@@ -82,22 +82,12 @@ env = environ.Env(
     #
     # Konfiguracja baz Redisa (numerki)
     #
-    DJANGO_BPP_REDIS_DB_BROKER=(
-        int,
-        1,
-    ),  # No longer used - kept for backward compatibility
+    DJANGO_BPP_REDIS_DB_BROKER=(int, 1),  # Celery broker
     DJANGO_BPP_REDIS_DB_CELERY=(int, 2),
     DJANGO_BPP_REDIS_DB_SESSION=(int, 4),
     DJANGO_BPP_REDIS_DB_CACHE=(int, 5),
     DJANGO_BPP_REDIS_DB_LOCKS=(int, 6),
     DJANGO_BPP_REDIS_DB_CACHEOPS=(int, 7),
-    #
-    # Konfiguracja RabbitMQ (Celery broker)
-    #
-    DJANGO_BPP_RABBITMQ_HOST=(str, "localhost"),
-    DJANGO_BPP_RABBITMQ_PORT=(int, 5672),
-    DJANGO_BPP_RABBITMQ_USER=(str, "bpp"),
-    DJANGO_BPP_RABBITMQ_PASS=(str, "bpp"),
     #
     # Konfiguracja Django
     #
@@ -277,7 +267,7 @@ TEMPLATES = [
                 "django.template.context_processors.request",
                 "django.template.context_processors.static",
                 "django.contrib.messages.context_processors.messages",
-                "password_policies.context_processors.password_status",
+                "django_bpp.context_processors.conditional_password_status",
                 "bpp.context_processors.uczelnia.uczelnia",
                 "bpp.context_processors.config.bpp_configuration",
                 "bpp.context_processors.constance_config.constance_config",
@@ -606,17 +596,19 @@ if DJANGO_BPP_CSRF_EXTRA_ORIGINS:
 REDIS_HOST = env("DJANGO_BPP_REDIS_HOST")
 REDIS_PORT = env("DJANGO_BPP_REDIS_PORT")
 
-# RabbitMQ configuration for Celery broker
-RABBITMQ_HOST = env("DJANGO_BPP_RABBITMQ_HOST")
-RABBITMQ_PORT = env("DJANGO_BPP_RABBITMQ_PORT")
-RABBITMQ_USER = env("DJANGO_BPP_RABBITMQ_USER")
-RABBITMQ_PASS = env("DJANGO_BPP_RABBITMQ_PASS")
-
-BROKER_URL = f"amqp://{RABBITMQ_USER}:{RABBITMQ_PASS}@{RABBITMQ_HOST}:{RABBITMQ_PORT}//"
+CELERY_BROKER_URL = (
+    f"redis://{REDIS_HOST}:{REDIS_PORT}/{env('DJANGO_BPP_REDIS_DB_BROKER')}"
+)
 CELERY_RESULT_BACKEND = (
     f"redis://{REDIS_HOST}:{REDIS_PORT}/{env('DJANGO_BPP_REDIS_DB_CELERY')}"
 )
-CELERY_BROKER_URL = BROKER_URL
+BROKER_URL = CELERY_BROKER_URL  # legacy alias for any third-party code
+
+CELERY_BROKER_TRANSPORT_OPTIONS = {
+    # Redis re-delivers in-flight task after this timeout if worker dies;
+    # must exceed longest job (PBN export, POLON import).
+    "visibility_timeout": 3600 * 6,
+}
 
 CELERY_RESULT_EXTENDED = False
 CELERY_RESULT_EXPIRES = timedelta(days=env("CELERY_RESULT_EXPIRES_DAYS"))
@@ -626,7 +618,7 @@ CELERYD_HIJACK_ROOT_LOGGER = False
 CELERY_TRACK_STARTED = False
 
 # Workerzy emituja eventy lifecycle (online/heartbeat/offline + task-received/
-# started/succeeded/failed) na RabbitMQ. Bez tego Flower nie widzi workerow.
+# started/succeeded/failed) na brokerze. Bez tego Flower nie widzi workerow.
 CELERY_WORKER_SEND_TASK_EVENTS = True
 
 CELERY_ROUTES = [

@@ -1,6 +1,8 @@
+import re
+
 import pytest
 from django.urls import reverse
-from playwright.sync_api import Page
+from playwright.sync_api import Page, expect
 
 from fixtures.pbn_api import pbn_pageable_json, pbn_publication_json
 from pbn_api.client import PBN_GET_PUBLICATION_BY_ID_URL, PBN_SEARCH_PUBLICATIONS_URL
@@ -23,7 +25,10 @@ def rozwin_ekstra_informacje_playwright(admin_page: Page):
         class_attr = parent.get_attribute("class") or ""
         if "grp-closed" in class_attr:
             ekstra_header.first.click()
-            admin_page.wait_for_timeout(500)
+            # Wait for the grappelli collapse animation to remove
+            # ``grp-closed`` from the fieldset class list — that's the
+            # signal that inner fields are ready to interact with.
+            expect(parent).not_to_have_class(re.compile(r"\bgrp-closed\b"))
 
 
 @pytest.mark.serial
@@ -82,10 +87,9 @@ def test_change_form_get_pbn_by_doi_via_api_nie_ma_w_api_jest_w_bazie(
         admin_page.locator(
             ".select2-results__option:not(.select2-results__message)"
         ).first.click()
-        admin_page.wait_for_timeout(300)
 
         # Verify pbn_uid field was populated with the local database record
-        assert admin_page.locator("#id_pbn_uid").input_value() == UID_REKORDU
+        expect(admin_page.locator("#id_pbn_uid")).to_have_value(UID_REKORDU)
     finally:
         res.delete()
 
@@ -137,10 +141,9 @@ def test_change_form_get_pbn_by_doi_via_api_jest_w_api(
     admin_page.locator(
         ".select2-results__option:not(.select2-results__message)"
     ).first.click()
-    admin_page.wait_for_timeout(300)
 
     # Verify pbn_uid field was populated with the API result
-    assert admin_page.locator("#id_pbn_uid").input_value() == UID_REKORDU
+    expect(admin_page.locator("#id_pbn_uid")).to_have_value(UID_REKORDU)
 
 
 @pytest.mark.django_db(transaction=True)
@@ -190,10 +193,9 @@ def test_change_form_get_pbn_by_isbn_or_eisbn_via_api_pub_jest_w_api(
     admin_page.locator(
         ".select2-results__option:not(.select2-results__message)"
     ).first.click()
-    admin_page.wait_for_timeout(300)
 
     # Verify pbn_uid field was populated with the API result
-    assert admin_page.locator("#id_pbn_uid").input_value() == UID_REKORDU
+    expect(admin_page.locator("#id_pbn_uid")).to_have_value(UID_REKORDU)
 
 
 @pytest.mark.django_db(transaction=True)
@@ -252,9 +254,8 @@ def test_change_form_get_pbn_by_isbn_or_eisbn_via_api_pub_jest_w_lokalnej_bazie(
         admin_page.locator(
             ".select2-results__option:not(.select2-results__message)"
         ).first.click()
-        admin_page.wait_for_timeout(300)
 
         # Verify pbn_uid field was populated with the local database record
-        assert admin_page.locator("#id_pbn_uid").input_value() == UID_REKORDU
+        expect(admin_page.locator("#id_pbn_uid")).to_have_value(UID_REKORDU)
     finally:
         pub.delete()

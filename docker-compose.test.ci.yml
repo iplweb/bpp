@@ -1,0 +1,33 @@
+# CI-only override for docker-compose.test.yml.
+#
+# Local dev uses docker-compose.test.yml alone — the bind mount
+# `.:/src` lets developers edit code and rerun tests without rebuilding
+# the test-runner image.
+#
+# CI uses both files (`docker compose -f docker-compose.test.yml -f
+# docker-compose.test.ci.yml ...`). This override:
+#   - drops the `.:/src` bind mount, so source code comes from the
+#     baked-in COPY in the test-runner stage (Dockerfile);
+#   - exposes `./ci-output` as the only writable mount, so pytest can
+#     write `cov.xml` somewhere the runner can pick up after
+#     `compose run --rm` discards the container.
+#
+# Dropping the docker.sock mount too — CI tests don't use Docker
+# from inside the test-runner (BPP_USE_TESTCONTAINERS=0).
+
+services:
+  test-runner:
+    # `!override` (Compose 2.24+) replaces the volumes list from
+    # the base file wholesale — that's how we drop `.:/src` while
+    # still attaching ./ci-output. `!reset` would zero out the list
+    # entirely and our own entries below would be discarded too;
+    # tested locally with `docker compose config` and confirmed.
+    volumes: !override
+      - ./ci-output:/ci-output
+    environment:
+      # CSS + .mo są zapieczone w obrazie test-runner (Dockerfile,
+      # stage test-runner: `npx grunt build-non-interactive` +
+      # `compilemessages`). conftest.py odpala `make assets` jako
+      # safety net dla developera lokalnego — w CI to czysty narzut
+      # × N shardów, dlatego tu wyłączamy.
+      BPP_SKIP_ASSETS_BUILD: "1"

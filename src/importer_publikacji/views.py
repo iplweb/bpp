@@ -3,6 +3,7 @@ import logging
 import traceback
 
 from django.contrib.contenttypes.models import ContentType
+from django.core.exceptions import ValidationError
 from django.db import transaction
 from django.db.models import Count, Q
 from django.http import HttpResponseBadRequest
@@ -686,6 +687,17 @@ class CreateView(ImporterPermissionMixin, View):
 
         try:
             record = _create_publication(session)
+        except ValidationError as e:
+            error_msg = " ".join(e.messages) if hasattr(e, "messages") else str(e)
+            return render(
+                request,
+                STEP_DONE,
+                {
+                    "session": session,
+                    "error": error_msg,
+                    "traceback": None,
+                },
+            )
         except Exception:
             traceback.print_exc()
             error_msg = "Wystąpił błąd podczas tworzenia rekordu."
@@ -1491,6 +1503,13 @@ def _link_pbn_uid(session, record):
 def _create_publication(session):
     """Utwórz rekord publikacji na podstawie sesji."""
     normalized_data = session.normalized_data
+
+    if not normalized_data.get("year"):
+        raise ValidationError(
+            "Brak roku publikacji w danych źródłowych — nie można utworzyć "
+            "rekordu. Uzupełnij rok w źródle (BibTeX/CrossRef/PBN) i spróbuj "
+            "ponownie."
+        )
 
     common_fields = {
         "tytul_oryginalny": normalized_data.get("title") or "",

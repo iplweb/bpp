@@ -15,8 +15,6 @@ fi
 DB_PORT="${DJANGO_BPP_DB_PORT:-5432}"
 APP_PORT="${DJANGO_BPP_PORT_APP:-8000}"
 REDIS_PORT="${DJANGO_BPP_REDIS_PORT:-6379}"
-RABBITMQ_PORT="${DJANGO_BPP_RABBITMQ_PORT:-5672}"
-RABBITMQ_MGMT_PORT="${DJANGO_BPP_PORT_RABBITMQ_MGMT:-15672}"
 
 # Unicode checkmarks with colors (using $'...' syntax for proper escape)
 GREEN=$'\033[32m'
@@ -48,8 +46,6 @@ echo ""
 print_port_line "$DB_PORT" "PostgreSQL:" ""
 print_port_line "$APP_PORT" "Django App:" "http://127.0.0.1:$APP_PORT"
 print_port_line "$REDIS_PORT" "Redis:" ""
-print_port_line "$RABBITMQ_PORT" "RabbitMQ:" ""
-print_port_line "$RABBITMQ_MGMT_PORT" "RabbitMQ UI:" "http://127.0.0.1:$RABBITMQ_MGMT_PORT"
 echo ""
 
 # Docker Compose container status

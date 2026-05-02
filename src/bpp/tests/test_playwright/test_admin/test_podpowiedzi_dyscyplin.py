@@ -36,8 +36,11 @@ def test_podpowiedzi_dyscyplin_autor_ma_dwie(
         admin_page, "id_autorzy_set-0-autor", "KOWALSKI", timeout=30000
     )
 
-    # Give time for any AJAX updates
-    admin_page.wait_for_timeout(1000)
+    # Give time for the (absent) podpowiedz-dyscyplinę AJAX to fire — this
+    # is a *negative* assertion (we want to verify nothing happens), so a
+    # fixed observation window is the correct pattern, not a conditional
+    # wait. 500 ms is enough headroom over the typical AJAX round-trip.
+    admin_page.wait_for_timeout(500)
 
     # Check that dyscyplina_naukowa field has "---------" (no auto-fill)
     sel = admin_page.locator("#id_autorzy_set-0-dyscyplina_naukowa")
@@ -76,8 +79,11 @@ def test_podpowiedzi_dyscyplin_autor_ma_jedna_uczelnia_nie_podpowiada(
         admin_page, "id_autorzy_set-0-autor", "KOWALSKI", timeout=30000
     )
 
-    # Give time for any AJAX updates
-    admin_page.wait_for_timeout(1000)
+    # Give time for the (absent) podpowiedz-dyscyplinę AJAX to fire — this
+    # is a *negative* assertion (we want to verify nothing happens), so a
+    # fixed observation window is the correct pattern, not a conditional
+    # wait. 500 ms is enough headroom over the typical AJAX round-trip.
+    admin_page.wait_for_timeout(500)
 
     # Check that dyscyplina_naukowa field has empty value (no auto-fill)
     sel = admin_page.locator("#id_autorzy_set-0-dyscyplina_naukowa")

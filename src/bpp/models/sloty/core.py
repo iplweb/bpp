@@ -43,6 +43,9 @@ def ISlot(original, uczelnia=None):  # noqa
             "statusów korekt. "
         )
 
+    if hasattr(original, "rok") and original.rok is None:
+        raise CannotAdapt("Rekord nie ma ustawionego roku — sloty nie są liczone.")
+
     if isinstance(original, Wydawnictwo_Ciagle):
         if original.rok in [2017, 2018]:
             if original.punkty_kbn >= 30:

@@ -80,7 +80,65 @@ def preauth_asgi_page(preauth_page: Page, channels_live_server, transactional_db
     wait_for_page_load(page)
     wait_for_websocket_connection(page)
     page.evaluate("Cookielaw.accept();")
-    import time
+    # Cookielaw.accept() removes #CookielawBanner synchronously; wait for
+    # the DOM to reflect that instead of sleeping a fixed second.
+    page.wait_for_selector("#CookielawBanner", state="detached", timeout=2000)
+    return page
 
-    time.sleep(1)
+
+# =============================================================================
+# Function-scoped warianty: fresh Daphne per test.
+#
+# Domyślny `channels_live_server` jest session-scoped (jeden Daphne na
+# worker xdist). Daje to ~2× szybszy run, ale niektóre testy są wrażliwe
+# na pollution stanu między testami w shared ASGI procesie (np. wycieki
+# DB connection w Daphne, race między test'em a server'em na widoczność
+# committed danych). Te testy używają poniższych wariantów `_per_test`,
+# które delegują do `channels_live_server_per_test` (function-scoped) —
+# każdy test dostaje świeży Daphne + świeże konekcje.
+# =============================================================================
+
+
+@pytest.fixture
+def admin_page_per_test(
+    page: Page, admin_user, channels_live_server_per_test, transactional_db
+):
+    """Function-scoped wariant `admin_page` — fresh Daphne per test."""
+    from django.test import Client
+
+    client = Client()
+    client.force_login(admin_user)
+    session_cookie = client.cookies["sessionid"]
+
+    page.context.add_cookies(
+        [
+            {
+                "name": "sessionid",
+                "value": session_cookie.value,
+                "domain": "localhost",
+                "path": "/",
+            }
+        ]
+    )
+
+    page.authorized_user = admin_user
+    return page
+
+
+@pytest.fixture
+def preauth_asgi_page_per_test(
+    preauth_page: Page, channels_live_server_per_test, transactional_db
+):
+    """Function-scoped wariant `preauth_asgi_page` — fresh Daphne per test."""
+    from django_bpp.playwright_util import (
+        wait_for_page_load,
+        wait_for_websocket_connection,
+    )
+
+    page = preauth_page
+    page.goto(channels_live_server_per_test.url)
+    wait_for_page_load(page)
+    wait_for_websocket_connection(page)
+    page.evaluate("Cookielaw.accept();")
+    page.wait_for_selector("#CookielawBanner", state="detached", timeout=2000)
     return page

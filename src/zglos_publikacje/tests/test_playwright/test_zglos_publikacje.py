@@ -158,8 +158,11 @@ def test_zglos_publikacje_ograniczony_dostep(
     n = 1
     admin_page.click("#add-form")
     admin_page.wait_for_selector(
-        f"#id_3-{n}-autor", state="visible"
+        f"#id_3-{n}-autor", state="attached", timeout=10000
     )
+
+    admin_page.locator(f"#id_3-{n}-autor").scroll_into_view_if_needed()
+
     select_select2_autocomplete(
         admin_page,
         f"id_3-{n}-autor",

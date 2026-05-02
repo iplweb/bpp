@@ -1,8 +1,8 @@
 """Broker connectivity probe for the celerybeat healthcheck.
 
-Beat publishes scheduled tasks to the broker (RabbitMQ); if the broker is
+Beat publishes scheduled tasks to the broker (Redis); if the broker is
 unreachable, beat keeps running but silently fails to enqueue work. This
-script opens a fresh AMQP connection and exits non-zero on failure so the
+script opens a fresh broker connection and exits non-zero on failure so the
 Docker HEALTHCHECK can flag the container as unhealthy.
 
 It does NOT depend on any worker being up (unlike `celery inspect`/`status`).

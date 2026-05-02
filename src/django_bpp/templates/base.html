@@ -237,7 +237,7 @@
     <div class="grid-container-fluid" data-sticky-container>
         <div class="grid-container">
             <div class="grid-x">
-                <div class="cell"><p/>
+                <div class="cell">
                     <div id="messagesPlaceholder"></div>
                     {% if DJANGO_BPP_ENABLE_TEST_CONFIGURATION %}
                         <div class="test-server-banner hide-on-print">
@@ -263,7 +263,7 @@
                                     </form>
                                 </div>
                             </div>
-                        {% else %}<p/>
+                        {% else %}
                             {% block content %}
                             {% endblock %}
                         {% endif %}

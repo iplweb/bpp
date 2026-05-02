@@ -40,7 +40,6 @@ Oprogramowanie dystrybuowane jest na zasadach otwartoźródłowej
 
 - PostgreSQL
 - Redis
-- RabbitMQ
 - Docker (zalecany sposób wdrożenia)
 
 ## Instalacja
@@ -80,7 +79,7 @@ pod adresem e-mail michal.dtz@gmail.com.
 >
 > **Pierwsze wykonanie poniższych kroków może trwać bardzo długo** —
 > ściągane są zależności Pythona, paczki npm/yarn, przeglądarki Playwright
-> oraz obrazy Dockera dla testcontainers (PostgreSQL, Redis, RabbitMQ).
+> oraz obrazy Dockera dla testcontainers (PostgreSQL, Redis).
 > Łącznie kilkaset MB do kilku GB transferu sieciowego. Pod każdym krokiem
 > podany jest sposób, jak włączyć szczegółowe logowanie postępu.
 
@@ -136,7 +135,7 @@ grunt build --verbose       # alternatywa dla `make grunt-build`
 uv run pytest
 ```
 
-Pytest startuje **własne** kontenery Docker (PostgreSQL, Redis, RabbitMQ)
+Pytest startuje **własne** kontenery Docker (PostgreSQL, Redis)
 przez plugin `testcontainers_bpp` — przy pierwszym uruchomieniu pobiera
 obrazy z Docker Hub (kolejne kilkaset MB). Wymagany jest działający
 **Docker daemon**.
@@ -172,13 +171,53 @@ Instaluje przez `apt` pakiety `yarnpkg`, `python3-dev`, `libpq-dev`,
 `uv sync --all-extras`. Po nim nadal trzeba ręcznie wywołać
 `uv run playwright install` oraz `sudo playwright install-deps`.
 
+## Szybkie uruchomienie wersji deweloperskiej (`run_site`)
+
+Komenda `manage.py run_site` uruchamia kompletny lokalny stack BPP
+w **testcontainerach** (PostgreSQL + Redis na losowych portach), więc
+można mieć kilka konfiguracji obok siebie bez konfliktów portów.
+
+```bash
+# Z baseline.sql (pusta baza demo):
+uv run python src/manage.py run_site
+
+# Z dump-em produkcyjnym (autodetect formatu):
+uv run python src/manage.py run_site --from-dump ~/backups/bpp.pg_dump
+```
+
+Co robi:
+
+1. Startuje PostgreSQL + Redis w kontenerach Docker na losowych portach.
+2. Odtwarza dump (`.sql` / `.sql.gz` / `.dump` / `.pg_dump` / `.pgdump`)
+   lub baseline (jeśli `--from-dump` nie podany).
+3. Wykonuje `migrate --noinput`.
+4. Tworzy lub nadpisuje superusera `admin` / `admin` z czyszczeniem
+   wymogu zmiany hasła (świeży wpis w `password_policies.PasswordHistory`).
+5. Drukuje banner z URL-ami i otwiera przeglądarkę na `/admin/`.
+6. Odpala `runserver` na losowym wolnym porcie i blokuje.
+
+`Ctrl-C` zatrzymuje runserver i sprząta kontenery.
+
+Opcje:
+
+| Flaga | Działanie |
+|-------|-----------|
+| `--from-dump PATH` | Restore z dump-a (autodetect po extension). |
+| `--with-celery` | Dodatkowo odpala celery worker. |
+| `--no-browser` | Nie otwiera przeglądarki. |
+| `--port PORT` | Konkretny port runserver (default: losowy wolny). |
+| `--reuse` | Reusuje istniejące named containery (szybszy restart). |
+
+**Wymaganie:** działający Docker daemon. Kontenery są ulotne — żyją
+tylko podczas trwania komendy (chyba że `--reuse`).
+
 ## Technologie
 
 | | |
 |---|---|
 | **Backend** | Python 3.10+, Django 4.2, Celery, Django Channels |
 | **Baza danych** | PostgreSQL |
-| **Cache / broker** | Redis, RabbitMQ |
+| **Cache / broker** | Redis |
 | **Frontend** | Foundation CSS, jQuery, HTMX, Select2 |
 | **Infrastruktura** | Docker, Nginx, Prometheus, Grafana |
 

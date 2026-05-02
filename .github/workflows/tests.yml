@@ -13,6 +13,11 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
+# Default minimum permissions; per-job overrides below where extra
+# scopes are needed (notably `packages:` for the GHCR push/pull flow).
+permissions:
+  contents: read
+
 jobs:
   lint:
     # Lint only Python files changed in this push/PR. The repo's
@@ -91,50 +96,61 @@ jobs:
           FILES: ${{ steps.files.outputs.list }}
         run: uv run --extra dev ruff format --check --force-exclude $FILES
 
-  build:
-    # Skip this job if it's a "Merge tag" commit on the dev branch
+  prepare-image:
+    # Build the test-runner image once and push it to GHCR with two
+    # tags: `:sha-<commit>` (consumed by downstream test jobs) and
+    # `:cache` (registry-mode buildx cache, auto-merged across builds).
+    # All test jobs `needs:` this step so the image is built once per
+    # workflow run instead of N times per matrix runner.
+    name: Build test-runner image
     if: |
       !(github.ref == 'refs/heads/dev' && contains(github.event.head_commit.message, 'Merge tag'))
 
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 30
 
-    strategy:
-      max-parallel: 4
-      matrix:
-        # Django 5.2 officially tests on CPython 3.10–3.13; Python 3.14
-        # is not supported upstream yet. Keep the matrix to 3.12 so we
-        # aren't spending runner minutes on a build we expect to fail.
-        python-version: ["3.12"]
+    permissions:
+      contents: read
+      # GHCR push needs `packages: write`. GITHUB_TOKEN inherits this
+      # scope only when the job declares it explicitly.
+      packages: write
+
+    outputs:
+      image: ${{ steps.tag.outputs.image }}
+
+    env:
+      PYTHON_VERSION: "3.12"
+      DEBIAN_VERSION: trixie
+      NODEJS_VERSION: "20"
+      # Lowercase repo owner, since GHCR rejects mixed-case namespaces.
+      # GitHub Actions ${{ github.repository_owner }} preserves case.
+      IMAGE_REPO: ghcr.io/iplweb/bpp-test-runner
 
     steps:
     - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
+    # baseline_check is repo-state-only — it doesn't need the
+    # test-runner image, the database, or any baked artefacts. Running
+    # it here (instead of inside a test job) means a baseline drift
+    # fails fast and skips the expensive image build below.
     - name: Install system build deps (for uv sync)
-      # uv sync --frozen builds native wheels (pycairo, psycopg2, lxml,
-      # cryptography) that need header libraries not present on the
-      # default runner image. Reuse docker/bpp_base/build.txt so the
-      # package list stays in sync with the runtime/test images.
       run: |
         sudo apt-get update
         xargs -a docker/bpp_base/build.txt sudo apt-get install -y
 
     - name: Install uv (for baseline_check)
+      # No setup-uv cache here — this job pushes images to GHCR, and
+      # zizmor flags cache+publish combos as a poisoning vector. The
+      # cache hit would shave a few seconds off a one-shot uv sync,
+      # not worth the audit smell.
       uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78 # v7.6.0
       with:
-        enable-cache: true
+        enable-cache: false
 
     - name: Install project deps (for baseline_check)
-      # baseline_check is a Django management command that loads the
-      # full INSTALLED_APPS. No DB connection needed — it reads
-      # src/baseline-sql/baseline.meta.json and counts migration files.
-      # --frozen is intentional: uv.lock is the single source of truth.
       run: uv sync --frozen --no-install-project
 
     - name: Check baseline freshness
-      # Fail loudly if migrations have outpaced the baseline pg_dump by
-      # more than --max-delta. When this fails, the fix is to run
-      # `make rebuild-baseline` locally and commit the refreshed files.
       env:
         DJANGO_BPP_SKIP_DOTENV: "1"
       run: uv run python src/manage.py baseline_check --max-delta 50
@@ -144,103 +160,144 @@ jobs:
       with:
         driver: docker-container
 
-    - name: Cache Docker layers
-      uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+    - name: Log in to GHCR
+      uses: docker/login-action@4907a6ddec9925e35a0a9e82d7399ccc52663121 # v4.1.0
       with:
-        path: /tmp/.buildx-cache
-        key: >-
-          ${{ runner.os }}-buildx-${{ matrix.python-version }}-${{
-            hashFiles(
-              'docker/bpp_base/Dockerfile',
-              'docker/bpp_base/*.txt',
-              'uv.lock'
-            )
-          }}
-        restore-keys: |
-          ${{ runner.os }}-buildx-${{ matrix.python-version }}-
+        registry: ghcr.io
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
 
-    - name: Build test-runner image
+    - name: Compute image tag
+      id: tag
       env:
-        PYTHON_VERSION: ${{ matrix.python-version }}
-        COMPOSE_DOCKER_CLI_BUILD: 1
-        DOCKER_BUILDKIT: 1
+        SHA: ${{ github.sha }}
       run: |
-        docker compose -f docker-compose.test.yml build test-runner
+        echo "image=${IMAGE_REPO}:sha-${SHA}" >> "$GITHUB_OUTPUT"
+
+    - name: Build & push test-runner image
+      uses: docker/build-push-action@263435318d21b8e681c14492fe198d362a7d2c83 # v6.18.0
+      with:
+        context: .
+        file: docker/bpp_base/Dockerfile
+        target: test-runner
+        push: true
+        # Two tags: immutable sha-pinned (consumed by tests jobs) and
+        # the registry-cache helper used to seed `cache-from` next time.
+        tags: |
+          ${{ steps.tag.outputs.image }}
+        build-args: |
+          PYTHON_VERSION=${{ env.PYTHON_VERSION }}
+          DEBIAN_VERSION=${{ env.DEBIAN_VERSION }}
+          NODEJS_VERSION=${{ env.NODEJS_VERSION }}
+        # Registry-mode cache. mode=max stores all intermediate layers,
+        # so subsequent builds where uv.lock/Dockerfile/build.txt are
+        # unchanged finish in seconds. The first run after rolling out
+        # this workflow has no cache and pays the full ~3 min build —
+        # warm cache afterwards.
+        cache-from: type=registry,ref=${{ env.IMAGE_REPO }}:cache
+        cache-to: type=registry,ref=${{ env.IMAGE_REPO }}:cache,mode=max
+
+  tests:
+    # Single sharded job covering the full suite (playwright +
+    # non-playwright + serial) under `pytest -n auto`. Earlier the
+    # workflow split this into three specialised jobs (parallel /
+    # serial / playwright); shard-then-mix is faster end-to-end because
+    # the per-shard fixed cost (image pull, PG init + baseline load,
+    # Redis startup) is paid once instead of three times.
+    #
+    # @pytest.mark.serial tests are deliberately mixed in here. They
+    # don't actually depend on running outside xdist — the marker is
+    # used by callers that want to opt out of parallelism, but the
+    # tests themselves pass under -n auto. If that ever changes, gate
+    # serial tests with @pytest.mark.xdist_group(name="serial") so
+    # `--dist=loadgroup` keeps them on a single worker.
+    #
+    # DB setup: docker-compose.test.yml mounts baseline.sql into
+    # /docker-entrypoint-initdb.d/ and sets DJANGO_BPP_TEST_TEMPLATE=bpp,
+    # so xdist worker DBs are created via `CREATE DATABASE … WITH
+    # TEMPLATE bpp` (instant in-server clone) instead of replaying
+    # `psql -f baseline.sql` per worker.
+    name: Tests (sharded)
+    needs: prepare-image
+    if: |
+      !(github.ref == 'refs/heads/dev' && contains(github.event.head_commit.message, 'Merge tag'))
+
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+
+    permissions:
+      contents: read
+      packages: read
+
+    strategy:
+      fail-fast: false
+      max-parallel: 8
+      matrix:
+        python-version: ["3.12"]
+        # 0-indexed; bump alongside NUM_SHARDS below if you change it.
+        shard: [0, 1, 2, 3, 4, 5, 6, 7]
+
+    env:
+      TEST_RUNNER_IMAGE: ${{ needs.prepare-image.outputs.image }}
+      COMPOSE_FILES: -f docker-compose.test.yml -f docker-compose.test.ci.yml
+      NUM_SHARDS: "8"
+
+    steps:
+    - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+    - name: Log in to GHCR
+      uses: docker/login-action@4907a6ddec9925e35a0a9e82d7399ccc52663121 # v4.1.0
+      with:
+        registry: ghcr.io
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Prepare ci-output dir
+      run: mkdir -p ci-output
+
+    - name: Pull test-runner image
+      run: docker compose $COMPOSE_FILES pull test-runner
 
     - name: Start services
-      run: |
-        docker compose -f docker-compose.test.yml up -d db redis rabbitmq
+      run: docker compose $COMPOSE_FILES up -d db redis
 
     - name: Wait for services
       timeout-minutes: 2
       run: |
-        until docker compose -f docker-compose.test.yml exec db \
+        until docker compose $COMPOSE_FILES exec db \
             pg_isready -U bpp; do
           echo "Waiting for PostgreSQL..."
           sleep 2
         done
-        until docker compose -f docker-compose.test.yml exec redis \
+        until docker compose $COMPOSE_FILES exec redis \
             redis-cli ping; do
           echo "Waiting for Redis..."
           sleep 2
         done
 
-    - name: Build assets
-      timeout-minutes: 10
+    - name: Tests (shard ${{ matrix.shard }}/${{ env.NUM_SHARDS }})
+      timeout-minutes: 25
+      env:
+        SHARD_ID: ${{ matrix.shard }}
       run: |
-        docker compose -f docker-compose.test.yml run --rm \
-          test-runner uv run make assets
-
-    - name: Install Playwright browsers
-      timeout-minutes: 10
-      run: |
-        docker compose -f docker-compose.test.yml run --rm \
-          test-runner uv run playwright install chromium chromium-headless-shell
-
-    - name: Tests (without Playwright, parallel)
-      timeout-minutes: 20
-      run: |
-        docker compose -f docker-compose.test.yml run --rm \
+        docker compose $COMPOSE_FILES run --rm \
+          -e SHARD_ID \
           test-runner uv run pytest \
-            -m "not playwright and not serial" -n auto \
+            -n auto \
+            --shard-id "$SHARD_ID" --num-shards "$NUM_SHARDS" \
             --timeout 300 \
             --cov=src/ --cov-branch \
-            --cov-report=xml:cov.xml
-
-    - name: Tests (serial, no xdist)
-      # Tests tagged @pytest.mark.serial share state that xdist
-      # workers shouldn't race on (e.g. PG connections that flake when
-      # another worker recycles the DB). Run them sequentially in a
-      # single process; --cov-append keeps coverage merged.
-      timeout-minutes: 5
-      run: |
-        docker compose -f docker-compose.test.yml run --rm \
-          test-runner uv run pytest \
-            -m "serial and not playwright" \
-            --timeout 300 \
-            --cov=src/ --cov-branch --cov-append \
-            --cov-report=xml:cov.xml
-
-    - name: Tests (Playwright)
-      timeout-minutes: 20
-      run: |
-        docker compose -f docker-compose.test.yml run --rm \
-          test-runner uv run pytest \
-            -m "playwright" -n auto \
-            --timeout 300 \
-            --cov=src/ --cov-branch --cov-append \
-            --cov-report=xml:cov.xml
+            --cov-report=xml:/ci-output/cov.xml
 
     - name: Upload coverage to Coveralls (parallel)
       if: always()
       uses: coverallsapp/github-action@5cbfd81b66ca5d10c19b062c04de0199c215fb6e # v2.3.7
       with:
         github-token: ${{ secrets.GITHUB_TOKEN }}
-        flag-name: tests
+        flag-name: tests-${{ matrix.shard }}
         parallel: true
-        file: cov.xml
+        file: ci-output/cov.xml
 
     - name: Cleanup
       if: always()
-      run: |
-        docker compose -f docker-compose.test.yml down -v
+      run: docker compose $COMPOSE_FILES down -v

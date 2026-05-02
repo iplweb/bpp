@@ -4,6 +4,294 @@ Historia zmian
 
 .. towncrier release notes start
 
+bpp 202604.1369 (2026-04-28)
+============================
+
+Naprawione
+----------
+
+- Naprawiono generowanie ``src/baseline-sql/baseline.sql``: komenda
+  ``baseline_rebuild`` uruchamia teraz ``pg_dump`` *wewnątrz*
+  testcontenera (``docker exec``) zamiast używać klienta z hosta.
+  Gdy host miał nowszy major PostgreSQL niż obraz bazowy
+  (``iplweb/bpp_dbserver:psql-16.13``), ``pg_dump`` w wersji 17
+  wstawiał do dumpa dyrektywę ``SET transaction_timeout = 0;``,
+  której PostgreSQL 16 nie zna — przez co odtworzenie baseline'u
+  na docelowej wersji się wywalało. Klient i serwer są teraz
+  zawsze w tym samym majorze. Dodatkowo scrubber wycina takie
+  linie jako safety net na wypadek przyszłych nowych dyrektyw.
+- Naprawiono komunikat o przeterminowanym haśle, który pojawiał się
+  użytkownikom zalogowanym przez Microsoft (``microsoft_auth``) lub
+  ORCID (``orcid_integration``) bez formularza zmiany hasła. Hasłem
+  takich kont zarządza zewnętrzny IdP, więc polityka wygasania nie
+  powinna ich w ogóle obejmować — middleware
+  ``ConditionalPasswordChangeMiddleware`` już to respektował, ale
+  context processor ``password_status`` z ``django-password-policies``
+  nadal sprawdzał wiek hasła w bazie i ustawiał
+  ``password_change_required = True`` w kontekście szablonu, przez co
+  ``base.html`` renderował callout bez formularza (zmienna ``form``
+  istnieje tylko w widoku zmiany hasła, do którego middleware słusznie
+  nie przekierowywał). Dodano
+  ``django_bpp.context_processors.conditional_password_status``,
+  który symetrycznie pomija sprawdzenie dla backendów OAuth z
+  ``EXTERNAL_AUTH_BACKENDS`` i deleguje do oryginalnego context
+  processora wyłącznie dla zwykłego logowania ``ModelBackend``.
+
+
+Usprawnienie
+------------
+
+- CI: shardy ``pytest`` w workflow ``Tests`` nie odpalają już ``make
+  assets`` przy starcie. Obraz ``test-runner`` ma zapieczone CSS i ``.mo``
+  z buildu obrazu (stage ``test-runner`` w ``docker/bpp_base/Dockerfile``),
+  więc ``conftest.py`` honoruje teraz zmienną ``BPP_SKIP_ASSETS_BUILD=1``
+  ustawioną w ``docker-compose.test.ci.yml``.
+
+  Wcześniej każdy z ośmiu równoległych shardów wpadał w
+  ``pytest_configure`` i — z powodu braku sentinela
+  ``node_modules/.installed`` w obrazie — odpalał pełny ``yarn install`` +
+  ``grunt build`` przed pierwszym testem. Lokalny dev nie jest zmieniony:
+  bez tej zmiennej ``conftest.py`` nadal uruchamia ``make assets`` jako
+  safety net.
+- Pipeline release-u (``make new-release`` oraz ``make release``)
+  weryfikuje teraz zaleznosci pod katem znanych CVE PRZED zbumpieniem
+  wersji i wystartowaniem builda. Nowy target ``make scan-deps``
+  generuje SBOM (CycloneDX) z ``uv.lock`` przez ``uv export --no-dev``
+  i puszcza go przez OSV-Scanner, Grype oraz Trivy. Jezeli ktorykolwiek
+  skaner znajdzie HIGH/CRITICAL CVE, ``make`` zatrzyma sie z exit 1 i
+  release nie ruszy — zeby pominac (na wlasna odpowiedzialnosc), uzyj
+  ``./bin/scan-deps.sh --no-gate``. Wymagane narzedzia: ``brew install
+  osv-scanner grype trivy``.
+
+  Workflow ``dependency-audit.yml`` rozszerzony o drugi job
+  ``multi-scanner``, ktory na CI generuje ten sam SBOM i odpala te
+  same trzy skanery jako defense-in-depth obok istniejacego gate-u
+  ``uv-secure``. Nowe skanery sa report-only (zapisuja markdown do
+  ``GITHUB_STEP_SUMMARY``, nie blokuja merga) — chodzi o widocznosc
+  findings, ktorych nie wykryla baza ``uv-secure``, bez ryzyka
+  zablokowania PR-a falszywym pozytywem z innej bazy CVE.
+
+
+bpp 202604.1368 (2026-04-28)
+============================
+
+Naprawione
+----------
+
+- Naprawiono migrację ``0413_bppuser_autor_onetoone``, która kończyła
+  się błędem ``cannot ALTER TABLE "bpp_bppuser" because it has pending
+  trigger events`` na bazach z istniejącymi danymi. Migracja została
+  oznaczona jako nieatomowa, dzięki czemu deferred triggery (``denorm``)
+  odpalane przez ``RunPython`` wystrzeliwują przed kolejnymi
+  ``ALTER TABLE`` na tej samej tabeli.
+
+
+bpp 202604.1367 (2026-04-28)
+============================
+
+Naprawione
+----------
+
+- ``MaliciousRequestBlockingMiddleware`` blokował legalne żądania
+  DataTables AJAX, jeśli tabela miała wiele kolumn — biblioteka
+  serializuje per-kolumnowe metadane (``columns[N][data]``,
+  ``[search][value]``, …) do query stringu, który łatwo przekraczał
+  limit 2048 znaków. Konsekwencja: kontrolki DataTables na widokach
+  ``/api/...`` zwracały HTTP 444 zamiast danych, a integracyjne testy
+  Playwright (m.in. ``import_dyscyplin``) timeout'owały się czekając
+  na dane, których serwer odmówił.
+
+  Dwie zmiany:
+
+  - Limit ``MAX_FULL_PATH_LENGTH`` podniesiony 2048 → 4096 znaków
+    (mieści typowy DataTables-payload bez otwierania drzwi rekurencyjnym
+    ``?next=`` od skanerów, bo te i tak obsługuje osobny check).
+  - Ścieżki zawierające ``/api/`` są zwolnione z check'u długości pełnego
+    URL — endpointy API legalnie generują wzdęte query stringi, a
+    scanner-boty z rekurencyjnymi przekierowaniami i tak nie kierują
+    swoich łańcuchów na ``/api/``. (middleware-api-whitelist)
+- Pełen suite testów Playwright zostaje przyspieszony z ~3:50 do ~2:24
+  (−85 s, −38 %) bez utraty pokrycia.
+
+  Główne źródło zysku — naprawa ukrytego buga w
+  ``django_bpp.playwright_util.select_select2_autocomplete``: pierwszy
+  ``wait_for_selector`` na ``#select2-{id}-container`` trafiał w pełen
+  30-sekundowy timeout w testach gdzie ten wariant markupu nie istnieje
+  (formularze inline django-grappelli admin), zanim wpadał do bloku
+  ``except`` z fallbackowym selektorem siostrzanym. Helper jest używany
+  w 64 miejscach — każde wywołanie traciło ~30 s. Najwolniejsze testy
+  jak ``test_changeform_add_full_flow`` (3 wywołania select2) traciły
+  ~90 s na samych timeoutach.
+
+  Naprawa: race obu selektorów przez listę ``", "`` w jednym
+  ``wait_for_selector`` — zwracamy się do ``.select2-selection`` (zawsze
+  klikalny element) zamiast container'a. Efekt:
+  - ``test_changeform_add_full_flow``: 97 s → 8 s
+  - ``test_admin_wydawnictwo_ciagle_dowolnie_zapisane_nazwisko``:
+    67 s → 8 s
+  - ``test_procent_odpowiedzialnosci_*_dwoch_autorow`` cluster:
+    37–48 s → 12–18 s
+
+  Drugi front — eliminacja antywzorców ``wait_for_load_state(networkidle)``
+  i sztywnych ``wait_for_timeout()`` w testach Playwright, zastępowane
+  warunkowymi waitami (``expect(...).to_have_value()``,
+  ``page.expect_navigation``, polling DB/listy dialogów):
+  - ``test_integracyjny`` (import dyscyplin): 75 s → 13 s — usunięte
+    sztywne sleepy i ``networkidle`` na stronie z otwartym WebSocketem
+  - ``test_multiseek_*`` (6 testów): 30+ s → ~2 s — ``expect_navigation``
+    zamiast ``networkidle`` po klikach search
+  - ``test_smoke`` crawler: usunięty ``networkidle`` w pętli (zawsze
+    trafiał w 10 s timeout bo strony BPP mają long-polling)
+  - ``test_toz_tamze``, ``test_admin_forms``, ``test_clarivate``,
+    ``test_change_form_pbn_isbn_doi_etc``, ``test_change_form_pubmed``,
+    ``test_crossref_api_sync_playwright`` — sztywne ``wait_for_timeout``
+    zamienione na polling licznika rekordów / listy dialogów / wartości
+    pól; w przypadku dialog handlerów polling musi pompować event loop
+    przez ``page.wait_for_timeout`` (a nie ``time.sleep``), bo handler
+    odpala się tylko gdy Playwright przetwarza eventy. (playwright-suite-speedup)
+- Naprawiono blokowanie zapytań AJAX widgetów DataTables przez
+  ``MaliciousRequestBlockingMiddleware``. Limit długości pełnego URL-a
+  (``MAX_FULL_PATH_LENGTH``) został podniesiony z 2048 na 8192 — DataTables
+  przy ~10 kolumnach generuje query string z percent-encoded metadanymi
+  kolumn (``columns%5B0%5D%5Bdata%5D=…``) przekraczający 2 KB, ale dobrze
+  mieszczący się w 8 KB (zgodnie z domyślnym ``large_client_header_buffers``
+  nginxa i ``LimitRequestLine`` Apacha). Eksponencjalnie rosnące łańcuchy
+  ``?next=`` produkowane przez bot-skannery nadal są łapane — albo przez
+  nowy próg, albo przez detektor zagnieżdżonego ``?next=``.
+- Naprawiono błąd teardown testów ``TransactionTestCase`` (m.in. testów
+  Playwright z ``transaction=True``) — ``TRUNCATE`` Django flush'a wywalał
+  się na FK z niezarządzanej tabeli ``bpp_rekord_mat`` do zarządzanej
+  ``bpp_charakter_formalny``. Monkey-patch ``_fixture_teardown`` (dodający
+  ``allow_cascade=True`` i retry przy deadlocku) został przeniesiony z
+  ``src/fixtures/conftest.py`` do ``src/conftest.py``: ten pierwszy plik
+  jest siostrzanym katalogiem względem testów i pytest go automatycznie
+  NIE ładuje dla testów spoza ``src/fixtures/``, więc patch nigdy nie
+  zaczepiał się dla większości testów transakcyjnych.
+- Naprawiono losowe failowanie kilku testów Playwrighta uruchamianych
+  równolegle z ``-n auto``. Testy używające session-scoped fixture
+  ``channels_live_server`` (jeden Daphne na worker, reuse między
+  testami) były wrażliwe na pollution stanu w shared ASGI procesie:
+  wycieki konekcji DB i race między test'em a serwerem na widoczność
+  commitowanych danych.
+
+  Dodano function-scoped warianty ``admin_page_per_test`` i
+  ``preauth_asgi_page_per_test`` (oparte o istniejący
+  ``channels_live_server_per_test``) — każdy test dostaje świeży
+  proces Daphne. Przepięto na nie testy:
+
+  - ``test_bpp_notifications``
+  - ``test_global_search_logged_in``
+  - ``test_procent_odpowiedzialnosci_baseModel_AutorFormset_jeden_autor``
+  - ``test_procent_odpowiedzialnosci_baseModel_AutorFormset_dwoch_autorow``
+  - ``test_procent_odpowiedzialnosci_baseModel_AutorFormset_dobrze_potem_zle_dwoch_autorow``
+
+  Pozostałe testy (~67) nadal używają szybkiego session-scoped
+  ``channels_live_server`` — bez regresji wydajności.
+
+
+bpp 202604.1366 (2026-04-27)
+============================
+
+Naprawione
+----------
+
+- Rozszerzono ``MaliciousRequestBlockingMiddleware`` o dwie dodatkowe
+  heurystyki ograniczające szum w logach od skanerów bezpieczeństwa:
+
+  - Pełny URL (ścieżka + query string) dłuższy niż 2048 znaków zwraca
+    HTTP 444. Dotychczasowy limit 1024 znaków obejmował tylko
+    ``request.path`` i przepuszczał wzdęte query stringi.
+  - Parametr ``next=`` zawierający kolejne ``?next=`` (po dekodowaniu
+    query stringu przez Django) jest blokowany jako odcisk bota
+    podążającego za przekierowaniami logowania bez cookies — typowy
+    wzorzec rekurencyjnie zakodowanych łańcuchów krążących między
+    ``/accounts/login/`` a ``/admin/login/``.
+
+  Pojedynczy, prawidłowy ``next=`` (np. po nieautoryzowanej próbie
+  wejścia do widoku ``toz``) pozostaje dozwolony. (blokada-zagnezdzonych-next)
+- Naprawiono renderowanie paginacji w widokach z HTMX (np. ``/pbn_export_queue/``),
+  gdzie stopka strony lądowała pomiędzy pagerem a tabelą. Przyczyną była
+  minifikacja HTML aplikowana do fragmentów ładowanych przez
+  ``hx-swap="innerHTML"`` — ``minify-html`` zaprojektowany dla pełnych
+  dokumentów restrukturyzował niezamknięte/puste tagi (m.in. pusty
+  ``<li class="ellipsis">``) w partial-ach, rozjeżdżając DOM po wstawieniu.
+
+  Wprowadzono prewencję systemową przeciwko regresjom tej klasy:
+
+  - ``BppMinifyHtmlMiddleware`` omija minifikację gdy żądanie ma nagłówek
+    ``HX-Request: true`` (wszystkie HTMX-owe partial-e bypassują minifier).
+  - Linter ``djlint`` dodany do pre-commit z aktywnymi regułami
+    strukturalnymi (H020 puste-tag-pair, H025 orphan-tag) — wykrywa
+    podobne pułapki przed merge-em.
+  - Test integralności ``test_html_minify_integrity.py`` weryfikuje że
+    typowe trefne wzorce (puste ``<li>``, ``<p/>``, ``<span/>``) po
+    minifikacji nie rozjeżdżają struktury DOM, plus że HTMX-owe requesty
+    są właściwie bypassowane.
+
+  Dodatkowo style paginacji ``pagination_with_anchor.html`` przeniesione z
+  inline ``<style>`` (re-injektowanego przy każdym HTMX-swap-ie) do
+  osobnego SCSS partial-a ``_pagination.scss`` importowanego z głównych
+  schematów (blue/orange/green). (htmx-minify-paginacja)
+
+
+Usprawnienie
+------------
+
+- Broker Celery przeniesiony z RabbitMQ na Redis (baza ``DB 1``,
+  zmienna ``DJANGO_BPP_REDIS_DB_BROKER``). Result backend (Redis ``DB 2``)
+  i routing tasków bez zmian — migracja jest neutralna funkcjonalnie.
+
+  Usunięte zostały:
+
+  - serwis ``rabbitmq`` z ``docker-compose.yml`` i
+    ``docker-compose.test.yml``,
+  - zmienne ``DJANGO_BPP_RABBITMQ_*`` z konfiguracji oraz
+    ``.env.docker`` / ``.env.example``,
+  - zależność pakietu ``amqp`` z ``pyproject.toml``,
+  - start kontenera RabbitMQ w plugin-ie ``testcontainers_bpp``,
+  - pozycja „RabbitMQ" z menu admina (DOCKER_SERVICES_MENU).
+
+  Po pull-u wymagany jest ``uv lock`` / rebuild obrazów (zniknie
+  biblioteka ``amqp``); istniejące deploye po przepięciu wymagają
+  ``stop workers → up -d → start workers``. Zadania zalegające
+  w kolejce RabbitMQ przy migracji zostaną porzucone.
+
+  Lokalne ``docker compose up`` startuje teraz znacząco szybciej —
+  RabbitMQ pod emulacją amd64 na arm64 potrafił rozgrzewać się
+  ~3 minuty, Redis w sekundę.
+
+  Dla deploymentów: zmiany w ``bpp-deploy`` (compose, init-configs,
+  prometheus job, nginx routing ``/rabbitmq/``) muszą zostać
+  wdrożone razem z tą wersją obrazu — szczegóły w ``CHANGELOG`` repo
+  ``iplweb/bpp-deploy``.
+
+  Dodano ``CELERY_BROKER_TRANSPORT_OPTIONS`` z ``visibility_timeout``
+  ustawionym na 6 godzin — Redis re-deliveruje zadanie po tym
+  timeout-cie jeśli worker padł, więc wartość musi przekraczać
+  najdłuższy realny task (PBN export, import POLON). (celery-broker-redis)
+
+
+bpp 202604.1365 (2026-04-27)
+============================
+
+Usprawnienie
+------------
+
+- Uproszczono healthcheck kontenera ``celerybeat`` — sprawdza on teraz
+  wyłącznie dostępność brokera (RabbitMQ) przez świeże połączenie AMQP,
+  bez wcześniejszego dwustopniowego badania pidfile + brokera.
+
+  Sprawdzenie żywotności procesu beata przez ``/celerybeat.pid`` było
+  redundantne, ponieważ ``celery beat`` jest procesem PID 1 kontenera —
+  gdy padnie, kontener wychodzi i healthcheck nie jest wtedy nawet
+  uruchamiany. Pozostawienie wyłącznie sondy brokera daje to, czego
+  healthcheck nie wie z samego faktu, że kontener jeszcze biegnie.
+
+  Dodatkowo usunięto pośredni skrypt ``docker/beatserver/healthcheck.sh``
+  — ``HEALTHCHECK`` w ``docker/beatserver/Dockerfile`` woła teraz
+  bezpośrednio ``python /app/healthcheck_broker.py``.
+
+
 bpp 202604.1364 (2026-04-27)
 ============================
 

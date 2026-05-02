@@ -3,8 +3,8 @@
 --
 
 
--- Dumped from database version 16.13 (Debian 16.13-1.pgdg12+1)
--- Dumped by pg_dump version 16.13 (Debian 16.13-1.pgdg12+1)
+-- Dumped from database version 16.13 (Debian 16.13-1.pgdg13+1)
+-- Dumped by pg_dump version 16.13 (Debian 16.13-1.pgdg13+1)
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -4840,11 +4840,12 @@ CREATE TABLE public.bpp_bppuser (
     adnotacje text NOT NULL,
     active_charmap_tab integer NOT NULL,
     per_page integer NOT NULL,
-    multiseek_format character varying(200),
-    multiseek_order_1 character varying(200),
-    pbn_token character varying(128),
+    multiseek_format character varying(200) NOT NULL,
+    multiseek_order_1 character varying(200) NOT NULL,
+    pbn_token character varying(128) NOT NULL,
     pbn_token_updated timestamp with time zone,
-    przedstawiaj_w_pbn_jako_id integer
+    przedstawiaj_w_pbn_jako_id integer,
+    autor_id integer
 );
 
 
@@ -10448,7 +10449,9 @@ CREATE TABLE public.importer_publikacji_importsession (
     created_by_id integer NOT NULL,
     wydawca_id integer,
     zrodlo_id integer,
-    modified_by_id integer
+    modified_by_id integer,
+    wydawnictwo_nadrzedne_id integer,
+    wydawnictwo_nadrzedne_w_pbn_id character varying(32)
 );
 
 
@@ -12271,6 +12274,22 @@ CREATE TABLE public.test_bpp_testoperation (
 
 
 --
+-- Name: test_bpp_testreport; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.test_bpp_testreport (
+    id uuid NOT NULL,
+    created_on timestamp with time zone NOT NULL,
+    last_updated_on timestamp with time zone NOT NULL,
+    started_on timestamp with time zone,
+    finished_on timestamp with time zone,
+    finished_successfully boolean NOT NULL,
+    traceback text,
+    owner_id integer NOT NULL
+);
+
+
+--
 -- Name: zglos_publikacje_obslugujacy_zgloszenia_wydzialow; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -13528,174 +13547,178 @@ COPY public.auth_permission (id, name, content_type_id, codename) FROM stdin;
 784	Can change test object that does not exist	201	change_testobjectthatdoesnotexist
 785	Can delete test object that does not exist	201	delete_testobjectthatdoesnotexist
 786	Can view test object that does not exist	201	view_testobjectthatdoesnotexist
-787	Can add template	148	add_template
-788	Can change template	148	change_template
-789	Can delete template	148	delete_template
-790	Can view template	148	view_template
-791	Can add oswiadczenia export task	202	add_oswiadczeniaexporttask
-792	Can change oswiadczenia export task	202	change_oswiadczeniaexporttask
-793	Can delete oswiadczenia export task	202	delete_oswiadczeniaexporttask
-794	Can view oswiadczenia export task	202	view_oswiadczeniaexporttask
-795	Can add import pliku polon	203	add_importplikupolon
-796	Can change import pliku polon	203	change_importplikupolon
-797	Can delete import pliku polon	203	delete_importplikupolon
-798	Can view import pliku polon	203	view_importplikupolon
-799	Can add wiersz importu pliku polon	204	add_wierszimportuplikupolon
-800	Can change wiersz importu pliku polon	204	change_wierszimportuplikupolon
-801	Can delete wiersz importu pliku polon	204	delete_wierszimportuplikupolon
-802	Can view wiersz importu pliku polon	204	view_wierszimportuplikupolon
-803	Can add import pliku absencji	205	add_importplikuabsencji
-804	Can change import pliku absencji	205	change_importplikuabsencji
-805	Can delete import pliku absencji	205	delete_importplikuabsencji
-806	Can view import pliku absencji	205	view_importplikuabsencji
-807	Can add wiersz importu pliku absencji	206	add_wierszimportuplikuabsencji
-808	Can change wiersz importu pliku absencji	206	change_wierszimportuplikuabsencji
-809	Can delete wiersz importu pliku absencji	206	delete_wierszimportuplikuabsencji
-810	Can view wiersz importu pliku absencji	206	view_wierszimportuplikuabsencji
-811	Can add Wymuszenie grupy stanowisk	136	add_importpolonoverride
-812	Can change Wymuszenie grupy stanowisk	136	change_importpolonoverride
-813	Can delete Wymuszenie grupy stanowisk	136	delete_importpolonoverride
-814	Can view Wymuszenie grupy stanowisk	136	view_importpolonoverride
-815	Can add import list ministerialnych	207	add_importlistministerialnych
-816	Can change import list ministerialnych	207	change_importlistministerialnych
-817	Can delete import list ministerialnych	207	delete_importlistministerialnych
-818	Can view import list ministerialnych	207	view_importlistministerialnych
-819	Can add wiersz importu listy ministerialnej	208	add_wierszimportulistyministerialnej
-820	Can change wiersz importu listy ministerialnej	208	change_wierszimportulistyministerialnej
-821	Can delete wiersz importu listy ministerialnej	208	delete_wierszimportulistyministerialnej
-822	Can view wiersz importu listy ministerialnej	208	view_wierszimportulistyministerialnej
-823	Can add snapshot odpiec	209	add_snapshotodpiec
-824	Can change snapshot odpiec	209	change_snapshotodpiec
-825	Can delete snapshot odpiec	209	delete_snapshotodpiec
-826	Can view snapshot odpiec	209	view_snapshotodpiec
-827	Can add wartosc snapshotu	210	add_wartoscsnapshotu
-828	Can change wartosc snapshotu	210	change_wartoscsnapshotu
-829	Can delete wartosc snapshotu	210	delete_wartoscsnapshotu
-830	Can view wartosc snapshotu	210	view_wartoscsnapshotu
-831	Can add Oznaczony jako nie-duplikat	141	add_notaduplicate
-832	Can change Oznaczony jako nie-duplikat	141	change_notaduplicate
-833	Can delete Oznaczony jako nie-duplikat	141	delete_notaduplicate
-834	Can view Oznaczony jako nie-duplikat	141	view_notaduplicate
-835	Can add Log scalania autorów	142	add_logscalania
-836	Can change Log scalania autorów	142	change_logscalania
-837	Can delete Log scalania autorów	142	delete_logscalania
-838	Can view Log scalania autorów	142	view_logscalania
-839	Can add Ignorowany autor	143	add_ignoredauthor
-840	Can change Ignorowany autor	143	change_ignoredauthor
-841	Can delete Ignorowany autor	143	delete_ignoredauthor
-842	Can view Ignorowany autor	143	view_ignoredauthor
-843	Can add Skanowanie duplikatów	211	add_duplicatescanrun
-844	Can change Skanowanie duplikatów	211	change_duplicatescanrun
-845	Can delete Skanowanie duplikatów	211	delete_duplicatescanrun
-846	Can view Skanowanie duplikatów	211	view_duplicatescanrun
-847	Can add Kandydat na duplikat	212	add_duplicatecandidate
-848	Can change Kandydat na duplikat	212	change_duplicatecandidate
-849	Can delete Kandydat na duplikat	212	delete_duplicatecandidate
-850	Can view Kandydat na duplikat	212	view_duplicatecandidate
-851	Can add Skanowanie duplikatów publikacji	213	add_publicationduplicatescanrun
-852	Can change Skanowanie duplikatów publikacji	213	change_publicationduplicatescanrun
-853	Can delete Skanowanie duplikatów publikacji	213	delete_publicationduplicatescanrun
-854	Can view Skanowanie duplikatów publikacji	213	view_publicationduplicatescanrun
-855	Can add Kandydat na duplikat publikacji	214	add_publicationduplicatecandidate
-856	Can change Kandydat na duplikat publikacji	214	change_publicationduplicatecandidate
-857	Can delete Kandydat na duplikat publikacji	214	delete_publicationduplicatecandidate
-858	Can view Kandydat na duplikat publikacji	214	view_publicationduplicatecandidate
-859	Can add źródło ignorowane w deduplikacji	215	add_ignoredsource
-860	Can change źródło ignorowane w deduplikacji	215	change_ignoredsource
-861	Can delete źródło ignorowane w deduplikacji	215	delete_ignoredsource
-862	Can view źródło ignorowane w deduplikacji	215	view_ignoredsource
-863	Can add oznaczenie 'to nie duplikat'	216	add_notaduplicate
-864	Can change oznaczenie 'to nie duplikat'	216	change_notaduplicate
-865	Can delete oznaczenie 'to nie duplikat'	216	delete_notaduplicate
-866	Can view oznaczenie 'to nie duplikat'	216	view_notaduplicate
-867	Can add Ignorowany naukowiec PBN	217	add_donotremind
-868	Can change Ignorowany naukowiec PBN	217	change_donotremind
-869	Can delete Ignorowany naukowiec PBN	217	delete_donotremind
-870	Can view Ignorowany naukowiec PBN	217	view_donotremind
-871	Can add Przebudowa cache'u importu autorów PBN	218	add_matchcacherebuildoperation
-872	Can change Przebudowa cache'u importu autorów PBN	218	change_matchcacherebuildoperation
-873	Can delete Przebudowa cache'u importu autorów PBN	218	delete_matchcacherebuildoperation
-874	Can view Przebudowa cache'u importu autorów PBN	218	view_matchcacherebuildoperation
-875	Can add Cache dopasowania naukowca PBN	219	add_cachedscientistmatch
-876	Can change Cache dopasowania naukowca PBN	219	change_cachedscientistmatch
-877	Can delete Cache dopasowania naukowca PBN	219	delete_cachedscientistmatch
-878	Can view Cache dopasowania naukowca PBN	219	view_cachedscientistmatch
-879	Can add Przemapowanie prac autora	220	add_przemapoaniepracautora
-880	Can change Przemapowanie prac autora	220	change_przemapoaniepracautora
-881	Can delete Przemapowanie prac autora	220	delete_przemapoaniepracautora
-882	Can view Przemapowanie prac autora	220	view_przemapoaniepracautora
-883	Can add Przemapowanie źródła	221	add_przemapowaniezrodla
-884	Can change Przemapowanie źródła	221	change_przemapowaniezrodla
-885	Can delete Przemapowanie źródła	221	delete_przemapowaniezrodla
-886	Can view Przemapowanie źródła	221	view_przemapowaniezrodla
-887	Can add Przemapowanie źródła	222	add_przemapowazrodla
-888	Can change Przemapowanie źródła	222	change_przemapowazrodla
-889	Can delete Przemapowanie źródła	222	delete_przemapowazrodla
-890	Can view Przemapowanie źródła	222	view_przemapowazrodla
-891	Can add PBN Download Task	223	add_pbndownloadtask
-892	Can change PBN Download Task	223	change_pbndownloadtask
-893	Can delete PBN Download Task	223	delete_pbndownloadtask
-894	Can view PBN Download Task	223	view_pbndownloadtask
-895	Can add PBN Institution People Download Task	224	add_pbninstitutionpeopletask
-896	Can change PBN Institution People Download Task	224	change_pbninstitutionpeopletask
-897	Can delete PBN Institution People Download Task	224	delete_pbninstitutionpeopletask
-898	Can view PBN Institution People Download Task	224	view_pbninstitutionpeopletask
-899	Can add PBN Journals Download Task	225	add_pbnjournalsdownloadtask
-900	Can change PBN Journals Download Task	225	change_pbnjournalsdownloadtask
-901	Can delete PBN Journals Download Task	225	delete_pbnjournalsdownloadtask
-902	Can view PBN Journals Download Task	225	view_pbnjournalsdownloadtask
-903	Can add Zadanie wysylki oswiadczen	226	add_pbnwysylkaoswiadczentask
-904	Can change Zadanie wysylki oswiadczen	226	change_pbnwysylkaoswiadczentask
-905	Can delete Zadanie wysylki oswiadczen	226	delete_pbnwysylkaoswiadczentask
-906	Can view Zadanie wysylki oswiadczen	226	view_pbnwysylkaoswiadczentask
-907	Can add Log wysylki	227	add_pbnwysylkalog
-908	Can change Log wysylki	227	change_pbnwysylkalog
-909	Can delete Log wysylki	227	delete_pbnwysylkalog
-910	Can view Log wysylki	227	view_pbnwysylkalog
-911	Can add Sesja importu	228	add_importsession
-912	Can change Sesja importu	228	change_importsession
-913	Can delete Sesja importu	228	delete_importsession
-914	Can view Sesja importu	228	view_importsession
-915	Can add Wpis dziennika importu	229	add_importlog
-916	Can change Wpis dziennika importu	229	change_importlog
-917	Can delete Wpis dziennika importu	229	delete_importlog
-918	Can view Wpis dziennika importu	229	view_importlog
-919	Can add Nieścisłość importu	230	add_importinconsistency
-920	Can change Nieścisłość importu	230	change_importinconsistency
-921	Can delete Nieścisłość importu	230	delete_importinconsistency
-922	Can view Nieścisłość importu	230	view_importinconsistency
-923	Can add Rozbieżność dyscyplin BPP-PBN	231	add_rozbieznoscdyscyplinpbn
-924	Can change Rozbieżność dyscyplin BPP-PBN	231	change_rozbieznoscdyscyplinpbn
-925	Can delete Rozbieżność dyscyplin BPP-PBN	231	delete_rozbieznoscdyscyplinpbn
-926	Can view Rozbieżność dyscyplin BPP-PBN	231	view_rozbieznoscdyscyplinpbn
-927	Can add Brak autora w publikacji	232	add_brakautorawpublikacji
-928	Can change Brak autora w publikacji	232	change_brakautorawpublikacji
-929	Can delete Brak autora w publikacji	232	delete_brakautorawpublikacji
-930	Can view Brak autora w publikacji	232	view_brakautorawpublikacji
-931	Can add Kliknięcie w menu	233	add_menuclick
-932	Can change Kliknięcie w menu	233	change_menuclick
-933	Can delete Kliknięcie w menu	233	delete_menuclick
-934	Can view Kliknięcie w menu	233	view_menuclick
-935	Can add sesja importu	234	add_importsession
-936	Can change sesja importu	234	change_importsession
-937	Can delete sesja importu	234	delete_importsession
-938	Can view sesja importu	234	view_importsession
-939	Can add importowany autor	235	add_importedauthor
-940	Can change importowany autor	235	change_importedauthor
-941	Can delete importowany autor	235	delete_importedauthor
-942	Can view importowany autor	235	view_importedauthor
-943	Can add CRUD event	236	add_crudevent
-944	Can change CRUD event	236	change_crudevent
-945	Can delete CRUD event	236	delete_crudevent
-946	Can view CRUD event	236	view_crudevent
-947	Can add login event	237	add_loginevent
-948	Can change login event	237	change_loginevent
-949	Can delete login event	237	delete_loginevent
-950	Can view login event	237	view_loginevent
-951	Can add request event	238	add_requestevent
-952	Can change request event	238	change_requestevent
-953	Can delete request event	238	delete_requestevent
-954	Can view request event	238	view_requestevent
+787	Can add test report	202	add_testreport
+788	Can change test report	202	change_testreport
+789	Can delete test report	202	delete_testreport
+790	Can view test report	202	view_testreport
+791	Can add template	148	add_template
+792	Can change template	148	change_template
+793	Can delete template	148	delete_template
+794	Can view template	148	view_template
+795	Can add oswiadczenia export task	203	add_oswiadczeniaexporttask
+796	Can change oswiadczenia export task	203	change_oswiadczeniaexporttask
+797	Can delete oswiadczenia export task	203	delete_oswiadczeniaexporttask
+798	Can view oswiadczenia export task	203	view_oswiadczeniaexporttask
+799	Can add import pliku polon	204	add_importplikupolon
+800	Can change import pliku polon	204	change_importplikupolon
+801	Can delete import pliku polon	204	delete_importplikupolon
+802	Can view import pliku polon	204	view_importplikupolon
+803	Can add wiersz importu pliku polon	205	add_wierszimportuplikupolon
+804	Can change wiersz importu pliku polon	205	change_wierszimportuplikupolon
+805	Can delete wiersz importu pliku polon	205	delete_wierszimportuplikupolon
+806	Can view wiersz importu pliku polon	205	view_wierszimportuplikupolon
+807	Can add import pliku absencji	206	add_importplikuabsencji
+808	Can change import pliku absencji	206	change_importplikuabsencji
+809	Can delete import pliku absencji	206	delete_importplikuabsencji
+810	Can view import pliku absencji	206	view_importplikuabsencji
+811	Can add wiersz importu pliku absencji	207	add_wierszimportuplikuabsencji
+812	Can change wiersz importu pliku absencji	207	change_wierszimportuplikuabsencji
+813	Can delete wiersz importu pliku absencji	207	delete_wierszimportuplikuabsencji
+814	Can view wiersz importu pliku absencji	207	view_wierszimportuplikuabsencji
+815	Can add Wymuszenie grupy stanowisk	136	add_importpolonoverride
+816	Can change Wymuszenie grupy stanowisk	136	change_importpolonoverride
+817	Can delete Wymuszenie grupy stanowisk	136	delete_importpolonoverride
+818	Can view Wymuszenie grupy stanowisk	136	view_importpolonoverride
+819	Can add import list ministerialnych	208	add_importlistministerialnych
+820	Can change import list ministerialnych	208	change_importlistministerialnych
+821	Can delete import list ministerialnych	208	delete_importlistministerialnych
+822	Can view import list ministerialnych	208	view_importlistministerialnych
+823	Can add wiersz importu listy ministerialnej	209	add_wierszimportulistyministerialnej
+824	Can change wiersz importu listy ministerialnej	209	change_wierszimportulistyministerialnej
+825	Can delete wiersz importu listy ministerialnej	209	delete_wierszimportulistyministerialnej
+826	Can view wiersz importu listy ministerialnej	209	view_wierszimportulistyministerialnej
+827	Can add snapshot odpiec	210	add_snapshotodpiec
+828	Can change snapshot odpiec	210	change_snapshotodpiec
+829	Can delete snapshot odpiec	210	delete_snapshotodpiec
+830	Can view snapshot odpiec	210	view_snapshotodpiec
+831	Can add wartosc snapshotu	211	add_wartoscsnapshotu
+832	Can change wartosc snapshotu	211	change_wartoscsnapshotu
+833	Can delete wartosc snapshotu	211	delete_wartoscsnapshotu
+834	Can view wartosc snapshotu	211	view_wartoscsnapshotu
+835	Can add Oznaczony jako nie-duplikat	141	add_notaduplicate
+836	Can change Oznaczony jako nie-duplikat	141	change_notaduplicate
+837	Can delete Oznaczony jako nie-duplikat	141	delete_notaduplicate
+838	Can view Oznaczony jako nie-duplikat	141	view_notaduplicate
+839	Can add Log scalania autorów	142	add_logscalania
+840	Can change Log scalania autorów	142	change_logscalania
+841	Can delete Log scalania autorów	142	delete_logscalania
+842	Can view Log scalania autorów	142	view_logscalania
+843	Can add Ignorowany autor	143	add_ignoredauthor
+844	Can change Ignorowany autor	143	change_ignoredauthor
+845	Can delete Ignorowany autor	143	delete_ignoredauthor
+846	Can view Ignorowany autor	143	view_ignoredauthor
+847	Can add Skanowanie duplikatów	212	add_duplicatescanrun
+848	Can change Skanowanie duplikatów	212	change_duplicatescanrun
+849	Can delete Skanowanie duplikatów	212	delete_duplicatescanrun
+850	Can view Skanowanie duplikatów	212	view_duplicatescanrun
+851	Can add Kandydat na duplikat	213	add_duplicatecandidate
+852	Can change Kandydat na duplikat	213	change_duplicatecandidate
+853	Can delete Kandydat na duplikat	213	delete_duplicatecandidate
+854	Can view Kandydat na duplikat	213	view_duplicatecandidate
+855	Can add Skanowanie duplikatów publikacji	214	add_publicationduplicatescanrun
+856	Can change Skanowanie duplikatów publikacji	214	change_publicationduplicatescanrun
+857	Can delete Skanowanie duplikatów publikacji	214	delete_publicationduplicatescanrun
+858	Can view Skanowanie duplikatów publikacji	214	view_publicationduplicatescanrun
+859	Can add Kandydat na duplikat publikacji	215	add_publicationduplicatecandidate
+860	Can change Kandydat na duplikat publikacji	215	change_publicationduplicatecandidate
+861	Can delete Kandydat na duplikat publikacji	215	delete_publicationduplicatecandidate
+862	Can view Kandydat na duplikat publikacji	215	view_publicationduplicatecandidate
+863	Can add źródło ignorowane w deduplikacji	216	add_ignoredsource
+864	Can change źródło ignorowane w deduplikacji	216	change_ignoredsource
+865	Can delete źródło ignorowane w deduplikacji	216	delete_ignoredsource
+866	Can view źródło ignorowane w deduplikacji	216	view_ignoredsource
+867	Can add oznaczenie 'to nie duplikat'	217	add_notaduplicate
+868	Can change oznaczenie 'to nie duplikat'	217	change_notaduplicate
+869	Can delete oznaczenie 'to nie duplikat'	217	delete_notaduplicate
+870	Can view oznaczenie 'to nie duplikat'	217	view_notaduplicate
+871	Can add Ignorowany naukowiec PBN	218	add_donotremind
+872	Can change Ignorowany naukowiec PBN	218	change_donotremind
+873	Can delete Ignorowany naukowiec PBN	218	delete_donotremind
+874	Can view Ignorowany naukowiec PBN	218	view_donotremind
+875	Can add Przebudowa cache'u importu autorów PBN	219	add_matchcacherebuildoperation
+876	Can change Przebudowa cache'u importu autorów PBN	219	change_matchcacherebuildoperation
+877	Can delete Przebudowa cache'u importu autorów PBN	219	delete_matchcacherebuildoperation
+878	Can view Przebudowa cache'u importu autorów PBN	219	view_matchcacherebuildoperation
+879	Can add Cache dopasowania naukowca PBN	220	add_cachedscientistmatch
+880	Can change Cache dopasowania naukowca PBN	220	change_cachedscientistmatch
+881	Can delete Cache dopasowania naukowca PBN	220	delete_cachedscientistmatch
+882	Can view Cache dopasowania naukowca PBN	220	view_cachedscientistmatch
+883	Can add Przemapowanie prac autora	221	add_przemapoaniepracautora
+884	Can change Przemapowanie prac autora	221	change_przemapoaniepracautora
+885	Can delete Przemapowanie prac autora	221	delete_przemapoaniepracautora
+886	Can view Przemapowanie prac autora	221	view_przemapoaniepracautora
+887	Can add Przemapowanie źródła	222	add_przemapowaniezrodla
+888	Can change Przemapowanie źródła	222	change_przemapowaniezrodla
+889	Can delete Przemapowanie źródła	222	delete_przemapowaniezrodla
+890	Can view Przemapowanie źródła	222	view_przemapowaniezrodla
+891	Can add Przemapowanie źródła	223	add_przemapowazrodla
+892	Can change Przemapowanie źródła	223	change_przemapowazrodla
+893	Can delete Przemapowanie źródła	223	delete_przemapowazrodla
+894	Can view Przemapowanie źródła	223	view_przemapowazrodla
+895	Can add PBN Download Task	224	add_pbndownloadtask
+896	Can change PBN Download Task	224	change_pbndownloadtask
+897	Can delete PBN Download Task	224	delete_pbndownloadtask
+898	Can view PBN Download Task	224	view_pbndownloadtask
+899	Can add PBN Institution People Download Task	225	add_pbninstitutionpeopletask
+900	Can change PBN Institution People Download Task	225	change_pbninstitutionpeopletask
+901	Can delete PBN Institution People Download Task	225	delete_pbninstitutionpeopletask
+902	Can view PBN Institution People Download Task	225	view_pbninstitutionpeopletask
+903	Can add PBN Journals Download Task	226	add_pbnjournalsdownloadtask
+904	Can change PBN Journals Download Task	226	change_pbnjournalsdownloadtask
+905	Can delete PBN Journals Download Task	226	delete_pbnjournalsdownloadtask
+906	Can view PBN Journals Download Task	226	view_pbnjournalsdownloadtask
+907	Can add Zadanie wysylki oswiadczen	227	add_pbnwysylkaoswiadczentask
+908	Can change Zadanie wysylki oswiadczen	227	change_pbnwysylkaoswiadczentask
+909	Can delete Zadanie wysylki oswiadczen	227	delete_pbnwysylkaoswiadczentask
+910	Can view Zadanie wysylki oswiadczen	227	view_pbnwysylkaoswiadczentask
+911	Can add Log wysylki	228	add_pbnwysylkalog
+912	Can change Log wysylki	228	change_pbnwysylkalog
+913	Can delete Log wysylki	228	delete_pbnwysylkalog
+914	Can view Log wysylki	228	view_pbnwysylkalog
+915	Can add Sesja importu	229	add_importsession
+916	Can change Sesja importu	229	change_importsession
+917	Can delete Sesja importu	229	delete_importsession
+918	Can view Sesja importu	229	view_importsession
+919	Can add Wpis dziennika importu	230	add_importlog
+920	Can change Wpis dziennika importu	230	change_importlog
+921	Can delete Wpis dziennika importu	230	delete_importlog
+922	Can view Wpis dziennika importu	230	view_importlog
+923	Can add Nieścisłość importu	231	add_importinconsistency
+924	Can change Nieścisłość importu	231	change_importinconsistency
+925	Can delete Nieścisłość importu	231	delete_importinconsistency
+926	Can view Nieścisłość importu	231	view_importinconsistency
+927	Can add Rozbieżność dyscyplin BPP-PBN	232	add_rozbieznoscdyscyplinpbn
+928	Can change Rozbieżność dyscyplin BPP-PBN	232	change_rozbieznoscdyscyplinpbn
+929	Can delete Rozbieżność dyscyplin BPP-PBN	232	delete_rozbieznoscdyscyplinpbn
+930	Can view Rozbieżność dyscyplin BPP-PBN	232	view_rozbieznoscdyscyplinpbn
+931	Can add Brak autora w publikacji	233	add_brakautorawpublikacji
+932	Can change Brak autora w publikacji	233	change_brakautorawpublikacji
+933	Can delete Brak autora w publikacji	233	delete_brakautorawpublikacji
+934	Can view Brak autora w publikacji	233	view_brakautorawpublikacji
+935	Can add Kliknięcie w menu	234	add_menuclick
+936	Can change Kliknięcie w menu	234	change_menuclick
+937	Can delete Kliknięcie w menu	234	delete_menuclick
+938	Can view Kliknięcie w menu	234	view_menuclick
+939	Can add sesja importu	235	add_importsession
+940	Can change sesja importu	235	change_importsession
+941	Can delete sesja importu	235	delete_importsession
+942	Can view sesja importu	235	view_importsession
+943	Can add importowany autor	236	add_importedauthor
+944	Can change importowany autor	236	change_importedauthor
+945	Can delete importowany autor	236	delete_importedauthor
+946	Can view importowany autor	236	view_importedauthor
+947	Can add CRUD event	237	add_crudevent
+948	Can change CRUD event	237	change_crudevent
+949	Can delete CRUD event	237	delete_crudevent
+950	Can view CRUD event	237	view_crudevent
+951	Can add login event	238	add_loginevent
+952	Can change login event	238	change_loginevent
+953	Can delete login event	238	delete_loginevent
+954	Can view login event	238	view_loginevent
+955	Can add request event	239	add_requestevent
+956	Can change request event	239	change_requestevent
+957	Can delete request event	239	delete_requestevent
+958	Can view request event	239	view_requestevent
 \.
 
 
@@ -13751,7 +13774,7 @@ COPY public.bpp_bppmultiseekvisibility (id, field_name, label, public, authentic
 -- Data for Name: bpp_bppuser; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY public.bpp_bppuser (id, password, last_login, is_superuser, username, first_name, last_name, email, is_staff, is_active, date_joined, ostatnio_zmieniony, adnotacje, active_charmap_tab, per_page, multiseek_format, multiseek_order_1, pbn_token, pbn_token_updated, przedstawiaj_w_pbn_jako_id) FROM stdin;
+COPY public.bpp_bppuser (id, password, last_login, is_superuser, username, first_name, last_name, email, is_staff, is_active, date_joined, ostatnio_zmieniony, adnotacje, active_charmap_tab, per_page, multiseek_format, multiseek_order_1, pbn_token, pbn_token_updated, przedstawiaj_w_pbn_jako_id, autor_id) FROM stdin;
 \.
 
 
@@ -13801,33 +13824,33 @@ COPY public.bpp_cache_punktacja_dyscypliny (id, rekord_id, pkd, slot, dyscyplina
 --
 
 COPY public.bpp_charakter_formalny (id, nazwa, skrot, publikacja, streszczenie, nazwa_w_primo, charakter_pbn_id, level, lft, parent_id, rght, tree_id, charakter_sloty, rodzaj_pbn, charakter_ogolny, wliczaj_do_rankingu) FROM stdin;
-16	Recenzja	R	f	f		\N	0	1	\N	2	21	\N	\N	xxx	t
-19	Referat zjazdowy konferencji miedzynarodowej	ZRZ	t	f	Materiał konferencyjny	\N	0	1	\N	2	22	3	\N	xxx	t
-17	Rozdział książki	ROZ	t	f	Rozdział	\N	0	1	\N	2	23	2	2	ksi	t
-18	Rozdział skryptu	ROZS	f	f	Rozdział	\N	0	1	\N	2	24	2	2	roz	t
-12	Skrypt	SKR	f	f		\N	0	1	\N	2	25	1	3	xxx	t
-20	Streszczenie zjazdowe konferencji międzynarodowej	ZSZ	f	t		\N	0	1	\N	2	26	\N	\N	xxx	t
-11	Tłumaczenie	TŁ	f	f		\N	0	1	\N	2	27	\N	\N	xxx	t
-1	Artykuł w czasopismie	AC	t	f	Artykuł	\N	0	1	\N	2	1	\N	\N	art	t
-21	Broszura	BR	f	f		\N	0	1	\N	2	2	\N	\N	xxx	t
+3	Komentarz	KOM	t	f		\N	0	1	\N	2	7	\N	\N	xxx	t
+4	List do redakcji	L	t	f		\N	0	1	\N	2	11	\N	\N	xxx	t
+5	Publikacja w suplemencie	Supl	t	f	Artykuł	\N	0	1	\N	2	20	\N	\N	xxx	t
 6	Czasopismo	CZ	f	f	Czasopismo	\N	0	1	\N	2	3	\N	\N	xxx	t
+10	inne	IN	f	f		\N	0	1	\N	2	6	\N	\N	xxx	t
+11	Tłumaczenie	TŁ	f	f		\N	0	1	\N	2	27	\N	\N	xxx	t
+14	Polskie streszczenie zjazdowe	PSZ	f	t	Materiał konferencyjny	\N	0	1	\N	2	15	\N	\N	xxx	t
+15	Poradnik zawodowy	PZ	f	f		\N	0	1	\N	2	16	\N	\N	xxx	t
+16	Recenzja	R	f	f		\N	0	1	\N	2	21	\N	\N	xxx	t
+20	Streszczenie zjazdowe konferencji międzynarodowej	ZSZ	f	t		\N	0	1	\N	2	26	\N	\N	xxx	t
+21	Broszura	BR	f	f		\N	0	1	\N	2	2	\N	\N	xxx	t
+22	Projekt wynalazczy	WYN	f	f		\N	0	1	\N	2	19	\N	\N	xxx	t
+23	Patent	PAT	f	f		\N	0	1	\N	2	12	\N	\N	xxx	t
+24	Praca doktorska	D	t	f		\N	0	1	\N	2	17	\N	\N	xxx	t
+25	Praca habilitacyjna	H	t	f		\N	0	1	\N	2	18	\N	\N	xxx	t
 27	Dokument elektroniczny	DE	f	f		\N	0	1	\N	2	4	\N	\N	xxx	t
 9	Fragment	frg	t	f		\N	0	1	\N	2	5	2	2	xxx	t
-10	inne	IN	f	f		\N	0	1	\N	2	6	\N	\N	xxx	t
-3	Komentarz	KOM	t	f		\N	0	1	\N	2	7	\N	\N	xxx	t
+26	Podręcznik akademicki	PA	f	f		\N	0	1	\N	2	13	1	3	xxx	t
+12	Skrypt	SKR	f	f		\N	0	1	\N	2	25	1	3	xxx	t
+1	Artykuł w czasopismie	AC	t	f	Artykuł	\N	0	1	\N	2	1	\N	\N	art	t
 2	Książka	KS	t	f	Książka	\N	0	1	\N	2	8	1	3	ksi	t
 8	Książka w języku obcym	KSZ	t	f	Książka	\N	0	1	\N	2	9	1	3	ksi	t
 7	Książka w języku polskim	KSP	t	f	Książka	\N	0	1	\N	2	10	1	3	ksi	t
-4	List do redakcji	L	t	f		\N	0	1	\N	2	11	\N	\N	xxx	t
-23	Patent	PAT	f	f		\N	0	1	\N	2	12	\N	\N	xxx	t
-26	Podręcznik akademicki	PA	f	f		\N	0	1	\N	2	13	1	3	xxx	t
+17	Rozdział książki	ROZ	t	f	Rozdział	\N	0	1	\N	2	23	2	2	ksi	t
+18	Rozdział skryptu	ROZS	f	f	Rozdział	\N	0	1	\N	2	24	2	2	roz	t
 13	Polski Referat Zjazdowy	PRZ	t	f	Materiał konferencyjny	\N	0	1	\N	2	14	3	\N	xxx	t
-14	Polskie streszczenie zjazdowe	PSZ	f	t	Materiał konferencyjny	\N	0	1	\N	2	15	\N	\N	xxx	t
-15	Poradnik zawodowy	PZ	f	f		\N	0	1	\N	2	16	\N	\N	xxx	t
-24	Praca doktorska	D	t	f		\N	0	1	\N	2	17	\N	\N	xxx	t
-25	Praca habilitacyjna	H	t	f		\N	0	1	\N	2	18	\N	\N	xxx	t
-22	Projekt wynalazczy	WYN	f	f		\N	0	1	\N	2	19	\N	\N	xxx	t
-5	Publikacja w suplemencie	Supl	t	f	Artykuł	\N	0	1	\N	2	20	\N	\N	xxx	t
+19	Referat zjazdowy konferencji miedzynarodowej	ZRZ	t	f	Materiał konferencyjny	\N	0	1	\N	2	22	3	\N	xxx	t
 \.
 
 
@@ -14796,43 +14819,44 @@ COPY public.django_content_type (id, app_label, model) FROM stdin;
 199	ewaluacja_optymalizuj_publikacje	historiazmiandyscypliny
 200	test_bpp	testoperation
 201	test_bpp	testobjectthatdoesnotexist
-202	oswiadczenia	oswiadczeniaexporttask
-203	import_polon	importplikupolon
-204	import_polon	wierszimportuplikupolon
-205	import_polon	importplikuabsencji
-206	import_polon	wierszimportuplikuabsencji
-207	import_list_ministerialnych	importlistministerialnych
-208	import_list_ministerialnych	wierszimportulistyministerialnej
-209	snapshot_odpiec	snapshotodpiec
-210	snapshot_odpiec	wartoscsnapshotu
-211	deduplikator_autorow	duplicatescanrun
-212	deduplikator_autorow	duplicatecandidate
-213	deduplikator_publikacji	publicationduplicatescanrun
-214	deduplikator_publikacji	publicationduplicatecandidate
-215	deduplikator_zrodel	ignoredsource
-216	deduplikator_zrodel	notaduplicate
-217	importer_autorow_pbn	donotremind
-218	importer_autorow_pbn	matchcacherebuildoperation
-219	importer_autorow_pbn	cachedscientistmatch
-220	przemapuj_prace_autora	przemapoaniepracautora
-221	przemapuj_zrodla_pbn	przemapowaniezrodla
-222	przemapuj_zrodlo	przemapowazrodla
-223	pbn_downloader_app	pbndownloadtask
-224	pbn_downloader_app	pbninstitutionpeopletask
-225	pbn_downloader_app	pbnjournalsdownloadtask
-226	pbn_wysylka_oswiadczen	pbnwysylkaoswiadczentask
-227	pbn_wysylka_oswiadczen	pbnwysylkalog
-228	pbn_import	importsession
-229	pbn_import	importlog
-230	pbn_import	importinconsistency
-231	komparator_pbn_udzialy	rozbieznoscdyscyplinpbn
-232	komparator_pbn_udzialy	brakautorawpublikacji
-233	admin_dashboard	menuclick
-234	importer_publikacji	importsession
-235	importer_publikacji	importedauthor
-236	easyaudit	crudevent
-237	easyaudit	loginevent
-238	easyaudit	requestevent
+202	test_bpp	testreport
+203	oswiadczenia	oswiadczeniaexporttask
+204	import_polon	importplikupolon
+205	import_polon	wierszimportuplikupolon
+206	import_polon	importplikuabsencji
+207	import_polon	wierszimportuplikuabsencji
+208	import_list_ministerialnych	importlistministerialnych
+209	import_list_ministerialnych	wierszimportulistyministerialnej
+210	snapshot_odpiec	snapshotodpiec
+211	snapshot_odpiec	wartoscsnapshotu
+212	deduplikator_autorow	duplicatescanrun
+213	deduplikator_autorow	duplicatecandidate
+214	deduplikator_publikacji	publicationduplicatescanrun
+215	deduplikator_publikacji	publicationduplicatecandidate
+216	deduplikator_zrodel	ignoredsource
+217	deduplikator_zrodel	notaduplicate
+218	importer_autorow_pbn	donotremind
+219	importer_autorow_pbn	matchcacherebuildoperation
+220	importer_autorow_pbn	cachedscientistmatch
+221	przemapuj_prace_autora	przemapoaniepracautora
+222	przemapuj_zrodla_pbn	przemapowaniezrodla
+223	przemapuj_zrodlo	przemapowazrodla
+224	pbn_downloader_app	pbndownloadtask
+225	pbn_downloader_app	pbninstitutionpeopletask
+226	pbn_downloader_app	pbnjournalsdownloadtask
+227	pbn_wysylka_oswiadczen	pbnwysylkaoswiadczentask
+228	pbn_wysylka_oswiadczen	pbnwysylkalog
+229	pbn_import	importsession
+230	pbn_import	importlog
+231	pbn_import	importinconsistency
+232	komparator_pbn_udzialy	rozbieznoscdyscyplinpbn
+233	komparator_pbn_udzialy	brakautorawpublikacji
+234	admin_dashboard	menuclick
+235	importer_publikacji	importsession
+236	importer_publikacji	importedauthor
+237	easyaudit	crudevent
+238	easyaudit	loginevent
+239	easyaudit	requestevent
 \.
 
 
@@ -14849,9 +14873,9 @@ COPY public.django_countdown_sitecountdown (id, countdown_time, message, long_de
 --
 
 COPY public.django_migrations (id, app, name, applied) FROM stdin;
-147	bpp	0077_auto_20170624_0130	2000-01-01 00:00:00+00
-458	bpp	0362_rzeczownik	2000-01-01 00:00:00+00
-542	denorm	0001_initial	2000-01-01 00:00:00+00
+132	bpp	0063_autor_aktualny	2000-01-01 00:00:00+00
+246	bpp	0172_auto_20190806_2052	2000-01-01 00:00:00+00
+544	denorm	0001_initial	2000-01-01 00:00:00+00
 1	contenttypes	0001_initial	2000-01-01 00:00:00+00
 2	auth	0001_initial	2000-01-01 00:00:00+00
 3	bpp	0001_initial	2000-01-01 00:00:00+00
@@ -14887,7 +14911,6 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 33	pbn_api	0010_auto_20210504_0040	2000-01-01 00:00:00+00
 34	pbn_api	0011_auto_20210509_2339	2000-01-01 00:00:00+00
 35	pbn_api	0012_auto_20210621_0947	2000-01-01 00:00:00+00
-837	tee	0001_initial	2000-01-01 00:00:00+00
 36	pbn_api	0013_oswiadczenieinstytucji_publikacjainstytucji	2000-01-01 00:00:00+00
 37	pbn_api	0014_auto_20210713_2229	2000-01-01 00:00:00+00
 38	pbn_api	0015_auto_20210713_2234	2000-01-01 00:00:00+00
@@ -14984,7 +15007,6 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 129	bpp	0060_auto_20161114_1905	2000-01-01 00:00:00+00
 130	bpp	0061_utworz_jednostka_wydzial	2000-01-01 00:00:00+00
 131	bpp	0062_auto_20161119_2207	2000-01-01 00:00:00+00
-132	bpp	0063_autor_aktualny	2000-01-01 00:00:00+00
 133	bpp	0064_autor_jednostka_aktualna	2000-01-01 00:00:00+00
 134	bpp	0051_auto_20161201_1137	2000-01-01 00:00:00+00
 135	bpp	0065_merge	2000-01-01 00:00:00+00
@@ -14999,6 +15021,7 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 144	bpp	0074_django110	2000-01-01 00:00:00+00
 145	bpp	0075_auto_20170622_0057	2000-01-01 00:00:00+00
 146	bpp	0076_auto_20170622_0058	2000-01-01 00:00:00+00
+147	bpp	0077_auto_20170624_0130	2000-01-01 00:00:00+00
 148	bpp	0078_django110_py3k	2000-01-01 00:00:00+00
 149	bpp	0079_wydzial_skrot_nazwy	2000-01-01 00:00:00+00
 150	bpp	0080_auto_20170708_2147	2000-01-01 00:00:00+00
@@ -15097,7 +15120,6 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 243	bpp	0169_dyscyplina_change_trigger_cacher	2000-01-01 00:00:00+00
 244	bpp	0170_wydawnictwo_wydawca	2000-01-01 00:00:00+00
 245	bpp	0171_auto_20190806_2015	2000-01-01 00:00:00+00
-246	bpp	0172_auto_20190806_2052	2000-01-01 00:00:00+00
 247	bpp	0173_auto_20190812_1412	2000-01-01 00:00:00+00
 248	bpp	0174_uczelnia_podpowiadaj_dyscypliny_konfig	2000-01-01 00:00:00+00
 249	bpp	0174_rodzaj_pbn_dla_charakteru	2000-01-01 00:00:00+00
@@ -15309,6 +15331,7 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 455	bpp	0359_patent_slowa_kluczowe_eng_and_more	2000-01-01 00:00:00+00
 456	bpp	0360_uczelnia_pokazuj_zrodla_bez_prac_w_przegladaniu_danych_and_more	2000-01-01 00:00:00+00
 457	bpp	0361_alter_patent_slowa_kluczowe_eng_and_more	2000-01-01 00:00:00+00
+458	bpp	0362_rzeczownik	2000-01-01 00:00:00+00
 459	bpp	0363_uczelnia_pokazuj_jednostki_na_pierwszej_stronie_and_more	2000-01-01 00:00:00+00
 460	bpp	0364_rzeczownik_uczelnie_pl	2000-01-01 00:00:00+00
 461	bpp	0365_bppuser_pbn_token_updated	2000-01-01 00:00:00+00
@@ -15359,366 +15382,380 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 506	bpp	0410_set_polish_skrot_crossref	2000-01-01 00:00:00+00
 507	bpp	0411_uczelnia_orcid_fields	2000-01-01 00:00:00+00
 508	bpp	0412_uczelnia_orcid_staff_only	2000-01-01 00:00:00+00
-509	constance	0001_initial	2000-01-01 00:00:00+00
-510	constance	0002_migrate_from_old_table	2000-01-01 00:00:00+00
-511	constance	0003_drop_pickle	2000-01-01 00:00:00+00
-512	crossref_bpp	0001_initial	2000-01-01 00:00:00+00
-513	dashboard	0001_initial	2000-01-01 00:00:00+00
-514	pbn_api	0049_tlumacz_dyscyplin_2025	2000-01-01 00:00:00+00
-515	pbn_api	0050_zamapuj_nowe_dyscypliny_2025	2000-01-01 00:00:00+00
-516	pbn_api	0051_alter_discipline_options_and_more	2000-01-01 00:00:00+00
-517	pbn_api	0052_publikacjainstytucji_v2	2000-01-01 00:00:00+00
-518	pbn_api	0053_alter_publikacjainstytucji_v2_unique_together	2000-01-01 00:00:00+00
-519	pbn_api	0054_publikacjainstytucji_v2_created_on_and_more	2000-01-01 00:00:00+00
-520	pbn_api	0055_osobazinstytucji	2000-01-01 00:00:00+00
-521	pbn_api	0056_delete_osobazinstytucji	2000-01-01 00:00:00+00
-522	pbn_api	0057_osobazinstytucji	2000-01-01 00:00:00+00
-523	pbn_api	0058_alter_osobazinstytucji_title	2000-01-01 00:00:00+00
-524	pbn_api	0059_alter_osobazinstytucji__from	2000-01-01 00:00:00+00
-525	pbn_api	0060_alter_osobazinstytucji_personid	2000-01-01 00:00:00+00
-526	pbn_api	0061_remove_pbn_export_queue	2000-01-01 00:00:00+00
-527	pbn_api	0062_sent_data_success_tracking	2000-01-01 00:00:00+00
-528	pbn_api	0063_pbnodpowiedziniepozadane	2000-01-01 00:00:00+00
-529	pbn_api	0064_alter_pbnodpowiedziniepozadane_stary_uid_and_more	2000-01-01 00:00:00+00
-530	pbn_api	0065_make_uzytkownik_nullable	2000-01-01 00:00:00+00
-531	pbn_api	0066_add_duplicate_scan_models	2000-01-01 00:00:00+00
-532	deduplikator_autorow	0001_initial	2000-01-01 00:00:00+00
-533	deduplikator_autorow	0002_logautomatycznegoscalania	2000-01-01 00:00:00+00
-534	deduplikator_autorow	0003_alter_notaduplicate_scientist_pk	2000-01-01 00:00:00+00
-535	deduplikator_autorow	0004_alter_notaduplicate_unique_together_and_more	2000-01-01 00:00:00+00
-536	deduplikator_autorow	0005_replace_log_model	2000-01-01 00:00:00+00
-537	deduplikator_autorow	0006_add_ignored_author	2000-01-01 00:00:00+00
-538	deduplikator_autorow	0007_add_duplicate_scan_models	2000-01-01 00:00:00+00
-539	deduplikator_autorow	0008_add_priority_field	2000-01-01 00:00:00+00
-540	deduplikator_publikacji	0001_initial	2000-01-01 00:00:00+00
-541	deduplikator_zrodel	0001_initial	2000-01-01 00:00:00+00
-543	denorm	0002_dirtyinstance_func_name	2000-01-01 00:00:00+00
-544	denorm	0003_auto_20211002_1955	2000-01-01 00:00:00+00
-545	denorm	0004_alter_dirtyinstance_success	2000-01-01 00:00:00+00
-546	denorm	0005_dirtyinstance_created_on	2000-01-01 00:00:00+00
-547	denorm	0006_auto_20211003_0346	2000-01-01 00:00:00+00
-548	denorm	0007_auto_created_on_now	2000-01-01 00:00:00+00
-549	denorm	0008_alter_dirtyinstance_object_id	2000-01-01 00:00:00+00
-550	denorm	0009_alter_dirtyinstance_object_id	2000-01-01 00:00:00+00
-551	denorm	0010_alter_dirtyinstance_object_id	2000-01-01 00:00:00+00
-552	denorm	0011_alter_dirtyinstance_object_id	2000-01-01 00:00:00+00
-553	denorm	0012_alter_dirtyinstance_object_id	2000-01-01 00:00:00+00
-554	denorm	0013_alter_dirtyinstance_success	2000-01-01 00:00:00+00
-555	denorm	0014_parametrized_notify	2000-01-01 00:00:00+00
-556	denorm	0015_remove_dirtyinstance_processing_finished_and_more	2000-01-01 00:00:00+00
-557	denorm	0016_not_parametrized_notify	2000-01-01 00:00:00+00
-558	django_celery_results	0001_initial	2000-01-01 00:00:00+00
-559	django_celery_results	0002_add_task_name_args_kwargs	2000-01-01 00:00:00+00
-560	django_celery_results	0003_auto_20181106_1101	2000-01-01 00:00:00+00
-561	django_celery_results	0004_auto_20190516_0412	2000-01-01 00:00:00+00
-562	django_celery_results	0005_taskresult_worker	2000-01-01 00:00:00+00
-563	django_celery_results	0006_taskresult_date_created	2000-01-01 00:00:00+00
-564	django_celery_results	0007_remove_taskresult_hidden	2000-01-01 00:00:00+00
-565	django_celery_results	0008_chordcounter	2000-01-01 00:00:00+00
-566	django_celery_results	0009_groupresult	2000-01-01 00:00:00+00
-567	django_celery_results	0010_remove_duplicate_indices	2000-01-01 00:00:00+00
-568	django_celery_results	0011_taskresult_periodic_task_name	2000-01-01 00:00:00+00
-569	django_celery_results	0012_taskresult_date_started	2000-01-01 00:00:00+00
-570	django_celery_results	0013_taskresult_django_cele_periodi_1993cf_idx	2000-01-01 00:00:00+00
-571	django_celery_results	0014_alter_taskresult_status	2000-01-01 00:00:00+00
-572	sites	0002_alter_domain_unique	2000-01-01 00:00:00+00
-573	django_countdown	0001_initial	2000-01-01 00:00:00+00
-574	django_countdown	0002_alter_sitecountdown_countdown_time	2000-01-01 00:00:00+00
-575	django_countdown	0003_sitecountdown_maintenance_until	2000-01-01 00:00:00+00
-576	django_countdown	0004_alter_sitecountdown_long_description	2000-01-01 00:00:00+00
-577	dynamic_columns	0001_initial	2000-01-01 00:00:00+00
-578	dynamic_columns	0002_auto_20221002_2252	2000-01-01 00:00:00+00
-579	dynamic_columns	0003_modeladmin_model_ref	2000-01-01 00:00:00+00
-580	dynamic_columns	0004_alter_modeladmin_options_and_more	2000-01-01 00:00:00+00
-581	easyaudit	0001_initial	2000-01-01 00:00:00+00
-582	easyaudit	0002_auto_20170125_0759	2000-01-01 00:00:00+00
-583	easyaudit	0003_auto_20170228_1505	2000-01-01 00:00:00+00
-584	easyaudit	0004_auto_20170620_1354	2000-01-01 00:00:00+00
-585	easyaudit	0005_auto_20170713_1155	2000-01-01 00:00:00+00
-586	easyaudit	0006_auto_20171018_1242	2000-01-01 00:00:00+00
-587	easyaudit	0007_auto_20180105_0838	2000-01-01 00:00:00+00
-588	easyaudit	0008_auto_20180220_1908	2000-01-01 00:00:00+00
-589	easyaudit	0009_auto_20180314_2225	2000-01-01 00:00:00+00
-590	easyaudit	0010_repr_text	2000-01-01 00:00:00+00
-591	easyaudit	0011_auto_20181101_1339	2000-01-01 00:00:00+00
-592	easyaudit	0012_auto_20181018_0012	2000-01-01 00:00:00+00
-593	easyaudit	0013_auto_20190723_0126	2000-01-01 00:00:00+00
-594	easyaudit	0014_auto_20200513_0008	2000-01-01 00:00:00+00
-595	easyaudit	0015_auto_20201019_1217	2000-01-01 00:00:00+00
-596	easyaudit	0016_alter_crudevent_event_type	2000-01-01 00:00:00+00
-597	easyaudit	0017_alter_requestevent_datetime	2000-01-01 00:00:00+00
-598	easyaudit	0018_rename_crudevent_object_id_content_type_index	2000-01-01 00:00:00+00
-599	easyaudit	0019_alter_crudevent_changed_fields_and_more	2000-01-01 00:00:00+00
-600	ewaluacja2021	0001_initial	2000-01-01 00:00:00+00
-601	ewaluacja2021	0002_auto_20211026_1137	2000-01-01 00:00:00+00
-602	ewaluacja2021	0003_auto_20211027_2320	2000-01-01 00:00:00+00
-603	ewaluacja2021	0004_importmaksymalnychslotow_ostatnia_zmiana	2000-01-01 00:00:00+00
-604	ewaluacja2021	0005_auto_20211028_0039	2000-01-01 00:00:00+00
-605	ewaluacja2021	0006_auto_20211110_0000	2000-01-01 00:00:00+00
-606	ewaluacja2021	0007_auto_20211110_0002	2000-01-01 00:00:00+00
-607	ewaluacja2021	0008_auto_20211122_0103	2000-01-01 00:00:00+00
-608	ewaluacja2021	0009_zamowienienaraport_status	2000-01-01 00:00:00+00
-609	ewaluacja2021	0010_django32	2000-01-01 00:00:00+00
-610	ewaluacja2021	0011_nullbooleanfield	2000-01-01 00:00:00+00
-611	ewaluacja2021	0012_liczbandlauczelni_2022_2025_and_more	2000-01-01 00:00:00+00
-612	ewaluacja2021	0013_alter_iloscudzialowdlaautora_ilosc_udzialow_and_more	2000-01-01 00:00:00+00
-613	ewaluacja2021	0014_iloscudzialowzarok	2000-01-01 00:00:00+00
-614	ewaluacja2021	0015_dyscyplina_nie_raportowana	2000-01-01 00:00:00+00
-615	ewaluacja2021	0016_alter_iloscudzialowdlaautora_2022_2025_unique_together_and_more	2000-01-01 00:00:00+00
-616	ewaluacja2021	0017_alter_liczbandlauczelni_dyscyplina_naukowa_and_more	2000-01-01 00:00:00+00
-617	ewaluacja2021	0018_move_files_to_protected	2000-01-01 00:00:00+00
-618	ewaluacja2021	0019_remove_null_from_string_fields	2000-01-01 00:00:00+00
-619	ewaluacja_liczba_n	0001_initial	2000-01-01 00:00:00+00
-620	ewaluacja_liczba_n	0002_rename_dyscyplinanieraportowana_2022_2025_dyscyplinanieraportowana_and_more	2000-01-01 00:00:00+00
-621	ewaluacja_liczba_n	0003_add_liczba_n_to_dyscyplina_nieraportowana	2000-01-01 00:00:00+00
-622	ewaluacja_liczba_n	0004_add_ilosc_udzialow_za_calosc	2000-01-01 00:00:00+00
-623	ewaluacja_liczba_n	0005_iloscudzialowdlaautorazarok_autor_dyscyplina	2000-01-01 00:00:00+00
-624	ewaluacja_liczba_n	0006_alter_iloscudzialowdlaautorazacalosc_unique_together_and_more	2000-01-01 00:00:00+00
-625	ewaluacja_liczba_n	0007_alter_iloscudzialowdlaautorazacalosc_komentarz	2000-01-01 00:00:00+00
-626	ewaluacja_liczba_n	0008_add_sankcje	2000-01-01 00:00:00+00
-627	ewaluacja_metryki	0001_initial	2000-01-01 00:00:00+00
-628	ewaluacja_metryki	0002_alter_metrykaautora_jednostka	2000-01-01 00:00:00+00
-629	ewaluacja_metryki	0003_add_liczba_do_przetworzenia	2000-01-01 00:00:00+00
-630	ewaluacja_metryki	0004_metrykaautora_rodzaj_autora	2000-01-01 00:00:00+00
-631	ewaluacja_metryki	0005_alter_metrykaautora_rodzaj_autora_and_more	2000-01-01 00:00:00+00
-632	ewaluacja_optymalizacja	0001_initial	2000-01-01 00:00:00+00
-633	ewaluacja_optymalizacja	0002_unpinningopportunity	2000-01-01 00:00:00+00
-634	ewaluacja_optymalizacja	0003_unpinningopportunity_punkty_roznica_b_and_more	2000-01-01 00:00:00+00
-635	ewaluacja_optymalizacja	0004_unpinningopportunity_punkty_roznica_a_and_more	2000-01-01 00:00:00+00
-636	ewaluacja_optymalizacja	0005_add_real_unpinning_values	2000-01-01 00:00:00+00
-637	ewaluacja_optymalizacja	0006_add_status_optymalizacji_z_odpinaniem	2000-01-01 00:00:00+00
-638	ewaluacja_optymalizacja	0007_add_status_optymalizacji_bulk	2000-01-01 00:00:00+00
-639	ewaluacja_optymalizacja	0008_add_status_unpinning_analizy	2000-01-01 00:00:00+00
-640	ewaluacja_optymalizacja	0009_add_plik_zip_wszystkie_xls	2000-01-01 00:00:00+00
-641	ewaluacja_optymalizacja	0010_add_is_optimal_to_optimizationrun	2000-01-01 00:00:00+00
-642	ewaluacja_optymalizacja	0011_move_files_to_protected	2000-01-01 00:00:00+00
-643	ewaluacja_optymalizacja	0012_add_discipline_swap_models	2000-01-01 00:00:00+00
-644	ewaluacja_optymalizacja	0013_add_status_przegladarka_recalc	2000-01-01 00:00:00+00
-645	ewaluacja_optymalizacja	0014_add_optimality_gap_to_optimization_run	2000-01-01 00:00:00+00
-646	ewaluacja_optymalizuj_publikacje	0001_initial	2000-01-01 00:00:00+00
-647	favicon	0001_initial	2000-01-01 00:00:00+00
-648	favicon	0002_favicon_site	2000-01-01 00:00:00+00
-649	favicon	0003_site_manager	2000-01-01 00:00:00+00
-650	favicon	0004_faviconimg_favicon_size_rel_unique	2000-01-01 00:00:00+00
-651	flexible_reports	0001_initial	2000-01-01 00:00:00+00
-652	flexible_reports	0002_auto_20170823_2225	2000-01-01 00:00:00+00
-653	flexible_reports	0003_table_attrs	2000-01-01 00:00:00+00
-654	flexible_reports	0004_auto_20170823_2342	2000-01-01 00:00:00+00
-655	flexible_reports	0005_column_attrs	2000-01-01 00:00:00+00
-656	flexible_reports	0006_default_ordering	2000-01-01 00:00:00+00
-657	flexible_reports	0007_sort_desc	2000-01-01 00:00:00+00
-658	flexible_reports	0008_auto_20171025_0553	2000-01-01 00:00:00+00
-659	flexible_reports	0009_auto_20171025_0558	2000-01-01 00:00:00+00
-660	flexible_reports	0010_auto_20171026_0340	2000-01-01 00:00:00+00
-661	flexible_reports	0011_alter_reportelement_options_alter_column_attrs_and_more	2000-01-01 00:00:00+00
-662	formdefaults	0001_initial	2000-01-01 00:00:00+00
-663	formdefaults	0002_django32	2000-01-01 00:00:00+00
-664	import_dyscyplin	0001_initial	2000-01-01 00:00:00+00
-665	import_dyscyplin	0002_import_dyscyplin_web_page_uid	2000-01-01 00:00:00+00
-666	import_dyscyplin	0003_auto_20180409_1129	2000-01-01 00:00:00+00
-667	import_dyscyplin	0004_auto_20180409_1240	2000-01-01 00:00:00+00
-668	import_dyscyplin	0005_auto_20180414_1801	2000-01-01 00:00:00+00
-669	import_dyscyplin	0006_auto_20180414_1841	2000-01-01 00:00:00+00
-670	import_dyscyplin	0007_auto_20180414_1917	2000-01-01 00:00:00+00
-671	import_dyscyplin	0008_auto_20180415_0813	2000-01-01 00:00:00+00
-672	import_dyscyplin	0009_auto_20180415_0847	2000-01-01 00:00:00+00
-673	import_dyscyplin	0010_auto_20180415_1107	2000-01-01 00:00:00+00
-674	import_dyscyplin	0011_auto_20180415_2223	2000-01-01 00:00:00+00
-675	import_dyscyplin	0012_import_dyscyplin_row_dyscyplina_ostateczna	2000-01-01 00:00:00+00
-676	import_dyscyplin	0013_auto_20190324_1826	2000-01-01 00:00:00+00
-677	import_dyscyplin	0014_auto_20190324_1906	2000-01-01 00:00:00+00
-678	import_dyscyplin	0015_auto_20190326_0553	2000-01-01 00:00:00+00
-679	import_dyscyplin	0016_auto_20190327_0129	2000-01-01 00:00:00+00
-680	import_dyscyplin	0017_auto_20190327_2246	2000-01-01 00:00:00+00
-681	import_dyscyplin	0018_auto_20200329_1719	2000-01-01 00:00:00+00
-682	import_dyscyplin	0019_drop_pesel_md5	2000-01-01 00:00:00+00
-683	import_dyscyplin	0020_django32	2000-01-01 00:00:00+00
-684	import_dyscyplin	0021_import_pustych_do_skasowania	2000-01-01 00:00:00+00
-685	import_dyscyplin	0022_move_files_to_protected	2000-01-01 00:00:00+00
-686	import_dyscyplin	0023_remove_null_from_string_fields	2000-01-01 00:00:00+00
-687	import_list_if	0001_initial	2000-01-01 00:00:00+00
-688	import_list_if	0002_auto_20210308_1246	2000-01-01 00:00:00+00
-689	import_list_if	0003_django32	2000-01-01 00:00:00+00
-690	import_list_ministerialnych	0001_initial	2000-01-01 00:00:00+00
-691	import_list_ministerialnych	0002_alter_wierszimportudyscyplinzrodel_nr_wiersza	2000-01-01 00:00:00+00
-692	import_list_ministerialnych	0003_rename_wierszimportudyscyplinzrodel_wierszimportulistyministerialnej	2000-01-01 00:00:00+00
-693	import_list_ministerialnych	0004_importlistministerialnych_ignoruj_zrodla_bez_odpowiednika	2000-01-01 00:00:00+00
-694	import_list_ministerialnych	0005_add_duplicate_tracking_fields	2000-01-01 00:00:00+00
-695	import_list_ministerialnych	0006_importlistministerialnych_nie_porownuj_po_tytulach	2000-01-01 00:00:00+00
-696	import_list_ministerialnych	0007_move_files_to_protected	2000-01-01 00:00:00+00
-697	import_list_ministerialnych	0008_remove_null_from_string_fields	2000-01-01 00:00:00+00
-698	import_polon	0001_initial	2000-01-01 00:00:00+00
-699	import_polon	0002_remove_wierszimportuplikupolon_orig_and_more	2000-01-01 00:00:00+00
-700	import_polon	0003_wierszimportuplikupolon_dyscyplina_naukowa_and_more	2000-01-01 00:00:00+00
-701	import_polon	0004_importplikupolon_rok	2000-01-01 00:00:00+00
-702	import_polon	0005_alter_wierszimportuplikupolon_options_and_more	2000-01-01 00:00:00+00
-703	import_polon	0006_importplikupolon_zapisz_zmiany_do_bazy	2000-01-01 00:00:00+00
-704	import_polon	0007_importplikupolon_ukryj_niezmatchowanych_autorow	2000-01-01 00:00:00+00
-705	import_polon	0008_importplikuabsencji	2000-01-01 00:00:00+00
-706	import_polon	0009_wierszimportuplikuabsencji	2000-01-01 00:00:00+00
-707	import_polon	0010_alter_wierszimportuplikuabsencji_options_and_more	2000-01-01 00:00:00+00
-708	import_polon	0011_alter_wierszimportuplikuabsencji_ile_dni_and_more	2000-01-01 00:00:00+00
-709	import_polon	0012_importpolonoverride	2000-01-01 00:00:00+00
-710	import_polon	0013_alter_importpolonoverride_options_and_more	2000-01-01 00:00:00+00
-711	import_polon	0014_add_ignoruj_miejsce_pracy	2000-01-01 00:00:00+00
-712	import_polon	0015_move_files_to_protected	2000-01-01 00:00:00+00
-713	import_pracownikow	0001_initial	2000-01-01 00:00:00+00
-714	import_pracownikow	0002_importpracownikowrow	2000-01-01 00:00:00+00
-715	import_pracownikow	0003_auto_20210228_1916	2000-01-01 00:00:00+00
-716	import_pracownikow	0004_auto_20210307_1110	2000-01-01 00:00:00+00
-717	import_pracownikow	0005_auto_20210307_1204	2000-01-01 00:00:00+00
-718	import_pracownikow	0006_importpracownikowrow_tytul	2000-01-01 00:00:00+00
-719	import_pracownikow	0007_django32	2000-01-01 00:00:00+00
-720	import_pracownikow	0008_nullbooleanfield	2000-01-01 00:00:00+00
-721	import_pracownikow	0009_move_files_to_protected	2000-01-01 00:00:00+00
-722	pbn_api	0067_fix_osobazinstytucji_title_not_null	2000-01-01 00:00:00+00
-723	pbn_api	0068_add_cache_models	2000-01-01 00:00:00+00
-724	importer_autorow_pbn	0001_initial	2000-01-01 00:00:00+00
-725	importer_autorow_pbn	0002_add_cache_models	2000-01-01 00:00:00+00
-726	importer_publikacji	0001_initial	2000-01-01 00:00:00+00
-727	importer_publikacji	0002_remove_skip_match_status	2000-01-01 00:00:00+00
-728	importer_publikacji	0003_importedauthor_dyscyplina_source	2000-01-01 00:00:00+00
-729	importer_publikacji	0004_rename_user_to_created_by_add_modified_by	2000-01-01 00:00:00+00
-730	integrator2	0001_initial	2000-01-01 00:00:00+00
-731	integrator2	0002_auto_20160124_1336	2000-01-01 00:00:00+00
-732	integrator2	0003_django110_py3k	2000-01-01 00:00:00+00
-733	integrator2	0004_django32	2000-01-01 00:00:00+00
-734	integrator2	0005_nullbooleanfield	2000-01-01 00:00:00+00
-735	integrator2	0006_move_files_to_protected	2000-01-01 00:00:00+00
-736	komparator_pbn	0001_initial	2000-01-01 00:00:00+00
-737	komparator_pbn	0002_pbndownloadtask_current_step_and_more	2000-01-01 00:00:00+00
-738	komparator_pbn	0003_delete_pbndownloadtask	2000-01-01 00:00:00+00
-739	komparator_pbn_udzialy	0001_initial	2000-01-01 00:00:00+00
-740	komparator_pbn_udzialy	0002_add_brakautora_model	2000-01-01 00:00:00+00
-741	menu	0001_initial	2000-01-01 00:00:00+00
-742	messages_extends	0001_initial	2000-01-01 00:00:00+00
-743	miniblog	0001_initial	2000-01-01 00:00:00+00
-744	miniblog	0002_auto_20180101_2017	2000-01-01 00:00:00+00
-745	notifications	0001_initial	2000-01-01 00:00:00+00
-746	notifications	0002_notification_acknowledged	2000-01-01 00:00:00+00
-747	notifications	0003_django32	2000-01-01 00:00:00+00
-748	oswiadczenia	0001_add_export_task_model	2000-01-01 00:00:00+00
-749	oswiadczenia	0002_add_offset_limit	2000-01-01 00:00:00+00
-750	oswiadczenia	0003_fix_export_format_max_length	2000-01-01 00:00:00+00
-751	oswiadczenia	0004_add_przypieta_filter	2000-01-01 00:00:00+00
-752	oswiadczenia	0005_migrate_template_to_dbtemplate	2000-01-01 00:00:00+00
-753	password_policies	0001_initial	2000-01-01 00:00:00+00
-754	password_policies	0002_passwordprofile	2000-01-01 00:00:00+00
-755	password_policies	0003_update_passwordprofile	2000-01-01 00:00:00+00
-756	pbn_downloader_app	0001_initial	2000-01-01 00:00:00+00
-757	pbn_downloader_app	0002_pbninstitutionpeopletask	2000-01-01 00:00:00+00
-758	pbn_downloader_app	0003_pbnjournalsdownloadtask	2000-01-01 00:00:00+00
-759	pbn_downloader_app	0004_alter_error_message_fields	2000-01-01 00:00:00+00
-760	pbn_export_queue	0001_rename_table	2000-01-01 00:00:00+00
-761	pbn_export_queue	0002_initial	2000-01-01 00:00:00+00
-762	pbn_export_queue	0003_add_rodzaj_bledu	2000-01-01 00:00:00+00
-763	pbn_export_queue	0004_add_wykluczone_field	2000-01-01 00:00:00+00
-764	pbn_export_queue	0005_reclassify_old_validation_errors	2000-01-01 00:00:00+00
-765	pbn_export_queue	0006_reclassify_list_format_validation_errors	2000-01-01 00:00:00+00
-766	pbn_export_queue	0007_reclassify_doiorwwwmissing_errors	2000-01-01 00:00:00+00
-767	pbn_import	0001_initial	2000-01-01 00:00:00+00
-768	pbn_import	0002_add_task_id_field	2000-01-01 00:00:00+00
-769	pbn_import	0003_add_import_inconsistency	2000-01-01 00:00:00+00
-770	pbn_import	0004_add_bpp_publication_content_type	2000-01-01 00:00:00+00
-771	pbn_import	0005_remove_importstatistics	2000-01-01 00:00:00+00
-772	pbn_import	0006_remove_importstep	2000-01-01 00:00:00+00
-773	pbn_import	0007_add_last_updated_field	2000-01-01 00:00:00+00
-774	pbn_import	0008_add_importsession_indexes	2000-01-01 00:00:00+00
-775	pbn_import	0009_fix_error_fields_default	2000-01-01 00:00:00+00
-776	pbn_komparator_zrodel	0001_initial	2000-01-01 00:00:00+00
-777	pbn_komparator_zrodel	0002_add_brakujaca_dyscyplina_pbn	2000-01-01 00:00:00+00
-778	pbn_wysylka_oswiadczen	0001_initial	2000-01-01 00:00:00+00
-779	pbn_wysylka_oswiadczen	0002_add_tytul_field	2000-01-01 00:00:00+00
-780	pbn_wysylka_oswiadczen	0003_add_synchronized_count	2000-01-01 00:00:00+00
-781	powiazania_autorow	0001_initial	2000-01-01 00:00:00+00
-782	powiazania_autorow	0002_alter_authorconnection_primary_author_and_more	2000-01-01 00:00:00+00
-783	przemapuj_prace_autora	0001_initial	2000-01-01 00:00:00+00
-784	przemapuj_prace_autora	0002_przemapoaniepracautora_prace_ciagle_historia_and_more	2000-01-01 00:00:00+00
-785	przemapuj_zrodla_pbn	0001_initial	2000-01-01 00:00:00+00
-786	przemapuj_zrodla_pbn	0002_przemapowaniezrodla_typ_operacji_and_more	2000-01-01 00:00:00+00
-787	przemapuj_zrodla_pbn	0003_alter_przemapowaniezrodla_zrodlo_nowe_and_more	2000-01-01 00:00:00+00
-788	przemapuj_zrodlo	0001_initial	2000-01-01 00:00:00+00
-789	raport_slotow	0001_initial	2000-01-01 00:00:00+00
-790	raport_slotow	0002_auto_20200316_2027	2000-01-01 00:00:00+00
-791	raport_slotow	0003_auto_20200329_1719	2000-01-01 00:00:00+00
-792	raport_slotow	0004_raportslotowuczelnia_raportslotowuczelniawiersz	2000-01-01 00:00:00+00
-793	raport_slotow	0005_auto_20210125_0256	2000-01-01 00:00:00+00
-794	raport_slotow	0006_auto_20210125_2330	2000-01-01 00:00:00+00
-795	raport_slotow	0007_auto_20210130_1407	2000-01-01 00:00:00+00
-796	raport_slotow	0008_auto_20210308_0839	2000-01-01 00:00:00+00
-797	raport_slotow	0009_auto_20210308_0846	2000-01-01 00:00:00+00
-798	raport_slotow	0010_auto_20210314_2204	2000-01-01 00:00:00+00
-799	raport_slotow	0011_auto_20210315_0141	2000-01-01 00:00:00+00
-800	raport_slotow	0012_django32	2000-01-01 00:00:00+00
-801	raport_slotow	0013_nullbooleanfield	2000-01-01 00:00:00+00
-802	raport_slotow	0014_alter_raportslotowuczelnia_do_roku	2000-01-01 00:00:00+00
-803	raport_slotow	0015_alter_raportslotowuczelnia_do_roku	2000-01-01 00:00:00+00
-804	raport_slotow	0016_alter_raportslotowuczelnia_do_roku	2000-01-01 00:00:00+00
-805	raport_slotow	0017_alter_raportslotowuczelnia_do_roku	2000-01-01 00:00:00+00
-806	raport_slotow	0018_alter_raportslotowuczelnia_do_roku	2000-01-01 00:00:00+00
-807	reversion	0001_squashed_0004_auto_20160611_1202	2000-01-01 00:00:00+00
-808	reversion	0002_add_index_on_version_for_content_type_and_db	2000-01-01 00:00:00+00
-809	rozbieznosci_dyscyplin	0001_widok_rozbieznosci	2000-01-01 00:00:00+00
-810	rozbieznosci_dyscyplin	0002_rok_2017_i_wyzej	2000-01-01 00:00:00+00
-811	rozbieznosci_dyscyplin	0003_brakprzypisaniaview_rozbiezneprzypisaniaview_rozbieznosciview	2000-01-01 00:00:00+00
-812	rozbieznosci_dyscyplin	0004_recreate	2000-01-01 00:00:00+00
-813	rozbieznosci_dyscyplin	0005_recreate	2000-01-01 00:00:00+00
-814	rozbieznosci_dyscyplin	0006_recreate	2000-01-01 00:00:00+00
-815	rozbieznosci_dyscyplin	0007_recreate	2000-01-01 00:00:00+00
-816	rozbieznosci_dyscyplin	0008_recreate	2000-01-01 00:00:00+00
-817	rozbieznosci_dyscyplin	0009_recreate	2000-01-01 00:00:00+00
-818	rozbieznosci_dyscyplin	0010_recreate	2000-01-01 00:00:00+00
-819	rozbieznosci_dyscyplin	0011_null_is_wrong	2000-01-01 00:00:00+00
-820	rozbieznosci_dyscyplin	0012_rozbieznosci_dyscyplin_zrodel	2000-01-01 00:00:00+00
-821	rozbieznosci_dyscyplin	0013_rozbieznoscizrodelview	2000-01-01 00:00:00+00
-822	rozbieznosci_dyscyplin	0014_recreate	2000-01-01 00:00:00+00
-823	rozbieznosci_dyscyplin	0015_recreate	2000-01-01 00:00:00+00
-824	rozbieznosci_dyscyplin	0016_rozbieznosci_dyscyplin_zrodel_v2	2000-01-01 00:00:00+00
-825	rozbieznosci_dyscyplin	0017_add_punkty_kbn_and_charakter_formalny	2000-01-01 00:00:00+00
-826	rozbieznosci_dyscyplin	0018_recreate	2000-01-01 00:00:00+00
-827	rozbieznosci_dyscyplin	0019_recreate	2000-01-01 00:00:00+00
-828	rozbieznosci_dyscyplin	0020_recreate	2000-01-01 00:00:00+00
-829	rozbieznosci_if	0001_initial	2000-01-01 00:00:00+00
-830	rozbieznosci_if	0002_auto_20210323_0106	2000-01-01 00:00:00+00
-831	rozbieznosci_if	0003_auto_20210323_0109	2000-01-01 00:00:00+00
-832	rozbieznosci_if	0004_rozbieznosciiflog	2000-01-01 00:00:00+00
-833	rozbieznosci_pk	0001_initial	2000-01-01 00:00:00+00
-834	sessions	0001_initial	2000-01-01 00:00:00+00
-835	snapshot_odpiec	0001_initial	2000-01-01 00:00:00+00
-836	snapshot_odpiec	0002_alter_snapshotodpiec_owner	2000-01-01 00:00:00+00
-838	tee	0002_auto_20211031_2122	2000-01-01 00:00:00+00
-839	tee	0003_log_traceback	2000-01-01 00:00:00+00
-840	tee	0004_auto_20220109_0151	2000-01-01 00:00:00+00
-841	tee	0005_django32	2000-01-01 00:00:00+00
-842	tee	0006_nullbooleanfield	2000-01-01 00:00:00+00
-843	test_bpp	0001_initial	2000-01-01 00:00:00+00
-844	test_bpp	0002_testobjectthatdoesnotexist	2000-01-01 00:00:00+00
-845	zglos_publikacje	0001_initial	2000-01-01 00:00:00+00
-846	zglos_publikacje	0002_auto_20220710_2331	2000-01-01 00:00:00+00
-847	zglos_publikacje	0003_auto_20220801_2045	2000-01-01 00:00:00+00
-848	zglos_publikacje	0004_auto_20220801_2128	2000-01-01 00:00:00+00
-849	zglos_publikacje	0005_auto_20220807_2329	2000-01-01 00:00:00+00
-850	zglos_publikacje	0006_auto_20220815_1752	2000-01-01 00:00:00+00
-851	zglos_publikacje	0007_auto_20220816_1019	2000-01-01 00:00:00+00
-852	zglos_publikacje	0008_auto_20220816_1255	2000-01-01 00:00:00+00
-853	zglos_publikacje	0009_alter_zgloszenie_publikacji_status	2000-01-01 00:00:00+00
-854	zglos_publikacje	0010_auto_20220818_0012	2000-01-01 00:00:00+00
-855	zglos_publikacje	0011_auto_20220910_1646	2000-01-01 00:00:00+00
-856	zglos_publikacje	0012_auto_20220910_1654	2000-01-01 00:00:00+00
-857	zglos_publikacje	0013_auto_20220910_2114	2000-01-01 00:00:00+00
-858	zglos_publikacje	0014_zgloszenie_publikacji_autor_kierunek_studiow	2000-01-01 00:00:00+00
-859	zglos_publikacje	0015_zgloszenie_publikacji_autor_oswiadczenie_ken	2000-01-01 00:00:00+00
-860	zglos_publikacje	0016_zgloszenie_publikacji_deleted_at_and_more	2000-01-01 00:00:00+00
-861	zglos_publikacje	0017_zgloszenie_publikacji_zgoda_na_publikacje_pelnego_tekstu	2000-01-01 00:00:00+00
-862	zglos_publikacje	0018_alter_zgloszenie_publikacji_rodzaj_zglaszanej_publikacji	2000-01-01 00:00:00+00
-863	zglos_publikacje	0019_zgloszenie_publikacji_autor_ostatnio_zmieniony	2000-01-01 00:00:00+00
-864	zglos_publikacje	0020_move_files_to_protected	2000-01-01 00:00:00+00
-865	zglos_publikacje	0021_fix_file_paths	2000-01-01 00:00:00+00
-866	zglos_publikacje	0022_uuid_filenames	2000-01-01 00:00:00+00
-867	denorm	0001_squashed_0012_alter_dirtyinstance_object_id	2000-01-01 00:00:00+00
-868	dynamic_columns	0001_initial_squashed_0003_modeladmin_model_ref	2000-01-01 00:00:00+00
-869	bpp	0165_cache_punktacja_autora_cache_punktacja_dyscypliny_squashed_0167_auto_20190707_2029	2000-01-01 00:00:00+00
-870	easyaudit	0004_auto_20170620_1354_squashed_0019_alter_crudevent_changed_fields_and_more	2000-01-01 00:00:00+00
+509	bpp	0413_bppuser_autor_onetoone	2000-01-01 00:00:00+00
+510	constance	0001_initial	2000-01-01 00:00:00+00
+511	constance	0002_migrate_from_old_table	2000-01-01 00:00:00+00
+512	constance	0003_drop_pickle	2000-01-01 00:00:00+00
+513	crossref_bpp	0001_initial	2000-01-01 00:00:00+00
+514	dashboard	0001_initial	2000-01-01 00:00:00+00
+515	dbtemplates	0002_alter_template_creation_date_and_more	2000-01-01 00:00:00+00
+516	pbn_api	0049_tlumacz_dyscyplin_2025	2000-01-01 00:00:00+00
+517	pbn_api	0050_zamapuj_nowe_dyscypliny_2025	2000-01-01 00:00:00+00
+518	pbn_api	0051_alter_discipline_options_and_more	2000-01-01 00:00:00+00
+519	pbn_api	0052_publikacjainstytucji_v2	2000-01-01 00:00:00+00
+520	pbn_api	0053_alter_publikacjainstytucji_v2_unique_together	2000-01-01 00:00:00+00
+521	pbn_api	0054_publikacjainstytucji_v2_created_on_and_more	2000-01-01 00:00:00+00
+522	pbn_api	0055_osobazinstytucji	2000-01-01 00:00:00+00
+523	pbn_api	0056_delete_osobazinstytucji	2000-01-01 00:00:00+00
+524	pbn_api	0057_osobazinstytucji	2000-01-01 00:00:00+00
+525	pbn_api	0058_alter_osobazinstytucji_title	2000-01-01 00:00:00+00
+526	pbn_api	0059_alter_osobazinstytucji__from	2000-01-01 00:00:00+00
+527	pbn_api	0060_alter_osobazinstytucji_personid	2000-01-01 00:00:00+00
+528	pbn_api	0061_remove_pbn_export_queue	2000-01-01 00:00:00+00
+529	pbn_api	0062_sent_data_success_tracking	2000-01-01 00:00:00+00
+530	pbn_api	0063_pbnodpowiedziniepozadane	2000-01-01 00:00:00+00
+531	pbn_api	0064_alter_pbnodpowiedziniepozadane_stary_uid_and_more	2000-01-01 00:00:00+00
+532	pbn_api	0065_make_uzytkownik_nullable	2000-01-01 00:00:00+00
+533	pbn_api	0066_add_duplicate_scan_models	2000-01-01 00:00:00+00
+534	deduplikator_autorow	0001_initial	2000-01-01 00:00:00+00
+535	deduplikator_autorow	0002_logautomatycznegoscalania	2000-01-01 00:00:00+00
+536	deduplikator_autorow	0003_alter_notaduplicate_scientist_pk	2000-01-01 00:00:00+00
+537	deduplikator_autorow	0004_alter_notaduplicate_unique_together_and_more	2000-01-01 00:00:00+00
+538	deduplikator_autorow	0005_replace_log_model	2000-01-01 00:00:00+00
+539	deduplikator_autorow	0006_add_ignored_author	2000-01-01 00:00:00+00
+540	deduplikator_autorow	0007_add_duplicate_scan_models	2000-01-01 00:00:00+00
+541	deduplikator_autorow	0008_add_priority_field	2000-01-01 00:00:00+00
+542	deduplikator_publikacji	0001_initial	2000-01-01 00:00:00+00
+543	deduplikator_zrodel	0001_initial	2000-01-01 00:00:00+00
+545	denorm	0002_dirtyinstance_func_name	2000-01-01 00:00:00+00
+546	denorm	0003_auto_20211002_1955	2000-01-01 00:00:00+00
+547	denorm	0004_alter_dirtyinstance_success	2000-01-01 00:00:00+00
+548	denorm	0005_dirtyinstance_created_on	2000-01-01 00:00:00+00
+549	denorm	0006_auto_20211003_0346	2000-01-01 00:00:00+00
+550	denorm	0007_auto_created_on_now	2000-01-01 00:00:00+00
+551	denorm	0008_alter_dirtyinstance_object_id	2000-01-01 00:00:00+00
+552	denorm	0009_alter_dirtyinstance_object_id	2000-01-01 00:00:00+00
+553	denorm	0010_alter_dirtyinstance_object_id	2000-01-01 00:00:00+00
+554	denorm	0011_alter_dirtyinstance_object_id	2000-01-01 00:00:00+00
+555	denorm	0012_alter_dirtyinstance_object_id	2000-01-01 00:00:00+00
+556	denorm	0013_alter_dirtyinstance_success	2000-01-01 00:00:00+00
+557	denorm	0014_parametrized_notify	2000-01-01 00:00:00+00
+558	denorm	0015_remove_dirtyinstance_processing_finished_and_more	2000-01-01 00:00:00+00
+559	denorm	0016_not_parametrized_notify	2000-01-01 00:00:00+00
+560	django_celery_results	0001_initial	2000-01-01 00:00:00+00
+561	django_celery_results	0002_add_task_name_args_kwargs	2000-01-01 00:00:00+00
+562	django_celery_results	0003_auto_20181106_1101	2000-01-01 00:00:00+00
+563	django_celery_results	0004_auto_20190516_0412	2000-01-01 00:00:00+00
+564	django_celery_results	0005_taskresult_worker	2000-01-01 00:00:00+00
+565	django_celery_results	0006_taskresult_date_created	2000-01-01 00:00:00+00
+566	django_celery_results	0007_remove_taskresult_hidden	2000-01-01 00:00:00+00
+567	django_celery_results	0008_chordcounter	2000-01-01 00:00:00+00
+568	django_celery_results	0009_groupresult	2000-01-01 00:00:00+00
+569	django_celery_results	0010_remove_duplicate_indices	2000-01-01 00:00:00+00
+570	django_celery_results	0011_taskresult_periodic_task_name	2000-01-01 00:00:00+00
+571	django_celery_results	0012_taskresult_date_started	2000-01-01 00:00:00+00
+572	django_celery_results	0013_taskresult_django_cele_periodi_1993cf_idx	2000-01-01 00:00:00+00
+573	django_celery_results	0014_alter_taskresult_status	2000-01-01 00:00:00+00
+574	sites	0002_alter_domain_unique	2000-01-01 00:00:00+00
+575	django_countdown	0001_initial	2000-01-01 00:00:00+00
+576	django_countdown	0002_alter_sitecountdown_countdown_time	2000-01-01 00:00:00+00
+577	django_countdown	0003_sitecountdown_maintenance_until	2000-01-01 00:00:00+00
+578	django_countdown	0004_alter_sitecountdown_long_description	2000-01-01 00:00:00+00
+579	dynamic_columns	0001_initial	2000-01-01 00:00:00+00
+580	dynamic_columns	0002_auto_20221002_2252	2000-01-01 00:00:00+00
+581	dynamic_columns	0003_modeladmin_model_ref	2000-01-01 00:00:00+00
+582	dynamic_columns	0004_alter_modeladmin_options_and_more	2000-01-01 00:00:00+00
+583	easyaudit	0001_initial	2000-01-01 00:00:00+00
+584	easyaudit	0002_auto_20170125_0759	2000-01-01 00:00:00+00
+585	easyaudit	0003_auto_20170228_1505	2000-01-01 00:00:00+00
+586	easyaudit	0004_auto_20170620_1354	2000-01-01 00:00:00+00
+587	easyaudit	0005_auto_20170713_1155	2000-01-01 00:00:00+00
+588	easyaudit	0006_auto_20171018_1242	2000-01-01 00:00:00+00
+589	easyaudit	0007_auto_20180105_0838	2000-01-01 00:00:00+00
+590	easyaudit	0008_auto_20180220_1908	2000-01-01 00:00:00+00
+591	easyaudit	0009_auto_20180314_2225	2000-01-01 00:00:00+00
+592	easyaudit	0010_repr_text	2000-01-01 00:00:00+00
+593	easyaudit	0011_auto_20181101_1339	2000-01-01 00:00:00+00
+594	easyaudit	0012_auto_20181018_0012	2000-01-01 00:00:00+00
+595	easyaudit	0013_auto_20190723_0126	2000-01-01 00:00:00+00
+596	easyaudit	0014_auto_20200513_0008	2000-01-01 00:00:00+00
+597	easyaudit	0015_auto_20201019_1217	2000-01-01 00:00:00+00
+598	easyaudit	0016_alter_crudevent_event_type	2000-01-01 00:00:00+00
+599	easyaudit	0017_alter_requestevent_datetime	2000-01-01 00:00:00+00
+600	easyaudit	0018_rename_crudevent_object_id_content_type_index	2000-01-01 00:00:00+00
+601	easyaudit	0019_alter_crudevent_changed_fields_and_more	2000-01-01 00:00:00+00
+602	ewaluacja2021	0001_initial	2000-01-01 00:00:00+00
+603	ewaluacja2021	0002_auto_20211026_1137	2000-01-01 00:00:00+00
+604	ewaluacja2021	0003_auto_20211027_2320	2000-01-01 00:00:00+00
+605	ewaluacja2021	0004_importmaksymalnychslotow_ostatnia_zmiana	2000-01-01 00:00:00+00
+606	ewaluacja2021	0005_auto_20211028_0039	2000-01-01 00:00:00+00
+607	ewaluacja2021	0006_auto_20211110_0000	2000-01-01 00:00:00+00
+608	ewaluacja2021	0007_auto_20211110_0002	2000-01-01 00:00:00+00
+609	ewaluacja2021	0008_auto_20211122_0103	2000-01-01 00:00:00+00
+610	ewaluacja2021	0009_zamowienienaraport_status	2000-01-01 00:00:00+00
+611	ewaluacja2021	0010_django32	2000-01-01 00:00:00+00
+612	ewaluacja2021	0011_nullbooleanfield	2000-01-01 00:00:00+00
+613	ewaluacja2021	0012_liczbandlauczelni_2022_2025_and_more	2000-01-01 00:00:00+00
+614	ewaluacja2021	0013_alter_iloscudzialowdlaautora_ilosc_udzialow_and_more	2000-01-01 00:00:00+00
+615	ewaluacja2021	0014_iloscudzialowzarok	2000-01-01 00:00:00+00
+616	ewaluacja2021	0015_dyscyplina_nie_raportowana	2000-01-01 00:00:00+00
+617	ewaluacja2021	0016_alter_iloscudzialowdlaautora_2022_2025_unique_together_and_more	2000-01-01 00:00:00+00
+618	ewaluacja2021	0017_alter_liczbandlauczelni_dyscyplina_naukowa_and_more	2000-01-01 00:00:00+00
+619	ewaluacja2021	0018_move_files_to_protected	2000-01-01 00:00:00+00
+620	ewaluacja2021	0019_remove_null_from_string_fields	2000-01-01 00:00:00+00
+621	ewaluacja_liczba_n	0001_initial	2000-01-01 00:00:00+00
+622	ewaluacja_liczba_n	0002_rename_dyscyplinanieraportowana_2022_2025_dyscyplinanieraportowana_and_more	2000-01-01 00:00:00+00
+623	ewaluacja_liczba_n	0003_add_liczba_n_to_dyscyplina_nieraportowana	2000-01-01 00:00:00+00
+624	ewaluacja_liczba_n	0004_add_ilosc_udzialow_za_calosc	2000-01-01 00:00:00+00
+625	ewaluacja_liczba_n	0005_iloscudzialowdlaautorazarok_autor_dyscyplina	2000-01-01 00:00:00+00
+626	ewaluacja_liczba_n	0006_alter_iloscudzialowdlaautorazacalosc_unique_together_and_more	2000-01-01 00:00:00+00
+627	ewaluacja_liczba_n	0007_alter_iloscudzialowdlaautorazacalosc_komentarz	2000-01-01 00:00:00+00
+628	ewaluacja_liczba_n	0008_add_sankcje	2000-01-01 00:00:00+00
+629	ewaluacja_metryki	0001_initial	2000-01-01 00:00:00+00
+630	ewaluacja_metryki	0002_alter_metrykaautora_jednostka	2000-01-01 00:00:00+00
+631	ewaluacja_metryki	0003_add_liczba_do_przetworzenia	2000-01-01 00:00:00+00
+632	ewaluacja_metryki	0004_metrykaautora_rodzaj_autora	2000-01-01 00:00:00+00
+633	ewaluacja_metryki	0005_alter_metrykaautora_rodzaj_autora_and_more	2000-01-01 00:00:00+00
+634	ewaluacja_optymalizacja	0001_initial	2000-01-01 00:00:00+00
+635	ewaluacja_optymalizacja	0002_unpinningopportunity	2000-01-01 00:00:00+00
+636	ewaluacja_optymalizacja	0003_unpinningopportunity_punkty_roznica_b_and_more	2000-01-01 00:00:00+00
+637	ewaluacja_optymalizacja	0004_unpinningopportunity_punkty_roznica_a_and_more	2000-01-01 00:00:00+00
+638	ewaluacja_optymalizacja	0005_add_real_unpinning_values	2000-01-01 00:00:00+00
+639	ewaluacja_optymalizacja	0006_add_status_optymalizacji_z_odpinaniem	2000-01-01 00:00:00+00
+640	ewaluacja_optymalizacja	0007_add_status_optymalizacji_bulk	2000-01-01 00:00:00+00
+641	ewaluacja_optymalizacja	0008_add_status_unpinning_analizy	2000-01-01 00:00:00+00
+642	ewaluacja_optymalizacja	0009_add_plik_zip_wszystkie_xls	2000-01-01 00:00:00+00
+643	ewaluacja_optymalizacja	0010_add_is_optimal_to_optimizationrun	2000-01-01 00:00:00+00
+644	ewaluacja_optymalizacja	0011_move_files_to_protected	2000-01-01 00:00:00+00
+645	ewaluacja_optymalizacja	0012_add_discipline_swap_models	2000-01-01 00:00:00+00
+646	ewaluacja_optymalizacja	0013_add_status_przegladarka_recalc	2000-01-01 00:00:00+00
+647	ewaluacja_optymalizacja	0014_add_optimality_gap_to_optimization_run	2000-01-01 00:00:00+00
+648	ewaluacja_optymalizuj_publikacje	0001_initial	2000-01-01 00:00:00+00
+649	favicon	0001_initial	2000-01-01 00:00:00+00
+650	favicon	0002_favicon_site	2000-01-01 00:00:00+00
+651	favicon	0003_site_manager	2000-01-01 00:00:00+00
+652	favicon	0004_faviconimg_favicon_size_rel_unique	2000-01-01 00:00:00+00
+653	favicon	0005_leftover_changes	2000-01-01 00:00:00+00
+654	flexible_reports	0001_initial	2000-01-01 00:00:00+00
+655	flexible_reports	0002_auto_20170823_2225	2000-01-01 00:00:00+00
+656	flexible_reports	0003_table_attrs	2000-01-01 00:00:00+00
+657	flexible_reports	0004_auto_20170823_2342	2000-01-01 00:00:00+00
+658	flexible_reports	0005_column_attrs	2000-01-01 00:00:00+00
+659	flexible_reports	0006_default_ordering	2000-01-01 00:00:00+00
+660	flexible_reports	0007_sort_desc	2000-01-01 00:00:00+00
+661	flexible_reports	0008_auto_20171025_0553	2000-01-01 00:00:00+00
+662	flexible_reports	0009_auto_20171025_0558	2000-01-01 00:00:00+00
+663	flexible_reports	0010_auto_20171026_0340	2000-01-01 00:00:00+00
+664	flexible_reports	0011_alter_reportelement_options_alter_column_attrs_and_more	2000-01-01 00:00:00+00
+665	formdefaults	0001_initial	2000-01-01 00:00:00+00
+666	formdefaults	0002_django32	2000-01-01 00:00:00+00
+667	import_dyscyplin	0001_initial	2000-01-01 00:00:00+00
+668	import_dyscyplin	0002_import_dyscyplin_web_page_uid	2000-01-01 00:00:00+00
+669	import_dyscyplin	0003_auto_20180409_1129	2000-01-01 00:00:00+00
+670	import_dyscyplin	0004_auto_20180409_1240	2000-01-01 00:00:00+00
+671	import_dyscyplin	0005_auto_20180414_1801	2000-01-01 00:00:00+00
+672	import_dyscyplin	0006_auto_20180414_1841	2000-01-01 00:00:00+00
+673	import_dyscyplin	0007_auto_20180414_1917	2000-01-01 00:00:00+00
+674	import_dyscyplin	0008_auto_20180415_0813	2000-01-01 00:00:00+00
+675	import_dyscyplin	0009_auto_20180415_0847	2000-01-01 00:00:00+00
+676	import_dyscyplin	0010_auto_20180415_1107	2000-01-01 00:00:00+00
+677	import_dyscyplin	0011_auto_20180415_2223	2000-01-01 00:00:00+00
+678	import_dyscyplin	0012_import_dyscyplin_row_dyscyplina_ostateczna	2000-01-01 00:00:00+00
+679	import_dyscyplin	0013_auto_20190324_1826	2000-01-01 00:00:00+00
+680	import_dyscyplin	0014_auto_20190324_1906	2000-01-01 00:00:00+00
+681	import_dyscyplin	0015_auto_20190326_0553	2000-01-01 00:00:00+00
+682	import_dyscyplin	0016_auto_20190327_0129	2000-01-01 00:00:00+00
+683	import_dyscyplin	0017_auto_20190327_2246	2000-01-01 00:00:00+00
+684	import_dyscyplin	0018_auto_20200329_1719	2000-01-01 00:00:00+00
+685	import_dyscyplin	0019_drop_pesel_md5	2000-01-01 00:00:00+00
+686	import_dyscyplin	0020_django32	2000-01-01 00:00:00+00
+687	import_dyscyplin	0021_import_pustych_do_skasowania	2000-01-01 00:00:00+00
+688	import_dyscyplin	0022_move_files_to_protected	2000-01-01 00:00:00+00
+689	import_dyscyplin	0023_remove_null_from_string_fields	2000-01-01 00:00:00+00
+690	import_list_if	0001_initial	2000-01-01 00:00:00+00
+691	import_list_if	0002_auto_20210308_1246	2000-01-01 00:00:00+00
+692	import_list_if	0003_django32	2000-01-01 00:00:00+00
+693	import_list_if	0004_alter_importlistif_plik_xls	2000-01-01 00:00:00+00
+694	import_list_ministerialnych	0001_initial	2000-01-01 00:00:00+00
+695	import_list_ministerialnych	0002_alter_wierszimportudyscyplinzrodel_nr_wiersza	2000-01-01 00:00:00+00
+696	import_list_ministerialnych	0003_rename_wierszimportudyscyplinzrodel_wierszimportulistyministerialnej	2000-01-01 00:00:00+00
+697	import_list_ministerialnych	0004_importlistministerialnych_ignoruj_zrodla_bez_odpowiednika	2000-01-01 00:00:00+00
+698	import_list_ministerialnych	0005_add_duplicate_tracking_fields	2000-01-01 00:00:00+00
+699	import_list_ministerialnych	0006_importlistministerialnych_nie_porownuj_po_tytulach	2000-01-01 00:00:00+00
+700	import_list_ministerialnych	0007_move_files_to_protected	2000-01-01 00:00:00+00
+701	import_list_ministerialnych	0008_remove_null_from_string_fields	2000-01-01 00:00:00+00
+702	import_polon	0001_initial	2000-01-01 00:00:00+00
+703	import_polon	0002_remove_wierszimportuplikupolon_orig_and_more	2000-01-01 00:00:00+00
+704	import_polon	0003_wierszimportuplikupolon_dyscyplina_naukowa_and_more	2000-01-01 00:00:00+00
+705	import_polon	0004_importplikupolon_rok	2000-01-01 00:00:00+00
+706	import_polon	0005_alter_wierszimportuplikupolon_options_and_more	2000-01-01 00:00:00+00
+707	import_polon	0006_importplikupolon_zapisz_zmiany_do_bazy	2000-01-01 00:00:00+00
+708	import_polon	0007_importplikupolon_ukryj_niezmatchowanych_autorow	2000-01-01 00:00:00+00
+709	import_polon	0008_importplikuabsencji	2000-01-01 00:00:00+00
+710	import_polon	0009_wierszimportuplikuabsencji	2000-01-01 00:00:00+00
+711	import_polon	0010_alter_wierszimportuplikuabsencji_options_and_more	2000-01-01 00:00:00+00
+712	import_polon	0011_alter_wierszimportuplikuabsencji_ile_dni_and_more	2000-01-01 00:00:00+00
+713	import_polon	0012_importpolonoverride	2000-01-01 00:00:00+00
+714	import_polon	0013_alter_importpolonoverride_options_and_more	2000-01-01 00:00:00+00
+715	import_polon	0014_add_ignoruj_miejsce_pracy	2000-01-01 00:00:00+00
+716	import_polon	0015_move_files_to_protected	2000-01-01 00:00:00+00
+717	import_pracownikow	0001_initial	2000-01-01 00:00:00+00
+718	import_pracownikow	0002_importpracownikowrow	2000-01-01 00:00:00+00
+719	import_pracownikow	0003_auto_20210228_1916	2000-01-01 00:00:00+00
+720	import_pracownikow	0004_auto_20210307_1110	2000-01-01 00:00:00+00
+721	import_pracownikow	0005_auto_20210307_1204	2000-01-01 00:00:00+00
+722	import_pracownikow	0006_importpracownikowrow_tytul	2000-01-01 00:00:00+00
+723	import_pracownikow	0007_django32	2000-01-01 00:00:00+00
+724	import_pracownikow	0008_nullbooleanfield	2000-01-01 00:00:00+00
+725	import_pracownikow	0009_move_files_to_protected	2000-01-01 00:00:00+00
+726	pbn_api	0067_fix_osobazinstytucji_title_not_null	2000-01-01 00:00:00+00
+727	pbn_api	0068_add_cache_models	2000-01-01 00:00:00+00
+728	importer_autorow_pbn	0001_initial	2000-01-01 00:00:00+00
+729	importer_autorow_pbn	0002_add_cache_models	2000-01-01 00:00:00+00
+730	importer_publikacji	0001_initial	2000-01-01 00:00:00+00
+731	importer_publikacji	0002_remove_skip_match_status	2000-01-01 00:00:00+00
+732	importer_publikacji	0003_importedauthor_dyscyplina_source	2000-01-01 00:00:00+00
+733	importer_publikacji	0004_rename_user_to_created_by_add_modified_by	2000-01-01 00:00:00+00
+734	importer_publikacji	0005_importsession_wydawnictwo_nadrzedne	2000-01-01 00:00:00+00
+735	importer_publikacji	0005_alter_importsession_created_by	2000-01-01 00:00:00+00
+736	importer_publikacji	0006_merge_20260421_1100	2000-01-01 00:00:00+00
+737	integrator2	0001_initial	2000-01-01 00:00:00+00
+738	integrator2	0002_auto_20160124_1336	2000-01-01 00:00:00+00
+739	integrator2	0003_django110_py3k	2000-01-01 00:00:00+00
+740	integrator2	0004_django32	2000-01-01 00:00:00+00
+741	integrator2	0005_nullbooleanfield	2000-01-01 00:00:00+00
+742	integrator2	0006_move_files_to_protected	2000-01-01 00:00:00+00
+743	komparator_pbn	0001_initial	2000-01-01 00:00:00+00
+744	komparator_pbn	0002_pbndownloadtask_current_step_and_more	2000-01-01 00:00:00+00
+745	komparator_pbn	0003_delete_pbndownloadtask	2000-01-01 00:00:00+00
+746	komparator_pbn_udzialy	0001_initial	2000-01-01 00:00:00+00
+747	komparator_pbn_udzialy	0002_add_brakautora_model	2000-01-01 00:00:00+00
+748	menu	0001_initial	2000-01-01 00:00:00+00
+749	messages_extends	0001_initial	2000-01-01 00:00:00+00
+750	miniblog	0001_initial	2000-01-01 00:00:00+00
+751	miniblog	0002_auto_20180101_2017	2000-01-01 00:00:00+00
+752	miniblog	0003_alter_article_article_body	2000-01-01 00:00:00+00
+753	notifications	0001_initial	2000-01-01 00:00:00+00
+754	notifications	0002_notification_acknowledged	2000-01-01 00:00:00+00
+755	notifications	0003_django32	2000-01-01 00:00:00+00
+756	oswiadczenia	0001_add_export_task_model	2000-01-01 00:00:00+00
+757	oswiadczenia	0002_add_offset_limit	2000-01-01 00:00:00+00
+758	oswiadczenia	0003_fix_export_format_max_length	2000-01-01 00:00:00+00
+759	oswiadczenia	0004_add_przypieta_filter	2000-01-01 00:00:00+00
+760	oswiadczenia	0005_migrate_template_to_dbtemplate	2000-01-01 00:00:00+00
+761	password_policies	0001_initial	2000-01-01 00:00:00+00
+762	password_policies	0002_passwordprofile	2000-01-01 00:00:00+00
+763	password_policies	0003_update_passwordprofile	2000-01-01 00:00:00+00
+764	pbn_downloader_app	0001_initial	2000-01-01 00:00:00+00
+765	pbn_downloader_app	0002_pbninstitutionpeopletask	2000-01-01 00:00:00+00
+766	pbn_downloader_app	0003_pbnjournalsdownloadtask	2000-01-01 00:00:00+00
+767	pbn_downloader_app	0004_alter_error_message_fields	2000-01-01 00:00:00+00
+768	pbn_export_queue	0001_rename_table	2000-01-01 00:00:00+00
+769	pbn_export_queue	0002_initial	2000-01-01 00:00:00+00
+770	pbn_export_queue	0003_add_rodzaj_bledu	2000-01-01 00:00:00+00
+771	pbn_export_queue	0004_add_wykluczone_field	2000-01-01 00:00:00+00
+772	pbn_export_queue	0005_reclassify_old_validation_errors	2000-01-01 00:00:00+00
+773	pbn_export_queue	0006_reclassify_list_format_validation_errors	2000-01-01 00:00:00+00
+774	pbn_export_queue	0007_reclassify_doiorwwwmissing_errors	2000-01-01 00:00:00+00
+775	pbn_import	0001_initial	2000-01-01 00:00:00+00
+776	pbn_import	0002_add_task_id_field	2000-01-01 00:00:00+00
+777	pbn_import	0003_add_import_inconsistency	2000-01-01 00:00:00+00
+778	pbn_import	0004_add_bpp_publication_content_type	2000-01-01 00:00:00+00
+779	pbn_import	0005_remove_importstatistics	2000-01-01 00:00:00+00
+780	pbn_import	0006_remove_importstep	2000-01-01 00:00:00+00
+781	pbn_import	0007_add_last_updated_field	2000-01-01 00:00:00+00
+782	pbn_import	0008_add_importsession_indexes	2000-01-01 00:00:00+00
+783	pbn_import	0009_fix_error_fields_default	2000-01-01 00:00:00+00
+784	pbn_import	0010_alter_importinconsistency_inconsistency_type	2000-01-01 00:00:00+00
+785	pbn_komparator_zrodel	0001_initial	2000-01-01 00:00:00+00
+786	pbn_komparator_zrodel	0002_add_brakujaca_dyscyplina_pbn	2000-01-01 00:00:00+00
+787	pbn_wysylka_oswiadczen	0001_initial	2000-01-01 00:00:00+00
+788	pbn_wysylka_oswiadczen	0002_add_tytul_field	2000-01-01 00:00:00+00
+789	pbn_wysylka_oswiadczen	0003_add_synchronized_count	2000-01-01 00:00:00+00
+790	powiazania_autorow	0001_initial	2000-01-01 00:00:00+00
+791	powiazania_autorow	0002_alter_authorconnection_primary_author_and_more	2000-01-01 00:00:00+00
+792	przemapuj_prace_autora	0001_initial	2000-01-01 00:00:00+00
+793	przemapuj_prace_autora	0002_przemapoaniepracautora_prace_ciagle_historia_and_more	2000-01-01 00:00:00+00
+794	przemapuj_zrodla_pbn	0001_initial	2000-01-01 00:00:00+00
+795	przemapuj_zrodla_pbn	0002_przemapowaniezrodla_typ_operacji_and_more	2000-01-01 00:00:00+00
+796	przemapuj_zrodla_pbn	0003_alter_przemapowaniezrodla_zrodlo_nowe_and_more	2000-01-01 00:00:00+00
+797	przemapuj_zrodlo	0001_initial	2000-01-01 00:00:00+00
+798	raport_slotow	0001_initial	2000-01-01 00:00:00+00
+799	raport_slotow	0002_auto_20200316_2027	2000-01-01 00:00:00+00
+800	raport_slotow	0003_auto_20200329_1719	2000-01-01 00:00:00+00
+801	raport_slotow	0004_raportslotowuczelnia_raportslotowuczelniawiersz	2000-01-01 00:00:00+00
+802	raport_slotow	0005_auto_20210125_0256	2000-01-01 00:00:00+00
+803	raport_slotow	0006_auto_20210125_2330	2000-01-01 00:00:00+00
+804	raport_slotow	0007_auto_20210130_1407	2000-01-01 00:00:00+00
+805	raport_slotow	0008_auto_20210308_0839	2000-01-01 00:00:00+00
+806	raport_slotow	0009_auto_20210308_0846	2000-01-01 00:00:00+00
+807	raport_slotow	0010_auto_20210314_2204	2000-01-01 00:00:00+00
+808	raport_slotow	0011_auto_20210315_0141	2000-01-01 00:00:00+00
+809	raport_slotow	0012_django32	2000-01-01 00:00:00+00
+810	raport_slotow	0013_nullbooleanfield	2000-01-01 00:00:00+00
+811	raport_slotow	0014_alter_raportslotowuczelnia_do_roku	2000-01-01 00:00:00+00
+812	raport_slotow	0015_alter_raportslotowuczelnia_do_roku	2000-01-01 00:00:00+00
+813	raport_slotow	0016_alter_raportslotowuczelnia_do_roku	2000-01-01 00:00:00+00
+814	raport_slotow	0017_alter_raportslotowuczelnia_do_roku	2000-01-01 00:00:00+00
+815	raport_slotow	0018_alter_raportslotowuczelnia_do_roku	2000-01-01 00:00:00+00
+816	raport_slotow	0019_alter_raportslotowuczelnia_do_roku	2000-01-01 00:00:00+00
+817	reversion	0001_squashed_0004_auto_20160611_1202	2000-01-01 00:00:00+00
+818	reversion	0002_add_index_on_version_for_content_type_and_db	2000-01-01 00:00:00+00
+819	rozbieznosci_dyscyplin	0001_widok_rozbieznosci	2000-01-01 00:00:00+00
+820	rozbieznosci_dyscyplin	0002_rok_2017_i_wyzej	2000-01-01 00:00:00+00
+821	rozbieznosci_dyscyplin	0003_brakprzypisaniaview_rozbiezneprzypisaniaview_rozbieznosciview	2000-01-01 00:00:00+00
+822	rozbieznosci_dyscyplin	0004_recreate	2000-01-01 00:00:00+00
+823	rozbieznosci_dyscyplin	0005_recreate	2000-01-01 00:00:00+00
+824	rozbieznosci_dyscyplin	0006_recreate	2000-01-01 00:00:00+00
+825	rozbieznosci_dyscyplin	0007_recreate	2000-01-01 00:00:00+00
+826	rozbieznosci_dyscyplin	0008_recreate	2000-01-01 00:00:00+00
+827	rozbieznosci_dyscyplin	0009_recreate	2000-01-01 00:00:00+00
+828	rozbieznosci_dyscyplin	0010_recreate	2000-01-01 00:00:00+00
+829	rozbieznosci_dyscyplin	0011_null_is_wrong	2000-01-01 00:00:00+00
+830	rozbieznosci_dyscyplin	0012_rozbieznosci_dyscyplin_zrodel	2000-01-01 00:00:00+00
+831	rozbieznosci_dyscyplin	0013_rozbieznoscizrodelview	2000-01-01 00:00:00+00
+832	rozbieznosci_dyscyplin	0014_recreate	2000-01-01 00:00:00+00
+833	rozbieznosci_dyscyplin	0015_recreate	2000-01-01 00:00:00+00
+834	rozbieznosci_dyscyplin	0016_rozbieznosci_dyscyplin_zrodel_v2	2000-01-01 00:00:00+00
+835	rozbieznosci_dyscyplin	0017_add_punkty_kbn_and_charakter_formalny	2000-01-01 00:00:00+00
+836	rozbieznosci_dyscyplin	0018_recreate	2000-01-01 00:00:00+00
+837	rozbieznosci_dyscyplin	0019_recreate	2000-01-01 00:00:00+00
+838	rozbieznosci_dyscyplin	0020_recreate	2000-01-01 00:00:00+00
+839	rozbieznosci_dyscyplin	0021_alter_rozbieznosciview_options	2000-01-01 00:00:00+00
+840	rozbieznosci_if	0001_initial	2000-01-01 00:00:00+00
+841	rozbieznosci_if	0002_auto_20210323_0106	2000-01-01 00:00:00+00
+842	rozbieznosci_if	0003_auto_20210323_0109	2000-01-01 00:00:00+00
+843	rozbieznosci_if	0004_rozbieznosciiflog	2000-01-01 00:00:00+00
+844	rozbieznosci_pk	0001_initial	2000-01-01 00:00:00+00
+845	sessions	0001_initial	2000-01-01 00:00:00+00
+846	snapshot_odpiec	0001_initial	2000-01-01 00:00:00+00
+847	snapshot_odpiec	0002_alter_snapshotodpiec_owner	2000-01-01 00:00:00+00
+848	taggit	0006_rename_taggeditem_content_type_object_id_taggit_tagg_content_8fc721_idx	2000-01-01 00:00:00+00
+849	tee	0001_initial	2000-01-01 00:00:00+00
+850	tee	0002_auto_20211031_2122	2000-01-01 00:00:00+00
+851	tee	0003_log_traceback	2000-01-01 00:00:00+00
+852	tee	0004_auto_20220109_0151	2000-01-01 00:00:00+00
+853	tee	0005_django32	2000-01-01 00:00:00+00
+854	tee	0006_nullbooleanfield	2000-01-01 00:00:00+00
+855	test_bpp	0001_initial	2000-01-01 00:00:00+00
+856	test_bpp	0002_testobjectthatdoesnotexist	2000-01-01 00:00:00+00
+857	test_bpp	0003_testreport	2000-01-01 00:00:00+00
+858	zglos_publikacje	0001_initial	2000-01-01 00:00:00+00
+859	zglos_publikacje	0002_auto_20220710_2331	2000-01-01 00:00:00+00
+860	zglos_publikacje	0003_auto_20220801_2045	2000-01-01 00:00:00+00
+861	zglos_publikacje	0004_auto_20220801_2128	2000-01-01 00:00:00+00
+862	zglos_publikacje	0005_auto_20220807_2329	2000-01-01 00:00:00+00
+863	zglos_publikacje	0006_auto_20220815_1752	2000-01-01 00:00:00+00
+864	zglos_publikacje	0007_auto_20220816_1019	2000-01-01 00:00:00+00
+865	zglos_publikacje	0008_auto_20220816_1255	2000-01-01 00:00:00+00
+866	zglos_publikacje	0009_alter_zgloszenie_publikacji_status	2000-01-01 00:00:00+00
+867	zglos_publikacje	0010_auto_20220818_0012	2000-01-01 00:00:00+00
+868	zglos_publikacje	0011_auto_20220910_1646	2000-01-01 00:00:00+00
+869	zglos_publikacje	0012_auto_20220910_1654	2000-01-01 00:00:00+00
+870	zglos_publikacje	0013_auto_20220910_2114	2000-01-01 00:00:00+00
+871	zglos_publikacje	0014_zgloszenie_publikacji_autor_kierunek_studiow	2000-01-01 00:00:00+00
+872	zglos_publikacje	0015_zgloszenie_publikacji_autor_oswiadczenie_ken	2000-01-01 00:00:00+00
+873	zglos_publikacje	0016_zgloszenie_publikacji_deleted_at_and_more	2000-01-01 00:00:00+00
+874	zglos_publikacje	0017_zgloszenie_publikacji_zgoda_na_publikacje_pelnego_tekstu	2000-01-01 00:00:00+00
+875	zglos_publikacje	0018_alter_zgloszenie_publikacji_rodzaj_zglaszanej_publikacji	2000-01-01 00:00:00+00
+876	zglos_publikacje	0019_zgloszenie_publikacji_autor_ostatnio_zmieniony	2000-01-01 00:00:00+00
+877	zglos_publikacje	0020_move_files_to_protected	2000-01-01 00:00:00+00
+878	zglos_publikacje	0021_fix_file_paths	2000-01-01 00:00:00+00
+879	zglos_publikacje	0022_uuid_filenames	2000-01-01 00:00:00+00
+880	denorm	0001_squashed_0012_alter_dirtyinstance_object_id	2000-01-01 00:00:00+00
+881	dynamic_columns	0001_initial_squashed_0003_modeladmin_model_ref	2000-01-01 00:00:00+00
+882	bpp	0165_cache_punktacja_autora_cache_punktacja_dyscypliny_squashed_0167_auto_20190707_2029	2000-01-01 00:00:00+00
+883	easyaudit	0004_auto_20170620_1354_squashed_0019_alter_crudevent_changed_fields_and_more	2000-01-01 00:00:00+00
 \.
 
 
@@ -16289,7 +16326,7 @@ COPY public.importer_publikacji_importedauthor (id, "order", family_name, given_
 -- Data for Name: importer_publikacji_importsession; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY public.importer_publikacji_importsession (id, provider_name, identifier, status, raw_data, normalized_data, matched_data, jest_wydawnictwem_zwartym, created_record_id, created, modified, charakter_formalny_id, created_record_content_type_id, jezyk_id, typ_kbn_id, created_by_id, wydawca_id, zrodlo_id, modified_by_id) FROM stdin;
+COPY public.importer_publikacji_importsession (id, provider_name, identifier, status, raw_data, normalized_data, matched_data, jest_wydawnictwem_zwartym, created_record_id, created, modified, charakter_formalny_id, created_record_content_type_id, jezyk_id, typ_kbn_id, created_by_id, wydawca_id, zrodlo_id, modified_by_id, wydawnictwo_nadrzedne_id, wydawnictwo_nadrzedne_w_pbn_id) FROM stdin;
 \.
 
 
@@ -16782,6 +16819,14 @@ COPY public.test_bpp_testoperation (id, created_on, last_updated_on, started_on,
 
 
 --
+-- Data for Name: test_bpp_testreport; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+COPY public.test_bpp_testreport (id, created_on, last_updated_on, started_on, finished_on, finished_successfully, traceback, owner_id) FROM stdin;
+\.
+
+
+--
 -- Data for Name: zglos_publikacje_obslugujacy_zgloszenia_wydzialow; Type: TABLE DATA; Schema: public; Owner: -
 --
 
@@ -16844,7 +16889,7 @@ SELECT pg_catalog.setval('public.auth_group_permissions_id_seq', 300, true);
 -- Name: auth_permission_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
-SELECT pg_catalog.setval('public.auth_permission_id_seq', 954, true);
+SELECT pg_catalog.setval('public.auth_permission_id_seq', 958, true);
 
 
 --
@@ -17453,7 +17498,7 @@ SELECT pg_catalog.setval('public.django_celery_results_taskresult_id_seq', 1, fa
 -- Name: django_content_type_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
-SELECT pg_catalog.setval('public.django_content_type_id_seq', 238, true);
+SELECT pg_catalog.setval('public.django_content_type_id_seq', 239, true);
 
 
 --
@@ -17467,7 +17512,7 @@ SELECT pg_catalog.setval('public.django_countdown_sitecountdown_id_seq', 1, fals
 -- Name: django_migrations_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
-SELECT pg_catalog.setval('public.django_migrations_id_seq', 870, true);
+SELECT pg_catalog.setval('public.django_migrations_id_seq', 883, true);
 
 
 --
@@ -18416,6 +18461,14 @@ ALTER TABLE ONLY public.bpp_bppmultiseekvisibility
 
 ALTER TABLE ONLY public.bpp_bppmultiseekvisibility
     ADD CONSTRAINT bpp_bppmultiseekvisibility_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: bpp_bppuser bpp_bppuser_autor_id_key; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.bpp_bppuser
+    ADD CONSTRAINT bpp_bppuser_autor_id_key UNIQUE (autor_id);
 
 
 --
@@ -21235,11 +21288,11 @@ ALTER TABLE ONLY public.taggit_tag
 
 
 --
--- Name: taggit_taggeditem taggit_taggeditem_content_type_id_object_i_4bb97a8e_uniq; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: taggit_taggeditem taggit_taggeditem_content_type_id_object_id_tag_id_4bb97a8e_uni; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.taggit_taggeditem
-    ADD CONSTRAINT taggit_taggeditem_content_type_id_object_i_4bb97a8e_uniq UNIQUE (content_type_id, object_id, tag_id);
+    ADD CONSTRAINT taggit_taggeditem_content_type_id_object_id_tag_id_4bb97a8e_uni UNIQUE (content_type_id, object_id, tag_id);
 
 
 --
@@ -21272,6 +21325,14 @@ ALTER TABLE ONLY public.test_bpp_testobjectthatdoesnotexist
 
 ALTER TABLE ONLY public.test_bpp_testoperation
     ADD CONSTRAINT test_bpp_testoperation_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: test_bpp_testreport test_bpp_testreport_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.test_bpp_testreport
+    ADD CONSTRAINT test_bpp_testreport_pkey PRIMARY KEY (id);
 
 
 --
@@ -26526,6 +26587,13 @@ CREATE INDEX importer_autorow_pbn_match_owner_id_d8a00d7d ON public.importer_aut
 
 
 --
+-- Name: importer_publikacji_impo_wydawnictwo_nadrzedne_w__36041859_like; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX importer_publikacji_impo_wydawnictwo_nadrzedne_w__36041859_like ON public.importer_publikacji_importsession USING btree (wydawnictwo_nadrzedne_w_pbn_id varchar_pattern_ops);
+
+
+--
 -- Name: importer_publikacji_import_charakter_formalny_id_c23c6096; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -26551,6 +26619,20 @@ CREATE INDEX importer_publikacji_import_matched_dyscyplina_id_5b32ec39 ON public
 --
 
 CREATE INDEX importer_publikacji_import_matched_jednostka_id_b9f55de2 ON public.importer_publikacji_importedauthor USING btree (matched_jednostka_id);
+
+
+--
+-- Name: importer_publikacji_import_wydawnictwo_nadrzedne_id_69fc10d2; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX importer_publikacji_import_wydawnictwo_nadrzedne_id_69fc10d2 ON public.importer_publikacji_importsession USING btree (wydawnictwo_nadrzedne_id);
+
+
+--
+-- Name: importer_publikacji_import_wydawnictwo_nadrzedne_w_pb_36041859; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX importer_publikacji_import_wydawnictwo_nadrzedne_w_pb_36041859 ON public.importer_publikacji_importsession USING btree (wydawnictwo_nadrzedne_w_pbn_id);
 
 
 --
@@ -28591,17 +28673,17 @@ CREATE INDEX taggit_tag_slug_6be58b2c_like ON public.taggit_tag USING btree (slu
 
 
 --
+-- Name: taggit_tagg_content_8fc721_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX taggit_tagg_content_8fc721_idx ON public.taggit_taggeditem USING btree (content_type_id, object_id);
+
+
+--
 -- Name: taggit_taggeditem_content_type_id_9957a03c; Type: INDEX; Schema: public; Owner: -
 --
 
 CREATE INDEX taggit_taggeditem_content_type_id_9957a03c ON public.taggit_taggeditem USING btree (content_type_id);
-
-
---
--- Name: taggit_taggeditem_content_type_id_object_id_196cc965_idx; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX taggit_taggeditem_content_type_id_object_id_196cc965_idx ON public.taggit_taggeditem USING btree (content_type_id, object_id);
 
 
 --
@@ -28623,6 +28705,13 @@ CREATE INDEX taggit_taggeditem_tag_id_f4f5b767 ON public.taggit_taggeditem USING
 --
 
 CREATE INDEX test_bpp_testoperation_owner_id_05177fc0 ON public.test_bpp_testoperation USING btree (owner_id);
+
+
+--
+-- Name: test_bpp_testreport_owner_id_6aa2101a; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX test_bpp_testreport_owner_id_6aa2101a ON public.test_bpp_testreport USING btree (owner_id);
 
 
 --
@@ -30244,6 +30333,14 @@ ALTER TABLE ONLY public.bpp_autor
 
 ALTER TABLE ONLY public.bpp_autor
     ADD CONSTRAINT bpp_autor_tytul_id_eca8a70c_fk_bpp_tytul_id FOREIGN KEY (tytul_id) REFERENCES public.bpp_tytul(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: bpp_bppuser bpp_bppuser_autor_id_12601f68_fk_bpp_autor_id; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.bpp_bppuser
+    ADD CONSTRAINT bpp_bppuser_autor_id_12601f68_fk_bpp_autor_id FOREIGN KEY (autor_id) REFERENCES public.bpp_autor(id) DEFERRABLE INITIALLY DEFERRED;
 
 
 --
@@ -32503,6 +32600,22 @@ ALTER TABLE ONLY public.importer_publikacji_importsession
 
 
 --
+-- Name: importer_publikacji_importsession importer_publikacji__wydawnictwo_nadrzedn_36041859_fk_pbn_api_p; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.importer_publikacji_importsession
+    ADD CONSTRAINT importer_publikacji__wydawnictwo_nadrzedn_36041859_fk_pbn_api_p FOREIGN KEY (wydawnictwo_nadrzedne_w_pbn_id) REFERENCES public.pbn_api_publication("mongoId") DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: importer_publikacji_importsession importer_publikacji__wydawnictwo_nadrzedn_69fc10d2_fk_bpp_wydaw; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.importer_publikacji_importsession
+    ADD CONSTRAINT importer_publikacji__wydawnictwo_nadrzedn_69fc10d2_fk_bpp_wydaw FOREIGN KEY (wydawnictwo_nadrzedne_id) REFERENCES public.bpp_wydawnictwo_zwarte(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
 -- Name: importer_publikacji_importsession importer_publikacji__zrodlo_id_1648d1be_fk_bpp_zrodl; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -33268,6 +33381,14 @@ ALTER TABLE ONLY public.taggit_taggeditem
 
 ALTER TABLE ONLY public.test_bpp_testoperation
     ADD CONSTRAINT test_bpp_testoperation_owner_id_05177fc0_fk_bpp_bppuser_id FOREIGN KEY (owner_id) REFERENCES public.bpp_bppuser(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: test_bpp_testreport test_bpp_testreport_owner_id_6aa2101a_fk_bpp_bppuser_id; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.test_bpp_testreport
+    ADD CONSTRAINT test_bpp_testreport_owner_id_6aa2101a_fk_bpp_bppuser_id FOREIGN KEY (owner_id) REFERENCES public.bpp_bppuser(id) DEFERRABLE INITIALLY DEFERRED;
 
 
 --
