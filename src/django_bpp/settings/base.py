@@ -273,7 +273,7 @@ TEMPLATES = [
                 "django.template.context_processors.request",
                 "django.template.context_processors.static",
                 "django.contrib.messages.context_processors.messages",
-                "password_policies.context_processors.password_status",
+                "django_bpp.context_processors.conditional_password_status",
                 "bpp.context_processors.uczelnia.uczelnia",
                 "bpp.context_processors.config.bpp_configuration",
                 "bpp.context_processors.constance_config.constance_config",

@@ -668,6 +668,66 @@ def test_create_publication_multiple_abstracts(
     assert streszczenia.count() == 2
 
 
+@pytest.mark.django_db
+def test_create_publication_without_year_raises_validation_error(
+    importer_user,
+    jezyki,
+    charaktery_formalne,
+    typy_kbn,
+    statusy_korekt,
+    typy_odpowiedzialnosci,
+):
+    """Brak roku → ValidationError z czytelnym komunikatem (nie TypeError)."""
+    from django.core.exceptions import ValidationError
+
+    session = _make_session_for_publication(
+        importer_user,
+        jezyki,
+        charaktery_formalne,
+        typy_kbn,
+        statusy_korekt,
+        typy_odpowiedzialnosci,
+    )
+    session.normalized_data["year"] = None
+    session.save()
+
+    with pytest.raises(ValidationError, match="Brak roku publikacji"):
+        _create_publication(session)
+
+
+@pytest.mark.django_db
+def test_create_view_without_year_shows_clean_error(
+    importer_client,
+    importer_user,
+    jezyki,
+    charaktery_formalne,
+    typy_kbn,
+    statusy_korekt,
+    typy_odpowiedzialnosci,
+):
+    """POST do CreateView dla sesji bez roku → czytelny komunikat,
+    bez tracebacku, status 200."""
+    session = _make_session_for_publication(
+        importer_user,
+        jezyki,
+        charaktery_formalne,
+        typy_kbn,
+        statusy_korekt,
+        typy_odpowiedzialnosci,
+    )
+    session.normalized_data["year"] = None
+    session.save()
+
+    url = reverse("importer_publikacji:create", kwargs={"session_id": session.pk})
+    response = importer_client.post(url)
+
+    assert response.status_code == 200
+    body = response.content.decode()
+    assert "Brak roku publikacji" in body
+    assert "TypeError" not in body
+    assert "Traceback" not in body
+
+
 def test_build_abstracts_list_with_extra():
     """extra['abstracts'] → zwróć je."""
     from dataclasses import dataclass, field

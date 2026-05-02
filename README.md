@@ -171,6 +171,46 @@ Instaluje przez `apt` pakiety `yarnpkg`, `python3-dev`, `libpq-dev`,
 `uv sync --all-extras`. Po nim nadal trzeba ręcznie wywołać
 `uv run playwright install` oraz `sudo playwright install-deps`.
 
+## Szybkie uruchomienie wersji deweloperskiej (`run_site`)
+
+Komenda `manage.py run_site` uruchamia kompletny lokalny stack BPP
+w **testcontainerach** (PostgreSQL + Redis na losowych portach), więc
+można mieć kilka konfiguracji obok siebie bez konfliktów portów.
+
+```bash
+# Z baseline.sql (pusta baza demo):
+uv run python src/manage.py run_site
+
+# Z dump-em produkcyjnym (autodetect formatu):
+uv run python src/manage.py run_site --from-dump ~/backups/bpp.pg_dump
+```
+
+Co robi:
+
+1. Startuje PostgreSQL + Redis w kontenerach Docker na losowych portach.
+2. Odtwarza dump (`.sql` / `.sql.gz` / `.dump` / `.pg_dump` / `.pgdump`)
+   lub baseline (jeśli `--from-dump` nie podany).
+3. Wykonuje `migrate --noinput`.
+4. Tworzy lub nadpisuje superusera `admin` / `admin` z czyszczeniem
+   wymogu zmiany hasła (świeży wpis w `password_policies.PasswordHistory`).
+5. Drukuje banner z URL-ami i otwiera przeglądarkę na `/admin/`.
+6. Odpala `runserver` na losowym wolnym porcie i blokuje.
+
+`Ctrl-C` zatrzymuje runserver i sprząta kontenery.
+
+Opcje:
+
+| Flaga | Działanie |
+|-------|-----------|
+| `--from-dump PATH` | Restore z dump-a (autodetect po extension). |
+| `--with-celery` | Dodatkowo odpala celery worker. |
+| `--no-browser` | Nie otwiera przeglądarki. |
+| `--port PORT` | Konkretny port runserver (default: losowy wolny). |
+| `--reuse` | Reusuje istniejące named containery (szybszy restart). |
+
+**Wymaganie:** działający Docker daemon. Kontenery są ulotne — żyją
+tylko podczas trwania komendy (chyba że `--reuse`).
+
 ## Technologie
 
 | | |
