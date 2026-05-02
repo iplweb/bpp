@@ -117,8 +117,19 @@ def _get_host_port(
     return host, int(binding["HostPort"])
 
 
-def _start_pg(reuse: bool) -> tuple[PostgresContainer | None, str, int]:
-    """Start PostgreSQL container or reuse an existing one."""
+def _start_pg(
+    reuse: bool, load_baseline: bool = True
+) -> tuple[PostgresContainer | None, str, int]:
+    """Start PostgreSQL container or reuse an existing one.
+
+    Args:
+        reuse: jeśli True, próbuje znaleźć istniejący named container.
+        load_baseline: jeśli True (default), montuje ``baseline.sql``
+            do init scripts. Ustaw False gdy zamierzasz zrobić własny
+            restore na pustej bazie (np. ``pg_restore`` z user-dump-a) —
+            inaczej masz zaimportowany baseline przed restore-em i
+            ``--clean`` walczy z istniejącymi FK.
+    """
     if reuse:
         existing = _find_running_container(_PG_NAME)
         if existing:
@@ -153,20 +164,23 @@ def _start_pg(reuse: bool) -> tuple[PostgresContainer | None, str, int]:
         }
     )
 
-    baseline_sql = find_baseline_sql()
-    if baseline_sql is not None:
-        # Postgres' entrypoint (docker-entrypoint.sh) replays every
-        # ``*.sql`` in /docker-entrypoint-initdb.d/ on first cluster
-        # init, before TCP starts accepting connections. testcontainers
-        # waits for ``psql -c 'select version()'`` on TCP (see
-        # PostgresContainer._connect / ExecWaitStrategy), so by the time
-        # pg.start() returns the dump is already loaded.
-        pg.with_volume_mapping(
-            str(baseline_sql),
-            "/docker-entrypoint-initdb.d/01-baseline.sql",
-            "ro",
-        )
-        logger.info("Mounting baseline %s into PG init scripts", baseline_sql)
+    if load_baseline:
+        baseline_sql = find_baseline_sql()
+        if baseline_sql is not None:
+            # Postgres' entrypoint (docker-entrypoint.sh) replays every
+            # ``*.sql`` in /docker-entrypoint-initdb.d/ on first cluster
+            # init, before TCP starts accepting connections. testcontainers
+            # waits for ``psql -c 'select version()'`` on TCP (see
+            # PostgresContainer._connect / ExecWaitStrategy), so by the time
+            # pg.start() returns the dump is already loaded.
+            pg.with_volume_mapping(
+                str(baseline_sql),
+                "/docker-entrypoint-initdb.d/01-baseline.sql",
+                "ro",
+            )
+            logger.info("Mounting baseline %s into PG init scripts", baseline_sql)
+    else:
+        logger.info("Skipping baseline (load_baseline=False)")
 
     pg.start()
 
@@ -200,19 +214,24 @@ def _start_redis(reuse: bool) -> tuple[DockerContainer | None, str, int]:
     return redis, host, port
 
 
-def start_containers(reuse: bool = False) -> BppContainers:
+def start_containers(reuse: bool = False, load_baseline: bool = True) -> BppContainers:
     """Start all service containers.
 
     When *reuse* is True, containers get fixed names and are kept running
     after pytest exits.  On the next run they are detected and reused
     instead of being recreated.
+
+    When *load_baseline* is False, baseline.sql NIE jest montowane do
+    init scripts. Use case: caller chce zrobić własny restore (np.
+    ``pg_restore`` z user-supplied dump-a) na pustej bazie.
     """
     _check_docker_daemon()
     print(  # noqa: T201
-        f"[testcontainers-bpp] Starting containers (reuse={reuse}) ...",
+        f"[testcontainers-bpp] Starting containers "
+        f"(reuse={reuse}, load_baseline={load_baseline}) ...",
         file=sys.stderr,
     )
-    pg, pg_host, pg_port = _start_pg(reuse)
+    pg, pg_host, pg_port = _start_pg(reuse, load_baseline=load_baseline)
     redis, redis_host, redis_port = _start_redis(reuse)
 
     reused = pg is None and redis is None
