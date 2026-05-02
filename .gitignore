@@ -175,6 +175,8 @@ dump.rdb
 .worktrees/
 .claude/
 
+.grunt-build-stamp
+
 # Local TODO / audit notes (not committed)
 TODO-*.txt
 TODO-*.md

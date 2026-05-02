@@ -22,11 +22,17 @@ def _get_site_domain():
         return "https://bpp.iplweb.pl"
 
 
-def _create_pbn_url(pbn_uid):
-    """Tworzy URL do profilu autora w PBN."""
-    if pbn_uid:
-        return f"https://pbn.nauka.gov.pl/sedno-webapp/persons/details/{pbn_uid}"
-    return ""
+def _create_pbn_url(autor):
+    """Zwraca aktualny URL do profilu autora w PBN.
+
+    Używa Autor.link_do_pbn() które łączy LINK_PBN_DO_AUTORA z pbn_api_root
+    z konfiguracji Uczelni - dotychczas zaszyty hardcoded https://pbn.nauka.gov.pl/
+    sedno-webapp/persons/details/{uid} prowadził do martwego/pustego endpointu.
+    """
+    if not autor or not autor.pbn_uid_id:
+        return ""
+    url = autor.link_do_pbn()
+    return url or ""
 
 
 def _get_author_name(candidate_name, autor):
@@ -46,15 +52,17 @@ def _build_candidate_row(candidate, site_domain, duplicate_counts):
 
     return [
         main_name,
+        main.orcid or "",
         main.pk,
         f"{site_domain}/bpp/autor/{main.pk}/",
         main.pbn_uid_id or "",
-        _create_pbn_url(main.pbn_uid_id),
+        _create_pbn_url(main),
         dup_name,
+        dup.orcid or "",
         dup.pk,
         f"{site_domain}/bpp/autor/{dup.pk}/",
         dup.pbn_uid_id or "",
-        _create_pbn_url(dup.pbn_uid_id),
+        _create_pbn_url(dup),
         round(candidate.confidence_percent, 2),
         duplicate_counts[candidate.main_autor_id],
         "PBN" if candidate.scan_mode == "pbn" else "Ogólny",
@@ -63,8 +71,12 @@ def _build_candidate_row(candidate, site_domain, duplicate_counts):
 
 def _format_url_hyperlinks(ws, data_rows_count):
     """Formatuje kolumny URL jako klikalne linki."""
-    # Kolumny z URL-ami: C (BPP główny), E (PBN główny), H (BPP duplikat), J (PBN duplikat)
-    url_columns = [3, 5, 8, 10]  # 1-indexed dla Excel
+    # Kolumny z URL-ami (1-indexed):
+    #   D = BPP URL głównego autora
+    #   F = PBN URL głównego autora
+    #   J = BPP URL duplikatu
+    #   L = PBN URL duplikatu
+    url_columns = [4, 6, 10, 12]
 
     for row_idx in range(2, data_rows_count + 2):  # Start from row 2 (after header)
         for col_idx in url_columns:
@@ -84,18 +96,20 @@ def export_duplicates_to_xlsx():
 
     Struktura pliku XLSX:
     - Kolumna A: Główny autor (NAZWISKO IMIĘ)
-    - Kolumna B: BPP ID głównego autora
-    - Kolumna C: BPP URL głównego autora (kliknij link)
-    - Kolumna D: PBN UID głównego autora
-    - Kolumna E: PBN URL głównego autora (kliknij link)
-    - Kolumna F: Duplikat (NAZWISKO IMIĘ)
-    - Kolumna G: BPP ID duplikatu
-    - Kolumna H: BPP URL duplikatu (kliknij link)
-    - Kolumna I: PBN UID duplikatu
-    - Kolumna J: PBN URL duplikatu (kliknij link)
-    - Kolumna K: Pewność podobieństwa (0.0-1.0)
-    - Kolumna L: Ilość duplikatów
-    - Kolumna M: Tryb (PBN / Ogólny)
+    - Kolumna B: ORCID głównego autora
+    - Kolumna C: BPP ID głównego autora
+    - Kolumna D: BPP URL głównego autora (kliknij link)
+    - Kolumna E: PBN UID głównego autora
+    - Kolumna F: PBN URL głównego autora (kliknij link)
+    - Kolumna G: Duplikat (NAZWISKO IMIĘ)
+    - Kolumna H: ORCID duplikatu
+    - Kolumna I: BPP ID duplikatu
+    - Kolumna J: BPP URL duplikatu (kliknij link)
+    - Kolumna K: PBN UID duplikatu
+    - Kolumna L: PBN URL duplikatu (kliknij link)
+    - Kolumna M: Pewność podobieństwa (0.0-1.0)
+    - Kolumna N: Ilość duplikatów
+    - Kolumna O: Tryb (PBN / Ogólny)
 
     Returns:
         bytes: Zawartość pliku XLSX
@@ -130,11 +144,13 @@ def export_duplicates_to_xlsx():
     # Nagłówki
     headers = [
         "Główny autor",
+        "ORCID głównego autora",
         "BPP ID głównego autora",
         "BPP URL głównego autora",
         "PBN UID głównego autora",
         "PBN URL głównego autora",
         "Duplikat",
+        "ORCID duplikatu",
         "BPP ID duplikatu",
         "BPP URL duplikatu",
         "PBN UID duplikatu",

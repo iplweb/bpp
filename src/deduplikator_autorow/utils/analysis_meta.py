@@ -13,8 +13,77 @@ def _common_initials(imiona_a: list[str], imiona_b: list[str]) -> int:
     return len(initials_a & initials_b)
 
 
+def _name_or_initial_match(a: str, b: str) -> bool:
+    """True jeśli ``a == b`` albo jedna strona jest inicjałem drugiej.
+
+    Inicjał = pojedyncza litera (ewentualnie z kropką, jak 'J.'). Tym samym
+    'jan' i 'j.' są dopasowaniem, ale 'jan' i 'ja' już nie.
+    """
+    if not a or not b:
+        return False
+    a_clean = a.lower().rstrip(".")
+    b_clean = b.lower().rstrip(".")
+    if a_clean == b_clean:
+        return True
+    if len(a_clean) == 1 and b_clean.startswith(a_clean):
+        return True
+    if len(b_clean) == 1 and a_clean.startswith(b_clean):
+        return True
+    return False
+
+
 def analiza_pary_meta(a: dict, b: dict) -> tuple[int, list[str]]:  # noqa: C901
-    """Zwraca (score, reasons) dla pary (a, b) na bazie meta-cache."""
+    """Zwraca (score, reasons) dla pary (a, b) na bazie meta-cache.
+
+    HARD REJECTION: jeżeli obie strony mają imiona, ale nie ma między nimi
+    żadnego punktu wspólnego (ani pełne imię, ani 3-prefix, ani inicjał),
+    a jednocześnie NIE wykryto pełnej zamiany imię↔nazwisko, kandydat jest
+    natychmiast odrzucany. Zwracamy mocno ujemny score gwarantujący filtr
+    `score >= min_confidence` w `search_general.generate_pairs`. To nie jest
+    duplikat — żaden bonus z innych kryteriów (ORCID, nazwisko, lata) nie
+    może tego nadpisać. 'Jan' i 'Agnieszka' to różne osoby.
+    """
+    # Wczesne policzenie sygnałów dopasowania imion + ewentualnego swap-a.
+    common_imie = set(a["imiona_norm"]) & set(b["imiona_norm"])
+    similar_imie = 0
+    for ia in a["imiona_norm"]:
+        for ib in b["imiona_norm"]:
+            if len(ia) >= 3 and len(ib) >= 3 and ia != ib:
+                if ia.startswith(ib[:3]) or ib.startswith(ia[:3]):
+                    similar_imie += 1
+    init_count_imie = _common_initials(a["imiona_norm"], b["imiona_norm"])
+    # Swap obejmuje też przypadek z inicjałem: 'Jan Kowalski' ↔ 'Kowalski J.'
+    # gdzie database swap (imiona='Kowalski', nazwisko='J.') ma inicjał 'J'
+    # pasujący do imienia 'Jan' z drugiej strony.
+    wykryto_swap = (
+        bool(a["nazwisko_norm"])
+        and bool(b["nazwisko_norm"])
+        and bool(a["imiona_norm"])
+        and bool(b["imiona_norm"])
+        and any(
+            _name_or_initial_match(a["nazwisko_norm"], imie)
+            for imie in b["imiona_norm"]
+        )
+        and any(
+            _name_or_initial_match(b["nazwisko_norm"], imie)
+            for imie in a["imiona_norm"]
+        )
+    )
+
+    if (
+        a["imiona_norm"]
+        and b["imiona_norm"]
+        and not common_imie
+        and similar_imie == 0
+        and init_count_imie == 0
+        and not wykryto_swap
+    ):
+        return -1000, [
+            f"odrzucono: zupełnie różne imiona "
+            f"('{' '.join(a['imiona_norm'])}' vs "
+            f"'{' '.join(b['imiona_norm'])}') — to różni autorzy"
+        ]
+
     score = 0
     reasons: list[str] = []
 
@@ -78,37 +147,21 @@ def analiza_pary_meta(a: dict, b: dict) -> tuple[int, list[str]]:  # noqa: C901
                         f"({', '.join(sorted(common_parts))})"
                     )
 
-    if (
-        a["nazwisko_norm"]
-        and b["nazwisko_norm"]
-        and a["imiona_norm"]
-        and b["imiona_norm"]
-    ):
-        if (a["nazwisko_norm"] in b["imiona_norm"]) and (
-            b["nazwisko_norm"] in a["imiona_norm"]
-        ):
-            score += 50
-            reasons.append("wykryto pełną zamianę imienia z nazwiskiem")
+    if wykryto_swap:
+        score += 50
+        reasons.append("wykryto pełną zamianę imienia z nazwiskiem")
 
-    common = set(a["imiona_norm"]) & set(b["imiona_norm"])
-    if common:
-        score += 30 * len(common)
-        reasons.append(f"wspólne imię ({len(common)})")
+    if common_imie:
+        score += 30 * len(common_imie)
+        reasons.append(f"wspólne imię ({len(common_imie)})")
 
-    similar = 0
-    for ia in a["imiona_norm"]:
-        for ib in b["imiona_norm"]:
-            if len(ia) >= 3 and len(ib) >= 3 and ia != ib:
-                if ia.startswith(ib[:3]) or ib.startswith(ia[:3]):
-                    similar += 1
-    if similar:
-        score += 15 * similar
-        reasons.append(f"podobne imię ({similar})")
+    if similar_imie:
+        score += 15 * similar_imie
+        reasons.append(f"podobne imię ({similar_imie})")
 
-    init_count = _common_initials(a["imiona_norm"], b["imiona_norm"])
-    if init_count:
-        score += 5 * init_count
-        reasons.append(f"pasujące inicjały ({init_count})")
+    if init_count_imie:
+        score += 5 * init_count_imie
+        reasons.append(f"pasujące inicjały ({init_count_imie})")
 
     if not b["imiona_norm"] and a["imiona_norm"]:
         score += 10

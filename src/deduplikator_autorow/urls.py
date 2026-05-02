@@ -43,4 +43,9 @@ urlpatterns = [
         views.mark_candidate_not_duplicate,
         name="mark_candidate_not_duplicate",
     ),
+    path(
+        "lastname-suggestions/",
+        views.lastname_suggestions,
+        name="lastname_suggestions",
+    ),
 ]

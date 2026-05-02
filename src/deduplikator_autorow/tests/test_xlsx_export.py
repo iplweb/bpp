@@ -124,11 +124,13 @@ def test_xlsx_structure_and_format():  # noqa: C901
         # Check headers (first row)
         expected_headers = [
             "Główny autor",
+            "ORCID głównego autora",
             "BPP ID głównego autora",
             "BPP URL głównego autora",
             "PBN UID głównego autora",
             "PBN URL głównego autora",
             "Duplikat",
+            "ORCID duplikatu",
             "BPP ID duplikatu",
             "BPP URL duplikatu",
             "PBN UID duplikatu",
@@ -158,38 +160,40 @@ def test_xlsx_structure_and_format():  # noqa: C901
             assert len(data_row) == len(expected_headers)
 
             # Check that BPP URLs are full URLs with HTTPS
-            if len(data_row) > 2 and data_row[2]:  # BPP URL column (C)
-                bpp_url = str(data_row[2])
+            if len(data_row) > 3 and data_row[3]:  # BPP URL column (D, 0-idx 3)
+                bpp_url = str(data_row[3])
                 assert bpp_url.startswith("https://")
                 assert "/bpp/autor/" in bpp_url
 
-            # Check that PBN URLs are properly formatted
-            if len(data_row) > 4 and data_row[4]:  # PBN URL column (E)
-                pbn_url = str(data_row[4])
-                assert pbn_url.startswith("https://pbn.nauka.gov.pl/")
-                assert "/persons/details/" in pbn_url
+            # Check that PBN URLs are properly formatted (LINK_PBN_DO_AUTORA pattern)
+            if len(data_row) > 5 and data_row[5]:  # PBN URL column (F, 0-idx 5)
+                pbn_url = str(data_row[5])
+                assert pbn_url.startswith("https://"), pbn_url
+                assert "/core/#/person/view/" in pbn_url, pbn_url
 
             # Check that similarity is a decimal number (not percentage)
-            if len(data_row) > 10 and data_row[10] is not None:  # Similarity column (K)
-                similarity = data_row[10]
+            if (
+                len(data_row) > 12 and data_row[12] is not None
+            ):  # Similarity (M, idx 12)
+                similarity = data_row[12]
                 assert isinstance(similarity, (int, float))
                 assert 0 <= similarity <= 1  # Should be between 0 and 1
 
             # Check that duplicate count is a positive integer
             if (
-                len(data_row) > 11 and data_row[11] is not None
-            ):  # Duplicate count column (L)
-                duplicate_count = data_row[11]
+                len(data_row) > 13 and data_row[13] is not None
+            ):  # Duplicate count (N, idx 13)
+                duplicate_count = data_row[13]
                 assert isinstance(duplicate_count, int)
                 assert duplicate_count >= 1  # Should be at least 1 duplicate
 
             # Check that URL cells have hyperlinks (if data exists)
             url_columns = [
-                3,
-                5,
-                8,
+                4,
+                6,
                 10,
-            ]  # BPP and PBN URL columns (1-indexed: C, E, H, J)
+                12,
+            ]  # BPP and PBN URL columns (1-indexed: D, F, J, L)
             for col_idx in url_columns:
                 if len(data_row) > col_idx - 1 and data_row[col_idx - 1]:
                     cell = ws.cell(row=2, column=col_idx)  # Check actual cell
