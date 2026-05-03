@@ -451,5 +451,5 @@ def mark_candidate_not_duplicate(request):
         traceback.print_exc()
         rollbar.report_exc_info(sys.exc_info())
         return _respond(
-            False, f"Błąd podczas oznaczania kandydata: {str(e)}", status=500
+            False, "Wystąpił wewnętrzny błąd podczas oznaczania kandydata.", status=500
         )
