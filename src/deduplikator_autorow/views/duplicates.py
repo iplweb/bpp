@@ -329,7 +329,11 @@ def mark_non_duplicate(request):
     except Exception as e:
         traceback.print_exc()
         rollbar.report_exc_info(sys.exc_info())
-        return _respond(False, f"Błąd podczas oznaczania autora: {str(e)}", status=500)
+        return _respond(
+            False,
+            "Wystąpił wewnętrzny błąd podczas oznaczania autora. Spróbuj ponownie później.",
+            status=500,
+        )
 
 
 @group_required(GR_WPROWADZANIE_DANYCH)
