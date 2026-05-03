@@ -398,16 +398,6 @@ def export_wykorzystanie(ws, header_font, header_fill, header_alignment, thin_bo
 
 def auto_adjust_column_widths(ws):
     """Auto-adjust column widths based on content."""
-    from openpyxl.utils import get_column_letter
+    from bpp.util import auto_fit_columns
 
-    for column in ws.columns:
-        max_length = 0
-        column_letter = get_column_letter(column[0].column)
-        for cell in column:
-            try:
-                if len(str(cell.value)) > max_length:
-                    max_length = len(str(cell.value))
-            except BaseException:
-                pass
-        adjusted_width = min(max_length + 2, 50)
-        ws.column_dimensions[column_letter].width = adjusted_width
+    auto_fit_columns(ws)

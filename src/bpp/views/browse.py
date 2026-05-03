@@ -1,4 +1,5 @@
 import json
+import logging
 import re
 
 from cacheops import cached
@@ -42,6 +43,8 @@ from bpp.multiseek_registry import (
     ZrodloQueryObject,
 )
 from miniblog.models import Article
+
+logger = logging.getLogger(__name__)
 
 PUBLIKACJE = "publikacje"
 STRESZCZENIA = "streszczenia"
@@ -801,5 +804,6 @@ def bibtex_view(request, model, pk):
                 status=400,
             )
 
-    except Exception as e:
-        return JsonResponse({"error": str(e)}, status=500)
+    except Exception:
+        logger.exception("BibTeX export failed for model=%s pk=%s", model, pk)
+        return JsonResponse({"error": "Internal error generating BibTeX"}, status=500)

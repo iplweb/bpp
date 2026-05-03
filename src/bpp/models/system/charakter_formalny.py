@@ -1,5 +1,3 @@
-import warnings
-
 from django.db import models
 from django.db.models import CASCADE
 from django.db.models.signals import post_migrate
@@ -164,50 +162,6 @@ class Charakter_Formalny(NazwaISkrot, MPTTModel):
 
     class MPTTMeta:
         order_insertion_by = ["nazwa"]
-
-    #
-    # Kompatybilne API dla .artykul_pbn, .rozdzial_pbn, .ksiazka_pbn
-    #
-
-    def get_rodzaj(self, typ):
-        warnings.warn("W przyszlosci uzyj pola 'rodzaj_pbn'", DeprecationWarning)
-        v = getattr(const, "RODZAJ_PBN_%s" % typ.upper())
-        if self.rodzaj_pbn == v:
-            return True
-        return False
-
-    def set_rodzaj(self, typ, value):
-        warnings.warn("W przyszlosci uzyj pola 'rodzaj_pbn'", DeprecationWarning)
-        v = getattr(const, "RODZAJ_PBN_%s" % typ.upper())
-        if value is True:
-            self.rodzaj_pbn = v
-        else:
-            raise NotImplementedError(
-                "Nie wiem jak sie zachowac, gdy atrybut self.%s_pbn jest ustawiany na False"
-                % typ
-            )
-
-    def get_artykul_pbn(self):
-        return self.get_rodzaj("artykul")
-
-    def get_ksiazka_pbn(self):
-        return self.get_rodzaj("ksiazka")
-
-    def get_rozdzial_pbn(self):
-        return self.get_rodzaj("rozdzial")
-
-    def set_artykul_pbn(self, v):
-        return self.set_rodzaj("artykul", v)
-
-    def set_ksiazka_pbn(self, v):
-        return self.set_rodzaj("ksiazka", v)
-
-    def set_rozdzial_pbn(self, v):
-        return self.set_rodzaj("rozdzial", v)
-
-    artykul_pbn = property(get_artykul_pbn, set_artykul_pbn)
-    ksiazka_pbn = property(get_ksiazka_pbn, set_ksiazka_pbn)
-    rozdzial_pbn = property(get_rozdzial_pbn, set_rozdzial_pbn)
 
     def get_absolute_url(self):
         return reverse("admin:bpp_charakter_formalny_change", args=(self.pk,))
