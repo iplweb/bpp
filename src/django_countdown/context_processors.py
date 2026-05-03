@@ -1,6 +1,10 @@
+import logging
+
 from django.contrib.sites.shortcuts import get_current_site
 
 from .models import SiteCountdown
+
+logger = logging.getLogger(__name__)
 
 
 def countdown_context(request):
@@ -25,7 +29,9 @@ def countdown_context(request):
                 and request.user.is_superuser
             ):
                 return {"active_countdown": None, "maintenance_countdown": countdown}
-    except (SiteCountdown.DoesNotExist, Exception):
+    except SiteCountdown.DoesNotExist:
         pass
+    except Exception:
+        logger.exception("countdown_context: nieoczekiwany błąd")
 
     return {"active_countdown": None, "maintenance_countdown": None}

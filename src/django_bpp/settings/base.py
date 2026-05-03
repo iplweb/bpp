@@ -1385,8 +1385,17 @@ LOGGING = {
     "version": 1,
     "disable_existing_loggers": False,
     "formatters": {
+        # Format z timestampem - dla wszystkiego co nie pochodzi z pbn_import.
+        # Korelacja logów między workerami w produkcji wymaga timestampu w
+        # samym logu, nie tylko z systemd/celery (które dorzuca swój dopiero
+        # przy stdout, ale nie do plików ani Rollbara).
+        "default": {
+            "format": ("[%(asctime)s] [%(levelname)s] %(name)s: %(message)s"),
+            "datefmt": "%Y-%m-%d %H:%M:%S",
+        },
         "pbn_import": {
-            # Bez timestampu - Celery/systemd dodaje swoje
+            # Format użytkownika końcowego — bez timestampu, bo pbn_import
+            # piszący do konsoli przy interaktywnym imporcie ma być czytelny.
             "format": "[%(levelname)s] %(message)s",
         },
     },
@@ -1394,13 +1403,37 @@ LOGGING = {
         "console": {
             "class": "logging.StreamHandler",
             "stream": "ext://sys.stderr",
+            "formatter": "default",
+        },
+        "pbn_import_console": {
+            "class": "logging.StreamHandler",
+            "stream": "ext://sys.stderr",
             "formatter": "pbn_import",
         },
     },
     "loggers": {
-        # Logger dla pbn_import - wyświetla INFO+
-        "pbn_import": {
+        # Eventy bezpieczeństwa Django (DisallowedHost, SuspiciousOperation,
+        # bad CSRF token, etc.) - widoczne na WARNING+
+        "django.security": {
             "handlers": ["console"],
+            "level": "WARNING",
+            "propagate": False,
+        },
+        # 4xx i 5xx z requests - WARNING bo INFO byłby spamem.
+        "django.request": {
+            "handlers": ["console"],
+            "level": "WARNING",
+            "propagate": False,
+        },
+        # Celery workery - retry, ack, errors. INFO to dobry kompromis.
+        "celery": {
+            "handlers": ["console"],
+            "level": "INFO",
+            "propagate": False,
+        },
+        # pbn_import - format bez timestampu (UI-style)
+        "pbn_import": {
+            "handlers": ["pbn_import_console"],
             "level": "INFO",
             "propagate": False,
         },

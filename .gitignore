@@ -178,3 +178,11 @@ dump.rdb
 # Local TODO / audit notes (not committed)
 TODO-*.txt
 TODO-*.md
+
+# Cache tokenu PBN tworzony przez `run_site --get-pbn-token-from ...`
+# Zawiera wrażliwy token, NIGDY nie commitować.
+.saved_pbn_token
+
+# Auto-login token tworzony przez `manage.py run_site` (sesja dev).
+# Plik istnieje tylko gdy run_site biegnie; kasowany na exit.
+.run_site_token

@@ -1,6 +1,6 @@
 [project]
 name = "bpp_iplweb"
-version = "202604.1369"
+version = "202605.1370"
 description = ""
 authors = [
     { name = "Michał Pasternak", email = "michal.dtz@gmail.com" }
@@ -212,7 +212,7 @@ include = [
 ]
 
 [tool.bumpver]
-current_version = "v202604.1369"
+current_version = "v202605.1370"
 version_pattern = "vYYYY0M.BUILD[-TAGNUM]"
 commit_message = "bump version {old_version} -> {new_version}"
 commit = true
@@ -272,7 +272,6 @@ line-length = 88
 target-version = "py310"
 extend-exclude = [
     "src/*/migrations/*",
-    "src/import_list_if/tests",
     "src/nowe_raporty/tests",
     "src/api_v1/tests",
     "src/import_dyscyplin/tests",
@@ -281,17 +280,11 @@ extend-exclude = [
     "src/pbn_api/tests",
     "src/pbn_export_queue/tests",
     "src/bpp/tests",
-    "src/formdefaults/tests",
     "src/zglos_publikacje/tests",
     "src/import_common/tests",
     "src/django_bpp/staticroot/notifications/js/tests",
     "src/long_running/tests",
-    "src/ewaluacja2021/tests",
-    "src/import_pracownikow/tests",
-    "src/import_dbf/tests",
-    "src/notifications/tests",
     "src/notifications/static/notifications/js/tests",
-    "src/integrator2/tests",
     "src/fixtures"
 ]
 
@@ -377,7 +370,7 @@ dev = [
 
 [tool.towncrier]
 package = "bpp"
-version = "202604.1369"
+version = "202605.1370"
 package_dir = "src"
 filename = "HISTORY.rst"
 

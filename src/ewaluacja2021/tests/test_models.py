@@ -2,10 +2,9 @@ import pytest
 from django.core.files.base import File
 from model_bakery import baker
 
+from bpp.models import Dyscyplina_Naukowa
 from ewaluacja2021.models import ImportMaksymalnychSlotow
 from ewaluacja2021.tests.utils import curdir
-
-from bpp.models import Dyscyplina_Naukowa
 
 
 @pytest.mark.django_db

@@ -1,5 +1,6 @@
 import pymed
 from django.conf import settings
+from django.contrib.auth.mixins import LoginRequiredMixin
 from django.http import JsonResponse
 from django.views.generic.base import View
 
@@ -39,7 +40,7 @@ def extract_data(x: "pymed.api.PubMedArticle"):
     }
 
 
-class GetPubmedIDView(View):
+class GetPubmedIDView(LoginRequiredMixin, View):
     def post(self, request, *args, **kw):
         tytul = request.POST.get("t", "").strip()[:1024]
 

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 import os
 import sys
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -17,6 +18,8 @@ from pbn_api.models import Scientist
 from pbn_integrator.utils.constants import CPU_COUNT
 from pbn_integrator.utils.django_imports import _ensure_django_imports
 from pbn_integrator.utils.mongodb_ops import zapisz_mongodb
+
+logger = logging.getLogger(__name__)
 
 if TYPE_CHECKING:
     from pbn_api.client import PBNClient
@@ -109,7 +112,7 @@ def _zapisz_osobe_z_instytucji(person):
                     "lastName": person.get("lastName"),
                 },
             )
-            print(
+            logger.info(
                 f"UWAGA: Konflikt polonUuid dla osoby {person.get('personId')}: "
                 f"{person.get('polonUuid')}. Pomijam wpis (zalogowano do Rollbar)."
             )
@@ -184,13 +187,13 @@ def pobierz_ludzi_z_uczelni(
             try:
                 future.result()
             except Exception as e:
-                print(f"Error processing person: {e}")
+                logger.info(f"Error processing person: {e}")
 
     from pbn_api.models.institution import Institution
 
     for person in elementy:
         if not Institution.objects.filter(pk=person["institutionId"]).exists():
-            print(
+            logger.info(
                 f"Pobieram extra instytucję {person.get('institutionName', '[brak nazwy]')}"
             )
             zapisz_mongodb(
@@ -289,7 +292,7 @@ def integruj_autorow_z_uczelni(
                 autor.save()
             else:
                 if autor.pbn_uid_id != person.pk:
-                    print(
+                    logger.info(
                         f"UWAGA: autor {autor} zmatchował się z PBN UID {person.pk} czyli {person}, "
                         f"sprawdź czy przypadkiem nie masz zdublowanych wpisów po stronie PBN!"
                     )
@@ -298,7 +301,7 @@ def integruj_autorow_z_uczelni(
             # autor is None:
             if not import_unexistent:
                 # Brak autora po stronie BPP, nie chcemy tworzyć nowych rekordów
-                print(f"Brak dopasowania w jednostce dla autora {person}")
+                logger.info(f"Brak dopasowania w jednostce dla autora {person}")
                 continue
 
             utworz_wpis_dla_jednego_autora(person)
@@ -326,7 +329,7 @@ def weryfikuj_orcidy(client: PBNClient, instutition_id):
         sciencist = zapisz_mongodb(res[0], Scientist)
         autor.pbn_uid = sciencist
         autor.save()
-        print(
+        logger.info(
             f"Dla autora {autor} utworzono powiazanie z rekordem PBN {sciencist} po ORCID"
         )
 
@@ -354,16 +357,11 @@ def matchuj_autora_po_stronie_pbn(imiona, nazwisko, orcid):  # noqa: C901
         except Scientist.DoesNotExist:
             pass
         except Scientist.MultipleObjectsReturned:
-            print(
+            logger.info(
                 f"XXX ORCID istnieje wiele razy w bazie PBN w rekordach importowanych przez API instytucji {orcid}"
             )
             for elem in Scientist.objects.filter(qry):
-                print(
-                    "\t * ",
-                    elem.pk,
-                    elem.name,
-                    elem.lastName,
-                )
+                logger.info(f"\t *  {elem.pk} {elem.name} {elem.lastName}")
 
         # Szukamy w rekordach wszystkich przez API instytucji
 
@@ -372,20 +370,15 @@ def matchuj_autora_po_stronie_pbn(imiona, nazwisko, orcid):  # noqa: C901
             res = Scientist.objects.exclude(from_institution_api=True).get(qry)
             return res
         except Scientist.DoesNotExist:
-            print(
+            logger.info(
                 f"*** ORCID nie istnieje w rekordach ani z API instytucji, ani we wszystkich {orcid}"
             )
         except Scientist.MultipleObjectsReturned:
-            print(
+            logger.info(
                 f"XXX ORCID istnieje wiele razy w bazie PBN w rekordach importowanych nie-przez API instytucji {orcid}"
             )
             for elem in Scientist.objects.filter(qry):
-                print(
-                    "\t * ",
-                    elem.pk,
-                    elem.name,
-                    elem.lastName,
-                )
+                logger.info(f"\t *  {elem.pk} {elem.name} {elem.lastName}")
 
     qry = Q(
         versions__contains=[
@@ -399,11 +392,11 @@ def matchuj_autora_po_stronie_pbn(imiona, nazwisko, orcid):  # noqa: C901
         res = Scientist.objects.filter(from_institution_api=True).get(qry)
         return res
     except Scientist.DoesNotExist:
-        print(
+        logger.info(
             f"*** BRAK AUTORA w PBN z API instytucji, istnieje w BPP (im/naz): {nazwisko} {imiona}"
         )
     except Scientist.MultipleObjectsReturned:
-        print(
+        logger.info(
             f"XXX AUTOR istnieje wiele razy w bazie PBN z API INSTYTUCJI (im/naz) {nazwisko} {imiona}"
         )
 
@@ -413,11 +406,11 @@ def matchuj_autora_po_stronie_pbn(imiona, nazwisko, orcid):  # noqa: C901
         res = Scientist.objects.exclude(from_institution_api=True).get(qry)
         return res
     except Scientist.DoesNotExist:
-        print(
+        logger.info(
             f"*** BRAK AUTORA w PBN z danych spoza API instytucji, istnieje w BPP: {nazwisko} {imiona}"
         )
     except Scientist.MultipleObjectsReturned:
-        print(
+        logger.info(
             f"XXX AUTOR istnieje wiele razy w bazie PBN z danych "
             f"spoza API INSTYTUCJI {nazwisko} {imiona}, "
             f"próba dobrania najlepszego"
@@ -446,10 +439,10 @@ def matchuj_autora_po_stronie_pbn(imiona, nazwisko, orcid):  # noqa: C901
 
         rated_elems.sort(reverse=True)
         if can_be_set:
-            print(f"--> Sposrod elementow {rated_elems} wybieram pierwszy")
+            logger.info(f"--> Sposrod elementow {rated_elems} wybieram pierwszy")
             return Scientist.objects.get(pk=rated_elems[0][1])
         else:
-            print(
+            logger.info(
                 f"XXX Sposrod elementow {rated_elems} NIE WYBIERAM NIC, bo autor nie pracuje w jednostce"
             )
 
@@ -463,6 +456,8 @@ def integruj_wszystkich_niezintegrowanych_autorow():
             autor.imiona, autor.nazwisko, autor.orcid
         )
         if sciencist:
-            print(f"==> integracja wszystkich: ustawiam {autor} na {sciencist.pk}")
+            logger.info(
+                f"==> integracja wszystkich: ustawiam {autor} na {sciencist.pk}"
+            )
             autor.pbn_uid = sciencist
             autor.save()

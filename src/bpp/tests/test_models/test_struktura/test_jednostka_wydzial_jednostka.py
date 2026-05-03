@@ -347,3 +347,92 @@ def test_wyczysc_przypisania_wariant_corner_case_left(wydzial, jednostka):
     )
     assert jednostka.wydzial_dnia(date(2011, 12, 31)) == wydzial
     assert jednostka.wydzial_dnia(date(2012, 1, 1)) is None
+
+
+@pytest.mark.django_db
+def test_wyczysc_przypisania_zakres_w_calosci_wewnatrz_parenta(wydzial, jednostka):
+    """Branch 3: od >= parent_od and do <= parent_do → cały rekord usuwany."""
+    Jednostka_Wydzial.objects.create(
+        wydzial=wydzial,
+        jednostka=jednostka,
+        od=date(2012, 3, 1),
+        do=date(2012, 9, 30),
+    )
+    Jednostka_Wydzial.objects.wyczysc_przypisania(
+        jednostka, date(2012, 1, 1), date(2012, 12, 31)
+    )
+    assert not Jednostka_Wydzial.objects.filter(
+        jednostka=jednostka, wydzial=wydzial
+    ).exists()
+
+
+@pytest.mark.django_db
+def test_wyczysc_przypisania_zakres_obejmuje_parenta(wydzial, jednostka):
+    """Branch 2: od < parent_od and do > parent_do → split na dwa rekordy.
+    Wcześniej brakowało jawnego testu na "lewy bok" splitu."""
+    Jednostka_Wydzial.objects.create(
+        wydzial=wydzial,
+        jednostka=jednostka,
+        od=date(2010, 1, 1),
+        do=date(2014, 12, 31),
+    )
+    Jednostka_Wydzial.objects.wyczysc_przypisania(
+        jednostka, date(2012, 1, 1), date(2012, 12, 31)
+    )
+    assert (
+        Jednostka_Wydzial.objects.filter(
+            jednostka=jednostka, wydzial=wydzial
+        ).count()
+        == 2
+    )
+    assert jednostka.wydzial_dnia(date(2011, 12, 31)) == wydzial
+    assert jednostka.wydzial_dnia(date(2012, 6, 1)) is None
+    assert jednostka.wydzial_dnia(date(2013, 1, 1)) == wydzial
+    assert jednostka.wydzial_dnia(date(2014, 12, 31)) == wydzial
+
+
+@pytest.mark.django_db
+def test_wyczysc_przypisania_wiele_zakresow_w_jednym_wywolaniu(wydzial, jednostka):
+    """Wiele zachodzących na siebie z parentem rekordów — wszystkie powinny
+    zostać prawidłowo zmodyfikowane w jednym wywołaniu."""
+    # Trzy nieprzenikające się rekordy, wszystkie zachodzą na 2012:
+    Jednostka_Wydzial.objects.create(
+        wydzial=wydzial, jednostka=jednostka,
+        od=date(2010, 1, 1), do=date(2012, 3, 31),
+    )
+    Jednostka_Wydzial.objects.create(
+        wydzial=wydzial, jednostka=jednostka,
+        od=date(2012, 5, 1), do=date(2012, 8, 31),
+    )
+    Jednostka_Wydzial.objects.create(
+        wydzial=wydzial, jednostka=jednostka,
+        od=date(2012, 10, 1), do=date(2014, 12, 31),
+    )
+
+    Jednostka_Wydzial.objects.wyczysc_przypisania(
+        jednostka, date(2012, 1, 1), date(2012, 12, 31)
+    )
+
+    # W całym 2012 ma nie być żadnego przypisania:
+    assert jednostka.wydzial_dnia(date(2012, 6, 15)) is None
+    assert jednostka.wydzial_dnia(date(2012, 11, 15)) is None
+    # Przed i po 2012 — przypisania zachowane:
+    assert jednostka.wydzial_dnia(date(2010, 6, 1)) == wydzial
+    assert jednostka.wydzial_dnia(date(2013, 6, 1)) == wydzial
+
+
+@pytest.mark.django_db
+def test_wyczysc_przypisania_parent_od_none_wymaga_parent_do(wydzial, jednostka):
+    """Bez parent_od funkcja porównuje None z date — to wybucha TypeError-em.
+    Dokumentujemy aktualny kontrakt: caller MUSI podać parent_od.
+
+    Jeśli to się kiedyś zmieni, ten test też trzeba zaktualizować."""
+    Jednostka_Wydzial.objects.create(
+        wydzial=wydzial, jednostka=jednostka,
+        od=date(2010, 1, 1), do=date(2014, 12, 31),
+    )
+
+    with pytest.raises(TypeError):
+        Jednostka_Wydzial.objects.wyczysc_przypisania(
+            jednostka, parent_od=None, parent_do=date(2012, 12, 31)
+        )

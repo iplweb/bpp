@@ -1,4 +1,5 @@
 import json
+import logging
 import re
 
 from cacheops import cached
@@ -6,6 +7,7 @@ from django.conf import settings
 from django.contrib import messages
 from django.contrib.contenttypes.models import ContentType
 from django.db.models import Count
+from django.db.models.functions import Substr
 from django.http import JsonResponse
 from django.utils import timezone
 
@@ -41,6 +43,8 @@ from bpp.multiseek_registry import (
     ZrodloQueryObject,
 )
 from miniblog.models import Article
+
+logger = logging.getLogger(__name__)
 
 PUBLIKACJE = "publikacje"
 STRESZCZENIA = "streszczenia"
@@ -163,30 +167,35 @@ PODWOJNE = {
 }
 
 
-def get_available_letters(queryset, field_name):
-    """Calculate which letters have objects in the queryset.
-
-    Args:
-        queryset: Django queryset to check against
-        field_name: Name of the field to check for letter matches
-
-    Returns:
-        set: Set of letters that have matching objects
-    """
-    available_letters = set()
+def _build_char_to_literka():
+    """Map any first-char (incl. polish diacritics, both cases) to canonical
+    letter from LITERKI. Built once at import time."""
+    mapping = {}
     for literka in LITERKI:
-        args = [literka]
-        if literka in PODWOJNE:
-            args = PODWOJNE[literka]
+        mapping[literka] = literka
+        mapping[literka.lower()] = literka
+    for literka, variants in PODWOJNE.items():
+        for v in variants:
+            mapping[v] = literka
+            mapping[v.lower()] = literka
+    return mapping
 
-        qobj = Q(**{field_name + "__istartswith": literka})
-        for x in args[1:]:
-            qobj |= Q(**{field_name + "__istartswith": x})
 
-        if queryset.filter(qobj).exists():
-            available_letters.add(literka)
+_CHAR_TO_LITERKA = _build_char_to_literka()
 
-    return available_letters
+
+def get_available_letters(queryset, field_name):
+    """Return the set of LITERKI for which queryset has at least one row.
+
+    One DB query (DISTINCT first char) instead of 26+ .exists() probes.
+    """
+    first_chars = (
+        queryset.annotate(_first_char=Substr(field_name, 1, 1))
+        .exclude(_first_char="")
+        .values_list("_first_char", flat=True)
+        .distinct()
+    )
+    return {_CHAR_TO_LITERKA[ch] for ch in first_chars if ch and ch in _CHAR_TO_LITERKA}
 
 
 class Browser(ListView):
@@ -800,5 +809,6 @@ def bibtex_view(request, model, pk):
                 status=400,
             )
 
-    except Exception as e:
-        return JsonResponse({"error": str(e)}, status=500)
+    except Exception:
+        logger.exception("BibTeX export failed for model=%s pk=%s", model, pk)
+        return JsonResponse({"error": "Internal error generating BibTeX"}, status=500)

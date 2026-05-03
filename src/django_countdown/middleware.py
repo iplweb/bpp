@@ -1,8 +1,12 @@
+import logging
+
 from django.contrib.sites.shortcuts import get_current_site
 from django.shortcuts import render
 from django.utils.deprecation import MiddlewareMixin
 
 from .models import SiteCountdown
+
+logger = logging.getLogger(__name__)
 
 
 class CountdownBlockingMiddleware(MiddlewareMixin):
@@ -24,7 +28,8 @@ class CountdownBlockingMiddleware(MiddlewareMixin):
         try:
             current_site = get_current_site(request)
         except Exception:
-            # Jeśli nie można pobrać site, nie blokuj
+            # Jeśli nie można pobrać site, nie blokuj — ale zaloguj
+            logger.exception("countdown middleware: nie udało się pobrać Site")
             return None
 
         # Sprawdź, czy istnieje countdown dla tego site
