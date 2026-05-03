@@ -13,10 +13,10 @@ class MockSheet:
             Mock(),
         ] * 5
         GOOD_ROW = [Mock(), Mock(), Mock(), Mock(value="test"), Mock()]
-        for a in range(3):
+        for _ in range(3):
             yield BAD_ROW
         yield GOOD_ROW
-        for a in range(10):
+        for _ in range(10):
             yield BAD_ROW
 
 
