@@ -3,11 +3,14 @@ Logika biznesowa dla modułu dwudyscyplinowców.
 Wyodrębniona z management command dla reużywalności.
 """
 
+import logging
 from collections import defaultdict
 from decimal import Decimal
 
 from bpp.models import Autor_Dyscyplina, Wydawnictwo_Ciagle_Autor
 from bpp.models.sloty.core import CannotAdapt, ISlot
+
+logger = logging.getLogger(__name__)
 
 
 def pobierz_autorow_z_dwiema_dyscyplinami(lata=None):
@@ -91,8 +94,12 @@ def _oblicz_sloty_dla_publikacji(publikacja, subdyscyplina):
                 sloty = Decimal("1") / Decimal(authors_with_discipline + 1)
 
             return sloty
-    except (CannotAdapt, Exception):
+    except CannotAdapt:
         pass
+    except Exception:
+        logger.exception(
+            "Błąd przy obliczaniu slotów dla subdyscypliny w dwudyscyplinowcach"
+        )
 
     return None
 

@@ -1,3 +1,4 @@
+import logging
 from datetime import timedelta
 
 import rollbar
@@ -9,6 +10,8 @@ from django_bpp.celery_tasks import app
 from long_running.util import wait_for_object
 
 from .models import PBN_Export_Queue, RodzajBledu, SendStatus
+
+logger = logging.getLogger(__name__)
 
 # Konfiguracja locków
 LOCK_TIMEOUT = 300  # 5 minut timeout dla locka
@@ -158,14 +161,29 @@ def queue_pbn_export_batch(app_label, model_name, record_ids, user_id):
                 if queue_entry:
                     task_sprobuj_wyslac_do_pbn.delay(queue_entry.pk)
             except AlreadyEnqueuedError:
-                # Record already in queue, skip
+                # Already in queue — to nie błąd, tylko idempotencja batcha.
                 pass
         except model.DoesNotExist:
-            # Skip records that don't exist
-            pass
+            # Rekord skasowany między enqueuem batcha a próbą wysłania.
+            # To również nie błąd — po prostu pomijamy.
+            logger.warning(
+                "PBN batch enqueue: rekord %s.%s pk=%s znikł — pomijam",
+                app_label,
+                model_name,
+                record_id,
+            )
         except Exception:
-            # Skip records with other errors
-            pass
+            # Każdy inny wyjątek to realny problem (DB error, integrity,
+            # programmer error). Logujemy, raportujemy do Rollbara,
+            # kontynuujemy batch — pojedynczy zły rekord nie powinien
+            # zatrzymać wysyłki dziesiątek innych.
+            logger.exception(
+                "PBN batch enqueue: błąd przy rekordzie %s.%s pk=%s",
+                app_label,
+                model_name,
+                record_id,
+            )
+            rollbar.report_exc_info()
 
 
 @app.task

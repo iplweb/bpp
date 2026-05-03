@@ -368,20 +368,18 @@ class Wydawnictwo_Zwarte(
     def warunek_redakcja(self):
         from bpp.models import Typ_Odpowiedzialnosci
 
-        for elem in Typ_Odpowiedzialnosci.objects.filter(
-            pk__in=self.autorzy_set.values_list("typ_odpowiedzialnosci_id")
-        ).distinct():
-            if elem.typ_ogolny == const.TO_REDAKTOR:
-                return True
+        return Typ_Odpowiedzialnosci.objects.filter(
+            pk__in=self.autorzy_set.values_list("typ_odpowiedzialnosci_id"),
+            typ_ogolny=const.TO_REDAKTOR,
+        ).exists()
 
     def warunek_autorstwo(self):
         from bpp.models import Typ_Odpowiedzialnosci
 
-        for elem in Typ_Odpowiedzialnosci.objects.filter(
-            pk__in=self.autorzy_set.values_list("typ_odpowiedzialnosci_id")
-        ).distinct():
-            if elem.typ_ogolny == const.TO_AUTOR:
-                return True
+        return Typ_Odpowiedzialnosci.objects.filter(
+            pk__in=self.autorzy_set.values_list("typ_odpowiedzialnosci_id"),
+            typ_ogolny=const.TO_AUTOR,
+        ).exists()
 
     def warunek_ksiazka(self):
         if self.charakter_formalny.charakter_sloty == const.CHARAKTER_SLOTY_KSIAZKA:

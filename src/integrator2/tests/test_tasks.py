@@ -1,12 +1,11 @@
 from datetime import timedelta
 
 import pytest
+from django.utils import timezone
 from model_bakery import baker
 
 from integrator2.models import ListaMinisterialnaIntegration
 from integrator2.tasks import analyze_file, remove_old_integrator_files
-
-from django.utils import timezone
 
 
 @pytest.mark.django_db(transaction=True)

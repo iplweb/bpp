@@ -14,11 +14,14 @@ logger = get_task_logger("django")
 @app.task(bind=True)
 def stworz_kolumny(self, pk):
     self.update_state(state="RUNNING")
-    i = Import_Dyscyplin.objects.get(pk=pk)
 
     try:
         with transaction.atomic():
-            Import_Dyscyplin.objects.select_for_update().filter(pk=pk)
+            # select_for_update MUSI mieć evaluację (.get/.first/iter) żeby
+            # SQL FOR UPDATE faktycznie poszedł i lock zaczął obowiązywać.
+            # Wcześniej był tu .filter() na luźnym QuerySecie — leniwy, więc
+            # lock nie istniał (regresja sprzed dawna, fix 2026-05-02).
+            i = Import_Dyscyplin.objects.select_for_update().get(pk=pk)
             try:
                 i.stworz_kolumny()
             except Exception:
@@ -41,11 +44,10 @@ def stworz_kolumny(self, pk):
 @app.task(bind=True)
 def przeanalizuj_import_dyscyplin(self, pk):
     self.update_state(state="RUNNING")
-    i = Import_Dyscyplin.objects.get(pk=pk)
 
     try:
         with transaction.atomic():
-            Import_Dyscyplin.objects.select_for_update().filter(pk=pk)
+            i = Import_Dyscyplin.objects.select_for_update().get(pk=pk)
             try:
                 i.przeanalizuj()
                 i.integruj_dyscypliny()
@@ -75,11 +77,10 @@ def przeanalizuj_import_dyscyplin(self, pk):
 @app.task(bind=True)
 def integruj_import_dyscyplin(self, pk):
     self.update_state(state="RUNNING")
-    i = Import_Dyscyplin.objects.get(pk=pk)
 
     try:
         with transaction.atomic():
-            Import_Dyscyplin.objects.select_for_update().filter(pk=pk)
+            i = Import_Dyscyplin.objects.select_for_update().get(pk=pk)
             try:
                 i.integruj_wiersze()
             except Exception:

@@ -7,6 +7,7 @@ zatrzymuje runserver i sprząta kontenery.
 
 from __future__ import annotations
 
+import atexit
 import logging
 import os
 import secrets
@@ -21,7 +22,7 @@ from django_bpp.views_run_site_autologin import (
     AUTOLOGIN_URL_PATH,
 )
 
-from ._run_site_helpers.banner import format_banner
+from ._run_site_helpers.banner import format_agent_help, format_banner
 from ._run_site_helpers.log_multiplexer import (
     COLOR_CYAN,
     COLOR_GREEN,
@@ -51,8 +52,37 @@ _SUPERUSER_EMAIL = "admin@example.com"
 
 _BROWSER_OPEN_TIMEOUT_SECONDS = 60.0
 _AUTOLOGIN_TOKEN_BYTES = 32
+_AUTOLOGIN_TOKEN_FILENAME = ".run_site_token"
 
 _PBN_TOKEN_CACHE_FILENAME = ".saved_pbn_token"
+
+
+def _autologin_token_path() -> Path:
+    return _src_dir().parent / _AUTOLOGIN_TOKEN_FILENAME
+
+
+def _write_autologin_token_file(token: str) -> Path:
+    """Zapisz token do gitignorowanego pliku z chmod 600.
+
+    Plik istnieje tylko przez czas życia procesu run_site — agent kodujący
+    może go odczytać żeby zrobić autoryzowany WebFetch/curl bez logowania
+    przez admina. Kasowany przez `_remove_autologin_token_file` (atexit
+    + finally w handle()).
+    """
+    path = _autologin_token_path()
+    path.write_text(token)
+    try:
+        path.chmod(0o600)
+    except OSError:
+        logger.exception("[run_site] Nie udało się ustawić chmod 600 na %s", path)
+    return path
+
+
+def _remove_autologin_token_file() -> None:
+    try:
+        _autologin_token_path().unlink()
+    except FileNotFoundError:
+        pass  # Plik już usunięty (np. przez równoległe wywołanie atexit/finally)
 
 
 class Command(BaseCommand):
@@ -178,6 +208,8 @@ class Command(BaseCommand):
                 raise CommandError(f"Docker daemon nie jest dostępny: {exc}") from exc
 
             autologin_token = secrets.token_urlsafe(_AUTOLOGIN_TOKEN_BYTES)
+            autologin_token_path = _write_autologin_token_file(autologin_token)
+            atexit.register(_remove_autologin_token_file)
             env = self._build_env(containers, autologin_token=autologin_token)
             self._restore_dump_if_needed(dump_path, containers)
             self._migrate(env)
@@ -209,6 +241,10 @@ class Command(BaseCommand):
                 containers=containers,
                 with_celery=opts["with_celery"],
                 dump_path=dump_path,
+            )
+            self._print_agent_help(
+                appserver_url=appserver_url,
+                token_path=autologin_token_path,
             )
 
             self.stdout.write(
@@ -263,6 +299,7 @@ class Command(BaseCommand):
                     stop_containers(containers)
                 except Exception:
                     logger.exception("[run_site] Failed to stop containers")
+            _remove_autologin_token_file()
 
     # ── helpers ─────────────────────────────────────────────────────────
 
@@ -383,6 +420,14 @@ class Command(BaseCommand):
             redis_port=containers.redis_port,
             with_celery=with_celery,
             dump_label=str(dump_path) if dump_path else "baseline",
+        )
+        self.stdout.write("")
+        self.stdout.write(text)
+
+    def _print_agent_help(self, *, appserver_url: str, token_path: Path) -> None:
+        text = format_agent_help(
+            appserver_url=appserver_url,
+            token_path=str(token_path),
         )
         self.stdout.write("")
         self.stdout.write(text)

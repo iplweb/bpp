@@ -77,15 +77,14 @@ class GetPBNPublicationsByBase(View):
                 {"error": "Autoryzuj się w PBN korzystając z menu na głównej stronie. "}
             )
 
-        except Exception as e:
-            # Zgłoś nieznany typ błędu do Sentry
+        except Exception:
+            # Zgłoś nieznany typ błędu do Sentry / Rollbar
             rollbar.report_exc_info(sys.exc_info())
 
-            # .. oraz do użytkownika:
+            # Generyczny komunikat dla klienta — szczegóły w logach serwera
             return JsonResponse(
                 {
                     "error": "Nieznany błąd po stronie serwera przy wywołaniu funkcji odpytującej PBN. "
-                    + str(e)
                 }
             )
 

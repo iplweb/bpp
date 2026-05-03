@@ -1,7 +1,7 @@
 import django_filters
 from django.forms import NumberInput, TextInput
 
-from bpp.models import Autorzy, Cache_Punktacja_Autora_Sum_Gruop, Dyscyplina_Naukowa
+from bpp.models import Autorzy, Cache_Punktacja_Autora_Sum_Group, Dyscyplina_Naukowa
 
 
 class RaportSlotowUczelniaBezJednostekIWydzialowFilter(django_filters.FilterSet):
@@ -37,7 +37,7 @@ class RaportSlotowUczelniaBezJednostekIWydzialowFilter(django_filters.FilterSet)
     )
 
     class Meta:
-        model = Cache_Punktacja_Autora_Sum_Gruop
+        model = Cache_Punktacja_Autora_Sum_Group
         fields = ["autor__nazwisko", "dyscyplina__nazwa"]
 
 
@@ -55,7 +55,7 @@ class RaportSlotowUczelniaFilter(RaportSlotowUczelniaBezJednostekIWydzialowFilte
     )
 
     class Meta:
-        model = Cache_Punktacja_Autora_Sum_Gruop
+        model = Cache_Punktacja_Autora_Sum_Group
         fields = ["autor__nazwisko", "suma__min", "suma__max"]
 
 

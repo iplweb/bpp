@@ -17,6 +17,8 @@ from pathlib import Path
 # These imports define Django settings - they ARE used by Django's settings machinery
 # even though they appear "unused" to static analysis tools
 from django_bpp.settings.production import (  # noqa: F401
+    # Allowed hosts (dziedzicz z production zamiast otwierać "*")
+    ALLOWED_HOSTS,
     # User model
     AUTH_USER_MODEL,
     # CSRF trusted origins for login form
@@ -43,7 +45,6 @@ from django_bpp.settings.production import (  # noqa: F401
 )
 
 DEBUG = False
-ALLOWED_HOSTS = ["*"]
 
 # Minimal apps - only what's needed for auth
 INSTALLED_APPS = [

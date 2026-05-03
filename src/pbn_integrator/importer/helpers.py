@@ -1,6 +1,7 @@
 """Helper utilities for PBN importer."""
 
 import copy
+import logging
 from datetime import date
 
 from bpp.models import (
@@ -17,12 +18,14 @@ from bpp.models import (
 from pbn_api.models import Journal
 from pbn_integrator.utils import zapisz_mongodb
 
+logger = logging.getLogger(__name__)
+
 
 def assert_dictionary_empty(dct, warn=False):
     if dct.keys():
         msg = f"some data still left in dictionary {dct=}"
         if warn:
-            print("WARNING: ", msg)
+            logger.info(f"WARNING:  {msg}")
             return
 
         raise AssertionError(msg)
@@ -135,8 +138,8 @@ def pobierz_jezyk(mainLanguage, pbn_json_title):
         try:
             return Jezyk.objects.get(skrot__startswith=mainLanguage)
         except Jezyk.DoesNotExist:
-            print(f" &&& JEZYK NIE ISTNIEJE {mainLanguage=}")
-            print(
+            logger.info(f" &&& JEZYK NIE ISTNIEJE {mainLanguage=}")
+            logger.info(
                 f" *** PRACA {pbn_json_title} zostanie utworzona z jezykiem "
                 f"PIERWSZYM NA LISCIE"
             )
@@ -151,12 +154,12 @@ def przetworz_journal_issue(pbn_json, ret, zrodlo):
 
     orig_journalIssue = copy.deepcopy(journalIssue)
     if str(journalIssue.pop("year", str(ret.rok))) != str(ret.rok):
-        print(
+        logger.info(
             f"CZY TO PROBLEM? year rozny od ret.rok {ret.rok=}, {orig_journalIssue=} "
             f"{ret.tytul_oryginalny} {zrodlo.nazwa}"
         )
     if str(journalIssue.pop("publishedYear", str(ret.rok))) != str(ret.rok):
-        print(
+        logger.info(
             f"CZY TO PROBLEM? publishedYear rozny od ret.rok {ret.rok=}, "
             f"{orig_journalIssue=} {ret.tytul_oryginalny} {zrodlo.nazwa}"
         )
@@ -203,7 +206,7 @@ def importuj_streszczenia(pbn_json, ret, klasa_bazowa):
             try:
                 jezyk = Jezyk.objects.get(skrot__startswith=language)
             except Jezyk.DoesNotExist:
-                print(
+                logger.info(
                     f"NIE ZAIMPORTUJE STRESZCZENIA ZA {ret=} poniewaz jego jezyk to "
                     f"{language=} a nie mam go w tabeli Jezyki"
                 )
@@ -280,7 +283,7 @@ def importuj_openaccess(
 
                 reldate_year = oa_json.pop("releaseDateYear")
                 if reldate_year is None:
-                    print("bez zartow BLAD DDATY")
+                    logger.info("bez zartow BLAD DDATY")
                 else:
                     ret.openaccess_data_opublikowania = date(
                         int(reldate_year),

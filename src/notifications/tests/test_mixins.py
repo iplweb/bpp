@@ -1,8 +1,9 @@
+import pytest
+
 from notifications.mixins import (
     ChannelSubscriberMixin,
     ChannelSubscriberSingleObjectMixin,
 )
-import pytest
 
 
 @pytest.mark.django_db

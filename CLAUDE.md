@@ -57,10 +57,63 @@ python src/manage.py shell
 pytest src/app_name/tests/
 ```
 
-## Claude Code Web Environment Setup
+## Uruchamianie dev stack-u (preferowane dla agenta)
 
-For cloud sandbox setup instructions, see
-[CLAUDE_CLOUD.md](CLAUDE_CLOUD.md).
+**Jeśli musisz obejrzeć stronę BPP, uruchomić ją lokalnie albo
+sprawdzić jak coś wygląda w przeglądarce — używaj `run_site`,
+NIE `docker compose up`.** Dla agenta to znacznie prostsze.
+
+```bash
+uv run python src/manage.py run_site
+```
+
+Co `run_site` robi w jednej komendzie:
+
+- startuje PostgreSQL i Redis przez testcontainers (losowe porty,
+  bez kolizji z dev-owymi kontenerami `docker compose up db redis`),
+- migruje bazę i tworzy superusera `admin`/`admin`,
+- odpala `runserver` na losowym wolnym porcie (lub `--port`),
+- otwiera przeglądarkę z auto-loginem (przeskakuje formularz logowania),
+- zapisuje token auto-loginu do `.run_site_token` (chmod 600,
+  gitignored, kasowany na exit) — patrz sekcja
+  „Autologin dla agentów" niżej,
+- drukuje w stdout banner z URL-ami + gotowy snippet curl dla agenta.
+
+**Dlaczego to lepsze niż `docker compose up` dla agenta:**
+
+- jeden proces zamiast trzech serwisów (web/celery/db) — łatwiej
+  uruchamiać w tle, łatwiej wyciągać port z outputu,
+- baseline migracji + admin są gotowe od ręki, bez ręcznego
+  `migrate`/`createsuperuser`,
+- WebFetch / curl działa od strzału dzięki `.run_site_token`,
+- testcontainers same się sprzątają na exit (Ctrl-C zamyka stack),
+- nie wymaga prebuildu obrazu appserver-a (compose by wymagał).
+
+**Najczęściej używane flagi:**
+
+- `--no-browser` — nie otwieraj browsera (zalecane gdy agent uruchamia
+  `run_site` w tle przez `run_in_background=true`),
+- `--port 8080` — wymuś konkretny port (default: losowy wolny;
+  agent najczęściej i tak czyta port z bannera),
+- `--reuse` — persystencja kontenerów PG/Redis między uruchomieniami
+  (drugi run nie inicjuje od zera; usuń ręcznie `bpp-tc-pg`/`bpp-tc-redis`
+  żeby zrestartować),
+- `--no-celery` — pomiń celery worker (szybciej, gdy nie testujesz
+  background-jobów),
+- `--from-dump PATH` — odtwórz `.sql` / `.sql.gz` / `.dump` zamiast
+  baseline.
+
+**Pobranie portu z bannera (gdy run_site w tle):**
+
+```bash
+# Po uruchomieniu w tle, port jest w outpucie:
+grep -oE 'http://localhost:[0-9]+' /tmp/run_site.log | head -1
+```
+
+Domyślny `docker compose up db redis -d` z Quick Reference jest
+dla **rzadszych przypadków**: testy z `BPP_USE_TESTCONTAINERS=0`
+albo gdy potrzebujesz długożyjącej bazy niezależnie od `run_site`.
+Do oglądania samej strony — używaj `run_site`.
 
 ## Key Commands (Quick Reference)
 
@@ -90,6 +143,47 @@ uv run celery -A django_bpp.tasks inspect registered
 **Pre-commit rules:** When pre-commit produces issues, analyze output
 issue-by-issue. Fix each manually with the Edit tool. Do NOT run
 `ruff check --fix` or any automated batch fixes.
+
+## Autologin dla agentów (WebFetch / curl bez logowania)
+
+Gdy user uruchomił `manage.py run_site`, w korzeniu repo pojawia się
+plik `.run_site_token` (gitignored, chmod 600) z tokenem do
+auto-loginu. Plik istnieje **tylko przez czas życia procesu run_site**
+i jest kasowany na exit. Jeśli pliku nie ma — znaczy że dev stack
+nie biegnie i nie da się fetchować zalogowanych stron; nie próbuj
+„obejść" tego logując się przez `/admin/login/` czy POST-em
+formularza, tylko poproś usera o uruchomienie `run_site`.
+
+Token uwierzytelnia jako `admin` (superuser) — używaj tylko gdy musisz
+zobaczyć stronę wymagającą zalogowania. Do publicznych stron nie ma
+sensu, a niepotrzebnie zostawia ślad w `request.user` w logach.
+
+**Pobranie zalogowanej strony przez curl + cookie jar:**
+
+```bash
+T=$(cat .run_site_token)
+J=$(mktemp)
+# Port runserver-a wypisuje run_site w banerze (zmienia się przy
+# każdym uruchomieniu; pobierz aktualny z bannera albo `lsof`).
+PORT=8080
+curl -sc "$J" -L "http://localhost:$PORT/__run_site_autologin__/?token=$T" \
+    >/dev/null
+curl -sb "$J" "http://localhost:$PORT/<path>"
+rm "$J"
+```
+
+**WebFetch tool (Claude Code):** jest bezstanowy — cookie z
+auto-loginu nie przeniesie się między kolejnymi wywołaniami.
+WebFetcha używaj tylko do publicznych stron. Do zalogowanych
+stron użyj snippetu z curl powyżej, ewentualnie spipuj wynik
+przez `pandoc -f html -t markdown` jeśli potrzebujesz markdown-a.
+
+**Bezpieczeństwo:** endpoint `/__run_site_autologin__/` istnieje
+tylko gdy ustawione `DJANGO_BPP_RUN_SITE_AUTOLOGIN_TOKEN` w env
+(ustawia to `run_site` automatycznie, nigdy w produkcji). Token
+nie wycieka do gita (gitignore + ulotny plik). Nie wklejaj
+zawartości `.run_site_token` do commitów, do PR-ów, ani do logów
+które trafią poza maszynę dewelopera.
 
 ## CSS/SCSS Rules
 

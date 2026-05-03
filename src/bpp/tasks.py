@@ -1,13 +1,9 @@
 import os
 
 from celery.utils.log import get_task_logger
+from celery_singleton import Singleton
 from django.conf import settings
 from django.core.exceptions import ImproperlyConfigured
-
-try:
-    pass
-except ImportError:
-    pass
 
 from bpp.models import (
     Praca_Doktorska,
@@ -16,39 +12,19 @@ from bpp.models import (
     Wydawnictwo_Ciagle,
     Wydawnictwo_Zwarte,
 )
+from django_bpp.celery_tasks import app
 
 logger = get_task_logger(__name__)
-
-from django_bpp.celery_tasks import app
 
 
 @app.task(ignore_result=True)
 def remove_file(path):
     if path.startswith(os.path.join(settings.MEDIA_ROOT, "report")):
-        logger.warning("Removing %r" % path)
+        logger.warning("Removing %r", path)
         os.unlink(path)
 
 
-task_limits = {}
-
-
-def my_limit(fun):
-    res = task_limits.get(fun)
-    if not res or (res.successful() or res.failed()):
-        task_limits[fun] = fun.apply_async(
-            countdown=settings.MAT_VIEW_REFRESH_COUNTDOWN
-        )
-        return
-
-    if res:
-        logger.info("Task %r has been revoked." % res.id)
-        res.revoke()
-        task_limits[fun] = fun.apply_async(
-            countdown=settings.MAT_VIEW_REFRESH_COUNTDOWN
-        )
-
-
-def _zaktualizuj_liczbe_cytowan(klasy=None):
+def _zaktualizuj_liczbe_cytowan(klasy=None):  # noqa: C901
     if klasy is None:
         klasy = (
             Wydawnictwo_Ciagle,
@@ -103,6 +79,20 @@ def _zaktualizuj_liczbe_cytowan(klasy=None):
                         obj.save()
 
 
-@app.task
+@app.task(
+    base=Singleton,
+    # Lock przez 2h — task realnie potrzebuje tyle przy dużym korpusie
+    # publikacji × kilkudziesięciu requestach do WoS API. Po 2h
+    # uznajemy zombie-task i odblokowujemy, żeby nowe wywołania nie
+    # zostały zablokowane przez zawieszony lock w Redisie.
+    lock_expiry=2 * 60 * 60,
+    # Hard time limit żeby zawieszony WoS request nie blokował workera
+    # w nieskończoność.
+    time_limit=2 * 60 * 60,
+    soft_time_limit=int(1.9 * 60 * 60),
+)
 def zaktualizuj_liczbe_cytowan():
+    """Update WoS citation counts. Singleton — dwa równoczesne uruchomienia
+    odpytałyby WoS API zdublowanie. Lock w Redisie zapewnia że tylko jeden
+    worker wykonuje task naraz (cluster-wide)."""
     _zaktualizuj_liczbe_cytowan()

@@ -149,7 +149,7 @@ def solve_discipline(
         if log_callback:
             log_callback(msg, style)
         elif verbose:
-            print(msg)
+            logger.info(msg)
 
     # Validate algorithm_mode parameter
     if algorithm_mode not in ["two-phase", "single-phase"]:
@@ -398,15 +398,15 @@ def solve_uczelnia(uczelnia_id: int | None = None, min_liczba_n: int = 12):
     disciplines = list(liczba_n_query)
 
     if not disciplines:
-        print(
+        logger.info(
             f"No disciplines found for university {uczelnia} "
             f"with liczba_n >= {min_liczba_n}"
         )
         return
 
-    print(f"Processing {len(disciplines)} disciplines for {uczelnia}")
-    print(f"Disciplines with liczba_n >= {min_liczba_n}")
-    print("=" * 80)
+    logger.info(f"Processing {len(disciplines)} disciplines for {uczelnia}")
+    logger.info(f"Disciplines with liczba_n >= {min_liczba_n}")
+    logger.info("=" * 80)
 
     # Process each discipline
     for liczba_n_obj in disciplines:

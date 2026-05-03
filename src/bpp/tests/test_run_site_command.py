@@ -49,3 +49,26 @@ def test_run_site_dry_run_with_valid_sql_succeeds(tmp_path):
     sql = tmp_path / "valid.sql"
     sql.write_text("SELECT 1;")
     call_command("run_site", "--from-dump", str(sql), "--dry-run")
+
+
+def test_autologin_token_file_write_and_remove(tmp_path, monkeypatch):
+    """Helper zapisuje token z chmod 600 i kasuje go bezpiecznie."""
+    import stat
+
+    from bpp.management.commands import run_site as run_site_mod
+
+    monkeypatch.setattr(
+        run_site_mod, "_autologin_token_path", lambda: tmp_path / ".run_site_token"
+    )
+
+    path = run_site_mod._write_autologin_token_file("sekret-abc123")
+    assert path.read_text() == "sekret-abc123"
+    # chmod 600 — tylko właściciel może czytać/pisać
+    mode = stat.S_IMODE(path.stat().st_mode)
+    assert mode == 0o600, f"oczekiwano 0o600, jest {oct(mode)}"
+
+    run_site_mod._remove_autologin_token_file()
+    assert not path.exists()
+
+    # Drugie wywołanie (np. atexit po finally) nie wybucha:
+    run_site_mod._remove_autologin_token_file()
