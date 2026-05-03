@@ -117,7 +117,10 @@ def scal_autorow_view(request):
         traceback.print_exc()
         rollbar.report_exc_info(sys.exc_info())
         return JsonResponse(
-            {"success": False, "error": f"Błąd podczas scalania autorów: {str(e)}"},
+            {
+                "success": False,
+                "error": "Wystąpił wewnętrzny błąd podczas scalania autorów.",
+            },
             status=500,
         )
 
