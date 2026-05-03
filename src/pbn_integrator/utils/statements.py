@@ -77,7 +77,7 @@ def integruj_oswiadczenia_z_instytucji_pojedyncza_praca(  # noqa: C901
                         f"{elem.publicationId}, parametr inOrcid oraz dyscypliny "
                         f"dla tej pracy nie zostanie zaimportowany!"
                     )
-                    print(f"\r\nPPP {msg}")
+                    logger.info(f"\r\nPPP {msg}")
                     if inconsistency_callback:
                         inconsistency_callback(
                             inconsistency_type="publication_not_found",
@@ -99,7 +99,7 @@ def integruj_oswiadczenia_z_instytucji_pojedyncza_praca(  # noqa: C901
                 f"Brak odpowiednika autora w BPP dla autora {elem.personId}, "
                 f"parametr inOrcid dla tego autora nie zostanie zaimportowany!"
             )
-            print(f"\r\nAAA {msg}")
+            logger.info(f"\r\nAAA {msg}")
             if inconsistency_callback:
                 inconsistency_callback(
                     inconsistency_type="author_not_in_bpp",
@@ -120,7 +120,9 @@ def integruj_oswiadczenia_z_instytucji_pojedyncza_praca(  # noqa: C901
             f"Po stronie PBN: {elem.publicationId}, "
             f"po stronie BPP: {pub}, {aut} -- nie ma ta praca takiego autora!"
         )
-        print(f"===========================================================\nXXX {msg}")
+        logger.info(
+            f"===========================================================\nXXX {msg}"
+        )
         if inconsistency_callback:
             inconsistency_callback(
                 inconsistency_type="author_not_found",
@@ -200,7 +202,7 @@ def integruj_oswiadczenia_z_instytucji_pojedyncza_praca(  # noqa: C901
 
                 if rec is None:
                     msg = "Nie mogę naprawić tego automatycznie - sprawdź ręcznie"
-                    print(
+                    logger.info(
                         f"XXX {msg}\n"
                         "==========================================================="
                     )
@@ -225,7 +227,7 @@ def integruj_oswiadczenia_z_instytucji_pojedyncza_praca(  # noqa: C901
                 f"Nadpisuję w tej pracy autora {rec.autor} autorem {aut}, "
                 f"wyślij tę pracę do PBN ponownie! (dyscyplina: {discipline})"
             )
-            print(
+            logger.info(
                 f"XXX {msg}\n"
                 f"==========================================================="
             )
@@ -246,7 +248,7 @@ def integruj_oswiadczenia_z_instytucji_pojedyncza_praca(  # noqa: C901
                 f"Nie nadpisuję w tej pracy autora {rec.autor} autorem {aut}, "
                 f"bo nie ma dyscyplin - sprawdź rekord ręcznie"
             )
-            print(
+            logger.info(
                 f"XXX {msg}\n"
                 f"==========================================================="
             )
@@ -359,7 +361,7 @@ def integruj_oswiadczenia_pbn_first_import(  # noqa: C901
                     bpp_pub = bpp_pub.original
 
             if bpp_pub is None:
-                print(
+                logger.info(
                     f"Brak odpowiednika publikacji po stronie BPP dla pracy w PBN {oswiadczenie.publicationId}, "
                     f"moze zaimportuj baze raz jeszcze"
                 )
@@ -378,7 +380,7 @@ def integruj_oswiadczenia_pbn_first_import(  # noqa: C901
             Wydawnictwo_Ciagle_Autor.DoesNotExist,
         ):
             if first:
-                print(
+                logger.info(
                     "Tytuł;Rok;mongoId;Autor przypisany;UID autora przypisanego;"
                     "Autor oświadczony;UID autora z oświadczeń"
                 )
@@ -401,7 +403,7 @@ def integruj_oswiadczenia_pbn_first_import(  # noqa: C901
 
                 przypisany = Przypisany()
 
-            print(
+            logger.info(
                 f"{bpp_pub.tytul_oryginalny};{bpp_pub.rok};{bpp_pub.pbn_uid_id};{przypisany};{przypisany.pbn_uid_id};"
                 f"{oswiadczenie.personId.lastName} {oswiadczenie.personId.name};{oswiadczenie.personId_id}"
             )
@@ -530,7 +532,7 @@ def wyswietl_niezmatchowane_ze_zblizonymi_tytulami():
             .annotate(tytul_oryginalny_length=Length("tytul_oryginalny"))
             .filter(tytul_oryginalny_length__gte=10)
         ):
-            print(
+            logger.info(
                 f"\r\nRekord z dyscyplinami, bez dopasowania w PBN: {rekord.rok} {rekord}"
             )
 
@@ -546,7 +548,7 @@ def wyswietl_niezmatchowane_ze_zblizonymi_tytulami():
             )
 
             for elem in res[:5]:
-                print("- MOZE: ", elem.mongoId, elem.title, elem.similarity)
+                logger.info(f"- MOZE:  {elem.mongoId} {elem.title} {elem.similarity}")
 
 
 def sprawdz_ilosc_autorow_przy_zmatchowaniu():

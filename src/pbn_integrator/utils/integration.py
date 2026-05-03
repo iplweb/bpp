@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 import os
 import sys
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -15,6 +16,8 @@ from pbn_integrator.utils.multiprocessing_utils import (
     split_list,
     wait_for_results,
 )
+
+logger = logging.getLogger(__name__)
 
 if TYPE_CHECKING:
     pass
@@ -37,7 +40,7 @@ def ustaw_pbn_uid_jesli_brak(elem, bpp_rekord):
     """
     if bpp_rekord is not None:
         if bpp_rekord.pbn_uid_id is not None and bpp_rekord.pbn_uid_id != elem.pk:
-            print(
+            logger.info(
                 f"\r\n*** Rekord BPP {bpp_rekord} {bpp_rekord.rok} ma już PBN UID {bpp_rekord.pbn_uid_id}, "
                 f"ale i pasuje też do {elem} PBN UID {elem.pk}"
             )
@@ -59,7 +62,7 @@ def _integruj_single_part(ids):
         try:
             elem = Publication.objects.get(pk=_id)
         except Publication.DoesNotExist as e:
-            print(f"Brak publikacji o ID {_id}")
+            logger.info(f"Brak publikacji o ID {_id}")
             raise e
         p = elem.matchuj_do_rekordu_bpp()
         ustaw_pbn_uid_jesli_brak(elem, p)
@@ -94,7 +97,7 @@ def _integruj_publikacje(
 
         if disable_multiprocessing:
             _integruj_single_part(elem)
-            print(f"{label} {no} of {total_batches}...", end="\r")
+            logger.info(f"{label} {no} of {total_batches}...")
             sys.stdout.flush()
 
             # Update callback if provided
@@ -169,7 +172,7 @@ def _integruj_publikacje_threaded(  # noqa: C901
 
             # Thread-safe print
             with _print_lock:
-                print(f"{label} {current_progress} of {total_batches}...", end="\r")
+                logger.info(f"{label} {current_progress} of {total_batches}...")
                 sys.stdout.flush()
 
             # Thread-safe callback update
@@ -186,7 +189,7 @@ def _integruj_publikacje_threaded(  # noqa: C901
         except Exception as e:
             # Log errors with thread safety
             with _print_lock:
-                print(f"\nError in batch {batch_no}: {str(e)}")
+                logger.info(f"\nError in batch {batch_no}: {str(e)}")
             return batch_no, False, str(e)
 
         finally:
@@ -230,21 +233,21 @@ def _integruj_publikacje_threaded(  # noqa: C901
                         errors.append(f"Batch {batch_no}: {error}")
                 except Exception as e:
                     with _print_lock:
-                        print(f"\nUnexpected error in batch {batch_no}: {str(e)}")
+                        logger.info(f"\nUnexpected error in batch {batch_no}: {str(e)}")
                     errors.append(f"Batch {batch_no}: {str(e)}")
 
             # Report any errors at the end
             if errors:
                 with _print_lock:
-                    print(f"\n{len(errors)} batches failed during processing:")
+                    logger.info(f"\n{len(errors)} batches failed during processing:")
                     for error in errors[:5]:  # Show first 5 errors
-                        print(f"  - {error}")
+                        logger.info(f"  - {error}")
                     if len(errors) > 5:
-                        print(f"  ... and {len(errors) - 5} more")
+                        logger.info(f"  ... and {len(errors) - 5} more")
 
     # Final cleanup
     with _print_lock:
-        print(
+        logger.info(
             f"\n{label} completed: {completed_batches[0]}/{total_batches} batches processed"
         )
         sys.stdout.flush()

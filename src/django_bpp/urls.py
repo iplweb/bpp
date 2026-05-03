@@ -1,3 +1,5 @@
+import os
+
 from django.apps import apps
 from django.conf import settings
 from django.conf.urls.static import static
@@ -28,13 +30,17 @@ from bpp.views.mymultiseek import (
     bpp_remove_from_removed_by_hand,
 )
 from bpp.views.sentry_tester import (
-    sentry_teset_view,
     test_403_view,
     test_500_view,
     test_exception_view,
 )
 from django_bpp.health import health_check
 from django_bpp.views import HTMXAwareLoginView
+from django_bpp.views_run_site_autologin import (
+    AUTOLOGIN_ENV_VAR,
+    AUTOLOGIN_URL_PATH,
+    run_site_autologin,
+)
 
 admin.autodiscover()
 
@@ -54,7 +60,6 @@ urlpatterns = (
     [
         path("setup/", include("bpp_setup_wizard.urls")),  # Setup wizard URLs
         url(r"^favicon\.ico$", cache_page(60 * 60)(favicon)),
-        path("sentry_test/", login_required(sentry_teset_view)),
         path("test_403/", login_required(test_403_view)),
         path("test_500/", login_required(test_500_view)),
         path("test_exception/", login_required(test_exception_view)),
@@ -465,6 +470,17 @@ if apps.is_installed("password_policies"):
             name="password_reset_complete",
         ),
     ]
+
+#
+# Auto-login endpoint dla `manage.py run_site` — montowany TYLKO gdy
+# ustawiona jest zmienna środowiskowa DJANGO_BPP_RUN_SITE_AUTOLOGIN_TOKEN.
+# Na produkcji ta zmienna nie istnieje, więc URL nie zostanie zarejestrowany.
+#
+if os.environ.get(AUTOLOGIN_ENV_VAR):
+    urlpatterns += [
+        path(AUTOLOGIN_URL_PATH, run_site_autologin, name="run_site_autologin"),
+    ]
+
 
 handler404 = "bpp.views.handler404"
 handler500 = "bpp.views.handler500"

@@ -4,7 +4,7 @@ repos:
       # A lower pin here caused pre-commit to accept an I001 layout that
       # ruff 0.15.x (used by CI) rejected — the diff was invisible
       # locally until GitHub Actions failed.
-      rev: v0.15.10
+      rev: v0.15.12
       hooks:
         - id: ruff
           args: ["--fix", "--exit-non-zero-on-fix"]

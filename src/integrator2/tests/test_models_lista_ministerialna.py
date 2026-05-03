@@ -3,9 +3,8 @@ from unittest.mock import Mock
 import pytest
 from model_bakery import baker
 
-from integrator2.models.lista_ministerialna import ListaMinisterialnaElement
-
 from bpp.models.zrodlo import Punktacja_Zrodla, Zrodlo
+from integrator2.models.lista_ministerialna import ListaMinisterialnaElement
 
 
 def test_models_lista_ministerialna_input_file_to_dict_stream(lmi):

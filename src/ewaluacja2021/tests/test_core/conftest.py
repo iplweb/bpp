@@ -1,9 +1,8 @@
 import pytest
 from model_bakery import baker
 
-from ewaluacja_liczba_n.models import IloscUdzialowDlaAutoraZaRok, LiczbaNDlaUczelni
-
 from bpp.models import Autor_Dyscyplina, Wydawnictwo_Ciagle
+from ewaluacja_liczba_n.models import IloscUdzialowDlaAutoraZaRok, LiczbaNDlaUczelni
 
 
 @pytest.fixture
@@ -36,8 +35,7 @@ def genetyczny_3n(
         dyscyplina_naukowa=dyscyplina1, uczelnia=uczelnia, liczba_n=100
     )
 
-    for a in range(20):
-
+    for _ in range(20):
         wc: Wydawnictwo_Ciagle = baker.make(
             Wydawnictwo_Ciagle,
             rok=ROK,

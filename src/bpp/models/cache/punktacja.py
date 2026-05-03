@@ -169,7 +169,7 @@ class Cache_Punktacja_Autora_Sum_Group_Ponizej(models.Model):
         )
 
 
-class Cache_Punktacja_Autora_Sum_Gruop(models.Model):
+class Cache_Punktacja_Autora_Sum_Group(models.Model):
     autor = models.OneToOneField(Autor, DO_NOTHING, primary_key=True)
     jednostka = ForeignKey("bpp.Jednostka", DO_NOTHING)
     dyscyplina = ForeignKey(Dyscyplina_Naukowa, DO_NOTHING)
