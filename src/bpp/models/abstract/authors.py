@@ -258,10 +258,9 @@ class BazaModeluOdpowiedzialnosciAutorow(models.Model):
 
 class MaProcentyMixin:
     def ma_procenty(self):
-        for autor in self.autorzy_set.all():
-            if autor.procent:
-                return True
-        return False
+        return (
+            self.autorzy_set.filter(procent__isnull=False).exclude(procent=0).exists()
+        )
 
 
 class NieMaProcentowMixin:
