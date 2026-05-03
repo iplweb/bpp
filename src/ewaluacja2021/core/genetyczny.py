@@ -1,4 +1,5 @@
 import itertools
+import logging
 import math
 import os
 import random
@@ -15,6 +16,8 @@ from .genetyczny_multiprocessing import (
     multiprocessing_gad_pool_initializer,
 )
 from .util import splitEveryN
+
+logger = logging.getLogger(__name__)
 
 
 class GAD(FitnessFuncMixin, Ewaluacja3NBase):
@@ -114,7 +117,7 @@ class GAD(FitnessFuncMixin, Ewaluacja3NBase):
             dlugosc = len(baza_dla_randomizera)
             start = dlugosc // 5
             end = dlugosc * 3 // 5
-            for a in range(self.ile_losowych // 2):
+            for _ in range(self.ile_losowych // 2):
                 start = random.randint(start, end)
                 end = random.randint(start, dlugosc)
                 osobnik = (
@@ -127,7 +130,7 @@ class GAD(FitnessFuncMixin, Ewaluacja3NBase):
             # Generuje druga połowe losowych
             # Tutaj osobnik losowy ma zamieniane segmenty genów losowo, tzn jest dzielony
             # na od 4 do 50 czesci i te czesci ma potem łączone w losowy sposób
-            for a in range(self.ile_losowych // 2):
+            for _ in range(self.ile_losowych // 2):
                 num_parts = random.randint(2, 50)
                 split_size = dlugosc // num_parts
                 if split_size == 0:
@@ -172,7 +175,7 @@ class GAD(FitnessFuncMixin, Ewaluacja3NBase):
 
             solution, fitness, idx = self.ga_instance.best_solution()
 
-            print(f"Najlepsze rozwiązanie z algorytmu genetycznego: {fitness}")
+            logger.info(f"Najlepsze rozwiązanie z algorytmu genetycznego: {fitness}")
 
             solution = solution.tolist()
 
@@ -230,7 +233,7 @@ class GAD(FitnessFuncMixin, Ewaluacja3NBase):
         wysycenie_epok = self.ile_epok_wysycenie
         while ile_epok < self.maks_epok:  # and poprzedni_wynik < self.suma_pkd:
             ile_epok += 1
-            print(f"Obliczam epoke nr {ile_epok}")
+            logger.info(f"Obliczam epoke nr {ile_epok}")
             new_solution = cykl_genetyczny(solution, nr_cyklu=ile_epok)
             res = self.fitness_func(new_solution)
 
@@ -244,15 +247,15 @@ class GAD(FitnessFuncMixin, Ewaluacja3NBase):
                 wysycenie_epok -= 1
 
             if wysycenie_epok < 0:
-                print("Wysycenie epok")
+                logger.info("Wysycenie epok")
                 ile_epok = self.maks_epok
 
         # self.fitness_func(solution)
         self.lista_prac = self.lista_prac_tuples
 
     def pozegnanie(self):
-        print(
+        logger.info(
             f"Number of generations passed is {self.ga_instance.generations_completed}"
         )
 
-        print("Najlepsza punktacja:", self.ga_instance.best_solution()[1])
+        logger.info(f"Najlepsza punktacja: {self.ga_instance.best_solution()[1]}")

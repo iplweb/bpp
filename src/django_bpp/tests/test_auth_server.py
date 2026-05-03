@@ -64,8 +64,11 @@ def test_is_superuser_superuser_gets_ok_with_headers(superuser):
     assert "X-WEBAUTH-NAME" in response
 
 
-def test_auth_server_health_endpoint():
-    """Test that health endpoint returns ok."""
+@pytest.mark.django_db
+def test_auth_server_health_endpoint_ok():
+    """Healthy DB + Redis returns 200 with status ok."""
+    import json
+
     from django_bpp.health import health_check
 
     rf = RequestFactory()
@@ -73,7 +76,56 @@ def test_auth_server_health_endpoint():
     response = health_check(request)
 
     assert response.status_code == 200
-    assert response.content == b"ok"
+    assert json.loads(response.content) == {"status": "ok"}
+
+
+def test_health_check_returns_503_when_db_down(monkeypatch):
+    """If DB ping fails, return 503 with the failing component."""
+    import json
+
+    from django_bpp import health
+
+    # NIE patchujemy `health.connection.ensure_connection` — `connection` to
+    # `ConnectionProxy` z `django.db`, którego `__setattr__` przekierowuje
+    # zapis na realny `DatabaseWrapper` w `connections[default]`. Pytest
+    # ``monkeypatch`` przy teardownie odtwarza „starą" wartość pobraną
+    # przez ``getattr`` przez proxy — w teście bez ``@django_db`` to bound
+    # ``pytest_django._blocking_wrapper``. ``setattr`` na proxy wstrzykuje
+    # ten bound wrapper do ``connections[default].__dict__``, co nadpisuje
+    # class-level patch i czyni ``django_db_blocker.unblock()``
+    # nieskutecznym dla kolejnych testów na tym workerze (instance attr
+    # ma priorytet) — pierwszy następny test używający DB pada na
+    # ``RuntimeError: Database access not allowed`` w ``setup_databases``.
+    # Patchujemy funkcję wyższego poziomu ``_check_db`` (symetrycznie do
+    # ``test_health_check_returns_503_when_redis_down``).
+    monkeypatch.setattr(health, "_check_db", lambda: "db: RuntimeError")
+    monkeypatch.setattr(health, "_check_redis", lambda: None)
+
+    rf = RequestFactory()
+    response = health.health_check(rf.get("/health/"))
+
+    assert response.status_code == 503
+    body = json.loads(response.content)
+    assert body["status"] == "error"
+    assert any("db" in f for f in body["failures"])
+
+
+def test_health_check_returns_503_when_redis_down(monkeypatch):
+    """If Redis ping fails, return 503 with the failing component."""
+    import json
+
+    from django_bpp import health
+
+    monkeypatch.setattr(health, "_check_db", lambda: None)
+    monkeypatch.setattr(health, "_check_redis", lambda: "redis: ConnectionError")
+
+    rf = RequestFactory()
+    response = health.health_check(rf.get("/health/"))
+
+    assert response.status_code == 503
+    body = json.loads(response.content)
+    assert body["status"] == "error"
+    assert any("redis" in f for f in body["failures"])
 
 
 def test_health_check_log_filter():

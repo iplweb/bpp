@@ -1,3 +1,4 @@
+from django.contrib.auth.mixins import LoginRequiredMixin
 from django.db import transaction
 from django.http import JsonResponse
 from django.http.response import HttpResponseNotFound
@@ -9,7 +10,7 @@ from bpp.models.praca_habilitacyjna import Praca_Habilitacyjna
 from bpp.models.zrodlo import Punktacja_Zrodla
 
 
-class RokHabilitacjiView(View):
+class RokHabilitacjiView(LoginRequiredMixin, View):
     def post(self, request, *args, **kw):
         try:
             autor = Autor.objects.get(pk=int(request.POST.get("autor_pk")))
@@ -24,7 +25,7 @@ class RokHabilitacjiView(View):
         return JsonResponse({"rok": habilitacja.rok})
 
 
-class PunktacjaZrodlaView(View):
+class PunktacjaZrodlaView(LoginRequiredMixin, View):
     def post(self, request, zrodlo_id, rok, *args, **kw):
         try:
             z = Zrodlo.objects.get(pk=zrodlo_id)
@@ -41,7 +42,7 @@ class PunktacjaZrodlaView(View):
         return JsonResponse(d)
 
 
-class UploadPunktacjaZrodlaView(View):
+class UploadPunktacjaZrodlaView(LoginRequiredMixin, View):
     def ok(self):
         return JsonResponse({"result": "ok"})
 
@@ -107,7 +108,7 @@ def ostatnia_dyscyplina(request, a, rok):
             return ad.dyscyplina_naukowa or ad.subdyscyplina_naukowa
 
 
-class OstatniaJednostkaIDyscyplinaView(View):
+class OstatniaJednostkaIDyscyplinaView(LoginRequiredMixin, View):
     """Zwraca jako JSON ostatnią jednostkę danego autora oraz ewentualnie jego
     dyscyplinę naukową, w sytuacji gdy jest ona jedna i określona na dany rok.
     """

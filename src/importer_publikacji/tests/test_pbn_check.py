@@ -130,7 +130,13 @@ def test_empty_pbn_result():
 
 
 @pytest.mark.django_db
-@patch("importer_publikacji.views._ensure_pbn_publication_local")
+# ``_populate_pbn_result`` i ``_ensure_pbn_publication_local`` żyją razem
+# w pod-module ``importer_publikacji.views.pbn_check`` (po podziale views.py
+# na pakiet). Wywołanie z ``_populate_pbn_result`` rozwiązuje się przez
+# globals pod-modułu, więc patchujemy tam — patch na re-eksporcie
+# ``importer_publikacji.views._ensure_pbn_publication_local`` nie miałby
+# efektu, identycznie jak udokumentowano wyżej dla ``_get_pbn_client``.
+@patch("importer_publikacji.views.pbn_check._ensure_pbn_publication_local")
 def test_populate_pbn_result_with_data(mock_ensure):
     session = _make_session()
     result = _empty_pbn_result()

@@ -1,9 +1,8 @@
 import pytest
 from model_bakery import baker
 
-from notifications.models import Notification
-
 from bpp.models import Wydawnictwo_Zwarte
+from notifications.models import Notification
 
 
 @pytest.mark.django_db

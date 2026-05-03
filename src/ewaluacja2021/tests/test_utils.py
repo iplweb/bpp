@@ -68,7 +68,7 @@ def test_InputXLSX_rows_as_dict():
         ("3.2", Decimal("3.2")),
         (3.2, Decimal("3.2")),
         (3.12345, Decimal("3.1235")),
-        (float(3.2), Decimal("3.2")),
+        (3.2, Decimal("3.2")),
         (None, None),
         (3, Decimal(3)),
     ],

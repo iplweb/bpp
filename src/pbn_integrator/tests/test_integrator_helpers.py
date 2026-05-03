@@ -25,13 +25,12 @@ class TestAssertDictionaryEmpty:
         except AssertionError:
             pytest.fail("assert_dictionary_empty should not raise for empty dict")
 
-    def test_assert_dictionary_empty_with_populated_dict_warns(self, capsys):
-        """Should print warning when dictionary is not empty and warn=True."""
+    def test_assert_dictionary_empty_with_populated_dict_warns(self, caplog):
+        """Should log warning when dictionary is not empty and warn=True."""
         test_dict = {"key": "value", "another": "data"}
-        assert_dictionary_empty(test_dict, warn=True)
-        # Verify warning was printed
-        captured = capsys.readouterr()
-        assert "WARNING" in captured.out
+        with caplog.at_level("INFO", logger="pbn_integrator.importer.helpers"):
+            assert_dictionary_empty(test_dict, warn=True)
+        assert any("WARNING" in rec.message for rec in caplog.records)
 
     def test_assert_dictionary_empty_with_populated_dict_raises(self):
         """Should raise AssertionError when dictionary not empty and warn=False."""

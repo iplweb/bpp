@@ -1,6 +1,6 @@
 {
     "name": "bpp-iplweb",
-    "version": "v202604.1369",
+    "version": "v202605.1370",
     "license": "MIT",
     "devDependencies": {
         "esbuild": "^0.27.2",
@@ -16,7 +16,6 @@
         "datatables.net": "^1.10.16",
         "datatables.net-dt": "^1.10.16",
         "datatables.net-zf": "^1.10.16",
-        "font-awesome": "4.1.0",
         "foundation-datepicker": "^1.5.6",
         "foundation-sites": "^6.9.0",
         "graphology": "^0.26.0",

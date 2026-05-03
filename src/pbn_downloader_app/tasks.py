@@ -244,13 +244,12 @@ def download_institution_publications(user_id):
 
     from pbn_downloader_app.models import PbnDownloadTask
 
-    # Check if there's already a running task
-    running_task = PbnDownloadTask.objects.filter(status="running").first()
-    if running_task:
-        raise ValueError(
-            "Another download task is already running. Please wait for it to complete."
-        )
-
+    # Sprawdzenie obecności running-taska wykonuje atomowo
+    # `create_task_with_lock` (wewnątrz transaction.atomic + filter().exists()).
+    # Wcześniejszy "wstępny" check w tym miejscu otwierał race window: dwa
+    # workery przechodziły go jednocześnie i drugi dopiero w
+    # create_task_with_lock dostawał ValueError. Teraz check jest wyłącznie
+    # w jednym miejscu — atomowym.
     task_record = None
     try:
         user, pbn_user = validate_pbn_user(user_id)
