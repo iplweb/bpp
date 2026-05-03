@@ -15,11 +15,17 @@ urlpatterns = [
     path(
         "reset-not-duplicates/", views.reset_not_duplicates, name="reset_not_duplicates"
     ),
-    path("ignore-author/", views.ignore_author, name="ignore_author"),
+    path("ignore-scientist/", views.ignore_scientist, name="ignore_scientist"),
     path(
-        "reset-ignored-authors/",
-        views.reset_ignored_authors,
-        name="reset_ignored_authors",
+        "reset-ignored-scientists/",
+        views.reset_ignored_scientists,
+        name="reset_ignored_scientists",
+    ),
+    path("ignore-autor/", views.ignore_autor, name="ignore_autor"),
+    path(
+        "reset-ignored-autorzy/",
+        views.reset_ignored_autorzy,
+        name="reset_ignored_autorzy",
     ),
     path("delete-author/", views.delete_author, name="delete_author"),
     path("scal-autorow/", views.scal_autorow_view, name="scal_autorow"),
@@ -36,5 +42,10 @@ urlpatterns = [
         "mark-candidate-not-duplicate/",
         views.mark_candidate_not_duplicate,
         name="mark_candidate_not_duplicate",
+    ),
+    path(
+        "lastname-suggestions/",
+        views.lastname_suggestions,
+        name="lastname_suggestions",
     ),
 ]

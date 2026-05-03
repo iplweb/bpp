@@ -30,8 +30,8 @@ class NotADuplicate(models.Model):
         return f"Autor {self.autor} (not duplicate) - {self.created_by}"
 
 
-class IgnoredAuthor(models.Model):
-    """Authors that should be completely ignored in the deduplication process"""
+class IgnoredScientist(models.Model):
+    """Scientists from PBN that should be completely ignored in deduplication"""
 
     scientist = models.OneToOneField(
         "pbn_api.Scientist",
@@ -66,14 +66,47 @@ class IgnoredAuthor(models.Model):
     )
 
     class Meta:
-        verbose_name = "Ignorowany autor"
-        verbose_name_plural = "Ignorowani autorzy"
+        verbose_name = "Ignorowany Scientist (PBN)"
+        verbose_name_plural = "Ignorowani Scientist (PBN)"
         ordering = ["-created_on"]
 
     def __str__(self):
         if self.autor:
             return f"Ignorowany: {self.autor} (Scientist #{self.scientist.pk})"
         return f"Ignorowany: Scientist #{self.scientist.pk}"
+
+
+class IgnoredAuthor(models.Model):
+    """BPP authors (without PBN-Scientist link) that should be ignored in deduplication."""
+
+    autor = models.OneToOneField(
+        "bpp.Autor",
+        on_delete=models.CASCADE,
+        db_index=True,
+        verbose_name="Autor (BPP)",
+        help_text="Autor BPP do ignorowania w deduplikacji ogólnej",
+    )
+
+    reason = models.CharField(
+        max_length=500,
+        blank=True,
+        verbose_name="Powód ignorowania",
+    )
+
+    created_on = models.DateTimeField("Data utworzenia", default=timezone.now)
+    created_by = models.ForeignKey(
+        BppUser,
+        on_delete=models.CASCADE,
+        verbose_name="Utworzył",
+    )
+
+    class Meta:
+        verbose_name = "Ignorowany autor (BPP)"
+        verbose_name_plural = "Ignorowani autorzy (BPP)"
+        ordering = ["-created_on"]
+
+    def __str__(self):
+        return f"Ignorowany autor: {self.autor}"
 
 
 class LogScalania(models.Model):
@@ -226,6 +259,10 @@ class DuplicateScanRun(models.Model):
         PENDING = "pending", "Oczekuje"
         RUNNING = "running", "W trakcie"
         COMPLETED = "completed", "Zakończone"
+        PARTIAL_COMPLETED = (
+            "partial_completed",
+            "Częściowo zakończone (faza PBN OK, general anulowana)",
+        )
         CANCELLED = "cancelled", "Anulowane"
         FAILED = "failed", "Błąd"
 
@@ -272,6 +309,13 @@ class DuplicateScanRun(models.Model):
         "ID zadania Celery",
         max_length=255,
         blank=True,
+    )
+
+    phase = models.CharField(
+        "Aktualna faza",
+        max_length=20,
+        blank=True,
+        choices=[("pbn", "Faza PBN"), ("general", "Faza ogólna")],
     )
 
     class Meta:
@@ -352,6 +396,14 @@ class DuplicateCandidate(models.Model):
         help_text="Priorytet wyświetlania: 100=prace 2022-2025 z dyscyplinami, 50=prace 2022-2025, 0=inne",
     )
 
+    scan_mode = models.CharField(
+        "Tryb skanowania",
+        max_length=20,
+        choices=[("pbn", "PBN"), ("general", "Ogólny")],
+        default="pbn",
+        db_index=True,
+    )
+
     # Status tracking
     status = models.CharField(
         "Status",
@@ -402,11 +454,12 @@ class DuplicateCandidate(models.Model):
             models.Index(fields=["scan_run", "status"]),
             models.Index(fields=["main_autor", "status"]),
             models.Index(fields=["priority", "confidence_score"]),
+            models.Index(fields=["scan_run", "scan_mode", "status"]),
         ]
         constraints = [
             models.UniqueConstraint(
-                fields=["scan_run", "main_autor", "duplicate_autor"],
-                name="unique_scan_main_duplicate",
+                fields=["scan_run", "scan_mode", "main_autor", "duplicate_autor"],
+                name="unique_scan_mode_main_duplicate",
             ),
         ]
 

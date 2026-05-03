@@ -5,16 +5,19 @@ public symbols are re-exported here so existing imports (urls.py, tests, etc.)
 continue to work via ``from deduplikator_autorow.views import ...``.
 
 Module map:
-- :mod:`.helpers` — decorators, session helpers, candidate/scan query helpers
-- :mod:`.duplicates` — main duplicate-browsing/resolution views
+- :mod:`.helpers` — decorators, session helpers, candidate/scan query helpers,
+  param resolution helpers
+- :mod:`.duplicates` — main duplicate-browsing/resolution views and lastname
+  autocomplete
 - :mod:`.merge` — merge & delete-author views
-- :mod:`.ignore` — ignored-author management views
+- :mod:`.ignore` — ignored-author management views (PBN + BPP)
 - :mod:`.scan` — scan-task lifecycle (start/cancel/status) views
 - :mod:`.export` — XLSX export view
 """
 
 from .duplicates import (
     duplicate_authors_view,
+    lastname_suggestions,
     mark_candidate_not_duplicate,
     mark_non_duplicate,
     reset_not_duplicates,
@@ -34,11 +37,19 @@ from .helpers import (
     _handle_go_previous,
     _handle_search_request,
     _handle_skip_current,
-    get_latest_completed_scan,
+    _read_param,
+    _resolve_autor_id,
+    _scientist_id_to_autor_id,
     get_running_scan,
     group_required,
 )
-from .ignore import ignore_author, reset_ignored_authors
+from .ignore import (
+    _trigger_rescan_after_reset,
+    ignore_autor,
+    ignore_scientist,
+    reset_ignored_autorzy,
+    reset_ignored_scientists,
+)
 from .merge import delete_author, scal_autorow_view
 from .scan import cancel_scan_view, scan_status_view, start_scan_view
 
@@ -55,17 +66,23 @@ __all__ = [
     "_handle_go_previous",
     "_handle_search_request",
     "_handle_skip_current",
+    "_read_param",
+    "_resolve_autor_id",
+    "_scientist_id_to_autor_id",
+    "_trigger_rescan_after_reset",
     "cancel_scan_view",
     "delete_author",
     "download_duplicates_xlsx",
     "duplicate_authors_view",
-    "get_latest_completed_scan",
     "get_running_scan",
     "group_required",
-    "ignore_author",
+    "ignore_autor",
+    "ignore_scientist",
+    "lastname_suggestions",
     "mark_candidate_not_duplicate",
     "mark_non_duplicate",
-    "reset_ignored_authors",
+    "reset_ignored_autorzy",
+    "reset_ignored_scientists",
     "reset_not_duplicates",
     "reset_skipped_authors",
     "scal_autorow_view",
