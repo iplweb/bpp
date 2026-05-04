@@ -4,6 +4,206 @@ Historia zmian
 
 .. towncrier release notes start
 
+bpp 202605.1371 (2026-05-04)
+============================
+
+Naprawione
+----------
+
+- Batchowe enqueueowanie do PBN
+  (``queue_pbn_export_batch``) raportuje teraz nieoczekiwane
+  błędy do Rollbara i logów zamiast cicho je połykać.
+  Wcześniej blok ``except Exception: pass`` w pętli po
+  rekordach pochłaniał wszystkie wyjątki (DB error,
+  integrity error, programmer error) — pojedynczy zły
+  rekord nie zatrzymywał batcha, ale operator nie miał
+  żadnej widoczności co poszło nie tak. Brakujące rekordy
+  (``DoesNotExist``) i już-w-kolejce
+  (``AlreadyEnqueuedError``) nadal są pomijane bez alertu —
+  to nie są błędy.
+- Endpoint ``/health/`` faktycznie sprawdza teraz dostępność
+  PostgreSQL (``SELECT 1``) i Redisa (``PING`` z 2-sekundowym
+  timeoutem) i zwraca ``503`` z listą niedostępnych komponentów
+  zamiast bezwarunkowego ``200 OK``. Docker healthcheck
+  serwisów ``appserver`` / ``authserver`` wykrywa teraz awarię
+  bazy lub brokera — wcześniej kontener pozostawał oznaczony
+  jako „healthy” mimo że strona nie była w stanie obsłużyć
+  żadnego requestu.
+- Endpointy ``/bpp/api/upload-punktacja-zrodla/``,
+  ``/bpp/api/punktacja-zrodla/``, ``/bpp/api/rok-habilitacji/``,
+  ``/bpp/api/ostatnia-jednostka-i-dyscyplina/`` oraz
+  ``/bpp/api/pubmed-id/`` wymagają teraz zalogowania.
+  Wcześniej były ``csrf_exempt`` bez sprawdzania
+  uwierzytelnienia — w szczególności
+  ``upload-punktacja-zrodla`` przyjmował anonimowe POST-y
+  i tworzył wpisy ``Punktacja_Zrodla`` w bazie. Adminowy JS
+  nadal działa bez zmian (sesja zalogowanego użytkownika);
+  zmiana blokuje wyłącznie wywołania nieautoryzowane.
+- Naprawiono auto-uzupełnianie jednostki i dyscypliny przy dodawaniu
+  autora w publicznym formularzu „Zgłoś publikację”. Skrypt
+  ``autorform_dependant.js`` wysyłał POST do
+  ``/bpp/api/ostatnia-jednostka-i-dyscyplina/`` bez tokenu CSRF —
+  publiczne ``base.html`` (w przeciwieństwie do admin-owego) nie ma
+  globalnego ``$.ajaxSetup`` dodającego nagłówek ``X-CSRFToken``,
+  więc żądanie kończyło się odpowiedzią 403 i pola nie były
+  wypełniane. Skrypt czyta teraz ``csrfmiddlewaretoken`` z ukrytego
+  pola formularza i dokleja go do danych żądania.
+- Strony przeglądania ``/bpp/browse/autorzy/``,
+  ``/bpp/browse/zrodla/`` i ``/bpp/browse/jednostki/``
+  generują listę aktywnych literek alfabetu jednym zapytaniem
+  ``SELECT DISTINCT`` zamiast 26+ osobnych ``EXISTS``-ów
+  (po jednym na każdą literkę z osobnym matchingiem dla
+  polskich znaków). Polskie diakrytyki nadal mapują się na
+  kanoniczne litery (``Ą`` → ``A``, ``Ł`` → ``L`` itd.).
+- Task ``pbn_downloader_app.tasks.download_institution_publications``
+  nie wykonuje już redundantnego sprawdzenia stanu
+  „running” poza transakcją. Atomowy check-and-create
+  w ``create_task_with_lock`` nadal zapobiega duplikatom;
+  usunięcie wcześniejszego, nie-atomowego check-a likwiduje
+  race-window, w którym dwa workery przechodziły check, oba
+  otrzymywały ``ValueError`` w wyścigu o lock i jeden niepotrzebnie
+  failował zamiast po prostu czekać.
+- Taski importu dyscyplin (``stworz_kolumny``,
+  ``przeanalizuj_import_dyscyplin``,
+  ``integruj_import_dyscyplin``) faktycznie ryglują rekord
+  ``Import_Dyscyplin`` przez ``SELECT ... FOR UPDATE``.
+  Wcześniej wywołanie ``select_for_update().filter(pk=pk)``
+  zwracało leniwy ``QuerySet``, który nigdy nie był ewaluowany —
+  SQL z klauzulą ``FOR UPDATE`` nie szedł do bazy, a lock
+  realnie nie istniał. Przy równoczesnym przetwarzaniu tego
+  samego importu (np. user kliknie „Przeanalizuj” dwa razy
+  pod rząd) workery mogły deptać sobie po polach FSM.
+- ``test_health_check_returns_503_when_db_down`` zatruwał blocker
+  ``pytest-django`` dla całego workera xdist (``monkeypatch.setattr`` na
+  ``ConnectionProxy`` wstrzykiwał bound ``_blocking_wrapper`` do
+  ``connections[default].__dict__``, co nadpisywało class-level patch
+  i czyniło ``django_db_blocker.unblock()`` bezskutecznym). Multiseek
+  testy padały deterministycznie 50 errors w ``setup_databases``.
+  Patch zmieniony na ``health._check_db`` (symetrycznie do testu
+  redis-down). Dodatkowo middleware ``test_logging_*`` w
+  ``test_page_validation.py`` zyskały autouse fixture wpinający
+  ``caplog.handler`` bezpośrednio do loggera ``django.request`` —
+  po zmianie ``propagate=False`` z commita audytu caplog nie widział
+  WARNING-ów o zablokowanych żądaniach.
+
+
+Usprawnienie
+------------
+
+- Admin interface dla aplikacji ``importer_publikacji``: superuser może
+  przeglądać historię importu publikacji (model ``ImportSession`` z
+  oryginalnym tekstem BibTeX w polu ``raw_data``) oraz dopasowanych
+  autorów (model ``ImportedAuthor``). Obie klasy zarejestrowane w
+  Django adminie jako read-only (bez możliwości ręcznego tworzenia
+  lub edycji, podgląd tylko). Lista sesji wspiera filtrowanie po statusie,
+  dostawcy, dacie i autorach; wyszukiwanie po identyfikatorze, tytule,
+  DOI; szczegóły sesji pokazują sformatowane JSON ``raw_data``,
+  ``normalized_data``, ``matched_data`` oraz tabelę autorów z
+  linkami do dopasowanych obiektów BPP.
+- Deduplikator autorów: gruntowna przebudowa UI. Tytuł i pozycje
+  menu uproszczone z "Deduplikator autorów PBN" na "Deduplikator
+  autorów" (bez znacznika BETA), wpis dodany dodatkowo do podmenu
+  "Operacje". Tryb skanowania (PBN/ogólny) prezentowany jest jako
+  kolorowy badge przy "Główny rekord autora", filtr "Pokaż wyniki"
+  zmieniony z radio-buttonów na poziomy button-group.
+
+  Przyciski na karcie każdego potencjalnego duplikatu pogrupowane
+  w trzy logiczne sekcje: Podgląd (otwórz wyd. ciągłe/zwarte,
+  redagowanie, stronę główną, PBN), Decyzja ("Nie jest duplikatem
+  głównego autora", usuń autora bez publikacji), Scalanie (cztery
+  warianty scalania). Przyciski "Scal + ustaw dyscyplinę" oraz
+  "Scal + ustaw subdyscyplinę" są ukryte, gdy główny autor nie ma
+  żadnej dyscypliny.
+
+  Powody podobieństwa renderowane są jako kolorowe chipy z ikonami
+  Foundation, z tonami match/info/weak/warn dobranymi do siły
+  przesłanki. Procent pewności jest sklampowany do zakresu 0–100%
+  (wcześniej widoczne były wartości typu 140% wynikające z surowego
+  score).
+
+  Naprawione: oznaczenie autora jako nie-duplikat (przycisk
+  "Nie jest duplikatem głównego autora") wykonuje się teraz przez
+  AJAX z fadeOut karty, zamiast przeładowywać widok i przeskakiwać
+  do kolejnego głównego autora. Naprawiono też "Scal wszystkie",
+  który dla kandydatów z trybu ogólnego zwracał błąd 400 (JS
+  wysyłał ``main_scientist_id`` zamiast ``main_autor_id``); brakujące
+  parametry trafiają teraz dodatkowo do Rollbara.
+- Deduplikator autorów: nowy tryb "ogólny" znajdujący duplikaty wśród
+  autorów spoza listy pracowników instytucji w PBN. Jeden przycisk
+  "Skanuj duplikaty" uruchamia obie fazy (PBN + ogólna) sekwencyjnie.
+  Widok pozwala filtrować wyniki radio-button-em (PBN/Ogólny/Oba),
+  eksport XLSX zawiera kolumnę "Tryb". Anulowanie fazy ogólnej skutkuje
+  statusem "Częściowo zakończone" — wyniki PBN pozostają dostępne.
+- Formularz zgłaszania publikacji: pomocniczy tekst pola „Link do publikacji
+  lub DOI" jest teraz dobierany w zależności od kombinacji rodzaju publikacji
+  i formy dostępu — m.in. fragment o katalogach BN/NUKAT pojawia się tylko
+  przy monografii i rozdziale w dostępie ograniczonym, a wzmianka o PBN
+  znika dla publikacji typu „Inne". Dla rodzaju „Inne" pole nie jest
+  wymagane (ponieważ tych publikacji nie wysyłamy do PBN); dla dostępu
+  ograniczonego pozostaje wymagany plik PDF.
+- Logi backendu Django zawierają teraz timestamp w formacie
+  ISO oraz nazwę loggera, co pozwala korelować zdarzenia
+  między równoczesnymi workerami w produkcji bez polegania
+  wyłącznie na timestampach z ``systemd`` / Celery. Domyślnie
+  skonfigurowane są też loggery ``django.security``
+  (SuspiciousOperation, DisallowedHost, niewłaściwy CSRF token),
+  ``django.request`` (4xx/5xx requestów) i ``celery``
+  (retry, ack, errors). Dotychczasowy logger ``pbn_import``
+  zachowuje swój dawny czysty format (bez timestampu) na
+  potrzeby UI pełnotekstowego importu.
+- Polecenie ``manage.py run_site`` strumieniuje teraz logi
+  runservera, celery i PostgreSQL równocześnie do jednego
+  terminala z kolorowymi prefiksami (``web``, ``celery``, ``pg``)
+  — jak ``docker compose up``. Linie z różnych procesów są
+  serializowane przez wątkowy multiplekser, więc się nie sklejają.
+  Dodatkowo na lokalnym dev-stacku z ``run_site`` cookie banner
+  jest automatycznie ukrywany — endpoint auto-loginu ustawia
+  cookie ``cookielaw_accepted=1`` w odpowiedzi z przekierowaniem,
+  co przy zwyczajowym workflow (uruchom ``run_site`` → przeglądarka
+  otwiera autologin → przekierowanie na ``/``) eliminuje banner.
+- Task ``zaktualizuj_liczbe_cytowan`` (pobieranie liczby
+  cytowań z Web of Science) używa teraz
+  ``celery_singleton.Singleton`` z 2-godzinnym lockiem
+  w Redisie i ``time_limit=2h``. Dwa równoczesne uruchomienia
+  (np. ręczne kliknięcie + zaplanowany cron) nie odpytają już
+  zewnętrznego API podwójnie, a zawieszony WoS request
+  nie zablokuje workera w nieskończoność.
+- ``manage.py run_site`` zapisuje teraz numer portu runservera do
+  gitignored pliku ``.run_site_port`` (analogicznie do
+  ``.run_site_token``). Agent kodujący nie musi już parsować bannera
+  ani logów — składa URL z ``cat .run_site_port`` + ``cat
+  .run_site_token``. Plik jest ulotny: kasowany na exit run_site.
+- ``manage.py run_site`` zapisuje teraz porty PostgreSQL i Redis-a
+  (testcontainers) do gitignored plików ``.run_site_pg_port`` i
+  ``.run_site_redis_port`` (analogicznie do ``.run_site_port``). Agent
+  kodujący może podpiąć ``psql`` / ``redis-cli`` bez parsowania bannera
+  — w stdoucie banner zawiera teraz gotowe snippety dla obu narzędzi.
+  Pliki są ulotne: kasowane na exit run_site.
+
+
+Usunięto
+--------
+
+- Usunięto pozostałości po niezainstalowanej integracji
+  Sentry: moduł ``django_bpp.sentry_support``, jego test,
+  endpoint ``/sentry_test/`` oraz sekcja ``SENTRYSDK_*``
+  w ``.env.example``. Projekt używa Rollbara — żadne
+  ustawienie Sentry nie było aktywne, a artefakty wprowadzały
+  w błąd. Endpointy ``/test_403/``, ``/test_500/``
+  i ``/test_exception/`` (do podglądu stron błędów i
+  weryfikacji integracji Rollbara) pozostają.
+
+  Z ``package.json`` usunięto pakiet ``font-awesome 4.1.0``
+  (nie był importowany przez bundle ani template'y; biblioteka
+  po EOL z dostępnymi CVE). Aktywnie używany ``jqueryui 1.11.1``
+  zostaje — wymiana wymaga osobnej, większej zmiany.
+
+  Z ``bpp/tasks.py`` usunięto martwą funkcję ``my_limit()``
+  i moduł-globalny słownik ``task_limits`` — funkcja nie była
+  nigdzie wywoływana, a per-procesowy słownik nie miał szans
+  działać poprawnie z wieloma workerami.
+
+
 bpp 202605.1370 (2026-05-02)
 ============================
 
