@@ -82,7 +82,7 @@ def scal_autorow_view(request):
         try:
             main_autor = Autor.objects.get(pk=main_autor_id)
             duplicate_autor = Autor.objects.get(pk=duplicate_autor_id)
-        except Autor.DoesNotExist as e:
+        except Autor.DoesNotExist:
             rollbar.report_exc_info(sys.exc_info())
             return JsonResponse(
                 {"success": False, "error": "Nie znaleziono autora."},
@@ -113,7 +113,7 @@ def scal_autorow_view(request):
         return JsonResponse({"success": result.get("success", False), "result": result})
     except NotImplementedError as e:
         return JsonResponse({"success": False, "error": str(e)}, status=501)
-    except Exception as e:
+    except Exception:
         traceback.print_exc()
         rollbar.report_exc_info(sys.exc_info())
         return JsonResponse(

@@ -1,0 +1,152 @@
+// Wizard form styles for zglos_publikacje
+// Uses theme's $primary-color for consistent theming
+
+.tile-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+    margin: 1.5rem 0;
+}
+
+.tile-grid--stacked {
+    grid-template-columns: 1fr;
+}
+
+.wizard-wybor-info {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 1rem;
+    margin: 1rem 0 0.5rem;
+    padding: 1.25rem 1.25rem;
+    background: rgba($primary-color, 0.08);
+    border: 1px solid rgba($primary-color, 0.3);
+    border-radius: 8px;
+
+    .wizard-wybor-ikona {
+        font-size: 3rem;
+        line-height: 1;
+    }
+
+    .wizard-wybor-label {
+        font-size: 1.4rem;
+        font-weight: bold;
+        color: $primary-color;
+    }
+}
+
+.tile-card {
+    border: 2px solid #e0e0e0;
+    border-radius: 8px;
+    padding: 1.5rem;
+    cursor: pointer;
+    text-align: center;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    background: #fff;
+
+    &:hover {
+        text-decoration: none;
+        border-color: $primary-color;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+
+    &:focus {
+        outline: 2px solid $primary-color;
+        outline-offset: 2px;
+        text-decoration: none;
+        border-color: $primary-color;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+
+    &.selected {
+        border-color: $primary-color;
+        background: rgba($primary-color, 0.08);
+        box-shadow: 0 2px 12px rgba($primary-color, 0.2);
+    }
+
+    input[type="radio"] {
+        display: none;
+    }
+
+    .tile-icon {
+        display: block;
+        font-size: 3rem;
+        line-height: 1.2;
+    }
+
+    .tile-title {
+        display: block;
+        font-size: 1.2rem;
+        font-weight: bold;
+        margin-top: 0.5rem;
+    }
+
+    .tile-desc {
+        display: block;
+        font-size: 0.9rem;
+        color: #666;
+        margin-top: 0.3rem;
+    }
+
+    &.tile-back {
+        border-color: #ccc;
+        background: #fff;
+        grid-column: 1 / -1;
+
+        &:hover {
+            border-color: #999;
+        }
+
+        &:focus {
+            outline: 2px solid #999;
+            outline-offset: 2px;
+        }
+    }
+}
+
+.wizard-nav {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+    margin: 1.5rem 0;
+}
+
+.wizard-nav-btn {
+    border: 2px solid #e0e0e0;
+    border-radius: 8px;
+    padding: 1.2rem;
+    cursor: pointer;
+    text-align: center;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    background: #fff;
+    font-family: inherit;
+    text-decoration: none;
+
+    &:hover {
+        border-color: $primary-color;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        text-decoration: none;
+    }
+
+    &:focus {
+        outline: 2px solid $primary-color;
+        outline-offset: 2px;
+    }
+
+    .tile-icon {
+        display: block;
+        font-size: 2rem;
+        line-height: 1.2;
+    }
+
+    .tile-title {
+        display: block;
+        font-size: 1.1rem;
+        font-weight: bold;
+        margin-top: 0.3rem;
+    }
+
+    &.nav-single {
+        grid-column: 1 / -1;
+    }
+}

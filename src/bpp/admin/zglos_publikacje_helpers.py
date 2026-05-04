@@ -61,9 +61,19 @@ class UzupelniajWstepneDanePoNumerzeZgloszeniaMixin(
             for pole in MODEL_Z_OPLATA_ZA_PUBLIKACJE:
                 ret[pole] = getattr(z, pole)
 
+            # Wydawca z nowego formularza
+            if z.wydawca_bpp_id:
+                ret["wydawca"] = z.wydawca_bpp_id
+
+            # Wydawnictwo nadrzędne z nowego formularza
+            if z.wydawnictwo_nadrzedne_bpp_id:
+                ret["wydawnictwo_nadrzedne"] = z.wydawnictwo_nadrzedne_bpp_id
+
             ret["adnotacje"] = (
-                f"E-mail zgłaszającego: <{z.email}>.\nNumer zgłoszenia: {z.id} -- {str(z)}\n"
-                f"Pole 'Dostęp dnia' ustawione automatycznie na datę utworzenia rekordu. "
+                f"E-mail zgłaszającego: <{z.email}>.\n"
+                f"Numer zgłoszenia: {z.id} -- {z}\n"
+                f"Pole 'Dostęp dnia' ustawione automatycznie"
+                f" na datę utworzenia rekordu. "
             )
 
             return ret

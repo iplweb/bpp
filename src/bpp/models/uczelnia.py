@@ -223,12 +223,45 @@ class Uczelnia(ModelZAdnotacjami, ModelZPBN_ID, NazwaISkrot, NazwaWDopelniaczu):
     )
 
     wymagaj_informacji_o_oplatach = models.BooleanField(
-        "Wymagaj informacji o opłatach",
+        "Wymagaj informacji o opłatach (legacy)",
         default=True,
-        help_text="Gdy zaznaczone, moduł 'Zgłaszanie publikacji' będzie wyświetlać użytkownikowi formularz "
-        "informacji o opłatach za publikację w przypadku zgłaszania artykułu lub monografii. "
-        "Gdy odznaczone, taki formularz nie bedzie wyświetlany, niezależnie od rodzaju "
-        "zgłaszanej publikacji. ",
+        help_text=(
+            "LEGACY: używaj pól wymagaj_oplatach_* poniżej."
+            " To pole zachowane dla kompatybilności."
+        ),
+    )
+
+    wymagaj_oplatach_artykul = models.BooleanField(
+        "Wymagaj informacji o opłatach: artykuł",
+        default=True,
+        help_text=(
+            "Gdy zaznaczone, formularz zgłaszania publikacji"
+            " będzie pytać o opłaty za artykuły naukowe."
+        ),
+    )
+    wymagaj_oplatach_monografia = models.BooleanField(
+        "Wymagaj informacji o opłatach: monografia",
+        default=True,
+        help_text=(
+            "Gdy zaznaczone, formularz zgłaszania publikacji"
+            " będzie pytać o opłaty za monografie."
+        ),
+    )
+    wymagaj_oplatach_rozdzial = models.BooleanField(
+        "Wymagaj informacji o opłatach: rozdział",
+        default=False,
+        help_text=(
+            "Gdy zaznaczone, formularz zgłaszania publikacji"
+            " będzie pytać o opłaty za rozdziały."
+        ),
+    )
+    wymagaj_oplatach_inne = models.BooleanField(
+        "Wymagaj informacji o opłatach: inne",
+        default=False,
+        help_text=(
+            "Gdy zaznaczone, formularz zgłaszania publikacji"
+            " będzie pytać o opłaty za pozostałe publikacje."
+        ),
     )
 
     wydruk_logo = models.BooleanField("Pokazuj logo na wydrukach", default=False)
