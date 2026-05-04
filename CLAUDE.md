@@ -290,11 +290,16 @@ Kontrakt miedzy obrazem a deploymentem:
   moze to override'owac (np. bpp-deploy ustawia `STATIC_ROOT=/staticroot`
   i mountuje named volume w tym miejscu).
 - **Entrypoint** (`docker/appserver/entrypoint-appserver.sh`, Phase 2):
-  kopiuje `cp -ru /app/staticroot.baked/. "$STATIC_ROOT/"`. `-u` (update
-  only if newer) nie nadpisuje tenant-specific zmian wgranych do volume
-  przez deployment. **Runtime nie uruchamia `collectstatic`** — wynik
-  bylby dokladnie taki sam jak `.baked` (bez `node_modules` YarnFinder
-  zwraca pusta liste, wiec nowych plikow by nie znalazl), wiec cp wystarcza.
+  kopiuje `cp -rf /app/staticroot.baked/. "$STATIC_ROOT/"`. `-f` zawsze
+  nadpisuje pliki istniejace w `.baked` (poprzednio bylo `-ru`, ale `-u`
+  skipowal kopiowanie gdy mtime na volume byl pozniejszy niz mtime
+  `grunt build` w obrazie — typowy przypadek miedzy szybko nastepujacymi
+  deployami → stary CSS przezywal restart). Pliki spoza `.baked`
+  (tenant-specific custom branding wgrany post-deploy) i tak nie sa
+  ruszane, bo cp nie kasuje plikow spoza zrodla. **Runtime nie uruchamia
+  `collectstatic`** — wynik bylby dokladnie taki sam jak `.baked` (bez
+  `node_modules` YarnFinder zwraca pusta liste, wiec nowych plikow by
+  nie znalazl), wiec cp wystarcza.
 - **Fallback**: jesli `.baked` nie istnieje w obrazie (stary tag sprzed
   wprowadzenia kontraktu), entrypoint degraduje do tradycyjnego
   `collectstatic` — zachowuje backward compat z obrazami pre-contract.
