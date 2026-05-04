@@ -2,9 +2,8 @@ from datetime import timedelta
 
 import pytest
 from django.urls import reverse
-from model_bakery import baker
-
 from django.utils.timezone import localtime
+from model_bakery import baker
 
 from bpp.models import Wydawnictwo_Ciagle
 
@@ -50,7 +49,7 @@ def test_rest_api_wydawnictwo_ciagle_filtering_2(api_client, wydawnictwo_ciagle)
 @pytest.mark.django_db
 def test_rest_api_wydawnictwo_ciagle_filtering_rok(api_client, wydawnictwo_ciagle, rok):
     res = api_client.get(
-        reverse("api_v1:wydawnictwo_ciagle-list") + f"?rok_min={rok+1}"
+        reverse("api_v1:wydawnictwo_ciagle-list") + f"?rok_min={rok + 1}"
     )
     assert res.json()["count"] == 0
 
@@ -72,7 +71,7 @@ def test_rest_api_wydawnictwo_ciagle_ukryj_status(
 
 @pytest.fixture
 def wiele_wydawnictw_ciaglych(db):
-    for a in range(100):
+    for _ in range(100):
         baker.make(Wydawnictwo_Ciagle)
 
 

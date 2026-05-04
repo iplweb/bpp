@@ -53,6 +53,9 @@ _SUPERUSER_EMAIL = "admin@example.com"
 _BROWSER_OPEN_TIMEOUT_SECONDS = 60.0
 _AUTOLOGIN_TOKEN_BYTES = 32
 _AUTOLOGIN_TOKEN_FILENAME = ".run_site_token"
+_PORT_FILENAME = ".run_site_port"
+_PG_PORT_FILENAME = ".run_site_pg_port"
+_REDIS_PORT_FILENAME = ".run_site_redis_port"
 
 _PBN_TOKEN_CACHE_FILENAME = ".saved_pbn_token"
 
@@ -81,6 +84,79 @@ def _write_autologin_token_file(token: str) -> Path:
 def _remove_autologin_token_file() -> None:
     try:
         _autologin_token_path().unlink()
+    except FileNotFoundError:
+        pass  # Plik już usunięty (np. przez równoległe wywołanie atexit/finally)
+
+
+def _port_path() -> Path:
+    return _src_dir().parent / _PORT_FILENAME
+
+
+def _write_port_file(port: int) -> Path:
+    """Zapisz aktualny port runservera do gitignorowanego pliku.
+
+    Token sam nie wystarczy — agent musi też znać port (losowany przy
+    każdym uruchomieniu). Banner drukuje go raz do stdout, ale agent
+    odpalający `run_site` w tle nie zawsze ma do tego stdout-u dostęp.
+    Plik dotfile rozwiązuje sprawę: agent czyta port + token, składa URL
+    bez parsowania logów. Kasowany przez `_remove_port_file` (atexit
+    + finally w handle()). Port nie jest sekretem, więc bez chmod 600.
+    """
+    path = _port_path()
+    path.write_text(str(port))
+    return path
+
+
+def _remove_port_file() -> None:
+    try:
+        _port_path().unlink()
+    except FileNotFoundError:
+        pass  # Plik już usunięty (np. przez równoległe wywołanie atexit/finally)
+
+
+def _pg_port_path() -> Path:
+    return _src_dir().parent / _PG_PORT_FILENAME
+
+
+def _write_pg_port_file(port: int) -> Path:
+    """Zapisz port PG (testcontainers) do gitignorowanego pliku.
+
+    Analogicznie do ``.run_site_port``: agent kodujący chce się czasem
+    wpiąć w bazę przez ``psql -h localhost -p $(cat .run_site_pg_port)``
+    bez parsowania bannera. Host = ``localhost`` (testcontainers eksponuje
+    PG na docker-host, czyli localhost na devie). Plik kasowany na exit.
+    """
+    path = _pg_port_path()
+    path.write_text(str(port))
+    return path
+
+
+def _remove_pg_port_file() -> None:
+    try:
+        _pg_port_path().unlink()
+    except FileNotFoundError:
+        pass  # Plik już usunięty (np. przez równoległe wywołanie atexit/finally)
+
+
+def _redis_port_path() -> Path:
+    return _src_dir().parent / _REDIS_PORT_FILENAME
+
+
+def _write_redis_port_file(port: int) -> Path:
+    """Zapisz port Redisa (testcontainers) do gitignorowanego pliku.
+
+    Analogicznie do ``.run_site_pg_port``: agent może podpiąć
+    ``redis-cli -p $(cat .run_site_redis_port)`` bez parsowania bannera.
+    Host = ``localhost``. Plik kasowany na exit.
+    """
+    path = _redis_port_path()
+    path.write_text(str(port))
+    return path
+
+
+def _remove_redis_port_file() -> None:
+    try:
+        _redis_port_path().unlink()
     except FileNotFoundError:
         pass  # Plik już usunięty (np. przez równoległe wywołanie atexit/finally)
 
@@ -210,6 +286,10 @@ class Command(BaseCommand):
             autologin_token = secrets.token_urlsafe(_AUTOLOGIN_TOKEN_BYTES)
             autologin_token_path = _write_autologin_token_file(autologin_token)
             atexit.register(_remove_autologin_token_file)
+            pg_port_path = _write_pg_port_file(containers.pg_port)
+            atexit.register(_remove_pg_port_file)
+            redis_port_path = _write_redis_port_file(containers.redis_port)
+            atexit.register(_remove_redis_port_file)
             env = self._build_env(containers, autologin_token=autologin_token)
             self._restore_dump_if_needed(dump_path, containers)
             self._migrate(env)
@@ -225,6 +305,8 @@ class Command(BaseCommand):
                 )
 
             port = opts.get("port") or find_free_port()
+            port_path = _write_port_file(port)
+            atexit.register(_remove_port_file)
             # ZAWSZE http:// — runserver nie ma SSL-a, https:// = błąd
             # połączenia. Używamy `localhost` zamiast `127.0.0.1`, żeby
             # uniknąć HSTS cache w Safari upgrade'ującego http://127.0.0.1
@@ -245,6 +327,9 @@ class Command(BaseCommand):
             self._print_agent_help(
                 appserver_url=appserver_url,
                 token_path=autologin_token_path,
+                port_path=port_path,
+                pg_port_path=pg_port_path,
+                redis_port_path=redis_port_path,
             )
 
             self.stdout.write(
@@ -300,6 +385,9 @@ class Command(BaseCommand):
                 except Exception:
                     logger.exception("[run_site] Failed to stop containers")
             _remove_autologin_token_file()
+            _remove_port_file()
+            _remove_pg_port_file()
+            _remove_redis_port_file()
 
     # ── helpers ─────────────────────────────────────────────────────────
 
@@ -424,10 +512,21 @@ class Command(BaseCommand):
         self.stdout.write("")
         self.stdout.write(text)
 
-    def _print_agent_help(self, *, appserver_url: str, token_path: Path) -> None:
+    def _print_agent_help(
+        self,
+        *,
+        appserver_url: str,
+        token_path: Path,
+        port_path: Path,
+        pg_port_path: Path,
+        redis_port_path: Path,
+    ) -> None:
         text = format_agent_help(
             appserver_url=appserver_url,
             token_path=str(token_path),
+            port_path=str(port_path),
+            pg_port_path=str(pg_port_path),
+            redis_port_path=str(redis_port_path),
         )
         self.stdout.write("")
         self.stdout.write(text)
