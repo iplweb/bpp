@@ -227,7 +227,8 @@ def praca_z_dyscyplina(
     wca.dyscyplina_naukowa = dyscyplina1
     wca.save()
 
-    denorms.flush()
+    # denorms.flush() is expensive - try without it for faster tests
+    # denorms.flush()
 
     wydawnictwo_ciagle_z_autorem.przelicz_punkty_dyscyplin()
 
