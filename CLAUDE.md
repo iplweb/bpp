@@ -25,6 +25,22 @@ management system built with Django. Python >=3.10,<3.15.
   - Public frontend (Foundation CSS): monochrome Foundation-Icons
     (`<span class="fi-icon"/>`)
   - Django admin (`templates/admin/`): use emoji (no Foundation Icons)
+- **Django template comments `{# ... #}` są jedno-liniowe — KAZDA LINIA
+  MUSI mieć własne otwarcie `{#` i zamknięcie `#}` na tej samej linii.**
+  Po `\n` w środku komentarza parser przestaje go widzieć i tekst wycieka
+  do wyrenderowanego HTML-u. Powtarzający się błąd. Reguła:
+  - ❌ ZABRONIONE wieloliniowe komentarze typu:
+    ```django
+    {# linia 1
+       linia 2 #}
+    ```
+  - ✅ ZAWSZE każda linia z osobnym `{# ... #}`:
+    ```django
+    {# linia 1 #}
+    {# linia 2 #}
+    ```
+  - Alternatywa dla bloków: `{% comment %}...{% endcomment %}` (też OK,
+    ale per-line `{# #}` jest preferowane przez użytkownika).
 
 ## Python and Django Execution
 

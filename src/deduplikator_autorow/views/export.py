@@ -1,7 +1,7 @@
-"""Export-related views.
+"""XLSX export view.
 
 ``download_duplicates_xlsx`` returns the full duplicates list as an XLSX
-attachment for offline review.
+attachment.
 """
 
 import datetime
