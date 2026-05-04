@@ -1,9 +1,12 @@
 """Health check endpoint and log filters for Docker healthcheck probes.
 
 Used by both the main appserver and the lightweight authserver.
-Returns 200 with `ok` if PostgreSQL and Redis are both reachable, 503 with
-the failing component(s) otherwise. Probe is bounded by short socket
-timeouts so a hung backend does not hang the docker healthcheck.
+Returns 200 with `ok` if PostgreSQL is reachable (and Redis, when
+``CELERY_BROKER_URL`` is configured), 503 with the failing component(s)
+otherwise. The Redis probe is skipped on settings that do not configure
+a broker (e.g. the lightweight authserver), since their healthiness does
+not depend on it. Probe is bounded by short socket timeouts so a hung
+backend does not hang the docker healthcheck.
 """
 
 import logging
@@ -30,11 +33,14 @@ def _check_db():
 
 
 def _check_redis():
+    broker_url = getattr(settings, "CELERY_BROKER_URL", None)
+    if not broker_url:
+        return None
     try:
         import redis
 
         client = redis.from_url(
-            settings.CELERY_BROKER_URL,
+            broker_url,
             socket_connect_timeout=_REDIS_TIMEOUT_SECONDS,
             socket_timeout=_REDIS_TIMEOUT_SECONDS,
         )
