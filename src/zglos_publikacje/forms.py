@@ -29,6 +29,26 @@ class MultipleFileInput(forms.FileInput):
         super().__init__(attrs=default_attrs)
 
 
+class TolerantQuerySetSequenceSelect2(QuerySetSequenceSelect2):
+    """QSS widget odporny na zniekształcone wartości w `selected_choices`.
+
+    Bazowy `dal_queryset_sequence.widgets.QuerySetSequenceSelectMixin
+    .filter_choices_to_render` rozpakowuje
+    `ctype_pk, model_pk = choice.split('-', 1)` bez wcześniejszego
+    sprawdzenia formatu. Jeśli POST przyniesie wartość bez `-`
+    (np. user wpisał coś w autocomplete i nie wybrał z dropdowna),
+    rozpakowanie wybucha `ValueError` i cały render template-u
+    crashuje z HTTP 500.
+
+    Pre-filtrujemy `selected_choices` do wartości w formacie
+    `<ctype_pk>-<pk>` przed delegacją do super().
+    """
+
+    def filter_choices_to_render(self, selected_choices):
+        valid = [c for c in selected_choices if c and "-" in str(c)]
+        super().filter_choices_to_render(valid)
+
+
 class MultipleFileField(forms.FileField):
     """FileField obsługujący listę plików z MultipleFileInput.
 
@@ -78,17 +98,27 @@ _OGR_KATALOGI_TEKST = (
     " strony wydawcy, wpisu w katalogu Biblioteki Narodowej (bn.org.pl) lub"
     " katalogu NUKAT (nukat.edu.pl)."
 )
+_FULL_URL_TEKST = (
+    "Prosimy o podanie pełnego adresu URL — z prefiksem"
+    " https:// lub http:// na początku. Jeżeli posiadasz sam"
+    " identyfikator DOI, dodaj go z prefiksem"
+    " https://dx.doi.org/[numer DOI]."
+)
 
 # Mapowanie (rodzaj, forma_dostepu) → tekst pomocniczy pola `strona_www`.
 STRONA_WWW_HELP_TEXT = {
-    ("ARTYKUL", "OTWARTY"): f"{_PBN_PREFIX} {_OA_TEKST}",
-    ("ARTYKUL", "OGRANICZONY"): f"{_PBN_PREFIX} {_OGR_INFO_TEKST}",
-    ("MONOGRAFIA", "OTWARTY"): f"{_PBN_PREFIX} {_OA_TEKST}",
-    ("MONOGRAFIA", "OGRANICZONY"): f"{_PBN_PREFIX} {_OGR_KATALOGI_TEKST}",
-    ("ROZDZIAL", "OTWARTY"): f"{_PBN_PREFIX} {_OA_TEKST}",
-    ("ROZDZIAL", "OGRANICZONY"): f"{_PBN_PREFIX} {_OGR_KATALOGI_TEKST}",
-    ("POZOSTALE", "OTWARTY"): "",
-    ("POZOSTALE", "OGRANICZONY"): _OGR_INFO_TEKST,
+    ("ARTYKUL", "OTWARTY"): f"{_PBN_PREFIX} {_OA_TEKST} {_FULL_URL_TEKST}",
+    ("ARTYKUL", "OGRANICZONY"): f"{_PBN_PREFIX} {_OGR_INFO_TEKST} {_FULL_URL_TEKST}",
+    ("MONOGRAFIA", "OTWARTY"): f"{_PBN_PREFIX} {_OA_TEKST} {_FULL_URL_TEKST}",
+    ("MONOGRAFIA", "OGRANICZONY"): (
+        f"{_PBN_PREFIX} {_OGR_KATALOGI_TEKST} {_FULL_URL_TEKST}"
+    ),
+    ("ROZDZIAL", "OTWARTY"): f"{_PBN_PREFIX} {_OA_TEKST} {_FULL_URL_TEKST}",
+    ("ROZDZIAL", "OGRANICZONY"): (
+        f"{_PBN_PREFIX} {_OGR_KATALOGI_TEKST} {_FULL_URL_TEKST}"
+    ),
+    ("POZOSTALE", "OTWARTY"): _FULL_URL_TEKST,
+    ("POZOSTALE", "OGRANICZONY"): f"{_OGR_INFO_TEKST} {_FULL_URL_TEKST}",
 }
 
 
@@ -189,7 +219,7 @@ class Zgloszenie_Publikacji_DaneForm(forms.ModelForm):
 
     wydawnictwo_nadrzedne = forms.CharField(
         required=False,
-        widget=QuerySetSequenceSelect2(
+        widget=TolerantQuerySetSequenceSelect2(
             url=("zglos_publikacje:public-wydawnictwo-nadrzedne-autocomplete"),
         ),
         label="Wydawnictwo nadrzędne",
@@ -295,8 +325,22 @@ class Zgloszenie_Publikacji_DaneForm(forms.ModelForm):
 
         # Dla rozdziału wymagane wyd. nadrzędne (FK lub tekst)
         if self.rodzaj == "ROZDZIAL":
-            wn = cleaned.get("wydawnictwo_nadrzedne")
+            wn = cleaned.get("wydawnictwo_nadrzedne") or ""
             wn_tekst = cleaned.get("wydawnictwo_nadrzedne_tekst", "").strip()
+
+            # Jeśli `wn` jest niepuste, ale nie ma formatu `<ct>-<pk>`,
+            # znaczy user wpisał tytuł w autocomplete i nie wybrał z
+            # dropdowna. Traktujemy to jako freetext (przenosimy do
+            # `wn_tekst`), żeby:
+            # 1) widget QSS nie wybuchał na re-renderze (`split('-', 1)`),
+            # 2) `done()` zapisał wpisany tytuł zamiast cicho zgubić.
+            if wn and "-" not in wn:
+                if not wn_tekst:
+                    wn_tekst = wn
+                    cleaned["wydawnictwo_nadrzedne_tekst"] = wn_tekst
+                cleaned["wydawnictwo_nadrzedne"] = ""
+                wn = ""
+
             if not wn and not wn_tekst:
                 raise ValidationError(
                     "Dla rozdziału wymagane jest podanie"

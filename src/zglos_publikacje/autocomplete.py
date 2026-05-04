@@ -62,8 +62,12 @@ class PublicWydawcaAutocomplete(
             return mark_safe(f"{result.nazwa} <small>[BPP]</small>")
         return mark_safe(f"{result.publisherName} <small>[PBN]</small>")
 
-    def get_result_value(self, result):
-        return self.get_result_label(result)
+    # NIE nadpisuj `get_result_value` — domyślna implementacja
+    # `dal_queryset_sequence.views` zwraca `<ct_pk>-<obj_pk>`, czego
+    # oczekuje QSS widget przy POST-cie. Zwrócenie z get_result_value
+    # samego label-a sprawia, że <option value="..."> ma w sobie
+    # tekst etykiety (HTML!) zamiast referencji do obiektu — i FK
+    # nigdy się nie odtworzy w `done()`.
 
 
 class PublicWydawnictwoNadrzedneAutocomplete(
@@ -107,5 +111,5 @@ class PublicWydawnictwoNadrzedneAutocomplete(
             label += f" ({result.year})"
         return mark_safe(f"{label} <small>[PBN]</small>")
 
-    def get_result_value(self, result):
-        return self.get_result_label(result)
+    # j.w. — nie nadpisujemy `get_result_value`. Patrz komentarz
+    # w `PublicWydawcaAutocomplete`.
