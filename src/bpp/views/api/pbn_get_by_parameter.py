@@ -1,6 +1,7 @@
 import sys
 
 import rollbar
+from django.contrib.auth.mixins import LoginRequiredMixin
 from django.http import JsonResponse
 from django.views.generic.base import View
 
@@ -12,7 +13,7 @@ from pbn_api.models import Publication
 from pbn_integrator.utils import _pobierz_prace_po_elemencie
 
 
-class GetPBNPublicationsByBase(View):
+class GetPBNPublicationsByBase(LoginRequiredMixin, View):
     def get_rok(
         self,
         request,
