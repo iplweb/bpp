@@ -9,11 +9,21 @@
             $(':input[name=' + prefix + 'zapisany_jako]').val(null).trigger('change');
             $(':input[name=' + prefix + 'dyscyplina_naukowa]').val(null).trigger('change');
         } else {
+            // CSRF token z najbliższego formularza — nie polegamy na
+            // globalnym $.ajaxSetup, bo public-facing zglos_publikacje
+            // nie ma go w base.html (tylko admin/base.html).
+            var csrfToken = $(this).closest('form').find(
+                '[name=csrfmiddlewaretoken]'
+            ).val();
             $.ajax({
                 url: "/bpp/api/ostatnia-jednostka-i-dyscyplina/",
                 context: document.body,
                 method: "POST",
-                data: {'autor_id': $(this).val(), 'rok': $("#id_rok").val()}
+                data: {
+                    'autor_id': $(this).val(),
+                    'rok': $("#id_rok").val(),
+                    'csrfmiddlewaretoken': csrfToken
+                }
             }).done(function (data) {
                 if (data.status == 'error')
                     return;

@@ -15,17 +15,17 @@ def test_Uczelnia_wosclient(uczelnia):
     assert res is not None
 
 
-def test_GetWoSAMRInformation_post_no_args(wd_app, uczelnia):
-    res = wd_app.post(reverse("bpp:api_wos_amr", args=(uczelnia.slug,)))
+def test_GetWoSAMRInformation_post_no_args(csrf_exempt_wd_app, uczelnia):
+    res = csrf_exempt_wd_app.post(reverse("bpp:api_wos_amr", args=(uczelnia.slug,)))
     assert res.json["status"] == "error"
 
 
-def test_GetWoSAMRInformation_post_good(wd_app, uczelnia, mocker):
+def test_GetWoSAMRInformation_post_good(csrf_exempt_wd_app, uczelnia, mocker):
     m = Mock()
     m.query_single = Mock(return_value={"timesCited": "-1"})
     mocker.patch("bpp.models.struktura.Uczelnia.wosclient", return_value=m)
 
-    res = wd_app.post(
+    res = csrf_exempt_wd_app.post(
         reverse("bpp:api_wos_amr", args=(uczelnia.slug,)), params={"pmid": "31337"}
     )
 
@@ -33,12 +33,12 @@ def test_GetWoSAMRInformation_post_good(wd_app, uczelnia, mocker):
     assert res.json["timesCited"] == "-1"
 
 
-def test_GetWoSAMRInformation_post_error(wd_app, uczelnia, mocker):
+def test_GetWoSAMRInformation_post_error(csrf_exempt_wd_app, uczelnia, mocker):
     m = Mock()
     m.query_single = Mock(side_effect=Exception("lel"))
     mocker.patch("bpp.models.struktura.Uczelnia.wosclient", return_value=m)
 
-    res = wd_app.post(
+    res = csrf_exempt_wd_app.post(
         reverse("bpp:api_wos_amr", args=(uczelnia.slug,)), params={"pmid": "31337"}
     )
 
@@ -47,7 +47,7 @@ def test_GetWoSAMRInformation_post_error(wd_app, uczelnia, mocker):
     assert res.json["info"] == "Wewnętrzny błąd systemu"
 
 
-def test_GetWoSAMRInformation_post_request_error(wd_app, uczelnia, mocker):
+def test_GetWoSAMRInformation_post_request_error(csrf_exempt_wd_app, uczelnia, mocker):
     """Test handling of network/connection errors."""
     import requests
 
@@ -55,7 +55,7 @@ def test_GetWoSAMRInformation_post_request_error(wd_app, uczelnia, mocker):
     m.query_single = Mock(side_effect=requests.ConnectionError("Connection failed"))
     mocker.patch("bpp.models.struktura.Uczelnia.wosclient", return_value=m)
 
-    res = wd_app.post(
+    res = csrf_exempt_wd_app.post(
         reverse("bpp:api_wos_amr", args=(uczelnia.slug,)), params={"pmid": "31337"}
     )
 
@@ -63,7 +63,7 @@ def test_GetWoSAMRInformation_post_request_error(wd_app, uczelnia, mocker):
     assert res.json["info"] == "Błąd komunikacji z Clarivate API"
 
 
-def test_GetWoSAMRInformation_post_json_error(wd_app, uczelnia, mocker):
+def test_GetWoSAMRInformation_post_json_error(csrf_exempt_wd_app, uczelnia, mocker):
     """Test handling of JSON parsing errors."""
     import json
 
@@ -71,7 +71,7 @@ def test_GetWoSAMRInformation_post_json_error(wd_app, uczelnia, mocker):
     m.query_single = Mock(side_effect=json.JSONDecodeError("msg", "doc", 0))
     mocker.patch("bpp.models.struktura.Uczelnia.wosclient", return_value=m)
 
-    res = wd_app.post(
+    res = csrf_exempt_wd_app.post(
         reverse("bpp:api_wos_amr", args=(uczelnia.slug,)), params={"pmid": "31337"}
     )
 

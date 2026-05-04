@@ -98,3 +98,11 @@ def admin_app(webtest_app, admin_user) -> DjangoTestApp:
 def csrf_exempt_django_admin_app(django_app_factory, admin_user):
     app = django_app_factory(csrf_checks=False)
     return _webtest_login(app, "admin", "password")
+
+
+@pytest.fixture
+def csrf_exempt_wd_app(django_app_factory, wprowadzanie_danych_user):
+    app = django_app_factory(csrf_checks=False)
+    return _webtest_login(
+        app, NORMAL_DJANGO_USER_LOGIN, NORMAL_DJANGO_USER_PASSWORD
+    )
