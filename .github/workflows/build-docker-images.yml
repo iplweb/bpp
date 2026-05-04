@@ -82,10 +82,14 @@ jobs:
     # Guard job decyduje czy budowac obraz Docker.
     # - master/main push:           buduj zawsze (release flow, dowolny actor)
     # - workflow_dispatch:           buduj zawsze (manual override, dowolny actor)
-    # - PR push / feature push:      buduj tylko gdy actor=mpasternak
-    #                                (aby nie palic Docker Cloud minutek na PR-y
-    #                                contributorow — manualnie odpalisz przez
-    #                                `gh workflow run` jesli trzeba)
+    # - PR push / feature push:      buduj tylko gdy:
+    #                                 • actor=mpasternak
+    #                                 • ORAZ commit message zawiera [docker-build]
+    #                                   (case-insensitive, w subject lub body)
+    #                               W przeciwnym razie skip — aby nie palic
+    #                               Docker Cloud minutek na kazdy feature/fix
+    #                               branch. Mozna wymusic build recznie przez
+    #                               `gh workflow run build-docker-images.yml`.
     # Plus dedupe: push do branchu z otwartym PR-em → skip (PR run obsluzy).
     #
     # Budowanie ad-hoc dowolnego branchu jako inny user:
