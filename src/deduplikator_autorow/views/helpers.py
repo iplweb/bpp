@@ -5,8 +5,10 @@ Contains:
 - session navigation helpers (``_get_excluded_authors_from_session``,
   ``_handle_*``)
 - duplicate-data builders (``_build_*``, ``_add_dyscypliny_to_duplicates``)
-- scan/candidate query helpers (``get_latest_completed_scan``,
-  ``get_running_scan``, ``_get_next_candidate_group``)
+- param resolution helpers (``_read_param``, ``_resolve_autor_id``,
+  ``_scientist_id_to_autor_id``)
+- scan/candidate query helpers (``get_running_scan``,
+  ``_get_pending_candidates_for_main_autor``, ``_get_next_candidate_group``)
 
 Public symbols re-exported via ``deduplikator_autorow.views`` for backward
 compatibility.
@@ -27,6 +29,7 @@ from ..utils import (
     search_author_by_lastname,
     znajdz_pierwszego_autora_z_duplikatami,
 )
+from ..utils.reason_display import enrich_reasons
 
 # Minimalny próg pewności do wyświetlania duplikatów
 # Duplikaty z pewnością poniżej tego progu nie będą pokazywane
@@ -164,6 +167,12 @@ def _build_context_from_candidate(candidate, glowny_autor):
         Rekord.objects.prace_autora(candidate.duplicate_autor)
     )
 
+    # Display percent: znormalizowane 0..1 → 0..100, zaokrąglone i sklampowane.
+    # Surowy confidence_score może być < 0 lub > 100 i historycznie pokazywał
+    # użytkownikom wartości w rodzaju 140% — confidence_percent jest jedynym
+    # polem, które gwarantuje sensowny zakres do prezentacji.
+    pewnosc_display = max(0, min(100, round((candidate.confidence_percent or 0) * 100)))
+
     return {
         "autor": candidate.duplicate_autor,
         "publikacje": publikacje,
@@ -171,20 +180,44 @@ def _build_context_from_candidate(candidate, glowny_autor):
         "publikacje_year_range": year_range,
         "analiza": {
             "autor": candidate.duplicate_autor,
-            "pewnosc": candidate.confidence_score,
-            "powody_podobienstwa": candidate.reasons,
+            "pewnosc": pewnosc_display,
+            "powody_podobienstwa": enrich_reasons(candidate.reasons),
         },
         "candidate_id": candidate.pk,  # For marking as not duplicate
     }
 
 
-def get_latest_completed_scan():
-    """Get the most recent completed scan run."""
-    return (
-        DuplicateScanRun.objects.filter(status=DuplicateScanRun.Status.COMPLETED)
-        .order_by("-finished_at")
-        .first()
-    )
+def _read_param(request, *names):
+    """Read first non-empty param from GET/POST by trying multiple names."""
+    for name in names:
+        val = request.GET.get(name) or request.POST.get(name)
+        if val:
+            return val
+    return None
+
+
+def _scientist_id_to_autor_id(scientist_id):
+    """Map Scientist PK to Autor PK via rekord_w_bpp. Returns None if not found."""
+    try:
+        sci = Scientist.objects.get(pk=scientist_id)
+    except Scientist.DoesNotExist:
+        return None
+    autor = sci.rekord_w_bpp
+    return autor.pk if autor is not None else None
+
+
+def _resolve_autor_id(request, autor_param, scientist_param):
+    """Resolve Autor PK from preferred autor_param or legacy scientist_param.
+
+    Preference: explicit autor_id over scientist_id (mapped via rekord_w_bpp).
+    """
+    autor_id = _read_param(request, autor_param)
+    if autor_id:
+        return autor_id
+    sci_id = _read_param(request, scientist_param)
+    if sci_id:
+        return _scientist_id_to_autor_id(sci_id)
+    return None
 
 
 def get_running_scan():
@@ -207,34 +240,69 @@ def _get_pending_candidates_for_main_autor(main_autor_id, scan_run):
     )
 
 
-def _get_next_candidate_group(scan_run, skip_count=0):
+def _get_next_candidate_group(
+    scan_run,
+    skip_count=0,
+    mode="both",
+    confidence_band="all",
+    confidence_threshold_frac=0.5,
+):
     """
     Get the next group of candidates (all for the same main author).
-    Returns (main_autor, candidates_queryset, skip_count) or
-    (None, None, 0) if no more pending.
+    Returns (main_autor, candidates_queryset, skip_count) or (None, None, 0)
+    if no more pending.
 
     Args:
         scan_run: The scan run to get candidates from
         skip_count: Number of main authors to skip (offset)
+        mode: Filter by scan_mode ("pbn", "general", or "both"). When "both",
+            PBN candidates are sorted before general (PBN is canonical).
+        confidence_band: "all" / "high" / "low". high = confidence_percent
+            >= threshold; low = strictly below threshold.
+        confidence_threshold_frac: próg jako ułamek 0..1 (np. 0.5 dla 50%).
 
     Returns:
         Tuple of (main_autor, candidates_queryset, current_skip_count)
     """
-    # Get distinct main authors with pending candidates, ordered by
-    # priority then confidence. We need to find distinct main_autor_ids
-    # in priority/confidence order.
-    distinct_main_autor_ids = (
-        DuplicateCandidate.objects.filter(
-            scan_run=scan_run,
-            status=DuplicateCandidate.Status.PENDING,
+    from django.db.models import Case, IntegerField, Value, When
+
+    qs = DuplicateCandidate.objects.filter(
+        scan_run=scan_run,
+        status=DuplicateCandidate.Status.PENDING,
+    )
+    if mode != "both":
+        qs = qs.filter(scan_mode=mode)
+    if confidence_band == "high":
+        qs = qs.filter(confidence_percent__gte=confidence_threshold_frac)
+    elif confidence_band == "low":
+        qs = qs.filter(confidence_percent__lt=confidence_threshold_frac)
+
+    # Annotate then iterate to dedupe in stable order. PostgreSQL's
+    # DISTINCT + ORDER BY semantics require ordering columns in SELECT,
+    # which Django's .values_list().distinct() may strip when an
+    # annotation is involved — leading to runtime errors or
+    # non-deterministic ordering. Materialize to Python and dedupe
+    # explicitly: simple, deterministic, side-effect free.
+    rows = (
+        qs.annotate(
+            mode_order=Case(
+                When(scan_mode="pbn", then=Value(0)),
+                When(scan_mode="general", then=Value(1)),
+                default=Value(2),
+                output_field=IntegerField(),
+            )
         )
-        .order_by("-priority", "-confidence_score", "main_autor_id")
+        .order_by("mode_order", "-priority", "-confidence_score", "main_autor_id")
         .values_list("main_autor_id", flat=True)
-        .distinct()
     )
 
-    # Convert to list to enable indexing
-    main_autor_ids = list(distinct_main_autor_ids)
+    # Stable dedupe preserving order of first occurrence.
+    seen: set[int] = set()
+    main_autor_ids: list[int] = []
+    for pk in rows:
+        if pk not in seen:
+            seen.add(pk)
+            main_autor_ids.append(pk)
 
     if not main_autor_ids:
         return None, None, 0

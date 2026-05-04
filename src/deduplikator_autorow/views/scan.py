@@ -1,9 +1,4 @@
-"""Views controlling duplicate-scan task lifecycle.
-
-- ``start_scan_view`` — kicks off a new ``scan_for_duplicates`` celery task.
-- ``cancel_scan_view`` — flags a running scan for cancellation.
-- ``scan_status_view`` — JSON status endpoint used by the AJAX progress poller.
-"""
+"""Scan-task lifecycle views (start / cancel / status)."""
 
 from datetime import timedelta
 
@@ -41,8 +36,7 @@ def start_scan_view(request):
     # Check if scan is already running
     if get_running_scan():
         messages.warning(
-            request,
-            "Skanowanie jest już w trakcie. Poczekaj na jego zakończenie.",
+            request, "Skanowanie jest już w trakcie. Poczekaj na jego zakończenie."
         )
         return redirect("deduplikator_autorow:duplicate_authors")
 
@@ -117,6 +111,7 @@ def scan_status_view(request, scan_id):
                 "finished": scan_run.status
                 in [
                     DuplicateScanRun.Status.COMPLETED,
+                    DuplicateScanRun.Status.PARTIAL_COMPLETED,
                     DuplicateScanRun.Status.CANCELLED,
                     DuplicateScanRun.Status.FAILED,
                 ],
