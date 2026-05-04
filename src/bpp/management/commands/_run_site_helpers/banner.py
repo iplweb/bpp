@@ -54,25 +54,51 @@ def format_banner(
     )
 
 
-def format_agent_help(*, appserver_url: str, token_path: str) -> str:
-    """Snippet copy-paste dla agenta kodującego (WebFetch / curl).
+def format_agent_help(
+    *,
+    appserver_url: str,
+    token_path: str,
+    port_path: str,
+    pg_port_path: str,
+    redis_port_path: str,
+) -> str:
+    """Snippet copy-paste dla agenta kodującego (WebFetch / curl / psql / redis-cli).
 
     Drukowany poniżej banera. Brak box-drawing chars (terminale czasem
     je mangą przy zaznaczaniu — fragment ma być prosto kopiowalny).
+
+    Snippety czytają porty z dotfile'ów zamiast hardcode'ować je z
+    bannera — porty się zmieniają przy każdym uruchomieniu run_site,
+    ale wzorzec polecenia z dotfile'a działa bez modyfikacji.
     """
     return (
-        "─── Auto-login dla agenta (WebFetch / curl) "
-        "──────────────────────────────\n"
-        f"  Token sesji admina znajdziesz w: {token_path}\n"
-        "  (gitignored, chmod 600, kasowany na exit run_site)\n"
+        "─── Dotfile'y dla agenta (WebFetch / curl / psql / redis-cli) "
+        "─────────────\n"
+        f"  Adres aktualnej sesji: {appserver_url}\n"
+        f"  Token sesji admina:    {token_path}\n"
+        f"  Port runservera:       {port_path}\n"
+        f"  Port PostgreSQL:       {pg_port_path}\n"
+        f"  Port Redis:            {redis_port_path}\n"
+        "  (wszystkie pliki: gitignored, kasowane na exit run_site;\n"
+        "   token z chmod 600 — porty nie są sekretami)\n"
         "\n"
         "  Pobranie zalogowanej strony bez wpisywania hasła:\n"
         f'    T=$(cat "{token_path}")\n'
+        f'    PORT=$(cat "{port_path}")\n'
         "    J=$(mktemp)\n"
-        f'    curl -sc "$J" -L "{appserver_url}/__run_site_autologin__/?token=$T" '
+        '    curl -sc "$J" -L '
+        '"http://localhost:$PORT/__run_site_autologin__/?token=$T" '
         ">/dev/null\n"
-        f'    curl -sb "$J" "{appserver_url}/<path>"\n'
+        '    curl -sb "$J" "http://localhost:$PORT/<path>"\n'
         '    rm "$J"\n'
+        "\n"
+        "  Połączenie z bazą PostgreSQL (user/pass: bpp/password):\n"
+        f'    PG_PORT=$(cat "{pg_port_path}")\n'
+        '    PGPASSWORD=password psql -h localhost -p "$PG_PORT" -U bpp -d bpp\n'
+        "\n"
+        "  Połączenie z Redis-em:\n"
+        f'    REDIS_PORT=$(cat "{redis_port_path}")\n'
+        '    redis-cli -p "$REDIS_PORT"\n'
         "\n"
         '  Szczegóły dla agenta: patrz CLAUDE.md → "Autologin dla agentów".\n'
         "──────────────────────────────────────────────────────────────────────\n"

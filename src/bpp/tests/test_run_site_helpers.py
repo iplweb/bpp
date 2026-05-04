@@ -251,11 +251,80 @@ def test_format_agent_help_contains_token_path_and_url():
     text = format_agent_help(
         appserver_url="http://localhost:54321",
         token_path="/tmp/foo/.run_site_token",
+        port_path="/tmp/foo/.run_site_port",
+        pg_port_path="/tmp/foo/.run_site_pg_port",
+        redis_port_path="/tmp/foo/.run_site_redis_port",
     )
     assert "/tmp/foo/.run_site_token" in text
+    assert "/tmp/foo/.run_site_port" in text
+    assert "/tmp/foo/.run_site_pg_port" in text
+    assert "/tmp/foo/.run_site_redis_port" in text
     assert "http://localhost:54321" in text
     assert "__run_site_autologin__" in text
     assert "curl" in text
+
+
+def test_format_agent_help_includes_psql_and_redis_snippets():
+    """Agent dostaje gotowe snippety dla psql i redis-cli, nie tylko curl-a.
+
+    Dotfile'y `.run_site_pg_port` / `.run_site_redis_port` istnieją po to,
+    żeby agent mógł podpiąć się do bazy / Redisa bez parsowania bannera.
+    Snippet musi czytać port z dotfile'a (nie hardcode'ować) — port się
+    zmienia przy każdym uruchomieniu run_site.
+    """
+    from bpp.management.commands._run_site_helpers.banner import (
+        format_agent_help,
+    )
+
+    text = format_agent_help(
+        appserver_url="http://localhost:54321",
+        token_path=".run_site_token",
+        port_path=".run_site_port",
+        pg_port_path=".run_site_pg_port",
+        redis_port_path=".run_site_redis_port",
+    )
+
+    assert "psql" in text
+    assert 'PG_PORT=$(cat ".run_site_pg_port")' in text
+    assert "-h localhost" in text
+    assert "-U bpp" in text
+
+    assert "redis-cli" in text
+    assert 'REDIS_PORT=$(cat ".run_site_redis_port")' in text
+
+
+def test_format_agent_help_snippet_uses_port_file_not_hardcoded():
+    """Snippet czyta port z `.run_site_port`, nie hardcode'uje URL-a z appserver_url.
+
+    Pattern z dotfile'a (PORT=$(cat ...)) jest reusable między runami —
+    port się zmienia, ale polecenie zostaje to samo. Hardcoded URL by się
+    rozjechał przy następnym uruchomieniu run_site.
+    """
+    from bpp.management.commands._run_site_helpers.banner import (
+        format_agent_help,
+    )
+
+    text = format_agent_help(
+        appserver_url="http://localhost:54321",
+        token_path=".run_site_token",
+        port_path=".run_site_port",
+        pg_port_path=".run_site_pg_port",
+        redis_port_path=".run_site_redis_port",
+    )
+    # Snippet używa $PORT zamiast hardcode'owanego ":54321" w URL-u curl-a.
+    # Filtrujemy tylko linie snippetu (4-spacjowe wcięcie), żeby nie
+    # łapać nagłówka "Auto-login dla agenta (WebFetch / curl)".
+    curl_lines = [
+        line for line in text.splitlines() if line.startswith("    ") and "curl" in line
+    ]
+    assert curl_lines, "snippet musi mieć linie curl-a"
+    for line in curl_lines:
+        assert "localhost:$PORT" in line, (
+            f"curl powinien używać $PORT z dotfile'a, jest: {line!r}"
+        )
+        assert ":54321" not in line, (
+            f"curl nie powinien hardcode'ować portu z appserver_url: {line!r}"
+        )
 
 
 def test_format_agent_help_no_box_drawing_chars_in_snippet():
@@ -272,6 +341,9 @@ def test_format_agent_help_no_box_drawing_chars_in_snippet():
     text = format_agent_help(
         appserver_url="http://localhost:8080",
         token_path=".run_site_token",
+        port_path=".run_site_port",
+        pg_port_path=".run_site_pg_port",
+        redis_port_path=".run_site_redis_port",
     )
     snippet_lines = [line for line in text.splitlines() if line.startswith("    ")]
     assert snippet_lines, "agent help musi zawierać snippet z 4-spacjowym wcięciem"

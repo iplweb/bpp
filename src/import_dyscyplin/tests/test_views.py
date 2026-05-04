@@ -1,4 +1,3 @@
-import pytest
 from django.db import transaction
 from django.urls import reverse
 

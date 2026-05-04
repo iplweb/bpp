@@ -273,9 +273,6 @@ target-version = "py310"
 extend-exclude = [
     "src/*/migrations/*",
     "src/nowe_raporty/tests",
-    "src/api_v1/tests",
-    "src/import_dyscyplin/tests",
-    "src/crossref_bpp/tests",
     "src/raport_slotow/tests",
     "src/pbn_api/tests",
     "src/pbn_export_queue/tests",
@@ -283,7 +280,6 @@ extend-exclude = [
     "src/zglos_publikacje/tests",
     "src/import_common/tests",
     "src/django_bpp/staticroot/notifications/js/tests",
-    "src/long_running/tests",
     "src/notifications/static/notifications/js/tests",
     "src/fixtures"
 ]
