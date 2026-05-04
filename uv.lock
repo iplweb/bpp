@@ -521,7 +521,7 @@ requires-dist = [
     { name = "towncrier", marker = "extra == 'dev'", specifier = ">=22.8.0" },
     { name = "tqdm", specifier = ">=4.67.3" },
     { name = "twine", marker = "extra == 'dev'", specifier = ">=5.1.0" },
-    { name = "twisted", extras = ["http2", "tls"], specifier = ">=24.3.0" },
+    { name = "twisted", extras = ["http2", "tls"], specifier = ">=25.5.0" },
     { name = "unidecode", specifier = ">=1.3,<2" },
     { name = "urllib3", specifier = ">=2.6.3,<3.0.0" },
     { name = "uvicorn", extras = ["standard"], specifier = ">=0.46.0" },
