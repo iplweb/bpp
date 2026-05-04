@@ -1,16 +1,16 @@
-import os
 
 import pytest
 from django.core.exceptions import ValidationError
 from django.core.files.uploadedfile import SimpleUploadedFile
+from django.db import IntegrityError
 from model_bakery import baker
 
-from bpp.const import PUSTY_ADRES_EMAIL, TO_AUTOR
-from bpp.models import Typ_Odpowiedzialnosci, Uczelnia
+from bpp.const import PUSTY_ADRES_EMAIL
+from bpp.models import Uczelnia
 from zglos_publikacje.models import (
     Obslugujacy_Zgloszenia_Wydzialow,
     Zgloszenie_Publikacji,
-    Zgloszenie_Publikacji_Autor,
+    Zgloszenie_Publikacji_Zalacznik,
 )
 from zglos_publikacje.validators import validate_file_extension_pdf
 
@@ -151,9 +151,94 @@ def test_obsulgujacy_zgloszenia_wydzialow_meta_unique():
     wydzial = baker.make("bpp.Wydzial", uczelnia=uczelnia)
     user = baker.make("bpp.BppUser")
 
-    obslugujacy = baker.make(
+    baker.make(
         Obslugujacy_Zgloszenia_Wydzialow, user=user, wydzial=wydzial
     )
 
-    with pytest.raises(Exception):
-        baker.make(Obslugujacy_Zgloszenia_Wydzialow, user=user, wydzial=wydzial)
+    with pytest.raises(IntegrityError):
+        baker.make(
+            Obslugujacy_Zgloszenia_Wydzialow,
+            user=user,
+            wydzial=wydzial,
+        )
+
+
+@pytest.mark.django_db
+def test_nowe_rodzaje_enum():
+    """Nowe wartości Rodzaje są dostępne."""
+    assert Zgloszenie_Publikacji.Rodzaje.ARTYKUL == 5
+    assert Zgloszenie_Publikacji.Rodzaje.MONOGRAFIA == 4
+    assert Zgloszenie_Publikacji.Rodzaje.INNE == 6
+    # Legacy
+    assert (
+        Zgloszenie_Publikacji.Rodzaje.ARTYKUL_LUB_MONOGRAFIA
+        == 1
+    )
+
+
+@pytest.mark.django_db
+def test_formy_dostepu_enum():
+    """FormyDostepu enum ma poprawne wartości."""
+    assert (
+        Zgloszenie_Publikacji.FormyDostepu.OTWARTY == 1
+    )
+    assert (
+        Zgloszenie_Publikacji.FormyDostepu.OGRANICZONY == 2
+    )
+
+
+@pytest.mark.django_db
+def test_zalacznik_tworzenie():
+    """Zgloszenie_Publikacji_Zalacznik tworzy się."""
+    zp = baker.make(Zgloszenie_Publikacji)
+    zalacznik = Zgloszenie_Publikacji_Zalacznik.objects.create(
+        zgloszenie=zp,
+        oryginalna_nazwa_pliku="test.pdf",
+        kolejnosc=0,
+    )
+    assert zalacznik.pk is not None
+    assert zp.zalaczniki.count() == 1
+
+
+@pytest.mark.django_db
+def test_zalacznik_cascade_delete():
+    """Usunięcie zgłoszenia kasuje załączniki."""
+    zp = baker.make(Zgloszenie_Publikacji)
+    Zgloszenie_Publikacji_Zalacznik.objects.create(
+        zgloszenie=zp,
+        oryginalna_nazwa_pliku="test.pdf",
+    )
+    zp_id = zp.pk
+    zp.delete()
+    assert not Zgloszenie_Publikacji_Zalacznik.objects.filter(
+        zgloszenie_id=zp_id
+    ).exists()
+
+
+@pytest.mark.django_db
+def test_uczelnia_wymagaj_oplatach_pola():
+    """Nowe pola konfiguracji opłat na Uczelnia."""
+    uczelnia = baker.make(Uczelnia)
+    # Domyślne wartości
+    assert uczelnia.wymagaj_oplatach_artykul is True
+    assert uczelnia.wymagaj_oplatach_monografia is True
+    assert uczelnia.wymagaj_oplatach_rozdzial is False
+    assert uczelnia.wymagaj_oplatach_inne is False
+
+
+@pytest.mark.django_db
+def test_clean_wymaga_oplatach_konfigurowalnie():
+    """Model.clean() respektuje konfigurowalne opłaty."""
+    uczelnia = baker.make(Uczelnia)
+    uczelnia.wymagaj_oplatach_artykul = False
+    uczelnia.save()
+
+    # Artykuł bez opłat powinien przejść walidację
+    zp = baker.make(
+        Zgloszenie_Publikacji,
+        rodzaj_zglaszanej_publikacji=(
+            Zgloszenie_Publikacji.Rodzaje.ARTYKUL
+        ),
+    )
+    # Nie powinien rzucić wyjątku
+    zp.clean()

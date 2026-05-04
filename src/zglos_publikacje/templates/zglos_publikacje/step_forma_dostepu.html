@@ -1,0 +1,79 @@
+{% extends "zglos_publikacje/step_base.html" %}
+
+{% block wizard_buttons %}{% endblock %}
+
+{% block wizard_content %}
+    <h3>Wybierz formę dostępu</h3>
+
+    <div class="tile-grid tile-grid--stacked">
+        {% for choice in wizard.form.forma_dostepu %}
+            <label class="tile-card"
+                   data-value="{{ choice.data.value }}"
+                   tabindex="0">
+                {{ choice.tag }}
+                <span class="tile-icon">
+                    {% if choice.data.value == "OTWARTY" %}🌐{% elif choice.data.value == "OGRANICZONY" %}🔒{% endif %}
+                </span>
+                <span class="tile-title">
+                    {{ choice.choice_label }}
+                </span>
+                <span class="tile-desc">
+                    {% if choice.data.value == "OTWARTY" %}Pełny tekst jest dostępny online (link lub DOI){% elif choice.data.value == "OGRANICZONY" %}Pełny tekst nie jest swobodnie dostępny w internecie{% endif %}
+                </span>
+            </label>
+        {% endfor %}
+        <button class="tile-card tile-back"
+                type="submit" name="wizard_goto_step"
+                formnovalidate
+                tabindex="0"
+                value="{{ wizard.steps.prev }}">
+            <span class="tile-icon">⬅️</span>
+            <span class="tile-title">Poprzedni krok</span>
+        </button>
+    </div>
+
+    <script>
+        (function() {
+            var tiles = document.querySelectorAll('.tile-card:not(.tile-back)');
+            var form = document.getElementById('form-container');
+
+            tiles.forEach(function(tile) {
+                // Click handler
+                tile.addEventListener('click', function() {
+                    var radio = tile.querySelector('input[type="radio"]');
+                    if (radio) {
+                        radio.checked = true;
+                        form.submit();
+                    }
+                });
+
+                // Keyboard handler
+                tile.addEventListener('keydown', function(e) {
+                    // Enter or Space to select
+                    if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        var radio = tile.querySelector('input[type="radio"]');
+                        if (radio) {
+                            radio.checked = true;
+                            form.submit();
+                        }
+                    }
+
+                    // Arrow key navigation
+                    var currentIndex = Array.prototype.indexOf.call(tiles, tile);
+                    var newIndex;
+
+                    if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
+                        e.preventDefault();
+                        newIndex = (currentIndex + 1) % tiles.length;
+                        tiles[newIndex].focus();
+                    } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
+                        e.preventDefault();
+                        newIndex = (currentIndex - 1 + tiles.length) % tiles.length;
+                        tiles[newIndex].focus();
+                    }
+                });
+            });
+        })();
+    </script>
+{% endblock %}

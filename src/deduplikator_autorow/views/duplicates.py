@@ -326,7 +326,7 @@ def mark_non_duplicate(request):
 
     except Autor.DoesNotExist:
         return _respond(False, "Nie znaleziono autora o podanym ID.", status=404)
-    except Exception as e:
+    except Exception:
         traceback.print_exc()
         rollbar.report_exc_info(sys.exc_info())
         return _respond(
@@ -447,7 +447,7 @@ def mark_candidate_not_duplicate(request):
 
     except DuplicateCandidate.DoesNotExist:
         return _respond(False, "Nie znaleziono kandydata o podanym ID.", status=404)
-    except Exception as e:
+    except Exception:
         traceback.print_exc()
         rollbar.report_exc_info(sys.exc_info())
         return _respond(
