@@ -1,6 +1,5 @@
 from django.urls import path
 from django.urls import re_path as url
-from django.views.decorators.csrf import csrf_exempt
 
 import bpp
 from bpp.views.api import (
@@ -106,7 +105,7 @@ urlpatterns = [
     ),
     url(
         r"^api/rok-habilitacji/$",
-        csrf_exempt(RokHabilitacjiView.as_view()),
+        RokHabilitacjiView.as_view(),
         name="api_rok_habilitacji",
     ),
     url(
@@ -141,52 +140,52 @@ urlpatterns = [
     ),
     url(
         r"^api/punktacja-zrodla/(?P<zrodlo_id>[\d]+)/(?P<rok>[\d]+)/$",
-        csrf_exempt(PunktacjaZrodlaView.as_view()),
+        PunktacjaZrodlaView.as_view(),
         name="api_punktacja_zrodla",
     ),
     url(
         r"^api/upload-punktacja-zrodla/(?P<zrodlo_id>[\d]+)/(?P<rok>[\d]+)/$",
-        csrf_exempt(UploadPunktacjaZrodlaView.as_view()),
+        UploadPunktacjaZrodlaView.as_view(),
         name="api_upload_punktacja_zrodla",
     ),
     url(
         r"^api/ostatnia-jednostka-i-dyscyplina/$",
-        csrf_exempt(OstatniaJednostkaIDyscyplinaView.as_view()),
+        OstatniaJednostkaIDyscyplinaView.as_view(),
         name="api_ostatnia_jednostka_i_dyscyplina",
     ),
     url(
         r"^api/pubmed-id/$",
-        csrf_exempt(GetPubmedIDView.as_view()),
+        GetPubmedIDView.as_view(),
         name="api_pubmed_id",
     ),
     url(
         r"^api/get-pbn-publications-by-isbn/$",
-        csrf_exempt(GetPBNPublicationsByISBN.as_view()),
+        GetPBNPublicationsByISBN.as_view(),
         name="api_get_pbn_by_isbn",
     ),
     url(
         r"^api/get-pbn-publications-by-doi/$",
-        csrf_exempt(GetPBNPublicationsByDOI.as_view()),
+        GetPBNPublicationsByDOI.as_view(),
         name="api_get_pbn_by_doi",
     ),
     url(
         r"^api/(?P<slug>[\w-]+)/wos-amr/$",
-        csrf_exempt(GetWoSAMRInformation.as_view()),
+        GetWoSAMRInformation.as_view(),
         name="api_wos_amr",
     ),
     url(
         r"^api/strona-tom-nr-zeszytu/$",
-        csrf_exempt(StronaTomNrZeszytuView.as_view()),
+        StronaTomNrZeszytuView.as_view(),
         name="api_strona_tom_nr_zeszytu",
     ),
     url(
         r"^api/uzupelnij_rok_wydawnictwo_zwarte/$",
-        csrf_exempt(ApiUzupelnijRokWydawnictwoZwarteView.as_view()),
+        ApiUzupelnijRokWydawnictwoZwarteView.as_view(),
         name="api_uzupelnij_rok_wydawnictwo_zwarte",
     ),
     url(
         r"^api/uzupelnij_rok_wydawnictwo_ciagle/$",
-        csrf_exempt(ApiUzupelnijRokWydawnictwoCiagleView.as_view()),
+        ApiUzupelnijRokWydawnictwoCiagleView.as_view(),
         name="api_uzupelnij_rok_wydawnictwo_ciagle",
     ),
     url(r"^oai/", OAIView.as_view(), name="oai"),

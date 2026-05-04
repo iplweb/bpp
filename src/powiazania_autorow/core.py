@@ -2,27 +2,30 @@
 Core functionality for calculating author connections.
 """
 
+import logging
 from collections import defaultdict
 
 from django.db import transaction
 
 from bpp.models import Patent_Autor, Wydawnictwo_Ciagle_Autor, Wydawnictwo_Zwarte_Autor
 
+logger = logging.getLogger(__name__)
 
-def calculate_author_connections():
+
+def calculate_author_connections():  # noqa: C901
     """
     Calculate and update all author connections based on shared publications.
     This function analyzes all publications and creates/updates AuthorConnection records.
     """
     from .models import AuthorConnection
 
-    print("Starting author connections calculation...")
+    logger.info("Starting author connections calculation...")
 
     # Dictionary to store connections: {(author1_id, author2_id): count}
     connections = defaultdict(int)
 
     # Process Wydawnictwo_Ciagle (continuous publications)
-    print("Processing Wydawnictwo_Ciagle...")
+    logger.info("Processing Wydawnictwo_Ciagle...")
     ciagle_authors = Wydawnictwo_Ciagle_Autor.objects.select_related(
         "autor", "rekord"
     ).values_list("rekord_id", "autor_id")
@@ -43,7 +46,7 @@ def calculate_author_connections():
                     connections[author_pair] += 1
 
     # Process Wydawnictwo_Zwarte (monographs)
-    print("Processing Wydawnictwo_Zwarte...")
+    logger.info("Processing Wydawnictwo_Zwarte...")
     zwarte_authors = Wydawnictwo_Zwarte_Autor.objects.select_related(
         "autor", "rekord"
     ).values_list("rekord_id", "autor_id")
@@ -61,7 +64,7 @@ def calculate_author_connections():
                     connections[author_pair] += 1
 
     # Process Patents
-    print("Processing Patents...")
+    logger.info("Processing Patents...")
     patent_authors = Patent_Autor.objects.select_related("autor", "rekord").values_list(
         "rekord_id", "autor_id"
     )
@@ -78,16 +81,16 @@ def calculate_author_connections():
                     author_pair = tuple(sorted([authors[i], authors[j]]))
                     connections[author_pair] += 1
 
-    print(f"Found {len(connections)} author connections")
+    logger.info(f"Found {len(connections)} author connections")
 
     # Update database
     with transaction.atomic():
         # Clear existing connections
-        print("Clearing existing connections...")
+        logger.info("Clearing existing connections...")
         AuthorConnection.objects.all().delete()
 
         # Create new connections
-        print("Creating new connections...")
+        logger.info("Creating new connections...")
         batch_size = 1000
         connections_to_create = []
 
@@ -110,5 +113,7 @@ def calculate_author_connections():
             AuthorConnection.objects.bulk_create(connections_to_create)
 
     total_connections = AuthorConnection.objects.count()
-    print(f"Calculation complete. Created {total_connections} author connections.")
+    logger.info(
+        f"Calculation complete. Created {total_connections} author connections."
+    )
     return total_connections

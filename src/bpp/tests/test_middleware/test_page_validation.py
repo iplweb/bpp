@@ -8,6 +8,23 @@ from bpp.middleware import MaliciousRequestBlockingMiddleware
 
 @pytest.mark.django_db
 class TestMaliciousRequestBlockingMiddleware:
+    @pytest.fixture(autouse=True)
+    def _attach_caplog_to_django_request(self, caplog):
+        # Settings ustawia ``django.request`` z ``propagate=False`` (świadomie,
+        # żeby nie dublować WARNING-ów na root handler). Pytest ``caplog``
+        # podpina swój ``LogCaptureHandler`` pod root, więc bez propagacji
+        # nie widzi tych logów. Flipowanie ``propagate=True`` per-test
+        # okazało się zawodne pod ``-n auto`` w pełnym suite (jakaś inna
+        # ścieżka resetuje propagate między fixturem a asercją). Wpinamy
+        # handler caplog-a bezpośrednio na ``django.request`` — niezależne
+        # od ``propagate``, nie wpływa na produkcję.
+        logger = logging.getLogger("django.request")
+        logger.addHandler(caplog.handler)
+        try:
+            yield
+        finally:
+            logger.removeHandler(caplog.handler)
+
     def setup_method(self):
         self.factory = RequestFactory()
         self.middleware = MaliciousRequestBlockingMiddleware(lambda r: None)
@@ -114,7 +131,7 @@ class TestMaliciousRequestBlockingMiddleware:
 
     def test_logging_on_blocked_request(self, caplog):
         """Test: Blocked requests should be logged"""
-        caplog.set_level(logging.WARNING)
+        caplog.set_level(logging.WARNING, logger="django.request")
 
         request = self.factory.get("/bpp/autorzy/?page=malicious_string_here")
         self.middleware.process_request(request)
@@ -124,7 +141,7 @@ class TestMaliciousRequestBlockingMiddleware:
 
     def test_logging_includes_remote_addr(self, caplog):
         """Test: Logged events should include remote address"""
-        caplog.set_level(logging.WARNING)
+        caplog.set_level(logging.WARNING, logger="django.request")
 
         request = self.factory.get(
             "/bpp/autorzy/?page=malicious_here", REMOTE_ADDR="192.168.1.100"
@@ -502,7 +519,7 @@ class TestMaliciousRequestBlockingMiddleware:
 
     def test_url_too_long_logs_reason(self, caplog):
         """Test: Oversized full URL block should log ``url_too_long``."""
-        caplog.set_level(logging.WARNING)
+        caplog.set_level(logging.WARNING, logger="django.request")
         long_next = "/x" + "a" * 8200
         request = self.factory.get(f"/admin/login/?next={long_next}")
         self.middleware.process_request(request)
@@ -558,7 +575,7 @@ class TestMaliciousRequestBlockingMiddleware:
 
     def test_nested_next_logs_reason(self, caplog):
         """Test: Nested ``?next=`` block should log ``nested_next``."""
-        caplog.set_level(logging.WARNING)
+        caplog.set_level(logging.WARNING, logger="django.request")
         request = self.factory.get(
             "/admin/login/", {"next": "/accounts/login/?next=/foo/"}
         )
@@ -599,7 +616,7 @@ class TestMaliciousRequestBlockingMiddleware:
     # Logging Tests for Path Blocking
     def test_path_blocking_logs_reason(self, caplog):
         """Test: Path blocking should log the block reason"""
-        caplog.set_level(logging.WARNING)
+        caplog.set_level(logging.WARNING, logger="django.request")
 
         request = self.factory.get("/index.php")
         self.middleware.process_request(request)

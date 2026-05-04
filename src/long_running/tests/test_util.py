@@ -1,9 +1,8 @@
 import pytest
 
+from bpp.models import Wydawnictwo_Ciagle
 from django_bpp.celery_tasks import app
 from long_running.util import wait_for_object
-
-from bpp.models import Wydawnictwo_Ciagle
 
 
 # Zadanie do testów — zarejestrowane na poziomie modułu (celery wymaga

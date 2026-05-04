@@ -20,7 +20,6 @@ from bpp.views.autocomplete import (
 )
 
 
-
 def test_dyscyplina_naukowa_przypisanie_autocomplete(
     app, autor_jan_kowalski, dyscyplina1, dyscyplina2, rok
 ):
@@ -75,7 +74,6 @@ def test_dyscyplina_naukowa_przypisanie_autocomplete(
     assert res.json["results"][0]["text"] == "memetyka stosowana"
 
 
-
 def test_dyscyplina_naukowa_przypisanie_autocomplete_brak_autora(
     app,
 ):
@@ -88,7 +86,6 @@ def test_dyscyplina_naukowa_przypisanie_autocomplete_brak_autora(
     )
     assert res.status_code == 200
     assert res.json["results"][0]["text"] == "Podaj autora"
-
 
 
 def test_dyscyplina_naukowa_przypisanie_autocomplete_brak_drugiej(
@@ -131,6 +128,30 @@ def test_AutorAutocomplete_create_bug_1():
     assert Autor.objects.count() == 1
     assert Autor.objects.first().nazwisko == "Fubar"
     assert Autor.objects.first().imiona == "Baz Quux"
+
+
+@pytest.mark.django_db
+def test_AutorAutocomplete_create_object_creates_log_entry(rf, admin_user, db):
+    from django.contrib.admin.models import ADDITION, LogEntry
+    from django.contrib.contenttypes.models import ContentType
+
+    autor_count_before = Autor.objects.count()
+
+    ac = AutorAutocomplete()
+    ac.request = rf.post("/", data={"text": "Kowalski Jan"})
+    ac.request.user = admin_user
+
+    obj = ac.create_object("Kowalski Jan")
+
+    assert obj.pk != -1
+    assert Autor.objects.count() == autor_count_before + 1
+
+    ct = ContentType.objects.get_for_model(Autor)
+    log = LogEntry.objects.get(
+        content_type=ct, object_id=str(obj.pk), action_flag=ADDITION
+    )
+    assert log.user == admin_user
+    assert "autocomplete" in log.change_message
 
 
 @pytest.mark.django_db

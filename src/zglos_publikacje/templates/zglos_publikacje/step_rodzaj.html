@@ -1,0 +1,70 @@
+{% extends "zglos_publikacje/step_base.html" %}
+
+{% block wizard_buttons %}{% endblock %}
+
+{% block wizard_content %}
+    <h3>Wybierz rodzaj publikacji</h3>
+
+    <div class="tile-grid">
+        {% for choice in wizard.form.rodzaj %}
+            <label class="tile-card"
+                   data-value="{{ choice.data.value }}"
+                   tabindex="0">
+                {{ choice.tag }}
+                <span class="tile-icon">
+                    {% if choice.data.value == "ARTYKUL" %}📄{% elif choice.data.value == "MONOGRAFIA" %}📚{% elif choice.data.value == "ROZDZIAL" %}📖{% elif choice.data.value == "POZOSTALE" %}📎{% endif %}
+                </span>
+                <span class="tile-title">
+                    {{ choice.choice_label }}
+                </span>
+                <span class="tile-desc">
+                    {% if choice.data.value == "ARTYKUL" %}Artykuł w czasopiśmie naukowym{% elif choice.data.value == "MONOGRAFIA" %}Monografia naukowa{% elif choice.data.value == "ROZDZIAL" %}Rozdział w monografii{% elif choice.data.value == "POZOSTALE" %}Pozostałe rodzaje publikacji{% endif %}
+                </span>
+            </label>
+        {% endfor %}
+    </div>
+
+    <script>
+        (function() {
+            var tiles = document.querySelectorAll('.tile-card');
+            var form = document.getElementById('form-container');
+            tiles.forEach(function(tile) {
+                // Click handler
+                tile.addEventListener('click', function() {
+                    var radio = tile.querySelector('input[type="radio"]');
+                    if (radio) {
+                        radio.checked = true;
+                        form.submit();
+                    }
+                });
+
+                // Keyboard handler
+                tile.addEventListener('keydown', function(e) {
+                    // Enter or Space to select
+                    if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        var radio = tile.querySelector('input[type="radio"]');
+                        if (radio) {
+                            radio.checked = true;
+                            form.submit();
+                        }
+                    }
+
+                    // Arrow key navigation
+                    var currentIndex = Array.prototype.indexOf.call(tiles, tile);
+                    var newIndex;
+
+                    if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
+                        e.preventDefault();
+                        newIndex = (currentIndex + 1) % tiles.length;
+                        tiles[newIndex].focus();
+                    } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
+                        e.preventDefault();
+                        newIndex = (currentIndex - 1 + tiles.length) % tiles.length;
+                        tiles[newIndex].focus();
+                    }
+                });
+            });
+        })();
+    </script>
+{% endblock %}

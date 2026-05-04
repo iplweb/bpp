@@ -1,5 +1,6 @@
 """Base views for admin dashboard."""
 
+import logging
 from datetime import timedelta
 
 from django.contrib.admin.views.decorators import staff_member_required
@@ -16,6 +17,7 @@ from bpp.models import (
 )
 
 User = get_user_model()
+logger = logging.getLogger(__name__)
 
 
 @staff_member_required
@@ -70,8 +72,9 @@ def database_stats(request):
             "ciagle": list(ciagle_by_type),
             "zwarte": list(zwarte_by_type),
         }
-    except Exception as e:
-        type_distribution = {"error": str(e)}
+    except Exception:
+        logger.exception("type_distribution query failed")
+        type_distribution = {"error": "Failed to load distribution"}
 
     # Trend publikacji w czasie (ostatnie 12 miesięcy)
     twelve_months_ago = timezone.now() - timedelta(days=365)

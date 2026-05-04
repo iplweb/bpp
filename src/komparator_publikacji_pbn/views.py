@@ -568,18 +568,9 @@ class PublicationComparisonView(ListView):
                 )
                 row_num += 1
 
-        # Adjust column widths
-        for column in ws.columns:
-            max_length = 0
-            column_letter = column[0].column_letter
-            for cell in column:
-                try:
-                    if len(str(cell.value)) > max_length:
-                        max_length = len(str(cell.value))
-                except BaseException:
-                    pass
-            adjusted_width = min(max_length + 2, 50)
-            ws.column_dimensions[column_letter].width = adjusted_width
+        from bpp.util import auto_fit_columns
+
+        auto_fit_columns(ws)
 
         # Save to bytes buffer
         buffer = io.BytesIO()

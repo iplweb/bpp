@@ -15,6 +15,27 @@
   max-height: 400px !important;
 }
 
+// Foundation daje `select { margin: 0 0 1rem }`. Select2 ukrywa
+// oryginalny <select> i wstawia w to miejsce `.select2-container`,
+// który tego marginesu nie dziedziczy. Bez tego help_text (renderowany
+// przez crispy zaraz pod polem) wpada praktycznie pod selecta.
+// Wyrównujemy zachowanie do natywnego <select>: 1rem dolnego oddechu,
+// dodatkowo wymuszamy `display: block` żeby kontener faktycznie zajął
+// pełną wysokość zamiast inline-block (margin-bottom na inline-block
+// w niektórych kontekstach nie tworzy widocznego odstępu).
+.select2-container {
+  display: block !important;
+  margin-bottom: 1rem !important;
+}
+
+// Foundation help-text bez własnego marginesu wpada wprost pod
+// poprzednika — daj mu trochę powietrza nad sobą gdy idzie po select2.
+.select2-container + .help-text,
+.select2-container ~ .help-text {
+  margin-top: 0.25rem;
+  display: block;
+}
+
 ::-ms-check {
   color: red;
   background: black;

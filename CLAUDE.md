@@ -25,6 +25,22 @@ management system built with Django. Python >=3.10,<3.15.
   - Public frontend (Foundation CSS): monochrome Foundation-Icons
     (`<span class="fi-icon"/>`)
   - Django admin (`templates/admin/`): use emoji (no Foundation Icons)
+- **Django template comments `{# ... #}` są jedno-liniowe — KAZDA LINIA
+  MUSI mieć własne otwarcie `{#` i zamknięcie `#}` na tej samej linii.**
+  Po `\n` w środku komentarza parser przestaje go widzieć i tekst wycieka
+  do wyrenderowanego HTML-u. Powtarzający się błąd. Reguła:
+  - ❌ ZABRONIONE wieloliniowe komentarze typu:
+    ```django
+    {# linia 1
+       linia 2 #}
+    ```
+  - ✅ ZAWSZE każda linia z osobnym `{# ... #}`:
+    ```django
+    {# linia 1 #}
+    {# linia 2 #}
+    ```
+  - Alternatywa dla bloków: `{% comment %}...{% endcomment %}` (też OK,
+    ale per-line `{# #}` jest preferowane przez użytkownika).
 
 ## Python and Django Execution
 
@@ -41,10 +57,70 @@ python src/manage.py shell
 pytest src/app_name/tests/
 ```
 
-## Claude Code Web Environment Setup
+## Uruchamianie dev stack-u (preferowane dla agenta)
 
-For cloud sandbox setup instructions, see
-[CLAUDE_CLOUD.md](CLAUDE_CLOUD.md).
+**Jeśli musisz obejrzeć stronę BPP, uruchomić ją lokalnie albo
+sprawdzić jak coś wygląda w przeglądarce — używaj `run_site`,
+NIE `docker compose up`.** Dla agenta to znacznie prostsze.
+
+```bash
+uv run python src/manage.py run_site
+```
+
+Co `run_site` robi w jednej komendzie:
+
+- startuje PostgreSQL i Redis przez testcontainers (losowe porty,
+  bez kolizji z dev-owymi kontenerami `docker compose up db redis`),
+- migruje bazę i tworzy superusera `admin`/`admin`,
+- odpala `runserver` na losowym wolnym porcie (lub `--port`),
+- otwiera przeglądarkę z auto-loginem (przeskakuje formularz logowania),
+- zapisuje token auto-loginu do `.run_site_token` (chmod 600,
+  gitignored, kasowany na exit) oraz porty:
+  `.run_site_port` (runserver), `.run_site_pg_port` (PostgreSQL
+  testcontainera), `.run_site_redis_port` (Redis testcontainera)
+  — wszystkie gitignored, ulotne, kasowane na exit; patrz sekcja
+  „Autologin dla agentów" niżej,
+- drukuje w stdout banner z URL-ami + gotowe snippety curl/psql/redis-cli
+  dla agenta.
+
+**Dlaczego to lepsze niż `docker compose up` dla agenta:**
+
+- jeden proces zamiast trzech serwisów (web/celery/db) — łatwiej
+  uruchamiać w tle, łatwiej wyciągać port z outputu,
+- baseline migracji + admin są gotowe od ręki, bez ręcznego
+  `migrate`/`createsuperuser`,
+- WebFetch / curl działa od strzału dzięki `.run_site_token` +
+  `.run_site_port` (agent składa URL bez parsowania bannera/logów);
+  `psql`/`redis-cli` analogicznie przez `.run_site_pg_port`
+  + `.run_site_redis_port`,
+- testcontainers same się sprzątają na exit (Ctrl-C zamyka stack),
+- nie wymaga prebuildu obrazu appserver-a (compose by wymagał).
+
+**Najczęściej używane flagi:**
+
+- `--no-browser` — nie otwieraj browsera (zalecane gdy agent uruchamia
+  `run_site` w tle przez `run_in_background=true`),
+- `--port 8080` — wymuś konkretny port (default: losowy wolny;
+  agent najczęściej i tak czyta port z bannera),
+- `--reuse` — persystencja kontenerów PG/Redis między uruchomieniami
+  (drugi run nie inicjuje od zera; usuń ręcznie `bpp-tc-pg`/`bpp-tc-redis`
+  żeby zrestartować),
+- `--no-celery` — pomiń celery worker (szybciej, gdy nie testujesz
+  background-jobów),
+- `--from-dump PATH` — odtwórz `.sql` / `.sql.gz` / `.dump` zamiast
+  baseline.
+
+**Pobranie portu z bannera (gdy run_site w tle):**
+
+```bash
+# Po uruchomieniu w tle, port jest w outpucie:
+grep -oE 'http://localhost:[0-9]+' /tmp/run_site.log | head -1
+```
+
+Domyślny `docker compose up db redis -d` z Quick Reference jest
+dla **rzadszych przypadków**: testy z `BPP_USE_TESTCONTAINERS=0`
+albo gdy potrzebujesz długożyjącej bazy niezależnie od `run_site`.
+Do oglądania samej strony — używaj `run_site`.
 
 ## Key Commands (Quick Reference)
 
@@ -74,6 +150,76 @@ uv run celery -A django_bpp.tasks inspect registered
 **Pre-commit rules:** When pre-commit produces issues, analyze output
 issue-by-issue. Fix each manually with the Edit tool. Do NOT run
 `ruff check --fix` or any automated batch fixes.
+
+## Autologin dla agentów (WebFetch / curl bez logowania)
+
+Gdy user uruchomił `manage.py run_site`, w korzeniu repo (lub worktree)
+pojawiają się gitignored, ulotne pliki:
+
+- `.run_site_token` — token autoryzacyjny (chmod 600),
+- `.run_site_port` — port runservera (host = zawsze `localhost`),
+- `.run_site_pg_port` — port PostgreSQL testcontainera
+  (host = zawsze `localhost`, user/pass = `bpp`/`password`,
+  baza = `bpp`),
+- `.run_site_redis_port` — port Redis testcontainera
+  (host = zawsze `localhost`, bez hasła).
+
+Wszystkie istnieją **tylko przez czas życia procesu run_site** i są
+kasowane na exit. Jeśli któregoś nie ma — znaczy że dev stack nie
+biegnie i nie da się fetchować zalogowanych stron / podpiąć się
+do bazy; nie próbuj „obejść" tego logując się przez `/admin/login/`
+czy POST-em formularza ani odpalać własnego PG/Redis-a — tylko poproś
+usera o uruchomienie `run_site`.
+
+Token uwierzytelnia jako `admin` (superuser) — używaj tylko gdy musisz
+zobaczyć stronę wymagającą zalogowania. Do publicznych stron nie ma
+sensu, a niepotrzebnie zostawia ślad w `request.user` w logach.
+
+**Pobranie zalogowanej strony przez curl + cookie jar:**
+
+```bash
+T=$(cat .run_site_token)
+PORT=$(cat .run_site_port)
+J=$(mktemp)
+curl -sc "$J" -L "http://localhost:$PORT/__run_site_autologin__/?token=$T" \
+    >/dev/null
+curl -sb "$J" "http://localhost:$PORT/<path>"
+rm "$J"
+```
+
+**Połączenie z bazą PostgreSQL testcontainera (psql, dbshell, etc.):**
+
+```bash
+PG_PORT=$(cat .run_site_pg_port)
+PGPASSWORD=password psql -h localhost -p "$PG_PORT" -U bpp -d bpp
+```
+
+Tej samej kombinacji `host=localhost`, `port=$(cat .run_site_pg_port)`,
+`user=bpp`, `password=password`, `dbname=bpp` używaj wszędzie indziej
+(SQLAlchemy, pgcli, DataGrip itd.). Nie próbuj odpalać własnego PG —
+ten kontener ma już zaimportowany baseline + zmigrowane schema.
+
+**Połączenie z Redis-em testcontainera (redis-cli, debug):**
+
+```bash
+REDIS_PORT=$(cat .run_site_redis_port)
+redis-cli -p "$REDIS_PORT"
+```
+
+**WebFetch tool (Claude Code):** jest bezstanowy — cookie z
+auto-loginu nie przeniesie się między kolejnymi wywołaniami.
+WebFetcha używaj tylko do publicznych stron. Do zalogowanych
+stron użyj snippetu z curl powyżej, ewentualnie spipuj wynik
+przez `pandoc -f html -t markdown` jeśli potrzebujesz markdown-a.
+
+**Bezpieczeństwo:** endpoint `/__run_site_autologin__/` istnieje
+tylko gdy ustawione `DJANGO_BPP_RUN_SITE_AUTOLOGIN_TOKEN` w env
+(ustawia to `run_site` automatycznie, nigdy w produkcji). Token
+nie wycieka do gita (gitignore + ulotny plik). Nie wklejaj
+zawartości `.run_site_token` do commitów, do PR-ów, ani do logów
+które trafią poza maszynę dewelopera. `.run_site_port`,
+`.run_site_pg_port` i `.run_site_redis_port` zawierają tylko
+numery portów (nie sekrety) — można je cytować swobodnie.
 
 ## CSS/SCSS Rules
 

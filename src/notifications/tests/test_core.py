@@ -1,8 +1,9 @@
-from notifications.core import (
-    get_obj_from_channel_name,
-    convert_obj_to_channel_name,
-)
 import pytest
+
+from notifications.core import (
+    convert_obj_to_channel_name,
+    get_obj_from_channel_name,
+)
 
 
 @pytest.mark.django_db

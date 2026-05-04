@@ -1,20 +1,21 @@
 {% extends "base.html" %}
 {% load static %}
 
-{% block extra_css %}
+{% block extrahead %}
+{{ block.super }}
 <link rel="stylesheet"
       href="{% static 'deduplikator_autorow/css/deduplikator_autorow.css' %}">
 {% endblock %}
 
-{% block title %}Deduplikator Autorów PBN{% endblock %}
+{% block title %}Deduplikator autorów{% endblock %}
 
 {% block breadcrumbs %}
     <li><a href="/">Strona główna</a></li>
-    <li><a href="{% url "deduplikator_autorow:duplicate_authors" %}">Deduplikator autorów PBN</a></li>
+    <li><a href="{% url "deduplikator_autorow:duplicate_authors" %}">Deduplikator autorów</a></li>
 {% endblock %}
 
 {% block content %}
-    <div id="left-menu-container">
+    <div id="left-menu-container" class="deduplikator-autorow-page">
         <!-- Left Sidebar Menu -->
         <div class="left-menu-sidebar">
             <div class="left-menu-menu">
@@ -46,6 +47,11 @@
                                     <p id="scan-eta-text" class="deduplikator-autorow__status-text--muted">
                                         <span class="fi-clock"></span> ETA: obliczanie...
                                     </p>
+                                    {% if running_scan.phase %}
+                                      <div class="deduplikator-autorow__scan-phase">
+                                        Faza: <strong>{{ running_scan.get_phase_display|default:running_scan.phase }}</strong>
+                                      </div>
+                                    {% endif %}
                                     <form method="post" action="{% url 'deduplikator_autorow:cancel_scan' %}" class="deduplikator-autorow__form">
                                         {% csrf_token %}
                                         <button type="submit" class="button alert expanded small"
@@ -219,37 +225,6 @@
                     </li>
                     {% endif %}
 
-                    <!-- Wyszukiwanie autora -->
-                    <li class="accordion-item {% if search_lastname %}is-active{% endif %}" data-accordion-item>
-                        <a class="accordion-title" href="#" {% if search_lastname %}aria-expanded="true"{% endif %}>
-                            <span class="fi-magnifying-glass" aria-hidden="true"></span> Szukaj autora
-                        </a>
-                        <div class="accordion-content{% if search_lastname %} deduplikator-autorow__accordion-content{% endif %}" data-tab-content>
-                            <form method="get" action="{% url 'deduplikator_autorow:duplicate_authors' %}" class="deduplikator-autorow__form">
-                                <label for="search_lastname" class="deduplikator-autorow__label">Po nazwisku:</label>
-                                <input type="text" id="search_lastname" name="search_lastname"
-                                       value="{{ search_lastname|default:'' }}"
-                                       placeholder="Wpisz część nazwiska..."
-                                       class="deduplikator-autorow__input">
-                                <button type="submit" class="button primary expanded small">
-                                    <span class="fi-magnifying-glass"></span> Szukaj
-                                </button>
-                                {% if search_lastname %}
-                                    <a href="{% url 'deduplikator_autorow:duplicate_authors' %}"
-                                       class="button secondary expanded small deduplikator-autorow__button--margin-top">
-                                        Wyczyść
-                                    </a>
-                                    <div class="deduplikator-autorow__search-results">
-                                        <strong>Szukano:</strong> "{{ search_lastname }}"
-                                        {% if search_results_count is not None %}
-                                            <br><strong>Znaleziono:</strong> {{ search_results_count }} autor{% if search_results_count != 1 %}ów{% endif %}
-                                        {% endif %}
-                                    </div>
-                                {% endif %}
-                            </form>
-                        </div>
-                    </li>
-
                     <!-- Pobierz XLSX -->
                     <li class="accordion-item" data-accordion-item>
                         <a class="accordion-title" href="#">
@@ -264,43 +239,35 @@
                         </div>
                     </li>
 
-                    <!-- Obejrz nie-duplikaty -->
+                    <!-- Nie-duplikaty: obejrzenie + reset w jednym panelu -->
                     <li class="accordion-item {% if not_duplicate_count > 0 %}is-active{% endif %}" data-accordion-item>
                         <a class="accordion-title" href="#" {% if not_duplicate_count > 0 %}aria-expanded="true"{% endif %}>
-                            <span class="fi-eye" aria-hidden="true"></span> Obejrz nie-duplikaty
+                            <span class="fi-eye" aria-hidden="true"></span> Nie-duplikaty {% if not_duplicate_count > 0 %}(<span id="not-duplicate-count" data-count="{{ not_duplicate_count }}">{{ not_duplicate_count }}</span>){% else %}<span id="not-duplicate-count" data-count="0" style="display:none"></span>{% endif %}
                         </a>
                         <div class="accordion-content{% if not_duplicate_count > 0 %} deduplikator-autorow__accordion-content{% endif %}" data-tab-content>
-                            <p class="deduplikator-autorow__status-text--spaced">Przejrzyj autorów oznaczonych jako nie będących duplikatami.</p>
-                            <a href="/admin/deduplikator_autorow/notaduplicate/"
-                               class="button secondary expanded deduplikator-autorow__button"
-                               target="_blank">
-                                <span class="fi-magnifying-glass"></span> Otwórz listę
-                            </a>
+                            {% if not_duplicate_count > 0 %}
+                                <p class="deduplikator-autorow__status-text--spaced">Autorzy oznaczeni jako nie będący duplikatami.</p>
+                                <p class="deduplikator-autorow__status-warning deduplikator-autorow__status-text--spaced">
+                                    <span class="fi-alert"></span> Obecnie: <span id="not-duplicate-count-text">{{ not_duplicate_count }}</span> oznaczonych
+                                </p>
+                                <a href="/admin/deduplikator_autorow/notaduplicate/"
+                                   class="button secondary expanded small deduplikator-autorow__button-margin-bottom"
+                                   target="_blank">
+                                    <span class="fi-magnifying-glass"></span> Otwórz listę
+                                </a>
+                                <form method="post" action="{% url 'deduplikator_autorow:reset_not_duplicates' %}" class="deduplikator-autorow__form">
+                                    {% csrf_token %}
+                                    <button type="submit"
+                                            class="button alert expanded small"
+                                            data-confirm="Czy na pewno chcesz zresetować wszystkie oznaczenia nie-duplikatów? Tej operacji nie można cofnąć.">
+                                        <span class="fi-trash"></span> Zresetuj wszystkie
+                                    </button>
+                                </form>
+                            {% else %}
+                                <p class="deduplikator-autorow__status-text--muted">Brak autorów oznaczonych jako nie-duplikaty.</p>
+                            {% endif %}
                         </div>
                     </li>
-
-                    <!-- Reset nie-duplikatów -->
-                    {% if not_duplicate_count > 0 %}
-                    <li class="accordion-item" data-accordion-item>
-                        <a class="accordion-title" href="#">
-                            <span class="fi-refresh" aria-hidden="true"></span> Zresetuj nie-duplikaty ({{ not_duplicate_count }})
-                        </a>
-                        <div class="accordion-content" data-tab-content>
-                            <p class="deduplikator-autorow__status-text--spaced">Wyczyść wszystkie oznaczenia nie-duplikatów.</p>
-                            <p class="deduplikator-autorow__status-warning deduplikator-autorow__status-text--spaced">
-                                <span class="fi-alert"></span> Obecnie: {{ not_duplicate_count }} oznaczonych
-                            </p>
-                            <form method="post" action="{% url 'deduplikator_autorow:reset_not_duplicates' %}" class="deduplikator-autorow__form">
-                                {% csrf_token %}
-                                <button type="submit"
-                                        class="button alert expanded deduplikator-autorow__button"
-                                        data-confirm="Czy na pewno chcesz zresetować wszystkie oznaczenia nie-duplikatów? Tej operacji nie można cofnąć.">
-                                    <span class="fi-trash"></span> Zresetuj wszystkie
-                                </button>
-                            </form>
-                        </div>
-                    </li>
-                    {% endif %}
 
                     <!-- Ignorowani autorzy -->
                     <li class="accordion-item {% if ignored_authors_count > 0 %}is-active{% endif %}" data-accordion-item>
@@ -313,12 +280,12 @@
                                 <p class="deduplikator-autorow__status-warning deduplikator-autorow__status-text--spaced">
                                     <span class="fi-alert"></span> Obecnie: {{ ignored_authors_count }} ignorowanych
                                 </p>
-                                <a href="/admin/deduplikator_autorow/ignoredauthor/"
+                                <a href="/admin/deduplikator_autorow/ignoredscientist/"
                                    class="button secondary expanded small deduplikator-autorow__button-margin-bottom"
                                    target="_blank">
                                     <span class="fi-list"></span> Zobacz listę
                                 </a>
-                                <form method="post" action="{% url 'deduplikator_autorow:reset_ignored_authors' %}" class="deduplikator-autorow__form">
+                                <form method="post" action="{% url 'deduplikator_autorow:reset_ignored_scientists' %}" class="deduplikator-autorow__form">
                                     {% csrf_token %}
                                     <button type="submit"
                                             class="button alert expanded small"
@@ -384,11 +351,102 @@
             <!-- Local messages placeholder that respects sidebar layout -->
             <div id="localMessagesPlaceholder" class="deduplikator-autorow__messages"></div>
 
+            {% if completed_scan and completed_scan.status == "partial_completed" %}
+              <div class="callout warning deduplikator-autorow__partial-banner">
+                <strong>Skanowanie częściowo zakończone:</strong>
+                Faza ogólna została anulowana. Wyniki PBN są dostępne, ale duplikaty
+                ogólne nie zostały przeskanowane. Uruchom skan ponownie, aby zobaczyć
+                wszystkie duplikaty.
+              </div>
+            {% endif %}
+
+            {# Top bar: mode-filter po lewej, szybkie wyszukiwanie po prawej. #}
+            {# Filtr pewności (Wszyscy/Pewniaki/Słabe) NIE jest tutaj - dotyczy #}
+            {# tylko kandydatów aktualnego głównego autora i wisi przy #}
+            {# nagłówku 'Możliwe duplikaty'. #}
+            {# Top-bar pokazujemy tylko gdy mamy co filtrować — czyli mamy #}
+            {# głównego autora albo wynik wyszukiwania. Na ekranie postępu #}
+            {# skanowania ('running_scan and not glowny_autor') schowane. #}
+            {% with q_search=search_lastname %}
+            {% if glowny_autor or search_lastname %}
+            <div class="deduplikator-autorow__top-bar">
+              <div class="deduplikator-autorow__mode-filter">
+                <div class="button-group deduplikator-autorow__mode-buttons" role="tablist" aria-label="Filtr trybu wyników">
+                  <a href="?mode=pbn{% if q_search %}&amp;search_lastname={{ q_search }}{% endif %}"
+                     role="tab"
+                     aria-selected="{% if mode == 'pbn' %}true{% else %}false{% endif %}"
+                     class="button{% if mode == 'pbn' %} primary{% else %} hollow secondary{% endif %}">
+                    <span class="fi-link" aria-hidden="true"></span>
+                    PBN
+                    <span class="deduplikator-autorow__mode-count">{{ pending_pbn_count }}</span>
+                  </a>
+                  <a href="?mode=general{% if q_search %}&amp;search_lastname={{ q_search }}{% endif %}"
+                     role="tab"
+                     aria-selected="{% if mode == 'general' %}true{% else %}false{% endif %}"
+                     class="button{% if mode == 'general' %} primary{% else %} hollow secondary{% endif %}">
+                    <span class="fi-magnifying-glass" aria-hidden="true"></span>
+                    Ogólny
+                    <span class="deduplikator-autorow__mode-count">{{ pending_general_count }}</span>
+                  </a>
+                  <a href="?mode=both{% if q_search %}&amp;search_lastname={{ q_search }}{% endif %}"
+                     role="tab"
+                     aria-selected="{% if mode == 'both' or not mode %}true{% else %}false{% endif %}"
+                     class="button{% if mode == 'both' or not mode %} primary{% else %} hollow secondary{% endif %}">
+                    <span class="fi-list" aria-hidden="true"></span>
+                    Oba
+                  </a>
+                </div>
+              </div>
+
+              <form method="get"
+                    action="{% url 'deduplikator_autorow:duplicate_authors' %}"
+                    class="deduplikator-autorow__top-search"
+                    role="search"
+                    autocomplete="off">
+                <input type="hidden" name="mode" value="{{ mode }}">
+                <label for="search_lastname" class="show-for-sr">Szukaj autora po nazwisku</label>
+                <div class="input-group deduplikator-autorow__top-search-group">
+                  <span class="input-group-label">
+                    <span class="fi-magnifying-glass" aria-hidden="true"></span>
+                  </span>
+                  <input type="text"
+                         id="search_lastname"
+                         name="search_lastname"
+                         value="{{ q_search|default:'' }}"
+                         placeholder="Szukaj autora po nazwisku..."
+                         class="input-group-field"
+                         list="lastname-suggestions"
+                         autocomplete="off">
+                  <datalist id="lastname-suggestions"></datalist>
+                  <div class="input-group-button">
+                    <button type="submit" class="button primary{% if q_search %} deduplikator-autorow__search-btn-flat-right{% endif %}">Szukaj</button>
+                  </div>
+                  {% if q_search %}
+                  <div class="input-group-button">
+                    <a href="?mode={{ mode }}"
+                       class="button secondary"
+                       title="Wyczyść wyszukiwanie">
+                      <span class="fi-x" aria-hidden="true"></span>
+                    </a>
+                  </div>
+                  {% endif %}
+                </div>
+                {% if q_search and search_results_count is not None %}
+                <small class="deduplikator-autorow__top-search-info">
+                  Wynik dla "<strong>{{ q_search }}</strong>":
+                  {{ search_results_count }} autor{% if search_results_count != 1 %}ów{% endif %}
+                </small>
+                {% endif %}
+              </form>
+            </div>
+            {% endif %}
+            {% endwith %}
+
             {% include "includes/pbn_freshness_warning.html" with custom_message="Analiza duplikatów opiera się na lokalnej kopii danych autorów z PBN. Wyniki mogą być nieaktualne." %}
 
             <div class="grid-x grid-padding-x align-middle deduplikator-autorow__header">
                 <div class="cell auto">
-                    <h1>Deduplikator Autorów PBN <span class="label warning deduplikator-autorow__beta-label">BETA</span></h1>
+                    <h1>Deduplikator autorów</h1>
                 </div>
                 <div class="cell shrink">
                     {% if not search_lastname and scientist %}
@@ -397,7 +455,7 @@
                                 <a href="{% url 'deduplikator_autorow:duplicate_authors' %}?skip_count={{ skip_count|add:"-1" }}"
                                    class="button secondary"><span class="fi-arrow-left"></span> Poprzedni autor</a>
                             {% endif %}
-                            <form method="post" action="{% url 'deduplikator_autorow:ignore_author' %}" class="deduplikator-autorow__form--inline">
+                            <form method="post" action="{% url 'deduplikator_autorow:ignore_scientist' %}" class="deduplikator-autorow__form--inline">
                                 {% csrf_token %}
                                 <input type="hidden" name="scientist_id" value="{{ scientist.pk }}">
                                 <input type="hidden" name="reason" value="Pominięty przez użytkownika">
@@ -418,6 +476,17 @@
                             {% endif %}
                             <a href="{% url 'deduplikator_autorow:duplicate_authors' %}?skip_count={{ skip_count|add:"1" }}"
                                class="button primary">Następny autor <span class="fi-arrow-right"></span></a>
+                        </div>
+                    {% elif search_lastname and glowny_autor %}
+                        <div class="button-group">
+                            {% if search_has_prev %}
+                                <a href="?search_lastname={{ search_lastname }}&amp;mode={{ mode }}&amp;skip_count={{ skip_count|add:"-1" }}"
+                                   class="button secondary"><span class="fi-arrow-left"></span> Poprzedni</a>
+                            {% endif %}
+                            {% if search_has_next %}
+                            <a href="?search_lastname={{ search_lastname }}&amp;mode={{ mode }}&amp;skip_count={{ skip_count|add:"1" }}"
+                               class="button primary">Następny <span class="fi-arrow-right"></span></a>
+                            {% endif %}
                         </div>
                     {% endif %}
                 </div>
@@ -452,9 +521,23 @@
                     <p id="main-scan-eta-text" class="deduplikator-autorow__status-text--medium">
                         <span class="fi-clock"></span> ETA: obliczanie...
                     </p>
+                    {% if running_scan.phase %}
+                      <div class="deduplikator-autorow__scan-phase">
+                        Faza: <strong>{{ running_scan.get_phase_display|default:running_scan.phase }}</strong>
+                      </div>
+                    {% endif %}
                     <p>Strona odświeży się automatycznie po zakończeniu skanowania.</p>
                 </div>
             {% elif not glowny_autor %}
+                {% if search_lastname %}
+                <div class="callout warning deduplikator-autorow__callout-centered">
+                    <h3><span class="fi-magnifying-glass"></span> Nie znaleziono takich autorów</h3>
+                    <p>Nie znaleziono kandydatów dla nazwiska „{{ search_lastname }}".</p>
+                    <a href="?mode={{ mode }}" class="button secondary deduplikator-autorow__callout-margin-top">
+                        <span class="fi-x"></span> Wyczyść wyszukiwanie
+                    </a>
+                </div>
+                {% else %}
                 <div class="callout success deduplikator-autorow__callout-centered">
                     <h3><span class="fi-check"></span> Gratulacje!</h3>
                     <p><strong>Wszystkie duplikaty zostały już przetworzone.</strong></p>
@@ -467,10 +550,26 @@
                         </button>
                     </form>
                 </div>
+                {% endif %}
             {% else %}
                 {% if glowny_autor %}
                     <div class="callout primary">
-                        <h3>Główny rekord autora</h3>
+                        <h3 class="deduplikator-autorow__main-record-title">
+                            <span>Główny rekord autora</span>
+                            {% if first_candidate %}
+                                {% if first_candidate.scan_mode == "pbn" %}
+                                    <span class="deduplikator-autorow__badge deduplikator-autorow__badge--pbn"
+                                          title="Duplikat wykryty na podstawie danych PBN">
+                                        <span class="fi-link" aria-hidden="true"></span> PBN
+                                    </span>
+                                {% else %}
+                                    <span class="deduplikator-autorow__badge deduplikator-autorow__badge--general"
+                                          title="Duplikat wykryty przez analizę ogólną">
+                                        <span class="fi-magnifying-glass" aria-hidden="true"></span> ogólny
+                                    </span>
+                                {% endif %}
+                            {% endif %}
+                        </h3>
                         <div class="grid-x grid-padding-x">
                             <div class="cell medium-4">
                                 <strong>Imię i nazwisko:</strong><br>
@@ -552,62 +651,116 @@
                         </div>
 
                         {% if glowne_publikacje %}
-                            <h4>Publikacje głównego autora:{% if glowne_publikacje_year_range %}
+                            <h4>{% if glowne_publikacje_count == 1 %}Publikacja{% else %}Publikacje{% endif %} głównego autora:{% if glowne_publikacje_year_range %}
                                 <small class="deduplikator-autorow__year-hint">({{ glowne_publikacje_year_range }})</small>{% endif %}</h4>
                             <div class="deduplikator-autorow__publication-list">
                                 {% for publikacja in glowne_publikacje %}
                                     <div class="deduplikator-autorow__publication-item">
-                                        <small><strong>
+                                        <small>
                                             <a href="{% url 'bpp:browse_praca_old' publikacja.content_type.model publikacja.pk.1 %}"
                                                target="_blank" class="deduplikator-autorow__publication-link">
-                                                {{ publikacja.tytul_oryginalny }}
+                                                {{ publikacja.opis_bibliograficzny_cache|truncatewords_html:30|safe }}
                                             </a>
-                                            {% if publikacja.rok %}
-                                                <span class="deduplikator-autorow__publication-year"> ({{ publikacja.rok }})</span>{% endif %}
-                                        </strong></small><br>
-                                        <small>{{ publikacja.opis_bibliograficzny_cache|truncatewords:20 }}</small>
+                                        </small>
                                     </div>
                                 {% endfor %}
                             </div>
                         {% endif %}
                     </div>
 
-                    <div class="grid-x grid-padding-x align-middle deduplikator-autorow__duplicates-header">
-                        <div class="cell auto">
-                            <h3 class="deduplikator-autorow__duplicates-title">Możliwe duplikaty ({{ duplikaty_z_publikacjami|length }})</h3>
-                        </div>
-                        {% if duplikaty_z_publikacjami|length > 0 %}
-                        <div class="cell shrink">
-                            <div id="merge-all-progress" class="deduplikator-autorow__merge-progress">
-                                <span class="label warning">
-                                    <span class="fi-loop deduplikator-autorow__spinner"></span>
-                                    Scalanie... <span id="merge-progress-text">0/0</span> duplikatów
-                                </span>
+                    <div id="mozliwe-duplikaty" class="deduplikator-autorow__duplicates-header">
+                        {# Wiersz 1: nagłówek + wskaźnik postępu + przyciski scalania. #}
+                        <div class="grid-x grid-padding-x align-middle">
+                            <div class="cell auto">
+                                <h3 class="deduplikator-autorow__duplicates-title">
+                                    Możliwe duplikaty
+                                    {% if confidence_band != 'all' and duplikaty_z_publikacjami|length != candidates_total_for_main %}
+                                        ({{ duplikaty_z_publikacjami|length }} z {{ candidates_total_for_main }})
+                                    {% else %}
+                                        ({{ duplikaty_z_publikacjami|length }})
+                                    {% endif %}
+                                </h3>
                             </div>
+                            {% if duplikaty_z_publikacjami|length > 0 %}
+                            {# Wskaźnik postępu - ukryty domyślnie, JS pokazuje go w trakcie scalania. #}
+                            <div class="cell shrink" id="merge-all-progress-cell" hidden style="display: none;">
+                                <div id="merge-all-progress" class="deduplikator-autorow__merge-progress">
+                                    <span class="label warning">
+                                        <span class="fi-loop deduplikator-autorow__spinner"></span>
+                                        Scalanie... <span id="merge-progress-text">0/0</span> duplikatów
+                                    </span>
+                                </div>
+                            </div>
+                            <div class="cell shrink">
+                                <div class="button-group"
+                                     {% if not allow_merge_all %}data-low-confidence-names="{{ low_confidence_names|join:'||' }}"{% endif %}>
+                                    <button type="button"
+                                            id="merge-all-btn"
+                                            class="button small success{% if not allow_merge_all %} deduplikator-autorow__merge-all-btn--disabled{% endif %}"
+                                            data-merge-all="true"
+                                            data-skip-pbn="false"
+                                            {% if not allow_merge_all %}aria-disabled="true"{% endif %}>
+                                        Scal wszystkie automatycznie
+                                    </button>
+                                    <button type="button"
+                                            id="merge-all-no-pbn-btn"
+                                            class="button small warning{% if not allow_merge_all %} deduplikator-autorow__merge-all-btn--disabled{% endif %}"
+                                            data-merge-all="true"
+                                            data-skip-pbn="true"
+                                            {% if not allow_merge_all %}aria-disabled="true"{% endif %}>
+                                        Scal wszystkie, nie wysyłaj do PBN
+                                    </button>
+                                </div>
+                            </div>
+                            {% endif %}
                         </div>
-                        <div class="cell shrink">
-                            <div class="button-group">
-                                <button type="button"
-                                        id="merge-all-btn"
-                                        class="button small success"
-                                        data-merge-all="true"
-                                        data-skip-pbn="false">
-                                    Scal wszystkie automatycznie
-                                </button>
-                                <button type="button"
-                                        id="merge-all-no-pbn-btn"
-                                        class="button small warning"
-                                        data-merge-all="true"
-                                        data-skip-pbn="true">
-                                    Scal wszystkie, nie wysyłaj do PBN
-                                </button>
+
+                        {# Wiersz 2: filtr pewności per-autor — Wszyscy / Pewniaki / Słabe. #}
+                        {# Liczniki dotyczą TYLKO kandydatów aktualnego głównego #}
+                        {# autora; nie skanuje całej bazy. #}
+                        {# Ukrywamy cały rząd gdy obie kategorie mają kandydatów #}
+                        {# — ale gdy tylko jedna kategoria > 0, nie ma czego filtrować. #}
+                        {% if candidates_high_for_main > 0 and candidates_low_for_main > 0 %}
+                        <div class="grid-x grid-padding-x">
+                            <div class="cell shrink">
+                                <div class="button-group deduplikator-autorow__confidence-buttons" role="tablist" aria-label="Filtr pewności (per autor)">
+                                    <a href="?{% if search_lastname %}search_lastname={{ search_lastname }}&amp;{% else %}skip_count={{ skip_count }}&amp;{% endif %}mode={{ mode }}&amp;confidence=all#mozliwe-duplikaty"
+                                       role="tab"
+                                       aria-selected="{% if confidence_band == 'all' %}true{% else %}false{% endif %}"
+                                       class="button small{% if confidence_band == 'all' %} primary{% else %} hollow secondary{% endif %}"
+                                       title="Pokaż wszystkich kandydatów tego autora">
+                                        Wszyscy
+                                        <span class="deduplikator-autorow__mode-count">{{ candidates_total_for_main }}</span>
+                                    </a>
+                                    <a href="?{% if search_lastname %}search_lastname={{ search_lastname }}&amp;{% else %}skip_count={{ skip_count }}&amp;{% endif %}mode={{ mode }}&amp;confidence=high#mozliwe-duplikaty"
+                                       role="tab"
+                                       aria-selected="{% if confidence_band == 'high' %}true{% else %}false{% endif %}"
+                                       class="button small{% if confidence_band == 'high' %} primary{% else %} hollow secondary{% endif %}"
+                                       title="Tylko kandydaci z pewnością ≥ 50%">
+                                        <span class="fi-checkbox" aria-hidden="true"></span>
+                                        Pewniaki
+                                        <span class="deduplikator-autorow__mode-count">{{ candidates_high_for_main }}</span>
+                                    </a>
+                                    <a href="?{% if search_lastname %}search_lastname={{ search_lastname }}&amp;{% else %}skip_count={{ skip_count }}&amp;{% endif %}mode={{ mode }}&amp;confidence=low#mozliwe-duplikaty"
+                                       role="tab"
+                                       aria-selected="{% if confidence_band == 'low' %}true{% else %}false{% endif %}"
+                                       class="button small{% if confidence_band == 'low' %} primary{% else %} hollow secondary{% endif %}"
+                                       title="Tylko kandydaci z pewnością < 50%">
+                                        <span class="fi-alert" aria-hidden="true"></span>
+                                        Słabe
+                                        <span class="deduplikator-autorow__mode-count">{{ candidates_low_for_main }}</span>
+                                    </a>
+                                </div>
                             </div>
                         </div>
                         {% endif %}
                     </div>
 
                     {% for duplikat_data in duplikaty_z_publikacjami %}
-                        <div id="duplicate-card-{{ duplikat_data.autor.pk }}" class="callout deduplikator-autorow__duplicate-card {% if duplikat_data.analiza.pewnosc > 50 %}success{% elif duplikat_data.analiza.pewnosc > 0 %}warning{% else %}alert{% endif %}">
+                        <div id="duplicate-card-{{ duplikat_data.autor.pk }}"
+                             data-pewnosc="{{ duplikat_data.analiza.pewnosc }}"
+                             data-author-name="{{ duplikat_data.autor }}"
+                             class="callout deduplikator-autorow__duplicate-card {% if duplikat_data.analiza.pewnosc > 50 %}success{% elif duplikat_data.analiza.pewnosc > 0 %}warning{% else %}alert{% endif %}">
                             <div class="grid-x grid-padding-x">
                                 <div class="cell medium-8">
                                     <div class="deduplikator-autorow__duplicate-header">
@@ -654,105 +807,154 @@
 
                                     <div class="deduplikator-autorow__reasons-section">
                                         <h5>Powody podobieństwa:</h5>
-                                        <ul>
+                                        <div class="deduplikator-autorow__reasons-chips">
                                             {% for powod in duplikat_data.analiza.powody_podobienstwa %}
-                                                <li>{{ powod }}</li>
+                                                <span class="deduplikator-autorow__reason-chip deduplikator-autorow__reason-chip--{{ powod.tone }}"
+                                                      title="{{ powod.text }}">
+                                                    <span class="{{ powod.icon }}" aria-hidden="true"></span>
+                                                    <span class="deduplikator-autorow__reason-chip-text">{{ powod.text }}</span>
+                                                </span>
                                                 {% empty %}
-                                                <li>Brak szczegółowych powodów</li>
+                                                <span class="deduplikator-autorow__reason-chip deduplikator-autorow__reason-chip--weak">
+                                                    <span class="fi-info" aria-hidden="true"></span>
+                                                    Brak szczegółowych powodów
+                                                </span>
                                             {% endfor %}
-                                        </ul>
+                                        </div>
                                     </div>
                                 </div>
 
-                                <div class="cell medium-4 text-right">
-                                    <div class="button-group stacked">
-                                        <button type="button"
-                                                id="merge-with-disc-btn-{{ duplikat_data.autor.pk }}"
-                                                class="button small success deduplikator-autorow__button--full-width"
-                                                data-merge-action="with-discipline"
-                                                data-main-author="{{ glowny_autor.pk }}"
-                                                data-duplicate-author="{{ duplikat_data.autor.pk }}"
-                                                data-candidate-id="{% if duplikat_data.candidate_id %}{{ duplikat_data.candidate_id }}{% endif %}">
-                                            <span class="button-text">Scal + ustaw dyscyplinę</span>
-                                            <span class="spinner" style="display: none;">
-                                                <i class="fi-loop deduplikator-autorow__spinner"></i> Scalanie...
-                                            </span>
-                                        </button>
-                                        <button type="button"
-                                                id="merge-with-subdisc-btn-{{ duplikat_data.autor.pk }}"
-                                                class="button small success deduplikator-autorow__button--full-width"
-                                                data-merge-action="with-subdiscipline"
-                                                data-main-author="{{ glowny_autor.pk }}"
-                                                data-duplicate-author="{{ duplikat_data.autor.pk }}"
-                                                data-candidate-id="{% if duplikat_data.candidate_id %}{{ duplikat_data.candidate_id }}{% endif %}">
-                                            <span class="button-text">Scal + ustaw subdyscyplinę</span>
-                                            <span class="spinner" style="display: none;">
-                                                <i class="fi-loop deduplikator-autorow__spinner"></i> Scalanie...
-                                            </span>
-                                        </button>
-                                        <button type="button"
-                                                id="merge-btn-{{ duplikat_data.autor.pk }}"
-                                                class="button small primary deduplikator-autorow__button--full-width"
-                                                data-merge-action="standard"
-                                                data-main-author="{{ glowny_autor.pk }}"
-                                                data-duplicate-author="{{ duplikat_data.autor.pk }}"
-                                                data-candidate-id="{% if duplikat_data.candidate_id %}{{ duplikat_data.candidate_id }}{% endif %}">
-                                            <span class="button-text">Scal bez zmian dyscyplin</span>
-                                            <span class="spinner" style="display: none;">
-                                                <i class="fi-loop deduplikator-autorow__spinner"></i> Scalanie...
-                                            </span>
-                                        </button>
-                                        <button type="button"
-                                                id="merge-no-pbn-btn-{{ duplikat_data.autor.pk }}"
-                                                class="button small warning deduplikator-autorow__button--full-width"
-                                                data-merge-action="no-pbn"
-                                                data-main-author="{{ glowny_autor.pk }}"
-                                                data-duplicate-author="{{ duplikat_data.autor.pk }}"
-                                                data-candidate-id="{% if duplikat_data.candidate_id %}{{ duplikat_data.candidate_id }}{% endif %}">
-                                            <span class="button-text">Scal, nie wysyłaj do PBN</span>
-                                            <span class="spinner" style="display: none;">
-                                                <i class="fi-loop deduplikator-autorow__spinner"></i> Scalanie...
-                                            </span>
-                                        </button>
-                                        <a href="#"
-                                           class="button small secondary deduplikator-autorow__button--full-width"
-                                           data-open-wydawnictwo="ciagle"
-                                           data-autor-id="{{ duplikat_data.autor.pk }}">
-                                            <span class="fi-pencil"></span> Pokaż wyd. ciągłe
-                                        </a>
-                                        <a href="#"
-                                           class="button small secondary deduplikator-autorow__button--full-width"
-                                           data-open-wydawnictwo="zwarte"
-                                           data-autor-id="{{ duplikat_data.autor.pk }}">
-                                            <span class="fi-pencil"></span> Pokaż wyd. zwarte
-                                        </a>
-                                        {% if duplikat_data.candidate_id %}
-                                        <form method="post" action="{% url 'deduplikator_autorow:mark_candidate_not_duplicate' %}"
-                                              class="deduplikator-autorow__form--block">
-                                            {% csrf_token %}
-                                            <input type="hidden" name="candidate_id"
-                                                   value="{{ duplikat_data.candidate_id }}">
-                                            <button type="submit" class="button small alert deduplikator-autorow__button--full-width">
-                                                Nie są duplikatami
+                                <div class="cell medium-4 deduplikator-autorow__actions">
+                                    {# 1. PODGLĄD — bez konsekwencji, tylko otwiera nowe karty #}
+                                    <div class="deduplikator-autorow__action-group">
+                                        <h6 class="deduplikator-autorow__action-group-title">
+                                            <span class="fi-eye" aria-hidden="true"></span> Podgląd
+                                        </h6>
+                                        <div class="button-group stacked">
+                                            <a href="#"
+                                               class="button small secondary deduplikator-autorow__button--full-width"
+                                               data-open-wydawnictwo="ciagle"
+                                               data-autor-id="{{ duplikat_data.autor.pk }}">
+                                                <span class="fi-page-multiple"></span> Pokaż wyd. ciągłe
+                                            </a>
+                                            <a href="#"
+                                               class="button small secondary deduplikator-autorow__button--full-width"
+                                               data-open-wydawnictwo="zwarte"
+                                               data-autor-id="{{ duplikat_data.autor.pk }}">
+                                                <span class="fi-book"></span> Pokaż wyd. zwarte
+                                            </a>
+                                            <a href="/admin/bpp/autor/{{ duplikat_data.autor.pk }}/change/"
+                                               target="_blank"
+                                               class="button small secondary deduplikator-autorow__button--full-width">
+                                                <span class="fi-pencil"></span> Otwórz w redagowaniu
+                                            </a>
+                                            <a href="{% url 'bpp:browse_autor' duplikat_data.autor.pk %}"
+                                               target="_blank"
+                                               class="button small secondary deduplikator-autorow__button--full-width">
+                                                <span class="fi-link"></span> Otwórz na stronie głównej
+                                            </a>
+                                            {% if duplikat_data.autor.pbn_uid_id %}
+                                            <a href="{{ duplikat_data.autor.link_do_pbn }}"
+                                               target="_blank"
+                                               class="button small secondary deduplikator-autorow__button--full-width">
+                                                <span class="fi-arrow-right"></span> Otwórz w PBN
+                                            </a>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+
+                                    {# 2. DECYZJA — czy w ogóle są duplikatami? #}
+                                    <div class="deduplikator-autorow__action-group">
+                                        <h6 class="deduplikator-autorow__action-group-title">
+                                            <span class="fi-checkbox" aria-hidden="true"></span> Decyzja
+                                        </h6>
+                                        <div class="button-group stacked">
+                                            {% if duplikat_data.candidate_id %}
+                                            <button type="button"
+                                                    class="button small alert deduplikator-autorow__button--full-width"
+                                                    data-mark-not-duplicate="candidate"
+                                                    data-candidate-id="{{ duplikat_data.candidate_id }}"
+                                                    data-duplicate-author="{{ duplikat_data.autor.pk }}">
+                                                <span class="fi-x" aria-hidden="true"></span>
+                                                Nie jest duplikatem głównego autora
                                             </button>
-                                        </form>
-                                        {% else %}
-                                        <form method="post" action="{% url 'deduplikator_autorow:mark_non_duplicate' %}"
-                                              class="deduplikator-autorow__form--block">
-                                            {% csrf_token %}
-                                            <input type="hidden" name="scientist_pk"
-                                                   value="{{ duplikat_data.autor.pk }}">
-                                            <button type="submit" class="button small alert deduplikator-autorow__button--full-width">
-                                                Nie są duplikatami
+                                            {% else %}
+                                            <button type="button"
+                                                    class="button small alert deduplikator-autorow__button--full-width"
+                                                    data-mark-not-duplicate="autor"
+                                                    data-scientist-pk="{{ duplikat_data.autor.pk }}"
+                                                    data-duplicate-author="{{ duplikat_data.autor.pk }}">
+                                                <span class="fi-x" aria-hidden="true"></span>
+                                                Nie jest duplikatem głównego autora
                                             </button>
-                                        </form>
-                                        {% endif %}
-                                        {% if duplikat_data.publikacje_count == 0 %}
+                                            {% endif %}
+                                            {% if duplikat_data.publikacje_count == 0 %}
                                             <button class="button small alert deduplikator-autorow__button--full-width"
                                                     data-delete-author="{{ duplikat_data.autor.pk }}">
+                                                <span class="fi-trash" aria-hidden="true"></span>
                                                 Usuń autora (brak publikacji)
                                             </button>
-                                        {% endif %}
+                                            {% endif %}
+                                        </div>
+                                    </div>
+
+                                    {# 3. SCALANIE — co zrobić, jeśli to duplikat #}
+                                    <div class="deduplikator-autorow__action-group">
+                                        <h6 class="deduplikator-autorow__action-group-title">
+                                            <span class="fi-arrows-compress" aria-hidden="true"></span> Scalanie
+                                        </h6>
+                                        <div class="button-group stacked">
+                                            {% if glowny_autor_dyscypliny %}
+                                            <button type="button"
+                                                    id="merge-with-disc-btn-{{ duplikat_data.autor.pk }}"
+                                                    class="button small success deduplikator-autorow__button--full-width"
+                                                    data-merge-action="with-discipline"
+                                                    data-main-author="{{ glowny_autor.pk }}"
+                                                    data-duplicate-author="{{ duplikat_data.autor.pk }}"
+                                                    data-candidate-id="{% if duplikat_data.candidate_id %}{{ duplikat_data.candidate_id }}{% endif %}">
+                                                <span class="button-text">Scal + ustaw dyscyplinę</span>
+                                                <span class="spinner" style="display: none;">
+                                                    <i class="fi-loop deduplikator-autorow__spinner"></i> Scalanie...
+                                                </span>
+                                            </button>
+                                            <button type="button"
+                                                    id="merge-with-subdisc-btn-{{ duplikat_data.autor.pk }}"
+                                                    class="button small success deduplikator-autorow__button--full-width"
+                                                    data-merge-action="with-subdiscipline"
+                                                    data-main-author="{{ glowny_autor.pk }}"
+                                                    data-duplicate-author="{{ duplikat_data.autor.pk }}"
+                                                    data-candidate-id="{% if duplikat_data.candidate_id %}{{ duplikat_data.candidate_id }}{% endif %}">
+                                                <span class="button-text">Scal + ustaw subdyscyplinę</span>
+                                                <span class="spinner" style="display: none;">
+                                                    <i class="fi-loop deduplikator-autorow__spinner"></i> Scalanie...
+                                                </span>
+                                            </button>
+                                            {% endif %}
+                                            <button type="button"
+                                                    id="merge-btn-{{ duplikat_data.autor.pk }}"
+                                                    class="button small primary deduplikator-autorow__button--full-width"
+                                                    data-merge-action="standard"
+                                                    data-main-author="{{ glowny_autor.pk }}"
+                                                    data-duplicate-author="{{ duplikat_data.autor.pk }}"
+                                                    data-candidate-id="{% if duplikat_data.candidate_id %}{{ duplikat_data.candidate_id }}{% endif %}">
+                                                <span class="button-text">Scal bez zmian dyscyplin</span>
+                                                <span class="spinner" style="display: none;">
+                                                    <i class="fi-loop deduplikator-autorow__spinner"></i> Scalanie...
+                                                </span>
+                                            </button>
+                                            <button type="button"
+                                                    id="merge-no-pbn-btn-{{ duplikat_data.autor.pk }}"
+                                                    class="button small warning deduplikator-autorow__button--full-width"
+                                                    data-merge-action="no-pbn"
+                                                    data-main-author="{{ glowny_autor.pk }}"
+                                                    data-duplicate-author="{{ duplikat_data.autor.pk }}"
+                                                    data-candidate-id="{% if duplikat_data.candidate_id %}{{ duplikat_data.candidate_id }}{% endif %}">
+                                                <span class="button-text">Scal, nie wysyłaj do PBN</span>
+                                                <span class="spinner" style="display: none;">
+                                                    <i class="fi-loop deduplikator-autorow__spinner"></i> Scalanie...
+                                                </span>
+                                            </button>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -802,23 +1004,19 @@
                             </div>
 
                             {% if duplikat_data.publikacje %}
-                                <h5 class="deduplikator-autorow__section-title">Publikacje duplikatu:
+                                <h5 class="deduplikator-autorow__section-title">{% if duplikat_data.publikacje_count == 1 %}Publikacja{% else %}Publikacje{% endif %} duplikatu:
                                     {% if duplikat_data.publikacje_year_range %}
                                         <small class="deduplikator-autorow__year-hint">({{ duplikat_data.publikacje_year_range }})</small>{% endif %}
                                 </h5>
                                 <div class="deduplikator-autorow__publication-list deduplikator-autorow__publication-list--short">
                                     {% for publikacja in duplikat_data.publikacje %}
                                         <div class="deduplikator-autorow__publication-item--duplicate">
-                                            <small><strong>
+                                            <small class="deduplikator-autorow__publication-description">
                                                 <a href="{% url 'bpp:browse_praca' publikacja.pk.0 publikacja.pk.1 %}"
                                                    target="_blank" class="deduplikator-autorow__publication-link--muted">
-                                                    {{ publikacja.tytul_oryginalny }}
+                                                    {{ publikacja.opis_bibliograficzny_cache|truncatewords_html:25|safe }}
                                                 </a>
-                                                {% if publikacja.rok %}
-                                                    <span class="deduplikator-autorow__publication-year"> ({{ publikacja.rok }})</span>{% endif %}
-                                            </strong></small><br>
-                                            <small class="deduplikator-autorow__publication-description">
-                                                {{ publikacja.opis_bibliograficzny_cache|truncatewords:15 }}</small>
+                                            </small>
                                         </div>
                                     {% endfor %}
                                 </div>
@@ -921,7 +1119,24 @@
         document.addEventListener('DOMContentLoaded', function() {
             adjustSidebarPosition();
             relocateMessages(); // Move messages to respect sidebar layout
+            scrollToHashTarget(); // Po kliknięciu filtra pewności scroll-do-mozliwe-duplikaty
         });
+
+        // Po nawigacji z fragmentem URL (np. ?confidence=high#mozliwe-duplikaty)
+        // przeglądarka domyślnie skoczy do elementu, ale sticky header BPP go
+        // schowa. Używamy oficjalnego helpera bpp.scrollToVisible, jak wymagane
+        // w CLAUDE.md.
+        function scrollToHashTarget() {
+            var hash = window.location.hash;
+            if (!hash || hash.length < 2) return;
+            var el = document.getElementById(hash.substring(1));
+            if (!el) return;
+            if (window.bpp && typeof window.bpp.scrollToVisible === 'function') {
+                window.bpp.scrollToVisible(el);
+            } else {
+                el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+        }
 
         // Adjust on window resize and scroll
         window.addEventListener('resize', adjustSidebarPosition);
@@ -951,10 +1166,10 @@
                 button.querySelector('.spinner').style.display = 'inline';
             }
 
-            // Build request data
+            // Build request data — use Autor PKs directly (template provides Autor PKs).
             var requestData = {
-                'main_scientist_id': mainAuthorId,
-                'duplicate_scientist_id': duplicateAuthorId
+                'main_autor_id': mainAuthorId,
+                'duplicate_autor_id': duplicateAuthorId
             };
             if (candidateId) {
                 requestData['candidate_id'] = candidateId;
@@ -1139,6 +1354,196 @@
             e.preventDefault();
         });
 
+        // Autocomplete dla pola "Szukaj autora po nazwisku" - debounce 200ms,
+        // używa endpointu lastname_suggestions zwracającego top-10 nazwisk
+        // z pending DuplicateCandidate. Przy < 2 znakach lista jest czyszczona.
+        (function setupLastnameAutocomplete() {
+            var input = document.getElementById('search_lastname');
+            var datalist = document.getElementById('lastname-suggestions');
+            if (!input || !datalist) return;
+
+            var debounceTimer = null;
+            var lastQuery = '';
+
+            function setOptions(names) {
+                while (datalist.firstChild) datalist.removeChild(datalist.firstChild);
+                names.forEach(function(name) {
+                    var opt = document.createElement('option');
+                    opt.value = name;
+                    datalist.appendChild(opt);
+                });
+            }
+
+            input.addEventListener('input', function() {
+                var q = input.value.trim();
+                if (q.length < 2) {
+                    setOptions([]);
+                    lastQuery = '';
+                    return;
+                }
+                if (q === lastQuery) return;
+                lastQuery = q;
+
+                clearTimeout(debounceTimer);
+                debounceTimer = setTimeout(function() {
+                    fetch('{% url "deduplikator_autorow:lastname_suggestions" %}?q=' + encodeURIComponent(q), {
+                        headers: { 'X-Requested-With': 'XMLHttpRequest' }
+                    })
+                    .then(function(r) { return r.json(); })
+                    .then(function(data) {
+                        if (data && Array.isArray(data.results)) {
+                            setOptions(data.results);
+                        }
+                    })
+                    .catch(function(err) {
+                        console.error('Autocomplete failed:', err);
+                    });
+                }, 200);
+            });
+        })();
+
+        // Po usunięciu/scaleniu karty duplikatu — przelicz, czy "Scal wszystkie"
+        // mogą wrócić do stanu aktywnego (wszyscy pozostali kandydaci ≥ 50%).
+        // Działa przeciwnie też: jeśli ktoś usunie ostatni "dobry" wpis i zostały
+        // tylko niskoprocentowe, przyciski wracają w stan disabled.
+        var MIN_PEWNOSC_THRESHOLD = {{ MIN_PEWNOSC_DO_WYSWIETLENIA|default:50 }};
+        function refreshMergeAllAvailability() {
+            var cards = document.querySelectorAll('[id^="duplicate-card-"]');
+            if (cards.length === 0) return;
+
+            var minPewnosc = 100;
+            var lowConfidence = [];
+            cards.forEach(function(card) {
+                var p = parseInt(card.dataset.pewnosc, 10);
+                if (isNaN(p)) return;
+                if (p < minPewnosc) minPewnosc = p;
+                if (p < MIN_PEWNOSC_THRESHOLD) {
+                    lowConfidence.push((card.dataset.authorName || 'autor') + ' (' + p + '%)');
+                }
+            });
+
+            var allowMergeAll = lowConfidence.length === 0;
+            var buttons = document.querySelectorAll('[data-merge-all]');
+            var group = document.querySelector('[data-low-confidence-names]');
+
+            buttons.forEach(function(btn) {
+                if (allowMergeAll) {
+                    btn.classList.remove('deduplikator-autorow__merge-all-btn--disabled');
+                    btn.removeAttribute('aria-disabled');
+                } else {
+                    btn.classList.add('deduplikator-autorow__merge-all-btn--disabled');
+                    btn.setAttribute('aria-disabled', 'true');
+                }
+            });
+
+            if (group) {
+                if (allowMergeAll) {
+                    group.removeAttribute('data-low-confidence-names');
+                } else {
+                    group.setAttribute('data-low-confidence-names', lowConfidence.join('||'));
+                }
+            } else if (!allowMergeAll && buttons.length > 0) {
+                // Brak wrappera (przyciski były od początku aktywne) — dorzuć dataset
+                // do najbliższego button-group, żeby alert mógł odczytać nazwiska.
+                var bg = buttons[0].closest('.button-group');
+                if (bg) bg.setAttribute('data-low-confidence-names', lowConfidence.join('||'));
+            }
+        }
+
+        // Event delegation for "Nie są duplikatami" - AJAX with fadeOut
+        document.addEventListener('click', function(e) {
+            var target = e.target.closest('[data-mark-not-duplicate]');
+            if (!target) return;
+            e.preventDefault();
+
+            var kind = target.dataset.markNotDuplicate;
+            var duplicateAuthorId = target.dataset.duplicateAuthor;
+            var card = document.getElementById('duplicate-card-' + duplicateAuthorId);
+
+            var url, payload;
+            if (kind === 'candidate') {
+                url = '{% url "deduplikator_autorow:mark_candidate_not_duplicate" %}';
+                payload = { candidate_id: target.dataset.candidateId };
+            } else {
+                url = '{% url "deduplikator_autorow:mark_non_duplicate" %}';
+                payload = { scientist_pk: target.dataset.scientistPk };
+            }
+
+            target.disabled = true;
+
+            $.ajax({
+                url: url,
+                type: 'POST',
+                dataType: 'json',
+                headers: {
+                    'X-CSRFToken': '{{ csrf_token }}',
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
+                data: payload,
+                success: function(response) {
+                    if (response && response.success) {
+                        if (bppNotifications && bppNotifications.addMessage && response.message) {
+                            bppNotifications.addMessage({
+                                cssClass: 'success',
+                                text: response.message,
+                                sound: false
+                            });
+                        }
+                        {# Aktualizuj licznik nie-duplikatów w sidebarze #}
+                        var ndBadge = document.getElementById('not-duplicate-count');
+                        var ndText = document.getElementById('not-duplicate-count-text');
+                        if (ndBadge) {
+                            var ndCount = parseInt(ndBadge.dataset.count || '0') + 1;
+                            ndBadge.dataset.count = ndCount;
+                            ndBadge.textContent = ndCount;
+                        }
+                        if (ndText) {
+                            ndText.textContent = (parseInt(ndText.textContent) || 0) + 1;
+                        }
+                        if (card) {
+                            $(card).fadeOut(400, function() {
+                                $(this).remove();
+                                var countElement = document.querySelector('.deduplikator-autorow__duplicates-title');
+                                if (countElement) {
+                                    var match = countElement.textContent.match(/\((\d+)\)/);
+                                    if (match) {
+                                        var newCount = parseInt(match[1]) - 1;
+                                        countElement.textContent = 'Możliwe duplikaty (' + newCount + ')';
+                                        if (newCount === 0) {
+                                            setTimeout(function() { window.location.reload(); }, 500);
+                                            return;
+                                        }
+                                    }
+                                }
+                                refreshMergeAllAvailability();
+                            });
+                        }
+                    } else {
+                        target.disabled = false;
+                        var msg = (response && response.message) || 'Operacja nie powiodła się.';
+                        if (bppNotifications && bppNotifications.addMessage) {
+                            bppNotifications.addMessage({ cssClass: 'alert', text: msg, sound: true });
+                        } else {
+                            alert(msg);
+                        }
+                    }
+                },
+                error: function(xhr) {
+                    target.disabled = false;
+                    var msg = 'Błąd serwera podczas oznaczania jako nie-duplikat.';
+                    try {
+                        var resp = xhr.responseJSON || JSON.parse(xhr.responseText);
+                        if (resp && resp.message) msg = resp.message;
+                    } catch (err) { /* ignore parse */ }
+                    if (bppNotifications && bppNotifications.addMessage) {
+                        bppNotifications.addMessage({ cssClass: 'alert', text: msg, sound: true });
+                    } else {
+                        alert(msg);
+                    }
+                }
+            });
+        });
+
         // Event delegation for delete author (data-delete-author)
         document.addEventListener('click', function(e) {
             var target = e.target.closest('[data-delete-author]');
@@ -1174,10 +1579,34 @@
         document.addEventListener('click', function(e) {
             var target = e.target.closest('[data-merge-all]');
             if (!target) return;
+            e.preventDefault();
+
+            // Wyszarzony przycisk (są kandydaci z pewnością < 50%) -> komunikat,
+            // zamiast uruchamiać scalanie zbiorcze.
+            if (target.getAttribute('aria-disabled') === 'true') {
+                var group = target.closest('[data-low-confidence-names]');
+                var namesAttr = group ? group.dataset.lowConfidenceNames : '';
+                var names = namesAttr ? namesAttr.split('||') : [];
+                var listHtml = names.length
+                    ? '\n\nAutorzy poniżej progu 50%:\n  • ' + names.join('\n  • ')
+                    : '';
+                alert(
+                    'Scalanie zbiorcze jest wyłączone dla tego głównego autora, '
+                    + 'ponieważ co najmniej jeden potencjalny duplikat ma pewność '
+                    + 'poniżej 50%.' + listHtml + '\n\n'
+                    + 'Co możesz zrobić, żeby przyciski wróciły:\n'
+                    + '  • Dodaj niepewnych autorów do "ignorowanych" (przycisk '
+                    + '"Ignoruj autora" w nagłówku),\n'
+                    + '  • lub scal/odrzuć ich ręcznie (przyciski w sekcji '
+                    + '"Decyzja" / "Scalanie" przy każdej karcie).\n\n'
+                    + 'Scalanie zbiorcze jest dostępne tylko, gdy WSZYSCY kandydaci '
+                    + 'mają pewność ≥ 50%.'
+                );
+                return;
+            }
 
             var skipPbn = target.dataset.skipPbn === 'true';
             handleMergeAll(skipPbn);
-            e.preventDefault();
         });
 
         function handleMergeAll(skipPbn) {
@@ -1212,6 +1641,11 @@
             }
 
             // Show progress, disable buttons
+            var progressCell = document.getElementById('merge-all-progress-cell');
+            if (progressCell) {
+                progressCell.removeAttribute('hidden');
+                progressCell.style.display = '';
+            }
             document.getElementById('merge-all-progress').style.display = 'block';
             document.getElementById('merge-all-btn').disabled = true;
             document.getElementById('merge-all-no-pbn-btn').disabled = true;
@@ -1247,8 +1681,8 @@
                     type: 'GET',
                     dataType: 'json',
                     data: {
-                        'main_scientist_id': mainAuthorId,
-                        'duplicate_scientist_id': duplicateId,
+                        'main_autor_id': mainAuthorId,
+                        'duplicate_autor_id': duplicateId,
                         'skip_pbn': skipPbn
                     },
                     complete: function(xhr, status) {
@@ -1277,6 +1711,11 @@
 
             function handleMergeAllError(response, duplicateId) {
                 // Hide progress
+                var progressCell = document.getElementById('merge-all-progress-cell');
+                if (progressCell) {
+                    progressCell.setAttribute('hidden', '');
+                    progressCell.style.display = 'none';
+                }
                 document.getElementById('merge-all-progress').style.display = 'none';
 
                 // Re-enable main buttons

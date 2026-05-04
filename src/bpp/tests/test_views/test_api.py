@@ -335,3 +335,58 @@ def test_upload_punktacja_zrodla_overwrite():
     UploadPunktacjaZrodlaView().post(fr, z.pk, CURRENT_YEAR)
     assert Punktacja_Zrodla.objects.count() == 1
     assert Punktacja_Zrodla.objects.all()[0].impact_factor == 60
+
+
+# =============================================================================
+# Regresja bezpieczeństwa: te endpointy MUSZĄ wymagać logowania.
+# Bez auth dało się anonimowo zapisywać do Punktacja_Zrodla i wyciągać
+# metadane autorów. Patrz: ANALYSIS.md #1 (2026-05-02).
+# =============================================================================
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    "url_name,url_kwargs,post_data",
+    [
+        ("bpp:api_rok_habilitacji", {}, {"autor_pk": 1}),
+        (
+            "bpp:api_punktacja_zrodla",
+            {"zrodlo_id": 1, "rok": CURRENT_YEAR},
+            {},
+        ),
+        (
+            "bpp:api_upload_punktacja_zrodla",
+            {"zrodlo_id": 1, "rok": CURRENT_YEAR},
+            {"impact_factor": "50.0"},
+        ),
+        ("bpp:api_ostatnia_jednostka_i_dyscyplina", {}, {"autor_id": 1}),
+        ("bpp:api_pubmed_id", {}, {"t": "test"}),
+    ],
+)
+def test_api_endpoints_require_login(client, url_name, url_kwargs, post_data):
+    url = reverse(url_name, kwargs=url_kwargs)
+    response = client.post(url, data=post_data)
+
+    assert response.status_code in (302, 403), (
+        f"{url_name} accepts anonymous POSTs (status={response.status_code})"
+    )
+    if response.status_code == 302:
+        assert "/accounts/login/" in response["Location"] or (
+            "login" in response["Location"].lower()
+        )
+
+
+@pytest.mark.django_db
+def test_upload_punktacja_zrodla_anon_does_not_write(client):
+    """Najtwardszy regression test: anonim NIE może utworzyć Punktacja_Zrodla."""
+    z = any_zrodlo()
+    before = Punktacja_Zrodla.objects.count()
+
+    url = reverse(
+        "bpp:api_upload_punktacja_zrodla",
+        kwargs={"zrodlo_id": z.pk, "rok": CURRENT_YEAR},
+    )
+    response = client.post(url, data={"impact_factor": "999.0"})
+
+    assert response.status_code in (302, 403)
+    assert Punktacja_Zrodla.objects.count() == before

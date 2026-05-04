@@ -17,6 +17,10 @@ from bpp.models.abstract import (
     ModelZOplataZaPublikacje,
     ModelZRokiem,
 )
+from bpp.models.wydawca import Wydawca
+from bpp.models.wydawnictwo_zwarte import Wydawnictwo_Zwarte
+from pbn_api.models.publication import Publication as PBN_Publication
+from pbn_api.models.publisher import Publisher as PBN_Publisher
 
 
 def skroc_nazwe_pliku(nazwa: str, max_dlugosc: int = 512) -> str:
@@ -97,27 +101,102 @@ class Zgloszenie_Publikacji(
     )
 
     class Rodzaje(models.IntegerChoices):
+        # Legacy - nie używane w nowym formularzu
         ARTYKUL_LUB_MONOGRAFIA = 1, "artykuł naukowy lub monografia"
-        ROZDZIAL_W_MONOGRAFII = 3, "rozdział w monografii"
         POZOSTALE = 2, "pozostałe rodzaje"
+        ROZDZIAL_W_MONOGRAFII = 3, "rozdział w monografii"
+        # Nowe wartości używane w nowym formularzu
+        MONOGRAFIA = 4, "monografia"
+        ARTYKUL = 5, "artykuł naukowy"
+        INNE = 6, "inne"
+
+    class FormyDostepu(models.IntegerChoices):
+        OTWARTY = 1, "otwarty dostęp"
+        OGRANICZONY = 2, "dostęp ograniczony"
 
     rodzaj_zglaszanej_publikacji = models.PositiveSmallIntegerField(
         "Rodzaj zgłaszanej publikacji",
         choices=Rodzaje.choices,
-        help_text="Dla artykułów naukowych i monografii może być wymagane wprowadzenie informacji o opłatach"
-        " za publikację w ostatnim etapie wypełniania formularza. ",
+        help_text=(
+            "Dla artykułów naukowych i monografii może być"
+            " wymagane wprowadzenie informacji o opłatach"
+            " za publikację w ostatnim etapie wypełniania"
+            " formularza. "
+        ),
+    )
+
+    forma_dostepu = models.PositiveSmallIntegerField(
+        "Forma dostępu",
+        choices=FormyDostepu.choices,
+        null=True,
+        blank=True,
+        help_text="Otwarty dostęp lub dostęp ograniczony",
     )
 
     strona_www = models.URLField(
         "Dostępna w sieci pod adresem",
-        help_text="Pole opcjonalne. Adres URL lokalizacji pełnego tekstu pracy (dostęp otwarty lub nie). "
-        "Jeżeli praca posiada numer DOI, wpisz go w postaci adresu URL czyli https://dx.doi.org/[NUMER_DOI]. "
-        "Jeżeli praca nie posiada numeru DOI bądź nie jest dostępna w sieci, pozostaw to pole puste. Adres "
-        "URL musi być pełny, to znaczy musi zaczynać się od oznaczenia protokołu czyli od ciągu "
-        "znaków http:// lub https:// ",
+        help_text=(
+            "Adres URL lub DOI pełnego tekstu pracy. "
+            "System automatycznie rozpozna, czy podano DOI"
+            " czy URL."
+        ),
         max_length=1024,
         blank=True,
         default="",
+    )
+
+    # Wydawca -- mogą być wypełnione: FK do bpp.Wydawca,
+    # FK do pbn_api.Publisher, lub tekst (freetext)
+    wydawca_zgloszenia = models.CharField(
+        "Wydawca (tekst)",
+        max_length=512,
+        blank=True,
+        default="",
+        help_text="Nazwa wydawcy wpisana przez zgłaszającego",
+    )
+    wydawca_bpp = models.ForeignKey(
+        Wydawca,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        verbose_name="Wydawca (BPP)",
+        related_name="zgloszenia_publikacji",
+    )
+    wydawca_pbn = models.ForeignKey(
+        PBN_Publisher,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        verbose_name="Wydawca (PBN)",
+        related_name="zgloszenia_publikacji",
+    )
+
+    # Wydawnictwo nadrzędne -- dla rozdziałów
+    wydawnictwo_nadrzedne_tekst = models.CharField(
+        "Wydawnictwo nadrzędne (tekst)",
+        max_length=512,
+        blank=True,
+        default="",
+        help_text=(
+            "Tytuł monografii, w której jest rozdział"
+            " -- wpisany ręcznie przez zgłaszającego"
+        ),
+    )
+    wydawnictwo_nadrzedne_bpp = models.ForeignKey(
+        Wydawnictwo_Zwarte,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        verbose_name="Wydawnictwo nadrzędne (BPP)",
+        related_name="zgloszenia_publikacji",
+    )
+    wydawnictwo_nadrzedne_pbn = models.ForeignKey(
+        PBN_Publication,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        verbose_name="Wydawnictwo nadrzędne (PBN)",
+        related_name="zgloszenia_publikacji",
     )
 
     plik = models.FileField(
@@ -138,42 +217,38 @@ class Zgloszenie_Publikacji(
         help_text="Oryginalna nazwa pliku przesłana przez użytkownika",
     )
 
+    def _uczelnia_wymaga_oplatach_dla_rodzaju(self, uczelnia):
+        """Sprawdź czy uczelnia wymaga informacji o opłatach
+        dla danego rodzaju publikacji."""
+        if uczelnia is None:
+            return False
+
+        mapping = {
+            self.Rodzaje.ARTYKUL: uczelnia.wymagaj_oplatach_artykul,
+            self.Rodzaje.MONOGRAFIA: uczelnia.wymagaj_oplatach_monografia,
+            self.Rodzaje.ROZDZIAL_W_MONOGRAFII: (uczelnia.wymagaj_oplatach_rozdzial),
+            self.Rodzaje.INNE: uczelnia.wymagaj_oplatach_inne,
+            # Legacy
+            self.Rodzaje.ARTYKUL_LUB_MONOGRAFIA: (uczelnia.wymagaj_oplatach_artykul),
+            self.Rodzaje.POZOSTALE: uczelnia.wymagaj_oplatach_inne,
+        }
+        return mapping.get(self.rodzaj_zglaszanej_publikacji, False)
+
     def clean(self):
         wpisano_informacje_o_oplatach = (
             self.opl_pub_cost_free is not None
             or self.opl_pub_research_potential is not None
-            or self.opl_pub_research_or_development_projects is not None
+            or (self.opl_pub_research_or_development_projects is not None)
             or self.opl_pub_other is not None
             or (self.opl_pub_amount is not None and self.opl_pub_amount != 0)
         )
 
-        # Informacja o opłatach może być opcjonalna, w zależności od ustawień obiektu Uczelnia.
-        # Informacja o opłatach może być opcjonalna jeżeli rodzaj zgłaszanej publikacji to "pozostałe"
-
-        # W obydwu przypadkach nie walidujemy (nie uruchamiamy ModelZOplataZaPublikacje.clean)... ale pod jednym
-        # warunkiem: pod takim warunkiem, ze NIC nie zostało wpisane jeżeli chodzi o informację o opłatach
-        # -- czyli, że zmienna zupelny_brak_informacji_o_oplatach jest False.
-
         uczelnia = Uczelnia.objects.get_default()
 
-        # Dla rozdziałów w monografii NIE zbieramy informacji o opłatach
-        if (
-            self.rodzaj_zglaszanej_publikacji
-            == Zgloszenie_Publikacji.Rodzaje.ROZDZIAL_W_MONOGRAFII
-        ):
-            return
+        wymaga_oplatach = self._uczelnia_wymaga_oplatach_dla_rodzaju(uczelnia)
 
-        if uczelnia is not None and (
-            uczelnia.wymagaj_informacji_o_oplatach is True
-            or wpisano_informacje_o_oplatach
-        ):
-            # Administrator systemu wymaga informacji o opłatach dla artykułów i monografii
-            if (
-                self.rodzaj_zglaszanej_publikacji
-                == Zgloszenie_Publikacji.Rodzaje.ARTYKUL_LUB_MONOGRAFIA
-            ) or wpisano_informacje_o_oplatach:
-                # Użytkownik zgłasza arytkuł lub monografię, uruchamiamy weryfikację
-                ModelZOplataZaPublikacje.clean(self)
+        if wymaga_oplatach or wpisano_informacje_o_oplatach:
+            ModelZOplataZaPublikacje.clean(self)
 
     def __str__(self):
         return f"Zgłoszenie od {self.email} utworzone {self.utworzono} dla pracy {self.tytul_oryginalny}"
@@ -188,6 +263,17 @@ class Zgloszenie_Publikacji(
             Zgloszenie_Publikacji.Statusy.NOWY,
             Zgloszenie_Publikacji.Statusy.PO_ZMIANACH,
         ]
+
+    @property
+    def pokazuj_przycisk_wydawnictwo_zwarte(self) -> bool:
+        return self.rodzaj_zglaszanej_publikacji in (
+            self.Rodzaje.MONOGRAFIA,
+            self.Rodzaje.ROZDZIAL_W_MONOGRAFII,
+        )
+
+    @property
+    def pokazuj_przycisk_wydawnictwo_ciagle(self) -> bool:
+        return self.rodzaj_zglaszanej_publikacji == self.Rodzaje.ARTYKUL
 
 
 class Zgloszenie_Publikacji_Autor(BazaModeluOdpowiedzialnosciAutorow):
@@ -235,6 +321,34 @@ class Zgloszenie_Publikacji_Autor(BazaModeluOdpowiedzialnosciAutorow):
                         f"rok {self.rok} do dyscypliny {self.dyscyplina_naukowa}."
                     }
                 ) from e
+
+
+class Zgloszenie_Publikacji_Zalacznik(models.Model):
+    zgloszenie = models.ForeignKey(
+        Zgloszenie_Publikacji,
+        on_delete=models.CASCADE,
+        related_name="zalaczniki",
+    )
+    plik = models.FileField(
+        "Plik załącznika",
+        upload_to=zgloszenie_publikacji_upload_to,
+        max_length=765,
+    )
+    oryginalna_nazwa_pliku = models.CharField(
+        "Oryginalna nazwa pliku",
+        max_length=512,
+        blank=True,
+        default="",
+    )
+    kolejnosc = models.PositiveSmallIntegerField(default=0)
+
+    class Meta:
+        verbose_name = "załącznik zgłoszenia publikacji"
+        verbose_name_plural = "załączniki zgłoszenia publikacji"
+        ordering = ("kolejnosc",)
+
+    def __str__(self):
+        return f"Załącznik {self.oryginalna_nazwa_pliku} do {self.zgloszenie}"
 
 
 class Obslugujacy_Zgloszenia_WydzialowManager(models.Manager):

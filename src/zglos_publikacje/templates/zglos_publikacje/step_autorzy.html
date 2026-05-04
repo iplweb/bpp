@@ -1,0 +1,63 @@
+{% extends "zglos_publikacje/step_base.html" %}
+{% load crispy_forms_tags %}
+
+{% block wizard_content %}
+    {{ wizard.form.management_form }}
+    <div class="form-template" style="display:none;">
+        {{ wizard.form.empty_form|crispy }}
+    </div>
+    {% for form in wizard.form.forms %}
+        {{ form|crispy }}
+    {% endfor %}
+
+    <input type="hidden" name="rok" id="id_rok" value="{{ rok }}"/>
+
+    <button id="add-form" type="button" class="button">
+        <span class="fi-plus"></span>
+        Dodaj kolejnego autora
+    </button>
+
+    <script type="text/javascript">
+        (function ($) {
+            $('#add-form').click(function () {
+                var index = $('#id_3-TOTAL_FORMS').val()
+                var newTable = $('div.form-template').clone()
+
+                newTable.find(':input').each(function () {
+                    for (attr of ['name', 'id',]) {
+                        if ($(this).attr(attr) === undefined)
+                            continue;
+
+                        $(this).attr(
+                            attr,
+                            $(this).attr(attr).replace('__prefix__', index)
+                        );
+                    }
+                });
+
+                newTable.find('div').each(function () {
+                        $(this).attr(
+                            "id",
+                            $(this).attr("id").replace('__prefix__', index)
+                        );
+                    }
+                );
+                newTable.find('label').each(function () {
+                        $(this).attr(
+                            "for",
+                            $(this).attr("for").replace('__prefix__', index)
+                        );
+                    }
+                );
+
+                newTable.attr("class", "")
+
+                newTable.find("#id_3-" + index + "-rok").val("{{ rok }}")
+
+                newTable.insertBefore($(this))
+                $('#id_3-TOTAL_FORMS').val(parseInt($('#id_3-TOTAL_FORMS').val()) + 1)
+                newTable.slideDown()
+            })
+        })($)
+    </script>
+{% endblock %}

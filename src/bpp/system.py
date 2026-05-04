@@ -78,7 +78,7 @@ from bpp.models.seria_wydawnicza import Seria_Wydawnicza
 from bpp.models.struktura import Jednostka_Wydzial
 from bpp.models.system import Charakter_PBN
 from bpp.models.wydawca import Poziom_Wydawcy, Wydawca
-from deduplikator_autorow.models import IgnoredAuthor, LogScalania, NotADuplicate
+from deduplikator_autorow.models import IgnoredScientist, LogScalania, NotADuplicate
 from dynamic_columns.models import ModelAdmin, ModelAdminColumn
 from ewaluacja_common.models import Rodzaj_Autora
 from ewaluacja_liczba_n.models import IloscUdzialowDlaAutoraZaRok, LiczbaNDlaUczelni
@@ -189,7 +189,7 @@ groups = {
         RozbieznosciZrodelView,
         NotADuplicate,
         LogScalania,
-        IgnoredAuthor,
+        IgnoredScientist,
     ],
     "indeks autorów": [Autor, Autor_Jednostka],
     "administracja": [

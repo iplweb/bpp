@@ -175,6 +175,27 @@ dump.rdb
 .worktrees/
 .claude/
 
+.grunt-build-stamp
+
 # Local TODO / audit notes (not committed)
 TODO-*.txt
 TODO-*.md
+
+# Cache tokenu PBN tworzony przez `run_site --get-pbn-token-from ...`
+# Zawiera wrażliwy token, NIGDY nie commitować.
+.saved_pbn_token
+
+# Auto-login token tworzony przez `manage.py run_site` (sesja dev).
+# Plik istnieje tylko gdy run_site biegnie; kasowany na exit.
+.run_site_token
+
+# Port runservera zapisywany przez `manage.py run_site` (sesja dev).
+# Pozwala agentowi złożyć URL bez parsowania bannera/logów.
+# Plik istnieje tylko gdy run_site biegnie; kasowany na exit.
+.run_site_port
+
+# Porty PostgreSQL/Redis (testcontainers) zapisywane przez run_site.
+# Pozwalają agentowi podpiąć psql/redis-cli bez parsowania bannera.
+# Pliki istnieją tylko gdy run_site biegnie; kasowane na exit.
+.run_site_pg_port
+.run_site_redis_port

@@ -1,5 +1,4 @@
 import pytest
-from cacheops import invalidate_all
 from django.contrib.auth import get_user_model
 from django.core.cache import cache
 from django.test import Client
@@ -33,9 +32,9 @@ def uczelnia(db):
     # Clear any existing universities to ensure get_default() returns our test university
     Uczelnia.objects.all().delete()
     u = baker.make(Uczelnia, nazwa="Test University", skrot="TU")
-    # Invalidate all caches so context processor returns the new uczelnia
+    # Delete specific cache key for uczelnia instead of invalidating all caches
+    # (much faster - invalidate_all() is very expensive)
     cache.delete(b"bpp_uczelnia")
-    invalidate_all()
     return u
 
 

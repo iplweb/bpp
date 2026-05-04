@@ -1,6 +1,7 @@
 import sys
 
 import rollbar
+from django.contrib.auth.mixins import LoginRequiredMixin
 from django.http import JsonResponse
 from django.views.generic.base import View
 
@@ -12,7 +13,7 @@ from pbn_api.models import Publication
 from pbn_integrator.utils import _pobierz_prace_po_elemencie
 
 
-class GetPBNPublicationsByBase(View):
+class GetPBNPublicationsByBase(LoginRequiredMixin, View):
     def get_rok(
         self,
         request,
@@ -77,15 +78,14 @@ class GetPBNPublicationsByBase(View):
                 {"error": "Autoryzuj się w PBN korzystając z menu na głównej stronie. "}
             )
 
-        except Exception as e:
-            # Zgłoś nieznany typ błędu do Sentry
+        except Exception:
+            # Zgłoś nieznany typ błędu do Sentry / Rollbar
             rollbar.report_exc_info(sys.exc_info())
 
-            # .. oraz do użytkownika:
+            # Generyczny komunikat dla klienta — szczegóły w logach serwera
             return JsonResponse(
                 {
                     "error": "Nieznany błąd po stronie serwera przy wywołaniu funkcji odpytującej PBN. "
-                    + str(e)
                 }
             )
 

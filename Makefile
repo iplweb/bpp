@@ -119,13 +119,13 @@ clean-pycache: ## Usuń __pycache__, *.pyc oraz .eggs/.cache
 	rm -rf .eggs .cache
 
 clean: clean-pycache ## Szersze czyszczenie: egg-info, logi, build, dist, staticroot/CACHE, .tox
+	rm -f .grunt-build-stamp
 	find . -type d -name \*egg-info -print0 | xargs -0 rm -rf
 	find . -name \*~ -print0 | xargs -0 rm -f
 	find . -name \*.prof -print0 | xargs -0 rm -f
 	rm -rf prof/
 	find . -name \*\\.log -print0 | xargs -0 rm -f
-	find . -name \*\\.log -print0 | xargs -0 rm -f
-	find . -name \#\* -print0 | xargs -0 rm -f
+	find . -name \#\* -not -path './node_modules/*' -print0 | xargs -0 rm -rf
 	rm -rf build dist/*django_bpp*whl dist/*bpp_iplweb*whl *.log dist
 	rm -rf src/django_bpp/staticroot/CACHE
 	rm -rf .tox
@@ -149,11 +149,13 @@ distclean: clean ## Pełne czyszczenie: + node_modules, staticroot, media, dist,
 grunt-build: ## Uruchom `grunt build` (SCSS → CSS, bundling JS)
 	grunt build
 
-# CSS output files (targets)
-CSS_TARGETS := src/bpp/static/scss/app-blue.css src/bpp/static/scss/app-green.css src/bpp/static/scss/app-orange.css
+# grunt build kompiluje WSZYSTKIE SCSS → CSS za jednym odpaleniem.
+# Pattern rule $(CSS_TARGETS): $(SCSS_SOURCES) odpalałby grunt N razy
+# (raz per out-of-date target). Zamiast tego: jeden stamp file zależy od
+# wszystkich SCSS + node_modules; grunt dotyka stampu po zakończeniu.
 
-# SCSS source files
-SCSS_SOURCES := $(wildcard src/bpp/static/scss/*.scss)
+SCSS_SOURCES := $(wildcard src/bpp/static/scss/*.scss) \
+                $(wildcard src/*/static/*/scss/*.scss)
 
 # Node modules dependency
 NODE_MODULES := node_modules/.installed
@@ -166,14 +168,16 @@ $(NODE_MODULES): package.json yarn.lock
 	export PUPPETEER_SKIP_CHROME_DOWNLOAD=true PUPPETEER_SKIP_CHROME_HEADLESS_SHELL_DOWNLOAD=true && $(YARN_CMD) install  --no-progress --emoji false -s
 	touch $(NODE_MODULES)
 
-$(CSS_TARGETS): $(SCSS_SOURCES) $(NODE_MODULES)
+CSS_STAMP := .grunt-build-stamp
+
+$(CSS_STAMP): $(SCSS_SOURCES) $(NODE_MODULES)
 	grunt build
+	@touch $(CSS_STAMP)
 
 $(MO_FILES): $(PO_FILES)
-	# cd src &&  django-admin compilemessages
 	uv run python src/manage.py compilemessages --locale=pl --ignore=site-packages
 
-assets: $(CSS_TARGETS) $(MO_FILES) ## Zbuduj frontend (CSS + .mo); uruchamia `yarn install` jeśli trzeba
+assets: $(CSS_STAMP) $(MO_FILES) ## Zbuduj frontend (CSS + .mo); uruchamia `yarn install` jeśli trzeba
 
 yarn: $(NODE_MODULES) ## Zainstaluj zależności Node.js (yarn install)
 
@@ -442,7 +446,7 @@ loc: clean ## Pokaż statystyki liczby linii (pygount)
 	pygount -N ... -F "...,staticroot,migrations,fixtures" src --format=summary
 
 
-DOCKER_VERSION=202605.1370
+DOCKER_VERSION=202605.1371
 
 # Cache configuration for docker buildx bake
 # - local: use local cache (default for local builds)

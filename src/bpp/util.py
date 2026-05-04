@@ -407,7 +407,11 @@ def set_seq(s):
         from django.db import connection
 
         cursor = connection.cursor()
-        cursor.execute(f"SELECT setval('{s}_id_seq', (SELECT MAX(id) FROM {s}))")
+        quoted_table = connection.ops.quote_name(s)
+        cursor.execute(
+            f"SELECT setval(%s, (SELECT MAX(id) FROM {quoted_table}))",
+            [f"{s}_id_seq"],
+        )
 
 
 def usun_nieuzywany_typ_charakter(klass, field, dry_run):
@@ -662,6 +666,29 @@ def worksheet_columns_autosize(
             )
 
         ws.column_dimensions[column].width = adjusted_width
+
+
+def auto_fit_columns(
+    ws: openpyxl.worksheet.worksheet.Worksheet,
+    max_width: int = 50,
+    padding: int = 2,
+):
+    """Prosta auto-szerokość kolumn: longest cell value + padding, capped at max_width.
+
+    Wcześniej duplikowane inline w 5 miejscach (eksporty XLSX z auto-fit). Dla
+    zaawansowanej wersji z hyperlinkami i multiplier patrz worksheet_columns_autosize.
+    """
+    for column in ws.columns:
+        max_length = 0
+        column_letter = get_column_letter(column[0].column)
+        for cell in column:
+            try:
+                length = len(str(cell.value))
+            except (TypeError, ValueError):
+                continue
+            if length > max_length:
+                max_length = length
+        ws.column_dimensions[column_letter].width = min(max_length + padding, max_width)
 
 
 def worksheet_create_table(

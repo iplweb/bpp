@@ -1,12 +1,11 @@
 import pytest
+from django.utils import timezone
 
 from long_running.exceptions import (
     ObjectDoesNotExistException,
     ProcessingAlreadyStartedException,
 )
 from long_running.tasks import perform_generic_long_running_task
-
-from django.utils import timezone
 
 
 @pytest.mark.django_db

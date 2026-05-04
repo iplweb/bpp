@@ -10,6 +10,7 @@ from .models import (
     DuplicateCandidate,
     DuplicateScanRun,
     IgnoredAuthor,
+    IgnoredScientist,
     LogScalania,
     NotADuplicate,
 )
@@ -76,8 +77,8 @@ class NotADuplicateAdmin(DynamicAdminFilterMixin, admin.ModelAdmin):
     get_author_last_name.admin_order_field = "scientist_pk"
 
 
-@admin.register(IgnoredAuthor)
-class IgnoredAuthorAdmin(DynamicAdminFilterMixin, admin.ModelAdmin):
+@admin.register(IgnoredScientist)
+class IgnoredScientistAdmin(DynamicAdminFilterMixin, admin.ModelAdmin):
     list_display = [
         "get_scientist_display",
         "get_autor_display",
@@ -120,6 +121,42 @@ class IgnoredAuthorAdmin(DynamicAdminFilterMixin, admin.ModelAdmin):
 
     def get_autor_display(self, obj):
         """Display autor with admin link"""
+        if obj.autor:
+            url = reverse("admin:bpp_autor_change", args=[obj.autor.pk])
+            return mark_safe(f'<a href="{url}">{obj.autor}</a>')
+        return "-"
+
+    get_autor_display.short_description = "Autor (BPP)"
+
+    def save_model(self, request, obj, form, change):
+        if not change:
+            obj.created_by = request.user
+        super().save_model(request, obj, form, change)
+
+
+@admin.register(IgnoredAuthor)
+class IgnoredAuthorAdmin(DynamicAdminFilterMixin, admin.ModelAdmin):
+    list_display = [
+        "get_autor_display",
+        "reason",
+        "created_by",
+        "created_on",
+    ]
+
+    list_filter = ["created_on", "created_by"]
+
+    search_fields = [
+        "autor__nazwisko",
+        "autor__imiona",
+        "reason",
+        "created_by__username",
+    ]
+
+    readonly_fields = ["created_on"]
+    date_hierarchy = "created_on"
+    ordering = ["-created_on"]
+
+    def get_autor_display(self, obj):
         if obj.autor:
             url = reverse("admin:bpp_autor_change", args=[obj.autor.pk])
             return mark_safe(f'<a href="{url}">{obj.autor}</a>')

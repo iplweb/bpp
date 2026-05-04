@@ -1,6 +1,17 @@
 // Deduplikator Autorow - Styles
 // BEM convention: .deduplikator-autorow__element--modifier
 
+// Foundation .label ma domyślnie kwadratowe rogi - w obrębie deduplikatora
+// chcemy jednolitą "pigułkową" estetykę (zgodną z chipami powodów
+// podobieństwa). Wrapper .deduplikator-autorow-page ogranicza override
+// tylko do tej strony, żeby nie wpływać globalnie na inne widoki BPP.
+.deduplikator-autorow-page .label {
+  border-radius: 999px;
+  padding: 3px 12px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
 // =============================================================================
 // SIDEBAR ACCORDION
 // =============================================================================
@@ -252,6 +263,16 @@
   color: #666;
 }
 
+.deduplikator-autorow__search-btn-flat-right {
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+}
+
+.deduplikator-autorow__search-btn-flat-right + .input-group-button .button {
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
+}
+
 // =============================================================================
 // DISCIPLINE TABLE
 // =============================================================================
@@ -306,25 +327,21 @@
 .deduplikator-autorow__publication-list {
   max-height: 300px;
   overflow-y: auto;
-  border: 1px solid #e1e1e1;
-  padding: 10px;
+  padding: 0;
 }
 
 .deduplikator-autorow__publication-list--short {
   max-height: 250px;
-  background-color: #f9f9f9;
 }
 
 .deduplikator-autorow__publication-item {
-  margin-bottom: 8px;
-  padding: 5px;
-  border-left: 3px solid #1779ba;
+  margin-bottom: 4px;
+  padding: 0;
 }
 
 .deduplikator-autorow__publication-item--duplicate {
-  margin-bottom: 6px;
-  padding: 3px;
-  border-left: 2px solid #8a8a8a;
+  margin-bottom: 2px;
+  padding: 0;
 }
 
 .deduplikator-autorow__publication-link {
@@ -352,6 +369,28 @@
 
 .deduplikator-autorow__duplicate-card {
   margin-bottom: 20px;
+  // Niektóre nadrzędne layouty BPP wymuszają text-align: center w obrębie
+  // .callout (zaobserwowane w warningowych callout-ach panelu duplikatów —
+  // imiona/nazwiska autorów wyświetlały się wycentrowane). Wymuszamy
+  // domyślne wyrównanie do lewej dla całej karty.
+  text-align: left;
+}
+
+// Stan "wyłączone" dla przycisków "Scal wszystkie" gdy w grupie jest kandydat
+// poniżej progu pewności. Trzymamy je klikalne (do wyświetlenia komunikatu)
+// dlatego nie używamy [disabled] - tylko aria-disabled + klasa wizualna.
+.deduplikator-autorow__merge-all-btn--disabled,
+.button.deduplikator-autorow__merge-all-btn--disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  background-color: #b5b5b5 !important;
+  color: #fff !important;
+
+  &:hover,
+  &:focus {
+    background-color: #b5b5b5 !important;
+    box-shadow: none;
+  }
 }
 
 .deduplikator-autorow__duplicate-header {
@@ -406,6 +445,10 @@
 
 .deduplikator-autorow__duplicates-header {
   margin-bottom: 15px;
+
+  .grid-x + .grid-x {
+    margin-top: 0.5em;
+  }
 }
 
 .deduplikator-autorow__duplicates-title {
@@ -480,4 +523,236 @@
 
 .deduplikator-autorow__confidence-low {
   color: red;
+}
+
+// Mode badges, partial-completed banner, mode filter, scan phase
+.deduplikator-autorow {
+  &__main-record-title {
+    display: flex;
+    align-items: center;
+    gap: 0.6em;
+    flex-wrap: wrap;
+  }
+
+  &__badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35em;
+    padding: 4px 10px 4px 9px;
+    border-radius: 999px;
+    font-size: 0.7em;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: #fff;
+    line-height: 1;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.15);
+    vertical-align: middle;
+
+    .fi-link,
+    .fi-magnifying-glass {
+      font-size: 1em;
+      line-height: 1;
+    }
+
+    &--pbn {
+      background: linear-gradient(180deg, #42a5f5 0%, #1976d2 100%);
+      border: 1px solid #1565c0;
+    }
+
+    &--general {
+      background: linear-gradient(180deg, #ffb74d 0%, #f57c00 100%);
+      border: 1px solid #ef6c00;
+    }
+  }
+
+  &__partial-banner {
+    margin: 1em 0;
+  }
+
+  // Top bar — przyciski trybu po lewej, wyszukiwarka po prawej.
+  &__top-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1em;
+    margin: 1em 0;
+    flex-wrap: nowrap;
+  }
+
+  &__top-search {
+    flex: 0 1 auto;
+    min-width: 200px;
+    margin: 0;
+  }
+
+  &__top-search-group {
+    margin: 0;
+  }
+
+  &__top-search-info {
+    display: block;
+    margin-top: 0.4em;
+    color: #555;
+  }
+
+  &__confidence-filter {
+    flex: 0 0 auto;
+    margin: 0;
+    display: flex;
+    align-items: center;
+  }
+
+  &__confidence-buttons {
+    margin: 0;
+
+    .button {
+      margin: 0;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4em;
+    }
+  }
+
+  // Mode filter (Pokaż wyniki: PBN/Ogólny/Oba) — Foundation button-group based
+  &__mode-filter {
+    flex: 0 0 auto;
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 0.75em;
+    flex-wrap: nowrap;
+  }
+
+  &__mode-filter-label {
+    font-weight: 600;
+    color: #4a4a4a;
+  }
+
+  &__mode-buttons {
+    margin: 0;
+
+    .button {
+      margin: 0;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4em;
+    }
+  }
+
+  &__mode-count {
+    display: inline-block;
+    margin-left: 0.3em;
+    padding: 1px 7px;
+    border-radius: 999px;
+    background: rgba(0, 0, 0, 0.18);
+    color: inherit;
+    font-size: 0.8em;
+    font-weight: 700;
+    line-height: 1.4;
+
+    .hollow & {
+      background: rgba(0, 0, 0, 0.08);
+    }
+  }
+
+  &__scan-phase {
+    margin-top: 0.5em;
+    font-style: italic;
+  }
+
+  // Action group sections within each duplicate card (Podgląd / Decyzja / Scalanie)
+  &__actions {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+
+  &__action-group {
+    background: rgba(0, 0, 0, 0.03);
+    border: 1px solid rgba(0, 0, 0, 0.08);
+    border-radius: 6px;
+    padding: 10px 12px;
+  }
+
+  &__action-group-title {
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: #555;
+    margin: 0 0 8px 0;
+    display: flex;
+    align-items: center;
+    gap: 0.4em;
+
+    .fi-eye,
+    .fi-checkbox,
+    .fi-arrows-compress {
+      color: #888;
+    }
+  }
+
+  // Opisy bibliograficzne renderują <b>/<strong> wokół tytułów — to jest OK,
+  // tytuł ma być boldem. Problem: Foundation daje .callout a:not(.close-button)
+  // { font-weight: bolder }, więc cały tekst w <a> wewnątrz .callout jest
+  // bold. Resetujemy font-weight na <a> w obrębie itemów publikacji z
+  // wyższą specyficznością niż .callout a:not(.close-button), żeby wygrać
+  // kaskadę. Zostawiamy <b>/<strong> z ich domyślnym bold, żeby tytuł nadal
+  // był wytłuszczony.
+  .callout &__publication-item a,
+  .callout &__publication-item--duplicate a {
+    font-weight: normal;
+  }
+
+  // Reason chips — small pills with icon + text
+  &__reasons-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    padding: 0;
+    margin: 0;
+  }
+
+  &__reason-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35em;
+    padding: 3px 9px;
+    border-radius: 999px;
+    font-size: 0.78rem;
+    line-height: 1.5;
+    border: 1px solid transparent;
+    white-space: nowrap;
+    max-width: 100%;
+
+    .deduplikator-autorow__reason-chip-text {
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    &--match {
+      background: #e6f4ea;
+      border-color: #b6dec0;
+      color: #1b5e20;
+    }
+
+    &--info {
+      background: #e7f0fc;
+      border-color: #b9d4f0;
+      color: #0d3a73;
+    }
+
+    &--weak {
+      background: #f0f0f0;
+      border-color: #d8d8d8;
+      color: #555;
+    }
+
+    &--warn {
+      background: #fff4e0;
+      border-color: #f5d49a;
+      color: #8a4b00;
+    }
+  }
 }
