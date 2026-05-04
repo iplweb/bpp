@@ -88,7 +88,7 @@ def select_select2_autocomplete(
 
     # Type the search term using pressSequentially to trigger AJAX search
     search_input = page.locator(".select2-search__field")
-    search_input.press_sequentially(value, delay=50)
+    search_input.press_sequentially(value)
 
     # Wait for AJAX search to complete by checking for loading indicators to disappear
     # Polish text "Trwa wyszukiwanie…" or "Trwa ładowanie…" indicates loading
@@ -130,11 +130,11 @@ def select_select2_autocomplete(
             timeout=timeout,
         )
     else:
-        # No event-driven signal available — small polishing wait so the
-        # next interaction starts after Select2's internal change handlers
-        # finish (jQuery 'change' listeners run synchronously, but custom
-        # widgets may queue setTimeout(0) callbacks).
-        page.wait_for_timeout(50)
+        # No event-driven signal available — wait for next event loop tick
+        # so Select2's internal change handlers finish (jQuery 'change'
+        # listeners run synchronously, but custom widgets may queue
+        # setTimeout(0) callbacks).
+        page.wait_for_timeout(0)
 
 
 def close_all_select2_dropdowns(page: Page):
@@ -150,7 +150,7 @@ def close_all_select2_dropdowns(page: Page):
         }
     }"""
     )
-    page.wait_for_timeout(100)
+    page.wait_for_timeout(0)
 
 
 def proper_click_element(page: Page, selector: str):
