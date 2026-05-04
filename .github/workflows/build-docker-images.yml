@@ -164,8 +164,19 @@ jobs:
             echo "::notice::Docker build — znaleziono flage [docker-build] w commit message"
           else
             echo "should_build=false" >> "$GITHUB_OUTPUT"
+            # Dla pull_request event github.ref_name to "<PR#>/merge"
+            # (wewnetrzny merge-ref GH, nie branch). `gh workflow run --ref`
+            # wymaga nazwy brancha — dla PR pobieramy ja z `gh pr view`,
+            # dla push event'u uzywamy REF_NAME.
+            if [ "$EVENT_NAME" = "pull_request" ]; then
+              PR_NUM="${REF_NAME%/merge}"
+              DISPATCH_REF=$(gh pr view "$PR_NUM" --repo "$REPO" \
+                             --json headRefName --jq '.headRefName')
+            else
+              DISPATCH_REF="$REF_NAME"
+            fi
             echo "::notice::Pomijam Docker build — brak flagi [docker-build] w commit message"
-            echo "::notice::Aby wymusic build, dodaj [docker-build] do commit message lub uruchom: gh workflow run build-docker-images.yml --ref ${REF_NAME}"
+            echo "::notice::Aby wymusic build, dodaj [docker-build] do commit message lub uruchom recznie: gh workflow run build-docker-images.yml --ref ${DISPATCH_REF}"
           fi
 
   docker:
