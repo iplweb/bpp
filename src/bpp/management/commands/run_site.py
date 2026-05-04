@@ -254,6 +254,12 @@ class Command(BaseCommand):
             default=False,
             help="Tylko walidacja args + exit (do testów).",
         )
+        parser.add_argument(
+            "--skip-assets",
+            action="store_true",
+            default=False,
+            help="Pomiń make assets (dla devs którzy mają aktualny CSS).",
+        )
 
     def handle(self, *args, **opts):  # noqa: C901
         dump_path = self._validate_dump_arg(opts.get("from_dump"))
@@ -263,6 +269,12 @@ class Command(BaseCommand):
         if opts.get("dry_run"):
             self.stdout.write(self.style.SUCCESS("dry-run OK"))
             return
+
+        # Build frontend assets na początku (chyba że --skip-assets)
+        if not opts.get("skip_assets"):
+            self._build_assets()
+        else:
+            self.stdout.write("[run_site] Pomijam build assets (--skip-assets)")
 
         from testcontainers_bpp.containers import (
             DockerNotRunningError,
@@ -454,6 +466,44 @@ class Command(BaseCommand):
         self.stdout.write(f"[run_site] Restore: {dump_path} → PG container...")
         restore_dump(dump_path, container_id)
         self.stdout.write(self.style.SUCCESS("[run_site] Restore: ukończony"))
+
+    def _build_assets(self):
+        """Zbuduj frontend assets (CSS + .mo) przez make assets."""
+        self.stdout.write("[run_site] Budowanie frontend assets...")
+        import subprocess
+
+        try:
+            result = subprocess.run(
+                ["make", "assets"],
+                cwd=_src_dir().parent,
+                capture_output=True,
+                text=True,
+                timeout=300,  # 5 minut
+            )
+            if result.returncode != 0:
+                self.stdout.write(
+                    self.style.WARNING(
+                        f"Warning: make assets zakończył się błędem (rc={result.returncode})"
+                    )
+                )
+                self.stdout.write(result.stdout)
+                self.stdout.write(result.stderr)
+            else:
+                self.stdout.write(self.style.SUCCESS("✓ Frontend assets zbudowane"))
+        except subprocess.TimeoutExpired:
+            self.stdout.write(
+                self.style.WARNING("Warning: make assets przekroczył timeout (5min)")
+            )
+        except FileNotFoundError:
+            self.stdout.write(
+                self.style.WARNING(
+                    "Warning: make nie znaleziony — pomijam build assets"
+                )
+            )
+        except Exception as exc:
+            self.stdout.write(
+                self.style.WARNING(f"Warning: błąd podczas make assets: {exc}")
+            )
 
     def _migrate(self, env):
         self.stdout.write("[run_site] Migracja...")
