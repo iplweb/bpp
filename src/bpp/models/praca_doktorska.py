@@ -50,7 +50,9 @@ class Praca_Doktorska_Baza(
                 return False
 
         ret = FakeAutorDoktoratuHabilitacji()
-        ret.typ_odpowiedzialnosci = Typ_Odpowiedzialnosci.objects.get(skrot="aut.")
+        ret.typ_odpowiedzialnosci = (
+            _Praca_Doktorska_PropertyCache.typ_odpowiedzialnosci_autor
+        )
         return FakeSet([ret])
 
     def autorzy_dla_opisu(self):
@@ -121,6 +123,10 @@ class _Praca_Doktorska_PropertyCache:
     @cached_property
     def charakter_formalny(self):
         return Charakter_Formalny.objects.get(skrot="D")
+
+    @cached_property
+    def typ_odpowiedzialnosci_autor(self):
+        return Typ_Odpowiedzialnosci.objects.get(skrot="aut.")
 
 
 _Praca_Doktorska_PropertyCache = _Praca_Doktorska_PropertyCache()

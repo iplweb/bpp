@@ -1,7 +1,7 @@
 from django.contrib.contenttypes.fields import GenericForeignKey, GenericRelation
 from django.contrib.contenttypes.models import ContentType
 from django.db import models
-from django.db.models import CASCADE
+from django.db.models import CASCADE, PROTECT
 from django.utils.functional import cached_property
 
 from bpp.models import Autor, Charakter_Formalny, DwaTytuly, ModelZOplataZaPublikacje
@@ -39,7 +39,7 @@ _Praca_Habilitacyjna_PropertyCache = _Praca_Habilitacyjna_PropertyCache()
 
 
 class Praca_Habilitacyjna(Praca_Doktorska_Baza):
-    autor = models.OneToOneField(Autor, CASCADE)
+    autor = models.OneToOneField(Autor, PROTECT)
 
     publikacje_habilitacyjne = GenericRelation(Publikacja_Habilitacyjna)
 
