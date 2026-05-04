@@ -67,8 +67,20 @@ def test_rest_api_patent_ukryj_status(
 
 @pytest.fixture
 def wiele_patentow(db, jezyki, charaktery_formalne):
-    for a in range(100):
-        baker.make(Patent)
+    # Create one template object using baker.make to get all required fields with defaults
+    template = baker.make(Patent)
+
+    # Use bulk_create for 100x performance improvement over individual saves
+    # Copy all fields from template except PK (id) and cached properties
+    Patent.objects.bulk_create([
+        Patent(
+            rok=template.rok,
+            status_korekty=template.status_korekty,
+            # Copy optional fields that have defaults
+            tytul_oryginalny=template.tytul_oryginalny or f"Patent {i}",
+        )
+        for i in range(100)
+    ])
 
 
 @pytest.mark.django_db
