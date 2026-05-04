@@ -72,3 +72,21 @@ def test_autologin_token_file_write_and_remove(tmp_path, monkeypatch):
 
     # Drugie wywołanie (np. atexit po finally) nie wybucha:
     run_site_mod._remove_autologin_token_file()
+
+
+def test_port_file_write_and_remove(tmp_path, monkeypatch):
+    """Helper zapisuje numer portu i kasuje go bezpiecznie."""
+    from bpp.management.commands import run_site as run_site_mod
+
+    monkeypatch.setattr(
+        run_site_mod, "_port_path", lambda: tmp_path / ".run_site_port"
+    )
+
+    path = run_site_mod._write_port_file(53715)
+    assert path.read_text() == "53715"
+
+    run_site_mod._remove_port_file()
+    assert not path.exists()
+
+    # Drugie wywołanie (atexit po finally) nie wybucha:
+    run_site_mod._remove_port_file()

@@ -53,6 +53,7 @@ _SUPERUSER_EMAIL = "admin@example.com"
 _BROWSER_OPEN_TIMEOUT_SECONDS = 60.0
 _AUTOLOGIN_TOKEN_BYTES = 32
 _AUTOLOGIN_TOKEN_FILENAME = ".run_site_token"
+_PORT_FILENAME = ".run_site_port"
 
 _PBN_TOKEN_CACHE_FILENAME = ".saved_pbn_token"
 
@@ -81,6 +82,32 @@ def _write_autologin_token_file(token: str) -> Path:
 def _remove_autologin_token_file() -> None:
     try:
         _autologin_token_path().unlink()
+    except FileNotFoundError:
+        pass  # Plik już usunięty (np. przez równoległe wywołanie atexit/finally)
+
+
+def _port_path() -> Path:
+    return _src_dir().parent / _PORT_FILENAME
+
+
+def _write_port_file(port: int) -> Path:
+    """Zapisz aktualny port runservera do gitignorowanego pliku.
+
+    Token sam nie wystarczy — agent musi też znać port (losowany przy
+    każdym uruchomieniu). Banner drukuje go raz do stdout, ale agent
+    odpalający `run_site` w tle nie zawsze ma do tego stdout-u dostęp.
+    Plik dotfile rozwiązuje sprawę: agent czyta port + token, składa URL
+    bez parsowania logów. Kasowany przez `_remove_port_file` (atexit
+    + finally w handle()). Port nie jest sekretem, więc bez chmod 600.
+    """
+    path = _port_path()
+    path.write_text(str(port))
+    return path
+
+
+def _remove_port_file() -> None:
+    try:
+        _port_path().unlink()
     except FileNotFoundError:
         pass  # Plik już usunięty (np. przez równoległe wywołanie atexit/finally)
 
@@ -225,6 +252,8 @@ class Command(BaseCommand):
                 )
 
             port = opts.get("port") or find_free_port()
+            port_path = _write_port_file(port)
+            atexit.register(_remove_port_file)
             # ZAWSZE http:// — runserver nie ma SSL-a, https:// = błąd
             # połączenia. Używamy `localhost` zamiast `127.0.0.1`, żeby
             # uniknąć HSTS cache w Safari upgrade'ującego http://127.0.0.1
@@ -245,6 +274,7 @@ class Command(BaseCommand):
             self._print_agent_help(
                 appserver_url=appserver_url,
                 token_path=autologin_token_path,
+                port_path=port_path,
             )
 
             self.stdout.write(
@@ -300,6 +330,7 @@ class Command(BaseCommand):
                 except Exception:
                     logger.exception("[run_site] Failed to stop containers")
             _remove_autologin_token_file()
+            _remove_port_file()
 
     # ── helpers ─────────────────────────────────────────────────────────
 
@@ -424,10 +455,13 @@ class Command(BaseCommand):
         self.stdout.write("")
         self.stdout.write(text)
 
-    def _print_agent_help(self, *, appserver_url: str, token_path: Path) -> None:
+    def _print_agent_help(
+        self, *, appserver_url: str, token_path: Path, port_path: Path
+    ) -> None:
         text = format_agent_help(
             appserver_url=appserver_url,
             token_path=str(token_path),
+            port_path=str(port_path),
         )
         self.stdout.write("")
         self.stdout.write(text)

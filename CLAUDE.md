@@ -75,7 +75,8 @@ Co `run_site` robi w jednej komendzie:
 - odpala `runserver` na losowym wolnym porcie (lub `--port`),
 - otwiera przeglądarkę z auto-loginem (przeskakuje formularz logowania),
 - zapisuje token auto-loginu do `.run_site_token` (chmod 600,
-  gitignored, kasowany na exit) — patrz sekcja
+  gitignored, kasowany na exit) i numer portu do `.run_site_port`
+  (gitignored, kasowany na exit) — patrz sekcja
   „Autologin dla agentów" niżej,
 - drukuje w stdout banner z URL-ami + gotowy snippet curl dla agenta.
 
@@ -85,7 +86,8 @@ Co `run_site` robi w jednej komendzie:
   uruchamiać w tle, łatwiej wyciągać port z outputu,
 - baseline migracji + admin są gotowe od ręki, bez ręcznego
   `migrate`/`createsuperuser`,
-- WebFetch / curl działa od strzału dzięki `.run_site_token`,
+- WebFetch / curl działa od strzału dzięki `.run_site_token` +
+  `.run_site_port` (agent składa URL bez parsowania bannera/logów),
 - testcontainers same się sprzątają na exit (Ctrl-C zamyka stack),
 - nie wymaga prebuildu obrazu appserver-a (compose by wymagał).
 
@@ -146,13 +148,17 @@ issue-by-issue. Fix each manually with the Edit tool. Do NOT run
 
 ## Autologin dla agentów (WebFetch / curl bez logowania)
 
-Gdy user uruchomił `manage.py run_site`, w korzeniu repo pojawia się
-plik `.run_site_token` (gitignored, chmod 600) z tokenem do
-auto-loginu. Plik istnieje **tylko przez czas życia procesu run_site**
-i jest kasowany na exit. Jeśli pliku nie ma — znaczy że dev stack
-nie biegnie i nie da się fetchować zalogowanych stron; nie próbuj
-„obejść" tego logując się przez `/admin/login/` czy POST-em
-formularza, tylko poproś usera o uruchomienie `run_site`.
+Gdy user uruchomił `manage.py run_site`, w korzeniu repo (lub worktree)
+pojawiają się dwa gitignored, ulotne pliki:
+
+- `.run_site_token` — token autoryzacyjny (chmod 600),
+- `.run_site_port` — port runservera (host = zawsze `localhost`).
+
+Oba istnieją **tylko przez czas życia procesu run_site** i są kasowane
+na exit. Jeśli któregoś nie ma — znaczy że dev stack nie biegnie i nie
+da się fetchować zalogowanych stron; nie próbuj „obejść" tego logując
+się przez `/admin/login/` czy POST-em formularza, tylko poproś usera
+o uruchomienie `run_site`.
 
 Token uwierzytelnia jako `admin` (superuser) — używaj tylko gdy musisz
 zobaczyć stronę wymagającą zalogowania. Do publicznych stron nie ma
@@ -162,10 +168,8 @@ sensu, a niepotrzebnie zostawia ślad w `request.user` w logach.
 
 ```bash
 T=$(cat .run_site_token)
+PORT=$(cat .run_site_port)
 J=$(mktemp)
-# Port runserver-a wypisuje run_site w banerze (zmienia się przy
-# każdym uruchomieniu; pobierz aktualny z bannera albo `lsof`).
-PORT=8080
 curl -sc "$J" -L "http://localhost:$PORT/__run_site_autologin__/?token=$T" \
     >/dev/null
 curl -sb "$J" "http://localhost:$PORT/<path>"
@@ -183,7 +187,8 @@ tylko gdy ustawione `DJANGO_BPP_RUN_SITE_AUTOLOGIN_TOKEN` w env
 (ustawia to `run_site` automatycznie, nigdy w produkcji). Token
 nie wycieka do gita (gitignore + ulotny plik). Nie wklejaj
 zawartości `.run_site_token` do commitów, do PR-ów, ani do logów
-które trafią poza maszynę dewelopera.
+które trafią poza maszynę dewelopera. `.run_site_port` zawiera
+tylko numer portu (nie sekret) — można go cytować swobodnie.
 
 ## CSS/SCSS Rules
 

@@ -188,3 +188,8 @@ TODO-*.md
 # Auto-login token tworzony przez `manage.py run_site` (sesja dev).
 # Plik istnieje tylko gdy run_site biegnie; kasowany na exit.
 .run_site_token
+
+# Port runservera zapisywany przez `manage.py run_site` (sesja dev).
+# Pozwala agentowi złożyć URL bez parsowania bannera/logów.
+# Plik istnieje tylko gdy run_site biegnie; kasowany na exit.
+.run_site_port
