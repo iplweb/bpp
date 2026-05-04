@@ -65,11 +65,7 @@ on:
     branches:
       - master
       - main
-      - 'feature/**'
-      - 'fix/**'
-      - 'hotfix/**'
-      # dev intentionally excluded — merge dev->master jest release flow,
-      # nie chcemy palic Docker Cloud minutek na intermediate state dev.
+      # feature/**, fix/**, hotfix/** removed - build only on [docker-build] flag
   pull_request:
     # Buduje na każdy push do PR-a (oraz na otwarcie/reopen).
     types: [opened, synchronize, reopened]
