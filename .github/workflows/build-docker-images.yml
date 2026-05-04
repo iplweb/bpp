@@ -98,6 +98,8 @@ jobs:
       should_build: ${{ steps.check.outputs.should_build }}
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0  # Need full history for commit messages
       - id: check
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -105,6 +107,7 @@ jobs:
           EVENT_NAME: ${{ github.event_name }}
           REPO: ${{ github.repository }}
           ACTOR: ${{ github.actor }}
+          GIT_SHA: ${{ github.sha }}
         run: |
           # Dedupe: push event na branchu z otwartym PR-em jest duplikatem
           # pull_request eventu dla tego samego commita. Pomijamy push run,
@@ -137,13 +140,28 @@ jobs:
             exit 0
           fi
 
-          # Pozostale (PR event, feature push bez PR) — tylko mpasternak.
-          if [ "$ACTOR" = "mpasternak" ]; then
+          # Pozostale (PR event, feature push bez PR) — sprawdzamy flage
+          # [docker-build] w commit message (case-insensitive).
+          # Budujemy tylko gdy:
+          #   - actor to mpasternak
+          #   - ORAZ commit message zawiera [docker-build]
+          if [ "$ACTOR" != "mpasternak" ]; then
+            echo "should_build=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::Pomijam Docker build — actor=${ACTOR} != mpasternak (flag check skipped)"
+            exit 0
+          fi
+
+          # Pobierz pelny commit message (subject + body)
+          COMMIT_MSG=$(git log -1 --format=%B "$GIT_SHA")
+
+          # Sprawdz flage [docker-build] (case-insensitive)
+          if echo "$COMMIT_MSG" | grep -qi "\[docker-build\]"; then
             echo "should_build=true" >> "$GITHUB_OUTPUT"
-            echo "::notice::Docker build — actor=mpasternak, event=${EVENT_NAME}"
+            echo "::notice::Docker build — znaleziono flage [docker-build] w commit message"
           else
             echo "should_build=false" >> "$GITHUB_OUTPUT"
-            echo "::notice::Pomijam Docker build — actor=${ACTOR} != mpasternak"
+            echo "::notice::Pomijam Docker build — brak flagi [docker-build] w commit message"
+            echo "::notice::Aby wymusic build, dodaj [docker-build] do commit message lub uruchom: gh workflow run build-docker-images.yml --ref ${REF_NAME}"
           fi
 
   docker:
