@@ -1,9 +1,7 @@
-"""Views handling author merging and deletion.
+"""Merge & delete-author views.
 
-- ``scal_autorow_view`` — JSON endpoint that performs an automatic merge
-  between two Scientist records and (optionally) marks the originating
-  ``DuplicateCandidate`` as resolved.
-- ``delete_author`` — removes an author that has no publications.
+``scal_autorow_view`` performs the actual merge of two authors;
+``delete_author`` removes an author when they have no publications.
 """
 
 import sys
@@ -13,7 +11,6 @@ import rollbar
 from django.contrib import messages
 from django.http import JsonResponse
 from django.shortcuts import redirect
-from django.utils import timezone
 from django.views.decorators.http import require_http_methods
 
 from bpp.const import GR_WPROWADZANIE_DANYCH
@@ -21,8 +18,8 @@ from bpp.models import Autor
 from bpp.models.cache import Rekord
 
 from ..models import DuplicateCandidate
-from ..utils import scal_autorow
-from .helpers import group_required
+from ..utils import scal_autora
+from .helpers import _read_param, _resolve_autor_id, group_required
 
 
 @group_required(GR_WPROWADZANIE_DANYCH)
@@ -31,9 +28,10 @@ def scal_autorow_view(request):
     """
     Widok do scalania autorów automatycznie.
 
-    Przyjmuje parametry:
-    - main_scientist_id: ID głównego autora (Scientist)
-    - duplicate_scientist_id: ID duplikatu autora (Scientist)
+    Przyjmuje parametry (warianty):
+    - main_autor_id / duplicate_autor_id: ID autorów BPP (preferowane)
+    - main_scientist_id / duplicate_scientist_id: ID Scientist z PBN
+      (mapowane do Autor przez rekord_w_bpp; backwards-compat)
     - skip_pbn: Opcjonalnie, jeśli true nie wysyła publikacji do PBN
     - candidate_id: Opcjonalnie, ID DuplicateCandidate do oznaczenia jako scalony
     - auto_assign_discipline: Opcjonalnie, jeśli true przypisuje główną dyscyplinę
@@ -41,45 +39,59 @@ def scal_autorow_view(request):
 
     Zwraca wynik operacji w formacie JSON.
     """
-    if request.method == "GET":
-        main_scientist_id = request.GET.get("main_scientist_id")
-        duplicate_scientist_id = request.GET.get("duplicate_scientist_id")
-        skip_pbn = request.GET.get("skip_pbn", "false").lower() == "true"
-        candidate_id = request.GET.get("candidate_id")
-        auto_assign_discipline = (
-            request.GET.get("auto_assign_discipline", "false").lower() == "true"
-        )
-        use_subdiscipline = (
-            request.GET.get("use_subdiscipline", "false").lower() == "true"
-        )
-    else:
-        main_scientist_id = request.POST.get("main_scientist_id")
-        duplicate_scientist_id = request.POST.get("duplicate_scientist_id")
-        skip_pbn = request.POST.get("skip_pbn", "false").lower() == "true"
-        candidate_id = request.POST.get("candidate_id")
-        auto_assign_discipline = (
-            request.POST.get("auto_assign_discipline", "false").lower() == "true"
-        )
-        use_subdiscipline = (
-            request.POST.get("use_subdiscipline", "false").lower() == "true"
-        )
+    from django.utils import timezone
 
-    if not main_scientist_id or not duplicate_scientist_id:
+    skip_pbn = (_read_param(request, "skip_pbn") or "false").lower() == "true"
+    candidate_id = _read_param(request, "candidate_id")
+    auto_assign_discipline = (
+        _read_param(request, "auto_assign_discipline") or "false"
+    ).lower() == "true"
+    use_subdiscipline = (
+        _read_param(request, "use_subdiscipline") or "false"
+    ).lower() == "true"
+
+    main_autor_id = _resolve_autor_id(request, "main_autor_id", "main_scientist_id")
+    duplicate_autor_id = _resolve_autor_id(
+        request, "duplicate_autor_id", "duplicate_scientist_id"
+    )
+
+    if not main_autor_id or not duplicate_autor_id:
+        # Sygnalizujemy do Rollbar — to nie powinno się zdarzać przy poprawnym
+        # wywołaniu z UI; raczej oznacza błąd JS-a lub niespójne dane (np.
+        # scientist_id wskazujący na rekord, którego rekord_w_bpp == None).
+        try:
+            raise ValueError(
+                "scal_autorow_view: missing required params after resolution. "
+                f"GET={dict(request.GET)} POST_keys={list(request.POST.keys())} "
+                f"resolved main={main_autor_id} duplicate={duplicate_autor_id}"
+            )
+        except ValueError:
+            traceback.print_exc()
+            rollbar.report_exc_info(sys.exc_info())
         return JsonResponse(
             {
                 "success": False,
                 "error": (
-                    "Brak wymaganych parametrów: "
-                    "main_scientist_id i duplicate_scientist_id"
+                    "Brak wymaganych parametrów: main_autor_id i duplicate_autor_id"
                 ),
             },
             status=400,
         )
 
     try:
-        result = scal_autorow(
-            main_scientist_id,
-            duplicate_scientist_id,
+        try:
+            main_autor = Autor.objects.get(pk=main_autor_id)
+            duplicate_autor = Autor.objects.get(pk=duplicate_autor_id)
+        except Autor.DoesNotExist as e:
+            rollbar.report_exc_info(sys.exc_info())
+            return JsonResponse(
+                {"success": False, "error": "Nie znaleziono autora."},
+                status=404,
+            )
+
+        result = scal_autora(
+            main_autor,
+            duplicate_autor,
             request.user,
             skip_pbn=skip_pbn,
             auto_assign_discipline=auto_assign_discipline,
@@ -95,9 +107,8 @@ def scal_autorow_view(request):
                 candidate.reviewed_by = request.user
                 candidate.save()
             except DuplicateCandidate.DoesNotExist:
-                # Candidate may have been deleted between the merge call and
-                # this update; that's not an error worth surfacing.
-                pass
+                # Candidate may have been deleted in the meantime
+                pass  # not an error - merge already succeeded
 
         return JsonResponse({"success": result.get("success", False), "result": result})
     except NotImplementedError as e:
@@ -108,7 +119,7 @@ def scal_autorow_view(request):
         return JsonResponse(
             {
                 "success": False,
-                "error": f"Błąd podczas scalania autorów: {str(e)}",
+                "error": "Wystąpił wewnętrzny błąd podczas scalania autorów.",
             },
             status=500,
         )

@@ -1,11 +1,11 @@
 import pytest
 from django.core.files.base import ContentFile
-from django.db import transaction
+from django.db import connection, transaction
 from django.db.models import Max
 from django.test.utils import CaptureQueriesContext
-from django.db import connection
 
 import notifications.core as notifications_core
+from bpp.models import Autor_Dyscyplina
 from import_dyscyplin.models import Import_Dyscyplin
 from import_dyscyplin.tasks import (
     integruj_import_dyscyplin,
@@ -13,8 +13,6 @@ from import_dyscyplin.tasks import (
     stworz_kolumny,
 )
 from notifications.models import Notification
-
-from bpp.models import Autor_Dyscyplina
 
 
 def test_kasowanie_calosci(
@@ -38,7 +36,6 @@ def test_kasowanie_calosci(
         )
         with open(test4_kasowanie_xlsx, "rb") as f:
             i.plik.save("test1.xlsx", ContentFile(f.read()))
-        i.plik.path
 
     mocker.patch("notifications.core._send")
     przeanalizuj_import_dyscyplin.delay(i.pk)
@@ -79,7 +76,6 @@ def test_kasowanie_subdyscypliny(
         )
         with open(test5_kasowanie_subdyscypliny, "rb") as f:
             i.plik.save("test1.xlsx", ContentFile(f.read()))
-        i.plik.path
 
     mocker.patch("notifications.core._send")
     przeanalizuj_import_dyscyplin.delay(i.pk)
@@ -107,7 +103,6 @@ def test_przeanalizuj_import_dyscyplin(
         )
         with open(test1_xlsx, "rb") as f:
             i.plik.save("test1.xls", ContentFile(f.read()))
-        i.plik.path
 
     mocker.patch("notifications.core._send")
 
@@ -138,9 +133,7 @@ def test_taski_import_dyscyplin_uzywaja_realnego_locka(
     """Każdy z trzech tasków musi wykonać `SELECT ... FOR UPDATE` — inaczej
     równoczesne uruchomienia mogą się zdeptać przy zmianie pól FSM."""
     with transaction.atomic():
-        i = Import_Dyscyplin.objects.create(
-            owner=normal_django_user, web_page_uid="x"
-        )
+        i = Import_Dyscyplin.objects.create(owner=normal_django_user, web_page_uid="x")
         with open(test1_xlsx, "rb") as f:
             i.plik.save("test1.xls", ContentFile(f.read()))
 

@@ -21,6 +21,27 @@ def get_latest_completed_scan():
     )
 
 
+def get_latest_usable_scan():
+    """Pobiera ostatnie skanowanie z użytecznymi wynikami.
+
+    "Użyteczne" = COMPLETED lub PARTIAL_COMPLETED (faza PBN ukończona,
+    nawet jeśli general anulowana).
+
+    Returns:
+        DuplicateScanRun lub None
+    """
+    return (
+        DuplicateScanRun.objects.filter(
+            status__in=[
+                DuplicateScanRun.Status.COMPLETED,
+                DuplicateScanRun.Status.PARTIAL_COMPLETED,
+            ]
+        )
+        .order_by("-finished_at")
+        .first()
+    )
+
+
 def get_latest_scan_stats():
     """
     Pobiera statystyki ostatniego skanowania.

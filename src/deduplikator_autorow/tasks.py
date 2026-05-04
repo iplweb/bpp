@@ -56,6 +56,33 @@ def _get_user_by_id(user_id):
         return None
 
 
+def _calculate_priority_from_meta(meta_entry: dict) -> int:
+    """Computes priority from meta dict (no SQL).
+
+    Mirrors :func:`calculate_author_priority` but uses cached fields
+    from the meta dict produced by ``build_autor_meta``. Avoids
+    per-candidate SQL on the hot path of ``_run_general_phase``.
+
+    Priority values:
+        100 - has 2022-2025 publications WITH disciplines
+        50 - has 2022-2025 publications (any)
+        0 - no recent publications
+
+    TODO: ``calculate_author_priority`` checks disciplines specifically
+    in 2022-2025 (``Autor_Dyscyplina.objects.filter(rok__gte=2022,
+    rok__lte=2025)``). The meta-cache only stores ``ma_dyscypline``
+    (any year), so this is an approximation. Acceptable for v1 since
+    priority is a sort hint, not a correctness invariant. To achieve
+    exact parity, store year-filtered discipline data in meta.
+    """
+    recent_lata = {rok for rok in meta_entry["lata_publikacji"] if 2022 <= rok <= 2025}
+    if not recent_lata:
+        return 0
+    if meta_entry["ma_dyscypline"]:
+        return 100
+    return 50
+
+
 def calculate_author_priority(autor):
     """
     Calculate priority based on publication dates and disciplines.
@@ -217,35 +244,207 @@ def _process_author_duplicates(osoba_z_instytucji, scan_run, min_confidence):
     return candidates
 
 
-@shared_task(bind=True, name="deduplikator_autorow.scan_for_duplicates")
-def scan_for_duplicates(self, user_id=None, min_confidence=MIN_CONFIDENCE_TO_STORE):
+def _run_general_phase(scan_run, min_confidence=MIN_CONFIDENCE_TO_STORE):
+    """Faza 2 skanu — duplikaty general (no SQL on hot path).
+
+    Algorytm:
+    1. build_autor_meta + build_buckets — pre-load wszystkich autorów.
+    2. Read IgnoredAuthor / NotADuplicate exclusions.
+    3. generate_pairs — pary score >= min_confidence.
+    4. find_clusters — connected components.
+    5. Cluster-skip jeśli ktokolwiek w klastrze ma OsobaZInstytucji.
+    6. Pick main przez hierarchię B; emit pary (main, dup) jako
+       DuplicateCandidate(scan_mode='general').
+    7. Sprawdza scan_run.status == CANCELLED między batchami.
     """
-    Background task to scan all authors for potential duplicates.
+    from .models import (
+        DuplicateCandidate,
+        DuplicateScanRun,
+        IgnoredAuthor,
+        NotADuplicate,
+    )
+    from .utils.analysis_meta import analiza_pary_meta
+    from .utils.cluster import find_clusters
+    from .utils.main_selection import pick_main_pk
+    from .utils.meta import build_autor_meta, build_buckets
+    from .utils.search_general import generate_pairs
 
-    This task:
-    1. Creates a DuplicateScanRun record
-    2. Deletes all existing DuplicateCandidate records (replace mode)
-    3. Iterates through all OsobaZInstytucji
-    4. For each, calls szukaj_kopii() to find candidates
-    5. For each candidate, calls analiza_duplikatow() and stores in DuplicateCandidate
-    6. Updates progress periodically
-    7. Marks run as completed
+    logger.info("General phase: building meta cache...")
+    meta = build_autor_meta()
+    buckets = build_buckets(meta)
+    logger.info("General phase: %d autorów, %d bucketów", len(meta), len(buckets))
 
-    Args:
-        user_id: Optional ID of the user who triggered the scan
-        min_confidence: Minimum confidence score to store a candidate (default: 50)
+    ignored_pks = set(IgnoredAuthor.objects.values_list("autor_id", flat=True))
+    notadup_pks = set(NotADuplicate.objects.values_list("autor_id", flat=True))
 
-    Returns:
-        dict: Result with status, scan_run_id, and statistics
+    pairs_data: dict[tuple[int, int], tuple[int, list[str]]] = {}
+    for pk_a, pk_b, score, reasons in generate_pairs(
+        buckets, meta, ignored_pks, notadup_pks, min_confidence
+    ):
+        pairs_data[(pk_a, pk_b)] = (score, reasons)
+    logger.info("General phase: znaleziono %d par", len(pairs_data))
+
+    clusters = find_clusters(list(pairs_data.keys()))
+    logger.info("General phase: %d klastrów wstępnych", len(clusters))
+
+    skipped_count = 0
+    candidates_to_create: list[DuplicateCandidate] = []
+    for cluster in clusters:
+        if any(meta[pk]["ma_osoba_z_instytucji"] for pk in cluster):
+            skipped_count += 1
+            continue
+        main_pk = pick_main_pk(cluster, meta)
+        for dup_pk in cluster - {main_pk}:
+            key = (min(main_pk, dup_pk), max(main_pk, dup_pk))
+            if key in pairs_data:
+                score, reasons = pairs_data[key]
+            else:
+                score, reasons = analiza_pary_meta(meta[main_pk], meta[dup_pk])
+            main_obj = meta[main_pk]["obj"]
+            dup_obj = meta[dup_pk]["obj"]
+            candidates_to_create.append(
+                DuplicateCandidate(
+                    scan_run=scan_run,
+                    main_autor=main_obj,
+                    duplicate_autor=dup_obj,
+                    confidence_score=score,
+                    confidence_percent=normalize_confidence(score),
+                    reasons=reasons,
+                    priority=_calculate_priority_from_meta(meta[dup_pk]),
+                    main_autor_name=str(main_obj),
+                    duplicate_autor_name=str(dup_obj),
+                    main_publications_count=meta[main_pk]["publikacje_count"],
+                    duplicate_publications_count=meta[dup_pk]["publikacje_count"],
+                    scan_mode="general",
+                )
+            )
+            if len(candidates_to_create) >= 1000:
+                with transaction.atomic():
+                    DuplicateCandidate.objects.bulk_create(
+                        candidates_to_create, ignore_conflicts=True
+                    )
+                candidates_to_create = []
+                scan_run.refresh_from_db()
+                if scan_run.status == DuplicateScanRun.Status.CANCELLED:
+                    logger.info("General phase cancelled mid-batch")
+                    return
+
+    if candidates_to_create:
+        with transaction.atomic():
+            DuplicateCandidate.objects.bulk_create(
+                candidates_to_create, ignore_conflicts=True
+            )
+
+    logger.info(
+        "General phase: %d klastrów pominiętych (z OsobaZInstytucji)",
+        skipped_count,
+    )
+
+
+def _run_pbn_phase(scan_run, min_confidence=MIN_CONFIDENCE_TO_STORE):
+    """Faza 1 skanu — duplikaty PBN (OsobaZInstytucji).
+
+    Iteruje przez wszystkie OsobaZInstytucji (z wyjątkiem IgnoredScientist),
+    dla każdej szuka kopii (`szukaj_kopii`), analizuje (`analiza_duplikatow`)
+    i tworzy DuplicateCandidate. Polluje `scan_run.status` między autorami —
+    jeśli zewnętrzny `cancel_scan` ustawił CANCELLED, kończy wcześnie
+    (status pozostaje CANCELLED — caller decyduje o finalizacji).
+
+    Aktualizuje pola `total_authors_to_scan`, `authors_scanned` i
+    `duplicates_found` na `scan_run` w trakcie pracy.
     """
     from pbn_api.models import OsobaZInstytucji
 
-    from .models import DuplicateCandidate, DuplicateScanRun, IgnoredAuthor
+    from .models import DuplicateCandidate, DuplicateScanRun, IgnoredScientist
 
-    logger.info("Starting duplicate scan task...")
+    ignored_scientist_ids = set(
+        IgnoredScientist.objects.values_list("scientist_id", flat=True)
+    )
+
+    osoby_query = OsobaZInstytucji.objects.select_related("personId").all()
+    if ignored_scientist_ids:
+        osoby_query = osoby_query.exclude(personId__pk__in=ignored_scientist_ids)
+
+    total_count = osoby_query.count()
+    scan_run.total_authors_to_scan = total_count
+    scan_run.save(update_fields=["total_authors_to_scan"])
+
+    logger.info(f"PBN phase: scanning {total_count} authors...")
+
+    authors_scanned = 0
+    duplicates_found = 0
+    candidates_to_create = []
+
+    for osoba_z_instytucji in osoby_query.iterator():
+        scan_run.refresh_from_db()
+        if scan_run.status == DuplicateScanRun.Status.CANCELLED:
+            logger.info("PBN phase cancelled by user")
+            if candidates_to_create:
+                with transaction.atomic():
+                    DuplicateCandidate.objects.bulk_create(
+                        candidates_to_create, ignore_conflicts=True
+                    )
+            scan_run.authors_scanned = authors_scanned
+            scan_run.duplicates_found = duplicates_found
+            scan_run.save(update_fields=["authors_scanned", "duplicates_found"])
+            return
+
+        authors_scanned += 1
+
+        new_candidates = _process_author_duplicates(
+            osoba_z_instytucji, scan_run, min_confidence
+        )
+        candidates_to_create.extend(new_candidates)
+        duplicates_found += len(new_candidates)
+
+        if len(candidates_to_create) >= 1000:
+            with transaction.atomic():
+                DuplicateCandidate.objects.bulk_create(
+                    candidates_to_create, ignore_conflicts=True
+                )
+            candidates_to_create = []
+
+        if authors_scanned % PROGRESS_UPDATE_INTERVAL == 0:
+            scan_run.authors_scanned = authors_scanned
+            scan_run.duplicates_found = duplicates_found
+            scan_run.save(update_fields=["authors_scanned", "duplicates_found"])
+            logger.info(
+                f"PBN progress: {authors_scanned}/{total_count} authors, "
+                f"{duplicates_found} duplicates found"
+            )
+
+    if candidates_to_create:
+        with transaction.atomic():
+            DuplicateCandidate.objects.bulk_create(
+                candidates_to_create, ignore_conflicts=True
+            )
+
+    scan_run.authors_scanned = authors_scanned
+    scan_run.duplicates_found = duplicates_found
+    scan_run.save(update_fields=["authors_scanned", "duplicates_found"])
+
+    logger.info(
+        f"PBN phase done: {authors_scanned} authors scanned, "
+        f"{duplicates_found} duplicates found"
+    )
+
+
+@shared_task(bind=True, name="deduplikator_autorow.scan_for_duplicates")
+def scan_for_duplicates(self, user_id=None, min_confidence=MIN_CONFIDENCE_TO_STORE):
+    """Combined task: faza PBN + faza general w jednym przebiegu.
+
+    Statusy końcowe:
+    - COMPLETED: obie fazy ukończone.
+    - PARTIAL_COMPLETED: faza PBN OK, faza general anulowana → wyniki PBN
+      dostępne.
+    - CANCELLED: faza PBN anulowana → brak wyników.
+    - FAILED: nieobsłużony wyjątek.
+    """
+    from .models import DuplicateCandidate, DuplicateScanRun
+
+    logger.info("Starting duplicate scan task (combined PBN + general)...")
 
     user = _get_user_by_id(user_id)
-
     scan_run = DuplicateScanRun.objects.create(
         status=DuplicateScanRun.Status.RUNNING,
         created_by=user,
@@ -253,88 +452,58 @@ def scan_for_duplicates(self, user_id=None, min_confidence=MIN_CONFIDENCE_TO_STO
     )
 
     try:
+        # Replace mode: clear all previous candidates
         deleted_count = DuplicateCandidate.objects.all().delete()[0]
         logger.info(f"Deleted {deleted_count} existing candidates")
 
-        ignored_scientist_ids = set(
-            IgnoredAuthor.objects.values_list("scientist_id", flat=True)
-        )
+        # FAZA 1: PBN
+        scan_run.phase = "pbn"
+        scan_run.save(update_fields=["phase"])
+        _run_pbn_phase(scan_run, min_confidence)
+        scan_run.refresh_from_db()
+        if scan_run.status == DuplicateScanRun.Status.CANCELLED:
+            scan_run.finished_at = timezone.now()
+            scan_run.save(update_fields=["finished_at"])
+            logger.info("Scan cancelled in PBN phase")
+            return {
+                "status": "cancelled",
+                "scan_run_id": scan_run.pk,
+            }
 
-        osoby_query = OsobaZInstytucji.objects.select_related("personId").all()
-        if ignored_scientist_ids:
-            osoby_query = osoby_query.exclude(personId__pk__in=ignored_scientist_ids)
+        # FAZA 2: general
+        scan_run.phase = "general"
+        scan_run.save(update_fields=["phase"])
+        _run_general_phase(scan_run, min_confidence)
+        scan_run.refresh_from_db()
+        if scan_run.status == DuplicateScanRun.Status.CANCELLED:
+            scan_run.status = DuplicateScanRun.Status.PARTIAL_COMPLETED
+            scan_run.finished_at = timezone.now()
+            scan_run.save(update_fields=["status", "finished_at"])
+            logger.info("Scan cancelled in general phase → PARTIAL_COMPLETED")
+            return {
+                "status": "partial_completed",
+                "scan_run_id": scan_run.pk,
+            }
 
-        total_count = osoby_query.count()
-        scan_run.total_authors_to_scan = total_count
-        scan_run.save(update_fields=["total_authors_to_scan"])
-
-        logger.info(f"Scanning {total_count} authors for duplicates...")
-
-        authors_scanned = 0
-        duplicates_found = 0
-        candidates_to_create = []
-
-        for osoba_z_instytucji in osoby_query.iterator():
-            scan_run.refresh_from_db()
-            if scan_run.status == DuplicateScanRun.Status.CANCELLED:
-                logger.info("Scan cancelled by user")
-                return {
-                    "status": "cancelled",
-                    "scan_run_id": scan_run.pk,
-                    "authors_scanned": authors_scanned,
-                    "duplicates_found": duplicates_found,
-                }
-
-            authors_scanned += 1
-
-            new_candidates = _process_author_duplicates(
-                osoba_z_instytucji, scan_run, min_confidence
-            )
-            candidates_to_create.extend(new_candidates)
-            duplicates_found += len(new_candidates)
-
-            if len(candidates_to_create) >= 1000:
-                with transaction.atomic():
-                    DuplicateCandidate.objects.bulk_create(
-                        candidates_to_create, ignore_conflicts=True
-                    )
-                candidates_to_create = []
-
-            if authors_scanned % PROGRESS_UPDATE_INTERVAL == 0:
-                scan_run.authors_scanned = authors_scanned
-                scan_run.duplicates_found = duplicates_found
-                scan_run.save(update_fields=["authors_scanned", "duplicates_found"])
-                logger.info(
-                    f"Progress: {authors_scanned}/{total_count} authors, "
-                    f"{duplicates_found} duplicates found"
-                )
-
-        if candidates_to_create:
-            with transaction.atomic():
-                DuplicateCandidate.objects.bulk_create(
-                    candidates_to_create, ignore_conflicts=True
-                )
-
+        total_cands = DuplicateCandidate.objects.filter(scan_run=scan_run).count()
         scan_run.status = DuplicateScanRun.Status.COMPLETED
         scan_run.finished_at = timezone.now()
-        scan_run.authors_scanned = authors_scanned
-        scan_run.duplicates_found = duplicates_found
+        scan_run.duplicates_found = total_cands
         scan_run.save()
 
         logger.info(
-            f"Scan completed: {authors_scanned} authors scanned, "
-            f"{duplicates_found} duplicates found"
+            f"Scan completed: {scan_run.authors_scanned} authors scanned, "
+            f"{total_cands} duplicates found"
         )
 
         return {
             "status": "success",
             "scan_run_id": scan_run.pk,
-            "authors_scanned": authors_scanned,
-            "duplicates_found": duplicates_found,
+            "duplicates_found": total_cands,
         }
 
     except Exception as e:
-        logger.error(f"Error during duplicate scan: {str(e)}", exc_info=True)
+        logger.exception("Error during duplicate scan")
         scan_run.status = DuplicateScanRun.Status.FAILED
         scan_run.finished_at = timezone.now()
         scan_run.error_message = str(e)

@@ -3,7 +3,7 @@ Funkcje wyszukiwania autorów z duplikatami.
 """
 
 from bpp.models import Autor
-from deduplikator_autorow.models import IgnoredAuthor
+from deduplikator_autorow.models import IgnoredScientist
 from pbn_api.models import OsobaZInstytucji, Scientist
 
 from .analysis import autor_ma_publikacje_z_lat
@@ -36,7 +36,7 @@ def znajdz_pierwszego_autora_z_duplikatami(  # noqa: C901
 
     # Pobierz IDs ignorowanych autorów
     ignored_scientist_ids = list(
-        IgnoredAuthor.objects.values_list("scientist_id", flat=True)
+        IgnoredScientist.objects.values_list("scientist_id", flat=True)
     )
 
     # Przeszukaj wszystkie rekordy OsobaZInstytucji, wykluczając określonych autorów

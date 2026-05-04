@@ -6,7 +6,7 @@ from bpp.models.abstract import ModelZAdnotacjami, ModelZNazwa
 
 
 class Konferencja(ModelZNazwa, ModelZAdnotacjami):
-    nazwa = models.TextField(max_length=512, db_index=True)
+    nazwa = models.CharField(max_length=512, db_index=True)
 
     skrocona_nazwa = models.CharField(
         "Skrócona nazwa", max_length=250, null=True, blank=True, db_index=True
@@ -81,5 +81,5 @@ class Konferencja(ModelZNazwa, ModelZAdnotacjami):
         if self.baza_wos:
             ret += " [WoS]"
         if self.baza_inna:
-            ret += f" [{ self.baza_inna }]"
+            ret += f" [{self.baza_inna}]"
         return ret
