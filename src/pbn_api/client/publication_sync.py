@@ -824,13 +824,33 @@ class PublicationSyncMixin:
                 no_tries -= 1
                 time.sleep(0.5)
 
-        try:
-            self.pobierz_publikacje_instytucji_v2(objectId=objectId)
-        except PublikacjaInstytucjiV2NieZnalezionaException:
-            notificator.warning(
-                "Nie znaleziono oświadczeń dla publikacji po stronie PBN w wersji "
-                "V2 API. Ten komunikat nie jest błędem. "
-            )
+        # Retry z exponential backoff dla V2 API
+        max_v2_tries = 5
+        v2_try = 0
+        base_delay = 2
+
+        while v2_try < max_v2_tries:
+            try:
+                self.pobierz_publikacje_instytucji_v2(objectId=objectId)
+                return
+            except PublikacjaInstytucjiV2NieZnalezionaException:
+                v2_try += 1
+                if v2_try >= max_v2_tries:
+                    notificator.error(
+                        f"Po {max_v2_tries} próbach nie znaleziono oświadczeń V2 w PBN. "
+                        "Może to oznaczać że: (1) publikacja nie ma jeszcze oświadczeń, "
+                        "(2) PBN jeszcze ich nie wygenerował. "
+                        "Spróbuj ponownie za kilka minut lub użyj wysyłki w tle "
+                        "(PBN Export Queue), która automatycznie poradzi sobie z tym przypadkiem."
+                    )
+                    return
+
+                delay = base_delay * (2**v2_try)
+                logger.info(
+                    f"V2 API nie gotowe dla objectId={objectId}, "
+                    f"próba {v2_try}/{max_v2_tries}, czekam {delay}s"
+                )
+                time.sleep(delay)
 
     def _get_username_from_notificator(self, notificator):
         """Extract username from notificator if available."""
