@@ -6,7 +6,7 @@ from model_bakery import baker
 
 from django.utils.timezone import localtime
 
-from bpp.models import Praca_Doktorska
+from bpp.models import Autor, Jednostka, Praca_Doktorska
 
 
 @pytest.mark.django_db
@@ -81,8 +81,24 @@ def test_rest_api_praca_doktorska_ukryj_status(
 
 @pytest.fixture
 def wiele_prac_doktorskich(db, typy_odpowiedzialnosci):
-    for a in range(100):
-        baker.make(Praca_Doktorska)
+    # Create one template object using baker.make to get all required fields with defaults
+    template = baker.make(Praca_Doktorska)
+
+    # Use bulk_create for 100x performance improvement over individual saves
+    # Copy all fields from template except PK (id) and cached properties
+    Praca_Doktorska.objects.bulk_create([
+        Praca_Doktorska(
+            autor=template.autor,
+            jednostka=template.jednostka,
+            rok=template.rok,
+            jezyk=template.jezyk,
+            typ_kbn=template.typ_kbn,
+            status_korekty=template.status_korekty,
+            # Copy optional fields that have defaults
+            tytul_oryginalny=template.tytul_oryginalny or f"Praca {i}",
+        )
+        for i in range(100)
+    ])
 
 
 @pytest.mark.django_db
