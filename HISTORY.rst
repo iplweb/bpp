@@ -4,6 +4,20 @@ Historia zmian
 
 .. towncrier release notes start
 
+bpp 202605.1372 (2026-05-04)
+============================
+
+Naprawione
+----------
+
+- Naprawiono healthcheck lekkiego ``authserver``-a, który zwracał
+  ``503 Service Unavailable`` przez ``AttributeError`` na nieistniejącym
+  ``settings.CELERY_BROKER_URL``. Sonda Redis jest teraz pomijana, gdy
+  ustawienia nie konfigurują brokera Celery — ``authserver`` nie używa
+  kolejki zadań, więc jego stan zdrowia nie zależy od Redis-a. Sonda
+  PostgreSQL działa bez zmian.
+
+
 bpp 202605.1371 (2026-05-04)
 ============================
 
