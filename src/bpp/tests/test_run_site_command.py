@@ -78,9 +78,7 @@ def test_port_file_write_and_remove(tmp_path, monkeypatch):
     """Helper zapisuje numer portu i kasuje go bezpiecznie."""
     from bpp.management.commands import run_site as run_site_mod
 
-    monkeypatch.setattr(
-        run_site_mod, "_port_path", lambda: tmp_path / ".run_site_port"
-    )
+    monkeypatch.setattr(run_site_mod, "_port_path", lambda: tmp_path / ".run_site_port")
 
     path = run_site_mod._write_port_file(53715)
     assert path.read_text() == "53715"
@@ -90,3 +88,41 @@ def test_port_file_write_and_remove(tmp_path, monkeypatch):
 
     # Drugie wywołanie (atexit po finally) nie wybucha:
     run_site_mod._remove_port_file()
+
+
+def test_pg_port_file_write_and_remove(tmp_path, monkeypatch):
+    """Helper zapisuje port PG (testcontainers) i kasuje go bezpiecznie."""
+    from bpp.management.commands import run_site as run_site_mod
+
+    monkeypatch.setattr(
+        run_site_mod, "_pg_port_path", lambda: tmp_path / ".run_site_pg_port"
+    )
+
+    path = run_site_mod._write_pg_port_file(54322)
+    assert path.read_text() == "54322"
+
+    run_site_mod._remove_pg_port_file()
+    assert not path.exists()
+
+    # Drugie wywołanie (atexit po finally) nie wybucha:
+    run_site_mod._remove_pg_port_file()
+
+
+def test_redis_port_file_write_and_remove(tmp_path, monkeypatch):
+    """Helper zapisuje port Redisa (testcontainers) i kasuje go bezpiecznie."""
+    from bpp.management.commands import run_site as run_site_mod
+
+    monkeypatch.setattr(
+        run_site_mod,
+        "_redis_port_path",
+        lambda: tmp_path / ".run_site_redis_port",
+    )
+
+    path = run_site_mod._write_redis_port_file(54323)
+    assert path.read_text() == "54323"
+
+    run_site_mod._remove_redis_port_file()
+    assert not path.exists()
+
+    # Drugie wywołanie (atexit po finally) nie wybucha:
+    run_site_mod._remove_redis_port_file()

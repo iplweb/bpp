@@ -193,3 +193,9 @@ TODO-*.md
 # Pozwala agentowi złożyć URL bez parsowania bannera/logów.
 # Plik istnieje tylko gdy run_site biegnie; kasowany na exit.
 .run_site_port
+
+# Porty PostgreSQL/Redis (testcontainers) zapisywane przez run_site.
+# Pozwalają agentowi podpiąć psql/redis-cli bez parsowania bannera.
+# Pliki istnieją tylko gdy run_site biegnie; kasowane na exit.
+.run_site_pg_port
+.run_site_redis_port
