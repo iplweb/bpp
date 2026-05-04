@@ -2,9 +2,8 @@ from datetime import timedelta
 
 import pytest
 from django.urls import reverse
-from model_bakery import baker
-
 from django.utils.timezone import localtime
+from model_bakery import baker
 
 from bpp.models import Praca_Habilitacyjna
 
@@ -52,7 +51,7 @@ def test_rest_api_praca_habilitacyjna_filtering_rok(
     api_client, praca_habilitacyjna, rok
 ):
     res = api_client.get(
-        reverse("api_v1:praca_habilitacyjna-list") + f"?rok_min={rok+1}"
+        reverse("api_v1:praca_habilitacyjna-list") + f"?rok_min={rok + 1}"
     )
     assert res.json()["count"] == 0
 
@@ -75,7 +74,7 @@ def test_rest_api_praca_habilitacyjna_ukryj_status(
 
 @pytest.fixture
 def wiele_prac_habilitacyjnych(db, typy_odpowiedzialnosci):
-    for a in range(100):
+    for _ in range(100):
         baker.make(Praca_Habilitacyjna)
 
 

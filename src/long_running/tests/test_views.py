@@ -1,6 +1,7 @@
 import pytest
 from model_bakery import baker
 
+from bpp.system import User
 from long_running import const
 from long_running.views import (
     CreateLongRunningOperationView,
@@ -13,8 +14,6 @@ from long_running.views import (
     RestrictToOwnerMixin,
 )
 from test_bpp.models import TestOperation
-
-from bpp.system import User
 
 
 def test_LongRunningTaskCallerMixin_task_on_commit(

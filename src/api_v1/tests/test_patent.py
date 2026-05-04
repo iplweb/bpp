@@ -2,9 +2,8 @@ from datetime import timedelta
 
 import pytest
 from django.urls import reverse
-from model_bakery import baker
-
 from django.utils.timezone import localtime
+from model_bakery import baker
 
 from bpp.models import Patent
 
@@ -45,7 +44,7 @@ def test_rest_api_patent_filtering_2(api_client, patent):
 
 @pytest.mark.django_db
 def test_rest_api_patent_filtering_rok(api_client, wydawnictwo_ciagle, rok):
-    res = api_client.get(reverse("api_v1:patent-list") + f"?rok_min={rok+1}")
+    res = api_client.get(reverse("api_v1:patent-list") + f"?rok_min={rok + 1}")
     assert res.json()["count"] == 0
 
 
@@ -67,7 +66,7 @@ def test_rest_api_patent_ukryj_status(
 
 @pytest.fixture
 def wiele_patentow(db, jezyki, charaktery_formalne):
-    for a in range(100):
+    for _ in range(100):
         baker.make(Patent)
 
 

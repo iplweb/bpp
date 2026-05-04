@@ -2,9 +2,8 @@ from datetime import timedelta
 
 import pytest
 from django.urls import reverse
-from model_bakery import baker
-
 from django.utils.timezone import localtime
+from model_bakery import baker
 
 from bpp.models import Praca_Doktorska
 
@@ -59,7 +58,7 @@ def test_rest_api_praca_doktorska_filtering_2(api_client, praca_doktorska):
 
 @pytest.mark.django_db
 def test_rest_api_praca_doktorska_filtering_rok(api_client, praca_doktorska, rok):
-    res = api_client.get(reverse("api_v1:praca_doktorska-list") + f"?rok_min={rok+1}")
+    res = api_client.get(reverse("api_v1:praca_doktorska-list") + f"?rok_min={rok + 1}")
     assert res.json()["count"] == 0
 
 
@@ -81,7 +80,7 @@ def test_rest_api_praca_doktorska_ukryj_status(
 
 @pytest.fixture
 def wiele_prac_doktorskich(db, typy_odpowiedzialnosci):
-    for a in range(100):
+    for _ in range(100):
         baker.make(Praca_Doktorska)
 
 
