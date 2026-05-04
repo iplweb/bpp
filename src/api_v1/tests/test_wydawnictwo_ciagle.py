@@ -72,8 +72,23 @@ def test_rest_api_wydawnictwo_ciagle_ukryj_status(
 
 @pytest.fixture
 def wiele_wydawnictw_ciaglych(db):
-    for a in range(100):
-        baker.make(Wydawnictwo_Ciagle)
+    # Create one template object using baker.make to get all required fields with defaults
+    template = baker.make(Wydawnictwo_Ciagle)
+
+    # Use bulk_create for 100x performance improvement over individual saves
+    # Copy all fields from template except PK (id) and cached properties
+    Wydawnictwo_Ciagle.objects.bulk_create([
+        Wydawnictwo_Ciagle(
+            rok=template.rok,
+            jezyk=template.jezyk,
+            typ_kbn=template.typ_kbn,
+            status_korekty=template.status_korekty,
+            charakter_formalny=template.charakter_formalny,
+            # Copy optional fields that have defaults
+            tytul_oryginalny=template.tytul_oryginalny or f"Wydawnictwo {i}",
+        )
+        for i in range(100)
+    ])
 
 
 @pytest.mark.django_db
