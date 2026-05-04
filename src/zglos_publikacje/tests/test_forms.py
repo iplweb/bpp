@@ -162,3 +162,39 @@ def test_set_wydawca_nie_resetuje_gdy_brak_pol_w_dane():
     assert wizard.object.wydawca_bpp == "sentinel_bpp"
     assert wizard.object.wydawca_pbn == "sentinel_pbn"
     assert wizard.object.wydawca_zgloszenia == "sentinel_tekst"
+
+
+@pytest.mark.django_db
+def test_walidacja_plikow_dla_dostepu_ograniczonego_z_dict():
+    """Test reprodukuje błąd AttributeError: 'dict' object has no attribute 'getlist'.
+
+    W wizardie, gdy formularz jest walidowany ponownie w render_done(),
+    self.files może być zwykłym dict, a nie QueryDict.
+    """
+    from django.core.files.uploadedfile import SimpleUploadedFile
+
+    baker.make(Uczelnia)
+
+    # Najpierw sprawdźmy czy formularz bez błędów w polach dochodzi do clean()
+    form = Zgloszenie_Publikacji_DaneForm(
+        data={
+            "tytul_oryginalny": "Test",
+            "rok": 2024,
+            "email": "test@example.com",
+            "strona_www": "https://example.com/test",
+            "zgoda_na_publikacje_pelnego_tekstu": "True",
+        },
+        files={},  # Pusty dict - to powinno wywołać błąd o braku plików
+        rodzaj="ARTYKUL",
+        forma_dostepu="OGRANICZONY",
+    )
+
+    # Formularz powinien być invalid, ale bez AttributeError
+    is_valid = form.is_valid()
+    assert is_valid is False
+
+    # Błąd powinien dotyczyć braku pliku, nie getlist()
+    errors = form.errors.get("__all__", [])
+    assert any("plik" in str(e).lower() for e in errors), (
+        f"Oczekiwany błąd o braku pliku, otrzymano: {errors}"
+    )

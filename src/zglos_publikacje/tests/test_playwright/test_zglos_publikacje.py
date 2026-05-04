@@ -237,3 +237,9 @@ def test_zglos_publikacje_wiele_klikniec(
     assert admin_page.locator(
         "#id_3-1-dyscyplina_naukowa"
     ).input_value() == str(dyscyplina1.pk)
+
+# Pełna integracja zgłoszenia z plikami (1 i wiele) jest pokryta
+# webtest-owymi testami `test_pelny_formularz_ograniczony_*`
+# w `tests_zglos_publikacje.py`. Browser tu nie jest potrzebny
+# (a wprowadza flakiness przy autouzupełnianiu jednostki przez
+# autorform_dependant.js).

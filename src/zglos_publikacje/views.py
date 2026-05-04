@@ -307,6 +307,63 @@ class Zgloszenie_PublikacjiWizard(UczelniaSettingRequiredMixin, SessionWizardVie
             self.request.session[const.SESSION_KEY] = form.cleaned_data.get("rok")
         return super().process_step(form)
 
+    PLIKI_EXTRA_KEY = "pliki_list"
+
+    def process_step_files(self, form):
+        """Zapisz wieloplikowe uploady poza standardowym storage formtools.
+
+        `formtools.wizard.storage.base.set_step_files` iteruje
+        `files.items()` po MultiValueDict, co dla pól typu
+        `<input multiple>` gubi wszystkie pliki poza ostatnim
+        (`.items()` zwraca jeden element per klucz). W rezultacie
+        do `done()` docierał tylko ostatni z wgranych plików.
+
+        Ratujemy się sami: każdy upload z `2-pliki` zapisujemy
+        bezpośrednio do `file_storage` i przechowujemy listę
+        metadanych w `storage.extra_data["pliki_list"]`. Standardowy
+        storage formtools nadal dostaje `form.files` (bo z niego korzysta
+        revalidacja w `render_done`), ale całość plików tworzymy
+        w `done()` z `extra_data`.
+        """
+        files = form.files or {}
+        if self.steps.current == "2" and hasattr(files, "getlist"):
+            pliki_key = "2-pliki"
+            pliki = files.getlist(pliki_key)
+            if pliki:
+                # Wyczyść poprzednie tmp pliki (powrót do kroku 2)
+                self._wyczysc_tmp_pliki()
+                saved = []
+                for f in pliki:
+                    tmp_name = self.file_storage.save(f.name, f)
+                    saved.append(
+                        {
+                            "tmp_name": tmp_name,
+                            "name": f.name,
+                            "content_type": (
+                                getattr(f, "content_type", None) or "application/pdf"
+                            ),
+                            "size": f.size,
+                        }
+                    )
+                extra = self.storage.extra_data
+                extra[self.PLIKI_EXTRA_KEY] = saved
+                self.storage.extra_data = extra
+        return super().process_step_files(form)
+
+    def _wyczysc_tmp_pliki(self):
+        """Usuń tymczasowe pliki z poprzedniego submita kroku 2."""
+        extra = self.storage.extra_data
+        for info in extra.get(self.PLIKI_EXTRA_KEY, []) or []:
+            tmp_name = info.get("tmp_name")
+            if not tmp_name:
+                continue
+            try:
+                self.file_storage.delete(tmp_name)
+            except FileNotFoundError:
+                pass  # Już usunięty — nie problem
+        extra[self.PLIKI_EXTRA_KEY] = []
+        self.storage.extra_data = extra
+
     RODZAJ_ETYKIETY = {
         "ARTYKUL": "artykuł",
         "MONOGRAFIA": "książkę / monografię",
@@ -366,7 +423,8 @@ class Zgloszenie_PublikacjiWizard(UczelniaSettingRequiredMixin, SessionWizardVie
             kwargs["rok"] = self.request.session.get(const.SESSION_KEY)
         kwargs["tytul_strony"] = self._tytul_strony()
         kwargs["wizard_breadcrumbs"] = self._wizard_breadcrumbs()
-        if self.steps.current == "1":
+        # Add banner for all steps after step 0
+        if self.steps.current != "0":
             step0 = self.get_cleaned_data_for_step("0") or {}
             rodzaj = step0.get("rodzaj")
             if rodzaj:
@@ -530,14 +588,40 @@ class Zgloszenie_PublikacjiWizard(UczelniaSettingRequiredMixin, SessionWizardVie
             self.object.wydawnictwo_nadrzedne_tekst = wn_tekst
 
     def _process_files(self, dane):
-        """Obsługa wielu plików PDF."""
-        # Pobierz listę plików z request.FILES
-        file_key = "2-pliki"
-        files = self.request.FILES.getlist(file_key)
+        """Obsługa wielu plików PDF.
 
-        if not files:
+        Pliki zapisaliśmy w `process_step_files` do `file_storage`,
+        a metadane wylądowały w `storage.extra_data[PLIKI_EXTRA_KEY]`.
+        Tu odczytujemy listę i tworzymy dla każdego elementu rekord
+        `Zgloszenie_Publikacji_Zalacznik`.
+
+        Fallback do `dane["pliki"]` zostawiony dla scenariuszy
+        z jednym plikiem (formtools storage trzyma jeden plik per
+        klucz pola, więc to nigdy nie zwróci więcej niż jednego).
+        """
+        from django.core.files.uploadedfile import SimpleUploadedFile
+
+        pliki_list = self.storage.extra_data.get(self.PLIKI_EXTRA_KEY) or []
+
+        if pliki_list:
+            for idx, info in enumerate(pliki_list):
+                with self.file_storage.open(info["tmp_name"]) as fh:
+                    content = fh.read()
+                upload = SimpleUploadedFile(info["name"], content, info["content_type"])
+                Zgloszenie_Publikacji_Zalacznik.objects.create(
+                    zgloszenie=self.object,
+                    plik=upload,
+                    oryginalna_nazwa_pliku=skroc_nazwe_pliku(info["name"]),
+                    kolejnosc=idx,
+                )
+            # Sprzątamy tmp pliki po przeniesieniu do permanent storage
+            self._wyczysc_tmp_pliki()
             return
 
+        # Fallback: pojedynczy plik z formtools storage
+        files = dane.get("pliki") or []
+        if not isinstance(files, list):
+            files = [files]
         for idx, uploaded_file in enumerate(files):
             Zgloszenie_Publikacji_Zalacznik.objects.create(
                 zgloszenie=self.object,

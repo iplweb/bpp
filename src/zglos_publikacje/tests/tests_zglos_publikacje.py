@@ -1,3 +1,4 @@
+import os
 
 import pytest
 from django.contrib.auth.models import Group
@@ -12,6 +13,8 @@ from zglos_publikacje.models import (
     Obslugujacy_Zgloszenia_Wydzialow,
     Zgloszenie_Publikacji,
 )
+
+PDF_PATH = os.path.join(os.path.dirname(__file__), "example.pdf")
 
 EMAIL = "test@panie.random.lol.pl"
 
@@ -392,6 +395,126 @@ def test_konfigurowalne_platnosci_artykul(
     # Powinien przejść od razu do sukcesu (bez kroku 4)
     # lub wymagać submitnięcia autorów
     assert page3.status_code == 200
+
+
+def _krok2_ograniczony_post_z_plikami(
+    webtest_app, page, *, ile_plikow, rok="2020"
+):
+    """Submit step 2 (OGRANICZONY) z N plikami przez webtest_app.post.
+
+    `webtest`-owa abstrakcja Form nie obsługuje wieloplikowych pól
+    z tym samym `name=` — trzeba zejść do `webtest_app.post()`
+    z parametrem `upload_files` (lista trójek (name, filename, content)),
+    który zachowuje duplikaty kluczy. Pozostałe pola przepisujemy
+    z aktualnego formularza, żeby management_form (`current_step`)
+    i pozostałe ukryte pola wizarda doszły bez ręcznego pamiętania.
+    """
+    form = page.forms[0]
+    fields = [
+        (n, v) for n, v in form.submit_fields() if not (n and n.startswith("2-"))
+    ]
+    fields.extend(
+        [
+            ("2-tytul_oryginalny", "Test multifile"),
+            ("2-rok", str(rok)),
+            ("2-email", "test@test.pl"),
+            ("2-strona_www", "https://example.com/"),
+        ]
+    )
+    with open(PDF_PATH, "rb") as fh:
+        pdf_content = fh.read()
+    upload_files = [
+        ("2-pliki", f"plik_{i}.pdf", pdf_content) for i in range(ile_plikow)
+    ]
+    url = reverse("zglos_publikacje:nowe_zgloszenie")
+    return webtest_app.post(url, params=fields, upload_files=upload_files)
+
+
+def _zlozenie_ograniczony_z_plikami(
+    webtest_app,
+    django_capture_on_commit_callbacks,
+    autor,
+    jednostka,
+    *,
+    ile_plikow,
+    rok="2020",
+):
+    """Pełny przelot wizarda OGRANICZONY z N plikami.
+
+    Zwraca finalną stronę (sukces).
+    """
+    page = _przejdz_do_kroku_danych(
+        webtest_app, rodzaj="ARTYKUL", forma="OGRANICZONY"
+    )
+    # Krok 2: dane + N plików
+    page2 = _krok2_ograniczony_post_z_plikami(
+        webtest_app, page, ile_plikow=ile_plikow, rok=rok
+    )
+    # Krok 3: autorzy
+    page2.forms[0]["3-0-autor"].force_value(autor.pk)
+    page2.forms[0]["3-0-jednostka"].force_value(jednostka.pk)
+    page3 = page2.forms[0].submit()
+    # Krok 4: opłaty (default uczelnia ma wymagaj_oplatach_artykul=True)
+    page3.forms[0]["4-opl_pub_cost_free"] = "true"
+    with django_capture_on_commit_callbacks(execute=True):
+        return page3.forms[0].submit().maybe_follow()
+
+
+@pytest.mark.django_db
+def test_pelny_formularz_ograniczony_jeden_plik(
+    webtest_app,
+    django_capture_on_commit_callbacks,
+    typy_odpowiedzialnosci,
+    uczelnia,
+    autor_jan_kowalski,
+    aktualna_jednostka,
+):
+    """Wizard OGRANICZONY z 1 plikiem: 1 Zalacznik w bazie."""
+    result = _zlozenie_ograniczony_z_plikami(
+        webtest_app,
+        django_capture_on_commit_callbacks,
+        autor=autor_jan_kowalski,
+        jednostka=aktualna_jednostka,
+        ile_plikow=1,
+    )
+    assert b"powiadomiony" in result.content or b"zostanie zaakceptowane" in result.content
+    zp = Zgloszenie_Publikacji.objects.order_by("-pk").first()
+    assert zp is not None
+    assert zp.zalaczniki.count() == 1
+
+
+@pytest.mark.django_db
+def test_pelny_formularz_ograniczony_wiele_plikow(
+    webtest_app,
+    django_capture_on_commit_callbacks,
+    typy_odpowiedzialnosci,
+    uczelnia,
+    autor_jan_kowalski,
+    aktualna_jednostka,
+):
+    """Wizard OGRANICZONY z 3 plikami: 3 Zalaczniki w bazie.
+
+    Regresja: formtools wizard storage iteruje `files.items()`
+    co dla pól z `<input multiple>` zapisuje tylko ostatni plik.
+    `Zgloszenie_PublikacjiWizard.process_step_files` zapisuje
+    całą listę do `extra_data`, a `_process_files` w `done()`
+    odtwarza wszystkie załączniki.
+    """
+    result = _zlozenie_ograniczony_z_plikami(
+        webtest_app,
+        django_capture_on_commit_callbacks,
+        autor=autor_jan_kowalski,
+        jednostka=aktualna_jednostka,
+        ile_plikow=3,
+    )
+    assert b"powiadomiony" in result.content or b"zostanie zaakceptowane" in result.content
+    zp = Zgloszenie_Publikacji.objects.order_by("-pk").first()
+    assert zp is not None
+    assert zp.zalaczniki.count() == 3, (
+        f"Oczekiwano 3 załączników, jest {zp.zalaczniki.count()}"
+    )
+    nazwy = sorted(z.oryginalna_nazwa_pliku for z in zp.zalaczniki.all())
+    assert all(n.endswith(".pdf") for n in nazwy)
 
 
 @pytest.mark.django_db

@@ -306,7 +306,18 @@ class Zgloszenie_Publikacji_DaneForm(forms.ModelForm):
 
         # Dla dostępu ograniczonego wymagany min. 1 plik
         if self.forma_dostepu == "OGRANICZONY":
-            pliki = self.files.getlist(self.add_prefix("pliki"))
+            pliki_key = self.add_prefix("pliki")
+            # W wizardze self.files może być dict lub QueryDict
+            if hasattr(self.files, "getlist"):
+                pliki = self.files.getlist(pliki_key)
+            else:
+                pliki = self.files.get(pliki_key, [])
+                # Upewnij się, że mamy listę
+                if pliki and not isinstance(pliki, list):
+                    pliki = [pliki]
+                elif not pliki:
+                    pliki = []
+
             if not pliki:
                 raise ValidationError(
                     "Dla dostępu ograniczonego wymagany jest"

@@ -5,17 +5,11 @@
 {% block wizard_content %}
     <h3>Wybierz formę dostępu</h3>
 
-    {% if wybrany_rodzaj_label %}
-        <div class="wizard-wybor-info">
-            <span class="wizard-wybor-ikona">{{ wybrany_rodzaj_ikona }}</span>
-            <span class="wizard-wybor-label">{{ wybrany_rodzaj_label }}</span>
-        </div>
-    {% endif %}
-
     <div class="tile-grid tile-grid--stacked">
         {% for choice in wizard.form.forma_dostepu %}
             <label class="tile-card"
-                   data-value="{{ choice.data.value }}">
+                   data-value="{{ choice.data.value }}"
+                   tabindex="0">
                 {{ choice.tag }}
                 <span class="tile-icon">
                     {% if choice.data.value == "OTWARTY" %}🌐{% elif choice.data.value == "OGRANICZONY" %}🔒{% endif %}
@@ -31,6 +25,7 @@
         <button class="tile-card tile-back"
                 type="submit" name="wizard_goto_step"
                 formnovalidate
+                tabindex="0"
                 value="{{ wizard.steps.prev }}">
             <span class="tile-icon">⬅️</span>
             <span class="tile-title">Poprzedni krok</span>
@@ -39,18 +34,43 @@
 
     <script>
         (function() {
-            var tiles = document.querySelectorAll(
-                '.tile-card:not(.tile-back)'
-            );
+            var tiles = document.querySelectorAll('.tile-card:not(.tile-back)');
             var form = document.getElementById('form-container');
+
             tiles.forEach(function(tile) {
+                // Click handler
                 tile.addEventListener('click', function() {
-                    var radio = tile.querySelector(
-                        'input[type="radio"]'
-                    );
+                    var radio = tile.querySelector('input[type="radio"]');
                     if (radio) {
                         radio.checked = true;
                         form.submit();
+                    }
+                });
+
+                // Keyboard handler
+                tile.addEventListener('keydown', function(e) {
+                    // Enter or Space to select
+                    if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        var radio = tile.querySelector('input[type="radio"]');
+                        if (radio) {
+                            radio.checked = true;
+                            form.submit();
+                        }
+                    }
+
+                    // Arrow key navigation
+                    var currentIndex = Array.prototype.indexOf.call(tiles, tile);
+                    var newIndex;
+
+                    if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
+                        e.preventDefault();
+                        newIndex = (currentIndex + 1) % tiles.length;
+                        tiles[newIndex].focus();
+                    } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
+                        e.preventDefault();
+                        newIndex = (currentIndex - 1 + tiles.length) % tiles.length;
+                        tiles[newIndex].focus();
                     }
                 });
             });

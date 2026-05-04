@@ -106,7 +106,7 @@ class Zgloszenie_PublikacjiAdmin(
         )
     )
 
-    readonly_fields = ["plik_do_pobrania"]
+    readonly_fields = ["pliki_do_pobrania"]
 
     inlines = [
         Zgloszenie_Publikacji_AutorInline,
@@ -140,6 +140,11 @@ class Zgloszenie_PublikacjiAdmin(
                 r"^(.+)/pobierz_plik/$",
                 wrap(self.pobierz_plik_view),
                 name=f"{info[0]}_{info[1]}_pobierz_plik",
+            ),
+            url(
+                r"^(.+)/pobierz_zalacznik/(\d+)/$",
+                wrap(self.pobierz_zalacznik_view),
+                name=f"{info[0]}_{info[1]}_pobierz_zalacznik",
             ),
         ]
 
@@ -240,7 +245,7 @@ class Zgloszenie_PublikacjiAdmin(
         return render(request, self.zwroc_view_template, context)
 
     def pobierz_plik_view(self, request, id):
-        """Pobierz plik załącznika przez X-Accel-Redirect."""
+        """Pobierz plik załącznika przez X-Accel-Redirect (legacy)."""
         obj = self.get_object(request, id)
         if obj is None:
             raise Http404("Zgłoszenie nie istnieje")
@@ -257,8 +262,27 @@ class Zgloszenie_PublikacjiAdmin(
             attachment_filename=filename,
         )
 
+    def pobierz_zalacznik_view(self, request, id, zalacznik_id):
+        """Pobierz konkretny załącznik przez X-Accel-Redirect."""
+        obj = self.get_object(request, id)
+        if obj is None:
+            raise Http404("Zgłoszenie nie istnieje")
+
+        try:
+            zalacznik = obj.zalaczniki.get(pk=zalacznik_id)
+        except Zgloszenie_Publikacji_Zalacznik.DoesNotExist:
+            raise Http404("Załącznik nie istnieje") from None
+
+        return sendfile(
+            request,
+            zalacznik.plik.path,
+            attachment=True,
+            attachment_filename=zalacznik.oryginalna_nazwa_pliku,
+        )
+
     @admin.display(description="Plik załącznika")
     def plik_do_pobrania(self, obj):
+        """Legacy - pokazuje tylko stare pole plik."""
         if not obj.plik:
             return "-"
         from django.urls import reverse
@@ -274,6 +298,47 @@ class Zgloszenie_PublikacjiAdmin(
             url,
             display_name,
         )
+
+    @admin.display(description="Pliki")
+    def pliki_do_pobrania(self, obj):
+        """Wyświetla wszystkie pliki - stare pole plik + nowe załączniki."""
+        from django.urls import reverse
+
+        parts = []
+
+        # Stare pole plik (legacy)
+        if obj.plik:
+            url = reverse(
+                "admin:zglos_publikacje_zgloszenie_publikacji_pobierz_plik",
+                args=[obj.pk],
+            )
+            display_name = obj.oryginalna_nazwa_pliku or obj.plik.name.split("/")[-1]
+            parts.append(
+                format_html(
+                    '<a href="{}">📄 {} (legacy)</a>',
+                    url,
+                    display_name,
+                )
+            )
+
+        # Nowe załączniki
+        for zalacznik in obj.zalaczniki.all():
+            url = reverse(
+                "admin:zglos_publikacje_zgloszenie_publikacji_pobierz_zalacznik",
+                args=[obj.pk, zalacznik.pk],
+            )
+            parts.append(
+                format_html(
+                    '<a href="{}">📎 {}</a>',
+                    url,
+                    zalacznik.oryginalna_nazwa_pliku,
+                )
+            )
+
+        if not parts:
+            return "-"
+
+        return format_html("<br/>".join(parts))
 
     def wydzial_pierwszego_autora(self, obj: Zgloszenie_Publikacji):
         try:
