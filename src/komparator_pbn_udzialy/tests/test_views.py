@@ -1,3 +1,5 @@
+from unittest.mock import MagicMock, patch
+
 import pytest
 from django.contrib.contenttypes.models import ContentType
 from django.test import Client
@@ -167,3 +169,62 @@ def test_problemy_pbn_list_view_statistics(client_with_group: Client):
     assert response.context["missing_autor_count"] == 1
     assert response.context["missing_link_count"] == 1
     assert response.context["total_count"] == 2
+
+
+@pytest.mark.django_db
+def test_rebuild_view_get_renders_confirmation(client_with_group: Client):
+    """GET wyświetla ekran potwierdzenia, NIE startuje zadania Celery."""
+    url = reverse("komparator_pbn_udzialy:rebuild")
+    with patch(
+        "komparator_pbn_udzialy.tasks.porownaj_dyscypliny_pbn_task"
+    ) as mock_task:
+        response = client_with_group.get(url)
+    assert response.status_code == 200
+    assert (
+        b"Czy na pewno przebudowa" in response.content
+        or b"przebudowa" in response.content.lower()
+    )
+    mock_task.delay.assert_not_called()
+
+
+@pytest.mark.django_db
+def test_rebuild_view_post_starts_task(client_with_group: Client):
+    """POST uruchamia zadanie Celery i przekierowuje na stronę statusu."""
+    url = reverse("komparator_pbn_udzialy:rebuild")
+    with (
+        patch("komparator_pbn_udzialy.tasks.porownaj_dyscypliny_pbn_task") as mock_task,
+        patch(
+            "komparator_pbn_udzialy.views.is_pbn_publications_data_fresh",
+            return_value=(True, "", None),
+        ),
+    ):
+        mock_result = MagicMock()
+        mock_result.id = "test-task-id"
+        mock_task.delay.return_value = mock_result
+        response = client_with_group.post(url)
+    assert response.status_code == 302
+    mock_task.delay.assert_called_once_with(clear_existing=True)
+
+
+@pytest.mark.django_db
+def test_rebuild_view_post_blocked_when_pbn_data_stale(client_with_group: Client):
+    """POST przy nieświeżych danych PBN nie uruchamia zadania."""
+    url = reverse("komparator_pbn_udzialy:rebuild")
+    with (
+        patch("komparator_pbn_udzialy.tasks.porownaj_dyscypliny_pbn_task") as mock_task,
+        patch(
+            "komparator_pbn_udzialy.views.is_pbn_publications_data_fresh",
+            return_value=(False, "Dane są stare", None),
+        ),
+    ):
+        response = client_with_group.post(url)
+    assert response.status_code == 302  # Redirect z komunikatem błędu
+    mock_task.delay.assert_not_called()
+
+
+@pytest.mark.django_db
+def test_rebuild_view_get_anonymous_redirected(client: Client):
+    """Anonimowy klient nie ma dostępu do widoku rebuild (login redirect)."""
+    url = reverse("komparator_pbn_udzialy:rebuild")
+    response = client.get(url)
+    assert response.status_code in (302, 403)

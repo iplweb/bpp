@@ -339,19 +339,34 @@ def test_ustaw_if_ze_zrodla_nonexistent():
 
 
 @pytest.mark.django_db
-def test_UstawWszystkieView_small_batch(
+def test_UstawWszystkieView_get_renders_confirmation(
+    wydawnictwo_z_rozbieznoscia_rok_2023, client_with_group
+):
+    """GET wyświetla stronę potwierdzenia, NIE mutuje danych."""
+    response = client_with_group.get(
+        "/rozbieznosci_if/ustaw-wszystkie/?rok_od=2022&rok_do=2025"
+    )
+
+    wydawnictwo_z_rozbieznoscia_rok_2023.refresh_from_db()
+
+    assert response.status_code == 200
+    assert wydawnictwo_z_rozbieznoscia_rok_2023.impact_factor != 75
+
+
+@pytest.mark.django_db
+def test_UstawWszystkieView_post_small_batch(
     wydawnictwo_z_rozbieznoscia_rok_2023, rf, admin_user
 ):
-    """Test bulk update with small batch (direct execution)."""
+    """POST z małą paczką wykonuje update synchronicznie."""
     from rozbieznosci_if.views import UstawWszystkieView
 
-    req = rf.get("/", data={"rok_od": "2022", "rok_do": "2025"})
+    req = rf.post("/", data={"rok_od": "2022", "rok_do": "2025"})
     req.user = admin_user
     req._messages = Mock()
 
     view = UstawWszystkieView()
     view.request = req
-    response = view.get(req)
+    response = view.post(req)
 
     wydawnictwo_z_rozbieznoscia_rok_2023.refresh_from_db()
 
@@ -360,20 +375,19 @@ def test_UstawWszystkieView_small_batch(
 
 
 @pytest.mark.django_db
-def test_UstawWszystkieView_large_batch_triggers_celery(rf, admin_user):
-    """Test bulk update with large batch (Celery task)."""
+def test_UstawWszystkieView_post_large_batch_triggers_celery(rf, admin_user):
+    """POST z dużą paczką uruchamia zadanie Celery."""
     from rozbieznosci_if.views import (
         OFFLOAD_TASKS_WITH_THIS_ELEMENTS_OR_MORE,
         UstawWszystkieView,
     )
 
-    # Create many records to trigger Celery
     for i in range(OFFLOAD_TASKS_WITH_THIS_ELEMENTS_OR_MORE + 5):
         zrodlo = baker.make(Zrodlo)
         zrodlo.punktacja_zrodla_set.create(rok=2023, impact_factor=100 + i)
         baker.make(Wydawnictwo_Ciagle, impact_factor=10 + i, rok=2023, zrodlo=zrodlo)
 
-    req = rf.get("/", data={"rok_od": "2022", "rok_do": "2025"})
+    req = rf.post("/", data={"rok_od": "2022", "rok_do": "2025"})
     req.user = admin_user
     req._messages = Mock()
 
@@ -384,16 +398,16 @@ def test_UstawWszystkieView_large_batch_triggers_celery(rf, admin_user):
         mock_task_result = MagicMock()
         mock_task_result.id = "test-task-id"
         mock_task.delay.return_value = mock_task_result
-        response = view.get(req)
+        response = view.post(req)
 
-    assert response.status_code == 302  # Redirect to status page
+    assert response.status_code == 302
     assert "task-status" in response.url
     mock_task.delay.assert_called_once()
 
 
 @pytest.mark.django_db
-def test_UstawWszystkieView_no_records(rf, admin_user):
-    """Test bulk update with no matching records."""
+def test_UstawWszystkieView_get_no_records_redirects(rf, admin_user):
+    """GET przy braku rekordów przekierowuje od razu z komunikatem."""
     from rozbieznosci_if.views import UstawWszystkieView
 
     req = rf.get("/", data={"rok_od": "1900", "rok_do": "1901"})
@@ -646,19 +660,18 @@ def test_TaskStatusView_failed_shows_error(client, admin_user):
 
 @pytest.mark.django_db
 def test_UstawWszystkieView_large_batch_redirects_to_status(rf, admin_user):
-    """Test that large batch redirects to task status page."""
+    """Test that large batch (POST) redirects to task status page."""
     from rozbieznosci_if.views import (
         OFFLOAD_TASKS_WITH_THIS_ELEMENTS_OR_MORE,
         UstawWszystkieView,
     )
 
-    # Create many records to trigger Celery
     for i in range(OFFLOAD_TASKS_WITH_THIS_ELEMENTS_OR_MORE + 5):
         zrodlo = baker.make(Zrodlo)
         zrodlo.punktacja_zrodla_set.create(rok=2023, impact_factor=100 + i)
         baker.make(Wydawnictwo_Ciagle, impact_factor=10 + i, rok=2023, zrodlo=zrodlo)
 
-    req = rf.get("/", data={"rok_od": "2022", "rok_do": "2025"})
+    req = rf.post("/", data={"rok_od": "2022", "rok_do": "2025"})
     req.user = admin_user
     req._messages = Mock()
 
@@ -669,7 +682,7 @@ def test_UstawWszystkieView_large_batch_redirects_to_status(rf, admin_user):
         mock_task_result = MagicMock()
         mock_task_result.id = "test-task-123"
         mock_task.delay.return_value = mock_task_result
-        response = view.get(req)
+        response = view.post(req)
 
     assert response.status_code == 302
     assert "task-status" in response.url
