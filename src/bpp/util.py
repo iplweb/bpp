@@ -668,6 +668,34 @@ def worksheet_columns_autosize(
         ws.column_dimensions[column].width = adjusted_width
 
 
+# Znaki, którymi zaczynający się tekst Excel/LibreOffice interpretuje
+# jako formułę (=, +, -, @) lub jako wstrzyknięcie do innej komórki/komendy
+# poprzez separator (Tab, CR, LF). Pełna lista zaleceń OWASP CSV/Formula
+# Injection: https://owasp.org/www-community/attacks/CSV_Injection
+_XLSX_FORMULA_INJECTION_LEAD = ("=", "+", "-", "@", "\t", "\r", "\n")
+
+
+def sanitize_xlsx_cell(value):
+    """Zwraca wartość bezpieczną do `ws.append()` / `ws.cell().value`.
+
+    Stringi zaczynające się od znaków interpretowanych jako formuła
+    (=, +, -, @) lub separator (Tab/CR/LF) są poprzedzane apostrofem,
+    co Excel traktuje jako wymuszenie typu „tekst" (apostrof nie jest
+    pokazywany w komórce). Pozostałe wartości (None, liczby, daty itd.)
+    są zwracane bez zmian.
+    """
+    if not isinstance(value, str):
+        return value
+    if value.startswith(_XLSX_FORMULA_INJECTION_LEAD):
+        return "'" + value
+    return value
+
+
+def sanitize_xlsx_row(row):
+    """Wersja `sanitize_xlsx_cell` dla całego wiersza (`ws.append(row)`)."""
+    return [sanitize_xlsx_cell(c) for c in row]
+
+
 def auto_fit_columns(
     ws: openpyxl.worksheet.worksheet.Worksheet,
     max_width: int = 50,
