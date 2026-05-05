@@ -8,8 +8,19 @@ from komparator_pbn_udzialy.models import BrakAutoraWPublikacji, RozbieznoscDysc
 
 
 @pytest.mark.django_db
-def test_problemy_pbn_list_view_empty(client: Client):
+def test_problemy_pbn_list_view_requires_group(client: Client):
+    """Anonimowy klient nie ma dostępu do listy problemów PBN."""
+    url = reverse("komparator_pbn_udzialy:list")
+    response = client.get(url)
+    # GroupRequiredMixin zwraca 302 (login redirect) albo 403 dla
+    # zalogowanych bez grupy; oba są akceptowalne, byle nie 200.
+    assert response.status_code in (302, 403)
+
+
+@pytest.mark.django_db
+def test_problemy_pbn_list_view_empty(client_with_group: Client):
     """Test widoku listy problemów PBN gdy brak danych."""
+    client = client_with_group
     url = reverse("komparator_pbn_udzialy:list")
     response = client.get(url)
 
@@ -19,8 +30,9 @@ def test_problemy_pbn_list_view_empty(client: Client):
 
 
 @pytest.mark.django_db
-def test_problemy_pbn_list_view_with_rozbieznosc(client: Client):
+def test_problemy_pbn_list_view_with_rozbieznosc(client_with_group: Client):
     """Test widoku listy z rozbieżnością dyscyplin."""
+    client = client_with_group
     autor = baker.make("bpp.Autor")
     jednostka = baker.make("bpp.Jednostka")
     wydawnictwo = baker.make("bpp.Wydawnictwo_Ciagle")
@@ -58,8 +70,9 @@ def test_problemy_pbn_list_view_with_rozbieznosc(client: Client):
 
 
 @pytest.mark.django_db
-def test_problemy_pbn_list_view_with_brak_autora(client: Client):
+def test_problemy_pbn_list_view_with_brak_autora(client_with_group: Client):
     """Test widoku listy z brakującym autorem."""
+    client = client_with_group
     pbn_scientist = baker.make("pbn_api.Scientist", name="Jan", lastName="Kowalski")
     publikacja_pbn = baker.make("pbn_api.Publication", year=2024, title="Test article")
     oswiadczenie = baker.make(
@@ -85,8 +98,9 @@ def test_problemy_pbn_list_view_with_brak_autora(client: Client):
 
 
 @pytest.mark.django_db
-def test_problemy_pbn_list_view_filter_by_typ(client: Client):
+def test_problemy_pbn_list_view_filter_by_typ(client_with_group: Client):
     """Test filtrowania widoku po typie problemu."""
+    client = client_with_group
     pbn_scientist = baker.make("pbn_api.Scientist", name="Anna", lastName="Nowak")
     publikacja_pbn = baker.make("pbn_api.Publication", year=2023)
     oswiadczenie = baker.make(
@@ -119,8 +133,9 @@ def test_problemy_pbn_list_view_filter_by_typ(client: Client):
 
 
 @pytest.mark.django_db
-def test_problemy_pbn_list_view_statistics(client: Client):
+def test_problemy_pbn_list_view_statistics(client_with_group: Client):
     """Test statystyk w widoku listy."""
+    client = client_with_group
     pbn_scientist = baker.make("pbn_api.Scientist")
     oswiadczenie1 = baker.make(
         "pbn_api.OswiadczenieInstytucji",
