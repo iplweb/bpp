@@ -283,12 +283,24 @@ class RozbieznoscDyscyplinPBNDetailView(GroupRequiredMixin, DetailView):
 class RebuildDiscrepanciesView(View):
     """Widok do przebudowy rozbieżności.
 
-    Kliknięcie od razu uruchamia zadanie Celery z clear_existing=True.
+    GET wyświetla ekran potwierdzenia, POST uruchamia zadanie Celery
+    z ``clear_existing=True``.
     """
 
+    template_name = "komparator_pbn_udzialy/rebuild_confirm.html"
+
     def get(self, request):
-        """Uruchamia przebudowę rozbieżności od razu."""
-        # Sprawdź świeżość danych PBN
+        pbn_data_fresh, pbn_stale_message, _ = is_pbn_publications_data_fresh()
+        return render(
+            request,
+            self.template_name,
+            {
+                "pbn_data_fresh": pbn_data_fresh,
+                "pbn_stale_message": pbn_stale_message,
+            },
+        )
+
+    def post(self, request):
         pbn_data_fresh, pbn_stale_message, _ = is_pbn_publications_data_fresh()
         if not pbn_data_fresh:
             messages.error(
@@ -298,7 +310,6 @@ class RebuildDiscrepanciesView(View):
             )
             return HttpResponseRedirect(reverse("komparator_pbn_udzialy:list"))
 
-        # Uruchom w tle z clear_existing=True
         try:
             from komparator_pbn_udzialy.tasks import porownaj_dyscypliny_pbn_task
 
@@ -319,7 +330,7 @@ class RebuildDiscrepanciesView(View):
             )
 
         except Exception as e:
-            logger.error(f"Błąd podczas uruchamiania zadania Celery: {e}")
+            logger.exception("Błąd podczas uruchamiania zadania Celery")
             messages.error(
                 request,
                 f"Nie można uruchomić zadania w tle: {str(e)}",

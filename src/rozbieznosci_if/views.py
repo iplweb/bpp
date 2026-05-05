@@ -504,7 +504,11 @@ def ustaw_if_ze_zrodla(pks, user_id=None):
 
 
 class BaseUstawWszystkieView(GroupRequiredMixin, View):
-    """Base class for bulk update views."""
+    """Base class for bulk update views.
+
+    GET wyświetla ekran potwierdzenia (z filtrami przeniesionymi do
+    ukrytych pól formularza), POST wykonuje aktualizację.
+    """
 
     group_required = "wprowadzanie danych"
 
@@ -516,13 +520,14 @@ class BaseUstawWszystkieView(GroupRequiredMixin, View):
     log_before_field = None
     log_after_field = None
     app_name = None
+    confirm_template_name = None
     celery_task = (
         None  # String path like "rozbieznosci_if.tasks.task_ustaw_if_ze_zrodla"
     )
 
-    def get_filter_params(self):
-        """Get filter parameters from request."""
-        form = FilterForm(self.request.GET)
+    def get_filter_params(self, source):
+        """Get filter parameters from a QueryDict (request.GET or request.POST)."""
+        form = FilterForm(source)
         if form.is_valid():
             rok_od = form.cleaned_data["rok_od"]
             rok_do = form.cleaned_data["rok_do"]
@@ -539,7 +544,37 @@ class BaseUstawWszystkieView(GroupRequiredMixin, View):
         raise NotImplementedError("Subclasses must implement get_celery_task")
 
     def get(self, request):
-        rok_od, rok_do, tytul = self.get_filter_params()
+        rok_od, rok_do, tytul = self.get_filter_params(request.GET)
+
+        queryset = get_base_queryset_for_field(self.field_name, self.ignore_model)
+        queryset = apply_filters(queryset, rok_od, rok_do, tytul)
+
+        count = queryset.count()
+
+        if count == 0:
+            messages.warning(
+                request,
+                f"Nie znaleziono rekordów z rozbieżnymi wartościami "
+                f"{self.field_label} do aktualizacji.",
+            )
+            return self._redirect_back(rok_od, rok_do, tytul)
+
+        return render(
+            request,
+            self.confirm_template_name,
+            {
+                "rok_od": rok_od,
+                "rok_do": rok_do,
+                "tytul": tytul,
+                "count": count,
+                "field_label": self.field_label,
+                "use_celery": count >= OFFLOAD_TASKS_WITH_THIS_ELEMENTS_OR_MORE,
+                "app_name": self.app_name,
+            },
+        )
+
+    def post(self, request):
+        rok_od, rok_do, tytul = self.get_filter_params(request.POST)
 
         queryset = get_base_queryset_for_field(self.field_name, self.ignore_model)
         queryset = apply_filters(queryset, rok_od, rok_do, tytul)
@@ -550,32 +585,33 @@ class BaseUstawWszystkieView(GroupRequiredMixin, View):
         if count == 0:
             messages.warning(
                 request,
-                f"Nie znaleziono rekordów z rozbieżnymi wartościami {self.field_label} "
-                f"do aktualizacji.",
+                f"Nie znaleziono rekordów z rozbieżnymi wartościami "
+                f"{self.field_label} do aktualizacji.",
             )
             return self._redirect_back(rok_od, rok_do, tytul)
 
         if count >= OFFLOAD_TASKS_WITH_THIS_ELEMENTS_OR_MORE:
             task = self.get_celery_task().delay(pks, user_id=request.user.id)
             return redirect(f"{self.app_name}:task_status", task_id=task.id)
-        else:
-            updated, errors = ustaw_pole_ze_zrodla(
-                pks,
-                self.field_name,
-                self.log_model,
-                self.log_before_field,
-                self.log_after_field,
-                user_id=request.user.id,
-            )
-            if errors:
-                messages.warning(
-                    request,
-                    f"Zaktualizowano {updated} rekordów. Wystąpiły błędy dla {errors} rekordów.",
-                )
-            else:
-                messages.success(request, f"Zaktualizowano {updated} rekordów.")
 
-            return self._redirect_back(rok_od, rok_do, tytul)
+        updated, errors = ustaw_pole_ze_zrodla(
+            pks,
+            self.field_name,
+            self.log_model,
+            self.log_before_field,
+            self.log_after_field,
+            user_id=request.user.id,
+        )
+        if errors:
+            messages.warning(
+                request,
+                f"Zaktualizowano {updated} rekordów. "
+                f"Wystąpiły błędy dla {errors} rekordów.",
+            )
+        else:
+            messages.success(request, f"Zaktualizowano {updated} rekordów.")
+
+        return self._redirect_back(rok_od, rok_do, tytul)
 
     def _redirect_back(self, rok_od, rok_do, tytul=""):
         return build_redirect_url(f"{self.app_name}:index", rok_od, rok_do, tytul)
@@ -591,6 +627,7 @@ class UstawWszystkieView(BaseUstawWszystkieView):
     log_before_field = "if_before"
     log_after_field = "if_after"
     app_name = "rozbieznosci_if"
+    confirm_template_name = "rozbieznosci_if/ustaw_wszystkie_confirm.html"
 
     def get_celery_task(self):
         from rozbieznosci_if.tasks import task_ustaw_if_ze_zrodla
