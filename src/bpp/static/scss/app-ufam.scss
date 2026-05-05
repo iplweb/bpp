@@ -128,6 +128,14 @@ input[type=radio] {
   color: white;
 }
 
+// Calendar icon color - use tile icon color in tiles, primary color elsewhere
 .fi-calendar {
   color: $primary-color;
+}
+
+// Override: in tiles, use the tile icon color class instead
+.uczelnia__tile {
+  .fi-calendar {
+    color: inherit;
+  }
 }
