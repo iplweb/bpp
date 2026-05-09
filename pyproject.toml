@@ -119,7 +119,7 @@ dependencies = [
     # Dependency runtime, bo INSTALLED_APPS odwoluje sie do niego z kazdego srodowiska
     # (testy/dev/baseline_rebuild). Sam runtime nic nie kosztuje gdy PG_BASELINE
     # niezdefiniowane (no-op AppConfig.ready).
-    "django-pg-baseline>=0.2.0",
+    "django-pg-baseline>=0.3.0",
 ]
 
 [project.optional-dependencies]

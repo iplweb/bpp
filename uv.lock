@@ -460,7 +460,7 @@ requires-dist = [
     { name = "django-mptt", specifier = ">=0.16,<1" },
     { name = "django-multiseek", specifier = "==0.9.49" },
     { name = "django-password-policies-iplweb", specifier = "==0.9.0" },
-    { name = "django-pg-baseline", specifier = ">=0.2.0" },
+    { name = "django-pg-baseline", specifier = ">=0.3.0" },
     { name = "django-prometheus", specifier = ">=2.4.1" },
     { name = "django-querysetsequence", specifier = "==0.18" },
     { name = "django-redis-iplweb", specifier = ">=6.0.1,<6.1" },
@@ -1913,15 +1913,15 @@ wheels = [
 
 [[package]]
 name = "django-pg-baseline"
-version = "0.2.0"
+version = "0.3.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "django", marker = "platform_python_implementation != 'PyPy'" },
     { name = "testcontainers", marker = "platform_python_implementation != 'PyPy'" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/b5/e3/65784c35b264975f7012cdd5488f0236487b3821f813699fd01501bce89b/django_pg_baseline-0.2.0.tar.gz", hash = "sha256:d3c1f7024bfd14f471c0a19dfb57db1cf4d14e1ee2baf65bfd580eded034434e", size = 24493, upload-time = "2026-05-09T12:24:01.406Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/d9/13/65d21c9470a605afdab5e7893ab404a0d01da1b051bd9b1b74299df9bc8a/django_pg_baseline-0.3.0.tar.gz", hash = "sha256:c28186891b0d80bf462aca91947c36eec70504f32933ac6cf93d20052bcceade", size = 25503, upload-time = "2026-05-09T16:27:44.095Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/82/33/3c4f3409667ef6f0e5c8c8ed66030ad055e81f4af9a90edae8ee53130cfe/django_pg_baseline-0.2.0-py3-none-any.whl", hash = "sha256:24d7c8f5ff7a0e997fda0e1ee3237619adeffcb57a0f22f0c228d9a36e618bf1", size = 31550, upload-time = "2026-05-09T12:23:59.878Z" },
+    { url = "https://files.pythonhosted.org/packages/57/f7/0e61c4600e393f64ac51fdc8dd2c2f1adc781743550c9fd96ffeeca0cabd/django_pg_baseline-0.3.0-py3-none-any.whl", hash = "sha256:dddb29af44b9ffeaf72f11144e2c85bd1631711dfb2688d308bfc4d598bb380c", size = 32955, upload-time = "2026-05-09T16:27:42.84Z" },
 ]
 
 [[package]]
