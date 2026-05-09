@@ -114,6 +114,12 @@ dependencies = [
     "gunicorn>=23", # authserver WSGI runner (moved from docker/authserver build-time uv pip install)
     "watchdog>=5.0.3", # --reload mode dla uvicorn/celery w dev compose (moved from entrypoint `uv pip install`)
     "sqlparse>=0.5.4", # Dependabot: transitive via Django, bumped to fix DoS in format_list_of_tuples
+    # django-pg-baseline: zewnetrzny pakiet zarzadzajacy baseline.sql + monkey-patch
+    # tworzenia testowej bazy. Dawniej wewnetrzny `src/django_pg_baseline/`.
+    # Dependency runtime, bo INSTALLED_APPS odwoluje sie do niego z kazdego srodowiska
+    # (testy/dev/baseline_rebuild). Sam runtime nic nie kosztuje gdy PG_BASELINE
+    # niezdefiniowane (no-op AppConfig.ready).
+    "django-pg-baseline>=0.2.0",
 ]
 
 [project.optional-dependencies]
@@ -135,7 +141,12 @@ dev = [
     "Sphinx>=7,<9",
     "coveralls>=4.1.0,<5",
     "psutil>=7.2.2",
-    "pytest<10.0.0",
+    # pytest 8.x: pytest-testcontainers-django (0.2.0) deklaruje pytest<9.
+    # Wewnetrznie korzysta tylko z stabilnego API hookow (pytest_load_initial_conftests
+    # etc.) — wiec dziala z pytest 9, ale upstream constraint wymusza <9 w
+    # resolverze. Po bumpie pytest-testcontainers-django na pytest>=8,<10
+    # mozna podniesc te wersje. Patrz pytest-env constraint nizej.
+    "pytest>=8,<9",
     "pytest-django>=4.12.0",
     "pytest-httpserver>=1.1.5",
     "werkzeug>=3.1.6", # Dependabot: transitive via pytest-httpserver, bump for safe_join() fixes
@@ -153,16 +164,34 @@ dev = [
     "ipython>=8.2.0",
     "playwright>=1.59.0,<2",
     "pytest-playwright>=0.4.0",
-    "pytest-env>=1.6.0",
+    # pytest-env 1.3.0+ wymaga pytest>=9.0.2 (sprawdz `pip show pytest-env`)
+    # — zostaje przy 1.2.0, kompatybilnym z pytest 8.x. Zachowuje sie tak
+    # samo dla naszego usage (env=DJANGO_ALLOW_ASYNC_UNSAFE=1 etc.). Po
+    # bumpie pytest do 9.x, podnies tez te wersje.
+    "pytest-env>=1.1.5,<1.3",
     "nest-asyncio>=1.6.0",
-    "testcontainers[postgres]>=4.14.2"
+    "testcontainers[postgres]>=4.14.2",
+    # pytest-testcontainers + bridge: dawniej wewnetrzny `src/testcontainers_bpp/`.
+    # Plugin auto-loaduje sie przez entry-point `pytest11` — `-p ...` w pytest.ini
+    # przestaje byc potrzebne. Konfiguracja w [tool.pytest-testcontainers-django].
+    "pytest-testcontainers>=0.1.0",
+    "pytest-testcontainers-django>=0.2.0",
+    # django-run-site: CLI orchestrator dev stack-u. Dawniej `manage.py run_site`
+    # + helpery w `_run_site_helpers/`. Instalowany w dev-deps zeby `uv run run-site`
+    # mialo dostep do CLI bez globalnego `uv tool install`. Konfiguracja: runsite.toml.
+    "run-site>=0.4.0",
+    # django-dev-helpers: autologin endpoint + dotfiles dla agentow LLM. Dawniej
+    # `src/django_bpp/views_run_site_autologin.py`. Aktywuje sie tylko gdy run-site
+    # ustawi DJANGO_DEV_HELPERS_ENABLED=1 — w produkcji no-op.
+    "django-dev-helpers>=0.1.0",
 ]
 
 # [project.scripts] i [project.entry-points] usuniete - BPP nie jest
 # instalowany jako package (uv sync --no-install-project wszedzie).
-# Plugin testcontainers_bpp ladowany przez `-p testcontainers_bpp.plugin`
-# w pytest.ini addopts. Skrypt `bpp-manage.py` byl dead code (Makefile/
-# Dockerfile uzywaja `python src/manage.py` bezposrednio).
+# Pluginy pytest (pytest-testcontainers, pytest-testcontainers-django,
+# django-pg-baseline) auto-loaduja sie przez wlasne entry-pointy `pytest11`.
+# Skrypt `bpp-manage.py` byl dead code (Makefile/Dockerfile uzywaja
+# `python src/manage.py` bezposrednio).
 
 [tool.setuptools.packages.find]
 where = ["src"]
@@ -173,7 +202,6 @@ include = [
     "crossref_bpp",
     "dynamic_columns",
     "django_bpp",
-    "django_pg_baseline",
     "ewaluacja2021",
     "fixtures",
     "formdefaults",
@@ -196,8 +224,7 @@ include = [
     "rozbieznosci_dyscyplin",
     "rozbieznosci_if",
     "tee",
-    "test_bpp",
-    "testcontainers_bpp"
+    "test_bpp"
 ]
 
 [tool.setuptools.package-data]
@@ -241,8 +268,9 @@ environments = ["python_version >= '3.10' and python_version < '3.15' and platfo
 # 3. uv-secure CVE scan w dependency-audit.yml workflow
 #
 # Workspace package (bpp-iplweb) NIE jest instalowany - `uv sync` wszedzie
-# uzywa --no-install-project. Pytest plugin testcontainers_bpp ladowany
-# przez `-p testcontainers_bpp.plugin` w pytest.ini addopts.
+# uzywa --no-install-project. Pluginy pytest (pytest-testcontainers,
+# pytest-testcontainers-django, django-pg-baseline) auto-loaduja sie przez
+# wlasne entry-pointy `pytest11`.
 #
 # Gdy nowa dep nie ma wheel: znajdz alternatywe LUB zglos wheel u
 # maintainera. NIE dodawaj do listy wyjatkow bez review.
@@ -256,6 +284,64 @@ environments = ["python_version >= '3.10' and python_version < '3.15' and platfo
 name = "pypi"
 url = "https://pypi.org/simple"
 default = true
+
+# pytest-testcontainers-django jeszcze nie ma na PyPI (PyPI rate-limit po
+# stronie maintainera). Pobieramy z taga GitHubowego — `uv` cachuje sklon
+# pod `~/.cache/uv/git-v0/`, kolejne `uv sync` nie ciagna ponownie.
+# Po publikacji na PyPI: usun ten blok w calosci, `uv sync` przejdzie
+# na `>=0.2.0` z [project.optional-dependencies].dev.
+#
+# CI/Docker: builderskie obrazy nie instaluja [dev], wiec brak tego pakietu
+# na PyPI nie blokuje produkcyjnego buildu. Production runtime nie potrzebuje
+# pytest-testcontainers* ani run-site/django-dev-helpers.
+[tool.uv.sources]
+pytest-testcontainers-django = { git = "https://github.com/iplweb/pytest-testcontainers-django", tag = "v0.2.0" }
+
+# Konfiguracja `pytest-testcontainers-django` — pluginu pytest, ktory
+# startuje kontenery PG/Redis przed importem Django settings i wstrzykuje
+# host:port do os.environ. Zastepuje wewnetrzny `src/testcontainers_bpp/`.
+#
+# - `postgres_image`: zachowujemy wlasny obraz BPP (ma plpython3u i locale
+#   pl_PL.UTF-8) zamiast vanilla `postgres:16` — schemat i dane zaleza
+#   od tego.
+# - `postgres_init_scripts`: baseline.sql jest mountowany do
+#   /docker-entrypoint-initdb.d/, dzieki czemu jest replayowany przez
+#   entrypoint Postgresa zanim TCP zacznie akceptowac polaczenia. Razem
+#   z `db_test_template_env` daje "instant" tworzenie test-DB przez
+#   CREATE DATABASE WITH TEMPLATE.
+# - `db_*_env`: nazwy zmiennych srodowiskowych ktore plugin pisze do
+#   os.environ. Pasuja do tych, ktore Django settings (`base.py`) czyta
+#   przez `env(...)`.
+# - `redis_enabled`: BPP wymaga Redisa do testow (channels, cacheops).
+[tool.pytest-testcontainers-django]
+postgres_image = "iplweb/bpp_dbserver:psql-16.13"
+postgres_user = "bpp"
+postgres_password = "password"
+postgres_database = "bpp"
+postgres_init_scripts = ["src/baseline-sql/baseline.sql"]
+postgres_template = "bpp"
+postgres_env = { POSTGRESQL_UNSAFE_BUT_FAST = "1", POSTGRESQL_MAX_LOCKS_PER_TRANSACTION = "512" }
+db_host_env = "DJANGO_BPP_DB_HOST"
+db_port_env = "DJANGO_BPP_DB_PORT"
+db_name_env = "DJANGO_BPP_DB_NAME"
+db_user_env = "DJANGO_BPP_DB_USER"
+db_password_env = "DJANGO_BPP_DB_PASSWORD"
+db_test_template_env = "DJANGO_BPP_TEST_TEMPLATE"
+skip_dotenv_env = "DJANGO_BPP_SKIP_DOTENV"
+# Migracja env-var semantyki: poprzednio `BPP_USE_TESTCONTAINERS=0`/=`1`
+# wlaczalo/wylaczalo plugin (domyslnie ON). Nowy plugin uzywa
+# `PYTEST_TESTCONTAINERS_DISABLE=1` jako "wylacz" (domyslnie OFF =
+# wlaczone). Workflow:
+#   - lokalnie: nic nie ustawiamy → kontenery startuja same.
+#   - CI z docker-compose: `PYTEST_TESTCONTAINERS_DISABLE=1` (patrz
+#     docker-compose.test.yml) zeby plugin nie startowal docker-in-docker.
+#   - reuse miedzy runs: `PYTEST_TESTCONTAINERS_REUSE=1`.
+disable_env = "PYTEST_TESTCONTAINERS_DISABLE"
+reuse_env = "PYTEST_TESTCONTAINERS_REUSE"
+redis_enabled = true
+redis_image = "redis:7-alpine"
+redis_host_env = "DJANGO_BPP_REDIS_HOST"
+redis_port_env = "DJANGO_BPP_REDIS_PORT"
 
 [tool.bumpver.file_patterns]
 "pyproject.toml" = ['current_version = "{version}"',

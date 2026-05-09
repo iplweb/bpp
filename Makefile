@@ -295,7 +295,7 @@ clean-testcontainers: ## Usuń wszystkie osierocone testcontainers (PG/Redis/Ryu
 
 # Run tests with ephemeral containers (destroyed after run).
 tests-ephemeral: ## Testy w efemerycznych testcontainers (usuwane po teście)
-	BPP_TESTCONTAINERS_REUSE=0 uv run pytest -n auto -m "not playwright" --maxfail 50
+	PYTEST_TESTCONTAINERS_REUSE=0 uv run pytest -n auto -m "not playwright" --maxfail 50
 
 tests-in-docker: ## Testy w pełni w Dockerze (docker-compose.test.yml)
 	docker compose -f docker-compose.test.yml build test-runner
