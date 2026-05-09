@@ -1,5 +1,3 @@
-import os
-
 from django.apps import apps
 from django.conf import settings
 from django.conf.urls.static import static
@@ -36,11 +34,6 @@ from bpp.views.sentry_tester import (
 )
 from django_bpp.health import health_check
 from django_bpp.views import HTMXAwareLoginView
-from django_bpp.views_run_site_autologin import (
-    AUTOLOGIN_ENV_VAR,
-    AUTOLOGIN_URL_PATH,
-    run_site_autologin,
-)
 
 admin.autodiscover()
 
@@ -472,14 +465,21 @@ if apps.is_installed("password_policies"):
     ]
 
 #
-# Auto-login endpoint dla `manage.py run_site` — montowany TYLKO gdy
-# ustawiona jest zmienna środowiskowa DJANGO_BPP_RUN_SITE_AUTOLOGIN_TOKEN.
-# Na produkcji ta zmienna nie istnieje, więc URL nie zostanie zarejestrowany.
+# Auto-login endpoint dla dev stack-u (run-site / django-dev-helpers).
+# `autologin_urlpatterns()` zwraca pusta liste gdy DJANGO_DEV_HELPERS_ENABLED
+# nie jest ustawione, wiec na produkcji URL nie istnieje. Token przekazywany
+# jest przez run-site CLI w zmiennej DEV_HELPERS_AUTOLOGIN_TOKEN, weryfikowany
+# w widoku przez hmac.compare_digest.
 #
-if os.environ.get(AUTOLOGIN_ENV_VAR):
-    urlpatterns += [
-        path(AUTOLOGIN_URL_PATH, run_site_autologin, name="run_site_autologin"),
-    ]
+try:
+    from django_dev_helpers.urls import autologin_urlpatterns
+
+    urlpatterns += autologin_urlpatterns()
+except ImportError:
+    # django-dev-helpers nie jest dostepne w niektorych srodowiskach
+    # (np. produkcyjny obraz nie ciagnie dev-deps). To oczekiwane — autologin
+    # i tak ma sens tylko lokalnie.
+    pass
 
 
 handler404 = "bpp.views.handler404"

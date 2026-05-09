@@ -224,26 +224,26 @@ groups_auto_add = {
 
 @transaction.atomic
 def odtworz_grupy(**kwargs):
-    grp_dict = {}
-    for u in BppUser.objects.prefetch_related("groups"):
-        grp_dict[u] = [grp.name for grp in u.groups.all()]
+    for name, models in groups.items():
+        group, _ = Group.objects.get_or_create(name=name)
 
-    for name, models in list(groups.items()):
-        try:
-            Group.objects.get(name=name).delete()
-        except Group.DoesNotExist:
-            pass
-
-        g = Group.objects.create(name=name)
-        for model in models:
-            content_type = ContentType.objects.get_for_model(model)
-            for permission in Permission.objects.filter(content_type=content_type):
-                g.permissions.add(permission)
+        permission_ids = list(
+            Permission.objects.filter(
+                content_type__in=[
+                    ContentType.objects.get_for_model(model) for model in models
+                ]
+            ).values_list("id", flat=True)
+        )
+        group.permissions.set(permission_ids)
 
     all_groups = {g.name: g for g in Group.objects.all()}
-    for u, grps in list(grp_dict.items()):
-        for gname in grps:
-            u.groups.add(all_groups[gname])
-            if gname in groups_auto_add:
-                for extra_group in groups_auto_add[gname]:
-                    u.groups.add(all_groups[extra_group])
+    for trigger_name, extra_names in groups_auto_add.items():
+        trigger_group = all_groups.get(trigger_name)
+        if trigger_group is None:
+            continue
+        for extra_name in extra_names:
+            extra_group = all_groups.get(extra_name)
+            if extra_group is None:
+                continue
+            for user in BppUser.objects.filter(groups=trigger_group):
+                user.groups.add(extra_group)

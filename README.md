@@ -136,9 +136,9 @@ uv run pytest
 ```
 
 Pytest startuje **własne** kontenery Docker (PostgreSQL, Redis)
-przez plugin `testcontainers_bpp` — przy pierwszym uruchomieniu pobiera
-obrazy z Docker Hub (kolejne kilkaset MB). Wymagany jest działający
-**Docker daemon**.
+przez plugin `pytest-testcontainers-django` — przy pierwszym
+uruchomieniu pobiera obrazy z Docker Hub (kolejne kilkaset MB).
+Wymagany jest działający **Docker daemon**.
 
 Pełen suite może trwać do **10 minut**. Domyślnie `pytest-sugar` pokazuje
 pasek postępu, ale jeśli chcesz więcej szczegółów:
@@ -153,7 +153,7 @@ Reuse kontenerów testowych między uruchomieniami (znacznie szybsze
 kolejne biegi):
 
 ```bash
-BPP_TESTCONTAINERS_REUSE=1 uv run pytest
+PYTEST_TESTCONTAINERS_REUSE=1 uv run pytest
 ```
 
 ### Skrót: `make prepare-developer-machine`
