@@ -29,7 +29,7 @@
 
 BRANCH=`git branch | sed -n '/\* /s///p'`
 
-.PHONY: help clean distclean tests release tests-without-playwright tests-only-playwright docker destroy-test-databases coveralls-upload clean-coverage combine-coverage cache-delete buildx-cache-stats buildx-cache-prune buildx-cache-prune-aggressive buildx-cache-prune-registry buildx-cache-export buildx-cache-import buildx-cache-list bump-dev bump-release bump-and-start-dev migrate new-worktree clean-worktree generate-500-page build build-force build-base build-app-services build-appserver-base build-appserver build-workerserver build-beatserver build-authserver build-denorm-queue build-servers check-clean-tree prepare-claude prepare-developer-machine prepare-developer-machine-linux
+.PHONY: help clean distclean tests release tests-without-playwright tests-only-playwright docker destroy-test-databases coveralls-upload clean-coverage combine-coverage cache-delete buildx-cache-stats buildx-cache-prune buildx-cache-prune-aggressive buildx-cache-prune-registry buildx-cache-export buildx-cache-import buildx-cache-list bump-dev bump-release bump-and-start-dev migrate new-worktree clean-worktree generate-500-page build build-force build-base build-app-services build-appserver-base build-appserver build-workerserver build-beatserver build-authserver build-denorm-queue build-servers check-clean-tree prepare-claude prepare-developer-machine prepare-developer-machine-linux prepare-developer-machine-macos playwright-install
 
 .DEFAULT_GOAL := help
 
@@ -57,7 +57,7 @@ endif
 
 all:	prepare-developer-machine release ## UWAGA: pełna konfiguracja + release (uruchamia release!)
 
-prepare-developer-machine-macos: ## Zainstaluj zależności systemowe na macOS (brew + uv sync)
+prepare-developer-machine-macos: ## Zainstaluj zależności systemowe na macOS (brew + uv sync + playwright)
 	uv sync --frozen --no-install-project --all-extras
 	brew install cairo pango gdk-pixbuf libffi gobject-introspection gtk+3
 	sudo ln -sf /opt/homebrew/opt/glib/lib/libgobject-2.0.0.dylib /usr/local/lib/gobject-2.0
@@ -65,13 +65,15 @@ prepare-developer-machine-macos: ## Zainstaluj zależności systemowe na macOS (
 	sudo ln -sf /opt/homebrew/opt/harfbuzz/lib/libharfbuzz.dylib /usr/local/lib/harfbuzz
 	sudo ln -sf /opt/homebrew/opt/fontconfig/lib/libfontconfig.1.dylib /usr/local/lib/fontconfig-1
 	sudo ln -sf /opt/homebrew/opt/pango/lib/libpangoft2-1.0.dylib /usr/local/lib/pangoft2-1.0
+	$(MAKE) playwright-install
 
-prepare-developer-machine-linux: ## Zainstaluj zależności systemowe na Linuksie (apt + uv sync)
+prepare-developer-machine-linux: ## Zainstaluj zależności systemowe na Linuksie (apt + uv sync + playwright)
 	sudo apt update
 	sudo apt install -y yarnpkg python3-dev libpq-dev \
 		libcairo2-dev libpango1.0-dev libgdk-pixbuf2.0-dev libffi-dev \
 		libgirepository1.0-dev libgtk-3-dev
 	uv sync --frozen --no-install-project --all-extras
+	$(MAKE) playwright-install
 
 prepare-developer-machine: ## Zainstaluj zależności systemowe (auto-detekcja macOS/Linux)
 ifeq ($(OS),Darwin)
@@ -82,6 +84,24 @@ else
 	@echo "Unsupported platform: $(OS)"
 	@echo "Supported: Darwin (macOS), Linux"
 	@exit 1
+endif
+
+# Pobiera przeglądarki Playwright (chromium itd.) potrzebne do testów E2E.
+# Na Linuksie używa --with-deps, żeby playwright doinstalował systemowe
+# biblioteki (libnss3, libatk, libgtk-3...) przez apt — to wymaga sudo
+# i jest dokładnie tym, co opisuje README sekcja 2 ("uv run playwright
+# install" + "sudo playwright install-deps") tylko sklejone w jednej
+# komendzie. Na macOS install-deps to no-op (browsers są self-contained,
+# a brew już zainstalował systemowe libki w prepare-developer-machine-macos),
+# więc używamy gołego "playwright install".
+#
+# Wymaga, by uv sync --all-extras zostało wcześniej wykonane (playwright
+# CLI siedzi w grupie dev pyproject.toml). Stąd kolejność w prepare-*.
+playwright-install: ## Pobierz przeglądarki Playwright dla testów E2E (na Linuksie z --with-deps, sudo)
+ifeq ($(OS),Darwin)
+	uv run playwright install
+else
+	uv run playwright install --with-deps
 endif
 
 prepare-claude: ## Pokaż instrukcję instalacji wtyczki claude-mem w Claude Code

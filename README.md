@@ -156,20 +156,30 @@ kolejne biegi):
 BPP_TESTCONTAINERS_REUSE=1 uv run pytest
 ```
 
-### Skrót: `make prepare-developer-machine-linux`
+### Skrót: `make prepare-developer-machine`
 
-Część kroku 2 (zależności systemowe + `uv sync --all-extras`)
-automatyzuje cel:
+Krok 2 w całości (zależności systemowe + `uv sync --all-extras` +
+przeglądarki Playwright) automatyzuje cel:
 
 ```bash
-make prepare-developer-machine-linux
+make prepare-developer-machine            # auto-detekcja macOS/Linux
+make prepare-developer-machine-linux      # wymuś wariant linuksowy
+make prepare-developer-machine-macos      # wymuś wariant macOS
 ```
 
-Instaluje przez `apt` pakiety `yarnpkg`, `python3-dev`, `libpq-dev`,
-`libcairo2-dev`, `libpango1.0-dev`, `libgdk-pixbuf2.0-dev`, `libffi-dev`,
-`libgirepository1.0-dev`, `libgtk-3-dev`, a następnie woła
-`uv sync --all-extras`. Po nim nadal trzeba ręcznie wywołać
-`uv run playwright install` oraz `sudo playwright install-deps`.
+Wariant linuksowy instaluje przez `apt` pakiety `yarnpkg`, `python3-dev`,
+`libpq-dev`, `libcairo2-dev`, `libpango1.0-dev`, `libgdk-pixbuf2.0-dev`,
+`libffi-dev`, `libgirepository1.0-dev`, `libgtk-3-dev`, woła
+`uv sync --all-extras`, a na końcu `uv run playwright install --with-deps`
+(pobiera przeglądarki + doinstalowuje systemowe libki, których wymaga
+chromium — wymaga sudo).
+
+Jeżeli przeglądarki Playwright trzeba zainstalować osobno (np. po
+samodzielnym `uv sync`), bez resetowania reszty środowiska:
+
+```bash
+make playwright-install
+```
 
 ## Szybkie uruchomienie wersji deweloperskiej (`run_site`)
 
