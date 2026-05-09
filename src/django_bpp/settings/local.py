@@ -130,3 +130,19 @@ INSTALLED_APPS.append("easyaudit")  # noqa
 MIDDLEWARE.append(  # noqa
     "easyaudit.middleware.easyaudit.EasyAuditMiddleware",
 )
+
+
+# django-dev-helpers — autologin endpoint + dotfiles dla agentow LLM.
+# Aktywuje sie samo, gdy run-site uruchamia stack i ustawia
+# DJANGO_DEV_HELPERS_ENABLED=1 (poza tym AppConfig.ready() jest no-op).
+# Trzymamy w `local.py` zamiast `base.py`, zeby produkcja nie musiala
+# instalowac dev-only dependency. Patrz pyproject.toml > [optional].dev.
+try:
+    import django_dev_helpers  # noqa: F401
+
+    INSTALLED_APPS.append("django_dev_helpers")
+except ImportError:
+    # Dev-deps nie zainstalowane (np. ktos uruchamia local.py w obrazie
+    # produkcyjnym dla testow rece). Pomijamy bez bledu — autologin
+    # i tak by sie nie wlaczyl bez DJANGO_DEV_HELPERS_ENABLED=1.
+    pass
