@@ -265,6 +265,7 @@ dependencies = [
     { name = "django-dbtemplates-iplweb", marker = "platform_python_implementation != 'PyPy'" },
     { name = "django-denorm-iplweb", marker = "platform_python_implementation != 'PyPy'" },
     { name = "django-dirtyfields", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "django-dynamic-columns", marker = "platform_python_implementation != 'PyPy'" },
     { name = "django-easy-audit", marker = "platform_python_implementation != 'PyPy'" },
     { name = "django-environ", marker = "platform_python_implementation != 'PyPy'" },
     { name = "django-extensions", marker = "platform_python_implementation != 'PyPy'" },
@@ -434,6 +435,7 @@ requires-dist = [
     { name = "django-debug-toolbar", marker = "extra == 'dev'", specifier = ">=6.3.0" },
     { name = "django-denorm-iplweb", specifier = ">=1.10.2" },
     { name = "django-dirtyfields", specifier = "==1.9.9" },
+    { name = "django-dynamic-columns", editable = "../../django-dynamic-columns" },
     { name = "django-dynamic-fixture", marker = "extra == 'dev'", specifier = ">=1.8.0" },
     { name = "django-easy-audit", specifier = ">=1.3.9a2,<2" },
     { name = "django-environ", specifier = ">=0.13.0" },
@@ -1636,6 +1638,28 @@ dependencies = [
 wheels = [
     { url = "https://files.pythonhosted.org/packages/72/96/56f1338dda1bf1822687c5a10d378c4a765753c39e76cf7c72fd9eb03a4a/django_dsl-0.1.12-py3-none-any.whl", hash = "sha256:30ef18f41124f4a72435cc634b4369ebaa7b566e84eba357f8d77b81c5d5054f", size = 8807, upload-time = "2022-07-07T20:29:21.69Z" },
 ]
+
+[[package]]
+name = "django-dynamic-columns"
+version = "0.1.0"
+source = { editable = "../../django-dynamic-columns" }
+dependencies = [
+    { name = "django", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "django-admin-sortable2", marker = "platform_python_implementation != 'PyPy'" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "django", specifier = ">=4.2" },
+    { name = "django-admin-sortable2", specifier = ">=2.1" },
+    { name = "django-webtest", marker = "extra == 'dev'", specifier = ">=1.9" },
+    { name = "model-bakery", marker = "extra == 'dev'", specifier = ">=1.17" },
+    { name = "pre-commit", marker = "extra == 'dev'", specifier = ">=3" },
+    { name = "pytest", marker = "extra == 'dev'", specifier = ">=7" },
+    { name = "pytest-django", marker = "extra == 'dev'", specifier = ">=4.5" },
+    { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.5" },
+]
+provides-extras = ["dev"]
 
 [[package]]
 name = "django-dynamic-fixture"

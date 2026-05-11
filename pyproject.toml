@@ -22,6 +22,7 @@ dependencies = [
     "django-flexible-reports>=0.2.12",
     "django-group-by==0.3.1",
     "django-columns==0.1.0",
+    "django-dynamic-columns>=0.1.0",
     "tablib==3.9.0",
     "openpyxl>=3.1.5",
     "django-dirtyfields==1.9.9",
@@ -171,7 +172,6 @@ include = [
     "bpp",
     "create_test_db",
     "crossref_bpp",
-    "dynamic_columns",
     "django_bpp",
     "django_pg_baseline",
     "ewaluacja2021",
@@ -256,6 +256,12 @@ environments = ["python_version >= '3.10' and python_version < '3.15' and platfo
 name = "pypi"
 url = "https://pypi.org/simple"
 default = true
+
+# Lokalne overrides dla pakietow rozwijanych side-by-side z BPP. Sekcja
+# uzywana przez `uv sync` przed publikacja django-dynamic-columns na
+# PyPI; po publikacji usun wpis i polegaj wylacznie na PyPI.
+[tool.uv.sources]
+django-dynamic-columns = { path = "../../django-dynamic-columns", editable = true }
 
 [tool.bumpver.file_patterns]
 "pyproject.toml" = ['current_version = "{version}"',
