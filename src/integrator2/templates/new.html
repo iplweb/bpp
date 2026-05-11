@@ -14,7 +14,8 @@
 {% endblock %}
 
 {% block content %}
-    {% load crispy_forms_tags %}
+    {% load crispy_forms_tags formdefaults %}
+    <div class="formdefaults-wrap">{% formdefaults_button form %}</div>
     {% crispy form %}
 {#    <h1>Jak importować dane? </h1>#}
 {#    <h2>Integracja autorów bez PBN ID</h2>#}

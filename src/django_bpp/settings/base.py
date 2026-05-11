@@ -1247,6 +1247,10 @@ X_FRAME_OPTIONS = "SAMEORIGIN"
 
 DATA_UPLOAD_MAX_NUMBER_FIELDS = 5000
 
+# django-formdefaults: pozwól wszystkim staff-userom edytować systemowe
+# wartości domyślne formularzy (domyślnie pakiet wpuszcza tylko superuserów).
+FORMDEFAULTS_CAN_EDIT_SYSTEM_WIDE = "bpp.formdefaults_perms.can_edit_system_wide"
+
 DJANGO_BPP_SKROT_WYDZIALU_W_NAZWIE_JEDNOSTKI = env(
     "DJANGO_BPP_SKROT_WYDZIALU_W_NAZWIE_JEDNOSTKI"
 )

@@ -1,7 +1,9 @@
+{% load formdefaults %}
 <div id="content-wrapper" class="ewaluacja-optymalizuj__content-wrapper">
     {% if not publikacja %}
         <div class="panel">
             <h4>Wybierz publikacje do optymalizacji</h4>
+            <div class="formdefaults-wrap">{% formdefaults_button form %}</div>
             <form method="post">
                 {% csrf_token %}
                 {{ form.as_p }}

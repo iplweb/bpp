@@ -22,9 +22,11 @@
 {% endblock %}
 
 {% block content %}
+    {% load formdefaults %}
     <h1>{{ tytul_strony }}</h1>
     <p class="subheader">Formularz umożliwia zgłoszenie publikacji do biblioteki.</p>
 
+    <div class="formdefaults-wrap">{% formdefaults_button wizard.form %}</div>
     <form action="" method="post" id="form-container" enctype="multipart/form-data">
         {% csrf_token %}
         {{ wizard.management_form }}

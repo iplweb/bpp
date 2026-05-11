@@ -18,6 +18,7 @@
     </h1>
 
 
-    {% load crispy_forms_tags %}
+    {% load crispy_forms_tags formdefaults %}
+    <div class="formdefaults-wrap">{% formdefaults_button form %}</div>
     {% crispy form %}
 {% endblock %}
