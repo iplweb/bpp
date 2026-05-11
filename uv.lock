@@ -438,7 +438,7 @@ requires-dist = [
     { name = "django-dbtemplates-iplweb", specifier = ">=4.3.2" },
     { name = "django-debug-toolbar", marker = "extra == 'dev'", specifier = ">=6.3.0" },
     { name = "django-denorm-iplweb", specifier = ">=1.10.2" },
-    { name = "django-dev-helpers", marker = "extra == 'dev'", specifier = ">=0.1.0" },
+    { name = "django-dev-helpers", marker = "extra == 'dev'", specifier = ">=0.1.2" },
     { name = "django-dirtyfields", specifier = "==1.9.9" },
     { name = "django-dynamic-fixture", marker = "extra == 'dev'", specifier = ">=1.8.0" },
     { name = "django-easy-audit", specifier = ">=1.3.9a2,<2" },
@@ -451,7 +451,7 @@ requires-dist = [
     { name = "django-fsm-2", specifier = ">=4,<5" },
     { name = "django-grappelli", specifier = ">=5.0.0,<6" },
     { name = "django-group-by", specifier = "==0.3.1" },
-    { name = "django-import-export", specifier = ">=4.4,<5" },
+    { name = "django-import-export", specifier = ">=4.4.1,<5" },
     { name = "django-loginas", specifier = "==0.3.14" },
     { name = "django-messages-extends", specifier = "==0.6.3" },
     { name = "django-microsoft-auth", marker = "extra == 'office365'", specifier = ">=3.0.1" },
@@ -542,7 +542,7 @@ requires-dist = [
     { name = "twine", marker = "extra == 'dev'", specifier = ">=5.1.0" },
     { name = "twisted", extras = ["http2", "tls"], specifier = ">=25.5.0" },
     { name = "unidecode", specifier = ">=1.3,<2" },
-    { name = "urllib3", specifier = ">=2.6.3,<3.0.0" },
+    { name = "urllib3", specifier = ">=2.7.0,<3.0.0" },
     { name = "uvicorn", extras = ["standard"], specifier = ">=0.46.0" },
     { name = "vcrpy", marker = "extra == 'dev'", specifier = ">=8.1.1,<9" },
     { name = "watchdog", specifier = ">=5.0.3" },
@@ -1625,14 +1625,14 @@ wheels = [
 
 [[package]]
 name = "django-dev-helpers"
-version = "0.1.0"
+version = "0.1.2"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "django", marker = "platform_python_implementation != 'PyPy'" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/40/b3/574c3236af25c88158897b5344348c46b6eeba1872c0ea6998f34a2fe174/django_dev_helpers-0.1.0.tar.gz", hash = "sha256:c85b1498d8ce48e204222b7e7c67cb5fd25544b9b6dba88fc8edc52c333cbc80", size = 78001, upload-time = "2026-05-09T06:21:28.175Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/bf/8b/138d6c2447123ec9c62fcc81b09d37872ee62722016bc095187c86d11c4a/django_dev_helpers-0.1.2.tar.gz", hash = "sha256:857dcb6718d658ef3cf26e02eacf33a32b4bda5dbd8c4d417c656b47cfd9c6d4", size = 83404, upload-time = "2026-05-09T16:13:13.896Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/3d/84/5396066165b1fd08717486091bb4fad7299f15498b61d608779db0116e9e/django_dev_helpers-0.1.0-py3-none-any.whl", hash = "sha256:eaf72a19224863d100c6c30c989c6190ffde1fe6f518e6651c9387b7b5b771de", size = 25324, upload-time = "2026-05-09T06:21:26.291Z" },
+    { url = "https://files.pythonhosted.org/packages/b6/c3/79db0a36c765323089e969c7127b20bde7e7a6ab31c56c76b234ecf5953a/django_dev_helpers-0.1.2-py3-none-any.whl", hash = "sha256:ad7daeea85c0b4da170ee818cb0fbc7d78c30b746950eb773a6e73f39225a7cb", size = 29484, upload-time = "2026-05-09T16:13:15.256Z" },
 ]
 
 [[package]]
@@ -1790,16 +1790,16 @@ wheels = [
 
 [[package]]
 name = "django-import-export"
-version = "4.4.0"
+version = "4.4.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "diff-match-patch", marker = "platform_python_implementation != 'PyPy'" },
     { name = "django", marker = "platform_python_implementation != 'PyPy'" },
     { name = "tablib", marker = "platform_python_implementation != 'PyPy'" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/22/26/279bc8e6cb2c83d1b5dcdca07e932207c3352af11c6d305d6964a2d03ccc/django_import_export-4.4.0.tar.gz", hash = "sha256:9900e99c89027594941074fb4cd63a5f2964975e239021765c0f066003fcd412", size = 2237714, upload-time = "2026-01-10T20:57:35.128Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/92/32/5b83cc46a70ac94c1d17144097bf8aee7d9bb401d0863652c8d5ce1d2e50/django_import_export-4.4.1.tar.gz", hash = "sha256:165dc7fdcd56a6356342eef3f88f3f3682b64b6f67e9a259a137e8b57aeff10c", size = 2238690, upload-time = "2026-05-05T12:42:44.295Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/2f/e0/f4aa6d2374cc6b53b23f36bd0d5814e1db2769b25931b9908723fa295bb0/django_import_export-4.4.0-py3-none-any.whl", hash = "sha256:2d9b234c0f024d3377167f4d9c5a506e095c5bad98e06d30700e1d0752829e3d", size = 157449, upload-time = "2026-01-10T20:57:33.141Z" },
+    { url = "https://files.pythonhosted.org/packages/91/d1/110aeb2acffea56d4222861b5678c2643f0bda00081e40d687077348bb7c/django_import_export-4.4.1-py3-none-any.whl", hash = "sha256:8be2782e505ae303ccb02070a1b4c528995922126fca9ee449eb28666835dd4b", size = 157691, upload-time = "2026-05-05T12:42:42.554Z" },
 ]
 
 [[package]]
@@ -5629,11 +5629,11 @@ wheels = [
 
 [[package]]
 name = "urllib3"
-version = "2.6.3"
+version = "2.7.0"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/c7/24/5f1b3bdffd70275f6661c76461e25f024d5a38a46f04aaca912426a2b1d3/urllib3-2.6.3.tar.gz", hash = "sha256:1b62b6884944a57dbe321509ab94fd4d3b307075e0c2eae991ac71ee15ad38ed", size = 435556, upload-time = "2026-01-07T16:24:43.925Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/53/0c/06f8b233b8fd13b9e5ee11424ef85419ba0d8ba0b3138bf360be2ff56953/urllib3-2.7.0.tar.gz", hash = "sha256:231e0ec3b63ceb14667c67be60f2f2c40a518cb38b03af60abc813da26505f4c", size = 433602, upload-time = "2026-05-07T16:13:18.596Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/39/08/aaaad47bc4e9dc8c725e68f9d04865dbcb2052843ff09c97b08904852d84/urllib3-2.6.3-py3-none-any.whl", hash = "sha256:bf272323e553dfb2e87d9bfd225ca7b0f467b919d7bbd355436d3fd37cb0acd4", size = 131584, upload-time = "2026-01-07T16:24:42.685Z" },
+    { url = "https://files.pythonhosted.org/packages/7f/3e/5db95bcf282c52709639744ca2a8b149baccf648e39c8cc87553df9eae0c/urllib3-2.7.0-py3-none-any.whl", hash = "sha256:9fb4c81ebbb1ce9531cce37674bbc6f1360472bc18ca9a553ede278ef7276897", size = 131087, upload-time = "2026-05-07T16:13:17.151Z" },
 ]
 
 [[package]]
