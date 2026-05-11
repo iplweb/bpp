@@ -340,7 +340,6 @@ INSTALLED_APPS = [
     "bpp_setup_wizard",  # Must be early to enable setup wizard
     "daphne",
     "tinymce",
-    "django_tee",
     "formtools",
     "denorm.apps.DenormAppConfig",
     "reversion",

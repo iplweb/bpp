@@ -120,12 +120,6 @@ dependencies = [
     # (testy/dev/baseline_rebuild). Sam runtime nic nie kosztuje gdy PG_BASELINE
     # niezdefiniowane (no-op AppConfig.ready).
     "django-pg-baseline>=0.3.0",
-    # django-tee: wrapper na management commandy zapisujacy stdout/stderr/traceback
-    # do bazy. Dawniej wewnetrzny `src/tee/`. Label aplikacji zostaje "tee" wiec
-    # istniejace `tee_log` table + `django_migrations` rows pasuja bez zmian.
-    # Dopoki nie ma na PyPI, ciagniety z lokalnej sciezki przez [tool.uv.sources]
-    # (patrz nizej). Po publikacji: usun blok z [tool.uv.sources].
-    "django-tee>=0.1.0",
 ]
 
 [project.optional-dependencies]
@@ -301,10 +295,6 @@ default = true
 # pytest-testcontainers* ani run-site/django-dev-helpers.
 [tool.uv.sources]
 pytest-testcontainers-django = { git = "https://github.com/iplweb/pytest-testcontainers-django", tag = "v0.2.0" }
-# django-tee: nie ma jeszcze na PyPI (swiezo wyekstrahowany z src/tee/).
-# Ciagnij z lokalnej sciezki (rownorzedny worktree, jak inne pakiety iplweb).
-# Po opublikowaniu na PyPI: usun ten wpis i `uv sync` przejdzie na PyPI-owy.
-django-tee = { path = "../django-tee", editable = true }
 
 # Konfiguracja `pytest-testcontainers-django` — pluginu pytest, ktory
 # startuje kontenery PG/Redis przed importem Django settings i wstrzykuje

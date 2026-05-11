@@ -296,7 +296,6 @@ dependencies = [
     { name = "django-tables2", marker = "platform_python_implementation != 'PyPy'" },
     { name = "django-tabular-permissions", marker = "platform_python_implementation != 'PyPy'" },
     { name = "django-taggit", marker = "platform_python_implementation != 'PyPy'" },
-    { name = "django-tee", marker = "platform_python_implementation != 'PyPy'" },
     { name = "django-templated-email", marker = "platform_python_implementation != 'PyPy'" },
     { name = "django-tinymce", marker = "platform_python_implementation != 'PyPy'" },
     { name = "django-weasyprint", marker = "platform_python_implementation != 'PyPy'" },
@@ -474,7 +473,6 @@ requires-dist = [
     { name = "django-tables2", specifier = ">=3.0.0,<3.1" },
     { name = "django-tabular-permissions", specifier = "==2.9.3" },
     { name = "django-taggit", specifier = ">=5,<7" },
-    { name = "django-tee", editable = "../django-tee" },
     { name = "django-templated-email", specifier = ">=3.0.0" },
     { name = "django-tinymce", specifier = ">=5.0.0" },
     { name = "django-weasyprint", specifier = ">=2.5.0" },
@@ -2092,31 +2090,6 @@ sdist = { url = "https://files.pythonhosted.org/packages/34/a6/f1beaf8f552fe90c1
 wheels = [
     { url = "https://files.pythonhosted.org/packages/6b/34/4185c345530b91d05cb82e05d07148f481a5eb5dc2ac44e092b3daa6f206/django_taggit-6.1.0-py3-none-any.whl", hash = "sha256:ab776264bbc76cb3d7e49e1bf9054962457831bd21c3a42db9138b41956e4cf0", size = 75749, upload-time = "2024-09-29T08:07:14.612Z" },
 ]
-
-[[package]]
-name = "django-tee"
-version = "0.1.0"
-source = { editable = "../django-tee" }
-dependencies = [
-    { name = "django", marker = "platform_python_implementation != 'PyPy'" },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "build", marker = "extra == 'dev'", specifier = ">=1" },
-    { name = "django", specifier = ">=4.2" },
-    { name = "model-bakery", marker = "extra == 'test'", specifier = ">=1.17" },
-    { name = "pre-commit", marker = "extra == 'dev'", specifier = ">=3.5" },
-    { name = "psycopg", extras = ["binary"], marker = "extra == 'test'", specifier = ">=3" },
-    { name = "pytest", marker = "extra == 'test'", specifier = ">=7" },
-    { name = "pytest-django", marker = "extra == 'test'", specifier = ">=4.8" },
-    { name = "pytest-mock", marker = "extra == 'test'", specifier = ">=3" },
-    { name = "rollbar", marker = "extra == 'rollbar'", specifier = ">=0.16" },
-    { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.6" },
-    { name = "testcontainers", extras = ["postgres"], marker = "extra == 'test'", specifier = ">=4" },
-    { name = "twine", marker = "extra == 'dev'", specifier = ">=5" },
-]
-provides-extras = ["rollbar", "test", "dev"]
 
 [[package]]
 name = "django-templated-email"
