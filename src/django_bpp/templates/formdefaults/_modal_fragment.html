@@ -6,7 +6,10 @@
     <button type="button" class="fd-modal-close" aria-label="{% trans 'Close' %}">×</button>
     <h3>{{ form_repr.label }}{% if system_wide %} — {% trans "system-wide defaults" %}{% endif %}</h3>
     {% if system_wide %}
-      <p class="fd-warning">{% trans "Heads up: you are editing values that apply to ALL users. Per-user overrides will continue to take precedence over these." %}</p>
+      <p class="fd-warning">
+        {% trans "Heads up: you are editing values that apply to ALL users." %}<br>
+        {% trans "Per-user overrides will continue to take precedence over these." %}
+      </p>
       <p class="fd-help">{% trans "Check the box next to a field to save a system-wide default. Uncheck to remove the system-wide default entirely (the form's own initial value will be used)." %}</p>
     {% else %}
       <p class="fd-help">{% trans "Check the box next to a field to save your value as your personal override. Leave it unchecked to use the system-wide default." %}</p>
