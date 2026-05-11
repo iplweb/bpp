@@ -21,9 +21,9 @@
         </div>
     {% endif %}
 
-    {% load formdefaults %}
+    {% load bpp_formdefaults %}
     {{ form.media }}
-    <div class="formdefaults-wrap">{% formdefaults_button form %}</div>
+    <div class="formdefaults-wrap">{% bpp_formdefaults_button form %}</div>
     <form hx-post="{% url 'importer_publikacji:source' session.pk %}"
           hx-target="#importer-wizard"
           hx-indicator="#source-spinner">

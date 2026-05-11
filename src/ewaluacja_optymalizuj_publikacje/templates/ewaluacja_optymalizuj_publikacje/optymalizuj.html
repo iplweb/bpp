@@ -331,10 +331,10 @@
         </h2>
 
         {% if not publikacja %}
-            {% load formdefaults %}
+            {% load bpp_formdefaults %}
             <div class="panel">
                 <h4>Wybierz publikację do optymalizacji</h4>
-                <div class="formdefaults-wrap">{% formdefaults_button form %}</div>
+                <div class="formdefaults-wrap">{% bpp_formdefaults_button form %}</div>
                 <form method="post">
                     {% csrf_token %}
                     {{ form.as_p }}

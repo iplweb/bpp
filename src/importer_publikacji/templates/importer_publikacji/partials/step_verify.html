@@ -338,8 +338,8 @@
         </div>
     {% endif %}
 
-    {% load formdefaults %}
-    <div class="formdefaults-wrap">{% formdefaults_button form %}</div>
+    {% load bpp_formdefaults %}
+    <div class="formdefaults-wrap">{% bpp_formdefaults_button form %}</div>
     <form hx-post="{% url 'importer_publikacji:verify' session.pk %}"
           hx-target="#importer-wizard"
           hx-indicator="#verify-spinner">

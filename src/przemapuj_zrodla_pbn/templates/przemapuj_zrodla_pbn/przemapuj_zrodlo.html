@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% load crispy_forms_tags formdefaults %}
+{% load crispy_forms_tags bpp_formdefaults %}
 
 {% block title %}Przemapowanie źródła - {{ zrodlo }}{% endblock %}
 
@@ -31,7 +31,7 @@
         </div>
 
         {% if not preview %}
-            <div class="formdefaults-wrap">{% formdefaults_button form %}</div>
+            <div class="formdefaults-wrap">{% bpp_formdefaults_button form %}</div>
             <form method="post" action="" id="mappingForm">
                 {% csrf_token %}
                 {{ form.typ_wyboru }}

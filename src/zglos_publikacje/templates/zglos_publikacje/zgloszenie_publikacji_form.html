@@ -17,9 +17,9 @@
     <h1>Zgłoś publikację</h1>
     <p class="subheader">Formularz umożliwia zgłoszenie publikacji do biblioteki.</p>
 
-    {% load crispy_forms_tags formdefaults %}
+    {% load crispy_forms_tags bpp_formdefaults %}
 
-    <div class="formdefaults-wrap">{% formdefaults_button wizard.form %}</div>
+    <div class="formdefaults-wrap">{% bpp_formdefaults_button wizard.form %}</div>
     <form action="" method="post" id="form-container" enctype="multipart/form-data">{% csrf_token %}
         <fieldset class="fieldset">
             <legend>Formularz {{ wizard.steps.step1 }} z {{ wizard.steps.count }}</legend>
