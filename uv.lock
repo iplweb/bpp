@@ -435,7 +435,7 @@ requires-dist = [
     { name = "django-debug-toolbar", marker = "extra == 'dev'", specifier = ">=6.3.0" },
     { name = "django-denorm-iplweb", specifier = ">=1.10.2" },
     { name = "django-dirtyfields", specifier = "==1.9.9" },
-    { name = "django-dynamic-admin-columns", specifier = ">=0.4.2" },
+    { name = "django-dynamic-admin-columns", specifier = ">=0.4.4" },
     { name = "django-dynamic-fixture", marker = "extra == 'dev'", specifier = ">=1.8.0" },
     { name = "django-easy-audit", specifier = ">=1.3.9a2,<2" },
     { name = "django-environ", specifier = ">=0.13.0" },
@@ -1641,15 +1641,15 @@ wheels = [
 
 [[package]]
 name = "django-dynamic-admin-columns"
-version = "0.4.2"
+version = "0.4.4"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "django", marker = "platform_python_implementation != 'PyPy'" },
     { name = "django-admin-sortable2", marker = "platform_python_implementation != 'PyPy'" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/81/76/43c6ff239017fe1de6b3fa43cfb34518b3a03f0bfa789ac41899f4208b5e/django_dynamic_admin_columns-0.4.2.tar.gz", hash = "sha256:84f59110eb458cb47d5306ec20d2585ef0e05b0673c6a01072c9b030d83c4826", size = 45827, upload-time = "2026-05-12T08:54:42.011Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/83/d4/44c668537effae57ac613cb080e66700bb4f026169d2bed90be6c33d2531/django_dynamic_admin_columns-0.4.4.tar.gz", hash = "sha256:8a2fb15adc4435f285711d77cc8f03e55700f5a2f8e109e81c44492efadf2ab6", size = 50930, upload-time = "2026-05-12T10:56:04.534Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/cd/7f/1b09d7ea9bf5b6cd0321396923a1e47ef04f00631ea17a62f9bf422ed352/django_dynamic_admin_columns-0.4.2-py3-none-any.whl", hash = "sha256:899f75f2bea07c8adb3105c87b5b864d793fb4b87b15d8112e2048819b741a13", size = 34283, upload-time = "2026-05-12T08:54:40.152Z" },
+    { url = "https://files.pythonhosted.org/packages/4d/7e/743743c5c845057624a5eb29b3d486424eb10a3b4280efa406e3e008918b/django_dynamic_admin_columns-0.4.4-py3-none-any.whl", hash = "sha256:c416ca12b9ec70bfe43482991f6c5cc1115195ea8a3b5838f431dfa0725c2778", size = 34547, upload-time = "2026-05-12T10:56:02.88Z" },
 ]
 
 [[package]]
