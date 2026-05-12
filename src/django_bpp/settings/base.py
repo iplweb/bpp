@@ -340,7 +340,6 @@ INSTALLED_APPS = [
     "bpp_setup_wizard",  # Must be early to enable setup wizard
     "daphne",
     "tinymce",
-    "tee",
     "formtools",
     "denorm.apps.DenormAppConfig",
     "reversion",
@@ -350,7 +349,7 @@ INSTALLED_APPS = [
     "constance",
     "constance.backends.database",
     "channels",
-    "dynamic_columns",
+    "dynamic_admin_columns",
     "django.contrib.humanize",
     "django.contrib.contenttypes",
     "django.contrib.auth",
@@ -1157,13 +1156,27 @@ DJANGO_EASY_AUDIT_REGISTERED_CLASSES = [
 
 SILENCED_SYSTEM_CHECKS.append("admin.E117")
 
-DYNAMIC_COLUMNS_ALLOWED_IMPORT_PATHS = [
+# Override the ``dynamic_admin_columns`` migrations directory.
+#
+# The package's ``0001_initial`` runs ``CreateModel`` against the
+# ``dynamic_columns_*`` tables. Every BPP database — both legacy
+# in-tree-app upgrades and freshly-baselined test DBs — already
+# carries those tables, so running ``CREATE TABLE`` again would
+# conflict. The replacement under ``bpp.migration_overrides`` is
+# state-only (declares the models in Django's state, emits no DDL).
+# Schema-level work for the per-user upgrade lives in
+# ``bpp.0416_rename_dynamic_columns_to_admin``.
+MIGRATION_MODULES = {
+    "dynamic_admin_columns": "bpp.migration_overrides.dynamic_admin_columns",
+}
+
+DYNAMIC_ADMIN_COLUMNS_ALLOWED_IMPORT_PATHS = [
     "bpp.admin.wydawnictwo_ciagle",
     "bpp.admin.wydawnictwo_zwarte",
     "bpp.admin.autor",
 ]
 
-DYNAMIC_COLUMNS_FORBIDDEN_COLUMN_NAMES = [
+DYNAMIC_ADMIN_COLUMNS_FORBIDDEN_COLUMN_NAMES = [
     ".*_cache$",
     ".*_sort$",
     "search_index",
@@ -1246,6 +1259,10 @@ LANGUAGE_COOKIE_SECURE = True
 X_FRAME_OPTIONS = "SAMEORIGIN"
 
 DATA_UPLOAD_MAX_NUMBER_FIELDS = 5000
+
+# django-formdefaults: pozwól wszystkim staff-userom edytować systemowe
+# wartości domyślne formularzy (domyślnie pakiet wpuszcza tylko superuserów).
+FORMDEFAULTS_CAN_EDIT_SYSTEM_WIDE = "bpp.formdefaults_perms.can_edit_system_wide"
 
 DJANGO_BPP_SKROT_WYDZIALU_W_NAZWIE_JEDNOSTKI = env(
     "DJANGO_BPP_SKROT_WYDZIALU_W_NAZWIE_JEDNOSTKI"

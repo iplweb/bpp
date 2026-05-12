@@ -48,8 +48,12 @@ Run from the repository root:
     # Load baseline into the configured DB (no-op if not empty)
     uv run python src/manage.py baseline_load [--database ALIAS] [--force]
 
-    # CI gate — exit 1 when any app has more than --max-delta new migrations
-    uv run python src/manage.py baseline_check [--max-delta 50]
+    # Informational (always exits 0) — pokazuje per-app delty bez gate'a
+    uv run python src/manage.py baseline_check
+
+    # CI gate — exit 1 when any app has more than --max-delta new migrations.
+    # Hard-fail (exit 1) gdy baseline.sql lub baseline.meta.json brakuje.
+    uv run python src/manage.py baseline_check --max-delta 50
 
     # Human-readable summary of the current baseline state
     uv run python src/manage.py baseline_info
