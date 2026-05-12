@@ -81,8 +81,11 @@ services:
       DJANGO_BPP_REDIS_PORT: 6379
       # Wyłącz testcontainers — w CI serwisy (db, redis) są uruchamiane
       # przez docker-compose, nie przez testcontainers. Testcontainers
-      # z wnętrza kontenera wymagałyby Docker-in-Docker.
-      BPP_USE_TESTCONTAINERS: 0
+      # z wnętrza kontenera wymagałyby Docker-in-Docker. Nazwa zmiennej
+      # pochodzi z pakietu pytest-testcontainers — gdy ustawiona na
+      # 1/true/yes, plugin sie wylacza i testy uzywaja zmiennych
+      # DJANGO_BPP_DB_* dostarczonych przez docker-compose.
+      PYTEST_TESTCONTAINERS_DISABLE: 1
       # Baseline jest ładowany przez postgresowy entrypoint (mount
       # /docker-entrypoint-initdb.d/01-baseline.sql w servisie db). Tutaj
       # mówimy Django, że ma tworzyć test_bpp_gwN jako klon `bpp` przez

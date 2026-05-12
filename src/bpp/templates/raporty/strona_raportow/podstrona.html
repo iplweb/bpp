@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% load crispy_forms_tags %}
+{% load crispy_forms_tags bpp_formdefaults %}
 
 {% block extratitle %}
     {{ nazwa_raportu }}
@@ -12,6 +12,7 @@
 
 {% block content %}
     <h2>{{ nazwa_raportu }}</h2>
+    <div class="formdefaults-wrap">{% bpp_formdefaults_button form %}</div>
     {% crispy form %}
     {{ form.media }}
 

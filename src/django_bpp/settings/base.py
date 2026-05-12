@@ -340,7 +340,6 @@ INSTALLED_APPS = [
     "bpp_setup_wizard",  # Must be early to enable setup wizard
     "daphne",
     "tinymce",
-    "tee",
     "formtools",
     "denorm.apps.DenormAppConfig",
     "reversion",
@@ -1260,6 +1259,10 @@ LANGUAGE_COOKIE_SECURE = True
 X_FRAME_OPTIONS = "SAMEORIGIN"
 
 DATA_UPLOAD_MAX_NUMBER_FIELDS = 5000
+
+# django-formdefaults: pozwól wszystkim staff-userom edytować systemowe
+# wartości domyślne formularzy (domyślnie pakiet wpuszcza tylko superuserów).
+FORMDEFAULTS_CAN_EDIT_SYSTEM_WIDE = "bpp.formdefaults_perms.can_edit_system_wide"
 
 DJANGO_BPP_SKROT_WYDZIALU_W_NAZWIE_JEDNOSTKI = env(
     "DJANGO_BPP_SKROT_WYDZIALU_W_NAZWIE_JEDNOSTKI"

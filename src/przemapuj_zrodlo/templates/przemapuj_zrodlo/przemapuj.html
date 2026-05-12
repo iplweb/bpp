@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% load crispy_forms_tags %}
+{% load crispy_forms_tags bpp_formdefaults %}
 
 {% block extratitle %}
     Przemapuj źródło: {{ zrodlo_zrodlowe.nazwa }}
@@ -80,6 +80,7 @@
         {% endif %}
 
         <!-- Form -->
+        <div class="formdefaults-wrap">{% bpp_formdefaults_button form %}</div>
         <form method="post" id="przemapuj-form">
             {% csrf_token %}
 

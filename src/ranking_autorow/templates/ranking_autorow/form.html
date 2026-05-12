@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% load crispy_forms_tags %}
+{% load crispy_forms_tags bpp_formdefaults %}
 
 {% block extratitle %}
     Ranking autorów - wybór parametrów
@@ -15,6 +15,7 @@
         <h2><span class="fi-trophy"></span> Ranking autorów</h2>
         <p class="lead">Wygeneruj ranking autorów na podstawie ich dorobku naukowego</p>
 
+        <div class="formdefaults-wrap">{% bpp_formdefaults_button form %}</div>
         {% crispy form %}
 
         {{ form.media }}

@@ -10,6 +10,10 @@
     {% load l10n %}
 
     {% if request.user.is_authenticated %}
+        {# django-formdefaults: popup do edycji wartości domyślnych formularzy #}
+        <link rel="stylesheet" type="text/css" href="{% static 'formdefaults/modal.css' %}"/>
+        <script src="{% static 'formdefaults/modal.js' %}" defer></script>
+
         {% include 'session_security/dialog.html' %}
         <script type="text/javascript">
             var sessionSecurity = new yourlabs.SessionSecurity({

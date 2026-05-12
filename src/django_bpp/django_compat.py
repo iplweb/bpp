@@ -18,10 +18,10 @@ if not hasattr(django.utils.timezone, "utc"):
 
 # models.NullBooleanField was removed in Django 5.0. Used by many old
 # migrations (bpp/0119, 0239, 0270, 0271; integrator2/0001;
-# import_pracownikow/0003, 0004; ewaluacja2021/0003; pbn_api/0012, 0031;
-# tee/0004). The replacement is BooleanField(null=True, default=None) —
-# we return a BooleanField subclass that applies those kwargs so the
-# migrations' frozen field definitions load unchanged.
+# import_pracownikow/0003, 0004; ewaluacja2021/0003; pbn_api/0012, 0031).
+# The replacement is BooleanField(null=True, default=None) — we return
+# a BooleanField subclass that applies those kwargs so the migrations'
+# frozen field definitions load unchanged.
 if not hasattr(models, "NullBooleanField"):
 
     class NullBooleanField(models.BooleanField):
