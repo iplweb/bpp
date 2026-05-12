@@ -6,7 +6,7 @@ Mimo nazwy sugerującej, że to "aplikacja tylko do testów", `test_bpp` jest
 **wymagana w `INSTALLED_APPS` bezwarunkowo** — również w produkcji.
 Usunięcie jej albo przeniesienie do konfiguracji dostępnej tylko w testach
 **zepsuje testy aplikacji `long_running`**, a także spowoduje rozjazd z
-`src/baseline-sql/baseline.sql`, który oczekuje istnienia tabel tej
+`baseline-sql/baseline.sql`, który oczekuje istnienia tabel tej
 aplikacji.
 
 ## Po co to istnieje

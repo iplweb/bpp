@@ -284,17 +284,17 @@ tests: clean-pycache clean-coverage uv-sync tests-without-playwright tests-only-
 # you suspect schema corruption or need to validate migrations from zero.
 tests-fresh: destroy-test-databases tests ## Jak `tests`, ale od zera (destroy-test-databases + tests)
 
-# Regenerate src/baseline-sql/baseline.sql by spinning up an isolated
+# Regenerate baseline-sql/baseline.sql by spinning up an isolated
 # postgres (via testcontainers), running migrate, dumping, and writing
 # baseline.meta.json. Commit the refreshed files to git.
 rebuild-baseline: ## Regeneruj baseline.sql do przyspieszenia testów (commit efektu!)
 	DJANGO_BPP_SKIP_DOTENV=1 uv run python src/manage.py baseline_rebuild
 	@echo ""
 	@echo "Baseline regenerated. Files:"
-	@ls -lh src/baseline-sql/baseline.sql src/baseline-sql/baseline.meta.json
+	@ls -lh baseline-sql/baseline.sql baseline-sql/baseline.meta.json
 	@echo ""
 	@echo "Don't forget to commit:"
-	@echo "    git add src/baseline-sql/baseline.sql src/baseline-sql/baseline.meta.json"
+	@echo "    git add baseline-sql/baseline.sql baseline-sql/baseline.meta.json"
 
 # Run tests against pre-existing docker-compose containers (no testcontainers).
 tests-no-containers: ## Testy przeciwko istniejącym kontenerom docker-compose (bez testcontainers)

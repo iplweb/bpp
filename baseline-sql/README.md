@@ -65,7 +65,7 @@ Whenever migrations are added and merged to `dev`. A GitHub Action
 automatically when `src/**/migrations/**` is touched in a push to
 `dev`. After a manual regeneration, commit both files together:
 
-    git add src/baseline-sql/baseline.sql src/baseline-sql/baseline.meta.json
+    git add baseline-sql/baseline.sql baseline-sql/baseline.meta.json
     git commit -m "chore(baseline): refresh pg_dump after migrations …"
 
 ## Configuration
