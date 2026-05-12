@@ -115,6 +115,7 @@ dependencies = [
     "gunicorn>=26.0.0", # authserver WSGI runner (moved from docker/authserver build-time uv pip install)
     "watchdog>=5.0.3", # --reload mode dla uvicorn/celery w dev compose (moved from entrypoint `uv pip install`)
     "sqlparse>=0.5.4", # Dependabot: transitive via Django, bumped to fix DoS in format_list_of_tuples
+    "django-countdown",
     "django-formdefaults>=0.6.2",
     # django-pg-baseline: zewnetrzny pakiet zarzadzajacy baseline.sql + monkey-patch
     # tworzenia testowej bazy. Dawniej wewnetrzny `src/django_pg_baseline/`.
@@ -284,6 +285,13 @@ name = "pypi"
 url = "https://pypi.org/simple"
 default = true
 
+[tool.uv.sources]
+# django-countdown jeszcze nie ma na PyPI (PyPI nie wpuscil pakietu pod ta nazwa).
+# Pobieramy z taga GitHubowego — `uv` cachuje sklon pod `~/.cache/uv/git-v0/`,
+# kolejne `uv sync` nie ciagna ponownie. Po publikacji na PyPI: wymien wpis na
+# wersjowany constraint w [project] dependencies i usun ta linie.
+django-countdown = { git = "https://github.com/iplweb/django-countdown.git", tag = "v0.2.0" }
+
 # pytest-testcontainers-django jeszcze nie ma na PyPI (PyPI rate-limit po
 # stronie maintainera). Pobieramy z taga GitHubowego — `uv` cachuje sklon
 # pod `~/.cache/uv/git-v0/`, kolejne `uv sync` nie ciagna ponownie.
@@ -293,7 +301,6 @@ default = true
 # CI/Docker: builderskie obrazy nie instaluja [dev], wiec brak tego pakietu
 # na PyPI nie blokuje produkcyjnego buildu. Production runtime nie potrzebuje
 # pytest-testcontainers* ani run-site/django-dev-helpers.
-[tool.uv.sources]
 pytest-testcontainers-django = { git = "https://github.com/iplweb/pytest-testcontainers-django", tag = "v0.2.0" }
 
 # Konfiguracja `pytest-testcontainers-django` — pluginu pytest, ktory

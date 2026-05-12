@@ -261,6 +261,7 @@ dependencies = [
     { name = "django-compressor", marker = "platform_python_implementation != 'PyPy'" },
     { name = "django-constance", marker = "platform_python_implementation != 'PyPy'" },
     { name = "django-cookie-law", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "django-countdown", marker = "platform_python_implementation != 'PyPy'" },
     { name = "django-crispy-forms", marker = "platform_python_implementation != 'PyPy'" },
     { name = "django-dbtemplates-iplweb", marker = "platform_python_implementation != 'PyPy'" },
     { name = "django-denorm-iplweb", marker = "platform_python_implementation != 'PyPy'" },
@@ -436,6 +437,7 @@ requires-dist = [
     { name = "django-compressor", specifier = "==4.6.0" },
     { name = "django-constance", specifier = ">=4.3.5" },
     { name = "django-cookie-law", specifier = "==2.2.0" },
+    { name = "django-countdown", git = "https://github.com/iplweb/django-countdown.git?tag=v0.2.0" },
     { name = "django-crispy-forms", specifier = ">=2.6,<3" },
     { name = "django-dbtemplates-iplweb", specifier = ">=4.3.2" },
     { name = "django-debug-toolbar", marker = "extra == 'dev'", specifier = ">=6.3.0" },
@@ -1573,6 +1575,14 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/f8/9b/ff89a562a6662a3cb58e73cdcc4cd110701eb0d77611487e8250b0d2a77e/django-cookie-law-2.2.0.tar.gz", hash = "sha256:c3c6c10a01b257886077dd170ead11a49448b5bdfd06e81acc5c7c4e2292d4c8", size = 16605, upload-time = "2022-03-11T10:13:38.693Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/dc/3b/77f79f50fbae115eb0b0210c59f73274c0749e5113529058f5731fdef917/django_cookie_law-2.2.0-py3-none-any.whl", hash = "sha256:121b503e8134287b6cb71bb0b617840e0cb350174d8f2947be2f5af0e7c8cf56", size = 29873, upload-time = "2022-03-11T10:13:36.994Z" },
+]
+
+[[package]]
+name = "django-countdown"
+version = "0.2.0"
+source = { git = "https://github.com/iplweb/django-countdown.git?tag=v0.2.0#089eef9817a602828341d00bdbb08d166d78978f" }
+dependencies = [
+    { name = "django", marker = "platform_python_implementation != 'PyPy'" },
 ]
 
 [[package]]
