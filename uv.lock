@@ -271,6 +271,7 @@ dependencies = [
     { name = "django-favicon-plus-reloaded", marker = "platform_python_implementation != 'PyPy'" },
     { name = "django-filter", marker = "platform_python_implementation != 'PyPy'" },
     { name = "django-flexible-reports", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "django-formdefaults", marker = "platform_python_implementation != 'PyPy'" },
     { name = "django-formtools", marker = "platform_python_implementation != 'PyPy'" },
     { name = "django-fsm-2", marker = "platform_python_implementation != 'PyPy'" },
     { name = "django-grappelli", marker = "platform_python_implementation != 'PyPy'" },
@@ -447,6 +448,7 @@ requires-dist = [
     { name = "django-favicon-plus-reloaded", specifier = ">=1.2,<2" },
     { name = "django-filter", specifier = ">=25.2,<25.3" },
     { name = "django-flexible-reports", specifier = ">=0.2.12" },
+    { name = "django-formdefaults", specifier = ">=0.6.2" },
     { name = "django-formtools", specifier = ">=2.5.1,<3" },
     { name = "django-fsm-2", specifier = ">=4,<5" },
     { name = "django-grappelli", specifier = ">=5.0.0,<6" },
@@ -1742,6 +1744,18 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/ee/03/1b60bacdfa3b63a0051eea721df04492cdab911798b45413592e68d4887a/django_flexible_reports-0.2.12.tar.gz", hash = "sha256:6e9901f42f744c7337d12116c118a318fb30498c055c4d435e6f70fe99605d32", size = 24874, upload-time = "2026-04-19T16:14:50.314Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/e8/24/4d43ca8419f62496705de05cdd7f27904ab3cb87918b65352b3ca32fb013/django_flexible_reports-0.2.12-py3-none-any.whl", hash = "sha256:daf7217ea4b2a9e619ef510561fe6e7c0e66766f4d381759c5a669619ea9c013", size = 38932, upload-time = "2026-04-19T16:14:49.045Z" },
+]
+
+[[package]]
+name = "django-formdefaults"
+version = "0.6.2"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "django", marker = "platform_python_implementation != 'PyPy'" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/0c/50/3d1065763d88baf2b78d68f5f478b018a4aef2fa26f36d4956fbef792cb3/django_formdefaults-0.6.2.tar.gz", hash = "sha256:de565336a806e8aebad8506f1ea5bf883abbd7a75d9ab7063bb527dfeb0b943b", size = 27976, upload-time = "2026-05-12T10:07:20.342Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/e9/40/948a3af80921ff20094d7b644fa6e6f0ef585f78cf32e639c588d054ed9c/django_formdefaults-0.6.2-py3-none-any.whl", hash = "sha256:f73c8af846e6d748357f3ee885befd15c9490c9f117b3b65dd35d4f454b9328a", size = 34325, upload-time = "2026-05-12T10:07:18.826Z" },
 ]
 
 [[package]]
