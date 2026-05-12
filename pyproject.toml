@@ -114,6 +114,7 @@ dependencies = [
     "gunicorn>=23", # authserver WSGI runner (moved from docker/authserver build-time uv pip install)
     "watchdog>=5.0.3", # --reload mode dla uvicorn/celery w dev compose (moved from entrypoint `uv pip install`)
     "sqlparse>=0.5.4", # Dependabot: transitive via Django, bumped to fix DoS in format_list_of_tuples
+    "django-countdown",
 ]
 
 [project.optional-dependencies]
@@ -256,6 +257,9 @@ environments = ["python_version >= '3.10' and python_version < '3.15' and platfo
 name = "pypi"
 url = "https://pypi.org/simple"
 default = true
+
+[tool.uv.sources]
+django-countdown = { path = "../../django-countdown", editable = true }
 
 [tool.bumpver.file_patterns]
 "pyproject.toml" = ['current_version = "{version}"',
