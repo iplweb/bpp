@@ -430,7 +430,7 @@ requires-dist = [
     { name = "django-compressor", specifier = "==4.6.0" },
     { name = "django-constance", specifier = ">=4.3.5" },
     { name = "django-cookie-law", specifier = "==2.2.0" },
-    { name = "django-countdown", editable = "../../django-countdown" },
+    { name = "django-countdown", git = "https://github.com/iplweb/django-countdown.git?tag=v0.2.0" },
     { name = "django-crispy-forms", specifier = ">=2.6,<3" },
     { name = "django-dbtemplates-iplweb", specifier = ">=4.3.2" },
     { name = "django-debug-toolbar", marker = "extra == 'dev'", specifier = ">=6.3.0" },
@@ -1566,22 +1566,10 @@ wheels = [
 [[package]]
 name = "django-countdown"
 version = "0.2.0"
-source = { editable = "../../django-countdown" }
+source = { git = "https://github.com/iplweb/django-countdown.git?tag=v0.2.0#089eef9817a602828341d00bdbb08d166d78978f" }
 dependencies = [
     { name = "django", marker = "platform_python_implementation != 'PyPy'" },
 ]
-
-[package.metadata]
-requires-dist = [
-    { name = "django", specifier = ">=5.2" },
-    { name = "model-bakery", marker = "extra == 'test'", specifier = ">=1.17" },
-    { name = "pre-commit", marker = "extra == 'dev'" },
-    { name = "pytest", marker = "extra == 'test'", specifier = ">=8" },
-    { name = "pytest-django", marker = "extra == 'test'", specifier = ">=4.8" },
-    { name = "pytest-mock", marker = "extra == 'test'", specifier = ">=3.12" },
-    { name = "ruff", marker = "extra == 'dev'" },
-]
-provides-extras = ["test", "dev"]
 
 [[package]]
 name = "django-crispy-forms"

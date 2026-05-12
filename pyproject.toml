@@ -259,7 +259,7 @@ url = "https://pypi.org/simple"
 default = true
 
 [tool.uv.sources]
-django-countdown = { path = "../../django-countdown", editable = true }
+django-countdown = { git = "https://github.com/iplweb/django-countdown.git", tag = "v0.2.0" }
 
 [tool.bumpver.file_patterns]
 "pyproject.toml" = ['current_version = "{version}"',
