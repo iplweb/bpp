@@ -201,7 +201,6 @@ where = ["src"]
 include = [
     "api_v1",
     "bpp",
-    "create_test_db",
     "crossref_bpp",
     "django_bpp",
     "ewaluacja2021",
