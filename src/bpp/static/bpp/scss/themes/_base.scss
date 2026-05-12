@@ -22,27 +22,18 @@ ul.grp-object-tools li a {
 }
 
 /* Icons for different link types in grp-object-tools */
-/* Add icon - ➕ zamiast spritesheet'owego "+" z grappelli, żeby kolorowane     */
-/* motywy (Brat Marysi/Ludwika/Złoty/itd.) tez go pokazywaly. W motywach      */
-/* nadpisujacych `ul.grp-object-tools li a { background: ... }` grappelli     */
-/* sprite zostawal zabity razem z bg, ale ::before z ::content emoji jest     */
-/* niezalezny od kaskady background-* i dziala wszedzie.                      */
-ul.grp-object-tools li a[href*="/add/"]::before {
+/* Add icon - ➕ TYLKO dla motywow (body.theme-*), gdzie `background: ...`    */
+/* shorthand z motywu zabija grappelli spritesheet "+". W domyslnym themie    */
+/* (bez body.theme-*) zostawiamy native grappelli look: sprite "+" na ciemnym */
+/* gradiencie (#666 -> #444). Selektor `body[class*="theme-"]` matchuje       */
+/* wszystkie nasze motywy (theme-mario-bros, theme-cream-green itd.).         */
+body[class*="theme-"] ul.grp-object-tools li a[href*="/add/"]::before {
     content: "➕";
     position: absolute;
     left: 8px;
     top: 50%;
     transform: translateY(-50%);
     font-size: 16px;
-}
-
-/* Default theme — wylacz grappelli sprite "+" zeby nie dublowal sie z      */
-/* naszym ::before ➕. Zostaje tylko grappelli dark gradient (#666 -> #444).  */
-/* W motywach body.theme-* selektor `body.theme-x ul.grp-object-tools li a`  */
-/* ma wyzsza specyficznosc (0,3,3 vs nasze 0,2,3) wiec ta regula nie kasuje  */
-/* themed bg.                                                                */
-ul.grp-object-tools li a.grp-add-link {
-    background-image: linear-gradient(#666, #444) !important;
 }
 
 /* Export icon - używamy 📊 dla arkusza/Excel */
