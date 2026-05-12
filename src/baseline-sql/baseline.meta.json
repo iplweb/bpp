@@ -1,16 +1,16 @@
 {
-  "git_sha": "7ebf109fa3fa98367f19d5ab2969bbefacc85744",
+  "git_sha": "75f3c70f7263338fd68443143d9aad6666b2efba",
   "last_migration": {
     "admin": "0003_logentry_add_action_flag_choices",
     "admin_dashboard": "0001_initial",
     "auth": "0012_alter_user_first_name_max_length",
-    "bpp": "0413_bppuser_autor_onetoone",
+    "bpp": "0415_merge_20260504_0907",
     "constance": "0003_drop_pickle",
     "contenttypes": "0002_remove_content_type_name",
     "crossref_bpp": "0001_initial",
     "dashboard": "0001_initial",
     "dbtemplates": "0002_alter_template_creation_date_and_more",
-    "deduplikator_autorow": "0008_add_priority_field",
+    "deduplikator_autorow": "0011_scan_mode_phase_partial",
     "deduplikator_publikacji": "0001_initial",
     "deduplikator_zrodel": "0001_initial",
     "denorm": "0016_not_parametrized_notify",
@@ -65,7 +65,8 @@
     "taggit": "0006_rename_taggeditem_content_type_object_id_taggit_tagg_content_8fc721_idx",
     "tee": "0006_nullbooleanfield",
     "test_bpp": "0003_testreport",
-    "zglos_publikacje": "0022_uuid_filenames"
+    "zglos_publikacje": "0024_migracja_danych_nowy_formularz"
   },
+  "meta_version": 1,
   "postgres_version": "PostgreSQL 16.13 (Debian 16.13-1.pgdg13+1) on aarch64-unknown-linux-gnu, compiled by gcc (Debian 14.2.0-19) 14.2.0, 64-bit"
 }

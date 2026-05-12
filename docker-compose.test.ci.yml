@@ -13,7 +13,7 @@
 #     `compose run --rm` discards the container.
 #
 # Dropping the docker.sock mount too — CI tests don't use Docker
-# from inside the test-runner (BPP_USE_TESTCONTAINERS=0).
+# from inside the test-runner (PYTEST_TESTCONTAINERS_DISABLE=1).
 
 services:
   test-runner:
