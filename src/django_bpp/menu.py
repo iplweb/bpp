@@ -137,7 +137,7 @@ ADMIN_MENU = [
     ),
     (
         "Kolumny w module redagowania",
-        "/admin/dynamic_columns/modeladmincolumn/",
+        "/admin/dynamic_admin_columns/modeladmin/",
     ),
 ]
 
