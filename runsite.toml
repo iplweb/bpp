@@ -43,7 +43,7 @@ POSTGRESQL_MAX_LOCKS_PER_TRANSACTION = "512"
 image = "redis:7-alpine"
 
 [dump]
-default_path = "src/baseline-sql/baseline.sql"
+default_path = "baseline-sql/baseline.sql"
 # `auto`: dla swiezego kontenera + .sql → init-script (najszybszy). Dla reused
 # kontenera lub innego formatu → post-start `psql`/`pg_restore`. Reused +
 # istniejace dane → skip.
