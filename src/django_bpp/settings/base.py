@@ -364,7 +364,6 @@ INSTALLED_APPS = [
     "import_pracownikow",
     "import_list_if",
     "password_policies",
-    "create_test_db",
     "celery",
     "django_celery_results",
     "flexible_reports",
