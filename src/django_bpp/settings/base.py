@@ -349,7 +349,7 @@ INSTALLED_APPS = [
     "constance",
     "constance.backends.database",
     "channels",
-    "dynamic_columns",
+    "dynamic_admin_columns",
     "django.contrib.humanize",
     "django.contrib.contenttypes",
     "django.contrib.auth",
@@ -1156,13 +1156,27 @@ DJANGO_EASY_AUDIT_REGISTERED_CLASSES = [
 
 SILENCED_SYSTEM_CHECKS.append("admin.E117")
 
-DYNAMIC_COLUMNS_ALLOWED_IMPORT_PATHS = [
+# Override the ``dynamic_admin_columns`` migrations directory.
+#
+# The package's ``0001_initial`` runs ``CreateModel`` against the
+# ``dynamic_columns_*`` tables. Every BPP database — both legacy
+# in-tree-app upgrades and freshly-baselined test DBs — already
+# carries those tables, so running ``CREATE TABLE`` again would
+# conflict. The replacement under ``bpp.migration_overrides`` is
+# state-only (declares the models in Django's state, emits no DDL).
+# Schema-level work for the per-user upgrade lives in
+# ``bpp.0416_rename_dynamic_columns_to_admin``.
+MIGRATION_MODULES = {
+    "dynamic_admin_columns": "bpp.migration_overrides.dynamic_admin_columns",
+}
+
+DYNAMIC_ADMIN_COLUMNS_ALLOWED_IMPORT_PATHS = [
     "bpp.admin.wydawnictwo_ciagle",
     "bpp.admin.wydawnictwo_zwarte",
     "bpp.admin.autor",
 ]
 
-DYNAMIC_COLUMNS_FORBIDDEN_COLUMN_NAMES = [
+DYNAMIC_ADMIN_COLUMNS_FORBIDDEN_COLUMN_NAMES = [
     ".*_cache$",
     ".*_sort$",
     "search_index",

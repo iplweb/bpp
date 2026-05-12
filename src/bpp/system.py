@@ -9,8 +9,10 @@ from django.contrib.auth.models import Group, Permission
 from django.contrib.contenttypes.models import ContentType
 from django.contrib.sites.models import Site
 from django.db import transaction
+from dynamic_admin_columns.models import ModelAdmin, ModelAdminColumn
 from favicon.models import Favicon, FaviconImg
 from flexible_reports import models as flexible_models
+from formdefaults.models import FormFieldRepresentation, FormRepresentation
 from multiseek.models import SearchForm
 
 from bpp.const import (
@@ -79,10 +81,8 @@ from bpp.models.struktura import Jednostka_Wydzial
 from bpp.models.system import Charakter_PBN
 from bpp.models.wydawca import Poziom_Wydawcy, Wydawca
 from deduplikator_autorow.models import IgnoredScientist, LogScalania, NotADuplicate
-from dynamic_columns.models import ModelAdmin, ModelAdminColumn
 from ewaluacja_common.models import Rodzaj_Autora
 from ewaluacja_liczba_n.models import IloscUdzialowDlaAutoraZaRok, LiczbaNDlaUczelni
-from formdefaults.models import FormFieldRepresentation, FormRepresentation
 from import_polon.models import ImportPolonOverride
 from miniblog.models import Article
 from pbn_api.models import (
