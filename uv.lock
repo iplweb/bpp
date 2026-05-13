@@ -256,6 +256,7 @@ dependencies = [
     { name = "django-cacheops", marker = "platform_python_implementation != 'PyPy'" },
     { name = "django-celery-email", marker = "platform_python_implementation != 'PyPy'" },
     { name = "django-celery-results", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "django-channels-broadcast", marker = "platform_python_implementation != 'PyPy'" },
     { name = "django-classy-tags", marker = "platform_python_implementation != 'PyPy'" },
     { name = "django-columns", marker = "platform_python_implementation != 'PyPy'" },
     { name = "django-compressor", marker = "platform_python_implementation != 'PyPy'" },
@@ -429,6 +430,7 @@ requires-dist = [
     { name = "django-cacheops", specifier = ">=7.2,<8" },
     { name = "django-celery-email", specifier = ">=3.0.0" },
     { name = "django-celery-results", specifier = "==2.6.0" },
+    { name = "django-channels-broadcast", specifier = ">=0.2.0" },
     { name = "django-classy-tags", specifier = "==4.1.0" },
     { name = "django-columns", specifier = "==0.1.0" },
     { name = "django-compressor", specifier = "==4.6.0" },
@@ -1529,6 +1531,21 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/a6/b5/9966c28e31014c228305e09d48b19b35522a8f941fe5af5f81f40dc8fa80/django_celery_results-2.6.0.tar.gz", hash = "sha256:9abcd836ae6b61063779244d8887a88fe80bbfaba143df36d3cb07034671277c", size = 83985, upload-time = "2025-04-10T08:23:52.677Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/2c/da/70f0f3c5364735344c4bc89e53413bcaae95b4fc1de4e98a7a3b9fb70c88/django_celery_results-2.6.0-py3-none-any.whl", hash = "sha256:b9ccdca2695b98c7cbbb8dea742311ba9a92773d71d7b4944a676e69a7df1c73", size = 38351, upload-time = "2025-04-10T08:23:49.965Z" },
+]
+
+[[package]]
+name = "django-channels-broadcast"
+version = "0.2.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "asgiref", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "channels", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "django", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "nest-asyncio", marker = "platform_python_implementation != 'PyPy'" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/c7/5c/feb9208d8f0b8301835bbed481979ddee3895dd17869c6b6fa806601cb5d/django_channels_broadcast-0.2.0.tar.gz", hash = "sha256:57894ec2efe4f50977d297d88d3122d99fe4b62b6344190e682560e1c72dda1d", size = 70372, upload-time = "2026-05-13T17:07:31.794Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/20/e5/e45b643695a701e2ab4ed150006fce887d96e3e725baa2706d81804ca21c/django_channels_broadcast-0.2.0-py3-none-any.whl", hash = "sha256:a791d06d9c3afc6d6626c48ce5b2afa2b2db97d58c1b5c2c7dc8f24ad9b44828", size = 43997, upload-time = "2026-05-13T17:07:33.19Z" },
 ]
 
 [[package]]

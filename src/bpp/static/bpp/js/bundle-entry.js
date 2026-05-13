@@ -37,7 +37,7 @@ select2(window.jQuery);
 window.jQuery.fn.select2.defaults.set('language', window.select2PlLanguage);
 
 // ===== 7. MUSTACHE + TONE (for notifications) =====
-import * as Mustache from '../../../../notifications/static/notifications/js/mustache.js';
+import * as Mustache from '../../../../../.venv/lib/python/site-packages/channels_broadcast/static/channels_broadcast/js/mustache.js';
 window.Mustache = Mustache;
 
 import * as Tone from 'tone';
@@ -60,7 +60,7 @@ import './jsi18n-pl.js';
 // ===== 10. BPP APPLICATION CODE =====
 import './bpp.js';
 import './form-handlers.js';
-import '../../../../notifications/static/notifications/js/notifications.js';
+import '../../../../../.venv/lib/python/site-packages/channels_broadcast/static/channels_broadcast/js/notifications.js';
 
 // ===== 11. GLOBAL EXPORTS =====
 // NOTE: django-autocomplete-light's 'yl' namespace is patched via sed
