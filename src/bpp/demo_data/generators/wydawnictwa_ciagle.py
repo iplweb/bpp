@@ -6,12 +6,15 @@ import random
 from collections.abc import Iterable
 from dataclasses import dataclass
 
+from bpp.demo_data.generators._publikacje_common import (
+    autor_jednostka_mapping,
+    make_doi,
+    make_tytul,
+)
 from bpp.demo_data.manifest import Manifest
-from bpp.demo_data.names import CONTEXTS, SUBJECTS, TOPICS, TYTULY_TEMPLATES
 from bpp.demo_data.progress import make_progress
 from bpp.models import (
     Autor,
-    Autor_Jednostka,
     Charakter_Formalny,
     Jezyk,
     Status_Korekty,
@@ -21,21 +24,6 @@ from bpp.models import (
     Wydawnictwo_Ciagle_Autor,
     Zrodlo,
 )
-
-
-def _tytul(rng: random.Random, idx: int) -> str:
-    template = rng.choice(TYTULY_TEMPLATES)
-    body = template.format(
-        topic=rng.choice(TOPICS),
-        subject=rng.choice(SUBJECTS),
-        context=rng.choice(CONTEXTS),
-    )
-    return f"Demo — {body} (nr {idx})"
-
-
-def _doi(rng: random.Random, rok: int, idx: int) -> str:
-    prefix4 = rng.randint(1000, 9999)
-    return f"10.{prefix4}/demo.{rok}.{idx}"
 
 
 def _maybe_openaccess(rng: random.Random) -> dict:
@@ -104,14 +92,14 @@ def _build_praca(
     s: _Slowniki,
 ) -> Wydawnictwo_Ciagle:
     return Wydawnictwo_Ciagle(
-        tytul_oryginalny=_tytul(rng, idx),
+        tytul_oryginalny=make_tytul(rng, idx),
         rok=rok,
         charakter_formalny=rng.choice(s.charaktery),
         typ_kbn=rng.choice(s.typy_kbn) if s.typy_kbn else None,
         jezyk=rng.choice(s.jezyki) if s.jezyki else None,
         status_korekty=rng.choice(s.statusy) if s.statusy else None,
         zrodlo=rng.choice(zrodla),
-        doi=_doi(rng, rok, idx),
+        doi=make_doi(rng, rok, idx),
         punkty_kbn=rng.randint(5, 200),
         **_maybe_openaccess(rng),
     )
@@ -144,18 +132,6 @@ def _build_powiazania(
     return powiazania
 
 
-def _autor_jednostka_mapping(autorzy: list[Autor]) -> dict[int, int]:
-    """Mapping autor_id -> jednostka_id z Autor_Jednostka.
-
-    Wydawnictwo_Ciagle_Autor.jednostka jest NOT NULL (BazaModeluOdpowiedzialnosciAutorow
-    — CASCADE FK bez null=True). Pre-fetchujemy mapping dla wszystkich autorow."""
-    return dict(
-        Autor_Jednostka.objects.filter(
-            autor_id__in=[a.pk for a in autorzy]
-        ).values_list("autor_id", "jednostka_id")
-    )
-
-
 def create_wc(
     *,
     n: int,
@@ -180,7 +156,7 @@ def create_wc(
         raise ValueError("Brak lat — pusty zakres.")
 
     s = _load_slowniki()
-    autor_to_jednostka = _autor_jednostka_mapping(autorzy)
+    autor_to_jednostka = autor_jednostka_mapping(autorzy)
     autorzy_z_jednostka = [a for a in autorzy if a.pk in autor_to_jednostka]
     if not autorzy_z_jednostka:
         raise ValueError(
