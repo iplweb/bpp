@@ -186,7 +186,7 @@ def run_create(opts: CreateOptions, *, stdin=None, stdout=None):
         f"\nUWAGA: bulk_create pomija sygnaly post_save, wiec "
         f"denormalizowane\npola (opis_bibliograficzny_cache, "
         f"slowa_kluczowe_z_autorow_cache)\nsa puste. Zeby je wypelnic, "
-        f"uruchom: uv run python src/manage.py denorm_rebuild\n"
+        f"uruchom: uv run python src/manage.py denorm_flush\n"
     )
 
 

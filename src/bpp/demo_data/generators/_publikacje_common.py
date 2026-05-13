@@ -59,7 +59,7 @@ def apply_denorm_pre_save_cache(obj, *, tytul: str, kind: str, idx: int) -> None
 
     Wartosci to placeholdery (puste tekst/listy, slug z disambiguatorem
     `kind-idx`). Po `create_demo_data` user powinien uruchomic
-    `manage.py denorm_rebuild` zeby wypelnic cache prawdziwymi wartosciami
+    `manage.py denorm_flush` zeby wypelnic cache prawdziwymi wartosciami
     (juz sugerowane w stdout banner).
 
     `kind` ('wc'/'wz') + `idx` (unique w obrebie generation run) gwarantuja
