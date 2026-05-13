@@ -92,7 +92,8 @@ prepare-developer-machine-macos: ## Zainstaluj zależności systemowe na macOS (
 		echo ""; \
 		exit 1; \
 	fi
-	brew install cairo pango gdk-pixbuf libffi gobject-introspection gtk+3
+	brew install cairo pango gdk-pixbuf libffi gobject-introspection gtk+3 node yarn
+	npm install -g grunt-cli
 	uv sync --frozen --no-install-project --all-extras
 	@ZPROFILE="$$HOME/.zprofile"; \
 	MARKER='# bpp: weasyprint dlopen (Homebrew libs on Apple Silicon)'; \
@@ -108,9 +109,10 @@ prepare-developer-machine-macos: ## Zainstaluj zależności systemowe na macOS (
 
 prepare-developer-machine-linux: ## Zainstaluj zależności systemowe na Linuksie (apt + uv sync + playwright)
 	sudo apt update
-	sudo apt install -y yarnpkg python3-dev libpq-dev \
+	sudo apt install -y yarnpkg nodejs npm python3-dev libpq-dev \
 		libcairo2-dev libpango1.0-dev libgdk-pixbuf2.0-dev libffi-dev \
 		libgirepository1.0-dev libgtk-3-dev
+	sudo npm install -g grunt-cli
 	uv sync --frozen --no-install-project --all-extras
 	$(MAKE) playwright-install
 

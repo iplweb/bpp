@@ -159,8 +159,17 @@ PYTEST_TESTCONTAINERS_REUSE=1 uv run pytest
 
 ### Skrót: `make prepare-developer-machine`
 
-Krok 2 w całości (zależności systemowe + `uv sync --all-extras` +
-przeglądarki Playwright) automatyzuje cel:
+End-to-end od świeżego klona do uruchomionych testów:
+
+```bash
+make prepare-developer-machine    # systemowe libki + uv sync + playwright
+make assets                       # yarn install + grunt build + compilemessages
+uv run pytest -n auto             # testy równolegle (pytest-xdist)
+```
+
+`make prepare-developer-machine` zastępuje **krok 2** powyżej (systemowe
+libki + `uv sync --all-extras` + przeglądarki Playwright) i auto-detektuje
+system; **nie woła `make assets`** — frontend trzeba zbudować osobno:
 
 ```bash
 make prepare-developer-machine            # auto-detekcja macOS/Linux
@@ -168,12 +177,33 @@ make prepare-developer-machine-linux      # wymuś wariant linuksowy
 make prepare-developer-machine-macos      # wymuś wariant macOS
 ```
 
-Wariant linuksowy instaluje przez `apt` pakiety `yarnpkg`, `python3-dev`,
-`libpq-dev`, `libcairo2-dev`, `libpango1.0-dev`, `libgdk-pixbuf2.0-dev`,
-`libffi-dev`, `libgirepository1.0-dev`, `libgtk-3-dev`, woła
-`uv sync --all-extras`, a na końcu `uv run playwright install --with-deps`
-(pobiera przeglądarki + doinstalowuje systemowe libki, których wymaga
-chromium — wymaga sudo).
+Wariant **macOS** (Apple Silicon, Homebrew):
+
+- przez `brew`: `cairo`, `pango`, `gdk-pixbuf`, `libffi`,
+  `gobject-introspection`, `gtk+3`, `node`, `yarn`
+- przez `npm`: globalnie `grunt-cli`
+- dopisuje `DYLD_FALLBACK_LIBRARY_PATH=/opt/homebrew/lib` do
+  `~/.zprofile` (dlopen weasyprint potrzebuje libgobject z brew)
+- na końcu `uv sync --frozen --no-install-project --all-extras` +
+  `uv run playwright install` (na macOS `install-deps` to no-op —
+  systemowe libki dostarcza brew)
+
+Wariant **linuksowy** (Debian/Ubuntu, `apt`):
+
+- przez `sudo apt`: `yarnpkg`, `nodejs`, `npm`, `python3-dev`,
+  `libpq-dev`, `libcairo2-dev`, `libpango1.0-dev`,
+  `libgdk-pixbuf2.0-dev`, `libffi-dev`, `libgirepository1.0-dev`,
+  `libgtk-3-dev`
+- przez `sudo npm`: globalnie `grunt-cli`
+- na końcu `uv sync --frozen --no-install-project --all-extras` +
+  `uv run playwright install --with-deps` (pobiera przeglądarki +
+  doinstalowuje systemowe libki chromium — wymaga sudo)
+
+`pytest -n auto` (`pytest-xdist`) rozdziela testy między workery; każdy
+worker dostaje **własny** testcontainer PostgreSQL/Redis na losowym
+porcie, więc nie ma kolizji. Pierwszy run i tak pobiera obrazy Dockera
+(`iplweb/bpp_dbserver`, `redis`) — kolejne biegi z `PYTEST_TESTCONTAINERS_REUSE=1`
+są znacznie szybsze.
 
 Jeżeli przeglądarki Playwright trzeba zainstalować osobno (np. po
 samodzielnym `uv sync`), bez resetowania reszty środowiska:
