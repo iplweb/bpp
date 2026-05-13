@@ -123,6 +123,7 @@ dependencies = [
     # (testy/dev/baseline_rebuild). Sam runtime nic nie kosztuje gdy PG_BASELINE
     # niezdefiniowane (no-op AppConfig.ready).
     "django-pg-baseline>=0.3.0",
+    "django-site-blog>=0.1.0",
 ]
 
 [project.optional-dependencies]

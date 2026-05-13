@@ -85,7 +85,7 @@ RAPORTY_MENU = [
 
 WEB_MENU = [
     ("Serwisy", "/admin/sites/site/"),
-    ("Miniblog", "/admin/miniblog/article/"),
+    ("Blog", "/admin/siteblog/article/"),
     ("Favicon", "/admin/favicon/"),
     ("Szablony", "/admin/dbtemplates/template/"),
     ("Powiązania szablonów dla opisu", "/admin/bpp/szablondlaopisubibliograficznego/"),

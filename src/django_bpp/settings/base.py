@@ -415,6 +415,7 @@ INSTALLED_APPS = [
     "webmaster_verification",
     "favicon",
     "miniblog",
+    "siteblog",
     "import_dyscyplin",
     "mptt",
     "rest_framework",
@@ -1167,6 +1168,11 @@ SILENCED_SYSTEM_CHECKS.append("admin.E117")
 # ``bpp.0416_rename_dynamic_columns_to_admin``.
 MIGRATION_MODULES = {
     "dynamic_admin_columns": "bpp.migration_overrides.dynamic_admin_columns",
+    # django-site-blog 0.1.0 ships an 0001_initial generated against
+    # model-utils 4.x (SplitField(no_excerpt_field=True)) which raises
+    # TypeError on model-utils 5. We own the schema here until siteblog
+    # 0.1.1+ ships a 5.x-compatible migration.
+    "siteblog": "django_bpp.siteblog_migrations",
 }
 
 DYNAMIC_ADMIN_COLUMNS_ALLOWED_IMPORT_PATHS = [

@@ -84,7 +84,7 @@ from deduplikator_autorow.models import IgnoredScientist, LogScalania, NotADupli
 from ewaluacja_common.models import Rodzaj_Autora
 from ewaluacja_liczba_n.models import IloscUdzialowDlaAutoraZaRok, LiczbaNDlaUczelni
 from import_polon.models import ImportPolonOverride
-from miniblog.models import Article
+from siteblog.models import Article
 from pbn_api.models import (
     Conference,
     Discipline,

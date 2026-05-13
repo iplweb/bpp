@@ -294,6 +294,7 @@ dependencies = [
     { name = "django-reversion-compare", marker = "platform_python_implementation != 'PyPy'" },
     { name = "django-sendfile2", marker = "platform_python_implementation != 'PyPy'" },
     { name = "django-session-security", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "django-site-blog", marker = "platform_python_implementation != 'PyPy'" },
     { name = "django-soft-delete", marker = "platform_python_implementation != 'PyPy'" },
     { name = "django-static-sitemaps", marker = "platform_python_implementation != 'PyPy'" },
     { name = "django-tables2", marker = "platform_python_implementation != 'PyPy'" },
@@ -474,6 +475,7 @@ requires-dist = [
     { name = "django-reversion-compare", specifier = ">=0.19.2" },
     { name = "django-sendfile2", specifier = ">=0.7.2" },
     { name = "django-session-security", specifier = ">=2.6.8" },
+    { name = "django-site-blog", specifier = ">=0.1.0" },
     { name = "django-soft-delete", specifier = ">=1.0.23" },
     { name = "django-static-sitemaps", specifier = ">=5.0.0" },
     { name = "django-tables2", specifier = ">=3.0.0,<3.1" },
@@ -2066,6 +2068,19 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/3a/7a/69a922ce628b7d91acb48101170741662f641cf7810d4a6273e3e37c702b/django_session_security-2.6.8.tar.gz", hash = "sha256:f8949d021eee5e237385413a1173bb90c3bd80ce2d56e412a5644608de815109", size = 104281, upload-time = "2026-04-24T14:41:42.034Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/e3/fb/4d39107e662fee72d53cc80d71d5c9304c794d2638724b9e76586f98f3e6/django_session_security-2.6.8-py3-none-any.whl", hash = "sha256:702a7a867a668cb86b02101477954ae2181d8bac99844d70debc35bfbbaa80d9", size = 116094, upload-time = "2026-04-24T14:41:39.79Z" },
+]
+
+[[package]]
+name = "django-site-blog"
+version = "0.1.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "django", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "django-model-utils", marker = "platform_python_implementation != 'PyPy'" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/f2/f7/5ac21529657e22f3bed377b56db4ffbf46c695213fc86092f333d79b9531/django_site_blog-0.1.0.tar.gz", hash = "sha256:e8d7b045fd2515eb0b5cd59b3be41ff368550d1e105ee045b7929deb9831d5ce", size = 10455, upload-time = "2026-05-13T10:30:27.304Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/0b/52/582993f92f77e7745ab7ad1c4781b9fa7ab892ef10680193802d5c2646bd/django_site_blog-0.1.0-py3-none-any.whl", hash = "sha256:0ff59ebbf4aa55343b07bfc85f7de642bab9f1858f39d4ef4aaeb4e05f25fccc", size = 11334, upload-time = "2026-05-13T10:30:28.794Z" },
 ]
 
 [[package]]
