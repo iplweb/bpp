@@ -6,6 +6,8 @@ BPP-side glue.
 """
 
 import pytest
+from django.contrib.auth import get_user_model
+from django.template.loader import get_template
 from django.test import Client
 from django.urls import reverse
 
@@ -134,6 +136,47 @@ def test_uczelnia_setup_not_accessible_when_exists(admin_user, uczelnia):
     # Step is_complete()==True → WizardStepView redirects to '/'.
     assert response.status_code == 302
     assert response.url == "/"
+
+
+@pytest.mark.django_db
+def test_admin_user_template_loaded_from_bpp_override():
+    """INSTALLED_APPS puts bpp_setup_wizard before first_run_wizard so that
+    BPP's own first_run_wizard/admin_user.html (BPP-styled, extends bare.html)
+    wins over the package's vendor-neutral default. Regression guard for
+    accidental reordering."""
+    t = get_template("first_run_wizard/admin_user.html")
+    assert "bpp_setup_wizard" in t.origin.name, (
+        f"loaded from {t.origin.name!r} — expected BPP override "
+        f"in src/bpp_setup_wizard/templates/first_run_wizard/"
+    )
+
+
+@pytest.mark.django_db
+def test_admin_user_page_is_bpp_branded_and_hides_skip_link():
+    """The first-wizard page renders with the BPP wrapper class and the
+    accessibility skip-link from bare.html is suppressed (block override)."""
+    get_user_model().objects.all().delete()
+    response = Client().get(
+        reverse("first_run_wizard:step", kwargs={"name": "admin_user"})
+    )
+    assert response.status_code == 200
+    body = response.content.decode("utf-8")
+    assert "bpp-setup-wizard" in body, "expected BPP-styled wrapper class"
+    assert "Przejdź do głównej zawartości" not in body, (
+        "skip-link from bare.html should be suppressed on wizard pages "
+        "(empty {% block skip_link %}{% endblock %} override)"
+    )
+
+
+@pytest.mark.django_db
+def test_uczelnia_setup_page_hides_skip_link(admin_user):
+    """Same skip-link suppression for the BPP-specific Uczelnia step."""
+    Uczelnia.objects.all().delete()
+    client = Client()
+    client.force_login(admin_user)
+    response = client.get(reverse("first_run_wizard:step", kwargs={"name": "uczelnia"}))
+    assert response.status_code == 200
+    assert "Przejdź do głównej zawartości" not in response.content.decode("utf-8")
 
 
 @pytest.mark.django_db
