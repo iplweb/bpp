@@ -755,7 +755,13 @@ SESSION_SECURITY_EXPIRE_AFTER = env("DJANGO_BPP_SESSION_SECURITY_EXPIRE_AFTER")
 PUNKTUJ_MONOGRAFIE = env("DJANGO_BPP_PUNKTUJ_MONOGRAFIE")
 
 
-# dla django-model-utils SplitField
+# dla django-model-utils SplitField. BPP używa „<!-- tutaj -->” zamiast
+# upstream-owego „<!-- split -->”, więc help_text na siteblog.Article.article_body
+# różni się od tego zaszytego w siteblog/0001_initial. To no-op drift —
+# `makemigrations siteblog` bez argumentów wygeneruje 0002_alter_article_body
+# w site-packages (ALTER TABLE jest no-op, bo help_text nie wpływa na schemat).
+# Plik nigdy nie trafia do git, prod-`migrate` go nie zaaplikuje (nie istnieje
+# w pakiecie). Ignoruj i nie commituj.
 SPLIT_MARKER = "<!-- tutaj -->"
 
 # django-crispy-forms: użyj crispy-forms-foundation
@@ -1168,11 +1174,6 @@ SILENCED_SYSTEM_CHECKS.append("admin.E117")
 # ``bpp.0416_rename_dynamic_columns_to_admin``.
 MIGRATION_MODULES = {
     "dynamic_admin_columns": "bpp.migration_overrides.dynamic_admin_columns",
-    # django-site-blog 0.1.0 ships an 0001_initial generated against
-    # model-utils 4.x (SplitField(no_excerpt_field=True)) which raises
-    # TypeError on model-utils 5. We own the schema here until siteblog
-    # 0.1.1+ ships a 5.x-compatible migration.
-    "siteblog": "django_bpp.siteblog_migrations",
 }
 
 DYNAMIC_ADMIN_COLUMNS_ALLOWED_IMPORT_PATHS = [
