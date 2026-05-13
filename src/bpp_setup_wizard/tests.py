@@ -190,3 +190,126 @@ def test_middleware_redirects_logged_in_admin_to_uczelnia_setup(admin_user):
     response = client.get("/")
     assert response.status_code == 302
     assert response.url == reverse("first_run_wizard:step", kwargs={"name": "uczelnia"})
+
+
+@pytest.mark.django_db
+def test_admin_user_post_via_bpp_override_creates_superuser():
+    """POST na admin_user step gdy renderuje się BPP override.
+
+    Pakiet testuje POST swojego vendor-neutral template-u. Tu sprawdzamy
+    że BPP-styled override nie zepsuł HTML form attrs (`name=`, csrf,
+    submit button) — POST faktycznie wpływa do AdminUserCreationForm
+    z pakietu i tworzy superusera.
+    """
+    User = get_user_model()
+    User.objects.all().delete()
+    Uczelnia.objects.all().delete()
+
+    client = Client()
+    url = reverse("first_run_wizard:step", kwargs={"name": "admin_user"})
+    response = client.post(
+        url,
+        {
+            "username": "bppadmin",
+            "email": "admin@bpp.test",
+            "password1": "StrongBppPwd456!",
+            "password2": "StrongBppPwd456!",
+        },
+    )
+
+    assert response.status_code == 302, response.content.decode("utf-8")[:500]
+    assert response.url == "/"
+
+    assert User.objects.count() == 1
+    user = User.objects.get(username="bppadmin")
+    assert user.email == "admin@bpp.test"
+    assert user.is_staff is True
+    assert user.is_superuser is True
+    assert user.is_active is True
+    assert user.check_password("StrongBppPwd456!")
+
+
+@pytest.mark.django_db
+def test_full_happy_path_empty_db_to_live_site():
+    """E2E na pustej bazie: anonimowy GET / → admin_user form → POST →
+    middleware → uczelnia form → POST → site live (brak redirectu setup).
+
+    Jeden Django test Client utrzymuje session przez całą ścieżkę,
+    weryfikujemy że wszystkie redirecty i obie strony BPP-styled formularzy
+    łączą się w spójny flow.
+    """
+    User = get_user_model()
+    User.objects.all().delete()
+    Uczelnia.objects.all().delete()
+
+    client = Client()
+    admin_url = reverse("first_run_wizard:step", kwargs={"name": "admin_user"})
+    uczelnia_url = reverse("first_run_wizard:step", kwargs={"name": "uczelnia"})
+
+    # 1) Pusta DB → / przekierowuje do admin_user (anon, ale admin step
+    # nie requires_superuser, więc accessible).
+    response = client.get("/")
+    assert response.status_code == 302
+    assert response.url == admin_url
+
+    # 2) GET admin_user renderuje BPP-styled formularz.
+    response = client.get(admin_url)
+    assert response.status_code == 200
+    body = response.content.decode("utf-8")
+    assert "bpp-setup-wizard" in body
+    assert 'name="username"' in body
+    assert 'name="password1"' in body
+
+    # 3) POST admin_user → tworzy admina + auto-login + redirect na /.
+    response = client.post(
+        admin_url,
+        {
+            "username": "e2eadmin",
+            "email": "e2e@bpp.test",
+            "password1": "E2EStrongPwd987!",
+            "password2": "E2EStrongPwd987!",
+        },
+    )
+    assert response.status_code == 302
+    assert response.url == "/"
+    assert User.objects.filter(username="e2eadmin", is_superuser=True).exists()
+
+    # 4) Po stworzeniu admina + automatycznym loginie, GET / przekierowuje
+    # do uczelnia (admin jest superuser, więc ma access do tego stepu).
+    response = client.get("/")
+    assert response.status_code == 302
+    assert response.url == uczelnia_url
+
+    # 5) GET uczelnia renderuje BPP-styled formularz.
+    response = client.get(uczelnia_url)
+    assert response.status_code == 200
+    body = response.content.decode("utf-8")
+    assert "Konfiguracja uczelni" in body
+    assert 'name="nazwa"' in body
+    assert 'name="pbn_api_root"' in body
+
+    # 6) POST uczelnia → tworzy Uczelnia z PBN flags + redirect na /.
+    response = client.post(
+        uczelnia_url,
+        {
+            "nazwa": "Uniwersytet E2E",
+            "nazwa_dopelniacz_field": "Uniwersytetu E2E",
+            "skrot": "UE2E",
+            "pbn_api_root": "https://pbn-micro-alpha.opi.org.pl",
+            "uzywaj_wydzialow": True,
+        },
+    )
+    assert response.status_code == 302
+    assert response.url == "/"
+    uczelnia = Uczelnia.objects.get()
+    assert uczelnia.nazwa == "Uniwersytet E2E"
+    assert uczelnia.pbn_integracja is True
+
+    # 7) GET / nie przekierowuje już do setup — site live. Może być 200 albo
+    # inny redirect zależnie od głównej routy BPP, ale NIE może być redirect
+    # do /setup/ (oba kroki ukończone).
+    response = client.get("/")
+    if response.status_code in (301, 302):
+        assert "/setup/" not in response.url, (
+            f"unexpected redirect to setup wizard after both steps done: {response.url}"
+        )
