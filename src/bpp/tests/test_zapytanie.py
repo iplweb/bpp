@@ -1,11 +1,22 @@
 import pytest
 from django.contrib.auth.models import Group
 from django.urls import reverse
+from djangoql.exceptions import DjangoQLParserError
+from djangoql.parser import DjangoQLParser
 from model_bakery import baker
 
 from bpp.const import GR_WPROWADZANIE_DANYCH
+from bpp.views.zapytanie import EXAMPLES
 
 URL = "bpp:zapytanie"
+
+
+def _all_examples():
+    """Splaszcza EXAMPLES do listy (level, model, desc, query)."""
+    for level in EXAMPLES:
+        for group in level["groups"]:
+            for desc, query in group["items"]:
+                yield (level["level"], group["model"], desc, query)
 
 
 @pytest.fixture
@@ -154,3 +165,51 @@ def test_zapytanie_default_model_is_rekord(superuser_client):
     assert response.status_code == 200
     form = response.context["form"]
     assert form.fields["model"].initial == "rekord"
+
+
+@pytest.mark.parametrize(
+    "level,model,desc,query",
+    list(_all_examples()),
+    ids=lambda v: str(v)[:50] if isinstance(v, str) else str(v),
+)
+def test_zapytanie_examples_are_valid_djangoql(level, model, desc, query):
+    """Kazdy przyklad w EXAMPLES MUSI byc poprawnym DjangoQL.
+
+    DjangoQL grammar (parser.py) nie wspiera unary `not (expr)`; do negacji
+    uzywaj `!=`, `!~`, `not in`, `not startswith`, `not endswith`.
+    Ten test parsuje skladniowo (bez resolvowania pol — to dziedzina schemy).
+    """
+    parser = DjangoQLParser()
+    try:
+        parser.parse(query)
+    except DjangoQLParserError as exc:
+        pytest.fail(
+            f"Bledna skladnia DjangoQL w przykladzie "
+            f"(level={level}, model={model}, desc={desc!r}): "
+            f"{query!r}\n -> {exc}"
+        )
+
+
+def test_zapytanie_examples_cover_both_models():
+    """Sanity check: kazdy poziom ma przyklady dla obu modeli."""
+    for level in EXAMPLES:
+        models = {g["model"] for g in level["groups"]}
+        assert models == {"rekord", "autor"}, (
+            f"Level {level['level']} ma niekompletne pokrycie: {models}"
+        )
+        for group in level["groups"]:
+            assert group["items"], (
+                f"Level {level['level']} {group['model']}: brak przykladow"
+            )
+
+
+def test_zapytanie_examples_no_unary_not():
+    """DjangoQL NIE WSPIERA unary `not (expr)` — wykryjmy regresje."""
+    import re
+
+    pattern = re.compile(r"\bnot\s*\(")
+    for level, model, desc, query in _all_examples():
+        assert not pattern.search(query), (
+            f"Unary 'not (...)' znaleziono w przykladzie "
+            f"(level={level}, model={model}, desc={desc!r}): {query!r}"
+        )

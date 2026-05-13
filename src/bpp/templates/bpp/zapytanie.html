@@ -142,6 +142,63 @@
             text-align: right;
             font-variant-numeric: tabular-nums;
         }
+        /* Klikalne przyklady w pomocy */
+        .zapytanie-help-sublevel { margin-top: 0.5rem; }
+        .zapytanie-help-sublevel summary {
+            cursor: pointer;
+            padding: 0.3rem 0;
+            font-size: 0.95rem;
+        }
+        .zapytanie-help-sublevel ul.examples {
+            list-style: none;
+            margin-left: 0;
+            padding-left: 0;
+        }
+        .zapytanie-help-sublevel ul.examples > li {
+            margin-bottom: 0.7rem;
+        }
+        .zapytanie-help-sublevel ul.examples > li > em {
+            color: #475569;
+            font-size: 0.85rem;
+        }
+        .zapytanie-help-sublevel ul.examples code {
+            display: block;
+            margin-top: 0.25rem;
+            padding: 0.5rem 0.7rem;
+            font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, monospace;
+            font-size: 0.85rem;
+            background: #f1f5f9;
+            border: 1px solid #cbd5e1;
+            border-radius: 4px;
+            color: #0f172a;
+            cursor: pointer;
+            white-space: pre-wrap;
+            word-break: break-word;
+            line-height: 1.55;
+            transition: background 0.12s, border-color 0.12s, transform 0.05s;
+            user-select: text;
+        }
+        .zapytanie-help-sublevel ul.examples code:hover {
+            background: #e0f2fe;
+            border-color: #38bdf8;
+        }
+        .zapytanie-help-sublevel ul.examples code:active {
+            transform: scale(0.99);
+        }
+        .zapytanie-help-sublevel ul.examples code:focus-visible {
+            outline: 2px solid #1779ba;
+            outline-offset: 2px;
+        }
+        /* Klikalny wiersz tabeli wynikow */
+        tr[data-href] { cursor: pointer; }
+        tr[data-href]:hover { background: #f8fafc; }
+        tr[data-href] a, tr[data-href] button { cursor: auto; }
+        .rekord-id-cell {
+            font-family: 'SF Mono', Monaco, monospace;
+            font-size: 0.85rem;
+            color: #64748b;
+            white-space: nowrap;
+        }
     </style>
 {% endblock %}
 
@@ -222,231 +279,61 @@
                         <tr><td>in, not in</td><td>nalezy do listy: <code>rok in (2023, 2024)</code></td></tr>
                     </tbody>
                 </table>
-                <p style="margin-top: 0.75rem;"><strong>Przyklady &mdash; Rekord</strong> (od podstaw do mocniejszych):</p>
-                <ul>
-                    <li>
-                        <em>Po slowie w tytule:</em>
-                        <code>tytul_oryginalny ~ "nowotwor"</code>
-                    </li>
-                    <li>
-                        <em>Wysoko punktowane prace ostatnich trzech lat:</em>
-                        <code>rok &gt;= 2022 and punkty_kbn &gt;= 100</code>
-                    </li>
-                    <li>
-                        <em>Wysoki Impact Factor z zakresu lat:</em>
-                        <code>impact_factor &gt; 5 and rok in (2022, 2023, 2024)</code>
-                    </li>
-                    <li>
-                        <em>Brak DOI mimo wysokiej punktacji (do uzupelnienia):</em>
-                        <code>punkty_kbn &gt;= 70 and doi = ""</code>
-                    </li>
-                    <li>
-                        <em>Czesto cytowane, ale nierecenzowane:</em>
-                        <code>liczba_cytowan &gt; 10 and recenzowana = False</code>
-                    </li>
-                    <li>
-                        <em>Konkretny charakter formalny + zakres punktow:</em>
-                        <code>charakter_formalny.skrot = "AC" and punkty_kbn &gt;= 40 and punkty_kbn &lt;= 100</code>
-                    </li>
-                    <li>
-                        <em>Wieloautorskie prace w okresie ewaluacyjnym:</em>
-                        <code>liczba_autorow &gt; 20 and rok &gt;= 2022 and rok &lt;= 2025</code>
-                    </li>
-                    <li>
-                        <em>Konkretne zrodlo + lata:</em>
-                        <code>zrodlo.nazwa ~ "Nature" and rok &gt;= 2020</code>
-                    </li>
-                    <li>
-                        <em>Polskojezyczne artykuly:</em>
-                        <code>jezyk.skrot = "pol" and charakter_formalny.skrot = "AC"</code>
-                    </li>
-                    <li>
-                        <em>Open Access &mdash; rekordy z przypisanym trybem dostepu:</em>
-                        <code>openaccess_tryb_dostepu != None and rok &gt;= 2023</code>
-                    </li>
-                    <li>
-                        <em>Szukanie po slowach kluczowych w tytule (combo OR):</em>
-                        <code>tytul_oryginalny ~ "COVID" or tytul_oryginalny ~ "SARS-CoV"</code>
-                    </li>
-                    <li>
-                        <em>Rekordy bez WWW i bez DOI (do redakcji):</em>
-                        <code>www = "" and doi = "" and rok &gt;= 2023</code>
-                    </li>
-                </ul>
-                <p><strong>Przyklady &mdash; Autor:</strong></p>
-                <ul>
-                    <li>
-                        <em>Po fragmencie nazwiska:</em>
-                        <code>nazwisko ~ "Kowal"</code>
-                    </li>
-                    <li>
-                        <em>Profesorowie z wpisanym ORCID:</em>
-                        <code>tytul.skrot = "prof." and orcid != ""</code>
-                    </li>
-                    <li>
-                        <em>Maja ORCID ale brak go w PBN:</em>
-                        <code>orcid != "" and orcid_w_pbn = False</code>
-                    </li>
-                    <li>
-                        <em>Z konkretnej jednostki (LIKE po nazwie):</em>
-                        <code>aktualna_jednostka.nazwa ~ "Medycyny" and tytul.skrot startswith "dr"</code>
-                    </li>
-                    <li>
-                        <em>Brak emaila, ale jest ORCID (mozna spytac o adres):</em>
-                        <code>email = "" and orcid != ""</code>
-                    </li>
-                    <li>
-                        <em>Konkretna jednostka po skrocie + filtr po nazwisku:</em>
-                        <code>nazwisko startswith "Now" and aktualna_jednostka.skrot = "II WL"</code>
-                    </li>
-                    <li>
-                        <em>Doktoraty + asystenci (zbior tytulow):</em>
-                        <code>tytul.skrot in ("dr", "dr hab.", "mgr")</code>
-                    </li>
-                </ul>
                 <p style="margin-top: 1rem;">
-                    <strong>Skomplikowane zapytania &mdash; Rekord (power-user):</strong>
+                    <strong>Przyklady &mdash; rozwin wg poziomu trudnosci.
+                    Kliknij wybrane zapytanie, zeby je wstawic do edytora.</strong>
                 </p>
-                <ol>
-                    <li>
-                        <em>Audyt ewaluacyjny &mdash; tylko recenzowane, z DOI,
-                        w okresie 2022&ndash;2025, z minimum 70 punktow:</em>
-                        <code>recenzowana = True and doi != "" and rok in (2022, 2023, 2024, 2025) and punkty_kbn &gt;= 70</code>
-                    </li>
-                    <li>
-                        <em>Combo z grupowaniem (rok OR + charakter OR) &times;
-                        punktacja:</em>
-                        <code>(rok = 2024 or rok = 2025) and (charakter_formalny.skrot = "AC" or charakter_formalny.skrot = "AOR") and punkty_kbn &gt;= 100</code>
-                    </li>
-                    <li>
-                        <em>Negacja: wszystko poza artykulami z czasopism,
-                        z minimum IF=3, od 2023:</em>
-                        <code>not (charakter_formalny.skrot = "AC") and rok &gt;= 2023 and impact_factor &gt; 3</code>
-                    </li>
-                    <li>
-                        <em>Wieloklauzulowo: tytul (covid/sars) &times; jezyk
-                        (en/pl) &times; min 3 autorow &times; konkretny rok:</em>
-                        <code>(tytul_oryginalny ~ "COVID" or tytul_oryginalny ~ "SARS") and jezyk.skrot in ("ang", "pol") and liczba_autorow &gt;= 3 and rok = 2023</code>
-                    </li>
-                    <li>
-                        <em>Wydawcy Elsevier/Springer/Wiley w okresie ewaluacji
-                        z konkretnym przedzialem punktow:</em>
-                        <code>(wydawca.nazwa ~ "Elsevier" or wydawca.nazwa ~ "Springer" or wydawca.nazwa ~ "Wiley") and rok &gt;= 2022 and punkty_kbn &gt;= 70 and punkty_kbn &lt;= 200</code>
-                    </li>
-                    <li>
-                        <em>Hot &amp; trending: cytowane &gt;50 razy
-                        w&nbsp;publikacjach z&nbsp;ostatnich 5 lat z&nbsp;IF
-                        &gt; 5:</em>
-                        <code>liczba_cytowan &gt; 50 and rok &gt;= 2020 and impact_factor &gt; 5</code>
-                    </li>
-                    <li>
-                        <em>Audyt jakosci danych: artykuly z 2024+ bez DOI,
-                        bez WWW, recenzowane &mdash; wymagaja redakcji:</em>
-                        <code>charakter_formalny.skrot = "AC" and rok &gt;= 2024 and doi = "" and www = "" and recenzowana = True</code>
-                    </li>
-                    <li>
-                        <em>Top-tier prace: Nature/Cell/Science/Lancet po 2020,
-                        wszystkie OA:</em>
-                        <code>zrodlo.nazwa in ("Nature", "Cell", "Science", "The Lancet") and rok &gt; 2020 and openaccess_tryb_dostepu != None</code>
-                    </li>
-                    <li>
-                        <em>Prace z polskim wydawca + jezyk = polski +
-                        konkretny zakres lat:</em>
-                        <code>wydawca.nazwa ~ "PWN" and jezyk.skrot = "pol" and rok in (2022, 2023, 2024)</code>
-                    </li>
-                    <li>
-                        <em>Rekordy zmienione od poczatku biezacego roku
-                        z adnotacjami redaktora:</em>
-                        <code>ostatnio_zmieniony &gt;= "2025-01-01" and adnotacje != ""</code>
-                    </li>
-                    <li>
-                        <em>Granica IF + zakres punktow + minimum
-                        cytowan &mdash; do rankingu jakosciowego:</em>
-                        <code>impact_factor &gt;= 5 and impact_factor &lt;= 10 and punkty_kbn &gt;= 100 and liczba_cytowan &gt;= 5</code>
-                    </li>
-                    <li>
-                        <em>Konkretny typ KBN + waski przedzial punktow +
-                        slowo w tytule:</em>
-                        <code>typ_kbn.skrot = "PO" and punkty_kbn &gt;= 40 and punkty_kbn &lt;= 70 and (tytul_oryginalny ~ "neuro" or tytul_oryginalny ~ "kardio")</code>
-                    </li>
-                    <li>
-                        <em>Powtorzenia DOI (zapytanie do weryfikacji
-                        manualnej, lista DOI):</em>
-                        <code>doi in ("10.1038/s41586-024-XXXXX", "10.1126/science.YYYYY")</code>
-                    </li>
-                </ol>
 
-                <p style="margin-top: 1rem;">
-                    <strong>Skomplikowane zapytania &mdash; Autor (power-user):</strong>
-                </p>
-                <ol>
-                    <li>
-                        <em>Profesorowie z konkretnej jednostki, z wpisanym
-                        ORCID-em, ale nie potwierdzonym w PBN:</em>
-                        <code>tytul.skrot in ("prof.", "prof. dr hab.") and aktualna_jednostka.skrot startswith "I WL" and orcid != "" and orcid_w_pbn = False</code>
-                    </li>
-                    <li>
-                        <em>Dwie jednostki + tytul dr/dr hab. + jest orcid:</em>
-                        <code>(aktualna_jednostka.skrot = "II WL" or aktualna_jednostka.skrot = "WLS") and tytul.skrot startswith "dr" and orcid != ""</code>
-                    </li>
-                    <li>
-                        <em>Brak emaila ale jest ORCID &mdash; do uzupelnienia
-                        kontaktu z poziomu administracji:</em>
-                        <code>email = "" and orcid != "" and tytul.skrot in ("dr", "dr hab.", "prof.")</code>
-                    </li>
-                    <li>
-                        <em>Format ORCID nieprawidlowy (nie zaczyna sie od
-                        '0000-'):</em>
-                        <code>orcid != "" and not (orcid startswith "0000-")</code>
-                    </li>
-                    <li>
-                        <em>Wszystkie z aktualna jednostka, oprocz mgr/mgr inz:</em>
-                        <code>aktualna_jednostka != None and not (tytul.skrot in ("mgr", "mgr inz."))</code>
-                    </li>
-                    <li>
-                        <em>Wyszukiwanie po fragmentach imienia i nazwiska
-                        (Jan Kowalski / Janusz Kowalik / ...):</em>
-                        <code>(imiona ~ "Jan" or imiona startswith "Janusz") and nazwisko startswith "Kowal"</code>
-                    </li>
-                </ol>
+                {% for level in examples %}
+                    <details class="zapytanie-help-sublevel">
+                        <summary>
+                            <strong>{{ level.level }}. {{ level.title }}</strong>
+                            &mdash; {{ level.subtitle }}
+                        </summary>
+                        {% for group in level.groups %}
+                            <p><em>{{ group.label }}:</em></p>
+                            <ul class="examples">
+                                {% for desc, query in group.items %}
+                                    <li>
+                                        {% if desc %}<em>{{ desc }}:</em>{% endif %}
+                                        <code data-model="{{ group.model }}"
+                                              role="button"
+                                              tabindex="0"
+                                              title="Kliknij, aby wstawic do zapytania (model: {{ group.model }})">{{ query }}</code>
+                                    </li>
+                                {% endfor %}
+                            </ul>
+                        {% endfor %}
+                    </details>
+                {% endfor %}
 
-                <p style="margin-top: 0.75rem;">
-                    <em>Wskazowki dla power-userow:</em>
-                </p>
-                <ul>
-                    <li>
-                        <strong>Grupowanie</strong> &mdash; uzywaj nawiasow
-                        do logicznych grup: <code>(A or B) and C</code>.
-                    </li>
-                    <li>
-                        <strong>Negacja</strong> &mdash; <code>not</code> przed
-                        wyrazeniem: <code>not (charakter_formalny.skrot = "AC")</code>.
-                    </li>
-                    <li>
-                        <strong>Pola relacji</strong> &mdash; po kropce:
-                        <code>charakter_formalny.skrot</code>,
-                        <code>zrodlo.wydawca.nazwa</code> (zagniezdzanie OK).
-                    </li>
-                    <li>
-                        <strong>Listy wartosci</strong> &mdash;
-                        <code>in (...)</code> dzieli sie przecinkami,
-                        oszczedza wielu <code>or</code>.
-                    </li>
-                    <li>
-                        <strong>Daty/datetime</strong> &mdash;
-                        ISO-string w cudzyslowie: <code>"2025-01-01"</code>.
-                    </li>
-                    <li>
-                        <strong>Pusty FK</strong> &mdash;
-                        <code>pole != None</code> / <code>pole = None</code>;
-                        dla stringa <code>pole = ""</code>.
-                    </li>
-                    <li>
-                        <strong>Granice zakresow</strong> &mdash; brak operatora
-                        <code>between</code>, zlozyć z
-                        <code>&gt;= X and &lt;= Y</code>.
-                    </li>
-                </ul>
+                <details class="zapytanie-help-sublevel">
+                    <summary><strong>Wskazowki dla power-userow</strong></summary>
+                    <ul>
+                        <li>
+                            <strong>Grupowanie</strong> &mdash; nawiasy do logicznych grup: <code>(A or B) and C</code>.
+                        </li>
+                        <li>
+                            <strong>Negacja</strong> &mdash; <code>not</code> przed wyrazeniem: <code>not (charakter_formalny.skrot = "AC")</code>.
+                        </li>
+                        <li>
+                            <strong>Pola relacji</strong> &mdash; po kropce, mozna zagniezdzac: <code>charakter_formalny.skrot</code>, <code>zrodlo.wydawca.nazwa</code>.
+                        </li>
+                        <li>
+                            <strong>Listy wartosci</strong> &mdash; <code>in (...)</code> oszczedza wielu <code>or</code>.
+                        </li>
+                        <li>
+                            <strong>Daty / datetime</strong> &mdash; ISO-string w cudzyslowie: <code>"2025-01-01"</code>.
+                        </li>
+                        <li>
+                            <strong>Pusty FK</strong> &mdash; <code>pole != None</code> / <code>pole = None</code>; dla stringa <code>pole = ""</code>.
+                        </li>
+                        <li>
+                            <strong>Granice zakresow</strong> &mdash; brak <code>between</code>, zlozyc z <code>&gt;= X and &lt;= Y</code>.
+                        </li>
+                    </ul>
+                </details>
+
             </details>
 
             <p style="margin-top: 1rem;">
@@ -508,33 +395,38 @@
                 <table class="hover stack">
                     <thead>
                         <tr>
-                            <th>ID</th>
                             <th>Reprezentacja</th>
-                            <th>Akcje</th>
+                            <th style="width: 6rem;">ID</th>
+                            <th style="width: 9rem;">Akcje</th>
                         </tr>
                     </thead>
                     <tbody>
                         {% for obj in results %}
-                            <tr>
-                                <td>{{ obj.pk }}</td>
-                                <td>
-                                    {% if model_key == "rekord" %}
-                                        {{ obj.opis_bibliograficzny_cache|safe }}
-                                    {% else %}
-                                        {{ obj }}
-                                    {% endif %}
-                                </td>
-                                <td>
-                                    {% if model_key == "autor" %}
+                            {% if model_key == "rekord" %}
+                                <tr data-href="{{ obj.get_absolute_url }}">
+                                    <td>{{ obj.opis_bibliograficzny_cache|safe }}</td>
+                                    <td class="rekord-id-cell">{{ obj.pk.0 }}-{{ obj.pk.1 }}</td>
+                                    <td>
+                                        <a href="{{ obj.get_absolute_url }}" target="_blank">Zobacz</a>
+                                        {% if request.user.is_staff and obj.admin_url %}
+                                            <br>
+                                            <a href="{{ obj.admin_url }}" target="_blank">Edytuj</a>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                            {% else %}
+                                <tr data-href="{% url 'bpp:browse_autor' obj.slug %}">
+                                    <td>{{ obj }}</td>
+                                    <td class="rekord-id-cell">{{ obj.pk }}</td>
+                                    <td>
                                         <a href="{% url 'bpp:browse_autor' obj.slug %}" target="_blank">Zobacz</a>
                                         {% if request.user.is_staff %}
+                                            <br>
                                             <a href="{% url 'admin:bpp_autor_change' obj.pk %}" target="_blank">Edytuj</a>
                                         {% endif %}
-                                    {% else %}
-                                        <a href="{{ obj.get_absolute_url }}" target="_blank">Zobacz</a>
-                                    {% endif %}
-                                </td>
-                            </tr>
+                                    </td>
+                                </tr>
+                            {% endif %}
                         {% endfor %}
                     </tbody>
                 </table>
@@ -885,6 +777,104 @@
                 });
             }
         );
+    });
+})();
+</script>
+<script>
+(function() {
+    // === Klikalne przyklady zapytan ============================================
+    // Tagujemy <ul> w sublevel-ach (poza "Wskazowki") klasa .examples i
+    // przypisujemy data-model do kazdego <code> wg poprzedzajacego <em>Rekord:</em>
+    // / <em>Autor:</em> naglowka. Klik wstawia query do textarea + przelacza model
+    // przez change-event radio (co tryguje dql.loadIntrospections w drugim IIFE).
+    function setupExamples() {
+        document.querySelectorAll(".zapytanie-help-sublevel")
+            .forEach(function(level) {
+                var summary = level.querySelector("summary");
+                if (summary && /Wskazowki/i.test(summary.textContent)) return;
+                var currentModel = null;
+                // querySelectorAll daje elementy w kolejnosci dokumentu.
+                level.querySelectorAll("p > em, ul").forEach(function(el) {
+                    if (el.tagName === "EM") {
+                        var t = el.textContent;
+                        if (/Autor/i.test(t)) currentModel = "autor";
+                        else if (/Rekord/i.test(t)) currentModel = "rekord";
+                    } else {
+                        el.classList.add("examples");
+                        el.querySelectorAll("li > code, li > br + code, li code")
+                            .forEach(function(code) {
+                                if (!currentModel) return;
+                                if (code.dataset.model) return; // raz
+                                code.dataset.model = currentModel;
+                                code.setAttribute("role", "button");
+                                code.setAttribute("tabindex", "0");
+                                code.title =
+                                    "Kliknij, aby wstawic do zapytania " +
+                                    "(model: " + currentModel + ")";
+                            });
+                    }
+                });
+            });
+    }
+
+    function applyExample(code) {
+        var query = code.textContent.trim();
+        var model = code.dataset.model;
+        if (!query || !model) return;
+        var radio = document.querySelector(
+            'input[name="model"][value="' + model + '"]'
+        );
+        if (radio && !radio.checked) {
+            radio.checked = true;
+            // bubbling change event -> drugi IIFE robi dql.loadIntrospections
+            radio.dispatchEvent(new Event("change", {bubbles: true}));
+        }
+        var ta = document.getElementById("id_query");
+        if (ta) {
+            ta.value = query;
+            ta.focus();
+            ta.setSelectionRange(query.length, query.length);
+            // scroll do formularza zeby user widzial co sie wstawilo
+            ta.scrollIntoView({behavior: "smooth", block: "center"});
+        }
+    }
+
+    // === Klikalne wiersze tabeli wynikow ========================================
+    function setupResultRowClicks() {
+        document.addEventListener("click", function(e) {
+            var tr = e.target.closest("tr[data-href]");
+            if (!tr) return;
+            // pomin gdy klik na link/przycisk w wierszu — one maja wlasna logike
+            if (e.target.closest("a, button")) return;
+            var href = tr.dataset.href;
+            if (!href) return;
+            window.open(href, "_blank", "noopener");
+        });
+    }
+
+    document.addEventListener("DOMContentLoaded", function() {
+        setupExamples();
+        setupResultRowClicks();
+
+        // Delegowany click na <code data-model> w pomocy.
+        document.addEventListener("click", function(e) {
+            var code = e.target.closest(
+                ".zapytanie-help-sublevel ul.examples code[data-model]"
+            );
+            if (!code) return;
+            e.preventDefault();
+            applyExample(code);
+        });
+        // Keyboard (Enter/Space) dla a11y.
+        document.addEventListener("keydown", function(e) {
+            if (e.key !== "Enter" && e.key !== " ") return;
+            var code = e.target.closest(
+                ".zapytanie-help-sublevel ul.examples code[data-model]"
+            );
+            if (!code) return;
+            e.preventDefault();
+            applyExample(code);
+        });
     });
 })();
 </script>
