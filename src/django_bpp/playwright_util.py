@@ -28,10 +28,49 @@ def wait_for_websocket_connection(page: Page, timeout: int = 10000):
         timeout: Timeout in milliseconds (default 10000)
     """
     page.wait_for_function(
-        "() => typeof bppNotifications !== 'undefined' && "
-        "bppNotifications.chatSocket && "
-        "bppNotifications.chatSocket.readyState === 1",  # WebSocket.OPEN
+        "() => typeof channelsBroadcast !== 'undefined' && "
+        "channelsBroadcast.chatSocket && "
+        "channelsBroadcast.chatSocket.readyState === 1",  # WebSocket.OPEN
         timeout=timeout,
+    )
+
+
+def wait_for_channel_subscription(
+    channel_name: str, since: float, timeout: float = 5.0
+):
+    """Block until the Daphne consumer has finished `group_add` for ``channel_name``.
+
+    Daphne completes the TCP handshake (101 Switching Protocols) BEFORE the
+    consumer's `connect()` returns — so `wait_for_websocket_connection` can
+    succeed while `group_add` is still in flight. A subsequent
+    `channel_layer.group_send` would then fan out to an empty group and the
+    message would be lost.
+
+    ``group_add`` stores ``time.time()`` as each member's sorted-set score.
+    Pass ``since`` = ``time.time()`` taken *before* the WebSocket was opened;
+    we then wait for a member whose score is ``>= since``. This skips stale
+    leftovers from earlier pytest runs (testcontainers reuse mode keeps the
+    Redis container between invocations) while still waiting for THIS
+    consumer to subscribe.
+    """
+    import os
+    import time
+
+    import redis
+
+    deadline = time.monotonic() + timeout
+    r = redis.Redis(
+        host=os.environ.get("DJANGO_BPP_REDIS_HOST", "localhost"),
+        port=int(os.environ.get("DJANGO_BPP_REDIS_PORT", 6379)),
+    )
+    group_key = f"asgi:group:{channel_name}".encode()
+    while time.monotonic() < deadline:
+        if r.zcount(group_key, since, "+inf") > 0:
+            return
+        time.sleep(0.05)
+    raise TimeoutError(
+        f"Daphne consumer did not subscribe to {channel_name!r} (score>={since}) "
+        f"within {timeout}s."
     )
 
 

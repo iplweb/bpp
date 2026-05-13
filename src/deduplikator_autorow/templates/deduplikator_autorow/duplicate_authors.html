@@ -1225,7 +1225,7 @@
                         }
 
                         // Show success message with details
-                        if (bppNotifications && bppNotifications.addMessage) {
+                        if (channelsBroadcast && channelsBroadcast.addMessage) {
                             var message = 'Autorzy zostali pomyślnie scaleni';
                             if (response.result) {
                                 if (response.result.total_updated) {
@@ -1238,7 +1238,7 @@
                                     message += '\n• ' + response.result.warnings.length + ' ostrzeżeń';
                                 }
                             }
-                            bppNotifications.addMessage({
+                            channelsBroadcast.addMessage({
                                 cssClass: 'success',
                                 text: message,
                                 sound: false
@@ -1289,8 +1289,8 @@
                             errorDiv.scrollIntoView({ behavior: 'smooth', block: 'center' });
                         }
 
-                        if (bppNotifications && bppNotifications.addMessage) {
-                            bppNotifications.addMessage({
+                        if (channelsBroadcast && channelsBroadcast.addMessage) {
+                            channelsBroadcast.addMessage({
                                 cssClass: 'alert',
                                 text: errorMessage.replace(/\n/g, ' '),
                                 sound: true
@@ -1482,8 +1482,8 @@
                 data: payload,
                 success: function(response) {
                     if (response && response.success) {
-                        if (bppNotifications && bppNotifications.addMessage && response.message) {
-                            bppNotifications.addMessage({
+                        if (channelsBroadcast && channelsBroadcast.addMessage && response.message) {
+                            channelsBroadcast.addMessage({
                                 cssClass: 'success',
                                 text: response.message,
                                 sound: false
@@ -1521,8 +1521,8 @@
                     } else {
                         target.disabled = false;
                         var msg = (response && response.message) || 'Operacja nie powiodła się.';
-                        if (bppNotifications && bppNotifications.addMessage) {
-                            bppNotifications.addMessage({ cssClass: 'alert', text: msg, sound: true });
+                        if (channelsBroadcast && channelsBroadcast.addMessage) {
+                            channelsBroadcast.addMessage({ cssClass: 'alert', text: msg, sound: true });
                         } else {
                             alert(msg);
                         }
@@ -1535,8 +1535,8 @@
                         var resp = xhr.responseJSON || JSON.parse(xhr.responseText);
                         if (resp && resp.message) msg = resp.message;
                     } catch (err) { /* ignore parse */ }
-                    if (bppNotifications && bppNotifications.addMessage) {
-                        bppNotifications.addMessage({ cssClass: 'alert', text: msg, sound: true });
+                    if (channelsBroadcast && channelsBroadcast.addMessage) {
+                        channelsBroadcast.addMessage({ cssClass: 'alert', text: msg, sound: true });
                     } else {
                         alert(msg);
                     }
@@ -1753,8 +1753,8 @@
                 }
 
                 // Show error in notification system if available
-                if (bppNotifications && bppNotifications.addMessage) {
-                    bppNotifications.addMessage({
+                if (channelsBroadcast && channelsBroadcast.addMessage) {
+                    channelsBroadcast.addMessage({
                         cssClass: 'alert',
                         text: 'Scalanie automatyczne zatrzymane na błędzie. Scalono ' + (current - 1) + ' z ' +
                               total + ' duplikatów.',

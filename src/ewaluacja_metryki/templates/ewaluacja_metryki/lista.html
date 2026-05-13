@@ -1051,8 +1051,8 @@ $(document).ready(function() {
                             ? `Generowanie metryk zostało pomyślnie uruchomione (ID zadania: ${taskId}).`
                             : 'Generowanie metryk zostało pomyślnie uruchomione.';
 
-                        if (typeof bppNotifications !== 'undefined') {
-                            bppNotifications.addMessage({
+                        if (typeof channelsBroadcast !== 'undefined') {
+                            channelsBroadcast.addMessage({
                                 cssClass: 'success',
                                 message: message
                             });
@@ -1072,8 +1072,8 @@ $(document).ready(function() {
                             errorMessage = 'Nie masz uprawnień do uruchomienia generowania.';
                         }
 
-                        if (typeof bppNotifications !== 'undefined') {
-                            bppNotifications.addMessage({
+                        if (typeof channelsBroadcast !== 'undefined') {
+                            channelsBroadcast.addMessage({
                                 cssClass: 'alert',
                                 message: errorMessage
                             });
@@ -1113,8 +1113,8 @@ $(document).ready(function() {
             $('#generowanie-modal').foundation('close');
 
             // Opcjonalnie pokaż powiadomienie o uruchomieniu
-            if (typeof bppNotifications !== 'undefined') {
-                bppNotifications.addMessage({
+            if (typeof channelsBroadcast !== 'undefined') {
+                channelsBroadcast.addMessage({
                     cssClass: 'info',
                     message: 'Uruchamianie generowania metryk...'
                 });
@@ -1134,8 +1134,8 @@ $(document).ready(function() {
             // Jeśli odpowiedź zawiera sukces, pokaż powiadomienie
             if (evt.detail.successful) {
                 console.log('Generation started successfully');
-                if (typeof bppNotifications !== 'undefined') {
-                    bppNotifications.addMessage({
+                if (typeof channelsBroadcast !== 'undefined') {
+                    channelsBroadcast.addMessage({
                         cssClass: 'success',
                         message: 'Generowanie metryk zostało pomyślnie uruchomione!'
                     });

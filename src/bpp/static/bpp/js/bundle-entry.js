@@ -69,6 +69,6 @@ import '../../../../../.venv/lib/python/site-packages/channels_broadcast/static/
 
 // ===== 12. PREVENT TREE-SHAKING FOR HTML-USED OBJECTS =====
 // These are used in HTML templates, so we need to prevent tree-shaking
-void window.bppNotifications;
+void window.channelsBroadcast;
 void window.Mustache;
 void window.Tone;
