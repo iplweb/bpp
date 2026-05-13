@@ -57,14 +57,53 @@ endif
 
 all:	prepare-developer-machine release ## UWAGA: pełna konfiguracja + release (uruchamia release!)
 
+# DYLD_FALLBACK_LIBRARY_PATH wskazuje dyld-owi na /opt/homebrew/lib, zeby
+# weasyprint (cffi.dlopen) mogl znalezc libgobject-2.0 / pango / harfbuzz /
+# fontconfig zainstalowane przez brew. Na Apple Silicon te biblioteki
+# siedza w /opt/homebrew/lib, ktorego dyld nie konsultuje domyslnie.
+# Trwaly fix: dopis do ~/.zprofile na koncu recipe (nowe shelle).
+# Doraznie: target-specific export, zeby biezacy `uv sync` i playwright
+# install tez ja widzialy, zanim user sourcnie zprofile.
+#
+# UWAGA: DYLD_FALLBACK_LIBRARY_PATH to runtime var dla dlopen. Nie pomaga
+# przy *build-time* bledach (np. wheel buduje sie z zrodla i nie znajduje
+# cairo.h) — wtedy potrzeba PKG_CONFIG_PATH=/opt/homebrew/lib/pkgconfig +
+# LDFLAGS=-L/opt/homebrew/lib + CPPFLAGS=-I/opt/homebrew/include.
+prepare-developer-machine-macos: export DYLD_FALLBACK_LIBRARY_PATH := /opt/homebrew/lib:$(DYLD_FALLBACK_LIBRARY_PATH)
 prepare-developer-machine-macos: ## Zainstaluj zależności systemowe na macOS (brew + uv sync + playwright)
-	uv sync --frozen --no-install-project --all-extras
+	@if ! command -v brew >/dev/null 2>&1; then \
+		echo ""; \
+		echo "BŁĄD: Homebrew (brew) nie jest zainstalowany."; \
+		echo ""; \
+		echo "Homebrew jest wymagany do zainstalowania zależności systemowych"; \
+		echo "(cairo, pango, gdk-pixbuf, libffi, gobject-introspection, gtk+3)."; \
+		echo ""; \
+		echo "Aby zainstalować Homebrew, uruchom w terminalu poniższe polecenie:"; \
+		echo ""; \
+		echo '  /bin/bash -c "$$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"'; \
+		echo ""; \
+		echo "Po zakończeniu instalacji wykonaj kroki dodające 'brew' do PATH"; \
+		echo "wypisane przez instalator (zwykle dla Apple Silicon: dopisanie"; \
+		echo "linii 'eval \"\$$(/opt/homebrew/bin/brew shellenv)\"' do ~/.zprofile)."; \
+		echo ""; \
+		echo "Pełna dokumentacja: https://brew.sh"; \
+		echo ""; \
+		echo "Po instalacji Homebrew uruchom ponownie:  make prepare-developer-machine"; \
+		echo ""; \
+		exit 1; \
+	fi
 	brew install cairo pango gdk-pixbuf libffi gobject-introspection gtk+3
-	sudo ln -sf /opt/homebrew/opt/glib/lib/libgobject-2.0.0.dylib /usr/local/lib/gobject-2.0
-	sudo ln -sf /opt/homebrew/opt/pango/lib/libpango-1.0.dylib /usr/local/lib/pango-1.0
-	sudo ln -sf /opt/homebrew/opt/harfbuzz/lib/libharfbuzz.dylib /usr/local/lib/harfbuzz
-	sudo ln -sf /opt/homebrew/opt/fontconfig/lib/libfontconfig.1.dylib /usr/local/lib/fontconfig-1
-	sudo ln -sf /opt/homebrew/opt/pango/lib/libpangoft2-1.0.dylib /usr/local/lib/pangoft2-1.0
+	uv sync --frozen --no-install-project --all-extras
+	@ZPROFILE="$$HOME/.zprofile"; \
+	MARKER='# bpp: weasyprint dlopen (Homebrew libs on Apple Silicon)'; \
+	if [ -f "$$ZPROFILE" ] && grep -qF "$$MARKER" "$$ZPROFILE"; then \
+		echo "DYLD_FALLBACK_LIBRARY_PATH juz skonfigurowane w $$ZPROFILE — pomijam."; \
+	else \
+		printf '\n%s\nexport DYLD_FALLBACK_LIBRARY_PATH="/opt/homebrew/lib$${DYLD_FALLBACK_LIBRARY_PATH:+:$$DYLD_FALLBACK_LIBRARY_PATH}"\n' "$$MARKER" >> "$$ZPROFILE"; \
+		echo "Dopisano DYLD_FALLBACK_LIBRARY_PATH do $$ZPROFILE."; \
+		echo "Aby zlapac w biezacej sesji uruchom:  source $$ZPROFILE"; \
+		echo "(albo otworz nowy terminal)."; \
+	fi
 	$(MAKE) playwright-install
 
 prepare-developer-machine-linux: ## Zainstaluj zależności systemowe na Linuksie (apt + uv sync + playwright)
