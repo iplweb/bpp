@@ -92,6 +92,27 @@ def test_autorzy_have_polish_names(jednostki_fixture, tmp_manifest_path):
 
 
 @pytest.mark.django_db(transaction=True)
+def test_no_slug_collision_at_scale(jednostki_fixture, tmp_manifest_path):
+    """Birthday-paradox guard: 50 autorow musi miec 50 unikalnych slugow,
+    nawet jesli losowe imiona/nazwiska sie powtarzaja."""
+    m, jednostki = jednostki_fixture
+    autorzy = create_autorzy(
+        n=50,
+        jednostki=jednostki,
+        manifest=m,
+        rng=random.Random(7),
+        batch_size=100,
+        disable_progress=True,
+    )
+    slugs = list(Autor.objects.values_list("slug", flat=True))
+    assert len(slugs) == 50
+    assert len(autorzy) == 50
+    assert len(set(slugs)) == 50, (
+        f"Slug duplicates: {[s for s in slugs if slugs.count(s) > 1]}"
+    )
+
+
+@pytest.mark.django_db(transaction=True)
 def test_seed_determinism(jednostki_fixture, tmp_manifest_path):
     m, jednostki = jednostki_fixture
     autorzy_1 = create_autorzy(

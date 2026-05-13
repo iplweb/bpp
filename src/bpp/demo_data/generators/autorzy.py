@@ -5,6 +5,8 @@ from __future__ import annotations
 import random
 from collections.abc import Iterable
 
+from django.utils.text import slugify
+
 from bpp.demo_data.manifest import Manifest
 from bpp.demo_data.names import IMIONA_POL, NAZWISKA_POL
 from bpp.demo_data.progress import make_progress
@@ -32,9 +34,17 @@ def create_autorzy(
         raise ValueError("Brak Jednostek do podpiecia Autorow.")
 
     autorzy_objs: list[Autor] = []
-    for _ in range(n):
+    for i in range(n):
         imiona = rng.choice(IMIONA_POL)
         nazwisko = rng.choice(NAZWISKA_POL)
+        # AutoSlugField.populate_from="get_full_name" + bulk_create:
+        # find_unique() nie widzi instancji ze swojego batcha (sa jeszcze
+        # nieinsertowane), wiec dwa Autorzy z identycznym (imiona, nazwisko)
+        # dostaja ten sam slug → IntegrityError przy drugim INSERT.
+        # Pula 87×100=8700 kombo + birthday paradox → przy --autorow 500
+        # kolizja praktycznie pewna. Fix: pre-set slug z disambiguatorem
+        # per-instancja. AutoSlugField pomija non-empty slug w pre_save.
+        slug_value = slugify(f"{imiona} {nazwisko}-demo-{i + 1}")
         autorzy_objs.append(
             Autor(
                 imiona=imiona,
@@ -42,6 +52,7 @@ def create_autorzy(
                 # Autor.save() ustawia 'sort' — bulk_create omija save(),
                 # wiec ustawiamy recznie (pole TextField, NOT NULL).
                 sort=_make_sort_key(nazwisko, imiona),
+                slug=slug_value,
             )
         )
 
