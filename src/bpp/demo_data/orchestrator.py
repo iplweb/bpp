@@ -183,6 +183,10 @@ def run_create(opts: CreateOptions, *, stdin=None, stdout=None):
         f"     Cleanup: uv run python src/manage.py cleanup_demo_data"
         f" --manifest {opts.manifest_out} --yes-i-am-sure"
         f" --confirm-db {db_name}\n"
+        f"\nUWAGA: bulk_create pomija sygnaly post_save, wiec "
+        f"denormalizowane\npola (opis_bibliograficzny_cache, "
+        f"slowa_kluczowe_z_autorow_cache)\nsa puste. Zeby je wypelnic, "
+        f"uruchom: uv run python src/manage.py denorm_rebuild\n"
     )
 
 
@@ -210,6 +214,19 @@ def run_cleanup(opts: CleanupOptions, *, stdin=None, stdout=None):
     db_name = connection.settings_dict["NAME"]
 
     manifest = Manifest.load(opts.manifest)
+
+    # Manifest-DB consistency check (PRZED double_confirm — fail fast na
+    # zlym inputie, nie pytaj usera o cos co i tak udowodnimy ze jest zle).
+    # Chroni przed pomyłkowym skopiowaniem stagingowego manifestu na prod,
+    # gdzie PK z manifestu moga przypadkowo trafic w prodowe rekordy.
+    if manifest.database != db_name:
+        stdout.write(
+            f"[ABORT] Manifest stworzony dla bazy '{manifest.database}', "
+            f"a polaczenie kieruje na '{db_name}'. Uzyj odpowiedniej "
+            f"konfiguracji DATABASE_URL lub manifestu.\n"
+        )
+        raise SystemExit(1)
+
     total = sum(len(v.get("pks", [])) for v in manifest.objects.values())
     plan_text = (
         f"Usunie {total} obiektow z manifestu '{opts.manifest}' w bazie '{db_name}'."

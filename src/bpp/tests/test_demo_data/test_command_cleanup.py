@@ -82,6 +82,37 @@ def test_roundtrip_create_then_cleanup(fixtures_loaded, tmp_path):
 
 
 @pytest.mark.django_db(transaction=True)
+def test_cleanup_aborts_when_manifest_database_mismatch(fixtures_loaded, tmp_path):
+    """Manifest z innej bazy → SystemExit zanim cokolwiek skasujemy."""
+    from bpp.demo_data.manifest import Manifest
+
+    db_name = connection.settings_dict["NAME"]
+
+    # Stworz fake manifest dla 'innej' bazy:
+    fake_manifest = Manifest(
+        path=tmp_path / "fake.json",
+        database="zupelnie_inna_baza",
+        command_args={},
+    )
+    fake_manifest.append("bpp.Wydzial", [1, 2, 3])
+    fake_manifest.save()
+
+    swiadek = Autor.objects.create(imiona="Swiadek", nazwisko="Test")
+
+    with pytest.raises(SystemExit):
+        call_command(
+            "cleanup_demo_data",
+            f"--manifest={fake_manifest.path}",
+            "--yes-i-am-sure",
+            f"--confirm-db={db_name}",
+        )
+
+    # Nic nie zmienione:
+    assert Autor.objects.filter(pk=swiadek.pk).exists()
+    assert fake_manifest.path.exists()  # manifest NIE zostal przeniesiony
+
+
+@pytest.mark.django_db(transaction=True)
 def test_cleanup_aborts_wrong_db(fixtures_loaded, tmp_path):
     """Zla nazwa bazy w --confirm-db → SystemExit, manifest NIE
     renamowany, dane NIE usuniete."""
