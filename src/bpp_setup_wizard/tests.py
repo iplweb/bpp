@@ -31,9 +31,7 @@ def enable_first_run_wizard_middleware(settings):
                 "first_run_wizard.middleware.FirstRunWizardMiddleware",
             )
         except ValueError:
-            middleware.insert(
-                0, "first_run_wizard.middleware.FirstRunWizardMiddleware"
-            )
+            middleware.insert(0, "first_run_wizard.middleware.FirstRunWizardMiddleware")
         settings.MIDDLEWARE = middleware
 
 
@@ -59,9 +57,7 @@ def test_uczelnia_step_requires_superuser():
 def test_uczelnia_setup_requires_login():
     Uczelnia.objects.all().delete()
     client = Client()
-    response = client.get(
-        reverse("first_run_wizard:step", kwargs={"name": "uczelnia"})
-    )
+    response = client.get(reverse("first_run_wizard:step", kwargs={"name": "uczelnia"}))
     # WizardStepView checks is_accessible() and redirects anonymous users
     # to '/' (since uczelnia step requires_superuser=True).
     assert response.status_code == 302
@@ -74,9 +70,7 @@ def test_uczelnia_setup_form_display(admin_user):
     client = Client()
     client.force_login(admin_user)
 
-    response = client.get(
-        reverse("first_run_wizard:step", kwargs={"name": "uczelnia"})
-    )
+    response = client.get(reverse("first_run_wizard:step", kwargs={"name": "uczelnia"}))
 
     assert response.status_code == 200
     content = response.content.decode("utf-8")
@@ -135,9 +129,7 @@ def test_uczelnia_setup_not_accessible_when_exists(admin_user, uczelnia):
     client = Client()
     client.force_login(admin_user)
 
-    response = client.get(
-        reverse("first_run_wizard:step", kwargs={"name": "uczelnia"})
-    )
+    response = client.get(reverse("first_run_wizard:step", kwargs={"name": "uczelnia"}))
 
     # Step is_complete()==True → WizardStepView redirects to '/'.
     assert response.status_code == 302
@@ -154,6 +146,4 @@ def test_middleware_redirects_logged_in_admin_to_uczelnia_setup(admin_user):
 
     response = client.get("/")
     assert response.status_code == 302
-    assert response.url == reverse(
-        "first_run_wizard:step", kwargs={"name": "uczelnia"}
-    )
+    assert response.url == reverse("first_run_wizard:step", kwargs={"name": "uczelnia"})
