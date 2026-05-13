@@ -1,0 +1,891 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block extratitle %}
+    Szukaj zapytaniem
+{% endblock %}
+
+{% block extrahead %}
+    {{ block.super }}
+    <link rel="stylesheet" href="{% static 'djangoql/css/completion.css' %}">
+    <style>
+        /* Button-group jako wybor modelu — czysty CSS, bez JS */
+        .zapytanie-model-group { margin-bottom: 1rem; }
+        .zapytanie-model-group .button {
+            margin: 0;
+            cursor: pointer;
+            background: #fff;
+            color: #2c3e50;
+            border: 1px solid #cfd8dc;
+            font-weight: 500;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+        }
+        .zapytanie-model-group .button input[type="radio"] {
+            position: absolute;
+            opacity: 0;
+            pointer-events: none;
+            width: 1px;
+            height: 1px;
+        }
+        .zapytanie-model-group .button:hover {
+            background: #f1f5f9;
+        }
+        .zapytanie-model-group .button:has(input[type="radio"]:checked) {
+            background: #1779ba;
+            color: #fff;
+            border-color: #1779ba;
+            box-shadow: inset 0 1px 2px rgba(0,0,0,.15);
+        }
+        .zapytanie-model-group .button:focus-within {
+            outline: 2px solid #1779ba;
+            outline-offset: 2px;
+        }
+
+        /* Beta badge */
+        .beta-badge {
+            display: inline-block;
+            vertical-align: middle;
+            margin-left: 0.5rem;
+            padding: 2px 8px;
+            font-size: 0.7rem;
+            font-weight: 700;
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+            color: #fff;
+            background: linear-gradient(135deg, #f39c12 0%, #e67e22 100%);
+            border-radius: 3px;
+            box-shadow: 0 1px 2px rgba(0,0,0,.15);
+        }
+
+        /* DjangoQL completion popup — over sticky-header.
+           Wymuszamy position:fixed bo BPP body ma position:relative+min-height:100vh
+           (z gradient-background), wiec popup z position:absolute liczony przez
+           djangoql laduje POZA viewportem i pcha scrollbar. */
+        .djangoql-completion {
+            position: fixed !important;
+            z-index: 9000 !important;
+            max-width: min(90vw, 520px);
+            box-shadow: 0 6px 24px rgba(0,0,0,.15);
+            border-radius: 4px;
+        }
+        .djangoql-completion ul { max-height: min(50vh, 320px); }
+        /* Wymuszenie widocznego highlightu wybranej sugestii — djangoql daje
+           .active, ale jego default (#79aec8) bywa pokryty stylami BPP. */
+        .djangoql-completion li.active,
+        .djangoql-completion li.active b {
+            background-color: #1779ba !important;
+            color: #fff !important;
+        }
+        .djangoql-completion li {
+            transition: background-color 0.08s;
+        }
+
+        /* Textarea — kod-friendly */
+        #id_query {
+            font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, monospace;
+            font-size: 0.95rem;
+            line-height: 1.45;
+        }
+
+        .zapytanie-help-card {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 4px;
+            padding: 0.75rem 1rem;
+            margin-top: 0.5rem;
+        }
+        .zapytanie-help-card summary {
+            cursor: pointer;
+            font-weight: 600;
+            color: #1779ba;
+        }
+        .zapytanie-help-card kbd {
+            display: inline-block;
+            padding: 1px 6px;
+            font-family: monospace;
+            font-size: 0.85em;
+            background: #fff;
+            border: 1px solid #cbd5e0;
+            border-radius: 3px;
+        }
+        .zapytanie-help-card table { margin-top: 0.5rem; }
+        .zapytanie-help-card table td:first-child { white-space: nowrap; font-family: monospace; }
+        /* Historia zapytan */
+        .zapytanie-history-card .history-query {
+            font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, monospace;
+            font-size: 0.85rem;
+            white-space: pre-wrap;
+            word-break: break-word;
+            display: block;
+            max-width: 60ch;
+        }
+        .zapytanie-history-card .history-remove {
+            background: transparent;
+            border: 1px solid #e2e8f0;
+            border-radius: 3px;
+            color: #94a3b8;
+            cursor: pointer;
+            font-family: inherit;
+            font-size: 0.85rem;
+            line-height: 1;
+            padding: 2px 6px;
+        }
+        .zapytanie-history-card .history-remove:hover {
+            color: #dc2626;
+            border-color: #fca5a5;
+            background: #fef2f2;
+        }
+        .zapytanie-history-card td { vertical-align: top; }
+        .zapytanie-history-card .history-count-cell {
+            text-align: right;
+            font-variant-numeric: tabular-nums;
+        }
+    </style>
+{% endblock %}
+
+{% block breadcrumbs %}
+    {{ block.super }}
+    <li class="current">Szukaj zapytaniem (DjangoQL)</li>
+{% endblock %}
+
+{% block content %}
+<div class="grid-x grid-margin-x">
+    <div class="cell">
+        <h1>
+            <span class="fi-clipboard-pencil" aria-hidden="true"></span>
+            Szukaj zapytaniem
+            <span class="beta-badge" title="Funkcja w wersji beta">beta</span>
+        </h1>
+
+        <div class="callout secondary" role="note" style="border-left: 4px solid #f39c12;">
+            <p style="margin: 0;">
+                <strong>Podglad technologiczny.</strong>
+                Ta funkcja jest udostepniona w ramach <em>podgladu
+                technologicznego</em> &mdash; pozwala przeszukiwac rekordy
+                i autorow zapytaniami w jezyku
+                <a href="https://github.com/ivelum/djangoql" target="_blank" rel="noopener">DjangoQL</a>,
+                podobnie jak w panelu administracyjnym Django. Interfejs
+                i zakres dostepnych pol moga sie zmieniac. Jesli cos nie
+                dziala albo masz pomysl na ulepszenie &mdash; daj znac.
+            </p>
+        </div>
+
+        <form method="get" action="" autocomplete="off">
+            <div class="zapytanie-model-group button-group">
+                {% for radio in form.model %}
+                    <label class="button" title="Przeszukaj model {{ radio.choice_label }}">
+                        {{ radio.tag }}
+                        {% if radio.choice_value == "rekord" %}
+                            <span class="fi-page-multiple" aria-hidden="true"></span>
+                        {% else %}
+                            <span class="fi-torso" aria-hidden="true"></span>
+                        {% endif %}
+                        <span>{{ radio.choice_label }}</span>
+                    </label>
+                {% endfor %}
+            </div>
+            {% if form.model.errors %}
+                <small class="form-error is-visible">{{ form.model.errors|join:", " }}</small>
+            {% endif %}
+
+            <label for="{{ form.query.id_for_label }}">
+                {{ form.query.label }}
+            </label>
+            {{ form.query }}
+            {% if form.query.errors %}
+                <small class="form-error is-visible">{{ form.query.errors|join:", " }}</small>
+            {% endif %}
+
+            <details class="zapytanie-help-card">
+                <summary>
+                    <span class="fi-info" aria-hidden="true"></span>
+                    Skladnia DjangoQL &mdash; rozwin pomoc i przyklady
+                </summary>
+                <p style="margin-top: 0.75rem;">
+                    Zapytania pisz w postaci <code>pole operator wartosc</code>,
+                    laczone przez <kbd>and</kbd> / <kbd>or</kbd>. Stringi
+                    obejmij cudzyslowem. Edytor podpowiada nazwy pol i
+                    wartosci &mdash; uzyj klawiszy <kbd>&uarr;</kbd>
+                    <kbd>&darr;</kbd> do wyboru, <kbd>Tab</kbd> aby wstawic.
+                </p>
+                <table class="hover stack unstriped">
+                    <thead>
+                        <tr><th>Operator</th><th>Znaczenie</th></tr>
+                    </thead>
+                    <tbody>
+                        <tr><td>=, !=</td><td>rowne / rozne</td></tr>
+                        <tr><td>&gt;, &gt;=, &lt;, &lt;=</td><td>porownania liczbowe / dat</td></tr>
+                        <tr><td>~, !~</td><td>zawiera / nie zawiera (tekst)</td></tr>
+                        <tr><td>startswith, endswith</td><td>zaczyna sie / konczy</td></tr>
+                        <tr><td>in, not in</td><td>nalezy do listy: <code>rok in (2023, 2024)</code></td></tr>
+                    </tbody>
+                </table>
+                <p style="margin-top: 0.75rem;"><strong>Przyklady &mdash; Rekord</strong> (od podstaw do mocniejszych):</p>
+                <ul>
+                    <li>
+                        <em>Po slowie w tytule:</em>
+                        <code>tytul_oryginalny ~ "nowotwor"</code>
+                    </li>
+                    <li>
+                        <em>Wysoko punktowane prace ostatnich trzech lat:</em>
+                        <code>rok &gt;= 2022 and punkty_kbn &gt;= 100</code>
+                    </li>
+                    <li>
+                        <em>Wysoki Impact Factor z zakresu lat:</em>
+                        <code>impact_factor &gt; 5 and rok in (2022, 2023, 2024)</code>
+                    </li>
+                    <li>
+                        <em>Brak DOI mimo wysokiej punktacji (do uzupelnienia):</em>
+                        <code>punkty_kbn &gt;= 70 and doi = ""</code>
+                    </li>
+                    <li>
+                        <em>Czesto cytowane, ale nierecenzowane:</em>
+                        <code>liczba_cytowan &gt; 10 and recenzowana = False</code>
+                    </li>
+                    <li>
+                        <em>Konkretny charakter formalny + zakres punktow:</em>
+                        <code>charakter_formalny.skrot = "AC" and punkty_kbn &gt;= 40 and punkty_kbn &lt;= 100</code>
+                    </li>
+                    <li>
+                        <em>Wieloautorskie prace w okresie ewaluacyjnym:</em>
+                        <code>liczba_autorow &gt; 20 and rok &gt;= 2022 and rok &lt;= 2025</code>
+                    </li>
+                    <li>
+                        <em>Konkretne zrodlo + lata:</em>
+                        <code>zrodlo.nazwa ~ "Nature" and rok &gt;= 2020</code>
+                    </li>
+                    <li>
+                        <em>Polskojezyczne artykuly:</em>
+                        <code>jezyk.skrot = "pol" and charakter_formalny.skrot = "AC"</code>
+                    </li>
+                    <li>
+                        <em>Open Access &mdash; rekordy z przypisanym trybem dostepu:</em>
+                        <code>openaccess_tryb_dostepu != None and rok &gt;= 2023</code>
+                    </li>
+                    <li>
+                        <em>Szukanie po slowach kluczowych w tytule (combo OR):</em>
+                        <code>tytul_oryginalny ~ "COVID" or tytul_oryginalny ~ "SARS-CoV"</code>
+                    </li>
+                    <li>
+                        <em>Rekordy bez WWW i bez DOI (do redakcji):</em>
+                        <code>www = "" and doi = "" and rok &gt;= 2023</code>
+                    </li>
+                </ul>
+                <p><strong>Przyklady &mdash; Autor:</strong></p>
+                <ul>
+                    <li>
+                        <em>Po fragmencie nazwiska:</em>
+                        <code>nazwisko ~ "Kowal"</code>
+                    </li>
+                    <li>
+                        <em>Profesorowie z wpisanym ORCID:</em>
+                        <code>tytul.skrot = "prof." and orcid != ""</code>
+                    </li>
+                    <li>
+                        <em>Maja ORCID ale brak go w PBN:</em>
+                        <code>orcid != "" and orcid_w_pbn = False</code>
+                    </li>
+                    <li>
+                        <em>Z konkretnej jednostki (LIKE po nazwie):</em>
+                        <code>aktualna_jednostka.nazwa ~ "Medycyny" and tytul.skrot startswith "dr"</code>
+                    </li>
+                    <li>
+                        <em>Brak emaila, ale jest ORCID (mozna spytac o adres):</em>
+                        <code>email = "" and orcid != ""</code>
+                    </li>
+                    <li>
+                        <em>Konkretna jednostka po skrocie + filtr po nazwisku:</em>
+                        <code>nazwisko startswith "Now" and aktualna_jednostka.skrot = "II WL"</code>
+                    </li>
+                    <li>
+                        <em>Doktoraty + asystenci (zbior tytulow):</em>
+                        <code>tytul.skrot in ("dr", "dr hab.", "mgr")</code>
+                    </li>
+                </ul>
+                <p style="margin-top: 1rem;">
+                    <strong>Skomplikowane zapytania &mdash; Rekord (power-user):</strong>
+                </p>
+                <ol>
+                    <li>
+                        <em>Audyt ewaluacyjny &mdash; tylko recenzowane, z DOI,
+                        w okresie 2022&ndash;2025, z minimum 70 punktow:</em>
+                        <code>recenzowana = True and doi != "" and rok in (2022, 2023, 2024, 2025) and punkty_kbn &gt;= 70</code>
+                    </li>
+                    <li>
+                        <em>Combo z grupowaniem (rok OR + charakter OR) &times;
+                        punktacja:</em>
+                        <code>(rok = 2024 or rok = 2025) and (charakter_formalny.skrot = "AC" or charakter_formalny.skrot = "AOR") and punkty_kbn &gt;= 100</code>
+                    </li>
+                    <li>
+                        <em>Negacja: wszystko poza artykulami z czasopism,
+                        z minimum IF=3, od 2023:</em>
+                        <code>not (charakter_formalny.skrot = "AC") and rok &gt;= 2023 and impact_factor &gt; 3</code>
+                    </li>
+                    <li>
+                        <em>Wieloklauzulowo: tytul (covid/sars) &times; jezyk
+                        (en/pl) &times; min 3 autorow &times; konkretny rok:</em>
+                        <code>(tytul_oryginalny ~ "COVID" or tytul_oryginalny ~ "SARS") and jezyk.skrot in ("ang", "pol") and liczba_autorow &gt;= 3 and rok = 2023</code>
+                    </li>
+                    <li>
+                        <em>Wydawcy Elsevier/Springer/Wiley w okresie ewaluacji
+                        z konkretnym przedzialem punktow:</em>
+                        <code>(wydawca.nazwa ~ "Elsevier" or wydawca.nazwa ~ "Springer" or wydawca.nazwa ~ "Wiley") and rok &gt;= 2022 and punkty_kbn &gt;= 70 and punkty_kbn &lt;= 200</code>
+                    </li>
+                    <li>
+                        <em>Hot &amp; trending: cytowane &gt;50 razy
+                        w&nbsp;publikacjach z&nbsp;ostatnich 5 lat z&nbsp;IF
+                        &gt; 5:</em>
+                        <code>liczba_cytowan &gt; 50 and rok &gt;= 2020 and impact_factor &gt; 5</code>
+                    </li>
+                    <li>
+                        <em>Audyt jakosci danych: artykuly z 2024+ bez DOI,
+                        bez WWW, recenzowane &mdash; wymagaja redakcji:</em>
+                        <code>charakter_formalny.skrot = "AC" and rok &gt;= 2024 and doi = "" and www = "" and recenzowana = True</code>
+                    </li>
+                    <li>
+                        <em>Top-tier prace: Nature/Cell/Science/Lancet po 2020,
+                        wszystkie OA:</em>
+                        <code>zrodlo.nazwa in ("Nature", "Cell", "Science", "The Lancet") and rok &gt; 2020 and openaccess_tryb_dostepu != None</code>
+                    </li>
+                    <li>
+                        <em>Prace z polskim wydawca + jezyk = polski +
+                        konkretny zakres lat:</em>
+                        <code>wydawca.nazwa ~ "PWN" and jezyk.skrot = "pol" and rok in (2022, 2023, 2024)</code>
+                    </li>
+                    <li>
+                        <em>Rekordy zmienione od poczatku biezacego roku
+                        z adnotacjami redaktora:</em>
+                        <code>ostatnio_zmieniony &gt;= "2025-01-01" and adnotacje != ""</code>
+                    </li>
+                    <li>
+                        <em>Granica IF + zakres punktow + minimum
+                        cytowan &mdash; do rankingu jakosciowego:</em>
+                        <code>impact_factor &gt;= 5 and impact_factor &lt;= 10 and punkty_kbn &gt;= 100 and liczba_cytowan &gt;= 5</code>
+                    </li>
+                    <li>
+                        <em>Konkretny typ KBN + waski przedzial punktow +
+                        slowo w tytule:</em>
+                        <code>typ_kbn.skrot = "PO" and punkty_kbn &gt;= 40 and punkty_kbn &lt;= 70 and (tytul_oryginalny ~ "neuro" or tytul_oryginalny ~ "kardio")</code>
+                    </li>
+                    <li>
+                        <em>Powtorzenia DOI (zapytanie do weryfikacji
+                        manualnej, lista DOI):</em>
+                        <code>doi in ("10.1038/s41586-024-XXXXX", "10.1126/science.YYYYY")</code>
+                    </li>
+                </ol>
+
+                <p style="margin-top: 1rem;">
+                    <strong>Skomplikowane zapytania &mdash; Autor (power-user):</strong>
+                </p>
+                <ol>
+                    <li>
+                        <em>Profesorowie z konkretnej jednostki, z wpisanym
+                        ORCID-em, ale nie potwierdzonym w PBN:</em>
+                        <code>tytul.skrot in ("prof.", "prof. dr hab.") and aktualna_jednostka.skrot startswith "I WL" and orcid != "" and orcid_w_pbn = False</code>
+                    </li>
+                    <li>
+                        <em>Dwie jednostki + tytul dr/dr hab. + jest orcid:</em>
+                        <code>(aktualna_jednostka.skrot = "II WL" or aktualna_jednostka.skrot = "WLS") and tytul.skrot startswith "dr" and orcid != ""</code>
+                    </li>
+                    <li>
+                        <em>Brak emaila ale jest ORCID &mdash; do uzupelnienia
+                        kontaktu z poziomu administracji:</em>
+                        <code>email = "" and orcid != "" and tytul.skrot in ("dr", "dr hab.", "prof.")</code>
+                    </li>
+                    <li>
+                        <em>Format ORCID nieprawidlowy (nie zaczyna sie od
+                        '0000-'):</em>
+                        <code>orcid != "" and not (orcid startswith "0000-")</code>
+                    </li>
+                    <li>
+                        <em>Wszystkie z aktualna jednostka, oprocz mgr/mgr inz:</em>
+                        <code>aktualna_jednostka != None and not (tytul.skrot in ("mgr", "mgr inz."))</code>
+                    </li>
+                    <li>
+                        <em>Wyszukiwanie po fragmentach imienia i nazwiska
+                        (Jan Kowalski / Janusz Kowalik / ...):</em>
+                        <code>(imiona ~ "Jan" or imiona startswith "Janusz") and nazwisko startswith "Kowal"</code>
+                    </li>
+                </ol>
+
+                <p style="margin-top: 0.75rem;">
+                    <em>Wskazowki dla power-userow:</em>
+                </p>
+                <ul>
+                    <li>
+                        <strong>Grupowanie</strong> &mdash; uzywaj nawiasow
+                        do logicznych grup: <code>(A or B) and C</code>.
+                    </li>
+                    <li>
+                        <strong>Negacja</strong> &mdash; <code>not</code> przed
+                        wyrazeniem: <code>not (charakter_formalny.skrot = "AC")</code>.
+                    </li>
+                    <li>
+                        <strong>Pola relacji</strong> &mdash; po kropce:
+                        <code>charakter_formalny.skrot</code>,
+                        <code>zrodlo.wydawca.nazwa</code> (zagniezdzanie OK).
+                    </li>
+                    <li>
+                        <strong>Listy wartosci</strong> &mdash;
+                        <code>in (...)</code> dzieli sie przecinkami,
+                        oszczedza wielu <code>or</code>.
+                    </li>
+                    <li>
+                        <strong>Daty/datetime</strong> &mdash;
+                        ISO-string w cudzyslowie: <code>"2025-01-01"</code>.
+                    </li>
+                    <li>
+                        <strong>Pusty FK</strong> &mdash;
+                        <code>pole != None</code> / <code>pole = None</code>;
+                        dla stringa <code>pole = ""</code>.
+                    </li>
+                    <li>
+                        <strong>Granice zakresow</strong> &mdash; brak operatora
+                        <code>between</code>, zlozyć z
+                        <code>&gt;= X and &lt;= Y</code>.
+                    </li>
+                </ul>
+            </details>
+
+            <p style="margin-top: 1rem;">
+                <button type="submit" class="button primary">
+                    <span class="fi-magnifying-glass" aria-hidden="true"></span> Szukaj
+                </button>
+                <a href="{% url 'bpp:zapytanie' %}" class="button secondary">
+                    Wyczysc
+                </a>
+            </p>
+        </form>
+
+        <details class="zapytanie-help-card zapytanie-history-card"
+                 id="zapytanie-history" style="display: none; margin-top: 1rem;">
+            <summary>
+                <span class="fi-clock" aria-hidden="true"></span>
+                Historia zapytan
+                (<span id="zapytanie-history-count">0</span>)
+            </summary>
+            <p style="margin-top: 0.5rem; color: #64748b; font-size: 0.85rem;">
+                <em>Historia ostatnich 20 roznych zapytan z tej przegladarki.
+                Kliknij wpis, zeby je przywrocic.</em>
+            </p>
+            <table class="hover stack unstriped" style="margin-top: 0.5rem;">
+                <thead>
+                    <tr>
+                        <th style="width: 5rem;">Model</th>
+                        <th>Zapytanie</th>
+                        <th style="text-align: right; width: 5rem;">Wynikow</th>
+                        <th style="width: 9rem;">Kiedy</th>
+                        <th style="width: 2rem;"></th>
+                    </tr>
+                </thead>
+                <tbody id="zapytanie-history-tbody"></tbody>
+            </table>
+            <p style="margin-top: 0.5rem;">
+                <button type="button"
+                        class="button tiny alert hollow"
+                        id="zapytanie-history-clear">
+                    Wyczysc cala historie
+                </button>
+            </p>
+        </details>
+
+        {% if error %}
+            <div class="callout alert" role="alert">
+                <strong>Blad zapytania:</strong>
+                <pre style="white-space: pre-wrap; word-break: break-word; margin: 0;">{{ error }}</pre>
+            </div>
+        {% endif %}
+
+        {% if results is not None %}
+            <h2>Wyniki ({{ count }} rekord{{ count|pluralize:"y,ow" }})</h2>
+            {% if query %}
+                <p><em>Zapytanie:</em> <code>{{ query }}</code> na modelu <strong>{{ model_key }}</strong></p>
+            {% endif %}
+            {% if results %}
+                {% include "bpp/_zapytanie_pager.html" %}
+                <table class="hover stack">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Reprezentacja</th>
+                            <th>Akcje</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for obj in results %}
+                            <tr>
+                                <td>{{ obj.pk }}</td>
+                                <td>
+                                    {% if model_key == "rekord" %}
+                                        {{ obj.opis_bibliograficzny_cache|safe }}
+                                    {% else %}
+                                        {{ obj }}
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if model_key == "autor" %}
+                                        <a href="{% url 'bpp:browse_autor' obj.slug %}" target="_blank">Zobacz</a>
+                                        {% if request.user.is_staff %}
+                                            <a href="{% url 'admin:bpp_autor_change' obj.pk %}" target="_blank">Edytuj</a>
+                                        {% endif %}
+                                    {% else %}
+                                        <a href="{{ obj.get_absolute_url }}" target="_blank">Zobacz</a>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                {% include "bpp/_zapytanie_pager.html" %}
+            {% else %}
+                <p><em>Brak rekordow pasujacych do zapytania.</em></p>
+            {% endif %}
+        {% endif %}
+    </div>
+</div>
+
+{% if results is not None and query %}
+<script>
+    window.bppZapytanieLast = {
+        model: "{{ model_key|escapejs }}",
+        query: "{{ query|escapejs }}",
+        count: {{ count|default:0 }}
+    };
+</script>
+{% endif %}
+<script>
+(function() {
+    var KEY = "bpp:zapytanie:history";
+    var MAX = 20;
+
+    function load() {
+        try {
+            var raw = localStorage.getItem(KEY);
+            return raw ? JSON.parse(raw) : [];
+        } catch (e) {
+            return [];
+        }
+    }
+    function save(arr) {
+        try {
+            localStorage.setItem(KEY, JSON.stringify(arr));
+        } catch (e) {
+            // quota / disabled — ignore
+        }
+    }
+
+    function fmtRelative(ts) {
+        var diff = (Date.now() - ts) / 1000;
+        if (diff < 60) return "przed chwila";
+        if (diff < 3600) return Math.floor(diff / 60) + " min temu";
+        if (diff < 86400) return Math.floor(diff / 3600) + " godz. temu";
+        if (diff < 7 * 86400) return Math.floor(diff / 86400) + " dni temu";
+        var d = new Date(ts);
+        return d.toLocaleDateString("pl-PL");
+    }
+
+    function fmtCount(n) {
+        if (typeof n !== "number") return "—";
+        return n.toLocaleString("pl-PL");
+    }
+
+    function recordCurrent() {
+        if (!window.bppZapytanieLast) return;
+        var L = window.bppZapytanieLast;
+        if (!L.query) return;
+        var arr = load();
+        arr = arr.filter(function(x) {
+            return !(x.model === L.model && x.query === L.query);
+        });
+        arr.unshift({
+            model: L.model,
+            query: L.query,
+            count: L.count,
+            ts: Date.now()
+        });
+        if (arr.length > MAX) arr.length = MAX;
+        save(arr);
+    }
+
+    function buildRow(item) {
+        var tr = document.createElement("tr");
+
+        var modelTd = document.createElement("td");
+        modelTd.textContent = item.model;
+
+        var queryTd = document.createElement("td");
+        var link = document.createElement("a");
+        link.href = "?model=" + encodeURIComponent(item.model) +
+            "&query=" + encodeURIComponent(item.query);
+        link.className = "history-query";
+        link.title = "Kliknij, aby przywrocic to zapytanie";
+        link.textContent = item.query;
+        queryTd.appendChild(link);
+
+        var countTd = document.createElement("td");
+        countTd.className = "history-count-cell";
+        countTd.textContent = fmtCount(item.count);
+
+        var timeTd = document.createElement("td");
+        timeTd.title = new Date(item.ts).toLocaleString("pl-PL");
+        timeTd.textContent = fmtRelative(item.ts);
+
+        var actionsTd = document.createElement("td");
+        var rm = document.createElement("button");
+        rm.type = "button";
+        rm.className = "history-remove";
+        rm.title = "Usun ten wpis z historii";
+        rm.setAttribute("aria-label", "Usun wpis");
+        rm.textContent = "✕"; // ✕
+        rm.dataset.ts = String(item.ts);
+        rm.addEventListener("click", function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            var ts = Number(this.dataset.ts);
+            save(load().filter(function(x) { return x.ts !== ts; }));
+            render();
+        });
+        actionsTd.appendChild(rm);
+
+        tr.appendChild(modelTd);
+        tr.appendChild(queryTd);
+        tr.appendChild(countTd);
+        tr.appendChild(timeTd);
+        tr.appendChild(actionsTd);
+        return tr;
+    }
+
+    function render() {
+        var arr = load();
+        var container = document.getElementById("zapytanie-history");
+        var tbody = document.getElementById("zapytanie-history-tbody");
+        var counter = document.getElementById("zapytanie-history-count");
+        if (!container || !tbody || !counter) return;
+
+        counter.textContent = arr.length;
+        tbody.replaceChildren();
+        if (arr.length === 0) {
+            container.style.display = "none";
+            return;
+        }
+        container.style.display = "";
+        arr.forEach(function(item) {
+            tbody.appendChild(buildRow(item));
+        });
+    }
+
+    document.addEventListener("DOMContentLoaded", function() {
+        recordCurrent();
+        render();
+
+        var clearBtn = document.getElementById("zapytanie-history-clear");
+        if (clearBtn) {
+            clearBtn.addEventListener("click", function() {
+                if (window.confirm("Wyczyscic cala historie zapytan?")) {
+                    save([]);
+                    render();
+                }
+            });
+        }
+    });
+})();
+</script>
+<script src="{% static 'djangoql/js/completion.js' %}"></script>
+<script>
+(function() {
+    var INTROSPECT_URLS = {
+        "rekord": "{% url 'bpp:zapytanie_introspect' 'rekord' %}",
+        "autor": "{% url 'bpp:zapytanie_introspect' 'autor' %}"
+    };
+
+    function currentModelKey() {
+        var checked = document.querySelector(
+            'input[name="model"]:checked'
+        );
+        return checked ? checked.value : "rekord";
+    }
+
+    DjangoQL.DOMReady(function() {
+        var textarea = document.getElementById("id_query");
+        var dql = null;
+
+        // Tab-completion shim. DOM Level 3: listenery w fazie AT_TARGET sa
+        // wywolywane w kolejnosci REJESTRACJI (nie w kolejnosci faz). djangoql
+        // rejestruje swoj keydown w konstruktorze (DjangoQL.init), wiec
+        // rejestrujemy NASZ listener PIERWSZY — ustawia selected=0 zanim
+        // handler djangoql go sprawdzi i wykona selectCompletion+preventDefault.
+        textarea.addEventListener("keydown", function(e) {
+            if (!dql) return;
+            if (e.keyCode !== 9 || e.shiftKey) return;
+            if (!dql.completionEnabled) return;
+            if (!dql.suggestions || dql.suggestions.length === 0) return;
+            if (dql.selected === null) {
+                dql.selected = 0;
+            }
+        });
+
+        dql = DjangoQL.init({
+            introspections: INTROSPECT_URLS[currentModelKey()],
+            selector: textarea,
+            autoResize: false
+        });
+
+        // BPP-owe body ma position:relative + min-height:100vh
+        // (gradient-background). djangoql doczepia popup do <body> z
+        // position:absolute i wpisuje top w document-coords — wskutek czego
+        // popup laduje POZA viewportem (rozciaga body i daje scrollbar po
+        // prawej). Repozycjonujemy popup na position:fixed (viewport coords).
+        // "Mirror div" technika: zeby policzyc pixel-position kursora w
+        // textarea, kopiujemy styl tekstu do niewidocznego diva z
+        // white-space:pre-wrap, wkladamy tam pierwsze N znakow + <span>
+        // markerze, czytamy offset spana. Standardowy trick.
+        var CARET_MIRROR_PROPS = [
+            "boxSizing", "width", "height",
+            "overflowX", "overflowY",
+            "borderTopWidth", "borderRightWidth",
+            "borderBottomWidth", "borderLeftWidth",
+            "borderTopStyle", "borderRightStyle",
+            "borderBottomStyle", "borderLeftStyle",
+            "paddingTop", "paddingRight", "paddingBottom", "paddingLeft",
+            "fontStyle", "fontVariant", "fontWeight", "fontStretch",
+            "fontSize", "fontSizeAdjust", "lineHeight", "fontFamily",
+            "textAlign", "textTransform", "textIndent", "textDecoration",
+            "letterSpacing", "wordSpacing", "tabSize"
+        ];
+
+        function getCaretViewportCoords(ta) {
+            var style = window.getComputedStyle(ta);
+            var mirror = document.createElement("div");
+            CARET_MIRROR_PROPS.forEach(function(p) {
+                mirror.style[p] = style[p];
+            });
+            mirror.style.position = "absolute";
+            mirror.style.visibility = "hidden";
+            mirror.style.whiteSpace = "pre-wrap";
+            mirror.style.wordWrap = "break-word";
+            mirror.style.overflow = "hidden";
+            mirror.style.top = "0";
+            mirror.style.left = "-9999px";
+            document.body.appendChild(mirror);
+
+            // Clamp na wszelki wypadek (po clear textarea Safari/Firefox
+            // bywaja niespojne ze selectionStart).
+            var pos = Math.min(ta.selectionStart || 0, ta.value.length);
+            mirror.textContent = ta.value.substring(0, pos);
+            var marker = document.createElement("span");
+            marker.textContent = ta.value.substring(pos) || ".";
+            mirror.appendChild(marker);
+
+            var borderTop = parseFloat(style.borderTopWidth) || 0;
+            var borderLeft = parseFloat(style.borderLeftWidth) || 0;
+            // standard textarea-caret-position: offsetTop liczone od padding
+            // edge offsetParenta, wiec trzeba dodac borderTopWidth zeby
+            // zsynchronizowac z getBoundingClientRect() (border-outer-edge).
+            var caretLeft = marker.offsetLeft + borderLeft;
+            var caretTop = marker.offsetTop + borderTop;
+            var lineHeight = parseFloat(style.lineHeight);
+            if (isNaN(lineHeight)) {
+                lineHeight = parseFloat(style.fontSize) * 1.2;
+            }
+
+            document.body.removeChild(mirror);
+
+            var rect = ta.getBoundingClientRect();
+            return {
+                x: rect.left + caretLeft - ta.scrollLeft,
+                y: rect.top + caretTop - ta.scrollTop,
+                lineHeight: lineHeight,
+                taRect: rect
+            };
+        }
+
+        function computeTargetPosition() {
+            var caret = getCaretViewportCoords(dql.textarea);
+            var popupHeight = dql.completion.offsetHeight || 240;
+            var popupWidth = dql.completion.offsetWidth || 320;
+            var caretBottom = caret.y + caret.lineHeight;
+            var roomBelow = window.innerHeight - caretBottom;
+            var roomAbove = caret.y;
+
+            var top;
+            if (roomBelow < popupHeight && roomAbove > roomBelow) {
+                top = Math.max(4, caret.y - popupHeight);
+            } else {
+                top = caretBottom + 2;
+            }
+            var left = Math.max(
+                4,
+                Math.min(caret.x, window.innerWidth - popupWidth - 4)
+            );
+            return {
+                top: top + "px",
+                left: left + "px",
+                maxWidth:
+                    "min(90vw, " + Math.max(320, caret.taRect.width) + "px)"
+            };
+        }
+
+        var repositionPending = false;
+        function repositionCompletion() {
+            if (!dql.completion) return;
+            if (dql.completion.style.display === "none") return;
+            var s = dql.completion.style;
+            var target = computeTargetPosition();
+            // Guard: jezeli style sie pokrywa, nie pisz — w przeciwnym razie
+            // MutationObserver zapetli sie z naszym zapisem.
+            if (
+                s.position === "fixed" &&
+                s.top === target.top &&
+                s.left === target.left &&
+                s.maxWidth === target.maxWidth
+            ) {
+                return;
+            }
+            s.position = "fixed";
+            s.top = target.top;
+            s.left = target.left;
+            s.maxWidth = target.maxWidth;
+        }
+
+        function scheduleReposition() {
+            if (repositionPending) return;
+            repositionPending = true;
+            requestAnimationFrame(function() {
+                repositionPending = false;
+                repositionCompletion();
+            });
+        }
+
+        var origRender = dql.renderCompletion.bind(dql);
+        dql.renderCompletion = function(t) {
+            origRender(t);
+            repositionCompletion();
+        };
+
+        // Pas bezpieczenstwa: niektore listenery djangoql (np. click,
+        // zarejestrowany w konstruktorze) trzymaja bound-original reference
+        // do popupCompletion, ktora moze ominac nasz wrapper renderCompletion.
+        // MutationObserver łapie KAZDA zmiane style popupu — dopinamy pozycje
+        // bez wzgledu na sciezke wywolania.
+        new MutationObserver(scheduleReposition).observe(dql.completion, {
+            attributes: true,
+            attributeFilter: ["style"]
+        });
+
+        window.addEventListener("scroll", scheduleReposition, {passive: true});
+        window.addEventListener("resize", scheduleReposition);
+
+        document.querySelectorAll('input[name="model"]').forEach(
+            function(radio) {
+                radio.addEventListener("change", function() {
+                    if (!this.checked) return;
+                    dql.loadIntrospections(INTROSPECT_URLS[this.value]);
+                });
+            }
+        );
+    });
+})();
+</script>
+{% endblock %}
