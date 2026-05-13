@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import datetime
 import random
 import sys
 from dataclasses import dataclass
@@ -21,6 +22,7 @@ from bpp.demo_data.generators.wydzialy import create_wydzialy
 from bpp.demo_data.generators.zrodla import create_zrodla
 from bpp.demo_data.manifest import Manifest
 from bpp.demo_data.preflight import check_required
+from bpp.demo_data.progress import make_progress
 
 
 @dataclass
@@ -182,3 +184,72 @@ def run_create(opts: CreateOptions, *, stdin=None, stdout=None):
         f" --manifest {opts.manifest_out} --yes-i-am-sure"
         f" --confirm-db {db_name}\n"
     )
+
+
+@dataclass
+class CleanupOptions:
+    manifest: Path
+    yes_i_am_sure: bool
+    confirm_db: str | None
+    batch_size: int = 500
+    disable_progress: bool = False
+
+
+def run_cleanup(opts: CleanupOptions, *, stdin=None, stdout=None):
+    """Symetryczne do `run_create` — czyta manifest, double-confirm,
+    usuwa obiekty w bezpiecznej kolejnosci, renamuje manifest do
+    `.applied.<TS>`.
+
+    Wewnatrz jednego modelu PK sortowane DESC — dla
+    `bpp.Wydawnictwo_Zwarte` rozdzialy zazwyczaj maja wyzsze PK niz
+    ich nadrzedne (sa tworzone po), wiec usuwajac od konca nie
+    zlamiemy FK `wydawnictwo_nadrzedne`.
+    """
+    stdin = stdin or sys.stdin
+    stdout = stdout or sys.stdout
+    db_name = connection.settings_dict["NAME"]
+
+    manifest = Manifest.load(opts.manifest)
+    total = sum(len(v.get("pks", [])) for v in manifest.objects.values())
+    plan_text = (
+        f"Usunie {total} obiektow z manifestu '{opts.manifest}' w bazie '{db_name}'."
+    )
+
+    try:
+        double_confirm(
+            stdin=stdin,
+            stdout=stdout,
+            database=db_name,
+            plan_text=plan_text,
+            yes_flag=opts.yes_i_am_sure,
+            confirm_db_flag=opts.confirm_db,
+        )
+    except ConfirmAborted as e:
+        stdout.write(f"[ABORT] {e}\n")
+        raise SystemExit(1) from None
+
+    from django.apps import apps
+    from django.db import transaction
+
+    for label, pks in manifest.objects_in_cleanup_order():
+        app_label, model_name = label.split(".")
+        model = apps.get_model(app_label, model_name)
+        # WAZNE: sort DESC, zeby intra-model FK (np.
+        # Wydawnictwo_Zwarte.wydawnictwo_nadrzedne) nie wybuchl.
+        sorted_pks = sorted(pks, reverse=True)
+        n_batches = (len(sorted_pks) + opts.batch_size - 1) // opts.batch_size
+        pbar = make_progress(
+            range(0, len(sorted_pks), opts.batch_size),
+            desc=f"Cleanup {label}",
+            total=n_batches,
+            disable=opts.disable_progress,
+        )
+        for start in pbar:
+            chunk = sorted_pks[start : start + opts.batch_size]
+            with transaction.atomic():
+                model.objects.filter(pk__in=chunk).delete()
+
+    ts = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+    applied = opts.manifest.with_suffix(opts.manifest.suffix + f".applied.{ts}")
+    opts.manifest.rename(applied)
+    stdout.write(f"\n[OK] Cleanup zakonczony. Manifest: {applied}\n")
