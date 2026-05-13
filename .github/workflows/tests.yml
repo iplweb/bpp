@@ -82,19 +82,20 @@ jobs:
           fi
 
       - name: Ruff check
-        # `ruff` lives in [project.optional-dependencies].dev, so the
-        # default `uv run` resolution doesn't see it. --extra dev pulls
-        # in the dev group that has ruff pinned.
+        # `ruff` siedzi w [dependency-groups].dev (PEP 735); `uv run`
+        # aktywuje grupe `dev` defaultowo, wiec nie ma `--group dev`
+        # / `--extra dev`. $FILES jest env-bounded ponizej (a nie
+        # ${{ ... }} inline), wiec nie ma command injection.
         if: steps.files.outputs.list != ''
         env:
           FILES: ${{ steps.files.outputs.list }}
-        run: uv run --extra dev ruff check --force-exclude $FILES
+        run: uv run ruff check --force-exclude $FILES
 
       - name: Ruff format --check
         if: steps.files.outputs.list != ''
         env:
           FILES: ${{ steps.files.outputs.list }}
-        run: uv run --extra dev ruff format --check --force-exclude $FILES
+        run: uv run ruff format --check --force-exclude $FILES
 
   prepare-image:
     # Build the test-runner image once and push it to GHCR with two

@@ -93,21 +93,22 @@ cd bpp
 ### 2. Zainstaluj zależności Pythona i Playwright
 
 ```bash
-uv sync --extra=dev
+uv sync
 uv run playwright install
 sudo playwright install-deps
 ```
 
-`uv sync --extra=dev` instaluje pakiety potrzebne do pracy
-i testów (pytest, pytest-django, model-bakery, ruff, pre-commit, …).
-`uv run playwright install` pobiera przeglądarki używane w testach E2E
-(~500 MB). `sudo playwright install-deps` doinstalowuje systemowe
-biblioteki, których wymagają te przeglądarki (libnss3, libatk, libgtk-3,
-…) — wymaga sudo, bo używa `apt`.
+`uv sync` instaluje pakiety potrzebne do pracy i testów (pytest,
+pytest-django, model-bakery, ruff, pre-commit, …) — siedzą one w
+`[dependency-groups].dev`, którą `uv` aktywuje defaultowo (opt-out
+przez `--no-dev`). `uv run playwright install` pobiera przeglądarki
+używane w testach E2E (~500 MB). `sudo playwright install-deps`
+doinstalowuje systemowe biblioteki, których wymagają te przeglądarki
+(libnss3, libatk, libgtk-3, …) — wymaga sudo, bo używa `apt`.
 
 Aby uzyskać dodatkowe logowanie postępu:
 
-- `uv sync --extra=dev -v` — verbose output uv
+- `uv sync -v` — verbose output uv
 - `uv run playwright install --with-deps` — alternatywa, która sama
   wywołuje `apt` (jeśli wolisz nie rozdzielać kroku z sudo)
 

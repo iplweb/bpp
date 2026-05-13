@@ -51,9 +51,11 @@ WORKDIR /app
 
 COPY pyproject.toml uv.lock yarn.lock package.json ./
 
-# R4: --all-extras --no-extra=dev również ciągnie `baseline-rebuild`
-# (testcontainers) i pakiety z [dependency-groups].dev (vulture, pytest-
-# repeat). Explicite wymieniamy extras potrzebne w produkcji.
+# R4: `--no-dev` blokuje grupe [dependency-groups].dev (testowe deps,
+# ruff, ipython, playwright, run-site, vulture itd.). Wczesniej dev byl
+# extras-em i `--all-extras --no-extra=dev` ciagal jeszcze
+# `baseline-rebuild`; po migracji dev->dependency-group wymieniamy tylko
+# realnie potrzebne extras produkcji (ldap, office365).
 RUN --mount=type=cache,target=/root/.cache/uv,id=uv-cache \
     uv sync --frozen --no-dev --no-install-project \
         --extra ldap --extra office365
