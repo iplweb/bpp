@@ -15,7 +15,10 @@ REQUIRED_DICTIONARIES: list[tuple[str, str]] = [
     ("bpp.Tytul", "loaddata tytul"),
     ("bpp.Plec", "loaddata plec"),
     ("bpp.Zrodlo_Informacji", "loaddata zrodlo_informacji"),
-    ("bpp.Dyscyplina_Naukowa", "import dyscyplin (zewnetrzny seed)"),
+    (
+        "bpp.Dyscyplina_Naukowa",
+        "uv run python src/manage.py seed_default_dyscypliny",
+    ),
 ]
 
 
