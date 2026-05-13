@@ -102,8 +102,9 @@ def test_channels_live_server(preauth_asgi_page: Page):
 
     call_command(
         "send_notification",
-        preauth_asgi_page.authorized_user.username,
         s,
+        audience="user",
+        username=preauth_asgi_page.authorized_user.username,
         verbosity=0,
     )
 
@@ -122,8 +123,9 @@ def test_bpp_notifications(preauth_asgi_page_per_test: Page):
     expect(page.locator("body")).not_to_contain_text(s)
     call_command(
         "send_notification",
-        preauth_asgi_page_per_test.authorized_user.username,
         s,
+        audience="user",
+        username=preauth_asgi_page_per_test.authorized_user.username,
         verbosity=0,
     )
     # Give time for notification to arrive
