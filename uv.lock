@@ -273,6 +273,7 @@ dependencies = [
     { name = "django-extensions", marker = "platform_python_implementation != 'PyPy'" },
     { name = "django-favicon-plus-reloaded", marker = "platform_python_implementation != 'PyPy'" },
     { name = "django-filter", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "django-first-run-wizard", marker = "platform_python_implementation != 'PyPy'" },
     { name = "django-flexible-reports", marker = "platform_python_implementation != 'PyPy'" },
     { name = "django-formdefaults", marker = "platform_python_implementation != 'PyPy'" },
     { name = "django-formtools", marker = "platform_python_implementation != 'PyPy'" },
@@ -447,6 +448,7 @@ requires-dist = [
     { name = "django-extensions", specifier = ">=3.2,<5" },
     { name = "django-favicon-plus-reloaded", specifier = ">=1.2,<2" },
     { name = "django-filter", specifier = ">=25.2,<25.3" },
+    { name = "django-first-run-wizard", specifier = ">=0.1.0" },
     { name = "django-flexible-reports", specifier = ">=0.2.12" },
     { name = "django-formdefaults", specifier = ">=0.6.2" },
     { name = "django-formtools", specifier = ">=2.5.1,<3" },
@@ -1784,6 +1786,18 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/2c/e4/465d2699cd388c0005fb8d6ae6709f239917c6d8790ac35719676fffdcf3/django_filter-25.2.tar.gz", hash = "sha256:760e984a931f4468d096f5541787efb8998c61217b73006163bf2f9523fe8f23", size = 143818, upload-time = "2025-10-05T09:51:31.521Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/c1/40/6a02495c5658beb1f31eb09952d8aa12ef3c2a66342331ce3a35f7132439/django_filter-25.2-py3-none-any.whl", hash = "sha256:9c0f8609057309bba611062fe1b720b4a873652541192d232dd28970383633e3", size = 94145, upload-time = "2025-10-05T09:51:29.728Z" },
+]
+
+[[package]]
+name = "django-first-run-wizard"
+version = "0.1.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "django", marker = "platform_python_implementation != 'PyPy'" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/a5/b6/59d756c5cf73670d56bf9c53533d129a92471a3c6e162985bc6c05601298/django_first_run_wizard-0.1.0.tar.gz", hash = "sha256:f07554f9fdcfa86e9b7a18c12e80fe6f93cdf799d42e7d680816549a2492db0e", size = 18704, upload-time = "2026-05-13T19:33:12.656Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/5d/ee/f77db7e7e02b08a09640d85dd2c1318cff745f6cb41f3cbd3694b921cc0b/django_first_run_wizard-0.1.0-py3-none-any.whl", hash = "sha256:50aec1a9e34aea736ae58d039efc0709d6b27139f60b6b0b4af1e7f9d68e4984", size = 19115, upload-time = "2026-05-13T19:33:10.861Z" },
 ]
 
 [[package]]

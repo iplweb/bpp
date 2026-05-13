@@ -293,7 +293,7 @@ MIDDLEWARE = [
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django_countdown.middleware.CountdownBlockingMiddleware",  # After auth - needs request.user
-    "bpp_setup_wizard.middleware.SetupWizardMiddleware",  # After auth middleware to have request.user
+    "first_run_wizard.middleware.FirstRunWizardMiddleware",  # After auth middleware to have request.user
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     "django_bpp.middleware.ConditionalPasswordChangeMiddleware",
@@ -337,7 +337,8 @@ if TESTING:
 
 INSTALLED_APPS = [
     # "django_werkzeug",
-    "bpp_setup_wizard",  # Must be early to enable setup wizard
+    "first_run_wizard",  # Pluggable first-run wizard engine (PyPI)
+    "bpp_setup_wizard",  # BPP-specific step (Uczelnia + PBN); registers in apps.ready()
     "daphne",
     "tinymce",
     "formtools",

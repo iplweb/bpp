@@ -51,7 +51,10 @@ def protected_media_serve(request, path, document_root=None):
 
 urlpatterns = (
     [
-        path("setup/", include("bpp_setup_wizard.urls")),  # Setup wizard URLs
+        path(  # Setup wizard URLs (engine from django-first-run-wizard;
+            "setup/",
+            include("first_run_wizard.urls", namespace="first_run_wizard"),
+        ),
         path("formdefaults/", include("formdefaults.urls")),
         url(r"^favicon\.ico$", cache_page(60 * 60)(favicon)),
         path("test_403/", login_required(test_403_view)),

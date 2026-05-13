@@ -148,6 +148,7 @@ dependencies = [
     # niezdefiniowane (no-op AppConfig.ready).
     "django-pg-baseline>=0.3.0",
     "django-site-blog>=0.2.0",
+    "django-first-run-wizard>=0.1.0",
 ]
 
 [project.optional-dependencies]
