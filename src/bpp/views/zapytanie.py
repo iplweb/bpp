@@ -135,7 +135,7 @@ def _resolve_model_or_404(model_key):
     try:
         return MODELS[model_key]
     except KeyError:
-        raise Http404(f"Nieznany model: {model_key}")
+        raise Http404(f"Nieznany model: {model_key}") from None
 
 
 class ZapytanieIntrospectView(WprowadzanieDanychOrSuperuserMixin, View):
