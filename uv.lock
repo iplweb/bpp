@@ -437,7 +437,7 @@ requires-dist = [
     { name = "django-compressor", specifier = "==4.6.0" },
     { name = "django-constance", specifier = ">=4.3.5" },
     { name = "django-cookie-law", specifier = "==2.2.0" },
-    { name = "django-countdown", git = "https://github.com/iplweb/django-countdown.git?tag=v0.2.0" },
+    { name = "django-countdown", specifier = ">=0.2.0" },
     { name = "django-crispy-forms", specifier = ">=2.6,<3" },
     { name = "django-dbtemplates-iplweb", specifier = ">=4.3.2" },
     { name = "django-debug-toolbar", marker = "extra == 'dev'", specifier = ">=6.3.0" },
@@ -524,7 +524,7 @@ requires-dist = [
     { name = "pytest-shard", marker = "extra == 'dev'", specifier = ">=0.1.2" },
     { name = "pytest-sugar", marker = "extra == 'dev'", specifier = ">=0.9.7" },
     { name = "pytest-testcontainers", marker = "extra == 'dev'", specifier = ">=0.1.0" },
-    { name = "pytest-testcontainers-django", marker = "extra == 'dev'", git = "https://github.com/iplweb/pytest-testcontainers-django?tag=v0.2.0" },
+    { name = "pytest-testcontainers-django", marker = "extra == 'dev'", specifier = ">=0.2.1" },
     { name = "pytest-timeout", marker = "extra == 'dev'", specifier = ">=2.1.0" },
     { name = "pytest-xdist", marker = "extra == 'dev'", specifier = ">=2.3.0" },
     { name = "python-dateutil", specifier = ">=2.9.0.post0" },
@@ -1580,9 +1580,13 @@ wheels = [
 [[package]]
 name = "django-countdown"
 version = "0.2.0"
-source = { git = "https://github.com/iplweb/django-countdown.git?tag=v0.2.0#089eef9817a602828341d00bdbb08d166d78978f" }
+source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "django", marker = "platform_python_implementation != 'PyPy'" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/f8/cf/24ef6118a39789aab8a4cf79d4e2f7e5673496bcf7961c0ce1aa465bd1b5/django_countdown-0.2.0.tar.gz", hash = "sha256:d87ed080bf91ab388c3a28acb046df8e56c392c483a369126166e641d625145c", size = 30539, upload-time = "2026-05-13T09:30:12.006Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/fc/de/cfdaab369f4d73cb4941be1612cae5e6f9905b1fff0ac9394ffe6f898549/django_countdown-0.2.0-py3-none-any.whl", hash = "sha256:2e5f1472348329d7970e262ad30dbc82ce3d830e0b3248ecd37bba46f7292ffe", size = 34870, upload-time = "2026-05-13T09:30:10.199Z" },
 ]
 
 [[package]]
@@ -4368,13 +4372,17 @@ wheels = [
 
 [[package]]
 name = "pytest-testcontainers-django"
-version = "0.2.0"
-source = { git = "https://github.com/iplweb/pytest-testcontainers-django?tag=v0.2.0#f48f03660b88c0fb680d29e7055ca17a216d1145" }
+version = "0.2.1"
+source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "pytest", marker = "platform_python_implementation != 'PyPy'" },
     { name = "pytest-django", marker = "platform_python_implementation != 'PyPy'" },
     { name = "pytest-testcontainers", marker = "platform_python_implementation != 'PyPy'" },
     { name = "testcontainers", marker = "platform_python_implementation != 'PyPy'" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/35/e1/6de1b2818e3505360b28c9e22128d2abb75ed57bfe8d179949bfb5d33ec9/pytest_testcontainers_django-0.2.1.tar.gz", hash = "sha256:02e633d6fc8fc79f5089d9105011362164dd3d8ed92956804608922f4a7fbd62", size = 23068, upload-time = "2026-05-10T03:32:23.911Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/c5/19/66b273a15c83d86c6062bb8e96ef8bdf9342558380367bd86c1968141122/pytest_testcontainers_django-0.2.1-py3-none-any.whl", hash = "sha256:b8a755383d93306c994301e45e047d60b6bd226087f1b4bcdfe7e95ff7ad5f90", size = 20709, upload-time = "2026-05-10T03:32:22.558Z" },
 ]
 
 [[package]]
