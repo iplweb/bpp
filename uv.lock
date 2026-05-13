@@ -468,7 +468,7 @@ requires-dist = [
     { name = "django-reversion-compare", specifier = ">=0.19.2" },
     { name = "django-sendfile2", specifier = ">=0.7.2" },
     { name = "django-session-security", specifier = ">=2.6.8" },
-    { name = "django-site-blog", editable = "../django-site-blog" },
+    { name = "django-site-blog", specifier = ">=0.2.0" },
     { name = "django-soft-delete", specifier = ">=1.0.23" },
     { name = "django-static-sitemaps", specifier = ">=5.0.0" },
     { name = "django-tables2", specifier = ">=3.0.0,<3.1" },
@@ -2082,23 +2082,16 @@ wheels = [
 
 [[package]]
 name = "django-site-blog"
-version = "0.1.0"
-source = { editable = "../django-site-blog" }
+version = "0.2.0"
+source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "django", marker = "platform_python_implementation != 'PyPy'" },
     { name = "django-model-utils", marker = "platform_python_implementation != 'PyPy'" },
 ]
-
-[package.metadata]
-requires-dist = [
-    { name = "django", specifier = ">=5.2" },
-    { name = "django-model-utils", specifier = ">=5,<6" },
-    { name = "pre-commit", marker = "extra == 'dev'" },
-    { name = "pytest", marker = "extra == 'test'", specifier = ">=8" },
-    { name = "pytest-django", marker = "extra == 'test'", specifier = ">=4.8" },
-    { name = "ruff", marker = "extra == 'dev'" },
+sdist = { url = "https://files.pythonhosted.org/packages/26/c2/f891504c562f8abc78e8dfa9727193cc9d5ad2aff5ffac6568009a0e5481/django_site_blog-0.2.0.tar.gz", hash = "sha256:528e50acdc0131cd230077c80bc63ed432a4113b1e5648db22bc2256de855d71", size = 12522, upload-time = "2026-05-13T15:02:19.65Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/12/b6/ea22ea5a5c5593cfba31aeb29ba48047746768d17d976b18b781202dc05c/django_site_blog-0.2.0-py3-none-any.whl", hash = "sha256:6da1f41b7d7538444cf75d1164f2a48a62ecc59fcb5aa119d2ec0e3ac0fc9a0d", size = 13034, upload-time = "2026-05-13T15:02:20.823Z" },
 ]
-provides-extras = ["test", "dev"]
 
 [[package]]
 name = "django-soft-delete"

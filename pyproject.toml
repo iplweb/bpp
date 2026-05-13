@@ -146,7 +146,7 @@ dependencies = [
     # (testy/dev/baseline_rebuild). Sam runtime nic nie kosztuje gdy PG_BASELINE
     # niezdefiniowane (no-op AppConfig.ready).
     "django-pg-baseline>=0.3.0",
-    "django-site-blog>=0.1.0",
+    "django-site-blog>=0.2.0",
 ]
 
 [project.optional-dependencies]
@@ -255,9 +255,6 @@ environments = ["python_version >= '3.10' and python_version < '3.15' and platfo
 name = "pypi"
 url = "https://pypi.org/simple"
 default = true
-
-[tool.uv.sources]
-django-site-blog = { path = "../django-site-blog", editable = true }
 
 # Konfiguracja `pytest-testcontainers-django` — pluginu pytest, ktory
 # startuje kontenery PG/Redis przed importem Django settings i wstrzykuje
