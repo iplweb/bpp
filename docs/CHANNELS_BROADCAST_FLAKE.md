@@ -161,19 +161,61 @@ gubi message. Mogłoby to być:
 | `playwright_util.py` | `wait_for_channel_subscription(channel_name, since, timeout)` | Defensive: poll Redis aż consumer subscribuje. Score-based żeby pomijać leftovery z testcontainer reuse. |
 | `playwright_fixtures.py` | `preauth_asgi_page{,_per_test}` wywołuje `wait_for_channel_subscription(...)` po `wait_for_websocket_connection` | Eliminuje teoretyczną klasę race-condition. Nie zamyka tego flake'u. |
 
-## Co dalej
+## Eksperymenty dot. timingu (sesja 2026-05-13)
 
-- `test_bpp_notifications` flake (~80% fail) pozostaje **otwarty**.
-- Praktycznie test można czasowo oznaczyć `@pytest.mark.flaky(reruns=3)`
-  (`pytest-rerunfailures`) albo `@pytest.mark.skip(reason="see docs/CHANNELS_BROADCAST_FLAKE.md")`
-  i wrócić gdy ktoś będzie miał czas.
-- Sensowne kolejne kroki diagnostyki:
-  1. Monkey-patch `channels_broadcast.consumers.NotificationsConsumer.chat_message`
-     żeby logować KAŻDY event wchodzący do consumer'a. Jeśli logi
-     pokazują że `chat_message` jest wywołane → problem to forward
-     do WS. Jeśli nie wywołane → problem to channel layer dispatch.
-  2. Dodać capture `chatSocket.addEventListener('error', ...)` w
-     `init()` żeby zobaczyć potencjalne WS errors po stronie klienta.
-  3. Uruchomić test z `CHANNELS_REDIS_TRACE=1` (jeśli pakiet
-     `channels-redis` wystawia coś takiego) lub z patched `_send`
-     który loguje cały payload + channel name.
+| Setup | Pass rate (5 runów) |
+|---|---|
+| Bez sleep przed `call_command` | 1/5 (20%) |
+| `wait_for_timeout(3000)` przed send | 4/5 (80%) |
+| `wait_for_timeout(5000)` przed send | 4/5 (80%) |
+| Deterministic JS-handler probe (no sleep) | 0/5 (0%) |
+| `wait_for_timeout(2000)` + `@flaky(reruns=3)` | **10/10 (100%)** ← przyjęte |
+
+Wnioski:
+
+- Krótki bufor czasowy przed send dramatycznie poprawia stabilność
+  (20% → 80%), ale plateau przy 80% sugeruje że problem **nie jest
+  tylko** "za szybko" — jest probabilistyczny komponent (~20% szansa
+  że message ginie nawet po 5s buforze).
+- Deterministic JS-handler check (`Mustache !== undefined &&
+  addMessage === 'function' && onmessage === 'function'`) passuje
+  natychmiast i regresuje do 0/5 — czyli problem **nie jest** po stronie
+  klienta. Klient jest ready, ale message i tak nie przychodzi.
+- Plateau przy 80% × 3 retries `@flaky` daje teoretyczne 0.2^4 ≈ 0.16%
+  combined fail rate. Empirycznie 10/10 pass = ≥70% per-run pass rate
+  z confidence ~99%.
+
+## Pragmatyczne rozwiązanie (przyjęte)
+
+```python
+@pytest.mark.flaky(reruns=3)
+@pytest.mark.django_db(transaction=True)
+def test_bpp_notifications(preauth_asgi_page_per_test: Page):
+    ...
+    expect(page.locator("body")).not_to_contain_text(s)
+    page.wait_for_timeout(2000)                         # 80% miss → 20%
+    call_command("send_notification", ...)
+    page.wait_for_timeout(1000)
+    expect(page.locator("body")).to_contain_text(s, timeout=15000)
+```
+
+`@pytest.mark.flaky(reruns=3)` (z `pytest-rerunfailures`, w deps) daje
+do 4 attempts. To **band-aid** — nie naprawia root cause, ale eliminuje
+flake w CI.
+
+## Co dalej (gdy ktoś będzie miał czas)
+
+Sensowne kolejne kroki diagnostyki:
+
+1. Monkey-patch `channels_broadcast.consumers.NotificationsConsumer.chat_message`
+   żeby logować KAŻDY event wchodzący do consumer'a. Jeśli logi
+   pokazują że `chat_message` jest wywołane → problem to forward
+   do WS. Jeśli nie wywołane → problem to channel layer dispatch.
+2. Dodać capture `chatSocket.addEventListener('error', ...)` w
+   `init()` żeby zobaczyć potencjalne WS errors po stronie klienta.
+3. Uruchomić test z `CHANNELS_REDIS_TRACE=1` (jeśli pakiet
+   `channels-redis` wystawia coś takiego) lub z patched `_send`
+   który loguje cały payload + channel name.
+4. Sprawdzić czy gubi się na poziomie `bzpopmin` w Daphne (`receive_loop`
+   nie zdąża z polling przed expiry message-a) — `self.expiry` default
+   60s, powinno wystarczyć, ale warto zweryfikować.
