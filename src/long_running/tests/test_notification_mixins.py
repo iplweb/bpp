@@ -19,7 +19,7 @@ def test_ASGINotificationMixin_asgi_channel_name(fake_rekord):
 
 
 def test_ASGINotificationMixin_send_notification(fake_rekord, mocker):
-    from notifications import core
+    from channels_broadcast import core
 
     mocker.patch("channels_broadcast.core.send_notification")
     fake_rekord.send_notification("msg")
@@ -27,7 +27,7 @@ def test_ASGINotificationMixin_send_notification(fake_rekord, mocker):
 
 
 def test_ASGINotificationMixin_send_progress(fake_rekord, mocker):
-    from notifications import core
+    from channels_broadcast import core
 
     mocker.patch("channels_broadcast.core._send")
     fake_rekord.send_progress(20)
@@ -36,7 +36,7 @@ def test_ASGINotificationMixin_send_progress(fake_rekord, mocker):
 
 @pytest.mark.django_db
 def test_ASGINotificationMixin_send_processing_finished(fake_rekord, mocker):
-    from notifications import core
+    from channels_broadcast import core
 
     mocker.patch("channels_broadcast.core._send")
     fake_rekord.send_processing_finished()
