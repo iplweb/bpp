@@ -72,7 +72,7 @@
     {% endcache %}
 </head>
 <body class="fouc-hidden">
-<a href="#main-content" class="skip-link">Przejdź do głównej zawartości</a>
+{% block skip_link %}<a href="#main-content" class="skip-link">Przejdź do głównej zawartości</a>{% endblock %}
 {% block body %}
 {% endblock %}
 <script type="text/javascript">

@@ -337,8 +337,11 @@ if TESTING:
 
 INSTALLED_APPS = [
     # "django_werkzeug",
+    # bpp_setup_wizard BEFORE first_run_wizard so BPP-side templates
+    # (first_run_wizard/admin_user.html in bpp_setup_wizard.templates)
+    # override the vendor-neutral defaults shipped by the package.
+    "bpp_setup_wizard",  # BPP-specific step + BPP-styled templates
     "first_run_wizard",  # Pluggable first-run wizard engine (PyPI)
-    "bpp_setup_wizard",  # BPP-specific step (Uczelnia + PBN); registers in apps.ready()
     "daphne",
     "tinymce",
     "formtools",
