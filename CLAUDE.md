@@ -21,6 +21,19 @@ management system built with Django. Python >=3.10,<3.15.
 - **Ask questions** if anything is unclear before taking on non-trivial tasks
 - **NEVER modify existing migration files** in `src/*/migrations/`
 - **Max line length: 88 characters** (enforced by ruff)
+- **Worktrees NIGDY w `bpp/` (ani w `.claude/worktrees/`).** Wszystkie
+  worktree mają lądować jako siostrzane katalogi obok głównego checkoutu,
+  tzn. w `~/Programowanie/`. Nazwa: `bpp-<feature-slug>`.
+  - ❌ `bpp/.claude/worktrees/<slug>` — zaśmieca repo, łatwo wpada do `find`,
+    `grep`, edytora, snapshotów IDE.
+  - ✅ `~/Programowanie/bpp-<slug>` — jako siostra `~/Programowanie/bpp`.
+  - Domyślny `EnterWorktree name=<slug>` claude'a tworzy worktree w
+    `bpp/.claude/worktrees/` — to **NIE** jest akceptowalne. Zamiast tego:
+    ```bash
+    git worktree add ~/Programowanie/bpp-<slug> -b worktree-<slug>
+    ```
+    a potem `EnterWorktree path=~/Programowanie/bpp-<slug>` żeby wejść
+    w już-istniejący worktree zamiast tworzyć kolejny.
 - **Icons in templates:**
   - Public frontend (Foundation CSS): monochrome Foundation-Icons
     (`<span class="fi-icon"/>`)

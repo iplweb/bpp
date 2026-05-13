@@ -190,6 +190,11 @@ TODO-*.md
 # kasowany na exit.
 .run-site-config
 
+# Runtime state dir run-site: dev secret_key i inne ephemeralne dotfiles.
+# Tworzone na uruchomieniu, NIE wolno commitowac (secret_key to dev key
+# generowany per maszyne; commit byly faktycznym wyciekiem klucza).
+.run-site/
+
 # Dotfiles django-dev-helpers (token + porty), tworzone przez
 # `django-dev-helpers` w korzeniu repo gdy aktywne (run-site ustawia
 # DJANGO_DEV_HELPERS_ENABLED). Ulotne; kasowane na exit.
