@@ -14,6 +14,12 @@ from django.urls import reverse
 from bpp.models import Uczelnia
 from bpp_setup_wizard.steps import UczelniaSetupStep
 
+# Test password used by HTTP tests that submit AdminUserCreationForm.
+# Must satisfy Django's default AUTH_PASSWORD_VALIDATORS (length ≥ 8,
+# not similar to username, not in common-password list, not all numeric).
+# Not a real credential.
+_TEST_PASSWORD = "wizard-test-pass-min8"  # pragma: allowlist secret  # noqa: S105
+
 
 @pytest.fixture(autouse=True)
 def enable_first_run_wizard_middleware(settings):
@@ -212,8 +218,8 @@ def test_admin_user_post_via_bpp_override_creates_superuser():
         {
             "username": "bppadmin",
             "email": "admin@bpp.test",
-            "password1": "StrongBppPwd456!",
-            "password2": "StrongBppPwd456!",
+            "password1": _TEST_PASSWORD,
+            "password2": _TEST_PASSWORD,
         },
     )
 
@@ -226,7 +232,7 @@ def test_admin_user_post_via_bpp_override_creates_superuser():
     assert user.is_staff is True
     assert user.is_superuser is True
     assert user.is_active is True
-    assert user.check_password("StrongBppPwd456!")
+    assert user.check_password(_TEST_PASSWORD)
 
 
 @pytest.mark.django_db
@@ -266,8 +272,8 @@ def test_full_happy_path_empty_db_to_live_site():
         {
             "username": "e2eadmin",
             "email": "e2e@bpp.test",
-            "password1": "E2EStrongPwd987!",
-            "password2": "E2EStrongPwd987!",
+            "password1": _TEST_PASSWORD,
+            "password2": _TEST_PASSWORD,
         },
     )
     assert response.status_code == 302
