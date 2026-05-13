@@ -7,6 +7,7 @@ from collections.abc import Iterable
 from dataclasses import dataclass
 
 from bpp.demo_data.generators._publikacje_common import (
+    apply_denorm_pre_save_cache,
     autor_jednostka_mapping,
     make_doi,
     make_tytul,
@@ -67,8 +68,9 @@ def _build_praca(
     s: _Slowniki,
     prefix: str = "",
 ) -> Wydawnictwo_Zwarte:
-    return Wydawnictwo_Zwarte(
-        tytul_oryginalny=make_tytul(rng, idx, prefix=prefix),
+    tytul = make_tytul(rng, idx, prefix=prefix)
+    praca = Wydawnictwo_Zwarte(
+        tytul_oryginalny=tytul,
         rok=rok,
         charakter_formalny=rng.choice(s.charaktery),
         typ_kbn=rng.choice(s.typy_kbn) if s.typy_kbn else None,
@@ -78,6 +80,8 @@ def _build_praca(
         doi=make_doi(rng, rok, idx),
         punkty_kbn=rng.randint(5, 200),
     )
+    apply_denorm_pre_save_cache(praca, tytul=tytul, kind="wz", idx=idx)
+    return praca
 
 
 def _bulk_create_with_manifest(

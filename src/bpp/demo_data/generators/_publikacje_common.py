@@ -9,8 +9,18 @@ from __future__ import annotations
 
 import random
 
+from django.utils.text import slugify
+
 from bpp.demo_data.names import CONTEXTS, SUBJECTS, TOPICS, TYTULY_TEMPLATES
 from bpp.models import Autor, Autor_Jednostka
+
+DENORM_CACHE_FIELDS: tuple[str, ...] = (
+    "cached_punkty_dyscyplin",
+    "opis_bibliograficzny_cache",
+    "opis_bibliograficzny_autorzy_cache",
+    "opis_bibliograficzny_zapisani_autorzy_cache",
+    "slug",
+)
 
 
 def make_tytul(rng: random.Random, idx: int, prefix: str = "") -> str:
@@ -31,6 +41,46 @@ def make_doi(rng: random.Random, rok: int, idx: int) -> str:
     """Generuje syntetyczny DOI w formacie `10.NNNN/demo.YYYY.IDX`."""
     prefix4 = rng.randint(1000, 9999)
     return f"10.{prefix4}/demo.{rok}.{idx}"
+
+
+def apply_denorm_pre_save_cache(obj, *, tytul: str, kind: str, idx: int) -> None:
+    """Pre-set `@denormalized` pola na obj + ich `_denorm_pre_save_<attname>`
+    cache, zeby `denorm.fields.pre_save` zwracal cache i NIE wywolal
+    callback funkcji.
+
+    Po co: w trakcie `bulk_create` Django wola `Field.pre_save(obj, add=True)`
+    dla kazdego pola PRZED INSERT-em. `denorm` registers `pre_save` jako
+    field-level (nie sygnal), wiec bulk_create JE odpala. Callbacki typu
+    `cached_punkty_dyscyplin` -> `przelicz_punkty_dyscyplin()` -> ISlot ->
+    `original.zewnetrzna_baza_danych.filter(...)` wymagaja PK i wywalaja
+    sie ValueError-em. `denorm/fields.py:pre_save` ma cache short-circuit
+    (`if cached is not None: return cached`), wiec pre-set non-None cache
+    omija callbacka.
+
+    Wartosci to placeholdery (puste tekst/listy, slug z disambiguatorem
+    `kind-idx`). Po `create_demo_data` user powinien uruchomic
+    `manage.py denorm_rebuild` zeby wypelnic cache prawdziwymi wartosciami
+    (juz sugerowane w stdout banner).
+
+    `kind` ('wc'/'wz') + `idx` (unique w obrebie generation run) gwarantuja
+    unique slug (SlugField ma unique=True). Cross-run uniqueness zalezy
+    od czystej bazy lub uprzedniego cleanup_demo_data.
+    """
+    safe_tytul = (tytul or "")[:60]
+    slug_value = slugify(f"{safe_tytul}-{kind}-{idx}")[:400]
+    if not slug_value:
+        slug_value = f"demo-{kind}-{idx}"
+
+    defaults: dict[str, object] = {
+        "cached_punkty_dyscyplin": [],
+        "opis_bibliograficzny_cache": tytul,
+        "opis_bibliograficzny_autorzy_cache": [],
+        "opis_bibliograficzny_zapisani_autorzy_cache": "",
+        "slug": slug_value,
+    }
+    for attname, value in defaults.items():
+        setattr(obj, attname, value)
+        setattr(obj, f"_denorm_pre_save_{attname}", value)
 
 
 def autor_jednostka_mapping(autorzy: list[Autor]) -> dict[int, int]:
