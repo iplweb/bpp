@@ -293,13 +293,13 @@ MIDDLEWARE = [
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django_countdown.middleware.CountdownBlockingMiddleware",  # After auth - needs request.user
-    "bpp_setup_wizard.middleware.SetupWizardMiddleware",  # After auth middleware to have request.user
+    "first_run_wizard.middleware.FirstRunWizardMiddleware",  # After auth middleware to have request.user
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     "django_bpp.middleware.ConditionalPasswordChangeMiddleware",
     "dj_pagination.middleware.PaginationMiddleware",
     "session_security.middleware.SessionSecurityMiddleware",
-    "notifications.middleware.NotificationsMiddleware",
+    "bpp.middleware.NotificationsMiddleware",
     # 'rollbar.contrib.django.middleware.RollbarNotifierMiddleware',
     "bpp.middleware.CustomRollbarNotifierMiddleware",
 ]
@@ -337,7 +337,11 @@ if TESTING:
 
 INSTALLED_APPS = [
     # "django_werkzeug",
-    "bpp_setup_wizard",  # Must be early to enable setup wizard
+    # bpp_setup_wizard BEFORE first_run_wizard so BPP-side templates
+    # (first_run_wizard/admin_user.html in bpp_setup_wizard.templates)
+    # override the vendor-neutral defaults shipped by the package.
+    "bpp_setup_wizard",  # BPP-specific step + BPP-styled templates
+    "first_run_wizard",  # Pluggable first-run wizard engine (PyPI)
     "daphne",
     "tinymce",
     "formtools",
@@ -405,7 +409,7 @@ INSTALLED_APPS = [
     "powiazania_autorow",
     "compressor",
     "session_security",
-    "notifications",
+    "channels_broadcast",
     "integrator2",
     "nowe_raporty",
     "rozbieznosci_dyscyplin",
@@ -885,7 +889,7 @@ TABULAR_PERMISSIONS_CONFIG = {
             "admin",
             "auth",
             "password_policies",
-            "notifications",
+            "channels_broadcast",
             "dashboard",
             "django.contrib.contenttypes",
             "egeria",

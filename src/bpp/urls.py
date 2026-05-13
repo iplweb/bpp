@@ -90,9 +90,29 @@ from bpp.views.microsoft_auth_redirect import MicrosoftAuthRedirectView
 from bpp.views.oai import OAIView
 from bpp.views.profile import ProfilUzytkownikaView
 from bpp.views.xlsx_issn_chunks import xlsx_issn_chunks
+from bpp.views.zapytanie import (
+    ZapytanieIntrospectView,
+    ZapytanieSuggestionsView,
+    ZapytanieView,
+)
 from ranking_autorow.views import RankingAutorow, RankingAutorowFormularz
 
 urlpatterns = [
+    path(
+        "zapytanie/",
+        ZapytanieView.as_view(),
+        name="zapytanie",
+    ),
+    path(
+        "zapytanie/introspect/<str:model_key>/",
+        ZapytanieIntrospectView.as_view(),
+        name="zapytanie_introspect",
+    ),
+    path(
+        "zapytanie/suggestions/<str:model_key>/",
+        ZapytanieSuggestionsView.as_view(),
+        name="zapytanie_suggestions",
+    ),
     path(
         "profil/",
         ProfilUzytkownikaView.as_view(),

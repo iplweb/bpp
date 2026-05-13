@@ -61,5 +61,5 @@ PASSWORD_HASHERS = ["django.contrib.auth.hashers.MD5PasswordHasher"]
 MIDDLEWARE = [
     m
     for m in MIDDLEWARE  # noqa
-    if m != "bpp_setup_wizard.middleware.SetupWizardMiddleware"  # noqa
+    if m != "first_run_wizard.middleware.FirstRunWizardMiddleware"  # noqa
 ]

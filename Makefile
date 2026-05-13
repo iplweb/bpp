@@ -57,20 +57,27 @@ endif
 
 all:	prepare-developer-machine release ## UWAGA: pełna konfiguracja + release (uruchamia release!)
 
-# DYLD_FALLBACK_LIBRARY_PATH wskazuje dyld-owi na /opt/homebrew/lib, zeby
-# weasyprint (cffi.dlopen) mogl znalezc libgobject-2.0 / pango / harfbuzz /
-# fontconfig zainstalowane przez brew. Na Apple Silicon te biblioteki
-# siedza w /opt/homebrew/lib, ktorego dyld nie konsultuje domyslnie.
-# Trwaly fix: dopis do ~/.zprofile na koncu recipe (nowe shelle).
-# Doraznie: target-specific export, zeby biezacy `uv sync` i playwright
-# install tez ja widzialy, zanim user sourcnie zprofile.
+# WeasyPrint (cffi.dlopen / ctypes.util.find_library) musi znalezc
+# libgobject-2.0 / pango / harfbuzz / fontconfig zainstalowane przez brew.
+# Na Apple Silicon te biblioteki siedza w /opt/homebrew/lib, ktorego dyld
+# nie konsultuje domyslnie (default search path to /usr/local/lib + /usr/lib).
 #
-# UWAGA: DYLD_FALLBACK_LIBRARY_PATH to runtime var dla dlopen. Nie pomaga
-# przy *build-time* bledach (np. wheel buduje sie z zrodla i nie znajduje
-# cairo.h) — wtedy potrzeba PKG_CONFIG_PATH=/opt/homebrew/lib/pkgconfig +
-# LDFLAGS=-L/opt/homebrew/lib + CPPFLAGS=-I/opt/homebrew/include.
-prepare-developer-machine-macos: export DYLD_FALLBACK_LIBRARY_PATH := /opt/homebrew/lib:$(DYLD_FALLBACK_LIBRARY_PATH)
-prepare-developer-machine-macos: ## Zainstaluj zależności systemowe na macOS (brew + uv sync + playwright)
+# Probowalismy wczesniej (commit 3531fd2d4) DYLD_FALLBACK_LIBRARY_PATH —
+# nie sprawdza sie w praktyce: macOS SIP strippuje wszystkie zmienne DYLD_*
+# w momencie wywolania chronionej binarki (/usr/bin/*, /bin/sh, itp.), wiec
+# w lancuchach typu  make → sh → uv → python → pytest  zmienna regularnie
+# ginie po drodze. Z perspektywy pytest/uv vs. dlopen — niedeterministyczne.
+#
+# Wracamy do symlinkow w /usr/local/lib: filesystem-level, dyld konsultuje
+# te sciezke z automatu, SIP nic z tym nie zrobi. Wymaga sudo *raz*
+# przy setupie maszyny. Idempotent — recipe nie nadpisuje istniejacych
+# symlinkow wskazujacych na te same cele.
+#
+# UWAGA: To runtime fix dla dlopen. Nie pomaga przy *build-time* bledach
+# (np. wheel buduje sie z zrodla i nie znajduje cairo.h) — wtedy potrzeba
+# PKG_CONFIG_PATH=/opt/homebrew/lib/pkgconfig + LDFLAGS=-L/opt/homebrew/lib
+# + CPPFLAGS=-I/opt/homebrew/include.
+prepare-developer-machine-macos: ## Zainstaluj zależności systemowe na macOS (brew + uv sync + playwright + symlinki)
 	@if ! command -v brew >/dev/null 2>&1; then \
 		echo ""; \
 		echo "BŁĄD: Homebrew (brew) nie jest zainstalowany."; \
@@ -95,15 +102,37 @@ prepare-developer-machine-macos: ## Zainstaluj zależności systemowe na macOS (
 	brew install cairo pango gdk-pixbuf libffi gobject-introspection gtk+3 node yarn
 	npm install -g grunt-cli
 	uv sync --frozen --no-install-project --all-extras
+	@# Symlinki w /usr/local/lib — dyld konsultuje te sciezke domyslnie,
+	@# wiec niezaleznie od stanu DYLD_* (SIP) WeasyPrint znajdzie libki.
+	@if [ ! -d /usr/local/lib ]; then \
+		echo "Tworze /usr/local/lib (wymagane sudo)..."; \
+		sudo mkdir -p /usr/local/lib; \
+	fi
+	@for pair in \
+		"/opt/homebrew/opt/glib/lib/libgobject-2.0.0.dylib:gobject-2.0" \
+		"/opt/homebrew/opt/pango/lib/libpango-1.0.dylib:pango-1.0" \
+		"/opt/homebrew/opt/harfbuzz/lib/libharfbuzz.dylib:harfbuzz" \
+		"/opt/homebrew/opt/fontconfig/lib/libfontconfig.1.dylib:fontconfig-1" \
+		"/opt/homebrew/opt/pango/lib/libpangoft2-1.0.dylib:pangoft2-1.0"; do \
+		src="$${pair%:*}"; dst="/usr/local/lib/$${pair##*:}"; \
+		if [ -L "$$dst" ] && [ "$$(readlink "$$dst")" = "$$src" ]; then \
+			echo "Symlink $$dst juz wskazuje na $$src — pomijam."; \
+		else \
+			echo "Tworze symlink $$dst -> $$src (wymagane sudo)..."; \
+			sudo ln -sf "$$src" "$$dst"; \
+		fi; \
+	done
+	@# Cleanup po poprzedniej probie z DYLD_FALLBACK_LIBRARY_PATH —
+	@# usun marker + linie export z ~/.zprofile, jesli zostaly.
 	@ZPROFILE="$$HOME/.zprofile"; \
 	MARKER='# bpp: weasyprint dlopen (Homebrew libs on Apple Silicon)'; \
 	if [ -f "$$ZPROFILE" ] && grep -qF "$$MARKER" "$$ZPROFILE"; then \
-		echo "DYLD_FALLBACK_LIBRARY_PATH juz skonfigurowane w $$ZPROFILE — pomijam."; \
-	else \
-		printf '\n%s\nexport DYLD_FALLBACK_LIBRARY_PATH="/opt/homebrew/lib$${DYLD_FALLBACK_LIBRARY_PATH:+:$$DYLD_FALLBACK_LIBRARY_PATH}"\n' "$$MARKER" >> "$$ZPROFILE"; \
-		echo "Dopisano DYLD_FALLBACK_LIBRARY_PATH do $$ZPROFILE."; \
-		echo "Aby zlapac w biezacej sesji uruchom:  source $$ZPROFILE"; \
-		echo "(albo otworz nowy terminal)."; \
+		cp "$$ZPROFILE" "$$ZPROFILE.bpp-bak"; \
+		awk -v m="$$MARKER" 'BEGIN{skip=0} \
+			$$0==m {skip=1; next} \
+			skip>0 {skip--; next} \
+			{print}' "$$ZPROFILE.bpp-bak" > "$$ZPROFILE"; \
+		echo "Usunieto stary wpis DYLD_FALLBACK_LIBRARY_PATH z $$ZPROFILE (backup: $$ZPROFILE.bpp-bak)."; \
 	fi
 	$(MAKE) playwright-install
 

@@ -101,7 +101,7 @@ if "pytest" in sys.modules:
     MIDDLEWARE = [
         m
         for m in MIDDLEWARE
-        if m != "bpp_setup_wizard.middleware.SetupWizardMiddleware"
+        if m != "first_run_wizard.middleware.FirstRunWizardMiddleware"
     ]
     # Testy nie powinny korzystać z cacheops — paczka monkey-patchuje
     # globalnie Manager.get / QuerySet.* i potrafi wywalać

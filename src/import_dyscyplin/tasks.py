@@ -6,7 +6,7 @@ from django.urls import reverse
 
 from django_bpp.celery_tasks import app
 from import_dyscyplin.models import Import_Dyscyplin
-from notifications.models import Notification
+from channels_broadcast.models import Notification
 
 logger = get_task_logger("django")
 

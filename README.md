@@ -102,9 +102,11 @@ Co robi `make prepare-developer-machine`:
 
 - **macOS** (Apple Silicon, Homebrew) — przez `brew`: `cairo`, `pango`,
   `gdk-pixbuf`, `libffi`, `gobject-introspection`, `gtk+3`, `node`,
-  `yarn`; przez `npm` globalnie `grunt-cli`; dopisuje
-  `DYLD_FALLBACK_LIBRARY_PATH=/opt/homebrew/lib` do `~/.zprofile`
-  (dlopen weasyprint potrzebuje libgobject z brew); na końcu
+  `yarn`; przez `npm` globalnie `grunt-cli`; tworzy `sudo`-symlinki
+  w `/usr/local/lib` na libki z `/opt/homebrew/lib`
+  (`dyld` nie konsultuje brew-owej ścieżki domyślnie, a `DYLD_FALLBACK_LIBRARY_PATH`
+  jest stripowana przez SIP w podprocesach — patrz
+  [docs/MACOS_WEASYPRINT.md](docs/MACOS_WEASYPRINT.md)); na końcu
   `uv sync --frozen --no-install-project --all-extras` +
   `uv run playwright install`.
 - **Linux** (Debian/Ubuntu, `apt`) — przez `sudo apt`: `yarnpkg`,
