@@ -11,8 +11,11 @@ CLEANUP_ORDER = (
     # Najpierw M2M-through:
     "bpp.Wydawnictwo_Ciagle_Autor",
     "bpp.Wydawnictwo_Zwarte_Autor",
-    # Potem rekordy (rozdzialy przed nadrzednymi obsluzy generator
-    # przez sortowanie PK wg wydawnictwo_nadrzedne):
+    # Potem rekordy. UWAGA: Wydawnictwo_Zwarte zawiera mieszane PK
+    # (nadrzedne + rozdzialy). Cleanup musi usuwac w odwrotnej
+    # kolejnosci PK (najpierw najwyzsze, tj. rozdzialy stworzone po
+    # nadrzednych), aby zachowac FK wydawnictwo_nadrzedne. Cleanup
+    # command (T14) implementuje to przez `sorted(pks, reverse=True)`.
     "bpp.Wydawnictwo_Ciagle",
     "bpp.Wydawnictwo_Zwarte",
     # Powiazania autorow:

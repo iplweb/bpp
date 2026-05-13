@@ -141,6 +141,24 @@ def test_rozdzialy_have_nadrzedne(setup):
 
 
 @pytest.mark.django_db(transaction=True)
+def test_procent_rozdzialy_validates_range(setup):
+    m, autorzy, wydawcy = setup
+    for invalid in (-1, 101, 150):
+        with pytest.raises(ValueError, match="procent_rozdzialy"):
+            create_wz(
+                n=5,
+                autorzy=autorzy,
+                wydawcy=wydawcy,
+                lata=range(2020, 2022),
+                manifest=m,
+                rng=random.Random(1),
+                procent_rozdzialy=invalid,
+                batch_size=10,
+                disable_progress=True,
+            )
+
+
+@pytest.mark.django_db(transaction=True)
 def test_pbn_uid_zawsze_puste(setup):
     m, autorzy, wydawcy = setup
     create_wz(

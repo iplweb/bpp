@@ -161,6 +161,11 @@ def create_wz(
         raise ValueError("Brak Wydawcow do podpiecia.")
     if not lata:
         raise ValueError("Brak lat — pusty zakres.")
+    if not 0 <= procent_rozdzialy <= 100:
+        raise ValueError(
+            f"procent_rozdzialy musi byc w zakresie [0, 100], "
+            f"dostal {procent_rozdzialy}"
+        )
 
     s = _load_slowniki()
     autor_to_jednostka = autor_jednostka_mapping(autorzy)
