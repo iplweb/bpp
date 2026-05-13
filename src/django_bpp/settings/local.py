@@ -43,7 +43,7 @@ ALLOWED_HOSTS = [
     "dockerhost",
     "localhost",
     "127.0.0.1",
-    "mac.iplweb",
+    "mac-mini",
     "publikacje-test",
     "test.unexistenttld",
     env("DJANGO_BPP_HOSTNAME"),  # noqa

@@ -366,6 +366,7 @@ dev = [
     { name = "django-debug-toolbar", marker = "platform_python_implementation != 'PyPy'" },
     { name = "django-dev-helpers", marker = "platform_python_implementation != 'PyPy'" },
     { name = "django-dynamic-fixture", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "django-run-site", marker = "platform_python_implementation != 'PyPy'" },
     { name = "django-webtest", marker = "platform_python_implementation != 'PyPy'" },
     { name = "djlint", marker = "platform_python_implementation != 'PyPy'" },
     { name = "ipdb", marker = "platform_python_implementation != 'PyPy'" },
@@ -393,7 +394,6 @@ dev = [
     { name = "pytest-timeout", marker = "platform_python_implementation != 'PyPy'" },
     { name = "pytest-xdist", marker = "platform_python_implementation != 'PyPy'" },
     { name = "ruff", marker = "platform_python_implementation != 'PyPy'" },
-    { name = "run-site", marker = "platform_python_implementation != 'PyPy'" },
     { name = "sphinx", marker = "platform_python_implementation != 'PyPy'" },
     { name = "testcontainers", marker = "platform_python_implementation != 'PyPy'" },
     { name = "towncrier", marker = "platform_python_implementation != 'PyPy'" },
@@ -533,6 +533,7 @@ dev = [
     { name = "django-debug-toolbar", specifier = ">=6.3.0" },
     { name = "django-dev-helpers", specifier = ">=0.1.9" },
     { name = "django-dynamic-fixture", specifier = ">=1.8.0" },
+    { name = "django-run-site", specifier = ">=0.14.0" },
     { name = "django-webtest", specifier = "==1.9.14" },
     { name = "djlint", specifier = ">=1.36,<2" },
     { name = "ipdb", specifier = ">=0.13.9" },
@@ -560,7 +561,6 @@ dev = [
     { name = "pytest-timeout", specifier = ">=2.1.0" },
     { name = "pytest-xdist", specifier = ">=2.3.0" },
     { name = "ruff", specifier = ">=0.15.12" },
-    { name = "run-site", specifier = ">=0.4.0" },
     { name = "sphinx", specifier = ">=7,<9" },
     { name = "testcontainers", extras = ["postgres"], specifier = ">=4.14.2" },
     { name = "towncrier", specifier = ">=22.8.0" },
@@ -2085,6 +2085,19 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/f9/28/54ba992a2d1e716fe8950b90791688a5890de4f6f68b0e78a86c8abfaabe/django_reversion_compare-0.19.2.tar.gz", hash = "sha256:b27f0616759eb529693956dca776009d9608900c90a97b09aefeede5d6703bee", size = 194226, upload-time = "2026-02-06T17:18:40.352Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/cf/7b/b2eb56cea8677109fadc6d0a53f33e4cc0ae85bb761914ec3d6cc09fdf92/django_reversion_compare-0.19.2-py3-none-any.whl", hash = "sha256:5100f70737ff84e814589f17245a9af2c4b76fbae89c85c196241b1568c19402", size = 128599, upload-time = "2026-02-06T17:18:38.923Z" },
+]
+
+[[package]]
+name = "django-run-site"
+version = "0.14.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "docker", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "testcontainers", extra = ["redis"], marker = "platform_python_implementation != 'PyPy'" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/af/c2/9f7c310493a5034667ac4b187bfc046e8d3a2bb25a8d9a8c0dfc5eeba799/django_run_site-0.14.0.tar.gz", hash = "sha256:207531c63e2459341400c3cdf7b1eb74bdfa9734a5f07ff56d16a81baa7c8084", size = 147691, upload-time = "2026-05-13T20:59:23.531Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/7d/d0/0a9236a23fdefeb9b1b3dfb0d9095248c89276aba1837fd75f99f41f0660/django_run_site-0.14.0-py3-none-any.whl", hash = "sha256:cac045f54d54e3a8eb3debb49ea8563721ad1587062c43840fa6b786b1de83b2", size = 94776, upload-time = "2026-05-13T20:59:25.952Z" },
 ]
 
 [[package]]
@@ -5143,19 +5156,6 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/ea/f9/0ae446942c846b8266059ad8a30702a35afae55f5cdc54c5adf8d7afdc27/ruff-0.15.12-py3-none-win32.whl", hash = "sha256:d0185894e038d7043ba8fd6aee7499ece6462dc0ea9f1e260c7451807c714c20", size = 10657277, upload-time = "2026-04-24T18:17:18.591Z" },
     { url = "https://files.pythonhosted.org/packages/33/f1/9614e03e1cdcbf9437570b5400ced8a720b5db22b28d8e0f1bda429f660d/ruff-0.15.12-py3-none-win_amd64.whl", hash = "sha256:c87a162d61ab3adca47c03f7f717c68672edec7d1b5499e652331780fe74950d", size = 11837758, upload-time = "2026-04-24T18:17:00.113Z" },
     { url = "https://files.pythonhosted.org/packages/c0/98/6beb4b351e472e5f4c4613f7c35a5290b8be2497e183825310c4c3a3984b/ruff-0.15.12-py3-none-win_arm64.whl", hash = "sha256:a538f7a82d061cee7be55542aca1d86d1393d55d81d4fcc314370f4340930d4f", size = 11120821, upload-time = "2026-04-24T18:16:57.979Z" },
-]
-
-[[package]]
-name = "run-site"
-version = "0.4.0"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "docker", marker = "platform_python_implementation != 'PyPy'" },
-    { name = "testcontainers", extra = ["redis"], marker = "platform_python_implementation != 'PyPy'" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/46/39/a069391a92be849d90f8c3a009f51ce10d5c30f5a48a70d77f54b57d612d/run_site-0.4.0.tar.gz", hash = "sha256:f0782f84d5ed1f09cc38e1911cf6e7294e20d4e702abacc678a4ce64ad22f154", size = 93898, upload-time = "2026-05-07T18:53:51.298Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/1f/bc/6db721f5b260ff1291e32eb7f88afd06abe55c3cad33d5d8b49fa1eca121/run_site-0.4.0-py3-none-any.whl", hash = "sha256:35d9d2501fe987d5fb07359c9cd0f8b9ba0625b922040ac0461b290886fa5479", size = 65844, upload-time = "2026-05-07T18:53:49.376Z" },
 ]
 
 [[package]]

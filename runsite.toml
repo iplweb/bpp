@@ -63,6 +63,7 @@ db_password = "DJANGO_BPP_DB_PASSWORD"
 redis_url = "DJANGO_BPP_REDIS_URL"
 redis_host = "DJANGO_BPP_REDIS_HOST"
 redis_port = "DJANGO_BPP_REDIS_PORT"
+allowed_hosts = "mac-mini"
 
 [env.extra]
 # Wymusza pominiecie .env w base.py — zmienne dostarcza run-site, .env mogloby
