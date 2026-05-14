@@ -127,27 +127,27 @@ Gdy system aktualizuje już istniejącego pracownika:
 
 Punkty PKd dla rekordu, dla danej dyscypliny:
 
-``` math
+$$
 PK_{d} = PK
-```
+$$
 
 Punkty PKdAut dla rekordu, dla autora z danej dyscypliny:
 
-``` math
+$$
 PKd_{Aut} = \frac{ PKd}{k}
-```
+$$
 
 Slot dla autora:
 
-``` math
+$$
 slot_{Aut} = \frac {1}{k}
-```
+$$
 
 Slot dla dyscypliny:
 
-``` math
+$$
 slot_{d} = 1
-```
+$$
 
 Slot dla dyscypliny nie będzie liczony jeżeli nie ma żadnych autorów w danej dyscyplinie, tzn
 gdy żaden z autorów nie jest afiliowany na jednostki uczelni.
@@ -156,9 +156,9 @@ gdy żaden z autorów nie jest afiliowany na jednostki uczelni.
 
 Punkty PKd dla rekordu, dla danej dyscypliny:
 
-``` math
+$$
 PK_{d} = PK * \sqrt  { \frac{k}{m} }
-```
+$$
 
 Zakładamy, że mnożnik z powyższego przykładu (pierwiastek kwadratowy z k/m) nie będzie mniejszy, jak 0.1. Jeżeli będzie mniejszy,
 to zostanie użyta wartość 0.1, chyba, że wszyscy autorzy z danej dyscypliny nie będą mieli afiliacji, wówczas zostanie użyta
@@ -166,29 +166,29 @@ wartość 0.
 
 Punkty PKdAut dla rekordu, dla autora z danej dyscypliny:
 
-``` math
+$$
 PKd_{Aut} = \frac{ PKd}{k}
-```
+$$
 
 Slot dla autora:
 
-``` math
+$$
 slot_{Aut} = \sqrt  { \frac{k}{m} } * \frac {1}{k}
-```
+$$
 
 Slot dla dyscypliny:
 
-``` math
+$$
 slot_{d} = \sqrt  { \frac{k}{m} }
-```
+$$
 
 ### Próg nr 3
 
 Punkty PKd dla rekordu, dla danej dyscypliny:
 
-``` math
+$$
 PK_{d} = PK * \frac{k}{m}
-```
+$$
 
 Zakładamy, że mnożnik z powyższego przykładu (wynik dzielenia k/m) nie będzie mniejszy, jak 0.1. Jeżeli będzie mniejszy,
 to zostanie użyta wartość 0.1, chyba, że wszyscy autorzy z danej dyscypliny nie będą mieli afiliacji, wówczas zostanie użyta
@@ -196,21 +196,21 @@ wartość 0.
 
 Punkty PKdAut dla rekordu, dla autora z danej dyscypliny:
 
-``` math
+$$
 PKd_{Aut} = \frac{ PKd}{k}
-```
+$$
 
 Slot dla autora:
 
-``` math
+$$
 slot_{Aut} = { \frac{1}{m} }
-```
+$$
 
 Slot dla dyscypliny:
 
-``` math
+$$
 slot_{d} = { \frac{1}{m * k} }
-```
+$$
 
 ## Wydawnictwa ciągłe
 
