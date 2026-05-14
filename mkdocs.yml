@@ -46,6 +46,7 @@ plugins:
         - en
   - autorefs
   - glightbox
+  - include-markdown
 
 exclude_docs: |
   superpowers/

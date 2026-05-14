@@ -421,7 +421,6 @@ dev = [
     "django-dynamic-fixture>=1.8.0",
     "django-webtest==1.9.14",
     "WebTest==3.0.0",
-    "Sphinx>=7,<9",
     "coveralls>=4.1.0,<5",
     "psutil>=7.2.2",
     # pytest 8.x: pytest-testcontainers-django (0.2.0) deklaruje pytest<9.
@@ -475,7 +474,11 @@ dev = [
 package = "bpp"
 version = "202605.1372"
 package_dir = "src"
-filename = "HISTORY.rst"
+filename = "HISTORY.md"
+start_string = "<!-- towncrier release notes start -->\n"
+underlines = ["", "", ""]
+title_format = "## bpp {version} ({project_date})"
+issue_format = "[#{issue}](https://github.com/iplweb/bpp/issues/{issue})"
 
 [[tool.towncrier.type]]
 directory = "bugfix"
