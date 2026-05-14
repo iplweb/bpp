@@ -6,6 +6,8 @@ został wpisany stary URL → 404 dla superusera klikającego z home page.
 """
 
 import re
+import threading
+from concurrent.futures import ThreadPoolExecutor
 from html.parser import HTMLParser
 
 import pytest
@@ -74,31 +76,29 @@ def _extract_links(html_bytes):
     return sorted(links)
 
 
-@pytest.fixture
-def admin_django_client(admin_user) -> Client:
-    """Zalogowany superuser przez standardowy Django test client (bez webtest)."""
-    client = Client()
-    client.force_login(admin_user)
-    return client
+# Liczba wątków sprawdzających linki równolegle. Empirycznie 4–6 to plateau
+# na M-Mac (~45–47s end-to-end); 8 wątków ~58s, 16 wątków ~113s. Plateau jest
+# tam, bo template rendering w adminie jest w przewadze CPU-bound w Pythonie,
+# więc GIL serializuje pracę zanim conn pool PG zacznie być wąskim gardłem.
+_PARALLELISM = 4
 
 
-@pytest.mark.django_db
-def test_admin_home_page_loads(admin_django_client):
-    """Sanity: sama strona /admin/ musi się otwierać."""
-    response = admin_django_client.get("/admin/")
-    assert response.status_code == 200
-
-
-@pytest.mark.django_db
+@pytest.mark.django_db(transaction=True)
 @pytest.mark.timeout(600)
-def test_admin_home_links_all_reachable(admin_django_client):
+def test_admin_home_links_all_reachable(admin_user):
     """Każdy link ze strony /admin/ otwiera się bez 404/500.
 
     Łapie regresje typu: stale URL w menu po przemianowaniu aplikacji.
     Nie podążamy za przekierowaniami: 3xx do widoku w admin jest OK,
     bo to sam URL z menu sprawdzamy — nie cały graf nawigacji.
+
+    `transaction=True` jest konieczne, żeby wątki sprawdzające linki widziały
+    zacommitowanego `admin_user` przez własne połączenia do PG — przy
+    standardowym TX-wrap teście inne wątki dostają pustą bazę i 302→login.
     """
-    home = admin_django_client.get("/admin/")
+    home_client = Client()
+    home_client.force_login(admin_user)
+    home = home_client.get("/admin/")
     assert home.status_code == 200, "/admin/ nie zwraca 200"
 
     links = _extract_links(home.content)
@@ -107,11 +107,26 @@ def test_admin_home_links_all_reachable(admin_django_client):
         "test nic by nie sprawdził."
     )
 
+    # /admin/ już sprawdzone; pomiń żeby nie strzelać ponownie po linku
+    # z breadcrumb logo.
+    links = [link for link in links if link != "/admin/"]
+
+    tls = threading.local()
+
+    def _probe(link):
+        client = getattr(tls, "client", None)
+        if client is None:
+            client = Client()
+            client.force_login(admin_user)
+            tls.client = client
+        response = client.get(link)
+        return link, response.status_code
+
     broken = []
-    for link in links:
-        sub = admin_django_client.get(link)
-        if sub.status_code >= 400:
-            broken.append((link, sub.status_code))
+    with ThreadPoolExecutor(max_workers=_PARALLELISM) as executor:
+        for link, status in executor.map(_probe, links):
+            if status >= 400:
+                broken.append((link, status))
 
     assert not broken, (
         "Linki ze strony /admin/, które zwróciły 4xx/5xx:\n"
