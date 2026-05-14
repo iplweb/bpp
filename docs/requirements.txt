@@ -1,0 +1,4 @@
+mkdocs-material>=9.5
+mkdocs-autorefs>=1.0
+mkdocs-glightbox>=0.4
+mkdocs-include-markdown-plugin>=7.1
