@@ -1,0 +1,106 @@
+site_name: Bibliografia Publikacji Pracowników
+site_description: Dokumentacja systemu BPP (Bibliografia Publikacji Pracowników)
+site_url: https://bpp.readthedocs.io/
+repo_url: https://github.com/iplweb/bpp
+repo_name: iplweb/bpp
+edit_uri: edit/dev/docs/
+copyright: Copyright &copy; 2005-2026 iplweb.pl — Michał Pasternak
+
+docs_dir: docs
+
+theme:
+  name: material
+  language: pl
+  features:
+    - navigation.instant
+    - navigation.tracking
+    - navigation.sections
+    - navigation.top
+    - navigation.indexes
+    - toc.follow
+    - content.code.copy
+    - content.action.edit
+    - search.suggest
+    - search.highlight
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-7
+        name: Tryb ciemny
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-4
+        name: Tryb jasny
+  icon:
+    repo: fontawesome/brands/github
+
+plugins:
+  - search:
+      lang:
+        - en
+  - autorefs
+  - glightbox
+
+exclude_docs: |
+  superpowers/
+  requirements.txt
+
+markdown_extensions:
+  - admonition
+  - attr_list
+  - md_in_html
+  - tables
+  - footnotes
+  - def_list
+  - pymdownx.details
+  - pymdownx.superfences
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - toc:
+      permalink: true
+      slugify: !!python/object/apply:pymdownx.slugs.slugify
+        kwds:
+          case: lower
+
+nav:
+  - Wprowadzenie:
+      - index.md
+      - readme.md
+  - Instrukcja użytkownika:
+      - Uczelnia: edycja_uczelnia.md
+      - Jednostki: edycja_jednostka.md
+      - Autorzy: edycja_autor.md
+      - Wydawnictwa: edycja_wydawnictwo.md
+      - Wyszukiwanie i redagowanie: wyszukiwanie_redagowanie.md
+  - Instrukcja administratora:
+      - Ogólna: usage_admin.md
+      - Importer publikacji: importer_publikacji.md
+      - Zgłaszanie publikacji: zglos_publikacje.md
+      - Konfiguracja PBN: konfiguracja_pbn.md
+      - Import pracowników: import_pracownikow.md
+  - Funkcje zaawansowane:
+      - Raporty i rankingi: raporty_rankingi.md
+      - Sloty: sloty.md
+      - Integracja z PBN: pbn.md
+      - Zaawansowane: advanced.md
+  - API i rozwój:
+      - API REST: api.md
+      - Rozwijanie projektu: contributing.md
+  - Operacje:
+      - Channels broadcast (flake): CHANNELS_BROADCAST_FLAKE.md
+      - macOS WeasyPrint: MACOS_WEASYPRINT.md
+      - Praktyki bezpieczeństwa: SECURITY_PRACTICES.md
+      - Polityka bezpieczeństwa: SECURITY.md
+  - O projekcie:
+      - Autorzy: authors.md
+      - Historia zmian: history.md

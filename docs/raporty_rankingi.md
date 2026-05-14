@@ -1,8 +1,6 @@
-Raporty i rankingi
-------------------
+# Raporty i rankingi
 
-Ranking autorów
-~~~~~~~~~~~~~~~
+## Ranking autorów
 
 Do rankingu autorów wchodzą prace z jednostek, które mają zaznaczone pole "Wchodzi do raportów".
 Pole to domyślnie przyjmuje wartość "PRAWDA".
