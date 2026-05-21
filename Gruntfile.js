@@ -41,6 +41,24 @@ module.exports = function (grunt) {
                         'src/bpp/static/scss/app-orange.scss'
                 }
             },
+            vizja: {
+                files: {
+                    'src/bpp/static/scss/app-vizja.css':
+                        'src/bpp/static/scss/app-vizja.scss'
+                }
+            },
+            mwsl: {
+                files: {
+                    'src/bpp/static/scss/app-mwsl.css':
+                        'src/bpp/static/scss/app-mwsl.scss'
+                }
+            },
+            uafm: {
+                files: {
+                    'src/bpp/static/scss/app-uafm.css':
+                        'src/bpp/static/scss/app-uafm.scss'
+                }
+            },
             adminthemes: {
                 files: {
                     'src/bpp/static/bpp/css/admin-themes.css':
@@ -145,6 +163,9 @@ module.exports = function (grunt) {
                     'sass:blue',
                     'sass:green',
                     'sass:orange',
+                    'sass:vizja',
+                    'sass:mwsl',
+                    'sass:uafm',
                     'sass:adminthemes',
                     'sass:adminfilterpanel',
                     'sass:przemapuj_zrodla',
