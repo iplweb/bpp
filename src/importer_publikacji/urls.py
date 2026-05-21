@@ -1,7 +1,7 @@
 from django.urls import path
-from django.views.generic import TemplateView
 
 from . import views
+from .views.retry import ImportTaskRetryView
 from .views.task_status import ImportTaskStatusView
 
 app_name = "importer_publikacji"
@@ -89,7 +89,7 @@ urlpatterns = [
     ),
     path(
         "task-retry/<int:session_id>/",
-        TemplateView.as_view(template_name="importer_publikacji/index.html"),
+        ImportTaskRetryView.as_view(),
         name="task-retry",
     ),
 ]
