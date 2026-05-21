@@ -182,16 +182,28 @@ def create_task_with_lock(task_model, user, initial_step):
     """
     Create a task record with atomic transaction to prevent race conditions.
 
+    Wymusza wzajemne wykluczanie przez Postgresowy advisory lock kluczowany
+    nazwą modelu. Sam `filter(status="running").exists()` w `transaction.atomic()`
+    nie wystarczy: dwie równoległe transakcje mogłyby równocześnie nie znaleźć
+    żadnego wiersza i obie utworzyć aktywne zadanie. Advisory lock blokuje
+    cały odcinek krytyczny do końca transakcji.
+
     Returns:
         task_record: The created task record
 
     Raises:
         ValueError: If another task is already running
     """
-    from django.db import transaction
+    from django.db import connection, transaction
     from django.utils import timezone
 
+    # 32-bit signed int dla pg_advisory_xact_lock(int)
+    lock_key = abs(hash(task_model.__name__)) % (2**31)
+
     with transaction.atomic():
+        with connection.cursor() as cursor:
+            cursor.execute("SELECT pg_advisory_xact_lock(%s)", [lock_key])
+
         if task_model.objects.filter(status="running").exists():
             raise ValueError(
                 "Another download task is already running. Please wait for it to complete."

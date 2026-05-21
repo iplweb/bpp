@@ -2,8 +2,8 @@ from dal import autocomplete
 from django import forms
 from django.contrib import admin
 from djangoql.admin import DjangoQLSearchMixin
+from dynamic_admin_columns.mixins import DynamicColumnsMixin
 
-from dynamic_columns.mixins import DynamicColumnsMixin
 from ewaluacja_liczba_n.models import IloscUdzialowDlaAutoraZaRok
 from pbn_api.models import Scientist
 

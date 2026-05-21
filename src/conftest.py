@@ -53,8 +53,9 @@ pytest_plugins = [
 ]
 
 # Baseline test-DB monkey-patch is installed by
-# ``django_pg_baseline.apps.DjangoPgBaselineConfig.ready()`` (the app
-# lives in INSTALLED_APPS + settings.PG_BASELINE).
+# ``django_pg_baseline.apps.DjangoPgBaselineConfig.ready()`` z zewnetrznego
+# pakietu ``django-pg-baseline`` (PyPI). INSTALLED_APPS zawiera
+# "django_pg_baseline" + settings.PG_BASELINE konfiguruje BASELINE_DIR.
 
 
 # =============================================================================

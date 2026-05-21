@@ -1,0 +1,148 @@
+# BPP dev stack — konfiguracja dla `run-site run`.
+#
+# Wczesniej dev stack startowal `manage.py run_site` (~640 linii kodu w
+# `src/bpp/management/commands/run_site.py` + helpers). Cala ta logika
+# zostala wyniesiona do zewnetrznego pakietu `run-site`. Tutaj zostaje
+# tylko konfiguracja + dwa BPP-specific hooki (clear_password_policy,
+# fetch_pbn_token) w `src/django_bpp/runsite_hooks.py`.
+#
+# Uruchomienie:
+#     uv run run-site run                        # default: open browser, with celery
+#     uv run run-site run --no-browser           # bez przegladarki (zalecane w tle)
+#     uv run run-site run --reuse                # nie usuwaj kontenerow na exit
+#     uv run run-site run --no-celery            # pomin celery worker
+#     uv run run-site run --skip-assets          # pomin make assets
+#     uv run run-site run --from-dump my.sql.gz  # restore wlasnego dumpa
+#     uv run run-site run --get-pbn-token-from user@host
+
+project_slug = "bpp"
+manage_py = "src/manage.py"
+
+[python]
+# `uv run python` aktywuje srodowisko ze .venv i zaspokaja CLAUDE.md zasade
+# "ALWAYS use `uv run` prefix". `executable` wprost na .venv/bin/python tez
+# dziala, ale gubi automatyczna synchronizacje deps.
+executable = ".venv/bin/python"
+
+[postgres]
+# Wlasny obraz BPP zamiast vanilla postgres:16 — ma plpython3u i locale
+# pl_PL.UTF-8 (wymagane przez schemat denormalizatorow + raporty).
+image = "iplweb/bpp_dbserver:psql-16.13"
+user = "bpp"
+password = "password"
+db = "bpp"
+stream_logs = true
+
+[postgres.env]
+# Tuning sugerowany przez obraz BPP — przyspiesza migracje i baseline restore
+# na koszt durability (akceptowalny w devie).
+POSTGRESQL_UNSAFE_BUT_FAST = "1"
+POSTGRESQL_MAX_LOCKS_PER_TRANSACTION = "512"
+
+[redis]
+image = "redis:7-alpine"
+
+[dump]
+default_path = "baseline-sql/baseline.sql"
+# `auto`: dla swiezego kontenera + .sql → init-script (najszybszy). Dla reused
+# kontenera lub innego formatu → post-start `psql`/`pg_restore`. Reused +
+# istniejace dane → skip.
+strategy = "auto"
+restore_jobs = 8
+fail_fast = true
+
+[env]
+# Mapowanie zmiennych srodowiskowych dla podprocesow (runserver, celery,
+# migrate). Django settings (`base.py`) czyta DJANGO_BPP_DB_*/REDIS_*.
+database_url = "DATABASE_URL"
+db_host = "DJANGO_BPP_DB_HOST"
+db_port = "DJANGO_BPP_DB_PORT"
+db_name = "DJANGO_BPP_DB_NAME"
+db_user = "DJANGO_BPP_DB_USER"
+db_password = "DJANGO_BPP_DB_PASSWORD"
+redis_url = "DJANGO_BPP_REDIS_URL"
+redis_host = "DJANGO_BPP_REDIS_HOST"
+redis_port = "DJANGO_BPP_REDIS_PORT"
+allowed_hosts = "mac-mini"
+
+[env.extra]
+# Wymusza pominiecie .env w base.py — zmienne dostarcza run-site, .env mogloby
+# nadpisac dynamiczne porty kontenerow na (zwykle nieaktualnych) wartosciach
+# z hardcoded localhost:5432.
+DJANGO_BPP_SKIP_DOTENV = "1"
+
+[django]
+runserver_bind = "127.0.0.1"
+# `localhost` zamiast `127.0.0.1` w URL-u zeby uniknac HSTS cache w Safari
+# (Safari upgrade'uje http://127.0.0.1 do https:// po jednym przypadkowym
+# klikniecu w linku z https; localhost nie ma tego problemu).
+runserver_display_host = "localhost"
+# /admin/login/ jest mapowane przez urlconf, wiec poprawna odpowiedz HTTP
+# znaczy ze Django zaladowal cale URLconf + middleware (a nie tylko
+# bind+listen).
+browser_probe_path = "/admin/login/"
+migrate = true
+
+[superuser]
+enabled = true
+username = "admin"
+password = "admin"
+email = "admin@example.com"
+# overwrite=true: gdy admin juz istnieje (np. po restore prod dumpa),
+# nadpisuje haslo + flagi (is_staff/is_superuser). Idempotent. Patrz
+# wczesniej: `runsite_setup_admin` management command.
+overwrite = true
+
+[celery]
+app = "django_bpp.celery_tasks"
+enabled = true
+# pool=solo: 1 worker, bez forkow. Dev OK; produkcja uzywa prefork.
+worker_pool = "solo"
+worker_log_level = "info"
+with_beat = false
+
+# ---------------------------------------------------------------------------
+# HOOKS
+# ---------------------------------------------------------------------------
+
+# Build frontend assets przed startem kontenerow. Fail-fast bo bez assetow
+# ekran wyglada zle. `--skip-assets` przeskakuje gdy dev wie, ze CSS/JS
+# jest aktualny.
+[[hooks.pre_containers]]
+type = "command"
+command = ["make", "assets"]
+timeout = 300
+cli_disable_flag = "--skip-assets"
+
+# Po stworzeniu superusera: czysci wymog zmiany hasla z password_policies
+# i dodaje swiezy wpis PasswordHistory zeby middleware nie wymuszalo zmiany.
+# Dawniej w `runsite_setup_admin._clear_password_change_required`.
+[[hooks.post_superuser]]
+type = "django"
+callable = "django_bpp.runsite_hooks:clear_password_policy"
+
+# Opcjonalny pull tokenu PBN z prod-deploy hosta przez SSH. Triggered tylko
+# gdy uzytkownik poda `--get-pbn-token-from USER@HOST`. Hook czyta argumenty
+# z `context["opts"]`. Dawniej inline w `run_site._run_site_helpers.pbn_token`.
+[[hooks.post_migrate]]
+type = "django"
+callable = "django_bpp.runsite_hooks:fetch_pbn_token"
+timeout = 60
+
+[[hooks.post_migrate.cli_args]]
+flag = "--get-pbn-token-from"
+dest = "pbn_ssh_source"
+metavar = "USER@HOST"
+help = "Pobierz token PBN z hosta SSH przez dump_pbn_token | load_pbn_token. USERNAME = nazwa Django (taka sama lokalnie i zdalnie); HOST = alias z ~/.ssh/config."
+
+[[hooks.post_migrate.cli_args]]
+flag = "--remote-deploy-path"
+dest = "pbn_remote_deploy_path"
+default = "~/bpp-deploy"
+help = "Sciezka do checkoutu bpp-deploy (z plikami docker-compose) na zdalnym hoscie. Default ~/bpp-deploy."
+
+[[hooks.post_migrate.cli_args]]
+flag = "--remote-compose-service"
+dest = "pbn_remote_compose_service"
+default = "appserver"
+help = "Nazwa serwisu w docker compose, w ktorym odpalic dump_pbn_token. Default appserver."

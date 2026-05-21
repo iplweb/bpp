@@ -24,7 +24,23 @@ repos:
           # diff-y indentacji na pre-commit, blokujac niezmienione pliki).
           args: ["--lint"]
           files: \.html$
-          exclude: ^(node_modules/|.*/migrations/|.*/staticroot/|src/django_bpp/static/500\.html$|src/bpp/static/500\.html$)
+          # Tech-debt z dev (dochodzi w merge'u origin/dev): templaty
+          # z wzorcem `{% if %}<a>{% else %}<a>{% endif %}content</a>`
+          # ktorego djlint nie potrafi sparsowac (H025 orphan tags) +
+          # pojedyncze H020 empty-tag. Pre-existing na dev, follow-up
+          # PR rozwiaze refactorem href-y do jednego wezla
+          # `<a href="?{% if x %}{{x}}&{% endif %}sort=...">`.
+          exclude: |
+            (?x)^(
+              node_modules/
+              | .*/migrations/
+              | .*/staticroot/
+              | src/django_bpp/static/500\.html$
+              | src/bpp/static/500\.html$
+              | src/rozbieznosci_if/templates/rozbieznosci_if/index\.html$
+              | src/rozbieznosci_pk/templates/rozbieznosci_pk/index\.html$
+              | src/snapshot_odpiec/templates/snapshot_odpiec/snapshotodpiec_list\.html$
+            )
 
     - repo: https://github.com/pre-commit/pre-commit-hooks
       rev: 'v6.0.0'
@@ -35,14 +51,18 @@ repos:
             # base file. PyYAML's safe loader doesn't know
             # Compose-specific tags, so check-yaml chokes on a file
             # that `docker compose config` parses fine.
-            exclude: ^docker-compose\.test\.ci\.yml$
+            #
+            # mkdocs.yml uses pymdownx.slugs.slugify Python object via
+            # `!!python/object/apply:` tag — same problem, MkDocs's own
+            # loader handles it but PyYAML safe loader nie umie.
+            exclude: ^(docker-compose\.test\.ci\.yml|mkdocs\.yml)$
         -   id: check-toml
         -   id: end-of-file-fixer
-            exclude: ^src/baseline-sql/baseline\.sql$
+            exclude: ^baseline-sql/baseline\.sql$
         -   id: trailing-whitespace
-            exclude: ^src/baseline-sql/baseline\.sql$
+            exclude: ^baseline-sql/baseline\.sql$
         -   id: mixed-line-ending
-            exclude: ^src/baseline-sql/baseline\.sql$
+            exclude: ^baseline-sql/baseline\.sql$
         -   id: check-added-large-files
             args: ['--maxkb=500']
         -   id: check-merge-conflict

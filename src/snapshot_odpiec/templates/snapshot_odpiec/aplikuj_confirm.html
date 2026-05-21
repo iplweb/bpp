@@ -1,0 +1,46 @@
+{% extends "base.html" %}{% load humanize %}
+
+{% block title %}Zaaplikuj snapshot odpięć nr {{ object.pk }}{% endblock %}
+
+{% block breadcrumbs %}
+    {{ block.super }}
+    <li><a href="{% url 'snapshot_odpiec:index' %}">Snapshoty odpiętych dyscyplin</a></li>
+    <li class="current">Aplikuj snapshot {{ object.pk }}</li>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="medium-12 columns">
+        <h2>Zaaplikuj snapshot odpięć nr {{ object.pk }}</h2>
+
+        <div class="callout warning">
+            <p>
+                Operacja przywróci stan przypięć dyscyplin
+                z wybranego snapshotu. <strong>Wszystkie aktualne ręczne
+                przypięcia/odpięcia zostaną nadpisane</strong> wartościami
+                ze snapshotu.
+            </p>
+            <ul>
+                <li>Snapshot nr: <strong>{{ object.pk }}</strong></li>
+                <li>Utworzony: <strong>{{ object.created_on }}</strong>
+                    ({{ object.created_on|naturaltime }})</li>
+                {% if object.comment %}
+                <li>Adnotacja: <em>{{ object.comment }}</em></li>
+                {% endif %}
+                <li>Przypiętych: <strong>{{ object.przypiete }}</strong></li>
+                <li>Odpiętych: <strong>{{ object.odpiete }}</strong></li>
+            </ul>
+        </div>
+
+        <form method="post" id="aplikuj-confirm">
+            {% csrf_token %}
+            <button type="submit" class="button warning">
+                <span class="fi-check"></span> Tak, zaaplikuj snapshot
+            </button>
+            <a href="{% url 'snapshot_odpiec:index' %}" class="button secondary">
+                Anuluj
+            </a>
+        </form>
+    </div>
+</div>
+{% endblock %}

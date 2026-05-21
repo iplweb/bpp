@@ -1,75 +1,7 @@
 from django import forms
-from django.contrib.auth import get_user_model
-from django.contrib.auth.forms import UserCreationForm
 from django.core.exceptions import ValidationError
 
 from bpp.models import Uczelnia
-
-BppUser = get_user_model()
-
-
-class SetupAdminForm(UserCreationForm):
-    """Form for creating the initial admin user during setup."""
-
-    username = forms.CharField(
-        max_length=150,
-        required=True,
-        label="Nazwa użytkownika",
-        help_text="Wymagane. 150 znaków lub mniej. Tylko litery, cyfry oraz @/./+/-/_.",
-        widget=forms.TextInput(attrs={"class": "form-control", "placeholder": "admin"}),
-    )
-
-    email = forms.EmailField(
-        required=True,
-        label="Adres email",
-        help_text="Wymagane. Adres email administratora systemu.",
-        widget=forms.EmailInput(
-            attrs={"class": "form-control", "placeholder": "admin@example.com"}
-        ),
-    )
-
-    password1 = forms.CharField(
-        label="Hasło",
-        widget=forms.PasswordInput(
-            attrs={"class": "form-control", "placeholder": "Wprowadź hasło"}
-        ),
-        help_text="Hasło powinno być silne i bezpieczne.",
-    )
-
-    password2 = forms.CharField(
-        label="Powtórz hasło",
-        widget=forms.PasswordInput(
-            attrs={"class": "form-control", "placeholder": "Powtórz hasło"}
-        ),
-        help_text="Wprowadź to samo hasło dla weryfikacji.",
-    )
-
-    class Meta:
-        model = BppUser
-        fields = ("username", "email", "password1", "password2")
-
-    def clean(self):
-        cleaned_data = super().clean()
-
-        # Check if any users exist
-        if BppUser.objects.exists():
-            raise ValidationError(
-                "Kreator konfiguracji może być uruchomiony tylko na pustej bazie danych."
-            )
-
-        return cleaned_data
-
-    def save(self, commit=True):
-        user = super().save(commit=False)
-        user.email = self.cleaned_data["email"]
-        user.is_staff = True
-        user.is_superuser = True
-        user.is_active = True
-
-        if commit:
-            user.save()
-
-        return user
 
 
 class UczelniaSetupForm(forms.ModelForm):
@@ -170,7 +102,6 @@ class UczelniaSetupForm(forms.ModelForm):
     def clean(self):
         cleaned_data = super().clean()
 
-        # Check if any Uczelnia exists
         if Uczelnia.objects.exists():
             raise ValidationError(
                 "Uczelnia została już skonfigurowana. "
@@ -182,21 +113,12 @@ class UczelniaSetupForm(forms.ModelForm):
     def save(self, commit=True, request=None):
         uczelnia = super().save(commit=False)
 
-        # Set the fields that should always be True
-        uczelnia.pbn_api_kasuj_przed_wysylka = (
-            True  # Kasuj oświadczenia przed wysłaniem do PBN
-        )
-        uczelnia.pbn_api_nie_wysylaj_prac_bez_pk = (
-            True  # Nie wysyłaj do PBN prac z PK=0
-        )
-        uczelnia.pbn_api_afiliacja_zawsze_na_uczelnie = (
-            True  # Wysyłaj zawsze UID uczelni jako afiliacje
-        )
-        uczelnia.pbn_wysylaj_bez_oswiadczen = True  # Wysyłaj prace bez oświadczeń
-        uczelnia.pbn_integracja = True  # Używać integracji z PBN
-        uczelnia.pbn_aktualizuj_na_biezaco = (
-            True  # Włącz opcjonalną aktualizację przy edycji
-        )
+        uczelnia.pbn_api_kasuj_przed_wysylka = True
+        uczelnia.pbn_api_nie_wysylaj_prac_bez_pk = True
+        uczelnia.pbn_api_afiliacja_zawsze_na_uczelnie = True
+        uczelnia.pbn_wysylaj_bez_oswiadczen = True
+        uczelnia.pbn_integracja = True
+        uczelnia.pbn_aktualizuj_na_biezaco = True
 
         if uczelnia.site_id is None and request is not None:
             from django.contrib.sites.shortcuts import get_current_site

@@ -128,6 +128,24 @@ def test_health_check_returns_503_when_redis_down(monkeypatch):
     assert any("redis" in f for f in body["failures"])
 
 
+def test_check_redis_skipped_without_broker_url():
+    """Without CELERY_BROKER_URL (e.g. authserver settings), Redis check is
+    skipped — returning None — instead of raising AttributeError.
+
+    Regression test for: ``healthcheck: redis failed: AttributeError(
+    "'Settings' object has no attribute 'CELERY_BROKER_URL'")``
+    on the lightweight authserver.
+    """
+    from django.test.utils import override_settings
+
+    from django_bpp import health
+
+    # `override_settings(CELERY_BROKER_URL=None)` keeps the attribute defined
+    # on the wrapper but maps it to None — exercises the falsy-value path.
+    with override_settings(CELERY_BROKER_URL=None):
+        assert health._check_redis() is None
+
+
 def test_health_check_log_filter():
     """Test that UvicornHealthCheckFilter suppresses /health/ logs."""
     import logging

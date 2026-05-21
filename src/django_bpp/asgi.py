@@ -8,15 +8,18 @@ os.environ.setdefault("DJANGO_SETTINGS_MODULE", "django_bpp.settings")
 # is populated before importing code that may import ORM models.
 django_asgi_app = get_asgi_application()
 
-from channels.auth import AuthMiddlewareStack
-from channels.routing import ProtocolTypeRouter, URLRouter
-from channels.security.websocket import AllowedHostsOriginValidator
+# Te importy muszą biec po get_asgi_application(), żeby AppRegistry
+# było zainicjalizowane — channels_broadcast.routing i pbn_import.routing
+# importują ORM modele.
+import channels_broadcast.routing  # noqa: E402
+from channels.auth import AuthMiddlewareStack  # noqa: E402
+from channels.routing import ProtocolTypeRouter, URLRouter  # noqa: E402
+from channels.security.websocket import AllowedHostsOriginValidator  # noqa: E402
 
-import notifications.routing
-import pbn_import.routing
+import pbn_import.routing  # noqa: E402
 
 websocket_urlpatterns = (
-    notifications.routing.websocket_urlpatterns
+    channels_broadcast.routing.websocket_urlpatterns
     + pbn_import.routing.websocket_urlpatterns
 )
 

@@ -369,3 +369,27 @@ class CustomRollbarNotifierMiddleware(RollbarNotifierMiddleware):
             }
 
         return payload_data
+
+
+class NotificationsMiddleware(MiddlewareMixin):
+    """Marks `messages_extends` persistent messages as read when the user
+    visits a URL that the message references in its body. Lives here (and not
+    in `channels_broadcast`) because it integrates `messages_extends`, not
+    Channels — they share only the historical `notifications` app name.
+    """
+
+    def process_request(self, request):
+        from messages_extends.models import Message
+
+        try:
+            user_id = request.user.pk
+        except AttributeError:
+            return
+
+        if user_id is None:
+            return
+
+        url = request.get_full_path()
+        Message.objects.filter(
+            user_id=user_id, read=False, message__icontains=url
+        ).update(read=True)

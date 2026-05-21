@@ -3,7 +3,7 @@
 Dokument zbiera praktyki bezpieczeństwa stosowane w BPP, oparte na
 [lirantal/pypi-security-best-practices](https://github.com/lirantal/pypi-security-best-practices).
 
-Polityka zgłaszania luk bezpieczeństwa: [SECURITY.md](../SECURITY.md).
+Polityka zgłaszania luk bezpieczeństwa: [SECURITY.md](SECURITY.md).
 
 ## Spis treści
 
@@ -125,4 +125,4 @@ cooldownem).
 - [pypi-security-best-practices (źródłowy doc)](https://github.com/lirantal/pypi-security-best-practices)
 - [uv docs — exclude-newer](https://docs.astral.sh/uv/reference/settings/#exclude-newer)
 - [zizmor docs](https://docs.zizmor.sh/)
-- [SECURITY.md (BPP vulnerability disclosure)](../SECURITY.md)
+- [SECURITY.md (BPP vulnerability disclosure)](SECURITY.md)

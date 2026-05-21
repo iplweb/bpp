@@ -100,7 +100,7 @@ CACHEOPS = {
     "bpp.szablondlaopisubibliograficznego": {
         "ops": ("fetch", "get", "count", "exists")
     },
-    "miniblog.article": {"ops": ("get", "fetch", "count", "exists")},
+    "siteblog.article": {"ops": ("get", "fetch", "count", "exists")},
     "contenttypes.contenttype": {"ops": ("get", "fetch", "count", "exists")},
     "ewaluacja_common.rodzaj_autora": {"ops": ("fetch", "get", "count", "exists")},
     "bpp.rzeczownik": {"ops": ("fetch", "get", "count", "exists")},

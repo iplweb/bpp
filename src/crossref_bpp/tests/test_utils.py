@@ -1,10 +1,9 @@
 import pytest
 from model_bakery import baker
 
+from bpp.models import Wydawnictwo_Ciagle
 from crossref_bpp.utils import json_format_with_wrap, perform_trigram_search
 from import_common.core import normalized_db_title
-
-from bpp.models import Wydawnictwo_Ciagle
 
 
 def test_json_format_with_wrap():

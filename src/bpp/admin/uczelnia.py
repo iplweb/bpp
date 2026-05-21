@@ -199,8 +199,11 @@ class UczelniaAdmin(
             {
                 "classes": ("grp-collapse grp-opened",),
                 "fields": (
-                    "wymagaj_informacji_o_oplatach",
                     "wymagaj_logowania_zglos_publikacje",
+                    "wymagaj_oplatach_artykul",
+                    "wymagaj_oplatach_monografia",
+                    "wymagaj_oplatach_rozdzial",
+                    "wymagaj_oplatach_inne",
                 ),
             },
         ),

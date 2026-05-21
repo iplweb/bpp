@@ -11,6 +11,7 @@ from openpyxl import Workbook
 from openpyxl.styles import Alignment, Font, PatternFill
 
 from bpp.models import Wydawnictwo_Ciagle, Wydawnictwo_Zwarte
+from bpp.util import sanitize_xlsx_row
 from import_common.normalization import normalize_isbn, normalize_issn
 from pbn_downloader_app.freshness import is_pbn_publications_data_fresh
 
@@ -551,20 +552,22 @@ class PublicationComparisonView(ListView):
         for comparison in comparisons:
             for diff in comparison["differences"]:
                 ws.append(
-                    [
-                        (
-                            "Wydawnictwo ciągłe"
-                            if comparison["type"] == "ciagle"
-                            else "Wydawnictwo zwarte"
-                        ),
-                        comparison["bpp_id"],
-                        comparison["pbn_id"],
-                        comparison["bpp_publication"].tytul_oryginalny[:100],
-                        comparison["bpp_publication"].rok,
-                        diff["field"],
-                        diff["bpp_value"],
-                        diff["pbn_value"],
-                    ]
+                    sanitize_xlsx_row(
+                        [
+                            (
+                                "Wydawnictwo ciągłe"
+                                if comparison["type"] == "ciagle"
+                                else "Wydawnictwo zwarte"
+                            ),
+                            comparison["bpp_id"],
+                            comparison["pbn_id"],
+                            comparison["bpp_publication"].tytul_oryginalny[:100],
+                            comparison["bpp_publication"].rok,
+                            diff["field"],
+                            diff["bpp_value"],
+                            diff["pbn_value"],
+                        ]
+                    )
                 )
                 row_num += 1
 

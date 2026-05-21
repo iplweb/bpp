@@ -2,11 +2,10 @@ from datetime import timedelta
 
 import pytest
 from django.urls import reverse
+from django.utils.timezone import localtime
 from model_bakery import baker
 
-from django.utils.timezone import localtime
-
-from bpp.models import Praca_Habilitacyjna
+from bpp.models import Autor, Praca_Habilitacyjna
 
 
 @pytest.mark.django_db
@@ -52,7 +51,7 @@ def test_rest_api_praca_habilitacyjna_filtering_rok(
     api_client, praca_habilitacyjna, rok
 ):
     res = api_client.get(
-        reverse("api_v1:praca_habilitacyjna-list") + f"?rok_min={rok+1}"
+        reverse("api_v1:praca_habilitacyjna-list") + f"?rok_min={rok + 1}"
     )
     assert res.json()["count"] == 0
 
@@ -75,8 +74,33 @@ def test_rest_api_praca_habilitacyjna_ukryj_status(
 
 @pytest.fixture
 def wiele_prac_habilitacyjnych(db, typy_odpowiedzialnosci):
-    for a in range(100):
-        baker.make(Praca_Habilitacyjna)
+    # Create one template object using baker.make to get all required fields with defaults
+    template = baker.make(Praca_Habilitacyjna)
+
+    # Create single jednostka for all objects (much faster than 100 separate baker.make calls)
+    jednostka = template.jednostka
+
+    # Create 100 different authors (unique constraint on autor_id for Praca_Habilitacyjna)
+    autorzy = baker.prepare(Autor, _quantity=100)
+    Autor.objects.bulk_create(autorzy)
+
+    # Use bulk_create for 100x performance improvement over individual saves
+    # Each Praca_Habilitacyjna must have unique autor (unique constraint)
+    Praca_Habilitacyjna.objects.bulk_create(
+        [
+            Praca_Habilitacyjna(
+                autor=autorzy[i],
+                jednostka=jednostka,
+                rok=template.rok,
+                jezyk=template.jezyk,
+                typ_kbn=template.typ_kbn,
+                status_korekty=template.status_korekty,
+                # Copy optional fields that have defaults
+                tytul_oryginalny=template.tytul_oryginalny or f"Praca {i}",
+            )
+            for i in range(100)
+        ]
+    )
 
 
 @pytest.mark.django_db

@@ -22,14 +22,18 @@ ul.grp-object-tools li a {
 }
 
 /* Icons for different link types in grp-object-tools */
-/* Add icon - wyłączone dla domyślnego theme (ciemny) */
-ul.grp-object-tools li a[href*="/add/"]::before {
-    content: none;
+/* Add icon - ➕ TYLKO dla motywow (body.theme-*), gdzie `background: ...`    */
+/* shorthand z motywu zabija grappelli spritesheet "+". W domyslnym themie    */
+/* (bez body.theme-*) zostawiamy native grappelli look: sprite "+" na ciemnym */
+/* gradiencie (#666 -> #444). Selektor `body[class*="theme-"]` matchuje       */
+/* wszystkie nasze motywy (theme-mario-bros, theme-cream-green itd.).         */
+body[class*="theme-"] ul.grp-object-tools li a[href*="/add/"]::before {
+    content: "➕";
     position: absolute;
-    left: 10px;
+    left: 8px;
     top: 50%;
     transform: translateY(-50%);
-    font-size: 14px;
+    font-size: 16px;
 }
 
 /* Export icon - używamy 📊 dla arkusza/Excel */
@@ -65,6 +69,19 @@ ul.grp-object-tools li a[href*="/history/"]::before {
 /* Author edit icon - używamy ✍️ dla edycji autorów */
 ul.grp-object-tools li a[href*="_autor/"]::before {
     content: "✍️";
+    position: absolute;
+    left: 8px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 16px;
+}
+
+/* django-dynamic-admin-columns picker - 🗂️ jako "3 kolumny tabeli" */
+/* (CARD INDEX DIVIDERS — trzy graficzne separatory kolumnowe).     */
+/* Wybór po id przycisku z dynamic_admin_columns/grappelli/         */
+/* change_list.html, niezależnie od href (href="#").                */
+ul.grp-object-tools li a#dyncol-button::before {
+    content: "🗂️";
     position: absolute;
     left: 8px;
     top: 50%;

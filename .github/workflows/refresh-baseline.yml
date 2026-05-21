@@ -1,6 +1,6 @@
 name: Refresh baseline pg_dump
 
-# Regenerates src/baseline-sql/baseline.sql + baseline.meta.json after
+# Regenerates baseline-sql/baseline.sql + baseline.meta.json after
 # any push to dev that touches a migration file. The workflow uses the
 # django_pg_baseline management commands, which spin up an isolated
 # Postgres via testcontainers (iplweb/bpp_dbserver:psql-16.13).
@@ -40,7 +40,7 @@ jobs:
           python-version: "3.12"
 
       - name: Install uv
-        uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78 # v7.6.0
+        uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
 
       - name: Install Python deps (with baseline-rebuild extra)
         run: uv sync --frozen --no-install-project --extra baseline-rebuild
@@ -57,10 +57,10 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          if git diff --quiet -- src/baseline-sql/baseline.sql src/baseline-sql/baseline.meta.json; then
+          if git diff --quiet -- baseline-sql/baseline.sql baseline-sql/baseline.meta.json; then
             echo "No baseline changes to commit"
             exit 0
           fi
-          git add src/baseline-sql/baseline.sql src/baseline-sql/baseline.meta.json
+          git add baseline-sql/baseline.sql baseline-sql/baseline.meta.json
           git commit -m "chore(baseline): refresh pg_dump after migration change [skip ci]"
           git push origin HEAD:dev

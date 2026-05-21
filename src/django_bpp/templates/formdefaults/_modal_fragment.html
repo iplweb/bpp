@@ -1,0 +1,24 @@
+{% load i18n %}
+{# BPP override of django-formdefaults' modal: submit button styled #}
+{# as a Foundation primary button so it matches the rest of the UI. #}
+<div class="fd-modal-backdrop">
+  <div class="fd-modal{% if system_wide %} fd-modal-system{% endif %}" role="dialog" aria-modal="true">
+    <button type="button" class="fd-modal-close" aria-label="{% trans 'Close' %}">×</button>
+    <h3>{{ form_repr.label }}{% if system_wide %} — {% trans "system-wide defaults" %}{% endif %}</h3>
+    {% if system_wide %}
+      <p class="fd-warning">
+        {% trans "Heads up: you are editing values that apply to ALL users." %}<br>
+        {% trans "Per-user overrides will continue to take precedence over these." %}
+      </p>
+      <p class="fd-help">{% trans "Check the box next to a field to save a system-wide default. Uncheck to remove the system-wide default entirely (the form's own initial value will be used)." %}</p>
+    {% else %}
+      <p class="fd-help">{% trans "Check the box next to a field to save your value as your personal override. Leave it unchecked to use the system-wide default." %}</p>
+    {% endif %}
+    {% if saved %}<p class="fd-saved">{% trans "Saved." %}</p>{% endif %}
+    <form method="post" data-fd-form>
+      {% csrf_token %}
+      {% include "formdefaults/_user_edit_form.html" with form=edit_form %}
+      <button type="submit" class="button submit">{% trans "Save" %}</button>
+    </form>
+  </div>
+</div>

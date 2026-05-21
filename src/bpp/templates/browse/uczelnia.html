@@ -280,7 +280,7 @@
                             {% endif %}
                             {% if request.user.is_superuser or request.user|has_group:"web" %}
                                 <div class="metadata-item admin-link">
-                                    {% include "browse/go_to_admin_change.html" with group="web" url="admin:miniblog_article_change" pk=article.pk text="<i class='fi-pencil'></i> Edytuj artykuł" %}
+                                    {% include "browse/go_to_admin_change.html" with group="web" url="admin:siteblog_article_change" pk=article.pk text="<i class='fi-pencil'></i> Edytuj artykuł" %}
                                 </div>
                             {% endif %}
                         </div>
@@ -300,13 +300,13 @@
                     {% if request.user.is_superuser or request.user|has_group:"web" %}
                         <div class="admin-buttons-centered hide-for-print">
                             <a target="_blank"
-                               href="{% url "admin:miniblog_article_changelist" %}"
+                               href="{% url "admin:siteblog_article_changelist" %}"
                                class="button btn-manage">
                                 <span class="fi-wrench"></span>
                                 Zarządzaj aktualnościami
                             </a>
                             <a target="_blank"
-                               href="{% url "admin:miniblog_article_add" %}"
+                               href="{% url "admin:siteblog_article_add" %}"
                                class="button btn-add">
                                 <span class="fi-page-add"></span>
                                 Dodaj artykuł
@@ -314,7 +314,7 @@
                         </div>
                     {% endif %}
                     <div class="news-articles">
-                        {% for article in miniblog %}
+                        {% for article in news %}
                             <article class="news-article-card">
                                 <div class="article-date-badge">
                                     <span class="day">{{ article.published_on|date:"d" }}</span>
@@ -349,13 +349,13 @@
                         {% endfor %}
                     </div>
                 </div>
-            {% elif miniblog.exists %}
+            {% elif news.exists %}
                 <div class="small-12 large-6 cell">
                     <h3 class="section-title">
                         <i class="fi-megaphone section-icon"></i>Aktualności
                     </h3>
                     <div class="news-articles">
-                        {% for article in miniblog %}
+                        {% for article in news %}
                             <article class="news-article-card">
                                 <div class="article-date-badge">
                                     <span class="day">{{ article.published_on|date:"d" }}</span>
@@ -389,7 +389,7 @@
             {% endif %}
         {% endif %}
         {% if uczelnia.pokazuj_wydzialy_na_pierwszej_stronie %}
-            {% if not article and not miniblog.exists and not request.user.is_superuser and not request.user|has_group:"web" %}
+            {% if not article and not news.exists and not request.user.is_superuser and not request.user|has_group:"web" %}
                 <div class="small-12 large-12 cell">
                     <h3 class="section-title">
                         <i class="fi-foundation section-icon"></i>Wybierz {% rzeczownik_wydział %}
@@ -426,7 +426,7 @@
                     </div>
                 </div>
             {% else %}
-                <div class="small-12 {% if article or miniblog.exists %}large-6{% else %}large-12{% endif %} cell">
+                <div class="small-12 {% if article or news.exists %}large-6{% else %}large-12{% endif %} cell">
                     <h3 class="section-title">
                         <i class="fi-foundation section-icon"></i>Wybierz {% rzeczownik_wydział %}
                     </h3>
@@ -446,7 +446,7 @@
                             </a>
                         </div>
                     {% endif %}
-                    {% if not article and not miniblog.exists %}
+                    {% if not article and not news.exists %}
                         <div class="grid-x grid-margin-x">
                             {% for wydzial in uczelnia.wydzialy %}
                                 <div class="small-12 medium-6 large-6 cell">
@@ -479,7 +479,7 @@
             {% endif %}
         {% endif %}
     {% if uczelnia.pokazuj_jednostki_na_pierwszej_stronie %}
-        {% if not article and not miniblog.exists and not request.user.is_superuser and not request.user|has_group:"web" %}
+        {% if not article and not news.exists and not request.user.is_superuser and not request.user|has_group:"web" %}
             <div class="small-12 large-12 cell">{% load deklinacja %}
                 <h3 class="section-title">
                     <i class="fi-home section-icon"></i>Wybierz {% rzeczownik_jednostkę %}
@@ -516,7 +516,7 @@
                 </div>
             </div>
         {% else %}
-            <div class="small-12 {% if article or miniblog.exists %}large-6{% else %}large-12{% endif %} cell">{% load deklinacja %}
+            <div class="small-12 {% if article or news.exists %}large-6{% else %}large-12{% endif %} cell">{% load deklinacja %}
                 <h3 class="section-title">
                     <i class="fi-home section-icon"></i>Wybierz {% rzeczownik_jednostkę %}
                 </h3>
@@ -536,7 +536,7 @@
                         </a>
                     </div>
                 {% endif %}
-                {% if not article and not miniblog.exists %}
+                {% if not article and not news.exists %}
                     <div class="grid-x grid-margin-x">
                         {% for jednostka in uczelnia.jednostki %}
                             <div class="small-12 medium-6 large-6 cell">

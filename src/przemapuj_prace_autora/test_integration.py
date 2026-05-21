@@ -33,7 +33,9 @@ def uczelnia(db):
     # Clear any existing universities to ensure get_default() returns our test university
     Uczelnia.objects.all().delete()
     u = baker.make(Uczelnia, nazwa="Test University", skrot="TU")
-    # Invalidate all caches so context processor returns the new uczelnia
+    # Reset wszystkich warstw cache po podmianie Uczelni: Django cache klucze
+    # (per-site namespace z Phase 5) + cacheops query cache, żeby context
+    # processor i ORM zwróciły nowo utworzoną instancję, a nie poprzednią.
     cache.delete(b"bpp_uczelnia")
     cache.delete("bpp_uczelnia_0")
     cache.delete("bpp_uczelnia_1")

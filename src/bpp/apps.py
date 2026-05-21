@@ -7,7 +7,7 @@ class BppConfig(AppConfig):
 
     def ready(self):
         from django.apps import apps
-        from django.db.models.signals import post_migrate
+        from django.db.models.signals import post_migrate, post_save
 
         # Only register post_migrate signal when dbtemplates is available
         # (auth_server uses minimal INSTALLED_APPS without dbtemplates)
@@ -15,6 +15,15 @@ class BppConfig(AppConfig):
             from bpp.system import odtworz_grupy
 
             post_migrate.connect(odtworz_grupy, sender=self)
+
+        if apps.is_installed("siteblog"):
+            from bpp.views.browse import invalidate_uczelnia_cache_on_article_change
+
+            post_save.connect(
+                invalidate_uczelnia_cache_on_article_change,
+                sender=apps.get_model("siteblog", "Article"),
+                dispatch_uid="bpp.invalidate_uczelnia_cache_on_article_change",
+            )
 
         # Ensure BppUserAdmin takes precedence over microsoft_auth's UserAdmin
         self._register_bpp_user_admin()

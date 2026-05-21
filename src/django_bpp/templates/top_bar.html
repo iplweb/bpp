@@ -1,4 +1,4 @@
-
+{% load user_in_group %}
 <nav role="navigation" aria-label="Główna nawigacja" class="sticky-header">
 <div class="title-bar" data-responsive-toggle="example-menu" data-hide-for="medium">
     <button class="menu-icon" type="button" data-toggle="example-menu"
@@ -31,6 +31,14 @@
                             precyzyjnie
                         </a>
                     </li>
+                    {% if request.user.is_superuser or request.user.is_staff and request.user|has_group:"wprowadzanie danych" %}
+                        <li role="menuitem">
+                            <a href="{% url "bpp:zapytanie" %}">
+                                <i class="fi-database" aria-hidden="true"></i>
+                                zapytaniem
+                            </a>
+                        </li>
+                    {% endif %}
                 </ul>
             </li>
             <li>
@@ -108,7 +116,7 @@
                     raportMenu.parentElement.style.display = 'none';
                 }
             </script>
-
+            <!-- djlint:disable=H025 -->
             <li class="has-submenu">
                 <a href="#" data-toggle aria-haspopup="menu"><i class="fi-graph-bar" aria-hidden="true"></i> ewaluacja</a>
                 <div class="menu-columns-wrapper" data-submenu id="top-bar-menu-ewaluacji">
@@ -135,12 +143,11 @@
                         {% czy_pokazywac raport_slotow_uczelnia %}
                             <li><a href="{% url "raport_slotow:lista-raport-slotow-uczelnia" %}"><i class="fi-foundation"></i> raport slotów -
                                 uczelnia</a></li>
-                            <li><a href="{% url "raport_slotow:index-ewaluacja" %}"><i class="fi-clipboard-pencil"></i> raport slotów - ewaluacja</a>
+                            <li><a href="{% url "raport_slotow:index-ewaluacja" %}"><i class="fi-clipboard-pencil"></i> raport slotów - ewaluacja</a></li>
                             <li><a href="{% url "raport_slotow:index-upowaznienia" %}"><i class="fi-shield"></i> raport ewaluacja -
-                                upoważnienia</a>
+                                upoważnienia</a></li>
                             {# Disabled 3N report #}
-                            {# <li><a href="{% url "ewaluacja2021:lista-raportow3n" %}"><i class="fi-page-multiple" style="font-size: 1.6rem; margin-right: 0.8rem;"></i> raport ewaluacja - 3N</a> #}
-                            </li>
+                            {# <li><a href="{% url "ewaluacja2021:lista-raportow3n" %}"><i class="fi-page-multiple" style="font-size: 1.6rem; margin-right: 0.8rem;"></i> raport ewaluacja - 3N</a></li> #}
                         {% end_czy_pokazywac %}
                     </ul>
                 </div>
@@ -178,7 +185,7 @@
                                         <li><a href="{% url "pbn_wysylka_oswiadczen:main" %}"><i class="fi-upload"></i> wysylka oswiadczen do PBN</a></li>
                                         <li><a href="{% url "pbn_export_queue:export-queue-list" %}"><i class="fi-list"></i> kolejka eksportu do PBN</a></li>
                                         <li><a href="{% url "importer_autorow_pbn:main" %}"><i class="fi-torsos-female-male"></i> importer autorów PBN</a></li>
-                                        <li><a href="{% url "deduplikator_autorow:duplicate_authors" %}"><i class="fi-filter"></i> deduplikator autorów PBN</a></li>
+                                        <li><a href="{% url "deduplikator_autorow:duplicate_authors" %}"><i class="fi-filter"></i> deduplikator autorów</a></li>
                                     </ul>
                                     <ul class="menu vertical column-2">
                                         <li><a href="{% url "komparator_pbn:main" %}"><i class="fi-arrows-compress"></i> komparator PBN</a></li>
@@ -221,6 +228,8 @@
                                     <li><a href="{% url "rozbieznosci_pk:index" %}"><i class="fi-graph-pie"></i> rozbieżności
                                         punktacji MNiSW</a></li>
                                     <hr>
+                                    <li><a href="{% url "deduplikator_autorow:duplicate_authors" %}">
+                                        <i class="fi-filter"></i> deduplikator autorów</a></li>
                                     <li><a href="{% url "deduplikator_publikacji:duplicate_publications" %}">
                                         <i class="fi-page-copy"></i> deduplikator publikacji</a></li>
                                     <li><a href="{% url "deduplikator_zrodel:duplicate_sources" %}">
@@ -311,9 +320,10 @@
                             <li><a href="/admin/bpp/bppuser/" target="_blank"><i class="fi-torso-business"></i> zaloguj jako inny użytkownik</a></li>
                         {% endif %}
                     </ul>
-                </li>
+            </li>
+            <!-- djlint:enable=H025 -->
 
-                <script type="text/javascript">
+            <script type="text/javascript">
                     // Check if wyloguj menu has only one item and simplify if so
                     document.addEventListener('DOMContentLoaded', function() {
                         var wylogujMenuItem = document.getElementById('wyloguj-menu-item');

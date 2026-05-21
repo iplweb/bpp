@@ -53,8 +53,8 @@ coverage.xml
 # Django stuff:
 *.log
 
-# Sphinx documentation
-docs/_build/
+# MkDocs build output
+site/
 
 # PyBuilder
 target/
@@ -175,14 +175,40 @@ dump.rdb
 .worktrees/
 .claude/
 
+.grunt-build-stamp
+
 # Local TODO / audit notes (not committed)
 TODO-*.txt
 TODO-*.md
 
-# Cache tokenu PBN tworzony przez `run_site --get-pbn-token-from ...`
+# Cache tokenu PBN tworzony przez `run-site run --get-pbn-token-from ...`
 # Zawiera wrażliwy token, NIGDY nie commitować.
 .saved_pbn_token
 
-# Auto-login token tworzony przez `manage.py run_site` (sesja dev).
-# Plik istnieje tylko gdy run_site biegnie; kasowany na exit.
+# Sidecar TOML zapisywany przez `run-site` z connection URL-ami
+# (web, postgres, redis). Plik istnieje tylko gdy run-site biegnie;
+# kasowany na exit.
+.run-site-config
+
+# Runtime state dir run-site: dev secret_key i inne ephemeralne dotfiles.
+# Tworzone na uruchomieniu, NIE wolno commitowac (secret_key to dev key
+# generowany per maszyne; commit byly faktycznym wyciekiem klucza).
+.run-site/
+
+# Dotfiles django-dev-helpers (token + porty), tworzone przez
+# `django-dev-helpers` w korzeniu repo gdy aktywne (run-site ustawia
+# DJANGO_DEV_HELPERS_ENABLED). Ulotne; kasowane na exit.
+.dev_helpers_token
+.dev_helpers_port
+.dev_helpers_pg_port
+.dev_helpers_pg_host
+.dev_helpers_redis_port
+.dev_helpers_redis_host
+
+# Stare dotfile names z wewnetrznego `manage.py run_site` (przed migracja
+# na zewnetrzne `run-site` + `django-dev-helpers`). Zachowane na wypadek
+# starych klocow developerskich, ktore wciaz pisza tymi nazwami.
 .run_site_token
+.run_site_port
+.run_site_pg_port
+.run_site_redis_port

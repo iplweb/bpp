@@ -1,8 +1,7 @@
+from channels_broadcast import core as notifications_core
+from channels_broadcast.models import Notification
 from django.contrib.messages import constants
 from django.utils.functional import cached_property
-
-from notifications import core as notifications_core
-from notifications.models import Notification
 
 
 class NullNotificationMixin:

@@ -1,0 +1,111 @@
+{% extends "base.html" %}
+
+{% block extratitle %}
+    {{ tytul_strony|default:"Zgłoś publikację" }}
+{% endblock %}
+
+{% block breadcrumbs %}
+    {{ block.super }}
+    <li><a href="{% url "zglos_publikacje:nowe_zgloszenie" %}">Zgłoś publikację</a></li>
+    {% for bc in wizard_breadcrumbs %}
+        {% if bc.current %}
+            <li class="disabled">{{ bc.label }}</li>
+        {% else %}
+            <li><a href="#" class="wizard-bc-link"
+                   data-step="{{ bc.step }}">{{ bc.label }}</a></li>
+        {% endif %}
+    {% endfor %}
+{% endblock %}
+
+{% block extrahead %}
+    {{ wizard.form.media }}
+{% endblock %}
+
+{% block content %}
+    {% load bpp_formdefaults %}
+    <h1>{{ tytul_strony }}</h1>
+    <p class="subheader">Formularz umożliwia zgłoszenie publikacji do biblioteki.</p>
+
+    <div class="formdefaults-wrap">{% bpp_formdefaults_button wizard.form %}</div>
+    <form action="" method="post" id="form-container" enctype="multipart/form-data">
+        {% csrf_token %}
+        {{ wizard.management_form }}
+
+        <fieldset class="fieldset">
+            <legend>Krok {{ wizard.steps.step1 }} z {{ wizard.steps.count }}</legend>
+
+            {% if wybrany_rodzaj_label %}
+                <div class="wizard-wybor-info">
+                    <span class="wizard-wybor-ikona">{{ wybrany_rodzaj_ikona }}</span>
+                    <span class="wizard-wybor-label">{{ wybrany_rodzaj_label }}</span>
+                </div>
+            {% endif %}
+
+            {% block wizard_content %}{% endblock %}
+        </fieldset>
+
+        {% block wizard_buttons %}
+        <div class="wizard-nav">
+            {% if wizard.steps.prev %}
+                <button name="wizard_goto_step" type="submit"
+                        class="wizard-nav-btn" formnovalidate
+                        value="{{ wizard.steps.prev }}">
+                    <span class="tile-icon">⬅️</span>
+                    <span class="tile-title">Poprzedni krok</span>
+                </button>
+            {% endif %}
+            {% if wizard.steps.next %}
+                <button type="submit" class="wizard-nav-btn{% if not wizard.steps.prev %} nav-single{% endif %}"
+                        id="id-wizard-submit">
+                    <span class="tile-icon">➡️</span>
+                    <span class="tile-title">Następny krok</span>
+                </button>
+            {% else %}
+                <button type="submit" class="wizard-nav-btn{% if not wizard.steps.prev %} nav-single{% endif %}"
+                        id="id-wizard-submit">
+                    <span class="tile-icon">✅</span>
+                    <span class="tile-title">Zakończ i wyślij</span>
+                </button>
+            {% endif %}
+        </div>
+        {% endblock %}
+    </form>
+    <script>
+        document.querySelectorAll('.wizard-bc-link').forEach(
+            function(link) {
+                link.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    var step = this.dataset.step;
+                    var form = document.getElementById(
+                        'form-container'
+                    );
+                    var input = document.createElement('input');
+                    input.type = 'hidden';
+                    input.name = 'wizard_goto_step';
+                    input.value = step;
+                    form.appendChild(input);
+                    form.noValidate = true;
+                    form.submit();
+                });
+            }
+        );
+
+        // Fix ENTER key submitting with "Poprzedni krok" instead of "Następny krok"
+        // This only affects steps with form inputs (step 2+: dane, autorzy, etc.)
+        var form = document.getElementById('form-container');
+        var submitButton = document.getElementById('id-wizard-submit');
+        var prevButtons = document.querySelectorAll('button[name="wizard_goto_step"]');
+
+        if (form && submitButton && prevButtons.length > 0) {
+            form.addEventListener('keydown', function(e) {
+                // If ENTER is pressed in an input field
+                if (e.key === 'Enter' && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT')) {
+                    // Prevent default form submission
+                    e.preventDefault();
+                    // Click the submit button instead
+                    submitButton.click();
+                }
+            });
+        }
+    </script>
+{% endblock %}

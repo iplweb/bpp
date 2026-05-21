@@ -157,9 +157,26 @@ class AutorAutocomplete(GroupRequiredMixin, AutorAutocompleteBase):
 
     def create_object(self, text):
         try:
-            return Autor.objects.create_from_string(text)
+            obj = Autor.objects.create_from_string(text)
         except ValueError:
             return self.err
+
+        from django.contrib.admin.models import ADDITION, LogEntry
+        from django.contrib.contenttypes.models import ContentType
+
+        try:
+            LogEntry.objects.create(
+                user_id=self.request.user.pk,
+                content_type_id=ContentType.objects.get_for_model(Autor).pk,
+                object_id=str(obj.pk),
+                object_repr=str(obj)[:200],
+                action_flag=ADDITION,
+                change_message="Utworzono z formularza autocomplete",
+            )
+        except (AttributeError, TypeError):
+            pass
+
+        return obj
 
 
 class PublicAutorAutocomplete(AutorAutocompleteBase):

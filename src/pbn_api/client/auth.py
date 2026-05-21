@@ -24,13 +24,20 @@ class OAuthMixin:
 
     @classmethod
     def get_user_token(klass, base_url, app_id, app_token, one_time_token):
+        from pbn_api.conf import settings as pbn_settings
+
         headers = {
             "X-App-Id": app_id,
             "X-App-Token": app_token,
         }
         body = {"oneTimeToken": one_time_token}
         url = f"{base_url}/auth/pbn/api/user/token"
-        response = requests.post(url=url, json=body, headers=headers)
+        response = requests.post(
+            url=url,
+            json=body,
+            headers=headers,
+            timeout=pbn_settings.PBN_CLIENT_HTTP_TIMEOUT,
+        )
         try:
             response.json()
         except ValueError as e:

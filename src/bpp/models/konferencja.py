@@ -6,9 +6,11 @@ from bpp.models.abstract import ModelZAdnotacjami, ModelZNazwa
 
 
 class Konferencja(ModelZNazwa, ModelZAdnotacjami):
-    nazwa = models.TextField(max_length=512, db_index=True)
+    nazwa = models.CharField(max_length=512, db_index=True)
 
-    skrocona_nazwa = models.CharField(
+    # noqa: DJ001 - pre-existing null=True na CharField (sprzed naszego brancha).
+    # Zmiana wymaga migracji backfill NULL→"", follow-up PR.
+    skrocona_nazwa = models.CharField(  # noqa: DJ001
         "Skrócona nazwa", max_length=250, null=True, blank=True, db_index=True
     )
 
@@ -16,15 +18,15 @@ class Konferencja(ModelZNazwa, ModelZAdnotacjami):
 
     zakonczenie = models.DateField("Zakończenie", null=True, blank=True)
 
-    miasto = models.CharField("Miasto", max_length=100, null=True, blank=True)
+    miasto = models.CharField("Miasto", max_length=100, null=True, blank=True)  # noqa: DJ001
 
-    panstwo = models.CharField("Państwo", max_length=100, null=True, blank=True)
+    panstwo = models.CharField("Państwo", max_length=100, null=True, blank=True)  # noqa: DJ001
 
     baza_scopus = models.BooleanField("Indeksowana w SCOPUS?", default=False)
 
     baza_wos = models.BooleanField("Indeksowana w WOS?", default=False)
 
-    baza_inna = models.CharField(
+    baza_inna = models.CharField(  # noqa: DJ001
         "Indeksowana w...",
         max_length=200,
         help_text="Wpisz listę innych baz czasopism i abstraktów, w których indeksowana "
@@ -81,5 +83,5 @@ class Konferencja(ModelZNazwa, ModelZAdnotacjami):
         if self.baza_wos:
             ret += " [WoS]"
         if self.baza_inna:
-            ret += f" [{ self.baza_inna }]"
+            ret += f" [{self.baza_inna}]"
         return ret

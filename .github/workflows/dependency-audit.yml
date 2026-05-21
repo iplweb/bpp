@@ -6,17 +6,24 @@
 # - pull_request: PR-y dotykajace zaleznosci nie merguja sie z aktywnym CVE
 # - weekly cron: nowo-disclosed CVE wykryte tez na "spokojnym" lockfile
 #
-# Tool: uv-secure (natively reads uv.lock z hashami SHA-256, lepszy
-# match dla naszego setupu niz pip-audit ktory potrzebuje requirements.txt).
+# Tool: pip-audit (PyPA-official, autorzy pip-a). Wczesniej uzywalismy
+# uv-secure ale projekt zostal zarchiwizowany 18 kwietnia 2026 (read-only
+# repo, ostatnie release v0.17.2). Stale CVE database = false sense of
+# security. pip-audit jest aktywnie maintained przez PyPA i czyta z tego
+# samego PyPI Advisory DB co uv-secure.
+#
+# uv.lock -> requirements.txt przez `uv export --no-dev` (jak w multi-scanner).
 #
 # Polityka:
-# - HIGH/CRITICAL z dostepnym fix-em: failure (musi byc PR podbijajacy dep)
-# - LOW/MEDIUM: warning w job summary, nie blokuje
-# - --ignore-unfixed: nie blokujemy na CVE bez fix-a (nie da sie nic zrobic)
+# - Vulnerability z fix-em dostepnym (fix_versions non-empty): failure.
+#   pip-audit nie ma natywnego severity filter, ale fix-availability juz
+#   jest dobrym proxy: jezeli upstream wypuscil fix, znaczy ze warto bumpnac.
+# - Vuln bez fixa: warning w job summary, nie blokuje (nic nie da sie zrobic).
+# - Whitelist znanych non-impact CVE przez --ignore-vuln (patrz job ponizej).
 #
 # Defense-in-depth: drugi job (multi-scanner) odpala OSV-Scanner, Grype
 # i Trivy na SBOM-ie wygenerowanym z uv.lock. Wszystkie report-only -
-# uv-secure pozostaje jedynym gate-em release-u.
+# pip-audit pozostaje jedynym gate-em release-u.
 
 name: Dependency vulnerability scan
 
@@ -41,8 +48,8 @@ permissions:
   contents: read
 
 jobs:
-  uv-secure:
-    name: uv-secure scan
+  pip-audit:
+    name: pip-audit scan
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -51,30 +58,59 @@ jobs:
           persist-credentials: false
 
       - name: Install uv
-        uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78 # v7.6.0
+        uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
 
-      - name: Run uv-secure (HIGH+CRITICAL gate)
+      - name: Export uv.lock -> requirements.txt (prod-only)
         run: |
-          uvx --from uv-secure uv-secure \
-            --severity high \
-            --ignore-unfixed \
-            --no-desc \
-            uv.lock
+          mkdir -p /tmp/audit
+          uv export --no-dev --format requirements-txt --no-hashes --quiet \
+            -o /tmp/audit/requirements.txt
 
-      - name: Run uv-secure (full report - non-blocking)
+      # Whitelist znanych non-impact CVE.
+      # ---
+      # CVE-2026-42304 / GHSA-grgv-6hw6-v9g4 (twisted < 26.4.0rc2):
+      #   DoS w twisted.names.dns.Name.decode przez glebokie DNS compression
+      #   pointer chains. BPP NIE uruchamia DNS-servera Twisted (twisted jest
+      #   transitive zaleznoscia daphne + autobahn dla WebSocket/Channels,
+      #   bez modulu twisted.names). Fix dostepny tylko w 26.4.0rc2 (release
+      #   candidate) - nie wprowadzamy RC do produkcji do czasu stable release.
+      #   Re-evaluate przy bumpie twisted do 26.x stable.
+      - name: Run pip-audit (gate on fixable)
+        run: |
+          uvx --from pip-audit pip-audit \
+            --requirement /tmp/audit/requirements.txt \
+            --disable-pip \
+            --no-deps \
+            --format columns \
+            --ignore-vuln CVE-2026-42304
+
+      - name: Run pip-audit (JSON full report - non-blocking)
         if: always()
         run: |
-          # Pelny raport ze wszystkimi findings (LOW/MEDIUM tez) jako
-          # job summary - nie failuje workflow, ale daje widocznosc.
+          uvx --from pip-audit pip-audit \
+            --requirement /tmp/audit/requirements.txt \
+            --disable-pip \
+            --no-deps \
+            --format json \
+            --output /tmp/audit/full.json || true
           {
-            echo "## uv-secure full report"
+            echo "## pip-audit full report"
             echo ""
-            echo '```'
-            uvx --from uv-secure uv-secure \
-              --show-severity \
-              --no-desc \
-              uv.lock || true
-            echo '```'
+            count=$(jq '[.dependencies[]?.vulns[]?] | length' \
+              /tmp/audit/full.json 2>/dev/null || echo 0)
+            if [ "$count" -gt 0 ]; then
+              echo "Znaleziono **$count** vulnerabilities (vs gate-policy)."
+              echo ""
+              echo '| Pakiet | Wersja | CVE | Fix versions |'
+              echo '|---|---|---|---|'
+              jq -r '
+                .dependencies[]? | . as $p |
+                .vulns[]? |
+                "| \($p.name) | \($p.version) | \(.id) | \(.fix_versions | join(", ")) |"
+              ' /tmp/audit/full.json | sort -u
+            else
+              echo "Brak findings."
+            fi
           } >> "$GITHUB_STEP_SUMMARY"
 
   # Defense-in-depth: trzy dodatkowe skanery (OSV/Grype/Trivy) na SBOM
@@ -93,7 +129,7 @@ jobs:
           persist-credentials: false
 
       - name: Install uv
-        uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78 # v7.6.0
+        uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
 
       - name: Generate SBOM (CycloneDX, prod-only)
         run: |
@@ -208,7 +244,7 @@ jobs:
 
       - name: Upload SBOM + raporty (artifact, retention 30d)
         if: always()
-        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: dependency-scan-${{ github.run_id }}
           path: /tmp/sbom/

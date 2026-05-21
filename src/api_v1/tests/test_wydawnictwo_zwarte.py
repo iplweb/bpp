@@ -2,9 +2,8 @@ from datetime import timedelta
 
 import pytest
 from django.urls import reverse
-from model_bakery import baker
-
 from django.utils.timezone import localtime
+from model_bakery import baker
 
 from bpp.models import Wydawnictwo_Zwarte
 
@@ -50,7 +49,7 @@ def test_rest_api_wydawnictwo_zwarte_filtering_2(api_client, wydawnictwo_zwarte)
 @pytest.mark.django_db
 def test_rest_api_wydawnictwo_zwarte_filtering_rok(api_client, wydawnictwo_ciagle, rok):
     res = api_client.get(
-        reverse("api_v1:wydawnictwo_zwarte-list") + f"?rok_min={rok+1}"
+        reverse("api_v1:wydawnictwo_zwarte-list") + f"?rok_min={rok + 1}"
     )
     assert res.json()["count"] == 0
 
@@ -72,8 +71,25 @@ def test_rest_api_wydawnictwo_zwarte_ukryj_status(
 
 @pytest.fixture
 def wiele_wydawnictw_zwartych(db):
-    for a in range(100):
-        baker.make(Wydawnictwo_Zwarte)
+    # Create one template object using baker.make to get all required fields with defaults
+    template = baker.make(Wydawnictwo_Zwarte)
+
+    # Use bulk_create for 100x performance improvement over individual saves
+    # Copy all fields from template except PK (id) and cached properties
+    Wydawnictwo_Zwarte.objects.bulk_create(
+        [
+            Wydawnictwo_Zwarte(
+                rok=template.rok,
+                jezyk=template.jezyk,
+                typ_kbn=template.typ_kbn,
+                status_korekty=template.status_korekty,
+                charakter_formalny=template.charakter_formalny,
+                # Copy optional fields that have defaults
+                tytul_oryginalny=template.tytul_oryginalny or f"Wydawnictwo {i}",
+            )
+            for i in range(100)
+        ]
+    )
 
 
 @pytest.mark.django_db

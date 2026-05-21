@@ -13,10 +13,10 @@ except ImportError:
 from model_bakery import baker
 from multiseek.logic import EQUAL, EQUAL_FEMALE, EQUAL_NONE
 from multiseek.views import MULTISEEK_SESSION_KEY
+from siteblog.models import Article
 
 from bpp.models import Rekord, Wydawnictwo_Zwarte
 from bpp.views.browse import BuildSearch, PracaViewBySlug
-from miniblog.models import Article
 
 
 def test_buildSearch(settings):

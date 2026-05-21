@@ -7,11 +7,11 @@ from fixtures.conftest_multisite import make_request_for_site
 
 
 @pytest.mark.django_db
-def test_article_visible_only_on_assigned_uczelnia(
+def test_article_visible_only_on_assigned_site(
     uczelnia1, uczelnia2, site1, site2, settings
 ):
-    """Article assigned to uczelnia1 is not visible on uczelnia2's page."""
-    from miniblog.models import Article
+    """Article z siteblog przypisany do site1 nie jest widoczny na uczelni2."""
+    from siteblog.models import Article
 
     settings.ALLOWED_HOSTS = ["*"]
 
@@ -21,25 +21,25 @@ def test_article_visible_only_on_assigned_uczelnia(
         article_body="Body text",
         status=Article.STATUS.published,
     )
-    article.uczelnie.set([uczelnia1])
+    article.sites.set([site1])
 
     from bpp.views.browse import get_uczelnia_context_data
 
-    # Clear cache
     get_uczelnia_context_data.invalidate()
 
     ctx1 = get_uczelnia_context_data(uczelnia1)
     ctx2 = get_uczelnia_context_data(uczelnia2)
 
-    assert article in ctx1["miniblog"]
-    assert article not in ctx2["miniblog"]
+    assert article in ctx1["news"]
+    assert article not in ctx2["news"]
 
 
 @pytest.mark.django_db
-def test_article_on_all_uczelnie_when_both_assigned(uczelnia1, uczelnia2):
-    """Article assigned to both uczelnie appears on both."""
+def test_article_on_all_sites_when_both_assigned(uczelnia1, uczelnia2, site1, site2):
+    """Article przypisany do obu site'ów jest widoczny na obu uczelniach."""
+    from siteblog.models import Article
+
     from bpp.views.browse import get_uczelnia_context_data
-    from miniblog.models import Article
 
     article = baker.make(
         Article,
@@ -47,22 +47,23 @@ def test_article_on_all_uczelnie_when_both_assigned(uczelnia1, uczelnia2):
         article_body="Body text",
         status=Article.STATUS.published,
     )
-    article.uczelnie.set([uczelnia1, uczelnia2])
+    article.sites.set([site1, site2])
 
     get_uczelnia_context_data.invalidate()
 
     ctx1 = get_uczelnia_context_data(uczelnia1)
     ctx2 = get_uczelnia_context_data(uczelnia2)
 
-    assert article in ctx1["miniblog"]
-    assert article in ctx2["miniblog"]
+    assert article in ctx1["news"]
+    assert article in ctx2["news"]
 
 
 @pytest.mark.django_db
-def test_article_with_empty_m2m_visible_on_all_uczelnie(uczelnia1, uczelnia2):
-    """Pusty M2M ``uczelnie`` = artykuł widoczny wszędzie (lazy resolution)."""
+def test_article_with_empty_m2m_visible_on_all_sites(uczelnia1, uczelnia2):
+    """Pusty M2M ``sites`` = artykuł widoczny wszędzie (siteblog convention)."""
+    from siteblog.models import Article
+
     from bpp.views.browse import get_uczelnia_context_data
-    from miniblog.models import Article
 
     article = baker.make(
         Article,
@@ -70,15 +71,16 @@ def test_article_with_empty_m2m_visible_on_all_uczelnie(uczelnia1, uczelnia2):
         article_body="Body text",
         status=Article.STATUS.published,
     )
-    # Celowo brak article.uczelnie.set(...) — pusty M2M.
+    # Celowo brak article.sites.set(...) — pusty M2M, zgodnie z help_textem
+    # siteblog: "Leave empty to make it visible on all sites."
 
     get_uczelnia_context_data.invalidate()
 
     ctx1 = get_uczelnia_context_data(uczelnia1)
     ctx2 = get_uczelnia_context_data(uczelnia2)
 
-    assert article in ctx1["miniblog"]
-    assert article in ctx2["miniblog"]
+    assert article in ctx1["news"]
+    assert article in ctx2["news"]
 
 
 @pytest.mark.django_db

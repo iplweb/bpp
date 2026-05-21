@@ -6,6 +6,7 @@ from bpp.models import Autor
 from bpp.models.cache import Rekord
 from pbn_api.models import OsobaZInstytucji
 
+from .analysis_meta import _name_or_initial_match
 from .gender import Gender, plcie_sa_rozne, zgadnij_plec_autora
 from .search import szukaj_kopii
 
@@ -42,6 +43,61 @@ def analiza_duplikatow(osoba_z_instytucji: OsobaZInstytucji) -> dict:  # noqa: C
     plec_glowny = zgadnij_plec_autora(glowny_autor.imiona, glowny_autor.plec)
 
     for duplikat in duplikaty:
+        # HARD REJECTION: imiona zupełnie rozłączne (brak common, similar,
+        # initial overlap) i to NIE swap → nie jest tym samym autorem.
+        # 'Jan' nie może być duplikatem 'Agnieszki' niezależnie od ORCID,
+        # nazwiska czy lat publikacji. Pomijamy całkowicie.
+        if duplikat.imiona and glowny_autor.imiona:
+            imiona_glowny_pre = glowny_autor.imiona.split()
+            imiona_duplikat_pre = duplikat.imiona.split()
+            common_pre = sum(
+                1
+                for ig in imiona_glowny_pre
+                for id_ in imiona_duplikat_pre
+                if ig.lower() == id_.lower()
+            )
+            similar_pre = sum(
+                1
+                for ig in imiona_glowny_pre
+                for id_ in imiona_duplikat_pre
+                if len(ig) >= 3
+                and len(id_) >= 3
+                and ig.lower() != id_.lower()
+                and (
+                    ig.lower().startswith(id_.lower()[:3])
+                    or id_.lower().startswith(ig.lower()[:3])
+                )
+            )
+            initials_g_pre = {ig[0].upper() for ig in imiona_glowny_pre if ig}
+            initials_d_pre = set()
+            for token in imiona_duplikat_pre:
+                if not token:
+                    continue
+                # 'J.' / 'J' / 'Jan' wszystkie dają inicjał na pierwszym znaku
+                initials_d_pre.add(token[0].upper())
+            init_count_pre = len(initials_g_pre & initials_d_pre)
+            # Inicjały też liczone do swap-detection: 'Jan Kowalski' ↔
+            # 'Kowalski J.' (database swap z inicjałem) musi przejść.
+            swap_pre = (
+                bool(duplikat.nazwisko)
+                and bool(glowny_autor.nazwisko)
+                and any(
+                    _name_or_initial_match(duplikat.nazwisko, ig)
+                    for ig in imiona_glowny_pre
+                )
+                and any(
+                    _name_or_initial_match(glowny_autor.nazwisko, id_)
+                    for id_ in imiona_duplikat_pre
+                )
+            )
+            if (
+                common_pre == 0
+                and similar_pre == 0
+                and init_count_pre == 0
+                and not swap_pre
+            ):
+                continue
+
         analiza = {"autor": duplikat, "powody_podobienstwa": [], "pewnosc": 0}  # 0-100%
 
         # Analiza płci - jeśli płcie są na pewno różne, to NIE mogą być duplikatami
@@ -144,14 +200,17 @@ def analiza_duplikatow(osoba_z_instytucji: OsobaZInstytucji) -> dict:  # noqa: C
             imiona_glowny = glowny_autor.imiona.split()
             imiona_duplikat = duplikat.imiona.split()
 
-            # Sprawdź czy nazwisko duplikatu = imię głównego (dokładnie)
+            # Sprawdź czy nazwisko duplikatu pasuje do imienia głównego
+            # (dokładnie LUB jako inicjał, np. 'J.' do 'Jan').
             dokladna_zamiana_nazwisko_duplikat = any(
-                duplikat.nazwisko.lower() == imie_g.lower() for imie_g in imiona_glowny
+                _name_or_initial_match(duplikat.nazwisko, imie_g)
+                for imie_g in imiona_glowny
             )
 
-            # Sprawdź czy nazwisko głównego = imię duplikatu (dokładnie)
+            # Sprawdź czy nazwisko głównego pasuje do imienia duplikatu
+            # (dokładnie LUB jako inicjał).
             dokladna_zamiana_nazwisko_glowny = any(
-                glowny_autor.nazwisko.lower() == imie_d.lower()
+                _name_or_initial_match(glowny_autor.nazwisko, imie_d)
                 for imie_d in imiona_duplikat
             )
 
