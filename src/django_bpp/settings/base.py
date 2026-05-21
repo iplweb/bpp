@@ -293,13 +293,13 @@ MIDDLEWARE = [
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django_countdown.middleware.CountdownBlockingMiddleware",  # After auth - needs request.user
-    "bpp_setup_wizard.middleware.SetupWizardMiddleware",  # After auth middleware to have request.user
+    "first_run_wizard.middleware.FirstRunWizardMiddleware",  # After auth middleware to have request.user
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     "django_bpp.middleware.ConditionalPasswordChangeMiddleware",
     "dj_pagination.middleware.PaginationMiddleware",
     "session_security.middleware.SessionSecurityMiddleware",
-    "notifications.middleware.NotificationsMiddleware",
+    "bpp.middleware.NotificationsMiddleware",
     # 'rollbar.contrib.django.middleware.RollbarNotifierMiddleware',
     "bpp.middleware.CustomRollbarNotifierMiddleware",
 ]
@@ -337,10 +337,13 @@ if TESTING:
 
 INSTALLED_APPS = [
     # "django_werkzeug",
-    "bpp_setup_wizard",  # Must be early to enable setup wizard
+    # bpp_setup_wizard BEFORE first_run_wizard so BPP-side templates
+    # (first_run_wizard/admin_user.html in bpp_setup_wizard.templates)
+    # override the vendor-neutral defaults shipped by the package.
+    "bpp_setup_wizard",  # BPP-specific step + BPP-styled templates
+    "first_run_wizard",  # Pluggable first-run wizard engine (PyPI)
     "daphne",
     "tinymce",
-    "tee",
     "formtools",
     "denorm.apps.DenormAppConfig",
     "reversion",
@@ -350,7 +353,7 @@ INSTALLED_APPS = [
     "constance",
     "constance.backends.database",
     "channels",
-    "dynamic_columns",
+    "dynamic_admin_columns",
     "django.contrib.humanize",
     "django.contrib.contenttypes",
     "django.contrib.auth",
@@ -365,7 +368,6 @@ INSTALLED_APPS = [
     "import_pracownikow",
     "import_list_if",
     "password_policies",
-    "create_test_db",
     "celery",
     "django_celery_results",
     "flexible_reports",
@@ -407,7 +409,7 @@ INSTALLED_APPS = [
     "powiazania_autorow",
     "compressor",
     "session_security",
-    "notifications",
+    "channels_broadcast",
     "integrator2",
     "nowe_raporty",
     "rozbieznosci_dyscyplin",
@@ -417,6 +419,7 @@ INSTALLED_APPS = [
     "webmaster_verification",
     "favicon",
     "miniblog",
+    "siteblog",
     "import_dyscyplin",
     "mptt",
     "rest_framework",
@@ -475,7 +478,7 @@ INSTALLED_APPS = [
 ]
 
 PG_BASELINE = {
-    "BASELINE_DIR": os.path.join(SITE_ROOT, "baseline-sql"),
+    "BASELINE_DIR": os.path.abspath(os.path.join(SITE_ROOT, "..", "baseline-sql")),
     # Our image has plpython3u + pl_PL.UTF-8 locale — vanilla postgres doesn't.
     "REBUILD_IMAGE": "iplweb/bpp_dbserver:psql-16.13",
     # bpp-specific exclusions on top of the generic django_session default.
@@ -771,7 +774,13 @@ SESSION_SECURITY_EXPIRE_AFTER = env("DJANGO_BPP_SESSION_SECURITY_EXPIRE_AFTER")
 PUNKTUJ_MONOGRAFIE = env("DJANGO_BPP_PUNKTUJ_MONOGRAFIE")
 
 
-# dla django-model-utils SplitField
+# dla django-model-utils SplitField. BPP używa „<!-- tutaj -->” zamiast
+# upstream-owego „<!-- split -->”, więc help_text na siteblog.Article.article_body
+# różni się od tego zaszytego w siteblog/0001_initial. To no-op drift —
+# `makemigrations siteblog` bez argumentów wygeneruje 0002_alter_article_body
+# w site-packages (ALTER TABLE jest no-op, bo help_text nie wpływa na schemat).
+# Plik nigdy nie trafia do git, prod-`migrate` go nie zaaplikuje (nie istnieje
+# w pakiecie). Ignoruj i nie commituj.
 SPLIT_MARKER = "<!-- tutaj -->"
 
 # django-crispy-forms: użyj crispy-forms-foundation
@@ -895,7 +904,7 @@ TABULAR_PERMISSIONS_CONFIG = {
             "admin",
             "auth",
             "password_policies",
-            "notifications",
+            "channels_broadcast",
             "dashboard",
             "django.contrib.contenttypes",
             "egeria",
@@ -1172,13 +1181,27 @@ DJANGO_EASY_AUDIT_REGISTERED_CLASSES = [
 
 SILENCED_SYSTEM_CHECKS.append("admin.E117")
 
-DYNAMIC_COLUMNS_ALLOWED_IMPORT_PATHS = [
+# Override the ``dynamic_admin_columns`` migrations directory.
+#
+# The package's ``0001_initial`` runs ``CreateModel`` against the
+# ``dynamic_columns_*`` tables. Every BPP database — both legacy
+# in-tree-app upgrades and freshly-baselined test DBs — already
+# carries those tables, so running ``CREATE TABLE`` again would
+# conflict. The replacement under ``bpp.migration_overrides`` is
+# state-only (declares the models in Django's state, emits no DDL).
+# Schema-level work for the per-user upgrade lives in
+# ``bpp.0416_rename_dynamic_columns_to_admin``.
+MIGRATION_MODULES = {
+    "dynamic_admin_columns": "bpp.migration_overrides.dynamic_admin_columns",
+}
+
+DYNAMIC_ADMIN_COLUMNS_ALLOWED_IMPORT_PATHS = [
     "bpp.admin.wydawnictwo_ciagle",
     "bpp.admin.wydawnictwo_zwarte",
     "bpp.admin.autor",
 ]
 
-DYNAMIC_COLUMNS_FORBIDDEN_COLUMN_NAMES = [
+DYNAMIC_ADMIN_COLUMNS_FORBIDDEN_COLUMN_NAMES = [
     ".*_cache$",
     ".*_sort$",
     "search_index",
@@ -1261,6 +1284,10 @@ LANGUAGE_COOKIE_SECURE = True
 X_FRAME_OPTIONS = "SAMEORIGIN"
 
 DATA_UPLOAD_MAX_NUMBER_FIELDS = 5000
+
+# django-formdefaults: pozwól wszystkim staff-userom edytować systemowe
+# wartości domyślne formularzy (domyślnie pakiet wpuszcza tylko superuserów).
+FORMDEFAULTS_CAN_EDIT_SYSTEM_WIDE = "bpp.formdefaults_perms.can_edit_system_wide"
 
 DJANGO_BPP_SKROT_WYDZIALU_W_NAZWIE_JEDNOSTKI = env(
     "DJANGO_BPP_SKROT_WYDZIALU_W_NAZWIE_JEDNOSTKI"

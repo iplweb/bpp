@@ -70,15 +70,23 @@ def preauth_page(page: Page, normal_django_user, live_server, transactional_db):
 def preauth_asgi_page(preauth_page: Page, channels_live_server, transactional_db):
     """Provide a pre-authenticated page with WebSocket connection."""
     # Import here to avoid Django app loading issues
+    import time
+
+    from channels_broadcast.core import get_channel_name_for_user
     from django_bpp.playwright_util import (
+        wait_for_channel_subscription,
         wait_for_page_load,
         wait_for_websocket_connection,
     )
 
     page = preauth_page
+    pre_goto = time.time()
     page.goto(channels_live_server.url)
     wait_for_page_load(page)
     wait_for_websocket_connection(page)
+    wait_for_channel_subscription(
+        get_channel_name_for_user(page.authorized_user), since=pre_goto
+    )
     page.evaluate("Cookielaw.accept();")
     # Cookielaw.accept() removes #CookielawBanner synchronously; wait for
     # the DOM to reflect that instead of sleeping a fixed second.
@@ -130,15 +138,23 @@ def preauth_asgi_page_per_test(
     preauth_page: Page, channels_live_server_per_test, transactional_db
 ):
     """Function-scoped wariant `preauth_asgi_page` — fresh Daphne per test."""
+    import time
+
+    from channels_broadcast.core import get_channel_name_for_user
     from django_bpp.playwright_util import (
+        wait_for_channel_subscription,
         wait_for_page_load,
         wait_for_websocket_connection,
     )
 
     page = preauth_page
+    pre_goto = time.time()
     page.goto(channels_live_server_per_test.url)
     wait_for_page_load(page)
     wait_for_websocket_connection(page)
+    wait_for_channel_subscription(
+        get_channel_name_for_user(page.authorized_user), since=pre_goto
+    )
     page.evaluate("Cookielaw.accept();")
     page.wait_for_selector("#CookielawBanner", state="detached", timeout=2000)
     return page

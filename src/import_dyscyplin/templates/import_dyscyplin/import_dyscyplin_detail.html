@@ -71,7 +71,7 @@
                 $.ajax({
                     url: "{% url "import_dyscyplin:przetwarzaj" object.pk %}",
                     method: "GET",
-                    data: {"web_page_uid": bppNotifications.messageCookieId}
+                    data: {"web_page_uid": channelsBroadcast.messageCookieId}
                 });
             });
         </script>
@@ -309,7 +309,7 @@
                 $.ajax({
                     url: url,
                     method: 'GET',
-                    data: {'web_page_uid': bppNotifications.messageCookieId}
+                    data: {'web_page_uid': channelsBroadcast.messageCookieId}
                 });
                 return;
             }

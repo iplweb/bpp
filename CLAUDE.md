@@ -21,6 +21,19 @@ management system built with Django. Python >=3.10,<3.15.
 - **Ask questions** if anything is unclear before taking on non-trivial tasks
 - **NEVER modify existing migration files** in `src/*/migrations/`
 - **Max line length: 88 characters** (enforced by ruff)
+- **Worktrees NIGDY w `bpp/` (ani w `.claude/worktrees/`).** Wszystkie
+  worktree mają lądować jako siostrzane katalogi obok głównego checkoutu,
+  tzn. w `~/Programowanie/`. Nazwa: `bpp-<feature-slug>`.
+  - ❌ `bpp/.claude/worktrees/<slug>` — zaśmieca repo, łatwo wpada do `find`,
+    `grep`, edytora, snapshotów IDE.
+  - ✅ `~/Programowanie/bpp-<slug>` — jako siostra `~/Programowanie/bpp`.
+  - Domyślny `EnterWorktree name=<slug>` claude'a tworzy worktree w
+    `bpp/.claude/worktrees/` — to **NIE** jest akceptowalne. Zamiast tego:
+    ```bash
+    git worktree add ~/Programowanie/bpp-<slug> -b worktree-<slug>
+    ```
+    a potem `EnterWorktree path=~/Programowanie/bpp-<slug>` żeby wejść
+    w już-istniejący worktree zamiast tworzyć kolejny.
 - **Icons in templates:**
   - Public frontend (Foundation CSS): monochrome Foundation-Icons
     (`<span class="fi-icon"/>`)
@@ -60,26 +73,31 @@ pytest src/app_name/tests/
 ## Uruchamianie dev stack-u (preferowane dla agenta)
 
 **Jeśli musisz obejrzeć stronę BPP, uruchomić ją lokalnie albo
-sprawdzić jak coś wygląda w przeglądarce — używaj `run_site`,
+sprawdzić jak coś wygląda w przeglądarce — używaj `run-site`,
 NIE `docker compose up`.** Dla agenta to znacznie prostsze.
 
 ```bash
-uv run python src/manage.py run_site
+uv run run-site run
 ```
 
-Co `run_site` robi w jednej komendzie:
+`run-site` to zewnętrzny pakiet (`run-site` na PyPI, dawniej wbudowane
+`manage.py run_site`). Konfiguracja siedzi w `runsite.toml` w korzeniu
+repo. Hooki BPP-specific (PBN token, password_policies cleanup) sa
+w `src/django_bpp/runsite_hooks.py`.
+
+Co `run-site run` robi w jednej komendzie:
 
 - startuje PostgreSQL i Redis przez testcontainers (losowe porty,
   bez kolizji z dev-owymi kontenerami `docker compose up db redis`),
-- migruje bazę i tworzy superusera `admin`/`admin`,
+- migruje bazę i tworzy superusera `admin`/`admin` (idempotent),
 - odpala `runserver` na losowym wolnym porcie (lub `--port`),
-- otwiera przeglądarkę z auto-loginem (przeskakuje formularz logowania),
-- zapisuje token auto-loginu do `.run_site_token` (chmod 600,
-  gitignored, kasowany na exit) oraz porty:
-  `.run_site_port` (runserver), `.run_site_pg_port` (PostgreSQL
-  testcontainera), `.run_site_redis_port` (Redis testcontainera)
-  — wszystkie gitignored, ulotne, kasowane na exit; patrz sekcja
-  „Autologin dla agentów" niżej,
+- otwiera przeglądarkę z auto-loginem przez `django-dev-helpers`
+  (przeskakuje formularz logowania),
+- `django-dev-helpers` zapisuje token + porty do gitignored
+  dotfile'ów: `.dev_helpers_token`, `.dev_helpers_port`,
+  `.dev_helpers_pg_port`, `.dev_helpers_redis_port` — wszystkie
+  ulotne, kasowane na exit; patrz sekcja „Autologin dla agentów" niżej,
+- `run-site` zapisuje `.run-site-config` (TOML sidecar z connection URLs),
 - drukuje w stdout banner z URL-ami + gotowe snippety curl/psql/redis-cli
   dla agenta.
 
@@ -89,28 +107,29 @@ Co `run_site` robi w jednej komendzie:
   uruchamiać w tle, łatwiej wyciągać port z outputu,
 - baseline migracji + admin są gotowe od ręki, bez ręcznego
   `migrate`/`createsuperuser`,
-- WebFetch / curl działa od strzału dzięki `.run_site_token` +
-  `.run_site_port` (agent składa URL bez parsowania bannera/logów);
-  `psql`/`redis-cli` analogicznie przez `.run_site_pg_port`
-  + `.run_site_redis_port`,
+- WebFetch / curl działa od strzału dzięki `.dev_helpers_token` +
+  `.dev_helpers_port` (agent składa URL bez parsowania bannera/logów);
+  `psql`/`redis-cli` analogicznie przez `.dev_helpers_pg_port`
+  + `.dev_helpers_redis_port`,
 - testcontainers same się sprzątają na exit (Ctrl-C zamyka stack),
 - nie wymaga prebuildu obrazu appserver-a (compose by wymagał).
 
 **Najczęściej używane flagi:**
 
 - `--no-browser` — nie otwieraj browsera (zalecane gdy agent uruchamia
-  `run_site` w tle przez `run_in_background=true`),
+  `run-site` w tle przez `run_in_background=true`),
 - `--port 8080` — wymuś konkretny port (default: losowy wolny;
   agent najczęściej i tak czyta port z bannera),
 - `--reuse` — persystencja kontenerów PG/Redis między uruchomieniami
-  (drugi run nie inicjuje od zera; usuń ręcznie `bpp-tc-pg`/`bpp-tc-redis`
-  żeby zrestartować),
+  (drugi run nie inicjuje od zera; usuń ręcznie kontenery
+  `bpp-runsite-pg`/`bpp-runsite-redis` żeby zrestartować),
 - `--no-celery` — pomiń celery worker (szybciej, gdy nie testujesz
   background-jobów),
+- `--skip-assets` — pomiń `make assets` (gdy CSS/JS jest aktualny),
 - `--from-dump PATH` — odtwórz `.sql` / `.sql.gz` / `.dump` zamiast
   baseline.
 
-**Pobranie portu z bannera (gdy run_site w tle):**
+**Pobranie portu z bannera (gdy run-site w tle):**
 
 ```bash
 # Po uruchomieniu w tle, port jest w outpucie:
@@ -118,9 +137,9 @@ grep -oE 'http://localhost:[0-9]+' /tmp/run_site.log | head -1
 ```
 
 Domyślny `docker compose up db redis -d` z Quick Reference jest
-dla **rzadszych przypadków**: testy z `BPP_USE_TESTCONTAINERS=0`
-albo gdy potrzebujesz długożyjącej bazy niezależnie od `run_site`.
-Do oglądania samej strony — używaj `run_site`.
+dla **rzadszych przypadków**: testy z `PYTEST_TESTCONTAINERS_DISABLE=1`
+albo gdy potrzebujesz długożyjącej bazy niezależnie od `run-site`.
+Do oglądania samej strony — używaj `run-site`.
 
 ## Key Commands (Quick Reference)
 
@@ -153,23 +172,29 @@ issue-by-issue. Fix each manually with the Edit tool. Do NOT run
 
 ## Autologin dla agentów (WebFetch / curl bez logowania)
 
-Gdy user uruchomił `manage.py run_site`, w korzeniu repo (lub worktree)
-pojawiają się gitignored, ulotne pliki:
+Gdy user uruchomił `run-site run`, dev stack zapisuje gitignored,
+ulotne pliki w korzeniu repo. `django-dev-helpers` (instalowany do
+INSTALLED_APPS przez `local.py`) tworzy:
 
-- `.run_site_token` — token autoryzacyjny (chmod 600),
-- `.run_site_port` — port runservera (host = zawsze `localhost`),
-- `.run_site_pg_port` — port PostgreSQL testcontainera
+- `.dev_helpers_token` — token autoryzacyjny (chmod 600),
+- `.dev_helpers_port` — port runservera (host = zawsze `localhost`),
+- `.dev_helpers_pg_port` — port PostgreSQL testcontainera
   (host = zawsze `localhost`, user/pass = `bpp`/`password`,
   baza = `bpp`),
-- `.run_site_redis_port` — port Redis testcontainera
+- `.dev_helpers_redis_port` — port Redis testcontainera
   (host = zawsze `localhost`, bez hasła).
 
-Wszystkie istnieją **tylko przez czas życia procesu run_site** i są
+`run-site` dodatkowo zapisuje `.run-site-config` (TOML sidecar z
+gotowymi connection URL-ami) — uzytkowny gdy chcesz np. `cat
+.run-site-config | grep '^url' | tail -1` zamiast skladac URL z paru
+dotfile'ow.
+
+Wszystkie istnieją **tylko przez czas życia procesu run-site** i są
 kasowane na exit. Jeśli któregoś nie ma — znaczy że dev stack nie
 biegnie i nie da się fetchować zalogowanych stron / podpiąć się
 do bazy; nie próbuj „obejść" tego logując się przez `/admin/login/`
 czy POST-em formularza ani odpalać własnego PG/Redis-a — tylko poproś
-usera o uruchomienie `run_site`.
+usera o uruchomienie `run-site`.
 
 Token uwierzytelnia jako `admin` (superuser) — używaj tylko gdy musisz
 zobaczyć stronę wymagającą zalogowania. Do publicznych stron nie ma
@@ -178,10 +203,10 @@ sensu, a niepotrzebnie zostawia ślad w `request.user` w logach.
 **Pobranie zalogowanej strony przez curl + cookie jar:**
 
 ```bash
-T=$(cat .run_site_token)
-PORT=$(cat .run_site_port)
+T=$(cat .dev_helpers_token)
+PORT=$(cat .dev_helpers_port)
 J=$(mktemp)
-curl -sc "$J" -L "http://localhost:$PORT/__run_site_autologin__/?token=$T" \
+curl -sc "$J" -L "http://localhost:$PORT/__autologin__/?token=$T" \
     >/dev/null
 curl -sb "$J" "http://localhost:$PORT/<path>"
 rm "$J"
@@ -190,11 +215,11 @@ rm "$J"
 **Połączenie z bazą PostgreSQL testcontainera (psql, dbshell, etc.):**
 
 ```bash
-PG_PORT=$(cat .run_site_pg_port)
+PG_PORT=$(cat .dev_helpers_pg_port)
 PGPASSWORD=password psql -h localhost -p "$PG_PORT" -U bpp -d bpp
 ```
 
-Tej samej kombinacji `host=localhost`, `port=$(cat .run_site_pg_port)`,
+Tej samej kombinacji `host=localhost`, `port=$(cat .dev_helpers_pg_port)`,
 `user=bpp`, `password=password`, `dbname=bpp` używaj wszędzie indziej
 (SQLAlchemy, pgcli, DataGrip itd.). Nie próbuj odpalać własnego PG —
 ten kontener ma już zaimportowany baseline + zmigrowane schema.
@@ -202,7 +227,7 @@ ten kontener ma już zaimportowany baseline + zmigrowane schema.
 **Połączenie z Redis-em testcontainera (redis-cli, debug):**
 
 ```bash
-REDIS_PORT=$(cat .run_site_redis_port)
+REDIS_PORT=$(cat .dev_helpers_redis_port)
 redis-cli -p "$REDIS_PORT"
 ```
 
@@ -212,14 +237,15 @@ WebFetcha używaj tylko do publicznych stron. Do zalogowanych
 stron użyj snippetu z curl powyżej, ewentualnie spipuj wynik
 przez `pandoc -f html -t markdown` jeśli potrzebujesz markdown-a.
 
-**Bezpieczeństwo:** endpoint `/__run_site_autologin__/` istnieje
-tylko gdy ustawione `DJANGO_BPP_RUN_SITE_AUTOLOGIN_TOKEN` w env
-(ustawia to `run_site` automatycznie, nigdy w produkcji). Token
-nie wycieka do gita (gitignore + ulotny plik). Nie wklejaj
-zawartości `.run_site_token` do commitów, do PR-ów, ani do logów
-które trafią poza maszynę dewelopera. `.run_site_port`,
-`.run_site_pg_port` i `.run_site_redis_port` zawierają tylko
-numery portów (nie sekrety) — można je cytować swobodnie.
+**Bezpieczeństwo:** endpoint `/__autologin__/` istnieje tylko gdy
+`django-dev-helpers` jest aktywne (INSTALLED_APPS + DJANGO_DEV_HELPERS
+dict, lub env var DJANGO_DEV_HELPERS_ENABLED=1 ktory ustawia
+`run-site`). Pakiet jest dev-only (extras=dev w pyproject.toml) i
+domyslnie no-op w produkcji. Token nie wycieka do gita (gitignore +
+ulotny plik). Nie wklejaj zawartości `.dev_helpers_token` do
+commitów, do PR-ów, ani do logów które trafią poza maszynę dewelopera.
+`.dev_helpers_*_port` zawierają tylko numery portów (nie sekrety) —
+można je cytować swobodnie.
 
 ## CSS/SCSS Rules
 
@@ -351,11 +377,12 @@ usuwajacy tagi starsze niz N dni.
 
 ### Testcontainers
 
-Testy używają plugin-a `testcontainers_bpp`, który domyślnie startuje
-na losowych portach **własne** kontenery PostgreSQL
-(`iplweb/bpp_dbserver`) i Redis. Dev-owe
-`docker compose up db redis` **nie jest wymagane** do
-uruchomienia testów i nie koliduje z nimi.
+Testy używają plugin-ow `pytest-testcontainers` + `pytest-testcontainers-django`
+(zewnetrzne pakiety na PyPI; dawniej wewnetrzny `src/testcontainers_bpp/`),
+ktore domyślnie startują na losowych portach **własne** kontenery PostgreSQL
+(`iplweb/bpp_dbserver`) i Redis. Dev-owe `docker compose up db redis`
+**nie jest wymagane** do uruchomienia testów i nie koliduje z nimi.
+Konfiguracja jest w `[tool.pytest-testcontainers-django]` w `pyproject.toml`.
 
 - Wymaganie: działający Docker daemon.
 - Plugin wstrzykuje `DJANGO_BPP_DB_PORT` i `DJANGO_BPP_REDIS_PORT`
@@ -363,15 +390,15 @@ uruchomienia testów i nie koliduje z nimi.
   załadowaniem Django settings, oraz `DJANGO_BPP_SKIP_DOTENV=1`, żeby
   `.env` nie nadpisał wstrzykniętych wartości.
 - Wyłączenie (gdy sam odpaliłeś usługi przez docker-compose):
-  `BPP_USE_TESTCONTAINERS=0 uv run pytest` lub flag `--no-testcontainers`.
+  `PYTEST_TESTCONTAINERS_DISABLE=1 uv run pytest` lub flag `--no-testcontainers`.
 - Reuse kontenerów między runs (znacznie szybciej):
-  `BPP_TESTCONTAINERS_REUSE=1`. Domyślnie kontenery są ulotne —
+  `PYTEST_TESTCONTAINERS_REUSE=1`. Domyślnie kontenery są ulotne —
   plugin jawnie je zatrzymuje w `pytest_unconfigure` (+ `atexit`
   jako safety net), Ryuk to ostatnia linia obrony. Przy restarcie
   Docker Desktop albo `SIGKILL` na pytest cleanup może zawieść;
   wtedy `make clean-testcontainers` usuwa wszystkie osierocone
   kontenery.
-- CI (`docker-compose.test.yml`) ma `BPP_USE_TESTCONTAINERS=0` —
+- CI (`docker-compose.test.yml`) ma `PYTEST_TESTCONTAINERS_DISABLE=1` —
   usługi dostarcza tam docker-compose.
 
 ## Exception Handling

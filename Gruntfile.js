@@ -200,7 +200,7 @@ module.exports = function (grunt) {
         },
 
         qunit: {
-            all: ['src/notifications/static/notifications/js/tests/index.html']
+            all: []
         },
 
         shell: {

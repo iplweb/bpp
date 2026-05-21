@@ -1,4 +1,4 @@
-
+{% load user_in_group %}
 <nav role="navigation" aria-label="Główna nawigacja" class="sticky-header">
 <div class="title-bar" data-responsive-toggle="example-menu" data-hide-for="medium">
     <button class="menu-icon" type="button" data-toggle="example-menu"
@@ -31,6 +31,14 @@
                             precyzyjnie
                         </a>
                     </li>
+                    {% if request.user.is_superuser or request.user.is_staff and request.user|has_group:"wprowadzanie danych" %}
+                        <li role="menuitem">
+                            <a href="{% url "bpp:zapytanie" %}">
+                                <i class="fi-database" aria-hidden="true"></i>
+                                zapytaniem
+                            </a>
+                        </li>
+                    {% endif %}
                 </ul>
             </li>
             <li>

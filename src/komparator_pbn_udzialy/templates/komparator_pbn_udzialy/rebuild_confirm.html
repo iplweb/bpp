@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+
+{% block title %}Przebudowa rozbieżności PBN{% endblock %}
+
+{% block breadcrumbs %}
+    <li><a href="/">Strona główna</a></li>
+    <li><a href="{% url 'komparator_pbn_udzialy:list' %}">Problemy PBN</a></li>
+    <li class="active">Przebudowa</li>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="large-12 columns">
+        <h2>Przebudowa rozbieżności PBN</h2>
+
+        {% include "includes/pbn_freshness_warning.html" %}
+
+        <div class="callout warning">
+            <h4>Czy na pewno przebudować rozbieżności?</h4>
+            <p>
+                Operacja ta <strong>usunie wszystkie istniejące rozbieżności
+                dyscyplin PBN i braki autorów</strong>, a następnie wygeneruje
+                je ponownie na podstawie aktualnych danych z PBN.
+            </p>
+            <p>
+                Wszystkie ręczne oznaczenia (np. „ignoruj”, opisy) zostaną
+                utracone. Operacja wykonywana jest w tle i może potrwać kilka
+                minut.
+            </p>
+        </div>
+
+        {% if not pbn_data_fresh %}
+        <div class="callout alert">
+            <p>
+                <strong>Uwaga:</strong> {{ pbn_stale_message }}.
+                Pobierz aktualne dane z PBN przed uruchomieniem przebudowy.
+            </p>
+        </div>
+        {% endif %}
+
+        <form method="post">
+            {% csrf_token %}
+            <button type="submit" class="button alert"{% if not pbn_data_fresh %} disabled{% endif %}>
+                <span class="fi-refresh"></span> Tak, przebuduj rozbieżności
+            </button>
+            <a href="{% url 'komparator_pbn_udzialy:list' %}" class="button secondary">
+                Anuluj
+            </a>
+        </form>
+    </div>
+</div>
+{% endblock %}

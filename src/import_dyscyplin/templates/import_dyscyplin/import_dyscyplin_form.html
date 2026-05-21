@@ -13,6 +13,7 @@
 
 
 {% block content %}
-    {% load crispy_forms_tags %}
+    {% load crispy_forms_tags bpp_formdefaults %}
+    <div class="formdefaults-wrap">{% bpp_formdefaults_button form %}</div>
     {% crispy form %}
 {% endblock %}

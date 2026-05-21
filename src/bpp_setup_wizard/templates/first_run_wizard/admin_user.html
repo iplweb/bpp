@@ -1,0 +1,137 @@
+{# Override pakietowego first_run_wizard/admin_user.html — BPP-styled,
+   spójny wizualnie z bpp_setup_wizard/uczelnia_setup.html (drugi krok). #}
+{% extends "bare.html" %}
+{% load static %}
+
+{% block skip_link %}{% endblock %}
+
+{% block title %}{{ title }} - Konfiguracja administratora{% endblock %}
+
+{% block extrahead %}
+    {{ block.super }}
+    <link rel="stylesheet"
+          href="{% static 'bpp_setup_wizard/css/bpp_setup_wizard.css' %}">
+{% endblock %}
+
+{% block body %}
+    <div class="bpp-setup-wizard">
+        <div class="bpp-setup-wizard__header">
+            <div class="bpp-setup-wizard__icon">
+                <span class="fi-torso"></span>
+            </div>
+            <h1 class="bpp-setup-wizard__header-title">{{ title }}</h1>
+            <p class="bpp-setup-wizard__header-subtitle">
+                Konfiguracja początkowa systemu
+            </p>
+        </div>
+
+        <div class="bpp-setup-wizard__info">
+            <h3 class="bpp-setup-wizard__info-title">
+                <span class="fi-info"></span> Informacja
+            </h3>
+            <p class="bpp-setup-wizard__info-text">
+                Baza danych BPP jest pusta. Aby kontynuować, utwórz konto
+                administratora systemu.
+            </p>
+            <p class="bpp-setup-wizard__info-text">
+                Konto administratora otrzyma pełne uprawnienia
+                (<code>is_staff</code>, <code>is_superuser</code>) i zostanie
+                automatycznie zalogowane po utworzeniu.
+            </p>
+        </div>
+
+        <form method="post" novalidate>
+            {% csrf_token %}
+
+            {% if form.non_field_errors %}
+                <div class="bpp-setup-wizard__form-errors">
+                    {{ form.non_field_errors }}
+                </div>
+            {% endif %}
+
+            <div class="bpp-setup-wizard__form-section">
+                <h4 class="bpp-setup-wizard__form-section-title">
+                    Dane konta
+                </h4>
+
+                <div class="bpp-setup-wizard__form-group">
+                    {{ form.username.label_tag }}
+                    {{ form.username }}
+                    {% if form.username.help_text %}
+                        <span class="bpp-setup-wizard__help-text">
+                            {{ form.username.help_text }}
+                        </span>
+                    {% endif %}
+                    {% if form.username.errors %}
+                        <div class="bpp-setup-wizard__error-message">
+                            {{ form.username.errors }}
+                        </div>
+                    {% endif %}
+                </div>
+
+                <div class="bpp-setup-wizard__form-group">
+                    {{ form.email.label_tag }}
+                    {{ form.email }}
+                    {% if form.email.help_text %}
+                        <span class="bpp-setup-wizard__help-text">
+                            {{ form.email.help_text }}
+                        </span>
+                    {% endif %}
+                    {% if form.email.errors %}
+                        <div class="bpp-setup-wizard__error-message">
+                            {{ form.email.errors }}
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="bpp-setup-wizard__form-section">
+                <h4 class="bpp-setup-wizard__form-section-title">
+                    Hasło
+                </h4>
+
+                <div class="bpp-setup-wizard__form-group">
+                    {{ form.password1.label_tag }}
+                    {{ form.password1 }}
+                    {% if form.password1.help_text %}
+                        <span class="bpp-setup-wizard__help-text">
+                            {{ form.password1.help_text }}
+                        </span>
+                    {% endif %}
+                    {% if form.password1.errors %}
+                        <div class="bpp-setup-wizard__error-message">
+                            {{ form.password1.errors }}
+                        </div>
+                    {% endif %}
+                </div>
+
+                <div class="bpp-setup-wizard__form-group">
+                    {{ form.password2.label_tag }}
+                    {{ form.password2 }}
+                    {% if form.password2.help_text %}
+                        <span class="bpp-setup-wizard__help-text">
+                            {{ form.password2.help_text }}
+                        </span>
+                    {% endif %}
+                    {% if form.password2.errors %}
+                        <div class="bpp-setup-wizard__error-message">
+                            {{ form.password2.errors }}
+                        </div>
+                    {% endif %}
+                </div>
+
+                <div class="bpp-setup-wizard__pbn-note">
+                    <span class="fi-alert"></span>
+                    <strong>Wskazówka:</strong> Wybierz silne hasło — to konto
+                    będzie mieć pełną kontrolę nad systemem. Walidatory
+                    wymuszają minimum 8 znaków, brak podobieństwa do nazwy
+                    użytkownika i odporność na słownikowe ataki.
+                </div>
+            </div>
+
+            <button type="submit" class="bpp-setup-wizard__submit-btn">
+                <span class="fi-save"></span> Utwórz administratora i zaloguj
+            </button>
+        </form>
+    </div>
+{% endblock %}

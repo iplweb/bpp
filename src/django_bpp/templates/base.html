@@ -10,6 +10,10 @@
     {% load l10n %}
 
     {% if request.user.is_authenticated %}
+        {# django-formdefaults: popup do edycji wartości domyślnych formularzy #}
+        <link rel="stylesheet" type="text/css" href="{% static 'formdefaults/modal.css' %}"/>
+        <script src="{% static 'formdefaults/modal.js' %}" defer></script>
+
         {% include 'session_security/dialog.html' %}
         <script type="text/javascript">
             var sessionSecurity = new yourlabs.SessionSecurity({
@@ -159,7 +163,7 @@
 
         <script type="text/javascript">
             $(document).ready(function () {
-                bppNotifications.init(document.getElementById('extra-channels').textContent);
+                channelsBroadcast.init(document.getElementById('extra-channels').textContent);
 
                 $(document).on('closed.zf', function (event) {
                     if ($(event.target).hasClass("ajax-on-close")) {
@@ -172,7 +176,7 @@
 
                 {% if messages %}
                     {% for message in messages %}
-                        bppNotifications.addMessage({
+                        channelsBroadcast.addMessage({
                             cssClass: '{{ message.level|message_level_to_css_class }}',
                             clickURL: '{{ message.url }}',
                             {% if message.pk %}
@@ -194,11 +198,11 @@
 
         <script type="text/javascript">
             $(document).ready(function () {
-                bppNotifications.init();
+                channelsBroadcast.init();
 
                 {% if messages %}
                     {% for message in messages %}
-                        bppNotifications.addMessage({
+                        channelsBroadcast.addMessage({
                             cssClass: '{{ message.level|message_level_to_css_class }}',
                             clickURL: '{{ message.url }}',
                             {% if message.pk %}

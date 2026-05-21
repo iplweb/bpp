@@ -56,8 +56,7 @@
                                 <span class="fi-download"></span> Eksport XLSX
                             </a>
                             <a href="{% url 'rozbieznosci_pk:ustaw_wszystkie' %}?{{ filter_query_string }}"
-                               class="button warning"
-                               data-confirm="Czy na pewno chcesz zaktualizować {{ field_label }} dla wszystkich {{ page_obj.paginator.count }} rekordów?">
+                               class="button warning">
                                 <span class="fi-check"></span> Ustaw wszystkie wg źródła
                             </a>
                         {% else %}
@@ -66,8 +65,7 @@
                                 <span class="fi-download"></span> Eksport XLSX
                             </a>
                             <a href="{% url 'rozbieznosci_pk:ustaw_wszystkie' %}"
-                               class="button warning"
-                               data-confirm="Czy na pewno chcesz zaktualizować {{ field_label }} dla wszystkich {{ page_obj.paginator.count }} rekordów?">
+                               class="button warning">
                                 <span class="fi-check"></span> Ustaw wszystkie wg źródła
                             </a>
                         {% endif %}

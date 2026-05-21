@@ -16,7 +16,7 @@ from multiseek.views import MULTISEEK_SESSION_KEY
 
 from bpp.models import Rekord, Wydawnictwo_Zwarte
 from bpp.views.browse import BuildSearch, PracaViewBySlug
-from miniblog.models import Article
+from siteblog.models import Article
 
 
 def test_buildSearch(settings):

@@ -29,7 +29,7 @@
 
 BRANCH=`git branch | sed -n '/\* /s///p'`
 
-.PHONY: help clean distclean tests release tests-without-playwright tests-only-playwright docker destroy-test-databases coveralls-upload clean-coverage combine-coverage cache-delete buildx-cache-stats buildx-cache-prune buildx-cache-prune-aggressive buildx-cache-prune-registry buildx-cache-export buildx-cache-import buildx-cache-list bump-dev bump-release bump-and-start-dev migrate new-worktree clean-worktree generate-500-page build build-force build-base build-app-services build-appserver-base build-appserver build-workerserver build-beatserver build-authserver build-denorm-queue build-servers check-clean-tree prepare-claude prepare-developer-machine prepare-developer-machine-linux
+.PHONY: help clean distclean tests release tests-without-playwright tests-only-playwright docker destroy-test-databases coveralls-upload clean-coverage combine-coverage cache-delete buildx-cache-stats buildx-cache-prune buildx-cache-prune-aggressive buildx-cache-prune-registry buildx-cache-export buildx-cache-import buildx-cache-list bump-dev bump-release bump-and-start-dev migrate new-worktree clean-worktree generate-500-page build build-force build-base build-app-services build-appserver-base build-appserver build-workerserver build-beatserver build-authserver build-denorm-queue build-servers check-clean-tree prepare-claude prepare-developer-machine prepare-developer-machine-linux prepare-developer-machine-macos playwright-install
 
 .DEFAULT_GOAL := help
 
@@ -57,21 +57,93 @@ endif
 
 all:	prepare-developer-machine release ## UWAGA: pełna konfiguracja + release (uruchamia release!)
 
-prepare-developer-machine-macos: ## Zainstaluj zależności systemowe na macOS (brew + uv sync)
+# WeasyPrint (cffi.dlopen / ctypes.util.find_library) musi znalezc
+# libgobject-2.0 / pango / harfbuzz / fontconfig zainstalowane przez brew.
+# Na Apple Silicon te biblioteki siedza w /opt/homebrew/lib, ktorego dyld
+# nie konsultuje domyslnie (default search path to /usr/local/lib + /usr/lib).
+#
+# Probowalismy wczesniej (commit 3531fd2d4) DYLD_FALLBACK_LIBRARY_PATH —
+# nie sprawdza sie w praktyce: macOS SIP strippuje wszystkie zmienne DYLD_*
+# w momencie wywolania chronionej binarki (/usr/bin/*, /bin/sh, itp.), wiec
+# w lancuchach typu  make → sh → uv → python → pytest  zmienna regularnie
+# ginie po drodze. Z perspektywy pytest/uv vs. dlopen — niedeterministyczne.
+#
+# Wracamy do symlinkow w /usr/local/lib: filesystem-level, dyld konsultuje
+# te sciezke z automatu, SIP nic z tym nie zrobi. Wymaga sudo *raz*
+# przy setupie maszyny. Idempotent — recipe nie nadpisuje istniejacych
+# symlinkow wskazujacych na te same cele.
+#
+# UWAGA: To runtime fix dla dlopen. Nie pomaga przy *build-time* bledach
+# (np. wheel buduje sie z zrodla i nie znajduje cairo.h) — wtedy potrzeba
+# PKG_CONFIG_PATH=/opt/homebrew/lib/pkgconfig + LDFLAGS=-L/opt/homebrew/lib
+# + CPPFLAGS=-I/opt/homebrew/include.
+prepare-developer-machine-macos: ## Zainstaluj zależności systemowe na macOS (brew + uv sync + playwright + symlinki)
+	@if ! command -v brew >/dev/null 2>&1; then \
+		echo ""; \
+		echo "BŁĄD: Homebrew (brew) nie jest zainstalowany."; \
+		echo ""; \
+		echo "Homebrew jest wymagany do zainstalowania zależności systemowych"; \
+		echo "(cairo, pango, gdk-pixbuf, libffi, gobject-introspection, gtk+3)."; \
+		echo ""; \
+		echo "Aby zainstalować Homebrew, uruchom w terminalu poniższe polecenie:"; \
+		echo ""; \
+		echo '  /bin/bash -c "$$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"'; \
+		echo ""; \
+		echo "Po zakończeniu instalacji wykonaj kroki dodające 'brew' do PATH"; \
+		echo "wypisane przez instalator (zwykle dla Apple Silicon: dopisanie"; \
+		echo "linii 'eval \"\$$(/opt/homebrew/bin/brew shellenv)\"' do ~/.zprofile)."; \
+		echo ""; \
+		echo "Pełna dokumentacja: https://brew.sh"; \
+		echo ""; \
+		echo "Po instalacji Homebrew uruchom ponownie:  make prepare-developer-machine"; \
+		echo ""; \
+		exit 1; \
+	fi
+	brew install cairo pango gdk-pixbuf libffi gobject-introspection gtk+3 node yarn
+	npm install -g grunt-cli
 	uv sync --frozen --no-install-project --all-extras
-	brew install cairo pango gdk-pixbuf libffi gobject-introspection gtk+3
-	sudo ln -sf /opt/homebrew/opt/glib/lib/libgobject-2.0.0.dylib /usr/local/lib/gobject-2.0
-	sudo ln -sf /opt/homebrew/opt/pango/lib/libpango-1.0.dylib /usr/local/lib/pango-1.0
-	sudo ln -sf /opt/homebrew/opt/harfbuzz/lib/libharfbuzz.dylib /usr/local/lib/harfbuzz
-	sudo ln -sf /opt/homebrew/opt/fontconfig/lib/libfontconfig.1.dylib /usr/local/lib/fontconfig-1
-	sudo ln -sf /opt/homebrew/opt/pango/lib/libpangoft2-1.0.dylib /usr/local/lib/pangoft2-1.0
+	@# Symlinki w /usr/local/lib — dyld konsultuje te sciezke domyslnie,
+	@# wiec niezaleznie od stanu DYLD_* (SIP) WeasyPrint znajdzie libki.
+	@if [ ! -d /usr/local/lib ]; then \
+		echo "Tworze /usr/local/lib (wymagane sudo)..."; \
+		sudo mkdir -p /usr/local/lib; \
+	fi
+	@for pair in \
+		"/opt/homebrew/opt/glib/lib/libgobject-2.0.0.dylib:gobject-2.0" \
+		"/opt/homebrew/opt/pango/lib/libpango-1.0.dylib:pango-1.0" \
+		"/opt/homebrew/opt/harfbuzz/lib/libharfbuzz.dylib:harfbuzz" \
+		"/opt/homebrew/opt/fontconfig/lib/libfontconfig.1.dylib:fontconfig-1" \
+		"/opt/homebrew/opt/pango/lib/libpangoft2-1.0.dylib:pangoft2-1.0"; do \
+		src="$${pair%:*}"; dst="/usr/local/lib/$${pair##*:}"; \
+		if [ -L "$$dst" ] && [ "$$(readlink "$$dst")" = "$$src" ]; then \
+			echo "Symlink $$dst juz wskazuje na $$src — pomijam."; \
+		else \
+			echo "Tworze symlink $$dst -> $$src (wymagane sudo)..."; \
+			sudo ln -sf "$$src" "$$dst"; \
+		fi; \
+	done
+	@# Cleanup po poprzedniej probie z DYLD_FALLBACK_LIBRARY_PATH —
+	@# usun marker + linie export z ~/.zprofile, jesli zostaly.
+	@ZPROFILE="$$HOME/.zprofile"; \
+	MARKER='# bpp: weasyprint dlopen (Homebrew libs on Apple Silicon)'; \
+	if [ -f "$$ZPROFILE" ] && grep -qF "$$MARKER" "$$ZPROFILE"; then \
+		cp "$$ZPROFILE" "$$ZPROFILE.bpp-bak"; \
+		awk -v m="$$MARKER" 'BEGIN{skip=0} \
+			$$0==m {skip=1; next} \
+			skip>0 {skip--; next} \
+			{print}' "$$ZPROFILE.bpp-bak" > "$$ZPROFILE"; \
+		echo "Usunieto stary wpis DYLD_FALLBACK_LIBRARY_PATH z $$ZPROFILE (backup: $$ZPROFILE.bpp-bak)."; \
+	fi
+	$(MAKE) playwright-install
 
-prepare-developer-machine-linux: ## Zainstaluj zależności systemowe na Linuksie (apt + uv sync)
+prepare-developer-machine-linux: ## Zainstaluj zależności systemowe na Linuksie (apt + uv sync + playwright)
 	sudo apt update
-	sudo apt install -y yarnpkg python3-dev libpq-dev \
+	sudo apt install -y yarnpkg nodejs npm python3-dev libpq-dev \
 		libcairo2-dev libpango1.0-dev libgdk-pixbuf2.0-dev libffi-dev \
 		libgirepository1.0-dev libgtk-3-dev
+	sudo npm install -g grunt-cli
 	uv sync --frozen --no-install-project --all-extras
+	$(MAKE) playwright-install
 
 prepare-developer-machine: ## Zainstaluj zależności systemowe (auto-detekcja macOS/Linux)
 ifeq ($(OS),Darwin)
@@ -82,6 +154,24 @@ else
 	@echo "Unsupported platform: $(OS)"
 	@echo "Supported: Darwin (macOS), Linux"
 	@exit 1
+endif
+
+# Pobiera przeglądarki Playwright (chromium itd.) potrzebne do testów E2E.
+# Na Linuksie używa --with-deps, żeby playwright doinstalował systemowe
+# biblioteki (libnss3, libatk, libgtk-3...) przez apt — to wymaga sudo
+# i jest dokładnie tym, co opisuje README sekcja 2 ("uv run playwright
+# install" + "sudo playwright install-deps") tylko sklejone w jednej
+# komendzie. Na macOS install-deps to no-op (browsers są self-contained,
+# a brew już zainstalował systemowe libki w prepare-developer-machine-macos),
+# więc używamy gołego "playwright install".
+#
+# Wymaga, by uv sync --all-extras zostało wcześniej wykonane (playwright
+# CLI siedzi w grupie dev pyproject.toml). Stąd kolejność w prepare-*.
+playwright-install: ## Pobierz przeglądarki Playwright dla testów E2E (na Linuksie z --with-deps, sudo)
+ifeq ($(OS),Darwin)
+	uv run playwright install
+else
+	uv run playwright install --with-deps
 endif
 
 prepare-claude: ## Pokaż instrukcję instalacji wtyczki claude-mem w Claude Code
@@ -264,17 +354,17 @@ tests: clean-pycache clean-coverage uv-sync tests-without-playwright tests-only-
 # you suspect schema corruption or need to validate migrations from zero.
 tests-fresh: destroy-test-databases tests ## Jak `tests`, ale od zera (destroy-test-databases + tests)
 
-# Regenerate src/baseline-sql/baseline.sql by spinning up an isolated
+# Regenerate baseline-sql/baseline.sql by spinning up an isolated
 # postgres (via testcontainers), running migrate, dumping, and writing
 # baseline.meta.json. Commit the refreshed files to git.
 rebuild-baseline: ## Regeneruj baseline.sql do przyspieszenia testów (commit efektu!)
 	DJANGO_BPP_SKIP_DOTENV=1 uv run python src/manage.py baseline_rebuild
 	@echo ""
 	@echo "Baseline regenerated. Files:"
-	@ls -lh src/baseline-sql/baseline.sql src/baseline-sql/baseline.meta.json
+	@ls -lh baseline-sql/baseline.sql baseline-sql/baseline.meta.json
 	@echo ""
 	@echo "Don't forget to commit:"
-	@echo "    git add src/baseline-sql/baseline.sql src/baseline-sql/baseline.meta.json"
+	@echo "    git add baseline-sql/baseline.sql baseline-sql/baseline.meta.json"
 
 # Run tests against pre-existing docker-compose containers (no testcontainers).
 tests-no-containers: ## Testy przeciwko istniejącym kontenerom docker-compose (bez testcontainers)
@@ -295,7 +385,7 @@ clean-testcontainers: ## Usuń wszystkie osierocone testcontainers (PG/Redis/Ryu
 
 # Run tests with ephemeral containers (destroyed after run).
 tests-ephemeral: ## Testy w efemerycznych testcontainers (usuwane po teście)
-	BPP_TESTCONTAINERS_REUSE=0 uv run pytest -n auto -m "not playwright" --maxfail 50
+	PYTEST_TESTCONTAINERS_REUSE=0 uv run pytest -n auto -m "not playwright" --maxfail 50
 
 tests-in-docker: ## Testy w pełni w Dockerze (docker-compose.test.yml)
 	docker compose -f docker-compose.test.yml build test-runner

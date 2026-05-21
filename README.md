@@ -83,6 +83,60 @@ pod adresem e-mail michal.dtz@gmail.com.
 > Łącznie kilkaset MB do kilku GB transferu sieciowego. Pod każdym krokiem
 > podany jest sposób, jak włączyć szczegółowe logowanie postępu.
 
+### Skrót — szybki start (TL;DR)
+
+Od zera do zielonych testów (macOS / Linux):
+
+```bash
+git clone https://github.com/iplweb/bpp.git && cd bpp
+make prepare-developer-machine    # systemowe libki + uv sync + playwright
+make assets                       # yarn install + grunt build + compilemessages
+uv run pytest -n auto             # testy równolegle (pytest-xdist)
+```
+
+Wymagania: **Docker daemon** (do testcontainers), Homebrew (macOS) lub
+`apt` + `sudo` (Linux). Pierwszy bieg pobiera kilkaset MB do paru GB
+(pakiety npm, przeglądarki Playwright, obrazy Dockera dla testów).
+
+Co robi `make prepare-developer-machine`:
+
+- **macOS** (Apple Silicon, Homebrew) — przez `brew`: `cairo`, `pango`,
+  `gdk-pixbuf`, `libffi`, `gobject-introspection`, `gtk+3`, `node`,
+  `yarn`; przez `npm` globalnie `grunt-cli`; tworzy `sudo`-symlinki
+  w `/usr/local/lib` na libki z `/opt/homebrew/lib`
+  (`dyld` nie konsultuje brew-owej ścieżki domyślnie, a `DYLD_FALLBACK_LIBRARY_PATH`
+  jest stripowana przez SIP w podprocesach — patrz
+  [docs/MACOS_WEASYPRINT.md](docs/MACOS_WEASYPRINT.md)); na końcu
+  `uv sync --frozen --no-install-project --all-extras` +
+  `uv run playwright install`.
+- **Linux** (Debian/Ubuntu, `apt`) — przez `sudo apt`: `yarnpkg`,
+  `nodejs`, `npm`, `python3-dev`, `libpq-dev`, `libcairo2-dev`,
+  `libpango1.0-dev`, `libgdk-pixbuf2.0-dev`, `libffi-dev`,
+  `libgirepository1.0-dev`, `libgtk-3-dev`; przez `sudo npm` globalnie
+  `grunt-cli`; na końcu `uv sync --frozen --no-install-project
+  --all-extras` + `uv run playwright install --with-deps` (z systemowymi
+  libkami chromium — wymaga sudo).
+
+Auto-detekcja systemu jest domyślna; aby wymusić wariant:
+`make prepare-developer-machine-macos` albo
+`make prepare-developer-machine-linux`. Cel **nie woła `make assets`** —
+frontend trzeba zbudować osobno.
+
+`pytest -n auto` (`pytest-xdist`) rozdziela testy między workery; każdy
+worker dostaje **własny** testcontainer PostgreSQL/Redis na losowym
+porcie, więc nie ma kolizji. Kolejne biegi z `PYTEST_TESTCONTAINERS_REUSE=1`
+są znacznie szybsze (kontenery nie znikają między uruchomieniami).
+
+Jeżeli przeglądarki Playwright trzeba zainstalować osobno (np. po
+samodzielnym `uv sync`), bez resetowania reszty środowiska:
+
+```bash
+make playwright-install
+```
+
+Poniżej szczegółowy opis krok po kroku — gdy chcesz wiedzieć, co
+dokładnie robi każdy etap albo musisz wykonać tylko fragment.
+
 ### 1. Sklonuj repozytorium
 
 ```bash
@@ -93,21 +147,22 @@ cd bpp
 ### 2. Zainstaluj zależności Pythona i Playwright
 
 ```bash
-uv sync --extra=dev
+uv sync
 uv run playwright install
 sudo playwright install-deps
 ```
 
-`uv sync --extra=dev` instaluje pakiety potrzebne do pracy
-i testów (pytest, pytest-django, model-bakery, ruff, pre-commit, …).
-`uv run playwright install` pobiera przeglądarki używane w testach E2E
-(~500 MB). `sudo playwright install-deps` doinstalowuje systemowe
-biblioteki, których wymagają te przeglądarki (libnss3, libatk, libgtk-3,
-…) — wymaga sudo, bo używa `apt`.
+`uv sync` instaluje pakiety potrzebne do pracy i testów (pytest,
+pytest-django, model-bakery, ruff, pre-commit, …) — siedzą one w
+`[dependency-groups].dev`, którą `uv` aktywuje defaultowo (opt-out
+przez `--no-dev`). `uv run playwright install` pobiera przeglądarki
+używane w testach E2E (~500 MB). `sudo playwright install-deps`
+doinstalowuje systemowe biblioteki, których wymagają te przeglądarki
+(libnss3, libatk, libgtk-3, …) — wymaga sudo, bo używa `apt`.
 
 Aby uzyskać dodatkowe logowanie postępu:
 
-- `uv sync --extra=dev -v` — verbose output uv
+- `uv sync -v` — verbose output uv
 - `uv run playwright install --with-deps` — alternatywa, która sama
   wywołuje `apt` (jeśli wolisz nie rozdzielać kroku z sudo)
 
@@ -136,9 +191,9 @@ uv run pytest
 ```
 
 Pytest startuje **własne** kontenery Docker (PostgreSQL, Redis)
-przez plugin `testcontainers_bpp` — przy pierwszym uruchomieniu pobiera
-obrazy z Docker Hub (kolejne kilkaset MB). Wymagany jest działający
-**Docker daemon**.
+przez plugin `pytest-testcontainers-django` — przy pierwszym
+uruchomieniu pobiera obrazy z Docker Hub (kolejne kilkaset MB).
+Wymagany jest działający **Docker daemon**.
 
 Pełen suite może trwać do **10 minut**. Domyślnie `pytest-sugar` pokazuje
 pasek postępu, ale jeśli chcesz więcej szczegółów:
@@ -153,23 +208,8 @@ Reuse kontenerów testowych między uruchomieniami (znacznie szybsze
 kolejne biegi):
 
 ```bash
-BPP_TESTCONTAINERS_REUSE=1 uv run pytest
+PYTEST_TESTCONTAINERS_REUSE=1 uv run pytest
 ```
-
-### Skrót: `make prepare-developer-machine-linux`
-
-Część kroku 2 (zależności systemowe + `uv sync --all-extras`)
-automatyzuje cel:
-
-```bash
-make prepare-developer-machine-linux
-```
-
-Instaluje przez `apt` pakiety `yarnpkg`, `python3-dev`, `libpq-dev`,
-`libcairo2-dev`, `libpango1.0-dev`, `libgdk-pixbuf2.0-dev`, `libffi-dev`,
-`libgirepository1.0-dev`, `libgtk-3-dev`, a następnie woła
-`uv sync --all-extras`. Po nim nadal trzeba ręcznie wywołać
-`uv run playwright install` oraz `sudo playwright install-deps`.
 
 ## Szybkie uruchomienie wersji deweloperskiej (`run_site`)
 

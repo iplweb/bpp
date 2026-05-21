@@ -7,7 +7,7 @@ from dal_select2_queryset_sequence.views import (
     Select2QuerySetSequenceView,
 )
 from django.contrib.postgres.search import TrigramSimilarity
-from django.utils.safestring import mark_safe
+from django.utils.html import format_html
 from queryset_sequence import QuerySetSequence
 
 from bpp.const import CHARAKTER_OGOLNY_KSIAZKA
@@ -59,8 +59,8 @@ class PublicWydawcaAutocomplete(
 
     def get_result_label(self, result):
         if isinstance(result, Wydawca):
-            return mark_safe(f"{result.nazwa} <small>[BPP]</small>")
-        return mark_safe(f"{result.publisherName} <small>[PBN]</small>")
+            return format_html("{} <small>[BPP]</small>", result.nazwa)
+        return format_html("{} <small>[PBN]</small>", result.publisherName)
 
     # NIE nadpisuj `get_result_value` — domyślna implementacja
     # `dal_queryset_sequence.views` zwraca `<ct_pk>-<obj_pk>`, czego
@@ -103,13 +103,13 @@ class PublicWydawnictwoNadrzedneAutocomplete(
             label = str(result.tytul_oryginalny)
             if result.rok:
                 label += f" ({result.rok})"
-            return mark_safe(f"{label} <small>[BPP]</small>")
+            return format_html("{} <small>[BPP]</small>", label)
 
         # PBN_Publication
         label = str(result.title or "")
         if result.year:
             label += f" ({result.year})"
-        return mark_safe(f"{label} <small>[PBN]</small>")
+        return format_html("{} <small>[PBN]</small>", label)
 
     # j.w. — nie nadpisujemy `get_result_value`. Patrz komentarz
     # w `PublicWydawcaAutocomplete`.
