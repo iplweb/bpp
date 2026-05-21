@@ -244,3 +244,38 @@ class ImportedAuthor(models.Model):
     def display_name(self):
         parts = [self.family_name, self.given_name]
         return " ".join(p for p in parts if p)
+
+
+class ImportedAuthor_Candidate(models.Model):
+    """Kandydat na dopasowanie dla ``ImportedAuthor`` zwrócony przez
+    ``znajdz_kandydatow_autora``.
+
+    Materializuje listę z metadanymi (pewność, powód strategii, liczba
+    publikacji) żeby UI wizardu mógł wyświetlić użytkownikowi pełny
+    kontekst — który autor ma więcej publikacji, ORCID, jaką strategią
+    został znaleziony.
+    """
+
+    imported_author = models.ForeignKey(
+        ImportedAuthor,
+        on_delete=models.CASCADE,
+        related_name="candidates",
+        verbose_name="importowany autor",
+    )
+    autor = models.ForeignKey(
+        "bpp.Autor",
+        on_delete=models.CASCADE,
+        verbose_name="autor BPP",
+    )
+    pewnosc = models.FloatField("pewność")
+    powod = models.CharField("powód dopasowania", max_length=32)
+    publikacji_count = models.PositiveIntegerField("liczba publikacji", default=0)
+
+    class Meta:
+        verbose_name = "kandydat na autora"
+        verbose_name_plural = "kandydaci na autora"
+        ordering = ["-pewnosc", "-publikacji_count"]
+        unique_together = [("imported_author", "autor")]
+
+    def __str__(self):
+        return f"{self.autor} ({self.pewnosc:.2f} / {self.powod})"

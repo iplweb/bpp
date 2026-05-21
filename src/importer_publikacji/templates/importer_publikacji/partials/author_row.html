@@ -34,6 +34,11 @@
         {% else %}
             <em>-</em>
         {% endif %}
+        {% with candidates=author.candidates.all %}
+            {% if candidates|length > 1 %}
+                {% include "importer_publikacji/partials/author_candidates.html" %}
+            {% endif %}
+        {% endwith %}
     </td>
     <td>
         {% if author.matched_jednostka %}

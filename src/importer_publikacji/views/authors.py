@@ -13,7 +13,7 @@ from bpp.models import Autor
 from crossref_bpp.core import Komparator, StatusPorownania
 from import_common.normalization import normalize_doi
 
-from ..models import ImportedAuthor
+from ..models import ImportedAuthor, ImportedAuthor_Candidate
 
 
 def _orcid_settable_qs(session):
@@ -65,8 +65,30 @@ def _get_dyscyplina(autor, year):
     return None
 
 
+def _apply_dyscyplina(imported, bpp_autor, year):
+    if not (year and bpp_autor):
+        return
+    dyscyplina = _get_dyscyplina(bpp_autor, year)
+    imported.matched_dyscyplina = dyscyplina
+    if dyscyplina:
+        imported.dyscyplina_source = ImportedAuthor.DyscyplinaSource.AUTO_JEDYNA
+
+
 def _auto_match_authors(session, authors_data, year):
-    """Auto-dopasuj autorów z danych dostawcy."""
+    """Auto-dopasuj autorów z danych dostawcy.
+
+    Dla każdego importowanego autora:
+
+    - DOKLADNE → AUTO_EXACT z preselectowanym bpp_autor
+    - LUZNE → AUTO_LOOSE z preselectowanym bpp_autor (niska pewność)
+    - WYMAGA_INGERENCJI → AUTO_LOOSE z sugerowanym bpp_autor (user
+      powinien potwierdzić; lista kandydatów dostępna w UI)
+    - BRAK → UNMATCHED (default)
+
+    Kandydaci z metadanymi (pewnosc, powod, publikacji) są zapisywani
+    do ``ImportedAuthor_Candidate`` żeby UI mógł pokazać listę z
+    badge'ami.
+    """
     for i, author_data in enumerate(authors_data):
         imported = ImportedAuthor.objects.create(
             session=session,
@@ -77,35 +99,39 @@ def _auto_match_authors(session, authors_data, year):
         )
 
         result = Komparator.porownaj_author(author_data)
+        bpp_autor = result.sugerowany or result.rekord_po_stronie_bpp
 
-        if result.status == StatusPorownania.DOKLADNE:
-            bpp_autor = result.rekord_po_stronie_bpp
-            if bpp_autor:
-                imported.matched_autor = bpp_autor
-                imported.match_status = ImportedAuthor.MatchStatus.AUTO_EXACT
-                imported.matched_jednostka = bpp_autor.aktualna_jednostka
-                if year:
-                    dyscyplina = _get_dyscyplina(bpp_autor, year)
-                    imported.matched_dyscyplina = dyscyplina
-                    if dyscyplina:
-                        imported.dyscyplina_source = (
-                            ImportedAuthor.DyscyplinaSource.AUTO_JEDYNA
-                        )
-        elif result.status == StatusPorownania.LUZNE:
-            bpp_autor = result.rekord_po_stronie_bpp
-            if bpp_autor:
-                imported.matched_autor = bpp_autor
-                imported.match_status = ImportedAuthor.MatchStatus.AUTO_LOOSE
-                imported.matched_jednostka = bpp_autor.aktualna_jednostka
-                if year:
-                    dyscyplina = _get_dyscyplina(bpp_autor, year)
-                    imported.matched_dyscyplina = dyscyplina
-                    if dyscyplina:
-                        imported.dyscyplina_source = (
-                            ImportedAuthor.DyscyplinaSource.AUTO_JEDYNA
-                        )
+        if result.status == StatusPorownania.DOKLADNE and bpp_autor:
+            imported.match_status = ImportedAuthor.MatchStatus.AUTO_EXACT
+        elif (
+            result.status
+            in (StatusPorownania.LUZNE, StatusPorownania.WYMAGA_INGERENCJI)
+            and bpp_autor
+        ):
+            imported.match_status = ImportedAuthor.MatchStatus.AUTO_LOOSE
+        else:
+            bpp_autor = None
+
+        if bpp_autor:
+            imported.matched_autor = bpp_autor
+            imported.matched_jednostka = bpp_autor.aktualna_jednostka
+            _apply_dyscyplina(imported, bpp_autor, year)
 
         imported.save()
+
+        if result.kandydaci:
+            ImportedAuthor_Candidate.objects.bulk_create(
+                [
+                    ImportedAuthor_Candidate(
+                        imported_author=imported,
+                        autor=k.autor,
+                        pewnosc=k.pewnosc,
+                        powod=k.powod,
+                        publikacji_count=k.publikacji,
+                    )
+                    for k in result.kandydaci
+                ]
+            )
 
 
 def _find_matching_zgloszenie(session):
