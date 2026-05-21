@@ -108,6 +108,11 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           REF_NAME: ${{ github.ref_name }}
+          # head_ref jest ustawione tylko dla pull_request eventów — to nazwa
+          # branchu zrodlowego PR-a (ref_name na PR to "<PR>/merge" ktorego
+          # workflow_dispatch nie akceptuje). Uzywane do hintu w komunikacie
+          # "jak wymusic build".
+          HEAD_REF: ${{ github.head_ref }}
           EVENT_NAME: ${{ github.event_name }}
           REPO: ${{ github.repository }}
           ACTOR: ${{ github.actor }}
@@ -165,7 +170,8 @@ jobs:
           else
             echo "should_build=false" >> "$GITHUB_OUTPUT"
             echo "::notice::Pomijam Docker build — brak flagi [docker-build] w commit message"
-            echo "::notice::Aby wymusic build, dodaj [docker-build] do commit message lub uruchom: gh workflow run build-docker-images.yml --ref ${REF_NAME}"
+            DISPATCH_REF="${HEAD_REF:-$REF_NAME}"
+            echo "::notice::Aby wymusic build, dodaj [docker-build] do commit message lub uruchom: gh workflow run build-docker-images.yml --ref ${DISPATCH_REF}"
           fi
 
   docker:

@@ -84,8 +84,11 @@ COPY src/bpp/static/scss/ src/bpp/static/scss/
 COPY src/bpp/static/bpp/scss/ src/bpp/static/bpp/scss/
 # JS for esbuild bundle
 COPY src/bpp/static/bpp/js/ src/bpp/static/bpp/js/
-COPY src/notifications/static/notifications/js/ \
-     src/notifications/static/notifications/js/
+# Notifications JS jest teraz dostarczane przez pakiet django-channels-broadcast
+# (zainstalowany przez uv) — collectstatic w runtime stage zaciągnie pliki
+# z venv-a. Stara apka src/notifications/ usunięta na dev w commicie
+# 048c2cfa2 (refactor: usun src/notifications/ — dostarczane przez
+# django-channels-broadcast).
 # App-specific SCSS (keep alphabetical)
 COPY src/bpp_setup_wizard/static/bpp_setup_wizard/scss/ \
      src/bpp_setup_wizard/static/bpp_setup_wizard/scss/
