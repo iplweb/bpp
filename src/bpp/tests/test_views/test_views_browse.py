@@ -361,7 +361,7 @@ def test_autorzy_view_page_not_integer_redirects(client, setup_group):
 @pytest.mark.django_db
 def test_get_available_letters_polish_diacritics_canonical():
     """Polskie znaki diakrytyczne mapują się na kanoniczną literkę."""
-    Uczelnia.objects.create(nazwa="X", skrot="X")
+    any_uczelnia(nazwa="X", skrot="X")
     baker.make(Autor, nazwisko="Ąbrowski", pokazuj=True)
     baker.make(Autor, nazwisko="ćwiek", pokazuj=True)
     baker.make(Autor, nazwisko="Łyk", pokazuj=True)
@@ -379,7 +379,7 @@ def test_get_available_letters_polish_diacritics_canonical():
 @pytest.mark.django_db
 def test_get_available_letters_runs_single_query(django_assert_num_queries):
     """Regresja: jedno zapytanie, niezależnie od liczby liter."""
-    Uczelnia.objects.create(nazwa="X", skrot="X")
+    any_uczelnia(nazwa="X", skrot="X")
     baker.make(Autor, nazwisko="Adam", pokazuj=True)
     baker.make(Autor, nazwisko="Bartek", pokazuj=True)
     baker.make(Autor, nazwisko="Cezary", pokazuj=True)
@@ -393,7 +393,7 @@ def test_get_available_letters_runs_single_query(django_assert_num_queries):
 @pytest.mark.django_db
 def test_get_available_letters_respects_queryset_filter():
     """Pre-filtry queryseta są zachowane (nie pokazujemy ukrytych autorów)."""
-    Uczelnia.objects.create(nazwa="X", skrot="X")
+    any_uczelnia(nazwa="X", skrot="X")
     baker.make(Autor, nazwisko="Adam", pokazuj=True)
     baker.make(Autor, nazwisko="Bartek", pokazuj=False)
 
