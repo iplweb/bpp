@@ -8,9 +8,11 @@ po zapisaniu user-safe message w sesji.
 import traceback
 
 from celery import shared_task
+from django.contrib.contenttypes.models import ContentType
 
 from .models import ImportSession
 from .progress import (
+    CREATE_STAGES,
     FETCH_STAGES,
     ProviderReturnedNothing,
     report_progress,
@@ -144,3 +146,121 @@ def _auto_match_type_and_language(session, result):
         lang_result = Komparator.porownaj_language(language_code)
         if lang_result.rekord_po_stronie_bpp:
             session.jezyk = lang_result.rekord_po_stronie_bpp
+
+
+@shared_task(bind=True)
+def create_publication_task(self, session_id, request_user_id, also_pbn):
+    """Utwórz rekord publikacji z danych sesji + opcjonalnie zleć
+    eksport do PBN. Działa w tle, raportuje postęp przez update_state.
+
+    Granularność progress: wagi z CREATE_STAGES. Per-author counter
+    w stage "add_authors" (50% wagi).
+
+    PBN export decision: B1 — gdy ``also_pbn=True``, wołamy oryginalny
+    helper ``sprobuj_utworzyc_zlecenie_eksportu_do_PBN_gui`` z minimalnym
+    request-stubem (atrybuty ``user`` oraz ``_messages`` jako no-op
+    storage). Helper używa ``request.user`` do utworzenia wpisu w
+    PBN_Export_Queue oraz wywołań ``messages.success/info/error/warning``;
+    no-op ``_messages`` połyka te komunikaty bez błędu (w Celery worker-ze
+    nie ma sensownego odbiorcy dla flash messages). ``Uczelnia.get_for_request``
+    bezpiecznie spada do ``get_default()`` gdy ``hasattr(request, "_uczelnia")``
+    jest False, więc nie trzeba podstawiać sesji / cache uczelni.
+    """
+    from django.contrib.auth import get_user_model
+
+    session = ImportSession.objects.get(pk=session_id)
+    user_model = get_user_model()
+    request_user = user_model.objects.get(pk=request_user_id)
+
+    try:
+        report_progress(self, "verify", stages=CREATE_STAGES)
+        report_progress(self, "create_record", stages=CREATE_STAGES)
+        report_progress(
+            self,
+            "add_authors",
+            sub_current=0,
+            sub_total=max(session.authors.count(), 1),
+            stages=CREATE_STAGES,
+        )
+
+        record = _create_publication(session)
+
+        report_progress(self, "create_abstracts", stages=CREATE_STAGES)
+        report_progress(self, "calc_score", stages=CREATE_STAGES)
+
+        if also_pbn:
+            report_progress(self, "link_pbn", stages=CREATE_STAGES)
+            _enqueue_pbn_export(request_user, record)
+
+        session.status = ImportSession.Status.COMPLETED
+        session.created_record_content_type = ContentType.objects.get_for_model(record)
+        session.created_record_id = record.pk
+        session.modified_by = request_user
+        session.celery_task_id = ""
+        session.save()
+    except Exception as exc:
+        session.status = ImportSession.Status.IMPORT_FAILED
+        session.last_failed_stage = "create"
+        session.last_error_message = user_safe_message(exc, task_kind="create")[:255]
+        session.last_error_traceback = traceback.format_exc()
+        session.save()
+        raise
+
+
+def _create_publication(session):
+    """Thin wrapper na ``views.publikacja._create_publication``.
+    Wydzielone do osobnej funkcji żeby testy mogły patchować
+    ``importer_publikacji.tasks._create_publication`` bez naruszania
+    importu w ``views.publikacja`` (gdzie funkcja jest też wołana
+    synchronicznie z ``CreateView`` w trybie pre-async).
+    """
+    from .views.publikacja import _create_publication as _impl
+
+    return _impl(session)
+
+
+class _NoopMessageStorage:
+    """No-op zamiennik ``request._messages`` dla wywołań w Celery worker-ze.
+
+    Django ``messages.success/info/error/warning`` wewnętrznie wołają
+    ``request._messages.add(level, message, extra_tags)``. W kontekście
+    background taska nie mamy gdzie tych komunikatów wyświetlić — po
+    prostu je odrzucamy. Brak ``_messages`` na obiekcie spowodowałby
+    ``MessageFailure`` z django.contrib.messages.api.add_message.
+    """
+
+    def add(self, level, message, extra_tags=""):
+        return None
+
+
+class _PbnRequestStub:
+    """Minimalny request stub dla PBN helper-a uruchamianego w Celery.
+
+    Wymagane atrybuty:
+        - ``user``: model User (helper przekazuje go do
+          ``PBN_Export_Queue.objects.sprobuj_utowrzyc_wpis(request.user, obj)``).
+        - ``_messages``: storage dla flash messages (helper woła
+          ``messages.success/info/error/warning``).
+    Nieobecność ``_uczelnia`` jest OK — ``Uczelnia.get_for_request``
+    fallbackuje do ``get_default()`` gdy ``hasattr(request, "_uczelnia")``
+    jest False.
+    """
+
+    def __init__(self, user):
+        self.user = user
+        self._messages = _NoopMessageStorage()
+
+
+def _enqueue_pbn_export(request_user, record):
+    """Wywołaj helper PBN export z minimalnym request stubem.
+
+    Decision: B1 (patrz docstring create_publication_task). Helper
+    wymaga ``request.user`` (do utworzenia wpisu w kolejce) oraz
+    ``request._messages`` (do wywołań flash messages — odrzucane).
+    """
+    from bpp.admin.helpers.pbn_api.gui import (
+        sprobuj_utworzyc_zlecenie_eksportu_do_PBN_gui,
+    )
+
+    request_stub = _PbnRequestStub(request_user)
+    sprobuj_utworzyc_zlecenie_eksportu_do_PBN_gui(request_stub, record)

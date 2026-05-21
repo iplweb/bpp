@@ -5,7 +5,7 @@ from model_bakery import baker
 
 from importer_publikacji.models import ImportSession
 from importer_publikacji.progress import ProviderReturnedNothing
-from importer_publikacji.tasks import fetch_session_task
+from importer_publikacji.tasks import create_publication_task, fetch_session_task
 
 
 @pytest.fixture
@@ -142,3 +142,82 @@ def test_fetch_session_task_processes_authors(fetch_session):
     fetch_session.refresh_from_db()
     assert fetch_session.authors.count() == 2
     assert fetch_session.status == ImportSession.Status.FETCHED
+
+
+@pytest.fixture
+def review_session(db, django_user_model):
+    user = baker.make(django_user_model)
+    return baker.make(
+        ImportSession,
+        created_by=user,
+        provider_name="crossref",
+        identifier="10.1234/test",
+        status=ImportSession.Status.CREATING,
+        normalized_data={"title": "Test", "year": 2024},
+    )
+
+
+@pytest.mark.django_db
+def test_create_publication_task_success_sets_completed(review_session):
+    from django.contrib.contenttypes.models import ContentType
+
+    fake_record = MagicMock(pk=42)
+    any_ct = ContentType.objects.first()
+    with (
+        patch("importer_publikacji.tasks._create_publication") as mock_create,
+        patch(
+            "importer_publikacji.tasks.ContentType.objects.get_for_model",
+            return_value=any_ct,
+        ),
+    ):
+        mock_create.return_value = fake_record
+
+        create_publication_task.apply(
+            args=[review_session.pk, review_session.created_by_id, False]
+        ).get()
+
+    review_session.refresh_from_db()
+    assert review_session.status == ImportSession.Status.COMPLETED
+    assert review_session.celery_task_id == ""
+
+
+@pytest.mark.django_db
+def test_create_publication_task_failure_marks_import_failed(review_session):
+    with patch("importer_publikacji.tasks._create_publication") as mock_create:
+        mock_create.side_effect = RuntimeError("create exploded")
+
+        with pytest.raises(RuntimeError, match="create exploded"):
+            create_publication_task.apply(
+                args=[review_session.pk, review_session.created_by_id, False]
+            ).get()
+
+    review_session.refresh_from_db()
+    assert review_session.status == ImportSession.Status.IMPORT_FAILED
+    assert review_session.last_failed_stage == "create"
+    assert "administrator" in review_session.last_error_message.lower()
+
+
+@pytest.mark.django_db
+def test_create_publication_task_with_pbn_calls_pbn_export(review_session):
+    from django.contrib.contenttypes.models import ContentType
+
+    fake_record = MagicMock(pk=42)
+    any_ct = ContentType.objects.first()
+    with (
+        patch("importer_publikacji.tasks._create_publication") as mock_create,
+        patch(
+            "bpp.admin.helpers.pbn_api.gui.sprobuj_utworzyc_zlecenie_eksportu_do_PBN_gui"
+        ) as mock_pbn,
+        patch(
+            "importer_publikacji.tasks.ContentType.objects.get_for_model",
+            return_value=any_ct,
+        ),
+    ):
+        mock_create.return_value = fake_record
+
+        create_publication_task.apply(
+            args=[review_session.pk, review_session.created_by_id, True]
+        ).get()
+
+    mock_pbn.assert_called_once()
+    assert mock_pbn.call_args.args[1] == fake_record
