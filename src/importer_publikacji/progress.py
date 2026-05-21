@@ -17,11 +17,12 @@ FETCH_STAGES = [
 ]
 
 CREATE_STAGES = [
-    ("verify", "Weryfikuję dane publikacji...", 5),
-    ("create_record", "Tworzę rekord publikacji...", 10),
-    ("add_authors", "Zapisuję autorów ({current}/{total})...", 50),
-    ("create_abstracts", "Tworzę streszczenia...", 5),
-    ("calc_score", "Uzupełniam punktację ze źródła...", 10),
+    ("prepare", "Przygotowuję dane do zapisu...", 5),
+    (
+        "create_record",
+        "Tworzę rekord publikacji (autorzy, źródło, streszczenia)...",
+        75,
+    ),
     ("link_pbn", "Powiązanie z PBN...", 20),
 ]
 

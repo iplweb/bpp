@@ -88,6 +88,7 @@ def fetch_session_task(self, session_id, request_user_id):
         session.last_failed_stage = "fetch"
         session.last_error_message = user_safe_message(exc, task_kind="fetch")[:255]
         session.last_error_traceback = traceback.format_exc()
+        session.celery_task_id = ""
         session.save()
         raise
 
@@ -153,8 +154,10 @@ def create_publication_task(self, session_id, request_user_id, also_pbn):
     """Utwórz rekord publikacji z danych sesji + opcjonalnie zleć
     eksport do PBN. Działa w tle, raportuje postęp przez update_state.
 
-    Granularność progress: wagi z CREATE_STAGES. Per-author counter
-    w stage "add_authors" (50% wagi).
+    Granularność progress: wagi z CREATE_STAGES. Progress raportowany
+    jest tylko na granicach ``_create_publication()`` — nie można
+    obserwować pętli autorów z zewnątrz (cała operacja jest atomowa
+    i synchronizowana wewnątrz helper-a).
 
     PBN export decision: B1 — gdy ``also_pbn=True``, wołamy oryginalny
     helper ``sprobuj_utworzyc_zlecenie_eksportu_do_PBN_gui`` z minimalnym
@@ -173,20 +176,9 @@ def create_publication_task(self, session_id, request_user_id, also_pbn):
     request_user = user_model.objects.get(pk=request_user_id)
 
     try:
-        report_progress(self, "verify", stages=CREATE_STAGES)
+        report_progress(self, "prepare", stages=CREATE_STAGES)
         report_progress(self, "create_record", stages=CREATE_STAGES)
-        report_progress(
-            self,
-            "add_authors",
-            sub_current=0,
-            sub_total=max(session.authors.count(), 1),
-            stages=CREATE_STAGES,
-        )
-
         record = _create_publication(session)
-
-        report_progress(self, "create_abstracts", stages=CREATE_STAGES)
-        report_progress(self, "calc_score", stages=CREATE_STAGES)
 
         if also_pbn:
             report_progress(self, "link_pbn", stages=CREATE_STAGES)
@@ -203,6 +195,7 @@ def create_publication_task(self, session_id, request_user_id, also_pbn):
         session.last_failed_stage = "create"
         session.last_error_message = user_safe_message(exc, task_kind="create")[:255]
         session.last_error_traceback = traceback.format_exc()
+        session.celery_task_id = ""
         session.save()
         raise
 
