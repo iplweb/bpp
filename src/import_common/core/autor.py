@@ -3,9 +3,15 @@ system kadrowy / PBN id) oraz po imieniu+nazwisku z kontekstem
 (jednostka, tytuł).
 """
 
+from django.contrib.postgres.lookups import Unaccent
 from django.db.models import Q
+from django.db.models.functions import Lower
 
 from bpp.models import Autor, Autor_Jednostka, Jednostka, Tytul
+from import_common.normalization import (
+    polish_english_first_name_variants,
+    remove_polish_diacritics,
+)
 
 
 def _try_get_autor_by_bpp_id(bpp_id: int | None) -> Autor | None:
@@ -143,6 +149,58 @@ def _try_match_autor_in_jednostka(
     return None
 
 
+def _try_match_autor_by_polish_english_variants(
+    imiona: str,
+    nazwisko: str,
+    jednostka: Jednostka | None,
+) -> Autor | None:
+    """Fallback dla wariantów pisowni polsko-angielskiej.
+
+    Stosuje ``unaccent`` na nazwisku po stronie bazy (Marańda↔Maranda)
+    oraz regułę ``v↔w`` na pierwszym imieniu (Eva↔Ewa, Viktor↔Wiktor).
+    Wymaga ``CREATE EXTENSION unaccent`` (instalowane przez migrację
+    0001_fulltext).
+
+    Zwraca autora tylko gdy istnieje **dokładnie jeden** kandydat —
+    przy ambiguity decyzja należy do użytkownika.
+    """
+    imiona = (imiona or "").strip()
+    nazwisko = (nazwisko or "").strip()
+    if not imiona or not nazwisko:
+        return None
+
+    first = imiona.split()[0]
+    variants_norm = {v.lower() for v in polish_english_first_name_variants(first)}
+    if not variants_norm:
+        return None
+
+    nazwisko_norm = remove_polish_diacritics(nazwisko).lower()
+
+    imie_q = Q()
+    for v in variants_norm:
+        imie_q |= Q(im_n=v) | Q(im_n__startswith=v + " ")
+
+    qs = (
+        Autor.objects.annotate(
+            naz_n=Lower(Unaccent("nazwisko")),
+            im_n=Lower(Unaccent("imiona")),
+        )
+        .filter(naz_n=nazwisko_norm)
+        .filter(imie_q)
+    )
+
+    if jednostka is not None:
+        qs_j = qs.filter(aktualna_jednostka=jednostka)
+        results = list(qs_j[:2])
+        if len(results) == 1:
+            return results[0]
+
+    results = list(qs[:2])
+    if len(results) == 1:
+        return results[0]
+    return None
+
+
 def _try_match_autor_with_orcid_or_tytul(imiona: str, nazwisko: str) -> Autor | None:
     """Ostatnia próba - szuka autora z ORCIDem lub tytułem."""
     imiona = (imiona or "").strip()
@@ -195,6 +253,11 @@ def matchuj_autora(
         result = _try_match_autor_in_jednostka(imiona, nazwisko, jednostka, tytul_str)
         if result:
             return result
+
+    # Warianty pisowni PL↔EN (diakrytyki + v↔w na imieniu)
+    result = _try_match_autor_by_polish_english_variants(imiona, nazwisko, jednostka)
+    if result:
+        return result
 
     # Ostatnia próba - autor z ORCIDem lub tytułem
     return _try_match_autor_with_orcid_or_tytul(imiona, nazwisko)
