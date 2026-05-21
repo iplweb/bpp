@@ -65,47 +65,59 @@ def _get_dyscyplina(autor, year):
     return None
 
 
+def _auto_match_single_author(session, author_data, order, year):
+    """Dopasuj pojedynczego autora i zwróć utworzony ImportedAuthor.
+
+    Wyciągnięte z _auto_match_authors żeby task mógł raportować postęp
+    po każdej iteracji.
+    """
+    imported = ImportedAuthor.objects.create(
+        session=session,
+        order=order,
+        family_name=author_data.get("family", ""),
+        given_name=author_data.get("given", ""),
+        orcid=author_data.get("orcid", ""),
+    )
+
+    result = Komparator.porownaj_author(author_data)
+
+    if result.status == StatusPorownania.DOKLADNE:
+        bpp_autor = result.rekord_po_stronie_bpp
+        if bpp_autor:
+            imported.matched_autor = bpp_autor
+            imported.match_status = ImportedAuthor.MatchStatus.AUTO_EXACT
+            imported.matched_jednostka = bpp_autor.aktualna_jednostka
+            if year:
+                dyscyplina = _get_dyscyplina(bpp_autor, year)
+                imported.matched_dyscyplina = dyscyplina
+                if dyscyplina:
+                    imported.dyscyplina_source = (
+                        ImportedAuthor.DyscyplinaSource.AUTO_JEDYNA
+                    )
+    elif result.status == StatusPorownania.LUZNE:
+        bpp_autor = result.rekord_po_stronie_bpp
+        if bpp_autor:
+            imported.matched_autor = bpp_autor
+            imported.match_status = ImportedAuthor.MatchStatus.AUTO_LOOSE
+            imported.matched_jednostka = bpp_autor.aktualna_jednostka
+            if year:
+                dyscyplina = _get_dyscyplina(bpp_autor, year)
+                imported.matched_dyscyplina = dyscyplina
+                if dyscyplina:
+                    imported.dyscyplina_source = (
+                        ImportedAuthor.DyscyplinaSource.AUTO_JEDYNA
+                    )
+
+    imported.save()
+    return imported
+
+
 def _auto_match_authors(session, authors_data, year):
-    """Auto-dopasuj autorów z danych dostawcy."""
+    """Auto-dopasuj autorów z danych dostawcy (thin wrapper, używany
+    w testach i w synchronicznych ścieżkach bez progress reporting).
+    """
     for i, author_data in enumerate(authors_data):
-        imported = ImportedAuthor.objects.create(
-            session=session,
-            order=i,
-            family_name=author_data.get("family", ""),
-            given_name=author_data.get("given", ""),
-            orcid=author_data.get("orcid", ""),
-        )
-
-        result = Komparator.porownaj_author(author_data)
-
-        if result.status == StatusPorownania.DOKLADNE:
-            bpp_autor = result.rekord_po_stronie_bpp
-            if bpp_autor:
-                imported.matched_autor = bpp_autor
-                imported.match_status = ImportedAuthor.MatchStatus.AUTO_EXACT
-                imported.matched_jednostka = bpp_autor.aktualna_jednostka
-                if year:
-                    dyscyplina = _get_dyscyplina(bpp_autor, year)
-                    imported.matched_dyscyplina = dyscyplina
-                    if dyscyplina:
-                        imported.dyscyplina_source = (
-                            ImportedAuthor.DyscyplinaSource.AUTO_JEDYNA
-                        )
-        elif result.status == StatusPorownania.LUZNE:
-            bpp_autor = result.rekord_po_stronie_bpp
-            if bpp_autor:
-                imported.matched_autor = bpp_autor
-                imported.match_status = ImportedAuthor.MatchStatus.AUTO_LOOSE
-                imported.matched_jednostka = bpp_autor.aktualna_jednostka
-                if year:
-                    dyscyplina = _get_dyscyplina(bpp_autor, year)
-                    imported.matched_dyscyplina = dyscyplina
-                    if dyscyplina:
-                        imported.dyscyplina_source = (
-                            ImportedAuthor.DyscyplinaSource.AUTO_JEDYNA
-                        )
-
-        imported.save()
+        _auto_match_single_author(session, author_data, i, year)
 
 
 def _find_matching_zgloszenie(session):
