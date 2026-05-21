@@ -9,38 +9,34 @@ import traceback
 
 from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ValidationError
-from django.http import HttpResponseBadRequest
+from django.http import HttpResponse, HttpResponseBadRequest, HttpResponseRedirect
 from django.shortcuts import get_object_or_404, render
 from django.urls import reverse
 from django.views import View
 
 from bpp.models import Uczelnia
 from bpp.views.api import ostatnia_dyscyplina, ostatnia_jednostka
-from crossref_bpp.core import Komparator
 
 from ..forms import AuthorMatchForm, FetchForm, SourceForm, VerifyForm
 from ..models import ImportedAuthor, ImportSession
 from ..permissions import ImporterPermissionMixin
 from ..providers import InputMode, get_provider
+from ..tasks import fetch_session_task
 from .authors import (
-    _auto_match_authors,
     _create_unmatched_authors,
     _orcid_settable_qs,
-    _prefill_dyscypliny_z_zgloszen,
 )
 from .helpers import (
     SESSIONS_PARTIAL,
     STEP_DONE,
     STEP_FETCH,
     _fetch_context,
-    _get_crossref_mapper,
     _push_url,
     _render_full_page,
     _sessions_list_context,
     _with_breadcrumbs_oob,
 )
 from .publikacja import (
-    _build_abstracts_list,
     _create_publication,
 )
 from .steps import (
@@ -92,22 +88,17 @@ class IndexView(ImporterPermissionMixin, View):
 
 
 class FetchView(ImporterPermissionMixin, View):
-    """Pobierz dane z dostawcy i utwórz sesję."""
+    """Walidacja identyfikatora + utworzenie sesji + enqueue Celery task-a."""
 
     def post(self, request):
         form = FetchForm(request.POST)
         if not form.is_valid():
-            return render(
-                request,
-                STEP_FETCH,
-                _fetch_context(form),
-            )
+            return render(request, STEP_FETCH, _fetch_context(form))
 
         provider_name = form.cleaned_data["provider"]
         request.session["importer_last_provider"] = provider_name
         provider = get_provider(provider_name)
 
-        # Wybierz dane wejściowe wg trybu providera
         if provider.input_mode == InputMode.TEXT:
             raw_input = form.cleaned_data["text_input"]
             error_field = "text_input"
@@ -117,94 +108,31 @@ class FetchView(ImporterPermissionMixin, View):
 
         normalized = provider.validate_identifier(raw_input)
         if normalized is None:
-            form.add_error(
-                error_field,
-                "Nieprawidłowy format danych.",
-            )
-            return render(
-                request,
-                STEP_FETCH,
-                _fetch_context(form),
-            )
+            form.add_error(error_field, "Nieprawidłowy format danych.")
+            return render(request, STEP_FETCH, _fetch_context(form))
 
-        result = provider.fetch(normalized)
-        if result is None:
-            form.add_error(
-                error_field,
-                "Nie udało się przetworzyć danych publikacji.",
-            )
-            return render(
-                request,
-                STEP_FETCH,
-                _fetch_context(form),
-            )
-
-        # Dla providerów TEXT, identifier w DB
-        # = DOI lub bibtex_key lub skrócony tytuł
-        if provider.input_mode == InputMode.TEXT:
-            identifier = (
-                result.doi or result.extra.get("bibtex_key") or result.title[:100]
-            )
-        else:
-            identifier = normalized
-
-        # Utwórz sesję importu
         session = ImportSession.objects.create(
             created_by=request.user,
             provider_name=provider_name,
-            identifier=identifier,
-            raw_data=result.raw_data,
-            normalized_data={
-                "title": result.title,
-                "doi": result.doi,
-                "year": result.year,
-                "authors": result.authors,
-                "source_title": result.source_title,
-                "source_abbreviation": (result.source_abbreviation),
-                "issn": result.issn,
-                "e_issn": result.e_issn,
-                "isbn": result.isbn,
-                "e_isbn": result.e_isbn,
-                "publisher": result.publisher,
-                "publication_type": (result.publication_type),
-                "language": result.language,
-                "abstract": result.abstract,
-                "volume": result.volume,
-                "issue": result.issue,
-                "pages": result.pages,
-                "url": result.url,
-                "license_url": result.license_url,
-                "keywords": result.keywords,
-                "article_number": result.extra.get("article_number"),
-                "original_title": result.extra.get("original_title"),
-                "abstracts": _build_abstracts_list(result),
-            },
+            identifier=normalized,
+            status=ImportSession.Status.FETCHING,
+            raw_data={},
+            normalized_data={},
         )
 
-        # Auto-dopasuj typ publikacji via Crossref_Mapper
-        mapper = _get_crossref_mapper(result.publication_type)
-        if mapper and mapper.charakter_formalny_bpp_id:
-            session.charakter_formalny = mapper.charakter_formalny_bpp
-            session.jest_wydawnictwem_zwartym = mapper.jest_wydawnictwem_zwartym
+        task = fetch_session_task.delay(session.pk, request.user.pk)
+        session.celery_task_id = task.id
+        session.save(update_fields=["celery_task_id"])
 
-        # Auto-dopasuj język
-        language_code = result.language
-        if not language_code:
-            from .helpers import _detect_language
-
-            language_code = _detect_language(result.title, result.abstract)
-        if language_code:
-            lang_result = Komparator.porownaj_language(language_code)
-            if lang_result.rekord_po_stronie_bpp:
-                session.jezyk = lang_result.rekord_po_stronie_bpp
-
-        session.save()
-
-        # Auto-dopasuj autorów
-        _auto_match_authors(session, result.authors, result.year)
-        _prefill_dyscypliny_z_zgloszen(session)
-
-        return _render_verify_step(request, session)
+        url = reverse(
+            "importer_publikacji:task-status",
+            kwargs={"session_id": session.pk},
+        )
+        if request.headers.get("HX-Request"):
+            response = HttpResponse(status=200)
+            response["HX-Redirect"] = url
+            return response
+        return HttpResponseRedirect(url)
 
 
 class VerifyView(ImporterPermissionMixin, View):
