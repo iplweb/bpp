@@ -53,8 +53,8 @@ coverage.xml
 # Django stuff:
 *.log
 
-# Sphinx documentation
-docs/_build/
+# MkDocs build output
+site/
 
 # PyBuilder
 target/
@@ -189,6 +189,11 @@ TODO-*.md
 # (web, postgres, redis). Plik istnieje tylko gdy run-site biegnie;
 # kasowany na exit.
 .run-site-config
+
+# Runtime state dir run-site: dev secret_key i inne ephemeralne dotfiles.
+# Tworzone na uruchomieniu, NIE wolno commitowac (secret_key to dev key
+# generowany per maszyne; commit byly faktycznym wyciekiem klucza).
+.run-site/
 
 # Dotfiles django-dev-helpers (token + porty), tworzone przez
 # `django-dev-helpers` w korzeniu repo gdy aktywne (run-site ustawia
