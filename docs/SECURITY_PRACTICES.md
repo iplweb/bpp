@@ -40,8 +40,10 @@ zapisane w `uv.lock` — z hashami SHA-256, które wykrywają tampering.
 - `make uv-sync` — luźny, bez `--frozen`, dla aktywnego dewelopmentu gdy
   dev modyfikuje `pyproject.toml` i potrzebuje refresh lockfile w jednym
   kroku. Workflow: `vim pyproject.toml; make uv-lock; make uv-sync`.
-- `make live-docs` — `uv pip install --upgrade sphinx-autobuild` poza
-  lockfile (świadomie, sphinx-autobuild jest dev-only narzędziem).
+- `make live-docs` — `uv pip install -r docs/requirements.txt` poza
+  głównym lockfile (świadomie, mkdocs-material i jego zależności to
+  dev-only narzędzia używane lokalnie i przez Read the Docs;
+  `docs/requirements.txt` jest osobnym manifestem dla RTD).
 - `make enable-microsoft-auth` — `uv pip install django_microsoft_auth`
   (alternatywnie można `uv sync --extra office365` jeśli pakiet jest w
   lockfile).

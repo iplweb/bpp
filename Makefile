@@ -299,12 +299,12 @@ js-tests: assets ## Uruchom testy JS (QUnit via Puppeteer)
 ##@ Dokumentacja
 
 # cel: live-docs
-# Uruchom sphinx-autobuild
-live-docs: ## Uruchom sphinx-autobuild na porcie 8080 (live-reload docs)
-	# Nie wrzucam instalacji sphinx-autobuild do requirements_dev.in
-	# celowo i z premedytacją:
-	uv pip install --upgrade sphinx-autobuild
-	uv run sphinx-autobuild --port 8080 -D language=pl docs/ docs/_build
+# Uruchom mkdocs serve (live-reload docs)
+live-docs: ## Uruchom mkdocs serve na porcie 8080 (live-reload docs)
+	# Zaleznosci docsow trzymamy poza glownym dev-extras (uzywane tylko
+	# lokalnie i na Read the Docs) — instalujemy ad-hoc:
+	uv pip install -r docs/requirements.txt
+	uv run mkdocs serve --dev-addr 127.0.0.1:8080
 
 ##@ Microsoft Auth
 

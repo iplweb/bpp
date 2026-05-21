@@ -44,7 +44,7 @@ W zgłoszeniu opisz proszę:
 | Łata: wysokie         | 30 dni                           |
 | Łata: średnie/niskie  | następne planowane wydanie       |
 
-Zgłaszający otrzyma podziękowanie w wpisie do `HISTORY.rst` i (na życzenie) w
+Zgłaszający otrzyma podziękowanie w wpisie do `HISTORY.md` i (na życzenie) w
 opublikowanym Security Advisory, po wydaniu łaty.
 
 ## Poza zakresem
@@ -101,5 +101,5 @@ Please include reproduction steps, impact, BPP version, and any PoC/logs.
 - Triage: within 7 business days.
 - Patch: critical 14d, high 30d, medium/low next scheduled release.
 
-Reporters are credited in `HISTORY.rst` and (on request) in the published
+Reporters are credited in `HISTORY.md` and (on request) in the published
 Security Advisory.
