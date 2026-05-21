@@ -249,7 +249,7 @@ def test_create_publication_without_year_raises_validation_error(
 
 
 @pytest.mark.django_db
-def test_create_view_without_year_shows_clean_error(
+def test_create_view_without_year_task_marks_session_failed(
     importer_client,
     importer_user,
     jezyki,
@@ -258,8 +258,11 @@ def test_create_view_without_year_shows_clean_error(
     statusy_korekt,
     typy_odpowiedzialnosci,
 ):
-    """POST do CreateView dla sesji bez roku → czytelny komunikat,
-    bez tracebacku, status 200."""
+    """POST do CreateView dla sesji bez roku → enqueue taska,
+    task ustawia IMPORT_FAILED z czytelnym komunikatem (bez tracebacku
+    w polu last_error_message)."""
+    from importer_publikacji.tasks import create_publication_task
+
     session = _make_session_for_publication(
         importer_user,
         jezyki,
@@ -274,8 +277,20 @@ def test_create_view_without_year_shows_clean_error(
     url = reverse("importer_publikacji:create", kwargs={"session_id": session.pk})
     response = importer_client.post(url)
 
-    assert response.status_code == 200
-    body = response.content.decode()
-    assert "Brak roku publikacji" in body
-    assert "TypeError" not in body
-    assert "Traceback" not in body
+    # View enqueueuje taska i redirectuje na task-status.
+    assert response.status_code == 302
+    assert "task-status" in response["Location"]
+
+    # .delay() nie jest eager — uruchamiamy taska synchronicznie.
+    # Task re-raise wyjatek po zapisaniu stanu IMPORT_FAILED.
+    from django.core.exceptions import ValidationError
+
+    with pytest.raises(ValidationError, match="Brak roku publikacji"):
+        create_publication_task.apply(args=[session.pk, importer_user.pk, False]).get()
+
+    session.refresh_from_db()
+    assert session.status == ImportSession.Status.IMPORT_FAILED
+    assert "Brak roku publikacji" in session.last_error_message
+    # Traceback siedzi w osobnym polu, nie wycieka do user-safe message.
+    assert "Traceback" not in session.last_error_message
+    assert "TypeError" not in session.last_error_message

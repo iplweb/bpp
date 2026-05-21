@@ -5,10 +5,6 @@ Authors → Review → Create → Done) plus boczne akcje na autorach i
 anulowanie sesji.
 """
 
-import traceback
-
-from django.contrib.contenttypes.models import ContentType
-from django.core.exceptions import ValidationError
 from django.http import HttpResponse, HttpResponseBadRequest, HttpResponseRedirect
 from django.shortcuts import get_object_or_404, render
 from django.urls import reverse
@@ -21,7 +17,7 @@ from ..forms import AuthorMatchForm, FetchForm, SourceForm, VerifyForm
 from ..models import ImportedAuthor, ImportSession
 from ..permissions import ImporterPermissionMixin
 from ..providers import InputMode, get_provider
-from ..tasks import fetch_session_task
+from ..tasks import create_publication_task, fetch_session_task
 from .authors import (
     _create_unmatched_authors,
     _orcid_settable_qs,
@@ -35,9 +31,6 @@ from .helpers import (
     _render_full_page,
     _sessions_list_context,
     _with_breadcrumbs_oob,
-)
-from .publikacja import (
-    _create_publication,
 )
 from .steps import (
     _is_chapter,
@@ -454,69 +447,31 @@ class ReviewView(ImporterPermissionMixin, View):
 
 
 class CreateView(ImporterPermissionMixin, View):
-    """Utwórz rekord publikacji."""
+    """Enqueueuje create_publication_task; redirect na task-status."""
 
     def post(self, request, session_id):
-        session = get_object_or_404(
-            ImportSession,
-            pk=session_id,
-        )
+        session = get_object_or_404(ImportSession, pk=session_id)
 
-        try:
-            record = _create_publication(session)
-        except ValidationError as e:
-            error_msg = " ".join(e.messages) if hasattr(e, "messages") else str(e)
-            return render(
-                request,
-                STEP_DONE,
-                {
-                    "session": session,
-                    "error": error_msg,
-                    "traceback": None,
-                },
-            )
-        except Exception:
-            traceback.print_exc()
-            error_msg = "Wystąpił błąd podczas tworzenia rekordu."
-            tb_text = None
-            if request.user.is_superuser:
-                tb_text = traceback.format_exc()
-            else:
-                error_msg += " Sprawdź logi serwera."
-            return render(
-                request,
-                STEP_DONE,
-                {
-                    "session": session,
-                    "error": error_msg,
-                    "traceback": tb_text,
-                },
-            )
+        also_pbn = "_create_and_pbn" in request.POST
 
-        session.status = ImportSession.Status.COMPLETED
-        session.created_record_content_type = ContentType.objects.get_for_model(record)
-        session.created_record_id = record.pk
-        session.modified_by = request.user
-        session.save()
+        # Persist for retry path (Task 10 reads this)
+        session.matched_data["pbn_export_pending"] = also_pbn
+        session.status = ImportSession.Status.CREATING
+        session.save(update_fields=["matched_data", "status"])
 
-        if "_create_and_pbn" in request.POST:
-            from bpp.admin.helpers.pbn_api.gui import (
-                sprobuj_utworzyc_zlecenie_eksportu_do_PBN_gui,
-            )
-
-            sprobuj_utworzyc_zlecenie_eksportu_do_PBN_gui(request, record)
+        task = create_publication_task.delay(session.pk, request.user.pk, also_pbn)
+        session.celery_task_id = task.id
+        session.save(update_fields=["celery_task_id"])
 
         url = reverse(
-            "importer_publikacji:done",
+            "importer_publikacji:task-status",
             kwargs={"session_id": session.pk},
         )
-        response = render(
-            request,
-            STEP_DONE,
-            {"session": session, "record": record},
-        )
-        response = _with_breadcrumbs_oob(response, request, session)
-        return _push_url(response, url)
+        if request.headers.get("HX-Request"):
+            response = HttpResponse(status=200)
+            response["HX-Redirect"] = url
+            return response
+        return HttpResponseRedirect(url)
 
 
 class DoneView(ImporterPermissionMixin, View):
