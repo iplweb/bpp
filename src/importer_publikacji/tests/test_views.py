@@ -83,15 +83,23 @@ def test_fetch_invalid_doi(importer_client):
     i task jest enqueueowany. Walidacja samego identyfikatora w formularzu
     nie odrzuca tego inputu, więc widok redirectuje na task-status, gdzie
     polling pokaże wynik (sukces/fail) po wykonaniu task-a.
+
+    Note: mockujemy fetch_session_task.delay żeby uniknąć niedeterministycznej
+    propagacji eager-mode (Celery legacy translation CELERY_ALWAYS_EAGER
+    nie zawsze daje task_always_eager=False po settings overridach).
     """
+    from unittest.mock import patch
+
     url = reverse("importer_publikacji:fetch")
-    response = importer_client.post(
-        url,
-        {
-            "provider": "CrossRef",
-            "identifier": "not-a-doi",
-        },
-    )
+    with patch("importer_publikacji.views.wizard.fetch_session_task") as mock_task:
+        mock_task.delay.return_value.id = "task-uuid"
+        response = importer_client.post(
+            url,
+            {
+                "provider": "CrossRef",
+                "identifier": "not-a-doi",
+            },
+        )
     assert response.status_code == 302
     assert "/task-status/" in response["Location"]
     session = ImportSession.objects.get()

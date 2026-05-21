@@ -3,7 +3,7 @@ from unittest.mock import patch
 import pytest
 from model_bakery import baker
 
-from importer_publikacji.models import ImportedAuthor, ImportSession
+from importer_publikacji.models import ImportSession
 from importer_publikacji.views.authors import (
     _auto_match_authors,
     _auto_match_single_author,

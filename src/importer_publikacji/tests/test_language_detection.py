@@ -55,7 +55,15 @@ def test_detect_language_short_title_no_crash():
 def test_fetch_auto_detects_language_for_bibtex(
     importer_client,
 ):
-    """BibTeX bez language → po fetchu język wykryty (lub None)."""
+    """BibTeX bez language → po fetchu język wykryty (lub None).
+
+    Mockujemy fetch_session_task.delay żeby uniknąć podwójnej egzekucji
+    pod CELERY_ALWAYS_EAGER (legacy Celery setting translation jest
+    niedeterministyczna w xdist) — test wykonuje task explicit przez
+    .apply() poniżej.
+    """
+    from unittest.mock import patch
+
     from django.urls import reverse
 
     from importer_publikacji.models import ImportSession
@@ -70,10 +78,12 @@ def test_fetch_auto_detects_language_for_bibtex(
   pages = {100--110}
 }"""
     url = reverse("importer_publikacji:fetch")
-    response = importer_client.post(
-        url,
-        {"provider": "BibTeX", "text_input": bibtex},
-    )
+    with patch("importer_publikacji.views.wizard.fetch_session_task") as mock_task:
+        mock_task.delay.return_value.id = "task-uuid"
+        response = importer_client.post(
+            url,
+            {"provider": "BibTeX", "text_input": bibtex},
+        )
     assert response.status_code in (200, 302)
 
     session = ImportSession.objects.order_by("-pk").first()
@@ -91,7 +101,12 @@ def test_fetch_auto_detects_language_for_bibtex(
 def test_fetch_polish_bibtex_detects_polish(
     importer_client,
 ):
-    """BibTeX z polskim tytułem → wykrywa język polski."""
+    """BibTeX z polskim tytułem → wykrywa język polski.
+
+    Mockujemy fetch_session_task.delay (patrz docstring testu wyżej).
+    """
+    from unittest.mock import patch
+
     from django.urls import reverse
 
     from importer_publikacji.models import ImportSession
@@ -104,10 +119,12 @@ def test_fetch_polish_bibtex_detects_polish(
   year = {2024}
 }"""
     url = reverse("importer_publikacji:fetch")
-    response = importer_client.post(
-        url,
-        {"provider": "BibTeX", "text_input": bibtex},
-    )
+    with patch("importer_publikacji.views.wizard.fetch_session_task") as mock_task:
+        mock_task.delay.return_value.id = "task-uuid"
+        response = importer_client.post(
+            url,
+            {"provider": "BibTeX", "text_input": bibtex},
+        )
     assert response.status_code in (200, 302)
 
     session = ImportSession.objects.order_by("-pk").first()

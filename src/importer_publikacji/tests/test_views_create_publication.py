@@ -260,7 +260,15 @@ def test_create_view_without_year_task_marks_session_failed(
 ):
     """POST do CreateView dla sesji bez roku → enqueue taska,
     task ustawia IMPORT_FAILED z czytelnym komunikatem (bez tracebacku
-    w polu last_error_message)."""
+    w polu last_error_message).
+
+    Mockujemy create_publication_task.delay żeby uniknąć propagacji
+    wyjątku do widoku pod eager-mode (Celery legacy translation jest
+    niedeterministyczna w xdist) — task wykonujemy explicit przez
+    .apply() poniżej.
+    """
+    from unittest.mock import patch
+
     from importer_publikacji.tasks import create_publication_task
 
     session = _make_session_for_publication(
@@ -275,7 +283,9 @@ def test_create_view_without_year_task_marks_session_failed(
     session.save()
 
     url = reverse("importer_publikacji:create", kwargs={"session_id": session.pk})
-    response = importer_client.post(url)
+    with patch("importer_publikacji.views.wizard.create_publication_task") as mock_task:
+        mock_task.delay.return_value.id = "task-uuid"
+        response = importer_client.post(url)
 
     # View enqueueuje taska i redirectuje na task-status.
     assert response.status_code == 302
