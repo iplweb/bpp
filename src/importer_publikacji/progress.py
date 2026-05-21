@@ -72,3 +72,43 @@ def report_progress(task, stage_code, sub_current=0, sub_total=1, *, stages):
             "progress": progress,
         },
     )
+
+
+class ProviderReturnedNothing(Exception):
+    """Provider zwrócił None - identyfikator nie został rozpoznany
+    lub nie ma takiej publikacji w bazie dostawcy.
+    """
+
+
+def user_safe_message(exc, *, task_kind):
+    """Zamapuj wyjątek na user-friendly komunikat (po polsku).
+
+    task_kind: "fetch" lub "create" — wpływa na fallback message.
+    """
+    import requests
+    from django.core.exceptions import ValidationError
+
+    if isinstance(exc, ProviderReturnedNothing):
+        return (
+            "Nie udało się pobrać danych z dostawcy. "
+            "Sprawdź poprawność identyfikatora i spróbuj ponownie."
+        )
+
+    if isinstance(exc, requests.exceptions.Timeout):
+        return (
+            "Dostawca danych nie odpowiada w wyznaczonym czasie. "
+            "Spróbuj ponownie za chwilę."
+        )
+
+    if isinstance(
+        exc,
+        (requests.exceptions.HTTPError, requests.exceptions.ConnectionError),
+    ):
+        return "Dostawca danych nie odpowiada. Spróbuj ponownie za chwilę."
+
+    if isinstance(exc, ValidationError):
+        messages = getattr(exc, "messages", None) or [str(exc)]
+        return " ".join(messages)
+
+    kind_text = "pobierania danych" if task_kind == "fetch" else "tworzenia rekordu"
+    return f"Wystąpił błąd podczas {kind_text}. Administrator został powiadomiony."
