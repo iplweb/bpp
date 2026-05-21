@@ -1,4 +1,5 @@
 from django.urls import path
+from django.views.generic import TemplateView
 
 from . import views
 
@@ -79,5 +80,10 @@ urlpatterns = [
         "<int:session_id>/cancel/",
         views.CancelView.as_view(),
         name="cancel",
+    ),
+    path(
+        "task-status/<int:session_id>/",
+        TemplateView.as_view(template_name="importer_publikacji/index.html"),
+        name="task-status",
     ),
 ]

@@ -120,3 +120,35 @@ def test_import_session_status_includes_new_choices():
     assert ImportSession.Status.FETCHING in choices
     assert ImportSession.Status.CREATING in choices
     assert ImportSession.Status.IMPORT_FAILED in choices
+
+
+@pytest.mark.django_db
+def test_get_continue_url_fetching_points_to_task_status():
+    session = baker.make(
+        ImportSession,
+        status=ImportSession.Status.FETCHING,
+    )
+    url = session.get_continue_url()
+    assert "task-status" in url
+    assert str(session.pk) in url
+
+
+@pytest.mark.django_db
+def test_get_continue_url_creating_points_to_task_status():
+    session = baker.make(
+        ImportSession,
+        status=ImportSession.Status.CREATING,
+    )
+    url = session.get_continue_url()
+    assert "task-status" in url
+
+
+@pytest.mark.django_db
+def test_get_continue_url_import_failed_points_to_task_status():
+    session = baker.make(
+        ImportSession,
+        status=ImportSession.Status.IMPORT_FAILED,
+    )
+    url = session.get_continue_url()
+    # Status view renderuje error partial sam — kierujemy tam.
+    assert "task-status" in url
