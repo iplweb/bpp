@@ -1,5 +1,5 @@
 @use "sass:color";
-@import "settings_ufam";
+@import "settings_uafm";
 
 @import "common";
 @import "checkbox";
@@ -59,10 +59,10 @@
 $info-color: #f0f8ff;
 
 /* UFAM University theme checkbox and radio button accent color */
-/* Using Foundation's primary color (#0056b8) for the blue theme */
+/* Using Foundation's primary color (#b41906) for the red theme */
 input[type=checkbox],
 input[type=radio] {
-  accent-color: #0056b8;
+  accent-color: #b41906;
 }
 
 // Theme-specific overrides for browse.scss
@@ -126,16 +126,4 @@ input[type=radio] {
 .select2-results__option--highlighted {
   background: $primary-color !important;
   color: white;
-}
-
-// Calendar icon color - use tile icon color in tiles, primary color elsewhere
-.fi-calendar {
-  color: $primary-color;
-}
-
-// Override: in tiles, use the tile icon color class instead
-.uczelnia__tile {
-  .fi-calendar {
-    color: inherit;
-  }
 }

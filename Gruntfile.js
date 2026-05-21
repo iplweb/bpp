@@ -53,10 +53,10 @@ module.exports = function (grunt) {
                         'src/bpp/static/scss/app-mwsl.scss'
                 }
             },
-            ufam: {
+            uafm: {
                 files: {
-                    'src/bpp/static/scss/app-ufam.css':
-                        'src/bpp/static/scss/app-ufam.scss'
+                    'src/bpp/static/scss/app-uafm.css':
+                        'src/bpp/static/scss/app-uafm.scss'
                 }
             },
             adminthemes: {
@@ -165,7 +165,7 @@ module.exports = function (grunt) {
                     'sass:orange',
                     'sass:vizja',
                     'sass:mwsl',
-                    'sass:ufam',
+                    'sass:uafm',
                     'sass:adminthemes',
                     'sass:adminfilterpanel',
                     'sass:przemapuj_zrodla',

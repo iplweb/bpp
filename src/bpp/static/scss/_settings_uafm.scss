@@ -1,9 +1,10 @@
+// Paleta dopasowana do uafm.edu.pl (generateblocks/style-42.css + WP --accent):
+//   primary   #b41906 — brand red (ciemniejszy, lepszy kontrast linków)
+//   secondary #045595 — brand blue
+//   alert     #df1a17 — vivid brand red (WP theme --accent)
 //
-//#0056b8 i #003688
-//
-//linki: #0044cc
-//
-//kolor tła: #f5f8ff
+// linki: #b41906
+// kolor tła: #f5f9fc
 
 @use "sass:color";
 @use "sass:math";
@@ -79,11 +80,11 @@ $global-font-size: 92%;
 $global-width: rem-calc(1200);
 $global-lineheight: 1.5;
 $foundation-palette: (
-  primary: #0056b8,
-  secondary: #003688,
+  primary: #b41906,
+  secondary: #045595,
   success: #3adb76,
   warning: #ffae00,
-  alert: #cc4b37,
+  alert: #df1a17,
 );
 $light-gray: #e6e6e6;
 $medium-gray: #cacaca;

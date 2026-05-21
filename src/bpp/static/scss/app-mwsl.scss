@@ -59,10 +59,10 @@
 $info-color: #fff0e8;
 
 /* MWSL University theme checkbox and radio button accent color */
-/* Using Foundation's primary color (#ff6b35) for the orange theme */
+/* Using Foundation's primary color (#e35b00) for the orange theme */
 input[type=checkbox],
 input[type=radio] {
-  accent-color: #ff6b35;
+  accent-color: #e35b00;
 }
 
 // Theme-specific overrides for browse.scss
@@ -126,16 +126,4 @@ input[type=radio] {
 .select2-results__option--highlighted {
   background: $primary-color !important;
   color: white;
-}
-
-// Calendar icon color - use tile icon color in tiles, primary color elsewhere
-.fi-calendar {
-  color: $primary-color;
-}
-
-// Override: in tiles, use the tile icon color class instead
-.uczelnia__tile {
-  .fi-calendar {
-    color: inherit;
-  }
 }

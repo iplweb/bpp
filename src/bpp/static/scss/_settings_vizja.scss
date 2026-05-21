@@ -1,9 +1,9 @@
+// Paleta dopasowana do federacjavizja.pl (theme-style.css / main.css):
+//   primary   #EFA402 — brand amber (.bgyellow)
+//   secondary #01608C — brand navy  (.bgnavy)
 //
-//#fbb800 i #3a3a3a
-//
-//linki: #d4a000
-//
-//kolor tła: #f8f8f8
+// linki: #EFA402 (uwaga: niski kontrast WCAG na białym ~3.8:1)
+// kolor tła: #f8f8f8
 
 @use "sass:color";
 @use "sass:math";
@@ -79,9 +79,9 @@ $global-font-size: 92%;
 $global-width: rem-calc(1200);
 $global-lineheight: 1.5;
 $foundation-palette: (
-  primary: #d4a000,
-  secondary: #3a3a3a,
-  success: #d4a000,
+  primary: #EFA402,
+  secondary: #01608C,
+  success: #3adb76,
   warning: #ffae00,
   alert: #cc4b37,
 );

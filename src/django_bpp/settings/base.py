@@ -583,7 +583,7 @@ COMPRESS_OFFLINE_CONTEXT = [
         "LANGUAGE_CODE": "pl",
     },
     {
-        "THEME_NAME": "scss/app-ufam.css",
+        "THEME_NAME": "scss/app-uafm.css",
         "STATIC_URL": STATIC_URL,
         "LANGUAGE_CODE": "pl",
     },

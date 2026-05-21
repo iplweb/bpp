@@ -1,9 +1,10 @@
+// Paleta dopasowana do mwsl.eu (template.css):
+//   primary   #e35b00 — dominujący pomarańcz brand
+//   secondary #002b53 — dominujący granat brand
+//   hover dla primary: #bb4b00 (już na ich stronie)
 //
-//#ff6b35 i #003688
-//
-//linki: #ff6b35
-//
-//kolor tła: #f5f8ff
+// linki: #e35b00
+// kolor tła: #f5f8ff
 
 @use "sass:color";
 @use "sass:math";
@@ -79,11 +80,11 @@ $global-font-size: 92%;
 $global-width: rem-calc(1200);
 $global-lineheight: 1.5;
 $foundation-palette: (
-  primary: #ff6b35,
-  secondary: #003688,
+  primary: #e35b00,
+  secondary: #002b53,
   success: #0044cc,
-  warning: #ffae00,
-  alert: #cc4b37,
+  warning: #ffae15,
+  alert: #bb4b00,
 );
 $light-gray: #e6e6e6;
 $medium-gray: #cacaca;

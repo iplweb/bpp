@@ -59,10 +59,10 @@
 $info-color: #fff8e0;
 
 /* Vizja University theme checkbox and radio button accent color */
-/* Using Foundation's primary color (#d4a000) for the yellow theme */
+/* Using Foundation's primary color (#EFA402) for the amber theme */
 input[type=checkbox],
 input[type=radio] {
-  accent-color: #d4a000;
+  accent-color: #EFA402;
 }
 
 // Theme-specific overrides for browse.scss
@@ -126,16 +126,4 @@ input[type=radio] {
 .select2-results__option--highlighted {
   background: $primary-color !important;
   color: $black;
-}
-
-// Calendar icon color - use tile icon color in tiles, primary color elsewhere
-.fi-calendar {
-  color: $primary-color;
-}
-
-// Override: in tiles, use the tile icon color class instead
-.uczelnia__tile {
-  .fi-calendar {
-    color: inherit;
-  }
 }
