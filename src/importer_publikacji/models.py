@@ -40,9 +40,8 @@ class ImportSession(models.Model):
         "dostawca danych",
         max_length=50,
     )
-    identifier = models.CharField(
+    identifier = models.TextField(
         "identyfikator",
-        max_length=255,
     )
     status = models.CharField(
         "status",

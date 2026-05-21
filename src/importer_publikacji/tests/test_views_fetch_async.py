@@ -83,3 +83,39 @@ def test_fetch_view_post_does_not_call_provider_fetch_inline(authed_client):
 
     mock_provider.return_value.fetch.assert_not_called()
     mock_task.delay.assert_called_once()
+
+
+@pytest.mark.django_db
+def test_fetch_view_post_accepts_long_text_identifier(authed_client):
+    """Regression: BibTeX entries can exceed 255 chars.
+
+    Identifier field must accept long text inputs.
+    """
+    client, user = authed_client
+
+    long_bibtex = (
+        "@article{key2024test,\n"
+        + ("  abstract = {" + "Lorem ipsum dolor sit amet. " * 50 + "},\n")
+        + "}"
+    )
+    assert len(long_bibtex) > 255
+
+    with (
+        patch("importer_publikacji.views.wizard.fetch_session_task") as mock_task,
+        patch("importer_publikacji.views.wizard.get_provider") as mock_provider,
+    ):
+        from importer_publikacji.providers import InputMode
+
+        mock_provider.return_value.input_mode = InputMode.TEXT
+        mock_provider.return_value.validate_identifier.return_value = long_bibtex
+        mock_task.delay.return_value.id = "task-id"
+
+        response = client.post(
+            reverse("importer_publikacji:fetch"),
+            {"provider": "BibTeX", "text_input": long_bibtex},
+        )
+
+    assert response.status_code == 302
+    session = ImportSession.objects.first()
+    assert session is not None
+    assert session.identifier == long_bibtex
