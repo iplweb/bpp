@@ -512,7 +512,7 @@ dev = [
     { name = "bumpver", specifier = ">=2023.1124" },
     { name = "coveralls", specifier = ">=4.1.0,<5" },
     { name = "django-debug-toolbar", specifier = ">=6.3.0" },
-    { name = "django-dev-helpers", specifier = ">=0.1.9" },
+    { name = "django-dev-helpers", specifier = ">=0.1.10" },
     { name = "django-dynamic-fixture", specifier = ">=1.8.0" },
     { name = "django-run-site", specifier = ">=0.14.0" },
     { name = "django-webtest", specifier = "==1.9.14" },
