@@ -1,5 +1,6 @@
 import django.db
 import pytest
+from model_bakery import baker
 
 from importer_publikacji.models import (
     ImportedAuthor,
@@ -101,3 +102,21 @@ def test_import_session_ordering(importer_user):
     sessions = list(ImportSession.objects.all())
     assert sessions[0] == s2  # newer first
     assert sessions[1] == s1
+
+
+@pytest.mark.django_db
+def test_import_session_has_async_state_fields():
+    session = baker.make(ImportSession)
+    # Defaults dla nowych pól
+    assert session.celery_task_id == ""
+    assert session.last_error_message == ""
+    assert session.last_error_traceback == ""
+    assert session.last_failed_stage == ""
+
+
+@pytest.mark.django_db
+def test_import_session_status_includes_new_choices():
+    choices = dict(ImportSession.Status.choices)
+    assert ImportSession.Status.FETCHING in choices
+    assert ImportSession.Status.CREATING in choices
+    assert ImportSession.Status.IMPORT_FAILED in choices

@@ -9,6 +9,9 @@ class ImportSession(models.Model):
 
     class Status(models.TextChoices):
         FETCHED = "fetched", "Pobrano dane"
+        FETCHING = "fetching", "Trwa pobieranie"
+        CREATING = "creating", "Trwa tworzenie rekordu"
+        IMPORT_FAILED = "import_failed", "Błąd importu"
         VERIFIED = "verified", "Zweryfikowano"
         SOURCE_MATCHED = "source_matched", "Dopasowano źródło"
         AUTHORS_MATCHED = (
@@ -135,6 +138,34 @@ class ImportSession(models.Model):
 
     created = models.DateTimeField("utworzono", auto_now_add=True)
     modified = models.DateTimeField("zmodyfikowano", auto_now=True)
+
+    celery_task_id = models.CharField(
+        "Celery task ID",
+        max_length=64,
+        blank=True,
+        default="",
+    )
+
+    last_error_message = models.CharField(
+        "Ostatni komunikat błędu",
+        max_length=255,
+        blank=True,
+        default="",
+    )
+
+    last_error_traceback = models.TextField(
+        "Pełny traceback ostatniego błędu",
+        blank=True,
+        default="",
+    )
+
+    last_failed_stage = models.CharField(
+        "Etap który padł",
+        max_length=16,
+        blank=True,
+        default="",
+        help_text="'fetch' lub 'create'",
+    )
 
     class Meta:
         verbose_name = "sesja importu"
