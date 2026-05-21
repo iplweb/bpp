@@ -446,19 +446,56 @@ def normalize_nazwisko_do_porownania(s: str) -> str:
     return remove_extra_spaces(s)
 
 
+# Klastry typowych par/trójek imion polsko-angielskich.
+# Każdy klaster zawiera wszystkie nawzajem-wymienne pisownie w postaci
+# ASCII-lowercase (porównanie odbywa się po unidecode-fold + lowercase).
+# Imię może należeć do co najwyżej jednego klastra.
+POLISH_ENGLISH_NAME_CLUSTERS: tuple[frozenset[str], ...] = (
+    # Mężczyźni
+    frozenset({"jan", "john"}),
+    frozenset({"krzysztof", "christopher"}),
+    frozenset({"pawel", "paul"}),
+    frozenset({"piotr", "peter"}),
+    frozenset({"michal", "michael"}),
+    frozenset({"lukasz", "luke", "lucas"}),
+    frozenset({"tomasz", "thomas"}),
+    frozenset({"marek", "mark"}),
+    frozenset({"andrzej", "andrew"}),
+    frozenset({"stefan", "stephen", "steven"}),
+    frozenset({"jozef", "joseph"}),
+    frozenset({"mikolaj", "nicholas"}),
+    frozenset({"jakub", "jacob"}),
+    # Kobiety
+    frozenset({"maria", "mary"}),
+    frozenset({"anna", "ann", "anne"}),
+    frozenset({"katarzyna", "catherine", "katherine"}),
+    frozenset({"malgorzata", "margaret"}),
+    frozenset({"elzbieta", "elizabeth"}),
+    frozenset({"ewa", "eve"}),
+    frozenset({"magdalena", "madeleine"}),
+    frozenset({"aleksandra", "alexandra"}),
+    frozenset({"aleksander", "alexander"}),
+    frozenset({"helena", "helen"}),
+    frozenset({"teresa", "theresa"}),
+    frozenset({"dorota", "dorothy"}),
+)
+
+
 def polish_english_first_name_variants(imie: str | None) -> set[str]:
     """Zwraca warianty pisowni imienia między polskim a angielskim.
 
-    Reguła: pojedyncza zamiana ``v↔w`` (litera występująca w imieniu
-    po unidecode-fold). Pokrywa typowe przypadki transliteracji:
+    Dwa źródła wariantów:
 
-    - ``Eva`` ↔ ``Ewa``
-    - ``Viktor`` ↔ ``Wiktor``
-    - ``Wioletta`` ↔ ``Violetta``
+    1. Reguła ``v↔w`` po unidecode-fold (Eva↔Ewa, Viktor↔Wiktor,
+       Wioletta↔Violetta) — fonetyczna, generyczna.
+    2. Mapa klastrów ``POLISH_ENGLISH_NAME_CLUSTERS`` dla typowych
+       par (Krzysztof↔Christopher, Paweł↔Paul, Maria↔Mary itp.) —
+       hand-curated, dotyczy imion bez wspólnego fonetycznego korzenia.
 
-    Zwraca zbiór wariantów (w tym oryginalną pisownię z diakrytykami,
-    jeśli była). Nigdy nie modyfikuje nazwisk — tam ``w`` jest często
-    autentyczną literą polską (``Wojciechowski`` ≠ ``Vojciechowski``).
+    Zwraca zbiór wariantów obejmujący oryginalną pisownię oraz wszystkie
+    znormalizowane formy. Nigdy nie modyfikuje nazwisk — tam ``w`` jest
+    często autentyczną literą polską (``Wojciechowski`` ≠
+    ``Vojciechowski``).
     """
     if not imie:
         return set()
@@ -474,5 +511,12 @@ def polish_english_first_name_variants(imie: str | None) -> set[str]:
     for src, dst in (("v", "w"), ("V", "W"), ("w", "v"), ("W", "V")):
         if src in folded:
             variants.add(folded.replace(src, dst))
+
+    # Hand-curated klastry PL↔EN
+    folded_lower = folded.lower()
+    for cluster in POLISH_ENGLISH_NAME_CLUSTERS:
+        if folded_lower in cluster:
+            variants.update(cluster)
+            break
 
     return variants

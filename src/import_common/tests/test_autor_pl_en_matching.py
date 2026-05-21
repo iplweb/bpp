@@ -84,3 +84,50 @@ def test_empty_inputs_return_none():
     baker.make(Autor, imiona="Jan", nazwisko="Kowalski")
     assert matchuj_autora(imiona="", nazwisko="") is None
     assert matchuj_autora(imiona=None, nazwisko=None) is None
+
+
+# ---------------------------------------------------------------------------
+# Klastry imion PL↔EN (hand-curated map)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    "imie_w_bazie, imie_w_imporcie",
+    [
+        ("Krzysztof", "Christopher"),
+        ("Christopher", "Krzysztof"),
+        ("Paweł", "Paul"),
+        ("Paul", "Paweł"),
+        ("Maria", "Mary"),
+        ("Małgorzata", "Margaret"),
+        ("Elżbieta", "Elizabeth"),
+        ("Łukasz", "Luke"),
+        ("Łukasz", "Lucas"),
+        ("Michał", "Michael"),
+        ("Andrzej", "Andrew"),
+        ("Tomasz", "Thomas"),
+        ("Józef", "Joseph"),
+        ("Aleksandra", "Alexandra"),
+        ("Aleksander", "Alexander"),
+        ("Ewa", "Eve"),  # uzupełnia v↔w (Ewa↔Eva)
+    ],
+)
+def test_match_pl_en_name_clusters(imie_w_bazie, imie_w_imporcie):
+    """Hand-curated mapa pokrywa typowe pary PL↔EN."""
+    autor = baker.make(Autor, imiona=imie_w_bazie, nazwisko="Kowalski")
+    assert matchuj_autora(imiona=imie_w_imporcie, nazwisko="Kowalski") == autor
+
+
+@pytest.mark.django_db
+def test_name_cluster_does_not_create_false_positive():
+    """Imię spoza klastra nie matchuje przypadkowo: Marcin ≠ Mark."""
+    baker.make(Autor, imiona="Marcin", nazwisko="Kowalski")
+    assert matchuj_autora(imiona="Mark", nazwisko="Kowalski") is None
+
+
+@pytest.mark.django_db
+def test_cluster_combined_with_surname_unaccent():
+    """Klaster imion + unaccent nazwiska razem: Christopher Marańda ↔ Krzysztof Maranda."""
+    autor = baker.make(Autor, imiona="Krzysztof", nazwisko="Marańda")
+    assert matchuj_autora(imiona="Christopher", nazwisko="Maranda") == autor
