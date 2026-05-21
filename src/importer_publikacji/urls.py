@@ -2,6 +2,7 @@ from django.urls import path
 from django.views.generic import TemplateView
 
 from . import views
+from .views.task_status import ImportTaskStatusView
 
 app_name = "importer_publikacji"
 
@@ -83,7 +84,12 @@ urlpatterns = [
     ),
     path(
         "task-status/<int:session_id>/",
-        TemplateView.as_view(template_name="importer_publikacji/index.html"),
+        ImportTaskStatusView.as_view(),
         name="task-status",
+    ),
+    path(
+        "task-retry/<int:session_id>/",
+        TemplateView.as_view(template_name="importer_publikacji/index.html"),
+        name="task-retry",
     ),
 ]

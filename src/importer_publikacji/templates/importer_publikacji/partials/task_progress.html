@@ -1,0 +1,25 @@
+{% if info %}
+    <div class="callout warning">
+        <h4><span class="fi-loop"></span> {{ info.label }}</h4>
+
+        <div class="progress large" role="progressbar"
+             aria-valuenow="{{ info.progress|default:0 }}"
+             aria-valuemin="0" aria-valuemax="100">
+            <div class="progress-meter"
+                 style="width: {{ info.progress|default:0 }}%">
+                <p class="progress-meter-text">{{ info.progress|default:0 }}%</p>
+            </div>
+        </div>
+
+        {% if info.counter_display %}
+            <p><strong>Postęp etapu:</strong> {{ info.counter_display }}</p>
+        {% endif %}
+
+        <p><em>Status odświeża się co 3 sekundy. Możesz zostać na stronie lub wrócić — zadanie wykonuje się w tle.</em></p>
+    </div>
+{% else %}
+    <div class="callout warning">
+        <h4><span class="fi-loop"></span> Inicjalizacja zadania...</h4>
+        <p>Trwa rozpoczynanie. Strona odświeży się automatycznie.</p>
+    </div>
+{% endif %}
