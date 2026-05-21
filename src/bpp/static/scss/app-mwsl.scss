@@ -1,5 +1,5 @@
 @use "sass:color";
-@import "settings_orange";
+@import "settings_mwsl";
 
 @import "common";
 @import "checkbox";
@@ -56,13 +56,13 @@
 @include foundation-float-classes;
 @include foundation-print-styles;
 
-$info-color: #DEF3B6;
+$info-color: #fff0e8;
 
-/* Orange theme checkbox and radio button accent color */
-/* Using Foundation's primary color (#f26621) for the orange theme */
+/* MWSL University theme checkbox and radio button accent color */
+/* Using Foundation's primary color (#e35b00) for the orange theme */
 input[type=checkbox],
 input[type=radio] {
-  accent-color: #f26621;
+  accent-color: #e35b00;
 }
 
 // Theme-specific overrides for browse.scss
@@ -73,8 +73,6 @@ input[type=radio] {
     }
   }
 }
-
-// Wydzial stats styling removed - using neutral colors from browse.scss
 
 .section-header {
   h2 {
@@ -87,8 +85,6 @@ input[type=radio] {
     }
   }
 }
-
-// Jednostka card styling removed - using neutral colors from browse.scss
 
 .jednostka-name a {
   &:hover {

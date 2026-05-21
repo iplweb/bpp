@@ -572,6 +572,21 @@ COMPRESS_OFFLINE_CONTEXT = [
         "STATIC_URL": STATIC_URL,
         "LANGUAGE_CODE": "pl",
     },
+    {
+        "THEME_NAME": "scss/app-vizja.css",
+        "STATIC_URL": STATIC_URL,
+        "LANGUAGE_CODE": "pl",
+    },
+    {
+        "THEME_NAME": "scss/app-mwsl.css",
+        "STATIC_URL": STATIC_URL,
+        "LANGUAGE_CODE": "pl",
+    },
+    {
+        "THEME_NAME": "scss/app-uafm.css",
+        "STATIC_URL": STATIC_URL,
+        "LANGUAGE_CODE": "pl",
+    },
 ]
 
 DJANGO_BPP_HOSTNAME = env("DJANGO_BPP_HOSTNAME")

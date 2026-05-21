@@ -1,5 +1,5 @@
 @use "sass:color";
-@import "settings_orange";
+@import "settings_vizja";
 
 @import "common";
 @import "checkbox";
@@ -56,13 +56,13 @@
 @include foundation-float-classes;
 @include foundation-print-styles;
 
-$info-color: #DEF3B6;
+$info-color: #fff8e0;
 
-/* Orange theme checkbox and radio button accent color */
-/* Using Foundation's primary color (#f26621) for the orange theme */
+/* Vizja University theme checkbox and radio button accent color */
+/* Using Foundation's primary color (#EFA402) for the amber theme */
 input[type=checkbox],
 input[type=radio] {
-  accent-color: #f26621;
+  accent-color: #EFA402;
 }
 
 // Theme-specific overrides for browse.scss
@@ -73,8 +73,6 @@ input[type=radio] {
     }
   }
 }
-
-// Wydzial stats styling removed - using neutral colors from browse.scss
 
 .section-header {
   h2 {
@@ -87,8 +85,6 @@ input[type=radio] {
     }
   }
 }
-
-// Jednostka card styling removed - using neutral colors from browse.scss
 
 .jednostka-name a {
   &:hover {
@@ -129,5 +125,5 @@ input[type=radio] {
 
 .select2-results__option--highlighted {
   background: $primary-color !important;
-  color: white;
+  color: $black;
 }

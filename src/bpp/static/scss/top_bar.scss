@@ -284,7 +284,7 @@ nav.sticky-header {
         width: 0;
         height: 0;
         border: inset 6px;
-        border-color: rgba(44, 62, 80, 0.6) transparent transparent transparent;
+        border-color: rgba($anchor-color, 0.6) transparent transparent transparent;
         border-top-style: solid;
         margin-left: 5px;
         vertical-align: middle;
