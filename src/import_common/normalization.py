@@ -444,3 +444,35 @@ def normalize_nazwisko_do_porownania(s: str) -> str:
     s = s.lower()
     s = s.replace("-", " ")
     return remove_extra_spaces(s)
+
+
+def polish_english_first_name_variants(imie: str | None) -> set[str]:
+    """Zwraca warianty pisowni imienia między polskim a angielskim.
+
+    Reguła: pojedyncza zamiana ``v↔w`` (litera występująca w imieniu
+    po unidecode-fold). Pokrywa typowe przypadki transliteracji:
+
+    - ``Eva`` ↔ ``Ewa``
+    - ``Viktor`` ↔ ``Wiktor``
+    - ``Wioletta`` ↔ ``Violetta``
+
+    Zwraca zbiór wariantów (w tym oryginalną pisownię z diakrytykami,
+    jeśli była). Nigdy nie modyfikuje nazwisk — tam ``w`` jest często
+    autentyczną literą polską (``Wojciechowski`` ≠ ``Vojciechowski``).
+    """
+    if not imie:
+        return set()
+    imie = imie.strip()
+    if not imie:
+        return set()
+
+    variants = {imie}
+    # Reguła v↔w działa na ASCII-fold (żeby Łukasz dał Lukasz, etc.)
+    folded = remove_polish_diacritics(imie)
+    variants.add(folded)
+
+    for src, dst in (("v", "w"), ("V", "W"), ("w", "v"), ("W", "V")):
+        if src in folded:
+            variants.add(folded.replace(src, dst))
+
+    return variants
