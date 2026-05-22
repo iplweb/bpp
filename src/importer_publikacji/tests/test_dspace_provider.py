@@ -93,6 +93,29 @@ def test_parse_url_no_items():
     assert _parse_dspace7_url(url) is None
 
 
+def test_parse_url_entities_publication():
+    """DSpace 7+ Angular UI używa /entities/<type>/<uuid>/[details]
+    zamiast /items/<uuid>. Provider musi to akceptować — REST API
+    endpoint to ten sam /server/api/core/items/<uuid>."""
+    url = f"{BASE_URL}/entities/publication/{SAMPLE_UUID}/details"
+    result = _parse_dspace7_url(url)
+    assert result == (BASE_URL, SAMPLE_UUID)
+
+
+def test_parse_url_entities_without_details_suffix():
+    url = f"{BASE_URL}/entities/publication/{SAMPLE_UUID}"
+    result = _parse_dspace7_url(url)
+    assert result == (BASE_URL, SAMPLE_UUID)
+
+
+def test_parse_url_entities_other_type():
+    """Inne typy entities (np. /entities/person/<uuid>) też matchują —
+    DSpace pozwala każdej instancji definiować własne entity types."""
+    url = f"{BASE_URL}/entities/dataset/{SAMPLE_UUID}/details"
+    result = _parse_dspace7_url(url)
+    assert result == (BASE_URL, SAMPLE_UUID)
+
+
 def test_parse_url_empty():
     assert _parse_dspace7_url("") is None
     assert _parse_dspace7_url("   ") is None

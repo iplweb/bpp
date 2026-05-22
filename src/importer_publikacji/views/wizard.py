@@ -101,7 +101,14 @@ class FetchView(ImporterPermissionMixin, View):
 
         normalized = provider.validate_identifier(raw_input)
         if normalized is None:
-            form.add_error(error_field, "Nieprawidłowy format danych.")
+            help_hint = getattr(provider, "input_help_text", "")
+            placeholder = getattr(provider, "input_placeholder", "")
+            msg = f"Nie rozpoznano formatu dla dostawcy „{provider.name}”."
+            if help_hint:
+                msg += f" Oczekiwany format: {help_hint}"
+            if placeholder:
+                msg += f" Przykład: {placeholder}"
+            form.add_error(error_field, msg)
             return render(request, STEP_FETCH, _fetch_context(form))
 
         # Idempotency (C2): jesli juz jest sesja in-flight tego samego usera
