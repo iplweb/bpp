@@ -93,6 +93,44 @@ def test_user_safe_message_for_http_error():
     assert "nie odpowiada" in msg.lower() or "spróbuj" in msg.lower()
 
 
+def test_user_safe_message_for_http_error_with_status_code():
+    """Gdy HTTPError ma .response, status code pojawia się w wiadomości
+    (tak, żeby user/admin widział że to np. 503 z serwera dostawcy)."""
+    response = MagicMock(status_code=503)
+    exc = requests.exceptions.HTTPError("503 unavailable", response=response)
+    msg = user_safe_message(exc, task_kind="fetch")
+    assert "503" in msg
+    assert "dostawcy" in msg.lower()
+    assert "nie aplikacji" in msg.lower()
+
+
+def test_user_safe_message_prefix_provider():
+    """Błędy dostawcy mają prefix 'Problem dostawcy'."""
+    assert user_safe_message(ProviderReturnedNothing(), task_kind="fetch").startswith(
+        "Problem dostawcy"
+    )
+    assert user_safe_message(
+        requests.exceptions.Timeout(), task_kind="fetch"
+    ).startswith("Problem dostawcy")
+    assert user_safe_message(
+        requests.exceptions.ConnectionError(), task_kind="fetch"
+    ).startswith("Problem dostawcy")
+
+
+def test_user_safe_message_prefix_internal():
+    """Wewnętrzne błędy aplikacji mają prefix 'Problem aplikacji'."""
+    msg = user_safe_message(RuntimeError("boom"), task_kind="fetch")
+    assert msg.startswith("Problem aplikacji")
+
+
+def test_user_safe_message_prefix_validation():
+    """Błędy walidacji mają prefix 'Problem danych wejściowych'."""
+    from django.core.exceptions import ValidationError
+
+    msg = user_safe_message(ValidationError(["bad"]), task_kind="create")
+    assert msg.startswith("Problem danych wejściowych")
+
+
 def test_user_safe_message_for_timeout():
     exc = requests.exceptions.Timeout("read timeout")
     msg = user_safe_message(exc, task_kind="fetch")

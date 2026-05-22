@@ -2,20 +2,25 @@
     <div class="callout warning">
         <h4><span class="fi-loop"></span> {{ info.label }}</h4>
 
+        {# Procent + counter NAD paskiem, nie wewnatrz progress-meter, #}
+        {# zeby tekst nie znikal przy progress=0 (Foundation 6 ucina #}
+        {# zawartosc progress-meter przez width:0%). Wzorzec z #}
+        {# long_running/operation_details.html. #}
+        <p style="margin-bottom: 0.25rem;">
+            <strong>{{ info.progress|default:0 }}%</strong>
+            {% if info.counter_display %}
+                — etap: {{ info.counter_display }}
+            {% endif %}
+        </p>
+
         <div class="progress large" role="progressbar"
              aria-valuenow="{{ info.progress|default:0 }}"
              aria-valuemin="0" aria-valuemax="100">
             <div class="progress-meter"
-                 style="width: {{ info.progress|default:0 }}%">
-                <p class="progress-meter-text">{{ info.progress|default:0 }}%</p>
-            </div>
+                 style="width: {{ info.progress|default:0 }}%"></div>
         </div>
 
-        {% if info.counter_display %}
-            <p><strong>Postęp etapu:</strong> {{ info.counter_display }}</p>
-        {% endif %}
-
-        <p><em>Status odświeża się co 3 sekundy. Możesz zostać na stronie lub wrócić — zadanie wykonuje się w tle.</em></p>
+        <p style="margin-top: 0.5rem;"><em>Status odświeża się co 3 sekundy. Możesz zostać na stronie lub wrócić — zadanie wykonuje się w tle.</em></p>
     </div>
 {% else %}
     <div class="callout warning">

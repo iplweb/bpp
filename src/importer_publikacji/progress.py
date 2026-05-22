@@ -84,6 +84,15 @@ class ProviderReturnedNothing(Exception):
 def user_safe_message(exc, *, task_kind):
     """Zamapuj wyjątek na user-friendly komunikat (po polsku).
 
+    Każda wiadomość ma prefix mówiący CZYJ to problem — żeby user widział
+    czy to my, dostawca czy jego dane. Prefiksy:
+      - "Problem dostawcy" — błąd po stronie serwera zewnętrznego
+        (HTTP 5xx, timeout, brak publikacji w bazie dostawcy).
+      - "Problem danych wejściowych" — błąd walidacji (user podał coś
+        niepoprawnego, np. niespełniający wymogi rekord).
+      - "Problem aplikacji" — bug po naszej stronie. Admin powiadomiony
+        przez Rollbar (globalny @task_failure.connect).
+
     task_kind: "fetch" lub "create" — wpływa na fallback message.
     """
     import requests
@@ -91,25 +100,51 @@ def user_safe_message(exc, *, task_kind):
 
     if isinstance(exc, ProviderReturnedNothing):
         return (
-            "Nie udało się pobrać danych od dostawcy. "
+            "Problem dostawcy: nie udało się pobrać danych. "
             "Sprawdź poprawność identyfikatora i spróbuj ponownie."
         )
 
     if isinstance(exc, requests.exceptions.Timeout):
         return (
-            "Dostawca danych nie odpowiada w wyznaczonym czasie. "
+            "Problem dostawcy: serwer nie odpowiada w wyznaczonym czasie. "
             "Spróbuj ponownie za chwilę."
         )
 
-    if isinstance(
-        exc,
-        (requests.exceptions.HTTPError, requests.exceptions.ConnectionError),
-    ):
-        return "Dostawca danych nie odpowiada. Spróbuj ponownie za chwilę."
+    if isinstance(exc, requests.exceptions.HTTPError):
+        status = _http_status_from_exc(exc)
+        if status:
+            return (
+                f"Problem dostawcy: serwer zwrócił błąd HTTP {status}. "
+                f"To problem po stronie dostawcy, nie aplikacji. "
+                f"Spróbuj ponownie później."
+            )
+        return "Problem dostawcy: serwer zwrócił błąd. Spróbuj ponownie za chwilę."
+
+    if isinstance(exc, requests.exceptions.ConnectionError):
+        return (
+            "Problem dostawcy: nie można połączyć się z serwerem. "
+            "Spróbuj ponownie za chwilę."
+        )
 
     if isinstance(exc, ValidationError):
         messages = getattr(exc, "messages", None) or [str(exc)]
-        return " ".join(messages)
+        return "Problem danych wejściowych: " + " ".join(messages)
 
     kind_text = "pobierania danych" if task_kind == "fetch" else "tworzenia rekordu"
-    return f"Wystąpił błąd podczas {kind_text}. Administrator został powiadomiony."
+    return (
+        f"Problem aplikacji: wystąpił błąd podczas {kind_text}. "
+        f"Administrator został powiadomiony."
+    )
+
+
+def _http_status_from_exc(exc):
+    """Wyciągnij status code z requests.HTTPError jeśli jest dostępny.
+
+    raise_for_status() zachowuje response na exception; ręczny raise z
+    inną sygnaturą może nie mieć. Bezpieczna ekstrakcja zwraca None gdy
+    nie ma response albo nie ma status_code.
+    """
+    response = getattr(exc, "response", None)
+    if response is None:
+        return None
+    return getattr(response, "status_code", None)
