@@ -86,6 +86,42 @@ def test_fetch_view_post_does_not_call_provider_fetch_inline(authed_client):
 
 
 @pytest.mark.django_db
+def test_fetch_view_post_redirects_to_in_flight_session(authed_client):
+    """Double-click defense: ponowny POST tego samego DOI redirectuje
+    do juz-istniejacej sesji zamiast startowac nowego taska."""
+    client, user = authed_client
+    existing = baker.make(
+        ImportSession,
+        created_by=user,
+        provider_name="CrossRef",
+        identifier="10.1234/x",
+        status=ImportSession.Status.FETCHING,
+    )
+
+    with (
+        patch("importer_publikacji.views.wizard.fetch_session_task") as mock_task,
+        patch("importer_publikacji.views.wizard.get_provider") as mock_provider,
+    ):
+        from importer_publikacji.providers import InputMode
+
+        mock_provider.return_value.input_mode = InputMode.IDENTIFIER
+        mock_provider.return_value.validate_identifier.return_value = "10.1234/x"
+
+        response = client.post(
+            reverse("importer_publikacji:fetch"),
+            {"provider": "CrossRef", "identifier": "10.1234/x"},
+        )
+
+    # Brak nowej sesji
+    assert ImportSession.objects.filter(provider_name="CrossRef").count() == 1
+    # Brak nowego taska
+    mock_task.delay.assert_not_called()
+    # Redirect do istniejacej sesji
+    assert response.status_code == 302
+    assert str(existing.pk) in response["Location"]
+
+
+@pytest.mark.django_db
 def test_fetch_view_post_accepts_long_text_identifier(authed_client):
     """Regression: BibTeX entries can exceed 255 chars.
 

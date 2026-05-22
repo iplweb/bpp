@@ -104,6 +104,30 @@ class FetchView(ImporterPermissionMixin, View):
             form.add_error(error_field, "Nieprawidłowy format danych.")
             return render(request, STEP_FETCH, _fetch_context(form))
 
+        # Idempotency (C2): jesli juz jest sesja in-flight tego samego usera
+        # dla tego samego (provider, identifier), nie startuj kolejnej —
+        # zredirectuj do istniejacej. Defense przed double-click i refresh.
+        recent_in_flight = (
+            ImportSession.objects.filter(
+                created_by=request.user,
+                provider_name=provider_name,
+                identifier=normalized,
+                status__in=[
+                    ImportSession.Status.FETCHING,
+                    ImportSession.Status.FETCHED,
+                ],
+            )
+            .order_by("-created")
+            .first()
+        )
+        if recent_in_flight is not None:
+            url = recent_in_flight.get_continue_url()
+            if request.headers.get("HX-Request"):
+                response = HttpResponse(status=200)
+                response["HX-Redirect"] = url
+                return response
+            return HttpResponseRedirect(url)
+
         session = ImportSession.objects.create(
             created_by=request.user,
             provider_name=provider_name,
@@ -451,6 +475,20 @@ class CreateView(ImporterPermissionMixin, View):
 
     def post(self, request, session_id):
         session = get_object_or_404(ImportSession, pk=session_id)
+
+        # Idempotency (C2): jesli sesja juz jest w trakcie tworzenia lub
+        # zakonczona — nie enqueueuj kolejnego taska. Redirect do
+        # task-status (lub done dla COMPLETED) zamiast podwojnego POST-a.
+        if session.status in (
+            ImportSession.Status.CREATING,
+            ImportSession.Status.COMPLETED,
+        ):
+            url = session.get_continue_url()
+            if request.headers.get("HX-Request"):
+                response = HttpResponse(status=200)
+                response["HX-Redirect"] = url
+                return response
+            return HttpResponseRedirect(url)
 
         also_pbn = "_create_and_pbn" in request.POST
 

@@ -88,6 +88,51 @@ def test_create_view_post_persists_pbn_export_pending_to_matched_data(
 
 
 @pytest.mark.django_db
+def test_create_view_post_idempotent_for_creating_session(authed_client):
+    """Double-click defense: POST na sesji w stanie CREATING redirectuje
+    do task-status zamiast startowac kolejnego taska."""
+    client, _ = authed_client
+    session = baker.make(
+        ImportSession,
+        created_by=baker.make("bpp.BppUser"),
+        status=ImportSession.Status.CREATING,
+    )
+
+    with patch("importer_publikacji.views.wizard.create_publication_task") as mock_task:
+        url = reverse(
+            "importer_publikacji:create",
+            kwargs={"session_id": session.pk},
+        )
+        response = client.post(url, {})
+
+    assert response.status_code == 302
+    assert "task-status" in response["Location"]
+    mock_task.delay.assert_not_called()
+
+
+@pytest.mark.django_db
+def test_create_view_post_idempotent_for_completed_session(authed_client):
+    """COMPLETED sesja tez nie powinna enqueueowac nowego taska —
+    redirect do done."""
+    client, _ = authed_client
+    session = baker.make(
+        ImportSession,
+        created_by=baker.make("bpp.BppUser"),
+        status=ImportSession.Status.COMPLETED,
+    )
+
+    with patch("importer_publikacji.views.wizard.create_publication_task") as mock_task:
+        url = reverse(
+            "importer_publikacji:create",
+            kwargs={"session_id": session.pk},
+        )
+        response = client.post(url, {})
+
+    assert response.status_code == 302
+    mock_task.delay.assert_not_called()
+
+
+@pytest.mark.django_db
 def test_create_view_post_persists_pbn_export_pending_false(
     authed_client, review_session
 ):
