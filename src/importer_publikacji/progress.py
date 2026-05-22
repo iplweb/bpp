@@ -9,7 +9,7 @@ faktycznie rósł podczas najdłuższej operacji.
 # (stage_code, label_template, weight)
 # label_template może zawierać {current}/{total} dla per-item counter.
 FETCH_STAGES = [
-    ("provider_fetch", "Pobieram dane z dostawcy...", 10),
+    ("provider_fetch", "Pobieram dane od dostawcy...", 10),
     ("create_session", "Tworzę sesję importu...", 5),
     ("match_type_lang", "Dopasowuję typ publikacji i język...", 5),
     ("match_authors", "Dopasowuję autorów ({current}/{total})...", 60),
@@ -91,7 +91,7 @@ def user_safe_message(exc, *, task_kind):
 
     if isinstance(exc, ProviderReturnedNothing):
         return (
-            "Nie udało się pobrać danych z dostawcy. "
+            "Nie udało się pobrać danych od dostawcy. "
             "Sprawdź poprawność identyfikatora i spróbuj ponownie."
         )
 

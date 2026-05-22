@@ -4,7 +4,6 @@ import pytest
 from model_bakery import baker
 
 from importer_publikacji.models import ImportSession
-from importer_publikacji.progress import ProviderReturnedNothing
 from importer_publikacji.tasks import create_publication_task, fetch_session_task
 
 
@@ -64,21 +63,29 @@ def test_fetch_session_task_success_sets_status_fetched(fetch_session):
 
 @pytest.mark.django_db
 def test_fetch_session_task_provider_returns_none_marks_failed(fetch_session):
+    """Provider zwracający None to oczekiwany failure (publikacja nie
+    znaleziona). Task NIE rzuca wyjątku — żeby Celery nie logował
+    ERROR-a ani @task_failure.connect nie zgłaszał do Rollbara.
+    Status sesji wystarczy do pokazania user-owi komunikatu.
+    """
     with patch("importer_publikacji.tasks.get_provider") as mock_get_provider:
         provider = MagicMock()
         provider.fetch.return_value = None
         mock_get_provider.return_value = provider
 
-        with pytest.raises(ProviderReturnedNothing):
-            fetch_session_task.apply(
-                args=[fetch_session.pk, fetch_session.created_by_id]
-            ).get()
+        # Bez pytest.raises: task kończy się sukcesem z punktu widzenia
+        # Celery, ale session.status == IMPORT_FAILED.
+        fetch_session_task.apply(
+            args=[fetch_session.pk, fetch_session.created_by_id]
+        ).get()
 
     fetch_session.refresh_from_db()
     assert fetch_session.status == ImportSession.Status.IMPORT_FAILED
     assert fetch_session.last_failed_stage == "fetch"
     assert "dostawcy" in fetch_session.last_error_message.lower()
-    assert fetch_session.last_error_traceback != ""
+    assert fetch_session.celery_task_id == ""
+    # Brak traceback dla expected failure — nie szliśmy przez except.
+    assert fetch_session.last_error_traceback == ""
 
 
 @pytest.mark.django_db

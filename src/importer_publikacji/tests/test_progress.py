@@ -31,7 +31,7 @@ def test_report_progress_first_stage_no_counter():
     assert kwargs["state"] == "PROGRESS"
     meta = kwargs["meta"]
     assert meta["stage_code"] == "provider_fetch"
-    assert meta["label"] == "Pobieram dane z dostawcy..."
+    assert meta["label"] == "Pobieram dane od dostawcy..."
     assert meta["current"] == 0
     assert meta["total"] == 0
     assert meta["progress"] == 0

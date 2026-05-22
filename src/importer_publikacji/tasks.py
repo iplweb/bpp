@@ -23,7 +23,7 @@ from .providers import get_provider
 
 @shared_task(bind=True)
 def fetch_session_task(self, session_id, request_user_id):
-    """Pobierz dane z dostawcy + auto-dopasuj autorów + uzupełnij
+    """Pobierz dane od dostawcy + auto-dopasuj autorów + uzupełnij
     dyscypliny ze zgłoszeń. Działa w tle, raportuje postęp przez
     update_state, na końcu ustawia session.status = FETCHED.
 
@@ -43,10 +43,19 @@ def fetch_session_task(self, session_id, request_user_id):
         provider = get_provider(session.provider_name)
         result = provider.fetch(session.identifier)
         if result is None:
-            raise ProviderReturnedNothing(
-                f"Provider {session.provider_name} returned None for "
-                f"{session.identifier}"
-            )
+            # Oczekiwany failure: dostawca nie zna identyfikatora.
+            # NIE jest to bug naszego kodu — nie raise, żeby Celery nie
+            # logował ERROR-a ani @task_failure.connect nie zgłaszał do
+            # Rollbara. Status sesji wystarczy do pokazania user-owi
+            # komunikatu w widoku statusu.
+            session.status = ImportSession.Status.IMPORT_FAILED
+            session.last_failed_stage = "fetch"
+            session.last_error_message = user_safe_message(
+                ProviderReturnedNothing(), task_kind="fetch"
+            )[:255]
+            session.celery_task_id = ""
+            session.save()
+            return
 
         report_progress(self, "create_session", stages=FETCH_STAGES)
         _store_normalized_data(session, result)
