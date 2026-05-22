@@ -331,6 +331,43 @@ class AuthorsView(ImporterPermissionMixin, View):
         return _render_authors_full(request, session)
 
 
+class AuthorRowView(ImporterPermissionMixin, View):
+    """Zwraca normalny (view) wiersz autora — używany jako cancel
+    po otwarciu inline-edit, żeby zwinąć formularz z powrotem do widoku.
+    """
+
+    def get(self, request, session_id, author_id):
+        session = get_object_or_404(ImportSession, pk=session_id)
+        imported_author = get_object_or_404(
+            ImportedAuthor, pk=author_id, session=session
+        )
+        return render(
+            request,
+            "importer_publikacji/partials/author_row.html",
+            {"session": session, "author": imported_author},
+        )
+
+
+class AuthorEditFormView(ImporterPermissionMixin, View):
+    """Zwraca wiersz autora w trybie inline-edit (3 select2 + Save/Cancel).
+
+    Klient (hx-get) zastępuje tym wierszem normalny wiersz. Po submicie
+    formularz POSTuje do ``author-match`` które przywraca normalny widok
+    przez ten sam mechanizm hx-swap=outerHTML.
+    """
+
+    def get(self, request, session_id, author_id):
+        session = get_object_or_404(ImportSession, pk=session_id)
+        imported_author = get_object_or_404(
+            ImportedAuthor, pk=author_id, session=session
+        )
+        return render(
+            request,
+            "importer_publikacji/partials/author_row_edit.html",
+            {"session": session, "author": imported_author},
+        )
+
+
 class AuthorMatchView(ImporterPermissionMixin, View):
     """Aktualizacja dopasowania pojedynczego autora."""
 

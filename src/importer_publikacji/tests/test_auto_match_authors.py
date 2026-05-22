@@ -109,3 +109,56 @@ def test_render_author_row_z_dropdownem_kandydatow(session, rf):
     # Tylko alternatywny kandydat (nie matched_autor) ma hidden input z pk
     bez_orcid_pk = imported.candidates.exclude(autor=z_orcid).get().autor.pk
     assert f'name="autor" value="{bez_orcid_pk}"' in html
+
+
+@pytest.mark.django_db
+def test_author_edit_form_view_zwraca_inline_form(session, importer_client):
+    """GET author-edit-form renderuje wiersz w trybie edit z 3 select2."""
+    from django.urls import reverse
+
+    autor = baker.make(Autor, imiona="Jan", nazwisko="Kowalski")
+    imp = baker.make(
+        ImportedAuthor,
+        session=session,
+        order=0,
+        family_name="Kowalski",
+        given_name="Jan",
+        matched_autor=autor,
+    )
+    url = reverse(
+        "importer_publikacji:author-edit-form",
+        args=[session.pk, imp.pk],
+    )
+    response = importer_client.get(url)
+    assert response.status_code == 200
+    html = response.content.decode()
+    assert "inline-autor" in html
+    assert "inline-jednostka" in html
+    assert "inline-dyscyplina" in html
+    assert "Anuluj edycję" in html
+
+
+@pytest.mark.django_db
+def test_author_row_view_zwraca_normalny_wiersz(session, importer_client):
+    """GET author-row renderuje normalny widok (cancel inline-edit)."""
+    from django.urls import reverse
+
+    autor = baker.make(Autor, imiona="Jan", nazwisko="Kowalski")
+    imp = baker.make(
+        ImportedAuthor,
+        session=session,
+        order=0,
+        family_name="Kowalski",
+        given_name="Jan",
+        matched_autor=autor,
+    )
+    url = reverse(
+        "importer_publikacji:author-row",
+        args=[session.pk, imp.pk],
+    )
+    response = importer_client.get(url)
+    assert response.status_code == 200
+    html = response.content.decode()
+    # Normalny wiersz — z linkiem do admina (↗) + edit button
+    assert "btn-edit-author" in html
+    assert "↗" in html

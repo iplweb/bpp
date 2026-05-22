@@ -1,4 +1,42 @@
 {% load static %}
+<style>
+/* Tabela autorów — szerszą kolumnę "Autor w BPP / jednostka" mamy
+   dzięki temu że ORCID i Źródło dyscypliny wpadły pod główne pola. */
+#authors-table td.cell-autor-jednostka { line-height: 1.4; }
+
+/* Dropdown kandydatów: każdy klikalny element wygląda klikalnie. */
+.candidates-list { margin: 0.25rem 0 0 0.5rem; padding: 0; }
+.candidate-row {
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+}
+.candidate-row:hover { background-color: #f0f0f0; }
+.candidate-selected { background-color: #e8f4ff; }
+.candidate-button {
+    padding: 0 !important;
+    margin: 0 !important;
+    text-align: left;
+    color: inherit !important;
+    background: transparent !important;
+}
+.candidate-button:hover { color: #1779ba !important; }
+
+/* Wiersz tabeli zachowuje jasnoszare tło gdy details w środku jest
+   rozwinięty — bez tego foundation .hover gubi style po DOM toggle. */
+#authors-table tbody tr.row-details-open > td {
+    background-color: #fafafa;
+}
+
+/* Inline edit cell: 3 select2 obok siebie + przyciski Save/Cancel. */
+.inline-edit-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr auto;
+    gap: 0.5rem;
+    align-items: end;
+}
+.inline-edit-grid label { margin: 0; font-size: 0.85rem; }
+.inline-edit-actions { display: flex; gap: 0.25rem; }
+</style>
 <div class="callout">
     <h4>
         <span class="fi-torsos-all"></span>
@@ -77,14 +115,12 @@
     <table class="hover" id="authors-table">
         <thead>
             <tr>
-                <th>#</th>
+                <th style="width:3rem">#</th>
                 <th>Autor (dane dostawcy)</th>
-                <th>ORCID</th>
-                <th>Dopasowanie</th>
-                <th>Autor w BPP / jednostka</th>
+                <th style="width:7rem">Dopasowanie</th>
+                <th style="width:40%">Autor w BPP / jednostka</th>
                 <th>Dyscyplina</th>
-                <th>Źródło dyscypliny</th>
-                <th>Akcje</th>
+                <th style="width:12rem">Akcje</th>
             </tr>
         </thead>
         <tbody>
@@ -385,7 +421,7 @@ $(document).ready(function() {
 
         var $autor = $('#modal-autor-select');
         $autor.select2({
-            dropdownParent: $modal,
+            dropdownParent: $('body'),
             ajax: {
                 url: $autor.data('url'),
                 dataType: 'json',
@@ -405,7 +441,7 @@ $(document).ready(function() {
 
         var $jednostka = $('#modal-jednostka-select');
         $jednostka.select2({
-            dropdownParent: $modal,
+            dropdownParent: $('body'),
             ajax: {
                 url: $jednostka.data('url'),
                 dataType: 'json',
@@ -425,7 +461,7 @@ $(document).ready(function() {
 
         var $dyscyplina = $('#modal-dyscyplina-select');
         $dyscyplina.select2({
-            dropdownParent: $modal,
+            dropdownParent: $('body'),
             placeholder: 'Wybierz dyscyplinę...',
             allowClear: true,
             language: 'pl'
@@ -534,6 +570,113 @@ $(document).ready(function() {
         '.author-row-clickable form',
         function(e) { e.stopPropagation(); }
     );
+
+    // Toggle wiersza tabeli gdy <details> kandydatów jest rozwinięty —
+    // wymusza spójne tło niezależnie od foundation hover state.
+    $(document).off('toggle.authorRow', '.candidates-dropdown');
+    $(document).on(
+        'toggle.authorRow',
+        '.candidates-dropdown',
+        function() {
+            var $tr = $(this).closest('tr.author-row-clickable');
+            $tr.toggleClass(
+                'row-details-open',
+                this.open
+            );
+        }
+    );
+
+    // Po wykonaniu inline-edit GET/POST inicjuj select2 w nowym wierszu.
+    $(document).off('htmx:afterSwap.authorRow');
+    $(document).on(
+        'htmx:afterSwap.authorRow',
+        function(e) {
+            var $row = $(e.target).closest(
+                'tr.author-row-clickable'
+            );
+            initInlineEditSelect2($row);
+        }
+    );
+
+    function initInlineEditSelect2($row) {
+        var $autor = $row.find('.inline-autor');
+        var $jed = $row.find('.inline-jednostka');
+        var $dys = $row.find('.inline-dyscyplina');
+        if (!$autor.length) return;
+
+        $autor.select2({
+            dropdownParent: $('body'),
+            ajax: {
+                url: $autor.data('url'),
+                dataType: 'json',
+                delay: 300,
+                data: function(p) { return {q: p.term}; },
+                processResults: function(d) { return d; }
+            },
+            minimumInputLength: 2,
+            placeholder: 'Szukaj autora...',
+            allowClear: true,
+            language: 'pl',
+            width: '100%'
+        });
+        $jed.select2({
+            dropdownParent: $('body'),
+            ajax: {
+                url: $jed.data('url'),
+                dataType: 'json',
+                delay: 300,
+                data: function(p) { return {q: p.term}; },
+                processResults: function(d) { return d; }
+            },
+            minimumInputLength: 2,
+            placeholder: 'Szukaj jednostki...',
+            allowClear: true,
+            language: 'pl',
+            width: '100%'
+        });
+        $dys.select2({
+            dropdownParent: $('body'),
+            placeholder: 'Wybierz dyscyplinę...',
+            allowClear: true,
+            language: 'pl',
+            width: '100%'
+        });
+        // Załaduj dyscypliny dla wybranego autora przy starcie i przy
+        // każdej zmianie autora.
+        function loadDys() {
+            var aid = $autor.val();
+            var cur = $dys.val();
+            $dys.empty().append(
+                '<option value="">---</option>'
+            );
+            if (aid && rok) {
+                $.ajax({
+                    url: $dys.data('url'),
+                    data: {forward: JSON.stringify(
+                        {autor: aid, rok: rok}
+                    )},
+                    dataType: 'json'
+                }).done(function(d) {
+                    d.results.forEach(function(item) {
+                        if (item.id) {
+                            var sel = String(item.id)
+                                === String(cur);
+                            $dys.append(
+                                '<option value="'
+                                + item.id + '"'
+                                + (sel ? ' selected' : '')
+                                + '>' + item.text
+                                + '</option>'
+                            );
+                        }
+                    });
+                    $dys.trigger('change.select2');
+                });
+            }
+        }
+        loadDys();
+        $autor.on('change', loadDys);
+    }
 
     // Open modal: row click or Edytuj button
     function openAuthorModal($row) {
