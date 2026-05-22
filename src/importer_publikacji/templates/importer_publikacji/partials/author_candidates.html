@@ -4,32 +4,30 @@
 {# Kontekst: candidates = lista ImportedAuthor_Candidate (z prefetch). #}
 <details class="candidates-dropdown">
     <summary>
-        <small class="label warning" style="cursor:pointer">
+        <span class="label warning" style="cursor:pointer">
             {{ candidates|length }} kandydatów
-        </small>
+        </span>
     </summary>
     <ul class="no-bullet" style="margin-top:0.25rem">
         {% for c in candidates %}
             <li>
                 {% if c.autor == author.matched_autor %}
-                    <small>
-                        <strong>▶ {{ c.autor }}</strong>
-                        {% if c.autor.aktualna_jednostka %}
-                            · <em>{{ c.autor.aktualna_jednostka }}</em>
-                        {% endif %}
-                        <span class="label primary tiny">wybrany</span>
-                        <span class="label secondary tiny">
-                            {{ c.pewnosc|floatformat:2 }}
+                    <strong>▶ {{ c.autor }}</strong>
+                    {% if c.autor.aktualna_jednostka %}
+                        · <em>{{ c.autor.aktualna_jednostka }}</em>
+                    {% endif %}
+                    <span class="label primary">wybrany</span>
+                    <span class="label secondary">
+                        {{ c.pewnosc|floatformat:2 }}
+                    </span>
+                    {% if c.publikacji_count %}
+                        <span class="label secondary">
+                            {{ c.publikacji_count }} publ.
                         </span>
-                        {% if c.publikacji_count %}
-                            <span class="label secondary tiny">
-                                {{ c.publikacji_count }} publ.
-                            </span>
-                        {% endif %}
-                        {% if c.autor.orcid %}
-                            <span class="label success tiny">ORCID</span>
-                        {% endif %}
-                    </small>
+                    {% endif %}
+                    {% if c.autor.orcid %}
+                        <span class="label success">ORCID</span>
+                    {% endif %}
                 {% else %}
                     <form hx-post="{% url 'importer_publikacji:author-match' session.pk author.pk %}"
                           hx-target="#author-row-{{ author.pk }}"
@@ -38,25 +36,23 @@
                         {% csrf_token %}
                         <input type="hidden" name="autor" value="{{ c.autor.pk }}">
                         <button type="submit"
-                                class="button tiny clear"
+                                class="button clear"
                                 style="padding:0;margin:0;text-align:left">
-                            <small>
-                                {{ c.autor }}
-                                {% if c.autor.aktualna_jednostka %}
-                                    · <em>{{ c.autor.aktualna_jednostka }}</em>
-                                {% endif %}
-                                <span class="label secondary tiny">
-                                    {{ c.pewnosc|floatformat:2 }}
+                            {{ c.autor }}
+                            {% if c.autor.aktualna_jednostka %}
+                                · <em>{{ c.autor.aktualna_jednostka }}</em>
+                            {% endif %}
+                            <span class="label secondary">
+                                {{ c.pewnosc|floatformat:2 }}
+                            </span>
+                            {% if c.publikacji_count %}
+                                <span class="label secondary">
+                                    {{ c.publikacji_count }} publ.
                                 </span>
-                                {% if c.publikacji_count %}
-                                    <span class="label secondary tiny">
-                                        {{ c.publikacji_count }} publ.
-                                    </span>
-                                {% endif %}
-                                {% if c.autor.orcid %}
-                                    <span class="label success tiny">ORCID</span>
-                                {% endif %}
-                            </small>
+                            {% endif %}
+                            {% if c.autor.orcid %}
+                                <span class="label success">ORCID</span>
+                            {% endif %}
                         </button>
                     </form>
                 {% endif %}
