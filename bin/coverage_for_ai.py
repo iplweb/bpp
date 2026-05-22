@@ -64,10 +64,7 @@ def compact_ranges(line_numbers: list[int]) -> str:
 def should_skip(path: str, num_statements: int) -> bool:
     if any(needle in path for needle in SKIP_SUBSTRINGS):
         return True
-    if (
-        Path(path).name == "__init__.py"
-        and num_statements < TRIVIAL_INIT_MAX_STMTS
-    ):
+    if Path(path).name == "__init__.py" and num_statements < TRIVIAL_INIT_MAX_STMTS:
         return True
     return False
 
@@ -84,8 +81,7 @@ def main() -> int:
         "--threshold",
         type=float,
         default=90.0,
-        help="Only report files with coverage strictly below this %% "
-        "(default: 90.0)",
+        help="Only report files with coverage strictly below this %% (default: 90.0)",
     )
     parser.add_argument(
         "--limit",
