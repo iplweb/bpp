@@ -1,0 +1,48 @@
+{# Sekcja kandydatów w modalu edycji autora — renderowana przez #}
+{# AuthorCandidatesModalView (GET) i wstrzykiwana do modala przez JS. #}
+{# Kontekst: candidates = lista ImportedAuthor_Candidate, author = #}
+{# ImportedAuthor (do podświetlenia obecnie wybranego). #}
+{% if candidates %}
+    <p style="margin:0.5rem 0 0.25rem;font-weight:bold">
+        Znalezieni kandydaci ({{ candidates|length }}) —
+        kliknij, aby wybrać:
+    </p>
+    <ul class="no-bullet modal-candidates-list">
+        {% for c in candidates %}
+            <li class="modal-candidate-row{% if c.autor == author.matched_autor %} modal-candidate-selected{% endif %}">
+                <button type="button"
+                        class="modal-candidate-button"
+                        data-autor-pk="{{ c.autor.pk }}"
+                        data-autor-display="{{ c.autor }}"
+                        data-jednostka-pk="{{ c.autor.aktualna_jednostka.pk|default:'' }}"
+                        data-jednostka-display="{{ c.autor.aktualna_jednostka|default:'' }}">
+                    {% if c.autor == author.matched_autor %}
+                        <strong>▶ {{ c.autor }}</strong>
+                    {% else %}
+                        › {{ c.autor }}
+                    {% endif %}
+                    {% if c.autor.aktualna_jednostka %}
+                        · <em>{{ c.autor.aktualna_jednostka }}</em>
+                    {% endif %}
+                    <span class="label secondary">
+                        {{ c.pewnosc|floatformat:2 }}
+                    </span>
+                    <span class="label secondary">
+                        {{ c.powod }}
+                    </span>
+                    {% if c.publikacji_count %}
+                        <span class="label secondary">
+                            {{ c.publikacji_count }} publ.
+                        </span>
+                    {% endif %}
+                    {% if c.autor.orcid %}
+                        <span class="label success">ORCID</span>
+                    {% endif %}
+                    {% if c.autor.pbn_uid_id %}
+                        <span class="label success">PBN</span>
+                    {% endif %}
+                </button>
+            </li>
+        {% endfor %}
+    </ul>
+{% endif %}

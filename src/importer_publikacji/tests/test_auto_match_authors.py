@@ -72,22 +72,17 @@ def test_lech_maranda_ambiguity_sugeruje_z_orcid(session):
 
 
 @pytest.mark.django_db
-def test_render_author_row_z_dropdownem_kandydatow(session, rf):
-    """Template author_row renderuje dropdown gdy są >1 kandydatów,
-    pokazuje aktualna_jednostka per kandydat i wbudowane info w głównej
-    komórce (po połączeniu kolumn Autor + Jednostka)."""
+def test_render_author_row_pokazuje_badge_kandydatow(session, rf):
+    """Wiersz pokazuje badge 'X kandydatów' gdy są >1 — lista jest w
+    modalu, nie inline."""
     from django.template.loader import render_to_string
 
-    from bpp.models import Jednostka
-
-    j_lekarska = baker.make(Jednostka, nazwa="Wydz. Lekarski-PROBE")
     z_orcid = baker.make(
         Autor,
         imiona="Ewa",
         nazwisko="Lech-Marańda",
         orcid="0000-0001-2345-6789",
     )
-    z_orcid.dodaj_jednostke(j_lekarska)  # ustawia aktualna_jednostka
     baker.make(Autor, imiona="Ewa", nazwisko="Lech-Maranda")
 
     _auto_match_authors(
@@ -99,66 +94,64 @@ def test_render_author_row_z_dropdownem_kandydatow(session, rf):
         "importer_publikacji/partials/author_row.html",
         {"session": session, "author": imported},
     )
+    # Badge pokazuje liczbę kandydatów (link do modala)
     assert "2 kandydatów" in html
+    # Wybrany autor widoczny w komórce "Autor w BPP"
     assert str(z_orcid) in html
-    assert "ORCID" in html
-    # Jednostka pokazana w głównej komórce (połączone kolumny)
-    assert "Wydz. Lekarski-PROBE" in html
-    # hx-post celuje w endpoint author-match (URL kończy się na /match/)
-    assert "/match/" in html
-    # Tylko alternatywny kandydat (nie matched_autor) ma hidden input z pk
-    bez_orcid_pk = imported.candidates.exclude(autor=z_orcid).get().autor.pk
-    assert f'name="autor" value="{bez_orcid_pk}"' in html
-
-
-@pytest.mark.django_db
-def test_author_edit_form_view_zwraca_inline_form(session, importer_client):
-    """GET author-edit-form renderuje wiersz w trybie edit z 3 select2."""
-    from django.urls import reverse
-
-    autor = baker.make(Autor, imiona="Jan", nazwisko="Kowalski")
-    imp = baker.make(
-        ImportedAuthor,
-        session=session,
-        order=0,
-        family_name="Kowalski",
-        given_name="Jan",
-        matched_autor=autor,
-    )
-    url = reverse(
-        "importer_publikacji:author-edit-form",
-        args=[session.pk, imp.pk],
-    )
-    response = importer_client.get(url)
-    assert response.status_code == 200
-    html = response.content.decode()
-    assert "inline-autor" in html
-    assert "inline-jednostka" in html
-    assert "inline-dyscyplina" in html
-    assert "Anuluj edycję" in html
-
-
-@pytest.mark.django_db
-def test_author_row_view_zwraca_normalny_wiersz(session, importer_client):
-    """GET author-row renderuje normalny widok (cancel inline-edit)."""
-    from django.urls import reverse
-
-    autor = baker.make(Autor, imiona="Jan", nazwisko="Kowalski")
-    imp = baker.make(
-        ImportedAuthor,
-        session=session,
-        order=0,
-        family_name="Kowalski",
-        given_name="Jan",
-        matched_autor=autor,
-    )
-    url = reverse(
-        "importer_publikacji:author-row",
-        args=[session.pk, imp.pk],
-    )
-    response = importer_client.get(url)
-    assert response.status_code == 200
-    html = response.content.decode()
-    # Normalny wiersz — z linkiem do admina (↗) + edit button
+    # Edytuj button do otwarcia modala
     assert "btn-edit-author" in html
-    assert "↗" in html
+    # Dropdown z kandydatami NIE jest już w wierszu (lista jest w modalu)
+    assert "modal-candidate-button" not in html
+    assert "candidates-dropdown" not in html
+
+
+@pytest.mark.django_db
+def test_author_info_view_zwraca_json(session, importer_client):
+    """GET author-info zwraca JSON z pk/slug/orcid/pbn_uid_id autora BPP."""
+    from django.urls import reverse
+
+    autor = baker.make(
+        Autor,
+        imiona="Jan",
+        nazwisko="Kowalski",
+        orcid="0000-0001-2345-6789",
+    )
+    url = reverse(
+        "importer_publikacji:author-info",
+        args=[session.pk, autor.pk],
+    )
+    response = importer_client.get(url)
+    assert response.status_code == 200
+    data = response.json()
+    assert data["pk"] == autor.pk
+    assert data["orcid"] == "0000-0001-2345-6789"
+    assert "slug" in data
+    assert "display" in data
+
+
+@pytest.mark.django_db
+def test_author_candidates_modal_view_renderuje_kandydatow(
+    session, importer_client
+):
+    """GET author-candidates-modal zwraca HTML partial z listą kandydatów."""
+    from django.urls import reverse
+
+    a1 = baker.make(Autor, imiona="Ewa", nazwisko="Lech-Marańda")
+    a2 = baker.make(Autor, imiona="Ewa", nazwisko="Lech-Maranda")
+    _auto_match_authors(
+        session, [{"given": "Eva", "family": "Lech-Maranda"}], year=None
+    )
+    imp = session.authors.get()
+
+    url = reverse(
+        "importer_publikacji:author-candidates-modal",
+        args=[session.pk, imp.pk],
+    )
+    response = importer_client.get(url)
+    assert response.status_code == 200
+    html = response.content.decode()
+    assert "modal-candidate-button" in html
+    assert str(a1) in html
+    assert str(a2) in html
+    # data-autor-pk pozwala JS-owi przepiąć select2
+    assert f'data-autor-pk="{a1.pk}"' in html or f"data-autor-pk='{a1.pk}'" in html

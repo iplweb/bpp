@@ -10,11 +10,10 @@
     data-dyscyplina-pk="{{ author.matched_dyscyplina.pk|default:'' }}"
     data-dyscyplina-name="{{ author.matched_dyscyplina|default:'' }}">
     <td>{{ author.order|add:1 }}</td>
+    <td>{{ author.display_name }}</td>
     <td>
-        {{ author.display_name }}
         {% if author.orcid %}
-            <br>
-            <small>ORCID: {{ author.orcid }}</small>
+            <small>{{ author.orcid }}</small>
         {% endif %}
     </td>
     <td>
@@ -27,52 +26,49 @@
         {% else %}
             <span class="label alert">niedopasowany</span>
         {% endif %}
-    </td>
-    <td class="cell-autor-jednostka">
-        {% if author.matched_autor %}
-            {{ author.matched_autor }}
-            <a href="{% url 'admin:bpp_autor_change' author.matched_autor.pk %}"
-               target="_blank"
-               title="Otwórz w adminie BPP (ID {{ author.matched_autor.pk }})">↗</a>
-            <button type="button"
-                    class="button tiny secondary btn-edit-author-inline"
-                    title="Edytuj autora/jednostkę/dyscyplinę bezpośrednio"
-                    hx-get="{% url 'importer_publikacji:author-edit-form' session.pk author.pk %}"
-                    hx-target="#author-row-{{ author.pk }}"
-                    hx-swap="outerHTML">
-                <span class="fi-pencil"></span>
-            </button>
-            {% if author.matched_jednostka %}
+        {% with candidates_count=author.candidates.all|length %}
+            {% if candidates_count > 1 %}
                 <br>
-                ↳ {{ author.matched_jednostka }}
-            {% endif %}
-        {% else %}
-            <em>-</em>
-        {% endif %}
-        {% with candidates=author.candidates.all %}
-            {% if candidates|length > 1 %}
-                {% include "importer_publikacji/partials/author_candidates.html" %}
+                <span class="label warning"
+                      title="W modalu edycji jest {{ candidates_count }} kandydatów do wyboru">
+                    {{ candidates_count }} kandydatów
+                </span>
             {% endif %}
         {% endwith %}
     </td>
     <td>
-        {% if author.matched_dyscyplina %}
-            {{ author.matched_dyscyplina }}
-            {% if author.dyscyplina_source %}
-                <br>
-                <small>
-                    źródło: {{ author.get_dyscyplina_source_display }}
-                </small>
-            {% endif %}
+        {% if author.matched_autor %}
+            {{ author.matched_autor }}
         {% else %}
             <em>-</em>
+        {% endif %}
+    </td>
+    <td>
+        {% if author.matched_jednostka %}
+            <small>{{ author.matched_jednostka }}</small>
+        {% else %}
+            <em>-</em>
+        {% endif %}
+    </td>
+    <td>
+        {% if author.matched_dyscyplina %}
+            <small>{{ author.matched_dyscyplina }}</small>
+        {% else %}
+            <em>-</em>
+        {% endif %}
+    </td>
+    <td>
+        {% if author.dyscyplina_source %}
+            <small>
+                {{ author.get_dyscyplina_source_display }}
+            </small>
         {% endif %}
     </td>
     <td>
         <button type="button"
                 class="button small secondary btn-edit-author">
             <span class="fi-pencil"></span>
-            Edytuj (modal)
+            Edytuj
         </button>
         {% if author.orcid and author.matched_autor and not author.matched_autor.orcid %}
             <form style="display:inline"
