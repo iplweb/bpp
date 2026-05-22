@@ -81,8 +81,7 @@
                 <th>Autor (dane dostawcy)</th>
                 <th>ORCID</th>
                 <th>Dopasowanie</th>
-                <th>Autor w BPP</th>
-                <th>Jednostka</th>
+                <th>Autor w BPP / jednostka</th>
                 <th>Dyscyplina</th>
                 <th>Źródło dyscypliny</th>
                 <th>Akcje</th>
@@ -163,7 +162,7 @@
 {# ===== Modal edycji autora (Foundation Reveal) ===== #}
 <div class="reveal" id="author-edit-modal" data-reveal
      data-close-on-click="false"
-     style="height:70vh;overflow-y:auto;top:15vh">
+     style="height:auto;max-height:90vh;overflow-y:auto;top:5vh;bottom:auto">
     <h5 id="modal-author-title"></h5>
     <form id="modal-author-form">
         {% csrf_token %}
@@ -631,21 +630,10 @@ $(document).ready(function() {
         $modal.foundation('open');
     }
 
-    // Click on row
-    $(document).off(
-        'click.authorModal',
-        '.author-row-clickable'
-    );
-    $(document).on(
-        'click.authorModal',
-        '.author-row-clickable',
-        function() {
-            openAuthorModal($(this));
-        }
-    );
-
-    // Click on Edytuj button (stop propagation
-    // to avoid double-open from row click)
+    // Edytuj: jedyna ścieżka do otwarcia modala. Klik w wiersz
+    // jest świadomie wyłączony — wiersz zawiera inne klikalne
+    // elementy (dropdown kandydatów, formy hx-post), które
+    // kolidowały z bubblowaniem do row-handlera.
     $(document).off(
         'click.authorModal',
         '.author-row-clickable .btn-edit-author'

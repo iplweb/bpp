@@ -251,9 +251,9 @@ def _authors_context(request, session):
 
     from ..models import ImportedAuthor_Candidate
 
-    candidates_qs = ImportedAuthor_Candidate.objects.select_related("autor").order_by(
-        "-pewnosc", "-publikacji_count"
-    )
+    candidates_qs = ImportedAuthor_Candidate.objects.select_related(
+        "autor", "autor__aktualna_jednostka"
+    ).order_by("-pewnosc", "-publikacji_count")
     all_authors = (
         session.authors.select_related(
             "matched_autor",

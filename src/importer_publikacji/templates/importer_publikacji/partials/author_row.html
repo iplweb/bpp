@@ -1,6 +1,5 @@
 <tr id="author-row-{{ author.pk }}"
     class="author-row-clickable"
-    style="cursor:pointer"
     data-author-id="{{ author.pk }}"
     data-author-name="{{ author.display_name }}"
     data-match-url="{% url 'importer_publikacji:author-match' session.pk author.pk %}"
@@ -31,6 +30,12 @@
     <td>
         {% if author.matched_autor %}
             {{ author.matched_autor }}
+            {% if author.matched_jednostka %}
+                <br>
+                <small class="secondary-text">
+                    ↳ {{ author.matched_jednostka }}
+                </small>
+            {% endif %}
         {% else %}
             <em>-</em>
         {% endif %}
@@ -39,13 +44,6 @@
                 {% include "importer_publikacji/partials/author_candidates.html" %}
             {% endif %}
         {% endwith %}
-    </td>
-    <td>
-        {% if author.matched_jednostka %}
-            <small>{{ author.matched_jednostka }}</small>
-        {% else %}
-            <em>-</em>
-        {% endif %}
     </td>
     <td>
         {% if author.matched_dyscyplina %}

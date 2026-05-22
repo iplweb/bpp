@@ -73,15 +73,21 @@ def test_lech_maranda_ambiguity_sugeruje_z_orcid(session):
 
 @pytest.mark.django_db
 def test_render_author_row_z_dropdownem_kandydatow(session, rf):
-    """Template author_row renderuje dropdown gdy są >1 kandydatów."""
+    """Template author_row renderuje dropdown gdy są >1 kandydatów,
+    pokazuje aktualna_jednostka per kandydat i wbudowane info w głównej
+    komórce (po połączeniu kolumn Autor + Jednostka)."""
     from django.template.loader import render_to_string
 
+    from bpp.models import Jednostka
+
+    j_lekarska = baker.make(Jednostka, nazwa="Wydz. Lekarski-PROBE")
     z_orcid = baker.make(
         Autor,
         imiona="Ewa",
         nazwisko="Lech-Marańda",
         orcid="0000-0001-2345-6789",
     )
+    z_orcid.dodaj_jednostke(j_lekarska)  # ustawia aktualna_jednostka
     baker.make(Autor, imiona="Ewa", nazwisko="Lech-Maranda")
 
     _auto_match_authors(
@@ -96,6 +102,8 @@ def test_render_author_row_z_dropdownem_kandydatow(session, rf):
     assert "2 kandydatów" in html
     assert str(z_orcid) in html
     assert "ORCID" in html
+    # Jednostka pokazana w głównej komórce (połączone kolumny)
+    assert "Wydz. Lekarski-PROBE" in html
     # hx-post celuje w endpoint author-match (URL kończy się na /match/)
     assert "/match/" in html
     # Tylko alternatywny kandydat (nie matched_autor) ma hidden input z pk

@@ -14,6 +14,9 @@
                 {% if c.autor == author.matched_autor %}
                     <small>
                         <strong>▶ {{ c.autor }}</strong>
+                        {% if c.autor.aktualna_jednostka %}
+                            · <em>{{ c.autor.aktualna_jednostka }}</em>
+                        {% endif %}
                         <span class="label primary tiny">wybrany</span>
                         <span class="label secondary tiny">
                             {{ c.pewnosc|floatformat:2 }}
@@ -39,6 +42,9 @@
                                 style="padding:0;margin:0;text-align:left">
                             <small>
                                 {{ c.autor }}
+                                {% if c.autor.aktualna_jednostka %}
+                                    · <em>{{ c.autor.aktualna_jednostka }}</em>
+                                {% endif %}
                                 <span class="label secondary tiny">
                                     {{ c.pewnosc|floatformat:2 }}
                                 </span>
