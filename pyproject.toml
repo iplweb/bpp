@@ -364,6 +364,35 @@ extension = "html"
 #   D018/J018 - django/jinja link patterns
 ignore = "H006,H008,H013,H014,H019,H021,H023,H030,H031,T001,T002,T003,D018,J018"
 
+# Coverage.py config — uzywany TYLKO lokalnie przez `make coverage-ai`.
+# CI nie uruchamia `pytest --cov`, wiec ten config jest inertny w pipeline.
+[tool.coverage.run]
+branch = true
+parallel = true
+concurrency = ["multiprocessing"]
+source = ["src"]
+omit = [
+    "*/migrations/*",
+    "*/tests/*",
+    "*/test_*.py",
+    "*/__pycache__/*",
+    "*/site-packages/*",
+    "src/django_bpp/staticroot/*",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+    "if TYPE_CHECKING:",
+    "if typing.TYPE_CHECKING:",
+]
+precision = 1
+skip_empty = true
+
 [build-system]
 requires = ["setuptools>=82.0.1", "wheel"]
 build-backend = "setuptools.build_meta"
@@ -397,6 +426,7 @@ dev = [
     "pytest-django>=4.12.0",
     "pytest-httpserver>=1.1.5",
     "werkzeug>=3.1.6", # Dependabot: transitive via pytest-httpserver, bump for safe_join() fixes
+    "pytest-cov>=7.1.0",  # lokalnie do `make coverage-ai`; CI nie wola --cov
     "pytest-mock>=3.7.0",
     "pytest-xdist>=2.3.0",
     "pytest-shard>=0.1.2",

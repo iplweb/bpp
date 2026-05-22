@@ -335,6 +335,25 @@ uv-sync: ## uv sync --all-extras (synchronizacja zależności Pythona)
 
 tests: clean-pycache uv-sync tests-without-playwright tests-only-playwright js-tests ## Pełny test suite (Playwright + JS)
 
+# Wygeneruj raport pokrycia w formacie zoptymalizowanym pod AI/LLM:
+# sortowany od najgorszego, z zakresami linii missing, bez śmieci
+# (migrations, tests, __init__.py). Wyjście leci na stdout — agent pipuje
+# do swojego kontekstu albo zapisuje (`make coverage-ai > /tmp/cov.txt`).
+# Domyślnie pomija playwright (długie). Override: COVERAGE_PYTEST_ARGS='-m ""'.
+COVERAGE_PYTEST_ARGS ?= -m "not playwright"
+COVERAGE_THRESHOLD ?= 90
+COVERAGE_LIMIT ?= 30
+
+coverage-ai: ## Raport pokrycia dla AI (sortowane ascending, top N najgorszych)
+	@rm -f .coverage .coverage.* coverage.json
+	uv run pytest -n auto $(COVERAGE_PYTEST_ARGS) \
+		--cov=src --cov-branch --cov-report=
+	uv run coverage json -o coverage.json --quiet
+	@echo ""
+	@uv run python bin/coverage_for_ai.py \
+		--threshold $(COVERAGE_THRESHOLD) \
+		--limit $(COVERAGE_LIMIT)
+
 # Same as `tests` but forces a full DB rebuild from scratch instead of
 # reusing the schema produced by the baseline + delta migrate. Use when
 # you suspect schema corruption or need to validate migrations from zero.
