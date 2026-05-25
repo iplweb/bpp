@@ -25,10 +25,10 @@
                         · <em>{{ c.autor.aktualna_jednostka }}</em>
                     {% endif %}
                     <span class="label secondary">
-                        {{ c.pewnosc|floatformat:2 }}
+                        {{ c.pewnosc_procent }}%
                     </span>
                     <span class="label secondary">
-                        {{ c.powod }}
+                        {{ c.powod_display }}
                     </span>
                     {% if c.publikacji_count %}
                         <span class="label secondary">

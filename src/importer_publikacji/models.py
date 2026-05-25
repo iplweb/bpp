@@ -246,6 +246,17 @@ class ImportedAuthor(models.Model):
         return " ".join(p for p in parts if p)
 
 
+# Mapowanie technicznej etykiety strategii dopasowania na user-friendly
+# tekst pokazywany w UI. Trzymane w models.py, nie w autor.py, żeby
+# template-y (które importują tylko model) nie musiały sięgać do
+# import_common.core.
+POWOD_DISPLAY = {
+    "iexact": "dokładne",
+    "iexact_pierwsze_imie": "pierwsze imię",
+    "polish_english": "wariant PL/EN",
+}
+
+
 class ImportedAuthor_Candidate(models.Model):
     """Kandydat na dopasowanie dla ``ImportedAuthor`` zwrócony przez
     ``znajdz_kandydatow_autora``.
@@ -278,4 +289,12 @@ class ImportedAuthor_Candidate(models.Model):
         unique_together = [("imported_author", "autor")]
 
     def __str__(self):
-        return f"{self.autor} ({self.pewnosc:.2f} / {self.powod})"
+        return f"{self.autor} ({self.pewnosc_procent}% / {self.powod_display})"
+
+    @property
+    def pewnosc_procent(self) -> int:
+        return int(round(self.pewnosc * 100))
+
+    @property
+    def powod_display(self) -> str:
+        return POWOD_DISPLAY.get(self.powod, self.powod)

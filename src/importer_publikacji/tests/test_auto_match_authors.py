@@ -72,9 +72,11 @@ def test_lech_maranda_ambiguity_sugeruje_z_orcid(session):
 
 
 @pytest.mark.django_db
-def test_render_author_row_pokazuje_badge_kandydatow(session, rf):
-    """Wiersz pokazuje badge 'X kandydatów' gdy są >1 — lista jest w
-    modalu, nie inline."""
+def test_render_author_row_pokazuje_orcid_i_badge_kandydatow(session, rf):
+    """Wiersz pokazuje ORCID wybranego autora pod nazwiskiem oraz badge
+    'X kandydatów' (oba w kolumnie 'Autor w BPP'). Kolumna 'Dopasowanie'
+    zostaje czysta — tylko status, żeby DataTables filter mógł
+    pogrupować po unikalnych wartościach."""
     from django.template.loader import render_to_string
 
     z_orcid = baker.make(
@@ -94,13 +96,17 @@ def test_render_author_row_pokazuje_badge_kandydatow(session, rf):
         "importer_publikacji/partials/author_row.html",
         {"session": session, "author": imported},
     )
-    # Badge pokazuje liczbę kandydatów (link do modala)
+    # Badge "X kandydatów" w komórce "Autor w BPP" (nie w kolumnie
+    # "Dopasowanie")
     assert "2 kandydatów" in html
-    # Wybrany autor widoczny w komórce "Autor w BPP"
+    # ORCID wybranego autora pod nazwiskiem
+    assert "0000-0001-2345-6789" in html
+    # Wybrany autor widoczny
     assert str(z_orcid) in html
-    # Edytuj button do otwarcia modala
+    # Edytuj button + klik na cały wiersz
     assert "btn-edit-author" in html
-    # Dropdown z kandydatami NIE jest już w wierszu (lista jest w modalu)
+    assert "author-row-clickable" in html
+    # Dropdown w wierszu nie istnieje (modal-based wybór)
     assert "modal-candidate-button" not in html
     assert "candidates-dropdown" not in html
 
@@ -130,9 +136,7 @@ def test_author_info_view_zwraca_json(session, importer_client):
 
 
 @pytest.mark.django_db
-def test_author_candidates_modal_view_renderuje_kandydatow(
-    session, importer_client
-):
+def test_author_candidates_modal_view_renderuje_kandydatow(session, importer_client):
     """GET author-candidates-modal zwraca HTML partial z listą kandydatów."""
     from django.urls import reverse
 
@@ -155,3 +159,8 @@ def test_author_candidates_modal_view_renderuje_kandydatow(
     assert str(a2) in html
     # data-autor-pk pozwala JS-owi przepiąć select2
     assert f'data-autor-pk="{a1.pk}"' in html or f"data-autor-pk='{a1.pk}'" in html
+    # Pewność pokazana jako procent (85%) zamiast 0.85,
+    # powód strategii user-friendly (wariant PL/EN) zamiast polish_english
+    assert "85%" in html
+    assert "wariant PL/EN" in html
+    assert "polish_english" not in html

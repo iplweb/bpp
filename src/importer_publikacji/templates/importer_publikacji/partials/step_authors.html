@@ -2,6 +2,7 @@
 <style>
 /* Sekcja kandydatów w modalu edycji autora — lista klikalnych
    wierszy z badge'ami; wybrany jest podświetlony. */
+.modal-candidates-section { padding-left: 1rem; }
 .modal-candidates-list { margin: 0.25rem 0 0; padding: 0; }
 .modal-candidate-row {
     padding: 0.5rem;
@@ -25,18 +26,30 @@
 }
 
 /* Linki do autora (admin/BPP/PBN/ORCID) — gdy wybrany jest autor. */
-.modal-author-links { margin: 0.5rem 0; }
+.modal-author-links {
+    margin: 0.5rem 0 0.75rem 1rem;
+}
 .modal-author-links a {
     display: inline-block;
     margin-right: 0.5rem;
-    padding: 0.1rem 0.4rem;
+    padding: 0.15rem 0.5rem;
     border: 1px solid #ccc;
     border-radius: 3px;
-    font-size: 0.85rem;
+    font-size: 0.9rem;
     text-decoration: none;
 }
 .modal-author-links a:hover {
     background-color: #f0f0f0;
+}
+
+/* Pola formularza w modalu — wcięcie z lewej i bold etykiety. */
+#modal-author-form > label {
+    padding-left: 1rem;
+    margin-bottom: 0.75rem;
+    font-weight: bold;
+}
+#modal-author-form > label > select {
+    font-weight: normal;
 }
 </style>
 <div class="callout">
@@ -209,7 +222,7 @@
     <h5 id="modal-author-title"></h5>
 
     {# Sekcja kandydatów — wstrzykiwana przez JS z author-candidates-modal #}
-    <div id="modal-candidates-section"></div>
+    <div id="modal-candidates-section" class="modal-candidates-section"></div>
 
     <form id="modal-author-form">
         {% csrf_token %}
@@ -592,30 +605,24 @@ $(document).ready(function() {
         if (!info || !info.pk) return;
         $links.append(
             '<a href="/admin/bpp/autor/' + info.pk + '/change/"'
-            + ' target="_blank">admin BPP</a>'
+            + ' target="_blank">otwórz w module redagowania</a>'
         );
-        if (info.slug) {
-            $links.append(
-                '<a href="/bpp/autor/' + info.slug + '/"'
-                + ' target="_blank">strona w BPP (prace)</a>'
-            );
-        } else {
-            $links.append(
-                '<a href="/bpp/autor/' + info.pk + '/"'
-                + ' target="_blank">strona w BPP (prace)</a>'
-            );
-        }
+        var slugPart = info.slug || info.pk;
+        $links.append(
+            '<a href="/bpp/autor/' + slugPart + '/"'
+            + ' target="_blank">otwórz stronę autora</a>'
+        );
         if (info.orcid) {
             $links.append(
                 '<a href="https://orcid.org/' + info.orcid + '"'
-                + ' target="_blank">ORCID</a>'
+                + ' target="_blank">strona ORCID</a>'
             );
         }
         if (info.pbn_uid_id) {
             $links.append(
                 '<a href="https://pbn.nauka.gov.pl/core/#/person/view/'
                 + info.pbn_uid_id + '"'
-                + ' target="_blank">PBN</a>'
+                + ' target="_blank">strona w PBN</a>'
             );
         }
     }
@@ -708,16 +715,23 @@ $(document).ready(function() {
             data: {forward: fwd},
             dataType: 'json'
         }).done(function(data) {
-            data.results.forEach(function(item) {
-                if (item.id) {
-                    var sel = String(item.id) === String(cur);
-                    $d.append(
-                        '<option value="' + item.id + '"'
-                        + (sel ? ' selected' : '')
-                        + '>' + item.text + '</option>'
-                    );
-                }
+            var withId = data.results.filter(function(i) {
+                return i.id;
             });
+            withId.forEach(function(item) {
+                var sel = String(item.id) === String(cur);
+                $d.append(
+                    '<option value="' + item.id + '"'
+                    + (sel ? ' selected' : '')
+                    + '>' + item.text + '</option>'
+                );
+            });
+            // Auto-select gdy dla autora+roku istnieje DOKLADNIE jedna
+            // dyscyplina i user jeszcze nic nie wybrał — odzwierciedla
+            // server-side ostatnia_dyscyplina() z bpp.views.api.
+            if (withId.length === 1 && !cur) {
+                $d.val(String(withId[0].id));
+            }
             $d.trigger('change.select2');
         });
     }
@@ -799,10 +813,22 @@ $(document).ready(function() {
         $modal.foundation('open');
     }
 
-    // Edytuj: jedyna ścieżka do otwarcia modala. Klik w wiersz
-    // jest świadomie wyłączony — wiersz zawiera inne klikalne
-    // elementy (dropdown kandydatów, formy hx-post), które
-    // kolidowały z bubblowaniem do row-handlera.
+    // Klik gdziekolwiek na wierszu otwiera modal. Inline formy
+    // (hx-post na "Ustaw ORCID") oraz przycisk "Edytuj" wewnątrz
+    // wiersza zatrzymują propagację, żeby ich kliknięcie nie
+    // otwierało dodatkowo modala.
+    $(document).off(
+        'click.authorModal',
+        '.author-row-clickable'
+    );
+    $(document).on(
+        'click.authorModal',
+        '.author-row-clickable',
+        function() {
+            openAuthorModal($(this));
+        }
+    );
+
     $(document).off(
         'click.authorModal',
         '.author-row-clickable .btn-edit-author'

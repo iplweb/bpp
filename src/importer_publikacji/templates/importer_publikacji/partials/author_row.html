@@ -1,5 +1,6 @@
 <tr id="author-row-{{ author.pk }}"
     class="author-row-clickable"
+    style="cursor:pointer"
     data-author-id="{{ author.pk }}"
     data-author-name="{{ author.display_name }}"
     data-match-url="{% url 'importer_publikacji:author-match' session.pk author.pk %}"
@@ -26,19 +27,23 @@
         {% else %}
             <span class="label alert">niedopasowany</span>
         {% endif %}
-        {% with candidates_count=author.candidates.all|length %}
-            {% if candidates_count > 1 %}
-                <br>
-                <span class="label warning"
-                      title="W modalu edycji jest {{ candidates_count }} kandydatów do wyboru">
-                    {{ candidates_count }} kandydatów
-                </span>
-            {% endif %}
-        {% endwith %}
     </td>
     <td>
         {% if author.matched_autor %}
             {{ author.matched_autor }}
+            {% if author.matched_autor.orcid %}
+                <br>
+                <small>ORCID: {{ author.matched_autor.orcid }}</small>
+            {% endif %}
+            {% with candidates_count=author.candidates.all|length %}
+                {% if candidates_count > 1 %}
+                    <br>
+                    <span class="label warning"
+                          title="W modalu edycji jest {{ candidates_count }} kandydatów do wyboru">
+                        {{ candidates_count }} kandydatów
+                    </span>
+                {% endif %}
+            {% endwith %}
         {% else %}
             <em>-</em>
         {% endif %}
