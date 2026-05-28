@@ -1,0 +1,27 @@
+<div class="callout alert">
+    {# Naglowek bledu importu - polski komunikat dla usera #}
+    <h4><span class="fi-x"></span> Wystąpił błąd</h4>
+
+    <p>{{ session.last_error_message }}</p>
+
+    <form method="post"
+          action="{% url 'importer_publikacji:task-retry' session_id=session.pk %}"
+          style="display:inline-block;">
+        {% csrf_token %}
+        <button type="submit" class="button primary">
+            <span class="fi-refresh"></span> Spróbuj ponownie
+        </button>
+    </form>
+
+    <a href="{% url 'importer_publikacji:index' %}" class="button secondary">
+        <span class="fi-arrow-left"></span> Wróć do początku
+    </a>
+
+    {% if request.user.is_superuser and session.last_error_traceback %}
+        <details style="margin-top: 1rem;">
+            {# Sekcja widoczna tylko dla superusera #}
+            <summary><strong>Traceback (admin)</strong></summary>
+            <pre style="background:#f4f4f4;padding:1rem;overflow:auto;">{{ session.last_error_traceback }}</pre>
+        </details>
+    {% endif %}
+</div>

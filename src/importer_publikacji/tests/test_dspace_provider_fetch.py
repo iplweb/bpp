@@ -78,26 +78,32 @@ def test_fetch_list_metadata_format(mock_get):
     assert pub.publication_type == "book"
 
 
+@patch("importer_publikacji.providers.dspace._fallback_to_www", return_value=None)
 @patch("importer_publikacji.providers.dspace.requests.get")
-def test_fetch_http_error(mock_get):
+def test_fetch_http_error(mock_get, mock_fallback):
     mock_get.return_value = _mock_response({}, status_code=404)
 
     p = DSpaceProvider()
     pub = p.fetch(SAMPLE_URL)
     assert pub is None
+    # WWW fallback został wywołany (zwrócił None — provider nie obronił).
+    mock_fallback.assert_called_once_with(SAMPLE_URL)
 
 
+@patch("importer_publikacji.providers.dspace._fallback_to_www", return_value=None)
 @patch("importer_publikacji.providers.dspace.requests.get")
-def test_fetch_connection_error(mock_get):
+def test_fetch_connection_error(mock_get, mock_fallback):
     mock_get.side_effect = __import__("requests").exceptions.ConnectionError()
 
     p = DSpaceProvider()
     pub = p.fetch(SAMPLE_URL)
     assert pub is None
+    mock_fallback.assert_called_once_with(SAMPLE_URL)
 
 
+@patch("importer_publikacji.providers.dspace._fallback_to_www", return_value=None)
 @patch("importer_publikacji.providers.dspace.requests.get")
-def test_fetch_no_title(mock_get):
+def test_fetch_no_title(mock_get, mock_fallback):
     data = {
         "uuid": SAMPLE_UUID,
         "metadata": {
@@ -109,6 +115,41 @@ def test_fetch_no_title(mock_get):
     p = DSpaceProvider()
     pub = p.fetch(SAMPLE_URL)
     assert pub is None
+    mock_fallback.assert_called_once_with(SAMPLE_URL)
+
+
+@patch("importer_publikacji.providers.dspace._fallback_to_www")
+@patch("importer_publikacji.providers.dspace.requests.get")
+def test_fetch_falls_back_to_www_when_api_fails(mock_get, mock_fallback):
+    """DSpace API failure → WWW provider próbuje sparsować HTML."""
+    from importer_publikacji.providers import FetchedPublication
+
+    mock_get.return_value = _mock_response({}, status_code=503)
+    mock_fallback.return_value = FetchedPublication(
+        raw_data={"url": SAMPLE_URL},
+        title="Tytuł ze strony WWW",
+        doi="10.1234/from-www",
+        year=2024,
+        authors=[{"family": "Kowalski", "given": "Jan", "orcid": ""}],
+        url=SAMPLE_URL,
+    )
+
+    pub = DSpaceProvider().fetch(SAMPLE_URL)
+    assert pub is not None
+    assert pub.title == "Tytuł ze strony WWW"
+    assert pub.doi == "10.1234/from-www"
+    mock_fallback.assert_called_once_with(SAMPLE_URL)
+
+
+@patch("importer_publikacji.providers.dspace._fallback_to_www")
+@patch("importer_publikacji.providers.dspace.requests.get")
+def test_fetch_does_not_fall_back_when_api_succeeds(mock_get, mock_fallback):
+    """Gdy DSpace API zwraca dane, WWW fallback NIE jest wywoływany."""
+    mock_get.return_value = _mock_response(SAMPLE_DSPACE_RESPONSE)
+
+    pub = DSpaceProvider().fetch(SAMPLE_URL)
+    assert pub is not None
+    mock_fallback.assert_not_called()
 
 
 def test_fetch_invalid_url():
@@ -291,8 +332,9 @@ def test_fetch_dspace6_connection_error(mock_get):
     assert pub is None
 
 
+@patch("importer_publikacji.providers.dspace._fallback_to_www", return_value=None)
 @patch("importer_publikacji.providers.dspace.requests.get")
-def test_fetch_dspace6_no_title(mock_get):
+def test_fetch_dspace6_no_title(mock_get, mock_fallback):
     data = {
         "metadata": [
             {
@@ -306,6 +348,7 @@ def test_fetch_dspace6_no_title(mock_get):
     p = DSpaceProvider()
     pub = p.fetch(SAMPLE_HANDLE_URL)
     assert pub is None
+    mock_fallback.assert_called_once_with(SAMPLE_HANDLE_URL)
 
 
 @patch("importer_publikacji.providers.dspace.requests.get")

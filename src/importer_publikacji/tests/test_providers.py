@@ -46,6 +46,52 @@ def test_get_provider_crossref():
     assert isinstance(provider, CrossRefProvider)
 
 
+def test_crossref_fetch_filters_institutional_authors(monkeypatch):
+    """CrossRef czasami zwraca jako 'autora' instytucję
+    (z kluczem 'name' bez 'family'/'given'), np. dla DOI
+    10.17306/j.afw.2021.4.23. Provider musi pominąć takie wpisy,
+    żeby nie powstawali "puści" autorzy w wizardzie.
+    """
+    from importer_publikacji.providers import crossref as crossref_mod
+
+    fake_data = {
+        "title": ["Test"],
+        "DOI": "10.17306/j.afw.2021.4.23",
+        "author": [
+            {
+                "name": "Katedra Ekonomiki i Techniki Leśnej",
+                "sequence": "first",
+            },
+            {
+                "family": "Starosta-Grala",
+                "given": "Monika",
+                "sequence": "first",
+            },
+            {
+                "family": "Ankudo-Jankowska",
+                "given": "Anna",
+                "sequence": "additional",
+            },
+        ],
+    }
+
+    class _FakeManager:
+        def get_by_doi(self, doi):
+            return fake_data
+
+    monkeypatch.setattr(
+        crossref_mod.CrossrefAPICache,
+        "objects",
+        _FakeManager(),
+    )
+
+    result = CrossRefProvider().fetch("10.17306/j.afw.2021.4.23")
+    assert result is not None
+    assert len(result.authors) == 2
+    assert result.authors[0]["family"] == "Starosta-Grala"
+    assert result.authors[1]["family"] == "Ankudo-Jankowska"
+
+
 def test_extract_orcid_from_url():
     assert (
         _extract_orcid("https://orcid.org/0000-0001-2345-6789") == "0000-0001-2345-6789"

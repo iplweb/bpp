@@ -5,43 +5,32 @@ Authors → Review → Create → Done) plus boczne akcje na autorach i
 anulowanie sesji.
 """
 
-import traceback
-
-from django.contrib.contenttypes.models import ContentType
-from django.core.exceptions import ValidationError
-from django.http import HttpResponseBadRequest
+from django.http import HttpResponse, HttpResponseBadRequest, HttpResponseRedirect
 from django.shortcuts import get_object_or_404, render
 from django.urls import reverse
 from django.views import View
 
 from bpp.models import Uczelnia
 from bpp.views.api import ostatnia_dyscyplina, ostatnia_jednostka
-from crossref_bpp.core import Komparator
 
 from ..forms import AuthorMatchForm, FetchForm, SourceForm, VerifyForm
 from ..models import ImportedAuthor, ImportSession
 from ..permissions import ImporterPermissionMixin
 from ..providers import InputMode, get_provider
+from ..tasks import create_publication_task, fetch_session_task
 from .authors import (
-    _auto_match_authors,
     _create_unmatched_authors,
     _orcid_settable_qs,
-    _prefill_dyscypliny_z_zgloszen,
 )
 from .helpers import (
     SESSIONS_PARTIAL,
     STEP_DONE,
     STEP_FETCH,
     _fetch_context,
-    _get_crossref_mapper,
     _push_url,
     _render_full_page,
     _sessions_list_context,
     _with_breadcrumbs_oob,
-)
-from .publikacja import (
-    _build_abstracts_list,
-    _create_publication,
 )
 from .steps import (
     _is_chapter,
@@ -92,22 +81,17 @@ class IndexView(ImporterPermissionMixin, View):
 
 
 class FetchView(ImporterPermissionMixin, View):
-    """Pobierz dane z dostawcy i utwórz sesję."""
+    """Walidacja identyfikatora + utworzenie sesji + enqueue Celery task-a."""
 
     def post(self, request):
         form = FetchForm(request.POST)
         if not form.is_valid():
-            return render(
-                request,
-                STEP_FETCH,
-                _fetch_context(form),
-            )
+            return render(request, STEP_FETCH, _fetch_context(form))
 
         provider_name = form.cleaned_data["provider"]
         request.session["importer_last_provider"] = provider_name
         provider = get_provider(provider_name)
 
-        # Wybierz dane wejściowe wg trybu providera
         if provider.input_mode == InputMode.TEXT:
             raw_input = form.cleaned_data["text_input"]
             error_field = "text_input"
@@ -117,94 +101,62 @@ class FetchView(ImporterPermissionMixin, View):
 
         normalized = provider.validate_identifier(raw_input)
         if normalized is None:
-            form.add_error(
-                error_field,
-                "Nieprawidłowy format danych.",
-            )
-            return render(
-                request,
-                STEP_FETCH,
-                _fetch_context(form),
-            )
+            help_hint = getattr(provider, "input_help_text", "")
+            placeholder = getattr(provider, "input_placeholder", "")
+            msg = f"Nie rozpoznano formatu dla dostawcy „{provider.name}”."
+            if help_hint:
+                msg += f" Oczekiwany format: {help_hint}"
+            if placeholder:
+                msg += f" Przykład: {placeholder}"
+            form.add_error(error_field, msg)
+            return render(request, STEP_FETCH, _fetch_context(form))
 
-        result = provider.fetch(normalized)
-        if result is None:
-            form.add_error(
-                error_field,
-                "Nie udało się przetworzyć danych publikacji.",
+        # Idempotency (C2): jesli juz jest sesja in-flight tego samego usera
+        # dla tego samego (provider, identifier), nie startuj kolejnej —
+        # zredirectuj do istniejacej. Defense przed double-click i refresh.
+        recent_in_flight = (
+            ImportSession.objects.filter(
+                created_by=request.user,
+                provider_name=provider_name,
+                identifier=normalized,
+                status__in=[
+                    ImportSession.Status.FETCHING,
+                    ImportSession.Status.FETCHED,
+                ],
             )
-            return render(
-                request,
-                STEP_FETCH,
-                _fetch_context(form),
-            )
+            .order_by("-created")
+            .first()
+        )
+        if recent_in_flight is not None:
+            url = recent_in_flight.get_continue_url()
+            if request.headers.get("HX-Request"):
+                response = HttpResponse(status=200)
+                response["HX-Redirect"] = url
+                return response
+            return HttpResponseRedirect(url)
 
-        # Dla providerów TEXT, identifier w DB
-        # = DOI lub bibtex_key lub skrócony tytuł
-        if provider.input_mode == InputMode.TEXT:
-            identifier = (
-                result.doi or result.extra.get("bibtex_key") or result.title[:100]
-            )
-        else:
-            identifier = normalized
-
-        # Utwórz sesję importu
         session = ImportSession.objects.create(
             created_by=request.user,
             provider_name=provider_name,
-            identifier=identifier,
-            raw_data=result.raw_data,
-            normalized_data={
-                "title": result.title,
-                "doi": result.doi,
-                "year": result.year,
-                "authors": result.authors,
-                "source_title": result.source_title,
-                "source_abbreviation": (result.source_abbreviation),
-                "issn": result.issn,
-                "e_issn": result.e_issn,
-                "isbn": result.isbn,
-                "e_isbn": result.e_isbn,
-                "publisher": result.publisher,
-                "publication_type": (result.publication_type),
-                "language": result.language,
-                "abstract": result.abstract,
-                "volume": result.volume,
-                "issue": result.issue,
-                "pages": result.pages,
-                "url": result.url,
-                "license_url": result.license_url,
-                "keywords": result.keywords,
-                "article_number": result.extra.get("article_number"),
-                "original_title": result.extra.get("original_title"),
-                "abstracts": _build_abstracts_list(result),
-            },
+            identifier=normalized,
+            status=ImportSession.Status.FETCHING,
+            raw_data={},
+            normalized_data={},
         )
 
-        # Auto-dopasuj typ publikacji via Crossref_Mapper
-        mapper = _get_crossref_mapper(result.publication_type)
-        if mapper and mapper.charakter_formalny_bpp_id:
-            session.charakter_formalny = mapper.charakter_formalny_bpp
-            session.jest_wydawnictwem_zwartym = mapper.jest_wydawnictwem_zwartym
+        task = fetch_session_task.delay(session.pk, request.user.pk)
+        session.celery_task_id = task.id
+        session.save(update_fields=["celery_task_id"])
 
-        # Auto-dopasuj język
-        language_code = result.language
-        if not language_code:
-            from .helpers import _detect_language
-
-            language_code = _detect_language(result.title, result.abstract)
-        if language_code:
-            lang_result = Komparator.porownaj_language(language_code)
-            if lang_result.rekord_po_stronie_bpp:
-                session.jezyk = lang_result.rekord_po_stronie_bpp
-
-        session.save()
-
-        # Auto-dopasuj autorów
-        _auto_match_authors(session, result.authors, result.year)
-        _prefill_dyscypliny_z_zgloszen(session)
-
-        return _render_verify_step(request, session)
+        url = reverse(
+            "importer_publikacji:task-status",
+            kwargs={"session_id": session.pk},
+        )
+        if request.headers.get("HX-Request"):
+            response = HttpResponse(status=200)
+            response["HX-Redirect"] = url
+            return response
+        return HttpResponseRedirect(url)
 
 
 class VerifyView(ImporterPermissionMixin, View):
@@ -417,17 +369,19 @@ class AuthorsConfirmView(ImporterPermissionMixin, View):
             matched_autor=None,
         ).count()
         if unmatched:
-            return _render_authors_step(
-                request,
-                session,
-                error=(
-                    f"Nie można przejść dalej — "
-                    f"pozostało {unmatched} "
-                    f"niedopasowanych autorów. "
-                    f"Dopasuj ich ręcznie lub utwórz "
-                    f"jako nowych autorów w systemie."
-                ),
-            )
+            if unmatched == 1:
+                error = (
+                    "Nie można przejść dalej — pozostał 1 "
+                    "niedopasowany autor. Dopasuj go ręcznie "
+                    "lub utwórz jako nowego autora w systemie."
+                )
+            else:
+                error = (
+                    f"Nie można przejść dalej — pozostało {unmatched} "
+                    f"niedopasowanych autorów. Dopasuj ich ręcznie "
+                    f"lub utwórz jako nowych autorów w systemie."
+                )
+            return _render_authors_step(request, session, error=error)
 
         session.status = ImportSession.Status.AUTHORS_MATCHED
         session.modified_by = request.user
@@ -526,69 +480,45 @@ class ReviewView(ImporterPermissionMixin, View):
 
 
 class CreateView(ImporterPermissionMixin, View):
-    """Utwórz rekord publikacji."""
+    """Enqueueuje create_publication_task; redirect na task-status."""
 
     def post(self, request, session_id):
-        session = get_object_or_404(
-            ImportSession,
-            pk=session_id,
-        )
+        session = get_object_or_404(ImportSession, pk=session_id)
 
-        try:
-            record = _create_publication(session)
-        except ValidationError as e:
-            error_msg = " ".join(e.messages) if hasattr(e, "messages") else str(e)
-            return render(
-                request,
-                STEP_DONE,
-                {
-                    "session": session,
-                    "error": error_msg,
-                    "traceback": None,
-                },
-            )
-        except Exception:
-            traceback.print_exc()
-            error_msg = "Wystąpił błąd podczas tworzenia rekordu."
-            tb_text = None
-            if request.user.is_superuser:
-                tb_text = traceback.format_exc()
-            else:
-                error_msg += " Sprawdź logi serwera."
-            return render(
-                request,
-                STEP_DONE,
-                {
-                    "session": session,
-                    "error": error_msg,
-                    "traceback": tb_text,
-                },
-            )
+        # Idempotency (C2): jesli sesja juz jest w trakcie tworzenia lub
+        # zakonczona — nie enqueueuj kolejnego taska. Redirect do
+        # task-status (lub done dla COMPLETED) zamiast podwojnego POST-a.
+        if session.status in (
+            ImportSession.Status.CREATING,
+            ImportSession.Status.COMPLETED,
+        ):
+            url = session.get_continue_url()
+            if request.headers.get("HX-Request"):
+                response = HttpResponse(status=200)
+                response["HX-Redirect"] = url
+                return response
+            return HttpResponseRedirect(url)
 
-        session.status = ImportSession.Status.COMPLETED
-        session.created_record_content_type = ContentType.objects.get_for_model(record)
-        session.created_record_id = record.pk
-        session.modified_by = request.user
-        session.save()
+        also_pbn = "_create_and_pbn" in request.POST
 
-        if "_create_and_pbn" in request.POST:
-            from bpp.admin.helpers.pbn_api.gui import (
-                sprobuj_utworzyc_zlecenie_eksportu_do_PBN_gui,
-            )
+        # Persist for retry path (Task 10 reads this)
+        session.matched_data["pbn_export_pending"] = also_pbn
+        session.status = ImportSession.Status.CREATING
+        session.save(update_fields=["matched_data", "status"])
 
-            sprobuj_utworzyc_zlecenie_eksportu_do_PBN_gui(request, record)
+        task = create_publication_task.delay(session.pk, request.user.pk, also_pbn)
+        session.celery_task_id = task.id
+        session.save(update_fields=["celery_task_id"])
 
         url = reverse(
-            "importer_publikacji:done",
+            "importer_publikacji:task-status",
             kwargs={"session_id": session.pk},
         )
-        response = render(
-            request,
-            STEP_DONE,
-            {"session": session, "record": record},
-        )
-        response = _with_breadcrumbs_oob(response, request, session)
-        return _push_url(response, url)
+        if request.headers.get("HX-Request"):
+            response = HttpResponse(status=200)
+            response["HX-Redirect"] = url
+            return response
+        return HttpResponseRedirect(url)
 
 
 class DoneView(ImporterPermissionMixin, View):
