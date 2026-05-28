@@ -369,17 +369,19 @@ class AuthorsConfirmView(ImporterPermissionMixin, View):
             matched_autor=None,
         ).count()
         if unmatched:
-            return _render_authors_step(
-                request,
-                session,
-                error=(
-                    f"Nie można przejść dalej — "
-                    f"pozostało {unmatched} "
-                    f"niedopasowanych autorów. "
-                    f"Dopasuj ich ręcznie lub utwórz "
-                    f"jako nowych autorów w systemie."
-                ),
-            )
+            if unmatched == 1:
+                error = (
+                    "Nie można przejść dalej — pozostał 1 "
+                    "niedopasowany autor. Dopasuj go ręcznie "
+                    "lub utwórz jako nowego autora w systemie."
+                )
+            else:
+                error = (
+                    f"Nie można przejść dalej — pozostało {unmatched} "
+                    f"niedopasowanych autorów. Dopasuj ich ręcznie "
+                    f"lub utwórz jako nowych autorów w systemie."
+                )
+            return _render_authors_step(request, session, error=error)
 
         session.status = ImportSession.Status.AUTHORS_MATCHED
         session.modified_by = request.user
