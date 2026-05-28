@@ -286,18 +286,7 @@ jobs:
           test-runner uv run pytest \
             -n auto \
             --shard-id "$SHARD_ID" --num-shards "$NUM_SHARDS" \
-            --timeout 300 \
-            --cov=src/ --cov-branch \
-            --cov-report=xml:/ci-output/cov.xml
-
-    - name: Upload coverage to Coveralls (parallel)
-      if: always()
-      uses: coverallsapp/github-action@5cbfd81b66ca5d10c19b062c04de0199c215fb6e # v2.3.7
-      with:
-        github-token: ${{ secrets.GITHUB_TOKEN }}
-        flag-name: tests-${{ matrix.shard }}
-        parallel: true
-        file: ci-output/cov.xml
+            --timeout 300
 
     - name: Cleanup
       if: always()

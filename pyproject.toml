@@ -364,23 +364,23 @@ extension = "html"
 #   D018/J018 - django/jinja link patterns
 ignore = "H006,H008,H013,H014,H019,H021,H023,H030,H031,T001,T002,T003,D018,J018"
 
+# Coverage.py config — uzywany TYLKO lokalnie przez `make coverage-ai`.
+# CI nie uruchamia `pytest --cov`, wiec ten config jest inertny w pipeline.
 [tool.coverage.run]
-# Support for parallel test runners
+branch = true
 parallel = true
 concurrency = ["multiprocessing"]
-# Measure branch coverage
-branch = true
-# Omit test files and migrations from coverage
+source = ["src"]
 omit = [
     "*/migrations/*",
     "*/tests/*",
     "*/test_*.py",
     "*/__pycache__/*",
-    "*/site-packages/*"
+    "*/site-packages/*",
+    "src/django_bpp/staticroot/*",
 ]
 
 [tool.coverage.report]
-# Exclude test code and migrations from report
 exclude_lines = [
     "pragma: no cover",
     "def __repr__",
@@ -390,13 +390,8 @@ exclude_lines = [
     "if TYPE_CHECKING:",
     "if typing.TYPE_CHECKING:",
 ]
-precision = 2
-
-[tool.coverage.html]
-directory = "cov_html"
-
-[tool.coverage.xml]
-output = "cov.xml"
+precision = 1
+skip_empty = true
 
 [build-system]
 requires = ["setuptools>=82.0.1", "wheel"]
@@ -421,7 +416,6 @@ dev = [
     "django-dynamic-fixture>=1.8.0",
     "django-webtest==1.9.14",
     "WebTest==3.0.0",
-    "coveralls>=4.1.0,<5",
     "psutil>=7.2.2",
     # pytest 8.x: pytest-testcontainers-django (0.2.0) deklaruje pytest<9.
     # Wewnetrznie korzysta tylko z stabilnego API hookow (pytest_load_initial_conftests
@@ -432,7 +426,7 @@ dev = [
     "pytest-django>=4.12.0",
     "pytest-httpserver>=1.1.5",
     "werkzeug>=3.1.6", # Dependabot: transitive via pytest-httpserver, bump for safe_join() fixes
-    "pytest-cov>=7.1.0",
+    "pytest-cov>=7.1.0",  # lokalnie do `make coverage-ai`; CI nie wola --cov
     "pytest-mock>=3.7.0",
     "pytest-xdist>=2.3.0",
     "pytest-shard>=0.1.2",
