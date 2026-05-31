@@ -2,6 +2,8 @@ from unittest.mock import patch
 
 import openpyxl
 import pytest
+from django.contrib.auth.models import Group
+from django.contrib.contenttypes.models import ContentType
 from django.urls import reverse
 from flexible_reports.models import (
     DATA_FROM_DATASOURCE,
@@ -11,10 +13,15 @@ from flexible_reports.models import (
     Table,
 )
 from flexible_reports.models.report import Report
+from formdefaults.models import FormRepresentation
 from model_bakery import baker
 from six import BytesIO
 
-from formdefaults.models import FormRepresentation
+from bpp.models import OpcjaWyswietlaniaField
+from bpp.models.autor import Autor
+from bpp.models.cache import Rekord
+from bpp.models.struktura import Jednostka, Wydzial
+from bpp.models.wydawnictwo_ciagle import Wydawnictwo_Ciagle
 from nowe_raporty.views import (
     AutorRaportFormView,
     GenerujRaportDlaAutora,
@@ -23,15 +30,6 @@ from nowe_raporty.views import (
     JednostkaRaportFormView,
     WydzialRaportFormView,
 )
-
-from django.contrib.contenttypes.models import ContentType
-
-from bpp.models import OpcjaWyswietlaniaField
-from bpp.models.autor import Autor
-from bpp.models.cache import Rekord
-from bpp.models.struktura import Jednostka, Wydzial
-from bpp.models.wydawnictwo_ciagle import Wydawnictwo_Ciagle
-
 
 
 @pytest.mark.django_db
@@ -49,6 +47,55 @@ def test_view_raport_nie_zdefiniowany(generuj_raporty_app, view, klass):
     res = generuj_raporty_app.get(v)
 
     assert "Nie znaleziono definicji" in res.text
+
+
+# Brak definicji raportu (flexible_reports.Report) na stronie FORMULARZA nie moze
+# konczyc sie twardym 404 - zamiast tego przyjazny komunikat + (dla redaktora)
+# link do modulu redagowania.
+
+FORM_BRAK_DEFINICJI = [
+    ("nowe_raporty:autor_form", "raport-autorow"),
+    ("nowe_raporty:jednostka_form", "raport-jednostek"),
+    ("nowe_raporty:wydzial_form", "raport-wydzialow"),
+    ("nowe_raporty:uczelnia_form", "raport-uczelni"),
+]
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("url_name,slug", FORM_BRAK_DEFINICJI)
+def test_form_brak_definicji_nie_404(generuj_raporty_app, url_name, slug):
+    # Bez utworzonego Report strona formularza musi zwrocic 200 z komunikatem,
+    # a nie 404.
+    res = generuj_raporty_app.get(reverse(url_name))
+    assert res.status_code == 200
+    assert "nie został jeszcze skonfigurowany" in res.text
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("url_name,slug", FORM_BRAK_DEFINICJI)
+def test_form_brak_definicji_redaktor_widzi_link(
+    generuj_raporty_app, normal_django_user, url_name, slug
+):
+    # Redaktor (grupa "raporty") dostaje link do modulu redagowania z
+    # prefillowanym slugiem.
+    normal_django_user.groups.add(Group.objects.get_or_create(name="raporty")[0])
+    res = generuj_raporty_app.get(reverse(url_name))
+    assert res.status_code == 200
+    assert "report/add" in res.text
+    assert slug in res.text
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("url_name,slug", FORM_BRAK_DEFINICJI)
+def test_form_brak_definicji_zwykly_user_widzi_kontakt(
+    generuj_raporty_app, url_name, slug
+):
+    # Uzytkownik bez uprawnien redakcyjnych widzi prosbe o kontakt, bez linku
+    # do panelu admina.
+    res = generuj_raporty_app.get(reverse(url_name))
+    assert res.status_code == 200
+    assert "Skontaktuj się z administratorem" in res.text
+    assert "report/add" not in res.text
 
 
 @pytest.mark.django_db

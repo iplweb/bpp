@@ -1,0 +1,29 @@
+{% load user_in_group %}
+{# Komunikat o braku definicji raportu (flexible_reports.Report). #}
+{# Redaktor (superuser / grupa "raporty") dostaje link do modulu redagowania #}
+{# z prefillowanym tytulem i slugiem; pozostali - prosbe o kontakt. #}
+<div class="callout warning" data-brak-definicji-raportu>
+    <h4>
+        <i class="fi-alert" aria-hidden="true" style="margin-right: 6px;"></i>
+        Raport „{{ report_title }}" nie został jeszcze skonfigurowany
+    </h4>
+    {% if request.user.is_superuser or request.user|has_group:"raporty" %}
+        <p>
+            Definicja tego raportu nie istnieje w module redagowania.
+            Aby raport zaczął działać, utwórz go w module redagowania —
+            tytuł i slug (<code>{{ report_slug }}</code>) są już wstępnie
+            wypełnione.
+        </p>
+        <a class="button primary"
+           target="_blank"
+           href="{% url 'admin:flexible_reports_report_add' %}?title={{ report_title|urlencode }}&slug={{ report_slug|urlencode }}">
+            <i class="fi-page-edit" aria-hidden="true" style="margin-right: 4px;"></i>
+            Skonfiguruj w module redagowania
+        </a>
+    {% else %}
+        <p>
+            Ten raport nie jest jeszcze dostępny.
+            Skontaktuj się z administratorem lub redaktorem systemu.
+        </p>
+    {% endif %}
+</div>

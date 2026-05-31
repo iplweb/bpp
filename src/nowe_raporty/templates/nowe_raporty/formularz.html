@@ -11,19 +11,23 @@
 
 {% block content %}
     <h2>{{ title }}</h2>
-    {# go_to_admin_change.html #}
-    {% load user_in_group %}{% if request.user.is_superuser or request.user|has_group:"raporty" %}
-        <div class="hide-for-print" style="margin-top: 10px; margin-bottom: 15px;">
-            <a target="_blank" href="{% url "admin:flexible_reports_report_change" report.pk %}" class="edit-button">
-                <i class="fi-page-edit" style="margin-right: 4px; font-size: 0.8rem;"></i>{{ text|default:"otwórz do edycji" }}
-            </a>
+    {% if not report %}
+        {% include "nowe_raporty/_brak_definicji_raportu.html" %}
+    {% else %}
+        {# go_to_admin_change.html #}
+        {% load user_in_group %}{% if request.user.is_superuser or request.user|has_group:"raporty" %}
+            <div class="hide-for-print" style="margin-top: 10px; margin-bottom: 15px;">
+                <a target="_blank" href="{% url "admin:flexible_reports_report_change" report.pk %}" class="edit-button">
+                    <i class="fi-page-edit" style="margin-right: 4px; font-size: 0.8rem;"></i>{{ text|default:"otwórz do edycji" }}
+                </a>
+            </div>
+        {% endif %}
+        <div class="grid-x">
+            <div class="large-8 medium-12 small-12 cell">
+                {% load crispy_forms_tags bpp_formdefaults %}
+                <div class="formdefaults-wrap">{% bpp_formdefaults_button form %}</div>
+                {% crispy form %}
+            </div>
         </div>
     {% endif %}
-    <div class="grid-x">
-        <div class="large-8 medium-12 small-12 cell">
-            {% load crispy_forms_tags bpp_formdefaults %}
-            <div class="formdefaults-wrap">{% bpp_formdefaults_button form %}</div>
-            {% crispy form %}
-        </div>
-    </div>
 {% endblock %}
