@@ -132,6 +132,13 @@ class BaseRaportForm(forms.Form):
             ),
         )
 
+        lata = Rekord.objects.all().aggregate(Min("rok"), Max("rok"))
+        for field in self["od_roku"], self["do_roku"]:
+            if lata["rok__min"] is not None:
+                field.field.validators.append(MinValueValidator(lata["rok__min"]))
+            if lata["rok__max"] is not None:
+                field.field.validators.append(MaxValueValidator(lata["rok__max"]))
+
     def _wiersze_zaawansowane(self):
         wiersze = [
             Row(
@@ -158,13 +165,6 @@ class BaseRaportForm(forms.Form):
             )
         wiersze.append(Row(Column("tylko_punktowane")))
         return wiersze
-
-        lata = Rekord.objects.all().aggregate(Min("rok"), Max("rok"))
-        for field in self["od_roku"], self["do_roku"]:
-            if lata["rok__min"] is not None:
-                field.field.validators.append(MinValueValidator(lata["rok__min"]))
-            if lata["rok__max"] is not None:
-                field.field.validators.append(MaxValueValidator(lata["rok__max"]))
 
 
 class UczelniaRaportForm(BaseRaportForm):

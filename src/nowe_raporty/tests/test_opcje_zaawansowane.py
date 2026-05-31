@@ -49,6 +49,29 @@ def test_filtr_zaawansowany_zaweza_raport(rf, autor_z_pracami):
 
 
 @pytest.mark.django_db
+def test_walidatory_zakresu_lat_dopiete(autor_z_pracami):
+    # Regresja: walidatory rok-min/rok-max muszą być faktycznie dopięte do pól
+    # (były martwym kodem po return w _wiersze_zaawansowane).
+    from nowe_raporty.forms import form_class_dla
+    from nowe_raporty.models import DefinicjaRaportu
+
+    definicja = baker.make(
+        DefinicjaRaportu, slug="r-walidacja", poziom=DefinicjaRaportu.POZIOM_AUTOR
+    )
+    form = form_class_dla(definicja)(
+        data={
+            "obiekt": autor_z_pracami.pk,
+            "od_roku": 1900,  # poniżej min (rekordy są z 2020)
+            "do_roku": 2020,
+            "_export": "html",
+            "tylko_z_jednostek_uczelni": False,
+        }
+    )
+    assert not form.is_valid()
+    assert "od_roku" in form.errors
+
+
+@pytest.mark.django_db
 def test_eksport_bez_definicji_raportu_nie_500(generuj_raporty_app, jednostka):
     # Brak Report + ?_export=docx nie moze konczyc sie 500 (zaleglosc tematu 1).
     url = reverse("nowe_raporty:jednostka_generuj", args=(jednostka.pk, 2020, 2020))
