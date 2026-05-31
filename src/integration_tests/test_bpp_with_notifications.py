@@ -138,13 +138,23 @@ def test_bpp_notifications(preauth_asgi_page_per_test: Page):
     expect(page.locator("body")).to_contain_text(s, timeout=15000)
 
 
+@pytest.mark.flaky(reruns=3)
 def test_bpp_notifications_and_messages(preauth_asgi_page: Page):
     """Sprawdz, czy notyfikacje dochodza."""
-
+    # Ten sam probabilistyczny flake co `test_bpp_notifications`: pierwszy
+    # `wait_for_function` czeka na live-push wiadomosci przez WebSocket, ktory
+    # ginie gdzies miedzy `group_send` a `chat_message` handlerem consumera w
+    # Daphne (mimo udowodnionej subskrypcji w fixture). 2-sekundowy bufor PRZED
+    # wyslaniem obniza miss-rate, `@flaky(reruns=3)` lapie reszte. Drugi
+    # assertion (po `page.reload()`) renderuje wiadomosc server-side z bazy,
+    # wiec nie podlega temu zgubowi. Patrz docs/CHANNELS_BROADCAST_FLAKE.md.
+    # (transactional_db dostarcza fixture `preauth_asgi_page`, wiec osobny
+    # marker @pytest.mark.django_db jest zbedny.)
     s = "test notyfikacji 123 456 902309093209092"
     page = preauth_asgi_page
     expect(page.locator("body")).not_to_contain_text(s)
 
+    page.wait_for_timeout(2000)  # Pozwol subskrypcji WS sie ustabilizowac
     call_command("send_message", preauth_asgi_page.authorized_user.username, s)
 
     page.wait_for_timeout(1000)  # Give time for message to be sent

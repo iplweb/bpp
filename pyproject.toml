@@ -432,7 +432,11 @@ dev = [
     "pytest-shard>=0.1.2",
     "pytest-timeout>=2.1.0",
     "pyparsing>=3.3.2",
-    "ruff>=0.15.12",
+    # Pinned exact, kept in sync with the `ruff-pre-commit` rev in
+    # .pre-commit-config.yaml. CI lints via pre-commit (that rev is the
+    # source of truth); this `==` pin only keeps ad-hoc `uv run ruff`
+    # producing identical output. Bump both together, never one alone.
+    "ruff==0.15.12",
     "djlint>=1.36,<2",
     "pre-commit>=4.6.0",
     "twine>=5.1.0",

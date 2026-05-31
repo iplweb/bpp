@@ -530,7 +530,7 @@ dev = [
     { name = "pytest-testcontainers-django", specifier = ">=0.2.2" },
     { name = "pytest-timeout", specifier = ">=2.1.0" },
     { name = "pytest-xdist", specifier = ">=2.3.0" },
-    { name = "ruff", specifier = ">=0.15.12" },
+    { name = "ruff", specifier = "==0.15.12" },
     { name = "testcontainers", extras = ["postgres"], specifier = ">=4.14.2" },
     { name = "towncrier", specifier = ">=22.8.0" },
     { name = "twine", specifier = ">=5.1.0" },
