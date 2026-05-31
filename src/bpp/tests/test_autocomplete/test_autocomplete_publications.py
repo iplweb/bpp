@@ -22,7 +22,7 @@ from bpp.views.autocomplete.pbn_api import (
     PublicationAutocomplete,
     PublisherPBNAutocomplete,
 )
-from fixtures import (
+from fixtures.pbn_api import (
     pbn_journal_json,
     pbn_pageable_json,
     pbn_publication_json,
