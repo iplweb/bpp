@@ -47,6 +47,13 @@ class BaseRaportForm(forms.Form):
         label="Format wyjściowy", choices=OUTPUT_FORMATS, required=True
     )
 
+    # Wspólny default; podklasy per-poziom mogą nadpisać label/help_text.
+    tylko_z_jednostek_uczelni = forms.BooleanField(
+        initial=True,
+        label="Tylko prace afiliowane",
+        required=False,
+    )
+
     # Opcje zaawansowane (schowane domyślnie, filtrują cały raport).
     punkty_mnisw_od = forms.FloatField(required=False, label="Punkty MNiSW od")
     punkty_mnisw_do = forms.FloatField(required=False, label="Punkty MNiSW do")
@@ -222,3 +229,31 @@ class AutorRaportForm(BaseRaportForm):
         "pozauczelnianych (obcych).",
         required=False,
     )
+
+
+def form_class_dla(definicja):
+    """Dynamiczna klasa formularza per DefinicjaRaportu.
+
+    formdefaults kluczuje zapisane domyślne wartości po ``full_name`` =
+    ``"{module}.{ClassName}"`` (bez hooka do override). Jedna wspólna klasa →
+    kolizja defaultów między raportami. Dlatego budujemy klasę o STABILNYM,
+    unikalnym ``__name__``/``__module__`` wyprowadzonym ze sluga.
+    """
+    import re
+
+    from .poziomy import POZIOMY
+
+    cfg = POZIOMY[definicja.poziom]
+    pole = cfg.pole_obiektu()
+    attrs = {"__module__": "nowe_raporty.forms_dynamiczne"}
+    if pole is not None:
+        attrs["obiekt"] = pole
+        attrs["OBJ_FIELD"] = Row(Column("obiekt"))
+    else:
+        attrs["OBJ_FIELD"] = ""
+
+    nazwa = "RaportForm_" + re.sub(r"\W", "_", definicja.slug)
+    # użyj metaklasy formularza (DeclarativeFieldsMetaclass), nie gołego type -
+    # inaczej "metaclass conflict" i pole 'obiekt' nie trafiłoby do base_fields.
+    metaklasa = type(BaseRaportForm)
+    return metaklasa(nazwa, (BaseRaportForm,), attrs)

@@ -6,7 +6,7 @@
 
 {% block breadcrumbs %}
     {{ block.super }}
-    <li><a href="{% url form_link %}">{{ form_title }}</a></li>
+    <li><a href="{{ form_link_url }}">{{ form_title }}</a></li>
     <li class="current">{{ title }} &nbsp;</li>
 {% endblock %}
 

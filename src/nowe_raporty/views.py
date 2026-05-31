@@ -1,8 +1,13 @@
 import os
 
 from django.conf import settings
+from django.contrib.auth.mixins import AccessMixin
+from django.http import Http404
 from django.http.response import FileResponse, HttpResponse, HttpResponseRedirect
+from django.shortcuts import get_object_or_404
 from django.template.context import RequestContext
+from django.urls import reverse
+from django.utils.functional import cached_property
 from django.utils.http import urlencode
 from django.views.generic import FormView, TemplateView
 from django.views.generic.detail import DetailView
@@ -24,7 +29,10 @@ from .forms import (
     JednostkaRaportForm,
     UczelniaRaportForm,
     WydzialRaportForm,
+    form_class_dla,
 )
+from .models import DefinicjaRaportu
+from .poziomy import POZIOMY
 
 
 def zastosuj_filtry_zaawansowane(queryset, params):
@@ -166,13 +174,16 @@ class GenerujRaportBase(DetailView):
     def title(self):
         return f"Raport dla {self.object} za {self.okres}"
 
-    def get_context_data(self, **kwargs):
-        from flexible_reports.models import Report
+    def get_report(self):
+        """Definicja flexible_reports.Report. Generyczny widok nadpisuje."""
+        return Report.objects.filter(slug=self.report_slug).first()
 
-        try:
-            report = Report.objects.get(slug=self.report_slug)
-        except Report.DoesNotExist:
-            report = None
+    def get_form_link_url(self):
+        """URL do formularza raportu (breadcrumb). Generyczny widok nadpisuje."""
+        return reverse(self.form_link)
+
+    def get_context_data(self, **kwargs):
+        report = self.get_report()
 
         if report:
             base_queryset = self.get_base_queryset()
@@ -210,7 +221,7 @@ class GenerujRaportBase(DetailView):
         kwargs["od_roku"] = self.kwargs["od_roku"]
         kwargs["do_roku"] = self.kwargs["do_roku"]
         kwargs["title"] = self.title
-        kwargs["form_link"] = self.form_link
+        kwargs["form_link_url"] = self.get_form_link_url()
         kwargs["form_title"] = self.form_title
         return super().get_context_data(**kwargs)
 
@@ -314,3 +325,77 @@ class GenerujRaportDlaUczelni(UczelniaRaportAuthMixin, GenerujRaportBase):
         if self.request.GET.get("_tzju", "True") == "True":
             return Rekord.objects.filter(autorzy__afiliuje=True)
         return Rekord.objects.all()
+
+
+# --- Generyczne widoki (data-driven, per DefinicjaRaportu) ------------------
+
+
+class RaportDostepMixin(AccessMixin):
+    """Autoryzacja generycznych widoków przez ``DefinicjaRaportu.widoczny_dla``."""
+
+    @cached_property
+    def definicja(self):
+        return get_object_or_404(DefinicjaRaportu, slug=self.kwargs["slug"])
+
+    def dispatch(self, request, *args, **kwargs):
+        if not self.definicja.widoczny_dla(request):
+            if request.user.is_authenticated:
+                raise Http404
+            return self.handle_no_permission()
+        return super().dispatch(request, *args, **kwargs)
+
+
+class RaportFormView(RaportDostepMixin, FormDefaultsMixin, FormView):
+    template_name = "nowe_raporty/formularz.html"
+
+    def setup(self, request, *args, **kwargs):
+        super().setup(request, *args, **kwargs)
+        # formdefaults czyta self.form_class() - dynamiczna klasa per definicja
+        self.form_class = form_class_dla(self.definicja)
+
+    def get_form_title(self):
+        return self.definicja.nazwa
+
+    def get_initial(self):
+        initial = super().get_initial()
+        cfg = POZIOMY[self.definicja.poziom]
+        if cfg.ma_pk and not initial.get("obiekt"):
+            queryset = cfg.model.objects.all()
+            if queryset.count() == 1:
+                initial["obiekt"] = queryset.first()
+        return initial
+
+    def form_valid(self, form):
+        return _redirect_do_generuj(
+            form.cleaned_data, getattr(form, "POLA_ZAAWANSOWANE", [])
+        )
+
+    def get_context_data(self, **kwargs):
+        kwargs["title"] = self.definicja.nazwa
+        kwargs["report"] = self.definicja.report
+        kwargs["report_slug"] = self.definicja.report.slug
+        kwargs["report_title"] = self.definicja.nazwa
+        return super().get_context_data(**kwargs)
+
+
+class RaportGenerujView(RaportDostepMixin, GenerujRaportBase):
+    def get_report(self):
+        return self.definicja.report
+
+    @property
+    def form_title(self):
+        return self.definicja.nazwa
+
+    def get_form_link_url(self):
+        return reverse("nowe_raporty:raport_form", args=[self.definicja.slug])
+
+    def get_object(self, queryset=None):
+        cfg = POZIOMY[self.definicja.poziom]
+        if cfg.ma_pk:
+            return get_object_or_404(cfg.model, pk=self.kwargs["pk"])
+        return Uczelnia.objects.get_for_request(self.request)
+
+    def get_base_queryset(self):
+        cfg = POZIOMY[self.definicja.poziom]
+        tylko = self.request.GET.get("_tzju", "True") == "True"
+        return cfg.base_queryset(self.object, tylko)
