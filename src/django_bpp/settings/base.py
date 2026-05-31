@@ -14,6 +14,7 @@ from celery.schedules import crontab
 from django.core.exceptions import ImproperlyConfigured
 
 from bpp.util import slugify_function
+from django_bpp.channels_prefix import get_channels_prefix
 from django_bpp.version import VERSION
 
 logger = logging.getLogger(__name__)
@@ -864,11 +865,16 @@ BPP_WALIDUJ_AFILIACJE_AUTOROW = (
 # ASGI_APPLICATION = "django_bpp.routing.application"
 ASGI_APPLICATION = "django_bpp.asgi.application"
 
+# Channel-layer key prefix (get_channels_prefix imported at top). Production:
+# "asgi" (channels_redis default). Under pytest-xdist: "asgi-test-<worker>" so
+# colliding per-user group names cannot cross-talk between workers sharing one
+# Redis. See django_bpp.channels_prefix and docs/CHANNELS_BROADCAST_FLAKE.md.
 CHANNEL_LAYERS = {
     "default": {
         "BACKEND": "channels_redis.core.RedisChannelLayer",
         "CONFIG": {
             "hosts": [(REDIS_HOST, REDIS_PORT)],
+            "prefix": get_channels_prefix(),
         },
     },
 }

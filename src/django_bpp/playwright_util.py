@@ -58,12 +58,16 @@ def wait_for_channel_subscription(
 
     import redis
 
+    from django_bpp.channels_prefix import get_channels_prefix
+
     deadline = time.monotonic() + timeout
     r = redis.Redis(
         host=os.environ.get("DJANGO_BPP_REDIS_HOST", "localhost"),
         port=int(os.environ.get("DJANGO_BPP_REDIS_PORT", 6379)),
     )
-    group_key = f"asgi:group:{channel_name}".encode()
+    # Must match the prefix Daphne uses in CHANNEL_LAYERS, or we poll the wrong
+    # Redis key. channels_redis stores groups as ``{prefix}:group:{name}``.
+    group_key = f"{get_channels_prefix()}:group:{channel_name}".encode()
     while time.monotonic() < deadline:
         if r.zcount(group_key, since, "+inf") > 0:
             return
