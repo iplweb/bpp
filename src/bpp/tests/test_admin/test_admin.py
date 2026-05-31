@@ -1,10 +1,10 @@
 from unittest.mock import Mock
 
 import pytest
-from django.apps import apps
+from django.contrib import admin
 from django.contrib.auth.models import Group
 from django.contrib.contenttypes.models import ContentType
-from django.urls import NoReverseMatch
+from django.test import RequestFactory
 from django.urls.base import reverse
 from model_bakery import baker
 
@@ -127,29 +127,31 @@ def test_zapisz_wydawnictwo_w_adminie(klass, autor_klass, name, url, admin_app):
     Autorzy.objects.all().delete()
 
 
-@pytest.mark.parametrize("model", apps.get_models())
-@pytest.mark.django_db
-def test_widok_admina(admin_client, model):
-    """Wejdź na podstrony admina 'changelist' oraz 'add' dla każdego modelu z aplikacji
-    'bpp' który to istnieje w adminie (został zarejestrowany) i do którego to admin_client
-    ma uprawnienia.
+# Parametryzujemy po KAŻDYM modelu zarejestrowanym w adminie (nie tylko `bpp`).
+# Źródłem prawdy jest `admin.site._registry` — czyli dokładnie te modele, które
+# faktycznie mają strony w adminie.
+_ADMIN_MODELS = sorted(
+    admin.site._registry,
+    key=lambda m: (m._meta.app_label, m._meta.model_name),
+)
 
-    W ten sposób możemy wyłapać błędy z nazwami pól w adminie, których to Django nie wyłapie
-    przed uruchomieniem aplikacji.
+
+@pytest.mark.parametrize(
+    "model",
+    _ADMIN_MODELS,
+    ids=lambda m: f"{m._meta.app_label}.{m._meta.model_name}",
+)
+@pytest.mark.django_db
+def test_widok_admina(admin_client, admin_user, model):
+    """Wejdź na podstrony 'changelist' oraz 'add' KAŻDEGO modelu zarejestrowanego
+    w adminie.
     """
 
-    # for model in apps.get_models():
     app_label = model._meta.app_label
     model_name = model._meta.model_name
+    model_admin = admin.site._registry[model]
 
-    if app_label != "bpp":
-        return
-
-    url_name = f"admin:{app_label}_{model_name}_changelist"
-    try:
-        url = reverse(url_name)
-    except NoReverseMatch:
-        return
+    url = reverse(f"admin:{app_label}_{model_name}_changelist")
 
     res = admin_client.get(url)
     assert res.status_code == 200, f"changelist failed for {model!r}"
@@ -157,18 +159,13 @@ def test_widok_admina(admin_client, model):
     res = admin_client.get(url + "?q=fafa")
     assert res.status_code == 200, f"changelist query failed for {model!r}"
 
-    MODELS_WITHOUT_ADD = [
-        ("bpp", "bppmultiseekvisibility"),
-        ("bpp", "rzeczownik"),
-        ("bpp", "oplatypublikacjilog"),
-    ]
-    if (app_label, model_name) in MODELS_WITHOUT_ADD:
+    request = RequestFactory().get("/")
+    request.user = admin_user
+    if not model_admin.has_add_permission(request):
         return
 
-    url_name = f"admin:{app_label}_{model_name}_add"
-    url = reverse(url_name)
+    url = reverse(f"admin:{app_label}_{model_name}_add")
     res = admin_client.get(url)
-
     assert res.status_code == 200, f"add failed for {model!r}"
 
 
