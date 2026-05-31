@@ -102,8 +102,7 @@ def _auto_match_single_author(session, author_data, order, year):
     if result.status == StatusPorownania.DOKLADNE and bpp_autor:
         imported.match_status = ImportedAuthor.MatchStatus.AUTO_EXACT
     elif (
-        result.status
-        in (StatusPorownania.LUZNE, StatusPorownania.WYMAGA_INGERENCJI)
+        result.status in (StatusPorownania.LUZNE, StatusPorownania.WYMAGA_INGERENCJI)
         and bpp_autor
     ):
         imported.match_status = ImportedAuthor.MatchStatus.AUTO_LOOSE
