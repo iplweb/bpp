@@ -34,7 +34,7 @@ def _importer_users_queryset():
 
 
 class FetchForm(forms.Form):
-    """Formularz pobierania danych z dostawcy."""
+    """Formularz pobierania danych od dostawcy."""
 
     provider = forms.ChoiceField(
         label="Źródło danych",

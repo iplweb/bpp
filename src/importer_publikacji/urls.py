@@ -1,6 +1,8 @@
 from django.urls import path
 
 from . import views
+from .views.retry import ImportTaskRetryView
+from .views.task_status import ImportTaskStatusView
 
 app_name = "importer_publikacji"
 
@@ -89,5 +91,15 @@ urlpatterns = [
         "<int:session_id>/cancel/",
         views.CancelView.as_view(),
         name="cancel",
+    ),
+    path(
+        "task-status/<int:session_id>/",
+        ImportTaskStatusView.as_view(),
+        name="task-status",
+    ),
+    path(
+        "task-retry/<int:session_id>/",
+        ImportTaskRetryView.as_view(),
+        name="task-retry",
     ),
 ]

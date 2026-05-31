@@ -32,10 +32,18 @@ class CrossRefProvider(DataProvider):
 
         authors = []
         for author in data.get("author", []):
+            family = author.get("family", "")
+            given = author.get("given", "")
+            # CrossRef czasami zwraca instytucje jako "autorów" — wtedy
+            # ma tylko klucz "name" bez "family"/"given". Pomijamy takie
+            # wpisy, bo nie sa to osoby (np. "Katedra Ekonomiki..." w
+            # DOI 10.17306/j.afw.2021.4.23 jako pierwszy autor).
+            if not family and not given:
+                continue
             authors.append(
                 {
-                    "family": author.get("family", ""),
-                    "given": author.get("given", ""),
+                    "family": family,
+                    "given": given,
                     "orcid": _extract_orcid(author.get("ORCID", "")),
                 }
             )

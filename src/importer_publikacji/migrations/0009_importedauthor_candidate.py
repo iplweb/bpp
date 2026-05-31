@@ -8,7 +8,7 @@ class Migration(migrations.Migration):
 
     dependencies = [
         ('bpp', '0416_rename_dynamic_columns_to_admin'),
-        ('importer_publikacji', '0006_merge_20260421_1100'),
+        ('importer_publikacji', '0008_identifier_textfield'),
     ]
 
     operations = [

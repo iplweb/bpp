@@ -100,16 +100,28 @@
     {% endif %}
 
     {% if stats.unmatched > 0 %}
-        <form hx-post="{% url 'importer_publikacji:authors-create-unmatched' session.pk %}"
-              hx-target="#importer-wizard"
-              hx-confirm="Czy na pewno chcesz utworzyć {{ stats.unmatched }} nowych autorów w systemie BPP? Nowi autorzy zostaną przypisani do obcej jednostki.">
-            {% csrf_token %}
-            <button type="submit" class="button warning">
-                <span class="fi-torsos-all"></span>
-                Utwórz {{ stats.unmatched }}
-                niedopasowanych autorów
-            </button>
-        </form>
+        {% if stats.unmatched == 1 %}
+            <form hx-post="{% url 'importer_publikacji:authors-create-unmatched' session.pk %}"
+                  hx-target="#importer-wizard"
+                  hx-confirm="Czy na pewno chcesz utworzyć nowego autora w systemie BPP? Nowy autor zostanie przypisany do obcej jednostki.">
+                {% csrf_token %}
+                <button type="submit" class="button warning">
+                    <span class="fi-torsos-all"></span>
+                    Utwórz niedopasowanego autora
+                </button>
+            </form>
+        {% else %}
+            <form hx-post="{% url 'importer_publikacji:authors-create-unmatched' session.pk %}"
+                  hx-target="#importer-wizard"
+                  hx-confirm="Czy na pewno chcesz utworzyć {{ stats.unmatched }} nowych autorów w systemie BPP? Nowi autorzy zostaną przypisani do obcej jednostki.">
+                {% csrf_token %}
+                <button type="submit" class="button warning">
+                    <span class="fi-torsos-all"></span>
+                    Utwórz {{ stats.unmatched }}
+                    niedopasowanych autorów
+                </button>
+            </form>
+        {% endif %}
         <p class="help-text">
             Nowi autorzy zostaną przypisani
             do obcej jednostki.
@@ -158,11 +170,19 @@
     {% if stats.unmatched > 0 %}
         <div class="callout warning" id="unmatched-warning">
             <span class="fi-alert"></span>
-            Nie można przejść dalej — pozostało
-            <strong>{{ stats.unmatched }}</strong>
-            niedopasowanych autorów. Dopasuj ich
-            ręcznie lub utwórz jako nowych autorów
-            w systemie.
+            {% if stats.unmatched == 1 %}
+                Nie można przejść dalej — pozostał
+                <strong>1</strong>
+                niedopasowany autor. Dopasuj go
+                ręcznie lub utwórz jako nowego autora
+                w systemie.
+            {% else %}
+                Nie można przejść dalej — pozostało
+                <strong>{{ stats.unmatched }}</strong>
+                niedopasowanych autorów. Dopasuj ich
+                ręcznie lub utwórz jako nowych autorów
+                w systemie.
+            {% endif %}
             <button type="button"
                     class="button small hollow"
                     style="margin-left:1rem"

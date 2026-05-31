@@ -6,7 +6,7 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('importer_publikacji', '0007_importedauthor_candidate'),
+        ('importer_publikacji', '0009_importedauthor_candidate'),
     ]
 
     operations = [
