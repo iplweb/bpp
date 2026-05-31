@@ -247,11 +247,22 @@ def _render_source_full(request, session, form=None):
 
 def _authors_context(request, session):
     """Przygotuj kontekst dla kroku autorów."""
-    all_authors = session.authors.select_related(
-        "matched_autor",
-        "matched_jednostka",
-        "matched_dyscyplina",
-    ).all()
+    from django.db.models import Prefetch
+
+    from ..models import ImportedAuthor_Candidate
+
+    candidates_qs = ImportedAuthor_Candidate.objects.select_related(
+        "autor", "autor__aktualna_jednostka"
+    ).order_by("-pewnosc", "-publikacji_count")
+    all_authors = (
+        session.authors.select_related(
+            "matched_autor",
+            "matched_jednostka",
+            "matched_dyscyplina",
+        )
+        .prefetch_related(Prefetch("candidates", queryset=candidates_qs))
+        .all()
+    )
     total = all_authors.count()
 
     stats = {

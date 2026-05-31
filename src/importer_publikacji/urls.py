@@ -43,6 +43,16 @@ urlpatterns = [
         name="author-match",
     ),
     path(
+        "<int:session_id>/authors/<int:author_id>/info/",
+        views.AuthorInfoView.as_view(),
+        name="author-info",
+    ),
+    path(
+        "<int:session_id>/authors/<int:author_id>/candidates-modal/",
+        views.AuthorCandidatesModalView.as_view(),
+        name="author-candidates-modal",
+    ),
+    path(
         "<int:session_id>/authors/create-unmatched/",
         views.CreateUnmatchedAuthorsView.as_view(),
         name="authors-create-unmatched",

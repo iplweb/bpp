@@ -137,8 +137,10 @@ def test_import_crossref_doi_author_modal_single_open(
     row_count = rows.count()
     assert row_count > 0, "Expected at least one author row"
 
-    # Click on the first author row to open the modal
-    rows.first.click()
+    # Klik na "Edytuj" jest jedyną ścieżką otwarcia modala (klik na
+    # cały wiersz został świadomie wyłączony — wiersz zawiera inne
+    # klikalne elementy: dropdown kandydatów, formy hx-post).
+    rows.first.locator(".btn-edit-author").click()
 
     # Wait for the modal to appear
     modal = page.locator("#author-edit-modal")

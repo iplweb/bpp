@@ -167,6 +167,11 @@ class AuthorMatchForm(forms.Form):
         label="Dyscyplina",
         required=False,
     )
+    zapisany_jako = forms.CharField(
+        label="Zapisany jako",
+        max_length=512,
+        required=False,
+    )
 
 
 class SessionFilterForm(forms.Form):

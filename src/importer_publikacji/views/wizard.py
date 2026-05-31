@@ -5,7 +5,12 @@ Authors → Review → Create → Done) plus boczne akcje na autorach i
 anulowanie sesji.
 """
 
-from django.http import HttpResponse, HttpResponseBadRequest, HttpResponseRedirect
+from django.http import (
+    HttpResponse,
+    HttpResponseBadRequest,
+    HttpResponseRedirect,
+    JsonResponse,
+)
 from django.shortcuts import get_object_or_404, render
 from django.urls import reverse
 from django.views import View
@@ -283,6 +288,57 @@ class AuthorsView(ImporterPermissionMixin, View):
         return _render_authors_full(request, session)
 
 
+class AuthorCandidatesModalView(ImporterPermissionMixin, View):
+    """Zwraca HTML partial z listą kandydatów dla ImportedAuthor.
+
+    Używane w modalu edycji żeby pokazać użytkownikowi listę autorów
+    BPP pasujących do importowanego — z metadanymi (pewnosc, powod,
+    publikacji_count, ORCID, jednostka) i klikalnym wyborem.
+    """
+
+    def get(self, request, session_id, author_id):
+        session = get_object_or_404(ImportSession, pk=session_id)
+        imported_author = get_object_or_404(
+            ImportedAuthor, pk=author_id, session=session
+        )
+        candidates = imported_author.candidates.select_related(
+            "autor", "autor__aktualna_jednostka"
+        ).order_by("-pewnosc", "-publikacji_count")
+        return render(
+            request,
+            "importer_publikacji/partials/modal_candidates.html",
+            {
+                "session": session,
+                "author": imported_author,
+                "candidates": candidates,
+            },
+        )
+
+
+class AuthorInfoView(ImporterPermissionMixin, View):
+    """Zwraca JSON z metadanymi autora BPP (pk, slug, orcid, pbn_uid_id)
+    — używane w modalu edycji do aktualizacji linków do admina/BPP/PBN/
+    ORCID po zmianie wybranego autora w select2.
+
+    Parameter ``author_id`` to PK ``Autor`` (nie ``ImportedAuthor``).
+    """
+
+    def get(self, request, session_id, author_id):
+        get_object_or_404(ImportSession, pk=session_id)
+        from bpp.models import Autor
+
+        autor = get_object_or_404(Autor, pk=author_id)
+        return JsonResponse(
+            {
+                "pk": autor.pk,
+                "slug": autor.slug,
+                "display": str(autor),
+                "orcid": autor.orcid or "",
+                "pbn_uid_id": autor.pbn_uid_id or "",
+            }
+        )
+
+
 class AuthorMatchView(ImporterPermissionMixin, View):
     """Aktualizacja dopasowania pojedynczego autora."""
 
@@ -307,6 +363,12 @@ class AuthorMatchView(ImporterPermissionMixin, View):
                     "author": imported_author,
                 },
             )
+
+        # "Zapisany jako" jest niezależne od stanu dopasowania —
+        # user może chcieć ustawić zapis nawet dla niedopasowanego autora.
+        zj = (form.cleaned_data.get("zapisany_jako") or "").strip()
+        if zj:
+            imported_author.zapisany_jako = zj
 
         if form.cleaned_data.get("autor"):
             imported_author.matched_autor = form.cleaned_data["autor"]
