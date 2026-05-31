@@ -157,8 +157,9 @@ wołają komendę/funkcję jawnie i kontrolują stan.
 - modyfikacja: `src/nowe_raporty/apps.py` (drugi handler `post_migrate` za
   guardem `settings.TESTING`)
 - nowy: `src/nowe_raporty/tests/test_seed_raporty.py`
-- (rozważyć, osobno) usunięcie zepsutego
-  `src/nowe_raporty/fixtures/0001_initial_data.json` — nie blokuje.
+- usunięty: `src/nowe_raporty/fixtures/0001_initial_data.json` — martwy ślad po
+  Django <1.9 auto-loadowanym `initial_data` (od 2015 nieładowany niczym),
+  zepsuty (ContentType po PK). Zastąpiony tym seedem.
 
 Bez plików JSON/fixture z danymi — definicje żyją w `seeding/definicje.py`.
 
