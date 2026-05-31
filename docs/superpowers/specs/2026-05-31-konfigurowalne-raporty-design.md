@@ -27,10 +27,14 @@ jedno-uczelniane i wspólne dla wszystkich raportów danego typu.
 
 ## Decyzje (zatwierdzone w brainstormingu)
 
-1. **Multi-tenant: tylko model gotowy-pod-multitenant.** Budujemy M2M
-   `raport ↔ uczelnia` + poziom dostępu + grupy. „Bieżąca uczelnia" nadal przez
-   istniejące `Uczelnia.objects.get_for_request` (dziś `first()`). Rozpoznawanie
-   tenanta per-request (middleware/domena) — POZA zakresem, później.
+1. **Multi-tenant: jedyny kontrakt to `Uczelnia.objects.get_for_request(request)`.**
+   Budujemy M2M `raport ↔ uczelnia` + poziom dostępu + grupy. „Bieżącą uczelnię"
+   bierzemy **wyłącznie** z `Uczelnia.objects.get_for_request(request)` i wg tego
+   obiektu filtrujemy/sprawdzamy widoczność. **Jak `get_for_request` rozwiązuje
+   tenanta (Site, domena, cokolwiek) — NIE jest przedmiotem tej zmiany.** Nie
+   ruszamy `SITE_ID`, `Site.objects`, cache'a uczelni ani niczego z tym
+   związanego. Traktujemy `get_for_request` jak czarną skrzynkę zwracającą
+   `Uczelnia` (lub `None`).
 2. **Uprawnienia = dwa wymiary.** Poziom dostępu (wszyscy / zalogowani / staff /
    superuser) ORAZ opcjonalny zbiór grup jako **AND** (member którejkolwiek =
    OR wewnątrz zbioru). Superuser zawsze przechodzi (poza filtrem uczelni).
@@ -137,9 +141,29 @@ parametryzowana `slug`-iem definicji:
   woła `base_queryset` z rejestru, ustawia `report.set_base_queryset(...)`,
   renderuje (z eksportem docx/xlsx jak dziś).
 
-Dotychczasowe URL-e per-poziom zastąpione; stare nazwy (`autor_form` itd.)
-można zachować jako aliasy do nowych slugów dla kompatybilności linków
-(do decyzji — patrz „Otwarte").
+Dotychczasowe URL-e per-poziom zastąpione, ale **stare nazwy URL** (`autor_form`,
+`jednostka_form`, `wydzial_form`, `uczelnia_form` + `*_generuj`) **zostają jako
+aliasy** kierujące na nowe trasy `…/<slug>/…` dla 4 domyślnych raportów —
+kompatybilność istniejących linków/zakładek (zatwierdzone).
+
+### Integracja z `django-formdefaults` (kluczowe)
+
+Obecne formularze raportów używają `FormDefaultsMixin` i mają być nadal na
+formdefaults. **Pułapka:** formdefaults kluczuje zapisane domyślne wartości po
+`FormRepresentation.full_name = "{module}.{ClassName}"` (primary key, **bez
+hooka do override**). Jeden wspólny generyczny form class → wszystkie definicje
+**współdzieliłyby jeden rekord defaultów** (kolizja).
+
+Rozwiązanie: **dynamiczna klasa formularza per definicja** — fabryka
+`form_class_dla(definicja)` zwraca podklasę bazowego formularza ze **stabilnym**
+`__name__`/`__module__` wyprowadzonym ze sluga (np. `RaportForm_<slug>` w
+`nowe_raporty.forms_dynamiczne`), więc `full_name` jest unikalny i deterministyczny
+per definicja → **osobne defaulty per raport**. Generyczny `RaportFormView`
+buduje tę klasę dla danego sluga, a `post_migrate` hook (`apps.create_entries`)
+**iteruje po `DefinicjaRaportu`** i rejestruje `FormRepresentation` dla każdej
+(zamiast dzisiejszej pętli po 4 zahardkodowanych view-ach). Kolejność na
+`post_migrate`: seed tworzy `DefinicjaRaportu` (i `Report`) → potem rejestracja
+formdefaults per definicja.
 
 ### Formularz: wybór obiektu + zakres lat + opcje zaawansowane
 
@@ -168,33 +192,47 @@ można zachować jako aliasy do nowych slugów dla kompatybilności linków
 `{% czy_pokazywac raport_X %}`. Zastępujemy **pętlą** po widocznych definicjach:
 
 - Nowy context processor `raporty_menu(request)` (lub template tag) zwraca listę
-  aktywnych `DefinicjaRaportu` **z cache** (globalny, jak `bpp_uczelnia`),
-  filtrowaną per-request metodą `widoczny_dla` (filtr w Pythonie — tani, bez
-  N zapytań, bo cache trzyma odchudzoną reprezentację: slug, nazwa, poziom,
-  poziom_dostepu, id grup, id uczelni, kolejnosc).
-- **Inwalidacja cache** na `post_save`/`m2m_changed` `DefinicjaRaportu` oraz na
-  `post_save` `Uczelnia` (dziś już inwaliduje `bpp_uczelnia`).
+  aktywnych `DefinicjaRaportu`, filtrowaną per-request metodą `widoczny_dla`
+  (która woła `get_for_request(request)` — czarna skrzynka).
+- **Własny** cache listy definicji (odrębny klucz, NIE `bpp_uczelnia`) trzyma
+  odchudzoną reprezentację (slug, nazwa, poziom, poziom_dostepu, id grup, id
+  uczelni, kolejnosc) — by filtr `widoczny_dla` leciał w Pythonie bez N zapytań.
+  Lista zależy tylko od `DefinicjaRaportu`, więc **inwalidacja na
+  `post_save`/`m2m_changed` `DefinicjaRaportu`** (cache'a `bpp_uczelnia` nie
+  ruszamy).
 - Szablon renderuje płaską listę `<li>` posortowaną wg `kolejnosc`.
 
-## Migracja z `Uczelnia.pokazuj_raport_*`
+## Migracja z `Uczelnia.pokazuj_raport_*` — PŁYNNE PRZEJŚCIE (twardy wymóg)
 
-1. **Data migration** (`nowe_raporty`): dla każdego z 4 istniejących
-   `flexible_reports.Report` (po slugu) utwórz `DefinicjaRaportu`:
-   - `poziom` z mapowania slug→poziom,
-   - `report` = FK,
-   - `nazwa`/`slug`/`kolejnosc` sensownie (np. nazwa = title raportu),
-   - `poziom_dostepu` + `wymagane_grupy` z **mapowania** obecnej flagi
-     `Uczelnia.pokazuj_raport_<x>`:
-     - `always`    → `WSZYSCY`,
-     - `logged-in` → `ZALOGOWANI` + grupa `GR_RAPORTY_WYSWIETLANIE`
-       (zachowuje dzisiejsze zachowanie),
-     - `staff`     → `STAFF`,
-     - `never`     → `aktywny = False`,
-   - `uczelnie` = puste (= wszędzie).
-2. **Usunięcie pól** `pokazuj_raport_*` z `Uczelnia` (osobna migracja) +
-   aktualizacja call-site'ów: `top_bar.html`, `czy_pokazywac`,
-   `UczelniaSettingRequiredMixin`/`sprawdz_uprawnienie` (raporty przestają z nich
-   korzystać; mixin zostaje dla innych stron, które używają innych flag).
+Wymóg: **żadnego okna ze zmienioną/zepsutą widocznością raportów.** Po
+deployu istniejące raporty mają być widoczne dla dokładnie tych samych
+użytkowników co przed. Realizujemy to uporządkowaną sekwencją migracji w
+**jednym** PR:
+
+1. **Migracja schematu A** — dodaj model `DefinicjaRaportu` (+ M2M). Pola
+   `Uczelnia.pokazuj_raport_*` jeszcze **istnieją**.
+2. **Data migration B** — dla każdego z 4 istniejących `flexible_reports.Report`
+   (po slugu) utwórz `DefinicjaRaportu` przepisując uprawnienia 1:1 z
+   `Uczelnia.pokazuj_raport_<x>`:
+   - `always`    → `poziom_dostepu = WSZYSCY`,
+   - `logged-in` → `ZALOGOWANI` + `wymagane_grupy = {GR_RAPORTY_WYSWIETLANIE}`
+     (dokładnie dzisiejsza semantyka `_sprawdz_uprawnienie_zalogowany`),
+   - `staff`     → `STAFF`,
+   - `never`     → `aktywny = False`,
+   - `uczelnie` = puste (= wszędzie); `poziom`/`nazwa`/`slug` z mapowania.
+   Wartości czyta z **pierwszej/jedynej** uczelni (`get_default`) — tak jak dziś
+   działa widoczność.
+3. **Przełączenie call-site'ów** — menu (`top_bar.html`) i dispatch widoków
+   przechodzą na `DefinicjaRaportu.widoczny_dla`. Dopiero teraz przestają
+   zależeć od `pokazuj_raport_*`.
+4. **Migracja schematu C** — usuń 4 pola `pokazuj_raport_*` z `Uczelnia`.
+   `czy_pokazywac` / `UczelniaSettingRequiredMixin` / inne flagi `pokazuj_*`
+   (ranking, raport slotów itd.) **zostają** — usuwamy tylko 4 flagi raportów.
+
+**Test parytetu** (gwarancja płynności): dla każdej wartości
+`OpcjaWyswietlaniaField` × (anon / zalogowany-bez-grupy / zalogowany-w-grupie /
+staff / superuser) — `DefinicjaRaportu.widoczny_dla` po migracji daje **ten sam**
+wynik co dawne `Uczelnia.sprawdz_uprawnienie` przed migracją.
 
 ## Reconciliation ze slice A (seed)
 
@@ -226,18 +264,52 @@ Slice A seeduje `flexible_reports.Report` (template/schemat). Slice B dokłada
 
 ## Poza zakresem
 
-- Rozpoznawanie tenanta per-request (middleware/domena) — przyszłość.
+- **Rozpoznawanie tenanta** (jak `get_for_request` mapuje request→`Uczelnia`,
+  Site/domena itd.) — załatwia samo `get_for_request`; my tylko je wołamy.
 - „Klonuj tabelę" (parking).
 - Przeprojektowanie datasource'ów „karm przefiltrowaną listą" (parking).
 - Bug 500 w eksporcie przy braku `Report` — można domknąć opcjonalnie przy
-  okazji generycznego widoku (do decyzji).
+  okazji generycznego widoku.
 
-## Otwarte do weryfikacji przez użytkownika
+## Decyzje zatwierdzone (były „otwarte")
 
-- **Zestaw opcji zaawansowanych** (4 powyższe) — czy pasują, czy coś dodać/ująć.
-- **Mapowanie uprawnień przy migracji** (zwł. `logged-in` → `ZALOGOWANI` +
-  grupa `GR_RAPORTY_WYSWIETLANIE`).
-- **Stare URL-e** (`autor_form` itd.) — aliasować do nowych slugów czy zostawić
-  tylko nowe `…/<slug>/`?
+- Opcje zaawansowane (4 powyższe) — **OK**.
+- Mapowanie uprawnień przy migracji — **OK**.
+- Stare URL-e — **aliasować** do nowych `…/<slug>/`.
+- Pola `pokazuj_raport_*` — usunąć, ale z **gwarancją płynnego przejścia**
+  (sekwencja migracji + test parytetu powyżej).
+
+## Etapowanie implementacji (TDD, przyrostowo na tej gałęzi)
+
+Slice B+C jest duży — proponuję 5 etapów, każdy z testami i osobnym commitem:
+
+1. **Model + `widoczny_dla`** (`DefinicjaRaportu`, migracja schematu A) + testy
+   uprawnień (poziomy, grupy AND, superuser, aktywny, M2M uczelnie).
+2. **Płynne przejście**: data migration B (mapowanie z `pokazuj_raport_*`) +
+   **test parytetu** + przełączenie call-site'ów + migracja C (usunięcie pól).
+3. **Generyczne widoki/formularz/URL** + rejestr `POZIOMY` + opcje zaawansowane
+   + **formdefaults per-definicja** (dynamiczne klasy) + aliasy starych URL.
+4. **Data-driven płaskie menu** + własny cache + inwalidacja.
+5. **Reconciliation ze slice A**: rozszerzenie `seed_default_reports()` o
+   `DefinicjaRaportu` + `post_migrate` rejestracja formdefaults per definicja.
+
+## Ryzyka / uwagi (self-review)
+
+- **Płynne przejście to najczulszy punkt.** Mitygacja: kolejność migracji A→B→
+  przełączenie→C w jednym PR + test parytetu. Połowiczny deploy (np. B bez C)
+  nie psuje widoczności, bo do kroku 3 menu nadal czyta stare flagi.
+- **`get_for_request` jako czarna skrzynka.** Dopóki nie jest „host-aware",
+  scoping `uczelnie` M2M działa efektywnie single-tenant (jedna uczelnia z
+  `get_default`). To OK i zgodne z założeniem — nic po naszej stronie.
+- **formdefaults wymaga dynamicznych klas** (`type()` ze stabilnym `__name__`
+  ze sluga) — jedyna droga, bo formdefaults kluczuje po `full_name` bez hooka.
+  Ryzyko: slug ze znakami spoza identyfikatora → sanityzować do `[A-Za-z0-9_]`.
+- **`get_for_request` jest wołane szeroko** w całym bpp — sama nasza zmiana go
+  nie modyfikuje, ale pełny suite (nie tylko `nowe_raporty`) trzeba przepuścić.
+- **`report` FK = `PROTECT`** — usunięcie `flexible_reports.Report` używanego
+  przez definicję jest blokowane (świadome).
+- **Rozmiar PR.** 5 etapów = duży PR. Alternatywa: etap 2 (płynne przejście)
+  jako osobny mniejszy PR przed resztą — do rozważenia, jeśli review ma być
+  lżejsze.
 - **Usunięcie pól `pokazuj_raport_*`** z `Uczelnia` teraz, czy deprecate-then-
   remove w osobnym kroku.
