@@ -100,3 +100,21 @@ def test_generyczny_niewidoczny_404_dla_zalogowanego(generuj_raporty_app):
     generuj_raporty_app.get(
         reverse("nowe_raporty:raport_form", args=["raport-x"]), status=404
     )
+
+
+@pytest.mark.django_db
+def test_create_entries_rejestruje_formdefaults_per_definicja():
+    from formdefaults.models import FormRepresentation
+
+    from nowe_raporty.apps import create_entries
+
+    seed_default_reports()
+    create_entries(sender=None)
+
+    # kazda definicja ma wlasny FormRepresentation (full_name per slug)
+    assert FormRepresentation.objects.filter(
+        full_name="nowe_raporty.forms_dynamiczne.RaportForm_raport_autorow"
+    ).exists()
+    assert FormRepresentation.objects.filter(
+        full_name="nowe_raporty.forms_dynamiczne.RaportForm_raport_uczelni"
+    ).exists()
