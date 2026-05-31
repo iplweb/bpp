@@ -1,9 +1,50 @@
 # Konfigurowalne raporty: model `DefinicjaRaportu` + uprawnienia (slice B + C)
 
 Data: 2026-05-31
-Status: do recenzji użytkownika
+Status: w trakcie implementacji — etapy 1/2/3a dowiezione, 3b/4/5 do zrobienia
 Branch: `feat/nowe-raporty-konfigurowalne` (stackowany na
 `feat/nowe-raporty-seed-domyslnych` / slice A)
+
+## Postęp implementacji (checkpoint)
+
+Wszystko zielone (cały moduł `nowe_raporty`: 89 passed), branch spójny.
+
+- ✅ **Etap 1** (`69409c2ee`): model `DefinicjaRaportu` + `widoczny_dla` + admin
+  + 11 testów uprawnień. Migracja `0001_initial` (zależność przepięta na realną
+  `flexible_reports.0011`, nie spurious `0012`).
+- ✅ **Etap 2** (`e73808040`): seed tworzy `DefinicjaRaportu` mapując uprawnienia
+  z `Uczelnia.pokazuj_raport_*` (`seeding/__init__.py`: `_OPCJA_NA_DOSTEP`,
+  `_POZIOM_META`, `_utworz_definicje`) + **test parytetu** (4 wartości × 5 userów).
+- ✅ **Etap 3a** (`c35463070`): opcje zaawansowane (collapsed `<details>` w
+  `BaseRaportForm`) + filtr `zastosuj_filtry_zaawansowane` w `GenerujRaportBase`
+  + scentralizowany `_redirect_do_generuj` + **fix bug 500** eksportu.
+
+### Do zrobienia (3b/4/5) — gotchas odkryte w trakcie
+
+- **Etap 3b — generyczny routing.** Rekomendacja: **additive** — dodać
+  `RaportFormView` + `RaportGenerujView` (slug z URL), a stare 4 klasy +
+  URL-e zostawić jako aliasy (zero churnu w istniejących testach). Rejestr
+  `POZIOMY` (`poziomy.py`): wyciągnąć `get_base_queryset` z 4 klas
+  `GenerujRaportDla*` (views.py — autor/jednostka/wydział mają `pk`, uczelnia
+  nie). **formdefaults**: fabryka `form_class_dla(definicja)` tworząca
+  **dynamiczną** podklasę ze STABILNYM `__name__`/`__module__` ze sluga
+  (formdefaults kluczuje po `full_name = module.ClassName`, bez hooka override
+  → jeden wspólny class = kolizja defaultów). Single-object default: gdy
+  `poziom.model.objects.count()==1` → preselect. Auth generyka: `widoczny_dla`
+  (4 domyślne mają już `DefinicjaRaportu` z seeda).
+- **Etap 4 — menu.** `top_bar.html` (~linie 54-98): zastąpić zahardkodowane
+  `<li>` (bramkowane `czy_pokazywac raport_X`) **pętlą** po widocznych
+  `DefinicjaRaportu`. Nowy context processor `raporty_menu(request)` → aktywne
+  definicje filtrowane `widoczny_dla`; **własny** cache (NIE `bpp_uczelnia`),
+  inwalidacja na `post_save`/`m2m_changed` `DefinicjaRaportu`. Menu linkuje do
+  nowych tras `<slug>/`. `ENABLE_NEW_REPORTS` nadal bramkuje sekcję.
+- **Etap 5 — formdefaults registracja.** `apps.create_entries` (dziś pętla po 4
+  zahardkodowanych view) → iterować `DefinicjaRaportu`, budować `form_class_dla`,
+  rejestrować formdefaults per definicja. Kolejność `post_migrate`: seed (tworzy
+  `DefinicjaRaportu`) PRZED `create_entries`.
+- **Mini-PR follow-up** (po przełączeniu menu/widoków): DROP COLUMN 4 pól
+  `Uczelnia.pokazuj_raport_*` + usunięcie starych klas/URL/form (gdy aliasy
+  zbędne). Pola są dziś martwe ale obecne (decyzja: płynne przejście).
 
 ## Problem
 
