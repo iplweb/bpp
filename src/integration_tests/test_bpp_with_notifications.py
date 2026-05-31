@@ -147,7 +147,10 @@ def test_bpp_notifications_and_messages(preauth_asgi_page: Page):
 
     call_command("send_message", preauth_asgi_page.authorized_user.username, s)
 
-    page.wait_for_timeout(1000)  # Give time for message to be sent
+    # `wait_for_function` poll-uje az tekst sie pojawi (timeout 15 s daje
+    # zapas), wiec poprzedzajacy go staly `wait_for_timeout(1000)` byl
+    # martwym czasem — subskrypcja kanalu jest juz udowodniona w fixturze
+    # `preauth_asgi_page` (wait_for_channel_subscription).
     page.wait_for_function(
         f"() => document.body.textContent.includes('{s}')", timeout=15000
     )
