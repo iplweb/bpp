@@ -49,48 +49,58 @@ uzupełnienia**, nie do wiernego importu.
 
 ## Rozwiązanie
 
-### 1. Plik danych (źródło prawdy)
+Decyzja: definicje i logika seedowania **w kodzie Pythona**, nie w pliku
+JSON/fixture. Uzasadnienie: `loaddata` i tak odrzucone (nadpisuje po PK), więc
+loader piszemy ręcznie niezależnie — wtedy JSON + custom loader to dwa artefakty
++ glue na PK + nieczytelny review, a Python budujący obiekty wprost to jeden
+artefakt, zero PK, czytelny diff, komentarze przy DSL. Dodatkowo Python pozwala
+wyrazić symetrię autor/jednostka/wydział/uczelnia (generowanie wariantów `2.x`
+z jednego wzorca) i zdeduplikować prawie-identyczny szablon HTML.
 
-`src/nowe_raporty/data/domyslne_raporty.json` — format serializacji Django
-(lista `{model, pk, fields}`, jak `dumpdata --natural-foreign`), wyprodukowany z
-dumpu usera z poprawkami:
+### 1. Definicje domyślne (źródło prawdy) — Python
 
-- **dodany `raport-uczelni`** (slug `raport-uczelni`, title „Raport uczelni"):
-  ta sama struktura 12 sekcji; `1.x/3/4.x` współdzielą istniejące datasource'y
-  bez filtra; `2.x` → **3 nowe** datasource'y „… - uczelnia" = warunki
-  monografii/rozdziału/redakcji **bez** `…= {{ obiekt.pk }}` (agregacja po całej
-  uczelni; base_queryset = `Rekord.all()`/`afiliuje`). **Do sanity-checku przez
-  usera** — semantyka DSL dla uczelni to mój wybór.
-- **poprawione szablony** wszystkich raportów: `<h2>…</h3>` → spójne `h2`/`h3`,
-  sekcje `4.1/4.2/4.3` jako `<h3>` pod „4. Inne".
-- **poprawione labele** datasource'ów `2.1` jednostka/wydział: „Autorstwo
-  **monografii**" zamiast „Autorstwo **rozdziału** monografii".
+`src/nowe_raporty/seeding/definicje.py` — czytelne stałe + funkcje budujące,
+treść DSL/kolumn/szablonu przepisana z dumpu usera **z poprawkami**:
 
-Format `dumpdata` zachowany celowo: user może odświeżyć plik wklejając nowy
-`dumpdata --natural-foreign`, a loader (niżej) i tak nadaje sens PK-om lokalnie.
+- **Kolumny** wspólnej tabeli: jedna lista definicji (Lp, Opis bibliograficzny,
+  IF, Pkt. MNiSW, Typ KBN, Rok, ID) + kolejność (Rok malejąco, Opis rosnąco).
+- **Datasource'y** jako buildery:
+  - `1.x`, `3`, `4.x` — wspólne, bez filtra po obiekcie (jeden zestaw).
+  - `2.x` — **generowane z jednego wzorca** parametryzowanego nazwą pola
+    obiektu: `autor` / `jednostka` / `wydzial` / `None`. Dla `None` (uczelnia)
+    klauzula `… = {{ obiekt.pk }}` znika → agregacja po całej uczelni. To
+    eliminuje duplikację osobnych prawie-identycznych datasource'ów z dumpu.
+  - **`raport-uczelni` 2.x** (wzorzec z `field=None`) — **do sanity-checku przez
+    usera**: semantyka monografii/rozdziału/redakcji na poziomie uczelni to mój
+    wybór projektowy.
+- **Szablon HTML** raportu — jedna funkcja parametryzowana nagłówkiem („Raport
+  autora/jednostki/wydziału/uczelni"), z **poprawionymi** tagami (`<h2>…</h3>`
+  → spójne `h2`/`h3`; `4.1/4.2/4.3` jako `<h3>` pod „4. Inne"). Zastępuje 4×
+  prawie-identyczny szablon z dumpu.
+- **Labele** `2.1` poprawione: „Autorstwo **monografii**" (nie „rozdziału").
+- **Definicje 4 raportów**: slug + tytuł + lista sekcji (które datasource'y,
+  w jakiej kolejności), w tym dorobiony `raport-uczelni`.
 
-### 2. Loader — management command `seed_raporty`
+### 2. Loader — `seed_default_reports()` + management command
 
-`src/nowe_raporty/management/commands/seed_raporty.py`. NIE używa `loaddata`
-(bo `loaddata` robi INSERT-or-UPDATE po PK → nadpisałoby/kolidowało). Zamiast
-tego własna, idempotentna aplikacja:
+`src/nowe_raporty/seeding/__init__.py` (funkcja `seed_default_reports()`),
+wołana przez `src/nowe_raporty/management/commands/seed_raporty.py`.
+Idempotentna aplikacja, **bez `loaddata`**:
 
-1. Wczytuje JSON, buduje mapę `pk-w-pliku → obiekt-w-bazie` w pamięci.
-2. **`Table`/`Datasource`**: `get_or_create` po `label` (jedyny ludzko-stabilny
+1. **`Table`/`Datasource`**: `get_or_create` po `label` (jedyny ludzko-stabilny
    klucz; `flexible_reports` nie ma slug-a na tych modelach, a pól dodać nie
    można — to obcy pakiet). Istnieje po label → używam, **nie dotykam**.
-   **`Column`/`ColumnOrder`** nie mają własnego klucza — tworzone są **atomowo
-   razem z `Table`** w gałęzi „zakładam tabelę"; gdy `Table` istnieje po label,
-   jej kolumn ani `ColumnOrder`-ów **nie tykamy** w ogóle.
-3. **`Report`**: `get_or_create` po `slug`. Istnieje → **pomijam w całości**
-   (z elementami). Brak → tworzę `Report` + jego `ReportElement`-y wskazujące na
-   (współdzieloną) tabelę i odpowiednie datasource'y.
-4. **`ContentType`** (base_model): rozwiązywany przez
-   `ContentType.objects.get_by_natural_key(app_label, model)`.
-5. Nigdy żadnego `UPDATE`/`delete`. Na końcu wypisuje podsumowanie
-   (utworzone vs pominięte) na stdout.
+   **`Column`/`ColumnOrder`** tworzone **atomowo razem z `Table`** w gałęzi
+   „zakładam tabelę"; gdy `Table` istnieje po label — kolumn/`ColumnOrder`-ów
+   **nie tykamy**.
+2. **`Report`**: `get_or_create` po `slug`. Istnieje → **pomijam w całości**
+   (z elementami). Brak → tworzę `Report` + `ReportElement`-y wskazujące na
+   współdzieloną tabelę i odpowiednie datasource'y.
+3. **`ContentType`** (base_model): `ContentType.objects.get_by_natural_key(...)`.
+4. Nigdy żadnego `UPDATE`/`delete`. Podsumowanie (utworzone vs pominięte) na
+   stdout.
 
-Flaga `--force`? **Nie** — sprzeczne z „nie nadpisuj". Re-seed = uzupełnia tylko
+Flaga `--force`? **Nie** — sprzeczne z „nie nadpisuj". Re-seed uzupełnia tylko
 brakujące.
 
 ### 3. Auto-seed na `post_migrate`
@@ -137,15 +147,20 @@ wołają komendę/funkcję jawnie i kontrolują stan.
 
 ## Pliki
 
-- nowy: `src/nowe_raporty/data/domyslne_raporty.json`
-- nowy: `src/nowe_raporty/seeding.py` (funkcja `seed_default_reports()`)
-- nowy: `src/nowe_raporty/management/commands/seed_raporty.py`
+- nowy: `src/nowe_raporty/seeding/__init__.py` (funkcja `seed_default_reports()`
+  + logika idempotentna)
+- nowy: `src/nowe_raporty/seeding/definicje.py` (stałe + buildery: kolumny,
+  datasource'y, szablon, definicje 4 raportów)
 - nowy: `src/nowe_raporty/management/__init__.py`,
   `src/nowe_raporty/management/commands/__init__.py` (jeśli brak)
-- modyfikacja: `src/nowe_raporty/apps.py` (drugi handler `post_migrate`)
+- nowy: `src/nowe_raporty/management/commands/seed_raporty.py`
+- modyfikacja: `src/nowe_raporty/apps.py` (drugi handler `post_migrate` za
+  guardem `settings.TESTING`)
 - nowy: `src/nowe_raporty/tests/test_seed_raporty.py`
-- (rozważyć) usunięcie/zastąpienie zepsutego
-  `src/nowe_raporty/fixtures/0001_initial_data.json` — osobno, nie blokuje.
+- (rozważyć, osobno) usunięcie zepsutego
+  `src/nowe_raporty/fixtures/0001_initial_data.json` — nie blokuje.
+
+Bez plików JSON/fixture z danymi — definicje żyją w `seeding/definicje.py`.
 
 ## Poza zakresem
 
