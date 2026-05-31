@@ -127,7 +127,15 @@ def test_zapisz_wydawnictwo_w_adminie(klass, autor_klass, name, url, admin_app):
     Autorzy.objects.all().delete()
 
 
-@pytest.mark.parametrize("model", apps.get_models())
+# Parametryzujemy WYŁĄCZNIE po modelach z aplikacji `bpp`. Wcześniej było
+# `apps.get_models()` (wszystkie modele całego projektu) + `if app_label !=
+# "bpp": return` w ciele — to generowało setki pustych no-op item-ów w raporcie
+# i niepotrzebnie obciążało kolekcję. Filtr na poziomie parametryzacji daje
+# identyczne pokrycie (modele nie-bpp i tak były pomijane), tylko bez śmieci.
+_BPP_MODELS = [m for m in apps.get_models() if m._meta.app_label == "bpp"]
+
+
+@pytest.mark.parametrize("model", _BPP_MODELS, ids=lambda m: m.__name__)
 @pytest.mark.django_db
 def test_widok_admina(admin_client, model):
     """Wejdź na podstrony admina 'changelist' oraz 'add' dla każdego modelu z aplikacji
@@ -138,12 +146,8 @@ def test_widok_admina(admin_client, model):
     przed uruchomieniem aplikacji.
     """
 
-    # for model in apps.get_models():
     app_label = model._meta.app_label
     model_name = model._meta.model_name
-
-    if app_label != "bpp":
-        return
 
     url_name = f"admin:{app_label}_{model_name}_changelist"
     try:
