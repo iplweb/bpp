@@ -1,4 +1,4 @@
-import os
+import re
 
 from django.conf import settings
 from django.contrib.auth.mixins import AccessMixin
@@ -8,7 +8,7 @@ from django.shortcuts import get_object_or_404
 from django.template.context import RequestContext
 from django.urls import reverse
 from django.utils.functional import cached_property
-from django.utils.http import urlencode
+from django.utils.http import content_disposition_header, urlencode
 from django.views.generic import FormView, TemplateView
 from django.views.generic.detail import DetailView
 from django_tables2.export.export import TableExport
@@ -174,6 +174,14 @@ class GenerujRaportBase(DetailView):
     def title(self):
         return f"Raport dla {self.object} za {self.okres}"
 
+    def nazwa_pliku(self, rozszerzenie):
+        """Opisowa, bezpieczna nazwa pliku eksportu: '<raport> - <obiekt> - <okres>'."""
+        surowa = f"{self.form_title} - {self.object} - {self.okres}"
+        # usuń znaki nielegalne w nazwach plików (/, \\, :, *, ?, ", <, >, |)
+        bezpieczna = re.sub(r'[\\/:*?"<>|]+', " ", surowa)
+        bezpieczna = re.sub(r"\s+", " ", bezpieczna).strip()
+        return f"{bezpieczna}.{rozszerzenie}"
+
     def get_report(self):
         """Definicja flexible_reports.Report. Generyczny widok nadpisuje."""
         return Report.objects.filter(slug=self.report_slug).first()
@@ -228,25 +236,28 @@ class GenerujRaportBase(DetailView):
     def as_docx_response(self, report, parent_context, filename=None):
         data = as_docx(report, parent_context)
 
-        response = FileResponse(
-            data,
-            content_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-        )
-
         if filename is None:
             filename = report.title + ".docx"
 
-        response["Content-Disposition"] = f'attachment; filename="{filename}"'
-
-        response["Content-Length"] = os.stat(data.name).st_size
-        return response
+        # FileResponse(as_attachment=, filename=) sam ustawia Content-Disposition
+        # zgodnie z RFC 6266 (filename* dla znaków spoza ASCII) i Content-Length.
+        return FileResponse(
+            data,
+            as_attachment=True,
+            filename=filename,
+            content_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        )
 
     def as_xlsx_response(self, report, parent_context, filename=None):
         response = HttpResponse(content_type=TableExport.FORMATS[TableExport.XLSX])
         if filename is None:
             filename = report.title + ".xlsx"
 
-        response["Content-Disposition"] = f'attachment; filename="{filename}"'
+        # poprawne kodowanie nazwy (RFC 6266) - inaczej przeglądarka spada do
+        # nazwy z URL-a (sam rok)
+        response["Content-Disposition"] = content_disposition_header(
+            as_attachment=True, filename=filename
+        )
 
         xlsx = as_tablib_databook(report, parent_context)
 
@@ -269,7 +280,7 @@ class GenerujRaportBase(DetailView):
             parent_context = RequestContext(self.request, context)
             fun = getattr(self, f"as_{_export}_response")
             return fun(
-                context["report"], parent_context, filename=self.title + "." + _export
+                context["report"], parent_context, filename=self.nazwa_pliku(_export)
             )
 
         return super().render_to_response(context, **response_kwargs)

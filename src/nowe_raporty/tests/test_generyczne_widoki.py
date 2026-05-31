@@ -103,6 +103,25 @@ def test_generyczny_niewidoczny_404_dla_zalogowanego(generuj_raporty_app):
 
 
 @pytest.mark.django_db
+def test_nazwa_pliku_eksportu_opisowa(webtest_app, typy_odpowiedzialnosci):
+    seed_default_reports()
+    autor = baker.make(Autor, nazwisko="Marańda", imiona="Ewa")  # polskie znaki
+    res = webtest_app.get(
+        reverse(
+            "nowe_raporty:raport_generuj",
+            args=["raport-autorow", autor.pk, 2018, 2020],
+        )
+        + "?_export=xlsx"
+    )
+    cd = res.headers["Content-Disposition"]
+    assert cd.startswith("attachment")
+    # opisowa nazwa: typ raportu + zakres lat + rozszerzenie (NIE sam rok z URL-a)
+    assert "Raport" in cd
+    assert "2018-2020" in cd
+    assert ".xlsx" in cd
+
+
+@pytest.mark.django_db
 def test_create_entries_rejestruje_formdefaults_per_definicja():
     from formdefaults.models import FormRepresentation
 
