@@ -136,6 +136,43 @@ def test_author_info_view_zwraca_json(session, importer_client):
 
 
 @pytest.mark.django_db
+def test_auto_match_ustawia_default_zapisany_jako(session):
+    """`zapisany_jako` jest pre-fillowane z family_name + given_name."""
+    _auto_match_authors(
+        session, [{"given": "Eva", "family": "Lech-Maranda"}], year=None
+    )
+    imp = session.authors.get()
+    assert imp.zapisany_jako == "Lech-Maranda Eva"
+
+
+@pytest.mark.django_db
+def test_author_match_view_zapisuje_zapisany_jako(session, importer_client):
+    """POST na author-match z polem `zapisany_jako` aktualizuje rekord."""
+    from django.urls import reverse
+
+    autor = baker.make(Autor, imiona="Ewa", nazwisko="Lech-Marańda")
+    imp = baker.make(
+        ImportedAuthor,
+        session=session,
+        order=0,
+        family_name="Lech-Maranda",
+        given_name="Eva",
+        zapisany_jako="Lech-Maranda Eva",
+    )
+    url = reverse(
+        "importer_publikacji:author-match",
+        args=[session.pk, imp.pk],
+    )
+    response = importer_client.post(
+        url,
+        {"autor": autor.pk, "zapisany_jako": "Lech-Maranda E."},
+    )
+    assert response.status_code == 200
+    imp.refresh_from_db()
+    assert imp.zapisany_jako == "Lech-Maranda E."
+
+
+@pytest.mark.django_db
 def test_author_candidates_modal_view_renderuje_kandydatow(session, importer_client):
     """GET author-candidates-modal zwraca HTML partial z listą kandydatów."""
     from django.urls import reverse

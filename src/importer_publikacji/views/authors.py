@@ -90,12 +90,15 @@ def _auto_match_authors(session, authors_data, year):
     badge'ami.
     """
     for i, author_data in enumerate(authors_data):
+        family = author_data.get("family", "")
+        given = author_data.get("given", "")
         imported = ImportedAuthor.objects.create(
             session=session,
             order=i,
-            family_name=author_data.get("family", ""),
-            given_name=author_data.get("given", ""),
+            family_name=family,
+            given_name=given,
             orcid=author_data.get("orcid", ""),
+            zapisany_jako=f"{family} {given}".strip(),
         )
 
         result = Komparator.porownaj_author(author_data)

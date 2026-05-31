@@ -42,14 +42,21 @@
     background-color: #f0f0f0;
 }
 
-/* Pola formularza w modalu — wcięcie z lewej i bold etykiety. */
-#modal-author-form > label {
-    padding-left: 1rem;
+/* Pola formularza w modalu — etykieta nad polem, pole z wcięciem.
+   Struktura: <div.field-group> > <label.field-label> + <div.field-input>. */
+#modal-author-form .field-group {
     margin-bottom: 0.75rem;
-    font-weight: bold;
 }
-#modal-author-form > label > select {
-    font-weight: normal;
+#modal-author-form .field-label {
+    display: block;
+    font-weight: bold;
+    margin-bottom: 0.25rem;
+}
+#modal-author-form .field-input {
+    padding-left: 1rem;
+}
+#modal-author-form .field-input > input[type="text"] {
+    margin-bottom: 0;
 }
 </style>
 <div class="callout">
@@ -228,33 +235,54 @@
         {% csrf_token %}
         <input type="hidden" id="modal-author-id" value="">
 
-        <label>Autor w BPP
-            <select name="autor"
-                    id="modal-autor-select"
-                    data-url="{% url 'bpp:autor-autocomplete' %}"
-                    style="width:100%">
-            </select>
-        </label>
+        <div class="field-group">
+            <label class="field-label">Autor w BPP:</label>
+            <div class="field-input">
+                <select name="autor"
+                        id="modal-autor-select"
+                        data-url="{% url 'bpp:autor-autocomplete' %}"
+                        style="width:100%">
+                </select>
+                {# Linki do wybranego autora (admin/BPP/PBN/ORCID) #}
+                <div class="modal-author-links"
+                     id="modal-author-links"></div>
+            </div>
+        </div>
 
-        {# Linki do wybranego autora (admin/BPP/PBN/ORCID) — JS update #}
-        <div class="modal-author-links" id="modal-author-links"></div>
+        <div class="field-group">
+            <label class="field-label">Jednostka:</label>
+            <div class="field-input">
+                <select name="jednostka"
+                        id="modal-jednostka-select"
+                        data-url="{% url 'bpp:jednostka-autocomplete' %}"
+                        style="width:100%">
+                </select>
+            </div>
+        </div>
 
-        <label>Jednostka
-            <select name="jednostka"
-                    id="modal-jednostka-select"
-                    data-url="{% url 'bpp:jednostka-autocomplete' %}"
-                    style="width:100%">
-            </select>
-        </label>
+        <div class="field-group">
+            <label class="field-label">Dyscyplina:</label>
+            <div class="field-input">
+                <select name="dyscyplina"
+                        id="modal-dyscyplina-select"
+                        data-url="{% url 'bpp:dyscyplina-naukowa-przypisanie-autocomplete' %}"
+                        data-rok="{{ session.normalized_data.year }}"
+                        style="width:100%">
+                </select>
+            </div>
+        </div>
 
-        <label>Dyscyplina
-            <select name="dyscyplina"
-                    id="modal-dyscyplina-select"
-                    data-url="{% url 'bpp:dyscyplina-naukowa-przypisanie-autocomplete' %}"
-                    data-rok="{{ session.normalized_data.year }}"
-                    style="width:100%">
-            </select>
-        </label>
+        <div class="field-group">
+            <label class="field-label" for="modal-zapisany-jako">
+                Zapisany jako (jak ma figurować w publikacji):
+            </label>
+            <div class="field-input">
+                <input type="text"
+                       name="zapisany_jako"
+                       id="modal-zapisany-jako"
+                       style="width:100%">
+            </div>
+        </div>
 
         <div class="text-right"
              style="margin-top:1rem">
@@ -785,6 +813,11 @@ $(document).ready(function() {
             );
         }
         $j.trigger('change.select2');
+
+        // Pre-fill "Zapisany jako"
+        $('#modal-zapisany-jako').val(
+            $row.data('zapisany-jako') || ''
+        );
 
         // Pre-fill dyscyplina (jeśli była) — full lista załaduje się
         // przez loadModalDyscypliny() niżej.

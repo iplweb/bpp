@@ -9,7 +9,8 @@
     data-jednostka-pk="{{ author.matched_jednostka.pk|default:'' }}"
     data-jednostka-name="{{ author.matched_jednostka|default:'' }}"
     data-dyscyplina-pk="{{ author.matched_dyscyplina.pk|default:'' }}"
-    data-dyscyplina-name="{{ author.matched_dyscyplina|default:'' }}">
+    data-dyscyplina-name="{{ author.matched_dyscyplina|default:'' }}"
+    data-zapisany-jako="{{ author.zapisany_jako|default:'' }}">
     <td>{{ author.order|add:1 }}</td>
     <td>{{ author.display_name }}</td>
     <td>

@@ -195,6 +195,13 @@ class ImportedAuthor(models.Model):
     family_name = models.CharField("nazwisko", max_length=255, blank=True, default="")
     given_name = models.CharField("imiona", max_length=255, blank=True, default="")
     orcid = models.CharField("ORCID", max_length=50, blank=True, default="")
+    # Pełen zapis "tak jak ma figurować w publikacji" — domyślnie
+    # tworzony z family_name+given_name dostawcy, ale edytowalny w UI
+    # (autor mógł podpisać się inaczej, np. panieńskim). Przy tworzeniu
+    # rekordu publikacji trafia do ``Wydawnictwo_*_Autor.zapisany_jako``.
+    zapisany_jako = models.CharField(
+        "zapisane nazwisko", max_length=512, blank=True, default=""
+    )
 
     match_status = models.CharField(
         "status dopasowania",

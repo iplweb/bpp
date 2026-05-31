@@ -407,6 +407,12 @@ class AuthorMatchView(ImporterPermissionMixin, View):
                 },
             )
 
+        # "Zapisany jako" jest niezależne od stanu dopasowania —
+        # user może chcieć ustawić zapis nawet dla niedopasowanego autora.
+        zj = (form.cleaned_data.get("zapisany_jako") or "").strip()
+        if zj:
+            imported_author.zapisany_jako = zj
+
         if form.cleaned_data.get("autor"):
             imported_author.matched_autor = form.cleaned_data["autor"]
             imported_author.match_status = ImportedAuthor.MatchStatus.MANUAL
