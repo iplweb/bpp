@@ -3,6 +3,7 @@ import os
 from django.conf import settings
 from django.http.response import FileResponse, HttpResponse, HttpResponseRedirect
 from django.template.context import RequestContext
+from django.utils.http import urlencode
 from django.views.generic import FormView, TemplateView
 from django.views.generic.detail import DetailView
 from django_tables2.export.export import TableExport
@@ -26,16 +27,60 @@ from .forms import (
 )
 
 
+def zastosuj_filtry_zaawansowane(queryset, params):
+    """Zawęża queryset Rekord wg opcjonalnych filtrów zaawansowanych z GET."""
+
+    def _liczba(nazwa):
+        try:
+            return float(params[nazwa])
+        except (KeyError, TypeError, ValueError):
+            return None
+
+    zakresy = [
+        ("punkty_mnisw_od", "punkty_kbn__gte"),
+        ("punkty_mnisw_do", "punkty_kbn__lte"),
+        ("if_od", "impact_factor__gte"),
+        ("if_do", "impact_factor__lte"),
+        ("punktacja_wewnetrzna_od", "punktacja_wewnetrzna__gte"),
+        ("punktacja_wewnetrzna_do", "punktacja_wewnetrzna__lte"),
+    ]
+    for param, lookup in zakresy:
+        wartosc = _liczba(param)
+        if wartosc is not None:
+            queryset = queryset.filter(**{lookup: wartosc})
+
+    if params.get("tylko_punktowane") in ("True", "true", "on", "1"):
+        queryset = queryset.filter(punkty_kbn__gt=0)
+    return queryset
+
+
+def _redirect_do_generuj(cleaned_data, pola_zaawansowane):
+    """Buduje redirect z formularza do widoku generuj (z parametrami)."""
+    params = {
+        "_export": cleaned_data["_export"],
+        "_tzju": cleaned_data.get("tylko_z_jednostek_uczelni", True),
+    }
+    for pole in pola_zaawansowane:
+        wartosc = cleaned_data.get(pole)
+        if wartosc not in (None, "", False):
+            params[pole] = wartosc
+    querystring = urlencode(params)
+
+    obiekt = cleaned_data.get("obiekt")
+    if obiekt is not None:
+        prefiks = f"./{obiekt.pk}/{cleaned_data['od_roku']}/{cleaned_data['do_roku']}/"
+    else:
+        prefiks = f"./{cleaned_data['od_roku']}/{cleaned_data['do_roku']}/"
+    return HttpResponseRedirect(f"{prefiks}?{querystring}")
+
+
 class BaseFormView(FormDefaultsMixin, FormView):
     template_name = "nowe_raporty/formularz.html"
     title = "Raporty"
 
     def form_valid(self, form):
-        d = form.cleaned_data
-        return HttpResponseRedirect(
-            f"./{d['obiekt'].pk}/{d['od_roku']}/{d['do_roku']}/?"
-            f"_export={d['_export']}&"
-            f"_tzju={d['tylko_z_jednostek_uczelni']}"
+        return _redirect_do_generuj(
+            form.cleaned_data, getattr(form, "POLA_ZAAWANSOWANE", [])
         )
 
     def get_context_data(self, **kwargs):
@@ -83,14 +128,6 @@ class AutorRaportFormView(AutorRaportAuthMixin, BaseFormView):
     title = "Raport autorów"
     report_slug = "raport-autorow"
 
-    def form_valid(self, form):
-        d = form.cleaned_data
-        return HttpResponseRedirect(
-            f"./{d['obiekt'].pk}/{d['od_roku']}/{d['do_roku']}/?"
-            f"_export={d['_export']}&"
-            f"_tzju={d['tylko_z_jednostek_uczelni']}"
-        )
-
 
 class JednostkaRaportFormView(JednostkaRaportAuthMixin, BaseFormView):
     report_slug = "raport-jednostek"
@@ -102,14 +139,6 @@ class UczelniaRaportFormView(UczelniaRaportAuthMixin, BaseFormView):
     report_slug = "raport-uczelni"
     form_class = UczelniaRaportForm
     title = "Raport uczelni"
-
-    def form_valid(self, form):
-        d = form.cleaned_data
-        return HttpResponseRedirect(
-            f"./{d['od_roku']}/{d['do_roku']}/?"
-            f"_export={d['_export']}&"
-            f"_tzju={d['tylko_z_jednostek_uczelni']}"
-        )
 
 
 class WydzialRaportFormView(WydzialRaportAuthMixin, BaseFormView):
@@ -150,6 +179,10 @@ class GenerujRaportBase(DetailView):
 
             base_queryset = base_queryset.filter(
                 rok__gte=self.kwargs["od_roku"], rok__lte=self.kwargs["do_roku"]
+            )
+
+            base_queryset = zastosuj_filtry_zaawansowane(
+                base_queryset, self.request.GET
             )
 
             uczelnia = Uczelnia.objects.get_for_request(self.request)
@@ -218,7 +251,9 @@ class GenerujRaportBase(DetailView):
     def render_to_response(self, context, **response_kwargs):
         _export = self.request.GET.get("_export")
 
-        if _export in ("docx", "xlsx"):
+        # Bez definicji raportu nie ma czego eksportowac - pokaz strone z
+        # komunikatem (jak temat 1) zamiast wywalac sie 500 w as_*_response(None).
+        if _export in ("docx", "xlsx") and context.get("report") is not None:
             context["request"] = self.request
             parent_context = RequestContext(self.request, context)
             fun = getattr(self, f"as_{_export}_response")

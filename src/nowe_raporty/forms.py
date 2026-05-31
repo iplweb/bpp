@@ -1,5 +1,6 @@
 from crispy_forms.helper import FormHelper
 from crispy_forms_foundation.layout import (
+    HTML,
     ButtonHolder,
     Column,
     Fieldset,
@@ -46,6 +47,32 @@ class BaseRaportForm(forms.Form):
         label="Format wyjściowy", choices=OUTPUT_FORMATS, required=True
     )
 
+    # Opcje zaawansowane (schowane domyślnie, filtrują cały raport).
+    punkty_mnisw_od = forms.FloatField(required=False, label="Punkty MNiSW od")
+    punkty_mnisw_do = forms.FloatField(required=False, label="Punkty MNiSW do")
+    if_od = forms.FloatField(required=False, label="Impact Factor od")
+    if_do = forms.FloatField(required=False, label="Impact Factor do")
+    punktacja_wewnetrzna_od = forms.FloatField(
+        required=False, label="Punktacja wewnętrzna od"
+    )
+    punktacja_wewnetrzna_do = forms.FloatField(
+        required=False, label="Punktacja wewnętrzna do"
+    )
+    tylko_punktowane = forms.BooleanField(
+        required=False, label="Tylko prace punktowane (pkt MNiSW > 0)"
+    )
+
+    # nazwy pól zaawansowanych przekazywanych w querystringu do widoku generuj
+    POLA_ZAAWANSOWANE = [
+        "punkty_mnisw_od",
+        "punkty_mnisw_do",
+        "if_od",
+        "if_do",
+        "punktacja_wewnetrzna_od",
+        "punktacja_wewnetrzna_do",
+        "tylko_punktowane",
+    ]
+
     def clean(self):
         if "od_roku" in self.cleaned_data and "do_roku" in self.cleaned_data:
             if self.cleaned_data["od_roku"] > self.cleaned_data["do_roku"]:
@@ -59,6 +86,11 @@ class BaseRaportForm(forms.Form):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+
+        uczelnia = Uczelnia.objects.get_default()
+        if not (uczelnia and uczelnia.pokazuj_punktacje_wewnetrzna):
+            self.fields.pop("punktacja_wewnetrzna_od", None)
+            self.fields.pop("punktacja_wewnetrzna_do", None)
 
         self.helper = FormHelper()
         self.helper.form_class = "custom"
@@ -77,6 +109,12 @@ class BaseRaportForm(forms.Form):
                 Row(Column("tylko_z_jednostek_uczelni")),
                 formdefaults_html_after(self),
             ),
+            HTML(
+                '<details class="opcje-zaawansowane hide-for-print" '
+                'style="margin-bottom: 1rem;"><summary>Opcje zaawansowane</summary>'
+            ),
+            *self._wiersze_zaawansowane(),
+            HTML("</details>"),
             ButtonHolder(
                 Submit(
                     "submit",
@@ -86,6 +124,33 @@ class BaseRaportForm(forms.Form):
                 ),
             ),
         )
+
+    def _wiersze_zaawansowane(self):
+        wiersze = [
+            Row(
+                Column("punkty_mnisw_od", css_class="large-6 medium-6 small-12"),
+                Column("punkty_mnisw_do", css_class="large-6 medium-6 small-12"),
+            ),
+            Row(
+                Column("if_od", css_class="large-6 medium-6 small-12"),
+                Column("if_do", css_class="large-6 medium-6 small-12"),
+            ),
+        ]
+        if "punktacja_wewnetrzna_od" in self.fields:
+            wiersze.append(
+                Row(
+                    Column(
+                        "punktacja_wewnetrzna_od",
+                        css_class="large-6 medium-6 small-12",
+                    ),
+                    Column(
+                        "punktacja_wewnetrzna_do",
+                        css_class="large-6 medium-6 small-12",
+                    ),
+                )
+            )
+        wiersze.append(Row(Column("tylko_punktowane")))
+        return wiersze
 
         lata = Rekord.objects.all().aggregate(Min("rok"), Max("rok"))
         for field in self["od_roku"], self["do_roku"]:
