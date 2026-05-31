@@ -8,16 +8,13 @@ from crispy_forms_foundation.layout import (
     Row,
     Submit,
 )
-from dal import autocomplete
 from django import forms
 from django.core.exceptions import ValidationError
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db.models.aggregates import Max, Min
 
 from bpp.models import Uczelnia
-from bpp.models.autor import Autor
 from bpp.models.cache import Rekord
-from bpp.models.struktura import Jednostka, Wydzial
 from bpp.util import formdefaults_html_after, formdefaults_html_before, year_last_month
 
 
@@ -165,70 +162,6 @@ class BaseRaportForm(forms.Form):
             )
         wiersze.append(Row(Column("tylko_punktowane")))
         return wiersze
-
-
-class UczelniaRaportForm(BaseRaportForm):
-    OBJ_FIELD = ""
-
-    tylko_z_jednostek_uczelni = forms.BooleanField(
-        initial=True,
-        label="Tylko prace afiliowane",
-        help_text="Odznaczenie tego pola uwzględnia w raporcie rekordy "
-        "w których autor przypisany jest do jednostki uczelni, ale nie afiliuje na nią",
-        required=False,
-    )
-
-
-class WydzialRaportForm(BaseRaportForm):
-    obiekt = forms.ModelChoiceField(
-        label="Wydział",
-        queryset=Wydzial.objects.all(),
-        widget=autocomplete.ModelSelect2(
-            url="bpp:wydzial-autocomplete",
-            attrs={"class": "bpp-autocomplete-wide"},
-        ),
-    )
-
-    tylko_z_jednostek_uczelni = forms.BooleanField(
-        initial=True,
-        label="Tylko prace afiliowane",
-        help_text="Odznaczenie tego pola uwzględnia w raporcie rekordy "
-        "w których autor przypisany jest do jednostki z wybranego wydziału, ale nie afiliuje na nią",
-        required=False,
-    )
-
-
-class JednostkaRaportForm(BaseRaportForm):
-    obiekt = forms.ModelChoiceField(
-        label="Jednostka",
-        queryset=Jednostka.objects.all(),
-        widget=autocomplete.ModelSelect2(url="bpp:jednostka-autocomplete"),
-    )
-
-    tylko_z_jednostek_uczelni = forms.BooleanField(
-        initial=True,
-        label="Tylko prace afiliowane",
-        help_text="Odznaczenie tego pola uwzględnia w raporcie rekordy "
-        "w których autor przypisany jest do wybranej jednostki, ale nie afiliuje na nią",
-        required=False,
-    )
-
-
-class AutorRaportForm(BaseRaportForm):
-    obiekt = forms.ModelChoiceField(
-        label="Autor",
-        queryset=Autor.objects.all(),
-        widget=autocomplete.ModelSelect2(url="bpp:public-autor-autocomplete"),
-    )
-
-    tylko_z_jednostek_uczelni = forms.BooleanField(
-        initial=True,
-        label="Tylko prace z afiliacją uczelni",
-        help_text="Odznaczenie tego pola uwzględnia w raporcie rekordy "
-        "w których autor przypisany jest do jednostek "
-        "pozauczelnianych (obcych).",
-        required=False,
-    )
 
 
 def form_class_dla(definicja):
