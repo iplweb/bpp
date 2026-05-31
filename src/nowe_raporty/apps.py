@@ -19,6 +19,14 @@ def create_entries(sender, **kw):
         elem().get_initial()
 
 
+def seed_reports(sender, **kw):
+    # Zaloz domyslne definicje raportow na swiezym deployu. Idempotentne i
+    # nienadpisujace - patrz nowe_raporty.seeding.
+    from nowe_raporty.seeding import seed_default_reports
+
+    seed_default_reports()
+
+
 class NoweRaportyConfig(AppConfig):
     name = "nowe_raporty"
 
@@ -26,3 +34,4 @@ class NoweRaportyConfig(AppConfig):
         if settings.TESTING:
             return
         post_migrate.connect(create_entries, sender=self)
+        post_migrate.connect(seed_reports, sender=self)
