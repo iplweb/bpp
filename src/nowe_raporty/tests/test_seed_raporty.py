@@ -4,7 +4,7 @@ from django.urls import reverse
 from flexible_reports.models import Column, Datasource, Report, Table
 from model_bakery import baker
 
-from bpp.models import OpcjaWyswietlaniaField
+from nowe_raporty.models import DefinicjaRaportu
 
 DEFAULT_SLUGS = {
     "raport-autorow",
@@ -81,7 +81,10 @@ def test_seed_raport_jednostek_renderuje_sie(
     call_command("seed_raporty")
 
     res = generuj_raporty_app.get(
-        reverse("nowe_raporty:jednostka_generuj", args=(jednostka.pk, 2020, 2020))
+        reverse(
+            "nowe_raporty:raport_generuj",
+            args=("raport-jednostek", jednostka.pk, 2020, 2020),
+        )
     )
     assert res.status_code == 200
     assert "Publikacje w czasopismach naukowych" in res.text
@@ -93,14 +96,19 @@ def test_seed_raport_uczelni_renderuje_sie(
     generuj_raporty_app, uczelnia, normal_django_user, grupa_raporty_wyswietlanie
 ):
     # Dorobiony raport-uczelni realnie dziala (sanity calej definicji + DSL 2.x
-    # bez obiekt.pk).
-    uczelnia.pokazuj_raport_uczelni = OpcjaWyswietlaniaField.POKAZUJ_ZALOGOWANYM
-    uczelnia.save()
-
+    # bez obiekt.pk). Domyslnie zaseedowany jako nieaktywny (dawny default
+    # POKAZUJ_NIGDY) - aktywujemy go na potrzeby renderu.
     call_command("seed_raporty")
 
+    definicja = DefinicjaRaportu.objects.get(slug="raport-uczelni")
+    definicja.aktywny = True
+    definicja.poziom_dostepu = DefinicjaRaportu.DOSTEP_ZALOGOWANI
+    definicja.save()
+
     res = generuj_raporty_app.get(
-        reverse("nowe_raporty:uczelnia_generuj", args=(2020, 2020))
+        reverse(
+            "nowe_raporty:raport_generuj_uczelnia", args=("raport-uczelni", 2020, 2020)
+        )
     )
     assert res.status_code == 200
     assert "Publikacje w czasopismach naukowych" in res.text
