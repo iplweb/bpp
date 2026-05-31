@@ -9,7 +9,8 @@
     data-jednostka-pk="{{ author.matched_jednostka.pk|default:'' }}"
     data-jednostka-name="{{ author.matched_jednostka|default:'' }}"
     data-dyscyplina-pk="{{ author.matched_dyscyplina.pk|default:'' }}"
-    data-dyscyplina-name="{{ author.matched_dyscyplina|default:'' }}">
+    data-dyscyplina-name="{{ author.matched_dyscyplina|default:'' }}"
+    data-zapisany-jako="{{ author.zapisany_jako|default:'' }}">
     <td>{{ author.order|add:1 }}</td>
     <td>{{ author.display_name }}</td>
     <td>
@@ -31,6 +32,19 @@
     <td>
         {% if author.matched_autor %}
             {{ author.matched_autor }}
+            {% if author.matched_autor.orcid %}
+                <br>
+                <small>ORCID: {{ author.matched_autor.orcid }}</small>
+            {% endif %}
+            {% with candidates_count=author.candidates.all|length %}
+                {% if candidates_count > 1 %}
+                    <br>
+                    <span class="label warning"
+                          title="W modalu edycji jest {{ candidates_count }} kandydatów do wyboru">
+                        {{ candidates_count }} kandydatów
+                    </span>
+                {% endif %}
+            {% endwith %}
         {% else %}
             <em>-</em>
         {% endif %}

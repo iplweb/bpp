@@ -29,7 +29,7 @@
 
 BRANCH=`git branch | sed -n '/\* /s///p'`
 
-.PHONY: help clean distclean tests release tests-without-playwright tests-only-playwright docker destroy-test-databases coveralls-upload clean-coverage combine-coverage cache-delete buildx-cache-stats buildx-cache-prune buildx-cache-prune-aggressive buildx-cache-prune-registry buildx-cache-export buildx-cache-import buildx-cache-list bump-dev bump-release bump-and-start-dev migrate new-worktree clean-worktree generate-500-page build build-force build-base build-app-services build-appserver-base build-appserver build-workerserver build-beatserver build-authserver build-denorm-queue build-servers check-clean-tree prepare-claude prepare-developer-machine prepare-developer-machine-linux prepare-developer-machine-macos playwright-install
+.PHONY: help clean distclean tests release tests-without-playwright tests-only-playwright docker destroy-test-databases cache-delete buildx-cache-stats buildx-cache-prune buildx-cache-prune-aggressive buildx-cache-prune-registry buildx-cache-export buildx-cache-import buildx-cache-list bump-dev bump-release bump-and-start-dev migrate new-worktree clean-worktree generate-500-page build build-force build-base build-app-services build-appserver-base build-appserver build-workerserver build-beatserver build-authserver build-denorm-queue build-servers check-clean-tree prepare-claude prepare-developer-machine prepare-developer-machine-linux prepare-developer-machine-macos playwright-install
 
 .DEFAULT_GOAL := help
 
@@ -317,12 +317,6 @@ disable-microsoft-auth: ## Wyłącz django_microsoft_auth
 	rm -f ~/.env.local
 	uv pip uninstall django_microsoft_auth
 
-##@ Czyszczenie
-
-clean-coverage: ## Usuń pliki pokrycia kodu (.coverage, cov.xml, cov_html)
-	rm -f .coverage .coverage.* cov.xml
-	rm -rf cov_html
-
 ##@ Testy
 
 tests-without-playwright: ## Szybkie testy bez Playwright (xdist -n auto, maxfail=50)
@@ -336,18 +330,29 @@ tests-with-microsoft-auth: enable-microsoft-auth tests-without-playwright-with-m
 tests-only-playwright: ## Tylko testy Playwright (wolne)
 	uv run pytest -n auto -m "playwright"
 
-combine-coverage: ## Scal pokrycie: coverage combine + xml + html
-	uv run coverage combine
-	uv run coverage xml
-	uv run coverage html
-
-coveralls-upload: ## Wyślij raport pokrycia do Coveralls
-	uv run coveralls
-
 uv-sync: ## uv sync --all-extras (synchronizacja zależności Pythona)
 	uv sync --no-install-project --all-extras
 
-tests: clean-pycache clean-coverage uv-sync tests-without-playwright tests-only-playwright combine-coverage js-tests coveralls-upload ## Pełny test suite (coverage + JS + Coveralls)
+tests: clean-pycache uv-sync tests-without-playwright tests-only-playwright js-tests ## Pełny test suite (Playwright + JS)
+
+# Wygeneruj raport pokrycia w formacie zoptymalizowanym pod AI/LLM:
+# sortowany od najgorszego, z zakresami linii missing, bez śmieci
+# (migrations, tests, __init__.py). Wyjście leci na stdout — agent pipuje
+# do swojego kontekstu albo zapisuje (`make coverage-ai > /tmp/cov.txt`).
+# Domyślnie pomija playwright (długie). Override: COVERAGE_PYTEST_ARGS='-m ""'.
+COVERAGE_PYTEST_ARGS ?= -m "not playwright"
+COVERAGE_THRESHOLD ?= 90
+COVERAGE_LIMIT ?= 30
+
+coverage-ai: ## Raport pokrycia dla AI (sortowane ascending, top N najgorszych)
+	@rm -f .coverage .coverage.* coverage.json
+	uv run pytest -n auto $(COVERAGE_PYTEST_ARGS) \
+		--cov=src --cov-branch --cov-report=
+	uv run coverage json -o coverage.json --quiet
+	@echo ""
+	@uv run python bin/coverage_for_ai.py \
+		--threshold $(COVERAGE_THRESHOLD) \
+		--limit $(COVERAGE_LIMIT)
 
 # Same as `tests` but forces a full DB rebuild from scratch instead of
 # reusing the schema produced by the baseline + delta migrate. Use when
@@ -405,7 +410,7 @@ tests-in-docker-down: ## Zatrzymaj i usuń środowisko tests-in-docker (wraz z v
 destroy-test-databases: ## Drop wszystkich baz testowych (local Postgres)
 	-./bin/drop-test-databases.sh
 
-full-tests: destroy-test-databases clean-coverage tests-with-microsoft-auth destroy-test-databases tests-without-playwright tests-only-playwright js-tests ## Ekstremalnie pełny test suite (drop DB + MS Auth + Playwright + JS)
+full-tests: destroy-test-databases tests-with-microsoft-auth destroy-test-databases tests-without-playwright tests-only-playwright js-tests ## Ekstremalnie pełny test suite (drop DB + MS Auth + Playwright + JS)
 
 
 ##@ PBN — integracja

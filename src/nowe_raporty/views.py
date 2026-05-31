@@ -2,13 +2,13 @@ import os
 
 from django.conf import settings
 from django.http.response import FileResponse, HttpResponse, HttpResponseRedirect
-from django.shortcuts import get_object_or_404
 from django.template.context import RequestContext
 from django.views.generic import FormView, TemplateView
 from django.views.generic.detail import DetailView
 from django_tables2.export.export import TableExport
 from flexible_reports.adapters.django_tables2 import as_tablib_databook
 from flexible_reports.models.report import Report
+from formdefaults.helpers import FormDefaultsMixin
 
 from bpp.const import GR_RAPORTY_WYSWIETLANIE
 from bpp.models import Uczelnia
@@ -16,7 +16,6 @@ from bpp.models.autor import Autor
 from bpp.models.cache import Rekord
 from bpp.models.struktura import Jednostka, Wydzial
 from bpp.views.mixins import UczelniaSettingRequiredMixin
-from formdefaults.helpers import FormDefaultsMixin
 
 from .docx_export import as_docx
 from .forms import (
@@ -34,14 +33,21 @@ class BaseFormView(FormDefaultsMixin, FormView):
     def form_valid(self, form):
         d = form.cleaned_data
         return HttpResponseRedirect(
-            f"./{ d['obiekt'].pk }/{ d['od_roku'] }/{ d['do_roku'] }/?"
-            f"_export={ d['_export'] }&"
+            f"./{d['obiekt'].pk}/{d['od_roku']}/{d['do_roku']}/?"
+            f"_export={d['_export']}&"
             f"_tzju={d['tylko_z_jednostek_uczelni']}"
         )
 
     def get_context_data(self, **kwargs):
         kwargs["title"] = self.title
-        kwargs["report"] = get_object_or_404(Report, slug=self.report_slug)
+        try:
+            kwargs["report"] = Report.objects.get(slug=self.report_slug)
+        except Report.DoesNotExist:
+            # Brak definicji raportu nie jest bledem HTTP - szablon pokaze
+            # przyjazny komunikat (a redaktorowi link do modulu redagowania).
+            kwargs["report"] = None
+        kwargs["report_slug"] = self.report_slug
+        kwargs["report_title"] = self.title
         return super().get_context_data(**kwargs)
 
 
@@ -80,9 +86,9 @@ class AutorRaportFormView(AutorRaportAuthMixin, BaseFormView):
     def form_valid(self, form):
         d = form.cleaned_data
         return HttpResponseRedirect(
-            f"./{ d['obiekt'].pk }/{ d['od_roku'] }/{ d['do_roku'] }/?"
-            f"_export={ d['_export'] }&"
-            f"_tzju={ d['tylko_z_jednostek_uczelni'] }"
+            f"./{d['obiekt'].pk}/{d['od_roku']}/{d['do_roku']}/?"
+            f"_export={d['_export']}&"
+            f"_tzju={d['tylko_z_jednostek_uczelni']}"
         )
 
 
@@ -100,8 +106,8 @@ class UczelniaRaportFormView(UczelniaRaportAuthMixin, BaseFormView):
     def form_valid(self, form):
         d = form.cleaned_data
         return HttpResponseRedirect(
-            f"./{ d['od_roku'] }/{ d['do_roku'] }/?"
-            f"_export={ d['_export'] }&"
+            f"./{d['od_roku']}/{d['do_roku']}/?"
+            f"_export={d['_export']}&"
             f"_tzju={d['tylko_z_jednostek_uczelni']}"
         )
 
@@ -129,7 +135,7 @@ class GenerujRaportBase(DetailView):
 
     @property
     def title(self):
-        return f"Raport dla { self.object } za { self.okres }"
+        return f"Raport dla {self.object} za {self.okres}"
 
     def get_context_data(self, **kwargs):
         from flexible_reports.models import Report

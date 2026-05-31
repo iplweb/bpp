@@ -38,6 +38,19 @@ UUID_RE = re.compile(
 )
 
 
+def _fallback_to_www(identifier: str) -> FetchedPublication | None:
+    """Spróbuj sparsować URL przez WWW provider (HTML scraping).
+
+    Używane jako fallback gdy DSpace REST API nie zwróci poprawnych
+    metadanych. Wyciągnięte do module-level funkcji żeby testy mogły
+    ją łatwo mockować (patch importer_publikacji.providers.dspace.
+    _fallback_to_www).
+    """
+    from .www.provider import WWWProvider
+
+    return WWWProvider().fetch(identifier)
+
+
 def _parse_dspace7_url(
     url: str,
 ) -> tuple[str, str] | None:
@@ -46,6 +59,12 @@ def _parse_dspace7_url(
     Formats:
     - https://repo.example.com/items/{uuid}
     - https://repo.example.com/items/{uuid}/full
+    - https://repo.example.com/entities/{type}/{uuid}
+    - https://repo.example.com/entities/{type}/{uuid}/details
+
+    DSpace 7+ Angular UI routuje "entities" (typed view) i "items"
+    (generic view) na ten sam obiekt — REST API endpoint dla obu to
+    /server/api/core/items/{uuid}.
     """
     url = url.strip()
     if not url:
@@ -65,7 +84,8 @@ def _parse_dspace7_url(
     path = parsed.path.rstrip("/")
 
     match = re.search(
-        r"/items/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}"
+        r"/(?:items|entities/[^/]+)/"
+        r"([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}"
         r"-[0-9a-f]{4}-[0-9a-f]{12})",
         path,
         re.IGNORECASE,
@@ -306,5 +326,15 @@ class DSpaceProvider(DataProvider):
 
         base_url, ident, version = parsed
         if version == "7":
-            return _fetch_dspace7(base_url, ident)
-        return _fetch_dspace6(base_url, ident)
+            result = _fetch_dspace7(base_url, ident)
+        else:
+            result = _fetch_dspace6(base_url, ident)
+
+        if result is not None:
+            return result
+
+        # Fallback: DSpace REST API zawiodło (404, 5xx, brak dc.title,
+        # SPA bez metadanych w API). Spróbuj sparsować stronę HTML
+        # przez WWW provider — często strona zawiera DOI/citation_*
+        # metatagi nawet gdy REST API nie odpowiada.
+        return _fallback_to_www(identifier)

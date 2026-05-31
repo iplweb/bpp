@@ -13,7 +13,7 @@ from bpp.models import Autor
 from crossref_bpp.core import Komparator, StatusPorownania
 from import_common.normalization import normalize_doi
 
-from ..models import ImportedAuthor
+from ..models import ImportedAuthor, ImportedAuthor_Candidate
 
 
 def _orcid_settable_qs(session):
@@ -65,47 +65,80 @@ def _get_dyscyplina(autor, year):
     return None
 
 
-def _auto_match_authors(session, authors_data, year):
-    """Auto-dopasuj autorów z danych dostawcy."""
-    for i, author_data in enumerate(authors_data):
-        imported = ImportedAuthor.objects.create(
-            session=session,
-            order=i,
-            family_name=author_data.get("family", ""),
-            given_name=author_data.get("given", ""),
-            orcid=author_data.get("orcid", ""),
+def _apply_dyscyplina(imported, bpp_autor, year):
+    if not (year and bpp_autor):
+        return
+    dyscyplina = _get_dyscyplina(bpp_autor, year)
+    imported.matched_dyscyplina = dyscyplina
+    if dyscyplina:
+        imported.dyscyplina_source = ImportedAuthor.DyscyplinaSource.AUTO_JEDYNA
+
+
+def _auto_match_single_author(session, author_data, order, year):
+    """Dopasuj pojedynczego autora i zwróć utworzony ImportedAuthor.
+
+    Wyciągnięte z _auto_match_authors żeby celery task mógł raportować
+    postęp po każdej iteracji. Łączy:
+
+    - status na podstawie wyniku Komparator-a (DOKLADNE / LUZNE /
+      WYMAGA_INGERENCJI z sugerowanym kandydatem),
+    - zapisany_jako domyślnie pre-fillowane z family+given dostawcy,
+    - bulk_create kandydatów do ImportedAuthor_Candidate (UI modala).
+    """
+    family = author_data.get("family", "")
+    given = author_data.get("given", "")
+    imported = ImportedAuthor.objects.create(
+        session=session,
+        order=order,
+        family_name=family,
+        given_name=given,
+        orcid=author_data.get("orcid", ""),
+        zapisany_jako=f"{family} {given}".strip(),
+    )
+
+    result = Komparator.porownaj_author(author_data)
+    bpp_autor = result.sugerowany or result.rekord_po_stronie_bpp
+
+    if result.status == StatusPorownania.DOKLADNE and bpp_autor:
+        imported.match_status = ImportedAuthor.MatchStatus.AUTO_EXACT
+    elif (
+        result.status
+        in (StatusPorownania.LUZNE, StatusPorownania.WYMAGA_INGERENCJI)
+        and bpp_autor
+    ):
+        imported.match_status = ImportedAuthor.MatchStatus.AUTO_LOOSE
+    else:
+        bpp_autor = None
+
+    if bpp_autor:
+        imported.matched_autor = bpp_autor
+        imported.matched_jednostka = bpp_autor.aktualna_jednostka
+        _apply_dyscyplina(imported, bpp_autor, year)
+
+    imported.save()
+
+    if result.kandydaci:
+        ImportedAuthor_Candidate.objects.bulk_create(
+            [
+                ImportedAuthor_Candidate(
+                    imported_author=imported,
+                    autor=k.autor,
+                    pewnosc=k.pewnosc,
+                    powod=k.powod,
+                    publikacji_count=k.publikacji,
+                )
+                for k in result.kandydaci
+            ]
         )
+    return imported
 
-        result = Komparator.porownaj_author(author_data)
 
-        if result.status == StatusPorownania.DOKLADNE:
-            bpp_autor = result.rekord_po_stronie_bpp
-            if bpp_autor:
-                imported.matched_autor = bpp_autor
-                imported.match_status = ImportedAuthor.MatchStatus.AUTO_EXACT
-                imported.matched_jednostka = bpp_autor.aktualna_jednostka
-                if year:
-                    dyscyplina = _get_dyscyplina(bpp_autor, year)
-                    imported.matched_dyscyplina = dyscyplina
-                    if dyscyplina:
-                        imported.dyscyplina_source = (
-                            ImportedAuthor.DyscyplinaSource.AUTO_JEDYNA
-                        )
-        elif result.status == StatusPorownania.LUZNE:
-            bpp_autor = result.rekord_po_stronie_bpp
-            if bpp_autor:
-                imported.matched_autor = bpp_autor
-                imported.match_status = ImportedAuthor.MatchStatus.AUTO_LOOSE
-                imported.matched_jednostka = bpp_autor.aktualna_jednostka
-                if year:
-                    dyscyplina = _get_dyscyplina(bpp_autor, year)
-                    imported.matched_dyscyplina = dyscyplina
-                    if dyscyplina:
-                        imported.dyscyplina_source = (
-                            ImportedAuthor.DyscyplinaSource.AUTO_JEDYNA
-                        )
-
-        imported.save()
+def _auto_match_authors(session, authors_data, year):
+    """Auto-dopasuj autorów z danych dostawcy (thin wrapper, używany
+    w testach i w synchronicznych ścieżkach bez progress reporting).
+    """
+    for i, author_data in enumerate(authors_data):
+        _auto_match_single_author(session, author_data, i, year)
 
 
 def _find_matching_zgloszenie(session):
