@@ -1,13 +1,14 @@
 # Konfigurowalne raporty: model `DefinicjaRaportu` + uprawnienia (slice B + C)
 
 Data: 2026-05-31
-Status: w trakcie implementacji — etapy 1/2/3a dowiezione, 3b/4/5 do zrobienia
+Status: ZAIMPLEMENTOWANE (etapy 1-5) — zostaje mini-PR drop pól + ew. review
 Branch: `feat/nowe-raporty-konfigurowalne` (stackowany na
 `feat/nowe-raporty-seed-domyslnych` / slice A)
 
-## Postęp implementacji (checkpoint)
+## Postęp implementacji
 
-Wszystko zielone (cały moduł `nowe_raporty`: 89 passed), branch spójny.
+Wszystko zielone: `nowe_raporty` **101 passed**, smoke `bpp/tests/test_views`
+**133 passed**, `manage.py check` bez uwag. Branch spójny.
 
 - ✅ **Etap 1** (`69409c2ee`): model `DefinicjaRaportu` + `widoczny_dla` + admin
   + 11 testów uprawnień. Migracja `0001_initial` (zależność przepięta na realną
@@ -19,7 +20,26 @@ Wszystko zielone (cały moduł `nowe_raporty`: 89 passed), branch spójny.
   `BaseRaportForm`) + filtr `zastosuj_filtry_zaawansowane` w `GenerujRaportBase`
   + scentralizowany `_redirect_do_generuj` + **fix bug 500** eksportu.
 
-### Do zrobienia (3b/4/5) — gotchas odkryte w trakcie
+- ✅ **Etap 3b** (`5f220cbaa`): rejestr `POZIOMY` + fabryka `form_class_dla`
+  (dynamiczne klasy, metaklasa formularza) + generyczne `RaportFormView`/
+  `RaportGenerujView` (auth `widoczny_dla`) + `GenerujRaportBase` refaktor
+  (`get_report`/`get_form_link_url`) + generyczne URL-e (additive) + single-object
+  default. 7 testów.
+- ✅ **Etap 4** (`bb4384b66`): data-driven płaskie menu (`top_bar.html` pętla)
+  + context processor `nowe_raporty.menu.raporty_menu` + cache (odrębny od
+  `bpp_uczelnia`, prefetch, filtr w Pythonie) + inwalidacja signalami.
+  `widoczny_dla` przerobiony na `.all()` (prefetch-friendly). 4 testy.
+- ✅ **Etap 5** (`1631a9e92`): `create_entries` rejestruje formdefaults per
+  definicja; kolejność `post_migrate` seed→create_entries. 1 test.
+
+### Zostaje: mini-PR (follow-up)
+
+- DROP COLUMN 4 pól `Uczelnia.pokazuj_raport_*` (dziś martwe, ale obecne) +
+  usunięcie starych klas/URL/form (`*RaportFormView`, `GenerujRaportDla*`,
+  `*RaportForm`, stare URL-e/aliasy, `*RaportAuthMixin`) gdy aliasy zbędne.
+  Po weryfikacji że menu+widoki działają na `widoczny_dla`.
+
+### Gotchas (z implementacji)
 
 - **Etap 3b — generyczny routing.** Rekomendacja: **additive** — dodać
   `RaportFormView` + `RaportGenerujView` (slug z URL), a stare 4 klasy +
