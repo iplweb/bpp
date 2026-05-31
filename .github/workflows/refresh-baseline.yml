@@ -42,6 +42,15 @@ jobs:
       - name: Install uv
         uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
 
+      - name: Install system build deps
+        # uv sync builds several wheels from source (pycairo via
+        # svglib/xhtml2pdf, psycopg2, python-ldap, cryptography) that need
+        # native headers. Reuse docker/bpp_base/build.txt so the package
+        # list stays in sync with the runtime/test images and tests.yml.
+        run: |
+          sudo apt-get update
+          xargs -a docker/bpp_base/build.txt sudo apt-get install -y
+
       - name: Install Python deps (with baseline-rebuild extra)
         run: uv sync --frozen --no-install-project --extra baseline-rebuild
 

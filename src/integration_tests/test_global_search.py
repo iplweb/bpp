@@ -23,12 +23,11 @@ def test_global_search_user(
         page.goto(channels_live_server.url)
         wait_for_page_load(page)
 
-        # Accept cookies if needed
+        # Accept cookies if needed. `Cookielaw.accept()` is synchronous, so
+        # the banner is gone once evaluate() returns — no fixed sleep needed
+        # before pressing "/"; `wait_for_selector(state="visible")` below
+        # poll-uje az dialog wyszukiwarki sie pojawi.
         page.evaluate("if (typeof Cookielaw !== 'undefined') { Cookielaw.accept(); }")
-
-        import time
-
-        time.sleep(0.5)
 
         # Press "/" to open the global search dialog
         page.keyboard.press("/")
@@ -94,12 +93,12 @@ def test_global_search_logged_in(
         wait_for_page_load(admin_page)
 
         # Accept cookies if needed
+        # `Cookielaw.accept()` is synchronous; banner is gone once evaluate()
+        # returns. `wait_for_selector(state="visible")` below poll-uje na
+        # dialog, wiec staly sleep przed press("/") byl martwym czasem.
         admin_page.evaluate(
             "if (typeof Cookielaw !== 'undefined') { Cookielaw.accept(); }"
         )
-        import time
-
-        time.sleep(0.5)
 
         # Press "/" to open the global search dialog
         admin_page.keyboard.press("/")
