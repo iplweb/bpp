@@ -139,7 +139,9 @@ parametryzowana `slug`-iem definicji:
   `…/nowe_raporty/<slug>/<obj_pk>/<od>/<do>/` (autor/jednostka/wydział) lub
   `…/nowe_raporty/<slug>/<od>/<do>/` (uczelnia, bez pk) — pobiera obiekt,
   woła `base_queryset` z rejestru, ustawia `report.set_base_queryset(...)`,
-  renderuje (z eksportem docx/xlsx jak dziś).
+  renderuje (z eksportem docx/xlsx jak dziś). **Domyka zaległy bug 500**: gdy
+  `report` jest pusty/None, `?_export=docx|xlsx` nie woła `as_*_response(None)`
+  tylko zwraca komunikat (jak temat 1), zamiast 500.
 
 Dotychczasowe URL-e per-poziom zastąpione, ale **stare nazwy URL** (`autor_form`,
 `jednostka_form`, `wydzial_form`, `uczelnia_form` + `*_generuj`) **zostają jako
@@ -268,8 +270,6 @@ Slice A seeduje `flexible_reports.Report` (template/schemat). Slice B dokłada
   Site/domena itd.) — załatwia samo `get_for_request`; my tylko je wołamy.
 - „Klonuj tabelę" (parking).
 - Przeprojektowanie datasource'ów „karm przefiltrowaną listą" (parking).
-- Bug 500 w eksporcie przy braku `Report` — można domknąć opcjonalnie przy
-  okazji generycznego widoku.
 
 ## Decyzje zatwierdzone (były „otwarte")
 
@@ -278,6 +278,11 @@ Slice A seeduje `flexible_reports.Report` (template/schemat). Slice B dokłada
 - Stare URL-e — **aliasować** do nowych `…/<slug>/`.
 - Pola `pokazuj_raport_*` — usunąć, ale z **gwarancją płynnego przejścia**
   (sekwencja migracji + test parytetu powyżej).
+- **Bug 500 w eksporcie** (zaległość tematu 1) — **domknąć** w nowym
+  `RaportGenerujView`.
+- **Dostarczenie:** jeden PR, 5 commitów (etap = commit).
+- **Domyślna kolejność menu** 4 raportów: uczelnia → wydział → jednostka →
+  autor (`kolejnosc` 0/1/2/3), jak w dzisiejszym `top_bar.html`.
 
 ## Etapowanie implementacji (TDD, przyrostowo na tej gałęzi)
 
@@ -308,8 +313,7 @@ Slice B+C jest duży — proponuję 5 etapów, każdy z testami i osobnym commit
   nie modyfikuje, ale pełny suite (nie tylko `nowe_raporty`) trzeba przepuścić.
 - **`report` FK = `PROTECT`** — usunięcie `flexible_reports.Report` używanego
   przez definicję jest blokowane (świadome).
-- **Rozmiar PR.** 5 etapów = duży PR. Alternatywa: etap 2 (płynne przejście)
-  jako osobny mniejszy PR przed resztą — do rozważenia, jeśli review ma być
-  lżejsze.
+- **Rozmiar PR.** Decyzja: jeden PR, 5 commitów (etap = commit) — spójność
+  płynnego przejścia trzymana w jednym miejscu. Review przyrostowo per commit.
 - **Usunięcie pól `pokazuj_raport_*`** z `Uczelnia` teraz, czy deprecate-then-
   remove w osobnym kroku.
