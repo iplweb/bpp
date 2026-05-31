@@ -1,6 +1,6 @@
 from django.apps import AppConfig
 from django.conf import settings
-from django.db.models.signals import post_migrate
+from django.db.models.signals import m2m_changed, post_delete, post_migrate, post_save
 
 
 def create_entries(sender, **kw):
@@ -27,10 +27,25 @@ def seed_reports(sender, **kw):
     seed_default_reports()
 
 
+def _polacz_inwalidacje_menu():
+    from nowe_raporty.menu import wyczysc_cache_menu
+    from nowe_raporty.models import DefinicjaRaportu
+
+    post_save.connect(wyczysc_cache_menu, sender=DefinicjaRaportu)
+    post_delete.connect(wyczysc_cache_menu, sender=DefinicjaRaportu)
+    m2m_changed.connect(
+        wyczysc_cache_menu, sender=DefinicjaRaportu.wymagane_grupy.through
+    )
+    m2m_changed.connect(wyczysc_cache_menu, sender=DefinicjaRaportu.uczelnie.through)
+
+
 class NoweRaportyConfig(AppConfig):
     name = "nowe_raporty"
 
     def ready(self):
+        # Inwalidacja cache menu - zawsze (także w testach).
+        _polacz_inwalidacje_menu()
+
         if settings.TESTING:
             return
         post_migrate.connect(create_entries, sender=self)

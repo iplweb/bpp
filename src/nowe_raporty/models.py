@@ -63,6 +63,13 @@ class DefinicjaRaportu(models.Model):
         help_text="Puste = pokazuj na wszystkich uczelniach.",
     )
 
+    IKONY = {
+        POZIOM_UCZELNIA: "fi-foundation",
+        POZIOM_WYDZIAL: "fi-results-demographics",
+        POZIOM_JEDNOSTKA: "fi-map",
+        POZIOM_AUTOR: "fi-torsos-all",
+    }
+
     class Meta:
         verbose_name = "definicja raportu"
         verbose_name_plural = "definicje raportów"
@@ -70,6 +77,10 @@ class DefinicjaRaportu(models.Model):
 
     def __str__(self):
         return self.nazwa
+
+    @property
+    def ikona_menu(self):
+        return self.IKONY.get(self.poziom, "fi-graph-trend")
 
     def _poziom_dostepu_ok(self, user):
         if self.poziom_dostepu == self.DOSTEP_WSZYSCY:
@@ -83,21 +94,23 @@ class DefinicjaRaportu(models.Model):
         return False
 
     def _grupy_ok(self, user):
-        if not self.wymagane_grupy.exists():
+        # .all() (nie .filter) - korzysta z prefetch_related w menu (bez N+1).
+        grupy = list(self.wymagane_grupy.all())
+        if not grupy:
             return True
         if not user.is_authenticated:
             return False
-        return self.wymagane_grupy.filter(
-            pk__in=user.groups.values_list("pk", flat=True)
-        ).exists()
+        user_grupa_ids = set(user.groups.values_list("pk", flat=True))
+        return any(g.pk in user_grupa_ids for g in grupy)
 
     def _uczelnia_ok(self, request):
-        if not self.uczelnie.exists():
+        uczelnie = list(self.uczelnie.all())
+        if not uczelnie:
             return True
         from bpp.models import Uczelnia
 
         biezaca = Uczelnia.objects.get_for_request(request)
-        return biezaca is not None and self.uczelnie.filter(pk=biezaca.pk).exists()
+        return biezaca is not None and any(u.pk == biezaca.pk for u in uczelnie)
 
     def widoczny_dla(self, request):
         """Czy raport jest widoczny dla danego requestu (menu + dispatch).

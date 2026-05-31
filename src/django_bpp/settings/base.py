@@ -279,6 +279,7 @@ TEMPLATES = [
                 "bpp.context_processors.testing.testing",
                 "cookielaw.context_processors.cookielaw",
                 "django_countdown.context_processors.countdown_context",
+                "nowe_raporty.menu.raporty_menu",
             ],
         },
     },
