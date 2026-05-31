@@ -18,3 +18,27 @@ class DefinicjaRaportuAdmin(admin.ModelAdmin):
     search_fields = ["nazwa", "slug"]
     prepopulated_fields = {"slug": ("nazwa",)}
     filter_horizontal = ["wymagane_grupy", "uczelnie"]
+    fieldsets = [
+        (
+            None,
+            {
+                "fields": [
+                    "nazwa",
+                    "slug",
+                    "poziom",
+                    "report",
+                    "kolejnosc",
+                    "aktywny",
+                ]
+            },
+        ),
+        (
+            "Uprawnienia i widoczność",
+            {
+                "fields": ["poziom_dostepu", "wymagane_grupy", "uczelnie"],
+                "description": "Kto widzi raport (poziom dostępu + opcjonalne "
+                "grupy) i na stronach których uczelni się pojawia "
+                "(puste = wszędzie).",
+            },
+        ),
+    ]
