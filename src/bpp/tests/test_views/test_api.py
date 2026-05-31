@@ -16,8 +16,7 @@ from bpp.views.api import (
 )
 from bpp.views.api.pbn_get_by_parameter import GetPBNPublicationsByISBN
 from bpp.views.api.pubmed import GetPubmedIDView, get_data_from_ncbi
-from fixtures import pbn_publication_json
-from fixtures.pbn_api import pbn_pageable_json
+from fixtures.pbn_api import pbn_pageable_json, pbn_publication_json
 
 
 def test_get_data_from_ncbi(mocker):

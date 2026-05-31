@@ -2,15 +2,8 @@ from http.server import HTTPServer
 from uuid import uuid4
 
 import pytest
+from model_bakery import baker
 
-# UWAGA: `from model_bakery import baker` jest robione lokalnie w funkcjach,
-# nie na top-levelu. Powod: rootdir-owy `conftest.py` robi `from fixtures
-# import *`, ktore preloaduje ten modul. `pytest-testcontainers-django`
-# preloaduje conftest ZANIM apps Django sa ready. `model_bakery` >= 1.20
-# wola `apps.is_installed("django.contrib.contenttypes")` w czasie importu
-# (model_bakery/content_types.py), co wybucha ImproperlyConfigured i
-# psuje preload (warning "preloading rootdir conftest.py raised").
-# Lazy import wewnatrz fikstur omija ten lancuch.
 from bpp import const
 from bpp.const import RODZAJ_PBN_KSIAZKA
 from bpp.models import Charakter_Formalny, Jezyk, Uczelnia, Wydawnictwo_Ciagle
@@ -91,8 +84,6 @@ def pbn_language():
 
 
 def _zrob_autora_pbn(autor):
-    from model_bakery import baker
-
     autor.pbn_uid = baker.make(Scientist)
     autor.save()
     return autor
@@ -105,8 +96,6 @@ def pbn_autor(autor_jan_nowak):
 
 @pytest.fixture
 def pbn_jednostka(jednostka):
-    from model_bakery import baker
-
     jednostka.pbn_uid = baker.make(Institution)
     jednostka.save()
     return jednostka
@@ -187,8 +176,6 @@ def pbn_rozdzial_z_autorem_z_dyscyplina(
 
 @pytest.fixture
 def pbn_charakter_formalny() -> Charakter_Formalny:
-    from model_bakery import baker
-
     return baker.make(Charakter_Formalny, rodzaj_pbn=RODZAJ_PBN_KSIAZKA)
 
 
@@ -240,8 +227,6 @@ def pbn_wydawnictwo_zwarte_z_charakterem(
 
 @pytest.fixture
 def pbn_uczelnia(pbn_client) -> Uczelnia:
-    from model_bakery import baker
-
     uczelnia = Uczelnia.objects.get_default()
     if uczelnia is None:
         uczelnia = baker.make(

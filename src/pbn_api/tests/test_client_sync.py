@@ -9,8 +9,11 @@ For helper/GUI tests, see test_client_helpers.py
 import pytest
 
 from bpp.decorators import json
-from fixtures import MOCK_RETURNED_INSTITUTION_PUBLICATION_V2_DATA
-from fixtures.pbn_api import MOCK_RETURNED_MONGODB_DATA, pbn_pageable_json
+from fixtures.pbn_api import (
+    MOCK_RETURNED_INSTITUTION_PUBLICATION_V2_DATA,
+    MOCK_RETURNED_MONGODB_DATA,
+    pbn_pageable_json,
+)
 from pbn_api.client import (
     PBN_DELETE_PUBLICATION_STATEMENT,
     PBN_GET_INSTITUTION_STATEMENTS,
