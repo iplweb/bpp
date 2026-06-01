@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+
+{% block title %}Utwórz nowy snapshot odpięć{% endblock %}
+
+{% block breadcrumbs %}
+    {{ block.super }}
+    <li><a href="{% url 'snapshot_odpiec:index' %}">Snapshoty odpiętych dyscyplin</a></li>
+    <li class="current">Nowy snapshot</li>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="medium-12 columns">
+        <h2>Utwórz nowy snapshot odpięć</h2>
+
+        <div class="callout primary">
+            <p>
+                Operacja zapisze aktualny stan przypięć/odpięć dyscyplin
+                wszystkich publikacji w postaci snapshotu, który będzie
+                można później zaaplikować, aby przywrócić ten stan.
+            </p>
+            <p>
+                Snapshot zostanie oznaczony adnotacją „utworzony ręcznie”
+                i przypisany do bieżącego użytkownika.
+            </p>
+        </div>
+
+        <form method="post" id="nowy-confirm">
+            {% csrf_token %}
+            <button type="submit" class="button warning">
+                <span class="fi-camera"></span> Tak, utwórz snapshot
+            </button>
+            <a href="{% url 'snapshot_odpiec:index' %}" class="button secondary">
+                Anuluj
+            </a>
+        </form>
+    </div>
+</div>
+{% endblock %}

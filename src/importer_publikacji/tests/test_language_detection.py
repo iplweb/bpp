@@ -55,10 +55,19 @@ def test_detect_language_short_title_no_crash():
 def test_fetch_auto_detects_language_for_bibtex(
     importer_client,
 ):
-    """BibTeX bez language → język wykrywany automatycznie."""
+    """BibTeX bez language → po fetchu język wykryty (lub None).
+
+    Mockujemy fetch_session_task.delay żeby uniknąć podwójnej egzekucji
+    pod CELERY_ALWAYS_EAGER (legacy Celery setting translation jest
+    niedeterministyczna w xdist) — test wykonuje task explicit przez
+    .apply() poniżej.
+    """
+    from unittest.mock import patch
+
     from django.urls import reverse
 
     from importer_publikacji.models import ImportSession
+    from importer_publikacji.tasks import fetch_session_task
 
     bibtex = """@article{test2024,
   title = {The Impact of Climate Change on Agriculture},
@@ -69,14 +78,19 @@ def test_fetch_auto_detects_language_for_bibtex(
   pages = {100--110}
 }"""
     url = reverse("importer_publikacji:fetch")
-    response = importer_client.post(
-        url,
-        {"provider": "BibTeX", "text_input": bibtex},
-    )
-    assert response.status_code == 200
+    with patch("importer_publikacji.views.wizard.fetch_session_task") as mock_task:
+        mock_task.delay.return_value.id = "task-uuid"
+        response = importer_client.post(
+            url,
+            {"provider": "BibTeX", "text_input": bibtex},
+        )
+    assert response.status_code in (200, 302)
 
     session = ImportSession.objects.order_by("-pk").first()
     assert session is not None
+    # Task runs the fetch synchronously to populate normalized_data.
+    fetch_session_task.apply(args=[session.pk, session.created_by_id]).get()
+    session.refresh_from_db()
     # Język powinien być wykryty (en) lub None
     # jeśli nie udało się dopasować do bazy
     # Tutaj sprawdzamy czy normalized_data nie ma language
@@ -87,10 +101,16 @@ def test_fetch_auto_detects_language_for_bibtex(
 def test_fetch_polish_bibtex_detects_polish(
     importer_client,
 ):
-    """BibTeX z polskim tytułem → wykrywa język polski."""
+    """BibTeX z polskim tytułem → wykrywa język polski.
+
+    Mockujemy fetch_session_task.delay (patrz docstring testu wyżej).
+    """
+    from unittest.mock import patch
+
     from django.urls import reverse
 
     from importer_publikacji.models import ImportSession
+    from importer_publikacji.tasks import fetch_session_task
 
     bibtex = """@article{test2024pl,
   title = {Wpływ zmian klimatycznych na rolnictwo w Polsce},
@@ -99,14 +119,19 @@ def test_fetch_polish_bibtex_detects_polish(
   year = {2024}
 }"""
     url = reverse("importer_publikacji:fetch")
-    response = importer_client.post(
-        url,
-        {"provider": "BibTeX", "text_input": bibtex},
-    )
-    assert response.status_code == 200
+    with patch("importer_publikacji.views.wizard.fetch_session_task") as mock_task:
+        mock_task.delay.return_value.id = "task-uuid"
+        response = importer_client.post(
+            url,
+            {"provider": "BibTeX", "text_input": bibtex},
+        )
+    assert response.status_code in (200, 302)
 
     session = ImportSession.objects.order_by("-pk").first()
     assert session is not None
+    # Task runs the fetch synchronously to populate normalized_data.
+    fetch_session_task.apply(args=[session.pk, session.created_by_id]).get()
+    session.refresh_from_db()
     # Sprawdzamy czy normalized_data nie ma language
     # (BibTeX bez pola language)
     assert session.normalized_data.get("language") is None

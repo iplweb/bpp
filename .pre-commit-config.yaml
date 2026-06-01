@@ -38,11 +38,11 @@ repos:
             exclude: ^docker-compose\.test\.ci\.yml$
         -   id: check-toml
         -   id: end-of-file-fixer
-            exclude: ^src/baseline-sql/baseline\.sql$
+            exclude: ^baseline-sql/baseline\.sql$
         -   id: trailing-whitespace
-            exclude: ^src/baseline-sql/baseline\.sql$
+            exclude: ^baseline-sql/baseline\.sql$
         -   id: mixed-line-ending
-            exclude: ^src/baseline-sql/baseline\.sql$
+            exclude: ^baseline-sql/baseline\.sql$
         -   id: check-added-large-files
             args: ['--maxkb=500']
         -   id: check-merge-conflict

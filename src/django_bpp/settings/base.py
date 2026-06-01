@@ -14,6 +14,7 @@ from celery.schedules import crontab
 from django.core.exceptions import ImproperlyConfigured
 
 from bpp.util import slugify_function
+from django_bpp.channels_prefix import get_channels_prefix
 from django_bpp.version import VERSION
 
 logger = logging.getLogger(__name__)
@@ -279,6 +280,7 @@ TEMPLATES = [
                 "bpp.context_processors.testing.testing",
                 "cookielaw.context_processors.cookielaw",
                 "django_countdown.context_processors.countdown_context",
+                "nowe_raporty.menu.raporty_menu",
             ],
         },
     },
@@ -293,13 +295,13 @@ MIDDLEWARE = [
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django_countdown.middleware.CountdownBlockingMiddleware",  # After auth - needs request.user
-    "bpp_setup_wizard.middleware.SetupWizardMiddleware",  # After auth middleware to have request.user
+    "first_run_wizard.middleware.FirstRunWizardMiddleware",  # After auth middleware to have request.user
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     "django_bpp.middleware.ConditionalPasswordChangeMiddleware",
     "dj_pagination.middleware.PaginationMiddleware",
     "session_security.middleware.SessionSecurityMiddleware",
-    "notifications.middleware.NotificationsMiddleware",
+    "bpp.middleware.NotificationsMiddleware",
     # 'rollbar.contrib.django.middleware.RollbarNotifierMiddleware',
     "bpp.middleware.CustomRollbarNotifierMiddleware",
 ]
@@ -337,10 +339,13 @@ if TESTING:
 
 INSTALLED_APPS = [
     # "django_werkzeug",
-    "bpp_setup_wizard",  # Must be early to enable setup wizard
+    # bpp_setup_wizard BEFORE first_run_wizard so BPP-side templates
+    # (first_run_wizard/admin_user.html in bpp_setup_wizard.templates)
+    # override the vendor-neutral defaults shipped by the package.
+    "bpp_setup_wizard",  # BPP-specific step + BPP-styled templates
+    "first_run_wizard",  # Pluggable first-run wizard engine (PyPI)
     "daphne",
     "tinymce",
-    "tee",
     "formtools",
     "denorm.apps.DenormAppConfig",
     "reversion",
@@ -350,7 +355,7 @@ INSTALLED_APPS = [
     "constance",
     "constance.backends.database",
     "channels",
-    "dynamic_columns",
+    "dynamic_admin_columns",
     "django.contrib.humanize",
     "django.contrib.contenttypes",
     "django.contrib.auth",
@@ -365,7 +370,6 @@ INSTALLED_APPS = [
     "import_pracownikow",
     "import_list_if",
     "password_policies",
-    "create_test_db",
     "celery",
     "django_celery_results",
     "flexible_reports",
@@ -407,7 +411,7 @@ INSTALLED_APPS = [
     "powiazania_autorow",
     "compressor",
     "session_security",
-    "notifications",
+    "channels_broadcast",
     "integrator2",
     "nowe_raporty",
     "rozbieznosci_dyscyplin",
@@ -417,6 +421,7 @@ INSTALLED_APPS = [
     "webmaster_verification",
     "favicon",
     "miniblog",
+    "siteblog",
     "import_dyscyplin",
     "mptt",
     "rest_framework",
@@ -475,7 +480,7 @@ INSTALLED_APPS = [
 ]
 
 PG_BASELINE = {
-    "BASELINE_DIR": os.path.join(SITE_ROOT, "baseline-sql"),
+    "BASELINE_DIR": os.path.abspath(os.path.join(SITE_ROOT, "..", "baseline-sql")),
     # Our image has plpython3u + pl_PL.UTF-8 locale — vanilla postgres doesn't.
     "REBUILD_IMAGE": "iplweb/bpp_dbserver:psql-16.13",
     # bpp-specific exclusions on top of the generic django_session default.
@@ -566,6 +571,21 @@ COMPRESS_OFFLINE_CONTEXT = [
     },
     {
         "THEME_NAME": "scss/app-orange.css",
+        "STATIC_URL": STATIC_URL,
+        "LANGUAGE_CODE": "pl",
+    },
+    {
+        "THEME_NAME": "scss/app-vizja.css",
+        "STATIC_URL": STATIC_URL,
+        "LANGUAGE_CODE": "pl",
+    },
+    {
+        "THEME_NAME": "scss/app-mwsl.css",
+        "STATIC_URL": STATIC_URL,
+        "LANGUAGE_CODE": "pl",
+    },
+    {
+        "THEME_NAME": "scss/app-uafm.css",
         "STATIC_URL": STATIC_URL,
         "LANGUAGE_CODE": "pl",
     },
@@ -756,7 +776,13 @@ SESSION_SECURITY_EXPIRE_AFTER = env("DJANGO_BPP_SESSION_SECURITY_EXPIRE_AFTER")
 PUNKTUJ_MONOGRAFIE = env("DJANGO_BPP_PUNKTUJ_MONOGRAFIE")
 
 
-# dla django-model-utils SplitField
+# dla django-model-utils SplitField. BPP używa „<!-- tutaj -->” zamiast
+# upstream-owego „<!-- split -->”, więc help_text na siteblog.Article.article_body
+# różni się od tego zaszytego w siteblog/0001_initial. To no-op drift —
+# `makemigrations siteblog` bez argumentów wygeneruje 0002_alter_article_body
+# w site-packages (ALTER TABLE jest no-op, bo help_text nie wpływa na schemat).
+# Plik nigdy nie trafia do git, prod-`migrate` go nie zaaplikuje (nie istnieje
+# w pakiecie). Ignoruj i nie commituj.
 SPLIT_MARKER = "<!-- tutaj -->"
 
 # django-crispy-forms: użyj crispy-forms-foundation
@@ -840,11 +866,16 @@ BPP_WALIDUJ_AFILIACJE_AUTOROW = (
 # ASGI_APPLICATION = "django_bpp.routing.application"
 ASGI_APPLICATION = "django_bpp.asgi.application"
 
+# Channel-layer key prefix (get_channels_prefix imported at top). Production:
+# "asgi" (channels_redis default). Under pytest-xdist: "asgi-test-<worker>" so
+# colliding per-user group names cannot cross-talk between workers sharing one
+# Redis. See django_bpp.channels_prefix and docs/CHANNELS_BROADCAST_FLAKE.md.
 CHANNEL_LAYERS = {
     "default": {
         "BACKEND": "channels_redis.core.RedisChannelLayer",
         "CONFIG": {
             "hosts": [(REDIS_HOST, REDIS_PORT)],
+            "prefix": get_channels_prefix(),
         },
     },
 }
@@ -880,7 +911,7 @@ TABULAR_PERMISSIONS_CONFIG = {
             "admin",
             "auth",
             "password_policies",
-            "notifications",
+            "channels_broadcast",
             "dashboard",
             "django.contrib.contenttypes",
             "egeria",
@@ -1157,13 +1188,25 @@ DJANGO_EASY_AUDIT_REGISTERED_CLASSES = [
 
 SILENCED_SYSTEM_CHECKS.append("admin.E117")
 
-DYNAMIC_COLUMNS_ALLOWED_IMPORT_PATHS = [
+# NOTE: BPP used to override ``dynamic_admin_columns`` migrations via
+# ``MIGRATION_MODULES`` because the package's old ``0001_initial`` ran a
+# plain ``CreateModel`` that collided with the ``dynamic_columns_*``
+# tables every BPP database already carries (legacy in-tree app +
+# baseline-loaded test DBs). Since django-dynamic-admin-columns 0.5.0
+# that migration is idempotent (creates the tables only when absent,
+# via the schema editor so the user FK resolves through
+# ``AUTH_USER_MODEL``), so the override is no longer needed and BPP
+# consumes the package's migrations directly. Schema-level work for the
+# legacy per-user upgrade still lives in
+# ``bpp.0416_rename_dynamic_columns_to_admin``.
+
+DYNAMIC_ADMIN_COLUMNS_ALLOWED_IMPORT_PATHS = [
     "bpp.admin.wydawnictwo_ciagle",
     "bpp.admin.wydawnictwo_zwarte",
     "bpp.admin.autor",
 ]
 
-DYNAMIC_COLUMNS_FORBIDDEN_COLUMN_NAMES = [
+DYNAMIC_ADMIN_COLUMNS_FORBIDDEN_COLUMN_NAMES = [
     ".*_cache$",
     ".*_sort$",
     "search_index",
@@ -1246,6 +1289,10 @@ LANGUAGE_COOKIE_SECURE = True
 X_FRAME_OPTIONS = "SAMEORIGIN"
 
 DATA_UPLOAD_MAX_NUMBER_FIELDS = 5000
+
+# django-formdefaults: pozwól wszystkim staff-userom edytować systemowe
+# wartości domyślne formularzy (domyślnie pakiet wpuszcza tylko superuserów).
+FORMDEFAULTS_CAN_EDIT_SYSTEM_WIDE = "bpp.formdefaults_perms.can_edit_system_wide"
 
 DJANGO_BPP_SKROT_WYDZIALU_W_NAZWIE_JEDNOSTKI = env(
     "DJANGO_BPP_SKROT_WYDZIALU_W_NAZWIE_JEDNOSTKI"

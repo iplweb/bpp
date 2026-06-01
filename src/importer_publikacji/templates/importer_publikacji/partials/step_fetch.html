@@ -8,11 +8,13 @@
     </div>
 {% endif %}
 
+{% load bpp_formdefaults %}
 <div class="callout">
     <h4>
         <span class="fi-magnifying-glass"></span>
         Krok 1: Podaj dane publikacji
     </h4>
+    <div class="formdefaults-wrap">{% bpp_formdefaults_button form %}</div>
     <form hx-post="{% url 'importer_publikacji:fetch' %}"
           hx-target="#importer-wizard"
           hx-indicator="#fetch-spinner">

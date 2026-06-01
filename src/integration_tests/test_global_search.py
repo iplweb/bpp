@@ -7,6 +7,30 @@ from bpp.models import Rekord, Wydawnictwo_Ciagle
 from django_bpp.playwright_util import select_select2_autocomplete, wait_for_page_load
 
 
+def open_global_search(page: Page) -> None:
+    """Press "/" once to open the global-search modal — after the shortcut
+    is actually live.
+
+    The "/" shortcut is a document-level ``keydown`` handler installed by
+    the modal script's IIFE, which in the same run also defines
+    ``window.openGlobalSearch``. ``wait_for_page_load`` only blocks for
+    ``domcontentloaded``, so on a slow (CI) page jQuery + that inline
+    script may not have finished when the test runs — the handler isn't
+    bound yet and a single ``press("/")`` is silently dropped. This is the
+    flakiness #254 exposed by deleting the fixed ``time.sleep`` that used
+    to wait the script out.
+
+    Waiting for ``window.openGlobalSearch`` to exist is the precise
+    readiness signal: it is defined by the same IIFE that binds the
+    keydown listener, so once it is a function the shortcut is live. Then
+    press "/" exactly once, the way a user would — the test still verifies
+    that a single keystroke opens the dialog.
+    """
+    page.wait_for_function("() => typeof window.openGlobalSearch === 'function'")
+    page.keyboard.press("/")
+    page.wait_for_selector("#globalSearchInput", state="visible", timeout=5000)
+
+
 def test_global_search_user(
     channels_live_server,
     page: Page,
@@ -23,18 +47,12 @@ def test_global_search_user(
         page.goto(channels_live_server.url)
         wait_for_page_load(page)
 
-        # Accept cookies if needed
+        # Accept cookies if needed (synchronous; banner gone once it returns).
         page.evaluate("if (typeof Cookielaw !== 'undefined') { Cookielaw.accept(); }")
 
-        import time
-
-        time.sleep(0.5)
-
-        # Press "/" to open the global search dialog
-        page.keyboard.press("/")
-
-        # Wait for the dialog/input to be visible
-        page.wait_for_selector("#globalSearchInput", state="visible", timeout=5000)
+        # Open the global search dialog via the "/" shortcut (resilient to
+        # the keydown handler not yet being live on a cold CI page).
+        open_global_search(page)
 
         # Type the search term directly into the input
         page.fill("#globalSearchInput", "Test")
@@ -93,21 +111,14 @@ def test_global_search_logged_in(
         admin_page.goto(channels_live_server_per_test.url)
         wait_for_page_load(admin_page)
 
-        # Accept cookies if needed
+        # Accept cookies if needed (synchronous; banner gone once it returns).
         admin_page.evaluate(
             "if (typeof Cookielaw !== 'undefined') { Cookielaw.accept(); }"
         )
-        import time
 
-        time.sleep(0.5)
-
-        # Press "/" to open the global search dialog
-        admin_page.keyboard.press("/")
-
-        # Wait for the dialog/input to be visible
-        admin_page.wait_for_selector(
-            "#globalSearchInput", state="visible", timeout=5000
-        )
+        # Open the global search dialog via the "/" shortcut (resilient to
+        # the keydown handler not yet being live on a cold CI page).
+        open_global_search(admin_page)
 
         # Type the search term directly into the input - use the unique title
         admin_page.fill("#globalSearchInput", unique_title)

@@ -42,7 +42,7 @@ from bpp.multiseek_registry import (
     ZakresLatQueryObject,
     ZrodloQueryObject,
 )
-from miniblog.models import Article
+from siteblog.models import Article
 
 logger = logging.getLogger(__name__)
 
@@ -50,6 +50,17 @@ PUBLIKACJE = "publikacje"
 STRESZCZENIA = "streszczenia"
 INNE = "inne"
 TYPY = [PUBLIKACJE, STRESZCZENIA, INNE]
+
+
+def invalidate_uczelnia_cache_on_article_change(sender, instance, **kwargs):
+    """Invalidate main page cache when a published Article is saved.
+
+    Wired in ``bpp.apps.BppConfig.ready`` against ``siteblog.Article``.
+    siteblog is a generic package and intentionally does not know about
+    BPP's cache, so the receiver lives here.
+    """
+    if instance.status == sender.STATUS.published:
+        get_uczelnia_context_data.invalidate()
 
 
 @cached(timeout=60 * 60)  # Cache for 1 hour
@@ -60,7 +71,7 @@ def get_uczelnia_context_data(uczelnia, article_slug=None):
     if article_slug:
         context["article"] = get_object_or_404(Article, slug=article_slug)
     else:
-        context["miniblog"] = Article.objects.filter(status=Article.STATUS.published)[
+        context["news"] = Article.objects.filter(status=Article.STATUS.published)[
             :5
         ]
         # Add 5 most recently updated records

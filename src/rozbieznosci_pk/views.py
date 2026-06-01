@@ -45,6 +45,7 @@ class UstawWszystkiePkView(BaseUstawWszystkieView):
     log_before_field = "pk_before"
     log_after_field = "pk_after"
     app_name = "rozbieznosci_pk"
+    confirm_template_name = "rozbieznosci_pk/ustaw_wszystkie_confirm.html"
 
     def get_celery_task(self):
         from rozbieznosci_pk.tasks import task_ustaw_pk_ze_zrodla

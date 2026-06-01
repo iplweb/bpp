@@ -1,5 +1,6 @@
 import logging
 
+from braces.views import GroupRequiredMixin
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required, permission_required
 from django.contrib.contenttypes.models import ContentType
@@ -12,6 +13,7 @@ from django.utils.decorators import method_decorator
 from django.views import View
 from django.views.generic import DetailView
 
+from bpp.const import GR_WPROWADZANIE_DANYCH
 from komparator_pbn_udzialy.models import (
     BrakAutoraWPublikacji,
     ProblemWrapper,
@@ -22,9 +24,10 @@ from pbn_downloader_app.freshness import is_pbn_publications_data_fresh
 logger = logging.getLogger(__name__)
 
 
-class ProblemyPBNListView(View):
+class ProblemyPBNListView(GroupRequiredMixin, View):
     """Widok listy wszystkich problemów PBN - rozbieżności i brakujących autorów."""
 
+    group_required = GR_WPROWADZANIE_DANYCH
     template_name = "komparator_pbn_udzialy/list.html"
 
     def get(self, request):
@@ -227,9 +230,10 @@ class ProblemyPBNListView(View):
         }
 
 
-class RozbieznoscDyscyplinPBNDetailView(DetailView):
+class RozbieznoscDyscyplinPBNDetailView(GroupRequiredMixin, DetailView):
     """Widok szczegółowy rozbieżności."""
 
+    group_required = GR_WPROWADZANIE_DANYCH
     model = RozbieznoscDyscyplinPBN
     template_name = "komparator_pbn_udzialy/detail.html"
     context_object_name = "rozbieznosc"
@@ -279,12 +283,24 @@ class RozbieznoscDyscyplinPBNDetailView(DetailView):
 class RebuildDiscrepanciesView(View):
     """Widok do przebudowy rozbieżności.
 
-    Kliknięcie od razu uruchamia zadanie Celery z clear_existing=True.
+    GET wyświetla ekran potwierdzenia, POST uruchamia zadanie Celery
+    z ``clear_existing=True``.
     """
 
+    template_name = "komparator_pbn_udzialy/rebuild_confirm.html"
+
     def get(self, request):
-        """Uruchamia przebudowę rozbieżności od razu."""
-        # Sprawdź świeżość danych PBN
+        pbn_data_fresh, pbn_stale_message, _ = is_pbn_publications_data_fresh()
+        return render(
+            request,
+            self.template_name,
+            {
+                "pbn_data_fresh": pbn_data_fresh,
+                "pbn_stale_message": pbn_stale_message,
+            },
+        )
+
+    def post(self, request):
         pbn_data_fresh, pbn_stale_message, _ = is_pbn_publications_data_fresh()
         if not pbn_data_fresh:
             messages.error(
@@ -294,7 +310,6 @@ class RebuildDiscrepanciesView(View):
             )
             return HttpResponseRedirect(reverse("komparator_pbn_udzialy:list"))
 
-        # Uruchom w tle z clear_existing=True
         try:
             from komparator_pbn_udzialy.tasks import porownaj_dyscypliny_pbn_task
 
@@ -315,7 +330,7 @@ class RebuildDiscrepanciesView(View):
             )
 
         except Exception as e:
-            logger.error(f"Błąd podczas uruchamiania zadania Celery: {e}")
+            logger.exception("Błąd podczas uruchamiania zadania Celery")
             messages.error(
                 request,
                 f"Nie można uruchomić zadania w tle: {str(e)}",
@@ -351,9 +366,10 @@ class TaskStatusAPIView(View):
             return JsonResponse({"status": "ERROR", "message": str(e)}, status=500)
 
 
-class BrakAutoraDetailView(DetailView):
+class BrakAutoraDetailView(GroupRequiredMixin, DetailView):
     """Widok szczegółowy brakującego autora."""
 
+    group_required = GR_WPROWADZANIE_DANYCH
     model = BrakAutoraWPublikacji
     template_name = "komparator_pbn_udzialy/brak_autora_detail.html"
     context_object_name = "brak_autora"

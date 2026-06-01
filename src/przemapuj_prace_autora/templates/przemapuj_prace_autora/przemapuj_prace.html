@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% load crispy_forms_tags %}
+{% load crispy_forms_tags bpp_formdefaults %}
 
 {% block title %}Przemapowanie prac - {{ autor }}{% endblock %}
 
@@ -59,6 +59,7 @@
             <hr>
 
             <h3>Przemapowanie prac</h3>
+            <div class="formdefaults-wrap">{% bpp_formdefaults_button form %}</div>
             <form method="post" action="">
                 {% csrf_token %}
                 <div class="row">

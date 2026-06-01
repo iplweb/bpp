@@ -11,8 +11,11 @@ from django.contrib.messages import get_messages
 from model_bakery import baker
 
 from bpp.admin.helpers.pbn_api.gui import sprobuj_wyslac_do_pbn_gui
-from fixtures import MOCK_RETURNED_INSTITUTION_PUBLICATION_V2_DATA
-from fixtures.pbn_api import MOCK_RETURNED_MONGODB_DATA, pbn_pageable_json
+from fixtures.pbn_api import (
+    MOCK_RETURNED_INSTITUTION_PUBLICATION_V2_DATA,
+    MOCK_RETURNED_MONGODB_DATA,
+    pbn_pageable_json,
+)
 from pbn_api.adapters.wydawnictwo import WydawnictwoPBNAdapter
 from pbn_api.client import (
     PBN_GET_INSTITUTION_STATEMENTS,

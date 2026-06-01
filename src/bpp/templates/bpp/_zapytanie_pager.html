@@ -1,0 +1,15 @@
+{% if results.has_other_pages %}
+    <ul class="pagination" role="navigation" aria-label="Paginacja">
+        {% if results.has_previous %}
+            <li><a href="?model={{ model_key }}&query={{ query|urlencode }}&page={{ results.previous_page_number }}">&laquo; poprzednia</a></li>
+        {% else %}
+            <li class="disabled">&laquo; poprzednia</li>
+        {% endif %}
+        <li class="current">{{ results.number }} / {{ results.paginator.num_pages }}</li>
+        {% if results.has_next %}
+            <li><a href="?model={{ model_key }}&query={{ query|urlencode }}&page={{ results.next_page_number }}">nastepna &raquo;</a></li>
+        {% else %}
+            <li class="disabled">nastepna &raquo;</li>
+        {% endif %}
+    </ul>
+{% endif %}

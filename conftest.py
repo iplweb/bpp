@@ -67,6 +67,15 @@ pytest_plugins = [
     "fixtures.conftest_disciplines",
 ]
 
+# UWAGA: tu wolno importować WYŁĄCZNIE symbole z modułów wolnych od Django
+# (czyli `fixtures.const`). `pytest-testcontainers-django` preloaduje ten
+# rootdir-owy conftest w hooku `pytest_load_initial_conftests` (tryfirst),
+# ZANIM `pytest-django` zrobi `django.setup()`. Każdy top-levelowy import
+# modelu w łańcuchu `from fixtures import *` wybucha wtedy
+# `AppRegistryNotReady`. Moduły z fiksturami importującymi modele
+# (`pbn_api`, `wydawnictwa`) są zarejestrowane jako pytest pluginy w
+# `src/conftest.py` (ładowane PO `django.setup()`).
+# Regresja-guard: src/bpp/tests/test_conftest_preload_safety.py.
 from fixtures import *  # noqa
 
 

@@ -10,7 +10,7 @@ set -euo pipefail
 # trafia do obrazu Dockera.
 #
 # --full: skan bieżącego venva ze wszystkimi extras (dev/test/docs).
-# Pokazuje też CVE w ipython, pytest, sphinx itd. - przydatne tylko
+# Pokazuje też CVE w ipython, pytest, mkdocs itd. - przydatne tylko
 # jeśli chcesz wiedzieć co dotyka developerów lokalnie. Te paczki
 # nigdy nie idą do obrazu produkcyjnego.
 

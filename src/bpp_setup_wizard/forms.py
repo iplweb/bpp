@@ -1,75 +1,7 @@
 from django import forms
-from django.contrib.auth import get_user_model
-from django.contrib.auth.forms import UserCreationForm
 from django.core.exceptions import ValidationError
 
 from bpp.models import Uczelnia
-
-BppUser = get_user_model()
-
-
-class SetupAdminForm(UserCreationForm):
-    """Form for creating the initial admin user during setup."""
-
-    username = forms.CharField(
-        max_length=150,
-        required=True,
-        label="Nazwa użytkownika",
-        help_text="Wymagane. 150 znaków lub mniej. Tylko litery, cyfry oraz @/./+/-/_.",
-        widget=forms.TextInput(attrs={"class": "form-control", "placeholder": "admin"}),
-    )
-
-    email = forms.EmailField(
-        required=True,
-        label="Adres email",
-        help_text="Wymagane. Adres email administratora systemu.",
-        widget=forms.EmailInput(
-            attrs={"class": "form-control", "placeholder": "admin@example.com"}
-        ),
-    )
-
-    password1 = forms.CharField(
-        label="Hasło",
-        widget=forms.PasswordInput(
-            attrs={"class": "form-control", "placeholder": "Wprowadź hasło"}
-        ),
-        help_text="Hasło powinno być silne i bezpieczne.",
-    )
-
-    password2 = forms.CharField(
-        label="Powtórz hasło",
-        widget=forms.PasswordInput(
-            attrs={"class": "form-control", "placeholder": "Powtórz hasło"}
-        ),
-        help_text="Wprowadź to samo hasło dla weryfikacji.",
-    )
-
-    class Meta:
-        model = BppUser
-        fields = ("username", "email", "password1", "password2")
-
-    def clean(self):
-        cleaned_data = super().clean()
-
-        # Check if any users exist
-        if BppUser.objects.exists():
-            raise ValidationError(
-                "Kreator konfiguracji może być uruchomiony tylko na pustej bazie danych."
-            )
-
-        return cleaned_data
-
-    def save(self, commit=True):
-        user = super().save(commit=False)
-        user.email = self.cleaned_data["email"]
-        user.is_staff = True
-        user.is_superuser = True
-        user.is_active = True
-
-        if commit:
-            user.save()
-
-        return user
 
 
 class UczelniaSetupForm(forms.ModelForm):
@@ -170,7 +102,6 @@ class UczelniaSetupForm(forms.ModelForm):
     def clean(self):
         cleaned_data = super().clean()
 
-        # Check if any Uczelnia exists
         if Uczelnia.objects.exists():
             raise ValidationError(
                 "Uczelnia została już skonfigurowana. "

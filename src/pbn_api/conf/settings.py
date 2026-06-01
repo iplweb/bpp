@@ -24,3 +24,28 @@ PBN_CLIENT_BASE_URL = getattr(
 PBN_CLIENT_USER_TOKEN = getattr(
     settings, "PBN_CLIENT_USER_TOKEN", os.getenv("PBN_CLIENT_USER_TOKEN")
 )
+
+
+def _parse_timeout(raw, default):
+    if raw is None:
+        return default
+    if isinstance(raw, (int, float)):
+        return float(raw)
+    if isinstance(raw, (tuple, list)):
+        return tuple(float(x) for x in raw)
+    parts = [p.strip() for p in str(raw).split(",") if p.strip()]
+    if len(parts) == 1:
+        return float(parts[0])
+    if len(parts) == 2:
+        return (float(parts[0]), float(parts[1]))
+    return default
+
+
+PBN_CLIENT_HTTP_TIMEOUT = _parse_timeout(
+    getattr(
+        settings,
+        "PBN_CLIENT_HTTP_TIMEOUT",
+        os.getenv("PBN_CLIENT_HTTP_TIMEOUT"),
+    ),
+    default=(30.0, 120.0),
+)

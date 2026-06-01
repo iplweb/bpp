@@ -34,7 +34,7 @@ def _importer_users_queryset():
 
 
 class FetchForm(forms.Form):
-    """Formularz pobierania danych z dostawcy."""
+    """Formularz pobierania danych od dostawcy."""
 
     provider = forms.ChoiceField(
         label="Źródło danych",
@@ -165,6 +165,11 @@ class AuthorMatchForm(forms.Form):
     dyscyplina = forms.ModelChoiceField(
         queryset=Dyscyplina_Naukowa.objects.all(),
         label="Dyscyplina",
+        required=False,
+    )
+    zapisany_jako = forms.CharField(
+        label="Zapisany jako",
+        max_length=512,
         required=False,
     )
 

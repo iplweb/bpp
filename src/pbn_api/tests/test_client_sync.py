@@ -25,8 +25,11 @@ from unittest.mock import patch
 
 import pytest
 
-from fixtures import MOCK_RETURNED_INSTITUTION_PUBLICATION_V2_DATA
-from fixtures.pbn_api import MOCK_RETURNED_MONGODB_DATA, pbn_pageable_json
+from fixtures.pbn_api import (
+    MOCK_RETURNED_INSTITUTION_PUBLICATION_V2_DATA,
+    MOCK_RETURNED_MONGODB_DATA,
+    pbn_pageable_json,
+)
 from pbn_api.adapters.wydawnictwo import WydawnictwoPBNAdapter
 from pbn_api.client import (
     PBN_DELETE_PUBLICATION_STATEMENT,

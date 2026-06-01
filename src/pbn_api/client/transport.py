@@ -57,10 +57,16 @@ class RequestsTransport(OAuthMixin, PBNClientTransport):
 
     def _make_get_request_with_retry(self, url, headers, max_retries=15):
         """Make GET request with retry on SSL/Connection errors."""
+        from pbn_api.conf import settings as pbn_settings
+
         retries = 0
         while retries < max_retries:
             try:
-                return requests.get(self.base_url + url, headers=headers)
+                return requests.get(
+                    self.base_url + url,
+                    headers=headers,
+                    timeout=pbn_settings.PBN_CLIENT_HTTP_TIMEOUT,
+                )
             except (SSLError, ConnectionError) as e:
                 retries += 1
                 time.sleep(random.randint(1, 5))
@@ -197,9 +203,16 @@ class RequestsTransport(OAuthMixin, PBNClientTransport):
         if not hasattr(self, "access_token"):
             return self.post(url, headers=headers, body=body, delete=delete)
 
+        from pbn_api.conf import settings as pbn_settings
+
         sent_headers = self._build_post_headers(headers)
         method = self._get_request_method(delete)
-        ret = method(self.base_url + url, headers=sent_headers, json=body)
+        ret = method(
+            self.base_url + url,
+            headers=sent_headers,
+            json=body,
+            timeout=pbn_settings.PBN_CLIENT_HTTP_TIMEOUT,
+        )
 
         if ret.status_code == 403:
             ret_json = self._parse_403_response(ret, url)

@@ -3,6 +3,7 @@ from django import forms
 from django.contrib import admin, messages
 from django.core.exceptions import ValidationError
 from djangoql.admin import DjangoQLSearchMixin
+from dynamic_admin_columns.mixins import DynamicColumnsMixin
 from mptt.forms import TreeNodeChoiceField
 from taggit.forms import TextareaTagWidget
 
@@ -32,7 +33,6 @@ from bpp.models import (
 from bpp.models.konferencja import Konferencja
 from bpp.models.seria_wydawnicza import Seria_Wydawnicza
 from crossref_bpp.mixins import AdminCrossrefAPIMixin, AdminCrossrefPBNAPIMixin
-from dynamic_columns.mixins import DynamicColumnsMixin
 from import_common.normalization import normalize_isbn
 from pbn_api.models import Publication
 

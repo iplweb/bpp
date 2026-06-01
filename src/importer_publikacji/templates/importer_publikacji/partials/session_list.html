@@ -105,6 +105,10 @@
                                     success
                                 {% elif s.status == 'cancelled' %}
                                     alert
+                                {% elif s.status == 'import_failed' %}
+                                    alert
+                                {% elif s.status == 'fetching' or s.status == 'creating' %}
+                                    warning
                                 {% else %}
                                     primary
                                 {% endif %}">

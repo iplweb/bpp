@@ -1,0 +1,117 @@
+{# Pośredni template łączący django-import-export z django-dynamic-admin-columns. #}
+{# BPP nadpisuje `change_list_template` w niektórych adminach (dla "Dodaj z #}
+{# CrossRef API" i import/export), co zamaskowuje template dostarczany przez #}
+{# DynamicColumnsMixin. Ten template wstrzykuje brakujące blocki picker'a #}
+{# (CSS/JS, przycisk "Kolumny" w object-tools, modal w content), zachowując #}
+{# jednocześnie import/export. Wariant pod grappelli — BPP ma grappelli w #}
+{# INSTALLED_APPS. #}
+{% extends "admin/import_export/change_list_export.html" %}
+{% load i18n static %}
+
+{% block extrastyle %}
+{{ block.super }}
+{% if dynamic_admin_columns %}
+<link rel="stylesheet" href="{% static 'dynamic_admin_columns/column-picker.css' %}">
+<link rel="stylesheet" href="{% static 'dynamic_admin_columns/column-picker-grappelli.css' %}">
+{% endif %}
+{% endblock %}
+
+{% block extrahead %}
+{{ block.super }}
+{% if dynamic_admin_columns %}
+<script src="{% static 'dynamic_admin_columns/column-picker.js' %}" defer></script>
+{% endif %}
+{% endblock %}
+
+{% block object-tools-items %}
+{{ block.super }}
+{% if dynamic_admin_columns %}
+<li>
+    <a href="#"
+       id="dyncol-button"
+       class="grp-state-focus{% if dynamic_admin_columns.has_personal_layout %} dyncol-personal{% endif %}"
+       data-save-url="{{ dynamic_admin_columns.save_url }}"
+       data-reset-url="{{ dynamic_admin_columns.reset_url }}"
+       data-has-personal="{{ dynamic_admin_columns.has_personal_layout|yesno:'1,0' }}"
+       data-is-superuser="{{ dynamic_admin_columns.is_superuser|yesno:'1,0' }}">
+        {% translate "Columns" %}{% if dynamic_admin_columns.has_personal_layout %} ★{% endif %}
+    </a>
+</li>
+{% endif %}
+{% endblock %}
+
+{% block content %}
+{{ block.super }}
+
+{% if dynamic_admin_columns %}
+{{ dynamic_admin_columns.personal_columns|json_script:"dyncol-personal-data" }}
+{{ dynamic_admin_columns.global_columns|json_script:"dyncol-global-data" }}
+{{ dynamic_admin_columns.js_i18n|json_script:"dyncol-i18n" }}
+
+<div id="dyncol-modal" class="dyncol-modal" hidden role="dialog" aria-modal="true" aria-labelledby="dyncol-modal-title">
+    <div class="dyncol-modal-backdrop" data-dyncol-close></div>
+    <div class="dyncol-modal-content" role="document">
+        <h2 id="dyncol-modal-title">{% translate "Configure columns" %}</h2>
+
+        {% if dynamic_admin_columns.is_superuser %}
+        <fieldset class="dyncol-scope">
+            <legend class="dyncol-sr-only">{% translate "Scope" %}</legend>
+            <label class="dyncol-scope-option">
+                <input type="radio" name="dyncol-scope" value="personal" checked>
+                <span class="dyncol-scope-label">
+                    <strong>{% translate "My personal layout" %}</strong>
+                    <small>{% translate "Affects only your account." %}</small>
+                </span>
+            </label>
+            <label class="dyncol-scope-option">
+                <input type="radio" name="dyncol-scope" value="global">
+                <span class="dyncol-scope-label">
+                    <strong>{% translate "Global defaults" %}</strong>
+                    <small>{% translate "Visible to every user that has no personal layout. Superusers only." %}</small>
+                </span>
+            </label>
+        </fieldset>
+        {% endif %}
+
+        <p class="dyncol-status" id="dyncol-status" role="status">
+            {% if dynamic_admin_columns.has_personal_layout %}
+            <span class="dyncol-status-icon">★</span>
+            {% translate "You are viewing your personal layout. Saves apply only to your account." %}
+            {% else %}
+            {% translate "You are viewing the global defaults. Saving will create a personal layout for your account." %}
+            {% endif %}
+        </p>
+
+        <p class="dyncol-help">
+            {% blocktranslate %}Drag rows to reorder; toggle the checkbox to show or hide a column.{% endblocktranslate %}
+        </p>
+
+        <ul id="dyncol-list" class="dyncol-list">
+            <li class="dyncol-empty" id="dyncol-empty" hidden>
+                {% translate "No user-configurable columns are declared for this admin." %}
+            </li>
+        </ul>
+
+        <div class="dyncol-actions">
+            <button type="button"
+                    class="grp-button dyncol-grp-reset"
+                    id="dyncol-reset"
+                    hidden>
+                {% translate "Discard personal layout" %}
+            </button>
+            <span class="dyncol-spacer"></span>
+            <button type="button"
+                    class="grp-button dyncol-grp-cancel"
+                    data-dyncol-close>
+                {% translate "Cancel" %}
+            </button>
+            <button type="button"
+                    class="grp-button grp-default dyncol-grp-save"
+                    id="dyncol-save">
+                {% translate "Save" %}
+            </button>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

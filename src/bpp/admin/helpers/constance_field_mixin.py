@@ -18,10 +18,16 @@ def get_constance_scoring_settings():
     try:
         from constance import config
 
+        # bool() coerces real values *and* constance's AsyncValueProxy
+        # (returned when an asyncio loop is running in this thread — e.g.
+        # tests sharing an xdist worker with prior async tests) to a true
+        # Python bool, so callers can rely on `isinstance(_, bool)`.
         return {
-            "POKAZUJ_INDEX_COPERNICUS": config.POKAZUJ_INDEX_COPERNICUS,
-            "POKAZUJ_PUNKTACJA_SNIP": config.POKAZUJ_PUNKTACJA_SNIP,
-            "UZYWAJ_PUNKTACJI_WEWNETRZNEJ": config.UZYWAJ_PUNKTACJI_WEWNETRZNEJ,
+            "POKAZUJ_INDEX_COPERNICUS": bool(config.POKAZUJ_INDEX_COPERNICUS),
+            "POKAZUJ_PUNKTACJA_SNIP": bool(config.POKAZUJ_PUNKTACJA_SNIP),
+            "UZYWAJ_PUNKTACJI_WEWNETRZNEJ": bool(
+                config.UZYWAJ_PUNKTACJI_WEWNETRZNEJ
+            ),
         }
     except (ImportError, AttributeError):
         # Fallback - wszystkie widoczne

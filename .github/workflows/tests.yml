@@ -20,10 +20,12 @@ permissions:
 
 jobs:
   lint:
-    # Lint only Python files changed in this push/PR. The repo's
-    # convention is that ruff runs on changed files only (see
-    # pre-commit config); historic drift in unchanged files is
-    # deliberately left alone, so CI must match that scope.
+    # Lint only Python files changed in this push/PR by running the
+    # pre-commit ruff hooks THEMSELVES (see .pre-commit-config.yaml)
+    # against the changed range. The ruff version + args live in one
+    # place, so local pre-commit and CI can never disagree. The repo's
+    # convention is changed-files-only; pre-commit's --from-ref/--to-ref
+    # reproduces that scope and historic drift is left alone.
     name: Lint changed files
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -33,15 +35,10 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Install system build deps
-        # uv run triggers a full project sync, and several wheels (pycairo
-        # via svglib/xhtml2pdf, psycopg2, python-ldap, cryptography) need
-        # native headers to build. Reuse docker/bpp_base/build.txt so the
-        # package list stays in sync with the runtime/test images.
-        run: |
-          sudo apt-get update
-          xargs -a docker/bpp_base/build.txt sudo apt-get install -y
-
+      # No apt build deps / project sync here: pre-commit builds an
+      # isolated ruff env from a prebuilt wheel (no native compilation),
+      # so the heavy toolchain the test jobs need is unnecessary for
+      # linting. uv is only a fast launcher for pre-commit (via uvx).
       - name: Install uv
         uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
         with:
@@ -66,35 +63,37 @@ jobs:
             echo "ref=origin/dev" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Collect changed Python files
-        id: files
+      - name: Ruff + ruff-format (via pre-commit — single source of truth)
+        # Runs the SAME `ruff` and `ruff-format` hooks declared in
+        # .pre-commit-config.yaml (pinned rev) over the changed range, so
+        # CI and a local `pre-commit run` execute the byte-identical ruff
+        # binary + args (--fix --exit-non-zero-on-fix). "passes locally,
+        # fails CI" becomes impossible — there is one ruff, one config.
+        # Bumping the ruff `rev` in .pre-commit-config.yaml updates CI
+        # automatically; no edit here is ever needed for a ruff upgrade.
+        #
+        # pre-commit derives the file scope ITSELF from --from-ref/
+        # --to-ref; we deliberately do NOT hand it a file list. A
+        # hand-rolled `git diff | tr '\n' ' '` list carries a trailing
+        # space, and `pre-commit run --files "<path> "` matches no real
+        # file → "(no files to check) Skipped" → exit 0 → the gate
+        # silently passes broken code. --from-ref/--to-ref sidesteps that
+        # entirely. --show-diff-on-failure prints the exact reformat diff
+        # so the fix is obvious straight from the CI log.
+        #
+        # `uvx` runs pre-commit as an isolated tool, so no `uv sync` / apt
+        # build toolchain is needed merely to lint (pre-commit builds ruff
+        # from a prebuilt wheel — no native code). pre-commit is left
+        # UNPINNED on purpose: it is just the runner, and only the ruff
+        # `rev` in .pre-commit-config.yaml affects results — so there is
+        # no third version to babysit alongside the ruff rev + pin.
         env:
           DIFF_BASE: ${{ steps.base.outputs.ref }}
         run: |
-          files=$(git diff --name-only --diff-filter=AM \
-            "$DIFF_BASE"...HEAD -- '*.py' | tr '\n' ' ')
-          echo "list=$files" >> "$GITHUB_OUTPUT"
-          if [ -n "$files" ]; then
-            echo "Changed Python files:"
-            printf '  %s\n' $files
-          else
-            echo "No Python files changed."
-          fi
-
-      - name: Ruff check
-        # `ruff` lives in [project.optional-dependencies].dev, so the
-        # default `uv run` resolution doesn't see it. --extra dev pulls
-        # in the dev group that has ruff pinned.
-        if: steps.files.outputs.list != ''
-        env:
-          FILES: ${{ steps.files.outputs.list }}
-        run: uv run --extra dev ruff check --force-exclude $FILES
-
-      - name: Ruff format --check
-        if: steps.files.outputs.list != ''
-        env:
-          FILES: ${{ steps.files.outputs.list }}
-        run: uv run --extra dev ruff format --check --force-exclude $FILES
+          uvx pre-commit run ruff \
+            --from-ref "$DIFF_BASE" --to-ref HEAD --show-diff-on-failure
+          uvx pre-commit run ruff-format \
+            --from-ref "$DIFF_BASE" --to-ref HEAD --show-diff-on-failure
 
   prepare-image:
     # Build the test-runner image once and push it to GHCR with two
@@ -156,12 +155,12 @@ jobs:
       run: uv run python src/manage.py baseline_check --max-delta 50
 
     - name: Set up Docker Buildx
-      uses: docker/setup-buildx-action@4d04d5d9486b7bd6fa91e7baf45bbb4f8b9deedd # v4.0.0
+      uses: docker/setup-buildx-action@d7f5e7f509e45cec5c76c4d5afdd7de93d0b3df5 # v4.1.0
       with:
         driver: docker-container
 
     - name: Log in to GHCR
-      uses: docker/login-action@4907a6ddec9925e35a0a9e82d7399ccc52663121 # v4.1.0
+      uses: docker/login-action@650006c6eb7dba73a995cc03b0b2d7f5ca915bee # v4.2.0
       with:
         registry: ghcr.io
         username: ${{ github.actor }}
@@ -175,7 +174,7 @@ jobs:
         echo "image=${IMAGE_REPO}:sha-${SHA}" >> "$GITHUB_OUTPUT"
 
     - name: Build & push test-runner image
-      uses: docker/build-push-action@bcafcacb16a39f128d818304e6c9c0c18556b85f # v7.1.0
+      uses: docker/build-push-action@f9f3042f7e2789586610d6e8b85c8f03e5195baf # v7.2.0
       with:
         context: .
         file: docker/bpp_base/Dockerfile
@@ -246,7 +245,7 @@ jobs:
     - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
     - name: Log in to GHCR
-      uses: docker/login-action@4907a6ddec9925e35a0a9e82d7399ccc52663121 # v4.1.0
+      uses: docker/login-action@650006c6eb7dba73a995cc03b0b2d7f5ca915bee # v4.2.0
       with:
         registry: ghcr.io
         username: ${{ github.actor }}
@@ -285,18 +284,7 @@ jobs:
           test-runner uv run pytest \
             -n auto \
             --shard-id "$SHARD_ID" --num-shards "$NUM_SHARDS" \
-            --timeout 300 \
-            --cov=src/ --cov-branch \
-            --cov-report=xml:/ci-output/cov.xml
-
-    - name: Upload coverage to Coveralls (parallel)
-      if: always()
-      uses: coverallsapp/github-action@5cbfd81b66ca5d10c19b062c04de0199c215fb6e # v2.3.7
-      with:
-        github-token: ${{ secrets.GITHUB_TOKEN }}
-        flag-name: tests-${{ matrix.shard }}
-        parallel: true
-        file: ci-output/cov.xml
+            --timeout 300
 
     - name: Cleanup
       if: always()
