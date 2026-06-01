@@ -1,6 +1,6 @@
 # Commands Reference
 
-For detailed architecture, see [CODEBASE_MAP.md](CODEBASE_MAP.md).
+For detailed architecture, see [mapa-kodu.md](mapa-kodu.md).
 
 ## Development Commands
 
