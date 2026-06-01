@@ -259,6 +259,22 @@ name = "pypi"
 url = "https://pypi.org/simple"
 default = true
 
+# django-import-export: TYMCZASOWY pin na git-tag naszego forka.
+# Powód: fix #2156 (lazy `IMPORT_EXPORT_FORMATS` — `get_default_formats()` jest
+# `@lru_cache` wołane przy budowie formularza eksportu, NIE na poziomie modułu)
+# sprawia, że openpyxl/numpy NIE ładują się przy admin autodiscover (RSS przy
+# `django.setup()` spada ~154 -> ~144 MB; openpyxl/numpy wchodzą dopiero przy
+# realnym eksporcie). Fix jest zmergowany w upstream main, ale NIEWYDANY na PyPI
+# (ostatni release = 4.4.1, który ma stary eager `DEFAULT_FORMATS = [... if
+# is_available()]` na poziomie modułu). Tag `4.4.2.dev0+iplweb` = main HEAD forka
+# (nazwa PEP 440-valid: setuptools_scm parsuje tag jako wersję, więc musi nią być).
+#
+# Git-source buduje ze źródeł (jak sdist) — ŚWIADOMY, audytowany wyjątek od
+# polityki wheel-only powyżej (kod = nasz fork oficjalnego repo, commit znany).
+# WYCOFAĆ gdy upstream wyda release z #2156 → wróć na PyPI `>=4.5`. Tracking: #280.
+[tool.uv.sources]
+django-import-export = { git = "https://github.com/mpasternak/django-import-export.git", tag = "4.4.2.dev0+iplweb" }
+
 # Konfiguracja `pytest-testcontainers-django` — pluginu pytest, ktory
 # startuje kontenery PG/Redis przed importem Django settings i wstrzykuje
 # host:port do os.environ. Zastepuje wewnetrzny `src/testcontainers_bpp/`.
