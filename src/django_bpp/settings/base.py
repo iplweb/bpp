@@ -1188,19 +1188,17 @@ DJANGO_EASY_AUDIT_REGISTERED_CLASSES = [
 
 SILENCED_SYSTEM_CHECKS.append("admin.E117")
 
-# Override the ``dynamic_admin_columns`` migrations directory.
-#
-# The package's ``0001_initial`` runs ``CreateModel`` against the
-# ``dynamic_columns_*`` tables. Every BPP database — both legacy
-# in-tree-app upgrades and freshly-baselined test DBs — already
-# carries those tables, so running ``CREATE TABLE`` again would
-# conflict. The replacement under ``bpp.migration_overrides`` is
-# state-only (declares the models in Django's state, emits no DDL).
-# Schema-level work for the per-user upgrade lives in
+# NOTE: BPP used to override ``dynamic_admin_columns`` migrations via
+# ``MIGRATION_MODULES`` because the package's old ``0001_initial`` ran a
+# plain ``CreateModel`` that collided with the ``dynamic_columns_*``
+# tables every BPP database already carries (legacy in-tree app +
+# baseline-loaded test DBs). Since django-dynamic-admin-columns 0.5.0
+# that migration is idempotent (creates the tables only when absent,
+# via the schema editor so the user FK resolves through
+# ``AUTH_USER_MODEL``), so the override is no longer needed and BPP
+# consumes the package's migrations directly. Schema-level work for the
+# legacy per-user upgrade still lives in
 # ``bpp.0416_rename_dynamic_columns_to_admin``.
-MIGRATION_MODULES = {
-    "dynamic_admin_columns": "bpp.migration_overrides.dynamic_admin_columns",
-}
 
 DYNAMIC_ADMIN_COLUMNS_ALLOWED_IMPORT_PATHS = [
     "bpp.admin.wydawnictwo_ciagle",

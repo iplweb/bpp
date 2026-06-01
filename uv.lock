@@ -415,7 +415,7 @@ requires-dist = [
     { name = "django-denorm-iplweb", specifier = ">=1.10.2" },
     { name = "django-dirtyfields", specifier = "==1.9.9" },
     { name = "django-dsl", specifier = ">=0.1.14" },
-    { name = "django-dynamic-admin-columns", specifier = ">=0.4.5" },
+    { name = "django-dynamic-admin-columns", specifier = ">=0.5.0" },
     { name = "django-easy-audit", specifier = ">=1.3.9a2,<2" },
     { name = "django-environ", specifier = ">=0.13.0" },
     { name = "django-extensions", specifier = ">=3.2,<5" },
@@ -1668,15 +1668,15 @@ wheels = [
 
 [[package]]
 name = "django-dynamic-admin-columns"
-version = "0.4.5"
+version = "0.5.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "django", marker = "platform_python_implementation != 'PyPy'" },
     { name = "django-admin-sortable2", marker = "platform_python_implementation != 'PyPy'" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/68/ce/019e7435409287d052e70e45beb3e1f9fa448a43d91ea1b5df421de2966c/django_dynamic_admin_columns-0.4.5.tar.gz", hash = "sha256:86dd7d19f893a6cb753c4464f8be0581bfe009bfb59c404b5d82162d49cc5036", size = 52570, upload-time = "2026-05-12T14:00:51.278Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/9d/11/e32d659149e3cf84d3fbeb4ce0c7a7cb8d2951da7d38278725ce4ce6e851/django_dynamic_admin_columns-0.5.0.tar.gz", hash = "sha256:44757685f971d1956d48f8a1b84ef89958c33d000a9ab15295f6f7c215b75e71", size = 50993, upload-time = "2026-05-31T21:16:14.995Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/cb/ed/3132686c67559e3e15883390ab943dbb04001e6307ccd3dbeb9e712fccf0/django_dynamic_admin_columns-0.4.5-py3-none-any.whl", hash = "sha256:723830a5b862f16e272047a853f3276d8d1479b0d018b04da90cd69cf9de6c1a", size = 35736, upload-time = "2026-05-12T14:00:49.686Z" },
+    { url = "https://files.pythonhosted.org/packages/b6/db/43dbac6a5b2e4fe649c20f56259ecf7edbb27cca8589b3989ab4e15d17b5/django_dynamic_admin_columns-0.5.0-py3-none-any.whl", hash = "sha256:722d5a6178fa99d6086d5728100ae7cfd69cc8e6a6bc3db3475aae71c0ef0dd2", size = 36553, upload-time = "2026-05-31T21:16:13.68Z" },
 ]
 
 [[package]]

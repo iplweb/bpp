@@ -46,7 +46,7 @@ dependencies = [
     "django-dsl>=0.1.14",
     "django-group-by==0.3.1",
     "django-columns==0.1.0",
-    "django-dynamic-admin-columns>=0.4.5",
+    "django-dynamic-admin-columns>=0.5.0",
     "tablib==3.9.0",
     "openpyxl>=3.1.5",
     "django-dirtyfields==1.9.9",
