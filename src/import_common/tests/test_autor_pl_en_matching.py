@@ -131,3 +131,33 @@ def test_cluster_combined_with_surname_unaccent():
     """Klaster imion + unaccent nazwiska razem: Christopher Marańda ↔ Krzysztof Maranda."""
     autor = baker.make(Autor, imiona="Krzysztof", nazwisko="Marańda")
     assert matchuj_autora(imiona="Christopher", nazwisko="Maranda") == autor
+
+
+# ---------------------------------------------------------------------------
+# Nazwiska z myślnikiem + diakrytyki (regresja: Lech-Marańda ↔ Lech-Maranda)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.django_db
+def test_match_hyphenated_surname_diacritics_pl_to_en():
+    """BPP: Kowalska-Ńowak Ewa ↔ import: Kowalska-Nowak Eva.
+
+    Regresja na zgłoszenie użytkownika: nazwisko z myślnikiem i diakrytykami
+    nie dopasowywało się do anglojęzycznego zapisu (Marańda↔Maranda, Ewa↔Eva).
+    """
+    autor = baker.make(Autor, imiona="Ewa", nazwisko="Kowalska-Ńowak")
+    assert matchuj_autora(imiona="Eva", nazwisko="Kowalska-Nowak") == autor
+
+
+@pytest.mark.django_db
+def test_match_hyphenated_surname_diacritics_en_to_pl():
+    """Odwrotnie: w bazie BPP siedzi Eva, import niesie polską pisownię."""
+    autor = baker.make(Autor, imiona="Eva", nazwisko="Kowalska-Nowak")
+    assert matchuj_autora(imiona="Ewa", nazwisko="Kowalska-Ńowak") == autor
+
+
+@pytest.mark.django_db
+def test_match_lech_maranda_literal():
+    """Dokladny przypadek zgloszenia: Lech-Maranda Eva ↔ Lech-Marańda Ewa."""
+    autor = baker.make(Autor, imiona="Ewa", nazwisko="Lech-Marańda")
+    assert matchuj_autora(imiona="Eva", nazwisko="Lech-Maranda") == autor

@@ -58,12 +58,24 @@ _OPCJA_NA_DOSTEP = {
     ),
 }
 
-# field (z definicje.RAPORTY) -> (poziom, atrybut flagi Uczelnia, kolejnosc menu)
+# field (z definicje.RAPORTY) -> (poziom, atrybut flagi, kolejnosc menu)
 _POZIOM_META = {
     None: (DefinicjaRaportu.POZIOM_UCZELNIA, "pokazuj_raport_uczelni", 0),
     "wydzial": (DefinicjaRaportu.POZIOM_WYDZIAL, "pokazuj_raport_wydzialow", 1),
     "jednostka": (DefinicjaRaportu.POZIOM_JEDNOSTKA, "pokazuj_raport_jednostek", 2),
     "autor": (DefinicjaRaportu.POZIOM_AUTOR, "pokazuj_raport_autorow", 3),
+}
+
+# Domyślne uprawnienia widoczności per raport. Odwzorowanie dawnych defaultów
+# pól ``Uczelnia.pokazuj_raport_*`` (usuniętych w tym PR): seed nie czyta już
+# instancji Uczelnia, tylko bierze stałą domyślną z tej mapy. Nowy deploy
+# dostaje te same uprawnienia, co przed dropem pól; redaktor dalej je zmienia
+# w adminie (seed istniejących definicji nie tyka).
+DEFAULTY_FLAG = {
+    "pokazuj_raport_uczelni": OpcjaWyswietlaniaField.POKAZUJ_NIGDY,
+    "pokazuj_raport_autorow": OpcjaWyswietlaniaField.POKAZUJ_ZAWSZE,
+    "pokazuj_raport_jednostek": OpcjaWyswietlaniaField.POKAZUJ_ZALOGOWANYM,
+    "pokazuj_raport_wydzialow": OpcjaWyswietlaniaField.POKAZUJ_ZALOGOWANYM,
 }
 
 
@@ -72,13 +84,8 @@ def _rekord_ct():
 
 
 def _odczytaj_flage(attr):
-    """Wartość flagi widoczności z istniejącej uczelni, lub domyślna pola."""
-    from bpp.models import Uczelnia
-
-    uczelnia = Uczelnia.objects.get_default()
-    if uczelnia is not None:
-        return getattr(uczelnia, attr)
-    return Uczelnia._meta.get_field(attr).default
+    """Domyślna wartość widoczności raportu (stała, niezależna od Uczelni)."""
+    return DEFAULTY_FLAG[attr]
 
 
 def _utworz_definicje(rdef, report):

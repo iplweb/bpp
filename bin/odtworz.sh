@@ -74,10 +74,29 @@ docker compose down -v
 docker compose up -d db
 
 echo "Czekam na uruchomienie bazy danych..."
-until docker compose exec db pg_isready -U ${DJANGO_BPP_DB_USER:-bpp} > /dev/null 2>&1; do
+# UWAGA: czekamy aż baza przyjmie ZAPYTANIE po tej samej ścieżce, której
+# zaraz użyją pg_restore/psql/Django (TCP localhost), a NIE przez
+# `docker compose exec db pg_isready`. Przy świeżej inicjalizacji (po
+# `down -v`) postgresowy entrypoint odpala najpierw tymczasowy serwer
+# tylko na gnieździe UNIX, żeby załadować baseline.sql, i dopiero potem
+# restartuje realny serwer nasłuchujący na TCP. W tym oknie
+# `pg_isready` wewnątrz kontenera mówi "ready", choć z hosta połączenie
+# jeszcze nie wstało — stąd "server closed the connection unexpectedly".
+until psql postgres -c 'SELECT 1' > /dev/null 2>&1; do
     sleep 1
 done
 echo "Baza danych gotowa."
+
+# Obraz bpp_dbserver ma zamontowany baseline.sql w
+# /docker-entrypoint-initdb.d/, więc po `down -v` świeży wolumen startuje
+# z PEŁNĄ bazą (schema + dane) załadowaną automatycznie przez postgresowy
+# entrypoint. Dla restore z dumpu to koliduje ("relacja już istnieje",
+# "wielokrotne klucze główne"). Kasujemy więc bazę i tworzymy ją pustą,
+# żeby pg_restore trafiał na czysty cel — zgodnie z deklaracją na górze
+# skryptu, że odtwarzamy bazę od zera z backupu.
+echo "Czyszczę bazę przed odtworzeniem (pomijam baseline.sql z obrazu)..."
+psql postgres -c "DROP DATABASE IF EXISTS \"$LOCAL_DATABASE_NAME\" WITH (FORCE);"
+psql postgres -c "CREATE DATABASE \"$LOCAL_DATABASE_NAME\";"
 
 # Filter out harmless errors from pg_restore (e.g., unknown config parameters
 # from newer PostgreSQL versions)

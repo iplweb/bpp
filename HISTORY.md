@@ -2,6 +2,138 @@
 
 <!-- towncrier release notes start -->
 
+## bpp 202606.1373 (2026-06-01)
+
+### Naprawione
+
+- Cztery widoki wykonujące mutacje danych zostały przerobione z metody
+  HTTP ``GET`` na ``POST`` z ekranem potwierdzenia. Wcześniej kliknięcie
+  zwykłego linku (lub np. prefetch w przeglądarce) mogło wykonać ciężką
+  operację bez świadomej akcji użytkownika i bez ochrony CSRF. Teraz
+  ``GET`` wyświetla ekran potwierdzenia z formularzem ``POST``,
+  zabezpieczonym tokenem CSRF, a sama mutacja wykonywana jest dopiero
+  po akceptacji.
+
+  Dotyczy widoków:
+
+  - ``komparator_pbn_udzialy:rebuild`` — przebudowa rozbieżności PBN
+    (uruchamia zadanie Celery z ``clear_existing=True``).
+  - ``rozbieznosci_if:ustaw_wszystkie`` — masowe ustawienie IF
+    z punktacji źródła dla przefiltrowanych rekordów.
+  - ``rozbieznosci_pk:ustaw_wszystkie`` — masowe ustawienie punktów
+    MNiSW z punktacji źródła dla przefiltrowanych rekordów.
+  - ``snapshot_odpiec:nowy`` — utworzenie nowego snapshotu odpięć.
+  - ``snapshot_odpiec:aplikuj`` — zaaplikowanie snapshotu na bazę.
+- Eksporty XLSX (porównanie publikacji BPP–PBN, lista publikacji
+  do wysyłki oświadczeń) sanityzują teraz wartości komórek przed
+  zapisem. Wartości tekstowe zaczynające się od ``=``, ``+``, ``-``,
+  ``@`` lub białego separatora są poprzedzane apostrofem,
+  co powstrzymuje Excela / LibreOffice'a przed interpretacją ich
+  jako formuł (CSV/Formula Injection wg OWASP). Pomocnicza funkcja
+  ``bpp.util.sanitize_xlsx_cell`` / ``sanitize_xlsx_row`` jest
+  dostępna do wykorzystania w kolejnych eksportach.
+- Klient PBN-API wykonuje teraz wszystkie zapytania HTTP (``GET``,
+  ``POST``, ``DELETE``, autoryzacja OAuth) z jawnymi limitami czasu
+  łączenia i odpowiedzi. Wcześniej brak ``timeout`` powodował, że
+  zawieszony serwer PBN mógł zablokować w nieskończoność proces web
+  albo workera Celery. Wartość można nadpisać przez ``settings``
+  lub zmienną środowiskową ``PBN_CLIENT_HTTP_TIMEOUT`` (sekundy
+  jako liczba albo ``connect,read``); domyślnie 30 s connect / 120 s
+  read.
+- Naprawiono błąd w ``docker/appserver/entrypoint-appserver.sh`` powodujący
+  że nowsze pliki staticów (np. CSS po dodaniu nowego SCSS-a) nie trafiały
+  na produkcję mimo zredeployowania nowego obrazu.
+
+  Poprzednio entrypoint kopiował ``cp -ru /app/staticroot.baked/. "$STATIC_ROOT/"``
+  — flaga ``-u`` (update only if newer) porównywała mtime źródła z mtime
+  docelowym. mtime w ``.baked`` pochodzi z czasu ``grunt build`` w trakcie
+  buildu obrazu, podczas gdy mtime na named volume z czasu ``cp`` przy
+  poprzednim restarcie kontenera. Jeśli poprzedni restart nastąpił później
+  niż grunt build w nowym obrazie (typowy scenariusz przy deployach jeden
+  po drugim), ``cp -u`` cicho skipował kopiowanie i volume utrzymywał stare
+  pliki — a ``django-compressor`` produkował bundle z tych przestarzałych
+  źródeł.
+
+  Teraz używamy ``cp -rf`` — zawsze nadpisuje pliki istniejące w ``.baked``,
+  bez sprawdzania mtime. Ochrona tenant-specific zmian (custom branding
+  wgrany post-deploy do podkatalogów spoza ``.baked``) jest zachowana,
+  ponieważ ``cp`` i tak nie kasuje plików spoza źródła.
+
+  **Symptom dla użytkowników poprzedniego zachowania**: po dodaniu nowych
+  reguł CSS (np. nowych klas SCSS) i zredeployowaniu obrazu, na produkcji
+  nadal widoczny jest stary styl. Workaround manualny:
+  ``docker compose exec appserver cp -rf /app/staticroot.baked/. "$STATIC_ROOT/" && docker compose exec appserver python src/manage.py compress -v0 --force``.
+  Po tym fixie nie jest już potrzebny.
+- Publiczny autocomplete w ``zglos_publikacje`` (wybór wydawcy
+  i wydawnictwa nadrzędnego) escape'uje teraz nazwy z bazy BPP
+  oraz dane pobrane z PBN przy budowie etykiet w wynikach. Wcześniej
+  ``mark_safe(f"...")`` interpolował wartości bez sanityzacji,
+  przez co tytuł lub nazwa wydawcy zawierające znaczniki HTML
+  mogły wstrzyknąć skrypt na publicznej stronie zgłoszenia.
+- Tworzenie zadań w tle dla pobrań z PBN
+  (``pbn_downloader_app.tasks.create_task_with_lock``) oraz wysyłki
+  oświadczeń (``pbn_wysylka_oswiadczen`` widok startu zadania) jest
+  teraz chronione przez Postgresowy advisory lock. Wcześniej sprawdzenie
+  ``filter(status="running").exists()`` wewnątrz ``transaction.atomic()``
+  nie gwarantowało wzajemnego wykluczenia — dwa równoczesne żądania
+  mogły obydwa nie znaleźć aktywnego zadania i obydwa założyć kolejne,
+  przez co dwóch workerów mogło naraz wykonywać tę samą operację.
+- Widoki listy problemów PBN, szczegółów rozbieżności dyscyplin
+  oraz szczegółów brakującego autora w module
+  ``komparator_pbn_udzialy`` wymagają teraz członkostwa w grupie
+  „wprowadzanie danych”. Wcześniej te trzy widoki były dostępne
+  publicznie, mimo że pokazują dane synchronizowane z PBN i wewnętrzne
+  identyfikatory BPP.
+
+### Usprawnienie
+
+- Aplikacja ``formdefaults``, dotychczas utrzymywana w drzewie BPP,
+  została wymieniona na zewnętrzny pakiet ``django-formdefaults``
+  (PyPI). Dane (``FormRepresentation``, ``FormFieldRepresentation``,
+  ``FormFieldDefaultValue``) i utrwalone wartości domyślne pozostają
+  nietknięte — Django zastosuje pięć nowych migracji przyrostowo
+  (``pre_registered``, ``is_auto_snapshot`` plus dwa unique constraints).
+
+  Każdy formularz frontendowy zalogowanego użytkownika dostał teraz
+  przycisk **„Moje wartości domyślne”** w prawym górnym rogu,
+  otwierający popup do edycji własnych ustawień startowych pola
+  po polu. Użytkownicy z flagą ``is_staff`` widzą obok drugi
+  przycisk **„Systemowe wartości domyślne”** — edytuje on
+  wartość systemową, którą widzą wszyscy. Domyślne uprawnienie pakietu
+  (``is_superuser``) zostało rozszerzone na ``is_staff`` przez ustawienie
+  ``FORMDEFAULTS_CAN_EDIT_SYSTEM_WIDE``.
+
+  Przyciski pojawiają się m.in. w nowych raportach, raporcie slotów,
+  rankingu autorów, importerze publikacji, importach (POLON, dyscypliny,
+  lista IF, lista ministerialna, pracownicy, udziały) oraz w wizardzie
+  zgłoszenia publikacji. Stary admin ``/admin/formdefaults/...`` nadal
+  działa.
+- Wizard importera publikacji (CrossRef): gdy dopasowanie autora trafia
+  na **wielu** kandydatów (np. dwóch autorów o tym samym nazwisku — z
+  diakrytykiem i bez), system pre-zaznacza najlepszego (więcej publikacji,
+  ORCID), zapisuje pełną listę z metadanymi i wyświetla rozwijaną listę
+  alternatyw z badge'ami `pewność` / `liczba publikacji` / `ORCID`.
+  Kliknięcie kandydata przepina dopasowanie jednym requestem.
+
+### Usunięto
+
+- Aplikacja ``dynamic_columns`` została wydzielona do osobnego pakietu
+  ``django-dynamic-columns`` (publikacja na PyPI, repo
+  ``iplweb/django-dynamic-columns``). Z perspektywy BPP nic się nie
+  zmienia: konfiguracja w ``settings.DYNAMIC_COLUMNS_ALLOWED_IMPORT_PATHS``
+  oraz ``settings.DYNAMIC_COLUMNS_FORBIDDEN_COLUMN_NAMES`` pozostaje
+  identyczna, a wszystkie zapisane przez użytkowników wybory kolumn w
+  adminie nadal działają — pakiet zachowuje te same tabele i migracje
+  co poprzednia, wbudowana w BPP aplikacja.
+- Usunięto martwą aplikację ``create_test_db`` wraz z jej jedynym
+  poleceniem ``manage.py create_test_db``. Komenda wykorzystywała
+  sztuczkę z ``manage.py test --keepdb`` do utworzenia bazy testowej
+  i nie była już używana przez CI ani lokalny workflow. Aktualnie
+  funkcjonalność pokrywają ``pytest-testcontainers`` (testy
+  integracyjne na ulotnym kontenerze PostgreSQL) oraz
+  ``run-site --from-dump`` (odtworzenie bazy z dumpa).
+
+
 ## bpp 202605.1372 (2026-05-04)
 
 ### Naprawione

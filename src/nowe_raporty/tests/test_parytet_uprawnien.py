@@ -1,67 +1,44 @@
-"""Test parytetu: po zaseedowaniu DefinicjaRaportu z flag Uczelnia.pokazuj_raport_*
-nowa metoda widoczny_dla() daje DOKŁADNIE ten sam wynik co dawne
-Uczelnia.sprawdz_uprawnienie() — gwarancja płynnego przejścia (slice C).
+"""Testy seedu domyślnych uprawnień DefinicjaRaportu.
+
+Pola Uczelnia.pokazuj_raport_* zostały usunięte — seed bierze domyślne
+uprawnienia ze stałej ``DEFAULTY_FLAG`` (mapuje dawne defaulty pól). Te testy
+pilnują, że nowy deploy dostaje raporty z poprawnymi domyślnymi poziomami
+dostępu/aktywnością.
 """
 
 import pytest
-from django.contrib.auth.models import AnonymousUser, Group
-from django.test import RequestFactory
 from model_bakery import baker
 
 from bpp.const import GR_RAPORTY_WYSWIETLANIE
-from bpp.models import OpcjaWyswietlaniaField, Uczelnia
 from nowe_raporty.models import DefinicjaRaportu
 from nowe_raporty.seeding import seed_default_reports
 
-WSZYSTKIE_OPCJE = [
-    OpcjaWyswietlaniaField.POKAZUJ_ZAWSZE,
-    OpcjaWyswietlaniaField.POKAZUJ_ZALOGOWANYM,
-    OpcjaWyswietlaniaField.POKAZUJ_GDY_W_ZESPOLE,
-    OpcjaWyswietlaniaField.POKAZUJ_NIGDY,
-]
-
-
-def _req(user):
-    r = RequestFactory().get("/")
-    r.user = user
-    return r
-
 
 @pytest.mark.django_db
-@pytest.mark.parametrize("opcja", WSZYSTKIE_OPCJE)
-def test_parytet_widocznosci_raport_autorow(opcja, django_user_model):
-    # Stan "przed": flaga widoczności raportu autorów na obiekcie Uczelnia.
-    uczelnia = baker.make(Uczelnia, pokazuj_raport_autorow=opcja)
-
-    # Migracja danych: seed tworzy DefinicjaRaportu mapując uprawnienia z flagi.
+@pytest.mark.parametrize(
+    "slug,poziom_dostepu,aktywny,wymaga_grupy",
+    [
+        # raport-autorow: dawny default POKAZUJ_ZAWSZE -> WSZYSCY, bez grupy.
+        ("raport-autorow", DefinicjaRaportu.DOSTEP_WSZYSCY, True, False),
+        # jednostki/wydzialy: POKAZUJ_ZALOGOWANYM -> ZALOGOWANI + grupa raporty.
+        ("raport-jednostek", DefinicjaRaportu.DOSTEP_ZALOGOWANI, True, True),
+        ("raport-wydzialow", DefinicjaRaportu.DOSTEP_ZALOGOWANI, True, True),
+        # raport-uczelni: dawny default POKAZUJ_NIGDY -> nieaktywny.
+        ("raport-uczelni", DefinicjaRaportu.DOSTEP_ZALOGOWANI, False, False),
+    ],
+)
+def test_seed_domyslne_uprawnienia(slug, poziom_dostepu, aktywny, wymaga_grupy):
     seed_default_reports()
-    definicja = DefinicjaRaportu.objects.get(slug="raport-autorow")
+    definicja = DefinicjaRaportu.objects.get(slug=slug)
 
-    grupa = Group.objects.get_or_create(name=GR_RAPORTY_WYSWIETLANIE)[0]
+    assert definicja.poziom_dostepu == poziom_dostepu
+    assert definicja.aktywny is aktywny
 
-    w_grupie = baker.make(django_user_model, is_staff=False, is_superuser=False)
-    w_grupie.groups.add(grupa)
-
-    users = [
-        AnonymousUser(),
-        baker.make(django_user_model, is_staff=False, is_superuser=False),
-        w_grupie,
-        baker.make(django_user_model, is_staff=True, is_superuser=False),
-        # superuser realistycznie z is_staff=True (Django admin tego wymaga);
-        # "superuser zawsze widzi" to zamierzone ulepszenie, zgodne ze starym
-        # zachowaniem dla staff-superusera.
-        baker.make(django_user_model, is_staff=True, is_superuser=True),
-    ]
-
-    for user in users:
-        req = _req(user)
-        stare = uczelnia.sprawdz_uprawnienie("raport_autorow", req)
-        nowe = definicja.widoczny_dla(req)
-        assert nowe == stare, (
-            f"opcja={opcja} user(staff={user.is_staff},"
-            f"super={getattr(user, 'is_superuser', False)}): "
-            f"stare={stare} nowe={nowe}"
-        )
+    nazwy_grup = set(definicja.wymagane_grupy.values_list("name", flat=True))
+    if wymaga_grupy:
+        assert GR_RAPORTY_WYSWIETLANIE in nazwy_grup
+    else:
+        assert nazwy_grup == set()
 
 
 @pytest.mark.django_db

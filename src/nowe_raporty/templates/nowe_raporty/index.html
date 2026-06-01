@@ -8,16 +8,20 @@
 
 {% block content %}
     <h2>Nowe raporty</h2>
-    Wybierz:
-    <ul>
-        <li>
-            <a href="{% url "nowe_raporty:wydzial_form" %}">wydział</a>
-        </li>
-        <li>
-            <a href="{% url "nowe_raporty:jednostka_form" %}">jednostka</a>
-        </li>
-        <li>
-            <a href="{% url "nowe_raporty:autor_form" %}">autor</a>
-        </li>
-    </ul>
+    {# Data-driven lista raportow z DefinicjaRaportu (context processor #}
+    {# nowe_raporty.menu.raporty_menu), spojna z menu w top_bar. #}
+    {% if raporty_menu %}
+        Wybierz:
+        <ul>
+            {% for raport in raporty_menu %}
+                <li>
+                    <a href="{% url "nowe_raporty:raport_form" raport.slug %}">
+                        <span class="{{ raport.ikona_menu }}"></span> {{ raport.nazwa }}
+                    </a>
+                </li>
+            {% endfor %}
+        </ul>
+    {% else %}
+        <p>Brak skonfigurowanych raportów.</p>
+    {% endif %}
 {% endblock %}
