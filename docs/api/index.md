@@ -10,7 +10,7 @@ korzystając ze zwykłej przeglądarki WWW zapoznać się z udostępnianymi prze
 a następnie płynnie przełączyć się w tryb JSON, aby pobierać dane czytelne nieco mniej dla
 człowieka, a bardziej dla komputera.
 
-![image](images/api/api_1.png)
+![image](../images/api/api_1.png)
 
 ## API dla raportów slotu - uczelnia
 
@@ -24,7 +24,7 @@ wymaga jednak zalogowania jako użytkownik będący członkiem grupy "generowani
     Przeglądarka poprosi nas o zalogowanie się za pomoca loginu i hasła. Na samym dole
     strony zobaczymy formularz, który umożliwia utworzenie raportu przez API:
 
-    ![image](images/api/api_2.png)
+    ![image](../images/api/api_2.png)
 
 2.  Aby utworzyć raport slotów - uczelnia przez API za pomocą polecenia `curl(1)`,
     możemy w systemowej powłoce napisać:
@@ -75,7 +75,7 @@ wymaga jednak zalogowania jako użytkownik będący członkiem grupy "generowani
     Jak łatwo zauważyć, będzie tam lista wierszy raportu, zawierająca informacje o autorze, jednostce,
     dyscyplinie, zebranym slocie i sumie PkD dla autora.
 
-    ![image](images/api/api_3.png)
+    ![image](../images/api/api_3.png)
 
     Zapytanie o te wszystkie dane z pomocą polecenia `curl(1)` zwróci nam tekst w
     formacie JSON:
