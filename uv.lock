@@ -429,7 +429,7 @@ requires-dist = [
     { name = "django-fsm-2", specifier = ">=4,<5" },
     { name = "django-grappelli", specifier = ">=5.0.0,<6" },
     { name = "django-group-by", specifier = "==0.3.1" },
-    { name = "django-import-export", git = "https://github.com/mpasternak/django-import-export.git?tag=4.4.2.dev0%2Biplweb" },
+    { name = "django-import-export", git = "https://github.com/mpasternak/django-import-export.git?rev=d6ee0d39194fee31437affbdc6fee5ce549b4b8f" },
     { name = "django-loginas", specifier = "==0.3.14" },
     { name = "django-messages-extends", specifier = "==0.6.3" },
     { name = "django-microsoft-auth", marker = "extra == 'office365'", specifier = ">=3.0.1" },
@@ -1838,7 +1838,7 @@ wheels = [
 [[package]]
 name = "django-import-export"
 version = "4.4.2.dev0+iplweb"
-source = { git = "https://github.com/mpasternak/django-import-export.git?tag=4.4.2.dev0%2Biplweb#d6ee0d39194fee31437affbdc6fee5ce549b4b8f" }
+source = { git = "https://github.com/mpasternak/django-import-export.git?rev=d6ee0d39194fee31437affbdc6fee5ce549b4b8f#d6ee0d39194fee31437affbdc6fee5ce549b4b8f" }
 dependencies = [
     { name = "diff-match-patch", marker = "platform_python_implementation != 'PyPy'" },
     { name = "django", marker = "platform_python_implementation != 'PyPy'" },
