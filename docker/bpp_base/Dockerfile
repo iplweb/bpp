@@ -51,9 +51,11 @@ WORKDIR /app
 
 COPY pyproject.toml uv.lock yarn.lock package.json ./
 
-# R4: --all-extras --no-extra=dev również ciągnie `baseline-rebuild`
-# (testcontainers) i pakiety z [dependency-groups].dev (vulture, pytest-
-# repeat). Explicite wymieniamy extras potrzebne w produkcji.
+# R4: `--no-dev` blokuje grupe [dependency-groups].dev (testowe deps,
+# ruff, ipython, playwright, run-site, vulture itd.). Wczesniej dev byl
+# extras-em i `--all-extras --no-extra=dev` ciagal jeszcze
+# `baseline-rebuild`; po migracji dev->dependency-group wymieniamy tylko
+# realnie potrzebne extras produkcji (ldap, office365).
 RUN --mount=type=cache,target=/root/.cache/uv,id=uv-cache \
     uv sync --frozen --no-dev --no-install-project \
         --extra ldap --extra office365
@@ -288,6 +290,7 @@ RUN --mount=type=cache,target=/root/.npm,id=npm-cache \
 # steps below it. Only changes inside src/ or the listed top-level
 # config files force a rebuild of the assets.
 COPY src/ /src/src/
+COPY baseline-sql/ /src/baseline-sql/
 COPY conftest.py pytest.ini Makefile pyproject.toml uv.lock /src/
 
 RUN npx grunt build-non-interactive
@@ -372,6 +375,7 @@ RUN --mount=type=cache,target=/root/.npm,id=npm-cache \
 # zostaje cached, a grunt + collectstatic licza sie ~minute lacznie.
 # Runtime przykrywa ten snapshot bind-mountem `./src:/app/src` z compose.
 COPY src/ src/
+COPY baseline-sql/ baseline-sql/
 
 RUN npx grunt build-non-interactive
 
@@ -463,10 +467,11 @@ WORKDIR /app
 # pisze do `$STATIC_ROOT` (default `/app/staticroot`, override w compose).
 COPY --from=builder /app/staticroot.baked ./staticroot.baked
 COPY --from=builder /app/.venv ./.venv
-# The baseline pg_dump (src/baseline-sql) ships along with src/ and is
-# loaded by entrypoint-appserver.sh via `manage.py baseline_load` on
-# empty databases to skip 800+ migrations on a cold install.
+# The baseline pg_dump (baseline-sql/) is a separate data artifact at the
+# repo root. Entrypoint-appserver.sh loads it via `manage.py baseline_load`
+# on empty databases to skip 800+ migrations on a cold install.
 COPY --from=builder /app/src ./src
+COPY --from=builder /app/baseline-sql ./baseline-sql
 
 # Sanity-check: zapisuje GIT_SHA do pliku, żeby `cat /app/.git-sha`
 # w runtime od razu pokazywał commit, na podstawie którego zbudowano obraz.

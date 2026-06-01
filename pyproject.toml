@@ -1,13 +1,36 @@
 [project]
 name = "bpp_iplweb"
-version = "202605.1372"
+version = "202606.1373"
 description = ""
 authors = [
     { name = "Michał Pasternak", email = "michal.dtz@gmail.com" }
 ]
+# Server-side gate PyPI: nieznany classifier => HTTP 400 "Unknown
+# classifier", upload odrzucony NIEZALEZNIE od klienta (uv publish,
+# twine, flit, poetry...). PyPI uzywa whitelisty `trove-classifiers`
+# do walidacji POST-a do /upload; nasz string nie jest na liscie,
+# wiec gate dziala. Komunikat w tresci classifiera laduje w
+# error-message PyPI i daje od razu wskazowke "use bpp-deploy repo".
+#
+# Co NIE zatrzymuje uploadu (waznie — bez zludzen):
+#  * `uv build`/`hatchling`/`setuptools` NIE waliduje classifierow;
+#    budowanie .whl/.sdist lokalnie nadal dziala.
+#  * `twine check` waliduje tylko long_description (PASSED with warnings
+#    bez patrzenia na classifiers).
+#  * Brak lokalnego pre-flightu w `uv publish` — POST faktycznie idzie
+#    do PyPI, dopiero serwer odrzuca. Ale skutek jest ten sam:
+#    obraz NIE powstaje na PyPI.
+#
+# Konwencja `Private :: Do Not Upload` z packaging.python.org dziala
+# z tego samego powodu — to NIE jest specjalny sentinel ani passthrough,
+# tylko de-facto popularny string ktorego nie ma w trove. Nasza wersja
+# z linkiem do bpp-deploy ma identyczny mechanizm + lepszy komunikat.
+classifiers = [
+    "DoNotUpload :: Use this project via github.com/iplweb/bpp-deploy repo",
+]
 requires-python = ">=3.11,<3.15"
 dependencies = [
-    "Django>=5.2,<5.3",
+    "Django>=5.2.14,<5.3",
     "arrow>=1.3,<2",
     "numpy>=2.4.4",
     "pygad>=3.6.0",
@@ -17,11 +40,13 @@ dependencies = [
     "django-reversion>=6,<7",
     "django-reversion-compare>=0.19.2",
     "channels[daphne]>=4.3.2,<5",
-    "uvicorn[standard]>=0.46.0",
+    "uvicorn[standard]>=0.47.0",
     "channels-redis>=4,<5",
-    "django-flexible-reports>=0.2.12",
+    "django-flexible-reports>=0.3.1",
+    "django-dsl>=0.1.14",
     "django-group-by==0.3.1",
     "django-columns==0.1.0",
+    "django-dynamic-admin-columns>=0.5.0",
     "tablib==3.9.0",
     "openpyxl>=3.1.5",
     "django-dirtyfields==1.9.9",
@@ -45,7 +70,7 @@ dependencies = [
     "django-session-security>=2.6.8",
     "django-password-policies-iplweb==0.9.0",
     "dj-pagination==2.5.0",
-    "requests>=2.32.4",
+    "requests>=2.34.0",
     "django-extensions>=3.2,<5",
     "django-minify-html>=1.14,<2",
     "Pillow>=12.2,<14",
@@ -71,7 +96,7 @@ dependencies = [
     "django-admin-sortable2>=2.3.1,<3",
     "cssmin==0.2.0",
     "rjsmin>=1.2.1",
-    "django-import-export>=4.4,<5",
+    "django-import-export>=4.4.1,<5",
     "pymed-iplweb==0.8.11",
     "django-taggit>=5,<7",
     "weasyprint>=66.0",
@@ -87,12 +112,12 @@ dependencies = [
     "django-celery-email>=3.0.0",
     "django-easy-audit>=1.3.9a2,<2",
     "crossrefapi>=1.7.0",
-    "urllib3>=2.6.3,<3.0.0",
-    "pandas>=3.0.2",
+    "urllib3>=2.7.0,<3.0.0",
+    "pandas>=3.0.3",
     "django-tinymce>=5.0.0",
     "crispy-bootstrap5>=2026.3",
     "crispy-bootstrap3>=2022.1",
-    "twisted[http2,tls]>=25.5.0",
+    "twisted[http2,tls]>=26.4.0",
     "django-dbtemplates-iplweb>=4.3.2",
     "django-soft-delete>=1.0.23",
     "tqdm>=4.67.3",
@@ -111,72 +136,50 @@ dependencies = [
     "bibtexparser>=2.0.0b7", # BibTeX import
     "langdetect>=1.0.9", # Language detection for imports
     "beautifulsoup4>=4.14.3", # importer_publikacji.providers.www imports at app-ready time
-    "gunicorn>=23", # authserver WSGI runner (moved from docker/authserver build-time uv pip install)
+    "gunicorn>=26.0.0", # authserver WSGI runner (moved from docker/authserver build-time uv pip install)
     "watchdog>=5.0.3", # --reload mode dla uvicorn/celery w dev compose (moved from entrypoint `uv pip install`)
     "sqlparse>=0.5.4", # Dependabot: transitive via Django, bumped to fix DoS in format_list_of_tuples
+    "django-channels-broadcast>=0.2.0",
+    "django-countdown>=0.2.0",
+    "django-formdefaults>=0.6.2",
+    # django-pg-baseline: zewnetrzny pakiet zarzadzajacy baseline.sql + monkey-patch
+    # tworzenia testowej bazy. Dawniej wewnetrzny `src/django_pg_baseline/`.
+    # Dependency runtime, bo INSTALLED_APPS odwoluje sie do niego z kazdego srodowiska
+    # (testy/dev/baseline_rebuild). Sam runtime nic nie kosztuje gdy PG_BASELINE
+    # niezdefiniowane (no-op AppConfig.ready).
+    "django-pg-baseline>=0.3.0",
+    "django-site-blog>=0.2.0",
+    "django-first-run-wizard>=0.1.0",
 ]
 
 [project.optional-dependencies]
 ldap = ["django-auth-ldap>=5.3.0"]
 office365 = ["django-microsoft-auth>=3.0.1"]
 baseline-rebuild = ["testcontainers[postgres]>=4.14.2"]
-dev = [
-    "bumpver>=2023.1124",
-    "pytest-recording>=0.12.1",
-    "vcrpy>=8.1.1,<9",
-    "towncrier>=22.8.0",
-    "pytest-sugar>=0.9.7",
-    "pytest-rerunfailures>=14.0",
-    "django-debug-toolbar>=6.3.0",
-    "model-bakery>=1.23.4",
-    "django-dynamic-fixture>=1.8.0",
-    "django-webtest==1.9.14",
-    "WebTest==3.0.0",
-    "Sphinx>=7,<9",
-    "coveralls>=4.1.0,<5",
-    "psutil>=7.2.2",
-    "pytest<10.0.0",
-    "pytest-django>=4.12.0",
-    "pytest-httpserver>=1.1.5",
-    "werkzeug>=3.1.6", # Dependabot: transitive via pytest-httpserver, bump for safe_join() fixes
-    "pytest-cov>=7.1.0",
-    "pytest-mock>=3.7.0",
-    "pytest-xdist>=2.3.0",
-    "pytest-shard>=0.1.2",
-    "pytest-timeout>=2.1.0",
-    "pyparsing>=3.3.2",
-    "ruff>=0.15.12",
-    "djlint>=1.36,<2",
-    "pre-commit>=4.6.0",
-    "twine>=5.1.0",
-    "ipdb>=0.13.9",
-    "ipython>=8.2.0",
-    "playwright>=1.59.0,<2",
-    "pytest-playwright>=0.4.0",
-    "pytest-env>=1.6.0",
-    "nest-asyncio>=1.6.0",
-    "testcontainers[postgres]>=4.14.2"
-]
+
+# UWAGA: dev-deps siedza w [dependency-groups].dev (PEP 735) na dole pliku.
+# Grupa `dev` jest aktywowana defaultowo przez `uv run` / `uv sync` (opt-out
+# przez --no-dev / UV_NO_DEV=1), wiec NIE TRZEBA `--extra dev` ani
+# `--group dev`. Historycznie dev-deps siedzialy tutaj jako extras, ale BPP
+# nie jest publikowany jako package — extras nic nie daly, a wymagaly
+# --extra dev przy kazdym uv run/sync. Konwersja: 2026-05.
 
 # [project.scripts] i [project.entry-points] usuniete - BPP nie jest
 # instalowany jako package (uv sync --no-install-project wszedzie).
-# Plugin testcontainers_bpp ladowany przez `-p testcontainers_bpp.plugin`
-# w pytest.ini addopts. Skrypt `bpp-manage.py` byl dead code (Makefile/
-# Dockerfile uzywaja `python src/manage.py` bezposrednio).
+# Pluginy pytest (pytest-testcontainers, pytest-testcontainers-django,
+# django-pg-baseline) auto-loaduja sie przez wlasne entry-pointy `pytest11`.
+# Skrypt `bpp-manage.py` byl dead code (Makefile/Dockerfile uzywaja
+# `python src/manage.py` bezposrednio).
 
 [tool.setuptools.packages.find]
 where = ["src"]
 include = [
     "api_v1",
     "bpp",
-    "create_test_db",
     "crossref_bpp",
-    "dynamic_columns",
     "django_bpp",
-    "django_pg_baseline",
     "ewaluacja2021",
     "fixtures",
-    "formdefaults",
     "import_common",
     "import_dyscyplin",
     "import_list_if",
@@ -186,7 +189,6 @@ include = [
     "zglos_publikacje",
     "long_running",
     "miniblog",
-    "notifications",
     "nowe_raporty",
     "oswiadczenia",
     "pbn_api",
@@ -195,9 +197,7 @@ include = [
     "ranking_autorow",
     "rozbieznosci_dyscyplin",
     "rozbieznosci_if",
-    "tee",
-    "test_bpp",
-    "testcontainers_bpp"
+    "test_bpp"
 ]
 
 [tool.setuptools.package-data]
@@ -212,7 +212,7 @@ include = [
 ]
 
 [tool.bumpver]
-current_version = "v202605.1372"
+current_version = "v202606.1373"
 version_pattern = "vYYYY0M.BUILD[-TAGNUM]"
 commit_message = "bump version {old_version} -> {new_version}"
 commit = true
@@ -241,8 +241,9 @@ environments = ["python_version >= '3.10' and python_version < '3.15' and platfo
 # 3. uv-secure CVE scan w dependency-audit.yml workflow
 #
 # Workspace package (bpp-iplweb) NIE jest instalowany - `uv sync` wszedzie
-# uzywa --no-install-project. Pytest plugin testcontainers_bpp ladowany
-# przez `-p testcontainers_bpp.plugin` w pytest.ini addopts.
+# uzywa --no-install-project. Pluginy pytest (pytest-testcontainers,
+# pytest-testcontainers-django, django-pg-baseline) auto-loaduja sie przez
+# wlasne entry-pointy `pytest11`.
 #
 # Gdy nowa dep nie ma wheel: znajdz alternatywe LUB zglos wheel u
 # maintainera. NIE dodawaj do listy wyjatkow bez review.
@@ -256,6 +257,52 @@ environments = ["python_version >= '3.10' and python_version < '3.15' and platfo
 name = "pypi"
 url = "https://pypi.org/simple"
 default = true
+
+# Konfiguracja `pytest-testcontainers-django` — pluginu pytest, ktory
+# startuje kontenery PG/Redis przed importem Django settings i wstrzykuje
+# host:port do os.environ. Zastepuje wewnetrzny `src/testcontainers_bpp/`.
+#
+# - `postgres_image`: zachowujemy wlasny obraz BPP (ma plpython3u i locale
+#   pl_PL.UTF-8) zamiast vanilla `postgres:16` — schemat i dane zaleza
+#   od tego.
+# - `postgres_init_scripts`: baseline.sql jest mountowany do
+#   /docker-entrypoint-initdb.d/, dzieki czemu jest replayowany przez
+#   entrypoint Postgresa zanim TCP zacznie akceptowac polaczenia. Razem
+#   z `db_test_template_env` daje "instant" tworzenie test-DB przez
+#   CREATE DATABASE WITH TEMPLATE.
+# - `db_*_env`: nazwy zmiennych srodowiskowych ktore plugin pisze do
+#   os.environ. Pasuja do tych, ktore Django settings (`base.py`) czyta
+#   przez `env(...)`.
+# - `redis_enabled`: BPP wymaga Redisa do testow (channels, cacheops).
+[tool.pytest-testcontainers-django]
+postgres_image = "iplweb/bpp_dbserver:psql-16.13"
+postgres_user = "bpp"
+postgres_password = "password"
+postgres_database = "bpp"
+postgres_init_scripts = ["baseline-sql/baseline.sql"]
+postgres_template = "bpp"
+postgres_env = { POSTGRESQL_UNSAFE_BUT_FAST = "1", POSTGRESQL_MAX_LOCKS_PER_TRANSACTION = "512" }
+db_host_env = "DJANGO_BPP_DB_HOST"
+db_port_env = "DJANGO_BPP_DB_PORT"
+db_name_env = "DJANGO_BPP_DB_NAME"
+db_user_env = "DJANGO_BPP_DB_USER"
+db_password_env = "DJANGO_BPP_DB_PASSWORD"
+db_test_template_env = "DJANGO_BPP_TEST_TEMPLATE"
+skip_dotenv_env = "DJANGO_BPP_SKIP_DOTENV"
+# Migracja env-var semantyki: poprzednio `BPP_USE_TESTCONTAINERS=0`/=`1`
+# wlaczalo/wylaczalo plugin (domyslnie ON). Nowy plugin uzywa
+# `PYTEST_TESTCONTAINERS_DISABLE=1` jako "wylacz" (domyslnie OFF =
+# wlaczone). Workflow:
+#   - lokalnie: nic nie ustawiamy → kontenery startuja same.
+#   - CI z docker-compose: `PYTEST_TESTCONTAINERS_DISABLE=1` (patrz
+#     docker-compose.test.yml) zeby plugin nie startowal docker-in-docker.
+#   - reuse miedzy runs: `PYTEST_TESTCONTAINERS_REUSE=1`.
+disable_env = "PYTEST_TESTCONTAINERS_DISABLE"
+reuse_env = "PYTEST_TESTCONTAINERS_REUSE"
+redis_enabled = true
+redis_image = "redis:7-alpine"
+redis_host_env = "DJANGO_BPP_REDIS_HOST"
+redis_port_env = "DJANGO_BPP_REDIS_PORT"
 
 [tool.bumpver.file_patterns]
 "pyproject.toml" = ['current_version = "{version}"',
@@ -279,8 +326,6 @@ extend-exclude = [
     "src/bpp/tests",
     "src/zglos_publikacje/tests",
     "src/import_common/tests",
-    "src/django_bpp/staticroot/notifications/js/tests",
-    "src/notifications/static/notifications/js/tests",
     "src/fixtures"
 ]
 
@@ -320,23 +365,23 @@ extension = "html"
 #   D018/J018 - django/jinja link patterns
 ignore = "H006,H008,H013,H014,H019,H021,H023,H030,H031,T001,T002,T003,D018,J018"
 
+# Coverage.py config — uzywany TYLKO lokalnie przez `make coverage-ai`.
+# CI nie uruchamia `pytest --cov`, wiec ten config jest inertny w pipeline.
 [tool.coverage.run]
-# Support for parallel test runners
+branch = true
 parallel = true
 concurrency = ["multiprocessing"]
-# Measure branch coverage
-branch = true
-# Omit test files and migrations from coverage
+source = ["src"]
 omit = [
     "*/migrations/*",
     "*/tests/*",
     "*/test_*.py",
     "*/__pycache__/*",
-    "*/site-packages/*"
+    "*/site-packages/*",
+    "src/django_bpp/staticroot/*",
 ]
 
 [tool.coverage.report]
-# Exclude test code and migrations from report
 exclude_lines = [
     "pragma: no cover",
     "def __repr__",
@@ -346,29 +391,93 @@ exclude_lines = [
     "if TYPE_CHECKING:",
     "if typing.TYPE_CHECKING:",
 ]
-precision = 2
-
-[tool.coverage.html]
-directory = "cov_html"
-
-[tool.coverage.xml]
-output = "cov.xml"
+precision = 1
+skip_empty = true
 
 [build-system]
 requires = ["setuptools>=82.0.1", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [dependency-groups]
+# Grupa `dev` (PEP 735) — aktywowana defaultowo przez `uv run` / `uv sync`.
+# Wczesniej te deps siedzialy w [project.optional-dependencies].dev jako
+# extras, ale wymagaly `--extra dev` przy kazdym wywolaniu. Migracja na
+# dependency-group eliminuje boilerplate: `uv run pytest` zaciaga te deps
+# automatycznie. Opt-out: `--no-dev` lub UV_NO_DEV=1 (uzywane w produkcji
+# docker stage builderowym).
 dev = [
+    "bumpver>=2023.1124",
+    "pytest-recording>=0.12.1",
+    "vcrpy>=8.1.1,<9",
+    "towncrier>=22.8.0",
+    "pytest-sugar>=0.9.7",
+    "pytest-rerunfailures>=14.0",
+    "django-debug-toolbar>=6.3.0",
+    "model-bakery>=1.23.4",
+    "django-dynamic-fixture>=1.8.0",
+    "django-webtest==1.9.14",
+    "WebTest==3.0.0",
+    "psutil>=7.2.2",
+    # pytest 8.x: pytest-testcontainers-django (0.2.0) deklaruje pytest<9.
+    # Wewnetrznie korzysta tylko z stabilnego API hookow (pytest_load_initial_conftests
+    # etc.) — wiec dziala z pytest 9, ale upstream constraint wymusza <9 w
+    # resolverze. Po bumpie pytest-testcontainers-django na pytest>=8,<10
+    # mozna podniesc te wersje. Patrz pytest-env constraint nizej.
+    "pytest>=8,<9",
+    "pytest-django>=4.12.0",
+    "pytest-httpserver>=1.1.5",
+    "werkzeug>=3.1.6", # Dependabot: transitive via pytest-httpserver, bump for safe_join() fixes
+    "pytest-cov>=7.1.0",  # lokalnie do `make coverage-ai`; CI nie wola --cov
+    "pytest-mock>=3.7.0",
+    "pytest-xdist>=2.3.0",
+    "pytest-shard>=0.1.2",
+    "pytest-timeout>=2.1.0",
+    "pyparsing>=3.3.2",
+    # Pinned exact, kept in sync with the `ruff-pre-commit` rev in
+    # .pre-commit-config.yaml. CI lints via pre-commit (that rev is the
+    # source of truth); this `==` pin only keeps ad-hoc `uv run ruff`
+    # producing identical output. Bump both together, never one alone.
+    "ruff==0.15.12",
+    "djlint>=1.36,<2",
+    "pre-commit>=4.6.0",
+    "twine>=5.1.0",
+    "ipdb>=0.13.9",
+    "ipython>=8.2.0",
+    "playwright>=1.59.0,<2",
+    "pytest-playwright>=0.4.0",
+    # pytest-env 1.3.0+ wymaga pytest>=9.0.2 (sprawdz `pip show pytest-env`)
+    # — zostaje przy 1.2.0, kompatybilnym z pytest 8.x. Zachowuje sie tak
+    # samo dla naszego usage (env=DJANGO_ALLOW_ASYNC_UNSAFE=1 etc.). Po
+    # bumpie pytest do 9.x, podnies tez te wersje.
+    "pytest-env>=1.1.5,<1.3",
+    "nest-asyncio>=1.6.0",
+    "testcontainers[postgres]>=4.14.2",
+    # pytest-testcontainers + bridge: dawniej wewnetrzny `src/testcontainers_bpp/`.
+    # Plugin auto-loaduje sie przez entry-point `pytest11` — `-p ...` w pytest.ini
+    # przestaje byc potrzebne. Konfiguracja w [tool.pytest-testcontainers-django].
+    "pytest-testcontainers>=0.1.0",
+    "pytest-testcontainers-django>=0.2.2",
+    # django-run-site: CLI orchestrator dev stack-u. Dawniej `manage.py run_site`
+    # + helpery w `_run_site_helpers/`. Instalowany w dev-deps zeby `uv run run-site`
+    # mialo dostep do CLI bez globalnego `uv tool install`. Konfiguracja: runsite.toml.
+    "django-run-site>=0.14.0",
+    # django-dev-helpers: autologin endpoint + dotfiles dla agentow LLM. Dawniej
+    # `src/django_bpp/views_run_site_autologin.py`. Aktywuje sie tylko gdy run-site
+    # ustawi DJANGO_DEV_HELPERS_ENABLED=1 — w produkcji no-op.
+    "django-dev-helpers>=0.1.10",
     "pytest-repeat>=0.9.4",
     "vulture>=2.16",
 ]
 
 [tool.towncrier]
 package = "bpp"
-version = "202605.1372"
+version = "202606.1373"
 package_dir = "src"
-filename = "HISTORY.rst"
+filename = "HISTORY.md"
+start_string = "<!-- towncrier release notes start -->\n"
+underlines = ["", "", ""]
+title_format = "## bpp {version} ({project_date})"
+issue_format = "[#{issue}](https://github.com/iplweb/bpp/issues/{issue})"
 
 [[tool.towncrier.type]]
 directory = "bugfix"

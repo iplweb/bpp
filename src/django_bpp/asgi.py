@@ -12,11 +12,11 @@ from channels.auth import AuthMiddlewareStack
 from channels.routing import ProtocolTypeRouter, URLRouter
 from channels.security.websocket import AllowedHostsOriginValidator
 
-import notifications.routing
+import channels_broadcast.routing
 import pbn_import.routing
 
 websocket_urlpatterns = (
-    notifications.routing.websocket_urlpatterns
+    channels_broadcast.routing.websocket_urlpatterns
     + pbn_import.routing.websocket_urlpatterns
 )
 

@@ -4,6 +4,7 @@ from django.contrib import admin
 from django.forms.utils import flatatt
 from django.utils.safestring import mark_safe
 from djangoql.admin import DjangoQLSearchMixin
+from dynamic_admin_columns.mixins import DynamicColumnsMixin
 from mptt.forms import TreeNodeChoiceField
 from taggit.forms import TextareaTagWidget
 
@@ -51,7 +52,6 @@ from bpp.models import (  # Publikacja_Habilitacyjna
 from bpp.models.konferencja import Konferencja
 from bpp.models.wydawnictwo_ciagle import Wydawnictwo_Ciagle_Autor
 from crossref_bpp.mixins import AdminCrossrefAPIMixin, AdminCrossrefPBNAPIMixin
-from dynamic_columns.mixins import DynamicColumnsMixin
 from pbn_api.models import Publication
 
 from . import BaseBppAdminMixin

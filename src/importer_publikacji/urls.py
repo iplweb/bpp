@@ -1,6 +1,8 @@
 from django.urls import path
 
 from . import views
+from .views.retry import ImportTaskRetryView
+from .views.task_status import ImportTaskStatusView
 
 app_name = "importer_publikacji"
 
@@ -41,6 +43,16 @@ urlpatterns = [
         name="author-match",
     ),
     path(
+        "<int:session_id>/authors/<int:author_id>/info/",
+        views.AuthorInfoView.as_view(),
+        name="author-info",
+    ),
+    path(
+        "<int:session_id>/authors/<int:author_id>/candidates-modal/",
+        views.AuthorCandidatesModalView.as_view(),
+        name="author-candidates-modal",
+    ),
+    path(
         "<int:session_id>/authors/create-unmatched/",
         views.CreateUnmatchedAuthorsView.as_view(),
         name="authors-create-unmatched",
@@ -79,5 +91,15 @@ urlpatterns = [
         "<int:session_id>/cancel/",
         views.CancelView.as_view(),
         name="cancel",
+    ),
+    path(
+        "task-status/<int:session_id>/",
+        ImportTaskStatusView.as_view(),
+        name="task-status",
+    ),
+    path(
+        "task-retry/<int:session_id>/",
+        ImportTaskRetryView.as_view(),
+        name="task-retry",
     ),
 ]

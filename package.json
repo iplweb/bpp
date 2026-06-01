@@ -1,6 +1,6 @@
 {
     "name": "bpp-iplweb",
-    "version": "v202605.1372",
+    "version": "v202606.1373",
     "license": "MIT",
     "devDependencies": {
         "esbuild": "^0.27.2",
@@ -12,7 +12,7 @@
         "sass": "~1.99.0"
     },
     "dependencies": {
-        "basic-ftp": "5.3.0",
+        "basic-ftp": "5.3.1",
         "datatables.net": "^1.10.16",
         "datatables.net-dt": "^1.10.16",
         "datatables.net-zf": "^1.10.16",

@@ -1,214 +1,85 @@
+"""Tests for the BPP-specific UczelniaSetupStep.
+
+The generic admin-user step and middleware are tested in the
+django-first-run-wizard package itself; this module covers only the
+BPP-side glue.
+"""
+
 import pytest
 from django.contrib.auth import get_user_model
-from django.test import Client, RequestFactory
+from django.template.loader import get_template
+from django.test import Client
 from django.urls import reverse
 
 from bpp.models import Uczelnia
-from bpp_setup_wizard.middleware import SetupWizardMiddleware
+from bpp_setup_wizard.steps import UczelniaSetupStep
 
-BppUser = get_user_model()
+# Test password used by HTTP tests that submit AdminUserCreationForm.
+# Must satisfy Django's default AUTH_PASSWORD_VALIDATORS (length ≥ 8,
+# not similar to username, not in common-password list, not all numeric).
+# Not a real credential.
+_TEST_PASSWORD = "wizard-test-pass-min8"  # pragma: allowlist secret  # noqa: S105
 
 
 @pytest.fixture(autouse=True)
-def enable_setup_wizard_middleware(settings):
-    """Enable SetupWizardMiddleware for all tests in this module."""
+def enable_first_run_wizard_middleware(settings):
+    """Re-enable the first-run wizard middleware for tests in this module.
+
+    `settings/test.py` strips it from MIDDLEWARE globally; we want it
+    back for these specific tests of the wizard flow.
+    """
     middleware = list(settings.MIDDLEWARE)
-    if "bpp_setup_wizard.middleware.SetupWizardMiddleware" not in middleware:
-        # Add the middleware after AuthenticationMiddleware to ensure user is available
+    if "first_run_wizard.middleware.FirstRunWizardMiddleware" not in middleware:
         try:
             auth_index = middleware.index(
                 "django.contrib.auth.middleware.AuthenticationMiddleware"
             )
             middleware.insert(
-                auth_index + 1, "bpp_setup_wizard.middleware.SetupWizardMiddleware"
+                auth_index + 1,
+                "first_run_wizard.middleware.FirstRunWizardMiddleware",
             )
         except ValueError:
-            # If AuthenticationMiddleware is not found, add at the beginning
-            middleware.insert(0, "bpp_setup_wizard.middleware.SetupWizardMiddleware")
+            middleware.insert(0, "first_run_wizard.middleware.FirstRunWizardMiddleware")
         settings.MIDDLEWARE = middleware
 
 
 @pytest.mark.django_db
-def test_setup_wizard_redirect_when_no_users():
-    """Test that the middleware redirects to setup when no users exist."""
-    client = Client()
-
-    # Verify no users exist
-    assert BppUser.objects.count() == 0
-
-    # Try to access the home page
-    response = client.get("/")
-
-    # Should redirect to setup wizard
-    assert response.status_code == 302
-    assert response.url == reverse("bpp_setup_wizard:setup")
+def test_uczelnia_step_is_incomplete_when_no_uczelnia():
+    Uczelnia.objects.all().delete()
+    assert UczelniaSetupStep().is_complete() is False
 
 
 @pytest.mark.django_db
-def test_setup_wizard_does_not_redirect_metrics_endpoint():
-    """Test that the middleware does not redirect Prometheus metrics."""
-    request = RequestFactory().get("/metrics/")
-
-    assert BppUser.objects.count() == 0
-
-    response = SetupWizardMiddleware(lambda request: None).process_request(request)
-
-    assert response is None
+def test_uczelnia_step_is_complete_when_uczelnia_exists(uczelnia):
+    assert UczelniaSetupStep().is_complete() is True
 
 
 @pytest.mark.django_db
-def test_setup_wizard_form_display():
-    """Test that the setup wizard form is displayed correctly."""
-    client = Client()
-
-    # Verify no users exist
-    assert BppUser.objects.count() == 0
-
-    # Access the setup wizard page
-    response = client.get(reverse("bpp_setup_wizard:setup"))
-
-    # Should display the form
-    assert response.status_code == 200
-    assert "Kreator konfiguracji BPP" in response.content.decode("utf-8")
-    assert "Nazwa użytkownika" in response.content.decode("utf-8")
-    assert "Adres email" in response.content.decode("utf-8")
-    assert "Hasło" in response.content.decode("utf-8")
-
-
-@pytest.mark.django_db
-def test_setup_wizard_create_admin_user():
-    """Test that the setup wizard creates an admin user correctly."""
-    client = Client()
-
-    # Verify no users exist
-    assert BppUser.objects.count() == 0
-
-    # Submit the form
-    response = client.post(
-        reverse("bpp_setup_wizard:setup"),
-        {
-            "username": "testadmin",
-            "email": "admin@test.com",
-            "password1": "TestPassword123!",
-            "password2": "TestPassword123!",
-        },
-    )
-
-    # Should redirect to main page after successful creation
-    assert response.status_code == 302
-    assert response.url == "/"
-
-    # Verify the user was created
-    assert BppUser.objects.count() == 1
-    user = BppUser.objects.first()
-    assert user.username == "testadmin"
-    assert user.email == "admin@test.com"
-    assert user.is_staff is True
-    assert user.is_superuser is True
-    assert user.is_active is True
-
-
-@pytest.mark.django_db
-def test_setup_wizard_not_accessible_when_users_exist(normal_django_user):
-    """Test that the setup wizard is not accessible when users already exist."""
-    client = Client()
-
-    # Verify users exist
-    assert BppUser.objects.count() > 0
-
-    # Try to access the setup wizard
-    response = client.get(reverse("bpp_setup_wizard:setup"))
-
-    # Should redirect away from setup
-    assert response.status_code == 302
-    assert response.url == "/"
-
-
-@pytest.mark.django_db
-def test_setup_wizard_status_view_needs_setup():
-    """Test that the status view correctly shows setup is needed."""
-    client = Client()
-
-    # Verify no users exist
-    assert BppUser.objects.count() == 0
-
-    # Access the status page
-    response = client.get(reverse("bpp_setup_wizard:status"))
-
-    # Should show setup is needed
-    assert response.status_code == 200
-    assert "Wymagana konfiguracja" in response.content.decode("utf-8")
-    assert "Uruchom kreator konfiguracji" in response.content.decode("utf-8")
-
-
-@pytest.mark.django_db
-def test_setup_wizard_status_view_already_configured(normal_django_user):
-    """Test that the status view correctly shows system is configured."""
-    client = Client()
-
-    # Verify users exist
-    user_count = BppUser.objects.count()
-    assert user_count > 0
-
-    # Access the status page
-    response = client.get(reverse("bpp_setup_wizard:status"))
-
-    # Should show system is configured
-    assert response.status_code == 200
-    assert "System skonfigurowany" in response.content.decode("utf-8")
-    assert str(user_count) in response.content.decode("utf-8")
+def test_uczelnia_step_requires_superuser():
+    step = UczelniaSetupStep()
+    assert step.requires_superuser is True
+    assert step.order == 100  # after admin_user
 
 
 @pytest.mark.django_db
 def test_uczelnia_setup_requires_login():
-    """Test that Uczelnia setup requires authentication."""
-    client = Client()
-
-    # Clean up any existing Uczelnia
     Uczelnia.objects.all().delete()
-
-    # Try to access without login
-    response = client.get(reverse("bpp_setup_wizard:uczelnia_setup"))
-
-    # Should redirect to login
-    assert response.status_code == 302
-    assert "/accounts/login/" in response.url
-
-
-@pytest.mark.django_db
-def test_uczelnia_setup_requires_superuser(normal_django_user):
-    """Test that Uczelnia setup requires superuser privileges."""
     client = Client()
-
-    # Clean up any existing Uczelnia
-    Uczelnia.objects.all().delete()
-
-    # Login as normal user
-    client.force_login(normal_django_user)
-
-    # Try to access Uczelnia setup
-    response = client.get(reverse("bpp_setup_wizard:uczelnia_setup"))
-
-    # Should redirect away
+    response = client.get(reverse("first_run_wizard:step", kwargs={"name": "uczelnia"}))
+    # WizardStepView checks is_accessible() and redirects anonymous users
+    # to '/' (since uczelnia step requires_superuser=True).
     assert response.status_code == 302
     assert response.url == "/"
 
 
 @pytest.mark.django_db
 def test_uczelnia_setup_form_display(admin_user):
-    """Test that the Uczelnia setup form is displayed correctly."""
-    client = Client()
-
-    # Clean up any existing Uczelnia
     Uczelnia.objects.all().delete()
-
-    # Login as admin
+    client = Client()
     client.force_login(admin_user)
 
-    # Access the Uczelnia setup page
-    response = client.get(reverse("bpp_setup_wizard:uczelnia_setup"))
+    response = client.get(reverse("first_run_wizard:step", kwargs={"name": "uczelnia"}))
 
-    # Should display the form
     assert response.status_code == 200
     content = response.content.decode("utf-8")
     assert "Konfiguracja uczelni" in content
@@ -220,19 +91,13 @@ def test_uczelnia_setup_form_display(admin_user):
 
 
 @pytest.mark.django_db
-def test_uczelnia_setup_create_uczelnia(admin_user):
-    """Test that the Uczelnia setup creates a university configuration correctly."""
-    client = Client()
-
-    # Clean up any existing Uczelnia
+def test_uczelnia_setup_creates_uczelnia(admin_user):
     Uczelnia.objects.all().delete()
-
-    # Login as admin
+    client = Client()
     client.force_login(admin_user)
 
-    # Submit the form
     response = client.post(
-        reverse("bpp_setup_wizard:uczelnia_setup"),
+        reverse("first_run_wizard:step", kwargs={"name": "uczelnia"}),
         {
             "nazwa": "Uniwersytet Testowy",
             "nazwa_dopelniacz_field": "Uniwersytetu Testowego",
@@ -244,25 +109,21 @@ def test_uczelnia_setup_create_uczelnia(admin_user):
         },
     )
 
-    # Should redirect to main page after successful creation
     assert response.status_code == 302
     assert response.url == "/"
 
-    # Verify the Uczelnia was created with correct data
     assert Uczelnia.objects.count() == 1
     uczelnia = Uczelnia.objects.first()
     assert uczelnia.nazwa == "Uniwersytet Testowy"
     assert uczelnia.nazwa_dopelniacz_field == "Uniwersytetu Testowego"
-    assert (
-        uczelnia.nazwa_dopelniacz() == "Uniwersytetu Testowego"
-    )  # Method should return the field value
+    assert uczelnia.nazwa_dopelniacz() == "Uniwersytetu Testowego"
     assert uczelnia.skrot == "UT"
     assert uczelnia.pbn_api_root == "https://pbn-micro-alpha.opi.org.pl"
     assert uczelnia.pbn_app_name == "test_app"
     assert uczelnia.pbn_app_token == "test_token"
     assert uczelnia.uzywaj_wydzialow is True
 
-    # Verify the automatically set fields
+    # Auto-set PBN flags
     assert uczelnia.pbn_api_kasuj_przed_wysylka is True
     assert uczelnia.pbn_api_nie_wysylaj_prac_bez_pk is True
     assert uczelnia.pbn_api_afiliacja_zawsze_na_uczelnie is True
@@ -273,50 +134,188 @@ def test_uczelnia_setup_create_uczelnia(admin_user):
 
 @pytest.mark.django_db
 def test_uczelnia_setup_not_accessible_when_exists(admin_user, uczelnia):
-    """Test that Uczelnia setup is not accessible when Uczelnia already exists."""
     client = Client()
-
-    # Login as admin
     client.force_login(admin_user)
 
-    # Try to access the Uczelnia setup
-    response = client.get(reverse("bpp_setup_wizard:uczelnia_setup"))
+    response = client.get(reverse("first_run_wizard:step", kwargs={"name": "uczelnia"}))
 
-    # Should redirect away from setup
+    # Step is_complete()==True → WizardStepView redirects to '/'.
     assert response.status_code == 302
     assert response.url == "/"
 
 
 @pytest.mark.django_db
-def test_middleware_redirects_to_uczelnia_setup_after_user_setup():
-    """Test that middleware redirects to Uczelnia setup after user is created."""
-    client = Client()
+def test_admin_user_template_loaded_from_bpp_override():
+    """INSTALLED_APPS puts bpp_setup_wizard before first_run_wizard so that
+    BPP's own first_run_wizard/admin_user.html (BPP-styled, extends bare.html)
+    wins over the package's vendor-neutral default. Regression guard for
+    accidental reordering."""
+    t = get_template("first_run_wizard/admin_user.html")
+    assert "bpp_setup_wizard" in t.origin.name, (
+        f"loaded from {t.origin.name!r} — expected BPP override "
+        f"in src/bpp_setup_wizard/templates/first_run_wizard/"
+    )
 
-    # Clean up
-    BppUser.objects.all().delete()
+
+@pytest.mark.django_db
+def test_admin_user_page_is_bpp_branded_and_hides_skip_link():
+    """The first-wizard page renders with the BPP wrapper class and the
+    accessibility skip-link from bare.html is suppressed (block override)."""
+    get_user_model().objects.all().delete()
+    response = Client().get(
+        reverse("first_run_wizard:step", kwargs={"name": "admin_user"})
+    )
+    assert response.status_code == 200
+    body = response.content.decode("utf-8")
+    assert "bpp-setup-wizard" in body, "expected BPP-styled wrapper class"
+    assert "Przejdź do głównej zawartości" not in body, (
+        "skip-link from bare.html should be suppressed on wizard pages "
+        "(empty {% block skip_link %}{% endblock %} override)"
+    )
+
+
+@pytest.mark.django_db
+def test_uczelnia_setup_page_hides_skip_link(admin_user):
+    """Same skip-link suppression for the BPP-specific Uczelnia step."""
+    Uczelnia.objects.all().delete()
+    client = Client()
+    client.force_login(admin_user)
+    response = client.get(reverse("first_run_wizard:step", kwargs={"name": "uczelnia"}))
+    assert response.status_code == 200
+    assert "Przejdź do głównej zawartości" not in response.content.decode("utf-8")
+
+
+@pytest.mark.django_db
+def test_middleware_redirects_logged_in_admin_to_uczelnia_setup(admin_user):
+    """End-to-end: admin user exists, no Uczelnia → middleware redirects
+    to /setup/step/uczelnia/."""
+    Uczelnia.objects.all().delete()
+    client = Client()
+    client.force_login(admin_user)
+
+    response = client.get("/")
+    assert response.status_code == 302
+    assert response.url == reverse("first_run_wizard:step", kwargs={"name": "uczelnia"})
+
+
+@pytest.mark.django_db
+def test_admin_user_post_via_bpp_override_creates_superuser():
+    """POST na admin_user step gdy renderuje się BPP override.
+
+    Pakiet testuje POST swojego vendor-neutral template-u. Tu sprawdzamy
+    że BPP-styled override nie zepsuł HTML form attrs (`name=`, csrf,
+    submit button) — POST faktycznie wpływa do AdminUserCreationForm
+    z pakietu i tworzy superusera.
+    """
+    User = get_user_model()
+    User.objects.all().delete()
     Uczelnia.objects.all().delete()
 
-    # First create an admin user
+    client = Client()
+    url = reverse("first_run_wizard:step", kwargs={"name": "admin_user"})
     response = client.post(
-        reverse("bpp_setup_wizard:setup"),
+        url,
         {
-            "username": "testadmin",
-            "email": "admin@test.com",
-            "password1": "TestPassword123!",
-            "password2": "TestPassword123!",
+            "username": "bppadmin",
+            "email": "admin@bpp.test",
+            "password1": _TEST_PASSWORD,
+            "password2": _TEST_PASSWORD,
         },
     )
 
-    # Should redirect to main page
-    assert response.status_code == 302
+    assert response.status_code == 302, response.content.decode("utf-8")[:500]
     assert response.url == "/"
 
-    # Login as the admin user we just created
-    admin = BppUser.objects.get(username="testadmin")
-    client.force_login(admin)
+    assert User.objects.count() == 1
+    user = User.objects.get(username="bppadmin")
+    assert user.email == "admin@bpp.test"
+    assert user.is_staff is True
+    assert user.is_superuser is True
+    assert user.is_active is True
+    assert user.check_password(_TEST_PASSWORD)
 
-    # Now trying to access main page should redirect to Uczelnia setup
-    # (since user is logged in as superuser and no Uczelnia exists)
+
+@pytest.mark.django_db
+def test_full_happy_path_empty_db_to_live_site():
+    """E2E na pustej bazie: anonimowy GET / → admin_user form → POST →
+    middleware → uczelnia form → POST → site live (brak redirectu setup).
+
+    Jeden Django test Client utrzymuje session przez całą ścieżkę,
+    weryfikujemy że wszystkie redirecty i obie strony BPP-styled formularzy
+    łączą się w spójny flow.
+    """
+    User = get_user_model()
+    User.objects.all().delete()
+    Uczelnia.objects.all().delete()
+
+    client = Client()
+    admin_url = reverse("first_run_wizard:step", kwargs={"name": "admin_user"})
+    uczelnia_url = reverse("first_run_wizard:step", kwargs={"name": "uczelnia"})
+
+    # 1) Pusta DB → / przekierowuje do admin_user (anon, ale admin step
+    # nie requires_superuser, więc accessible).
     response = client.get("/")
     assert response.status_code == 302
-    assert response.url == reverse("bpp_setup_wizard:uczelnia_setup")
+    assert response.url == admin_url
+
+    # 2) GET admin_user renderuje BPP-styled formularz.
+    response = client.get(admin_url)
+    assert response.status_code == 200
+    body = response.content.decode("utf-8")
+    assert "bpp-setup-wizard" in body
+    assert 'name="username"' in body
+    assert 'name="password1"' in body
+
+    # 3) POST admin_user → tworzy admina + auto-login + redirect na /.
+    response = client.post(
+        admin_url,
+        {
+            "username": "e2eadmin",
+            "email": "e2e@bpp.test",
+            "password1": _TEST_PASSWORD,
+            "password2": _TEST_PASSWORD,
+        },
+    )
+    assert response.status_code == 302
+    assert response.url == "/"
+    assert User.objects.filter(username="e2eadmin", is_superuser=True).exists()
+
+    # 4) Po stworzeniu admina + automatycznym loginie, GET / przekierowuje
+    # do uczelnia (admin jest superuser, więc ma access do tego stepu).
+    response = client.get("/")
+    assert response.status_code == 302
+    assert response.url == uczelnia_url
+
+    # 5) GET uczelnia renderuje BPP-styled formularz.
+    response = client.get(uczelnia_url)
+    assert response.status_code == 200
+    body = response.content.decode("utf-8")
+    assert "Konfiguracja uczelni" in body
+    assert 'name="nazwa"' in body
+    assert 'name="pbn_api_root"' in body
+
+    # 6) POST uczelnia → tworzy Uczelnia z PBN flags + redirect na /.
+    response = client.post(
+        uczelnia_url,
+        {
+            "nazwa": "Uniwersytet E2E",
+            "nazwa_dopelniacz_field": "Uniwersytetu E2E",
+            "skrot": "UE2E",
+            "pbn_api_root": "https://pbn-micro-alpha.opi.org.pl",
+            "uzywaj_wydzialow": True,
+        },
+    )
+    assert response.status_code == 302
+    assert response.url == "/"
+    uczelnia = Uczelnia.objects.get()
+    assert uczelnia.nazwa == "Uniwersytet E2E"
+    assert uczelnia.pbn_integracja is True
+
+    # 7) GET / nie przekierowuje już do setup — site live. Może być 200 albo
+    # inny redirect zależnie od głównej routy BPP, ale NIE może być redirect
+    # do /setup/ (oba kroki ukończone).
+    response = client.get("/")
+    if response.status_code in (301, 302):
+        assert "/setup/" not in response.url, (
+            f"unexpected redirect to setup wizard after both steps done: {response.url}"
+        )

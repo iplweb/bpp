@@ -92,6 +92,8 @@ from .steps import (
     _verify_context,
 )
 from .wizard import (
+    AuthorCandidatesModalView,
+    AuthorInfoView,
     AuthorMatchView,
     AuthorsConfirmView,
     AuthorSetOrcidView,
@@ -127,6 +129,8 @@ __all__ = [
     "STEP_SOURCE",
     "STEP_VERIFY",
     # Class-based views
+    "AuthorCandidatesModalView",
+    "AuthorInfoView",
     "AuthorMatchView",
     "AuthorSetOrcidView",
     "AuthorsConfirmView",

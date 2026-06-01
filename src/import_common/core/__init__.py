@@ -21,6 +21,7 @@ Podział na podmoduły:
 """
 
 from .autor import (
+    KandydatAutora,
     _build_autor_name_query,
     _try_get_autor_by_bpp_id,
     _try_get_autor_by_orcid,
@@ -32,6 +33,7 @@ from .autor import (
     _try_match_autor_in_jednostka,
     _try_match_autor_with_orcid_or_tytul,
     matchuj_autora,
+    znajdz_kandydatow_autora,
 )
 from .dyscyplina import (
     matchuj_aktualna_dyscypline_pbn,
@@ -86,6 +88,8 @@ from .zrodlo import (
 __all__ = [
     # autor
     "matchuj_autora",
+    "znajdz_kandydatow_autora",
+    "KandydatAutora",
     "_build_autor_name_query",
     "_try_get_autor_by_bpp_id",
     "_try_get_autor_by_orcid",

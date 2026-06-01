@@ -15,7 +15,7 @@ def _restore_django_ensure_connection():
     zapytanie spoza testu z markerem ``django_db``.
 
     Konsekwencja: middleware używające DB w ``process_request``
-    (``django_countdown``, ``bpp_setup_wizard``, etc.) crashują na
+    (``django_countdown``, ``first_run_wizard``, etc.) crashują na
     KAŻDYM żądaniu obsłużonym przez Daphne → 500 → puste strony →
     Playwright timeouts.
 

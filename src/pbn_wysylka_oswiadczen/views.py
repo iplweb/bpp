@@ -12,6 +12,7 @@ from openpyxl.styles import Font
 from queryset_sequence import QuerySetSequence
 
 from bpp.const import GR_WPROWADZANIE_DANYCH
+from bpp.util import sanitize_xlsx_row
 from pbn_wysylka_oswiadczen.models import PbnWysylkaLog, PbnWysylkaOswiadczenTask
 from pbn_wysylka_oswiadczen.queries import get_publications_queryset
 from pbn_wysylka_oswiadczen.tasks import wysylka_oswiadczen_task
@@ -212,32 +213,43 @@ class StartTaskView(View):
         # Clean up stale running tasks
         PbnWysylkaOswiadczenTask.cleanup_stale_running_tasks()
 
-        # Check if task is already running
-        running_task = PbnWysylkaOswiadczenTask.objects.filter(status="running").first()
-        if running_task:
-            return JsonResponse(
-                {
-                    "success": False,
-                    "error": "Zadanie wysylki jest juz uruchomione. "
-                    "Prosze poczekac na jego zakonczenie.",
-                }
-            )
-
         # Get parameters
         rok_od = int(request.POST.get("rok_od", 2022))
         rok_do = int(request.POST.get("rok_do", 2025))
         tytul = request.POST.get("tytul", "").strip()
         resume_mode = request.POST.get("resume_mode", "false").lower() == "true"
 
-        # Create task record
-        task = PbnWysylkaOswiadczenTask.objects.create(
-            user=user,
-            status="pending",
-            rok_od=rok_od,
-            rok_do=rok_do,
-            tytul=tytul,
-            resume_mode=resume_mode,
-        )
+        # Sprawdzenie wykluczenia + utworzenie rekordu pod jednym
+        # Postgresowym advisory lockiem — bez tego dwa równoległe
+        # POST-y mogą równocześnie nie znaleźć aktywnego zadania
+        # i obydwa założyć nowe (pending), co skończy się dwoma
+        # workerami wysyłającymi oświadczenia naraz.
+        from django.db import connection, transaction
+
+        lock_key = abs(hash("PbnWysylkaOswiadczenTask")) % (2**31)
+        with transaction.atomic():
+            with connection.cursor() as cursor:
+                cursor.execute("SELECT pg_advisory_xact_lock(%s)", [lock_key])
+
+            if PbnWysylkaOswiadczenTask.objects.filter(
+                status__in=("pending", "running")
+            ).exists():
+                return JsonResponse(
+                    {
+                        "success": False,
+                        "error": "Zadanie wysylki jest juz uruchomione. "
+                        "Prosze poczekac na jego zakonczenie.",
+                    }
+                )
+
+            task = PbnWysylkaOswiadczenTask.objects.create(
+                user=user,
+                status="pending",
+                rok_od=rok_od,
+                rok_do=rok_do,
+                tytul=tytul,
+                resume_mode=resume_mode,
+            )
 
         # Start Celery task
         try:
@@ -388,15 +400,17 @@ class ExcelExportView(View):
             pbn_uid = publication.pbn_uid_id if publication.pbn_uid_id else ""
 
             ws.append(
-                [
-                    publication.pk,
-                    pub_type,
-                    publication.tytul_oryginalny,
-                    publication.rok,
-                    pbn_uid,
-                    publication.liczba_oswiadczen,
-                    publication.liczba_przypietych,
-                ]
+                sanitize_xlsx_row(
+                    [
+                        publication.pk,
+                        pub_type,
+                        publication.tytul_oryginalny,
+                        publication.rok,
+                        pbn_uid,
+                        publication.liczba_oswiadczen,
+                        publication.liczba_przypietych,
+                    ]
+                )
             )
 
         # Adjust column widths

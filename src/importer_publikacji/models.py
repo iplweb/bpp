@@ -9,6 +9,9 @@ class ImportSession(models.Model):
 
     class Status(models.TextChoices):
         FETCHED = "fetched", "Pobrano dane"
+        FETCHING = "fetching", "Trwa pobieranie"
+        CREATING = "creating", "Trwa tworzenie rekordu"
+        IMPORT_FAILED = "import_failed", "Błąd importu"
         VERIFIED = "verified", "Zweryfikowano"
         SOURCE_MATCHED = "source_matched", "Dopasowano źródło"
         AUTHORS_MATCHED = (
@@ -37,9 +40,8 @@ class ImportSession(models.Model):
         "dostawca danych",
         max_length=50,
     )
-    identifier = models.CharField(
+    identifier = models.TextField(
         "identyfikator",
-        max_length=255,
     )
     status = models.CharField(
         "status",
@@ -136,6 +138,34 @@ class ImportSession(models.Model):
     created = models.DateTimeField("utworzono", auto_now_add=True)
     modified = models.DateTimeField("zmodyfikowano", auto_now=True)
 
+    celery_task_id = models.CharField(
+        "Celery task ID",
+        max_length=64,
+        blank=True,
+        default="",
+    )
+
+    last_error_message = models.CharField(
+        "Ostatni komunikat błędu",
+        max_length=255,
+        blank=True,
+        default="",
+    )
+
+    last_error_traceback = models.TextField(
+        "Pełny traceback ostatniego błędu",
+        blank=True,
+        default="",
+    )
+
+    last_failed_stage = models.CharField(
+        "Etap który padł",
+        max_length=16,
+        blank=True,
+        default="",
+        help_text="'fetch' lub 'create'",
+    )
+
     class Meta:
         verbose_name = "sesja importu"
         verbose_name_plural = "sesje importu"
@@ -149,6 +179,9 @@ class ImportSession(models.Model):
 
         status_url_map = {
             self.Status.FETCHED: "verify",
+            self.Status.FETCHING: "task-status",
+            self.Status.CREATING: "task-status",
+            self.Status.IMPORT_FAILED: "task-status",
             self.Status.VERIFIED: "source",
             self.Status.SOURCE_MATCHED: "authors",
             self.Status.AUTHORS_MATCHED: "review",
@@ -195,6 +228,13 @@ class ImportedAuthor(models.Model):
     family_name = models.CharField("nazwisko", max_length=255, blank=True, default="")
     given_name = models.CharField("imiona", max_length=255, blank=True, default="")
     orcid = models.CharField("ORCID", max_length=50, blank=True, default="")
+    # Pełen zapis "tak jak ma figurować w publikacji" — domyślnie
+    # tworzony z family_name+given_name dostawcy, ale edytowalny w UI
+    # (autor mógł podpisać się inaczej, np. panieńskim). Przy tworzeniu
+    # rekordu publikacji trafia do ``Wydawnictwo_*_Autor.zapisany_jako``.
+    zapisany_jako = models.CharField(
+        "zapisane nazwisko", max_length=512, blank=True, default=""
+    )
 
     match_status = models.CharField(
         "status dopasowania",
@@ -244,3 +284,57 @@ class ImportedAuthor(models.Model):
     def display_name(self):
         parts = [self.family_name, self.given_name]
         return " ".join(p for p in parts if p)
+
+
+# Mapowanie technicznej etykiety strategii dopasowania na user-friendly
+# tekst pokazywany w UI. Trzymane w models.py, nie w autor.py, żeby
+# template-y (które importują tylko model) nie musiały sięgać do
+# import_common.core.
+POWOD_DISPLAY = {
+    "iexact": "dokładne",
+    "iexact_pierwsze_imie": "pierwsze imię",
+    "polish_english": "wariant PL/EN",
+}
+
+
+class ImportedAuthor_Candidate(models.Model):
+    """Kandydat na dopasowanie dla ``ImportedAuthor`` zwrócony przez
+    ``znajdz_kandydatow_autora``.
+
+    Materializuje listę z metadanymi (pewność, powód strategii, liczba
+    publikacji) żeby UI wizardu mógł wyświetlić użytkownikowi pełny
+    kontekst — który autor ma więcej publikacji, ORCID, jaką strategią
+    został znaleziony.
+    """
+
+    imported_author = models.ForeignKey(
+        ImportedAuthor,
+        on_delete=models.CASCADE,
+        related_name="candidates",
+        verbose_name="importowany autor",
+    )
+    autor = models.ForeignKey(
+        "bpp.Autor",
+        on_delete=models.CASCADE,
+        verbose_name="autor BPP",
+    )
+    pewnosc = models.FloatField("pewność")
+    powod = models.CharField("powód dopasowania", max_length=32)
+    publikacji_count = models.PositiveIntegerField("liczba publikacji", default=0)
+
+    class Meta:
+        verbose_name = "kandydat na autora"
+        verbose_name_plural = "kandydaci na autora"
+        ordering = ["-pewnosc", "-publikacji_count"]
+        unique_together = [("imported_author", "autor")]
+
+    def __str__(self):
+        return f"{self.autor} ({self.pewnosc_procent}% / {self.powod_display})"
+
+    @property
+    def pewnosc_procent(self) -> int:
+        return int(round(self.pewnosc * 100))
+
+    @property
+    def powod_display(self) -> str:
+        return POWOD_DISPLAY.get(self.powod, self.powod)

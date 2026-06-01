@@ -21,18 +21,26 @@ echo "Migrations done."
 #  - builder stage collectstatic'uje do `/app/staticroot.baked` (read-only
 #    w obrazie) — runtime NIE odpala collectstatic od nowa, bo to dokladnie
 #    ten sam wynik (bez node_modules YarnFinder zwraca pusta liste, wiec
-#    output byłby identyczny). `cp -ru` ponizej jest funkcjonalnym
+#    output byłby identyczny). `cp -rf` ponizej jest funkcjonalnym
 #    zamiennikiem: `.baked` to gotowy output collectstatic.
 #  - `$STATIC_ROOT` moze byc overridowane przez deployment (np. bpp-deploy
 #    mountuje named volume na `/staticroot`). cp honoruje te zmienna.
-#  - `cp -ru` nie nadpisuje nowszych plikow → tenant-specific zmiany wgrane
-#    do volume (np. custom branding) przetrwaja restart.
+#  - `cp -rf` (nie `-u`!) ZAWSZE nadpisuje pliki istniejace w `.baked`.
+#    Wczesniej bylo `cp -ru`, ale to puapka: mtime w `.baked` pochodzi z
+#    czasu `grunt build` w buildzie obrazu, a mtime na volume z czasu
+#    poprzedniego cp przy starcie kontenera. Jesli poprzedni restart byl
+#    pozniej niz grunt build w nowym obrazie (typowy przypadek przy szybko
+#    nastepujacych po sobie deployach), `-u` skipowal kopiowanie i volume
+#    zostawal ze starymi plikami. `-f` to eliminuje.
+#  - Pliki ktorych nie ma w `.baked` (tenant-specific zmiany, np. custom
+#    branding wgrany post-deploy do podkatalogu nie objetego standardowym
+#    collectstatic) nadal przetrwaja, bo cp nie kasuje plikow spoza zrodla.
 echo "Starting background tasks..."
 (
     if [ -d /app/staticroot.baked ]; then
         echo "  [bg] seeding STATIC_ROOT=$STATIC_ROOT z /app/staticroot.baked..."
         mkdir -p "$STATIC_ROOT"
-        cp -ru /app/staticroot.baked/. "$STATIC_ROOT/"
+        cp -rf /app/staticroot.baked/. "$STATIC_ROOT/"
         echo "  [bg] seed done."
     else
         echo "  [bg] UWAGA: /app/staticroot.baked nie istnieje — obraz przed"

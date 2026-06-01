@@ -28,10 +28,53 @@ def wait_for_websocket_connection(page: Page, timeout: int = 10000):
         timeout: Timeout in milliseconds (default 10000)
     """
     page.wait_for_function(
-        "() => typeof bppNotifications !== 'undefined' && "
-        "bppNotifications.chatSocket && "
-        "bppNotifications.chatSocket.readyState === 1",  # WebSocket.OPEN
+        "() => typeof channelsBroadcast !== 'undefined' && "
+        "channelsBroadcast.chatSocket && "
+        "channelsBroadcast.chatSocket.readyState === 1",  # WebSocket.OPEN
         timeout=timeout,
+    )
+
+
+def wait_for_channel_subscription(
+    channel_name: str, since: float, timeout: float = 5.0
+):
+    """Block until the Daphne consumer has finished `group_add` for ``channel_name``.
+
+    Daphne completes the TCP handshake (101 Switching Protocols) BEFORE the
+    consumer's `connect()` returns — so `wait_for_websocket_connection` can
+    succeed while `group_add` is still in flight. A subsequent
+    `channel_layer.group_send` would then fan out to an empty group and the
+    message would be lost.
+
+    ``group_add`` stores ``time.time()`` as each member's sorted-set score.
+    Pass ``since`` = ``time.time()`` taken *before* the WebSocket was opened;
+    we then wait for a member whose score is ``>= since``. This skips stale
+    leftovers from earlier pytest runs (testcontainers reuse mode keeps the
+    Redis container between invocations) while still waiting for THIS
+    consumer to subscribe.
+    """
+    import os
+    import time
+
+    import redis
+
+    from django_bpp.channels_prefix import get_channels_prefix
+
+    deadline = time.monotonic() + timeout
+    r = redis.Redis(
+        host=os.environ.get("DJANGO_BPP_REDIS_HOST", "localhost"),
+        port=int(os.environ.get("DJANGO_BPP_REDIS_PORT", 6379)),
+    )
+    # Must match the prefix Daphne uses in CHANNEL_LAYERS, or we poll the wrong
+    # Redis key. channels_redis stores groups as ``{prefix}:group:{name}``.
+    group_key = f"{get_channels_prefix()}:group:{channel_name}".encode()
+    while time.monotonic() < deadline:
+        if r.zcount(group_key, since, "+inf") > 0:
+            return
+        time.sleep(0.05)
+    raise TimeoutError(
+        f"Daphne consumer did not subscribe to {channel_name!r} (score>={since}) "
+        f"within {timeout}s."
     )
 
 
@@ -88,7 +131,7 @@ def select_select2_autocomplete(
 
     # Type the search term using pressSequentially to trigger AJAX search
     search_input = page.locator(".select2-search__field")
-    search_input.press_sequentially(value, delay=50)
+    search_input.press_sequentially(value)
 
     # Wait for AJAX search to complete by checking for loading indicators to disappear
     # Polish text "Trwa wyszukiwanie…" or "Trwa ładowanie…" indicates loading
@@ -130,11 +173,11 @@ def select_select2_autocomplete(
             timeout=timeout,
         )
     else:
-        # No event-driven signal available — small polishing wait so the
-        # next interaction starts after Select2's internal change handlers
-        # finish (jQuery 'change' listeners run synchronously, but custom
-        # widgets may queue setTimeout(0) callbacks).
-        page.wait_for_timeout(50)
+        # No event-driven signal available — wait for next event loop tick
+        # so Select2's internal change handlers finish (jQuery 'change'
+        # listeners run synchronously, but custom widgets may queue
+        # setTimeout(0) callbacks).
+        page.wait_for_timeout(0)
 
 
 def close_all_select2_dropdowns(page: Page):
@@ -150,7 +193,7 @@ def close_all_select2_dropdowns(page: Page):
         }
     }"""
     )
-    page.wait_for_timeout(100)
+    page.wait_for_timeout(0)
 
 
 def proper_click_element(page: Page, selector: str):
