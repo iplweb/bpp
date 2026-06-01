@@ -41,15 +41,6 @@ wheels = [
 ]
 
 [[package]]
-name = "annotated-doc"
-version = "0.0.4"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/57/ba/046ceea27344560984e26a590f90bc7f4a75b06701f653222458922b558c/annotated_doc-0.0.4.tar.gz", hash = "sha256:fbcda96e87e9c92ad167c2e53839e57503ecfda18804ea28102353485033faa4", size = 7288, upload-time = "2025-11-10T22:07:42.062Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/1e/d3/26bf1008eb3d2daa8ef4cacc7f3bfdc11818d111f7e2d0201bc6e3b49d45/annotated_doc-0.0.4-py3-none-any.whl", hash = "sha256:571ac1dc6991c450b25a9c2d84a3705e2ae7a53467b5d111c24fa8baabbed320", size = 5303, upload-time = "2025-11-10T22:07:40.673Z" },
-]
-
-[[package]]
 name = "anyio"
 version = "4.11.0"
 source = { registry = "https://pypi.org/simple" }
@@ -249,6 +240,7 @@ dependencies = [
     { name = "django-dbtemplates-iplweb", marker = "platform_python_implementation != 'PyPy'" },
     { name = "django-denorm-iplweb", marker = "platform_python_implementation != 'PyPy'" },
     { name = "django-dirtyfields", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "django-dsl", marker = "platform_python_implementation != 'PyPy'" },
     { name = "django-dynamic-admin-columns", marker = "platform_python_implementation != 'PyPy'" },
     { name = "django-easy-audit", marker = "platform_python_implementation != 'PyPy'" },
     { name = "django-environ", marker = "platform_python_implementation != 'PyPy'" },
@@ -344,7 +336,6 @@ office365 = [
 [package.dev-dependencies]
 dev = [
     { name = "bumpver", marker = "platform_python_implementation != 'PyPy'" },
-    { name = "coveralls", marker = "platform_python_implementation != 'PyPy'" },
     { name = "django-debug-toolbar", marker = "platform_python_implementation != 'PyPy'" },
     { name = "django-dev-helpers", marker = "platform_python_implementation != 'PyPy'" },
     { name = "django-dynamic-fixture", marker = "platform_python_implementation != 'PyPy'" },
@@ -423,14 +414,15 @@ requires-dist = [
     { name = "django-dbtemplates-iplweb", specifier = ">=4.3.2" },
     { name = "django-denorm-iplweb", specifier = ">=1.10.2" },
     { name = "django-dirtyfields", specifier = "==1.9.9" },
-    { name = "django-dynamic-admin-columns", specifier = ">=0.4.5" },
+    { name = "django-dsl", specifier = ">=0.1.14" },
+    { name = "django-dynamic-admin-columns", specifier = ">=0.5.0" },
     { name = "django-easy-audit", specifier = ">=1.3.9a2,<2" },
     { name = "django-environ", specifier = ">=0.13.0" },
     { name = "django-extensions", specifier = ">=3.2,<5" },
     { name = "django-favicon-plus-reloaded", specifier = ">=1.2,<2" },
     { name = "django-filter", specifier = ">=25.2,<25.3" },
     { name = "django-first-run-wizard", specifier = ">=0.1.0" },
-    { name = "django-flexible-reports", specifier = ">=0.2.12" },
+    { name = "django-flexible-reports", specifier = ">=0.3.1" },
     { name = "django-formdefaults", specifier = ">=0.6.2" },
     { name = "django-formtools", specifier = ">=2.5.1,<3" },
     { name = "django-fsm-2", specifier = ">=4,<5" },
@@ -495,10 +487,10 @@ requires-dist = [
     { name = "testcontainers", extras = ["postgres"], marker = "extra == 'baseline-rebuild'", specifier = ">=4.14.2" },
     { name = "thefuzz", specifier = ">=0.22.1" },
     { name = "tqdm", specifier = ">=4.67.3" },
-    { name = "twisted", extras = ["http2", "tls"], specifier = ">=25.5.0" },
+    { name = "twisted", extras = ["http2", "tls"], specifier = ">=26.4.0" },
     { name = "unidecode", specifier = ">=1.3,<2" },
     { name = "urllib3", specifier = ">=2.7.0,<3.0.0" },
-    { name = "uvicorn", extras = ["standard"], specifier = ">=0.46.0" },
+    { name = "uvicorn", extras = ["standard"], specifier = ">=0.47.0" },
     { name = "watchdog", specifier = ">=5.0.3" },
     { name = "weasyprint", specifier = ">=66.0" },
     { name = "wosclient", specifier = "==0.1.5" },
@@ -510,7 +502,6 @@ provides-extras = ["ldap", "office365", "baseline-rebuild"]
 [package.metadata.requires-dev]
 dev = [
     { name = "bumpver", specifier = ">=2023.1124" },
-    { name = "coveralls", specifier = ">=4.1.0,<5" },
     { name = "django-debug-toolbar", specifier = ">=6.3.0" },
     { name = "django-dev-helpers", specifier = ">=0.1.10" },
     { name = "django-dynamic-fixture", specifier = ">=1.8.0" },
@@ -541,7 +532,7 @@ dev = [
     { name = "pytest-testcontainers-django", specifier = ">=0.2.2" },
     { name = "pytest-timeout", specifier = ">=2.1.0" },
     { name = "pytest-xdist", specifier = ">=2.3.0" },
-    { name = "ruff", specifier = ">=0.15.12" },
+    { name = "ruff", specifier = "==0.15.12" },
     { name = "testcontainers", extras = ["postgres"], specifier = ">=4.14.2" },
     { name = "towncrier", specifier = ">=22.8.0" },
     { name = "twine", specifier = ">=5.1.0" },
@@ -1158,20 +1149,6 @@ toml = [
 ]
 
 [[package]]
-name = "coveralls"
-version = "4.1.0"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "coverage", extra = ["toml"], marker = "platform_python_implementation != 'PyPy'" },
-    { name = "requests", marker = "platform_python_implementation != 'PyPy'" },
-    { name = "typer", marker = "platform_python_implementation != 'PyPy'" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/97/16/aa263cb5450de470234f5176ce42664c5e0535aab1a2094b739447065797/coveralls-4.1.0.tar.gz", hash = "sha256:dab364025ba80cbb95ce56c6fc62cd9172d7fd637060ea235dde99d9b46a4494", size = 12736, upload-time = "2026-02-28T15:16:47.591Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/60/f1/5a884d2e8e3e7e7d854d3032b777bd22aad1598161cf9aa77ac37d684908/coveralls-4.1.0-py3-none-any.whl", hash = "sha256:bfacfda2d443c24fc90d67035027cec15015fff2dbd036427e8bf8f4953dda2e", size = 14168, upload-time = "2026-02-28T15:16:46.181Z" },
-]
-
-[[package]]
 name = "crispy-bootstrap3"
 version = "2024.1"
 source = { registry = "https://pypi.org/simple" }
@@ -1678,27 +1655,28 @@ wheels = [
 
 [[package]]
 name = "django-dsl"
-version = "0.1.12"
+version = "0.1.14"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "django", marker = "platform_python_implementation != 'PyPy'" },
     { name = "ply", marker = "platform_python_implementation != 'PyPy'" },
 ]
+sdist = { url = "https://files.pythonhosted.org/packages/69/14/635aadf7907adf8eeb024b5444af35cd55d0a223c3bf8f870af0d5f3b7da/django_dsl-0.1.14.tar.gz", hash = "sha256:d90409b9f0176c9f6f916ac0f8bc7ed7ae5a0686ad05b74ffd364ab5facf0d09", size = 8493, upload-time = "2026-05-31T21:06:33.272Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/72/96/56f1338dda1bf1822687c5a10d378c4a765753c39e76cf7c72fd9eb03a4a/django_dsl-0.1.12-py3-none-any.whl", hash = "sha256:30ef18f41124f4a72435cc634b4369ebaa7b566e84eba357f8d77b81c5d5054f", size = 8807, upload-time = "2022-07-07T20:29:21.69Z" },
+    { url = "https://files.pythonhosted.org/packages/6a/8e/878ab08c7e42121585cd2516fb30877e61516aa525c40a8040e7c95404a3/django_dsl-0.1.14-py3-none-any.whl", hash = "sha256:bea4158a61376f8e82117bf3085bb7b12b3cb17ad5a39f9d04032875f6a0310f", size = 8985, upload-time = "2026-05-31T21:06:32.082Z" },
 ]
 
 [[package]]
 name = "django-dynamic-admin-columns"
-version = "0.4.5"
+version = "0.5.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "django", marker = "platform_python_implementation != 'PyPy'" },
     { name = "django-admin-sortable2", marker = "platform_python_implementation != 'PyPy'" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/68/ce/019e7435409287d052e70e45beb3e1f9fa448a43d91ea1b5df421de2966c/django_dynamic_admin_columns-0.4.5.tar.gz", hash = "sha256:86dd7d19f893a6cb753c4464f8be0581bfe009bfb59c404b5d82162d49cc5036", size = 52570, upload-time = "2026-05-12T14:00:51.278Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/9d/11/e32d659149e3cf84d3fbeb4ce0c7a7cb8d2951da7d38278725ce4ce6e851/django_dynamic_admin_columns-0.5.0.tar.gz", hash = "sha256:44757685f971d1956d48f8a1b84ef89958c33d000a9ab15295f6f7c215b75e71", size = 50993, upload-time = "2026-05-31T21:16:14.995Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/cb/ed/3132686c67559e3e15883390ab943dbb04001e6307ccd3dbeb9e712fccf0/django_dynamic_admin_columns-0.4.5-py3-none-any.whl", hash = "sha256:723830a5b862f16e272047a853f3276d8d1479b0d018b04da90cd69cf9de6c1a", size = 35736, upload-time = "2026-05-12T14:00:49.686Z" },
+    { url = "https://files.pythonhosted.org/packages/b6/db/43dbac6a5b2e4fe649c20f56259ecf7edbb27cca8589b3989ab4e15d17b5/django_dynamic_admin_columns-0.5.0-py3-none-any.whl", hash = "sha256:722d5a6178fa99d6086d5728100ae7cfd69cc8e6a6bc3db3475aae71c0ef0dd2", size = 36553, upload-time = "2026-05-31T21:16:13.68Z" },
 ]
 
 [[package]]
@@ -1782,20 +1760,21 @@ wheels = [
 
 [[package]]
 name = "django-flexible-reports"
-version = "0.2.12"
+version = "0.3.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "bleach", marker = "platform_python_implementation != 'PyPy'" },
     { name = "django", marker = "platform_python_implementation != 'PyPy'" },
     { name = "django-dsl", marker = "platform_python_implementation != 'PyPy'" },
     { name = "django-tables2", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "djangoql", marker = "platform_python_implementation != 'PyPy'" },
     { name = "lxml", marker = "platform_python_implementation != 'PyPy'" },
     { name = "pypandoc", marker = "platform_python_implementation != 'PyPy'" },
     { name = "tablib", marker = "platform_python_implementation != 'PyPy'" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/ee/03/1b60bacdfa3b63a0051eea721df04492cdab911798b45413592e68d4887a/django_flexible_reports-0.2.12.tar.gz", hash = "sha256:6e9901f42f744c7337d12116c118a318fb30498c055c4d435e6f70fe99605d32", size = 24874, upload-time = "2026-04-19T16:14:50.314Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/ac/2e/1f95bc282af71bd6339bd303c130be5f1ca313980f4a8c5b06923696ee24/django_flexible_reports-0.3.1.tar.gz", hash = "sha256:96754f61a16fbf4870ee26165edabf4a40a76a6c5c48b7678936f4c295219112", size = 27835, upload-time = "2026-05-31T21:10:12.643Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/e8/24/4d43ca8419f62496705de05cdd7f27904ab3cb87918b65352b3ca32fb013/django_flexible_reports-0.2.12-py3-none-any.whl", hash = "sha256:daf7217ea4b2a9e619ef510561fe6e7c0e66766f4d381759c5a669619ea9c013", size = 38932, upload-time = "2026-04-19T16:14:49.045Z" },
+    { url = "https://files.pythonhosted.org/packages/63/b2/d6b13ba7f8b3580f7dffc72a7be43e23cff24aa6c5b4d6719747e1eccae9/django_flexible_reports-0.3.1-py3-none-any.whl", hash = "sha256:36d65d746469b844b7ca5d3e4dc4fcca0c616e3ad17eebdb2f3237c2ae9b0ead", size = 43047, upload-time = "2026-05-31T21:10:11.379Z" },
 ]
 
 [[package]]
@@ -2633,11 +2612,11 @@ wheels = [
 
 [[package]]
 name = "idna"
-version = "3.11"
+version = "3.16"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/6f/6d/0703ccc57f3a7233505399edb88de3cbd678da106337b9fcde432b65ed60/idna-3.11.tar.gz", hash = "sha256:795dafcc9c04ed0c1fb032c2aa73654d8e8c5023a7df64a53f39190ada629902", size = 194582, upload-time = "2025-10-12T14:55:20.501Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/1a/88/bcf9709822fe69d02c2a6a77956c98ce6ea8ca8767a9aadcedc7eb6a2390/idna-3.16.tar.gz", hash = "sha256:d7a6da03db833450fca25d2358ac9ff06cd624577a4aea3a596d5c0f77b8e03d", size = 203770, upload-time = "2026-05-22T00:16:18.781Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/0e/61/66938bbb5fc52dbdf84594873d5b51fb1f7c7794e9c0f5bd885f30bc507b/idna-3.11-py3-none-any.whl", hash = "sha256:771a87f49d9defaf64091e6e6fe9c18d4833f140bd19464795bc32d966ca37ea", size = 71008, upload-time = "2025-10-12T14:55:18.883Z" },
+    { url = "https://files.pythonhosted.org/packages/94/16/70255075a9859a0e3adb789b68ceb0e210dec03934245fd98d248226572f/idna-3.16-py3-none-any.whl", hash = "sha256:cc246e3a3f89580c3a951b5ad298ca4638078b2cdd4f115654332b5c26daded5", size = 74165, upload-time = "2026-05-22T00:16:16.698Z" },
 ]
 
 [[package]]
@@ -5146,15 +5125,6 @@ wheels = [
 ]
 
 [[package]]
-name = "shellingham"
-version = "1.5.4"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/58/15/8b3609fd3830ef7b27b655beb4b4e9c62313a4e8da8c676e142cc210d58e/shellingham-1.5.4.tar.gz", hash = "sha256:8dbca0739d487e5bd35ab3ca4b36e11c4078f3a234bfce294b0a0291363404de", size = 10310, upload-time = "2023-10-24T04:13:40.426Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/e0/f9/0595336914c5619e5f28a1fb793285925a8cd4b432c9da0a987836c7f822/shellingham-1.5.4-py2.py3-none-any.whl", hash = "sha256:7ecfff8f2fd72616f7481040475a65b2bf8af90a56c89140852d1120324e8686", size = 9755, upload-time = "2023-10-24T04:13:38.866Z" },
-]
-
-[[package]]
 name = "simplejson"
 version = "4.1.1"
 source = { registry = "https://pypi.org/simple" }
@@ -5508,7 +5478,7 @@ wheels = [
 
 [[package]]
 name = "twisted"
-version = "25.5.0"
+version = "26.4.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "attrs", marker = "platform_python_implementation != 'PyPy'" },
@@ -5519,9 +5489,9 @@ dependencies = [
     { name = "typing-extensions", marker = "platform_python_implementation != 'PyPy'" },
     { name = "zope-interface", marker = "platform_python_implementation != 'PyPy'" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/13/0f/82716ed849bf7ea4984c21385597c949944f0f9b428b5710f79d0afc084d/twisted-25.5.0.tar.gz", hash = "sha256:1deb272358cb6be1e3e8fc6f9c8b36f78eb0fa7c2233d2dbe11ec6fee04ea316", size = 3545725, upload-time = "2025-06-07T09:52:24.858Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/db/97/6e9beb1e78247ae6dc34114f27d538cf2cb183c4afcd3609dfdf2b0439c8/twisted-26.4.0.tar.gz", hash = "sha256:dbfd0fe1ee409d0243fdd7a6a6ff14f4948cec1fd78e0376291f805e1501fae9", size = 3575095, upload-time = "2026-05-11T11:24:51.861Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/eb/66/ab7efd8941f0bc7b2bd555b0f0471bff77df4c88e0cc31120c82737fec77/twisted-25.5.0-py3-none-any.whl", hash = "sha256:8559f654d01a54a8c3efe66d533d43f383531ebf8d81d9f9ab4769d91ca15df7", size = 3204767, upload-time = "2025-06-07T09:52:21.428Z" },
+    { url = "https://files.pythonhosted.org/packages/a6/57/bcf4e2370dd218c9aa68a9140a65d86729c73f1d529f7e94786c2766fc72/twisted-26.4.0-py3-none-any.whl", hash = "sha256:dc25ea0ebf6511c24f03232ee9f4afa54b291c5d897990e3a39cc4d14a1ef4c0", size = 3230362, upload-time = "2026-05-11T11:24:49.5Z" },
 ]
 
 [package.optional-dependencies]
@@ -5542,21 +5512,6 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/2b/20/2e7ccea9ab2dd824d0bd421d9364424afde3bb33863afb80cd9180335019/txaio-25.9.2.tar.gz", hash = "sha256:e42004a077c02eb5819ff004a4989e49db113836708430d59cb13d31bd309099", size = 50008, upload-time = "2025-09-25T22:21:07.958Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/7e/2c/e276b80f73fc0411cefa1c1eeae6bc17955197a9c3e2b41b41f957322549/txaio-25.9.2-py3-none-any.whl", hash = "sha256:a23ce6e627d130e9b795cbdd46c9eaf8abd35e42d2401bb3fea63d38beda0991", size = 31293, upload-time = "2025-09-25T22:21:06.394Z" },
-]
-
-[[package]]
-name = "typer"
-version = "0.25.1"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "annotated-doc", marker = "platform_python_implementation != 'PyPy'" },
-    { name = "click", marker = "platform_python_implementation != 'PyPy'" },
-    { name = "rich", marker = "platform_python_implementation != 'PyPy'" },
-    { name = "shellingham", marker = "platform_python_implementation != 'PyPy'" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/e4/51/9aed62104cea109b820bbd6c14245af756112017d309da813ef107d42e7e/typer-0.25.1.tar.gz", hash = "sha256:9616eb8853a09ffeabab1698952f33c6f29ffdbceb4eaeecf571880e8d7664cc", size = 122276, upload-time = "2026-04-30T19:32:16.964Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/3f/f9/2b3ff4e56e5fa7debfaf9eb135d0da96f3e9a1d5b27222223c7296336e5f/typer-0.25.1-py3-none-any.whl", hash = "sha256:75caa44ed46a03fb2dab8808753ffacdbfea88495e74c85a28c5eefcf5f39c89", size = 58409, upload-time = "2026-04-30T19:32:18.271Z" },
 ]
 
 [[package]]
@@ -5618,15 +5573,15 @@ wheels = [
 
 [[package]]
 name = "uvicorn"
-version = "0.46.0"
+version = "0.47.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "click", marker = "platform_python_implementation != 'PyPy'" },
     { name = "h11", marker = "platform_python_implementation != 'PyPy'" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/1f/93/041fca8274050e40e6791f267d82e0e2e27dd165627bd640d3e0e378d877/uvicorn-0.46.0.tar.gz", hash = "sha256:fb9da0926999cc6cb22dc7cd71a94a632f078e6ae47ff683c5c420750fb7413d", size = 88758, upload-time = "2026-04-23T07:16:00.151Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/f6/b1/8e7077a8641086aea449e1b5752a570f1b5906c64e0a33cd6d93b63a066b/uvicorn-0.47.0.tar.gz", hash = "sha256:7c9a0ea1a9414106bbab7324609c162d8fa0cdcdcb703060987269d77c7bb533", size = 90582, upload-time = "2026-05-14T18:16:54.455Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/31/a3/5b1562db76a5a488274b2332a97199b32d0442aca0ed193697fd47786316/uvicorn-0.46.0-py3-none-any.whl", hash = "sha256:bbebbcbed972d162afca128605223022bedd345b7bc7855ce66deb31487a9048", size = 70926, upload-time = "2026-04-23T07:15:58.355Z" },
+    { url = "https://files.pythonhosted.org/packages/15/41/ac2dfdbc1f60c7af4f994c7a335cfa7040c01642b605d65f611cecc2a1e4/uvicorn-0.47.0-py3-none-any.whl", hash = "sha256:2c5715bc12d1892d84752049f400cd1c3cb018514967fdfeb97640443a6a9432", size = 71301, upload-time = "2026-05-14T18:16:51.762Z" },
 ]
 
 [package.optional-dependencies]

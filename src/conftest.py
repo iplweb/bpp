@@ -50,6 +50,13 @@ pytest_plugins = [
     "fixtures.conftest_system",
     "fixtures.conftest_browser",
     "fixtures.conftest_disciplines",
+    # ``pbn_api`` i ``wydawnictwa`` importują modele Django na top-levelu,
+    # więc MUSZĄ być rejestrowane tutaj (plugin ładowany po ``django.setup()``),
+    # a NIE przez ``from fixtures import *`` w rootdir-owym ``conftest.py`` —
+    # ten jest preloadowany ZANIM apps Django są ready i wybucha
+    # ``AppRegistryNotReady``. Guard: bpp/tests/test_conftest_preload_safety.py.
+    "fixtures.pbn_api",
+    "fixtures.wydawnictwa",
 ]
 
 # Baseline test-DB monkey-patch is installed by

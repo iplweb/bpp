@@ -1,4 +1,64 @@
 {% load static %}
+<style>
+/* Sekcja kandydatów w modalu edycji autora — lista klikalnych
+   wierszy z badge'ami; wybrany jest podświetlony. */
+.modal-candidates-section { padding-left: 1rem; }
+.modal-candidates-list { margin: 0.25rem 0 0; padding: 0; }
+.modal-candidate-row {
+    padding: 0.5rem;
+    border-radius: 4px;
+    border: 1px solid #ddd;
+    margin-bottom: 0.25rem;
+}
+.modal-candidate-row:hover { background-color: #f0f0f0; }
+.modal-candidate-selected {
+    background-color: #e8f4ff;
+    border-color: #1779ba;
+}
+.modal-candidate-button {
+    padding: 0 !important;
+    margin: 0 !important;
+    text-align: left !important;
+    color: inherit !important;
+    background: transparent !important;
+    border: none !important;
+    width: 100%;
+}
+
+/* Linki do autora (admin/BPP/PBN/ORCID) — gdy wybrany jest autor. */
+.modal-author-links {
+    margin: 0.5rem 0 0.75rem 1rem;
+}
+.modal-author-links a {
+    display: inline-block;
+    margin-right: 0.5rem;
+    padding: 0.15rem 0.5rem;
+    border: 1px solid #ccc;
+    border-radius: 3px;
+    font-size: 0.9rem;
+    text-decoration: none;
+}
+.modal-author-links a:hover {
+    background-color: #f0f0f0;
+}
+
+/* Pola formularza w modalu — etykieta nad polem, pole z wcięciem.
+   Struktura: <div.field-group> > <label.field-label> + <div.field-input>. */
+#modal-author-form .field-group {
+    margin-bottom: 0.75rem;
+}
+#modal-author-form .field-label {
+    display: block;
+    font-weight: bold;
+    margin-bottom: 0.25rem;
+}
+#modal-author-form .field-input {
+    padding-left: 1rem;
+}
+#modal-author-form .field-input > input[type="text"] {
+    margin-bottom: 0;
+}
+</style>
 <div class="callout">
     <h4>
         <span class="fi-torsos-all"></span>
@@ -40,16 +100,28 @@
     {% endif %}
 
     {% if stats.unmatched > 0 %}
-        <form hx-post="{% url 'importer_publikacji:authors-create-unmatched' session.pk %}"
-              hx-target="#importer-wizard"
-              hx-confirm="Czy na pewno chcesz utworzyć {{ stats.unmatched }} nowych autorów w systemie BPP? Nowi autorzy zostaną przypisani do obcej jednostki.">
-            {% csrf_token %}
-            <button type="submit" class="button warning">
-                <span class="fi-torsos-all"></span>
-                Utwórz {{ stats.unmatched }}
-                niedopasowanych autorów
-            </button>
-        </form>
+        {% if stats.unmatched == 1 %}
+            <form hx-post="{% url 'importer_publikacji:authors-create-unmatched' session.pk %}"
+                  hx-target="#importer-wizard"
+                  hx-confirm="Czy na pewno chcesz utworzyć nowego autora w systemie BPP? Nowy autor zostanie przypisany do obcej jednostki.">
+                {% csrf_token %}
+                <button type="submit" class="button warning">
+                    <span class="fi-torsos-all"></span>
+                    Utwórz niedopasowanego autora
+                </button>
+            </form>
+        {% else %}
+            <form hx-post="{% url 'importer_publikacji:authors-create-unmatched' session.pk %}"
+                  hx-target="#importer-wizard"
+                  hx-confirm="Czy na pewno chcesz utworzyć {{ stats.unmatched }} nowych autorów w systemie BPP? Nowi autorzy zostaną przypisani do obcej jednostki.">
+                {% csrf_token %}
+                <button type="submit" class="button warning">
+                    <span class="fi-torsos-all"></span>
+                    Utwórz {{ stats.unmatched }}
+                    niedopasowanych autorów
+                </button>
+            </form>
+        {% endif %}
         <p class="help-text">
             Nowi autorzy zostaną przypisani
             do obcej jednostki.
@@ -98,11 +170,19 @@
     {% if stats.unmatched > 0 %}
         <div class="callout warning" id="unmatched-warning">
             <span class="fi-alert"></span>
-            Nie można przejść dalej — pozostało
-            <strong>{{ stats.unmatched }}</strong>
-            niedopasowanych autorów. Dopasuj ich
-            ręcznie lub utwórz jako nowych autorów
-            w systemie.
+            {% if stats.unmatched == 1 %}
+                Nie można przejść dalej — pozostał
+                <strong>1</strong>
+                niedopasowany autor. Dopasuj go
+                ręcznie lub utwórz jako nowego autora
+                w systemie.
+            {% else %}
+                Nie można przejść dalej — pozostało
+                <strong>{{ stats.unmatched }}</strong>
+                niedopasowanych autorów. Dopasuj ich
+                ręcznie lub utwórz jako nowych autorów
+                w systemie.
+            {% endif %}
             <button type="button"
                     class="button small hollow"
                     style="margin-left:1rem"
@@ -163,36 +243,66 @@
 {# ===== Modal edycji autora (Foundation Reveal) ===== #}
 <div class="reveal" id="author-edit-modal" data-reveal
      data-close-on-click="false"
-     style="height:70vh;overflow-y:auto;top:15vh">
+     data-author-info-base="/importer_publikacji/{{ session.pk }}/authors/"
+     data-candidates-modal-base="/importer_publikacji/{{ session.pk }}/authors/"
+     style="height:auto;max-height:90vh;overflow-y:auto;top:5vh;bottom:auto">
     <h5 id="modal-author-title"></h5>
+
+    {# Sekcja kandydatów — wstrzykiwana przez JS z author-candidates-modal #}
+    <div id="modal-candidates-section" class="modal-candidates-section"></div>
+
     <form id="modal-author-form">
         {% csrf_token %}
         <input type="hidden" id="modal-author-id" value="">
 
-        <label>Autor w BPP
-            <select name="autor"
-                    id="modal-autor-select"
-                    data-url="{% url 'bpp:autor-autocomplete' %}"
-                    style="width:100%">
-            </select>
-        </label>
+        <div class="field-group">
+            <label class="field-label">Autor w BPP:</label>
+            <div class="field-input">
+                <select name="autor"
+                        id="modal-autor-select"
+                        data-url="{% url 'bpp:autor-autocomplete' %}"
+                        style="width:100%">
+                </select>
+                {# Linki do wybranego autora (admin/BPP/PBN/ORCID) #}
+                <div class="modal-author-links"
+                     id="modal-author-links"></div>
+            </div>
+        </div>
 
-        <label>Jednostka
-            <select name="jednostka"
-                    id="modal-jednostka-select"
-                    data-url="{% url 'bpp:jednostka-autocomplete' %}"
-                    style="width:100%">
-            </select>
-        </label>
+        <div class="field-group">
+            <label class="field-label">Jednostka:</label>
+            <div class="field-input">
+                <select name="jednostka"
+                        id="modal-jednostka-select"
+                        data-url="{% url 'bpp:jednostka-autocomplete' %}"
+                        style="width:100%">
+                </select>
+            </div>
+        </div>
 
-        <label>Dyscyplina
-            <select name="dyscyplina"
-                    id="modal-dyscyplina-select"
-                    data-url="{% url 'bpp:dyscyplina-naukowa-przypisanie-autocomplete' %}"
-                    data-rok="{{ session.normalized_data.year }}"
-                    style="width:100%">
-            </select>
-        </label>
+        <div class="field-group">
+            <label class="field-label">Dyscyplina:</label>
+            <div class="field-input">
+                <select name="dyscyplina"
+                        id="modal-dyscyplina-select"
+                        data-url="{% url 'bpp:dyscyplina-naukowa-przypisanie-autocomplete' %}"
+                        data-rok="{{ session.normalized_data.year }}"
+                        style="width:100%">
+                </select>
+            </div>
+        </div>
+
+        <div class="field-group">
+            <label class="field-label" for="modal-zapisany-jako">
+                Zapisany jako (jak ma figurować w publikacji):
+            </label>
+            <div class="field-input">
+                <input type="text"
+                       name="zapisany_jako"
+                       id="modal-zapisany-jako"
+                       style="width:100%">
+            </div>
+        </div>
 
         <div class="text-right"
              style="margin-top:1rem">
@@ -386,7 +496,7 @@ $(document).ready(function() {
 
         var $autor = $('#modal-autor-select');
         $autor.select2({
-            dropdownParent: $modal,
+            dropdownParent: $('body'),
             ajax: {
                 url: $autor.data('url'),
                 dataType: 'json',
@@ -406,7 +516,7 @@ $(document).ready(function() {
 
         var $jednostka = $('#modal-jednostka-select');
         $jednostka.select2({
-            dropdownParent: $modal,
+            dropdownParent: $('body'),
             ajax: {
                 url: $jednostka.data('url'),
                 dataType: 'json',
@@ -426,7 +536,7 @@ $(document).ready(function() {
 
         var $dyscyplina = $('#modal-dyscyplina-select');
         $dyscyplina.select2({
-            dropdownParent: $modal,
+            dropdownParent: $('body'),
             placeholder: 'Wybierz dyscyplinę...',
             allowClear: true,
             language: 'pl'
@@ -536,6 +646,144 @@ $(document).ready(function() {
         function(e) { e.stopPropagation(); }
     );
 
+    // Render linków do wybranego autora BPP (admin/BPP/PBN/ORCID).
+    function renderAuthorLinks(info) {
+        var $links = $('#modal-author-links');
+        $links.empty();
+        if (!info || !info.pk) return;
+        $links.append(
+            '<a href="/admin/bpp/autor/' + info.pk + '/change/"'
+            + ' target="_blank">otwórz w module redagowania</a>'
+        );
+        var slugPart = info.slug || info.pk;
+        $links.append(
+            '<a href="/bpp/autor/' + slugPart + '/"'
+            + ' target="_blank">otwórz stronę autora</a>'
+        );
+        if (info.orcid) {
+            $links.append(
+                '<a href="https://orcid.org/' + info.orcid + '"'
+                + ' target="_blank">strona ORCID</a>'
+            );
+        }
+        if (info.pbn_uid_id) {
+            $links.append(
+                '<a href="https://pbn.nauka.gov.pl/core/#/person/view/'
+                + info.pbn_uid_id + '"'
+                + ' target="_blank">strona w PBN</a>'
+            );
+        }
+    }
+
+    // Fetch info dla wybranego autora BPP i odśwież linki.
+    function updateAuthorLinks(autorPk) {
+        var $links = $('#modal-author-links');
+        if (!autorPk) { $links.empty(); return; }
+        var base = $modal.data('author-info-base');
+        $.getJSON(base + autorPk + '/info/').done(renderAuthorLinks)
+            .fail(function() { $links.empty(); });
+    }
+
+    // Wstrzykuje sekcję kandydatów (partial z server-side rendering)
+    // dla danego ImportedAuthor.pk.
+    function loadCandidatesSection(importedAuthorPk) {
+        var $sec = $('#modal-candidates-section');
+        var base = $modal.data('candidates-modal-base');
+        $sec.empty();
+        $.get(base + importedAuthorPk + '/candidates-modal/').done(
+            function(html) {
+                $sec.html(html);
+            }
+        );
+    }
+
+    // Klik na kandydata w modalu → ustaw select2 + odśwież linki +
+    // przeładuj dyscypliny (bez submitu — user musi kliknąć Zapisz).
+    $(document).off('click.modalCand', '.modal-candidate-button');
+    $(document).on(
+        'click.modalCand',
+        '.modal-candidate-button',
+        function() {
+            var $btn = $(this);
+            var pk = $btn.data('autor-pk');
+            var disp = $btn.data('autor-display');
+            var jPk = $btn.data('jednostka-pk');
+            var jDisp = $btn.data('jednostka-display');
+
+            var $autor = $('#modal-autor-select');
+            $autor.empty().append(
+                '<option value="' + pk + '" selected>'
+                + disp + '</option>'
+            );
+            $autor.trigger('change.select2');
+
+            if (jPk) {
+                var $j = $('#modal-jednostka-select');
+                $j.empty().append(
+                    '<option value="' + jPk + '" selected>'
+                    + jDisp + '</option>'
+                );
+                $j.trigger('change.select2');
+            }
+
+            // Podświetl wybrany wiersz na liście kandydatów
+            $('.modal-candidate-row').removeClass(
+                'modal-candidate-selected'
+            );
+            $btn.closest('.modal-candidate-row').addClass(
+                'modal-candidate-selected'
+            );
+
+            updateAuthorLinks(pk);
+            // Przeładuj listę dyscyplin dla wybranego autora + roku
+            loadModalDyscypliny(pk);
+        }
+    );
+
+    // Po zmianie autora w select2 — odśwież linki i dyscypliny.
+    $(document).off('change.modalLinks', '#modal-autor-select');
+    $(document).on(
+        'change.modalLinks',
+        '#modal-autor-select',
+        function() {
+            var v = $(this).val();
+            updateAuthorLinks(v);
+            loadModalDyscypliny(v);
+        }
+    );
+
+    function loadModalDyscypliny(autorId) {
+        var $d = $('#modal-dyscyplina-select');
+        var cur = $d.val();
+        $d.empty().append('<option value="">---</option>');
+        if (!(autorId && rok)) return;
+        var fwd = JSON.stringify({autor: autorId, rok: rok});
+        $.ajax({
+            url: $d.data('url'),
+            data: {forward: fwd},
+            dataType: 'json'
+        }).done(function(data) {
+            var withId = data.results.filter(function(i) {
+                return i.id;
+            });
+            withId.forEach(function(item) {
+                var sel = String(item.id) === String(cur);
+                $d.append(
+                    '<option value="' + item.id + '"'
+                    + (sel ? ' selected' : '')
+                    + '>' + item.text + '</option>'
+                );
+            });
+            // Auto-select gdy dla autora+roku istnieje DOKLADNIE jedna
+            // dyscyplina i user jeszcze nic nie wybrał — odzwierciedla
+            // server-side ostatnia_dyscyplina() z bpp.views.api.
+            if (withId.length === 1 && !cur) {
+                $d.val(String(withId[0].id));
+            }
+            $d.trigger('change.select2');
+        });
+    }
+
     // Open modal: row click or Edytuj button
     function openAuthorModal($row) {
         initModalSelect2();
@@ -586,11 +834,15 @@ $(document).ready(function() {
         }
         $j.trigger('change.select2');
 
-        // Set dyscyplina + load options for autor
-        var $d = $('#modal-dyscyplina-select');
-        $d.empty().append(
-            '<option value="">---</option>'
+        // Pre-fill "Zapisany jako"
+        $('#modal-zapisany-jako').val(
+            $row.data('zapisany-jako') || ''
         );
+
+        // Pre-fill dyscyplina (jeśli była) — full lista załaduje się
+        // przez loadModalDyscypliny() niżej.
+        var $d = $('#modal-dyscyplina-select');
+        $d.empty().append('<option value="">---</option>');
         if ($row.data('dyscyplina-pk')) {
             $d.append(
                 '<option value="'
@@ -600,38 +852,24 @@ $(document).ready(function() {
                 + '</option>'
             );
         }
-        if ($row.data('autor-pk') && rok) {
-            var fwd = JSON.stringify({
-                autor: $row.data('autor-pk'),
-                rok: rok
-            });
-            $.ajax({
-                url: $d.data('url'),
-                data: {forward: fwd},
-                dataType: 'json'
-            }).done(function(data) {
-                var cur = String(
-                    $row.data('dyscyplina-pk') || ''
-                );
-                data.results.forEach(function(item) {
-                    if (item.id
-                        && String(item.id) !== cur) {
-                        $d.append(
-                            '<option value="'
-                            + item.id + '">'
-                            + item.text + '</option>'
-                        );
-                    }
-                });
-                $d.trigger('change.select2');
-            });
-        }
         $d.trigger('change.select2');
+
+        // Załaduj sekcję kandydatów (server-side partial)
+        loadCandidatesSection($row.data('author-id'));
+
+        // Linki dla obecnie wybranego autora
+        updateAuthorLinks($row.data('autor-pk'));
+
+        // Pełna lista dyscyplin dla wybranego autora + roku
+        loadModalDyscypliny($row.data('autor-pk'));
 
         $modal.foundation('open');
     }
 
-    // Click on row
+    // Klik gdziekolwiek na wierszu otwiera modal. Inline formy
+    // (hx-post na "Ustaw ORCID") oraz przycisk "Edytuj" wewnątrz
+    // wiersza zatrzymują propagację, żeby ich kliknięcie nie
+    // otwierało dodatkowo modala.
     $(document).off(
         'click.authorModal',
         '.author-row-clickable'
@@ -644,8 +882,6 @@ $(document).ready(function() {
         }
     );
 
-    // Click on Edytuj button (stop propagation
-    // to avoid double-open from row click)
     $(document).off(
         'click.authorModal',
         '.author-row-clickable .btn-edit-author'

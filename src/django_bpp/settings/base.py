@@ -14,6 +14,7 @@ from celery.schedules import crontab
 from django.core.exceptions import ImproperlyConfigured
 
 from bpp.util import slugify_function
+from django_bpp.channels_prefix import get_channels_prefix
 from django_bpp.version import VERSION
 
 logger = logging.getLogger(__name__)
@@ -285,6 +286,7 @@ TEMPLATES = [
                 "bpp.context_processors.testing.testing",
                 "cookielaw.context_processors.cookielaw",
                 "django_countdown.context_processors.countdown_context",
+                "nowe_raporty.menu.raporty_menu",
             ],
         },
     },
@@ -914,11 +916,16 @@ BPP_WALIDUJ_AFILIACJE_AUTOROW = (
 # ASGI_APPLICATION = "django_bpp.routing.application"
 ASGI_APPLICATION = "django_bpp.asgi.application"
 
+# Channel-layer key prefix (get_channels_prefix imported at top). Production:
+# "asgi" (channels_redis default). Under pytest-xdist: "asgi-test-<worker>" so
+# colliding per-user group names cannot cross-talk between workers sharing one
+# Redis. See django_bpp.channels_prefix and docs/CHANNELS_BROADCAST_FLAKE.md.
 CHANNEL_LAYERS = {
     "default": {
         "BACKEND": "channels_redis.core.RedisChannelLayer",
         "CONFIG": {
             "hosts": [(REDIS_HOST, REDIS_PORT)],
+            "prefix": get_channels_prefix(),
         },
     },
 }
@@ -1231,19 +1238,17 @@ DJANGO_EASY_AUDIT_REGISTERED_CLASSES = [
 
 SILENCED_SYSTEM_CHECKS.append("admin.E117")
 
-# Override the ``dynamic_admin_columns`` migrations directory.
-#
-# The package's ``0001_initial`` runs ``CreateModel`` against the
-# ``dynamic_columns_*`` tables. Every BPP database — both legacy
-# in-tree-app upgrades and freshly-baselined test DBs — already
-# carries those tables, so running ``CREATE TABLE`` again would
-# conflict. The replacement under ``bpp.migration_overrides`` is
-# state-only (declares the models in Django's state, emits no DDL).
-# Schema-level work for the per-user upgrade lives in
+# NOTE: BPP used to override ``dynamic_admin_columns`` migrations via
+# ``MIGRATION_MODULES`` because the package's old ``0001_initial`` ran a
+# plain ``CreateModel`` that collided with the ``dynamic_columns_*``
+# tables every BPP database already carries (legacy in-tree app +
+# baseline-loaded test DBs). Since django-dynamic-admin-columns 0.5.0
+# that migration is idempotent (creates the tables only when absent,
+# via the schema editor so the user FK resolves through
+# ``AUTH_USER_MODEL``), so the override is no longer needed and BPP
+# consumes the package's migrations directly. Schema-level work for the
+# legacy per-user upgrade still lives in
 # ``bpp.0416_rename_dynamic_columns_to_admin``.
-MIGRATION_MODULES = {
-    "dynamic_admin_columns": "bpp.migration_overrides.dynamic_admin_columns",
-}
 
 DYNAMIC_ADMIN_COLUMNS_ALLOWED_IMPORT_PATHS = [
     "bpp.admin.wydawnictwo_ciagle",

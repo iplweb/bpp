@@ -18,13 +18,13 @@ from bpp.models import (
 )
 from crossref_bpp.utils import json_format_with_wrap, perform_trigram_search
 from import_common.core import (
-    matchuj_autora,
     matchuj_wydawce,
     normalize_zrodlo_nazwa_for_db_lookup,
     normalize_zrodlo_skrot_for_db_lookup,
     normalized_db_title,
     normalized_db_zrodlo_nazwa,
     normalized_db_zrodlo_skrot,
+    znajdz_kandydatow_autora,
 )
 from import_common.normalization import (
     normalize_doi,
@@ -54,10 +54,19 @@ class WynikPorownania:
         status: StatusPorownania,
         opis: str = "",
         rekordy: [list[models.Model,] | None] = None,
+        *,
+        sugerowany=None,
+        kandydaci=None,
     ):
         self.status = status
         self.opis = opis
         self.rekordy = rekordy
+        # `sugerowany`: best-of-N rekord wskazany jako preselekcja w UI
+        # (ustawiany przez Komparator przy WYMAGA_INGERENCJI). `kandydaci`:
+        # opcjonalna lista obiektów z metadanymi (np. KandydatAutora) do
+        # zapisu w tabeli kandydatów importowanego autora.
+        self.sugerowany = sugerowany
+        self.kandydaci = kandydaci
 
     @cached_property
     def rekord_po_stronie_bpp(self):
@@ -353,45 +362,40 @@ class Komparator:
 
         nazwisko = normalize_last_name(wartosc.get("family"))
         imiona = normalize_first_name(wartosc.get("given"))
-        if nazwisko and imiona:
-            ret = matchuj_autora(imiona, nazwisko)
-            if ret:
-                return WynikPorownania(
-                    StatusPorownania.LUZNE,
-                    "znaleziono dokładnie jednego autora po imieniu i nazwisku",
-                    rekordy=[
-                        ret,
-                    ],
-                )
+        if not (nazwisko and imiona):
+            return BRAK_DOPASOWANIA
 
-            # Brak jednego autora, ale moze jest wielu? Funkcja matchuj_autora nie zwraca
-            # takich danych:
+        kandydaci = znajdz_kandydatow_autora(imiona, nazwisko, max_wyniki=10)
+        if not kandydaci:
+            return BRAK_DOPASOWANIA
 
-            q = Autor.objects.filter(
-                nazwisko__icontains=nazwisko, imiona__icontains=imiona
+        best = kandydaci[0]
+        if len(kandydaci) == 1:
+            # Pojedynczy kandydat. DOKLADNE tylko gdy wpadliśmy w iexact full,
+            # inaczej LUZNE — sygnalizujemy że pewność jest niższa.
+            status = (
+                StatusPorownania.DOKLADNE
+                if best.pewnosc >= 1.0
+                else StatusPorownania.LUZNE
+            )
+            return WynikPorownania(
+                status,
+                f"jeden autor ({best.powod}, pewność {best.pewnosc:.2f})",
+                rekordy=[best.autor],
+                sugerowany=best.autor,
+                kandydaci=kandydaci,
             )
 
-            if q.exists():
-                addendum = ""
-                MAX_AUT = 10
-                if q.count() >= MAX_AUT:
-                    addendum = (
-                        f" - w sumie {q.count()} rekordow, pokazuje pierwsze {MAX_AUT}"
-                    )
-
-                msg = "kilku autorów - luźne porównanie po imieniu i nazwisku"
-                status = StatusPorownania.WYMAGA_INGERENCJI
-                if q.count() == 1:
-                    msg = "jeden autor - luźne porównanie po imieniu i nazwisku"
-                    status = StatusPorownania.LUZNE
-
-                return WynikPorownania(
-                    status,
-                    f"{msg}{addendum}",
-                    rekordy=q[:MAX_AUT],
-                )
-
-        return BRAK_DOPASOWANIA
+        info_best = f"{best.powod}, {best.publikacji} publikacji"
+        if best.autor.orcid:
+            info_best += ", ORCID"
+        return WynikPorownania(
+            StatusPorownania.WYMAGA_INGERENCJI,
+            f"{len(kandydaci)} kandydatów; sugerowany: {best.autor} ({info_best})",
+            rekordy=[k.autor for k in kandydaci],
+            sugerowany=best.autor,
+            kandydaci=kandydaci,
+        )
 
     @classmethod
     def porownaj_short_container_title(cls, wartosc):

@@ -1,5 +1,14 @@
 # test_bpp_notifications — diagnostyka flake'u (2026-05-13)
 
+> **AKTUALIZACJA 2026-05-31 — zidentyfikowana przyczyna i fix.**
+> Sekcja „## Przyczyna: kolizja nazw grup między workerami xdist" na końcu
+> tego dokumentu opisuje znalezioną przyczynę (współdzielony namespace
+> channel-layer w Redisie między workerami pytest-xdist) i wdrożony fix
+> (konfigurowalny, per-worker prefix przez `django_bpp.channels_prefix`).
+> Reszta dokumentu poniżej to oryginalny zapis diagnostyki z 2026-05-13,
+> zachowany dla kontekstu.
+
+
 Po migracji z lokalnej apki `src/notifications/` na zewnętrzny pakiet
 `django-channels-broadcast>=0.2.0` (commity `f6e0fa6cf` + `048c2cfa2`)
 test `src/integration_tests/test_bpp_with_notifications.py::test_bpp_notifications`
@@ -219,3 +228,79 @@ Sensowne kolejne kroki diagnostyki:
 4. Sprawdzić czy gubi się na poziomie `bzpopmin` w Daphne (`receive_loop`
    nie zdąża z polling przed expiry message-a) — `self.expiry` default
    60s, powinno wystarczyć, ale warto zweryfikować.
+
+## Przyczyna: kolizja nazw grup między workerami xdist (2026-05-31)
+
+Po dalszej analizie zidentyfikowano przyczynę, której poprzednia sesja nie
+sprawdziła: **współdzielony namespace channel-layer w Redisie między
+workerami pytest-xdist.**
+
+### Mechanizm
+
+1. Nazwa grupy per-user to `md5(str(pk) + username)`
+   (`channels_broadcast/core.py::get_channel_name_for_user`).
+2. Username testowy jest stały (`fixtures/const.py::NORMAL_DJANGO_USER_LOGIN
+   = "test_login_bpp"`), a `transactional_db` robi
+   `TRUNCATE ... RESTART IDENTITY` → user testowy dostaje `pk=1` w **każdym**
+   workerze.
+3. Skutek: `md5("1" + "test_login_bpp")` = `ce13ba84…` — **identyczna** nazwa
+   grupy w gw0, gw1, …, gw15.
+4. `channels_redis` namespace'uje klucze grup jako `{prefix}:group:{name}`
+   (domyślny prefix `"asgi"`). Bez własnego prefixu wszystkie workery
+   współdzielące jeden Redis testcontainera lądują w **tej samej** grupie
+   `asgi:group:ce13ba84…`. `group_send` jednego workera fan-outuje do
+   konsumentów innych workerów → cross-talk i probabilistyczny zgub/przeplot
+   wiadomości WebSocket.
+
+Diagnostyka pkt 1 (na górze tego dokumentu) sprawdziła, że Daphne i proces
+testowy używają tego samego **portu** Redisa — ale przeoczyła, że pod
+`-n auto` *wszystkie* workery dzielą ten jeden Redis z **kolidującymi**
+nazwami grup. Asymetria solo-PASS / pełny-plik-FAIL i fakt, że fail z CI był
+na `gw8` (9. worker, czyli `-n auto` na wielordzeniowej maszynie), pasują do
+pollution stanu współdzielonego, nie do buga send/receive.
+
+### Fix: konfigurowalny per-worker prefix
+
+`src/django_bpp/channels_prefix.py` (single source of truth) liczy prefix:
+
+1. `DJANGO_BPP_CHANNELS_PREFIX` — jawny override (każde środowisko),
+2. `asgi-test-<worker>` pod xdist (`PYTEST_XDIST_WORKER` ustawione),
+3. `"asgi"` — domyślny `channels_redis` (produkcja / brak xdist).
+
+Dwa kooperujące procesy muszą zgadzać się co do prefixu **bajt w bajt**:
+
+- subprocess Daphne — przez `CHANNEL_LAYERS["default"]["CONFIG"]["prefix"]`
+  w `settings/base.py`,
+- test-side poller `wait_for_channel_subscription`
+  (`django_bpp/playwright_util.py`), który czyta klucz grupy wprost z Redisa.
+
+Daphne jest forkowany z workera xdist (`channels_live_server::_spawn_daphne`),
+więc dziedziczy `PYTEST_XDIST_WORKER`; oba procesy importują ten sam
+`channels_prefix.py` → liczą identyczny prefix. To naprawia błąd
+wcześniejszego (porzuconego) podejścia, gdzie prefix zmieniono tylko w
+`CHANNEL_LAYERS`, a poller dalej pollował hardcoded `asgi:group:…` →
+`TimeoutError` (poll złego klucza).
+
+Produkcyjnie **no-op**: `PYTEST_XDIST_WORKER` istnieje tylko pod xdist;
+zweryfikowano, że w env prod-like prefix = `"asgi"` (zgodny z domyślnym
+`channels_redis`, więc żadnej zmiany zachowania w produkcji).
+
+### Status weryfikacji — uczciwie
+
+- ✅ **Sound-by-construction**: prefix izoluje namespace per worker; obie
+  strony (Daphne + poller) liczą go z jednego źródła. Kolizja z mechanizmu
+  jest niemożliwa, gdy każdy worker ma własny namespace.
+- ✅ **Brak regresji**: pełny plik `test_bpp_with_notifications.py` z fixem,
+  `-n 8` oraz `-n 12 --count=8` → wszystko pass, zero rerunów; poller nie
+  timeout'uje (czyli prefix jest spójny między procesami).
+- ⚠️ **Nie zreprodukowano flake'u lokalnie**: na maszynie 10-rdzeniowej,
+  nawet wymuszając współdzielony namespace (`DJANGO_BPP_CHANNELS_PREFIX=asgi`)
+  pod `-n 12 --count=8` (192 egz./iterację × 3 iteracje) — 0 rerunów. Flake
+  potrzebuje wyższej równoległości (CI fail był na `gw8` = ~16 workerów pod
+  `-n auto`), której lokalny sprzęt nie wygeneruje. A/B nie był więc w stanie
+  empirycznie *udowodnić* fixu na tym sprzęcie — opieramy się na argumencie
+  konstrukcyjnym + braku regresji.
+- Mitygacja testu (`@pytest.mark.flaky(reruns=3)` + bufor) zostaje jako
+  defense-in-depth (tania, chroni przed ewentualnym rezydualnym
+  within-worker pollution session-scoped Daphne między testami tego samego
+  workera).

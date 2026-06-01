@@ -12,6 +12,8 @@ from .views import (
     AutorRaportFormView,
     GenerujRaportDlaAutora,
     JednostkaRaportFormView,
+    RaportFormView,
+    RaportGenerujView,
     WydzialRaportFormView,
 )
 
@@ -45,4 +47,16 @@ urlpatterns = [
         GenerujRaportDlaAutora.as_view(),
         name="autor_generuj",
     ),
+    # Generyczne trasy data-driven (po starych aliasach; matchują nowe slugi).
+    url(
+        r"^(?P<slug>[\w-]+)/(?P<pk>\d+)/(?P<od_roku>\d+)/(?P<do_roku>\d+)/$",
+        RaportGenerujView.as_view(),
+        name="raport_generuj",
+    ),
+    url(
+        r"^(?P<slug>[\w-]+)/(?P<od_roku>\d+)/(?P<do_roku>\d+)/$",
+        RaportGenerujView.as_view(),
+        name="raport_generuj_uczelnia",
+    ),
+    url(r"^(?P<slug>[\w-]+)/$", RaportFormView.as_view(), name="raport_form"),
 ]

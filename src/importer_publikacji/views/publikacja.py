@@ -129,9 +129,12 @@ def _add_authors_to_record(session, record, uczelnia=None):
         if not imported_author.matched_autor or not imported_author.matched_jednostka:
             continue
 
+        # `zapisany_jako` może być nadpisane przez użytkownika w modalu
+        # edycji autora; fallback dla rekordów sprzed dodania pola.
         zapisany_jako = (
-            f"{imported_author.family_name} {imported_author.given_name}"
-        ).strip()
+            imported_author.zapisany_jako.strip()
+            or (f"{imported_author.family_name} {imported_author.given_name}").strip()
+        )
 
         jest_obca = obca and imported_author.matched_jednostka == obca
         afiliuje = not jest_obca

@@ -257,11 +257,28 @@ def test_convert_using_docker_image_custom_docker_image(monkeypatch, tmp_path):
     assert output_path.exists()
 
 
-@pytest.mark.skipif(
-    subprocess.run(["docker", "info"], capture_output=True, check=False).returncode
-    != 0,
-    reason="Docker is not available",
-)
+def _docker_available():
+    """Sprawdza dostępność Docker daemona LENIWIE (przy uruchomieniu testu).
+
+    Nie wołaj tego w `@pytest.mark.skipif(...)` — argumenty dekoratora liczą
+    się w momencie *importu* modułu (czyli przy każdej kolekcji pytest, także
+    `pytest -k cos_innego`), więc `docker info` startowałby na każdym przebiegu
+    i niepotrzebnie wiązał całą sesję z demonem Dockera. Wywołane wewnątrz
+    ciała testu odpala się tylko wtedy, gdy ten test naprawdę jest zbierany
+    do uruchomienia.
+    """
+    try:
+        return (
+            subprocess.run(
+                ["docker", "info"], capture_output=True, check=False
+            ).returncode
+            == 0
+        )
+    except FileNotFoundError:
+        return False
+
+
+@pytest.mark.slow
 def test_convert_using_docker_image_integration(tmp_path):
     """Integration test: actual Docker conversion with real html2docx container.
 
@@ -289,6 +306,9 @@ def test_convert_using_docker_image_integration(tmp_path):
     </body>
     </html>
     """
+
+    if not _docker_available():
+        pytest.skip("Docker is not available")
 
     output_path = tmp_path / "integration_test.docx"
 
