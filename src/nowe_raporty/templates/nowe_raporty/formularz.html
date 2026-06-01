@@ -29,5 +29,75 @@
                 {% crispy form %}
             </div>
         </div>
+
+        <style>
+            /* "Opcje zaawansowane": rozwijany akordeon wewnątrz fieldsetu,
+               wizualnie spójny z "Filtry ..." na stronie ranking-autorow.
+               Realizacja natywnym <details>/<summary> - zwijanie bez JS. */
+            details.opcje-zaawansowane {
+                margin-top: 1rem;
+            }
+
+            details.opcje-zaawansowane > summary {
+                display: block;
+                list-style: none;
+                cursor: pointer;
+                padding: 0.5rem;
+                background-color: #f4f4f4;
+                border: 1px solid #ddd;
+                border-radius: 3px;
+                color: #333;
+                font-weight: 600;
+                transition: background-color 0.3s;
+            }
+
+            details.opcje-zaawansowane > summary::-webkit-details-marker {
+                display: none;
+            }
+
+            details.opcje-zaawansowane > summary::before {
+                content: "\002B"; /* plus */
+                display: inline-block;
+                width: 1rem;
+                font-weight: 700;
+            }
+
+            details.opcje-zaawansowane[open] > summary::before {
+                content: "\2212"; /* minus */
+            }
+
+            details.opcje-zaawansowane > summary:hover {
+                background-color: #e8e8e8;
+            }
+
+            details.opcje-zaawansowane[open] > summary {
+                border-radius: 3px 3px 0 0;
+            }
+
+            .opcje-zaawansowane__body {
+                padding: 1rem;
+                border: 1px solid #ddd;
+                border-top: none;
+                background-color: #fafafa;
+            }
+
+            /* Poza fieldsetem Foundation nie wymusza border-box na float-gridzie,
+               więc kolumny od/do (width:50% + padding) nie mieszczą się w
+               wierszu i spadają jedna pod drugą. Wymuszamy border-box, by para
+               od/do stała obok siebie - analogicznie do "Od roku/Do roku". */
+            .opcje-zaawansowane__body .row,
+            .opcje-zaawansowane__body [class*="column"] {
+                box-sizing: border-box;
+            }
+
+            .zaawansowane-grupa-naglowek {
+                font-weight: 600;
+                margin: 0.75rem 0 0.25rem;
+            }
+
+            .opcje-zaawansowane__body .zaawansowane-grupa-naglowek:first-child {
+                margin-top: 0;
+            }
+        </style>
     {% endif %}
 {% endblock %}

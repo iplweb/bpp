@@ -6,23 +6,55 @@ i uniwersyteckich w Polsce.
 
 Oprogramowanie dystrybuowane jest na zasadach otwartoźródłowej
 [licencji MIT](https://pl.wikipedia.org/wiki/Licencja_MIT). Repozytorium
-projektu: [github.com/iplweb/bpp](https://github.com/iplweb/bpp).
+projektu: [github.com/iplweb/bpp](https://github.com/iplweb/bpp). Pełne
+README znajduje się
+[w korzeniu repozytorium](https://github.com/iplweb/bpp/blob/dev/README.md).
 
-## O dokumentacji
+## Wybierz sekcję
 
-Niniejsza dokumentacja podzielona jest na sekcje:
+Dokumentacja jest podzielona według odbiorcy.
 
-- **Instrukcja użytkownika** — opisuje codzienne czynności redakcyjne
-  ([edycja uczelni](edycja_uczelnia.md), [jednostek](edycja_jednostka.md),
-  [autorów](edycja_autor.md), [wydawnictw](edycja_wydawnictwo.md))
-  oraz [wyszukiwanie i redagowanie](wyszukiwanie_redagowanie.md).
-- **Instrukcja administratora** — konfiguracja
-  ([ogólna](usage_admin.md), [PBN](konfiguracja_pbn.md)), importy
-  ([publikacji](importer_publikacji.md), [pracowników](import_pracownikow.md))
-  oraz moduł [zgłaszania publikacji](zglos_publikacje.md).
-- **Funkcje zaawansowane** —
-  [raporty i rankingi](raporty_rankingi.md), [sloty](sloty.md),
-  [integracja z PBN](pbn.md), [konfiguracja zaawansowana](advanced.md).
-- **API i rozwój** — [API REST](api.md), [rozwijanie projektu](contributing.md).
-- **Informacje o projekcie** — [autorzy](authors.md),
-  [historia zmian](history.md).
+### 📘 Instrukcja użytkownika
+
+Codzienne czynności redakcyjne — dla bibliotekarzy i redaktorów.
+
+- [Uczelnia](uzytkownik/uczelnia.md)
+- [Jednostki](uzytkownik/jednostki.md)
+- [Autorzy](uzytkownik/autorzy.md)
+- [Wydawnictwa](uzytkownik/wydawnictwa.md)
+- [Wyszukiwanie i redagowanie](uzytkownik/wyszukiwanie-redagowanie.md)
+- [Raporty i rankingi](uzytkownik/raporty-rankingi.md)
+- [Sloty](uzytkownik/sloty.md)
+
+### 🛠️ Instrukcja administratora
+
+Konfiguracja, importy i integracje — dla administratorów wdrożenia.
+
+- [Konfiguracja ogólna](administrator/ogolna.md)
+- [Importer publikacji](administrator/importer-publikacji.md)
+- [Import pracowników](administrator/import-pracownikow.md)
+- [Zgłaszanie publikacji](administrator/zglaszanie-publikacji.md)
+- [Konfiguracja PBN](administrator/konfiguracja-pbn.md)
+- [Integracja z PBN](administrator/integracja-pbn.md)
+- [Konfiguracja zaawansowana](administrator/zaawansowane.md)
+
+### 🔌 API
+
+- [REST API — pobieranie danych](api/index.md)
+
+### 💻 Dla deweloperów i agentów
+
+Dokumentacja techniczna — dla deweloperów i agentów AI, nie dla
+użytkowników końcowych.
+
+- [Przegląd sekcji deweloperskiej](deweloper/index.md)
+
+### 🔒 Bezpieczeństwo
+
+- [Polityka bezpieczeństwa](bezpieczenstwo/polityka.md)
+- [Praktyki bezpieczeństwa](bezpieczenstwo/praktyki.md)
+
+### ℹ️ O projekcie
+
+- [Autorzy](o-projekcie/autorzy.md)
+- [Historia zmian](o-projekcie/historia.md)

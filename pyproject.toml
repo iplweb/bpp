@@ -1,6 +1,6 @@
 [project]
 name = "bpp_iplweb"
-version = "202606.1375"
+version = "202606.1376"
 description = ""
 authors = [
     { name = "Michał Pasternak", email = "michal.dtz@gmail.com" }
@@ -150,6 +150,7 @@ dependencies = [
     "django-pg-baseline>=0.3.0",
     "django-site-blog>=0.2.1",
     "django-first-run-wizard>=0.1.1",
+    "uvicorn-worker>=0.4.0",
 ]
 
 [project.optional-dependencies]
@@ -212,7 +213,7 @@ include = [
 ]
 
 [tool.bumpver]
-current_version = "v202606.1375"
+current_version = "v202606.1376"
 version_pattern = "vYYYY0M.BUILD[-TAGNUM]"
 commit_message = "bump version {old_version} -> {new_version}"
 commit = true
@@ -257,6 +258,27 @@ environments = ["python_version >= '3.10' and python_version < '3.15' and platfo
 name = "pypi"
 url = "https://pypi.org/simple"
 default = true
+
+# django-import-export: TYMCZASOWY pin na git-tag naszego forka.
+# Powód: fix #2156 (lazy `IMPORT_EXPORT_FORMATS` — `get_default_formats()` jest
+# `@lru_cache` wołane przy budowie formularza eksportu, NIE na poziomie modułu)
+# sprawia, że openpyxl/numpy NIE ładują się przy admin autodiscover (RSS przy
+# `django.setup()` spada ~154 -> ~144 MB; openpyxl/numpy wchodzą dopiero przy
+# realnym eksporcie). Fix jest zmergowany w upstream main, ale NIEWYDANY na PyPI
+# (ostatni release = 4.4.1, który ma stary eager `DEFAULT_FORMATS = [... if
+# is_available()]` na poziomie modułu).
+#
+# Pin przez IMMUTABLE `rev` (commit SHA), nie `tag` — tag jest przesuwalny, więc
+# zamrożenie deklaracji źródła (a nie tylko `uv.lock`) wymaga SHA. Commit
+# d6ee0d3 = main HEAD forka (4.4.1 + 49 commitów incl. #2156); ma na sobie tag
+# `4.4.2.dev0+iplweb` jako czytelny marker (setuptools_scm użyje go jako wersji).
+# Każdy przyszły bump MUSI jawnie zmienić ten SHA (zob. #280) — nie "śledzimy taga".
+#
+# Git-source buduje ze źródeł (jak sdist) — ŚWIADOMY, audytowany wyjątek od
+# polityki wheel-only powyżej (kod = nasz fork oficjalnego repo, commit znany).
+# WYCOFAĆ gdy upstream wyda release z #2156 → wróć na PyPI `>=4.5`. Tracking: #280.
+[tool.uv.sources]
+django-import-export = { git = "https://github.com/mpasternak/django-import-export.git", rev = "d6ee0d39194fee31437affbdc6fee5ce549b4b8f" }
 
 # Konfiguracja `pytest-testcontainers-django` — pluginu pytest, ktory
 # startuje kontenery PG/Redis przed importem Django settings i wstrzykuje
@@ -471,7 +493,7 @@ dev = [
 
 [tool.towncrier]
 package = "bpp"
-version = "202606.1375"
+version = "202606.1376"
 package_dir = "src"
 filename = "HISTORY.md"
 start_string = "<!-- towncrier release notes start -->\n"

@@ -1,18 +1,22 @@
-import openpyxl
 from django.core.exceptions import ValidationError
 from django.db import models
-from openpyxl.utils.exceptions import InvalidFileException
 
 from ewaluacja2021.util import find_header_row
 
 
 def validate_xlsx(obj: models.FileField):
+    # openpyxl importowany lokalnie — ten moduł ładuje się eager przez
+    # ewaluacja2021.models (xlsx_header_validator) przy django.setup(), a
+    # openpyxl ciągnie numpy do każdego procesu. Patrz import_common/util.py.
+    import openpyxl
+    from openpyxl.utils.exceptions import InvalidFileException
+
     try:
         return openpyxl.load_workbook(obj)
     except InvalidFileException as e:
-        raise ValidationError(f"Nieobsługiwany rodzaj pliku ({e}) ")
+        raise ValidationError(f"Nieobsługiwany rodzaj pliku ({e}) ") from e
     except BaseException as e:
-        raise ValidationError(f"Błąd przy próbie otwarcia pliku ({e})")
+        raise ValidationError(f"Błąd przy próbie otwarcia pliku ({e})") from e
 
 
 class xlsx_header_validator:
