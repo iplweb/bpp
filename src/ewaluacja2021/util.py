@@ -1,17 +1,24 @@
+# PEP 563: adnotacje (np. ``ws: openpyxl...Worksheet``) stają się łańcuchami,
+# więc nie wymagają openpyxl przy imporcie. openpyxl (a przez nie numpy, ~tens
+# MB RSS) ciągnął się eager do każdego procesu, bo ewaluacja2021.models
+# importuje z tego modułu ``InputXLSX``/helper już na ``django.setup()``.
+# openpyxl importujemy lokalnie w funkcjach, które faktycznie tworzą/czytają xlsx.
+from __future__ import annotations
+
 import itertools
 from collections import OrderedDict
 from decimal import Decimal
 from enum import Enum
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
-import openpyxl.worksheet.worksheet
 from django.contrib.sites.models import Site
 from django.utils.functional import cached_property
-from openpyxl.utils import get_column_letter
-from openpyxl.worksheet.table import TableColumn
 from unidecode import unidecode
 
-from bpp.util import worksheet_columns_autosize, worksheet_create_table
+if TYPE_CHECKING:
+    # tylko dla type-checkerów/ruff — runtime importuje openpyxl lokalnie
+    # w funkcjach tworzących/czytających xlsx (patrz komentarz na górze pliku).
+    import openpyxl
 
 
 def chunker(n, iterable):
@@ -69,6 +76,12 @@ def output_table_to_xlsx(
     autosize_columns: list[str] = None,
     column_widths: dict[int, int] = None,
 ):
+    from openpyxl.styles import Font
+    from openpyxl.utils import get_column_letter
+    from openpyxl.worksheet.table import TableColumn
+
+    from bpp.util import worksheet_columns_autosize, worksheet_create_table
+
     ws.append(headers)
 
     table_columns = tuple(
@@ -93,7 +106,7 @@ def output_table_to_xlsx(
             footer_row.append("")
 
     for cell in ws[ws.max_row : ws.max_row]:
-        cell.font = openpyxl.styles.Font(bold=True)
+        cell.font = Font(bold=True)
 
     first_table_row = ws.max_row
 
@@ -207,6 +220,8 @@ class InputXLSX:
 
     @cached_property
     def workbook(self):
+        import openpyxl
+
         return openpyxl.load_workbook(self.fn)
 
     @cached_property

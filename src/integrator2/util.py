@@ -1,4 +1,7 @@
-import openpyxl
+# openpyxl importowany lokalnie w read_xls_data (jedyny użytkownik): ten moduł
+# ładuje się eager przez integrator2.models.lista_ministerialna już przy
+# django.setup(), a openpyxl ciągnie numpy (~tens MB RSS) do każdego procesu.
+# Patrz analogiczna zmiana w import_common/util.py.
 
 
 def find_header_row(sheet, first_column_value, max_row_range=10, max_col_range=10):
@@ -75,6 +78,8 @@ def read_xls_data(
     :param transformations: słownik funkcji, transformujących wartość z arkusza przed zwróceniem jej
     :return:
     """
+    import openpyxl
+
     book = openpyxl.load_workbook(filename=filename)
     sheets = book.worksheets
     if limit_sheets:

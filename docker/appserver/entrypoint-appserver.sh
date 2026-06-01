@@ -61,16 +61,21 @@ echo "Starting background tasks..."
 ) &
 
 # === PHASE 3: Start server (immediately) ===
-echo "Starting uvicorn..."
 if [ "$ENABLE_AUTORELOAD_ON_CODE_CHANGE" = "1" ] || \
    [ "$ENABLE_AUTORELOAD_ON_CODE_CHANGE" = "true" ]; then
-    echo "Auto-reload ENABLED"
+    # Dev: uvicorn --reload (recykling przy zmianie kodu i tak restartuje proces,
+    # więc problem nieograniczonego wzrostu RSS nie występuje).
+    echo "Auto-reload ENABLED — uvicorn --reload"
     exec uvicorn --host 0 --port 8000 --reload \
         --reload-dir /app/src \
         --log-config /uvicorn_log_config.json \
         django_bpp.asgi:application
 else
-    exec uvicorn --host 0 --port 8000 \
-        --log-config /uvicorn_log_config.json \
-        django_bpp.asgi:application
+    # Prod: gunicorn + UvicornWorker z recyklingiem (--max-requests w configu).
+    # uvicorn samodzielnie nie recykluje workera, więc RSS rósł bez ograniczeń;
+    # gunicorn master gracefully restartuje workera po N żądaniach. Patrz
+    # docker/appserver/gunicorn_conf.py.
+    echo "Auto-reload DISABLED — gunicorn + UvicornWorker (recykling)"
+    exec gunicorn django_bpp.asgi:application \
+        --config /gunicorn_appserver_conf.py
 fi
