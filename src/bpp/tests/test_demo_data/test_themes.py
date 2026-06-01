@@ -142,3 +142,43 @@ def test_compose_streszczenie_fills_placeholders():
     s = compose_streszczenie(t, random.Random(1))
     assert "{" not in s and "}" not in s  # wszystkie placeholdery wypełnione
     assert len(s) > 0
+
+
+def test_registry_has_all_required_pools_nonempty():
+    from bpp.demo_data.themes.base import Theme
+    from bpp.demo_data.themes.registry import THEMES
+
+    pool_fields = [
+        "uczelnia_nazwy",
+        "wydzial_dziedziny",
+        "jednostka_dziedziny",
+        "autor_imiona",
+        "autor_nazwiska",
+        "zrodlo_human",
+        "wydawcy",
+        "tytul_topics",
+        "tytul_subjects",
+        "tytul_contexts",
+        "streszczenie_templates",
+        "jednostka_prefiksy",
+        "zrodlo_prefiksy",
+        "tytul_templates",
+    ]
+    assert THEMES, "registry nie może być pusty"
+    for key, theme in THEMES.items():
+        assert isinstance(theme, Theme)
+        assert theme.key == key
+        assert theme.label
+        assert theme.uczelnia_skrot
+        for f in pool_fields:
+            assert len(getattr(theme, f)) > 0, f"{key}.{f} puste"
+
+
+def test_get_theme_known_and_unknown():
+    import pytest
+
+    from bpp.demo_data.themes.registry import get_theme
+
+    assert get_theme("realistyczny").key == "realistyczny"
+    with pytest.raises(ValueError):
+        get_theme("nie-istnieje")
