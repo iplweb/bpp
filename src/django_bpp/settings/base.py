@@ -232,6 +232,19 @@ STATICFILES_FINDERS = (
     #    'django.contrib.staticfiles.finders.DefaultStorageFinder',
 )
 
+# Storage backends (Django 5.x). `staticfiles` → tolerancyjny
+# ManifestStaticFilesStorage (issue #269): content-hash cache-busting całego
+# long-taila statyków; szczegóły i powód tolerancji w django_bpp/storage.py.
+# `default` (media) zostaje na domyślnym Django FileSystemStorage.
+STORAGES = {
+    "default": {
+        "BACKEND": "django.core.files.storage.FileSystemStorage",
+    },
+    "staticfiles": {
+        "BACKEND": "django_bpp.storage.TolerantManifestStaticFilesStorage",
+    },
+}
+
 TEMPLATES = [
     {
         "BACKEND": "django.template.backends.django.DjangoTemplates",
@@ -888,6 +901,19 @@ CHANNEL_LAYERS = {
         },
     },
 }
+
+# Pozwól anonimowym użytkownikom łączyć się z WebSocketem notyfikacji
+# (/asgi/notifications/) i subskrybować globalny kanał "__all__".
+#
+# django-channels-broadcast domyślnie (CHANNELS_BROADCAST_ENABLE_ANONYMOUS=False)
+# odrzuca anonimów w NotificationsConsumer.connect() przez self.close() PRZED
+# self.accept() — uvicorn zwraca wtedy HTTP 403 na handshake, a przeglądarka
+# raportuje NS_ERROR_WEBSOCKET_CONNECTION_REFUSED. Stary lokalny src/notifications/
+# consumer akceptował połączenie bezwarunkowo, więc po przepięciu na pakiet
+# zewnętrzny (refactor f6e0fa6cf) anonimowy front przestał się łączyć. Ta flaga
+# przywraca poprzednie zachowanie. Kanał "__all__" jest globalnym broadcastem —
+# nie publikuj na nim danych wrażliwych.
+CHANNELS_BROADCAST_ENABLE_ANONYMOUS = True
 
 
 # django-compressor dla każdej wersji będzie miał swoją nazwę katalogu

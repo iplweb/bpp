@@ -57,10 +57,16 @@
         <link rel="stylesheet" href="{% static "datatables.net-zf/css/dataTables.foundation.css" %}"/>
     {% endcompress %}
 
-    {# JavaScript bundle - built with esbuild, includes jQuery and all JS dependencies #}
-    <script src="{% static 'bpp/js/dist/bundle.js' %}"></script>
-    {# Centralized event handlers for data-confirm, data-submit-on-change, data-open-url #}
-    <script src="{% static 'bpp/js/event-handlers.js' %}"></script>
+    {# JavaScript bundle - built with esbuild, includes jQuery and all JS deps. #}
+    {# Owinięte w {% compress js %}, żeby django-compressor wyemitował plik z #}
+    {# content-hashem (CACHE-<VERSION>/js/output.<hash>.js) — cache-busted tak #}
+    {# samo jak output.<hash>.css. Bez tego nginx serwuje wieczny stary #}
+    {# bundle.js spod stałej nazwy (brak hasha => agresywny cache). #}
+    {% compress js %}
+        <script src="{% static 'bpp/js/dist/bundle.js' %}"></script>
+        {# Centralized event handlers: data-confirm, data-submit-on-change, data-open-url #}
+        <script src="{% static 'bpp/js/event-handlers.js' %}"></script>
+    {% endcompress %}
     {% block extrahead_js %}{% endblock %}
 
     {% block extrahead %}
