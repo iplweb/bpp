@@ -103,6 +103,20 @@ def ladne_numery_prac(arr):
 register.filter(ladne_numery_prac)
 
 
+@register.filter(name="safe_streszczenie")
+def safe_streszczenie(value):
+    """Wyrenderuj streszczenie bezpiecznie.
+
+    Zamiennik dla ``|safe`` przy treści streszczeń: escape'uje matematyczne
+    operatory '<'/'>' wpisane w tekst (np. "<30 IU/dL"), usuwa niedozwolony
+    markup (w tym JATS i ewentualny XSS) i oddaje zbalansowany HTML, którego
+    minifikator HTML nie zepsuje. Bez tego goły '<' pożerał układ strony.
+    """
+    from bpp.util import safe_streszczenie_html
+
+    return mark_safe(safe_streszczenie_html(value))
+
+
 @register.filter(name="jsonify")
 def jsonify(value):
     """Convert a value to JSON string for use in JSON-LD structured data."""

@@ -202,7 +202,7 @@ wheels = [
 
 [[package]]
 name = "bpp-iplweb"
-version = "202606.1374"
+version = "202606.1375"
 source = { editable = "." }
 dependencies = [
     { name = "arrow", marker = "platform_python_implementation != 'PyPy'" },
@@ -505,7 +505,7 @@ dev = [
     { name = "django-debug-toolbar", specifier = ">=6.3.0" },
     { name = "django-dev-helpers", specifier = ">=0.1.11" },
     { name = "django-dynamic-fixture", specifier = ">=1.8.0" },
-    { name = "django-run-site", specifier = ">=0.15.0" },
+    { name = "django-run-site", specifier = ">=0.16.0" },
     { name = "django-webtest", specifier = "==1.9.14" },
     { name = "djlint", specifier = ">=1.36,<2" },
     { name = "ipdb", specifier = ">=0.13.9" },
@@ -2048,15 +2048,15 @@ wheels = [
 
 [[package]]
 name = "django-run-site"
-version = "0.15.0"
+version = "0.16.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "docker", marker = "platform_python_implementation != 'PyPy'" },
     { name = "testcontainers", extra = ["redis"], marker = "platform_python_implementation != 'PyPy'" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/86/e4/2a53f51d45ab39a13a964ce685558018709ec729c46efc9e44f0187168a9/django_run_site-0.15.0.tar.gz", hash = "sha256:bfa9aff9289919b8c591173a40272e304982fcf6aa9c9f80642e5fcc19ba95f7", size = 151474, upload-time = "2026-05-25T10:01:18.884Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/49/d2/be1a7572bc7017f3289a95d8455dda0d6eff4caea0ed9e9e0ad4ffa1f78c/django_run_site-0.16.0.tar.gz", hash = "sha256:64dc96a65d5981ae5c38670e11f4123885f6762e5304c3eb1ccd7c4903049f9b", size = 160608, upload-time = "2026-06-01T12:28:08.2Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/3e/32/39946ad5905509aa438fd99ab01cac3ebedec5e52e9d8b69eaf97b4fba1a/django_run_site-0.15.0-py3-none-any.whl", hash = "sha256:f6352dd656a697414fcc9201c6a981df3739cbc1392c61b5aa787121a225e8b7", size = 96532, upload-time = "2026-05-25T10:01:16.68Z" },
+    { url = "https://files.pythonhosted.org/packages/c9/e1/d837158744e4b610ea79406b5f021056bc4a58cb7a6679ef8bf54c9e7690/django_run_site-0.16.0-py3-none-any.whl", hash = "sha256:c565e555de82e7a0e4e3cbd812ba35edf1c2e91a8200b2c8853cfa4b83b669b4", size = 99181, upload-time = "2026-06-01T12:28:06.248Z" },
 ]
 
 [[package]]
