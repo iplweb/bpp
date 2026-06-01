@@ -12932,6 +12932,102 @@ COPY public.auth_group_permissions (id, group_id, permission_id) FROM stdin;
 298	8	125
 299	8	126
 300	8	127
+301	1	512
+302	1	513
+303	1	514
+304	1	515
+305	1	516
+306	1	517
+307	1	518
+308	1	519
+309	1	520
+310	1	521
+311	1	522
+312	1	523
+313	1	524
+314	1	525
+315	1	526
+316	1	527
+317	1	528
+318	1	529
+319	1	530
+320	1	531
+321	1	532
+322	1	533
+323	1	534
+324	1	535
+325	1	536
+326	1	537
+327	1	538
+328	1	539
+329	1	540
+330	1	541
+331	1	542
+332	1	547
+333	1	548
+334	1	549
+335	1	550
+336	1	551
+337	1	552
+338	1	553
+339	1	554
+340	1	687
+341	1	688
+342	1	689
+343	1	690
+344	1	819
+345	1	820
+346	1	821
+347	1	822
+348	1	511
+349	2	720
+350	2	721
+351	2	722
+352	2	719
+353	3	640
+354	3	641
+355	3	642
+356	3	643
+357	3	644
+358	3	645
+359	3	646
+360	3	839
+361	3	840
+362	3	841
+363	3	842
+364	3	843
+365	3	844
+366	3	845
+367	3	846
+368	3	711
+369	3	712
+370	3	713
+371	3	714
+372	3	855
+373	3	856
+374	3	857
+375	3	858
+376	3	639
+377	5	608
+378	5	609
+379	5	610
+380	5	607
+381	6	663
+382	6	664
+383	6	665
+384	6	666
+385	6	667
+386	6	668
+387	6	669
+388	6	670
+389	6	795
+390	6	672
+391	6	673
+392	6	674
+393	6	796
+394	6	797
+395	6	798
+396	6	671
 \.
 
 
@@ -16266,136 +16362,6 @@ COPY public.favicon_faviconimg (id, size, rel, "faviconImage", "faviconFK_id") F
 
 
 --
--- Data for Name: flexible_reports_column; Type: TABLE DATA; Schema: public; Owner: -
---
-
-COPY public.flexible_reports_column (id, label, "position", sortable, attr_name, template, display_totals, footer_template, parent_id, exclude_from_export, strip_html_on_export, attrs) FROM stdin;
-1	Lp	0	f	pk	{{ column.column.counter }}.	f		1	t	f	{"td": {"class": "bpp-lp-column"}}
-2	Opis bibliograficzny	1	t	tytul_oryginalny	{{ record.opis_bibliograficzny_cache|safe }}	t	<div align=right>Suma:</div>	1	f	t	\N
-3	IF	3	t	impact_factor		t	{{ value }}	1	f	f	{"td": {"style": "text-align: right;"}}
-4	Pkt. MNiSW	4	t	punkty_kbn		t	{{ value }}	1	f	f	{"td": {"style": "text-align: right;"}}
-5	Typ KBN	5	t	typ_kbn		f	{{ value }}	1	f	f	\N
-6	Rok	2	t	rok		t	{{ count }}	1	f	f	{"td": {"style": "text-align: right;"}}
-7	ID rekordu	6	f	id	{{ value }}	f	{{ value }}	1	f	f	\N
-\.
-
-
---
--- Data for Name: flexible_reports_columnorder; Type: TABLE DATA; Schema: public; Owner: -
---
-
-COPY public.flexible_reports_columnorder (id, "position", column_id, table_id, "desc") FROM stdin;
-1	0	6	1	t
-2	1	2	1	f
-\.
-
-
---
--- Data for Name: flexible_reports_datasource; Type: TABLE DATA; Schema: public; Owner: -
---
-
-COPY public.flexible_reports_datasource (id, label, dsl_query, "distinct", base_model_id, query_language, sample_context) FROM stdin;
-1	1.1. Publikacje w czasopiśmie naukowym posiadającym Impact Factor IF (część A wykazu MNiSW)	(\n  impact_factor > 0\n  AND punktacja_wewnetrzna = 0\n  AND NOT (\n      adnotacje ~ "wos"\n      OR\n      konferencja__baza_wos = 1\n      OR\n      adnotacje ~ "erih"\n  )\n  AND NOT typ_kbn = "PW"\n)\n\nOR adnotacje ~ "lista_a"	t	77	dsl	{}
-2	1.2 Publikacja w czasopiśmie naukowym nieposiadającym IF (część B wykazu MNiSW)	adnotacje ~ "lista_b"\n\nOR\n\n(\nimpact_factor = 0\nAND punkty_kbn > 0\nAND charakter IN ["AC", "L", "Supl"]\nAND NOT (\n    adnotacje ~ "wos"\n    OR\n    konferencja__baza_wos = 1\n    OR\n    adnotacje ~ "erih"\n    OR\n    adnotacje ~ "lista_a"\n)\nAND NOT (typ_kbn = "PW")\n\nAND NOT (\n{%comment%}\npunkt 1.4\n{%endcomment%}\nliczba_znakow_wydawniczych >= 20000\nAND charakter IN ["AC", "L", "Supl"]\nAND impact_factor=0\nAND punkty_kbn > 0\nAND NOT jezyk__skrot = "pol."\n\n)\n)	t	77	dsl	{}
-3	1.3 Publikacja w czasopiśmie naukowym znajdującym się w bazie European Reference Index for the Humanities (ERIH (część C wykazu MNiSW)	adnotacje ~ "erih"\nAND punkty_kbn > 0	t	77	dsl	{}
-4	1.4 Recenzowana publikacja naukowa w języku innym niż polski w zagranicznym czasopiśmie naukowym spoza list A,B,C, o objętości co najmniej 0,5 arkusza	liczba_znakow_wydawniczych >= 20000\nAND charakter IN ["AC", "L", "Supl"]\nAND impact_factor=0\nAND punkty_kbn > 0\nAND NOT jezyk__skrot = "pol."	t	77	dsl	{}
-5	1.5 Publikacja w recenzowanych materiałach z konferencji międzynarodowej uwzględnionej w Web of Science.	(adnotacje ~ "wos" OR konferencja__baza_wos = 1)	t	77	dsl	{}
-6	2.1. Autorstwo monografii naukowej - autor	typ_odpowiedzialnosci IN ["aut.", "Aut. koresp."]\nAND charakter IN ["KSZ", "KSP", "KS", "H"]\nAND NOT (charakter IN ["KS", "KSP", "KSZ"] AND (typ_kbn = "000" OR typ_kbn="PNP"))\n{% if punktuj_monografie %}\nAND punkty_kbn > 0\n{% endif %}\nAND autor = {{ obiekt.pk|default:0 }}	t	77	dsl	{}
-7	2.2 Autorstwo rozdziału w monografii naukowej - autor	charakter = "ROZ"\nAND typ_odpowiedzialnosci IN ["aut.", "Aut. koresp."]\nAND NOT (charakter="ROZ" AND (typ_kbn = "000" OR typ_kbn="PNP"))\nAND autor = {{ obiekt.pk|default:0 }}	t	77	dsl	{}
-8	2.3 Redakcja naukowa monografii naukowej wieloautorskiej - autor	typ_odpowiedzialnosci IN ["red.", "red. nauk. wyd. pol."]\nAND charakter IN ["KSZ", "KSP", "KS"]\nAND NOT typ_kbn IN ["000", "PNP"]\n{% if punktuj_monografie %}\nAND punkty_kbn > 0\n{% endif %}\nAND autor = {{ obiekt.pk|default:0 }}	t	77	dsl	{}
-9	3. Patenty	charakter = "PAT"	t	77	dsl	{}
-10	4.1 Materiały konferencyjne	charakter IN ["PSZ", "PRZ", "PST", "PSTS", "RZK", "ZRZ", "PSZ", "SZK", "ZSZ"]\n\nAND NOT (\n\n\n{% comment %}\nWyklucz prace z punktu 1.5 konferencje indeksowane w bazach WOS\n{% endcomment %}\n\n\n   (adnotacje ~ "wos" OR konferencja__baza_wos = 1)\n   AND punkty_kbn > 0\n)	t	77	dsl	{}
-11	4.2 Publikacje popularnonaukowe	typ_kbn = "PNP"	t	77	dsl	{}
-12	2.1. Autorstwo monografii naukowej - jednostka	typ_odpowiedzialnosci IN ["aut.", "Aut. koresp."]\nAND charakter IN ["KSZ", "KSP", "KS", "H"]\nAND NOT (charakter IN ["KS", "KSP", "KSZ"] AND (typ_kbn = "000" OR typ_kbn="PNP"))\n{% if punktuj_monografie %}\nAND punkty_kbn > 0\n{% endif %}\nAND jednostka = {{ obiekt.pk|default:0 }}	t	77	dsl	{}
-13	2.2 Autorstwo rozdziału w monografii naukowej - jednostka	charakter = "ROZ"\nAND typ_odpowiedzialnosci IN ["aut.", "Aut. koresp."]\nAND NOT (charakter="ROZ" AND (typ_kbn = "000" OR typ_kbn="PNP"))\nAND jednostka = {{ obiekt.pk|default:0 }}	t	77	dsl	{}
-14	2.3 Redakcja naukowa monografii naukowej wieloautorskiej - jednostka	typ_odpowiedzialnosci IN ["red.", "red. nauk. wyd. pol."]\nAND charakter IN ["KSZ", "KSP", "KS"]\nAND NOT typ_kbn IN ["000", "PNP"]\n{% if punktuj_monografie %}\nAND punkty_kbn > 0\n{% endif %}\nAND jednostka = {{ obiekt.pk|default:0 }}	t	77	dsl	{}
-15	2.1. Autorstwo monografii naukowej - wydział	typ_odpowiedzialnosci IN ["aut.", "Aut. koresp."]\nAND charakter IN ["KSZ", "KSP", "KS", "H"]\nAND NOT (charakter IN ["KS", "KSP", "KSZ"] AND (typ_kbn = "000" OR typ_kbn="PNP"))\n{% if punktuj_monografie %}\nAND punkty_kbn > 0\n{% endif %}\nAND wydzial = {{ obiekt.pk|default:0 }}	t	77	dsl	{}
-16	2.2 Autorstwo rozdziału w monografii naukowej - wydział	charakter = "ROZ"\nAND typ_odpowiedzialnosci IN ["aut.", "Aut. koresp."]\nAND NOT (charakter="ROZ" AND (typ_kbn = "000" OR typ_kbn="PNP"))\nAND wydzial = {{ obiekt.pk|default:0 }}	t	77	dsl	{}
-17	2.3 Redakcja naukowa monografii naukowej wieloautorskiej - wydział	typ_odpowiedzialnosci IN ["red.", "red. nauk. wyd. pol."]\nAND charakter IN ["KSZ", "KSP", "KS"]\nAND NOT typ_kbn IN ["000", "PNP"]\n{% if punktuj_monografie %}\nAND punkty_kbn > 0\n{% endif %}\nAND wydzial = {{ obiekt.pk|default:0 }}	t	77	dsl	{}
-18	2.1. Autorstwo monografii naukowej - uczelnia	typ_odpowiedzialnosci IN ["aut.", "Aut. koresp."]\nAND charakter IN ["KSZ", "KSP", "KS", "H"]\nAND NOT (charakter IN ["KS", "KSP", "KSZ"] AND (typ_kbn = "000" OR typ_kbn="PNP"))\n{% if punktuj_monografie %}\nAND punkty_kbn > 0\n{% endif %}	t	77	dsl	{}
-19	2.2 Autorstwo rozdziału w monografii naukowej - uczelnia	charakter = "ROZ"\nAND typ_odpowiedzialnosci IN ["aut.", "Aut. koresp."]\nAND NOT (charakter="ROZ" AND (typ_kbn = "000" OR typ_kbn="PNP"))	t	77	dsl	{}
-20	2.3 Redakcja naukowa monografii naukowej wieloautorskiej - uczelnia	typ_odpowiedzialnosci IN ["red.", "red. nauk. wyd. pol."]\nAND charakter IN ["KSZ", "KSP", "KS"]\nAND NOT typ_kbn IN ["000", "PNP"]\n{% if punktuj_monografie %}\nAND punkty_kbn > 0\n{% endif %}	t	77	dsl	{}
-\.
-
-
---
--- Data for Name: flexible_reports_report; Type: TABLE DATA; Schema: public; Owner: -
---
-
-COPY public.flexible_reports_report (id, title, slug, template) FROM stdin;
-1	Raport autorów	raport-autorow	<h1>Raport autora - {{ object }} za\n{% if od_roku == do_roku %}\n    rok {{ od_roku }}\n{% else %}\n    lata {{ od_roku }} - {{ do_roku }}\n{% endif %}\n</h1>\n\n{% load django_tables2 %}\n\n<h2>1. Publikacje w czasopismach naukowych</h2>\n<h3>{{ elements.tabela_1_1.title }}</h3>\n{% if elements.tabela_1_1.object_list.exists %}\n{% render_table elements.tabela_1_1.table %}\n{% else %}\n<p>Nie znaleziono takich rekordów.</p>\n{% endif %}\n\n<h3>{{ elements.tabela_1_2.title }}</h3>\n{% if elements.tabela_1_2.object_list.exists %}\n{% render_table elements.tabela_1_2.table %}\n{% else %}\n<p>Nie znaleziono takich rekordów.</p>\n{% endif %}\n\n<h3>{{ elements.tabela_1_3.title }}</h3>\n{% if elements.tabela_1_3.object_list.exists %}\n{% render_table elements.tabela_1_3.table %}\n{% else %}\n<p>Nie znaleziono takich rekordów.</p>\n{% endif %}\n\n<h3>{{ elements.tabela_1_4.title }}</h3>\n{% if elements.tabela_1_4.object_list.exists %}\n{% render_table elements.tabela_1_4.table %}\n{% else %}\n<p>Nie znaleziono takich rekordów.</p>\n{% endif %}\n\n<h3>{{ elements.tabela_1_5.title }}</h3>\n{% if elements.tabela_1_5.object_list.exists %}\n{% render_table elements.tabela_1_5.table %}\n{% else %}\n<p>Nie znaleziono takich rekordów.</p>\n{% endif %}\n\n<h2>2. Monografie naukowe</h2>\n<h3>{{ elements.tabela_2_1.title }}</h3>\n{% if elements.tabela_2_1.object_list.exists %}\n{% render_table elements.tabela_2_1.table %}\n{% else %}\n<p>Nie znaleziono takich rekordów.</p>\n{% endif %}\n\n<h3>{{ elements.tabela_2_2.title }}</h3>\n{% if elements.tabela_2_2.object_list.exists %}\n{% render_table elements.tabela_2_2.table %}\n{% else %}\n<p>Nie znaleziono takich rekordów.</p>\n{% endif %}\n\n<h3>{{ elements.tabela_2_3.title }}</h3>\n{% if elements.tabela_2_3.object_list.exists %}\n{% render_table elements.tabela_2_3.table %}\n{% else %}\n<p>Nie znaleziono takich rekordów.</p>\n{% endif %}\n\n<h2>3. Patenty</h2>\n<h3>{{ elements.tabela_3.title }}</h3>\n{% if elements.tabela_3.object_list.exists %}\n{% render_table elements.tabela_3.table %}\n{% else %}\n<p>Nie znaleziono takich rekordów.</p>\n{% endif %}\n\n<h2>4. Inne</h2>\n<h3>{{ elements.tabela_4_1.title }}</h3>\n{% if elements.tabela_4_1.object_list.exists %}\n{% render_table elements.tabela_4_1.table %}\n{% else %}\n<p>Nie znaleziono takich rekordów.</p>\n{% endif %}\n\n<h3>{{ elements.tabela_4_2.title }}</h3>\n{% if elements.tabela_4_2.object_list.exists %}\n{% render_table elements.tabela_4_2.table %}\n{% else %}\n<p>Nie znaleziono takich rekordów.</p>\n{% endif %}\n\n<h3>{{ elements.tabela_4_3.title }}</h3>\n{% if elements.tabela_4_3.object_list.exists %}\n{% render_table elements.tabela_4_3.table %}\n{% else %}\n<p>Nie znaleziono takich rekordów.</p>\n{% endif %}\n\n
-2	Raport jednostek	raport-jednostek	<h1>Raport jednostki - {{ object }} za\n{% if od_roku == do_roku %}\n    rok {{ od_roku }}\n{% else %}\n    lata {{ od_roku }} - {{ do_roku }}\n{% endif %}\n</h1>\n\n{% load django_tables2 %}\n\n<h2>1. Publikacje w czasopismach naukowych</h2>\n<h3>{{ elements.tabela_1_1.title }}</h3>\n{% if elements.tabela_1_1.object_list.exists %}\n{% render_table elements.tabela_1_1.table %}\n{% else %}\n<p>Nie znaleziono takich rekordów.</p>\n{% endif %}\n\n<h3>{{ elements.tabela_1_2.title }}</h3>\n{% if elements.tabela_1_2.object_list.exists %}\n{% render_table elements.tabela_1_2.table %}\n{% else %}\n<p>Nie znaleziono takich rekordów.</p>\n{% endif %}\n\n<h3>{{ elements.tabela_1_3.title }}</h3>\n{% if elements.tabela_1_3.object_list.exists %}\n{% render_table elements.tabela_1_3.table %}\n{% else %}\n<p>Nie znaleziono takich rekordów.</p>\n{% endif %}\n\n<h3>{{ elements.tabela_1_4.title }}</h3>\n{% if elements.tabela_1_4.object_list.exists %}\n{% render_table elements.tabela_1_4.table %}\n{% else %}\n<p>Nie znaleziono takich rekordów.</p>\n{% endif %}\n\n<h3>{{ elements.tabela_1_5.title }}</h3>\n{% if elements.tabela_1_5.object_list.exists %}\n{% render_table elements.tabela_1_5.table %}\n{% else %}\n<p>Nie znaleziono takich rekordów.</p>\n{% endif %}\n\n<h2>2. Monografie naukowe</h2>\n<h3>{{ elements.tabela_2_1.title }}</h3>\n{% if elements.tabela_2_1.object_list.exists %}\n{% render_table elements.tabela_2_1.table %}\n{% else %}\n<p>Nie znaleziono takich rekordów.</p>\n{% endif %}\n\n<h3>{{ elements.tabela_2_2.title }}</h3>\n{% if elements.tabela_2_2.object_list.exists %}\n{% render_table elements.tabela_2_2.table %}\n{% else %}\n<p>Nie znaleziono takich rekordów.</p>\n{% endif %}\n\n<h3>{{ elements.tabela_2_3.title }}</h3>\n{% if elements.tabela_2_3.object_list.exists %}\n{% render_table elements.tabela_2_3.table %}\n{% else %}\n<p>Nie znaleziono takich rekordów.</p>\n{% endif %}\n\n<h2>3. Patenty</h2>\n<h3>{{ elements.tabela_3.title }}</h3>\n{% if elements.tabela_3.object_list.exists %}\n{% render_table elements.tabela_3.table %}\n{% else %}\n<p>Nie znaleziono takich rekordów.</p>\n{% endif %}\n\n<h2>4. Inne</h2>\n<h3>{{ elements.tabela_4_1.title }}</h3>\n{% if elements.tabela_4_1.object_list.exists %}\n{% render_table elements.tabela_4_1.table %}\n{% else %}\n<p>Nie znaleziono takich rekordów.</p>\n{% endif %}\n\n<h3>{{ elements.tabela_4_2.title }}</h3>\n{% if elements.tabela_4_2.object_list.exists %}\n{% render_table elements.tabela_4_2.table %}\n{% else %}\n<p>Nie znaleziono takich rekordów.</p>\n{% endif %}\n\n<h3>{{ elements.tabela_4_3.title }}</h3>\n{% if elements.tabela_4_3.object_list.exists %}\n{% render_table elements.tabela_4_3.table %}\n{% else %}\n<p>Nie znaleziono takich rekordów.</p>\n{% endif %}\n\n
-3	Raport wydziałów	raport-wydzialow	<h1>Raport wydziału - {{ object }} za\n{% if od_roku == do_roku %}\n    rok {{ od_roku }}\n{% else %}\n    lata {{ od_roku }} - {{ do_roku }}\n{% endif %}\n</h1>\n\n{% load django_tables2 %}\n\n<h2>1. Publikacje w czasopismach naukowych</h2>\n<h3>{{ elements.tabela_1_1.title }}</h3>\n{% if elements.tabela_1_1.object_list.exists %}\n{% render_table elements.tabela_1_1.table %}\n{% else %}\n<p>Nie znaleziono takich rekordów.</p>\n{% endif %}\n\n<h3>{{ elements.tabela_1_2.title }}</h3>\n{% if elements.tabela_1_2.object_list.exists %}\n{% render_table elements.tabela_1_2.table %}\n{% else %}\n<p>Nie znaleziono takich rekordów.</p>\n{% endif %}\n\n<h3>{{ elements.tabela_1_3.title }}</h3>\n{% if elements.tabela_1_3.object_list.exists %}\n{% render_table elements.tabela_1_3.table %}\n{% else %}\n<p>Nie znaleziono takich rekordów.</p>\n{% endif %}\n\n<h3>{{ elements.tabela_1_4.title }}</h3>\n{% if elements.tabela_1_4.object_list.exists %}\n{% render_table elements.tabela_1_4.table %}\n{% else %}\n<p>Nie znaleziono takich rekordów.</p>\n{% endif %}\n\n<h3>{{ elements.tabela_1_5.title }}</h3>\n{% if elements.tabela_1_5.object_list.exists %}\n{% render_table elements.tabela_1_5.table %}\n{% else %}\n<p>Nie znaleziono takich rekordów.</p>\n{% endif %}\n\n<h2>2. Monografie naukowe</h2>\n<h3>{{ elements.tabela_2_1.title }}</h3>\n{% if elements.tabela_2_1.object_list.exists %}\n{% render_table elements.tabela_2_1.table %}\n{% else %}\n<p>Nie znaleziono takich rekordów.</p>\n{% endif %}\n\n<h3>{{ elements.tabela_2_2.title }}</h3>\n{% if elements.tabela_2_2.object_list.exists %}\n{% render_table elements.tabela_2_2.table %}\n{% else %}\n<p>Nie znaleziono takich rekordów.</p>\n{% endif %}\n\n<h3>{{ elements.tabela_2_3.title }}</h3>\n{% if elements.tabela_2_3.object_list.exists %}\n{% render_table elements.tabela_2_3.table %}\n{% else %}\n<p>Nie znaleziono takich rekordów.</p>\n{% endif %}\n\n<h2>3. Patenty</h2>\n<h3>{{ elements.tabela_3.title }}</h3>\n{% if elements.tabela_3.object_list.exists %}\n{% render_table elements.tabela_3.table %}\n{% else %}\n<p>Nie znaleziono takich rekordów.</p>\n{% endif %}\n\n<h2>4. Inne</h2>\n<h3>{{ elements.tabela_4_1.title }}</h3>\n{% if elements.tabela_4_1.object_list.exists %}\n{% render_table elements.tabela_4_1.table %}\n{% else %}\n<p>Nie znaleziono takich rekordów.</p>\n{% endif %}\n\n<h3>{{ elements.tabela_4_2.title }}</h3>\n{% if elements.tabela_4_2.object_list.exists %}\n{% render_table elements.tabela_4_2.table %}\n{% else %}\n<p>Nie znaleziono takich rekordów.</p>\n{% endif %}\n\n<h3>{{ elements.tabela_4_3.title }}</h3>\n{% if elements.tabela_4_3.object_list.exists %}\n{% render_table elements.tabela_4_3.table %}\n{% else %}\n<p>Nie znaleziono takich rekordów.</p>\n{% endif %}\n\n
-4	Raport uczelni	raport-uczelni	<h1>Raport uczelni - {{ object }} za\n{% if od_roku == do_roku %}\n    rok {{ od_roku }}\n{% else %}\n    lata {{ od_roku }} - {{ do_roku }}\n{% endif %}\n</h1>\n\n{% load django_tables2 %}\n\n<h2>1. Publikacje w czasopismach naukowych</h2>\n<h3>{{ elements.tabela_1_1.title }}</h3>\n{% if elements.tabela_1_1.object_list.exists %}\n{% render_table elements.tabela_1_1.table %}\n{% else %}\n<p>Nie znaleziono takich rekordów.</p>\n{% endif %}\n\n<h3>{{ elements.tabela_1_2.title }}</h3>\n{% if elements.tabela_1_2.object_list.exists %}\n{% render_table elements.tabela_1_2.table %}\n{% else %}\n<p>Nie znaleziono takich rekordów.</p>\n{% endif %}\n\n<h3>{{ elements.tabela_1_3.title }}</h3>\n{% if elements.tabela_1_3.object_list.exists %}\n{% render_table elements.tabela_1_3.table %}\n{% else %}\n<p>Nie znaleziono takich rekordów.</p>\n{% endif %}\n\n<h3>{{ elements.tabela_1_4.title }}</h3>\n{% if elements.tabela_1_4.object_list.exists %}\n{% render_table elements.tabela_1_4.table %}\n{% else %}\n<p>Nie znaleziono takich rekordów.</p>\n{% endif %}\n\n<h3>{{ elements.tabela_1_5.title }}</h3>\n{% if elements.tabela_1_5.object_list.exists %}\n{% render_table elements.tabela_1_5.table %}\n{% else %}\n<p>Nie znaleziono takich rekordów.</p>\n{% endif %}\n\n<h2>2. Monografie naukowe</h2>\n<h3>{{ elements.tabela_2_1.title }}</h3>\n{% if elements.tabela_2_1.object_list.exists %}\n{% render_table elements.tabela_2_1.table %}\n{% else %}\n<p>Nie znaleziono takich rekordów.</p>\n{% endif %}\n\n<h3>{{ elements.tabela_2_2.title }}</h3>\n{% if elements.tabela_2_2.object_list.exists %}\n{% render_table elements.tabela_2_2.table %}\n{% else %}\n<p>Nie znaleziono takich rekordów.</p>\n{% endif %}\n\n<h3>{{ elements.tabela_2_3.title }}</h3>\n{% if elements.tabela_2_3.object_list.exists %}\n{% render_table elements.tabela_2_3.table %}\n{% else %}\n<p>Nie znaleziono takich rekordów.</p>\n{% endif %}\n\n<h2>3. Patenty</h2>\n<h3>{{ elements.tabela_3.title }}</h3>\n{% if elements.tabela_3.object_list.exists %}\n{% render_table elements.tabela_3.table %}\n{% else %}\n<p>Nie znaleziono takich rekordów.</p>\n{% endif %}\n\n<h2>4. Inne</h2>\n<h3>{{ elements.tabela_4_1.title }}</h3>\n{% if elements.tabela_4_1.object_list.exists %}\n{% render_table elements.tabela_4_1.table %}\n{% else %}\n<p>Nie znaleziono takich rekordów.</p>\n{% endif %}\n\n<h3>{{ elements.tabela_4_2.title }}</h3>\n{% if elements.tabela_4_2.object_list.exists %}\n{% render_table elements.tabela_4_2.table %}\n{% else %}\n<p>Nie znaleziono takich rekordów.</p>\n{% endif %}\n\n<h3>{{ elements.tabela_4_3.title }}</h3>\n{% if elements.tabela_4_3.object_list.exists %}\n{% render_table elements.tabela_4_3.table %}\n{% else %}\n<p>Nie znaleziono takich rekordów.</p>\n{% endif %}\n\n
-\.
-
-
---
--- Data for Name: flexible_reports_reportelement; Type: TABLE DATA; Schema: public; Owner: -
---
-
-COPY public.flexible_reports_reportelement (id, title, "position", slug, datasource_id, parent_id, table_id, data_from, base_model_id) FROM stdin;
-1	1.1. Publikacje w czasopiśmie naukowym posiadającym Impact Factor IF	0	tabela_1_1	1	1	1	0	\N
-2	1.2 Publikacja w czasopiśmie naukowym nieposiadającym IF	1	tabela_1_2	2	1	1	0	\N
-3	1.3 Publikacja w czasopiśmie naukowym znajdującym się w bazie European Reference Index for the Humanities	2	tabela_1_3	3	1	1	0	\N
-4	1.4 Recenzowana publikacja naukowa w języku innym niż polski w zagranicznym czasopiśmie naukowym spoza list MNiSW o objętości co najmniej 0,5 arkusza	3	tabela_1_4	4	1	1	0	\N
-5	1.5 Publikacja w recenzowanych materiałach z konferencji międzynarodowej uwzględnionej w Web of Science.	4	tabela_1_5	5	1	1	0	\N
-6	2.1 Autorstwo monografii naukowej	5	tabela_2_1	6	1	1	0	\N
-7	2.2 Autorstwo rozdziału w monografii naukowej	6	tabela_2_2	7	1	1	0	\N
-8	2.3 Redakcja naukowa monografii naukowej wieloautorskiej	7	tabela_2_3	8	1	1	0	\N
-9	3. Patenty	8	tabela_3	9	1	1	0	\N
-10	4.1. Materiały konferencyjne	9	tabela_4_1	10	1	1	0	\N
-11	4.2. Publikacje popularnonaukowe	10	tabela_4_2	11	1	1	0	\N
-12	4.3. Inne	11	tabela_4_3	\N	1	1	2	77
-13	1.1. Publikacje w czasopiśmie naukowym posiadającym Impact Factor IF	0	tabela_1_1	1	2	1	0	\N
-14	1.2 Publikacja w czasopiśmie naukowym nieposiadającym IF	1	tabela_1_2	2	2	1	0	\N
-15	1.3 Publikacja w czasopiśmie naukowym znajdującym się w bazie European Reference Index for the Humanities	2	tabela_1_3	3	2	1	0	\N
-16	1.4 Recenzowana publikacja naukowa w języku innym niż polski w zagranicznym czasopiśmie naukowym spoza list MNiSW o objętości co najmniej 0,5 arkusza	3	tabela_1_4	4	2	1	0	\N
-17	1.5 Publikacja w recenzowanych materiałach z konferencji międzynarodowej uwzględnionej w Web of Science.	4	tabela_1_5	5	2	1	0	\N
-18	2.1 Autorstwo monografii naukowej	5	tabela_2_1	12	2	1	0	\N
-19	2.2 Autorstwo rozdziału w monografii naukowej	6	tabela_2_2	13	2	1	0	\N
-20	2.3 Redakcja naukowa monografii naukowej wieloautorskiej	7	tabela_2_3	14	2	1	0	\N
-21	3. Patenty	8	tabela_3	9	2	1	0	\N
-22	4.1. Materiały konferencyjne	9	tabela_4_1	10	2	1	0	\N
-23	4.2. Publikacje popularnonaukowe	10	tabela_4_2	11	2	1	0	\N
-24	4.3. Inne	11	tabela_4_3	\N	2	1	2	77
-25	1.1. Publikacje w czasopiśmie naukowym posiadającym Impact Factor IF	0	tabela_1_1	1	3	1	0	\N
-26	1.2 Publikacja w czasopiśmie naukowym nieposiadającym IF	1	tabela_1_2	2	3	1	0	\N
-27	1.3 Publikacja w czasopiśmie naukowym znajdującym się w bazie European Reference Index for the Humanities	2	tabela_1_3	3	3	1	0	\N
-28	1.4 Recenzowana publikacja naukowa w języku innym niż polski w zagranicznym czasopiśmie naukowym spoza list MNiSW o objętości co najmniej 0,5 arkusza	3	tabela_1_4	4	3	1	0	\N
-29	1.5 Publikacja w recenzowanych materiałach z konferencji międzynarodowej uwzględnionej w Web of Science.	4	tabela_1_5	5	3	1	0	\N
-30	2.1 Autorstwo monografii naukowej	5	tabela_2_1	15	3	1	0	\N
-31	2.2 Autorstwo rozdziału w monografii naukowej	6	tabela_2_2	16	3	1	0	\N
-32	2.3 Redakcja naukowa monografii naukowej wieloautorskiej	7	tabela_2_3	17	3	1	0	\N
-33	3. Patenty	8	tabela_3	9	3	1	0	\N
-34	4.1. Materiały konferencyjne	9	tabela_4_1	10	3	1	0	\N
-35	4.2. Publikacje popularnonaukowe	10	tabela_4_2	11	3	1	0	\N
-36	4.3. Inne	11	tabela_4_3	\N	3	1	2	77
-37	1.1. Publikacje w czasopiśmie naukowym posiadającym Impact Factor IF	0	tabela_1_1	1	4	1	0	\N
-38	1.2 Publikacja w czasopiśmie naukowym nieposiadającym IF	1	tabela_1_2	2	4	1	0	\N
-39	1.3 Publikacja w czasopiśmie naukowym znajdującym się w bazie European Reference Index for the Humanities	2	tabela_1_3	3	4	1	0	\N
-40	1.4 Recenzowana publikacja naukowa w języku innym niż polski w zagranicznym czasopiśmie naukowym spoza list MNiSW o objętości co najmniej 0,5 arkusza	3	tabela_1_4	4	4	1	0	\N
-41	1.5 Publikacja w recenzowanych materiałach z konferencji międzynarodowej uwzględnionej w Web of Science.	4	tabela_1_5	5	4	1	0	\N
-42	2.1 Autorstwo monografii naukowej	5	tabela_2_1	18	4	1	0	\N
-43	2.2 Autorstwo rozdziału w monografii naukowej	6	tabela_2_2	19	4	1	0	\N
-44	2.3 Redakcja naukowa monografii naukowej wieloautorskiej	7	tabela_2_3	20	4	1	0	\N
-45	3. Patenty	8	tabela_3	9	4	1	0	\N
-46	4.1. Materiały konferencyjne	9	tabela_4_1	10	4	1	0	\N
-47	4.2. Publikacje popularnonaukowe	10	tabela_4_2	11	4	1	0	\N
-48	4.3. Inne	11	tabela_4_3	\N	4	1	2	77
-\.
-
-
---
--- Data for Name: flexible_reports_table; Type: TABLE DATA; Schema: public; Owner: -
---
-
-COPY public.flexible_reports_table (id, label, sort_option, group_prefix, empty_template, base_model_id, attrs) FROM stdin;
-1	Publikacje autorów	0	\N	<center>Nie znaleziono takich rekordów.</center>	77	{"class": "bpp-table"}
-\.
-
-
---
 -- Data for Name: formdefaults_formfielddefaultvalue; Type: TABLE DATA; Schema: public; Owner: -
 --
 
@@ -16451,25 +16417,16 @@ COPY public.formdefaults_formfielddefaultvalue (id, value, field_id, parent_id, 
 
 COPY public.formdefaults_formfieldrepresentation (id, name, label, klass, "order", parent_id) FROM stdin;
 1	obiekt	Autor	django.forms.models.ModelChoiceField	0	raport_slotow.forms.autor.AutorRaportSlotowForm
-2	od_roku	Od roku	django.forms.fields.IntegerField	1	raport_slotow.forms.autor.AutorRaportSlotowForm
-3	do_roku	Do roku	django.forms.fields.IntegerField	2	raport_slotow.forms.autor.AutorRaportSlotowForm
 4	minimalny_pk	Minimalna wartość PK pracy	django.forms.fields.IntegerField	3	raport_slotow.forms.autor.AutorRaportSlotowForm
 5	dzialanie	Wygeneruj	django.forms.fields.ChoiceField	4	raport_slotow.forms.autor.AutorRaportSlotowForm
 6	slot	Zadana wielkość slotu	django.forms.fields.DecimalField	5	raport_slotow.forms.autor.AutorRaportSlotowForm
 7	_export	Format wyjściowy	django.forms.fields.ChoiceField	6	raport_slotow.forms.autor.AutorRaportSlotowForm
-8	od_roku	Od roku	django.forms.fields.IntegerField	0	raport_slotow.forms.ewaluacja.ParametryRaportSlotowEwaluacjaForm
-9	do_roku	Do roku	django.forms.fields.IntegerField	1	raport_slotow.forms.ewaluacja.ParametryRaportSlotowEwaluacjaForm
 10	_export	Format wyjściowy	django.forms.fields.ChoiceField	2	raport_slotow.forms.ewaluacja.ParametryRaportSlotowEwaluacjaForm
 11	upowaznienie_pbn	Upowaznienie pbn	django.forms.fields.NullBooleanField	3	raport_slotow.forms.ewaluacja.ParametryRaportSlotowEwaluacjaForm
-12	od_roku	Od roku	django.forms.fields.IntegerField	0	raport_slotow.forms.uczelnia.UtworzRaportSlotowUczelniaForm
-13	do_roku	Do roku	django.forms.fields.IntegerField	1	raport_slotow.forms.uczelnia.UtworzRaportSlotowUczelniaForm
 14	akcja	Akcja	django.forms.fields.TypedChoiceField	2	raport_slotow.forms.uczelnia.UtworzRaportSlotowUczelniaForm
-15	slot	Slot	django.forms.fields.DecimalField	3	raport_slotow.forms.uczelnia.UtworzRaportSlotowUczelniaForm
 16	minimalny_pk	Minimalny pk	django.forms.fields.DecimalField	4	raport_slotow.forms.uczelnia.UtworzRaportSlotowUczelniaForm
 17	dziel_na_jednostki_i_wydzialy	Dziel na jednostki i wydziały	django.forms.fields.BooleanField	5	raport_slotow.forms.uczelnia.UtworzRaportSlotowUczelniaForm
 18	pokazuj_zerowych	Dołączaj autorów z zerowymi slotami	django.forms.fields.BooleanField	6	raport_slotow.forms.uczelnia.UtworzRaportSlotowUczelniaForm
-19	od_roku	Od roku	django.forms.fields.IntegerField	0	nowe_raporty.forms_dynamiczne.RaportForm_raport_uczelni
-20	do_roku	Do roku	django.forms.fields.IntegerField	1	nowe_raporty.forms_dynamiczne.RaportForm_raport_uczelni
 21	_export	Format wyjściowy	django.forms.fields.ChoiceField	2	nowe_raporty.forms_dynamiczne.RaportForm_raport_uczelni
 22	tylko_z_jednostek_uczelni	Tylko prace afiliowane	django.forms.fields.BooleanField	3	nowe_raporty.forms_dynamiczne.RaportForm_raport_uczelni
 23	punkty_mnisw_od	Punkty MNiSW od	django.forms.fields.FloatField	4	nowe_raporty.forms_dynamiczne.RaportForm_raport_uczelni
@@ -16477,8 +16434,6 @@ COPY public.formdefaults_formfieldrepresentation (id, name, label, klass, "order
 25	if_od	Impact Factor od	django.forms.fields.FloatField	6	nowe_raporty.forms_dynamiczne.RaportForm_raport_uczelni
 26	if_do	Impact Factor do	django.forms.fields.FloatField	7	nowe_raporty.forms_dynamiczne.RaportForm_raport_uczelni
 27	tylko_punktowane	Tylko prace punktowane (pkt MNiSW > 0)	django.forms.fields.BooleanField	8	nowe_raporty.forms_dynamiczne.RaportForm_raport_uczelni
-28	od_roku	Od roku	django.forms.fields.IntegerField	0	nowe_raporty.forms_dynamiczne.RaportForm_raport_wydzialow
-29	do_roku	Do roku	django.forms.fields.IntegerField	1	nowe_raporty.forms_dynamiczne.RaportForm_raport_wydzialow
 30	_export	Format wyjściowy	django.forms.fields.ChoiceField	2	nowe_raporty.forms_dynamiczne.RaportForm_raport_wydzialow
 31	tylko_z_jednostek_uczelni	Tylko prace afiliowane	django.forms.fields.BooleanField	3	nowe_raporty.forms_dynamiczne.RaportForm_raport_wydzialow
 32	punkty_mnisw_od	Punkty MNiSW od	django.forms.fields.FloatField	4	nowe_raporty.forms_dynamiczne.RaportForm_raport_wydzialow
@@ -16487,8 +16442,6 @@ COPY public.formdefaults_formfieldrepresentation (id, name, label, klass, "order
 35	if_do	Impact Factor do	django.forms.fields.FloatField	7	nowe_raporty.forms_dynamiczne.RaportForm_raport_wydzialow
 36	tylko_punktowane	Tylko prace punktowane (pkt MNiSW > 0)	django.forms.fields.BooleanField	8	nowe_raporty.forms_dynamiczne.RaportForm_raport_wydzialow
 37	obiekt	Wydział	django.forms.models.ModelChoiceField	9	nowe_raporty.forms_dynamiczne.RaportForm_raport_wydzialow
-38	od_roku	Od roku	django.forms.fields.IntegerField	0	nowe_raporty.forms_dynamiczne.RaportForm_raport_jednostek
-39	do_roku	Do roku	django.forms.fields.IntegerField	1	nowe_raporty.forms_dynamiczne.RaportForm_raport_jednostek
 40	_export	Format wyjściowy	django.forms.fields.ChoiceField	2	nowe_raporty.forms_dynamiczne.RaportForm_raport_jednostek
 41	tylko_z_jednostek_uczelni	Tylko prace afiliowane	django.forms.fields.BooleanField	3	nowe_raporty.forms_dynamiczne.RaportForm_raport_jednostek
 42	punkty_mnisw_od	Punkty MNiSW od	django.forms.fields.FloatField	4	nowe_raporty.forms_dynamiczne.RaportForm_raport_jednostek
@@ -16497,8 +16450,6 @@ COPY public.formdefaults_formfieldrepresentation (id, name, label, klass, "order
 45	if_do	Impact Factor do	django.forms.fields.FloatField	7	nowe_raporty.forms_dynamiczne.RaportForm_raport_jednostek
 46	tylko_punktowane	Tylko prace punktowane (pkt MNiSW > 0)	django.forms.fields.BooleanField	8	nowe_raporty.forms_dynamiczne.RaportForm_raport_jednostek
 47	obiekt	Jednostka	django.forms.models.ModelChoiceField	9	nowe_raporty.forms_dynamiczne.RaportForm_raport_jednostek
-48	od_roku	Od roku	django.forms.fields.IntegerField	0	nowe_raporty.forms_dynamiczne.RaportForm_raport_autorow
-49	do_roku	Do roku	django.forms.fields.IntegerField	1	nowe_raporty.forms_dynamiczne.RaportForm_raport_autorow
 50	_export	Format wyjściowy	django.forms.fields.ChoiceField	2	nowe_raporty.forms_dynamiczne.RaportForm_raport_autorow
 51	tylko_z_jednostek_uczelni	Tylko prace afiliowane	django.forms.fields.BooleanField	3	nowe_raporty.forms_dynamiczne.RaportForm_raport_autorow
 52	punkty_mnisw_od	Punkty MNiSW od	django.forms.fields.FloatField	4	nowe_raporty.forms_dynamiczne.RaportForm_raport_autorow
@@ -16738,36 +16689,6 @@ COPY public.messages_extends_message (id, message, level, extra_tags, created, m
 --
 
 COPY public.multiseek_searchform (id, name, public, data, owner_id) FROM stdin;
-\.
-
-
---
--- Data for Name: nowe_raporty_definicjaraportu; Type: TABLE DATA; Schema: public; Owner: -
---
-
-COPY public.nowe_raporty_definicjaraportu (id, nazwa, slug, poziom, kolejnosc, aktywny, poziom_dostepu, report_id) FROM stdin;
-1	Raport autorów	raport-autorow	autor	3	t	wszyscy	1
-2	Raport jednostek	raport-jednostek	jednostka	2	t	zalogowani	2
-3	Raport wydziałów	raport-wydzialow	wydzial	1	t	zalogowani	3
-4	Raport uczelni	raport-uczelni	uczelnia	0	f	zalogowani	4
-\.
-
-
---
--- Data for Name: nowe_raporty_definicjaraportu_uczelnie; Type: TABLE DATA; Schema: public; Owner: -
---
-
-COPY public.nowe_raporty_definicjaraportu_uczelnie (id, definicjaraportu_id, uczelnia_id) FROM stdin;
-\.
-
-
---
--- Data for Name: nowe_raporty_definicjaraportu_wymagane_grupy; Type: TABLE DATA; Schema: public; Owner: -
---
-
-COPY public.nowe_raporty_definicjaraportu_wymagane_grupy (id, definicjaraportu_id, group_id) FROM stdin;
-1	2	9
-2	3	9
 \.
 
 
@@ -17275,7 +17196,7 @@ SELECT pg_catalog.setval('public.auth_group_id_seq', 9, true);
 -- Name: auth_group_permissions_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
-SELECT pg_catalog.setval('public.auth_group_permissions_id_seq', 300, true);
+SELECT pg_catalog.setval('public.auth_group_permissions_id_seq', 396, true);
 
 
 --
@@ -18161,48 +18082,6 @@ SELECT pg_catalog.setval('public.favicon_faviconimg_id_seq', 1, false);
 
 
 --
--- Name: flexible_reports_column_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
---
-
-SELECT pg_catalog.setval('public.flexible_reports_column_id_seq', 7, true);
-
-
---
--- Name: flexible_reports_columnorder_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
---
-
-SELECT pg_catalog.setval('public.flexible_reports_columnorder_id_seq', 2, true);
-
-
---
--- Name: flexible_reports_datasource_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
---
-
-SELECT pg_catalog.setval('public.flexible_reports_datasource_id_seq', 20, true);
-
-
---
--- Name: flexible_reports_report_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
---
-
-SELECT pg_catalog.setval('public.flexible_reports_report_id_seq', 4, true);
-
-
---
--- Name: flexible_reports_reportelement_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
---
-
-SELECT pg_catalog.setval('public.flexible_reports_reportelement_id_seq', 48, true);
-
-
---
--- Name: flexible_reports_table_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
---
-
-SELECT pg_catalog.setval('public.flexible_reports_table_id_seq', 1, true);
-
-
---
 -- Name: formdefaults_formfielddefaultvalue_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
@@ -18354,27 +18233,6 @@ SELECT pg_catalog.setval('public.messages_extends_message_id_seq', 1, false);
 --
 
 SELECT pg_catalog.setval('public.multiseek_searchform_id_seq', 1, false);
-
-
---
--- Name: nowe_raporty_definicjaraportu_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
---
-
-SELECT pg_catalog.setval('public.nowe_raporty_definicjaraportu_id_seq', 4, true);
-
-
---
--- Name: nowe_raporty_definicjaraportu_uczelnie_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
---
-
-SELECT pg_catalog.setval('public.nowe_raporty_definicjaraportu_uczelnie_id_seq', 1, false);
-
-
---
--- Name: nowe_raporty_definicjaraportu_wymagane_grupy_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
---
-
-SELECT pg_catalog.setval('public.nowe_raporty_definicjaraportu_wymagane_grupy_id_seq', 2, true);
 
 
 --
