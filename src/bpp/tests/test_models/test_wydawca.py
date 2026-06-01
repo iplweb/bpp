@@ -1,5 +1,6 @@
 import pytest
 from denorm.models import DirtyInstance
+from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ValidationError
 from django.db.models import ProtectedError
 from model_bakery import baker
@@ -57,7 +58,12 @@ def test_wydawnictwo_zwarte_wydawca_change_alias_dla(
     wydawca.alias_dla = wydawca2
     wydawca.save()
 
-    assert DirtyInstance.objects.all().count() == 5
+    # denorm 1.11+ dedupuje powtorzone enqueue przez UNIQUE
+    # denorm_dirtyinstance_unique. Pozostaja 4 odrebne markery: dwa rekordy
+    # Wydawca (calymi instancjami) + dwa cache'owane pola wyd. zwartego
+    # (cached_punkty_dyscyplin, opis_bibliograficzny_cache). Wczesniej jeden
+    # z nich byl wstawiany dwukrotnie, co dawalo 5.
+    assert DirtyInstance.objects.all().count() == 4
 
 
 @pytest.mark.django_db
@@ -81,9 +87,21 @@ def test_wydawnictwo_zwarte_wydawca_change_poziom_ten_sam_rok(
     # Tu przebuduje wydawce + liste poziomow na wydawcy
     denorms.flush(run_once=True)
 
-    # ... a teraz bedzie przebudowywał wyd. zwrate
-    assert DirtyInstance.objects.all().count() == 1
-    assert DirtyInstance.objects.first().object_id == wydawnictwo_zwarte.pk
+    # ... a teraz bedzie przebudowywał wyd. zwrate.
+    #
+    # denorm 1.11+ przy przebudowie Wydawcy re-dirty'uje rowniez sam rekord
+    # Wydawcy (marker calej instancji, func_name=None), wiec po jednym
+    # run_once w kolejce sa 2 markery: downstream wyd. zwarte
+    # (cached_punkty_dyscyplin) + Wydawca. Indeks denorm_dirtyinstance_unique
+    # ich NIE scala — to rozne content_type. Istotne behawioralnie jest, ze
+    # wyd. zwarte zostalo zaplanowane do przeliczenia, a kolejka domyka sie
+    # do zera po pelnym flushu (sprawdzona konwergencja, bez petli).
+    zwarte_ct = ContentType.objects.get_for_model(wydawnictwo_zwarte)
+    assert DirtyInstance.objects.filter(
+        content_type=zwarte_ct, object_id=wydawnictwo_zwarte.pk
+    ).exists()
+    denorms.flush()
+    assert DirtyInstance.objects.all().count() == 0
 
 
 @pytest.mark.django_db
