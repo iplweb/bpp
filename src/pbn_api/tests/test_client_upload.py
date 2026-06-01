@@ -177,8 +177,10 @@ def test_PBNClient_post_publication_no_statements(
     pbn_client.transport.return_values[PBN_GET_PUBLICATION_BY_ID_URL.format(id=456)] = (
         MOCK_RETURNED_MONGODB_DATA
     )
-    from fixtures import MOCK_RETURNED_INSTITUTION_PUBLICATION_V2_DATA
-    from fixtures.pbn_api import pbn_pageable_json
+    from fixtures.pbn_api import (
+        MOCK_RETURNED_INSTITUTION_PUBLICATION_V2_DATA,
+        pbn_pageable_json,
+    )
 
     pbn_client.transport.return_values[
         PBN_GET_INSTITUTION_PUBLICATIONS_V2 + "?publicationId=123&size=10"
