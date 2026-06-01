@@ -1,4 +1,7 @@
-import openpyxl
+# openpyxl importowany lokalnie w read_xls_data (jedyny użytkownik): ten moduł
+# ładuje się eager przez integrator2.models.lista_ministerialna już przy
+# django.setup(), a openpyxl ciągnie numpy (~tens MB RSS) do każdego procesu.
+# Patrz analogiczna zmiana w import_common/util.py.
 
 
 def find_header_row(sheet, first_column_value, max_row_range=10, max_col_range=10):
@@ -56,7 +59,7 @@ class ReadDataException(Exception):
     pass
 
 
-def read_xls_data(
+def read_xls_data(  # noqa: C901 — złożoność pre-existing, nie z tego PR
     filename,
     column_mapping,
     header_row_name,
@@ -75,6 +78,8 @@ def read_xls_data(
     :param transformations: słownik funkcji, transformujących wartość z arkusza przed zwróceniem jej
     :return:
     """
+    import openpyxl
+
     book = openpyxl.load_workbook(filename=filename)
     sheets = book.worksheets
     if limit_sheets:
@@ -86,7 +91,7 @@ def read_xls_data(
         header_row_no = find_header_row(sheet, header_row_name)
         if header_row_no is None:
             raise ReadDataException(
-                "Brak wiersza nagłówka, poszukiwano %r" % header_row_name
+                f"Brak wiersza nagłówka, poszukiwano {header_row_name!r}"
             )
         header_row_values = list(sheet.iter_rows(header_row_no, header_row_no + 1))[0]
         read_data_mapping = list(

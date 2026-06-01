@@ -1,17 +1,27 @@
+# PEP 563: adnotacje (np. ``ws: openpyxl...Worksheet``) stają się łańcuchami,
+# więc nie wymagają openpyxl przy imporcie. openpyxl (a przez nie numpy, ~tens
+# MB RSS) ciągnął się eager do każdego procesu, bo ewaluacja2021.models
+# importuje z tego modułu ``InputXLSX``/helper już na ``django.setup()``.
+# openpyxl importujemy lokalnie w funkcjach, które faktycznie tworzą/czytają xlsx.
+from __future__ import annotations
+
 import itertools
+import os
+import random
+import zipfile
 from collections import OrderedDict
 from decimal import Decimal
 from enum import Enum
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
-import openpyxl.worksheet.worksheet
 from django.contrib.sites.models import Site
 from django.utils.functional import cached_property
-from openpyxl.utils import get_column_letter
-from openpyxl.worksheet.table import TableColumn
 from unidecode import unidecode
 
-from bpp.util import worksheet_columns_autosize, worksheet_create_table
+if TYPE_CHECKING:
+    # tylko dla type-checkerów/ruff — runtime importuje openpyxl lokalnie
+    # w funkcjach tworzących/czytających xlsx (patrz komentarz na górze pliku).
+    import openpyxl
 
 
 def chunker(n, iterable):
@@ -30,9 +40,6 @@ class SHUFFLE_TYPE(Enum):
     RANDOM = 4
 
 
-import random
-
-
 def shuffle_array(
     array, start, length, no_shuffles=1, shuffle_type=SHUFFLE_TYPE.MIDDLE
 ):
@@ -45,19 +52,19 @@ def shuffle_array(
         i = random.randint(1, 3)
 
     if i == SHUFFLE_TYPE.BEGIN:
-        for a in range(no_shuffles):
+        for _ in range(no_shuffles):
             random.shuffle(first)
     elif i == SHUFFLE_TYPE.MIDDLE:
-        for a in range(no_shuffles):
+        for _ in range(no_shuffles):
             random.shuffle(second)
     elif i == SHUFFLE_TYPE.END:
-        for a in range(no_shuffles):
+        for _ in range(no_shuffles):
             random.shuffle(third)
 
     return first + second + third
 
 
-def output_table_to_xlsx(
+def output_table_to_xlsx(  # noqa: C901 — złożoność pre-existing, nie z tego PR
     ws: openpyxl.worksheet.worksheet.Worksheet,
     title: str,
     headers: list[str],
@@ -69,6 +76,12 @@ def output_table_to_xlsx(
     autosize_columns: list[str] = None,
     column_widths: dict[int, int] = None,
 ):
+    from openpyxl.styles import Font
+    from openpyxl.utils import get_column_letter
+    from openpyxl.worksheet.table import TableColumn
+
+    from bpp.util import worksheet_columns_autosize, worksheet_create_table
+
     ws.append(headers)
 
     table_columns = tuple(
@@ -93,7 +106,7 @@ def output_table_to_xlsx(
             footer_row.append("")
 
     for cell in ws[ws.max_row : ws.max_row]:
-        cell.font = openpyxl.styles.Font(bold=True)
+        cell.font = Font(bold=True)
 
     first_table_row = ws.max_row
 
@@ -148,7 +161,7 @@ def output_table_to_xlsx(
         ws.column_dimensions[letter].bestFit = True
 
     dont_resize_those_columns = []
-    for ncol, col in enumerate(ws.columns):
+    for ncol, _col in enumerate(ws.columns):
         if headers[ncol] in totals:
             dont_resize_those_columns.append(ncol)
 
@@ -207,6 +220,8 @@ class InputXLSX:
 
     @cached_property
     def workbook(self):
+        import openpyxl
+
         return openpyxl.load_workbook(self.fn)
 
     @cached_property
@@ -250,13 +265,9 @@ def float_or_string_or_int_or_none_to_decimal(i, decimal_places=4):
     raise NotImplementedError(f"Type {type(i)} not supported.")
 
 
-import os
-import zipfile
-
-
 def zipdir(path, ziph):
     # https://stackoverflow.com/a/1855118/401516
-    for root, dirs, files in os.walk(path):
+    for root, _dirs, files in os.walk(path):
         for file in files:
             ziph.write(
                 os.path.join(root, file),

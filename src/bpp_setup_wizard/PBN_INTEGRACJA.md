@@ -63,7 +63,7 @@ Po uzyskaniu danych z PBN, wprowadź je podczas konfiguracji uczelni:
 
 ### Wsparcie
 - Oficjalna dokumentacja PBN: https://pbn.nauka.gov.pl/centrum-pomocy/
-- Dokumentacja integracji BPP z PBN: https://bpp.readthedocs.io/pl/latest/konfiguracja_pbn.html
+- Dokumentacja integracji BPP z PBN: https://iplweb.github.io/bpp/konfiguracja_pbn/
 - Przykłady i najlepsze praktyki: https://bpp.iplweb.pl/zrodla
 
 ## Często zadawane pytania
