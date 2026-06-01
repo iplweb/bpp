@@ -153,8 +153,29 @@ def select_select2_autocomplete(
         timeout=timeout,
     )
 
-    # Press Enter to select the first/highlighted result
-    search_input.press("Enter")
+    # Select the result deterministically. Pressing Enter blindly picks the
+    # FIRST highlighted option, which under CI timing can be a stale/broader
+    # intermediate AJAX result: typing "Aut2…" character-by-character may, when
+    # press_sequentially runs slower than Select2's debounce, momentarily show
+    # the results for "Aut…" — which also contain a *different* author sharing
+    # the prefix. Enter then silently selects that wrong author; the mistake
+    # only surfaces later as a unique-constraint violation on submit (two
+    # formset rows pointing at the same autor_id). So: prefer clicking the
+    # specific option whose visible text contains the full search term. Only if
+    # no such option exists — fields where the search term is not a substring
+    # of the rendered label, e.g. generated "zapisany jako" name variants — do
+    # we fall back to Enter-on-first-highlight.
+    option_selector = (
+        ".select2-results__option:not(.loading-results):not(.select2-results__message)"
+    )
+    matching_option = page.locator(option_selector).filter(has_text=value).first
+    try:
+        matching_option.wait_for(state="visible", timeout=2000)
+        matching_option.click()
+    except Exception:
+        # No option literally containing the search term — fall back to
+        # selecting the first/highlighted result via Enter.
+        search_input.press("Enter")
 
     # Wait for the actual signals that selection propagated:
     # (1) Select2 closes the dropdown after Enter, (2) underlying <select>
