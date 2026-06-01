@@ -362,10 +362,26 @@ tests-fresh: destroy-test-databases tests ## Jak `tests`, ale od zera (destroy-t
 # Regenerate baseline-sql/baseline.sql by spinning up an isolated
 # postgres (via testcontainers), running migrate, dumping, and writing
 # baseline.meta.json. Commit the refreshed files to git.
-rebuild-baseline: ## Regeneruj baseline.sql do przyspieszenia testów (commit efektu!)
+rebuild-baseline: ## Regeneruj baseline.sql OD ZERA (pełny reset; duży diff)
 	DJANGO_BPP_SKIP_DOTENV=1 uv run python src/manage.py baseline_rebuild
 	@echo ""
 	@echo "Baseline regenerated. Files:"
+	@ls -lh baseline-sql/baseline.sql baseline-sql/baseline.meta.json
+	@echo ""
+	@echo "Don't forget to commit:"
+	@echo "    git add baseline-sql/baseline.sql baseline-sql/baseline.meta.json"
+
+# Update baseline-sql/baseline.sql IN PLACE: load the existing baseline
+# into an isolated postgres, apply pending migrations, dump back. Preserves
+# auto-increment IDs and the existing dump representation, so the diff is
+# just the delta of the new migrations -- no full auth/* table churn (column
+# reordering, IDENTITY-vs-serial) that the from-scratch `rebuild-baseline`
+# produces. This is the usual way to refresh the baseline after adding
+# migrations; reach for `rebuild-baseline` only for a full reset.
+baseline-update: ## Zaktualizuj baseline.sql IN-PLACE (load+migrate+dump; mały diff)
+	DJANGO_BPP_SKIP_DOTENV=1 uv run python src/manage.py baseline_update
+	@echo ""
+	@echo "Baseline updated in place. Files:"
 	@ls -lh baseline-sql/baseline.sql baseline-sql/baseline.meta.json
 	@echo ""
 	@echo "Don't forget to commit:"
@@ -541,7 +557,7 @@ loc: clean ## Pokaż statystyki liczby linii (pygount)
 	pygount -N ... -F "...,staticroot,migrations,fixtures" src --format=summary
 
 
-DOCKER_VERSION=202606.1373
+DOCKER_VERSION=202606.1374
 
 # Cache configuration for docker buildx bake
 # - local: use local cache (default for local builds)

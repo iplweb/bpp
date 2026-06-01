@@ -8,16 +8,13 @@ from crispy_forms_foundation.layout import (
     Row,
     Submit,
 )
-from dal import autocomplete
 from django import forms
 from django.core.exceptions import ValidationError
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db.models.aggregates import Max, Min
 
 from bpp.models import Uczelnia
-from bpp.models.autor import Autor
 from bpp.models.cache import Rekord
-from bpp.models.struktura import Jednostka, Wydzial
 from bpp.util import formdefaults_html_after, formdefaults_html_before, year_last_month
 
 
@@ -55,16 +52,14 @@ class BaseRaportForm(forms.Form):
     )
 
     # Opcje zaawansowane (schowane domyślnie, filtrują cały raport).
-    punkty_mnisw_od = forms.FloatField(required=False, label="Punkty MNiSW od")
-    punkty_mnisw_do = forms.FloatField(required=False, label="Punkty MNiSW do")
-    if_od = forms.FloatField(required=False, label="Impact Factor od")
-    if_do = forms.FloatField(required=False, label="Impact Factor do")
-    punktacja_wewnetrzna_od = forms.FloatField(
-        required=False, label="Punktacja wewnętrzna od"
-    )
-    punktacja_wewnetrzna_do = forms.FloatField(
-        required=False, label="Punktacja wewnętrzna do"
-    )
+    # Labele są krótkie ("od"/"do"), bo nazwę metryki niesie nagłówek grupy
+    # renderowany w _grupa_zakres() — patrz układ "Opcje zaawansowane".
+    punkty_mnisw_od = forms.FloatField(required=False, label="od")
+    punkty_mnisw_do = forms.FloatField(required=False, label="do")
+    if_od = forms.FloatField(required=False, label="od")
+    if_do = forms.FloatField(required=False, label="do")
+    punktacja_wewnetrzna_od = forms.FloatField(required=False, label="od")
+    punktacja_wewnetrzna_do = forms.FloatField(required=False, label="do")
     tylko_punktowane = forms.BooleanField(
         required=False, label="Tylko prace punktowane (pkt MNiSW > 0)"
     )
@@ -139,96 +134,38 @@ class BaseRaportForm(forms.Form):
             if lata["rok__max"] is not None:
                 field.field.validators.append(MaxValueValidator(lata["rok__max"]))
 
-    def _wiersze_zaawansowane(self):
-        wiersze = [
-            Row(
-                Column("punkty_mnisw_od", css_class="large-6 medium-6 small-12"),
-                Column("punkty_mnisw_do", css_class="large-6 medium-6 small-12"),
+    @staticmethod
+    def _grupa_zakres(naglowek, pole_od, pole_do):
+        """Nagłówek metryki + para pól od/do obok siebie (Opcje zaawansowane).
+
+        Inputy zostają w jednym wierszu także na małych ekranach (small-6),
+        bo zakres "od–do" czyta się jako jedna całość.
+        """
+        return [
+            HTML(
+                '<div class="zaawansowane-grupa-naglowek" '
+                'style="font-weight:600;margin:0.75rem 0 0.25rem;">'
+                f"{naglowek}</div>"
             ),
             Row(
-                Column("if_od", css_class="large-6 medium-6 small-12"),
-                Column("if_do", css_class="large-6 medium-6 small-12"),
+                Column(pole_od, css_class="large-6 medium-6 small-6"),
+                Column(pole_do, css_class="large-6 medium-6 small-6"),
             ),
         ]
+
+    def _wiersze_zaawansowane(self):
+        elementy = [
+            *self._grupa_zakres("Punkty MNiSW", "punkty_mnisw_od", "punkty_mnisw_do"),
+            *self._grupa_zakres("Impact Factor", "if_od", "if_do"),
+        ]
         if "punktacja_wewnetrzna_od" in self.fields:
-            wiersze.append(
-                Row(
-                    Column(
-                        "punktacja_wewnetrzna_od",
-                        css_class="large-6 medium-6 small-12",
-                    ),
-                    Column(
-                        "punktacja_wewnetrzna_do",
-                        css_class="large-6 medium-6 small-12",
-                    ),
-                )
+            elementy += self._grupa_zakres(
+                "Punktacja wewnętrzna",
+                "punktacja_wewnetrzna_od",
+                "punktacja_wewnetrzna_do",
             )
-        wiersze.append(Row(Column("tylko_punktowane")))
-        return wiersze
-
-
-class UczelniaRaportForm(BaseRaportForm):
-    OBJ_FIELD = ""
-
-    tylko_z_jednostek_uczelni = forms.BooleanField(
-        initial=True,
-        label="Tylko prace afiliowane",
-        help_text="Odznaczenie tego pola uwzględnia w raporcie rekordy "
-        "w których autor przypisany jest do jednostki uczelni, ale nie afiliuje na nią",
-        required=False,
-    )
-
-
-class WydzialRaportForm(BaseRaportForm):
-    obiekt = forms.ModelChoiceField(
-        label="Wydział",
-        queryset=Wydzial.objects.all(),
-        widget=autocomplete.ModelSelect2(
-            url="bpp:wydzial-autocomplete",
-            attrs={"class": "bpp-autocomplete-wide"},
-        ),
-    )
-
-    tylko_z_jednostek_uczelni = forms.BooleanField(
-        initial=True,
-        label="Tylko prace afiliowane",
-        help_text="Odznaczenie tego pola uwzględnia w raporcie rekordy "
-        "w których autor przypisany jest do jednostki z wybranego wydziału, ale nie afiliuje na nią",
-        required=False,
-    )
-
-
-class JednostkaRaportForm(BaseRaportForm):
-    obiekt = forms.ModelChoiceField(
-        label="Jednostka",
-        queryset=Jednostka.objects.all(),
-        widget=autocomplete.ModelSelect2(url="bpp:jednostka-autocomplete"),
-    )
-
-    tylko_z_jednostek_uczelni = forms.BooleanField(
-        initial=True,
-        label="Tylko prace afiliowane",
-        help_text="Odznaczenie tego pola uwzględnia w raporcie rekordy "
-        "w których autor przypisany jest do wybranej jednostki, ale nie afiliuje na nią",
-        required=False,
-    )
-
-
-class AutorRaportForm(BaseRaportForm):
-    obiekt = forms.ModelChoiceField(
-        label="Autor",
-        queryset=Autor.objects.all(),
-        widget=autocomplete.ModelSelect2(url="bpp:public-autor-autocomplete"),
-    )
-
-    tylko_z_jednostek_uczelni = forms.BooleanField(
-        initial=True,
-        label="Tylko prace z afiliacją uczelni",
-        help_text="Odznaczenie tego pola uwzględnia w raporcie rekordy "
-        "w których autor przypisany jest do jednostek "
-        "pozauczelnianych (obcych).",
-        required=False,
-    )
+        elementy.append(Row(Column("tylko_punktowane")))
+        return elementy
 
 
 def form_class_dla(definicja):

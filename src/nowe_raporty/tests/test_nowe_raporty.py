@@ -1,8 +1,5 @@
-from unittest.mock import patch
-
 import openpyxl
 import pytest
-from django.contrib.auth.models import Group
 from django.contrib.contenttypes.models import ContentType
 from django.urls import reverse
 from flexible_reports.models import (
@@ -17,108 +14,14 @@ from formdefaults.models import FormRepresentation
 from model_bakery import baker
 from six import BytesIO
 
-from bpp.models import OpcjaWyswietlaniaField
 from bpp.models.autor import Autor
 from bpp.models.cache import Rekord
-from bpp.models.struktura import Jednostka, Wydzial
+from bpp.models.struktura import Jednostka
 from bpp.models.wydawnictwo_ciagle import Wydawnictwo_Ciagle
-from nowe_raporty.views import (
-    AutorRaportFormView,
-    GenerujRaportDlaAutora,
-    GenerujRaportDlaJednostki,
-    GenerujRaportDlaWydzialu,
-    JednostkaRaportFormView,
-    WydzialRaportFormView,
-)
-
-
-@pytest.mark.django_db
-@pytest.mark.parametrize(
-    "view,klass",
-    [
-        ("autor_generuj", Autor),
-        ("jednostka_generuj", Jednostka),
-        ("wydzial_generuj", Wydzial),
-    ],
-)
-def test_view_raport_nie_zdefiniowany(generuj_raporty_app, view, klass):
-    obj = baker.make(klass)
-    v = reverse("nowe_raporty:" + view, args=(obj.pk, 2017, 2017))
-    res = generuj_raporty_app.get(v)
-
-    assert "Nie znaleziono definicji" in res.text
-
-
-# Brak definicji raportu (flexible_reports.Report) na stronie FORMULARZA nie moze
-# konczyc sie twardym 404 - zamiast tego przyjazny komunikat + (dla redaktora)
-# link do modulu redagowania.
-
-FORM_BRAK_DEFINICJI = [
-    ("nowe_raporty:autor_form", "raport-autorow"),
-    ("nowe_raporty:jednostka_form", "raport-jednostek"),
-    ("nowe_raporty:wydzial_form", "raport-wydzialow"),
-    ("nowe_raporty:uczelnia_form", "raport-uczelni"),
-]
-
-
-@pytest.mark.django_db
-@pytest.mark.parametrize("url_name,slug", FORM_BRAK_DEFINICJI)
-def test_form_brak_definicji_nie_404(generuj_raporty_app, url_name, slug):
-    # Bez utworzonego Report strona formularza musi zwrocic 200 z komunikatem,
-    # a nie 404.
-    res = generuj_raporty_app.get(reverse(url_name))
-    assert res.status_code == 200
-    assert "nie został jeszcze skonfigurowany" in res.text
-
-
-@pytest.mark.django_db
-@pytest.mark.parametrize("url_name,slug", FORM_BRAK_DEFINICJI)
-def test_form_brak_definicji_redaktor_widzi_link(
-    generuj_raporty_app, normal_django_user, url_name, slug
-):
-    # Redaktor (grupa "raporty") dostaje link do modulu redagowania z
-    # prefillowanym slugiem.
-    normal_django_user.groups.add(Group.objects.get_or_create(name="raporty")[0])
-    res = generuj_raporty_app.get(reverse(url_name))
-    assert res.status_code == 200
-    assert "report/add" in res.text
-    assert slug in res.text
-
-
-@pytest.mark.django_db
-@pytest.mark.parametrize("url_name,slug", FORM_BRAK_DEFINICJI)
-def test_form_brak_definicji_zwykly_user_widzi_kontakt(
-    generuj_raporty_app, url_name, slug
-):
-    # Uzytkownik bez uprawnien redakcyjnych widzi prosbe o kontakt, bez linku
-    # do panelu admina.
-    res = generuj_raporty_app.get(reverse(url_name))
-    assert res.status_code == 200
-    assert "Skontaktuj się z administratorem" in res.text
-    assert "report/add" not in res.text
-
-
-@pytest.mark.django_db
-@pytest.mark.parametrize(
-    "view,klass,report_slug",
-    [
-        (GenerujRaportDlaAutora, Autor, "raport-autorow"),
-        (GenerujRaportDlaJednostki, Jednostka, "raport-jednostek"),
-        (GenerujRaportDlaWydzialu, Wydzial, "raport-wydzialow"),
-    ],
-)
-def test_view_raport_zdefiniowany(view, klass, report_slug, rf):
-    obj = baker.make(klass)
-    v = view(kwargs=dict(od_roku=2017, do_roku=2017))
-    v.object = obj
-    baker.make(Report, slug=report_slug)
-
-    v.request = rf.get("/")
-    ret = v.get_context_data()
-
-    assert ret["report"] is not None
-
-    assert ret["report"].base_queryset.all().count() == 0
+from nowe_raporty.forms import form_class_dla
+from nowe_raporty.models import DefinicjaRaportu
+from nowe_raporty.seeding import seed_default_reports
+from nowe_raporty.views import RaportGenerujView
 
 
 @pytest.fixture
@@ -147,285 +50,6 @@ def test_rekord_prace_autora_z_afiliowanych_jednostek(autor):
     assert Rekord.objects.prace_autora_z_afiliowanych_jednostek(autor).count() == 1
 
 
-def test_GenerujRaportDlaAutora_get_base_queryset(rf):
-    with patch.object(
-        Rekord.objects, "prace_autora_z_afiliowanych_jednostek"
-    ) as prace_z_afiliowanych:
-        with patch.object(Rekord.objects, "prace_autora") as prace_autora:
-            x = GenerujRaportDlaAutora()
-            x.request = rf.get("/", data={"_tzju": "True"})
-            x.object = None
-            x.get_base_queryset()
-
-            prace_z_afiliowanych.assert_called_once()
-            prace_autora.assert_not_called()
-
-    with patch.object(
-        Rekord.objects, "prace_autora_z_afiliowanych_jednostek"
-    ) as prace_z_afiliowanych:
-        with patch.object(Rekord.objects, "prace_autora") as prace_autora:
-            x = GenerujRaportDlaAutora()
-            x.request = rf.get("/", data={"_tzju": "False"})
-            x.object = None
-            x.get_base_queryset()
-
-            prace_z_afiliowanych.assert_not_called()
-            prace_autora.assert_called_once()
-
-
-@pytest.mark.django_db
-def test_czy_jednostka_form_niewidoczny_dla_anonimow(webtest_app, uczelnia):
-    baker.make(Report, slug="raport-jednostek")
-    res = webtest_app.get(reverse("nowe_raporty:jednostka_form"))
-    assert res.status_code == 302
-    assert "login" in res.location
-
-
-@pytest.mark.django_db
-def test_czy_jednostka_form_widoczny_dla_zalogowanych(generuj_raporty_app):
-    baker.make(Report, slug="raport-jednostek")
-    res = generuj_raporty_app.get(reverse("nowe_raporty:jednostka_form"))
-    assert res.status_code == 200
-
-
-@pytest.mark.django_db
-def test_czy_generuj_jednostka_niewidoczny_dla_anonimow(webtest_app, jednostka):
-    baker.make(Report, slug="raport-jednostek")
-    res = webtest_app.get(
-        reverse("nowe_raporty:jednostka_generuj", args=(jednostka.pk, 2018, 2020))
-    )
-    assert res.status_code == 302
-    assert "login" in res.location
-
-
-@pytest.mark.django_db
-def test_czy_generuj_jednostka_widoczny_dla_zalogowanych(
-    generuj_raporty_app, jednostka, normal_django_user, grupa_raporty_wyswietlanie
-):
-    baker.make(Report, slug="raport-jednostek")
-    res = generuj_raporty_app.get(
-        reverse("nowe_raporty:jednostka_generuj", args=(jednostka.pk, 2018, 2020))
-    )
-    assert res.status_code == 200
-
-
-@pytest.mark.django_db
-def test_czy_wydzial_form_niewidoczny_dla_anonimow(webtest_app, uczelnia):
-    baker.make(Report, slug="raport-wydzialow")
-    res = webtest_app.get(reverse("nowe_raporty:wydzial_form"))
-    assert res.status_code == 302
-    assert "login" in res.location
-
-
-@pytest.mark.django_db
-def test_czy_wydzial_form_widoczny_dla_zalogowanych(generuj_raporty_app):
-    baker.make(Report, slug="raport-wydzialow")
-    res = generuj_raporty_app.get(reverse("nowe_raporty:wydzial_form"))
-    assert res.status_code == 200
-
-
-@pytest.mark.django_db
-def test_czy_generuj_wydzial_niewidoczny_dla_anonimow(webtest_app, wydzial):
-    baker.make(Report, slug="raport-wydzialow")
-    res = webtest_app.get(
-        reverse("nowe_raporty:wydzial_generuj", args=(wydzial.pk, 2018, 2020))
-    )
-    assert res.status_code == 302
-    assert "login" in res.location
-
-
-@pytest.mark.django_db
-def test_czy_generuj_wydzial_widoczny_dla_niezalogowanych(generuj_raporty_app, wydzial):
-    baker.make(Report, slug="raport-wydzialow")
-    res = generuj_raporty_app.get(
-        reverse("nowe_raporty:wydzial_generuj", args=(wydzial.pk, 2018, 2020))
-    )
-    assert res.status_code == 200
-
-
-@pytest.mark.django_db
-def test_czy_raport_autorow_generuj_i_form_przestrzegaja_ustawien_anonim(
-    webtest_app, uczelnia, autor_jan_kowalski
-):
-    baker.make(Report, slug="raport-autorow")
-
-    urls = [
-        reverse("nowe_raporty:autor_generuj", args=(autor_jan_kowalski.pk, 2018, 2020)),
-        reverse("nowe_raporty:autor_form"),
-    ]
-
-    for url in urls:
-        uczelnia.pokazuj_raport_autorow = OpcjaWyswietlaniaField.POKAZUJ_ZALOGOWANYM
-        uczelnia.save()
-
-        res = webtest_app.get(url)
-        assert res.status_code == 302
-        assert "login" in res.location
-
-        uczelnia.pokazuj_raport_autorow = OpcjaWyswietlaniaField.POKAZUJ_ZAWSZE
-        uczelnia.save()
-
-        res = webtest_app.get(url)
-        assert res.status_code == 200
-
-        uczelnia.pokazuj_raport_autorow = OpcjaWyswietlaniaField.POKAZUJ_NIGDY
-        uczelnia.save()
-
-        webtest_app.get(url, status=404)
-
-
-@pytest.mark.django_db
-def test_czy_raport_jednostek_generuj_i_form_przestrzegaja_ustawien_anonim(
-    webtest_app, uczelnia, jednostka
-):
-    baker.make(Report, slug="raport-jednostek")
-
-    urls = [
-        reverse("nowe_raporty:jednostka_generuj", args=(jednostka.pk, 2018, 2020)),
-        reverse("nowe_raporty:jednostka_form"),
-    ]
-
-    for url in urls:
-        uczelnia.pokazuj_raport_jednostek = OpcjaWyswietlaniaField.POKAZUJ_ZALOGOWANYM
-        uczelnia.save()
-
-        res = webtest_app.get(url)
-        assert res.status_code == 302
-        assert "login" in res.location
-
-        uczelnia.pokazuj_raport_jednostek = OpcjaWyswietlaniaField.POKAZUJ_ZAWSZE
-        uczelnia.save()
-
-        res = webtest_app.get(url)
-        assert res.status_code == 200
-
-        uczelnia.pokazuj_raport_jednostek = OpcjaWyswietlaniaField.POKAZUJ_NIGDY
-        uczelnia.save()
-
-        webtest_app.get(url, status=404)
-
-
-@pytest.mark.django_db
-def test_czy_raport_wydzialow_generuj_i_form_przestrzegaja_ustawien_anonim(
-    webtest_app, uczelnia, wydzial
-):
-    baker.make(Report, slug="raport-wydzialow")
-
-    urls = [
-        reverse("nowe_raporty:wydzial_generuj", args=(wydzial.pk, 2018, 2020)),
-        reverse("nowe_raporty:wydzial_form"),
-    ]
-
-    for url in urls:
-        uczelnia.pokazuj_raport_wydzialow = OpcjaWyswietlaniaField.POKAZUJ_ZALOGOWANYM
-        uczelnia.save()
-
-        res = webtest_app.get(url)
-        assert res.status_code == 302
-        assert "login" in res.location
-
-        uczelnia.pokazuj_raport_wydzialow = OpcjaWyswietlaniaField.POKAZUJ_ZAWSZE
-        uczelnia.save()
-
-        res = webtest_app.get(url)
-        assert res.status_code == 200
-
-        uczelnia.pokazuj_raport_wydzialow = OpcjaWyswietlaniaField.POKAZUJ_NIGDY
-        uczelnia.save()
-
-        webtest_app.get(url, status=404)
-
-
-@pytest.mark.django_db
-def test_czy_raport_autorow_generuj_i_form_przestrzegaja_ustawien_zalogowany(
-    generuj_raporty_app, uczelnia, autor_jan_kowalski
-):
-    baker.make(Report, slug="raport-autorow")
-
-    urls = [
-        reverse("nowe_raporty:autor_generuj", args=(autor_jan_kowalski.pk, 2018, 2020)),
-        reverse("nowe_raporty:autor_form"),
-    ]
-
-    for url in urls:
-        uczelnia.pokazuj_raport_autorow = OpcjaWyswietlaniaField.POKAZUJ_ZALOGOWANYM
-        uczelnia.save()
-
-        res = generuj_raporty_app.get(url)
-        assert res.status_code == 200
-
-        uczelnia.pokazuj_raport_autorow = OpcjaWyswietlaniaField.POKAZUJ_ZAWSZE
-        uczelnia.save()
-
-        res = generuj_raporty_app.get(url)
-        assert res.status_code == 200
-
-        uczelnia.pokazuj_raport_autorow = OpcjaWyswietlaniaField.POKAZUJ_NIGDY
-        uczelnia.save()
-
-        generuj_raporty_app.get(url, status=404)
-
-
-@pytest.mark.django_db
-def test_czy_raport_jednostek_generuj_i_form_przestrzegaja_ustawien_zalogowany(
-    generuj_raporty_app, uczelnia, jednostka
-):
-    baker.make(Report, slug="raport-jednostek")
-
-    urls = [
-        reverse("nowe_raporty:jednostka_generuj", args=(jednostka.pk, 2018, 2020)),
-        reverse("nowe_raporty:jednostka_form"),
-    ]
-
-    for url in urls:
-        uczelnia.pokazuj_raport_jednostek = OpcjaWyswietlaniaField.POKAZUJ_ZALOGOWANYM
-        uczelnia.save()
-
-        res = generuj_raporty_app.get(url)
-        assert res.status_code == 200
-
-        uczelnia.pokazuj_raport_jednostek = OpcjaWyswietlaniaField.POKAZUJ_ZAWSZE
-        uczelnia.save()
-
-        res = generuj_raporty_app.get(url)
-        assert res.status_code == 200
-
-        uczelnia.pokazuj_raport_jednostek = OpcjaWyswietlaniaField.POKAZUJ_NIGDY
-        uczelnia.save()
-
-        generuj_raporty_app.get(url, status=404)
-
-
-@pytest.mark.django_db
-def test_czy_raport_wydzialow_generuj_i_form_przestrzegaja_ustawien_zalogowany(
-    generuj_raporty_app, uczelnia, wydzial
-):
-    baker.make(Report, slug="raport-wydzialow")
-
-    urls = [
-        reverse("nowe_raporty:wydzial_generuj", args=(wydzial.pk, 2018, 2020)),
-        reverse("nowe_raporty:wydzial_form"),
-    ]
-
-    for url in urls:
-        uczelnia.pokazuj_raport_wydzialow = OpcjaWyswietlaniaField.POKAZUJ_ZALOGOWANYM
-        uczelnia.save()
-
-        res = generuj_raporty_app.get(url)
-        assert res.status_code == 200
-
-        uczelnia.pokazuj_raport_wydzialow = OpcjaWyswietlaniaField.POKAZUJ_ZAWSZE
-        uczelnia.save()
-
-        res = generuj_raporty_app.get(url)
-        assert res.status_code == 200
-
-        uczelnia.pokazuj_raport_wydzialow = OpcjaWyswietlaniaField.POKAZUJ_NIGDY
-        uczelnia.save()
-
-        generuj_raporty_app.get(url, status=404)
-
-
 @pytest.mark.django_db
 def test_generowanie_xls(
     uczelnia,
@@ -437,10 +61,20 @@ def test_generowanie_xls(
     wydawnictwo_zwarte,
     typ_odpowiedzialnosci_autor,
 ):
+    # Eksport XLSX zaseedowanego raportu autorow (raport-autorow ma domyslnie
+    # DOSTEP_WSZYSCY -> anonim/klient widzi).
     wydawnictwo_ciagle.dodaj_autora(autor_jan_kowalski, jednostka)
     wydawnictwo_zwarte.dodaj_autora(autor_jan_kowalski, jednostka)
 
     r = baker.make(Report, slug="raport-autorow")
+    baker.make(
+        DefinicjaRaportu,
+        slug="raport-autorow",
+        poziom=DefinicjaRaportu.POZIOM_AUTOR,
+        report=r,
+        poziom_dostepu=DefinicjaRaportu.DOSTEP_WSZYSCY,
+        aktywny=True,
+    )
     ds = baker.make(Datasource, dsl_query='tytul_oryginalny = "fa"', distinct=True)
 
     base_model = ContentType.objects.get_for_model(Rekord)
@@ -458,7 +92,10 @@ def test_generowanie_xls(
     )
 
     url = (
-        reverse("nowe_raporty:autor_generuj", args=(autor_jan_kowalski.pk, rok, rok))
+        reverse(
+            "nowe_raporty:raport_generuj",
+            args=("raport-autorow", autor_jan_kowalski.pk, rok, rok),
+        )
         + "?_export=xlsx&_tzju=True"
     )
     res = client.get(url)
@@ -468,59 +105,68 @@ def test_generowanie_xls(
     assert len(wb.worksheets) == 1
 
 
-@pytest.mark.parametrize(
-    "url,slug,klass",
-    [
-        ("nowe_raporty:autor_form", "raport-autorow", AutorRaportFormView),
-        ("nowe_raporty:jednostka_form", "raport-jednostek", JednostkaRaportFormView),
-        ("nowe_raporty:wydzial_form", "raport-wydzialow", WydzialRaportFormView),
-    ],
-)
-def test_form_defaults_napis_przed_po(uczelnia, admin_client, url, klass, slug):
+@pytest.mark.django_db
+def test_form_defaults_napis_przed_po(uczelnia, admin_client):
+    # FormRepresentation html_before/html_after renderuja sie na stronie
+    # generycznego formularza raportu (formdefaults per dynamiczna klasa).
     NAPIS_PRZED = b"napis przed"
     NAPIS_PO = b"napis po"
 
-    baker.make(Report, slug=slug, title="foobar")
+    seed_default_reports()  # raport-autorow -> DOSTEP_WSZYSCY
+    definicja = DefinicjaRaportu.objects.get(slug="raport-autorow")
+    url = reverse("nowe_raporty:raport_form", args=[definicja.slug])
 
-    uczelnia.pokazuj_raport_autorow = OpcjaWyswietlaniaField.POKAZUJ_ZAWSZE
-    uczelnia.pokazuj_raport_wydzialow = OpcjaWyswietlaniaField.POKAZUJ_ZAWSZE
-    uczelnia.pokazuj_raport_jednostek = OpcjaWyswietlaniaField.POKAZUJ_ZAWSZE
-    uczelnia.save()
-
-    res = admin_client.get(reverse(url))
+    res = admin_client.get(url)
     for n in NAPIS_PO, NAPIS_PRZED:
         assert n not in res.content
 
-    res = FormRepresentation.objects.get_or_create_for_instance(klass.form_class())
-    res.html_before = NAPIS_PRZED
-    res.html_after = NAPIS_PO
-    res.save()
+    rep = FormRepresentation.objects.get_or_create_for_instance(
+        form_class_dla(definicja)()
+    )
+    rep.html_before = NAPIS_PRZED
+    rep.html_after = NAPIS_PO
+    rep.save()
 
-    res = admin_client.get(reverse(url))
+    res = admin_client.get(url)
     for n in NAPIS_PO, NAPIS_PRZED:
         assert n in res.content
 
 
-def test_GenerujRaportDlaAutora_get_context_data_ukryj_statusy(
-    rf, uczelnia, przed_korekta
-):
-    Report.objects.create(slug="raport-autorow", title="XXX")
+@pytest.mark.django_db
+def test_generuj_get_context_data_ukryj_statusy(rf, uczelnia, przed_korekta):
+    # ukryte_statusy("raporty") wyklucza rekordy o danym statusie korekty z
+    # bazowego querysetu raportu (generyczny RaportGenerujView).
+    seed_default_reports()
+    definicja = DefinicjaRaportu.objects.get(slug="raport-autorow")
 
     uczelnia.ukryj_status_korekty_set.create(status_korekty=przed_korekta)
 
-    x = GenerujRaportDlaAutora(kwargs=dict(od_roku=0, do_roku=3000))
-    x.request = rf.get("/", data={"_tzju": "True"})
-    x.object = None
-    res = x.get_context_data()
+    v = RaportGenerujView()
+    v.kwargs = dict(slug=definicja.slug, od_roku=0, do_roku=3000)
+    v.object = None
+    v.request = rf.get("/", data={"_tzju": "True"})
+    res = v.get_context_data()
     query = str(res["report"].base_queryset.query)
     assert """AND NOT ("bpp_rekord_mat"."status_korekty_id" IN """ in query
 
 
+@pytest.mark.django_db
 def test_invalid_character_slash_sheet_title(
-    autor_jan_kowalski, rf, admin_client, raport_autorow
+    autor_jan_kowalski, admin_client, raport_autorow
 ):
-    # Request URL: http://bpp.umlub.pl/nowe_raporty/autor/8553/2020/2020/?_export=xlsx&_tzju=True
-    url = reverse(
-        "nowe_raporty:autor_generuj", args=(autor_jan_kowalski.pk, 2020, 2020)
+    # Tytuly arkuszy XLSX z "/" sa sanityzowane (Invalid character / in sheet
+    # title). raport_autorow (conftest) tworzy Report; dorabiamy DefinicjaRaportu.
+    baker.make(
+        DefinicjaRaportu,
+        slug="raport-autorow",
+        poziom=DefinicjaRaportu.POZIOM_AUTOR,
+        report=raport_autorow,
+        poziom_dostepu=DefinicjaRaportu.DOSTEP_WSZYSCY,
+        aktywny=True,
     )
-    assert admin_client.get(url, data={"_tzju": "True", "_export": "xlsx"})  # noqa
+    url = reverse(
+        "nowe_raporty:raport_generuj",
+        args=("raport-autorow", autor_jan_kowalski.pk, 2020, 2020),
+    )
+    res = admin_client.get(url, data={"_tzju": "True", "_export": "xlsx"})
+    assert res.status_code == 200

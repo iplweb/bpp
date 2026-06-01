@@ -6,10 +6,8 @@ from bpp.models.autor import Autor
 from bpp.models.cache import Rekord
 from bpp.models.struktura import Jednostka
 from bpp.models.wydawnictwo_ciagle import Wydawnictwo_Ciagle
-from nowe_raporty.views import (
-    GenerujRaportDlaAutora,
-    zastosuj_filtry_zaawansowane,
-)
+from nowe_raporty.seeding import seed_default_reports
+from nowe_raporty.views import zastosuj_filtry_zaawansowane
 
 
 @pytest.fixture
@@ -39,8 +37,16 @@ def test_zastosuj_filtry_zaawansowane(autor_z_pracami):
 
 @pytest.mark.django_db
 def test_filtr_zaawansowany_zaweza_raport(rf, autor_z_pracami):
-    baker.make("flexible_reports.Report", slug="raport-autorow")
-    v = GenerujRaportDlaAutora(kwargs=dict(od_roku=2020, do_roku=2020))
+    # Filtr zaawansowany (punkty_mnisw_od) zaweza queryset raportu - przez
+    # generyczny RaportGenerujView + zaseedowana DefinicjaRaportu.
+    from nowe_raporty.models import DefinicjaRaportu
+    from nowe_raporty.views import RaportGenerujView
+
+    seed_default_reports()
+    definicja = DefinicjaRaportu.objects.get(slug="raport-autorow")
+
+    v = RaportGenerujView()
+    v.kwargs = dict(slug=definicja.slug, od_roku=2020, do_roku=2020)
     v.object = autor_z_pracami
     v.request = rf.get("/", data={"_tzju": "False", "punkty_mnisw_od": "10"})
 
@@ -72,9 +78,11 @@ def test_walidatory_zakresu_lat_dopiete(autor_z_pracami):
 
 
 @pytest.mark.django_db
-def test_eksport_bez_definicji_raportu_nie_500(generuj_raporty_app, jednostka):
-    # Brak Report + ?_export=docx nie moze konczyc sie 500 (zaleglosc tematu 1).
-    url = reverse("nowe_raporty:jednostka_generuj", args=(jednostka.pk, 2020, 2020))
+def test_eksport_raportu_nie_500(generuj_raporty_app, autor, rok):
+    # Eksport zaseedowanego raportu (?_export=docx) renderuje sie bez 500.
+    seed_default_reports()
+    url = reverse(
+        "nowe_raporty:raport_generuj", args=("raport-autorow", autor.pk, rok, rok)
+    )
     res = generuj_raporty_app.get(url + "?_export=docx")
     assert res.status_code == 200
-    assert "Nie znaleziono definicji" in res.text

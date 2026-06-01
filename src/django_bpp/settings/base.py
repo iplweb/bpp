@@ -232,6 +232,19 @@ STATICFILES_FINDERS = (
     #    'django.contrib.staticfiles.finders.DefaultStorageFinder',
 )
 
+# Storage backends (Django 5.x). `staticfiles` → tolerancyjny
+# ManifestStaticFilesStorage (issue #269): content-hash cache-busting całego
+# long-taila statyków; szczegóły i powód tolerancji w django_bpp/storage.py.
+# `default` (media) zostaje na domyślnym Django FileSystemStorage.
+STORAGES = {
+    "default": {
+        "BACKEND": "django.core.files.storage.FileSystemStorage",
+    },
+    "staticfiles": {
+        "BACKEND": "django_bpp.storage.TolerantManifestStaticFilesStorage",
+    },
+}
+
 TEMPLATES = [
     {
         "BACKEND": "django.template.backends.django.DjangoTemplates",
@@ -487,6 +500,15 @@ PG_BASELINE = {
     "PG_DUMP_EXTRA_EXCLUDE_TABLE_DATA": [
         "django_cache*",
         "easy_thumbnails_*",
+        # nowe_raporty seeds default reports via a post_migrate handler
+        # (NoweRaportyConfig.ready -> seed_reports/create_entries), which fires
+        # during a baseline rebuild because that runs migrate with TESTING=False.
+        # That application data must NOT live in the schema baseline: the dump is
+        # loaded as-is into every test DB, and the nowe_raporty tests assume these
+        # tables start empty. Production is unaffected — post_migrate re-seeds
+        # idempotently on a real deploy. See nowe_raporty/seeding/.
+        "flexible_reports_*",
+        "nowe_raporty_definicjaraportu*",
     ],
     # dbtemplates inserts rows via data-migration — we keep them in the
     # dump, but freeze their timestamps for a deterministic diff.
@@ -879,6 +901,19 @@ CHANNEL_LAYERS = {
         },
     },
 }
+
+# Pozwól anonimowym użytkownikom łączyć się z WebSocketem notyfikacji
+# (/asgi/notifications/) i subskrybować globalny kanał "__all__".
+#
+# django-channels-broadcast domyślnie (CHANNELS_BROADCAST_ENABLE_ANONYMOUS=False)
+# odrzuca anonimów w NotificationsConsumer.connect() przez self.close() PRZED
+# self.accept() — uvicorn zwraca wtedy HTTP 403 na handshake, a przeglądarka
+# raportuje NS_ERROR_WEBSOCKET_CONNECTION_REFUSED. Stary lokalny src/notifications/
+# consumer akceptował połączenie bezwarunkowo, więc po przepięciu na pakiet
+# zewnętrzny (refactor f6e0fa6cf) anonimowy front przestał się łączyć. Ta flaga
+# przywraca poprzednie zachowanie. Kanał "__all__" jest globalnym broadcastem —
+# nie publikuj na nim danych wrażliwych.
+CHANNELS_BROADCAST_ENABLE_ANONYMOUS = True
 
 
 # django-compressor dla każdej wersji będzie miał swoją nazwę katalogu
