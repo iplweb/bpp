@@ -48,5 +48,5 @@ następnie wybrać jednostkę w polu *Obca jednostka* i zapisać taki rekord.
 
 !!! note
 
-    warto, aby *Obca jednostka* miała odznaczone [Pole *Skupia pracowników*](edycja_jednostka.md#pole-skupia-pracowników) oraz [Pole *Zarządzaj automatycznie*](edycja_jednostka.md#pole-zarządzaj-automatycznie)
+    warto, aby *Obca jednostka* miała odznaczone [Pole *Skupia pracowników*](jednostki.md#pole-skupia-pracowników) oraz [Pole *Zarządzaj automatycznie*](jednostki.md#pole-zarządzaj-automatycznie)
 

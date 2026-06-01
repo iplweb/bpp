@@ -69,7 +69,7 @@ Powiązania Autor+Jednostka na takiej liście charakteryzują się następujący
 - nie wystąpiły w pliku importu - jezeli danego powiązania Autor+Jednostka nie ma w pliku importu, uznane zostanie
   ono za nieaktualne.
 - powiązanie Autor+Jednostka dotyczy jednostki, która ma zaznaczone
-  [pole Zarządzaj automatycznie](edycja_jednostka.md#pole-zarządzaj-automatycznie) na `TAK`
+  [pole Zarządzaj automatycznie](../uzytkownik/jednostki.md#pole-zarządzaj-automatycznie) na `TAK`
 - powiazanie Autor+Jednostka nie dotyczy [obcej jednostki](../uzytkownik/uczelnia.md#obca-jednostka)
 
 !!! warning
