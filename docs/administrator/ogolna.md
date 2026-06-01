@@ -41,7 +41,7 @@ którzy nie są pracownikami danej jednostki należy je odznaczyć.
 Po wybraniu dowolnego autora w module Redagowanie➡Wprowadzanie danych➡Autorzy
 odznacz to pole i zapisz rekord, aby nie wyświetlać autora na stronie jednostki.
 
-![image](images/admin/pokazuj_na_stronach_jednostek.png)
+![image](../images/admin/pokazuj_na_stronach_jednostek.png)
 
 #### Ukrywanie lub wyświetlanie raportów na stronie głównej
 
@@ -52,7 +52,7 @@ serwisu, skorzystaj z opcji Redagowanie➡Struktura➡Uczelnie, a następnie w s
 lub chowanie danego elementu, niektóre umożliwiają wyświetlenie danego elementu
 tylko dla użytkowników zalogowanych.
 
-![image](images/admin/uczelnia_strona_wizualna.png)
+![image](../images/admin/uczelnia_strona_wizualna.png)
 
 #### Ukrywanie lub wyświetlanie formularzy wyszukiwania
 
@@ -164,26 +164,26 @@ System umożliwia zmianę rodzaju i ilości wyświetlanych kolumn w module redag
 użytkownik posiadający uprawnienia administratora po zalogowaniu się powinien w module redagowania
 wejść w opcję Administracja -\> Kolumny w module redagowania:
 
-![image](images/admin/dynamic_columns/dynamic_columns_1.png)
+![image](../images/admin/dynamic_columns/dynamic_columns_1.png)
 
 Następnie wyświetli się nam tabelka. W prawym górnym rogu, za pomocą opcji "Filtruj" wybieramy,
 dla którego modułu chcemy skonfigurować kolumny. Klikamy na przycisk "Filtruj"
 
-![image](images/admin/dynamic_columns/dynamic_columns_2.png)
+![image](../images/admin/dynamic_columns/dynamic_columns_2.png)
 
 I wybieramy interesujący nas moduł:
 
-![image](images/admin/dynamic_columns/dynamic_columns_3.png)
+![image](../images/admin/dynamic_columns/dynamic_columns_3.png)
 
 Następnie możemy - za pomocą szarego prostokątu po prawej stronie - zmieniać kolejność kolumn.
 Wystarczy najechac na niego myszą i przeciągnąć (ang. *drag and drop*):
 
-![image](images/admin/dynamic_columns/dynamic_columns_4.png)
+![image](../images/admin/dynamic_columns/dynamic_columns_4.png)
 
 Można też wybrane kolumny podświetlić za pomocą ptaszków (ang. *checkbox*) po lewej stronie i
 na dole tabeli wybrać jedno z działań np włączyć lub wyłączyć grupowo wiele pól na raz.
 
-![image](images/admin/dynamic_columns/dynamic_columns_5.png)
+![image](../images/admin/dynamic_columns/dynamic_columns_5.png)
 
 !!! note
 
@@ -295,7 +295,7 @@ python src/manage.py pbn_wyslij_oswiadczenia_instytucji --year 2023
 
     Wszystkie powyższe operacje wymagają prawidłowej konfiguracji integracji z PBN
     oraz autoryzacji użytkownika w systemie PBN. Szczegóły konfiguracji znajdują
-    się w dokumentacji [konfiguracja PBN](konfiguracja_pbn.md).
+    się w dokumentacji [konfiguracja PBN](konfiguracja-pbn.md).
 
 
 ## Konfiguracja mapowania charakterów CrossRef API na charaktery formalne BPP

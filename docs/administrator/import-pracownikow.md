@@ -70,7 +70,7 @@ Powiązania Autor+Jednostka na takiej liście charakteryzują się następujący
   ono za nieaktualne.
 - powiązanie Autor+Jednostka dotyczy jednostki, która ma zaznaczone
   [pole Zarządzaj automatycznie](edycja_jednostka.md#pole-zarządzaj-automatycznie) na `TAK`
-- powiazanie Autor+Jednostka nie dotyczy [obcej jednostki](edycja_uczelnia.md#obca-jednostka)
+- powiazanie Autor+Jednostka nie dotyczy [obcej jednostki](../uzytkownik/uczelnia.md#obca-jednostka)
 
 !!! warning
 
@@ -82,5 +82,5 @@ Powiązania Autor+Jednostka na takiej liście charakteryzują się następujący
 !!! note
 
     procedura "odpinająca" miejsca pracy jest szczególnie przydatna, jeżeli chcemy mieć
-    zaktualizowane informacje dla pola — por. [Pole *Aktualne miejsce pracy* dla autora](edycja_autor.md#pole-aktualne-miejsce-pracy-dla-autora)
+    zaktualizowane informacje dla pola — por. [Pole *Aktualne miejsce pracy* dla autora](../uzytkownik/autorzy.md#pole-aktualne-miejsce-pracy-dla-autora)
 
