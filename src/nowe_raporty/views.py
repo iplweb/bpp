@@ -18,19 +18,10 @@ from formdefaults.helpers import FormDefaultsMixin
 
 from bpp.const import GR_RAPORTY_WYSWIETLANIE
 from bpp.models import Uczelnia
-from bpp.models.autor import Autor
-from bpp.models.cache import Rekord
-from bpp.models.struktura import Jednostka, Wydzial
 from bpp.views.mixins import UczelniaSettingRequiredMixin
 
 from .docx_export import as_docx
-from .forms import (
-    AutorRaportForm,
-    JednostkaRaportForm,
-    UczelniaRaportForm,
-    WydzialRaportForm,
-    form_class_dla,
-)
+from .forms import form_class_dla
 from .models import DefinicjaRaportu
 from .poziomy import POZIOMY
 
@@ -82,77 +73,15 @@ def _redirect_do_generuj(cleaned_data, pola_zaawansowane):
     return HttpResponseRedirect(f"{prefiks}?{querystring}")
 
 
-class BaseFormView(FormDefaultsMixin, FormView):
-    template_name = "nowe_raporty/formularz.html"
-    title = "Raporty"
-
-    def form_valid(self, form):
-        return _redirect_do_generuj(
-            form.cleaned_data, getattr(form, "POLA_ZAAWANSOWANE", [])
-        )
-
-    def get_context_data(self, **kwargs):
-        kwargs["title"] = self.title
-        try:
-            kwargs["report"] = Report.objects.get(slug=self.report_slug)
-        except Report.DoesNotExist:
-            # Brak definicji raportu nie jest bledem HTTP - szablon pokaze
-            # przyjazny komunikat (a redaktorowi link do modulu redagowania).
-            kwargs["report"] = None
-        kwargs["report_slug"] = self.report_slug
-        kwargs["report_title"] = self.title
-        return super().get_context_data(**kwargs)
-
-
 class BaseRaportAuthMixin(UczelniaSettingRequiredMixin):
     """Wspólny mixin - bazowa klasa autoryzująca dostęp do raportów.
 
-    Wymaga ustawienia obiektu uczelnia ``pokazuj_raport_x`` oraz wymaga
-    odpowiedniej grupy czyli ``generowanie_raportow``.
-
+    Wymaga ustawienia ``uczelnia_attr`` (flaga ``pokazuj_*`` na obiekcie
+    Uczelnia) oraz przynależności do grupy ``GR_RAPORTY_WYSWIETLANIE``.
+    Używany dalej przez ``raport_slotow`` (raport slotów autor/zerowy/uczelnia).
     """
 
     group_required = GR_RAPORTY_WYSWIETLANIE
-
-
-class AutorRaportAuthMixin(BaseRaportAuthMixin):
-    uczelnia_attr = "pokazuj_raport_autorow"
-
-
-class JednostkaRaportAuthMixin(BaseRaportAuthMixin):
-    uczelnia_attr = "pokazuj_raport_jednostek"
-
-
-class WydzialRaportAuthMixin(BaseRaportAuthMixin):
-    uczelnia_attr = "pokazuj_raport_wydzialow"
-
-
-class UczelniaRaportAuthMixin(BaseRaportAuthMixin):
-    uczelnia_attr = "pokazuj_raport_uczelni"
-
-
-class AutorRaportFormView(AutorRaportAuthMixin, BaseFormView):
-    form_class = AutorRaportForm
-    title = "Raport autorów"
-    report_slug = "raport-autorow"
-
-
-class JednostkaRaportFormView(JednostkaRaportAuthMixin, BaseFormView):
-    report_slug = "raport-jednostek"
-    form_class = JednostkaRaportForm
-    title = "Raport jednostek"
-
-
-class UczelniaRaportFormView(UczelniaRaportAuthMixin, BaseFormView):
-    report_slug = "raport-uczelni"
-    form_class = UczelniaRaportForm
-    title = "Raport uczelni"
-
-
-class WydzialRaportFormView(WydzialRaportAuthMixin, BaseFormView):
-    report_slug = "raport-wydzialow"
-    form_class = WydzialRaportForm
-    title = "Raport wydziałów"
 
 
 class BaseGenerujView(TemplateView):
@@ -284,58 +213,6 @@ class GenerujRaportBase(DetailView):
             )
 
         return super().render_to_response(context, **response_kwargs)
-
-
-class GenerujRaportDlaAutora(AutorRaportAuthMixin, GenerujRaportBase):
-    report_slug = "raport-autorow"
-    form_link = "nowe_raporty:autor_form"
-    form_title = "Raport autorów"
-    model = Autor
-
-    def get_base_queryset(self):
-        if self.request.GET.get("_tzju", "True") == "True":
-            return Rekord.objects.prace_autora_z_afiliowanych_jednostek(self.object)
-
-        return Rekord.objects.prace_autora(self.object)
-
-
-class GenerujRaportDlaJednostki(JednostkaRaportAuthMixin, GenerujRaportBase):
-    report_slug = "raport-jednostek"
-    form_link = "nowe_raporty:jednostka_form"
-    form_title = "Raport jednostek"
-    model = Jednostka
-
-    def get_base_queryset(self):
-        if self.request.GET.get("_tzju", "True") == "True":
-            return Rekord.objects.prace_jednostki(self.object, afiliowane=True)
-        return Rekord.objects.prace_jednostki(self.object)
-
-
-class GenerujRaportDlaWydzialu(WydzialRaportAuthMixin, GenerujRaportBase):
-    report_slug = "raport-wydzialow"
-    form_link = "nowe_raporty:wydzial_form"
-    form_title = "Raport wydziałów"
-    model = Wydzial
-
-    def get_base_queryset(self):
-        if self.request.GET.get("_tzju", "True") == "True":
-            return Rekord.objects.prace_wydzialu(self.object, afiliowane=True)
-        return Rekord.objects.prace_wydzialu(self.object)
-
-
-class GenerujRaportDlaUczelni(UczelniaRaportAuthMixin, GenerujRaportBase):
-    report_slug = "raport-uczelni"
-    form_link = "nowe_raporty:uczelnia_form"
-    form_title = "Raport uczelni"
-    model = Uczelnia
-
-    def get_object(self, queryset=None):
-        return Uczelnia.objects.get_for_request(self.request)
-
-    def get_base_queryset(self):
-        if self.request.GET.get("_tzju", "True") == "True":
-            return Rekord.objects.filter(autorzy__afiliuje=True)
-        return Rekord.objects.all()
 
 
 # --- Generyczne widoki (data-driven, per DefinicjaRaportu) ------------------

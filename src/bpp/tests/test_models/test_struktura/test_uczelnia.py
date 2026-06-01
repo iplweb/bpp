@@ -141,10 +141,10 @@ def test_uczelnia_praca_pokazuj_pozostale(
     assert s not in res.rendered_content
 
 
-# Menu raportów (autor/jednostka/wydział/uczelnia) jest teraz data-driven
-# (DefinicjaRaportu + widoczny_dla), nie sterowane flagami Uczelnia.pokazuj_raport_*.
-# Te scenariusze pokrywa nowe_raporty/tests/test_menu.py. Tu zostaje ranking,
-# który nadal idzie przez czy_pokazywac/flagi Uczelni.
+# Menu raportów (nowe_raporty) jest teraz data-driven (DefinicjaRaportu),
+# niezależne od Uczelnia.pokazuj_raport_* (pola usunięte) - jego widoczność
+# pokrywają testy w src/nowe_raporty/tests/. Tu zostaje tylko ranking autorów,
+# który dalej jest sterowany flagą na Uczelni.
 lista_stron_raportow = [
     ("pokazuj_ranking_autorow", b'ranking-autorow/wybierz/"><i'),
 ]
