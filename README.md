@@ -7,7 +7,7 @@
 <p align="center">
   <a href="https://github.com/iplweb/bpp/actions/workflows/tests.yml"><img src="https://github.com/iplweb/bpp/actions/workflows/tests.yml/badge.svg?branch=dev" alt="Testy"></a>
   <a href="https://github.com/iplweb/bpp/actions/workflows/build-docker-images.yml"><img src="https://github.com/iplweb/bpp/actions/workflows/build-docker-images.yml/badge.svg?branch=master" alt="Docker - oficjalne obrazy"></a>
-  <a href="http://bpp.readthedocs.io/pl/latest/?badge=latest"><img src="https://readthedocs.org/projects/bpp/badge/?version=latest" alt="Dokumentacja"></a>
+  <a href="https://iplweb.github.io/bpp/"><img src="https://github.com/iplweb/bpp/actions/workflows/docs.yml/badge.svg?branch=dev" alt="Dokumentacja"></a>
 </p>
 
 <p align="center">
@@ -274,7 +274,9 @@ tylko podczas trwania komendy (chyba że `--reuse`).
 ## Dokumentacja
 
 Dokumentacja dostępna jest na stronie
-[bpp.readthedocs.io](https://bpp.readthedocs.io/).
+[iplweb.github.io/bpp](https://iplweb.github.io/bpp/)
+(równolegle nadal budowana także na
+[bpp.readthedocs.io](https://bpp.readthedocs.io/)).
 
 ## Rozwój
 
