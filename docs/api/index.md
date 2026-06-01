@@ -92,8 +92,7 @@ wymaga jednak zalogowania jako użytkownik będący członkiem grupy "generowani
 System BPP udostępnia szereg endpoint'ów REST API dla pobierania danych o publikacjach i powiązanych obiektach.
 API jest tylko-do-odczytu i nie wymaga autoryzacji dla dostępu do danych publikacji.
 
-Główne endpoint'y API
-\~\~\~\~\~\~\~\~\~\~\~\~\~\~\~\~\~\~\~~
+### Główne endpoint'y API
 
 System udostępnia następujące główne endpoint'y dla pobierania danych publikacji:
 
@@ -112,8 +111,7 @@ Dane pomocnicze dostępne są przez następujące endpoint'y:
 - `/api/v1/zrodlo/` - źródła publikacji
 - `/api/v1/charakter_formalny/` - charaktery formalne
 
-Przykłady użycia CURL
-\~\~\~\~\~\~\~\~\~\~\~\~\~\~\~\~\~\~\~~
+### Przykłady użycia CURL
 
 1.  **Pobranie listy wydawnictw ciągłych:**
 
@@ -161,8 +159,7 @@ Przykłady użycia CURL
 
     Gdzie `456` to ID konkretnego autora.
 
-Przykłady użycia w Postman
-\~\~\~\~\~\~\~\~\~\~\~\~\~\~\~\~\~\~\~\~\~\~\~\~~
+### Przykłady użycia w Postman
 
 !!! note
 
@@ -189,8 +186,7 @@ Przykłady użycia w Postman
     - Method: GET
     - URL: `https://adres.serwera/api/v1/wydawnictwo_ciagle/123/`
 
-Format odpowiedzi
-\~\~\~\~\~\~\~\~\~\~\~\~\~\~\~~
+### Format odpowiedzi
 
 API zwraca dane w formacie JSON. Przykład odpowiedzi dla listy wydawnictw:
 
@@ -221,8 +217,7 @@ API zwraca dane w formacie JSON. Przykład odpowiedzi dla listy wydawnictw:
 }
 ```
 
-Parametry filtrowania
-\~\~\~\~\~\~\~\~\~\~\~\~\~\~\~\~\~\~~
+### Parametry filtrowania
 
 Większość endpoint'ów obsługuje następujące parametry filtrowania:
 
@@ -233,8 +228,7 @@ Większość endpoint'ów obsługuje następujące parametry filtrowania:
 - `ostatnio_zmieniony__gte` - rekordy zmienione od podanej daty
 - `charakter_formalny` - filtrowanie po charakterze formalnym publikacji
 
-Paginacja
-\~\~\~\~\~\~\~~
+### Paginacja
 
 Wszystkie listy są paginowane. Odpowiedzi zawierają:
 
@@ -258,8 +252,7 @@ Aby pobrać ostatnie publikacje autora, należy użyć następującego endpoint'
 
 Gdzie `{id}` to identyfikator autora w systemie BPP.
 
-Funkcjonalność
-\~\~\~\~\~\~\~\~\~\~\~\~~
+### Funkcjonalność
 
 - Zwraca 25 ostatnich publikacji autora
 - Publikacje są sortowane według daty ostatniej modyfikacji (od najnowszej)
@@ -269,8 +262,7 @@ Funkcjonalność
   - Data ostatniej modyfikacji
   - URL do szczegółowej strony publikacji w systemie BPP
 
-Format odpowiedzi
-\~\~\~\~\~\~\~\~\~\~\~\~\~\~\~~
+### Format odpowiedzi
 
 ``` json
 {
@@ -294,8 +286,7 @@ Format odpowiedzi
 }
 ```
 
-Przykład użycia CURL
-\~\~\~\~\~\~\~\~\~\~\~\~\~\~\~\~\~~
+### Przykład użycia CURL
 
 ``` shell
 curl "https://bpp.uczelnia.pl/api/v1/recent_author_publications/123/" | python -m json.tool
@@ -448,8 +439,7 @@ do automatycznego pobierania i wyświetlania listy jego publikacji:
 </html>
 ```
 
-Uwagi dotyczące CORS
-\~\~\~\~\~\~\~\~\~\~\~\~\~\~\~\~\~\~~
+### Uwagi dotyczące CORS
 
 CORS (Cross-Origin Resource Sharing) to mechanizm bezpieczeństwa przeglądarek internetowych, który kontroluje
 dostęp do zasobów między różnymi domenami. Gdy strona internetowa próbuje pobrać dane z innej domeny

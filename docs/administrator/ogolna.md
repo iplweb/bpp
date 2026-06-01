@@ -305,8 +305,7 @@ Aby prawidłowo zaimportować dane z CrossRef, konieczne jest skonfigurowanie ma
 między charakterami formalnej publikacji używanymi przez CrossRef API a charakterami
 formalnymi zdefiniowanymi w systemie BPP.
 
-Dostępne charaktery CrossRef API
-\~\~\~\~\~\~\~\~\~\~\~\~\~\~\~\~\~\~\~\~\~\~\~\~\~\~\~\~\~\~~
+### Dostępne charaktery CrossRef API
 
 System CrossRef API wykorzystuje następujące typy charakterów publikacji:
 
@@ -327,8 +326,7 @@ System CrossRef API wykorzystuje następujące typy charakterów publikacji:
 - `peer-review` - recenzje
 - `other` - inne typy publikacji
 
-Konfiguracja mapowania w module Redagowania
-\~\~\~\~\~\~\~\~\~\~\~\~\~\~\~\~\~\~\~\~\~\~\~\~\~\~\~\~\~\~\~\~\~\~\~\~\~\~\~\~\~~
+### Konfiguracja mapowania w module Redagowania
 
 Aby skonfigurować mapowanie charakterów CrossRef na charaktery formalne BPP:
 
@@ -353,8 +351,7 @@ Aby skonfigurować mapowanie charakterów CrossRef na charaktery formalne BPP:
     2)  W polu "Charakter formalny bpp" wybierz odpowiedni charakter z listy rozwijanej
     3)  Zapisz zmiany przyciskiem "Zapisz"
 
-Ważne zasady mapowania
-\~\~\~\~\~\~\~\~\~\~\~\~\~\~\~\~\~\~\~\~~
+### Ważne zasady mapowania
 
 !!! warning
 
@@ -365,13 +362,12 @@ Ważne zasady mapowania
 
 !!! note
 
-    \* Mapowanie jest opcjonalne - charaktery CrossRef mogą pozostać bez przypisania
-    \* Rekordy bez mapowania będą wyświetlane jako "\[brak zamapowania\]"
-    \* Zmiana mapowania wpłynie na wszystkie przyszłe importy z CrossRef API
+    - Mapowanie jest opcjonalne - charaktery CrossRef mogą pozostać bez przypisania
+    - Rekordy bez mapowania będą wyświetlane jako "\[brak zamapowania\]"
+    - Zmiana mapowania wpłynie na wszystkie przyszłe importy z CrossRef API
 
 
-Przykłady typowych mapowań
-\~\~\~\~\~\~\~\~\~\~\~\~\~\~\~\~\~\~\~\~\~\~\~\~~
+### Przykłady typowych mapowań
 
 Poniżej przedstawiono sugerowane mapowania dla typowych charakterów:
 
@@ -389,8 +385,7 @@ Poniżej przedstawiono sugerowane mapowania dla typowych charakterów:
     zdefiniowanych w danej uczelni.
 
 
-Weryfikacja poprawności mapowania
-\~\~\~\~\~\~\~\~\~\~\~\~\~\~\~\~\~\~\~\~\~\~\~\~\~\~\~\~\~\~\~~
+### Weryfikacja poprawności mapowania
 
 Po skonfigurowaniu mapowań zaleca się przeprowadzenie testowego importu -
 wykonaj próbny import publikacji z CrossRef API aby sprawdzić, czy
