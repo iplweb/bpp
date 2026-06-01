@@ -1,0 +1,102 @@
+"""Motyw 'wiedzmin' — Wiedźmin (saga A. Sapkowskiego)."""
+
+from __future__ import annotations
+
+from bpp.demo_data.themes.base import Theme
+
+WIEDZMIN = Theme(
+    key="wiedzmin",
+    label="Wiedźmin",
+    uczelnia_nazwy=(
+        "Akademia Wiedźmińska w Kaer Morhen",
+        "Uniwersytet w Oxenfurcie",
+    ),
+    uczelnia_skrot="AKM",
+    wydzial_dziedziny=(
+        "Wiedźmiński",
+        "Magii i Eliksirów",
+        "Bestiariuszu",
+        "Znaków",
+        "Szermierki",
+        "Zielarstwa",
+    ),
+    jednostka_dziedziny=(
+        "Eliksirologii",
+        "Bestiariuszu Porównawczego",
+        "Znaków i Gestów",
+        "Szlaku Wiedźmińskiego",
+        "Mutacji",
+        "Zielarstwa Wiedźmińskiego",
+        "Toksykologii Stosowanej",
+        "Szermierki",
+    ),
+    autor_imiona=(
+        "Geralt",
+        "Yennefer",
+        "Ciri",
+        "Jaskier",
+        "Vesemir",
+        "Triss",
+        "Lambert",
+        "Eskel",
+        "Regis",
+        "Filippa",
+        "Cahir",
+        "Milva",
+    ),
+    autor_nazwiska=(
+        "z Rivii",
+        "z Vengerbergu",
+        "z Cintry",
+        "Merigold",
+        "z Kaer Morhen",
+        "z Oxenfurtu",
+        "z Aretuzy",
+        "z Novigradu",
+    ),
+    zrodlo_human=(
+        "Kaedwenica",
+        "Wiedźmińska",
+        "Novigradzka",
+        "Temerska",
+        "Aretuzańska",
+        "Oxenfurcka",
+    ),
+    wydawcy=(
+        "Wydawnictwo Kaer Morhen",
+        "Oficyna Oxenfurcka",
+        "Dom Wydawniczy Novigrad",
+        "Wydawnictwo Aretuza",
+    ),
+    tytul_topics=(
+        "eliksirów wiedźmińskich",
+        "mutacji",
+        "bestii",
+        "znaków",
+        "szlaku wiedźmińskiego",
+        "toksyn",
+        "potworów",
+        "mieczy srebrnych",
+    ),
+    tytul_subjects=(
+        "skuteczność polowania",
+        "tolerancję eliksirów",
+        "siłę znaków",
+        "regenerację po mutacji",
+        "rozpoznawanie bestii",
+    ),
+    tytul_contexts=(
+        "warunkach Kaer Morhen",
+        "lochach Novigradu",
+        "puszczy Brokilon",
+        "badaniu terenowym",
+        "laboratorium aretuzańskim",
+    ),
+    streszczenie_templates=(
+        "Zbadano skuteczność {topic} w odniesieniu do {subject}.",
+        "Obserwacje terenowe przeprowadzono w {context}.",
+        "Wyniki potwierdzają związek {topic} z {subject}.",
+        "Mistrzowie szlaku wykazali wpływ {topic} na {subject}.",
+        "Analiza w {context} rzuca światło na zagadnienie {topic}.",
+    ),
+)

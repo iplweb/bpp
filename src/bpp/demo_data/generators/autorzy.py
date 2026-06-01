@@ -8,8 +8,9 @@ from collections.abc import Iterable
 from django.utils.text import slugify
 
 from bpp.demo_data.manifest import Manifest
-from bpp.demo_data.names import IMIONA_POL, NAZWISKA_POL
 from bpp.demo_data.progress import make_progress
+from bpp.demo_data.themes.base import Theme
+from bpp.demo_data.themes.compose import compose_autor
 from bpp.models import Autor, Autor_Jednostka, Jednostka
 
 
@@ -22,6 +23,7 @@ def create_autorzy(
     *,
     n: int,
     jednostki: Iterable[Jednostka],
+    theme: Theme,
     manifest: Manifest,
     rng: random.Random,
     batch_size: int = 500,
@@ -35,13 +37,12 @@ def create_autorzy(
 
     autorzy_objs: list[Autor] = []
     for i in range(n):
-        imiona = rng.choice(IMIONA_POL)
-        nazwisko = rng.choice(NAZWISKA_POL)
+        imiona, nazwisko = compose_autor(theme, rng)
         # AutoSlugField.populate_from="get_full_name" + bulk_create:
         # find_unique() nie widzi instancji ze swojego batcha (sa jeszcze
         # nieinsertowane), wiec dwa Autorzy z identycznym (imiona, nazwisko)
         # dostaja ten sam slug → IntegrityError przy drugim INSERT.
-        # Pula 87×100=8700 kombo + birthday paradox → przy --autorow 500
+        # Pula imion×nazwisk + birthday paradox → przy wiekszym n
         # kolizja praktycznie pewna. Fix: pre-set slug z disambiguatorem
         # per-instancja. AutoSlugField pomija non-empty slug w pre_save.
         slug_value = slugify(f"{imiona} {nazwisko}-demo-{i + 1}")
