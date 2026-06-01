@@ -103,6 +103,7 @@ nav:
   - API i rozwój:
       - API REST: api.md
       - Rozwijanie projektu: contributing.md
+      - Dane demo: demo-data.md
   - Operacje:
       - Channels broadcast (flake): CHANNELS_BROADCAST_FLAKE.md
       - macOS WeasyPrint: MACOS_WEASYPRINT.md
