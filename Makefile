@@ -327,7 +327,7 @@ tests-without-playwright-with-microsoft-auth: ## tests-without-playwright z akty
 
 tests-with-microsoft-auth: enable-microsoft-auth tests-without-playwright-with-microsoft-auth disable-microsoft-auth ## Włącz MS Auth, uruchom testy, wyłącz
 
-tests-only-playwright: ## Tylko testy Playwright (wolne)
+tests-only-playwright: playwright-install ## Tylko testy Playwright (wolne)
 	uv run pytest -n auto -m "playwright"
 
 uv-sync: ## uv sync --all-extras (synchronizacja zależności Pythona)
