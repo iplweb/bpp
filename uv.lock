@@ -435,7 +435,7 @@ requires-dist = [
     { name = "django-minify-html", specifier = ">=1.14,<2" },
     { name = "django-model-utils", specifier = "==5.0.0" },
     { name = "django-mptt", specifier = ">=0.16,<1" },
-    { name = "django-multiseek", specifier = "==0.9.49" },
+    { name = "django-multiseek", specifier = "==0.10.2" },
     { name = "django-password-policies-iplweb", specifier = "==0.9.0" },
     { name = "django-pg-baseline", specifier = ">=0.3.0" },
     { name = "django-prometheus", specifier = ">=2.4.1" },
@@ -1932,16 +1932,16 @@ wheels = [
 
 [[package]]
 name = "django-multiseek"
-version = "0.9.49"
+version = "0.10.2"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "django", marker = "platform_python_implementation != 'PyPy'" },
     { name = "django-autocomplete-light", marker = "platform_python_implementation != 'PyPy'" },
     { name = "python-dateutil", marker = "platform_python_implementation != 'PyPy'" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/b7/33/0179cf1ce1bf22a774321d54aacb6fa387c83f24dc8b289e8c7089d510af/django_multiseek-0.9.49.tar.gz", hash = "sha256:46616cb4fffd575b850db4a612dff641f4370c0ca5dd51e093cc5a372d2621b5", size = 34741, upload-time = "2026-04-16T15:50:26.161Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/0f/8b/d41fad5c84a8e5f99a64825c3786d78312559f8ac9cd24fb63275331d5f0/django_multiseek-0.10.2.tar.gz", hash = "sha256:e85ba2ea95452b171899d72c97a64a4755044aed1cb29a8cd5617f9756323545", size = 39406, upload-time = "2026-06-01T09:57:57.713Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/9b/38/399225b265f57c27f25131496c8550c51215b6e64bc646ea627e0c382e78/django_multiseek-0.9.49-py3-none-any.whl", hash = "sha256:7eb7da79225e2191edae7434ebf23eec363897447386a86d30f9a8cf97b53514", size = 45897, upload-time = "2026-04-16T15:50:24.833Z" },
+    { url = "https://files.pythonhosted.org/packages/49/f3/eddf25d93e5df856c37f3aec71e8d081055fb2b8a85a077947356bddc933/django_multiseek-0.10.2-py3-none-any.whl", hash = "sha256:67d2fd82dae05841a98084b5b39ac2cbca5d16de73c191c0acf5e30c2bc6c91f", size = 51150, upload-time = "2026-06-01T09:57:56.627Z" },
 ]
 
 [[package]]
