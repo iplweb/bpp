@@ -211,7 +211,8 @@ def run_create(opts: CreateOptions, *, stdin=None, stdout=None):
 
     manifest.save()
     stdout.write(
-        f"\n[OK] Motyw: {theme.label}. Streszczenia: ~{opts.procent_ze_streszczeniem}% prac.\n"
+        f"\n[OK] Motyw: {theme.label}. "
+        f"Streszczenia: ~{opts.procent_ze_streszczeniem}% prac.\n"
         f"\n[OK] Manifest zapisany: {opts.manifest_out}\n"
         f"     Cleanup: uv run python src/manage.py cleanup_demo_data"
         f" --manifest {opts.manifest_out} --yes-i-am-sure"
