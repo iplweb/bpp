@@ -8,11 +8,11 @@ tekstowe, w które możemy wpisać część tytułu rekordu aby przeszukać jedn
 wydawnictwa ciągłe, zwarte, patenty, habilitacje, doktoraty, autorów, jednostki
 i źródła. W ten sposób wygodnie można przejść do pożądanego rekordu.
 
-![image](images/admin/wyszukiwanie_globalne.png)
+![image](../images/admin/wyszukiwanie_globalne.png)
 
 Po wpisaniu ciągu znaków otrzymujemy rozwijaną listę z rekordami różnego rodzaju:
 
-![image](images/admin/wyszukiwanie_globalne_2.png)
+![image](../images/admin/wyszukiwanie_globalne_2.png)
 
 !!! note
 
@@ -29,7 +29,7 @@ powodując, ze system wyszuka prace zawierające ten ciąg znaków. Zazwyczaj
 przeszukiwane jest pole "tytuł oryginalny", "źródło", "informacje", "szczegóły",
 "adnotacje", "rok" ale dla specyficznych tabel mogą być to również inne pola.
 
-![image](images/admin/wyszukiwanie.png)
+![image](../images/admin/wyszukiwanie.png)
 
 ### Filtr precyzyjny
 
@@ -37,7 +37,7 @@ Filtrowanie precyzyjne pozwala nam wybrać prace w bardziej szczegółowy sposó
 na podstawie konkretnych pól. Przykładowo, na poniższym rysunku przedstawione są
 dostępne filtry dla tabeli "Wydawnictwo ciągłe".
 
-![image](images/admin/filtry.png)
+![image](../images/admin/filtry.png)
 
 Na poniższym rysunku z kolei przedstawione są przykładowe opcje dla pola "Język".
 
@@ -49,7 +49,7 @@ Część tabel w module Redagowanie umożliwia wyszukiwanie rekordów przy pomoc
 zapytań [DjangoQL](https://github.com/ivelum/djangoql#language-reference) . Można poznać to po tym, że w polu filtru tekstowego będzie widniała,
 domyślnie wyłączona, kontrolka typu "checkbox" - jak na zrzucie ekranu ponizej:
 
-![image](images/admin/djangoql_1.png)
+![image](../images/admin/djangoql_1.png)
 
 Kontrolka pusta - wyłaczona, oznacza, że filtrowanie DjangoQL jest wyłączone; wyszukiwanie za
 pomocą tekstu będzie wyglądało tak, jak opisane w sekcji [Filtr tekstowy](#filtr-tekstowy).
@@ -64,18 +64,18 @@ rok = 2010 or rok = 2020
 
 Wybór rzecz jasna zatwierdzamy klawiszem ENTER lub klikając w lupę. W rezultacie otrzymujemy wynik wyszukiwania:
 
-![image](images/admin/djangoql_2.png)
+![image](../images/admin/djangoql_2.png)
 
 Spróbujmy czegoś trudniejszego. Wyszukajmy prace, których impact factor jest większy od 2 i charakter
 formalny to artykuł lub ksiażka. Redaktor na pewno zauważy, że podczas pisania tekstu przy włączonym wyszukiwaniu
 [DjangoQL](https://github.com/ivelum/djangoql#language-reference) system próbuje podpowiadać nazwy kolumn:
 
-![image](images/admin/djangoql_3.png)
+![image](../images/admin/djangoql_3.png)
 
 Po wpisaniu kilku znaków więcej i naciśnięciu kropki otrzymujemy podopowiedzi wszystkich pól obiektu
 "Charakter formalny", które możemy przeszukac:
 
-![image](images/admin/djangoql_4.png)
+![image](../images/admin/djangoql_4.png)
 
 Dokończmy nasze zapytanie:
 
@@ -85,13 +85,13 @@ Dokończmy nasze zapytanie:
 
 Jak widać na zrzucie ekranu poniżej, zadziałało ono:
 
-![image](images/admin/djangoql_5.png)
+![image](../images/admin/djangoql_5.png)
 
 Jeżeli wpiszemy zapytanie niepoprawnie, nic się nie stanie. System nie wykona takiego zapytania,
 informując nas o błedzie składniowym. Przykładowo gdy zamiast operatora `or` użyjemy polskiego
 słowa `lub`, system poinformuje nas o tym w taki sposób:
 
-![image](images/admin/djangoql_6.png)
+![image](../images/admin/djangoql_6.png)
 
 ### Przykładowe zapytania w DjangoQL
 
