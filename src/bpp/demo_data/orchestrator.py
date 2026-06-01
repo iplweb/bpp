@@ -44,6 +44,9 @@ class CreateOptions:
     batch_size: int
     yes_i_am_sure: bool
     confirm_db: str | None
+    motyw: str = "realistyczny"
+    procent_ze_streszczeniem: int = 70
+    bez_prefiksu: bool = False
     disable_progress: bool = False
 
 
@@ -103,14 +106,22 @@ def run_create(opts: CreateOptions, *, stdin=None, stdout=None):
         command_args=command_args,
     )
 
+    from bpp.demo_data.generators.streszczenia import create_streszczenia
+    from bpp.demo_data.themes.registry import get_theme
+
+    theme = get_theme(opts.motyw)
+    prefix = "" if opts.bez_prefiksu else "Demo — "
+
     # 4. Generatory (kolejnosc zalozenia: uczelnia → wydzialy → jednostki →
     # autorzy → dyscypliny → zrodla → wydawcy → WC → WZ):
-    uczelnia = ensure_uczelnia(manifest)
+    uczelnia = ensure_uczelnia(manifest, theme=theme, prefix=prefix)
     wydzialy = create_wydzialy(
         n=opts.wydzialow,
         uczelnia=uczelnia,
+        theme=theme,
         manifest=manifest,
         rng=rng,
+        prefix=prefix,
         batch_size=opts.batch_size,
         disable_progress=opts.disable_progress,
     )
@@ -118,14 +129,17 @@ def run_create(opts: CreateOptions, *, stdin=None, stdout=None):
         per_wydzial=opts.jednostek_na_wydzial,
         wydzialy=wydzialy,
         uczelnia=uczelnia,
+        theme=theme,
         manifest=manifest,
         rng=rng,
+        prefix=prefix,
         batch_size=opts.batch_size,
         disable_progress=opts.disable_progress,
     )
     autorzy = create_autorzy(
         n=opts.autorow,
         jednostki=jednostki,
+        theme=theme,
         manifest=manifest,
         rng=rng,
         batch_size=opts.batch_size,
@@ -144,33 +158,51 @@ def run_create(opts: CreateOptions, *, stdin=None, stdout=None):
     )
     zrodla = create_zrodla(
         n=opts.zrodel,
+        theme=theme,
         manifest=manifest,
         rng=rng,
+        prefix=prefix,
         batch_size=opts.batch_size,
         disable_progress=opts.disable_progress,
     )
     wydawcy = create_wydawcy(
         n=opts.wydawcow,
+        theme=theme,
         manifest=manifest,
         rng=rng,
+        prefix=prefix,
         batch_size=opts.batch_size,
         disable_progress=opts.disable_progress,
     )
-    create_wc(
+    wc = create_wc(
         n=opts.ile_ciaglych,
         autorzy=autorzy,
         zrodla=zrodla,
         lata=range(opts.od_roku, opts.do_roku + 1),
+        theme=theme,
+        prefix=prefix,
         manifest=manifest,
         rng=rng,
         batch_size=opts.batch_size,
         disable_progress=opts.disable_progress,
     )
-    create_wz(
+    wz = create_wz(
         n=opts.ile_zwartych,
         autorzy=autorzy,
         wydawcy=wydawcy,
         lata=range(opts.od_roku, opts.do_roku + 1),
+        theme=theme,
+        prefix=prefix,
+        manifest=manifest,
+        rng=rng,
+        batch_size=opts.batch_size,
+        disable_progress=opts.disable_progress,
+    )
+    create_streszczenia(
+        prace_wc=wc,
+        prace_wz=wz,
+        theme=theme,
+        procent=opts.procent_ze_streszczeniem,
         manifest=manifest,
         rng=rng,
         batch_size=opts.batch_size,
@@ -179,6 +211,7 @@ def run_create(opts: CreateOptions, *, stdin=None, stdout=None):
 
     manifest.save()
     stdout.write(
+        f"\n[OK] Motyw: {theme.label}. Streszczenia: ~{opts.procent_ze_streszczeniem}% prac.\n"
         f"\n[OK] Manifest zapisany: {opts.manifest_out}\n"
         f"     Cleanup: uv run python src/manage.py cleanup_demo_data"
         f" --manifest {opts.manifest_out} --yes-i-am-sure"
