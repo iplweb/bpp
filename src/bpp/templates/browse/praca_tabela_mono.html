@@ -206,7 +206,7 @@
                                     {{ streszczenie.jezyk_streszczenia.nazwa }}:
                                 </strong>
                             {% endif %}
-                            <p class="praca-mono__abstract-text">{{ streszczenie.streszczenie|safe }}</p>
+                            <p class="praca-mono__abstract-text">{{ streszczenie.streszczenie|safe_streszczenie }}</p>
                         </div>
                     {% endfor %}
                 </div>
