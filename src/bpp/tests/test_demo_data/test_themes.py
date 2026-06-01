@@ -1,5 +1,7 @@
 """Testy systemu motywów (Theme dataclass, compose, registry)."""
 
+import pytest
+
 from bpp.demo_data.themes.base import (
     SHARED_JEDNOSTKA_PREFIKSY,
     SHARED_TYTUL_TEMPLATES,
@@ -182,3 +184,25 @@ def test_get_theme_known_and_unknown():
     assert get_theme("realistyczny").key == "realistyczny"
     with pytest.raises(ValueError):
         get_theme("nie-istnieje")
+
+
+@pytest.mark.parametrize("key", ["lem", "wiedzmin", "harry-potter", "disney"])
+def test_themed_modules_registered_and_compose(key):
+    import random
+
+    from bpp.demo_data.themes.compose import (
+        compose_autor,
+        compose_jednostka_nazwa,
+        compose_streszczenie,
+        compose_zrodlo_nazwa,
+    )
+    from bpp.demo_data.themes.registry import get_theme
+
+    theme = get_theme(key)
+    rng = random.Random(1)
+    assert compose_jednostka_nazwa(theme, rng)
+    imiona, nazwisko = compose_autor(theme, rng)
+    assert imiona and nazwisko  # nazwisko nigdy puste
+    assert compose_zrodlo_nazwa(theme, rng)
+    s = compose_streszczenie(theme, rng)
+    assert "{" not in s and "}" not in s
