@@ -9,18 +9,23 @@ from bpp.demo_data.generators.jednostki import create_jednostki
 from bpp.demo_data.generators.uczelnia import ensure_uczelnia
 from bpp.demo_data.generators.wydzialy import create_wydzialy
 from bpp.demo_data.manifest import Manifest
+from bpp.demo_data.themes.registry import get_theme
 from bpp.models import Autor, Autor_Jednostka
+
+REALISTYCZNY = get_theme("realistyczny")
 
 
 @pytest.fixture
 def jednostki_fixture(tmp_manifest_path, db):
     m = Manifest(path=tmp_manifest_path, database="db", command_args={})
-    uczelnia = ensure_uczelnia(m)
+    uczelnia = ensure_uczelnia(m, theme=REALISTYCZNY, prefix="Demo — ")
     w = create_wydzialy(
         n=2,
         uczelnia=uczelnia,
+        theme=REALISTYCZNY,
         manifest=m,
         rng=random.Random(1),
+        prefix="Demo — ",
         batch_size=10,
         disable_progress=True,
     )
@@ -28,8 +33,10 @@ def jednostki_fixture(tmp_manifest_path, db):
         per_wydzial=2,
         wydzialy=w,
         uczelnia=uczelnia,
+        theme=REALISTYCZNY,
         manifest=m,
         rng=random.Random(2),
+        prefix="Demo — ",
         batch_size=10,
         disable_progress=True,
     )
@@ -43,6 +50,7 @@ def test_create_autorzy_creates_n_records(jednostki_fixture, tmp_manifest_path):
     autorzy = create_autorzy(
         n=10,
         jednostki=jednostki,
+        theme=REALISTYCZNY,
         manifest=m,
         rng=random.Random(3),
         batch_size=100,
@@ -60,6 +68,7 @@ def test_each_autor_has_one_jednostka(jednostki_fixture, tmp_manifest_path):
     autorzy = create_autorzy(
         n=5,
         jednostki=jednostki,
+        theme=REALISTYCZNY,
         manifest=m,
         rng=random.Random(3),
         batch_size=100,
@@ -75,20 +84,22 @@ def test_each_autor_has_one_jednostka(jednostki_fixture, tmp_manifest_path):
 
 @pytest.mark.django_db(transaction=True)
 def test_autorzy_have_polish_names(jednostki_fixture, tmp_manifest_path):
-    from bpp.demo_data.names import IMIONA_POL, NAZWISKA_POL
+    from bpp.demo_data.themes.registry import get_theme
 
+    theme = get_theme("realistyczny")
     m, jednostki = jednostki_fixture
     autorzy = create_autorzy(
         n=5,
         jednostki=jednostki,
+        theme=theme,
         manifest=m,
         rng=random.Random(3),
         batch_size=100,
         disable_progress=True,
     )
     for a in autorzy:
-        assert a.imiona in IMIONA_POL
-        assert a.nazwisko in NAZWISKA_POL
+        assert a.imiona in theme.autor_imiona
+        assert a.nazwisko in theme.autor_nazwiska
 
 
 @pytest.mark.django_db(transaction=True)
@@ -99,6 +110,7 @@ def test_no_slug_collision_at_scale(jednostki_fixture, tmp_manifest_path):
     autorzy = create_autorzy(
         n=50,
         jednostki=jednostki,
+        theme=REALISTYCZNY,
         manifest=m,
         rng=random.Random(7),
         batch_size=100,
@@ -118,6 +130,7 @@ def test_seed_determinism(jednostki_fixture, tmp_manifest_path):
     autorzy_1 = create_autorzy(
         n=5,
         jednostki=jednostki,
+        theme=REALISTYCZNY,
         manifest=m,
         rng=random.Random(99),
         batch_size=100,
@@ -130,6 +143,7 @@ def test_seed_determinism(jednostki_fixture, tmp_manifest_path):
     autorzy_2 = create_autorzy(
         n=5,
         jednostki=jednostki,
+        theme=REALISTYCZNY,
         manifest=Manifest(path=tmp_manifest_path, database="db", command_args={}),
         rng=random.Random(99),
         batch_size=100,
