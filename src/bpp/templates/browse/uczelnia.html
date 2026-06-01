@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% load user_in_group deklinacja cache media_utils static %}
+{% load user_in_group deklinacja cache media_utils static prace %}
 
 {% block extratitle %}
     Uczelnia
@@ -821,7 +821,7 @@
                                     {{ rekord.rekord.opis_bibliograficzny_cache|safe }}
                                 </a>
                                 <div class="abstract-content">
-                                    {{ rekord.streszczenie|truncatewords_html:130|safe }}
+                                    {{ rekord.streszczenie|safe_streszczenie|truncatewords_html:130|safe }}
                                 </div>
                                 <div class="abstract-meta">
                                     {{ rekord.ostatnio_zmieniony|date:"d.m.Y H:i" }}

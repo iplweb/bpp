@@ -72,7 +72,7 @@
             <th>Streszczenie:</th>
             <td>{% for streszczenie in praca.streszczenia.all %}
                 <!-- <strong>{{streszczenie.jezyk_streszczenia.nazwa}}</strong> -->
-                <p>{{ streszczenie.streszczenie|safe }}</p>
+                <p>{{ streszczenie.streszczenie|safe_streszczenie }}</p>
             {% endfor %}
             </td>
         </tr>
