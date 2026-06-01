@@ -283,6 +283,13 @@
                     <div class="callout secondary">
                         <h4>Wyslane dane JSON</h4>
 
+                        {% if sent_data.api_url %}
+                            <p>
+                                <strong>Wyslano do:</strong>
+                                <code>{{ sent_data.api_url }}</code>
+                            </p>
+                        {% endif %}
+
                         <details class="pbn-export-queue__details">
                             <summary class="pbn-export-queue__details-summary">
                                 <span class="fi-page-filled"></span> Pokaz/ukryj wyslane dane JSON
