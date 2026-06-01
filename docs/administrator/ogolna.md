@@ -20,10 +20,10 @@
   być wyświetlane lub nie, możesz za pomocą tej funkcji ustawić je w określonej
   kolejności.
 
-  !!! note
+    !!! note
 
-      wydziały w module interfejsu uzytkownika niezalogowanego nie są wyświelane
-      alfabetycznie a zgodnie z ustaloną kolejnością.
+        wydziały w module interfejsu uzytkownika niezalogowanego nie są wyświelane
+        alfabetycznie a zgodnie z ustaloną kolejnością.
 
 
 - aby obejrzeć szczegóły wydziału skorzystaj z opcji
@@ -162,7 +162,7 @@ potrzeby procedur liczących, raportujących, eksportujących dane itp.
 
 System umożliwia zmianę rodzaju i ilości wyświetlanych kolumn w module redagowania. W tym celu
 użytkownik posiadający uprawnienia administratora po zalogowaniu się powinien w module redagowania
-wejść w opcję Administracja -\> Kolumny w module redagowania:
+wejść w opcję Administracja -> Kolumny w module redagowania:
 
 ![image](../images/admin/dynamic_columns/dynamic_columns_1.png)
 
@@ -218,7 +218,7 @@ wypełnienia tych dat oraz wysłania oświadczeń do PBN.
     Ta procedura:
 
     - Wyszukuje wszystkie rekordy powiązań autor-publikacja z pustymi datami oświadczeń
-    - Uwzględnia tylko publikacje z rokiem wydania \>= 2022
+    - Uwzględnia tylko publikacje z rokiem wydania >= 2022
     - Ustawia datę oświadczenia na datę utworzenia nadrzędnego rekordu publikacji
     - Aktualizuje rekordy w tabelach `Wydawnictwo_Ciagle_Autor` i `Wydawnictwo_Zwarte_Autor`
 
