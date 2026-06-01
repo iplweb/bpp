@@ -19,6 +19,9 @@ import os
 # zachowanie uvicorna (mniejsze zużycie RAM). Override przez WEB_CONCURRENCY.
 # Master gunicorna jest lekki i recykluje każdego workera niezależnie.
 workers = int(os.environ.get("WEB_CONCURRENCY", "1"))
+# UWAGA: ``uvicorn.workers`` jest deprecated od uvicorn ~0.30 (działa w 0.47,
+# emituje DeprecationWarning). Gdy uvicorn go usunie (przyszły major), dodaj
+# zależność ``uvicorn-worker`` i zmień na ``uvicorn_worker.UvicornWorker``.
 worker_class = "uvicorn.workers.UvicornWorker"
 bind = "0.0.0.0:8000"
 
