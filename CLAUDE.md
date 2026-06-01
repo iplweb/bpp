@@ -12,9 +12,9 @@ Lefkowitz, raised by Bruce Schneier.
 BPP (Bibliografia Publikacji Pracownikow) is a Polish academic bibliography
 management system built with Django. Python >=3.10,<3.15.
 
-- Architecture: [docs/CODEBASE_MAP.md](docs/CODEBASE_MAP.md)
-- Commands reference: [docs/COMMANDS.md](docs/COMMANDS.md)
-- CSS/SCSS build: [docs/CSS_BUILD.md](docs/CSS_BUILD.md)
+- Architecture: [docs/deweloper/mapa-kodu.md](docs/deweloper/mapa-kodu.md)
+- Commands reference: [docs/deweloper/polecenia.md](docs/deweloper/polecenia.md)
+- CSS/SCSS build: [docs/deweloper/budowanie-css.md](docs/deweloper/budowanie-css.md)
 
 ## Critical Rules
 
@@ -143,7 +143,7 @@ Do oglądania samej strony — używaj `run-site`.
 
 ## Key Commands (Quick Reference)
 
-Full details: [docs/COMMANDS.md](docs/COMMANDS.md)
+Full details: [docs/deweloper/polecenia.md](docs/deweloper/polecenia.md)
 
 ```bash
 # Infrastructure services (when not running locally):
@@ -249,7 +249,7 @@ można je cytować swobodnie.
 
 ## CSS/SCSS Rules
 
-Full details: [docs/CSS_BUILD.md](docs/CSS_BUILD.md)
+Full details: [docs/deweloper/budowanie-css.md](docs/deweloper/budowanie-css.md)
 
 - **NEVER override Foundation's grid classes** (`medium-4`, `large-12`,
   etc.) in SCSS. Change classes in HTML templates instead.
