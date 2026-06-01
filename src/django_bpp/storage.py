@@ -27,10 +27,13 @@ from django.contrib.staticfiles.storage import ManifestStaticFilesStorage
 
 
 class TolerantManifestStaticFilesStorage(ManifestStaticFilesStorage):
-    # Runtime: brakujący wpis w manifeście → zwróć nazwę nie-hashowaną zamiast
-    # rzucać "Missing staticfiles manifest entry". Chroni dev/testy bez
-    # collectstatic (choć tam i tak działa short-circuit DEBUG w `.url()`)
-    # oraz 132 vendored-refy, które zostały niezahashowane na buildzie.
+    # Runtime: brakujący wpis w manifeście → nie rzucaj "Missing staticfiles
+    # manifest entry". Potrzebne dla 132 vendored-refów niezahashowanych na
+    # buildzie. UWAGA: samo `manifest_strict=False` NIE wystarcza dla dev/testów
+    # bez collectstatic — vanilla fallback liczy wtedy hash w locie (martwy URL,
+    # bo hashowanej kopii nie ma na dysku). Pod pytest `DEBUG=False`, więc
+    # short-circuit DEBUG w `.url()` też nie ratuje. Realnie chroni nas dopiero
+    # override `stored_name` poniżej.
     manifest_strict = False
 
     def hashed_name(self, name, content=None, filename=None):
@@ -41,3 +44,27 @@ class TolerantManifestStaticFilesStorage(ManifestStaticFilesStorage):
             # / sprite, którego targetu nie ma w zebranych statykach). Zostaw
             # nazwę oryginalną zamiast przerywać collectstatic — issue #269.
             return name
+
+    def stored_name(self, name):
+        # Runtime lookup używany przez `url()`. Gdy manifestu NIE MA w ogóle
+        # (`staticfiles.json` nie istnieje → `hashed_files` puste — dev/testy
+        # bez collectstatic, albo stary `staticroot` sprzed Manifestu),
+        # vanilla `ManifestFilesMixin.stored_name` z `manifest_strict=False`
+        # liczy content-hash w locie przez `hashed_name()`. Dla pliku, który
+        # PRZYPADKIEM leży w STATIC_ROOT, daje to `name.<hash>.ext` — nazwę,
+        # której fizycznej kopii nikt nigdy nie wygenerował (stary
+        # collectstatic zrobił tylko nie-hashowaną). URL jest martwy:
+        # django-compressor rzuca `UncompressableFileError`, a bezpośredni GET
+        # (webtest) dostaje 404. Manifest jest jedynym źródłem prawdy dla
+        # hashy — bez niego serwujemy nazwę oryginalną; realny plik źródłowy
+        # zaserwuje finder / runserver / whitenoise.
+        #
+        # Gating na PUSTY manifest (nie per-wpis) jest celowo wąski: gdy
+        # collectstatic wygenerował manifest (produkcja, `.baked`),
+        # `hashed_files` jest niepuste → delegujemy do vanilla bez zmian, więc
+        # cache-busting długiego ogona działa 1:1 jak dotąd. Build-time
+        # `post_process` używa osobnej ścieżki (`_stored_name`, force=True),
+        # więc ten override go nie dotyka.
+        if not self.hashed_files:
+            return name
+        return super().stored_name(name)
