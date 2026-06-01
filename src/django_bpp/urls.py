@@ -352,7 +352,11 @@ urlpatterns = (
         #     cache_page(7*24*3600)(sitemaps_views.sitemap), {'sitemaps': django_bpp_sitemaps},
         #     name='sitemaps'),
         # url(r'^sitemap\.xml', include('static_sitemaps.urls')),
-        path("", include("static_sitemaps.urls")),
+        *(
+            [path("", include("static_sitemaps.urls"))]
+            if getattr(settings, "ENABLE_SITEMAPS", True)
+            else []
+        ),
         url(r"", include("webmaster_verification.urls")),
         url(
             r"^global-nav-redir/(?P<param>.+)/$",

@@ -14,9 +14,22 @@ class Command(BaseCommand):
         "Czyści dane z PBNu oraz dane z bazy BPP (autorzy, źródła, wydawcy, publikacje)"
     )
 
+    def add_arguments(self, parser):
+        super().add_arguments(parser)
+        parser.add_argument(
+            "--uczelnia-id",
+            type=int,
+            default=None,
+            help=("ID uczelni (domyślnie: pierwsza uczelnia w bazie)"),
+        )
+
     @transaction.atomic
     def handle(self, *args, **options):
-        uczelnia = Uczelnia.objects.get_default()
+        uczelnia_id = options.get("uczelnia_id")
+        if uczelnia_id:
+            uczelnia = Uczelnia.objects.get(pk=uczelnia_id)
+        else:
+            uczelnia = Uczelnia.objects.get_default()
         wydzial = Wydzial.objects.get(skrot="WD")  # wydział domyslny
         for elem in open(
             "/Users/mpasternak/Programowanie/bpp/jednostki-uniq.txt"

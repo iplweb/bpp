@@ -58,7 +58,7 @@ def update_progress(session, step_name, progress, message=None):
 
 
 @shared_task(bind=True)
-def run_pbn_import(self, session_id):
+def run_pbn_import(self, session_id, uczelnia_id=None):
     """Main PBN import task"""
     logger.info(f"Uruchamianie zadania Celery dla sesji importu #{session_id}")
     try:
@@ -73,7 +73,11 @@ def run_pbn_import(self, session_id):
 
         # Get configuration
         config = session.config
-        uczelnia = Uczelnia.objects.get_default()
+        uczelnia = (
+            Uczelnia.objects.get(pk=uczelnia_id)
+            if uczelnia_id
+            else Uczelnia.objects.get_default()
+        )
 
         if not uczelnia:
             raise Exception("Brak konfiguracji uczelni")

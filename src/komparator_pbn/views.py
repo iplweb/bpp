@@ -35,7 +35,7 @@ class KomparatorMainView(TemplateView):
         from bpp.models.system import Charakter_Formalny
         from bpp.models.uczelnia import Uczelnia
 
-        uczelnia = Uczelnia.objects.get_default()
+        uczelnia = Uczelnia.objects.get_for_request(self.request)
 
         # Get charaktery formalne that should be exported to PBN
         charaktery_wysylane_do_pbn = list(
@@ -271,7 +271,7 @@ class BPPMissingInPBNView(ListView):
             # Apply the same filtering logic as in main view for "not sent" records
             from bpp.models.uczelnia import Uczelnia
 
-            uczelnia = Uczelnia.objects.get_default()
+            uczelnia = Uczelnia.objects.get_for_request(self.request)
 
             # Exclude PK=0 records if university setting is enabled
             if uczelnia and uczelnia.pbn_api_nie_wysylaj_prac_bez_pk:
@@ -305,7 +305,7 @@ class BPPMissingInPBNView(ListView):
             # Apply the same filtering logic as in main view for "not sent" records
             from bpp.models.uczelnia import Uczelnia
 
-            uczelnia = Uczelnia.objects.get_default()
+            uczelnia = Uczelnia.objects.get_for_request(self.request)
 
             # Exclude PK=0 records if university setting is enabled
             if uczelnia and uczelnia.pbn_api_nie_wysylaj_prac_bez_pk:

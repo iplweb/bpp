@@ -12,9 +12,10 @@ class AuthorImporter(ImportStepBase):
     step_name = "author_import"
     step_description = "Import autorów"
 
-    def run(self):
+    def run(self, uczelnia=None):
         """Import authors"""
-        uczelnia = Uczelnia.objects.get_default()
+        if uczelnia is None:
+            uczelnia = Uczelnia.objects.get_default()
 
         if not uczelnia or not uczelnia.pbn_uid_id:
             self.log(

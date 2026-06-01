@@ -95,9 +95,10 @@ class InstitutionImporter(ImportStepBase):
             wydzial_domyslny
         )
 
-    def run(self):
+    def run(self, uczelnia=None):
         """Setup default institutions"""
-        uczelnia = Uczelnia.objects.get_default()
+        if uczelnia is None:
+            uczelnia = Uczelnia.objects.get_default()
 
         if not uczelnia:
             raise ValueError(

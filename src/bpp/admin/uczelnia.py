@@ -1,5 +1,6 @@
 from django import forms
 from django.contrib import admin, messages
+from django.core.exceptions import ImproperlyConfigured
 from reversion.admin import VersionAdmin
 
 from ewaluacja_liczba_n.models import LiczbaNDlaUczelni
@@ -12,6 +13,7 @@ from .core import BaseBppAdminMixin, RestrictDeletionToAdministracjaGroupMixin
 from .helpers.constance_field_mixin import ConstanceUczelniaFieldsMixin
 from .helpers.fieldsets import ADNOTACJE_FIELDSET
 from .helpers.mixins import ZapiszZAdnotacjaMixin
+from .helpers.site_filtered import SiteFilteredAdminMixin
 
 
 class WydzialInlineForm(forms.ModelForm):
@@ -61,6 +63,7 @@ class Ukryj_Status_KorektyInline(admin.StackedInline):
 
 
 class UczelniaAdmin(
+    SiteFilteredAdminMixin,
     ConstanceUczelniaFieldsMixin,
     RestrictDeletionToAdministracjaGroupMixin,
     ZapiszZAdnotacjaMixin,
@@ -68,6 +71,16 @@ class UczelniaAdmin(
     VersionAdmin,
 ):
     list_display = ["nazwa", "nazwa_dopelniacz_field", "skrot", "pbn_uid"]
+
+    def get_queryset(self, request):
+        qs = super(SiteFilteredAdminMixin, self).get_queryset(request)
+        if request.user.is_superuser:
+            return qs
+        uczelnia = getattr(request, "_uczelnia", None)
+        if uczelnia:
+            return qs.filter(pk=uczelnia.pk)
+        return qs
+
     autocomplete_fields = ["pbn_uid", "obca_jednostka"]
     fieldsets = (
         (
@@ -77,6 +90,8 @@ class UczelniaAdmin(
                     "nazwa",
                     "nazwa_dopelniacz_field",
                     "skrot",
+                    "site",
+                    "theme_name",
                     "pbn_uid",
                     "pbn_id",
                     "favicon_ico",
@@ -161,6 +176,10 @@ class UczelniaAdmin(
                     "wydruk_parametry_zapytania",
                     "drukuj_oswiadczenia",
                     "drukuj_alternatywne_oswiadczenia",
+                    "wydruk_margines_gora",
+                    "wydruk_margines_dol",
+                    "wydruk_margines_lewo",
+                    "wydruk_margines_prawo",
                 ),
             },
         ),
@@ -189,6 +208,26 @@ class UczelniaAdmin(
             {
                 "classes": ("grp-collapse grp-opened",),
                 "fields": ("przydzielaj_1_slot_gdy_udzial_mniejszy",),
+            },
+        ),
+        (
+            "Struktura uczelni",
+            {
+                "classes": ("grp-collapse grp-closed",),
+                "fields": (
+                    "skrot_wydzialu_w_nazwie_jednostki",
+                    "pokazuj_oswiadczenie_ken",
+                ),
+            },
+        ),
+        (
+            "Integracje Google",
+            {
+                "classes": ("grp-collapse grp-closed",),
+                "fields": (
+                    "google_analytics_property_id",
+                    "google_verification_code",
+                ),
             },
         ),
         ADNOTACJE_FIELDSET,
@@ -235,11 +274,26 @@ class UczelniaAdmin(
     ]
 
     def save_model(self, request, obj, form, change):
+        if obj.site_id is None and not change:
+            from django.contrib.sites.shortcuts import get_current_site
+
+            obj.site = get_current_site(request)
+
         ret = super().save_model(request, obj, form, change)
 
         if obj.pbn_integracja:
+            try:
+                client = obj.pbn_client()
+            except ImproperlyConfigured as e:
+                messages.warning(
+                    request,
+                    f"Integracja z PBN jest włączona, ale konfiguracja jest niekompletna: {e}. "
+                    f"Uzupełnij brakujące dane (nazwa aplikacji i token) lub wyłącz "
+                    f"integrację z PBN w sekcji „Integracja z PBN API”.",
+                )
+                return ret
+
             # Wykonaj próbne pobranie rekordu z PBNu
-            client = obj.pbn_client()
             try:
                 client.get_languages()
             except PraceSerwisoweException:

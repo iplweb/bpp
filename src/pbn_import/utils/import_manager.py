@@ -92,7 +92,7 @@ class ImportManager:
             session=self.session, level__in=["error", "critical"]
         ).exists()
 
-    def _refresh_pbn_client_after_setup(self):
+    def _refresh_pbn_client_after_setup(self, uczelnia=None):
         """Refresh PBN client after initial setup changes configuration.
 
         On a clean database, pbn_uid_id may be None when the import starts.
@@ -102,8 +102,10 @@ class ImportManager:
         """
         from bpp.models import Uczelnia
 
-        # Refresh uczelnia from database to get changes made by InitialSetup
-        uczelnia = Uczelnia.objects.get_default()
+        # Refresh uczelnia from database to get changes made by
+        # InitialSetup
+        if uczelnia is None:
+            uczelnia = Uczelnia.objects.get_default()
 
         if uczelnia is None:
             logger.warning("Nie znaleziono uczelni po InitialSetup")

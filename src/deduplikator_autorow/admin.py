@@ -18,6 +18,9 @@ from .models import (
 
 @admin.register(NotADuplicate)
 class NotADuplicateAdmin(DynamicAdminFilterMixin, admin.ModelAdmin):
+    def has_module_permission(self, request):
+        return request.user.is_superuser
+
     list_display = [
         "autor",
         "created_by",
@@ -79,6 +82,9 @@ class NotADuplicateAdmin(DynamicAdminFilterMixin, admin.ModelAdmin):
 
 @admin.register(IgnoredScientist)
 class IgnoredScientistAdmin(DynamicAdminFilterMixin, admin.ModelAdmin):
+    def has_module_permission(self, request):
+        return request.user.is_superuser
+
     list_display = [
         "get_scientist_display",
         "get_autor_display",
@@ -136,6 +142,9 @@ class IgnoredScientistAdmin(DynamicAdminFilterMixin, admin.ModelAdmin):
 
 @admin.register(IgnoredAuthor)
 class IgnoredAuthorAdmin(DynamicAdminFilterMixin, admin.ModelAdmin):
+    def has_module_permission(self, request):
+        return request.user.is_superuser
+
     list_display = [
         "get_autor_display",
         "reason",
@@ -172,6 +181,9 @@ class IgnoredAuthorAdmin(DynamicAdminFilterMixin, admin.ModelAdmin):
 
 @admin.register(LogScalania)
 class LogScalaniaAdmin(DynamicAdminFilterMixin, admin.ModelAdmin):
+    def has_module_permission(self, request):
+        return request.user.is_superuser
+
     list_display = [
         "get_operation_icon",
         "get_merge_description",
@@ -376,6 +388,9 @@ class LogScalaniaAdmin(DynamicAdminFilterMixin, admin.ModelAdmin):
 
 @admin.register(DuplicateScanRun)
 class DuplicateScanRunAdmin(DynamicAdminFilterMixin, admin.ModelAdmin):
+    def has_module_permission(self, request):
+        return request.user.is_superuser
+
     list_display = [
         "id",
         "status",
@@ -489,6 +504,9 @@ class DuplicateScanRunAdmin(DynamicAdminFilterMixin, admin.ModelAdmin):
 
 @admin.register(DuplicateCandidate)
 class DuplicateCandidateAdmin(DynamicAdminFilterMixin, admin.ModelAdmin):
+    def has_module_permission(self, request):
+        return request.user.is_superuser
+
     list_display = [
         "id",
         "get_main_autor_link",

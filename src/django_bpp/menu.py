@@ -228,7 +228,7 @@ class CustomMenu(Menu):
 
         from bpp.models import Uczelnia
 
-        uczelnia = Uczelnia.objects.get_default()
+        uczelnia = Uczelnia.objects.get_for_request(context["request"])
         uzywaj_wydzialow = True
         if uczelnia is not None:
             uzywaj_wydzialow = uczelnia.uzywaj_wydzialow

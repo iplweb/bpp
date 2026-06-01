@@ -1,6 +1,7 @@
 """Author-related autocomplete views."""
 
 import json
+from collections import OrderedDict
 
 from braces.views import GroupRequiredMixin
 from dal import autocomplete
@@ -13,7 +14,7 @@ from queryset_sequence import QuerySetSequence
 from bpp.const import GR_WPROWADZANIE_DANYCH
 from bpp.jezyk_polski import warianty_zapisanego_nazwiska
 from bpp.models import Autor_Dyscyplina
-from bpp.models.autor import Autor
+from bpp.models.autor import Autor, Autor_Jednostka
 from bpp.models.patent import Patent, Patent_Autor
 from bpp.models.wydawnictwo_ciagle import Wydawnictwo_Ciagle, Wydawnictwo_Ciagle_Autor
 from bpp.models.wydawnictwo_zwarte import Wydawnictwo_Zwarte, Wydawnictwo_Zwarte_Autor
@@ -28,31 +29,93 @@ class AutorAutocompleteBase(
 ):
     """Base autocomplete for authors with PBN indicators."""
 
+    GROUP_NASZA_UCZELNIA = 1
+    GROUP_HISTORYCZNIE = 2
+    GROUP_ZEWNETRZNI = 3
+
+    GROUP_LABELS = {
+        GROUP_NASZA_UCZELNIA: "✅ Autorzy z naszej uczelni",
+        GROUP_HISTORYCZNIE: "🏛️ Autorzy powiązani historycznie z naszą uczelnią",
+        GROUP_ZEWNETRZNI: "🌐 Autorzy zewnętrzni",
+    }
+
     def get_queryset(self):
-        from django.db.models import Exists, OuterRef
+        from django.db.models import (
+            Case,
+            Exists,
+            IntegerField,
+            OuterRef,
+            Value,
+            When,
+        )
 
-        qs = Autor.objects.select_related("tytul", "pbn_uid")
+        if self.q:
+            qs = Autor.objects.fulltext_filter(self.q)
+        else:
+            qs = Autor.objects.all()
 
-        # Annotate with information if person is from institution (OsobaZInstytucji)
-        qs = qs.annotate(
+        qs = qs.select_related("tytul", "pbn_uid").annotate(
             ma_osobe_z_instytucji=Exists(
                 OsobaZInstytucji.objects.filter(personId_id=OuterRef("pbn_uid_id"))
             )
         )
 
-        if self.q:
-            return (
-                Autor.objects.fulltext_filter(self.q)
-                .select_related("tytul", "pbn_uid")
-                .annotate(
-                    ma_osobe_z_instytucji=Exists(
-                        OsobaZInstytucji.objects.filter(
-                            personId_id=OuterRef("pbn_uid_id")
-                        )
-                    )
+        uczelnia = getattr(getattr(self, "request", None), "_uczelnia", None)
+        if uczelnia:
+            ma_jednostke_w_naszej = Exists(
+                Autor_Jednostka.objects.filter(
+                    autor=OuterRef("pk"),
+                    jednostka__uczelnia=uczelnia,
                 )
             )
+            qs = qs.annotate(
+                ma_jednostke_w_naszej=ma_jednostke_w_naszej,
+                grupa_uczelnia=Case(
+                    When(
+                        aktualna_jednostka__uczelnia=uczelnia,
+                        then=Value(self.GROUP_NASZA_UCZELNIA),
+                    ),
+                    When(
+                        ma_jednostke_w_naszej=True,
+                        then=Value(self.GROUP_HISTORYCZNIE),
+                    ),
+                    default=Value(self.GROUP_ZEWNETRZNI),
+                    output_field=IntegerField(),
+                ),
+            ).order_by("grupa_uczelnia", "nazwisko", "imiona")
+
         return qs
+
+    def get_results(self, context):
+        """Group authors into optgroups by their relation to the current uczelnia."""
+        uczelnia = getattr(getattr(self, "request", None), "_uczelnia", None)
+        if uczelnia is None:
+            return super().get_results(context)
+
+        groups = OrderedDict((grp_no, []) for grp_no in self.GROUP_LABELS)
+        for result in context["object_list"]:
+            grp_no = getattr(result, "grupa_uczelnia", self.GROUP_ZEWNETRZNI)
+            groups.setdefault(grp_no, []).append(result)
+
+        output = []
+        for grp_no, items in groups.items():
+            if not items:
+                continue
+            output.append(
+                {
+                    "id": None,
+                    "text": self.GROUP_LABELS.get(grp_no, ""),
+                    "children": [
+                        {
+                            "id": self.get_result_value(r),
+                            "text": self.get_result_label(r),
+                            "selected_text": self.get_selected_result_label(r),
+                        }
+                        for r in items
+                    ],
+                }
+            )
+        return output
 
     def get_result_label(self, result):
         # Handle error objects or non-Autor instances

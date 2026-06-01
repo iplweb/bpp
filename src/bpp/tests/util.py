@@ -50,8 +50,14 @@ def any_autor(nazwisko="Kowalski", imiona="Jan Maria", tytul="dr", **kw):
     return Autor.objects.create(nazwisko=nazwisko, tytul=tytul, imiona=imiona, **kw)
 
 
-def any_uczelnia(nazwa="Uczelnia", skrot="UCL"):
-    return Uczelnia.objects.create(nazwa=nazwa, skrot=skrot)
+def any_uczelnia(nazwa="Uczelnia", skrot="UCL", site=None):
+    if site is None:
+        from django.contrib.sites.models import Site
+
+        site, _ = Site.objects.get_or_create(
+            domain="testserver", defaults={"name": "testserver"}
+        )
+    return Uczelnia.objects.create(nazwa=nazwa, skrot=skrot, site=site)
 
 
 wydzial_cnt = 0

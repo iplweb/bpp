@@ -93,6 +93,9 @@ env = environ.Env(
     # Konfiguracja Django
     #
     DJANGO_BPP_HOSTNAME=(str, "localhost"),
+    # Multi-hosted: comma-separated lista nazw hostów (np. "u1.example,u2.example").
+    # Pusta wartość = używaj DJANGO_BPP_HOSTNAME (single-host, backward compat).
+    DJANGO_BPP_HOSTNAMES=(str, ""),
     DJANGO_BPP_DB_NAME=(str, "bpp"),
     DJANGO_BPP_DB_USER=(str, "bpp"),
     DJANGO_BPP_DB_PASSWORD=(str, "password"),
@@ -205,7 +208,10 @@ LOCALE_PATHS = [
     os.path.join(BASE_DIR, "locale"),
 ]
 
-SITE_ID = 1  # dla static-sitemaps
+# SITE_ID służy jako fallback dla SiteResolutionMiddleware gdy hostname
+# nie pasuje do żadnego obiektu Site. W multi-hosted ustawia się na ID
+# domyślnego Site. static-sitemaps również wymaga tej wartości.
+SITE_ID = env("DJANGO_BPP_SITE_ID", default=1, cast=int)
 USE_I18N = True
 USE_TZ = True
 
@@ -307,6 +313,7 @@ MIDDLEWARE = [
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
+    "bpp.middleware.SiteResolutionMiddleware",  # After auth - resolves Site/Uczelnia from hostname
     "django_countdown.middleware.CountdownBlockingMiddleware",  # After auth - needs request.user
     "first_run_wizard.middleware.FirstRunWizardMiddleware",  # After auth middleware to have request.user
     "django.contrib.messages.middleware.MessageMiddleware",
@@ -613,17 +620,60 @@ COMPRESS_OFFLINE_CONTEXT = [
     },
 ]
 
-DJANGO_BPP_HOSTNAME = env("DJANGO_BPP_HOSTNAME")
+# Lista hostów obsługiwanych przez deployment.
+# Konfiguracja jawnie XOR: ustaw ALBO DJANGO_BPP_HOSTNAME (single, bez
+# przecinka), ALBO DJANGO_BPP_HOSTNAMES (multi-host, CSV z minimum dwoma
+# hostami). Ustawienie obu = ImproperlyConfigured (intencja niejasna).
+_hostname = os.environ.get("DJANGO_BPP_HOSTNAME", "").strip()
+_hostnames_csv = os.environ.get("DJANGO_BPP_HOSTNAMES", "").strip()
+
+if _hostname and _hostnames_csv:
+    raise ImproperlyConfigured(
+        "Ustaw albo DJANGO_BPP_HOSTNAME (single host, bez przecinka), albo "
+        "DJANGO_BPP_HOSTNAMES (multi-host, comma-separated, minimum dwa). "
+        "Oba naraz są niejednoznaczne — wybierz jedno."
+    )
+
+if _hostnames_csv:
+    if "," not in _hostnames_csv:
+        raise ImproperlyConfigured(
+            f"DJANGO_BPP_HOSTNAMES musi zawierać minimum dwa hosty "
+            f"oddzielone przecinkiem (otrzymano: {_hostnames_csv!r}). "
+            f"Dla single-host użyj DJANGO_BPP_HOSTNAME."
+        )
+    DJANGO_BPP_HOSTNAMES = [h.strip() for h in _hostnames_csv.split(",") if h.strip()]
+    if len(DJANGO_BPP_HOSTNAMES) < 2:
+        raise ImproperlyConfigured(
+            f"DJANGO_BPP_HOSTNAMES po sparsowaniu daje mniej niż dwa hosty "
+            f"(otrzymano: {DJANGO_BPP_HOSTNAMES!r}). "
+            f"Dla single-host użyj DJANGO_BPP_HOSTNAME."
+        )
+elif _hostname:
+    if "," in _hostname:
+        raise ImproperlyConfigured(
+            f"DJANGO_BPP_HOSTNAME nie może zawierać przecinka "
+            f"(otrzymano: {_hostname!r}). Dla multi-host użyj "
+            f"DJANGO_BPP_HOSTNAMES."
+        )
+    DJANGO_BPP_HOSTNAMES = [_hostname]
+else:
+    # Żadne nie ustawione — fallback do default ("localhost") z env declaration
+    DJANGO_BPP_HOSTNAMES = [env("DJANGO_BPP_HOSTNAME")]
+
+# Canonical/primary hostname — pierwszy z listy. Używany m.in. przez
+# Rollbar jako identyfikacja deployment'u (oznaczenie instalacji); per-request
+# vhost gdzie padło zgłoszenie ma osobny klucz w extra_data middleware'u.
+DJANGO_BPP_HOSTNAME = DJANGO_BPP_HOSTNAMES[0]
 
 ALLOWED_HOSTS = [
     "127.0.0.1",
     "appserver",
     "appserver:8000",
     "test.unexistenttld",
-    DJANGO_BPP_HOSTNAME,
+    *DJANGO_BPP_HOSTNAMES,
 ]
 
-CSRF_TRUSTED_ORIGINS = ["https://" + DJANGO_BPP_HOSTNAME]
+CSRF_TRUSTED_ORIGINS = ["https://" + h for h in DJANGO_BPP_HOSTNAMES]
 
 # Optional extra CSRF origins for dev with non-standard ports
 # (comma-separated, e.g. "https://bpp.localnet:10443,https://localhost:10443")
@@ -1301,13 +1351,20 @@ TINYMCE_DEFAULT_CONFIG = {
 
 #
 # django-static-sitemaps
+# W trybie multi-hosted można wyłączyć sitemaps ustawiając
+# DJANGO_BPP_ENABLE_SITEMAPS=False, ponieważ static-sitemaps
+# generuje sitemapę tylko dla jednej domeny (SITE_ID).
 #
 
-STATICSITEMAPS_ROOT_SITEMAP = "django_bpp.sitemaps.django_bpp_sitemaps"
+ENABLE_SITEMAPS = env("DJANGO_BPP_ENABLE_SITEMAPS", default=True, cast=bool)
 
-STATICSITEMAPS_REFRESH_AFTER = 24 * 60
-
-STATICSITEMAPS_ROOT_DIR = os.path.relpath(STATIC_ROOT, os.getcwd())
+if ENABLE_SITEMAPS:
+    STATICSITEMAPS_ROOT_SITEMAP = "django_bpp.sitemaps.django_bpp_sitemaps"
+    STATICSITEMAPS_REFRESH_AFTER = 24 * 60
+    STATICSITEMAPS_ROOT_DIR = os.path.relpath(STATIC_ROOT, os.getcwd())
+else:
+    if "static_sitemaps" in INSTALLED_APPS:
+        INSTALLED_APPS.remove("static_sitemaps")
 
 #
 # "Audyt" bezpieczeństwa
@@ -1485,93 +1542,11 @@ CACHEOPS_REDIS = {
 CONSTANCE_BACKEND = "constance.backends.database.DatabaseBackend"
 CONSTANCE_DATABASE_CACHE_BACKEND = "constance_cache"
 
-CONSTANCE_CONFIG = {
-    # Punktacja
-    "UZYWAJ_PUNKTACJI_WEWNETRZNEJ": (
-        env("DJANGO_BPP_UZYWAJ_PUNKTACJI_WEWNETRZNEJ"),
-        "Używaj punktacji wewnętrznej w systemie",
-        bool,
-    ),
-    "POKAZUJ_INDEX_COPERNICUS": (
-        True,
-        "Pokazuj pole Index Copernicus w formularzach",
-        bool,
-    ),
-    "POKAZUJ_PUNKTACJA_SNIP": (
-        True,
-        "Pokazuj pole punktacji SNIP w formularzach",
-        bool,
-    ),
-    # Funkcjonalność
-    "POKAZUJ_OSWIADCZENIE_KEN": (
-        env("DJANGO_BPP_POKAZUJ_OSWIADCZENIE_KEN"),
-        "Pokazuj opcję oświadczenia KEN",
-        bool,
-    ),
-    # Struktura uczelni
-    "SKROT_WYDZIALU_W_NAZWIE_JEDNOSTKI": (
-        env("DJANGO_BPP_SKROT_WYDZIALU_W_NAZWIE_JEDNOSTKI"),
-        "Wyświetlaj skrót wydziału w nazwie jednostki",
-        bool,
-    ),
-    "UCZELNIA_UZYWA_WYDZIALOW": (
-        env("DJANGO_BPP_UCZELNIA_UZYWA_WYDZIALOW"),
-        "Uczelnia używa struktury wydziałowej",
-        bool,
-    ),
-    # Integracje Google
-    "GOOGLE_ANALYTICS_PROPERTY_ID": (
-        env("DJANGO_BPP_GOOGLE_ANALYTICS_PROPERTY_ID"),
-        "Google Analytics Property ID (np. UA-XXXXXXXX-X lub G-XXXXXXXXXX)",
-        str,
-    ),
-    "GOOGLE_VERIFICATION_CODE": (
-        env("DJANGO_BPP_GOOGLE_VERIFICATION_CODE"),
-        "Kod weryfikacyjny Google Search Console",
-        str,
-    ),
-    # Wydruk - marginesy
-    "WYDRUK_MARGINES_GORA": (
-        "2cm",
-        "Margines górny wydruku (np. 2cm, 20mm, 0.8in)",
-        str,
-    ),
-    "WYDRUK_MARGINES_DOL": (
-        "2cm",
-        "Margines dolny wydruku (np. 2cm, 20mm, 0.8in)",
-        str,
-    ),
-    "WYDRUK_MARGINES_LEWO": (
-        "2cm",
-        "Margines lewy wydruku (np. 2cm, 20mm, 0.8in)",
-        str,
-    ),
-    "WYDRUK_MARGINES_PRAWO": (
-        "2cm",
-        "Margines prawy wydruku (np. 2cm, 20mm, 0.8in)",
-        str,
-    ),
-}
-
-CONSTANCE_CONFIG_FIELDSETS = {
-    "Punktacja": (
-        "UZYWAJ_PUNKTACJI_WEWNETRZNEJ",
-        "POKAZUJ_INDEX_COPERNICUS",
-        "POKAZUJ_PUNKTACJA_SNIP",
-    ),
-    "Funkcjonalność": ("POKAZUJ_OSWIADCZENIE_KEN",),
-    "Struktura uczelni": (
-        "SKROT_WYDZIALU_W_NAZWIE_JEDNOSTKI",
-        "UCZELNIA_UZYWA_WYDZIALOW",
-    ),
-    "Integracje Google": (
-        "GOOGLE_ANALYTICS_PROPERTY_ID",
-        "GOOGLE_VERIFICATION_CODE",
-    ),
-    "Wydruk": (
-        "WYDRUK_MARGINES_GORA",
-        "WYDRUK_MARGINES_DOL",
-        "WYDRUK_MARGINES_LEWO",
-        "WYDRUK_MARGINES_PRAWO",
-    ),
-}
+# Ustawienia per-uczelnia przeniesione do modelu Uczelnia:
+# UZYWAJ_PUNKTACJI_WEWNETRZNEJ, POKAZUJ_INDEX_COPERNICUS, POKAZUJ_PUNKTACJA_SNIP,
+# POKAZUJ_OSWIADCZENIE_KEN, SKROT_WYDZIALU_W_NAZWIE_JEDNOSTKI,
+# UCZELNIA_UZYWA_WYDZIALOW, GOOGLE_ANALYTICS_PROPERTY_ID,
+# GOOGLE_VERIFICATION_CODE, WYDRUK_MARGINES_*
+# Puste CONSTANCE_CONFIG zachowane dla backward compat z django-constance.
+CONSTANCE_CONFIG = {}
+CONSTANCE_CONFIG_FIELDSETS = {}

@@ -49,6 +49,7 @@ class RankingAutorowFormularz(FormView):
     def get_form_kwargs(self, **kw):
         data = FormView.get_form_kwargs(self, **kw)
         data["lata"] = self.get_lata()
+        data["request"] = self.request
         return data
 
     def get_raport_arguments(self, form):
@@ -222,7 +223,7 @@ class RankingAutorow(ExportMixin, SingleTableView):
         if jednostki:
             qset = qset.filter(jednostka__in=jednostki)
 
-        uczelnia = Uczelnia.objects.first()
+        uczelnia = Uczelnia.objects.get_for_request(self.request)
         if uczelnia and uczelnia.uzywaj_wydzialow and not jednostki:
             wydzialy = self.get_wydzialy()
             if wydzialy:
@@ -253,7 +254,7 @@ class RankingAutorow(ExportMixin, SingleTableView):
         if self.bez_nieaktualnych:
             qset = qset.exclude(autor__aktualna_jednostka=None)
 
-        uczelnia = Uczelnia.objects.get_default()
+        uczelnia = Uczelnia.objects.get_for_request(self.request)
         if uczelnia is not None:
             ukryte_statusy = uczelnia.ukryte_statusy("rankingi")
             if ukryte_statusy:
@@ -370,7 +371,7 @@ class RankingAutorow(ExportMixin, SingleTableView):
             subtitle_parts.append(", ".join([x.nazwa for x in jednostki]))
 
         # Check if uczelnia uses wydzialy and handle them
-        uczelnia = Uczelnia.objects.first()
+        uczelnia = Uczelnia.objects.get_for_request(self.request)
         if uczelnia and uczelnia.uzywaj_wydzialow:
             wydzialy = self.get_wydzialy()
             context["wydzialy"] = wydzialy if wydzialy else []
@@ -403,7 +404,7 @@ class RankingAutorow(ExportMixin, SingleTableView):
         return context
 
     def get_table_kwargs(self):
-        uczelnia = Uczelnia.objects.all().first()
+        uczelnia = Uczelnia.objects.get_for_request(self.request)
         pokazuj = uczelnia.pokazuj_liczbe_cytowan_w_rankingu
 
         if pokazuj == OpcjaWyswietlaniaField.POKAZUJ_NIGDY or (

@@ -175,8 +175,7 @@ EXAMPLES = [
                         'charakter_formalny.skrot = "AOR") and punkty_kbn >= 100',
                     ),
                     (
-                        "Negacja: wszystko poza artykulami z czasopism, "
-                        "IF>=3, od 2023",
+                        "Negacja: wszystko poza artykulami z czasopism, IF>=3, od 2023",
                         'charakter_formalny.skrot != "AC" and rok >= 2023 '
                         "and impact_factor > 3",
                     ),
@@ -194,8 +193,7 @@ EXAMPLES = [
                     ),
                     (
                         "Hot & trending: cytowane >50 razy w okresie, IF>5",
-                        "liczba_cytowan > 50 and rok >= 2020 and "
-                        "impact_factor > 5",
+                        "liczba_cytowan > 50 and rok >= 2020 and impact_factor > 5",
                     ),
                     (
                         "Audyt jakosci danych — artykuly 2024+ bez DOI/WWW",
@@ -213,8 +211,7 @@ EXAMPLES = [
                         'ostatnio_zmieniony >= "2025-01-01" and adnotacje != ""',
                     ),
                     (
-                        "Wielowarunkowa granica IF + zakres punktow + "
-                        "minimum cytowan",
+                        "Wielowarunkowa granica IF + zakres punktow + minimum cytowan",
                         "impact_factor >= 5 and impact_factor <= 10 and "
                         "punkty_kbn >= 100 and liczba_cytowan >= 5",
                     ),

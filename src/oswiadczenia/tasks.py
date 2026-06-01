@@ -536,11 +536,12 @@ def _generate_zip_output(task, declarations, uczelnia):
 
 
 @shared_task(bind=True)
-def generate_oswiadczenia_zip(self, task_id: int):
+def generate_oswiadczenia_zip(self, task_id: int, uczelnia_id=None):
     """Generate ZIP or single file with declarations.
 
     Args:
         task_id: ID of OswiadczeniaExportTask record.
+        uczelnia_id: ID of Uczelnia (defaults to get_default()).
 
     Returns:
         dict with status and task_id.
@@ -555,7 +556,11 @@ def generate_oswiadczenia_zip(self, task_id: int):
 
     try:
         queryset = build_queryset_for_task(task)
-        uczelnia = Uczelnia.objects.get_default()
+        uczelnia = (
+            Uczelnia.objects.get(pk=uczelnia_id)
+            if uczelnia_id
+            else Uczelnia.objects.get_default()
+        )
         declarations = build_declarations_list(queryset, uczelnia)
 
         task.total_items = len(declarations)

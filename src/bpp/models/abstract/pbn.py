@@ -14,12 +14,13 @@ class LinkDoPBNMixin:
     def link_do_pbn_wartosc_id(self):
         return getattr(self, self.atrybut_dla_url_do_pbn)
 
-    def link_do_pbn(self):
+    def link_do_pbn(self, uczelnia=None):
         assert self.url_do_pbn, "Określ parametr self.url_do_pbn"
 
-        from bpp.models import Uczelnia
+        if uczelnia is None:
+            from bpp.models import Uczelnia
 
-        uczelnia = Uczelnia.objects.get_default()
+            uczelnia = Uczelnia.objects.get_default()
         if uczelnia is not None:
             return self.url_do_pbn.format(
                 pbn_api_root=uczelnia.pbn_api_root,
@@ -80,11 +81,12 @@ class LinkDoPBNMixin:
         # pbn_api.models.Publication
         return self.current_version.get("versionHash", None)
 
-    def _format_link_pi(self, pbn_uid_id, uuid=None, versionHash=None):
+    def _format_link_pi(self, pbn_uid_id, uuid=None, versionHash=None, uczelnia=None):
         """Format the link to PI based on available data."""
-        from bpp.models import Uczelnia
+        if uczelnia is None:
+            from bpp.models import Uczelnia
 
-        uczelnia = Uczelnia.objects.get_default()
+            uczelnia = Uczelnia.objects.get_default()
         if uczelnia is None:
             return None
 

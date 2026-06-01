@@ -67,8 +67,8 @@ class IndexCopernicusQueryObject(BppMultiseekVisibilityMixin, SafeDecimalQueryOb
     label = "Index Copernicus"
     field_name = "index_copernicus"
 
-    def option_enabled(self):
-        u = Uczelnia.objects.get_default()
+    def option_enabled(self, uczelnia=None):
+        u = uczelnia or Uczelnia.objects.get_default()
         if u is not None:
             return u.pokazuj_index_copernicus
         return True

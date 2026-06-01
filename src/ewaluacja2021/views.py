@@ -76,7 +76,7 @@ class ListaRaporto3N(GroupRequiredMixin, generic.ListView):
     def get(self, request, *args, **kwargs):
         if request.GET.get("przelicz") == "1" and request.user.is_staff:
             oblicz_liczby_n_dla_ewaluacji_2022_2025(
-                uczelnia=Uczelnia.objects.get_default()
+                uczelnia=Uczelnia.objects.get_for_request(request)
             )
             messages.info(
                 request,

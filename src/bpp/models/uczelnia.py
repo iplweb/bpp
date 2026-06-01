@@ -43,6 +43,12 @@ class UczelniaManager(models.Manager):
 
         return self.get_default()
 
+    def get_for_site(self, site) -> Union["Uczelnia", None]:
+        """Zwraca Uczelnię powiązaną z danym obiektem Site."""
+        if site is None:
+            return self.get_default()
+        return getattr(site, "uczelnia", None)
+
     @cached_property
     def default(self):
         return self.get_default()
@@ -65,7 +71,29 @@ class UczelniaManager(models.Manager):
         raise NotImplementedError
 
 
+THEME_CHOICES = [
+    ("app-green", "Zielony"),
+    ("app-blue", "Niebieski"),
+    ("app-orange", "Pomarańczowy"),
+]
+
+
 class Uczelnia(ModelZAdnotacjami, ModelZPBN_ID, NazwaISkrot, NazwaWDopelniaczu):
+    site = models.OneToOneField(
+        "sites.Site",
+        verbose_name="Strona (domena)",
+        on_delete=models.PROTECT,
+        related_name="uczelnia",
+        help_text="Powiązanie z obiektem Site (domena internetowa tej uczelni).",
+    )
+
+    theme_name = models.CharField(
+        "Motyw kolorystyczny",
+        max_length=50,
+        default="app-green",
+        choices=THEME_CHOICES,
+    )
+
     slug = AutoSlugField(populate_from="skrot", unique=True)
     logo_www = models.ImageField(
         "Logo na stronę WWW",
@@ -463,6 +491,49 @@ class Uczelnia(ModelZAdnotacjami, ModelZPBN_ID, NazwaISkrot, NazwaWDopelniaczu):
     pytaj_o_zgode_na_publikacje_pelnego_tekstu = models.BooleanField(
         verbose_name="Pytaj o zgodę na publikację pełnego tekstu w formularzu zgłoszeniowym prac",
         default=False,
+    )
+
+    # Pola przeniesione z django-constance (per-uczelnia zamiast globalnych)
+    google_analytics_property_id = models.CharField(
+        "Google Analytics Property ID",
+        max_length=100,
+        blank=True,
+        default="",
+        help_text="Np. UA-XXXXXXXX-X lub G-XXXXXXXXXX",
+    )
+    google_verification_code = models.CharField(
+        "Kod weryfikacyjny Google Search Console",
+        max_length=100,
+        blank=True,
+        default="",
+    )
+    pokazuj_oswiadczenie_ken = models.BooleanField(
+        "Pokazuj opcję oświadczenia KEN",
+        default=False,
+    )
+    skrot_wydzialu_w_nazwie_jednostki = models.BooleanField(
+        "Wyświetlaj skrót wydziału w nazwie jednostki",
+        default=True,
+    )
+    wydruk_margines_gora = models.CharField(
+        "Margines górny wydruku",
+        max_length=10,
+        default="2cm",
+    )
+    wydruk_margines_dol = models.CharField(
+        "Margines dolny wydruku",
+        max_length=10,
+        default="2cm",
+    )
+    wydruk_margines_lewo = models.CharField(
+        "Margines lewy wydruku",
+        max_length=10,
+        default="2cm",
+    )
+    wydruk_margines_prawo = models.CharField(
+        "Margines prawy wydruku",
+        max_length=10,
+        default="2cm",
     )
 
     objects = UczelniaManager()

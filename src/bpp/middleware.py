@@ -1,6 +1,7 @@
 import json
 import logging
 
+from django.core.exceptions import ObjectDoesNotExist
 from django.http import HttpResponse
 from django.utils.deprecation import MiddlewareMixin
 from rollbar.contrib.django.middleware import RollbarNotifierMiddleware
@@ -252,13 +253,106 @@ class NonHtmlDebugToolbarMiddleware(MiddlewareMixin):
         return response
 
 
+class SiteResolutionMiddleware(MiddlewareMixin):
+    """Resolve the current Site and Uczelnia from the request hostname.
+
+    Sets ``request.site`` and ``request._uczelnia`` so that downstream code
+    (views, context processors, managers) can access the current university
+    without additional DB queries.
+
+    Fallback order:
+    1. Match hostname against ``Site.domain``
+    2. Use ``settings.SITE_ID`` (backward compat for single-site deployments)
+    """
+
+    def process_request(self, request):
+        from django.conf import settings
+        from django.contrib.sites.models import Site
+
+        hostname = request.get_host().split(":")[0]
+        try:
+            site = Site.objects.get(domain=hostname)
+        except Site.DoesNotExist:
+            site_id = getattr(settings, "SITE_ID", None)
+            if site_id is not None:
+                try:
+                    site = Site.objects.get(pk=site_id)
+                except Site.DoesNotExist:
+                    site = None
+            else:
+                site = None
+
+        request.site = site
+
+        uczelnia = None
+        if site is not None:
+            try:
+                uczelnia = site.uczelnia
+            except ObjectDoesNotExist:
+                # Site exists but no Uczelnia linked — fall back to default
+                from bpp.models.uczelnia import Uczelnia
+
+                uczelnia = Uczelnia.objects.get_default()
+        request._uczelnia = uczelnia
+
+    def process_view(self, request, view_func, view_args, view_kwargs):
+        """Block admin access for staff users without access to current site.
+
+        Anonymous users and public pages are not affected.
+        Superusers always have access to all sites.
+        """
+        if not getattr(request, "path", "").startswith("/admin/"):
+            return None
+
+        user = getattr(request, "user", None)
+        if user is None or not user.is_authenticated or user.is_superuser:
+            return None
+
+        uczelnia = getattr(request, "_uczelnia", None)
+        if uczelnia is None:
+            return None
+
+        # If user has any accessible_uczelnie configured, enforce the check.
+        # If user has none (backward compat / not yet configured), allow.
+        if (
+            user.accessible_uczelnie.exists()
+            and not user.accessible_uczelnie.filter(pk=uczelnia.pk).exists()
+        ):
+            from django.http import HttpResponseForbidden
+
+            return HttpResponseForbidden(
+                "Nie masz dostępu do tej uczelni. Skontaktuj się z administratorem."
+            )
+
+        return None
+
+
 class CustomRollbarNotifierMiddleware(RollbarNotifierMiddleware):
     def get_extra_data(self, request, exc):
         from django.conf import settings
+        from django.core.exceptions import DisallowedHost
 
-        return {
+        data = {
+            # Identyfikacja instalacji (canonical hostname, pierwsza pozycja
+            # z DJANGO_BPP_HOSTNAMES). W single-host = pełna informacja.
             "DJANGO_BPP_HOSTNAME": settings.DJANGO_BPP_HOSTNAME,
         }
+
+        if request is not None:
+            try:
+                data["request_host"] = request.get_host()
+            except DisallowedHost:
+                # request.get_host() może rzucić DisallowedHost — być może
+                # to właśnie ten exception już raportujemy. Nie blokuj
+                # wzbogacania payloadu, zaznacz informacją.
+                data["request_host"] = "<DisallowedHost>"
+
+            uczelnia = getattr(request, "_uczelnia", None)
+            if uczelnia is not None:
+                data["uczelnia_skrot"] = getattr(uczelnia, "skrot", None)
+                data["uczelnia_pk"] = uczelnia.pk
+
+        return data
 
     def get_payload_data(self, request, exc):
         payload_data = dict()

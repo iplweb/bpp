@@ -50,6 +50,15 @@ pytest_plugins = [
     "fixtures.conftest_system",
     "fixtures.conftest_browser",
     "fixtures.conftest_disciplines",
+    # ``conftest_multisite`` importuje modele Django na top-levelu (``Site``,
+    # ``Uczelnia``, ``BppUser``...), więc — jak moduły niżej — MUSI być tutaj.
+    # Rejestracja wyłącznie w rootdir-owym ``conftest.py`` nie wystarcza: jego
+    # ``pytest_plugins`` ładuje się w preloadzie ``pytest-testcontainers-django``
+    # ZANIM ``django.setup()`` zapełni rejestr aplikacji, import wybucha
+    # ``AppRegistryNotReady`` i fikstury (``site1``, ``uczelnia1``...) cicho się
+    # nie rejestrują → ``fixture 'site1' not found``. Guard:
+    # bpp/tests/test_conftest_preload_safety.py.
+    "fixtures.conftest_multisite",
     # ``pbn_api`` i ``wydawnictwa`` importują modele Django na top-levelu,
     # więc MUSZĄ być rejestrowane tutaj (plugin ładowany po ``django.setup()``),
     # a NIE przez ``from fixtures import *`` w rootdir-owym ``conftest.py`` —
@@ -594,8 +603,8 @@ def constance_cache_warmed_up(db):
     Fixture that pre-creates constance values in the database and warms
     the cache to prevent constance queries during test execution.
 
-    This ensures all constance values exist in the DB before the test runs,
-    avoiding INSERT/UPDATE queries during the test's query assertion block.
+    Note: Most constance settings have been migrated to Uczelnia model fields.
+    This fixture now only handles remaining constance entries (if any).
     """
     import json
 
@@ -609,15 +618,4 @@ def constance_cache_warmed_up(db):
         value_json = json.dumps({"__type__": "default", "__value__": default})
         Constance.objects.get_or_create(key=key, defaults={"value": value_json})
 
-    # Warm the cache by accessing all values
-    _ = (
-        config.UZYWAJ_PUNKTACJI_WEWNETRZNEJ,
-        config.POKAZUJ_INDEX_COPERNICUS,
-        config.POKAZUJ_PUNKTACJA_SNIP,
-        config.POKAZUJ_OSWIADCZENIE_KEN,
-        config.SKROT_WYDZIALU_W_NAZWIE_JEDNOSTKI,
-        config.UCZELNIA_UZYWA_WYDZIALOW,
-        config.GOOGLE_ANALYTICS_PROPERTY_ID,
-        config.GOOGLE_VERIFICATION_CODE,
-    )
     return config

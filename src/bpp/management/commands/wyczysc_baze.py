@@ -45,19 +45,35 @@ class Command(BaseCommand):
     def add_arguments(self, parser):
         super().add_arguments(parser)
 
-        (parser.add_argument("--tylko-publikacje", action="store_true", default=False),)
+        parser.add_argument(
+            "--tylko-publikacje",
+            action="store_true",
+            default=False,
+        )
+        parser.add_argument(
+            "--uczelnia-id",
+            type=int,
+            default=None,
+            help=("ID uczelni (domyślnie: pierwsza uczelnia w bazie)"),
+        )
 
     @transaction.atomic
     def handle(self, tylko_publikacje, *args, **options):
+        uczelnia_id = options.get("uczelnia_id")
+        if uczelnia_id:
+            uczelnia = Uczelnia.objects.get(pk=uczelnia_id)
+        else:
+            uczelnia = Uczelnia.objects.get_default()
+
         challenge = "".join(random.sample("abcdefghijklmnopqrstuvwxzy!@#$^^&", 5))
-        print("Informacje o systemie")
-        print("=====================")
-        os.system("uname -mon")
-        print(settings.DATABASES["default"])
-        print("")
-        print("Baza danych czyja?")
-        print("==================")
-        print(Uczelnia.objects.get_default())
+        print("Informacje o systemie")  # noqa: T201
+        print("=====================")  # noqa: T201
+        os.system("uname -mon")  # noqa: S605, S607 -- existing code
+        print(settings.DATABASES["default"])  # noqa: T201
+        print("")  # noqa: T201
+        print("Baza danych czyja?")  # noqa: T201
+        print("==================")  # noqa: T201
+        print(uczelnia)  # noqa: T201
         print("")
         print("Kasowanie danych?")
         print("=================")

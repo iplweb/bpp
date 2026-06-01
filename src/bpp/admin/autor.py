@@ -28,6 +28,7 @@ from .filters import (
     PBNIDObecnyFilter,
 )
 from .helpers.fieldsets import ADNOTACJE_FIELDSET, ZapiszZAdnotacjaMixin
+from .helpers.site_filtered import SiteFilteredAdminMixin
 from .helpers.widgets import CHARMAP_SINGLE_LINE
 from .xlsx_export import resources
 from .xlsx_export.mixins import EksportDanychMixin
@@ -190,6 +191,7 @@ class AutorForm(forms.ModelForm):
 
 
 class AutorAdmin(
+    SiteFilteredAdminMixin,
     DjangoQLSearchMixin,
     ZapiszZAdnotacjaMixin,
     EksportDanychMixin,
@@ -197,6 +199,7 @@ class AutorAdmin(
     DynamicColumnsMixin,
     admin.ModelAdmin,
 ):
+    uczelnia_field_path = "aktualna_jednostka__uczelnia"
     djangoql_completion_enabled_by_default = False
     djangoql_completion = True
 

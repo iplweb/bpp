@@ -7,6 +7,9 @@ from rozbieznosci_pk.models import IgnorujRozbieznoscPk, RozbieznosciPkLog
 class IgnorujRozbieznoscPkAdmin(admin.ModelAdmin):
     list_display = ["object", "created_on"]
 
+    def has_module_permission(self, request):
+        return request.user.is_superuser
+
 
 @admin.register(RozbieznosciPkLog)
 class RozbieznosciPkLogAdmin(admin.ModelAdmin):
@@ -22,6 +25,17 @@ class RozbieznosciPkLogAdmin(admin.ModelAdmin):
         "created_on",
     ]
     date_hierarchy = "created_on"
+
+    def get_queryset(self, request):
+        qs = super().get_queryset(request)
+        if request.user.is_superuser:
+            return qs
+        uczelnia = getattr(request, "_uczelnia", None)
+        if uczelnia:
+            return qs.filter(
+                rekord__autorzy_set__jednostka__uczelnia=uczelnia
+            ).distinct()
+        return qs
 
     def has_add_permission(self, request):
         return False

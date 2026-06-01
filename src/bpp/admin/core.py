@@ -66,7 +66,8 @@ class DynamicAdminFilterMixin:
             query_string = request.GET.urlencode()
             query_hash = md5(query_string.encode()).hexdigest()
             model_label = self.model._meta.label
-            cache_key = f"filter_count_{model_label}_{query_hash}"
+            site_pk = getattr(getattr(request, "site", None), "pk", 0)
+            cache_key = f"filter_count_{site_pk}_{model_label}_{query_hash}"
 
             # Sprawdź czy wynik jest już w cache
             count = cache.get(cache_key)

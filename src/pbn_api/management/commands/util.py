@@ -14,6 +14,13 @@ class PBNBaseCommand(BaseCommand):
         base_url = settings.PBN_CLIENT_BASE_URL
         user_token = None
 
+        parser.add_argument(
+            "--uczelnia-id",
+            type=int,
+            default=None,
+            help=("ID uczelni (domyślnie: pierwsza uczelnia w bazie)"),
+        )
+
         uczelnia = Uczelnia.objects.get_default()
         if uczelnia is not None:
             if uczelnia.pbn_app_name:

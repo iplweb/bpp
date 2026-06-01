@@ -13,7 +13,6 @@ from html.parser import HTMLParser
 import pytest
 from django.test import Client
 
-
 # Linki, które celowo pomijamy w teście:
 #  * logout — wylogowuje sesję klienta, w środku przebiegu testu nie ma
 #    sensu sprawdzać (po nim wszystkie kolejne requesty byłyby 302→login).

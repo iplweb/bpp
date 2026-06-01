@@ -23,6 +23,7 @@ from django.views.generic import DetailView, ListView, RedirectView, TemplateVie
 from multiseek.logic import AND, OR
 from multiseek.util import make_field
 from multiseek.views import MULTISEEK_SESSION_KEY, MULTISEEK_SESSION_KEY_REMOVED
+from siteblog.models import Article
 
 from bpp.models import (
     Autor,
@@ -42,7 +43,6 @@ from bpp.multiseek_registry import (
     ZakresLatQueryObject,
     ZrodloQueryObject,
 )
-from siteblog.models import Article
 
 logger = logging.getLogger(__name__)
 
@@ -68,23 +68,40 @@ def get_uczelnia_context_data(uczelnia, article_slug=None):
     """Shared function to get context data for uczelnia view."""
     context = {"object": uczelnia, "uczelnia": uczelnia}
 
+    # Multi-host: filtruj artykuły po Site bieżącej uczelni. siteblog.Article
+    # ma M2M `sites`; pusty M2M = artykuł widoczny wszędzie (zgodnie z
+    # help_textem w siteblog). on_site (CurrentSiteManager) jest strict —
+    # wymusza Site_id i wyklucza puste M2M — więc używamy własnego Q.
+    site_id = uczelnia.site_id
+    visible_articles = Article.objects.filter(
+        Q(sites=site_id) | Q(sites__isnull=True)
+    ).distinct()
+
     if article_slug:
-        context["article"] = get_object_or_404(Article, slug=article_slug)
+        context["article"] = get_object_or_404(visible_articles, slug=article_slug)
     else:
-        context["news"] = Article.objects.filter(status=Article.STATUS.published)[
-            :5
-        ]
-        # Add 5 most recently updated records
-        context["recently_updated"] = Rekord.objects.order_by("-ostatnio_zmieniony")[
-            :12
-        ]
-        # Add 5 recent records with abstracts
+        context["news"] = visible_articles.filter(status=Article.STATUS.published)[:5]
+
+        # Multi-host: rekordy z autorami z jednostek tej uczelni
+        jednostki_uczelni = uczelnia.jednostka_set.all()
+        context["recently_updated"] = (
+            Rekord.objects.filter(autorzy__jednostka__in=jednostki_uczelni)
+            .order_by("-ostatnio_zmieniony")
+            .distinct()[:12]
+        )
+
         context["recent_abstracts"] = (
             Wydawnictwo_Ciagle_Streszczenie.objects.exclude(streszczenie__isnull=True)
             .exclude(streszczenie__exact="")
-            .order_by("-rekord__ostatnio_zmieniony")[:5]
+            .filter(rekord__autorzy_set__jednostka__in=jednostki_uczelni)
+            .order_by("-rekord__ostatnio_zmieniony")
+            .distinct()[:5]
         )
-        context["total_rekord_count"] = Rekord.objects.count()
+        context["total_rekord_count"] = (
+            Rekord.objects.filter(autorzy__jednostka__in=jednostki_uczelni)
+            .distinct()
+            .count()
+        )
         context["current_year"] = timezone.now().date().year
 
     return context
@@ -402,17 +419,9 @@ class JednostkiView(Browser):
     paginate_by = 150
 
     def get_paginate_by(self, queryset):
-        uczelnia = None
-
-        if hasattr(self, "request") and self.request is not None:
-            uczelnia = Uczelnia.objects.get_for_request(self.request)
-
-        if uczelnia is None:
-            uczelnia = Uczelnia.objects.get_default()
-
+        uczelnia = Uczelnia.objects.get_for_request(getattr(self, "request", None))
         if uczelnia is None:
             return self.paginate_by
-
         return uczelnia.ilosc_jednostek_na_strone
 
     def get_queryset(self):

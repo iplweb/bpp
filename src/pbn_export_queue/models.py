@@ -77,6 +77,14 @@ class PBN_Export_Queue(models.Model):
 
     zamowil = models.ForeignKey(AUTH_USER_MODEL, on_delete=models.CASCADE)
 
+    uczelnia = models.ForeignKey(
+        "bpp.Uczelnia",
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name="pbn_export_queue",
+    )
+
     zamowiono = models.DateTimeField(auto_now_add=True, db_index=True)
 
     wysylke_podjeto = models.DateTimeField(null=True, blank=True)

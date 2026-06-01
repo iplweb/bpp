@@ -5,15 +5,18 @@ from ..models import Wydzial  # Publikacja_Habilitacyjna
 from .core import BaseBppAdminMixin, RestrictDeletionToAdministracjaGroupMixin
 from .helpers.fieldsets import ADNOTACJE_FIELDSET
 from .helpers.mixins import ZapiszZAdnotacjaMixin
+from .helpers.site_filtered import SiteFilteredAdminMixin
 
 
 class WydzialAdmin(
+    SiteFilteredAdminMixin,
     RestrictDeletionToAdministracjaGroupMixin,
     SortableAdminMixin,
     ZapiszZAdnotacjaMixin,
     BaseBppAdminMixin,
     admin.ModelAdmin,
 ):
+    uczelnia_field_path = "uczelnia"
     list_display = [
         "nazwa",
         "skrot",

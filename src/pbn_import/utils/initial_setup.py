@@ -17,13 +17,15 @@ class InitialSetup(ImportStepBase):
     step_name = "initial_setup"
     step_description = "Konfiguracja początkowa"
 
-    def run(self):
+    def run(self, uczelnia=None):
         """Execute initial setup"""
+        if uczelnia is None:
+            uczelnia = Uczelnia.objects.get_default()
+
         # Check if we have a PBN client
         if self.client is None:
             self.log("warning", "Brak klienta PBN - próba utworzenia")
             # Try to get or create PBN client
-            uczelnia = Uczelnia.objects.get_default()
             if uczelnia:
                 try:
                     self.client = uczelnia.pbn_client()
@@ -53,7 +55,7 @@ class InitialSetup(ImportStepBase):
             # For other errors, we can try minimal setup
             self.log("warning", f"Nie można zintegrować języków z PBN: {error_msg}")
             self.log("info", "Próba uruchomienia minimalnej konfiguracji")
-            return self._run_minimal_setup(Uczelnia.objects.get_default())
+            return self._run_minimal_setup(uczelnia)
 
         # Step 2: Countries
         self.update_progress(1, 4, "Importowanie krajów")
@@ -87,7 +89,6 @@ class InitialSetup(ImportStepBase):
             self.clear_subtask_progress()
 
         # Auto-match Uczelnia and enable PBN integration
-        uczelnia = Uczelnia.objects.get_default()
         self._finalize_uczelnia_setup(uczelnia)
 
         self.update_progress(4, 4, "Zakończono konfigurację początkową")

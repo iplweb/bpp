@@ -27,4 +27,3 @@ odznaczyć to pole.
 
     W obecnym kształcie systemu BPP, pole to używane jest przy [imporcie pracowników](import_pracownikow.md)
     przez procedurę [odpinania nieaktualnych miejsc pracy](import_pracownikow.md#odpinanie-nieaktualnych-miejsc-pracy).
-

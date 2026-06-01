@@ -83,7 +83,7 @@ class ImportDashboardView(LoginRequiredMixin, ImportPermissionMixin, TemplateVie
         context["motivational_message"] = self.get_motivational_message()
 
         # Check if PBN is configured
-        uczelnia = Uczelnia.objects.get_default()
+        uczelnia = Uczelnia.objects.get_for_request(self.request)
         context["pbn_configured"] = uczelnia and uczelnia.pbn_integracja
         context["uczelnia"] = uczelnia
         context["uzywaj_wydzialow"] = uczelnia.uzywaj_wydzialow if uczelnia else False

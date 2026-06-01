@@ -13,7 +13,7 @@ głównego wybrać opcję operacje➡import pracowników.
 
 ## Kontrola dostępu
 
-Dostęp do funkcji importu pracowników mają:  
+Dostęp do funkcji importu pracowników mają:
 - członkowie grupy *wprowadzanie danych*
 - superużytkownicy.
 
@@ -27,13 +27,13 @@ kodu źródłowego BPP -- [plik wzorcowy na GitHub](https://github.com/iplweb/bp
 
 ## Warunki importu danych
 
-Warunkiem importu jest, aby:  
+Warunkiem importu jest, aby:
 - każda jednostka występująca w pliku XLS miała jeden i tylko jeden pasujący po
   nazwie odpowiednik po stronie systemu BPP,
 - każdy autor występujący w pliku XLS miał jeden i tylko jeden pasujący do niego
   odpowiednik, po kodzie ORCID lub po imieniu, nazwisku i tytule.
 
-Import osób rozwiązany jest w ten sposób, ponieważ:  
+Import osób rozwiązany jest w ten sposób, ponieważ:
 - format XLS oprogramowania [Egeria](https://egeria.comarch.pl) nie zawiera danych które jednoznacznie identyfikują jednostki,
   stąd dopasowanie odbywa się po nazwie. W sytuacji, gdyby w pliku XLS znajdowały się
   jednostki o choćby minimalnie róznej nazwie, system mógłby nie dopasować ich i utworzyć nowe
@@ -83,4 +83,3 @@ Powiązania Autor+Jednostka na takiej liście charakteryzują się następujący
 
     procedura "odpinająca" miejsca pracy jest szczególnie przydatna, jeżeli chcemy mieć
     zaktualizowane informacje dla pola — por. [Pole *Aktualne miejsce pracy* dla autora](edycja_autor.md#pole-aktualne-miejsce-pracy-dla-autora)
-

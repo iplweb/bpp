@@ -44,6 +44,16 @@ class BppUser(AbstractUser, ModelZAdnotacjami):
     pbn_token = models.CharField(max_length=128, default="", blank=True)
     pbn_token_updated = models.DateTimeField(null=True, blank=True)
 
+    accessible_uczelnie = models.ManyToManyField(
+        "bpp.Uczelnia",
+        verbose_name="Dostępne uczelnie",
+        blank=True,
+        related_name="staff_users",
+        help_text="Uczelnie, do których użytkownik ma dostęp w panelu "
+        "administracyjnym. Puste = dostęp do wszystkich "
+        "(kompatybilność wsteczna).",
+    )
+
     przedstawiaj_w_pbn_jako = models.ForeignKey(
         "bpp.BppUser",
         blank=True,

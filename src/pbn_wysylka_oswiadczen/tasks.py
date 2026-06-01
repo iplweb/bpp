@@ -19,12 +19,13 @@ from pbn_api.exceptions import (
 from pbn_wysylka_oswiadczen.queries import get_publications_queryset
 
 
-def get_pbn_client(user):
+def get_pbn_client(user, uczelnia=None):
     """
     Create a PBN client for the given user.
 
     Args:
         user: Django user with PBN token
+        uczelnia: Uczelnia instance (optional, falls back to default)
 
     Returns:
         PBNClient: Configured PBN API client
@@ -40,7 +41,8 @@ def get_pbn_client(user):
     if not pbn_user.pbn_token_possibly_valid():
         raise ValueError("Token PBN wygasl. Zaloguj sie ponownie do PBN.")
 
-    uczelnia = Uczelnia.objects.get_default()
+    if uczelnia is None:
+        uczelnia = Uczelnia.objects.get_default()
     if not uczelnia:
         raise ValueError("Brak domyslnej uczelni w systemie.")
 

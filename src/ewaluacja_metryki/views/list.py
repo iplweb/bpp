@@ -165,7 +165,7 @@ class MetrykiListView(EwaluacjaRequiredMixin, ListView):
         context = {}
 
         # Sprawdź czy uczelnia używa wydziałów
-        uczelnia = Uczelnia.objects.get_default()
+        uczelnia = Uczelnia.objects.get_for_request(self.request)
         context["uzywa_wydzialow"] = uczelnia.uzywaj_wydzialow if uczelnia else False
 
         # Jeśli wydzial jest wybrany, filtruj jednostki tylko z tego wydziału

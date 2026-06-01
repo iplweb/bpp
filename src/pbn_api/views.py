@@ -23,7 +23,7 @@ class TokenRedirectPage(LoginRequiredMixin, RedirectView):
 
         from django.utils import timezone
 
-        uczelnia = Uczelnia.objects.get_default()
+        uczelnia = Uczelnia.objects.get_for_request(self.request)
 
         # Get the original page from 'next' parameter or HTTP referer
         next_url = self.request.GET.get("next")
@@ -53,7 +53,7 @@ class TokenLandingPage(LoginRequiredMixin, RedirectView):
         if not ott:
             raise HttpResponseBadRequest("Brak parametru OTT lub pusty")
 
-        uczelnia = Uczelnia.objects.get_default()
+        uczelnia = Uczelnia.objects.get_for_request(self.request)
 
         # Default redirect URL
         redirect_url = "/"

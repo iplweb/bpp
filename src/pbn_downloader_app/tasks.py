@@ -327,13 +327,14 @@ def download_institution_publications(user_id):
 
 
 @app.task
-def download_institution_people(user_id):
+def download_institution_people(user_id, uczelnia_id=None):
     """
     Download institution people using PBN API integrator function.
     Uses database-based locking to ensure only one instance runs at a time.
 
     Args:
         user_id: ID of the user initiating the download (must have valid PBN token)
+        uczelnia_id: ID of Uczelnia (defaults to get_default()).
     """
     from bpp.models import Uczelnia
     from pbn_downloader_app.models import PbnInstitutionPeopleTask
@@ -351,7 +352,11 @@ def download_institution_people(user_id):
         user, pbn_user = validate_pbn_user(user_id)
 
         # Get institution ID
-        uczelnia = Uczelnia.objects.get_default()
+        uczelnia = (
+            Uczelnia.objects.get(pk=uczelnia_id)
+            if uczelnia_id
+            else Uczelnia.objects.get_default()
+        )
         if not uczelnia.pbn_uid_id:
             raise ValueError(
                 "Default institution does not have PBN UID. "
@@ -397,9 +402,13 @@ def download_institution_people(user_id):
         raise
 
 
-def get_pbn_client(pbn_user):
+def get_pbn_client(pbn_user, uczelnia_id=None):
     """
     Create a PBN client with proper configuration.
+
+    Args:
+        pbn_user: PBN user object with pbn_token.
+        uczelnia_id: ID of Uczelnia (defaults to get_default()).
 
     Returns:
         tuple: (client, uczelnia) if successful
@@ -410,7 +419,11 @@ def get_pbn_client(pbn_user):
     from bpp.models import Uczelnia
     from pbn_api.client import PBNClient, RequestsTransport
 
-    uczelnia = Uczelnia.objects.get_default()
+    uczelnia = (
+        Uczelnia.objects.get(pk=uczelnia_id)
+        if uczelnia_id
+        else Uczelnia.objects.get_default()
+    )
     if not uczelnia:
         raise ValueError("No default institution configured")
 

@@ -110,7 +110,7 @@ class UczelniaSetupForm(forms.ModelForm):
 
         return cleaned_data
 
-    def save(self, commit=True):
+    def save(self, commit=True, request=None):
         uczelnia = super().save(commit=False)
 
         uczelnia.pbn_api_kasuj_przed_wysylka = True
@@ -119,6 +119,11 @@ class UczelniaSetupForm(forms.ModelForm):
         uczelnia.pbn_wysylaj_bez_oswiadczen = True
         uczelnia.pbn_integracja = True
         uczelnia.pbn_aktualizuj_na_biezaco = True
+
+        if uczelnia.site_id is None and request is not None:
+            from django.contrib.sites.shortcuts import get_current_site
+
+            uczelnia.site = get_current_site(request)
 
         if commit:
             uczelnia.save()

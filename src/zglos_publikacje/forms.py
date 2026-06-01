@@ -303,6 +303,7 @@ class Zgloszenie_Publikacji_DaneForm(forms.ModelForm):
     def __init__(self, *args, rodzaj=None, forma_dostepu=None, **kw):
         self.rodzaj = rodzaj
         self.forma_dostepu = forma_dostepu
+        uczelnia = kw.pop("uczelnia", None)
 
         self.helper = FormHelper()
         self.helper.form_tag = False
@@ -311,8 +312,13 @@ class Zgloszenie_Publikacji_DaneForm(forms.ModelForm):
 
         super().__init__(*args, **kw)
 
-        uczelnia = Uczelnia.objects.get_default()
-        if not uczelnia.pytaj_o_zgode_na_publikacje_pelnego_tekstu:
+        if uczelnia is None:
+            uczelnia = Uczelnia.objects.get_default()
+
+        if (
+            uczelnia is not None
+            and not uczelnia.pytaj_o_zgode_na_publikacje_pelnego_tekstu
+        ):
             self.fields.pop("zgoda_na_publikacje_pelnego_tekstu", None)
 
         self._usun_pola_wg_formy_dostepu(forma_dostepu)

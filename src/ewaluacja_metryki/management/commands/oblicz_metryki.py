@@ -53,10 +53,17 @@ class Command(BaseCommand):
             choices=["N", "D", "B", "Z", " "],
             default=["N", "D", "B", "Z", " "],
             help=(
-                "Rodzaje autorów do przetworzenia (N=pracownik, B=pracownik badawczy, D=doktorant, "
-                "Z=inny zatrudniony, ' '=brak danych). "
-                "Domyślnie: wszystkie"
+                "Rodzaje autorów do przetworzenia "
+                "(N=pracownik, B=pracownik badawczy, "
+                "D=doktorant, Z=inny zatrudniony, "
+                "' '=brak danych). Domyślnie: wszystkie"
             ),
+        )
+        parser.add_argument(
+            "--uczelnia-id",
+            type=int,
+            default=None,
+            help="ID uczelni (domyślnie: pierwsza uczelnia w bazie)",
         )
 
     def handle(self, *args, **options):
@@ -67,13 +74,18 @@ class Command(BaseCommand):
         bez_liczby_n = options["bez_liczby_n"]
         rodzaje_autora = options.get("rodzaje_autora", ["N", "D", "B", "Z", " "])
 
+        uczelnia_id = options.get("uczelnia_id")
+        if uczelnia_id:
+            uczelnia = Uczelnia.objects.get(pk=uczelnia_id)
+        else:
+            uczelnia = Uczelnia.objects.get_default()
+
         # Krok 1: Przelicz liczby N, chyba że pominięto
         if not bez_liczby_n:
             self.stdout.write(
                 self.style.WARNING("Krok 1/2: Przeliczanie liczby N dla uczelni...")
             )
             try:
-                uczelnia = Uczelnia.objects.get_default()
                 oblicz_liczby_n_dla_ewaluacji_2022_2025(uczelnia=uczelnia)
                 self.stdout.write(
                     self.style.SUCCESS("✓ Przeliczono liczby N pomyślnie")

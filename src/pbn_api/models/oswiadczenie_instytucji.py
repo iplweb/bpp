@@ -28,6 +28,13 @@ class OswiadczenieInstytucji(LinkDoPBNMixin, models.Model):
     institutionId = models.ForeignKey("pbn_api.Institution", on_delete=models.CASCADE)
     personId = models.ForeignKey("pbn_api.Scientist", on_delete=models.CASCADE)
     publicationId = models.ForeignKey("pbn_api.Publication", on_delete=models.CASCADE)
+    uczelnia = models.ForeignKey(
+        "bpp.Uczelnia",
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name="oswiadczenia_instytucji",
+    )
     type = models.CharField(max_length=50)
     disciplines = models.JSONField(blank=True, null=True)
 
