@@ -30,3 +30,23 @@ msgstr "Anuluj"
 
 msgid "Forgotten your password? Enter your email address below, and we'll email instructions for setting a new one."
 msgstr "Zapomniałeś/aś hasła? Wprowadź swój adres email poniżej, a wyślemy Ci instrukcje dotyczące ustawienia nowego."
+
+#. django-session-security: pakiet shippuje tylko .po (bez .mo) dla pl,
+#. a projektowy compilemessages pomija site-packages (--ignore=site-packages).
+#. Tłumaczymy te stringi tu, w LOCALE_PATHS, żeby dialog wygaśnięcia sesji
+#. był po polsku. "seconds" upstream nie przetłumaczył w żadnym locale.
+#: session_security/templates/session_security/dialog.html:6
+msgid "Your session is about to expire"
+msgstr "Twoja sesja za chwilę wygaśnie"
+
+#: session_security/templates/session_security/dialog.html:6
+msgid "seconds"
+msgstr "sekund"
+
+#: session_security/templates/session_security/dialog.html:7
+msgid "Click or type to extend your session."
+msgstr "Kliknij lub wciśnij dowolny klawisz, aby wydłużyć czas trwania Twojej sesji."
+
+#: session_security/templates/session_security/all.html:33
+msgid "You have unsaved changes in a form of this page."
+msgstr "Na tej stronie znajduje się formularz, w którym zmiany mogły jeszcze nie zostać zapisane."

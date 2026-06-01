@@ -2,6 +2,27 @@
 
 <!-- towncrier release notes start -->
 
+## bpp 202606.1376 (2026-06-01)
+
+### Naprawione
+
+- Na formularzach nowych raportów (np. „Raport autorów”) sekcja
+  „Opcje zaawansowane” jest teraz rozwijanym akordeonem (z markerem
+  ``+``/``−``) umieszczonym wewnątrz ramki „Wybierz parametry”, spójnym
+  wizualnie z filtrami na stronie „Ranking autorów”.
+
+  Pola zakresów od/do (Punkty MNiSW, Impact Factor, Punktacja
+  wewnętrzna) wyświetlają się obok siebie — analogicznie do pól
+  „Od roku”/„Do roku” — zamiast jedno pod drugim.
+- Spolszczono okno ostrzeżenia o wygasającej sesji
+  (``django-session-security``) — wcześniej wyświetlało się po angielsku
+  zarówno na stronie publicznej, jak i w panelu administracyjnym.
+  Pakiet nie dostarcza skompilowanych tłumaczeń dla języka polskiego,
+  więc komunikaty („Your session is about to expire”, „seconds”,
+  „Click or type to extend your session.”) zostały przetłumaczone
+  w katalogu tłumaczeń projektu.
+
+
 ## bpp 202606.1375 (2026-06-01)
 
 ### Naprawione

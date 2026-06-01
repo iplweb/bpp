@@ -80,35 +80,36 @@ extra_javascript:
   - https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js
 
 nav:
-  - Wprowadzenie:
-      - index.md
-      - readme.md
+  - Start: index.md
   - Instrukcja użytkownika:
-      - Uczelnia: edycja_uczelnia.md
-      - Jednostki: edycja_jednostka.md
-      - Autorzy: edycja_autor.md
-      - Wydawnictwa: edycja_wydawnictwo.md
-      - Wyszukiwanie i redagowanie: wyszukiwanie_redagowanie.md
+      - Uczelnia: uzytkownik/uczelnia.md
+      - Jednostki: uzytkownik/jednostki.md
+      - Autorzy: uzytkownik/autorzy.md
+      - Wydawnictwa: uzytkownik/wydawnictwa.md
+      - Wyszukiwanie i redagowanie: uzytkownik/wyszukiwanie-redagowanie.md
+      - Raporty i rankingi: uzytkownik/raporty-rankingi.md
+      - Sloty: uzytkownik/sloty.md
   - Instrukcja administratora:
-      - Ogólna: usage_admin.md
-      - Importer publikacji: importer_publikacji.md
-      - Zgłaszanie publikacji: zglos_publikacje.md
-      - Konfiguracja PBN: konfiguracja_pbn.md
-      - Import pracowników: import_pracownikow.md
-  - Funkcje zaawansowane:
-      - Raporty i rankingi: raporty_rankingi.md
-      - Sloty: sloty.md
-      - Integracja z PBN: pbn.md
-      - Zaawansowane: advanced.md
-  - API i rozwój:
-      - API REST: api.md
-      - Rozwijanie projektu: contributing.md
-      - Dane demo: demo-data.md
-  - Operacje:
-      - Channels broadcast (flake): CHANNELS_BROADCAST_FLAKE.md
-      - macOS WeasyPrint: MACOS_WEASYPRINT.md
-      - Praktyki bezpieczeństwa: SECURITY_PRACTICES.md
-      - Polityka bezpieczeństwa: SECURITY.md
+      - Konfiguracja ogólna: administrator/ogolna.md
+      - Importer publikacji: administrator/importer-publikacji.md
+      - Import pracowników: administrator/import-pracownikow.md
+      - Zgłaszanie publikacji: administrator/zglaszanie-publikacji.md
+      - Konfiguracja PBN: administrator/konfiguracja-pbn.md
+      - Integracja z PBN: administrator/integracja-pbn.md
+      - Konfiguracja zaawansowana: administrator/zaawansowane.md
+  - API: api/index.md
+  - Dla deweloperów i agentów:
+      - deweloper/index.md
+      - Mapa kodu: deweloper/mapa-kodu.md
+      - Polecenia: deweloper/polecenia.md
+      - Budowanie CSS/SCSS: deweloper/budowanie-css.md
+      - Rozwijanie projektu: deweloper/rozwijanie-projektu.md
+      - Dane demo: deweloper/dane-demo.md
+      - WeasyPrint na macOS: deweloper/weasyprint-macos.md
+      - Channels broadcast (flake): deweloper/testy-channels-broadcast.md
+  - Bezpieczeństwo:
+      - Polityka bezpieczeństwa: bezpieczenstwo/polityka.md
+      - Praktyki bezpieczeństwa: bezpieczenstwo/praktyki.md
   - O projekcie:
-      - Autorzy: authors.md
-      - Historia zmian: history.md
+      - Autorzy: o-projekcie/autorzy.md
+      - Historia zmian: o-projekcie/historia.md

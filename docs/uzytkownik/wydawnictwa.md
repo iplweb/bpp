@@ -12,7 +12,7 @@ Aby zmienić kolejność autorów, skorzystaj z przycisku przeciągania oraz tec
 przycisku przeciągania i przeciągnij dane powiązanie autora z rekordem w górę
 lub w dół. Przycisk przeciągania wygląda w następujący sposób:
 
-![Przycisk przeciągania](images/editor/przycisk_przeciagania.png)
+![Przycisk przeciągania](../images/editor/przycisk_przeciagania.png)
 
 Możesz "zwinąć" formularz powiązania autora z rekordem aby zmiana kolejności autorów
 była łatwiejsza, co ma szczególne znaczenie na monitorach o niewielkiej rozdzielczości.

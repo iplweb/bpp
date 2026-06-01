@@ -202,7 +202,7 @@ wheels = [
 
 [[package]]
 name = "bpp-iplweb"
-version = "202606.1375"
+version = "202606.1376"
 source = { editable = "." }
 dependencies = [
     { name = "arrow", marker = "platform_python_implementation != 'PyPy'" },
@@ -531,7 +531,7 @@ dev = [
     { name = "pytest-shard", specifier = ">=0.1.2" },
     { name = "pytest-sugar", specifier = ">=0.9.7" },
     { name = "pytest-testcontainers", specifier = ">=0.1.0" },
-    { name = "pytest-testcontainers-django", specifier = ">=0.2.2" },
+    { name = "pytest-testcontainers-django", specifier = ">=0.2.3" },
     { name = "pytest-timeout", specifier = ">=2.1.0" },
     { name = "pytest-xdist", specifier = ">=2.3.0" },
     { name = "ruff", specifier = "==0.15.15" },
@@ -4389,7 +4389,7 @@ wheels = [
 
 [[package]]
 name = "pytest-testcontainers-django"
-version = "0.2.2"
+version = "0.2.3"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "pytest", marker = "platform_python_implementation != 'PyPy'" },
@@ -4397,9 +4397,9 @@ dependencies = [
     { name = "pytest-testcontainers", marker = "platform_python_implementation != 'PyPy'" },
     { name = "testcontainers", marker = "platform_python_implementation != 'PyPy'" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/63/18/a60a319b649e0f8e34e98f677b0019864b6ea91ed40817b117e6ab85b0fa/pytest_testcontainers_django-0.2.2.tar.gz", hash = "sha256:01fc8a2cf757a96813930eda48410b8a36fb90e009e8597102ce962a2f1cccef", size = 25906, upload-time = "2026-05-14T00:25:00.639Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/9b/75/60b1a5f35641372c3aadbe9070a00db4a46b1ea3c4caa304ba1f795c6924/pytest_testcontainers_django-0.2.3.tar.gz", hash = "sha256:002b41dbe7f8278ed2d06b2500f1370995ff83f84066a94c49a08d9934f8b65e", size = 27189, upload-time = "2026-06-01T18:11:40.808Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/c5/76/4de69bd7fbf480590d4c12f62c47ea1b8750e11c84e9c3b7fb451a82a1f4/pytest_testcontainers_django-0.2.2-py3-none-any.whl", hash = "sha256:dd88dd6f5cb5c1e30935926e1841cbd1601f29dbfbde59882d3eeec224f3ea23", size = 21857, upload-time = "2026-05-14T00:24:59.243Z" },
+    { url = "https://files.pythonhosted.org/packages/eb/cf/2a51ae762142377e3233050f41dd37cee429a6e08f025b5bbb4c01fd151c/pytest_testcontainers_django-0.2.3-py3-none-any.whl", hash = "sha256:d7abc0145903e79d321f4384cdb67df097b4829716f152d5f2b8e5c5f172c919", size = 22253, upload-time = "2026-06-01T18:11:39.539Z" },
 ]
 
 [[package]]

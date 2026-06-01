@@ -109,14 +109,20 @@ class BaseRaportForm(forms.Form):
                 ),
                 Row(Column("_export")),
                 Row(Column("tylko_z_jednostek_uczelni")),
+                # "Opcje zaawansowane" jako rozwijana sekcja WEWNĄTRZ fieldsetu
+                # (analogicznie do "Filtry ..." na ranking-autorow). Natywny
+                # <details> daje zwijanie bez JS; CSS robi z <summary> pasek
+                # akordeonu z markerem +/-. Sekcja MUSI być w fieldsecie -
+                # patrz uwaga o box-sizing przy stylach .opcje-zaawansowane.
+                HTML(
+                    '<details class="opcje-zaawansowane hide-for-print">'
+                    "<summary>Opcje zaawansowane</summary>"
+                    '<div class="opcje-zaawansowane__body">'
+                ),
+                *self._wiersze_zaawansowane(),
+                HTML("</div></details>"),
                 formdefaults_html_after(self),
             ),
-            HTML(
-                '<details class="opcje-zaawansowane hide-for-print" '
-                'style="margin-bottom: 1rem;"><summary>Opcje zaawansowane</summary>'
-            ),
-            *self._wiersze_zaawansowane(),
-            HTML("</details>"),
             ButtonHolder(
                 Submit(
                     "submit",
@@ -142,11 +148,7 @@ class BaseRaportForm(forms.Form):
         bo zakres "od–do" czyta się jako jedna całość.
         """
         return [
-            HTML(
-                '<div class="zaawansowane-grupa-naglowek" '
-                'style="font-weight:600;margin:0.75rem 0 0.25rem;">'
-                f"{naglowek}</div>"
-            ),
+            HTML(f'<div class="zaawansowane-grupa-naglowek">{naglowek}</div>'),
             Row(
                 Column(pole_od, css_class="large-6 medium-6 small-6"),
                 Column(pole_do, css_class="large-6 medium-6 small-6"),
