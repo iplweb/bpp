@@ -125,3 +125,31 @@ def test_command_aborts_wrong_db_name(fixtures_loaded):
             "--confirm-db=zla_nazwa",
         )
     assert Wydzial.objects.count() == 0
+
+
+@pytest.mark.django_db(transaction=True)
+def test_command_with_theme_and_streszczenia(fixtures_loaded, tmp_path):
+    """Motyw wiedzmin + streszczenia 100% + bez prefiksu."""
+    from model_bakery import baker
+
+    from bpp.models import Jezyk, Wydawnictwo_Ciagle_Streszczenie
+
+    if not Jezyk.objects.filter(nazwa__icontains="polski").exists():
+        baker.make(Jezyk, nazwa="polski", skrot="pol.")
+
+    manifest = tmp_path / "m.json"
+    call_command(
+        "create_demo_data",
+        "--motyw=wiedzmin",
+        "--bez-prefiksu",
+        "--procent-ze-streszczeniem=100",
+        "--wydzialow=1", "--jednostek-na-wydzial=1", "--autorow=3",
+        "--ile-ciaglych=3", "--ile-zwartych=3", "--zrodel=2", "--wydawcow=2",
+        "--seed=1", f"--manifest-out={manifest}", "--batch-size=10",
+        "--yes-i-am-sure", f"--confirm-db={connection.settings_dict['NAME']}",
+    )
+    # bez prefiksu: żadna jednostka nie zaczyna się od "Demo —"
+    for j in Jednostka.objects.all():
+        assert not j.nazwa.startswith("Demo —")
+    # streszczenia powstały dla prac WC
+    assert Wydawnictwo_Ciagle_Streszczenie.objects.count() == 3
