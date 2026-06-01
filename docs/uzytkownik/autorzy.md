@@ -6,7 +6,7 @@ Wartość pola *Aktualne miejsce pracy* która widnieje w module redagowania
 dla Autora jest wartością tylko-do-odczytu a jej wartość obliczana jest na podstawie
 wpisów powiązań autora z jednostką:
 
-![Zrzut ekranu przedstawiający kilka powiązań autora z jednostkami.](images/admin/autor_jednostka/autor_jednostka.png)
+![Zrzut ekranu przedstawiający kilka powiązań autora z jednostkami.](../images/admin/autor_jednostka/autor_jednostka.png)
 
 !!! note
 
