@@ -143,10 +143,18 @@ def test_command_with_theme_and_streszczenia(fixtures_loaded, tmp_path):
         "--motyw=wiedzmin",
         "--bez-prefiksu",
         "--procent-ze-streszczeniem=100",
-        "--wydzialow=1", "--jednostek-na-wydzial=1", "--autorow=3",
-        "--ile-ciaglych=3", "--ile-zwartych=3", "--zrodel=2", "--wydawcow=2",
-        "--seed=1", f"--manifest-out={manifest}", "--batch-size=10",
-        "--yes-i-am-sure", f"--confirm-db={connection.settings_dict['NAME']}",
+        "--wydzialow=1",
+        "--jednostek-na-wydzial=1",
+        "--autorow=3",
+        "--ile-ciaglych=3",
+        "--ile-zwartych=3",
+        "--zrodel=2",
+        "--wydawcow=2",
+        "--seed=1",
+        f"--manifest-out={manifest}",
+        "--batch-size=10",
+        "--yes-i-am-sure",
+        f"--confirm-db={connection.settings_dict['NAME']}",
     )
     # bez prefiksu: żadna jednostka nie zaczyna się od "Demo —"
     for j in Jednostka.objects.all():
@@ -166,16 +174,28 @@ def test_cleanup_removes_streszczenia(fixtures_loaded, tmp_path):
 
     manifest = tmp_path / "m.json"
     call_command(
-        "create_demo_data", "--motyw=lem", "--procent-ze-streszczeniem=100",
-        "--wydzialow=1", "--jednostek-na-wydzial=1", "--autorow=3",
-        "--ile-ciaglych=3", "--ile-zwartych=3", "--zrodel=2", "--wydawcow=2",
-        "--seed=1", f"--manifest-out={manifest}", "--batch-size=10",
-        "--yes-i-am-sure", f"--confirm-db={connection.settings_dict['NAME']}",
+        "create_demo_data",
+        "--motyw=lem",
+        "--procent-ze-streszczeniem=100",
+        "--wydzialow=1",
+        "--jednostek-na-wydzial=1",
+        "--autorow=3",
+        "--ile-ciaglych=3",
+        "--ile-zwartych=3",
+        "--zrodel=2",
+        "--wydawcow=2",
+        "--seed=1",
+        f"--manifest-out={manifest}",
+        "--batch-size=10",
+        "--yes-i-am-sure",
+        f"--confirm-db={connection.settings_dict['NAME']}",
     )
     assert Wydawnictwo_Ciagle_Streszczenie.objects.count() == 3
     call_command(
-        "cleanup_demo_data", f"--manifest={manifest}",
-        "--yes-i-am-sure", f"--confirm-db={connection.settings_dict['NAME']}",
+        "cleanup_demo_data",
+        f"--manifest={manifest}",
+        "--yes-i-am-sure",
+        f"--confirm-db={connection.settings_dict['NAME']}",
     )
     assert Wydawnictwo_Ciagle_Streszczenie.objects.count() == 0
     assert Wydawnictwo_Ciagle.objects.count() == 0
