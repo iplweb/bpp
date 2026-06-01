@@ -59,7 +59,7 @@ class ReadDataException(Exception):
     pass
 
 
-def read_xls_data(
+def read_xls_data(  # noqa: C901 — złożoność pre-existing, nie z tego PR
     filename,
     column_mapping,
     header_row_name,
@@ -91,7 +91,7 @@ def read_xls_data(
         header_row_no = find_header_row(sheet, header_row_name)
         if header_row_no is None:
             raise ReadDataException(
-                "Brak wiersza nagłówka, poszukiwano %r" % header_row_name
+                f"Brak wiersza nagłówka, poszukiwano {header_row_name!r}"
             )
         header_row_values = list(sheet.iter_rows(header_row_no, header_row_no + 1))[0]
         read_data_mapping = list(

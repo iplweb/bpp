@@ -6,6 +6,9 @@
 from __future__ import annotations
 
 import itertools
+import os
+import random
+import zipfile
 from collections import OrderedDict
 from decimal import Decimal
 from enum import Enum
@@ -37,9 +40,6 @@ class SHUFFLE_TYPE(Enum):
     RANDOM = 4
 
 
-import random
-
-
 def shuffle_array(
     array, start, length, no_shuffles=1, shuffle_type=SHUFFLE_TYPE.MIDDLE
 ):
@@ -52,19 +52,19 @@ def shuffle_array(
         i = random.randint(1, 3)
 
     if i == SHUFFLE_TYPE.BEGIN:
-        for a in range(no_shuffles):
+        for _ in range(no_shuffles):
             random.shuffle(first)
     elif i == SHUFFLE_TYPE.MIDDLE:
-        for a in range(no_shuffles):
+        for _ in range(no_shuffles):
             random.shuffle(second)
     elif i == SHUFFLE_TYPE.END:
-        for a in range(no_shuffles):
+        for _ in range(no_shuffles):
             random.shuffle(third)
 
     return first + second + third
 
 
-def output_table_to_xlsx(
+def output_table_to_xlsx(  # noqa: C901 — złożoność pre-existing, nie z tego PR
     ws: openpyxl.worksheet.worksheet.Worksheet,
     title: str,
     headers: list[str],
@@ -161,7 +161,7 @@ def output_table_to_xlsx(
         ws.column_dimensions[letter].bestFit = True
 
     dont_resize_those_columns = []
-    for ncol, col in enumerate(ws.columns):
+    for ncol, _col in enumerate(ws.columns):
         if headers[ncol] in totals:
             dont_resize_those_columns.append(ncol)
 
@@ -265,13 +265,9 @@ def float_or_string_or_int_or_none_to_decimal(i, decimal_places=4):
     raise NotImplementedError(f"Type {type(i)} not supported.")
 
 
-import os
-import zipfile
-
-
 def zipdir(path, ziph):
     # https://stackoverflow.com/a/1855118/401516
-    for root, dirs, files in os.walk(path):
+    for root, _dirs, files in os.walk(path):
         for file in files:
             ziph.write(
                 os.path.join(root, file),

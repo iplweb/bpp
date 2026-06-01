@@ -14,9 +14,9 @@ def validate_xlsx(obj: models.FileField):
     try:
         return openpyxl.load_workbook(obj)
     except InvalidFileException as e:
-        raise ValidationError(f"Nieobsługiwany rodzaj pliku ({e}) ")
+        raise ValidationError(f"Nieobsługiwany rodzaj pliku ({e}) ") from e
     except BaseException as e:
-        raise ValidationError(f"Błąd przy próbie otwarcia pliku ({e})")
+        raise ValidationError(f"Błąd przy próbie otwarcia pliku ({e})") from e
 
 
 class xlsx_header_validator:
