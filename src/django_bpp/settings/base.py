@@ -487,6 +487,15 @@ PG_BASELINE = {
     "PG_DUMP_EXTRA_EXCLUDE_TABLE_DATA": [
         "django_cache*",
         "easy_thumbnails_*",
+        # nowe_raporty seeds default reports via a post_migrate handler
+        # (NoweRaportyConfig.ready -> seed_reports/create_entries), which fires
+        # during a baseline rebuild because that runs migrate with TESTING=False.
+        # That application data must NOT live in the schema baseline: the dump is
+        # loaded as-is into every test DB, and the nowe_raporty tests assume these
+        # tables start empty. Production is unaffected — post_migrate re-seeds
+        # idempotently on a real deploy. See nowe_raporty/seeding/.
+        "flexible_reports_*",
+        "nowe_raporty_definicjaraportu*",
     ],
     # dbtemplates inserts rows via data-migration — we keep them in the
     # dump, but freeze their timestamps for a deterministic diff.
