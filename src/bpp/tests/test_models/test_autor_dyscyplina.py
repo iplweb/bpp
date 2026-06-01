@@ -372,7 +372,10 @@ def test_autor_dyscyplina_cacher_zmiana(
 
     wca.refresh_from_db()
     assert wca.dyscyplina_naukowa == dyscyplina2
-    assert DirtyInstance.objects.count() == 3
+    # denorm 1.11+ dedupuje powtorzone enqueue przez UNIQUE
+    # denorm_dirtyinstance_unique — identyczny (content_type_id, object_id,
+    # func_name) jest wstawiany raz. Wczesniej duplikat dawal 3 wiersze.
+    assert DirtyInstance.objects.count() == 2
 
 
 def test_autor_dyscyplina_cacher_skasowanie(
@@ -397,4 +400,7 @@ def test_autor_dyscyplina_cacher_skasowanie(
 
     wca.refresh_from_db()
     assert wca.dyscyplina_naukowa is None
-    assert DirtyInstance.objects.count() == 3
+    # denorm 1.11+ dedupuje powtorzone enqueue przez UNIQUE
+    # denorm_dirtyinstance_unique — identyczny (content_type_id, object_id,
+    # func_name) jest wstawiany raz. Wczesniej duplikat dawal 3 wiersze.
+    assert DirtyInstance.objects.count() == 2

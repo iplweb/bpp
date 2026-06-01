@@ -27,7 +27,8 @@ from bpp.models.struktura import Jednostka
 from bpp.models.system import Charakter_Formalny, Jezyk, Typ_KBN, Typ_Odpowiedzialnosci
 from bpp.models.wydawnictwo_ciagle import Wydawnictwo_Ciagle, Wydawnictwo_Ciagle_Autor
 from bpp.models.zrodlo import Zrodlo
-from bpp.tests.helpers import autor as autor_publikacji, ciagle, zwarte
+from bpp.tests.helpers import autor as autor_publikacji
+from bpp.tests.helpers import ciagle, zwarte
 from bpp.tests.util import any_autor, any_ciagle
 
 
@@ -453,7 +454,9 @@ def test_rebuild_ciagle(
     django_assert_max_num_queries, wydawnictwo_ciagle_z_dwoma_autorami, denorms
 ):
     Wydawnictwo_Ciagle.objects.all().delete()
-    with django_assert_max_num_queries(10):
+    # denorm 1.11+ dokłada jedno zapytanie w rebuild/flush (lock-and-capture
+    # dirty PK przez SELECT ... FOR UPDATE — fix wyścigu w flush pipeline).
+    with django_assert_max_num_queries(11):
         denorms.rebuildall("Wydawnictwo_Ciagle")
 
 
@@ -462,7 +465,9 @@ def test_rebuild_zwarte(
     django_assert_max_num_queries, wydawnictwo_zwarte_z_autorem, denorms
 ):
     Wydawnictwo_Zwarte.objects.all().delete()
-    with django_assert_max_num_queries(10):
+    # denorm 1.11+ dokłada jedno zapytanie w rebuild/flush (lock-and-capture
+    # dirty PK przez SELECT ... FOR UPDATE — fix wyścigu w flush pipeline).
+    with django_assert_max_num_queries(11):
         denorms.rebuildall("Wydawnictwo_Zwarte")
 
 

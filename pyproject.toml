@@ -34,7 +34,7 @@ dependencies = [
     "arrow>=1.3,<2",
     "numpy>=2.4.4",
     "pygad>=3.6.0",
-    "django-denorm-iplweb>=1.10.2",
+    "django-denorm-iplweb>=1.11.1",
     "django-tabular-permissions==2.9.3",
     "simplejson>=4.1.1,<5",
     "django-reversion>=6,<7",
