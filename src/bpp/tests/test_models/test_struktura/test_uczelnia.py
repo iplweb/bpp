@@ -2,19 +2,17 @@ from urllib.parse import urlencode
 
 import pytest
 from cacheops import invalidate_obj
+from django.contrib.contenttypes.models import ContentType
 from django.core.cache import cache
 from django.core.exceptions import ValidationError
 from django.urls.base import reverse
-
-from raport_slotow import const
-from raport_slotow.views import SESSION_KEY
-
-from django.contrib.contenttypes.models import ContentType
 
 from bpp.const import DO_STYCZNIA_POPRZEDNI_POTEM_OBECNY, NAJWIEKSZY_REKORD
 from bpp.models import Uczelnia
 from bpp.models.fields import OpcjaWyswietlaniaField
 from bpp.tests import browse_praca_url, normalize_html
+from raport_slotow import const
+from raport_slotow.views import SESSION_KEY
 
 # Disable cache for all tests in this file
 pytestmark = pytest.mark.django_db
@@ -143,11 +141,12 @@ def test_uczelnia_praca_pokazuj_pozostale(
     assert s not in res.rendered_content
 
 
+# Menu raportów (autor/jednostka/wydział/uczelnia) jest teraz data-driven
+# (DefinicjaRaportu + widoczny_dla), nie sterowane flagami Uczelnia.pokazuj_raport_*.
+# Te scenariusze pokrywa nowe_raporty/tests/test_menu.py. Tu zostaje ranking,
+# który nadal idzie przez czy_pokazywac/flagi Uczelni.
 lista_stron_raportow = [
     ("pokazuj_ranking_autorow", b'ranking-autorow/wybierz/"><i'),
-    ("pokazuj_raport_autorow", b"nowe_raporty/autor"),
-    ("pokazuj_raport_jednostek", b"nowe_raporty/jednostka"),
-    ("pokazuj_raport_wydzialow", b"nowe_raporty/wydzial"),
 ]
 
 

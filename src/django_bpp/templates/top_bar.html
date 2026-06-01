@@ -58,34 +58,13 @@
                     {% load user_in_group %}
 
                     {% if ENABLE_NEW_REPORTS %}
-                        {% czy_pokazywac raport_uczelni %}
+                        {% for raport in raporty_menu %}
                             <li>
-                                <a href="{% url "nowe_raporty:uczelnia_form" %}">
-                                    <i class="fi-foundation"></i> raport uczelni
+                                <a href="{% url "nowe_raporty:raport_form" raport.slug %}">
+                                    <i class="{{ raport.ikona_menu }}"></i> {{ raport.nazwa }}
                                 </a>
                             </li>
-                        {% end_czy_pokazywac %}
-                        {% czy_pokazywac raport_wydzialow %}
-                            <li>
-                                <a href="{% url "nowe_raporty:wydzial_form" %}">
-                                    <i class="fi-results-demographics"></i> raport wydziałów
-                                </a>
-                            </li>
-                        {% end_czy_pokazywac %}
-                        {% czy_pokazywac raport_jednostek %}
-                            <li>
-                                <a href="{% url "nowe_raporty:jednostka_form" %}">
-                                    <i class="fi-map"></i> raport jednostek
-                                </a>
-                            </li>
-                        {% end_czy_pokazywac %}
-                        {% czy_pokazywac raport_autorow %}
-                            <li>
-                                <a href="{% url "nowe_raporty:autor_form" %}">
-                                    <i class="fi-torsos-all"></i> raport autorów
-                                </a>
-                            </li>
-                        {% end_czy_pokazywac %}
+                        {% endfor %}
                     {% endif %}
                     {% czy_pokazywac ranking_autorow %}
                         <hr/>

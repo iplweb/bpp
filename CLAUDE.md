@@ -380,6 +380,26 @@ usuwajacy tagi starsze niz N dni.
 - Fixtures in `src/conftest.py` and subdirectories
 - Full suite timeout: at least 600000ms (10 minutes)
 
+### Testy Playwright (`src/integration_tests/`) lokalnie
+
+Testy przeglądarkowe (np. `test_global_search.py`) **da się** odpalić
+lokalnie — testcontainery same stawiają PostgreSQL + Redis, a fixture
+`channels_live_server` startuje Daphne. Trzeba tylko mieć zbudowany
+frontend i przeglądarki Playwright:
+
+```bash
+make assets              # zbuduj CSS/JS + .mo — BEZ tego live server
+                         # nie wyrenderuje strony i `page.goto` timeoutuje
+make playwright-install  # jednorazowo: pobierz przeglądarki Playwright
+uv run pytest src/integration_tests/test_global_search.py::test_global_search_user
+```
+
+- Pierwszy run bywa wolny (cold start testcontainerów) i `page.goto`
+  potrafi raz timeoutnąć — **ponów**, kolejne są szybkie (~2 s/test).
+- `--count=N` (pytest-repeat) powtarza test N razy — przydatne do
+  łapania timing-flake'ów Playwrighta.
+- Żeby pominąć browser-testy w ogóle: `make tests-without-playwright`.
+
 ### Testcontainers
 
 Testy używają plugin-ow `pytest-testcontainers` + `pytest-testcontainers-django`

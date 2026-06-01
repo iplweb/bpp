@@ -1,5 +1,6 @@
 from crispy_forms.helper import FormHelper
 from crispy_forms_foundation.layout import (
+    HTML,
     ButtonHolder,
     Column,
     Fieldset,
@@ -46,6 +47,39 @@ class BaseRaportForm(forms.Form):
         label="Format wyjściowy", choices=OUTPUT_FORMATS, required=True
     )
 
+    # Wspólny default; podklasy per-poziom mogą nadpisać label/help_text.
+    tylko_z_jednostek_uczelni = forms.BooleanField(
+        initial=True,
+        label="Tylko prace afiliowane",
+        required=False,
+    )
+
+    # Opcje zaawansowane (schowane domyślnie, filtrują cały raport).
+    punkty_mnisw_od = forms.FloatField(required=False, label="Punkty MNiSW od")
+    punkty_mnisw_do = forms.FloatField(required=False, label="Punkty MNiSW do")
+    if_od = forms.FloatField(required=False, label="Impact Factor od")
+    if_do = forms.FloatField(required=False, label="Impact Factor do")
+    punktacja_wewnetrzna_od = forms.FloatField(
+        required=False, label="Punktacja wewnętrzna od"
+    )
+    punktacja_wewnetrzna_do = forms.FloatField(
+        required=False, label="Punktacja wewnętrzna do"
+    )
+    tylko_punktowane = forms.BooleanField(
+        required=False, label="Tylko prace punktowane (pkt MNiSW > 0)"
+    )
+
+    # nazwy pól zaawansowanych przekazywanych w querystringu do widoku generuj
+    POLA_ZAAWANSOWANE = [
+        "punkty_mnisw_od",
+        "punkty_mnisw_do",
+        "if_od",
+        "if_do",
+        "punktacja_wewnetrzna_od",
+        "punktacja_wewnetrzna_do",
+        "tylko_punktowane",
+    ]
+
     def clean(self):
         if "od_roku" in self.cleaned_data and "do_roku" in self.cleaned_data:
             if self.cleaned_data["od_roku"] > self.cleaned_data["do_roku"]:
@@ -59,6 +93,11 @@ class BaseRaportForm(forms.Form):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+
+        uczelnia = Uczelnia.objects.get_default()
+        if not (uczelnia and uczelnia.pokazuj_punktacje_wewnetrzna):
+            self.fields.pop("punktacja_wewnetrzna_od", None)
+            self.fields.pop("punktacja_wewnetrzna_do", None)
 
         self.helper = FormHelper()
         self.helper.form_class = "custom"
@@ -77,6 +116,12 @@ class BaseRaportForm(forms.Form):
                 Row(Column("tylko_z_jednostek_uczelni")),
                 formdefaults_html_after(self),
             ),
+            HTML(
+                '<details class="opcje-zaawansowane hide-for-print" '
+                'style="margin-bottom: 1rem;"><summary>Opcje zaawansowane</summary>'
+            ),
+            *self._wiersze_zaawansowane(),
+            HTML("</details>"),
             ButtonHolder(
                 Submit(
                     "submit",
@@ -93,6 +138,33 @@ class BaseRaportForm(forms.Form):
                 field.field.validators.append(MinValueValidator(lata["rok__min"]))
             if lata["rok__max"] is not None:
                 field.field.validators.append(MaxValueValidator(lata["rok__max"]))
+
+    def _wiersze_zaawansowane(self):
+        wiersze = [
+            Row(
+                Column("punkty_mnisw_od", css_class="large-6 medium-6 small-12"),
+                Column("punkty_mnisw_do", css_class="large-6 medium-6 small-12"),
+            ),
+            Row(
+                Column("if_od", css_class="large-6 medium-6 small-12"),
+                Column("if_do", css_class="large-6 medium-6 small-12"),
+            ),
+        ]
+        if "punktacja_wewnetrzna_od" in self.fields:
+            wiersze.append(
+                Row(
+                    Column(
+                        "punktacja_wewnetrzna_od",
+                        css_class="large-6 medium-6 small-12",
+                    ),
+                    Column(
+                        "punktacja_wewnetrzna_do",
+                        css_class="large-6 medium-6 small-12",
+                    ),
+                )
+            )
+        wiersze.append(Row(Column("tylko_punktowane")))
+        return wiersze
 
 
 class UczelniaRaportForm(BaseRaportForm):
@@ -157,3 +229,31 @@ class AutorRaportForm(BaseRaportForm):
         "pozauczelnianych (obcych).",
         required=False,
     )
+
+
+def form_class_dla(definicja):
+    """Dynamiczna klasa formularza per DefinicjaRaportu.
+
+    formdefaults kluczuje zapisane domyślne wartości po ``full_name`` =
+    ``"{module}.{ClassName}"`` (bez hooka do override). Jedna wspólna klasa →
+    kolizja defaultów między raportami. Dlatego budujemy klasę o STABILNYM,
+    unikalnym ``__name__``/``__module__`` wyprowadzonym ze sluga.
+    """
+    import re
+
+    from .poziomy import POZIOMY
+
+    cfg = POZIOMY[definicja.poziom]
+    pole = cfg.pole_obiektu()
+    attrs = {"__module__": "nowe_raporty.forms_dynamiczne"}
+    if pole is not None:
+        attrs["obiekt"] = pole
+        attrs["OBJ_FIELD"] = Row(Column("obiekt"))
+    else:
+        attrs["OBJ_FIELD"] = ""
+
+    nazwa = "RaportForm_" + re.sub(r"\W", "_", definicja.slug)
+    # użyj metaklasy formularza (DeclarativeFieldsMetaclass), nie gołego type -
+    # inaczej "metaclass conflict" i pole 'obiekt' nie trafiłoby do base_fields.
+    metaklasa = type(BaseRaportForm)
+    return metaklasa(nazwa, (BaseRaportForm,), attrs)
