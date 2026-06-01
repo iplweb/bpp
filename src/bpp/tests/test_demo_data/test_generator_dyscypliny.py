@@ -11,6 +11,7 @@ from bpp.demo_data.generators.jednostki import create_jednostki
 from bpp.demo_data.generators.uczelnia import ensure_uczelnia
 from bpp.demo_data.generators.wydzialy import create_wydzialy
 from bpp.demo_data.manifest import Manifest
+from bpp.demo_data.themes.registry import get_theme
 from bpp.models import Autor_Dyscyplina, Dyscyplina_Naukowa
 
 
@@ -20,11 +21,13 @@ def setup(tmp_manifest_path, db):
     for i in range(5):
         baker.make(Dyscyplina_Naukowa, nazwa=f"Dysc{i}", kod=f"D{i}")
 
+    theme = get_theme("realistyczny")
     m = Manifest(path=tmp_manifest_path, database="db", command_args={})
-    u = ensure_uczelnia(m)
+    u = ensure_uczelnia(m, theme=theme)
     w = create_wydzialy(
         n=1,
         uczelnia=u,
+        theme=theme,
         manifest=m,
         rng=random.Random(1),
         batch_size=10,
@@ -34,6 +37,7 @@ def setup(tmp_manifest_path, db):
         per_wydzial=1,
         wydzialy=w,
         uczelnia=u,
+        theme=theme,
         manifest=m,
         rng=random.Random(2),
         batch_size=10,
@@ -42,6 +46,7 @@ def setup(tmp_manifest_path, db):
     a = create_autorzy(
         n=20,
         jednostki=j,
+        theme=theme,
         manifest=m,
         rng=random.Random(3),
         batch_size=10,
