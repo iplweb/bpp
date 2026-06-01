@@ -12,13 +12,21 @@ pakiet zewnętrzny anonimowy front przestał się łączyć. BPP ustawia flagę 
 ``True`` (``settings/base.py``), żeby przywrócić poprzednie zachowanie — ten
 plik to przypina, żeby ktoś przypadkiem nie zdjął/odwrócił ustawienia.
 
-Test jest celowo hermetyczny: ``on_connect`` (replay z bazy) jest zamockowany,
-więc nie potrzebujemy DB ani Redisa — exerciseujemy wyłącznie bramkę
-auth + accept/close na ``InMemoryChannelLayer``. ``async_to_sync`` odpala
-asynchroniczny ``WebsocketCommunicator`` w syncowym teście (repo nie ma
-``pytest-asyncio``).
+``on_connect`` (replay z bazy) jest zamockowany, więc NIE odpytujemy tabel
+notyfikacji, a ``InMemoryChannelLayer`` trzyma Redisa z daleka — exerciseujemy
+wyłącznie bramkę auth + accept/close. Testy są jednak ``@pytest.mark.django_db``:
+channels owija sync-consumera w ``DatabaseSyncToAsync``, który woła
+``close_old_connections()`` (channels/db.py) wokół handlera. To iteruje
+zainicjalizowane połączenia i robi ``ensure_connection()``. Gdy wcześniejszy
+test w procesie zainicjalizował połączenie w współdzielonym wątku sync-executora,
+pytest-django blokuje ten dostęp dla testu bez marka → ``RuntimeError: Database
+access not allowed`` (flaky zależny od kolejności; w izolacji przechodzi, bo
+połączenie nie jest zainicjalizowane). Mark zezwala na sam cykl połączenia
+(bez realnych zapytań do tabel). ``async_to_sync`` odpala asynchroniczny
+``WebsocketCommunicator`` w syncowym teście (repo nie ma ``pytest-asyncio``).
 """
 
+import pytest
 from asgiref.sync import async_to_sync
 from channels.testing import WebsocketCommunicator
 from channels_broadcast.consumers import NotificationsConsumer
@@ -48,6 +56,7 @@ def test_bpp_enables_anonymous_notifications():
     assert settings.CHANNELS_BROADCAST_ENABLE_ANONYMOUS is True
 
 
+@pytest.mark.django_db
 def test_anonymous_user_can_connect(settings, mocker):
     """Z flagą BPP (True) anonim nawiązuje WS — handshake zaakceptowany."""
     settings.CHANNEL_LAYERS = INMEMORY_LAYER
@@ -57,6 +66,7 @@ def test_anonymous_user_can_connect(settings, mocker):
     assert _connect_as_anonymous() is True
 
 
+@pytest.mark.django_db
 def test_anonymous_rejected_when_flag_disabled(settings, mocker):
     """Objaw sprzed fixu: bez flagi anonim jest odrzucany (close przed accept)."""
     settings.CHANNEL_LAYERS = INMEMORY_LAYER
