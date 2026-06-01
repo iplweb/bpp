@@ -56,3 +56,89 @@ def test_theme_is_frozen():
     )
     with pytest.raises(dataclasses.FrozenInstanceError):
         t.key = "y"
+
+
+def _mini_theme():
+    from bpp.demo_data.themes.base import Theme
+
+    return Theme(
+        key="t",
+        label="T",
+        uczelnia_nazwy=("Uniwersytet Testowy",),
+        uczelnia_skrot="UT",
+        wydzial_dziedziny=("Lekarski", "Farmaceutyczny", "Chemii"),
+        jednostka_dziedziny=("Kardiologii", "Biochemii"),
+        autor_imiona=("Anna", "Jan"),
+        autor_nazwiska=("Kowalski", "Nowak"),
+        zrodlo_human=("Medica", "Biochemica"),
+        wydawcy=("Wyd. A", "Wyd. B"),
+        tytul_topics=("biomarkerów",),
+        tytul_subjects=("skuteczność",),
+        tytul_contexts=("warunkach klinicznych",),
+        streszczenie_templates=(
+            "Zbadano wpływ {topic} na {subject}.",
+            "Analizę przeprowadzono w {context}.",
+        ),
+    )
+
+
+def test_compose_jednostka_uses_prefix_and_dziedzina():
+    import random
+
+    from bpp.demo_data.themes.compose import compose_jednostka_nazwa
+
+    t = _mini_theme()
+    nazwa = compose_jednostka_nazwa(t, random.Random(1))
+    assert any(nazwa.startswith(p) for p in t.jednostka_prefiksy)
+    assert any(nazwa.endswith(d) for d in t.jednostka_dziedziny)
+
+
+def test_compose_autor_returns_pair_from_pools():
+    import random
+
+    from bpp.demo_data.themes.compose import compose_autor
+
+    t = _mini_theme()
+    imiona, nazwisko = compose_autor(t, random.Random(1))
+    assert imiona in t.autor_imiona
+    assert nazwisko in t.autor_nazwiska
+
+
+def test_wydawca_nazwy_are_unique():
+    import random
+
+    from bpp.demo_data.themes.compose import wydawca_nazwy
+
+    t = _mini_theme()  # pula = 2 wydawców
+    nazwy = wydawca_nazwy(t, random.Random(1), 5)
+    assert len(nazwy) == 5
+    assert len(set(nazwy)) == 5  # unikalne mimo puli < n
+
+
+def test_apply_prefix():
+    from bpp.demo_data.themes.compose import apply_prefix
+
+    assert apply_prefix("Kardiologii", "Demo — ") == "Demo — Kardiologii"
+    assert apply_prefix("Kardiologii", "") == "Kardiologii"
+
+
+def test_compose_determinism():
+    import random
+
+    from bpp.demo_data.themes.compose import compose_jednostka_nazwa
+
+    t = _mini_theme()
+    a = compose_jednostka_nazwa(t, random.Random(42))
+    b = compose_jednostka_nazwa(t, random.Random(42))
+    assert a == b
+
+
+def test_compose_streszczenie_fills_placeholders():
+    import random
+
+    from bpp.demo_data.themes.compose import compose_streszczenie
+
+    t = _mini_theme()
+    s = compose_streszczenie(t, random.Random(1))
+    assert "{" not in s and "}" not in s  # wszystkie placeholdery wypełnione
+    assert len(s) > 0
