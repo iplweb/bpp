@@ -11,6 +11,9 @@ CLEANUP_ORDER = (
     # Najpierw M2M-through:
     "bpp.Wydawnictwo_Ciagle_Autor",
     "bpp.Wydawnictwo_Zwarte_Autor",
+    # Streszczenia (FK rekord → praca, CASCADE) — usuwamy przed rekordami:
+    "bpp.Wydawnictwo_Ciagle_Streszczenie",
+    "bpp.Wydawnictwo_Zwarte_Streszczenie",
     # Potem rekordy. UWAGA: Wydawnictwo_Zwarte zawiera mieszane PK
     # (nadrzedne + rozdzialy). Cleanup musi usuwac w odwrotnej
     # kolejnosci PK (najpierw najwyzsze, tj. rozdzialy stworzone po
