@@ -1,17 +1,29 @@
+from __future__ import annotations
+
 import re
 from collections import defaultdict
 from collections.abc import Generator
+from typing import TYPE_CHECKING
 
-import openpyxl
 from django.utils.functional import cached_property
-from openpyxl.utils.exceptions import InvalidFileException
-from openpyxl.worksheet.worksheet import Worksheet
 
 from .exceptions import (
     BadNoOfSheetsException,
     HeaderNotFoundException,
     ImproperFileException,
 )
+
+# openpyxl importujemy LOKALNIE (nie na poziomie modułu): ten moduł jest
+# importowany eager przez import_common.models (XLSImportFile) już przy
+# django.setup(), a openpyxl przez compat/numbers.py ciągnie całe numpy
+# (~tens MB RSS) do KAŻDEGO procesu — także web/ASGI, który nigdy nie czyta
+# xlsx. Dzięki PEP 563 (future annotations) adnotacje typu ``Worksheet`` /
+# ``openpyxl.*`` w sygnaturach poniżej są tylko łańcuchami i nie wymagają
+# openpyxl w runtime; pod TYPE_CHECKING dajemy je type-checkerom/ruff. Plik
+# xlsx otwierają tylko funkcje z lokalnym importem.
+if TYPE_CHECKING:
+    import openpyxl
+    from openpyxl.worksheet.worksheet import Worksheet
 
 DEFAULT_COL_NAMES = [
     "imię",
@@ -69,6 +81,9 @@ def znajdz_naglowek(
     """
     :return: ([str, str...], no_row)
     """
+    import openpyxl
+    from openpyxl.utils.exceptions import InvalidFileException
+
     try:
         f: openpyxl.workbook.workbook.Workbook = openpyxl.load_workbook(sciezka)
     except InvalidFileException as e:
@@ -119,6 +134,8 @@ class XLSImportFile:
 
     @cached_property
     def xl_workbook(self) -> openpyxl.workbook.workbook.Workbook:
+        import openpyxl
+
         return openpyxl.load_workbook(self.xls_path)
 
     @cached_property
