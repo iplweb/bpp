@@ -232,6 +232,19 @@ STATICFILES_FINDERS = (
     #    'django.contrib.staticfiles.finders.DefaultStorageFinder',
 )
 
+# Storage backends (Django 5.x). `staticfiles` → tolerancyjny
+# ManifestStaticFilesStorage (issue #269): content-hash cache-busting całego
+# long-taila statyków; szczegóły i powód tolerancji w django_bpp/storage.py.
+# `default` (media) zostaje na domyślnym Django FileSystemStorage.
+STORAGES = {
+    "default": {
+        "BACKEND": "django.core.files.storage.FileSystemStorage",
+    },
+    "staticfiles": {
+        "BACKEND": "django_bpp.storage.TolerantManifestStaticFilesStorage",
+    },
+}
+
 TEMPLATES = [
     {
         "BACKEND": "django.template.backends.django.DjangoTemplates",
