@@ -75,7 +75,7 @@ dependencies = [
     "django-minify-html>=1.14,<2",
     "Pillow>=12.2,<14",
     "django-grappelli>=5.0.0,<6",
-    "django-multiseek==0.9.49",
+    "django-multiseek==0.10.2",
     "django-braces>=1.15.0",
     "django-loginas==0.3.14",
     "django-webmaster-verification==0.4.3",
