@@ -111,7 +111,10 @@
         {% include 'session_security/dialog.html' %}
 
         {# Load SessionSecurity javascript 'class', jquery should be loaded - by you - at this point #}
-        <script type="text/javascript" src="{% static 'bpp/session_security/script_patched.js' %}"></script>
+        {# compress => content-hashed nazwa (cache-bust); musi byc PRZED inline-initem yourlabs.SessionSecurity nizej #}
+        {% compress js %}
+            <script type="text/javascript" src="{% static 'bpp/session_security/script_patched.js' %}"></script>
+        {% endcompress %}
 
         {# Bootstrap a SessionSecurity instance as the sessionSecurity global variable #}
         {% localize off %}
