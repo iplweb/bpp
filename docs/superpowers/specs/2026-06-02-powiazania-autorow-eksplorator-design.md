@@ -55,13 +55,19 @@ Trzy luźno powiązane jednostki:
 
 ### B. Endpoint danych
 
-Nowy `powiazania_autorow/views.py` + `powiazania_autorow/urls.py`
-(włączony w root `src/django_bpp/urls.py`, przed trasami autora z `bpp`,
-choć kolizji nie ma dzięki dodatkowemu segmentowi ścieżki).
+Nowe widoki w `powiazania_autorow/views.py`. Trasy dodane do
+`src/bpp/urls.py` (pod namespace `bpp`, obok `browse_autor`) — `bpp.urls`
+jest włączone pod prefiksem `^bpp/`, więc strona autora to realnie
+`/bpp/autor/<pk>/`, a graf trzyma się tej samej przestrzeni. `bpp/urls.py`
+już importuje widoki z innych apek (np. `ranking_autorow.views`), więc
+import z `powiazania_autorow.views` jest zgodny ze wzorcem. Brak kolizji
+z `^autor/(?P<pk>\d+)/$` dzięki dodatkowemu segmentowi.
 
-URL-e:
-- `/autor/<int:pk>/powiazania/` → `GrafView` — renderuje stronę eksploratora.
-- `/autor/<int:pk>/powiazania/dane.json` → `GrafDaneView` — dane JSON.
+URL-e (namespace `bpp`):
+- `/bpp/autor/<pk>/powiazania/` → `GrafPowiazanView` (nazwa
+  `browse_autor_powiazania`) — renderuje stronę eksploratora.
+- `/bpp/autor/<pk>/powiazania/dane.json` → `GrafPowiazanDaneView` (nazwa
+  `browse_autor_powiazania_dane`) — dane JSON.
 
 Kształt odpowiedzi JSON:
 ```json
@@ -90,8 +96,8 @@ centrum, ale **sąsiedzi zawsze filtrowani po `pokazuj=True`**.
 ### C. Harmonogram (celerybeat)
 
 `calculate_author_connections` obecnie **nie jest** schedulowany → tabela
-`AuthorConnection` się nie zapełnia. Dopisać do `CELERY_BEAT_SCHEDULE`
-(`src/django_bpp/settings/base.py`) wpis odpalający
+`AuthorConnection` się nie zapełnia. Dopisać do `CELERYBEAT_SCHEDULE`
+(`src/django_bpp/settings/base.py:670`) wpis odpalający
 `powiazania_autorow.calculate_author_connections` raz na dobę
 (np. `crontab(hour=4, minute=0)` — po istniejących nocnych taskach 3:00/3:30).
 
@@ -174,17 +180,15 @@ Frontend: test Playwright **pominięty** (decyzja użytkownika).
 ## Pliki
 
 Tworzone:
-- `src/powiazania_autorow/urls.py`
 - `src/powiazania_autorow/templates/powiazania_autorow/graf.html`
 - `src/bpp/static/bpp/js/visualizations/powiazania-autorow.js`
 - `src/bpp/static/bpp/js/cytoscape-entry.js`
-- testy endpointu (rozszerzenie `src/powiazania_autorow/tests.py` lub nowy
-  `test_views.py`)
+- `src/powiazania_autorow/test_views.py` (testy endpointu)
 
 Modyfikowane:
 - `src/powiazania_autorow/views.py` (z pustego stuba)
-- `src/django_bpp/urls.py` (include url-i apki)
-- `src/django_bpp/settings/base.py` (`CELERY_BEAT_SCHEDULE`)
+- `src/bpp/urls.py` (trasy grafu pod namespace `bpp`)
+- `src/django_bpp/settings/base.py` (`CELERYBEAT_SCHEDULE`)
 - `src/bpp/views/browse.py` (`AutorView.get_context_data`)
 - `src/bpp/templates/browse/autor.html` (przycisk)
 - `package.json` (cytoscape, cytoscape-fcose)
