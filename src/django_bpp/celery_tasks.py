@@ -1,3 +1,4 @@
+import math
 import os
 import platform
 
@@ -34,7 +35,7 @@ def resolve_worker_config(environ, system, cpu_count):
         concurrency = 10
     else:
         percent = int(environ.get("CELERY_WORKER_CONCURRENCY_PERCENT", "75"))
-        concurrency = max(1, round((cpu_count or 1) * percent / 100))
+        concurrency = max(1, math.floor((cpu_count or 1) * percent / 100))
 
     config = {"worker_pool": pool, "worker_concurrency": concurrency}
 
