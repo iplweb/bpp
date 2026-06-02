@@ -337,12 +337,19 @@ RUN --mount=type=cache,target=/root/.npm,id=npm-cache \
 # (~1 min × N jobs) on every invocation. Local dev keeps the bind
 # mount and rebuilds assets on demand.
 #
-# Granular COPYs (instead of `COPY . /src`) keep this layer cached
-# whenever the change is outside the listed paths — edits to
-# .github/, docker/, docker-compose*.yml, .pre-commit-config.yaml,
-# etc. don't invalidate the source layer or the grunt/compilemessages
-# steps below it. Only changes inside src/ or the listed top-level
-# config files force a rebuild of the assets.
+# Cache-bust źródła per commit — TAK SAMO jak builder przed `COPY . .`
+# (patrz `RUN echo "Building from git commit..."`). Powód: ten obraz jest
+# budowany z `cache-from type=registry,ref=...:cache`, które potrafi
+# przywrócić STARĄ warstwę `COPY src/` sprzed zmiany zawartości src/ (np.
+# przeniesienia plików). Wtedy `grunt build` / esbuild biegnie na
+# nieaktualnym drzewie i nie widzi nowo dodanych/przeniesionych plików
+# (objaw: esbuild "Could not resolve <nowa ścieżka>"). RUN z $GIT_SHA zmienia
+# klucz cache co commit i wymusza świeży COPY + grunt. Koszt: warstwa źródła
+# test-runnera odbudowuje się na każdym commicie (sekundy), ale CI dostaje
+# obraz z aktualnym kodem i assetami.
+ARG GIT_SHA=unknown
+RUN echo "test-runner source snapshot for ${GIT_SHA}"
+
 COPY src/ /src/src/
 COPY baseline-sql/ /src/baseline-sql/
 COPY conftest.py pytest.ini Makefile pyproject.toml uv.lock /src/
