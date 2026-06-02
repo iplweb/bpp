@@ -23,6 +23,7 @@ from django.views.generic import DetailView, ListView, RedirectView, TemplateVie
 from multiseek.logic import AND, OR
 from multiseek.util import make_field
 from multiseek.views import MULTISEEK_SESSION_KEY, MULTISEEK_SESSION_KEY_REMOVED
+from siteblog.models import Article
 
 from bpp.models import (
     Autor,
@@ -42,7 +43,6 @@ from bpp.multiseek_registry import (
     ZakresLatQueryObject,
     ZrodloQueryObject,
 )
-from siteblog.models import Article
 
 logger = logging.getLogger(__name__)
 
