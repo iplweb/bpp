@@ -71,9 +71,7 @@ def get_uczelnia_context_data(uczelnia, article_slug=None):
     if article_slug:
         context["article"] = get_object_or_404(Article, slug=article_slug)
     else:
-        context["news"] = Article.objects.filter(status=Article.STATUS.published)[
-            :5
-        ]
+        context["news"] = Article.objects.filter(status=Article.STATUS.published)[:5]
         # Add 5 most recently updated records
         context["recently_updated"] = Rekord.objects.order_by("-ostatnio_zmieniony")[
             :12

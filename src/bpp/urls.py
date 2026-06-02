@@ -95,9 +95,8 @@ from bpp.views.zapytanie import (
     ZapytanieSuggestionsView,
     ZapytanieView,
 )
-from ranking_autorow.views import RankingAutorow, RankingAutorowFormularz
-
 from powiazania_autorow.views import GrafPowiazanDaneView, GrafPowiazanView
+from ranking_autorow.views import RankingAutorow, RankingAutorowFormularz
 
 urlpatterns = [
     path(

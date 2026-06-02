@@ -112,7 +112,5 @@ def test_strona_autora_ma_flage_powiazan_false(client):
 def test_przelicznik_jest_w_celerybeat():
     from django.conf import settings
 
-    nazwy_taskow = {
-        wpis["task"] for wpis in settings.CELERYBEAT_SCHEDULE.values()
-    }
+    nazwy_taskow = {wpis["task"] for wpis in settings.CELERYBEAT_SCHEDULE.values()}
     assert "powiazania_autorow.calculate_author_connections" in nazwy_taskow
