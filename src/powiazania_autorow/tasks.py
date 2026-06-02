@@ -6,19 +6,26 @@ logger = get_task_logger(__name__)
 
 def _zlicz_wspolautorow(model_autorstwa, author, connections):
     """Zlicza współautorów `author` z jednego modelu autorstwa (*_Autor) do
-    słownika `connections` (coauthor_id -> liczba wspólnych prac)."""
-    pub_ids = model_autorstwa.objects.filter(autor=author).values_list(
-        "rekord_id", flat=True
+    słownika `connections` (coauthor_id -> liczba wspólnych prac).
+
+    Dwa zapytania na model (zamiast 1 + N): najpierw materializujemy listę
+    ID prac autora, potem JEDNYM zapytaniem pobieramy wszystkich współautorów
+    na tych pracach. Semantyka zliczania jest identyczna jak przy pętli po
+    pojedynczych pracach — każde wystąpienie współautora (z pominięciem
+    `autor_id is None`) zwiększa licznik o 1, więc dla współautora N
+    wspólnych prac dostajemy N.
+    """
+    pub_ids = list(
+        model_autorstwa.objects.filter(autor=author).values_list("rekord_id", flat=True)
     )
-    for pub_id in pub_ids:
-        coauthors = (
-            model_autorstwa.objects.filter(rekord_id=pub_id)
-            .exclude(autor=author)
-            .values_list("autor_id", flat=True)
-        )
-        for coauthor_id in coauthors:
-            if coauthor_id:
-                connections[coauthor_id] += 1
+    # Pusta lista ID prac → puste IN, zapytanie zwróci 0 wierszy (pusta pętla).
+    for coauthor_id in (
+        model_autorstwa.objects.filter(rekord_id__in=pub_ids)
+        .exclude(autor=author)
+        .values_list("autor_id", flat=True)
+    ):
+        if coauthor_id:
+            connections[coauthor_id] += 1
 
 
 @shared_task(name="powiazania_autorow.calculate_author_connections")
