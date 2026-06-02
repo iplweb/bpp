@@ -150,5 +150,32 @@ bez_oswiadczen: bool)`.
   `.get()`; docelowo zostawić tylko świadomy „dowolna" (ewentualny
   `get_arbitrary()` dla `middleware` Site-bez-uczelni) albo wycofać.
 
-To osobny, stopniowy wątek — nie wchodzi w zakres splitu `pbn_client`, poza tym
-że split sam z siebie usuwa `get_default` z `publication_sync` i adaptera.
+### Status: ZREALIZOWANE (2026-06-02, Fazy 1–9)
+
+Cleanup wykonany. Pozostały po nim **tylko świadome użycia** `get_default`/
+`objects.default` (15 plików), pilnowane przez sentinel-test
+`src/bpp/tests/test_multihosted_get_default_guard.py` (nowy `get_default`
+w runtime → fail CI). Kategorie pozostałych:
+
+- **Świadome fallbacki bez requestu:** `middleware.py` (Site bez Uczelni),
+  `util/bpp_specific.py` (CLI/Celery bez requestu), `pbn_import_tags.py`
+  (template tag, request-first), `command_helpers.py` (CLI + `CommandError`).
+- **None-tolerant warstwa modelu/wyświetlanie:** `jednostka.py` (sortowanie),
+  `multiseek .../numeric_fields.py` (index copernicus), `abstract/pbn.py`
+  (root linków).
+- **GUARDED:** `pbn_api/.../util.py` (`count==1` else `CommandError`).
+- **Test-only:** `adapters/wydawnictwo.py` (runtime przekazuje jawną uczelnię).
+- **PARKED z TODO (deeper redesign per-uczelnia):** `sloty/core.py`,
+  `abstract/disciplines.py` (sloty/punktacja per-uczelnia — cache per
+  rekord×uczelnia), oraz integrator (`scientists.py`, `importer/authors.py`,
+  `pbn_integrator.py` — threading uczelni docelowej przez pipeline).
+
+Reszta runtime została przepięta na jawną uczelnię: `get_for_request` (widoki,
+ORCID, importer steps/detail), `session.uczelnia` (importer_publikacji),
+`self.uczelnia` w `BppPBNClient`/`ImportManager` (PBN sync, import), oraz
+`Uczelnia.objects.get()` w fallbackach single-install (komendy CLI, taski
+z `uczelnia_id`).
+
+**Następny, osobny wątek (brainstorm):** per-uczelnia liczenie slotów/punktacji
+(parked TODO) — `Cache_Punktacja_*` z `uczelnia_id`, liczenie+zapis per
+uczelnia autora, odczyty filtrowane po uczelni oglądającego.
