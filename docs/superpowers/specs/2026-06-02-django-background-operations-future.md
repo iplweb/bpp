@@ -1,4 +1,4 @@
-# Notatka na przyszłość: `django-background-operations`
+# Notatka na przyszłość: śledzenie operacji w tle + powiadomienia na żywo
 
 > **STATUS: NOTATKA-NA-KIEDYŚ, NIE SPEC DO IMPLEMENTACJI.**
 > Powstała z brainstormu 2026-06-02. Nic nie wdraża. Ma być punktem
@@ -26,33 +26,104 @@ szablony, migracja). 12 konsumentów `long_running` w repo.
 traci owner/formularz/wyniki). Problem to **dostarczanie progressu** i
 **ergonomia**.
 
-## Wizja: nowa apka `django-background-operations`
+## Wizja: rozbicie na 2 nowe pakiety (+ istniejący `messages-extends`)
 
-Nowa apka (nie przebudowa `long_running` w miejscu — przy 12 konsumentach
-zbyt ryzykowne). Konsumenci migrują pojedynczo; `long_running` zostaje aż
-się opróżni. Apka **bpp-free od dnia zero** (`owner =
-settings.AUTH_USER_MODEL`), bo nazwa pachnie reusable — kandydat do
-ekstrakcji jak `pbn_client`.
+To są **dwa różne problemy**, które tylko spotykają się na końcu, a nie
+jeden. **Śledzenie stanu zadań** (co leci, na ilu %, co padło) to inny
+problem niż **dostarczanie komunikatu do usera na żywo na wszystkich
+kartach**. Pierwsze nie potrzebuje websocketów (można odpytać API).
+Drugie nie ma nic wspólnego z zadaniami — to generyczny kanał „powiedz
+temu userowi coś, teraz, wszędzie gdzie patrzy" (równie dobrze: ogłoszenie
+admina, „sesja zaraz wygaśnie"). Sklejanie ich w jeden pakiet zlepiałoby
+dwie reusable rzeczy w jedną nie-reusable. Stąd **3 pakiety w stacku, ale
+tylko 2 nowe**:
 
-Zawiera:
+| # | Pakiet | Odpowiedzialność | Zależności | Ziarno w repo |
+|---|--------|------------------|-----------|----------------|
+| 1 | **`messages-extends`** *(już masz)* | trwały komunikat: model `Message` (user, body, `read`, level), render na stronie, auto-read-po-wejściu-na-URL | DB | — (3rd party, działa) |
+| 2 | **`django-background-operations`** *(NOWY)* | `Operation` (UID/owner/status/traceback), `set/get_progress` (Redis), **API statusu** „oto Twoje zadania — 1 skończone, 5 trwa na X%, 3 z błędami", szuflada-widget | Redis + DB | `long_running.Operation` |
+| 3 | **`django-live-messages`** *(NOWY, nazwa robocza)* | transport **na żywo** dla messages-extends: push nowego komunikatu na wszystkie karty usera + **sync zamknięcia** (zamknął na jednej → znika na pozostałych) | channels + messages-extends | `channels_broadcast` |
+
+Oba nowe pakiety mają **ziarno w repo**, nie startują od zera:
+- Pakiet 2 wyrasta z `long_running.Operation` (śledzenie start/koniec już
+  działa).
+- Pakiet 3 to **dorosła wersja `channels_broadcast`** — on już pushuje
+  toasty websocketem (toastify) i ma pojęcie ACK. Brakuje mu (a) integracji
+  z `messages-extends` (live-komunikat wygląda identycznie i jest trwały),
+  (b) sync zamknięcia między kartami.
+
+Obie apki **bpp-free od dnia zero** (`owner = settings.AUTH_USER_MODEL`) —
+kandydaci do ekstrakcji jak `pbn_client`. Nie przebudowa `long_running`
+w miejscu (przy 12 konsumentach zbyt ryzykowne): konsumenci migrują
+pojedynczo, `long_running` znika gdy pusty.
+
+### Pakiet 2: `django-background-operations`
+
 - `Operation` (durable): UID (UUID), owner, start/koniec, status,
   traceback, `label`/`title` (ludzka nazwa do toastu/szuflady).
 - `set_progress` / `get_progress` przez **Redis** (transient, poza
   transakcją — zapis natychmiast widoczny dla czytelników).
+- **API statusu** + szuflada-widget: „oto Twoje zadania w tle".
+- **Nie wie o powiadomieniach.** Tylko śledzi stan i wystawia go.
+  Emituje sygnał `operation_finished` na zakończeniu.
 - `test_app` w środku: (a) przykładowy `Operation`-subclass + trywialny
   task „licz do 100" pod testy integracyjne, (b) uruchamialna strona
   demo z paskiem.
+
+### Pakiet 3: `django-live-messages` (nazwa robocza)
+
+- Wysyła komunikat **wyglądający identycznie jak `messages-extends`** na
+  wszystkie końcówki, na których siedzi user, **na żywo**.
+- **Sync zamknięcia**: zamknięcie na jednej karcie → znika na pozostałych
+  (zapis `read` w DB + broadcast eventu do grupy `user-{id}`).
+- **Generyczny** — nie wie o operacjach. Użyteczny do dowolnego live-
+  powiadomienia, nie tylko „zadanie skończone".
+- Stoi na `messages-extends` (trwałość + render) + `channels` (transport).
+- Alternatywne nazwy do rozważenia: `django-messages-live`,
+  `django-realtime-messages`.
+
+### Szew między pakietami — odwrócona zależność (klucz do rozłączności)
+
+Pakiet 2 **nie zależy** od Pakietu 3. Operacja emituje tylko sygnał;
+cienki **klej w projekcie** (BPP-owy, nie-pakiet) tłumaczy go na komunikat:
+
+```
+Operation kończy się  ──signal operation_finished──▶  glue (w projekcie)
+                                       └─▶ live_messages.send(
+                                             user, "Import skończył się po 3h…",
+                                             persistent=decision_required)
+```
+
+Dzięki temu: Pakietu 2 użyjesz bez 3 (sam pasek, odpytywany przez API —
+bez websocketów); Pakietu 3 użyjesz bez 2 (ogłoszenie admina — cokolwiek
+live). Klej `*_bpp` zostaje w projekcie.
+
+**Dlaczego 2 nowe, a nie 1 i nie 4:** nie 1 — monolit wiązałby Redis-
+progress z websocketami z messages-extends, nie da się użyć kawałka osobno.
+Nie 4 — frontend (szuflada, toast) zostaje w swoim pakiecie (każdy wozi
+własny cienki JS/szablony); osobny pakiet „tylko frontend" to piekło
+wersjonowania. YAGNI.
+
+**To ta sama zasada, co dla `pbn_api`/`long_running`:** rozbicie na osobne
+**apki Django w projekcie** z czystymi szwami jest **tanie** (greenfield,
+zero podatku migracyjnego) i to dobra higiena, która *umożliwia* późniejszą
+ekstrakcję bez jej *wymuszania*. Fizyczny `pip install` czeka aż pojawi się
+**drugi konsument** spoza BPP.
 
 ## NAJWAŻNIEJSZE: taksonomia pojęć (to się zlewało)
 
 Cztery **różne** byty. Mieszanie ich było źródłem zamętu:
 
-| # | Byt | Czas życia | Gdzie żyje | Status w projekcie |
-|---|-----|-----------|-----------|--------------------|
-| 1 | **Operation** — rekord zadania (UID, owner, status, traceback) | durable | Postgres | do zbudowania (nowa apka) |
-| 2 | **Progress** — live `%` + komunikat biegnącej operacji | transient | Redis | do zbudowania (`set/get_progress`) |
-| 3 | **Live signal** — ulotny event „op X się zmieniła/skończyła, odśwież/toastnij" | ulotny | websocket (channels) | mamy `channels_broadcast` |
-| 4 | **Standing notification** — trwały komunikat „skończyło się, wejdź tu", zostaje aż przeczytany/odrzucony | durable | DB | **JUŻ MAMY: `messages_extends`** |
+Ta taksonomia mapuje się wprost na pakiety (patrz wyżej): byty #1/#2 →
+Pakiet 2 (`django-background-operations`), byt #3 → Pakiet 3
+(`django-live-messages`), byt #4 → istniejący `messages-extends`.
+
+| # | Byt | Czas życia | Gdzie żyje | Pakiet |
+|---|-----|-----------|-----------|--------|
+| 1 | **Operation** — rekord zadania (UID, owner, status, traceback) | durable | Postgres | 2 — `django-background-operations` |
+| 2 | **Progress** — live `%` + komunikat biegnącej operacji | transient | Redis | 2 — `django-background-operations` |
+| 3 | **Live signal** — ulotny event „op X się zmieniła/skończyła, odśwież/toastnij" | ulotny | websocket (channels) | 3 — `django-live-messages` (z `channels_broadcast`) |
+| 4 | **Standing notification** — trwały komunikat „skończyło się, wejdź tu", zostaje aż przeczytany/odrzucony | durable | DB | 1 — `messages-extends` *(już masz)* |
 
 Kluczowe rozróżnienia, które się myliły:
 - **Progress (2) ≠ Operation (1).** Pasek to ulotna projekcja, nie rekord.
@@ -185,18 +256,30 @@ multi-tab dedupuje się sam.
 - **Eskalacja e-mail** (nieprzeczytane po 2-3 h / user offline) — model
   dostanie `acknowledged_on`/`emailed_on`, więc beat-task dołożymy później
   bez migracji-rewolucji. **Nie w pierwszym wydaniu.**
-- Fizyczna ekstrakcja apki do osobnego repo/PyPI — dopiero gdy stabilna.
+- Fizyczna ekstrakcja pakietów (2 i 3) do osobnych repo/PyPI — dopiero
+  gdy stabilne i pojawi się drugi konsument spoza BPP.
 
-## Gdy wrócimy — proponowana dekompozycja
+## Gdy wrócimy — proponowana kolejność (wg pakietów)
 
-- **SP1** — silnik + globalny delivery: `Operation` (+ `label`,
-  `acknowledged_on`, `cancelled_on`), tracker Redis (`set/get_progress`),
-  endpoint `/moje-operacje/` (JSON), globalna szurada/widget (htmx +
-  toastify), thin eventy WS, podpięcie zakończenia do `messages_extends`
-  (#4), sync ack między oknami, `test_app`. Zabija push-progress
-  `long_running`.
-- **SP2** — eskalacja e-mail (ack + beat-task).
-- **SP3** — decommission daphne: migracja `pbn_import` (własny consumer),
-  usunięcie `channels`/daphne — tylko jeśli realnie chcemy zejść z ASGI.
+- **SP1 — Pakiet 2 (`django-background-operations`):** `Operation`
+  (+ `label`, `acknowledged_on`, `cancelled_on`), tracker Redis
+  (`set/get_progress`), endpoint statusu `/moje-operacje/` (JSON),
+  szuflada/widget (htmx + toastify), sygnał `operation_finished`,
+  `test_app`. **Samodzielny — nie wymaga websocketów** (status przez
+  polling API). Zabija push-progress `long_running` dla części
+  „śledzenie".
+- **SP2 — Pakiet 3 (`django-live-messages`):** transport live nad
+  `messages-extends` (push + sync zamknięcia między kartami), ewolucja
+  `channels_broadcast`. **+** klej BPP-owy: `operation_finished` →
+  `live_messages.send(...)`. Dopiero tu wchodzą websockety.
+- **SP3 — eskalacja e-mail** (ack + beat-task) — nad messages-extends/
+  operacjami.
+- **SP4 — sprzątanie `pbn_import`** (jego własny consumer websocket) —
+  ale **uwaga na fork**: pełne zejście z daphne jest **wykluczające się**
+  z adopcją Pakietu 3 (live-messages stoi na websocketach → daphne
+  zostaje). Decyzja „websockety zostają" (przyjęta) oznacza, że daphne
+  zostaje, a migracja `pbn_import` to zwykłe ujednolicenie kanałów, nie
+  usunięcie ASGI. Czysto-pollingowy wariant (drop daphne, brak live-push)
+  to alternatywa, której świadomie nie wybieramy.
 
 Każdy SP własny cykl spec → plan → implementacja.
