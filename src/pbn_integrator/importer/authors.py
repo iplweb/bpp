@@ -86,6 +86,10 @@ def _przetworz_afiliacje(
     Returns:
         Tuple of (jednostka, afiliuje, typ_odpowiedzialnosci).
     """
+    # TODO(multi-hosted): porównania z „naszą" uczelnią (objects.default tutaj
+    # i niżej) docelowo per-uczelnia — wymaga przekazania uczelni docelowej
+    # przez pipeline integratora (deeper, jak per-uczelnia sloty). objects.default
+    # zostaje świadomie (NIE .get(): wołane wielokrotnie, bez kontekstu uczelni).
     jednostka = Uczelnia.objects.default.obca_jednostka
     afiliuje = False
     # Use provided default or fallback to autor

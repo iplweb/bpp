@@ -214,6 +214,10 @@ class Command(PBNBaseCommand):
     def _handle_people(self, opts, client, s, e):
         """Etapy 6-9: pobieranie i integracja ludzi."""
         ea = opts["enable_all"]
+        # TODO(multi-hosted): integrator docelowo per-uczelnia — porównanie
+        # z „naszą" uczelnią wymaga przekazania uczelni DOCELOWEJ przez
+        # pipeline integratora (deeper, jak per-uczelnia sloty). Do tego czasu
+        # objects.default (NIE .get(): w pętlach i bez kontekstu uczelni).
         pbn_uid_id = Uczelnia.objects.default.pbn_uid_id
 
         self._run_stage(

@@ -431,6 +431,9 @@ def matchuj_autora_po_stronie_pbn(imiona, nazwisko, orcid):  # noqa: C901
 
             currentEmployments = elem.value_or_none("object", "currentEmployments")
             if currentEmployments is not None:
+                # TODO(multi-hosted): matcher porównuje z „naszą" uczelnią —
+                # docelowo per-uczelnia (deeper integrator-threading, jak sloty).
+                # objects.default zostaje (cached; matcher bez kontekstu uczelni).
                 for pos in currentEmployments:
                     if pos.get("institutionId") == Uczelnia.objects.default.pbn_uid_id:
                         can_be_set = True
