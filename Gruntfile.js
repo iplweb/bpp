@@ -225,6 +225,14 @@ module.exports = function (grunt) {
                          '--inject:src/bpp/static/bpp/js/jquery-shim.js ' +
                          '--define:global=window'
             },
+            // Osobny lazy bundle Cytoscape.js + fcose dla strony eksploratora
+            // powiązań autorów (ładowany tylko na tej stronie, nie globalnie).
+            esbuildCytoscape: {
+                command: 'npx esbuild src/bpp/static/bpp/js/cytoscape-entry.js ' +
+                         '--bundle --minify-syntax --minify-whitespace --sourcemap ' +
+                         '--outfile=src/bpp/static/bpp/js/dist/cytoscape-bundle.js ' +
+                         '--format=iife --target=es2018'
+            },
             // Post-process bundle to fix IIFE scope issues
             // django-autocomplete-light: yl namespace (esbuild renames to yl2)
             patchBundle: {
@@ -249,6 +257,7 @@ module.exports = function (grunt) {
         'concurrent:themes',
         'shell:linkSitePackages',
         'shell:esbuild',
+        'shell:esbuildCytoscape',
         'shell:patchBundle',
         'shell:collectstatic'
     ]);
@@ -256,6 +265,7 @@ module.exports = function (grunt) {
         'concurrent:themes',
         'shell:linkSitePackages',
         'shell:esbuild',
+        'shell:esbuildCytoscape',
         'shell:patchBundle'
     ]);
 
