@@ -11,6 +11,47 @@ from django.conf import settings
 if platform.system() == "Darwin":
     os.environ.setdefault("OBJC_DISABLE_INITIALIZE_FORK_SAFETY", "YES")
 
+
+def resolve_worker_config(environ, system, cpu_count):
+    """Wyznacz konfigurację workera Celery na podstawie zmiennych środowiskowych.
+
+    Czysta funkcja (bez side-effectów) — wszystkie wejścia przez argumenty,
+    żeby dało się ją testować bez startu workera i bez mutowania os.environ.
+
+    Zwraca dict gotowy do `app.conf.update(...)`. Opcjonalne knoby (prefetch,
+    max_tasks/max_memory_per_child) trafiają do wyniku tylko gdy env ustawiony.
+    """
+    use_prefork_on_darwin = environ.get("CELERY_USE_PREFORK") == "1"
+    is_darwin = system == "Darwin"
+    default_pool = "threads" if (is_darwin and not use_prefork_on_darwin) else "prefork"
+    pool = environ.get("CELERY_WORKER_POOL", default_pool)
+
+    explicit = environ.get("CELERY_WORKER_CONCURRENCY")
+    if explicit:
+        concurrency = int(explicit)
+    elif pool == "threads":
+        # Dotychczasowy default deva (macOS): prefork + C-ext segfaultuje po forku.
+        concurrency = 10
+    else:
+        percent = int(environ.get("CELERY_WORKER_CONCURRENCY_PERCENT", "75"))
+        concurrency = max(1, round((cpu_count or 1) * percent / 100))
+
+    config = {"worker_pool": pool, "worker_concurrency": concurrency}
+
+    # Opcjonalne knoby — tylko gdy jawnie ustawione (puste = default Celery).
+    optional = {
+        "CELERY_WORKER_PREFETCH_MULTIPLIER": "worker_prefetch_multiplier",
+        "CELERY_WORKER_MAX_TASKS_PER_CHILD": "worker_max_tasks_per_child",
+        "CELERY_WORKER_MAX_MEMORY_PER_CHILD": "worker_max_memory_per_child",
+    }
+    for env_name, conf_key in optional.items():
+        value = environ.get(env_name)
+        if value:
+            config[conf_key] = int(value)
+
+    return config
+
+
 app = Celery("django_bpp")
 app.config_from_object("django.conf:settings")
 app.autodiscover_tasks(lambda: settings.INSTALLED_APPS)
