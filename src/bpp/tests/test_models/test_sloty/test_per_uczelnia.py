@@ -194,3 +194,20 @@ def test_przelicz_zwrotka_deterministyczna(zwarte_dwie_uczelnie):
     a = zwarte_dwie_uczelnie.przelicz_punkty_dyscyplin()
     b = zwarte_dwie_uczelnie.przelicz_punkty_dyscyplin()
     assert str(a) == str(b)
+
+
+@pytest.mark.django_db
+def test_widok_nie_duplikuje_miedzy_uczelniami(zwarte_dwie_uczelnie):
+    from django.contrib.contenttypes.models import ContentType
+
+    from bpp.models.cache import Cache_Punktacja_Autora_Query_View
+
+    zwarte_dwie_uczelnie.przelicz_punkty_dyscyplin()
+    ctype = ContentType.objects.get_for_model(zwarte_dwie_uczelnie).pk
+
+    rows = Cache_Punktacja_Autora_Query_View.objects.filter(
+        rekord_id=[ctype, zwarte_dwie_uczelnie.pk]
+    )
+    # 2 autorow x 2 dyscyplina-agregaty bez joina po uczelni = 4 (kartezjan).
+    # Z naprawą: 2.
+    assert rows.count() == 2
