@@ -21,42 +21,39 @@ flagi/sterowanie payloadem z **niewłaściwej** uczelni.
 
 ## Cel
 
-Rozciąć klienta dokładnie po granicy odpowiedzialności na dwa pakiety:
+**Wariant B (decyzja 2026-06-02):** rozcinamy na DWIE warstwy; nie tworzymy
+osobnego pakietu `pbn_client_bpp`.
 
-- **`src/pbn_client/`** — Warstwa 1, reusable, **kandydat do ekstrakcji jako
-  osobny pakiet PyPI w przyszłości**. Wie tylko o pojęciach PBN: tokeny, URL-e,
-  PBN UID instytucji (goła wartość), JSON-y, flagi `bool`. **Nie wolno jej
-  importować `bpp.models`** (ani niczego z projektu poza `pbn_api.const`-owym
-  odpowiednikiem, który też się przenosi).
-- **`src/pbn_client_bpp/`** — Warstwa 2, „nasza", BPP-aware. Klasa
-  `BppPBNClient(uczelnia)` budowana **z** obiektu `Uczelnia`; trzyma
-  orchestrację, adaptery (most rekord BPP → PBN JSON) i odczyt flag uczelni.
-  **Tu — i tylko tu — żyje wiedza o `Uczelnia`.** `get_default()` znika
-  z podsystemu.
+- **`src/pbn_client/`** — Warstwa 1, reusable, kandydat do ekstrakcji jako
+  osobny pakiet PyPI. Wie tylko o pojęciach PBN: tokeny, URL-e, PBN UID, JSON-y,
+  flagi `bool`. **Nie importuje `bpp` ani `pbn_api`.** Klasa `PBNClient` =
+  kompozycja czystych mixinów (+ `StatementsMixin`), bez orchestracji.
+- **`BppPBNClient` w `pbn_api/client`** — Warstwa 2, BPP-aware:
+  `BppPBNClient(PBNClient, PublicationSyncMixin, DisciplinesMixin)` z
+  `__init__(transport, uczelnia)`. Trzyma orchestrację i odczyt flag uczelni;
+  **tu — i tylko tu — żyje wiedza o `Uczelnia`.** `get_default()` znika
+  z podsystemu (zastąpione przez `self.uczelnia`).
 
-Po splicie pytanie „czy `PBNClient` potrzebuje uczelni" znika: czysty klient
-nigdy jej nie zna, `BppPBNClient` zawsze ma ją z konstrukcji.
+Orchestracja i adaptery **ZOSTAJĄ w `pbn_api`**. Wyniesienie ich do osobnego
+pakietu rozwiązywałoby problem, którego jeszcze nie mamy (ekstrakcja
+`pbn_api`), a ta jest i tak zablokowana przez sklejenie modeli z BPP (patrz
+„Nalecialości"). Konieczne jest tylko **odpięcie orchestracji od czystego
+`PBNClient`** — nie jej fizyczne przeniesienie poza `pbn_api`.
 
-## Trójpodział odpowiedzialności (cel)
+Po splicie pytanie „czy `PBNClient` potrzebuje uczelni" znika: czysty
+`pbn_client.PBNClient` nigdy jej nie zna, `BppPBNClient` zawsze ma ją
+z konstrukcji.
 
-Dziś `pbn_api` to worek z trzema rolami. Split rozdziela je po naturalnych
-szwach:
+## Dwupodział odpowiedzialności (cel)
 
-- **`pbn_client`** — *protokół* PBN (reusable, do ekstrakcji). Bez Django-modeli.
-  Najczystszy, ekstrahowalny pierwszy.
-- **`pbn_api`** — *dane domenowe PBN*: lustro encji PBN (Publication,
-  Institution, Journal, Scientist, Publisher, Conference, Discipline,
-  Language, Country) + słowniki + admin do przeglądania. **Własny
-  reusable-kandydat** — ekstrahowalny **po** odseparowaniu resztkowego
-  sklejenia z BPP (osobny przyszły tor).
-- **`pbn_client_bpp`** — *logika integracji* BPP↔PBN: `BppPBNClient` +
-  orchestracja + **adaptery** (rekord BPP → PBN JSON). Wie o `Uczelnia`.
-  Z natury projektowy (klej), nie-reusable.
-
-Zakres tego speca to **Poziom 1**: split klienta + przeniesienie `adapters/`
-do `pbn_client_bpp`. **Modele zostają w `pbn_api`** — to ich właściwy dom
-(dane PBN), nie materiał dla warstwy kleju. Nie ma „Poziomu 2 = przenieś
-modele do `pbn_client_bpp`" — to byłby zły kierunek.
+- **`pbn_client`** — *protokół* PBN (reusable, do ekstrakcji). Bez Django-modeli,
+  bez `bpp`, bez `pbn_api`.
+- **`pbn_api`** — wszystko BPP↔PBN: *dane domenowe PBN* (lustro encji
+  Publication/Institution/Journal/Scientist/Publisher/Conference/Discipline/
+  Language/Country + słowniki + admin) ORAZ *logika integracji* (`BppPBNClient`
+  + orchestracja + adaptery, znające `Uczelnia`/`Rekord`). Przyszły
+  reusable-kandydat — dopiero po odseparowaniu sklejenia z BPP (osobny tor;
+  orchestracja to tylko część tego sklejenia, modele to druga część).
 
 ### Nalecialości BPP w `pbn_api` (osobny przyszły tor, nie ten spec)
 
@@ -105,37 +102,33 @@ przenoszone tu: `_diff_statements`, `_statement_key_*`, `_convert_stmt_for_api`,
 `convert_json_with_statements_to_no_statements`, `_post_publication_data`,
 `post_publication{,_no_statements}`, `post_publication_fee`, `get_publication_fee{,s_batch}`.
 
-### `src/pbn_client_bpp/` (Warstwa 2, BPP-aware)
+### `BppPBNClient` w `pbn_api/client` (Warstwa 2, BPP-aware)
 
-```
-src/pbn_client_bpp/
-  __init__.py
-  client.py          # BppPBNClient(PBNClient) — patrz niżej
-  publication_sync.py# orchestracja: sync_publication, upload_publication, ...
-  disciplines.py     # sync_disciplines (BPP-aware)
-  adapters/          # PRZENIESIONE z pbn_api: rekord BPP → PBN JSON
-  # modele persystencji (Publication, SentData, ...) zostają w pbn_api,
-  # importowane lokalnie w metodach (mniejszy churn, brak migracji)
-```
+Brak osobnego pakietu. Pod Wariantem B:
 
-Przeniesienie `adapters/` (Poziom 1): ~5 call-site'ów do aktualizacji importu
-(`pbn_wysylka_oswiadczen/tasks.py`, `pbn_api/management/commands/`
-`{pbn_show_json, pbn_test_wysylka_interaktywna, pbn_wyslij_oswiadczenia_instytucji}.py`,
-oraz wewnętrzny `publication_sync`). Czysty kod — **bez migracji**. Domyka fix
-`adapters/wydawnictwo.py:94` (`get_default` → `uczelnia` podane przez
-`BppPBNClient`). Dla kompatybilności wstecznej zostaje cienki re-eksport w
-`pbn_api/adapters/__init__.py`.
+- `pbn_client.PBNClient` = czysta kompozycja (pure mixiny + `StatementsMixin`),
+  **bez** `PublicationSyncMixin`/`DisciplinesMixin`. Ląduje w
+  `pbn_client/client.py`.
+- `publication_sync.py` (orchestracja) + `disciplines.py` (`DisciplinesMixin`)
+  **zostają** w `pbn_api/client`.
+- `adapters/` **zostają** w `pbn_api/adapters` (bez przenoszenia). Zmiana tylko
+  behawioralna: orchestracja przekazuje `uczelnia=self.uczelnia` do adaptera,
+  a `get_default()` z `adapters/wydawnictwo.py:94` znika.
+- `pbn_api/client/__init__.py` definiuje `BppPBNClient` i re-eksportuje całość.
 
-`BppPBNClient` **dziedziczy** po `PBNClient` (a nie kompozycja), bo call-site'y
-wołają na tym samym obiekcie i metody czyste (`get_journals`), i orchestrację
-(`sync_publication`). Dziedziczenie = zero delegacji ~50 metod.
+`BppPBNClient` **dziedziczy** po `PBNClient` (nie kompozycja delegująca), bo
+call-site'y wołają na tym samym obiekcie i metody czyste (`get_journals`), i
+orchestrację (`sync_publication`). Dziedziczenie = zero delegacji ~50 metod.
 
 ```python
-class BppPBNClient(
-    PBNClient,                       # czyste metody HTTP (W1)
-    PublicationSyncOrchestrationMixin,
-    DisciplinesBppMixin,
-):
+# pbn_api/client/__init__.py
+from pbn_client import PBNClient
+
+from .disciplines import DisciplinesMixin
+from .publication_sync import PublicationSyncMixin
+
+
+class BppPBNClient(PBNClient, PublicationSyncMixin, DisciplinesMixin):
     def __init__(self, transport, uczelnia):
         super().__init__(transport)
         self.uczelnia = uczelnia     # JEDYNE źródło prawdy o uczelni
@@ -167,10 +160,10 @@ Trzy flagi uczelni (`pbn_kasuj_dyscypliny_selektywnie`, `pbn_wysylaj_bez_oswiadc
   `BppPBNClient(transport, uczelnia=self)`. To usuwa `get_default()`
   z `publication_sync.py:287/1046` i `adapters/wydawnictwo.py:94` —
   uczelnia jest jawna. **Import `BppPBNClient` musi być lokalny w metodzie**
-  (cykl `bpp.models.uczelnia → pbn_client_bpp → adapters → bpp.models`).
-- `pbn_api.client` zostaje **shimem re-eksportującym CAŁY dotychczasowy
-  publiczny zestaw** (`__all__`): `PBNClient` (z `pbn_client`), `BppPBNClient`
-  (z `pbn_client_bpp`), `OAuthMixin`, wszystkie 9 klas mixinów,
+  (cykl `bpp.models.uczelnia → pbn_api.client → adapters → bpp.models`).
+- `pbn_api.client` re-eksportuje **CAŁY dotychczasowy publiczny zestaw**
+  (`__all__`): `PBNClient` (z `pbn_client`), `BppPBNClient` (zdefiniowany
+  tutaj), `OAuthMixin`, wszystkie 9 klas mixinów,
   `RequestsTransport`, `PBNClientTransport`, `PageableResource`, `smart_content`
   oraz stałe `PBN_*`/`DEFAULT_BASE_URL`/`NEEDS_PBN_AUTH_MSG`. Inaczej pękną
   importy typu `from pbn_api.client import RequestsTransport`. 35 importów
@@ -204,9 +197,8 @@ Widok/zadanie  ──get_for_request/uczelnia_id──▶  Uczelnia
 - `pbn_client` to **czysta biblioteka** (bez modeli/migracji) — nie musi być
   appką Django ani trafiać do `INSTALLED_APPS`. Konfiguracja PBN przez własny
   `conf.py` (czyta Django `settings`, ale nie modele).
-- `pbn_client_bpp` **dodajemy do `INSTALLED_APPS`** z własnym `apps.py`
-  (`AppConfig`) — może mieć szablony/adminy/testy; modele na razie zostają
-  w `pbn_api`.
+- `BppPBNClient` żyje w `pbn_api/client` — **żadnej nowej appki Django**, zero
+  zmian w `INSTALLED_APPS`, zero migracji. `pbn_api` pozostaje appką jak dziś.
 - **Testy:** istniejące `pbn_api/tests/test_client*.py` zostają, importując
   przez shim `pbn_api.client` — dzięki temu „zielone" przez całą migrację.
   Relokacja testów czystych do `pbn_client/tests/` jest opcjonalna i późniejsza.
@@ -218,30 +210,32 @@ Widok/zadanie  ──get_for_request/uczelnia_id──▶  Uczelnia
 
 | Ryzyko | Mitygacja |
 |---|---|
-| Cykl importów `pbn_client_bpp` ↔ `pbn_api` (modele/adaptery) | Importy lokalne w metodach (jak dziś w `publication_sync.py`) |
-| Pęknięcie 35 importów `pbn_api.client.PBNClient` | Shim re-eksportujący w `pbn_api/client/__init__.py` |
+| Cykl importów `bpp.models.uczelnia → pbn_api.client → adapters → bpp.models` | `Uczelnia.pbn_client()` importuje `BppPBNClient` **lokalnie w metodzie** |
+| Pęknięcie 35 importów `pbn_api.client.PBNClient` | `pbn_api.client` re-eksportuje pełny `__all__` (`PBNClient` z `pbn_client` + `BppPBNClient`) |
 | CLI `get_client` → orchestracja na czystym `PBNClient` (brak metod) | `get_client` zwraca `BppPBNClient` z `_resolve_uczelnia` |
-| Regresja w cięciu `statements.py` | Najpierw wydzielić W1 z re-eksportem i **zielonymi testami**, dopiero potem wyciąć orchestrację |
+| Czysty `PBNClient` instancjonowany wprost (`importer_publikacji`) i wołający orchestrację | Sprawdzić: te call-site'y wołają tylko czyste metody; orchestracja idzie przez fabrykę (`BppPBNClient`) |
 | Brak pokrycia multi-hosted | Dodać fixture `dwie_uczelnie` + test: właściwy `pbn_app_token` w transporcie i flagi z właściwej uczelni |
 
 ## Plan etapowy (kolejność krytyczna)
 
-1. **W1 bez ruszania zachowania:** utwórz `src/pbn_client/`, przenieś czyste
-   moduły (transport, auth, pagination, utils, const/exceptions/conf — część
-   PBN, 8 mixinów). `pbn_api.client` re-eksportuje. Zielone testy.
-2. **Wytnij `statements.py`** (czysty silnik) z `publication_sync.py` do W1.
-   Zielone testy.
-3. **W2:** utwórz `src/pbn_client_bpp/` z `BppPBNClient(PBNClient)` +
-   orchestracją (BPP-owe części `publication_sync` + `DisciplinesMixin`).
-   `get_default()` w orchestracji zastąpiony przez `self.uczelnia`.
-4. **Przenieś `adapters/`** z `pbn_api` do `pbn_client_bpp`; zaktualizuj ~5
-   importów; re-eksport w `pbn_api/adapters/__init__.py`. Adapter dostaje
-   `uczelnia=self.uczelnia` z `BppPBNClient`; `get_default()` z adaptera
-   usunięty. Zielone testy.
-5. **Fabryki:** `Uczelnia.pbn_client()` i `get_client()` zwracają
-   `BppPBNClient`. Shim re-eksportuje `BppPBNClient`.
-6. **Fixture + testy multi-hosted.** Weryfikacja, że właściwa uczelnia steruje
-   payloadem (token w transporcie + 3 flagi + adapter).
+1. ✅ **W1 bez ruszania zachowania:** `src/pbn_client/`, czyste moduły
+   przeniesione, `pbn_api.client` re-eksportuje. (Faza 1, zrobione.)
+2. ✅ **`StatementsMixin`** wycięty z `publication_sync.py` do
+   `pbn_client/statements.py`. (Faza 2, zrobione.)
+3. **Czysty `PBNClient` → `pbn_client/client.py`:** klasa = pure mixiny +
+   `StatementsMixin` (bez `PublicationSyncMixin`/`DisciplinesMixin`).
+   `pbn_client.__init__` eksportuje `PBNClient`. Zielone testy.
+4. **`BppPBNClient` w `pbn_api/client/__init__.py`:**
+   `BppPBNClient(PBNClient, PublicationSyncMixin, DisciplinesMixin)` z
+   `__init__(transport, uczelnia)`. `pbn_api.client` re-eksportuje pełny `__all__`
+   (`PBNClient` + `BppPBNClient` + reszta). Zielone testy.
+5. **Fix multi-hosted (zmiana zachowania):** w `publication_sync.py`
+   `get_default()` → `self.uczelnia`; orchestracja przekazuje
+   `uczelnia=self.uczelnia` do `WydawnictwoPBNAdapter`, `get_default()` z
+   `adapters/wydawnictwo.py` znika. Fabryki: `Uczelnia.pbn_client()` (lokalny
+   import) i `PBNBaseCommand.get_client()` zwracają `BppPBNClient`.
+6. **Fixture `dwie_uczelnie` + testy multi-hosted.** Weryfikacja, że właściwa
+   uczelnia steruje payloadem (token w transporcie + 3 flagi + adapter).
 7. **(poza tym specem)** pozostałe znaleziska audytu Tier 🔴/🟠 nie-PBN
    (ORCID, `importer_publikacji/providers/pbn.py`, `importer_autorow_pbn`) oraz
    wątek `get_default` jako follow-up.
@@ -249,8 +243,9 @@ Widok/zadanie  ──get_for_request/uczelnia_id──▶  Uczelnia
 ## Poza zakresem
 
 - Szeroki refaktor `get_default` (osobny, **następny** wątek; patrz audyt).
-- Izolacja nalecialości BPP w `pbn_api` (FK `uczelnia`/`Rekord`, `matchuj_*`,
-  `LinkDoPBNMixin`) — warunek ekstrakcji `pbn_api`, osobny przyszły tor.
-  Modele **nie** są przenoszone do `pbn_client_bpp`.
+- Izolacja nalecialości BPP w `pbn_api` (orchestracja + adaptery + FK
+  `uczelnia`/`Rekord` w modelach + `matchuj_*` + `LinkDoPBNMixin`) — warunek
+  ekstrakcji `pbn_api`, osobny przyszły tor. W tym specu nic z `pbn_api` nie
+  jest wynoszone do osobnego pakietu.
 - Fizyczna ekstrakcja `pbn_client` / `pbn_api` do osobnych repo/PyPI (dopiero
   gdy warstwy są stabilne i odseparowane).
