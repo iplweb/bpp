@@ -1,5 +1,5 @@
 {
-  "git_sha": "983c640d2c7a369bcce88df6e15529d466039739",
+  "git_sha": "4e0a303931a0897181ddfbdc0a31d61a416c60a6",
   "last_migration": {
     "admin": "0003_logentry_add_action_flag_choices",
     "admin_dashboard": "0001_initial",
@@ -19,7 +19,7 @@
     "django_countdown": "0005_alter_sitecountdown_options_and_more",
     "dynamic_admin_columns": "0001_initial",
     "easyaudit": "0019_alter_crudevent_changed_fields_and_more",
-    "ewaluacja2021": "0019_remove_null_from_string_fields",
+    "ewaluacja2021": "0020_delete_ewaluacja2021_models",
     "ewaluacja_common": "0004_alter_rodzaj_autora_options",
     "ewaluacja_liczba_n": "0008_add_sankcje",
     "ewaluacja_metryki": "0005_alter_metrykaautora_rodzaj_autora_and_more",
