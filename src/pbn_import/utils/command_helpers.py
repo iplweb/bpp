@@ -36,6 +36,10 @@ def get_validated_default_jednostka(jednostka_name=None, uczelnia=None):
         CommandError: Gdy brak domyślnej uczelni lub podana jednostka nie istnieje.
     """
     if uczelnia is None:
+        # Util CLI: świadomie None-tolerant — get_default() zwraca None gdy
+        # brak uczelni, a poniżej dajemy CZYTELNY CommandError (NIE .get(),
+        # które rzuciłoby DoesNotExist zamiast komunikatu). Multi-hosted: CLI
+        # ma podać uczelnię jawnie.
         uczelnia = Uczelnia.objects.get_default()
 
     if uczelnia is None:

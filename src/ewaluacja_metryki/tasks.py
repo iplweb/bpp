@@ -216,7 +216,7 @@ def generuj_metryki_task_parallel(
             uczelnia = (
                 Uczelnia.objects.get(pk=uczelnia_id)
                 if uczelnia_id
-                else Uczelnia.objects.get_default()
+                else Uczelnia.objects.get()
             )
             oblicz_liczby_n_dla_ewaluacji_2022_2025(uczelnia=uczelnia)
             logger.info("Przeliczono liczby N pomyślnie")
@@ -343,7 +343,7 @@ def generuj_metryki_task(
             uczelnia = (
                 Uczelnia.objects.get(pk=uczelnia_id)
                 if uczelnia_id
-                else Uczelnia.objects.get_default()
+                else Uczelnia.objects.get()
             )
             oblicz_liczby_n_dla_ewaluacji_2022_2025(uczelnia=uczelnia)
             logger.info("Przeliczono liczby N pomyślnie")

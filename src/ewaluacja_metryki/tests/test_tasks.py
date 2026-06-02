@@ -138,7 +138,7 @@ def test_finalizuj_generowanie_metryk():
 
     # Symuluj atomowe update'y licznika przez poszczególne taski
     # (w prawdziwym scenariuszu każdy task wywołuje StatusGenerowania.objects.update(...))
-    for result in results:
+    for _result in results:
         StatusGenerowania.objects.update(
             liczba_przetworzonych=F("liczba_przetworzonych") + 1
         )
@@ -216,7 +216,7 @@ def test_oblicz_metryki_dla_autora_task_inkrementuje_licznik():
 
 
 @pytest.mark.django_db
-def test_generuj_metryki_task_parallel_uruchamia_chord():
+def test_generuj_metryki_task_parallel_uruchamia_chord(uczelnia):
     """Test że równoległy task tworzy chord z taskami"""
     from unittest.mock import MagicMock
 

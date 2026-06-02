@@ -559,7 +559,7 @@ def generate_oswiadczenia_zip(self, task_id: int, uczelnia_id=None):
         uczelnia = (
             Uczelnia.objects.get(pk=uczelnia_id)
             if uczelnia_id
-            else Uczelnia.objects.get_default()
+            else Uczelnia.objects.get()
         )
         declarations = build_declarations_list(queryset, uczelnia)
 
