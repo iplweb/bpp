@@ -87,7 +87,7 @@ elif pool == "threads":
     concurrency = 10                       # dotychczasowy default deva
 else:                                      # prefork
     pct = int(os.environ.get("CELERY_WORKER_CONCURRENCY_PERCENT", "75"))
-    concurrency = max(1, round((os.cpu_count() or 1) * pct / 100))
+    concurrency = max(1, math.floor((os.cpu_count() or 1) * pct / 100))
 ```
 
 Pozostałe knoby (`prefetch_multiplier`, `max_tasks_per_child`,
