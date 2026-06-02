@@ -29,7 +29,7 @@
 
 BRANCH=`git branch | sed -n '/\* /s///p'`
 
-.PHONY: help clean distclean tests release tests-without-playwright tests-only-playwright docker destroy-test-databases cache-delete buildx-cache-stats buildx-cache-prune buildx-cache-prune-aggressive buildx-cache-prune-registry buildx-cache-export buildx-cache-import buildx-cache-list bump-dev bump-release bump-and-start-dev migrate new-worktree clean-worktree generate-500-page build build-force build-base build-app-services build-appserver-base build-appserver build-workerserver build-beatserver build-authserver build-denorm-queue build-servers check-clean-tree prepare-claude prepare-developer-machine prepare-developer-machine-linux prepare-developer-machine-macos playwright-install
+.PHONY: help clean distclean tests test-durations release tests-without-playwright tests-only-playwright docker destroy-test-databases cache-delete buildx-cache-stats buildx-cache-prune buildx-cache-prune-aggressive buildx-cache-prune-registry buildx-cache-export buildx-cache-import buildx-cache-list bump-dev bump-release bump-and-start-dev migrate new-worktree clean-worktree generate-500-page build build-force build-base build-app-services build-appserver-base build-appserver build-workerserver build-beatserver build-authserver build-denorm-queue build-servers check-clean-tree prepare-claude prepare-developer-machine prepare-developer-machine-linux prepare-developer-machine-macos playwright-install
 
 .DEFAULT_GOAL := help
 
@@ -319,8 +319,23 @@ disable-microsoft-auth: ## Wyłącz django_microsoft_auth
 
 ##@ Testy
 
+# pytest-split czyta `.test_durations` (commitowany), zeby CI dzielilo
+# suite na grupy o ~rownym CZASIE (a nie liczbie testow). Plik odswiezamy
+# lokalnie: gdy STORE_DURATIONS=1, oba przebiegi ponizej dopisuja swoje
+# czasy do `.test_durations`. pytest-split MERGE'uje (bez --clean-durations
+# zaden przebieg nie kasuje testow drugiego), wiec `not playwright` +
+# `playwright` skladaja sie na komplet. Domyslnie OFF — szybka iteracja
+# (`make tests-without-playwright`) nie brudzi pliku. `make tests` i
+# `make test-durations` wlaczaja zapis przez target-specific STORE_DURATIONS.
+STORE_DURATIONS ?=
+_store_durations = $(if $(STORE_DURATIONS),--store-durations --durations-path .test_durations,)
+# Po zapisie zaokraglij+posortuj plik (maly, stabilny diff). `&&` —
+# normalizujemy tylko po udanym przebiegu; przy STORE_DURATIONS pustym
+# rozwija sie do `true` (no-op).
+_normalize_durations = $(if $(STORE_DURATIONS),&& uv run python bin/normalize_test_durations.py,)
+
 tests-without-playwright: ## Szybkie testy bez Playwright (xdist -n auto, maxfail=50)
-	uv run pytest -n auto -m "not playwright" --maxfail 50
+	uv run pytest -n auto -m "not playwright" --maxfail 50 $(_store_durations) $(_normalize_durations)
 
 tests-without-playwright-with-microsoft-auth: ## tests-without-playwright z aktywnym Microsoft Auth
 	uv run pytest -n auto -m "not playwright" --maxfail 50
@@ -328,12 +343,23 @@ tests-without-playwright-with-microsoft-auth: ## tests-without-playwright z akty
 tests-with-microsoft-auth: enable-microsoft-auth tests-without-playwright-with-microsoft-auth disable-microsoft-auth ## Włącz MS Auth, uruchom testy, wyłącz
 
 tests-only-playwright: playwright-install ## Tylko testy Playwright (wolne)
-	uv run pytest -n auto -m "playwright"
+	uv run pytest -n auto -m "playwright" $(_store_durations) $(_normalize_durations)
 
 uv-sync: ## uv sync --all-extras (synchronizacja zależności Pythona)
 	uv sync --no-install-project --all-extras
 
-tests: clean-pycache uv-sync tests-without-playwright tests-only-playwright js-tests ## Pełny test suite (Playwright + JS)
+# Target-specific STORE_DURATIONS=1 jest dziedziczone przez prerekwizyty
+# (GNU Make), wiec pelny `make tests` odswieza `.test_durations` przy okazji
+# (oba przebiegi dopisuja, pytest-split merge'uje). Standalone
+# `make tests-without-playwright` pozostaje OFF — bez churnu w pliku.
+tests: STORE_DURATIONS = 1
+tests: clean-pycache uv-sync tests-without-playwright tests-only-playwright js-tests ## Pełny test suite (Playwright + JS) + odśwież .test_durations
+
+# Sam regen `.test_durations` bez js-tests — pelny przebieg pytest (oba
+# markery) z zapisem czasow. Uzyj gdy chcesz tylko odswiezyc plik splitu
+# CI (np. po dodaniu wolnych testow) bez reszty `make tests`.
+test-durations: STORE_DURATIONS = 1
+test-durations: clean-pycache uv-sync tests-without-playwright tests-only-playwright ## Regeneruj .test_durations (split CI), bez js-tests
 
 # Wygeneruj raport pokrycia w formacie zoptymalizowanym pod AI/LLM:
 # sortowany od najgorszego, z zakresami linii missing, bez śmieci

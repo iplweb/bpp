@@ -45,6 +45,10 @@ repos:
             exclude: ^baseline-sql/baseline\.sql$
         -   id: check-added-large-files
             args: ['--maxkb=500']
+            # .test_durations to celowy, generowany plik danych pytest-split
+            # (~450K, rosnie z liczba testow — same dlugie node-id dominuja
+            # rozmiar). Hook ma lapac PRZYPADKOWE bloby, nie ten plik.
+            exclude: ^\.test_durations$
         -   id: check-merge-conflict
         -   id: check-case-conflict
         -   id: debug-statements
