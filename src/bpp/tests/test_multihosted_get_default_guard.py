@@ -30,8 +30,9 @@ SRC = Path(__file__).resolve().parents[2]  # .../src
 APPROVED: dict[str, int] = {
     "bpp/middleware.py": 1,  # świadomy fallback: Site istnieje, brak Uczelni
     "bpp/util/bpp_specific.py": 2,  # docstring + świadomy fallback (CLI/Celery bez requestu)
-    "bpp/models/sloty/core.py": 1,  # TODO per-uczelnia sloty (parked, hot-path)
-    "bpp/models/abstract/disciplines.py": 1,  # TODO per-uczelnia (parked)
+    # bpp/models/sloty/core.py i abstract/disciplines.py: get_default USUNIĘTY
+    # (per-uczelnia sloty zrealizowane — ISlot._rozstrzygnij_uczelnie + przelicz
+    # bez parametru). Brak wpisu = guard złapie ewentualny powrót get_default.
     "bpp/models/abstract/pbn.py": 2,  # linki PBN, metoda modelu bez requestu
     "bpp/models/jednostka.py": 1,  # sortowanie (display), warstwa modelu
     "bpp/multiseek_registry/fields/numeric_fields.py": 1,  # toggle IC, None-tolerant
@@ -43,6 +44,7 @@ APPROVED: dict[str, int] = {
     "pbn_integrator/importer/authors.py": 5,  # TODO integrator per-uczelnia (parked)
     "pbn_integrator/utils/scientists.py": 1,  # TODO integrator per-uczelnia (parked)
     "pbn_integrator/management/commands/pbn_integrator.py": 1,  # TODO integrator per-uczelnia
+    "powiazania_autorow/queries.py": 1,  # dev: explorer, root PBN raz (anty-N+1), display; deferred multi-host
 }
 
 

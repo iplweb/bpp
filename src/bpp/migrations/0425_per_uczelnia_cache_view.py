@@ -13,12 +13,19 @@ SELECT a.id,
        a.jednostka_id,
        d.autorzy_z_dyscypliny,
        d.zapisani_autorzy_z_dyscypliny
+-- d.uczelnia_id IS NULL: wiersze legacy/przed-backfillem (kolumna uczelnia
+-- jest nullable; wypełnia ją dopiero przeliczenie per-uczelnia). Tolerujemy je,
+-- żeby raporty slotów nie zniknęły między `migrate` a denorm-rebuildem oraz dla
+-- danych tworzonych bez uczelni (fixtures). Nowe wiersze per-uczelnia mają
+-- uczelnia_id != NULL i matchują exact (bez kartezjana). Dla danego rekordu
+-- wiersze są albo wszystkie NULL (legacy), albo wszystkie nie-NULL (po
+-- przeliczeniu) — nie mieszają się, więc IS NULL nie powiela.
 FROM bpp_cache_punktacja_autora a
 JOIN bpp_jednostka j ON j.id = a.jednostka_id
 JOIN bpp_cache_punktacja_dyscypliny d
   ON a.rekord_id = d.rekord_id
  AND a.dyscyplina_id = d.dyscyplina_id
- AND d.uczelnia_id = j.uczelnia_id;
+ AND (d.uczelnia_id = j.uczelnia_id OR d.uczelnia_id IS NULL);
 """
 
 CREATE_OLD = """
