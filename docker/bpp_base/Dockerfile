@@ -334,17 +334,56 @@ RUN --mount=type=cache,target=/root/.npm,id=npm-cache \
 # (~1 min × N jobs) on every invocation. Local dev keeps the bind
 # mount and rebuilds assets on demand.
 #
-# Granular COPYs (instead of `COPY . /src`) keep this layer cached
-# whenever the change is outside the listed paths — edits to
-# .github/, docker/, docker-compose*.yml, .pre-commit-config.yaml,
-# etc. don't invalidate the source layer or the grunt/compilemessages
-# steps below it. Only changes inside src/ or the listed top-level
-# config files force a rebuild of the assets.
+# Asset-source COPYs PRZED `grunt build` — dokladnie jak w stage `builder`
+# (patrz komentarz tam) — zeby warstwa grunta (~60s) byla CACHE-HIT, gdy
+# zmienil sie TYLKO kod Pythona, a nie scss/js. Wczesniej test-runner robil
+# `COPY src/` (cale drzewo) przed gruntem, wiec grunt przebudowywal sie na
+# KAZDYM commicie (a wiec i prepare-image gejtujacy wszystkie shardy). Teraz
+# grunt odpala sie tylko gdy faktycznie ruszysz scss/js. Gruntfile.js juz jest
+# w /src (skopiowany z package.json/yarn.lock wyzej). Dodajac nowy task SCSS
+# do Gruntfile.js — dopisz tu COPY (jak w builderze).
+# Theme and admin SCSS
+COPY src/bpp/static/scss/ src/bpp/static/scss/
+COPY src/bpp/static/bpp/scss/ src/bpp/static/bpp/scss/
+# JS for esbuild bundle
+COPY src/bpp/static/bpp/js/ src/bpp/static/bpp/js/
+# App-specific SCSS (keep alphabetical, mirror `builder`)
+COPY src/bpp_setup_wizard/static/bpp_setup_wizard/scss/ \
+     src/bpp_setup_wizard/static/bpp_setup_wizard/scss/
+COPY src/deduplikator_autorow/static/deduplikator_autorow/scss/ \
+     src/deduplikator_autorow/static/deduplikator_autorow/scss/
+COPY src/deduplikator_zrodel/static/deduplikator_zrodel/scss/ \
+     src/deduplikator_zrodel/static/deduplikator_zrodel/scss/
+COPY src/ewaluacja_dwudyscyplinowcy/static/ewaluacja_dwudyscyplinowcy/scss/ \
+     src/ewaluacja_dwudyscyplinowcy/static/ewaluacja_dwudyscyplinowcy/scss/
+COPY src/ewaluacja_liczba_n/static/ewaluacja_liczba_n/scss/ \
+     src/ewaluacja_liczba_n/static/ewaluacja_liczba_n/scss/
+COPY src/ewaluacja_optymalizuj_publikacje/static/ewaluacja_optymalizuj_publikacje/scss/ \
+     src/ewaluacja_optymalizuj_publikacje/static/ewaluacja_optymalizuj_publikacje/scss/
+COPY src/komparator_publikacji_pbn/static/komparator_publikacji_pbn/scss/ \
+     src/komparator_publikacji_pbn/static/komparator_publikacji_pbn/scss/
+COPY src/pbn_downloader_app/static/pbn_downloader_app/scss/ \
+     src/pbn_downloader_app/static/pbn_downloader_app/scss/
+COPY src/pbn_export_queue/static/pbn_export_queue/scss/ \
+     src/pbn_export_queue/static/pbn_export_queue/scss/
+COPY src/pbn_import/static/pbn_import/scss/ \
+     src/pbn_import/static/pbn_import/scss/
+COPY src/pbn_komparator_zrodel/static/pbn_komparator_zrodel/scss/ \
+     src/pbn_komparator_zrodel/static/pbn_komparator_zrodel/scss/
+COPY src/przemapuj_prace_autora/static/przemapuj_prace_autora/scss/ \
+     src/przemapuj_prace_autora/static/przemapuj_prace_autora/scss/
+COPY src/przemapuj_zrodla_pbn/static/przemapuj_zrodla_pbn/scss/ \
+     src/przemapuj_zrodla_pbn/static/przemapuj_zrodla_pbn/scss/
+
+RUN npx grunt build-non-interactive
+
+# Reszta zrodla PO gruncie: zmiany w kodzie Pythona nie unieważniaja warstwy
+# grunta powyzej. Skompilowane assety (gitignored, nieobecne w kontekscie
+# build) przezyja ten COPY — COPY nie kasuje plikow, ktorych nie ma w zrodle.
 COPY src/ /src/src/
 COPY baseline-sql/ /src/baseline-sql/
 COPY conftest.py pytest.ini Makefile pyproject.toml uv.lock /src/
 
-RUN npx grunt build-non-interactive
 RUN /opt/venv/bin/python src/manage.py compilemessages -v0 -l pl --traceback
 
 ##############################################################################
