@@ -227,11 +227,11 @@ def pbn_wydawnictwo_zwarte_z_charakterem(
 
 @pytest.fixture
 def pbn_uczelnia(pbn_client) -> Uczelnia:
-    uczelnia = Uczelnia.objects.get_default()
-    if uczelnia is None:
-        uczelnia = baker.make(
-            Uczelnia,
-        )
+    # MUSI być TYM SAMYM obiektem, który trzyma klient (``self.uczelnia``),
+    # bo orchestracja czyta flagi z obiektu w pamięci klienta. Świeży
+    # ``get_default()`` zwróciłby inny obiekt Pythona (ten sam wiersz DB),
+    # przez co mutacje flag w teście nie byłyby widziane przez klienta.
+    uczelnia = pbn_client.uczelnia
 
     uczelnia.pbn_client = lambda *args, **kw: pbn_client
     pbn_client.transport.return_values[PBN_GET_LANGUAGES_URL] = {"1": "23"}

@@ -67,6 +67,7 @@ class PublicationSyncMixin(StatementsMixin):
         """
         js = WydawnictwoPBNAdapter(
             rec,
+            uczelnia=self.uczelnia,
             export_pk_zero=export_pk_zero,
             always_affiliate_to_uid=always_affiliate_to_uid,
         ).pbn_get_json()
@@ -108,8 +109,6 @@ class PublicationSyncMixin(StatementsMixin):
           chcemy wysłać publikacji do API które za chwilę odrzuci nas
           z powodu pozostałych oświadczeń.
         """
-        from bpp.models import Uczelnia
-
         pbn_uid = rec.pbn_uid_id
         if not pbn_uid:
             return
@@ -134,7 +133,7 @@ class PublicationSyncMixin(StatementsMixin):
         if not pbn_statements:
             return
 
-        uczelnia = Uczelnia.objects.get_default()
+        uczelnia = self.uczelnia
         kasuj_selektywnie = (
             uczelnia.pbn_kasuj_dyscypliny_selektywnie if uczelnia else True
         )
@@ -279,7 +278,7 @@ class PublicationSyncMixin(StatementsMixin):
         Zwraca ``None`` gdy zestaw po filtrowaniu jest pusty (brak sensu
         POST-ować pustą listę).
         """
-        adapter = WydawnictwoPBNAdapter(rec)
+        adapter = WydawnictwoPBNAdapter(rec, uczelnia=self.uczelnia)
 
         # Zawsze wywołujemy pbn_get_api_statements — daje publicationUuid
         # i pełen zestaw dla trybu bez-filtra. Może rzucić
@@ -395,7 +394,9 @@ class PublicationSyncMixin(StatementsMixin):
         publication_pk = rec.pk
 
         pbn_statements = self._get_pbn_statements_with_retry(objectId, publication_pk)
-        intended = WydawnictwoPBNAdapter(rec).pbn_get_json_statements()
+        intended = WydawnictwoPBNAdapter(
+            rec, uczelnia=self.uczelnia
+        ).pbn_get_json_statements()
 
         only_in_pbn, only_in_intended = self._diff_statements(pbn_statements, intended)
 
@@ -644,8 +645,6 @@ class PublicationSyncMixin(StatementsMixin):
             a tryb kasowania sterowany jest przez
             ``Uczelnia.pbn_kasuj_dyscypliny_selektywnie``.
         """
-        from bpp.models import Uczelnia
-
         pub = self.eventually_coerce_to_publication(pub)
 
         # KROK 1: POST publikacji do endpointu repo (zawsze)
@@ -703,7 +702,7 @@ class PublicationSyncMixin(StatementsMixin):
             )
 
         # KROK 5: synchronizacja oświadczeń (split flow, po wysyłce publikacji)
-        uczelnia = Uczelnia.objects.get_default()
+        uczelnia = self.uczelnia
         kasuj_selektywnie = (
             uczelnia.pbn_kasuj_dyscypliny_selektywnie if uczelnia else True
         )
