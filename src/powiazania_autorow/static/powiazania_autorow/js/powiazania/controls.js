@@ -81,6 +81,51 @@ export function podepnijZdarzenia(ctx) {
         pokazPanelAutora(ctx, info);
     });
 
+    // --- przeciąganie zabiera ze sobą CAŁY poddrzew węzła ---
+    // Chwytając węzeł przesuwamy jego potomków (z drzewa rozwijania) tym samym
+    // wektorem; przodek i inne gałęzie zostają nieruchome. Dzięki temu da się
+    // rozsunąć/uporządkować gałąź jednym ruchem zamiast węzeł po węźle.
+    function potomkowiePoddrzewa(id) {
+        const kids = ctx.lastTree ? ctx.lastTree.children : null;
+        let coll = cy.collection();
+        if (!kids) { return coll; }
+        const stos = [String(id)];
+        while (stos.length) {
+            const cur = stos.pop();
+            (kids[cur] || []).forEach(function (c) {
+                const el = cy.getElementById(c);
+                if (el.nonempty()) { coll = coll.union(el); }
+                stos.push(c);
+            });
+        }
+        return coll;
+    }
+
+    cy.on("grab", "node", function (evt) {
+        const n = evt.target;
+        n.scratch("_poddrzew", potomkowiePoddrzewa(n.id()));
+        n.scratch("_ostPoz", { x: n.position("x"), y: n.position("y") });
+    });
+    cy.on("drag", "node", function (evt) {
+        const n = evt.target;
+        const prev = n.scratch("_ostPoz");
+        const pot = n.scratch("_poddrzew");
+        if (!prev || !pot) { return; }
+        const dx = n.position("x") - prev.x;
+        const dy = n.position("y") - prev.y;
+        if (dx || dy) {
+            pot.positions(function (ele) {
+                return { x: ele.position("x") + dx, y: ele.position("y") + dy };
+            });
+        }
+        n.scratch("_ostPoz", { x: n.position("x"), y: n.position("y") });
+    });
+    cy.on("free", "node", function (evt) {
+        const n = evt.target;
+        n.removeScratch("_poddrzew");
+        n.removeScratch("_ostPoz");
+    });
+
     // --- suwak top-N -> przeładuj sieć (top-N per węzeł) ---
     ctx.slider.addEventListener("input", function () {
         ctx.topN = parseInt(ctx.slider.value, 10);
