@@ -2,7 +2,7 @@
 
 from urllib.parse import quote
 
-from pbn_api.const import PBN_GET_PUBLICATION_BY_ID_URL
+from pbn_client.const import PBN_GET_PUBLICATION_BY_ID_URL
 
 
 class PublicationsMixin:

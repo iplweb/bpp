@@ -1,6 +1,6 @@
 """Search API mixin."""
 
-from pbn_api.const import PBN_SEARCH_PUBLICATIONS_URL
+from pbn_client.const import PBN_SEARCH_PUBLICATIONS_URL
 
 
 class SearchMixin:

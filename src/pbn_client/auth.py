@@ -4,7 +4,7 @@ from urllib.parse import parse_qs, urlparse
 
 import requests
 
-from pbn_api.exceptions import (
+from pbn_client.exceptions import (
     AuthenticationConfigurationError,
     AuthenticationResponseError,
 )
@@ -24,7 +24,7 @@ class OAuthMixin:
 
     @classmethod
     def get_user_token(klass, base_url, app_id, app_token, one_time_token):
-        from pbn_api.conf import settings as pbn_settings
+        from pbn_client.conf import settings as pbn_settings
 
         headers = {
             "X-App-Id": app_id,
@@ -53,7 +53,7 @@ class OAuthMixin:
         return response.json().get("X-User-Token")
 
     def authorize(self, base_url, app_id, app_token):
-        from pbn_api.conf import settings
+        from pbn_client.conf import settings
 
         if self.access_token:
             return True

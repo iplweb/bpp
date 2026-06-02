@@ -2,13 +2,13 @@
 
 import json
 
-from pbn_api.const import (
+from pbn_client.const import (
     PBN_DELETE_PUBLICATION_STATEMENT,
     PBN_GET_INSTITUTION_PUBLICATIONS_V2,
     PBN_GET_INSTITUTION_STATEMENTS,
     PBN_POST_INSTITUTION_STATEMENTS_URL,
 )
-from pbn_api.exceptions import (
+from pbn_client.exceptions import (
     CannotDeleteStatementsException,
     HttpException,
     ResourceLockedException,

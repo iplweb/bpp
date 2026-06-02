@@ -9,9 +9,11 @@ import sys
 from collections.abc import Iterable
 from pprint import pprint
 
+from pbn_client.auth import OAuthMixin
+
 # Re-export constants for backwards compatibility
 # (previously these were importable from pbn_api.client)
-from pbn_api.const import (
+from pbn_client.const import (
     DEFAULT_BASE_URL,
     NEEDS_PBN_AUTH_MSG,
     PBN_DELETE_PUBLICATION_STATEMENT,
@@ -27,10 +29,7 @@ from pbn_api.const import (
     PBN_POST_PUBLICATIONS_URL,
     PBN_SEARCH_PUBLICATIONS_URL,
 )
-
-from .auth import OAuthMixin
-from .disciplines import DisciplinesMixin
-from .mixins import (
+from pbn_client.mixins import (
     ConferencesMixin,
     DictionariesMixin,
     InstitutionsMixin,
@@ -41,10 +40,12 @@ from .mixins import (
     PublishersMixin,
     SearchMixin,
 )
-from .pagination import PageableResource
+from pbn_client.pagination import PageableResource
+from pbn_client.transport import PBNClientTransport, RequestsTransport
+from pbn_client.utils import smart_content
+
+from .disciplines import DisciplinesMixin
 from .publication_sync import PublicationSyncMixin
-from .transport import PBNClientTransport, RequestsTransport
-from .utils import smart_content
 
 __all__ = [
     # Client classes

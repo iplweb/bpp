@@ -1,6 +1,6 @@
 """Journals API mixin."""
 
-from pbn_api.const import PBN_GET_JOURNAL_BY_ID
+from pbn_client.const import PBN_GET_JOURNAL_BY_ID
 
 
 class JournalsMixin:

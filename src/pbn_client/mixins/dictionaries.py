@@ -1,6 +1,6 @@
 """Dictionaries API mixin."""
 
-from pbn_api.const import PBN_GET_DISCIPLINES_URL, PBN_GET_LANGUAGES_URL
+from pbn_client.const import PBN_GET_DISCIPLINES_URL, PBN_GET_LANGUAGES_URL
 
 
 class DictionariesMixin:

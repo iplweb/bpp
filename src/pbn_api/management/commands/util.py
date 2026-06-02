@@ -4,7 +4,7 @@ from django.core.management import BaseCommand, CommandError
 
 from bpp.models import BppUser, Uczelnia
 from pbn_api.client import PBNClient, RequestsTransport
-from pbn_api.conf import settings
+from pbn_client.conf import settings
 
 
 class PBNBaseCommand(BaseCommand):
