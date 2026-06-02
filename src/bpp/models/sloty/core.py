@@ -2,7 +2,7 @@ from django.contrib.contenttypes.models import ContentType
 from django.db import transaction
 from django.utils.functional import cached_property
 
-from bpp.models import Dyscyplina_Naukowa, Uczelnia, Wydawca
+from bpp.models import Dyscyplina_Naukowa, Wydawca
 from bpp.models.cache import Cache_Punktacja_Autora, Cache_Punktacja_Dyscypliny
 from bpp.models.patent import Patent
 from bpp.models.sloty.wydawnictwo_ciagle import SlotKalkulator_Wydawnictwo_Ciagle_Prog3
@@ -23,6 +23,24 @@ from .wydawnictwo_ciagle import (
 )
 
 
+def _rozstrzygnij_uczelnie(original):  # noqa
+    """ISlot bez jawnej uczelni: zwróć jednoznaczną uczelnię albo CannotAdapt."""
+    from bpp.models.uczelnia import Uczelnia
+
+    if Uczelnia.objects.count() == 1:
+        return Uczelnia.objects.get()
+
+    uczelnie = list(original.uczelnie_rekordu())
+    if len(uczelnie) == 1:
+        return uczelnie[0]
+    if len(uczelnie) == 0:
+        raise CannotAdapt("Rekord nie ma afiliujących autorów z uczelnią.")
+    raise CannotAdapt(
+        "Rekord ma autorów z wielu uczelni — podaj uczelnię jawnie "
+        "(ISlot(rekord, uczelnia=...)); bez niej wynik jest niejednoznaczny."
+    )
+
+
 def ISlot(original, uczelnia=None):  # noqa
     if isinstance(original, Patent):
         raise CannotAdapt("Sloty dla patentów nie są liczone")
@@ -30,17 +48,14 @@ def ISlot(original, uczelnia=None):  # noqa
     if hasattr(original, "typ_kbn") and original.typ_kbn.skrot == "PW":
         raise CannotAdapt("Sloty dla prac wieloośrodkowych nie są liczone.")
 
+    if hasattr(original, "rok") and original.rok is None:
+        raise CannotAdapt("Rekord nie ma ustawionego roku — sloty nie są liczone.")
+
     if uczelnia is None:
-        # TODO(multi-hosted): sloty/punktacja docelowo per-uczelnia (autor →
-        # jednostka → uczelnia; wynik różny per uczelnia, do liczenia i zapisu
-        # OSOBNO). To osobny redesign warstwy ewaluacji (cache per
-        # rekord×uczelnia). Do tego czasu get_default() — NIE .get(): to
-        # hot-path per-save, >1 uczelnia rzuciłaby przy każdym zapisie.
-        uczelnia = Uczelnia.objects.get_default()
+        uczelnia = _rozstrzygnij_uczelnie(original)
 
     if (
-        uczelnia is not None
-        and hasattr(original, "status_korekty_id")
+        hasattr(original, "status_korekty_id")
         and original.status_korekty_id in uczelnia.ukryte_statusy("sloty")
     ):
         raise CannotAdapt(
@@ -48,9 +63,12 @@ def ISlot(original, uczelnia=None):  # noqa
             "statusów korekt. "
         )
 
-    if hasattr(original, "rok") and original.rok is None:
-        raise CannotAdapt("Rekord nie ma ustawionego roku — sloty nie są liczone.")
+    kalkulator = _dopasuj_kalkulator(original)
+    kalkulator.uczelnia = uczelnia
+    return kalkulator
 
+
+def _dopasuj_kalkulator(original):  # noqa
     if isinstance(original, Wydawnictwo_Ciagle):
         if original.rok in [2017, 2018]:
             if original.punkty_kbn >= 30:

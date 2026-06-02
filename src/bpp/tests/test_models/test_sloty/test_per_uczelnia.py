@@ -112,3 +112,30 @@ def test_uczelnie_rekordu_zwraca_obie(
         jednostka.uczelnia,
         druga_uczelnia,
     }
+
+
+@pytest.mark.django_db
+def test_islot_jawna_uczelnia_scoped(zwarte_dwie_uczelnie, jednostka):
+    from bpp.models.sloty.core import ISlot
+
+    kalk = ISlot(zwarte_dwie_uczelnie, uczelnia=jednostka.uczelnia)
+    assert kalk.uczelnia == jednostka.uczelnia
+    assert kalk.wszyscy() == 1
+
+
+@pytest.mark.django_db
+def test_islot_none_cross_uczelnia_failuje(zwarte_dwie_uczelnie, druga_uczelnia):
+    from bpp.models.sloty.core import CannotAdapt, ISlot
+
+    # 2 uczelnie w systemie + praca cross-uczelnia => niejednoznaczne => CannotAdapt
+    with pytest.raises(CannotAdapt):
+        ISlot(zwarte_dwie_uczelnie)
+
+
+@pytest.mark.django_db
+def test_islot_none_jedna_uczelnia_systemu_rozstrzyga(zwarte_z_dyscyplinami, uczelnia):
+    from bpp.models.sloty.core import ISlot
+
+    # tylko jedna uczelnia w systemie => ISlot(obj) rozstrzyga ją
+    kalk = ISlot(zwarte_z_dyscyplinami)
+    assert kalk.uczelnia == uczelnia
