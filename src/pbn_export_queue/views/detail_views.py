@@ -141,6 +141,22 @@ class PBNExportQueueDetailView(
 
         return error_code, error_details
 
+    def _resolve_api_endpoint(self, sent_data):
+        """Return endpoint URL stored in SentData, with fallback to current Uczelnia config."""
+        if sent_data.api_url:
+            return sent_data.api_url
+
+        from bpp.models import Uczelnia
+        from pbn_api.const import PBN_POST_PUBLICATION_NO_STATEMENTS_URL
+
+        uczelnia = Uczelnia.objects.get_default()
+        if uczelnia and uczelnia.pbn_api_root:
+            return (
+                uczelnia.pbn_api_root.rstrip("/")
+                + PBN_POST_PUBLICATION_NO_STATEMENTS_URL
+            )
+        return "Brak informacji o endpoincie"
+
     def _build_ai_prompt(
         self,
         sent_data,
@@ -173,6 +189,7 @@ class PBNExportQueueDetailView(
             error_code=ai_error_code,
             error_details=ai_error_details,
             record_title=record_title,
+            api_endpoint=self._resolve_api_endpoint(sent_data),
         )
 
     def _add_sent_data_context(self, context):

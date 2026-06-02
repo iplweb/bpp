@@ -113,12 +113,21 @@ class UczelniaSetupForm(forms.ModelForm):
     def save(self, commit=True, request=None):
         uczelnia = super().save(commit=False)
 
-        uczelnia.pbn_api_kasuj_przed_wysylka = True
-        uczelnia.pbn_api_nie_wysylaj_prac_bez_pk = True
-        uczelnia.pbn_api_afiliacja_zawsze_na_uczelnie = True
-        uczelnia.pbn_wysylaj_bez_oswiadczen = True
-        uczelnia.pbn_integracja = True
-        uczelnia.pbn_aktualizuj_na_biezaco = True
+        # Set the fields that should always be True
+        uczelnia.pbn_kasuj_dyscypliny_selektywnie = (
+            True  # Selektywny DELETE oświadczeń per-osoba (nowy flow)
+        )
+        uczelnia.pbn_api_nie_wysylaj_prac_bez_pk = (
+            True  # Nie wysyłaj do PBN prac z PK=0
+        )
+        uczelnia.pbn_api_afiliacja_zawsze_na_uczelnie = (
+            True  # Wysyłaj zawsze UID uczelni jako afiliacje
+        )
+        uczelnia.pbn_wysylaj_bez_oswiadczen = True  # Wysyłaj prace bez oświadczeń
+        uczelnia.pbn_integracja = True  # Używać integracji z PBN
+        uczelnia.pbn_aktualizuj_na_biezaco = (
+            True  # Włącz opcjonalną aktualizację przy edycji
+        )
 
         if uczelnia.site_id is None and request is not None:
             from django.contrib.sites.shortcuts import get_current_site

@@ -1511,6 +1511,15 @@ LOGGING = {
             "level": "INFO",
             "propagate": False,
         },
+        # Logger dla pbn_api - WARNING+ na konsolę. W szczególności
+        # `_check_error_response` w transport.py loguje pełne body
+        # i headers przy odpowiedziach >= 400, co jest kluczowe przy
+        # diagnostyce błędów typu „400 Bad Request" bez czytelnego body.
+        "pbn_api": {
+            "handlers": ["console"],
+            "level": "WARNING",
+            "propagate": False,
+        },
     },
 }
 

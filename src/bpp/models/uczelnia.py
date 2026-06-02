@@ -390,8 +390,18 @@ class Uczelnia(ModelZAdnotacjami, ModelZPBN_ID, NazwaISkrot, NazwaWDopelniaczu):
     pbn_app_token = models.CharField(
         "Token aplikacji w PBN", blank=True, default="", max_length=128
     )
-    pbn_api_kasuj_przed_wysylka = models.BooleanField(
-        "Kasuj oświadczenia rekordu przed wysłaniem do PBN", default=False
+    pbn_kasuj_dyscypliny_selektywnie = models.BooleanField(
+        "Kasuj oświadczenia selektywnie (per osoba)",
+        default=True,
+        help_text=(
+            "Gdy zaznaczone: ``sync_publication`` usuwa oświadczenia "
+            "selektywnie per-osoba (DELETE ``/publications/{id}`` z "
+            "``{personId, role}``) i wysyła tylko brakujące. Gdy "
+            "odznaczone: usuwa wszystkie oświadczenia publikacji jednym "
+            "DELETE (``{all: True}``), a następnie wysyła wszystkie "
+            "lokalne jako batch. Wariant selektywny zachowuje metadata "
+            "PBN (``addedTimestamp`` itd.) dla identycznych rekordów."
+        ),
     )
     pbn_api_nie_wysylaj_prac_bez_pk = models.BooleanField(
         "Nie wysyłaj do PBN prac z PK=0", default=False
