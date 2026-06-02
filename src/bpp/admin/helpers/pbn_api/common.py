@@ -43,7 +43,7 @@ def sprawdz_wysylke_do_pbn_w_parametrach_uczelni(uczelnia):
     return uczelnia
 
 
-def sprobuj_wyslac_do_pbn(
+def sprobuj_wyslac_do_pbn(  # noqa: C901
     obj, pbn_client, uczelnia, notificator, force_upload=False, raise_exceptions=False
 ):
     # Sprawdź, czy wydawnictwo nadrzędne ma odpowoednik PBN:
@@ -156,7 +156,6 @@ def sprobuj_wyslac_do_pbn(
             obj,
             notificator=notificator,
             force_upload=force_upload,
-            delete_statements_before_upload=uczelnia.pbn_api_kasuj_przed_wysylka,
             export_pk_zero=not uczelnia.pbn_api_nie_wysylaj_prac_bez_pk,
             always_affiliate_to_uid=(
                 uczelnia.pbn_uid_id
@@ -247,8 +246,8 @@ def sprobuj_wyslac_do_pbn(
         extra = ""
         if link_do_wyslanych:
             extra = (
-                '<a target=_blank href="%s">Kliknij, aby otworzyć widok wysłanych danych</a>.'
-                % link_do_wyslanych
+                f'<a target=_blank href="{link_do_wyslanych}">'
+                f"Kliknij, aby otworzyć widok wysłanych danych</a>."
             )
 
         notificator.warning(
