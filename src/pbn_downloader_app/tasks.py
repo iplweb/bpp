@@ -395,7 +395,14 @@ def download_institution_people(user_id, uczelnia_id):
         ):
             from pbn_integrator.utils import pobierz_ludzi_z_uczelni
 
-            pobierz_ludzi_z_uczelni(pbn_user.pbn_token, uczelnia.pbn_uid_id)
+            # Budujemy klienta z KONKRETNEJ uczelni i podajemy go jako obiekt
+            # (nie token) — inaczej integrator wewnętrznie sięgnąłby po
+            # get_default() przy tworzeniu klienta (multi-hosted bug).
+            pobierz_ludzi_z_uczelni(
+                uczelnia.pbn_client(pbn_user.pbn_token),
+                uczelnia.pbn_uid_id,
+                uczelnia=uczelnia,
+            )
 
         task_record.current_step = "Finalizowanie pobierania osób..."
         task_record.progress_percentage = 95

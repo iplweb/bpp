@@ -319,12 +319,60 @@ def test_download_institution_people_no_pbn_uid(uczelnia):
 
 
 @pytest.mark.django_db
+def test_download_institution_people_passes_client_from_correct_uczelnia(uczelnia):
+    """download_institution_people MUSI zbudować klienta z PRZEKAZANEJ
+    uczelni i podać go (obiekt, nie token) do pobierz_ludzi_z_uczelni —
+    inaczej integrator wewnętrznie zbuduje klienta przez get_default()
+    (ten sam bug multi-hosted, warstwę niżej)."""
+    from bpp.models import Uczelnia
+
+    user = User.objects.create_user("testuser", password="testpass")
+
+    pbn_institution = baker.make("pbn_api.Institution")
+    uczelnia.pbn_uid = pbn_institution
+    uczelnia.pbn_app_name = "APP"
+    uczelnia.pbn_app_token = "TOK"
+    uczelnia.pbn_api_root = "https://x.example/"
+    uczelnia.save()
+
+    class MockPbnUser:
+        pbn_token = "valid-token"
+
+        def pbn_token_possibly_valid(self):
+            return True
+
+    sentinel_client = MagicMock(name="pbn_client")
+    recorded_pk = []
+
+    def fake_pbn_client(self, token):
+        recorded_pk.append(self.pk)
+        return sentinel_client
+
+    with patch("pbn_downloader_app.tasks.validate_pbn_user") as mock_validate:
+        mock_validate.return_value = (user, MockPbnUser())
+        with patch("pbn_downloader_app.tasks.tqdm_progress_context"):
+            with patch.object(Uczelnia, "pbn_client", fake_pbn_client):
+                with patch(
+                    "pbn_integrator.utils.pobierz_ludzi_z_uczelni"
+                ) as mock_pobierz:
+                    download_institution_people(user.pk, uczelnia.pk)
+
+    # klient zbudowany z właściwej uczelni i przekazany jako obiekt
+    assert recorded_pk == [uczelnia.pk]
+    first_arg = mock_pobierz.call_args.args[0]
+    assert first_arg is sentinel_client
+
+
+@pytest.mark.django_db
 def test_download_institution_people_success(uczelnia):
     """Test download_institution_people succeeds with mocked dependencies."""
     user = User.objects.create_user("testuser", password="testpass")
 
     pbn_institution = baker.make("pbn_api.Institution")
     uczelnia.pbn_uid = pbn_institution
+    uczelnia.pbn_app_name = "APP"
+    uczelnia.pbn_app_token = "TOK"
+    uczelnia.pbn_api_root = "https://x.example/"
     uczelnia.save()
 
     class MockPbnUser:
