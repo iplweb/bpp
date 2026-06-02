@@ -31,6 +31,11 @@ def ISlot(original, uczelnia=None):  # noqa
         raise CannotAdapt("Sloty dla prac wieloośrodkowych nie są liczone.")
 
     if uczelnia is None:
+        # TODO(multi-hosted): sloty/punktacja docelowo per-uczelnia (autor →
+        # jednostka → uczelnia; wynik różny per uczelnia, do liczenia i zapisu
+        # OSOBNO). To osobny redesign warstwy ewaluacji (cache per
+        # rekord×uczelnia). Do tego czasu get_default() — NIE .get(): to
+        # hot-path per-save, >1 uczelnia rzuciłaby przy każdym zapisie.
         uczelnia = Uczelnia.objects.get_default()
 
     if (

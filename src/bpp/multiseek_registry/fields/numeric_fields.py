@@ -68,6 +68,8 @@ class IndexCopernicusQueryObject(BppMultiseekVisibilityMixin, SafeDecimalQueryOb
     field_name = "index_copernicus"
 
     def option_enabled(self, uczelnia=None):
+        # Toggle per-uczelnia czytany w rejestrze multiseek bez pewnego
+        # requestu — get_default() akceptowalny (None-tolerant: True gdy brak).
         u = uczelnia or Uczelnia.objects.get_default()
         if u is not None:
             return u.pokazuj_index_copernicus

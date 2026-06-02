@@ -43,6 +43,8 @@ class JednostkaManager(FulltextSearchMixin, TreeManager):
 
     def get_default_ordering(self, uczelnia=None):
         if uczelnia is None:
+            # Ustawienie WYŚWIETLANIA (sortowanie jednostek) czytane z warstwy
+            # modelu (wydzial.py) bez requestu — get_default() akceptowalny.
             uczelnia = Uczelnia.objects.get_default()
 
         ordering = SORTUJ_RECZNIE

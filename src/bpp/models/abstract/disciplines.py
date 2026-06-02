@@ -15,6 +15,9 @@ class ModelZPrzeliczaniemDyscyplin(models.Model):
         if uczelnia is None:
             from bpp.models.uczelnia import Uczelnia
 
+            # TODO(multi-hosted): patrz ISlot — punktacja docelowo per-uczelnia,
+            # osobny redesign warstwy ewaluacji. Do tego czasu get_default()
+            # (NIE .get() — hot-path per-save).
             uczelnia = Uczelnia.objects.get_default()
 
         ipc = IPunktacjaCacher(self, uczelnia)

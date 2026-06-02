@@ -20,6 +20,8 @@ class LinkDoPBNMixin:
         if uczelnia is None:
             from bpp.models import Uczelnia
 
+            # Root linku PBN (pbn_api_root); metoda modelu bez requestu —
+            # get_default() akceptowalny (None-tolerant).
             uczelnia = Uczelnia.objects.get_default()
         if uczelnia is not None:
             return self.url_do_pbn.format(
@@ -86,6 +88,8 @@ class LinkDoPBNMixin:
         if uczelnia is None:
             from bpp.models import Uczelnia
 
+            # Root linku PBN (pbn_api_root); metoda modelu bez requestu —
+            # get_default() akceptowalny (None-tolerant).
             uczelnia = Uczelnia.objects.get_default()
         if uczelnia is None:
             return None
