@@ -202,7 +202,9 @@ def process_single_publication(publication, pbn_client, task, log_model):
 
     # Step 3: Get statements data
     try:
-        json_data = WydawnictwoPBNAdapter(publication).pbn_get_api_statements()
+        json_data = WydawnictwoPBNAdapter(
+            publication, uczelnia=pbn_client.uczelnia
+        ).pbn_get_api_statements()
     except DaneLokalneWymagajaAktualizacjiException as e:
         log_entry.error_message = f"Dane lokalne wymagaja aktualizacji: {str(e)}"
         log_entry.save()
