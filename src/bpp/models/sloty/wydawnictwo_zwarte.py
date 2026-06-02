@@ -22,11 +22,10 @@ class SlotKalkulator_Wydawnictwo_Zwarte_Baza:
         poziom_wydawcy=None,
         uczelnia=None,
     ):
-        self.original = original
+        super().__init__(original, uczelnia=uczelnia)
         self.tryb_kalkulacji = tryb_kalkulacji
         self.wiele_hst = wiele_hst
         self.poziom_wydawcy = poziom_wydawcy
-        self.uczelnia = uczelnia
 
     def punkty_pkd(self, dyscyplina):
         val = super().punkty_pkd(dyscyplina)
