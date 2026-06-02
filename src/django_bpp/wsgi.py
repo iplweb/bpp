@@ -1,6 +1,6 @@
 import os
 
-os.environ.setdefault("DJANGO_SETTINGS_MODULE", "django_bpp.settings")
+os.environ.setdefault("DJANGO_SETTINGS_MODULE", "django_bpp.settings.local")
 
 from django.core.wsgi import get_wsgi_application
 

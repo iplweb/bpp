@@ -1,7 +1,11 @@
-# Lokalny development (na moim Maku)
+# Lokalny development (na moim Maku).
+#
+# Czysto deweloperska konfiguracja (runserver, shell, dev celery). Testy
+# NIE używają tego pliku bezpośrednio — jadą na ``django_bpp.settings.test``
+# (patrz ``pytest.ini`` --ds), który dziedziczy stąd przez ``from .local
+# import *`` i dokłada modyfikacje specyficzne dla pytest.
 
 import os
-import sys
 
 
 def setenv_default(varname, default_value):
@@ -94,35 +98,6 @@ TEMPLATES[0]["OPTIONS"]["loaders"] = [  # noqa
     "django.template.loaders.filesystem.Loader",
     "django.template.loaders.app_directories.Loader",
 ]
-
-# Disable setup wizard middleware during tests
-
-if "pytest" in sys.modules:
-    MIDDLEWARE = [
-        m
-        for m in MIDDLEWARE
-        if m != "first_run_wizard.middleware.FirstRunWizardMiddleware"
-    ]
-    # Testy nie powinny korzystać z cacheops — paczka monkey-patchuje
-    # globalnie Manager.get / QuerySet.* i potrafi wywalać
-    # NotSupportedError / ForeignKeyViolation przy losowej kolejności
-    # xdist workerów (queryset-y dzielą stan `combinator` między
-    # testami). Usunięcie cacheops z INSTALLED_APPS w trybie pytest
-    # wyłącza monkey-patching — produkcja dalej używa cacheops
-    # z pełnym CACHEOPS dict w production.py.
-    INSTALLED_APPS = [app for app in INSTALLED_APPS if app != "cacheops"]
-    # Sam INSTALLED_APPS-prune NIE wystarczy: dekorator @cached
-    # (cacheops.simple) jest niezależny od `cacheops` w INSTALLED_APPS,
-    # nadal pisze/czyta z Redis db=7. Pod xdist Redis jest jeden na
-    # sesję pytest, więc workery widzą nawzajem swoje cache'owane wyniki
-    # — np. `get_uczelnia_context_data` cache'uje `recently_updated`
-    # z PK-ami publikacji workera A, worker B renderuje homepage z tymi
-    # linkami i potem dostaje 404 na `/bpp/rekord/<ct>,<pk>/`.
-    # Wyłączenie CACHEOPS_ENABLED zamienia `@cached` w no-op
-    # (cacheops/simple.py:54) i propaguje się też na `invalidate_*`,
-    # które same sprawdzają tę flagę.
-    CACHEOPS_ENABLED = False
-
 
 # django-easy-audit
 
