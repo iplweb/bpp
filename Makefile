@@ -762,10 +762,10 @@ cache-delete: ## `manage.py clear_cache` — wyczyść cache Django
 
 ##@ Celery
 
-docker-celery-inspect: ## Wykonaj celery inspect (active, active_queues, stats) na workerserver-general
-	docker compose exec workerserver-general uv run celery -A django_bpp.celery_tasks inspect active
-	docker compose exec workerserver-general uv run celery -A django_bpp.celery_tasks inspect active_queues
-	docker compose exec workerserver-general uv run celery -A django_bpp.celery_tasks inspect stats | grep max-concurrency
+docker-celery-inspect: ## Wykonaj celery inspect (active, active_queues, stats) na workerserver
+	docker compose exec workerserver uv run celery -A django_bpp.celery_tasks inspect active
+	docker compose exec workerserver uv run celery -A django_bpp.celery_tasks inspect active_queues
+	docker compose exec workerserver uv run celery -A django_bpp.celery_tasks inspect stats | grep max-concurrency
 
 ##@ Docker compose
 
