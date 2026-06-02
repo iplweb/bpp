@@ -75,6 +75,9 @@ THEME_CHOICES = [
     ("app-green", "Zielony"),
     ("app-blue", "Niebieski"),
     ("app-orange", "Pomarańczowy"),
+    ("app-vizja", "Vizja (federacjavizja.pl — amber/granat)"),
+    ("app-mwsl", "MWSL (mwsl.eu — pomarańcz/granat)"),
+    ("app-uafm", "UAFM (uafm.edu.pl — czerwień/błękit)"),
 ]
 
 
