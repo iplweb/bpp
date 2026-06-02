@@ -279,7 +279,7 @@ git commit -m "feat(docker): worker domyslnie konsumuje kolejki celery,denorm"
 
 ### Task 4: Dev `docker-compose.yml` — jeden worker, naprawa zależności
 
-Usuwamy `workerserver-denorm`, usuwamy martwe `WEB_CONCURRENCY=4`, przepinamy `depends_on`. Nazwę `workerserver-general` ZACHOWUJEMY (rename poza zakresem — minimalizujemy diff i ryzyko rozjazdu z bpp-deploy, gdzie serwis też nazywa się `workerserver-general`).
+Usuwamy `workerserver-denorm`, usuwamy martwe `WEB_CONCURRENCY=4`, przepinamy `depends_on`, oraz **zmieniamy nazwę `workerserver-general` → `workerserver`** (decyzja użytkownika z 2026-06-02: skoro został jeden worker, „-general" nie ma już sensu). Rename pociąga aktualizację wszystkich odwołań w `depends_on`.
 
 **Files:**
 - Modify: `docker-compose.yml`
