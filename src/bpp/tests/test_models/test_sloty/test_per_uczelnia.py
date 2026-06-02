@@ -211,3 +211,107 @@ def test_widok_nie_duplikuje_miedzy_uczelniami(zwarte_dwie_uczelnie):
     # 2 autorow x 2 dyscyplina-agregaty bez joina po uczelni = 4 (kartezjan).
     # Z naprawą: 2.
     assert rows.count() == 2
+
+
+@pytest.mark.django_db
+def test_ukryte_statusy_gatuje_jedna_uczelnie(
+    zwarte_dwie_uczelnie, jednostka, druga_uczelnia
+):
+    from bpp.models import Ukryj_Status_Korekty
+    from bpp.models.sloty.core import IPunktacjaCacher
+
+    # Druga uczelnia ukrywa status korekty tej pracy dla slotów; pierwsza nie.
+    Ukryj_Status_Korekty.objects.create(
+        uczelnia=druga_uczelnia,
+        status_korekty=zwarte_dwie_uczelnie.status_korekty,
+        sloty=True,
+    )
+
+    ctype = IPunktacjaCacher(zwarte_dwie_uczelnie).ctype
+    zwarte_dwie_uczelnie.przelicz_punkty_dyscyplin()
+
+    uczelnie = set(
+        Cache_Punktacja_Dyscypliny.objects.filter(
+            rekord_id=[ctype, zwarte_dwie_uczelnie.pk]
+        ).values_list("uczelnia_id", flat=True)
+    )
+    assert jednostka.uczelnia_id in uczelnie
+    assert druga_uczelnia.pk not in uczelnie
+
+
+@pytest.mark.django_db
+def test_wypadniecie_uczelni_kasuje_sieroty(
+    zwarte_dwie_uczelnie, jednostka, druga_uczelnia
+):
+    from bpp.models.sloty.core import IPunktacjaCacher
+
+    ctype = IPunktacjaCacher(zwarte_dwie_uczelnie).ctype
+    zwarte_dwie_uczelnie.przelicz_punkty_dyscyplin()
+    assert (
+        Cache_Punktacja_Dyscypliny.objects.filter(
+            rekord_id=[ctype, zwarte_dwie_uczelnie.pk]
+        ).count()
+        == 2
+    )
+
+    # Przenieś autora drugiej uczelni do pierwszej jednostki i przelicz ponownie.
+    wa = zwarte_dwie_uczelnie.autorzy_set.get(autor__nazwisko="Kowalski")
+    wa.jednostka = jednostka
+    wa.save()
+
+    zwarte_dwie_uczelnie.przelicz_punkty_dyscyplin()
+    uczelnie = set(
+        Cache_Punktacja_Dyscypliny.objects.filter(
+            rekord_id=[ctype, zwarte_dwie_uczelnie.pk]
+        ).values_list("uczelnia_id", flat=True)
+    )
+    assert uczelnie == {jednostka.uczelnia_id}  # brak sieroty druga_uczelnia
+
+
+@pytest.mark.django_db
+def test_invariant_jedna_uczelnia_k2(
+    wydawnictwo_zwarte,
+    autor_jan_nowak,
+    autor_jan_kowalski,
+    jednostka,
+    dyscyplina1,
+    rodzaj_autora_n,
+    charaktery_formalne,
+    wydawca,
+    typy_odpowiedzialnosci,
+    rok,
+):
+    from bpp.models.cache import Cache_Punktacja_Autora
+
+    # Obaj autorzy w TEJ SAMEJ uczelni i dyscyplinie => k=2, slot dzielony.
+    Autor_Dyscyplina.objects.create(
+        autor=autor_jan_nowak,
+        dyscyplina_naukowa=dyscyplina1,
+        rok=rok,
+        rodzaj_autora=rodzaj_autora_n,
+    )
+    Autor_Dyscyplina.objects.create(
+        autor=autor_jan_kowalski,
+        dyscyplina_naukowa=dyscyplina1,
+        rok=rok,
+        rodzaj_autora=rodzaj_autora_n,
+    )
+    wydawnictwo_zwarte.dodaj_autora(
+        autor_jan_nowak, jednostka, dyscyplina_naukowa=dyscyplina1
+    )
+    wydawnictwo_zwarte.dodaj_autora(
+        autor_jan_kowalski, jednostka, dyscyplina_naukowa=dyscyplina1
+    )
+    wydawnictwo_zwarte.punkty_kbn = 20
+    wydawnictwo_zwarte.wydawca = wydawca
+    wydawnictwo_zwarte.charakter_formalny = Charakter_Formalny.objects.get(skrot="KSP")
+    wydawnictwo_zwarte.save()
+
+    wydawnictwo_zwarte.przelicz_punkty_dyscyplin()
+    slots = list(
+        Cache_Punktacja_Autora.objects.filter(
+            autor__in=[autor_jan_nowak, autor_jan_kowalski]
+        ).values_list("slot", flat=True)
+    )
+    assert len(slots) == 2
+    assert sum(slots) == 1  # k=2 w jednej uczelni: po pół slotu, suma 1.0
