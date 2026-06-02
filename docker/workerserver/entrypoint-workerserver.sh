@@ -2,7 +2,7 @@
 
 cd /app
 
-CELERY_QUEUE=${CELERY_QUEUE:-celery}
+CELERY_QUEUE=${CELERY_QUEUE:-celery,denorm}
 
 if [ "$ENABLE_AUTORELOAD_ON_CODE_CHANGE" = "1" ] || [ "$ENABLE_AUTORELOAD_ON_CODE_CHANGE" = "true" ]; then
     echo "Auto-reload ENABLED for worker"
