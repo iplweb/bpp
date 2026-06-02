@@ -58,7 +58,7 @@ def pobierz_i_zapisz_dane_jednej_osoby(
     if isinstance(client_or_token, str):
         # Create PBN client
         if uczelnia is None:
-            uczelnia = Uczelnia.objects.get_default()
+            uczelnia = Uczelnia.objects.get()
         client = uczelnia.pbn_client(client_or_token)
 
     scientist = client.get_person_by_id(personId)
@@ -153,7 +153,7 @@ def pobierz_ludzi_z_uczelni(
     if isinstance(client_or_token, str):
         # Create PBN client
         if uczelnia is None:
-            uczelnia = Uczelnia.objects.get_default()
+            uczelnia = Uczelnia.objects.get()
         client = uczelnia.pbn_client(client_or_token)
 
     elementy = client.get_people_by_institution_id(instutition_id)

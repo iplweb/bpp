@@ -40,7 +40,9 @@ def sprobuj_wyslac_do_pbn_celery(
 
     try:
         uczelnia = sprawdz_wysylke_do_pbn_w_parametrach_uczelni(
-            uczelnia or Uczelnia.objects.get_default()
+            # Caller (kolejka) przekazuje uczelnia=self.uczelnia; fallback to
+            # single-install: .get() (przy >1 rzuca — multi-hosted ma podać).
+            uczelnia or Uczelnia.objects.get()
         )
     except BrakZdefiniowanegoObiektuUczelniaWSystemieError as e:
         raise ValueError("W systemie brak obiektu Uczelnia.") from e

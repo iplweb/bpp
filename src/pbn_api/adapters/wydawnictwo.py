@@ -91,6 +91,11 @@ class WydawnictwoPBNAdapter:
             uczelnia = Uczelnia.objects.get_for_request(request)
 
         if uczelnia is None:
+            # Runtime callerzy przekazują JAWNĄ uczelnię (publication_sync,
+            # pbn_wysylka, komendy) — tu nigdy nie docierają. Ten fallback jest
+            # test-only: adapter bywa konstruowany w izolacji bez uczelni i ma
+            # zadziałać None-tolerant (domyślne flagi). Dlatego get_default()
+            # (None gdy 0), NIE .get() (rzuciłby w testach bez uczelni).
             uczelnia = Uczelnia.objects.get_default()
 
         if uczelnia is not None:
