@@ -102,3 +102,13 @@ def test_slotmixin_wszyscy_scoped_po_uczelni(zwarte_dwie_uczelnie, jednostka):
     )
     assert kalk_all.wszyscy() == 2
     assert kalk_u1.wszyscy() == 1
+
+
+@pytest.mark.django_db
+def test_uczelnie_rekordu_zwraca_obie(
+    zwarte_dwie_uczelnie, jednostka, druga_uczelnia
+):
+    assert set(zwarte_dwie_uczelnie.uczelnie_rekordu()) == {
+        jednostka.uczelnia,
+        druga_uczelnia,
+    }

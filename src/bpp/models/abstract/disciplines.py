@@ -40,3 +40,18 @@ class ModelZPrzeliczaniemDyscyplin(models.Model):
             .values_list("dyscyplina_naukowa")
             .distinct()
         )
+
+    def uczelnie_rekordu(self):
+        """Distinct uczelnie wśród afiliujących, przypiętych autorów rekordu
+        (autor → jednostka → uczelnia). Luźny nadzbiór wystarcza."""
+        from bpp.models.uczelnia import Uczelnia
+
+        if not self.pk:
+            return Uczelnia.objects.none()
+
+        uczelnia_ids = (
+            self.autorzy_set.filter(afiliuje=True, przypieta=True)
+            .values_list("jednostka__uczelnia_id", flat=True)
+            .distinct()
+        )
+        return Uczelnia.objects.filter(pk__in=list(uczelnia_ids))
