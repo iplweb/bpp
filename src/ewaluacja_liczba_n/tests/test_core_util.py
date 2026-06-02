@@ -14,10 +14,10 @@ def test_get_lista_prac_zakres_lat(
     typy_odpowiedzialnosci,
     charaktery_formalne,
 ):
-    """Sprawdza, czy lista prac odrzuca prace spoza zakresu 2022-2025"""
+    """Sprawdza, czy lista prac odrzuca prace spoza zakresu 2022-2026"""
     from bpp.models import Charakter_Formalny
 
-    # Zrob dane testowe od 2015 do 2025
+    # Zrob dane testowe od 2015 do 2026
 
     LiczbaNDlaUczelni.objects.create(
         dyscyplina_naukowa=dyscyplina1, uczelnia=uczelnia, liczba_n=100
@@ -28,13 +28,13 @@ def test_get_lista_prac_zakres_lat(
         charakter_ogolny__isnull=False
     ).first()
 
-    for ROK in range(2015, 2026):
+    for ROK in range(2015, 2027):
         Autor_Dyscyplina.objects.create(
             autor=autor_jan_nowak, rok=ROK, dyscyplina_naukowa=dyscyplina1
         )
 
-        # Create IloscUdzialowDlaAutoraZaRok only for years 2022-2025
-        if 2022 <= ROK <= 2025:
+        # Create IloscUdzialowDlaAutoraZaRok only for years 2022-2026
+        if 2022 <= ROK <= 2026:
             IloscUdzialowDlaAutoraZaRok.objects.create(
                 autor=autor_jan_nowak,
                 rok=ROK,
@@ -69,4 +69,4 @@ def test_get_lista_prac_zakres_lat(
             "Cache_Punktacja_Autora_Query not populated - this appears to be a test infrastructure issue"
         )
 
-    assert (len(list(get_lista_prac(dyscyplina1.nazwa)))) == 4
+    assert (len(list(get_lista_prac(dyscyplina1.nazwa)))) == 5
