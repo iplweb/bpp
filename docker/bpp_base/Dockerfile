@@ -216,27 +216,89 @@ RUN find /app/.venv -type d -name __pycache__ -exec rm -rf {} + \
 ##############################################################################
 # TEST-RUNNER: test environment (source mounted at runtime via volume)
 ##############################################################################
-FROM base AS test-runner
+# TEST-VENV-BUILDER: kompiluje testowy venv (--all-extras --all-groups) i
+# pobiera przegladarki Playwright NA PELNYM python:trixie (z toolchainem),
+# bo wheelsy z C-rozszerzeniami wymagajacymi kompilacji ze zrodel
+# (python-ldap z extras `ldap`) potrzebuja gcc + naglowkow z build.txt.
+# Artefakty (/opt/venv, /opt/playwright) sa COPY-owane do slim test-runnera
+# nizej — to wzorzec identyczny jak produkcyjny stage `runtime`, dzieki
+# ktoremu ~1.1 GB toolchainu (buildpack python:trixie + build.txt) NIE laduje
+# w obrazie testowym.
+FROM base AS test-venv-builder
 
-# Runtime + test packages (build.txt already in base)
-COPY docker/bpp_base/runtime.txt \
-     docker/bpp_base/test.txt /tmp/packages/
+ENV UV_PROJECT_ENVIRONMENT=/opt/venv
+
+WORKDIR /build
+COPY pyproject.toml uv.lock ./
+RUN --mount=type=cache,target=/root/.cache/uv,id=uv-cache \
+    uv sync --frozen --all-extras \
+        --all-groups --no-install-project
+
+# Przegladarki Playwright raz, do /opt/playwright (kopiowane do slim nizej).
+RUN PLAYWRIGHT_BROWSERS_PATH=/opt/playwright \
+    /opt/venv/bin/playwright install chromium chromium-headless-shell
+
+
+##############################################################################
+# TEST-RUNNER: srodowisko testowe NA python:slim. Skompilowany venv +
+# przegladarki przychodza gotowe z `test-venv-builder` (COPY --from), wiec slim
+# nie potrzebuje toolchainu. Tnie to obraz o ~1.1 GB build-only deps (buildpack
+# pelnego python:trixie: gcc/g++/dpkg-dev/autoconf + git/mercurial/svn, plus
+# nasz build.txt), ktore byly martwym balastem w obrazie testowym. Wzorzec
+# identyczny jak produkcyjny stage `runtime` (compiled venv na slim + runtime
+# liby). Slim NIE dziedziczy z `base`, wiec ENV/uv/node trzeba odtworzyc.
+##############################################################################
+ARG PYTHON_VERSION
+ARG DEBIAN_VERSION
+FROM python:${PYTHON_VERSION}-slim-${DEBIAN_VERSION} AS test-runner
+
+ARG NODEJS_VERSION
+
+ENV DEBIAN_FRONTEND=noninteractive
+# MALLOC_ARENA_MAX: patrz komentarz w stage `base` (slim nie dziedziczy).
+ENV MALLOC_ARENA_MAX=2
+ENV UV_COMPILE_BYTECODE=1 \
+    UV_LINK_MODE=copy \
+    UV_PROJECT_ENVIRONMENT=/opt/venv \
+    PLAYWRIGHT_BROWSERS_PATH=/opt/playwright
+ENV PATH="/opt/venv/bin:${PATH}"
+
+# uv potrzebne w runtime — CI wola `uv run pytest` (jak na pelnym obrazie).
+COPY --from=ghcr.io/astral-sh/uv:0.7 /uv /usr/local/bin/uv
+
+RUN sed -i s/http/https/g /etc/apt/sources.list.d/debian.sources
+
+# Runtime liby wspoldzielone, ktorych potrzebuja skompilowane wheelsy +
+# narzedzia. runtime.txt: pango/cairo (weasyprint), libpq, gmp/lua (pandoc).
+# test.txt: redis-tools. Dodatkowo wzgledem `base`/produkcji:
+#  - libldap2/libsasl2-2: python-ldap (z extras `ldap`) linkuje sie z nimi;
+#    na pelnym trixie dawal je libldap2-dev/libsasl2-dev (build.txt), tu nie ma,
+#  - gettext: msgfmt do compilemessages (bake nizej),
+#  - ca-certificates/curl/gnupg: repo NodeSource + Dockera,
+#  - git: `yarn install` ma zaleznosci po URL-u git (pelny trixie mial git
+#    w buildpacku; slim nie ma) — bez tego `yarn install` pada.
+COPY docker/bpp_base/runtime.txt docker/bpp_base/test.txt /tmp/packages/
 RUN --mount=type=cache,target=/var/cache/apt,sharing=locked,id=apt-cache \
     --mount=type=cache,target=/var/lib/apt/lists,sharing=locked,id=apt-lists \
+    apt-get update && \
+    apt-get install -y --no-install-recommends \
+        ca-certificates curl gnupg gettext git libldap2 libsasl2-2 && \
     cat /tmp/packages/*.txt | xargs apt-get install -y
 
-# Pandoc z oficjalnego obrazu (patrz komentarz R7 przy runtime stage).
-# libgmp10/liblua5.4-0 juz sa w runtime.txt instalowanym wyzej.
-COPY --from=pandoc-src /usr/local/bin/pandoc /usr/local/bin/pandoc
-
-# yarn + grunt (global install for CLI use)
-RUN --mount=type=cache,target=/root/.npm,id=npm-cache \
-    npm install -g --force yarn grunt-cli
-
-# Playwright system deps
+# Node (grunt build + yarn install dla `make assets`) + yarn/grunt globalnie.
 RUN --mount=type=cache,target=/var/cache/apt,sharing=locked,id=apt-cache \
     --mount=type=cache,target=/var/lib/apt/lists,sharing=locked,id=apt-lists \
-    npx playwright install-deps chromium 2>/dev/null || true
+    curl -fsSL https://deb.nodesource.com/setup_${NODEJS_VERSION}.x | bash - && \
+    apt-get install -y nodejs && \
+    npm install -g --force yarn grunt-cli
+
+# Skompilowany venv + przegladarki z buildera (bez toolchainu).
+COPY --from=test-venv-builder /opt/venv /opt/venv
+COPY --from=test-venv-builder /opt/playwright /opt/playwright
+
+# Playwright system deps. Na slim — w odroznieniu od pelnego trixie — tych
+# bibliotek nie ma, wiec instalacja jest konieczna (uzywamy playwrighta z venv).
+RUN /opt/venv/bin/playwright install-deps chromium
 
 # Docker CLI (for tests that use Docker, e.g. html2docx)
 RUN --mount=type=cache,target=/var/cache/apt,sharing=locked,id=apt-cache \
@@ -251,28 +313,9 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked,id=apt-cache \
         > /etc/apt/sources.list.d/docker.list && \
     apt-get update && apt-get install -y docker-ce-cli
 
-# Install Python deps to /opt/venv so the docker-compose volume
-# mount of .:/src doesn't overwrite them.
-ENV UV_PROJECT_ENVIRONMENT=/opt/venv
-ENV PATH="/opt/venv/bin:${PATH}"
-
-WORKDIR /build
-COPY pyproject.toml uv.lock ./
-RUN --mount=type=cache,target=/root/.cache/uv,id=uv-cache \
-    uv sync --frozen --all-extras \
-        --all-groups --no-install-project
-
-# Playwright browser binaries baked into the image so the CI workflow
-# doesn't have to run `playwright install` per build (saves ~30-60s and
-# obviates the docker volume that previously persisted the cache between
-# `compose run --rm` invocations). Cache key: this layer is invalidated
-# whenever uv.lock changes, which already happens when playwright is
-# bumped — so the image always ships browsers matching the pinned
-# Python wheel. System libs were already installed via
-# `npx playwright install-deps chromium` above.
-RUN PLAYWRIGHT_BROWSERS_PATH=/opt/playwright \
-    /opt/venv/bin/playwright install chromium chromium-headless-shell
-ENV PLAYWRIGHT_BROWSERS_PATH=/opt/playwright
+# Pandoc z oficjalnego obrazu (patrz komentarz R7 przy runtime stage).
+# libgmp10/liblua5.4-0 juz sa w runtime.txt instalowanym wyzej.
+COPY --from=pandoc-src /usr/local/bin/pandoc /usr/local/bin/pandoc
 
 # Yarn deps + grunt CLI (needed for `make assets`). Mirrors the
 # testserver stage so CI gets a pre-built test-runner image with the
