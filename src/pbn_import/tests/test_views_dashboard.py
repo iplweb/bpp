@@ -218,6 +218,33 @@ class TestStartImportView:
         assert session.config["wydzial_domyslny"] == "IT Department"
         assert session.config["wydzial_domyslny_id"] == wydzial.pk
 
+    def test_start_import_passes_uczelnia_id_from_request(
+        self, uczelnia, django_user_model
+    ):
+        """Entrypoint MUSI przekazać id uczelni z requestu do zadania w tle."""
+        uczelnia.pbn_integracja = True
+        uczelnia.save()
+
+        client = Client()
+        user = baker.make(django_user_model, is_superuser=True)
+        client.force_login(user)
+
+        with (
+            patch("pbn_import.tasks.run_pbn_import") as mock_task,
+            patch("pbn_import.views.get_channel_layer"),
+            patch("pbn_import.views.async_to_sync"),
+        ):
+            mock_task.delay.return_value = MagicMock(id="task-123")
+
+            client.post(reverse("pbn_import:start"), {"initial": "on"})
+
+        mock_task.delay.assert_called_once()
+        call = mock_task.delay.call_args
+        passed = call.kwargs.get("uczelnia_id")
+        if passed is None and len(call.args) > 1:
+            passed = call.args[1]
+        assert passed == uczelnia.pk
+
     def test_start_import_redirects_to_dashboard(self, django_user_model):
         """Test start import redirects to dashboard after creation"""
         client = Client()

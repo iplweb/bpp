@@ -118,7 +118,7 @@ def test_run_pbn_import_success(uczelnia, admin_user):
     with patch("pbn_import.tasks.send_websocket_update"):
         with patch("pbn_import.tasks.ImportManager", return_value=mock_import_manager):
             with patch.object(uczelnia, "pbn_client", return_value=MagicMock()):
-                run_pbn_import.apply(args=(session.pk,))
+                run_pbn_import.apply(args=(session.pk, uczelnia.pk))
 
     session.refresh_from_db()
     assert session.status == "completed"
@@ -139,7 +139,7 @@ def test_run_pbn_import_marks_running(uczelnia, admin_user):
     with patch("pbn_import.tasks.send_websocket_update"):
         with patch("pbn_import.tasks.ImportManager", return_value=mock_import_manager):
             with patch.object(uczelnia, "pbn_client", return_value=MagicMock()):
-                run_pbn_import.apply(args=(session.pk,))
+                run_pbn_import.apply(args=(session.pk, uczelnia.pk))
 
     session.refresh_from_db()
     assert session.task_id is not None
@@ -158,7 +158,7 @@ def test_run_pbn_import_handles_no_pbn_client(uczelnia, admin_user):
             with patch.object(
                 uczelnia, "pbn_client", side_effect=Exception("No PBN config")
             ):
-                run_pbn_import.apply(args=(session.pk,))
+                run_pbn_import.apply(args=(session.pk, uczelnia.pk))
 
     session.refresh_from_db()
     assert session.status == "completed"
@@ -181,7 +181,7 @@ def test_run_pbn_import_failure(uczelnia, admin_user):
         with patch("pbn_import.tasks.ImportManager", return_value=mock_import_manager):
             with patch.object(uczelnia, "pbn_client", return_value=MagicMock()):
                 with patch("pbn_import.tasks.rollbar"):
-                    run_pbn_import.apply(args=(session.pk,))
+                    run_pbn_import.apply(args=(session.pk, uczelnia.pk))
 
     session.refresh_from_db()
     assert session.status == "failed"
@@ -209,7 +209,7 @@ def test_run_pbn_import_cancelled(uczelnia, admin_user):
     with patch("pbn_import.tasks.send_websocket_update"):
         with patch("pbn_import.tasks.ImportManager", side_effect=simulate_cancellation):
             with patch.object(uczelnia, "pbn_client", return_value=MagicMock()):
-                run_pbn_import.apply(args=(session.pk,))
+                run_pbn_import.apply(args=(session.pk, uczelnia.pk))
 
     session.refresh_from_db()
     assert session.status == "cancelled"
@@ -226,7 +226,7 @@ def test_run_pbn_import_failed_result(uczelnia, admin_user):
     with patch("pbn_import.tasks.send_websocket_update"):
         with patch("pbn_import.tasks.ImportManager", return_value=mock_import_manager):
             with patch.object(uczelnia, "pbn_client", return_value=MagicMock()):
-                run_pbn_import.apply(args=(session.pk,))
+                run_pbn_import.apply(args=(session.pk, uczelnia.pk))
 
     session.refresh_from_db()
     assert session.status == "failed"
@@ -248,13 +248,89 @@ def test_run_pbn_import_sends_completion_notification(uczelnia, admin_user):
     with patch("pbn_import.tasks.send_websocket_update", side_effect=track_websocket):
         with patch("pbn_import.tasks.ImportManager", return_value=mock_import_manager):
             with patch.object(uczelnia, "pbn_client", return_value=MagicMock()):
-                run_pbn_import.apply(args=(session.pk,))
+                run_pbn_import.apply(args=(session.pk, uczelnia.pk))
 
     completion_call = next(
         (c for c in websocket_calls if c.get("type") == "completion"), None
     )
     assert completion_call is not None
     assert completion_call["success"] is True
+
+
+@pytest.mark.django_db
+def test_run_pbn_import_uses_passed_uczelnia_not_default(admin_user):
+    """run_pbn_import MUSI budować klienta z uczelni przekazanej przez
+    entrypoint, a NIE z pierwszej-z-brzegu (get_default()).
+
+    Regresja błędu multi-hosted: PBN skonfigurowany w drugiej uczelni,
+    a zadanie czytało konfigurację pierwszej -> 403 'token aplikacji null'.
+    """
+    from django.contrib.sites.models import Site
+
+    from bpp.models import Uczelnia
+
+    # Pierwsza uczelnia (get_default()) — BEZ konfiguracji PBN.
+    site1, _ = Site.objects.get_or_create(
+        domain="pierwsza.example.com", defaults={"name": "pierwsza"}
+    )
+    Uczelnia.objects.create(skrot="P1", nazwa="Pierwsza", site=site1)
+
+    # Druga uczelnia — to ją wybiera użytkownik (ma PBN).
+    site2, _ = Site.objects.get_or_create(
+        domain="druga.example.com", defaults={"name": "druga"}
+    )
+    uczelnia2 = Uczelnia.objects.create(skrot="P2", nazwa="Druga", site=site2)
+
+    session = ImportSession.objects.create(
+        user=admin_user, status="pending", config={}
+    )
+
+    recorded_pk = []
+
+    def fake_pbn_client(self, token):
+        recorded_pk.append(self.pk)
+        return MagicMock()
+
+    mock_import_manager = MagicMock()
+    mock_import_manager.run.return_value = {"success": True}
+
+    with patch("pbn_import.tasks.send_websocket_update"):
+        with patch("pbn_import.tasks.ImportManager", return_value=mock_import_manager):
+            with patch.object(Uczelnia, "pbn_client", fake_pbn_client):
+                run_pbn_import.apply(args=(session.pk, uczelnia2.pk))
+
+    assert recorded_pk == [uczelnia2.pk]
+
+
+@pytest.mark.django_db
+def test_run_pbn_import_without_uczelnia_id_does_not_fall_back(admin_user):
+    """Bez uczelnia_id zadanie MUSI zakończyć się błędem, a nie po cichu
+    użyć pierwszej uczelni (get_default()). To eliminuje wzorzec
+    'default institution' z toru w tle."""
+    from django.contrib.sites.models import Site
+
+    from bpp.models import Uczelnia
+
+    site1, _ = Site.objects.get_or_create(
+        domain="pierwsza.example.com", defaults={"name": "pierwsza"}
+    )
+    Uczelnia.objects.create(skrot="P1", nazwa="Pierwsza", site=site1)
+
+    session = ImportSession.objects.create(
+        user=admin_user, status="pending", config={}
+    )
+
+    mock_import_manager = MagicMock()
+    mock_import_manager.run.return_value = {"success": True}
+
+    with patch("pbn_import.tasks.send_websocket_update"):
+        with patch("pbn_import.tasks.ImportManager", return_value=mock_import_manager):
+            with patch("pbn_import.tasks.rollbar"):
+                # brak uczelnia_id — entrypoint go nie podał
+                run_pbn_import.apply(args=(session.pk,))
+
+    session.refresh_from_db()
+    assert session.status == "failed"
 
 
 @pytest.mark.django_db
@@ -268,7 +344,7 @@ def test_run_pbn_import_creates_start_log(uczelnia, admin_user):
     with patch("pbn_import.tasks.send_websocket_update"):
         with patch("pbn_import.tasks.ImportManager", return_value=mock_import_manager):
             with patch.object(uczelnia, "pbn_client", return_value=MagicMock()):
-                run_pbn_import.apply(args=(session.pk,))
+                run_pbn_import.apply(args=(session.pk, uczelnia.pk))
 
     start_log = ImportLog.objects.filter(
         session=session, step="Start", level="info"

@@ -181,7 +181,12 @@ class StartImportView(LoginRequiredMixin, ImportPermissionMixin, View):
         # Launch Celery task
         from .tasks import run_pbn_import
 
-        result = run_pbn_import.delay(session.id)
+        # Multi-hosted: entrypoint zna konkretną uczelnię z requestu i MUSI
+        # przekazać jej id do zadania w tle (zadanie NIE robi get_default()).
+        uczelnia = Uczelnia.objects.get_for_request(request)
+        result = run_pbn_import.delay(
+            session.id, uczelnia_id=uczelnia.pk if uczelnia else None
+        )
         session.task_id = result.id
         session.status = "pending"  # Keep as pending until task starts
         session.save()

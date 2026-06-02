@@ -73,14 +73,9 @@ def run_pbn_import(self, session_id, uczelnia_id=None):
 
         # Get configuration
         config = session.config
-        uczelnia = (
-            Uczelnia.objects.get(pk=uczelnia_id)
-            if uczelnia_id
-            else Uczelnia.objects.get_default()
-        )
-
-        if not uczelnia:
-            raise Exception("Brak konfiguracji uczelni")
+        # Multi-hosted: konkretna uczelnia z entrypointu, BEZ fallbacku
+        # do get_default() (patrz UczelniaManager.get_for_pbn_background).
+        uczelnia = Uczelnia.objects.get_for_pbn_background(uczelnia_id)
 
         # Create PBN client
         try:

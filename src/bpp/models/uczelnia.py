@@ -43,6 +43,27 @@ class UczelniaManager(models.Manager):
 
         return self.get_default()
 
+    def get_for_pbn_background(self, uczelnia_id) -> "Uczelnia":
+        """Resolwer uczelni dla PBN-owych zadań w tle (Celery, kolejki).
+
+        W instalacji multi-hosted KAŻDY entrypoint (widok) zna konkretną
+        uczelnię z requestu (``get_for_request``) i MUSI przekazać jej
+        ``pk`` do zadania. Brak ``uczelnia_id`` to błąd programistyczny —
+        świadomie NIE robimy fallbacku do ``get_default()``, bo wybrałby
+        pierwszą-z-brzegu uczelnię, która może nie mieć skonfigurowanego
+        PBN (to było źródłem błędu ``403 token aplikacji null``).
+
+        :raises ValueError: gdy ``uczelnia_id`` jest ``None``.
+        :raises Uczelnia.DoesNotExist: gdy uczelnia o danym id nie istnieje.
+        """
+        if uczelnia_id is None:
+            raise ValueError(
+                "Operacja PBN w tle wymaga jawnego uczelnia_id — w trybie "
+                "multi-hosted nie ma fallbacku do uczelni domyślnej. "
+                "Entrypoint (widok) musi przekazać id uczelni z requestu."
+            )
+        return self.get(pk=uczelnia_id)
+
     def get_for_site(self, site) -> Union["Uczelnia", None]:
         """Zwraca Uczelnię powiązaną z danym obiektem Site."""
         if site is None:

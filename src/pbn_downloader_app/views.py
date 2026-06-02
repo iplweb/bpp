@@ -6,6 +6,7 @@ from django.views import View
 from django.views.generic.base import TemplateView
 
 from bpp.const import GR_WPROWADZANIE_DANYCH
+from bpp.models import Uczelnia
 from pbn_downloader_app.models import (
     PbnDownloadTask,
     PbnInstitutionPeopleTask,
@@ -18,6 +19,18 @@ from pbn_downloader_app.tasks import (
 )
 
 logger = logging.getLogger(__name__)
+
+
+def _request_uczelnia_id(request):
+    """Id uczelni z requestu dla PBN-owych zadań w tle.
+
+    Multi-hosted: entrypoint zna konkretną uczelnię z hosta i przekazuje
+    jej id do zadania. Zadanie NIE robi get_default() — patrz
+    UczelniaManager.get_for_pbn_background.
+    """
+    uczelnia = Uczelnia.objects.get_for_request(request)
+    return uczelnia.pk if uczelnia else None
+
 
 # Custom group required decorator
 
@@ -105,7 +118,9 @@ class StartPbnDownloadView(View):
 
         # Start the task
         try:
-            download_institution_publications.delay(user.pk)
+            download_institution_publications.delay(
+                user.pk, uczelnia_id=_request_uczelnia_id(request)
+            )
             return JsonResponse(
                 {"success": True, "message": "Zadanie pobierania rozpoczęte."}
             )
@@ -199,7 +214,9 @@ class RetryTaskView(View):
 
         # Start the task
         try:
-            download_institution_publications.delay(user.pk)
+            download_institution_publications.delay(
+                user.pk, uczelnia_id=_request_uczelnia_id(request)
+            )
             return JsonResponse(
                 {"success": True, "message": "Zadanie pobierania uruchomione ponownie."}
             )
@@ -254,7 +271,9 @@ class StartPbnPeopleDownloadView(View):
 
         # Start the task
         try:
-            download_institution_people.delay(user.pk)
+            download_institution_people.delay(
+                user.pk, uczelnia_id=_request_uczelnia_id(request)
+            )
             return JsonResponse(
                 {"success": True, "message": "Zadanie pobierania osób rozpoczęte."}
             )
@@ -348,7 +367,9 @@ class RetryPeopleTaskView(View):
 
         # Start the task
         try:
-            download_institution_people.delay(user.pk)
+            download_institution_people.delay(
+                user.pk, uczelnia_id=_request_uczelnia_id(request)
+            )
             return JsonResponse(
                 {
                     "success": True,
@@ -409,7 +430,9 @@ class StartJournalsDownloadView(View):
 
         # Start the task
         try:
-            download_journals.delay(user.pk)
+            download_journals.delay(
+                user.pk, uczelnia_id=_request_uczelnia_id(request)
+            )
             return JsonResponse(
                 {"success": True, "message": "Zadanie pobierania źródeł rozpoczęte."}
             )
@@ -505,7 +528,9 @@ class RetryJournalsTaskView(View):
 
         # Start the task
         try:
-            download_journals.delay(user.pk)
+            download_journals.delay(
+                user.pk, uczelnia_id=_request_uczelnia_id(request)
+            )
             return JsonResponse(
                 {
                     "success": True,

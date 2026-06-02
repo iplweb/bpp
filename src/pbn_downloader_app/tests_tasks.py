@@ -145,7 +145,8 @@ def test_mark_task_failed_handles_none():
 
 @pytest.mark.django_db
 def test_get_pbn_client_success(uczelnia):
-    """Test get_pbn_client creates client with valid config."""
+    """get_pbn_client buduje klienta przez kanoniczną Uczelnia.pbn_client()
+    dla konkretnej (przekazanej po id) uczelni."""
 
     class MockPbnUser:
         pbn_token = "valid-token"
@@ -155,35 +156,30 @@ def test_get_pbn_client_success(uczelnia):
     uczelnia.pbn_api_root = "https://pbn-api.test/"
     uczelnia.save()
 
-    with patch("pbn_api.client.PBNClient"):
-        with patch("pbn_api.client.RequestsTransport") as mock_transport:
-            client, returned_uczelnia = get_pbn_client(MockPbnUser())
+    client, returned_uczelnia = get_pbn_client(MockPbnUser(), uczelnia.pk)
 
-    mock_transport.assert_called_once_with(
-        "test-app", "test-app-token", "https://pbn-api.test/", "valid-token"
-    )
+    assert client is not None
     assert returned_uczelnia == uczelnia
 
 
 @pytest.mark.django_db
-def test_get_pbn_client_no_uczelnia():
-    """Test get_pbn_client raises ValueError when no default uczelnia."""
-    from bpp.models import Uczelnia
-
-    Uczelnia.objects.all().delete()
+def test_get_pbn_client_requires_uczelnia_id():
+    """Bez uczelnia_id => ValueError (brak fallbacku do get_default())."""
 
     class MockPbnUser:
         pbn_token = "valid-token"
 
     with pytest.raises(ValueError) as exc_info:
-        get_pbn_client(MockPbnUser())
+        get_pbn_client(MockPbnUser(), None)
 
-    assert "No default institution" in str(exc_info.value)
+    assert "uczelnia_id" in str(exc_info.value)
 
 
 @pytest.mark.django_db
 def test_get_pbn_client_incomplete_config(uczelnia):
-    """Test get_pbn_client raises ValueError when config incomplete."""
+    """Niekompletna konfiguracja PBN uczelni => ImproperlyConfigured
+    (rzucane przez kanoniczną Uczelnia.pbn_client())."""
+    from django.core.exceptions import ImproperlyConfigured
 
     class MockPbnUser:
         pbn_token = "valid-token"
@@ -194,10 +190,10 @@ def test_get_pbn_client_incomplete_config(uczelnia):
     uczelnia.pbn_api_root = "https://pbn-api.test/"
     uczelnia.save()
 
-    with pytest.raises(ValueError) as exc_info:
-        get_pbn_client(MockPbnUser())
+    with pytest.raises(ImproperlyConfigured) as exc_info:
+        get_pbn_client(MockPbnUser(), uczelnia.pk)
 
-    assert "not properly configured" in str(exc_info.value)
+    assert "Brak nazwy aplikacji" in str(exc_info.value)
 
 
 # ============================================================================
@@ -206,19 +202,30 @@ def test_get_pbn_client_incomplete_config(uczelnia):
 
 
 @pytest.mark.django_db
-def test_download_institution_publications_already_running():
+def test_download_institution_publications_already_running(uczelnia):
     """Test download_institution_publications fails when task already running."""
     user = User.objects.create_user("testuser", password="testpass")
     PbnDownloadTask.objects.create(user=user, status="running")
 
-    with pytest.raises(ValueError) as exc_info:
-        download_institution_publications(user.pk)
+    class MockPbnUser:
+        pbn_token = "valid-token"
+
+        def pbn_token_possibly_valid(self):
+            return True
+
+    # Strażnik współbieżności (create_task_with_lock) działa PO walidacji
+    # użytkownika, więc mockujemy walidację, by dojść do testowanego guardu.
+    with patch("pbn_downloader_app.tasks.validate_pbn_user") as mock_validate:
+        mock_validate.return_value = (user, MockPbnUser())
+
+        with pytest.raises(ValueError) as exc_info:
+            download_institution_publications(user.pk, uczelnia.pk)
 
     assert "already running" in str(exc_info.value)
 
 
 @pytest.mark.django_db
-def test_download_institution_publications_success():
+def test_download_institution_publications_success(uczelnia):
     """Test download_institution_publications succeeds with mocked dependencies."""
     user = User.objects.create_user("testuser", password="testpass")
 
@@ -234,7 +241,7 @@ def test_download_institution_publications_success():
         # call_command is imported locally, so mock at source
         with patch("django.core.management.call_command") as mock_call:
             with patch("pbn_downloader_app.tasks.tqdm_progress_context"):
-                download_institution_publications(user.pk)
+                download_institution_publications(user.pk, uczelnia.pk)
 
     assert mock_call.call_count == 2
 
@@ -244,7 +251,7 @@ def test_download_institution_publications_success():
 
 
 @pytest.mark.django_db
-def test_download_institution_publications_handles_error():
+def test_download_institution_publications_handles_error(uczelnia):
     """Test download_institution_publications marks task failed on error."""
     user = User.objects.create_user("testuser", password="testpass")
 
@@ -263,7 +270,7 @@ def test_download_institution_publications_handles_error():
         ):
             with patch("pbn_downloader_app.tasks.tqdm_progress_context"):
                 with pytest.raises(Exception, match="API Error"):
-                    download_institution_publications(user.pk)
+                    download_institution_publications(user.pk, uczelnia.pk)
 
     task = PbnDownloadTask.objects.filter(user=user).first()
     assert task is not None
@@ -277,13 +284,13 @@ def test_download_institution_publications_handles_error():
 
 
 @pytest.mark.django_db
-def test_download_institution_people_already_running():
+def test_download_institution_people_already_running(uczelnia):
     """Test download_institution_people fails when task already running."""
     user = User.objects.create_user("testuser", password="testpass")
     PbnInstitutionPeopleTask.objects.create(user=user, status="running")
 
     with pytest.raises(ValueError) as exc_info:
-        download_institution_people(user.pk)
+        download_institution_people(user.pk, uczelnia.pk)
 
     assert "already running" in str(exc_info.value)
 
@@ -306,7 +313,7 @@ def test_download_institution_people_no_pbn_uid(uczelnia):
         mock_validate.return_value = (user, MockPbnUser())
 
         with pytest.raises(ValueError) as exc_info:
-            download_institution_people(user.pk)
+            download_institution_people(user.pk, uczelnia.pk)
 
     assert "PBN UID" in str(exc_info.value)
 
@@ -332,7 +339,7 @@ def test_download_institution_people_success(uczelnia):
         with patch("pbn_downloader_app.tasks.tqdm_progress_context"):
             # pobierz_ludzi_z_uczelni is imported locally from pbn_integrator.utils
             with patch("pbn_integrator.utils.pobierz_ludzi_z_uczelni") as mock_pobierz:
-                download_institution_people(user.pk)
+                download_institution_people(user.pk, uczelnia.pk)
 
     mock_pobierz.assert_called_once()
 
@@ -347,13 +354,13 @@ def test_download_institution_people_success(uczelnia):
 
 
 @pytest.mark.django_db
-def test_download_journals_already_running():
+def test_download_journals_already_running(uczelnia):
     """Test download_journals fails when task already running."""
     user = User.objects.create_user("testuser", password="testpass")
     PbnJournalsDownloadTask.objects.create(user=user, status="running")
 
     with pytest.raises(ValueError) as exc_info:
-        download_journals(user.pk)
+        download_journals(user.pk, uczelnia.pk)
 
     assert "already running" in str(exc_info.value)
 
@@ -387,7 +394,7 @@ def test_download_journals_success(uczelnia):
                     with patch(
                         "pbn_komparator_zrodel.utils.aktualizuj_brakujace_dyscypliny_pbn"
                     ):
-                        download_journals(user.pk)
+                        download_journals(user.pk, uczelnia.pk)
 
     mock_pobierz.assert_called_once()
     mock_integruj.assert_called_once()
@@ -425,7 +432,7 @@ def test_download_journals_handles_error(uczelnia):
                 side_effect=Exception("API Error"),
             ):
                 with pytest.raises(Exception, match="API Error"):
-                    download_journals(user.pk)
+                    download_journals(user.pk, uczelnia.pk)
 
     task = PbnJournalsDownloadTask.objects.filter(user=user).first()
     assert task is not None
