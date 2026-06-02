@@ -8,6 +8,7 @@ Patrz: docs/superpowers/specs/2026-06-02-pbn-client-split-design.md
 """
 
 from .auth import OAuthMixin
+from .client import PBNClient
 from .mixins import (
     ConferencesMixin,
     DictionariesMixin,
@@ -24,6 +25,7 @@ from .transport import PBNClientTransport, RequestsTransport
 from .utils import smart_content
 
 __all__ = [
+    "PBNClient",
     "OAuthMixin",
     "ConferencesMixin",
     "DictionariesMixin",

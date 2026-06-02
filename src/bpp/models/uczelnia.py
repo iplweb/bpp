@@ -643,9 +643,12 @@ class Uczelnia(ModelZAdnotacjami, ModelZPBN_ID, NazwaISkrot, NazwaWDopelniaczu):
 
         return WoSClient(self.clarivate_username, self.clarivate_password)
 
-    def pbn_client(self, pbn_user_token=None) -> "pbn_api.client.PBNClient":
+    def pbn_client(self, pbn_user_token=None) -> "pbn_api.client.BppPBNClient":
         """
-        Zwraca klienta PBNu
+        Zwraca klienta PBNu związanego z TĄ uczelnią (``BppPBNClient``).
+
+        Klient zna ``self`` jako swoją ``uczelnia`` — orchestracja czyta z niej
+        flagi zamiast zgadywać ``get_default()`` (kluczowe dla multi-hosted).
         """
         from pbn_api import client
 
@@ -668,7 +671,7 @@ class Uczelnia(ModelZAdnotacjami, ModelZPBN_ID, NazwaISkrot, NazwaWDopelniaczu):
         transport = UczelniaTransport(
             self.pbn_app_name, self.pbn_app_token, self.pbn_api_root, pbn_user_token
         )
-        return client.PBNClient(transport)
+        return client.BppPBNClient(transport, uczelnia=self)
 
     @property
     def orcid_base_url(self):

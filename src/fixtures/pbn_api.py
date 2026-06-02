@@ -7,7 +7,7 @@ from model_bakery import baker
 from bpp import const
 from bpp.const import RODZAJ_PBN_KSIAZKA
 from bpp.models import Charakter_Formalny, Jezyk, Uczelnia, Wydawnictwo_Ciagle
-from pbn_api.client import PBN_GET_LANGUAGES_URL, PBNClient
+from pbn_api.client import PBN_GET_LANGUAGES_URL, BppPBNClient
 from pbn_api.models import Institution, Language, Publication, Scientist
 from pbn_api.tests.utils import MockTransport
 
@@ -73,9 +73,9 @@ MOCK_RETURNED_INSTITUTION_PUBLICATION_V2_DATA = [
 
 
 @pytest.fixture
-def pbn_client() -> PBNClient:
+def pbn_client(uczelnia) -> BppPBNClient:
     transport = MockTransport()
-    return PBNClient(transport=transport)
+    return BppPBNClient(transport=transport, uczelnia=uczelnia)
 
 
 @pytest.fixture

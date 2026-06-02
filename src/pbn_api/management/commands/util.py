@@ -3,7 +3,7 @@ import warnings
 from django.core.management import BaseCommand, CommandError
 
 from bpp.models import BppUser, Uczelnia
-from pbn_api.client import PBNClient, RequestsTransport
+from pbn_api.client import BppPBNClient, RequestsTransport
 from pbn_client.conf import settings
 
 
@@ -64,6 +64,9 @@ class PBNBaseCommand(BaseCommand):
         konfiguracji wskazanej uczelni, a w ostateczności z ``settings``.
         """
         uczelnia = self._resolve_uczelnia(options.get("uczelnia_id"))
+        # Zapamiętujemy rozwiązaną uczelnię, żeby get_client zbudował
+        # BppPBNClient świadomy uczelni (orchestracja czyta z niej flagi).
+        self._resolved_uczelnia = uczelnia
 
         if options.get("app_id") is None:
             options["app_id"] = (
@@ -102,4 +105,4 @@ class PBNBaseCommand(BaseCommand):
             print("App token\t", app_token)
             print("Base URL\t", base_url)
             print("User token\t", user_token)
-        return PBNClient(transport)
+        return BppPBNClient(transport, uczelnia=getattr(self, "_resolved_uczelnia", None))
