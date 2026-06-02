@@ -1,6 +1,6 @@
 [project]
 name = "bpp_iplweb"
-version = "202606.1376"
+version = "202606.1377"
 description = ""
 authors = [
     { name = "Michał Pasternak", email = "michal.dtz@gmail.com" }
@@ -213,7 +213,7 @@ include = [
 ]
 
 [tool.bumpver]
-current_version = "v202606.1376"
+current_version = "v202606.1377"
 version_pattern = "vYYYY0M.BUILD[-TAGNUM]"
 commit_message = "bump version {old_version} -> {new_version}"
 commit = true
@@ -452,7 +452,7 @@ dev = [
     "pytest-cov>=7.1.0",  # lokalnie do `make coverage-ai`; CI nie wola --cov
     "pytest-mock>=3.7.0",
     "pytest-xdist>=2.3.0",
-    "pytest-shard>=0.1.2",
+    "pytest-split>=0.9.0",
     "pytest-timeout>=2.1.0",
     "pyparsing>=3.3.2",
     # Pinned exact, kept in sync with the `ruff-pre-commit` rev in
@@ -478,7 +478,7 @@ dev = [
     # Plugin auto-loaduje sie przez entry-point `pytest11` — `-p ...` w pytest.ini
     # przestaje byc potrzebne. Konfiguracja w [tool.pytest-testcontainers-django].
     "pytest-testcontainers>=0.1.0",
-    "pytest-testcontainers-django>=0.2.2",
+    "pytest-testcontainers-django>=0.2.3",
     # django-run-site: CLI orchestrator dev stack-u. Dawniej `manage.py run_site`
     # + helpery w `_run_site_helpers/`. Instalowany w dev-deps zeby `uv run run-site`
     # mialo dostep do CLI bez globalnego `uv tool install`. Konfiguracja: runsite.toml.
@@ -493,7 +493,7 @@ dev = [
 
 [tool.towncrier]
 package = "bpp"
-version = "202606.1376"
+version = "202606.1377"
 package_dir = "src"
 filename = "HISTORY.md"
 start_string = "<!-- towncrier release notes start -->\n"

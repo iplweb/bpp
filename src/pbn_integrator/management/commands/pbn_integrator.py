@@ -9,10 +9,12 @@ from pbn_integrator.utils.pobierz_skasowane_prace import pobierz_skasowane_prace
 django.setup()
 
 
-from pbn_api.exceptions import IntegracjaWylaczonaException
-from pbn_api.management.commands.util import PBNBaseCommand
-from pbn_integrator import utils as integrator
-from pbn_integrator.utils import (
+# Importy poniżej muszą być po django.setup() — stąd noqa E402.
+from bpp.models import Uczelnia  # noqa: E402
+from pbn_api.exceptions import IntegracjaWylaczonaException  # noqa: E402
+from pbn_api.management.commands.util import PBNBaseCommand  # noqa: E402
+from pbn_integrator import utils as integrator  # noqa: E402
+from pbn_integrator.utils import (  # noqa: E402
     integruj_autorow_z_uczelni,
     integruj_instytucje,
     integruj_jezyki,
@@ -42,8 +44,6 @@ from pbn_integrator.utils import (
     wyswietl_niezmatchowane_ze_zblizonymi_tytulami,
 )
 
-from bpp.models import Uczelnia
-
 
 def check_end_before(stage, end_before_stage):
     if end_before_stage == stage:
@@ -54,13 +54,15 @@ class Command(PBNBaseCommand):
     def add_arguments(self, parser):
         super().add_arguments(parser)
 
-        parser.add_argument(
-            "--disable-multiprocessing", action="store_true", default=False
-        ),
+        (
+            parser.add_argument(
+                "--disable-multiprocessing", action="store_true", default=False
+            ),
+        )
 
         parser.add_argument("--start-from-stage", type=int, default=0)
         parser.add_argument("--end-before-stage", type=int, default=None)
-        parser.add_argument("--just-one-stage", action="store_true"),
+        (parser.add_argument("--just-one-stage", action="store_true"),)
 
         parser.add_argument("--clear-all", action="store_true", default=False)
         parser.add_argument("--clear-publications", action="store_true", default=False)
@@ -137,9 +139,6 @@ class Command(PBNBaseCommand):
         parser.add_argument("--only-bad", action="store_true", default=False)
         parser.add_argument("--only-new", action="store_true", default=False)
         parser.add_argument(
-            "--delete-statements-before-upload", action="store_true", default=None
-        )
-        parser.add_argument(
             "--export-pk-zero",
             action="store_true",
             default=None,
@@ -148,7 +147,7 @@ class Command(PBNBaseCommand):
             "--disable-progress-bar", action="store_true", default=False
         )
 
-    def handle(
+    def handle(  # noqa: C901
         self,
         app_id,
         app_token,
@@ -190,10 +189,9 @@ class Command(PBNBaseCommand):
         only_bad,
         only_new,
         disable_progress_bar,
-        delete_statements_before_upload,
         export_pk_zero,
         *args,
-        **options
+        **options,
     ):
         if disable_multiprocessing:
             integrator.CPU_COUNT = "single"
@@ -416,14 +414,10 @@ class Command(PBNBaseCommand):
             if export_pk_zero is None:
                 export_pk_zero = not uczelnia.pbn_api_nie_wysylaj_prac_bez_pk
 
-            if delete_statements_before_upload is None:
-                delete_statements_before_upload = uczelnia.pbn_api_kasuj_przed_wysylka
-
             synchronizuj_publikacje(
                 client=client,
                 force_upload=force_upload,
                 only_bad=only_bad,
                 only_new=only_new,
-                delete_statements_before_upload=delete_statements_before_upload,
                 export_pk_zero=export_pk_zero,
             )

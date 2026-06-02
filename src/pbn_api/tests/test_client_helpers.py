@@ -16,12 +16,16 @@ from fixtures.pbn_api import (
     MOCK_RETURNED_MONGODB_DATA,
     pbn_pageable_json,
 )
+from pbn_api.adapters.wydawnictwo import WydawnictwoPBNAdapter
 from pbn_api.client import (
     PBN_GET_INSTITUTION_STATEMENTS,
     PBN_GET_PUBLICATION_BY_ID_URL,
-    PBN_POST_PUBLICATIONS_URL,
 )
-from pbn_api.const import PBN_GET_INSTITUTION_PUBLICATIONS_V2
+from pbn_api.const import (
+    PBN_GET_INSTITUTION_PUBLICATIONS_V2,
+    PBN_POST_INSTITUTION_STATEMENTS_URL,
+    PBN_POST_PUBLICATION_NO_STATEMENTS_URL,
+)
 from pbn_api.models import Institution, Publication
 from pbn_api.tests.utils import middleware
 
@@ -58,6 +62,7 @@ def test_helpers_wysylka_z_uid_uczelni(
     pbn_uczelnia,
     admin_user,
     pbn_client,
+    monkeypatch,
 ):
     odpowiednik = baker.make(Institution, mongoId="PBN_UID_UCZELNI----")
 
@@ -70,9 +75,21 @@ def test_helpers_wysylka_z_uid_uczelni(
     pbn_uczelnia.pbn_integracja = pbn_uczelnia.pbn_aktualizuj_na_biezaco = True
     pbn_uczelnia.save()
 
-    pbn_client.transport.return_values[PBN_POST_PUBLICATIONS_URL] = {
-        "objectId": pbn_wydawnictwo_zwarte_z_autorem_z_dyscyplina.pk
-    }
+    # Ten test bada UID uczelni w body, nie synchronizację statements —
+    # wymuszamy pustą intencję żeby _sync_statements_with_pbn nie próbował
+    # POST /v2/statements. Uczelnia musi mieć pbn_wysylaj_bez_oswiadczen
+    # żeby adapter.pbn_get_json nie rzucił StatementsMissing.
+    pbn_uczelnia.pbn_wysylaj_bez_oswiadczen = True
+    pbn_uczelnia.save()
+    monkeypatch.setattr(
+        WydawnictwoPBNAdapter,
+        "pbn_get_json_statements",
+        lambda self, _lst=None: [],
+    )
+
+    pbn_client.transport.return_values[PBN_POST_PUBLICATION_NO_STATEMENTS_URL] = [
+        {"id": pbn_wydawnictwo_zwarte_z_autorem_z_dyscyplina.pk}
+    ]
     pbn_client.transport.return_values[
         PBN_GET_PUBLICATION_BY_ID_URL.format(
             id=pbn_wydawnictwo_zwarte_z_autorem_z_dyscyplina.pk
@@ -87,8 +104,12 @@ def test_helpers_wysylka_z_uid_uczelni(
     )
 
     pbn_client.transport.return_values[
-        PBN_GET_INSTITUTION_STATEMENTS + "?publicationId=123&size=5120"
+        PBN_GET_INSTITUTION_STATEMENTS
+        + f"?publicationId={pbn_wydawnictwo_zwarte_z_autorem_z_dyscyplina.pk}&size=5120"
     ] = pbn_pageable_json([])
+    pbn_client.transport.return_values[PBN_POST_INSTITUTION_STATEMENTS_URL] = {
+        "data": []
+    }
 
     req = rf.get("/")
     req._uczelnia = pbn_uczelnia
@@ -98,13 +119,17 @@ def test_helpers_wysylka_z_uid_uczelni(
         sprobuj_wyslac_do_pbn_gui(req, pbn_wydawnictwo_zwarte_z_autorem_z_dyscyplina)
         msg = list(get_messages(req))
 
-    assert len(msg) == 1
-    # assert str(msg[0]).find("nie posiada oświadczeń") > -1
-    assert str(msg[0]).find("y zaktualizowane") > -1
+    # Nowy flow może wyemitować dodatkowe info-messages o sync statements
+    # (np. "Oświadczenia identyczne"); szukamy końcowego success-message.
+    assert any("y zaktualizowane" in str(m) for m in msg)
 
-    iv = pbn_client.transport.input_values["/api/v1/publications"]
-    assert iv["body"]["authors"][0]["affiliations"][0] == odpowiednik.pk
-    assert iv["body"]["institutions"][odpowiednik.pk]["objectId"] == odpowiednik.pk
+    # Po refaktoryzacji: endpoint repo zwraca body jako lista [js]; autorzy
+    # po ``convert_json_with_statements_to_no_statements`` używają pola
+    # ``firstName`` zamiast ``givenNames`` (konwersja w adapterze).
+    iv = pbn_client.transport.input_values[PBN_POST_PUBLICATION_NO_STATEMENTS_URL]
+    body = iv["body"][0]
+    assert body["authors"][0]["affiliations"][0] == odpowiednik.pk
+    assert body["institutions"][odpowiednik.pk]["objectId"] == odpowiednik.pk
 
 
 @pytest.mark.django_db
@@ -116,6 +141,7 @@ def test_helpers_wysylka_bez_uid_uczelni(
     pbn_jednostka,
     admin_user,
     pbn_client,
+    monkeypatch,
 ):
     odpowiednik = baker.make(Institution, mongoId="PBN_UID_UCZELNI----")
 
@@ -128,9 +154,18 @@ def test_helpers_wysylka_bez_uid_uczelni(
     pbn_uczelnia.pbn_integracja = pbn_uczelnia.pbn_aktualizuj_na_biezaco = True
     pbn_uczelnia.save()
 
-    pbn_client.transport.return_values[PBN_POST_PUBLICATIONS_URL] = {
-        "objectId": pbn_wydawnictwo_zwarte_z_autorem_z_dyscyplina.pk
-    }
+    # Ten test bada afiliację jednostki w body, nie sync statements.
+    pbn_uczelnia.pbn_wysylaj_bez_oswiadczen = True
+    pbn_uczelnia.save()
+    monkeypatch.setattr(
+        WydawnictwoPBNAdapter,
+        "pbn_get_json_statements",
+        lambda self, _lst=None: [],
+    )
+
+    pbn_client.transport.return_values[PBN_POST_PUBLICATION_NO_STATEMENTS_URL] = [
+        {"id": pbn_wydawnictwo_zwarte_z_autorem_z_dyscyplina.pk}
+    ]
     pbn_client.transport.return_values[
         PBN_GET_PUBLICATION_BY_ID_URL.format(
             id=pbn_wydawnictwo_zwarte_z_autorem_z_dyscyplina.pk
@@ -147,8 +182,12 @@ def test_helpers_wysylka_bez_uid_uczelni(
     ] = pbn_pageable_json(MOCK_RETURNED_INSTITUTION_PUBLICATION_V2_DATA)
 
     pbn_client.transport.return_values[
-        PBN_GET_INSTITUTION_STATEMENTS + "?publicationId=123&size=5120"
+        PBN_GET_INSTITUTION_STATEMENTS
+        + f"?publicationId={pbn_wydawnictwo_zwarte_z_autorem_z_dyscyplina.pk}&size=5120"
     ] = pbn_pageable_json([])
+    pbn_client.transport.return_values[PBN_POST_INSTITUTION_STATEMENTS_URL] = {
+        "data": []
+    }
 
     req = rf.get("/")
     req._uczelnia = pbn_uczelnia
@@ -158,11 +197,27 @@ def test_helpers_wysylka_bez_uid_uczelni(
         sprobuj_wyslac_do_pbn_gui(req, pbn_wydawnictwo_zwarte_z_autorem_z_dyscyplina)
         msg = list(get_messages(req))
 
-    assert len(msg) == 1 and str(msg[0]).find("y zaktualizowane") > -1
+    assert any("y zaktualizowane" in str(m) for m in msg)
 
-    iv = pbn_client.transport.input_values["/api/v1/publications"]
-    assert iv["body"]["authors"][0]["affiliations"][0] == pbn_jednostka.pbn_uid_id
+    iv = pbn_client.transport.input_values[PBN_POST_PUBLICATION_NO_STATEMENTS_URL]
+    body = iv["body"][0]
+    assert body["authors"][0]["affiliations"][0] == pbn_jednostka.pbn_uid_id
     assert (
-        iv["body"]["institutions"][pbn_jednostka.pbn_uid_id]["objectId"]
+        body["institutions"][pbn_jednostka.pbn_uid_id]["objectId"]
         == pbn_jednostka.pbn_uid_id
     )
+
+
+def test_convert_json_with_statements_to_no_statements_removes_statements(
+    pbn_client,
+):
+    js = {"authors": [], "statements": [{"type": "AUTHOR"}]}
+    out = pbn_client.convert_json_with_statements_to_no_statements(js)
+    assert "statements" not in out
+
+
+def test_convert_json_with_statements_to_no_statements_no_statements_key(
+    pbn_client,
+):
+    js = {"authors": []}
+    pbn_client.convert_json_with_statements_to_no_statements(js)

@@ -1,65 +1,38 @@
-# Konfiguracja hosta 'master'
-
-import os
-
-from .base import *  # noqa
-from .base import DATABASES, MIDDLEWARE, REDIS_HOST, REDIS_PORT  # noqa
-
-# Per-xdist-worker key prefix on the constance Redis cache.
+# Konfiguracja dla testów (pytest).
 #
-# Constance reads through CONSTANCE_DATABASE_CACHE_BACKEND. Under
-# `pytest -n auto`, workers have separate Postgres DBs but would otherwise
-# share one Redis DB; values cached by worker A would leak into worker B's
-# read path. We segregate by KEY_PREFIX (not DB number) so the scheme is
-# not bounded by Redis's 16-DB default — `pytest -n auto` on 10+ cores
-# would overflow a DB-per-worker scheme.
-_CONSTANCE_KEY_PREFIX = os.environ.get("PYTEST_XDIST_WORKER", "master")
+# Cienka warstwa nad ``local.py``: testy dziedziczą całą konfigurację
+# deweloperską (DummyCache, DEBUG, eager Celery, easyaudit, dev-helpers),
+# a tutaj nakładamy WYŁĄCZNIE rzeczy specyficzne dla przebiegu testowego.
+# Wybierane przez ``--ds=django_bpp.settings.test`` w ``pytest.ini``.
+#
+# Wcześniej te modyfikacje siedziały w ``local.py`` pod strażą
+# ``if "pytest" in sys.modules`` — bo ``local.py`` pełnił podwójną rolę
+# (dev + testy). Po rozdzieleniu strażnik jest zbędny: ten plik ładuje się
+# tylko dla testów, więc nakładamy je bezwarunkowo.
 
-DEBUG = True
+from .local import *  # noqa
+from .local import INSTALLED_APPS, MIDDLEWARE  # noqa
 
-DEBUG_TOOLBAR = False
-
-SENDFILE_BACKEND = "django_sendfile.backends.simple"
-
-SESSION_COOKIE_SECURE = False
-CSRF_COOKIE_SECURE = False
-MEDIA_ROOT = os.path.abspath(
-    os.path.join(os.path.dirname(__file__), "..", "..", "media")
-)
-SENDFILE_ROOT = MEDIA_ROOT
-
-CELERY_ALWAYS_EAGER = True
-CELERY_EAGER_PROPAGATES_EXCEPTIONS = True
-
-COMPRESS_ENABLED = True
-COMPRESS_OFFLINE = False
-
-DATABASES["default"]["CONN_MAX_AGE"] = 0  # noqa
-
-# Vide komentarz w TEMPLATES[0]["OPTIONS"]["loaders"]
-CACHES = {
-    "default": {
-        "BACKEND": "django.core.cache.backends.dummy.DummyCache",
-    },
-    "constance_cache": {
-        "BACKEND": "django_redis.cache.RedisCache",
-        "LOCATION": f"redis://{REDIS_HOST}:{REDIS_PORT}/8",
-        "KEY_PREFIX": _CONSTANCE_KEY_PREFIX,
-        "OPTIONS": {
-            "CONNECTION_POOL_CLASS": "redis.BlockingConnectionPool",
-            "CONNECTION_POOL_CLASS_KWARGS": {
-                "max_connections": 50,
-                "timeout": 20,
-            },
-        },
-    },
-}
-
-PASSWORD_HASHERS = ["django.contrib.auth.hashers.MD5PasswordHasher"]
-
-# Disable setup wizard middleware during tests
+# Setup wizard middleware nie ma sensu w testach (i przeszkadza fixture'om).
 MIDDLEWARE = [
-    m
-    for m in MIDDLEWARE  # noqa
-    if m != "first_run_wizard.middleware.FirstRunWizardMiddleware"  # noqa
+    m for m in MIDDLEWARE if m != "first_run_wizard.middleware.FirstRunWizardMiddleware"
 ]
+
+# Testy nie powinny korzystać z cacheops — paczka monkey-patchuje
+# globalnie Manager.get / QuerySet.* i potrafi wywalać
+# NotSupportedError / ForeignKeyViolation przy losowej kolejności
+# xdist workerów (queryset-y dzielą stan `combinator` między testami).
+# Usunięcie cacheops z INSTALLED_APPS wyłącza monkey-patching — produkcja
+# dalej używa cacheops z pełnym CACHEOPS dict w production.py.
+INSTALLED_APPS = [app for app in INSTALLED_APPS if app != "cacheops"]
+
+# Sam INSTALLED_APPS-prune NIE wystarczy: dekorator @cached (cacheops.simple)
+# jest niezależny od `cacheops` w INSTALLED_APPS, nadal pisze/czyta z Redis
+# db=7. Pod xdist Redis jest jeden na sesję pytest, więc workery widzą
+# nawzajem swoje cache'owane wyniki — np. `get_uczelnia_context_data`
+# cache'uje `recently_updated` z PK-ami publikacji workera A, worker B
+# renderuje homepage z tymi linkami i potem dostaje 404 na
+# `/bpp/rekord/<ct>,<pk>/`. Wyłączenie CACHEOPS_ENABLED zamienia `@cached`
+# w no-op (cacheops/simple.py:54) i propaguje się też na `invalidate_*`,
+# które same sprawdzają tę flagę.
+CACHEOPS_ENABLED = False

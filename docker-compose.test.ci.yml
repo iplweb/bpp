@@ -24,6 +24,13 @@ services:
     # tested locally with `docker compose config` and confirmed.
     volumes: !override
       - ./ci-output:/ci-output
+      # Duration data for pytest-split's `--splitting-algorithm
+      # least_duration`. Mounted read-only from the checked-out tree
+      # (the CI test-runner image bakes source via granular COPYs that
+      # deliberately exclude this fast-churning file, so a durations
+      # refresh never busts the grunt/compilemessages image cache).
+      # Read-only so a test run can never accidentally rewrite it.
+      - ./.test_durations:/src/.test_durations:ro
     environment:
       # CSS + .mo są zapieczone w obrazie test-runner (Dockerfile,
       # stage test-runner: `npx grunt build-non-interactive` +

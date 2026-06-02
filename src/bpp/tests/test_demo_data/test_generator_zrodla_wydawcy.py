@@ -8,6 +8,7 @@ from model_bakery import baker
 from bpp.demo_data.generators.wydawcy import create_wydawcy
 from bpp.demo_data.generators.zrodla import create_zrodla
 from bpp.demo_data.manifest import Manifest
+from bpp.demo_data.themes.registry import get_theme
 from bpp.models import Rodzaj_Zrodla, Wydawca, Zrodlo
 
 
@@ -22,8 +23,10 @@ def test_create_zrodla(setup_rodzaje, tmp_manifest_path):
     m = Manifest(path=tmp_manifest_path, database="db", command_args={})
     zrodla = create_zrodla(
         n=5,
+        theme=get_theme("realistyczny"),
         manifest=m,
         rng=random.Random(1),
+        prefix="Demo — ",
         batch_size=10,
         disable_progress=True,
     )
@@ -32,6 +35,18 @@ def test_create_zrodla(setup_rodzaje, tmp_manifest_path):
     for z in zrodla:
         assert z.nazwa.startswith("Demo —")
         assert z.rodzaj_id is not None
+        assert any(
+            z.nazwa[len("Demo — ") :].startswith(p)
+            for p in (
+                "Acta",
+                "Annales",
+                "Folia",
+                "Roczniki",
+                "Przegląd",
+                "Zeszyty Naukowe",
+                "Studia",
+            )
+        )
     assert sorted(m.objects_for("bpp.Zrodlo")) == sorted([z.pk for z in zrodla])
 
 
@@ -40,8 +55,10 @@ def test_create_wydawcy(tmp_manifest_path):
     m = Manifest(path=tmp_manifest_path, database="db", command_args={})
     wydawcy = create_wydawcy(
         n=3,
+        theme=get_theme("realistyczny"),
         manifest=m,
         rng=random.Random(1),
+        prefix="Demo — ",
         batch_size=10,
         disable_progress=True,
     )
@@ -58,8 +75,10 @@ def test_zrodla_have_synthetic_issn(setup_rodzaje, tmp_manifest_path):
     m = Manifest(path=tmp_manifest_path, database="db", command_args={})
     zrodla = create_zrodla(
         n=3,
+        theme=get_theme("realistyczny"),
         manifest=m,
         rng=random.Random(1),
+        prefix="Demo — ",
         batch_size=10,
         disable_progress=True,
     )
@@ -72,14 +91,15 @@ def test_zrodla_have_synthetic_issn(setup_rodzaje, tmp_manifest_path):
 def test_zrodla_no_slug_collision_at_scale(setup_rodzaje, tmp_manifest_path):
     """AutoSlugField populate_from='nazwa' + bulk_create:
     find_unique() nie widzi instancji ze swojego batcha. Nazwa
-    'Demo — Czasopismo {i}' jest unikalna globalnie, wiec slug tez,
-    ale regression guard sprawdza ze nic sie nie zepsulo (np. populate_from
-    na inne pole)."""
+    jest unikalna globalnie, wiec slug tez, ale regression guard
+    sprawdza ze nic sie nie zepsulo (np. populate_from na inne pole)."""
     m = Manifest(path=tmp_manifest_path, database="db", command_args={})
     zrodla = create_zrodla(
         n=50,
+        theme=get_theme("realistyczny"),
         manifest=m,
         rng=random.Random(7),
+        prefix="Demo — ",
         batch_size=10,
         disable_progress=True,
     )

@@ -31,7 +31,7 @@ API. W ten sposób będziemy mogli zaciągać liczbę cytowań dla rekordów i a
 ## Integracja z PBN
 
 Jeżeli w PBN uzyskaliśmy rolę "Menedżer aplikacji", możemy utworzyc token aplikacji i wpisać te dane do BPP. Umożliwi
-to autoryzowanie użytkownika loginem w PBN (na głównej stronie, menu operacje -\> autoryzuj w PBN) a następnie
+to autoryzowanie użytkownika loginem w PBN (na głównej stronie, menu operacje -> autoryzuj w PBN) a następnie
 możliwe będzie wysyłanie prac do PBN przy ich zapisywaniu. W ten sposób dane publikacji wpisujemy tylko raz (do BPP),
 a ręczne ich wysyłanie do PBN nie jest potrzebne.
 

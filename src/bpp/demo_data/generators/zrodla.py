@@ -8,6 +8,8 @@ from django.utils.text import slugify
 
 from bpp.demo_data.manifest import Manifest
 from bpp.demo_data.progress import make_progress
+from bpp.demo_data.themes.base import Theme
+from bpp.demo_data.themes.compose import apply_prefix, compose_zrodlo_nazwa
 from bpp.models import Rodzaj_Zrodla, Zrodlo
 
 
@@ -23,8 +25,10 @@ def _synthetic_issn(rng: random.Random) -> str:
 def create_zrodla(
     *,
     n: int,
+    theme: Theme,
     manifest: Manifest,
     rng: random.Random,
+    prefix: str = "",
     batch_size: int = 500,
     disable_progress: bool = False,
 ) -> list[Zrodlo]:
@@ -35,7 +39,7 @@ def create_zrodla(
 
     objs: list[Zrodlo] = []
     for i in range(n):
-        nazwa = f"Demo — Czasopismo {i + 1}"
+        nazwa = apply_prefix(compose_zrodlo_nazwa(theme, rng), prefix)
         # Zrodlo.slug = AutoSlugField(populate_from="nazwa", unique=True).
         # bulk_create + find_unique() nie widzi siostr w batchu, wiec
         # pre-setujemy slug z disambiguatorem per-instancja. AutoSlugField

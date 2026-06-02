@@ -146,7 +146,7 @@ and aktualna_jednostka != None
 
 #### Źródła bez odpowiednika w PBN, które mają publikacje w roku 2022
 
-Po wejściu w Redagowanie -\> Źródła,
+Po wejściu w Redagowanie -> Źródła,
 
 ``` python
 pbn_uid = None and wydawnictwo_ciagle.rok = 2022
@@ -154,7 +154,7 @@ pbn_uid = None and wydawnictwo_ciagle.rok = 2022
 
 #### Publikacje za lata 2020-2021 z określonym odpowiednikiem PBN oraz nieokreśloną informacją o płatności
 
-Po wejściu w Redagowanie -\> Wydawnictwa ciągłe/zwarte,
+Po wejściu w Redagowanie -> Wydawnictwa ciągłe/zwarte,
 
 ``` python
 pbn_uid != None and opl_pub_cost_free != None and rok >= 2020 and rok <= 2021
@@ -165,7 +165,7 @@ pbn_uid != None and opl_pub_cost_free != None and rok >= 2020 and rok <= 2021
 Wyszukiwanie autorów z ukrytymi profilami, którzy mają w swoich publikacjach jednostkę zawierającą "SKN"
 w nazwie. Przydatne do znalezienia studentów z kół naukowych, którzy mają ukryte profile.
 
-Po wejściu w Redagowanie -\> Autorzy, można użyć następujących zapytań:
+Po wejściu w Redagowanie -> Autorzy, można użyć następujących zapytań:
 
 Wyszukiwanie po ciągu znaków "SKN" w nazwie jednostki:
 
@@ -186,7 +186,7 @@ autorzy.aktualna_jednostka.rodzaj_jednostki = "kolo_naukowe" and autorzy.pokazuj
 ```
 
 Przykład zapytania w kontekście publikacji - znajdowanie publikacji ciągłych z autorami z kół naukowych
-z ukrytymi profilami. Po wejściu w Redagowanie -\> Wydawnictwa ciągłe:
+z ukrytymi profilami. Po wejściu w Redagowanie -> Wydawnictwa ciągłe:
 
 ``` python
 autorzy.autor_jednostka.jednostka.nazwa ~ "SKN" and autorzy.pokazuj = False

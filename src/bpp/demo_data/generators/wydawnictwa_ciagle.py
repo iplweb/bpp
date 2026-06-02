@@ -14,6 +14,7 @@ from bpp.demo_data.generators._publikacje_common import (
 )
 from bpp.demo_data.manifest import Manifest
 from bpp.demo_data.progress import make_progress
+from bpp.demo_data.themes.base import Theme
 from bpp.models import (
     Autor,
     Charakter_Formalny,
@@ -91,8 +92,10 @@ def _build_praca(
     rok: int,
     zrodla: list[Zrodlo],
     s: _Slowniki,
+    theme: Theme,
+    marker: str = "",
 ) -> Wydawnictwo_Ciagle:
-    tytul = make_tytul(rng, idx)
+    tytul = make_tytul(theme, rng, idx, marker=marker)
     praca = Wydawnictwo_Ciagle(
         tytul_oryginalny=tytul,
         rok=rok,
@@ -142,8 +145,10 @@ def create_wc(
     autorzy: Iterable[Autor],
     zrodla: Iterable[Zrodlo],
     lata: Iterable[int],
+    theme: Theme,
     manifest: Manifest,
     rng: random.Random,
+    prefix: str = "",
     batch_size: int = 500,
     disable_progress: bool = False,
 ) -> list[Wydawnictwo_Ciagle]:
@@ -169,7 +174,15 @@ def create_wc(
         )
 
     prace = [
-        _build_praca(rng=rng, idx=i + 1, rok=rng.choice(lata), zrodla=zrodla, s=s)
+        _build_praca(
+            rng=rng,
+            idx=i + 1,
+            rok=rng.choice(lata),
+            zrodla=zrodla,
+            s=s,
+            theme=theme,
+            marker=prefix,
+        )
         for i in range(n)
     ]
 

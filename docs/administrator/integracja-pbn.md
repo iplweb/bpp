@@ -8,7 +8,7 @@
 2.  Adres zwrotny ("callback") dla aplikacji należy ustawić jako <https://nazwa.serwera.bpp/pbn_api/callback>
 
 3.  Identyfikator i token aplikacji należy wpisać do ustawień obiektu Uczelnia w module
-    "Redagowanie" (Redagowanie -\> Struktura -\> Uczelnia -\> zakładka "PBN API")
+    "Redagowanie" (Redagowanie -> Struktura -> Uczelnia -> zakładka "PBN API")
 
 4.  Podczas edycji powyższych ustawień należy zwrócić uwagę na adres PBN API,
     dla serwisu testowego w momencie tworzenia niniejszej dokumentacji jest to

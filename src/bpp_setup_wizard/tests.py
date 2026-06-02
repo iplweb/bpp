@@ -123,8 +123,8 @@ def test_uczelnia_setup_creates_uczelnia(admin_user):
     assert uczelnia.pbn_app_token == "test_token"
     assert uczelnia.uzywaj_wydzialow is True
 
-    # Auto-set PBN flags
-    assert uczelnia.pbn_api_kasuj_przed_wysylka is True
+    # Verify the automatically set fields
+    assert uczelnia.pbn_kasuj_dyscypliny_selektywnie is True
     assert uczelnia.pbn_api_nie_wysylaj_prac_bez_pk is True
     assert uczelnia.pbn_api_afiliacja_zawsze_na_uczelnie is True
     assert uczelnia.pbn_wysylaj_bez_oswiadczen is True

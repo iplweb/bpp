@@ -53,9 +53,9 @@ Domyślnie otrzymają takie powiadomienie wszystkie osoby, które są w grupie "
 
 Jeżeli jednak mamy użytkowników w systemie dopisanych do grupy "wprowadzanie danych", wówczas tylko tacy
 użytkownicy otrzymają powiadomienia o nowych zgłoszeniach. Możemy ich do niej dopisać, korzystając z opcji
-Redagowanie -\> Administracja -\> Użytkownicy.
+Redagowanie -> Administracja -> Użytkownicy.
 
-Możemy też rozdzielać powiadomienia wg wydziałów uczelni. Za pomocą opcji Redagowanie -\> Administracja -\> Obsługa zgłoszeń
+Możemy też rozdzielać powiadomienia wg wydziałów uczelni. Za pomocą opcji Redagowanie -> Administracja -> Obsługa zgłoszeń
 prac - wydziały możemy dopisać konkretnych użytkowników do konkretnych wydziałów. W sytuacji, gdy zgłaszający
 publikację wypełni przynajmniej jednego autora i jego jednostkę, powiadomienie o tym zgłoszeniu trafi do
 przypisanej osoby - według wydziału pierwszej, skupiającej pracowników jednostki autora, wg kolejności autorów
@@ -70,8 +70,8 @@ powiadomienia będą mogły otrzymać osoby gdy np praca nie ma żadnego autora 
 
 ## Zwracanie zgłoszenia
 
-W przypadku, gdyby zgłoszenie wymagało poprawek, po wejściu w nie w module redagowania (Redagowanie -\> Wprowadzanie danych
--\> Zgłoszenia publikacji -\> tytuł zgłoszenia) szukamy przycisku "Zwróć do autora", który znajduje się na belce nad
+W przypadku, gdyby zgłoszenie wymagało poprawek, po wejściu w nie w module redagowania (Redagowanie -> Wprowadzanie danych
+-> Zgłoszenia publikacji -> tytuł zgłoszenia) szukamy przycisku "Zwróć do autora", który znajduje się na belce nad
 formularzem. Po kliknięciu możemy wpisać powód zwrócenia zgłoszenia. Autor otrzyma e-mail z powodem zwrócenia
 zgłoszenia oraz z linkiem do edycji zgłoszenia. Gdy je zatwierdzi, redaktor otrzyma powiadomienie wg reguł jak wyżej.
 

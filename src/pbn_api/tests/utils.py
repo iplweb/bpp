@@ -33,6 +33,7 @@ class MockTransport(RequestsTransport):
     def __init__(self, return_values=None):
         self.return_values = {}
         self.input_values = {}
+        self.base_url = "https://pbn-test.example.org"
         if return_values:
             self.return_values.update(return_values)
 

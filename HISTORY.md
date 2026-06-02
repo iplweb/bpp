@@ -2,6 +2,106 @@
 
 <!-- towncrier release notes start -->
 
+## bpp 202606.1377 (2026-06-02)
+
+### Naprawione
+
+- Dodano exponential backoff (5 prób, max ~30 sekund) przy pobieraniu
+  ``PublikacjaInstytucji_V2`` (UUID publikacji z PBN API v2). Poprzednio
+  jedna próba kończyła się warningiem "nie jest błędem", co myliło użytkowników
+  — brak V2 oznacza brak możliwości generowania linków do PBN Interfejs
+  i wysyłki oświadczeń (wymagany UUID). Teraz system automatycznie ponawia
+  z rosnącym czasem oczekiwania (2s, 4s, 8s, 16s, 32s).
+
+  Jeśli po wszystkich próbach nadal nie ma V2 — wyświetlany jest BŁĄD (czerwony)
+  z sugestią użycia wysyłki w tle (PBN Export Queue) zamiast interaktywnej.
+
+  **Ważne dla deploymentu**: przy interaktywnej wysyłce z admina może być potrzebne
+  zwiększenie timeoutu nginx/gunicorn dla ścieżek ``/admin/`` do minimum 90-120 sekund
+  (domyślne 30-60s może być za mało przy 5 próbach z opóźnieniami).
+- Poprawka w ``sync_publication``: POST oświadczeń publikacji w trybie
+  selektywnym (``Uczelnia.pbn_kasuj_dyscypliny_selektywnie=True``, default)
+  wysyła teraz TYLKO oświadczenia brakujące w PBN (``only_in_intended``),
+  nie pełen zestaw lokalnych. Wcześniej kod wywoływał
+  ``WydawnictwoPBNAdapter.pbn_get_api_statements()`` zwracające wszystkie
+  lokalne statements i POST-ował kompletny zestaw — także te oświadczenia,
+  które już były w PBN. Przy założeniu że API PBN może nie być
+  idempotentne (odrzucić duplikaty, utworzyć zduplikowane rekordy albo
+  zachowywać się nieprzewidywalnie), wysyłanie tylko brakujących jest
+  bezpieczniejsze — nie dublujemy żądań dla już istniejących oświadczeń,
+  co zachowuje ich metadata w PBN (``addedTimestamp`` itp.).
+
+  Krok 3 algorytmu (PBN puste + BPP ma) nadal wysyła wszystkie oświadczenia
+  publikacji, bo w tym scenariuszu ``only_in_intended`` = wszystkie klucze
+  lokalne. Krok 5 (tryb batch, ``pbn_kasuj_dyscypliny_selektywnie=False``)
+  pozostaje bez zmian — po ``delete_all`` PBN jest puste, więc POST wysyła
+  pełen zestaw BPP (wipe+rewrite).
+- Poprawka w narzędziu CLI ``pbn_test_wysylka_interaktywna``:
+
+  - krok porównania oświadczeń (KROK 6/8) używał lokalnego cache'a
+    ``OswiadczenieInstytucji`` (snapshot z poprzedniej synchronizacji
+    PBN) jako reprezentanta „stanu BPP", co powodowało fałszywą
+    identyczność po zmianach w rekordzie — skasowaniu autora,
+    zmianie/wypięciu dyscypliny lub innej edycji ``Wydawnictwo_*_Autor``
+    (cache nie był re-synchronizowany, pokazywał stare 3 oświadczenia
+    nawet po faktycznym zmniejszeniu intencji BPP do 2). Narzędzie
+    teraz porównuje **intencję BPP na żywo** — to co by wygenerował
+    ``WydawnictwoPBNAdapter.pbn_get_api_statements()`` gdyby wysyłać
+    teraz — z aktualnym stanem PBN. Dodatkowo KROK 1/8 pokazuje zarówno
+    cache jak i intencję żywą, żeby od razu widać było rozjazd.
+  - narzędzie zawsze pyta osobno o DELETE oświadczeń i osobno o POST
+    oświadczeń, także gdy porównanie zwróciło identyczność —
+    użytkownik może wymusić operację np. dla empirycznego sprawdzenia
+    reakcji PBN (wcześniej flow kończył się wczesnym ``return`` po
+    identyczności bez opcji kontynuacji). Domyślna wartość pytania
+    zależy od wyniku porównania: „identyczne" → default ``n``,
+    „różnice" → default ``t``.
+- Refaktoryzacja wysyłki publikacji do PBN (``sync_publication``): publikacja
+  jest zawsze wysyłana przez endpoint repozytoryjny
+  ``POST /api/v1/repositorium/publications`` (bez oświadczeń w body), a
+  dyscypliny/oświadczenia synchronizowane są w osobnym kroku przez
+  ``/api/v2/institution-profile/statements`` dopiero po potwierdzeniu
+  wysyłki publikacji. Dzięki temu nieudana wysyłka publikacji (np. HTTP
+  423 Locked albo inna przejściowa awaria PBN) nie kasuje już istniejących
+  oświadczeń w profilu instytucji — wcześniej kasowanie działo się przed
+  POST i tracono dane przy każdym niepowodzeniu.
+
+  Algorytm synchronizacji oświadczeń: GET aktualnego stanu PBN, porównanie
+  z intencją BPP (``WydawnictwoPBNAdapter.pbn_get_json_statements()``)
+  przez klucz ``(personId, disciplineId)``, selektywne DELETE (per-osoba
+  przez ``delete_publication_statement(personId, role)``) brakujących w
+  BPP + POST dodatkowych. Tryb kasowania sterowany nową flagą
+  ``Uczelnia.pbn_kasuj_dyscypliny_selektywnie`` (domyślnie ``True``;
+  ``False`` używa ``delete_all`` + POST batch).
+
+  Nowy wyjątek ``StatementsResendFailedException`` (w
+  ``pbn_api.exceptions``) jest podnoszony gdy retry x3 z exponential
+  backoff (2s/4s/8s) na GET/DELETE/POST /v2/statements się wyczerpie.
+  Klasyfikowany w ``pbn_export_queue`` jako ``RETRY_LATER`` — kolejka
+  ponowi wysyłkę za kilka minut.
+
+  Usunięto pole ``Uczelnia.pbn_api_kasuj_przed_wysylka`` (obsolete —
+  stary pre-upload DELETE zastąpiony nowym algorytmem diff po wysyłce).
+  Flaga ``Uczelnia.pbn_wysylaj_bez_oswiadczen`` pozostaje z dotychczasową
+  semantyką (odmawia wysyłki publikacji bez oświadczeń).
+
+### Usprawnienie
+
+- Dodano interaktywne narzędzie CLI
+  ``pbn_test_wysylka_interaktywna`` (Django management command) do
+  eksperymentalnego testowania flow wysyłki publikacji i oświadczeń do PBN
+  krok po kroku. Narzędzie prowadzi użytkownika przez kolejne fazy —
+  generowanie JSON publikacji, wybór endpointa (``/api/v1/publications``
+  all-in-one albo ``/api/v1/repositorium/publications`` bez oświadczeń),
+  POST publikacji, GET i porównanie oświadczeń lokalnych z tym co jest w
+  PBN, DELETE oświadczeń i POST przez ``/api/v2/institution-profile/statements``
+  — pokazując dla każdego kroku metodę HTTP, URL, body i odpowiedź
+  serwera. Narzędzie nie modyfikuje lokalnej bazy BPP i posiada tryb
+  ``--dry-run``. Służy jako baza do audytu zachowania PBN API i
+  projektowania bezpieczniejszej kolejności operacji wysyłki (scenariusz:
+  nieudana wysyłka publikacji kasowała wcześniej istniejące oświadczenia).
+
+
 ## bpp 202606.1376 (2026-06-01)
 
 ### Naprawione
