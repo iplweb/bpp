@@ -452,7 +452,7 @@ dev = [
     "pytest-cov>=7.1.0",  # lokalnie do `make coverage-ai`; CI nie wola --cov
     "pytest-mock>=3.7.0",
     "pytest-xdist>=2.3.0",
-    "pytest-shard>=0.1.2",
+    "pytest-split>=0.9.0",
     "pytest-timeout>=2.1.0",
     "pyparsing>=3.3.2",
     # Pinned exact, kept in sync with the `ruff-pre-commit` rev in
