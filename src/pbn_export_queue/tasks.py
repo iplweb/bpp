@@ -126,7 +126,7 @@ def kolejka_ponow_wysylke_prac_po_zalogowaniu(pk):
 
 
 @app.task
-def queue_pbn_export_batch(app_label, model_name, record_ids, user_id):
+def queue_pbn_export_batch(app_label, model_name, record_ids, user_id, uczelnia_id=None):
     """
     Queue multiple records for PBN export in batch.
 
@@ -135,9 +135,12 @@ def queue_pbn_export_batch(app_label, model_name, record_ids, user_id):
         model_name: Model name (e.g. 'wydawnictwo_ciagle')
         record_ids: List of record IDs to queue
         user_id: User ID who initiated the export
+        uczelnia_id: ID uczelni z requestu (multi-hosted) — zapisywane na
+            wpisie kolejki, żeby wysyłka użyła właściwej konfiguracji PBN.
     """
     from django.contrib.auth import get_user_model
 
+    from bpp.models import Uczelnia
     from pbn_api.exceptions import AlreadyEnqueuedError
 
     User = get_user_model()
@@ -147,13 +150,19 @@ def queue_pbn_export_batch(app_label, model_name, record_ids, user_id):
     except User.DoesNotExist:
         return
 
+    uczelnia = (
+        Uczelnia.objects.filter(pk=uczelnia_id).first() if uczelnia_id else None
+    )
+
     model = apps.get_model(app_label, model_name)
 
     for record_id in record_ids:
         try:
             record = model.objects.get(pk=record_id)
             try:
-                PBN_Export_Queue.objects.sprobuj_utowrzyc_wpis(user, record)
+                PBN_Export_Queue.objects.sprobuj_utowrzyc_wpis(
+                    user, record, uczelnia=uczelnia
+                )
                 # Send to PBN in background
                 queue_entry = PBN_Export_Queue.objects.filter_rekord_do_wysylki(
                     record

@@ -65,6 +65,33 @@ class TestSendToPbn:
         result = queue_item.send_to_pbn()
         assert result == SendStatus.FINISHED_OKAY
 
+    def test_send_to_pbn_forwards_entry_uczelnia(
+        self, wydawnictwo_ciagle, admin_user, uczelnia
+    ):
+        """send_to_pbn MUSI użyć uczelni zapisanej na wpisie kolejki, a nie
+        pozwolić warstwie niżej zgadywać przez get_default() (multi-hosted)."""
+        queue_item = baker.make(
+            PBN_Export_Queue,
+            rekord_do_wysylki=wydawnictwo_ciagle,
+            zamowil=admin_user,
+            uczelnia=uczelnia,
+        )
+
+        with (
+            patch(
+                "bpp.admin.helpers.pbn_api.cli.sprobuj_wyslac_do_pbn_celery"
+            ) as mock_send,
+            patch.object(
+                PBN_Export_Queue,
+                "_handle_successful_send",
+                return_value=SendStatus.FINISHED_OKAY,
+            ),
+        ):
+            mock_send.return_value = (MagicMock(), [])
+            queue_item.send_to_pbn()
+
+        assert mock_send.call_args.kwargs.get("uczelnia") == uczelnia
+
     def test_send_to_pbn_statements_resend_failed_exception(
         self, wydawnictwo_ciagle, admin_user
     ):
