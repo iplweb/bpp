@@ -1,3 +1,7 @@
+# Instaluj oba typy hooków przy `pre-commit install` — pre-commit (per
+# commit) ORAZ pre-push (range-lint poniżej + TruffleHog).
+default_install_hook_types: [pre-commit, pre-push]
+
 repos:
     - repo: https://github.com/astral-sh/ruff-pre-commit
       # Keep in sync with `ruff` pin in pyproject.toml's `[dev]` extra.
@@ -61,6 +65,22 @@ repos:
           entry: bash -c 'trufflehog git file://. --since-commit HEAD --only-verified --fail --no-update'
           language: system
           stages: ["pre-commit", "pre-push"]
+
+        # Lint CAŁEGO zakresu gałęzi (origin/dev..HEAD) tym samym ruff-em co
+        # job CI "Lint changed files" — na PRE-PUSH. Per-commit hook lintuje
+        # tylko pliki danego commita, więc problem w pliku zmienionym
+        # WCZEŚNIEJ w branchu (którego późniejsze commity nie dotykają)
+        # wychodzi inaczej dopiero w CI. Ten hook odtwarza dokładnie komendę
+        # CI (--from-ref/--to-ref, ten sam przypięty ruff), więc "przechodzi
+        # lokalnie, pada w CI" znika. Nie da się tego złapać na pre-commit:
+        # commit widzi tylko swoje staged pliki, nie cały zakres gałęzi.
+        - id: ruff-zakres-galezi
+          name: ruff + ruff-format na zakresie origin/dev..HEAD (jak CI)
+          entry: bash -c 'git fetch --no-tags -q --depth=100 origin dev || true; pre-commit run ruff --from-ref origin/dev --to-ref HEAD --show-diff-on-failure && pre-commit run ruff-format --from-ref origin/dev --to-ref HEAD --show-diff-on-failure'
+          language: system
+          stages: ["pre-push"]
+          pass_filenames: false
+          always_run: true
 
 #    - repo: https://github.com/gitguardian/ggshield
 #      rev: v1.43.0

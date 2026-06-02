@@ -25,6 +25,12 @@
     display: inline;
   }
 
+  // Przycisk "Zobacz sieć powiązań" — odstęp od sąsiada (Pokaż wszystkie
+  // prace / Szukaj publikacji); styl kolorystyczny dziedziczy po sąsiedzie.
+  &__network-btn {
+    margin-left: 0.5rem;
+  }
+
   // Show all works button
   &__show-all-btn {
     background: #27ae60;

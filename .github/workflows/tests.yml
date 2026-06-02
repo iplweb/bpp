@@ -206,6 +206,10 @@ jobs:
           PYTHON_VERSION=${{ env.PYTHON_VERSION }}
           DEBIAN_VERSION=${{ env.DEBIAN_VERSION }}
           NODEJS_VERSION=${{ env.NODEJS_VERSION }}
+          # Zmienia się co commit -> busta warstwy COPY src/ + grunt w
+          # test-runnerze (patrz ARG GIT_SHA w Dockerfile), żeby cache-from
+          # nie przywrócił nieaktualnego drzewa źródeł.
+          GIT_SHA=${{ github.sha }}
         # Registry-mode cache. mode=max stores all intermediate layers,
         # so subsequent builds where uv.lock/Dockerfile/build.txt are
         # unchanged finish in seconds. The first run after rolling out

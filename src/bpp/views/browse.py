@@ -23,6 +23,7 @@ from django.views.generic import DetailView, ListView, RedirectView, TemplateVie
 from multiseek.logic import AND, OR
 from multiseek.util import make_field
 from multiseek.views import MULTISEEK_SESSION_KEY, MULTISEEK_SESSION_KEY_REMOVED
+from siteblog.models import Article
 
 from bpp.models import (
     Autor,
@@ -42,7 +43,6 @@ from bpp.multiseek_registry import (
     ZakresLatQueryObject,
     ZrodloQueryObject,
 )
-from siteblog.models import Article
 
 logger = logging.getLogger(__name__)
 
@@ -71,9 +71,7 @@ def get_uczelnia_context_data(uczelnia, article_slug=None):
     if article_slug:
         context["article"] = get_object_or_404(Article, slug=article_slug)
     else:
-        context["news"] = Article.objects.filter(status=Article.STATUS.published)[
-            :5
-        ]
+        context["news"] = Article.objects.filter(status=Article.STATUS.published)[:5]
         # Add 5 most recently updated records
         context["recently_updated"] = Rekord.objects.order_by("-ostatnio_zmieniony")[
             :12
@@ -149,7 +147,14 @@ class AutorView(DetailView):
     model = Autor
 
     def get_context_data(self, **kwargs):
-        return super().get_context_data(typy=TYPY, **kwargs)
+        from powiazania_autorow.models import AuthorConnection
+
+        ma_powiazania = AuthorConnection.objects.filter(
+            Q(primary_author=self.object) | Q(secondary_author=self.object)
+        ).exists()
+        return super().get_context_data(
+            typy=TYPY, ma_powiazania=ma_powiazania, **kwargs
+        )
 
 
 LITERKI = "ABCDEFGHIJKLMNOPQRSTUVWYXZ"
