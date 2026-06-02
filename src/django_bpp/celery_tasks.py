@@ -58,10 +58,17 @@ app.config_from_object("django.conf:settings")
 app.autodiscover_tasks(lambda: settings.INSTALLED_APPS)
 app.autodiscover_tasks(lambda: [n.name for n in apps.get_app_configs()])
 
-# On macOS, prefork + C extensions (psycopg2, numpy, lxml, etc.) can segfault after fork.
-# Default to threads locally unless explicitly overridden.
-if platform.system() == "Darwin" and os.environ.get("CELERY_USE_PREFORK") != "1":
-    app.conf.update(worker_pool="threads", worker_concurrency=10)
+# Konfiguracja workera (pula, concurrency=75% rdzeni dla prefork, prefetch,
+# recykling procesów) — w pełni sterowalna przez zmienne środowiskowe.
+# Patrz docs/superpowers/specs/2026-06-02-single-worker-design.md.
+# macOS domyślnie threads (prefork + C-ext segfaultuje po forku).
+app.conf.update(
+    resolve_worker_config(
+        environ=os.environ,
+        system=platform.system(),
+        cpu_count=os.cpu_count(),
+    )
+)
 
 
 @worker_ready.connect
