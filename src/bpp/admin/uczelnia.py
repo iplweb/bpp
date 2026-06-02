@@ -1,4 +1,5 @@
 from django import forms
+from django.conf import settings
 from django.contrib import admin, messages
 from django.core.exceptions import ImproperlyConfigured
 from reversion.admin import VersionAdmin
@@ -62,6 +63,25 @@ class Ukryj_Status_KorektyInline(admin.StackedInline):
     extra = 0
 
 
+class UczelniaAdminForm(forms.ModelForm):
+    # `theme_name` to na poziomie modelu zwykły CharField (bez `choices`),
+    # więc deklarujemy je tu jako ChoiceField, a listę motywów pobieramy z
+    # settings.BPP_THEMES — jedynego źródła prawdy. Dzięki temu dorzucenie
+    # motywu w settings od razu pojawia się w dropdownie, bez migracji.
+    theme_name = forms.ChoiceField(label="Motyw kolorystyczny")
+
+    class Meta:
+        model = Uczelnia
+        # Tylko pole, które tu nadpisujemy — admin i tak regeneruje pełną
+        # listę pól z fieldsets przez modelform_factory, ten Meta.fields jest
+        # wtedy przesłaniany. Wystarcza do samodzielnego instancjonowania formy.
+        fields = ["theme_name"]
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["theme_name"].choices = list(settings.BPP_THEMES)
+
+
 class UczelniaAdmin(
     SiteFilteredAdminMixin,
     ConstanceUczelniaFieldsMixin,
@@ -70,6 +90,7 @@ class UczelniaAdmin(
     BaseBppAdminMixin,
     VersionAdmin,
 ):
+    form = UczelniaAdminForm
     list_display = ["nazwa", "nazwa_dopelniacz_field", "skrot", "pbn_uid"]
 
     def get_queryset(self, request):

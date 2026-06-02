@@ -71,16 +71,6 @@ class UczelniaManager(models.Manager):
         raise NotImplementedError
 
 
-THEME_CHOICES = [
-    ("app-green", "Zielony"),
-    ("app-blue", "Niebieski"),
-    ("app-orange", "Pomarańczowy"),
-    ("app-vizja", "Vizja (federacjavizja.pl — amber/granat)"),
-    ("app-mwsl", "MWSL (mwsl.eu — pomarańcz/granat)"),
-    ("app-uafm", "UAFM (uafm.edu.pl — czerwień/błękit)"),
-]
-
-
 class Uczelnia(ModelZAdnotacjami, ModelZPBN_ID, NazwaISkrot, NazwaWDopelniaczu):
     site = models.OneToOneField(
         "sites.Site",
@@ -94,7 +84,9 @@ class Uczelnia(ModelZAdnotacjami, ModelZPBN_ID, NazwaISkrot, NazwaWDopelniaczu):
         "Motyw kolorystyczny",
         max_length=50,
         default="app-green",
-        choices=THEME_CHOICES,
+        # Dozwolone wartości pochodzą z settings.BPP_THEMES, walidowane w
+        # UczelniaAdminForm — celowo BEZ `choices=` na poziomie modelu, żeby
+        # zmiana listy motywów nie generowała migracji.
     )
 
     slug = AutoSlugField(populate_from="skrot", unique=True)

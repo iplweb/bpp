@@ -587,37 +587,29 @@ COMPRESS_CSS_FILTERS = [
 COMPRESS_JS_FILTERS = ["compressor.filters.jsmin.rJSMinFilter"]
 
 COMPRESS_ROOT = STATIC_ROOT
+
+# Jedyne źródło prawdy dla listy motywów kolorystycznych front-endu:
+# (wartość pliku SCSS bez rozszerzenia, etykieta widoczna w adminie uczelni).
+# Admin (UczelniaAdminForm) czyta tę listę, a COMPRESS_OFFLINE_CONTEXT poniżej
+# jest z niej wyliczany — dodanie motywu = jeden wpis tutaj (+ ręcznie target
+# w Gruntfile.js). Walidacja wyboru żyje w formularzu, NIE w `choices` pola
+# modelu, dzięki czemu zmiana listy nie wymaga migracji.
+BPP_THEMES = [
+    ("app-green", "Zielony"),
+    ("app-blue", "Niebieski"),
+    ("app-orange", "Pomarańczowy"),
+    ("app-vizja", "Bursztynowo-granatowy"),
+    ("app-mwsl", "Pomarańczowo-granatowy"),
+    ("app-uafm", "Czerwono-błękitny"),
+]
+
 COMPRESS_OFFLINE_CONTEXT = [
     {
-        "THEME_NAME": "scss/app-blue.css",
+        "THEME_NAME": f"scss/{value}.css",
         "STATIC_URL": STATIC_URL,
         "LANGUAGE_CODE": "pl",
-    },
-    {
-        "THEME_NAME": "scss/app-green.css",
-        "STATIC_URL": STATIC_URL,
-        "LANGUAGE_CODE": "pl",
-    },
-    {
-        "THEME_NAME": "scss/app-orange.css",
-        "STATIC_URL": STATIC_URL,
-        "LANGUAGE_CODE": "pl",
-    },
-    {
-        "THEME_NAME": "scss/app-vizja.css",
-        "STATIC_URL": STATIC_URL,
-        "LANGUAGE_CODE": "pl",
-    },
-    {
-        "THEME_NAME": "scss/app-mwsl.css",
-        "STATIC_URL": STATIC_URL,
-        "LANGUAGE_CODE": "pl",
-    },
-    {
-        "THEME_NAME": "scss/app-uafm.css",
-        "STATIC_URL": STATIC_URL,
-        "LANGUAGE_CODE": "pl",
-    },
+    }
+    for value, _label in BPP_THEMES
 ]
 
 # Lista hostów obsługiwanych przez deployment.

@@ -31,13 +31,15 @@ BPP_THEMES = [
     ("app-green", "Zielony"),
     ("app-blue", "Niebieski"),
     ("app-orange", "Pomarańczowy"),
-    ("app-vizja", "Vizja (federacjavizja.pl — amber/granat)"),
-    ("app-mwsl", "MWSL (mwsl.eu — pomarańcz/granat)"),
-    ("app-uafm", "UAFM (uafm.edu.pl — czerwień/błękit)"),
+    ("app-vizja", "Bursztynowo-granatowy"),
+    ("app-mwsl", "Pomarańczowo-granatowy"),
+    ("app-uafm", "Czerwono-błękitny"),
 ]
 ```
 
-Jedyne miejsce, gdzie żyje lista motywów (wartość + etykieta).
+Jedyne miejsce, gdzie żyje lista motywów (wartość = nazwa pliku SCSS bez
+rozszerzenia + etykieta kolorystyczna; etykiety celowo bez nazw własnych
+uczelni).
 
 ### 2. `COMPRESS_OFFLINE_CONTEXT` wyliczany z `BPP_THEMES`
 
