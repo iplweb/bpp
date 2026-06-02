@@ -120,7 +120,7 @@ services:
       appserver:
         condition: service_healthy
 
-  workerserver-general:
+  workerserver:
     image: bpp_testserver:dev
     build: *testserver-build
     env_file:
@@ -129,7 +129,6 @@ services:
       - path: .env
         required: false
     environment:
-      - WEB_CONCURRENCY=4
       - ENABLE_AUTORELOAD_ON_CODE_CHANGE=${ENABLE_AUTORELOAD_ON_CODE_CHANGE:-1}
     entrypoint: ["/entrypoint-workerserver.sh"]
     restart: always
@@ -138,38 +137,6 @@ services:
     # uslug, kazda ma inne wymagania) — musimy go dolozyc per-service tutaj.
     # $$HOSTNAME (escaped $) → docker compose passuje literalne $HOSTNAME do
     # shella w kontenerze, ktory rozwija to do nazwy hosta (= identifier workera).
-    healthcheck:
-      test: ["CMD-SHELL", "celery -A django_bpp.celery_tasks inspect ping --destination celery@$$HOSTNAME"]
-      interval: 10s
-      timeout: 10s
-      start_period: 120s
-      retries: 5
-    volumes:
-      - ./src:/app/src
-      - ./src/django_bpp/staticroot:/staticroot
-      - media:/mediaroot
-    depends_on:
-      # Musi czekać na appserver, gdyż appserver aktualizuje ewentualnie baze danych.
-      # Czy nawet w ogóle ją buduje...
-      redis:
-        condition: service_healthy
-      appserver:
-        condition: service_healthy
-
-  workerserver-denorm:
-    image: bpp_testserver:dev
-    build: *testserver-build
-    env_file:
-      - path: .env.docker
-        required: true
-      - path: .env
-        required: false
-    environment:
-      - WEB_CONCURRENCY=4
-      - ENABLE_AUTORELOAD_ON_CODE_CHANGE=${ENABLE_AUTORELOAD_ON_CODE_CHANGE:-1}
-      - CELERY_QUEUE=denorm
-    entrypoint: ["/entrypoint-workerserver.sh"]
-    restart: always
     healthcheck:
       test: ["CMD-SHELL", "celery -A django_bpp.celery_tasks inspect ping --destination celery@$$HOSTNAME"]
       interval: 10s
@@ -199,9 +166,7 @@ services:
     entrypoint: ["/entrypoint-workerserver.sh"]
     command: status
     depends_on:
-      workerserver-general:
-        condition: service_healthy
-      workerserver-denorm:
+      workerserver:
         condition: service_healthy
     profiles: ['manual']
 
@@ -224,7 +189,7 @@ services:
     depends_on:
       redis:
         condition: service_healthy
-      workerserver-denorm:
+      workerserver:
         condition: service_healthy
 
   # ── Monitoring (start with: docker compose --profile monitoring up) ────
