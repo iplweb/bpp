@@ -21,7 +21,11 @@ muszą być liczone i **zapisywane osobno per uczelnia**, za każdym razem dla
 
 **Poza zakresem (osobny, następny spec — read-side):**
 - filtrowanie odczytów po uczelni oglądającego (`get_for_request`): raporty,
-  rankingi, „liczba N", `ewaluacja_optymalizacja`, API,
+  `ewaluacja_optymalizacja`, `ewaluacja_metryki`, `ewaluacja2021`, oświadczenia
+  (pełna inwentaryzacja niżej, sekcja „Następny krok: read-side"). „Liczba N",
+  rankingi i API konsumują cache pośrednio (przez `Rekord`/serializery) — do
+  zweryfikowania w read-side spec, nie inwentaryzowane tu jako bezpośredni
+  importerzy,
 - pipeline tabel tymczasowych `Cache_Punktacja_Autora_Sum` /
   `_Sum_Group` (raport_slotow),
 - integrator per-uczelnia (handoff §B), drobne (handoff §C).
@@ -116,6 +120,14 @@ i zapytaniach grupujących per uczelnia. Decyzja usera: trzymać wyprowadzaną.
 Ryzyko: pominięty odczyt `autorzy_set` przeciekłby autorów spoza uczelni.
 Mitygacja: test, w którym pominięcie zmieniłoby liczbę (asercja na dzielnik).
 
+Subtelność `m` (mianownik) a autorzy bez jednostki: `wszyscy()` dziś liczy
+WSZYSTKICH autorów rekordu. Filtr `jednostka__uczelnia=U` wyklucza autorów z
+`jednostka IS NULL` z mianownika KAŻDEJ uczelni — to świadoma konsekwencja
+„subsetu autorów z danej uczelni" (autor bez jednostki nie należy do żadnej
+uczelni), ale jest to zmiana zachowania także względem naiwnego „tagowania".
+Decyzja: akceptowalne i spójne z regułą wiodącą; do pokrycia testem
+(rekord z autorem bez jednostki → nie wpływa na `m` żadnej uczelni).
+
 ## Orkiestracja cachera
 
 - `IPunktacjaCacher(original, uczelnia)` — w pełni per uczelnia:
@@ -134,8 +146,17 @@ Mitygacja: test, w którym pominięcie zmieniłoby liczbę (asercja na dzielnik)
     globalny delete już zrobiony),
   - `uczelnia=` jawne ⇒ policz tylko tę jedną (targetowane przebudowy, testy).
 - `cached_punkty_dyscyplin` (`@denormalized`) woła bez argumentów ⇒ auto-rebuild
-  produkuje wszystkie uczelnie. `serialize()` zwraca pełny payload
-  wielouczelniany.
+  produkuje wszystkie uczelnie.
+
+Zwracana wartość `przelicz_punkty_dyscyplin()`: dziś zwraca `ipc.serialize()`
+jednej uczelni (krotka dwóch list), a wynik trafia do pola `@denormalized
+cached_punkty_dyscyplin` (TextField, używane jako artefakt denorm/change-
+detection, nie parsowane merytorycznie). Po wprowadzeniu pętli musi zwracać
+**zagregowany, deterministyczny** payload ze wszystkich uczelni (np. konkatenacja
+`serialize()` per uczelnia w stabilnej kolejności po `uczelnia_id`). Źródłem
+prawdy są wiersze w tabelach cache; format zwrotki jest elastyczny, byle
+deterministyczny (inaczej denorm „migałby" jako wiecznie brudny). Weryfikacja:
+brak kodu czytającego `cached_punkty_dyscyplin` jako dane — potwierdzić w planie.
 
 `uczelnie_rekordu()`: helper na `ModelZPrzeliczaniemDyscyplin` (lub modelu),
 zwraca distinct `Uczelnia` z `autorzy_set` afiliujących/przypiętych. Może być
@@ -196,6 +217,9 @@ dostaje na razie nowego pola — ekspozycja `uczelnia` w odczytach to read-side.
   autora (nadzbiór jest OK — uczelnia bez autorów daje zero wierszy, bez błędu).
 - Wypadnięcie uczelni: po przeniesieniu ostatniego autora U2 do U1 i przeliczeniu
   — brak osieroconych wierszy U2.
+- Autor bez jednostki: nie wpływa na mianownik `m` żadnej uczelni.
+- Determinizm zwrotki `przelicz_punkty_dyscyplin()`: dwa przeliczenia tego samego
+  rekordu dają identyczny string (denorm nie jest wiecznie brudny).
 
 ## Komendy weryfikacji
 
