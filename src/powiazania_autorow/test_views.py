@@ -88,3 +88,22 @@ def test_strona_grafu_renderuje_kontener(client):
 def test_strona_grafu_404_dla_nieistniejacego_autora(client):
     url = reverse("bpp:browse_autor_powiazania", args=[99999])
     assert client.get(url).status_code == 404
+
+
+@pytest.mark.django_db
+def test_strona_autora_ma_flage_powiazan_true(client):
+    centrum = baker.make(Autor, pokazuj=True)
+    sasiad = baker.make(Autor, pokazuj=True)
+    AuthorConnection.objects.create(
+        primary_author=centrum, secondary_author=sasiad, shared_publications_count=1
+    )
+    resp = client.get(reverse("bpp:browse_autor", args=[centrum.pk]))
+    assert resp.status_code == 200
+    assert resp.context["ma_powiazania"] is True
+
+
+@pytest.mark.django_db
+def test_strona_autora_ma_flage_powiazan_false(client):
+    centrum = baker.make(Autor, pokazuj=True)
+    resp = client.get(reverse("bpp:browse_autor", args=[centrum.pk]))
+    assert resp.context["ma_powiazania"] is False

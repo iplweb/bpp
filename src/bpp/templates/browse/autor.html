@@ -35,6 +35,12 @@
                         <span class="fi fi-page-edit"></span>Otwórz do edycji
                     </a>
                 {% endif %}
+                {% if ma_powiazania %}
+                    <a href="{% url 'bpp:browse_autor_powiazania' autor.pk %}"
+                       class="jednostka-remap-button">
+                        <span class="fi fi-share"></span>Zobacz sieć powiązań
+                    </a>
+                {% endif %}
             </div>
         </div>
     </div>

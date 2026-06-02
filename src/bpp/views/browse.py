@@ -149,7 +149,14 @@ class AutorView(DetailView):
     model = Autor
 
     def get_context_data(self, **kwargs):
-        return super().get_context_data(typy=TYPY, **kwargs)
+        from powiazania_autorow.models import AuthorConnection
+
+        ma_powiazania = AuthorConnection.objects.filter(
+            Q(primary_author=self.object) | Q(secondary_author=self.object)
+        ).exists()
+        return super().get_context_data(
+            typy=TYPY, ma_powiazania=ma_powiazania, **kwargs
+        )
 
 
 LITERKI = "ABCDEFGHIJKLMNOPQRSTUVWYXZ"
