@@ -7,7 +7,6 @@ import logging
 
 from django.db import IntegrityError
 
-from bpp.models import Uczelnia
 from import_common.normalization import normalize_doi
 
 logger = logging.getLogger(__name__)
@@ -91,7 +90,7 @@ def _populate_pbn_result(result, data, session):
         return
 
     result["pbn_mongo_id"] = mongo_id
-    uczelnia = Uczelnia.objects.get_default()
+    uczelnia = session.uczelnia
     if uczelnia and uczelnia.pbn_api_root:
         from bpp.const import LINK_PBN_DO_PUBLIKACJI
 
@@ -128,7 +127,7 @@ def _check_pbn_by_doi(session):
     try:
         from ..providers.pbn import _get_pbn_client
 
-        client = _get_pbn_client()
+        client = _get_pbn_client(session.uczelnia)
     except Exception as e:
         logger.warning("Nie można utworzyć klienta PBN: %s", e)
         return None

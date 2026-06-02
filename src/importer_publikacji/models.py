@@ -36,6 +36,18 @@ class ImportSession(models.Model):
         related_name="importer_modified_sessions",
         verbose_name="ostatnio zmodyfikował",
     )
+    uczelnia = models.ForeignKey(
+        "bpp.Uczelnia",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="importer_publikacji_sessions",
+        verbose_name="uczelnia",
+        help_text=(
+            "Uczelnia hosta, z którego utworzono sesję (multi-hosted). "
+            "Steruje konfiguracją PBN użytą do sprawdzenia/eksportu."
+        ),
+    )
     provider_name = models.CharField(
         "dostawca danych",
         max_length=50,
