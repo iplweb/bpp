@@ -1,6 +1,5 @@
 """Initial setup for PBN import - languages, countries, disciplines"""
 
-from bpp.models import Uczelnia
 from import_common.core import matchuj_uczelnie
 from pbn_integrator.utils import (
     integruj_jezyki,
@@ -20,7 +19,7 @@ class InitialSetup(ImportStepBase):
     def run(self, uczelnia=None):
         """Execute initial setup"""
         if uczelnia is None:
-            uczelnia = Uczelnia.objects.get_default()
+            uczelnia = self.uczelnia
 
         # Check if we have a PBN client
         if self.client is None:

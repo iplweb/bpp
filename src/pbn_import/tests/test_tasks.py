@@ -197,7 +197,7 @@ def test_run_pbn_import_cancelled(uczelnia, admin_user):
     """Test run_pbn_import respects cancelled status set during import."""
     session = ImportSession.objects.create(user=admin_user, status="pending", config={})
 
-    def simulate_cancellation(sess, pbn_client, config):
+    def simulate_cancellation(sess, pbn_client, config, uczelnia=None):
         """Simulate ImportManager that detects cancellation during run."""
         # During run, session gets cancelled (e.g., user cancels via UI)
         sess.status = "cancelled"
@@ -213,6 +213,31 @@ def test_run_pbn_import_cancelled(uczelnia, admin_user):
 
     session.refresh_from_db()
     assert session.status == "cancelled"
+
+
+@pytest.mark.django_db
+def test_import_manager_uzywa_swojej_uczelni_nie_get_default(admin_user):
+    """Faza 3 (multi-hosted): ImportManager propaguje SWOJĄ uczelnię do
+    ``_refresh_pbn_client_after_setup``, zamiast zgadywać ``get_default()``
+    (pierwszą-z-brzegu). Failowałby przed Fazą 3."""
+    from bpp.models import Uczelnia
+    from pbn_api.models import Institution
+    from pbn_import.utils.import_manager import ImportManager
+
+    inst1 = baker.make(Institution)
+    inst2 = baker.make(Institution)
+    u1 = baker.make(Uczelnia, pbn_uid=inst1)  # get_default ją zwróci
+    u2 = baker.make(Uczelnia, pbn_uid=inst2, pbn_integracja=False)
+    assert Uczelnia.objects.get_default() == u1
+
+    session = baker.make(ImportSession, user=admin_user, config={})
+    manager = ImportManager(session, client=None, uczelnia=u2)
+    assert manager.uczelnia == u2
+
+    manager._refresh_pbn_client_after_setup()
+
+    # Użył pbn_uid u2 (inst2), nie get_default()=u1 (inst1).
+    assert session.config["uczelnia_pbn_uid"] == inst2.pk
 
 
 @pytest.mark.django_db

@@ -88,9 +88,12 @@ class ImportStepBase:
     step_name: str = "Unknown Step"
     step_description: str = "Przetwarzanie..."
 
-    def __init__(self, session: ImportSession, client=None):
+    def __init__(self, session: ImportSession, client=None, uczelnia=None):
         self.session = session
         self.client = client
+        # Uczelnia kontekstu importu (multi-hosted) — kroki czytają z niej
+        # config zamiast zgadywać get_default().
+        self.uczelnia = uczelnia
         self.start_time = None
         self.processed_count = 0
         self.total_count = 0

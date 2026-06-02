@@ -5,7 +5,6 @@ from bpp.models import (
     Jednostka,
     Rekord,
     Rodzaj_Zrodla,
-    Uczelnia,
     Wersja_Tekstu_OpenAccess,
     Wydawnictwo_Ciagle,
     Wydawnictwo_Zwarte,
@@ -26,8 +25,8 @@ class PublicationImporter(ImportStepBase):
     step_name = "publication_import"
     step_description = "Import publikacji"
 
-    def __init__(self, session, client=None, delete_existing=False):
-        super().__init__(session, client)
+    def __init__(self, session, client=None, delete_existing=False, uczelnia=None):
+        super().__init__(session, client, uczelnia=uczelnia)
         self.delete_existing = delete_existing
         self.default_jednostka = None
 
@@ -76,7 +75,7 @@ class PublicationImporter(ImportStepBase):
     def _setup_uczelnia_and_jednostka(self, uczelnia=None):
         """Setup uczelnia and default jednostka for import."""
         if uczelnia is None:
-            uczelnia = Uczelnia.objects.get_default()
+            uczelnia = self.uczelnia
 
         if not uczelnia or not uczelnia.pbn_uid_id:
             self.log(

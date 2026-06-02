@@ -1,6 +1,6 @@
 """Institution import utilities"""
 
-from bpp.models import Jednostka, Jednostka_Wydzial, Uczelnia, Wydzial
+from bpp.models import Jednostka, Jednostka_Wydzial, Wydzial
 
 from .base import ImportStepBase
 
@@ -86,10 +86,11 @@ class InstitutionImporter(ImportStepBase):
         self,
         session,
         client=None,
+        uczelnia=None,
         wydzial_domyslny="Wydział Domyślny",
         wydzial_domyslny_skrot=None,
     ):
-        super().__init__(session, client)
+        super().__init__(session, client, uczelnia=uczelnia)
         self.wydzial_domyslny = wydzial_domyslny
         self.wydzial_domyslny_skrot = wydzial_domyslny_skrot or zrob_skrot(
             wydzial_domyslny
@@ -98,7 +99,7 @@ class InstitutionImporter(ImportStepBase):
     def run(self, uczelnia=None):
         """Setup default institutions"""
         if uczelnia is None:
-            uczelnia = Uczelnia.objects.get_default()
+            uczelnia = self.uczelnia
 
         if not uczelnia:
             raise ValueError(

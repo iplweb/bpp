@@ -21,10 +21,17 @@ class ImportManager:
     """Orchestrates the entire PBN import process"""
 
     def __init__(
-        self, session: ImportSession, client, config: dict[str, Any] | None = None
+        self,
+        session: ImportSession,
+        client,
+        config: dict[str, Any] | None = None,
+        uczelnia=None,
     ):
         self.session = session
         self.client = client
+        # Uczelnia importu (multi-hosted) — propagowana do kroków, żeby NIE
+        # zgadywały get_default() i nie przebudowały klienta na złą uczelnię.
+        self.uczelnia = uczelnia
         self.config = config or {}
         self.pbn_authorized = False
         self.pbn_error_message = None
@@ -100,12 +107,10 @@ class ImportManager:
         configuration. This method refreshes the client after InitialSetup
         to ensure proper authorization for subsequent API calls.
         """
-        from bpp.models import Uczelnia
-
         # Refresh uczelnia from database to get changes made by
         # InitialSetup
         if uczelnia is None:
-            uczelnia = Uczelnia.objects.get_default()
+            uczelnia = self.uczelnia
 
         if uczelnia is None:
             logger.warning("Nie znaleziono uczelni po InitialSetup")
@@ -230,7 +235,10 @@ class ImportManager:
         """Execute a single import step"""
         step_class = step_config["class"]
         step = step_class(
-            session=self.session, client=self.client, **step_config["args"]
+            session=self.session,
+            client=self.client,
+            uczelnia=self.uczelnia,
+            **step_config["args"],
         )
 
         logger.info(

@@ -93,7 +93,7 @@ def run_pbn_import(self, session_id, uczelnia_id=None):
             pbn_client = None
 
         # Create and run ImportManager
-        import_manager = ImportManager(session, pbn_client, config)
+        import_manager = ImportManager(session, pbn_client, config, uczelnia=uczelnia)
 
         # Run the import
         result = import_manager.run()

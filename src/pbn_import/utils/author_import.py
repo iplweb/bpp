@@ -1,6 +1,5 @@
 """Author import utilities"""
 
-from bpp.models import Uczelnia
 from pbn_integrator.utils import integruj_autorow_z_uczelni, pobierz_ludzi_z_uczelni
 
 from .base import ImportStepBase
@@ -15,7 +14,7 @@ class AuthorImporter(ImportStepBase):
     def run(self, uczelnia=None):
         """Import authors"""
         if uczelnia is None:
-            uczelnia = Uczelnia.objects.get_default()
+            uczelnia = self.uczelnia
 
         if not uczelnia or not uczelnia.pbn_uid_id:
             self.log(

@@ -11,7 +11,6 @@ from django.db import transaction
 from bpp.models import (
     Status_Korekty,
     Typ_Odpowiedzialnosci,
-    Uczelnia,
     Wydawnictwo_Ciagle,
     Wydawnictwo_Zwarte,
 )
@@ -122,7 +121,8 @@ def _add_authors_to_record(session, record, uczelnia=None):
     typ_aut = Typ_Odpowiedzialnosci.objects.get(skrot="aut.")
 
     if uczelnia is None:
-        uczelnia = Uczelnia.objects.get_default()
+        # Uczelnia sesji (multi-hosted) — obca_jednostka jest per-uczelnia.
+        uczelnia = session.uczelnia
     obca = uczelnia.obca_jednostka if uczelnia else None
 
     for imported_author in authors:
