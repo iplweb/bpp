@@ -155,6 +155,7 @@ src/ewaluacja_optymalizuj_publikacje/static/ewaluacja_optymalizuj_publikacje/css
 
 # esbuild output
 src/bpp/static/bpp/js/dist/
+src/powiazania_autorow/static/powiazania_autorow/js/dist/
 src/bpp_setup_wizard/static/bpp_setup_wizard/css/bpp_setup_wizard.css
 src/ewaluacja_dwudyscyplinowcy/static/ewaluacja_dwudyscyplinowcy/css/ewaluacja_dwudyscyplinowcy.css
 src/ewaluacja_liczba_n/static/ewaluacja_liczba_n/css/ewaluacja_liczba_n.css

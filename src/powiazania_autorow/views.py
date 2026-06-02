@@ -1,6 +1,9 @@
 from collections import defaultdict
+from contextlib import contextmanager
 
+from django.db import connection, transaction
 from django.db.models import Q
+from django.db.utils import OperationalError
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404
 from django.views.generic import TemplateView, View
@@ -20,6 +23,96 @@ MAKS_WEZLOW_SIECI = 400
 
 # Backstop dla krawędzi "poprzecznych" (powiązania wewnątrz widocznej grupy).
 MAKS_KRAWEDZI_WEWN = 3000
+
+# Źródła/wydawcy z mniejszą liczbą prac nie trafiają do comboboxu (szum).
+MIN_PRAC_ZRODLO = 4
+
+# Przy aktywnym filtrze (rok/źródło/wydawca) liczymy współautorstwa z cache
+# (self-join na bpp_autorzy_mat) zamiast z gotowego AuthorConnection — tańszego
+# precomputed odpowiednika nie ma. Batch per poziom jest tani, ale głębokość
+# tniemy dodatkowo, żeby self-join nie rozjechał się przy gęstych sieciach.
+MAKS_GLEBOKOSC_FILTR = 4
+
+# Twardy limit czasu (ms) dla zapytań liczonych z cache przy aktywnym filtrze.
+# Patologiczny self-join `rekord__autorzy` na gęstej sieci ma ubić własny
+# request (timeout → 503), zamiast męczyć bazę aż do timeoutu connection-poola.
+STATEMENT_TIMEOUT_FILTR_MS = 8000
+
+# Maks. liczba id źródeł/wydawców branych z requestu — ochrona przed
+# gigantycznym `IN (...)` podsuniętym ręcznie spreparowanym requestem.
+MAKS_ZRODEL_WYDAWCOW = 100
+
+
+@contextmanager
+def _limit_czasu(ms):
+    """Ogranicza czas pojedynczego zapytania do `ms` przez `SET LOCAL
+    statement_timeout`. `SET LOCAL` żyje tylko w obrębie transakcji, więc
+    całość owijamy w `transaction.atomic()` — po wyjściu limit znika.
+    Przekroczenie → `OperationalError` (łapane wyżej, zwracamy 503).
+    """
+    with transaction.atomic():
+        with connection.cursor() as c:
+            c.execute("SET LOCAL statement_timeout = %s", [ms])
+        yield
+
+
+class Filtr:
+    """Filtr prac po roku (od-do) oraz po WIELU źródłach/wydawcach (oba
+    indeksowane FK w bpp_rekord_mat). Źródła i wydawcy łączymy OR-em (praca z
+    któregokolwiek zaznaczonego), rok to AND. `aktywny()` decyduje, czy w ogóle
+    schodzimy ze ścieżki AuthorConnection na liczenie z cache.
+    """
+
+    def __init__(self, rok_od=None, rok_do=None, zrodla=None, wydawcy=None):
+        self.rok_od = rok_od
+        self.rok_do = rok_do
+        self.zrodla = zrodla or []
+        self.wydawcy = wydawcy or []
+
+    def aktywny(self):
+        return bool(self.rok_od or self.rok_do or self.zrodla or self.wydawcy)
+
+    def zastosuj(self, qs):
+        """Nakłada WHERE-y na queryset po `Autorzy` (przez relację rekord)."""
+        if self.rok_od:
+            qs = qs.filter(rekord__rok__gte=self.rok_od)
+        if self.rok_do:
+            qs = qs.filter(rekord__rok__lte=self.rok_do)
+        if self.zrodla or self.wydawcy:
+            src = Q()
+            if self.zrodla:
+                src |= Q(rekord__zrodlo_id__in=self.zrodla)
+            if self.wydawcy:
+                src |= Q(rekord__wydawca_id__in=self.wydawcy)
+            qs = qs.filter(src)
+        return qs
+
+
+def _int_or_none(v):
+    try:
+        return int(v)
+    except (TypeError, ValueError):
+        return None
+
+
+def _ints(values):
+    """Lista intów z listy stringów (pomija śmieci)."""
+    out = []
+    for v in values:
+        iv = _int_or_none(v)
+        if iv is not None:
+            out.append(iv)
+    return out
+
+
+def _filtr_z_request(request):
+    return Filtr(
+        rok_od=_int_or_none(request.GET.get("rok_od")),
+        rok_do=_int_or_none(request.GET.get("rok_do")),
+        # cap listy id, żeby nie zbudować gigantycznego `IN (...)`
+        zrodla=_ints(request.GET.getlist("zrodlo"))[:MAKS_ZRODEL_WYDAWCOW],
+        wydawcy=_ints(request.GET.getlist("wydawca"))[:MAKS_ZRODEL_WYDAWCOW],
+    )
 
 
 def _etykieta(autor):
@@ -139,6 +232,39 @@ def _kandydaci_frontu(front_set):
     return kandydaci, inni
 
 
+def _kandydaci_cache(front_set, filtr):
+    """Odpowiednik `_kandydaci_frontu`, ale liczony z materializowanego cache
+    z filtrem rok/źródło/wydawca. JEDNO zapytanie na poziom: self-join po
+    `rekord__autorzy` (a1 = autor frontu, a2 = współautor na tej samej pracy),
+    `Count(DISTINCT rekord)` = liczba wspólnych prac. `rekord_id` to klucz
+    krotkowy (TupleField), więc liczymy przez relację, nie przez listę id.
+    """
+    from django.db.models import Count, F
+
+    from bpp.models import Autorzy
+
+    rows = (
+        filtr.zastosuj(Autorzy.objects.filter(autor_id__in=front_set))
+        .values("autor_id", co=F("rekord__autorzy__autor_id"))
+        .annotate(shared=Count("rekord_id", distinct=True))
+    )
+
+    wspolne = defaultdict(dict)  # frontier_id -> {co_id: shared}
+    for r in rows:
+        fa = r["autor_id"]
+        co = r["co"]
+        if co is None or co == fa:
+            continue
+        wspolne[fa][co] = r["shared"]
+
+    kandydaci = {}
+    inni = set()
+    for fa, d in wspolne.items():
+        kandydaci[fa] = sorted(d.items(), key=lambda kv: (-kv[1], kv[0]))
+        inni.update(d.keys())
+    return kandydaci, inni
+
+
 def _top_widoczni(lista, widoczni, topn):
     """Z uporządkowanej listy (id, shared) bierze top-N widocznych sąsiadów.
 
@@ -154,12 +280,14 @@ def _top_widoczni(lista, widoczni, topn):
     return wynik
 
 
-def _bfs_siec(centrum_id, depth, topn):
-    """BFS po AuthorConnection od centrum do głębokości `depth`.
+def _bfs_siec(centrum_id, depth, topn, filtr=None):
+    """BFS od centrum do głębokości `depth`.
 
-    Zwraca (level_of, parent_of, krawedzie, przyciecie). `przyciecie` jest
-    True, gdy trafiliśmy w MAKS_WEZLOW_SIECI i sieć została obcięta.
+    Bez filtra czerpie z gotowego AuthorConnection; z filtrem (rok/źródło/
+    wydawca) liczy współautorstwa z cache. Zwraca (level_of, parent_of,
+    krawedzie, przyciecie); `przyciecie` = trafienie w MAKS_WEZLOW_SIECI.
     """
+    z_filtrem = filtr is not None and filtr.aktywny()
     visited = {centrum_id}
     level_of = {centrum_id: 0}
     parent_of = {centrum_id: None}
@@ -170,7 +298,10 @@ def _bfs_siec(centrum_id, depth, topn):
     for lvl in range(1, depth + 1):
         if not frontier:
             break
-        kandydaci, inni = _kandydaci_frontu(set(frontier))
+        if z_filtrem:
+            kandydaci, inni = _kandydaci_cache(set(frontier), filtr)
+        else:
+            kandydaci, inni = _kandydaci_frontu(set(frontier))
         widoczni = set(
             Autor.objects.filter(id__in=inni, pokazuj=True).values_list("id", flat=True)
         )
@@ -196,13 +327,51 @@ def _bfs_siec(centrum_id, depth, topn):
     return level_of, parent_of, krawedzie, przyciecie
 
 
-def _krawedzie_wewnatrz(visited, krawedzie):
+def _pary_wewnatrz_cache(visited, filtr):
+    """Pary (a, b) -> liczba wspólnych prac MIĘDZY autorami z `visited`, liczone
+    z cache po filtrze (jeden self-join `rekord__autorzy`, oba końce w
+    `visited`). Dla widoku z filtrem — AuthorConnection nie zna roku/źródła."""
+    from django.db.models import Count, F
+
+    from bpp.models import Autorzy
+
+    rows = (
+        filtr.zastosuj(Autorzy.objects.filter(autor_id__in=visited))
+        .filter(rekord__autorzy__autor_id__in=visited)
+        .values("autor_id", co=F("rekord__autorzy__autor_id"))
+        .annotate(shared=Count("rekord_id", distinct=True))
+    )
+    pary = {}
+    for r in rows:
+        a = r["autor_id"]
+        b = r["co"]
+        if b is None or a == b:
+            continue
+        # każda nieskierowana para pada dwa razy (a→b i b→a) z tym samym shared
+        klucz = (a, b) if a < b else (b, a)
+        pary[klucz] = r["shared"]
+    return pary
+
+
+def _krawedzie_wewnatrz(visited, krawedzie, filtr=None):
     """Wszystkie powiązania między autorami z `visited`, których nie ma w
     drzewie rozwijania (`krawedzie`). To "poprzeczne" linki — np. liść, który
     współpracował też z autorem z wcześniejszego poziomu. Zwraca listę
     {source, target, shared} (przycięta do MAKS_KRAWEDZI_WEWN).
     """
     tree_pairs = {tuple(sorted((a, b))) for a, b, _ in krawedzie}
+    wynik = []
+
+    if filtr is not None and filtr.aktywny():
+        pary = _pary_wewnatrz_cache(visited, filtr)
+        for (a, b), sh in sorted(pary.items(), key=lambda kv: -kv[1]):
+            if (a, b) in tree_pairs:
+                continue
+            wynik.append({"source": a, "target": b, "shared": sh})
+            if len(wynik) >= MAKS_KRAWEDZI_WEWN:
+                break
+        return wynik
+
     wewn = (
         AuthorConnection.objects.filter(
             primary_author_id__in=visited, secondary_author_id__in=visited
@@ -210,7 +379,6 @@ def _krawedzie_wewnatrz(visited, krawedzie):
         .values("primary_author_id", "secondary_author_id", "shared_publications_count")
         .order_by("-shared_publications_count")
     )
-    wynik = []
     for c in wewn:
         a = c["primary_author_id"]
         b = c["secondary_author_id"]
@@ -224,6 +392,63 @@ def _krawedzie_wewnatrz(visited, krawedzie):
         if len(wynik) >= MAKS_KRAWEDZI_WEWN:
             break
     return wynik
+
+
+def _sasiedzi_authorconnection(autor):
+    """Sąsiedzi centrum z gotowego AuthorConnection (ścieżka bez filtra)."""
+    polaczenia = (
+        AuthorConnection.objects.filter(
+            Q(primary_author_id=autor.pk) | Q(secondary_author_id=autor.pk)
+        )
+        .select_related(
+            "primary_author",
+            "primary_author__tytul",
+            "secondary_author",
+            "secondary_author__tytul",
+        )
+        .order_by("-shared_publications_count")
+    )
+    wybrani = []
+    for c in polaczenia:
+        inny = (
+            c.secondary_author if c.primary_author_id == autor.pk else c.primary_author
+        )
+        if not inny.pokazuj:
+            continue
+        wybrani.append((inny, c.shared_publications_count))
+        if len(wybrani) >= MAKS_SASIADOW:
+            break
+    return wybrani
+
+
+def _sasiedzi_cache(autor, filtr):
+    """Sąsiedzi centrum policzeni z cache po filtrze (rok/źródło/wydawca)."""
+    kandydaci, _ = _kandydaci_cache({autor.pk}, filtr)
+    pary = kandydaci.get(autor.pk, [])  # [(co_id, shared)] malejąco
+    co_ids = [a for a, _ in pary]
+    widoczne = set(
+        Autor.objects.filter(id__in=co_ids, pokazuj=True).values_list("id", flat=True)
+    )
+    pary = [(a, s) for a, s in pary if a in widoczne][:MAKS_SASIADOW]
+    autorzy = {
+        a.pk: a
+        for a in Autor.objects.filter(id__in=[a for a, _ in pary]).select_related(
+            "tytul"
+        )
+    }
+    return [(autorzy[a], s) for a, s in pary if a in autorzy]
+
+
+def _zakres_lat(autor_id):
+    """(min, max) rok prac autora — do ustawienia granic suwaka lat w UI."""
+    from django.db.models import Max, Min
+
+    from bpp.models import Autorzy
+
+    agg = Autorzy.objects.filter(autor_id=autor_id).aggregate(
+        mn=Min("rekord__rok"), mx=Max("rekord__rok")
+    )
+    return agg["mn"], agg["mx"]
 
 
 class GrafPowiazanView(TemplateView):
@@ -249,33 +474,24 @@ class GrafPowiazanDaneView(View):
     def get(self, request, pk):
         autor = get_object_or_404(Autor.objects.select_related("tytul"), pk=pk)
         pbn_root = _pbn_root()
+        filtr = _filtr_z_request(request)
 
-        polaczenia = (
-            AuthorConnection.objects.filter(
-                Q(primary_author_id=pk) | Q(secondary_author_id=pk)
-            )
-            .select_related(
-                "primary_author",
-                "primary_author__tytul",
-                "secondary_author",
-                "secondary_author__tytul",
-            )
-            .order_by("-shared_publications_count")
-        )
-
-        wybrani = []  # [(Autor, shared_count), ...] po filtrze pokazuj
-        for c in polaczenia:
-            # pk z URL-a bywa str — porównujemy z autor.pk (int z bazy).
-            inny = (
-                c.secondary_author
-                if c.primary_author_id == autor.pk
-                else c.primary_author
-            )
-            if not inny.pokazuj:
-                continue
-            wybrani.append((inny, c.shared_publications_count))
-            if len(wybrani) >= MAKS_SASIADOW:
-                break
+        if filtr.aktywny():
+            # liczenie z cache (self-join) pod twardym statement_timeout —
+            # patologiczny filtr ubija własny request, nie bazę
+            try:
+                with _limit_czasu(STATEMENT_TIMEOUT_FILTR_MS):
+                    wybrani = _sasiedzi_cache(autor, filtr)
+            except OperationalError:
+                return JsonResponse(
+                    {
+                        "error": "Zapytanie z filtrem trwało za długo — "
+                        "zawęź zakres lat lub liczbę źródeł."
+                    },
+                    status=503,
+                )
+        else:
+            wybrani = _sasiedzi_authorconnection(autor)
 
         metryki = _metryki_prac([autor.pk] + [a.pk for a, _ in wybrani])
 
@@ -310,9 +526,40 @@ class GrafPowiazanSiecView(View):
         autor = get_object_or_404(Autor, pk=pk)
         depth = _int_param(request, "depth", 2, 1, 10)
         topn = _int_param(request, "topn", 15, 1, 50)
+        filtr = _filtr_z_request(request)
+        if filtr.aktywny():
+            # przy liczeniu z cache tniemy głębokość (self-join jest droższy)
+            depth = min(depth, MAKS_GLEBOKOSC_FILTR)
 
-        level_of, parent_of, krawedzie, przyciecie = _bfs_siec(autor.pk, depth, topn)
-        visited = set(level_of.keys())
+        if filtr.aktywny():
+            # BFS i krawędzie poprzeczne liczone z cache (self-join) pod
+            # twardym statement_timeout — patologiczna gęsta sieć ubija własny
+            # request (503), zamiast męczyć bazę
+            try:
+                with _limit_czasu(STATEMENT_TIMEOUT_FILTR_MS):
+                    level_of, parent_of, krawedzie, przyciecie = _bfs_siec(
+                        autor.pk, depth, topn, filtr
+                    )
+                    visited = set(level_of.keys())
+                    extra_edges = _krawedzie_wewnatrz(visited, krawedzie, filtr)
+            except OperationalError:
+                return JsonResponse(
+                    {
+                        "error": "Zapytanie z filtrem trwało za długo — "
+                        "zawęź zakres lat lub liczbę źródeł."
+                    },
+                    status=503,
+                )
+        else:
+            level_of, parent_of, krawedzie, przyciecie = _bfs_siec(
+                autor.pk, depth, topn, filtr
+            )
+            visited = set(level_of.keys())
+            # Krawędzie "poprzeczne": wszystkie powiązania MIĘDZY widocznymi
+            # autorami, których nie ma w drzewie rozwijania. UI pokazuje je na
+            # żądanie (przełącznik), żeby zobaczyć powiązania wewnątrz grupy bez
+            # klikania każdego autora.
+            extra_edges = _krawedzie_wewnatrz(visited, krawedzie, filtr)
 
         autorzy = {
             a.pk: a
@@ -332,11 +579,8 @@ class GrafPowiazanSiecView(View):
             nodes.append(dane)
 
         edges = [{"source": a, "target": b, "shared": sh} for a, b, sh in krawedzie]
-        # Krawędzie "poprzeczne": wszystkie powiązania MIĘDZY widocznymi
-        # autorami, których nie ma w drzewie rozwijania. UI pokazuje je na
-        # żądanie (przełącznik), żeby zobaczyć powiązania wewnątrz grupy bez
-        # klikania każdego autora.
-        extra_edges = _krawedzie_wewnatrz(visited, krawedzie)
+
+        rok_min, rok_max = _zakres_lat(autor.pk)
 
         return JsonResponse(
             {
@@ -345,5 +589,65 @@ class GrafPowiazanSiecView(View):
                 "edges": edges,
                 "extra_edges": extra_edges,
                 "truncated": przyciecie,
+                "rok_min": rok_min,
+                "rok_max": rok_max,
+            }
+        )
+
+
+class GrafPowiazanZrodlaView(View):
+    """Zwrotna lista źródeł i wydawców prac autora centralnego (z filtrem roku).
+
+    Zasila combobox "pokazuj tylko prace z:" — każda pozycja z liczbą prac,
+    np. "Blood (500)". Dwa GROUP BY na cache (bpp_autorzy_mat ⋈ bpp_rekord_mat).
+    """
+
+    def get(self, request, pk):
+        from django.db.models import Count
+
+        from bpp.models import Autorzy
+
+        autor = get_object_or_404(Autor, pk=pk)
+        filtr = _filtr_z_request(request)
+
+        base = Autorzy.objects.filter(autor_id=autor.pk)
+        if filtr.rok_od:
+            base = base.filter(rekord__rok__gte=filtr.rok_od)
+        if filtr.rok_do:
+            base = base.filter(rekord__rok__lte=filtr.rok_do)
+
+        zrodla = (
+            base.filter(rekord__zrodlo__isnull=False)
+            .values("rekord__zrodlo_id", "rekord__zrodlo__nazwa")
+            .annotate(n=Count("rekord_id", distinct=True))
+            .filter(n__gte=MIN_PRAC_ZRODLO)
+            .order_by("-n")[:100]
+        )
+        wydawcy = (
+            base.filter(rekord__wydawca__isnull=False)
+            .values("rekord__wydawca_id", "rekord__wydawca__nazwa")
+            .annotate(n=Count("rekord_id", distinct=True))
+            .filter(n__gte=MIN_PRAC_ZRODLO)
+            .order_by("-n")[:100]
+        )
+
+        return JsonResponse(
+            {
+                "zrodla": [
+                    {
+                        "id": z["rekord__zrodlo_id"],
+                        "nazwa": z["rekord__zrodlo__nazwa"],
+                        "n": z["n"],
+                    }
+                    for z in zrodla
+                ],
+                "wydawcy": [
+                    {
+                        "id": w["rekord__wydawca_id"],
+                        "nazwa": w["rekord__wydawca__nazwa"],
+                        "n": w["n"],
+                    }
+                    for w in wydawcy
+                ],
             }
         )

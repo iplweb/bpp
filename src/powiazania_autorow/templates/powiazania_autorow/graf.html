@@ -13,6 +13,7 @@
 {% block content %}
     <h1>Sieć powiązań — {{ autor }}</h1>
 
+    {# --- podstawowe kontrolki (zawsze widoczne) --- #}
     <div class="graf-controls"
          style="display: flex; flex-wrap: wrap; align-items: flex-end;
                 gap: 8px 24px;">
@@ -53,6 +54,49 @@
                 <option value="pk">Sumarycznego PK</option>
             </select>
         </div>
+        <button type="button" id="graf-zaawansowane-toggle"
+                class="button small secondary" style="margin: 0; height: 2.4rem;">
+            <span class="fi-widget"></span> Opcje zaawansowane ▾
+        </button>
+    </div>
+
+    {# --- opcje zaawansowane (domyślnie schowane) --- #}
+    <div id="graf-zaawansowane"
+         style="display: none; flex-wrap: wrap; align-items: flex-end;
+                gap: 8px 24px; margin-top: 8px; padding: 10px;
+                background: #f7f7f7; border: 1px solid #e3e3e3;
+                border-radius: 4px;">
+        <div>
+            <label style="display: block;">Rok (od–do)</label>
+            <input type="number" id="graf-rok-od" autocomplete="off"
+                   placeholder="od"
+                   style="margin: 0; height: 2.4rem; width: 104px;">
+            <input type="number" id="graf-rok-do" autocomplete="off"
+                   placeholder="do"
+                   style="margin: 0; height: 2.4rem; width: 104px;">
+        </div>
+        <div style="position: relative;">
+            <label style="display: block;">Pokazuj tylko prace z</label>
+            <button type="button" id="graf-zrodla-toggle"
+                    class="button small secondary"
+                    style="margin: 0; height: 2.4rem;">
+                Wszystkie źródła ▾
+            </button>
+            <div id="graf-zrodla-panel"
+                 style="display: none; position: absolute; z-index: 1002;
+                        top: 100%; left: 0; min-width: 280px; max-height: 360px;
+                        overflow-y: auto; background: #fff; border: 1px solid #ccc;
+                        border-radius: 4px; box-shadow: 0 4px 14px rgba(0,0,0,.18);
+                        padding: 8px;">
+                <input type="search" id="graf-zrodla-filter" autocomplete="off"
+                       placeholder="filtruj…" style="width: 100%; margin: 0 0 4px;">
+                <div style="text-align: right; margin-bottom: 4px;">
+                    <a href="#" id="graf-zrodla-clear"
+                       style="font-size: 12px;">odznacz wszystko</a>
+                </div>
+                <div id="graf-zrodla-lista"></div>
+            </div>
+        </div>
         <div>
             <label for="graf-szukaj" style="display: block;">
                 Szukaj autora
@@ -87,7 +131,7 @@
             <span class="fi-download"></span> SVG
         </button>
     </div>
-    <small style="display: block; color: #666; margin: 2px 0 12px;">
+    <small style="display: block; color: #666; margin: 6px 0 12px;">
         Na każdym węźle pokazujemy najpierw współautorów z największą liczbą
         wspólnych publikacji. Klik w węzeł dowija jego dalszych współautorów.
     </small>
@@ -98,6 +142,7 @@
              data-autor-label="{{ autor.imiona }} {{ autor.nazwisko }}"
              data-dane-url-template="{% url 'bpp:browse_autor_powiazania_dane' 0 %}"
              data-siec-url-template="{% url 'bpp:browse_autor_powiazania_siec' 0 %}"
+             data-zrodla-url-template="{% url 'bpp:browse_autor_powiazania_zrodla' 0 %}"
              data-graf-url-template="{% url 'bpp:browse_autor_powiazania' 0 %}"
              style="width: 100%; height: 75vh; border: 1px solid #ccc;
                     background: #fff;"></div>
@@ -118,7 +163,7 @@
                     border-radius: 4px; padding: 4px 8px; font-size: 12px;
                     z-index: 1001;"></div>
         <div id="graf-panel"
-             style="position: absolute; bottom: 10px; right: 10px; display: none;
+             style="position: absolute; top: 10px; left: 10px; display: none;
                     background: rgba(255,255,255,.95); border: 1px solid #ddd;
                     border-radius: 4px; padding: 10px; font-size: 13px;
                     max-width: 280px; z-index: 1001;"></div>
@@ -136,6 +181,5 @@
         </div>
     </div>
 
-    <script src="{% static 'bpp/js/dist/cytoscape-bundle.js' %}"></script>
-    <script src="{% static 'bpp/js/visualizations/powiazania-autorow.js' %}"></script>
+    <script src="{% static 'powiazania_autorow/js/dist/cytoscape-bundle.js' %}"></script>
 {% endblock %}

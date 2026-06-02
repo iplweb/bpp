@@ -4,7 +4,16 @@
 import cytoscape from "cytoscape";
 import fcose from "cytoscape-fcose";
 import svg from "cytoscape-svg";
+import { init } from "./powiazania/index.js";
 
 cytoscape.use(fcose);
 cytoscape.use(svg); // eksport wektorowy (cy.svg())
 window.cytoscape = cytoscape;
+
+// Eksplorator sieci powiązań (moduły ES w ./powiazania/). Cytoscape
+// udostępniany jest modułom przez window.cytoscape powyżej.
+if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", init);
+} else {
+    init();
+}

@@ -228,9 +228,10 @@ module.exports = function (grunt) {
             // Osobny lazy bundle Cytoscape.js + fcose dla strony eksploratora
             // powiązań autorów (ładowany tylko na tej stronie, nie globalnie).
             esbuildCytoscape: {
-                command: 'npx esbuild src/bpp/static/bpp/js/cytoscape-entry.js ' +
+                command: 'npx esbuild ' +
+                         'src/powiazania_autorow/static/powiazania_autorow/js/cytoscape-entry.js ' +
                          '--bundle --minify-syntax --minify-whitespace --sourcemap ' +
-                         '--outfile=src/bpp/static/bpp/js/dist/cytoscape-bundle.js ' +
+                         '--outfile=src/powiazania_autorow/static/powiazania_autorow/js/dist/cytoscape-bundle.js ' +
                          '--format=iife --target=es2018'
             },
             // Post-process bundle to fix IIFE scope issues

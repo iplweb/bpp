@@ -99,6 +99,7 @@ from powiazania_autorow.views import (
     GrafPowiazanDaneView,
     GrafPowiazanSiecView,
     GrafPowiazanView,
+    GrafPowiazanZrodlaView,
 )
 from ranking_autorow.views import RankingAutorow, RankingAutorowFormularz
 
@@ -260,6 +261,11 @@ urlpatterns = [
         r"^autor/(?P<pk>\d+)/powiazania/siec\.json$",
         GrafPowiazanSiecView.as_view(),
         name="browse_autor_powiazania_siec",
+    ),
+    url(
+        r"^autor/(?P<pk>\d+)/powiazania/zrodla\.json$",
+        GrafPowiazanZrodlaView.as_view(),
+        name="browse_autor_powiazania_zrodla",
     ),
     url(r"^autor/(?P<slug>[\w-]+)/$", AutorView.as_view(), name="browse_autor"),
     url(r"^zrodla/$", ZrodlaView.as_view(), name="browse_zrodla"),

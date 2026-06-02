@@ -4,6 +4,23 @@ from celery.utils.log import get_task_logger
 logger = get_task_logger(__name__)
 
 
+def _zlicz_wspolautorow(model_autorstwa, author, connections):
+    """Zlicza współautorów `author` z jednego modelu autorstwa (*_Autor) do
+    słownika `connections` (coauthor_id -> liczba wspólnych prac)."""
+    pub_ids = model_autorstwa.objects.filter(autor=author).values_list(
+        "rekord_id", flat=True
+    )
+    for pub_id in pub_ids:
+        coauthors = (
+            model_autorstwa.objects.filter(rekord_id=pub_id)
+            .exclude(autor=author)
+            .values_list("autor_id", flat=True)
+        )
+        for coauthor_id in coauthors:
+            if coauthor_id:
+                connections[coauthor_id] += 1
+
+
 @shared_task(name="powiazania_autorow.calculate_author_connections")
 def calculate_author_connections_task():
     """
@@ -34,14 +51,14 @@ def update_single_author_connections_task(author_id):
     from django.db import transaction
     from django.db.models import Q
 
-    from .models import AuthorConnection
-
     from bpp.models import (
         Autor,
         Patent_Autor,
         Wydawnictwo_Ciagle_Autor,
         Wydawnictwo_Zwarte_Autor,
     )
+
+    from .models import AuthorConnection
 
     logger.info(f"Updating connections for author ID: {author_id}")
 
@@ -57,51 +74,13 @@ def update_single_author_connections_task(author_id):
         # Dictionary to store connections
         connections = defaultdict(int)
 
-        # Find all publications for this author
-        # Process Wydawnictwo_Ciagle
-        ciagle_pubs = Wydawnictwo_Ciagle_Autor.objects.filter(autor=author).values_list(
-            "rekord_id", flat=True
-        )
-        for pub_id in ciagle_pubs:
-            coauthors = (
-                Wydawnictwo_Ciagle_Autor.objects.filter(rekord_id=pub_id)
-                .exclude(autor=author)
-                .values_list("autor_id", flat=True)
-            )
-
-            for coauthor_id in coauthors:
-                if coauthor_id:
-                    connections[coauthor_id] += 1
-
-        # Process Wydawnictwo_Zwarte
-        zwarte_pubs = Wydawnictwo_Zwarte_Autor.objects.filter(autor=author).values_list(
-            "rekord_id", flat=True
-        )
-        for pub_id in zwarte_pubs:
-            coauthors = (
-                Wydawnictwo_Zwarte_Autor.objects.filter(rekord_id=pub_id)
-                .exclude(autor=author)
-                .values_list("autor_id", flat=True)
-            )
-
-            for coauthor_id in coauthors:
-                if coauthor_id:
-                    connections[coauthor_id] += 1
-
-        # Process Patents
-        patent_pubs = Patent_Autor.objects.filter(autor=author).values_list(
-            "rekord_id", flat=True
-        )
-        for pub_id in patent_pubs:
-            coauthors = (
-                Patent_Autor.objects.filter(rekord_id=pub_id)
-                .exclude(autor=author)
-                .values_list("autor_id", flat=True)
-            )
-
-            for coauthor_id in coauthors:
-                if coauthor_id:
-                    connections[coauthor_id] += 1
+        # Zlicz współautorów ze wszystkich typów prac danego autora.
+        for model_autorstwa in (
+            Wydawnictwo_Ciagle_Autor,
+            Wydawnictwo_Zwarte_Autor,
+            Patent_Autor,
+        ):
+            _zlicz_wspolautorow(model_autorstwa, author, connections)
 
         # Create new connections
         with transaction.atomic():

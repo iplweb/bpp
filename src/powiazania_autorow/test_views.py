@@ -211,6 +211,137 @@ def test_siec_404_dla_nieistniejacego_autora(client):
 
 
 @pytest.mark.django_db
+def test_siec_filtr_roku(client, jednostka, typy_odpowiedzialnosci):
+    from bpp.models import Wydawnictwo_Ciagle
+
+    centrum = baker.make(Autor, imiona="Jan", nazwisko="Centralny", pokazuj=True)
+    a_stary = baker.make(Autor, imiona="Adam", nazwisko="Stary", pokazuj=True)
+    a_nowy = baker.make(Autor, imiona="Ewa", nazwisko="Nowa", pokazuj=True)
+
+    w1 = baker.make(Wydawnictwo_Ciagle, rok=2005)
+    w1.dodaj_autora(centrum, jednostka)
+    w1.dodaj_autora(a_stary, jednostka)
+
+    w2 = baker.make(Wydawnictwo_Ciagle, rok=2020)
+    w2.dodaj_autora(centrum, jednostka)
+    w2.dodaj_autora(a_nowy, jednostka)
+
+    url = reverse("bpp:browse_autor_powiazania_siec", args=[centrum.pk])
+    data = client.get(url, {"rok_od": 2018, "rok_do": 2025, "depth": 1}).json()
+
+    ids = {n["id"] for n in data["nodes"]}
+    assert centrum.pk in ids
+    assert a_nowy.pk in ids  # współautor z 2020 — w zakresie
+    assert a_stary.pk not in ids  # współautor z 2005 — poza zakresem
+    assert data["rok_min"] == 2005
+    assert data["rok_max"] == 2020
+
+
+@pytest.mark.django_db
+def test_siec_filtr_roku_happy_path_mimo_statement_timeout(
+    client, jednostka, typy_odpowiedzialnosci
+):
+    # Aktywny filtr roku owija liczenie BFS/krawędzi w `SET LOCAL
+    # statement_timeout`. Sprawdzamy, że happy path (zapytanie mieści się
+    # w limicie) nadal zwraca 200 i poprawny payload, mimo owinięcia.
+    from bpp.models import Wydawnictwo_Ciagle
+
+    centrum = baker.make(Autor, imiona="Jan", nazwisko="Centralny", pokazuj=True)
+    a_nowy = baker.make(Autor, imiona="Ewa", nazwisko="Nowa", pokazuj=True)
+
+    w = baker.make(Wydawnictwo_Ciagle, rok=2020)
+    w.dodaj_autora(centrum, jednostka)
+    w.dodaj_autora(a_nowy, jednostka)
+
+    url = reverse("bpp:browse_autor_powiazania_siec", args=[centrum.pk])
+    resp = client.get(url, {"rok_od": 2018, "rok_do": 2025, "depth": 1})
+
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["center_id"] == centrum.pk
+    ids = {n["id"] for n in data["nodes"]}
+    assert centrum.pk in ids
+    assert a_nowy.pk in ids  # współautor z 2020 — w zakresie filtra
+    assert "edges" in data
+    assert "extra_edges" in data
+    assert data["truncated"] is False
+
+
+@pytest.mark.django_db
+def test_siec_filtr_zrodla(client, jednostka, typy_odpowiedzialnosci):
+    from bpp.models import Wydawnictwo_Ciagle, Zrodlo
+
+    centrum = baker.make(Autor, imiona="Jan", nazwisko="Centralny", pokazuj=True)
+    a_blood = baker.make(Autor, imiona="Adam", nazwisko="Bloodowy", pokazuj=True)
+    a_inne = baker.make(Autor, imiona="Ewa", nazwisko="Innawska", pokazuj=True)
+    blood = baker.make(Zrodlo, nazwa="Blood")
+    inne = baker.make(Zrodlo, nazwa="Inne czasopismo")
+
+    w1 = baker.make(Wydawnictwo_Ciagle, zrodlo=blood, rok=2020)
+    w1.dodaj_autora(centrum, jednostka)
+    w1.dodaj_autora(a_blood, jednostka)
+
+    w2 = baker.make(Wydawnictwo_Ciagle, zrodlo=inne, rok=2020)
+    w2.dodaj_autora(centrum, jednostka)
+    w2.dodaj_autora(a_inne, jednostka)
+
+    url = reverse("bpp:browse_autor_powiazania_siec", args=[centrum.pk])
+    data = client.get(url, {"zrodlo": blood.pk, "depth": 1}).json()
+
+    ids = {n["id"] for n in data["nodes"]}
+    assert a_blood.pk in ids
+    assert a_inne.pk not in ids  # współautor tylko z innego źródła
+
+
+@pytest.mark.django_db
+def test_siec_filtr_wiele_zrodel(client, jednostka, typy_odpowiedzialnosci):
+    from bpp.models import Wydawnictwo_Ciagle, Zrodlo
+
+    centrum = baker.make(Autor, imiona="Jan", nazwisko="Centralny", pokazuj=True)
+    a_blood = baker.make(Autor, imiona="Adam", nazwisko="Bloodowy", pokazuj=True)
+    a_hema = baker.make(Autor, imiona="Ewa", nazwisko="Hemowska", pokazuj=True)
+    a_inne = baker.make(Autor, imiona="Tom", nazwisko="Innowski", pokazuj=True)
+    blood = baker.make(Zrodlo, nazwa="Blood")
+    hema = baker.make(Zrodlo, nazwa="Hematologia")
+    inne = baker.make(Zrodlo, nazwa="Inne")
+    for zr, co in [(blood, a_blood), (hema, a_hema), (inne, a_inne)]:
+        w = baker.make(Wydawnictwo_Ciagle, zrodlo=zr, rok=2020)
+        w.dodaj_autora(centrum, jednostka)
+        w.dodaj_autora(co, jednostka)
+
+    url = reverse("bpp:browse_autor_powiazania_siec", args=[centrum.pk])
+    # OR po wielu źródłach: Blood lub Hematologia, ale nie Inne
+    data = client.get(url, {"zrodlo": [blood.pk, hema.pk], "depth": 1}).json()
+
+    ids = {n["id"] for n in data["nodes"]}
+    assert a_blood.pk in ids
+    assert a_hema.pk in ids
+    assert a_inne.pk not in ids
+
+
+@pytest.mark.django_db
+def test_zrodla_json_liczy_prace(client, jednostka, typy_odpowiedzialnosci):
+    from bpp.models import Wydawnictwo_Ciagle, Zrodlo
+
+    centrum = baker.make(Autor, imiona="Jan", nazwisko="Centralny", pokazuj=True)
+    blood = baker.make(Zrodlo, nazwa="Blood")
+    rzadkie = baker.make(Zrodlo, nazwa="Rzadkie czasopismo")
+    for _ in range(4):  # >= MIN_PRAC_ZRODLO (4) -> w combobox
+        w = baker.make(Wydawnictwo_Ciagle, zrodlo=blood, rok=2020)
+        w.dodaj_autora(centrum, jednostka)
+    for _ in range(2):  # < 4 -> odfiltrowane jako szum
+        w = baker.make(Wydawnictwo_Ciagle, zrodlo=rzadkie, rok=2020)
+        w.dodaj_autora(centrum, jednostka)
+
+    url = reverse("bpp:browse_autor_powiazania_zrodla", args=[centrum.pk])
+    data = client.get(url).json()
+
+    nazwy = {z["nazwa"]: z["n"] for z in data["zrodla"]}
+    assert nazwy.get("Blood") == 4
+    assert "Rzadkie czasopismo" not in nazwy  # 2 prace < próg
+
+
+@pytest.mark.django_db
 def test_strona_grafu_renderuje_kontener(client):
     autor = baker.make(Autor, imiona="Jan", nazwisko="Kowalski", pokazuj=True)
     url = reverse("bpp:browse_autor_powiazania", args=[autor.pk])
