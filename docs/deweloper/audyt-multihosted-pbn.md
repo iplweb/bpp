@@ -179,3 +179,23 @@ z `uczelnia_id`).
 **Następny, osobny wątek (brainstorm):** per-uczelnia liczenie slotów/punktacji
 (parked TODO) — `Cache_Punktacja_*` z `uczelnia_id`, liczenie+zapis per
 uczelnia autora, odczyty filtrowane po uczelni oglądającego.
+
+## Backfill per-uczelnia cache (write-side)
+
+Migracje dodają nullable `uczelnia` na `Cache_Punktacja_Dyscypliny`
+(`0424_cache_punktacja_dyscypliny_uczelnia_and_more`) i naprawiają widok
+`bpp_cache_punktacja_autora_view` tak, by joinował po uczelni
+(`0425_per_uczelnia_cache_view`).
+
+Po deployu należy **przeliczyć cache** pełnym przeliczeniem punktów dyscyplin —
+nowy kod (`IPunktacjaCacher.rebuildEntries`) zapisze wiersze osobno per uczelnia.
+W instalacji jednouczelnianej liczby pozostają identyczne (fast-track: jedna
+uczelnia w systemie ⇒ liczenie jak dotychczas, tylko z otagowaniem uczelnią).
+
+Wyzwolenie pełnego przeliczenia: rebuild pól `@denormalized cached_punkty_dyscyplin`
+(np. denorm rebuild używany w projekcie lub `denorms.flush()` w shellu), który
+woła `przelicz_punkty_dyscyplin()` per rekord. Konkretną komendę denorm rebuild
+potwierdzić w środowisku docelowym.
+
+Opcjonalnie, po przeliczeniu, można dodać migrację zacieśniającą
+`Cache_Punktacja_Dyscypliny.uczelnia` do `null=False`.
