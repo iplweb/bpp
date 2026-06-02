@@ -66,7 +66,10 @@ class ImporterAutorowPBNView(ListView):
         # When "pokaz_wszystkich" param is set to "1", show all
         pokaz_wszystkich = self.request.GET.get("pokaz_wszystkich", "0")
         if pokaz_wszystkich != "1":
-            uczelnia = Uczelnia.objects.default
+            # Uczelnia z requestu (multi-hosted): filtr po pbn_uid „naszej"
+            # uczelni musi dotyczyć uczelni bieżącego hosta, nie pierwszej
+            # z brzegu (get_default).
+            uczelnia = Uczelnia.objects.get_for_request(self.request)
             if uczelnia and uczelnia.pbn_uid_id:
                 # Filter by institution ID in currentEmployments JSON
                 queryset = queryset.filter(
