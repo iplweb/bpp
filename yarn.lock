@@ -1083,6 +1083,11 @@ cytoscape-fcose@^2.2.0:
   dependencies:
     cose-base "^2.2.0"
 
+cytoscape-svg@^0.4.0:
+  version "0.4.0"
+  resolved "https://registry.yarnpkg.com/cytoscape-svg/-/cytoscape-svg-0.4.0.tgz#1959320fe1b75c2eea9c00b0e6b7e33e2f67011c"
+  integrity sha512-omqIzfPd1Vy9mk6lHTiR2wTbjxELxb9GXSQ2pE6W+GwAe/6/yvOUQ2h5ApFf2QhCBnpMwLkCTq5DZXxBCgUpDw==
+
 cytoscape@^3.34.0:
   version "3.34.0"
   resolved "https://registry.yarnpkg.com/cytoscape/-/cytoscape-3.34.0.tgz#5fbe2eb1cf76b070a8ecd5647c35f65aa097c9c6"

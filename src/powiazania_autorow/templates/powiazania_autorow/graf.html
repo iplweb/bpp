@@ -12,25 +12,106 @@
 
 {% block content %}
     <h1>Sieć powiązań — {{ autor }}</h1>
-    <p class="graf-pomoc">
-        Najedź na węzeł, aby zobaczyć autora. Kliknij, aby rozwinąć jego
-        współautorów. Grubość linii odpowiada liczbie wspólnych publikacji.
-    </p>
 
-    <div class="graf-controls">
-        <label for="graf-topn">
-            Maks. współautorów na węzeł: <span id="graf-topn-label">15</span>
-        </label>
-        <input type="range" id="graf-topn" min="3" max="50" value="15" step="1">
+    <div class="graf-controls"
+         style="display: flex; flex-wrap: wrap; align-items: flex-end;
+                gap: 8px 24px;">
+        <div>
+            <label for="graf-topn" style="display: block;">
+                Maks. współautorów na węzeł: <span id="graf-topn-label">6</span>
+            </label>
+            <input type="range" id="graf-topn" autocomplete="off"
+                   min="3" max="20" value="6" step="1">
+        </div>
+        <div>
+            <label for="graf-glebokosc" style="display: block;">
+                Głębokość sieci (poziomów bez klikania):
+                <span id="graf-glebokosc-label">2</span>
+            </label>
+            <input type="range" id="graf-glebokosc" autocomplete="off"
+                   min="1" max="10" value="2" step="1">
+        </div>
+        <div>
+            <label for="graf-uklad" style="display: block;">
+                Układ
+            </label>
+            <select id="graf-uklad" autocomplete="off"
+                    style="margin: 0; height: 2.4rem;">
+                <option value="radial">Radialny (pączek)</option>
+                <option value="koncentryczny">Koncentryczny</option>
+                <option value="sila">Siłowy (organiczny)</option>
+            </select>
+        </div>
+        <div>
+            <label for="graf-metryka" style="display: block;">
+                Wielkość kółka wg
+            </label>
+            <select id="graf-metryka" autocomplete="off"
+                    style="margin: 0; height: 2.4rem;">
+                <option value="works">Liczby prac</option>
+                <option value="if">Sumarycznego IF</option>
+                <option value="pk">Sumarycznego PK</option>
+            </select>
+        </div>
+        <div>
+            <label for="graf-szukaj" style="display: block;">
+                Szukaj autora
+            </label>
+            <input type="search" id="graf-szukaj" autocomplete="off"
+                   placeholder="nazwisko…"
+                   style="margin: 0; height: 2.4rem; width: 180px;">
+        </div>
+        <div title="Pokaż powiązania między widocznymi autorami (poza drzewem)">
+            <label style="display: block; margin: 0;">
+                <input type="checkbox" id="graf-wewnetrzne-chk" autocomplete="off"
+                       style="margin: 0 4px 0 0;">
+                Powiązania w grupie
+            </label>
+            <label for="graf-wewn-prog"
+                   style="display: block; font-size: 12px; color: #666;">
+                od <span id="graf-wewn-prog-label">1</span> wspólnych prac
+            </label>
+            <input type="range" id="graf-wewn-prog" autocomplete="off"
+                   min="1" max="10" value="1" step="1">
+        </div>
+        <button type="button" id="graf-odswiez" class="button small"
+                style="margin: 0;">
+            <span class="fi-refresh"></span> Odśwież układ
+        </button>
+        <button type="button" id="graf-pobierz" class="button small secondary"
+                style="margin: 0;">
+            <span class="fi-download"></span> PNG
+        </button>
+        <button type="button" id="graf-pobierz-svg" class="button small secondary"
+                style="margin: 0;">
+            <span class="fi-download"></span> SVG
+        </button>
     </div>
+    <small style="display: block; color: #666; margin: 2px 0 12px;">
+        Na każdym węźle pokazujemy najpierw współautorów z największą liczbą
+        wspólnych publikacji. Klik w węzeł dowija jego dalszych współautorów.
+    </small>
 
     <div id="graf-wrapper" style="position: relative;">
         <div id="cytoscape-container"
              data-autor-id="{{ autor.pk }}"
              data-autor-label="{{ autor.imiona }} {{ autor.nazwisko }}"
              data-dane-url-template="{% url 'bpp:browse_autor_powiazania_dane' 0 %}"
+             data-siec-url-template="{% url 'bpp:browse_autor_powiazania_siec' 0 %}"
+             data-graf-url-template="{% url 'bpp:browse_autor_powiazania' 0 %}"
              style="width: 100%; height: 75vh; border: 1px solid #ccc;
                     background: #fff;"></div>
+        <div id="graf-legenda"
+             style="position: absolute; top: 10px; right: 10px; max-width: 260px;
+                    background: rgba(255,255,255,.92); border: 1px solid #ddd;
+                    border-radius: 4px; padding: 8px 10px; font-size: 12px;
+                    color: #444; pointer-events: none; z-index: 1001;">
+            Najedź na węzeł, aby zobaczyć autora; najedź na linię, aby zobaczyć
+            liczbę wspólnych publikacji. Kliknij węzeł, aby rozwinąć jego
+            współautorów i otworzyć menu akcji. Wielkość kółka odpowiada wybranej
+            metryce (liczba prac / IF / PK), a grubość linii — liczbie wspólnych
+            publikacji.
+        </div>
         <div id="graf-tooltip"
              style="position: absolute; display: none; pointer-events: none;
                     background: rgba(255,255,255,.95); border: 1px solid #ddd;
@@ -44,6 +125,15 @@
         <p id="graf-empty" style="display: none;">
             Brak zarejestrowanych powiązań — dane przeliczane są raz na dobę.
         </p>
+        <div id="graf-notka"
+             style="position: absolute; bottom: 10px; left: 10px; display: none;
+                    background: rgba(255,248,220,.96); border: 1px solid #e0c97f;
+                    border-radius: 4px; padding: 6px 10px; font-size: 12px;
+                    color: #6b5900; max-width: 320px; z-index: 1001;">
+            Pokazano część sieci — przy tej głębokości i liczbie współautorów
+            sieć przekroczyła limit węzłów. Zmniejsz głębokość lub liczbę
+            współautorów, aby zobaczyć węższy, pełny wycinek.
+        </div>
     </div>
 
     <script src="{% static 'bpp/js/dist/cytoscape-bundle.js' %}"></script>

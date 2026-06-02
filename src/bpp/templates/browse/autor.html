@@ -35,12 +35,6 @@
                         <span class="fi fi-page-edit"></span>Otwórz do edycji
                     </a>
                 {% endif %}
-                {% if ma_powiazania %}
-                    <a href="{% url 'bpp:browse_autor_powiazania' autor.pk %}"
-                       class="jednostka-remap-button">
-                        <span class="fi fi-share"></span>Zobacz sieć powiązań
-                    </a>
-                {% endif %}
             </div>
         </div>
     </div>
@@ -59,6 +53,12 @@
             <i class="fi-list-bullet autor-page__icon--mr-lg"></i>Pokaż wszystkie prace
         </button>
     </form>
+    {% if ma_powiazania %}
+        <a href="{% url 'bpp:browse_autor_powiazania' autor.pk %}"
+           class="button primary large autor-page__show-all-btn autor-page__network-btn">
+            <i class="fi-share autor-page__icon--mr-lg"></i>Zobacz sieć powiązań
+        </a>
+    {% endif %}
 </div>
 
 <div class="shaded-hr-div-small"></div>
@@ -350,6 +350,12 @@
                     class="button primary large autor-page__search-btn">
                 <i class="fi-magnifying-glass autor-page__icon--mr-lg autor-page__icon--white"></i>Szukaj publikacji
             </button>
+            {% if ma_powiazania %}
+                <a href="{% url 'bpp:browse_autor_powiazania' autor.pk %}"
+                   class="button primary large autor-page__search-btn autor-page__network-btn">
+                    <i class="fi-share autor-page__icon--mr-lg autor-page__icon--white"></i>Zobacz sieć powiązań
+                </a>
+            {% endif %}
         </div>
     </form>
 </div>
