@@ -95,6 +95,12 @@ from bpp.views.zapytanie import (
     ZapytanieSuggestionsView,
     ZapytanieView,
 )
+from powiazania_autorow.views import (
+    GrafPowiazanDaneView,
+    GrafPowiazanSiecView,
+    GrafPowiazanView,
+    GrafPowiazanZrodlaView,
+)
 from ranking_autorow.views import RankingAutorow, RankingAutorowFormularz
 
 urlpatterns = [
@@ -241,6 +247,26 @@ urlpatterns = [
         name="browse_autorzy_literka",
     ),
     url(r"^autor/(?P<pk>\d+)/$", AutorView.as_view(), name="browse_autor"),
+    url(
+        r"^autor/(?P<pk>\d+)/powiazania/$",
+        GrafPowiazanView.as_view(),
+        name="browse_autor_powiazania",
+    ),
+    url(
+        r"^autor/(?P<pk>\d+)/powiazania/dane\.json$",
+        GrafPowiazanDaneView.as_view(),
+        name="browse_autor_powiazania_dane",
+    ),
+    url(
+        r"^autor/(?P<pk>\d+)/powiazania/siec\.json$",
+        GrafPowiazanSiecView.as_view(),
+        name="browse_autor_powiazania_siec",
+    ),
+    url(
+        r"^autor/(?P<pk>\d+)/powiazania/zrodla\.json$",
+        GrafPowiazanZrodlaView.as_view(),
+        name="browse_autor_powiazania_zrodla",
+    ),
     url(r"^autor/(?P<slug>[\w-]+)/$", AutorView.as_view(), name="browse_autor"),
     url(r"^zrodla/$", ZrodlaView.as_view(), name="browse_zrodla"),
     url(

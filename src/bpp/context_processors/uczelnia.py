@@ -53,10 +53,26 @@ def uczelnia(request):
 
 
 @receiver(post_save, sender=Uczelnia)
-def remove_cache_key(sender, instance, **kw):
-    """Invalidate uczelnia cache for the site linked to the saved instance."""
+def invalidate_uczelnia_caches(sender, instance, **kw):
+    """Wyczyść cache zależne od ustawień uczelni po jej zapisie.
+
+    Dwie niezależne warstwy trzymają migawkę obiektu ``Uczelnia``:
+
+    * cache context processora (górny pasek) — kluczowany per-site
+      (``bpp_uczelnia_{site_pk}``), plus legacy klucz ``b"bpp_uczelnia"``,
+    * ``get_uczelnia_context_data`` — ``@cached`` z cacheops, kontekst
+      strony głównej. To cache *funkcji*, więc cacheops NIE czyści go
+      automatycznie przy zapisie modelu (robi to tylko dla zapytań ORM) —
+      trzeba wołać ``.invalidate()`` ręcznie, analogicznie do sygnałów
+      na ``Wydzial``/``Jednostka``/``Article``.
+
+    Import lokalny, żeby uniknąć cyklu context_processors -> views.
+    """
+    from bpp.views.browse import get_uczelnia_context_data
+
     site = getattr(instance, "site", None)
     site_pk = getattr(site, "pk", 0)
     cache.delete(f"bpp_uczelnia_{site_pk}")
-    # Also delete the legacy key for backward compatibility
+    # Legacy klucz (sprzed kluczowania per-site) — backward compatibility.
     cache.delete(b"bpp_uczelnia")
+    get_uczelnia_context_data.invalidate()

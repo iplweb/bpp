@@ -1,6 +1,6 @@
 {
     "name": "bpp-iplweb",
-    "version": "v202606.1376",
+    "version": "v202606.1377",
     "license": "MIT",
     "devDependencies": {
         "esbuild": "^0.27.2",
@@ -13,6 +13,9 @@
     },
     "dependencies": {
         "basic-ftp": "5.3.1",
+        "cytoscape": "^3.34.0",
+        "cytoscape-fcose": "^2.2.0",
+        "cytoscape-svg": "^0.4.0",
         "datatables.net": "^1.10.16",
         "datatables.net-dt": "^1.10.16",
         "datatables.net-zf": "^1.10.16",

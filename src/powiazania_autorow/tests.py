@@ -305,6 +305,53 @@ def test_update_single_author_connections_task():
 
 
 @pytest.mark.django_db
+def test_update_single_author_connections_task_dodaj_autora(
+    jednostka, typy_odpowiedzialnosci
+):
+    """Refaktor N+1 w `_zlicz_wspolautorow`: autor centralny + 2 współautorów
+    na 2 pracach Wydawnictwo_Ciagle. Sprawdza, że batchowa wersja liczenia
+    daje poprawne `shared_publications_count`.
+
+    Krótkie nazwiska — losowe baker przekraczają limit 512 znaków na
+    `zapisany_jako`, który `dodaj_autora` składa z imienia i nazwiska.
+    """
+    centrum = baker.make(Autor, imiona="Jan", nazwisko="Cen")
+    wsp1 = baker.make(Autor, imiona="Ada", nazwisko="Wpa")
+    wsp2 = baker.make(Autor, imiona="Ewa", nazwisko="Wpb")
+
+    # Praca 1: centrum + wsp1
+    w1 = baker.make(Wydawnictwo_Ciagle)
+    w1.dodaj_autora(centrum, jednostka)
+    w1.dodaj_autora(wsp1, jednostka)
+
+    # Praca 2: centrum + wsp1 + wsp2 (wsp1 współautorem na obu pracach)
+    w2 = baker.make(Wydawnictwo_Ciagle)
+    w2.dodaj_autora(centrum, jednostka)
+    w2.dodaj_autora(wsp1, jednostka)
+    w2.dodaj_autora(wsp2, jednostka)
+
+    result = update_single_author_connections_task(centrum.pk)
+
+    assert result["status"] == "success"
+    assert result["author_id"] == centrum.pk
+    assert result["connections_updated"] == 2  # powiązania z wsp1 i wsp2
+
+    # centrum <-> wsp1: dwie wspólne prace
+    conn1 = AuthorConnection.objects.filter(
+        Q(primary_author=centrum, secondary_author=wsp1)
+        | Q(primary_author=wsp1, secondary_author=centrum)
+    ).get()
+    assert conn1.shared_publications_count == 2
+
+    # centrum <-> wsp2: jedna wspólna praca
+    conn2 = AuthorConnection.objects.filter(
+        Q(primary_author=centrum, secondary_author=wsp2)
+        | Q(primary_author=wsp2, secondary_author=centrum)
+    ).get()
+    assert conn2.shared_publications_count == 1
+
+
+@pytest.mark.django_db
 def test_update_single_author_connections_task_nonexistent_author():
     """Test the task with non-existent author ID."""
     result = update_single_author_connections_task(99999)
