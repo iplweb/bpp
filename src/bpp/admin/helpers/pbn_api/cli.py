@@ -44,7 +44,14 @@ def sprobuj_wyslac_do_pbn_celery(
             # single-install: .get() (przy >1 rzuca — multi-hosted ma podać).
             uczelnia or Uczelnia.objects.get()
         )
-    except BrakZdefiniowanegoObiektuUczelniaWSystemieError as e:
+    except (
+        BrakZdefiniowanegoObiektuUczelniaWSystemieError,
+        Uczelnia.DoesNotExist,
+    ) as e:
+        # .get() rzuca DoesNotExist gdy 0 rekordow Uczelnia (dawne
+        # get_default() zwracalo None -> param-check rzucal Brak...Error).
+        # MultipleObjectsReturned (>1) celowo NIE jest tu lapane: multi-hosted
+        # caller musi podac uczelnia jawnie, a glosny blad to sygnalizuje.
         raise ValueError("W systemie brak obiektu Uczelnia.") from e
 
     if uczelnia is False:
