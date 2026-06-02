@@ -112,8 +112,11 @@ Brak osobnego pakietu. Pod Wariantem B:
 - `publication_sync.py` (orchestracja) + `disciplines.py` (`DisciplinesMixin`)
   **zostają** w `pbn_api/client`.
 - `adapters/` **zostają** w `pbn_api/adapters` (bez przenoszenia). Zmiana tylko
-  behawioralna: orchestracja przekazuje `uczelnia=self.uczelnia` do adaptera,
-  a `get_default()` z `adapters/wydawnictwo.py:94` znika.
+  behawioralna: orchestracja przekazuje `uczelnia=self.uczelnia` do adaptera.
+  Wewnętrzny `get_default()` adaptera (`wydawnictwo.py:94`) **zostaje jako
+  fallback** — ścieżka `publication_sync` już go nie dotyka (jawna uczelnia),
+  ale inni callerzy adaptera (`pbn_wysylka_oswiadczen/tasks`, management
+  commands) wciąż na nim polegają. Ich migracja + usunięcie fallbacku = Phase 7.
 - `pbn_api/client/__init__.py` definiuje `BppPBNClient` i re-eksportuje całość.
 
 `BppPBNClient` **dziedziczy** po `PBNClient` (nie kompozycja delegująca), bo
@@ -229,13 +232,14 @@ Widok/zadanie  ──get_for_request/uczelnia_id──▶  Uczelnia
    `BppPBNClient(PBNClient, PublicationSyncMixin, DisciplinesMixin)` z
    `__init__(transport, uczelnia)`. `pbn_api.client` re-eksportuje pełny `__all__`
    (`PBNClient` + `BppPBNClient` + reszta). Zielone testy.
-5. **Fix multi-hosted (zmiana zachowania):** w `publication_sync.py`
-   `get_default()` → `self.uczelnia`; orchestracja przekazuje
-   `uczelnia=self.uczelnia` do `WydawnictwoPBNAdapter`, `get_default()` z
-   `adapters/wydawnictwo.py` znika. Fabryki: `Uczelnia.pbn_client()` (lokalny
-   import) i `PBNBaseCommand.get_client()` zwracają `BppPBNClient`.
-6. **Fixture `dwie_uczelnie` + testy multi-hosted.** Weryfikacja, że właściwa
-   uczelnia steruje payloadem (token w transporcie + 3 flagi + adapter).
+5. ✅ **Fix multi-hosted (3B, zmiana zachowania):** w `publication_sync.py`
+   `get_default()` → `self.uczelnia` (2 miejsca); orchestracja przekazuje
+   `uczelnia=self.uczelnia` do `WydawnictwoPBNAdapter` (3 miejsca). Fabryki
+   zwracają `BppPBNClient` (zrobione w 3A). Wewnętrzny `get_default()` adaptera
+   zostaje jako fallback dla nie-zmigrowanych callerów (Phase 7).
+6. ✅ **Test multi-hosted** (`test_multihosted.py`): dwie uczelnie z różnymi
+   flagami; klient związany z drugą wybiera batch/selective wg SWOJEJ uczelni,
+   nie `get_default()` (pierwszej). Failowałby przed 3B.
 7. **(poza tym specem)** pozostałe znaleziska audytu Tier 🔴/🟠 nie-PBN
    (ORCID, `importer_publikacji/providers/pbn.py`, `importer_autorow_pbn`) oraz
    wątek `get_default` jako follow-up.
