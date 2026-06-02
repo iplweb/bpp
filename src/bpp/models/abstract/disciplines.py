@@ -9,13 +9,13 @@ class ModelZPrzeliczaniemDyscyplin(models.Model):
     class Meta:
         abstract = True
 
-    def przelicz_punkty_dyscyplin(self, uczelnia=None):  # noqa: ARG002
+    def przelicz_punkty_dyscyplin(self):
         from bpp.models.sloty.core import IPunktacjaCacher
 
-        # uczelnia ignorowana — IPunktacjaCacher iteruje per-uczelnia wewnętrznie
         ipc = IPunktacjaCacher(self)
         ipc.removeEntries()
-        ipc.rebuildEntries()
+        if ipc.canAdapt():
+            ipc.rebuildEntries()
         return ipc.serialize()
 
     def odpiete_dyscypliny(self):

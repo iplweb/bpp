@@ -174,3 +174,23 @@ def test_rebuild_tworzy_wiersze_per_uczelnia(
         jednostka.uczelnia_id,
         druga_uczelnia.pk,
     }
+
+
+@pytest.mark.django_db
+def test_przelicz_per_uczelnia_dzielnik_k1(zwarte_dwie_uczelnie):
+    from bpp.models.cache import Cache_Punktacja_Autora
+
+    zwarte_dwie_uczelnie.przelicz_punkty_dyscyplin()
+
+    cpa_nowak = Cache_Punktacja_Autora.objects.get(autor__nazwisko="Nowak")
+    cpa_kowalski = Cache_Punktacja_Autora.objects.get(autor__nazwisko="Kowalski")
+    # k=1 w obrębie każdej uczelni => każdy ma pełny slot, suma = 2.0
+    assert cpa_nowak.slot == cpa_kowalski.slot
+    assert cpa_nowak.slot + cpa_kowalski.slot == 2
+
+
+@pytest.mark.django_db
+def test_przelicz_zwrotka_deterministyczna(zwarte_dwie_uczelnie):
+    a = zwarte_dwie_uczelnie.przelicz_punkty_dyscyplin()
+    b = zwarte_dwie_uczelnie.przelicz_punkty_dyscyplin()
+    assert str(a) == str(b)
