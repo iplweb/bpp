@@ -1,6 +1,5 @@
 import pytest
 
-from bpp.models.cache import Cache_Punktacja_Dyscypliny
 from bpp.models import (
     Autor_Dyscyplina,
     Charakter_Formalny,
@@ -8,6 +7,7 @@ from bpp.models import (
     Uczelnia,
     Wydzial,
 )
+from bpp.models.cache import Cache_Punktacja_Dyscypliny
 
 
 @pytest.mark.django_db
@@ -139,3 +139,38 @@ def test_islot_none_jedna_uczelnia_systemu_rozstrzyga(zwarte_z_dyscyplinami, ucz
     # tylko jedna uczelnia w systemie => ISlot(obj) rozstrzyga ją
     kalk = ISlot(zwarte_z_dyscyplinami)
     assert kalk.uczelnia == uczelnia
+
+
+@pytest.mark.django_db
+def test_rebuild_tworzy_wiersze_per_uczelnia(
+    zwarte_dwie_uczelnie, jednostka, druga_uczelnia
+):
+    from bpp.models.cache import (
+        Cache_Punktacja_Autora,
+        Cache_Punktacja_Dyscypliny,
+    )
+    from bpp.models.sloty.core import IPunktacjaCacher
+
+    cacher = IPunktacjaCacher(zwarte_dwie_uczelnie)
+    cacher.removeEntries()
+    cacher.rebuildEntries()
+
+    cpd = Cache_Punktacja_Dyscypliny.objects.filter(
+        rekord_id=[cacher.ctype, zwarte_dwie_uczelnie.pk]
+    )
+    assert cpd.count() == 2
+    assert set(cpd.values_list("uczelnia_id", flat=True)) == {
+        jednostka.uczelnia_id,
+        druga_uczelnia.pk,
+    }
+    for row in cpd:
+        assert len(row.autorzy_z_dyscypliny) == 1
+
+    cpa = Cache_Punktacja_Autora.objects.filter(
+        rekord_id=[cacher.ctype, zwarte_dwie_uczelnie.pk]
+    )
+    assert cpa.count() == 2
+    assert {c.jednostka.uczelnia_id for c in cpa} == {
+        jednostka.uczelnia_id,
+        druga_uczelnia.pk,
+    }
