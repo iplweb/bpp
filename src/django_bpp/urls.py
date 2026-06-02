@@ -86,13 +86,6 @@ urlpatterns = (
             r"^integrator2/",
             include(("integrator2.urls", "integrator2"), namespace="integrator2"),
         ),
-        # Disabled ewaluacja2021 (contains 3N reports)
-        # path(
-        #     "ewaluacja2021/",
-        #     include(
-        #         "ewaluacja2021.urls",
-        #     ),
-        # ),
         path(
             "ewaluacja_liczba_n/",
             include(
