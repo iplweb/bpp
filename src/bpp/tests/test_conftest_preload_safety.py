@@ -31,7 +31,7 @@ REPO_ROOT = Path(__file__).resolve().parents[3]
 # `from fixtures import *` chain blows up here with AppRegistryNotReady.
 _PRELOAD_SNIPPET = """
 import os
-os.environ.setdefault("DJANGO_SETTINGS_MODULE", "django_bpp.settings.local")
+os.environ.setdefault("DJANGO_SETTINGS_MODULE", "django_bpp.settings.test")
 
 from django.conf import settings
 

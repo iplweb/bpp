@@ -54,7 +54,7 @@ def test_heavy_imports_absent_from_non_admin_setup_graph():
     env = dict(os.environ)
     env["PYTHONPATH"] = src_dir + os.pathsep + env.get("PYTHONPATH", "")
     env["DJANGO_SETTINGS_MODULE"] = settings.SETTINGS_MODULE or env.get(
-        "DJANGO_SETTINGS_MODULE", "django_bpp.settings.local"
+        "DJANGO_SETTINGS_MODULE", "django_bpp.settings.test"
     )
     # Nie pozwól, by .env nadpisał wstrzyknięte przez testcontainery porty DB.
     env.setdefault("DJANGO_BPP_SKIP_DOTENV", "1")
