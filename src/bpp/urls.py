@@ -97,7 +97,7 @@ from bpp.views.zapytanie import (
 )
 from ranking_autorow.views import RankingAutorow, RankingAutorowFormularz
 
-from powiazania_autorow.views import GrafPowiazanDaneView
+from powiazania_autorow.views import GrafPowiazanDaneView, GrafPowiazanView
 
 urlpatterns = [
     path(
@@ -243,6 +243,11 @@ urlpatterns = [
         name="browse_autorzy_literka",
     ),
     url(r"^autor/(?P<pk>\d+)/$", AutorView.as_view(), name="browse_autor"),
+    url(
+        r"^autor/(?P<pk>\d+)/powiazania/$",
+        GrafPowiazanView.as_view(),
+        name="browse_autor_powiazania",
+    ),
     url(
         r"^autor/(?P<pk>\d+)/powiazania/dane\.json$",
         GrafPowiazanDaneView.as_view(),

@@ -71,3 +71,20 @@ def test_dane_pusty_gdy_brak_powiazan(client):
 def test_dane_404_dla_nieistniejacego_autora(client):
     url = reverse("bpp:browse_autor_powiazania_dane", args=[99999])
     assert client.get(url).status_code == 404
+
+
+@pytest.mark.django_db
+def test_strona_grafu_renderuje_kontener(client):
+    autor = baker.make(Autor, imiona="Jan", nazwisko="Kowalski", pokazuj=True)
+    url = reverse("bpp:browse_autor_powiazania", args=[autor.pk])
+    resp = client.get(url)
+    assert resp.status_code == 200
+    tresc = resp.content.decode("utf-8")
+    assert 'id="cytoscape-container"' in tresc
+    assert f'data-autor-id="{autor.pk}"' in tresc
+
+
+@pytest.mark.django_db
+def test_strona_grafu_404_dla_nieistniejacego_autora(client):
+    url = reverse("bpp:browse_autor_powiazania", args=[99999])
+    assert client.get(url).status_code == 404

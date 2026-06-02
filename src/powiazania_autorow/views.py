@@ -1,7 +1,7 @@
 from django.db.models import Q
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404
-from django.views.generic import View
+from django.views.generic import TemplateView, View
 
 from bpp.models import Autor
 
@@ -13,6 +13,17 @@ MAKS_SASIADOW = 500
 
 def _etykieta(autor):
     return f"{autor.imiona} {autor.nazwisko}".strip()
+
+
+class GrafPowiazanView(TemplateView):
+    """Strona z interaktywnym grafem powiązań autora."""
+
+    template_name = "powiazania_autorow/graf.html"
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["autor"] = get_object_or_404(Autor, pk=kwargs["pk"])
+        return context
 
 
 class GrafPowiazanDaneView(View):
