@@ -1,5 +1,10 @@
-"""Konstanty leksykalne dla generatora demo data (data-only, no logic)."""
+"""Motyw 'realistyczny' — polskie dane akademickie (domyślny, bez żartu)."""
 
+from __future__ import annotations
+
+from bpp.demo_data.themes.base import Theme
+
+# --- przeniesione z dawnego names.py (skopiuj 1:1 zawartość krotek) ---
 IMIONA_POL = (
     # Kobiety
     "Anna",
@@ -228,19 +233,6 @@ KIERUNKI_POL = (
     "Nauk Geograficznych i Geologicznych",
 )
 
-TYTULY_TEMPLATES = (
-    "Analiza wpływu {topic} na {subject} w {context}",
-    "Badania {topic} w kontekście {subject}",
-    "Wpływ {topic} na {subject}",
-    "{topic}: studium przypadku {subject}",
-    "Metodologia {topic} w {context}",
-    "Modelowanie {topic} z wykorzystaniem {subject}",
-    "Perspektywy rozwoju {topic} w {context}",
-    "{topic} jako narzędzie {subject}",
-    "Optymalizacja {topic} w {context}",
-    "Przegląd literatury: {topic} a {subject}",
-)
-
 TOPICS = (
     "metod numerycznych",
     "algorytmów uczenia maszynowego",
@@ -284,4 +276,70 @@ CONTEXTS = (
     "modelu zwierzęcym",
     "ośrodkach referencyjnych",
     "badaniu prospektywnym",
+)
+
+# --- nowe pule realistyczne ---
+JEDNOSTKA_DZIEDZINY = (
+    "Kardiologii",
+    "Biochemii",
+    "Mikrobiologii Lekarskiej",
+    "Anatomii Prawidłowej",
+    "Genetyki Molekularnej",
+    "Chirurgii Ogólnej",
+    "Farmakologii",
+    "Patomorfologii",
+    "Neurologii",
+    "Pediatrii",
+    "Fizjologii",
+    "Immunologii",
+    "Histologii",
+    "Onkologii",
+    "Radiologii",
+)
+ZRODLO_HUMAN = (
+    "Medica Polonica",
+    "Biochemica",
+    "Clinica",
+    "Neurologica",
+    "Chirurgica",
+    "Oncologica",
+    "Pharmaceutica",
+    "Microbiologica",
+    "Academiae Medicae",
+    "Diagnostica",
+)
+WYDAWCY = (
+    "Wydawnictwo Naukowe PWN",
+    "Wydawnictwo Lekarskie PZWL",
+    "Wydawnictwo Uniwersyteckie",
+    "Oficyna Wydawnicza Scholar",
+    "Wydawnictwo Naukowe UAM",
+    "Elsevier Urban & Partner",
+    "Wydawnictwo Czelej",
+    "Termedia Wydawnictwa Medyczne",
+)
+STRESZCZENIE_TEMPLATES = (
+    "W niniejszej pracy zbadano wpływ {topic} na {subject}.",
+    "Analizę przeprowadzono w {context}, z uwzględnieniem {topic}.",
+    "Wyniki wskazują na istotny związek {topic} z {subject}.",
+    "Celem badania była ocena {topic} w odniesieniu do {subject}.",
+    "Materiał i metody obejmowały {topic} w {context}.",
+    "Wnioski potwierdzają znaczenie {topic} dla {subject}.",
+)
+
+REALISTYCZNY = Theme(
+    key="realistyczny",
+    label="Realistyczny (polski akademicki)",
+    uczelnia_nazwy=("Uniwersytet Przykładowy", "Akademia Nauk Stosowanych"),
+    uczelnia_skrot="UP",
+    wydzial_dziedziny=KIERUNKI_POL,
+    jednostka_dziedziny=JEDNOSTKA_DZIEDZINY,
+    autor_imiona=IMIONA_POL,
+    autor_nazwiska=NAZWISKA_POL,
+    zrodlo_human=ZRODLO_HUMAN,
+    wydawcy=WYDAWCY,
+    tytul_topics=TOPICS,
+    tytul_subjects=SUBJECTS,
+    tytul_contexts=CONTEXTS,
+    streszczenie_templates=STRESZCZENIE_TEMPLATES,
 )

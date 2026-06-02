@@ -7,6 +7,8 @@ from collections.abc import Iterable
 
 from bpp.demo_data.manifest import Manifest
 from bpp.demo_data.progress import make_progress
+from bpp.demo_data.themes.base import Theme
+from bpp.demo_data.themes.compose import apply_prefix, compose_jednostka_nazwa
 from bpp.models import Jednostka, Uczelnia, Wydzial
 
 
@@ -15,8 +17,10 @@ def create_jednostki(
     per_wydzial: int,
     wydzialy: Iterable[Wydzial],
     uczelnia: Uczelnia,
+    theme: Theme,
     manifest: Manifest,
     rng: random.Random,
+    prefix: str = "",
     batch_size: int = 500,
     disable_progress: bool = False,
 ) -> list[Jednostka]:
@@ -28,7 +32,7 @@ def create_jednostki(
                 Jednostka(
                     uczelnia=uczelnia,
                     wydzial=wydzial,
-                    nazwa=f"Demo — Jednostka {w_idx}-{j_idx}",
+                    nazwa=apply_prefix(compose_jednostka_nazwa(theme, rng), prefix),
                     skrot=f"DJ{w_idx}-{j_idx}",
                     rodzaj_jednostki=Jednostka.RODZAJ_JEDNOSTKI.NORMALNA,
                     # MPTT NOT NULL fields — wartosci tymczasowe; rebuild()
