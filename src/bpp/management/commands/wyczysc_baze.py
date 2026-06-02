@@ -63,7 +63,7 @@ class Command(BaseCommand):
         if uczelnia_id:
             uczelnia = Uczelnia.objects.get(pk=uczelnia_id)
         else:
-            uczelnia = Uczelnia.objects.get_default()
+            uczelnia = Uczelnia.objects.get()
 
         challenge = "".join(random.sample("abcdefghijklmnopqrstuvwxzy!@#$^^&", 5))
         print("Informacje o systemie")  # noqa: T201

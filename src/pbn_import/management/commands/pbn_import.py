@@ -161,7 +161,7 @@ class Command(PBNBaseCommand):
 
     def _ensure_pbn_integration(self):
         """Włącz integrację PBN jeśli wyłączona."""
-        uczelnia = Uczelnia.objects.get_default()
+        uczelnia = Uczelnia.objects.get()
         if uczelnia and not uczelnia.pbn_integracja:
             uczelnia.pbn_integracja = True
             uczelnia.save(update_fields=["pbn_integracja"])

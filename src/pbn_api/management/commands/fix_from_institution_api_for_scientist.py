@@ -22,7 +22,7 @@ class Command(PBNBaseCommand):
         if uczelnia_id:
             uczelnia = Uczelnia.objects.get(pk=uczelnia_id)
         else:
-            uczelnia = Uczelnia.objects.get_default()
+            uczelnia = Uczelnia.objects.get()
 
         if uczelnia.pbn_uid_id is None:
             raise Exception("Uczelnia nie ma ustawionego pbn_uid_id")

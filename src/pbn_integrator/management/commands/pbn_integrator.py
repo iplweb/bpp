@@ -439,7 +439,7 @@ class Command(PBNBaseCommand):
         uczelnia = (
             Uczelnia.objects.get(pk=uczelnia_id)
             if uczelnia_id
-            else Uczelnia.objects.get_default()
+            else Uczelnia.objects.get()
         )
         if uczelnia is not None:
             if not uczelnia.pbn_integracja:

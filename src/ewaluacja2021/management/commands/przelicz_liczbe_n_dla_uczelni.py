@@ -21,6 +21,6 @@ class Command(BaseCommand):
         if uczelnia_id:
             uczelnia = Uczelnia.objects.get(pk=uczelnia_id)
         else:
-            uczelnia = Uczelnia.objects.get_default()
+            uczelnia = Uczelnia.objects.get()
 
         oblicz_liczby_n_dla_ewaluacji_2022_2025(uczelnia=uczelnia)

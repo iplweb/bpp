@@ -74,14 +74,17 @@ class Command(BaseCommand):
         bez_liczby_n = options["bez_liczby_n"]
         rodzaje_autora = options.get("rodzaje_autora", ["N", "D", "B", "Z", " "])
 
-        uczelnia_id = options.get("uczelnia_id")
-        if uczelnia_id:
-            uczelnia = Uczelnia.objects.get(pk=uczelnia_id)
-        else:
-            uczelnia = Uczelnia.objects.get_default()
-
         # Krok 1: Przelicz liczby N, chyba że pominięto
         if not bez_liczby_n:
+            # Uczelnia potrzebna TYLKO do liczby N — rozwiązujemy leniwie, żeby
+            # --bez-liczby-n nie wymagało uczelni (i .get() nie rzucało, gdy
+            # w bazie jest 0 lub >1 uczelni, np. w danych testowych).
+            uczelnia_id = options.get("uczelnia_id")
+            if uczelnia_id:
+                uczelnia = Uczelnia.objects.get(pk=uczelnia_id)
+            else:
+                uczelnia = Uczelnia.objects.get()
+
             self.stdout.write(
                 self.style.WARNING("Krok 1/2: Przeliczanie liczby N dla uczelni...")
             )
