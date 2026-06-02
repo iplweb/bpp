@@ -700,6 +700,10 @@ CELERYBEAT_SCHEDULE = {
         "task": "pbn_export_queue.tasks.report_technical_errors_to_rollbar",
         "schedule": crontab(hour=8, minute=0),  # Daily at 8 AM
     },
+    "powiazania-autorow-przelicz-codziennie": {
+        "task": "powiazania_autorow.calculate_author_connections",
+        "schedule": crontab(hour=4, minute=0),  # Daily at 4 AM
+    },
 }
 
 
