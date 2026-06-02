@@ -20,10 +20,10 @@
   być wyświetlane lub nie, możesz za pomocą tej funkcji ustawić je w określonej
   kolejności.
 
-  !!! note
+    !!! note
 
-      wydziały w module interfejsu uzytkownika niezalogowanego nie są wyświelane
-      alfabetycznie a zgodnie z ustaloną kolejnością.
+        wydziały w module interfejsu uzytkownika niezalogowanego nie są wyświelane
+        alfabetycznie a zgodnie z ustaloną kolejnością.
 
 
 - aby obejrzeć szczegóły wydziału skorzystaj z opcji
@@ -41,7 +41,7 @@ którzy nie są pracownikami danej jednostki należy je odznaczyć.
 Po wybraniu dowolnego autora w module Redagowanie➡Wprowadzanie danych➡Autorzy
 odznacz to pole i zapisz rekord, aby nie wyświetlać autora na stronie jednostki.
 
-![image](images/admin/pokazuj_na_stronach_jednostek.png)
+![image](../images/admin/pokazuj_na_stronach_jednostek.png)
 
 #### Ukrywanie lub wyświetlanie raportów na stronie głównej
 
@@ -52,7 +52,7 @@ serwisu, skorzystaj z opcji Redagowanie➡Struktura➡Uczelnie, a następnie w s
 lub chowanie danego elementu, niektóre umożliwiają wyświetlenie danego elementu
 tylko dla użytkowników zalogowanych.
 
-![image](images/admin/uczelnia_strona_wizualna.png)
+![image](../images/admin/uczelnia_strona_wizualna.png)
 
 #### Ukrywanie lub wyświetlanie formularzy wyszukiwania
 
@@ -162,28 +162,28 @@ potrzeby procedur liczących, raportujących, eksportujących dane itp.
 
 System umożliwia zmianę rodzaju i ilości wyświetlanych kolumn w module redagowania. W tym celu
 użytkownik posiadający uprawnienia administratora po zalogowaniu się powinien w module redagowania
-wejść w opcję Administracja -\> Kolumny w module redagowania:
+wejść w opcję Administracja -> Kolumny w module redagowania:
 
-![image](images/admin/dynamic_columns/dynamic_columns_1.png)
+![image](../images/admin/dynamic_columns/dynamic_columns_1.png)
 
 Następnie wyświetli się nam tabelka. W prawym górnym rogu, za pomocą opcji "Filtruj" wybieramy,
 dla którego modułu chcemy skonfigurować kolumny. Klikamy na przycisk "Filtruj"
 
-![image](images/admin/dynamic_columns/dynamic_columns_2.png)
+![image](../images/admin/dynamic_columns/dynamic_columns_2.png)
 
 I wybieramy interesujący nas moduł:
 
-![image](images/admin/dynamic_columns/dynamic_columns_3.png)
+![image](../images/admin/dynamic_columns/dynamic_columns_3.png)
 
 Następnie możemy - za pomocą szarego prostokątu po prawej stronie - zmieniać kolejność kolumn.
 Wystarczy najechac na niego myszą i przeciągnąć (ang. *drag and drop*):
 
-![image](images/admin/dynamic_columns/dynamic_columns_4.png)
+![image](../images/admin/dynamic_columns/dynamic_columns_4.png)
 
 Można też wybrane kolumny podświetlić za pomocą ptaszków (ang. *checkbox*) po lewej stronie i
 na dole tabeli wybrać jedno z działań np włączyć lub wyłączyć grupowo wiele pól na raz.
 
-![image](images/admin/dynamic_columns/dynamic_columns_5.png)
+![image](../images/admin/dynamic_columns/dynamic_columns_5.png)
 
 !!! note
 
@@ -218,7 +218,7 @@ wypełnienia tych dat oraz wysłania oświadczeń do PBN.
     Ta procedura:
 
     - Wyszukuje wszystkie rekordy powiązań autor-publikacja z pustymi datami oświadczeń
-    - Uwzględnia tylko publikacje z rokiem wydania \>= 2022
+    - Uwzględnia tylko publikacje z rokiem wydania >= 2022
     - Ustawia datę oświadczenia na datę utworzenia nadrzędnego rekordu publikacji
     - Aktualizuje rekordy w tabelach `Wydawnictwo_Ciagle_Autor` i `Wydawnictwo_Zwarte_Autor`
 
@@ -295,7 +295,7 @@ python src/manage.py pbn_wyslij_oswiadczenia_instytucji --year 2023
 
     Wszystkie powyższe operacje wymagają prawidłowej konfiguracji integracji z PBN
     oraz autoryzacji użytkownika w systemie PBN. Szczegóły konfiguracji znajdują
-    się w dokumentacji [konfiguracja PBN](konfiguracja_pbn.md).
+    się w dokumentacji [konfiguracja PBN](konfiguracja-pbn.md).
 
 
 ## Konfiguracja mapowania charakterów CrossRef API na charaktery formalne BPP
@@ -305,8 +305,7 @@ Aby prawidłowo zaimportować dane z CrossRef, konieczne jest skonfigurowanie ma
 między charakterami formalnej publikacji używanymi przez CrossRef API a charakterami
 formalnymi zdefiniowanymi w systemie BPP.
 
-Dostępne charaktery CrossRef API
-\~\~\~\~\~\~\~\~\~\~\~\~\~\~\~\~\~\~\~\~\~\~\~\~\~\~\~\~\~\~~
+### Dostępne charaktery CrossRef API
 
 System CrossRef API wykorzystuje następujące typy charakterów publikacji:
 
@@ -327,8 +326,7 @@ System CrossRef API wykorzystuje następujące typy charakterów publikacji:
 - `peer-review` - recenzje
 - `other` - inne typy publikacji
 
-Konfiguracja mapowania w module Redagowania
-\~\~\~\~\~\~\~\~\~\~\~\~\~\~\~\~\~\~\~\~\~\~\~\~\~\~\~\~\~\~\~\~\~\~\~\~\~\~\~\~\~~
+### Konfiguracja mapowania w module Redagowania
 
 Aby skonfigurować mapowanie charakterów CrossRef na charaktery formalne BPP:
 
@@ -353,8 +351,7 @@ Aby skonfigurować mapowanie charakterów CrossRef na charaktery formalne BPP:
     2)  W polu "Charakter formalny bpp" wybierz odpowiedni charakter z listy rozwijanej
     3)  Zapisz zmiany przyciskiem "Zapisz"
 
-Ważne zasady mapowania
-\~\~\~\~\~\~\~\~\~\~\~\~\~\~\~\~\~\~\~\~~
+### Ważne zasady mapowania
 
 !!! warning
 
@@ -365,13 +362,12 @@ Ważne zasady mapowania
 
 !!! note
 
-    \* Mapowanie jest opcjonalne - charaktery CrossRef mogą pozostać bez przypisania
-    \* Rekordy bez mapowania będą wyświetlane jako "\[brak zamapowania\]"
-    \* Zmiana mapowania wpłynie na wszystkie przyszłe importy z CrossRef API
+    - Mapowanie jest opcjonalne - charaktery CrossRef mogą pozostać bez przypisania
+    - Rekordy bez mapowania będą wyświetlane jako "\[brak zamapowania\]"
+    - Zmiana mapowania wpłynie na wszystkie przyszłe importy z CrossRef API
 
 
-Przykłady typowych mapowań
-\~\~\~\~\~\~\~\~\~\~\~\~\~\~\~\~\~\~\~\~\~\~\~\~~
+### Przykłady typowych mapowań
 
 Poniżej przedstawiono sugerowane mapowania dla typowych charakterów:
 
@@ -389,8 +385,7 @@ Poniżej przedstawiono sugerowane mapowania dla typowych charakterów:
     zdefiniowanych w danej uczelni.
 
 
-Weryfikacja poprawności mapowania
-\~\~\~\~\~\~\~\~\~\~\~\~\~\~\~\~\~\~\~\~\~\~\~\~\~\~\~\~\~\~\~~
+### Weryfikacja poprawności mapowania
 
 Po skonfigurowaniu mapowań zaleca się przeprowadzenie testowego importu -
 wykonaj próbny import publikacji z CrossRef API aby sprawdzić, czy

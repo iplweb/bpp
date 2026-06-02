@@ -25,6 +25,16 @@ ARG NODEJS_VERSION
 
 ENV DEBIAN_FRONTEND=noninteractive
 
+# MALLOC_ARENA_MAX ogranicza liczbę aren glibc malloc. Domyślnie glibc tworzy do
+# 8*CPU aren, co przy wielowątkowych procesach Pythona z rozszerzeniami C
+# (numpy, pandas, psycopg2, lxml, openpyxl, Pillow, weasyprint) prowadzi do
+# silnej fragmentacji i rozdęcia RSS — zwolniona pamięć rzadko wraca do OS.
+# Ograniczenie do 2 aren typowo ścina RSS o 20-40% na proces (web + każdy
+# prefork-child Celery) kosztem nieznacznie większej kontencji alokatora.
+# Dziedziczone przez stage `testserver` (dev). Stage `runtime` (prod) ustawia
+# to samo osobno, bo nie wywodzi się z `base`.
+ENV MALLOC_ARENA_MAX=2
+
 COPY --from=ghcr.io/astral-sh/uv:0.7 /uv /usr/local/bin/uv
 
 ENV UV_COMPILE_BYTECODE=1 \
@@ -401,6 +411,8 @@ COPY --chmod=755 docker/denorm-queue/entrypoint-denorm-queue.sh \
                  /entrypoint-denorm-queue.sh
 COPY --chmod=644 docker/appserver/uvicorn_log_config.json \
                  /uvicorn_log_config.json
+COPY --chmod=644 docker/appserver/gunicorn_conf.py \
+                 /gunicorn_appserver_conf.py
 
 ##############################################################################
 # RUNTIME: slim production image
@@ -457,7 +469,12 @@ ENV PATH="/app/.venv/bin:$PATH" \
     BPP_GIT_SHA=${GIT_SHA} \
     BPP_BUILD_FLAVOR=${BPP_BUILD_FLAVOR} \
     BPP_IMAGE_TAG=${BPP_IMAGE_TAG} \
-    BPP_BRANCH_TAG=${BPP_BRANCH_TAG}
+    BPP_BRANCH_TAG=${BPP_BRANCH_TAG} \
+    MALLOC_ARENA_MAX=2
+# MALLOC_ARENA_MAX=2: patrz komentarz w stage `base`. Ustawiane też tutaj, bo
+# `runtime` startuje od czystego python:slim (nie dziedziczy z `base`).
+# Dotyczy WSZYSTKICH serwisów (appserver + workery Celery + beat + denorm),
+# które wywodzą się z iplweb/bpp_base = ten stage.
 
 WORKDIR /app
 

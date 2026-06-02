@@ -50,6 +50,7 @@ from bpp.util.text import (
     non_url,
     safe_html,
     safe_html_defaults,
+    safe_streszczenie_html,
     slugify_function,
     strip_extra_spaces,
     strip_extra_spaces_regex,
@@ -59,17 +60,43 @@ from bpp.util.text import (
     wytnij_isbn_z_uwag,
     zrob_cache,
 )
-from bpp.util.xlsx import (
-    _XLSX_FORMULA_INJECTION_LEAD,
-    _calculate_column_width,
-    _extract_hyperlink_text,
-    auto_fit_columns,
-    sanitize_xlsx_cell,
-    sanitize_xlsx_row,
-    worksheet_columns_autosize,
-    worksheet_create_table,
-    worksheet_create_urls,
+
+# bpp.util jest importowany tranzytywnie przez niemal każdy moduł
+# admin/models, więc eager ``from bpp.util.xlsx import ...`` wciągał openpyxl
+# (a przez nie numpy — patrz openpyxl/compat/numbers.py: opcjonalny
+# ``try: import numpy``) do KAŻDEGO procesu już na etapie ``django.setup()``,
+# w tym do workera web/ASGI, który nigdy nie buduje arkusza.
+#
+# PEP 562 module-level ``__getattr__`` zachowuje publiczne
+# ``from bpp.util import worksheet_columns_autosize`` (i ``import *`` via
+# ``__all__``), ale odkłada import openpyxl/numpy do pierwszego faktycznego
+# użycia którejś z funkcji xlsx. Zysk: ~kilkadziesiąt MB RSS na proces, który
+# nigdy nie eksportuje xlsx (realizowany razem z worker admin-autodiscover skip).
+# Guard: bpp/tests/test_imports/test_lazy_heavy_imports.py.
+_XLSX_LAZY_NAMES = frozenset(
+    {
+        "_XLSX_FORMULA_INJECTION_LEAD",
+        "_calculate_column_width",
+        "_extract_hyperlink_text",
+        "auto_fit_columns",
+        "sanitize_xlsx_cell",
+        "sanitize_xlsx_row",
+        "worksheet_columns_autosize",
+        "worksheet_create_table",
+        "worksheet_create_urls",
+    }
 )
+
+
+def __getattr__(name):
+    # PEP 562: wołane tylko dla atrybutów nieznalezionych normalnym lookupem,
+    # więc dostęp do już-zaimportowanych helperów (text/orm/...) jest bez zmian.
+    if name in _XLSX_LAZY_NAMES:
+        from bpp.util import xlsx
+
+        return getattr(xlsx, name)
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+
 
 __all__ = [
     # algorithms
@@ -113,6 +140,7 @@ __all__ = [
     "non_url",
     "safe_html",
     "safe_html_defaults",
+    "safe_streszczenie_html",
     "slugify_function",
     "strip_extra_spaces",
     "strip_extra_spaces_regex",

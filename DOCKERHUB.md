@@ -13,7 +13,7 @@
   <a href="https://github.com/iplweb/bpp">Source on GitHub</a> •
   <a href="https://www.iplweb.pl">iplweb.pl</a> •
   <a href="https://bpp.iplweb.pl">bpp.iplweb.pl</a> •
-  <a href="https://bpp.readthedocs.io">Dokumentacja</a>
+  <a href="https://iplweb.github.io/bpp/">Dokumentacja</a>
 </p>
 
 ---
@@ -103,7 +103,7 @@ Pełna lista z wersjami — [bpp-deploy/docker-compose.yml](https://github.com/i
 - 💻 **Kod monorepo**: [github.com/iplweb/bpp](https://github.com/iplweb/bpp)
 - 🚀 **Wdrożenie produkcyjne**: [github.com/iplweb/bpp-deploy](https://github.com/iplweb/bpp-deploy)
 - 🐘 **dbserver (wydzielony)**: [github.com/iplweb/bpp-dbserver](https://github.com/iplweb/bpp-dbserver)
-- 📚 **Dokumentacja**: [bpp.readthedocs.io](https://bpp.readthedocs.io)
+- 📚 **Dokumentacja**: [iplweb.github.io/bpp](https://iplweb.github.io/bpp/)
 - 🌐 **Strona projektu / demo**: [bpp.iplweb.pl](https://bpp.iplweb.pl)
 - 💼 **Wsparcie komercyjne**: [iplweb.pl](https://www.iplweb.pl)
 

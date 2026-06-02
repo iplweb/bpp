@@ -11,7 +11,8 @@ import random
 
 from django.utils.text import slugify
 
-from bpp.demo_data.names import CONTEXTS, SUBJECTS, TOPICS, TYTULY_TEMPLATES
+from bpp.demo_data.themes.base import Theme
+from bpp.demo_data.themes.compose import compose_tytul
 from bpp.models import Autor, Autor_Jednostka
 
 DENORM_CACHE_FIELDS: tuple[str, ...] = (
@@ -23,18 +24,22 @@ DENORM_CACHE_FIELDS: tuple[str, ...] = (
 )
 
 
-def make_tytul(rng: random.Random, idx: int, prefix: str = "") -> str:
-    """Generuje tytul z szablonu w `names.TYTULY_TEMPLATES`.
+def make_tytul(
+    theme: Theme,
+    rng: random.Random,
+    idx: int,
+    *,
+    marker: str = "",
+    rola: str = "",
+) -> str:
+    """Tytuł: '<marker><rola> <treść> (nr idx)'.
 
-    `prefix` (np. " Ksiazka nadrzedna" / " Rozdzial") wstawia sie po
-    em-dash w "Demo —", przed wlasciwym tytulem."""
-    template = rng.choice(TYTULY_TEMPLATES)
-    body = template.format(
-        topic=rng.choice(TOPICS),
-        subject=rng.choice(SUBJECTS),
-        context=rng.choice(CONTEXTS),
-    )
-    return f"Demo —{prefix} {body} (nr {idx})"
+    `marker` — wizualny prefiks demo ('Demo — ' lub '').
+    `rola` — etykieta roli publikacji ('Rozdział' / 'Książka nadrzędna' / '').
+    """
+    body = compose_tytul(theme, rng)
+    rola_part = f"{rola} " if rola else ""
+    return f"{marker}{rola_part}{body} (nr {idx})"
 
 
 def make_doi(rng: random.Random, rok: int, idx: int) -> str:

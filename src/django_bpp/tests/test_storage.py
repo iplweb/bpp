@@ -57,6 +57,48 @@ def test_missing_manifest_entry_falls_back_instead_of_raising():
     assert TolerantManifestStaticFilesStorage().url(probe) == "/static/" + probe
 
 
+@override_settings(DEBUG=False)
+def test_existing_file_without_manifest_is_not_hashed_on_the_fly(tmp_path):
+    # Regression (bug: testy padały lokalnie, przechodziły na CI). Gdy
+    # STATIC_ROOT zawiera plik fizyczny, ale NIE ma manifestu
+    # (`staticfiles.json`) — typowy stan lokalny ze starym `staticroot`
+    # sprzed wprowadzenia Manifestu — vanilla `ManifestFilesMixin.stored_name`
+    # z `manifest_strict=False` liczy content-hash w locie i zwraca
+    # `foo.<hash>.css`. Plik z tą nazwą NIE istnieje na dysku (stary
+    # collectstatic wyprodukował tylko nie-hashowaną kopię), więc
+    # django-compressor i webtest dostają `could not be found` / 404.
+    #
+    # Bez manifestu (jedyne źródło prawdy dla hashy jest puste) musimy
+    # serwować nazwę ORYGINALNĄ — realny plik zaserwuje finder / runserver /
+    # whitenoise. Kontrast z `ManifestStaticFilesStorage` (poniżej) dowodzi,
+    # że to nasza subklasa, nie domyślne zachowanie Django, daje ten wynik.
+    (tmp_path / "foo.css").write_text("body{color:red}")
+    storage = TolerantManifestStaticFilesStorage(location=str(tmp_path))
+    assert storage.hashed_files == {}  # brak manifestu
+
+    # Vanilla z manifest_strict=False (nasza konfiguracja) fabrykuje martwą
+    # nazwę hashowaną (foo.<hash>.css) — to jest dokładnie bug:
+    vanilla = ManifestStaticFilesStorage(location=str(tmp_path))
+    vanilla.manifest_strict = False
+    assert vanilla.stored_name("foo.css") != "foo.css"
+
+    # Subklasa zwraca nazwę oryginalną — i runtime'owy url() też:
+    assert storage.stored_name("foo.css") == "foo.css"
+    assert storage.url("foo.css") == "/static/foo.css"
+
+
+@override_settings(DEBUG=False)
+def test_present_manifest_still_hashes(tmp_path):
+    # Strona przeciwna do regresji: gdy manifest ISTNIEJE (produkcja, `.baked`
+    # po collectstatic), cache-busting długiego ogona musi działać 1:1 jak w
+    # vanilla — `stored_name` deleguje do super i zwraca nazwę z manifestu.
+    # Override z `not self.hashed_files` jest wąski i NIE dotyka tej ścieżki.
+    storage = TolerantManifestStaticFilesStorage(location=str(tmp_path))
+    storage.hashed_files = {"foo.css": "foo.deadbeef0123.css"}
+    assert storage.stored_name("foo.css") == "foo.deadbeef0123.css"
+    assert storage.url("foo.css") == "/static/foo.deadbeef0123.css"
+
+
 @override_settings(DEBUG=True)
 def test_url_in_debug_returns_unhashed_without_manifest():
     # Keystone "jedna klasa storage wszędzie": w DEBUG `HashedFilesMixin.url()`

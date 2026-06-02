@@ -1,8 +1,16 @@
 import re
 from decimal import Decimal
 
+# math.isnan zamiast numpy.isnan: ten moduł jest importowany tranzytywnie przez
+# modele/admin BPP (np. bpp.models.dyscyplina_naukowa), więc eager ``from numpy
+# import isnan`` wciągał całe numpy (~30 MB RSS) do KAŻDEGO procesu na etapie
+# ``django.setup()`` — tylko po to, by sprawdzić NaN jednego skalara w
+# ``normalize_nulldecimalfield``. math.isnan przyjmuje float i typy z
+# ``__float__`` (w tym numpy scalary), a następujące dalej ``float(...)`` i tak
+# normalizuje numpy.int64 itp. Zero zmian semantyki dla danych z importu xlsx.
+from math import isnan
+
 from django.core.exceptions import ValidationError
-from numpy import isnan
 from pathspec.util import normalize_file
 
 # Słownik konwersji cyfr rzymskich na arabskie
