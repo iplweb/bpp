@@ -313,7 +313,7 @@ class Zgloszenie_Publikacji_DaneForm(forms.ModelForm):
         super().__init__(*args, **kw)
 
         if uczelnia is None:
-            uczelnia = Uczelnia.objects.get_default()
+            uczelnia = Uczelnia.objects.get()
 
         if (
             uczelnia is not None

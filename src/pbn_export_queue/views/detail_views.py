@@ -149,7 +149,7 @@ class PBNExportQueueDetailView(
         from bpp.models import Uczelnia
         from pbn_api.const import PBN_POST_PUBLICATION_NO_STATEMENTS_URL
 
-        uczelnia = Uczelnia.objects.get_default()
+        uczelnia = Uczelnia.objects.get_for_request(self.request)
         if uczelnia and uczelnia.pbn_api_root:
             return (
                 uczelnia.pbn_api_root.rstrip("/")

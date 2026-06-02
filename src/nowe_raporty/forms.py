@@ -89,7 +89,7 @@ class BaseRaportForm(forms.Form):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        uczelnia = Uczelnia.objects.get_default()
+        uczelnia = Uczelnia.objects.get()
         if not (uczelnia and uczelnia.pokazuj_punktacje_wewnetrzna):
             self.fields.pop("punktacja_wewnetrzna_od", None)
             self.fields.pop("punktacja_wewnetrzna_do", None)

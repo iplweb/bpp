@@ -251,7 +251,7 @@ class Zgloszenie_Publikacji(
         # -- czyli, że zmienna zupelny_brak_informacji_o_oplatach jest False.
 
         if not hasattr(self, "_uczelnia") or self._uczelnia is None:
-            uczelnia = Uczelnia.objects.get_default()
+            uczelnia = Uczelnia.objects.get()
         else:
             uczelnia = self._uczelnia
 

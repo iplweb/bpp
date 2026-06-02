@@ -65,7 +65,7 @@ class PublikacjaInstytucji_V2(models.Model):
         from bpp import const
         from bpp.models import Uczelnia
 
-        uczelnia = self.uczelnia or Uczelnia.objects.get_default()
+        uczelnia = self.uczelnia or Uczelnia.objects.get()
         if uczelnia is not None:
             return const.LINK_PI_ADD_STATEMENTS.format(
                 pbn_api_root=uczelnia.pbn_api_root, pbn_uid_id=pbn_uid_id, uuid=uuid
