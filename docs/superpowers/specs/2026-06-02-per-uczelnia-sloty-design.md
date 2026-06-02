@@ -120,13 +120,13 @@ i zapytaniach grupujących per uczelnia. Decyzja usera: trzymać wyprowadzaną.
 Ryzyko: pominięty odczyt `autorzy_set` przeciekłby autorów spoza uczelni.
 Mitygacja: test, w którym pominięcie zmieniłoby liczbę (asercja na dzielnik).
 
-Subtelność `m` (mianownik) a autorzy bez jednostki: `wszyscy()` dziś liczy
-WSZYSTKICH autorów rekordu. Filtr `jednostka__uczelnia=U` wyklucza autorów z
-`jednostka IS NULL` z mianownika KAŻDEJ uczelni — to świadoma konsekwencja
-„subsetu autorów z danej uczelni" (autor bez jednostki nie należy do żadnej
-uczelni), ale jest to zmiana zachowania także względem naiwnego „tagowania".
-Decyzja: akceptowalne i spójne z regułą wiodącą; do pokrycia testem
-(rekord z autorem bez jednostki → nie wpływa na `m` żadnej uczelni).
+Invariant `jednostka`: pole `jednostka` na wierszu autorstwa
+(`BazaModeluOdpowiedzialnosciAutorow.jednostka`, `src/bpp/models/abstract/
+authors.py:23`) jest **NOT NULL** — każdy autor na rekordzie ma jednostkę, więc
+zawsze ma uczelnię. Nie ma więc przypadku „autor bez uczelni", a filtr
+`jednostka__uczelnia=U` na `wszyscy()`/`m` zawęża wyłącznie po realnej
+przynależności (współautorzy z innej uczelni wypadają z `m` danej uczelni —
+to właśnie sedno partycji, nie efekt nullowy).
 
 ## Orkiestracja cachera
 
@@ -217,7 +217,6 @@ dostaje na razie nowego pola — ekspozycja `uczelnia` w odczytach to read-side.
   autora (nadzbiór jest OK — uczelnia bez autorów daje zero wierszy, bez błędu).
 - Wypadnięcie uczelni: po przeniesieniu ostatniego autora U2 do U1 i przeliczeniu
   — brak osieroconych wierszy U2.
-- Autor bez jednostki: nie wpływa na mianownik `m` żadnej uczelni.
 - Determinizm zwrotki `przelicz_punkty_dyscyplin()`: dwa przeliczenia tego samego
   rekordu dają identyczny string (denorm nie jest wiecznie brudny).
 
