@@ -39,7 +39,7 @@ def test_get_pbn_client_no_token():
     user.get_pbn_user = lambda: MockPbnUser()
 
     with pytest.raises(ValueError) as exc_info:
-        get_pbn_client(user)
+        get_pbn_client(user, 1)
 
     assert "tokenu" in str(exc_info.value).lower()
 
@@ -58,14 +58,14 @@ def test_get_pbn_client_expired_token():
     user.get_pbn_user = lambda: MockPbnUser()
 
     with pytest.raises(ValueError) as exc_info:
-        get_pbn_client(user)
+        get_pbn_client(user, 1)
 
     assert "wygasl" in str(exc_info.value).lower()
 
 
 @pytest.mark.django_db
-def test_get_pbn_client_no_uczelnia():
-    """Test get_pbn_client raises error when no uczelnia exists."""
+def test_get_pbn_client_unknown_uczelnia_id():
+    """Nieistniejące uczelnia_id => Uczelnia.DoesNotExist (bez fallbacku)."""
     user = User.objects.create_user("testuser", password="testpass")
 
     class MockPbnUser:
@@ -76,13 +76,94 @@ def test_get_pbn_client_no_uczelnia():
 
     user.get_pbn_user = lambda: MockPbnUser()
 
-    # Make sure no Uczelnia exists
-    Uczelnia.objects.all().delete()
+    with pytest.raises(Uczelnia.DoesNotExist):
+        get_pbn_client(user, 999999)
+
+
+@pytest.mark.django_db
+def test_get_pbn_client_requires_uczelnia_id(uczelnia):
+    """Bez uczelnia_id get_pbn_client rzuca (brak fallbacku do get_default)."""
+    user = User.objects.create_user("testuser", password="testpass")
+
+    class MockPbnUser:
+        pbn_token = "valid-token"
+
+        def pbn_token_possibly_valid(self):
+            return True
+
+    user.get_pbn_user = lambda: MockPbnUser()
 
     with pytest.raises(ValueError) as exc_info:
-        get_pbn_client(user)
+        get_pbn_client(user, None)
 
     assert "uczelni" in str(exc_info.value).lower()
+
+
+@pytest.mark.django_db
+def test_get_pbn_client_uses_passed_uczelnia(uczelnia):
+    """get_pbn_client buduje klienta z PRZEKAZANEJ uczelni (po id),
+    przez kanoniczną Uczelnia.pbn_client()."""
+    user = User.objects.create_user("testuser", password="testpass")
+
+    class MockPbnUser:
+        pbn_token = "valid-token"
+
+        def pbn_token_possibly_valid(self):
+            return True
+
+    user.get_pbn_user = lambda: MockPbnUser()
+
+    uczelnia.pbn_app_name = "APP"
+    uczelnia.pbn_app_token = "TOK"
+    uczelnia.pbn_api_root = "https://x.example/"
+    uczelnia.save()
+
+    recorded = []
+
+    def fake_pbn_client(self, token):
+        recorded.append(self.pk)
+        return MagicMock()
+
+    with patch.object(Uczelnia, "pbn_client", fake_pbn_client):
+        client = get_pbn_client(user, uczelnia.pk)
+
+    assert client is not None
+    assert recorded == [uczelnia.pk]
+
+
+@pytest.mark.django_db
+def test_start_task_view_passes_uczelnia_id(uczelnia):
+    """Entrypoint wysyłki oświadczeń MUSI przekazać id uczelni do zadania."""
+    from django.contrib.auth.models import Group
+    from django.test import RequestFactory
+
+    from bpp.const import GR_WPROWADZANIE_DANYCH
+    from pbn_wysylka_oswiadczen.views import StartTaskView
+
+    request = RequestFactory().post("/start/", {"rok_od": "2022", "rok_do": "2025"})
+    user = User.objects.create_user("testuser", password="testpass")
+    group, _ = Group.objects.get_or_create(name=GR_WPROWADZANIE_DANYCH)
+    user.groups.add(group)
+    request.user = user
+    request.session = {}
+
+    pbn_user = MagicMock()
+    pbn_user.pbn_token = "valid-token"
+    pbn_user.pbn_token_possibly_valid.return_value = True
+    user.get_pbn_user = lambda: pbn_user
+
+    with patch(
+        "pbn_wysylka_oswiadczen.views.wysylka_oswiadczen_task"
+    ) as mock_task:
+        mock_task.delay.return_value = MagicMock(id="task-123")
+        StartTaskView().post(request)
+
+    mock_task.delay.assert_called_once()
+    call = mock_task.delay.call_args
+    passed = call.kwargs.get("uczelnia_id")
+    if passed is None and len(call.args) > 1:
+        passed = call.args[1]
+    assert passed == uczelnia.pk
 
 
 @pytest.mark.django_db
