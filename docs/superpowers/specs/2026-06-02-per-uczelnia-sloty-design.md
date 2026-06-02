@@ -130,20 +130,40 @@ to właśnie sedno partycji, nie efekt nullowy).
 
 ## Orkiestracja cachera
 
-- `IPunktacjaCacher(original, uczelnia)` — w pełni per uczelnia:
+**Kluczowa decyzja kompatybilności:** konstruktor `IPunktacjaCacher(original,
+uczelnia=None)` **zostaje wstecznie kompatybilny** (nie wymusza uczelni), żeby
+nie złamać kilkunastu istniejących bezpośrednich callerów `rebuildEntries()`
+(patrz inwentaryzacja niżej) — w szczególności odkładanego modułu optymalizacji
+federacyjnej. `uczelnia` na poziomie cachera ma DWA tryby:
+
+- **`uczelnia=U` (scoped)** — operacje tylko na danych jednej uczelni:
   - `removeEntries()` zawężone: `Cache_Punktacja_Dyscypliny.filter(uczelnia=U)`
     i `Cache_Punktacja_Autora.filter(jednostka__uczelnia=U)`,
-  - `rebuildEntries()` odpala zawężony kalkulator; nowe wiersze
-    `Cache_Punktacja_Dyscypliny` tagowane `uczelnia=U`; `Cache_Punktacja_Autora`
-    bez zmiany kształtu.
-- `przelicz_punkty_dyscyplin(self, uczelnia=None)` (wejście denorm) zyskuje
-  pętlę i **traci `get_default()`** (zamyka parked TODO):
+  - `rebuildEntries()` odpala zawężony kalkulator (`ISlot(original, U)`); nowe
+    wiersze `Cache_Punktacja_Dyscypliny` tagowane `uczelnia=U`;
+    `Cache_Punktacja_Autora` bez zmiany kształtu (uczelnia z jednostki).
+- **`uczelnia=None` (all)** — operuje na WSZYSTKICH uczelniach rekordu:
+  - `removeEntries(None)` — **kasuje cały rekord po `rekord_id`** (unscoped, jak
+    dziś), NIE pętlą scoped-delete po `uczelnie_rekordu()` — inaczej pominęłoby
+    uczelnie, które wypadły (sieroty),
+  - `rebuildEntries(None)` — enumeruje `uczelnie_rekordu()` i wykonuje ścieżkę
+    scoped (create) dla każdej.
+  Dzięki temu istniejące wywołania `removeEntries(); rebuildEntries()` dalej
+  działają i w single-install dają liczby **identyczne jak dziś** (jedna uczelnia
+  ⇒ filtr `jednostka__uczelnia=U0` obejmuje wszystkich autorów).
+
+> Uwaga o warstwach: `None` znaczy co innego w kalkulatorze niż w cacherze.
+> W `SlotMixin`/`ISlot` `uczelnia=None` = brak filtra autorów (jeden przebieg po
+> wszystkich). W `IPunktacjaCacher` `uczelnia=None` = pętla po uczelniach
+> rekordu, gdzie każda iteracja woła `ISlot(original, U)` (scoped). Cacher z
+> `None` NIE woła `ISlot(None)`.
+
+- `przelicz_punkty_dyscyplin(self, uczelnia=None)` (wejście denorm) **traci
+  `get_default()`** (zamyka parked TODO) i deleguje do cachera:
   - **skasuj wszystkie** wiersze cache dla rekordu raz (czyści uczelnie, które
     wypadły — np. po zmianie afiliacji ostatniego autora z danej uczelni),
-  - wylicz uczelnie rekordu — `uczelnie_rekordu()` = distinct `uczelnia` wśród
-    afiliujących/przypiętych autorów (spójnie z filtrami `rebuildEntries`),
-  - dla każdej zbuduj `IPunktacjaCacher(self, U)` i przebuduj (tylko create —
-    globalny delete już zrobiony),
+  - wylicz `uczelnie_rekordu()`, dla każdej zbuduj `IPunktacjaCacher(self, U)`
+    i przebuduj (tylko create — globalny delete już zrobiony),
   - `uczelnia=` jawne ⇒ policz tylko tę jedną (targetowane przebudowy, testy).
 - `cached_punkty_dyscyplin` (`@denormalized`) woła bez argumentów ⇒ auto-rebuild
   produkuje wszystkie uczelnie.
@@ -165,6 +185,38 @@ zwraca distinct `Uczelnia` z `autorzy_set` afiliujących/przypiętych. Może by�
 enumeracja nie musi co do joty replikować filtrów `rebuildEntries`
 (`skupia_pracownikow`, `rodzaj_autora_uwzgledniany_w_kalkulacjach_slotow`).
 Ważne tylko, by nie **pomijała** uczelni, która ma policzalnych autorów.
+
+## Bezpośredni callerzy rebuildu (write-path) — inwentaryzacja i zakres
+
+Poza polem `@denormalized` istnieje kilkanaście miejsc konstruujących
+`IPunktacjaCacher(x)` i wołających `rebuildEntries()` ręcznie. Dzięki decyzji
+kompatybilności (`uczelnia=None` = wszystkie uczelnie rekordu) **żadne z nich się
+nie wywala**, a w single-install działają identycznie. Podział wg traktowania:
+
+**A. Trwały write-path (realna zmiana danych):** wszystkie używają wzorca
+`cacher.removeEntries(); cacher.rebuildEntries()`. Dzięki semantyce
+`uczelnia=None` (`removeEntries(None)` kasuje cały rekord po `rekord_id` jak
+dziś; `rebuildEntries(None)` przelicza wszystkie uczelnie) dostają **poprawne
+zachowanie wielouczelniane BEZ zmiany kodu**. Ewentualna migracja do
+`x.przelicz_punkty_dyscyplin()` jest **kosmetyczna (DRY)**, nie wymagana:
+- `src/bpp/admin/core.py:122` — zapis rekordu w adminie,
+- `src/ewaluacja_metryki/views/pin_unpin.py:61,134` — pin/odpięcie,
+- `src/ewaluacja_optymalizuj_publikacje/views.py:144,173,210` — zmiana
+  przypięcia/dyscypliny (sama DECYZJA optymalizacyjna jest federacyjna i
+  odłożona; rebuild po realnej zmianie danych jest poprawny dzięki kompat).
+
+Twardy wymóg write-side: `removeEntries(None)` MUSI kasować komplet wierszy
+rekordu (zachowanie jak dziś) — inaczej zostałyby sieroty po uczelniach, które
+wypadły.
+
+**B. Symulacja optymalizacji (efemeryczne what-if — moduł federacyjny, ODŁOŻONE):**
+nietknięte w tym spec; konstruktor zostaje kompatybilny, więc w single-install
+działają. Federacyjna poprawność (maks. wynik w obrębie WSZYSTKICH uczelni
+federacji, nie pojedynczej) to osobny, późniejszy temat:
+- `src/ewaluacja_optymalizacja/utils.py:179`,
+- `src/ewaluacja_optymalizacja/tasks/unpinning/simulation.py:116`,
+- `src/ewaluacja_optymalizacja/tasks/discipline_swap/simulation.py:48`,
+- `src/ewaluacja_optymalizacja/core/__init__.py:344`.
 
 ## Naprawa widoku SQL (poprawność, nie do odłożenia)
 
@@ -241,22 +293,50 @@ analogicznie jak `Cache_Punktacja_Autora` po `jednostka__uczelnia`, a
 (z `bpp_jednostka.uczelnia_id`) i pipeline tabel tymczasowych musi nieść
 uczelnię.
 
-Zinwentaryzowani konsumenci (write-side ich NIE rusza; do read-side spec):
+**Pojęcie federacji (kluczowe dla optymalizacji):** instalacja wielouczelniana
+to **federacja** uczelni. Optymalizacja (dobór przypięć/dyscyplin maksymalizujący
+wynik ewaluacji) musi maksymalizować wynik w obrębie **całej federacji**
+(wszystkich uczelni razem), nie pojedynczej uczelni. To NIE jest prosty filtr
+per-uczelnia jak w raportach — to inny problem optymalizacyjny ponad
+partycjonowanym cache. Cache per (rekord, uczelnia) jest właściwym podłożem
+(suma per uczelnia), ale logika decyzyjna jest federacyjna → **odłożona**.
 
-- **raport_slotow** — `core.py`, `tables.py`, `filters.py`, `views/autor.py`,
-  `models/uczelnia.py` (główny konsument widoku + tabel `_Sum`/`_Sum_Group`).
-- **ewaluacja_optymalizacja** — `core/data_loader.py`,
-  `core/optimization_phases.py`, `tasks/unpinning/{analysis,capacity_analysis}.py`,
-  `utils.py`, `views/{author_works,author_works_exports,exports,helpers,
-  verification}.py`, `views/evaluation_browser/prefetch.py`.
-- **ewaluacja_metryki** — `models.py`, `utils.py`, `views/{detail,list}.py`.
-- **ewaluacja2021** — `core/{plecakowy,sumator_base,util}.py`, `models.py`,
-  `reports.py`.
-- **ewaluacja_optymalizuj_publikacje** — `views.py` (też wywołuje rebuild —
-  upewnić się, że po zmianie przypięcia/dyscypliny przelicza per uczelnia).
-- **oswiadczenia** — `views.py`.
-- **ewaluacja_common** — `utils.py`.
-- **bpp** — `core.py`, `management/commands/zbieraj_sloty.py` (raport per autor).
+Zinwentaryzowani konsumenci (write-side ich NIE rusza), z adnotacjami usera:
+
+- **raport_slotow** (`core.py`, `tables.py`, `filters.py`, `views/autor.py`,
+  `models/uczelnia.py`) — **ISTOTNE**, główny konsument widoku + tabel
+  `_Sum`/`_Sum_Group`. Czysty read-side: filtr po uczelni oglądającego.
+  Priorytet następnego spec.
+- **ewaluacja_optymalizacja** (`core/data_loader.py`,
+  `core/optimization_phases.py`, `tasks/unpinning/*`, `utils.py`, `views/*`,
+  `views/evaluation_browser/prefetch.py`) — **FEDERACJA, ODŁOŻONE**. Tu trzeba
+  liczyć na najwyższy wynik nie w obrębie jednej uczelni, lecz wszystkich
+  (federacji). Osobny, późniejszy temat (też pisze cache w symulacjach — patrz
+  sekcja „Bezpośredni callerzy rebuildu", grupa B; konstruktor zostaje
+  kompatybilny, single-install działa).
+- **ewaluacja_optymalizuj_publikacje** (`views.py`) — **FEDERACJA, ODŁOŻONE**.
+  Optymalizacja jednej publikacji musi uwzględniać cele wszystkich uczelni
+  (federacji). Część write-path (rebuild po zmianie) ujęta w grupie A wyżej;
+  logika decyzyjna federacyjna odłożona.
+- **ewaluacja_metryki** — DWUstronne: `views/{detail,list}.py` to **tylko
+  odczyt** (zostawiamy / prosty filtr przy odczycie); `views/pin_unpin.py`
+  to **write-path** (rebuild po pin/unpin) — ujęty w grupie A. (Korekta: moduł
+  nie jest „tylko odczytem".)
+- **ewaluacja2021** (`core/*`, `models.py`, `reports.py`) — **STATUS NIEJASNY**.
+  Web URL-e **wyłączone** (zakomentowane w `django_bpp/urls.py`: „Disabled
+  ewaluacja2021 (contains 3N reports)"), ale: jest w `INSTALLED_APPS`,
+  `ewaluacja_common/utils.py` importuje z niego `const`, ma żywe management
+  commands (`raport_3n_genetyczny/plecakowy`, `przelicz_liczbe_n_dla_uczelni`,
+  `odepnij_dyscypliny`). Decyzja „używać/naprawiać?” do podjęcia w read-side
+  spec — najpierw potwierdzić, czy raporty 3N są jeszcze w użyciu.
+- **oswiadczenia** (`views.py`) — read-only (`Cache_Punktacja_Autora.filter`).
+  Status priorytetu: do ustalenia (user: „nie wiem”). Filtr po uczelni przy
+  odczycie wystarczy.
+- **ewaluacja_common** (`utils.py`) — read-only
+  (`Cache_Punktacja_Autora_Query.filter`). Status: do ustalenia.
+- **bpp** (`core.py` read-only `Cache_Punktacja_Autora_Query.filter`;
+  `management/commands/zbieraj_sloty.py` raport per autor) — read-only. Status:
+  do ustalenia.
 
 Tabele tymczasowe pipeline'u raportów (`Cache_Punktacja_Autora_Sum`,
 `_Sum_Group`, `bpp_temporary_cpaq*`, `bpp_temporary_cpasg*`) — przebudowa pod
