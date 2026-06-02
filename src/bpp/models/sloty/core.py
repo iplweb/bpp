@@ -23,7 +23,7 @@ from .wydawnictwo_ciagle import (
 )
 
 
-def _rozstrzygnij_uczelnie(original):  # noqa
+def _rozstrzygnij_uczelnie(original):
     """ISlot bez jawnej uczelni: zwróć jednoznaczną uczelnię albo CannotAdapt."""
     from bpp.models.uczelnia import Uczelnia
 
@@ -34,7 +34,10 @@ def _rozstrzygnij_uczelnie(original):  # noqa
     if len(uczelnie) == 1:
         return uczelnie[0]
     if len(uczelnie) == 0:
-        raise CannotAdapt("Rekord nie ma afiliujących autorów z uczelnią.")
+        raise CannotAdapt(
+            "Rekord nie ma afiliujących i przypiętych autorów — "
+            "nie można ustalić uczelni."
+        )
     raise CannotAdapt(
         "Rekord ma autorów z wielu uczelni — podaj uczelnię jawnie "
         "(ISlot(rekord, uczelnia=...)); bez niej wynik jest niejednoznaczny."
@@ -68,7 +71,7 @@ def ISlot(original, uczelnia=None):  # noqa
     return kalkulator
 
 
-def _dopasuj_kalkulator(original):  # noqa
+def _dopasuj_kalkulator(original):  # noqa: C901
     if isinstance(original, Wydawnictwo_Ciagle):
         if original.rok in [2017, 2018]:
             if original.punkty_kbn >= 30:
