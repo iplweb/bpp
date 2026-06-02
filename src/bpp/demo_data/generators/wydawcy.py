@@ -6,23 +6,28 @@ import random
 
 from bpp.demo_data.manifest import Manifest
 from bpp.demo_data.progress import make_progress
+from bpp.demo_data.themes.base import Theme
+from bpp.demo_data.themes.compose import apply_prefix, wydawca_nazwy
 from bpp.models import Wydawca
 
 
 def create_wydawcy(
     *,
     n: int,
+    theme: Theme,
     manifest: Manifest,
     rng: random.Random,
+    prefix: str = "",
     batch_size: int = 500,
     disable_progress: bool = False,
 ) -> list[Wydawca]:
-    """Tworzy n Wydawcow z prefixem 'Demo —'.
+    """Tworzy n Wydawcow z nazwami z motywu.
 
-    Wydawca dziedziczy z ModelZNazwa (nazwa unique=True). Brak AutoSlugField,
-    wiec wystarcza unikalna nazwa per i — bez pre-setowania slug-a.
+    Wydawca dziedziczy z ModelZNazwa (nazwa unique=True). Unikalnosc
+    zapewnia wydawca_nazwy() przez cyklowanie z przyrostkiem oddzialu.
     """
-    objs = [Wydawca(nazwa=f"Demo — Wydawca {i + 1}") for i in range(n)]
+    nazwy = wydawca_nazwy(theme, rng, n)
+    objs = [Wydawca(nazwa=apply_prefix(nazwy[i], prefix)) for i in range(n)]
 
     pbar = make_progress(
         range(0, n, batch_size),

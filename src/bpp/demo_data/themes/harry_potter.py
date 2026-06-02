@@ -1,0 +1,103 @@
+"""Motyw 'harry-potter' — uniwersum Harry'ego Pottera."""
+
+from __future__ import annotations
+
+from bpp.demo_data.themes.base import Theme
+
+HARRY_POTTER = Theme(
+    key="harry-potter",
+    label="Harry Potter",
+    uczelnia_nazwy=(
+        "Hogwart — Szkoła Magii i Czarodziejstwa",
+        "Akademia Magii Beauxbatons",
+    ),
+    uczelnia_skrot="HSM",
+    wydzial_dziedziny=(
+        "Magii",
+        "Eliksirów",
+        "Transmutacji",
+        "Obrony przed Czarną Magią",
+        "Zielarstwa",
+        "Zaklęć",
+    ),
+    jednostka_dziedziny=(
+        "Eliksirów",
+        "Transmutacji",
+        "Obrony przed Czarną Magią",
+        "Zielarstwa",
+        "Numerologii",
+        "Zaklęć",
+        "Opieki nad Magicznymi Stworzeniami",
+        "Wróżbiarstwa",
+    ),
+    autor_imiona=(
+        "Harry",
+        "Hermiona",
+        "Ron",
+        "Albus",
+        "Severus",
+        "Minerwa",
+        "Rubeus",
+        "Draco",
+        "Luna",
+        "Neville",
+        "Ginny",
+        "Sybilla",
+    ),
+    autor_nazwiska=(
+        "Potter",
+        "Granger",
+        "Weasley",
+        "Dumbledore",
+        "Snape",
+        "McGonagall",
+        "Hagrid",
+        "Malfoy",
+        "Lovegood",
+        "Longbottom",
+    ),
+    zrodlo_human=(
+        "Hogvartensia",
+        "Magiczne",
+        "Czarodziejskie",
+        "Eliksirologiczne",
+        "Transmutacyjne",
+    ),
+    wydawcy=(
+        "Oficyna Hogwart Press",
+        "Wydawnictwo Esy i Floresy",
+        "Wydawnictwo Ministerstwa Magii",
+        "Dom Wydawniczy Hogsmeade",
+    ),
+    tytul_topics=(
+        "eliksirów",
+        "zaklęć obronnych",
+        "transmutacji",
+        "magicznych stworzeń",
+        "wróżbiarstwa",
+        "numerologii",
+        "ziół magicznych",
+        "różdżek",
+    ),
+    tytul_subjects=(
+        "skuteczność zaklęcia",
+        "trwałość eliksiru",
+        "siłę różdżki",
+        "odporność na klątwy",
+        "precyzję transmutacji",
+    ),
+    tytul_contexts=(
+        "warunkach Hogwartu",
+        "lochach Slytherinu",
+        "Zakazanym Lesie",
+        "klasie eliksirów",
+        "badaniu w Hogsmeade",
+    ),
+    streszczenie_templates=(
+        "Zbadano wpływ {topic} na {subject}.",
+        "Doświadczenie przeprowadzono w {context}.",
+        "Wyniki dowodzą zależności {topic} od {subject}.",
+        "Mistrzowie magii wykazali rolę {topic} dla {subject}.",
+        "Obserwacje w {context} potwierdzają hipotezę o {topic}.",
+    ),
+)

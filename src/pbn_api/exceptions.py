@@ -167,3 +167,23 @@ class BPPAutorPublicationLinkNotFound(Exception):
     ale autor nie jest powiązany z tą publikacją."""
 
     pass
+
+
+class StatementsResendFailedException(Exception):
+    """Podnoszony gdy synchronizacja oświadczeń z PBN nie powiodła się
+    po wyczerpaniu prób retry w ``sync_publication`` (GET/DELETE/POST).
+
+    Publikacja została już wysłana do PBN (POST do endpointu repo OK),
+    ale kolejne kroki synchronizacji oświadczeń zawiodły. Klasyfikowany
+    w ``pbn_export_queue`` jako RETRY_LATER + TECHNICZNY.
+    """
+
+    def __init__(self, publication_pk, pbn_uid, last_error):
+        self.publication_pk = publication_pk
+        self.pbn_uid = pbn_uid
+        self.last_error = last_error
+        super().__init__(
+            f"Synchronizacja oświadczeń dla pracy pk={publication_pk} "
+            f"(PBN UID={pbn_uid}) nie powiodła się po wyczerpaniu prób: "
+            f"{last_error}"
+        )

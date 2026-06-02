@@ -12,6 +12,7 @@ from bpp.demo_data.generators.wydawcy import create_wydawcy
 from bpp.demo_data.generators.wydawnictwa_zwarte import create_wz
 from bpp.demo_data.generators.wydzialy import create_wydzialy
 from bpp.demo_data.manifest import Manifest
+from bpp.demo_data.themes.registry import get_theme
 from bpp.models import (
     Charakter_Formalny,
     Jezyk,
@@ -43,11 +44,13 @@ def slowniki(db):
 
 @pytest.fixture
 def setup(slowniki, tmp_manifest_path):
+    theme = get_theme("realistyczny")
     m = Manifest(path=tmp_manifest_path, database="db", command_args={})
-    u = ensure_uczelnia(m)
+    u = ensure_uczelnia(m, theme=theme)
     w = create_wydzialy(
         n=1,
         uczelnia=u,
+        theme=theme,
         manifest=m,
         rng=random.Random(1),
         batch_size=10,
@@ -57,6 +60,7 @@ def setup(slowniki, tmp_manifest_path):
         per_wydzial=1,
         wydzialy=w,
         uczelnia=u,
+        theme=theme,
         manifest=m,
         rng=random.Random(2),
         batch_size=10,
@@ -65,6 +69,7 @@ def setup(slowniki, tmp_manifest_path):
     a = create_autorzy(
         n=10,
         jednostki=j,
+        theme=theme,
         manifest=m,
         rng=random.Random(3),
         batch_size=10,
@@ -72,22 +77,24 @@ def setup(slowniki, tmp_manifest_path):
     )
     wyd = create_wydawcy(
         n=3,
+        theme=theme,
         manifest=m,
         rng=random.Random(4),
         batch_size=10,
         disable_progress=True,
     )
-    return m, a, wyd
+    return m, a, wyd, theme
 
 
 @pytest.mark.django_db(transaction=True)
 def test_creates_n_prac(setup):
-    m, autorzy, wydawcy = setup
+    m, autorzy, wydawcy, theme = setup
     prace = create_wz(
         n=20,
         autorzy=autorzy,
         wydawcy=wydawcy,
         lata=range(2020, 2023),
+        theme=theme,
         manifest=m,
         rng=random.Random(99),
         procent_rozdzialy=0,
@@ -100,12 +107,13 @@ def test_creates_n_prac(setup):
 
 @pytest.mark.django_db(transaction=True)
 def test_doi_format(setup):
-    m, autorzy, wydawcy = setup
+    m, autorzy, wydawcy, theme = setup
     create_wz(
         n=5,
         autorzy=autorzy,
         wydawcy=wydawcy,
         lata=range(2020, 2023),
+        theme=theme,
         manifest=m,
         rng=random.Random(99),
         procent_rozdzialy=0,
@@ -119,12 +127,13 @@ def test_doi_format(setup):
 
 @pytest.mark.django_db(transaction=True)
 def test_rozdzialy_have_nadrzedne(setup):
-    m, autorzy, wydawcy = setup
+    m, autorzy, wydawcy, theme = setup
     create_wz(
         n=10,
         autorzy=autorzy,
         wydawcy=wydawcy,
         lata=range(2020, 2023),
+        theme=theme,
         manifest=m,
         rng=random.Random(99),
         procent_rozdzialy=100,
@@ -142,7 +151,7 @@ def test_rozdzialy_have_nadrzedne(setup):
 
 @pytest.mark.django_db(transaction=True)
 def test_procent_rozdzialy_validates_range(setup):
-    m, autorzy, wydawcy = setup
+    m, autorzy, wydawcy, theme = setup
     for invalid in (-1, 101, 150):
         with pytest.raises(ValueError, match="procent_rozdzialy"):
             create_wz(
@@ -150,6 +159,7 @@ def test_procent_rozdzialy_validates_range(setup):
                 autorzy=autorzy,
                 wydawcy=wydawcy,
                 lata=range(2020, 2022),
+                theme=theme,
                 manifest=m,
                 rng=random.Random(1),
                 procent_rozdzialy=invalid,
@@ -160,12 +170,13 @@ def test_procent_rozdzialy_validates_range(setup):
 
 @pytest.mark.django_db(transaction=True)
 def test_pbn_uid_zawsze_puste(setup):
-    m, autorzy, wydawcy = setup
+    m, autorzy, wydawcy, theme = setup
     create_wz(
         n=5,
         autorzy=autorzy,
         wydawcy=wydawcy,
         lata=range(2020, 2023),
+        theme=theme,
         manifest=m,
         rng=random.Random(99),
         procent_rozdzialy=20,

@@ -12,6 +12,7 @@ from pathlib import Path
 from django.core.management.base import BaseCommand
 
 from bpp.demo_data.orchestrator import CreateOptions, run_create
+from bpp.demo_data.themes.registry import THEMES
 
 
 class Command(BaseCommand):
@@ -27,8 +28,8 @@ class Command(BaseCommand):
         parser.add_argument("--autorow", type=int, default=500)
         parser.add_argument("--ile-ciaglych", type=int, default=5000)
         parser.add_argument("--ile-zwartych", type=int, default=5000)
-        parser.add_argument("--od-roku", type=int, default=2017)
-        parser.add_argument("--do-roku", type=int, default=2025)
+        parser.add_argument("--od-roku", type=int, default=2020)
+        parser.add_argument("--do-roku", type=int, default=2026)
         parser.add_argument("--procent-z-dyscyplina", type=int, default=80)
         parser.add_argument("--procent-z-subdyscyplina", type=int, default=20)
         parser.add_argument("--procent-zmiana-dyscypliny", type=int, default=10)
@@ -39,6 +40,11 @@ class Command(BaseCommand):
         parser.add_argument("--batch-size", type=int, default=500)
         parser.add_argument("--yes-i-am-sure", action="store_true")
         parser.add_argument("--confirm-db", type=str, default=None)
+        parser.add_argument(
+            "--motyw", type=str, default="realistyczny", choices=sorted(THEMES)
+        )
+        parser.add_argument("--procent-ze-streszczeniem", type=int, default=70)
+        parser.add_argument("--bez-prefiksu", action="store_true")
 
     def handle(self, *args, **options):
         manifest_out = options.get("manifest_out")
@@ -64,6 +70,9 @@ class Command(BaseCommand):
             batch_size=options["batch_size"],
             yes_i_am_sure=options["yes_i_am_sure"],
             confirm_db=options.get("confirm_db"),
+            motyw=options["motyw"],
+            procent_ze_streszczeniem=options["procent_ze_streszczeniem"],
+            bez_prefiksu=options["bez_prefiksu"],
         )
         # BaseCommand ma self.stdout (OutputWrapper) ale NIE ma self.stdin —
         # passujemy sys.stdin explicit (potrzebne dla double_confirm w trybie

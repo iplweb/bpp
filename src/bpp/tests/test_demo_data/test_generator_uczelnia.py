@@ -5,6 +5,7 @@ from model_bakery import baker
 
 from bpp.demo_data.generators.uczelnia import ensure_uczelnia
 from bpp.demo_data.manifest import Manifest
+from bpp.demo_data.themes.registry import get_theme
 from bpp.models import Uczelnia
 
 
@@ -13,7 +14,7 @@ def test_creates_uczelnia_when_missing(tmp_manifest_path):
     assert not Uczelnia.objects.exists()
     m = Manifest(path=tmp_manifest_path, database="db", command_args={})
 
-    uczelnia = ensure_uczelnia(m)
+    uczelnia = ensure_uczelnia(m, theme=get_theme("realistyczny"), prefix="Demo — ")
 
     assert Uczelnia.objects.count() == 1
     assert uczelnia.nazwa.startswith("Demo")
@@ -26,7 +27,7 @@ def test_reuses_existing_uczelnia(tmp_manifest_path):
     existing = baker.make(Uczelnia, nazwa="Istniejaca", skrot="IST")
     m = Manifest(path=tmp_manifest_path, database="db", command_args={})
 
-    uczelnia = ensure_uczelnia(m)
+    uczelnia = ensure_uczelnia(m, theme=get_theme("realistyczny"), prefix="Demo — ")
 
     assert uczelnia.pk == existing.pk
     assert Uczelnia.objects.count() == 1

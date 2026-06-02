@@ -1,0 +1,101 @@
+"""Motyw 'lem' — Stanisław Lem."""
+
+from __future__ import annotations
+
+from bpp.demo_data.themes.base import Theme
+
+LEM = Theme(
+    key="lem",
+    label="Stanisław Lem",
+    uczelnia_nazwy=(
+        "Instytut Badań Kosmicznych im. Ijona Tichego",
+        "Wyższa Szkoła Cybernetyki Solaryjskiej",
+    ),
+    uczelnia_skrot="IBK",
+    wydzial_dziedziny=(
+        "Kosmonautyki",
+        "Cybernetyki",
+        "Solarystyki",
+        "Robotyki",
+        "Futurologii",
+        "Sepulkologii",
+        "Astronautyki Stosowanej",
+    ),
+    jednostka_dziedziny=(
+        "Solarystyki",
+        "Robotyki Trurla",
+        "Sepulkologii",
+        "Bystrzochronu",
+        "Cyberiady Porównawczej",
+        "Kosmogonii Eksperymentalnej",
+        "Teorii Sepulek",
+        "Bionicznej Inżynierii Pożytecznej",
+    ),
+    autor_imiona=(
+        "Ijon",
+        "Kris",
+        "Hal",
+        "Pirx",
+        "Trurl",
+        "Klapaucjusz",
+        "Snaut",
+        "Rohan",
+        "Adam",
+        "Konstanty",
+    ),
+    autor_nazwiska=(
+        "Tichy",
+        "Kelvin",
+        "Bregg",
+        "Sartorius",
+        "Horpach",
+        "Berg",
+        "Gibarian",
+        "Maartens",
+    ),
+    zrodlo_human=(
+        "Solarystyczne",
+        "Cybernetyczne",
+        "Sepulkarne",
+        "Astronautyczne",
+        "Kosmogoniczne",
+        "Futurologiczne",
+    ),
+    wydawcy=(
+        "Wydawnictwo Solaris",
+        "Oficyna Kosmiczna Tichego",
+        "Dom Wydawniczy Eden",
+        "Wydawnictwo Cyberiada",
+    ),
+    tytul_topics=(
+        "podróży międzygwiezdnych",
+        "sepulek",
+        "robotów Trurla",
+        "oceanu Solaris",
+        "cybernetyki stosowanej",
+        "bystrzochronu",
+        "konstruktorów",
+        "wypraw Pirxa",
+    ),
+    tytul_subjects=(
+        "stabilność psychiki kosmonauty",
+        "skuteczność sepulenia",
+        "wydajność robotów",
+        "bezpieczeństwo lotów",
+        "tolerancję mutacji",
+    ),
+    tytul_contexts=(
+        "warunkach kosmicznych",
+        "stacji orbitalnej Solaris",
+        "próżni międzygwiezdnej",
+        "modelu cybernetycznym",
+        "wyprawie badawczej",
+    ),
+    streszczenie_templates=(
+        "W pracy zbadano wpływ {topic} na {subject}.",
+        "Eksperyment przeprowadzono w {context}.",
+        "Wyniki rzucają nowe światło na zagadnienie {topic}.",
+        "Konstruktorzy wykazali zależność {topic} od {subject}.",
+        "Obserwacje w {context} potwierdzają tezę o {topic}.",
+    ),
+)

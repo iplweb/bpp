@@ -14,6 +14,7 @@ from bpp.demo_data.generators._publikacje_common import (
 )
 from bpp.demo_data.manifest import Manifest
 from bpp.demo_data.progress import make_progress
+from bpp.demo_data.themes.base import Theme
 from bpp.models import (
     Autor,
     Charakter_Formalny,
@@ -66,9 +67,11 @@ def _build_praca(
     rok: int,
     wydawcy: list[Wydawca],
     s: _Slowniki,
-    prefix: str = "",
+    theme: Theme,
+    marker: str = "",
+    rola: str = "",
 ) -> Wydawnictwo_Zwarte:
-    tytul = make_tytul(rng, idx, prefix=prefix)
+    tytul = make_tytul(theme, rng, idx, marker=marker, rola=rola)
     praca = Wydawnictwo_Zwarte(
         tytul_oryginalny=tytul,
         rok=rok,
@@ -142,9 +145,11 @@ def create_wz(
     autorzy: Iterable[Autor],
     wydawcy: Iterable[Wydawca],
     lata: Iterable[int],
+    theme: Theme,
     manifest: Manifest,
     rng: random.Random,
     procent_rozdzialy: int = 20,
+    prefix: str = "",
     batch_size: int = 500,
     disable_progress: bool = False,
 ) -> list[Wydawnictwo_Zwarte]:
@@ -193,7 +198,9 @@ def create_wz(
             rok=rng.choice(lata),
             wydawcy=wydawcy,
             s=s,
-            prefix=" Książka nadrzędna",
+            theme=theme,
+            marker=prefix,
+            rola="Książka nadrzędna",
         )
         for i in range(n_nadrzednych)
     ]
@@ -215,6 +222,8 @@ def create_wz(
                 rok=rng.choice(lata),
                 wydawcy=wydawcy,
                 s=s,
+                theme=theme,
+                marker=prefix,
             )
         )
     for i in range(n_rozdzialow):
@@ -224,7 +233,9 @@ def create_wz(
             rok=rng.choice(lata),
             wydawcy=wydawcy,
             s=s,
-            prefix=" Rozdział",
+            theme=theme,
+            marker=prefix,
+            rola="Rozdział",
         )
         praca.wydawnictwo_nadrzedne = rng.choice(nadrzedne_created)
         pozostale_objs.append(praca)

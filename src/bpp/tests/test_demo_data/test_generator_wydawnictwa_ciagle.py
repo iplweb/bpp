@@ -13,6 +13,7 @@ from bpp.demo_data.generators.wydawnictwa_ciagle import create_wc
 from bpp.demo_data.generators.wydzialy import create_wydzialy
 from bpp.demo_data.generators.zrodla import create_zrodla
 from bpp.demo_data.manifest import Manifest
+from bpp.demo_data.themes.registry import get_theme
 from bpp.models import (
     Charakter_Formalny,
     Jezyk,
@@ -45,11 +46,13 @@ def slowniki(db):
 
 @pytest.fixture
 def setup(slowniki, tmp_manifest_path):
+    theme = get_theme("realistyczny")
     m = Manifest(path=tmp_manifest_path, database="db", command_args={})
-    u = ensure_uczelnia(m)
+    u = ensure_uczelnia(m, theme=theme)
     w = create_wydzialy(
         n=1,
         uczelnia=u,
+        theme=theme,
         manifest=m,
         rng=random.Random(1),
         batch_size=10,
@@ -59,6 +62,7 @@ def setup(slowniki, tmp_manifest_path):
         per_wydzial=1,
         wydzialy=w,
         uczelnia=u,
+        theme=theme,
         manifest=m,
         rng=random.Random(2),
         batch_size=10,
@@ -67,6 +71,7 @@ def setup(slowniki, tmp_manifest_path):
     a = create_autorzy(
         n=10,
         jednostki=j,
+        theme=theme,
         manifest=m,
         rng=random.Random(3),
         batch_size=10,
@@ -74,22 +79,24 @@ def setup(slowniki, tmp_manifest_path):
     )
     z = create_zrodla(
         n=3,
+        theme=theme,
         manifest=m,
         rng=random.Random(4),
         batch_size=10,
         disable_progress=True,
     )
-    return m, a, z
+    return m, a, z, theme
 
 
 @pytest.mark.django_db(transaction=True)
 def test_creates_n_prac(setup):
-    m, autorzy, zrodla = setup
+    m, autorzy, zrodla, theme = setup
     prace = create_wc(
         n=20,
         autorzy=autorzy,
         zrodla=zrodla,
         lata=range(2020, 2023),
+        theme=theme,
         manifest=m,
         rng=random.Random(99),
         batch_size=10,
@@ -101,12 +108,13 @@ def test_creates_n_prac(setup):
 
 @pytest.mark.django_db(transaction=True)
 def test_each_praca_has_authors(setup):
-    m, autorzy, zrodla = setup
+    m, autorzy, zrodla, theme = setup
     create_wc(
         n=10,
         autorzy=autorzy,
         zrodla=zrodla,
         lata=range(2020, 2023),
+        theme=theme,
         manifest=m,
         rng=random.Random(99),
         batch_size=10,
@@ -119,12 +127,13 @@ def test_each_praca_has_authors(setup):
 
 @pytest.mark.django_db(transaction=True)
 def test_doi_format(setup):
-    m, autorzy, zrodla = setup
+    m, autorzy, zrodla, theme = setup
     create_wc(
         n=5,
         autorzy=autorzy,
         zrodla=zrodla,
         lata=range(2020, 2023),
+        theme=theme,
         manifest=m,
         rng=random.Random(99),
         batch_size=10,
@@ -137,12 +146,13 @@ def test_doi_format(setup):
 
 @pytest.mark.django_db(transaction=True)
 def test_pbn_uid_always_empty(setup):
-    m, autorzy, zrodla = setup
+    m, autorzy, zrodla, theme = setup
     create_wc(
         n=5,
         autorzy=autorzy,
         zrodla=zrodla,
         lata=range(2020, 2023),
+        theme=theme,
         manifest=m,
         rng=random.Random(99),
         batch_size=10,
@@ -154,12 +164,13 @@ def test_pbn_uid_always_empty(setup):
 
 @pytest.mark.django_db(transaction=True)
 def test_lata_w_zakresie(setup):
-    m, autorzy, zrodla = setup
+    m, autorzy, zrodla, theme = setup
     create_wc(
         n=20,
         autorzy=autorzy,
         zrodla=zrodla,
         lata=range(2018, 2021),
+        theme=theme,
         manifest=m,
         rng=random.Random(99),
         batch_size=10,
@@ -171,12 +182,13 @@ def test_lata_w_zakresie(setup):
 
 @pytest.mark.django_db(transaction=True)
 def test_manifest_includes_powiazania(setup):
-    m, autorzy, zrodla = setup
+    m, autorzy, zrodla, theme = setup
     create_wc(
         n=5,
         autorzy=autorzy,
         zrodla=zrodla,
         lata=range(2020, 2023),
+        theme=theme,
         manifest=m,
         rng=random.Random(99),
         batch_size=10,

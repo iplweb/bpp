@@ -1,11 +1,13 @@
 """HTTP transport layer for PBN API client."""
 
+import logging
 import random
 import time
 import warnings
 from urllib.parse import quote
 
 import requests
+import rollbar
 from requests import ConnectionError
 from requests.exceptions import JSONDecodeError as RequestsJSONDecodeError
 from requests.exceptions import SSLError
@@ -23,6 +25,8 @@ from pbn_api.exceptions import (
 from .auth import OAuthMixin
 from .pagination import PageableResource
 from .utils import smart_content
+
+logger = logging.getLogger(__name__)
 
 
 class PBNClientTransport:
@@ -167,6 +171,30 @@ class RequestsTransport(OAuthMixin, PBNClientTransport):
                 raise ResourceLockedException(
                     ret.status_code, url, smart_content(ret.content)
                 )
+            # Diagnostyka: logger.error dla widoczności w konsoli/plikach
+            # logów, rollbar.report_message dla zdalnego trackingu (oba przy
+            # każdym 4xx/5xx — szczegóły body i headers przydają się przy
+            # debugowaniu enigmatycznych odpowiedzi typu „400 Bad Request"
+            # bez body).
+            logger.error(
+                "PBN %s on %s: headers=%r body_len=%d body=%r",
+                ret.status_code,
+                url,
+                dict(ret.headers),
+                len(ret.content),
+                ret.content[:4000],
+            )
+            rollbar.report_message(
+                f"PBN {ret.status_code} on {url}",
+                level="error" if ret.status_code >= 500 else "warning",
+                extra_data={
+                    "status_code": ret.status_code,
+                    "url": url,
+                    "headers": dict(ret.headers),
+                    "body_len": len(ret.content),
+                    "body": smart_content(ret.content[:4000]),
+                },
+            )
             raise HttpException(ret.status_code, url, smart_content(ret.content))
 
     def post(self, url, headers=None, body=None, delete=False):
