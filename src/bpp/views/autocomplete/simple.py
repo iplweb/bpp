@@ -30,7 +30,7 @@ from .base import (
     NazwaTrigramMixin,
     autocomplete_create_error,
 )
-from .mixins import SanitizedAutocompleteMixin
+from .mixins import SanitizedAutocompleteMixin, UczelniaScopedAutocompleteMixin
 
 
 class _OrderedSlicedQuerySetSequence(QuerySetSequence):
@@ -197,9 +197,12 @@ class WydzialAutocomplete(
 
 
 class PublicWydzialAutocomplete(
-    SanitizedAutocompleteMixin, NazwaLubSkrotMixin, autocomplete.Select2QuerySetView
+    UczelniaScopedAutocompleteMixin,
+    SanitizedAutocompleteMixin,
+    NazwaLubSkrotMixin,
+    autocomplete.Select2QuerySetView,
 ):
-    """Public autocomplete for visible departments."""
+    """Public autocomplete for visible departments (per-uczelnia, multi-hosted)."""
 
     qset = Wydzial.objects.filter(widoczny=True)
 
