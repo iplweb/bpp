@@ -37,7 +37,6 @@ APPROVED: dict[str, int] = {
     "bpp/models/jednostka.py": 1,  # sortowanie (display), warstwa modelu
     "bpp/multiseek_registry/fields/numeric_fields.py": 1,  # toggle IC, None-tolerant
     "ewaluacja2021/util.py": 1,  # komentarz (nie kod)
-    "pbn_api/adapters/wydawnictwo.py": 1,  # test-only None-tolerant fallback
     "pbn_api/management/commands/util.py": 1,  # GUARDED count==1 (wzorzec CLI)
     "pbn_import/templatetags/pbn_import_tags.py": 1,  # request-first, fallback bez requestu
     "pbn_import/utils/command_helpers.py": 1,  # CLI None-tolerant + CommandError
