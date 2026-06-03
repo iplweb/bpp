@@ -430,9 +430,7 @@ class StartJournalsDownloadView(View):
 
         # Start the task
         try:
-            download_journals.delay(
-                user.pk, uczelnia_id=_request_uczelnia_id(request)
-            )
+            download_journals.delay(user.pk, uczelnia_id=_request_uczelnia_id(request))
             return JsonResponse(
                 {"success": True, "message": "Zadanie pobierania źródeł rozpoczęte."}
             )
@@ -528,9 +526,7 @@ class RetryJournalsTaskView(View):
 
         # Start the task
         try:
-            download_journals.delay(
-                user.pk, uczelnia_id=_request_uczelnia_id(request)
-            )
+            download_journals.delay(user.pk, uczelnia_id=_request_uczelnia_id(request))
             return JsonResponse(
                 {
                     "success": True,

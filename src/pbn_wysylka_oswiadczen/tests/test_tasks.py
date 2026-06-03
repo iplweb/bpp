@@ -152,9 +152,7 @@ def test_start_task_view_passes_uczelnia_id(uczelnia):
     pbn_user.pbn_token_possibly_valid.return_value = True
     user.get_pbn_user = lambda: pbn_user
 
-    with patch(
-        "pbn_wysylka_oswiadczen.views.wysylka_oswiadczen_task"
-    ) as mock_task:
+    with patch("pbn_wysylka_oswiadczen.views.wysylka_oswiadczen_task") as mock_task:
         mock_task.delay.return_value = MagicMock(id="task-123")
         StartTaskView().post(request)
 

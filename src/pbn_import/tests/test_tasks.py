@@ -306,9 +306,7 @@ def test_run_pbn_import_uses_passed_uczelnia_not_default(admin_user):
     )
     uczelnia2 = Uczelnia.objects.create(skrot="P2", nazwa="Druga", site=site2)
 
-    session = ImportSession.objects.create(
-        user=admin_user, status="pending", config={}
-    )
+    session = ImportSession.objects.create(user=admin_user, status="pending", config={})
 
     recorded_pk = []
 
@@ -341,9 +339,7 @@ def test_run_pbn_import_without_uczelnia_id_does_not_fall_back(admin_user):
     )
     Uczelnia.objects.create(skrot="P1", nazwa="Pierwsza", site=site1)
 
-    session = ImportSession.objects.create(
-        user=admin_user, status="pending", config={}
-    )
+    session = ImportSession.objects.create(user=admin_user, status="pending", config={})
 
     mock_import_manager = MagicMock()
     mock_import_manager.run.return_value = {"success": True}

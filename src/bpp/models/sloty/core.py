@@ -57,10 +57,9 @@ def ISlot(original, uczelnia=None):  # noqa
     if uczelnia is None:
         uczelnia = _rozstrzygnij_uczelnie(original)
 
-    if (
-        hasattr(original, "status_korekty_id")
-        and original.status_korekty_id in uczelnia.ukryte_statusy("sloty")
-    ):
+    if hasattr(
+        original, "status_korekty_id"
+    ) and original.status_korekty_id in uczelnia.ukryte_statusy("sloty"):
         raise CannotAdapt(
             "Sloty nie będą liczone, zgodnie z ustawieniami obiektu Uczelnia dla ukrywanych "
             "statusów korekt. "

@@ -105,4 +105,6 @@ class PBNBaseCommand(BaseCommand):
             print("App token\t", app_token)
             print("Base URL\t", base_url)
             print("User token\t", user_token)
-        return BppPBNClient(transport, uczelnia=getattr(self, "_resolved_uczelnia", None))
+        return BppPBNClient(
+            transport, uczelnia=getattr(self, "_resolved_uczelnia", None)
+        )

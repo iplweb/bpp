@@ -214,9 +214,7 @@ class Command(PBNBaseCommand):
 
     def _step_generate_json(self, publication):
         self._header("KROK 2/8 — Generowanie JSON publikacji")
-        adapter = WydawnictwoPBNAdapter(
-            publication, uczelnia=self._resolved_uczelnia
-        )
+        adapter = WydawnictwoPBNAdapter(publication, uczelnia=self._resolved_uczelnia)
         js = adapter.pbn_get_json()
         bez_oswiadczen = "statements" not in js
         n_statements = len(js.get("statements", [])) if not bez_oswiadczen else 0

@@ -126,7 +126,9 @@ def kolejka_ponow_wysylke_prac_po_zalogowaniu(pk):
 
 
 @app.task
-def queue_pbn_export_batch(app_label, model_name, record_ids, user_id, uczelnia_id=None):
+def queue_pbn_export_batch(
+    app_label, model_name, record_ids, user_id, uczelnia_id=None
+):
     """
     Queue multiple records for PBN export in batch.
 
@@ -150,9 +152,7 @@ def queue_pbn_export_batch(app_label, model_name, record_ids, user_id, uczelnia_
     except User.DoesNotExist:
         return
 
-    uczelnia = (
-        Uczelnia.objects.filter(pk=uczelnia_id).first() if uczelnia_id else None
-    )
+    uczelnia = Uczelnia.objects.filter(pk=uczelnia_id).first() if uczelnia_id else None
 
     model = apps.get_model(app_label, model_name)
 
