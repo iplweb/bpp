@@ -22,6 +22,7 @@ from bpp.models import (
     Uczelnia,
 )
 from bpp.models.struktura import Wydzial
+from bpp.util.uczelnia_scope import tylko_jedna_uczelnia
 
 from .forms import RankingAutorowForm
 
@@ -228,6 +229,11 @@ class RankingAutorow(ExportMixin, SingleTableView):
             wydzialy = self.get_wydzialy()
             if wydzialy:
                 qset = qset.filter(jednostka__wydzial__in=wydzialy)
+
+        # Multi-hosted: ranking = obecni pracownicy tej uczelni.
+        # No-op na single-install (guard) — wynik bez zmian.
+        if uczelnia is not None and not tylko_jedna_uczelnia():
+            qset = qset.filter(autor__aktualna_jednostka__uczelnia=uczelnia)
 
         return qset
 
