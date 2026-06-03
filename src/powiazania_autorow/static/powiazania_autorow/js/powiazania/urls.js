@@ -19,7 +19,9 @@ export function wybraneZrodla(ctx) {
     return { z: z, w: w };
 }
 
-// Parametry filtra (rok od-do + wiele źródeł/wydawców) jako "&k=v...".
+// Parametry filtra (rok od-do + wiele źródeł/wydawców + tylko zatrudnieni)
+// jako "&k=v...". Dokleja je i siecUrl, i daneUrl, więc auto-rozwijanie BFS
+// oraz klik-rozwijanie pojedynczego węzła respektują ten sam filtr.
 export function paramyFiltru(ctx) {
     let p = "";
     if (ctx.rokOdEl && ctx.rokOdEl.value) {
@@ -35,6 +37,9 @@ export function paramyFiltru(ctx) {
     sel.w.forEach(function (id) {
         p += "&wydawca=" + encodeURIComponent(id);
     });
+    if (ctx.tylkoZatrudnieni) {
+        p += "&tylko_zatrudnieni=1";
+    }
     return p;
 }
 

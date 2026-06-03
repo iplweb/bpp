@@ -31,12 +31,15 @@ export function podepnijZdarzenia(ctx) {
         debTimer = setTimeout(function () { zaladujSiec(ctx); }, 250);
     }
 
-    // Zmiana roku wpływa i na sieć, i na listę źródeł — przeładuj oba.
+    // Zmiana roku wpływa i na sieć, i na listę źródeł — przeładuj sieć
+    // zawsze, a listę źródeł TYLKO gdy szuflada była już otwierana (lista
+    // załadowana). Jeśli user jeszcze jej nie otwierał, świeże źródła (z
+    // bieżącym rokiem) pobiorą się przy pierwszym otwarciu szuflady.
     let debFiltr = null;
     function poZmianieRoku() {
         if (debFiltr) { clearTimeout(debFiltr); }
         debFiltr = setTimeout(function () {
-            zaladujZrodla(ctx);
+            if (ctx.zrodlaZaladowane) { zaladujZrodla(ctx); }
             zaladujSiec(ctx);
         }, 350);
     }
@@ -149,8 +152,15 @@ export function podepnijZdarzenia(ctx) {
     // --- szuflada źródeł/wydawców (multi-select) ---
     if (ctx.btnZrodlaToggle && ctx.panelZrodla) {
         ctx.btnZrodlaToggle.addEventListener("click", function () {
-            ctx.panelZrodla.style.display =
-                ctx.panelZrodla.style.display === "block" ? "none" : "block";
+            const otwieramy = ctx.panelZrodla.style.display !== "block";
+            ctx.panelZrodla.style.display = otwieramy ? "block" : "none";
+            // Leniwe ładowanie: listę pobieramy dopiero przy pierwszym
+            // otwarciu szuflady (a nie na starcie strony). Pierwszy fetch
+            // i tak uwzględnia bieżący filtr roku (zrodlaUrl dokleja rok).
+            if (otwieramy && !ctx.zrodlaZaladowane) {
+                ctx.zrodlaZaladowane = true;
+                zaladujZrodla(ctx);
+            }
         });
         // zamknięcie po kliknięciu poza szufladą
         document.addEventListener("click", function (e) {
@@ -246,6 +256,15 @@ export function podepnijZdarzenia(ctx) {
                 ctx.progWewnLabel.textContent = ctx.progWewn;
             }
             odswiezKrawedzieWewn(ctx);
+        });
+    }
+
+    // --- tylko aktualnie zatrudnieni: zawęź sieć do współautorów z
+    // aktualną jednostką w tej uczelni (przeładowanie z serwera) ---
+    if (ctx.chkZatrudnieni) {
+        ctx.chkZatrudnieni.addEventListener("change", function () {
+            ctx.tylkoZatrudnieni = ctx.chkZatrudnieni.checked;
+            zaladujSiecZwloka();
         });
     }
 

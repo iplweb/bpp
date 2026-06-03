@@ -19,6 +19,7 @@ from .queries import (
     _pbn_root,
     _sasiedzi_authorconnection,
     _sasiedzi_cache,
+    _uczelnia_zatrudnienia,
     _zakres_lat,
 )
 
@@ -47,13 +48,14 @@ class GrafPowiazanDaneView(View):
         autor = get_object_or_404(Autor.objects.select_related("tytul"), pk=pk)
         pbn_root = _pbn_root()
         filtr = _filtr_z_request(request)
+        uczelnia_zatr = _uczelnia_zatrudnienia(request)
 
         if filtr.aktywny():
             # liczenie z cache (self-join) pod twardym statement_timeout —
             # patologiczny filtr ubija własny request, nie bazę
             try:
                 with _limit_czasu(STATEMENT_TIMEOUT_FILTR_MS):
-                    wybrani = _sasiedzi_cache(autor, filtr)
+                    wybrani = _sasiedzi_cache(autor, filtr, uczelnia_zatr)
             except OperationalError:
                 return JsonResponse(
                     {
@@ -63,7 +65,7 @@ class GrafPowiazanDaneView(View):
                     status=503,
                 )
         else:
-            wybrani = _sasiedzi_authorconnection(autor)
+            wybrani = _sasiedzi_authorconnection(autor, uczelnia_zatr)
 
         metryki = _metryki_prac([autor.pk] + [a.pk for a, _ in wybrani])
 
@@ -99,6 +101,7 @@ class GrafPowiazanSiecView(View):
         depth = _int_param(request, "depth", 2, 1, 10)
         topn = _int_param(request, "topn", 15, 1, 50)
         filtr = _filtr_z_request(request)
+        uczelnia_zatr = _uczelnia_zatrudnienia(request)
         if filtr.aktywny():
             # przy liczeniu z cache tniemy głębokość (self-join jest droższy)
             depth = min(depth, MAKS_GLEBOKOSC_FILTR)
@@ -110,7 +113,7 @@ class GrafPowiazanSiecView(View):
             try:
                 with _limit_czasu(STATEMENT_TIMEOUT_FILTR_MS):
                     level_of, parent_of, krawedzie, przyciecie = _bfs_siec(
-                        autor.pk, depth, topn, filtr
+                        autor.pk, depth, topn, filtr, uczelnia_zatr
                     )
                     visited = set(level_of.keys())
                     extra_edges = _krawedzie_wewnatrz(visited, krawedzie, filtr)
@@ -124,7 +127,7 @@ class GrafPowiazanSiecView(View):
                 )
         else:
             level_of, parent_of, krawedzie, przyciecie = _bfs_siec(
-                autor.pk, depth, topn, filtr
+                autor.pk, depth, topn, filtr, uczelnia_zatr
             )
             visited = set(level_of.keys())
             # Krawędzie "poprzeczne": wszystkie powiązania MIĘDZY widocznymi

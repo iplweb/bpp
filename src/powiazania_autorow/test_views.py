@@ -320,6 +320,97 @@ def test_siec_filtr_wiele_zrodel(client, jednostka, typy_odpowiedzialnosci):
 
 
 @pytest.mark.django_db
+def test_dane_filtr_tylko_zatrudnieni(client, jednostka):
+    # jednostka.uczelnia jest jedyną (więc domyślną) uczelnią — pracownik
+    # liczy się jako "aktualnie zatrudniony", gdy jego aktualna_jednostka
+    # należy do tej uczelni.
+    centrum = baker.make(Autor, pokazuj=True, aktualna_jednostka=None)
+    zatrudniony = baker.make(
+        Autor,
+        imiona="Anna",
+        nazwisko="Nowak",
+        pokazuj=True,
+        aktualna_jednostka=jednostka,
+    )
+    obcy = baker.make(
+        Autor,
+        imiona="Bob",
+        nazwisko="Obcy",
+        pokazuj=True,
+        aktualna_jednostka=None,
+    )
+    for s in (zatrudniony, obcy):
+        AuthorConnection.objects.create(
+            primary_author=centrum, secondary_author=s, shared_publications_count=3
+        )
+
+    url = reverse("bpp:browse_autor_powiazania_dane", args=[centrum.pk])
+
+    # bez filtra — obaj sąsiedzi widoczni
+    bez = client.get(url).json()
+    assert {n["label"] for n in bez["neighbors"]} == {"Anna Nowak", "Bob Obcy"}
+
+    # z filtrem — tylko zatrudniony w uczelni; centrum zawsze obecne
+    data = client.get(url, {"tylko_zatrudnieni": 1}).json()
+    assert [n["label"] for n in data["neighbors"]] == ["Anna Nowak"]
+    assert data["center"]["id"] == centrum.pk
+
+
+@pytest.mark.django_db
+def test_siec_filtr_tylko_zatrudnieni_centrum_zawsze(client, jednostka):
+    # Centrum NIE jest zatrudnione (aktualna_jednostka=None) — i tak musi
+    # zostać korzeniem sieci przy aktywnym filtrze.
+    centrum = baker.make(Autor, pokazuj=True, aktualna_jednostka=None)
+    zatrudniony = baker.make(Autor, pokazuj=True, aktualna_jednostka=jednostka)
+    obcy = baker.make(Autor, pokazuj=True, aktualna_jednostka=None)
+    AuthorConnection.objects.create(
+        primary_author=centrum,
+        secondary_author=zatrudniony,
+        shared_publications_count=5,
+    )
+    AuthorConnection.objects.create(
+        primary_author=centrum, secondary_author=obcy, shared_publications_count=4
+    )
+
+    url = reverse("bpp:browse_autor_powiazania_siec", args=[centrum.pk])
+    data = client.get(url, {"tylko_zatrudnieni": 1, "depth": 1}).json()
+
+    ids = {n["id"] for n in data["nodes"]}
+    assert centrum.pk in ids  # centrum zawsze, mimo braku zatrudnienia
+    assert zatrudniony.pk in ids
+    assert obcy.pk not in ids
+
+
+@pytest.mark.django_db
+def test_siec_filtr_zatrudnieni_pomija_obca_uczelnie(client, jednostka):
+    # Sąsiad zatrudniony, ale w INNEJ uczelni — filtr go pomija (sprawdza,
+    # że liczy się dopasowanie uczelni, nie samo "ma aktualną jednostkę").
+    from bpp.models import Jednostka, Uczelnia, Wydzial
+
+    obca_uczelnia = baker.make(Uczelnia, nazwa="Obca", skrot="OB")
+    obcy_wydzial = baker.make(Wydzial, uczelnia=obca_uczelnia)
+    obca_jednostka = baker.make(Jednostka, uczelnia=obca_uczelnia, wydzial=obcy_wydzial)
+
+    centrum = baker.make(Autor, pokazuj=True, aktualna_jednostka=jednostka)
+    nasz = baker.make(Autor, pokazuj=True, aktualna_jednostka=jednostka)
+    obcy = baker.make(Autor, pokazuj=True, aktualna_jednostka=obca_jednostka)
+    AuthorConnection.objects.create(
+        primary_author=centrum, secondary_author=nasz, shared_publications_count=5
+    )
+    AuthorConnection.objects.create(
+        primary_author=centrum, secondary_author=obcy, shared_publications_count=4
+    )
+
+    url = reverse("bpp:browse_autor_powiazania_siec", args=[centrum.pk])
+    data = client.get(url, {"tylko_zatrudnieni": 1, "depth": 1}).json()
+
+    ids = {n["id"] for n in data["nodes"]}
+    assert centrum.pk in ids
+    assert nasz.pk in ids
+    assert obcy.pk not in ids
+
+
+@pytest.mark.django_db
 def test_zrodla_json_liczy_prace(client, jednostka, typy_odpowiedzialnosci):
     from bpp.models import Wydawnictwo_Ciagle, Zrodlo
 
