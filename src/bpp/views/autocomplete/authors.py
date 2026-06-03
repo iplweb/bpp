@@ -21,7 +21,7 @@ from bpp.models.wydawnictwo_zwarte import Wydawnictwo_Zwarte, Wydawnictwo_Zwarte
 from pbn_api.models import OsobaZInstytucji
 
 from .base import autocomplete_create_error
-from .mixins import SanitizedAutocompleteMixin
+from .mixins import SanitizedAutocompleteMixin, UczelniaScopedAutocompleteMixin
 
 
 class AutorAutocompleteBase(
@@ -179,8 +179,18 @@ class AutorAutocomplete(GroupRequiredMixin, AutorAutocompleteBase):
         return obj
 
 
-class PublicAutorAutocomplete(AutorAutocompleteBase):
-    """Public autocomplete for authors (no create, no PBN/MNISW markers)."""
+class PublicAutorAutocomplete(UczelniaScopedAutocompleteMixin, AutorAutocompleteBase):
+    """Public autocomplete for authors (no create, no PBN/MNISW markers).
+
+    Autorzy związani z uczelnią obecnie lub w przeszłości (multi-hosted) —
+    grupy 1+2 z grupowania bazy; grupa „zewnętrzni" odpada. Grupowanie i
+    sortowanie z bazy zachowane.
+    """
+
+    uczelnia_lookups = (
+        "aktualna_jednostka__uczelnia",
+        "autor_jednostka__jednostka__uczelnia",
+    )
 
     def get_result_label(self, result):
         """Return clean author name without PBN/MNISW markers."""

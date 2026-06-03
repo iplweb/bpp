@@ -47,3 +47,56 @@ def test_wydzial_autocomplete_zawezony_do_uczelni(
     pks = set(view.get_queryset().values_list("pk", flat=True))
     assert wydzial_uczelnia1.pk in pks
     assert wydzial_uczelnia2.pk not in pks
+
+
+@pytest.mark.django_db
+def test_autor_autocomplete_kiedykolwiek_zwiazany(
+    uczelnia1,
+    uczelnia2,
+    site1,
+    jednostka_uczelnia1,
+    jednostka_uczelnia2,
+    autor_uczelnia1,
+    autor_uczelnia2,
+    settings,
+):
+    settings.ALLOWED_HOSTS = ["*"]
+    from model_bakery import baker
+
+    from bpp.views.autocomplete.authors import PublicAutorAutocomplete
+
+    # autor historyczny: aktualna jednostka w U2, ale wpis Autor_Jednostka w U1
+    autor_hist = baker.make("bpp.Autor", aktualna_jednostka=jednostka_uczelnia2)
+    baker.make("bpp.Autor_Jednostka", autor=autor_hist, jednostka=jednostka_uczelnia1)
+
+    view = PublicAutorAutocomplete()
+    view.request = make_request_for_site(site1)
+    view.q = ""
+    pks = set(view.get_queryset().values_list("pk", flat=True))
+    assert autor_uczelnia1.pk in pks  # obecny pracownik U1
+    assert autor_hist.pk in pks  # historycznie związany z U1
+    assert autor_uczelnia2.pk not in pks  # tylko U2 → zewnętrzny dla U1
+
+
+@pytest.mark.django_db
+def test_autor_autocomplete_dedup_wielokrotna_historia(
+    uczelnia1, uczelnia2, site1, jednostka_uczelnia1, settings
+):
+    """Autor z wieloma wpisami Autor_Jednostka w U1 pojawia się DOKŁADNIE raz
+    (kontrakt .distinct() — join po historii mnoży wiersze)."""
+    settings.ALLOWED_HOSTS = ["*"]
+    from model_bakery import baker
+
+    from bpp.views.autocomplete.authors import PublicAutorAutocomplete
+
+    # druga jednostka tej samej uczelni U1, by autor miał 2 wpisy historii w U1
+    jedn_u1_b = baker.make("bpp.Jednostka", uczelnia=uczelnia1)
+    autor = baker.make("bpp.Autor", aktualna_jednostka=jednostka_uczelnia1)
+    baker.make("bpp.Autor_Jednostka", autor=autor, jednostka=jednostka_uczelnia1)
+    baker.make("bpp.Autor_Jednostka", autor=autor, jednostka=jedn_u1_b)
+
+    view = PublicAutorAutocomplete()
+    view.request = make_request_for_site(site1)
+    view.q = ""
+    pk_list = list(view.get_queryset().values_list("pk", flat=True))
+    assert pk_list.count(autor.pk) == 1  # nie zduplikowany mimo 2 wpisów historii
