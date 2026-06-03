@@ -16,8 +16,24 @@ przepina te porównania na **uczelnię klienta** (`client.uczelnia`).
 `pbn_integrator/importer/authors.py` (funkcja `_przetworz_afiliacje`) → parametr
 `uczelnia` przekazany z `utworz_autorow` (ma `client`). Aktualizacja guard-whitelisty.
 
-**Poza zakresem:** reszta `pbn_integrator` nie używa `objects.default` (guard
-whitelist potwierdza: jedyny wpis to `authors.py: 5`). Drobne (§E) — osobno.
+**KOREKTA zakresu (2026-06-03):** pierwotny spec błędnie twierdził „jedyny wpis to
+authors.py: 5" (truncated grep). Guard whitelist ma w istocie TRZY wpisy integratora
+(zgodnie z handoff §D). Pełny zakres:
+- `importer/authors.py` (5) — ZROBIONE (`68959b629` + `3ca65a740`).
+- `management/commands/pbn_integrator.py:221` (`_handle_people`): `pbn_uid_id =
+  Uczelnia.objects.default.pbn_uid_id`. `handle()` ma już `client` i `uczelnia`;
+  `_handle_people(opts, client, s, e)` → użyj `client.uczelnia.pbn_uid_id`.
+- `utils/scientists.py:438` (matcher `matchuj_autora_po_stronie_pbn`): porównanie
+  `pos["institutionId"] == Uczelnia.objects.default.pbn_uid_id`. Jedyny caller:
+  `integruj_wszystkich_niezintegrowanych_autorow()` (globalny, iteruje wszystkich
+  autorów bez pbn_uid). **Reguła (jak R2):** matcher dostaje uczelnię AUTORA
+  (`autor.aktualna_jednostka.uczelnia`); gdy `None` (brak/obca jednostka) →
+  matcher nie potrafi potwierdzić „pracuje u nas", `can_be_set` zostaje False
+  (autor i tak bez home-uczelni — nie integrujemy go agresywnie). Sygnatura
+  `matchuj_autora_po_stronie_pbn(imiona, nazwisko, orcid, uczelnia)`; przy `438`
+  porównanie tylko gdy `uczelnia is not None` (`uczelnia.pbn_uid_id`).
+
+**Poza zakresem:** reszta `pbn_integrator` nie używa `objects.default`. Drobne (§E) — osobno.
 
 ## Stan obecny (zmapowany)
 
