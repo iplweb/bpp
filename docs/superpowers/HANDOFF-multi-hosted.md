@@ -233,13 +233,16 @@ WPROST przeciekają międzyuczelniano. R1 objął tylko cache slotów; te widoki
 poza zakresem R1 i NIE odnotowane jako wyłączone → kandydat na wątek **R3**.
 
 ### Nowy backlog (priorytety)
-- **A) R3 read-side publiczny `Rekord`** (najwyższy): 5 widoków —
-  multiwyszukiwarka (`bpp/views/mymultiseek.py:37` → `multiseek_registry/__init__.py:32`),
-  raport „cała uczelnia" (`nowe_raporty/poziomy.py:39` — `obiekt` ignorowany),
-  ranking (`ranking_autorow/views.py:265`), browse lata/rok (`bpp/views/browse.py:491-556`),
-  OAI (`bpp/views/oai.py:243`). Fix: helper `scope_rekord_do_uczelni` +
-  `autorzy__jednostka__uczelnia` + `skupia_pracownikow` + `distinct`. Każdy ma już
-  `get_for_request`. → osobny spec.
+- **A) R3 read-side publiczny `Rekord`** — podzielone na R3a (widoki) + R3b (autocomplety).
+  - ✅ **R3a ZROBIONE (2026-06-03):** helper `bpp.util.uczelnia_scope.scope_rekord_do_uczelni`
+    + guard `tylko_jedna_uczelnia` (short-circuit single-install); raport poziom-uczelnia,
+    browse lata/rok, OAI feed zawężone (reguła homepage `autorzy__jednostka__uczelnia`);
+    ranking po `autor__aktualna_jednostka__uczelnia` (obecni pracownicy). Multiseek wyniki
+    świadomie NIE filtrowane. 6 tasków TDD (subagent-driven, spec+quality review każdy),
+    pełna regresja zielona, invariant single-install trzyma. Plan
+    `plans/2026-06-03-r3a-read-side-publiczny-widoki.md`. Niepushowane.
+  - **R3b (publiczne autocomplety) — NASTĘPNY.** Spec
+    `specs/2026-06-03-r3b-publiczne-autocomplety-uczelnia-design.md`. Zależy od helpera R3a.
 - **B) Drobne gotowe:** `powiazania_autorow/queries.py:_pbn_root()` →
   `get_for_request` (jedyny realny dług z whitelisty get_default, Audyt 1);
   **LUKA R1:** komenda `zbieraj_sloty` CLI + `Autor.zbieraj_sloty` nie przekazują
