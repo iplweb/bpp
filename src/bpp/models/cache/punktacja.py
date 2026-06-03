@@ -115,6 +115,7 @@ class Cache_Punktacja_Autora_Query_View(models.Model):
     rekord = ForeignKey("bpp.Rekord", DO_NOTHING)
     autor = ForeignKey(Autor, DO_NOTHING)
     jednostka = ForeignKey("bpp.Jednostka", DO_NOTHING)
+    uczelnia = ForeignKey("bpp.Uczelnia", DO_NOTHING)
     dyscyplina = ForeignKey(Dyscyplina_Naukowa, DO_NOTHING)
     pkdaut = models.DecimalField(max_digits=20, decimal_places=4)
     slot = models.DecimalField(max_digits=20, decimal_places=4)

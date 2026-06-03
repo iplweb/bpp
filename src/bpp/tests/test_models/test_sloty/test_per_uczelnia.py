@@ -269,6 +269,26 @@ def test_wypadniecie_uczelni_kasuje_sieroty(
 
 
 @pytest.mark.django_db
+def test_view_eksponuje_uczelnia(zwarte_dwie_uczelnie, jednostka, druga_uczelnia):
+    from django.contrib.contenttypes.models import ContentType
+
+    from bpp.models.cache import Cache_Punktacja_Autora_Query_View
+
+    zwarte_dwie_uczelnie.przelicz_punkty_dyscyplin()
+    ctype = ContentType.objects.get_for_model(zwarte_dwie_uczelnie).pk
+
+    rows = Cache_Punktacja_Autora_Query_View.objects.filter(
+        rekord_id=[ctype, zwarte_dwie_uczelnie.pk]
+    )
+    for row in rows:
+        assert row.uczelnia_id == row.jednostka.uczelnia_id
+    assert set(rows.values_list("uczelnia_id", flat=True)) == {
+        jednostka.uczelnia_id,
+        druga_uczelnia.pk,
+    }
+
+
+@pytest.mark.django_db
 def test_invariant_jedna_uczelnia_k2(
     wydawnictwo_zwarte,
     autor_jan_nowak,
