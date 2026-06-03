@@ -445,6 +445,14 @@ class Uczelnia(ModelZAdnotacjami, ModelZPBN_ID, NazwaISkrot, NazwaWDopelniaczu):
     pokazuj_jednostki_na_pierwszej_stronie = models.BooleanField(default=False)
     pokazuj_wydzialy_na_pierwszej_stronie = models.BooleanField(default=True)
 
+    pokazuj_siec_powiazan = models.BooleanField(
+        verbose_name="Pokazuj sieć powiązań autorów",
+        default=True,
+        help_text="Czy na stronie autora udostępniać interaktywną sieć "
+        "współautorstwa. Ustawienie domyślne dla całej uczelni — pojedynczy "
+        "autor może je nadpisać własnym polem 'Pokazuj sieć powiązań'.",
+    )
+
     uzywaj_wydzialow = models.BooleanField(
         verbose_name="Używaj wydziałów",
         default=True,
