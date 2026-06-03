@@ -1,12 +1,15 @@
 """Testy metody ``autorzy_dla_opisu_skrocony`` — skrócony widok listy
 autorów na stronie rekordu (pierwszych N + nasi autorzy z pozycją)."""
 
+from types import SimpleNamespace
+
 import pytest
 from django.contrib.contenttypes.models import ContentType
 from django.urls import reverse
 from model_bakery import baker
 
-from bpp.models import Autor
+from bpp.models import Autor, Wydawnictwo_Ciagle
+from bpp.templatetags.prace import autor_nazwa
 
 
 def _browse_praca(client, wydawnictwo_ciagle):
@@ -183,3 +186,43 @@ def test_render_doktorat_nie_wybucha(client, doktorat, denorms):
     )
     assert res.status_code == 200
     assert "Pokaż wszystkich" not in res.content.decode("utf-8")
+
+
+def test_autor_nazwa_bez_linku_pozycja_i_wyroznienie():
+    autor = SimpleNamespace(
+        zapisany_jako="Kowalski Jan", czy_nasz=True, pozycja=12, autor=None
+    )
+    html = str(autor_nazwa(autor, links="", pokaz_pozycje=True))
+
+    assert "KOWALSKI JAN" in html
+    assert "praca-mono__author-name--nasz" in html
+    assert "(12.)" in html
+    # Brak otaczających białych znaków — to był bug z {% include %}
+    # (spacja przed przecinkiem między autorami).
+    assert html == html.strip()
+    assert "\n" not in html
+
+
+@pytest.mark.django_db
+def test_autor_nazwa_link_normal(autor_jan_kowalski):
+    autor = SimpleNamespace(
+        zapisany_jako="Kowalski Jan",
+        czy_nasz=False,
+        pozycja=1,
+        autor=autor_jan_kowalski,
+    )
+    html = str(autor_nazwa(autor, links="normal"))
+
+    assert "<a " in html and "</a>" in html
+    assert autor_jan_kowalski.slug in html
+    assert html == html.strip()
+
+
+def test_skrocony_na_niezapisanym_rekordzie_nie_wybucha():
+    # pk=None -> autorzy_dla_opisu() zwraca [], metoda nie może crashnąć na
+    # [].select_related(...).
+    box = Wydawnictwo_Ciagle().autorzy_dla_opisu_skrocony()
+
+    assert box["skrocony"] is False
+    assert box["wszyscy"] == []
+    assert box["liczba"] == 0

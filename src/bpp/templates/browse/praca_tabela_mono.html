@@ -34,10 +34,9 @@
                 <div id="authors-collapsed"
                      class="praca-mono__authors-list praca-mono__authors-collapsed" data-authors-collapsed>
                     {{ praca.tekst_przed_pierwszym_autorem|default:"" }}
-                    <span class="praca-mono__author-type-badge">{{ box.pierwsi.0.typ_odpowiedzialnosci.skrot|upper }}</span>
-                    {% for autor in box.pierwsi %}{% include "browse/_autor_nazwa.html" %}{% if not forloop.last %}, {% endif %}{% endfor %}
+                    {% for autor in box.pierwsi %}{% ifchanged autor.typ_odpowiedzialnosci %}<span class="praca-mono__author-type-badge">{{ autor.typ_odpowiedzialnosci.skrot|upper }}</span> {% endifchanged %}{% autor_nazwa autor links %}{% if not forloop.last %}, {% endif %}{% endfor %}
                     <span class="praca-mono__authors-ellipsis">…</span>
-                    {% for autor in box.nasi_dalej %}{% include "browse/_autor_nazwa.html" with pokaz_pozycje=True %}{% if not forloop.last %}, {% endif %}{% endfor %}
+                    {% for autor in box.nasi_dalej %}{% ifchanged autor.typ_odpowiedzialnosci %}<span class="praca-mono__author-type-badge">{{ autor.typ_odpowiedzialnosci.skrot|upper }}</span> {% endifchanged %}{% autor_nazwa autor links pokaz_pozycje=True %}{% if not forloop.last %}, {% endif %}{% endfor %}
                     <button class="button tiny secondary praca-mono__authors-toggle-btn"
                             data-toggle-authors="show"
                             aria-controls="authors-full authors-collapsed"
@@ -49,7 +48,7 @@
                  class="praca-mono__authors-list praca-mono__authors-full"
                  data-authors-full{% if box.skrocony %} hidden tabindex="-1" aria-label="Pełna lista autorów ({{ box.liczba }})"{% endif %}>
                 {{ praca.tekst_przed_pierwszym_autorem|default:"" }}
-                {% for autor in box.wszyscy %}{% ifchanged autor.typ_odpowiedzialnosci %}<span class="praca-mono__author-type-badge">{{ autor.typ_odpowiedzialnosci.skrot|upper }}</span> {% endifchanged %}{% include "browse/_autor_nazwa.html" %}{% if not forloop.last %}, {% else %}{{ praca.tekst_po_ostatnim_autorze|default:"" }}.{% endif %}{% endfor %}
+                {% for autor in box.wszyscy %}{% ifchanged autor.typ_odpowiedzialnosci %}<span class="praca-mono__author-type-badge">{{ autor.typ_odpowiedzialnosci.skrot|upper }}</span> {% endifchanged %}{% autor_nazwa autor links %}{% if not forloop.last %}, {% else %}{{ praca.tekst_po_ostatnim_autorze|default:"" }}.{% endif %}{% endfor %}
                 {% if box.skrocony %}
                     <button class="button tiny secondary praca-mono__authors-toggle-btn"
                             data-toggle-authors="hide"

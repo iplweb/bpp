@@ -143,7 +143,12 @@ class ModelZOpisemBibliograficznym(models.Model):
         - ``nasi_dalej`` -- "nasi" autorzy spoza pierwszej piątki,
         - ``liczba``     -- liczba autorów.
         """
-        wszyscy = list(self.autorzy_dla_opisu().select_related("jednostka"))
+        autorzy = self.autorzy_dla_opisu()
+        # autorzy_dla_opisu() zwraca [] (zamiast QuerySetu) dla niezapisanego
+        # rekordu (pk=None) — wtedy nie ma do czego doczepić select_related.
+        if hasattr(autorzy, "select_related"):
+            autorzy = autorzy.select_related("jednostka")
+        wszyscy = list(autorzy)
         for pozycja, wpis in enumerate(wszyscy, start=1):
             wpis.pozycja = pozycja
             wpis.czy_nasz = bool(wpis.jednostka.skupia_pracownikow)
