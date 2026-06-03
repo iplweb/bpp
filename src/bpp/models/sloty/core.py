@@ -411,6 +411,12 @@ class IPunktacjaCacher:
         if not self.original.pk:
             return
 
+        # UWAGA (read-side): autorzy_z_dyscypliny zapisani w
+        # Cache_Punktacja_Dyscypliny mogą zawierać PK autora z jednostki
+        # skupia_pracownikow=False, dla którego NIE powstaje wiersz
+        # Cache_Punktacja_Autora (ten filtr go pomija). Konsumenci widoku
+        # nie powinni zakładać relacji 1:1 między listą autorów w CPD a
+        # wierszami CPA.
         for wa in self.original.autorzy_set.filter(jednostka__uczelnia=uczelnia):
             if (
                 not wa.afiliuje
