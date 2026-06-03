@@ -102,14 +102,6 @@ export function init(ForceGraph3D) {
         .linkColor(function () { return "rgba(255,255,255,0.16)"; })
         .linkWidth(function (l) { return Math.max(0.4, Math.log2(l.shared + 1)); })
         .linkOpacity(0.45)
-        // Płynące cząsteczki = "przepływ" współpracy. Tylko na silniejszych
-        // powiązaniach (shared >= 2) i z twardym capem, żeby nie mnożyć
-        // obiektów Three.js przy gęstych sieciach.
-        .linkDirectionalParticles(function (l) {
-            return l.shared >= 2 ? Math.min(2, l.shared - 1) : 0;
-        })
-        .linkDirectionalParticleSpeed(0.006)
-        .linkDirectionalParticleWidth(1.1)
         .onNodeClick(function (n) {
             // Dolot kamery do węzła (klasyczny recipe 3d-force-graph).
             const dist = 140;
@@ -199,7 +191,8 @@ export function init(ForceGraph3D) {
         const nodes = Graph.graphData().nodes;
         if (uklad === "drzewo") {
             nodes.forEach(function (n) { n.fx = n.fy = n.fz = undefined; });
-            Graph.dagMode("radialout").dagLevelDistance(70).onDagError(null);
+            Graph.dagMode("radialout").dagLevelDistance(70)
+                .onDagError(function () {});
         } else if (uklad === "warstwy") {
             Graph.dagMode(null);
             nodes.forEach(function (n) {
@@ -233,16 +226,19 @@ export function init(ForceGraph3D) {
                 pk_sum: n.pk_sum || 0
             };
         });
+        const uklad = ukladEl ? ukladEl.value : "sila";
         const links = (rawData.edges || []).map(mapLink);
-        if (!chkWewn || chkWewn.checked) {
+        // W "drzewie" pokazujemy TYLKO krawędzie drzewa — extra_edges tworzą
+        // cykle, które psują układ DAG (radialout); w pozostałych formach
+        // dokładamy powiązania w grupie wg progu.
+        if (uklad !== "drzewo" && (!chkWewn || chkWewn.checked)) {
             const prog = progWewn ? (parseInt(progWewn.value, 10) || 1) : 1;
             (rawData.extra_edges || []).forEach(function (e) {
                 if ((e.shared || 1) >= prog) { links.push(mapLink(e)); }
             });
         }
         Graph.graphData({ nodes: nodes, links: links });
-        // utrzymaj wybraną formę układu po przebudowie danych
-        zastosujUklad(ukladEl ? ukladEl.value : "sila");
+        zastosujUklad(uklad);
     }
 
     function dopasujRozmiar() {
@@ -313,9 +309,9 @@ export function init(ForceGraph3D) {
         });
     }
     if (ukladEl) {
-        ukladEl.addEventListener("change", function () {
-            zastosujUklad(ukladEl.value);
-        });
+        // przez render(), bo "drzewo" wymaga przefiltrowania krawędzi do
+        // samego drzewa (potem zastosujUklad nada formę)
+        ukladEl.addEventListener("change", render);
     }
 
     // --- zaawansowane: rok / zatrudnieni -> przeładuj sieć ---
