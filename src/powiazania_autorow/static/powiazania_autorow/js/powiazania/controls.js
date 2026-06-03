@@ -232,7 +232,7 @@ export function podepnijZdarzenia(ctx) {
         });
     }
 
-    // --- metryka wielkości kółka: prace / IF / PK (bez przeładowania) ---
+    // --- metryka wielkości koła: prace / IF / PK (bez przeładowania) ---
     if (ctx.selMetryka) {
         ctx.selMetryka.addEventListener("change", function () {
             ctx.metryka = ctx.selMetryka.value;
