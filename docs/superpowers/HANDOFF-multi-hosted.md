@@ -99,8 +99,10 @@ w Kroku „discovery" przed spec:
    żywe mgmt-commands (`raport_3n_*`, `przelicz_liczbe_n_dla_uczelni`,
    `odepnij_dyscypliny`) + import `const` w `ewaluacja_common`. Decyzja
    „używać/naprawiać?" do podjęcia (najpierw potwierdzić użycie 3N).
-6. „Liczba N", rankingi, API — konsumują cache pośrednio (`Rekord`/serializery);
-   zweryfikować czy filtrują, czy idą przez widok.
+6. API (`api_v1/.../raport_slotow_uczelnia` viewset+serializer) NIE czyta
+   `Cache_Punktacja` wprost — jedzie na `raport_slotow` (model `RaportSlotowUczelnia`),
+   więc domyka się razem z #1. Rankingi — nie czytają cache (idą przez `Rekord`),
+   poza zakresem. „Liczba N" — patrz osobny wątek G (to NIE prosty filtr cache).
 
 ### B) ODŁOŻONE (trudniejsze): federacja optymalizacji
 **ewaluacja_optymalizacja** (`core/*`, `tasks/unpinning/*`, `utils.py`, `views/*`)
@@ -126,6 +128,23 @@ zmianie) już poprawny; logika decyzyjna federacyjna odłożona. Osobny, późni
 5. **NOT NULL na `Cache_Punktacja_Dyscypliny.uczelnia`** — niemożliwe dopóki
    fixtures tworzą NULL w runtime; rozważyć po uporządkowaniu fixtures (read-side).
 
+### G) ewaluacja_liczba_n per-uczelnia (WRITE+READ — osobny spec)
+Discovery 2026-06-03: **częściowo już per-uczelnia**, ale z luką write.
+- JUŻ OK: `LiczbaNDlaUczelni` (FK `uczelnia`, `unique_together(uczelnia,
+  dyscyplina)`), `DyscyplinaNieRaportowana` (FK `uczelnia`), widoki
+  (`views/index.py` przez `get_for_request`), komenda `przelicz_n`
+  (`.get(pk)`/`.get()` single-or-fail), `excel_export` (filtr po uczelni).
+- **LUKA (schemat/write):** `IloscUdzialowDlaAutoraZaRok`
+  (`unique_together(autor, dyscyplina, rok)`) i `IloscUdzialowDlaAutoraZaCalosc`
+  (`(autor, dyscyplina, rodzaj_autora)`) NIE mają `uczelnia` → w multi-install
+  autor afiliowany do >1 uczelni nie ma rozłącznych udziałów per uczelnia
+  (kolizja unique_together); liczenie `oblicz_liczby_n_*`/`oblicz_srednia_*`
+  musi zawężać autorów do uczelni.
+- Zakres spec: dodać `uczelnia` FK do `IloscUdzialow*` (+ migracja + backfill
+  analogiczny do 0425: single → domyślna, multi z danymi → fail), poprawić
+  unique_together, zawęzić liczenie udziałów per uczelnia. To write+read,
+  bliżej write-side slotów niż filtrów odczytu.
+
 ### D) Integrator per-uczelnia (parked)
 `pbn_integrator/utils/scientists.py` (matcher), `importer/authors.py` (×5 porównań
 afiliacji), `management/commands/pbn_integrator.py`. Porównania z „naszą" uczelnią
@@ -149,16 +168,21 @@ Zatwierdzony wariant: **A (Verify → Stabilize → Investigate → Spec)**.
 
 1. ✅ **Self-review write-side** (zrobione) — + fix migracji 0425.
 2. ✅ **Aktualizacja HANDOFF + roadmapa** (ten dokument).
-3. ⏭ **Read-side discovery** — rozstrzygnąć statusy „do ustalenia" FAKTAMI z kodu
-   (ewaluacja2021/3N czy żywe; liczba N/rankingi/API — bezpośrednio cache czy przez
-   `Rekord`; realny kształt oswiadczenia/ewaluacja_common/bpp core). Output:
-   zredukowana lista decyzji.
-4. ⏭ **Brainstorm → spec read-side → plan** (`writing-plans`). Federacja (B) NIE
-   wchodzi — osobny, późniejszy spec.
-5. (później) Federacja optymalizacji; integrator (D); drobne (E).
+3. ✅ **Read-side discovery** (zrobione 2026-06-03) — ustalenia: ewaluacja2021
+   WYGASZANA (husk, OUT); rankingi/API nie czytają cache wprost (API przez
+   raport_slotow); filtr czytania jednolity `jednostka__uczelnia`;
+   ewaluacja_liczba_n częściowo per-uczelnia z luką write (wątek G).
+4. ⏭ **Specy read-side — TRZY niezależne** (każdy: brainstorm→spec→plan):
+   - **R1 — slot read-side (A):** widok eksponuje uczelnię + pipeline temp-tabel
+     niesie uczelnię + raport_slotow/API/proste filtry (metryki/oswiadczenia/
+     common/bpp-core) filtrują po uczelni oglądającego. Hardening #2 (indeks),
+     #3 (asymetria) wpiąć tu.
+   - **R2 — ewaluacja_liczba_n per-uczelnia (G):** write+read, schemat
+     `IloscUdzialow*` + zawężenie liczenia.
+   - **F — federacja optymalizacji (B):** najtrudniejszy, ostatni.
+5. (później) Integrator (D); drobne (E); NOT NULL na uczelnia (#5).
 
-Backlog hardeningu (C) wpinać oportunistycznie w Krok 4 (te dotykające read-side:
-indeks #2, asymetria #3) i federację (#1 HST).
+Backlog hardeningu (C): #2/#3 → R1; #1 (HST globalnie) → F (federacja).
 
 ---
 
