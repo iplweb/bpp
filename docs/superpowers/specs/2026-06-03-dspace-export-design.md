@@ -131,6 +131,7 @@ Nowe pola na `src/bpp/models/uczelnia.py` (spójnie z istniejącymi
 | `content_type` + `object_id` | GenericForeignKey → dowolny rekord |
 | `uczelnia` | FK(`Uczelnia`) — do której instalacji wysłano |
 | `dspace_uuid` | UUIDField, null — UUID utworzonego itemu |
+| `bitstreams` | JSONField, default dict — mapa `Element_Repozytorium.id → bitstream UUID` (do reconciliation) |
 | `data_sent` | JSONField — wysłany dict DC (do diff/skip) |
 | `data_hash` | CharField — hash do szybkiego „czy się zmieniło" |
 | `submitted_successfully` | Boolean |
@@ -160,18 +161,31 @@ rec
       ├─ client = DSpaceClient(uczelnia)    # auth per uczelnia (endpoint/login/hasło z Uczelni)
       ├─ nowy:    item = client.create_item(collection, dc_dict)
       │  istnieje: client.patch_item(sent.dspace_uuid, dc_dict)
-      ├─ pliki jawne (Element_Repozytorium.tryb_dostepu==jawny):
+      ├─ RECONCILE bitstreamów (jawne pliki Element_Repozytorium):
+      │     aktualne = {el.id: el for el in jawne_pliki_rekordu(rec)}  # żywe, jawny, ma plik
+      │     poprzednie = sent.bitstreams                               # {element_id: bitstream_uuid}
       │     bundle = client.ensure_bundle(item, 'ORIGINAL')
-      │     for plik: client.create_bitstream(bundle, plik)   # tylko przy tworzeniu w MVP
-      └─ SentToDSpace.mark_as_successful(rec, uczelnia, dspace_uuid, ...)
+      │     for el_id in aktualne - poprzednie:                        # nowe → upload
+      │         poprzednie[el_id] = client.create_bitstream(bundle, aktualne[el_id])
+      │     for el_id in poprzednie - aktualne:                        # usunięte/soft-del/nie-jawne → kasuj w DSpace
+      │         client.delete_bitstream(poprzednie.pop(el_id))
+      └─ SentToDSpace.mark_as_successful(rec, uczelnia, dspace_uuid, bitstreams=poprzednie)
 ```
 
 - Item tworzony **bezpośrednio w kolekcji** (POST `items?owningCollection=`),
   z pominięciem workflow submission → konto API każdej uczelni musi mieć
   prawa collection-admin/admin w swoim DSpace.
 - **Re-wysyłka:** zmienione metadane → PATCH istniejącego itemu (per
-  uczelnia, po `SentToDSpace.dspace_uuid`). Reconciliation bitstreamów
-  (zmiana/usuwanie plików) — **poza MVP**.
+  uczelnia, po `SentToDSpace.dspace_uuid`).
+- **Reconciliation bitstreamów (w zakresie):** `Element_Repozytorium`
+  zyskuje `plik` (FileField) i dziedziczy `SoftDeleteModel` (paczka
+  `django-soft-delete`). Mapa `Element_Repozytorium.id → bitstream UUID`
+  żyje w `SentToDSpace.bitstreams` (JSONField). Przy każdej udanej wysyłce
+  (create i patch) liczymy różnicę: nowe pliki wgrywamy, a pliki usunięte
+  (hard- lub soft-delete) albo już-nie-jawne **kasujemy też po stronie
+  DSpace** (`delete_bitstream`). Soft-delete sprawia, że usunięty plik
+  automatycznie wypada z `jawne_pliki_rekordu` (domyślny manager `objects`
+  pomija `is_deleted`), więc trafia do zbioru „do skasowania".
 
 ## 6. Mapowanie metadanych (Dublin Core)
 
@@ -245,7 +259,9 @@ admin w „Dane systemowe". Management command `dspace_wyslij` do cron/bulk.
 
 ## 10. Poza MVP (v2)
 
-- Reconciliation bitstreamów przy re-wysyłce (zmiana/usuwanie plików).
+- Kopiowanie plików `zglos_publikacje` → `Element_Repozytorium` przy
+  akceptacji zgłoszenia (osobny PR — patrz §10b). Bez tego `Element_Repozytorium`
+  zapełnia operator ręcznie (upload w inline adminie).
 - Streszczenie jako pobieralny załącznik (`.txt`/`.pdf`), jeśli zajdzie potrzeba.
 - Mapowanie do schematów custom DSpace-CRIS (autorytety autorów, afiliacje).
 - Pozostałe typy rekordów, jeśli się pojawią.
@@ -264,7 +280,28 @@ z dostępnym kluczem) i dotyka żywych ścieżek auth PBN/ORCID/Clarivate →
 **robione osobnym PR-em**, nie wmieszane w feature DSpace (izolacja ryzyka
 regresji). Ten sam field, dwa rozłączne wdrożenia.
 
+### 10b. Follow-up (osobny PR): kopiowanie zgłoszeń → Element_Repozytorium
+
+Wynik spike'u Task 20: realne bajty plików **nie** są w `Element_Repozytorium`
+(to był metadanowy wskaźnik dla OAI/Primo), lecz w module `zglos_publikacje`
+(`Zgloszenie_Publikacji.plik` + `Zgloszenie_Publikacji_Zalacznik.plik`,
+Django FileField w `protected/`), spięte z rekordem przez `odpowiednik_w_bpp`
+(GenericFK) / `wydawnictwo_nadrzedne` (FK `related_name="zgloszenia_publikacji"`).
+
+Decyzja architektoniczna: **`Element_Repozytorium` staje się kanonicznym
+magazynem plików** (zyskuje `plik` FileField + soft-delete) — DSpace czyta
+z jednego miejsca. Workflow kopiowania zaakceptowanego `zglos_publikacje` →
+`Element_Repozytorium` (z mapowaniem `forma_dostepu`/`zgoda_na_publikacje_pelnego_tekstu`
+→ `tryb_dostepu`) to **osobny PR**, bo dotyka ścieżki akceptacji zgłoszeń.
+Do tego czasu `Element_Repozytorium` zapełnia operator ręcznie.
+
 ## 11. Otwarte / do potwierdzenia przy implementacji
+
+- **Reconciliation a wersje plików:** identyfikacja bitstreamu jest po
+  `Element_Repozytorium.id` (nie po treści). Podmiana *zawartości* tego
+  samego pliku (ten sam wiersz, nowy upload) nie jest wykrywana jako zmiana
+  — w razie potrzeby dołożyć hash treści do `bitstreams` i porównywać.
+  Usunięcie/dodanie/zmiana `tryb_dostepu` — wykrywane (zmiana zbioru id).
 
 - **Jednostki obce / afiliacje zewnętrzne:** autorzy mogą afiliować do
   jednostek spoza „własnych" uczelni (np. „Obca jednostka"). Jeśli taka
