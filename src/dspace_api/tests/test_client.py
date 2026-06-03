@@ -60,3 +60,18 @@ def test_client_create_item_zwraca_uuid(fernet_key):
         assert uuid == "44444444-4444-4444-4444-444444444444"
         ItemCls.assert_called_once()
         raw.create_item.assert_called_once()
+
+
+@pytest.mark.django_db
+def test_client_delete_bitstream_wola_raw(fernet_key):
+    from dspace_api.client import DSpaceClient
+
+    u = baker.make("bpp.Uczelnia")
+    u.dspace_api_endpoint = "https://repo.x/server/api"
+    u.save()
+
+    with mock.patch("dspace_api.client.RawDSpaceClient") as RawCls:
+        raw = RawCls.return_value
+        client = DSpaceClient(u)
+        client.delete_bitstream("bs-uuid-1")
+        assert raw.delete_bitstream.called or raw.delete_dso.called

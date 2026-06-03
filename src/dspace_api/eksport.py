@@ -3,7 +3,7 @@ import traceback
 from dspace_api.adapters import adapter_for
 from dspace_api.client import DSpaceClient
 from dspace_api.models import Mapowanie_DSpace, SentToDSpace
-from dspace_api.selectors import uczelnie_rekordu
+from dspace_api.selectors import jawne_pliki_rekordu, uczelnie_rekordu
 
 
 def eksportuj_rekord(rec):
@@ -17,6 +17,21 @@ def eksportuj_rekord(rec):
 
 def _wynik(uczelnia, status, powod=""):
     return {"uczelnia": uczelnia, "status": status, "powod": powod}
+
+
+def _reconcile_bitstreams(client, item_uuid, aktualne, poprzednie):
+    """aktualne: {str(id): Element_Repozytorium}; poprzednie: {str(id): bs_uuid}.
+    Wgrywa nowe pliki, kasuje w DSpace bitstreamy plików usuniętych.
+    Zwraca zaktualizowaną mapę {str(id): bs_uuid}."""
+    nowy = dict(poprzednie)
+    do_uploadu = set(aktualne) - set(poprzednie)
+    if do_uploadu:
+        bundle = client.ensure_bundle(item_uuid, "ORIGINAL")
+        for el_id in do_uploadu:
+            nowy[el_id] = client.create_bitstream(bundle, aktualne[el_id])
+    for el_id in set(poprzednie) - set(aktualne):
+        client.delete_bitstream(nowy.pop(el_id))
+    return nowy
 
 
 def _eksportuj_do_uczelni(rec, uczelnia):
@@ -39,15 +54,20 @@ def _eksportuj_do_uczelni(rec, uczelnia):
     dc = adapter_for(
         rec, domyslny_jezyk=uczelnia.dspace_domyslny_jezyk_dc or "pl"
     ).to_dspace_dict()
+    aktualne = {str(el.id): el for el in jawne_pliki_rekordu(rec)}
 
-    if not SentToDSpace.objects.check_if_upload_needed(rec, uczelnia, dc):
+    if not SentToDSpace.objects.check_if_upload_needed(
+        rec, uczelnia, dc, bitstream_ids=list(aktualne)
+    ):
         return _wynik(uczelnia, "bez_zmian", "dane bez zmian")
 
     try:
         sent = SentToDSpace.objects.get_for_rec(rec, uczelnia)
         istnieje_uuid = sent.dspace_uuid
+        poprzednie = dict(sent.bitstreams)
     except SentToDSpace.DoesNotExist:
         istnieje_uuid = None
+        poprzednie = {}
 
     SentToDSpace.objects.create_or_update_before_upload(rec, uczelnia, dc)
 
@@ -56,11 +76,14 @@ def _eksportuj_do_uczelni(rec, uczelnia):
         client.authenticate()
         if istnieje_uuid:
             client.patch_item(istnieje_uuid, dc)
-            uuid, status = istnieje_uuid, "zaktualizowano"
+            item_uuid, status = istnieje_uuid, "zaktualizowano"
         else:
-            uuid = client.create_item(mapowanie.collection_uuid, dc)
+            item_uuid = client.create_item(mapowanie.collection_uuid, dc)
             status = "wyslano"
-        SentToDSpace.objects.mark_as_successful(rec, uczelnia, dspace_uuid=uuid)
+        bitstreams = _reconcile_bitstreams(client, item_uuid, aktualne, poprzednie)
+        SentToDSpace.objects.mark_as_successful(
+            rec, uczelnia, dspace_uuid=item_uuid, bitstreams=bitstreams
+        )
         return _wynik(uczelnia, status)
     except Exception as e:
         SentToDSpace.objects.mark_as_failed(

@@ -35,3 +35,30 @@ class DSpaceClient:
         item = Item({"uuid": str(item_uuid), "metadata": dc_dict, "inArchive": True})
         self._raw.update_item(item)
         return item_uuid
+
+    def ensure_bundle(self, item_uuid, name="ORIGINAL"):
+        # Faza 11: zweryfikować sygnaturę wobec żywego DSpace 9.x
+        return self._raw.create_bundle(parent=str(item_uuid), name=name)
+
+    def create_bitstream(self, bundle, element):
+        # element: bpp.Element_Repozytorium z polem .plik (FileField)
+        # Faza 11: zweryfikować sygnaturę (path vs file-obj) wobec żywego DSpace
+        import mimetypes
+
+        nazwa = element.nazwa_pliku or element.plik.name.rsplit("/", 1)[-1]
+        mime, _ = mimetypes.guess_type(nazwa)
+        created = self._raw.create_bitstream(
+            bundle=bundle,
+            name=nazwa,
+            path=element.plik.path,
+            mime=mime or "application/octet-stream",
+            metadata={},
+        )
+        return getattr(created, "uuid", None)
+
+    def delete_bitstream(self, bitstream_uuid):
+        # Faza 11: zweryfikować nazwę metody (delete_bitstream / delete_dso)
+        deleter = getattr(self._raw, "delete_bitstream", None)
+        if deleter is None:
+            deleter = self._raw.delete_dso
+        return deleter(str(bitstream_uuid))
