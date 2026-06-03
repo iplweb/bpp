@@ -52,6 +52,7 @@ from bpp.models import (  # Publikacja_Habilitacyjna
 from bpp.models.konferencja import Konferencja
 from bpp.models.wydawnictwo_ciagle import Wydawnictwo_Ciagle_Autor
 from crossref_bpp.mixins import AdminCrossrefAPIMixin, AdminCrossrefPBNAPIMixin
+from dspace_api.actions import wyslij_do_dspace, wyslij_do_dspace_w_tle
 from pbn_api.models import Publication
 
 from . import BaseBppAdminMixin
@@ -306,6 +307,8 @@ class Wydawnictwo_CiagleAdmin(
         ustaw_przed_korekta,
         wyslij_do_pbn,
         wyslij_do_pbn_w_tle,
+        wyslij_do_dspace,
+        wyslij_do_dspace_w_tle,
     ]
 
     form = Wydawnictwo_CiagleForm
