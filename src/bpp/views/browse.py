@@ -152,7 +152,9 @@ class AutorView(DetailView):
         # Link do sieci pokazujemy tylko gdy (a) są jakieś powiązania ORAZ
         # (b) sieć jest włączona dla tego autora (per-autor nadpisuje
         # per-uczelnia). Ten sam warunek twardo bramkuje widoki sieci (404).
-        uczelnia = Uczelnia.objects.get_for_request(self.request)
+        # getattr — get_context_data bywa wołane w testach jednostkowych bez
+        # request; get_for_request(None) degraduje do uczelni domyślnej.
+        uczelnia = Uczelnia.objects.get_for_request(getattr(self, "request", None))
         ma_powiazania = (
             self.object.czy_pokazywac_siec_powiazan(uczelnia)
             and AuthorConnection.objects.filter(
