@@ -1,9 +1,8 @@
 import pytest
 from model_bakery import baker
 
-from raport_slotow.models.uczelnia import RaportSlotowUczelnia
-
 from bpp.models import Cache_Punktacja_Autora_Query, Cache_Punktacja_Dyscypliny, Rekord
+from raport_slotow.models.uczelnia import RaportSlotowUczelnia
 
 
 def _rekord_slotu_maker(autor, jednostka, dyscyplina, wydawnictwo_ciagle, rok):
@@ -13,6 +12,7 @@ def _rekord_slotu_maker(autor, jednostka, dyscyplina, wydawnictwo_ciagle, rok):
     Cache_Punktacja_Dyscypliny.objects.create(
         rekord_id=rekord.pk,
         dyscyplina=dyscyplina,
+        uczelnia=jednostka.uczelnia,
         pkd=50,
         slot=20,
         autorzy_z_dyscypliny=[
