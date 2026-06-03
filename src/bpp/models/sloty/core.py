@@ -65,12 +65,12 @@ def ISlot(original, uczelnia=None):  # noqa
             "statusów korekt. "
         )
 
-    kalkulator = _dopasuj_kalkulator(original)
+    kalkulator = _dopasuj_kalkulator(original, uczelnia)
     kalkulator.uczelnia = uczelnia
     return kalkulator
 
 
-def _dopasuj_kalkulator(original):  # noqa: C901
+def _dopasuj_kalkulator(original, uczelnia=None):  # noqa: C901
     if isinstance(original, Wydawnictwo_Ciagle):
         if original.rok in [2017, 2018]:
             if original.punkty_kbn >= 30:
@@ -172,7 +172,7 @@ def _dopasuj_kalkulator(original):  # noqa: C901
 
         rodzaje_hst = {
             Dyscyplina_Naukowa.objects.get(pk=x[0]).dyscyplina_hst
-            for x in original.wszystkie_dyscypliny_rekordu()
+            for x in original.wszystkie_dyscypliny_rekordu(uczelnia)
         }
 
         match len(rodzaje_hst):

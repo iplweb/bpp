@@ -283,3 +283,97 @@ def test_invariant_jedna_uczelnia_k2(
     )
     assert len(slots) == 2
     assert sum(slots) == 1  # k=2 w jednej uczelni: po pół slotu, suma 1.0
+
+
+# ---------------------------------------------------------------------------
+# Hardening #1 — wiele_hst liczone per-uczelnia
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture
+def zwarte_cross_hst(
+    wydawnictwo_zwarte,
+    autor_jan_nowak,
+    autor_jan_kowalski,
+    jednostka,
+    jednostka_drugiej_uczelni,
+    dyscyplina1_hst,
+    dyscyplina2,
+    rodzaj_autora_n,
+    charaktery_formalne,
+    wydawca,
+    typy_odpowiedzialnosci,
+    rok,
+):
+    """Praca z autorem HST w uczelni A i autorem nie-HST w uczelni B.
+
+    Globalnie: dyscypliny_rekordu() → {HST, nie-HST} → wiele_hst=True.
+    Per-uczelnia: każda uczelnia ma jednorodny zestaw → wiele_hst=False.
+    """
+    Autor_Dyscyplina.objects.create(
+        autor=autor_jan_nowak,
+        dyscyplina_naukowa=dyscyplina1_hst,
+        rok=rok,
+        rodzaj_autora=rodzaj_autora_n,
+    )
+    Autor_Dyscyplina.objects.create(
+        autor=autor_jan_kowalski,
+        dyscyplina_naukowa=dyscyplina2,
+        rok=rok,
+        rodzaj_autora=rodzaj_autora_n,
+    )
+    wydawnictwo_zwarte.dodaj_autora(
+        autor_jan_nowak, jednostka, dyscyplina_naukowa=dyscyplina1_hst
+    )
+    wydawnictwo_zwarte.dodaj_autora(
+        autor_jan_kowalski,
+        jednostka_drugiej_uczelni,
+        dyscyplina_naukowa=dyscyplina2,
+    )
+    wydawnictwo_zwarte.punkty_kbn = 20
+    wydawnictwo_zwarte.wydawca = wydawca
+    wydawnictwo_zwarte.charakter_formalny = Charakter_Formalny.objects.get(
+        skrot="KSP"
+    )
+    wydawnictwo_zwarte.save()
+    return wydawnictwo_zwarte
+
+
+@pytest.mark.django_db
+def test_wszystkie_dyscypliny_rekordu_bez_uczelni_zwraca_obie(
+    zwarte_cross_hst, dyscyplina1_hst, dyscyplina2
+):
+    """Bez filtrowania uczelni: globalnie obie dyscypliny są widoczne."""
+    pks = {row[0] for row in zwarte_cross_hst.wszystkie_dyscypliny_rekordu()}
+    assert dyscyplina1_hst.pk in pks
+    assert dyscyplina2.pk in pks
+
+
+@pytest.mark.django_db
+def test_wszystkie_dyscypliny_rekordu_uczelnia_a_zwraca_tylko_hst(
+    zwarte_cross_hst, jednostka, dyscyplina1_hst, dyscyplina2
+):
+    """Per uczelnia A (HST): widoczna tylko dyscyplina HST."""
+    pks = {
+        row[0]
+        for row in zwarte_cross_hst.wszystkie_dyscypliny_rekordu(
+            uczelnia=jednostka.uczelnia
+        )
+    }
+    assert dyscyplina1_hst.pk in pks
+    assert dyscyplina2.pk not in pks
+
+
+@pytest.mark.django_db
+def test_wszystkie_dyscypliny_rekordu_uczelnia_b_zwraca_tylko_nie_hst(
+    zwarte_cross_hst, jednostka_drugiej_uczelni, dyscyplina1_hst, dyscyplina2
+):
+    """Per uczelnia B (nie-HST): widoczna tylko dyscyplina nie-HST."""
+    pks = {
+        row[0]
+        for row in zwarte_cross_hst.wszystkie_dyscypliny_rekordu(
+            uczelnia=jednostka_drugiej_uczelni.uczelnia
+        )
+    }
+    assert dyscyplina2.pk in pks
+    assert dyscyplina1_hst.pk not in pks
