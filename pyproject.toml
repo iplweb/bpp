@@ -71,6 +71,8 @@ dependencies = [
     "django-password-policies-iplweb==0.9.0",
     "dj-pagination==2.5.0",
     "requests>=2.34.2",
+    "dspace-rest-client>=0.1.12",
+    "cryptography",
     "django-extensions>=3.2,<5",
     "django-minify-html>=1.14,<2",
     "Pillow>=12.2,<14",
