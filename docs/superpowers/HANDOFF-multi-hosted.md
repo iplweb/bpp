@@ -131,9 +131,11 @@ zmianie) już poprawny; logika decyzyjna federacyjna odłożona. Osobny, późni
    `AlterField null=False`. Commit `6c888f245` (+ admin liczba_n pokazuje uczelnię:
    `uczelnia` w list_display/list_filter `IloscUdzialow*`).
 
-POZOSTAJE z R2 (minor, nieblokujące): `views/verify.py` (WeryfikujBazeView) liczy
-`Autor_Dyscyplina` globalnie (diagnostyka superusera; nie przeciek, nie crash) —
-do per-uczelnia przy okazji.
+✅ **[ZROBIONE 2026-06-03] `views/verify.py` per-uczelnia.** WeryfikujBazeView
+(reads przez bazowy `ad_qs` z filtrem `autor__aktualna_jednostka__uczelnia` +
+`skupia_pracownikow`) ORAZ 4 POST-fixy (`UstawWymiarEtatu`/`UstawProcent*`/
+`UstawRodzajAutora`) — `.update()` zawężony per-uczelnia (był globalny → mutował
+dane wszystkich uczelni). Commit `ee67eb958`.
 
 ### G) ewaluacja_liczba_n per-uczelnia (WRITE+READ — osobny spec)
 Discovery 2026-06-03: **częściowo już per-uczelnia**, ale z luką write.
@@ -213,8 +215,8 @@ Zatwierdzony wariant: **A (Verify → Stabilize → Investigate → Spec)**.
    - **F — federacja optymalizacji (B):** ODŁOŻONA (decyzja usera, olana).
 5. ✅ **integrator (D): ZROBIONE.** ✅ **drobne (E): ZROBIONE.** ✅ **NOT NULL
    uczelnia (#5): ZROBIONE.** ✅ **hardening #1 HST per-uczelnia: ZROBIONE** (nie
-   federacyjne — poprawność teraz). Federacja optymalizacji — nadal OLANA.
-   Pozostały minor: verify.py global Autor_Dyscyplina (diagnostyka).
+   federacyjne — poprawność teraz). ✅ **verify.py per-uczelnia (reads+POST):
+   ZROBIONE.** Federacja optymalizacji — nadal OLANA. Brak otwartych minorów.
 
 Backlog hardeningu (C): #2/#3 → R1; #1 (HST globalnie) → F (federacja).
 
