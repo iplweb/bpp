@@ -119,6 +119,14 @@ export function pozycjeUkladu(ctx, centerId, children, levelOf) {
     return pozycjeRadialne(centerId, children);
 }
 
+// Delikatna "guma" na PRZEJŚCIU między układami: easing z lekkim
+// przestrzeleniem celu (drugi punkt kontrolny krzywej Béziera ma y > 1, więc
+// węzeł minimalnie wyjeżdża za pozycję docelową i wraca). W przeciwieństwie do
+// spring() jest w pełni przewidywalny — żadnego rozkołysania, tylko subtelne
+// "dociągnięcie". Strojenie: większe y2 = wyraźniejsze odbicie.
+const EASING_UKLAD = "cubic-bezier(0.34, 1.25, 0.64, 1)";
+const CZAS_UKLAD = 520; // ms — nieco dłużej niż 450, by przestrzelenie było czytelne
+
 // Ułożenie grafu wg bieżącego układu. "sila" = layout siłowy fcose
 // (organiczne skupiska); pozostałe = deterministyczne pozycje liczone
 // z drzewa ostatniej sieci. `animuj` steruje animacją przejścia.
@@ -130,7 +138,8 @@ export function ulozGraf(ctx, animuj) {
             quality: "default",
             randomize: true,
             animate: animuj,
-            animationDuration: 500,
+            animationDuration: CZAS_UKLAD,
+            animationEasing: animuj ? EASING_UKLAD : undefined,
             fit: true,
             padding: 50,
             nodeRepulsion: 9000,
@@ -149,11 +158,12 @@ export function ulozGraf(ctx, animuj) {
             const p = pozycje[n.id()];
             if (p) {
                 n.animate(
-                    { position: p }, { duration: 450, easing: "ease-out" }
+                    { position: p },
+                    { duration: CZAS_UKLAD, easing: EASING_UKLAD }
                 );
             }
         });
-        cy.animate({ fit: { eles: cy.elements(), padding: 50 }, duration: 450 });
+        cy.animate({ fit: { eles: cy.elements(), padding: 50 }, duration: CZAS_UKLAD });
     } else {
         cy.batch(function () {
             cy.nodes().forEach(function (n) {
