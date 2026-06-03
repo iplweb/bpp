@@ -9,8 +9,8 @@ from django.http import Http404, HttpResponse
 from django.urls import NoReverseMatch, reverse
 from django.views.generic import FormView, View
 from djangoql.exceptions import DjangoQLError
+from djangoql.extras import ExtrasSchema
 from djangoql.queryset import apply_search
-from djangoql.schema import DjangoQLSchema
 from djangoql.serializers import SuggestionsAPISerializer
 from djangoql.views import SuggestionsAPIView
 
@@ -175,8 +175,7 @@ EXAMPLES = [
                         'charakter_formalny.skrot = "AOR") and punkty_kbn >= 100',
                     ),
                     (
-                        "Negacja: wszystko poza artykulami z czasopism, "
-                        "IF>=3, od 2023",
+                        "Negacja: wszystko poza artykulami z czasopism, IF>=3, od 2023",
                         'charakter_formalny.skrot != "AC" and rok >= 2023 '
                         "and impact_factor > 3",
                     ),
@@ -194,8 +193,7 @@ EXAMPLES = [
                     ),
                     (
                         "Hot & trending: cytowane >50 razy w okresie, IF>5",
-                        "liczba_cytowan > 50 and rok >= 2020 and "
-                        "impact_factor > 5",
+                        "liczba_cytowan > 50 and rok >= 2020 and impact_factor > 5",
                     ),
                     (
                         "Audyt jakosci danych — artykuly 2024+ bez DOI/WWW",
@@ -213,8 +211,7 @@ EXAMPLES = [
                         'ostatnio_zmieniony >= "2025-01-01" and adnotacje != ""',
                     ),
                     (
-                        "Wielowarunkowa granica IF + zakres punktow + "
-                        "minimum cytowan",
+                        "Wielowarunkowa granica IF + zakres punktow + minimum cytowan",
                         "impact_factor >= 5 and impact_factor <= 10 and "
                         "punkty_kbn >= 100 and liczba_cytowan >= 5",
                     ),
@@ -337,7 +334,12 @@ class ZapytanieView(WprowadzanieDanychOrSuperuserMixin, FormView):
         count = None
 
         try:
-            queryset = apply_search(queryset, query)
+            queryset = apply_search(queryset, query, schema=ExtrasSchema)
+            # Filtrowanie po relacjach "do wielu" (np. autorzy.autor.nazwisko)
+            # tworzy JOIN, ktory zwielokrotnia ten sam rekord raz na kazdy
+            # pasujacy wiersz powiazany. .distinct() zwija te duplikaty, zeby
+            # liczba wynikow i lista byly zgodne z liczba unikalnych obiektow.
+            queryset = queryset.distinct()
             count = queryset.count()
             paginator = Paginator(queryset, self.paginate_by)
             page_number = self.request.GET.get("page") or 1
@@ -398,7 +400,7 @@ class ZapytanieIntrospectView(WprowadzanieDanychOrSuperuserMixin, View):
         suggestions_url = reverse(
             "bpp:zapytanie_suggestions", kwargs={"model_key": model_key}
         )
-        schema = DjangoQLSchema(model)
+        schema = ExtrasSchema(model)
         payload = SuggestionsAPISerializer(suggestions_url).serialize(schema)
         return HttpResponse(
             content=json.dumps(payload),
@@ -409,5 +411,5 @@ class ZapytanieIntrospectView(WprowadzanieDanychOrSuperuserMixin, View):
 class ZapytanieSuggestionsView(WprowadzanieDanychOrSuperuserMixin, View):
     def get(self, request, model_key):
         model = _resolve_model_or_404(model_key)
-        view = SuggestionsAPIView.as_view(schema=DjangoQLSchema(model))
+        view = SuggestionsAPIView.as_view(schema=ExtrasSchema(model))
         return view(request)
