@@ -2,9 +2,26 @@
 autorów na stronie rekordu (pierwszych N + nasi autorzy z pozycją)."""
 
 import pytest
+from django.contrib.contenttypes.models import ContentType
+from django.urls import reverse
 from model_bakery import baker
 
 from bpp.models import Autor
+
+
+def _browse_praca(client, wydawnictwo_ciagle):
+    return client.get(
+        reverse(
+            "bpp:browse_praca",
+            args=(
+                ContentType.objects.get(
+                    app_label="bpp", model="wydawnictwo_ciagle"
+                ).pk,
+                wydawnictwo_ciagle.pk,
+            ),
+        ),
+        follow=True,
+    )
 
 
 def _dodaj_autorow(wydawnictwo_ciagle, jednostki):
@@ -104,3 +121,65 @@ def test_pozycja_jest_1_based_niezaleznie_od_kolejnosci(
     box = wydawnictwo_ciagle.autorzy_dla_opisu_skrocony()
 
     assert [a.pozycja for a in box["wszyscy"]] == [1, 2, 3]
+
+
+@pytest.mark.django_db
+def test_render_skrocony_na_stronie_rekordu(
+    client, wydawnictwo_ciagle, jednostka, obca_jednostka, denorms
+):
+    jednostki = [obca_jednostka] * 30
+    jednostki[3] = jednostka  # pozycja 4
+    jednostki[27] = jednostka  # pozycja 28
+    _dodaj_autorow(wydawnictwo_ciagle, jednostki)
+    denorms.flush()
+
+    res = _browse_praca(client, wydawnictwo_ciagle)
+    assert res.status_code == 200
+    tresc = res.content.decode("utf-8")
+
+    # przycisk z liczbą autorów (renderowany tylko w widoku skróconym)
+    assert "Pokaż wszystkich (30)" in tresc
+    # div widoku skróconego (klasa renderowana tylko gdy skrocony)
+    assert "praca-mono__authors-collapsed" in tresc
+    # przycisk zwijania na pełnej liście (tylko gdy skrocony)
+    assert "Zwiń listę autorów" in tresc
+    assert "praca-mono__author-name--nasz" in tresc  # nasz autor podświetlony
+    assert "(28.)" in tresc  # pozycja naszego autora spoza pierwszej piątki
+
+
+@pytest.mark.django_db
+def test_render_krotka_lista_bez_skracania(
+    client, wydawnictwo_ciagle, obca_jednostka, denorms
+):
+    _dodaj_autorow(wydawnictwo_ciagle, [obca_jednostka] * 10)
+    denorms.flush()
+
+    res = _browse_praca(client, wydawnictwo_ciagle)
+    assert res.status_code == 200
+    tresc = res.content.decode("utf-8")
+
+    assert "Pokaż wszystkich" not in tresc
+    # div widoku skróconego nie powinien się wyrenderować
+    assert "praca-mono__authors-collapsed" not in tresc
+
+
+@pytest.mark.django_db
+def test_render_doktorat_nie_wybucha(client, doktorat, denorms):
+    # Praca_Doktorska dziedziczy autorzy_dla_opisu_skrocony, ale jej
+    # autorzy_set to FakeSet z 1 (fałszywym) autorem — strona rekordu musi
+    # się renderować bez błędu (regresja na ścieżce doktorat/habilitacja).
+    denorms.flush()
+    res = client.get(
+        reverse(
+            "bpp:browse_praca",
+            args=(
+                ContentType.objects.get(
+                    app_label="bpp", model="praca_doktorska"
+                ).pk,
+                doktorat.pk,
+            ),
+        ),
+        follow=True,
+    )
+    assert res.status_code == 200
+    assert "Pokaż wszystkich" not in res.content.decode("utf-8")
