@@ -45,19 +45,28 @@ Tani filtr po indeksowanym FK; guard daje zerowy narzut na single-install
 
 ### Autor — `PublicAutorAutocomplete` (semantyka „kiedykolwiek związany")
 Decyzja usera: w Multiseeku szukamy autora **obecnie LUB w przeszłości**
-związanego z uczelnią X — czyli mającego dowolną jednostkę w historii należącą
-do U. Lookup przez `Autor_Jednostka` (reverse `autor_jednostka`):
+związanego z uczelnią X. „Obecnie" = aktualna jednostka w U; „w przeszłości" =
+dowolna jednostka w historii (`Autor_Jednostka`) w U. Filtr = OR obu lookupów
++ `.distinct()`:
 ```python
-qs.filter(autor_jednostka__jednostka__uczelnia=U).distinct()
+qs.filter(
+    Q(aktualna_jednostka__uczelnia=U)
+    | Q(autor_jednostka__jednostka__uczelnia=U)
+).distinct()
 ```
-**NIE** `aktualna_jednostka__uczelnia` — to byłaby semantyka „aktualnie
-zatrudniony", potrzebna gdzie indziej (np. ranking w R3a), ale nie tu.
+Dlaczego OR, a nie sam `autor_jednostka`: `AutorAutocompleteBase.get_queryset`
+(`authors.py:42-87`) JUŻ rozróżnia grupę „nasza uczelnia" (`aktualna_jednostka`)
+od „historycznie" (`autor_jednostka`) — model dopuszcza obecnego pracownika
+BEZ wiersza historii, więc sam `autor_jednostka` mógłby go zgubić. OR = dokładnie
+grupy 1+2 z istniejącego grupowania (zewnętrzni = grupa 3 odpadają). To NIE samo
+`aktualna_jednostka__uczelnia` (tamto = wyłącznie „aktualnie zatrudniony",
+potrzebne np. w rankingu R3a).
 
 ### Dwie semantyki autora (do utrwalenia w kodzie/komentarzu)
 | semantyka | lookup | gdzie |
 |---|---|---|
 | aktualnie zatrudniony | `aktualna_jednostka__uczelnia=U` | ranking (R3a), miejsca „nasz pracownik" |
-| kiedykolwiek związany | `autor_jednostka__jednostka__uczelnia=U` `.distinct()` | PublicAutorAutocomplete (ten spec) |
+| obecnie LUB w przeszłości związany | `Q(aktualna_jednostka__uczelnia=U) \| Q(autor_jednostka__jednostka__uczelnia=U)` `.distinct()` | PublicAutorAutocomplete (ten spec) |
 
 ## Niezmienniki i przypadki brzegowe
 - **Single-install:** guard `tylko_jedna_uczelnia()` → wszystkie trzy autocomplety
