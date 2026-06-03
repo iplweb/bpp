@@ -75,6 +75,7 @@ export function init(ForceGraph3D) {
     const glebLabel = document.getElementById("siec3d-glebokosc-label");
     const topnLabel = document.getElementById("siec3d-topn-label");
     const info = document.getElementById("siec3d-info");
+    const ukladEl = document.getElementById("siec3d-uklad");
 
     // --- opcje zaawansowane ---
     const rokOdEl = document.getElementById("siec3d-rok-od");
@@ -101,6 +102,14 @@ export function init(ForceGraph3D) {
         .linkColor(function () { return "rgba(255,255,255,0.16)"; })
         .linkWidth(function (l) { return Math.max(0.4, Math.log2(l.shared + 1)); })
         .linkOpacity(0.45)
+        // Płynące cząsteczki = "przepływ" współpracy. Tylko na silniejszych
+        // powiązaniach (shared >= 2) i z twardym capem, żeby nie mnożyć
+        // obiektów Three.js przy gęstych sieciach.
+        .linkDirectionalParticles(function (l) {
+            return l.shared >= 2 ? Math.min(2, l.shared - 1) : 0;
+        })
+        .linkDirectionalParticleSpeed(0.006)
+        .linkDirectionalParticleWidth(1.1)
         .onNodeClick(function (n) {
             // Dolot kamery do węzła (klasyczny recipe 3d-force-graph).
             const dist = 140;
@@ -156,6 +165,56 @@ export function init(ForceGraph3D) {
         };
     }
 
+    // "Sferyczne powłoki": każdy poziom BFS na własnej sferze (promień ∝ poziom),
+    // węzły rozłożone równomiernie metodą Fibonacciego. Centrum w środku.
+    // Ustawia fx/fy/fz (pozycje zamrożone).
+    function ustawSfery(nodes, R) {
+        const wgPoziomu = {};
+        nodes.forEach(function (n) {
+            const l = n.level || 0;
+            (wgPoziomu[l] = wgPoziomu[l] || []).push(n);
+        });
+        const GA = Math.PI * (3 - Math.sqrt(5)); // złoty kąt
+        Object.keys(wgPoziomu).forEach(function (lk) {
+            const grupa = wgPoziomu[lk];
+            const promien = Number(lk) * R;
+            const k = grupa.length;
+            grupa.forEach(function (n, i) {
+                if (promien === 0) { n.fx = 0; n.fy = 0; n.fz = 0; return; }
+                const y = k === 1 ? 0 : 1 - (i / (k - 1)) * 2;
+                const r = Math.sqrt(Math.max(0, 1 - y * y));
+                const theta = i * GA;
+                n.fx = promien * Math.cos(theta) * r;
+                n.fy = promien * y;
+                n.fz = promien * Math.sin(theta) * r;
+            });
+        });
+    }
+
+    // Przełączanie formy układu. Drzewo = wbudowany dagMode (radialny, używa
+    // kierunku krawędzi rodzic→dziecko; cykliczne extra_edges ignorujemy przez
+    // onDagError(null)). Warstwy = poziom→oś Z, X/Y swobodne (siła). Sfery =
+    // pozycje zamrożone. Siłowy = brak ograniczeń (domyślna chmura).
+    function zastosujUklad(uklad) {
+        const nodes = Graph.graphData().nodes;
+        if (uklad === "drzewo") {
+            nodes.forEach(function (n) { n.fx = n.fy = n.fz = undefined; });
+            Graph.dagMode("radialout").dagLevelDistance(70).onDagError(null);
+        } else if (uklad === "warstwy") {
+            Graph.dagMode(null);
+            nodes.forEach(function (n) {
+                n.fx = undefined; n.fy = undefined; n.fz = (n.level || 0) * 80;
+            });
+        } else if (uklad === "sfery") {
+            Graph.dagMode(null);
+            ustawSfery(nodes, 95);
+        } else { // siłowy
+            Graph.dagMode(null);
+            nodes.forEach(function (n) { n.fx = n.fy = n.fz = undefined; });
+        }
+        Graph.d3ReheatSimulation();
+    }
+
     // Buduje graphData z rawData. Krawędzie drzewa (edges) zawsze; poprzeczne
     // (extra_edges) tylko gdy włączone "powiązania w grupie", z progiem
     // "od N wspólnych prac" — filtr po stronie klienta (bez fetcha).
@@ -182,6 +241,8 @@ export function init(ForceGraph3D) {
             });
         }
         Graph.graphData({ nodes: nodes, links: links });
+        // utrzymaj wybraną formę układu po przebudowie danych
+        zastosujUklad(ukladEl ? ukladEl.value : "sila");
     }
 
     function dopasujRozmiar() {
@@ -249,6 +310,11 @@ export function init(ForceGraph3D) {
         selMetryka.addEventListener("change", function () {
             metryka = selMetryka.value;
             Graph.nodeVal(function (n) { return wartoscMetryki(n, metryka); });
+        });
+    }
+    if (ukladEl) {
+        ukladEl.addEventListener("change", function () {
+            zastosujUklad(ukladEl.value);
         });
     }
 
