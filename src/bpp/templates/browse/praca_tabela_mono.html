@@ -25,34 +25,35 @@
         </h2>
 
         <!-- Authors Section -->
-        <div class="praca-mono__authors-section">
-            <div class="praca-mono__authors-list">
-                {{ praca.tekst_przed_pierwszym_autorem|default:"" }}
-                {% for autor in praca.autorzy_dla_opisu %}
-                    {% ifchanged autor.typ_odpowiedzialnosci %}
-                        <span class="praca-mono__author-type-badge">{{ autor.typ_odpowiedzialnosci.skrot|upper }}</span>
-                    {% endifchanged %}
-                    {% if links == "admin" %}
-                        <a href="{% url "admin:bpp_autor_change" autor.autor.pk %}">
-                    {% elif links == "normal" %}
-                        <a href="{% url "bpp:browse_autor" autor.autor.slug %}">
-                    {% endif %}
-                <span class="author-name{% if not links %} praca-mono__author-name{% endif %}">
-                        {{ autor.zapisany_jako|upper }}
-                    </span>
-                {% if links == "admin" or links == "normal" %}</a>{% endif %}{% if not forloop.last %},
-                    {% else %}{{ praca.tekst_po_ostatnim_autorze|default:"" }}.{% endif %}
-                {% endfor %}
-            </div>
+        {% with box=praca.autorzy_dla_opisu_skrocony %}
+        <div class="praca-mono__authors-section{% if box.skrocony %} praca-mono__authors-section--collapsible{% endif %}">
 
-            <!-- Show more authors button if there are many -->
-            <div id="authors-toggle" class="praca-mono__authors-toggle">
-                <button class="button tiny secondary"
-                        data-toggle-authors="true"
-                        aria-expanded="false"
-                        aria-label="Pokaż wszystkich autorów publikacji">Pokaż wszystkich autorów</button>
+            {% if box.skrocony %}
+                {% comment %} Widok skrócony: pierwszych N + nasi autorzy (z pozycją). {% endcomment %}
+                {% comment %} Pełna lista niżej jest ukryta i odsłaniana przyciskiem. {% endcomment %}
+                <div class="praca-mono__authors-list praca-mono__authors-collapsed" data-authors-collapsed>
+                    {{ praca.tekst_przed_pierwszym_autorem|default:"" }}
+                    <span class="praca-mono__author-type-badge">{{ box.pierwsi.0.typ_odpowiedzialnosci.skrot|upper }}</span>
+                    {% for autor in box.pierwsi %}{% include "browse/_autor_nazwa.html" %}{% if not forloop.last %}, {% endif %}{% endfor %}
+                    <span class="praca-mono__authors-ellipsis">…</span>
+                    {% for autor in box.nasi_dalej %}{% include "browse/_autor_nazwa.html" with pokaz_pozycje=True %}{% if not forloop.last %}, {% endif %}{% endfor %}
+                    <button class="button tiny secondary praca-mono__authors-toggle-btn"
+                            data-toggle-authors="show"
+                            aria-expanded="false">Pokaż wszystkich ({{ box.liczba }})</button>
+                </div>
+            {% endif %}
+
+            <div class="praca-mono__authors-list praca-mono__authors-full" data-authors-full{% if box.skrocony %} hidden{% endif %}>
+                {{ praca.tekst_przed_pierwszym_autorem|default:"" }}
+                {% for autor in box.wszyscy %}{% ifchanged autor.typ_odpowiedzialnosci %}<span class="praca-mono__author-type-badge">{{ autor.typ_odpowiedzialnosci.skrot|upper }}</span> {% endifchanged %}{% include "browse/_autor_nazwa.html" %}{% if not forloop.last %}, {% else %}{{ praca.tekst_po_ostatnim_autorze|default:"" }}.{% endif %}{% endfor %}
+                {% if box.skrocony %}
+                    <button class="button tiny secondary praca-mono__authors-toggle-btn"
+                            data-toggle-authors="hide"
+                            aria-expanded="true">Zwiń listę autorów</button>
+                {% endif %}
             </div>
         </div>
+        {% endwith %}
     </div>
 
     <!-- Main content in two columns -->
@@ -322,7 +323,7 @@
                                         <i class="fi-clipboard"></i>
                                     </button>
                                     <button class="button open-button" type="button"
-                                            data-open-url="http://doi.org/{{ praca.doi }}" data-target="_blank"
+                                            data-open-url="https://doi.org/{{ praca.doi }}" data-target="_blank"
                                             title="Otwórz stronę DOI">
                                         <i class="fi-arrow-right"></i> Otwórz
                                     </button>
@@ -1032,11 +1033,51 @@
                 }, 2000);
             }
 
-            // Check if there are many authors and implement show/hide
-            var authorsList = $('.author-name');
-            if (authorsList.length > 10) {
-                // Implementation for show more authors would go here
-            }
+            // Lista autorów: przełączanie widoku skróconego <-> pełnego.
+            document.querySelectorAll('[data-toggle-authors]').forEach(function (btn) {
+                btn.addEventListener('click', function () {
+                    var section = btn.closest('.praca-mono__authors-section');
+                    if (!section) { return; }
+                    var collapsed = section.querySelector('[data-authors-collapsed]');
+                    var full = section.querySelector('[data-authors-full]');
+                    var showFull = btn.getAttribute('data-toggle-authors') === 'show';
+                    if (collapsed) { collapsed.hidden = showFull; }
+                    if (full) { full.hidden = !showFull; }
+                    // Po zwinięciu przewiń do sekcji autorów (sticky header).
+                    if (!showFull && window.bpp && window.bpp.scrollToVisible) {
+                        window.bpp.scrollToVisible(section);
+                    }
+                });
+            });
+
+            // Opis bibliograficzny: clamp + "rozwiń" tylko gdy się nie mieści.
+            (function () {
+                var bib = document.getElementById('bibliographic-description');
+                if (!bib) { return; }
+                var textEl = bib.querySelector('.praca-mono__biblio-text');
+                if (!textEl) { return; }
+                textEl.classList.add('praca-mono__biblio-text--clamped');
+                if (textEl.scrollHeight <= textEl.clientHeight + 2) {
+                    // Mieści się — bez clampowania i bez przycisku.
+                    textEl.classList.remove('praca-mono__biblio-text--clamped');
+                    return;
+                }
+                var btn = document.createElement('button');
+                btn.type = 'button';
+                btn.className = 'button tiny secondary praca-mono__biblio-toggle';
+                btn.textContent = 'rozwiń';
+                btn.setAttribute('aria-expanded', 'false');
+                btn.addEventListener('click', function (e) {
+                    // Nie wyzwalaj "kliknij aby skopiować" na kontenerze opisu.
+                    e.stopPropagation();
+                    var clamped = textEl.classList.toggle(
+                        'praca-mono__biblio-text--clamped');
+                    btn.textContent = clamped ? 'rozwiń' : 'zwiń';
+                    btn.setAttribute('aria-expanded', clamped ? 'false' : 'true');
+                });
+                // Przycisk POZA kontenerem z data-copy-content.
+                bib.insertAdjacentElement('afterend', btn);
+            })();
 
             // Related records search functionality
             $('.related-records-search').each(function() {

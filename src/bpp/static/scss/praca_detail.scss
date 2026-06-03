@@ -1180,9 +1180,61 @@
     font-weight: 500;
 }
 
+// "Nasz" autor (pracownik jednostki skupiającej pracowników) — wyróżniony,
+// żeby od razu rzucał się w oczy na długiej liście autorów obcych.
+.praca-mono__author-name--nasz {
+    font-weight: 700;
+    color: #1f6f3c;
+    background: #eaf6ee;
+    border-radius: 3px;
+    padding: 0 2px;
+}
+
+// Numer pozycji autora na liście, np. "(264.)" — mały, wyszarzony.
+.praca-mono__author-pozycja {
+    font-size: 0.75em;
+    color: #6b7280;
+    white-space: nowrap;
+}
+
+.praca-mono__authors-ellipsis {
+    margin: 0 4px;
+    color: #6b7280;
+}
+
+// Przyciski "Pokaż wszystkich" / "Zwiń".
+.praca-mono__authors-toggle-btn {
+    display: inline-block;
+    margin: 8px 0 0 6px;
+    vertical-align: middle;
+}
+
+// Ukrywanie atrybutem hidden (na wypadek resetów nadpisujących domyślny styl).
+.praca-mono__authors-list[hidden] {
+    display: none;
+}
+
 .praca-mono__authors-toggle {
     display: none;
     margin-top: 10px;
+}
+
+// Druk: zawsze pełna lista autorów, bez widoku skróconego i bez przycisków.
+@media print {
+    .praca-mono__authors-collapsed,
+    .praca-mono__authors-toggle-btn,
+    .praca-mono__biblio-toggle {
+        display: none !important;
+    }
+
+    .praca-mono__authors-full[hidden] {
+        display: block !important;
+    }
+
+    .praca-mono__biblio-text--clamped {
+        display: block !important;
+        -webkit-line-clamp: none !important;
+    }
 }
 
 // Content columns layout
@@ -1250,6 +1302,19 @@
     font-size: 0.95em;
     line-height: 1.6;
     color: #333;
+}
+
+// Zwinięty opis bibliograficzny (clamp do 3 linii). Klasę dokłada/zdejmuje
+// JS — przycisk "rozwiń" pojawia się tylko gdy treść faktycznie się nie mieści.
+.praca-mono__biblio-text--clamped {
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+.praca-mono__biblio-toggle {
+    margin-top: 8px;
 }
 
 .praca-mono__biblio-feedback {
