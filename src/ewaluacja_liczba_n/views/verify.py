@@ -23,10 +23,17 @@ class WeryfikujBazeView(GroupRequiredMixin, TemplateView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
 
+        uczelnia = Uczelnia.objects.get_for_request(self.request)
+        ad_qs = Autor_Dyscyplina.objects.filter(
+            rok__gte=2022,
+            rok__lte=2025,
+            autor__aktualna_jednostka__uczelnia=uczelnia,
+            autor__aktualna_jednostka__skupia_pracownikow=True,
+        )
+
         # 1. Total by rodzaj_pracownika for 2022-2025
         context["rodzaje_pracownika"] = (
-            Autor_Dyscyplina.objects.filter(rok__gte=2022, rok__lte=2025)
-            .values("rodzaj_autora")
+            ad_qs.values("rodzaj_autora")
             .annotate(liczba=Count("id"))
             .order_by("rodzaj_autora")
         )
@@ -63,10 +70,7 @@ class WeryfikujBazeView(GroupRequiredMixin, TemplateView):
         ]
 
         context["bez_rodzaju_zatrudnienia"] = (
-            Autor_Dyscyplina.objects.filter(
-                rok__gte=2022,
-                rok__lte=2025,
-            )
+            ad_qs
             .exclude(rodzaj_autora__in=known_rodzaje_ids)
             .count()
         )
@@ -76,7 +80,7 @@ class WeryfikujBazeView(GroupRequiredMixin, TemplateView):
 
         # 2. Records without wymiar_etatu
         context["bez_wymiaru_etatu"] = (
-            Autor_Dyscyplina.objects.filter(rok__gte=2022, rok__lte=2025)
+            ad_qs
             .filter(Q(wymiar_etatu__isnull=True) | Q(wymiar_etatu=0))
             .select_related("autor")
             .count()
@@ -88,7 +92,7 @@ class WeryfikujBazeView(GroupRequiredMixin, TemplateView):
         # - if subdyscyplina_naukowa exists, procent_subdyscypliny must not be NULL or 0
         # - only for authors with jest_w_n=True OR licz_sloty=True
         context["bez_procent_n_sloty"] = (
-            Autor_Dyscyplina.objects.filter(rok__gte=2022, rok__lte=2025)
+            ad_qs
             .filter(Q(rodzaj_autora__jest_w_n=True) | Q(rodzaj_autora__licz_sloty=True))
             .filter(
                 Q(procent_dyscypliny__isnull=True)  # Missing main discipline percentage
@@ -107,7 +111,7 @@ class WeryfikujBazeView(GroupRequiredMixin, TemplateView):
 
         # 3.1. Records with missing percentage - any author type
         context["bez_procent_dowolny"] = (
-            Autor_Dyscyplina.objects.filter(rok__gte=2022, rok__lte=2025)
+            ad_qs
             .filter(
                 Q(procent_dyscypliny__isnull=True)
                 | Q(procent_dyscypliny=Decimal("0"))
@@ -125,7 +129,7 @@ class WeryfikujBazeView(GroupRequiredMixin, TemplateView):
         # Count records that can be auto-fixed (only single discipline, no subdyscyplina)
         # For N/sloty authors
         context["bez_procent_n_sloty_do_naprawy"] = (
-            Autor_Dyscyplina.objects.filter(rok__gte=2022, rok__lte=2025)
+            ad_qs
             .filter(Q(rodzaj_autora__jest_w_n=True) | Q(rodzaj_autora__licz_sloty=True))
             .filter(subdyscyplina_naukowa__isnull=True)
             .filter(
@@ -136,7 +140,7 @@ class WeryfikujBazeView(GroupRequiredMixin, TemplateView):
 
         # For any author type
         context["bez_procent_dowolny_do_naprawy"] = (
-            Autor_Dyscyplina.objects.filter(rok__gte=2022, rok__lte=2025)
+            ad_qs
             .filter(subdyscyplina_naukowa__isnull=True)
             .filter(
                 Q(procent_dyscypliny__isnull=True) | Q(procent_dyscypliny=Decimal("0"))
@@ -149,7 +153,7 @@ class WeryfikujBazeView(GroupRequiredMixin, TemplateView):
         # Only for authors with jest_w_n=True OR licz_sloty=True
         problematic_suma = []
         all_records = (
-            Autor_Dyscyplina.objects.filter(rok__gte=2022, rok__lte=2025)
+            ad_qs
             .filter(Q(rodzaj_autora__jest_w_n=True) | Q(rodzaj_autora__licz_sloty=True))
             .select_related("autor", "rodzaj_autora")
         )
@@ -183,7 +187,7 @@ class WeryfikujBazeView(GroupRequiredMixin, TemplateView):
 
         # Calculate distinct number of authors
         context["distinct_authors_count"] = (
-            Autor_Dyscyplina.objects.filter(rok__gte=2022, rok__lte=2025)
+            ad_qs
             .values("autor")
             .distinct()
             .count()
@@ -222,8 +226,8 @@ class WeryfikujBazeView(GroupRequiredMixin, TemplateView):
         )
 
         # 5. Autorzy z obiema dyscyplinami nie-raportowanymi
-        # Oblicz nie-raportowane dyscypliny na podstawie sumy udziałów w 2025 (suma < 12)
-        uczelnia = Uczelnia.objects.get_for_request(self.request)
+        # Oblicz nie-raportowane dyscypliny na podstawie sumy udziałów w 2025
+        # (suma < 12); reuse the uczelnia already fetched above.
         sumy_2025 = (
             IloscUdzialowDlaAutoraZaRok.objects.filter(uczelnia=uczelnia, rok=2025)
             .values("dyscyplina_naukowa_id")
@@ -238,7 +242,7 @@ class WeryfikujBazeView(GroupRequiredMixin, TemplateView):
         # Znajdź autorów z dwoma dyscyplinami gdzie obie są nie-raportowane
         autorzy_obie_nieraportowane = []
         autorzy_dwie_dyscypliny = (
-            Autor_Dyscyplina.objects.filter(rok__gte=2022, rok__lte=2025)
+            ad_qs
             .filter(subdyscyplina_naukowa__isnull=False)
             .select_related("autor", "dyscyplina_naukowa", "subdyscyplina_naukowa")
         )
@@ -270,8 +274,14 @@ class UstawWymiarEtatuView(GroupRequiredMixin, View):
     group_required = GR_WPROWADZANIE_DANYCH
 
     def post(self, request):
+        uczelnia = Uczelnia.objects.get_for_request(request)
         updated = (
-            Autor_Dyscyplina.objects.filter(rok__gte=2022, rok__lte=2025)
+            Autor_Dyscyplina.objects.filter(
+                rok__gte=2022,
+                rok__lte=2025,
+                autor__aktualna_jednostka__uczelnia=uczelnia,
+                autor__aktualna_jednostka__skupia_pracownikow=True,
+            )
             .filter(Q(wymiar_etatu__isnull=True) | Q(wymiar_etatu=0))
             .update(wymiar_etatu=Decimal("1.0"))
         )
@@ -289,9 +299,15 @@ class UstawProcentDyscyplinyNSlotyView(GroupRequiredMixin, View):
     group_required = GR_WPROWADZANIE_DANYCH
 
     def post(self, request):
+        uczelnia = Uczelnia.objects.get_for_request(request)
         # Only update records without subdyscyplina (single discipline)
         updated = (
-            Autor_Dyscyplina.objects.filter(rok__gte=2022, rok__lte=2025)
+            Autor_Dyscyplina.objects.filter(
+                rok__gte=2022,
+                rok__lte=2025,
+                autor__aktualna_jednostka__uczelnia=uczelnia,
+                autor__aktualna_jednostka__skupia_pracownikow=True,
+            )
             .filter(Q(rodzaj_autora__jest_w_n=True) | Q(rodzaj_autora__licz_sloty=True))
             .filter(subdyscyplina_naukowa__isnull=True)
             .filter(
@@ -314,9 +330,15 @@ class UstawProcentDyscyplinyDowolnyView(GroupRequiredMixin, View):
     group_required = GR_WPROWADZANIE_DANYCH
 
     def post(self, request):
+        uczelnia = Uczelnia.objects.get_for_request(request)
         # Only update records without subdyscyplina (single discipline)
         updated = (
-            Autor_Dyscyplina.objects.filter(rok__gte=2022, rok__lte=2025)
+            Autor_Dyscyplina.objects.filter(
+                rok__gte=2022,
+                rok__lte=2025,
+                autor__aktualna_jednostka__uczelnia=uczelnia,
+                autor__aktualna_jednostka__skupia_pracownikow=True,
+            )
             .filter(subdyscyplina_naukowa__isnull=True)
             .filter(
                 Q(procent_dyscypliny__isnull=True) | Q(procent_dyscypliny=Decimal("0"))
@@ -356,9 +378,15 @@ class UstawRodzajAutoraView(GroupRequiredMixin, View):
             )
         )
 
+        uczelnia = Uczelnia.objects.get_for_request(request)
         # Update records without rodzaj_autora or with unknown rodzaj_autora
         updated = (
-            Autor_Dyscyplina.objects.filter(rok__gte=2022, rok__lte=2025)
+            Autor_Dyscyplina.objects.filter(
+                rok__gte=2022,
+                rok__lte=2025,
+                autor__aktualna_jednostka__uczelnia=uczelnia,
+                autor__aktualna_jednostka__skupia_pracownikow=True,
+            )
             .exclude(rodzaj_autora__in=known_rodzaje_ids)
             .update(rodzaj_autora=rodzaj)
         )

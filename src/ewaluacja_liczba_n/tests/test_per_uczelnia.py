@@ -3,6 +3,8 @@ from decimal import Decimal
 import pytest
 from model_bakery import baker
 
+from bpp.models import Autor, Jednostka, Uczelnia
+from bpp.models.dyscyplina_naukowa import Dyscyplina_Naukowa
 from ewaluacja_liczba_n.models import (
     IloscUdzialowDlaAutoraZaCalosc,
     IloscUdzialowDlaAutoraZaRok,
@@ -173,3 +175,123 @@ def test_autorzy_list_view_filtruje_po_uczelni(rf, db):
     autor_ids = list(qs.values_list("autor_id", flat=True))
     assert a1.pk in autor_ids, "U1 row missing from queryset"
     assert a2.pk not in autor_ids, "U2 row must be excluded"
+
+
+# ---------------------------------------------------------------------------
+# Verify view scoping tests (R2 rule)
+# ---------------------------------------------------------------------------
+
+
+def _setup_two_universities_with_bad_ad(dyscyplina):
+    """
+    Build two universities (U1, U2), each with one author having an
+    Autor_Dyscyplina record that has wymiar_etatu=None (data-quality issue).
+    Returns (u1, u2, a1, a2, ad1, ad2).
+    """
+    from bpp.models.dyscyplina_naukowa import Autor_Dyscyplina
+    from ewaluacja_common.models import Rodzaj_Autora
+
+    rodzaj_n, _ = Rodzaj_Autora.objects.get_or_create(
+        skrot="N",
+        defaults=dict(
+            nazwa="pracownik naukowy w liczbie N",
+            jest_w_n=True,
+            licz_sloty=True,
+            sort=1,
+        ),
+    )
+
+    u1 = baker.make(Uczelnia, skrot="W1", nazwa="Uczelnia W1")
+    u2 = baker.make(Uczelnia, skrot="W2", nazwa="Uczelnia W2")
+    j1 = baker.make(Jednostka, uczelnia=u1, skupia_pracownikow=True)
+    j2 = baker.make(Jednostka, uczelnia=u2, skupia_pracownikow=True)
+    a1 = baker.make(Autor, aktualna_jednostka=j1)
+    a2 = baker.make(Autor, aktualna_jednostka=j2)
+
+    ad1 = Autor_Dyscyplina.objects.create(
+        autor=a1,
+        rok=2023,
+        dyscyplina_naukowa=dyscyplina,
+        wymiar_etatu=None,
+        procent_dyscypliny=Decimal("100.0"),
+        rodzaj_autora=rodzaj_n,
+    )
+    ad2 = Autor_Dyscyplina.objects.create(
+        autor=a2,
+        rok=2023,
+        dyscyplina_naukowa=dyscyplina,
+        wymiar_etatu=None,
+        procent_dyscypliny=Decimal("100.0"),
+        rodzaj_autora=rodzaj_n,
+    )
+    return u1, u2, a1, a2, ad1, ad2
+
+
+@pytest.mark.django_db
+def test_weryfikuj_baze_view_bez_wymiaru_etatu_per_uczelnia(rf, db):
+    """
+    WeryfikujBazeView.get_context_data with request._uczelnia=U1 must report
+    bez_wymiaru_etatu == 1 (only U1's bad record), not 2.
+    """
+    from ewaluacja_liczba_n.views.verify import WeryfikujBazeView
+
+    dyscyplina = baker.make(Dyscyplina_Naukowa)
+    u1, u2, _a1, _a2, _ad1, _ad2 = _setup_two_universities_with_bad_ad(
+        dyscyplina
+    )
+
+    user = baker.make("bpp.BppUser")
+    request = rf.get("/")
+    request.user = user
+    request._uczelnia = u1
+
+    view = WeryfikujBazeView()
+    view.request = request
+    view.kwargs = {}
+
+    context = view.get_context_data()
+
+    assert context["bez_wymiaru_etatu"] == 1, (
+        f"Expected 1 (only U1 record), got {context['bez_wymiaru_etatu']}. "
+        "WeryfikujBazeView must scope queries to the requesting university."
+    )
+
+
+@pytest.mark.django_db
+def test_ustaw_wymiar_etatu_view_post_per_uczelnia(rf, db):
+    """
+    UstawWymiarEtatuView.post with request._uczelnia=U1 must update only U1's
+    Autor_Dyscyplina records; U2's record must stay None.
+    """
+    from unittest.mock import patch
+
+    from ewaluacja_liczba_n.views.verify import UstawWymiarEtatuView
+
+    dyscyplina = baker.make(Dyscyplina_Naukowa)
+    u1, u2, _a1, _a2, ad1, ad2 = _setup_two_universities_with_bad_ad(
+        dyscyplina
+    )
+
+    user = baker.make("bpp.BppUser")
+    request = rf.post("/")
+    request.user = user
+    request._uczelnia = u1
+
+    view = UstawWymiarEtatuView()
+    view.request = request
+    view.kwargs = {}
+
+    # Patch messages.success so that rf (no middleware) doesn't raise;
+    # we only care about DB mutation here.
+    with patch("ewaluacja_liczba_n.views.verify.messages"):
+        view.post(request)
+
+    ad1.refresh_from_db()
+    ad2.refresh_from_db()
+
+    assert ad1.wymiar_etatu == Decimal("1.0"), (
+        "U1 record was not updated by UstawWymiarEtatuView.post"
+    )
+    assert ad2.wymiar_etatu is None, (
+        "U2 record must NOT be updated when request._uczelnia=U1"
+    )
