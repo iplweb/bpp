@@ -157,9 +157,11 @@ po danych zatrudnienia PBN (matcher zwraca None bez home-uczelni) — poprawne w
 R2 (odłączony autor = nie pracownik), mała populacja. Commity `68959b629`, `3ca65a740`,
 `49f320aa8`.
 
-### E) Drobne
-- Usunięcie fallbacku `get_default` z `adapters/wydawnictwo.py` — wymaga migracji
-  testów adaptera + naprawy `pbn_wyslij` (pre-existing `C901`). Niski priorytet.
+### E) Drobne — ZROBIONE 2026-06-03
+Usunięto test-only fallback `get_default` z `pbn_api/adapters/wydawnictwo.py`
+(commit `be04bc2be`). Trywialne: żaden test nie polegał na fallbacku (233 testy
+pbn_api zielone, zero zmian w testach), `pbn_wyslij` nietknięty, guard whitelist
+bez wpisu adaptera. Adapter None-tolerant przez istniejący `if uczelnia is not None`.
 
 ### F) Operacyjne (deploy write-side)
 - Single-install: migracja 0425 sama wpisze ID domyślnej uczelni w legacy cache;
