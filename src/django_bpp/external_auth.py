@@ -8,4 +8,5 @@ nie ma password_policies w INSTALLED_APPS).
 EXTERNAL_AUTH_BACKENDS = {
     "microsoft_auth.backends.MicrosoftAuthenticationBackend",
     "orcid_integration.backends.OrcidAuthenticationBackend",
+    "oidc_integration.backends.BppOIDCBackend",
 }

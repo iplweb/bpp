@@ -31,8 +31,27 @@ BPP — uwierzytelnia je Keycloak.
 
   `UAFM` = `Uczelnia.skrot`. Aktywny skrót wykrywany automatycznie: jeśli
   w środowisku jest dokładnie jeden komplet `DJANGO_BPP_OIDC_<X>_*`, brany
-  jest on; warianty bez prefiksu nadpisują/uzupełniają. Twarde wiązanie z
+  jest on. Pierwszeństwo per-pole: **wariant z prefiksem > bare** (specyficzny
+  bije generyczny), bare jest fallbackiem. Twarde wiązanie z
   `Uczelnia.objects.get_default().skrot` z bazy — faza 2.
+
+## Współistnienie metod logowania (wymóg)
+
+Strona logowania ma oferować **równocześnie wiele metod**: wbudowane
+logowanie hasłem Django **ORAZ** OIDC **ORAZ** ORCID **ORAZ** Microsoft —
+nie „jedna przejmuje stronę”. Konsekwencje dla spike'a OIDC:
+
+- OIDC jest **czysto addytywne**: NIE dotyka `/accounts/login/`, montuje
+  tylko trasy `oidc/` i dokłada przycisk na istniejącej stronie (wzorzec
+  identyczny jak istniejący przycisk ORCID: formularz hasła zostaje).
+- Backend jest **dopisywany** do `AUTHENTICATION_BACKENDS` z zachowaniem
+  `ModelBackend` — logowanie hasłem działa równolegle.
+- **Poza spike'em** (osobny krok): pełne ujednolicenie strony logowania w
+  „chooser” obejmujący też Microsoft — dziś `urls.py` przy włączonym
+  `microsoft_auth` *redirectuje* `/accounts/login/` na Microsoft i spycha
+  hasło na `/accounts/login/local/`. Do modelu „wiele metod naraz” trzeba
+  odwrócić tę logikę i znieść strażnik wzajemnego wykluczenia LDAP/Microsoft
+  z `base.py`. To dotyka zachowania Microsoftu → nie mieszamy do spike'a.
 
 ## Architektura
 
