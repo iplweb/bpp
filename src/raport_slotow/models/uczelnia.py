@@ -48,6 +48,10 @@ class RaportSlotowUczelnia(ASGINotificationMixin, Report):
 
     minimalny_pk = models.DecimalField(default=0, decimal_places=2, max_digits=5)
 
+    uczelnia = models.ForeignKey(
+        "bpp.Uczelnia", on_delete=models.CASCADE, null=True, blank=True
+    )
+
     dziel_na_jednostki_i_wydzialy = models.BooleanField(
         verbose_name="Dziel na jednostki i wydziały",
         default=True,
@@ -111,6 +115,11 @@ class RaportSlotowUczelnia(ASGINotificationMixin, Report):
             .distinct()
         )
 
+        if self.uczelnia_id is not None:
+            kombinacje = kombinacje.filter(
+                jednostka__uczelnia_id=self.uczelnia_id
+            )
+
         total = kombinacje.count()
 
         for n, res in enumerate(kombinacje):
@@ -129,6 +138,7 @@ class RaportSlotowUczelnia(ASGINotificationMixin, Report):
                 dyscyplina_id=dyscyplina_id,
                 jednostka_id=jednostka_id,
                 akcja=self.akcja,
+                uczelnia_id=self.uczelnia_id,
             )
 
             avg = None
@@ -154,7 +164,10 @@ class RaportSlotowUczelnia(ASGINotificationMixin, Report):
 
         if self.pokazuj_zerowych:
             zerowi = autorzy_zerowi(
-                od_roku=self.od_roku, do_roku=self.do_roku, min_pk=self.minimalny_pk
+                od_roku=self.od_roku,
+                do_roku=self.do_roku,
+                min_pk=self.minimalny_pk,
+                uczelnia=self.uczelnia,
             )
 
             # --- Początek --- komentarz dot. buga w Django
