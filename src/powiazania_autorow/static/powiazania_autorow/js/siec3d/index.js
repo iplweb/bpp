@@ -109,7 +109,10 @@ export function init(ForceGraph3D) {
         .nodeColor(function (n) { return kolorPoziomu(n.level); })
         .nodeOpacity(0.95)
         .nodeLabel(function (n) {
-            return "<b>" + esc(n.label) + "</b><br>prace: " + (n.total_works | 0);
+            // tytuł naukowy przed nazwiskiem, np. "prof. dr hab. Jan Kowalski"
+            const tyt = n.tytul ? esc(n.tytul) + " " : "";
+            return "<b>" + tyt + esc(n.label) + "</b><br>prace: "
+                + (n.total_works | 0);
         })
         // etykieta jako sprite obok kuli (extend = nie zastępuje kuli);
         // tylko dla top-N i gdy włączone "pokaż etykiety"
