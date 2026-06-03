@@ -3,7 +3,7 @@
 Czysty unit — bez bazy i bez sieci. Przekazujemy własny ``environ``.
 """
 
-from oidc_integration.conf import discover_oidc_config
+from oidc_integration.conf import discover_oidc_config, fetch_well_known_endpoints
 
 ISSUER = "https://auth.uafm.edu.pl/auth/realms/KA"
 
@@ -83,3 +83,51 @@ def test_endpointy_wyprowadzone_z_issuera():
     assert ep["token"] == f"{base}/token"
     assert ep["userinfo"] == f"{base}/userinfo"
     assert ep["jwks"] == f"{base}/certs"
+    assert ep["end_session"] == f"{base}/logout"
+
+
+def test_fetch_well_known_fallback_na_bledzie_sieci(monkeypatch):
+    import requests
+
+    def boom(*args, **kwargs):
+        raise requests.RequestException("brak sieci")
+
+    monkeypatch.setattr("requests.get", boom)
+    assert fetch_well_known_endpoints(ISSUER) is None
+
+
+def test_fetch_well_known_parsuje_endpointy(monkeypatch):
+    class FakeResp:
+        def raise_for_status(self):
+            pass
+
+        def json(self):
+            return {
+                "authorization_endpoint": "https://kc/auth",
+                "token_endpoint": "https://kc/token",
+                "userinfo_endpoint": "https://kc/userinfo",
+                "jwks_uri": "https://kc/certs",
+                "end_session_endpoint": "https://kc/logout",
+            }
+
+    monkeypatch.setattr("requests.get", lambda *a, **k: FakeResp())
+    ep = fetch_well_known_endpoints(ISSUER)
+    assert ep == {
+        "authorization": "https://kc/auth",
+        "token": "https://kc/token",
+        "userinfo": "https://kc/userinfo",
+        "jwks": "https://kc/certs",
+        "end_session": "https://kc/logout",
+    }
+
+
+def test_fetch_well_known_niekompletny_to_none(monkeypatch):
+    class FakeResp:
+        def raise_for_status(self):
+            pass
+
+        def json(self):
+            return {"userinfo_endpoint": "https://kc/userinfo"}  # brak auth/token/jwks
+
+    monkeypatch.setattr("requests.get", lambda *a, **k: FakeResp())
+    assert fetch_well_known_endpoints(ISSUER) is None

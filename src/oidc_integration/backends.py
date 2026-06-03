@@ -89,6 +89,21 @@ class BppOIDCBackend(OIDCAuthenticationBackend):
         self._assign_uczelnia(user)
         return user
 
+    def _unique_username(self, base):
+        """Zwróć ``base`` albo ``base-2``/``base-3``… jeśli zajęty.
+
+        ``create_user`` woła się tylko, gdy nie ma konta dopasowanego po
+        e-mailu — ale sam username mógłby kolidować z innym kontem (ten sam
+        ``preferred_username`` przy innym e-mailu). Bez tego byłby IntegrityError.
+        """
+        manager = self.UserModel.objects
+        if not manager.filter(username=base).exists():
+            return base
+        i = 2
+        while manager.filter(username=f"{base}-{i}").exists():
+            i += 1
+        return f"{base}-{i}"
+
     def create_user(self, claims):
         """Załóż zwykłe konto (bez is_staff) na podstawie claimów.
 
@@ -97,9 +112,10 @@ class BppOIDCBackend(OIDCAuthenticationBackend):
         OIDC. Wywoływane tylko, gdy ``filter_users_by_claims`` (domyślnie po
         e-mailu) nie znajdzie istniejącego konta.
         """
-        username = (
+        base_username = (
             claims.get("preferred_username") or claims.get("email") or claims.get("sub")
         )
+        username = self._unique_username(base_username)
         email = claims.get("email") or ""
 
         user = self.UserModel.objects.create_user(username=username, email=email)

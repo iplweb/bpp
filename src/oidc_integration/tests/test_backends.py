@@ -74,6 +74,21 @@ def test_create_user_zaklada_zwykle_konto_bez_is_staff():
 
 
 @pytest.mark.django_db
+def test_create_user_unika_kolizji_username():
+    UserModel = get_user_model()
+    UserModel.objects.create_user(username="jkowalski", email="ktos@inny.pl")
+
+    backend = _backend()
+    backend.UserModel = UserModel
+    # ten sam preferred_username, inny e-mail → username nie może kolidować
+    user = backend.create_user(
+        {"preferred_username": "jkowalski", "email": "jan@uafm.edu.pl"}
+    )
+
+    assert user.username == "jkowalski-2"
+
+
+@pytest.mark.django_db
 def test_create_user_username_fallback_do_sub():
     backend = _backend()
     backend.UserModel = get_user_model()

@@ -400,13 +400,21 @@ if not apps.is_installed("microsoft_auth"):
     # Jeżeli NIE ma włączonej aplikacji microsoft_auth, to obsługuj
     # własne logowanie hasłem z front-endu:
     #
+    # Logout świadomy OIDC: sesja OIDC → wyloguj też z Keycloaka; reszta →
+    # standardowy LogoutView. Bezpieczny nadzbiór, więc używamy go zawsze gdy
+    # apka OIDC jest aktywna.
+    if apps.is_installed("oidc_integration"):
+        from oidc_integration.views import BppOIDCAwareLogoutView as _LogoutView
+    else:
+        _LogoutView = LogoutView
+
     urlpatterns += [
         url(
             r"^accounts/login/$",
             HTMXAwareLoginView.as_view(authentication_form=MyAuthenticationForm),
             name="login_form",
         ),
-        url(r"^logout/$", login_required(LogoutView.as_view()), name="logout"),
+        url(r"^logout/$", login_required(_LogoutView.as_view()), name="logout"),
     ]
 else:
     from django_bpp.views import MicrosoftLogoutView
