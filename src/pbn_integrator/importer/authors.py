@@ -72,7 +72,8 @@ def _przetworz_afiliacje(
     typ_odpowiedzialnosci_autor,
     typ_odpowiedzialnosci_redaktor,
     default_typ_odpowiedzialnosci=None,
-    uczelnia=None,
+    *,
+    uczelnia,
 ):
     """Process author affiliation data.
 
