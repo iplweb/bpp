@@ -1,7 +1,6 @@
 import urllib
 
 from django.contrib.auth.mixins import LoginRequiredMixin
-from django.http import HttpResponseRedirect
 from django.utils import timezone
 from django_filters.views import FilterMixin
 from django_tables2 import RequestConfig, SingleTableMixin
@@ -59,11 +58,8 @@ class UtworzRaportSlotowUczelnia(
     task = perform_generic_long_running_task
 
     def form_valid(self, form):
-        form.instance.owner = self.request.user
         form.instance.uczelnia = uczelnia_dla_odczytu(self.request)
-        self.object = form.save()
-        self.task_on_commit(pk=form.instance.pk)
-        return HttpResponseRedirect(self.get_success_url())
+        return super().form_valid(form)
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
