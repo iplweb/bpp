@@ -334,7 +334,7 @@ def weryfikuj_orcidy(client: PBNClient, instutition_id):
         )
 
 
-def matchuj_autora_po_stronie_pbn(imiona, nazwisko, orcid):  # noqa: C901
+def matchuj_autora_po_stronie_pbn(imiona, nazwisko, orcid, uczelnia):  # noqa: C901
     """Match an author on the PBN side.
 
     Args:
@@ -430,12 +430,9 @@ def matchuj_autora_po_stronie_pbn(imiona, nazwisko, orcid):  # noqa: C901
                     cur_elem_points += 1
 
             currentEmployments = elem.value_or_none("object", "currentEmployments")
-            if currentEmployments is not None:
-                # TODO(multi-hosted): matcher porównuje z „naszą" uczelnią —
-                # docelowo per-uczelnia (deeper integrator-threading, jak sloty).
-                # objects.default zostaje (cached; matcher bez kontekstu uczelni).
+            if currentEmployments is not None and uczelnia is not None:
                 for pos in currentEmployments:
-                    if pos.get("institutionId") == Uczelnia.objects.default.pbn_uid_id:
+                    if pos.get("institutionId") == uczelnia.pbn_uid_id:
                         can_be_set = True
 
             rated_elems.append((cur_elem_points, elem.pk))
@@ -456,7 +453,10 @@ def integruj_wszystkich_niezintegrowanych_autorow():
 
     for autor in Autor.objects.filter(pk__in=autorzy_z_dyscyplina_ids, pbn_uid_id=None):
         sciencist = matchuj_autora_po_stronie_pbn(
-            autor.imiona, autor.nazwisko, autor.orcid
+            autor.imiona,
+            autor.nazwisko,
+            autor.orcid,
+            autor.aktualna_jednostka.uczelnia if autor.aktualna_jednostka_id else None,
         )
         if sciencist:
             logger.info(

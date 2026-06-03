@@ -41,8 +41,6 @@ APPROVED: dict[str, int] = {
     "pbn_api/management/commands/util.py": 1,  # GUARDED count==1 (wzorzec CLI)
     "pbn_import/templatetags/pbn_import_tags.py": 1,  # request-first, fallback bez requestu
     "pbn_import/utils/command_helpers.py": 1,  # CLI None-tolerant + CommandError
-    "pbn_integrator/utils/scientists.py": 1,  # TODO integrator per-uczelnia (parked)
-    "pbn_integrator/management/commands/pbn_integrator.py": 1,  # TODO integrator per-uczelnia
     "powiazania_autorow/queries.py": 1,  # dev: explorer, root PBN raz (anty-N+1), display; deferred multi-host
 }
 
