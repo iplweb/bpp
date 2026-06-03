@@ -8,7 +8,7 @@ import {
     pokazTooltipAutor,
     pokazTooltipKrawedz
 } from "./panel.js";
-import { przeliczRozmiary } from "./sizing.js";
+import { przeliczRozmiaryAnim } from "./sizing.js";
 import { szukaj } from "./search.js";
 import { odswiezKrawedzieWewn } from "./group-edges.js";
 import { ulozGraf } from "./layout.js";
@@ -299,7 +299,8 @@ export function podepnijZdarzenia(ctx) {
     if (ctx.selMetryka) {
         ctx.selMetryka.addEventListener("change", function () {
             ctx.metryka = ctx.selMetryka.value;
-            przeliczRozmiary(ctx);
+            // płynne przejście rozmiarów kół (~1 s) zamiast skoku
+            przeliczRozmiaryAnim(ctx, 1000);
         });
     }
 

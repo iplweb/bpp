@@ -119,13 +119,13 @@ export function pozycjeUkladu(ctx, centerId, children, levelOf) {
     return pozycjeRadialne(centerId, children);
 }
 
-// Delikatna "guma" na PRZEJŚCIU między układami: easing z lekkim
-// przestrzeleniem celu (drugi punkt kontrolny krzywej Béziera ma y > 1, więc
-// węzeł minimalnie wyjeżdża za pozycję docelową i wraca). W przeciwieństwie do
-// spring() jest w pełni przewidywalny — żadnego rozkołysania, tylko subtelne
-// "dociągnięcie". Strojenie: większe y2 = wyraźniejsze odbicie.
-const EASING_UKLAD = "cubic-bezier(0.34, 1.25, 0.64, 1)";
-const CZAS_UKLAD = 520; // ms — nieco dłużej niż 450, by przestrzelenie było czytelne
+// "Guma" na PRZEJŚCIU między układami: easing z przestrzeleniem celu (drugi
+// punkt kontrolny krzywej Béziera ma y > 1, więc węzeł wyjeżdża za pozycję
+// docelową i sprężyście wraca). W przeciwieństwie do spring() jest w pełni
+// przewidywalny. Strojenie: większe y2 = wyraźniejsze, bardziej "gumowate"
+// odbicie; dłuższy CZAS_UKLAD = wolniejsze, bardziej elastyczne dojście.
+const EASING_UKLAD = "cubic-bezier(0.34, 1.55, 0.5, 1)";
+const CZAS_UKLAD = 650; // ms — dłużej, by sprężyste odbicie było wyraźne
 
 // Ułożenie grafu wg bieżącego układu. "sila" = layout siłowy fcose
 // (organiczne skupiska); pozostałe = deterministyczne pozycje liczone
