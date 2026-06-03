@@ -183,11 +183,20 @@ Zatwierdzony wariant: **A (Verify → Stabilize → Investigate → Spec)**.
      `RaportSlotow`(autor)/`oswiadczenia` filtrują po uczelni; API owner-scoped;
      ewaluacja_metryki/common adnotowane (już-zawężone/federacja). Hardening
      #2/#3 wpięte. **Niepushowane.**
-   - ⏭ **R2 — ewaluacja_liczba_n per-uczelnia (G):** NASTĘPNY. write+read, schemat
-     `IloscUdzialow*` (+ FK uczelnia, migracja/backfill, unique_together) +
-     zawężenie liczenia udziałów per uczelnia.
-   - **F — federacja optymalizacji (B):** ODŁOŻONA (nie teraz, decyzja usera).
-5. ⏭ Po R2: **integrator (D)**; potem drobne (E); NOT NULL na uczelnia (#5).
+   - ✅ **R2 — ewaluacja_liczba_n per-uczelnia (G): ZROBIONE 2026-06-03.** Spec
+     `specs/2026-06-03-ewaluacja-liczba-n-per-uczelnia-design.md`, plan
+     `plans/2026-06-03-ewaluacja-liczba-n-per-uczelnia-R2.md`. 4 taski
+     (subagent-driven, review spec+jakość), final review „ready to merge",
+     67 testów (liczba_n+metryki) zielonych. FK `uczelnia` na `IloscUdzialow*`
+     (mig 0009 +backfill single→domyślna/multi→fail), cały pipeline `utils.py`
+     zawężony per uczelnia (autor→uczelnia via `aktualna_jednostka.uczelnia`;
+     NULL/obca wykluczeni; naprawiony globalny bug `objects.all().delete()`),
+     widoki list/export/verify filtrują `get_for_request`, wszystkie
+     `oblicz_dyscypliny_nieraportowane(uczelnia)` poprawione. **Niepushowane.**
+     Minor follow-up (nieblokujące): `views/verify.py` liczy `Autor_Dyscyplina`
+     globalnie (diagnostyka, pre-existing); admin nie pokazuje `uczelnia`.
+   - **F — federacja optymalizacji (B):** ODŁOŻONA (decyzja usera, olana).
+5. ⏭ NASTĘPNY: **integrator (D)**; potem drobne (E); NOT NULL na uczelnia (#5).
 
 Backlog hardeningu (C): #2/#3 → R1; #1 (HST globalnie) → F (federacja).
 
