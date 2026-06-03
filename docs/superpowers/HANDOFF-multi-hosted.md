@@ -172,15 +172,22 @@ Zatwierdzony wariant: **A (Verify → Stabilize → Investigate → Spec)**.
    WYGASZANA (husk, OUT); rankingi/API nie czytają cache wprost (API przez
    raport_slotow); filtr czytania jednolity `jednostka__uczelnia`;
    ewaluacja_liczba_n częściowo per-uczelnia z luką write (wątek G).
-4. ⏭ **Specy read-side — TRZY niezależne** (każdy: brainstorm→spec→plan):
-   - **R1 — slot read-side (A):** widok eksponuje uczelnię + pipeline temp-tabel
-     niesie uczelnię + raport_slotow/API/proste filtry (metryki/oswiadczenia/
-     common/bpp-core) filtrują po uczelni oglądającego. Hardening #2 (indeks),
-     #3 (asymetria) wpiąć tu.
-   - **R2 — ewaluacja_liczba_n per-uczelnia (G):** write+read, schemat
-     `IloscUdzialow*` + zawężenie liczenia.
-   - **F — federacja optymalizacji (B):** najtrudniejszy, ostatni.
-5. (później) Integrator (D); drobne (E); NOT NULL na uczelnia (#5).
+4. Specy read-side — TRZY niezależne (każdy: brainstorm→spec→plan):
+   - ✅ **R1 — slot read-side (A): ZROBIONE 2026-06-03.** Spec
+     `specs/2026-06-03-per-uczelnia-sloty-read-side-design.md`, plan
+     `plans/2026-06-03-per-uczelnia-sloty-read-side-R1.md`. 10 tasków
+     (subagent-driven, każdy spec+quality review), final review „ready to merge",
+     269 testów konsumentów zielonych. Widok eksponuje `uczelnia_id` (mig 0426),
+     indeks (0427), helper `uczelnia_dla_odczytu` (hybryda), `zbieraj_sloty`/
+     `autorzy_zerowi`/`RaportSlotowUczelnia`(mig raport_slotow 0020 +backfill)/
+     `RaportSlotow`(autor)/`oswiadczenia` filtrują po uczelni; API owner-scoped;
+     ewaluacja_metryki/common adnotowane (już-zawężone/federacja). Hardening
+     #2/#3 wpięte. **Niepushowane.**
+   - ⏭ **R2 — ewaluacja_liczba_n per-uczelnia (G):** NASTĘPNY. write+read, schemat
+     `IloscUdzialow*` (+ FK uczelnia, migracja/backfill, unique_together) +
+     zawężenie liczenia udziałów per uczelnia.
+   - **F — federacja optymalizacji (B):** ODŁOŻONA (nie teraz, decyzja usera).
+5. ⏭ Po R2: **integrator (D)**; potem drobne (E); NOT NULL na uczelnia (#5).
 
 Backlog hardeningu (C): #2/#3 → R1; #1 (HST globalnie) → F (federacja).
 
