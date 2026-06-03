@@ -18,7 +18,7 @@
 // przekazywanym do funkcji pozostałych modułów zamiast domknięcia.
 import { utworzKontekst } from "./state.js";
 import { podepnijZdarzenia } from "./controls.js";
-import { zaladujSiec, zaladujZrodla } from "./loaders.js";
+import { zaladujSiec } from "./loaders.js";
 
 export function init() {
     const ctx = utworzKontekst();
@@ -28,7 +28,10 @@ export function init() {
 
     podepnijZdarzenia(ctx);
 
-    // --- start: cała sieć do bieżącej głębokości + lista źródeł ---
-    zaladujZrodla(ctx);
+    // --- start: tylko sieć do bieżącej głębokości ---
+    // Listę źródeł/wydawców ładujemy LENIWIE — dopiero przy pierwszym
+    // otwarciu szuflady "Wszystkie źródła" (siedzi w schowanych "Opcje
+    // zaawansowane"), więc nie płacimy za dwa GROUP BY-e, gdy nikt jej
+    // nie otwiera. Patrz handler graf-zrodla-toggle w controls.js.
     zaladujSiec(ctx);
 }

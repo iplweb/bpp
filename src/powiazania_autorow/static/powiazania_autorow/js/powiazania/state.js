@@ -47,6 +47,7 @@ export function utworzKontekst() {
         listaZrodla: document.getElementById("graf-zrodla-lista"),
         inputSzukaj: document.getElementById("graf-szukaj"),
         chkWewn: document.getElementById("graf-wewnetrzne-chk"),
+        chkZatrudnieni: document.getElementById("graf-zatrudnieni-chk"),
         progWewnSlider: progWewnSlider,
         progWewnLabel: document.getElementById("graf-wewn-prog-label"),
 
@@ -64,6 +65,8 @@ export function utworzKontekst() {
         uklad: selUklad ? selUklad.value : "radial",
         lastTree: null,        // { centerId, children, levelOf } z ostatniej sieci
         pokazWewn: false,      // czy rysujemy krawędzie wewnątrz grupy
+        tylkoZatrudnieni: false, // tylko współautorzy aktualnie zatrudnieni
+        zrodlaZaladowane: false, // czy lista źródeł już pobrana (leniwie)
         progWewn: progWewnSlider
             ? parseInt(progWewnSlider.value, 10) || 1
             : 1,

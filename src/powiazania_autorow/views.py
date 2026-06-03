@@ -1,5 +1,5 @@
 from django.db.utils import OperationalError
-from django.http import JsonResponse
+from django.http import Http404, JsonResponse
 from django.shortcuts import get_object_or_404
 from django.views.generic import TemplateView, View
 
@@ -9,9 +9,12 @@ from .queries import (
     MAKS_GLEBOKOSC_FILTR,
     MIN_PRAC_ZRODLO,
     STATEMENT_TIMEOUT_FILTR_MS,
+    Filtr,
     _autor_dict,
+    _autorzy_widocznej_sieci,
     _bfs_siec,
     _filtr_z_request,
+    _int_or_none,
     _int_param,
     _krawedzie_wewnatrz,
     _limit_czasu,
@@ -19,7 +22,9 @@ from .queries import (
     _pbn_root,
     _sasiedzi_authorconnection,
     _sasiedzi_cache,
+    _uczelnia_zatrudnienia,
     _zakres_lat,
+    siec_powiazan_wlaczona,
 )
 
 
@@ -30,7 +35,10 @@ class GrafPowiazanView(TemplateView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context["autor"] = get_object_or_404(Autor, pk=kwargs["pk"])
+        autor = get_object_or_404(Autor, pk=kwargs["pk"])
+        if not siec_powiazan_wlaczona(autor, self.request):
+            raise Http404("Sieć powiązań jest wyłączona dla tego autora.")
+        context["autor"] = autor
         return context
 
 
@@ -45,15 +53,18 @@ class GrafPowiazanDaneView(View):
 
     def get(self, request, pk):
         autor = get_object_or_404(Autor.objects.select_related("tytul"), pk=pk)
+        if not siec_powiazan_wlaczona(autor, request):
+            raise Http404("Sieć powiązań jest wyłączona dla tego autora.")
         pbn_root = _pbn_root()
         filtr = _filtr_z_request(request)
+        uczelnia_zatr = _uczelnia_zatrudnienia(request)
 
         if filtr.aktywny():
             # liczenie z cache (self-join) pod twardym statement_timeout —
             # patologiczny filtr ubija własny request, nie bazę
             try:
                 with _limit_czasu(STATEMENT_TIMEOUT_FILTR_MS):
-                    wybrani = _sasiedzi_cache(autor, filtr)
+                    wybrani = _sasiedzi_cache(autor, filtr, uczelnia_zatr)
             except OperationalError:
                 return JsonResponse(
                     {
@@ -63,7 +74,7 @@ class GrafPowiazanDaneView(View):
                     status=503,
                 )
         else:
-            wybrani = _sasiedzi_authorconnection(autor)
+            wybrani = _sasiedzi_authorconnection(autor, uczelnia_zatr)
 
         metryki = _metryki_prac([autor.pk] + [a.pk for a, _ in wybrani])
 
@@ -96,9 +107,12 @@ class GrafPowiazanSiecView(View):
 
     def get(self, request, pk):
         autor = get_object_or_404(Autor, pk=pk)
+        if not siec_powiazan_wlaczona(autor, request):
+            raise Http404("Sieć powiązań jest wyłączona dla tego autora.")
         depth = _int_param(request, "depth", 2, 1, 10)
         topn = _int_param(request, "topn", 15, 1, 50)
         filtr = _filtr_z_request(request)
+        uczelnia_zatr = _uczelnia_zatrudnienia(request)
         if filtr.aktywny():
             # przy liczeniu z cache tniemy głębokość (self-join jest droższy)
             depth = min(depth, MAKS_GLEBOKOSC_FILTR)
@@ -110,7 +124,7 @@ class GrafPowiazanSiecView(View):
             try:
                 with _limit_czasu(STATEMENT_TIMEOUT_FILTR_MS):
                     level_of, parent_of, krawedzie, przyciecie = _bfs_siec(
-                        autor.pk, depth, topn, filtr
+                        autor.pk, depth, topn, filtr, uczelnia_zatr
                     )
                     visited = set(level_of.keys())
                     extra_edges = _krawedzie_wewnatrz(visited, krawedzie, filtr)
@@ -124,7 +138,7 @@ class GrafPowiazanSiecView(View):
                 )
         else:
             level_of, parent_of, krawedzie, przyciecie = _bfs_siec(
-                autor.pk, depth, topn, filtr
+                autor.pk, depth, topn, filtr, uczelnia_zatr
             )
             visited = set(level_of.keys())
             # Krawędzie "poprzeczne": wszystkie powiązania MIĘDZY widocznymi
@@ -168,25 +182,65 @@ class GrafPowiazanSiecView(View):
 
 
 class GrafPowiazanZrodlaView(View):
-    """Zwrotna lista źródeł i wydawców prac autora centralnego (z filtrem roku).
+    """Lista źródeł i wydawców prac CAŁEJ widocznej sieci (z filtrem roku).
 
     Zasila combobox "pokazuj tylko prace z:" — każda pozycja z liczbą prac,
-    np. "Blood (500)". Dwa GROUP BY na cache (bpp_autorzy_mat ⋈ bpp_rekord_mat).
+    np. "Blood (500)". Zbiór autorów = ta sama sieć BFS co graf (depth/topn +
+    rok + zatrudnieni), więc zmiana tych kontrolek realnie zmienia listę.
+    Filtr źródła/wydawcy świadomie pomijamy przy liczeniu zbioru autorów — w
+    przeciwnym razie wybór źródła zawężałby sieć, a ta listę (sprzężenie).
+
+    Dwa GROUP BY na cache (bpp_autorzy_mat ⋈ bpp_rekord_mat) po pracach
+    widocznych autorów; `Count(DISTINCT rekord)` liczy każdą pracę raz, nawet
+    gdy współautorzy z sieci dzielą ją między sobą.
     """
 
     def get(self, request, pk):
+        autor = get_object_or_404(Autor, pk=pk)
+        if not siec_powiazan_wlaczona(autor, request):
+            raise Http404("Sieć powiązań jest wyłączona dla tego autora.")
+
+        depth = _int_param(request, "depth", 2, 1, 10)
+        topn = _int_param(request, "topn", 15, 1, 50)
+        rok_od = _int_or_none(request.GET.get("rok_od"))
+        rok_do = _int_or_none(request.GET.get("rok_do"))
+        uczelnia_zatr = _uczelnia_zatrudnienia(request)
+        # filtr tylko-rok (bez źródła/wydawcy) do wyznaczenia zbioru autorów
+        filtr_rok = Filtr(rok_od=rok_od, rok_do=rok_do)
+
+        # BFS po sieci + dwa GROUP BY mogą dotknąć do MAKS_WEZLOW_SIECI autorów
+        # — twardy statement_timeout ubija patologiczny request (503) zamiast
+        # męczyć bazę.
+        try:
+            with _limit_czasu(STATEMENT_TIMEOUT_FILTR_MS):
+                visible_ids = _autorzy_widocznej_sieci(
+                    autor.pk, depth, topn, filtr_rok, uczelnia_zatr
+                )
+                dane = self._zrodla_wydawcy(visible_ids, rok_od, rok_do)
+        except OperationalError:
+            return JsonResponse(
+                {
+                    "error": "Zapytanie o źródła sieci trwało za długo — "
+                    "zmniejsz głębokość lub liczbę współautorów."
+                },
+                status=503,
+            )
+
+        return JsonResponse(dane)
+
+    @staticmethod
+    def _zrodla_wydawcy(autor_ids, rok_od, rok_do):
+        """Top-100 źródeł i wydawców (>= MIN_PRAC_ZRODLO prac) wśród prac
+        autorów `autor_ids`, z filtrem roku. Zwraca gotowy dict do JSON-a."""
         from django.db.models import Count
 
         from bpp.models import Autorzy
 
-        autor = get_object_or_404(Autor, pk=pk)
-        filtr = _filtr_z_request(request)
-
-        base = Autorzy.objects.filter(autor_id=autor.pk)
-        if filtr.rok_od:
-            base = base.filter(rekord__rok__gte=filtr.rok_od)
-        if filtr.rok_do:
-            base = base.filter(rekord__rok__lte=filtr.rok_do)
+        base = Autorzy.objects.filter(autor_id__in=autor_ids)
+        if rok_od:
+            base = base.filter(rekord__rok__gte=rok_od)
+        if rok_do:
+            base = base.filter(rekord__rok__lte=rok_do)
 
         zrodla = (
             base.filter(rekord__zrodlo__isnull=False)
@@ -203,23 +257,21 @@ class GrafPowiazanZrodlaView(View):
             .order_by("-n")[:100]
         )
 
-        return JsonResponse(
-            {
-                "zrodla": [
-                    {
-                        "id": z["rekord__zrodlo_id"],
-                        "nazwa": z["rekord__zrodlo__nazwa"],
-                        "n": z["n"],
-                    }
-                    for z in zrodla
-                ],
-                "wydawcy": [
-                    {
-                        "id": w["rekord__wydawca_id"],
-                        "nazwa": w["rekord__wydawca__nazwa"],
-                        "n": w["n"],
-                    }
-                    for w in wydawcy
-                ],
-            }
-        )
+        return {
+            "zrodla": [
+                {
+                    "id": z["rekord__zrodlo_id"],
+                    "nazwa": z["rekord__zrodlo__nazwa"],
+                    "n": z["n"],
+                }
+                for z in zrodla
+            ],
+            "wydawcy": [
+                {
+                    "id": w["rekord__wydawca_id"],
+                    "nazwa": w["rekord__wydawca__nazwa"],
+                    "n": w["n"],
+                }
+                for w in wydawcy
+            ],
+        }

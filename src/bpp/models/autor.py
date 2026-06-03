@@ -109,6 +109,15 @@ class Autor(LinkDoPBNMixin, ModelZAdnotacjami, ModelZPBN_ID):
         default=True, help_text="Pokazuj autora na stronach jednostek oraz w rankingu. "
     )
 
+    pokazuj_siec_powiazan = models.BooleanField(
+        verbose_name="Pokazuj sieć powiązań",
+        null=True,
+        blank=True,
+        default=None,
+        help_text="Czy udostępniać sieć współautorstwa dla tego autora. "
+        "Puste = użyj ustawienia uczelni; TAK/NIE nadpisuje je dla tego autora.",
+    )
+
     email = models.EmailField("E-mail", max_length=128, blank=True, default="")
     www = models.URLField("WWW", max_length=1024, blank=True, default="")
 
@@ -198,6 +207,21 @@ class Autor(LinkDoPBNMixin, ModelZAdnotacjami, ModelZPBN_ID):
 
     def get_absolute_url(self):
         return reverse("bpp:browse_autor", args=(self.slug,))
+
+    def czy_pokazywac_siec_powiazan(self, uczelnia):
+        """Efektywne ustawienie "pokazuj sieć powiązań" dla tego autora.
+
+        Tri-state per-autor (`pokazuj_siec_powiazan`): TAK/NIE nadpisuje
+        ustawienie uczelni, a wartość pusta (None) deleguje do niej. Gdy nie
+        ma uczelni — domyślnie pokazuj (True). `uczelnia` podaje wołający
+        (np. przez Uczelnia.objects.get_for_request), żeby nie robić ukrytego
+        zapytania per autor.
+        """
+        if self.pokazuj_siec_powiazan is not None:
+            return self.pokazuj_siec_powiazan
+        if uczelnia is None:
+            return True
+        return bool(uczelnia.pokazuj_siec_powiazan)
 
     class Meta:
         verbose_name = "autor"
