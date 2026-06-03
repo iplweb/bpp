@@ -398,6 +398,27 @@ usuwajacy tagi starsze niz N dni.
 - Fixtures in `src/conftest.py` and subdirectories
 - Full suite timeout: at least 600000ms (10 minutes)
 
+### Uruchamiaj testy LOKALNIE — nie spychaj wszystkiego na CI
+
+**Domyślnie odpalaj testy na swojej maszynie.** „Środowiskowo-ciężkie",
+„zostawmy to CI", „Playwright wymaga setupu" to NIE są powody, żeby pominąć
+lokalny przebieg — to najwyżej powód, żeby najpierw zrobić warunki wstępne
+(`make assets`, `make playwright-install`). Brak warunku wstępnego = wykonaj go,
+nie pomijaj testu.
+
+- **Praca nad zdalnym branchem / w PR:** odpalenie lokalnego `make tests`
+  **równolegle** z czekaniem na CI jest OK i **zalecane** — szybszy feedback,
+  łapiesz regresje zanim CI je zwróci, nie marnujesz rundy CI. Te dwa kanały się
+  nie wykluczają; rób oba.
+- Pełne `make tests` przerywa się na pierwszym błędnym kroku (`make` zwraca na
+  Error 1), więc gdy `tests-without-playwright` padnie, kroki
+  `tests-only-playwright` i `js-tests` się NIE wykonają. Po naprawie Pythona
+  **dokończ** pozostałe kroki (albo ponów całe `make tests`), zamiast uznać je
+  za „pominięte".
+- Jedyny akceptowalny powód, by czegoś nie odpalić lokalnie: fizyczny brak
+  możliwości (np. brak działającego Dockera dla testcontainers) — wtedy powiedz
+  to wprost, a nie „jest ciężkie".
+
 ### Testy Playwright (`src/integration_tests/`) lokalnie
 
 Testy przeglądarkowe (np. `test_global_search.py`) **da się** odpalić
