@@ -133,7 +133,9 @@ export function init(ForceGraph3D) {
     // Etykieta węzła (SpriteText) — tylko dla top-N i gdy włączone.
     function budujEtykiete(n) {
         if (!etykietyOn || !n._top) { return null; }
-        const s = new SpriteText(n.label || "");
+        // tytuł naukowy przed nazwiskiem, np. "prof. dr hab. Jan Kowalski"
+        const txt = (n.tytul ? n.tytul + " " : "") + (n.label || "");
+        const s = new SpriteText(txt);
         s.color = "#fff";
         s.textHeight = 6;
         s.backgroundColor = "rgba(11,16,32,0.72)";
