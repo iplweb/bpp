@@ -9,16 +9,22 @@
 // klik = dolot kamery + panel akcji jak w 2D, przeciąganie węzła = sprężysta
 // reakcja układu siłowego (efekt "gumy" w 3D).
 //
-// Opcje zaawansowane (te same parametry co 2D): rok od-do i "tylko aktualnie
-// zatrudnieni" idą do siec.json (przeładowanie z serwera); "powiązania w
-// grupie" (extra_edges) z progiem filtrujemy po stronie klienta z ostatnio
-// pobranych danych; "odśwież układ" rozgrzewa symulację i dopasowuje kamerę.
+// Opcje: rok od-do i "tylko aktualnie zatrudnieni" idą do siec.json
+// (przeładowanie z serwera); "powiązania w grupie" (extra_edges, domyślnie
+// WYŁĄCZONE) z progiem dorysowujemy po stronie klienta w innym kolorze, bez
+// przerysowywania układu; "pokaż etykiety" rysuje nazwiska top-N węzłów;
+// "odśwież układ" rozgrzewa symulację i dopasowuje kamerę.
+
+import SpriteText from "three-spritetext";
 
 // Kolory wg poziomu: centrum złote, dalej chłodna paleta (dobre na ciemnym tle).
 const PALETA = [
     "#ffd54a", "#4ea1ff", "#36c9c0", "#7ed957",
     "#c792ea", "#ff8a65", "#9aa7b2"
 ];
+
+// Ile najważniejszych (wg bieżącej metryki) węzłów dostaje stałą etykietę.
+const TOP_ETYKIETY = 25;
 
 function kolorPoziomu(level) {
     return PALETA[Math.min(level || 0, PALETA.length - 1)];
@@ -76,6 +82,7 @@ export function init(ForceGraph3D) {
     const topnLabel = document.getElementById("siec3d-topn-label");
     const info = document.getElementById("siec3d-info");
     const ukladEl = document.getElementById("siec3d-uklad");
+    const chkEtykiety = document.getElementById("siec3d-etykiety-chk");
 
     // --- opcje zaawansowane ---
     const rokOdEl = document.getElementById("siec3d-rok-od");
@@ -86,6 +93,7 @@ export function init(ForceGraph3D) {
     const progWewnLabel = document.getElementById("siec3d-wewn-prog-label");
 
     let metryka = selMetryka ? selMetryka.value : "works";
+    let etykietyOn = chkEtykiety ? chkEtykiety.checked : false;
     // ostatnio pobrana sieć (raw siec.json) — do klienckiego przebudowania
     // linków przy zmianie opcji "powiązania w grupie" bez ponownego fetcha.
     let rawData = { nodes: [], edges: [], extra_edges: [] };
@@ -99,9 +107,15 @@ export function init(ForceGraph3D) {
         .nodeLabel(function (n) {
             return "<b>" + esc(n.label) + "</b><br>prace: " + (n.total_works | 0);
         })
-        .linkColor(function () { return "rgba(255,255,255,0.16)"; })
+        // etykieta jako sprite obok kuli (extend = nie zastępuje kuli);
+        // tylko dla top-N i gdy włączone "pokaż etykiety"
+        .nodeThreeObjectExtend(true)
+        .linkColor(function (l) {
+            // powiązania w grupie wyróżnione kolorem (bursztyn), drzewo białe
+            return l.grupa ? "rgba(255,179,71,0.55)" : "rgba(255,255,255,0.16)";
+        })
         .linkWidth(function (l) { return Math.max(0.4, Math.log2(l.shared + 1)); })
-        .linkOpacity(0.45)
+        .linkOpacity(0.5)
         .onNodeClick(function (n) {
             // Dolot kamery do węzła (klasyczny recipe 3d-force-graph).
             const dist = 140;
@@ -111,6 +125,24 @@ export function init(ForceGraph3D) {
             );
             pokazPanel(n);
         });
+
+    // Etykieta węzła (SpriteText) — tylko dla top-N i gdy włączone.
+    function budujEtykiete(n) {
+        if (!etykietyOn || !n._top) { return null; }
+        const s = new SpriteText(n.label || "");
+        s.color = "#fff";
+        s.textHeight = 5;
+        s.backgroundColor = "rgba(11,16,32,0.65)";
+        s.padding = 1.5;
+        s.position.set(0, 9, 0); // unieś nad kulę
+        return s;
+    }
+    // Re-assign przez świeży wrapper => 3d-force-graph regeneruje obiekty
+    // węzłów (np. po przełączeniu etykiet albo zmianie listy top-N).
+    function odswiezEtykiety() {
+        Graph.nodeThreeObject(function (n) { return budujEtykiete(n); });
+    }
+    odswiezEtykiety();
 
     // Panel akcji jak w 2D: nagłówek (nazwisko + tytuł), ORCID i linki
     // kontekstowe. Budowany przez DOM (textContent/createElement) — zero XSS.
@@ -149,17 +181,43 @@ export function init(ForceGraph3D) {
         info.style.display = "block";
     }
 
-    function mapLink(e) {
+    function mapLink(e, grupa) {
         return {
             source: String(e.source),
             target: String(e.target),
-            shared: e.shared || 1
+            shared: e.shared || 1,
+            grupa: !!grupa
         };
+    }
+
+    // Ustaw flagę _top na top-N węzłach wg bieżącej metryki (do etykiet).
+    function oznaczTop(nodes) {
+        nodes.forEach(function (n) { n._top = false; });
+        nodes.slice()
+            .sort(function (a, b) {
+                return wartoscMetryki(b, metryka) - wartoscMetryki(a, metryka);
+            })
+            .slice(0, TOP_ETYKIETY)
+            .forEach(function (n) { n._top = true; });
+    }
+
+    // Linki dla bieżącego układu: krawędzie drzewa zawsze; powiązania w grupie
+    // (extra_edges) tylko gdy włączone i poza układem "drzewo" (cykle psują DAG).
+    function zbudujLinki(uklad) {
+        const links = (rawData.edges || []).map(function (e) {
+            return mapLink(e, false);
+        });
+        if (uklad !== "drzewo" && chkWewn && chkWewn.checked) {
+            const prog = progWewn ? (parseInt(progWewn.value, 10) || 1) : 1;
+            (rawData.extra_edges || []).forEach(function (e) {
+                if ((e.shared || 1) >= prog) { links.push(mapLink(e, true)); }
+            });
+        }
+        return links;
     }
 
     // "Sferyczne powłoki": każdy poziom BFS na własnej sferze (promień ∝ poziom),
     // węzły rozłożone równomiernie metodą Fibonacciego. Centrum w środku.
-    // Ustawia fx/fy/fz (pozycje zamrożone).
     function ustawSfery(nodes, R) {
         const wgPoziomu = {};
         nodes.forEach(function (n) {
@@ -183,10 +241,9 @@ export function init(ForceGraph3D) {
         });
     }
 
-    // Przełączanie formy układu. Drzewo = wbudowany dagMode (radialny, używa
-    // kierunku krawędzi rodzic→dziecko; cykliczne extra_edges ignorujemy przez
-    // onDagError(null)). Warstwy = poziom→oś Z, X/Y swobodne (siła). Sfery =
-    // pozycje zamrożone. Siłowy = brak ograniczeń (domyślna chmura).
+    // Przełączanie formy układu. Drzewo = dagMode radialny (krawędzie drzewa są
+    // acykliczne). Warstwy = poziom→oś Z, X/Y swobodne. Sfery = pozycje
+    // zamrożone. Siłowy = brak ograniczeń (domyślna chmura).
     function zastosujUklad(uklad) {
         const nodes = Graph.graphData().nodes;
         if (uklad === "drzewo") {
@@ -208,10 +265,9 @@ export function init(ForceGraph3D) {
         Graph.d3ReheatSimulation();
     }
 
-    // Buduje graphData z rawData. Krawędzie drzewa (edges) zawsze; poprzeczne
-    // (extra_edges) tylko gdy włączone "powiązania w grupie", z progiem
-    // "od N wspólnych prac" — filtr po stronie klienta (bez fetcha).
+    // Pełna przebudowa (świeże węzły) — przy pobraniu danych i zmianie układu.
     function render() {
+        const uklad = ukladEl ? ukladEl.value : "sila";
         const nodes = (rawData.nodes || []).map(function (n) {
             return {
                 id: String(n.id),
@@ -226,19 +282,17 @@ export function init(ForceGraph3D) {
                 pk_sum: n.pk_sum || 0
             };
         });
-        const uklad = ukladEl ? ukladEl.value : "sila";
-        const links = (rawData.edges || []).map(mapLink);
-        // W "drzewie" pokazujemy TYLKO krawędzie drzewa — extra_edges tworzą
-        // cykle, które psują układ DAG (radialout); w pozostałych formach
-        // dokładamy powiązania w grupie wg progu.
-        if (uklad !== "drzewo" && (!chkWewn || chkWewn.checked)) {
-            const prog = progWewn ? (parseInt(progWewn.value, 10) || 1) : 1;
-            (rawData.extra_edges || []).forEach(function (e) {
-                if ((e.shared || 1) >= prog) { links.push(mapLink(e)); }
-            });
-        }
-        Graph.graphData({ nodes: nodes, links: links });
+        oznaczTop(nodes);
+        Graph.graphData({ nodes: nodes, links: zbudujLinki(uklad) });
         zastosujUklad(uklad);
+    }
+
+    // Przebudowa SAMYCH krawędzi z zachowaniem węzłów (i ich pozycji) — dla
+    // przełącznika/progu "powiązań w grupie", żeby nie przerzucać układu.
+    function przebudujKrawedzie() {
+        const uklad = ukladEl ? ukladEl.value : "sila";
+        const nodes = Graph.graphData().nodes;
+        Graph.graphData({ nodes: nodes, links: zbudujLinki(uklad) });
     }
 
     function dopasujRozmiar() {
@@ -306,6 +360,9 @@ export function init(ForceGraph3D) {
         selMetryka.addEventListener("change", function () {
             metryka = selMetryka.value;
             Graph.nodeVal(function (n) { return wartoscMetryki(n, metryka); });
+            // top-N (a więc i etykiety) zależy od metryki
+            oznaczTop(Graph.graphData().nodes);
+            odswiezEtykiety();
         });
     }
     if (ukladEl) {
@@ -313,18 +370,24 @@ export function init(ForceGraph3D) {
         // samego drzewa (potem zastosujUklad nada formę)
         ukladEl.addEventListener("change", render);
     }
+    if (chkEtykiety) {
+        chkEtykiety.addEventListener("change", function () {
+            etykietyOn = chkEtykiety.checked;
+            odswiezEtykiety();
+        });
+    }
 
     // --- zaawansowane: rok / zatrudnieni -> przeładuj sieć ---
     if (rokOdEl) { rokOdEl.addEventListener("input", zaladujZwloka); }
     if (rokDoEl) { rokDoEl.addEventListener("input", zaladujZwloka); }
     if (chkZatr) { chkZatr.addEventListener("change", zaladuj); }
 
-    // --- zaawansowane: powiązania w grupie -> przebuduj linki (bez fetcha) ---
-    if (chkWewn) { chkWewn.addEventListener("change", render); }
+    // --- zaawansowane: powiązania w grupie -> przebuduj SAME linki ---
+    if (chkWewn) { chkWewn.addEventListener("change", przebudujKrawedzie); }
     if (progWewn) {
         progWewn.addEventListener("input", function () {
             if (progWewnLabel) { progWewnLabel.textContent = progWewn.value; }
-            render();
+            przebudujKrawedzie();
         });
     }
 

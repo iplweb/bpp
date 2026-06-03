@@ -55,6 +55,15 @@
                 <option value="pk">Sumarycznego PK</option>
             </select>
         </div>
+        <div title="Pokaż nazwiska najważniejszych autorów (top 25 wg metryki)">
+            <label style="display: block;">Etykiety</label>
+            <label style="display: block; margin: 0; height: 2.4rem;
+                          line-height: 2.4rem;">
+                <input type="checkbox" id="siec3d-etykiety-chk" autocomplete="off"
+                       style="margin: 0 4px 0 0;">
+                Pokaż nazwiska
+            </label>
+        </div>
         <button type="button" id="siec3d-zaawansowane-toggle"
                 class="button small secondary" style="margin: 0; height: 2.4rem;">
             <span class="fi-widget"></span> Opcje zaawansowane ▾
@@ -93,7 +102,7 @@
         <div title="Pokaż powiązania między widocznymi autorami (poza drzewem)">
             <label style="display: block; margin: 0;">
                 <input type="checkbox" id="siec3d-wewnetrzne-chk" autocomplete="off"
-                       checked style="margin: 0 4px 0 0;">
+                       style="margin: 0 4px 0 0;">
                 Powiązania w grupie
             </label>
             <label for="siec3d-wewn-prog"
