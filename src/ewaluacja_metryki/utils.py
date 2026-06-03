@@ -105,6 +105,8 @@ def oblicz_metryki_dla_autora(
     from bpp.models.cache import Cache_Punktacja_Autora_Query
 
     if prace_nazbierane_ids:
+        # read-side multi-uczelnia: zawężone transitive po autor_id+dyscyplina_id;
+        # rewizja per-uczelnia metryk należy do federacji, nie R1.
         prace_nazbierane_rekord_ids = list(
             Cache_Punktacja_Autora_Query.objects.filter(
                 pk__in=prace_nazbierane_ids
@@ -129,6 +131,8 @@ def oblicz_metryki_dla_autora(
 
     # Convert cache PKs to stable rekord_ids
     if prace_wszystkie_ids:
+        # read-side multi-uczelnia: zawężone transitive po autor_id+dyscyplina_id;
+        # rewizja per-uczelnia metryk należy do federacji, nie R1.
         prace_wszystkie_rekord_ids = list(
             Cache_Punktacja_Autora_Query.objects.filter(
                 pk__in=prace_wszystkie_ids
@@ -336,6 +340,8 @@ def _calculate_metrics_data(
 
     # Convert cache PKs to stable rekord_ids
     if prace_nazbierane_ids:
+        # read-side multi-uczelnia: zawężone transitive po autor_id+dyscyplina_id;
+        # rewizja per-uczelnia metryk należy do federacji, nie R1.
         prace_nazbierane_rekord_ids = list(
             Cache_Punktacja_Autora_Query.objects.filter(
                 pk__in=prace_nazbierane_ids
@@ -360,6 +366,8 @@ def _calculate_metrics_data(
 
     # Convert cache PKs to stable rekord_ids
     if prace_wszystkie_ids:
+        # read-side multi-uczelnia: zawężone transitive po autor_id+dyscyplina_id;
+        # rewizja per-uczelnia metryk należy do federacji, nie R1.
         prace_wszystkie_rekord_ids = list(
             Cache_Punktacja_Autora_Query.objects.filter(
                 pk__in=prace_wszystkie_ids

@@ -256,6 +256,8 @@ class MetrykiListView(EwaluacjaRequiredMixin, ListView):
             # Get all works for this author/discipline
             if metryka.prace_nazbierane:
                 # Query by stable rekord_id
+                # read-side multi-uczelnia: zawężone transitive po autor_id+dyscyplina_id;
+                # rewizja per-uczelnia metryk należy do federacji, nie R1.
                 prace = Cache_Punktacja_Autora_Query.objects.filter(
                     rekord_id__in=metryka.prace_nazbierane,
                     autor_id=metryka.autor_id,

@@ -132,6 +132,8 @@ class MetrykaDetailView(EwaluacjaRequiredMixin, DetailView):
             # JSONField stores tuples as lists: (51, 123) -> [51, 123]
 
             # Query by stable rekord_id (survives cache rebuilds from pin/unpin)
+            # read-side multi-uczelnia: zawężone transitive po autor_id+dyscyplina_id;
+            # rewizja per-uczelnia metryk należy do federacji, nie R1.
             prace_nazbierane = (
                 Cache_Punktacja_Autora_Query.objects.filter(
                     rekord_id__in=metryka.prace_nazbierane,
@@ -177,6 +179,8 @@ class MetrykaDetailView(EwaluacjaRequiredMixin, DetailView):
             # Convert JSON lists to tuples for PostgreSQL tuple matching
 
             # Query by stable rekord_id
+            # read-side multi-uczelnia: zawężone transitive po autor_id+dyscyplina_id;
+            # rewizja per-uczelnia metryk należy do federacji, nie R1.
             prace_wszystkie = (
                 Cache_Punktacja_Autora_Query.objects.filter(
                     rekord_id__in=metryka.prace_wszystkie,
@@ -250,6 +254,8 @@ class MetrykaDetailView(EwaluacjaRequiredMixin, DetailView):
         if metryka.prace_wszystkie:
             # Convert JSON lists to tuples for PostgreSQL tuple matching
             # Query by stable rekord_id (survives cache rebuilds)
+            # read-side multi-uczelnia: zawężone transitive po autor_id+dyscyplina_id;
+            # rewizja per-uczelnia metryk należy do federacji, nie R1.
             prace_wszystkie = (
                 Cache_Punktacja_Autora_Query.objects.filter(
                     rekord_id__in=metryka.prace_wszystkie,
