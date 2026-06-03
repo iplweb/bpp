@@ -1,7 +1,17 @@
 import pytest
+from django.contrib.sites.models import Site
 from model_bakery import baker
 
-from bpp.models import Cache_Punktacja_Autora_Query, Cache_Punktacja_Dyscypliny, Rekord
+from bpp.models import (
+    Autor_Dyscyplina,
+    Cache_Punktacja_Autora_Query,
+    Cache_Punktacja_Dyscypliny,
+    Charakter_Formalny,
+    Jednostka,
+    Rekord,
+    Uczelnia,
+    Wydzial,
+)
 from raport_slotow.models.uczelnia import RaportSlotowUczelnia
 
 
@@ -44,3 +54,77 @@ def rekord_slotu(
 @pytest.fixture
 def raport_slotow_uczelnia(db):
     return baker.make(RaportSlotowUczelnia)
+
+
+# ---------------------------------------------------------------------------
+# Fixtures for multi-uczelnia slot-cache tests
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture
+def druga_uczelnia(db):
+    site, _ = Site.objects.get_or_create(
+        domain="druga.testserver", defaults={"name": "druga"}
+    )
+    return Uczelnia.objects.create(
+        skrot="DR", nazwa="Druga uczelnia", site=site
+    )
+
+
+@pytest.fixture
+def jednostka_drugiej_uczelni(druga_uczelnia, db):
+    wydzial = Wydzial.objects.create(
+        uczelnia=druga_uczelnia, skrot="W2", nazwa="Wydział II"
+    )
+    return Jednostka.objects.create(
+        nazwa="Jedn. Drugiej Ucz.",
+        skrot="JDU",
+        wydzial=wydzial,
+        uczelnia=druga_uczelnia,
+    )
+
+
+@pytest.fixture
+def zwarte_dwie_uczelnie(
+    wydawnictwo_zwarte,
+    autor_jan_nowak,
+    autor_jan_kowalski,
+    jednostka,
+    jednostka_drugiej_uczelni,
+    dyscyplina1,
+    rodzaj_autora_n,
+    charaktery_formalne,
+    wydawca,
+    typy_odpowiedzialnosci,
+    rok,
+):
+    """Wydawnictwo_Zwarte co-authored by two authors from two different
+    universities (jednostka → uczelnia1, jednostka_drugiej_uczelni →
+    druga_uczelnia), both in the same dyscyplina1."""
+    Autor_Dyscyplina.objects.create(
+        autor=autor_jan_nowak,
+        dyscyplina_naukowa=dyscyplina1,
+        rok=rok,
+        rodzaj_autora=rodzaj_autora_n,
+    )
+    Autor_Dyscyplina.objects.create(
+        autor=autor_jan_kowalski,
+        dyscyplina_naukowa=dyscyplina1,
+        rok=rok,
+        rodzaj_autora=rodzaj_autora_n,
+    )
+    wydawnictwo_zwarte.dodaj_autora(
+        autor_jan_nowak, jednostka, dyscyplina_naukowa=dyscyplina1
+    )
+    wydawnictwo_zwarte.dodaj_autora(
+        autor_jan_kowalski,
+        jednostka_drugiej_uczelni,
+        dyscyplina_naukowa=dyscyplina1,
+    )
+    wydawnictwo_zwarte.punkty_kbn = 20
+    wydawnictwo_zwarte.wydawca = wydawca
+    wydawnictwo_zwarte.charakter_formalny = Charakter_Formalny.objects.get(
+        skrot="KSP"
+    )
+    wydawnictwo_zwarte.save()
+    return wydawnictwo_zwarte
