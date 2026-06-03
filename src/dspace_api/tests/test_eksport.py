@@ -176,3 +176,65 @@ def test_reconcile_wgrywa_nowy_plik(fernet_key):
     assert SentToDSpace.objects.get_for_rec(rec, u).bitstreams == {
         str(el.id): "bs-uuid-9"
     }
+
+
+@pytest.mark.django_db
+def test_reconcile_utrwala_mape_przy_czesciowej_awarii(fernet_key):
+    """Gdy 2. upload padnie, 1. wgrany bitstream zostaje zapisany w mapie
+    (nie zgubiony) — żeby następny sync go nie zdublował."""
+    from django.core.files.uploadedfile import SimpleUploadedFile
+
+    from bpp.const import TRYB_DOSTEPU
+    from bpp.models import Element_Repozytorium
+    from dspace_api.eksport import eksportuj_rekord
+    from dspace_api.models import Mapowanie_DSpace, SentToDSpace
+
+    u = baker.make("bpp.Uczelnia", dspace_aktywny=True)
+    u.dspace_api_endpoint = "https://repo/server/api"
+    u.save()
+    j = baker.make("bpp.Jednostka", uczelnia=u)
+    charakter = baker.make("bpp.Charakter_Formalny")
+    rec = baker.make(
+        "bpp.Wydawnictwo_Ciagle",
+        tytul_oryginalny="T",
+        rok=2024,
+        charakter_formalny=charakter,
+    )
+    baker.make("bpp.Wydawnictwo_Ciagle_Autor", rekord=rec, jednostka=j, kolejnosc=0)
+    Mapowanie_DSpace.objects.create(
+        uczelnia=u,
+        charakter_formalny=charakter,
+        collection_uuid="66666666-6666-6666-6666-666666666666",
+    )
+    el1 = Element_Repozytorium.objects.create(
+        rekord=rec,
+        rodzaj="pdf",
+        nazwa_pliku="a.pdf",
+        tryb_dostepu=TRYB_DOSTEPU.JAWNY.value,
+        plik=SimpleUploadedFile("a.pdf", b"%PDF a"),
+    )
+    Element_Repozytorium.objects.create(
+        rekord=rec,
+        rodzaj="pdf",
+        nazwa_pliku="b.pdf",
+        tryb_dostepu=TRYB_DOSTEPU.JAWNY.value,
+        plik=SimpleUploadedFile("b.pdf", b"%PDF b"),
+    )
+
+    # create_bitstream: 1. plik OK, 2. rzuca
+    def fake_create_bitstream(bundle, element):
+        if element.pk == el1.pk:
+            return "bs-uuid-1"
+        raise RuntimeError("DSpace padło na drugim pliku")
+
+    with mock.patch("dspace_api.eksport.DSpaceClient") as ClientCls:
+        client = ClientCls.return_value
+        client.create_item.return_value = "11111111-1111-1111-1111-111111111111"
+        client.ensure_bundle.return_value = "bundle-1"
+        client.create_bitstream.side_effect = fake_create_bitstream
+        wyniki = eksportuj_rekord(rec)
+
+    assert wyniki[0]["status"] == "blad"
+    sent = SentToDSpace.objects.get_for_rec(rec, u)
+    # KLUCZOWE: 1. wgrany bitstream JEST w mapie (nie zgubiony)
+    assert sent.bitstreams == {str(el1.pk): "bs-uuid-1"}

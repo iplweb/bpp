@@ -56,11 +56,15 @@ class SentToDSpaceManager(models.Manager):
             sd.bitstreams = bitstreams
         sd.save()
 
-    def mark_as_failed(self, rec, uczelnia, exception="", api_response_status=""):
+    def mark_as_failed(
+        self, rec, uczelnia, exception="", api_response_status="", bitstreams=None
+    ):
         sd = self.get_for_rec(rec, uczelnia)
         sd.submitted_successfully = False
         sd.exception = str(exception) if exception else ""
         sd.api_response_status = api_response_status
+        if bitstreams is not None:
+            sd.bitstreams = bitstreams
         sd.save()
 
 

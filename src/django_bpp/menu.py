@@ -45,6 +45,7 @@ SYSTEM_MENU = [
     ("Crossref Mapper", "/admin/bpp/crossref_mapper/"),
     ("Charakter PBN", "/admin/bpp/charakter_pbn/"),
     ("Mapowania DSpace", "/admin/dspace_api/mapowanie_dspace/"),
+    ("Wysyłki do DSpace", "/admin/dspace_api/senttodspace/"),
     ("Dyscypliny naukowe", "/admin/bpp/dyscyplina_naukowa/"),
     ("Formularze - wartości domyślne", "/admin/formdefaults/formrepresentation/"),
     ("Funkcje w jednostce", "/admin/bpp/funkcja_autora/"),

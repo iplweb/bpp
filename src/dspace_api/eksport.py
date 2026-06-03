@@ -19,19 +19,22 @@ def _wynik(uczelnia, status, powod=""):
     return {"uczelnia": uczelnia, "status": status, "powod": powod}
 
 
-def _reconcile_bitstreams(client, item_uuid, aktualne, poprzednie):
-    """aktualne: {str(id): Element_Repozytorium}; poprzednie: {str(id): bs_uuid}.
-    Wgrywa nowe pliki, kasuje w DSpace bitstreamy plików usuniętych.
-    Zwraca zaktualizowaną mapę {str(id): bs_uuid}."""
-    nowy = dict(poprzednie)
-    do_uploadu = set(aktualne) - set(poprzednie)
+def _reconcile_bitstreams(client, item_uuid, aktualne, biezace):
+    """Uzgodnij bitstreamy. Mutuje `biezace` (mapa str(id)→uuid) W MIEJSCU,
+    żeby stan był znany nawet przy częściowej awarii.
+    - nowe pliki (aktualne − biezace) → upload,
+    - usunięte (biezace − aktualne) → delete w DSpace, potem usuń z mapy
+      (gdy delete padnie, klucz zostaje → następny sync ponowi)."""
+    do_uploadu = set(aktualne) - set(biezace)
     if do_uploadu:
         bundle = client.ensure_bundle(item_uuid, "ORIGINAL")
-        for el_id in do_uploadu:
-            nowy[el_id] = client.create_bitstream(bundle, aktualne[el_id])
-    for el_id in set(poprzednie) - set(aktualne):
-        client.delete_bitstream(nowy.pop(el_id))
-    return nowy
+        # deterministyczna kolejność (po id rosnąco) — żeby przy częściowej
+        # awarii było jednoznaczne, co zdążyło się wgrać przed błędem
+        for el_id in sorted(do_uploadu, key=int):
+            biezace[el_id] = client.create_bitstream(bundle, aktualne[el_id])
+    for el_id in sorted(set(biezace) - set(aktualne), key=int):
+        client.delete_bitstream(biezace[el_id])
+        del biezace[el_id]
 
 
 def _eksportuj_do_uczelni(rec, uczelnia):
@@ -71,6 +74,7 @@ def _eksportuj_do_uczelni(rec, uczelnia):
 
     SentToDSpace.objects.create_or_update_before_upload(rec, uczelnia, dc)
 
+    biezace = dict(poprzednie)
     try:
         client = DSpaceClient(uczelnia)
         client.authenticate()
@@ -80,13 +84,13 @@ def _eksportuj_do_uczelni(rec, uczelnia):
         else:
             item_uuid = client.create_item(mapowanie.collection_uuid, dc)
             status = "wyslano"
-        bitstreams = _reconcile_bitstreams(client, item_uuid, aktualne, poprzednie)
+        _reconcile_bitstreams(client, item_uuid, aktualne, biezace)
         SentToDSpace.objects.mark_as_successful(
-            rec, uczelnia, dspace_uuid=item_uuid, bitstreams=bitstreams
+            rec, uczelnia, dspace_uuid=item_uuid, bitstreams=biezace
         )
         return _wynik(uczelnia, status)
     except Exception as e:
         SentToDSpace.objects.mark_as_failed(
-            rec, uczelnia, exception=traceback.format_exc()
+            rec, uczelnia, exception=traceback.format_exc(), bitstreams=biezace
         )
         return _wynik(uczelnia, "blad", str(e))
