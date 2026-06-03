@@ -14,6 +14,11 @@ from django.db.models import Max
 from django.template.loader import get_template
 from django.utils import safestring
 
+# Skrócony widok listy autorów na stronie rekordu (patrz
+# ModelZOpisemBibliograficznym.autorzy_dla_opisu_skrocony):
+LICZBA_PIERWSZYCH_AUTOROW = 5
+PROG_SKRACANIA_AUTOROW = 25
+
 
 def dodaj_autora(
     klass,
@@ -124,6 +129,34 @@ class ModelZOpisemBibliograficznym(models.Model):
         return self.autorzy_set.select_related(
             "autor", "typ_odpowiedzialnosci"
         ).order_by("kolejnosc")
+
+    def autorzy_dla_opisu_skrocony(self):
+        """Dane dla skróconego widoku listy autorów na stronie rekordu.
+
+        Materializuje listę autorów raz i dokleja każdemu wpisowi atrybuty
+        ``pozycja`` (1-based numer na liście) oraz ``czy_nasz`` (autor z
+        jednostki skupiającej pracowników uczelni). Zwraca słownik:
+
+        - ``skrocony``   -- czy włączyć widok zwinięty (autorów > próg),
+        - ``wszyscy``    -- pełna lista (z ``pozycja``/``czy_nasz``),
+        - ``pierwsi``    -- pierwszych ``LICZBA_PIERWSZYCH_AUTOROW``,
+        - ``nasi_dalej`` -- "nasi" autorzy spoza pierwszej piątki,
+        - ``liczba``     -- liczba autorów.
+        """
+        wszyscy = list(self.autorzy_dla_opisu().select_related("jednostka"))
+        for pozycja, wpis in enumerate(wszyscy, start=1):
+            wpis.pozycja = pozycja
+            wpis.czy_nasz = bool(wpis.jednostka.skupia_pracownikow)
+
+        return {
+            "skrocony": len(wszyscy) > PROG_SKRACANIA_AUTOROW,
+            "wszyscy": wszyscy,
+            "pierwsi": wszyscy[:LICZBA_PIERWSZYCH_AUTOROW],
+            "nasi_dalej": [
+                wpis for wpis in wszyscy[LICZBA_PIERWSZYCH_AUTOROW:] if wpis.czy_nasz
+            ],
+            "liczba": len(wszyscy),
+        }
 
     def get_slug(self):
         if self.pk is None:
