@@ -71,6 +71,7 @@ class TestPrzetworzAfiliacje:
             default_jednostka=None,
             typ_odpowiedzialnosci_autor=typ_autor,
             typ_odpowiedzialnosci_redaktor=typ_redaktor,
+            uczelnia=uczelnia_with_obca_jednostka,
         )
 
         assert typ == typ_autor
@@ -88,6 +89,7 @@ class TestPrzetworzAfiliacje:
             typ_odpowiedzialnosci_autor=typ_autor,
             typ_odpowiedzialnosci_redaktor=typ_redaktor,
             default_typ_odpowiedzialnosci=typ_autor,
+            uczelnia=uczelnia_with_obca_jednostka,
         )
 
         assert typ == typ_autor
@@ -109,6 +111,7 @@ class TestPrzetworzAfiliacje:
             typ_odpowiedzialnosci_autor=typ_autor,
             typ_odpowiedzialnosci_redaktor=typ_redaktor,
             default_typ_odpowiedzialnosci=typ_redaktor,
+            uczelnia=uczelnia_with_obca_jednostka,
         )
 
         assert typ == typ_redaktor
@@ -129,6 +132,7 @@ class TestPrzetworzAfiliacje:
             typ_odpowiedzialnosci_autor=typ_autor,
             typ_odpowiedzialnosci_redaktor=typ_redaktor,
             default_typ_odpowiedzialnosci=typ_redaktor,  # default is redaktor
+            uczelnia=uczelnia_with_obca_jednostka,
         )
 
         # But affiliation says AUTHOR, so return autor
@@ -149,6 +153,7 @@ class TestPrzetworzAfiliacje:
             typ_odpowiedzialnosci_autor=typ_autor,
             typ_odpowiedzialnosci_redaktor=typ_redaktor,
             default_typ_odpowiedzialnosci=typ_autor,  # default is autor
+            uczelnia=uczelnia_with_obca_jednostka,
         )
 
         # But affiliation says EDITOR, so return redaktor
@@ -167,6 +172,7 @@ class TestPrzetworzAfiliacje:
             default_jednostka=None,
             typ_odpowiedzialnosci_autor=typ_autor,
             typ_odpowiedzialnosci_redaktor=typ_redaktor,
+            uczelnia=uczelnia_with_obca_jednostka,
         )
 
         assert typ == typ_redaktor

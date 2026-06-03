@@ -2,7 +2,7 @@
 
 import logging
 
-from bpp.models import Autor, Typ_Odpowiedzialnosci, Uczelnia
+from bpp.models import Autor, Typ_Odpowiedzialnosci
 from pbn_api.models import Scientist
 from pbn_integrator.utils import (
     pobierz_i_zapisz_dane_jednej_osoby,
@@ -72,6 +72,7 @@ def _przetworz_afiliacje(
     typ_odpowiedzialnosci_autor,
     typ_odpowiedzialnosci_redaktor,
     default_typ_odpowiedzialnosci=None,
+    uczelnia=None,
 ):
     """Process author affiliation data.
 
@@ -82,15 +83,13 @@ def _przetworz_afiliacje(
         typ_odpowiedzialnosci_redaktor: Typ_Odpowiedzialnosci for "redaktor".
         default_typ_odpowiedzialnosci: Default responsibility type to use when
             affiliation data is missing. If None, defaults to autor.
+        uczelnia: Target Uczelnia instance for affiliation matching.
+            Determines which institutionId is considered "ours".
 
     Returns:
         Tuple of (jednostka, afiliuje, typ_odpowiedzialnosci).
     """
-    # TODO(multi-hosted): porównania z „naszą" uczelnią (objects.default tutaj
-    # i niżej) docelowo per-uczelnia — wymaga przekazania uczelni docelowej
-    # przez pipeline integratora (deeper, jak per-uczelnia sloty). objects.default
-    # zostaje świadomie (NIE .get(): wołane wielokrotnie, bez kontekstu uczelni).
-    jednostka = Uczelnia.objects.default.obca_jednostka
+    jednostka = uczelnia.obca_jednostka
     afiliuje = False
     # Use provided default or fallback to autor
     typ_odpowiedzialnosci = default_typ_odpowiedzialnosci or typ_odpowiedzialnosci_autor
@@ -103,7 +102,7 @@ def _przetworz_afiliacje(
     else:
         jest_nasz = False
         typ_autora = ta_afiliacja[0]["type"]
-        if ta_afiliacja[0]["institutionId"] == Uczelnia.objects.default.pbn_uid_id:
+        if ta_afiliacja[0]["institutionId"] == uczelnia.pbn_uid_id:
             jest_nasz = True
         for elem in ta_afiliacja[1:]:
             if elem["type"] != typ_autora:
@@ -112,14 +111,12 @@ def _przetworz_afiliacje(
                     f"{ta_afiliacja=}"
                 )
                 continue
-            if elem["institutionId"] == Uczelnia.objects.default.pbn_uid_id:
+            if elem["institutionId"] == uczelnia.pbn_uid_id:
                 jest_nasz = True
 
         ta_afiliacja = {
             "type": typ_autora,
-            "institutionId": (
-                Uczelnia.objects.default.pbn_uid_id if jest_nasz else "123"
-            ),
+            "institutionId": (uczelnia.pbn_uid_id if jest_nasz else "123"),
         }
 
     pbn_typ_odpowiedzialnosci = ta_afiliacja.pop("type")
@@ -132,7 +129,7 @@ def _przetworz_afiliacje(
 
     pbn_institution_id = ta_afiliacja.pop("institutionId")
 
-    if pbn_institution_id == Uczelnia.objects.default.pbn_uid_id:
+    if pbn_institution_id == uczelnia.pbn_uid_id:
         jednostka = default_jednostka
         afiliuje = True
 
@@ -174,6 +171,7 @@ def utworz_autorow(
                 typ_odpowiedzialnosci_autor,
                 typ_odpowiedzialnosci_redaktor,
                 default_typ_odpowiedzialnosci=typ_odpowiedzialnosci,
+                uczelnia=client.uczelnia,
             )
 
             try:
