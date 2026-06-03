@@ -213,6 +213,19 @@ class UczelniaAdmin(
             },
         ),
         (
+            "DSpace",
+            {
+                "classes": ("grp-collapse grp-closed",),
+                "fields": (
+                    "dspace_aktywny",
+                    "dspace_api_endpoint",
+                    "dspace_api_username",
+                    "dspace_api_password",
+                    "dspace_domyslny_jezyk_dc",
+                ),
+            },
+        ),
+        (
             "Deklaracja dostępności",
             {
                 "classes": (
