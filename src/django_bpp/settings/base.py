@@ -1207,7 +1207,10 @@ AUTHENTICATION_BACKENDS = list(AUTHENTICATION_BACKENDS) + [
 # Backend jest DOPISYWANY do listy (ModelBackend zostaje → logowanie hasłem
 # działa równolegle).
 #
-from oidc_integration.conf import discover_oidc_config  # noqa: E402
+from oidc_integration.conf import (  # noqa: E402
+    discover_oidc_config,
+    fetch_well_known_endpoints,
+)
 
 _OIDC_CONFIG = discover_oidc_config()
 OIDC_LOGIN_ENABLED = _OIDC_CONFIG is not None
@@ -1220,16 +1223,25 @@ if _OIDC_CONFIG:
     OIDC_RP_CLIENT_ID = _OIDC_CONFIG["client_id"]
     OIDC_RP_CLIENT_SECRET = _OIDC_CONFIG["client_secret"]
 
-    _oidc_endpoints = _OIDC_CONFIG["endpoints"]
+    # Endpointy: preferuj .well-known (źródło prawdy serwera), z fallbackiem na
+    # konwencję Keycloaka gdy IdP nieosiągalny przy starcie.
+    _oidc_endpoints = (
+        fetch_well_known_endpoints(_OIDC_CONFIG["issuer"]) or _OIDC_CONFIG["endpoints"]
+    )
     OIDC_OP_AUTHORIZATION_ENDPOINT = _oidc_endpoints["authorization"]
     OIDC_OP_TOKEN_ENDPOINT = _oidc_endpoints["token"]
-    OIDC_OP_USER_ENDPOINT = _oidc_endpoints["userinfo"]
+    OIDC_OP_USER_ENDPOINT = _oidc_endpoints.get("userinfo", "")
     OIDC_OP_JWKS_ENDPOINT = _oidc_endpoints["jwks"]
+    # end_session: wylogowanie z Keycloaka (RP-Initiated Logout).
+    OIDC_OP_LOGOUT_ENDPOINT = _oidc_endpoints.get("end_session", "")
+    OIDC_OP_LOGOUT_URL_METHOD = "oidc_integration.logout.build_provider_logout_url"
 
     # Keycloak podpisuje id_token RS256; scope email konieczny do auto-create.
     OIDC_RP_SIGN_ALGO = "RS256"
     OIDC_RP_SCOPES = "openid email profile"
     OIDC_CREATE_USER = True
+    # Zapamiętaj id_token w sesji — potrzebny jako id_token_hint przy logout.
+    OIDC_STORE_ID_TOKEN = True
 
     AUTHENTICATION_BACKENDS = list(AUTHENTICATION_BACKENDS) + [
         "oidc_integration.backends.BppOIDCBackend",

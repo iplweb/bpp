@@ -137,16 +137,33 @@ Blok warunkowy à la `if MICROSOFT_AUTH_CLIENT_ID:` — aktywny tylko gdy
 - Bez e2e przeciw realnemu Keycloakowi — to wymaga sekretów i sieci;
   testujemy ręcznie po wgraniu env.
 
-## Poza zakresem spike'a (faza 2, po obejrzeniu claimów)
+## Faza 2 — dokończenie (PR na `feature/multi-hosted-config`, ZAIMPLEMENTOWANE)
+
+Zakres niezależny od realnych claimów (gating ról świadomie odłożony, bo role
+bywają w access/id-tokenie, nie w userinfo — nie buduję na ślepo):
+
+- **Wylogowanie z Keycloaka** (RP-Initiated Logout): `BppOIDCAwareLogoutView`
+  pod `logout/` — sesja OIDC → redirect na `end_session_endpoint` z
+  `id_token_hint` (z sesji; `OIDC_STORE_ID_TOKEN=True`) +
+  `post_logout_redirect_uri`; każda inna sesja → standardowy `LogoutView`.
+  Wymaga rejestracji post-logout redirect URI w kliencie KC.
+- **Endpointy z `.well-known/openid-configuration`**: `fetch_well_known_endpoints`
+  pobiera prawdziwe adresy (krótki timeout), z **fallbackiem na konwencję**
+  Keycloaka gdy IdP nieosiągalny przy starcie. Sieć dotykana tylko z settings;
+  testy env-resolution bez sieci.
+- **Odporność**: unikalny `username` przy kolizji (`base-2`, `base-3`…),
+  brak `email` obsłużony.
+
+## Poza zakresem — faza 2b (po obejrzeniu claimów)
 
 - Gating studentów: filtr po roli/grupie z tokenu („nie wpuszczamy” /
   „nie tworzymy kont”).
 - Mapowanie ról/grup Keycloaka → grupy/uprawnienia Django.
 - Powiązanie z istniejącym `Autor` przez claim `person_id`.
-- Wylogowanie z Keycloaka (`end_session_endpoint`).
 - Twarde wiązanie skrótu z `Uczelnia` z bazy zamiast auto-detekcji env.
-- Przełączenie wyprowadzania endpointów z konwencji Keycloaka na fetch
-  `.well-known/openid-configuration` z cache.
+- Cache wyniku `.well-known` (dziś fetch przy każdym starcie procesu).
+- Wiele issuerów naraz w jednym procesie (3 uczelnie / 3 OIDC) — osobne
+  podklasy backendu + routing per-host/mountpoint.
 
 ## Wymagania od administratora Keycloak (realm KA)
 
