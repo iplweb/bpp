@@ -14,6 +14,7 @@ from bpp.models import Uczelnia
 from bpp.models.autor import Autor
 from bpp.models.cache import Rekord
 from bpp.models.struktura import Jednostka, Wydzial
+from bpp.util.uczelnia_scope import scope_rekord_do_uczelni
 
 from .models import DefinicjaRaportu
 
@@ -38,8 +39,10 @@ def _base_wydzial(obiekt, tylko_afiliowane):
 
 def _base_uczelnia(obiekt, tylko_afiliowane):
     if tylko_afiliowane:
-        return Rekord.objects.filter(autorzy__afiliuje=True)
-    return Rekord.objects.all()
+        qs = Rekord.objects.filter(autorzy__afiliuje=True)
+    else:
+        qs = Rekord.objects.all()
+    return scope_rekord_do_uczelni(qs, obiekt)
 
 
 def _pole(label, model, url):
