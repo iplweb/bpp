@@ -31,7 +31,8 @@
             {% if box.skrocony %}
                 {% comment %} Widok skrócony: pierwszych N + nasi autorzy (z pozycją). {% endcomment %}
                 {% comment %} Pełna lista niżej jest ukryta i odsłaniana przyciskiem. {% endcomment %}
-                <div class="praca-mono__authors-list praca-mono__authors-collapsed" data-authors-collapsed>
+                <div id="authors-collapsed"
+                     class="praca-mono__authors-list praca-mono__authors-collapsed" data-authors-collapsed>
                     {{ praca.tekst_przed_pierwszym_autorem|default:"" }}
                     <span class="praca-mono__author-type-badge">{{ box.pierwsi.0.typ_odpowiedzialnosci.skrot|upper }}</span>
                     {% for autor in box.pierwsi %}{% include "browse/_autor_nazwa.html" %}{% if not forloop.last %}, {% endif %}{% endfor %}
@@ -39,16 +40,20 @@
                     {% for autor in box.nasi_dalej %}{% include "browse/_autor_nazwa.html" with pokaz_pozycje=True %}{% if not forloop.last %}, {% endif %}{% endfor %}
                     <button class="button tiny secondary praca-mono__authors-toggle-btn"
                             data-toggle-authors="show"
+                            aria-controls="authors-full authors-collapsed"
                             aria-expanded="false">Pokaż wszystkich ({{ box.liczba }})</button>
                 </div>
             {% endif %}
 
-            <div class="praca-mono__authors-list praca-mono__authors-full" data-authors-full{% if box.skrocony %} hidden{% endif %}>
+            <div id="authors-full"
+                 class="praca-mono__authors-list praca-mono__authors-full"
+                 data-authors-full{% if box.skrocony %} hidden tabindex="-1" aria-label="Pełna lista autorów ({{ box.liczba }})"{% endif %}>
                 {{ praca.tekst_przed_pierwszym_autorem|default:"" }}
                 {% for autor in box.wszyscy %}{% ifchanged autor.typ_odpowiedzialnosci %}<span class="praca-mono__author-type-badge">{{ autor.typ_odpowiedzialnosci.skrot|upper }}</span> {% endifchanged %}{% include "browse/_autor_nazwa.html" %}{% if not forloop.last %}, {% else %}{{ praca.tekst_po_ostatnim_autorze|default:"" }}.{% endif %}{% endfor %}
                 {% if box.skrocony %}
                     <button class="button tiny secondary praca-mono__authors-toggle-btn"
                             data-toggle-authors="hide"
+                            aria-controls="authors-full authors-collapsed"
                             aria-expanded="true">Zwiń listę autorów</button>
                 {% endif %}
             </div>
@@ -1043,17 +1048,42 @@
                     var showFull = btn.getAttribute('data-toggle-authors') === 'show';
                     if (collapsed) { collapsed.hidden = showFull; }
                     if (full) { full.hidden = !showFull; }
-                    // Po zwinięciu przewiń do sekcji autorów (sticky header).
-                    if (!showFull && window.bpp && window.bpp.scrollToVisible) {
-                        window.bpp.scrollToVisible(section);
+                    // aria-expanded musi odzwierciedlać stan na obu przyciskach.
+                    section.querySelectorAll('[data-toggle-authors]').forEach(
+                        function (b) {
+                            b.setAttribute('aria-expanded', showFull ? 'true' : 'false');
+                        });
+                    // Przenieś fokus do nowo-widocznego bloku (klawiatura/SR nie
+                    // mogą zostać na przycisku, który właśnie zniknął).
+                    if (showFull) {
+                        // Fokus na kontener pełnej listy (tabindex=-1), od góry —
+                        // NIE na przycisk "Zwiń", który jest na samym dole.
+                        if (full && full.focus) { full.focus(); }
+                    } else {
+                        var pokazBtn = collapsed
+                            && collapsed.querySelector('[data-toggle-authors]');
+                        if (pokazBtn) { pokazBtn.focus(); }
+                        if (window.bpp && window.bpp.scrollToVisible) {
+                            window.bpp.scrollToVisible(section);
+                        }
                     }
                 });
             });
 
-            // Opis bibliograficzny: clamp + "rozwiń" tylko gdy się nie mieści.
+            // Opis bibliograficzny: 1. klik/Enter rozwija, kolejny kopiuje.
             (function () {
                 var bib = document.getElementById('bibliographic-description');
                 if (!bib) { return; }
+
+                // Klawiatura: Enter/Spacja działa jak kliknięcie (kontener ma
+                // role="button"). Dotyczy też krótkich opisów (kopiowanie).
+                bib.addEventListener('keydown', function (e) {
+                    if (e.key === 'Enter' || e.key === ' ' || e.key === 'Spacebar') {
+                        e.preventDefault();
+                        bib.click();
+                    }
+                });
+
                 var textEl = bib.querySelector('.praca-mono__biblio-text');
                 if (!textEl) { return; }
                 var hint = bib.parentElement
