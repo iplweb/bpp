@@ -9,7 +9,7 @@ from django.views import View
 from django.views.generic import TemplateView
 
 from bpp.const import GR_WPROWADZANIE_DANYCH
-from bpp.models import Autor_Dyscyplina
+from bpp.models import Autor_Dyscyplina, Uczelnia
 from ewaluacja_common.models import Rodzaj_Autora
 from ewaluacja_liczba_n.models import IloscUdzialowDlaAutoraZaRok
 
@@ -223,8 +223,9 @@ class WeryfikujBazeView(GroupRequiredMixin, TemplateView):
 
         # 5. Autorzy z obiema dyscyplinami nie-raportowanymi
         # Oblicz nie-raportowane dyscypliny na podstawie sumy udziałów w 2025 (suma < 12)
+        uczelnia = Uczelnia.objects.get_for_request(self.request)
         sumy_2025 = (
-            IloscUdzialowDlaAutoraZaRok.objects.filter(rok=2025)
+            IloscUdzialowDlaAutoraZaRok.objects.filter(uczelnia=uczelnia, rok=2025)
             .values("dyscyplina_naukowa_id")
             .annotate(suma=Sum("ilosc_udzialow"))
         )

@@ -120,3 +120,56 @@ def test_pipeline_pomija_nieprzypisanych(db):
 
     assert not IloscUdzialowDlaAutoraZaRok.objects.filter(autor=a_null).exists()
     assert not IloscUdzialowDlaAutoraZaRok.objects.filter(autor=a_obca).exists()
+
+
+@pytest.mark.django_db
+def test_autorzy_list_view_filtruje_po_uczelni(rf, db):
+    """AutorzyLiczbaNListView.get_queryset zwraca tylko wiersze uczelni z requestu."""
+    from decimal import Decimal
+
+    from model_bakery import baker
+
+    from bpp.models import Autor, Jednostka, Uczelnia
+    from bpp.models.dyscyplina_naukowa import Dyscyplina_Naukowa
+    from ewaluacja_liczba_n.models import IloscUdzialowDlaAutoraZaRok
+    from ewaluacja_liczba_n.views.list import AutorzyLiczbaNListView
+
+    u1 = baker.make(Uczelnia, skrot="V1", nazwa="Uczelnia V1")
+    u2 = baker.make(Uczelnia, skrot="V2", nazwa="Uczelnia V2")
+    dyscyplina = baker.make(Dyscyplina_Naukowa)
+    j1 = baker.make(Jednostka, uczelnia=u1, skupia_pracownikow=True)
+    j2 = baker.make(Jednostka, uczelnia=u2, skupia_pracownikow=True)
+    a1 = baker.make(Autor, aktualna_jednostka=j1)
+    a2 = baker.make(Autor, aktualna_jednostka=j2)
+
+    IloscUdzialowDlaAutoraZaRok.objects.create(
+        autor=a1,
+        dyscyplina_naukowa=dyscyplina,
+        rok=2022,
+        ilosc_udzialow=Decimal("1.0"),
+        ilosc_udzialow_monografie=Decimal("0.5"),
+        uczelnia=u1,
+    )
+    IloscUdzialowDlaAutoraZaRok.objects.create(
+        autor=a2,
+        dyscyplina_naukowa=dyscyplina,
+        rok=2022,
+        ilosc_udzialow=Decimal("2.0"),
+        ilosc_udzialow_monografie=Decimal("1.0"),
+        uczelnia=u2,
+    )
+
+    user = baker.make("bpp.BppUser")
+    request = rf.get("/")
+    request.user = user
+    request._uczelnia = u1
+
+    view = AutorzyLiczbaNListView()
+    view.request = request
+    view.kwargs = {}
+
+    qs = view.get_queryset()
+
+    autor_ids = list(qs.values_list("autor_id", flat=True))
+    assert a1.pk in autor_ids, "U1 row missing from queryset"
+    assert a2.pk not in autor_ids, "U2 row must be excluded"

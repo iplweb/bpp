@@ -5,7 +5,7 @@ from django.db.models import Q, Sum
 from django.views.generic import ListView
 
 from bpp.const import GR_WPROWADZANIE_DANYCH
-from bpp.models import Autor_Dyscyplina, Dyscyplina_Naukowa
+from bpp.models import Autor_Dyscyplina, Dyscyplina_Naukowa, Uczelnia
 from ewaluacja_common.models import Rodzaj_Autora
 
 from ..models import IloscUdzialowDlaAutoraZaCalosc, IloscUdzialowDlaAutoraZaRok
@@ -110,7 +110,8 @@ class AutorzyLiczbaNListView(GroupRequiredMixin, ListView):
         # Filtrowanie po statusie raportowana/nieraportowana
         raportowana = self.request.GET.get("raportowana")
         if raportowana:
-            nieraportowane_ids = oblicz_dyscypliny_nieraportowane()
+            uczelnia = Uczelnia.objects.get_for_request(self.request)
+            nieraportowane_ids = oblicz_dyscypliny_nieraportowane(uczelnia)
             if raportowana == "tak":
                 queryset = queryset.exclude(
                     dyscyplina_naukowa_id__in=nieraportowane_ids
@@ -180,9 +181,10 @@ class AutorzyLiczbaNListView(GroupRequiredMixin, ListView):
         return queryset.order_by(*sort_fields)
 
     def get_queryset(self):
-        # Pobierz wszystkie udziały dla autorów
+        uczelnia = Uczelnia.objects.get_for_request(self.request)
+        # Pobierz wszystkie udziały dla autorów tej uczelni
         queryset = IloscUdzialowDlaAutoraZaRok.objects.filter(
-            rok__gte=2022, rok__lte=2025
+            uczelnia=uczelnia, rok__gte=2022, rok__lte=2025
         ).select_related(
             "autor",
             "dyscyplina_naukowa",
@@ -205,10 +207,13 @@ class AutorzyLiczbaNListView(GroupRequiredMixin, ListView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
+        uczelnia = Uczelnia.objects.get_for_request(self.request)
 
-        # Pobierz ID dyscyplin które mają faktyczne dane
+        # Pobierz ID dyscyplin które mają faktyczne dane dla tej uczelni
         dyscypliny_z_danymi = (
-            IloscUdzialowDlaAutoraZaRok.objects.filter(rok__gte=2022, rok__lte=2025)
+            IloscUdzialowDlaAutoraZaRok.objects.filter(
+                uczelnia=uczelnia, rok__gte=2022, rok__lte=2025
+            )
             .values_list("dyscyplina_naukowa_id", flat=True)
             .distinct()
         )
@@ -218,9 +223,11 @@ class AutorzyLiczbaNListView(GroupRequiredMixin, ListView):
             pk__in=dyscypliny_z_danymi, widoczna=True
         ).order_by("nazwa")
 
-        # Pobierz tylko lata które faktycznie są w bazie
+        # Pobierz tylko lata które faktycznie są w bazie dla tej uczelni
         lata_z_danymi = (
-            IloscUdzialowDlaAutoraZaRok.objects.filter(rok__gte=2022, rok__lte=2025)
+            IloscUdzialowDlaAutoraZaRok.objects.filter(
+                uczelnia=uczelnia, rok__gte=2022, rok__lte=2025
+            )
             .values_list("rok", flat=True)
             .distinct()
             .order_by("rok")
@@ -240,7 +247,7 @@ class AutorzyLiczbaNListView(GroupRequiredMixin, ListView):
         context["current_sort"] = self.request.GET.get("sort", "autor")
 
         # Oblicz dyscypliny nieraportowane do wyświetlania w template
-        context["nieraportowane_ids"] = oblicz_dyscypliny_nieraportowane()
+        context["nieraportowane_ids"] = oblicz_dyscypliny_nieraportowane(uczelnia)
 
         # Oblicz sumy dla przefiltrowanych danych (przed paginacją)
         queryset_for_sum = self.get_queryset()
@@ -327,10 +334,11 @@ class UdzialyZaCaloscListView(GroupRequiredMixin, ListView):
     group_required = GR_WPROWADZANIE_DANYCH
 
     def get_queryset(self):
-        # Pobierz wszystkie udziały za cały okres
-        queryset = IloscUdzialowDlaAutoraZaCalosc.objects.all().select_related(
-            "autor", "dyscyplina_naukowa", "rodzaj_autora"
-        )
+        uczelnia = Uczelnia.objects.get_for_request(self.request)
+        # Pobierz wszystkie udziały za cały okres dla tej uczelni
+        queryset = IloscUdzialowDlaAutoraZaCalosc.objects.filter(
+            uczelnia=uczelnia
+        ).select_related("autor", "dyscyplina_naukowa", "rodzaj_autora")
 
         # Filtrowanie po nazwisku/imieniu autora
         search = self.request.GET.get("search")
@@ -354,7 +362,7 @@ class UdzialyZaCaloscListView(GroupRequiredMixin, ListView):
         # Filtrowanie po statusie raportowana/nieraportowana
         raportowana = self.request.GET.get("raportowana")
         if raportowana:
-            nieraportowane_ids = oblicz_dyscypliny_nieraportowane()
+            nieraportowane_ids = oblicz_dyscypliny_nieraportowane(uczelnia)
             if raportowana == "tak":
                 # Tylko dyscypliny raportowane (nie są w zbiorze nieraportowanych)
                 queryset = queryset.exclude(
@@ -387,11 +395,14 @@ class UdzialyZaCaloscListView(GroupRequiredMixin, ListView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
+        uczelnia = Uczelnia.objects.get_for_request(self.request)
 
-        # Pobierz ID dyscyplin które mają faktyczne dane
-        dyscypliny_z_danymi = IloscUdzialowDlaAutoraZaCalosc.objects.values_list(
-            "dyscyplina_naukowa_id", flat=True
-        ).distinct()
+        # Pobierz ID dyscyplin które mają faktyczne dane dla tej uczelni
+        dyscypliny_z_danymi = (
+            IloscUdzialowDlaAutoraZaCalosc.objects.filter(uczelnia=uczelnia)
+            .values_list("dyscyplina_naukowa_id", flat=True)
+            .distinct()
+        )
 
         # Filtruj tylko te dyscypliny które mają dane
         context["dyscypliny"] = Dyscyplina_Naukowa.objects.filter(
@@ -409,7 +420,7 @@ class UdzialyZaCaloscListView(GroupRequiredMixin, ListView):
         context["current_sort"] = self.request.GET.get("sort", "autor")
 
         # Oblicz dyscypliny nieraportowane do wyświetlania w template
-        context["nieraportowane_ids"] = oblicz_dyscypliny_nieraportowane()
+        context["nieraportowane_ids"] = oblicz_dyscypliny_nieraportowane(uczelnia)
 
         # Oblicz sumy dla przefiltrowanych danych (przed paginacją)
         queryset_for_sum = self.get_queryset()
