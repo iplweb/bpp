@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block extratitle %}Sieć powiązań 3D — {{ autor }}{% endblock %}
+
+{% block breadcrumbs %}
+    {{ block.super }}
+    <li><a href="{% url "bpp:browse_autorzy" %}">Autorzy</a></li>
+    <li><a href="{{ autor.get_absolute_url }}">{{ autor }}</a></li>
+    <li><a href="{% url "bpp:browse_autor_powiazania" autor.pk %}">Sieć powiązań</a></li>
+    <li class="current">3D</li>
+{% endblock %}
+
+{% block content %}
+    <h1>Sieć powiązań 3D — {{ autor }}</h1>
+
+    {# --- kontrolki (kompaktowe) --- #}
+    <div class="graf-controls"
+         style="display: flex; flex-wrap: wrap; align-items: flex-end;
+                gap: 8px 24px;">
+        <div>
+            <label for="siec3d-topn" style="display: block;">
+                Maks. współautorów na węzeł: <span id="siec3d-topn-label">10</span>
+            </label>
+            <input type="range" id="siec3d-topn" autocomplete="off"
+                   min="3" max="20" value="10" step="1">
+        </div>
+        <div>
+            <label for="siec3d-glebokosc" style="display: block;">
+                Głębokość sieci: <span id="siec3d-glebokosc-label">2</span>
+            </label>
+            <input type="range" id="siec3d-glebokosc" autocomplete="off"
+                   min="1" max="10" value="2" step="1">
+        </div>
+        <div>
+            <label for="siec3d-metryka" style="display: block;">
+                Wielkość koła wg
+            </label>
+            <select id="siec3d-metryka" autocomplete="off"
+                    style="margin: 0; height: 2.4rem;">
+                <option value="works">Liczby prac</option>
+                <option value="if">Sumarycznego IF</option>
+                <option value="pk">Sumarycznego PK</option>
+            </select>
+        </div>
+        <a href="{% url 'bpp:browse_autor_powiazania' autor.pk %}"
+           class="button small secondary" style="margin: 0; height: 2.4rem;">
+            <span class="fi-arrow-left"></span> Widok 2D
+        </a>
+    </div>
+    <small style="display: block; color: #666; margin: 6px 0 12px;">
+        Obracaj scenę przeciągając tło, przybliżaj kółkiem myszy. Najedź na
+        węzeł, aby zobaczyć autora; kliknij, aby dolecieć kamerą i otworzyć
+        link do jego strony. Złapany węzeł można przeciągać — układ reaguje
+        sprężyście. Kolor węzła odpowiada poziomowi sieci, wielkość — wybranej
+        metryce, grubość linii — liczbie wspólnych publikacji.
+    </small>
+
+    <div id="siec3d-wrapper" style="position: relative;">
+        <div id="siec3d-container"
+             data-autor-id="{{ autor.pk }}"
+             data-siec-url-template="{% url 'bpp:browse_autor_powiazania_siec' 0 %}"
+             style="width: 100%; height: 78vh; border: 1px solid #ccc;
+                    background: #0b1020;"></div>
+        <div id="siec3d-info"
+             style="position: absolute; top: 10px; left: 10px; display: none;
+                    background: rgba(255,255,255,.95); border: 1px solid #ddd;
+                    border-radius: 4px; padding: 8px 10px; font-size: 13px;
+                    max-width: 280px; z-index: 1001;"></div>
+    </div>
+
+    <script src="{% static 'powiazania_autorow/js/dist/three-bundle.js' %}"></script>
+{% endblock %}

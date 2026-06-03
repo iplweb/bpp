@@ -12,6 +12,7 @@
         "sass": "~1.99.0"
     },
     "dependencies": {
+        "3d-force-graph": "^1.80.0",
         "basic-ftp": "5.3.1",
         "cytoscape": "^3.34.0",
         "cytoscape-fcose": "^2.2.0",

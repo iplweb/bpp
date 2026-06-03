@@ -234,6 +234,15 @@ module.exports = function (grunt) {
                          '--outfile=src/powiazania_autorow/static/powiazania_autorow/js/dist/cytoscape-bundle.js ' +
                          '--format=iife --target=es2018'
             },
+            // Osobny lazy bundle Three.js + 3d-force-graph dla widoku 3D sieci
+            // powiązań (ładowany tylko na stronie 3D, nie globalnie).
+            esbuildThree: {
+                command: 'npx esbuild ' +
+                         'src/powiazania_autorow/static/powiazania_autorow/js/three-entry.js ' +
+                         '--bundle --minify-syntax --minify-whitespace --sourcemap ' +
+                         '--outfile=src/powiazania_autorow/static/powiazania_autorow/js/dist/three-bundle.js ' +
+                         '--format=iife --target=es2018'
+            },
             // Post-process bundle to fix IIFE scope issues
             // django-autocomplete-light: yl namespace (esbuild renames to yl2)
             patchBundle: {
@@ -259,6 +268,7 @@ module.exports = function (grunt) {
         'shell:linkSitePackages',
         'shell:esbuild',
         'shell:esbuildCytoscape',
+        'shell:esbuildThree',
         'shell:patchBundle',
         'shell:collectstatic'
     ]);
@@ -267,6 +277,7 @@ module.exports = function (grunt) {
         'shell:linkSitePackages',
         'shell:esbuild',
         'shell:esbuildCytoscape',
+        'shell:esbuildThree',
         'shell:patchBundle'
     ]);
 
