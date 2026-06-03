@@ -1056,27 +1056,30 @@
                 if (!bib) { return; }
                 var textEl = bib.querySelector('.praca-mono__biblio-text');
                 if (!textEl) { return; }
-                textEl.classList.add('praca-mono__biblio-text--clamped');
+                var hint = bib.parentElement
+                    ? bib.parentElement.querySelector('.praca-mono__biblio-hint')
+                    : null;
+                var CLAMP = 'praca-mono__biblio-text--clamped';
+                textEl.classList.add(CLAMP);
                 if (textEl.scrollHeight <= textEl.clientHeight + 2) {
-                    // Mieści się — bez clampowania i bez przycisku.
-                    textEl.classList.remove('praca-mono__biblio-text--clamped');
+                    // Mieści się — bez clampowania; klik kopiuje jak zwykle.
+                    textEl.classList.remove(CLAMP);
                     return;
                 }
-                var btn = document.createElement('button');
-                btn.type = 'button';
-                btn.className = 'button tiny secondary praca-mono__biblio-toggle';
-                btn.textContent = 'rozwiń';
-                btn.setAttribute('aria-expanded', 'false');
-                btn.addEventListener('click', function (e) {
-                    // Nie wyzwalaj "kliknij aby skopiować" na kontenerze opisu.
-                    e.stopPropagation();
-                    var clamped = textEl.classList.toggle(
-                        'praca-mono__biblio-text--clamped');
-                    btn.textContent = clamped ? 'rozwiń' : 'zwiń';
-                    btn.setAttribute('aria-expanded', clamped ? 'false' : 'true');
+                // Treść się nie mieści: pierwszy klik rozwija, drugi kopiuje.
+                if (hint) {
+                    hint.textContent = 'Kliknij aby rozwinąć, ponownie aby skopiować';
+                }
+                bib.addEventListener('click', function (e) {
+                    if (textEl.classList.contains(CLAMP)) {
+                        textEl.classList.remove(CLAMP);
+                        if (hint) {
+                            hint.textContent = 'Kliknij aby skopiować do schowka';
+                        }
+                        // Pierwszy klik tylko rozwija — nie kopiuj.
+                        e.stopPropagation();
+                    }
                 });
-                // Przycisk POZA kontenerem z data-copy-content.
-                bib.insertAdjacentElement('afterend', btn);
             })();
 
             // Related records search functionality

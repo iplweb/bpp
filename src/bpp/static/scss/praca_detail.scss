@@ -1222,8 +1222,7 @@
 // Druk: zawsze pełna lista autorów, bez widoku skróconego i bez przycisków.
 @media print {
     .praca-mono__authors-collapsed,
-    .praca-mono__authors-toggle-btn,
-    .praca-mono__biblio-toggle {
+    .praca-mono__authors-toggle-btn {
         display: none !important;
     }
 
@@ -1311,10 +1310,8 @@
     -webkit-line-clamp: 3;
     -webkit-box-orient: vertical;
     overflow: hidden;
-}
-
-.praca-mono__biblio-toggle {
-    margin-top: 8px;
+    // Sygnał, że jest więcej i że można rozwinąć kliknięciem.
+    cursor: pointer;
 }
 
 .praca-mono__biblio-feedback {
