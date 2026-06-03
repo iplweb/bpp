@@ -100,3 +100,16 @@ def test_autor_autocomplete_dedup_wielokrotna_historia(
     view.q = ""
     pk_list = list(view.get_queryset().values_list("pk", flat=True))
     assert pk_list.count(autor.pk) == 1  # nie zduplikowany mimo 2 wpisów historii
+
+
+def test_admin_autocomplety_nie_sa_zawezone():
+    """Admin/edytor autocomplety NIE dziedziczą scopingu — pełny dostęp do
+    wszystkich uczelni (multi-hosted: tylko publiczne pickery są zawężone)."""
+    from bpp.views.autocomplete.mixins import UczelniaScopedAutocompleteMixin
+    from bpp.views.autocomplete.units import JednostkaAutocomplete
+    from bpp.views.autocomplete.simple import WydzialAutocomplete
+    from bpp.views.autocomplete.authors import AutorAutocomplete
+
+    assert not issubclass(JednostkaAutocomplete, UczelniaScopedAutocompleteMixin)
+    assert not issubclass(WydzialAutocomplete, UczelniaScopedAutocompleteMixin)
+    assert not issubclass(AutorAutocomplete, UczelniaScopedAutocompleteMixin)

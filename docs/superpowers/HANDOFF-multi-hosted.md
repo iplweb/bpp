@@ -241,8 +241,15 @@ poza zakresem R1 i NIE odnotowane jako wyłączone → kandydat na wątek **R3**
     świadomie NIE filtrowane. 6 tasków TDD (subagent-driven, spec+quality review każdy),
     pełna regresja zielona, invariant single-install trzyma. Plan
     `plans/2026-06-03-r3a-read-side-publiczny-widoki.md`. Niepushowane.
-  - **R3b (publiczne autocomplety) — NASTĘPNY.** Spec
-    `specs/2026-06-03-r3b-publiczne-autocomplety-uczelnia-design.md`. Zależy od helpera R3a.
+  - ✅ **R3b ZROBIONE (2026-06-03):** publiczne autocomplety jednostka/wydział/autor
+    zawężone per-uczelnia przez wspólny mixin `UczelniaScopedAutocompleteMixin`
+    (OR listy `uczelnia_lookups` + distinct, guard single-install z R3a). Jednostka/
+    wydział po FK `uczelnia`; autor = „obecnie LUB w przeszłości związany"
+    (`aktualna_jednostka__uczelnia` OR `autor_jednostka__jednostka__uczelnia`). Admin/
+    edytor autocomplety nietknięte. 4 taski TDD (subagent-driven, spec+quality review),
+    regresja zielona, invariant single-install trzyma. Plan
+    `plans/2026-06-03-r3b-publiczne-autocomplety-uczelnia.md`. Niepushowane.
+    Tym samym **R3 (a+b) read-side publiczny domknięty**.
 - **B) Drobne gotowe:** `powiazania_autorow/queries.py:_pbn_root()` →
   `get_for_request` (jedyny realny dług z whitelisty get_default, Audyt 1);
   **LUKA R1:** komenda `zbieraj_sloty` CLI + `Autor.zbieraj_sloty` nie przekazują
