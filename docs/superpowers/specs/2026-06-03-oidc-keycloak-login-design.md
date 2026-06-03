@@ -61,10 +61,19 @@ Nowa aplikacja `src/oidc_integration/` (wzorzec `src/orcid_integration/`):
   `{client_id, client_secret, issuer}` albo `None` (gdy nie skonfigurowano).
   Z `issuer` wyprowadza 4 endpointy konwencją Keycloaka
   (`/protocol/openid-connect/{auth,token,userinfo,certs}`).
-- `backends.py` — `BppOIDCBackend(OIDCAuthenticationBackend)`. W spike'u:
-  `verify_claims()` **loguje cały dict claimów** (`logger.info`) i deleguje
-  do `super()`. Wyraźny `# TODO faza 2`: gating po rolach/grupach,
-  deny-lista, „nie twórz konta”.
+- `backends.py` — `BppOIDCBackend(OIDCAuthenticationBackend)`.
+  **Faza 2a (discovery, zaimplementowana):**
+  - `verify_claims()` — **wypisuje klucze i wartości claimów na stderr**
+    (banner `[OIDC]`, sortowane klucze) + `logger.info`, potem deleguje do
+    `super()`. Cel: zobaczyć realne klucze realmu bez interaktywnego testu.
+  - `create_user()` — **zakłada zwykłe konto KAŻDEMU** zalogowanemu, **bez**
+    `is_staff`/`is_superuser`, hasło nieużywalne (`username` =
+    `preferred_username` → `email` → `sub`). Stan tymczasowy do czasu poznania
+    kluczy/ról.
+  - **Faza 2b (po obejrzeniu kluczy):** gating po rolach/grupach
+    (`realm_access.roles`) w `verify_claims`, warunek „komu nie tworzymy
+    konta" w `create_user`, mapowanie ról w `update_user`, powiązanie z
+    `Autor` przez `person_id` w `filter_users_by_claims`.
 - `apps.py`, `urls.py` (re-eksport `mozilla_django_oidc.urls`),
   `templates/` (przycisk „Zaloguj przez <skrót>”), `tests/`.
 
