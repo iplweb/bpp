@@ -112,11 +112,12 @@ w obrębie CAŁEJ federacji, nie pojedynczej uczelni. To NIE prosty filtr per-uc
 — inny problem optymalizacyjny ponad partycjonowanym cache. Write-path (rebuild po
 zmianie) już poprawny; logika decyzyjna federacyjna odłożona. Osobny, późniejszy spec.
 
-### C) Backlog hardeningu z self-review (MEDIUM/LOW — wpiąć w read-side/federację)
-1. **[MEDIUM] `_dopasuj_kalkulator` liczy `wiele_hst`/próg globalnie** (wszystkie
-   uczelnie), kalkulator używany per-uczelnia → rekord cross-uczelnia mieszający
-   HST/nie-HST ponad granicą uczelni dziedziczy globalne `wiele_hst`. Spec to
-   akceptuje, brak testu. Dodać test graniczny + jawną decyzję domenową.
+### C) Backlog hardeningu z self-review (MEDIUM/LOW)
+1. ✅ **[ZROBIONE 2026-06-03] `wiele_hst` per-uczelnia.** `_dopasuj_kalkulator(original,
+   uczelnia=None)` + `wszystkie_dyscypliny_rekordu(uczelnia=None)` (filtr
+   `jednostka__uczelnia`); `ISlot` przekazuje rozstrzygniętą uczelnię, `canAdapt`
+   zostaje globalny. Test graniczny HST/nie-HST cross-uczelnia. Single-install
+   no-op. Commit `c687ceb07`. (Nie federacyjne — poprawność per-uczelnia.)
 2. **[MEDIUM] brak indeksu** `(rekord_id, uczelnia, dyscyplina)` na
    `Cache_Punktacja_Dyscypliny` (jest tylko `(uczelnia, dyscyplina)`) — pod join
    widoku i jako naturalny klucz. Dorzucić w nowej migracji.
@@ -125,8 +126,14 @@ zmianie) już poprawny; logika decyzyjna federacyjna odłożona. Osobny, późni
    bez wiersza CPA. Istotne dla read-side (zaskoczenie konsumenta) — udokumentować/zrównać.
 4. **[LOW/design] mutacja `kalk.uczelnia` po konstrukcji** w `ISlot` — bezpieczna
    tylko dzięki świeżej instancji. Rozważyć `uczelnia` jako wymagany arg konstruktora.
-5. **NOT NULL na `Cache_Punktacja_Dyscypliny.uczelnia`** — niemożliwe dopóki
-   fixtures tworzą NULL w runtime; rozważyć po uporządkowaniu fixtures (read-side).
+5. ✅ **[ZROBIONE 2026-06-03] NOT NULL na `Cache_Punktacja_Dyscypliny.uczelnia`.**
+   Oba write-paths zawsze ustawiają uczelnię, 0425 zbackfillował legacy → mig 0428
+   `AlterField null=False`. Commit `6c888f245` (+ admin liczba_n pokazuje uczelnię:
+   `uczelnia` w list_display/list_filter `IloscUdzialow*`).
+
+POZOSTAJE z R2 (minor, nieblokujące): `views/verify.py` (WeryfikujBazeView) liczy
+`Autor_Dyscyplina` globalnie (diagnostyka superusera; nie przeciek, nie crash) —
+do per-uczelnia przy okazji.
 
 ### G) ewaluacja_liczba_n per-uczelnia (WRITE+READ — osobny spec)
 Discovery 2026-06-03: **częściowo już per-uczelnia**, ale z luką write.
@@ -204,8 +211,10 @@ Zatwierdzony wariant: **A (Verify → Stabilize → Investigate → Spec)**.
      Minor follow-up (nieblokujące): `views/verify.py` liczy `Autor_Dyscyplina`
      globalnie (diagnostyka, pre-existing); admin nie pokazuje `uczelnia`.
    - **F — federacja optymalizacji (B):** ODŁOŻONA (decyzja usera, olana).
-5. ✅ **integrator (D): ZROBIONE 2026-06-03.** ⏭ NASTĘPNY: drobne (E);
-   potem NOT NULL na uczelnia (#5), hardening #1 (HST, w federacji — olanej).
+5. ✅ **integrator (D): ZROBIONE.** ✅ **drobne (E): ZROBIONE.** ✅ **NOT NULL
+   uczelnia (#5): ZROBIONE.** ✅ **hardening #1 HST per-uczelnia: ZROBIONE** (nie
+   federacyjne — poprawność teraz). Federacja optymalizacji — nadal OLANA.
+   Pozostały minor: verify.py global Autor_Dyscyplina (diagnostyka).
 
 Backlog hardeningu (C): #2/#3 → R1; #1 (HST globalnie) → F (federacja).
 
