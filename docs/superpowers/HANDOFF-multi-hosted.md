@@ -222,6 +222,49 @@ Backlog hardeningu (C): #2/#3 → R1; #1 (HST globalnie) → F (federacja).
 
 ---
 
+## AUDYTY 4× (2026-06-03) — wyniki + nowy backlog
+
+Pełny raport: `docs/superpowers/2026-06-03-audyty-multihosted-4x.md`.
+Cztery audyty po domknięciu głównych wątków (1–3 rozpoznawcze równolegle, 4
+self-review vs spec per obszar). Wszystkie read-only. **Nic nie implementowano.**
+
+**Najważniejsze (zbieżność Audytu 3 + 4b):** publiczne widoki czytające `Rekord`
+WPROST przeciekają międzyuczelniano. R1 objął tylko cache slotów; te widoki są
+poza zakresem R1 i NIE odnotowane jako wyłączone → kandydat na wątek **R3**.
+
+### Nowy backlog (priorytety)
+- **A) R3 read-side publiczny `Rekord`** (najwyższy): 5 widoków —
+  multiwyszukiwarka (`bpp/views/mymultiseek.py:37` → `multiseek_registry/__init__.py:32`),
+  raport „cała uczelnia" (`nowe_raporty/poziomy.py:39` — `obiekt` ignorowany),
+  ranking (`ranking_autorow/views.py:265`), browse lata/rok (`bpp/views/browse.py:491-556`),
+  OAI (`bpp/views/oai.py:243`). Fix: helper `scope_rekord_do_uczelni` +
+  `autorzy__jednostka__uczelnia` + `skupia_pracownikow` + `distinct`. Każdy ma już
+  `get_for_request`. → osobny spec.
+- **B) Drobne gotowe:** `powiazania_autorow/queries.py:_pbn_root()` →
+  `get_for_request` (jedyny realny dług z whitelisty get_default, Audyt 1);
+  **LUKA R1:** komenda `zbieraj_sloty` CLI + `Autor.zbieraj_sloty` nie przekazują
+  `uczelnia_id` (spec wymieniał dwukrotnie); test delty R2 integratora
+  (`uczelnia=None`→`None`) + docstringi; oznaczyć stary self-review write-side
+  SUPERSEDED + notka HST do spec write-side.
+- **C) Federacja olana, ale bugi KORUPCJI DANYCH** (decyzja do podjęcia):
+  `OptimizationRun.delete()` cross-uczelnia (`ewaluacja_optymalizacja/tasks/optimization.py:73`),
+  `reset_all_pins_task`/`optimize_and_unpin` globalne querysety, komparatory PBN
+  globalny `.delete()`. To integralność, nie logika federacyjna — można scope-fix
+  niezależnie.
+- **D) `ewaluacja_metryki` per-uczelnia** (osobny wątek write+read): `MetrykaAutora`
+  bez FK uczelnia + 5× globalne `IloscUdzialow…objects.all()`. Kształt jak liczba_n R2.
+
+### Stan zgodności ze spec (Audyt 4)
+- Write-side sloty: ✓ 31/31 (1 świadomy korzystny rozjazd — HST per-uczelnia).
+- Read-side R1: ✓ 18/19 (LUKA: `zbieraj_sloty` CLI; rozjazd: API per-owner).
+- liczba_n R2: ✓ 24/24 (oba minory follow-up domknięte; metryki poza zakresem → D).
+- Integrator: ✓ 16/16 (2 nieblokujące: test delty R2, docstring).
+
+### Guard get_default: nadal szczelny
+10 wpisów whitelisty, 9 ZOSTAJE (świadome), 1 DO ZROBIENIA (`powiazania_autorow` → B).
+
+---
+
 ## KOMENDY (dla agenta)
 - Testy: `uv run pytest <ścieżka> -q -p no:cacheprovider` (testcontainers same
   stawiają PG/Redis; Docker musi działać).
