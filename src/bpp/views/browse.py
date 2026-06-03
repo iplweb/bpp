@@ -43,6 +43,7 @@ from bpp.multiseek_registry import (
     ZakresLatQueryObject,
     ZrodloQueryObject,
 )
+from bpp.util.uczelnia_scope import scope_rekord_do_uczelni
 
 logger = logging.getLogger(__name__)
 
@@ -489,9 +490,11 @@ class LataView(ListView):
     paginate_by = None
 
     def get_queryset(self):
+        uczelnia = Uczelnia.objects.get_for_request(self.request)
+        qs = scope_rekord_do_uczelni(Rekord.objects.all(), uczelnia)
         return [
             {"year": row["rok"], "count": row["count"]}
-            for row in Rekord.objects.values("rok")
+            for row in qs.values("rok")
             .annotate(count=Count("*"))
             .filter(count__gt=0)
             .order_by("-rok")
@@ -499,7 +502,10 @@ class LataView(ListView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context["total_publications"] = Rekord.objects.count()
+        uczelnia = Uczelnia.objects.get_for_request(self.request)
+        context["total_publications"] = scope_rekord_do_uczelni(
+            Rekord.objects.all(), uczelnia
+        ).count()
 
         # Add current year for reference
         context["current_year"] = timezone.now().year
@@ -535,7 +541,10 @@ class RokView(ListView):
             raise Http404("Nieprawidłowy rok") from e
 
         # Get publications for this year
-        return Rekord.objects.filter(rok=year).order_by("-ostatnio_zmieniony")
+        uczelnia = Uczelnia.objects.get_for_request(self.request)
+        return scope_rekord_do_uczelni(
+            Rekord.objects.filter(rok=year), uczelnia
+        ).order_by("-ostatnio_zmieniony")
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -546,14 +555,19 @@ class RokView(ListView):
         context["prev_year"] = None
         context["next_year"] = None
 
-        if Rekord.objects.filter(rok=year - 1).exists():
+        uczelnia = Uczelnia.objects.get_for_request(self.request)
+
+        def _scoped(qs):
+            return scope_rekord_do_uczelni(qs, uczelnia)
+
+        if _scoped(Rekord.objects.filter(rok=year - 1)).exists():
             context["prev_year"] = year - 1
 
-        if Rekord.objects.filter(rok=year + 1).exists():
+        if _scoped(Rekord.objects.filter(rok=year + 1)).exists():
             context["next_year"] = year + 1
 
         # Get total count for the year
-        context["total_count"] = Rekord.objects.filter(rok=year).count()
+        context["total_count"] = _scoped(Rekord.objects.filter(rok=year)).count()
 
         return context
 
