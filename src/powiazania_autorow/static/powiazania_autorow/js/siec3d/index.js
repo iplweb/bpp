@@ -26,6 +26,9 @@ const PALETA = [
 // Ile najważniejszych (wg bieżącej metryki) węzłów dostaje stałą etykietę.
 const TOP_ETYKIETY = 25;
 
+// Czas płynnej animacji rozmiaru kół przy zmianie metryki (ms).
+const ANIM_METRYKA_MS = 1200;
+
 function kolorPoziomu(level) {
     return PALETA[Math.min(level || 0, PALETA.length - 1)];
 }
@@ -94,6 +97,7 @@ export function init(ForceGraph3D) {
 
     let metryka = selMetryka ? selMetryka.value : "works";
     let etykietyOn = chkEtykiety ? chkEtykiety.checked : false;
+    let tweenRaf = null; // uchwyt animacji rozmiaru kół (zmiana metryki)
     // ostatnio pobrana sieć (raw siec.json) — do klienckiego przebudowania
     // linków przy zmianie opcji "powiązania w grupie" bez ponownego fetcha.
     let rawData = { nodes: [], edges: [], extra_edges: [] };
@@ -129,12 +133,21 @@ export function init(ForceGraph3D) {
     // Etykieta węzła (SpriteText) — tylko dla top-N i gdy włączone.
     function budujEtykiete(n) {
         if (!etykietyOn || !n._top) { return null; }
-        const s = new SpriteText(n.label || "");
+        // tytuł naukowy przed nazwiskiem, np. "prof. dr hab. Jan Kowalski"
+        const txt = (n.tytul ? n.tytul + " " : "") + (n.label || "");
+        const s = new SpriteText(txt);
         s.color = "#fff";
-        s.textHeight = 5;
-        s.backgroundColor = "rgba(11,16,32,0.65)";
-        s.padding = 1.5;
-        s.position.set(0, 9, 0); // unieś nad kulę
+        s.textHeight = 6;
+        s.backgroundColor = "rgba(11,16,32,0.72)";
+        s.padding = 2;
+        // Unieś etykietę NAD kulę: promień kuli ≈ nodeRelSize * cbrt(metryka),
+        // inaczej przy dużych węzłach tekst ląduje w środku kuli.
+        const promien = 4 * Math.cbrt(Math.max(1, wartoscMetryki(n, metryka)));
+        s.position.set(0, promien + 6, 0);
+        // Rysuj PONAD geometrią — nie chowaj za/wewnątrz kul (zawsze czytelne).
+        s.material.depthTest = false;
+        s.material.depthWrite = false;
+        s.renderOrder = 999;
         return s;
     }
     // Re-assign przez świeży wrapper => 3d-force-graph regeneruje obiekty
@@ -199,6 +212,35 @@ export function init(ForceGraph3D) {
             })
             .slice(0, TOP_ETYKIETY)
             .forEach(function (n) { n._top = true; });
+    }
+
+    // Płynna animacja rozmiaru kół przy zmianie metryki: co klatkę ustawiamy
+    // nodeVal na wartość interpolowaną `stara→nowa` (easeInOutCubic). Po końcu
+    // przypinamy zwykły akcesor i odświeżamy top-N/etykiety.
+    function animujMetryke(stara, nowa) {
+        if (tweenRaf) { cancelAnimationFrame(tweenRaf); tweenRaf = null; }
+        let t0 = null;
+        function krok(teraz) {
+            if (t0 === null) { t0 = teraz; }
+            const t = Math.min(1, (teraz - t0) / ANIM_METRYKA_MS);
+            const e = t < 0.5
+                ? 4 * t * t * t
+                : 1 - Math.pow(-2 * t + 2, 3) / 2; // easeInOutCubic
+            Graph.nodeVal(function (n) {
+                const a = wartoscMetryki(n, stara);
+                const b = wartoscMetryki(n, nowa);
+                return a + (b - a) * e;
+            });
+            if (t < 1) {
+                tweenRaf = requestAnimationFrame(krok);
+            } else {
+                tweenRaf = null;
+                Graph.nodeVal(function (n) { return wartoscMetryki(n, nowa); });
+                oznaczTop(Graph.graphData().nodes);
+                odswiezEtykiety();
+            }
+        }
+        tweenRaf = requestAnimationFrame(krok);
     }
 
     // Linki dla bieżącego układu: krawędzie drzewa zawsze; powiązania w grupie
@@ -358,11 +400,12 @@ export function init(ForceGraph3D) {
     }
     if (selMetryka) {
         selMetryka.addEventListener("change", function () {
-            metryka = selMetryka.value;
-            Graph.nodeVal(function (n) { return wartoscMetryki(n, metryka); });
-            // top-N (a więc i etykiety) zależy od metryki
-            oznaczTop(Graph.graphData().nodes);
-            odswiezEtykiety();
+            const stara = metryka;
+            const nowa = selMetryka.value;
+            if (nowa === stara) { return; }
+            metryka = nowa;
+            // płynne przejście rozmiarów; top-N/etykiety odświeżą się na końcu
+            animujMetryke(stara, nowa);
         });
     }
     if (ukladEl) {
