@@ -29,7 +29,7 @@ class Cache_Punktacja_Dyscypliny(models.Model):
         models.TextField(), blank=True, null=True
     )
 
-    uczelnia = ForeignKey("bpp.Uczelnia", models.CASCADE, null=True, blank=True)
+    uczelnia = ForeignKey("bpp.Uczelnia", models.CASCADE)
 
     class Meta:
         ordering = ("dyscyplina__nazwa",)

@@ -99,18 +99,19 @@ class IloscUdzialowDlaAutoraZaRokAdmin(
 ):
     resource_classes = [IloscUdzialowDlaAutoraZaRokResource]
     list_display = [
+        "uczelnia",
         "autor",
         "dyscyplina_naukowa",
         "ilosc_udzialow",
         "ilosc_udzialow_monografie",
     ]
-    list_select_related = ["autor", "autor__tytul", "dyscyplina_naukowa"]
+    list_select_related = ["uczelnia", "autor", "autor__tytul", "dyscyplina_naukowa"]
     search_fields = [
         "autor__nazwisko",
         "dyscyplina_naukowa__kod",
         "dyscyplina_naukowa__nazwa",
     ]
-    list_filter = ["dyscyplina_naukowa", "ilosc_udzialow"]
+    list_filter = ["uczelnia", "dyscyplina_naukowa", "ilosc_udzialow"]
     ordering = ("autor__nazwisko", "autor__imiona", "dyscyplina_naukowa__nazwa")
 
 
@@ -120,6 +121,7 @@ class IloscUdzialowDlaAutoraZaCaloscAdmin(
 ):
     resource_classes = [IloscUdzialowDlaAutoraZaCaloscResource]
     list_display = [
+        "uczelnia",
         "autor",
         "dyscyplina_naukowa",
         "rodzaj_autora",
@@ -127,6 +129,7 @@ class IloscUdzialowDlaAutoraZaCaloscAdmin(
         "ilosc_udzialow_monografie",
     ]
     list_select_related = [
+        "uczelnia",
         "autor",
         "autor__tytul",
         "dyscyplina_naukowa",
@@ -137,7 +140,7 @@ class IloscUdzialowDlaAutoraZaCaloscAdmin(
         "dyscyplina_naukowa__kod",
         "dyscyplina_naukowa__nazwa",
     ]
-    list_filter = ["dyscyplina_naukowa", "rodzaj_autora", "ilosc_udzialow"]
+    list_filter = ["uczelnia", "dyscyplina_naukowa", "rodzaj_autora", "ilosc_udzialow"]
     ordering = ("autor__nazwisko", "autor__imiona", "dyscyplina_naukowa__nazwa")
 
 

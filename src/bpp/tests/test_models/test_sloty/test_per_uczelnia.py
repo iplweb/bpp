@@ -221,6 +221,22 @@ def test_view_eksponuje_uczelnia(zwarte_dwie_uczelnie, jednostka, druga_uczelnia
 
 
 @pytest.mark.django_db
+def test_cpd_uczelnia_not_null(dyscyplina1):
+    from django.db import IntegrityError, transaction
+
+    from bpp.models.cache import Cache_Punktacja_Dyscypliny
+
+    with pytest.raises(IntegrityError):
+        with transaction.atomic():
+            Cache_Punktacja_Dyscypliny.objects.create(
+                rekord_id=[1, 1],
+                dyscyplina=dyscyplina1,
+                pkd=10,
+                slot=1,
+            )
+
+
+@pytest.mark.django_db
 def test_invariant_jedna_uczelnia_k2(
     wydawnictwo_zwarte,
     autor_jan_nowak,
