@@ -118,8 +118,8 @@ export function podepnijZdarzenia(ctx) {
     //   SPRING_K     — sztywność: większe = gałąź szybciej dogania korzeń,
     //   SPRING_FRIC  — ile prędkości zostaje na klatkę: większe = dłuższe,
     //                  bardziej rozkołysane odbicie; mniejsze = sztywniej.
-    const SPRING_K = 0.08;
-    const SPRING_FRIC = 0.88;
+    const SPRING_K = 0.13;
+    const SPRING_FRIC = 0.74;
     const SPRING_EPS = 0.5; // próg osiadania (px) po puszczeniu
 
     let dragRaf = null;
