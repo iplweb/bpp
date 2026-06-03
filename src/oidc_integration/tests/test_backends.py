@@ -11,6 +11,8 @@ import logging
 
 import pytest
 from django.contrib.auth import get_user_model
+from django.test import override_settings
+from model_bakery import baker
 
 from oidc_integration.backends import BppOIDCBackend
 
@@ -82,3 +84,42 @@ def test_create_user_username_fallback_do_sub():
     assert user.username == "tylko-sub-789"
     assert user.email == ""
     assert user.is_staff is False
+
+
+@pytest.mark.django_db
+@override_settings(OIDC_LOGIN_SKROT="UAFM")
+def test_create_user_przypisuje_uczelnie_wg_skrotu():
+    uczelnia = baker.make("bpp.Uczelnia", skrot="UAFM")
+    backend = _backend()
+    backend.UserModel = get_user_model()
+
+    user = backend.create_user(
+        {"preferred_username": "jkowalski", "email": "jan@uafm.edu.pl"}
+    )
+
+    assert list(user.accessible_uczelnie.all()) == [uczelnia]
+
+
+@pytest.mark.django_db
+@override_settings(OIDC_LOGIN_SKROT="UAFM")
+def test_create_user_bez_pasujacej_uczelni_nie_przypisuje():
+    # Uczelnia o innym skrócie — brak dopasowania, konto bez przypisania.
+    baker.make("bpp.Uczelnia", skrot="INNA")
+    backend = _backend()
+    backend.UserModel = get_user_model()
+
+    user = backend.create_user({"preferred_username": "jkowalski"})
+
+    assert user.accessible_uczelnie.count() == 0
+
+
+@pytest.mark.django_db
+@override_settings(OIDC_LOGIN_SKROT="")
+def test_create_user_bez_skrotu_nie_przypisuje():
+    baker.make("bpp.Uczelnia", skrot="UAFM")
+    backend = _backend()
+    backend.UserModel = get_user_model()
+
+    user = backend.create_user({"preferred_username": "jkowalski"})
+
+    assert user.accessible_uczelnie.count() == 0

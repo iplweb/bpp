@@ -70,6 +70,17 @@ Nowa aplikacja `src/oidc_integration/` (wzorzec `src/orcid_integration/`):
     `is_staff`/`is_superuser`, hasło nieużywalne (`username` =
     `preferred_username` → `email` → `sub`). Stan tymczasowy do czasu poznania
     kluczy/ról.
+  - **Przypisanie uczelni**: konto dostaje `accessible_uczelnie` (M2M z
+    PR #189) z `Uczelnia` o `skrot` == skrótowi z konfiguracji OIDC
+    (`OIDC_LOGIN_SKROT`). Ten sam skrót wybiera client_id/secret **i** uczelnię
+    → docelowe „3 backendy = 3 uczelnie" przypisują właściwą automatycznie.
+    `update_user()` dopilnowuje przypisania też istniejącym kontom
+    (idempotentnie). Brak skrótu / brak pasującej uczelni → konto bez
+    przypisania (log), nie błąd.
+
+  > **Baza:** ten branch wyrasta z `feature/multi-hosted-config` (PR #189),
+  > bo `accessible_uczelnie` pochodzi stamtąd. PR #295 mergowalny dopiero po
+  > #189 (albo do jego brancha).
   - **Faza 2b (po obejrzeniu kluczy):** gating po rolach/grupach
     (`realm_access.roles`) w `verify_claims`, warunek „komu nie tworzymy
     konta" w `create_user`, mapowanie ról w `update_user`, powiązanie z

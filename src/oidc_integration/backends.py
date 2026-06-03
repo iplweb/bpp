@@ -1,6 +1,7 @@
 import logging
 import sys
 
+from django.conf import settings
 from mozilla_django_oidc.auth import OIDCAuthenticationBackend
 
 logger = logging.getLogger(__name__)
@@ -35,6 +36,12 @@ class BppOIDCBackend(OIDCAuthenticationBackend):
     studenci — patrz scope ``kierunek-oidc``) dostanie konto BPP. Bezpieczne o
     tyle, że bez ``is_staff`` nie ma dostępu do panelu/edycji. To stan tymczasowy.
 
+    Przypisanie uczelni: konto dostaje ``accessible_uczelnie`` (M2M z PR #189)
+    z uczelnią o ``skrot`` == skrótowi z konfiguracji OIDC. Ten sam skrót
+    (np. ``UAFM``), który wybrał ``client_id``/``client_secret``, mapuje 1:1 na
+    ``Uczelnia.skrot`` — dzięki czemu docelowe „3 backendy = 3 uczelnie" same
+    przypisują właściwą uczelnię, bez dodatkowej konfiguracji.
+
     Faza 2b (po obejrzeniu kluczy) — TU wejdą reguły:
       * gating po rolach/grupach (``realm_access.roles``): „kogo nie wpuszczamy"
         → ``verify_claims`` zwraca ``False``;
@@ -48,6 +55,39 @@ class BppOIDCBackend(OIDCAuthenticationBackend):
         _dump_claims_to_stderr(claims)
         logger.info("OIDC: otrzymane claimy: %r", claims)
         return super().verify_claims(claims)
+
+    def _assign_uczelnia(self, user):
+        """Przypisz uczelnię docelową (``accessible_uczelnie``) wg skrótu OIDC.
+
+        Idempotentne (``.add`` na M2M). Brak skrótu albo brak pasującej
+        ``Uczelnia`` → konto bez przypisania (z logiem), nie błąd.
+        """
+        skrot = getattr(settings, "OIDC_LOGIN_SKROT", "") or ""
+        if not skrot:
+            logger.info("OIDC: brak skrótu uczelni w konfiguracji — bez przypisania")
+            return
+
+        # Import lokalny: backends.py bywa ładowany bardzo wcześnie (settings).
+        from bpp.models import Uczelnia
+
+        uczelnia = Uczelnia.objects.filter(skrot__iexact=skrot).first()
+        if uczelnia is None:
+            logger.warning(
+                "OIDC: nie znaleziono Uczelni o skrocie=%s — konto bez przypisania",
+                skrot,
+            )
+            return
+
+        user.accessible_uczelnie.add(uczelnia)
+        logger.info(
+            "OIDC: przypisano uczelnię skrot=%s do konta %s", skrot, user.username
+        )
+
+    def update_user(self, user, claims):
+        # Dopilnuj przypisania uczelni także istniejącym kontom przy kolejnym
+        # logowaniu (idempotentnie) — np. założonym przed wprowadzeniem tej logiki.
+        self._assign_uczelnia(user)
+        return user
 
     def create_user(self, claims):
         """Załóż zwykłe konto (bez is_staff) na podstawie claimów.
@@ -70,6 +110,8 @@ class BppOIDCBackend(OIDCAuthenticationBackend):
         user.is_active = True
         user.set_unusable_password()
         user.save()
+
+        self._assign_uczelnia(user)
 
         logger.info(
             "OIDC: utworzono konto username=%s email=%s (zwykłe, bez is_staff)",
