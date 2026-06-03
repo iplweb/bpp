@@ -212,6 +212,64 @@ def test_oswiadczenie_wiele(zwarte_z_dyscyplinami, admin_client):  # noqa
 
 
 @pytest.mark.django_db
+def test_oswiadczenia_publikacji_kontekst_filtruje_po_uczelni(
+    zwarte_dwie_uczelnie,
+    jednostka,
+    druga_uczelnia,
+    rf,
+    django_user_model,
+):
+    """OswiadczeniaPublikacji.get_context_data zwraca tylko punktacje dla
+    uczelni odczytu — rzedy z drugiej uczelni sa wykluczone."""
+    from oswiadczenia.views import OswiadczeniaPublikacji
+
+    zwarte_dwie_uczelnie.przelicz_punkty_dyscyplin()
+
+    from bpp.models import Cache_Punktacja_Autora, Rekord
+
+    rekord = Rekord.objects.get_for_model(zwarte_dwie_uczelnie)
+
+    # Upewnij sie, ze obie uczelnie maja wiersze w cache
+    wszystkie = Cache_Punktacja_Autora.objects.filter(rekord_id=rekord.pk)
+    uczelnie_w_cache = set(
+        wszystkie.values_list("jednostka__uczelnia_id", flat=True)
+    )
+    assert jednostka.uczelnia_id in uczelnie_w_cache, (
+        "U1 nie ma wierszy w Cache_Punktacja_Autora — test bylby pusty"
+    )
+    assert druga_uczelnia.pk in uczelnie_w_cache, (
+        "U2 nie ma wierszy w Cache_Punktacja_Autora — test bylby nie-wykluczajacy"
+    )
+
+    # Superuser z _uczelnia = U1
+    user = django_user_model.objects.create_superuser(
+        username="test_multi_uczelnia", password="pass"
+    )
+    request = rf.get("/")
+    request.user = user
+    request._uczelnia = jednostka.uczelnia
+
+    view = OswiadczeniaPublikacji()
+    view.request = request
+    view.kwargs = {
+        "content_type_id": rekord.pk[0],
+        "object_id": rekord.pk[1],
+    }
+    view.object = view.get_object()
+
+    ctx = view.get_context_data()
+    punktacje_ids = set(
+        ctx["punktacje"].values_list("jednostka__uczelnia_id", flat=True)
+    )
+
+    assert punktacje_ids == {jednostka.uczelnia_id}, (
+        f"Oczekiwano tylko U1 ({jednostka.uczelnia_id}), "
+        f"otrzymano: {punktacje_ids}"
+    )
+    assert druga_uczelnia.pk not in punktacje_ids
+
+
+@pytest.mark.django_db
 def test_remove_old_oswiadczenia_export_files():
     from datetime import timedelta
 

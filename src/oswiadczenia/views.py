@@ -337,10 +337,13 @@ class OswiadczeniaPublikacji(GroupRequiredMixin, DetailView):
         return self.object
 
     def get_context_data(self, **kwargs):
+        from raport_slotow.uczelnia_helper import uczelnia_dla_odczytu
+
         return {
             "object": self.object,
             "punktacje": Cache_Punktacja_Autora.objects.filter(
-                rekord_id=self.object.pk
+                rekord_id=self.object.pk,
+                jednostka__uczelnia=uczelnia_dla_odczytu(self.request),
             ),
         }
 
