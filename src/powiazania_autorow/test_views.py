@@ -450,6 +450,34 @@ def test_strona_grafu_404_dla_nieistniejacego_autora(client):
 
 
 @pytest.mark.django_db
+def test_strona_grafu_3d_renderuje_kontener(client):
+    autor = baker.make(Autor, imiona="Jan", nazwisko="Kowalski", pokazuj=True)
+    url = reverse("bpp:browse_autor_powiazania_3d", args=[autor.pk])
+    resp = client.get(url)
+    assert resp.status_code == 200
+    tresc = resp.content.decode("utf-8")
+    assert 'id="siec3d-container"' in tresc
+    assert f'data-autor-id="{autor.pk}"' in tresc
+    # lazy bundle 3D (nazwa może być zahashowana przez ManifestStaticFiles)
+    assert "three-bundle" in tresc
+
+
+@pytest.mark.django_db
+def test_strona_grafu_3d_404_gdy_siec_wylaczona(client, uczelnia):
+    uczelnia.pokazuj_siec_powiazan = False
+    uczelnia.save()
+    autor = baker.make(Autor, pokazuj=True, pokazuj_siec_powiazan=None)
+    url = reverse("bpp:browse_autor_powiazania_3d", args=[autor.pk])
+    assert client.get(url).status_code == 404
+
+
+@pytest.mark.django_db
+def test_strona_grafu_3d_404_dla_nieistniejacego_autora(client):
+    url = reverse("bpp:browse_autor_powiazania_3d", args=[99999])
+    assert client.get(url).status_code == 404
+
+
+@pytest.mark.django_db
 def test_strona_autora_ma_flage_powiazan_true(client):
     centrum = baker.make(Autor, pokazuj=True)
     sasiad = baker.make(Autor, pokazuj=True)

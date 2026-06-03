@@ -42,6 +42,25 @@ class GrafPowiazanView(TemplateView):
         return context
 
 
+class GrafPowiazan3DView(TemplateView):
+    """Widok 3D sieci powiązań (Three.js / WebGL) — alternatywa dla 2D.
+
+    Czyta ten sam endpoint danych (siec.json) co widok 2D; różni się tylko
+    rendererem po stronie klienta. Bramkowany tym samym ustawieniem
+    "pokazuj sieć powiązań" (404 gdy wyłączone).
+    """
+
+    template_name = "powiazania_autorow/graf3d.html"
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        autor = get_object_or_404(Autor, pk=kwargs["pk"])
+        if not siec_powiazan_wlaczona(autor, self.request):
+            raise Http404("Sieć powiązań jest wyłączona dla tego autora.")
+        context["autor"] = autor
+        return context
+
+
 class GrafPowiazanDaneView(View):
     """JSON z sąsiadami (współautorami) danego autora.
 

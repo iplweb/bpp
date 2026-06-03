@@ -96,6 +96,7 @@ from bpp.views.zapytanie import (
     ZapytanieView,
 )
 from powiazania_autorow.views import (
+    GrafPowiazan3DView,
     GrafPowiazanDaneView,
     GrafPowiazanSiecView,
     GrafPowiazanView,
@@ -251,6 +252,11 @@ urlpatterns = [
         r"^autor/(?P<pk>\d+)/powiazania/$",
         GrafPowiazanView.as_view(),
         name="browse_autor_powiazania",
+    ),
+    url(
+        r"^autor/(?P<pk>\d+)/powiazania/3d/$",
+        GrafPowiazan3DView.as_view(),
+        name="browse_autor_powiazania_3d",
     ),
     url(
         r"^autor/(?P<pk>\d+)/powiazania/dane\.json$",
