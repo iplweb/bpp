@@ -145,11 +145,17 @@ Discovery 2026-06-03: **częściowo już per-uczelnia**, ale z luką write.
   unique_together, zawęzić liczenie udziałów per uczelnia. To write+read,
   bliżej write-side slotów niż filtrów odczytu.
 
-### D) Integrator per-uczelnia (parked)
-`pbn_integrator/utils/scientists.py` (matcher), `importer/authors.py` (×5 porównań
-afiliacji), `management/commands/pbn_integrator.py`. Porównania z „naszą" uczelnią
-(`objects.default.pbn_uid_id`) — wymaga przekazania uczelni docelowej przez pipeline.
-`objects.default` zostaje świadomie (perf w pętlach).
+### D) Integrator per-uczelnia — ZROBIONE 2026-06-03
+Spec: `specs/2026-06-03-integrator-per-uczelnia-design.md`. 3 sites (subagent-driven
++ review): `importer/authors.py` (5×, `client.uczelnia`), `management/commands/
+pbn_integrator.py` (`_handle_people` → `client.uczelnia.pbn_uid_id`),
+`utils/scientists.py` (matcher `matchuj_autora_po_stronie_pbn(..., uczelnia)`,
+caller przekazuje `autor.aktualna_jednostka.uczelnia`/None). `pbn_integrator/` jest
+czyste z `objects.default`; guard whitelist bez wpisów integratora. 97 testów zielone.
+**Delta (świadoma):** autor z `aktualna_jednostka=None` nie jest już auto-matchowany
+po danych zatrudnienia PBN (matcher zwraca None bez home-uczelni) — poprawne wg reguły
+R2 (odłączony autor = nie pracownik), mała populacja. Commity `68959b629`, `3ca65a740`,
+`49f320aa8`.
 
 ### E) Drobne
 - Usunięcie fallbacku `get_default` z `adapters/wydawnictwo.py` — wymaga migracji
@@ -196,7 +202,8 @@ Zatwierdzony wariant: **A (Verify → Stabilize → Investigate → Spec)**.
      Minor follow-up (nieblokujące): `views/verify.py` liczy `Autor_Dyscyplina`
      globalnie (diagnostyka, pre-existing); admin nie pokazuje `uczelnia`.
    - **F — federacja optymalizacji (B):** ODŁOŻONA (decyzja usera, olana).
-5. ⏭ NASTĘPNY: **integrator (D)**; potem drobne (E); NOT NULL na uczelnia (#5).
+5. ✅ **integrator (D): ZROBIONE 2026-06-03.** ⏭ NASTĘPNY: drobne (E);
+   potem NOT NULL na uczelnia (#5), hardening #1 (HST, w federacji — olanej).
 
 Backlog hardeningu (C): #2/#3 → R1; #1 (HST globalnie) → F (federacja).
 
