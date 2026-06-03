@@ -35,6 +35,7 @@ class Cache_Punktacja_Dyscypliny(models.Model):
         ordering = ("dyscyplina__nazwa",)
         indexes = [
             models.Index(fields=["uczelnia", "dyscyplina"]),
+            models.Index(fields=["rekord_id", "uczelnia", "dyscyplina"]),
         ]
 
     def serialize(self):
