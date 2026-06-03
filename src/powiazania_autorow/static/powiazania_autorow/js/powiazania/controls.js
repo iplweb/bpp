@@ -90,10 +90,14 @@ export function podepnijZdarzenia(ctx) {
         pokazPanelAutora(ctx, info);
     });
 
-    // --- przeciąganie zabiera ze sobą CAŁY poddrzew węzła ---
-    // Chwytając węzeł przesuwamy jego potomków (z drzewa rozwijania) tym samym
-    // wektorem; przodek i inne gałęzie zostają nieruchome. Dzięki temu da się
-    // rozsunąć/uporządkować gałąź jednym ruchem zamiast węzeł po węźle.
+    // --- przeciąganie zabiera ze sobą CAŁY poddrzew węzła, ale SPRĘŻYŚCIE ---
+    // Chwytając węzeł, jego potomkowie (z drzewa rozwijania) podążają za nim
+    // jak na gumie: z opóźnieniem (trailing) i lekkim odbiciem na osiadanie.
+    // Korzeń idzie ostro za kursorem (Cytoscape), a gałąź się „rozciąga" i
+    // dogania w pętli rAF — stąd wrażenie żywej, giętkiej struktury, a nie
+    // płaskiego elementu. To czysta animacja pozycji (wariant B): bez silnika
+    // fizyki, rusza się tylko przeciągany poddrzew (tanio nawet przy 1200
+    // węzłach). Przodek i inne gałęzie zostają nieruchome.
     function potomkowiePoddrzewa(id) {
         const kids = ctx.lastTree ? ctx.lastTree.children : null;
         let coll = cy.collection();
@@ -110,29 +114,88 @@ export function podepnijZdarzenia(ctx) {
         return coll;
     }
 
-    cy.on("grab", "node", function (evt) {
-        const n = evt.target;
-        n.scratch("_poddrzew", potomkowiePoddrzewa(n.id()));
-        n.scratch("_ostPoz", { x: n.position("x"), y: n.position("y") });
-    });
-    cy.on("drag", "node", function (evt) {
-        const n = evt.target;
-        const prev = n.scratch("_ostPoz");
-        const pot = n.scratch("_poddrzew");
-        if (!prev || !pot) { return; }
-        const dx = n.position("x") - prev.x;
-        const dy = n.position("y") - prev.y;
-        if (dx || dy) {
-            pot.positions(function (ele) {
-                return { x: ele.position("x") + dx, y: ele.position("y") + dy };
+    // Parametry sprężyny (do strojenia "gumowatości"):
+    //   SPRING_K     — sztywność: większe = gałąź szybciej dogania korzeń,
+    //   SPRING_FRIC  — ile prędkości zostaje na klatkę: większe = dłuższe,
+    //                  bardziej rozkołysane odbicie; mniejsze = sztywniej.
+    const SPRING_K = 0.22;
+    const SPRING_FRIC = 0.78;
+    const SPRING_EPS = 0.5; // próg osiadania (px) po puszczeniu
+
+    let dragRaf = null;
+    let dragRoot = null;     // chwycony węzeł (idzie za kursorem)
+    let dragColl = null;     // jego poddrzew (podąża sprężyście)
+    let dragHeld = false;    // czy palec wciąż trzyma (grab..free)
+    const dragOffset = {};   // id -> {x,y} offset względem korzenia (z grab)
+    const dragVel = {};      // id -> {x,y} prędkość sprężyny
+
+    function sprzataczGumy() {
+        if (dragRaf) { cancelAnimationFrame(dragRaf); dragRaf = null; }
+        // dociągnij potomków dokładnie do docelowych offsetów (czysty układ)
+        if (dragRoot && !dragRoot.removed() && dragColl) {
+            const rp = dragRoot.position();
+            dragColl.forEach(function (n) {
+                const off = dragOffset[n.id()];
+                if (off && !n.removed()) {
+                    n.position({ x: rp.x + off.x, y: rp.y + off.y });
+                }
             });
         }
-        n.scratch("_ostPoz", { x: n.position("x"), y: n.position("y") });
-    });
-    cy.on("free", "node", function (evt) {
+        dragRoot = null;
+        dragColl = null;
+        Object.keys(dragOffset).forEach(function (k) { delete dragOffset[k]; });
+        Object.keys(dragVel).forEach(function (k) { delete dragVel[k]; });
+    }
+
+    function krokGumy() {
+        // korzeń zniknął w trakcie (np. przeładowanie sieci) -> sprzątamy
+        if (!dragRoot || dragRoot.removed()) { sprzataczGumy(); return 0; }
+        const rp = dragRoot.position();
+        let max = 0;
+        dragColl.forEach(function (n) {
+            const id = n.id();
+            const off = dragOffset[id];
+            if (!off || n.removed()) { return; }
+            const tx = rp.x + off.x;
+            const ty = rp.y + off.y;
+            const p = n.position();
+            const v = dragVel[id];
+            v.x = v.x * SPRING_FRIC + (tx - p.x) * SPRING_K;
+            v.y = v.y * SPRING_FRIC + (ty - p.y) * SPRING_K;
+            n.position({ x: p.x + v.x, y: p.y + v.y });
+            max = Math.max(
+                max, Math.abs(tx - p.x - v.x), Math.abs(ty - p.y - v.y),
+                Math.abs(v.x), Math.abs(v.y)
+            );
+        });
+        return max;
+    }
+
+    function petlaGumy() {
+        const max = krokGumy();
+        // gdy palec puszczony i wszystko osiadło — dociągnij dokładnie i stop
+        if (!dragHeld && max < SPRING_EPS) { sprzataczGumy(); return; }
+        dragRaf = requestAnimationFrame(petlaGumy);
+    }
+
+    cy.on("grab", "node", function (evt) {
         const n = evt.target;
-        n.removeScratch("_poddrzew");
-        n.removeScratch("_ostPoz");
+        // nowy chwyt zaczynamy od czystego stanu (gdyby poprzedni nie osiadł)
+        sprzataczGumy();
+        dragRoot = n;
+        dragColl = potomkowiePoddrzewa(n.id());
+        const rp = n.position();
+        dragColl.forEach(function (c) {
+            const p = c.position();
+            dragOffset[c.id()] = { x: p.x - rp.x, y: p.y - rp.y };
+            dragVel[c.id()] = { x: 0, y: 0 };
+        });
+        dragHeld = true;
+        dragRaf = requestAnimationFrame(petlaGumy);
+    });
+    cy.on("free", "node", function () {
+        // pętla dokończy osiadanie (z odbiciem) i sama się zatrzyma
+        dragHeld = false;
     });
 
     // --- suwak top-N -> przeładuj sieć (top-N per węzeł) ---
