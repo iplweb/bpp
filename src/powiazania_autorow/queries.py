@@ -128,6 +128,19 @@ def _uczelnia_zatrudnienia(request):
     return uczelnia.pk if uczelnia is not None else None
 
 
+def siec_powiazan_wlaczona(autor, request):
+    """Czy sieć powiązań ma być dostępna dla `autor` w kontekście `request`.
+
+    Efektywne ustawienie: tri-state per-autor nadpisuje per-uczelnia (patrz
+    Autor.czy_pokazywac_siec_powiazan). Wspólny gate dla strony grafu i
+    wszystkich endpointów JSON — gdy False, widoki zwracają 404.
+    """
+    from bpp.models import Uczelnia
+
+    uczelnia = Uczelnia.objects.get_for_request(request)
+    return autor.czy_pokazywac_siec_powiazan(uczelnia)
+
+
 def _widoczni_autorzy(ids, uczelnia_zatr=None):
     """Zbiór id autorów z `ids`, którzy są widoczni (pokazuj=True). Gdy podano
     `uczelnia_zatr`, dodatkowo zawęża do aktualnie zatrudnionych w tej uczelni
@@ -353,6 +366,23 @@ def _bfs_siec(centrum_id, depth, topn, filtr=None, uczelnia_zatr=None):
         frontier = nowy_front
 
     return level_of, parent_of, krawedzie, przyciecie
+
+
+def _autorzy_widocznej_sieci(centrum_id, depth, topn, filtr=None, uczelnia_zatr=None):
+    """Zbiór id autorów widocznych w sieci BFS (centrum + sąsiedzi do `depth`,
+    top-N na węzeł) — z tym samym kształtem co graf (rok + zatrudnieni).
+
+    Zasila listę źródeł, żeby odzwierciedlała CAŁĄ widoczną sieć, nie tylko
+    autora centralnego: zmiana głębokości / liczby współautorów / roku realnie
+    zmienia zbiór autorów, a więc i zbiór ich źródeł. Filtr źródła/wydawcy
+    świadomie NIE wchodzi tu w grę (wołający podaje filtr tylko-rok) — inaczej
+    wybór źródła zawężałby sieć, a ta listę źródeł (sprzężenie zwrotne).
+    """
+    if filtr is not None and filtr.aktywny():
+        # self-join z rok-filtrem jest droższy — tnij głębokość jak w grafie
+        depth = min(depth, MAKS_GLEBOKOSC_FILTR)
+    level_of, _, _, _ = _bfs_siec(centrum_id, depth, topn, filtr, uczelnia_zatr)
+    return set(level_of.keys())
 
 
 def _pary_wewnatrz_cache(visited, filtr):

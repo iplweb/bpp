@@ -28,7 +28,13 @@ export function podepnijZdarzenia(ctx) {
     let debTimer = null;
     function zaladujSiecZwloka() {
         if (debTimer) { clearTimeout(debTimer); }
-        debTimer = setTimeout(function () { zaladujSiec(ctx); }, 250);
+        debTimer = setTimeout(function () {
+            zaladujSiec(ctx);
+            // Lista źródeł odzwierciedla CAŁĄ widoczną sieć, więc odśwież ją,
+            // gdy zmienia się kształt sieci (top-N / głębokość / zatrudnieni)
+            // — ale tylko jeśli szuflada była już otwierana (leniwe ładowanie).
+            if (ctx.zrodlaZaladowane) { zaladujZrodla(ctx); }
+        }, 250);
     }
 
     // Zmiana roku wpływa i na sieć, i na listę źródeł — przeładuj sieć

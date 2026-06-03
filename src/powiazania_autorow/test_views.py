@@ -468,6 +468,128 @@ def test_strona_autora_ma_flage_powiazan_false(client):
     assert resp.context["ma_powiazania"] is False
 
 
+@pytest.mark.django_db
+def test_zrodla_obejmuje_cala_widoczna_siec(client, jednostka, typy_odpowiedzialnosci):
+    # Lista źródeł = źródła CAŁEJ widocznej sieci, nie tylko centrum. Źródło,
+    # które ma wyłącznie autor z poziomu 2, pojawia się dopiero przy depth=2.
+    from bpp.models import Wydawnictwo_Ciagle, Zrodlo
+
+    centrum = baker.make(Autor, imiona="Jan", nazwisko="Centralny", pokazuj=True)
+    wspolautor = baker.make(Autor, imiona="Anna", nazwisko="Bliska", pokazuj=True)
+    daleki = baker.make(Autor, imiona="Bob", nazwisko="Daleki", pokazuj=True)
+
+    bliskie = baker.make(Zrodlo, nazwa="Bliskie")
+    posrednie = baker.make(Zrodlo, nazwa="Pośrednie")
+    tylko_dalekie = baker.make(Zrodlo, nazwa="Tylko dalekie")
+
+    # >= MIN_PRAC_ZRODLO (4) prac na źródło, by przejść próg comboboxu
+    for _ in range(4):
+        w = baker.make(Wydawnictwo_Ciagle, zrodlo=bliskie, rok=2020)
+        w.dodaj_autora(centrum, jednostka)
+        w.dodaj_autora(wspolautor, jednostka)
+    for _ in range(4):
+        w = baker.make(Wydawnictwo_Ciagle, zrodlo=posrednie, rok=2020)
+        w.dodaj_autora(wspolautor, jednostka)
+        w.dodaj_autora(daleki, jednostka)
+    for _ in range(4):
+        w = baker.make(Wydawnictwo_Ciagle, zrodlo=tylko_dalekie, rok=2020)
+        w.dodaj_autora(daleki, jednostka)
+
+    # graf BFS jedzie po AuthorConnection — zbuduj go ręcznie, spójnie z pracami
+    AuthorConnection.objects.create(
+        primary_author=centrum, secondary_author=wspolautor, shared_publications_count=4
+    )
+    AuthorConnection.objects.create(
+        primary_author=wspolautor, secondary_author=daleki, shared_publications_count=4
+    )
+
+    url = reverse("bpp:browse_autor_powiazania_zrodla", args=[centrum.pk])
+
+    # depth=1: widoczni centrum + wspolautor -> "Tylko dalekie" jeszcze nieobecne
+    d1 = client.get(url, {"depth": 1, "topn": 10}).json()
+    nazwy1 = {z["nazwa"] for z in d1["zrodla"]}
+    assert "Bliskie" in nazwy1
+    assert "Pośrednie" in nazwy1
+    assert "Tylko dalekie" not in nazwy1
+
+    # depth=2: dochodzi 'daleki' -> jego źródło wchodzi do listy
+    d2 = client.get(url, {"depth": 2, "topn": 10}).json()
+    nazwy2 = {z["nazwa"] for z in d2["zrodla"]}
+    assert "Tylko dalekie" in nazwy2
+
+
+@pytest.mark.django_db
+def test_czy_pokazywac_siec_powiazan_dziedziczy_z_uczelni(uczelnia):
+    autor = baker.make(Autor, pokazuj_siec_powiazan=None)
+    uczelnia.pokazuj_siec_powiazan = True
+    uczelnia.save()
+    assert autor.czy_pokazywac_siec_powiazan(uczelnia) is True
+    uczelnia.pokazuj_siec_powiazan = False
+    uczelnia.save()
+    assert autor.czy_pokazywac_siec_powiazan(uczelnia) is False
+
+
+@pytest.mark.django_db
+def test_czy_pokazywac_siec_powiazan_autor_nadpisuje_uczelnie(uczelnia):
+    uczelnia.pokazuj_siec_powiazan = False
+    uczelnia.save()
+    autor_tak = baker.make(Autor, pokazuj_siec_powiazan=True)
+    autor_nie = baker.make(Autor, pokazuj_siec_powiazan=False)
+    assert autor_tak.czy_pokazywac_siec_powiazan(uczelnia) is True
+    assert autor_nie.czy_pokazywac_siec_powiazan(uczelnia) is False
+
+
+@pytest.mark.django_db
+def test_czy_pokazywac_siec_powiazan_bez_uczelni_domyslnie_true():
+    autor = baker.make(Autor, pokazuj_siec_powiazan=None)
+    assert autor.czy_pokazywac_siec_powiazan(None) is True
+
+
+@pytest.mark.django_db
+def test_siec_404_dla_wszystkich_endpointow_gdy_uczelnia_wylacza(client, uczelnia):
+    uczelnia.pokazuj_siec_powiazan = False
+    uczelnia.save()
+    autor = baker.make(Autor, pokazuj=True, pokazuj_siec_powiazan=None)
+    for name in (
+        "browse_autor_powiazania",
+        "browse_autor_powiazania_dane",
+        "browse_autor_powiazania_siec",
+        "browse_autor_powiazania_zrodla",
+    ):
+        url = reverse(f"bpp:{name}", args=[autor.pk])
+        assert client.get(url).status_code == 404, name
+
+
+@pytest.mark.django_db
+def test_siec_404_gdy_autor_wylacza_mimo_wlaczonej_uczelni(client, uczelnia):
+    # uczelnia domyślnie pokazuje, ale autor jawnie wyłącza
+    autor = baker.make(Autor, pokazuj=True, pokazuj_siec_powiazan=False)
+    url = reverse("bpp:browse_autor_powiazania", args=[autor.pk])
+    assert client.get(url).status_code == 404
+
+
+@pytest.mark.django_db
+def test_siec_dostepna_gdy_autor_wlacza_mimo_wylaczonej_uczelni(client, uczelnia):
+    uczelnia.pokazuj_siec_powiazan = False
+    uczelnia.save()
+    autor = baker.make(Autor, pokazuj=True, pokazuj_siec_powiazan=True)
+    url = reverse("bpp:browse_autor_powiazania", args=[autor.pk])
+    assert client.get(url).status_code == 200
+
+
+@pytest.mark.django_db
+def test_ma_powiazania_false_gdy_siec_wylaczona(client, uczelnia):
+    uczelnia.pokazuj_siec_powiazan = False
+    uczelnia.save()
+    centrum = baker.make(Autor, pokazuj=True, pokazuj_siec_powiazan=None)
+    sasiad = baker.make(Autor, pokazuj=True)
+    AuthorConnection.objects.create(
+        primary_author=centrum, secondary_author=sasiad, shared_publications_count=1
+    )
+    resp = client.get(reverse("bpp:browse_autor", args=[centrum.pk]))
+    assert resp.context["ma_powiazania"] is False
+
+
 def test_przelicznik_jest_w_celerybeat():
     from django.conf import settings
 

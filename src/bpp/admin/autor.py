@@ -289,6 +289,7 @@ class AutorAdmin(
                     "tytul",
                     "pseudonim",
                     "pokazuj",
+                    "pokazuj_siec_powiazan",
                     "email",
                     "www",
                     "orcid",
