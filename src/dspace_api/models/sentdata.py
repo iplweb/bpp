@@ -13,10 +13,13 @@ class SentToDSpaceManager(models.Manager):
             uczelnia=uczelnia,
         )
 
-    def check_if_upload_needed(self, rec, uczelnia, data: dict):
+    def check_if_upload_needed(self, rec, uczelnia, data: dict, bitstream_ids=None):
         try:
             sd = self.get_for_rec(rec, uczelnia)
-            if sd.data_sent == data and sd.submitted_successfully:
+            pliki_zgodne = bitstream_ids is None or set(sd.bitstreams.keys()) == {
+                str(i) for i in bitstream_ids
+            }
+            if sd.data_sent == data and sd.submitted_successfully and pliki_zgodne:
                 return False
         except SentToDSpace.DoesNotExist:
             pass
@@ -42,13 +45,15 @@ class SentToDSpaceManager(models.Manager):
             )
 
     def mark_as_successful(
-        self, rec, uczelnia, dspace_uuid=None, api_response_status=""
+        self, rec, uczelnia, dspace_uuid=None, api_response_status="", bitstreams=None
     ):
         sd = self.get_for_rec(rec, uczelnia)
         sd.submitted_successfully = True
         sd.dspace_uuid = dspace_uuid
         sd.api_response_status = api_response_status
         sd.exception = ""
+        if bitstreams is not None:
+            sd.bitstreams = bitstreams
         sd.save()
 
     def mark_as_failed(self, rec, uczelnia, exception="", api_response_status=""):
@@ -69,6 +74,7 @@ class SentToDSpace(models.Model):
     uczelnia = models.ForeignKey("bpp.Uczelnia", on_delete=models.CASCADE)
 
     dspace_uuid = models.UUIDField("UUID itemu w DSpace", null=True, blank=True)
+    bitstreams = JSONField("Bitstreamy (element_id → uuid)", default=dict, blank=True)
     data_sent = JSONField("Wysłane dane")
     submitted_successfully = models.BooleanField(
         "Wysłano pomyślnie", default=False, db_index=True

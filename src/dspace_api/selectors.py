@@ -23,3 +23,21 @@ def uczelnie_rekordu(rec):
         uczelnie.add(jednostka.uczelnia)
 
     return uczelnie
+
+
+def jawne_pliki_rekordu(rec):
+    """Żywe (nie soft-deleted) Element_Repozytorium rekordu z trybem JAWNY
+    i niepustym plikiem. Soft-deleted wypadają same (domyślny manager)."""
+    from django.contrib.contenttypes.models import ContentType
+
+    from bpp.const import TRYB_DOSTEPU
+    from bpp.models import Element_Repozytorium
+
+    ct = ContentType.objects.get_for_model(rec)
+    return list(
+        Element_Repozytorium.objects.filter(
+            content_type=ct, object_id=rec.pk, tryb_dostepu=TRYB_DOSTEPU.JAWNY.value
+        )
+        .exclude(plik="")
+        .exclude(plik__isnull=True)
+    )
