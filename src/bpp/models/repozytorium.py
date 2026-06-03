@@ -1,12 +1,21 @@
+import os
+import uuid
+
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
 from django.db import models
+from django_softdelete.models import SoftDeleteModel
 from model_utils import Choices
 
 from bpp.const import TRYB_DOSTEPU
 
 
-class Element_Repozytorium(models.Model):
+def element_repozytorium_upload_to(instance, filename):
+    ext = os.path.splitext(filename)[1].lower()
+    return f"protected/repozytorium/{uuid.uuid4()}{ext}"
+
+
+class Element_Repozytorium(SoftDeleteModel):
     ER_TRYB_DOSTEPU = Choices(
         (TRYB_DOSTEPU.NIEJAWNY, "niejawny"),
         (TRYB_DOSTEPU.TYLKO_W_SIECI, "tylko w sieci"),
@@ -21,6 +30,13 @@ class Element_Repozytorium(models.Model):
     rodzaj = models.CharField(max_length=200)
     nazwa_pliku = models.CharField(max_length=200)
     tryb_dostepu = models.PositiveSmallIntegerField(choices=ER_TRYB_DOSTEPU)
+    plik = models.FileField(
+        "Plik",
+        upload_to=element_repozytorium_upload_to,
+        max_length=765,
+        blank=True,
+        null=True,
+    )
 
     class Meta:
         verbose_name = "element repozytorium"
