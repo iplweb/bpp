@@ -68,9 +68,7 @@ class SentToDSpace(models.Model):
 
     uczelnia = models.ForeignKey("bpp.Uczelnia", on_delete=models.CASCADE)
 
-    dspace_uuid = models.UUIDField(
-        "UUID itemu w DSpace", null=True, blank=True
-    )
+    dspace_uuid = models.UUIDField("UUID itemu w DSpace", null=True, blank=True)
     data_sent = JSONField("Wysłane dane")
     submitted_successfully = models.BooleanField(
         "Wysłano pomyślnie", default=False, db_index=True

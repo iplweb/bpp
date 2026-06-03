@@ -27,7 +27,7 @@ class CommaDecimalField(forms.DecimalField):
         try:
             return Decimal(str(value))
         except (ValueError, InvalidOperation):
-            raise ValidationError(self.error_messages["invalid"])
+            raise ValidationError(self.error_messages["invalid"]) from None
 
 
 class DOIField(models.CharField):
