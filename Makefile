@@ -254,7 +254,8 @@ SCSS_SOURCES := $(wildcard src/bpp/static/scss/*.scss) \
 # wygenerowane bundle nie stają się własną zależnością (brak pętli rebuildu).
 JS_SOURCES := $(wildcard src/bpp/static/bpp/js/*.js) \
               $(wildcard src/powiazania_autorow/static/powiazania_autorow/js/*.js) \
-              $(wildcard src/powiazania_autorow/static/powiazania_autorow/js/powiazania/*.js)
+              $(wildcard src/powiazania_autorow/static/powiazania_autorow/js/powiazania/*.js) \
+              $(wildcard src/powiazania_autorow/static/powiazania_autorow/js/siec3d/*.js)
 
 # Node modules dependency
 NODE_MODULES := node_modules/.installed

@@ -9,7 +9,7 @@ const STYLE = [
     {
         selector: "node",
         style: {
-            "label": "data(label)",
+            "label": "data(etykieta)",
             "background-color": "#4A90E2",
             "width": "data(rozmiar)",
             "height": "data(rozmiar)",
