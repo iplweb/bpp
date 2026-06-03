@@ -424,3 +424,25 @@ def test_uczelnia_do_roku_default(uczelnia, wydawnictwo_zwarte):
     uczelnia.save()
 
     assert Uczelnia.objects.do_roku_default() == 3000
+
+
+def test_zapis_uczelni_inwaliduje_cache_strony_glownej(uczelnia, mocker):
+    """Zapis Uczelni musi zrzucić cache kontekstu strony głównej.
+
+    ``get_uczelnia_context_data`` to ``@cached`` z cacheops (cache funkcji,
+    nie zapytania ORM), więc cacheops nie czyści go sam przy zapisie modelu —
+    robi to dopiero sygnał ``invalidate_uczelnia_caches``. Bez tego zmiany
+    ustawień uczelni (tytuł, flagi ``pokazuj_*``, logo) nie pojawiają się na
+    stronie głównej do godziny. Weryfikujemy samo podpięcie, niezależnie od
+    backendu cache (w tym module wyłączonego).
+    """
+    from bpp.views.browse import get_uczelnia_context_data
+
+    invalidate = mocker.patch.object(get_uczelnia_context_data, "invalidate")
+    delete = mocker.patch("bpp.context_processors.uczelnia.cache.delete")
+
+    uczelnia.nazwa = "Zmieniona nazwa"
+    uczelnia.save()
+
+    invalidate.assert_called_once_with()
+    delete.assert_called_once_with(b"bpp_uczelnia")

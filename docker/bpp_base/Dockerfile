@@ -94,6 +94,9 @@ COPY src/bpp/static/scss/ src/bpp/static/scss/
 COPY src/bpp/static/bpp/scss/ src/bpp/static/bpp/scss/
 # JS for esbuild bundle
 COPY src/bpp/static/bpp/js/ src/bpp/static/bpp/js/
+# JS for esbuild bundle eksploratora powiązań (cytoscape-entry + moduły ES)
+COPY src/powiazania_autorow/static/powiazania_autorow/js/ \
+     src/powiazania_autorow/static/powiazania_autorow/js/
 # App-specific SCSS (keep alphabetical)
 COPY src/bpp_setup_wizard/static/bpp_setup_wizard/scss/ \
      src/bpp_setup_wizard/static/bpp_setup_wizard/scss/
@@ -340,13 +343,17 @@ RUN --mount=type=cache,target=/root/.npm,id=npm-cache \
 # `COPY src/` (cale drzewo) przed gruntem, wiec grunt przebudowywal sie na
 # KAZDYM commicie (a wiec i prepare-image gejtujacy wszystkie shardy). Teraz
 # grunt odpala sie tylko gdy faktycznie ruszysz scss/js. Gruntfile.js juz jest
-# w /src (skopiowany z package.json/yarn.lock wyzej). Dodajac nowy task SCSS
-# do Gruntfile.js — dopisz tu COPY (jak w builderze).
+# w /src (skopiowany z package.json/yarn.lock wyzej). Dodajac nowy task
+# SCSS/JS do Gruntfile.js — dopisz tu COPY (jak w builderze). Pominiecie
+# zrodla taska esbuild = "Could not resolve <entry>" i grunt build pada.
 # Theme and admin SCSS
 COPY src/bpp/static/scss/ src/bpp/static/scss/
 COPY src/bpp/static/bpp/scss/ src/bpp/static/bpp/scss/
 # JS for esbuild bundle
 COPY src/bpp/static/bpp/js/ src/bpp/static/bpp/js/
+# JS for esbuild bundle eksploratora powiązań (cytoscape-entry + moduły ES)
+COPY src/powiazania_autorow/static/powiazania_autorow/js/ \
+     src/powiazania_autorow/static/powiazania_autorow/js/
 # App-specific SCSS (keep alphabetical, mirror `builder`)
 COPY src/bpp_setup_wizard/static/bpp_setup_wizard/scss/ \
      src/bpp_setup_wizard/static/bpp_setup_wizard/scss/

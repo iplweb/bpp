@@ -22,12 +22,21 @@ test w procesie zainicjalizował połączenie w współdzielonym wątku sync-exe
 pytest-django blokuje ten dostęp dla testu bez marka → ``RuntimeError: Database
 access not allowed`` (flaky zależny od kolejności; w izolacji przechodzi, bo
 połączenie nie jest zainicjalizowane). Mark zezwala na sam cykl połączenia
-(bez realnych zapytań do tabel). ``async_to_sync`` odpala asynchroniczny
-``WebsocketCommunicator`` w syncowym teście (repo nie ma ``pytest-asyncio``).
+(bez realnych zapytań do tabel).
+
+Korutynę ``WebsocketCommunicatora`` (repo nie ma ``pytest-asyncio``) odpalamy
+w dedykowanym wątku przez ``asyncio.run``. Wcześniej był tu ``async_to_sync``,
+ale on celowo rzuca ``RuntimeError: You cannot use AsyncToSync in the same
+thread as an async event loop`` gdy w bieżącym wątku już biegnie pętla — a
+zdarza się to, gdy wcześniejszy test w tym samym shardzie ``pytest-split``
+zostawił działającą pętlę (kolejny flaky zależny od kolejności). Osobny wątek
+ma własną, świeżą pętlę i jest odporny na stan pętli wątku wołającego.
 """
 
+import asyncio
+from concurrent.futures import ThreadPoolExecutor
+
 import pytest
-from asgiref.sync import async_to_sync
 from channels.testing import WebsocketCommunicator
 from channels_broadcast.consumers import NotificationsConsumer
 from django.conf import settings
@@ -48,7 +57,10 @@ def _connect_as_anonymous():
             await communicator.disconnect()
         return connected
 
-    return async_to_sync(_run)()
+    # Dedykowany wątek + świeża pętla — odporne na pętlę asyncio ewentualnie
+    # zostawioną w wątku wołającym przez inny test (flake zależny od kolejności).
+    with ThreadPoolExecutor(max_workers=1) as pool:
+        return pool.submit(lambda: asyncio.run(_run())).result()
 
 
 def test_bpp_enables_anonymous_notifications():

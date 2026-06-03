@@ -46,5 +46,21 @@ def uczelnia(request):
 
 
 @receiver(post_save, sender=Uczelnia)
-def remove_cache_key(*args, **kw):
+def invalidate_uczelnia_caches(*args, **kw):
+    """Wyczyść cache zależne od ustawień uczelni po jej zapisie.
+
+    Dwie niezależne warstwy trzymają migawkę obiektu ``Uczelnia``:
+
+    * ``b"bpp_uczelnia"`` — cache context processora (górny pasek),
+    * ``get_uczelnia_context_data`` — ``@cached`` z cacheops, kontekst
+      strony głównej. To cache *funkcji*, więc cacheops NIE czyści go
+      automatycznie przy zapisie modelu (robi to tylko dla zapytań ORM) —
+      trzeba wołać ``.invalidate()`` ręcznie, analogicznie do sygnałów
+      na ``Wydzial``/``Jednostka``/``Article``.
+
+    Import lokalny, żeby uniknąć cyklu context_processors -> views.
+    """
+    from bpp.views.browse import get_uczelnia_context_data
+
     cache.delete(b"bpp_uczelnia")
+    get_uczelnia_context_data.invalidate()

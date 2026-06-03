@@ -1,7 +1,7 @@
 from django.db.models import F, Transform
 
 from bpp.const import RODZAJ_PBN_ARTYKUL
-from ewaluacja2021 import const
+from ewaluacja_common import const
 
 
 class NieArtykul(Transform):

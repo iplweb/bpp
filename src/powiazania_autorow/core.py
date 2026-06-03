@@ -26,9 +26,12 @@ def calculate_author_connections():  # noqa: C901
 
     # Process Wydawnictwo_Ciagle (continuous publications)
     logger.info("Processing Wydawnictwo_Ciagle...")
-    ciagle_authors = Wydawnictwo_Ciagle_Autor.objects.select_related(
-        "autor", "rekord"
-    ).values_list("rekord_id", "autor_id")
+    # Bez select_related — przy .values_list selektujemy tylko kolumny FK
+    # z tabeli bazowej, więc join był martwy. .iterator() strumieniuje
+    # wiersze zamiast ładować wszystkie do RAM naraz.
+    ciagle_authors = Wydawnictwo_Ciagle_Autor.objects.values_list(
+        "rekord_id", "autor_id"
+    ).iterator(chunk_size=2000)
 
     # Group authors by publication
     publications_ciagle = defaultdict(list)
@@ -47,9 +50,10 @@ def calculate_author_connections():  # noqa: C901
 
     # Process Wydawnictwo_Zwarte (monographs)
     logger.info("Processing Wydawnictwo_Zwarte...")
-    zwarte_authors = Wydawnictwo_Zwarte_Autor.objects.select_related(
-        "autor", "rekord"
-    ).values_list("rekord_id", "autor_id")
+    # Patrz wyżej — bez martwego select_related, ze strumieniowaniem.
+    zwarte_authors = Wydawnictwo_Zwarte_Autor.objects.values_list(
+        "rekord_id", "autor_id"
+    ).iterator(chunk_size=2000)
 
     publications_zwarte = defaultdict(list)
     for rekord_id, autor_id in zwarte_authors:
@@ -65,8 +69,9 @@ def calculate_author_connections():  # noqa: C901
 
     # Process Patents
     logger.info("Processing Patents...")
-    patent_authors = Patent_Autor.objects.select_related("autor", "rekord").values_list(
-        "rekord_id", "autor_id"
+    # Patrz wyżej — bez martwego select_related, ze strumieniowaniem.
+    patent_authors = Patent_Autor.objects.values_list("rekord_id", "autor_id").iterator(
+        chunk_size=2000
     )
 
     publications_patent = defaultdict(list)
