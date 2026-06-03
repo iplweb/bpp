@@ -16,6 +16,7 @@ from moai.oai import OAIServerFactory
 from moai.server import FeedConfig
 
 from bpp.models import Rekord, Uczelnia
+from bpp.util.uczelnia_scope import scope_rekord_do_uczelni
 
 
 class CacheMetadata:
@@ -240,10 +241,12 @@ class OAIView(View):
 
         url = "/".join(urlparts)
 
-        db = BPPOAIDatabase(
+        uczelnia = Uczelnia.objects.get_for_request(request)
+        base_qs = scope_rekord_do_uczelni(
             Rekord.objects.all().exclude(charakter_formalny__nazwa_w_primo=""),
-            request=request,
+            uczelnia,
         )
+        db = BPPOAIDatabase(base_qs, request=request)
         oai_server = OAIServerFactory(db, FeedConfig("bpp", base_url))
         return HttpResponse(
             content=oai_server.handleRequest(request.GET),
