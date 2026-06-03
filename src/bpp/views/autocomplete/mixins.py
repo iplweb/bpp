@@ -52,7 +52,11 @@ class UczelniaScopedAutocompleteMixin:
         from bpp.models import Uczelnia
         from bpp.util.uczelnia_scope import tylko_jedna_uczelnia
 
-        uczelnia = Uczelnia.objects.get_for_request(self.request)
+        request = getattr(self, "request", None)
+        if request is None:
+            return qs
+
+        uczelnia = Uczelnia.objects.get_for_request(request)
         if uczelnia is not None and not tylko_jedna_uczelnia():
             warunek = Q()
             for lookup in self.uczelnia_lookups:

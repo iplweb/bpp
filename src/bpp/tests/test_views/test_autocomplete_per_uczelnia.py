@@ -105,11 +105,26 @@ def test_autor_autocomplete_dedup_wielokrotna_historia(
 def test_admin_autocomplety_nie_sa_zawezone():
     """Admin/edytor autocomplety NIE dziedziczą scopingu — pełny dostęp do
     wszystkich uczelni (multi-hosted: tylko publiczne pickery są zawężone)."""
-    from bpp.views.autocomplete.mixins import UczelniaScopedAutocompleteMixin
-    from bpp.views.autocomplete.units import JednostkaAutocomplete
-    from bpp.views.autocomplete.simple import WydzialAutocomplete
     from bpp.views.autocomplete.authors import AutorAutocomplete
+    from bpp.views.autocomplete.mixins import UczelniaScopedAutocompleteMixin
+    from bpp.views.autocomplete.simple import WydzialAutocomplete
+    from bpp.views.autocomplete.units import JednostkaAutocomplete
 
     assert not issubclass(JednostkaAutocomplete, UczelniaScopedAutocompleteMixin)
     assert not issubclass(WydzialAutocomplete, UczelniaScopedAutocompleteMixin)
     assert not issubclass(AutorAutocomplete, UczelniaScopedAutocompleteMixin)
+
+
+@pytest.mark.django_db
+def test_autocomplete_get_queryset_bez_requestu_nie_wywala(uczelnia1, uczelnia2):
+    """Mixin toleruje brak self.request (no-op) — kontrakt defensywny bazy.
+
+    Niektóre testy/ścieżki instancjonują widok bez requestu i wołają
+    get_queryset() bezpośrednio; mixin nie może na tym wywalić AttributeError.
+    """
+    from bpp.views.autocomplete.units import WidocznaJednostkaAutocomplete
+
+    view = WidocznaJednostkaAutocomplete()  # brak view.request
+    view.q = ""
+    # nie powinno rzucić AttributeError — po prostu nie zawęża
+    list(view.get_queryset())
