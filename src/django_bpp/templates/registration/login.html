@@ -6,7 +6,7 @@
 
 {% block breadcrumbs %}
     {{ block.super }}
-    <li class="current">Logowanie</a>
+    <li class="current">Logowanie</li>
 {% endblock %}
 
 {% block content %}
@@ -21,6 +21,14 @@
                        class="button expanded"
                        style="background-color: #a6ce39; color: #fff;">
                         Zaloguj się przez ORCID
+                    </a>
+                </div>
+                {% endif %}
+                {% if oidc_login_enabled %}
+                <div style="margin-top: 1rem;">
+                    <a href="{% url "oidc_authentication_init" %}{% if request.GET.next %}?next={{ request.GET.next|urlencode }}{% endif %}"
+                       class="button expanded">
+                        Zaloguj się przez {{ oidc_login_skrot|default:"OpenID" }}
                     </a>
                 </div>
                 {% endif %}

@@ -296,6 +296,7 @@ TEMPLATES = [
                 "bpp.context_processors.pbn_token_aktualny.pbn_token_aktualny",
                 "bpp.context_processors.microsoft_auth.microsoft_auth_status",
                 "bpp.context_processors.orcid.orcid_auth_status",
+                "bpp.context_processors.oidc.oidc_auth_status",
                 "bpp.context_processors.testing.testing",
                 "cookielaw.context_processors.cookielaw",
                 "django_countdown.context_processors.countdown_context",
@@ -1196,6 +1197,47 @@ if "AUTHENTICATION_BACKENDS" not in dir():
 AUTHENTICATION_BACKENDS = list(AUTHENTICATION_BACKENDS) + [
     "orcid_integration.backends.OrcidAuthenticationBackend",
 ]
+
+#
+# Konfiguracja logowania OpenID Connect (Keycloak) — opcjonalna i ADDYTYWNA.
+#
+# Aktywuje się TYLKO gdy w środowisku jest komplet DJANGO_BPP_OIDC_*_{CLIENT_ID,
+# CLIENT_SECRET,ISSUER} (z prefiksem skrótu uczelni lub bez). Nie przejmuje
+# strony logowania — dokłada się jako kolejna metoda obok hasła/Microsoft/ORCID.
+# Backend jest DOPISYWANY do listy (ModelBackend zostaje → logowanie hasłem
+# działa równolegle).
+#
+from oidc_integration.conf import discover_oidc_config  # noqa: E402
+
+_OIDC_CONFIG = discover_oidc_config()
+OIDC_LOGIN_ENABLED = _OIDC_CONFIG is not None
+OIDC_LOGIN_SKROT = (_OIDC_CONFIG or {}).get("skrot") or ""
+
+if _OIDC_CONFIG:
+    if "oidc_integration" not in INSTALLED_APPS:
+        INSTALLED_APPS = list(INSTALLED_APPS) + ["oidc_integration"]
+
+    OIDC_RP_CLIENT_ID = _OIDC_CONFIG["client_id"]
+    OIDC_RP_CLIENT_SECRET = _OIDC_CONFIG["client_secret"]
+
+    _oidc_endpoints = _OIDC_CONFIG["endpoints"]
+    OIDC_OP_AUTHORIZATION_ENDPOINT = _oidc_endpoints["authorization"]
+    OIDC_OP_TOKEN_ENDPOINT = _oidc_endpoints["token"]
+    OIDC_OP_USER_ENDPOINT = _oidc_endpoints["userinfo"]
+    OIDC_OP_JWKS_ENDPOINT = _oidc_endpoints["jwks"]
+
+    # Keycloak podpisuje id_token RS256; scope email konieczny do auto-create.
+    OIDC_RP_SIGN_ALGO = "RS256"
+    OIDC_RP_SCOPES = "openid email profile"
+    OIDC_CREATE_USER = True
+
+    AUTHENTICATION_BACKENDS = list(AUTHENTICATION_BACKENDS) + [
+        "oidc_integration.backends.BppOIDCBackend",
+    ]
+
+#
+# Koniec konfiguracji OpenID Connect
+#
 
 #
 # Konfiguracja serwera pocztowego

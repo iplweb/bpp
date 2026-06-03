@@ -374,6 +374,15 @@ if "microsoft_auth" in getattr(settings, "INSTALLED_APPS", []):
     ]
 
 
+# Logowanie OpenID Connect — addytywne, montowane tylko gdy apka aktywna.
+# Trasy mozilla-django-oidc: oidc/authenticate/ (start), oidc/callback/ (powrót).
+# Redirect URI do zarejestrowania w Keycloaku: https://<host>/oidc/callback/
+if apps.is_installed("oidc_integration"):
+    urlpatterns += [
+        path("oidc/", include("mozilla_django_oidc.urls")),
+    ]
+
+
 if settings.DJANGO_BPP_ENABLE_PROMETHEUS:
     urlpatterns += [
         path("", include("django_prometheus.urls")),
