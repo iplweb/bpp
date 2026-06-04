@@ -301,6 +301,7 @@ def integruj_publikacje_instytucji(
     skip_pages=0,
     callback=None,
     use_threads=False,
+    uczelnia=None,
 ):
     """Integrate institution publications.
 
@@ -308,13 +309,17 @@ def integruj_publikacje_instytucji(
         skip_pages: Number of batches to skip.
         callback: Optional callback function for progress tracking.
         use_threads: If True, uses the threaded implementation instead of multiprocessing.
+        uczelnia: Optional ``Uczelnia`` — gdy podana (i ma ``pbn_uid``), bierzemy
+            TYLKO publikacje z oświadczeń tej uczelni (``institutionId ==
+            uczelnia.pbn_uid``). Multi-hosted (Track 7a). Zawężamy zewnętrzny
+            queryset ``pubs`` PRZED rozesłaniem do workerów (multiprocessing /
+            wątki), więc workerzy dostają już listę intów (pk) — bez picklowania
+            instancji modelu. Brak / brak pbn_uid → zachowanie globalne.
     """
-    pubs = (
-        OswiadczenieInstytucji.objects.all()
-        .values_list("publicationId_id", flat=True)
-        .order_by("-pk")
-        .distinct()
-    )
+    pubs = OswiadczenieInstytucji.objects.all()
+    if uczelnia is not None and uczelnia.pbn_uid_id is not None:
+        pubs = pubs.filter(institutionId_id=uczelnia.pbn_uid_id)
+    pubs = pubs.values_list("publicationId_id", flat=True).order_by("-pk").distinct()
 
     if use_threads:
         return _integruj_publikacje_threaded(

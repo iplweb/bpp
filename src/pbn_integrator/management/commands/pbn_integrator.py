@@ -333,7 +333,9 @@ class Command(PBNBaseCommand):
             s,
             e,
             17,
-            lambda: integruj_publikacje_instytucji(dm, skip_pages=skip_pages),
+            lambda: integruj_publikacje_instytucji(
+                dm, skip_pages=skip_pages, uczelnia=client.uczelnia
+            ),
         )
         self._run_stage(
             opts["enable_pobierz_oswiadczenia_instytucji"],
@@ -341,7 +343,7 @@ class Command(PBNBaseCommand):
             s,
             e,
             18,
-            integruj_oswiadczenia_z_instytucji,
+            lambda: integruj_oswiadczenia_z_instytucji(uczelnia=client.uczelnia),
         )
         self._run_stage(
             opts["enable_pobierz_po_doi"],

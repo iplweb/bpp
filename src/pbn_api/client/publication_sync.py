@@ -246,7 +246,13 @@ class PublicationSyncMixin(StatementsMixin):
         from pbn_api.models import OswiadczenieInstytucji
         from pbn_integrator.utils import pobierz_mongodb, zapisz_oswiadczenie_instytucji
 
-        OswiadczenieInstytucji.objects.filter(publicationId_id=pub.pk).delete()
+        # Multi-hosted (Track 7a): kasujemy lokalne oświadczenia tej publikacji
+        # zawężone do uczelni klienta (po ``institutionId == uczelnia.pbn_uid``),
+        # by sync uczelni A nie usuwał oświadczeń uczelni B dla tej samej pracy.
+        qs = OswiadczenieInstytucji.objects.filter(publicationId_id=pub.pk)
+        if self.uczelnia is not None and self.uczelnia.pbn_uid_id is not None:
+            qs = qs.filter(institutionId_id=self.uczelnia.pbn_uid_id)
+        qs.delete()
 
         pobierz_mongodb(
             self.get_institution_statements_of_single_publication(pub.pk, 5120),

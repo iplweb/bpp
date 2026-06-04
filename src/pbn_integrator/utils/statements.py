@@ -304,6 +304,7 @@ def integruj_oswiadczenia_z_instytucji(
     callback=None,
     inconsistency_callback=None,
     default_jednostka=None,
+    uczelnia=None,
 ):
     """Integrate all institution statements.
 
@@ -313,11 +314,18 @@ def integruj_oswiadczenia_z_instytucji(
         inconsistency_callback: Optional callback for reporting inconsistencies.
         default_jednostka: Optional default unit to assign when updating
             from "Obca jednostka" to a proper unit during discipline assignment.
+        uczelnia: Optional ``Uczelnia`` — gdy podana (i ma ``pbn_uid``),
+            iterujemy TYLKO po jej oświadczeniach (``institutionId ==
+            uczelnia.pbn_uid``). Multi-hosted (Track 7a): integracja dotyczy
+            jednej uczelni. Brak / brak pbn_uid → iteracja globalna (legacy).
     """
     noted_pub = set()
     noted_aut = set()
+    qs = OswiadczenieInstytucji.objects.all()
+    if uczelnia is not None and uczelnia.pbn_uid_id is not None:
+        qs = qs.filter(institutionId_id=uczelnia.pbn_uid_id)
     for elem in pbar(
-        OswiadczenieInstytucji.objects.all(),
+        qs,
         label="integruj_oswiadczenia_z_instytucji",
         callback=callback,
     ):
@@ -345,8 +353,21 @@ def integruj_oswiadczenia_pbn_first_import(  # noqa: C901
         dopisuj_zwrotnie_dyscypliny_autorom: Whether to add disciplines back to authors.
         koryguj_afiliacje: Whether to correct affiliations.
     """
+    # Multi-hosted (Track 7a): gdy mamy klienta z uczelnią (i pbn_uid),
+    # iterujemy TYLKO po oświadczeniach tej uczelni (institutionId ==
+    # uczelnia.pbn_uid). ``client`` może być None (default) → iteracja globalna.
+    oswiadczenia_qs = OswiadczenieInstytucji.objects.all()
+    if (
+        client is not None
+        and client.uczelnia is not None
+        and client.uczelnia.pbn_uid_id is not None
+    ):
+        oswiadczenia_qs = oswiadczenia_qs.filter(
+            institutionId_id=client.uczelnia.pbn_uid_id
+        )
+
     first = True
-    for oswiadczenie in tqdm(OswiadczenieInstytucji.objects.all()):
+    for oswiadczenie in tqdm(oswiadczenia_qs):
         bpp_pub = oswiadczenie.get_bpp_publication()
 
         if bpp_pub is None:
@@ -468,9 +489,12 @@ def usun_wszystkie_oswiadczenia(client):
     Args:
         client: PBN client.
     """
-    for elem in pbar(
-        OswiadczenieInstytucji.objects.all(), label="usun_wszystkie_oswiadczenia"
-    ):
+    # Multi-hosted (Track 7a): kasujemy tylko oświadczenia uczelni klienta
+    # (institutionId == client.uczelnia.pbn_uid), nie wszystkich uczelni.
+    qs = OswiadczenieInstytucji.objects.all()
+    if client.uczelnia is not None and client.uczelnia.pbn_uid_id is not None:
+        qs = qs.filter(institutionId_id=client.uczelnia.pbn_uid_id)
+    for elem in pbar(qs, label="usun_wszystkie_oswiadczenia"):
         with transaction.atomic():
             try:
                 elem.sprobuj_skasowac_z_pbn(pbn_client=client)
@@ -495,10 +519,16 @@ def usun_zerowe_oswiadczenia(client):
     for klass in Wydawnictwo_Ciagle, Wydawnictwo_Zwarte:
         zerowe = klass.objects.exclude(pbn_uid=None).filter(punkty_kbn=0)
 
+        # Multi-hosted (Track 7a): zawężamy do oświadczeń uczelni klienta
+        # (institutionId == client.uczelnia.pbn_uid).
+        osw_qs = OswiadczenieInstytucji.objects.filter(
+            publicationId_id__in=zerowe.values_list("pbn_uid_id", flat=True)
+        )
+        if client.uczelnia is not None and client.uczelnia.pbn_uid_id is not None:
+            osw_qs = osw_qs.filter(institutionId_id=client.uczelnia.pbn_uid_id)
+
         for elem in pbar(
-            OswiadczenieInstytucji.objects.filter(
-                publicationId_id__in=zerowe.values_list("pbn_uid_id", flat=True)
-            ),
+            osw_qs,
             label=f"usun_zerowe dla {klass}",
         ):
             with transaction.atomic():

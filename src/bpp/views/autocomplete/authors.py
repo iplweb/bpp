@@ -54,13 +54,26 @@ class AutorAutocompleteBase(
         else:
             qs = Autor.objects.all()
 
-        qs = qs.select_related("tytul", "pbn_uid").annotate(
-            ma_osobe_z_instytucji=Exists(
-                OsobaZInstytucji.objects.filter(personId_id=OuterRef("pbn_uid_id"))
+        uczelnia = getattr(getattr(self, "request", None), "_uczelnia", None)
+
+        # Multi-hosted (Track 7a): wskaźnik "✅ jest w PBN naszej instytucji"
+        # ma odzwierciedlać instytucję PBN OGLĄDAJĄCEJ uczelni
+        # (``uczelnia.pbn_uid``), nie dowolnej. ``OsobaZInstytucji`` to lustro
+        # per-instytucja (institutionId == uczelnia.pbn_uid), więc zawężamy
+        # subquery. Brak uczelni / brak pbn_uid → subquery globalne (dawne
+        # zachowanie, single-install / uczelnia bez konfiguracji PBN).
+        osoba_z_instytucji_qs = OsobaZInstytucji.objects.filter(
+            personId_id=OuterRef("pbn_uid_id")
+        )
+        if uczelnia is not None and uczelnia.pbn_uid_id is not None:
+            osoba_z_instytucji_qs = osoba_z_instytucji_qs.filter(
+                institutionId_id=uczelnia.pbn_uid_id
             )
+
+        qs = qs.select_related("tytul", "pbn_uid").annotate(
+            ma_osobe_z_instytucji=Exists(osoba_z_instytucji_qs)
         )
 
-        uczelnia = getattr(getattr(self, "request", None), "_uczelnia", None)
         if uczelnia:
             ma_jednostke_w_naszej = Exists(
                 Autor_Jednostka.objects.filter(

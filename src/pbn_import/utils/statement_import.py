@@ -134,10 +134,15 @@ class StatementImporter(ImportStepBase):
             inconsistency_callback = self._create_inconsistency_callback()
 
             # Pass None for missing_publication_callback - publications already downloaded
+            # Multi-hosted (Track 7a): integrujemy TYLKO oświadczenia uczelni
+            # kontekstu importu (institutionId == uczelnia.pbn_uid). ``uczelnia``
+            # to lokalna, zweryfikowana (ma pbn_uid) Uczelnia z
+            # _setup_uczelnia_and_jednostka powyżej.
             integruj_oswiadczenia_z_instytucji(
                 missing_publication_callback=None,
                 inconsistency_callback=inconsistency_callback,
                 default_jednostka=default_jednostka,
+                uczelnia=uczelnia,
             )
 
             # Log inconsistency summary
