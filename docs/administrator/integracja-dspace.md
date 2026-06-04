@@ -31,7 +31,6 @@ i rozwiń sekcję **„DSpace"**. Ustaw:
 
 !!! note "Bezpieczeństwo hasła"
     Hasło API jest szyfrowane (Fernet) wspólnym kluczem instalacji.
-    Nie trafia do zrzutów słownikowych bazy (`baseline.sql`).
 
 ## 2. Mapowania kolekcji (Charakter formalny → kolekcja DSpace)
 
