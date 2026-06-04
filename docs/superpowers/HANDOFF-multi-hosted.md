@@ -282,14 +282,35 @@ poza zakresem R1 i NIE odnotowane jako wyłączone → kandydat na wątek **R3**
   `reset_all_pins_task`/`optimize_and_unpin` globalne querysety, komparatory PBN
   globalny `.delete()`. To integralność, nie logika federacyjna — można scope-fix
   niezależnie.
-- **D) `ewaluacja_metryki` per-uczelnia — NASTĘPNY (wymaga spec-a).** `MetrykaAutora`
-  bez FK uczelnia (`unique_together(autor,dyscyplina)` bez uczelni) + globalne
-  `IloscUdzialowDlaAutoraZaCalosc.objects.all()` (`tasks.py:231,357`, `utils.py:277`,
-  `oblicz_metryki.py:132`, `generation.py:74`) + globalny rebuild
-  `MetrykaAutora.objects.all().delete()` (`utils.py:556`, `tasks.py:245`) + odczyty
-  eksport/statystyki (`export_helpers.py:11,357`, `statistics.py:50`). Kształt jak
-  liczba_n R2 (FK+backfill+scope pipeline+widoki). **Pełny brief + prompt do
-  wklejenia po resecie: `docs/superpowers/NEXT-SESSION-metryki-per-uczelnia.md`.**
+- ✅ **D) `ewaluacja_metryki` per-uczelnia — ZROBIONE (2026-06-04).** Spec
+  `specs/2026-06-04-ewaluacja-metryki-per-uczelnia-design.md`, plan
+  `plans/2026-06-04-ewaluacja-metryki-per-uczelnia.md`. 11 tasków
+  (subagent-driven, każdy spec+quality review + finalny holistyczny review
+  „ready to merge", 148 testów metryki+optymalizacja+guard zielonych). Commity
+  `16786180e`…`5ddd3fefa` (19 szt., wszystkie `ewaluacja_metryki/`). **Niepushowane.**
+  - **Schemat:** FK `uczelnia` na `MetrykaAutora` (mig 0006, backfill: single→domyślna,
+    multi→**wyczyść** regenerowalny cache; `unique_together(autor,dyscyplina,uczelnia)`,
+    indeks) → NOT NULL (mig 0008). `StatusGenerowania` FK `uczelnia` per-uczelnia
+    (mig 0007, koniec singletonu pk=1) — **świadomie ZOSTAJE nullable** (odłożona
+    federacja `ewaluacja_optymalizacja` woła `get_or_create()` no-arg → wiersz None).
+  - **Write (naprawiony uśpiony bug R2):** `oblicz_metryki_dla_autora` agregował
+    `IloscUdzialow.aggregate(Sum)` po WSZYSTKICH uczelniach (zawyżony slot_maksymalny)
+    + `MetrykaAutora.all().delete()` globalny + knapsack leak (`zbieraj_sloty` bez
+    `uczelnia_id`). Teraz: bulk dziedziczy uczelnię z wiersza `IloscUdzialow`,
+    pin/unpin z `aktualna_jednostka.uczelnia` (reguła R2), delete/agregat/knapsack
+    scoped; taski/CLI/widok single-or-fail (`_resolve_uczelnia`, NIE get_default);
+    status per-uczelnia (chord callback dostaje `uczelnia_id`).
+  - **Read:** helper `ewaluacja_metryki/uczelnia_scope.scope_metryki` (hybryda
+    `uczelnia_dla_odczytu` + guard `tylko_jedna_uczelnia`); list/statistics/export
+    (Opcja A: helpery dostają `base_qs`)/detail(ranking+inne_dyscypliny)/pin_unpin
+    zawężone. Transitive `Cache_Punktacja_Autora_Query` (autor_id+dyscyplina_id)
+    zostają (federacja). Admin pokazuje `uczelnia`.
+  - **Invariant single-install:** wszystkie filtry no-op (1 uczelnia) → liczby
+    identyczne. **Deploy:** 0006→0007→0008; multi-install z danymi czyści metryki
+    (regeneracja przy następnym generowaniu per uczelnia).
+  - **Follow-up (nieblokujące):** federacja `ewaluacja_optymalizacja` nadal czyta
+    `StatusGenerowania.get_or_create()` no-arg (wiersz None) — pełne per-uczelnia
+    statusu tam należy do wątku federacji (B/F).
 
 ### Stan zgodności ze spec (Audyt 4)
 - Write-side sloty: ✓ 31/31 (1 świadomy korzystny rozjazd — HST per-uczelnia).
