@@ -6,6 +6,7 @@ from multiseek.logic import (
     EQUAL,
     GREATER_OR_EQUAL,
     NOT_STARTS_WITH,
+    OR,
 )
 
 from bpp.multiseek_registry import registry
@@ -155,3 +156,97 @@ def test_empty_form():
     )
     assert res.query == ""
     assert res.warnings == []
+
+
+@pytest.mark.django_db
+def test_two_conditions_or():
+    form = {
+        "form_data": [
+            None,
+            {"field": "Rok", "operator": str(EQUAL), "value": 2020, "prev_op": None},
+            {
+                "field": "Rok",
+                "operator": str(EQUAL),
+                "value": 2021,
+                "prev_op": str(OR),
+            },
+        ],
+        "ordering": {},
+    }
+    res = multiseek_form_to_djangoql(form, registry)
+    assert res.query == "rok = 2020 or rok = 2021"
+    assert res.warnings == []
+
+
+@pytest.mark.django_db
+def test_mixed_or_then_and_is_grouped_left_to_right():
+    # Multiseek liczy (A or B) and C; bez nawiasów DjangoQL dałby A or (B and C).
+    form = {
+        "form_data": [
+            None,
+            {"field": "Rok", "operator": str(EQUAL), "value": 2020, "prev_op": None},
+            {
+                "field": "Rok",
+                "operator": str(EQUAL),
+                "value": 2021,
+                "prev_op": str(OR),
+            },
+            {
+                "field": "Rok",
+                "operator": str(GREATER_OR_EQUAL),
+                "value": 2010,
+                "prev_op": str(AND),
+            },
+        ],
+        "ordering": {},
+    }
+    res = multiseek_form_to_djangoql(form, registry)
+    assert res.query == "(rok = 2020 or rok = 2021) and rok >= 2010"
+    assert res.warnings == []
+
+
+@pytest.mark.django_db
+def test_pure_and_chain_has_no_parens():
+    form = {
+        "form_data": [
+            None,
+            {"field": "Rok", "operator": str(EQUAL), "value": 2020, "prev_op": None},
+            {
+                "field": "Rok",
+                "operator": str(GREATER_OR_EQUAL),
+                "value": 2010,
+                "prev_op": str(AND),
+            },
+        ],
+        "ordering": {},
+    }
+    res = multiseek_form_to_djangoql(form, registry)
+    assert res.query == "rok = 2020 and rok >= 2010"
+
+
+@pytest.mark.django_db
+def test_nested_subframe_gets_parens():
+    form = {
+        "form_data": [
+            None,
+            {"field": "Rok", "operator": str(EQUAL), "value": 2020, "prev_op": None},
+            [
+                str(AND),
+                {
+                    "field": "Rok",
+                    "operator": str(EQUAL),
+                    "value": 2021,
+                    "prev_op": None,
+                },
+                {
+                    "field": "Rok",
+                    "operator": str(EQUAL),
+                    "value": 2022,
+                    "prev_op": str(OR),
+                },
+            ],
+        ],
+        "ordering": {},
+    }
+    res = multiseek_form_to_djangoql(form, registry)
+    assert res.query == "rok = 2020 and (rok = 2021 or rok = 2022)"

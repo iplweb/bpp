@@ -201,7 +201,8 @@ class ConversionResult:
 def _logical_keyword(prev_op):
     """'and'/'or' dla operatora laczacego multiseek; None gdy nie AND/OR.
 
-    str() liczone per-call -> poprawne niezaleznie od aktywnej lokalizacji.
+    AND/OR to zwykle stringi w multiseek.logic; str() jest defensywne,
+    nie lokalizacyjne.
     """
     s = str(prev_op)
     if s == str(AND):
@@ -220,12 +221,27 @@ def _leaf_label(leaf):
 
 
 def _join_parts(parts):
-    """parts: list[(joiner, fragment)]; joiner pierwszego ignorowany."""
+    """Łączy fragmenty LEWOSTRONNIE, zgodnie z multiseek (ret = ret & q / | q).
+
+    DjangoQL daje `and` wyższy priorytet niż `or`, więc płaskie złączenie
+    `A or B and C` znaczyłoby `A or (B and C)`. Multiseek liczy `(A or B) and C`.
+    Dlatego nawiasujemy lewy akumulator, gdy dołączamy `and`, a akumulator ma
+    na szczycie `or`. Czysty łańcuch `and`/`or` zostaje bez zbędnych nawiasów.
+    parts: list[(joiner, fragment)]; joiner pierwszego elementu jest ignorowany,
+    a `frag` to atom (pojedyncze porównanie) albo już-nawiasowana podramka.
+    """
     if not parts:
         return ""
     out = parts[0][1]
+    has_top_or = False
     for joiner, frag in parts[1:]:
-        out = f"{out} {joiner or 'and'} {frag}"
+        j = joiner or "and"
+        if j == "and" and has_top_or:
+            out = f"({out})"
+            has_top_or = False
+        out = f"{out} {j} {frag}"
+        if j == "or":
+            has_top_or = True
     return out
 
 
@@ -243,7 +259,13 @@ def _append_leaf(registry, leaf, parts, warnings):
             f"Pominięto warunek: {_leaf_label(leaf)} (nieprzekładalny)"
         )
         return
-    parts.append((_logical_keyword(prev_op), frag))
+    kw = _logical_keyword(prev_op)
+    if prev_op is not None and kw is None:
+        warnings.append(
+            f"Nieznany operator łączący {prev_op!r} dla: {_leaf_label(leaf)} "
+            "— przyjęto 'and'"
+        )
+    parts.append((kw, frag))
 
 
 def _append_subframe(registry, subframe, parts, warnings):
@@ -256,7 +278,13 @@ def _append_subframe(registry, subframe, parts, warnings):
     sub = _walk_frame(registry, subframe, warnings)
     if not sub:
         return
-    parts.append((_logical_keyword(prev_op), f"({sub})"))
+    kw = _logical_keyword(prev_op)
+    if prev_op is not None and kw is None:
+        warnings.append(
+            f"Nieznany operator łączący {prev_op!r} dla grupy warunków "
+            "— przyjęto 'and'"
+        )
+    parts.append((kw, f"({sub})"))
 
 
 def _walk_frame(registry, frame, warnings):
