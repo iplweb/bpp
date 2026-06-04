@@ -171,3 +171,26 @@ def test_generuj_metryki_task_scope_per_uczelnia(autor_jan_kowalski, dyscyplina1
     )
     # metryka u2 nadal istnieje (scoped delete nie wyciera obcej uczelni)
     assert MetrykaAutora.objects.filter(uczelnia=u2).exists()
+
+
+@pytest.mark.django_db
+def test_scope_metryki_single_install_noop(autor_jan_kowalski, dyscyplina1):
+    from ewaluacja_metryki.uczelnia_scope import scope_metryki
+
+    u = baker.make("bpp.Uczelnia")  # dokładnie 1 uczelnia
+    _make_metryka(autor_jan_kowalski, dyscyplina1, u)
+    qs = scope_metryki(MetrykaAutora.objects.all(), u)
+    assert qs.count() == 1  # no-op, nie filtruje
+
+
+@pytest.mark.django_db
+def test_scope_metryki_multi_filtruje(autor_jan_kowalski, dyscyplina1):
+    from ewaluacja_metryki.uczelnia_scope import scope_metryki
+
+    u1 = baker.make("bpp.Uczelnia")
+    u2 = baker.make("bpp.Uczelnia")
+    autor2 = baker.make("bpp.Autor")
+    _make_metryka(autor_jan_kowalski, dyscyplina1, u1)
+    _make_metryka(autor2, dyscyplina1, u2)
+    qs = scope_metryki(MetrykaAutora.objects.all(), u1)
+    assert list(qs.values_list("uczelnia_id", flat=True)) == [u1.pk]
