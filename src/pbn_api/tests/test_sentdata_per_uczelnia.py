@@ -98,7 +98,11 @@ def test_single_install_global_lookup_bez_uczelni(uczelnia, wydawnictwo_ciagle):
 
 @pytest.mark.django_db
 def test_backfill_logic_single_install(uczelnia, wydawnictwo_ciagle):
-    """Single-install: NULL-owy wiersz dostaje jedyną uczelnię (jak w 0072)."""
+    """Single-install: NULL-owy wiersz dostaje jedyną uczelnię (jak w 0072).
+
+    Lustro logiki migracji ``0072_backfill_sentdata_uczelnia`` — jeśli
+    zachowanie migracji się zmieni, ten test musi się zmienić razem z nią.
+    """
     rec = wydawnictwo_ciagle
     # Wiersz wprost z uczelnia=None (legacy/untagged).
     SentData.objects.create_or_update_before_upload(
@@ -119,18 +123,19 @@ def test_backfill_logic_single_install(uczelnia, wydawnictwo_ciagle):
 def test_backfill_logic_multi_install_leaves_null(
     uczelnia, uczelnia2, wydawnictwo_ciagle
 ):
-    """Multi-install (≥2 uczelnie): backfill NIE rusza NULL-owych wierszy."""
+    """Multi-install (≥2 uczelnie): backfill NIE rusza NULL-owych wierszy.
+
+    Lustro logiki migracji ``0072_backfill_sentdata_uczelnia`` — jeśli
+    zachowanie migracji się zmieni, ten test musi się zmienić razem z nią.
+    """
     rec = wydawnictwo_ciagle
     SentData.objects.create_or_update_before_upload(
         rec, {"type": "ARTICLE"}, uczelnia=None
     )
 
-    # Symulacja warunku migracji: count != 1 → brak update.
+    # Warunek migracji: count != 1 → brak update. Przy ≥2 uczelniach migracja
+    # świadomie zostawia NULL-owe wiersze (self-healing przy następnej wysyłce).
     assert Uczelnia.objects.count() == 2
-    if Uczelnia.objects.count() == 1:  # pragma: no cover - tu nie wejdzie
-        SentData.objects.filter(uczelnia__isnull=True).update(
-            uczelnia=Uczelnia.objects.get()
-        )
 
-    # NULL-owy wiersz pozostaje (self-healing przy następnej wysyłce).
+    # NULL-owy wiersz pozostaje nietknięty.
     assert SentData.objects.filter(uczelnia__isnull=True).count() == 1
