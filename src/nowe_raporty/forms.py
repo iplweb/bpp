@@ -89,7 +89,15 @@ class BaseRaportForm(forms.Form):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        uczelnia = Uczelnia.objects.get()
+        # Multi-hosted: ten __init__ leci też z post_migrate (nowe_raporty.apps
+        # .create_entries → form_class(), user=None, BEZ requestu) przy rejestracji
+        # form-defaults. Gołe ``Uczelnia.objects.get()`` rzucało tu
+        # MultipleObjectsReturned przy >1 uczelni i WALIŁO MIGRACJĘ. Ścieżka
+        # request-less → ``get_default()`` (None-tolerant; widoczność pola to
+        # tylko display, nie korupcja danych). Per-uczelnia widoczność wg
+        # oglądającego wymagałaby przekazania request/uczelni do formularza —
+        # osobny refaktor (rejestracja defaultów konkretnej uczelni nie potrzebuje).
+        uczelnia = Uczelnia.objects.get_default()
         if not (uczelnia and uczelnia.pokazuj_punktacje_wewnetrzna):
             self.fields.pop("punktacja_wewnetrzna_od", None)
             self.fields.pop("punktacja_wewnetrzna_do", None)
