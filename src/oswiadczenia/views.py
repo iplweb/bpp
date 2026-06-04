@@ -86,14 +86,21 @@ class WydrukOswiadczenFilterForm(forms.Form):
         return self.cleaned_data.get("przypieta") or ""
 
 
-def get_base_queryset():
-    """Return base queryset for declarations (Autorzy with discipline assigned)."""
-    return (
+def get_base_queryset(uczelnia=None):
+    """Return base queryset for declarations (Autorzy with discipline assigned).
+
+    Zawężony do uczelni oglądającego (``jednostka__uczelnia``) — oświadczenia
+    autorów innej uczelni nie mogą przeciekać na liście/eksporcie tej uczelni.
+    """
+    qs = (
         Autorzy.objects.exclude(dyscyplina_naukowa=None)
         .filter(rekord__rok__gte=DEFAULT_ROK_OD, rekord__rok__lte=DEFAULT_ROK_DO)
         .select_related("autor", "rekord", "dyscyplina_naukowa")
         .order_by("rekord__rok", "autor__nazwisko", "autor__imiona")
     )
+    if uczelnia is not None:
+        qs = qs.filter(jednostka__uczelnia=uczelnia)
+    return qs
 
 
 def apply_filters(
@@ -185,11 +192,13 @@ class WydrukOswiadczen2022View(GroupRequiredMixin, ListView):
         return rok_od, rok_do, szukaj_autor, szukaj_tytul, dyscyplina, przypieta
 
     def get_queryset(self):
+        from raport_slotow.uczelnia_helper import uczelnia_dla_odczytu
+
         rok_od, rok_do, szukaj_autor, szukaj_tytul, dyscyplina, przypieta = (
             self.get_filter_params()
         )
         return apply_filters(
-            get_base_queryset(),
+            get_base_queryset(uczelnia=uczelnia_dla_odczytu(self.request)),
             rok_od,
             rok_do,
             szukaj_autor,
@@ -373,11 +382,13 @@ class WydrukOswiadczenExportView(GroupRequiredMixin, View):
         return rok_od, rok_do, szukaj_autor, szukaj_tytul, dyscyplina, przypieta
 
     def get(self, request):
+        from raport_slotow.uczelnia_helper import uczelnia_dla_odczytu
+
         rok_od, rok_do, szukaj_autor, szukaj_tytul, dyscyplina, przypieta = (
             self.get_filter_params()
         )
 
-        queryset = get_base_queryset()
+        queryset = get_base_queryset(uczelnia=uczelnia_dla_odczytu(request))
         queryset = apply_filters(
             queryset, rok_od, rok_do, szukaj_autor, szukaj_tytul, dyscyplina, przypieta
         )
@@ -508,8 +519,14 @@ class StartExportTaskView(GroupRequiredMixin, View):
             limit=limit,
         )
 
-        # Start Celery task
-        generate_oswiadczenia_zip.delay(task.pk)
+        # Start Celery task — przekaż uczelnię oglądającego (multi-hosted),
+        # zadanie NIE robi fallbacku do pierwszej-z-brzegu (MultipleObjects).
+        from raport_slotow.uczelnia_helper import uczelnia_dla_odczytu
+
+        uczelnia = uczelnia_dla_odczytu(request)
+        generate_oswiadczenia_zip.delay(
+            task.pk, uczelnia_id=uczelnia.pk if uczelnia else None
+        )
 
         return redirect("oswiadczenia:task-status", task_id=task.pk)
 

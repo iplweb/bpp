@@ -114,8 +114,12 @@ def build_declarations_list(queryset, uczelnia):
     return declarations
 
 
-def build_queryset_for_task(task):
-    """Build filtered queryset for declarations export task."""
+def build_queryset_for_task(task, uczelnia=None):
+    """Build filtered queryset for declarations export task.
+
+    Zawężony do ``uczelnia`` (``jednostka__uczelnia``) — tło nie może mieszać
+    oświadczeń autorów różnych uczelni do jednego eksportu.
+    """
     queryset = (
         Autorzy.objects.exclude(dyscyplina_naukowa=None)
         .filter(
@@ -124,6 +128,9 @@ def build_queryset_for_task(task):
         )
         .select_related("autor", "rekord", "dyscyplina_naukowa")
     )
+
+    if uczelnia is not None:
+        queryset = queryset.filter(jednostka__uczelnia=uczelnia)
 
     if task.szukaj_autor:
         queryset = queryset.filter(
@@ -541,7 +548,9 @@ def generate_oswiadczenia_zip(self, task_id: int, uczelnia_id=None):
 
     Args:
         task_id: ID of OswiadczeniaExportTask record.
-        uczelnia_id: ID of Uczelnia (defaults to get_default()).
+        uczelnia_id: ID uczelni oglądającego (przekazane z widoku). Brak →
+            single-or-fail ``Uczelnia.objects.get()`` (multi-hosted: głośny
+            fail zamiast zgadywania pierwszej-z-brzegu).
 
     Returns:
         dict with status and task_id.
@@ -555,12 +564,12 @@ def generate_oswiadczenia_zip(self, task_id: int, uczelnia_id=None):
     task.save()
 
     try:
-        queryset = build_queryset_for_task(task)
         uczelnia = (
             Uczelnia.objects.get(pk=uczelnia_id)
             if uczelnia_id
             else Uczelnia.objects.get()
         )
+        queryset = build_queryset_for_task(task, uczelnia=uczelnia)
         declarations = build_declarations_list(queryset, uczelnia)
 
         task.total_items = len(declarations)
