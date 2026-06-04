@@ -334,7 +334,9 @@ class Command(PBNBaseCommand):
             e,
             17,
             lambda: integruj_publikacje_instytucji(
-                dm, skip_pages=skip_pages, uczelnia=client.uczelnia
+                disable_multiprocessing=dm,
+                skip_pages=skip_pages,
+                uczelnia=client.uczelnia,
             ),
         )
         self._run_stage(

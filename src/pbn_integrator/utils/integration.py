@@ -301,6 +301,7 @@ def integruj_publikacje_instytucji(
     skip_pages=0,
     callback=None,
     use_threads=False,
+    disable_multiprocessing=False,
     uczelnia=None,
 ):
     """Integrate institution publications.
@@ -309,6 +310,7 @@ def integruj_publikacje_instytucji(
         skip_pages: Number of batches to skip.
         callback: Optional callback function for progress tracking.
         use_threads: If True, uses the threaded implementation instead of multiprocessing.
+        disable_multiprocessing: If True, runs in single-process/single-thread mode.
         uczelnia: Optional ``Uczelnia`` — gdy podana (i ma ``pbn_uid``), bierzemy
             TYLKO publikacje z oświadczeń tej uczelni (``institutionId ==
             uczelnia.pbn_uid``). Multi-hosted (Track 7a). Zawężamy zewnętrzny
@@ -324,11 +326,21 @@ def integruj_publikacje_instytucji(
     if use_threads:
         return _integruj_publikacje_threaded(
             pubs,
+            disable_threading=disable_multiprocessing,
             skip_pages=skip_pages,
             callback=callback,
         )
     else:
-        # Zostawiamy wersje z multiprocessing ALE wyłączamy to
+        # Wersja z multiprocessing. Historycznie multiprocessing był tu
+        # bezwarunkowo wyłączony (``disable_multiprocessing=True`` na sztywno),
+        # bo dla integracji publikacji instytucji workerzy bywali zawodni.
+        # Zachowujemy ten bezpieczny default: gdy wywołujący NIE poda flagi
+        # (``disable_multiprocessing=False``), nadal wymuszamy single-process.
+        # Flaga ``--disable-multiprocessing`` z linii poleceń (True) niczego
+        # nie zmienia (i tak single-process) — ale przekazujemy ją jawnie,
+        # więc sygnatura jest spójna z ``integruj_wszystkie_publikacje`` i
+        # wywołanie z komendy nie wybucha ``TypeError`` (``dm`` trafiał wcześniej
+        # pozycyjnie w ``skip_pages``).
         return _integruj_publikacje(
             pubs,
             disable_multiprocessing=True,
