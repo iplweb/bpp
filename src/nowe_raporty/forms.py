@@ -86,18 +86,17 @@ class BaseRaportForm(forms.Form):
                     }
                 )
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, request=None, **kwargs):
         super().__init__(*args, **kwargs)
 
-        # Multi-hosted: ten __init__ leci też z post_migrate (nowe_raporty.apps
-        # .create_entries → form_class(), user=None, BEZ requestu) przy rejestracji
-        # form-defaults. Gołe ``Uczelnia.objects.get()`` rzucało tu
-        # MultipleObjectsReturned przy >1 uczelni i WALIŁO MIGRACJĘ. Ścieżka
-        # request-less → ``get_default()`` (None-tolerant; widoczność pola to
-        # tylko display, nie korupcja danych). Per-uczelnia widoczność wg
-        # oglądającego wymagałaby przekazania request/uczelni do formularza —
-        # osobny refaktor (rejestracja defaultów konkretnej uczelni nie potrzebuje).
-        uczelnia = Uczelnia.objects.get_default()
+        # Multi-hosted: uczelnię bierzemy WYŁĄCZNIE z requestu
+        # (``request._uczelnia``, ustawiane przez SiteResolutionMiddleware wg
+        # hosta). Bez requestu — post_migrate (nowe_raporty.apps.create_entries
+        # → form_class(), user=None), introspekcja formdefaults, testy — uczelnia
+        # = None. NIE szukamy „domyślnej" uczelni: taki byt NIE istnieje (realne
+        # stany: brak / jedna / wiele). None-tolerant — pola opcjonalne znikają,
+        # gdy nie ma uczelni z requestu albo nie pokazuje punktacji wewnętrznej.
+        uczelnia = getattr(request, "_uczelnia", None)
         if not (uczelnia and uczelnia.pokazuj_punktacje_wewnetrzna):
             self.fields.pop("punktacja_wewnetrzna_od", None)
             self.fields.pop("punktacja_wewnetrzna_do", None)
