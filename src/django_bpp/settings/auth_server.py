@@ -21,6 +21,12 @@ from django_bpp.settings.production import (  # noqa: F401
     ALLOWED_HOSTS,
     # User model
     AUTH_USER_MODEL,
+    # Polityka django-axes — ta sama ochrona brute-force co w głównej apce
+    AXES_CLIENT_IP_CALLABLE,
+    AXES_COOLOFF_TIME,
+    AXES_FAILURE_LIMIT,
+    AXES_LOCKOUT_PARAMETERS,
+    AXES_RESET_ON_SUCCESS,
     # CSRF trusted origins for login form
     CSRF_TRUSTED_ORIGINS,
     DATABASES,
@@ -51,6 +57,7 @@ INSTALLED_APPS = [
     "django.contrib.contenttypes",
     "django.contrib.auth",
     "django.contrib.sessions",
+    "axes",  # Brute-force lockout także na tym (osobnym) formularzu logowania
     "bpp",  # Required for AUTH_USER_MODEL = "bpp.BppUser"
 ]
 
@@ -59,7 +66,22 @@ MIDDLEWARE = [
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
+    # AxesMiddleware ostatnie — renderuje odpowiedź "konto zablokowane".
+    "axes.middleware.AxesMiddleware",
 ]
+
+# Ten serwer nie definiuje własnych AUTHENTICATION_BACKENDS (dotąd leciał gołym
+# ModelBackendem przez Django default). Axes wymaga AxesStandaloneBackend jako
+# PIERWSZEGO, żeby zawetować zablokowaną parę (login, IP) zanim ModelBackend
+# sprawdzi hasło. Tabela AccessAttempt jest współdzielona z główną apką (ta sama
+# baza), więc lockout obowiązuje spójnie na obu powierzchniach logowania.
+AUTHENTICATION_BACKENDS = [
+    "axes.backends.AxesStandaloneBackend",
+    "django.contrib.auth.backends.ModelBackend",
+]
+
+# Brak django.contrib.admin w tym serwisie — wyłączamy integrację z adminem axes.
+AXES_ENABLE_ADMIN = False
 
 ROOT_URLCONF = "django_bpp.urls_auth_server"
 
