@@ -1,0 +1,24 @@
+-- Reverse migracji 0422: odtworzenie skasowanych indeksow (dokladne definicje).
+BEGIN;
+CREATE INDEX bpp_rekord_mat_public_www ON public.bpp_rekord_mat USING gin (public_www gin_trgm_ops);
+CREATE INDEX bpp_rekord_mat_www ON public.bpp_rekord_mat USING gin (www gin_trgm_ops);
+CREATE INDEX bpp_rekord_mat_doi_gin ON public.bpp_rekord_mat USING gin (doi gin_trgm_ops);
+CREATE INDEX bpp_rekord_mat_e ON public.bpp_rekord_mat USING btree (uwagi);
+CREATE INDEX bpp_rekord_mat_9 ON public.bpp_rekord_mat USING btree (index_copernicus);
+CREATE INDEX bpp_rekord_mat_public_www_idx ON public.bpp_rekord_mat USING btree (public_www);
+CREATE INDEX bpp_rekord_mat_www_idx ON public.bpp_rekord_mat USING btree (www);
+CREATE INDEX bpp_rekord_mat_isbn ON public.bpp_rekord_mat USING gin (isbn gin_trgm_ops);
+CREATE INDEX bpp_rekord_mat_isbn_idx ON public.bpp_rekord_mat USING btree (isbn);
+CREATE INDEX bpp_rekord_mat_5 ON public.bpp_rekord_mat USING btree (wydawnictwo);
+CREATE INDEX bpp_rekord_mat_n ON public.bpp_rekord_mat USING btree (openaccess_tryb_dostepu_id);
+CREATE INDEX bpp_rekord_mat_k ON public.bpp_rekord_mat USING btree (recenzowana);
+CREATE INDEX bpp_rekord_mat_q ON public.bpp_rekord_mat USING btree (dostep_dnia);
+CREATE INDEX bpp_rekord_mat_p ON public.bpp_rekord_mat USING btree (liczba_cytowan);
+CREATE INDEX bpp_rekord_mat_e_isbn ON public.bpp_rekord_mat USING gin (e_isbn gin_trgm_ops);
+CREATE INDEX bpp_rekord_mat_e_isbn_gin ON public.bpp_rekord_mat USING gin (upper(e_isbn) gin_trgm_ops);
+CREATE INDEX bpp_rekord_mat_f ON public.bpp_rekord_mat USING btree (adnotacje);
+CREATE INDEX bpp_autorzy_mat_7 ON public.bpp_autorzy_mat USING btree (upowaznienie_pbn);
+CREATE INDEX bpp_autorzy_mat_11 ON public.bpp_autorzy_mat USING btree (przypieta);
+CREATE INDEX bpp_autorzy_mat_12 ON public.bpp_autorzy_mat USING btree (data_oswiadczenia);
+CREATE INDEX bpp_autorzy_mat_6 ON public.bpp_autorzy_mat USING btree (dyscyplina_naukowa_id);
+COMMIT;
