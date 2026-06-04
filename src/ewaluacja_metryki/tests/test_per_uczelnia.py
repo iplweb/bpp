@@ -83,6 +83,36 @@ def test_oblicz_metryki_dla_autora_nie_sumuje_slotow_z_innej_uczelni(
 
 
 @pytest.mark.django_db
+def test_command_oblicz_metryki_scope_uczelnia(autor_jan_kowalski, dyscyplina1):
+    """Komenda oblicz_metryki z --uczelnia-id scope'uje delete i źródłowy QS."""
+    from django.core.management import call_command
+
+    from ewaluacja_liczba_n.models import IloscUdzialowDlaAutoraZaCalosc
+
+    u1 = baker.make("bpp.Uczelnia")
+    u2 = baker.make("bpp.Uczelnia")
+    _make_metryka(autor_jan_kowalski, dyscyplina1, u2)  # must survive
+    IloscUdzialowDlaAutoraZaCalosc.objects.create(
+        autor=autor_jan_kowalski,
+        dyscyplina_naukowa=dyscyplina1,
+        rodzaj_autora=None,
+        ilosc_udzialow=Decimal("4.0"),
+        ilosc_udzialow_monografie=Decimal("0"),
+        uczelnia=u1,
+    )
+    call_command(
+        "oblicz_metryki",
+        "--bez-liczby-n",
+        "--nadpisz",
+        "--uczelnia-id",
+        str(u1.pk),
+        "--rodzaje-autora",
+        " ",
+    )
+    assert MetrykaAutora.objects.filter(uczelnia=u2).exists()  # u2 nietknięta
+
+
+@pytest.mark.django_db
 def test_generuj_metryki_task_scope_per_uczelnia(autor_jan_kowalski, dyscyplina1):
     """Task generuje metryki tylko dla swojej uczelni, nie wyciera innej."""
     from ewaluacja_liczba_n.models import IloscUdzialowDlaAutoraZaCalosc

@@ -74,17 +74,19 @@ class Command(BaseCommand):
         bez_liczby_n = options["bez_liczby_n"]
         rodzaje_autora = options.get("rodzaje_autora", ["N", "D", "B", "Z", " "])
 
+        # Rozwiąż uczelnię raz — wymagana do scope'owania zarówno źródłowego QS
+        # jak i scoped delete wewnątrz generuj_metryki (nadpisz).
+        # single-or-fail: .get() rzuca DoesNotExist lub MultipleObjectsReturned
+        # gdy brak lub >1 uczelni bez --uczelnia-id — to zamierzone zachowanie.
+        uczelnia_id = options.get("uczelnia_id")
+        uczelnia = (
+            Uczelnia.objects.get(pk=uczelnia_id)
+            if uczelnia_id
+            else Uczelnia.objects.get()
+        )
+
         # Krok 1: Przelicz liczby N, chyba że pominięto
         if not bez_liczby_n:
-            # Uczelnia potrzebna TYLKO do liczby N — rozwiązujemy leniwie, żeby
-            # --bez-liczby-n nie wymagało uczelni (i .get() nie rzucało, gdy
-            # w bazie jest 0 lub >1 uczelni, np. w danych testowych).
-            uczelnia_id = options.get("uczelnia_id")
-            if uczelnia_id:
-                uczelnia = Uczelnia.objects.get(pk=uczelnia_id)
-            else:
-                uczelnia = Uczelnia.objects.get()
-
             self.stdout.write(
                 self.style.WARNING("Krok 1/2: Przeliczanie liczby N dla uczelni...")
             )
@@ -128,8 +130,10 @@ class Command(BaseCommand):
         rodzaje_str = ", ".join([rodzaje_nazwy.get(r, r) for r in rodzaje_autora])
         self.stdout.write(f"Rodzaje autorów: {rodzaje_str}")
 
-        # Filtruj IloscUdzialowDlaAutoraZaCalosc
-        ilosc_udzialow_qs = IloscUdzialowDlaAutoraZaCalosc.objects.all()
+        # Filtruj IloscUdzialowDlaAutoraZaCalosc — scope per uczelnia od razu
+        ilosc_udzialow_qs = IloscUdzialowDlaAutoraZaCalosc.objects.filter(
+            uczelnia=uczelnia
+        )
 
         if options["autor_id"]:
             ilosc_udzialow_qs = ilosc_udzialow_qs.filter(autor_id=options["autor_id"])
@@ -158,6 +162,7 @@ class Command(BaseCommand):
             rodzaje_autora=rodzaje_autora,
             logger_output=self.stdout,
             ilosc_udzialow_queryset=ilosc_udzialow_qs,
+            uczelnia=uczelnia,
         )
 
         # Wyświetl podsumowanie
