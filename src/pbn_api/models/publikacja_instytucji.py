@@ -6,6 +6,10 @@ class PublikacjaInstytucji(models.Model):
     insPersonId = models.ForeignKey("pbn_api.Scientist", on_delete=models.CASCADE)
     institutionId = models.ForeignKey("pbn_api.Institution", on_delete=models.CASCADE)
     publicationId = models.ForeignKey("pbn_api.Publication", on_delete=models.CASCADE)
+    # Multi-hosted (audyt uczelnia 2026-06-04): lustro danych PBN. FK nullable
+    # ŚWIADOMIE — wiersz wiąże się z instytucją przez ``institutionId``
+    # (== ``uczelnia.pbn_uid``), więc brak tagu uczelni to brak wygody
+    # filtrowania, nie korupcja. Write-side tagowanie odłożone.
     uczelnia = models.ForeignKey(
         "bpp.Uczelnia",
         on_delete=models.CASCADE,
@@ -30,6 +34,9 @@ class PublikacjaInstytucji_V2(models.Model):
     o oświadczeniach instytucji.
     """
 
+    # Multi-hosted (audyt uczelnia 2026-06-04): lustro danych PBN, FK nullable
+    # świadomie — wiązanie z instytucją przez ``objectId``/PBN. Patrz
+    # ``PublikacjaInstytucji.uczelnia``.
     uczelnia = models.ForeignKey(
         "bpp.Uczelnia",
         on_delete=models.CASCADE,

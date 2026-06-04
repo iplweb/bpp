@@ -28,6 +28,12 @@ class OswiadczenieInstytucji(LinkDoPBNMixin, models.Model):
     institutionId = models.ForeignKey("pbn_api.Institution", on_delete=models.CASCADE)
     personId = models.ForeignKey("pbn_api.Scientist", on_delete=models.CASCADE)
     publicationId = models.ForeignKey("pbn_api.Publication", on_delete=models.CASCADE)
+    # Multi-hosted (audyt uczelnia 2026-06-04): lustro danych PBN. FK nullable
+    # ŚWIADOMIE — wiersz wiąże się z instytucją przez ``institutionId``
+    # (== ``uczelnia.pbn_uid``), więc brak tagu uczelni to brak wygody
+    # filtrowania, nie korupcja. Write-side tagowanie odłożone. UWAGA:
+    # override ``delete()`` kasuje ``SentData`` po ``publicationId`` — po
+    # tagowaniu SentData per-uczelnia (Track 4) trzeba tu zawęzić też uczelnię.
     uczelnia = models.ForeignKey(
         "bpp.Uczelnia",
         on_delete=models.CASCADE,
