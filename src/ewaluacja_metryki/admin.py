@@ -11,6 +11,7 @@ class MetrykaAutoraAdmin(DynamicAdminFilterMixin, admin.ModelAdmin):
     list_display = [
         "autor",
         "dyscyplina_naukowa",
+        "uczelnia",
         "jednostka",
         "slot_maksymalny",
         "slot_nazbierany",
@@ -20,7 +21,12 @@ class MetrykaAutoraAdmin(DynamicAdminFilterMixin, admin.ModelAdmin):
         "data_obliczenia",
     ]
 
-    list_filter = ["dyscyplina_naukowa", "jednostka", "procent_wykorzystania_slotow"]
+    list_filter = [
+        "uczelnia",
+        "dyscyplina_naukowa",
+        "jednostka",
+        "procent_wykorzystania_slotow",
+    ]
 
     search_fields = ["autor__nazwisko", "autor__imiona", "jednostka__nazwa"]
 
@@ -34,7 +40,7 @@ class MetrykaAutoraAdmin(DynamicAdminFilterMixin, admin.ModelAdmin):
     fieldsets = [
         (
             "Podstawowe informacje",
-            {"fields": ("autor", "dyscyplina_naukowa", "jednostka")},
+            {"fields": ("autor", "dyscyplina_naukowa", "uczelnia", "jednostka")},
         ),
         ("Parametry ewaluacji", {"fields": ("rok_min", "rok_max", "slot_maksymalny")}),
         (
