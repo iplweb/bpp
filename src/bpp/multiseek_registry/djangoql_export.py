@@ -7,6 +7,7 @@ pola trudne nadpisuja metode `to_djangoql(value, operation)`. Kazdy fragment
 jest walidowany przeciw BppQLSchema(Rekord) — niepoprawne -> warning.
 """
 
+import logging
 from decimal import Decimal
 
 from djangoql.parser import DjangoQLParser
@@ -28,6 +29,13 @@ from multiseek.logic import (
 
 from bpp.djangoql_schema import BppQLSchema
 from bpp.models import Rekord
+
+logger = logging.getLogger(__name__)
+
+# Schema introspekcja jest kosztowna (rekursywny obchod grafu modeli) i bezstanowa
+# po zbudowaniu -> jeden wspoldzielony singleton. Parser tworzymy per-call
+# (wspoldzielony lexer nie jest thread-safe pod wielowatkowym WSGI).
+_REKORD_SCHEMA = BppQLSchema(Rekord)
 
 
 def _build_scalar_op_map():
@@ -91,10 +99,8 @@ def is_valid_rekord_djangoql(fragment):
     """Czy fragment parsuje sie i waliduje wzgledem BppQLSchema(Rekord)."""
     try:
         ast = DjangoQLParser().parse(fragment)
-        BppQLSchema(Rekord).validate(ast)
-    except Exception:  # noqa: BLE001 — best-effort validity gate
-        # Klasyfikuje fragment jako nieprzekladalny (zwraca False); nie tlumi
-        # bledu logiki — niepoprawne fragmenty sa poprawnie odrzucane.
+        _REKORD_SCHEMA.validate(ast)
+    except Exception:  # noqa: BLE001 — best-effort validity gate (klasyfikuje, nie tlumi)
         return False
     return True
 
@@ -102,15 +108,23 @@ def is_valid_rekord_djangoql(fragment):
 def _autocomplete_leaf(field, value, operation):
     """value to pk; resolwujemy obiekt i emitujemy '<sciezka>__rel = "L [pk]"'."""
     op = str(operation)
-    if op in {str(o) for o in DIFFERENT_ALL}:
+    diff_strs = {str(o) for o in DIFFERENT_ALL}
+    equal_strs = {str(o) for o in EQUALITY_OPS_ALL} - diff_strs
+    if op in diff_strs:
         rel_op = "!="
-    elif op in {str(o) for o in EQUALITY_OPS_ALL}:
+    elif op in equal_strs:
         rel_op = "="
     else:
         return None
     try:
         obj = field.value_from_web(value)
-    except Exception:  # noqa: BLE001 — nieistniejacy/uszkodzony pk -> warning
+    except Exception:  # noqa: BLE001 — nieoczekiwany blad resolucji pk -> nieprzekladalne
+        logger.debug(
+            "value_from_web zawiodlo dla pola %r (value=%r)",
+            getattr(field, "label", field),
+            value,
+            exc_info=True,
+        )
         return None
     if obj is None:
         return None

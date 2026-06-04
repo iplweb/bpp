@@ -77,3 +77,17 @@ def test_leaf_unknown_field_returns_none():
         {"field": "Nie ma takiego pola", "operator": str(CONTAINS), "value": "x"},
     )
     assert frag is None
+
+
+@pytest.mark.django_db
+def test_is_valid_rekord_djangoql_accepts_known_field():
+    from bpp.multiseek_registry.djangoql_export import is_valid_rekord_djangoql
+
+    assert is_valid_rekord_djangoql('rok = 2020') is True
+
+
+@pytest.mark.django_db
+def test_is_valid_rekord_djangoql_rejects_unknown_field():
+    from bpp.multiseek_registry.djangoql_export import is_valid_rekord_djangoql
+
+    assert is_valid_rekord_djangoql('totalnie_nie_ma_takiego_pola = "x"') is False
