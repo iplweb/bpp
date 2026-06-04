@@ -82,16 +82,22 @@ publikacji przed usunięciem czyni kasowanie bezużytecznym. Wąska semantyka
 ### 2.1 Trigger jako choke-point (najwrażliwszy, robiony PIERWSZY)
 
 `Rekord` to UNION-view nad materializowaną tabelą `bpp_rekord_mat`, zasilaną
-triggerem `bpp_refresh_cache()`
-(**baseline: `src/bpp/migrations/0001_cache_functions.sql`** — uwaga: stary
-spec referował przed-squashowy `107_cache_functions.sql`). Z `bpp_rekord_mat`
-/ `bpp_autorzy_mat` czyta większość systemu (publiczny frontend, multiseek,
-global search, ewaluacja `Cache_Punktacja_*`, raporty).
+triggerem `bpp_refresh_cache()`. **Aktualna wersja funkcji to
+`src/bpp/migrations/0399_fix_refresh_cache_upsert.sql`** (NIE baseline
+`0001_cache_functions.sql` — historyczny; funkcja ewoluowała przez `0112`,
+`0310`, `0387`, `0399`, + `0400_drop/restore_cache_triggers`). Z
+`bpp_rekord_mat`/`bpp_autorzy_mat` czyta większość systemu (publiczny frontend,
+multiseek, global search, ewaluacja `Cache_Punktacja_*`, raporty).
 
-**Fakt z kodu** (`0001_cache_functions.sql:78-87`): na `DELETE` trigger usuwa
-wiersze z tabel `_mat`; na `UPDATE/INSERT` re-insertuje. Soft-delete to
-technicznie `UPDATE` → **bez zmiany triggera skasowany rekord wróciłby do
-mat-view**.
+**Fakt z kodu** (`0399_fix_refresh_cache_upsert.sql`): na `DELETE` trigger usuwa
+wiersze z `_mat`; na `UPDATE/INSERT` robi **`DELETE` + upsert**
+(`INSERT ... SELECT FROM <widok źródłowy> ... ON CONFLICT DO UPDATE`, pod
+`pg_advisory_xact_lock`). `DELETE` przed upsertem jest **bezwarunkowy** (linie
+125-126), więc gdy widok źródłowy odfiltruje skasowane — upsert nic nie
+re-insertuje. Soft-delete to technicznie `UPDATE` → **bez filtra w widoku
+skasowany rekord wróciłby** (upsert wstawiłby go ponownie). (Uwaga: `0399` ma
+drobny utajony bug — `"bpp_autorzy_mat" not in refresh_tables` sprawdza string
+w liście krotek `(table, id_col)`; do poprawienia przy okazji, faza 01.)
 
 **Zmiana:** ścieżka `UPDATE/INSERT` triggera uczona reguły:
 > jeśli `TD['new']['deleted_at'] IS NOT NULL` → zachowaj się jak `DELETE`
@@ -114,13 +120,17 @@ Skutki:
   (`Rekord` czyta `bpp_rekord`, `src/bpp/models/cache/rekord.py:357`), oraz
   pełną re-projekcję/weryfikację cache.
 - **Mechanizm #2 (optymalizacja) — trigger-skip:** w gałęzi `UPDATE/INSERT`
-  `if TD['new'].get('deleted_at') is not None: <pomiń re-insert>`. Oszczędza
-  no-op SELECT/INSERT, ale **sam nie wystarcza** (nie pokrywa odczytu z widoku
-  ani `verify_cache`). Filtr widoku (#1) jest obowiązkowy; trigger-skip
-  opcjonalny.
-- **`verify_cache` (`src/bpp/management/commands/verify_cache.py`)** porównuje
-  `bpp_rekord_mat` ze źródłem — MUSI respektować `deleted_at` (przez filtr #1),
-  inaczej zgłosi fałszywy rozjazd dla skasowanych i spróbuje je wskrzesić.
+  `if TD['new'].get('deleted_at') is not None: <pomiń upsert>` (DELETE i tak
+  już zaszedł). Oszczędza no-op SELECT/upsert, ale **sam nie pokrywa pełnej
+  re-projekcji** (ta re-selektuje z widoku). Filtr widoku (#1) jest
+  obowiązkowy; trigger-skip opcjonalny.
+- **Weryfikacja spójności — `Rekord.objects.full_refresh()`** (re-projekcja
+  `_mat` ze źródła), NIE `verify_cache`. ⚠️ `src/bpp/management/commands/verify_cache.py`
+  to **martwy stub** (`psycopg2.connect(database="b_med", host="linux-dev")` +
+  `raise NotImplementedError`) — nie da się go uruchomić; jego naprawa jest
+  POZA zakresem soft-delete. Testy spójności robią pełen `full_refresh` i
+  sprawdzają, że skasowane rekordy NIE wracają do `_mat` (to weryfikuje filtr
+  widoku #1).
 - **Przypadek brzegowy znika strukturalnie:** edycja wiersza autorstwa
   skasowanej publikacji nie wskrzesi go w `bpp_autorzy_mat`, bo widok
   źródłowy go odfiltruje (ma własne `deleted_at` ustawione kaskadą).
@@ -128,8 +138,8 @@ Skutki:
   triggerów through. Pomijalne.
 
 Testy spójności mat-view obowiązkowe (soft-delete → znika z `Rekord` i
-`Autorzy`; restore → wraca; `verify_cache` czysty po soft-delete; brak
-rozjazdu `Cache_Punktacja_*`).
+`Autorzy`; restore → wraca; po `full_refresh()` skasowane NIE wracają do `_mat`;
+brak rozjazdu `Cache_Punktacja_*`).
 
 ### 2.2 Override `delete()` — wąska, kontrolowana kaskada na `*_Autor`
 
@@ -165,8 +175,12 @@ Zweryfikować, że nadpisany `delete()`/`restore()` nadal emituje sygnały
 
 ### 2.3 `slug` — warunkowy unique
 
-Wszystkie 5 modeli ma denormalizowany `slug unique=True`. Skasowany rekord
-trzyma slug → konflikt przy ponownym utworzeniu. Zamiana na
+⚠️ `slug` to **pole denormalizowane** (`@denormalized(models.SlugField, ...,
+unique=True, ...)` z `django-denorm-iplweb`), zadeklarowane w 4 miejscach:
+`wydawnictwo_ciagle.py:246`, `wydawnictwo_zwarte.py:325`, `patent.py:180`,
+`Praca_Doktorska_Baza:105` (dzielone przez doktorat i habilitację). Skasowany
+rekord trzyma slug → konflikt przy ponownym utworzeniu. Zmiana: **zdjąć
+`unique=True` z kwargs denorm** i dodać w `Meta` każdej konkretnej klasy
 `UniqueConstraint(fields=["slug"], condition=Q(deleted_at__isnull=True))`.
 Migracja (NIE modyfikować istniejących migracji).
 
@@ -323,6 +337,13 @@ Rozszerzenie:
 - gałąź w logice wysyłki: `WYCOFANIE` → `delete_all_publication_statements`,
 - status zapisywany jak dla wysyłki (`zakonczono_pomyslnie`, `komunikat`,
   `ilosc_prob`) + odzwierciedlenie w `SentData` i `SoftDeleteLog`.
+
+⚠️ **`PBN_Export_Queue.zamowil` jest NOT NULL (`on_delete=CASCADE`).**
+Zakolejkowanie z admina ma `request.user`. Ale zakolejkowanie inicjowane
+sygnałem przy soft-delete bez usera (operacje programistyczne / celery) nie ma
+kogo wpisać. Rozwiązanie (faza 05/06): **konto techniczne** (np.
+`get_or_create` systemowego użytkownika) jako `zamowil` dla operacji
+systemowych — NIE robić `zamowil` nullable (psułoby istniejące zał. kolejki).
 
 `SentData` (`src/pbn_api/models/sentdata.py`, GFK + `pbn_uid` +
 `submitted_successfully` + `mark_as_successful`/`mark_as_failed`) trzyma stan

@@ -82,10 +82,12 @@ Pola PINNED: `content_type` (FK ContentType), `object_id` (PositiveIntegerField,
 - Nowe pole na `PBN_Export_Queue`: `operacja = models.CharField(choices=Operacja.choices, default=Operacja.WYSYLKA)` gdzie `class Operacja(models.TextChoices): WYSYLKA="wysylka"; WYCOFANIE="wycofanie"`.
 - Gałąź w logice wysyłki: `WYCOFANIE` → `client.delete_all_publication_statements(pbn_uid)` (`src/pbn_api/client/mixins/institutions.py:87`).
 
-### Wstrzykiwanie `user` (PINNED, faza 06/07)
+### Wstrzykiwanie `user` (PINNED — API thread-local, faza 06 tworzy, 07 używa)
 - Override sygnatury: `delete(self, *args, user=None, reason="", **kwargs)` i `restore(self, *args, user=None, **kwargs)`.
-- W adminie **jeden hook** (`delete_model`/`delete_queryset`/akcja „Przywróć") ustawia usera; ten sam moment ma w przyszłości zasilić `reversion.set_user` (patrz „Kontrakty z reversion").
-- Sygnał nie niesie usera → przekazujemy go do receiverów przez argument akcji / thread-local ustawiony w adminie. Operacje systemowe (merge, celery): `user=None`.
+- **Kanoniczne API (faza 06, `src/bpp/models/soft_delete_context.py`):** context manager `soft_delete_context(user=None, reason="")` (thread-local, reentrant — wąska kaskada `*_Autor` dziedziczy kontekst rodzica) + akcesory `get_soft_delete_user()` / `get_soft_delete_reason()`. Receivery sygnałów czytają akcesory (sygnał nie niesie usera).
+- **Faza 07 (admin) używa `soft_delete_context`** — jeden hook (`delete_model`/`delete_queryset`/akcja „Przywróć") owija operację w `with soft_delete_context(user=request.user, reason=...):`. Ten sam moment ma w przyszłości zasilić `reversion.set_user` (patrz „Kontrakty z reversion"). NIE wymyślać osobnego `set/get/clear_soft_delete_user` — używać `soft_delete_context`.
+- **`zamowil` w `pbn_export_queue` jest NOT NULL** — gdy `user is None` (operacje systemowe/celery), zakolejkowanie używa konta technicznego (`get_or_create`), nie `None`.
+- Operacje systemowe (merge autora, celery): `user=None` w `SoftDeleteLog` (FK nullable), konto techniczne tylko dla `zamowil` kolejki.
 
 ### Punkty zaczepienia w istniejącym kodzie (zweryfikowane)
 - Rejestracja sygnałów: `src/bpp/apps.py` → `BppConfig.ready()` (linia 8).
