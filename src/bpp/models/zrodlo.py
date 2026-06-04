@@ -92,7 +92,9 @@ class Redakcja_Zrodla(models.Model):
 class Punktacja_Zrodla(ModelPunktowanyBaza, ModelZKwartylami, models.Model):
     """Informacja o punktacji danego źródła w danym roku"""
 
-    zrodlo = models.ForeignKey("Zrodlo", CASCADE)
+    # db_index=False: redundantny względem unique_together (zrodlo, rok) —
+    # zrodlo jest wiodącą kolumną tego złożonego indeksu.
+    zrodlo = models.ForeignKey("Zrodlo", CASCADE, db_index=False)
     rok = YearField()
 
     class Meta:
@@ -108,7 +110,9 @@ class Punktacja_Zrodla(ModelPunktowanyBaza, ModelZKwartylami, models.Model):
 
 class Dyscyplina_Zrodla(models.Model):
     rok = YearField()
-    zrodlo = models.ForeignKey("Zrodlo", on_delete=CASCADE)
+    # db_index=False: redundantny względem unique_together
+    # (zrodlo, dyscyplina, rok) — zrodlo jest wiodącą kolumną tego indeksu.
+    zrodlo = models.ForeignKey("Zrodlo", on_delete=CASCADE, db_index=False)
     dyscyplina = models.ForeignKey("Dyscyplina_Naukowa", on_delete=CASCADE)
 
     class Meta:

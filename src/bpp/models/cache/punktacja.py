@@ -49,7 +49,9 @@ class Cache_Punktacja_Autora_Base(models.Model):
 
 
 class Cache_Punktacja_Autora(Cache_Punktacja_Autora_Base):
-    rekord_id = TupleField(models.IntegerField(), size=2, db_index=True)
+    # db_index zbędny: raw-indeks bpp_cache_punktacja_autora_rekord_autor_idx
+    # (rekord_id, autor_id) z migracji 0206 ma rekord_id jako kolumnę wiodącą.
+    rekord_id = TupleField(models.IntegerField(), size=2)
 
     class Meta:
         ordering = ("autor__nazwisko", "dyscyplina__nazwa")

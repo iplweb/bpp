@@ -659,7 +659,9 @@ class Uczelnia(ModelZAdnotacjami, ModelZPBN_ID, NazwaISkrot, NazwaWDopelniaczu):
 
 
 class Ukryj_Status_Korekty(models.Model):
-    uczelnia = models.ForeignKey(Uczelnia, on_delete=models.CASCADE)
+    # db_index=False: redundantny względem unique_together
+    # (uczelnia, status_korekty) — uczelnia jest wiodącą kolumną tego indeksu.
+    uczelnia = models.ForeignKey(Uczelnia, on_delete=models.CASCADE, db_index=False)
     status_korekty = models.ForeignKey("Status_Korekty", on_delete=models.CASCADE)
 
     multiwyszukiwarka = models.BooleanField(

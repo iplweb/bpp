@@ -708,6 +708,13 @@ CELERYBEAT_SCHEDULE = {
         "task": "powiazania_autorow.calculate_author_connections",
         "schedule": crontab(hour=4, minute=0),  # Daily at 4 AM
     },
+    # Retencja logów logowania (RODO): kasuj LoginEvent starsze niż 24 mies.
+    # Raz w miesiącu, 1. dnia o 2:00. CRUDEvent (historia edycji) NIE jest
+    # ruszany.
+    "easyaudit-purge-stare-logi-logowania": {
+        "task": "bpp.tasks.usun_stare_logi_logowania_easyaudit",
+        "schedule": crontab(hour=2, minute=0, day_of_month=1),
+    },
 }
 
 

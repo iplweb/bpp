@@ -14,6 +14,8 @@ class RozbieznoscZrodlaPBN(models.Model):
         on_delete=CASCADE,
         related_name="rozbieznosci_pbn",
         verbose_name="Źródło",
+        # Auto-indeks FK redundantny: pokrywa go unique_together [zrodlo, rok].
+        db_index=False,
     )
 
     rok = models.PositiveSmallIntegerField(
@@ -71,10 +73,9 @@ class RozbieznoscZrodlaPBN(models.Model):
         unique_together = [["zrodlo", "rok"]]
         ordering = ["-updated_at"]
         indexes = [
-            models.Index(fields=["zrodlo"]),
-            models.Index(fields=["rok"]),
-            models.Index(fields=["ma_rozbieznosc_punktow"]),
-            models.Index(fields=["ma_rozbieznosc_dyscyplin"]),
+            # Usunięto Index(["zrodlo"]) — pokrywa go unique_together [zrodlo,rok];
+            # oraz Index(["rok"]/["ma_rozbieznosc_punktow"]/["ma_rozbieznosc_dyscyplin"])
+            # — duplikaty indeksów z db_index=True na tych polach.
             models.Index(fields=["created_at"]),
         ]
 

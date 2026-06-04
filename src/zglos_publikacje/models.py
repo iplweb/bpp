@@ -370,7 +370,12 @@ class Obslugujacy_Zgloszenia_WydzialowManager(models.Manager):
 
 class Obslugujacy_Zgloszenia_Wydzialow(models.Model):
     user = models.ForeignKey(
-        settings.AUTH_USER_MODEL, models.CASCADE, verbose_name="Użytkownik"
+        settings.AUTH_USER_MODEL,
+        models.CASCADE,
+        verbose_name="Użytkownik",
+        # Auto-indeks FK redundantny: pokrywa go unique_together
+        # [user, wydzial] (user jest kolumną wiodącą).
+        db_index=False,
     )
     wydzial = models.ForeignKey("bpp.Wydzial", models.CASCADE, verbose_name="Wydział")
 
