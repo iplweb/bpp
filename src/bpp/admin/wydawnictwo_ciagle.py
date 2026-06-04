@@ -38,6 +38,7 @@ from bpp.admin.helpers.widgets import (
     NIZSZE_TEXTFIELD_Z_MAPA_ZNAKOW,
 )
 from bpp.admin.nagroda import NagrodaInline
+from bpp.djangoql_schema import BppQLSchema
 from bpp.models import (  # Publikacja_Habilitacyjna
     Charakter_Formalny,
     Wydawnictwo_Ciagle,
@@ -294,6 +295,7 @@ class Wydawnictwo_CiagleAdmin(
 
     djangoql_completion_enabled_by_default = False
     djangoql_completion = True
+    djangoql_schema = BppQLSchema
 
     formfield_overrides = {
         **NIZSZE_TEXTFIELD_Z_MAPA_ZNAKOW,

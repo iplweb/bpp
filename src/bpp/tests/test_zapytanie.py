@@ -530,3 +530,46 @@ def test_picker_excludes_hidden_records(superuser_client):
     items = response.json()["items"]
     assert any(f"[{widoczny.pk}]" in item for item in items)
     assert not any(f"[{ukryty.pk}]" in item for item in items)
+
+
+@pytest.mark.django_db
+def test_schema_publication_models_have_pickers():
+    """Wspólny BppQLSchema auto-generuje pickery dla modeli publikacji
+    (admin Patent/doktorat/habilitacja korzysta z tego samego schematu)."""
+    from bpp.djangoql_schema import BppQLSchema
+    from bpp.models import Patent, Praca_Doktorska, Praca_Habilitacyjna
+
+    cases = {
+        Patent: ["status_korekty__rel", "wydzial__rel"],
+        Praca_Doktorska: [
+            "autor__rel",
+            "promotor__rel",
+            "wydawca__rel",
+            "jednostka__rel",
+        ],
+        Praca_Habilitacyjna: ["jednostka__rel", "wydawca__rel", "typ_kbn__rel"],
+    }
+    for model, expected in cases.items():
+        schema = BppQLSchema(model)
+        fields = schema.models[schema.model_label(model)]
+        for name in expected:
+            assert name in fields, f"{model.__name__}: brak {name}"
+
+
+def test_publication_admins_use_bpp_ql_schema():
+    """Adminy publikacji (w tym nowo włączone) mają djangoql_schema = BppQLSchema."""
+    from bpp.admin.patent import Patent_Admin
+    from bpp.admin.praca_doktorska import Praca_DoktorskaAdmin
+    from bpp.admin.praca_habilitacyjna import Praca_HabilitacyjnaAdmin
+    from bpp.admin.wydawnictwo_ciagle import Wydawnictwo_CiagleAdmin
+    from bpp.admin.wydawnictwo_zwarte import Wydawnictwo_ZwarteAdmin
+    from bpp.djangoql_schema import BppQLSchema
+
+    for admin_cls in (
+        Patent_Admin,
+        Praca_DoktorskaAdmin,
+        Praca_HabilitacyjnaAdmin,
+        Wydawnictwo_CiagleAdmin,
+        Wydawnictwo_ZwarteAdmin,
+    ):
+        assert admin_cls.djangoql_schema is BppQLSchema, admin_cls.__name__

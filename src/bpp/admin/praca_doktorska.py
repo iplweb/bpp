@@ -1,12 +1,14 @@
 from dal import autocomplete
 from django import forms
 from django.contrib import admin
+from djangoql.admin import DjangoQLSearchMixin
 from taggit.forms import TextareaTagWidget
 
 from bpp.admin.helpers.widgets import (
     COMMA_DECIMAL_FIELD_OVERRIDE,
     NIZSZE_TEXTFIELD_Z_MAPA_ZNAKOW,
 )
+from bpp.djangoql_schema import BppQLSchema
 
 from ..models import Autor, Jednostka, Praca_Doktorska
 from .actions import ustaw_po_korekcie, ustaw_przed_korekta, ustaw_w_trakcie_korekty
@@ -55,8 +57,12 @@ DOKTORSKA_FIELDS = (
 
 
 class Praca_Doktorska_Habilitacyjna_Admin_Base(
-    AdnotacjeZDatamiMixin, BaseBppAdminMixin, admin.ModelAdmin
+    DjangoQLSearchMixin, AdnotacjeZDatamiMixin, BaseBppAdminMixin, admin.ModelAdmin
 ):
+    djangoql_completion_enabled_by_default = False
+    djangoql_completion = True
+    djangoql_schema = BppQLSchema
+
     formfield_overrides = {
         **NIZSZE_TEXTFIELD_Z_MAPA_ZNAKOW,
         **COMMA_DECIMAL_FIELD_OVERRIDE,
