@@ -389,6 +389,7 @@ class Autor(LinkDoPBNMixin, ModelZAdnotacjami, ModelZPBN_ID):
         dyscyplina_id=None,
         jednostka_id=None,
         akcja=None,
+        uczelnia_id=None,
     ):
         return zbieraj_sloty(
             autor_id=self.pk,
@@ -399,6 +400,7 @@ class Autor(LinkDoPBNMixin, ModelZAdnotacjami, ModelZPBN_ID):
             dyscyplina_id=dyscyplina_id,
             jednostka_id=jednostka_id,
             akcja=akcja,
+            uczelnia_id=uczelnia_id,
         )
 
     @property
