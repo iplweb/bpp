@@ -73,14 +73,24 @@ class PublicTaggitTagAutocomplete(
 
 
 class LataAutocomplete(SanitizedAutocompleteMixin, autocomplete.Select2QuerySetView):
-    """Autocomplete for years (lata) from Rekord cache."""
+    """Autocomplete for years (lata) from Rekord cache.
 
-    qset = (
-        Rekord.objects.all().values_list("rok", flat=True).distinct().order_by("-rok")
-    )
+    Zawężony do uczelni oglądającego (jak ``LataView`` w R3a) — picker lat na
+    domenie jednej uczelni nie podpowiada lat z rekordów innych uczelni.
+    """
 
     def get_queryset(self):
-        qs = self.qset
+        from bpp.util.uczelnia_scope import scope_rekord_do_uczelni
+        from raport_slotow.uczelnia_helper import uczelnia_dla_odczytu
+
+        qs = (
+            scope_rekord_do_uczelni(
+                Rekord.objects.all(), uczelnia_dla_odczytu(self.request)
+            )
+            .values_list("rok", flat=True)
+            .distinct()
+            .order_by("-rok")
+        )
         if self.q:
             qs = qs.filter(rok=self.q)
         return qs
