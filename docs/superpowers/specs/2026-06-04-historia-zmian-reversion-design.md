@@ -45,7 +45,7 @@ inny koszt, inny use-case.
 
 | Narzędzie | Werdykt | Dlaczego |
 |---|---|---|
-| **django-reversion** (+ compare) | ✅ **wybrane** | Już w repo, już ostylowane (`templates/reversion/object_history.html`), już na `Uczelnia`. Daje dokładnie żądany UX: per-rekordowa oś wersji + diff pól + revert + „kto/kiedy/komentarz". Zakres selektywny (per-model). |
+| **django-reversion** (+ `reversion-compare`) | ✅ **wybrane** | Już w repo (na `Uczelnia` jako goły `VersionAdmin` = oś wersji + revert + „kto/kiedy/komentarz"; szablon historii już ostylowany). **Diff pól** (side-by-side) wymaga `CompareVersionAdmin` z `reversion-compare` — pakiet jest zainstalowany, ale **nie jest jeszcze wpięty w żaden admin** (grep: 0 trafień); to dorobimy. Zakres selektywny (per-model). |
 | django-pghistory | ❌ | Triggerowy total-audyt DB (łapie bulk/SQL). Rozwiązuje *inny* problem niż „historia edycji w adminie"; jego admin to log zdarzeń, nie oś wersji z revertem. |
 | django-simple-history | ❌ | Duplikuje każdą tabelę (`_historical`) — zła kombinacja z 5 dużymi tabelami publikacji; dubluje paradygmat, który już mamy w reversion; nie wykorzystalibyśmy jego głównej przewagi (compare mamy w reversion-compare). |
 
@@ -53,6 +53,11 @@ inny koszt, inny use-case.
 > łapie **edycje przez admin** (+ jawne `create_revision`). Zmiany maszynowe
 > (import, SQL) zostają niewidoczne — i to jest **akceptowalne**, bo celem jest
 > rozliczalność ludzi, a nie total-audyt (sekcja 1).
+
+**Zaleta wdrożeniowa:** włączenie reversion na kolejnym modelu **nie wymaga
+migracji** — rejestracja jest runtime, a tabele `Revision`/`Version` już istnieją
+(reversion działa w repo). Kontrast z simple-history (migracja + osobna tabela
+`_historical` na każdy model).
 
 ## 3. Co BPP już ma (punkt wyjścia)
 
@@ -63,16 +68,22 @@ inny koszt, inny use-case.
   tekstowy (które pola), bez wartości pól, bez revertu. **Zostaje jako druga
   siatka bezpieczeństwa.**
 - **Warstwa 1 — reversion na `Uczelnia`.** `UczelniaAdmin(... VersionAdmin)`
-  (`src/bpp/admin/uczelnia.py`) + `reversion-compare` + **ostylowany**
-  `src/django_bpp/templates/reversion/object_history.html` (Grappelli look).
-  Koszt integracji UX-owej jest już zapłacony — trzeba tylko podpiąć kolejne
-  modele.
+  (`src/bpp/admin/uczelnia.py`, **goły `VersionAdmin`** z `reversion.admin`) —
+  daje oś wersji + revert + „kto/kiedy/komentarz", ale **nie** diff pól (to
+  `CompareVersionAdmin`, sekcja 4). Szablon historii
+  `src/django_bpp/templates/reversion/object_history.html` jest już ostylowany
+  (Grappelli). Koszt integracji częściowo zapłacony — UX historii gotowy, brakuje
+  wpięcia compare.
 
 ## 4. Zakres — modele do objęcia `VersionAdmin`
 
-Dziś wszystkie poniższe (poza `Uczelnia`) używają gołego `admin.ModelAdmin` —
-zmiana to dorzucenie `reversion.admin.VersionAdmin` do MRO (wzór:
-`uczelnia.py`).
+Dziś wszystkie poniższe (poza `Uczelnia`) używają gołego `admin.ModelAdmin`.
+Zmiana to dorzucenie do MRO **`CompareVersionAdmin`** (z `reversion_compare.admin`
+— daje historię + revert **oraz** side-by-side diff pól; rozszerza `VersionAdmin`).
+Goły `VersionAdmin` (jak dziś na `Uczelnia`) wystarcza, gdy diff pól niepotrzebny
+— ale skoro celem jest „kto **co** zmienił", `CompareVersionAdmin` jest domyślnym
+wyborem. (`Uczelnia` warto przy okazji podnieść z `VersionAdmin` na
+`CompareVersionAdmin`.)
 
 | Model | Admin | Baza dziś | Uwagi |
 |---|---|---|---|
@@ -84,7 +95,15 @@ zmiana to dorzucenie `reversion.admin.VersionAdmin` do MRO (wzór:
 | `Autor` | `AutorAdmin` (`src/bpp/admin/autor.py`) | `admin.ModelAdmin` | też w zakresie soft-delete |
 | `Wydzial` | `WydzialAdmin` | `admin.ModelAdmin` | |
 | `Jednostka` | `JednostkaAdmin` | `DraggableMPTTAdmin` ⚠️ | MRO `VersionAdmin`+MPTT — przetestować drzewo (drag&drop zmienia `lft/rght/level`) |
-| `Uczelnia` | `UczelniaAdmin` | ✅ `VersionAdmin` | wzorzec, bez zmian |
+| `Uczelnia` | `UczelniaAdmin` | ✅ goły `VersionAdmin` | działa (oś+revert), bez diffa; opcjonalnie podnieść na `CompareVersionAdmin` |
+
+> **Zgłoszenia publikacji** są **tworzone** przez userów (front-end:
+> `src/zglos_publikacje/views.py`), a **edytowane w adminie** — więc reversion
+> (admin) pokrywa edycję, czyli to, co nas interesuje. Niuans niskiej wagi: samo
+> userowe *utworzenie* nie jest rewizją admina, więc historia rekordu zaczyna się
+> od pierwszej zmiany w adminie (lub od `createinitialrevisions`). Jeśli kiedyś
+> chcemy w historii także autora pierwotnego zgłoszenia — owinąć widok tworzenia
+> w `create_revision()` (opcjonalne, nie blokuje).
 
 ## 5. Relacja do `SoftDeleteLog` — komplementarność, nie duplikacja
 
@@ -125,12 +144,20 @@ w rewizję, z atrybucją usera i komentarzem:
 import reversion
 
 def delete_model(self, request, obj):
-    with reversion.create_revision():
-        reversion.set_user(request.user)
+    # self.create_revision(request) = helper VersionAdmin; sam robi set_user(request.user)
+    with self.create_revision(request):
         reversion.set_comment("Usunięto (soft-delete)")
         super().delete_model(request, obj)   # → obj.delete() = UPDATE deleted_at
 # analogicznie delete_queryset() (akcja masowa) oraz akcja "Przywróć" → set_comment("Przywrócono")
 ```
+
+> **Twardy warunek poprawności:** nadpisany w projekcie soft-delete
+> `delete()`/`restore()` (§2.2 tamtego design) **musi nadal wołać `instance.save()`**.
+> Zweryfikowane: pakietowy `delete()` robi `self.save(update_fields=[...])`
+> (`django_softdelete/models.py:163`), na czym wisi `post_save`, który reversion
+> przechwytuje w bloku rewizji. Gdyby ktoś „zoptymalizował" override na
+> `queryset.update()` (bulk), `post_save` nie odpali i historia usunięć **po cichu
+> zniknie**.
 
 Ponieważ soft-delete utrzymuje wiersz, oś czasu reversion pozostaje **ciągła**:
 `utworzono → edycje → usunięto → przywrócono → edycje` w jednej zakładce. (To
@@ -155,16 +182,27 @@ moment akcji superusera.
   „Pokaż skasowane"). To **odpowiada na pytanie „czy admin obejrzy usunięte"**:
   tak — dzięki temu usunięty rekord da się otworzyć i przeczytać jego Historię.
   reversion tu nic nie zmienia, tylko korzysta z tego, że wiersz jest osiągalny.
-- Wbudowany przycisk reversion **„recover deleted" staje się zbędny/mylący** pod
-  soft-delete (przywracamy przez `restore()`, nie przez reversion-recover) —
-  ukryć, by nie mieć dwóch sprzecznych dróg odkasowania.
+- **Ukryć reversion „recover deleted".** Lista recover bierze wersje, których
+  wiersz już **nie istnieje** (`Version.objects.get_deleted`). Soft-deletowany
+  rekord wiersz **ma** (`deleted_at` ustawione) → w recover-liście się **nie
+  pojawi**, więc dla soft-delete jest po prostu pusta. Realny problem to
+  **`hard_delete`**: usuwa wiersz, więc reversion-recover mógłby go wskrzesić
+  *poza* przepływem (bez `WYSYLKA` w `pbn_export_queue`, bez `SoftDeleteLog`,
+  z ryzykiem złamania warunkowego unique na `slug`). Dlatego recover ukrywamy.
 
 ## 7. Pozostałe punkty (mniejszej wagi, ale realne)
 
-- **Inline'y → `follow`.** `Zgloszenie_Publikacji` i wydawnictwa mają inline'y
-  (autorzy, załączniki). `VersionAdmin` domyślnie rejestruje i śledzi modele
-  inline z admina — **zweryfikować**, bo inaczej rewizja zapisze nagłówek bez
-  autorów i compare będzie mylący.
+- **Inline'y → `follow` (automatyczne).** `VersionAdmin`/`CompareVersionAdmin`
+  **samo** rejestruje i `follow`-uje modele inline zadeklarowane w `self.inlines`
+  (`reversion/admin.py:145-154`) — autorzy/załączniki `Zgloszenie_Publikacji` i
+  wydawnictw wejdą do rewizji bez dodatkowej pracy. Realny caveat: relacje
+  edytowane **spoza** zadeklarowanych inline'ów nie są objęte — wtedy `follow`
+  trzeba dodać ręcznie.
+- **Szablon historii a compare.** Ostylowany `object_history.html` renderuje
+  płaską tabelę bez kontrolek wyboru wersji do porównania. `CompareVersionAdmin`
+  potrzebuje w historii radio-inputów do wskazania pary wersji — szablon trzeba
+  rozszerzyć o ten selektor (albo użyć `compare_history` z `reversion_compare`).
+  Banał, ale konieczny, żeby diff był klikalny.
 - **Backfill historii (decyzja otwarta).** Reversion zna tylko zmiany *po*
   wdrożeniu. Pierwsza wersja starego rekordu powstaje przy pierwszej edycji albo
   jednorazowo przez `manage.py createinitialrevisions <app.Model>`. Na 5 dużych
@@ -193,8 +231,9 @@ moment akcji superusera.
 
 ## 9. Decyzje rozstrzygnięte (brainstorming 2026-06-04)
 
-1. **Narzędzie:** `django-reversion` (rozszerzenie istniejącego). pghistory i
-   simple-history odrzucone (sekcja 2).
+1. **Narzędzie:** `django-reversion` + `CompareVersionAdmin` z `reversion-compare`
+   (rozszerzenie istniejącego; diff pól). pghistory i simple-history odrzucone
+   (sekcja 2).
 2. **Zakres:** edycje ludzkie przez admin na zdefiniowanym zbiorze modeli
    (sekcja 4); **nie** total-audyt bazy.
 3. **Soft-delete w historii:** usunięcie i restore mają być rewizjami reversion
@@ -215,8 +254,10 @@ moment akcji superusera.
 ## 11. Precedensy w repo
 
 - `django-reversion>=6.2.0` + `django-reversion-compare>=0.19.2` —
-  `pyproject.toml`.
-- `src/bpp/admin/uczelnia.py` — `VersionAdmin` w akcji (wzorzec MRO).
+  `pyproject.toml`. Uwaga: `reversion_compare` jest w `INSTALLED_APPS`, ale
+  **żaden admin nie używa `CompareVersionAdmin`** (grep: 0 trafień) — compare
+  jest do wpięcia od zera.
+- `src/bpp/admin/uczelnia.py` — goły `VersionAdmin` w akcji (wzorzec MRO; bez diffa).
 - `src/django_bpp/templates/reversion/object_history.html` — gotowy, ostylowany
   szablon historii (nie trzeba robić od zera).
 - `src/bpp/admin/filters.py` — filtry na wbudowanym `LogEntry` (warstwa 0).
