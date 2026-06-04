@@ -280,3 +280,32 @@ def test_export_globalne_stats_scoped(
         if row[0] == "Liczba autorów":
             found = row[1]
     assert found == 1
+
+
+@pytest.mark.django_db
+def test_detail_pozycja_w_jednostce_per_uczelnia(dyscyplina1, uczelnia1, uczelnia2):
+    """_get_position_context liczy pozycję tylko w obrębie uczelni metryki."""
+    from ewaluacja_metryki.views.detail import MetrykaDetailView
+
+    autor1 = baker.make("bpp.Autor")
+    autor2 = baker.make("bpp.Autor")
+    jedn = baker.make("bpp.Jednostka", uczelnia=uczelnia1)
+    m1 = _make_metryka(
+        autor1,
+        dyscyplina1,
+        uczelnia1,
+        jednostka=jedn,
+        srednia_za_slot_nazbierana=Decimal("5.0"),
+    )
+    # obca metryka w tym samym jednostka_id ale uczelnia2 (sztuczny edge)
+    _make_metryka(
+        autor2,
+        dyscyplina1,
+        uczelnia2,
+        jednostka=jedn,
+        srednia_za_slot_nazbierana=Decimal("9.0"),
+    )
+    view = MetrykaDetailView()
+    ctx = view._get_position_context(m1)
+    # liczba_w_jednostce liczona w obrębie uczelnia1 → 1 (tylko m1)
+    assert ctx["liczba_w_jednostce"] == 1
