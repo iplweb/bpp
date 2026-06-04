@@ -24,11 +24,50 @@ jest dla bibliotek naukowych i uniwersyteckich w Polsce.
 Oprogramowanie dystrybuowane jest na zasadach otwartoźródłowej
 [licencji MIT](https://pl.wikipedia.org/wiki/Licencja_MIT).
 
+## Integracje — BPP jako centralny hub danych
+
+BPP pełni rolę **centralnego punktu przyjmowania i obróbki publikacji**
+na uczelni. Dane wpływają do systemu z wielu źródeł, są w nim
+ujednolicane, weryfikowane i punktowane, a następnie udostępniane dalej
+przez zestaw kanałów wyjściowych.
+
+<p align="center">
+  <img src="https://github.com/iplweb/bpp/raw/dev/src/bpp/static/bpp/images/bpp_integracje.svg" width="900" alt="Schemat architektury wymiany danych BPP — po lewej wejścia (Pracownicy, PBN, CrossRef, Web of Science, DSpace), w centrum BPP jako hub, po prawej wyjścia (PBN, OAI-PMH, API, DSpace)">
+</p>
+
+- **Wejście (input)** — dane trafiają do BPP od **pracowników**
+  (zgłaszanie publikacji), z **PBN**, **CrossRef**, **Web of Science**
+  oraz z repozytoriów **DSpace** (import publikacji wraz z metadanymi
+  Dublin Core, autodetekcja DSpace 6/7).
+- **Wyjście (output)** — z BPP dane wypływają do **PBN**, są wystawiane
+  przez **OAI-PMH** (zbiór do agregatorów i discovery), udostępniane
+  programistycznie przez **API**, a prace mogą być **wysyłane do
+  repozytorium DSpace**, dzięki czemu BPP staje się jednym, spójnym
+  miejscem zasilania całego ekosystemu publikacyjnego uczelni.
+
+### Integracja z DSpace (dwukierunkowa)
+
+BPP integruje się z repozytoriami instytucjonalnymi opartymi o **DSpace**
+w obie strony:
+
+- **DSpace → BPP** — import publikacji z repozytorium na podstawie adresu
+  rekordu (`/items/{uuid}` dla DSpace 7+ oraz `/handle/{prefix}/{suffix}`
+  dla DSpace 6). BPP odczytuje metadane (tytuł, autorzy, rok, DOI,
+  ISSN/ISBN, typ, abstrakt, słowa kluczowe, licencja) i zakłada na ich
+  podstawie rekord.
+- **BPP → DSpace** — wysyłanie prac z BPP do repozytorium DSpace, tak aby
+  BPP było centralnym punktem rejestracji i obróbki, a repozytorium
+  otrzymywało gotowe, opisane rekordy.
+
 ## Główne funkcje
 
 - Zarządzanie bibliografią publikacji pracowników naukowych
+- Centralny punkt przyjmowania i obróbki publikacji na uczelni
 - Integracja z Polską Bibliografią Naukową (PBN)
 - Integracja z ORCID i CrossRef
+- Integracja z Web of Science
+- Dwukierunkowa integracja z repozytoriami DSpace (import oraz wysyłanie prac)
+- Wystawianie danych przez OAI-PMH oraz API
 - Raporty ewaluacyjne i analiza slotów
 - Ranking autorów i punktacja publikacji
 - Klasyfikacja i śledzenie Open Access
