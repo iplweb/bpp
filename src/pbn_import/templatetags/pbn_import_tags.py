@@ -17,10 +17,11 @@ def pbn_publication_url(context, pbn_publication_id):
     if not pbn_publication_id:
         return ""
     request = context.get("request")
-    if request is not None:
-        uczelnia = Uczelnia.objects.get_for_request(request)
-    else:
-        uczelnia = Uczelnia.objects.get_default()
+    # Multi-hosted: uczelnia z requestu; bez requestu → None → publiczny root
+    # PBN (NIE „domyślna" uczelnia).
+    uczelnia = (
+        Uczelnia.objects.get_for_request(request) if request is not None else None
+    )
     pbn_root = uczelnia.pbn_api_root if uczelnia else "https://pbn.nauka.gov.pl"
     # Remove trailing slash if present
     pbn_root = pbn_root.rstrip("/")

@@ -1,18 +1,23 @@
-"""Guard multi-hosted: pilnuje, że ``Uczelnia.objects.get_default()`` /
-``Uczelnia.objects.default`` nie pojawia się poza ZATWIERDZONĄ whitelistą.
+"""Guard multi-hosted: pilnuje, że footguny „pierwszej-z-brzegu uczelni"
+nie wracają do kodu runtime.
 
-Każdy wpis na whiteliście to ŚWIADOMA decyzja (świadomy fallback bez requestu,
-None-tolerant warstwa modelu, parked TODO per-uczelnia, albo guarded count==1).
-Nowe użycie ``get_default`` w ścieżce runtime to potencjalny bug multi-hosted —
-zgaduje uczelnię „pierwszą-z-brzegu" zamiast użyć właściwej.
+NIE MA „uczelni domyślnej". ``Uczelnia.objects.get_default()`` /
+``Uczelnia.objects.default`` zostały TRWALE USUNIĘTE — każde ich wystąpienie
+w ``src/`` (poza testami/migracjami) to regresja. Uczelnię ustala się z
+requestu (``get_for_request`` → domena → Site → Uczelnia); gdy się NIE DA,
+jedyny dozwolony fallback to ``get_single_uczelnia_or_none`` (jedna albo None,
+bez zgadywania) lub ``get_single_uczelnia_or_fail`` (jedna albo głośny błąd).
+
+Drugi, semantycznie równoważny footgun to ``Uczelnia.objects.first()`` /
+``Uczelnia.objects.all()[0]`` — pilnowany osobno (whitelista demo/debug/
+warstwa-modelu/UI default).
 
 Gdy ten test PADA:
-- DODAŁEŚ ``get_default``/``objects.default`` → użyj JAWNEJ uczelni:
-  ``get_for_request(request)`` (widoki), argument przekazany od wołającego,
-  albo FK na obiekcie (np. ``session.uczelnia``, wpis kolejki). Jeśli miejsce
-  jest NAPRAWDĘ akceptowalne — dopisz je do ``APPROVED`` z uzasadnieniem.
-- USUNĄŁEŚ ``get_default`` (np. naprawiłeś multi-hosted) → zmniejsz licznik
-  albo usuń wpis z ``APPROVED``.
+- dla get_default → USUNĄŁEŚ regres: ``Uczelnia.objects.get_default()``/
+  ``.default`` NIE WOLNO użyć (metoda nie istnieje). Użyj jawnej uczelni
+  (``get_for_request`` / argument / FK obiektu) albo ``get_single_uczelnia_*``.
+- dla first() → użyj jawnej uczelni / single-or-fail, albo dopisz do
+  ``APPROVED_FIRST`` z uzasadnieniem (gdy to świadomy fallback bez requestu).
 
 Patrz: docs/deweloper/audyt-multihosted-pbn.md
 """
@@ -20,40 +25,17 @@ Patrz: docs/deweloper/audyt-multihosted-pbn.md
 import re
 from pathlib import Path
 
-# Wzorzec: faktyczne wywołania na managerze (NIE ``self.get_default()``
-# w definicji UczelniaManager, które tego wzorca nie pasują).
+# TWARDY ZAKAZ: ``Uczelnia.objects.get_default()`` / ``Uczelnia.objects.default``
+# nie istnieją już jako API — 0 dozwolonych wystąpień (też w komentarzach, żeby
+# nie sugerować nieistniejącej metody).
 PATTERN = re.compile(r"Uczelnia\.objects\.(?:get_default\(\)|default\b)")
 
-# Drugi footgun, semantycznie równoważny ``get_default`` w ścieżce runtime:
-# ``Uczelnia.objects.first()`` / ``Uczelnia.objects.all()[0]`` zgaduje
-# „pierwszą-z-brzegu" uczelnię niezależnie od hosta (uczelni) z requestu —
-# ta sama klasa buga co B1, inna pisownia. ``all()[0]`` dorzucony
-# prewencyjnie (0 wystąpień dziś, zerowy koszt utrzymania).
+# Drugi footgun, semantycznie równoważny: ``Uczelnia.objects.first()`` /
+# ``Uczelnia.objects.all()[0]`` zgaduje „pierwszą-z-brzegu" uczelnię niezależnie
+# od hosta z requestu. ``all()[0]`` dorzucony prewencyjnie (0 wystąpień dziś).
 PATTERN_FIRST = re.compile(r"Uczelnia\.objects\.(?:first\(\)|all\(\)\s*\[\s*0\s*\])")
 
 SRC = Path(__file__).resolve().parents[2]  # .../src
-
-# Ścieżka (względem src/) -> dozwolona liczba wystąpień. Komentarz = dlaczego OK.
-APPROVED: dict[str, int] = {
-    "bpp/middleware.py": 1,  # świadomy fallback: Site istnieje, brak Uczelni
-    "bpp/util/bpp_specific.py": 2,  # docstring + świadomy fallback (CLI/Celery bez requestu)
-    # bpp/models/sloty/core.py i abstract/disciplines.py: get_default USUNIĘTY
-    # (per-uczelnia sloty zrealizowane — ISlot._rozstrzygnij_uczelnie + przelicz
-    # bez parametru). Brak wpisu = guard złapie ewentualny powrót get_default.
-    "bpp/models/abstract/pbn.py": 2,  # linki PBN, metoda modelu bez requestu
-    "bpp/models/jednostka.py": 1,  # sortowanie (display), warstwa modelu
-    # do_roku_default(request=None): default pola modelu (migracja
-    # 0020_fix_do_roku_default_modulowa_funkcja) + initial= formularzy raportów.
-    # Musi być request-less i serializowalny w migracji, więc świadomy
-    # fallback get_default() z obsługą None (per-uczelnia override idzie przez
-    # metodę managera do_roku_default(request=...) wyżej w pliku).
-    "bpp/models/uczelnia.py": 1,
-    "bpp/multiseek_registry/fields/numeric_fields.py": 1,  # toggle IC, None-tolerant
-    "ewaluacja2021/util.py": 1,  # komentarz (nie kod)
-    "pbn_api/management/commands/util.py": 1,  # GUARDED count==1 (wzorzec CLI)
-    "pbn_import/templatetags/pbn_import_tags.py": 1,  # request-first, fallback bez requestu
-    "pbn_import/utils/command_helpers.py": 1,  # CLI None-tolerant + CommandError
-}
 
 # Whitelist dla ``Uczelnia.objects.first()``. Każdy wpis to ŚWIADOMY fallback
 # bez requestu (warstwa modelu / UI default / demo / debug / komentarz).
@@ -80,15 +62,18 @@ def _scan(pattern: re.Pattern) -> dict[str, int]:
     return found
 
 
-def test_get_default_poza_whitelista_to_regresja_multihosted():
+def test_get_default_usuniete_na_trwale():
+    """``Uczelnia.objects.get_default()`` / ``.default`` NIE MOŻE istnieć w
+    runtime — metoda i cached_property zostały usunięte (nie ma „uczelni
+    domyślnej"). Każde wystąpienie = regresja do footguna pierwszej-z-brzegu.
+    """
     found = _scan(PATTERN)
 
-    nowe = {f: n for f, n in found.items() if n > APPROVED.get(f, 0)}
-    assert not nowe, (
-        "Nowe/dodatkowe Uczelnia.objects.get_default()/.default poza whitelistą "
-        f"(potencjalny bug multi-hosted): {nowe}. Użyj jawnej uczelni "
-        "(get_for_request / argument / FK obiektu) albo dopisz do APPROVED "
-        "w tym pliku z uzasadnieniem."
+    assert not found, (
+        "Znaleziono Uczelnia.objects.get_default()/.default — ten byt został "
+        f"USUNIĘTY na trwałe (nie ma uczelni domyślnej): {found}. Użyj jawnej "
+        "uczelni (get_for_request / argument / FK obiektu) albo "
+        "get_single_uczelnia_or_none / get_single_uczelnia_or_fail."
     )
 
 

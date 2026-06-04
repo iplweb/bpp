@@ -28,8 +28,9 @@ def test_pre_upload_clear_uzywa_flagi_z_wlasnej_uczelni_nie_get_default():
     uczelnia_a = baker.make(Uczelnia, pbn_kasuj_dyscypliny_selektywnie=True)
     uczelnia_b = baker.make(Uczelnia, pbn_kasuj_dyscypliny_selektywnie=False)
 
-    # Założenie testu: get_default() zwraca uczelnię INNĄ niż ta klienta.
-    assert Uczelnia.objects.get_default() == uczelnia_a
+    # Multi-hosted: są DWIE uczelnie, więc NIE ma „jedynej" do zgadnięcia —
+    # klient MUSI użyć swojej (uczelnia_b), nie pierwszej-z-brzegu.
+    assert Uczelnia.objects.get_single_uczelnia_or_none() is None
     assert uczelnia_a != uczelnia_b
 
     client = BppPBNClient(MockTransport(), uczelnia=uczelnia_b)

@@ -226,9 +226,11 @@ def test_import_manager_uzywa_swojej_uczelni_nie_get_default(admin_user):
 
     inst1 = baker.make(Institution)
     inst2 = baker.make(Institution)
-    u1 = baker.make(Uczelnia, pbn_uid=inst1)  # get_default ją zwróci
+    baker.make(Uczelnia, pbn_uid=inst1)  # pierwsza-z-brzegu (gdyby ktoś zgadywał)
     u2 = baker.make(Uczelnia, pbn_uid=inst2, pbn_integracja=False)
-    assert Uczelnia.objects.get_default() == u1
+    # Multi-hosted: są DWIE uczelnie, więc nie ma „jedynej" — ImportManager
+    # MUSI użyć swojej (u2), nie zgadywać pierwszej-z-brzegu.
+    assert Uczelnia.objects.get_single_uczelnia_or_none() is None
 
     session = baker.make(ImportSession, user=admin_user, config={})
     manager = ImportManager(session, client=None, uczelnia=u2)

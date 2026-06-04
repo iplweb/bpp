@@ -94,8 +94,9 @@ def test_link_do_pi_per_uczelnia_rozroznia_dwa_wiersze(uczelnia):
 
 
 @pytest.mark.django_db
-def test_link_do_pi_bez_uczelni_uzywa_get_default(uczelnia):
-    """Backward-compat: link_do_pi() bez uczelni działa via get_default()."""
+def test_link_do_pi_bez_uczelni_jedyna_uczelnia(uczelnia):
+    """Bez argumentu uczelni: gdy w systemie jest JEDNA uczelnia, link_do_pi()
+    działa via get_single_uczelnia_or_none (single → ona). Brak get_default."""
     uczelnia.pbn_api_root = "https://pbn-default.example.com"
     uczelnia.save()
 

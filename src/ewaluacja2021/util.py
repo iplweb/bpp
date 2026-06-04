@@ -109,8 +109,8 @@ def output_table_to_xlsx(  # noqa: C901 — złożoność pre-existing, nie z te
 
     first_table_row = ws.max_row
 
-    # CLI/Celery context — brak requestu. Helper fallbackuje do
-    # Uczelnia.objects.get_default().site lub Site.objects.first().
+    # CLI/Celery context — brak requestu. Helper (bez „uczelni domyślnej")
+    # bierze bazowy URL z pierwszego Site (lub localhost).
     from bpp.util import site_url_for_request
 
     site_url = site_url_for_request()

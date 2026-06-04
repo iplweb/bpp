@@ -17,17 +17,20 @@ class LinkDoPBNMixin:
     def link_do_pbn(self, uczelnia=None):
         assert self.url_do_pbn, "Określ parametr self.url_do_pbn"
 
+        # Multi-hosted: bez przekazanej uczelni próbujemy JEDYNEJ w systemie
+        # (get_single_uczelnia_or_none: single → ona; 0/>1 → None). NIE ma
+        # „uczelni domyślnej" (zgadywania pierwszej-z-brzegu). Bez ustalonej
+        # uczelni — nie linkujemy.
         if uczelnia is None:
             from bpp.models import Uczelnia
 
-            # Root linku PBN (pbn_api_root); metoda modelu bez requestu —
-            # get_default() akceptowalny (None-tolerant).
-            uczelnia = Uczelnia.objects.get_default()
-        if uczelnia is not None:
-            return self.url_do_pbn.format(
-                pbn_api_root=uczelnia.pbn_api_root,
-                pbn_uid_id=self.link_do_pbn_wartosc_id(),
-            )
+            uczelnia = Uczelnia.objects.get_single_uczelnia_or_none()
+        if uczelnia is None:
+            return None
+        return self.url_do_pbn.format(
+            pbn_api_root=uczelnia.pbn_api_root,
+            pbn_uid_id=self.link_do_pbn_wartosc_id(),
+        )
 
     def _get_lookup_id(self):
         """Get the lookup ID for PublikacjaInstytucji_V2 query.
@@ -85,12 +88,12 @@ class LinkDoPBNMixin:
 
     def _format_link_pi(self, pbn_uid_id, uuid=None, versionHash=None, uczelnia=None):
         """Format the link to PI based on available data."""
+        # Multi-hosted: bez przekazanej uczelni próbujemy JEDYNEJ w systemie
+        # (single → ona; 0/>1 → None). NIE ma „uczelni domyślnej".
         if uczelnia is None:
             from bpp.models import Uczelnia
 
-            # Root linku PBN (pbn_api_root); metoda modelu bez requestu —
-            # get_default() akceptowalny (None-tolerant).
-            uczelnia = Uczelnia.objects.get_default()
+            uczelnia = Uczelnia.objects.get_single_uczelnia_or_none()
         if uczelnia is None:
             return None
 

@@ -136,7 +136,8 @@ def link_do_pi(praca, uczelnia=None):
     metodzie, więc filtr przekazuje uczelnię oglądającego (z kontekstu) do
     ``praca.link_do_pi(uczelnia)`` — link wskazuje na PBN-root TEJ uczelni i
     rozwiązuje wiersz ``PublikacjaInstytucji_V2`` otagowany TĄ uczelnią.
-    ``uczelnia=None`` degraduje do ``get_default()`` (single-install).
+    ``uczelnia=None`` (brak uczelni w kontekście) → brak linku (NIE ma
+    „uczelni domyślnej").
     """
     method = getattr(praca, "link_do_pi", None)
     if method is None:

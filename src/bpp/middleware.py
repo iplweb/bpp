@@ -1,7 +1,6 @@
 import json
 import logging
 
-from django.core.exceptions import ObjectDoesNotExist
 from django.http import HttpResponse
 from django.utils.deprecation import MiddlewareMixin
 from rollbar.contrib.django.middleware import RollbarNotifierMiddleware
@@ -266,34 +265,17 @@ class SiteResolutionMiddleware(MiddlewareMixin):
     """
 
     def process_request(self, request):
-        from django.conf import settings
-        from django.contrib.sites.models import Site
+        from bpp.models.uczelnia import Uczelnia
 
-        hostname = request.get_host().split(":")[0]
-        try:
-            site = Site.objects.get(domain=hostname)
-        except Site.DoesNotExist:
-            site_id = getattr(settings, "SITE_ID", None)
-            if site_id is not None:
-                try:
-                    site = Site.objects.get(pk=site_id)
-                except Site.DoesNotExist:
-                    site = None
-            else:
-                site = None
-
+        # Rozdzielczość Site i Uczelni jest WSPÓLNA z
+        # ``Uczelnia.objects.get_for_request`` (jeden resolver, host-first).
+        site = Uczelnia.objects._site_dla_requestu(request)
         request.site = site
 
-        uczelnia = None
-        if site is not None:
-            try:
-                uczelnia = site.uczelnia
-            except ObjectDoesNotExist:
-                # Site exists but no Uczelnia linked — fall back to default
-                from bpp.models.uczelnia import Uczelnia
-
-                uczelnia = Uczelnia.objects.get_default()
-        request._uczelnia = uczelnia
+        # Multi-hosted: uczelnia z Site (domena), a gdy się nie da — jedyna
+        # uczelnia w systemie. Brak → None; jedna → ta; wiele bez wskazania
+        # z domeny → None (ŻADNA, nie zgadujemy „domyślnej").
+        request._uczelnia = Uczelnia.objects.uczelnia_dla_site(site)
 
     def process_view(self, request, view_func, view_args, view_kwargs):
         """Block admin access for staff users without access to current site.

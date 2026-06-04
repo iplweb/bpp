@@ -51,7 +51,7 @@ class PBNBaseCommand(BaseCommand):
         if count == 0:
             return None
         if count == 1:
-            return Uczelnia.objects.get_default()
+            return Uczelnia.objects.get()
         raise CommandError(
             "W systemie jest więcej niż jedna uczelnia — podaj --uczelnia-id, "
             "żeby wskazać której konfiguracji PBN użyć."

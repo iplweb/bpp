@@ -90,20 +90,15 @@ def dont_log_anonymous_crud_events(
 def site_url_for_request(request=None):
     """Zwraca bazowy URL serwisu (``scheme://host``) z bieżącego requestu.
 
-    W multi-hosted ten URL musi pochodzić z requestu — ``Site.objects.first()``
-    zwróciłby losową domenę. Bez requestu (CLI, Celery task, test) fallback
-    do ``Uczelnia.objects.get_default().site`` lub pierwszego ``Site``.
+    W multi-hosted ten URL musi pochodzić z requestu. Bez requestu (CLI,
+    Celery task, test) NIE ma „uczelni domyślnej", więc bazowy URL bierzemy
+    z pierwszego ``Site`` (lub localhost) — to request-less fallback dla
+    maili/linków, nie ścieżka uczelniozależna.
     """
     if request is not None:
         return f"{request.scheme}://{request.get_host()}"
 
     from django.contrib.sites.models import Site
-
-    from bpp.models.uczelnia import Uczelnia
-
-    uczelnia = Uczelnia.objects.get_default()
-    if uczelnia is not None and uczelnia.site_id is not None:
-        return "https://" + uczelnia.site.domain
 
     site = Site.objects.first()
     if site is not None:
