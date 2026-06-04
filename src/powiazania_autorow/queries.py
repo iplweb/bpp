@@ -15,7 +15,7 @@ MAKS_SASIADOW = 500
 # Twardy limit węzłów dla auto-rozwijania sieci (BFS na N poziomów). Chroni
 # przed eksplozją depth × rozgałęzienie; po przekroczeniu BFS się zatrzymuje,
 # a UI pokazuje informację, że sieć została przycięta.
-MAKS_WEZLOW_SIECI = 400
+MAKS_WEZLOW_SIECI = 1200
 
 # Backstop dla krawędzi "poprzecznych" (powiązania wewnątrz widocznej grupy).
 MAKS_KRAWEDZI_WEWN = 3000
@@ -109,6 +109,48 @@ def _filtr_z_request(request):
         zrodla=_ints(request.GET.getlist("zrodlo"))[:MAKS_ZRODEL_WYDAWCOW],
         wydawcy=_ints(request.GET.getlist("wydawca"))[:MAKS_ZRODEL_WYDAWCOW],
     )
+
+
+def _uczelnia_zatrudnienia(request):
+    """PK uczelni dla filtra "tylko aktualnie zatrudnieni", albo None gdy
+    filtr wyłączony bądź brak uczelni domyślnej. Autor liczy się jako
+    aktualnie zatrudniony, gdy jego `aktualna_jednostka` należy do tej uczelni.
+
+    Filtr jest ortogonalny do `Filtr` (rok/źródło/wydawca): tamten zawęża po
+    cechach PRACY, ten po cesze AUTORA (węzła), więc działa niezależnie na obu
+    ścieżkach (AuthorConnection i cache).
+    """
+    if request.GET.get("tylko_zatrudnieni") not in ("1", "true", "on"):
+        return None
+    from bpp.models import Uczelnia
+
+    uczelnia = Uczelnia.objects.get_for_request(request)
+    return uczelnia.pk if uczelnia is not None else None
+
+
+def siec_powiazan_wlaczona(autor, request):
+    """Czy sieć powiązań ma być dostępna dla `autor` w kontekście `request`.
+
+    Efektywne ustawienie: tri-state per-autor nadpisuje per-uczelnia (patrz
+    Autor.czy_pokazywac_siec_powiazan). Wspólny gate dla strony grafu i
+    wszystkich endpointów JSON — gdy False, widoki zwracają 404.
+    """
+    from bpp.models import Uczelnia
+
+    uczelnia = Uczelnia.objects.get_for_request(request)
+    return autor.czy_pokazywac_siec_powiazan(uczelnia)
+
+
+def _widoczni_autorzy(ids, uczelnia_zatr=None):
+    """Zbiór id autorów z `ids`, którzy są widoczni (pokazuj=True). Gdy podano
+    `uczelnia_zatr`, dodatkowo zawęża do aktualnie zatrudnionych w tej uczelni
+    (`aktualna_jednostka__uczelnia_id` == uczelnia_zatr) — jeden indeksowany
+    JOIN do Jednostki.
+    """
+    qs = Autor.objects.filter(id__in=ids, pokazuj=True)
+    if uczelnia_zatr is not None:
+        qs = qs.filter(aktualna_jednostka__uczelnia_id=uczelnia_zatr)
+    return set(qs.values_list("id", flat=True))
 
 
 def _etykieta(autor):
@@ -278,12 +320,17 @@ def _top_widoczni(lista, widoczni, topn):
     return wynik
 
 
-def _bfs_siec(centrum_id, depth, topn, filtr=None):
+def _bfs_siec(centrum_id, depth, topn, filtr=None, uczelnia_zatr=None):
     """BFS od centrum do głębokości `depth`.
 
     Bez filtra czerpie z gotowego AuthorConnection; z filtrem (rok/źródło/
     wydawca) liczy współautorstwa z cache. Zwraca (level_of, parent_of,
     krawedzie, przyciecie); `przyciecie` = trafienie w MAKS_WEZLOW_SIECI.
+
+    `uczelnia_zatr` (gdy nie-None) zawęża widocznych sąsiadów do aktualnie
+    zatrudnionych w tej uczelni. Centrum jest korzeniem (dodane do `visited`
+    bezwarunkowo) — filtr go nie dotyczy, więc zostaje nawet gdy sam nie jest
+    zatrudniony.
     """
     z_filtrem = filtr is not None and filtr.aktywny()
     visited = {centrum_id}
@@ -300,9 +347,7 @@ def _bfs_siec(centrum_id, depth, topn, filtr=None):
             kandydaci, inni = _kandydaci_cache(set(frontier), filtr)
         else:
             kandydaci, inni = _kandydaci_frontu(set(frontier))
-        widoczni = set(
-            Autor.objects.filter(id__in=inni, pokazuj=True).values_list("id", flat=True)
-        )
+        widoczni = _widoczni_autorzy(inni, uczelnia_zatr)
         nowy_front = []
         for fid in frontier:
             for oid, sh in _top_widoczni(kandydaci.get(fid, []), widoczni, topn):
@@ -323,6 +368,23 @@ def _bfs_siec(centrum_id, depth, topn, filtr=None):
         frontier = nowy_front
 
     return level_of, parent_of, krawedzie, przyciecie
+
+
+def _autorzy_widocznej_sieci(centrum_id, depth, topn, filtr=None, uczelnia_zatr=None):
+    """Zbiór id autorów widocznych w sieci BFS (centrum + sąsiedzi do `depth`,
+    top-N na węzeł) — z tym samym kształtem co graf (rok + zatrudnieni).
+
+    Zasila listę źródeł, żeby odzwierciedlała CAŁĄ widoczną sieć, nie tylko
+    autora centralnego: zmiana głębokości / liczby współautorów / roku realnie
+    zmienia zbiór autorów, a więc i zbiór ich źródeł. Filtr źródła/wydawcy
+    świadomie NIE wchodzi tu w grę (wołający podaje filtr tylko-rok) — inaczej
+    wybór źródła zawężałby sieć, a ta listę źródeł (sprzężenie zwrotne).
+    """
+    if filtr is not None and filtr.aktywny():
+        # self-join z rok-filtrem jest droższy — tnij głębokość jak w grafie
+        depth = min(depth, MAKS_GLEBOKOSC_FILTR)
+    level_of, _, _, _ = _bfs_siec(centrum_id, depth, topn, filtr, uczelnia_zatr)
+    return set(level_of.keys())
 
 
 def _pary_wewnatrz_cache(visited, filtr):
@@ -392,8 +454,14 @@ def _krawedzie_wewnatrz(visited, krawedzie, filtr=None):
     return wynik
 
 
-def _sasiedzi_authorconnection(autor):
-    """Sąsiedzi centrum z gotowego AuthorConnection (ścieżka bez filtra)."""
+def _sasiedzi_authorconnection(autor, uczelnia_zatr=None):
+    """Sąsiedzi centrum z gotowego AuthorConnection (ścieżka bez filtra).
+
+    `uczelnia_zatr` (gdy nie-None) zawęża do aktualnie zatrudnionych w tej
+    uczelni. `aktualna_jednostka` dociągamy przez select_related, więc
+    `inny.aktualna_jednostka.uczelnia_id` jest kolumną dołączonego wiersza —
+    bez N+1.
+    """
     polaczenia = (
         AuthorConnection.objects.filter(
             Q(primary_author_id=autor.pk) | Q(secondary_author_id=autor.pk)
@@ -401,8 +469,10 @@ def _sasiedzi_authorconnection(autor):
         .select_related(
             "primary_author",
             "primary_author__tytul",
+            "primary_author__aktualna_jednostka",
             "secondary_author",
             "secondary_author__tytul",
+            "secondary_author__aktualna_jednostka",
         )
         .order_by("-shared_publications_count")
     )
@@ -413,20 +483,27 @@ def _sasiedzi_authorconnection(autor):
         )
         if not inny.pokazuj:
             continue
+        if uczelnia_zatr is not None and (
+            inny.aktualna_jednostka_id is None
+            or inny.aktualna_jednostka.uczelnia_id != uczelnia_zatr
+        ):
+            continue
         wybrani.append((inny, c.shared_publications_count))
         if len(wybrani) >= MAKS_SASIADOW:
             break
     return wybrani
 
 
-def _sasiedzi_cache(autor, filtr):
-    """Sąsiedzi centrum policzeni z cache po filtrze (rok/źródło/wydawca)."""
+def _sasiedzi_cache(autor, filtr, uczelnia_zatr=None):
+    """Sąsiedzi centrum policzeni z cache po filtrze (rok/źródło/wydawca).
+
+    `uczelnia_zatr` (gdy nie-None) zawęża do aktualnie zatrudnionych w tej
+    uczelni — ten sam gate widoczności co reszta endpointów.
+    """
     kandydaci, _ = _kandydaci_cache({autor.pk}, filtr)
     pary = kandydaci.get(autor.pk, [])  # [(co_id, shared)] malejąco
     co_ids = [a for a, _ in pary]
-    widoczne = set(
-        Autor.objects.filter(id__in=co_ids, pokazuj=True).values_list("id", flat=True)
-    )
+    widoczne = _widoczni_autorzy(co_ids, uczelnia_zatr)
     pary = [(a, s) for a, s in pary if a in widoczne][:MAKS_SASIADOW]
     autorzy = {
         a.pk: a

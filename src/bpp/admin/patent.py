@@ -1,8 +1,11 @@
 from django import forms
 from django.contrib import admin
+from djangoql.admin import DjangoQLSearchMixin
 from taggit.forms import TextareaTagWidget
 
+from bpp.djangoql_schema import BppQLSchema
 from bpp.models.patent import Patent, Patent_Autor
+from dspace_api.admin_mixins import DSpaceLinkAdminMixin
 
 from .core import generuj_inline_dla_autorow
 from .element_repozytorium import Element_RepozytoriumInline
@@ -81,12 +84,18 @@ class PatentResource(resources.Wydawnictwo_ResourceBase):
 
 
 class Patent_Admin(
+    DSpaceLinkAdminMixin,
+    DjangoQLSearchMixin,
     ConstanceScoringFieldsMixin,
     AdnotacjeZDatamiMixin,
     EksportDanychZFormatowanieMixin,
     ExportActionsMixin,
     Wydawnictwo_ZwarteAdmin_Baza,
 ):
+    djangoql_completion_enabled_by_default = False
+    djangoql_completion = True
+    djangoql_schema = BppQLSchema
+
     resource_classes = [PatentResource]
     bibtex_resource_class = resources.PatentBibTeXResource
 

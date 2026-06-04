@@ -1,13 +1,29 @@
 name: Tests
 
+# Zmiany czysto dokumentacyjne (docs/, mkdocs.yml, .readthedocs.yaml)
+# NIE uruchamiaja calej suity testow — buduje je wtedy tylko workflow
+# `Docs` (ma komplementarny `paths:`). Dzieki temu commit z sama
+# dokumentacja deployuje MkDocs na Pages, ale nie odpala ~10-min testow.
+# UWAGA: `[skip ci]` w komunikacie commita ubilby ROWNIEZ `Docs` —
+# dlatego selekcja jest po sciezkach, nie po komunikacie. Commit
+# mieszany (dokumentacja + kod) i tak odpali testy, bo nie wszystkie
+# zmienione pliki sa ignorowane.
 on:
   push:
     branches:
       - dev
       - master
+    paths-ignore:
+      - docs/**
+      - mkdocs.yml
+      - .readthedocs.yaml
   pull_request:
     branches:
       - dev
+    paths-ignore:
+      - docs/**
+      - mkdocs.yml
+      - .readthedocs.yaml
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}

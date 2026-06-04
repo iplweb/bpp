@@ -45,7 +45,7 @@
         </div>
         <div>
             <label for="graf-metryka" style="display: block;">
-                Wielkość kółka wg
+                Wielkość koła wg
             </label>
             <select id="graf-metryka" autocomplete="off"
                     style="margin: 0; height: 2.4rem;">
@@ -58,6 +58,11 @@
                 class="button small secondary" style="margin: 0; height: 2.4rem;">
             <span class="fi-widget"></span> Opcje zaawansowane ▾
         </button>
+        <a href="{% url 'bpp:browse_autor_powiazania_3d' autor.pk %}"
+           class="button small secondary" style="margin: 0; height: 2.4rem;"
+           title="Zobacz sieć w 3D (obracana scena WebGL)">
+            <span class="fi-play"></span> Widok 3D
+        </a>
     </div>
 
     {# --- opcje zaawansowane (domyślnie schowane) --- #}
@@ -118,18 +123,31 @@
             <input type="range" id="graf-wewn-prog" autocomplete="off"
                    min="1" max="10" value="1" step="1">
         </div>
-        <button type="button" id="graf-odswiez" class="button small"
-                style="margin: 0;">
-            <span class="fi-refresh"></span> Odśwież układ
-        </button>
-        <button type="button" id="graf-pobierz" class="button small secondary"
-                style="margin: 0;">
-            <span class="fi-download"></span> PNG
-        </button>
-        <button type="button" id="graf-pobierz-svg" class="button small secondary"
-                style="margin: 0;">
-            <span class="fi-download"></span> SVG
-        </button>
+        <div title="Pokaż tylko współautorów z aktualną jednostką w tej uczelni">
+            <label style="display: block; margin: 0;">
+                <input type="checkbox" id="graf-zatrudnieni-chk" autocomplete="off"
+                       style="margin: 0 4px 0 0;">
+                Tylko aktualnie zatrudnieni
+            </label>
+            <span style="display: block; font-size: 12px; color: #666;">
+                współautorzy z bieżącej uczelni
+            </span>
+        </div>
+        {# przyciski akcji jeden pod drugim (kolumna) #}
+        <div style="display: flex; flex-direction: column; gap: 4px;">
+            <button type="button" id="graf-odswiez" class="button small"
+                    style="margin: 0;">
+                <span class="fi-refresh"></span> Odśwież układ
+            </button>
+            <button type="button" id="graf-pobierz" class="button small secondary"
+                    style="margin: 0;">
+                <span class="fi-download"></span> PNG
+            </button>
+            <button type="button" id="graf-pobierz-svg" class="button small secondary"
+                    style="margin: 0;">
+                <span class="fi-download"></span> SVG
+            </button>
+        </div>
     </div>
     <small style="display: block; color: #666; margin: 6px 0 12px;">
         Na każdym węźle pokazujemy najpierw współautorów z największą liczbą
@@ -153,7 +171,7 @@
                     color: #444; pointer-events: none; z-index: 1001;">
             Najedź na węzeł, aby zobaczyć autora; najedź na linię, aby zobaczyć
             liczbę wspólnych publikacji. Kliknij węzeł, aby rozwinąć jego
-            współautorów i otworzyć menu akcji. Wielkość kółka odpowiada wybranej
+            współautorów i otworzyć menu akcji. Wielkość koła odpowiada wybranej
             metryce (liczba prac / IF / PK), a grubość linii — liczbie wspólnych
             publikacji.
         </div>

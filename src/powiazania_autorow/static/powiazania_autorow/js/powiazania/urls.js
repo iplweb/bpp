@@ -19,7 +19,9 @@ export function wybraneZrodla(ctx) {
     return { z: z, w: w };
 }
 
-// Parametry filtra (rok od-do + wiele źródeł/wydawców) jako "&k=v...".
+// Parametry filtra (rok od-do + wiele źródeł/wydawców + tylko zatrudnieni)
+// jako "&k=v...". Dokleja je i siecUrl, i daneUrl, więc auto-rozwijanie BFS
+// oraz klik-rozwijanie pojedynczego węzła respektują ten sam filtr.
 export function paramyFiltru(ctx) {
     let p = "";
     if (ctx.rokOdEl && ctx.rokOdEl.value) {
@@ -35,6 +37,9 @@ export function paramyFiltru(ctx) {
     sel.w.forEach(function (id) {
         p += "&wydawca=" + encodeURIComponent(id);
     });
+    if (ctx.tylkoZatrudnieni) {
+        p += "&tylko_zatrudnieni=1";
+    }
     return p;
 }
 
@@ -50,16 +55,21 @@ export function siecUrl(ctx, id, depth, topn) {
 }
 
 export function zrodlaUrl(ctx, id) {
-    // lista źródeł zależy tylko od zakresu lat, nie od wyboru źródła
-    let p = "";
+    // Lista źródeł = źródła CAŁEJ widocznej sieci, więc zależy od kształtu
+    // sieci: głębokość + liczba współautorów + rok + filtr zatrudnienia.
+    // Świadomie NIE doklejamy wybranych źródeł/wydawców — inaczej wybór
+    // źródła zawężałby sieć, a ta listę źródeł (sprzężenie zwrotne).
+    let p = "depth=" + ctx.glebokosc + "&topn=" + ctx.topN;
     if (ctx.rokOdEl && ctx.rokOdEl.value) {
         p += "&rok_od=" + encodeURIComponent(ctx.rokOdEl.value);
     }
     if (ctx.rokDoEl && ctx.rokDoEl.value) {
         p += "&rok_do=" + encodeURIComponent(ctx.rokDoEl.value);
     }
-    return ctx.zrodlaUrlTemplate.replace("/0/", "/" + id + "/")
-        + (p ? "?" + p.slice(1) : "");
+    if (ctx.tylkoZatrudnieni) {
+        p += "&tylko_zatrudnieni=1";
+    }
+    return ctx.zrodlaUrlTemplate.replace("/0/", "/" + id + "/") + "?" + p;
 }
 
 export function grafUrl(ctx, id) {

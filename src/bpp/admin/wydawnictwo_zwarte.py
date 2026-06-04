@@ -22,6 +22,7 @@ from bpp.admin.filters import (
 )
 from bpp.admin.helpers import fieldsets
 from bpp.admin.helpers.widgets import COMMA_DECIMAL_FIELD_OVERRIDE
+from bpp.djangoql_schema import BppQLSchema
 from bpp.models import (
     Charakter_Formalny,
     Wydawca,
@@ -33,6 +34,8 @@ from bpp.models import (
 from bpp.models.konferencja import Konferencja
 from bpp.models.seria_wydawnicza import Seria_Wydawnicza
 from crossref_bpp.mixins import AdminCrossrefAPIMixin, AdminCrossrefPBNAPIMixin
+from dspace_api.actions import wyslij_do_dspace, wyslij_do_dspace_w_tle
+from dspace_api.admin_mixins import DSpaceLinkAdminMixin
 from import_common.normalization import normalize_isbn
 from pbn_api.models import Publication
 
@@ -85,6 +88,8 @@ class Wydawnictwo_ZwarteAdmin_Baza(BaseBppAdminMixin, admin.ModelAdmin):
         ustaw_przed_korekta,
         wyslij_do_pbn,
         wyslij_do_pbn_w_tle,
+        wyslij_do_dspace,
+        wyslij_do_dspace_w_tle,
     ]
 
     list_display_always = [
@@ -436,6 +441,7 @@ class Wydawnictwo_Zwarte_Zewnetrzna_Baza_DanychInline(admin.StackedInline):
 
 
 class Wydawnictwo_ZwarteAdmin(
+    DSpaceLinkAdminMixin,
     ConstanceScoringFieldsMixin,
     DjangoQLSearchMixin,
     KolumnyZeSkrotamiMixin,
@@ -467,6 +473,7 @@ class Wydawnictwo_ZwarteAdmin(
     form = Wydawnictwo_ZwarteForm
     djangoql_completion_enabled_by_default = False
     djangoql_completion = True
+    djangoql_schema = BppQLSchema
     search_fields = Wydawnictwo_ZwarteAdmin_Baza.search_fields
     resource_classes = [resources.Wydawnictwo_ZwarteResource]
     bibtex_resource_class = resources.Wydawnictwo_ZwarteBibTeXResource

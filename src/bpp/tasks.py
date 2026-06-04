@@ -24,6 +24,39 @@ def remove_file(path):
         os.unlink(path)
 
 
+# Domyślna retencja logów LOGOWANIA (django-easy-audit LoginEvent) w
+# miesiącach. Logi logowania zawierają dane osobowe (login, IP, czas) — RODO
+# wymaga minimalizacji (art. 5), więc nie trzymamy ich bezterminowo. 24 mies.
+# pokrywa benchmark PCI-DSS (>= 1 rok) z zapasem na forensykę incydentów.
+# UWAGA: logi EDYCJI (CRUDEvent) to inna kategoria — tu NIE są ruszane
+# (zostają bezterminowo, decyzja merytoryczna).
+EASYAUDIT_LOGINEVENT_RETENTION_MONTHS = 24
+
+
+@app.task(ignore_result=True)
+def usun_stare_logi_logowania_easyaudit(
+    months=EASYAUDIT_LOGINEVENT_RETENTION_MONTHS,
+):
+    """Usuwa wpisy LoginEvent starsze niż `months` miesięcy (retencja RODO).
+
+    Usuwa wyłącznie LoginEvent (kto/kiedy/skąd się logował) — NIE dotyka
+    CRUDEvent (historia zmian rekordów), który zostaje bezterminowo.
+    """
+    from dateutil.relativedelta import relativedelta
+    from django.utils import timezone
+    from easyaudit.models import LoginEvent
+
+    cutoff = timezone.now() - relativedelta(months=months)
+    deleted, _ = LoginEvent.objects.filter(datetime__lt=cutoff).delete()
+    logger.info(
+        "easyaudit LoginEvent: usunięto %d wpisów starszych niż %d mies. (cutoff=%s)",
+        deleted,
+        months,
+        cutoff.date(),
+    )
+    return deleted
+
+
 def _zaktualizuj_liczbe_cytowan(klasy=None):  # noqa: C901
     if klasy is None:
         klasy = (

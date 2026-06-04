@@ -281,16 +281,19 @@ RUN sed -i s/http/https/g /etc/apt/sources.list.d/debian.sources
 # test.txt: redis-tools. Dodatkowo wzgledem `base`/produkcji:
 #  - libldap2/libsasl2-2: python-ldap (z extras `ldap`) linkuje sie z nimi;
 #    na pelnym trixie dawal je libldap2-dev/libsasl2-dev (build.txt), tu nie ma,
-#  - gettext: msgfmt do compilemessages (bake nizej),
 #  - ca-certificates/curl/gnupg: repo NodeSource + Dockera,
 #  - git: `yarn install` ma zaleznosci po URL-u git (pelny trixie mial git
 #    w buildpacku; slim nie ma) — bez tego `yarn install` pada.
+# UWAGA: `gettext` (msgfmt) NIE jest tu potrzebny — projektowy override
+# `compilemessages` (src/bpp/management/commands/) kompiluje .po→.mo Babelem
+# w czystym Pythonie. xgettext/makemessages to operacja dev-only, nieobecna
+# w buildzie/CI.
 COPY docker/bpp_base/runtime.txt docker/bpp_base/test.txt /tmp/packages/
 RUN --mount=type=cache,target=/var/cache/apt,sharing=locked,id=apt-cache \
     --mount=type=cache,target=/var/lib/apt/lists,sharing=locked,id=apt-lists \
     apt-get update && \
     apt-get install -y --no-install-recommends \
-        ca-certificates curl gnupg gettext git libldap2 libsasl2-2 && \
+        ca-certificates curl gnupg git libldap2 libsasl2-2 && \
     cat /tmp/packages/*.txt | xargs apt-get install -y
 
 # Node (grunt build + yarn install dla `make assets`) + yarn/grunt globalnie.

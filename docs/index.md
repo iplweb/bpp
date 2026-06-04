@@ -16,15 +16,24 @@ Dokumentacja jest podzielona według odbiorcy.
 
 ### 📘 Instrukcja użytkownika
 
-Codzienne czynności redakcyjne — dla bibliotekarzy i redaktorów.
+To, co widzi każdy odwiedzający stronę — wyszukiwanie i przeglądanie
+publikacji, bez logowania.
 
-- [Uczelnia](uzytkownik/uczelnia.md)
-- [Jednostki](uzytkownik/jednostki.md)
-- [Autorzy](uzytkownik/autorzy.md)
-- [Wydawnictwa](uzytkownik/wydawnictwa.md)
-- [Wyszukiwanie i redagowanie](uzytkownik/wyszukiwanie-redagowanie.md)
+- [Przeglądanie i wyszukiwanie](uzytkownik/przegladanie-i-wyszukiwanie.md)
 - [Raporty i rankingi](uzytkownik/raporty-rankingi.md)
-- [Sloty](uzytkownik/sloty.md)
+
+### ✏️ Instrukcja redaktora
+
+Codzienne czynności redakcyjne — dla bibliotekarzy i redaktorów po
+zalogowaniu.
+
+- [Wyszukiwanie i redagowanie](redaktor/wyszukiwanie-redagowanie.md)
+- [Uczelnia](redaktor/uczelnia.md)
+- [Jednostki](redaktor/jednostki.md)
+- [Autorzy](redaktor/autorzy.md)
+- [Wydawnictwa](redaktor/wydawnictwa.md)
+- [Sloty](redaktor/sloty.md)
+- [Eksportowanie do DSpace](redaktor/eksportowanie-do-dspace.md)
 
 ### 🛠️ Instrukcja administratora
 
@@ -36,6 +45,7 @@ Konfiguracja, importy i integracje — dla administratorów wdrożenia.
 - [Zgłaszanie publikacji](administrator/zglaszanie-publikacji.md)
 - [Konfiguracja PBN](administrator/konfiguracja-pbn.md)
 - [Integracja z PBN](administrator/integracja-pbn.md)
+- [Integracja z DSpace](administrator/integracja-dspace.md)
 - [Konfiguracja zaawansowana](administrator/zaawansowane.md)
 
 ### 🔌 API

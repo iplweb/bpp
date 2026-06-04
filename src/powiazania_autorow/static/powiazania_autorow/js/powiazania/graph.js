@@ -23,6 +23,10 @@ export function dodajWezel(ctx, id, info, isCentrum, seedPos) {
         data: {
             id: id,
             label: info.label,
+            // etykieta renderowana na węźle: tytuł naukowy przed nazwiskiem
+            // (np. "prof. dr hab. Jan Kowalski"). `label` zostaje samym
+            // nazwiskiem — używają go wyszukiwarka i tooltip.
+            etykieta: (info.tytul ? info.tytul + " " : "") + (info.label || ""),
             url: info.url,
             works: info.total_works || 0,
             if_sum: info.if_sum || 0,
@@ -157,6 +161,10 @@ export function renderujSiec(ctx, data) {
     ctx.animujDodawanie = false;
     cy.elements().remove();
     ctx.expanded = {};
+    // Pełne przeładowanie sieci unieważnia per-węzłowy cache sąsiadów: top-N
+    // lub filtr (rok/źródło/zatrudnieni) mogły się zmienić, więc dotychczasowe
+    // listy są nieaktualne. infoCache (metadane autora) może zostać.
+    ctx.neighborsCache = {};
 
     const centerId = String(data.center_id);
     data.nodes.forEach(function (n) { zapamietaj(ctx, n); });

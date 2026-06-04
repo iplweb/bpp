@@ -36,3 +36,11 @@ INSTALLED_APPS = [app for app in INSTALLED_APPS if app != "cacheops"]
 # w no-op (cacheops/simple.py:54) i propaguje się też na `invalidate_*`,
 # które same sprawdzają tę flagę.
 CACHEOPS_ENABLED = False
+
+# django-axes wyłączone w testach: Client.login() woła authenticate() bez
+# `request`, na co AxesStandaloneBackend reaguje AxesBackendRequestParameterRequired
+# i wywróciłby wszystkie fixture'y logujące się przez client.login(). Testy, które
+# faktycznie sprawdzają lockout (src/bpp/tests/test_axes_lockout.py), włączają axes
+# punktowo przez @override_settings(AXES_ENABLED=True) i logują się POST-em do
+# widoku logowania (który request przekazuje).
+AXES_ENABLED = False

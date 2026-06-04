@@ -79,7 +79,8 @@ class Wydawca(ModelZNazwa, ModelZPBN_UID):
 
 
 class Poziom_Wydawcy(models.Model):
-    rok = YearField(db_index=True)
+    # db_index zbędny: pokrywa go unique_together (rok, wydawca) — rok wiodący.
+    rok = YearField()
     wydawca = models.ForeignKey(Wydawca, models.CASCADE)
     poziom = models.PositiveSmallIntegerField(
         choices=[(None, "nieokreślono"), (1, "poziom I"), (2, "poziom II")],
@@ -93,16 +94,16 @@ class Poziom_Wydawcy(models.Model):
         verbose_name_plural = "poziomy wydawcy"
         ordering = ("rok",)
 
+    def __str__(self):
+        return f'Poziom wydawcy "{self.wydawca.nazwa}" za rok {self.rok}'
+
+    def save(self, *args, **kw):
+        self.clean()
+        return super().save(*args, **kw)
+
     def clean(self):
         if hasattr(self, "wydawca_id") and self.wydawca_id:
             if self.wydawca.alias_dla is not None:
                 raise ValidationError(
                     "Nie można przypisywać poziomu wydawcy dla aliasów."
                 )
-
-    def save(self, *args, **kw):
-        self.clean()
-        return super().save(*args, **kw)
-
-    def __str__(self):
-        return f'Poziom wydawcy "{self.wydawca.nazwa}" za rok {self.rok}'

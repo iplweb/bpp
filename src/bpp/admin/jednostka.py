@@ -7,6 +7,7 @@ from djangoql.admin import DjangoQLSearchMixin
 from import_export.admin import ImportMixin
 from mptt.admin import DraggableMPTTAdmin
 
+from bpp.djangoql_schema import BppQLSchema
 from bpp.models import Autor_Jednostka, Uczelnia
 
 from ..models.struktura import Jednostka, Jednostka_Wydzial
@@ -51,6 +52,7 @@ class JednostkaAdmin(
     uczelnia_field_path = "uczelnia"
     djangoql_completion_enabled_by_default = False
     djangoql_completion = True
+    djangoql_schema = BppQLSchema
 
     resource_classes = [JednostkaImportResource]
 

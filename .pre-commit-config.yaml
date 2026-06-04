@@ -56,9 +56,9 @@ repos:
             # Compose-specific tags, so check-yaml chokes on a file
             # that `docker compose config` parses fine.
             #
-            # mkdocs.yml uses pymdownx.slugs.slugify Python object via
-            # `!!python/object/apply:` tag — same problem, MkDocs's own
-            # loader handles it but PyYAML safe loader nie umie.
+            # mkdocs.yml uses `!!python/object/apply:pymdownx.slugs.slugify`
+            # (Python-object tag) — SafeLoader odmawia jego budowy, choć
+            # `mkdocs build --strict` parsuje plik bez problemu.
             exclude: ^(docker-compose\.test\.ci\.yml|mkdocs\.yml)$
         -   id: check-toml
         -   id: end-of-file-fixer

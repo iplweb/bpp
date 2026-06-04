@@ -42,6 +42,12 @@ APPROVED: dict[str, int] = {
     # bez parametru). Brak wpisu = guard złapie ewentualny powrót get_default.
     "bpp/models/abstract/pbn.py": 2,  # linki PBN, metoda modelu bez requestu
     "bpp/models/jednostka.py": 1,  # sortowanie (display), warstwa modelu
+    # do_roku_default(request=None): default pola modelu (migracja
+    # 0020_fix_do_roku_default_modulowa_funkcja) + initial= formularzy raportów.
+    # Musi być request-less i serializowalny w migracji, więc świadomy
+    # fallback get_default() z obsługą None (per-uczelnia override idzie przez
+    # metodę managera do_roku_default(request=...) wyżej w pliku).
+    "bpp/models/uczelnia.py": 1,
     "bpp/multiseek_registry/fields/numeric_fields.py": 1,  # toggle IC, None-tolerant
     "ewaluacja2021/util.py": 1,  # komentarz (nie kod)
     "pbn_api/management/commands/util.py": 1,  # GUARDED count==1 (wzorzec CLI)

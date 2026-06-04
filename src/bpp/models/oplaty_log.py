@@ -11,8 +11,13 @@ class OplatyPublikacjiLog(models.Model):
     """Log of fee-related changes to publications."""
 
     # GenericForeignKey to publication (Wydawnictwo_Ciagle or Wydawnictwo_Zwarte)
+    # db_index=False: redundantny względem Meta.indexes
+    # Index(content_type, object_id) — content_type jest wiodącą kolumną.
     content_type = models.ForeignKey(
-        ContentType, on_delete=models.CASCADE, verbose_name="Typ rekordu"
+        ContentType,
+        on_delete=models.CASCADE,
+        verbose_name="Typ rekordu",
+        db_index=False,
     )
     object_id = models.PositiveIntegerField(verbose_name="ID obiektu")
     publikacja = GenericForeignKey("content_type", "object_id")

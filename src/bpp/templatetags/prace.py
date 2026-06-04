@@ -239,3 +239,47 @@ def generate_coins(praca, autorzy):  # noqa
 
     # Return the complete COinS span
     return mark_safe(f'<span class="Z3988" title="{coins_string}"></span>')
+
+
+@register.simple_tag
+def autor_nazwa(autor, links="", pokaz_pozycje=False):
+    """Renderuje pojedynczego autora na liście na stronie rekordu: nazwisko
+    (opcjonalnie linkowane do admina/strony autora), z wyróżnieniem "naszego"
+    autora oraz opcjonalnym numerem pozycji.
+
+    Zwraca bezpieczny HTML bez otaczających białych znaków — w przeciwieństwie
+    do ``{% include %}``, które (przez wymuszony przez pre-commit newline na
+    końcu pliku) wstawiało spację przed przecinkiem między autorami.
+    """
+    from django.urls import reverse
+    from django.utils.html import format_html
+
+    klasa = "author-name"
+    if not links:
+        klasa += " praca-mono__author-name"
+    if getattr(autor, "czy_nasz", False):
+        klasa += " praca-mono__author-name--nasz"
+
+    nazwa = format_html(
+        '<span class="{}">{}</span>', klasa, (autor.zapisany_jako or "").upper()
+    )
+
+    if links == "admin":
+        nazwa = format_html(
+            '<a href="{}">{}</a>',
+            reverse("admin:bpp_autor_change", args=[autor.autor.pk]),
+            nazwa,
+        )
+    elif links == "normal":
+        nazwa = format_html(
+            '<a href="{}">{}</a>',
+            reverse("bpp:browse_autor", args=[autor.autor.slug]),
+            nazwa,
+        )
+
+    pozycja = getattr(autor, "pozycja", None)
+    if pokaz_pozycje and pozycja:
+        nazwa = format_html(
+            '{} <span class="praca-mono__author-pozycja">({}.)</span>', nazwa, pozycja
+        )
+    return nazwa

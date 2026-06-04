@@ -13,7 +13,9 @@ from .fields import LiczbaNField
 
 
 class LiczbaNDlaUczelni(models.Model):
-    uczelnia = models.ForeignKey(Uczelnia, on_delete=models.CASCADE)
+    # Auto-indeks FK redundantny: pokrywa go unique_together
+    # [uczelnia, dyscyplina_naukowa]
+    uczelnia = models.ForeignKey(Uczelnia, on_delete=models.CASCADE, db_index=False)
     dyscyplina_naukowa = models.ForeignKey(Dyscyplina_Naukowa, on_delete=models.CASCADE)
     liczba_n = LiczbaNField()
     sankcje = LiczbaNField(
@@ -40,7 +42,11 @@ class LiczbaNDlaUczelni(models.Model):
 class IloscUdzialowDlaAutoraBase(models.Model):
     """Abstract base model for author share calculations"""
 
-    autor = models.ForeignKey(Autor, on_delete=models.CASCADE)
+    # Auto-indeks FK redundantny: pokrywa go unique_together z autorem jako
+    # kolumną wiodącą w klasach pochodnych — IloscUdzialowDlaAutoraZaRok
+    # [autor, dyscyplina_naukowa, rok] oraz IloscUdzialowDlaAutoraZaCalosc
+    # [autor, dyscyplina_naukowa, rodzaj_autora]
+    autor = models.ForeignKey(Autor, on_delete=models.CASCADE, db_index=False)
     dyscyplina_naukowa = models.ForeignKey(Dyscyplina_Naukowa, on_delete=models.CASCADE)
     ilosc_udzialow = LiczbaNField()
     ilosc_udzialow_monografie = LiczbaNField()
@@ -117,7 +123,11 @@ class IloscUdzialowDlaAutoraZaCalosc(IloscUdzialowDlaAutoraBase):
 
 
 class DyscyplinaNieRaportowana(models.Model):
-    uczelnia = models.ForeignKey("bpp.Uczelnia", on_delete=models.CASCADE)
+    # Auto-indeks FK redundantny: pokrywa go unique_together
+    # [uczelnia, dyscyplina_naukowa]
+    uczelnia = models.ForeignKey(
+        "bpp.Uczelnia", on_delete=models.CASCADE, db_index=False
+    )
     dyscyplina_naukowa = models.ForeignKey(
         "bpp.Dyscyplina_Naukowa", on_delete=models.CASCADE
     )

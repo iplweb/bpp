@@ -19,6 +19,9 @@ class RozbieznoscDyscyplinPBN(models.Model):
             app_label="bpp",
             model__in=["wydawnictwo_ciagle_autor", "wydawnictwo_zwarte_autor"],
         ),
+        # Auto-indeks FK redundantny: pokrywa go wiodący prefiks
+        # unique_together [content_type, object_id, oswiadczenie_instytucji].
+        db_index=False,
     )
     object_id = models.PositiveIntegerField()
     wydawnictwo_autor = GenericForeignKey("content_type", "object_id")
@@ -59,8 +62,10 @@ class RozbieznoscDyscyplinPBN(models.Model):
         unique_together = [["content_type", "object_id", "oswiadczenie_instytucji"]]
         ordering = ["-created_at"]
         indexes = [
-            models.Index(fields=["content_type", "object_id"]),
-            models.Index(fields=["oswiadczenie_instytucji"]),
+            # Usunięto Index(["content_type","object_id"]) — redundantny prefiks
+            # unique_together; oraz Index(["oswiadczenie_instytucji"]) — duplikat
+            # auto-indeksu FK (oswiadczenie_instytucji nie jest wiodący w unique,
+            # więc auto-indeks FK zostaje).
             models.Index(fields=["created_at"]),
         ]
 
@@ -126,6 +131,9 @@ class BrakAutoraWPublikacji(models.Model):
         "pbn_api.OswiadczenieInstytucji",
         on_delete=CASCADE,
         related_name="brakujace_autorzy",
+        # Auto-indeks FK redundantny: unique_together [oswiadczenie_instytucji]
+        # już zakłada unikalny indeks na tej kolumnie.
+        db_index=False,
     )
 
     # Naukowiec z PBN
@@ -177,8 +185,8 @@ class BrakAutoraWPublikacji(models.Model):
         ordering = ["-created_at"]
         indexes = [
             models.Index(fields=["typ"]),
-            models.Index(fields=["autor"]),
-            models.Index(fields=["pbn_scientist"]),
+            # Usunięto Index(["autor"]) i Index(["pbn_scientist"]) — duplikaty
+            # auto-indeksów tych FK (auto-indeksy zostają).
             models.Index(fields=["created_at"]),
         ]
 

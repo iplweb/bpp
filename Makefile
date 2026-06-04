@@ -247,6 +247,16 @@ grunt-build: ## Uruchom `grunt build` (SCSS → CSS, bundling JS)
 SCSS_SOURCES := $(wildcard src/bpp/static/scss/*.scss) \
                 $(wildcard src/*/static/*/scss/*.scss)
 
+# Źródła JS bundlowane przez `grunt build` (esbuild: główny bundle + cytoscape
+# eksploratora powiązań). Stamp musi zależeć też od nich, inaczej zmiana w JS
+# (np. src/powiazania_autorow/.../js/powiazania/*.js) nie odpala przebudowy i
+# serwowany jest stary bundle. `*.js` NIE schodzi do podkatalogu dist/, więc
+# wygenerowane bundle nie stają się własną zależnością (brak pętli rebuildu).
+JS_SOURCES := $(wildcard src/bpp/static/bpp/js/*.js) \
+              $(wildcard src/powiazania_autorow/static/powiazania_autorow/js/*.js) \
+              $(wildcard src/powiazania_autorow/static/powiazania_autorow/js/powiazania/*.js) \
+              $(wildcard src/powiazania_autorow/static/powiazania_autorow/js/siec3d/*.js)
+
 # Node modules dependency
 NODE_MODULES := node_modules/.installed
 
@@ -260,7 +270,7 @@ $(NODE_MODULES): package.json yarn.lock
 
 CSS_STAMP := .grunt-build-stamp
 
-$(CSS_STAMP): $(SCSS_SOURCES) $(NODE_MODULES)
+$(CSS_STAMP): $(SCSS_SOURCES) $(JS_SOURCES) $(NODE_MODULES)
 	grunt build
 	@touch $(CSS_STAMP)
 

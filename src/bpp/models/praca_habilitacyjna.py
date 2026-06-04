@@ -9,7 +9,12 @@ from bpp.models.praca_doktorska import Praca_Doktorska_Baza
 
 
 class Publikacja_Habilitacyjna(models.Model):
-    praca_habilitacyjna = models.ForeignKey("Praca_Habilitacyjna", CASCADE)
+    # db_index=False: redundantny względem unique_together
+    # (praca_habilitacyjna, content_type, object_id) — praca_habilitacyjna
+    # jest wiodącą kolumną tego indeksu.
+    praca_habilitacyjna = models.ForeignKey(
+        "Praca_Habilitacyjna", CASCADE, db_index=False
+    )
     kolejnosc = models.IntegerField("Kolejność", default=0)
 
     limit = (

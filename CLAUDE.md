@@ -465,6 +465,29 @@ Konfiguracja jest w `[tool.pytest-testcontainers-django]` w `pyproject.toml`.
 - CI (`docker-compose.test.yml`) ma `PYTEST_TESTCONTAINERS_DISABLE=1` —
   usługi dostarcza tam docker-compose.
 
+### Czytanie checków CI na PR-ach — co NAPRAWDĘ testuje
+
+**NIE ciesz się z zielonego, dopóki realne gejty nie przejdą.** Check
+kończący się w <1 min ze statusem „success" jest najczęściej **SKIPNIĘTY**,
+nie przetestowany — to NIE jest dowód, że cokolwiek działa. Zanim powiesz
+„zielono / działa", sprawdź że gejty niżej mają `conclusion: success`;
+inaczej milcz i czekaj.
+
+- **Dekoracyjne / skipowane (NIE walidują kodu):** `Docker - oficjalne
+  obrazy` (<1 min „success" = job `docker` jest `skipped`; dedupe: push na
+  branchu z otwartym PR-em = duplikat, realny build leci dopiero na
+  `master`), `Docs`, `Lint changed files`, `Check baseline freshness`,
+  CodeQL/GitGuardian. Szybkie, pomocnicze — nie są dowodem poprawności.
+- **REALNE gejty PR-a (czekaj na ZIELEŃ tych dwóch):**
+  - **`Build test-runner image`** — buduje obraz testowy; tu wychodzą błędy
+    assetów / grunt / esbuild (np. „Could not resolve <entry>"), Dockerfile,
+    deps. Kilka minut.
+  - **`Tests (sharded)` (3.1x, 0..N)** — właściwa suita pytest na ~12
+    shardach (do ~10 min). PR jest zielony **dopiero gdy WSZYSTKIE shardy**
+    przejdą — jeden in_progress = nie przeszło.
+- `mergeStateStatus: UNSTABLE` = mergeowalny (brak konfliktów), ale CI nadal
+  biegnie / jakiś check pending — to NIE znaczy „testy przeszły".
+
 ## Exception Handling
 
 **NEVER write bare `except: pass` or `except Exception: pass`.**

@@ -63,8 +63,8 @@ class PrzemapowaZrodla(models.Model):
         verbose_name_plural = "Przemapowania źródeł"
         ordering = ["-utworzono"]
         indexes = [
-            models.Index(fields=["zrodlo_z"]),
-            models.Index(fields=["zrodlo_do"]),
+            # Indeksy [zrodlo_z] i [zrodlo_do] usunięte: duplikowały
+            # auto-indeksy FK zrodlo_z / zrodlo_do (db_index=True domyślnie).
             models.Index(fields=["utworzono"]),
         ]
 

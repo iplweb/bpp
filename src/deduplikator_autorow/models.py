@@ -120,6 +120,8 @@ class LogScalania(models.Model):
         related_name="merge_logs_as_main",
         verbose_name="Autor główny (BPP)",
         help_text="Główny autor BPP do którego przypisano publikacje",
+        # Auto-indeks FK redundantny: pokrywa go Meta.Index [main_autor, created_on].
+        db_index=False,
     )
 
     # Duplicate author (source of the merge) - stored as CharField since it gets deleted
@@ -216,6 +218,8 @@ class LogScalania(models.Model):
         on_delete=models.CASCADE,
         verbose_name="Wykonał",
         help_text="Użytkownik który wykonał scalanie",
+        # Auto-indeks FK redundantny: pokrywa go Meta.Index [created_by, created_on].
+        db_index=False,
     )
 
     # Additional tracking
@@ -347,6 +351,8 @@ class DuplicateCandidate(models.Model):
         on_delete=models.CASCADE,
         related_name="candidates",
         verbose_name="Skanowanie",
+        # Auto-indeks FK redundantny: pokrywa go Meta.Index [scan_run, status].
+        db_index=False,
     )
 
     # The main author (from OsobaZInstytucji/pbn_uid)
@@ -355,6 +361,8 @@ class DuplicateCandidate(models.Model):
         on_delete=models.CASCADE,
         related_name="duplicate_main_candidates",
         verbose_name="Autor główny",
+        # Auto-indeks FK redundantny: pokrywa go Meta.Index [main_autor, status].
+        db_index=False,
     )
     main_osoba_z_instytucji = models.ForeignKey(
         "pbn_api.OsobaZInstytucji",
@@ -392,7 +400,7 @@ class DuplicateCandidate(models.Model):
     priority = models.IntegerField(
         "Priorytet",
         default=0,
-        db_index=True,
+        # db_index zbędny: pokrywa go Meta.Index [priority, confidence_score].
         help_text="Priorytet wyświetlania: 100=prace 2022-2025 z dyscyplinami, 50=prace 2022-2025, 0=inne",
     )
 
