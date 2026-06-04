@@ -203,4 +203,10 @@ class PublisherPBNAutocomplete(BasePBNAutocomplete):
         return client.get_publisher_by_id(query)
 
     def filter_queryset(self, qs, word):
-        return qs.filter(Q(publisherName__icontains=word) | Q(mniswId__icontains=word))
+        # publisherName -> gin trgm; mniswId EXACT (int) -> btree. Wczesniej
+        # mniswId__icontains (podciag po incie) byl nieindeksowalny i zatruwal
+        # OR, wymuszajac Seq Scan calej tabeli (~250k).
+        q = Q(publisherName__icontains=word)
+        if word.isdigit():
+            q |= Q(mniswId=int(word))
+        return qs.filter(q)

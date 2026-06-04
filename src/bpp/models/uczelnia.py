@@ -14,6 +14,7 @@ from django.utils.functional import cached_property
 from model_utils import Choices
 from tinymce.models import HTMLField
 
+from bpp.fields import EncryptedTextField
 from bpp.models import ModelZAdnotacjami, NazwaISkrot
 from bpp.models.abstract import ModelZPBN_ID, NazwaWDopelniaczu
 from pbn_api.exceptions import WillNotExportError
@@ -48,21 +49,36 @@ class UczelniaManager(models.Manager):
         return self.get_default()
 
     def do_roku_default(self=None, request=None):
-        if self is None:
-            # Uruchomione przez migrację
-            return
-        uczelnia = self.get_default()
-        if (
-            uczelnia is None
-            or uczelnia.metoda_do_roku_formularze
-            == const.DO_STYCZNIA_POPRZEDNI_POTEM_OBECNY
-        ):
-            return year_last_month()
-        if uczelnia.metoda_do_roku_formularze == const.NAJWIEKSZY_REKORD:
-            from bpp.models.cache import Rekord
+        # Cienki delegator do funkcji modułowej `do_roku_default` (niżej).
+        # Trzymany dla zgodności z `Uczelnia.objects.do_roku_default` używanym
+        # jako `initial=` w formularzach raportów i w testach.
+        return do_roku_default(request=request)
 
-            return Rekord.objects.all().aggregate(Max("rok"))["rok__max"]
-        raise NotImplementedError
+
+def do_roku_default(request=None):
+    """Domyślna wartość `do_roku` dla formularzy raportów oraz pola modelu
+    `RaportSlotowUczelnia.do_roku`.
+
+    Funkcja MODUŁOWA (nie metoda managera) celowo: default pola modelu musi
+    być stabilnie serializowalny w migracjach. Wcześniej był to bound-method
+    instancji managera (`Uczelnia.objects.do_roku_default`), który Django
+    serializował jako wersję unbound — nigdy nie równą wersji z modelu, przez
+    co `makemigrations` w nieskończoność wykrywał „zmianę" pola (wieczny
+    drift). Bez `self` działa zarówno serializowalnie, jak i w runtime
+    (zwraca prawdziwy rok, nie None).
+    """
+    uczelnia = Uczelnia.objects.get_default()
+    if (
+        uczelnia is None
+        or uczelnia.metoda_do_roku_formularze
+        == const.DO_STYCZNIA_POPRZEDNI_POTEM_OBECNY
+    ):
+        return year_last_month()
+    if uczelnia.metoda_do_roku_formularze == const.NAJWIEKSZY_REKORD:
+        from bpp.models.cache import Rekord
+
+        return Rekord.objects.all().aggregate(Max("rok"))["rok__max"]
+    raise NotImplementedError
 
 
 class Uczelnia(ModelZAdnotacjami, ModelZPBN_ID, NazwaISkrot, NazwaWDopelniaczu):
@@ -367,6 +383,28 @@ class Uczelnia(ModelZAdnotacjami, ModelZPBN_ID, NazwaISkrot, NazwaWDopelniaczu):
     pbn_app_token = models.CharField(
         "Token aplikacji w PBN", blank=True, default="", max_length=128
     )
+    dspace_aktywny = models.BooleanField(
+        "Włącz eksport do DSpace",
+        default=False,
+        help_text="Gdy włączone, rekordy afiliowane do tej uczelni można "
+        "wysyłać do jej instalacji DSpace.",
+    )
+    dspace_api_endpoint = models.URLField(
+        "Adres API DSpace",
+        blank=True,
+        default="",
+        help_text="np. https://repozytorium.uczelnia.pl/server/api",
+    )
+    dspace_api_username = models.CharField(
+        "Użytkownik API DSpace", max_length=255, blank=True, default=""
+    )
+    dspace_api_password = EncryptedTextField("Hasło API DSpace", blank=True, default="")
+    dspace_domyslny_jezyk_dc = models.CharField(
+        "Domyślny język dc.language.iso",
+        max_length=8,
+        blank=True,
+        default="pl",
+    )
     pbn_kasuj_dyscypliny_selektywnie = models.BooleanField(
         "Kasuj oświadczenia selektywnie (per osoba)",
         default=True,
@@ -444,6 +482,14 @@ class Uczelnia(ModelZAdnotacjami, ModelZPBN_ID, NazwaISkrot, NazwaWDopelniaczu):
 
     pokazuj_jednostki_na_pierwszej_stronie = models.BooleanField(default=False)
     pokazuj_wydzialy_na_pierwszej_stronie = models.BooleanField(default=True)
+
+    pokazuj_siec_powiazan = models.BooleanField(
+        verbose_name="Pokazuj sieć powiązań autorów",
+        default=True,
+        help_text="Czy na stronie autora udostępniać interaktywną sieć "
+        "współautorstwa. Ustawienie domyślne dla całej uczelni — pojedynczy "
+        "autor może je nadpisać własnym polem 'Pokazuj sieć powiązań'.",
+    )
 
     uzywaj_wydzialow = models.BooleanField(
         verbose_name="Używaj wydziałów",
@@ -651,7 +697,9 @@ class Uczelnia(ModelZAdnotacjami, ModelZPBN_ID, NazwaISkrot, NazwaWDopelniaczu):
 
 
 class Ukryj_Status_Korekty(models.Model):
-    uczelnia = models.ForeignKey(Uczelnia, on_delete=models.CASCADE)
+    # db_index=False: redundantny względem unique_together
+    # (uczelnia, status_korekty) — uczelnia jest wiodącą kolumną tego indeksu.
+    uczelnia = models.ForeignKey(Uczelnia, on_delete=models.CASCADE, db_index=False)
     status_korekty = models.ForeignKey("Status_Korekty", on_delete=models.CASCADE)
 
     multiwyszukiwarka = models.BooleanField(

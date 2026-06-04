@@ -6,6 +6,7 @@ from django.utils.html import format_html
 from djangoql.admin import DjangoQLSearchMixin
 from mptt.admin import DraggableMPTTAdmin
 
+from bpp.djangoql_schema import BppQLSchema
 from bpp.models import Autor_Jednostka, Uczelnia
 
 from ..models.struktura import Jednostka, Jednostka_Wydzial
@@ -45,6 +46,7 @@ class JednostkaAdmin(
 ):
     djangoql_completion_enabled_by_default = False
     djangoql_completion = True
+    djangoql_schema = BppQLSchema
 
     change_list_template = "admin/grappelli_mptt_change_list.html"
 

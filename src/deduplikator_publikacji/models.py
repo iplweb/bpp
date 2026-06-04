@@ -128,6 +128,8 @@ class PublicationDuplicateCandidate(models.Model):
         on_delete=models.CASCADE,
         related_name="candidates",
         verbose_name="Skanowanie",
+        # Auto-indeks FK redundantny: pokrywa go Meta.Index [scan_run, status].
+        db_index=False,
     )
 
     # Original publication (using GenericForeignKey)
@@ -136,6 +138,9 @@ class PublicationDuplicateCandidate(models.Model):
         on_delete=models.CASCADE,
         related_name="publication_duplicate_originals",
         verbose_name="Typ oryginalnej publikacji",
+        # Auto-indeks FK redundantny: pokrywa go Meta.Index
+        # [original_content_type, original_object_id, status].
+        db_index=False,
     )
     original_object_id = models.PositiveIntegerField(
         verbose_name="ID oryginalnej publikacji",
@@ -230,7 +235,8 @@ class PublicationDuplicateCandidate(models.Model):
         ordering = ["-similarity_score", "original_title"]
         indexes = [
             models.Index(fields=["scan_run", "status"]),
-            models.Index(fields=["similarity_score"]),
+            # Usunięto Index(["similarity_score"]) — duplikat indeksu z
+            # db_index=True na polu similarity_score.
             models.Index(
                 fields=["original_content_type", "original_object_id", "status"]
             ),

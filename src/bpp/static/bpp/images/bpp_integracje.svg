@@ -1,0 +1,70 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 1280 1000" width="1280" height="1000" font-family="'Segoe UI', Roboto, Helvetica, Arial, sans-serif" role="img" aria-label="BPP jako centralny hub informacji naukowej: wejscia po lewej, wyjscia po prawej, tryby wyszukiwania na dole">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffffff"/><stop offset="1" stop-color="#fdf3e7"/></linearGradient>
+    <linearGradient id="inGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff3e0"/><stop offset="1" stop-color="#ffe0b2"/></linearGradient>
+    <linearGradient id="outGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffe9d6"/><stop offset="1" stop-color="#ffd1a3"/></linearGradient>
+    <linearGradient id="seaGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fef6e7"/><stop offset="1" stop-color="#fde4bd"/></linearGradient>
+    <filter id="soft" x="-20%" y="-20%" width="140%" height="140%"><feDropShadow dx="0" dy="3" stdDeviation="4" flood-color="#7c2d12" flood-opacity="0.18"/></filter>
+    <filter id="hubShadow" x="-40%" y="-40%" width="180%" height="180%"><feDropShadow dx="0" dy="6" stdDeviation="11" flood-color="#c2410c" flood-opacity="0.45"/></filter>
+    <marker id="aIn" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#c2410c"/></marker>
+    <marker id="aOut" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#ea580c"/></marker>
+    <marker id="aSea" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#d97706"/></marker>
+  </defs>
+  <rect x="0" y="0" width="1280" height="1000" rx="26" fill="url(#bg)"/>
+  <rect x="2" y="2" width="1276" height="996" rx="24" fill="none" stroke="#e8843a" stroke-width="2.5"/>
+  <text x="640.0" y="56" text-anchor="middle" font-size="25" font-weight="700" fill="#7c2d12">BPP — centralny punkt przyjmowania i obróbki publikacji na uczelni</text>
+  <text x="185.0" y="242" text-anchor="middle" font-size="16" font-weight="700" letter-spacing="3" fill="#b45309">WEJŚCIE</text>
+  <text x="1075.0" y="102" text-anchor="middle" font-size="16" font-weight="700" letter-spacing="3" fill="#b45309">WYJŚCIE</text>
+  <g fill="none" stroke="#c2410c" stroke-width="2.5">
+    <path d="M300,285.0 C410,285.0 415,355.0 510,355.0" marker-end="url(#aIn)"/>
+    <path d="M300,355.0 C410,355.0 415,390.0 510,390.0" marker-end="url(#aIn)"/>
+    <path d="M300,425.0 C410,425.0 415,425.0 510,425.0" marker-end="url(#aIn)"/>
+    <path d="M300,495.0 C410,495.0 415,460.0 510,460.0" marker-end="url(#aIn)"/>
+    <path d="M300,565.0 C410,565.0 415,495.0 510,495.0" marker-end="url(#aIn)"/>
+  </g>
+  <g fill="none" stroke="#ea580c" stroke-width="2.5">
+    <path d="M765,345.0 C858,345.0 862,145.0 935,145.0" marker-end="url(#aOut)"/>
+    <path d="M765,365.0 C858,365.0 862,215.0 935,215.0" marker-end="url(#aOut)"/>
+    <path d="M765,385.0 C858,385.0 862,285.0 935,285.0" marker-end="url(#aOut)"/>
+    <path d="M765,405.0 C858,405.0 862,355.0 935,355.0" marker-end="url(#aOut)"/>
+    <path d="M765,425.0 C858,425.0 862,425.0 935,425.0" marker-end="url(#aOut)"/>
+    <path d="M765,445.0 C858,445.0 862,495.0 935,495.0" marker-end="url(#aOut)"/>
+    <path d="M765,465.0 C858,465.0 862,565.0 935,565.0" marker-end="url(#aOut)"/>
+    <path d="M765,485.0 C858,485.0 862,635.0 935,635.0" marker-end="url(#aOut)"/>
+    <path d="M765,505.0 C858,505.0 862,705.0 935,705.0" marker-end="url(#aOut)"/>
+  </g>
+  <path d="M640.0,520.0 C640.0,630 640.0,700 640.0,766" fill="none" stroke="#d97706" stroke-width="3" marker-end="url(#aSea)"/>
+  <g filter="url(#soft)">
+    <g><rect x="70" y="260.0" width="230" height="50" rx="11" fill="url(#inGrad)" stroke="#ea580c" stroke-width="1.5"/><text x="185.0" y="282.0" text-anchor="middle" font-size="14.5" font-weight="600" fill="#7c2d12">Zgłoszenia</text><text x="185.0" y="299.0" text-anchor="middle" font-size="14.5" font-weight="600" fill="#7c2d12">przez formularz</text></g>
+    <g><rect x="70" y="330.0" width="230" height="50" rx="11" fill="url(#inGrad)" stroke="#ea580c" stroke-width="1.5"/><text x="185.0" y="360.0" text-anchor="middle" font-size="17" font-weight="600" fill="#7c2d12">PBN</text></g>
+    <g><rect x="70" y="400.0" width="230" height="50" rx="11" fill="url(#inGrad)" stroke="#ea580c" stroke-width="1.5"/><text x="185.0" y="430.0" text-anchor="middle" font-size="17" font-weight="600" fill="#7c2d12">CrossRef</text></g>
+    <g><rect x="70" y="470.0" width="230" height="50" rx="11" fill="url(#inGrad)" stroke="#ea580c" stroke-width="1.5"/><text x="185.0" y="500.0" text-anchor="middle" font-size="17" font-weight="600" fill="#7c2d12">Web of Science</text></g>
+    <g><rect x="70" y="540.0" width="230" height="50" rx="11" fill="url(#inGrad)" stroke="#ea580c" stroke-width="1.5"/><text x="185.0" y="570.0" text-anchor="middle" font-size="17" font-weight="600" fill="#7c2d12">DSpace</text></g>
+  </g>
+  <g filter="url(#soft)">
+    <g><rect x="940" y="120.0" width="270" height="50" rx="11" fill="url(#outGrad)" stroke="#ea580c" stroke-width="1.5"/><text x="1075.0" y="150.0" text-anchor="middle" font-size="16" font-weight="600" fill="#7c2d12">PBN</text></g>
+    <g><rect x="940" y="190.0" width="270" height="50" rx="11" fill="url(#outGrad)" stroke="#ea580c" stroke-width="1.5"/><text x="1075.0" y="220.0" text-anchor="middle" font-size="16" font-weight="600" fill="#7c2d12">OAI-PMH</text></g>
+    <g><rect x="940" y="260.0" width="270" height="50" rx="11" fill="url(#outGrad)" stroke="#ea580c" stroke-width="1.5"/><text x="1075.0" y="290.0" text-anchor="middle" font-size="16" font-weight="600" fill="#7c2d12">API</text></g>
+    <g><rect x="940" y="330.0" width="270" height="50" rx="11" fill="url(#outGrad)" stroke="#ea580c" stroke-width="1.5"/><text x="1075.0" y="360.0" text-anchor="middle" font-size="16" font-weight="600" fill="#7c2d12">DSpace</text></g>
+    <g><rect x="940" y="400.0" width="270" height="50" rx="11" fill="url(#outGrad)" stroke="#ea580c" stroke-width="1.5"/><text x="1075.0" y="430.0" text-anchor="middle" font-size="14" font-weight="600" fill="#7c2d12">Raporty dla Uczelni</text></g>
+    <g><rect x="940" y="470.0" width="270" height="50" rx="11" fill="url(#outGrad)" stroke="#ea580c" stroke-width="1.5"/><text x="1075.0" y="500.0" text-anchor="middle" font-size="14" font-weight="600" fill="#7c2d12">Ewaluacja z optymalizacją</text></g>
+    <g><rect x="940" y="540.0" width="270" height="50" rx="11" fill="url(#outGrad)" stroke="#ea580c" stroke-width="1.5"/><text x="1075.0" y="570.0" text-anchor="middle" font-size="14" font-weight="600" fill="#7c2d12">Wizualizacje</text></g>
+    <g><rect x="940" y="610.0" width="270" height="50" rx="11" fill="url(#outGrad)" stroke="#ea580c" stroke-width="1.5"/><text x="1075.0" y="640.0" text-anchor="middle" font-size="14" font-weight="600" fill="#7c2d12">Profile naukowców</text></g>
+    <g><rect x="940" y="680.0" width="270" height="50" rx="11" fill="url(#outGrad)" stroke="#ea580c" stroke-width="1.5"/><text x="1075.0" y="710.0" text-anchor="middle" font-size="14" font-weight="600" fill="#7c2d12">Strona WWW instytucji</text></g>
+  </g>
+  <g filter="url(#soft)"><rect x="200.0" y="770" width="880" height="130" rx="16" fill="#fffaf2" stroke="#d97706" stroke-width="2"/></g>
+  <text x="640.0" y="800" text-anchor="middle" font-size="15" font-weight="700" letter-spacing="3" fill="#b45309">WYSZUKIWANIE</text>
+    <g><rect x="221.0" y="822" width="196" height="54" rx="10" fill="url(#seaGrad)" stroke="#d97706" stroke-width="1.5"/><text x="319.0" y="854.0" text-anchor="middle" font-size="16" font-weight="600" fill="#7c2d12">Zapytania QL</text></g>
+    <g><rect x="435.0" y="822" width="196" height="54" rx="10" fill="url(#seaGrad)" stroke="#d97706" stroke-width="1.5"/><text x="533.0" y="854.0" text-anchor="middle" font-size="16" font-weight="600" fill="#7c2d12">Pełny tekst</text></g>
+    <g><rect x="649.0" y="822" width="196" height="54" rx="10" fill="url(#seaGrad)" stroke="#d97706" stroke-width="1.5"/><text x="747.0" y="854.0" text-anchor="middle" font-size="16" font-weight="600" fill="#7c2d12">Formularz GUI</text></g>
+    <g><rect x="863.0" y="822" width="196" height="54" rx="10" fill="url(#seaGrad)" stroke="#d97706" stroke-width="1.5"/><text x="961.0" y="854.0" text-anchor="middle" font-size="16" font-weight="600" fill="#7c2d12">Przeglądanie</text></g>
+  <g filter="url(#hubShadow)"><rect x="515" y="330.0" width="250" height="190" rx="22" fill="#fff7ed" stroke="#ea580c" stroke-width="3"/></g>
+  <image xlink:href="https://github.com/iplweb/bpp/raw/dev/src/bpp/static/bpp/images/logo_bpp.png" x="535.0" y="360.0" width="210" height="71.6"/>
+  <line x1="545" y1="454.0" x2="735" y2="454.0" stroke="#fed7aa" stroke-width="2"/>
+  <text x="640.0" y="474.0" text-anchor="middle" font-size="12.5" font-weight="700" letter-spacing="1.3" fill="#c2410c">CENTRALNY HUB</text>
+  <text x="640.0" y="490.0" text-anchor="middle" font-size="12.5" font-weight="700" letter-spacing="1.3" fill="#c2410c">INFORMACJI NAUKOWEJ</text>
+  <text x="640.0" y="508.0" text-anchor="middle" font-size="10.5" fill="#9a4318">przyjmowanie · obróbka · redystrybucja</text>
+  <text x="1235" y="914" text-anchor="end" font-size="12.5" fill="#7c2d12">otwarte oprogramowanie</text>
+  <text x="1235" y="932" text-anchor="end" font-size="12.5" fill="#7c2d12">wsparcie komercyjne przez iplweb.pl</text>
+  <image xlink:href="https://www.iplweb.pl/images/ipl-logo-large.png" x="1173.3" y="944" width="61.7" height="40" preserveAspectRatio="xMidYMax meet"/>
+</svg>

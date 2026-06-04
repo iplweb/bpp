@@ -16,6 +16,24 @@ management system built with Django. Python >=3.10,<3.15.
 - Commands reference: [docs/deweloper/polecenia.md](docs/deweloper/polecenia.md)
 - CSS/SCSS build: [docs/deweloper/budowanie-css.md](docs/deweloper/budowanie-css.md)
 
+## Pokazywanie ścieżek do plików `.md` (linki `file://`)
+
+Gdy w odpowiedzi pokazujesz ścieżkę do pliku `.md` (spec, dokument w
+`docs/`, audyt, notatki), **dodaj obok pełny, widoczny, klikalny wariant
+`file://`**. NIE chowaj go pod etykietą markdown typu `[file://](...)` —
+pokaż całą ścieżkę jako goły URL.
+
+Transformacja: `/Users/mpasternak/<reszta>` →
+`file:///Volumes/mpasternak/<reszta>` (trzy ukośniki: `file://` + `/Volumes`).
+
+Przykład:
+- `/Users/mpasternak/Programowanie/bpp/docs/foo.md`
+- `file:///Volumes/mpasternak/Programowanie/bpp/docs/foo.md`
+
+(`/Volumes/mpasternak` to lokalny mount SMB udziału `mpasternak` — pliki
+`.md` user otwiera w Typorze. `file://` działa tylko gdy wolumen jest
+zamontowany.)
+
 ## Critical Rules
 
 - **Ask questions** if anything is unclear before taking on non-trivial tasks
@@ -425,6 +443,29 @@ Konfiguracja jest w `[tool.pytest-testcontainers-django]` w `pyproject.toml`.
   kontenery.
 - CI (`docker-compose.test.yml`) ma `PYTEST_TESTCONTAINERS_DISABLE=1` —
   usługi dostarcza tam docker-compose.
+
+### Czytanie checków CI na PR-ach — co NAPRAWDĘ testuje
+
+**NIE ciesz się z zielonego, dopóki realne gejty nie przejdą.** Check
+kończący się w <1 min ze statusem „success" jest najczęściej **SKIPNIĘTY**,
+nie przetestowany — to NIE jest dowód, że cokolwiek działa. Zanim powiesz
+„zielono / działa", sprawdź że gejty niżej mają `conclusion: success`;
+inaczej milcz i czekaj.
+
+- **Dekoracyjne / skipowane (NIE walidują kodu):** `Docker - oficjalne
+  obrazy` (<1 min „success" = job `docker` jest `skipped`; dedupe: push na
+  branchu z otwartym PR-em = duplikat, realny build leci dopiero na
+  `master`), `Docs`, `Lint changed files`, `Check baseline freshness`,
+  CodeQL/GitGuardian. Szybkie, pomocnicze — nie są dowodem poprawności.
+- **REALNE gejty PR-a (czekaj na ZIELEŃ tych dwóch):**
+  - **`Build test-runner image`** — buduje obraz testowy; tu wychodzą błędy
+    assetów / grunt / esbuild (np. „Could not resolve <entry>"), Dockerfile,
+    deps. Kilka minut.
+  - **`Tests (sharded)` (3.1x, 0..N)** — właściwa suita pytest na ~12
+    shardach (do ~10 min). PR jest zielony **dopiero gdy WSZYSTKIE shardy**
+    przejdą — jeden in_progress = nie przeszło.
+- `mergeStateStatus: UNSTABLE` = mergeowalny (brak konfliktów), ale CI nadal
+  biegnie / jakiś check pending — to NIE znaczy „testy przeszły".
 
 ## Exception Handling
 

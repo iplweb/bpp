@@ -13,7 +13,10 @@ class OrganPrzyznajacyNagrody(NazwaISkrot):
 
 
 class Nagroda(models.Model):
-    content_type = models.ForeignKey(ContentType, CASCADE)
+    # db_index=False: redundantny względem unique_together
+    # (content_type, object_id, organ_przyznajacy, rok_przyznania) —
+    # content_type jest wiodącą kolumną tego indeksu.
+    content_type = models.ForeignKey(ContentType, CASCADE, db_index=False)
     object_id = models.PositiveIntegerField()
     object = GenericForeignKey()
 

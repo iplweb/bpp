@@ -125,8 +125,6 @@
                             <li><a href="{% url "raport_slotow:index-ewaluacja" %}"><i class="fi-clipboard-pencil"></i> raport slotów - ewaluacja</a></li>
                             <li><a href="{% url "raport_slotow:index-upowaznienia" %}"><i class="fi-shield"></i> raport ewaluacja -
                                 upoważnienia</a></li>
-                            {# Disabled 3N report #}
-                            {# <li><a href="{% url "ewaluacja2021:lista-raportow3n" %}"><i class="fi-page-multiple" style="font-size: 1.6rem; margin-right: 0.8rem;"></i> raport ewaluacja - 3N</a></li> #}
                         {% end_czy_pokazywac %}
                     </ul>
                 </div>
@@ -189,9 +187,6 @@
                                     <li><a href="{% url "import_polon:index-absencji" %}"><i class="fi-calendar"></i> import absencji</a></li>
                                     <li><a href="{% url "import_list_ministerialnych:index" %}"><i class="fi-clipboard-notes"></i> import list
                                         ministerialnych</a></li>
-{#                                    <li><a href="{% url "ewaluacja2021:lista-importow" %}">import udziałów dla#}
-{#                                        autorów</a>#}
-{#                                    </li>#}
                                     <li><a href="{% url "import_list_if:index" %}"><i class="fi-graph-bar"></i> import list IF</a></li>
                                     <li><a href="{% url "import_dyscyplin:index" %}"><i class="fi-folder"></i> import dyscyplin</a></li>
                                     <hr/>

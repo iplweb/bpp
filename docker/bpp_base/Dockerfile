@@ -94,6 +94,9 @@ COPY src/bpp/static/scss/ src/bpp/static/scss/
 COPY src/bpp/static/bpp/scss/ src/bpp/static/bpp/scss/
 # JS for esbuild bundle
 COPY src/bpp/static/bpp/js/ src/bpp/static/bpp/js/
+# JS for esbuild bundle eksploratora powiązań (cytoscape-entry + moduły ES)
+COPY src/powiazania_autorow/static/powiazania_autorow/js/ \
+     src/powiazania_autorow/static/powiazania_autorow/js/
 # App-specific SCSS (keep alphabetical)
 COPY src/bpp_setup_wizard/static/bpp_setup_wizard/scss/ \
      src/bpp_setup_wizard/static/bpp_setup_wizard/scss/
@@ -216,27 +219,92 @@ RUN find /app/.venv -type d -name __pycache__ -exec rm -rf {} + \
 ##############################################################################
 # TEST-RUNNER: test environment (source mounted at runtime via volume)
 ##############################################################################
-FROM base AS test-runner
+# TEST-VENV-BUILDER: kompiluje testowy venv (--all-extras --all-groups) i
+# pobiera przegladarki Playwright NA PELNYM python:trixie (z toolchainem),
+# bo wheelsy z C-rozszerzeniami wymagajacymi kompilacji ze zrodel
+# (python-ldap z extras `ldap`) potrzebuja gcc + naglowkow z build.txt.
+# Artefakty (/opt/venv, /opt/playwright) sa COPY-owane do slim test-runnera
+# nizej — to wzorzec identyczny jak produkcyjny stage `runtime`, dzieki
+# ktoremu ~1.1 GB toolchainu (buildpack python:trixie + build.txt) NIE laduje
+# w obrazie testowym.
+FROM base AS test-venv-builder
 
-# Runtime + test packages (build.txt already in base)
-COPY docker/bpp_base/runtime.txt \
-     docker/bpp_base/test.txt /tmp/packages/
+ENV UV_PROJECT_ENVIRONMENT=/opt/venv
+
+WORKDIR /build
+COPY pyproject.toml uv.lock ./
+RUN --mount=type=cache,target=/root/.cache/uv,id=uv-cache \
+    uv sync --frozen --all-extras \
+        --all-groups --no-install-project
+
+# Przegladarki Playwright raz, do /opt/playwright (kopiowane do slim nizej).
+RUN PLAYWRIGHT_BROWSERS_PATH=/opt/playwright \
+    /opt/venv/bin/playwright install chromium chromium-headless-shell
+
+
+##############################################################################
+# TEST-RUNNER: srodowisko testowe NA python:slim. Skompilowany venv +
+# przegladarki przychodza gotowe z `test-venv-builder` (COPY --from), wiec slim
+# nie potrzebuje toolchainu. Tnie to obraz o ~1.1 GB build-only deps (buildpack
+# pelnego python:trixie: gcc/g++/dpkg-dev/autoconf + git/mercurial/svn, plus
+# nasz build.txt), ktore byly martwym balastem w obrazie testowym. Wzorzec
+# identyczny jak produkcyjny stage `runtime` (compiled venv na slim + runtime
+# liby). Slim NIE dziedziczy z `base`, wiec ENV/uv/node trzeba odtworzyc.
+##############################################################################
+ARG PYTHON_VERSION
+ARG DEBIAN_VERSION
+FROM python:${PYTHON_VERSION}-slim-${DEBIAN_VERSION} AS test-runner
+
+ARG NODEJS_VERSION
+
+ENV DEBIAN_FRONTEND=noninteractive
+# MALLOC_ARENA_MAX: patrz komentarz w stage `base` (slim nie dziedziczy).
+ENV MALLOC_ARENA_MAX=2
+ENV UV_COMPILE_BYTECODE=1 \
+    UV_LINK_MODE=copy \
+    UV_PROJECT_ENVIRONMENT=/opt/venv \
+    PLAYWRIGHT_BROWSERS_PATH=/opt/playwright
+ENV PATH="/opt/venv/bin:${PATH}"
+
+# uv potrzebne w runtime — CI wola `uv run pytest` (jak na pelnym obrazie).
+COPY --from=ghcr.io/astral-sh/uv:0.7 /uv /usr/local/bin/uv
+
+RUN sed -i s/http/https/g /etc/apt/sources.list.d/debian.sources
+
+# Runtime liby wspoldzielone, ktorych potrzebuja skompilowane wheelsy +
+# narzedzia. runtime.txt: pango/cairo (weasyprint), libpq, gmp/lua (pandoc).
+# test.txt: redis-tools. Dodatkowo wzgledem `base`/produkcji:
+#  - libldap2/libsasl2-2: python-ldap (z extras `ldap`) linkuje sie z nimi;
+#    na pelnym trixie dawal je libldap2-dev/libsasl2-dev (build.txt), tu nie ma,
+#  - ca-certificates/curl/gnupg: repo NodeSource + Dockera,
+#  - git: `yarn install` ma zaleznosci po URL-u git (pelny trixie mial git
+#    w buildpacku; slim nie ma) — bez tego `yarn install` pada.
+# UWAGA: `gettext` (msgfmt) NIE jest tu potrzebny — projektowy override
+# `compilemessages` (src/bpp/management/commands/) kompiluje .po→.mo Babelem
+# w czystym Pythonie. xgettext/makemessages to operacja dev-only, nieobecna
+# w buildzie/CI.
+COPY docker/bpp_base/runtime.txt docker/bpp_base/test.txt /tmp/packages/
 RUN --mount=type=cache,target=/var/cache/apt,sharing=locked,id=apt-cache \
     --mount=type=cache,target=/var/lib/apt/lists,sharing=locked,id=apt-lists \
+    apt-get update && \
+    apt-get install -y --no-install-recommends \
+        ca-certificates curl gnupg git libldap2 libsasl2-2 && \
     cat /tmp/packages/*.txt | xargs apt-get install -y
 
-# Pandoc z oficjalnego obrazu (patrz komentarz R7 przy runtime stage).
-# libgmp10/liblua5.4-0 juz sa w runtime.txt instalowanym wyzej.
-COPY --from=pandoc-src /usr/local/bin/pandoc /usr/local/bin/pandoc
-
-# yarn + grunt (global install for CLI use)
-RUN --mount=type=cache,target=/root/.npm,id=npm-cache \
-    npm install -g --force yarn grunt-cli
-
-# Playwright system deps
+# Node (grunt build + yarn install dla `make assets`) + yarn/grunt globalnie.
 RUN --mount=type=cache,target=/var/cache/apt,sharing=locked,id=apt-cache \
     --mount=type=cache,target=/var/lib/apt/lists,sharing=locked,id=apt-lists \
-    npx playwright install-deps chromium 2>/dev/null || true
+    curl -fsSL https://deb.nodesource.com/setup_${NODEJS_VERSION}.x | bash - && \
+    apt-get install -y nodejs && \
+    npm install -g --force yarn grunt-cli
+
+# Skompilowany venv + przegladarki z buildera (bez toolchainu).
+COPY --from=test-venv-builder /opt/venv /opt/venv
+COPY --from=test-venv-builder /opt/playwright /opt/playwright
+
+# Playwright system deps. Na slim — w odroznieniu od pelnego trixie — tych
+# bibliotek nie ma, wiec instalacja jest konieczna (uzywamy playwrighta z venv).
+RUN /opt/venv/bin/playwright install-deps chromium
 
 # Docker CLI (for tests that use Docker, e.g. html2docx)
 RUN --mount=type=cache,target=/var/cache/apt,sharing=locked,id=apt-cache \
@@ -251,28 +319,9 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked,id=apt-cache \
         > /etc/apt/sources.list.d/docker.list && \
     apt-get update && apt-get install -y docker-ce-cli
 
-# Install Python deps to /opt/venv so the docker-compose volume
-# mount of .:/src doesn't overwrite them.
-ENV UV_PROJECT_ENVIRONMENT=/opt/venv
-ENV PATH="/opt/venv/bin:${PATH}"
-
-WORKDIR /build
-COPY pyproject.toml uv.lock ./
-RUN --mount=type=cache,target=/root/.cache/uv,id=uv-cache \
-    uv sync --frozen --all-extras \
-        --all-groups --no-install-project
-
-# Playwright browser binaries baked into the image so the CI workflow
-# doesn't have to run `playwright install` per build (saves ~30-60s and
-# obviates the docker volume that previously persisted the cache between
-# `compose run --rm` invocations). Cache key: this layer is invalidated
-# whenever uv.lock changes, which already happens when playwright is
-# bumped — so the image always ships browsers matching the pinned
-# Python wheel. System libs were already installed via
-# `npx playwright install-deps chromium` above.
-RUN PLAYWRIGHT_BROWSERS_PATH=/opt/playwright \
-    /opt/venv/bin/playwright install chromium chromium-headless-shell
-ENV PLAYWRIGHT_BROWSERS_PATH=/opt/playwright
+# Pandoc z oficjalnego obrazu (patrz komentarz R7 przy runtime stage).
+# libgmp10/liblua5.4-0 juz sa w runtime.txt instalowanym wyzej.
+COPY --from=pandoc-src /usr/local/bin/pandoc /usr/local/bin/pandoc
 
 # Yarn deps + grunt CLI (needed for `make assets`). Mirrors the
 # testserver stage so CI gets a pre-built test-runner image with the
@@ -291,17 +340,60 @@ RUN --mount=type=cache,target=/root/.npm,id=npm-cache \
 # (~1 min × N jobs) on every invocation. Local dev keeps the bind
 # mount and rebuilds assets on demand.
 #
-# Granular COPYs (instead of `COPY . /src`) keep this layer cached
-# whenever the change is outside the listed paths — edits to
-# .github/, docker/, docker-compose*.yml, .pre-commit-config.yaml,
-# etc. don't invalidate the source layer or the grunt/compilemessages
-# steps below it. Only changes inside src/ or the listed top-level
-# config files force a rebuild of the assets.
+# Asset-source COPYs PRZED `grunt build` — dokladnie jak w stage `builder`
+# (patrz komentarz tam) — zeby warstwa grunta (~60s) byla CACHE-HIT, gdy
+# zmienil sie TYLKO kod Pythona, a nie scss/js. Wczesniej test-runner robil
+# `COPY src/` (cale drzewo) przed gruntem, wiec grunt przebudowywal sie na
+# KAZDYM commicie (a wiec i prepare-image gejtujacy wszystkie shardy). Teraz
+# grunt odpala sie tylko gdy faktycznie ruszysz scss/js. Gruntfile.js juz jest
+# w /src (skopiowany z package.json/yarn.lock wyzej). Dodajac nowy task
+# SCSS/JS do Gruntfile.js — dopisz tu COPY (jak w builderze). Pominiecie
+# zrodla taska esbuild = "Could not resolve <entry>" i grunt build pada.
+# Theme and admin SCSS
+COPY src/bpp/static/scss/ src/bpp/static/scss/
+COPY src/bpp/static/bpp/scss/ src/bpp/static/bpp/scss/
+# JS for esbuild bundle
+COPY src/bpp/static/bpp/js/ src/bpp/static/bpp/js/
+# JS for esbuild bundle eksploratora powiązań (cytoscape-entry + moduły ES)
+COPY src/powiazania_autorow/static/powiazania_autorow/js/ \
+     src/powiazania_autorow/static/powiazania_autorow/js/
+# App-specific SCSS (keep alphabetical, mirror `builder`)
+COPY src/bpp_setup_wizard/static/bpp_setup_wizard/scss/ \
+     src/bpp_setup_wizard/static/bpp_setup_wizard/scss/
+COPY src/deduplikator_autorow/static/deduplikator_autorow/scss/ \
+     src/deduplikator_autorow/static/deduplikator_autorow/scss/
+COPY src/deduplikator_zrodel/static/deduplikator_zrodel/scss/ \
+     src/deduplikator_zrodel/static/deduplikator_zrodel/scss/
+COPY src/ewaluacja_dwudyscyplinowcy/static/ewaluacja_dwudyscyplinowcy/scss/ \
+     src/ewaluacja_dwudyscyplinowcy/static/ewaluacja_dwudyscyplinowcy/scss/
+COPY src/ewaluacja_liczba_n/static/ewaluacja_liczba_n/scss/ \
+     src/ewaluacja_liczba_n/static/ewaluacja_liczba_n/scss/
+COPY src/ewaluacja_optymalizuj_publikacje/static/ewaluacja_optymalizuj_publikacje/scss/ \
+     src/ewaluacja_optymalizuj_publikacje/static/ewaluacja_optymalizuj_publikacje/scss/
+COPY src/komparator_publikacji_pbn/static/komparator_publikacji_pbn/scss/ \
+     src/komparator_publikacji_pbn/static/komparator_publikacji_pbn/scss/
+COPY src/pbn_downloader_app/static/pbn_downloader_app/scss/ \
+     src/pbn_downloader_app/static/pbn_downloader_app/scss/
+COPY src/pbn_export_queue/static/pbn_export_queue/scss/ \
+     src/pbn_export_queue/static/pbn_export_queue/scss/
+COPY src/pbn_import/static/pbn_import/scss/ \
+     src/pbn_import/static/pbn_import/scss/
+COPY src/pbn_komparator_zrodel/static/pbn_komparator_zrodel/scss/ \
+     src/pbn_komparator_zrodel/static/pbn_komparator_zrodel/scss/
+COPY src/przemapuj_prace_autora/static/przemapuj_prace_autora/scss/ \
+     src/przemapuj_prace_autora/static/przemapuj_prace_autora/scss/
+COPY src/przemapuj_zrodla_pbn/static/przemapuj_zrodla_pbn/scss/ \
+     src/przemapuj_zrodla_pbn/static/przemapuj_zrodla_pbn/scss/
+
+RUN npx grunt build-non-interactive
+
+# Reszta zrodla PO gruncie: zmiany w kodzie Pythona nie unieważniaja warstwy
+# grunta powyzej. Skompilowane assety (gitignored, nieobecne w kontekscie
+# build) przezyja ten COPY — COPY nie kasuje plikow, ktorych nie ma w zrodle.
 COPY src/ /src/src/
 COPY baseline-sql/ /src/baseline-sql/
 COPY conftest.py pytest.ini Makefile pyproject.toml uv.lock /src/
 
-RUN npx grunt build-non-interactive
 RUN /opt/venv/bin/python src/manage.py compilemessages -v0 -l pl --traceback
 
 ##############################################################################

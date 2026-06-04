@@ -3,117 +3,93 @@ Core functionality for calculating author connections.
 """
 
 import logging
-from collections import defaultdict
 
-from django.db import transaction
+from django.db import connection, transaction
 
 from bpp.models import Patent_Autor, Wydawnictwo_Ciagle_Autor, Wydawnictwo_Zwarte_Autor
 
+from .models import AuthorConnection
+
 logger = logging.getLogger(__name__)
 
+# Modele autorstwa, z których liczymy współautorstwa. Każdy ma WŁASNĄ przestrzeń
+# rekord_id (Ciągłe/Zwarte/Patenty to osobne tabele), więc liczymy per-tabela i
+# sumujemy — rekord_id=5 w jednej tabeli to inna praca niż rekord_id=5 w drugiej.
+_MODELE_AUTORSTWA = (
+    Wydawnictwo_Ciagle_Autor,
+    Wydawnictwo_Zwarte_Autor,
+    Patent_Autor,
+)
 
-def calculate_author_connections():  # noqa: C901
+
+def _self_join_sql(db_table):
+    """Fragment SELECT: dla jednej tabeli *_Autor liczy, ile WSPÓLNYCH prac
+    (DISTINCT rekord_id) dzieli każda nieuporządkowana para autorów.
+
+    Self-join po rekord_id; warunek ``a1.autor_id < a2.autor_id`` daje każdą
+    parę dokładnie raz (mniejszy id jako primary) i z definicji wyklucza parę
+    autora z samym sobą — nawet gdy autor ma kilka wpisów na tej samej pracy
+    (różne typy odpowiedzialności / kolejność). NULL-owe autor_id odpadają przy
+    porównaniu ``<``. Join korzysta z istniejącego indeksu unique_together
+    ``(rekord, autor, ...)`` — bez potrzeby dodawania nowych indeksów.
     """
-    Calculate and update all author connections based on shared publications.
-    This function analyzes all publications and creates/updates AuthorConnection records.
+    return f"""
+        SELECT a1.autor_id AS p,
+               a2.autor_id AS s,
+               COUNT(DISTINCT a1.rekord_id) AS cnt
+          FROM "{db_table}" a1
+          JOIN "{db_table}" a2
+            ON a1.rekord_id = a2.rekord_id
+           AND a1.autor_id < a2.autor_id
+         GROUP BY a1.autor_id, a2.autor_id
     """
-    from .models import AuthorConnection
 
-    logger.info("Starting author connections calculation...")
 
-    # Dictionary to store connections: {(author1_id, author2_id): count}
-    connections = defaultdict(int)
+def calculate_author_connections():
+    """Przelicza od zera całą tabelę AuthorConnection z bieżących współautorstw.
 
-    # Process Wydawnictwo_Ciagle (continuous publications)
-    logger.info("Processing Wydawnictwo_Ciagle...")
-    ciagle_authors = Wydawnictwo_Ciagle_Autor.objects.select_related(
-        "autor", "rekord"
-    ).values_list("rekord_id", "autor_id")
+    Całość liczona w SQL: ``TRUNCATE`` + ``INSERT ... SELECT`` z self-joinem per
+    tabela autorstwa (Ciągłe / Zwarte / Patenty), zsumowane po parze autorów.
+    Zero round-tripów do Pythona i zero materializacji par w pamięci — w
+    odróżnieniu od dawnej wersji, która streamowała wszystkie wiersze i budowała
+    ogromny słownik par (O(k^2) na publikację, patologia przy pracach z setkami
+    współautorów).
 
-    # Group authors by publication
-    publications_ciagle = defaultdict(list)
-    for rekord_id, autor_id in ciagle_authors:
-        if autor_id:  # Skip null authors
-            publications_ciagle[rekord_id].append(autor_id)
+    Semantyka: ``shared_publications_count`` = liczba WSPÓLNYCH publikacji
+    (DISTINCT rekord), sumowana po typach prac. Para autorów zapisywana jest raz,
+    z mniejszym id jako ``primary_author`` (spójnie z unique_together). Pary
+    autora z samym sobą nie powstają.
 
-    # Count connections
-    for authors in publications_ciagle.values():
-        if len(authors) > 1:
-            for i in range(len(authors)):
-                for j in range(i + 1, len(authors)):
-                    # Always store with smaller ID first to avoid duplicates
-                    author_pair = tuple(sorted([authors[i], authors[j]]))
-                    connections[author_pair] += 1
-
-    # Process Wydawnictwo_Zwarte (monographs)
-    logger.info("Processing Wydawnictwo_Zwarte...")
-    zwarte_authors = Wydawnictwo_Zwarte_Autor.objects.select_related(
-        "autor", "rekord"
-    ).values_list("rekord_id", "autor_id")
-
-    publications_zwarte = defaultdict(list)
-    for rekord_id, autor_id in zwarte_authors:
-        if autor_id:
-            publications_zwarte[rekord_id].append(autor_id)
-
-    for authors in publications_zwarte.values():
-        if len(authors) > 1:
-            for i in range(len(authors)):
-                for j in range(i + 1, len(authors)):
-                    author_pair = tuple(sorted([authors[i], authors[j]]))
-                    connections[author_pair] += 1
-
-    # Process Patents
-    logger.info("Processing Patents...")
-    patent_authors = Patent_Autor.objects.select_related("autor", "rekord").values_list(
-        "rekord_id", "autor_id"
+    Zwraca łączną liczbę utworzonych powiązań.
+    """
+    table = AuthorConnection._meta.db_table
+    union = "\n        UNION ALL\n".join(
+        _self_join_sql(m._meta.db_table) for m in _MODELE_AUTORSTWA
     )
+    insert_sql = f"""
+        INSERT INTO "{table}"
+            (primary_author_id, secondary_author_id,
+             shared_publications_count, last_updated)
+        SELECT p, s, SUM(cnt) AS shared, now()
+          FROM (
+{union}
+          ) sub
+         GROUP BY p, s
+    """
 
-    publications_patent = defaultdict(list)
-    for rekord_id, autor_id in patent_authors:
-        if autor_id:
-            publications_patent[rekord_id].append(autor_id)
-
-    for authors in publications_patent.values():
-        if len(authors) > 1:
-            for i in range(len(authors)):
-                for j in range(i + 1, len(authors)):
-                    author_pair = tuple(sorted([authors[i], authors[j]]))
-                    connections[author_pair] += 1
-
-    logger.info(f"Found {len(connections)} author connections")
-
-    # Update database
+    logger.info("Przeliczanie powiązań autorów (SQL)...")
     with transaction.atomic():
-        # Clear existing connections
-        logger.info("Clearing existing connections...")
-        AuthorConnection.objects.all().delete()
+        with connection.cursor() as cur:
+            # DELETE (nie TRUNCATE): TRUNCATE wywala się błędem ObjectInUse, gdy
+            # w tej samej transakcji były wcześniej INSERT-y do tabeli (oczekujące
+            # zdarzenia wyzwalaczy FK) — np. w testach owiniętych w transakcję lub
+            # gdy recompute leci po innej operacji na tabeli. DELETE bez WHERE to
+            # jedno zapytanie, transakcyjne i odporne na ten przypadek. Cały blok
+            # jest atomowy: przy błędzie INSERT-u DELETE też się cofa, więc tabela
+            # nigdy nie zostaje pusta.
+            cur.execute(f'DELETE FROM "{table}"')
+            cur.execute(insert_sql)
 
-        # Create new connections
-        logger.info("Creating new connections...")
-        batch_size = 1000
-        connections_to_create = []
-
-        for (author1_id, author2_id), count in connections.items():
-            if count > 0:  # Only create connections with at least 1 shared publication
-                connections_to_create.append(
-                    AuthorConnection(
-                        primary_author_id=author1_id,
-                        secondary_author_id=author2_id,
-                        shared_publications_count=count,
-                    )
-                )
-
-                if len(connections_to_create) >= batch_size:
-                    AuthorConnection.objects.bulk_create(connections_to_create)
-                    connections_to_create = []
-
-        # Create remaining connections
-        if connections_to_create:
-            AuthorConnection.objects.bulk_create(connections_to_create)
-
-    total_connections = AuthorConnection.objects.count()
-    logger.info(
-        f"Calculation complete. Created {total_connections} author connections."
-    )
-    return total_connections
+    total = AuthorConnection.objects.count()
+    logger.info("Przeliczono %s powiązań autorów.", total)
+    return total

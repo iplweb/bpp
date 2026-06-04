@@ -1,13 +1,29 @@
 name: Tests
 
+# Zmiany czysto dokumentacyjne (docs/, mkdocs.yml, .readthedocs.yaml)
+# NIE uruchamiaja calej suity testow — buduje je wtedy tylko workflow
+# `Docs` (ma komplementarny `paths:`). Dzieki temu commit z sama
+# dokumentacja deployuje MkDocs na Pages, ale nie odpala ~10-min testow.
+# UWAGA: `[skip ci]` w komunikacie commita ubilby ROWNIEZ `Docs` —
+# dlatego selekcja jest po sciezkach, nie po komunikacie. Commit
+# mieszany (dokumentacja + kod) i tak odpali testy, bo nie wszystkie
+# zmienione pliki sa ignorowane.
 on:
   push:
     branches:
       - dev
       - master
+    paths-ignore:
+      - docs/**
+      - mkdocs.yml
+      - .readthedocs.yaml
   pull_request:
     branches:
       - dev
+    paths-ignore:
+      - docs/**
+      - mkdocs.yml
+      - .readthedocs.yaml
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
@@ -95,6 +111,44 @@ jobs:
           uvx pre-commit run ruff-format \
             --from-ref "$DIFF_BASE" --to-ref HEAD --show-diff-on-failure
 
+  baseline-check:
+    # Guard repo-state-only: czy baseline-sql/baseline.sql nadaza za migracjami
+    # (manage.py baseline_check). Wydzielone z prepare-image i puszczone
+    # ROWNOLEGLE — wczesniej te ~37s (apt + uv sync + check) blokowaly start
+    # builda obrazu, a wiec i wszystkich shardow, na KAZDYM runie. Drift jest
+    # rzadki: sporadyczny "zmarnowany" build przy realnym drifcie jest tanszy
+    # niz 37s na kazdym runie. Drift = ten job czerwony = caly run czerwony.
+    name: Check baseline freshness
+    if: |
+      !(github.ref == 'refs/heads/dev' && contains(github.event.head_commit.message, 'Merge tag'))
+
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    permissions:
+      contents: read
+
+    steps:
+    - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+    - name: Install system build deps (for uv sync)
+      run: |
+        sudo apt-get update
+        xargs -a docker/bpp_base/build.txt sudo apt-get install -y
+
+    - name: Install uv
+      uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
+      with:
+        enable-cache: false
+
+    - name: Install project deps
+      run: uv sync --frozen --no-install-project
+
+    - name: Check baseline freshness
+      env:
+        DJANGO_BPP_SKIP_DOTENV: "1"
+      run: uv run python src/manage.py baseline_check --max-delta 50
+
   prepare-image:
     # Build the test-runner image once and push it to GHCR with two
     # tags: `:sha-<commit>` (consumed by downstream test jobs) and
@@ -128,31 +182,11 @@ jobs:
     steps:
     - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
-    # baseline_check is repo-state-only — it doesn't need the
-    # test-runner image, the database, or any baked artefacts. Running
-    # it here (instead of inside a test job) means a baseline drift
-    # fails fast and skips the expensive image build below.
-    - name: Install system build deps (for uv sync)
-      run: |
-        sudo apt-get update
-        xargs -a docker/bpp_base/build.txt sudo apt-get install -y
-
-    - name: Install uv (for baseline_check)
-      # No setup-uv cache here — this job pushes images to GHCR, and
-      # zizmor flags cache+publish combos as a poisoning vector. The
-      # cache hit would shave a few seconds off a one-shot uv sync,
-      # not worth the audit smell.
-      uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
-      with:
-        enable-cache: false
-
-    - name: Install project deps (for baseline_check)
-      run: uv sync --frozen --no-install-project
-
-    - name: Check baseline freshness
-      env:
-        DJANGO_BPP_SKIP_DOTENV: "1"
-      run: uv run python src/manage.py baseline_check --max-delta 50
+    # baseline_check przeniesiony do osobnego joba `baseline-check`, ktory
+    # biegnie ROWNOLEGLE z tym buildem (wczesniej jego ~37s apt+uv sync+check
+    # blokowaly start builda obrazu — a wiec i wszystkich shardow). Baseline
+    # drift jest rzadki, wiec sporadyczny "zmarnowany" build przy realnym
+    # drifcie jest tanszy niz 37s na kazdym runie.
 
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@d7f5e7f509e45cec5c76c4d5afdd7de93d0b3df5 # v4.1.0
@@ -188,6 +222,10 @@ jobs:
           PYTHON_VERSION=${{ env.PYTHON_VERSION }}
           DEBIAN_VERSION=${{ env.DEBIAN_VERSION }}
           NODEJS_VERSION=${{ env.NODEJS_VERSION }}
+          # Zmienia się co commit -> busta warstwy COPY src/ + grunt w
+          # test-runnerze (patrz ARG GIT_SHA w Dockerfile), żeby cache-from
+          # nie przywrócił nieaktualnego drzewa źródeł.
+          GIT_SHA=${{ github.sha }}
         # Registry-mode cache. mode=max stores all intermediate layers,
         # so subsequent builds where uv.lock/Dockerfile/build.txt are
         # unchanged finish in seconds. The first run after rolling out
@@ -245,16 +283,20 @@ jobs:
 
     strategy:
       fail-fast: false
-      max-parallel: 8
+      max-parallel: 12
       matrix:
         python-version: ["3.12"]
-        # 0-indexed; bump alongside NUM_SHARDS below if you change it.
-        shard: [0, 1, 2, 3, 4, 5, 6, 7]
+        # 0-indexed; MUSI byc spojne z NUM_SHARDS nizej. Duration-split
+        # (pytest-split, .test_durations) balansuje dowolne N po czasie, wiec
+        # bump jest tani: 8 -> 12 tnie czas testow najwolniejszego sharda
+        # (~220s -> ~150s). Powyzej ~12 zysk topnieje, bo czas sharda spada
+        # ponizej czasu prepare-image (to staje sie podloga krytycznej sciezki).
+        shard: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]
 
     env:
       TEST_RUNNER_IMAGE: ${{ needs.prepare-image.outputs.image }}
       COMPOSE_FILES: -f docker-compose.test.yml -f docker-compose.test.ci.yml
-      NUM_SHARDS: "8"
+      NUM_SHARDS: "12"
 
     steps:
     - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2

@@ -222,6 +222,9 @@ class ImportedAuthor(models.Model):
         on_delete=models.CASCADE,
         related_name="authors",
         verbose_name="sesja",
+        # Auto-indeks FK redundantny: pokrywa go unique_together
+        # [session, order] (session jest kolumną wiodącą).
+        db_index=False,
     )
     order = models.PositiveIntegerField("kolejność")
 

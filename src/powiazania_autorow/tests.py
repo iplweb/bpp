@@ -228,6 +228,90 @@ def test_calculate_author_connections_clears_existing():
 
 
 @pytest.mark.django_db
+def test_calculate_liczy_distinct_publikacje_i_bez_self_loop():
+    """Autor z KILKOMA wpisami na jednej pracy (różne typy odpowiedzialności)
+    nie zawyża liczby wspólnych publikacji ani nie tworzy pętli autor-do-siebie.
+
+    `shared_publications_count` = liczba WSPÓLNYCH publikacji (DISTINCT rekord),
+    a nie liczba par wierszy. Stara wersja liczyła pary wierszy (zawyżała) i
+    potrafiła stworzyć powiązanie autora z samym sobą.
+    """
+    from bpp.models import Typ_Odpowiedzialnosci
+
+    x = baker.make(Autor, imiona="X", nazwisko="Iks")
+    y = baker.make(Autor, imiona="Y", nazwisko="Igrek")
+    t1 = baker.make(Typ_Odpowiedzialnosci)
+    t2 = baker.make(Typ_Odpowiedzialnosci)
+
+    pub = baker.make(Wydawnictwo_Ciagle)
+    # X występuje DWA razy na tej samej pracy (dwa typy odpowiedzialności)
+    baker.make(
+        Wydawnictwo_Ciagle_Autor,
+        rekord=pub,
+        autor=x,
+        typ_odpowiedzialnosci=t1,
+        kolejnosc=0,
+    )
+    baker.make(
+        Wydawnictwo_Ciagle_Autor,
+        rekord=pub,
+        autor=x,
+        typ_odpowiedzialnosci=t2,
+        kolejnosc=1,
+    )
+    baker.make(
+        Wydawnictwo_Ciagle_Autor,
+        rekord=pub,
+        autor=y,
+        typ_odpowiedzialnosci=t1,
+        kolejnosc=2,
+    )
+
+    calculate_author_connections()
+
+    # tylko jedno powiązanie X<->Y; ŻADNEJ pętli X<->X
+    assert AuthorConnection.objects.count() == 1
+    conn = AuthorConnection.objects.get()
+    assert {conn.primary_author_id, conn.secondary_author_id} == {x.pk, y.pk}
+    assert conn.shared_publications_count == 1  # jedna wspólna praca, nie dwie
+    assert not AuthorConnection.objects.filter(
+        primary_author_id=x.pk, secondary_author_id=x.pk
+    ).exists()
+
+
+@pytest.mark.django_db
+def test_calculate_zapisuje_mniejszy_id_jako_primary():
+    """Para autorów zapisywana raz, z mniejszym id jako primary_author."""
+    a = baker.make(Autor)
+    b = baker.make(Autor)
+    lo, hi = sorted([a.pk, b.pk])
+    pub = baker.make(Wydawnictwo_Ciagle)
+    baker.make(Wydawnictwo_Ciagle_Autor, rekord=pub, autor=a, kolejnosc=0)
+    baker.make(Wydawnictwo_Ciagle_Autor, rekord=pub, autor=b, kolejnosc=1)
+
+    calculate_author_connections()
+
+    conn = AuthorConnection.objects.get()
+    assert conn.primary_author_id == lo
+    assert conn.secondary_author_id == hi
+
+
+@pytest.mark.django_db
+def test_management_command_przelicza_powiazania():
+    from django.core.management import call_command
+
+    a = baker.make(Autor, imiona="A", nazwisko="Aa")
+    b = baker.make(Autor, imiona="B", nazwisko="Bb")
+    pub = baker.make(Wydawnictwo_Ciagle)
+    baker.make(Wydawnictwo_Ciagle_Autor, rekord=pub, autor=a, kolejnosc=0)
+    baker.make(Wydawnictwo_Ciagle_Autor, rekord=pub, autor=b, kolejnosc=1)
+
+    call_command("przelicz_powiazania_autorow")
+
+    assert AuthorConnection.objects.count() == 1
+
+
+@pytest.mark.django_db
 def test_calculate_author_connections_single_author_publication():
     """Test that single-author publications don't create connections."""
     # Create author
@@ -302,6 +386,53 @@ def test_update_single_author_connections_task():
         Q(primary_author=author1) | Q(secondary_author=author1)
     )
     assert connections.count() == 2
+
+
+@pytest.mark.django_db
+def test_update_single_author_connections_task_dodaj_autora(
+    jednostka, typy_odpowiedzialnosci
+):
+    """Refaktor N+1 w `_zlicz_wspolautorow`: autor centralny + 2 współautorów
+    na 2 pracach Wydawnictwo_Ciagle. Sprawdza, że batchowa wersja liczenia
+    daje poprawne `shared_publications_count`.
+
+    Krótkie nazwiska — losowe baker przekraczają limit 512 znaków na
+    `zapisany_jako`, który `dodaj_autora` składa z imienia i nazwiska.
+    """
+    centrum = baker.make(Autor, imiona="Jan", nazwisko="Cen")
+    wsp1 = baker.make(Autor, imiona="Ada", nazwisko="Wpa")
+    wsp2 = baker.make(Autor, imiona="Ewa", nazwisko="Wpb")
+
+    # Praca 1: centrum + wsp1
+    w1 = baker.make(Wydawnictwo_Ciagle)
+    w1.dodaj_autora(centrum, jednostka)
+    w1.dodaj_autora(wsp1, jednostka)
+
+    # Praca 2: centrum + wsp1 + wsp2 (wsp1 współautorem na obu pracach)
+    w2 = baker.make(Wydawnictwo_Ciagle)
+    w2.dodaj_autora(centrum, jednostka)
+    w2.dodaj_autora(wsp1, jednostka)
+    w2.dodaj_autora(wsp2, jednostka)
+
+    result = update_single_author_connections_task(centrum.pk)
+
+    assert result["status"] == "success"
+    assert result["author_id"] == centrum.pk
+    assert result["connections_updated"] == 2  # powiązania z wsp1 i wsp2
+
+    # centrum <-> wsp1: dwie wspólne prace
+    conn1 = AuthorConnection.objects.filter(
+        Q(primary_author=centrum, secondary_author=wsp1)
+        | Q(primary_author=wsp1, secondary_author=centrum)
+    ).get()
+    assert conn1.shared_publications_count == 2
+
+    # centrum <-> wsp2: jedna wspólna praca
+    conn2 = AuthorConnection.objects.filter(
+        Q(primary_author=centrum, secondary_author=wsp2)
+        | Q(primary_author=wsp2, secondary_author=centrum)
+    ).get()
+    assert conn2.shared_publications_count == 1
 
 
 @pytest.mark.django_db

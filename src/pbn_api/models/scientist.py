@@ -15,11 +15,14 @@ class Scientist(LinkDoPBNMixin, BasePBNMongoDBModel):
         "Rekord z API instytucji", db_index=True, null=True
     )
 
-    lastName = models.TextField(db_index=True, blank=True, default="")
-    name = models.TextField(db_index=True, blank=True, default="")
+    lastName = models.TextField(blank=True, default="")
+    name = models.TextField(blank=True, default="")
+    # pbnId: db_index ZOSTAJE — gałąź `pbnId = ?` w autocomplete (ScientistAutocomplete)
+    # potrzebuje btree, by Postgres mógł zrobić BitmapOr zamiast Seq Scan 14 GB
+    # dla rzadkich terminów. idx_scan=0 myliło: to "polisa" na worst-case.
     pbnId = models.TextField(db_index=True, blank=True, default="")
     qualifications = models.TextField("Tytuł", db_index=True, blank=True, default="")
-    orcid = models.TextField(db_index=True, blank=True, default="")
+    orcid = models.TextField(blank=True, default="")
     polonUid = models.TextField(db_index=True, blank=True, default="")
 
     pull_up_on_save = ["lastName", "name", "qualifications", "orcid", "polonUid"]

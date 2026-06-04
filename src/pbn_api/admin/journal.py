@@ -30,4 +30,5 @@ class JournalAdmin(BaseMongoDBAdmin):
         "status",
         "rekord_w_bpp",
     ]
-    search_fields = ["mongoId", "title", "websiteLink", "issn", "eissn", "mniswId"]
+    # exact (=) -> PK/btree; title/websiteLink -> gin trgm upper()
+    search_fields = ["=mongoId", "title", "websiteLink", "=issn", "=eissn", "=mniswId"]

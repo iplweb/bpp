@@ -144,6 +144,7 @@ class UczelniaAdmin(
                     "uzywaj_wydzialow",
                     "pokazuj_jednostki_na_pierwszej_stronie",
                     "pokazuj_wydzialy_na_pierwszej_stronie",
+                    "pokazuj_siec_powiazan",
                     "wyszukiwanie_rekordy_na_strone_anonim",
                     "wyszukiwanie_rekordy_na_strone_zalogowany",
                     "sortuj_jednostki_alfabetycznie",
@@ -208,6 +209,19 @@ class UczelniaAdmin(
                     "orcid_client_secret",
                     "orcid_sandbox",
                     "orcid_tylko_dla_pracownikow",
+                ),
+            },
+        ),
+        (
+            "DSpace",
+            {
+                "classes": ("grp-collapse grp-closed",),
+                "fields": (
+                    "dspace_aktywny",
+                    "dspace_api_endpoint",
+                    "dspace_api_username",
+                    "dspace_api_password",
+                    "dspace_domyslny_jezyk_dc",
                 ),
             },
         ),

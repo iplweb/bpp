@@ -124,11 +124,10 @@ class DisciplineSwapOpportunity(models.Model):
         ordering = ["-makes_sense", "-point_improvement", "rekord_tytul"]
         indexes = [
             models.Index(fields=["created_at"]),
-            models.Index(fields=["uczelnia"]),
+            # Usunięto Index(["uczelnia"]), (["current_discipline"]),
+            # (["target_discipline"]) — duplikowały auto-indeksy tych FK.
             models.Index(fields=["makes_sense"]),
             models.Index(fields=["-point_improvement"]),
-            models.Index(fields=["current_discipline"]),
-            models.Index(fields=["target_discipline"]),
             models.Index(fields=["zrodlo_discipline_match"]),
             models.Index(fields=["rekord_rok"]),
         ]
