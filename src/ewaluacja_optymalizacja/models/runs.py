@@ -25,7 +25,12 @@ class OptimizationRun(models.Model):
     ]
 
     dyscyplina_naukowa = models.ForeignKey(
-        Dyscyplina_Naukowa, on_delete=models.CASCADE, verbose_name="Dyscyplina naukowa"
+        Dyscyplina_Naukowa,
+        on_delete=models.CASCADE,
+        verbose_name="Dyscyplina naukowa",
+        # Indeks pojedynczy zbędny: pokrywa go złożony
+        # Index(["dyscyplina_naukowa", "-started_at"]) w Meta (kolumna wiodąca).
+        db_index=False,
     )
     uczelnia = models.ForeignKey(
         Uczelnia,
@@ -132,6 +137,9 @@ class OptimizationAuthorResult(models.Model):
         on_delete=models.CASCADE,
         related_name="author_results",
         verbose_name="Wynik optymalizacji",
+        # Auto-indeks FK redundantny: unique_together (optimization_run, autor)
+        # ma optimization_run jako kolumnę wiodącą — obsługuje i lookup, i kaskadę.
+        db_index=False,
     )
     autor = models.ForeignKey(Autor, on_delete=models.CASCADE, verbose_name="Autor")
     rodzaj_autora = models.ForeignKey(
@@ -171,10 +179,8 @@ class OptimizationAuthorResult(models.Model):
         verbose_name_plural = "Wyniki autorów w optymalizacji"
         ordering = ["optimization_run", "autor__nazwisko", "autor__imiona"]
         unique_together = [("optimization_run", "autor")]
-        indexes = [
-            models.Index(fields=["optimization_run", "autor"]),
-            models.Index(fields=["autor"]),
-        ]
+        # Brak Meta.indexes: Index(["optimization_run","autor"]) duplikował
+        # indeks z unique_together, a Index(["autor"]) — auto-indeks FK autor.
 
     def __str__(self):
         return f"{self.autor} - {self.optimization_run}"
@@ -223,10 +229,8 @@ class OptimizationPublication(models.Model):
         verbose_name = "Publikacja w optymalizacji"
         verbose_name_plural = "Publikacje w optymalizacji"
         ordering = ["author_result", "-points"]
-        indexes = [
-            models.Index(fields=["author_result"]),
-            models.Index(fields=["rekord_id"]),
-        ]
+        # Brak Meta.indexes: Index(["author_result"]) duplikował auto-indeks FK,
+        # a Index(["rekord_id"]) — indeks z db_index=True na polu rekord_id.
 
     def __str__(self):
         return f"{self.get_kind_display()} - {self.points} pkt - {self.author_result.autor}"

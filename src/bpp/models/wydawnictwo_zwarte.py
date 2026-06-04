@@ -65,7 +65,12 @@ class Wydawnictwo_Zwarte_Autor(
     zwartego."""
 
     rekord = models.ForeignKey(
-        "Wydawnictwo_Zwarte", CASCADE, related_name="autorzy_set"
+        "Wydawnictwo_Zwarte",
+        CASCADE,
+        related_name="autorzy_set",
+        # Auto-indeks FK redundantny: unique_together ma rekord jako kolumnę
+        # wiodącą — pokrywa lookup po rekord i kaskadę usuwania.
+        db_index=False,
     )
 
     class Meta:
