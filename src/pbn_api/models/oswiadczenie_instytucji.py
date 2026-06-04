@@ -181,6 +181,12 @@ class OswiadczenieInstytucji(LinkDoPBNMixin, models.Model):
         return Dyscyplina_Naukowa.objects.get(nazwa=self.disciplines["name"])
 
     def sprobuj_skasowac_z_pbn(self, request=None, pbn_client=None):
+        # Multi-hosted (LATER, notka): token PBN pochodzi z JEDNEJ uczelni
+        # (uprawnienia zalogowanego autora). Dla pracy wielo-uczelnianej docelowo
+        # próbować uczelnię główną (z requestu) ORAZ obce (federacyjne), tolerując
+        # porażki federacyjne (brak tokenu do obcej uczelni = oczekiwane, nie błąd
+        # krytyczny). Patrz docs/superpowers/2026-06-04-handoff-track7-pbn-lustro.md
+        # sekcja „Federacyjna wysyłka/kasowanie oświadczeń".
         from bpp.models import Uczelnia
 
         if pbn_client is None:
