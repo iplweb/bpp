@@ -96,19 +96,15 @@ def test_metryka_autora_czy_pelne_wykorzystanie():
 
 
 @pytest.mark.django_db
-def test_status_generowania_singleton():
-    """Test że StatusGenerowania działa jako singleton"""
-    status1 = StatusGenerowania.get_or_create()
-    status2 = StatusGenerowania.get_or_create()
+def test_status_generowania_get_or_create_idempotent():
+    """Test że get_or_create jest idempotentne dla tej samej uczelni (NULL = brak)"""
+    from model_bakery import baker
 
-    assert status1.pk == 1
-    assert status2.pk == 1
-    assert status1.pk == status2.pk
+    u = baker.make("bpp.Uczelnia")
+    status1 = StatusGenerowania.get_or_create(uczelnia=u)
+    status2 = StatusGenerowania.get_or_create(uczelnia=u)
 
-    # Próba utworzenia nowego też da pk=1
-    status3 = StatusGenerowania()
-    status3.save()
-    assert status3.pk == 1
+    assert status1.pk == status2.pk  # ten sam rekord dla tej samej uczelni
 
 
 @pytest.mark.django_db

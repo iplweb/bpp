@@ -35,3 +35,16 @@ def test_metryka_unique_together_z_uczelnia(autor_jan_kowalski, dyscyplina1):
     _make_metryka(autor_jan_kowalski, dyscyplina1, u1)
     _make_metryka(autor_jan_kowalski, dyscyplina1, u2)
     assert MetrykaAutora.objects.count() == 2
+
+
+@pytest.mark.django_db
+def test_status_generowania_per_uczelnia():
+    from ewaluacja_metryki.models import StatusGenerowania
+
+    u1 = baker.make("bpp.Uczelnia")
+    u2 = baker.make("bpp.Uczelnia")
+    s1 = StatusGenerowania.get_or_create(uczelnia=u1)
+    s2 = StatusGenerowania.get_or_create(uczelnia=u2)
+    assert s1.pk != s2.pk
+    assert s1.uczelnia_id == u1.pk
+    assert s2.uczelnia_id == u2.pk

@@ -225,6 +225,14 @@ class StatusGenerowania(models.Model):
         help_text="ID zadania Celery",
     )
 
+    uczelnia = models.OneToOneField(
+        "bpp.Uczelnia",
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        help_text="Uczelnia, której dotyczy ten status (multi-hosted)",
+    )
+
     class Meta:
         verbose_name = "Status generowania metryk"
         verbose_name_plural = "Status generowania metryk"
@@ -238,14 +246,12 @@ class StatusGenerowania(models.Model):
             return "Brak informacji o generowaniu"
 
     def save(self, *args, **kwargs):
-        # Singleton - zawsze nadpisuj rekord o id=1
-        self.pk = 1
         super().save(*args, **kwargs)
 
     @classmethod
-    def get_or_create(cls):
-        """Pobierz lub utwórz instancję singleton"""
-        obj, created = cls.objects.get_or_create(pk=1)
+    def get_or_create(cls, uczelnia=None):
+        """Pobierz lub utwórz status dla danej uczelni (per-uczelnia, multi-hosted)."""
+        obj, created = cls.objects.get_or_create(uczelnia=uczelnia)
         return obj
 
     def rozpocznij_generowanie(self, task_id="", liczba_do_przetworzenia=0):
