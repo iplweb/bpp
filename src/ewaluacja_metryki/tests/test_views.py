@@ -4,7 +4,7 @@ import pytest
 from django.urls import reverse
 from model_bakery import baker
 
-from bpp.models import Autor, Dyscyplina_Naukowa, Jednostka
+from bpp.models import Autor, Dyscyplina_Naukowa, Jednostka, Uczelnia
 from ewaluacja_metryki.models import MetrykaAutora, StatusGenerowania
 
 
@@ -22,12 +22,10 @@ def test_metryki_list_view_requires_login(client):
 @pytest.mark.django_db
 def test_metryki_list_view_logged_in(admin_user, client):
     """Test widoku listy dla zalogowanego użytkownika"""
-    from bpp.models import Uczelnia as UczelniaModel
-
     client.force_login(admin_user)
 
     # Jedna uczelnia — scope_metryki jest no-op (tylko_jedna_uczelnia=True)
-    uczelnia = baker.make(UczelniaModel)
+    uczelnia = baker.make(Uczelnia)
 
     # Stwórz dane testowe
     autor = baker.make(Autor, nazwisko="Kowalski", imiona="Jan")
@@ -118,13 +116,11 @@ def test_metryki_list_view_filtering_by_jednostka(admin_user, client):
     co zapewnia spójne działanie scope_metryki (single-install no-op
     lub multi-install z tym samym scopem co request).
     """
-    from bpp.models import Uczelnia as UczelniaModel
-
     client.force_login(admin_user)
 
     # Jedna uczelnia — scope_metryki jest no-op (tylko_jedna_uczelnia=True)
     # i jednocześnie metryki mają spójne uczelnia_id z request-resolution
-    u = baker.make(UczelniaModel)
+    u = baker.make(Uczelnia)
     jednostka1 = baker.make(Jednostka, nazwa="Instytut Informatyki", uczelnia=u)
     jednostka2 = baker.make(Jednostka, nazwa="Instytut Fizyki", uczelnia=u)
 
@@ -193,12 +189,10 @@ def test_metryka_detail_view(admin_user, client):
 @pytest.mark.django_db
 def test_statystyki_view(admin_user, client):
     """Test widoku statystyk"""
-    from bpp.models import Uczelnia as UczelniaModel
-
     client.force_login(admin_user)
 
     # Jedna uczelnia — scope_metryki jest no-op (tylko_jedna_uczelnia=True)
-    uczelnia = baker.make(UczelniaModel)
+    uczelnia = baker.make(Uczelnia)
 
     # Stwórz dyscyplinę raz i użyj dla wszystkich metryk
     # (unika race condition z unikalnym polem kod w Dyscyplina_Naukowa)
@@ -379,13 +373,11 @@ def test_status_generowania_in_context(admin_user, client):
 @pytest.mark.django_db
 def test_metryki_list_view_sorting(admin_user, client):
     """Test sortowania listy metryk"""
-    from bpp.models import Uczelnia as UczelniaModel
-
     client.force_login(admin_user)
 
     # Jedna uczelnia — scope_metryki jest no-op (tylko_jedna_uczelnia=True);
     # obie metryki mają to samo uczelnia_id, więc view widzi obie.
-    uczelnia = baker.make(UczelniaModel)
+    uczelnia = baker.make(Uczelnia)
 
     # Stwórz metryki z różnymi średnimi
     metryka1 = baker.make(

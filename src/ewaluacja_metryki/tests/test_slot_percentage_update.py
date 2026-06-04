@@ -134,10 +134,10 @@ def test_procent_wykorzystania_slotow_updates_correctly(denorms, rodzaj_autora_n
 def test_procent_wykorzystania_handles_zero_slot_maksymalny(rodzaj_autora_n):
     """Test that percentage calculation handles zero slot_maksymalny gracefully"""
 
-    jednostka = baker.make(Jednostka, skupia_pracownikow=True)  # noqa
+    uczelnia = baker.make("bpp.Uczelnia")
+    jednostka = baker.make(Jednostka, skupia_pracownikow=True, uczelnia=uczelnia)  # noqa: F841
     autor = baker.make(Autor, nazwisko="ZeroSlot", imiona="Test")
     dyscyplina = baker.make(Dyscyplina_Naukowa, nazwa="Matematyka")
-    uczelnia = baker.make("bpp.Uczelnia")
 
     baker.make(
         Autor_Dyscyplina,
