@@ -121,8 +121,15 @@ def zapisz_publikacje_instytucji_v2(client: PBNClient, elem: dict):
         objectId = _pobierz_pojedyncza_prace(client, objectId_id)
         print(f"Pobrano brakującą pracę: {objectId}")
 
+    defaults = {"json_data": elem}
+    # Multi-hosted (audyt uczelnia, track 7b): taguj wiersz uczelnią klienta,
+    # żeby ``_V2`` dało się filtrować per-uczelni. Guard: gdy klient nie ma
+    # uczelni (None), zostaw NULL — nie crashujemy.
+    if getattr(client, "uczelnia", None) is not None:
+        defaults["uczelnia"] = client.uczelnia
+
     return PublikacjaInstytucji_V2.objects.update_or_create(
-        uuid=uuid, objectId=objectId, defaults={"json_data": elem}
+        uuid=uuid, objectId=objectId, defaults=defaults
     )
 
 

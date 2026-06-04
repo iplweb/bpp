@@ -110,7 +110,7 @@ class LinkDoPBNMixin:
 
         return None
 
-    def link_do_pi(self):
+    def link_do_pi(self, uczelnia=None):
         pbn_uid_id = self.link_do_pbn_wartosc_id()
 
         if not pbn_uid_id:
@@ -120,20 +120,26 @@ class LinkDoPBNMixin:
 
         lookup_id = self._get_lookup_id()
 
+        # Multi-hosted (audyt uczelnia, track 7b): gdy podano ``uczelnia``,
+        # zawężamy lookup ``_V2`` do tej uczelni (≥2 wiersze per objectId w
+        # multi-install). Bez uczelni — zachowanie jak dotąd (globalny lookup +
+        # MultipleObjectsReturned-fallback dla legacy/untagged danych).
+        qs = PublikacjaInstytucji_V2.objects.filter(objectId_id=lookup_id)
+        if uczelnia is not None:
+            qs = qs.filter(uczelnia=uczelnia)
+
         try:
-            uuid = PublikacjaInstytucji_V2.objects.get(objectId_id=lookup_id).pk
-            return self._format_link_pi(pbn_uid_id, uuid=uuid)
+            uuid = qs.get().pk
+            return self._format_link_pi(pbn_uid_id, uuid=uuid, uczelnia=uczelnia)
         except PublikacjaInstytucji_V2.MultipleObjectsReturned:
-            duplicates = list(
-                PublikacjaInstytucji_V2.objects.filter(
-                    objectId_id=lookup_id
-                ).values_list("pk", "created_on")
-            )
+            duplicates = list(qs.values_list("pk", "created_on"))
             uuid = self._report_and_get_first_duplicate(lookup_id, duplicates)
-            return self._format_link_pi(pbn_uid_id, uuid=uuid)
+            return self._format_link_pi(pbn_uid_id, uuid=uuid, uczelnia=uczelnia)
         except PublikacjaInstytucji_V2.DoesNotExist:
             versionHash = self._get_version_hash_from_fallback()
-            return self._format_link_pi(pbn_uid_id, versionHash=versionHash)
+            return self._format_link_pi(
+                pbn_uid_id, versionHash=versionHash, uczelnia=uczelnia
+            )
 
 
 class ModelZPBN_UID(LinkDoPBNMixin, models.Model):
