@@ -27,6 +27,7 @@ def oblicz_metryki_dla_autora_task(
     rok_max=2025,
     minimalny_pk=0.01,
     rodzaje_autora=None,
+    uczelnia_id=None,
 ):
     """
     Celery task do obliczania metryki dla pojedynczego autora-dyscypliny.
@@ -37,6 +38,7 @@ def oblicz_metryki_dla_autora_task(
         rok_max: Końcowy rok okresu ewaluacji
         minimalny_pk: Minimalny próg punktów
         rodzaje_autora: Lista rodzajów autorów do przetworzenia
+        uczelnia_id: ID uczelni — używane do per-uczelnia scope StatusGenerowania
 
     Returns:
         Dict z kluczami: status ("processed"/"skipped"/"error"), autor, dyscyplina
@@ -72,8 +74,8 @@ def oblicz_metryki_dla_autora_task(
             logger_output=None,
         )
 
-        # Atomowo zwiększ licznik przetworzonych tasków
-        StatusGenerowania.objects.update(
+        # Atomowo zwiększ licznik przetworzonych tasków (per uczelnia)
+        StatusGenerowania.objects.filter(uczelnia_id=uczelnia_id).update(
             liczba_przetworzonych=F("liczba_przetworzonych") + 1
         )
 
@@ -89,8 +91,8 @@ def oblicz_metryki_dla_autora_task(
             f"IloscUdzialowDlaAutoraZaCalosc o ID {ilosc_udzialow_id} nie istnieje"
         )
         logger.error(error_msg)
-        # Atomowo zwiększ licznik przetworzonych tasków
-        StatusGenerowania.objects.update(
+        # Atomowo zwiększ licznik przetworzonych tasków (per uczelnia)
+        StatusGenerowania.objects.filter(uczelnia_id=uczelnia_id).update(
             liczba_przetworzonych=F("liczba_przetworzonych") + 1
         )
         return {
@@ -103,8 +105,8 @@ def oblicz_metryki_dla_autora_task(
         error_msg = f"Błąd przy przetwarzaniu ID {ilosc_udzialow_id}: {str(e)}"
         logger.error(error_msg)
         rollbar.report_exc_info(sys.exc_info())
-        # Atomowo zwiększ licznik przetworzonych tasków
-        StatusGenerowania.objects.update(
+        # Atomowo zwiększ licznik przetworzonych tasków (per uczelnia)
+        StatusGenerowania.objects.filter(uczelnia_id=uczelnia_id).update(
             liczba_przetworzonych=F("liczba_przetworzonych") + 1
         )
         return {
@@ -116,17 +118,21 @@ def oblicz_metryki_dla_autora_task(
 
 
 @shared_task
-def finalizuj_generowanie_metryk(results):
+def finalizuj_generowanie_metryk(results, uczelnia_id=None):
     """
     Callback task wywoływany po zakończeniu wszystkich tasków obliczania metryk.
 
     Args:
         results: Lista wyników z tasków oblicz_metryki_dla_autora_task
+        uczelnia_id: ID uczelni — per-uczelnia scope StatusGenerowania
 
     Returns:
         Dict z podsumowaniem: processed, skipped, errors, total
     """
-    status = StatusGenerowania.get_or_create()
+    uczelnia = (
+        Uczelnia.objects.get(pk=uczelnia_id) if uczelnia_id else Uczelnia.objects.get()
+    )
+    status = StatusGenerowania.get_or_create(uczelnia=uczelnia)
 
     # Odśwież status z bazy danych aby pobrać aktualną wartość liczba_przetworzonych
     # zaktualizowaną atomowo przez poszczególne taski
@@ -204,7 +210,10 @@ def generuj_metryki_task_parallel(
 
         rodzaje_autora = get_default_rodzaje_autora()
 
-    status = StatusGenerowania.get_or_create()
+    uczelnia = (
+        Uczelnia.objects.get(pk=uczelnia_id) if uczelnia_id else Uczelnia.objects.get()
+    )
+    status = StatusGenerowania.get_or_create(uczelnia=uczelnia)
 
     try:
         # Krok 1: Przelicz liczby N jeśli włączone
@@ -213,11 +222,6 @@ def generuj_metryki_task_parallel(
             status.ostatni_komunikat = "Przeliczanie liczby N..."
             status.save()
 
-            uczelnia = (
-                Uczelnia.objects.get(pk=uczelnia_id)
-                if uczelnia_id
-                else Uczelnia.objects.get()
-            )
             oblicz_liczby_n_dla_ewaluacji_2022_2025(uczelnia=uczelnia)
             logger.info("Przeliczono liczby N pomyślnie")
 
@@ -226,9 +230,8 @@ def generuj_metryki_task_parallel(
 
         from .models import MetrykaAutora
 
-        # Filtruj tylko wpisy z odpowiednimi rodzajami autorów
-        # aby uniknąć duplikatów dla tego samego autora+dyscypliny
-        queryset = IloscUdzialowDlaAutoraZaCalosc.objects.all()
+        # Filtruj wpisy dla tej uczelni oraz (opcjonalnie) rodzajów autorów
+        queryset = IloscUdzialowDlaAutoraZaCalosc.objects.filter(uczelnia=uczelnia)
         if rodzaje_autora:
             queryset = queryset.filter(rodzaj_autora__skrot__in=rodzaje_autora)
 
@@ -240,10 +243,11 @@ def generuj_metryki_task_parallel(
             f"(task_id: {self.request.id})"
         )
 
-        # Krok 3: Usuń stare metryki jeśli nadpisz=True
+        # Krok 3: Usuń stare metryki tej uczelni jeśli nadpisz=True
         if nadpisz:
-            deleted_count = MetrykaAutora.objects.all().count()
-            MetrykaAutora.objects.all().delete()
+            qs = MetrykaAutora.objects.filter(uczelnia=uczelnia)
+            deleted_count = qs.count()
+            qs.delete()
             logger.info(f"Usunięto {deleted_count} starych metryk")
 
         # Krok 4: Zainicjuj status generowania
@@ -260,24 +264,28 @@ def generuj_metryki_task_parallel(
                     rok_max=rok_max,
                     minimalny_pk=minimalny_pk,
                     rodzaje_autora=rodzaje_autora,
+                    uczelnia_id=uczelnia.pk,
                 )
                 for autor_id in ids_list
             ]
         )
 
         # Krok 6: Uruchom chord (group + callback) i zapisz group_id
-        job = chord(task_group)(finalizuj_generowanie_metryk.s())
+        job = chord(task_group)(finalizuj_generowanie_metryk.s(uczelnia_id=uczelnia.pk))
 
         # Group ID jest dostępny w job.parent
         group_id = job.parent.id if hasattr(job, "parent") and job.parent else None
 
         logger.info(
-            f"Utworzono chord z {total_count} taskami. Chord ID: {job.id}, Group ID: {group_id}"
+            f"Utworzono chord z {total_count} taskami. "
+            f"Chord ID: {job.id}, Group ID: {group_id}"
         )
 
         return {
             "success": True,
-            "message": f"Uruchomiono równoległe generowanie metryk dla {total_count} autorów",
+            "message": (
+                f"Uruchomiono równoległe generowanie metryk dla {total_count} autorów"
+            ),
             "total": total_count,
             "task_id": self.request.id,
             "group_id": group_id,
@@ -328,7 +336,11 @@ def generuj_metryki_task(
         from .utils import get_default_rodzaje_autora
 
         rodzaje_autora = get_default_rodzaje_autora()
-    status = StatusGenerowania.get_or_create()
+
+    uczelnia = (
+        Uczelnia.objects.get(pk=uczelnia_id) if uczelnia_id else Uczelnia.objects.get()
+    )
+    status = StatusGenerowania.get_or_create(uczelnia=uczelnia)
 
     # NOTE: Sprawdzanie w_trakcie przeniesione do widoku UruchomGenerowanie
     # Status jest ustawiany w widoku przed uruchomieniem taska, więc tutaj nie sprawdzamy
@@ -340,11 +352,6 @@ def generuj_metryki_task(
             status.ostatni_komunikat = "Przeliczanie liczby N..."
             status.save()
 
-            uczelnia = (
-                Uczelnia.objects.get(pk=uczelnia_id)
-                if uczelnia_id
-                else Uczelnia.objects.get()
-            )
             oblicz_liczby_n_dla_ewaluacji_2022_2025(uczelnia=uczelnia)
             logger.info("Przeliczono liczby N pomyślnie")
 
@@ -353,8 +360,8 @@ def generuj_metryki_task(
 
         from ewaluacja_liczba_n.models import IloscUdzialowDlaAutoraZaCalosc
 
-        # Policz tylko wpisy z odpowiednimi rodzajami autorów
-        queryset = IloscUdzialowDlaAutoraZaCalosc.objects.all()
+        # Policz tylko wpisy tej uczelni z odpowiednimi rodzajami autorów
+        queryset = IloscUdzialowDlaAutoraZaCalosc.objects.filter(uczelnia=uczelnia)
         if rodzaje_autora:
             queryset = queryset.filter(rodzaj_autora__skrot__in=rodzaje_autora)
         total_count = queryset.count()
@@ -365,7 +372,8 @@ def generuj_metryki_task(
             status.save()
 
         logger.info(
-            f"Rozpoczęto generowanie metryk dla {total_count} autorów (task_id: {self.request.id})"
+            f"Rozpoczęto generowanie metryk dla {total_count} autorów "
+            f"(task_id: {self.request.id})"
         )
 
         # Callback do aktualizacji statusu
@@ -386,7 +394,7 @@ def generuj_metryki_task(
                 },
             )
 
-        # Wywołaj wspólną funkcję generuj_metryki
+        # Wywołaj wspólną funkcję generuj_metryki (z uczelnia → scoped delete)
         wynik = generuj_metryki(
             rok_min=rok_min,
             rok_max=rok_max,
@@ -394,6 +402,7 @@ def generuj_metryki_task(
             nadpisz=nadpisz,
             rodzaje_autora=rodzaje_autora,
             progress_callback=update_progress,
+            uczelnia=uczelnia,
         )
 
         _liczba_przetworzonych = wynik["processed"]

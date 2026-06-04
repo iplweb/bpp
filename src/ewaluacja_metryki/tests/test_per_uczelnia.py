@@ -80,3 +80,28 @@ def test_oblicz_metryki_dla_autora_nie_sumuje_slotow_z_innej_uczelni(
     # slot_maksymalny = 4.0 (tylko u1), NIE 13.0 (suma u1+u2)
     assert metryka.slot_maksymalny == Decimal("4.0")
     assert metryka.uczelnia_id == u1.pk
+
+
+@pytest.mark.django_db
+def test_generuj_metryki_task_scope_per_uczelnia(autor_jan_kowalski, dyscyplina1):
+    """Task generuje metryki tylko dla swojej uczelni, nie wyciera innej."""
+    from ewaluacja_liczba_n.models import IloscUdzialowDlaAutoraZaCalosc
+    from ewaluacja_metryki.tasks import generuj_metryki_task
+
+    u1 = baker.make("bpp.Uczelnia")
+    u2 = baker.make("bpp.Uczelnia")
+    # istniejąca metryka u2 — nie wolno jej skasować
+    _make_metryka(autor_jan_kowalski, dyscyplina1, u2)
+    IloscUdzialowDlaAutoraZaCalosc.objects.create(
+        autor=autor_jan_kowalski,
+        dyscyplina_naukowa=dyscyplina1,
+        rodzaj_autora=None,
+        ilosc_udzialow=Decimal("4.0"),
+        ilosc_udzialow_monografie=Decimal("0"),
+        uczelnia=u1,
+    )
+    generuj_metryki_task(
+        uczelnia_id=u1.pk, przelicz_liczbe_n=False, rodzaje_autora=[" "]
+    )
+    # metryka u2 nadal istnieje (scoped delete nie wyciera obcej uczelni)
+    assert MetrykaAutora.objects.filter(uczelnia=u2).exists()
