@@ -64,6 +64,9 @@ przez zestaw kanałów wyjściowych.
   tworzy **wizualizacje**, buduje **profile naukowców** oraz publiczną
   **stronę WWW instytucji**. Dzięki temu BPP staje się jednym, spójnym
   miejscem zasilania całego ekosystemu publikacyjnego uczelni.
+- **Wyszukiwanie** — zgromadzone dane są dostępne wieloma trybami:
+  **zapytania QL**, wyszukiwanie **pełnotekstowe**, **formularz GUI**
+  oraz **przeglądanie**.
 
 ### Integracja z DSpace (dwukierunkowa)
 
