@@ -13,8 +13,9 @@
 sens, przy minimalnym blast-radiusie:
 
 1. **Publikacje** (5 modeli) — pełny soft-delete: `DELETE` → znacznik
-   `deleted_at`; rekord znika z widoku publicznego / ewaluacji / API / PBN,
-   dane (w tym powiązania `*_Autor`) zostają i da się je przywrócić.
+   `deleted_at`; rekord znika z widoku publicznego / ewaluacji / API / PBN.
+   Powiązania `*_Autor` są soft-deletowane razem z rekordem (wąska kaskada,
+   §2.2) — zachowane i odwracalne, nie tracone jak przy hard-delete.
 2. **Autor** — soft-delete **wyłącznie dla autora bez prac** (odwracalny
    „kosz" dla pustych/błędnych rekordów). Autor **z** pracami → `PROTECT`
    (zero kasowania, soft ani hard).
@@ -105,22 +106,30 @@ działa identycznie niezależnie od tego, czy zadziałała tabela publikacji czy
 tabela autorska. **Nie ma potrzeby JOIN-a/lookupu do rekordu nadrzędnego.**
 
 Skutki:
-- **Funkcja triggera:** jedna zmiana w gałęzi `UPDATE/INSERT` —
-  `if TD['new'].get('deleted_at') is not None: <pomiń re-insert>`.
-- **Widoki źródłowe:** filtr po **własnej** kolumnie tabeli, bez JOIN —
-  `bpp_*_autorzy` (selektują `FROM bpp_*_autor`,
-  `src/bpp/migrations/0001_widoki_autorzy.sql`) dostają `WHERE deleted_at IS
-  NULL` na kolumnie tabeli autorskiej; `bpp_rekord` analogicznie na kolumnie
-  tabeli publikacji.
+- **Mechanizm #1 — filtr `deleted_at IS NULL` w widokach źródłowych** (po
+  **własnej** kolumnie tabeli, bez JOIN): `bpp_*_autorzy` (selektują
+  `FROM bpp_*_autor`, `src/bpp/migrations/0001_widoki_autorzy.sql`) i każda
+  gałąź UNION-u `bpp_rekord`. **To jest nadrzędny mechanizm**, bo pokrywa
+  WSZYSTKIE ścieżki: re-insert triggera, bezpośredni odczyt z widoku `bpp_rekord`
+  (`Rekord` czyta `bpp_rekord`, `src/bpp/models/cache/rekord.py:357`), oraz
+  pełną re-projekcję/weryfikację cache.
+- **Mechanizm #2 (optymalizacja) — trigger-skip:** w gałęzi `UPDATE/INSERT`
+  `if TD['new'].get('deleted_at') is not None: <pomiń re-insert>`. Oszczędza
+  no-op SELECT/INSERT, ale **sam nie wystarcza** (nie pokrywa odczytu z widoku
+  ani `verify_cache`). Filtr widoku (#1) jest obowiązkowy; trigger-skip
+  opcjonalny.
+- **`verify_cache` (`src/bpp/management/commands/verify_cache.py`)** porównuje
+  `bpp_rekord_mat` ze źródłem — MUSI respektować `deleted_at` (przez filtr #1),
+  inaczej zgłosi fałszywy rozjazd dla skasowanych i spróbuje je wskrzesić.
 - **Przypadek brzegowy znika strukturalnie:** edycja wiersza autorstwa
-  skasowanej publikacji nie wskrzesi go w `bpp_autorzy_mat`, bo ten wiersz
-  ma własne `deleted_at` (ustawione kaskadą) → trigger traktuje go jak DELETE.
+  skasowanej publikacji nie wskrzesi go w `bpp_autorzy_mat`, bo widok
+  źródłowy go odfiltruje (ma własne `deleted_at` ustawione kaskadą).
 - **Koszt:** soft-delete publikacji z N autorami odpala N dodatkowych (no-op)
-  triggerów through — usuwają z `bpp_autorzy_mat` to, co trigger rodzica już
-  usunął. Pomijalne.
+  triggerów through. Pomijalne.
 
 Testy spójności mat-view obowiązkowe (soft-delete → znika z `Rekord` i
-`Autorzy`; restore → wraca; brak rozjazdu `Cache_Punktacja_*`).
+`Autorzy`; restore → wraca; `verify_cache` czysty po soft-delete; brak
+rozjazdu `Cache_Punktacja_*`).
 
 ### 2.2 Override `delete()` — wąska, kontrolowana kaskada na `*_Autor`
 
@@ -196,6 +205,29 @@ któreś z nich *musi* widzieć skasowane autorstwa (mało prawdopodobne w
 ewaluacji — tam „pomiń skasowane" jest poprawnym defaultem) → wtedy
 `global_objects`. Domyślny default „pomijaj" jest tu znacznie bezpieczniejszy
 niż przeciwny.
+
+### 2.6 Self-referencja `Wydawnictwo_Zwarte` + GenericForeignKey
+
+**Self-FK `wydawnictwo_nadrzedne`** (`src/bpp/models/wydawnictwo_zwarte.py:202`,
+rozdziały → książka-matka; denorm `@depend_on_related("self",
+"wydawnictwo_nadrzedne")`). Wąska kaskada (§2.2) zatrzymuje się na `*_Autor` —
+**nie kaskaduje na rozdziały**. Soft-delete książki-matki zostawia rozdziały
+widoczne, wskazujące na skasowaną książkę.
+
+> **DECYZJA (proponowana, do potwierdzenia):** soft-delete książki-matki
+> **NIE** kaskaduje automatycznie na rozdziały (są niezależnymi publikacjami,
+> często z osobnym dorobkiem autorów); admin pokazuje **ostrzeżenie** „ta
+> książka ma N rozdziałów — zostaną widoczne". Alternatywa: kaskada na
+> rozdziały (jak na `*_Autor`). Powiązane: zweryfikować, że denorm
+> `depend_on_related("self", ...)` nie wywala się przy ustawianiu `deleted_at`
+> rodzica.
+
+**GenericForeignKey** (`Nagroda`, `Publikacja_Habilitacyjna` → rekord przez
+`content_type`+`object_id`): przy soft-delete obiekt **fizycznie istnieje**,
+więc GFK rozwiązuje się poprawnie — soft-delete jest tu *bezpieczniejszy* niż
+hard-delete (mniej sierot). Do rozważenia tylko, czy `nagrody` skasowanego
+rekordu mają być nadal pokazywane (domyślnie: skoro rekord w koszu, jego
+podstrona i tak znika — kwestia bez realnego skutku).
 
 ---
 
@@ -290,7 +322,11 @@ Rozszerzenie:
 
 `SentData` (`src/pbn_api/models/sentdata.py`, GFK + `pbn_uid` +
 `submitted_successfully` + `mark_as_successful`/`mark_as_failed`) trzyma stan
-PBN per-rekord — po wycofaniu oznaczamy odpowiednio.
+PBN per-rekord. **Po udanym wycofaniu:** ustawiamy `submitted_successfully =
+False` (rekord nie jest już „wystawiony" w PBN) i dodajemy znacznik wycofania
+(np. `withdrawn_at` — nowe pole, lub `api_response_status`); **wiersza
+`SentData` NIE kasujemy** — zostaje dla audytu i re-matchingu przy restore.
+Restore (`WYSYLKA`) → ponowne `mark_as_successful` po udanej wysyłce.
 
 ### 4.3 Restore → symetria
 
@@ -356,12 +392,13 @@ odłożone, YAGNI; można dorobić jako zadanie `CELERYBEAT_SCHEDULE`,
 
 ## 8. Kolejność prac (fazy; szczegółowy TDD → writing-plans)
 
-1. **`*_Autor` + trigger + widoki** — `SoftDeleteModel` na 3 through-modelach
-   (`deleted_at`+indeks); funkcja `bpp_refresh_cache()` ucząca się reguły
-   `deleted_at IS NOT NULL → DELETE` (jednolicie dla wszystkich 8 tabel,
-   bez JOIN do rodzica); filtr `deleted_at IS NULL` w widokach źródłowych
-   `bpp_rekord`/`bpp_*_autorzy` (po własnej kolumnie). Testy spójności
-   mat-view. **Najwrażliwsze, pierwsze.**
+1. **`*_Autor` + trigger + widoki** — kolejność wewnątrz fazy: (a) migracja
+   `SoftDeleteModel` na 3 through-modelach (`deleted_at`+indeks) — **musi być
+   PRZED** (b), bo trigger/widok czytają tę kolumnę; (b) filtr `deleted_at IS
+   NULL` w widokach źródłowych `bpp_rekord`/`bpp_*_autorzy` (mechanizm #1, po
+   własnej kolumnie); (c) funkcja `bpp_refresh_cache()` z regułą
+   `deleted_at IS NOT NULL → pomiń re-insert` (opcjonalna optymalizacja).
+   Testy spójności mat-view + `verify_cache`. **Najwrażliwsze, pierwsze.**
 2. **Publikacje** — `SoftDeleteModel` na 5 modelach, override
    `delete()`/`restore()` z **wąską kaskadą na `*_Autor`** (wspólny
    `transaction_id`, bez refleksyjnej kaskady pakietu), migracje
@@ -428,6 +465,15 @@ odłożone, YAGNI; można dorobić jako zadanie `CELERYBEAT_SCHEDULE`,
 7. **Admin:** superuser-only; soft-delete zastępuje „usuń"; hard-delete jako
    osobna jawna akcja.
 8. **Retencja:** brak auto-czyszczenia; tylko ręczny hard-delete.
+9. **Cache — mechanizm nadrzędny:** filtr `deleted_at IS NULL` w widokach
+   źródłowych (pokrywa trigger, odczyt z `bpp_rekord`, `verify_cache`);
+   trigger-skip to opcjonalna optymalizacja.
+10. **SentData przy wycofaniu:** `submitted_successfully=False` + znacznik
+    wycofania, wiersza nie kasujemy.
+
+**Oczekuje potwierdzenia:**
+- **Self-FK `Wydawnictwo_Zwarte` (rozdziały):** propozycja — soft-delete
+  książki-matki NIE kaskaduje na rozdziały, admin ostrzega (§2.6).
 
 ---
 
