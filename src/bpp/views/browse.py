@@ -669,7 +669,14 @@ class BuildSearch(RedirectView):
 
 class PracaViewMixin:
     def get(self, request, *args, **kwargs):
+        from raport_slotow.uczelnia_helper import uczelnia_dla_odczytu
+
         self.object = self.get_object()
+
+        # Multi-hosted: tabela punktacji na stronie rekordu pokazuje sloty/
+        # punkty tylko uczelni oglądającego (CPD po uczelni, CPA po
+        # jednostka__uczelnia). No-op przy single-install.
+        self.object._uczelnia_ogladajacego = uczelnia_dla_odczytu(request)
 
         if request.user.is_anonymous:
             # Jeżeli użytkownik jest anonimowy, to może obejmować go ukrywanie statusów

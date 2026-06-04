@@ -298,16 +298,24 @@ class RekordBase(
     def form_post_pk(self):
         return "{" + f"{self.pk[0]:d},{self.pk[1]:d}" + "}"
 
+    def _uczelnia_punktacji(self):
+        """Uczelnia oglądającego ustawiona przez widok rekordu (multi-hosted).
+
+        Tabela punktacji na publicznej stronie rekordu ma pokazywać sloty/
+        punkty tylko uczelni z requestu. Widok (``PracaViewMixin``) ustawia
+        ``rekord._uczelnia_ogladajacego``; gdy atrybutu brak (admin, inne
+        konteksty) albo single-install — zwracamy ``None`` (brak zawężenia).
+        """
+        from bpp.util.uczelnia_scope import tylko_jedna_uczelnia
+
+        uczelnia = getattr(self, "_uczelnia_ogladajacego", None)
+        if uczelnia is None or tylko_jedna_uczelnia():
+            return None
+        return uczelnia
+
     @cached_property
     def ma_punktacje_sloty(self):
-        return (
-            Cache_Punktacja_Autora.objects.filter(
-                rekord_id=[self.id[0], self.id[1]]
-            ).exists()
-            or Cache_Punktacja_Dyscypliny.objects.filter(
-                rekord_id=[self.id[0], self.id[1]]
-            ).exists()
-        )
+        return self.punktacja_autora.exists() or self.punktacja_dyscypliny.exists()
 
     @cached_property
     def ma_odpiete_dyscypliny(self):
@@ -319,13 +327,21 @@ class RekordBase(
 
     @cached_property
     def punktacja_dyscypliny(self):
-        return Cache_Punktacja_Dyscypliny.objects.filter(
+        qs = Cache_Punktacja_Dyscypliny.objects.filter(
             rekord_id=[self.id[0], self.id[1]]
         )
+        uczelnia = self._uczelnia_punktacji()
+        if uczelnia is not None:
+            qs = qs.filter(uczelnia=uczelnia)
+        return qs
 
     @cached_property
     def punktacja_autora(self):
-        return Cache_Punktacja_Autora.objects.filter(rekord_id=[self.id[0], self.id[1]])
+        qs = Cache_Punktacja_Autora.objects.filter(rekord_id=[self.id[0], self.id[1]])
+        uczelnia = self._uczelnia_punktacji()
+        if uczelnia is not None:
+            qs = qs.filter(jednostka__uczelnia=uczelnia)
+        return qs
 
     @cached_property
     def pierwszy_autor_afiliowany(self):
