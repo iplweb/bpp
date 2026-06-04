@@ -245,13 +245,60 @@ def _join_parts(parts):
     return out
 
 
+_INVERT = {
+    "=": "!=",
+    "!=": "=",
+    "~": "!~",
+    "!~": "~",
+    ">": "<=",
+    ">=": "<",
+    "<": ">=",
+    "<=": ">",
+    "startswith": "not startswith",
+    "not startswith": "startswith",
+}
+
+
+def _invert_fragment(frag):
+    """Zaneguj fragment-liścia podmieniając operator (De Morgan na pojedynczym
+    porównaniu). Zwraca zanegowany fragment albo None, gdy się nie da.
+
+    Fragmenty złożone (zakres `(a >= x and a <= y)`, grupy) nie podlegają
+    prostej inwersji operatora -> None. Operator jest zakotwiczony tuż za LHS
+    (ścieżka pola nie zawiera spacji), więc znaki operatorowe wewnątrz wartości
+    (np. `~ "a = b"`) nie mylą parsera.
+    """
+    if frag.startswith("(") or " and " in frag or " or " in frag:
+        return None
+    try:
+        lhs, rest = frag.split(" ", 1)
+    except ValueError:
+        return None
+    for op in sorted(_INVERT, key=len, reverse=True):
+        prefix = op + " "
+        if rest.startswith(prefix):
+            return f"{lhs} {_INVERT[op]} {rest[len(prefix):]}"
+    return None
+
+
 def _append_leaf(registry, leaf, parts, warnings):
     prev_op = leaf.get("prev_op")
     if _is_andnot(prev_op):
-        # Task 6 podniesie to do inwersji operatora; teraz skip+warning.
-        warnings.append(
-            f"Pominięto zanegowany warunek: {_leaf_label(leaf)} (andnot)"
-        )
+        frag = leaf_to_djangoql(registry, leaf)
+        if frag is None:
+            warnings.append(
+                f"Pominięto zanegowany warunek: {_leaf_label(leaf)} "
+                "(nieprzekładalny)"
+            )
+            return
+        inverted = _invert_fragment(frag)
+        if inverted is None:
+            warnings.append(
+                f"Pominięto zanegowany warunek: {_leaf_label(leaf)} "
+                "(nie da się odwrócić operatora)"
+            )
+            return
+        parts.append(("and", inverted))
         return
     frag = leaf_to_djangoql(registry, leaf)
     if frag is None:
