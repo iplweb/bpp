@@ -2,6 +2,7 @@
 {% load static %}
 {% load compress %}
 {% load i18n %}
+{% load query_editor %}
 
 {% block title %}
     BPP - wyszukiwanie zaawansowane
@@ -148,6 +149,14 @@
 
 
                 {% endif %}
+
+                {% if user|can_use_query_editor %}
+                    <button type="button" class="button secondary"
+                            data-action="to-djangoql"
+                            id="toDjangoqlButton">
+                        <i class="fi-clipboard-notes" aria-hidden="true"></i> Pokaż jako zapytanie DjangoQL
+                    </button>
+                {% endif %}
             </div>
         </div>
         <script type="text/javascript">
@@ -224,9 +233,97 @@
                     location.href = multiseek.LOAD_FORM_URL + btn.dataset.loadFormId;
                     return;
                 }
+
+                // Show form as DjangoQL query
+                btn = e.target.closest('[data-action="to-djangoql"]');
+                if (btn) {
+                    e.preventDefault();
+                    openDjangoqlDrawer();
+                    return;
+                }
+
+                // Copy DjangoQL query to clipboard
+                btn = e.target.closest('#djangoqlCopy');
+                if (btn) {
+                    e.preventDefault();
+                    copyDjangoqlQuery(btn);
+                    return;
+                }
             });
 
+            function getCsrfToken() {
+                var el = document.querySelector('input[name="csrfmiddlewaretoken"]');
+                return el ? el.value : '';
+            }
+
+            function openDjangoqlDrawer() {
+                var payload = formAsJSON();  // JSON string
+                var body = new URLSearchParams();
+                body.append('json', payload);
+                fetch('./do-djangoql/', {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': getCsrfToken(),
+                        'Content-Type': 'application/x-www-form-urlencoded'
+                    },
+                    body: body.toString()
+                }).then(function (r) {
+                    if (!r.ok) { throw new Error('HTTP ' + r.status); }
+                    return r.json();
+                }).then(function (data) {
+                    document.getElementById('djangoqlQuery').value = data.query || '';
+                    document.getElementById('djangoqlOpenEditor').href = data.editor_url;
+                    var w = document.getElementById('djangoqlWarnings');
+                    w.innerHTML = '';
+                    if (data.warnings && data.warnings.length) {
+                        var strong = document.createElement('strong');
+                        strong.textContent = 'Uwaga — pominięto warunki:';
+                        w.appendChild(strong);
+                        var ul = document.createElement('ul');
+                        data.warnings.forEach(function (s) {
+                            var li = document.createElement('li');
+                            li.textContent = s;       // text node -> escaped
+                            ul.appendChild(li);
+                        });
+                        w.appendChild(ul);
+                        w.style.display = '';
+                    } else {
+                        w.style.display = 'none';
+                    }
+                    $('#djangoqlDrawer').foundation('open');
+                }).catch(function (err) {
+                    alert('Nie udało się przetłumaczyć formularza: ' + err.message);
+                });
+            }
+
+            function copyDjangoqlQuery(btn) {
+                var ta = document.getElementById('djangoqlQuery');
+                navigator.clipboard.writeText(ta.value).then(function () {
+                    btn.classList.add('success');
+                });
+            }
+
         </script>
+        {% if user|can_use_query_editor %}
+            {% csrf_token %}
+            <div class="reveal" id="djangoqlDrawer" data-reveal>
+                <h4>Zapytanie DjangoQL</h4>
+                <p class="help-text">Równoważne zapytanie nad modelem Rekord. Możesz je skopiować lub otworzyć w edytorze zapytań.</p>
+                <textarea id="djangoqlQuery" rows="4" readonly spellcheck="false" style="font-family:monospace;"></textarea>
+                <div id="djangoqlWarnings" class="callout warning" style="display:none"></div>
+                <div class="button-group">
+                    <button type="button" class="button" id="djangoqlCopy">
+                        <i class="fi-clipboard" aria-hidden="true"></i> Kopiuj
+                    </button>
+                    <a class="button success" id="djangoqlOpenEditor" href="#" target="_blank" rel="noopener">
+                        <i class="fi-arrow-right" aria-hidden="true"></i> Otwórz w edytorze zapytań
+                    </a>
+                </div>
+                <button class="close-button" data-close aria-label="Zamknij" type="button">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+        {% endif %}
     </form>
     <hr size="1"/>
     <style>
