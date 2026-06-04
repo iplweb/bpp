@@ -2,6 +2,19 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
+> ⚠️ **AKTUALIZACJA ZAKRESU (decyzja użytkownika 2026-06-04) — CZYTAJ PRZED STARTEM:**
+> 1. **NIE ruszamy funkcji `bpp_refresh_cache()`.** Zmieniamy **wyłącznie widoki
+>    źródłowe** (`bpp_*_autorzy`, ew. `bpp_rekord`) — filtr `deleted_at IS NULL`.
+>    Każde zadanie tego planu dotyczące **trigger-skip** / modyfikacji kopii
+>    `0399` / fixu utajonego buga z krotkami — **POMIŃ** (zostaje równoległej
+>    optymalizacji triggera).
+> 2. **BLOKER:** funkcja `bpp_refresh_cache()` jest równolegle optymalizowana w
+>    osobnej gałęzi. Tej fazy **NIE startować**, dopóki ta gałąź nie wyląduje i
+>    `feat/soft-delete` nie zostanie na nią zaktualizowana. Po aktualizacji
+>    zweryfikować inwariant: trigger na `UPDATE/INSERT` robi **bezwarunkowy
+>    `DELETE` z `_mat` przed re-insertem/upsertem** (na tym wisi wystarczalność
+>    filtra widoku). Jeśli inwariant zniknie → dopiero wtedy rozważyć trigger-skip.
+
 **Goal:** Uczynić 3 through-modele `Wydawnictwo_Ciagle_Autor`, `Wydawnictwo_Zwarte_Autor`, `Patent_Autor` modelami `SoftDeleteModel` (przez wspólną bazę `BazaModeluOdpowiedzialnosciAutorow`), dodać im pola `deleted_at`/`restored_at`/`transaction_id` + indeks na `deleted_at`, oraz wpiąć filtr `deleted_at IS NULL` do widoków źródłowych PostgreSQL (`bpp_*_autorzy` + gałęzie UNION `bpp_rekord`) tak, by soft-deletowane autorstwa znikały z materializowanego cache (`bpp_autorzy_mat`, model `Autorzy`) i wracały po `restore`. Opcjonalnie: trigger-skip w `bpp_refresh_cache()`. Faza najwrażliwsza — robiona pierwsza; gwarantuje spójność cache zanim cokolwiek innego (publikacje, admin) zacznie soft-deletować.
 
 **Architecture:** Mechanizm nadrzędny to **filtr widoku (#1)** — każda tabela `bpp_*_autor` ma własną kolumnę `deleted_at`, a widoki źródłowe `bpp_wydawnictwo_ciagle_autorzy` / `bpp_wydawnictwo_zwarte_autorzy` / `bpp_patent_autorzy` (`0001_widoki_autorzy.sql`) dostają `AND <tabela>.deleted_at IS NULL` po **własnej** kolumnie (bez JOIN do rekordu nadrzędnego). To pokrywa WSZYSTKIE ścieżki: re-insert triggera `bpp_refresh_cache()`, bezpośredni odczyt `Rekord`/`RekordView` z widoku `bpp_rekord`, oraz pełną re-projekcję cache. Gałęzie `UNION` w `bpp_rekord` (`0001_widoki_rekord.sql`) per typ publikacji NIE filtrują po `*_autor.deleted_at` (rekord publikacji żyje niezależnie od soft-delete pojedynczego autorstwa — soft-delete publikacji to faza 02), ale dla spójności kontraktu dodajemy filtr `deleted_at IS NULL` na poziomie tabeli autorskiej tylko w widokach `bpp_*_autorzy`. Trigger-skip (#2) to opcjonalna optymalizacja w gałęzi `UPDATE/INSERT` funkcji `bpp_refresh_cache()` (aktualna wersja: `0399_fix_refresh_cache_upsert.sql`): gdy `TD['new']['deleted_at'] is not None` → pomiń upsert (delete-only). Nie zastępuje #1.
