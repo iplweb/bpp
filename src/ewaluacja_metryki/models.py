@@ -22,6 +22,14 @@ class MetrykaAutora(models.Model):
         help_text="Główna jednostka autora w okresie ewaluacji",
     )
 
+    uczelnia = models.ForeignKey(
+        "bpp.Uczelnia",
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        help_text="Uczelnia, dla której policzono metrykę (multi-hosted)",
+    )
+
     # Dane z algorytmu plecakowego (nazbierane optymalne)
     slot_maksymalny = models.DecimalField(
         max_digits=10,
@@ -112,12 +120,13 @@ class MetrykaAutora(models.Model):
     class Meta:
         verbose_name = "Metryka autora"
         verbose_name_plural = "Metryki autorów"
-        unique_together = [("autor", "dyscyplina_naukowa")]
+        unique_together = [("autor", "dyscyplina_naukowa", "uczelnia")]
         ordering = ["-srednia_za_slot_nazbierana", "autor__nazwisko", "autor__imiona"]
         indexes = [
             models.Index(fields=["-srednia_za_slot_nazbierana"]),
             models.Index(fields=["jednostka", "-srednia_za_slot_nazbierana"]),
             models.Index(fields=["dyscyplina_naukowa", "-srednia_za_slot_nazbierana"]),
+            models.Index(fields=["uczelnia", "-srednia_za_slot_nazbierana"]),
         ]
 
     def __str__(self):
