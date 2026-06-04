@@ -16,8 +16,9 @@ def backfill_uczelnia(apps, schema_editor):
         return
 
     # MetrykaAutora to regenerowalny cache (delete+create przy generowaniu);
-    # przy >1 uczelni nie da się zdeterministycznie przypisać legacy wierszy,
-    # więc czyścimy — odtworzą się przy najbliższym generuj_metryki per uczelnia.
+    # przy >1 uczelni (lub 0 uczelni) nie da się zdeterministycznie przypisać
+    # legacy wierszy, więc czyścimy — odtworzą się przy najbliższym
+    # generuj_metryki per uczelnia.
     null_qs.delete()
 
 
