@@ -15,7 +15,7 @@ class Journal(LinkDoPBNMixin, BasePBNMongoDBModel):
         verbose_name_plural = "Zródła w PBN API"
 
     title = models.TextField(blank=True, default="", db_index=True)
-    websiteLink = models.TextField(blank=True, default="", db_index=True)
+    websiteLink = models.TextField(blank=True, default="")
     issn = models.TextField(blank=True, default="", db_index=True)
     eissn = models.TextField(blank=True, default="", db_index=True)
     mniswId = models.IntegerField(null=True, blank=True, db_index=True)

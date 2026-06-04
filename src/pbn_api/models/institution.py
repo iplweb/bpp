@@ -9,12 +9,12 @@ class Institution(BasePBNMongoDBModel):
         verbose_name = "Instytucja w PBN API"
         verbose_name_plural = "Instytucje w PBN API"
 
-    name = models.TextField(blank=True, default="", db_index=True)
+    name = models.TextField(blank=True, default="")
     addressCity = models.TextField(blank=True, default="", db_index=True)
-    addressStreet = models.TextField(blank=True, default="", db_index=True)
+    addressStreet = models.TextField(blank=True, default="")
     addressStreetNumber = models.TextField(blank=True, default="", db_index=True)
-    addressPostalCode = models.TextField(blank=True, default="", db_index=True)
-    polonUid = models.TextField(blank=True, default="", db_index=True)
+    addressPostalCode = models.TextField(blank=True, default="")
+    polonUid = models.TextField(blank=True, default="")
 
     pull_up_on_save = [
         "name",
