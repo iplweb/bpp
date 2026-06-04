@@ -433,6 +433,9 @@
                 {% include "bpp/_zapytanie_pager.html" %}
             {% else %}
                 <p><em>Brak rekordow pasujacych do zapytania.</em></p>
+                {% if breakdown %}
+                    {% include "bpp/_zapytanie_breakdown.html" with node=breakdown is_root=True %}
+                {% endif %}
             {% endif %}
         {% endif %}
     </div>

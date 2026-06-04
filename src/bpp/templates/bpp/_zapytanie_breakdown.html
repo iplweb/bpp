@@ -1,0 +1,23 @@
+{# Rekurencyjny widok rozbicia "dlaczego 0 wynikow". #}
+{# Oczekuje `node` (dict: text, count, role, children, truncated) i `is_root`. #}
+{% if is_root %}
+    <div class="callout warning zapytanie-breakdown-box" role="status">
+        <h3><span class="fi-info"></span> Dlaczego 0 wynikow?</h3>
+        {% if node.truncated %}
+            <p><em>Pokazano tylko warunki najwyzszego poziomu (zapytanie zbyt zlozone, aby rozbic w calosci).</em></p>
+        {% endif %}
+    </div>
+{% endif %}
+<ul class="zapytanie-breakdown role-{{ node.role }}">
+    <li>
+        <code>{{ node.text }}</code> &rarr; <strong>{{ node.count }}</strong> trafien
+        {% if node.role == "killer_and" %}
+            <span class="label alert">tu koncza sie dane: po polaczeniu zostaje 0</span>
+        {% elif node.role == "dead_or_branch" %}
+            <span class="label secondary">ta galaz OR nic nie wnosi (0 trafien)</span>
+        {% endif %}
+        {% for child in node.children %}
+            {% include "bpp/_zapytanie_breakdown.html" with node=child is_root=False %}
+        {% endfor %}
+    </li>
+</ul>

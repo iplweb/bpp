@@ -313,3 +313,91 @@ def test_rekord_autorzy_autor_rel_filters_real_fk():
     sql = str(qs.query).lower()
     assert "autor__rel" not in sql  # remap zadziałał (nie filtruje alt-nazwy)
     assert "autor_id" in sql
+
+
+@pytest.mark.django_db
+def test_zapytanie_view_tytul_rel_picker(superuser_client):
+    from bpp.models.autor import Tytul
+
+    prof, _ = Tytul.objects.get_or_create(
+        nazwa="profesor", defaults={"skrot": "prof."}
+    )
+    baker.make("bpp.Autor", nazwisko="Kowalski", tytul=prof)
+
+    response = superuser_client.get(
+        reverse(URL),
+        {"model": "autor", "query": 'tytul__rel = "profesor [%d]"' % prof.pk},
+    )
+    assert response.status_code == 200
+    assert response.context["error"] is None
+    assert response.context["count"] == 1
+
+
+@pytest.mark.django_db
+def test_zapytanie_suggestions_tytul_rel_returns_options(superuser_client):
+    from bpp.models.autor import Tytul
+
+    prof, _ = Tytul.objects.get_or_create(
+        nazwa="profesor", defaults={"skrot": "prof."}
+    )
+    url = reverse("bpp:zapytanie_suggestions", kwargs={"model_key": "autor"})
+    response = superuser_client.get(url, {"field": "tytul__rel", "search": "profesor"})
+    assert response.status_code == 200
+    items = response.json()["items"]
+    assert any("[%d]" % prof.pk in item for item in items)
+
+
+@pytest.mark.django_db
+def test_zapytanie_suggestions_autor_rel_dal_smoke(superuser_client):
+    baker.make("bpp.Autor", nazwisko="Kowalski", imiona="Jan")
+    url = reverse("bpp:zapytanie_suggestions", kwargs={"model_key": "rekord"})
+    response = superuser_client.get(
+        url, {"field": "autorzy.autor__rel", "search": "Kowal"}
+    )
+    assert response.status_code == 200
+    assert isinstance(response.json()["items"], list)
+
+
+def _breakdown_leaves(node):
+    if not node["children"]:
+        yield node
+    for ch in node["children"]:
+        yield from _breakdown_leaves(ch)
+
+
+@pytest.mark.django_db
+def test_zapytanie_breakdown_explains_zero(superuser_client):
+    baker.make("bpp.Autor", nazwisko="Kowalski", imiona="Jan")
+    response = superuser_client.get(
+        reverse(URL),
+        {"model": "autor", "query": 'nazwisko = "Kowalski" and imiona = "asdfo"'},
+    )
+    assert response.status_code == 200
+    assert response.context["count"] == 0
+    breakdown = response.context["breakdown"]
+    assert breakdown is not None
+    assert breakdown["count"] == 0
+    leaves = {leaf["text"]: leaf["count"] for leaf in _breakdown_leaves(breakdown)}
+    assert any("asdfo" in t and c == 0 for t, c in leaves.items())
+
+
+@pytest.mark.django_db
+def test_zapytanie_no_breakdown_when_results(superuser_client):
+    baker.make("bpp.Autor", nazwisko="Kowalski")
+    response = superuser_client.get(
+        reverse(URL), {"model": "autor", "query": 'nazwisko = "Kowalski"'}
+    )
+    assert response.context["count"] == 1
+    assert response.context["breakdown"] is None
+
+
+@pytest.mark.django_db
+def test_zapytanie_breakdown_rendered_in_html(superuser_client):
+    baker.make("bpp.Autor", nazwisko="Kowalski", imiona="Jan")
+    response = superuser_client.get(
+        reverse(URL),
+        {"model": "autor", "query": 'nazwisko = "Kowalski" and imiona = "asdfo"'},
+    )
+    html = response.content.decode("utf-8")
+    assert "Dlaczego 0 wynikow" in html
+    assert "asdfo" in html

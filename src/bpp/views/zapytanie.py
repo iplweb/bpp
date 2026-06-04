@@ -1,4 +1,5 @@
 import json
+import logging
 
 from django import forms
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
@@ -8,6 +9,7 @@ from django.core.paginator import Paginator
 from django.http import Http404, HttpResponse
 from django.urls import NoReverseMatch, reverse
 from django.views.generic import FormView, View
+from djangoql.breakdown import explain_empty
 from djangoql.exceptions import DjangoQLError
 from djangoql.extras import ExtrasSchema
 from djangoql.queryset import apply_search
@@ -18,6 +20,8 @@ from bpp.const import GR_WPROWADZANIE_DANYCH
 from bpp.models import Autor
 from bpp.models.autor import Tytul
 from bpp.models.cache import Autorzy, Rekord
+
+logger = logging.getLogger(__name__)
 
 MODEL_REKORD = "rekord"
 MODEL_AUTOR = "autor"
@@ -53,6 +57,11 @@ EXAMPLES = [
                     ("", 'charakter_formalny.skrot = "AC"'),
                     ("", 'tytul_oryginalny ~ "covid" and rok = 2023'),
                     ("", 'doi != ""'),
+                    ("Po autorze (autocomplete)", 'autorzy.autor__rel = "Kowalski"'),
+                    (
+                        "Po jednostce (autocomplete)",
+                        'autorzy.jednostka__rel = "Kardiologii"',
+                    ),
                 ],
             },
             {
@@ -64,6 +73,11 @@ EXAMPLES = [
                     ("", 'nazwisko = "Kowalski" and imiona = "Jan"'),
                     ("", 'orcid != ""'),
                     ("", 'aktualna_jednostka.nazwa ~ "Medycyny"'),
+                    ("Po tytule (autocomplete)", 'tytul__rel = "prof."'),
+                    (
+                        "Po jednostce (autocomplete)",
+                        'aktualna_jednostka__rel = "Kardiologii"',
+                    ),
                 ],
             },
         ],
@@ -384,7 +398,7 @@ class ZapytanieView(WprowadzanieDanychOrSuperuserMixin, FormView):
         count = None
 
         try:
-            queryset = apply_search(queryset, query, schema=ExtrasSchema)
+            queryset = apply_search(queryset, query, schema=BppZapytanieSchema)
             # Filtrowanie po relacjach "do wielu" (np. autorzy.autor.nazwisko)
             # tworzy JOIN, ktory zwielokrotnia ten sam rekord raz na kazdy
             # pasujacy wiersz powiazany. .distinct() zwija te duplikaty, zeby
@@ -400,6 +414,20 @@ class ZapytanieView(WprowadzanieDanychOrSuperuserMixin, FormView):
         if results_page is not None and model_key == MODEL_REKORD:
             self._attach_admin_urls(results_page)
 
+        breakdown = None
+        if error is None and count == 0:
+            try:
+                breakdown = explain_empty(
+                    model.objects.all(), query, schema=BppZapytanieSchema
+                )
+            except (DjangoQLError, FieldError, ValidationError, ValueError):
+                logger.exception(
+                    "explain_empty zawiodlo dla zapytania %r (model=%s)",
+                    query,
+                    model_key,
+                )
+                breakdown = None
+
         context = self.get_context_data(
             form=form,
             results=results_page,
@@ -407,6 +435,7 @@ class ZapytanieView(WprowadzanieDanychOrSuperuserMixin, FormView):
             error=error,
             model_key=model_key,
             query=query,
+            breakdown=breakdown,
         )
         return self.render_to_response(context)
 
@@ -450,7 +479,7 @@ class ZapytanieIntrospectView(WprowadzanieDanychOrSuperuserMixin, View):
         suggestions_url = reverse(
             "bpp:zapytanie_suggestions", kwargs={"model_key": model_key}
         )
-        schema = ExtrasSchema(model)
+        schema = BppZapytanieSchema(model)
         payload = SuggestionsAPISerializer(suggestions_url).serialize(schema)
         return HttpResponse(
             content=json.dumps(payload),
@@ -461,5 +490,5 @@ class ZapytanieIntrospectView(WprowadzanieDanychOrSuperuserMixin, View):
 class ZapytanieSuggestionsView(WprowadzanieDanychOrSuperuserMixin, View):
     def get(self, request, model_key):
         model = _resolve_model_or_404(model_key)
-        view = SuggestionsAPIView.as_view(schema=ExtrasSchema(model))
+        view = SuggestionsAPIView.as_view(schema=BppZapytanieSchema(model))
         return view(request)
