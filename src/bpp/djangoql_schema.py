@@ -121,12 +121,14 @@ class JednostkaZPodjednostkamiField(AutocompleteField):
     def get_lookup(self, path, operator, value):
         parsed = self.parse_id(value)
         if not isinstance(parsed, int):
-            # free-text fallback po nazwie jednostki (best-effort)
-            return Q(autorzy__jednostka__nazwa__icontains=str(value))
+            # free-text fallback po nazwie jednostki (best-effort), uwzględnia operator
+            q = Q(autorzy__jednostka__nazwa__icontains=str(value))
+            return ~q if operator in ("!=", "not in") else q
         try:
             jednostka = Jednostka.objects.get(pk=parsed)
         except Jednostka.DoesNotExist:
-            return Q(pk__in=[])  # nic nie pasuje
+            # Pozytywne dopasowanie: nic nie pasuje. Negacja: pasuje wszystko.
+            return Q() if operator in ("!=", "not in") else Q(pk__in=[])
         q = Q(autorzy__jednostka__in=jednostka.get_family())
         return ~q if operator in ("!=", "not in") else q
 

@@ -12,7 +12,6 @@ from djangoql.queryset import apply_search
 pytestmark = pytest.mark.serial
 
 
-@pytest.mark.django_db
 def test_jednostka_z_podjednostkami_in_schema():
     from bpp.djangoql_schema import BppQLSchema
     from bpp.models import Rekord
@@ -40,8 +39,44 @@ def test_jednostka_z_podjednostkami_matches_subunit_author(
 
     # Zapytanie po JEDNOSTCE NADRZĘDNEJ powinno znaleźć publikację autora
     # z podjednostki dzięki rozwinięciu rodziny MPTT.
-    query = f'jednostka_z_podjednostkami__rel = "Parent [{jednostka.pk}]"'
+    query = f'jednostka_z_podjednostkami__rel = "{jednostka.nazwa} [{jednostka.pk}]"'
     found = apply_search(Rekord.objects.all(), query, schema=BppQLSchema).distinct()
 
     assert found.count() == 1
     assert found.first().tytul_oryginalny == wydawnictwo_ciagle.tytul_oryginalny
+
+
+@pytest.mark.django_db
+def test_jednostka_z_podjednostkami_free_text_negation(
+    wydawnictwo_ciagle,
+    autor_jan_kowalski,
+    jednostka,
+):
+    """Operator != w fallbacku free-text (bez [pk]) wyklucza pasujące rekordy.
+
+    Weryfikuje Fix 1: ``~q`` zamiast ``q`` gdy operator == "!="
+    dla ścieżki bez identyfikatora numerycznego.
+    """
+    from denorm import denorms
+
+    from bpp.djangoql_schema import BppQLSchema
+    from bpp.models import Rekord
+
+    # Autor przypisany bezpośrednio do ``jednostka`` (nazwa: "Jednostka Uczelni").
+    wydawnictwo_ciagle.dodaj_autora(autor_jan_kowalski, jednostka)
+    denorms.flush()
+
+    # Zapytanie pozytywne — powinno znaleźć tę publikację.
+    pos_query = (
+        f'jednostka_z_podjednostkami__rel = "{jednostka.nazwa}"'
+    )
+    pos = apply_search(Rekord.objects.all(), pos_query, schema=BppQLSchema).distinct()
+    assert pos.count() == 1
+
+    # Zapytanie negacyjne — ta sama wartość free-text, ale !=.
+    # Bez Fix 1 zwróciłoby 1 (ignorując operator), powinno zwrócić 0.
+    neg_query = (
+        f'jednostka_z_podjednostkami__rel != "{jednostka.nazwa}"'
+    )
+    neg = apply_search(Rekord.objects.all(), neg_query, schema=BppQLSchema).distinct()
+    assert neg.count() == 0
