@@ -299,6 +299,34 @@ def test_rekord_schema_has_autorzy_rel_pickers():
 
 
 @pytest.mark.django_db
+def test_user_can_use_query_editor_superuser():
+    from bpp.views.zapytanie import user_can_use_query_editor
+
+    u = baker.make("bpp.BppUser", is_superuser=True, is_staff=False)
+    assert user_can_use_query_editor(u) is True
+
+
+@pytest.mark.django_db
+def test_user_can_use_query_editor_staff_in_group():
+    from django.contrib.auth.models import Group
+
+    from bpp.views.zapytanie import user_can_use_query_editor
+
+    u = baker.make("bpp.BppUser", is_superuser=False, is_staff=True)
+    grp, _ = Group.objects.get_or_create(name=GR_WPROWADZANIE_DANYCH)
+    u.groups.add(grp)
+    assert user_can_use_query_editor(u) is True
+
+
+@pytest.mark.django_db
+def test_user_can_use_query_editor_plain_logged_in():
+    from bpp.views.zapytanie import user_can_use_query_editor
+
+    u = baker.make("bpp.BppUser", is_superuser=False, is_staff=False)
+    assert user_can_use_query_editor(u) is False
+
+
+@pytest.mark.django_db
 def test_rekord_autorzy_autor_rel_filters_real_fk():
     from djangoql.queryset import apply_search
 

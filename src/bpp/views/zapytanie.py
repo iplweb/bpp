@@ -272,6 +272,21 @@ EXAMPLES = [
 ]
 
 
+def user_can_use_query_editor(user):
+    """Czy user widzi/uzywa edytora zapytan DjangoQL.
+
+    Superuser, albo staff w grupie 'wprowadzanie danych'. Jedno zrodlo
+    prawdy dla: mixinu widoku, endpointu konwertera i filtru szablonowego.
+    """
+    if not user.is_authenticated:
+        return False
+    if user.is_superuser:
+        return True
+    return user.is_staff and user.groups.filter(
+        name=GR_WPROWADZANIE_DANYCH
+    ).exists()
+
+
 class WprowadzanieDanychOrSuperuserMixin(LoginRequiredMixin, UserPassesTestMixin):
     """Dostep dla superuserow lub uzytkownikow w grupie 'wprowadzanie danych'
     bedacych jednoczesnie w staffie."""
@@ -279,12 +294,7 @@ class WprowadzanieDanychOrSuperuserMixin(LoginRequiredMixin, UserPassesTestMixin
     raise_exception = True
 
     def test_func(self):
-        user = self.request.user
-        if user.is_superuser:
-            return True
-        return (
-            user.is_staff and user.groups.filter(name=GR_WPROWADZANIE_DANYCH).exists()
-        )
+        return user_can_use_query_editor(self.request.user)
 
 
 class ZapytanieForm(forms.Form):
