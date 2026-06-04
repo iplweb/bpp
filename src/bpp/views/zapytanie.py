@@ -16,7 +16,8 @@ from djangoql.views import SuggestionsAPIView
 
 from bpp.const import GR_WPROWADZANIE_DANYCH
 from bpp.models import Autor
-from bpp.models.cache import Rekord
+from bpp.models.autor import Tytul
+from bpp.models.cache import Autorzy, Rekord
 
 MODEL_REKORD = "rekord"
 MODEL_AUTOR = "autor"
@@ -252,6 +253,55 @@ EXAMPLES = [
         ],
     },
 ]
+
+
+class BppZapytanieSchema(ExtrasSchema):
+    """ExtrasSchema z pickerami ``<fk>__rel`` obok trawersacji z kropką.
+
+    Notacja z kropką (``autorzy.autor.nazwisko``, ``tytul.skrot``) zostaje
+    domyślna dla FK. ``<fk>__rel`` to picker autocomplete: wybierasz konkretny
+    obiekt z podpowiedzi i filtruje po jego pk (``lookup_name`` wskazuje realny
+    FK), z fallbackiem free-text (icontains po ``search_fields``).
+    """
+
+    autocomplete = {
+        Autorzy: {
+            "autor__rel": {
+                "lookup_name": "autor",
+                "url": "bpp:public-autor-autocomplete",
+                "search_fields": ["nazwisko", "imiona"],
+            },
+            "jednostka__rel": {
+                "lookup_name": "jednostka",
+                "url": "bpp:jednostka-autocomplete",
+                "search_fields": ["nazwa", "skrot"],
+            },
+        },
+        Autor: {
+            "tytul__rel": {
+                "lookup_name": "tytul",
+                "queryset": Tytul.objects.all(),
+                "search_fields": ["nazwa", "skrot"],
+            },
+            "aktualna_jednostka__rel": {
+                "lookup_name": "aktualna_jednostka",
+                "url": "bpp:jednostka-autocomplete",
+                "search_fields": ["nazwa", "skrot"],
+            },
+        },
+    }
+
+    # Nazwy syntetyczne (nie ma ich w modelu) — bez tego nie zostaną
+    # zintrospektowane ani podpowiedziane.
+    _REL_FIELDS = {
+        Autorzy: ["autor__rel", "jednostka__rel"],
+        Autor: ["tytul__rel", "aktualna_jednostka__rel"],
+    }
+
+    def get_fields(self, model):
+        fields = list(super().get_fields(model))
+        fields += self._REL_FIELDS.get(model, [])
+        return fields
 
 
 class WprowadzanieDanychOrSuperuserMixin(LoginRequiredMixin, UserPassesTestMixin):

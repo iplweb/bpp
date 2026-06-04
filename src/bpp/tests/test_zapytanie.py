@@ -213,3 +213,103 @@ def test_zapytanie_examples_no_unary_not():
             f"Unary 'not (...)' znaleziono w przykladzie "
             f"(level={level}, model={model}, desc={desc!r}): {query!r}"
         )
+
+
+@pytest.mark.django_db
+def test_tytul_rel_picker_filters_by_pk():
+    from djangoql.queryset import apply_search
+
+    from bpp.models import Autor
+    from bpp.models.autor import Tytul
+    from bpp.views.zapytanie import BppZapytanieSchema
+
+    # Baseline DB may already contain these titles (tytul.json fixture).
+    prof, _ = Tytul.objects.get_or_create(nazwa="profesor", defaults={"skrot": "prof."})
+    dr, _ = Tytul.objects.get_or_create(nazwa="doktor", defaults={"skrot": "dr"})
+    a1 = baker.make("bpp.Autor", nazwisko="Kowalski", tytul=prof)
+    baker.make("bpp.Autor", nazwisko="Nowak", tytul=dr)
+
+    qs = apply_search(
+        Autor.objects.all(),
+        'tytul__rel = "profesor [%d]"' % prof.pk,
+        schema=BppZapytanieSchema,
+    )
+    assert list(qs) == [a1]
+
+
+@pytest.mark.django_db
+def test_tytul_dot_traversal_still_works():
+    from djangoql.queryset import apply_search
+
+    from bpp.models import Autor
+    from bpp.models.autor import Tytul
+    from bpp.views.zapytanie import BppZapytanieSchema
+
+    # Baseline DB may already contain this title (tytul.json fixture).
+    prof, _ = Tytul.objects.get_or_create(nazwa="profesor", defaults={"skrot": "prof."})
+    a1 = baker.make("bpp.Autor", nazwisko="Kowalski", tytul=prof)
+
+    qs = apply_search(
+        Autor.objects.all(), 'tytul.skrot = "prof."', schema=BppZapytanieSchema
+    )
+    assert list(qs) == [a1]
+
+
+@pytest.mark.django_db
+def test_aktualna_jednostka_rel_picker_filters_by_pk():
+    from djangoql.queryset import apply_search
+
+    from bpp.models import Autor, Jednostka
+    from bpp.views.zapytanie import BppZapytanieSchema
+
+    j = baker.make(Jednostka, nazwa="Katedra X")
+    a1 = baker.make("bpp.Autor", nazwisko="Kowalski", aktualna_jednostka=j)
+    baker.make("bpp.Autor", nazwisko="Nowak")
+
+    qs = apply_search(
+        Autor.objects.all(),
+        'aktualna_jednostka__rel = "Katedra X [%d]"' % j.pk,
+        schema=BppZapytanieSchema,
+    )
+    assert list(qs) == [a1]
+
+
+@pytest.mark.django_db
+def test_autor_schema_has_rel_fields_and_keeps_relations():
+    from bpp.models import Autor
+    from bpp.views.zapytanie import BppZapytanieSchema
+
+    schema = BppZapytanieSchema(Autor)
+    fields = schema.models["bpp.autor"]
+    assert "tytul__rel" in fields
+    assert "aktualna_jednostka__rel" in fields
+    assert fields["tytul"].type == "relation"  # trawersacja zachowana
+
+
+@pytest.mark.django_db
+def test_rekord_schema_has_autorzy_rel_pickers():
+    from bpp.models.cache import Autorzy, Rekord
+    from bpp.views.zapytanie import BppZapytanieSchema
+
+    schema = BppZapytanieSchema(Rekord)
+    autorzy_fields = schema.models[schema.model_label(Autorzy)]
+    assert "autor__rel" in autorzy_fields
+    assert "jednostka__rel" in autorzy_fields
+    assert autorzy_fields["autor"].type == "relation"
+
+
+@pytest.mark.django_db
+def test_rekord_autorzy_autor_rel_filters_real_fk():
+    from djangoql.queryset import apply_search
+
+    from bpp.models.cache import Rekord
+    from bpp.views.zapytanie import BppZapytanieSchema
+
+    qs = apply_search(
+        Rekord.objects.all(),
+        'autorzy.autor__rel = "X [1]"',
+        schema=BppZapytanieSchema,
+    )
+    sql = str(qs.query).lower()
+    assert "autor__rel" not in sql  # remap zadziałał (nie filtruje alt-nazwy)
+    assert "autor_id" in sql
