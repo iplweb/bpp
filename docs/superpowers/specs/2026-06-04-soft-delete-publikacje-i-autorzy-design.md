@@ -210,17 +210,21 @@ niż przeciwny.
 
 **Self-FK `wydawnictwo_nadrzedne`** (`src/bpp/models/wydawnictwo_zwarte.py:202`,
 rozdziały → książka-matka; denorm `@depend_on_related("self",
-"wydawnictwo_nadrzedne")`). Wąska kaskada (§2.2) zatrzymuje się na `*_Autor` —
-**nie kaskaduje na rozdziały**. Soft-delete książki-matki zostawia rozdziały
-widoczne, wskazujące na skasowaną książkę.
+"wydawnictwo_nadrzedne")`).
 
-> **DECYZJA (proponowana, do potwierdzenia):** soft-delete książki-matki
-> **NIE** kaskaduje automatycznie na rozdziały (są niezależnymi publikacjami,
-> często z osobnym dorobkiem autorów); admin pokazuje **ostrzeżenie** „ta
-> książka ma N rozdziałów — zostaną widoczne". Alternatywa: kaskada na
-> rozdziały (jak na `*_Autor`). Powiązane: zweryfikować, że denorm
-> `depend_on_related("self", ...)` nie wywala się przy ustawianiu `deleted_at`
-> rodzica.
+> **DECYZJA: PROTECT — soft-delete książki-matki jest ZABLOKOWANY, jeśli ma
+> rozdziały.** Ten sam dwuwarstwowy wzorzec co guard autora (§3):
+> - **warstwa 1:** flip FK `wydawnictwo_nadrzedne` `CASCADE→PROTECT`
+>   (obrona przed hard-delete; migracja state-only),
+> - **warstwa 2:** guard w soft-`delete()` `Wydawnictwo_Zwarte` — jeśli rekord
+>   ma rozdziały (dzieci `wydawnictwo_nadrzedne`), odmów z czytelnym
+>   komunikatem; operator najpierw usuwa/przenosi rozdziały.
+>
+> Liczenie rozdziałów: przez `global_objects` (także soft-deletowane
+> rozdziały blokują — spójnie z guardem autora §3.2). Dzięki PROTECT problem
+> „rozdziały wskazujące na skasowaną książkę" w ogóle nie powstaje, a denorm
+> `depend_on_related("self", ...)` nie jest wyzwalany kaskadą (rodzic nie
+> może być skasowany, póki ma dzieci).
 
 **GenericForeignKey** (`Nagroda`, `Publikacja_Habilitacyjna` → rekord przez
 `content_type`+`object_id`): przy soft-delete obiekt **fizycznie istnieje**,
@@ -408,9 +412,14 @@ odłożone, YAGNI; można dorobić jako zadanie `CELERYBEAT_SCHEDULE`,
    `global_objects`; audyt 90 miejsc `*_Autor.objects` (default „pomijaj"
    poprawny, wyjątki → `global_objects`). Testy: re-import nie tworzy
    duplikatów; ewaluacja pomija prace w koszu.
-4. **Autor** — flip FK `CASCADE→PROTECT` (`*_Autor`, doktorat), guard w soft
-   `delete()` **liczący przez `global_objects`** (widzi kaskadowo-skasowane
-   autorstwa), soft-delete husku; weryfikacja merge.
+4. **Guardy PROTECT** (ten sam wzorzec: flip FK + guard liczący przez
+   `global_objects`):
+   - **Autor** — flip FK `CASCADE→PROTECT` (`*_Autor`, doktorat), guard w soft
+     `delete()` (widzi kaskadowo-skasowane autorstwa), soft-delete husku;
+     weryfikacja merge.
+   - **`Wydawnictwo_Zwarte` (rozdziały)** — flip FK `wydawnictwo_nadrzedne`
+     `CASCADE→PROTECT`, guard w soft `delete()` blokujący gdy ma rozdziały
+     (§2.6).
 5. **PBN** — `operacja WYCOFANIE` w `pbn_export_queue` + restore→`WYSYLKA`;
    integracja `SentData`.
 6. **SoftDeleteLog** + receivery sygnałów (`post_soft_delete`/`post_restore`/
@@ -470,10 +479,9 @@ odłożone, YAGNI; można dorobić jako zadanie `CELERYBEAT_SCHEDULE`,
    trigger-skip to opcjonalna optymalizacja.
 10. **SentData przy wycofaniu:** `submitted_successfully=False` + znacznik
     wycofania, wiersza nie kasujemy.
-
-**Oczekuje potwierdzenia:**
-- **Self-FK `Wydawnictwo_Zwarte` (rozdziały):** propozycja — soft-delete
-  książki-matki NIE kaskaduje na rozdziały, admin ostrzega (§2.6).
+11. **Self-FK `Wydawnictwo_Zwarte` (rozdziały):** **PROTECT** — soft-delete
+    książki-matki zablokowany, jeśli ma rozdziały (flip FK `CASCADE→PROTECT`
+    + guard liczący przez `global_objects`, §2.6). Wzorzec jak guard autora.
 
 ---
 
