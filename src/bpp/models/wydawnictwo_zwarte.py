@@ -120,7 +120,11 @@ class Wydawnictwo_Zwarte_Baza(
         spacją.""",
     )
 
-    wydawca = models.ForeignKey(Wydawca, PROTECT, null=True, blank=True)
+    # Auto-indeks FK redundantny: każda konkretna tabela dziedzicząca
+    # Wydawnictwo_Zwarte_Baza (wydawnictwo_zwarte, praca_doktorska,
+    # praca_habilitacyjna) ma raw-indeks <tabela>_wydawca_rok (wydawca_id, rok)
+    # z migracji 0172 — wydawca jest tam wiodący, więc pokrywa lookup i PROTECT.
+    wydawca = models.ForeignKey(Wydawca, PROTECT, null=True, blank=True, db_index=False)
     wydawca_opis = models.CharField(
         "Wydawca - szczegóły", max_length=256, blank=True, default=""
     )

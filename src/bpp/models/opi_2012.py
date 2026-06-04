@@ -14,7 +14,9 @@ class Opi_2012_Afiliacja_Do_Wydzialu(models.Model):
     nie zaś do jednostki.
     """
 
-    autor = models.ForeignKey(Autor, CASCADE)
+    # db_index=False: redundantny względem unique_together
+    # (autor, wydzial, rok) — autor jest wiodącą kolumną tego indeksu.
+    autor = models.ForeignKey(Autor, CASCADE, db_index=False)
     wydzial = models.ForeignKey(Wydzial, CASCADE)
     rok = YearField(db_index=True)
 

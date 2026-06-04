@@ -92,7 +92,10 @@ class Autor_DyscyplinaManager(models.Manager):
 
 class Autor_Dyscyplina(models.Model):
     rok = PositiveSmallIntegerField()
-    autor = models.ForeignKey("bpp.Autor", CASCADE)
+    # Auto-indeks FK redundantny: pokrywa go raw-indeks (migracja 0207)
+    # bpp_autor_dyscyplina_autor_rok_idx (autor_id, rok) — autor wiodący.
+    # unique_together to (rok, autor), więc to NIE on pokrywa, tylko raw-indeks.
+    autor = models.ForeignKey("bpp.Autor", CASCADE, db_index=False)
 
     rodzaj_autora = models.ForeignKey(
         "ewaluacja_common.Rodzaj_Autora",

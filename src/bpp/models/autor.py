@@ -545,7 +545,10 @@ class Autor_Jednostka_Manager(models.Manager):
 class Autor_Jednostka(models.Model):
     """Powiązanie autora z jednostką"""
 
-    autor = models.ForeignKey("bpp.Autor", CASCADE)
+    # db_index=False: redundantny względem unique_together
+    # (autor, jednostka, rozpoczal_prace) — autor jest wiodącą kolumną tego
+    # złożonego indeksu, więc auto-indeks FK jest zbędny.
+    autor = models.ForeignKey("bpp.Autor", CASCADE, db_index=False)
     jednostka = models.ForeignKey("bpp.Jednostka", CASCADE)
     rozpoczal_prace = models.DateField(
         "Rozpoczął pracę", blank=True, null=True, db_index=True

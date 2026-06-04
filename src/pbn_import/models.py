@@ -18,7 +18,10 @@ class ImportSession(models.Model):
         ("cancelled", "Anulowany"),
     ]
 
-    user = models.ForeignKey(User, on_delete=models.CASCADE, verbose_name="Użytkownik")
+    # Auto-indeks FK redundantny: pokrywa go Meta.Index [user, status].
+    user = models.ForeignKey(
+        User, on_delete=models.CASCADE, db_index=False, verbose_name="Użytkownik"
+    )
     started_at = models.DateTimeField(auto_now_add=True, verbose_name="Rozpoczęto")
     completed_at = models.DateTimeField(
         null=True, blank=True, verbose_name="Zakończono"
@@ -185,10 +188,12 @@ class ImportLog(models.Model):
         ("critical", "Krytyczny"),
     ]
 
+    # Auto-indeks FK redundantny: pokrywa go Meta.Index [session, -timestamp].
     session = models.ForeignKey(
         ImportSession,
         on_delete=models.CASCADE,
         related_name="logs",
+        db_index=False,
         verbose_name="Sesja",
     )
     timestamp = models.DateTimeField(auto_now_add=True, verbose_name="Czas")
@@ -230,10 +235,12 @@ class ImportInconsistency(models.Model):
         ),
     ]
 
+    # Auto-indeks FK redundantny: pokrywa go Meta.Index [session, -timestamp].
     session = models.ForeignKey(
         ImportSession,
         on_delete=models.CASCADE,
         related_name="inconsistencies",
+        db_index=False,
         verbose_name="Sesja",
     )
     timestamp = models.DateTimeField(auto_now_add=True, verbose_name="Czas")
