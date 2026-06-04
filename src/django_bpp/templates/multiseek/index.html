@@ -257,6 +257,8 @@
             }
 
             function openDjangoqlDrawer() {
+                var queryEl = document.getElementById('djangoqlQuery');
+                if (!queryEl) { return; }  // drawer niedostepny dla tego usera
                 var payload = formAsJSON();  // JSON string
                 var body = new URLSearchParams();
                 body.append('json', payload);
@@ -290,6 +292,8 @@
                     } else {
                         w.style.display = 'none';
                     }
+                    var copyBtn = document.getElementById('djangoqlCopy');
+                    if (copyBtn) { copyBtn.classList.remove('success'); }
                     $('#djangoqlDrawer').foundation('open');
                 }).catch(function (err) {
                     alert('Nie udało się przetłumaczyć formularza: ' + err.message);
@@ -298,6 +302,7 @@
 
             function copyDjangoqlQuery(btn) {
                 var ta = document.getElementById('djangoqlQuery');
+                if (!ta) { return; }
                 navigator.clipboard.writeText(ta.value).then(function () {
                     btn.classList.add('success');
                 });
@@ -306,8 +311,8 @@
         </script>
         {% if user|can_use_query_editor %}
             {% csrf_token %}
-            <div class="reveal" id="djangoqlDrawer" data-reveal>
-                <h4>Zapytanie DjangoQL</h4>
+            <div class="reveal" id="djangoqlDrawer" data-reveal aria-labelledby="djangoqlDrawerTitle">
+                <h4 id="djangoqlDrawerTitle">Zapytanie DjangoQL</h4>
                 <p class="help-text">Równoważne zapytanie nad modelem Rekord. Możesz je skopiować lub otworzyć w edytorze zapytań.</p>
                 <textarea id="djangoqlQuery" rows="4" readonly spellcheck="false" style="font-family:monospace;"></textarea>
                 <div id="djangoqlWarnings" class="callout warning" style="display:none"></div>
