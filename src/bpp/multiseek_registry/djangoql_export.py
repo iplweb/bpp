@@ -9,7 +9,9 @@ jest walidowany przeciw BppQLSchema(Rekord) — niepoprawne -> warning.
 
 from decimal import Decimal
 
+from djangoql.parser import DjangoQLParser
 from multiseek.logic import (
+    AUTOCOMPLETE,
     CONTAINS,
     DIFFERENT_ALL,
     EQUALITY_OPS_ALL,
@@ -23,6 +25,9 @@ from multiseek.logic import (
     NOT_STARTS_WITH,
     STARTS_WITH,
 )
+
+from bpp.djangoql_schema import BppQLSchema
+from bpp.models import Rekord
 
 
 def _build_scalar_op_map():
@@ -75,3 +80,85 @@ def render_value(value):
         return str(value)
     s = str(value).replace("\\", "\\\\").replace('"', '\\"')
     return f'"{s}"'
+
+
+def _orm_path_to_djangoql(field_name):
+    """field_name multiseek (ORM, '__') -> sciezka DjangoQL ('.')."""
+    return field_name.replace("__", ".")
+
+
+def is_valid_rekord_djangoql(fragment):
+    """Czy fragment parsuje sie i waliduje wzgledem BppQLSchema(Rekord)."""
+    try:
+        ast = DjangoQLParser().parse(fragment)
+        BppQLSchema(Rekord).validate(ast)
+    except Exception:  # noqa: BLE001 — best-effort validity gate
+        # Klasyfikuje fragment jako nieprzekladalny (zwraca False); nie tlumi
+        # bledu logiki — niepoprawne fragmenty sa poprawnie odrzucane.
+        return False
+    return True
+
+
+def _autocomplete_leaf(field, value, operation):
+    """value to pk; resolwujemy obiekt i emitujemy '<sciezka>__rel = "L [pk]"'."""
+    op = str(operation)
+    if op in {str(o) for o in DIFFERENT_ALL}:
+        rel_op = "!="
+    elif op in {str(o) for o in EQUALITY_OPS_ALL}:
+        rel_op = "="
+    else:
+        return None
+    try:
+        obj = field.value_from_web(value)
+    except Exception:  # noqa: BLE001 — nieistniejacy/uszkodzony pk -> warning
+        return None
+    if obj is None:
+        return None
+    rel_path = _orm_path_to_djangoql(field.field_name) + "__rel"
+    label = str(obj).replace("\\", "\\\\").replace('"', '\\"')
+    return f'{rel_path} {rel_op} "{label} [{obj.pk}]"'
+
+
+def _range_leaf(name, value, operation):
+    """IN_RANGE/NOT_IN_RANGE: value to [low, high]."""
+    if not (isinstance(value, (list, tuple)) and len(value) == 2):
+        return None
+    if str(operation) == str(NOT_IN_RANGE):
+        return None  # brak unary not(...) w DjangoQL -> warning (Task 5/6)
+    low, high = value
+    path = _orm_path_to_djangoql(name)
+    return f"({path} >= {render_value(low)} and {path} <= {render_value(high)})"
+
+
+def _default_leaf(field, value, operation):
+    op = str(operation)
+    if getattr(field, "type", None) == AUTOCOMPLETE:
+        return _autocomplete_leaf(field, value, operation)
+    name = getattr(field, "field_name", None)
+    if not name:
+        return None
+    if op in range_operators():
+        return _range_leaf(name, value, operation)
+    dql_op = scalar_operator_to_djangoql(op)
+    if dql_op is None:
+        return None
+    return f"{_orm_path_to_djangoql(name)} {dql_op} {render_value(value)}"
+
+
+def leaf_to_djangoql(registry, leaf):
+    """Fragment DjangoQL dla pojedynczego warunku, albo None (nieprzekladalny).
+
+    None gdy: nieznane pole, nieobslugiwana operacja, albo fragment nie
+    waliduje sie wzgledem schematu Rekord.
+    """
+    field = registry.field_by_name.get(leaf["field"])
+    if field is None:
+        return None
+    override = getattr(field, "to_djangoql", None)
+    if callable(override):
+        frag = override(leaf["value"], leaf["operator"])
+    else:
+        frag = _default_leaf(field, leaf["value"], leaf["operator"])
+    if frag is None:
+        return None
+    return frag if is_valid_rekord_djangoql(frag) else None

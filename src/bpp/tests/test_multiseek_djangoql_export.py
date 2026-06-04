@@ -1,3 +1,4 @@
+import pytest
 from multiseek.logic import (
     CONTAINS,
     DIFFERENT,
@@ -6,7 +7,9 @@ from multiseek.logic import (
     NOT_STARTS_WITH,
 )
 
+from bpp.multiseek_registry import registry
 from bpp.multiseek_registry.djangoql_export import (
+    leaf_to_djangoql,
     render_value,
     scalar_operator_to_djangoql,
 )
@@ -47,3 +50,30 @@ def test_scalar_operator_locale_robust():
 
 def test_render_value_escapes_backslash():
     assert render_value(r"a\b") == r'"a\\b"'
+
+
+@pytest.mark.django_db
+def test_leaf_scalar_string_contains():
+    frag = leaf_to_djangoql(
+        registry,
+        {"field": "Tytuł pracy", "operator": str(CONTAINS), "value": "nowotwor"},
+    )
+    assert frag == 'tytul_oryginalny ~ "nowotwor"'
+
+
+@pytest.mark.django_db
+def test_leaf_year_gte():
+    frag = leaf_to_djangoql(
+        registry,
+        {"field": "Rok", "operator": str(GREATER_OR_EQUAL), "value": 2020},
+    )
+    assert frag == "rok >= 2020"
+
+
+@pytest.mark.django_db
+def test_leaf_unknown_field_returns_none():
+    frag = leaf_to_djangoql(
+        registry,
+        {"field": "Nie ma takiego pola", "operator": str(CONTAINS), "value": "x"},
+    )
+    assert frag is None
