@@ -3,7 +3,7 @@ from django.http import JsonResponse
 from django.shortcuts import get_object_or_404
 from django.views.generic import TemplateView, View
 
-from bpp.models import Autor
+from bpp.models import Autor, Uczelnia
 
 from .queries import (
     MAKS_GLEBOKOSC_FILTR,
@@ -45,7 +45,7 @@ class GrafPowiazanDaneView(View):
 
     def get(self, request, pk):
         autor = get_object_or_404(Autor.objects.select_related("tytul"), pk=pk)
-        pbn_root = _pbn_root()
+        pbn_root = _pbn_root(Uczelnia.objects.get_for_request(request))
         filtr = _filtr_z_request(request)
 
         if filtr.aktywny():
@@ -137,7 +137,7 @@ class GrafPowiazanSiecView(View):
             a.pk: a
             for a in Autor.objects.filter(id__in=visited).select_related("tytul")
         }
-        pbn_root = _pbn_root()
+        pbn_root = _pbn_root(Uczelnia.objects.get_for_request(request))
         metryki = _metryki_prac(list(visited))
 
         nodes = []

@@ -40,7 +40,6 @@ APPROVED: dict[str, int] = {
     "pbn_api/management/commands/util.py": 1,  # GUARDED count==1 (wzorzec CLI)
     "pbn_import/templatetags/pbn_import_tags.py": 1,  # request-first, fallback bez requestu
     "pbn_import/utils/command_helpers.py": 1,  # CLI None-tolerant + CommandError
-    "powiazania_autorow/queries.py": 1,  # dev: explorer, root PBN raz (anty-N+1), display; deferred multi-host
 }
 
 
