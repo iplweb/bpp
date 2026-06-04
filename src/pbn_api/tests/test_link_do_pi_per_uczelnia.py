@@ -8,6 +8,7 @@
 """
 
 import uuid as uuid_module
+from urllib.parse import urlparse
 
 import pytest
 from model_bakery import baker
@@ -85,9 +86,9 @@ def test_link_do_pi_per_uczelnia_rozroznia_dwa_wiersze(uczelnia):
 
     assert link1 is not None
     assert link2 is not None
-    assert "pbn-u1.example.com" in link1
+    assert urlparse(link1).hostname == "pbn-u1.example.com"
     assert str(v1.pk) in link1
-    assert "pbn-u2.example.com" in link2
+    assert urlparse(link2).hostname == "pbn-u2.example.com"
     assert str(v2.pk) in link2
     assert link1 != link2
 
@@ -104,7 +105,7 @@ def test_link_do_pi_bez_uczelni_uzywa_get_default(uczelnia):
     link = objectId.link_do_pi()
 
     assert link is not None
-    assert "pbn-default.example.com" in link
+    assert urlparse(link).hostname == "pbn-default.example.com"
     assert str(v.pk) in link
 
 
