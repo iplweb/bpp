@@ -115,9 +115,10 @@ class StatusGenerowaniaAdmin(admin.ModelAdmin):
     status_display.short_description = "Status"
 
     def has_add_permission(self, request):
-        # Singleton - nie pozwalaj dodawać nowych
+        # Wiersze per uczelnia tworzy proces generowania (get_or_create),
+        # nie ręcznie w adminie.
         return False
 
     def has_delete_permission(self, request, obj=None):
-        # Singleton - nie pozwalaj usuwać
+        # Status per uczelnia zarządzany automatycznie — bez ręcznego usuwania.
         return False
