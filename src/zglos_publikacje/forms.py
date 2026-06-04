@@ -315,6 +315,11 @@ class Zgloszenie_Publikacji_DaneForm(forms.ModelForm):
         if uczelnia is None:
             uczelnia = Uczelnia.objects.get()
 
+        # Przepisz uczelnię oglądającego na instancję, żeby walidacja opłat
+        # w ``Zgloszenie_Publikacji.clean`` użyła JEJ, a nie zgadywała przez
+        # ``Uczelnia.objects.get()`` (crash przy >1 uczelni, multi-hosted).
+        self.instance._uczelnia = uczelnia
+
         if (
             uczelnia is not None
             and not uczelnia.pytaj_o_zgode_na_publikacje_pelnego_tekstu
