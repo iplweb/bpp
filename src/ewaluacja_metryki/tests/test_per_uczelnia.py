@@ -46,3 +46,37 @@ def test_status_generowania_per_uczelnia():
     assert s1.pk != s2.pk
     assert s1.uczelnia_id == u1.pk
     assert s2.uczelnia_id == u2.pk
+
+
+@pytest.mark.django_db
+def test_oblicz_metryki_dla_autora_nie_sumuje_slotow_z_innej_uczelni(
+    autor_jan_kowalski, dyscyplina1
+):
+    """Regresja R2: slot_maksymalny nie może sumować udziałów wszystkich uczelni."""
+    from ewaluacja_liczba_n.models import IloscUdzialowDlaAutoraZaCalosc
+    from ewaluacja_metryki.utils import oblicz_metryki_dla_autora
+
+    u1 = baker.make("bpp.Uczelnia")
+    u2 = baker.make("bpp.Uczelnia")
+    IloscUdzialowDlaAutoraZaCalosc.objects.create(
+        autor=autor_jan_kowalski,
+        dyscyplina_naukowa=dyscyplina1,
+        rodzaj_autora=None,
+        ilosc_udzialow=Decimal("4.0"),
+        ilosc_udzialow_monografie=Decimal("0"),
+        uczelnia=u1,
+    )
+    IloscUdzialowDlaAutoraZaCalosc.objects.create(
+        autor=autor_jan_kowalski,
+        dyscyplina_naukowa=dyscyplina1,
+        rodzaj_autora=None,
+        ilosc_udzialow=Decimal("9.0"),
+        ilosc_udzialow_monografie=Decimal("0"),
+        uczelnia=u2,
+    )
+    metryka, _ = oblicz_metryki_dla_autora(
+        autor=autor_jan_kowalski, dyscyplina=dyscyplina1, uczelnia=u1
+    )
+    # slot_maksymalny = 4.0 (tylko u1), NIE 13.0 (suma u1+u2)
+    assert metryka.slot_maksymalny == Decimal("4.0")
+    assert metryka.uczelnia_id == u1.pk

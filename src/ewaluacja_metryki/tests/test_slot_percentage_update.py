@@ -85,10 +85,11 @@ def test_procent_wykorzystania_slotow_updates_correctly(denorms, rodzaj_autora_n
         cacher.removeEntries()
         cacher.rebuildEntries()
 
-    # Calculate metrics
+    # Calculate metrics (uczelnia=None — IloscUdzialow created without uczelnia)
     metryka, created = oblicz_metryki_dla_autora(
         autor=autor,
         dyscyplina=dyscyplina,
+        uczelnia=None,
         rok_min=2022,
         rok_max=2025,
     )
@@ -107,6 +108,7 @@ def test_procent_wykorzystania_slotow_updates_correctly(denorms, rodzaj_autora_n
     metryka2, created = oblicz_metryki_dla_autora(
         autor=autor,
         dyscyplina=dyscyplina,
+        uczelnia=None,
         rok_min=2022,
         rok_max=2025,
     )
@@ -148,6 +150,7 @@ def test_procent_wykorzystania_handles_zero_slot_maksymalny(rodzaj_autora_n):
     metryka, created = oblicz_metryki_dla_autora(
         autor=autor,
         dyscyplina=dyscyplina,
+        uczelnia=None,
         rok_min=2022,
         rok_max=2025,
         slot_maksymalny=Decimal("0"),  # Force zero
@@ -212,10 +215,11 @@ def test_averages_calculated_correctly(rodzaj_autora_n):
     cacher.removeEntries()
     cacher.rebuildEntries()
 
-    # Calculate metrics
+    # Calculate metrics (uczelnia=None — IloscUdzialow created without uczelnia)
     metryka, _ = oblicz_metryki_dla_autora(
         autor=autor,
         dyscyplina=dyscyplina,
+        uczelnia=None,
         rok_min=2022,
         rok_max=2025,
     )
