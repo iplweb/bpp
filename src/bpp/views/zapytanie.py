@@ -4,8 +4,9 @@ import logging
 from django import forms
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.contrib.contenttypes.models import ContentType
-from django.core.exceptions import FieldError, ValidationError
+from django.core.exceptions import FieldDoesNotExist, FieldError, ValidationError
 from django.core.paginator import Paginator
+from django.db import models
 from django.http import Http404, HttpResponse
 from django.urls import NoReverseMatch, reverse
 from django.views.generic import FormView, View
@@ -17,9 +18,27 @@ from djangoql.serializers import SuggestionsAPISerializer
 from djangoql.views import SuggestionsAPIView
 
 from bpp.const import GR_WPROWADZANIE_DANYCH
-from bpp.models import Autor
+from bpp.models import (
+    Autor,
+    Charakter_Formalny,
+    Dyscyplina_Naukowa,
+    Jezyk,
+    Kierunek_Studiow,
+    Konferencja,
+    Status_Korekty,
+    Typ_KBN,
+    Typ_Odpowiedzialnosci,
+    Wydawca,
+    Wydawnictwo_Zwarte,
+    Zrodlo,
+)
 from bpp.models.autor import Tytul
 from bpp.models.cache import Autorzy, Rekord
+from bpp.models.openaccess import (
+    Czas_Udostepnienia_OpenAccess,
+    Licencja_OpenAccess,
+    Wersja_Tekstu_OpenAccess,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -269,52 +288,114 @@ EXAMPLES = [
 ]
 
 
+def _dal_picker(lookup_name, url, search_fields):
+    """Config pickera ``<fk>__rel`` korzystającego z czystego endpointu DAL."""
+    return {
+        "lookup_name": lookup_name,
+        "url": url,
+        "search_fields": list(search_fields),
+    }
+
+
+_VISIBILITY_FIELDS = ("widoczny", "widoczna", "widoczne")
+
+
+def _visible_qs(model):
+    """Queryset modelu z odfiltrowanymi niewidocznymi pozycjami, jeśli model ma
+    boolowskie pole ``widoczny``/``widoczna``/``widoczne`` — żeby lookup nie
+    podpowiadał ukrytych rekordów. W przeciwnym razie pełny ``all()``.
+    """
+    for name in _VISIBILITY_FIELDS:
+        try:
+            field = model._meta.get_field(name)
+        except FieldDoesNotExist:
+            continue
+        if isinstance(field, models.BooleanField):
+            return model.objects.filter(**{name: True})
+    return model.objects.all()
+
+
+def _qs_picker(lookup_name, model, search_fields=("nazwa", "skrot")):
+    """Config pickera ``<fk>__rel`` z querysetu modelu — icontains po
+    ``search_fields``, ograniczony limitem AutocompleteField. Używane zamiast
+    endpointów DAL, które bywają bramkowane grupą albo doklejają opcję „utwórz".
+    Niewidoczne pozycje są odfiltrowane (patrz :func:`_visible_qs`).
+    """
+    return {
+        "lookup_name": lookup_name,
+        "queryset": _visible_qs(model),
+        "search_fields": list(search_fields),
+    }
+
+
 class BppZapytanieSchema(ExtrasSchema):
     """ExtrasSchema z pickerami ``<fk>__rel`` obok trawersacji z kropką.
 
-    Notacja z kropką (``autorzy.autor.nazwisko``, ``tytul.skrot``) zostaje
-    domyślna dla FK. ``<fk>__rel`` to picker autocomplete: wybierasz konkretny
-    obiekt z podpowiedzi i filtruje po jego pk (``lookup_name`` wskazuje realny
-    FK), z fallbackiem free-text (icontains po ``search_fields``).
+    Kropka (``autorzy.autor.nazwisko``, ``tytul.skrot``, ``zrodlo.nazwa``)
+    zostaje domyślna dla każdego FK. ``<fk>__rel`` to picker: wybierasz obiekt
+    z podpowiedzi i filtruje po jego pk (``lookup_name`` = realny FK), z
+    fallbackiem free-text (icontains po ``search_fields``). ``autor`` i
+    ``jednostka`` używają czystych endpointów DAL; reszta — querysetów
+    (bramkowane / „create" endpointy DAL odpadają).
     """
 
     autocomplete = {
         Autorzy: {
-            "autor__rel": {
-                "lookup_name": "autor",
-                "url": "bpp:public-autor-autocomplete",
-                "search_fields": ["nazwisko", "imiona"],
-            },
-            "jednostka__rel": {
-                "lookup_name": "jednostka",
-                "url": "bpp:jednostka-autocomplete",
-                "search_fields": ["nazwa", "skrot"],
-            },
+            "autor__rel": _dal_picker(
+                "autor", "bpp:public-autor-autocomplete", ["nazwisko", "imiona"]
+            ),
+            "jednostka__rel": _dal_picker(
+                "jednostka", "bpp:jednostka-widoczna-autocomplete", ["nazwa", "skrot"]
+            ),
+            "dyscyplina_naukowa__rel": _qs_picker(
+                "dyscyplina_naukowa", Dyscyplina_Naukowa, ["nazwa", "kod"]
+            ),
+            "kierunek_studiow__rel": _qs_picker("kierunek_studiow", Kierunek_Studiow),
+            "typ_odpowiedzialnosci__rel": _qs_picker(
+                "typ_odpowiedzialnosci", Typ_Odpowiedzialnosci
+            ),
         },
         Autor: {
-            "tytul__rel": {
-                "lookup_name": "tytul",
-                "queryset": Tytul.objects.all(),
-                "search_fields": ["nazwa", "skrot"],
-            },
-            "aktualna_jednostka__rel": {
-                "lookup_name": "aktualna_jednostka",
-                "url": "bpp:jednostka-autocomplete",
-                "search_fields": ["nazwa", "skrot"],
-            },
+            "tytul__rel": _qs_picker("tytul", Tytul),
+            "aktualna_jednostka__rel": _dal_picker(
+                "aktualna_jednostka",
+                "bpp:jednostka-widoczna-autocomplete",
+                ["nazwa", "skrot"],
+            ),
         },
-    }
-
-    # Nazwy syntetyczne (nie ma ich w modelu) — bez tego nie zostaną
-    # zintrospektowane ani podpowiedziane.
-    _REL_FIELDS = {
-        Autorzy: ["autor__rel", "jednostka__rel"],
-        Autor: ["tytul__rel", "aktualna_jednostka__rel"],
+        Rekord: {
+            "zrodlo__rel": _qs_picker("zrodlo", Zrodlo),
+            "wydawca__rel": _qs_picker("wydawca", Wydawca, ["nazwa"]),
+            "konferencja__rel": _qs_picker("konferencja", Konferencja, ["nazwa"]),
+            "wydawnictwo_nadrzedne__rel": _qs_picker(
+                "wydawnictwo_nadrzedne", Wydawnictwo_Zwarte, ["tytul_oryginalny"]
+            ),
+            "charakter_formalny__rel": _qs_picker(
+                "charakter_formalny", Charakter_Formalny
+            ),
+            "typ_kbn__rel": _qs_picker("typ_kbn", Typ_KBN),
+            "jezyk__rel": _qs_picker("jezyk", Jezyk),
+            "status_korekty__rel": _qs_picker(
+                "status_korekty", Status_Korekty, ["nazwa"]
+            ),
+            "openaccess_wersja_tekstu__rel": _qs_picker(
+                "openaccess_wersja_tekstu", Wersja_Tekstu_OpenAccess
+            ),
+            "openaccess_licencja__rel": _qs_picker(
+                "openaccess_licencja", Licencja_OpenAccess
+            ),
+            "openaccess_czas_publikacji__rel": _qs_picker(
+                "openaccess_czas_publikacji", Czas_Udostepnienia_OpenAccess
+            ),
+        },
     }
 
     def get_fields(self, model):
+        # Picker `<fk>__rel` to nazwa syntetyczna (nie ma jej w modelu) — trzeba
+        # ją dorzucić do introspekcji, inaczej nie będzie zbudowana ani
+        # podpowiedziana. Klucze mapy `autocomplete` to dokładnie te nazwy.
         fields = list(super().get_fields(model))
-        fields += self._REL_FIELDS.get(model, [])
+        fields += list(self.autocomplete.get(model, {}).keys())
         return fields
 
 

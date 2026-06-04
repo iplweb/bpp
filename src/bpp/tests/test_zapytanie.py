@@ -231,7 +231,7 @@ def test_tytul_rel_picker_filters_by_pk():
 
     qs = apply_search(
         Autor.objects.all(),
-        'tytul__rel = "profesor [%d]"' % prof.pk,
+        f'tytul__rel = "profesor [{prof.pk}]"',
         schema=BppZapytanieSchema,
     )
     assert list(qs) == [a1]
@@ -268,7 +268,7 @@ def test_aktualna_jednostka_rel_picker_filters_by_pk():
 
     qs = apply_search(
         Autor.objects.all(),
-        'aktualna_jednostka__rel = "Katedra X [%d]"' % j.pk,
+        f'aktualna_jednostka__rel = "Katedra X [{j.pk}]"',
         schema=BppZapytanieSchema,
     )
     assert list(qs) == [a1]
@@ -319,14 +319,12 @@ def test_rekord_autorzy_autor_rel_filters_real_fk():
 def test_zapytanie_view_tytul_rel_picker(superuser_client):
     from bpp.models.autor import Tytul
 
-    prof, _ = Tytul.objects.get_or_create(
-        nazwa="profesor", defaults={"skrot": "prof."}
-    )
+    prof, _ = Tytul.objects.get_or_create(nazwa="profesor", defaults={"skrot": "prof."})
     baker.make("bpp.Autor", nazwisko="Kowalski", tytul=prof)
 
     response = superuser_client.get(
         reverse(URL),
-        {"model": "autor", "query": 'tytul__rel = "profesor [%d]"' % prof.pk},
+        {"model": "autor", "query": f'tytul__rel = "profesor [{prof.pk}]"'},
     )
     assert response.status_code == 200
     assert response.context["error"] is None
@@ -337,14 +335,12 @@ def test_zapytanie_view_tytul_rel_picker(superuser_client):
 def test_zapytanie_suggestions_tytul_rel_returns_options(superuser_client):
     from bpp.models.autor import Tytul
 
-    prof, _ = Tytul.objects.get_or_create(
-        nazwa="profesor", defaults={"skrot": "prof."}
-    )
+    prof, _ = Tytul.objects.get_or_create(nazwa="profesor", defaults={"skrot": "prof."})
     url = reverse("bpp:zapytanie_suggestions", kwargs={"model_key": "autor"})
     response = superuser_client.get(url, {"field": "tytul__rel", "search": "profesor"})
     assert response.status_code == 200
     items = response.json()["items"]
-    assert any("[%d]" % prof.pk in item for item in items)
+    assert any(f"[{prof.pk}]" in item for item in items)
 
 
 @pytest.mark.django_db
@@ -463,3 +459,74 @@ def test_zapytanie_breakdown_no_label_on_dead_or_branch(superuser_client):
     asdfo = next(leaf for leaf in leaves if "asdfo" in leaf["text"])
     assert asdfo["count"] == 0
     assert asdfo["label"] == "ten warunek nie pasuje do żadnego rekordu"
+
+
+@pytest.mark.django_db
+def test_rekord_zrodlo_rel_filters_real_fk():
+    from djangoql.queryset import apply_search
+
+    from bpp.models.cache import Rekord
+    from bpp.views.zapytanie import BppZapytanieSchema
+
+    qs = apply_search(
+        Rekord.objects.all(), 'zrodlo__rel = "X [1]"', schema=BppZapytanieSchema
+    )
+    sql = str(qs.query).lower()
+    assert "zrodlo__rel" not in sql  # remap na realny FK
+    assert "zrodlo_id" in sql
+
+
+@pytest.mark.django_db
+def test_rekord_and_autorzy_have_extended_pickers():
+    from bpp.models.cache import Autorzy, Rekord
+    from bpp.views.zapytanie import BppZapytanieSchema
+
+    schema = BppZapytanieSchema(Rekord)
+    rekord_fields = schema.models[schema.model_label(Rekord)]
+    for name in (
+        "zrodlo__rel",
+        "wydawca__rel",
+        "konferencja__rel",
+        "wydawnictwo_nadrzedne__rel",
+        "charakter_formalny__rel",
+        "jezyk__rel",
+        "typ_kbn__rel",
+        "status_korekty__rel",
+        "openaccess_licencja__rel",
+    ):
+        assert name in rekord_fields, name
+    assert rekord_fields["zrodlo"].type == "relation"  # trawersacja zachowana
+
+    autorzy_fields = schema.models[schema.model_label(Autorzy)]
+    for name in (
+        "dyscyplina_naukowa__rel",
+        "kierunek_studiow__rel",
+        "typ_odpowiedzialnosci__rel",
+    ):
+        assert name in autorzy_fields, name
+
+
+@pytest.mark.django_db
+def test_zapytanie_suggestions_zrodlo_rel(superuser_client):
+    from bpp.models import Zrodlo
+
+    z = baker.make(Zrodlo, nazwa="Nature Reviews Cardiology")
+    url = reverse("bpp:zapytanie_suggestions", kwargs={"model_key": "rekord"})
+    response = superuser_client.get(url, {"field": "zrodlo__rel", "search": "Nature"})
+    assert response.status_code == 200
+    items = response.json()["items"]
+    assert any(f"[{z.pk}]" in item for item in items)
+
+
+@pytest.mark.django_db
+def test_picker_excludes_hidden_records(superuser_client):
+    from bpp.models import Jezyk
+
+    widoczny = baker.make(Jezyk, nazwa="ZZTESTwidoczny", widoczny=True)
+    ukryty = baker.make(Jezyk, nazwa="ZZTESTukryty", widoczny=False)
+    url = reverse("bpp:zapytanie_suggestions", kwargs={"model_key": "rekord"})
+    response = superuser_client.get(url, {"field": "jezyk__rel", "search": "ZZTEST"})
+    assert response.status_code == 200
+    items = response.json()["items"]
+    assert any(f"[{widoczny.pk}]" in item for item in items)
+    assert not any(f"[{ukryty.pk}]" in item for item in items)
