@@ -1,5 +1,9 @@
+import json
+
 from django.db.models import Sum
+from django.http import HttpResponseBadRequest, JsonResponse
 from django.views.decorators.cache import never_cache
+from django.views.generic import View
 from multiseek.logic import get_registry
 from multiseek.views import (
     MULTISEEK_SESSION_KEY_REMOVED,
@@ -8,6 +12,9 @@ from multiseek.views import (
 )
 
 from bpp.models import Uczelnia
+from bpp.multiseek_registry import registry as multiseek_registry
+from bpp.multiseek_registry.djangoql_export import multiseek_form_to_djangoql
+from bpp.views.zapytanie import WprowadzanieDanychOrSuperuserMixin
 
 PKT_WEWN = "pkt_wewn"
 PKT_WEWN_BEZ = "pkt_wewn_bez"
@@ -148,3 +155,29 @@ def bpp_remove_from_removed_by_hand(request, pk):
     pk = tuple(int(x) for x in pk.split("_"))
     _normalize_session_removed(request)
     return manually_add_or_remove(request, pk, add=False)
+
+
+class MultiseekToDjangoQLView(WprowadzanieDanychOrSuperuserMixin, View):
+    """Tlumaczy biezacy formularz Multiseek (POST 'json') na zapytanie
+    DjangoQL nad Rekord. Zwraca {query, warnings, editor_url}."""
+
+    http_method_names = ["post"]
+
+    def post(self, request, *args, **kwargs):
+        raw = request.POST.get("json")
+        if not raw:
+            return HttpResponseBadRequest("Brak parametru 'json'.")
+        try:
+            form_json = json.loads(raw)
+        except (ValueError, TypeError):
+            return HttpResponseBadRequest("Niepoprawny JSON formularza.")
+        if not isinstance(form_json, dict):
+            return HttpResponseBadRequest("Oczekiwano obiektu JSON.")
+        result = multiseek_form_to_djangoql(form_json, multiseek_registry)
+        return JsonResponse(
+            {
+                "query": result.query,
+                "warnings": result.warnings,
+                "editor_url": result.editor_url,
+            }
+        )
