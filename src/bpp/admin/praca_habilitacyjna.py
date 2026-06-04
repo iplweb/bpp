@@ -17,6 +17,7 @@ from bpp.models import (  # Publikacja_Habilitacyjna
     Wydawnictwo_Zwarte,
 )
 from bpp.models.praca_habilitacyjna import Publikacja_Habilitacyjna
+from dspace_api.admin_mixins import DSpaceLinkAdminMixin
 
 from .element_repozytorium import Element_RepozytoriumInline
 from .grant import Grant_RekorduInline
@@ -170,6 +171,7 @@ class Praca_HabilitacyjnaResource(resources.Wydawnictwo_ResourceBase):
 
 
 class Praca_HabilitacyjnaAdmin(
+    DSpaceLinkAdminMixin,
     ConstanceScoringFieldsMixin,
     EksportDanychZFormatowanieMixin,
     ExportActionsMixin,

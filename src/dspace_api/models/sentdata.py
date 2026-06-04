@@ -45,7 +45,13 @@ class SentToDSpaceManager(models.Manager):
             )
 
     def mark_as_successful(
-        self, rec, uczelnia, dspace_uuid=None, api_response_status="", bitstreams=None
+        self,
+        rec,
+        uczelnia,
+        dspace_uuid=None,
+        api_response_status="",
+        bitstreams=None,
+        dspace_handle=None,
     ):
         sd = self.get_for_rec(rec, uczelnia)
         sd.submitted_successfully = True
@@ -54,6 +60,8 @@ class SentToDSpaceManager(models.Manager):
         sd.exception = ""
         if bitstreams is not None:
             sd.bitstreams = bitstreams
+        if dspace_handle is not None:
+            sd.dspace_handle = dspace_handle
         sd.save()
 
     def mark_as_failed(
@@ -78,6 +86,14 @@ class SentToDSpace(models.Model):
     uczelnia = models.ForeignKey("bpp.Uczelnia", on_delete=models.CASCADE)
 
     dspace_uuid = models.UUIDField("UUID itemu w DSpace", null=True, blank=True)
+    dspace_handle = models.CharField(
+        "Handle itemu w DSpace",
+        max_length=255,
+        blank=True,
+        default="",
+        help_text="Trwały identyfikator (np. 11089/1234) — podstawa linku do "
+        "rekordu w repozytorium.",
+    )
     bitstreams = JSONField("Bitstreamy (element_id → uuid)", default=dict, blank=True)
     data_sent = JSONField("Wysłane dane")
     submitted_successfully = models.BooleanField(

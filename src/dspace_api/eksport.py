@@ -1,9 +1,12 @@
+import logging
 import traceback
 
 from dspace_api.adapters import adapter_for
 from dspace_api.client import DSpaceClient
 from dspace_api.models import Mapowanie_DSpace, SentToDSpace
 from dspace_api.selectors import jawne_pliki_rekordu, uczelnie_rekordu
+
+logger = logging.getLogger(__name__)
 
 
 def eksportuj_rekord(rec):
@@ -37,6 +40,21 @@ def _reconcile_bitstreams(client, item_uuid, aktualne, biezace):
         del biezace[el_id]
 
 
+def _backfill_handle(client, item_uuid, handle):
+    """Handle to dodatek (link do repozytorium), nie krytyczny element synchro.
+    Gdy go nie znamy (stary rekord / aktualizacja bez zapisanego handle),
+    próbujemy go doczytać — ale błąd nie może wywrócić wysyłki."""
+    if handle or not item_uuid:
+        return handle
+    try:
+        return client.fetch_handle(item_uuid) or ""
+    except Exception:
+        logger.warning(
+            "DSpace: nie udało się pobrać handle dla itemu %s", item_uuid, exc_info=True
+        )
+        return ""
+
+
 def _eksportuj_do_uczelni(rec, uczelnia):
     if not uczelnia.dspace_aktywny or not uczelnia.dspace_api_endpoint:
         return _wynik(uczelnia, "pominieto", "brak/nieaktywna konfiguracja DSpace")
@@ -68,9 +86,11 @@ def _eksportuj_do_uczelni(rec, uczelnia):
         sent = SentToDSpace.objects.get_for_rec(rec, uczelnia)
         istnieje_uuid = sent.dspace_uuid
         poprzednie = dict(sent.bitstreams)
+        poprzedni_handle = sent.dspace_handle
     except SentToDSpace.DoesNotExist:
         istnieje_uuid = None
         poprzednie = {}
+        poprzedni_handle = ""
 
     SentToDSpace.objects.create_or_update_before_upload(rec, uczelnia, dc)
 
@@ -81,12 +101,18 @@ def _eksportuj_do_uczelni(rec, uczelnia):
         if istnieje_uuid:
             client.patch_item(istnieje_uuid, dc)
             item_uuid, status = istnieje_uuid, "zaktualizowano"
+            handle = poprzedni_handle
         else:
-            item_uuid = client.create_item(mapowanie.collection_uuid, dc)
+            item_uuid, handle = client.create_item(mapowanie.collection_uuid, dc)
             status = "wyslano"
+        handle = _backfill_handle(client, item_uuid, handle)
         _reconcile_bitstreams(client, item_uuid, aktualne, biezace)
         SentToDSpace.objects.mark_as_successful(
-            rec, uczelnia, dspace_uuid=item_uuid, bitstreams=biezace
+            rec,
+            uczelnia,
+            dspace_uuid=item_uuid,
+            dspace_handle=handle,
+            bitstreams=biezace,
         )
         return _wynik(uczelnia, status)
     except Exception as e:

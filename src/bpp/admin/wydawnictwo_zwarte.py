@@ -34,6 +34,7 @@ from bpp.models.konferencja import Konferencja
 from bpp.models.seria_wydawnicza import Seria_Wydawnicza
 from crossref_bpp.mixins import AdminCrossrefAPIMixin, AdminCrossrefPBNAPIMixin
 from dspace_api.actions import wyslij_do_dspace, wyslij_do_dspace_w_tle
+from dspace_api.admin_mixins import DSpaceLinkAdminMixin
 from import_common.normalization import normalize_isbn
 from pbn_api.models import Publication
 
@@ -439,6 +440,7 @@ class Wydawnictwo_Zwarte_Zewnetrzna_Baza_DanychInline(admin.StackedInline):
 
 
 class Wydawnictwo_ZwarteAdmin(
+    DSpaceLinkAdminMixin,
     ConstanceScoringFieldsMixin,
     DjangoQLSearchMixin,
     KolumnyZeSkrotamiMixin,

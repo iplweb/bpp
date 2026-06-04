@@ -57,6 +57,21 @@ def test_bitstreams_zapis_i_odczyt():
 
 
 @pytest.mark.django_db
+def test_mark_as_successful_zapisuje_handle():
+    from dspace_api.models import SentToDSpace
+
+    rec = baker.make("bpp.Wydawnictwo_Ciagle")
+    uczelnia = baker.make("bpp.Uczelnia")
+    data = {"dc.title": [{"value": "T"}]}
+
+    SentToDSpace.objects.create_or_update_before_upload(rec, uczelnia, data)
+    SentToDSpace.objects.mark_as_successful(
+        rec, uczelnia, dspace_uuid=None, dspace_handle="11089/42"
+    )
+    assert SentToDSpace.objects.get_for_rec(rec, uczelnia).dspace_handle == "11089/42"
+
+
+@pytest.mark.django_db
 def test_check_if_upload_needed_wykrywa_zmiane_plikow():
     from dspace_api.models import SentToDSpace
 

@@ -1,3 +1,5 @@
+import functools
+
 from dspace_rest_client.client import DSpaceClient as RawDSpaceClient
 from dspace_rest_client.models import Item
 
@@ -29,7 +31,30 @@ class DSpaceClient:
     def create_item(self, collection_uuid, dc_dict):
         item = Item({"metadata": dc_dict, "inArchive": True})
         created = self._raw.create_item(parent=str(collection_uuid), item=item)
-        return getattr(created, "uuid", None)
+        return getattr(created, "uuid", None), getattr(created, "handle", "") or ""
+
+    def fetch_handle(self, item_uuid):
+        """Pobierz handle (trwały identyfikator) istniejącego itemu — używane
+        do backfillu rekordów wysłanych zanim zaczęliśmy zapisywać handle."""
+        item = self._raw.get_item(str(item_uuid))
+        return getattr(item, "handle", "") or ""
+
+    def fetch_collections(self, timeout=4):
+        """Zwróć listę kolekcji DSpace tej uczelni jako ``[{uuid, name}, ...]``.
+
+        Odpytuje API na żywo (bez cache). Każde żądanie HTTP ma narzucony
+        ``timeout`` (w sekundach), żeby formularz admina nie wisiał, gdy DSpace
+        jest nieosiągalny."""
+        session = getattr(self._raw, "session", None)
+        if session is not None:
+            # requests.Session nie ma timeoutu domyślnego — wstrzykujemy go
+            # jako wartość domyślną na owijce session.request.
+            session.request = functools.partial(session.request, timeout=timeout)
+        self.authenticate()
+        kolekcje = []
+        for c in self._raw.get_collections_iter():
+            kolekcje.append({"uuid": str(c.uuid), "name": c.name or str(c.uuid)})
+        return kolekcje
 
     def patch_item(self, item_uuid, dc_dict):
         item = Item({"uuid": str(item_uuid), "metadata": dc_dict, "inArchive": True})

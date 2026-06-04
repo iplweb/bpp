@@ -3,6 +3,7 @@ from django.contrib import admin
 from taggit.forms import TextareaTagWidget
 
 from bpp.models.patent import Patent, Patent_Autor
+from dspace_api.admin_mixins import DSpaceLinkAdminMixin
 
 from .core import generuj_inline_dla_autorow
 from .element_repozytorium import Element_RepozytoriumInline
@@ -81,6 +82,7 @@ class PatentResource(resources.Wydawnictwo_ResourceBase):
 
 
 class Patent_Admin(
+    DSpaceLinkAdminMixin,
     ConstanceScoringFieldsMixin,
     AdnotacjeZDatamiMixin,
     EksportDanychZFormatowanieMixin,

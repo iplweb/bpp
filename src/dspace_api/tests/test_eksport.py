@@ -41,7 +41,10 @@ def test_wachlarz_jedna_skonfigurowana_druga_nie(fernet_key):
 
     with mock.patch("dspace_api.eksport.DSpaceClient") as ClientCls:
         client = ClientCls.return_value
-        client.create_item.return_value = "77777777-7777-7777-7777-777777777777"
+        client.create_item.return_value = (
+            "77777777-7777-7777-7777-777777777777",
+            "11089/77",
+        )
 
         wyniki = eksportuj_rekord(rec)
 
@@ -104,7 +107,10 @@ def test_reconcile_usuwa_bitstream_skasowanego_pliku(fernet_key):
     # 1. pierwsza wysyłka — plik wgrany
     with mock.patch("dspace_api.eksport.DSpaceClient") as ClientCls:
         client = ClientCls.return_value
-        client.create_item.return_value = "11111111-1111-1111-1111-111111111111"
+        client.create_item.return_value = (
+            "11111111-1111-1111-1111-111111111111",
+            "11089/11",
+        )
         client.ensure_bundle.return_value = "bundle-1"
         client.create_bitstream.return_value = "bs-uuid-1"
         eksportuj_rekord(rec)
@@ -116,7 +122,10 @@ def test_reconcile_usuwa_bitstream_skasowanego_pliku(fernet_key):
     el.delete()
     with mock.patch("dspace_api.eksport.DSpaceClient") as ClientCls:
         client = ClientCls.return_value
-        client.create_item.return_value = "11111111-1111-1111-1111-111111111111"
+        client.create_item.return_value = (
+            "11111111-1111-1111-1111-111111111111",
+            "11089/11",
+        )
         wyniki = eksportuj_rekord(rec)  # noqa: F841
         client.delete_bitstream.assert_called_once_with("bs-uuid-1")
 
@@ -153,7 +162,10 @@ def test_reconcile_wgrywa_nowy_plik(fernet_key):
 
     with mock.patch("dspace_api.eksport.DSpaceClient") as ClientCls:
         client = ClientCls.return_value
-        client.create_item.return_value = "11111111-1111-1111-1111-111111111111"
+        client.create_item.return_value = (
+            "11111111-1111-1111-1111-111111111111",
+            "11089/11",
+        )
         client.ensure_bundle.return_value = "bundle-1"
         client.create_bitstream.return_value = "bs-uuid-9"
         eksportuj_rekord(rec)  # bez plików → brak bitstreamów
@@ -229,7 +241,10 @@ def test_reconcile_utrwala_mape_przy_czesciowej_awarii(fernet_key):
 
     with mock.patch("dspace_api.eksport.DSpaceClient") as ClientCls:
         client = ClientCls.return_value
-        client.create_item.return_value = "11111111-1111-1111-1111-111111111111"
+        client.create_item.return_value = (
+            "11111111-1111-1111-1111-111111111111",
+            "11089/11",
+        )
         client.ensure_bundle.return_value = "bundle-1"
         client.create_bitstream.side_effect = fake_create_bitstream
         wyniki = eksportuj_rekord(rec)
@@ -238,3 +253,88 @@ def test_reconcile_utrwala_mape_przy_czesciowej_awarii(fernet_key):
     sent = SentToDSpace.objects.get_for_rec(rec, u)
     # KLUCZOWE: 1. wgrany bitstream JEST w mapie (nie zgubiony)
     assert sent.bitstreams == {str(el1.pk): "bs-uuid-1"}
+
+
+@pytest.mark.django_db
+def test_handle_zapisany_przy_create(fernet_key):
+    """Przy pierwszej wysyłce handle z odpowiedzi create_item ląduje w bazie."""
+    from dspace_api.eksport import eksportuj_rekord
+    from dspace_api.models import Mapowanie_DSpace, SentToDSpace
+
+    u = baker.make("bpp.Uczelnia", dspace_aktywny=True)
+    u.dspace_api_endpoint = "https://repo/server/api"
+    u.save()
+    j = baker.make("bpp.Jednostka", uczelnia=u)
+    charakter = baker.make("bpp.Charakter_Formalny")
+    rec = baker.make(
+        "bpp.Wydawnictwo_Ciagle",
+        tytul_oryginalny="T",
+        rok=2024,
+        charakter_formalny=charakter,
+    )
+    baker.make("bpp.Wydawnictwo_Ciagle_Autor", rekord=rec, jednostka=j, kolejnosc=0)
+    Mapowanie_DSpace.objects.create(
+        uczelnia=u,
+        charakter_formalny=charakter,
+        collection_uuid="66666666-6666-6666-6666-666666666666",
+    )
+
+    with mock.patch("dspace_api.eksport.DSpaceClient") as ClientCls:
+        client = ClientCls.return_value
+        client.create_item.return_value = (
+            "11111111-1111-1111-1111-111111111111",
+            "11089/555",
+        )
+        eksportuj_rekord(rec)
+        client.fetch_handle.assert_not_called()  # handle przyszedł z create
+
+    assert SentToDSpace.objects.get_for_rec(rec, u).dspace_handle == "11089/555"
+
+
+@pytest.mark.django_db
+def test_handle_backfill_przy_aktualizacji_starego_rekordu(fernet_key):
+    """Rekord wysłany zanim zapisywaliśmy handle (puste) — przy aktualizacji
+    handle jest doczytywany przez fetch_handle."""
+    from dspace_api.eksport import eksportuj_rekord
+    from dspace_api.models import Mapowanie_DSpace, SentToDSpace
+
+    u = baker.make("bpp.Uczelnia", dspace_aktywny=True)
+    u.dspace_api_endpoint = "https://repo/server/api"
+    u.save()
+    j = baker.make("bpp.Jednostka", uczelnia=u)
+    charakter = baker.make("bpp.Charakter_Formalny")
+    rec = baker.make(
+        "bpp.Wydawnictwo_Ciagle",
+        tytul_oryginalny="T",
+        rok=2024,
+        charakter_formalny=charakter,
+    )
+    baker.make("bpp.Wydawnictwo_Ciagle_Autor", rekord=rec, jednostka=j, kolejnosc=0)
+    Mapowanie_DSpace.objects.create(
+        uczelnia=u,
+        charakter_formalny=charakter,
+        collection_uuid="66666666-6666-6666-6666-666666666666",
+    )
+    # symuluj "stary" rekord: wysłany, ma uuid, ale puste handle
+    SentToDSpace.objects.create_or_update_before_upload(rec, u, {"dc.title": []})
+    SentToDSpace.objects.mark_as_successful(
+        rec, u, dspace_uuid="11111111-1111-1111-1111-111111111111", dspace_handle=""
+    )
+
+    # zmiana danych → kolejna wysyłka pójdzie ścieżką update (patch_item)
+    rec.tytul_oryginalny = "T2"
+    rec.save()
+
+    with mock.patch("dspace_api.eksport.DSpaceClient") as ClientCls:
+        client = ClientCls.return_value
+        client.fetch_handle.return_value = "11089/backfilled"
+        eksportuj_rekord(rec)
+        client.create_item.assert_not_called()  # to aktualizacja, nie create
+        client.fetch_handle.assert_called_once()
+        # dspace_uuid to pole UUIDField → arg jest obiektem UUID, nie stringiem
+        assert (
+            str(client.fetch_handle.call_args[0][0])
+            == "11111111-1111-1111-1111-111111111111"
+        )
+
+    assert SentToDSpace.objects.get_for_rec(rec, u).dspace_handle == "11089/backfilled"

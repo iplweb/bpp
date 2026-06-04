@@ -8,6 +8,7 @@ from bpp.admin.helpers.widgets import (
     NIZSZE_TEXTFIELD_Z_MAPA_ZNAKOW,
 )
 from dspace_api.actions import wyslij_do_dspace, wyslij_do_dspace_w_tle
+from dspace_api.admin_mixins import DSpaceLinkAdminMixin
 
 from ..models import Autor, Jednostka, Praca_Doktorska
 from .actions import ustaw_po_korekcie, ustaw_przed_korekta, ustaw_w_trakcie_korekty
@@ -202,6 +203,7 @@ class Praca_DoktorskaResource(resources.Wydawnictwo_ResourceBase):
 
 
 class Praca_DoktorskaAdmin(
+    DSpaceLinkAdminMixin,
     ConstanceScoringFieldsMixin,
     EksportDanychZFormatowanieMixin,
     ExportActionsMixin,
