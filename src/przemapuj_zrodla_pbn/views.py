@@ -8,7 +8,7 @@ from django.db import models, transaction
 from django.db.models import Count, Q
 from django.shortcuts import get_object_or_404, redirect, render
 
-from bpp.models import Rekord, Rodzaj_Zrodla, Wydawnictwo_Ciagle, Zrodlo
+from bpp.models import Rekord, Rodzaj_Zrodla, Uczelnia, Wydawnictwo_Ciagle, Zrodlo
 from pbn_api.const import ACTIVE, DELETED
 from pbn_api.models import Journal
 from pbn_export_queue.models import PBN_Export_Queue
@@ -561,10 +561,15 @@ def przemapuj_zrodlo(request, zrodlo_id):  # noqa: C901
                         # Dodaj do kolejki PBN
                         sukces_pbn = 0
                         bledy_pbn = []
+                        # Rozwiąż uczelnię raz, poza pętlą (na multi-hosted
+                        # decyduje, do którego PBN-a wpis zostanie wysłany).
+                        uczelnia = Uczelnia.objects.get_for_request(request)
                         for original_rekord in rekordy_do_wyslania:
                             try:
                                 PBN_Export_Queue.objects.sprobuj_utowrzyc_wpis(
-                                    user=request.user, rekord=original_rekord
+                                    user=request.user,
+                                    rekord=original_rekord,
+                                    uczelnia=uczelnia,
                                 )
                                 sukces_pbn += 1
                             except Exception as e:
