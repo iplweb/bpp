@@ -14919,7 +14919,7 @@ COPY public.django_countdown_sitecountdown (id, countdown_time, message, long_de
 --
 
 COPY public.django_migrations (id, app, name, applied) FROM stdin;
-92	bpp	0025_auto_20150830_1740	2000-01-01 00:00:00+00
+89	bpp	0022_auto_20150825_2303	2000-01-01 00:00:00+00
 1	contenttypes	0001_initial	2000-01-01 00:00:00+00
 2	auth	0001_initial	2000-01-01 00:00:00+00
 3	bpp	0001_initial	2000-01-01 00:00:00+00
@@ -15008,9 +15008,9 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 86	bpp	0019_charakter_formalny_charakter_pbn	2000-01-01 00:00:00+00
 87	bpp	0020_auto_20150824_1609	2000-01-01 00:00:00+00
 88	bpp	0021_auto_20150825_2301	2000-01-01 00:00:00+00
-89	bpp	0022_auto_20150825_2303	2000-01-01 00:00:00+00
 90	bpp	0023_auto_20150830_1704	2000-01-01 00:00:00+00
 91	bpp	0024_auto_20150830_1705	2000-01-01 00:00:00+00
+92	bpp	0025_auto_20150830_1740	2000-01-01 00:00:00+00
 93	bpp	0026_auto_20150902_2102	2000-01-01 00:00:00+00
 94	bpp	0027_auto_20150921_2304	2000-01-01 00:00:00+00
 95	bpp	0028_openaccess	2000-01-01 00:00:00+00
@@ -15719,122 +15719,124 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 798	password_policies	0003_update_passwordprofile	2000-01-01 00:00:00+00
 799	pbn_api	0069_sentdata_api_url	2000-01-01 00:00:00+00
 800	pbn_api	0070_drop_unused_indexes	2000-01-01 00:00:00+00
-801	pbn_downloader_app	0001_initial	2000-01-01 00:00:00+00
-802	pbn_downloader_app	0002_pbninstitutionpeopletask	2000-01-01 00:00:00+00
-803	pbn_downloader_app	0003_pbnjournalsdownloadtask	2000-01-01 00:00:00+00
-804	pbn_downloader_app	0004_alter_error_message_fields	2000-01-01 00:00:00+00
-805	pbn_export_queue	0001_rename_table	2000-01-01 00:00:00+00
-806	pbn_export_queue	0002_initial	2000-01-01 00:00:00+00
-807	pbn_export_queue	0003_add_rodzaj_bledu	2000-01-01 00:00:00+00
-808	pbn_export_queue	0004_add_wykluczone_field	2000-01-01 00:00:00+00
-809	pbn_export_queue	0005_reclassify_old_validation_errors	2000-01-01 00:00:00+00
-810	pbn_export_queue	0006_reclassify_list_format_validation_errors	2000-01-01 00:00:00+00
-811	pbn_export_queue	0007_reclassify_doiorwwwmissing_errors	2000-01-01 00:00:00+00
-812	pbn_import	0001_initial	2000-01-01 00:00:00+00
-813	pbn_import	0002_add_task_id_field	2000-01-01 00:00:00+00
-814	pbn_import	0003_add_import_inconsistency	2000-01-01 00:00:00+00
-815	pbn_import	0004_add_bpp_publication_content_type	2000-01-01 00:00:00+00
-816	pbn_import	0005_remove_importstatistics	2000-01-01 00:00:00+00
-817	pbn_import	0006_remove_importstep	2000-01-01 00:00:00+00
-818	pbn_import	0007_add_last_updated_field	2000-01-01 00:00:00+00
-819	pbn_import	0008_add_importsession_indexes	2000-01-01 00:00:00+00
-820	pbn_import	0009_fix_error_fields_default	2000-01-01 00:00:00+00
-821	pbn_import	0010_alter_importinconsistency_inconsistency_type	2000-01-01 00:00:00+00
-822	pbn_komparator_zrodel	0001_initial	2000-01-01 00:00:00+00
-823	pbn_komparator_zrodel	0002_add_brakujaca_dyscyplina_pbn	2000-01-01 00:00:00+00
-824	pbn_wysylka_oswiadczen	0001_initial	2000-01-01 00:00:00+00
-825	pbn_wysylka_oswiadczen	0002_add_tytul_field	2000-01-01 00:00:00+00
-826	pbn_wysylka_oswiadczen	0003_add_synchronized_count	2000-01-01 00:00:00+00
-827	powiazania_autorow	0001_initial	2000-01-01 00:00:00+00
-828	powiazania_autorow	0002_alter_authorconnection_primary_author_and_more	2000-01-01 00:00:00+00
-829	powiazania_autorow	0003_backfill_powiazania_istniejace	2000-01-01 00:00:00+00
-830	przemapuj_prace_autora	0001_initial	2000-01-01 00:00:00+00
-831	przemapuj_prace_autora	0002_przemapoaniepracautora_prace_ciagle_historia_and_more	2000-01-01 00:00:00+00
-832	przemapuj_zrodla_pbn	0001_initial	2000-01-01 00:00:00+00
-833	przemapuj_zrodla_pbn	0002_przemapowaniezrodla_typ_operacji_and_more	2000-01-01 00:00:00+00
-834	przemapuj_zrodla_pbn	0003_alter_przemapowaniezrodla_zrodlo_nowe_and_more	2000-01-01 00:00:00+00
-835	przemapuj_zrodlo	0001_initial	2000-01-01 00:00:00+00
-836	raport_slotow	0001_initial	2000-01-01 00:00:00+00
-837	raport_slotow	0002_auto_20200316_2027	2000-01-01 00:00:00+00
-838	raport_slotow	0003_auto_20200329_1719	2000-01-01 00:00:00+00
-839	raport_slotow	0004_raportslotowuczelnia_raportslotowuczelniawiersz	2000-01-01 00:00:00+00
-840	raport_slotow	0005_auto_20210125_0256	2000-01-01 00:00:00+00
-841	raport_slotow	0006_auto_20210125_2330	2000-01-01 00:00:00+00
-842	raport_slotow	0007_auto_20210130_1407	2000-01-01 00:00:00+00
-843	raport_slotow	0008_auto_20210308_0839	2000-01-01 00:00:00+00
-844	raport_slotow	0009_auto_20210308_0846	2000-01-01 00:00:00+00
-845	raport_slotow	0010_auto_20210314_2204	2000-01-01 00:00:00+00
-846	raport_slotow	0011_auto_20210315_0141	2000-01-01 00:00:00+00
-847	raport_slotow	0012_django32	2000-01-01 00:00:00+00
-848	raport_slotow	0013_nullbooleanfield	2000-01-01 00:00:00+00
-849	raport_slotow	0014_alter_raportslotowuczelnia_do_roku	2000-01-01 00:00:00+00
-850	raport_slotow	0015_alter_raportslotowuczelnia_do_roku	2000-01-01 00:00:00+00
-851	raport_slotow	0016_alter_raportslotowuczelnia_do_roku	2000-01-01 00:00:00+00
-852	raport_slotow	0017_alter_raportslotowuczelnia_do_roku	2000-01-01 00:00:00+00
-853	raport_slotow	0018_alter_raportslotowuczelnia_do_roku	2000-01-01 00:00:00+00
-854	raport_slotow	0019_alter_raportslotowuczelnia_do_roku	2000-01-01 00:00:00+00
-855	reversion	0001_squashed_0004_auto_20160611_1202	2000-01-01 00:00:00+00
-856	reversion	0002_add_index_on_version_for_content_type_and_db	2000-01-01 00:00:00+00
-857	rozbieznosci_dyscyplin	0001_widok_rozbieznosci	2000-01-01 00:00:00+00
-858	rozbieznosci_dyscyplin	0002_rok_2017_i_wyzej	2000-01-01 00:00:00+00
-859	rozbieznosci_dyscyplin	0003_brakprzypisaniaview_rozbiezneprzypisaniaview_rozbieznosciview	2000-01-01 00:00:00+00
-860	rozbieznosci_dyscyplin	0004_recreate	2000-01-01 00:00:00+00
-861	rozbieznosci_dyscyplin	0005_recreate	2000-01-01 00:00:00+00
-862	rozbieznosci_dyscyplin	0006_recreate	2000-01-01 00:00:00+00
-863	rozbieznosci_dyscyplin	0007_recreate	2000-01-01 00:00:00+00
-864	rozbieznosci_dyscyplin	0008_recreate	2000-01-01 00:00:00+00
-865	rozbieznosci_dyscyplin	0009_recreate	2000-01-01 00:00:00+00
-866	rozbieznosci_dyscyplin	0010_recreate	2000-01-01 00:00:00+00
-867	rozbieznosci_dyscyplin	0011_null_is_wrong	2000-01-01 00:00:00+00
-868	rozbieznosci_dyscyplin	0012_rozbieznosci_dyscyplin_zrodel	2000-01-01 00:00:00+00
-869	rozbieznosci_dyscyplin	0013_rozbieznoscizrodelview	2000-01-01 00:00:00+00
-870	rozbieznosci_dyscyplin	0014_recreate	2000-01-01 00:00:00+00
-871	rozbieznosci_dyscyplin	0015_recreate	2000-01-01 00:00:00+00
-872	rozbieznosci_dyscyplin	0016_rozbieznosci_dyscyplin_zrodel_v2	2000-01-01 00:00:00+00
-873	rozbieznosci_dyscyplin	0017_add_punkty_kbn_and_charakter_formalny	2000-01-01 00:00:00+00
-874	rozbieznosci_dyscyplin	0018_recreate	2000-01-01 00:00:00+00
-875	rozbieznosci_dyscyplin	0019_recreate	2000-01-01 00:00:00+00
-876	rozbieznosci_dyscyplin	0020_recreate	2000-01-01 00:00:00+00
-877	rozbieznosci_dyscyplin	0021_alter_rozbieznosciview_options	2000-01-01 00:00:00+00
-878	rozbieznosci_if	0001_initial	2000-01-01 00:00:00+00
-879	rozbieznosci_if	0002_auto_20210323_0106	2000-01-01 00:00:00+00
-880	rozbieznosci_if	0003_auto_20210323_0109	2000-01-01 00:00:00+00
-881	rozbieznosci_if	0004_rozbieznosciiflog	2000-01-01 00:00:00+00
-882	rozbieznosci_pk	0001_initial	2000-01-01 00:00:00+00
-883	sessions	0001_initial	2000-01-01 00:00:00+00
-884	snapshot_odpiec	0001_initial	2000-01-01 00:00:00+00
-885	snapshot_odpiec	0002_alter_snapshotodpiec_owner	2000-01-01 00:00:00+00
-886	taggit	0006_rename_taggeditem_content_type_object_id_taggit_tagg_content_8fc721_idx	2000-01-01 00:00:00+00
-887	test_bpp	0001_initial	2000-01-01 00:00:00+00
-888	test_bpp	0002_testobjectthatdoesnotexist	2000-01-01 00:00:00+00
-889	test_bpp	0003_testreport	2000-01-01 00:00:00+00
-890	zglos_publikacje	0001_initial	2000-01-01 00:00:00+00
-891	zglos_publikacje	0002_auto_20220710_2331	2000-01-01 00:00:00+00
-892	zglos_publikacje	0003_auto_20220801_2045	2000-01-01 00:00:00+00
-893	zglos_publikacje	0004_auto_20220801_2128	2000-01-01 00:00:00+00
-894	zglos_publikacje	0005_auto_20220807_2329	2000-01-01 00:00:00+00
-895	zglos_publikacje	0006_auto_20220815_1752	2000-01-01 00:00:00+00
-896	zglos_publikacje	0007_auto_20220816_1019	2000-01-01 00:00:00+00
-897	zglos_publikacje	0008_auto_20220816_1255	2000-01-01 00:00:00+00
-898	zglos_publikacje	0009_alter_zgloszenie_publikacji_status	2000-01-01 00:00:00+00
-899	zglos_publikacje	0010_auto_20220818_0012	2000-01-01 00:00:00+00
-900	zglos_publikacje	0011_auto_20220910_1646	2000-01-01 00:00:00+00
-901	zglos_publikacje	0012_auto_20220910_1654	2000-01-01 00:00:00+00
-902	zglos_publikacje	0013_auto_20220910_2114	2000-01-01 00:00:00+00
-903	zglos_publikacje	0014_zgloszenie_publikacji_autor_kierunek_studiow	2000-01-01 00:00:00+00
-904	zglos_publikacje	0015_zgloszenie_publikacji_autor_oswiadczenie_ken	2000-01-01 00:00:00+00
-905	zglos_publikacje	0016_zgloszenie_publikacji_deleted_at_and_more	2000-01-01 00:00:00+00
-906	zglos_publikacje	0017_zgloszenie_publikacji_zgoda_na_publikacje_pelnego_tekstu	2000-01-01 00:00:00+00
-907	zglos_publikacje	0018_alter_zgloszenie_publikacji_rodzaj_zglaszanej_publikacji	2000-01-01 00:00:00+00
-908	zglos_publikacje	0019_zgloszenie_publikacji_autor_ostatnio_zmieniony	2000-01-01 00:00:00+00
-909	zglos_publikacje	0020_move_files_to_protected	2000-01-01 00:00:00+00
-910	zglos_publikacje	0021_fix_file_paths	2000-01-01 00:00:00+00
-911	zglos_publikacje	0022_uuid_filenames	2000-01-01 00:00:00+00
-912	zglos_publikacje	0023_nowy_formularz_zgloszenia	2000-01-01 00:00:00+00
-913	zglos_publikacje	0024_migracja_danych_nowy_formularz	2000-01-01 00:00:00+00
-914	denorm	0001_squashed_0012_alter_dirtyinstance_object_id	2000-01-01 00:00:00+00
-915	bpp	0165_cache_punktacja_autora_cache_punktacja_dyscypliny_squashed_0167_auto_20190707_2029	2000-01-01 00:00:00+00
-916	easyaudit	0004_auto_20170620_1354_squashed_0019_alter_crudevent_changed_fields_and_more	2000-01-01 00:00:00+00
+801	pbn_api	0071_alter_institution_addresspostalcode_and_more	2000-01-01 00:00:00+00
+802	pbn_api	0072_pbn_search_gin_indexes	2000-01-01 00:00:00+00
+803	pbn_downloader_app	0001_initial	2000-01-01 00:00:00+00
+804	pbn_downloader_app	0002_pbninstitutionpeopletask	2000-01-01 00:00:00+00
+805	pbn_downloader_app	0003_pbnjournalsdownloadtask	2000-01-01 00:00:00+00
+806	pbn_downloader_app	0004_alter_error_message_fields	2000-01-01 00:00:00+00
+807	pbn_export_queue	0001_rename_table	2000-01-01 00:00:00+00
+808	pbn_export_queue	0002_initial	2000-01-01 00:00:00+00
+809	pbn_export_queue	0003_add_rodzaj_bledu	2000-01-01 00:00:00+00
+810	pbn_export_queue	0004_add_wykluczone_field	2000-01-01 00:00:00+00
+811	pbn_export_queue	0005_reclassify_old_validation_errors	2000-01-01 00:00:00+00
+812	pbn_export_queue	0006_reclassify_list_format_validation_errors	2000-01-01 00:00:00+00
+813	pbn_export_queue	0007_reclassify_doiorwwwmissing_errors	2000-01-01 00:00:00+00
+814	pbn_import	0001_initial	2000-01-01 00:00:00+00
+815	pbn_import	0002_add_task_id_field	2000-01-01 00:00:00+00
+816	pbn_import	0003_add_import_inconsistency	2000-01-01 00:00:00+00
+817	pbn_import	0004_add_bpp_publication_content_type	2000-01-01 00:00:00+00
+818	pbn_import	0005_remove_importstatistics	2000-01-01 00:00:00+00
+819	pbn_import	0006_remove_importstep	2000-01-01 00:00:00+00
+820	pbn_import	0007_add_last_updated_field	2000-01-01 00:00:00+00
+821	pbn_import	0008_add_importsession_indexes	2000-01-01 00:00:00+00
+822	pbn_import	0009_fix_error_fields_default	2000-01-01 00:00:00+00
+823	pbn_import	0010_alter_importinconsistency_inconsistency_type	2000-01-01 00:00:00+00
+824	pbn_komparator_zrodel	0001_initial	2000-01-01 00:00:00+00
+825	pbn_komparator_zrodel	0002_add_brakujaca_dyscyplina_pbn	2000-01-01 00:00:00+00
+826	pbn_wysylka_oswiadczen	0001_initial	2000-01-01 00:00:00+00
+827	pbn_wysylka_oswiadczen	0002_add_tytul_field	2000-01-01 00:00:00+00
+828	pbn_wysylka_oswiadczen	0003_add_synchronized_count	2000-01-01 00:00:00+00
+829	powiazania_autorow	0001_initial	2000-01-01 00:00:00+00
+830	powiazania_autorow	0002_alter_authorconnection_primary_author_and_more	2000-01-01 00:00:00+00
+831	powiazania_autorow	0003_backfill_powiazania_istniejace	2000-01-01 00:00:00+00
+832	przemapuj_prace_autora	0001_initial	2000-01-01 00:00:00+00
+833	przemapuj_prace_autora	0002_przemapoaniepracautora_prace_ciagle_historia_and_more	2000-01-01 00:00:00+00
+834	przemapuj_zrodla_pbn	0001_initial	2000-01-01 00:00:00+00
+835	przemapuj_zrodla_pbn	0002_przemapowaniezrodla_typ_operacji_and_more	2000-01-01 00:00:00+00
+836	przemapuj_zrodla_pbn	0003_alter_przemapowaniezrodla_zrodlo_nowe_and_more	2000-01-01 00:00:00+00
+837	przemapuj_zrodlo	0001_initial	2000-01-01 00:00:00+00
+838	raport_slotow	0001_initial	2000-01-01 00:00:00+00
+839	raport_slotow	0002_auto_20200316_2027	2000-01-01 00:00:00+00
+840	raport_slotow	0003_auto_20200329_1719	2000-01-01 00:00:00+00
+841	raport_slotow	0004_raportslotowuczelnia_raportslotowuczelniawiersz	2000-01-01 00:00:00+00
+842	raport_slotow	0005_auto_20210125_0256	2000-01-01 00:00:00+00
+843	raport_slotow	0006_auto_20210125_2330	2000-01-01 00:00:00+00
+844	raport_slotow	0007_auto_20210130_1407	2000-01-01 00:00:00+00
+845	raport_slotow	0008_auto_20210308_0839	2000-01-01 00:00:00+00
+846	raport_slotow	0009_auto_20210308_0846	2000-01-01 00:00:00+00
+847	raport_slotow	0010_auto_20210314_2204	2000-01-01 00:00:00+00
+848	raport_slotow	0011_auto_20210315_0141	2000-01-01 00:00:00+00
+849	raport_slotow	0012_django32	2000-01-01 00:00:00+00
+850	raport_slotow	0013_nullbooleanfield	2000-01-01 00:00:00+00
+851	raport_slotow	0014_alter_raportslotowuczelnia_do_roku	2000-01-01 00:00:00+00
+852	raport_slotow	0015_alter_raportslotowuczelnia_do_roku	2000-01-01 00:00:00+00
+853	raport_slotow	0016_alter_raportslotowuczelnia_do_roku	2000-01-01 00:00:00+00
+854	raport_slotow	0017_alter_raportslotowuczelnia_do_roku	2000-01-01 00:00:00+00
+855	raport_slotow	0018_alter_raportslotowuczelnia_do_roku	2000-01-01 00:00:00+00
+856	raport_slotow	0019_alter_raportslotowuczelnia_do_roku	2000-01-01 00:00:00+00
+857	reversion	0001_squashed_0004_auto_20160611_1202	2000-01-01 00:00:00+00
+858	reversion	0002_add_index_on_version_for_content_type_and_db	2000-01-01 00:00:00+00
+859	rozbieznosci_dyscyplin	0001_widok_rozbieznosci	2000-01-01 00:00:00+00
+860	rozbieznosci_dyscyplin	0002_rok_2017_i_wyzej	2000-01-01 00:00:00+00
+861	rozbieznosci_dyscyplin	0003_brakprzypisaniaview_rozbiezneprzypisaniaview_rozbieznosciview	2000-01-01 00:00:00+00
+862	rozbieznosci_dyscyplin	0004_recreate	2000-01-01 00:00:00+00
+863	rozbieznosci_dyscyplin	0005_recreate	2000-01-01 00:00:00+00
+864	rozbieznosci_dyscyplin	0006_recreate	2000-01-01 00:00:00+00
+865	rozbieznosci_dyscyplin	0007_recreate	2000-01-01 00:00:00+00
+866	rozbieznosci_dyscyplin	0008_recreate	2000-01-01 00:00:00+00
+867	rozbieznosci_dyscyplin	0009_recreate	2000-01-01 00:00:00+00
+868	rozbieznosci_dyscyplin	0010_recreate	2000-01-01 00:00:00+00
+869	rozbieznosci_dyscyplin	0011_null_is_wrong	2000-01-01 00:00:00+00
+870	rozbieznosci_dyscyplin	0012_rozbieznosci_dyscyplin_zrodel	2000-01-01 00:00:00+00
+871	rozbieznosci_dyscyplin	0013_rozbieznoscizrodelview	2000-01-01 00:00:00+00
+872	rozbieznosci_dyscyplin	0014_recreate	2000-01-01 00:00:00+00
+873	rozbieznosci_dyscyplin	0015_recreate	2000-01-01 00:00:00+00
+874	rozbieznosci_dyscyplin	0016_rozbieznosci_dyscyplin_zrodel_v2	2000-01-01 00:00:00+00
+875	rozbieznosci_dyscyplin	0017_add_punkty_kbn_and_charakter_formalny	2000-01-01 00:00:00+00
+876	rozbieznosci_dyscyplin	0018_recreate	2000-01-01 00:00:00+00
+877	rozbieznosci_dyscyplin	0019_recreate	2000-01-01 00:00:00+00
+878	rozbieznosci_dyscyplin	0020_recreate	2000-01-01 00:00:00+00
+879	rozbieznosci_dyscyplin	0021_alter_rozbieznosciview_options	2000-01-01 00:00:00+00
+880	rozbieznosci_if	0001_initial	2000-01-01 00:00:00+00
+881	rozbieznosci_if	0002_auto_20210323_0106	2000-01-01 00:00:00+00
+882	rozbieznosci_if	0003_auto_20210323_0109	2000-01-01 00:00:00+00
+883	rozbieznosci_if	0004_rozbieznosciiflog	2000-01-01 00:00:00+00
+884	rozbieznosci_pk	0001_initial	2000-01-01 00:00:00+00
+885	sessions	0001_initial	2000-01-01 00:00:00+00
+886	snapshot_odpiec	0001_initial	2000-01-01 00:00:00+00
+887	snapshot_odpiec	0002_alter_snapshotodpiec_owner	2000-01-01 00:00:00+00
+888	taggit	0006_rename_taggeditem_content_type_object_id_taggit_tagg_content_8fc721_idx	2000-01-01 00:00:00+00
+889	test_bpp	0001_initial	2000-01-01 00:00:00+00
+890	test_bpp	0002_testobjectthatdoesnotexist	2000-01-01 00:00:00+00
+891	test_bpp	0003_testreport	2000-01-01 00:00:00+00
+892	zglos_publikacje	0001_initial	2000-01-01 00:00:00+00
+893	zglos_publikacje	0002_auto_20220710_2331	2000-01-01 00:00:00+00
+894	zglos_publikacje	0003_auto_20220801_2045	2000-01-01 00:00:00+00
+895	zglos_publikacje	0004_auto_20220801_2128	2000-01-01 00:00:00+00
+896	zglos_publikacje	0005_auto_20220807_2329	2000-01-01 00:00:00+00
+897	zglos_publikacje	0006_auto_20220815_1752	2000-01-01 00:00:00+00
+898	zglos_publikacje	0007_auto_20220816_1019	2000-01-01 00:00:00+00
+899	zglos_publikacje	0008_auto_20220816_1255	2000-01-01 00:00:00+00
+900	zglos_publikacje	0009_alter_zgloszenie_publikacji_status	2000-01-01 00:00:00+00
+901	zglos_publikacje	0010_auto_20220818_0012	2000-01-01 00:00:00+00
+902	zglos_publikacje	0011_auto_20220910_1646	2000-01-01 00:00:00+00
+903	zglos_publikacje	0012_auto_20220910_1654	2000-01-01 00:00:00+00
+904	zglos_publikacje	0013_auto_20220910_2114	2000-01-01 00:00:00+00
+905	zglos_publikacje	0014_zgloszenie_publikacji_autor_kierunek_studiow	2000-01-01 00:00:00+00
+906	zglos_publikacje	0015_zgloszenie_publikacji_autor_oswiadczenie_ken	2000-01-01 00:00:00+00
+907	zglos_publikacje	0016_zgloszenie_publikacji_deleted_at_and_more	2000-01-01 00:00:00+00
+908	zglos_publikacje	0017_zgloszenie_publikacji_zgoda_na_publikacje_pelnego_tekstu	2000-01-01 00:00:00+00
+909	zglos_publikacje	0018_alter_zgloszenie_publikacji_rodzaj_zglaszanej_publikacji	2000-01-01 00:00:00+00
+910	zglos_publikacje	0019_zgloszenie_publikacji_autor_ostatnio_zmieniony	2000-01-01 00:00:00+00
+911	zglos_publikacje	0020_move_files_to_protected	2000-01-01 00:00:00+00
+912	zglos_publikacje	0021_fix_file_paths	2000-01-01 00:00:00+00
+913	zglos_publikacje	0022_uuid_filenames	2000-01-01 00:00:00+00
+914	zglos_publikacje	0023_nowy_formularz_zgloszenia	2000-01-01 00:00:00+00
+915	zglos_publikacje	0024_migracja_danych_nowy_formularz	2000-01-01 00:00:00+00
+916	denorm	0001_squashed_0012_alter_dirtyinstance_object_id	2000-01-01 00:00:00+00
+917	bpp	0165_cache_punktacja_autora_cache_punktacja_dyscypliny_squashed_0167_auto_20190707_2029	2000-01-01 00:00:00+00
+918	easyaudit	0004_auto_20170620_1354_squashed_0019_alter_crudevent_changed_fields_and_more	2000-01-01 00:00:00+00
 \.
 
 
@@ -17572,7 +17574,7 @@ SELECT pg_catalog.setval('public.django_countdown_sitecountdown_id_seq', 1, fals
 -- Name: django_migrations_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
-SELECT pg_catalog.setval('public.django_migrations_id_seq', 916, true);
+SELECT pg_catalog.setval('public.django_migrations_id_seq', 918, true);
 
 
 --
@@ -26932,6 +26934,20 @@ CREATE INDEX pbn_api_discipline_parent_group_id_42baa890 ON public.pbn_api_disci
 
 
 --
+-- Name: pbn_api_institu_addresscity_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX pbn_api_institu_addresscity_idx ON public.pbn_api_institution USING gin (upper("addressCity") public.gin_trgm_ops);
+
+
+--
+-- Name: pbn_api_institu_name_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX pbn_api_institu_name_idx ON public.pbn_api_institution USING gin (upper(name) public.gin_trgm_ops);
+
+
+--
 -- Name: pbn_api_institution_addressCity_aa8236f3; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -26943,20 +26959,6 @@ CREATE INDEX "pbn_api_institution_addressCity_aa8236f3" ON public.pbn_api_instit
 --
 
 CREATE INDEX "pbn_api_institution_addressCity_aa8236f3_like" ON public.pbn_api_institution USING btree ("addressCity" text_pattern_ops);
-
-
---
--- Name: pbn_api_institution_addressPostalCode_ae69b87a; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX "pbn_api_institution_addressPostalCode_ae69b87a" ON public.pbn_api_institution USING btree ("addressPostalCode");
-
-
---
--- Name: pbn_api_institution_addressPostalCode_ae69b87a_like; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX "pbn_api_institution_addressPostalCode_ae69b87a_like" ON public.pbn_api_institution USING btree ("addressPostalCode" text_pattern_ops);
 
 
 --
@@ -26974,52 +26976,10 @@ CREATE INDEX "pbn_api_institution_addressStreetNumber_7d0b0bb8_like" ON public.p
 
 
 --
--- Name: pbn_api_institution_addressStreet_21c78dd2; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX "pbn_api_institution_addressStreet_21c78dd2" ON public.pbn_api_institution USING btree ("addressStreet");
-
-
---
--- Name: pbn_api_institution_addressStreet_21c78dd2_like; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX "pbn_api_institution_addressStreet_21c78dd2_like" ON public.pbn_api_institution USING btree ("addressStreet" text_pattern_ops);
-
-
---
 -- Name: pbn_api_institution_mongoId_2b186302_like; Type: INDEX; Schema: public; Owner: -
 --
 
 CREATE INDEX "pbn_api_institution_mongoId_2b186302_like" ON public.pbn_api_institution USING btree ("mongoId" varchar_pattern_ops);
-
-
---
--- Name: pbn_api_institution_name_1c989156; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX pbn_api_institution_name_1c989156 ON public.pbn_api_institution USING btree (name);
-
-
---
--- Name: pbn_api_institution_name_1c989156_like; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX pbn_api_institution_name_1c989156_like ON public.pbn_api_institution USING btree (name text_pattern_ops);
-
-
---
--- Name: pbn_api_institution_polonUid_3b78c1be; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX "pbn_api_institution_polonUid_3b78c1be" ON public.pbn_api_institution USING btree ("polonUid");
-
-
---
--- Name: pbn_api_institution_polonUid_3b78c1be_like; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX "pbn_api_institution_polonUid_3b78c1be_like" ON public.pbn_api_institution USING btree ("polonUid" text_pattern_ops);
 
 
 --
@@ -27177,24 +27137,17 @@ CREATE INDEX pbn_api_journal_verified_e2ca6918 ON public.pbn_api_journal USING b
 
 
 --
--- Name: pbn_api_journal_websiteLink_e2484d23; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX "pbn_api_journal_websiteLink_e2484d23" ON public.pbn_api_journal USING btree ("websiteLink");
-
-
---
--- Name: pbn_api_journal_websiteLink_e2484d23_like; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX "pbn_api_journal_websiteLink_e2484d23_like" ON public.pbn_api_journal USING btree ("websiteLink" text_pattern_ops);
-
-
---
 -- Name: pbn_api_journal_websitelink_idx; Type: INDEX; Schema: public; Owner: -
 --
 
 CREATE INDEX pbn_api_journal_websitelink_idx ON public.pbn_api_journal USING gin (upper("websiteLink") public.gin_trgm_ops);
+
+
+--
+-- Name: pbn_api_journal_websitelink_trgm; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX pbn_api_journal_websitelink_trgm ON public.pbn_api_journal USING gin (upper("websiteLink") public.gin_trgm_ops);
 
 
 --
@@ -27394,17 +27347,10 @@ CREATE INDEX pbn_api_pub_title_idx ON public.pbn_api_publication USING gin (uppe
 
 
 --
--- Name: pbn_api_publication_doi_a863278a; Type: INDEX; Schema: public; Owner: -
+-- Name: pbn_api_publication_doi_trgm; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX pbn_api_publication_doi_a863278a ON public.pbn_api_publication USING btree (doi);
-
-
---
--- Name: pbn_api_publication_doi_a863278a_like; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX pbn_api_publication_doi_a863278a_like ON public.pbn_api_publication USING btree (doi text_pattern_ops);
+CREATE INDEX pbn_api_publication_doi_trgm ON public.pbn_api_publication USING gin (upper(doi) public.gin_trgm_ops);
 
 
 --
@@ -27426,20 +27372,6 @@ CREATE INDEX pbn_api_publication_isbn_56b42069_like ON public.pbn_api_publicatio
 --
 
 CREATE INDEX "pbn_api_publication_mongoId_5a901c5d_like" ON public.pbn_api_publication USING btree ("mongoId" varchar_pattern_ops);
-
-
---
--- Name: pbn_api_publication_publicUri_d5a1e472; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX "pbn_api_publication_publicUri_d5a1e472" ON public.pbn_api_publication USING btree ("publicUri");
-
-
---
--- Name: pbn_api_publication_publicUri_d5a1e472_like; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX "pbn_api_publication_publicUri_d5a1e472_like" ON public.pbn_api_publication USING btree ("publicUri" text_pattern_ops);
 
 
 --
@@ -27468,6 +27400,13 @@ CREATE INDEX pbn_api_publication_title_7d556fb5 ON public.pbn_api_publication US
 --
 
 CREATE INDEX pbn_api_publication_title_7d556fb5_like ON public.pbn_api_publication USING btree (title text_pattern_ops);
+
+
+--
+-- Name: pbn_api_publication_title_trgm; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX pbn_api_publication_title_trgm ON public.pbn_api_publication USING gin (upper(title) public.gin_trgm_ops);
 
 
 --
@@ -27569,17 +27508,10 @@ CREATE INDEX "pbn_api_publisher_mongoId_0d94689a_like" ON public.pbn_api_publish
 
 
 --
--- Name: pbn_api_publisher_publisherName_f2fac865; Type: INDEX; Schema: public; Owner: -
+-- Name: pbn_api_publisher_publishername_trgm; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX "pbn_api_publisher_publisherName_f2fac865" ON public.pbn_api_publisher USING btree ("publisherName");
-
-
---
--- Name: pbn_api_publisher_publisherName_f2fac865_like; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX "pbn_api_publisher_publisherName_f2fac865_like" ON public.pbn_api_publisher USING btree ("publisherName" text_pattern_ops);
+CREATE INDEX pbn_api_publisher_publishername_trgm ON public.pbn_api_publisher USING gin (upper("publisherName") public.gin_trgm_ops);
 
 
 --
@@ -27671,48 +27603,6 @@ CREATE INDEX pbn_api_scienti_orcid_idx ON public.pbn_api_scientist USING gin (up
 --
 
 CREATE INDEX pbn_api_scientist_from_institution_api_eb500590 ON public.pbn_api_scientist USING btree (from_institution_api);
-
-
---
--- Name: pbn_api_scientist_lastName_660502e7; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX "pbn_api_scientist_lastName_660502e7" ON public.pbn_api_scientist USING btree ("lastName");
-
-
---
--- Name: pbn_api_scientist_lastName_660502e7_like; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX "pbn_api_scientist_lastName_660502e7_like" ON public.pbn_api_scientist USING btree ("lastName" text_pattern_ops);
-
-
---
--- Name: pbn_api_scientist_name_379251f8; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX pbn_api_scientist_name_379251f8 ON public.pbn_api_scientist USING btree (name);
-
-
---
--- Name: pbn_api_scientist_name_379251f8_like; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX pbn_api_scientist_name_379251f8_like ON public.pbn_api_scientist USING btree (name text_pattern_ops);
-
-
---
--- Name: pbn_api_scientist_orcid_aede67f9; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX pbn_api_scientist_orcid_aede67f9 ON public.pbn_api_scientist USING btree (orcid);
-
-
---
--- Name: pbn_api_scientist_orcid_aede67f9_like; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX pbn_api_scientist_orcid_aede67f9_like ON public.pbn_api_scientist USING btree (orcid text_pattern_ops);
 
 
 --

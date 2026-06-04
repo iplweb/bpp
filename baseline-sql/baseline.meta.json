@@ -1,5 +1,5 @@
 {
-  "git_sha": "99dda29cec95815e7f900c1e86f8dcc3f47726e6",
+  "git_sha": "c745d3eee97b8ddb869a6adfd9da7000641d6977",
   "last_migration": {
     "admin": "0003_logentry_add_action_flag_choices",
     "admin_dashboard": "0001_initial",
@@ -45,7 +45,7 @@
     "nowe_raporty": "0001_initial",
     "oswiadczenia": "0005_migrate_template_to_dbtemplate",
     "password_policies": "0003_update_passwordprofile",
-    "pbn_api": "0070_drop_unused_indexes",
+    "pbn_api": "0072_pbn_search_gin_indexes",
     "pbn_downloader_app": "0004_alter_error_message_fields",
     "pbn_export_queue": "0007_reclassify_doiorwwwmissing_errors",
     "pbn_import": "0010_alter_importinconsistency_inconsistency_type",
