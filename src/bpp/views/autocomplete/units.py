@@ -31,7 +31,9 @@ class WidocznaJednostkaAutocomplete(
     qset = Jednostka.objects.widoczne().select_related("wydzial")
 
 
-class PublicJednostkaAutocomplete(JednostkaAutocomplete):
-    """Public autocomplete for public organizational units."""
+class PublicJednostkaAutocomplete(
+    UczelniaScopedAutocompleteMixin, JednostkaAutocomplete
+):
+    """Public autocomplete for public organizational units (per-uczelnia, multi-hosted)."""
 
     qset = Jednostka.objects.publiczne().select_related("wydzial")

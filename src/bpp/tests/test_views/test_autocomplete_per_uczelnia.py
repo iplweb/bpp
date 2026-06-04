@@ -116,6 +116,30 @@ def test_admin_autocomplety_nie_sa_zawezone():
 
 
 @pytest.mark.django_db
+def test_public_jednostka_autocomplete_zawezony_do_uczelni(
+    uczelnia1, uczelnia2, site1, jednostka_uczelnia1, jednostka_uczelnia2, settings
+):
+    settings.ALLOWED_HOSTS = ["*"]
+    from bpp.views.autocomplete.units import PublicJednostkaAutocomplete
+
+    # PublicJednostkaAutocomplete używa Jednostka.objects.publiczne(), tj.
+    # widoczne().filter(aktualna=True) → filter(widoczna=True, aktualna=True).
+    # `aktualna` ma default=False, więc fixtury (Jednostka.objects.create bez
+    # tego pola) NIE są publiczne. Ustawiamy widoczna=True ORAZ aktualna=True na
+    # obu jednostkach, by test mierzył filtr per-uczelnia, a nie publiczność.
+    Jednostka.objects.filter(
+        pk__in=[jednostka_uczelnia1.pk, jednostka_uczelnia2.pk]
+    ).update(widoczna=True, aktualna=True)
+
+    view = PublicJednostkaAutocomplete()
+    view.request = make_request_for_site(site1)
+    view.q = ""
+    pks = set(view.get_queryset().values_list("pk", flat=True))
+    assert jednostka_uczelnia1.pk in pks
+    assert jednostka_uczelnia2.pk not in pks
+
+
+@pytest.mark.django_db
 def test_autocomplete_get_queryset_bez_requestu_nie_wywala(uczelnia1, uczelnia2):
     """Mixin toleruje brak self.request (no-op) — kontrakt defensywny bazy.
 
