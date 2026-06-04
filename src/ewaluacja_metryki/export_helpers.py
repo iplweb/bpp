@@ -8,8 +8,8 @@ def export_globalne_stats(ws, header_font, header_fill, header_alignment, base_q
     from .models import MetrykaAutora
 
     ws.title = "Statystyki globalne"
-    wszystkie = base_qs if base_qs is not None else MetrykaAutora.objects.all()
-    stats = wszystkie.aggregate(
+    base = base_qs if base_qs is not None else MetrykaAutora.objects.all()
+    stats = base.aggregate(
         liczba_wierszy=Count("id"),
         liczba_autorow=Count("autor", distinct=True),
         srednia_wykorzystania=Avg("procent_wykorzystania_slotow"),
@@ -375,36 +375,36 @@ def export_wykorzystanie(
     from .models import MetrykaAutora
 
     ws.title = "Rozkład wykorzystania slotów"
-    wszystkie = base_qs if base_qs is not None else MetrykaAutora.objects.all()
+    base = base_qs if base_qs is not None else MetrykaAutora.objects.all()
 
     headers = ["Przedział", "Liczba wierszy", "Procent"]
     write_headers(ws, headers, header_font, header_fill, header_alignment, thin_border)
 
-    total = wszystkie.count()
+    total = base.count()
     ranges = [
-        ("0-25%", wszystkie.filter(procent_wykorzystania_slotow__lt=25).count()),
+        ("0-25%", base.filter(procent_wykorzystania_slotow__lt=25).count()),
         (
             "25-50%",
-            wszystkie.filter(
+            base.filter(
                 procent_wykorzystania_slotow__gte=25,
                 procent_wykorzystania_slotow__lt=50,
             ).count(),
         ),
         (
             "50-75%",
-            wszystkie.filter(
+            base.filter(
                 procent_wykorzystania_slotow__gte=50,
                 procent_wykorzystania_slotow__lt=75,
             ).count(),
         ),
         (
             "75-99%",
-            wszystkie.filter(
+            base.filter(
                 procent_wykorzystania_slotow__gte=75,
                 procent_wykorzystania_slotow__lt=99,
             ).count(),
         ),
-        ("99-100%", wszystkie.filter(procent_wykorzystania_slotow__gte=99).count()),
+        ("99-100%", base.filter(procent_wykorzystania_slotow__gte=99).count()),
     ]
 
     for row_idx, (range_name, count) in enumerate(ranges, 2):

@@ -4,7 +4,6 @@ from django.utils.decorators import method_decorator
 from django.views import View
 
 from bpp.models import Jednostka, Wydzial
-from bpp.models.uczelnia import Uczelnia
 from ewaluacja_common.models import Rodzaj_Autora
 
 from ..models import MetrykaAutora
@@ -259,14 +258,23 @@ class ExportListaXLSX(View):
     def _determine_visible_columns(self, request):
         """Determine which columns should be visible in export."""
         from bpp.models import Dyscyplina_Naukowa
+        from raport_slotow.uczelnia_helper import uczelnia_dla_odczytu
 
-        uczelnia = Uczelnia.objects.get_for_request(request)
+        from ..models import MetrykaAutora
+        from ..uczelnia_scope import scope_metryki
+
+        uczelnia = uczelnia_dla_odczytu(request)
         uzywa_wydzialow = uczelnia.uzywaj_wydzialow if uczelnia else False
 
-        wszystkie_dyscypliny = Dyscyplina_Naukowa.objects.filter(
-            metrykaautora__isnull=False
+        scoped_disc_ids = (
+            scope_metryki(MetrykaAutora.objects.all(), uczelnia)
+            .values_list("dyscyplina_naukowa_id", flat=True)
+            .distinct()
+        )
+        dyscypliny = Dyscyplina_Naukowa.objects.filter(
+            pk__in=scoped_disc_ids
         ).distinct()
-        tylko_jedna_dyscyplina = wszystkie_dyscypliny.count() == 1
+        tylko_jedna_dyscyplina = dyscypliny.count() == 1
 
         return {
             "uzywa_wydzialow": uzywa_wydzialow,
