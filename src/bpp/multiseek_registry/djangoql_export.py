@@ -8,10 +8,16 @@ jest walidowany przeciw BppQLSchema(Rekord) — niepoprawne -> warning.
 """
 
 import logging
+from dataclasses import dataclass
+from dataclasses import field as dataclass_field
 from decimal import Decimal
+from urllib.parse import urlencode
 
+from django.urls import reverse
 from djangoql.parser import DjangoQLParser
 from multiseek.logic import (
+    AND,
+    ANDNOT,
     AUTOCOMPLETE,
     CONTAINS,
     DIFFERENT_ALL,
@@ -24,6 +30,7 @@ from multiseek.logic import (
     NOT_CONTAINS,
     NOT_IN_RANGE,
     NOT_STARTS_WITH,
+    OR,
     STARTS_WITH,
 )
 
@@ -176,3 +183,101 @@ def leaf_to_djangoql(registry, leaf):
     if frag is None:
         return None
     return frag if is_valid_rekord_djangoql(frag) else None
+
+
+@dataclass
+class ConversionResult:
+    query: str
+    warnings: list = dataclass_field(default_factory=list)
+
+    @property
+    def editor_url(self):
+        base = reverse("bpp:zapytanie")
+        if not self.query:
+            return f"{base}?{urlencode({'model': 'rekord'})}"
+        return f"{base}?{urlencode({'model': 'rekord', 'query': self.query})}"
+
+
+def _logical_keyword(prev_op):
+    """'and'/'or' dla operatora laczacego multiseek; None gdy nie AND/OR.
+
+    str() liczone per-call -> poprawne niezaleznie od aktywnej lokalizacji.
+    """
+    s = str(prev_op)
+    if s == str(AND):
+        return "and"
+    if s == str(OR):
+        return "or"
+    return None
+
+
+def _is_andnot(prev_op):
+    return prev_op is not None and str(prev_op) == str(ANDNOT)
+
+
+def _leaf_label(leaf):
+    return f"{leaf.get('field')} {leaf.get('operator')}".strip()
+
+
+def _join_parts(parts):
+    """parts: list[(joiner, fragment)]; joiner pierwszego ignorowany."""
+    if not parts:
+        return ""
+    out = parts[0][1]
+    for joiner, frag in parts[1:]:
+        out = f"{out} {joiner or 'and'} {frag}"
+    return out
+
+
+def _append_leaf(registry, leaf, parts, warnings):
+    prev_op = leaf.get("prev_op")
+    if _is_andnot(prev_op):
+        # Task 6 podniesie to do inwersji operatora; teraz skip+warning.
+        warnings.append(
+            f"Pominięto zanegowany warunek: {_leaf_label(leaf)} (andnot)"
+        )
+        return
+    frag = leaf_to_djangoql(registry, leaf)
+    if frag is None:
+        warnings.append(
+            f"Pominięto warunek: {_leaf_label(leaf)} (nieprzekładalny)"
+        )
+        return
+    parts.append((_logical_keyword(prev_op), frag))
+
+
+def _append_subframe(registry, subframe, parts, warnings):
+    prev_op = subframe[0] if subframe else None
+    if _is_andnot(prev_op):
+        warnings.append(
+            "Pominięto zanegowaną grupę warunków (DjangoQL nie ma `not(...)`)"
+        )
+        return
+    sub = _walk_frame(registry, subframe, warnings)
+    if not sub:
+        return
+    parts.append((_logical_keyword(prev_op), f"({sub})"))
+
+
+def _walk_frame(registry, frame, warnings):
+    """Zwraca fragment DjangoQL dla ramki (lub '' gdy nic przekladalnego).
+
+    frame[0] to operator ramki (lub None); frame[1:] to liscie/podramki.
+    """
+    parts = []
+    for idx, element in enumerate(frame):
+        if idx == 0:
+            continue
+        if isinstance(element, dict):
+            _append_leaf(registry, element, parts, warnings)
+        elif isinstance(element, list):
+            _append_subframe(registry, element, parts, warnings)
+    return _join_parts(parts)
+
+
+def multiseek_form_to_djangoql(form_json, registry):
+    """Glowne API: dict z 'form_data' -> ConversionResult(query, warnings)."""
+    warnings = []
+    form_data = form_json.get("form_data") or [None]
+    query = _walk_frame(registry, form_data, warnings)
+    return ConversionResult(query=query, warnings=warnings)

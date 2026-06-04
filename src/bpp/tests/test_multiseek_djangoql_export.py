@@ -1,5 +1,6 @@
 import pytest
 from multiseek.logic import (
+    AND,
     CONTAINS,
     DIFFERENT,
     EQUAL,
@@ -10,6 +11,7 @@ from multiseek.logic import (
 from bpp.multiseek_registry import registry
 from bpp.multiseek_registry.djangoql_export import (
     leaf_to_djangoql,
+    multiseek_form_to_djangoql,
     render_value,
     scalar_operator_to_djangoql,
 )
@@ -91,3 +93,65 @@ def test_is_valid_rekord_djangoql_rejects_unknown_field():
     from bpp.multiseek_registry.djangoql_export import is_valid_rekord_djangoql
 
     assert is_valid_rekord_djangoql('totalnie_nie_ma_takiego_pola = "x"') is False
+
+
+@pytest.mark.django_db
+def test_two_conditions_and():
+    form = {
+        "form_data": [
+            None,
+            {
+                "field": "Tytuł pracy",
+                "operator": str(CONTAINS),
+                "value": "covid",
+                "prev_op": None,
+            },
+            {
+                "field": "Rok",
+                "operator": str(EQUAL),
+                "value": 2023,
+                "prev_op": str(AND),
+            },
+        ],
+        "ordering": {},
+        "report_type": "0",
+    }
+    res = multiseek_form_to_djangoql(form, registry)
+    assert res.query == 'tytul_oryginalny ~ "covid" and rok = 2023'
+    assert res.warnings == []
+
+
+@pytest.mark.django_db
+def test_untranslatable_condition_warns_and_skips():
+    form = {
+        "form_data": [
+            None,
+            {
+                "field": "Rok",
+                "operator": str(EQUAL),
+                "value": 2023,
+                "prev_op": None,
+            },
+            {
+                "field": "Nie ma pola",
+                "operator": str(EQUAL),
+                "value": "x",
+                "prev_op": str(AND),
+            },
+        ],
+        "ordering": {},
+        "report_type": "0",
+    }
+    res = multiseek_form_to_djangoql(form, registry)
+    assert res.query == "rok = 2023"
+    assert len(res.warnings) == 1
+    assert "Nie ma pola" in res.warnings[0]
+
+
+@pytest.mark.django_db
+def test_empty_form():
+    res = multiseek_form_to_djangoql(
+        {"form_data": [None], "ordering": {}}, registry
+    )
+    assert res.query == ""
+    assert res.warnings == []
