@@ -5,7 +5,6 @@ libldap2-dev
 libssl-dev
 libcairo2-dev
 python-dev-is-python3
-gettext
 curl
 gnupg
 git
