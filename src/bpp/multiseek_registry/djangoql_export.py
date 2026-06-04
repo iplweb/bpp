@@ -268,7 +268,7 @@ def _invert_fragment(frag):
     (ścieżka pola nie zawiera spacji), więc znaki operatorowe wewnątrz wartości
     (np. `~ "a = b"`) nie mylą parsera.
     """
-    if frag.startswith("(") or " and " in frag or " or " in frag:
+    if frag.startswith("("):
         return None
     try:
         lhs, rest = frag.split(" ", 1)

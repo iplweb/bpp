@@ -1,6 +1,7 @@
 import pytest
 from multiseek.logic import (
     AND,
+    ANDNOT,
     CONTAINS,
     DIFFERENT,
     EQUAL,
@@ -252,16 +253,26 @@ def test_nested_subframe_gets_parens():
     assert res.query == "rok = 2020 and (rok = 2021 or rok = 2022)"
 
 
-from multiseek.logic import ANDNOT  # noqa: E402
-
-
 @pytest.mark.django_db
 def test_andnot_leaf_inverts_operator():
-    form = {"form_data": [
-        None,
-        {"field": "Rok", "operator": str(EQUAL), "value": 2023, "prev_op": None},
-        {"field": "Tytuł pracy", "operator": str(CONTAINS), "value": "abc", "prev_op": str(ANDNOT)},
-    ], "ordering": {}}
+    form = {
+        "form_data": [
+            None,
+            {
+                "field": "Rok",
+                "operator": str(EQUAL),
+                "value": 2023,
+                "prev_op": None,
+            },
+            {
+                "field": "Tytuł pracy",
+                "operator": str(CONTAINS),
+                "value": "abc",
+                "prev_op": str(ANDNOT),
+            },
+        ],
+        "ordering": {},
+    }
     res = multiseek_form_to_djangoql(form, registry)
     assert res.query == 'rok = 2023 and tytul_oryginalny !~ "abc"'
     assert res.warnings == []
@@ -271,11 +282,49 @@ def test_andnot_leaf_inverts_operator():
 def test_andnot_value_with_operator_char_is_safe():
     # Wartość zawiera znak '='; inwersja musi działać na operatorze pola,
     # nie na znaku wewnątrz wartości.
-    form = {"form_data": [
-        None,
-        {"field": "Rok", "operator": str(EQUAL), "value": 2023, "prev_op": None},
-        {"field": "Tytuł pracy", "operator": str(CONTAINS), "value": "a = b", "prev_op": str(ANDNOT)},
-    ], "ordering": {}}
+    form = {
+        "form_data": [
+            None,
+            {
+                "field": "Rok",
+                "operator": str(EQUAL),
+                "value": 2023,
+                "prev_op": None,
+            },
+            {
+                "field": "Tytuł pracy",
+                "operator": str(CONTAINS),
+                "value": "a = b",
+                "prev_op": str(ANDNOT),
+            },
+        ],
+        "ordering": {},
+    }
     res = multiseek_form_to_djangoql(form, registry)
     assert res.query == 'rok = 2023 and tytul_oryginalny !~ "a = b"'
+    assert res.warnings == []
+
+
+@pytest.mark.django_db
+def test_andnot_value_with_and_in_string_inverts_correctly():
+    form = {
+        "form_data": [
+            None,
+            {
+                "field": "Rok",
+                "operator": str(EQUAL),
+                "value": 2023,
+                "prev_op": None,
+            },
+            {
+                "field": "Tytuł pracy",
+                "operator": str(CONTAINS),
+                "value": "arms and legs",
+                "prev_op": str(ANDNOT),
+            },
+        ],
+        "ordering": {},
+    }
+    res = multiseek_form_to_djangoql(form, registry)
+    assert res.query == 'rok = 2023 and tytul_oryginalny !~ "arms and legs"'
     assert res.warnings == []
