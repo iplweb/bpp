@@ -250,3 +250,33 @@ def test_autor_discipline_count_scoped_per_uczelnia(
     assert metryki[0].uczelnia_id == uczelnia1.pk
     # discipline_count must reflect only u1 disciplines (1), not u1+u2 total (2)
     assert metryki[0].autor_discipline_count == 1
+
+
+@pytest.mark.django_db
+def test_export_globalne_stats_scoped(
+    autor_jan_kowalski, dyscyplina1, uczelnia1, uczelnia2
+):
+    from openpyxl import Workbook
+    from openpyxl.styles import Alignment, Font, PatternFill
+
+    from ewaluacja_metryki.export_helpers import export_globalne_stats
+    from ewaluacja_metryki.uczelnia_scope import scope_metryki
+
+    autor2 = baker.make("bpp.Autor")
+    _make_metryka(autor_jan_kowalski, dyscyplina1, uczelnia1)
+    _make_metryka(autor2, dyscyplina1, uczelnia2)
+
+    base = scope_metryki(MetrykaAutora.objects.all(), uczelnia1)
+    ws = Workbook().active
+    header_font = Font(bold=True)
+    header_fill = PatternFill(
+        start_color="366092", end_color="366092", fill_type="solid"
+    )
+    header_alignment = Alignment(horizontal="center")
+    export_globalne_stats(ws, header_font, header_fill, header_alignment, base_qs=base)
+    # "Liczba autorów" row value == 1 (tylko uczelnia1)
+    found = None
+    for row in ws.iter_rows(min_row=2, max_col=2, values_only=True):
+        if row[0] == "Liczba autorów":
+            found = row[1]
+    assert found == 1

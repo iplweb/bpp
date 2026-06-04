@@ -1,14 +1,14 @@
 """Helper functions for XLSX export views in ewaluacja_metryki."""
 
 
-def export_globalne_stats(ws, header_font, header_fill, header_alignment):
+def export_globalne_stats(ws, header_font, header_fill, header_alignment, base_qs=None):
     """Export global statistics table."""
     from django.db.models import Avg, Count, Sum
 
     from .models import MetrykaAutora
 
     ws.title = "Statystyki globalne"
-    wszystkie = MetrykaAutora.objects.all()
+    wszystkie = base_qs if base_qs is not None else MetrykaAutora.objects.all()
     stats = wszystkie.aggregate(
         liczba_wierszy=Count("id"),
         liczba_autorow=Count("autor", distinct=True),
@@ -119,14 +119,17 @@ def add_autofilter_and_freeze(ws, headers, last_data_row):
     ws.freeze_panes = ws["A2"]
 
 
-def export_top_autorzy(ws, header_font, header_fill, header_alignment, thin_border):
+def export_top_autorzy(
+    ws, header_font, header_fill, header_alignment, thin_border, base_qs=None
+):
     """Export top 20 authors by PKDaut/slot."""
     from .models import MetrykaAutora
 
     ws.title = "Top 20 autorów PKDaut-slot"
-    queryset = MetrykaAutora.objects.select_related(
-        "autor", "dyscyplina_naukowa", "jednostka"
-    ).order_by("-srednia_za_slot_nazbierana")[:20]
+    base = base_qs if base_qs is not None else MetrykaAutora.objects.all()
+    queryset = base.select_related("autor", "dyscyplina_naukowa", "jednostka").order_by(
+        "-srednia_za_slot_nazbierana"
+    )[:20]
 
     headers = get_author_metrics_headers()
     write_headers(ws, headers, header_font, header_fill, header_alignment, thin_border)
@@ -139,13 +142,16 @@ def export_top_autorzy(ws, header_font, header_fill, header_alignment, thin_bord
     add_autofilter_and_freeze(ws, headers, last_data_row)
 
 
-def export_top_sloty(ws, header_font, header_fill, header_alignment, thin_border):
+def export_top_sloty(
+    ws, header_font, header_fill, header_alignment, thin_border, base_qs=None
+):
     """Export top 20 authors by slots filled."""
     from .models import MetrykaAutora
 
     ws.title = "Top 20 autorów sloty wypełnione"
+    base = base_qs if base_qs is not None else MetrykaAutora.objects.all()
     queryset = (
-        MetrykaAutora.objects.select_related("autor", "dyscyplina_naukowa", "jednostka")
+        base.select_related("autor", "dyscyplina_naukowa", "jednostka")
         .filter(slot_nazbierany__gt=0)
         .order_by("-slot_nazbierany", "-srednia_za_slot_nazbierana")[:20]
     )
@@ -157,13 +163,16 @@ def export_top_sloty(ws, header_font, header_fill, header_alignment, thin_border
         write_author_metric_row(ws, row_idx, metryka, row_idx - 1)
 
 
-def export_bottom_pkd(ws, header_font, header_fill, header_alignment, thin_border):
+def export_bottom_pkd(
+    ws, header_font, header_fill, header_alignment, thin_border, base_qs=None
+):
     """Export bottom 20 authors by PKDaut/slot."""
     from .models import MetrykaAutora
 
     ws.title = "Najniższe 20 PKDaut-slot"
+    base = base_qs if base_qs is not None else MetrykaAutora.objects.all()
     queryset = (
-        MetrykaAutora.objects.select_related("autor", "dyscyplina_naukowa", "jednostka")
+        base.select_related("autor", "dyscyplina_naukowa", "jednostka")
         .filter(srednia_za_slot_nazbierana__gt=0)
         .order_by("srednia_za_slot_nazbierana")[:20]
     )
@@ -175,13 +184,16 @@ def export_bottom_pkd(ws, header_font, header_fill, header_alignment, thin_borde
         write_author_metric_row(ws, row_idx, metryka, row_idx - 1)
 
 
-def export_bottom_sloty(ws, header_font, header_fill, header_alignment, thin_border):
+def export_bottom_sloty(
+    ws, header_font, header_fill, header_alignment, thin_border, base_qs=None
+):
     """Export bottom 20 authors by slots filled."""
     from .models import MetrykaAutora
 
     ws.title = "Najniższe 20 sloty wypełnione"
+    base = base_qs if base_qs is not None else MetrykaAutora.objects.all()
     queryset = (
-        MetrykaAutora.objects.select_related("autor", "dyscyplina_naukowa", "jednostka")
+        base.select_related("autor", "dyscyplina_naukowa", "jednostka")
         .filter(slot_nazbierany__gt=0)
         .order_by("slot_nazbierany")[:20]
     )
@@ -193,7 +205,9 @@ def export_bottom_sloty(ws, header_font, header_fill, header_alignment, thin_bor
         write_author_metric_row(ws, row_idx, metryka, row_idx - 1)
 
 
-def export_zerowi(ws, header_font, header_fill, header_alignment, thin_border):
+def export_zerowi(
+    ws, header_font, header_fill, header_alignment, thin_border, base_qs=None
+):
     """Export authors with zero metrics.
 
     UWAGA: Eksportowane są tylko autorzy i lata, za które mieli
@@ -205,8 +219,9 @@ def export_zerowi(ws, header_font, header_fill, header_alignment, thin_border):
 
     ws.title = "Autorzy zerowi"
 
+    base = base_qs if base_qs is not None else MetrykaAutora.objects.all()
     queryset_raw = (
-        MetrykaAutora.objects.select_related("autor", "dyscyplina_naukowa", "jednostka")
+        base.select_related("autor", "dyscyplina_naukowa", "jednostka")
         .filter(srednia_za_slot_nazbierana=0)
         .order_by("autor__nazwisko", "autor__imiona")
     )
@@ -268,15 +283,18 @@ def export_zerowi(ws, header_font, header_fill, header_alignment, thin_border):
         lp += 1
 
 
-def export_jednostki(ws, header_font, header_fill, header_alignment, thin_border):
+def export_jednostki(
+    ws, header_font, header_fill, header_alignment, thin_border, base_qs=None
+):
     """Export unit statistics."""
     from django.db.models import Avg, Count, Sum
 
     from .models import MetrykaAutora
 
     ws.title = "Statystyki jednostek"
+    base = base_qs if base_qs is not None else MetrykaAutora.objects.all()
     stats = (
-        MetrykaAutora.objects.values("jednostka__nazwa", "jednostka__skrot")
+        base.values("jednostka__nazwa", "jednostka__skrot")
         .annotate(
             liczba_autorow=Count("id"),
             srednia_wykorzystania=Avg("procent_wykorzystania_slotow"),
@@ -308,17 +326,18 @@ def export_jednostki(ws, header_font, header_fill, header_alignment, thin_border
         ws.cell(row=row_idx, column=5, value=f"{stat['suma_punktow'] or 0:.0f}")
 
 
-def export_dyscypliny(ws, header_font, header_fill, header_alignment, thin_border):
+def export_dyscypliny(
+    ws, header_font, header_fill, header_alignment, thin_border, base_qs=None
+):
     """Export discipline statistics."""
     from django.db.models import Avg, Count, Sum
 
     from .models import MetrykaAutora
 
     ws.title = "Statystyki dyscyplin"
+    base = base_qs if base_qs is not None else MetrykaAutora.objects.all()
     stats = (
-        MetrykaAutora.objects.values(
-            "dyscyplina_naukowa__nazwa", "dyscyplina_naukowa__kod"
-        )
+        base.values("dyscyplina_naukowa__nazwa", "dyscyplina_naukowa__kod")
         .annotate(
             liczba_autorow=Count("id"),
             srednia_wykorzystania=Avg("procent_wykorzystania_slotow"),
@@ -349,12 +368,14 @@ def export_dyscypliny(ws, header_font, header_fill, header_alignment, thin_borde
         ws.cell(row=row_idx, column=6, value=f"{stat['suma_punktow'] or 0:.0f}")
 
 
-def export_wykorzystanie(ws, header_font, header_fill, header_alignment, thin_border):
+def export_wykorzystanie(
+    ws, header_font, header_fill, header_alignment, thin_border, base_qs=None
+):
     """Export slot utilization distribution."""
     from .models import MetrykaAutora
 
     ws.title = "Rozkład wykorzystania slotów"
-    wszystkie = MetrykaAutora.objects.all()
+    wszystkie = base_qs if base_qs is not None else MetrykaAutora.objects.all()
 
     headers = ["Przedział", "Liczba wierszy", "Procent"]
     write_headers(ws, headers, header_font, header_fill, header_alignment, thin_border)

@@ -60,6 +60,8 @@ class ExportStatystykiXLSX(View):
     def get(self, request, table_type):
         from django.http import HttpResponse
 
+        from raport_slotow.uczelnia_helper import uczelnia_dla_odczytu
+
         from ..export_helpers import (
             auto_adjust_column_widths,
             export_bottom_pkd,
@@ -72,6 +74,8 @@ class ExportStatystykiXLSX(View):
             export_wykorzystanie,
             export_zerowi,
         )
+        from ..models import MetrykaAutora
+        from ..uczelnia_scope import scope_metryki
 
         # Dispatch table to appropriate export handler
         table_handlers = {
@@ -93,12 +97,22 @@ class ExportStatystykiXLSX(View):
             self._setup_workbook_and_styles()
         )
 
+        uczelnia = uczelnia_dla_odczytu(request)
+        base_qs = scope_metryki(MetrykaAutora.objects.all(), uczelnia)
+
         # Call the appropriate handler
         handler = table_handlers[table_type]
         if table_type == "globalne":
-            handler(ws, header_font, header_fill, header_alignment)
+            handler(ws, header_font, header_fill, header_alignment, base_qs=base_qs)
         else:
-            handler(ws, header_font, header_fill, header_alignment, thin_border)
+            handler(
+                ws,
+                header_font,
+                header_fill,
+                header_alignment,
+                thin_border,
+                base_qs=base_qs,
+            )
 
         auto_adjust_column_widths(ws)
 
@@ -592,22 +606,34 @@ class ExportListaXLSX(View):
     def get(self, request):
         from django.db.models import Count, OuterRef, Subquery
 
+        from raport_slotow.uczelnia_helper import uczelnia_dla_odczytu
+
+        from ..uczelnia_scope import scope_metryki
+
         # Setup workbook and styles
         styles = self._setup_workbook_styles()
         ws = styles["ws"]
         wb = styles["wb"]
 
-        # Build queryset with discipline count annotation
+        uczelnia = uczelnia_dla_odczytu(request)
+
+        # Subquery to count disciplines for each author within their own uczelnia
         discipline_count = (
-            MetrykaAutora.objects.filter(autor=OuterRef("autor"))
+            MetrykaAutora.objects.filter(
+                autor=OuterRef("autor"),
+                uczelnia=OuterRef("uczelnia"),
+            )
             .values("autor")
             .annotate(count=Count("dyscyplina_naukowa"))
             .values("count")
         )
 
-        queryset = MetrykaAutora.objects.select_related(
-            "autor", "dyscyplina_naukowa", "jednostka", "jednostka__wydzial"
-        ).annotate(autor_discipline_count=Subquery(discipline_count))
+        queryset = scope_metryki(
+            MetrykaAutora.objects.select_related(
+                "autor", "dyscyplina_naukowa", "jednostka", "jednostka__wydzial"
+            ).annotate(autor_discipline_count=Subquery(discipline_count)),
+            uczelnia,
+        )
 
         # Apply filters and sorting
         queryset = self._apply_filters_to_queryset(queryset, request)
