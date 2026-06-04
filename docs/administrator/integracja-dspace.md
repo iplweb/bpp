@@ -7,7 +7,7 @@ i własne kolekcje — eksport jest więc konfigurowany per uczelnia.
 
 Ten rozdział opisuje konfigurację po stronie administratora. Codzienną
 wysyłkę rekordów przez redaktora opisuje rozdział
-[Eksportowanie do DSpace](../uzytkownik/eksportowanie-do-dspace.md).
+[Eksportowanie do DSpace](../redaktor/eksportowanie-do-dspace.md).
 
 ## Wymagania
 
@@ -31,7 +31,6 @@ i rozwiń sekcję **„DSpace"**. Ustaw:
 
 !!! note "Bezpieczeństwo hasła"
     Hasło API jest szyfrowane (Fernet) wspólnym kluczem instalacji.
-    Nie trafia do zrzutów słownikowych bazy (`baseline.sql`).
 
 ## 2. Mapowania kolekcji (Charakter formalny → kolekcja DSpace)
 

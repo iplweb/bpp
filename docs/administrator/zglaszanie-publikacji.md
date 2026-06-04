@@ -81,7 +81,7 @@ Moduł może zostać skonfigurowany tak, aby wymagać zalogowania się przez uż
 włączonej integracji z [LDAP (ActiveDirectory)](zaawansowane.md#konfiguracja-ldap-activedirectory) możemy wymagać od użytkowników zalogowania się na swoje konto w sieci
 intranet — nie trzeba każdemu zakładać loginu i hasła.
 
-W tym celu należy wejsć w [edycję danych uczelni](../uzytkownik/uczelnia.md) i zaznaczyć "Pokazuj opcję 'Zgłoś nową publikację'" jako
+W tym celu należy wejsć w [edycję danych uczelni](../redaktor/uczelnia.md) i zaznaczyć "Pokazuj opcję 'Zgłoś nową publikację'" jako
 "tylko dla zalogowanych".
 
 Jeżeli chcemy umożliwić dodawanie zgłoszeń publikacji osobom niezalogowanym należy powyższą opcję ustawić jako "zawsze".
@@ -95,7 +95,7 @@ Jeżeli chcemy w ogóle wyłączyć możliwość dodawania zgłoszeń publikacji
 W przypadku, gdy użytkownik w pierwszym formularzu przy zgłaszaniu publikacji wybierze "artykuł lub monografia",
 domyślnie zostanie zapytany w ostatnim formularzu o opłaty.
 
-Możemy wyłaczyć tą opcję i nie pytać o opłaty. W tym celu należy wejsć w [edycję danych uczelni](../uzytkownik/uczelnia.md)
+Możemy wyłaczyć tą opcję i nie pytać o opłaty. W tym celu należy wejsć w [edycję danych uczelni](../redaktor/uczelnia.md)
 i odnaleźc zakładkę "Zgłaszanie publikacji":
 
 ![image](../images/admin/zglos_publikacje/zglos_publikacje_7.png)

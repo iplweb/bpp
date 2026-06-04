@@ -18,7 +18,7 @@ rekordów przez redaktora.
    Wydawnictwa zwarte, Patenty, Prace doktorskie lub Prace
    habilitacyjne.
 2. Zaznacz rekordy do wysłania (checkboxy po lewej).
-3. Z listy akcji nad tabelą wybierz:
+3. Z listy akcji **na dole listy** (pasek akcji jest pod tabelą) wybierz:
    - **Wyślij do DSpace** — wysyłka od razu, z podsumowaniem na ekranie.
      Limit **10 rekordów** naraz.
    - **Wyślij do DSpace w tle** — wysyłka w tle (kolejka zadań), gdy
