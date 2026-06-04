@@ -30,3 +30,20 @@ def test_scalar_operator_mapping():
 
 def test_scalar_operator_unknown_returns_none():
     assert scalar_operator_to_djangoql("zupełnie nieznany") is None
+
+
+def test_scalar_operator_locale_robust():
+    from django.utils import translation
+
+    # Build/lookup under English first...
+    with translation.override("en"):
+        en_key = str(CONTAINS)
+        assert scalar_operator_to_djangoql(en_key) == "~"
+    # ...then Polish: must still resolve (no frozen-key poisoning).
+    with translation.override("pl"):
+        pl_key = str(CONTAINS)
+        assert scalar_operator_to_djangoql(pl_key) == "~"
+
+
+def test_render_value_escapes_backslash():
+    assert render_value(r"a\b") == r'"a\\b"'

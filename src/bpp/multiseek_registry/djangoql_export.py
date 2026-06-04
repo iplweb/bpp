@@ -46,27 +46,25 @@ def _build_scalar_op_map():
     return m
 
 
-_SCALAR_OP_MAP: dict | None = None
-_RANGE_OPS: frozenset | None = None
-
-
-def _get_scalar_op_map() -> dict:
-    global _SCALAR_OP_MAP
-    if _SCALAR_OP_MAP is None:
-        _SCALAR_OP_MAP = _build_scalar_op_map()
-    return _SCALAR_OP_MAP
-
-
-def _get_range_ops() -> frozenset:
-    global _RANGE_OPS
-    if _RANGE_OPS is None:
-        _RANGE_OPS = frozenset({str(IN_RANGE), str(NOT_IN_RANGE)})
-    return _RANGE_OPS
-
-
 def scalar_operator_to_djangoql(operator):
-    """DjangoQL-owy operator dla skalarnej operacji multiseek, lub None."""
-    return _get_scalar_op_map().get(str(operator))
+    """DjangoQL-owy operator dla skalarnej operacji multiseek, lub None.
+
+    Mapa jest budowana przy kazdym wywolaniu (tanio: ~20 wpisow), aby
+    str() na stałych lazy-gettext rozwiazal sie pod AKTYWNYM jezykiem
+    w momencie wywolania — identycznym z jezykiem formularza Multiseek.
+    Cache bylby bledny: pierwszy call mrozi jezyk-kluczy na caly czas
+    zycia procesu.
+    """
+    return _build_scalar_op_map().get(str(operator))
+
+
+def range_operators() -> frozenset:
+    """Zbior stringowych nazw operatorow zakresu pod aktywnym jezykiem.
+
+    Analogicznie do scalar_operator_to_djangoql — budowane per-call,
+    bez cache, aby lazy-gettext rozwiazalo sie pod biezacym jezykiem.
+    """
+    return frozenset({str(IN_RANGE), str(NOT_IN_RANGE)})
 
 
 def render_value(value):
