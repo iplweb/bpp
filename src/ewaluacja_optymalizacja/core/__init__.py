@@ -374,7 +374,8 @@ def solve_uczelnia(uczelnia_id: int | None = None, min_liczba_n: int = 12):
     Solve optimization for all disciplines in university with liczba_n >= min_liczba_n.
 
     Args:
-        uczelnia_id: University ID (if None, uses first available)
+        uczelnia_id: University ID (if None, uses the sole university;
+            raises if zero or multiple exist — multi-hosted fail-loud)
         min_liczba_n: Minimum liczba N threshold (default: 12)
 
     Yields:
