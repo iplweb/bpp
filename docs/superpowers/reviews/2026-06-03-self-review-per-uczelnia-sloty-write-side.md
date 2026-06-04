@@ -1,5 +1,15 @@
 # Self-review — per-uczelnia sloty (write-side)
 
+> **⚠️ SUPERSEDED (2026-06-04).** Ten self-review jest PRZETERMINOWANY — opisuje
+> stan na swoją datę. Jego otwarte MEDIUM/LOW zostały od tego czasu domknięte:
+> NOT NULL na `Cache_Punktacja_Dyscypliny.uczelnia` (commit `6c888f245`, mig
+> `0428`), indeks `(rekord_id, uczelnia, dyscyplina)` (mig `0427`), ekspozycja
+> `uczelnia` w widoku (mig `0426`), `wiele_hst`/HST per-uczelnia (`c687ceb07`).
+> Twierdzenia „NOT NULL niemożliwe" / „widok nie eksponuje uczelni" / „brak
+> indeksu" już NIE są prawdą. Aktualny przegląd całości: Audyt 4a w
+> `docs/superpowers/2026-06-03-audyty-multihosted-4x.md`. Trzymane jako zapis
+> historyczny.
+
 Data: 2026-06-03. Gałąź: `feature/multi-hosted-config`.
 Zakres: `git diff 58daf3e1c..HEAD` na `src/bpp/models/sloty/`,
 `src/bpp/models/cache/punktacja.py`, `src/bpp/models/abstract/disciplines.py`,

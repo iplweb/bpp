@@ -106,6 +106,16 @@ i zapytaniach grupujących per uczelnia. Decyzja usera: trzymać wyprowadzaną.
 
 ## Kalkulator slotów (`ISlot(publikacja, uczelnia=None)` — opcjonalna uczelnia)
 
+> **Korekta (2026-06-04, hardening #1 — commit `c687ceb07`):** reguła „wybór
+> progu/klasy `_dopasuj_kalkulator` jest niezależny od uczelni" została
+> ŚWIADOMIE ZREWIDOWANA dla `wiele_hst`. `_dopasuj_kalkulator(original,
+> uczelnia=None)` liczy `rodzaje_hst` z `wszystkie_dyscypliny_rekordu(uczelnia)`
+> ZAWĘŻONEGO per-uczelnia — bo mnożnik HST 1.5× to cecha per-dyscyplina/uczelnia,
+> a globalne `wiele_hst` psułoby liczby dla prac cross-uczelnia. `canAdapt()`
+> woła bez uczelni (globalny boolean adapt-check). Single-install: filtr no-op →
+> liczby identyczne. Patrz Audyt 4a. Reszta sekcji (poniżej) opisuje pierwotny
+> zamysł — selekcja progu poza HST nadal jest uczelnia-niezależna.
+
 Kalkulacje robi się przez `ISlot(publikacja)`; dla wygody przyjmuje opcjonalną
 `uczelnia`. Wybór progu/klasy (`_dopasuj_kalkulator`) jest niezależny od uczelni
 — od niej zależy tylko liczenie autorów (dzielnik). Split na uczelnie robi cacher

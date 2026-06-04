@@ -105,6 +105,13 @@ komenda → argument/`.get()`):
 queryset viewsetu sam nie listuje cudzych raportów → ograniczyć do uczelni
 żądającego (hybryda).
 
+> **Realizacja (2026-06-04, Audyt 4b):** viewset filtruje per-OWNER
+> (`request.user`), nie per-UCZELNIA. Bezpieczne — user nie zobaczy cudzego
+> raportu. Dla R1 przyjmujemy **ownership ≈ uczelnia** (świadoma decyzja). Edge
+> nieobsłużony: superuser z override `?uczelnia=` widzi przez API własne raporty
+> WSZYSTKICH uczelni naraz (mała populacja, akceptowalne dla R1). Pełny per-uczelnia
+> filtr API — ewentualny późniejszy follow-up.
+
 ## Data flow
 
 request → `uczelnia_dla_odczytu(request)` (site lub override superusera) →
