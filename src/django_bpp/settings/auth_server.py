@@ -22,6 +22,7 @@ from django_bpp.settings.production import (  # noqa: F401
     # User model
     AUTH_USER_MODEL,
     # Polityka django-axes — ta sama ochrona brute-force co w głównej apce
+    AXES_CLIENT_IP_CALLABLE,
     AXES_COOLOFF_TIME,
     AXES_FAILURE_LIMIT,
     AXES_LOCKOUT_PARAMETERS,

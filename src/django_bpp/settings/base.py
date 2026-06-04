@@ -1177,6 +1177,11 @@ AXES_LOCKOUT_PARAMETERS = [["username", "ip_address"]]  # ...na parę (login, IP
 AXES_COOLOFF_TIME = timedelta(minutes=30)  # auto-odblokowanie po 30 min
 AXES_RESET_ON_SUCCESS = True  # udane logowanie zeruje licznik nieudanych prób
 AXES_ENABLE_ADMIN = True  # podgląd/odblokowanie prób z panelu admina
+# IP klienta zza nginx: bierzemy OSTATNI wpis X-Forwarded-For (doklejony przez
+# nginx z $remote_addr = realny klient, niefalsyfikowalny). Bez tego axes użyłby
+# REMOTE_ADDR = IP nginxa i komponent (ip_address) lockoutu zlałby się do jednej
+# wartości dla wszystkich. Patrz django_bpp/client_ip.py.
+AXES_CLIENT_IP_CALLABLE = "django_bpp.client_ip.get_client_ip"
 # Handler bazodanowy (domyślny) działa jednolicie w dev/test/prod; cache handler
 # byłby no-op pod DummyCache (dev/test). Tabela AccessAttempt daje wgląd w adminie.
 #
