@@ -6,7 +6,11 @@ from multiseek.logic import DIFFERENT_FEMALE, EQUAL_FEMALE
 from bpp.djangoql_schema import BppQLSchema
 from bpp.models import Jednostka, Rekord
 from bpp.multiseek_registry import registry
-from bpp.multiseek_registry.fields.constants import EQUAL_PLUS_SUB_FEMALE, UNION_FEMALE
+from bpp.multiseek_registry.fields.constants import (
+    EQUAL_PLUS_SUB_FEMALE,
+    EQUAL_PLUS_SUB_UNION_FEMALE,
+    UNION_FEMALE,
+)
 
 pytestmark = pytest.mark.serial
 
@@ -43,12 +47,17 @@ def test_jednostka_union_is_untranslatable():
 
 
 @pytest.mark.django_db
+def test_jednostka_plus_subunits_union_is_untranslatable():
+    j = baker.make(Jednostka, nazwa="Klinika X")
+    field = registry.field_by_name["Jednostka"]
+    assert field.to_djangoql(j.pk, str(EQUAL_PLUS_SUB_UNION_FEMALE)) is None
+
+
+@pytest.mark.django_db
 def test_roundtrip_jednostka_plus_subunits_same_rekordy(
-    jednostka, jednostka_podrzedna, wydawnictwo_ciagle, autor_jan_kowalski
+    jednostka, jednostka_podrzedna, wydawnictwo_ciagle, autor_jan_kowalski, denorms
 ):
     """Multiseek Q vs skonwertowane DjangoQL daja ten sam zbior Rekord."""
-    from denorm import denorms
-
     # autor w PODRZEDNEJ jednostce; pytamy o NADRZEDNA z '+ podrzedne'
     wydawnictwo_ciagle.dodaj_autora(autor_jan_kowalski, jednostka_podrzedna)
     denorms.flush()
