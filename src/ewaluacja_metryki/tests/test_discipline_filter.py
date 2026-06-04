@@ -10,6 +10,11 @@ from ewaluacja_metryki.models import MetrykaAutora
 @pytest.mark.django_db
 def test_discipline_filter_hidden_when_only_one(admin_user, db):
     """Test that discipline filter is hidden when there's only one discipline"""
+    from bpp.models import Uczelnia as UczelniaModel
+
+    # Jedna uczelnia — scope_metryki jest no-op (tylko_jedna_uczelnia=True)
+    uczelnia = baker.make(UczelniaModel)
+
     # Create only one discipline with metrics
     dyscyplina = baker.make(Dyscyplina_Naukowa, nazwa="Test Discipline")
     autor = baker.make("bpp.Autor")
@@ -21,6 +26,7 @@ def test_discipline_filter_hidden_when_only_one(admin_user, db):
         autor=autor,
         dyscyplina_naukowa=dyscyplina,
         jednostka=jednostka,
+        uczelnia=uczelnia,
         slot_maksymalny=4.0,
         slot_nazbierany=2.0,
         punkty_nazbierane=100.0,
@@ -53,6 +59,11 @@ def test_discipline_filter_hidden_when_only_one(admin_user, db):
 @pytest.mark.django_db
 def test_discipline_filter_shown_when_multiple(admin_user, db):
     """Test that discipline filter is shown when there are multiple disciplines"""
+    from bpp.models import Uczelnia as UczelniaModel
+
+    # Jedna uczelnia — scope_metryki jest no-op (tylko_jedna_uczelnia=True)
+    uczelnia = baker.make(UczelniaModel)
+
     # Create multiple disciplines with metrics
     dyscyplina1 = baker.make(Dyscyplina_Naukowa, nazwa="Discipline 1")
     dyscyplina2 = baker.make(Dyscyplina_Naukowa, nazwa="Discipline 2")
@@ -65,6 +76,7 @@ def test_discipline_filter_shown_when_multiple(admin_user, db):
         autor=autor,
         dyscyplina_naukowa=dyscyplina1,
         jednostka=jednostka,
+        uczelnia=uczelnia,
         slot_maksymalny=4.0,
         slot_nazbierany=2.0,
         punkty_nazbierane=100.0,
@@ -76,6 +88,7 @@ def test_discipline_filter_shown_when_multiple(admin_user, db):
         autor=autor,
         dyscyplina_naukowa=dyscyplina2,
         jednostka=jednostka,
+        uczelnia=uczelnia,
         slot_maksymalny=4.0,
         slot_nazbierany=1.5,
         punkty_nazbierane=80.0,
@@ -109,6 +122,11 @@ def test_discipline_filter_shown_when_multiple(admin_user, db):
 @pytest.mark.django_db
 def test_column_sizing_with_one_discipline(admin_user, db):
     """Test that column sizing adjusts when discipline filter is hidden"""
+    from bpp.models import Uczelnia as UczelniaModel
+
+    # Jedna uczelnia — scope_metryki jest no-op (tylko_jedna_uczelnia=True)
+    uczelnia = baker.make(UczelniaModel)
+
     # Create only one discipline
     dyscyplina = baker.make(Dyscyplina_Naukowa, nazwa="Single Discipline")
     autor = baker.make("bpp.Autor")
@@ -119,6 +137,7 @@ def test_column_sizing_with_one_discipline(admin_user, db):
         autor=autor,
         dyscyplina_naukowa=dyscyplina,
         jednostka=jednostka,
+        uczelnia=uczelnia,
         slot_maksymalny=4.0,
         slot_nazbierany=2.0,
         punkty_nazbierane=100.0,

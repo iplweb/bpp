@@ -22,7 +22,12 @@ def test_metryki_list_view_requires_login(client):
 @pytest.mark.django_db
 def test_metryki_list_view_logged_in(admin_user, client):
     """Test widoku listy dla zalogowanego użytkownika"""
+    from bpp.models import Uczelnia as UczelniaModel
+
     client.force_login(admin_user)
+
+    # Jedna uczelnia — scope_metryki jest no-op (tylko_jedna_uczelnia=True)
+    uczelnia = baker.make(UczelniaModel)
 
     # Stwórz dane testowe
     autor = baker.make(Autor, nazwisko="Kowalski", imiona="Jan")
@@ -36,6 +41,7 @@ def test_metryki_list_view_logged_in(admin_user, client):
         autor=autor,
         dyscyplina_naukowa=dyscyplina,
         jednostka=jednostka,
+        uczelnia=uczelnia,
         slot_maksymalny=Decimal("4.0"),
         slot_nazbierany=Decimal("3.5"),
         punkty_nazbierane=Decimal("140.0"),
@@ -48,6 +54,7 @@ def test_metryki_list_view_logged_in(admin_user, client):
     baker.make(
         MetrykaAutora,
         dyscyplina_naukowa=dyscyplina2,
+        uczelnia=uczelnia,
         slot_maksymalny=Decimal("4.0"),
         slot_nazbierany=Decimal("3.0"),
         punkty_nazbierane=Decimal("120.0"),
@@ -186,7 +193,12 @@ def test_metryka_detail_view(admin_user, client):
 @pytest.mark.django_db
 def test_statystyki_view(admin_user, client):
     """Test widoku statystyk"""
+    from bpp.models import Uczelnia as UczelniaModel
+
     client.force_login(admin_user)
+
+    # Jedna uczelnia — scope_metryki jest no-op (tylko_jedna_uczelnia=True)
+    uczelnia = baker.make(UczelniaModel)
 
     # Stwórz dyscyplinę raz i użyj dla wszystkich metryk
     # (unika race condition z unikalnym polem kod w Dyscyplina_Naukowa)
@@ -197,6 +209,7 @@ def test_statystyki_view(admin_user, client):
         baker.make(
             MetrykaAutora,
             dyscyplina_naukowa=dyscyplina,
+            uczelnia=uczelnia,
             slot_maksymalny=Decimal("4.0"),
             slot_nazbierany=Decimal(f"{3.0 + i * 0.2}"),
             punkty_nazbierane=Decimal(f"{120.0 + i * 10}"),
@@ -366,11 +379,18 @@ def test_status_generowania_in_context(admin_user, client):
 @pytest.mark.django_db
 def test_metryki_list_view_sorting(admin_user, client):
     """Test sortowania listy metryk"""
+    from bpp.models import Uczelnia as UczelniaModel
+
     client.force_login(admin_user)
+
+    # Jedna uczelnia — scope_metryki jest no-op (tylko_jedna_uczelnia=True);
+    # obie metryki mają to samo uczelnia_id, więc view widzi obie.
+    uczelnia = baker.make(UczelniaModel)
 
     # Stwórz metryki z różnymi średnimi
     metryka1 = baker.make(
         MetrykaAutora,
+        uczelnia=uczelnia,
         slot_maksymalny=Decimal("4.0"),
         slot_nazbierany=Decimal("4.0"),
         punkty_nazbierane=Decimal("200.0"),  # średnia 50
@@ -380,6 +400,7 @@ def test_metryki_list_view_sorting(admin_user, client):
 
     metryka2 = baker.make(
         MetrykaAutora,
+        uczelnia=uczelnia,
         slot_maksymalny=Decimal("4.0"),
         slot_nazbierany=Decimal("4.0"),
         punkty_nazbierane=Decimal("120.0"),  # średnia 30

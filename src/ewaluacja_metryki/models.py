@@ -25,8 +25,6 @@ class MetrykaAutora(models.Model):
     uczelnia = models.ForeignKey(
         "bpp.Uczelnia",
         on_delete=models.CASCADE,
-        null=True,
-        blank=True,
         help_text="Uczelnia, dla której policzono metrykę (multi-hosted)",
     )
 
@@ -225,6 +223,11 @@ class StatusGenerowania(models.Model):
         help_text="ID zadania Celery",
     )
 
+    # Zostaje nullable: moduł ewaluacja_optymalizacja (poza zakresem federacji)
+    # używa StatusGenerowania.get_or_create() bez argumentu w 3 miejscach
+    # (views/unpinning_analysis.py:39,149, views/unpinning_list.py:137),
+    # co rozwiązuje się do wiersza uczelnia=None. Pełny per-uczelnia status
+    # należy do późniejszych prac federacyjnych.
     uczelnia = models.OneToOneField(
         "bpp.Uczelnia",
         on_delete=models.CASCADE,

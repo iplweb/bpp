@@ -14,11 +14,13 @@ def test_metryka_autora_create():
     autor = baker.make(Autor)
     dyscyplina = baker.make(Dyscyplina_Naukowa)
     jednostka = baker.make(Jednostka)
+    uczelnia = baker.make("bpp.Uczelnia")
 
     metryka = MetrykaAutora.objects.create(
         autor=autor,
         dyscyplina_naukowa=dyscyplina,
         jednostka=jednostka,
+        uczelnia=uczelnia,
         slot_maksymalny=Decimal("4.0"),
         slot_nazbierany=Decimal("3.5"),
         punkty_nazbierane=Decimal("140.0"),

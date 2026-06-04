@@ -21,8 +21,10 @@ from ewaluacja_metryki.utils import oblicz_metryki_dla_autora
 def test_procent_wykorzystania_slotow_updates_correctly(denorms, rodzaj_autora_n):
     """Test that slot utilization percentage is correctly calculated and updated"""
 
-    # Create test data
-    jednostka = baker.make(Jednostka, skupia_pracownikow=True)
+    # Create test data — jednostka musi należeć do uczelni,
+    # bo zbieraj_sloty filtruje Cache przez jednostka__uczelnia_id.
+    uczelnia = baker.make("bpp.Uczelnia")
+    jednostka = baker.make(Jednostka, skupia_pracownikow=True, uczelnia=uczelnia)
     autor = baker.make(Autor, nazwisko="TestAutor", imiona="Jan")
     dyscyplina = baker.make(Dyscyplina_Naukowa, nazwa="Informatyka")
 
@@ -35,11 +37,12 @@ def test_procent_wykorzystania_slotow_updates_correctly(denorms, rodzaj_autora_n
         rodzaj_autora=rodzaj_autora_n,
     )
 
-    # Set maximum slots for the author
+    # Set maximum slots for the author (per-uczelnia scope)
     baker.make(
         IloscUdzialowDlaAutoraZaCalosc,
         autor=autor,
         dyscyplina_naukowa=dyscyplina,
+        uczelnia=uczelnia,
         ilosc_udzialow=Decimal("4"),  # Maximum 4 slots
         ilosc_udzialow_monografie=Decimal("1"),  # Required field
     )
@@ -85,11 +88,11 @@ def test_procent_wykorzystania_slotow_updates_correctly(denorms, rodzaj_autora_n
         cacher.removeEntries()
         cacher.rebuildEntries()
 
-    # Calculate metrics (uczelnia=None — IloscUdzialow created without uczelnia)
+    # Calculate metrics — IloscUdzialow created with uczelnia (per-uczelnia scope)
     metryka, created = oblicz_metryki_dla_autora(
         autor=autor,
         dyscyplina=dyscyplina,
-        uczelnia=None,
+        uczelnia=uczelnia,
         rok_min=2022,
         rok_max=2025,
     )
@@ -108,7 +111,7 @@ def test_procent_wykorzystania_slotow_updates_correctly(denorms, rodzaj_autora_n
     metryka2, created = oblicz_metryki_dla_autora(
         autor=autor,
         dyscyplina=dyscyplina,
-        uczelnia=None,
+        uczelnia=uczelnia,
         rok_min=2022,
         rok_max=2025,
     )
@@ -134,6 +137,7 @@ def test_procent_wykorzystania_handles_zero_slot_maksymalny(rodzaj_autora_n):
     jednostka = baker.make(Jednostka, skupia_pracownikow=True)  # noqa
     autor = baker.make(Autor, nazwisko="ZeroSlot", imiona="Test")
     dyscyplina = baker.make(Dyscyplina_Naukowa, nazwa="Matematyka")
+    uczelnia = baker.make("bpp.Uczelnia")
 
     baker.make(
         Autor_Dyscyplina,
@@ -143,14 +147,14 @@ def test_procent_wykorzystania_handles_zero_slot_maksymalny(rodzaj_autora_n):
         rodzaj_autora=rodzaj_autora_n,
     )
 
-    # Don't create IloscUdzialowDlaAutoraZaCalosc - will default to 4
-    # But we'll test with slot_maksymalny=0 case
+    # Don't create IloscUdzialowDlaAutoraZaCalosc — test with slot_maksymalny=0
+    # (forced via explicit arg, bypasses DB lookup)
 
     # Calculate metrics with forced slot_maksymalny=0
     metryka, created = oblicz_metryki_dla_autora(
         autor=autor,
         dyscyplina=dyscyplina,
-        uczelnia=None,
+        uczelnia=uczelnia,
         rok_min=2022,
         rok_max=2025,
         slot_maksymalny=Decimal("0"),  # Force zero
@@ -165,7 +169,9 @@ def test_procent_wykorzystania_handles_zero_slot_maksymalny(rodzaj_autora_n):
 def test_averages_calculated_correctly(rodzaj_autora_n):
     """Test that average points per slot are calculated correctly"""
 
-    jednostka = baker.make(Jednostka, skupia_pracownikow=True)
+    # jednostka musi należeć do uczelni — zbieraj_sloty filtruje po uczelnia_id
+    uczelnia = baker.make("bpp.Uczelnia")
+    jednostka = baker.make(Jednostka, skupia_pracownikow=True, uczelnia=uczelnia)
     autor = baker.make(Autor, nazwisko="Average", imiona="Test")
     dyscyplina = baker.make(Dyscyplina_Naukowa, nazwa="Fizyka")
 
@@ -182,6 +188,7 @@ def test_averages_calculated_correctly(rodzaj_autora_n):
         IloscUdzialowDlaAutoraZaCalosc,
         autor=autor,
         dyscyplina_naukowa=dyscyplina,
+        uczelnia=uczelnia,
         ilosc_udzialow=Decimal("4"),
         ilosc_udzialow_monografie=Decimal("2"),
     )
@@ -215,11 +222,11 @@ def test_averages_calculated_correctly(rodzaj_autora_n):
     cacher.removeEntries()
     cacher.rebuildEntries()
 
-    # Calculate metrics (uczelnia=None — IloscUdzialow created without uczelnia)
+    # Calculate metrics — IloscUdzialow created with uczelnia (per-uczelnia scope)
     metryka, _ = oblicz_metryki_dla_autora(
         autor=autor,
         dyscyplina=dyscyplina,
-        uczelnia=None,
+        uczelnia=uczelnia,
         rok_min=2022,
         rok_max=2025,
     )
