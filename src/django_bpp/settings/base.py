@@ -317,6 +317,9 @@ MIDDLEWARE = [
     "bpp.middleware.NotificationsMiddleware",
     # 'rollbar.contrib.django.middleware.RollbarNotifierMiddleware',
     "bpp.middleware.CustomRollbarNotifierMiddleware",
+    # AxesMiddleware MUSI być ostatnie — przechwytuje AxesBackendPermissionDenied
+    # z backendu logowania i renderuje odpowiedź "konto zablokowane".
+    "axes.middleware.AxesMiddleware",
 ]
 
 INTERNAL_IPS = ("127.0.0.1",)
@@ -383,6 +386,7 @@ INSTALLED_APPS = [
     "import_pracownikow",
     "import_list_if",
     "password_policies",
+    "axes",  # Ochrona przed brute-force logowaniem (lockout po nieudanych próbach)
     "celery",
     "django_celery_results",
     "flexible_reports",
@@ -1154,6 +1158,34 @@ if "AUTHENTICATION_BACKENDS" not in dir():
 AUTHENTICATION_BACKENDS = list(AUTHENTICATION_BACKENDS) + [
     "orcid_integration.backends.OrcidAuthenticationBackend",
 ]
+
+#
+# django-axes — ochrona przed zgadywaniem hasła (brute-force / credential stuffing)
+#
+# AxesStandaloneBackend NIE uwierzytelnia sam — tylko sprawdza, czy dana próba
+# nie jest już zablokowana, i musi stać PIERWSZY na liście, żeby zawetować
+# zablokowane logowanie zanim trafi ono do LDAP / Microsoft / ORCID / Model.
+# (Używamy "Standalone", bo własne backendy zostają — w przeciwieństwie do
+# AxesBackend, który zastąpiłby uwierzytelnianie ModelBackendem.)
+AUTHENTICATION_BACKENDS = [
+    "axes.backends.AxesStandaloneBackend",
+] + list(AUTHENTICATION_BACKENDS)
+
+# Polityka lockoutu (PCI-DSS 8.3.4: ≤10 prób, blokada ≥30 min):
+AXES_FAILURE_LIMIT = 10  # 10 nieudanych prób...
+AXES_LOCKOUT_PARAMETERS = [["username", "ip_address"]]  # ...na parę (login, IP)
+AXES_COOLOFF_TIME = timedelta(minutes=30)  # auto-odblokowanie po 30 min
+AXES_RESET_ON_SUCCESS = True  # udane logowanie zeruje licznik nieudanych prób
+AXES_ENABLE_ADMIN = True  # podgląd/odblokowanie prób z panelu admina
+# Handler bazodanowy (domyślny) działa jednolicie w dev/test/prod; cache handler
+# byłby no-op pod DummyCache (dev/test). Tabela AccessAttempt daje wgląd w adminie.
+#
+# Blokujemy po KOMBINACJI (login + IP), nie po samym loginie — twardy lockout
+# konta jest wektorem DoS (atakujący celowo blokuje ofiarę złym hasłem; NIST
+# SP 800-63B przed tym ostrzega). Atakującemu z jednego IP wystarczy ~10 prób/30
+# min na konto — grubo poniżej pułapu NIST (100/h), a ofiara nie traci dostępu
+# globalnie.
+#
 
 #
 # Konfiguracja serwera pocztowego
