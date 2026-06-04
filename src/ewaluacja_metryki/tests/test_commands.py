@@ -12,6 +12,7 @@ from bpp.models import (
     Autor_Jednostka,
     Dyscyplina_Naukowa,
     Jednostka,
+    Uczelnia,
 )
 from ewaluacja_liczba_n.models import IloscUdzialowDlaAutoraZaCalosc
 from ewaluacja_metryki.models import MetrykaAutora
@@ -22,8 +23,6 @@ def test_oblicz_metryki_command_basic(rodzaj_autora_n):
     """Test podstawowego działania komendy oblicz_metryki"""
 
     # Stwórz dane testowe
-    from bpp.models import Uczelnia
-
     uczelnia = baker.make(Uczelnia)
     jednostka = baker.make(Jednostka, nazwa="Instytut")
     autor = baker.make(
@@ -103,8 +102,6 @@ def test_oblicz_metryki_command_basic(rodzaj_autora_n):
 @pytest.mark.django_db
 def test_oblicz_metryki_command_filters(rodzaj_autora_n):
     """Test filtrowania po autorze, dyscyplinie i jednostce"""
-    from bpp.models import Uczelnia
-
     uczelnia = baker.make(Uczelnia)
 
     # Stwórz jednostki najpierw
@@ -217,8 +214,6 @@ def test_oblicz_metryki_command_filters(rodzaj_autora_n):
 @pytest.mark.django_db
 def test_oblicz_metryki_command_error_handling(rodzaj_autora_n):
     """Test obsługi błędów w komendzie"""
-    from bpp.models import Uczelnia
-
     uczelnia = baker.make(Uczelnia)
     autor = baker.make(Autor, nazwisko="Błędny")
     dyscyplina = baker.make(Dyscyplina_Naukowa)
@@ -268,8 +263,6 @@ def test_oblicz_metryki_command_error_handling(rodzaj_autora_n):
 @pytest.mark.django_db
 def test_oblicz_metryki_command_parameters(rodzaj_autora_n):
     """Test parametrów rok_min, rok_max i minimalny_pk"""
-    from bpp.models import Uczelnia
-
     uczelnia = baker.make(Uczelnia)
     autor = baker.make(Autor)
     dyscyplina = baker.make(Dyscyplina_Naukowa)
@@ -339,8 +332,6 @@ def test_oblicz_metryki_command_rodzaj_autora_filter(
     rodzaj_autora_n, rodzaj_autora_b, rodzaj_autora_d, rodzaj_autora_z
 ):
     """Test filtrowania po rodzaju autora"""
-    from bpp.models import Uczelnia
-
     uczelnia = baker.make(Uczelnia)
 
     # Stwórz trzech autorów z różnymi rodzajami

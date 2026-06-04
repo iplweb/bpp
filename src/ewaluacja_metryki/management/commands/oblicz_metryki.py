@@ -78,7 +78,7 @@ class Command(BaseCommand):
         # jak i scoped delete wewnątrz generuj_metryki (nadpisz).
         # single-or-fail: .get() rzuca DoesNotExist lub MultipleObjectsReturned
         # gdy brak lub >1 uczelni bez --uczelnia-id — to zamierzone zachowanie.
-        uczelnia_id = options.get("uczelnia_id")
+        uczelnia_id = options["uczelnia_id"]
         uczelnia = (
             Uczelnia.objects.get(pk=uczelnia_id)
             if uczelnia_id

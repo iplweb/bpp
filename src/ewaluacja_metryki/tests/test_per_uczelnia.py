@@ -1,4 +1,5 @@
 from decimal import Decimal
+from unittest.mock import patch
 
 import pytest
 from model_bakery import baker
@@ -83,15 +84,25 @@ def test_oblicz_metryki_dla_autora_nie_sumuje_slotow_z_innej_uczelni(
 
 
 @pytest.mark.django_db
-def test_command_oblicz_metryki_scope_uczelnia(autor_jan_kowalski, dyscyplina1):
-    """Komenda oblicz_metryki z --uczelnia-id scope'uje delete i źródłowy QS."""
+def test_command_oblicz_metryki_scope_uczelnia(
+    autor_jan_kowalski, dyscyplina1, rodzaj_autora_n
+):
+    """Komenda oblicz_metryki z --uczelnia-id scope'uje delete i źródłowy QS.
+
+    Asercja pozytywna: komenda musi wygenerować metrykę dla u1.
+    Asercja negatywna: istniejąca metryka u2 (sprzed uruchomienia) musi
+    przeżyć (scoped --nadpisz nie wyciera obcej uczelni).
+    """
     from django.core.management import call_command
 
+    from bpp.models import Autor_Dyscyplina
     from ewaluacja_liczba_n.models import IloscUdzialowDlaAutoraZaCalosc
 
     u1 = baker.make("bpp.Uczelnia")
     u2 = baker.make("bpp.Uczelnia")
     _make_metryka(autor_jan_kowalski, dyscyplina1, u2)  # must survive
+
+    # IloscUdzialowDlaAutoraZaCalosc dla u1 — źródło slot_maksymalny
     IloscUdzialowDlaAutoraZaCalosc.objects.create(
         autor=autor_jan_kowalski,
         dyscyplina_naukowa=dyscyplina1,
@@ -100,15 +111,40 @@ def test_command_oblicz_metryki_scope_uczelnia(autor_jan_kowalski, dyscyplina1):
         ilosc_udzialow_monografie=Decimal("0"),
         uczelnia=u1,
     )
-    call_command(
-        "oblicz_metryki",
-        "--bez-liczby-n",
-        "--nadpisz",
-        "--uczelnia-id",
-        str(u1.pk),
-        "--rodzaje-autora",
-        " ",
+
+    # Autor_Dyscyplina wymagany przez _should_skip_author (rok w 2022-2025,
+    # rodzaj_autora.skrot == "N" pasujący do --rodzaje-autora N)
+    Autor_Dyscyplina.objects.create(
+        autor=autor_jan_kowalski,
+        rok=2022,
+        dyscyplina_naukowa=dyscyplina1,
+        wymiar_etatu=Decimal("1.0"),
+        procent_dyscypliny=Decimal("100.0"),
+        rodzaj_autora=rodzaj_autora_n,
     )
+
+    # Mockujemy _calculate_metrics_data — zbieraj_sloty potrzebuje cache
+    # który jest pusty w tym teście; interesuje nas tu tylko logika scope'owania.
+    with patch("ewaluacja_metryki.utils._calculate_metrics_data") as mock_calc:
+        mock_calc.return_value = {
+            "punkty_nazbierane": Decimal("100.0"),
+            "prace_nazbierane_ids": [],
+            "slot_nazbierany": Decimal("2.0"),
+            "punkty_wszystkie": Decimal("100.0"),
+            "prace_wszystkie_ids": [],
+            "slot_wszystkie": Decimal("2.0"),
+        }
+        call_command(
+            "oblicz_metryki",
+            "--bez-liczby-n",
+            "--nadpisz",
+            "--uczelnia-id",
+            str(u1.pk),
+            "--rodzaje-autora",
+            "N",
+        )
+
+    assert MetrykaAutora.objects.filter(uczelnia=u1).exists()  # u1 wygenerowana
     assert MetrykaAutora.objects.filter(uczelnia=u2).exists()  # u2 nietknięta
 
 
