@@ -2,6 +2,70 @@
 
 <!-- towncrier release notes start -->
 
+## bpp 202606.1378 (2026-06-04)
+
+### Naprawione
+
+- Wyszukiwarka zapytań DjangoQL (``/bpp/zapytanie/``) nie zwraca już
+  zduplikowanych wyników. Filtrowanie po relacji „do wielu" (np.
+  ``autorzy.autor.nazwisko ~ "Kowalski"``) tworzyło złączenie, które
+  powielało ten sam rekord raz na każdy pasujący wiersz powiązany —
+  przez co lista i licznik wyników były zawyżone. Wyniki są teraz
+  zwracane jako lista unikalnych obiektów.
+
+### Usprawnienie
+
+- Na stronie rekordu prace z bardzo długą listą autorów (powyżej 25)
+  domyślnie pokazują widok skrócony: pierwszych pięciu autorów, a po
+  wielokropku autorów z jednostek uczelni (z numerem ich pozycji na
+  liście, np. ``(264.)``). Przycisk „Pokaż wszystkich (N)" rozwija pełną
+  listę, a „Zwiń listę autorów" wraca do skróconej. Autorzy z naszej
+  uczelni są wyróżnieni także na pełnej liście. Pełna lista pozostaje w
+  treści strony, więc kopiowanie, wydruk i indeksowanie obejmują
+  wszystkich autorów.
+
+  Długi opis bibliograficzny jest dodatkowo zwijany do kilku linii z
+  przyciskiem „rozwiń" (pojawia się tylko gdy opis faktycznie się nie
+  mieści).
+- Usprawnienia integracji z DSpace w panelu redagowania:
+
+  - W mapowaniach DSpace pole „Uczelnia" jest teraz podstawiane domyślnie
+    (jedyna uczelnia w systemie, a przy wielu — uczelnia bieżącego
+    serwisu).
+  - Pole „UUID kolekcji DSpace" zamienia się w listę kolekcji pobieraną na
+    żywo z DSpace wybranej uczelni — nie trzeba już przepisywać UUID
+    ręcznie. Gdy DSpace jest nieosiągalny, pole wraca do ręcznego
+    wpisania identyfikatora.
+  - Dla rekordów wysłanych do repozytorium pojawia się link „zobacz
+    w repozytorium" — na stronie edycji rekordu, w dzienniku wysyłek oraz
+    na publicznej stronie szczegółów rekordu (karta „Linki zewnętrzne").
+- Widok „Szukaj zapytaniem": pola ``<fk>__rel`` z autocomplete (wybór autora,
+  jednostki, tytułu naukowego z podpowiedzi i filtrowanie po wybranym obiekcie),
+  obok dotychczasowej składni z kropką. Gdy zapytanie zwróci 0 rekordów, widok
+  pokazuje teraz rozbicie wyjaśniające, który warunek wyzerował wynik.
+- Wyszukiwarka DjangoQL w adminie (Źródło, Autor, Wydawca, Jednostka,
+  Autor-Dyscyplina, Wydawnictwo ciągłe/zwarte oraz nowo włączone Patent, Praca
+  doktorska i habilitacyjna) używa teraz wspólnego schematu ``BppQLSchema``:
+  pickery ``<fk>__rel`` z autocomplete wyboru obiektu (po widocznych pozycjach),
+  agregaty relacji, części dat oraz rozbicie „dlaczego 0 wyników". Publikacje są
+  opisywane/szukane przez opis bibliograficzny.
+- Wyszukiwarka zapytań DjangoQL (``/bpp/zapytanie/``) obsługuje teraz
+  agregaty relacji oraz części dat. W zapytaniu można odwołać się do
+  liczby powiązanych obiektów przez ``<relacja>__count`` (np.
+  ``autorzy__count > 5`` zwraca rekordy z więcej niż pięcioma autorami)
+  oraz do sum, średnich, minimów i maksimów pól liczbowych powiązanych
+  modeli przez ``<relacja>__<pole>__sum`` / ``__avg`` / ``__min`` /
+  ``__max``.
+
+  Pola dat i czasu można porównywać po wyodrębnionych częściach —
+  ``<pole>__year``, ``__month``, ``__day``, ``__quarter`` itd., a dla
+  pól ze znacznikiem czasu dodatkowo ``__hour``, ``__minute``,
+  ``__second``.
+
+  Nowe pola pojawiają się również w podpowiedziach (autouzupełnianiu)
+  edytora zapytań.
+
+
 ## bpp 202606.1377 (2026-06-02)
 
 ### Naprawione
