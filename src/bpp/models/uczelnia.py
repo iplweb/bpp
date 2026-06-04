@@ -398,9 +398,7 @@ class Uczelnia(ModelZAdnotacjami, ModelZPBN_ID, NazwaISkrot, NazwaWDopelniaczu):
     dspace_api_username = models.CharField(
         "Użytkownik API DSpace", max_length=255, blank=True, default=""
     )
-    dspace_api_password = EncryptedTextField(
-        "Hasło API DSpace", blank=True, default=""
-    )
+    dspace_api_password = EncryptedTextField("Hasło API DSpace", blank=True, default="")
     dspace_domyslny_jezyk_dc = models.CharField(
         "Domyślny język dc.language.iso",
         max_length=8,
