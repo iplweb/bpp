@@ -14,6 +14,17 @@ from .utils import generuj_metryki
 logger = logging.getLogger(__name__)
 
 
+def _resolve_uczelnia(uczelnia_id):
+    """Single-or-fail: jawne uczelnia_id albo jedyna uczelnia w bazie.
+
+    NIGDY get_default(). Rzuca Uczelnia.DoesNotExist / MultipleObjectsReturned,
+    które wołający task obsługuje czytelnym early-returnem.
+    """
+    if uczelnia_id:
+        return Uczelnia.objects.get(pk=uczelnia_id)
+    return Uczelnia.objects.get()
+
+
 @shared_task(
     bind=True,
     autoretry_for=(Exception,),
@@ -129,9 +140,7 @@ def finalizuj_generowanie_metryk(results, uczelnia_id=None):
     Returns:
         Dict z podsumowaniem: processed, skipped, errors, total
     """
-    uczelnia = (
-        Uczelnia.objects.get(pk=uczelnia_id) if uczelnia_id else Uczelnia.objects.get()
-    )
+    uczelnia = _resolve_uczelnia(uczelnia_id)
     status = StatusGenerowania.get_or_create(uczelnia=uczelnia)
 
     # Odśwież status z bazy danych aby pobrać aktualną wartość liczba_przetworzonych
@@ -210,9 +219,15 @@ def generuj_metryki_task_parallel(
 
         rodzaje_autora = get_default_rodzaje_autora()
 
-    uczelnia = (
-        Uczelnia.objects.get(pk=uczelnia_id) if uczelnia_id else Uczelnia.objects.get()
-    )
+    try:
+        uczelnia = _resolve_uczelnia(uczelnia_id)
+    except (Uczelnia.DoesNotExist, Uczelnia.MultipleObjectsReturned) as e:
+        logger.error(f"Nie można rozstrzygnąć uczelni (uczelnia_id={uczelnia_id}): {e}")
+        return {
+            "success": False,
+            "message": f"Nie można rozstrzygnąć uczelni: {e}",
+            "error": str(e),
+        }
     status = StatusGenerowania.get_or_create(uczelnia=uczelnia)
 
     try:
@@ -337,9 +352,15 @@ def generuj_metryki_task(
 
         rodzaje_autora = get_default_rodzaje_autora()
 
-    uczelnia = (
-        Uczelnia.objects.get(pk=uczelnia_id) if uczelnia_id else Uczelnia.objects.get()
-    )
+    try:
+        uczelnia = _resolve_uczelnia(uczelnia_id)
+    except (Uczelnia.DoesNotExist, Uczelnia.MultipleObjectsReturned) as e:
+        logger.error(f"Nie można rozstrzygnąć uczelni (uczelnia_id={uczelnia_id}): {e}")
+        return {
+            "success": False,
+            "message": f"Nie można rozstrzygnąć uczelni: {e}",
+            "error": str(e),
+        }
     status = StatusGenerowania.get_or_create(uczelnia=uczelnia)
 
     # NOTE: Sprawdzanie w_trakcie przeniesione do widoku UruchomGenerowanie
