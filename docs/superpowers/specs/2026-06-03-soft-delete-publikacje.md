@@ -1,10 +1,12 @@
 # Spec: Soft-delete dla rekordów publikacji (Wydawnictwo_Ciagle/Zwarte, Doktorat, Habilitacja, Patent)
 
-> ⛔ **STATUS: ODŁOŻONE — na razie (2026-06-03).**
-> Ten dokument to spec/analiza wykonalności, a **NIE** zlecenie do
-> implementacji. Decyzja: świadomie wstrzymujemy realizację. Spec
-> spisany, żeby nie tracić rozpoznania; gdy wrócimy do tematu, startujemy
-> stąd. Patrz sekcja [„Dlaczego odkładamy"](#dlaczego-odkładamy).
+> 🔁 **STATUS: ZASTĄPIONY (2026-06-04).**
+> Ten dokument to wczesna analiza wykonalności (publikacje-only, „ODŁOŻONE").
+> Aktualnym, zatwierdzonym do realizacji projektem wdrożeniowym — obejmującym
+> publikacje ORAZ soft-delete autora, wycofanie z PBN przez kolejkę, tabelę-log
+> i admin — jest:
+> [`2026-06-04-soft-delete-publikacje-i-autorzy-design.md`](2026-06-04-soft-delete-publikacje-i-autorzy-design.md).
+> Pozostawiony jako kontekst historyczny rozpoznania.
 
 **Cel:** Umożliwić „miękkie" kasowanie 5 typów rekordów publikacji —
 zamiast fizycznego `DELETE` ustawiamy znacznik `deleted_at`, dzięki czemu
