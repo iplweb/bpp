@@ -105,15 +105,26 @@ def test_metryki_list_view_filtering_by_nazwisko(admin_user, client):
 
 @pytest.mark.django_db
 def test_metryki_list_view_filtering_by_jednostka(admin_user, client):
-    """Test filtrowania po jednostce"""
+    """Test filtrowania po jednostce.
+
+    Używa jednej jawnej Uczelni dla obu jednostek i metryk,
+    co zapewnia spójne działanie scope_metryki (single-install no-op
+    lub multi-install z tym samym scopem co request).
+    """
+    from bpp.models import Uczelnia as UczelniaModel
+
     client.force_login(admin_user)
 
-    jednostka1 = baker.make(Jednostka, nazwa="Instytut Informatyki")
-    jednostka2 = baker.make(Jednostka, nazwa="Instytut Fizyki")
+    # Jedna uczelnia — scope_metryki jest no-op (tylko_jedna_uczelnia=True)
+    # i jednocześnie metryki mają spójne uczelnia_id z request-resolution
+    u = baker.make(UczelniaModel)
+    jednostka1 = baker.make(Jednostka, nazwa="Instytut Informatyki", uczelnia=u)
+    jednostka2 = baker.make(Jednostka, nazwa="Instytut Fizyki", uczelnia=u)
 
     metryka1 = baker.make(
         MetrykaAutora,
         jednostka=jednostka1,
+        uczelnia=u,
         slot_maksymalny=Decimal("4.0"),
         slot_nazbierany=Decimal("3.0"),
         punkty_nazbierane=Decimal("120.0"),
@@ -123,6 +134,7 @@ def test_metryki_list_view_filtering_by_jednostka(admin_user, client):
     metryka2 = baker.make(
         MetrykaAutora,
         jednostka=jednostka2,
+        uczelnia=u,
         slot_maksymalny=Decimal("4.0"),
         slot_nazbierany=Decimal("3.0"),
         punkty_nazbierane=Decimal("120.0"),

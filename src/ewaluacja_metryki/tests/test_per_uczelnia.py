@@ -194,3 +194,23 @@ def test_scope_metryki_multi_filtruje(autor_jan_kowalski, dyscyplina1):
     _make_metryka(autor2, dyscyplina1, u2)
     qs = scope_metryki(MetrykaAutora.objects.all(), u1)
     assert list(qs.values_list("uczelnia_id", flat=True)) == [u1.pk]
+
+
+@pytest.mark.django_db
+def test_lista_metryk_filtruje_po_uczelni(
+    client, settings, django_user_model, dyscyplina1, uczelnia1, uczelnia2, site1
+):
+    from django.urls import reverse
+
+    settings.ALLOWED_HOSTS = ["*"]
+    autor1 = baker.make("bpp.Autor")
+    autor2 = baker.make("bpp.Autor")
+    _make_metryka(autor1, dyscyplina1, uczelnia1)
+    _make_metryka(autor2, dyscyplina1, uczelnia2)
+
+    su = django_user_model.objects.create_superuser("su_d7", "su_d7@x.pl", "x")
+    client.force_login(su)
+    resp = client.get(reverse("ewaluacja_metryki:lista"), HTTP_HOST=site1.domain)
+    assert resp.status_code == 200
+    uczelnie = {m.uczelnia_id for m in resp.context["metryki"]}
+    assert uczelnie == {uczelnia1.pk}  # tylko uczelnia z site1, nie uczelnia2
