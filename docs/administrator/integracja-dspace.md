@@ -7,7 +7,7 @@ i własne kolekcje — eksport jest więc konfigurowany per uczelnia.
 
 Ten rozdział opisuje konfigurację po stronie administratora. Codzienną
 wysyłkę rekordów przez redaktora opisuje rozdział
-[Eksportowanie do DSpace](../uzytkownik/eksportowanie-do-dspace.md).
+[Eksportowanie do DSpace](../redaktor/eksportowanie-do-dspace.md).
 
 ## Wymagania
 
