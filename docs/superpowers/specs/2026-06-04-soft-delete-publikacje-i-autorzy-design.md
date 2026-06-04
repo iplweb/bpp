@@ -41,14 +41,24 @@ celowej **asymetrii**, która drastycznie ogranicza ryzyko:
 | Mechanizm | Pełny `SoftDeleteModel` | Soft-delete **tylko gdy brak prac** |
 | Autor/rekord z pracami | — | **PROTECT** (zero kasowania) |
 | Autor/rekord bez prac | — | Soft-delete = odwracalny husk |
-| Through-modele `*_Autor` | **Nietknięte** (Projekt A) | Nie stają się soft-delete |
+| Through-modele `*_Autor` | `SoftDeleteModel`, **wąska kaskada** z rodzica | nie kaskadują od autora |
 | Doktorat / habilitacja | Soft-delete (są publikacjami) | FK do autora → `PROTECT` |
 
-**Konsekwencja kluczowa:** `Wydawnictwo_*_Autor`, `Praca_Doktorska`,
-`Praca_Habilitacyjna` **NIE** stają się `SoftDeleteModel` na potrzeby
-soft-delete autora. Soft-delete autora to operacja-liść na pustych rekordach,
-więc nie dotyka materializowanych widoków, ewaluacji ani PBN. Cała ryzykowna
-robota zostaje skupiona na publikacjach.
+**Konsekwencja kluczowa (autor):** soft-delete **autora** to operacja-liść na
+pustych rekordach — autor z jakimkolwiek autorstwem/doktoratem/habilitacją jest
+`PROTECT` (§3), więc usunięcie autora nigdy nie dotyka materializowanych
+widoków, ewaluacji ani PBN. Soft-delete autora **nie kaskaduje** do `*_Autor`.
+
+**Konsekwencja kluczowa (publikacja):** through-modele `Wydawnictwo_*_Autor`
+i `Patent_Autor` **stają się `SoftDeleteModel`** — ale wyłącznie jako cel
+**wąskiej kaskady** z soft-delete publikacji (§2.2), NIE pełnego refleksyjnego
+Projektu B. Pozostałe dzieci (`*_Streszczenie`, `*_Zewnetrzna_Baza_Danych`,
+`Publikacja_Habilitacyjna`, `Opi_2012_Tytul_Cache`) zostają nie-soft —
+kaskada zatrzymuje się na `*_Autor` i **nie jest wirusowa**. Powód: 90
+bezpośrednich zapytań `*_Autor.objects` w kodzie (większość w
+`ewaluacja_optymalizacja` — najwrażliwszy korekcyjnie podsystem) — domyślny
+menedżer `objects` po wpięciu `SoftDeleteModel` czyni je poprawnymi
+automatycznie, eliminując 90-punktowe ryzyko „silent leak" do ewaluacji.
 
 **Dlaczego nie kaskada autor→prace ani „guard z 50 publikacjami":**
 realny przypadek użycia kasowania autora jest wąski — to wyłącznie puste /
@@ -61,10 +71,12 @@ publikacji przed usunięciem czyni kasowanie bezużytecznym. Wąska semantyka
 
 ---
 
-## 2. Publikacje — fundament (Projekt A)
+## 2. Publikacje — fundament (Projekt A + wąska kaskada na `*_Autor`)
 
 5 modeli: `Wydawnictwo_Ciagle`, `Wydawnictwo_Zwarte`, `Praca_Doktorska`,
-`Praca_Habilitacyjna`, `Patent` ← `SoftDeleteModel`.
+`Praca_Habilitacyjna`, `Patent` ← `SoftDeleteModel`. Dodatkowo 3 through-modele
+`Wydawnictwo_Ciagle_Autor`, `Wydawnictwo_Zwarte_Autor`, `Patent_Autor` ←
+`SoftDeleteModel` (cel wąskiej kaskady z rodzica, §2.2).
 
 ### 2.1 Trigger jako choke-point (najwrażliwszy, robiony PIERWSZY)
 
@@ -81,30 +93,66 @@ technicznie `UPDATE` → **bez zmiany triggera skasowany rekord wróciłby do
 mat-view**.
 
 **Zmiana:** ścieżka `UPDATE/INSERT` triggera uczona reguły:
-> jeśli `NEW.deleted_at IS NOT NULL` → zachowaj się jak `DELETE` (usuń z
-> `bpp_rekord_mat` + `bpp_autorzy_mat`, **nie** re-insertuj).
+> jeśli `TD['new']['deleted_at'] IS NOT NULL` → zachowaj się jak `DELETE`
+> (usuń z `_mat`, **nie** re-insertuj).
 > `deleted_at: <data>→NULL` (restore) → normalny re-insert.
 
-Trzeba to obsłużyć dla **wszystkich 5 tabel źródłowych** oraz przemyśleć
-ścieżkę przez tabele autorskie (`bpp_wydawnictwo_*_autor`, `bpp_patent_autor`)
-— tam `deleted_at` siedzi na rekordzie nadrzędnym, nie na wierszu autorskim,
-więc warunek czytamy z rekordu rodzica (lub polegamy na tym, że trigger
-rodzica już wyczyścił `bpp_autorzy_mat`). Do rozstrzygnięcia w planie TDD;
-testy spójności mat-view są obowiązkowe (soft-delete → znika z `Rekord`;
-restore → wraca; brak rozjazdu `Cache_Punktacja_*`).
+**Jednolitość dzięki wąskiej kaskadzie na `*_Autor` (§2.2).** Ponieważ
+through-modele też stają się `SoftDeleteModel`, **każda z 8 tabel pod
+triggerem ma własną kolumnę `deleted_at`** (5 publikacji + 3 `*_autor`).
+Trigger czyta `deleted_at` z **własnego** wiersza (`TD['new']`) — reguła
+działa identycznie niezależnie od tego, czy zadziałała tabela publikacji czy
+tabela autorska. **Nie ma potrzeby JOIN-a/lookupu do rekordu nadrzędnego.**
 
-### 2.2 Override `delete()` — bez refleksyjnej kaskady pakietu
+Skutki:
+- **Funkcja triggera:** jedna zmiana w gałęzi `UPDATE/INSERT` —
+  `if TD['new'].get('deleted_at') is not None: <pomiń re-insert>`.
+- **Widoki źródłowe:** filtr po **własnej** kolumnie tabeli, bez JOIN —
+  `bpp_*_autorzy` (selektują `FROM bpp_*_autor`,
+  `src/bpp/migrations/0001_widoki_autorzy.sql`) dostają `WHERE deleted_at IS
+  NULL` na kolumnie tabeli autorskiej; `bpp_rekord` analogicznie na kolumnie
+  tabeli publikacji.
+- **Przypadek brzegowy znika strukturalnie:** edycja wiersza autorstwa
+  skasowanej publikacji nie wskrzesi go w `bpp_autorzy_mat`, bo ten wiersz
+  ma własne `deleted_at` (ustawione kaskadą) → trigger traktuje go jak DELETE.
+- **Koszt:** soft-delete publikacji z N autorami odpala N dodatkowych (no-op)
+  triggerów through — usuwają z `bpp_autorzy_mat` to, co trigger rodzica już
+  usunął. Pomijalne.
 
-`SoftDeleteModel.delete()` domyślnie kaskaduje refleksyjnie po odwrotnych
-relacjach. W trybie `strict=True` (domyślny) rzuci `SoftDeleteException` na
-nie-soft dzieciach (`*_Autor`, `*_Streszczenie`, `*_Zewnetrzna_Baza_Danych`,
+Testy spójności mat-view obowiązkowe (soft-delete → znika z `Rekord` i
+`Autorzy`; restore → wraca; brak rozjazdu `Cache_Punktacja_*`).
+
+### 2.2 Override `delete()` — wąska, kontrolowana kaskada na `*_Autor`
+
+`SoftDeleteModel.delete()` domyślnie kaskaduje **refleksyjnie** po wszystkich
+odwrotnych relacjach. W `strict=True` (domyślny) rzuci `SoftDeleteException`
+na nie-soft dzieciach (`*_Streszczenie`, `*_Zewnetrzna_Baza_Danych`,
 `Publikacja_Habilitacyjna`, `Opi_2012_Tytul_Cache`), a `strict=False` twardo
 skasuje je przez CASCADE. **Oba złe.** Dlatego na 5 modelach nadpisujemy
-`delete()` tak, by jedynie ustawił `deleted_at` i zapisał (bez kaskady) —
-dzieci `*_Autor` zostają nietknięte, a trigger usuwa je z `bpp_autorzy_mat`
-jako pochodne. `restore()` (analogicznie bez kaskady) → trigger re-projektuje
-wszystko ze źródła. Zweryfikować, że nadpisany `delete()`/`restore()` nadal
-emituje sygnały `post_soft_delete`/`post_restore` (patrz §5).
+`delete()` tak, by **NIE** używał refleksyjnej kaskady pakietu, lecz:
+
+1. ustawił własne `deleted_at` i zapisał,
+2. **jawnie soft-deletował własne wiersze `*_Autor`** (`Wydawnictwo_Ciagle_Autor`
+   / `Wydawnictwo_Zwarte_Autor` / `Patent_Autor`) pod **wspólnym
+   `transaction_id`** — kaskada wąska, kontrolowana, zatrzymana na `*_Autor`.
+
+Pozostałe dzieci (`*_Streszczenie`, `*_Zewnetrzna_Baza_Danych`,
+`Publikacja_Habilitacyjna`, `Opi_2012_Tytul_Cache`) **nie są ruszane** (nie są
+`SoftDeleteModel`, czyta się je przez rodzica). `restore()` analogicznie:
+przywraca rodzica i jego `*_Autor` po `transaction_id`. Trigger (§2.1) usuwa
+wszystko z `_mat` na podstawie własnych `deleted_at`; przy restore
+re-projektuje ze źródła.
+
+Po co jawna kaskada na `*_Autor`, skoro trigger i tak czyści `bpp_autorzy_mat`?
+Bo **90 miejsc w kodzie czyta `*_Autor.objects` bezpośrednio** (z pominięciem
+cache), głównie w `ewaluacja_optymalizacja`. Domyślny menedżer `objects`
+`SoftDeleteModel` ukrywa skasowane → te 90 miejsc staje się poprawne
+automatycznie, bez ręcznych filtrów `wydawnictwo_ciagle__deleted_at__isnull`
+(których pominięcie = po cichu zliczona skasowana praca w ewaluacji).
+
+Zweryfikować, że nadpisany `delete()`/`restore()` nadal emituje sygnały
+`post_soft_delete`/`post_restore` (patrz §5), oraz że ścieżka queryset
+(`.delete()` na QS) również kaskaduje na `*_Autor`.
 
 ### 2.3 `slug` — warunkowy unique
 
@@ -137,6 +185,17 @@ eksport / liczenie) staje się czysta automatycznie (zero zmian). Ale
 > **Pułapka nadrzędna:** jeśli importer użyje domyślnego (ukrywającego)
 > menedżera, soft-delete staje się generatorem duplikatów. Audyt kat. B jest
 > obowiązkowy.
+
+**Through-modele `*_Autor` (90 miejsc).** Po wpięciu `SoftDeleteModel`
+90 bezpośrednich zapytań `*_Autor.objects` (głównie `ewaluacja_optymalizacja`:
+`reset_pins`, `reset_disciplines`, `unpin_all_sensible`, `optimization`,
+`author_works`, `evaluation_browser`, `verification`; oraz `api_v1`,
+`przemapuj_prace_autora`, `ewaluacja_dwudyscyplinowcy`) **staje się poprawne
+domyślnie** (pomijają skasowane). Audyt sprawdza wyjątki kat. B: czy
+któreś z nich *musi* widzieć skasowane autorstwa (mało prawdopodobne w
+ewaluacji — tam „pomiń skasowane" jest poprawnym defaultem) → wtedy
+`global_objects`. Domyślny default „pomijaj" jest tu znacznie bezpieczniejszy
+niż przeciwny.
 
 ---
 
@@ -171,6 +230,17 @@ odmowa (`ProtectedError`/`ValidationError` z czytelnym komunikatem).
 *soft-deletowane* publikacje (najprościej i najbezpieczniej — autor jest
 „husk" dopiero gdy naprawdę nic nie wskazuje). Autor `SoftDeleteModel`; jego
 wiersze atrybutów zostają nietknięte (restore odtwarza całość).
+
+> **Interakcja z kaskadą §2.2 (krytyczne!):** `*_Autor` są teraz
+> `SoftDeleteModel`, a soft-delete publikacji kaskadowo soft-deletuje ich
+> wiersze. Domyślny `*_Autor.objects` **ukrywa** te skasowane autorstwa.
+> Gdyby guard użył `objects`, autor, którego wszystkie prace są w koszu,
+> wyglądałby na „pustego" i przeszedłby przez guard — łamiąc decyzję „licz
+> wszystko, też kosz". **Guard musi liczyć przez `*_Autor.global_objects`**
+> (i analogicznie doktorat/habilitację przez `global_objects`), żeby widzieć
+> również kaskadowo-skasowane autorstwa. To samo dotyczy FK `PROTECT`:
+> chroni przed hard-delete niezależnie od `deleted_at` (constraint DB widzi
+> wiersz fizyczny).
 
 ### 3.3 Synergia z `deduplikator_autorow` (merge)
 
@@ -286,16 +356,24 @@ odłożone, YAGNI; można dorobić jako zadanie `CELERYBEAT_SCHEDULE`,
 
 ## 8. Kolejność prac (fazy; szczegółowy TDD → writing-plans)
 
-1. **Trigger** `bpp_refresh_cache()` — nowa migracja SQL: `deleted_at IS NOT
-   NULL` jako DELETE dla 5 tabel + ścieżka tabel autorskich; testy spójności
-   cache. **Najwrażliwsze, pierwsze.**
+1. **`*_Autor` + trigger + widoki** — `SoftDeleteModel` na 3 through-modelach
+   (`deleted_at`+indeks); funkcja `bpp_refresh_cache()` ucząca się reguły
+   `deleted_at IS NOT NULL → DELETE` (jednolicie dla wszystkich 8 tabel,
+   bez JOIN do rodzica); filtr `deleted_at IS NULL` w widokach źródłowych
+   `bpp_rekord`/`bpp_*_autorzy` (po własnej kolumnie). Testy spójności
+   mat-view. **Najwrażliwsze, pierwsze.**
 2. **Publikacje** — `SoftDeleteModel` na 5 modelach, override
-   `delete()`/`restore()` (bez kaskady), migracje (`deleted_at`+indeks,
-   ew. `CONCURRENTLY`), `slug` `UniqueConstraint`, przeplecenie menedżerów.
+   `delete()`/`restore()` z **wąską kaskadą na `*_Autor`** (wspólny
+   `transaction_id`, bez refleksyjnej kaskady pakietu), migracje
+   (`deleted_at`+indeks, ew. `CONCURRENTLY`), `slug` `UniqueConstraint`,
+   przeplecenie menedżerów.
 3. **Audyt kat. B** — przełączenie import/dedup/PBN-matching na
-   `global_objects`. Testy: re-import nie tworzy duplikatów.
+   `global_objects`; audyt 90 miejsc `*_Autor.objects` (default „pomijaj"
+   poprawny, wyjątki → `global_objects`). Testy: re-import nie tworzy
+   duplikatów; ewaluacja pomija prace w koszu.
 4. **Autor** — flip FK `CASCADE→PROTECT` (`*_Autor`, doktorat), guard w soft
-   `delete()`, soft-delete husku; weryfikacja merge.
+   `delete()` **liczący przez `global_objects`** (widzi kaskadowo-skasowane
+   autorstwa), soft-delete husku; weryfikacja merge.
 5. **PBN** — `operacja WYCOFANIE` w `pbn_export_queue` + restore→`WYSYLKA`;
    integracja `SentData`.
 6. **SoftDeleteLog** + receivery sygnałów (`post_soft_delete`/`post_restore`/
@@ -310,8 +388,12 @@ odłożone, YAGNI; można dorobić jako zadanie `CELERYBEAT_SCHEDULE`,
 ## 9. Ryzyka
 
 - **Cache/trigger** — rozjazd, jeśli `deleted_at` nie obsłużone we wszystkich
-  5 tabelach + ścieżce UPDATE + tabelach autorskich. Najgroźniejsze,
-  wydajnościowo wrażliwe. Mitygacja: testy spójności jako pierwsze.
+  8 tabelach (5 publikacji + 3 `*_autor`) + ścieżce UPDATE + widokach
+  źródłowych. Najgroźniejsze, wydajnościowo wrażliwe. Mitygacja: testy
+  spójności jako pierwsze.
+- **Guard autora przez `objects` zamiast `global_objects`** — autor z pracami
+  tylko-w-koszu przeszedłby przez guard (autorstwa kaskadowo skasowane są
+  ukryte). MUSI być `global_objects` (§3.2).
 - **Duplikaty** z importu/PBN/dedup, jeśli kat. B nie przejdzie na
   `global_objects`.
 - **Merge autorów** — jeśli nie przenosi wszystkich typów prac przed
@@ -327,10 +409,15 @@ odłożone, YAGNI; można dorobić jako zadanie `CELERYBEAT_SCHEDULE`,
 
 ## 10. Decyzje rozstrzygnięte (z brainstormingu 2026-06-04)
 
-1. **Autor:** z pracami → `PROTECT`; bez prac → soft-delete (husk). Through-
-   modele/doktorat/habilitacja **nie** stają się `SoftDeleteModel`.
-2. **Publikacje:** Projekt A (override `delete()`, trigger jako choke-point;
-   dzieci nietknięte).
+1. **Autor:** z pracami → `PROTECT`; bez prac → soft-delete (husk). Guard
+   liczy przez `global_objects`. Soft-delete autora **nie** kaskaduje do
+   `*_Autor`. Doktorat/habilitacja: FK do autora → `PROTECT`.
+2. **Publikacje:** Projekt A z **wąską kaskadą na `*_Autor`** — 5 modeli +
+   3 through-modele `*_Autor` stają się `SoftDeleteModel`; override `delete()`
+   soft-deletuje rodzica i jego `*_Autor` (wspólny `transaction_id`), bez
+   refleksyjnej kaskady na pozostałe dzieci. Trigger jako choke-point,
+   jednolity dzięki własnym `deleted_at` na wszystkich 8 tabelach (bez JOIN
+   do rodzica). Powód kaskady: 90 miejsc `*_Autor.objects` w ewaluacji.
 3. **PBN przy soft-delete:** wycofanie oświadczeń instytucji
    (`delete_all_publication_statements`), gate na `pbn_uid`; obiektu
    publikacji nie kasujemy.
