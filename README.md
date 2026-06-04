@@ -48,21 +48,22 @@ ujednolicane, weryfikowane i punktowane, a następnie udostępniane dalej
 przez zestaw kanałów wyjściowych.
 
 <p align="center">
-  <img src="https://github.com/iplweb/bpp/raw/dev/src/bpp/static/bpp/images/bpp_integracje.svg" width="900" alt="Schemat architektury wymiany danych BPP — po lewej wejścia (Pracownicy, PBN, CrossRef, Web of Science, DSpace), w centrum BPP jako hub, po prawej wyjścia (PBN, OAI-PMH, API, DSpace)">
+  <img src="https://github.com/iplweb/bpp/raw/dev/src/bpp/static/bpp/images/bpp_integracje.png" width="900" alt="Schemat wymiany danych BPP — po lewej wejścia (Pracownicy, PBN, CrossRef, Web of Science, DSpace), w centrum BPP jako hub, po prawej wyjścia (PBN, OAI-PMH, API, DSpace, raporty dla Uczelni, ewaluacja z optymalizacją, wizualizacje, profile naukowców, strona WWW instytucji)">
 </p>
 
-- **Wejście (input)** — dane trafiają do BPP od **pracowników**
+- **Wejście** — dane trafiają do BPP od **pracowników**
   (zgłaszanie publikacji), z **PBN**, **CrossRef**, **Web of Science**
   oraz z repozytoriów **DSpace** (import publikacji wraz z metadanymi
   Dublin Core, autodetekcja DSpace 6/7).
-- **Wyjście (output)** — z BPP dane wypływają do **PBN**, są wystawiane
-  przez **OAI-PMH** (zbiór do agregatorów i discovery), udostępniane
-  programistycznie przez **API**, a prace mogą być **wysyłane do
-  repozytorium DSpace**. Na bazie zebranych danych BPP generuje też
-  **raporty dla Uczelni** oraz prowadzi **ewaluację z optymalizacją**
-  (dobór publikacji maksymalizujący wynik ewaluacji). Dzięki temu BPP
-  staje się jednym, spójnym miejscem zasilania całego ekosystemu
-  publikacyjnego uczelni.
+- **Wyjście** — paleta kanałów wyjściowych jest znacznie
+  bogatsza, bo BPP wzbogaca dane uczelni: zasila **PBN**, wystawia zbiór
+  przez **OAI-PMH** (agregatory i discovery), udostępnia dane
+  programistycznie przez **API**, **wysyła prace do repozytorium
+  DSpace**, generuje **raporty dla Uczelni**, prowadzi **ewaluację
+  z optymalizacją** (dobór publikacji maksymalizujący wynik ewaluacji),
+  tworzy **wizualizacje**, buduje **profile naukowców** oraz publiczną
+  **stronę WWW instytucji**. Dzięki temu BPP staje się jednym, spójnym
+  miejscem zasilania całego ekosystemu publikacyjnego uczelni.
 
 ### Integracja z DSpace (dwukierunkowa)
 
