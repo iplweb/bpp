@@ -69,6 +69,37 @@ class JednostkaQueryObject(
             return ~ret
         return ret
 
+    def to_djangoql(self, value, operation):
+        """Tlumaczenie na DjangoQL nad Rekord (patrz real_query po semantyke).
+
+        - rownosc -> autorzy.jednostka__rel (picker po jednostce autora)
+        - roznosc -> autorzy.jednostka__rel != ...
+        - '+ podrzedne' (EQUAL_PLUS_SUB_FEMALE) -> jednostka_z_podjednostkami__rel
+          (wirtualne pole MPTT get_family, identyczne z real_query)
+        - UNION / '+podrzedne+wspolna' -> None (warning): inny ksztalt zapytania,
+          bez gwarancji rownowaznosci bez osobnego pola wirtualnego.
+        """
+        if type(self) is not JednostkaQueryObject:
+            return None  # podklasy (np. AktualnaJednostka...) maja inna semantyke
+        op = str(operation)
+        try:
+            obj = self.value_from_web(value)
+        except Exception:  # noqa: BLE001 — uszkodzony/nieistniejacy pk -> nieprzekladalne
+            return None
+        if obj is None:
+            return None
+        label = str(obj).replace("\\", "\\\\").replace('"', '\\"')
+        suffix = f'"{label} [{obj.pk}]"'
+
+        if op == str(EQUAL_FEMALE):
+            return f"autorzy.jednostka__rel = {suffix}"
+        if op == str(DIFFERENT_FEMALE):
+            return f"autorzy.jednostka__rel != {suffix}"
+        if op == str(EQUAL_PLUS_SUB_FEMALE):
+            return f"jednostka_z_podjednostkami__rel = {suffix}"
+        # UNION_FEMALE, EQUAL_PLUS_SUB_UNION_FEMALE -> nieprzekladalne 1:1
+        return None
+
 
 class AktualnaJednostkaAutoraQueryObject(JednostkaQueryObject):
     label = "Aktualna jednostka dowolnego autora"
