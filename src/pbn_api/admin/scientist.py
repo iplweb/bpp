@@ -30,10 +30,10 @@ class ScientistAdmin(BaseMongoDBAdmin):
     ]
 
     search_fields = [
-        "mongoId",
-        "lastName",
-        "name",
-        "orcid",
+        "=mongoId",  # exact -> PK (zamiast substring-seq-scan)
+        "lastName",  # gin trgm upper()
+        "name",  # gin trgm upper()
+        "orcid",  # gin trgm upper()
     ]
 
     fields = BaseMongoDBAdmin.fields + [

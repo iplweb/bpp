@@ -21,8 +21,8 @@ class Publication(LinkDoPBNMixin, BasePBNMongoDBModel):
         unique_together = ["mongoId", "title", "isbn", "doi", "publicUri"]
 
     title = models.TextField(db_index=True, blank=True, default="")
-    doi = models.TextField(db_index=True, blank=True, default="")
-    publicUri = models.TextField(db_index=True, blank=True, default="")
+    doi = models.TextField(blank=True, default="")
+    publicUri = models.TextField(blank=True, default="")
     isbn = models.TextField(db_index=True, blank=True, default="")
     year = models.IntegerField(db_index=True, null=True, blank=True)
 
