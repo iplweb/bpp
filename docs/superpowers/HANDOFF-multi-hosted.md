@@ -254,19 +254,32 @@ poza zakresem R1 i NIE odnotowane jako wyłączone → kandydat na wątek **R3**
     dodano **4. picker `PublicJednostkaAutocomplete`** (filtr jednostki w
     rankingu / „zgłoś publikację", był poza pierwotnym zakresem — commit
     `f446fc268`). Tym samym **R3 (a+b) read-side publiczny domknięty**.
-- **B) Drobne gotowe:** `powiazania_autorow/queries.py:_pbn_root()` →
-  `get_for_request` (jedyny realny dług z whitelisty get_default, Audyt 1);
-  **LUKA R1:** komenda `zbieraj_sloty` CLI + `Autor.zbieraj_sloty` nie przekazują
-  `uczelnia_id` (spec wymieniał dwukrotnie); test delty R2 integratora
-  (`uczelnia=None`→`None`) + docstringi; oznaczyć stary self-review write-side
-  SUPERSEDED + notka HST do spec write-side.
+- ✅ **B) Drobne ZROBIONE (2026-06-04):**
+  - **B1** `powiazania_autorow/queries.py:_pbn_root(uczelnia)` — z requestu
+    (`get_for_request`), nie `get_default`; usunięty OSTATNI dług z whitelisty
+    get_default. Commit `77524dfd6`.
+  - **B2** `zbieraj_sloty` CLI: `Autor.zbieraj_sloty` przelot `uczelnia_id` +
+    komenda `--uczelnia` single-or-fail (`.get()` dla count==1, nie `get_default`
+    → guard nietknięty). Commit `7be2b6238`.
+  - **B3** test delty R2 integratora (`uczelnia=None`→`None`, realne fixtury
+    Scientist, pozytywna+negatywna) + docstringi `matchuj_autora`/`_handle_people`
+    (zero zmian logiki). Commit `cddd8ff91`.
+  - **B4+B5** higiena docs: stary self-review write-side oznaczony SUPERSEDED;
+    notka HST per-uczelnia w spec write-side; notka „ownership≈uczelnia" (API
+    per-owner) w spec R1. Commit `d02fe6219`.
 - **C) Federacja olana, ale bugi KORUPCJI DANYCH** (decyzja do podjęcia):
   `OptimizationRun.delete()` cross-uczelnia (`ewaluacja_optymalizacja/tasks/optimization.py:73`),
   `reset_all_pins_task`/`optimize_and_unpin` globalne querysety, komparatory PBN
   globalny `.delete()`. To integralność, nie logika federacyjna — można scope-fix
   niezależnie.
-- **D) `ewaluacja_metryki` per-uczelnia** (osobny wątek write+read): `MetrykaAutora`
-  bez FK uczelnia + 5× globalne `IloscUdzialow…objects.all()`. Kształt jak liczba_n R2.
+- **D) `ewaluacja_metryki` per-uczelnia — NASTĘPNY (wymaga spec-a).** `MetrykaAutora`
+  bez FK uczelnia (`unique_together(autor,dyscyplina)` bez uczelni) + globalne
+  `IloscUdzialowDlaAutoraZaCalosc.objects.all()` (`tasks.py:231,357`, `utils.py:277`,
+  `oblicz_metryki.py:132`, `generation.py:74`) + globalny rebuild
+  `MetrykaAutora.objects.all().delete()` (`utils.py:556`, `tasks.py:245`) + odczyty
+  eksport/statystyki (`export_helpers.py:11,357`, `statistics.py:50`). Kształt jak
+  liczba_n R2 (FK+backfill+scope pipeline+widoki). **Pełny brief + prompt do
+  wklejenia po resecie: `docs/superpowers/NEXT-SESSION-metryki-per-uczelnia.md`.**
 
 ### Stan zgodności ze spec (Audyt 4)
 - Write-side sloty: ✓ 31/31 (1 świadomy korzystny rozjazd — HST per-uczelnia).
@@ -275,7 +288,9 @@ poza zakresem R1 i NIE odnotowane jako wyłączone → kandydat na wątek **R3**
 - Integrator: ✓ 16/16 (2 nieblokujące: test delty R2, docstring).
 
 ### Guard get_default: nadal szczelny
-10 wpisów whitelisty, 9 ZOSTAJE (świadome), 1 DO ZROBIENIA (`powiazania_autorow` → B).
+Po B1: **9 wpisów whitelisty, wszystkie ZOSTAJĄ** (świadome fallbacki bez requestu /
+None-tolerant warstwa modelu / display / guarded count==1 / komentarz). Zero
+otwartych długów (`powiazania_autorow` usunięty w B1, commit `77524dfd6`).
 
 ---
 
