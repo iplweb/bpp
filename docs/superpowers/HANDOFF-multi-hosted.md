@@ -267,6 +267,16 @@ poza zakresem R1 i NIE odnotowane jako wyłączone → kandydat na wątek **R3**
   - **B4+B5** higiena docs: stary self-review write-side oznaczony SUPERSEDED;
     notka HST per-uczelnia w spec write-side; notka „ownership≈uczelnia" (API
     per-owner) w spec R1. Commit `d02fe6219`.
+  - **B6** (znalezisko z pytania usera) **kolejka PBN jest uczelnio-zależna** —
+    `PBN_Export_Queue.uczelnia` FK (nullable), `send_to_pbn` buduje klienta z
+    `entry.uczelnia`, fallback `None`→`Uczelnia.objects.get()` single-or-fail
+    (głośny fail na multi, NIE get_default). Główne enqueue (admin batch,
+    importer) tagują uczelnię. Dwa enqueue w `przemapuj_zrodlo/views.py` i
+    `przemapuj_zrodla_pbn/views.py` NIE tagowały (wpisy `uczelnia=None` → padały
+    przy wysyłce na multi) → naprawione: `uczelnia=get_for_request(request)`
+    (hoisted przed pętlę). Commit `32823854`. UWAGA: drugi agent dorabia
+    równolegle soft-deletes + event WYCOFANIE w kolejce — model `PBN_Export_Queue`
+    świadomie NIEtknięty w B6.
 - **C) Federacja olana, ale bugi KORUPCJI DANYCH** (decyzja do podjęcia):
   `OptimizationRun.delete()` cross-uczelnia (`ewaluacja_optymalizacja/tasks/optimization.py:73`),
   `reset_all_pins_task`/`optimize_and_unpin` globalne querysety, komparatory PBN
