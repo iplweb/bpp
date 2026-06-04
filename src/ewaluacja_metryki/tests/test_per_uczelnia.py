@@ -214,3 +214,39 @@ def test_lista_metryk_filtruje_po_uczelni(
     assert resp.status_code == 200
     uczelnie = {m.uczelnia_id for m in resp.context["metryki"]}
     assert uczelnie == {uczelnia1.pk}  # tylko uczelnia z site1, nie uczelnia2
+
+
+@pytest.mark.django_db
+def test_autor_discipline_count_scoped_per_uczelnia(
+    client,
+    settings,
+    django_user_model,
+    dyscyplina1,
+    dyscyplina2,
+    uczelnia1,
+    uczelnia2,
+    site1,
+):
+    """Regresja D/Fix-1: autor_discipline_count zlicza dyscypliny TYLKO z uczelni oglądanej.
+
+    Autor ma 1 dyscyplinę w u1 i 1 dyscyplinę w u2.
+    Gdy patrzymy przez site1 (→ uczelnia1), annotacja powinna wynosić 1, nie 2.
+    """
+    from django.urls import reverse
+
+    settings.ALLOWED_HOSTS = ["*"]
+    autor = baker.make("bpp.Autor")
+    _make_metryka(autor, dyscyplina1, uczelnia1)
+    _make_metryka(autor, dyscyplina2, uczelnia2)
+
+    su = django_user_model.objects.create_superuser("su_disc", "su_disc@x.pl", "x")
+    client.force_login(su)
+    resp = client.get(reverse("ewaluacja_metryki:lista"), HTTP_HOST=site1.domain)
+    assert resp.status_code == 200
+
+    metryki = list(resp.context["metryki"])
+    # Site1 → uczelnia1: only the u1 metryka should be visible
+    assert len(metryki) == 1
+    assert metryki[0].uczelnia_id == uczelnia1.pk
+    # discipline_count must reflect only u1 disciplines (1), not u1+u2 total (2)
+    assert metryki[0].autor_discipline_count == 1

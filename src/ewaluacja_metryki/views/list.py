@@ -2,7 +2,6 @@ from django.db.models import Avg, Count, Q
 from django.views.generic import ListView
 
 from bpp.models import Jednostka, Wydzial
-from bpp.models.uczelnia import Uczelnia
 from ewaluacja_common.models import Rodzaj_Autora
 from raport_slotow.uczelnia_helper import uczelnia_dla_odczytu
 
@@ -124,9 +123,12 @@ class MetrykiListView(EwaluacjaRequiredMixin, ListView):
     def get_queryset(self):
         from django.db.models import Count, OuterRef, Subquery
 
-        # Subquery to count disciplines for each author
+        # Subquery to count disciplines for each author within their own uczelnia
         discipline_count = (
-            MetrykaAutora.objects.filter(autor=OuterRef("autor"))
+            MetrykaAutora.objects.filter(
+                autor=OuterRef("autor"),
+                uczelnia=OuterRef("uczelnia"),
+            )
             .values("autor")
             .annotate(count=Count("dyscyplina_naukowa"))
             .values("count")
@@ -171,12 +173,9 @@ class MetrykiListView(EwaluacjaRequiredMixin, ListView):
 
         context = {}
 
-        # Sprawdź czy uczelnia używa wydziałów
+        # Sprawdź czy uczelnia używa wydziałów (scope per oglądanej uczelni)
         uczelnia = uczelnia_dla_odczytu(self.request)
-        viewing_uczelnia = Uczelnia.objects.get_for_request(self.request)
-        context["uzywa_wydzialow"] = (
-            viewing_uczelnia.uzywaj_wydzialow if viewing_uczelnia else False
-        )
+        context["uzywa_wydzialow"] = uczelnia.uzywaj_wydzialow if uczelnia else False
 
         # Autorzy mający metryki w bieżącej uczelni (scoped)
         scoped_metryki_autorzy = (
