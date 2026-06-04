@@ -1,22 +1,58 @@
+/* Poprawki layoutu paska wyszukiwania DjangoQL w adminie grappelli.
+ *
+ * Pasek to „pigułka" (form#grp-changelist-search-form, border-radius:20px),
+ * w której completion_admin.js składa rodzeństwo:
+ *   [hidden][checkbox.djangoql-toggle][textarea name=q][button.grp-search-button]
+ * a grappelli pozycjonuje przełącznik i lupę ABSOLUTNIE nad textareą.
+ *
+ * djangoql_highlight=True owija textarę w <div.dql-highlight position:relative;
+ * display:block> (nakładka kolorująca składnię). To psuło pasek:
+ *  (a) wrapper jest elementem POZYCJONOWANYM i w DOM idzie PO przełączniku,
+ *      więc malował się NAD nim → checkbox był nieklikalny,
+ *  (b) jako BLOK spychał lupę (następne rodzeństwo, abs. ze statyczną pozycją)
+ *      do nowej linii → „lupa w dziwnym miejscu".
+ * Naprawa: kotwiczymy przełącznik i lupę do pigułki i podnosimy je nad nakładkę
+ * (z-index). Wrapper zostaje blokiem (textarea ma wypełniać całą pigułkę).
+ */
 
 form#grp-changelist-search-form {
     margin: 0;
     border: none;
+    /* kotwica dla absolutnie pozycjonowanej lupy (top/right poniżej) */
+    position: relative;
 }
 
 .l-2cr-fluid.l-d-12 .c-1 textarea {
+    /* miejsce na przełącznik (lewo) i lupę (prawo), żeby tekst pod nie nie wchodził */
     padding-bottom: 20px;
     padding-left: 25px;
+    padding-right: 30px;
 }
 
+/* Przełącznik QL — zostaje na swojej statycznej pozycji (lewa krawędź pigułki),
+   ale MUSI malować się nad nakładką, inaczej jest nieklikalny. */
 .djangoql-toggle {
     position: absolute !important;
+    z-index: 3;
+}
+
+/* Lupa — nakładka-blok zepchnęła ją do nowej linii; przywracamy ją na prawą
+   stronę pigułki (pionowo wyśrodkowana) i nad nakładkę. */
+button.grp-search-button {
+    position: absolute;
+    z-index: 3;
+    top: 50%;
+    right: 8px;
+    transform: translateY(-50%);
+    margin: 0;
+}
+
+/* Nakładka highlight wypełnia pigułkę; sama textarea (na wierzchu nakładki)
+   przepuszcza klik na przełącznik/lupę dzięki ich wyższemu z-index. */
+form#grp-changelist-search-form .dql-highlight {
+    display: block;
 }
 
 .djangoql-completion {
     z-index: 10000;
-}
-
-button.grp-search-button {
-    position: absolute;
 }

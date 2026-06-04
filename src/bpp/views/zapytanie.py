@@ -1,5 +1,4 @@
 import json
-import logging
 import re
 
 from django import forms
@@ -10,7 +9,7 @@ from django.core.paginator import Paginator
 from django.http import Http404, HttpResponse, JsonResponse
 from django.urls import NoReverseMatch, reverse
 from django.views.generic import FormView, View
-from djangoql.breakdown import explain, explain_empty
+from djangoql.breakdown import explain
 from djangoql.exceptions import DjangoQLError
 from djangoql.formatter import format_query
 from djangoql.queryset import apply_search
@@ -21,8 +20,6 @@ from bpp.const import GR_WPROWADZANIE_DANYCH
 from bpp.djangoql_schema import BppQLSchema
 from bpp.models import Autor
 from bpp.models.cache import Rekord
-
-logger = logging.getLogger(__name__)
 
 # Alias zgodności: schemat przeniesiony do bpp.djangoql_schema (wspólny trzon
 # dla widoku i adminów). Widok i testy odwołują się do BppZapytanieSchema.
@@ -325,40 +322,6 @@ class ZapytanieForm(forms.Form):
     )
 
 
-def _annotate_breakdown(node, is_root=True, on_zero_path=True):
-    """Dodaje do każdego węzła drzewa rozbicia pole ``label`` (tekst albo None)
-    — komunikat wskazujący realnego „winowajcę" zerowego wyniku.
-
-    Idea: idziemy „ścieżką zera". Dziecko jest na ścieżce zera tylko jeśli SAMO
-    ma 0 trafień — bo wtedy jego pustka propaguje się w górę przez AND (każdy
-    zerowy operand zeruje AND) albo współtworzy puste OR. Zero pochłonięte przez
-    NIEPUSTE OR (np. ``(A or B)`` które zwraca >0, mimo że B=0) NIE jest
-    winowajcą — i nie dostaje etykiety (koniec z szumem na martwych gałęziach).
-
-    Etykietę dostaje tylko NAJGŁĘBSZY węzeł na ścieżce zera (ten, poniżej
-    którego nie ma już zera) — czyli realny powód pustki:
-    - liść z 0 trafień → „warunek nie pasuje do niczego",
-    - AND-przecięcie (każdy operand z osobna >0, ale razem 0) → etykieta na AND.
-
-    Korzeń (główne zapytanie) NIE dostaje etykiety — i tak wiadomo, że ma 0 (po
-    to renderujemy rozbicie). Liczone z samych ``count`` + struktury — bez
-    polegania na rolach z djangoql.
-    """
-    children = node["children"]
-    child_on_zero = [on_zero_path and c["count"] == 0 for c in children]
-    is_deepest_zero = on_zero_path and node["count"] == 0 and not any(child_on_zero)
-    label = None
-    if is_deepest_zero and not is_root:
-        if children:
-            label = "każdy warunek z osobna coś zwraca, ale ich połączenie daje 0"
-        else:
-            label = "ten warunek nie pasuje do żadnego rekordu"
-    node["label"] = label
-    for child, czp in zip(children, child_on_zero, strict=True):
-        _annotate_breakdown(child, is_root=False, on_zero_path=czp)
-    return node
-
-
 def _format_error_text(exc):
     """Czytelny komunikat błędu zapytania (łączy komunikaty ValidationError)."""
     if isinstance(exc, ValidationError):
@@ -463,22 +426,10 @@ class ZapytanieView(WprowadzanieDanychOrSuperuserMixin, FormView):
         if results_page is not None and model_key == MODEL_REKORD:
             self._attach_admin_urls(results_page)
 
-        breakdown = None
-        if error is None and count == 0:
-            try:
-                breakdown = explain_empty(
-                    model.objects.all(), query, schema=BppZapytanieSchema
-                )
-            except (DjangoQLError, FieldError, ValidationError, ValueError):
-                logger.exception(
-                    "explain_empty zawiodlo dla zapytania %r (model=%s)",
-                    query,
-                    model_key,
-                )
-                breakdown = None
-            if breakdown is not None:
-                _annotate_breakdown(breakdown)
-
+        # Rozbicie „dlaczego 0 wyników" pokazuje (z podświetlaniem składni) panel
+        # „Wyjaśnij liczby" w JS — auto-otwierany, gdy count == 0 (patrz
+        # autoExplain w szablonie + zapytanie.js). Serwer nie renderuje już
+        # własnego rozbicia.
         context = self.get_context_data(
             form=form,
             results=results_page,
@@ -487,7 +438,6 @@ class ZapytanieView(WprowadzanieDanychOrSuperuserMixin, FormView):
             error_location=error_location,
             model_key=model_key,
             query=query,
-            breakdown=breakdown,
         )
         return self.render_to_response(context)
 

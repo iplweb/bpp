@@ -141,20 +141,27 @@
       }
     });
 
+    // Zakotwicz popup autocomplete przy kursorze. Nadpisujemy PROTOTYP (nie
+    // instancję) i PRZED DjangoQL.init: widget w konstruktorze binduje handlery
+    // mouseup/mouseout do prototypowej renderCompletion, więc nadpisanie samej
+    // instancji (po init) zostałoby przez nie ominięte — i popup skakałby pod
+    // textareę. Patch jednorazowy (flaga _bppCaretAnchor).
+    if (DjangoQL.prototype && !DjangoQL.prototype._bppCaretAnchor) {
+      var _origRenderCompletion = DjangoQL.prototype.renderCompletion;
+      DjangoQL.prototype.renderCompletion = function () {
+        _origRenderCompletion.apply(this, arguments);
+        if (this.completion && this.completion.style.display === "block") {
+          positionPopupAtCaret(this.textarea, this.completion);
+        }
+      };
+      DjangoQL.prototype._bppCaretAnchor = true;
+    }
+
     dql = DjangoQL.init({
       introspections: cfg.introspect[currentModelKey()],
       selector: textarea,
       autoResize: false
     });
-
-    // Po oryginalnym renderze popupu — przesuń go pod kursor.
-    var origRender = dql.renderCompletion.bind(dql);
-    dql.renderCompletion = function (t) {
-      origRender(t);
-      if (dql.completion && dql.completion.style.display !== "none") {
-        positionPopupAtCaret(dql.textarea, dql.completion);
-      }
-    };
 
     // Zmiana modelu (radio) → przeładuj introspekcję pod nowy schemat.
     document.querySelectorAll('input[name="model"]').forEach(function (radio) {
@@ -239,6 +246,13 @@
       li.title = node.count + " rekord(ów) pasuje do tej gałęzi";
       var count = document.createElement("span");
       count.className = "node-count";
+      // Wyróżnij, gdzie wynik znika: 0 trafień = czerwone, martwa gałąź OR =
+      // bursztynowe (rola z djangoql.breakdown).
+      if (node.role === "dead_or_branch") {
+        count.classList.add("dead");
+      } else if (node.count === 0) {
+        count.classList.add("zero");
+      }
       count.textContent = node.count;
       var label = document.createElement("span");
       label.className = "node-label";
@@ -313,6 +327,13 @@
       if (errorEl) {
         errorEl.hidden = true;
       }
+    }
+
+    // Zapytanie zwróciło 0 rekordów → automatycznie pokaż rozbicie liczności
+    // gałęzi (z podświetlaniem składni). Zastępuje dawny serwerowy panel
+    // „dlaczego 0 wyników".
+    if (cfg.autoExplain) {
+      explain();
     }
   });
 })();

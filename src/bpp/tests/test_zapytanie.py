@@ -355,15 +355,10 @@ def test_zapytanie_suggestions_autor_rel_dal_smoke(superuser_client):
     assert isinstance(response.json()["items"], list)
 
 
-def _breakdown_leaves(node):
-    if not node["children"]:
-        yield node
-    for ch in node["children"]:
-        yield from _breakdown_leaves(ch)
-
-
 @pytest.mark.django_db
-def test_zapytanie_breakdown_explains_zero(superuser_client):
+def test_zapytanie_zero_results_sets_auto_explain(superuser_client):
+    """0 rekordów → strona prosi JS o auto-otwarcie panelu „Wyjaśnij liczby"
+    (z podświetlaniem składni); dawny serwerowy panel „dlaczego 0" znika."""
     baker.make("bpp.Autor", nazwisko="Kowalski", imiona="Jan")
     response = superuser_client.get(
         reverse(URL),
@@ -371,95 +366,21 @@ def test_zapytanie_breakdown_explains_zero(superuser_client):
     )
     assert response.status_code == 200
     assert response.context["count"] == 0
-    breakdown = response.context["breakdown"]
-    assert breakdown is not None
-    assert breakdown["count"] == 0
-    leaves = {leaf["text"]: leaf["count"] for leaf in _breakdown_leaves(breakdown)}
-    assert any("asdfo" in t and c == 0 for t, c in leaves.items())
+    html = response.content.decode("utf-8")
+    assert '"autoExplain": true' in html
+    # stary, nie-podświetlany panel nie jest już renderowany
+    assert "Dlaczego 0 wyników" not in html
+    assert "zapytanie-breakdown" not in html
 
 
 @pytest.mark.django_db
-def test_zapytanie_no_breakdown_when_results(superuser_client):
+def test_zapytanie_with_results_no_auto_explain(superuser_client):
     baker.make("bpp.Autor", nazwisko="Kowalski")
     response = superuser_client.get(
         reverse(URL), {"model": "autor", "query": 'nazwisko = "Kowalski"'}
     )
     assert response.context["count"] == 1
-    assert response.context["breakdown"] is None
-
-
-@pytest.mark.django_db
-def test_zapytanie_breakdown_rendered_in_html(superuser_client):
-    baker.make("bpp.Autor", nazwisko="Kowalski", imiona="Jan")
-    response = superuser_client.get(
-        reverse(URL),
-        {"model": "autor", "query": 'nazwisko = "Kowalski" and imiona = "asdfo"'},
-    )
-    html = response.content.decode("utf-8")
-    assert "Dlaczego 0 wyników" in html
-    assert "ten warunek nie pasuje do żadnego rekordu" in html
-    assert "asdfo" in html
-    # warunek z 0 trafień (poza korzeniem) ma czerwoną liczbę
-    assert "zapytanie-breakdown-count--zero" in html
-
-
-@pytest.mark.django_db
-def test_zapytanie_breakdown_culprit_on_leaf_not_root(superuser_client):
-    baker.make("bpp.Autor", nazwisko="Kowalski", imiona="Jan")
-    response = superuser_client.get(
-        reverse(URL),
-        {"model": "autor", "query": 'nazwisko = "Kowalski" and imiona = "asdfo"'},
-    )
-    breakdown = response.context["breakdown"]
-    assert breakdown["label"] is None  # korzeń (główne zapytanie) bez etykiety
-    leaves = list(_breakdown_leaves(breakdown))
-    culprit = next(leaf for leaf in leaves if "asdfo" in leaf["text"])
-    assert culprit["count"] == 0
-    assert culprit["label"] == "ten warunek nie pasuje do żadnego rekordu"
-    other = next(leaf for leaf in leaves if "Kowalski" in leaf["text"])
-    assert other["label"] is None  # warunek z trafieniami nie jest winowajcą
-
-
-@pytest.mark.django_db
-def test_zapytanie_breakdown_root_intersection_not_labeled(superuser_client):
-    baker.make("bpp.Autor", nazwisko="Kowalski", imiona="Jan")
-    baker.make("bpp.Autor", nazwisko="Nowak", imiona="Anna")
-    response = superuser_client.get(
-        reverse(URL),
-        {"model": "autor", "query": 'nazwisko = "Kowalski" and imiona = "Anna"'},
-    )
-    breakdown = response.context["breakdown"]
-    assert breakdown["count"] == 0
-    assert breakdown["label"] is None  # głównego zapytania nie etykietujemy
-    # każdy warunek z osobna coś zwraca (>=1), więc żaden liść nie jest winowajcą
-    for leaf in _breakdown_leaves(breakdown):
-        assert leaf["count"] >= 1
-        assert leaf["label"] is None
-
-
-@pytest.mark.django_db
-def test_zapytanie_breakdown_no_label_on_dead_or_branch(superuser_client):
-    baker.make("bpp.Autor", nazwisko="Kowalski", imiona="Jan")
-    response = superuser_client.get(
-        reverse(URL),
-        {
-            "model": "autor",
-            "query": (
-                '(nazwisko = "Kowalski" or nazwisko = "Xyz") and imiona = "asdfo"'
-            ),
-        },
-    )
-    breakdown = response.context["breakdown"]
-    assert breakdown["count"] == 0
-    leaves = list(_breakdown_leaves(breakdown))
-    # martwa gałąź w NIEPUSTYM OR — nie winowajca, bez etykiety (koniec z szumem)
-    xyz = next(leaf for leaf in leaves if "Xyz" in leaf["text"])
-    assert xyz["count"] == 0
-    assert xyz["label"] is None
-    # realny winowajca: warunek z 0 trafień połączony AND-em
-    asdfo = next(leaf for leaf in leaves if "asdfo" in leaf["text"])
-    assert asdfo["count"] == 0
-    assert asdfo["label"] == "ten warunek nie pasuje do żadnego rekordu"
+    assert '"autoExplain": false' in response.content.decode("utf-8")
 
 
 @pytest.mark.django_db
@@ -690,18 +611,6 @@ def test_zapytanie_template_loads_query_ux_assets(superuser_client):
     assert 'id="zapytanie-format"' in html
     assert 'id="zapytanie-explain"' in html
     assert 'id="zapytanie-explain-panel"' in html
-
-
-@pytest.mark.django_db
-def test_zapytanie_breakdown_renders_role_class(superuser_client):
-    baker.make("bpp.Autor", nazwisko="Kowalski", imiona="Jan")
-    response = superuser_client.get(
-        reverse(URL),
-        {"model": "autor", "query": 'nazwisko = "Kowalski" and imiona = "asdfo"'},
-    )
-    html = response.content.decode("utf-8")
-    # korzeń AND-a schodzącego do 0 dostaje wizualną rolę killer_and
-    assert "role-killer_and" in html
 
 
 def test_admin_djangoql_highlight_enabled():

@@ -199,49 +199,6 @@
             color: #64748b;
             white-space: nowrap;
         }
-        /* Rozbicie "dlaczego 0 wynikow" — delikatne, jak naglowek + lista */
-        .zapytanie-breakdown-title {
-            font-size: 0.9rem;
-            font-weight: 600;
-            color: #6b7280;
-            margin: 0.9rem 0 0.3rem;
-        }
-        .zapytanie-breakdown-title .fi-info { color: #9ca3af; }
-        .zapytanie-breakdown-trunc {
-            font-weight: 400;
-            font-style: italic;
-            color: #9ca3af;
-        }
-        ul.zapytanie-breakdown {
-            list-style: none;
-            margin: 0 0 0 0.25rem;
-            font-size: 0.9rem;
-            line-height: 1.5;
-        }
-        ul.zapytanie-breakdown ul.zapytanie-breakdown { margin-left: 1.1rem; }
-        ul.zapytanie-breakdown li { margin: 0.1rem 0; }
-        .zapytanie-breakdown code {
-            font-size: 0.82rem;
-            background: #f3f4f6;
-            color: #374151;
-            padding: 0.05rem 0.3rem;
-            border-radius: 3px;
-        }
-        .zapytanie-breakdown-count { color: #9ca3af; }
-        .zapytanie-breakdown-count--zero { color: #dc2626; font-weight: 600; }
-        .zapytanie-breakdown-note {
-            margin-left: 0.4rem;
-            color: #b45309;
-            font-style: italic;
-            font-size: 0.82rem;
-        }
-        /* Wizualne role rozbicia (z djangoql.breakdown): tam gdzie schodzi do 0 */
-        .zapytanie-breakdown li.role-killer_and > .zapytanie-breakdown-count {
-            color: #dc2626;
-            font-weight: 600;
-        }
-        .zapytanie-breakdown li.role-dead_or_branch > code { opacity: 0.65; }
-
         /* Inline error dla AJAX (Sformatuj / Wyjasnij liczby) */
         #zapytanie-error[hidden] { display: none; }
         #zapytanie-error {
@@ -269,12 +226,8 @@
             text-align: right; font-variant-numeric: tabular-nums;
             font-weight: 600; color: #9ca3af;
         }
-        .zapytanie-explain-tree .node.role-killer_and > .node-count {
-            color: #dc2626;
-        }
-        .zapytanie-explain-tree .node.role-dead_or_branch > .node-count {
-            color: #b45309;
-        }
+        .zapytanie-explain-tree .node-count.zero { color: #dc2626; }
+        .zapytanie-explain-tree .node-count.dead { color: #b45309; }
         .zapytanie-explain-tree .node-label {
             font-family: 'SF Mono', Monaco, 'Cascadia Code', monospace;
             font-size: 0.85rem;
@@ -539,9 +492,8 @@
                 {% include "bpp/_zapytanie_pager.html" %}
             {% else %}
                 <p><em>Brak rekordow pasujacych do zapytania.</em></p>
-                {% if breakdown %}
-                    {% include "bpp/_zapytanie_breakdown.html" with node=breakdown is_root=True %}
-                {% endif %}
+                {# „Dlaczego 0?" pokazuje auto-otwierany panel „Wyjasnij liczby" #}
+                {# (z podswietlaniem skladni) — patrz autoExplain + zapytanie.js. #}
             {% endif %}
         {% endif %}
     </div>
@@ -709,6 +661,7 @@
     },
     "csrfToken": "{{ csrf_token }}",
     "modelKey": "{{ model_key|default:'rekord'|escapejs }}",
+    "autoExplain": {% if results is not None and count == 0 and query %}true{% else %}false{% endif %},
     "errorLocation": {% if error_location %}{"line": {{ error_location.line }}, "column": {{ error_location.column }}, "mark": "{{ error_location.mark|escapejs }}"}{% else %}null{% endif %}
 }
 </script>
