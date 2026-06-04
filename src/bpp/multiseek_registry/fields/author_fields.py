@@ -85,6 +85,33 @@ class NazwiskoIImieQueryObject(
 
         return ret
 
+    def to_djangoql(self, value, operation):
+        """Tłumaczenie na DjangoQL: autorzy.autor__rel (picker po autorze).
+
+        Tylko bazowe 'Nazwisko i imię'; podklasy (zakres kolejności, typ
+        ogólny) mają semantykę bez czystego odpowiednika DjangoQL -> None
+        (konwerter wyemituje ostrzeżenie).
+        """
+        if type(self) is not NazwiskoIImieQueryObject:
+            return None
+        op = str(operation)
+        diff_strs = {str(o) for o in DIFFERENT_ALL}
+        equal_strs = {str(o) for o in EQUALITY_OPS_ALL} - diff_strs
+        if op in diff_strs:
+            rel_op = "!="
+        elif op in equal_strs:
+            rel_op = "="
+        else:
+            return None
+        try:
+            obj = self.value_from_web(value)
+        except Exception:  # noqa: BLE001 — uszkodzony/nieistniejący pk -> nieprzekładalne
+            return None
+        if obj is None:
+            return None
+        label = str(obj).replace("\\", "\\\\").replace('"', '\\"')
+        return f'autorzy.autor__rel {rel_op} "{label} [{obj.pk}]"'
+
 
 class NazwiskoIImieWZakresieKolejnosci(NazwiskoIImieQueryObject):
     ops = [EQUAL, UNION_NONE]
