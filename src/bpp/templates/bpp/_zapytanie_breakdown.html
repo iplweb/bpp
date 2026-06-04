@@ -1,5 +1,7 @@
 {# Rekurencyjny widok rozbicia „dlaczego 0 wyników". #}
-{# Oczekuje `node` (dict: text, count, label, children, truncated) i `is_root`. #}
+{# Oczekuje `node` (dict: text, count, role, label, children, truncated) i `is_root`. #}
+{# `role` z djangoql.breakdown: killer_and = tu przeciecie schodzi do 0, #}
+{# dead_or_branch = martwa galaz OR (wizualnie wyciszona). #}
 {% if is_root %}
     <p class="zapytanie-breakdown-title">
         <span class="fi-info"></span> Dlaczego 0 wyników?
@@ -9,7 +11,7 @@
     </p>
 {% endif %}
 <ul class="zapytanie-breakdown">
-    <li>
+    <li{% if node.role %} class="role-{{ node.role }}"{% endif %}>
         <code>{{ node.text }}</code>
         <span class="zapytanie-breakdown-count{% if node.count == 0 and not is_root %} zapytanie-breakdown-count--zero{% endif %}">→ {{ node.count }} trafień</span>
         {% if node.label %}

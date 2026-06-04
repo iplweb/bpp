@@ -2,9 +2,8 @@
 from dal import autocomplete
 from django import forms
 from django.contrib import admin
-from djangoql.admin import DjangoQLSearchMixin
 
-from bpp.djangoql_schema import BppQLSchema
+from bpp.admin.helpers.djangoql import BppDjangoQLSearchMixin
 from bpp.models.zrodlo import Redakcja_Zrodla
 from pbn_api.models import Journal
 
@@ -110,11 +109,10 @@ class ZrodloForm(forms.ModelForm):
 
 
 class ZrodloAdmin(
-    DjangoQLSearchMixin, ZapiszZAdnotacjaMixin, BaseBppAdminMixin, admin.ModelAdmin
+    BppDjangoQLSearchMixin, ZapiszZAdnotacjaMixin, BaseBppAdminMixin, admin.ModelAdmin
 ):
     djangoql_completion_enabled_by_default = False
     djangoql_completion = True
-    djangoql_schema = BppQLSchema
 
     form = ZrodloForm
 

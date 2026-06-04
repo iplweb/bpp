@@ -340,7 +340,8 @@ def test_zapytanie_suggestions_tytul_rel_returns_options(superuser_client):
     response = superuser_client.get(url, {"field": "tytul__rel", "search": "profesor"})
     assert response.status_code == 200
     items = response.json()["items"]
-    assert any(f"[{prof.pk}]" in item for item in items)
+    # djangoql 0.25 renderuje sugestie jako "<etykieta> #<id>" (wcześniej "[id]")
+    assert any(f"#{prof.pk}" in item for item in items)
 
 
 @pytest.mark.django_db
@@ -515,7 +516,7 @@ def test_zapytanie_suggestions_zrodlo_rel(superuser_client):
     response = superuser_client.get(url, {"field": "zrodlo__rel", "search": "Nature"})
     assert response.status_code == 200
     items = response.json()["items"]
-    assert any(f"[{z.pk}]" in item for item in items)
+    assert any(f"#{z.pk}" in item for item in items)
 
 
 @pytest.mark.django_db
@@ -528,8 +529,8 @@ def test_picker_excludes_hidden_records(superuser_client):
     response = superuser_client.get(url, {"field": "jezyk__rel", "search": "ZZTEST"})
     assert response.status_code == 200
     items = response.json()["items"]
-    assert any(f"[{widoczny.pk}]" in item for item in items)
-    assert not any(f"[{ukryty.pk}]" in item for item in items)
+    assert any(f"#{widoczny.pk}" in item for item in items)
+    assert not any(f"#{ukryty.pk}" in item for item in items)
 
 
 @pytest.mark.django_db
@@ -573,3 +574,143 @@ def test_publication_admins_use_bpp_ql_schema():
         Wydawnictwo_ZwarteAdmin,
     ):
         assert admin_cls.djangoql_schema is BppQLSchema, admin_cls.__name__
+
+
+# === djangoql 0.25 query-UX: format / explain / podświetlanie składni =========
+
+
+@pytest.mark.django_db
+def test_zapytanie_format_endpoint_pretty_prints(superuser_client):
+    url = reverse("bpp:zapytanie_format", kwargs={"model_key": "autor"})
+    resp = superuser_client.post(url, {"q": 'nazwisko = "Kowalski" and imiona = "Jan"'})
+    assert resp.status_code == 200
+    formatted = resp.json()["formatted"]
+    assert "\n" in formatted  # wieloliniowo, z wcięciami
+    assert "nazwisko" in formatted
+
+
+@pytest.mark.django_db
+def test_zapytanie_format_endpoint_empty_query(superuser_client):
+    url = reverse("bpp:zapytanie_format", kwargs={"model_key": "autor"})
+    resp = superuser_client.post(url, {"q": "   "})
+    assert resp.status_code == 200
+    assert resp.json() == {"formatted": ""}
+
+
+@pytest.mark.django_db
+def test_zapytanie_format_endpoint_syntax_error_has_location(superuser_client):
+    url = reverse("bpp:zapytanie_format", kwargs={"model_key": "autor"})
+    resp = superuser_client.post(url, {"q": 'nazwisko = = "x"'})
+    assert resp.status_code == 400
+    data = resp.json()
+    assert data["error"]
+    # współrzędne dla czerwonej falki nakładki: błąd składni -> podświetl ogon
+    assert data["line"] == 1
+    assert data["column"]
+    assert data["mark"] == "to_end"
+
+
+@pytest.mark.django_db
+def test_zapytanie_format_endpoint_requires_auth(client):
+    url = reverse("bpp:zapytanie_format", kwargs={"model_key": "autor"})
+    resp = client.post(url, {"q": 'nazwisko = "x"'})
+    assert resp.status_code in (302, 403)
+
+
+@pytest.mark.django_db
+def test_zapytanie_explain_endpoint_returns_tree_with_roles(superuser_client):
+    baker.make("bpp.Autor", nazwisko="Kowalski", imiona="Jan")
+    url = reverse("bpp:zapytanie_explain", kwargs={"model_key": "autor"})
+    resp = superuser_client.post(
+        url, {"q": 'nazwisko = "Kowalski" and imiona = "asdfo"'}
+    )
+    assert resp.status_code == 200
+    tree = resp.json()["tree"]
+    # AND schodzące do 0 -> rola killer_and (tu kończą się dane)
+    assert tree["role"] == "killer_and"
+    assert tree["count"] == 0
+    # liść "asdfo" nic nie zwraca
+    assert any("asdfo" in c["text"] and c["count"] == 0 for c in tree["children"])
+
+
+@pytest.mark.django_db
+def test_zapytanie_explain_endpoint_empty_query(superuser_client):
+    url = reverse("bpp:zapytanie_explain", kwargs={"model_key": "autor"})
+    resp = superuser_client.post(url, {"q": "  "})
+    assert resp.status_code == 200
+    assert resp.json() == {"tree": None}
+
+
+@pytest.mark.django_db
+def test_zapytanie_explain_endpoint_unknown_field_has_location(superuser_client):
+    url = reverse("bpp:zapytanie_explain", kwargs={"model_key": "autor"})
+    resp = superuser_client.post(url, {"q": 'nieistniejace_pole = "x"'})
+    assert resp.status_code == 400
+    data = resp.json()
+    assert data["error"]
+    assert data["mark"] == "token"  # nieznane pole -> oznacz ten jeden token
+
+
+@pytest.mark.django_db
+def test_zapytanie_explain_endpoint_unknown_model_404(superuser_client):
+    url = reverse("bpp:zapytanie_explain", kwargs={"model_key": "nieznany"})
+    resp = superuser_client.post(url, {"q": "rok = 2020"})
+    assert resp.status_code == 404
+
+
+@pytest.mark.django_db
+def test_zapytanie_run_syntax_error_sets_error_location(superuser_client):
+    response = superuser_client.get(
+        reverse(URL), {"model": "autor", "query": 'nazwisko = = "x"'}
+    )
+    assert response.status_code == 200
+    loc = response.context["error_location"]
+    assert loc and loc["line"] == 1 and loc["column"] and loc["mark"] == "to_end"
+
+
+@pytest.mark.django_db
+def test_zapytanie_run_unknown_field_sets_error_location(superuser_client):
+    response = superuser_client.get(
+        reverse(URL), {"model": "autor", "query": 'nieistniejace_pole = "x"'}
+    )
+    assert response.status_code == 200
+    loc = response.context["error_location"]
+    assert loc and loc["mark"] == "token"
+
+
+@pytest.mark.django_db
+def test_zapytanie_template_loads_query_ux_assets(superuser_client):
+    html = superuser_client.get(reverse(URL)).content.decode("utf-8")
+    # prymitywy djangoql 0.25 + spinacz BPP
+    assert "highlight" in html  # highlight.js + highlight.css (nakładka)
+    assert "multiline" in html  # multiline.js (Shift+Enter)
+    assert "zapytanie.js" in html or "zapytanie." in html
+    # wyspa konfiguracyjna + przyciski Format/Explain + panel rozbicia
+    assert 'id="zapytanie-config"' in html
+    assert 'id="zapytanie-format"' in html
+    assert 'id="zapytanie-explain"' in html
+    assert 'id="zapytanie-explain-panel"' in html
+
+
+@pytest.mark.django_db
+def test_zapytanie_breakdown_renders_role_class(superuser_client):
+    baker.make("bpp.Autor", nazwisko="Kowalski", imiona="Jan")
+    response = superuser_client.get(
+        reverse(URL),
+        {"model": "autor", "query": 'nazwisko = "Kowalski" and imiona = "asdfo"'},
+    )
+    html = response.content.decode("utf-8")
+    # korzeń AND-a schodzącego do 0 dostaje wizualną rolę killer_and
+    assert "role-killer_and" in html
+
+
+def test_admin_djangoql_highlight_enabled():
+    """Adminy z BppDjangoQLSearchMixin mają włączoną nakładkę podświetlania."""
+    from bpp.admin.autor import AutorAdmin
+    from bpp.admin.helpers.djangoql import BppDjangoQLSearchMixin
+    from bpp.admin.wydawnictwo_ciagle import Wydawnictwo_CiagleAdmin
+    from bpp.admin.zrodlo import ZrodloAdmin
+
+    assert BppDjangoQLSearchMixin.djangoql_highlight is True
+    for admin_cls in (ZrodloAdmin, AutorAdmin, Wydawnictwo_CiagleAdmin):
+        assert admin_cls.djangoql_highlight is True, admin_cls.__name__
