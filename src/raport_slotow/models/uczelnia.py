@@ -20,7 +20,8 @@ from django.db import models
 
 from bpp.core import zbieraj_sloty
 from bpp.fields import YearField
-from bpp.models import Autor, Cache_Punktacja_Autora_Query, Uczelnia
+from bpp.models import Autor, Cache_Punktacja_Autora_Query
+from bpp.models.uczelnia import do_roku_default
 from bpp.util import year_last_month
 from long_running.models import Report
 from long_running.notification_mixins import ASGINotificationMixin
@@ -29,7 +30,10 @@ from raport_slotow.core import autorzy_zerowi
 
 class RaportSlotowUczelnia(ASGINotificationMixin, Report):
     od_roku = YearField(default=year_last_month)
-    do_roku = YearField(default=Uczelnia.objects.do_roku_default)
+    # default = funkcja modułowa (stabilnie serializowalna) — patrz docstring
+    # bpp.models.uczelnia.do_roku_default. Wcześniej bound-method managera
+    # powodował wieczny drift makemigrations.
+    do_roku = YearField(default=do_roku_default)
 
     class Akcje(models.TextChoices):
         SLOTY = "slot", "zbieraj najkorzystniejsze prace do zadanej wielkości slotu"

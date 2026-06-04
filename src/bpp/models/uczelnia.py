@@ -48,21 +48,36 @@ class UczelniaManager(models.Manager):
         return self.get_default()
 
     def do_roku_default(self=None, request=None):
-        if self is None:
-            # Uruchomione przez migrację
-            return
-        uczelnia = self.get_default()
-        if (
-            uczelnia is None
-            or uczelnia.metoda_do_roku_formularze
-            == const.DO_STYCZNIA_POPRZEDNI_POTEM_OBECNY
-        ):
-            return year_last_month()
-        if uczelnia.metoda_do_roku_formularze == const.NAJWIEKSZY_REKORD:
-            from bpp.models.cache import Rekord
+        # Cienki delegator do funkcji modułowej `do_roku_default` (niżej).
+        # Trzymany dla zgodności z `Uczelnia.objects.do_roku_default` używanym
+        # jako `initial=` w formularzach raportów i w testach.
+        return do_roku_default(request=request)
 
-            return Rekord.objects.all().aggregate(Max("rok"))["rok__max"]
-        raise NotImplementedError
+
+def do_roku_default(request=None):
+    """Domyślna wartość `do_roku` dla formularzy raportów oraz pola modelu
+    `RaportSlotowUczelnia.do_roku`.
+
+    Funkcja MODUŁOWA (nie metoda managera) celowo: default pola modelu musi
+    być stabilnie serializowalny w migracjach. Wcześniej był to bound-method
+    instancji managera (`Uczelnia.objects.do_roku_default`), który Django
+    serializował jako wersję unbound — nigdy nie równą wersji z modelu, przez
+    co `makemigrations` w nieskończoność wykrywał „zmianę" pola (wieczny
+    drift). Bez `self` działa zarówno serializowalnie, jak i w runtime
+    (zwraca prawdziwy rok, nie None).
+    """
+    uczelnia = Uczelnia.objects.get_default()
+    if (
+        uczelnia is None
+        or uczelnia.metoda_do_roku_formularze
+        == const.DO_STYCZNIA_POPRZEDNI_POTEM_OBECNY
+    ):
+        return year_last_month()
+    if uczelnia.metoda_do_roku_formularze == const.NAJWIEKSZY_REKORD:
+        from bpp.models.cache import Rekord
+
+        return Rekord.objects.all().aggregate(Max("rok"))["rok__max"]
+    raise NotImplementedError
 
 
 class Uczelnia(ModelZAdnotacjami, ModelZPBN_ID, NazwaISkrot, NazwaWDopelniaczu):
