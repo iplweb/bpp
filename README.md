@@ -58,8 +58,11 @@ przez zestaw kanałów wyjściowych.
 - **Wyjście (output)** — z BPP dane wypływają do **PBN**, są wystawiane
   przez **OAI-PMH** (zbiór do agregatorów i discovery), udostępniane
   programistycznie przez **API**, a prace mogą być **wysyłane do
-  repozytorium DSpace**, dzięki czemu BPP staje się jednym, spójnym
-  miejscem zasilania całego ekosystemu publikacyjnego uczelni.
+  repozytorium DSpace**. Na bazie zebranych danych BPP generuje też
+  **raporty dla Uczelni** oraz prowadzi **ewaluację z optymalizacją**
+  (dobór publikacji maksymalizujący wynik ewaluacji). Dzięki temu BPP
+  staje się jednym, spójnym miejscem zasilania całego ekosystemu
+  publikacyjnego uczelni.
 
 ### Integracja z DSpace (dwukierunkowa)
 
