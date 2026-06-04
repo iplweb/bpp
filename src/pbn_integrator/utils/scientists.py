@@ -341,6 +341,9 @@ def matchuj_autora_po_stronie_pbn(imiona, nazwisko, orcid, uczelnia):  # noqa: C
         imiona: First names.
         nazwisko: Last name.
         orcid: ORCID identifier.
+        uczelnia: Home-uczelnia autora (z aktualna_jednostka) lub None.
+            Gdy None, autor nie jest auto-matchowany po danych zatrudnienia
+            PBN (reguła R2 — odłączony autor = nie pracownik).
 
     Returns:
         Scientist object or None.

@@ -212,7 +212,13 @@ class Command(PBNBaseCommand):
         )
 
     def _handle_people(self, opts, client, s, e):
-        """Etapy 6-9: pobieranie i integracja ludzi."""
+        """Etapy 6-9: pobieranie i integracja ludzi.
+
+        Macierzysta uczelnia bierze się z ``client.uczelnia`` (jej
+        ``pbn_uid_id``) i jest używana do matchowania autorów po danych
+        zatrudnienia PBN (patrz reguła R2 w
+        ``matchuj_autora_po_stronie_pbn``).
+        """
         ea = opts["enable_all"]
         pbn_uid_id = client.uczelnia.pbn_uid_id
 
