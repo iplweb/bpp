@@ -204,5 +204,15 @@ class OswiadczenieInstytucji(LinkDoPBNMixin, models.Model):
         # wysłane dane:
         from pbn_api.models import SentData
 
+        # Multi-hosted (Track 4): kasujemy SentData po ``pbn_uid_id`` publikacji.
+        # IDEALNIE zawęzilibyśmy też po ``self.uczelnia`` (żeby skasowanie
+        # oświadczenia jednej uczelni nie wywalało stanu wysyłki drugiej), ALE
+        # ``OswiadczenieInstytucji.uczelnia`` jest obecnie nullable i zwykle NULL
+        # (write-side tagowanie tego modelu = Track 7, jeszcze nie zrobione).
+        # Gdyby filtrować po ``uczelnia=None``, przy NULL-owym oświadczeniu nie
+        # skasowalibyśmy poprawnie otagowanych (per-uczelnia) wierszy SentData —
+        # stan wysyłki rozjechałby się z faktem skasowania oświadczenia. Dlatego
+        # ZACHOWUJEMY globalne (po publikacji) kasowanie. Po Track 7 (tag uczelni
+        # na OswiadczenieInstytucji niezawodny) dopisz tu ``uczelnia=self.uczelnia``.
         SentData.objects.filter(pbn_uid_id=self.publicationId_id).delete(*args, **kw)
         return super().delete(*args, **kw)

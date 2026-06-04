@@ -197,10 +197,22 @@ class PBNExportQueueDetailView(
         try:
             from pbn_api.models.sentdata import SentData
 
-            sent_data = SentData.objects.get(
+            # Multi-hosted (Track 4): zawężamy do uczelni wpisu kolejki, żeby
+            # przy ≥2 uczelniach wysyłających ten rekord nie dostać
+            # ``MultipleObjectsReturned``. Wpis kolejki zna swoją uczelnię
+            # (``self.object.uczelnia`` — ta sama, której client wysyłał).
+            # Filtrujemy po (content_type, object_id) — nie przez GFK — bo
+            # rekord BPP mógł zostać w międzyczasie skasowany, a SentData wciąż
+            # istnieje (zachowanie identyczne jak poprzedni ``.get()``). Tag
+            # uczelni dokładamy tylko gdy wpis kolejki go ma (legacy = NULL →
+            # globalny lookup, działa dla single-install i untagged rows).
+            qs = SentData.objects.filter(
                 content_type=self.object.content_type,
                 object_id=self.object.object_id,
             )
+            if self.object.uczelnia_id is not None:
+                qs = qs.filter(uczelnia=self.object.uczelnia)
+            sent_data = qs.get()
             context["sent_data"] = sent_data
 
             if sent_data.pbn_uid_id:

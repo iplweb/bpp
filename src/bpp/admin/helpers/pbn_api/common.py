@@ -1,7 +1,6 @@
 import sys
 
 import rollbar
-from django.contrib.contenttypes.models import ContentType
 from django.urls import reverse
 
 from bpp.admin.helpers import link_do_obiektu
@@ -174,7 +173,7 @@ def sprobuj_wyslac_do_pbn(  # noqa: C901
     except SameDataUploadedRecently as e:
         link_do_wyslanych = reverse(
             "admin:pbn_api_sentdata_change",
-            args=(SentData.objects.get_for_rec(obj).pk,),
+            args=(SentData.objects.get_for_rec(obj, uczelnia).pk,),
         )
 
         notificator.info(
@@ -238,7 +237,7 @@ def sprobuj_wyslac_do_pbn(  # noqa: C901
         try:
             link_do_wyslanych = reverse(
                 "admin:pbn_api_sentdata_change",
-                args=(SentData.objects.get_for_rec(obj).pk,),
+                args=(SentData.objects.get_for_rec(obj, uczelnia).pk,),
             )
         except SentData.DoesNotExist:
             link_do_wyslanych = None
@@ -263,9 +262,11 @@ def sprobuj_wyslac_do_pbn(  # noqa: C901
 
         return
 
-    sent_data = SentData.objects.get(
-        content_type=ContentType.objects.get_for_model(obj), object_id=obj.pk
-    )
+    # Multi-hosted (Track 4): zawężamy do uczelni z kontekstu akcji — ta sama
+    # uczelnia, której client wysyłał rekord (``self.uczelnia`` w sync). Bez
+    # tego, gdy ≥2 uczelnie wysłały ten rekord, ``.get()`` rzuciłby
+    # ``MultipleObjectsReturned``.
+    sent_data = SentData.objects.get_for_rec(obj, uczelnia)
     sent_data_link = link_do_obiektu(sent_data, "Otwórz widok wysłanych danych. ")
 
     publication_link = link_do_obiektu(

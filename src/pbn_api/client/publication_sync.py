@@ -81,10 +81,12 @@ class PublicationSyncMixin(StatementsMixin):
     def _check_upload_needed(self, rec, js, force_upload):
         """Check if upload is needed."""
         if not force_upload:
-            needed = SentData.objects.check_if_upload_needed(rec, js)
+            needed = SentData.objects.check_if_upload_needed(
+                rec, js, uczelnia=self.uczelnia
+            )
             if not needed:
                 raise SameDataUploadedRecently(
-                    SentData.objects.get_for_rec(rec).last_updated_on
+                    SentData.objects.get_for_rec(rec, self.uczelnia).last_updated_on
                 )
 
     def _pre_upload_clear_pbn_statements_if_any(self, rec):
@@ -201,18 +203,27 @@ class PublicationSyncMixin(StatementsMixin):
             else PBN_POST_PUBLICATIONS_URL
         )
         api_url = self.transport.base_url + endpoint_path
-        SentData.objects.create_or_update_before_upload(rec, js, api_url=api_url)
+        SentData.objects.create_or_update_before_upload(
+            rec, js, api_url=api_url, uczelnia=self.uczelnia
+        )
 
         try:
             ret, objectId = self._post_publication_data(js, bez_oswiadczen)
-            SentData.objects.mark_as_successful(rec, api_response_status=str(ret))
+            SentData.objects.mark_as_successful(
+                rec, api_response_status=str(ret), uczelnia=self.uczelnia
+            )
         except HttpException as e:
             SentData.objects.mark_as_failed(
-                rec, exception=str(e), api_response_status=e.content
+                rec,
+                exception=str(e),
+                api_response_status=e.content,
+                uczelnia=self.uczelnia,
             )
             raise
         except Exception as e:
-            SentData.objects.mark_as_failed(rec, exception=str(e))
+            SentData.objects.mark_as_failed(
+                rec, exception=str(e), uczelnia=self.uczelnia
+            )
             raise
 
         return objectId, ret, js, bez_oswiadczen
@@ -664,7 +675,7 @@ class PublicationSyncMixin(StatementsMixin):
 
         # Update SentData with the publication link now that it exists
         try:
-            sent_data = SentData.objects.get_for_rec(pub)
+            sent_data = SentData.objects.get_for_rec(pub, self.uczelnia)
             if sent_data.pbn_uid_id is None:
                 sent_data.pbn_uid_id = publication.pk
                 sent_data.save()

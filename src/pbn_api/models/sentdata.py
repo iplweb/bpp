@@ -11,15 +11,27 @@ from pbn_api.utils import compare_dicts
 
 
 class SentDataManager(models.Manager):
-    def get_for_rec(self, rec):
-        return self.get(
+    # Multi-hosted (audyt uczelnia, Track 4): kluczem wysyłki jest trójka
+    # ``(object_id, content_type, uczelnia)``. Dwie uczelnie wysyłające ten
+    # sam rekord BPP do swoich profili PBN dostają DWA niezależne wiersze.
+    # Parametr ``uczelnia`` ma default ``None`` (zachowanie globalne — lookup
+    # bez zawężania), ale realni callerzy ZAWSZE go podają (``self.uczelnia``
+    # / ``client.uczelnia`` / ``entry.uczelnia``). NULL = legacy/untagged.
+    # UWAGA: gdy istnieją ≥2 wiersze dla ``(object_id, content_type)``, lookup
+    # BEZ ``uczelnia`` rzuci ``MultipleObjectsReturned`` — dlatego wszystkie
+    # call-sites zostały zmienione atomowo.
+    def get_for_rec(self, rec, uczelnia=None):
+        qs = self.filter(
             object_id=rec.pk, content_type=ContentType.objects.get_for_model(rec)
         )
+        if uczelnia is not None:
+            qs = qs.filter(uczelnia=uczelnia)
+        return qs.get()
 
-    def check_if_needed(self, rec, data: dict):
+    def check_if_needed(self, rec, data: dict, uczelnia=None):
         """Legacy method - kept for backward compatibility"""
         try:
-            sd = self.get_for_rec(rec)
+            sd = self.get_for_rec(rec, uczelnia)
         except SentData.DoesNotExist:
             return True
 
@@ -31,10 +43,10 @@ class SentDataManager(models.Manager):
 
         return False
 
-    def check_if_upload_needed(self, rec, data: dict):
+    def check_if_upload_needed(self, rec, data: dict, uczelnia=None):
         """Check if upload needed based on SUCCESSFUL submissions only"""
         try:
-            sd = self.get_for_rec(rec)
+            sd = self.get_for_rec(rec, uczelnia)
             # Only skip if data matches AND was successfully submitted
             if (not compare_dicts(sd.data_sent, data)) and sd.submitted_successfully:
                 return False
@@ -42,10 +54,12 @@ class SentDataManager(models.Manager):
             pass
         return True
 
-    def create_or_update_before_upload(self, rec, data: dict, api_url=""):
+    def create_or_update_before_upload(
+        self, rec, data: dict, api_url="", uczelnia=None
+    ):
         """Create or update SentData record before API call"""
         try:
-            sd = self.get_for_rec(rec)
+            sd = self.get_for_rec(rec, uczelnia)
             # Reset fields for new attempt
             sd.submitted_successfully = False
             sd.submitted_at = timezone.now()
@@ -65,11 +79,14 @@ class SentDataManager(models.Manager):
                 submitted_at=timezone.now(),
                 uploaded_okay=False,
                 api_url=api_url,
+                uczelnia=uczelnia,
             )
 
-    def mark_as_successful(self, rec, pbn_uid_id=None, api_response_status=""):
+    def mark_as_successful(
+        self, rec, pbn_uid_id=None, api_response_status="", uczelnia=None
+    ):
         """Mark existing record as successful after API call"""
-        sd = self.get_for_rec(rec)
+        sd = self.get_for_rec(rec, uczelnia)
         sd.submitted_successfully = True
         sd.uploaded_okay = True
         sd.pbn_uid_id = pbn_uid_id
@@ -77,9 +94,9 @@ class SentDataManager(models.Manager):
         sd.exception = ""
         sd.save()
 
-    def mark_as_failed(self, rec, exception="", api_response_status=""):
+    def mark_as_failed(self, rec, exception="", api_response_status="", uczelnia=None):
         """Mark existing record as failed after API call"""
-        sd = self.get_for_rec(rec)
+        sd = self.get_for_rec(rec, uczelnia)
         sd.submitted_successfully = False
         sd.uploaded_okay = False
         sd.exception = str(exception) if exception else ""
@@ -87,11 +104,17 @@ class SentDataManager(models.Manager):
         sd.save()
 
     def updated(
-        self, rec, data: dict, pbn_uid_id=None, uploaded_okay=True, exception=""
+        self,
+        rec,
+        data: dict,
+        pbn_uid_id=None,
+        uploaded_okay=True,
+        exception="",
+        uczelnia=None,
     ):
         """Legacy method - kept for backward compatibility"""
         try:
-            sd = self.get_for_rec(rec)
+            sd = self.get_for_rec(rec, uczelnia)
         except SentData.DoesNotExist:
             self.create(
                 object=rec,
@@ -101,6 +124,7 @@ class SentDataManager(models.Manager):
                 exception=exception,
                 submitted_successfully=uploaded_okay,
                 submitted_at=timezone.now() if uploaded_okay else None,
+                uczelnia=uczelnia,
             )
             return
 
@@ -113,12 +137,15 @@ class SentDataManager(models.Manager):
             sd.submitted_at = timezone.now()
         sd.save()
 
-    def ids_for_model(self, model):
-        return self.filter(content_type=ContentType.objects.get_for_model(model))
+    def ids_for_model(self, model, uczelnia=None):
+        qs = self.filter(content_type=ContentType.objects.get_for_model(model))
+        if uczelnia is not None:
+            qs = qs.filter(uczelnia=uczelnia)
+        return qs
 
-    def bad_uploads(self, model):
+    def bad_uploads(self, model, uczelnia=None):
         return (
-            self.ids_for_model(model)
+            self.ids_for_model(model, uczelnia)
             .filter(uploaded_okay=False)
             .values_list("object_id", flat=True)
             .distinct()

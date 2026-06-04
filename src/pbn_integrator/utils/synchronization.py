@@ -201,13 +201,17 @@ def synchronizuj_publikacje(
 
     if only_bad:
         zwarte_baza = zwarte_baza.filter(
-            pk__in=SentData.objects.bad_uploads(Wydawnictwo_Zwarte)
+            pk__in=SentData.objects.bad_uploads(
+                Wydawnictwo_Zwarte, uczelnia=client.uczelnia
+            )
         )
 
     if only_new:
         # Nie synchronizuj prac ktore juz sa w SentData
         zwarte_baza = zwarte_baza.exclude(
-            pk__in=SentData.objects.ids_for_model(Wydawnictwo_Zwarte)
+            pk__in=SentData.objects.ids_for_model(
+                Wydawnictwo_Zwarte, uczelnia=client.uczelnia
+            )
             .values_list("pk", flat=True)
             .distinct()
         )
@@ -241,13 +245,17 @@ def synchronizuj_publikacje(
 
     if only_bad:
         ciagle_baza = ciagle_baza.filter(
-            pk__in=SentData.objects.bad_uploads(Wydawnictwo_Ciagle)
+            pk__in=SentData.objects.bad_uploads(
+                Wydawnictwo_Ciagle, uczelnia=client.uczelnia
+            )
         )
 
     if only_new:
         # Nie synchronizuj prac ktore juz sa w SentData
         ciagle_baza = ciagle_baza.exclude(
-            pk__in=SentData.objects.ids_for_model(Wydawnictwo_Ciagle)
+            pk__in=SentData.objects.ids_for_model(
+                Wydawnictwo_Ciagle, uczelnia=client.uczelnia
+            )
             .values_list("pk", flat=True)
             .distinct()
         )

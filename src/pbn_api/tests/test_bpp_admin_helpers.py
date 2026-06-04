@@ -82,10 +82,13 @@ def test_sprobuj_wyslac_do_pbn_dane_juz_wyslane(
 ):
     js = WydawnictwoPBNAdapter(pbn_wydawnictwo_zwarte_z_charakterem).pbn_get_json()
     js.pop("languageData", None)
+    # Tagujemy SentData uczelnią clienta — od Track 4 lookup wysyłki zawęża
+    # po uczelni (``self.uczelnia`` == ``pbn_uczelnia``).
     SentData.objects.updated(
         pbn_wydawnictwo_zwarte_z_charakterem,
         js,
         uploaded_okay=True,
+        uczelnia=pbn_uczelnia,
     )
 
     req = rf.get("/")
