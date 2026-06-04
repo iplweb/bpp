@@ -172,7 +172,7 @@ wzorzec `Uczelnia\.objects\.first\(\)` (z whitelistą dla demo/debug/warstwy mod
 
 Wszystkie naprawy: TDD (RED→GREEN), invariant single-install, lint czysty.
 
-### ✅ ZROBIONE (9 napraw)
+### ✅ ZROBIONE (11 napraw)
 | Track | plik(i) | test |
 |---|---|---|
 | 2 | `raport_slotow/views/zerowy.py` (+ `…/tests/…/test_raport_slotow_zerowy_per_uczelnia.py`) | 16 ✅ |
@@ -184,13 +184,19 @@ Wszystkie naprawy: TDD (RED→GREEN), invariant single-install, lint czysty.
 | 1b | `bpp/views/autocomplete/simple.py` `LataAutocomplete` (+ test) | 2 ✅ |
 | 1c | `bpp/views/autocomplete/{navigation,search_services}.py` (+ test) | 132 ✅ (autocomplete regr.) |
 | 1d | `bpp/models/cache/rekord.py` + `bpp/views/browse.py` (+ test) | 22 ✅ (browse regr.) |
+| 4 | `pbn_api/models/sentdata.py` (`SentDataManager` klucz `(object_id, content_type, uczelnia)`) + call-site'y (`publication_sync`, `synchronization`, `admin/helpers/pbn_api/common`, `pbn_export_queue/views/detail_views`) + migracja danych `0072` (backfill single-install, NULL self-healing w multi) (+ `pbn_api/tests/test_sentdata_per_uczelnia.py`, `pbn_export_queue/tests/test_views_detail.py`) | pbn_api 241 ✅ / queue regr. |
+| 6 | `ewaluacja_optymalizacja/views/*` (19× `Uczelnia.objects.first()` → `get_for_request`/`uczelnia_dla_odczytu`) + `core/__init__.py` + komendy `solve_uczelnia`/`solve_evaluation` (single-or-fail + `--uczelnia`) + guard `test_multihosted_get_default_guard.py` (wzorzec `first()`/`all()[0]` + whitelist) (+ `ewaluacja_optymalizacja/tests/test_first_per_uczelnia.py`) | ewaluacja 82 ✅ / guard 2 ✅ |
 
-### 📋 SPEC (execution-ready, do wykonania w świeżym kontekście / subagentem)
-- **Track 4 — SentData per-uczelnia:** `specs/2026-06-04-sentdata-per-uczelnia-track4-design.md`
-  (outward-facing, ~8 call-site'ów spójnościowych + migracja — świadomie NIE
-  robione połowicznie na rozciągniętym kontekście).
-- **Track 6 — `Uczelnia.objects.first()` sweep + guard:** `specs/2026-06-04-uczelnia-first-sweep-track6-design.md`
-  (28 wystąpień; druga ślepa plamka guarda).
+Regresja dotkniętych aplikacji na HEAD: **474 passed**, brak migration-drift.
+Każdy track: dwustopniowy review (spec compliance → code quality) + final
+holistic review (READY TO MERGE), z domkniętymi poprawkami review (queue-detail
+`MultipleObjectsReturned` guard; mutujące `browser_*` → `get_for_request`).
+
+### 📋 SPEC — wszystkie wykonane
+- ~~Track 4 — SentData per-uczelnia~~ → **ZROBIONE** (`c99452e5f`, `45ae7c0e9`).
+- ~~Track 6 — `Uczelnia.objects.first()` sweep + guard~~ → **ZROBIONE**
+  (`583d09ba4`, `035fa6f1b`, `a9a55aa53`). Faktycznie 27 wystąpień runtime
+  (spec szacował 28; drift repo) + 3 w testach (ignorowane przez guard).
 
 ### 🟡 Odłożone (bez akcji, odnotowane): federacja optymalizacji (backlog C globalne
 delete), API REST maszynowe, pbn_api lustro (Track 7 = komentarze), multiseek by-design.
