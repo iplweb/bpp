@@ -16,7 +16,7 @@
 
 | # | Plik | Zakres | Zależy od |
 |---|---|---|---|
-| 01 | `2026-06-04-soft-delete-01-autor-trigger-widoki.md` | `*_Autor` → SoftDeleteModel; filtr `deleted_at` w widokach źródłowych; trigger-skip; testy spójności cache + `verify_cache` | — |
+| 01 | `2026-06-04-soft-delete-01-autor-trigger-widoki.md` | `*_Autor` → SoftDeleteModel; **filtr `deleted_at` w widokach źródłowych (mechanizm nadrzędny)**; trigger-skip OPCJONALNY; spójność przez `full_refresh()`. ⚠️ patrz „Koordynacja: trigger" niżej | — / trigger ⚠️ |
 | 02 | `2026-06-04-soft-delete-02-publikacje.md` | 5 modeli → SoftDeleteModel; override `delete()`/`restore()` z wąską kaskadą na `*_Autor`; `slug` warunkowy unique; przeplecenie menedżerów | 01 |
 | 03 | `2026-06-04-soft-delete-03-audyt-kategorii-b.md` | przełączenie import/dedup/PBN-matching na `global_objects`; jawny `.hard_delete()` w `pbn_import`; audyt 90 miejsc `*_Autor.objects` | 02 |
 | 04 | `2026-06-04-soft-delete-04-guardy-protect.md` | flip FK `CASCADE→PROTECT` (autor, doktorat, `wydawnictwo_nadrzedne`); guard w soft `delete()` (autor + książka-matka); soft-delete husku autora | 02 |
@@ -24,6 +24,28 @@
 | 06 | `2026-06-04-soft-delete-06-softdeletelog.md` | model `SoftDeleteLog`; receivery `post_soft_delete`/`post_restore`/`post_hard_delete`; wstrzykiwanie `user` | 02, 05 |
 | 07 | `2026-06-04-soft-delete-07-admin.md` | admin superuser-only: kosz/filtr/przywróć/usuń-trwale/powód (5 modeli + Autor); jeden hook usera | 04, 06 |
 | 08 | `2026-06-04-soft-delete-08-testy-regresji.md` | pełna suita regresji: PBN duplikaty/wycofanie, dashboard, import, ewaluacja, merge autorów, API | 01–07 |
+
+---
+
+## ⚠️ Koordynacja: trigger `bpp_refresh_cache` (BLOKER fazy 01)
+
+Funkcja `bpp_refresh_cache()` jest **równolegle optymalizowana w osobnej gałęzi**
+(prace użytkownika). **Faza 01 NIE startuje, dopóki ta gałąź nie wyląduje** i
+`feat/soft-delete` nie zostanie na nią zaktualizowana (rebase na `dev` lub
+merge gałęzi optymalizacji).
+
+Ortogonalność: faza 01 dla POPRAWNOŚCI dotyka **widoków źródłowych**
+(`bpp_rekord`, `bpp_*_autorzy` — filtr `deleted_at IS NULL`), a optymalizacja
+dotyka **funkcji triggera** — w dużej mierze rozłączne. Modyfikacja funkcji
+triggera w fazie 01 jest **opcjonalna** (trigger-skip) i nakładana CIENKO na
+wierzch zoptymalizowanej funkcji, jeśli w ogóle.
+
+**Inwariant, który MUSI przetrwać optymalizację** (inaczej filtr widoku przestaje
+wystarczać i wraca konieczność trigger-skip): na `UPDATE/INSERT` trigger robi
+**bezwarunkowy `DELETE` z `_mat` przed re-insertem/upsertem** — tzn. nie
+re-insertuje wiersza, którego źródłowy widok nie zwraca. Po wskazaniu gałęzi:
+zweryfikować ten inwariant + czy optymalizacja rusza widoki + status utajonego
+buga (string w liście krotek `(table, id_col)`).
 
 ---
 
