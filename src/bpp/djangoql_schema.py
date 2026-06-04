@@ -19,8 +19,11 @@ pomijane.
 
 from django.core.exceptions import FieldDoesNotExist
 from django.db import models
+from django.db.models import Q
 from django.utils.html import strip_tags
 from djangoql.extras import AutocompleteField, ExtrasSchema
+
+from bpp.models import Jednostka
 
 #: Pola-etykiety wg priorytetu — czym opisać i po czym szukać obiekt w pickerze.
 #: Opis bibliograficzny jako pierwszy: dla publikacji jest najczytelniejszy.
@@ -47,6 +50,8 @@ _VISIBLE_WHEN_FALSE = ("disabled", "ukryty", "ukryta", "ukryte")
 _REL_SUFFIX = "__rel"
 #: FK pomijane (rodzic cache/through — pickowanie rodzica nie ma sensu).
 _SKIP_FK = ("rekord",)
+#: Wirtualne pole: picker po Jednostce dopasowujący rodzinę MPTT.
+_SUBUNITS_FIELD = "jednostka_z_podjednostkami__rel"
 
 
 def _field_names(model):
@@ -105,15 +110,61 @@ def _picker_fks(model):
     return out
 
 
+class JednostkaZPodjednostkamiField(AutocompleteField):
+    """Picker po Jednostce: dopasowuje rekordy autorów z tej jednostki ORAZ
+    wszystkich jednostek z jej rodziny MPTT (przodkowie+sama+potomkowie).
+
+    Odwzorowuje multiseek EQUAL_PLUS_SUB_FEMALE:
+        Q(autorzy__jednostka__in=value.get_family())
+    """
+
+    def get_lookup(self, path, operator, value):
+        parsed = self.parse_id(value)
+        if not isinstance(parsed, int):
+            # free-text fallback po nazwie jednostki (best-effort)
+            return Q(autorzy__jednostka__nazwa__icontains=str(value))
+        try:
+            jednostka = Jednostka.objects.get(pk=parsed)
+        except Jednostka.DoesNotExist:
+            return Q(pk__in=[])  # nic nie pasuje
+        q = Q(autorzy__jednostka__in=jednostka.get_family())
+        return ~q if operator in ("!=", "not in") else q
+
+
+def _has_autorzy_jednostka(model):
+    """True, gdy model ma odwrotną relację 'autorzy' z FK 'jednostka'
+    (Rekord/cache)."""
+    try:
+        rel = model._meta.get_field("autorzy")
+    except FieldDoesNotExist:
+        return False
+    related = getattr(rel, "related_model", None)
+    if related is None:
+        return False
+    return "jednostka" in {
+        f.name for f in related._meta.get_fields() if isinstance(f, models.Field)
+    }
+
+
 class RelPickerSchemaMixin:
     """Mixin auto-generujący pickery ``<fk>__rel`` (patrz docstring modułu)."""
 
     def get_fields(self, model):
         fields = list(super().get_fields(model))
         fields += [f.name + _REL_SUFFIX for f in _picker_fks(model)]
+        if _has_autorzy_jednostka(model):
+            fields.append(_SUBUNITS_FIELD)
         return fields
 
     def get_field_instance(self, model, field_name):
+        if field_name == _SUBUNITS_FIELD:
+            return JednostkaZPodjednostkamiField(
+                model=model,
+                name=_SUBUNITS_FIELD,
+                nullable=True,
+                queryset=_visible_qs(Jednostka),
+                search_fields=_label_fields(Jednostka),
+            )
         if field_name.endswith(_REL_SUFFIX):
             fk_name = field_name[: -len(_REL_SUFFIX)]
             try:
