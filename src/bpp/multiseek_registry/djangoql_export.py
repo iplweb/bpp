@@ -172,14 +172,20 @@ def leaf_to_djangoql(registry, leaf):
     None gdy: nieznane pole, nieobslugiwana operacja, albo fragment nie
     waliduje sie wzgledem schematu Rekord.
     """
-    field = registry.field_by_name.get(leaf["field"])
+    if not isinstance(leaf, dict):
+        return None
+    field = registry.field_by_name.get(leaf.get("field"))
     if field is None:
+        return None
+    value = leaf.get("value")
+    operation = leaf.get("operator")
+    if operation is None:
         return None
     override = getattr(field, "to_djangoql", None)
     if callable(override):
-        frag = override(leaf["value"], leaf["operator"])
+        frag = override(value, operation)
     else:
-        frag = _default_leaf(field, leaf["value"], leaf["operator"])
+        frag = _default_leaf(field, value, operation)
     if frag is None:
         return None
     return frag if is_valid_rekord_djangoql(frag) else None

@@ -328,3 +328,20 @@ def test_andnot_value_with_and_in_string_inverts_correctly():
     res = multiseek_form_to_djangoql(form, registry)
     assert res.query == 'rok = 2023 and tytul_oryginalny !~ "arms and legs"'
     assert res.warnings == []
+
+
+@pytest.mark.django_db
+def test_malformed_leaf_missing_keys_is_skipped():
+    # Liść bez 'operator'/'value' nie może wywalić konwersji — best-effort.
+    form = {
+        "form_data": [
+            None,
+            {"field": "Rok", "operator": str(EQUAL), "value": 2020,
+             "prev_op": None},
+            {"field": "Rok"},  # malformed: brak operator/value
+        ],
+        "ordering": {},
+    }
+    res = multiseek_form_to_djangoql(form, registry)
+    assert res.query == "rok = 2020"
+    assert len(res.warnings) == 1

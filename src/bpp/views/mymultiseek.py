@@ -173,7 +173,12 @@ class MultiseekToDjangoQLView(WprowadzanieDanychOrSuperuserMixin, View):
             return HttpResponseBadRequest("Niepoprawny JSON formularza.")
         if not isinstance(form_json, dict):
             return HttpResponseBadRequest("Oczekiwano obiektu JSON.")
-        result = multiseek_form_to_djangoql(form_json, multiseek_registry)
+        try:
+            result = multiseek_form_to_djangoql(form_json, multiseek_registry)
+        except (KeyError, TypeError, AttributeError) as exc:
+            return HttpResponseBadRequest(
+                f"Niepoprawna struktura formularza: {exc}"
+            )
         return JsonResponse(
             {
                 "query": result.query,

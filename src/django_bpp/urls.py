@@ -288,6 +288,9 @@ urlpatterns = (
             ),
             name="multiseek:results",
         ),
+        # Musi byc w przestrzeni /multiseek/ (root urlconf), PRZED include
+        # ("multiseek.urls"), bo formularz POST-uje relatywnie ./do-djangoql/.
+        # Nazwa jest top-level (nie bpp:...), bo trasa nie jest w bpp.urls.
         url(
             r"^multiseek/do-djangoql/$",
             MultiseekToDjangoQLView.as_view(),
