@@ -55,6 +55,60 @@ niezależnie od jego nazwy (starych hashy `_e76def89` itp.), więc nie
   `Wydawnictwo_Ciagle_Autor` (7.6 MB, hot), `Wydawnictwo_Zwarte_Autor`
   (4.2 MB), `Patent_Autor` — redundantne prefiksy `unique_together`.
 
+## Batch 2 (czerwiec 2026) — wykonane
+
+Druga seria, ~35 redundantnych indeksów usuniętych przez edycje modeli
+(`db_index=False` / usunięcie `Meta.Index`) + raw SQL dla nieosiągalnych
+przez ORM. Wszystkie zweryfikowane: `makemigrations --check` czysto,
+migracje aplikują się pod testcontainers, testy zielone.
+
+**Apki Django (migracje per-apka):** `deduplikator_autorow` (5),
+`deduplikator_publikacji` (3), `komparator_pbn_udzialy` (5),
+`pbn_komparator_zrodel` (5), `pbn_import` (3), `pbn_wysylka_oswiadczen` (2),
+`przemapuj_zrodlo` (2), `powiazania_autorow` (1), `ewaluacja_liczba_n` (4),
+`ewaluacja_metryki` (3), `importer_publikacji` (1), `zglos_publikacje` (1).
+
+**`bpp` core (migracja `0424`):** `autor_dyscyplina` (przez raw-indeks
+`_autor_rok_idx`), `autor_jednostka`, `dyscyplina_zrodla`,
+`punktacja_zrodla`, `nagroda`, `opi_2012`, `oplatypublikacjilog`,
+`publikacja_habilitacyjna`, `ukryj_status_korekty`, `wydawca` w abstrakcie
+`Wydawnictwo_Zwarte_Baza` (→ wydawnictwo_zwarte + praca_doktorska +
+praca_habilitacyjna), `cache_punktacja_autora.rekord_id`.
+
+**`bpp` raw SQL (migracja `0425`, wzorzec 0422):** `bpp_autorzy_mat_2`
+(managed=False), osierocone `bpp_praca_doktorska_52be3978` /
+`bpp_praca_habilitacyjna_52be3978`. (`bpp_autorzy_mat_6` — już w 0422.)
+
+**Retencja logów logowania:** task Celery
+`bpp.tasks.usun_stare_logi_logowania_easyaudit` + wpis w
+`CELERYBEAT_SCHEDULE` (1. dnia miesiąca, 2:00) — kasuje `LoginEvent`
+starsze niż **24 mies.** (RODO). CRUDEvent (historia edycji) nietknięty.
+
+### Świadomie pominięte w Batch 2 (z powodem)
+
+- **`grant_rekordu`, `poziom_wydawcy`** — tabele KB (zysk znikomy), a pliki
+  `grant.py`/`wydawca.py` mają **pre-existing** dług lintera (DJ001
+  `null=True` na TextField → wymaga migracji schematu; DJ012 kolejność
+  metod). Nie naprawiamy cudzego długu drive-by → do osobnego PR-a
+  lint-cleanup razem z edycją indeksu.
+- **`konferencja.nazwa`** — plain-btree redundantny, ALE `db_index=True` na
+  polu tekstowym tworzy też wariant `_like` (text_pattern_ops),
+  nie-pokryty przez unique_together. Drop dotknąłby `_like` (nie
+  udowodniony jako zbędny). Mała tabela → zostawione.
+- **`ewaluacja2021`** — modele już usunięte (migracja 0020), tabele znikną.
+- **`favicon`, `flexible_reports`, `formdefaults`, `dynamic_columns`** —
+  **pakiety zewnętrzne** (site-packages); poprawka należy do upstream.
+- **`import_dyscyplin`, `bppuser_*`** — auto-tabele M2M (brak modelu z
+  `db_index`); raw-drop ze starą nazwą zbyt kruchy za zerowy zysk.
+
+### Znaleziony przy okazji pre-existing drift (NIE w tym PR)
+
+`makemigrations` (bez filtra apek) generuje
+`raport_slotow.0020_alter_raportslotowuczelnia_do_roku` — model
+`RaportSlotowUczelnia.do_roku` rozjechał się ze stanem migracji (commit
+`a3a5ffff6 "Fix 923"` zmienił pole bez migracji). Osobny problem na `dev`,
+do naprawy niezależnie.
+
 ## Do zrobienia — checklist (≈60 indeksów, pogrupowane)
 
 Ten sam wzorzec naprawy. Pominąć **pakiety zewnętrzne** (ich indeksy
