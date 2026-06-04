@@ -366,6 +366,40 @@ class ZapytanieForm(forms.Form):
     )
 
 
+def _annotate_breakdown(node, is_root=True, on_zero_path=True):
+    """Dodaje do każdego węzła drzewa rozbicia pole ``label`` (tekst albo None)
+    — komunikat wskazujący realnego „winowajcę" zerowego wyniku.
+
+    Idea: idziemy „ścieżką zera". Dziecko jest na ścieżce zera tylko jeśli SAMO
+    ma 0 trafień — bo wtedy jego pustka propaguje się w górę przez AND (każdy
+    zerowy operand zeruje AND) albo współtworzy puste OR. Zero pochłonięte przez
+    NIEPUSTE OR (np. ``(A or B)`` które zwraca >0, mimo że B=0) NIE jest
+    winowajcą — i nie dostaje etykiety (koniec z szumem na martwych gałęziach).
+
+    Etykietę dostaje tylko NAJGŁĘBSZY węzeł na ścieżce zera (ten, poniżej
+    którego nie ma już zera) — czyli realny powód pustki:
+    - liść z 0 trafień → „warunek nie pasuje do niczego",
+    - AND-przecięcie (każdy operand z osobna >0, ale razem 0) → etykieta na AND.
+
+    Korzeń (główne zapytanie) NIE dostaje etykiety — i tak wiadomo, że ma 0 (po
+    to renderujemy rozbicie). Liczone z samych ``count`` + struktury — bez
+    polegania na rolach z djangoql.
+    """
+    children = node["children"]
+    child_on_zero = [on_zero_path and c["count"] == 0 for c in children]
+    is_deepest_zero = on_zero_path and node["count"] == 0 and not any(child_on_zero)
+    label = None
+    if is_deepest_zero and not is_root:
+        if children:
+            label = "każdy warunek z osobna coś zwraca, ale ich połączenie daje 0"
+        else:
+            label = "ten warunek nie pasuje do żadnego rekordu"
+    node["label"] = label
+    for child, czp in zip(children, child_on_zero, strict=True):
+        _annotate_breakdown(child, is_root=False, on_zero_path=czp)
+    return node
+
+
 class ZapytanieView(WprowadzanieDanychOrSuperuserMixin, FormView):
     template_name = "bpp/zapytanie.html"
     form_class = ZapytanieForm
@@ -427,6 +461,8 @@ class ZapytanieView(WprowadzanieDanychOrSuperuserMixin, FormView):
                     model_key,
                 )
                 breakdown = None
+            if breakdown is not None:
+                _annotate_breakdown(breakdown)
 
         context = self.get_context_data(
             form=form,

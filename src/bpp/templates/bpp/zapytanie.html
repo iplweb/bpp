@@ -199,6 +199,42 @@
             color: #64748b;
             white-space: nowrap;
         }
+        /* Rozbicie "dlaczego 0 wynikow" — delikatne, jak naglowek + lista */
+        .zapytanie-breakdown-title {
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: #6b7280;
+            margin: 0.9rem 0 0.3rem;
+        }
+        .zapytanie-breakdown-title .fi-info { color: #9ca3af; }
+        .zapytanie-breakdown-trunc {
+            font-weight: 400;
+            font-style: italic;
+            color: #9ca3af;
+        }
+        ul.zapytanie-breakdown {
+            list-style: none;
+            margin: 0 0 0 0.25rem;
+            font-size: 0.9rem;
+            line-height: 1.5;
+        }
+        ul.zapytanie-breakdown ul.zapytanie-breakdown { margin-left: 1.1rem; }
+        ul.zapytanie-breakdown li { margin: 0.1rem 0; }
+        .zapytanie-breakdown code {
+            font-size: 0.82rem;
+            background: #f3f4f6;
+            color: #374151;
+            padding: 0.05rem 0.3rem;
+            border-radius: 3px;
+        }
+        .zapytanie-breakdown-count { color: #9ca3af; }
+        .zapytanie-breakdown-count--zero { color: #dc2626; font-weight: 600; }
+        .zapytanie-breakdown-note {
+            margin-left: 0.4rem;
+            color: #b45309;
+            font-style: italic;
+            font-size: 0.82rem;
+        }
     </style>
 {% endblock %}
 

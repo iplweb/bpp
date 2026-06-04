@@ -399,5 +399,67 @@ def test_zapytanie_breakdown_rendered_in_html(superuser_client):
         {"model": "autor", "query": 'nazwisko = "Kowalski" and imiona = "asdfo"'},
     )
     html = response.content.decode("utf-8")
-    assert "Dlaczego 0 wynikow" in html
+    assert "Dlaczego 0 wyników" in html
+    assert "ten warunek nie pasuje do żadnego rekordu" in html
     assert "asdfo" in html
+    # warunek z 0 trafień (poza korzeniem) ma czerwoną liczbę
+    assert "zapytanie-breakdown-count--zero" in html
+
+
+@pytest.mark.django_db
+def test_zapytanie_breakdown_culprit_on_leaf_not_root(superuser_client):
+    baker.make("bpp.Autor", nazwisko="Kowalski", imiona="Jan")
+    response = superuser_client.get(
+        reverse(URL),
+        {"model": "autor", "query": 'nazwisko = "Kowalski" and imiona = "asdfo"'},
+    )
+    breakdown = response.context["breakdown"]
+    assert breakdown["label"] is None  # korzeń (główne zapytanie) bez etykiety
+    leaves = list(_breakdown_leaves(breakdown))
+    culprit = next(leaf for leaf in leaves if "asdfo" in leaf["text"])
+    assert culprit["count"] == 0
+    assert culprit["label"] == "ten warunek nie pasuje do żadnego rekordu"
+    other = next(leaf for leaf in leaves if "Kowalski" in leaf["text"])
+    assert other["label"] is None  # warunek z trafieniami nie jest winowajcą
+
+
+@pytest.mark.django_db
+def test_zapytanie_breakdown_root_intersection_not_labeled(superuser_client):
+    baker.make("bpp.Autor", nazwisko="Kowalski", imiona="Jan")
+    baker.make("bpp.Autor", nazwisko="Nowak", imiona="Anna")
+    response = superuser_client.get(
+        reverse(URL),
+        {"model": "autor", "query": 'nazwisko = "Kowalski" and imiona = "Anna"'},
+    )
+    breakdown = response.context["breakdown"]
+    assert breakdown["count"] == 0
+    assert breakdown["label"] is None  # głównego zapytania nie etykietujemy
+    # każdy warunek z osobna coś zwraca (>=1), więc żaden liść nie jest winowajcą
+    for leaf in _breakdown_leaves(breakdown):
+        assert leaf["count"] >= 1
+        assert leaf["label"] is None
+
+
+@pytest.mark.django_db
+def test_zapytanie_breakdown_no_label_on_dead_or_branch(superuser_client):
+    baker.make("bpp.Autor", nazwisko="Kowalski", imiona="Jan")
+    response = superuser_client.get(
+        reverse(URL),
+        {
+            "model": "autor",
+            "query": (
+                '(nazwisko = "Kowalski" or nazwisko = "Xyz") and imiona = "asdfo"'
+            ),
+        },
+    )
+    breakdown = response.context["breakdown"]
+    assert breakdown["count"] == 0
+    leaves = list(_breakdown_leaves(breakdown))
+    # martwa gałąź w NIEPUSTYM OR — nie winowajca, bez etykiety (koniec z szumem)
+    xyz = next(leaf for leaf in leaves if "Xyz" in leaf["text"])
+    assert xyz["count"] == 0
+    assert xyz["label"] is None
+    # realny winowajca: warunek z 0 trafień połączony AND-em
+    asdfo = next(leaf for leaf in leaves if "asdfo" in leaf["text"])
+    assert asdfo["count"] == 0
+    assert asdfo["label"] == "ten warunek nie pasuje do żadnego rekordu"
