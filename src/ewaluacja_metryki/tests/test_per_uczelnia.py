@@ -3,7 +3,7 @@ from decimal import Decimal
 import pytest
 from model_bakery import baker
 
-from ewaluacja_metryki.models import MetrykaAutora
+from ewaluacja_metryki.models import MetrykaAutora, StatusGenerowania
 
 
 def _make_metryka(autor, dyscyplina, uczelnia, **kw):
@@ -39,8 +39,6 @@ def test_metryka_unique_together_z_uczelnia(autor_jan_kowalski, dyscyplina1):
 
 @pytest.mark.django_db
 def test_status_generowania_per_uczelnia():
-    from ewaluacja_metryki.models import StatusGenerowania
-
     u1 = baker.make("bpp.Uczelnia")
     u2 = baker.make("bpp.Uczelnia")
     s1 = StatusGenerowania.get_or_create(uczelnia=u1)

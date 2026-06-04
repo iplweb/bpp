@@ -186,7 +186,7 @@ class MetrykaAutora(models.Model):
 
 
 class StatusGenerowania(models.Model):
-    """Model przechowujący informację o ostatnim generowaniu metryk (singleton)"""
+    """Model przechowujący informację o ostatnim generowaniu metryk (per uczelnia)."""
 
     data_rozpoczecia = models.DateTimeField(
         null=True, blank=True, help_text="Data rozpoczęcia ostatniego generowania"
@@ -244,9 +244,6 @@ class StatusGenerowania(models.Model):
             return f"Ostatnie generowanie: {self.data_zakonczenia.strftime('%Y-%m-%d %H:%M:%S')}"
         else:
             return "Brak informacji o generowaniu"
-
-    def save(self, *args, **kwargs):
-        super().save(*args, **kwargs)
 
     @classmethod
     def get_or_create(cls, uczelnia=None):
