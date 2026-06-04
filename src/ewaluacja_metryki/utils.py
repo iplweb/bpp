@@ -90,6 +90,8 @@ def oblicz_metryki_dla_autora(
     if autor_dyscyplina and autor_dyscyplina.rodzaj_autora:
         rodzaj_autora_skrot = autor_dyscyplina.rodzaj_autora.skrot
 
+    uczelnia_id = uczelnia.pk if uczelnia is not None else None
+
     # Oblicz metryki algorytmem plecakowym
     (
         punkty_nazbierane,
@@ -101,7 +103,7 @@ def oblicz_metryki_dla_autora(
         rok_max=rok_max,
         minimalny_pk=minimalny_pk,
         dyscyplina_id=dyscyplina.pk,
-        uczelnia_id=uczelnia.pk if uczelnia is not None else None,
+        uczelnia_id=uczelnia_id,
     )
 
     # Convert cache PKs to stable rekord_ids (survives cache rebuilds from pin/unpin)
@@ -130,7 +132,7 @@ def oblicz_metryki_dla_autora(
         minimalny_pk=minimalny_pk,
         dyscyplina_id=dyscyplina.pk,
         akcja="wszystko",
-        uczelnia_id=uczelnia.pk if uczelnia is not None else None,
+        uczelnia_id=uczelnia_id,
     )
 
     # Convert cache PKs to stable rekord_ids
@@ -337,6 +339,8 @@ def _calculate_metrics_data(
     """Oblicza dane metryk dla autora."""
     from bpp.models.cache import Cache_Punktacja_Autora_Query
 
+    uczelnia_id = uczelnia.pk if uczelnia is not None else None
+
     # Oblicz metryki algorytmem plecakowym
     (
         punkty_nazbierane,
@@ -348,7 +352,7 @@ def _calculate_metrics_data(
         rok_max=rok_max,
         minimalny_pk=minimalny_pk,
         dyscyplina_id=dyscyplina.pk,
-        uczelnia_id=uczelnia.pk if uczelnia is not None else None,
+        uczelnia_id=uczelnia_id,
     )
 
     # Convert cache PKs to stable rekord_ids
@@ -375,7 +379,7 @@ def _calculate_metrics_data(
         minimalny_pk=minimalny_pk,
         dyscyplina_id=dyscyplina.pk,
         akcja="wszystko",
-        uczelnia_id=uczelnia.pk if uczelnia is not None else None,
+        uczelnia_id=uczelnia_id,
     )
 
     # Convert cache PKs to stable rekord_ids
@@ -589,7 +593,7 @@ def generuj_metryki(
 
     # Przetwarzaj autorów po kolei z aktualizacją statusu
     for idx, ilosc_udzialow in enumerate(
-        ilosc_udzialow_qs.select_related("autor", "dyscyplina_naukowa"), 1
+        ilosc_udzialow_qs.select_related("autor", "dyscyplina_naukowa", "uczelnia"), 1
     ):
         result, msg = _process_single_author(
             ilosc_udzialow,
