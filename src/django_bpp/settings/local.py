@@ -15,6 +15,13 @@ def setenv_default(varname, default_value):
 
 setenv_default("DJANGO_SETTINGS_MODULE", "django_bpp.settings.local")
 setenv_default("DJANGO_BPP_SECRET_KEY", "0xdeadbeef 2")
+# Staly dev-owy klucz Fernet dla EncryptedTextField (credentiale DSpace itd.).
+# Bez niego zapis pola EncryptedTextField wywala ImproperlyConfigured
+# (src/bpp/fields.py). Stala wartosc (nie generowana co restart), zeby
+# rekordy zaszyfrowane wczesniej dalo sie odszyfrowac po restarcie. Dev-only:
+# local.py nie laduje sie w produkcji — tam klucz przychodzi z prawdziwego
+# env/.env. Override: ustaw DSPACE_CREDENTIALS_KEY w srodowisku przed startem.
+setenv_default("DSPACE_CREDENTIALS_KEY", "beRCn4RUNneKiOizMZEEZDjeZVwdOJ6m2etsvwC3wfs=")
 
 from .base import *  # noqa
 from .base import (  # noqa
