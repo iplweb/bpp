@@ -12,6 +12,7 @@
         "sass": "~1.99.0"
     },
     "dependencies": {
+        "3d-force-graph": "^1.80.0",
         "basic-ftp": "5.3.1",
         "cytoscape": "^3.34.0",
         "cytoscape-fcose": "^2.2.0",
@@ -35,6 +36,7 @@
         "select2": "^4.1.0-rc.0",
         "select2-foundation-theme": "https://github.com/mpasternak/select2-foundation.git#modernize-foundation-6.9",
         "sigma": "^3.0.2",
+        "three-spritetext": "^1.10.0",
         "tone": "^15.1.22",
         "what-input": "^5.0.5"
     },

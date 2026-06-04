@@ -9,10 +9,20 @@ from bpp.models.jednostka import Jednostka
 class MetrykaAutora(models.Model):
     """Model przechowujący metryki ewaluacyjne dla autora"""
 
-    autor = models.ForeignKey(Autor, on_delete=models.CASCADE, related_name="metryki")
+    # Auto-indeks FK redundantny: pokrywa go unique_together
+    # [autor, dyscyplina_naukowa]
+    autor = models.ForeignKey(
+        Autor, on_delete=models.CASCADE, related_name="metryki", db_index=False
+    )
 
-    dyscyplina_naukowa = models.ForeignKey(Dyscyplina_Naukowa, on_delete=models.CASCADE)
+    # Auto-indeks FK redundantny: pokrywa go Meta.Index
+    # [dyscyplina_naukowa, -srednia_za_slot_nazbierana]
+    dyscyplina_naukowa = models.ForeignKey(
+        Dyscyplina_Naukowa, on_delete=models.CASCADE, db_index=False
+    )
 
+    # Auto-indeks FK redundantny: pokrywa go Meta.Index
+    # [jednostka, -srednia_za_slot_nazbierana]
     jednostka = models.ForeignKey(
         Jednostka,
         on_delete=models.CASCADE,
@@ -20,6 +30,7 @@ class MetrykaAutora(models.Model):
         blank=True,
         related_name="metryka_autora",
         help_text="Główna jednostka autora w okresie ewaluacji",
+        db_index=False,
     )
 
     # Dane z algorytmu plecakowego (nazbierane optymalne)

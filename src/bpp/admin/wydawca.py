@@ -7,6 +7,7 @@ from djangoql.admin import DjangoQLSearchMixin
 from bpp.admin.core import DynamicAdminFilterMixin
 from bpp.admin.filters import PBN_UID_IDObecnyFilter
 from bpp.const import PBN_UID_LEN
+from bpp.djangoql_schema import BppQLSchema
 from bpp.models import Wydawca
 from bpp.models.wydawca import Poziom_Wydawcy
 from pbn_api.models import Publisher
@@ -95,6 +96,7 @@ class WydawcaForm(forms.ModelForm):
 class WydawcaAdmin(DynamicAdminFilterMixin, DjangoQLSearchMixin, admin.ModelAdmin):
     djangoql_completion_enabled_by_default = False
     djangoql_completion = True
+    djangoql_schema = BppQLSchema
 
     form = WydawcaForm
 

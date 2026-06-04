@@ -213,3 +213,363 @@ def test_zapytanie_examples_no_unary_not():
             f"Unary 'not (...)' znaleziono w przykladzie "
             f"(level={level}, model={model}, desc={desc!r}): {query!r}"
         )
+
+
+@pytest.mark.django_db
+def test_tytul_rel_picker_filters_by_pk():
+    from djangoql.queryset import apply_search
+
+    from bpp.models import Autor
+    from bpp.models.autor import Tytul
+    from bpp.views.zapytanie import BppZapytanieSchema
+
+    # Baseline DB may already contain these titles (tytul.json fixture).
+    prof, _ = Tytul.objects.get_or_create(nazwa="profesor", defaults={"skrot": "prof."})
+    dr, _ = Tytul.objects.get_or_create(nazwa="doktor", defaults={"skrot": "dr"})
+    a1 = baker.make("bpp.Autor", nazwisko="Kowalski", tytul=prof)
+    baker.make("bpp.Autor", nazwisko="Nowak", tytul=dr)
+
+    qs = apply_search(
+        Autor.objects.all(),
+        f'tytul__rel = "profesor [{prof.pk}]"',
+        schema=BppZapytanieSchema,
+    )
+    assert list(qs) == [a1]
+
+
+@pytest.mark.django_db
+def test_tytul_dot_traversal_still_works():
+    from djangoql.queryset import apply_search
+
+    from bpp.models import Autor
+    from bpp.models.autor import Tytul
+    from bpp.views.zapytanie import BppZapytanieSchema
+
+    # Baseline DB may already contain this title (tytul.json fixture).
+    prof, _ = Tytul.objects.get_or_create(nazwa="profesor", defaults={"skrot": "prof."})
+    a1 = baker.make("bpp.Autor", nazwisko="Kowalski", tytul=prof)
+
+    qs = apply_search(
+        Autor.objects.all(), 'tytul.skrot = "prof."', schema=BppZapytanieSchema
+    )
+    assert list(qs) == [a1]
+
+
+@pytest.mark.django_db
+def test_aktualna_jednostka_rel_picker_filters_by_pk():
+    from djangoql.queryset import apply_search
+
+    from bpp.models import Autor, Jednostka
+    from bpp.views.zapytanie import BppZapytanieSchema
+
+    j = baker.make(Jednostka, nazwa="Katedra X")
+    a1 = baker.make("bpp.Autor", nazwisko="Kowalski", aktualna_jednostka=j)
+    baker.make("bpp.Autor", nazwisko="Nowak")
+
+    qs = apply_search(
+        Autor.objects.all(),
+        f'aktualna_jednostka__rel = "Katedra X [{j.pk}]"',
+        schema=BppZapytanieSchema,
+    )
+    assert list(qs) == [a1]
+
+
+@pytest.mark.django_db
+def test_autor_schema_has_rel_fields_and_keeps_relations():
+    from bpp.models import Autor
+    from bpp.views.zapytanie import BppZapytanieSchema
+
+    schema = BppZapytanieSchema(Autor)
+    fields = schema.models["bpp.autor"]
+    assert "tytul__rel" in fields
+    assert "aktualna_jednostka__rel" in fields
+    assert fields["tytul"].type == "relation"  # trawersacja zachowana
+
+
+@pytest.mark.django_db
+def test_rekord_schema_has_autorzy_rel_pickers():
+    from bpp.models.cache import Autorzy, Rekord
+    from bpp.views.zapytanie import BppZapytanieSchema
+
+    schema = BppZapytanieSchema(Rekord)
+    autorzy_fields = schema.models[schema.model_label(Autorzy)]
+    assert "autor__rel" in autorzy_fields
+    assert "jednostka__rel" in autorzy_fields
+    assert autorzy_fields["autor"].type == "relation"
+
+
+@pytest.mark.django_db
+def test_rekord_autorzy_autor_rel_filters_real_fk():
+    from djangoql.queryset import apply_search
+
+    from bpp.models.cache import Rekord
+    from bpp.views.zapytanie import BppZapytanieSchema
+
+    qs = apply_search(
+        Rekord.objects.all(),
+        'autorzy.autor__rel = "X [1]"',
+        schema=BppZapytanieSchema,
+    )
+    sql = str(qs.query).lower()
+    assert "autor__rel" not in sql  # remap zadziałał (nie filtruje alt-nazwy)
+    assert "autor_id" in sql
+
+
+@pytest.mark.django_db
+def test_zapytanie_view_tytul_rel_picker(superuser_client):
+    from bpp.models.autor import Tytul
+
+    prof, _ = Tytul.objects.get_or_create(nazwa="profesor", defaults={"skrot": "prof."})
+    baker.make("bpp.Autor", nazwisko="Kowalski", tytul=prof)
+
+    response = superuser_client.get(
+        reverse(URL),
+        {"model": "autor", "query": f'tytul__rel = "profesor [{prof.pk}]"'},
+    )
+    assert response.status_code == 200
+    assert response.context["error"] is None
+    assert response.context["count"] == 1
+
+
+@pytest.mark.django_db
+def test_zapytanie_suggestions_tytul_rel_returns_options(superuser_client):
+    from bpp.models.autor import Tytul
+
+    prof, _ = Tytul.objects.get_or_create(nazwa="profesor", defaults={"skrot": "prof."})
+    url = reverse("bpp:zapytanie_suggestions", kwargs={"model_key": "autor"})
+    response = superuser_client.get(url, {"field": "tytul__rel", "search": "profesor"})
+    assert response.status_code == 200
+    items = response.json()["items"]
+    assert any(f"[{prof.pk}]" in item for item in items)
+
+
+@pytest.mark.django_db
+def test_zapytanie_suggestions_autor_rel_dal_smoke(superuser_client):
+    baker.make("bpp.Autor", nazwisko="Kowalski", imiona="Jan")
+    url = reverse("bpp:zapytanie_suggestions", kwargs={"model_key": "rekord"})
+    response = superuser_client.get(
+        url, {"field": "autorzy.autor__rel", "search": "Kowal"}
+    )
+    assert response.status_code == 200
+    assert isinstance(response.json()["items"], list)
+
+
+def _breakdown_leaves(node):
+    if not node["children"]:
+        yield node
+    for ch in node["children"]:
+        yield from _breakdown_leaves(ch)
+
+
+@pytest.mark.django_db
+def test_zapytanie_breakdown_explains_zero(superuser_client):
+    baker.make("bpp.Autor", nazwisko="Kowalski", imiona="Jan")
+    response = superuser_client.get(
+        reverse(URL),
+        {"model": "autor", "query": 'nazwisko = "Kowalski" and imiona = "asdfo"'},
+    )
+    assert response.status_code == 200
+    assert response.context["count"] == 0
+    breakdown = response.context["breakdown"]
+    assert breakdown is not None
+    assert breakdown["count"] == 0
+    leaves = {leaf["text"]: leaf["count"] for leaf in _breakdown_leaves(breakdown)}
+    assert any("asdfo" in t and c == 0 for t, c in leaves.items())
+
+
+@pytest.mark.django_db
+def test_zapytanie_no_breakdown_when_results(superuser_client):
+    baker.make("bpp.Autor", nazwisko="Kowalski")
+    response = superuser_client.get(
+        reverse(URL), {"model": "autor", "query": 'nazwisko = "Kowalski"'}
+    )
+    assert response.context["count"] == 1
+    assert response.context["breakdown"] is None
+
+
+@pytest.mark.django_db
+def test_zapytanie_breakdown_rendered_in_html(superuser_client):
+    baker.make("bpp.Autor", nazwisko="Kowalski", imiona="Jan")
+    response = superuser_client.get(
+        reverse(URL),
+        {"model": "autor", "query": 'nazwisko = "Kowalski" and imiona = "asdfo"'},
+    )
+    html = response.content.decode("utf-8")
+    assert "Dlaczego 0 wyników" in html
+    assert "ten warunek nie pasuje do żadnego rekordu" in html
+    assert "asdfo" in html
+    # warunek z 0 trafień (poza korzeniem) ma czerwoną liczbę
+    assert "zapytanie-breakdown-count--zero" in html
+
+
+@pytest.mark.django_db
+def test_zapytanie_breakdown_culprit_on_leaf_not_root(superuser_client):
+    baker.make("bpp.Autor", nazwisko="Kowalski", imiona="Jan")
+    response = superuser_client.get(
+        reverse(URL),
+        {"model": "autor", "query": 'nazwisko = "Kowalski" and imiona = "asdfo"'},
+    )
+    breakdown = response.context["breakdown"]
+    assert breakdown["label"] is None  # korzeń (główne zapytanie) bez etykiety
+    leaves = list(_breakdown_leaves(breakdown))
+    culprit = next(leaf for leaf in leaves if "asdfo" in leaf["text"])
+    assert culprit["count"] == 0
+    assert culprit["label"] == "ten warunek nie pasuje do żadnego rekordu"
+    other = next(leaf for leaf in leaves if "Kowalski" in leaf["text"])
+    assert other["label"] is None  # warunek z trafieniami nie jest winowajcą
+
+
+@pytest.mark.django_db
+def test_zapytanie_breakdown_root_intersection_not_labeled(superuser_client):
+    baker.make("bpp.Autor", nazwisko="Kowalski", imiona="Jan")
+    baker.make("bpp.Autor", nazwisko="Nowak", imiona="Anna")
+    response = superuser_client.get(
+        reverse(URL),
+        {"model": "autor", "query": 'nazwisko = "Kowalski" and imiona = "Anna"'},
+    )
+    breakdown = response.context["breakdown"]
+    assert breakdown["count"] == 0
+    assert breakdown["label"] is None  # głównego zapytania nie etykietujemy
+    # każdy warunek z osobna coś zwraca (>=1), więc żaden liść nie jest winowajcą
+    for leaf in _breakdown_leaves(breakdown):
+        assert leaf["count"] >= 1
+        assert leaf["label"] is None
+
+
+@pytest.mark.django_db
+def test_zapytanie_breakdown_no_label_on_dead_or_branch(superuser_client):
+    baker.make("bpp.Autor", nazwisko="Kowalski", imiona="Jan")
+    response = superuser_client.get(
+        reverse(URL),
+        {
+            "model": "autor",
+            "query": (
+                '(nazwisko = "Kowalski" or nazwisko = "Xyz") and imiona = "asdfo"'
+            ),
+        },
+    )
+    breakdown = response.context["breakdown"]
+    assert breakdown["count"] == 0
+    leaves = list(_breakdown_leaves(breakdown))
+    # martwa gałąź w NIEPUSTYM OR — nie winowajca, bez etykiety (koniec z szumem)
+    xyz = next(leaf for leaf in leaves if "Xyz" in leaf["text"])
+    assert xyz["count"] == 0
+    assert xyz["label"] is None
+    # realny winowajca: warunek z 0 trafień połączony AND-em
+    asdfo = next(leaf for leaf in leaves if "asdfo" in leaf["text"])
+    assert asdfo["count"] == 0
+    assert asdfo["label"] == "ten warunek nie pasuje do żadnego rekordu"
+
+
+@pytest.mark.django_db
+def test_rekord_zrodlo_rel_filters_real_fk():
+    from djangoql.queryset import apply_search
+
+    from bpp.models.cache import Rekord
+    from bpp.views.zapytanie import BppZapytanieSchema
+
+    qs = apply_search(
+        Rekord.objects.all(), 'zrodlo__rel = "X [1]"', schema=BppZapytanieSchema
+    )
+    sql = str(qs.query).lower()
+    assert "zrodlo__rel" not in sql  # remap na realny FK
+    assert "zrodlo_id" in sql
+
+
+@pytest.mark.django_db
+def test_rekord_and_autorzy_have_extended_pickers():
+    from bpp.models.cache import Autorzy, Rekord
+    from bpp.views.zapytanie import BppZapytanieSchema
+
+    schema = BppZapytanieSchema(Rekord)
+    rekord_fields = schema.models[schema.model_label(Rekord)]
+    for name in (
+        "zrodlo__rel",
+        "wydawca__rel",
+        "konferencja__rel",
+        "wydawnictwo_nadrzedne__rel",
+        "charakter_formalny__rel",
+        "jezyk__rel",
+        "typ_kbn__rel",
+        "status_korekty__rel",
+        "openaccess_licencja__rel",
+    ):
+        assert name in rekord_fields, name
+    assert rekord_fields["zrodlo"].type == "relation"  # trawersacja zachowana
+
+    autorzy_fields = schema.models[schema.model_label(Autorzy)]
+    for name in (
+        "dyscyplina_naukowa__rel",
+        "kierunek_studiow__rel",
+        "typ_odpowiedzialnosci__rel",
+    ):
+        assert name in autorzy_fields, name
+
+
+@pytest.mark.django_db
+def test_zapytanie_suggestions_zrodlo_rel(superuser_client):
+    from bpp.models import Zrodlo
+
+    z = baker.make(Zrodlo, nazwa="Nature Reviews Cardiology")
+    url = reverse("bpp:zapytanie_suggestions", kwargs={"model_key": "rekord"})
+    response = superuser_client.get(url, {"field": "zrodlo__rel", "search": "Nature"})
+    assert response.status_code == 200
+    items = response.json()["items"]
+    assert any(f"[{z.pk}]" in item for item in items)
+
+
+@pytest.mark.django_db
+def test_picker_excludes_hidden_records(superuser_client):
+    from bpp.models import Jezyk
+
+    widoczny = baker.make(Jezyk, nazwa="ZZTESTwidoczny", widoczny=True)
+    ukryty = baker.make(Jezyk, nazwa="ZZTESTukryty", widoczny=False)
+    url = reverse("bpp:zapytanie_suggestions", kwargs={"model_key": "rekord"})
+    response = superuser_client.get(url, {"field": "jezyk__rel", "search": "ZZTEST"})
+    assert response.status_code == 200
+    items = response.json()["items"]
+    assert any(f"[{widoczny.pk}]" in item for item in items)
+    assert not any(f"[{ukryty.pk}]" in item for item in items)
+
+
+@pytest.mark.django_db
+def test_schema_publication_models_have_pickers():
+    """Wspólny BppQLSchema auto-generuje pickery dla modeli publikacji
+    (admin Patent/doktorat/habilitacja korzysta z tego samego schematu)."""
+    from bpp.djangoql_schema import BppQLSchema
+    from bpp.models import Patent, Praca_Doktorska, Praca_Habilitacyjna
+
+    cases = {
+        Patent: ["status_korekty__rel", "wydzial__rel"],
+        Praca_Doktorska: [
+            "autor__rel",
+            "promotor__rel",
+            "wydawca__rel",
+            "jednostka__rel",
+        ],
+        Praca_Habilitacyjna: ["jednostka__rel", "wydawca__rel", "typ_kbn__rel"],
+    }
+    for model, expected in cases.items():
+        schema = BppQLSchema(model)
+        fields = schema.models[schema.model_label(model)]
+        for name in expected:
+            assert name in fields, f"{model.__name__}: brak {name}"
+
+
+def test_publication_admins_use_bpp_ql_schema():
+    """Adminy publikacji (w tym nowo włączone) mają djangoql_schema = BppQLSchema."""
+    from bpp.admin.patent import Patent_Admin
+    from bpp.admin.praca_doktorska import Praca_DoktorskaAdmin
+    from bpp.admin.praca_habilitacyjna import Praca_HabilitacyjnaAdmin
+    from bpp.admin.wydawnictwo_ciagle import Wydawnictwo_CiagleAdmin
+    from bpp.admin.wydawnictwo_zwarte import Wydawnictwo_ZwarteAdmin
+    from bpp.djangoql_schema import BppQLSchema
+
+    for admin_cls in (
+        Patent_Admin,
+        Praca_DoktorskaAdmin,
+        Praca_HabilitacyjnaAdmin,
+        Wydawnictwo_CiagleAdmin,
+        Wydawnictwo_ZwarteAdmin,
+    ):
+        assert admin_cls.djangoql_schema is BppQLSchema, admin_cls.__name__

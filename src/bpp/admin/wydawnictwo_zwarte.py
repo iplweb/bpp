@@ -22,6 +22,7 @@ from bpp.admin.filters import (
 )
 from bpp.admin.helpers import fieldsets
 from bpp.admin.helpers.widgets import COMMA_DECIMAL_FIELD_OVERRIDE
+from bpp.djangoql_schema import BppQLSchema
 from bpp.models import (
     Charakter_Formalny,
     Wydawca,
@@ -472,6 +473,7 @@ class Wydawnictwo_ZwarteAdmin(
     form = Wydawnictwo_ZwarteForm
     djangoql_completion_enabled_by_default = False
     djangoql_completion = True
+    djangoql_schema = BppQLSchema
     search_fields = Wydawnictwo_ZwarteAdmin_Baza.search_fields
     resource_classes = [resources.Wydawnictwo_ZwarteResource]
     bibtex_resource_class = resources.Wydawnictwo_ZwarteBibTeXResource

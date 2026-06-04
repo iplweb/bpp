@@ -8,11 +8,13 @@ class AuthorConnection(models.Model):
     Model representing connection between two authors based on shared publications.
     """
 
+    # Auto-indeks FK redundantny: pokrywa go unique_together
+    # [primary_author, secondary_author] (primary_author jest kolumną wiodącą).
     primary_author = models.ForeignKey(
         Autor,
         on_delete=models.CASCADE,
         related_name="+",
-        db_index=True,
+        db_index=False,
         verbose_name="Autor główny",
     )
     secondary_author = models.ForeignKey(

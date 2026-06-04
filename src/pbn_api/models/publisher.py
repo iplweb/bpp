@@ -25,7 +25,7 @@ class Publisher(LinkDoPBNMixin, BasePBNMongoDBModel):
 
     pull_up_on_save = ["publisherName", "mniswId"]
 
-    publisherName = models.TextField(blank=True, default="", db_index=True)
+    publisherName = models.TextField(blank=True, default="")
     mniswId = models.IntegerField(null=True, blank=True, db_index=True)
 
     def __str__(self):

@@ -18,12 +18,12 @@ class InstitutionAdmin(BaseMongoDBAdmin):
     ]
 
     search_fields = [
-        "mongoId",
-        "name",
-        "addressCity",
-        "addressStreet",
-        "addressPostalCode",
-        "polonUid",
+        "=mongoId",  # exact -> PK
+        "name",  # gin trgm upper()
+        "addressCity",  # gin trgm upper()
+        "=polonUid",  # exact
+        # addressStreet/addressPostalCode usuniete z wyszukiwania: bez gin
+        # zatruwaly OR (Seq Scan calosci); rzadko sluza do znalezienia instytucji
     ]
     list_filter = [
         OdpowiednikJednostkiWBPPFilter,

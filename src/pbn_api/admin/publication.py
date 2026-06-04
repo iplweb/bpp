@@ -64,11 +64,11 @@ class PublicationAdmin(
         "id_mismatch_indicator",
     ]
     search_fields = [
-        "mongoId",
-        "title",
-        "isbn",
-        "doi",
-        "publicUri",
+        "=mongoId",  # exact -> PK
+        "title",  # gin trgm upper()
+        "=isbn",  # exact -> btree
+        "doi",  # gin trgm upper()
+        "=publicUri",  # exact (tabela mala: ~20k)
     ]
 
     formfield_overrides = {models.JSONField: {"widget": PrettyJSONWidgetReadonly}}

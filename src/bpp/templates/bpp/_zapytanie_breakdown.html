@@ -1,0 +1,22 @@
+{# Rekurencyjny widok rozbicia „dlaczego 0 wyników". #}
+{# Oczekuje `node` (dict: text, count, label, children, truncated) i `is_root`. #}
+{% if is_root %}
+    <p class="zapytanie-breakdown-title">
+        <span class="fi-info"></span> Dlaczego 0 wyników?
+        {% if node.truncated %}
+            <span class="zapytanie-breakdown-trunc">(pokazano tylko warunki najwyższego poziomu — zapytanie zbyt złożone, by rozbić w całości)</span>
+        {% endif %}
+    </p>
+{% endif %}
+<ul class="zapytanie-breakdown">
+    <li>
+        <code>{{ node.text }}</code>
+        <span class="zapytanie-breakdown-count{% if node.count == 0 and not is_root %} zapytanie-breakdown-count--zero{% endif %}">→ {{ node.count }} trafień</span>
+        {% if node.label %}
+            <span class="zapytanie-breakdown-note">{{ node.label }}</span>
+        {% endif %}
+        {% for child in node.children %}
+            {% include "bpp/_zapytanie_breakdown.html" with node=child is_root=False %}
+        {% endfor %}
+    </li>
+</ul>

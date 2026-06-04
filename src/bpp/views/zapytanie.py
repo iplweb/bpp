@@ -1,4 +1,5 @@
 import json
+import logging
 
 from django import forms
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
@@ -8,15 +9,22 @@ from django.core.paginator import Paginator
 from django.http import Http404, HttpResponse
 from django.urls import NoReverseMatch, reverse
 from django.views.generic import FormView, View
+from djangoql.breakdown import explain_empty
 from djangoql.exceptions import DjangoQLError
 from djangoql.queryset import apply_search
-from djangoql.schema import DjangoQLSchema
 from djangoql.serializers import SuggestionsAPISerializer
 from djangoql.views import SuggestionsAPIView
 
 from bpp.const import GR_WPROWADZANIE_DANYCH
+from bpp.djangoql_schema import BppQLSchema
 from bpp.models import Autor
 from bpp.models.cache import Rekord
+
+logger = logging.getLogger(__name__)
+
+# Alias zgodności: schemat przeniesiony do bpp.djangoql_schema (wspólny trzon
+# dla widoku i adminów). Widok i testy odwołują się do BppZapytanieSchema.
+BppZapytanieSchema = BppQLSchema
 
 MODEL_REKORD = "rekord"
 MODEL_AUTOR = "autor"
@@ -52,6 +60,11 @@ EXAMPLES = [
                     ("", 'charakter_formalny.skrot = "AC"'),
                     ("", 'tytul_oryginalny ~ "covid" and rok = 2023'),
                     ("", 'doi != ""'),
+                    ("Po autorze (autocomplete)", 'autorzy.autor__rel = "Kowalski"'),
+                    (
+                        "Po jednostce (autocomplete)",
+                        'autorzy.jednostka__rel = "Kardiologii"',
+                    ),
                 ],
             },
             {
@@ -63,6 +76,11 @@ EXAMPLES = [
                     ("", 'nazwisko = "Kowalski" and imiona = "Jan"'),
                     ("", 'orcid != ""'),
                     ("", 'aktualna_jednostka.nazwa ~ "Medycyny"'),
+                    ("Po tytule (autocomplete)", 'tytul__rel = "prof."'),
+                    (
+                        "Po jednostce (autocomplete)",
+                        'aktualna_jednostka__rel = "Kardiologii"',
+                    ),
                 ],
             },
         ],
@@ -175,8 +193,7 @@ EXAMPLES = [
                         'charakter_formalny.skrot = "AOR") and punkty_kbn >= 100',
                     ),
                     (
-                        "Negacja: wszystko poza artykulami z czasopism, "
-                        "IF>=3, od 2023",
+                        "Negacja: wszystko poza artykulami z czasopism, IF>=3, od 2023",
                         'charakter_formalny.skrot != "AC" and rok >= 2023 '
                         "and impact_factor > 3",
                     ),
@@ -194,8 +211,7 @@ EXAMPLES = [
                     ),
                     (
                         "Hot & trending: cytowane >50 razy w okresie, IF>5",
-                        "liczba_cytowan > 50 and rok >= 2020 and "
-                        "impact_factor > 5",
+                        "liczba_cytowan > 50 and rok >= 2020 and impact_factor > 5",
                     ),
                     (
                         "Audyt jakosci danych — artykuly 2024+ bez DOI/WWW",
@@ -213,8 +229,7 @@ EXAMPLES = [
                         'ostatnio_zmieniony >= "2025-01-01" and adnotacje != ""',
                     ),
                     (
-                        "Wielowarunkowa granica IF + zakres punktow + "
-                        "minimum cytowan",
+                        "Wielowarunkowa granica IF + zakres punktow + minimum cytowan",
                         "impact_factor >= 5 and impact_factor <= 10 and "
                         "punkty_kbn >= 100 and liczba_cytowan >= 5",
                     ),
@@ -305,6 +320,40 @@ class ZapytanieForm(forms.Form):
     )
 
 
+def _annotate_breakdown(node, is_root=True, on_zero_path=True):
+    """Dodaje do każdego węzła drzewa rozbicia pole ``label`` (tekst albo None)
+    — komunikat wskazujący realnego „winowajcę" zerowego wyniku.
+
+    Idea: idziemy „ścieżką zera". Dziecko jest na ścieżce zera tylko jeśli SAMO
+    ma 0 trafień — bo wtedy jego pustka propaguje się w górę przez AND (każdy
+    zerowy operand zeruje AND) albo współtworzy puste OR. Zero pochłonięte przez
+    NIEPUSTE OR (np. ``(A or B)`` które zwraca >0, mimo że B=0) NIE jest
+    winowajcą — i nie dostaje etykiety (koniec z szumem na martwych gałęziach).
+
+    Etykietę dostaje tylko NAJGŁĘBSZY węzeł na ścieżce zera (ten, poniżej
+    którego nie ma już zera) — czyli realny powód pustki:
+    - liść z 0 trafień → „warunek nie pasuje do niczego",
+    - AND-przecięcie (każdy operand z osobna >0, ale razem 0) → etykieta na AND.
+
+    Korzeń (główne zapytanie) NIE dostaje etykiety — i tak wiadomo, że ma 0 (po
+    to renderujemy rozbicie). Liczone z samych ``count`` + struktury — bez
+    polegania na rolach z djangoql.
+    """
+    children = node["children"]
+    child_on_zero = [on_zero_path and c["count"] == 0 for c in children]
+    is_deepest_zero = on_zero_path and node["count"] == 0 and not any(child_on_zero)
+    label = None
+    if is_deepest_zero and not is_root:
+        if children:
+            label = "każdy warunek z osobna coś zwraca, ale ich połączenie daje 0"
+        else:
+            label = "ten warunek nie pasuje do żadnego rekordu"
+    node["label"] = label
+    for child, czp in zip(children, child_on_zero, strict=True):
+        _annotate_breakdown(child, is_root=False, on_zero_path=czp)
+    return node
+
+
 class ZapytanieView(WprowadzanieDanychOrSuperuserMixin, FormView):
     template_name = "bpp/zapytanie.html"
     form_class = ZapytanieForm
@@ -337,7 +386,12 @@ class ZapytanieView(WprowadzanieDanychOrSuperuserMixin, FormView):
         count = None
 
         try:
-            queryset = apply_search(queryset, query)
+            queryset = apply_search(queryset, query, schema=BppZapytanieSchema)
+            # Filtrowanie po relacjach "do wielu" (np. autorzy.autor.nazwisko)
+            # tworzy JOIN, ktory zwielokrotnia ten sam rekord raz na kazdy
+            # pasujacy wiersz powiazany. .distinct() zwija te duplikaty, zeby
+            # liczba wynikow i lista byly zgodne z liczba unikalnych obiektow.
+            queryset = queryset.distinct()
             count = queryset.count()
             paginator = Paginator(queryset, self.paginate_by)
             page_number = self.request.GET.get("page") or 1
@@ -348,6 +402,22 @@ class ZapytanieView(WprowadzanieDanychOrSuperuserMixin, FormView):
         if results_page is not None and model_key == MODEL_REKORD:
             self._attach_admin_urls(results_page)
 
+        breakdown = None
+        if error is None and count == 0:
+            try:
+                breakdown = explain_empty(
+                    model.objects.all(), query, schema=BppZapytanieSchema
+                )
+            except (DjangoQLError, FieldError, ValidationError, ValueError):
+                logger.exception(
+                    "explain_empty zawiodlo dla zapytania %r (model=%s)",
+                    query,
+                    model_key,
+                )
+                breakdown = None
+            if breakdown is not None:
+                _annotate_breakdown(breakdown)
+
         context = self.get_context_data(
             form=form,
             results=results_page,
@@ -355,6 +425,7 @@ class ZapytanieView(WprowadzanieDanychOrSuperuserMixin, FormView):
             error=error,
             model_key=model_key,
             query=query,
+            breakdown=breakdown,
         )
         return self.render_to_response(context)
 
@@ -398,7 +469,7 @@ class ZapytanieIntrospectView(WprowadzanieDanychOrSuperuserMixin, View):
         suggestions_url = reverse(
             "bpp:zapytanie_suggestions", kwargs={"model_key": model_key}
         )
-        schema = DjangoQLSchema(model)
+        schema = BppZapytanieSchema(model)
         payload = SuggestionsAPISerializer(suggestions_url).serialize(schema)
         return HttpResponse(
             content=json.dumps(payload),
@@ -409,5 +480,5 @@ class ZapytanieIntrospectView(WprowadzanieDanychOrSuperuserMixin, View):
 class ZapytanieSuggestionsView(WprowadzanieDanychOrSuperuserMixin, View):
     def get(self, request, model_key):
         model = _resolve_model_or_404(model_key)
-        view = SuggestionsAPIView.as_view(schema=DjangoQLSchema(model))
+        view = SuggestionsAPIView.as_view(schema=BppZapytanieSchema(model))
         return view(request)

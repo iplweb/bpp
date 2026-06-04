@@ -50,3 +50,13 @@ msgstr "Kliknij lub wciśnij dowolny klawisz, aby wydłużyć czas trwania Twoje
 #: session_security/templates/session_security/all.html:33
 msgid "You have unsaved changes in a form of this page."
 msgstr "Na tej stronie znajduje się formularz, w którym zmiany mogły jeszcze nie zostać zapisane."
+
+#. Komunikaty admina „Wybrano/Zakolejkowano N rekord(y/ów)" — bpp/admin/actions.py.
+#. Polski wymaga 3 form dla liczb całkowitych (1 / 2–4 / 5+); forma [3]
+#. (CLDR „other") dotyczy ułamków i przy zliczaniu rekordów nigdy nie pada.
+msgid "rekord"
+msgid_plural "rekordów"
+msgstr[0] "rekord"
+msgstr[1] "rekordy"
+msgstr[2] "rekordów"
+msgstr[3] "rekordów"

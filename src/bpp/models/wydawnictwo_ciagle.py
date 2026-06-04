@@ -56,7 +56,12 @@ class Wydawnictwo_Ciagle_Autor(
     """Powiązanie autora do wydawnictwa ciągłego."""
 
     rekord = models.ForeignKey(
-        "Wydawnictwo_Ciagle", CASCADE, related_name="autorzy_set"
+        "Wydawnictwo_Ciagle",
+        CASCADE,
+        related_name="autorzy_set",
+        # Auto-indeks FK redundantny: unique_together ma rekord jako kolumnę
+        # wiodącą w obu krotkach — pokrywa lookup po rekord i kaskadę usuwania.
+        db_index=False,
     )
 
     class Meta:

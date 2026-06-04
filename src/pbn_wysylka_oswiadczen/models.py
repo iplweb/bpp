@@ -113,16 +113,20 @@ class PbnWysylkaLog(models.Model):
         ("maintenance", "Prace serwisowe PBN"),
     ]
 
+    # Auto-indeks FK redundantny: pokrywa go Meta.Index [task, status].
     task = models.ForeignKey(
         PbnWysylkaOswiadczenTask,
         on_delete=models.CASCADE,
         related_name="logs",
+        db_index=False,
     )
 
     # Publication reference using GenericForeignKey
+    # Auto-indeks FK redundantny: pokrywa go Meta.Index [content_type, object_id].
     content_type = models.ForeignKey(
         ContentType,
         on_delete=models.CASCADE,
+        db_index=False,
         limit_choices_to={
             "app_label": "bpp",
             "model__in": ["wydawnictwo_ciagle", "wydawnictwo_zwarte"],

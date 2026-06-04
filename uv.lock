@@ -183,6 +183,15 @@ wheels = [
 ]
 
 [[package]]
+name = "babel"
+version = "2.18.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/7d/b2/51899539b6ceeeb420d40ed3cd4b7a40519404f9baf3d4ac99dc413a834b/babel-2.18.0.tar.gz", hash = "sha256:b80b99a14bd085fcacfa15c9165f651fbb3406e66cc603abf11c5750937c992d", size = 9959554, upload-time = "2026-02-01T12:30:56.078Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/77/f5/21d2de20e8b8b0408f0681956ca2c69f1320a3848ac50e6e7f39c6159675/babel-2.18.0-py3-none-any.whl", hash = "sha256:e2b422b277c2b9a9630c1d7903c2a00d0830c409c59ac8cae9081c92f1aeba35", size = 10196845, upload-time = "2026-02-01T12:30:53.445Z" },
+]
+
+[[package]]
 name = "backports-tarfile"
 version = "1.2.0"
 source = { registry = "https://pypi.org/simple" }
@@ -309,30 +318,30 @@ wheels = [
 
 [[package]]
 name = "boto3"
-version = "1.43.21"
+version = "1.43.22"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "botocore", marker = "platform_python_implementation != 'PyPy'" },
     { name = "jmespath", marker = "platform_python_implementation != 'PyPy'" },
     { name = "s3transfer", marker = "platform_python_implementation != 'PyPy'" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/1e/f2/0ef88b6584285002a8a8000e34340f56e82681ad2b8a76ea8bd3ecaa5cb9/boto3-1.43.21.tar.gz", hash = "sha256:6dfeb70bf4f9a3514b91c7199f475f71f939199d62f9c63cd555b033fb283f89", size = 113157, upload-time = "2026-06-03T07:09:23.263Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/64/31/32388d5ec332ffe81d8f3650860f94b66294009172d188c390cad58c6f5f/boto3-1.43.22.tar.gz", hash = "sha256:2a7fe12d8e0731bb8aa7c1e59b4ccc770fda031b8659c2f6f497393bdcec3051", size = 113203, upload-time = "2026-06-03T19:33:13.39Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/01/ea/5352950cbee9d1e8392e5396ddbc6defc982414e2abc004b501139bce13c/boto3-1.43.21-py3-none-any.whl", hash = "sha256:8bb863b32dabe5baa4f2e3701778c259243ba117e4811a595411819958c4fb1b", size = 140534, upload-time = "2026-06-03T07:09:21.18Z" },
+    { url = "https://files.pythonhosted.org/packages/8b/6b/c2fb3b91e849882df5426e68cc15eb2b5ba6ac28325ab2aa3a1065da5884/boto3-1.43.22-py3-none-any.whl", hash = "sha256:0597fb9fe1613e636ac55219a5a54ad0fcb7c15e6be32c799301f7fb53ff04e1", size = 140536, upload-time = "2026-06-03T19:33:10.939Z" },
 ]
 
 [[package]]
 name = "botocore"
-version = "1.43.21"
+version = "1.43.22"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "jmespath", marker = "platform_python_implementation != 'PyPy'" },
     { name = "python-dateutil", marker = "platform_python_implementation != 'PyPy'" },
     { name = "urllib3", marker = "platform_python_implementation != 'PyPy'" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/7b/97/d9d26cebf0a8533105e183d8438931c0b196e52484cd5bf00e8443ac1b2d/botocore-1.43.21.tar.gz", hash = "sha256:17604607efe28894e947401379e569cc8f0fe2d69337ece98bd0c82d1bcfaf92", size = 15451979, upload-time = "2026-06-03T07:09:11.489Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/76/cf/840f1b8db16d45e3807c23d1ea779723eed1cd9cf3b6c49e16f372d2a777/botocore-1.43.22.tar.gz", hash = "sha256:b00de525e538289ed4a7a85263f1be4e47473c124cec87be6b23be49356bf745", size = 15458781, upload-time = "2026-06-03T19:33:02.882Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/bb/c7/8c60049357e96d663980d66b98a44cb3626a7e5eaca66480b97826eb5379/botocore-1.43.21-py3-none-any.whl", hash = "sha256:f021ba3e844c36031106fc531ec90259ef005ba5d04f691df53bc4ecbd08f0dd", size = 15135303, upload-time = "2026-06-03T07:09:06.115Z" },
+    { url = "https://files.pythonhosted.org/packages/de/6b/576a1b0f915871e35f14a33104f2bcae635f19c6a72486ba639db0d1fc70/botocore-1.43.22-py3-none-any.whl", hash = "sha256:ceec9f81d0891abe7b28ca2b2ee47e32de7b3360ad11e80d351470f015217379", size = 15141375, upload-time = "2026-06-03T19:32:58.324Z" },
 ]
 
 [[package]]
@@ -341,6 +350,7 @@ version = "202606.1377"
 source = { editable = "." }
 dependencies = [
     { name = "arrow", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "babel", marker = "platform_python_implementation != 'PyPy'" },
     { name = "beautifulsoup4", marker = "platform_python_implementation != 'PyPy'" },
     { name = "bibtexparser", marker = "platform_python_implementation != 'PyPy'" },
     { name = "celery", marker = "platform_python_implementation != 'PyPy'" },
@@ -361,6 +371,7 @@ dependencies = [
     { name = "django-admin-tools", marker = "platform_python_implementation != 'PyPy'" },
     { name = "django-autocomplete-light", marker = "platform_python_implementation != 'PyPy'" },
     { name = "django-autoslug", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "django-axes", marker = "platform_python_implementation != 'PyPy'" },
     { name = "django-braces", marker = "platform_python_implementation != 'PyPy'" },
     { name = "django-cacheops", marker = "platform_python_implementation != 'PyPy'" },
     { name = "django-celery-email", marker = "platform_python_implementation != 'PyPy'" },
@@ -517,6 +528,7 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "arrow", specifier = ">=1.3,<2" },
+    { name = "babel", specifier = ">=2.17" },
     { name = "beautifulsoup4", specifier = ">=4.14.3" },
     { name = "bibtexparser", specifier = ">=2.0.0b7" },
     { name = "celery", specifier = ">=5.6.3" },
@@ -538,6 +550,7 @@ requires-dist = [
     { name = "django-auth-ldap", marker = "extra == 'ldap'", specifier = ">=5.3.0" },
     { name = "django-autocomplete-light", specifier = "==4.0.1" },
     { name = "django-autoslug", specifier = "==1.9.9" },
+    { name = "django-axes", specifier = ">=7.0,<9" },
     { name = "django-braces", specifier = ">=1.15.0" },
     { name = "django-cacheops", specifier = ">=7.2,<8" },
     { name = "django-celery-email", specifier = ">=3.0.0" },
@@ -594,7 +607,7 @@ requires-dist = [
     { name = "django-tinymce", specifier = ">=5.0.0" },
     { name = "django-weasyprint", specifier = ">=2.5.0" },
     { name = "django-webmaster-verification", specifier = "==0.4.3" },
-    { name = "djangoql-iplweb", specifier = "==0.20.0" },
+    { name = "djangoql-iplweb", specifier = ">=0.23.0" },
     { name = "djangorestframework", specifier = "==3.17.1" },
     { name = "dspace-rest-client", specifier = ">=0.1.12" },
     { name = "gunicorn", specifier = ">=26.0.0" },
@@ -1581,6 +1594,19 @@ wheels = [
 ]
 
 [[package]]
+name = "django-axes"
+version = "8.3.1"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "asgiref", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "django", marker = "platform_python_implementation != 'PyPy'" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/f0/b4/00c701a22d46288e3eb1340a1c141f5b4002572ce836a3e8d069f1e1de8a/django_axes-8.3.1.tar.gz", hash = "sha256:d57e923c0ba33cf45275253dd1313c3a3ff04bec686b38d677beb2b3d43c7bcd", size = 254715, upload-time = "2026-02-11T20:19:52.172Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/46/f6/777a5df7d5698eeb23c7c496cc268c0181f0489dbc5b5f2b235b30e5d8dd/django_axes-8.3.1-py3-none-any.whl", hash = "sha256:f7887582fd12713064f1602091ff6152752becae5e891a15bf802746cab0f51a", size = 74213, upload-time = "2026-02-11T20:19:48.646Z" },
+]
+
+[[package]]
 name = "django-braces"
 version = "1.17.0"
 source = { registry = "https://pypi.org/simple" }
@@ -2362,14 +2388,14 @@ wheels = [
 
 [[package]]
 name = "djangoql-iplweb"
-version = "0.20.0"
+version = "0.23.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "ply", marker = "platform_python_implementation != 'PyPy'" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/31/35/56ee3aabb65b91c571539e0463d4b26657ee323f69f9dd100e074bb1da10/djangoql_iplweb-0.20.0.tar.gz", hash = "sha256:1adeaea0b833de690a35a1d997a79050ed7cb24f5880fccf25d2b6874d71a04a", size = 237490, upload-time = "2026-06-03T10:44:44.205Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/25/e0/c3164c6afb2cb9da40cb0b9f1b94c1c0e4dcffee0b585f24978f63017fb3/djangoql_iplweb-0.23.0.tar.gz", hash = "sha256:e830893e88354592b03810c46c7918e475991747ff1a95415bb246916e88b38d", size = 248317, upload-time = "2026-06-04T09:21:54.419Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/9e/6c/7460a657626ef205cb8b4af8bd8c2cc5712923bee7f0efc519dcfde32745/djangoql_iplweb-0.20.0-py3-none-any.whl", hash = "sha256:461f4de134f8e780b0504ce8d8677f64d81370154c0c4c31a3944779ec19044c", size = 258212, upload-time = "2026-06-03T10:44:42.435Z" },
+    { url = "https://files.pythonhosted.org/packages/9c/a2/9c884132b408899dd836b43a7c1bd0b16fea173ea9b8c2f089186806df6c/djangoql_iplweb-0.23.0-py3-none-any.whl", hash = "sha256:20fb4af8770ab30a0bfb5190ecad58f5e02aa3ea76f2cb1aa969547fafe07b1f", size = 283909, upload-time = "2026-06-04T09:21:52.825Z" },
 ]
 
 [[package]]
@@ -6251,14 +6277,14 @@ wheels = [
 
 [[package]]
 name = "webob"
-version = "1.8.9"
+version = "1.8.10"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "legacy-cgi", marker = "python_full_version >= '3.13' and platform_python_implementation != 'PyPy'" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/85/0b/1732085540b01f65e4e7999e15864fe14cd18b12a95731a43fd6fd11b26a/webob-1.8.9.tar.gz", hash = "sha256:ad6078e2edb6766d1334ec3dee072ac6a7f95b1e32ce10def8ff7f0f02d56589", size = 279775, upload-time = "2024-10-24T03:19:20.651Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/58/f9/974eafebfd0bd442b8848899fe7d30675c93f750c313e1a6fe61acbde1e3/webob-1.8.10.tar.gz", hash = "sha256:1c963a11f307bc3f624fbab9dde737701eae255f32981b7a5486a88db1767c2b", size = 280796, upload-time = "2026-06-02T19:56:47.268Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/50/bd/c336448be43d40be28e71f2e0f3caf7ccb28e2755c58f4c02c065bfe3e8e/WebOb-1.8.9-py2.py3-none-any.whl", hash = "sha256:45e34c58ed0c7e2ecd238ffd34432487ff13d9ad459ddfd77895e67abba7c1f9", size = 115364, upload-time = "2024-10-24T03:19:18.642Z" },
+    { url = "https://files.pythonhosted.org/packages/83/21/fce134877fb6fc6ad3c464e4a07ede0ee9219f705d26a981ae58ea36ca13/webob-1.8.10-py2.py3-none-any.whl", hash = "sha256:e68ad87fda378191081965ab02a185391c26e4e926adec855c3b0286a8369d49", size = 115825, upload-time = "2026-06-02T19:56:44.765Z" },
 ]
 
 [[package]]

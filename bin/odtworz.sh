@@ -5,6 +5,12 @@ set -euo pipefail
 # 1) usuwa istniejącą bazę danych bpp
 # 2) instaluje baze danych z bpp z backupu (pierwszy parametr)
 # 3) tworzy konto superuzytkownika 'admin' z haslem 'foobar123'
+#
+# Obsługiwane formaty backupu (autodetekcja po ZAWARTOŚCI, nie po nazwie):
+#   - pg_dump -Fc  (custom, pojedynczy plik)
+#   - pg_dump -Ft  (tar)
+#   - pg_dump -Fd  (katalog) — także spakowany jako .tar.gz / .tgz
+#   - dowolny z powyższych dodatkowo skompresowany gzipem (.gz)
 
 BASEDIR=$(dirname "$0")
 
@@ -27,6 +33,9 @@ while [[ $# -gt 0 ]]; do
             echo "Użycie: $0 [-o|--with-owner] <ścieżka_do_pliku_pg_dump>"
             echo ""
             echo "Ten skrypt odtwarza bazę danych BPP z backupu."
+            echo ""
+            echo "Format backupu wykrywany jest po zawartości pliku:"
+            echo "  pg_dump -Fc/-Ft/-Fd, także spakowane .gz / .tar.gz / .tgz"
             echo ""
             echo "Opcje:"
             echo "  -o, --with-owner  Przywróć właścicieli obiektów z dumpu"
@@ -58,6 +67,70 @@ if [ -z "$DUMP_FILE" ]; then
 fi
 
 LOCAL_DATABASE_NAME=bpp
+
+# Katalog tymczasowy na rozpakowane archiwa; sprzątany przy wyjściu (też
+# przy błędzie, dzięki trap EXIT).
+WORKDIR=""
+cleanup() {
+    [ -n "${WORKDIR:-}" ] && rm -rf "$WORKDIR"
+    return 0
+}
+trap cleanup EXIT
+
+# Ustala, co faktycznie podać pg_restore. Wynik ląduje w DUMP_TARGET.
+# Autodetekcja po zawartości pliku (nie po rozszerzeniu):
+#   - format wprost czytelny dla pg_restore (-Fc / -Ft / katalog -Fd) → bez zmian,
+#   - .tar.gz / .tgz owijający katalogowy dump (pg_dump -Fd) → rozpakowanie,
+#   - pojedynczy dump skompresowany gzipem (np. pg_dump -Fc | gzip) → dekompresja.
+# Rozpakowane dane trafiają do $WORKDIR i są kasowane przez trap.
+DUMP_TARGET=""
+resolve_dump_target() {
+    local f="$1"
+
+    if [ ! -e "$f" ]; then
+        echo "Błąd: plik backupu nie istnieje: $f" >&2
+        exit 1
+    fi
+
+    # Format, który pg_restore czyta bezpośrednio: custom (-Fc), tar (-Ft)
+    # albo rozpakowany katalog (-Fd). pg_restore -l czyta tylko spis treści.
+    if pg_restore -l "$f" >/dev/null 2>&1; then
+        DUMP_TARGET="$f"
+        return
+    fi
+
+    # Nie jest to bezpośredni dump — spróbuj rozpakować gzip.
+    if gzip -t "$f" >/dev/null 2>&1; then
+        WORKDIR="$(mktemp -d)"
+        if gzip -dc "$f" | tar -tf - >/dev/null 2>&1; then
+            # .tar.gz owijający katalogowy dump (pg_dump -Fd): toc.dat + *.dat.gz
+            echo "Rozpakowuję archiwum katalogowe (pg_dump -Fd)..."
+            gzip -dc "$f" | tar -xf - -C "$WORKDIR"
+            local toc
+            toc="$(find "$WORKDIR" -maxdepth 3 -name toc.dat -print -quit)"
+            if [ -z "$toc" ]; then
+                echo "Błąd: w archiwum nie znaleziono dumpu pg_dump (brak toc.dat)." >&2
+                exit 1
+            fi
+            DUMP_TARGET="$(dirname "$toc")"
+            return
+        fi
+        # Pojedynczy dump skompresowany gzipem (np. pg_dump -Fc | gzip).
+        echo "Rozpakowuję skompresowany dump (gzip)..."
+        gzip -dc "$f" > "$WORKDIR/dump"
+        DUMP_TARGET="$WORKDIR/dump"
+        return
+    fi
+
+    echo "Błąd: nieobsługiwany format pliku backupu: $f" >&2
+    echo "Obsługiwane: pg_dump -Fc/-Ft/-Fd oraz ich warianty .gz / .tar.gz" >&2
+    exit 1
+}
+
+# Walidujemy i ewentualnie rozpakowujemy backup ZANIM cokolwiek zburzymy
+# (docker compose down -v / DROP DATABASE). Dzięki temu zły plik wywala się
+# od razu, bez ruszania bieżącej bazy.
+resolve_dump_target "$DUMP_FILE"
 
 # Opcjonalnie: możnaby tu ubić serwer Django, ale ponieważ jest dropdb -f,
 # to nie ma takiej potrzeby. Ewentualnie możnaby go zrestartować po wszystkim, wysyłając
@@ -105,10 +178,10 @@ filter_pg_restore_errors() {
 }
 
 if [ "$NO_OWNER" = true ]; then
-    pg_restore -j 6 --no-owner -d $LOCAL_DATABASE_NAME "$DUMP_FILE" \
+    pg_restore -j 6 --no-owner -d $LOCAL_DATABASE_NAME "$DUMP_TARGET" \
         2> >(filter_pg_restore_errors) || true
 else
-    pg_restore -j 6 -d $LOCAL_DATABASE_NAME "$DUMP_FILE" \
+    pg_restore -j 6 -d $LOCAL_DATABASE_NAME "$DUMP_TARGET" \
         2> >(filter_pg_restore_errors) || true
 fi
 
