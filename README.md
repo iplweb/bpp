@@ -24,6 +24,22 @@ jest dla bibliotek naukowych i uniwersyteckich w Polsce.
 Oprogramowanie dystrybuowane jest na zasadach otwartoźródłowej
 [licencji MIT](https://pl.wikipedia.org/wiki/Licencja_MIT).
 
+## Główne funkcje
+
+- Zarządzanie bibliografią publikacji pracowników naukowych
+- Centralny punkt przyjmowania i obróbki publikacji na uczelni
+- Integracja z Polską Bibliografią Naukową (PBN)
+- Integracja z ORCID i CrossRef
+- Integracja z Web of Science
+- Dwukierunkowa integracja z repozytoriami DSpace (import oraz wysyłanie prac)
+- Wystawianie danych przez OAI-PMH oraz API
+- Raporty ewaluacyjne i analiza slotów
+- Ranking autorów i punktacja publikacji
+- Klasyfikacja i śledzenie Open Access
+- Import i eksport danych z zewnętrznych systemów
+- System zgłaszania publikacji przez pracowników
+- Powiadomienia w czasie rzeczywistym
+
 ## Integracje — BPP jako centralny hub danych
 
 BPP pełni rolę **centralnego punktu przyjmowania i obróbki publikacji**
@@ -58,22 +74,6 @@ w obie strony:
 - **BPP → DSpace** — wysyłanie prac z BPP do repozytorium DSpace, tak aby
   BPP było centralnym punktem rejestracji i obróbki, a repozytorium
   otrzymywało gotowe, opisane rekordy.
-
-## Główne funkcje
-
-- Zarządzanie bibliografią publikacji pracowników naukowych
-- Centralny punkt przyjmowania i obróbki publikacji na uczelni
-- Integracja z Polską Bibliografią Naukową (PBN)
-- Integracja z ORCID i CrossRef
-- Integracja z Web of Science
-- Dwukierunkowa integracja z repozytoriami DSpace (import oraz wysyłanie prac)
-- Wystawianie danych przez OAI-PMH oraz API
-- Raporty ewaluacyjne i analiza slotów
-- Ranking autorów i punktacja publikacji
-- Klasyfikacja i śledzenie Open Access
-- Import i eksport danych z zewnętrznych systemów
-- System zgłaszania publikacji przez pracowników
-- Powiadomienia w czasie rzeczywistym
 
 ## Wymagania systemowe
 
