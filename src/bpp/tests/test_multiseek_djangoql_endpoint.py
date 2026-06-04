@@ -92,3 +92,14 @@ def test_endpoint_surfaces_warnings(client, uprawniony):
     data = resp.json()
     assert data["query"] == ""
     assert data["warnings"]  # co najmniej jedno ostrzeżenie
+
+
+@pytest.mark.django_db
+def test_template_filter_can_use_query_editor():
+    from django.template import Context, Template
+
+    su = baker.make("bpp.BppUser", is_superuser=True)
+    plain = baker.make("bpp.BppUser", is_superuser=False, is_staff=False)
+    tpl = Template("{% load query_editor %}{{ user|can_use_query_editor }}")
+    assert tpl.render(Context({"user": su})) == "True"
+    assert tpl.render(Context({"user": plain})) == "False"
