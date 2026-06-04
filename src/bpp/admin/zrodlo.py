@@ -4,6 +4,7 @@ from django import forms
 from django.contrib import admin
 from djangoql.admin import DjangoQLSearchMixin
 
+from bpp.djangoql_schema import BppQLSchema
 from bpp.models.zrodlo import Redakcja_Zrodla
 from pbn_api.models import Journal
 
@@ -113,6 +114,7 @@ class ZrodloAdmin(
 ):
     djangoql_completion_enabled_by_default = False
     djangoql_completion = True
+    djangoql_schema = BppQLSchema
 
     form = ZrodloForm
 

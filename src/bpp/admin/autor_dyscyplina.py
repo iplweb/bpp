@@ -14,6 +14,7 @@ from bpp.admin.filters import (
     PBN_UID_IDAutoraObecnyFilter,
 )
 from bpp.admin.xlsx_export.mixins import EksportDanychMixin
+from bpp.djangoql_schema import BppQLSchema
 from bpp.models import Autor, Autor_Dyscyplina
 
 
@@ -131,6 +132,7 @@ class Autor_DyscyplinaAdmin(
 ):
     djangoql_completion_enabled_by_default = True
     djangoql_completion = True
+    djangoql_schema = BppQLSchema
 
     max_allowed_export_items = 10000
 

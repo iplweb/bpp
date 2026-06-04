@@ -7,6 +7,7 @@ from dynamic_admin_columns.mixins import DynamicColumnsMixin
 from ewaluacja_liczba_n.models import IloscUdzialowDlaAutoraZaRok
 from pbn_api.models import Scientist
 
+from ..djangoql_schema import BppQLSchema
 from ..models import (  # Publikacja_Habilitacyjna
     Autor,
     Autor_Absencja,
@@ -199,6 +200,7 @@ class AutorAdmin(
 ):
     djangoql_completion_enabled_by_default = False
     djangoql_completion = True
+    djangoql_schema = BppQLSchema
 
     max_allowed_export_items = 5000
 
