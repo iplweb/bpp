@@ -10,6 +10,7 @@ from django.views.decorators.http import require_POST
 
 from bpp.models import (
     Autor_Dyscyplina,
+    Uczelnia,
     Wydawnictwo_Ciagle_Autor,
     Wydawnictwo_Zwarte_Autor,
 )
@@ -125,7 +126,7 @@ def browser_table(request):
 @require_POST
 def browser_toggle_pin(request, model_type, pk):
     """Toggle przypieta na rekordzie autor-publikacja."""
-    uczelnia = uczelnia_dla_odczytu(request)
+    uczelnia = Uczelnia.objects.get_for_request(request)
     if not uczelnia:
         return HttpResponseBadRequest("Nie znaleziono uczelni")
 
@@ -179,7 +180,7 @@ def browser_toggle_pin(request, model_type, pk):
 @require_POST
 def browser_swap_discipline(request, model_type, pk):
     """Zamień dyscyplinę na drugą dla autora z dwoma dyscyplinami."""
-    uczelnia = uczelnia_dla_odczytu(request)
+    uczelnia = Uczelnia.objects.get_for_request(request)
     if not uczelnia:
         return HttpResponseBadRequest("Nie znaleziono uczelni")
 

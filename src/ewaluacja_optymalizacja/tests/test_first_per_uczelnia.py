@@ -157,6 +157,62 @@ def test_bulk_optimization_kasuje_runy_uczelni_z_requestu(dwie_uczelnie):
 
 
 @pytest.mark.django_db
+def test_browser_toggle_pin_enqueue_dla_uczelni_z_requestu(dwie_uczelnie):
+    """``browser_toggle_pin`` (mutujący/enqueue) scope'uje przeliczanie do
+    uczelni z requestu (U2) — NIE do pierwszej-z-brzegu (U1).
+
+    Dowód: ``solve_all_reported_disciplines.delay`` dostaje ``U2.pk``, a
+    ``StatusPrzegladarkaRecalc`` startuje dla U2. Gdyby widok używał
+    ``uczelnia_dla_odczytu`` z honorowaniem ``?uczelnia=`` override albo
+    ``get_default`` first()-of-arbitrary, mógłby trafić w U1.
+    """
+    from ewaluacja_optymalizacja.models import StatusPrzegladarkaRecalc
+    from ewaluacja_optymalizacja.views.evaluation_browser.views import (
+        browser_toggle_pin,
+    )
+
+    u1, u2 = dwie_uczelnie
+    autor_rekord = baker.make("bpp.Wydawnictwo_Ciagle_Autor", przypieta=False)
+
+    su = baker.make("bpp.BppUser", is_superuser=True)
+    request = _make_request(u2, user=su)
+    request.method = "POST"
+    request.POST = {}
+
+    class FakeTask:
+        id = "fake-task-id"
+
+    def fake_render(req, template, context):
+        from django.http import HttpResponse
+
+        return HttpResponse("ok")
+
+    with (
+        patch(
+            "ewaluacja_optymalizacja.views.evaluation_browser.views."
+            "solve_all_reported_disciplines.delay",
+            return_value=FakeTask(),
+        ) as mock_delay,
+        patch(
+            "ewaluacja_optymalizacja.views.evaluation_browser.views.render",
+            side_effect=fake_render,
+        ),
+    ):
+        browser_toggle_pin(request, "ciagle", autor_rekord.pk)
+
+    mock_delay.assert_called_once_with(u2.pk)
+    assert mock_delay.call_args.args != (u1.pk,), (
+        "Przeliczanie poszło do U1 (first()-of-arbitrary) zamiast U2 z requestu."
+    )
+
+    status = StatusPrzegladarkaRecalc.get_or_create()
+    assert status.uczelnia_id == u2.pk, (
+        "StatusPrzegladarkaRecalc wystartował dla złej uczelni — "
+        "mutacja nie była scoped do uczelni z requestu."
+    )
+
+
+@pytest.mark.django_db
 def test_solve_uczelnia_command_failuje_przy_wielu_uczelniach(dwie_uczelnie):
     """``solve_uczelnia`` bez --uczelnia przy >1 uczelni → CommandError."""
     with pytest.raises(CommandError, match="więcej niż jedna uczelnia"):

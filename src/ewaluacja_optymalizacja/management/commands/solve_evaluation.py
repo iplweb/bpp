@@ -312,7 +312,7 @@ class Command(BaseCommand):
         """
         try:
             dyscyplina_obj = Dyscyplina_Naukowa.objects.get(nazwa=dyscyplina)
-            if uczelnia and dyscyplina_obj:
+            if dyscyplina_obj:
                 liczba_n_obj = LiczbaNDlaUczelni.objects.get(
                     uczelnia=uczelnia, dyscyplina_naukowa=dyscyplina_obj
                 )
