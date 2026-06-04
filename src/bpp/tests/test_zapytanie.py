@@ -6,7 +6,7 @@ from djangoql.parser import DjangoQLParser
 from model_bakery import baker
 
 from bpp.const import GR_WPROWADZANIE_DANYCH
-from bpp.views.zapytanie import EXAMPLES
+from bpp.views.zapytanie import EXAMPLES, user_can_use_query_editor
 
 URL = "bpp:zapytanie"
 
@@ -300,18 +300,12 @@ def test_rekord_schema_has_autorzy_rel_pickers():
 
 @pytest.mark.django_db
 def test_user_can_use_query_editor_superuser():
-    from bpp.views.zapytanie import user_can_use_query_editor
-
     u = baker.make("bpp.BppUser", is_superuser=True, is_staff=False)
     assert user_can_use_query_editor(u) is True
 
 
 @pytest.mark.django_db
 def test_user_can_use_query_editor_staff_in_group():
-    from django.contrib.auth.models import Group
-
-    from bpp.views.zapytanie import user_can_use_query_editor
-
     u = baker.make("bpp.BppUser", is_superuser=False, is_staff=True)
     grp, _ = Group.objects.get_or_create(name=GR_WPROWADZANIE_DANYCH)
     u.groups.add(grp)
@@ -320,10 +314,14 @@ def test_user_can_use_query_editor_staff_in_group():
 
 @pytest.mark.django_db
 def test_user_can_use_query_editor_plain_logged_in():
-    from bpp.views.zapytanie import user_can_use_query_editor
-
     u = baker.make("bpp.BppUser", is_superuser=False, is_staff=False)
     assert user_can_use_query_editor(u) is False
+
+
+def test_user_can_use_query_editor_anonymous():
+    from django.contrib.auth.models import AnonymousUser
+
+    assert user_can_use_query_editor(AnonymousUser()) is False
 
 
 @pytest.mark.django_db
