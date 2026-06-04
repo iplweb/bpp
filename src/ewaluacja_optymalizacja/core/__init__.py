@@ -382,13 +382,16 @@ def solve_uczelnia(uczelnia_id: int | None = None, min_liczba_n: int = 12):
     """
     from bpp.models import Uczelnia
 
-    # Get university
+    # Get university (single-or-fail: bez jawnego uczelnia_id NIE zgadujemy
+    # pierwszej-z-brzegu uczelni; przy >1 uczelni get() rzuca
+    # MultipleObjectsReturned — fail-loud zamiast cichego błędu multi-hosted).
     if uczelnia_id:
         uczelnia = Uczelnia.objects.get(pk=uczelnia_id)
     else:
-        uczelnia = Uczelnia.objects.first()
-        if not uczelnia:
-            raise ValueError("No university found in database")
+        try:
+            uczelnia = Uczelnia.objects.get()
+        except Uczelnia.DoesNotExist as e:
+            raise ValueError("No university found in database") from e
 
     # Get disciplines with liczba_n >= min_liczba_n
     liczba_n_query = LiczbaNDlaUczelni.objects.filter(

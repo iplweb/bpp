@@ -22,8 +22,7 @@ def unpin_all_sensible(request):
 
     from ..tasks import unpin_all_sensible_task
 
-    # Pobierz pierwszą uczelnię (zakładamy, że jest tylko jedna)
-    uczelnia = Uczelnia.objects.first()
+    uczelnia = Uczelnia.objects.get_for_request(request)
 
     if not uczelnia:
         messages.error(request, "Nie znaleziono uczelni w systemie.")

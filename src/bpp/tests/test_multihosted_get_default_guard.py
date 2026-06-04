@@ -24,6 +24,13 @@ from pathlib import Path
 # w definicji UczelniaManager, które tego wzorca nie pasują).
 PATTERN = re.compile(r"Uczelnia\.objects\.(?:get_default\(\)|default\b)")
 
+# Drugi footgun, semantycznie równoważny ``get_default`` w ścieżce runtime:
+# ``Uczelnia.objects.first()`` / ``Uczelnia.objects.all()[0]`` zgaduje
+# „pierwszą-z-brzegu" uczelnię niezależnie od hosta (uczelni) z requestu —
+# ta sama klasa buga co B1, inna pisownia. ``all()[0]`` dorzucony
+# prewencyjnie (0 wystąpień dziś, zerowy koszt utrzymania).
+PATTERN_FIRST = re.compile(r"Uczelnia\.objects\.(?:first\(\)|all\(\)\s*\[\s*0\s*\])")
+
 SRC = Path(__file__).resolve().parents[2]  # .../src
 
 # Ścieżka (względem src/) -> dozwolona liczba wystąpień. Komentarz = dlaczego OK.
@@ -42,23 +49,33 @@ APPROVED: dict[str, int] = {
     "pbn_import/utils/command_helpers.py": 1,  # CLI None-tolerant + CommandError
 }
 
+# Whitelist dla ``Uczelnia.objects.first()``. Każdy wpis to ŚWIADOMY fallback
+# bez requestu (warstwa modelu / UI default / demo / debug / komentarz).
+APPROVED_FIRST: dict[str, int] = {
+    "bpp/admin/core.py": 1,  # admin form __init__: default pola 'afiliuje', None-tolerant UI
+    "bpp/demo_data/generators/uczelnia.py": 1,  # demo/seed, CLI bez requestu
+    "bpp/management/commands/debug_setup_initial_data.py": 1,  # debug command, None-tolerant
+    "bpp/models/autor.py": 1,  # warstwa modelu: domyślne 'pokazuj' nowego autora, None-tolerant
+    "bpp/models/jednostka.py": 1,  # KOMENTARZ (nie kod) — zakomentowany default=lambda
+}
 
-def _scan() -> dict[str, int]:
+
+def _scan(pattern: re.Pattern) -> dict[str, int]:
     found: dict[str, int] = {}
     for path in SRC.rglob("*.py"):
         rel = path.relative_to(SRC).as_posix()
         if "/tests/" in f"/{rel}" or "/migrations/" in f"/{rel}":
             continue
-        if path.name.startswith("test_"):
+        if path.name.startswith("test_") or path.name == "tests.py":
             continue
-        n = len(PATTERN.findall(path.read_text(encoding="utf-8")))
+        n = len(pattern.findall(path.read_text(encoding="utf-8")))
         if n:
             found[rel] = n
     return found
 
 
 def test_get_default_poza_whitelista_to_regresja_multihosted():
-    found = _scan()
+    found = _scan(PATTERN)
 
     nowe = {f: n for f, n in found.items() if n > APPROVED.get(f, 0)}
     assert not nowe, (
@@ -66,4 +83,29 @@ def test_get_default_poza_whitelista_to_regresja_multihosted():
         f"(potencjalny bug multi-hosted): {nowe}. Użyj jawnej uczelni "
         "(get_for_request / argument / FK obiektu) albo dopisz do APPROVED "
         "w tym pliku z uzasadnieniem."
+    )
+
+
+def test_first_poza_whitelista_to_regresja_multihosted():
+    """``Uczelnia.objects.first()`` w runtime to ten sam bug co get_default:
+    wybiera pierwszą-z-brzegu uczelnię zamiast tej z requestu/argumentu.
+
+    Gdy ten test PADA:
+    - DODAŁEŚ ``Uczelnia.objects.first()`` → użyj JAWNEJ uczelni:
+      ``uczelnia_dla_odczytu(request)`` / ``get_for_request(request)`` w
+      widokach, argument przekazany od wołającego, albo single-or-fail
+      (``get()`` z CommandError) w komendach CLI. Jeśli miejsce jest NAPRAWDĘ
+      akceptowalne (warstwa modelu / UI default / demo / debug) — dopisz je do
+      ``APPROVED_FIRST`` z uzasadnieniem.
+    - USUNĄŁEŚ ``first()`` (naprawiłeś multi-hosted) → zmniejsz licznik / usuń
+      wpis z ``APPROVED_FIRST``.
+    """
+    found = _scan(PATTERN_FIRST)
+
+    nowe = {f: n for f, n in found.items() if n > APPROVED_FIRST.get(f, 0)}
+    assert not nowe, (
+        "Nowe/dodatkowe Uczelnia.objects.first()/all()[0] poza whitelistą "
+        f"(potencjalny bug multi-hosted): {nowe}. Użyj jawnej uczelni "
+        "(uczelnia_dla_odczytu / get_for_request / argument / single-or-fail) "
+        "albo dopisz do APPROVED_FIRST w tym pliku z uzasadnieniem."
     )
