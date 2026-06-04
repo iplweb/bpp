@@ -31,6 +31,9 @@ class UnpinningOpportunity(models.Model):
         "bpp.Uczelnia",
         on_delete=models.CASCADE,
         verbose_name="Uczelnia",
+        # Auto-indeks FK redundantny: pokrywa go złożony
+        # Index(["uczelnia", "dyscyplina_naukowa"]) w Meta (kolumna wiodąca).
+        db_index=False,
     )
 
     dyscyplina_naukowa = models.ForeignKey(

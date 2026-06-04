@@ -32,7 +32,14 @@ from bpp.util import safe_html
 class Patent_Autor(BazaModeluOdpowiedzialnosciAutorow):
     """Powiązanie autora do patentu."""
 
-    rekord = models.ForeignKey("Patent", CASCADE, related_name="autorzy_set")
+    rekord = models.ForeignKey(
+        "Patent",
+        CASCADE,
+        related_name="autorzy_set",
+        # Auto-indeks FK redundantny: unique_together ma rekord jako kolumnę
+        # wiodącą — pokrywa lookup po rekord i kaskadę usuwania.
+        db_index=False,
+    )
 
     class Meta:
         verbose_name = "powiązanie autora z patentem"
