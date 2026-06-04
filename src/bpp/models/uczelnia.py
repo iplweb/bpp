@@ -14,6 +14,7 @@ from django.utils.functional import cached_property
 from model_utils import Choices
 from tinymce.models import HTMLField
 
+from bpp.fields import EncryptedTextField
 from bpp.models import ModelZAdnotacjami, NazwaISkrot
 from bpp.models.abstract import ModelZPBN_ID, NazwaWDopelniaczu
 from pbn_api.exceptions import WillNotExportError
@@ -381,6 +382,30 @@ class Uczelnia(ModelZAdnotacjami, ModelZPBN_ID, NazwaISkrot, NazwaWDopelniaczu):
     )
     pbn_app_token = models.CharField(
         "Token aplikacji w PBN", blank=True, default="", max_length=128
+    )
+    dspace_aktywny = models.BooleanField(
+        "Włącz eksport do DSpace",
+        default=False,
+        help_text="Gdy włączone, rekordy afiliowane do tej uczelni można "
+        "wysyłać do jej instalacji DSpace.",
+    )
+    dspace_api_endpoint = models.URLField(
+        "Adres API DSpace",
+        blank=True,
+        default="",
+        help_text="np. https://repozytorium.uczelnia.pl/server/api",
+    )
+    dspace_api_username = models.CharField(
+        "Użytkownik API DSpace", max_length=255, blank=True, default=""
+    )
+    dspace_api_password = EncryptedTextField(
+        "Hasło API DSpace", blank=True, default=""
+    )
+    dspace_domyslny_jezyk_dc = models.CharField(
+        "Domyślny język dc.language.iso",
+        max_length=8,
+        blank=True,
+        default="pl",
     )
     pbn_kasuj_dyscypliny_selektywnie = models.BooleanField(
         "Kasuj oświadczenia selektywnie (per osoba)",

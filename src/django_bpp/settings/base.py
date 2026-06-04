@@ -404,6 +404,7 @@ INSTALLED_APPS = [
     "bpp",
     "crossref_bpp",
     "pbn_api",
+    "dspace_api",
     "pbn_export_queue",
     "pbn_komparator_zrodel",
     "dal",
@@ -761,6 +762,11 @@ if _test_template:
     DATABASES["default"]["TEST"] = test_settings
 
 SECRET_KEY = env("DJANGO_BPP_SECRET_KEY")
+
+# Klucz Fernet do szyfrowania sekretów integracji (DSpace itd.).
+# Wygeneruj: python -c "from cryptography.fernet import Fernet;
+#   print(Fernet.generate_key().decode())"
+DSPACE_CREDENTIALS_KEY = env("DSPACE_CREDENTIALS_KEY", default="")
 
 SENDFILE_URL = MEDIA_URL
 

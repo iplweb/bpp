@@ -89,6 +89,7 @@ nav:
       - Wyszukiwanie i redagowanie: uzytkownik/wyszukiwanie-redagowanie.md
       - Raporty i rankingi: uzytkownik/raporty-rankingi.md
       - Sloty: uzytkownik/sloty.md
+      - Eksportowanie do DSpace: uzytkownik/eksportowanie-do-dspace.md
   - Instrukcja administratora:
       - Konfiguracja ogólna: administrator/ogolna.md
       - Importer publikacji: administrator/importer-publikacji.md
@@ -96,6 +97,7 @@ nav:
       - Zgłaszanie publikacji: administrator/zglaszanie-publikacji.md
       - Konfiguracja PBN: administrator/konfiguracja-pbn.md
       - Integracja z PBN: administrator/integracja-pbn.md
+      - Integracja z DSpace: administrator/integracja-dspace.md
       - Konfiguracja zaawansowana: administrator/zaawansowane.md
   - API: api/index.md
   - Dla deweloperów i agentów:

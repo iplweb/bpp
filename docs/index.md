@@ -25,6 +25,7 @@ Codzienne czynności redakcyjne — dla bibliotekarzy i redaktorów.
 - [Wyszukiwanie i redagowanie](uzytkownik/wyszukiwanie-redagowanie.md)
 - [Raporty i rankingi](uzytkownik/raporty-rankingi.md)
 - [Sloty](uzytkownik/sloty.md)
+- [Eksportowanie do DSpace](uzytkownik/eksportowanie-do-dspace.md)
 
 ### 🛠️ Instrukcja administratora
 
@@ -36,6 +37,7 @@ Konfiguracja, importy i integracje — dla administratorów wdrożenia.
 - [Zgłaszanie publikacji](administrator/zglaszanie-publikacji.md)
 - [Konfiguracja PBN](administrator/konfiguracja-pbn.md)
 - [Integracja z PBN](administrator/integracja-pbn.md)
+- [Integracja z DSpace](administrator/integracja-dspace.md)
 - [Konfiguracja zaawansowana](administrator/zaawansowane.md)
 
 ### 🔌 API

@@ -1,4 +1,4 @@
-{% load prace user_in_group %}
+{% load prace user_in_group dspace_links %}
 
 {% comment %} Include bibliography metadata in head section {% endcomment %}
 {% if not request.is_ajax %}
@@ -261,7 +261,8 @@
         <div class="praca-mono__column--right">
 
             <!-- External Links Card - Redesigned -->
-            {% if praca.pbn_uid_id or praca.doi or praca.pubmed_id or praca.pmc_id or praca.public_www or praca.www %}
+            {% dspace_repo_links praca as dspace_repo_links %}
+            {% if praca.pbn_uid_id or praca.doi or praca.pubmed_id or praca.pmc_id or praca.public_www or praca.www or dspace_repo_links %}
                 <div class="external-links-card">
                     <h3>
                         <span class="fi-web"></span> Linki zewnętrzne
@@ -402,6 +403,28 @@
                             </div>
                             {% endwith %}
                         {% endif %}
+
+                        {% for uczelnia, dspace_url in dspace_repo_links %}
+                            <div class="external-link-item link-dspace">
+                                <span class="fi-database link-icon" aria-hidden="true"></span>
+                                <div class="link-content">
+                                    <div class="link-label">Repozytorium DSpace</div>
+                                    <div class="link-value">{{ uczelnia }}</div>
+                                </div>
+                                <div class="link-actions">
+                                    <button class="button copy-button" type="button"
+                                            data-copy-text="{{ dspace_url }}"
+                                            title="Kopiuj adres">
+                                        <i class="fi-clipboard"></i>
+                                    </button>
+                                    <button class="button open-button" type="button"
+                                            data-open-url="{{ dspace_url }}" data-target="_blank"
+                                            title="Otwórz rekord w repozytorium">
+                                        <i class="fi-arrow-right"></i> Otwórz
+                                    </button>
+                                </div>
+                            </div>
+                        {% endfor %}
                     </div>
                 </div>
             {% endif %}
