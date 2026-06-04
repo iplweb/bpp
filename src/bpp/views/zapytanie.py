@@ -282,9 +282,7 @@ def user_can_use_query_editor(user):
         return False
     if user.is_superuser:
         return True
-    return user.is_staff and user.groups.filter(
-        name=GR_WPROWADZANIE_DANYCH
-    ).exists()
+    return user.is_staff and user.groups.filter(name=GR_WPROWADZANIE_DANYCH).exists()
 
 
 class WprowadzanieDanychOrSuperuserMixin(LoginRequiredMixin, UserPassesTestMixin):

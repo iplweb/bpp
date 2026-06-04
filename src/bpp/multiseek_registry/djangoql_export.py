@@ -283,7 +283,7 @@ def _invert_fragment(frag):
     for op in sorted(_INVERT, key=len, reverse=True):
         prefix = op + " "
         if rest.startswith(prefix):
-            return f"{lhs} {_INVERT[op]} {rest[len(prefix):]}"
+            return f"{lhs} {_INVERT[op]} {rest[len(prefix) :]}"
     return None
 
 
@@ -293,8 +293,7 @@ def _append_leaf(registry, leaf, parts, warnings):
         frag = leaf_to_djangoql(registry, leaf)
         if frag is None:
             warnings.append(
-                f"Pominięto zanegowany warunek: {_leaf_label(leaf)} "
-                "(nieprzekładalny)"
+                f"Pominięto zanegowany warunek: {_leaf_label(leaf)} (nieprzekładalny)"
             )
             return
         inverted = _invert_fragment(frag)
@@ -308,9 +307,7 @@ def _append_leaf(registry, leaf, parts, warnings):
         return
     frag = leaf_to_djangoql(registry, leaf)
     if frag is None:
-        warnings.append(
-            f"Pominięto warunek: {_leaf_label(leaf)} (nieprzekładalny)"
-        )
+        warnings.append(f"Pominięto warunek: {_leaf_label(leaf)} (nieprzekładalny)")
         return
     kw = _logical_keyword(prev_op)
     if prev_op is not None and kw is None:
@@ -334,8 +331,7 @@ def _append_subframe(registry, subframe, parts, warnings):
     kw = _logical_keyword(prev_op)
     if prev_op is not None and kw is None:
         warnings.append(
-            f"Nieznany operator łączący {prev_op!r} dla grupy warunków "
-            "— przyjęto 'and'"
+            f"Nieznany operator łączący {prev_op!r} dla grupy warunków — przyjęto 'and'"
         )
     parts.append((kw, f"({sub})"))
 
