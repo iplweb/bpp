@@ -248,8 +248,12 @@ poza zakresem R1 i NIE odnotowane jako wyłączone → kandydat na wątek **R3**
     (`aktualna_jednostka__uczelnia` OR `autor_jednostka__jednostka__uczelnia`). Admin/
     edytor autocomplety nietknięte. 4 taski TDD (subagent-driven, spec+quality review),
     regresja zielona, invariant single-install trzyma. Plan
-    `plans/2026-06-03-r3b-publiczne-autocomplety-uczelnia.md`. Niepushowane.
-    Tym samym **R3 (a+b) read-side publiczny domknięty**.
+    `plans/2026-06-03-r3b-publiczne-autocomplety-uczelnia.md`.
+    Follow-up (2026-06-04): holistyczny review złapał regresję (mixin czytał
+    `self.request` bezwarunkowo → fix `e48ccc5b4` toleruje brak requestu) ORAZ
+    dodano **4. picker `PublicJednostkaAutocomplete`** (filtr jednostki w
+    rankingu / „zgłoś publikację", był poza pierwotnym zakresem — commit
+    `f446fc268`). Tym samym **R3 (a+b) read-side publiczny domknięty**.
 - **B) Drobne gotowe:** `powiazania_autorow/queries.py:_pbn_root()` →
   `get_for_request` (jedyny realny dług z whitelisty get_default, Audyt 1);
   **LUKA R1:** komenda `zbieraj_sloty` CLI + `Autor.zbieraj_sloty` nie przekazują

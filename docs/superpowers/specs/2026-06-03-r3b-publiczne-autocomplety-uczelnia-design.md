@@ -21,9 +21,16 @@ i `multiseek_registry/fields/`):
 
 | byt | klasa (plik) | używana przez | współdzielona z edytorem? |
 |---|---|---|---|
-| jednostka | `WidocznaJednostkaAutocomplete` (`autocomplete/units.py:26`) | pole jednostki Multiseek (`unit_fields.py:46,84` → `jednostka-widoczna-autocomplete`) | **NIE** (tylko Multiseek) |
+| jednostka (multiseek) | `WidocznaJednostkaAutocomplete` (`autocomplete/units.py:26`) | pole jednostki Multiseek (`unit_fields.py:46,84` → `jednostka-widoczna-autocomplete`) | **NIE** (tylko Multiseek) |
+| jednostka (publiczna) | `PublicJednostkaAutocomplete` (`autocomplete/units.py:34`) | filtr jednostki w rankingu (`ranking_autorow/forms.py`), formularz „zgłoś publikację" (`zglos_publikacje/forms.py`) → `jednostka-publiczna-autocomplete` | NIE (publiczny) |
 | wydział | `PublicWydzialAutocomplete` (`autocomplete/simple.py:199`) | `public-wydzial-autocomplete` (`unit_fields.py:158`) | NIE (publiczny) |
 | autor | `PublicAutorAutocomplete` (`autocomplete/authors.py:182`) | `public-autor-autocomplete` (`author_fields.py:70`) | NIE (publiczny) |
+
+> **Follow-up (2026-06-04):** `PublicJednostkaAutocomplete` dodana po holistycznym
+> review R3b — pierwotny spec obejmował tylko 3 klasy multiseekowe, ale ten
+> picker (ranking/„zgłoś publikację") też przeciekał jednostki innych uczelni.
+> Ten sam mixin, domyślne `uczelnia_lookups=("uczelnia",)` (FK). `publiczne()`
+> = `widoczne().filter(aktualna=True)`.
 
 Każdą zawężamy **w miejscu** w `get_queryset` — bez nowych klas/URL-i, bez ryzyka
 dla formularzy redakcyjnych (admin używa innych: `JednostkaAutocomplete`,
