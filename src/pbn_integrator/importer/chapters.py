@@ -10,6 +10,7 @@ from bpp.models import (
     Wydawca,
     Wydawnictwo_Zwarte,
     Wydawnictwo_Zwarte_Streszczenie,
+    Wydawnictwo_Zwarte_Tytul,
 )
 from pbn_api.client import PBNClient
 from pbn_api.models import Publication
@@ -26,6 +27,7 @@ from .helpers import (
     importuj_streszczenia,
     pbn_keywords_to_slowa_kluczowe,
     przetworz_slowa_kluczowe,
+    przetworz_tytuly,
 )
 from .publishers import sciagnij_i_zapisz_wydawce
 
@@ -125,16 +127,9 @@ def importuj_rozdzial(
         status_korekty=get_status_korekty_przed(),
     )
 
-    if "titles" in pbn_json:
-        titles = pbn_json.pop("titles")
-        try:
-            ret.tytul = titles.pop("eng")
-        except KeyError:
-            ret.tytul = titles.pop("pol")
-
-        assert_dictionary_empty(titles)
-
     ret.save()
+
+    przetworz_tytuly(pbn_json, ret, Wydawnictwo_Zwarte_Tytul)
 
     importuj_streszczenia(pbn_chapter_json, ret, Wydawnictwo_Zwarte_Streszczenie)
     pbn_json.pop("abstracts", None)
