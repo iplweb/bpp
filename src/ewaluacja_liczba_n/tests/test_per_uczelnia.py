@@ -236,9 +236,7 @@ def test_weryfikuj_baze_view_bez_wymiaru_etatu_per_uczelnia(rf, db):
     from ewaluacja_liczba_n.views.verify import WeryfikujBazeView
 
     dyscyplina = baker.make(Dyscyplina_Naukowa)
-    u1, u2, _a1, _a2, _ad1, _ad2 = _setup_two_universities_with_bad_ad(
-        dyscyplina
-    )
+    u1, u2, _a1, _a2, _ad1, _ad2 = _setup_two_universities_with_bad_ad(dyscyplina)
 
     user = baker.make("bpp.BppUser")
     request = rf.get("/")
@@ -268,9 +266,7 @@ def test_ustaw_wymiar_etatu_view_post_per_uczelnia(rf, db):
     from ewaluacja_liczba_n.views.verify import UstawWymiarEtatuView
 
     dyscyplina = baker.make(Dyscyplina_Naukowa)
-    u1, u2, _a1, _a2, ad1, ad2 = _setup_two_universities_with_bad_ad(
-        dyscyplina
-    )
+    u1, u2, _a1, _a2, ad1, ad2 = _setup_two_universities_with_bad_ad(dyscyplina)
 
     user = baker.make("bpp.BppUser")
     request = rf.post("/")

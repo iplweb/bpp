@@ -231,9 +231,7 @@ def test_oswiadczenia_publikacji_kontekst_filtruje_po_uczelni(
 
     # Upewnij sie, ze obie uczelnie maja wiersze w cache
     wszystkie = Cache_Punktacja_Autora.objects.filter(rekord_id=rekord.pk)
-    uczelnie_w_cache = set(
-        wszystkie.values_list("jednostka__uczelnia_id", flat=True)
-    )
+    uczelnie_w_cache = set(wszystkie.values_list("jednostka__uczelnia_id", flat=True))
     assert jednostka.uczelnia_id in uczelnie_w_cache, (
         "U1 nie ma wierszy w Cache_Punktacja_Autora — test bylby pusty"
     )
@@ -263,8 +261,7 @@ def test_oswiadczenia_publikacji_kontekst_filtruje_po_uczelni(
     )
 
     assert punktacje_ids == {jednostka.uczelnia_id}, (
-        f"Oczekiwano tylko U1 ({jednostka.uczelnia_id}), "
-        f"otrzymano: {punktacje_ids}"
+        f"Oczekiwano tylko U1 ({jednostka.uczelnia_id}), otrzymano: {punktacje_ids}"
     )
     assert druga_uczelnia.pk not in punktacje_ids
 

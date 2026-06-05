@@ -31,9 +31,7 @@ class ModelZPrzeliczaniemDyscyplin(models.Model):
         if not self.pk:
             return []
 
-        qs = (
-            self.autorzy_set.exclude(dyscyplina_naukowa=None).filter(przypieta=True)
-        )
+        qs = self.autorzy_set.exclude(dyscyplina_naukowa=None).filter(przypieta=True)
         if uczelnia is not None:
             qs = qs.filter(jednostka__uczelnia=uczelnia)
         return qs.values_list("dyscyplina_naukowa").distinct()

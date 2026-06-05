@@ -69,19 +69,16 @@ class WeryfikujBazeView(GroupRequiredMixin, TemplateView):
             r.id for r in rodzaje_dict.values() if r.skrot in ["N", "D", "B", "Z"]
         ]
 
-        context["bez_rodzaju_zatrudnienia"] = (
-            ad_qs
-            .exclude(rodzaj_autora__in=known_rodzaje_ids)
-            .count()
-        )
+        context["bez_rodzaju_zatrudnienia"] = ad_qs.exclude(
+            rodzaj_autora__in=known_rodzaje_ids
+        ).count()
 
         # List of available rodzaj_autora types for dropdown
         context["rodzaje_autora_lista"] = Rodzaj_Autora.objects.all().order_by("sort")
 
         # 2. Records without wymiar_etatu
         context["bez_wymiaru_etatu"] = (
-            ad_qs
-            .filter(Q(wymiar_etatu__isnull=True) | Q(wymiar_etatu=0))
+            ad_qs.filter(Q(wymiar_etatu__isnull=True) | Q(wymiar_etatu=0))
             .select_related("autor")
             .count()
         )
@@ -92,8 +89,9 @@ class WeryfikujBazeView(GroupRequiredMixin, TemplateView):
         # - if subdyscyplina_naukowa exists, procent_subdyscypliny must not be NULL or 0
         # - only for authors with jest_w_n=True OR licz_sloty=True
         context["bez_procent_n_sloty"] = (
-            ad_qs
-            .filter(Q(rodzaj_autora__jest_w_n=True) | Q(rodzaj_autora__licz_sloty=True))
+            ad_qs.filter(
+                Q(rodzaj_autora__jest_w_n=True) | Q(rodzaj_autora__licz_sloty=True)
+            )
             .filter(
                 Q(procent_dyscypliny__isnull=True)  # Missing main discipline percentage
                 | Q(procent_dyscypliny=Decimal("0"))  # Or percentage is 0.0
@@ -110,27 +108,24 @@ class WeryfikujBazeView(GroupRequiredMixin, TemplateView):
         )
 
         # 3.1. Records with missing percentage - any author type
-        context["bez_procent_dowolny"] = (
-            ad_qs
-            .filter(
-                Q(procent_dyscypliny__isnull=True)
-                | Q(procent_dyscypliny=Decimal("0"))
-                | (
-                    Q(subdyscyplina_naukowa__isnull=False)
-                    & (
-                        Q(procent_subdyscypliny__isnull=True)
-                        | Q(procent_subdyscypliny=Decimal("0"))
-                    )
+        context["bez_procent_dowolny"] = ad_qs.filter(
+            Q(procent_dyscypliny__isnull=True)
+            | Q(procent_dyscypliny=Decimal("0"))
+            | (
+                Q(subdyscyplina_naukowa__isnull=False)
+                & (
+                    Q(procent_subdyscypliny__isnull=True)
+                    | Q(procent_subdyscypliny=Decimal("0"))
                 )
             )
-            .count()
-        )
+        ).count()
 
         # Count records that can be auto-fixed (only single discipline, no subdyscyplina)
         # For N/sloty authors
         context["bez_procent_n_sloty_do_naprawy"] = (
-            ad_qs
-            .filter(Q(rodzaj_autora__jest_w_n=True) | Q(rodzaj_autora__licz_sloty=True))
+            ad_qs.filter(
+                Q(rodzaj_autora__jest_w_n=True) | Q(rodzaj_autora__licz_sloty=True)
+            )
             .filter(subdyscyplina_naukowa__isnull=True)
             .filter(
                 Q(procent_dyscypliny__isnull=True) | Q(procent_dyscypliny=Decimal("0"))
@@ -140,8 +135,7 @@ class WeryfikujBazeView(GroupRequiredMixin, TemplateView):
 
         # For any author type
         context["bez_procent_dowolny_do_naprawy"] = (
-            ad_qs
-            .filter(subdyscyplina_naukowa__isnull=True)
+            ad_qs.filter(subdyscyplina_naukowa__isnull=True)
             .filter(
                 Q(procent_dyscypliny__isnull=True) | Q(procent_dyscypliny=Decimal("0"))
             )
@@ -152,11 +146,9 @@ class WeryfikujBazeView(GroupRequiredMixin, TemplateView):
         # We need to check each record individually
         # Only for authors with jest_w_n=True OR licz_sloty=True
         problematic_suma = []
-        all_records = (
-            ad_qs
-            .filter(Q(rodzaj_autora__jest_w_n=True) | Q(rodzaj_autora__licz_sloty=True))
-            .select_related("autor", "rodzaj_autora")
-        )
+        all_records = ad_qs.filter(
+            Q(rodzaj_autora__jest_w_n=True) | Q(rodzaj_autora__licz_sloty=True)
+        ).select_related("autor", "rodzaj_autora")
 
         for record in all_records:
             procent_d = record.procent_dyscypliny or Decimal("0")
@@ -186,12 +178,7 @@ class WeryfikujBazeView(GroupRequiredMixin, TemplateView):
         )
 
         # Calculate distinct number of authors
-        context["distinct_authors_count"] = (
-            ad_qs
-            .values("autor")
-            .distinct()
-            .count()
-        )
+        context["distinct_authors_count"] = ad_qs.values("autor").distinct().count()
 
         # Generate DjangoQL queries and admin filter URLs
         # DjangoQL needs to reference the related object now
@@ -241,11 +228,9 @@ class WeryfikujBazeView(GroupRequiredMixin, TemplateView):
 
         # Znajdź autorów z dwoma dyscyplinami gdzie obie są nie-raportowane
         autorzy_obie_nieraportowane = []
-        autorzy_dwie_dyscypliny = (
-            ad_qs
-            .filter(subdyscyplina_naukowa__isnull=False)
-            .select_related("autor", "dyscyplina_naukowa", "subdyscyplina_naukowa")
-        )
+        autorzy_dwie_dyscypliny = ad_qs.filter(
+            subdyscyplina_naukowa__isnull=False
+        ).select_related("autor", "dyscyplina_naukowa", "subdyscyplina_naukowa")
 
         for ad in autorzy_dwie_dyscypliny:
             if (
