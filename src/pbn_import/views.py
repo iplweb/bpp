@@ -111,14 +111,17 @@ class ImportDashboardView(LoginRequiredMixin, ImportPermissionMixin, TemplateVie
         context["wydzialy"] = wydzialy
         context["jednostki"] = jednostki
 
-        # Domyślnie wybrany wydział - pierwszy dostępny
-        context["wydzial_domyslny"] = wydzialy.first()
-
-        # Jednostka domyślna - szukaj "JD" lub pierwsza dostępna
-        jednostka_domyslna = Jednostka.objects.filter(skrot="JD").first()
-        if not jednostka_domyslna:
-            jednostka_domyslna = jednostki.first()
-        context["jednostka_domyslna"] = jednostka_domyslna
+        # Domyślnie zaznaczony wydział/jednostka: WYŁĄCZNIE encja-placeholder
+        # mająca "Domyślny"/"Domyślna" w nazwie (taka, jaką tworzą
+        # znajdz_lub_utworz_*_domyslny). Jeśli takiej nie ma — pole zostaje
+        # PUSTE i użytkownik musi świadomie wybrać prawdziwą jednostkę/wydział.
+        # Nie podstawiamy tu nigdy losowej, realnej jednostki uczelni.
+        context["wydzial_domyslny"] = wydzialy.filter(
+            nazwa__icontains="domyśln"
+        ).first()
+        context["jednostka_domyslna"] = jednostki.filter(
+            nazwa__icontains="domyśln"
+        ).first()
 
         # Import steps for dynamic form rendering (from step_definitions.py)
         context["import_steps"] = get_form_steps()
@@ -151,6 +154,30 @@ class StartImportView(LoginRequiredMixin, ImportPermissionMixin, View):
         jednostka = (
             Jednostka.objects.filter(pk=jednostka_id).first() if jednostka_id else None
         )
+
+        # Domyślna jednostka/wydział muszą być świadomie wybrane przez
+        # użytkownika — nie pozwalamy ruszyć importu z pustym polem (w domyślnym
+        # widoku nic nie jest pre-zaznaczone, chyba że istnieje placeholder
+        # "Domyślna…"). Wydział egzekwujemy tylko gdy uczelnia używa wydziałów.
+        # Multi-hosted: uczelnię bierzemy z requestu (NIE get_default) — tak samo
+        # jak entrypoint zadania w tle kilka linii niżej.
+        uczelnia = Uczelnia.objects.get_for_request(request)
+        uzywaj_wydzialow = uczelnia.uzywaj_wydzialow if uczelnia else False
+
+        errors = []
+        if jednostka is None:
+            errors.append("Wybierz domyślną jednostkę przed rozpoczęciem importu.")
+        if uzywaj_wydzialow and wydzial is None:
+            errors.append("Wybierz domyślny wydział przed rozpoczęciem importu.")
+
+        if errors:
+            for error in errors:
+                messages.error(request, error)
+            if request.headers.get("HX-Request"):
+                response = HttpResponse()
+                response["HX-Redirect"] = reverse("pbn_import:dashboard")
+                return response
+            return redirect("pbn_import:dashboard")
 
         # Build config dynamically from step_definitions
         disable_keys = get_all_disable_keys()
