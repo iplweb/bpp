@@ -96,12 +96,22 @@ class NazwiskoIImieQueryObject(
 
         return ret
 
+    def _autor_rel_suffix(self, value):
+        """'"label [pk]"' dla wybranego autora, albo None."""
+        try:
+            obj = self.value_from_web(value)
+        except Exception:  # noqa: BLE001 — uszkodzony/nieistniejący pk -> nieprzekładalne
+            return None
+        if obj is None:
+            return None
+        label = str(obj).replace("\\", "\\\\").replace('"', '\\"')
+        return f'"{label} [{obj.pk}]"'
+
     def to_djangoql(self, value, operation):
         """Tłumaczenie na DjangoQL: autorzy.autor__rel (picker po autorze).
 
-        Tylko bazowe 'Nazwisko i imię'; podklasy (zakres kolejności, typ
-        ogólny) mają semantykę bez czystego odpowiednika DjangoQL -> None
-        (konwerter wyemituje ostrzeżenie).
+        Tylko bazowe 'Nazwisko i imię'; podklasy mają własne to_djangoql
+        (zakres kolejności, typ ogólny).
         """
         if type(self) is not NazwiskoIImieQueryObject:
             return None
@@ -114,20 +124,40 @@ class NazwiskoIImieQueryObject(
             rel_op = "="
         else:
             return None
-        try:
-            obj = self.value_from_web(value)
-        except Exception:  # noqa: BLE001 — uszkodzony/nieistniejący pk -> nieprzekładalne
+        suffix = self._autor_rel_suffix(value)
+        if suffix is None:
             return None
-        if obj is None:
-            return None
-        label = str(obj).replace("\\", "\\\\").replace('"', '\\"')
-        return f'autorzy.autor__rel {rel_op} "{label} [{obj.pk}]"'
+        return f"autorzy.autor__rel {rel_op} {suffix}"
 
 
 class NazwiskoIImieWZakresieKolejnosci(NazwiskoIImieQueryObject):
     ops = [EQUAL, UNION_NONE]
     kolejnosc_gte = None
     kolejnosc_lt = None
+
+    def to_djangoql(self, value, operation):
+        """autorzy.autor__rel = X and autorzy.kolejnosc w [gte, lt) — same-row,
+        dokładne. Gdy granice są F-expression (Ostatnie nazwisko) → best-effort
+        bez filtra kolejności, z ostrzeżeniem.
+        """
+        op = str(operation)
+        equal = {str(o) for o in EQUALITY_OPS_ALL} - {str(o) for o in DIFFERENT_ALL}
+        if op not in equal and not _is_union_value(op):
+            return None
+        suffix = self._autor_rel_suffix(value)
+        if suffix is None:
+            return None
+        base = f"autorzy.autor__rel = {suffix}"
+        gte, lt = self.kolejnosc_gte, self.kolejnosc_lt
+        if not isinstance(gte, int) or not isinstance(lt, int):
+            return base, (
+                'Filtr „ostatni/zakres kolejności" pominięto — zależy od liczby '
+                "autorów (F-expression), nie do wyrażenia w DjangoQL."
+            )
+        frag = f"{base} and autorzy.kolejnosc >= {gte} and autorzy.kolejnosc < {lt}"
+        if _is_union_value(op):
+            return frag, 'Operator „wspólny" przełożono jak równość.'
+        return frag
 
     def real_query(self, value, operation):
         if operation in EQUALITY_OPS_ALL:

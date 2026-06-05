@@ -40,17 +40,25 @@ def test_jednostka_plus_subunits_maps_to_virtual_field():
 
 
 @pytest.mark.django_db
-def test_jednostka_union_is_untranslatable():
+def test_jednostka_union_best_effort_warns():
     j = baker.make(Jednostka, nazwa="Klinika X")
     field = registry.field_by_name["Jednostka"]
-    assert field.to_djangoql(j.pk, str(UNION_FEMALE)) is None
+    result = field.to_djangoql(j.pk, str(UNION_FEMALE))
+    assert isinstance(result, tuple)
+    frag, warn = result
+    assert frag == f'autorzy.jednostka__rel = "Klinika X [{j.pk}]"'
+    assert "wspóln" in warn.lower()
 
 
 @pytest.mark.django_db
-def test_jednostka_plus_subunits_union_is_untranslatable():
+def test_jednostka_plus_subunits_union_best_effort_warns():
     j = baker.make(Jednostka, nazwa="Klinika X")
     field = registry.field_by_name["Jednostka"]
-    assert field.to_djangoql(j.pk, str(EQUAL_PLUS_SUB_UNION_FEMALE)) is None
+    result = field.to_djangoql(j.pk, str(EQUAL_PLUS_SUB_UNION_FEMALE))
+    assert isinstance(result, tuple)
+    frag, warn = result
+    assert frag == f'jednostka_z_podjednostkami__rel = "Klinika X [{j.pk}]"'
+    assert "wspóln" in warn.lower()
 
 
 @pytest.mark.django_db

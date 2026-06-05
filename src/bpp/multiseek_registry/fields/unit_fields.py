@@ -91,13 +91,20 @@ class JednostkaQueryObject(
         label = str(obj).replace("\\", "\\\\").replace('"', '\\"')
         suffix = f'"{label} [{obj.pk}]"'
 
+        union_warning = (
+            'Operator „wspólna" przełożono jak równość — w DjangoQL może objąć '
+            "innego autora niż pozostałe kryteria."
+        )
         if op == str(EQUAL_FEMALE):
             return f"autorzy.jednostka__rel = {suffix}"
         if op == str(DIFFERENT_FEMALE):
             return f"autorzy.jednostka__rel != {suffix}"
         if op == str(EQUAL_PLUS_SUB_FEMALE):
             return f"jednostka_z_podjednostkami__rel = {suffix}"
-        # UNION_FEMALE, EQUAL_PLUS_SUB_UNION_FEMALE -> nieprzekladalne 1:1
+        if op == str(UNION_FEMALE):
+            return f"autorzy.jednostka__rel = {suffix}", union_warning
+        if op == str(EQUAL_PLUS_SUB_UNION_FEMALE):
+            return f"jednostka_z_podjednostkami__rel = {suffix}", union_warning
         return None
 
 

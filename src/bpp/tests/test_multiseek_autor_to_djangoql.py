@@ -27,10 +27,14 @@ def test_autor_different_maps_to_not_equal():
 
 
 @pytest.mark.django_db
-def test_pierwsze_nazwisko_is_untranslatable():
+def test_pierwsze_nazwisko_translates_with_kolejnosc():
     a = baker.make(Autor, nazwisko="Kowalski", imiona="Jan")
     field = registry.field_by_name["Pierwsze nazwisko i imię"]
-    assert field.to_djangoql(a.pk, str(EQUAL)) is None
+    frag = field.to_djangoql(a.pk, str(EQUAL))
+    assert frag == (
+        f'autorzy.autor__rel = "{a} [{a.pk}]" '
+        "and autorzy.kolejnosc >= 0 and autorzy.kolejnosc < 1"
+    )
 
 
 @pytest.mark.django_db
