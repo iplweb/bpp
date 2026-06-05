@@ -101,9 +101,9 @@ def test_GetPBNPublicationsByISBN_jedna_praca(
     # Multi-hosted: jawnie ustawiamy uczelnię requestu (NIE ma get_default).
     req._uczelnia = pbn_uczelnia
 
-    pbn_client.transport.return_values[
-        "/api/v1/search/publications?size=10"
-    ] = pbn_pageable_json([pub1])
+    pbn_client.transport.return_values["/api/v1/search/publications?size=10"] = (
+        pbn_pageable_json([pub1])
+    )
     pbn_client.transport.return_values[f"/api/v1/publications/id/{UID_REKORDU}"] = pub1
 
     res = GetPBNPublicationsByISBN(request=req).post(req)
@@ -137,9 +137,9 @@ def test_GetPBNPublicationsByISBN_wiele_isbn(
     # Multi-hosted: jawnie ustawiamy uczelnię requestu (NIE ma get_default).
     req._uczelnia = pbn_uczelnia
 
-    pbn_client.transport.return_values[
-        "/api/v1/search/publications?size=10"
-    ] = pbn_pageable_json([pub1, pub2])
+    pbn_client.transport.return_values["/api/v1/search/publications?size=10"] = (
+        pbn_pageable_json([pub1, pub2])
+    )
     pbn_client.transport.return_values[f"/api/v1/publications/id/{UID_REKORDU}"] = pub1
     pbn_client.transport.return_values[f"/api/v1/publications/id/{UID_REKORDU}2"] = pub2
 

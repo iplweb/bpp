@@ -186,8 +186,14 @@ def pobierz_ludzi_z_uczelni(
         ):
             try:
                 future.result()
-            except Exception as e:
-                logger.info(f"Error processing person: {e}")
+            except Exception:
+                # Catch-all w wątku — pełny traceback + Rollbar, żeby błąd
+                # przetwarzania naukowca nie zniknął bez śladu.
+                logger.exception("Błąd przetwarzania naukowca")
+                rollbar.report_exc_info(
+                    sys.exc_info(),
+                    extra_data={"phase": "integruj_scientists_future_result"},
+                )
 
     from pbn_api.models.institution import Institution
 

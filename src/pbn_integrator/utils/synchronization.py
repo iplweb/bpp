@@ -2,8 +2,11 @@
 
 from __future__ import annotations
 
+import logging
+import sys
 from typing import TYPE_CHECKING
 
+import rollbar
 from django.db.models import Q
 from tqdm import tqdm
 
@@ -30,6 +33,8 @@ from pbn_integrator.utils.publications import _pobierz_prace_po_elemencie
 
 if TYPE_CHECKING:
     from pbn_api.client import PBNClient
+
+logger = logging.getLogger(__name__)
 
 
 def wydawnictwa_zwarte_do_synchronizacji():

@@ -162,4 +162,18 @@ def run_pbn_import(self, session_id, uczelnia_id=None):
                 },
             )
         except BaseException:
-            pass
+            # Nie udało się nawet ZAPISAĆ błędu (np. baza padła). To NIE może
+            # zniknąć po cichu — inaczej krytyczny błąd importu nie zostawia
+            # żadnego śladu. Zaloguj z tracebackiem i zgłoś do Rollbar.
+            logger.exception(
+                "Nie udało się zapisać krytycznego błędu importu dla sesji %s",
+                session_id,
+            )
+            rollbar.report_exc_info(
+                sys.exc_info(),
+                extra_data={
+                    "session_id": session_id,
+                    "task": "run_pbn_import",
+                    "phase": "error_persistence_failed",
+                },
+            )

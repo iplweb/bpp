@@ -178,8 +178,11 @@ def do_roku_default(request=None):
     """
     # Multi-hosted: uczelnię bierzemy z requestu (gdy podany), NIE z „domyślnej"
     # (taki byt nie istnieje). Bez requestu (initial pola, migracja, CLI) →
-    # None → sensowny default roku (year_last_month), bez zgadywania uczelni.
+    # jedyna-albo-None (single-install respektuje swoją metoda_do_roku; przy
+    # 0/>1 → None → year_last_month). Bez zgadywania pierwszej-z-brzegu.
     uczelnia = getattr(request, "_uczelnia", None)
+    if uczelnia is None:
+        uczelnia = Uczelnia.objects.get_single_uczelnia_or_none()
     if (
         uczelnia is None
         or uczelnia.metoda_do_roku_formularze

@@ -2,9 +2,12 @@
 
 from __future__ import annotations
 
+import logging
+import sys
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import TYPE_CHECKING
 
+import rollbar
 from tqdm import tqdm
 
 from bpp.const import PBN_MIN_ROK
@@ -31,6 +34,8 @@ from pbn_integrator.utils.threaded_page_getter import (
 
 if TYPE_CHECKING:
     from pbn_api.client import PBNClient
+
+logger = logging.getLogger(__name__)
 
 
 class PublikacjeInstytucjiGetter(ThreadedPageGetter):
@@ -425,6 +430,16 @@ def _download_and_import_single_publication(
     except BrakIDPracyPoStroniePBN:
         return (pbn_uid_id, False, "Publikacja nie istnieje w PBN")
     except Exception as e:
+        # Catch-all w wątku roboczym — błąd pojedynczej pracy nie może zniknąć
+        # po cichu. Pełny traceback do logów + Rollbar; status wraca do agregatora.
+        logger.exception("Błąd importu publikacji PBN UID %s", pbn_uid_id)
+        rollbar.report_exc_info(
+            sys.exc_info(),
+            extra_data={
+                "pbn_uid_id": pbn_uid_id,
+                "phase": "pobierz_i_zaimportuj_pojedyncza_prace",
+            },
+        )
         return (pbn_uid_id, False, str(e))
 
 

@@ -35,9 +35,7 @@ def test_pre_upload_clear_uzywa_flagi_z_wlasnej_uczelni_nie_get_default():
 
     client = BppPBNClient(MockTransport(), uczelnia=uczelnia_b)
     client.get_institution_statements_of_single_publication = MagicMock(
-        return_value=[
-            {"id": "x", "personId": "p1", "area": "301", "type": "AUTHOR"}
-        ]
+        return_value=[{"id": "x", "personId": "p1", "area": "301", "type": "AUTHOR"}]
     )
     client._delete_statements_selective = MagicMock()
     client._delete_statements_batch = MagicMock()
@@ -54,9 +52,7 @@ def test_pre_upload_clear_uzywa_flagi_z_wlasnej_uczelni_nie_get_default():
 @pytest.mark.django_db
 def test_dwoch_klientow_czyta_wlasne_flagi_niezaleznie():
     """Dwa klienty związane z różnymi uczelniami czytają swoje flagi."""
-    uczelnia_selektywna = baker.make(
-        Uczelnia, pbn_kasuj_dyscypliny_selektywnie=True
-    )
+    uczelnia_selektywna = baker.make(Uczelnia, pbn_kasuj_dyscypliny_selektywnie=True)
     uczelnia_batch = baker.make(Uczelnia, pbn_kasuj_dyscypliny_selektywnie=False)
 
     statements = [{"id": "x", "personId": "p1", "area": "301", "type": "AUTHOR"}]

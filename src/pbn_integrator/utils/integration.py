@@ -8,6 +8,8 @@ import sys
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import TYPE_CHECKING
 
+import rollbar
+
 from bpp.models import Rekord
 from pbn_api.models import OswiadczenieInstytucji, Publication
 from pbn_integrator.utils.multiprocessing_utils import (
@@ -187,9 +189,14 @@ def _integruj_publikacje_threaded(  # noqa: C901
             return batch_no, True, None
 
         except Exception as e:
-            # Log errors with thread safety
+            # Catch-all w wątku roboczym — błąd MUSI zostawić ślad (pełny
+            # traceback + Rollbar), inaczej cały batch znika po cichu.
             with _print_lock:
-                logger.info(f"\nError in batch {batch_no}: {str(e)}")
+                logger.exception("Błąd w batchu integracji %s", batch_no)
+            rollbar.report_exc_info(
+                sys.exc_info(),
+                extra_data={"batch_no": batch_no, "phase": "integruj_single_part"},
+            )
             return batch_no, False, str(e)
 
         finally:
@@ -232,8 +239,18 @@ def _integruj_publikacje_threaded(  # noqa: C901
                     if not success and error:
                         errors.append(f"Batch {batch_no}: {error}")
                 except Exception as e:
+                    # future.result() rzucił — nie chowaj tego pod logger.info.
                     with _print_lock:
-                        logger.info(f"\nUnexpected error in batch {batch_no}: {str(e)}")
+                        logger.exception(
+                            "Nieoczekiwany błąd przy odbiorze batcha %s", batch_no
+                        )
+                    rollbar.report_exc_info(
+                        sys.exc_info(),
+                        extra_data={
+                            "batch_no": batch_no,
+                            "phase": "integruj_future_result",
+                        },
+                    )
                     errors.append(f"Batch {batch_no}: {str(e)}")
 
             # Report any errors at the end

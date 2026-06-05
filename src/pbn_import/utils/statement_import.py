@@ -21,9 +21,13 @@ class StatementImporter(ImportStepBase):
     step_name = "statement_import"
     step_description = "Import oświadczeń"
 
-    def __init__(self, session, client=None):
-        super().__init__(session, client)
-        self.publication_importer = PublicationImporter(session, client)
+    def __init__(self, session, client=None, uczelnia=None):
+        super().__init__(session, client, uczelnia=uczelnia)
+        # Propaguj kontekst uczelni dalej — wewnętrzny PublicationImporter też
+        # jest multi-hosted i nie może zgadywać get_default().
+        self.publication_importer = PublicationImporter(
+            session, client, uczelnia=uczelnia
+        )
 
     def _create_inconsistency_callback(self):
         """Create callback for recording statement integration inconsistencies."""

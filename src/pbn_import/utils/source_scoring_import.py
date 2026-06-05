@@ -106,8 +106,10 @@ class SourceScoringImporter(ImportStepBase):
     step_name = "source_scoring_import"
     step_description = "Synchronizacja punktów i dyscyplin źródeł"
 
-    def __init__(self, session, client=None, min_rok=2017, max_workers=None):
-        super().__init__(session, client)
+    def __init__(
+        self, session, client=None, min_rok=2017, max_workers=None, uczelnia=None
+    ):
+        super().__init__(session, client, uczelnia=uczelnia)
         self.min_rok = min_rok
         self.max_workers = (
             max_workers if max_workers is not None else (os.cpu_count() or 8)
