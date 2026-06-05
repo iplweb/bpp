@@ -6,13 +6,9 @@
  * a grappelli pozycjonuje przełącznik i lupę ABSOLUTNIE nad textareą.
  *
  * djangoql_highlight=True owija textarę w <div.dql-highlight position:relative;
- * display:block> (nakładka kolorująca składnię). To psuło pasek:
- *  (a) wrapper jest elementem POZYCJONOWANYM i w DOM idzie PO przełączniku,
- *      więc malował się NAD nim → checkbox był nieklikalny,
- *  (b) jako BLOK spychał lupę (następne rodzeństwo, abs. ze statyczną pozycją)
- *      do nowej linii → „lupa w dziwnym miejscu".
- * Naprawa: kotwiczymy przełącznik i lupę do pigułki i podnosimy je nad nakładkę
- * (z-index). Wrapper zostaje blokiem (textarea ma wypełniać całą pigułkę).
+ * display:block> (nakładka kolorująca składnię). Wraz z border-box grappelli
+ * psuło to pasek na kilka sposobów — poprawki niżej (zweryfikowane w
+ * przeglądarce na realnym adminie wydawnictw).
  */
 
 form#grp-changelist-search-form {
@@ -23,18 +19,49 @@ form#grp-changelist-search-form {
 }
 
 .l-2cr-fluid.l-d-12 .c-1 textarea {
-    /* miejsce na przełącznik (lewo) i lupę (prawo), żeby tekst pod nie nie wchodził */
-    padding-bottom: 20px;
-    padding-left: 25px;
-    padding-right: 30px;
+    /* miejsce na przełącznik (lewo) i lupę (prawo); mały padding pionowy */
+    padding: 4px 30px 4px 25px;
 }
 
-/* Przełącznik QL — nad nakładką (z-index), pionowo na środku pigułki, lekko
-   od lewej (domyślnie lądował w lewym-górnym rogu). */
+/* Nakładka highlight wypełnia pigułkę; sama textarea (na wierzchu nakładki)
+   przepuszcza klik na przełącznik/lupę dzięki ich wyższemu z-index. */
+form#grp-changelist-search-form .dql-highlight {
+    display: block;
+}
+
+/* Pole wyszukiwania (textarea pod nakładką):
+   - color/background: transparent — grappelli koloruje pole
+     (`textarea{color:#555;background:#fdfdfd;font-weight:bold}`), więc bez tego
+     własny tekst+tło malowały się NAD kolorowym backdropem i gasiły
+     podświetlanie;
+   - box-sizing: content-box — djangoql autoResize liczy wysokość wg modelu
+     content-box (scrollHeight − padding), a grappelli wymusza border-box → pole
+     wychodziło za niskie i UCINAŁO ostatnią linię po przeładowaniu. Wracamy do
+     content-box i odejmujemy od szerokości poziomy padding+border (25+30+2=57),
+     żeby pole nie wyszło poza pigułkę. */
+form#grp-changelist-search-form textarea.dql-highlight-input {
+    color: transparent !important;
+    background: transparent !important;
+    box-sizing: content-box;
+    width: calc(100% - 57px);
+}
+
+/* Backdrop dostaje NIEPRZEZROCZYSTE tło pola — inaczej całe pole jest
+   półprzezroczyste i prześwitują przez nie kontrolki za nim (np. paginacja,
+   gdy ekran jest wąski). highlight.js nie kopiuje `background` do backdropu,
+   więc ustawiamy je tu. */
+form#grp-changelist-search-form .dql-highlight-backdrop {
+    background: #fdfdfd;
+}
+
+/* Przełącznik QL — nad nakładką (z-index), pionowo na środku pigułki, lekko od
+   lewej. `top: 50%` MUSI mieć !important: grappelli ma bardziej szczegółowe
+   `.grp-row input[type=checkbox]{top:-1px}` (pasek siedzi w .grp-row), które
+   inaczej spycha checkbox na samą górę pola. */
 .djangoql-toggle {
     position: absolute !important;
     z-index: 3;
-    top: 50%;
+    top: 50% !important;
     left: 6px;
     transform: translateY(-50%);
     margin: 0;
@@ -49,22 +76,6 @@ button.grp-search-button {
     right: 8px;
     transform: translateY(-50%);
     margin: 0;
-}
-
-/* Nakładka highlight wypełnia pigułkę; sama textarea (na wierzchu nakładki)
-   przepuszcza klik na przełącznik/lupę dzięki ich wyższemu z-index. */
-form#grp-changelist-search-form .dql-highlight {
-    display: block;
-}
-
-/* Grappelli koloruje pole wyszukiwania (reguła `textarea{color:#555;
-   background:#fdfdfd;font-weight:bold}`), co „gasiło" podświetlanie — własny
-   tekst i nieprzezroczyste tło textarea malowały się NAD kolorowym backdropem
-   nakładki. Wymuszamy przezroczystość pola (backdrop highlightu staje się
-   widoczny; kursor zachowuje własny caret-color ustawiany z highlight.js). */
-form#grp-changelist-search-form textarea.dql-highlight-input {
-    color: transparent !important;
-    background: transparent !important;
 }
 
 .djangoql-completion {
