@@ -177,6 +177,52 @@ def test_health_check_log_filter():
     assert f.filter(record_normal) is True
 
 
+def test_auth_server_installs_formdefaults_for_eager_templatetag_import():
+    """formdefaults musi być w INSTALLED_APPS authservera.
+
+    Django przy inicjalizacji silnika szablonów ładuje ZACHŁANNIE wszystkie
+    moduły ``templatetags/*.py`` każdej aplikacji z INSTALLED_APPS — niezależnie
+    od tego, czy renderowany szablon ich używa. Ponieważ ``bpp`` jest w
+    INSTALLED_APPS authservera, importowany jest też ``bpp.templatetags.
+    bpp_formdefaults``, który na top-levelu robi ``from formdefaults.models
+    import FormRepresentation``. Bez ``formdefaults`` w INSTALLED_APPS ten model
+    nie da się zdefiniować i samo wyrenderowanie formularza logowania
+    authservera wywala się 500-tką.
+
+    Regression test for: RuntimeError: Model class
+    formdefaults.models.FormRepresentation doesn't declare an explicit
+    app_label and isn't in an application in INSTALLED_APPS — przy
+    GET /__external_auth/login/ na authserverze (Grafana/Dozzle redirect).
+    """
+    from django_bpp.settings import auth_server
+
+    assert "formdefaults" in auth_server.INSTALLED_APPS, (
+        "auth_server musi mieć 'formdefaults' w INSTALLED_APPS, bo "
+        "bpp/templatetags/bpp_formdefaults.py importuje formdefaults.models "
+        "na top-levelu, a Django importuje wszystkie templatetagi 'bpp' "
+        "zachłannie przy starcie silnika szablonów."
+    )
+
+
+@pytest.mark.django_db
+def test_auth_server_renders_login_template():
+    """Formularz logowania authservera musi się wyrenderować bez wyjątku.
+
+    Wymusza dokładnie ścieżkę, która padała w produkcji: inicjalizacja silnika
+    szablonów (która importuje wszystkie templatetagi z INSTALLED_APPS) +
+    rozwiązanie i renderowanie ``auth_server/login.html``. Test biegnie pod
+    testowym settingsem, ale ``bpp`` + ``formdefaults`` są tam obecne tak samo
+    jak na authserverze, więc waliduje, że łańcuch importów templatetagów 'bpp'
+    nie wybucha.
+    """
+    from django.template.loader import get_template
+
+    template = get_template("auth_server/login.html")
+    # Pusty kontekst wystarcza — chodzi o to, że resolve + import templatetagów
+    # nie rzuca RuntimeError (model bez app_label).
+    assert template.render({}) is not None
+
+
 def test_auth_server_has_rollbar_config():
     """
     Verify auth server settings include ROLLBAR configuration.
