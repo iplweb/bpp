@@ -186,6 +186,7 @@ class WydzialQueryObject(
     model = Wydzial
     search_fields = ["nazwa"]
     field_name = "wydzial"
+    djangoql_field_name = "autorzy__jednostka__wydzial"
     url = "bpp:public-wydzial-autocomplete"
 
     def real_query(self, value, operation):

@@ -171,6 +171,7 @@ class KierunekStudiowQueryObject(
     model = Kierunek_Studiow
     search_fields = ["nazwa"]
     field_name = "kierunek_studiow"
+    djangoql_field_name = "autorzy__kierunek_studiow"
     url = "bpp:kierunek-studiow-autocomplete"
 
     def real_query(self, value, operation):

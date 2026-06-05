@@ -236,6 +236,7 @@ class DyscyplinaQueryObject(
     ]
     model = Dyscyplina_Naukowa
     field_name = "nazwa"
+    djangoql_field_name = "autorzy__dyscyplina_naukowa"
     url = "bpp:dyscyplina-autocomplete"
 
     def real_query(self, value, operation):
