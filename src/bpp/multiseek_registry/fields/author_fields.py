@@ -24,6 +24,11 @@ from bpp.multiseek_registry.mixins import BppMultiseekVisibilityMixin
 from .constants import NULL_VALUE, UNION, UNION_NONE, UNION_OPS_ALL
 
 
+def _is_union_value(operation):
+    """True gdy operator multiseek to wariant UNION (równy+wspólny…)."""
+    return str(operation) in {str(o) for o in UNION_OPS_ALL}
+
+
 class ForeignKeyDescribeMixin:
     def value_for_description(self, value):
         if value is None:
@@ -206,6 +211,32 @@ class TypOgolnyAutorQueryObject(NazwiskoIImieQueryObject):
             return ~ret
 
         return ret
+
+    def to_djangoql(self, value, operation):
+        op = str(operation)
+        diff = {str(o) for o in DIFFERENT_ALL}
+        equal = {str(o) for o in EQUALITY_OPS_ALL} - diff
+        if op in diff:
+            return None  # negacja koniunkcji nie ma czystego not(...) w DjangoQL
+        if op not in equal and not _is_union_value(op):
+            return None
+        try:
+            obj = self.value_from_web(value)
+        except Exception:  # noqa: BLE001 — uszkodzony pk -> nieprzekładalne
+            return None
+        if obj is None:
+            return None
+        label = str(obj).replace("\\", "\\\\").replace('"', '\\"')
+        frag = (
+            f'autorzy.autor__rel = "{label} [{obj.pk}]" '
+            f"and autorzy.typ_odpowiedzialnosci.typ_ogolny = {self.typ_ogolny}"
+        )
+        if _is_union_value(op):
+            return frag, (
+                'Operator „wspólny" przełożono jak równość — w DjangoQL może '
+                "objąć inny wiersz autora."
+            )
+        return frag
 
 
 class TypOgolnyRedaktorQueryObject(TypOgolnyAutorQueryObject):

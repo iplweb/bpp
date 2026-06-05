@@ -50,3 +50,22 @@ def test_roundtrip_autor_equal_same_rekordy(
     )
     assert via_multiseek
     assert via_multiseek == via_djangoql
+
+
+@pytest.mark.django_db
+def test_typ_ogolny_autor_compound():
+    a = baker.make(Autor, nazwisko="Nowak", imiona="Jan")
+    field = registry.field_by_name["Autor"]
+    frag = field.to_djangoql(a.pk, str(EQUAL))
+    assert frag == (
+        f'autorzy.autor__rel = "{a} [{a.pk}]" '
+        "and autorzy.typ_odpowiedzialnosci.typ_ogolny = 0"
+    )
+
+
+@pytest.mark.django_db
+def test_typ_ogolny_redaktor_compound():
+    a = baker.make(Autor, nazwisko="Nowak", imiona="Jan")
+    field = registry.field_by_name["Redaktor"]
+    frag = field.to_djangoql(a.pk, str(EQUAL))
+    assert frag.endswith("and autorzy.typ_odpowiedzialnosci.typ_ogolny = 1")
