@@ -59,6 +59,15 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "axes",  # Brute-force lockout także na tym (osobnym) formularzu logowania
     "bpp",  # Required for AUTH_USER_MODEL = "bpp.BppUser"
+    # Wymagane przez "bpp": Django przy inicjalizacji silnika szablonów
+    # ŁADUJE ZACHŁANNIE wszystkie moduły bpp/templatetags/*.py (niezależnie
+    # od tego, czy renderowany szablon ich używa). bpp/templatetags/
+    # bpp_formdefaults.py importuje na top-levelu formdefaults.models, więc
+    # bez "formdefaults" w INSTALLED_APPS samo wyrenderowanie formularza
+    # logowania authservera wywala się na RuntimeError ("Model class ...
+    # doesn't declare an explicit app_label"). Patrz traceback przy
+    # /__external_auth/login/ → 500.
+    "formdefaults",
 ]
 
 # Minimal middleware (includes CSRF for login form)

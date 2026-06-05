@@ -2,6 +2,7 @@
 {% load static %}
 {% load compress %}
 {% load i18n %}
+{% load query_editor %}
 
 {% block title %}
     BPP - wyszukiwanie zaawansowane
@@ -131,7 +132,7 @@
                     <button type="button" class="secondary dropdown button" data-toggle="multiseek-form-menu" href="#"
                             data-dropdown="drop2"
                             aria-haspopup="menu">
-                        <i class="fi-upload" aria-hidden="true"></i> Wczytaj formularz</a>
+                        <i class="fi-upload" aria-hidden="true"></i> Wczytaj formularz
                     </button>
 
                     <div class="dropdown-pane" id="multiseek-form-menu" data-dropdown>
@@ -147,6 +148,14 @@
 
 
 
+                {% endif %}
+
+                {% if user|can_use_query_editor %}
+                    <button type="button" class="button secondary"
+                            data-action="to-djangoql"
+                            id="toDjangoqlButton">
+                        <i class="fi-clipboard-notes" aria-hidden="true"></i> Pokaż jako zapytanie DjangoQL
+                    </button>
                 {% endif %}
             </div>
         </div>
@@ -224,9 +233,143 @@
                     location.href = multiseek.LOAD_FORM_URL + btn.dataset.loadFormId;
                     return;
                 }
+
+                // Show form as DjangoQL query
+                btn = e.target.closest('[data-action="to-djangoql"]');
+                if (btn) {
+                    e.preventDefault();
+                    openDjangoqlDrawer();
+                    return;
+                }
+
+                // Copy DjangoQL query to clipboard
+                btn = e.target.closest('#djangoqlCopy');
+                if (btn) {
+                    e.preventDefault();
+                    copyDjangoqlQuery(btn);
+                    return;
+                }
             });
 
+            function getCsrfToken() {
+                var el = document.querySelector('input[name="csrfmiddlewaretoken"]');
+                return el ? el.value : '';
+            }
+
+            function openDjangoqlDrawer() {
+                var queryEl = document.getElementById('djangoqlPretty');
+                if (!queryEl) { return; }  // drawer niedostepny dla tego usera
+                var payload = formAsJSON();  // JSON string
+                var body = new URLSearchParams();
+                body.append('json', payload);
+                fetch('./do-djangoql/', {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': getCsrfToken(),
+                        'Content-Type': 'application/x-www-form-urlencoded'
+                    },
+                    body: body.toString()
+                }).then(function (r) {
+                    if (!r.ok) { throw new Error('HTTP ' + r.status); }
+                    return r.json();
+                }).then(function (data) {
+                    if (window.djangoqlRenderPretty) {
+                        window.djangoqlRenderPretty(data.query || '');
+                    }
+                    document.getElementById('djangoqlOpenEditor').href = data.editor_url;
+                    var w = document.getElementById('djangoqlWarnings');
+                    w.innerHTML = '';
+                    if (data.warnings && data.warnings.length) {
+                        var strong = document.createElement('strong');
+                        strong.textContent = 'Uwaga — pominięto warunki:';
+                        w.appendChild(strong);
+                        var ul = document.createElement('ul');
+                        data.warnings.forEach(function (s) {
+                            var li = document.createElement('li');
+                            li.textContent = s;       // text node -> escaped
+                            ul.appendChild(li);
+                        });
+                        w.appendChild(ul);
+                        w.style.display = '';
+                    } else {
+                        w.style.display = 'none';
+                    }
+                    var copyBtn = document.getElementById('djangoqlCopy');
+                    if (copyBtn) { copyBtn.classList.remove('success'); }
+                    $('#djangoqlDrawer').foundation('open');
+                }).catch(function (err) {
+                    alert('Nie udało się przetłumaczyć formularza: ' + err.message);
+                });
+            }
+
+            function copyDjangoqlQuery(btn) {
+                var pre = document.getElementById('djangoqlPretty');
+                var raw = document.getElementById('djangoqlQueryRaw');
+                var text = (pre && pre.textContent) || (raw && raw.value) || '';
+                if (!text) { return; }
+                navigator.clipboard.writeText(text).then(function () {
+                    btn.classList.add('success');
+                });
+            }
+
         </script>
+        {% if user|can_use_query_editor %}
+            {% csrf_token %}
+            <div class="reveal" id="djangoqlDrawer" data-reveal aria-labelledby="djangoqlDrawerTitle">
+                <h4 id="djangoqlDrawerTitle">Zapytanie DjangoQL</h4>
+                <p class="help-text">Równoważne zapytanie nad modelem Rekord. Możesz je skopiować lub otworzyć w edytorze zapytań.</p>
+                <pre class="djangoql-pretty"><code id="djangoqlPretty"></code></pre>
+                {# Surowe (jednoliniowe) zapytanie — fallback do kopiowania/edytora. #}
+                <input type="hidden" id="djangoqlQueryRaw" value="">
+                <div id="djangoqlWarnings" class="callout warning" style="display:none"></div>
+                <div class="button-group">
+                    <button type="button" class="button" id="djangoqlCopy">
+                        <i class="fi-clipboard" aria-hidden="true"></i> Kopiuj
+                    </button>
+                    <a class="button success" id="djangoqlOpenEditor" href="#" target="_blank" rel="noopener">
+                        <i class="fi-arrow-right" aria-hidden="true"></i> Otwórz w edytorze zapytań
+                    </a>
+                </div>
+                <button class="close-button" data-close aria-label="Zamknij" type="button">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <script src="{% static 'djangoql/js/completion.js' %}"></script>
+            <script src="{% static 'bpp/js/djangoql-pretty.js' %}"></script>
+            <script>
+            (function () {
+                var _dql = null;
+                function getLexer() {
+                    if (_dql) { return _dql.lexer; }
+                    var ta = document.getElementById('djangoqlLexerProbe');
+                    if (!ta) {
+                        ta = document.createElement('textarea');
+                        ta.id = 'djangoqlLexerProbe';
+                        ta.style.display = 'none';
+                        document.body.appendChild(ta);
+                    }
+                    try {
+                        _dql = DjangoQL.init({
+                            introspections: "{% url 'bpp:zapytanie_introspect' 'rekord' %}",
+                            selector: ta,
+                            autoResize: false
+                        });
+                    } catch (e) { return null; }
+                    return _dql.lexer;
+                }
+                window.djangoqlRenderPretty = function (query) {
+                    var raw = document.getElementById('djangoqlQueryRaw');
+                    var pre = document.getElementById('djangoqlPretty');
+                    if (raw) { raw.value = query || ''; }
+                    if (!pre) { return; }
+                    var lexer = getLexer();
+                    pre.innerHTML = (lexer && window.djangoqlPretty)
+                        ? window.djangoqlPretty.formatAndHighlight(query || '', lexer)
+                        : (query || '');
+                };
+            })();
+            </script>
+        {% endif %}
     </form>
     <hr size="1"/>
     <style>
@@ -236,6 +379,19 @@
             min-height: 400px;
             border: none;
         }
+        .djangoql-pretty {
+            font-family: monospace; white-space: pre; overflow-x: auto;
+            background: #f6f6f6; padding: .6rem; border-radius: 3px;
+            line-height: 1.5; margin-bottom: 1rem;
+        }
+        .dql-keyword { color: #8959a8; font-weight: bold; }
+        .dql-op { color: #3e999f; }
+        .dql-name { color: #4271ae; }
+        .dql-dot { color: #999; }
+        .dql-str { color: #718c00; }
+        .dql-num { color: #f5871f; }
+        .dql-bool, .dql-none { color: #c82829; }
+        .dql-paren { color: #555; }
     </style>
     <iframe src="./live-results/" width="100%" id="if"
             name="list_frame" scrolling="no"
