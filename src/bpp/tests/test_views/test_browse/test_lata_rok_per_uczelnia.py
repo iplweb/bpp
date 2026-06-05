@@ -23,6 +23,7 @@ def test_lata_view_liczy_tylko_swoja_uczelnie(
     jednostka_uczelnia2,
     autor_uczelnia1,
     autor_uczelnia2,
+    typy_odpowiedzialnosci,
     settings,
 ):
     settings.ALLOWED_HOSTS = ["*"]
@@ -46,6 +47,7 @@ def test_rok_view_listuje_tylko_swoja_uczelnie(
     jednostka_uczelnia2,
     autor_uczelnia1,
     autor_uczelnia2,
+    typy_odpowiedzialnosci,
     settings,
 ):
     settings.ALLOWED_HOSTS = ["*"]
