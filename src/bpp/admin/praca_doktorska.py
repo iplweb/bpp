@@ -1,14 +1,13 @@
 from dal import autocomplete
 from django import forms
 from django.contrib import admin
-from djangoql.admin import DjangoQLSearchMixin
 from taggit.forms import TextareaTagWidget
 
+from bpp.admin.helpers.djangoql import BppDjangoQLSearchMixin
 from bpp.admin.helpers.widgets import (
     COMMA_DECIMAL_FIELD_OVERRIDE,
     NIZSZE_TEXTFIELD_Z_MAPA_ZNAKOW,
 )
-from bpp.djangoql_schema import BppQLSchema
 from dspace_api.actions import wyslij_do_dspace, wyslij_do_dspace_w_tle
 from dspace_api.admin_mixins import DSpaceLinkAdminMixin
 
@@ -59,11 +58,10 @@ DOKTORSKA_FIELDS = (
 
 
 class Praca_Doktorska_Habilitacyjna_Admin_Base(
-    DjangoQLSearchMixin, AdnotacjeZDatamiMixin, BaseBppAdminMixin, admin.ModelAdmin
+    BppDjangoQLSearchMixin, AdnotacjeZDatamiMixin, BaseBppAdminMixin, admin.ModelAdmin
 ):
     djangoql_completion_enabled_by_default = False
     djangoql_completion = True
-    djangoql_schema = BppQLSchema
 
     formfield_overrides = {
         **NIZSZE_TEXTFIELD_Z_MAPA_ZNAKOW,

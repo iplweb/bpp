@@ -1,22 +1,108 @@
+/* Poprawki layoutu paska wyszukiwania DjangoQL w adminie grappelli.
+ *
+ * Pasek to „pigułka" (form#grp-changelist-search-form, border-radius:20px),
+ * w której completion_admin.js składa rodzeństwo:
+ *   [hidden][checkbox.djangoql-toggle][textarea name=q][button.grp-search-button]
+ * a grappelli pozycjonuje przełącznik i lupę ABSOLUTNIE nad textareą.
+ *
+ * djangoql_highlight=True owija textarę w <div.dql-highlight position:relative;
+ * display:block> (nakładka kolorująca składnię). Wraz z border-box grappelli
+ * psuło to pasek na kilka sposobów — poprawki niżej (zweryfikowane w
+ * przeglądarce na realnym adminie wydawnictw).
+ */
 
 form#grp-changelist-search-form {
     margin: 0;
     border: none;
+    /* kotwica dla absolutnie pozycjonowanej lupy (top/right poniżej) */
+    position: relative;
 }
 
 .l-2cr-fluid.l-d-12 .c-1 textarea {
-    padding-bottom: 20px;
-    padding-left: 25px;
+    /* miejsce na przełącznik (lewo) i lupę (prawo); mały padding pionowy */
+    padding: 4px 30px 4px 25px;
 }
 
+/* Nakładka highlight wypełnia pigułkę; sama textarea (na wierzchu nakładki)
+   przepuszcza klik na przełącznik/lupę dzięki ich wyższemu z-index. */
+form#grp-changelist-search-form .dql-highlight {
+    display: block;
+}
+
+/* Pole wyszukiwania (textarea pod nakładką):
+   - color/background: transparent — grappelli koloruje pole
+     (`textarea{color:#555;background:#fdfdfd;font-weight:bold}`), więc bez tego
+     własny tekst+tło malowały się NAD kolorowym backdropem i gasiły
+     podświetlanie;
+   - box-sizing: content-box — djangoql autoResize liczy wysokość wg modelu
+     content-box (scrollHeight − padding), a grappelli wymusza border-box → pole
+     wychodziło za niskie i UCINAŁO ostatnią linię po przeładowaniu. Wracamy do
+     content-box i odejmujemy od szerokości poziomy padding+border (25+30+2=57),
+     żeby pole nie wyszło poza pigułkę. */
+form#grp-changelist-search-form textarea.dql-highlight-input {
+    color: transparent !important;
+    background: transparent !important;
+    box-sizing: content-box;
+    width: calc(100% - 57px);
+}
+
+/* Backdrop dostaje NIEPRZEZROCZYSTE tło pola — inaczej całe pole jest
+   półprzezroczyste i prześwitują przez nie kontrolki za nim (np. paginacja,
+   gdy ekran jest wąski). highlight.js nie kopiuje `background` do backdropu,
+   więc ustawiamy je tu. */
+form#grp-changelist-search-form .dql-highlight-backdrop {
+    background: #fdfdfd;
+}
+
+/* Przełącznik QL — nad nakładką (z-index), pionowo na środku pigułki, lekko od
+   lewej. `top: 50%` MUSI mieć !important: grappelli ma bardziej szczegółowe
+   `.grp-row input[type=checkbox]{top:-1px}` (pasek siedzi w .grp-row), które
+   inaczej spycha checkbox na samą górę pola. */
 .djangoql-toggle {
     position: absolute !important;
+    z-index: 3;
+    top: 50% !important;
+    left: 6px;
+    transform: translateY(-50%);
+    margin: 0;
+}
+
+/* Lupa — nakładka-blok zepchnęła ją do nowej linii; przywracamy ją na prawą
+   stronę pigułki (pionowo wyśrodkowana) i nad nakładkę. */
+button.grp-search-button {
+    position: absolute;
+    z-index: 3;
+    top: 50%;
+    right: 8px;
+    transform: translateY(-50%);
+    margin: 0;
 }
 
 .djangoql-completion {
     z-index: 10000;
 }
 
-button.grp-search-button {
-    position: absolute;
+/* Komunikat rozbicia „dlaczego 0 wyników": grappelli stawia krzyżyk zamknięcia
+   (<a.close>) inline, a treść djangoql to <div> (block) — przez co spadała pod
+   krzyżyk i wyglądała na rozjechaną. inline-block ustawia ją OBOK krzyżyka. */
+.grp-messagelist .djangoql-empty-breakdown {
+    display: inline-block;
+    vertical-align: top;
+}
+.grp-messagelist .djangoql-empty-breakdown p {
+    margin: 0 0 0.3em;
+}
+.grp-messagelist .djangoql-breakdown-tree,
+.grp-messagelist .djangoql-breakdown-tree ul {
+    margin: 0 0 0 1em;
+    padding: 0;
+    list-style: none;
+}
+.grp-messagelist .djangoql-breakdown-count {
+    font-weight: 700;
+    margin-left: 0.4em;
+}
+.grp-messagelist .djangoql-breakdown-killer_and > .djangoql-breakdown-count,
+.grp-messagelist .djangoql-breakdown-flag {
+    color: #bf3030;
 }

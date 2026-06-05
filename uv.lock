@@ -607,7 +607,7 @@ requires-dist = [
     { name = "django-tinymce", specifier = ">=5.0.0" },
     { name = "django-weasyprint", specifier = ">=2.5.0" },
     { name = "django-webmaster-verification", specifier = "==0.4.3" },
-    { name = "djangoql-iplweb", specifier = ">=0.26.0" },
+    { name = "djangoql-iplweb", specifier = ">=0.27.0" },
     { name = "djangorestframework", specifier = "==3.17.1" },
     { name = "dspace-rest-client", specifier = ">=0.1.12" },
     { name = "gunicorn", specifier = ">=26.0.0" },
@@ -2388,14 +2388,14 @@ wheels = [
 
 [[package]]
 name = "djangoql-iplweb"
-version = "0.26.0"
+version = "0.27.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "ply", marker = "platform_python_implementation != 'PyPy'" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/08/5c/856ffb426fcc8091e767c48063546d5160ee73151370ecdc65d065551c54/djangoql_iplweb-0.26.0.tar.gz", hash = "sha256:aa36b575b22e47e565370360eb5ddb73791d54d04577a0285a6c97ac7067f5fc", size = 265530, upload-time = "2026-06-05T07:49:18.577Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/91/fb/5bcafead6113e3a732eeef38a2e1cd1e3717fc20ebbec307c956d502c7b7/djangoql_iplweb-0.27.0.tar.gz", hash = "sha256:0613412864724094f3d4d354baaac061ebddc9610a82b272054608a771dddd16", size = 303655, upload-time = "2026-06-05T13:49:17.247Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/ac/87/681d3026b4148e5e1ae683fdd4ae7d7f320d051a6fbf72b428fb8410ff2d/djangoql_iplweb-0.26.0-py3-none-any.whl", hash = "sha256:b18c9b778f1b9a3dab9835bf412e9b7510a2689095eec3bc0dd11c69e32d54ec", size = 315392, upload-time = "2026-06-05T07:49:17.124Z" },
+    { url = "https://files.pythonhosted.org/packages/04/9c/8c3ea4120b871159c338eb139968408dccbb2b1417118edcc4dacdc40d7d/djangoql_iplweb-0.27.0-py3-none-any.whl", hash = "sha256:34a869d807ab98ca97363a31f8c2664a92b96530fcf7ca62fb6b5b7055351aa2", size = 361857, upload-time = "2026-06-05T13:49:15.593Z" },
 ]
 
 [[package]]

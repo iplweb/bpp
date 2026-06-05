@@ -366,6 +366,7 @@ def test_zapytanie_suggestions_tytul_rel_returns_options(superuser_client):
     response = superuser_client.get(url, {"field": "tytul__rel", "search": "profesor"})
     assert response.status_code == 200
     items = response.json()["items"]
+    # djangoql 0.25 renderuje sugestie jako "<etykieta> #<id>" (wcześniej "[id]")
     assert any(f"#{prof.pk}" in item for item in items)
 
 
@@ -380,15 +381,10 @@ def test_zapytanie_suggestions_autor_rel_dal_smoke(superuser_client):
     assert isinstance(response.json()["items"], list)
 
 
-def _breakdown_leaves(node):
-    if not node["children"]:
-        yield node
-    for ch in node["children"]:
-        yield from _breakdown_leaves(ch)
-
-
 @pytest.mark.django_db
-def test_zapytanie_breakdown_explains_zero(superuser_client):
+def test_zapytanie_zero_results_sets_auto_explain(superuser_client):
+    """0 rekordów → strona prosi JS o auto-otwarcie panelu „Wyjaśnij liczby"
+    (z podświetlaniem składni); dawny serwerowy panel „dlaczego 0" znika."""
     baker.make("bpp.Autor", nazwisko="Kowalski", imiona="Jan")
     response = superuser_client.get(
         reverse(URL),
@@ -396,95 +392,21 @@ def test_zapytanie_breakdown_explains_zero(superuser_client):
     )
     assert response.status_code == 200
     assert response.context["count"] == 0
-    breakdown = response.context["breakdown"]
-    assert breakdown is not None
-    assert breakdown["count"] == 0
-    leaves = {leaf["text"]: leaf["count"] for leaf in _breakdown_leaves(breakdown)}
-    assert any("asdfo" in t and c == 0 for t, c in leaves.items())
+    html = response.content.decode("utf-8")
+    assert '"autoExplain": true' in html
+    # stary, nie-podświetlany panel nie jest już renderowany
+    assert "Dlaczego 0 wyników" not in html
+    assert "zapytanie-breakdown" not in html
 
 
 @pytest.mark.django_db
-def test_zapytanie_no_breakdown_when_results(superuser_client):
+def test_zapytanie_with_results_no_auto_explain(superuser_client):
     baker.make("bpp.Autor", nazwisko="Kowalski")
     response = superuser_client.get(
         reverse(URL), {"model": "autor", "query": 'nazwisko = "Kowalski"'}
     )
     assert response.context["count"] == 1
-    assert response.context["breakdown"] is None
-
-
-@pytest.mark.django_db
-def test_zapytanie_breakdown_rendered_in_html(superuser_client):
-    baker.make("bpp.Autor", nazwisko="Kowalski", imiona="Jan")
-    response = superuser_client.get(
-        reverse(URL),
-        {"model": "autor", "query": 'nazwisko = "Kowalski" and imiona = "asdfo"'},
-    )
-    html = response.content.decode("utf-8")
-    assert "Dlaczego 0 wyników" in html
-    assert "ten warunek nie pasuje do żadnego rekordu" in html
-    assert "asdfo" in html
-    # warunek z 0 trafień (poza korzeniem) ma czerwoną liczbę
-    assert "zapytanie-breakdown-count--zero" in html
-
-
-@pytest.mark.django_db
-def test_zapytanie_breakdown_culprit_on_leaf_not_root(superuser_client):
-    baker.make("bpp.Autor", nazwisko="Kowalski", imiona="Jan")
-    response = superuser_client.get(
-        reverse(URL),
-        {"model": "autor", "query": 'nazwisko = "Kowalski" and imiona = "asdfo"'},
-    )
-    breakdown = response.context["breakdown"]
-    assert breakdown["label"] is None  # korzeń (główne zapytanie) bez etykiety
-    leaves = list(_breakdown_leaves(breakdown))
-    culprit = next(leaf for leaf in leaves if "asdfo" in leaf["text"])
-    assert culprit["count"] == 0
-    assert culprit["label"] == "ten warunek nie pasuje do żadnego rekordu"
-    other = next(leaf for leaf in leaves if "Kowalski" in leaf["text"])
-    assert other["label"] is None  # warunek z trafieniami nie jest winowajcą
-
-
-@pytest.mark.django_db
-def test_zapytanie_breakdown_root_intersection_not_labeled(superuser_client):
-    baker.make("bpp.Autor", nazwisko="Kowalski", imiona="Jan")
-    baker.make("bpp.Autor", nazwisko="Nowak", imiona="Anna")
-    response = superuser_client.get(
-        reverse(URL),
-        {"model": "autor", "query": 'nazwisko = "Kowalski" and imiona = "Anna"'},
-    )
-    breakdown = response.context["breakdown"]
-    assert breakdown["count"] == 0
-    assert breakdown["label"] is None  # głównego zapytania nie etykietujemy
-    # każdy warunek z osobna coś zwraca (>=1), więc żaden liść nie jest winowajcą
-    for leaf in _breakdown_leaves(breakdown):
-        assert leaf["count"] >= 1
-        assert leaf["label"] is None
-
-
-@pytest.mark.django_db
-def test_zapytanie_breakdown_no_label_on_dead_or_branch(superuser_client):
-    baker.make("bpp.Autor", nazwisko="Kowalski", imiona="Jan")
-    response = superuser_client.get(
-        reverse(URL),
-        {
-            "model": "autor",
-            "query": (
-                '(nazwisko = "Kowalski" or nazwisko = "Xyz") and imiona = "asdfo"'
-            ),
-        },
-    )
-    breakdown = response.context["breakdown"]
-    assert breakdown["count"] == 0
-    leaves = list(_breakdown_leaves(breakdown))
-    # martwa gałąź w NIEPUSTYM OR — nie winowajca, bez etykiety (koniec z szumem)
-    xyz = next(leaf for leaf in leaves if "Xyz" in leaf["text"])
-    assert xyz["count"] == 0
-    assert xyz["label"] is None
-    # realny winowajca: warunek z 0 trafień połączony AND-em
-    asdfo = next(leaf for leaf in leaves if "asdfo" in leaf["text"])
-    assert asdfo["count"] == 0
-    assert asdfo["label"] == "ten warunek nie pasuje do żadnego rekordu"
+    assert '"autoExplain": false' in response.content.decode("utf-8")
 
 
 @pytest.mark.django_db
@@ -599,3 +521,142 @@ def test_publication_admins_use_bpp_ql_schema():
         Wydawnictwo_ZwarteAdmin,
     ):
         assert admin_cls.djangoql_schema is BppQLSchema, admin_cls.__name__
+
+
+# === djangoql 0.25 query-UX: format / explain / podświetlanie składni =========
+
+
+@pytest.mark.django_db
+def test_zapytanie_format_endpoint_pretty_prints(superuser_client):
+    url = reverse("bpp:zapytanie_format", kwargs={"model_key": "autor"})
+    resp = superuser_client.post(url, {"q": 'nazwisko = "Kowalski" and imiona = "Jan"'})
+    assert resp.status_code == 200
+    formatted = resp.json()["formatted"]
+    assert "\n" in formatted  # wieloliniowo, z wcięciami
+    assert "nazwisko" in formatted
+
+
+@pytest.mark.django_db
+def test_zapytanie_format_endpoint_empty_query(superuser_client):
+    url = reverse("bpp:zapytanie_format", kwargs={"model_key": "autor"})
+    resp = superuser_client.post(url, {"q": "   "})
+    assert resp.status_code == 200
+    assert resp.json() == {"formatted": ""}
+
+
+@pytest.mark.django_db
+def test_zapytanie_format_endpoint_syntax_error_has_location(superuser_client):
+    url = reverse("bpp:zapytanie_format", kwargs={"model_key": "autor"})
+    resp = superuser_client.post(url, {"q": 'nazwisko = = "x"'})
+    assert resp.status_code == 400
+    data = resp.json()
+    assert data["error"]
+    # współrzędne dla czerwonej falki nakładki: błąd składni -> podświetl ogon
+    assert data["line"] == 1
+    assert data["column"]
+    assert data["mark"] == "to_end"
+
+
+@pytest.mark.django_db
+def test_zapytanie_format_endpoint_requires_auth(client):
+    url = reverse("bpp:zapytanie_format", kwargs={"model_key": "autor"})
+    resp = client.post(url, {"q": 'nazwisko = "x"'})
+    assert resp.status_code in (302, 403)
+
+
+@pytest.mark.django_db
+def test_zapytanie_explain_endpoint_returns_tree_with_roles(superuser_client):
+    baker.make("bpp.Autor", nazwisko="Kowalski", imiona="Jan")
+    url = reverse("bpp:zapytanie_explain", kwargs={"model_key": "autor"})
+    resp = superuser_client.post(
+        url, {"q": 'nazwisko = "Kowalski" and imiona = "asdfo"'}
+    )
+    assert resp.status_code == 200
+    tree = resp.json()["tree"]
+    # AND schodzące do 0 -> rola killer_and (tu kończą się dane)
+    assert tree["role"] == "killer_and"
+    assert tree["count"] == 0
+    # liść "asdfo" nic nie zwraca
+    assert any("asdfo" in c["text"] and c["count"] == 0 for c in tree["children"])
+
+
+@pytest.mark.django_db
+def test_zapytanie_explain_endpoint_empty_query(superuser_client):
+    url = reverse("bpp:zapytanie_explain", kwargs={"model_key": "autor"})
+    resp = superuser_client.post(url, {"q": "  "})
+    assert resp.status_code == 200
+    assert resp.json() == {"tree": None}
+
+
+@pytest.mark.django_db
+def test_zapytanie_explain_endpoint_unknown_field_has_location(superuser_client):
+    url = reverse("bpp:zapytanie_explain", kwargs={"model_key": "autor"})
+    resp = superuser_client.post(url, {"q": 'nieistniejace_pole = "x"'})
+    assert resp.status_code == 400
+    data = resp.json()
+    assert data["error"]
+    assert data["mark"] == "token"  # nieznane pole -> oznacz ten jeden token
+
+
+@pytest.mark.django_db
+def test_zapytanie_explain_endpoint_unknown_model_404(superuser_client):
+    url = reverse("bpp:zapytanie_explain", kwargs={"model_key": "nieznany"})
+    resp = superuser_client.post(url, {"q": "rok = 2020"})
+    assert resp.status_code == 404
+
+
+@pytest.mark.django_db
+def test_zapytanie_run_syntax_error_sets_error_location(superuser_client):
+    response = superuser_client.get(
+        reverse(URL), {"model": "autor", "query": 'nazwisko = = "x"'}
+    )
+    assert response.status_code == 200
+    loc = response.context["error_location"]
+    assert loc and loc["line"] == 1 and loc["column"] and loc["mark"] == "to_end"
+
+
+@pytest.mark.django_db
+def test_zapytanie_run_unknown_field_sets_error_location(superuser_client):
+    response = superuser_client.get(
+        reverse(URL), {"model": "autor", "query": 'nieistniejace_pole = "x"'}
+    )
+    assert response.status_code == 200
+    loc = response.context["error_location"]
+    assert loc and loc["mark"] == "token"
+
+
+@pytest.mark.django_db
+def test_zapytanie_template_loads_query_ux_assets(superuser_client):
+    html = superuser_client.get(reverse(URL)).content.decode("utf-8")
+    # prymitywy djangoql 0.25 + spinacz BPP
+    assert "highlight" in html  # highlight.js + highlight.css (nakładka)
+    assert "multiline" in html  # multiline.js (Shift+Enter)
+    assert "zapytanie.js" in html or "zapytanie." in html
+    # wyspa konfiguracyjna + przyciski Format/Explain + panel rozbicia
+    assert 'id="zapytanie-config"' in html
+    assert 'id="zapytanie-format"' in html
+    assert 'id="zapytanie-explain"' in html
+    assert 'id="zapytanie-explain-panel"' in html
+
+
+def test_admin_djangoql_highlight_loaded():
+    """Adminy z BppDjangoQLSearchMixin ładują nakładkę podświetlania + skrypt
+    falki błędu (przez własne ``media``, nie wbudowane ``djangoql_highlight``)."""
+    from django.contrib import admin as dj_admin
+
+    from bpp.admin.autor import AutorAdmin
+    from bpp.admin.wydawnictwo_ciagle import Wydawnictwo_CiagleAdmin
+    from bpp.admin.zrodlo import ZrodloAdmin
+    from bpp.models import Autor, Wydawnictwo_Ciagle, Zrodlo
+
+    for admin_cls, model in (
+        (ZrodloAdmin, Zrodlo),
+        (AutorAdmin, Autor),
+        (Wydawnictwo_CiagleAdmin, Wydawnictwo_Ciagle),
+    ):
+        js = list(admin_cls(model, dj_admin.site).media._js)
+        assert any("highlight.js" in str(p) for p in js), (admin_cls.__name__, js)
+        assert any("djangoql-admin.js" in str(p) for p in js), (
+            admin_cls.__name__,
+            js,
+        )
