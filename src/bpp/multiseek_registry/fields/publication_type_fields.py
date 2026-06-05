@@ -28,6 +28,8 @@ class Typ_OdpowiedzialnosciQueryObject(BppMultiseekVisibilityMixin, QueryObject)
     values = Typ_Odpowiedzialnosci.objects.all()
     ops = [EQUAL, DIFFERENT, UNION]
     field_name = "typ_odpowiedzialnosci"
+    djangoql_field_name = "autorzy__typ_odpowiedzialnosci"
+    djangoql_value_field = "nazwa"
     public = False
 
     def value_from_web(self, value):

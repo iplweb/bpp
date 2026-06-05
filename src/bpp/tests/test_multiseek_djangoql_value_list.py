@@ -37,3 +37,41 @@ def test_value_list_respects_djangoql_field_name():
         _value_list_leaf(VL2(), "autor", str(EQUAL))
         == 'autorzy.typ_odpowiedzialnosci.nazwa = "autor"'
     )
+
+
+import pytest  # noqa: E402
+from model_bakery import baker  # noqa: E402
+
+from bpp.multiseek_registry import registry  # noqa: E402
+from bpp.multiseek_registry.djangoql_export import leaf_to_djangoql  # noqa: E402
+
+
+@pytest.mark.django_db
+@pytest.mark.serial
+def test_jezyk_maps_to_nazwa():
+    frag = leaf_to_djangoql(
+        registry, {"field": "Język", "operator": str(EQUAL), "value": "polski"}
+    )
+    assert frag == 'jezyk.nazwa = "polski"'
+
+
+@pytest.mark.django_db
+@pytest.mark.serial
+def test_typ_kbn_maps_to_nazwa():
+    from bpp.models.system import Typ_KBN
+
+    baker.make(Typ_KBN, nazwa="PO")
+    frag = leaf_to_djangoql(
+        registry, {"field": "Typ MNiSW/MEiN", "operator": str(EQUAL), "value": "PO"}
+    )
+    assert frag == 'typ_kbn.nazwa = "PO"'
+
+
+@pytest.mark.django_db
+@pytest.mark.serial
+def test_typ_odpowiedzialnosci_maps_to_nested_nazwa():
+    frag = leaf_to_djangoql(
+        registry,
+        {"field": "Typ odpowiedzialności", "operator": str(EQUAL), "value": "autor"},
+    )
+    assert frag == 'autorzy.typ_odpowiedzialnosci.nazwa = "autor"'
