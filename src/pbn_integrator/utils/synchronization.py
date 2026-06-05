@@ -289,6 +289,17 @@ def _handle_no_pbn_uid(client: PBNClient, elem, upload_publication: bool) -> Non
         try:
             client.upload_publication(elem)
         except Exception as e:
+            # Catch-all — błąd uploadu nie może zostać tylko na ekranie
+            # (tqdm.write). Pełny traceback do logów + Rollbar.
+            logger.exception(
+                "Błąd uploadu publikacji %s (pk=%s) do PBN",
+                elem.tytul_oryginalny,
+                elem.pk,
+            )
+            rollbar.report_exc_info(
+                sys.exc_info(),
+                extra_data={"pk": elem.pk, "phase": "upload_publication"},
+            )
             tqdm.write(
                 f"Podczas aktualizacji pracy {elem.tytul_oryginalny, elem.pk} wystąpił błąd: {e}. "
                 f"Wczytaj dane tej pracy ręcznie. "
