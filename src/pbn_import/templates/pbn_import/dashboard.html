@@ -143,11 +143,15 @@
             {% if uzywaj_wydzialow %}
             <div class="pbn-import__modal-field--spaced">
                 <label>Domyślny wydział:</label>
-                {% if wydzialy.count == 1 %}
+                {# Auto-podstawiamy bez wyboru TYLKO gdy jedyny wydział to #}
+                {# placeholder "Domyślny" (wtedy wydzial_domyslny jest ustawiony). #}
+                {# W przeciwnym razie pokazujemy select z pustą opcją, żeby #}
+                {# użytkownik świadomie wybrał realny wydział. #}
+                {% if wydzialy.count == 1 and wydzial_domyslny %}
                 <input type="hidden" name="wydzial_domyslny_id" value="{{ wydzialy.0.pk }}">
                 <span class="pbn-import__readonly-value">{{ wydzialy.0.nazwa }}</span>
                 {% else %}
-                <select name="wydzial_domyslny_id" id="wydzial_domyslny_select">
+                <select name="wydzial_domyslny_id" id="wydzial_domyslny_select" required>
                     <option value="">-- Wybierz wydział --</option>
                     {% for w in wydzialy %}
                     <option value="{{ w.pk }}"{% if wydzial_domyslny and wydzial_domyslny.pk == w.pk %} selected{% endif %}>
@@ -164,12 +168,14 @@
 
             <div class="pbn-import__modal-field--spaced">
                 <label>Domyślna jednostka:</label>
-                {% if jednostki.count == 1 %}
+                {# Jak wyżej: ukryte pole bez wyboru dozwolone tylko dla #}
+                {# placeholdera "Domyślna" (jednostka_domyslna ustawiona). #}
+                {% if jednostki.count == 1 and jednostka_domyslna %}
                 <input type="hidden" name="jednostka_domyslna_id" value="{{ jednostki.0.pk }}">
                 <span class="pbn-import__readonly-value">{{ jednostki.0.nazwa }}</span>
                 {% else %}
                 <select name="jednostka_domyslna_id" id="jednostka_domyslna_select"
-                        class="jednostka-select2" style="width: 100%;">
+                        class="jednostka-select2" style="width: 100%;" required>
                     <option value="">-- Wybierz jednostkę --</option>
                     {% for j in jednostki %}
                     <option value="{{ j.pk }}"{% if jednostka_domyslna and jednostka_domyslna.pk == j.pk %} selected{% endif %}>

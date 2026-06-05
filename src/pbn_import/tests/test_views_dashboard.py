@@ -139,6 +139,117 @@ class TestImportDashboardView:
         assert session1 in response.context["recent_sessions"]
         assert session2 not in response.context["recent_sessions"]
 
+    def test_dashboard_default_unit_prefers_domyslna_name(self, django_user_model):
+        """Default unit must be the one whose nazwa contains 'Domyśln…'."""
+        from bpp.models import Jednostka
+
+        client = Client()
+        user = baker.make(django_user_model, is_superuser=True)
+        client.force_login(user)
+        uczelnia = baker.make(Uczelnia, pbn_integracja=True)
+
+        # A real unit that sorts first under the default ordering (by nazwa),
+        # to prove the name match wins over mere queryset ordering.
+        baker.make(
+            Jednostka,
+            nazwa="AAA Prawdziwa Jednostka",
+            skupia_pracownikow=True,
+            uczelnia=uczelnia,
+        )
+        domyslna = baker.make(
+            Jednostka,
+            nazwa="Jednostka Domyślna",
+            skupia_pracownikow=True,
+            uczelnia=uczelnia,
+        )
+
+        response = client.get(reverse("pbn_import:dashboard"))
+
+        assert response.context["jednostka_domyslna"] == domyslna
+
+    def test_dashboard_default_unit_empty_without_domyslna(self, django_user_model):
+        """No 'Domyśln…' unit → no pre-selected unit (user must choose)."""
+        from bpp.models import Jednostka
+
+        client = Client()
+        user = baker.make(django_user_model, is_superuser=True)
+        client.force_login(user)
+        uczelnia = baker.make(Uczelnia, pbn_integracja=True)
+
+        baker.make(
+            Jednostka,
+            nazwa="Katedra Czegokolwiek",
+            skupia_pracownikow=True,
+            uczelnia=uczelnia,
+        )
+        baker.make(
+            Jednostka,
+            nazwa="Instytut Czegoś Innego",
+            skupia_pracownikow=True,
+            uczelnia=uczelnia,
+        )
+
+        response = client.get(reverse("pbn_import:dashboard"))
+
+        assert response.context["jednostka_domyslna"] is None
+
+    def test_dashboard_default_faculty_prefers_domyslny_name(self, django_user_model):
+        """Default faculty must be the one whose nazwa contains 'Domyśln…'."""
+        from bpp.models import Wydzial
+
+        client = Client()
+        user = baker.make(django_user_model, is_superuser=True)
+        client.force_login(user)
+        uczelnia = baker.make(Uczelnia, pbn_integracja=True)
+
+        baker.make(Wydzial, nazwa="AAA Wydział Prawdziwy", uczelnia=uczelnia)
+        domyslny = baker.make(Wydzial, nazwa="Wydział Domyślny", uczelnia=uczelnia)
+
+        response = client.get(reverse("pbn_import:dashboard"))
+
+        assert response.context["wydzial_domyslny"] == domyslny
+
+    def test_dashboard_default_faculty_empty_without_domyslny(self, django_user_model):
+        """No 'Domyśln…' faculty → no pre-selected faculty (user must choose)."""
+        from bpp.models import Wydzial
+
+        client = Client()
+        user = baker.make(django_user_model, is_superuser=True)
+        client.force_login(user)
+        uczelnia = baker.make(Uczelnia, pbn_integracja=True)
+
+        baker.make(Wydzial, nazwa="Wydział Lekarski", uczelnia=uczelnia)
+        baker.make(Wydzial, nazwa="Wydział Farmaceutyczny", uczelnia=uczelnia)
+
+        response = client.get(reverse("pbn_import:dashboard"))
+
+        assert response.context["wydzial_domyslny"] is None
+
+    def test_dashboard_single_real_unit_renders_select_not_hidden(
+        self, django_user_model
+    ):
+        """A lone real unit must be choosable (select), never auto-forced."""
+        from bpp.models import Jednostka
+
+        client = Client()
+        user = baker.make(django_user_model, is_superuser=True)
+        client.force_login(user)
+        uczelnia = baker.make(Uczelnia, pbn_integracja=True, uzywaj_wydzialow=False)
+        baker.make(
+            Jednostka,
+            nazwa="Jedyna Realna Jednostka",
+            skupia_pracownikow=True,
+            uczelnia=uczelnia,
+        )
+
+        response = client.get(reverse("pbn_import:dashboard"))
+        content = response.content.decode("utf-8")
+
+        assert response.context["jednostka_domyslna"] is None
+        # The empty placeholder option proves a real select (conscious choice),
+        # not a hidden auto-submitted value.
+        assert "-- Wybierz jednostkę --" in content
+
 
 # ============================================================================
 # START IMPORT VIEW TESTS
@@ -161,9 +272,13 @@ class TestStartImportView:
 
     def test_start_import_creates_session(self, django_user_model):
         """Test start import creates ImportSession"""
+        from bpp.models import Jednostka
+
         client = Client()
         user = baker.make(django_user_model, is_superuser=True)
-        baker.make(Uczelnia, pbn_integracja=True)
+        # uzywaj_wydzialow=False → only the default unit is required.
+        uczelnia = baker.make(Uczelnia, pbn_integracja=True, uzywaj_wydzialow=False)
+        jednostka = baker.make(Jednostka, skupia_pracownikow=True, uczelnia=uczelnia)
         client.force_login(user)
 
         with (
@@ -179,6 +294,7 @@ class TestStartImportView:
                     "initial": "on",
                     "zrodla": "on",
                     "wydawcy": "on",
+                    "jednostka_domyslna_id": jednostka.pk,
                 },
             )
 
@@ -188,12 +304,13 @@ class TestStartImportView:
 
     def test_start_import_stores_config(self, django_user_model):
         """Test start import stores configuration from POST data"""
-        from bpp.models import Wydzial
+        from bpp.models import Jednostka, Wydzial
 
         client = Client()
         user = baker.make(django_user_model, is_superuser=True)
         uczelnia = baker.make(Uczelnia, pbn_integracja=True)
         wydzial = baker.make(Wydzial, nazwa="IT Department", uczelnia=uczelnia)
+        jednostka = baker.make(Jednostka, skupia_pracownikow=True, uczelnia=uczelnia)
         client.force_login(user)
 
         with (
@@ -210,6 +327,7 @@ class TestStartImportView:
                     "zrodla": "on",
                     "delete_existing": "on",
                     "wydzial_domyslny_id": wydzial.pk,
+                    "jednostka_domyslna_id": jednostka.pk,
                 },
             )
 
@@ -220,9 +338,12 @@ class TestStartImportView:
 
     def test_start_import_redirects_to_dashboard(self, django_user_model):
         """Test start import redirects to dashboard after creation"""
+        from bpp.models import Jednostka
+
         client = Client()
         user = baker.make(django_user_model, is_superuser=True)
-        baker.make(Uczelnia, pbn_integracja=True)
+        uczelnia = baker.make(Uczelnia, pbn_integracja=True, uzywaj_wydzialow=False)
+        jednostka = baker.make(Jednostka, skupia_pracownikow=True, uczelnia=uczelnia)
         client.force_login(user)
 
         with (
@@ -234,11 +355,83 @@ class TestStartImportView:
 
             response = client.post(
                 reverse("pbn_import:start"),
-                {},
+                {"jednostka_domyslna_id": jednostka.pk},
                 follow=False,
             )
 
         assert response.status_code in [302, 303, 307]  # Redirect codes
+
+    def test_start_import_blocked_without_unit(self, django_user_model):
+        """Empty default-unit field must block the import (conscious choice)."""
+        client = Client()
+        user = baker.make(django_user_model, is_superuser=True)
+        baker.make(Uczelnia, pbn_integracja=True, uzywaj_wydzialow=False)
+        client.force_login(user)
+
+        with (
+            patch("pbn_import.tasks.run_pbn_import") as mock_task,
+            patch("pbn_import.views.get_channel_layer"),
+            patch("pbn_import.views.async_to_sync"),
+        ):
+            mock_task.delay.return_value = MagicMock(id="task-123")
+
+            response = client.post(
+                reverse("pbn_import:start"),
+                {"initial": "on"},
+            )
+
+        assert not ImportSession.objects.filter(user=user).exists()
+        assert response.status_code in [302, 303, 307]
+
+    def test_start_import_blocked_without_faculty_when_used(self, django_user_model):
+        """When wydziały are used, an empty faculty field blocks the import."""
+        from bpp.models import Jednostka
+
+        client = Client()
+        user = baker.make(django_user_model, is_superuser=True)
+        uczelnia = baker.make(Uczelnia, pbn_integracja=True, uzywaj_wydzialow=True)
+        jednostka = baker.make(Jednostka, skupia_pracownikow=True, uczelnia=uczelnia)
+        client.force_login(user)
+
+        with (
+            patch("pbn_import.tasks.run_pbn_import") as mock_task,
+            patch("pbn_import.views.get_channel_layer"),
+            patch("pbn_import.views.async_to_sync"),
+        ):
+            mock_task.delay.return_value = MagicMock(id="task-123")
+
+            client.post(
+                reverse("pbn_import:start"),
+                {"jednostka_domyslna_id": jednostka.pk},
+            )
+
+        assert not ImportSession.objects.filter(user=user).exists()
+
+    def test_start_import_allowed_without_faculty_when_not_used(
+        self, django_user_model
+    ):
+        """When wydziały are not used, faculty is not required."""
+        from bpp.models import Jednostka
+
+        client = Client()
+        user = baker.make(django_user_model, is_superuser=True)
+        uczelnia = baker.make(Uczelnia, pbn_integracja=True, uzywaj_wydzialow=False)
+        jednostka = baker.make(Jednostka, skupia_pracownikow=True, uczelnia=uczelnia)
+        client.force_login(user)
+
+        with (
+            patch("pbn_import.tasks.run_pbn_import") as mock_task,
+            patch("pbn_import.views.get_channel_layer"),
+            patch("pbn_import.views.async_to_sync"),
+        ):
+            mock_task.delay.return_value = MagicMock(id="task-123")
+
+            client.post(
+                reverse("pbn_import:start"),
+                {"jednostka_domyslna_id": jednostka.pk},
+            )
+
+        assert ImportSession.objects.filter(user=user).exists()
 
 
 # ============================================================================
