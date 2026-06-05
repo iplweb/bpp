@@ -69,6 +69,44 @@ class JednostkaQueryObject(
             return ~ret
         return ret
 
+    def to_djangoql(self, value, operation):
+        """Tlumaczenie na DjangoQL nad Rekord (patrz real_query po semantyke).
+
+        - rownosc -> autorzy.jednostka__rel (picker po jednostce autora)
+        - roznosc -> autorzy.jednostka__rel != ...
+        - '+ podrzedne' (EQUAL_PLUS_SUB_FEMALE) -> jednostka_z_podjednostkami__rel
+          (wirtualne pole MPTT get_family, identyczne z real_query)
+        - UNION / '+podrzedne+wspolna' -> None (warning): inny ksztalt zapytania,
+          bez gwarancji rownowaznosci bez osobnego pola wirtualnego.
+        """
+        if type(self) is not JednostkaQueryObject:
+            return None  # podklasy (np. AktualnaJednostka...) maja inna semantyke
+        op = str(operation)
+        try:
+            obj = self.value_from_web(value)
+        except Exception:  # noqa: BLE001 — uszkodzony/nieistniejacy pk -> nieprzekladalne
+            return None
+        if obj is None:
+            return None
+        label = str(obj).replace("\\", "\\\\").replace('"', '\\"')
+        suffix = f'"{label} [{obj.pk}]"'
+
+        union_warning = (
+            'Operator „wspólna" przełożono jak równość — w DjangoQL może objąć '
+            "innego autora niż pozostałe kryteria."
+        )
+        if op == str(EQUAL_FEMALE):
+            return f"autorzy.jednostka__rel = {suffix}"
+        if op == str(DIFFERENT_FEMALE):
+            return f"autorzy.jednostka__rel != {suffix}"
+        if op == str(EQUAL_PLUS_SUB_FEMALE):
+            return f"jednostka_z_podjednostkami__rel = {suffix}"
+        if op == str(UNION_FEMALE):
+            return f"autorzy.jednostka__rel = {suffix}", union_warning
+        if op == str(EQUAL_PLUS_SUB_UNION_FEMALE):
+            return f"jednostka_z_podjednostkami__rel = {suffix}", union_warning
+        return None
+
 
 class AktualnaJednostkaAutoraQueryObject(JednostkaQueryObject):
     label = "Aktualna jednostka dowolnego autora"
@@ -155,6 +193,7 @@ class WydzialQueryObject(
     model = Wydzial
     search_fields = ["nazwa"]
     field_name = "wydzial"
+    djangoql_field_name = "autorzy__jednostka__wydzial"
     url = "bpp:public-wydzial-autocomplete"
 
     def real_query(self, value, operation):
@@ -217,3 +256,18 @@ class RodzajJednostkiQueryObject(BppMultiseekVisibilityMixin, ValueListQueryObje
         if operation == DIFFERENT:
             return ~q
         return q
+
+    def to_djangoql(self, value, operation):
+        mapa = {
+            Jednostka.RODZAJ_JEDNOSTKI.NORMALNA.label: (
+                Jednostka.RODZAJ_JEDNOSTKI.NORMALNA.value
+            ),
+            Jednostka.RODZAJ_JEDNOSTKI.KOLO_NAUKOWE.label: (
+                Jednostka.RODZAJ_JEDNOSTKI.KOLO_NAUKOWE.value
+            ),
+        }
+        kod = mapa.get(value)
+        if kod is None:
+            return None
+        op = "!=" if str(operation) == str(DIFFERENT) else "="
+        return f'autorzy.jednostka.rodzaj_jednostki {op} "{kod}"'

@@ -28,6 +28,8 @@ class Typ_OdpowiedzialnosciQueryObject(BppMultiseekVisibilityMixin, QueryObject)
     values = Typ_Odpowiedzialnosci.objects.all()
     ops = [EQUAL, DIFFERENT, UNION]
     field_name = "typ_odpowiedzialnosci"
+    djangoql_field_name = "autorzy__typ_odpowiedzialnosci"
+    djangoql_value_field = "nazwa"
     public = False
 
     def value_from_web(self, value):
@@ -78,6 +80,23 @@ class TypRekorduObject(BppMultiseekVisibilityMixin, ValueListQueryObject):
             return ~q
         return q
 
+    def to_djangoql(self, value, operation):
+        neg = str(operation) in {str(o) for o in DIFFERENT_ALL}
+        if value == "publikacje":
+            frag = "charakter_formalny.publikacja = True"
+        elif value == "streszczenia":
+            frag = "charakter_formalny.streszczenie = True"
+        elif value == "inne":
+            frag = (
+                "(charakter_formalny.publikacja = False "
+                "and charakter_formalny.streszczenie = False)"
+            )
+        else:
+            return None
+        if neg:
+            return None  # negacja zbioru -> brak czystego not(...) w DjangoQL
+        return frag
+
 
 class CharakterOgolnyQueryObject(BppMultiseekVisibilityMixin, ValueListQueryObject):
     label = "Charakter formalny ogólny"
@@ -114,6 +133,20 @@ class CharakterOgolnyQueryObject(BppMultiseekVisibilityMixin, ValueListQueryObje
         if operation == DIFFERENT:
             return ~q
         return q
+
+    _DJANGOQL_OGOLNY = {
+        "artykuł": const.CHARAKTER_OGOLNY_ARTYKUL,
+        "rozdział": const.CHARAKTER_OGOLNY_ROZDZIAL,
+        "książka": const.CHARAKTER_OGOLNY_KSIAZKA,
+        "inne": const.CHARAKTER_OGOLNY_INNE,
+    }
+
+    def to_djangoql(self, value, operation):
+        kod = self._DJANGOQL_OGOLNY.get(value)
+        if kod is None:
+            return None
+        op = "!=" if str(operation) in {str(o) for o in DIFFERENT_ALL} else "="
+        return f'charakter_formalny.charakter_ogolny {op} "{kod}"'
 
 
 class CharakterFormalnyQueryObject(
@@ -172,6 +205,22 @@ class CharakterFormalnyQueryObject(
 
         return ret
 
+    def to_djangoql(self, value, operation):
+        """charakter_z_podrzednymi__rel (MPTT: sam + potomkowie) — dokładne."""
+        obj = self.value_from_web(value)
+        if obj is None:
+            return None
+        op = str(operation)
+        diff = {str(o) for o in DIFFERENT_ALL}
+        if op in diff:
+            rel_op = "!="
+        elif op in {str(o) for o in EQUALITY_OPS_ALL} - diff:
+            rel_op = "="
+        else:
+            return None
+        label = str(obj.nazwa).replace("\\", "\\\\").replace('"', '\\"')
+        return f'charakter_z_podrzednymi__rel {rel_op} "{label} [{obj.pk}]"'
+
 
 class RodzajKonferenckjiQueryObject(BppMultiseekVisibilityMixin, ValueListQueryObject):
     label = "Rodzaj konferencji"
@@ -195,3 +244,16 @@ class RodzajKonferenckjiQueryObject(BppMultiseekVisibilityMixin, ValueListQueryO
         if operation == DIFFERENT:
             return ~q
         return q
+
+    _DJANGOQL_TK = {
+        "krajowa": Konferencja.TK_KRAJOWA,
+        "międzynarodowa": Konferencja.TK_MIEDZYNARODOWA,
+        "lokalna": Konferencja.TK_LOKALNA,
+    }
+
+    def to_djangoql(self, value, operation):
+        tk = self._DJANGOQL_TK.get(value)
+        if tk is None:
+            return None
+        op = "!=" if str(operation) in {str(o) for o in DIFFERENT_ALL} else "="
+        return f"konferencja.typ_konferencji {op} {tk}"

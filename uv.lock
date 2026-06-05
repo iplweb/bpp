@@ -607,7 +607,7 @@ requires-dist = [
     { name = "django-tinymce", specifier = ">=5.0.0" },
     { name = "django-weasyprint", specifier = ">=2.5.0" },
     { name = "django-webmaster-verification", specifier = "==0.4.3" },
-    { name = "djangoql-iplweb", specifier = ">=0.23.0" },
+    { name = "djangoql-iplweb", specifier = ">=0.26.0" },
     { name = "djangorestframework", specifier = "==3.17.1" },
     { name = "dspace-rest-client", specifier = ">=0.1.12" },
     { name = "gunicorn", specifier = ">=26.0.0" },
@@ -659,7 +659,7 @@ dev = [
     { name = "django-debug-toolbar", specifier = ">=6.3.0" },
     { name = "django-dev-helpers", specifier = ">=0.1.11" },
     { name = "django-dynamic-fixture", specifier = ">=1.8.0" },
-    { name = "django-run-site", specifier = ">=0.16.0" },
+    { name = "django-run-site", specifier = ">=0.16.1" },
     { name = "django-webtest", specifier = "==1.9.14" },
     { name = "djlint", specifier = ">=1.36,<2" },
     { name = "ipdb", specifier = ">=0.13.9" },
@@ -2211,15 +2211,15 @@ wheels = [
 
 [[package]]
 name = "django-run-site"
-version = "0.16.0"
+version = "0.16.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "docker", marker = "platform_python_implementation != 'PyPy'" },
     { name = "testcontainers", extra = ["redis"], marker = "platform_python_implementation != 'PyPy'" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/49/d2/be1a7572bc7017f3289a95d8455dda0d6eff4caea0ed9e9e0ad4ffa1f78c/django_run_site-0.16.0.tar.gz", hash = "sha256:64dc96a65d5981ae5c38670e11f4123885f6762e5304c3eb1ccd7c4903049f9b", size = 160608, upload-time = "2026-06-01T12:28:08.2Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/a6/72/e895be8b14f05b6c75dcc7013ea65ceb56d24b5bd0e74bdca7e05f61698d/django_run_site-0.16.1.tar.gz", hash = "sha256:1f8f668888bf098a396b25b0582e6f458e7c9f0a3e989c19c417876adce17882", size = 163046, upload-time = "2026-06-05T06:32:08.978Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/c9/e1/d837158744e4b610ea79406b5f021056bc4a58cb7a6679ef8bf54c9e7690/django_run_site-0.16.0-py3-none-any.whl", hash = "sha256:c565e555de82e7a0e4e3cbd812ba35edf1c2e91a8200b2c8853cfa4b83b669b4", size = 99181, upload-time = "2026-06-01T12:28:06.248Z" },
+    { url = "https://files.pythonhosted.org/packages/b2/87/b20a51b61d3f4ef6d638d757a23b5af7851a7757977cb1f5ae42a0f20f67/django_run_site-0.16.1-py3-none-any.whl", hash = "sha256:c26bb189f9ac516ea32279b301eff8dbf40d2a68c771143d2aaebd2a75614fa2", size = 99998, upload-time = "2026-06-05T06:32:07.502Z" },
 ]
 
 [[package]]
@@ -2388,14 +2388,14 @@ wheels = [
 
 [[package]]
 name = "djangoql-iplweb"
-version = "0.23.0"
+version = "0.26.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "ply", marker = "platform_python_implementation != 'PyPy'" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/25/e0/c3164c6afb2cb9da40cb0b9f1b94c1c0e4dcffee0b585f24978f63017fb3/djangoql_iplweb-0.23.0.tar.gz", hash = "sha256:e830893e88354592b03810c46c7918e475991747ff1a95415bb246916e88b38d", size = 248317, upload-time = "2026-06-04T09:21:54.419Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/08/5c/856ffb426fcc8091e767c48063546d5160ee73151370ecdc65d065551c54/djangoql_iplweb-0.26.0.tar.gz", hash = "sha256:aa36b575b22e47e565370360eb5ddb73791d54d04577a0285a6c97ac7067f5fc", size = 265530, upload-time = "2026-06-05T07:49:18.577Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/9c/a2/9c884132b408899dd836b43a7c1bd0b16fea173ea9b8c2f089186806df6c/djangoql_iplweb-0.23.0-py3-none-any.whl", hash = "sha256:20fb4af8770ab30a0bfb5190ecad58f5e02aa3ea76f2cb1aa969547fafe07b1f", size = 283909, upload-time = "2026-06-04T09:21:52.825Z" },
+    { url = "https://files.pythonhosted.org/packages/ac/87/681d3026b4148e5e1ae683fdd4ae7d7f320d051a6fbf72b428fb8410ff2d/djangoql_iplweb-0.26.0-py3-none-any.whl", hash = "sha256:b18c9b778f1b9a3dab9835bf412e9b7510a2689095eec3bc0dd11c69e32d54ec", size = 315392, upload-time = "2026-06-05T07:49:17.124Z" },
 ]
 
 [[package]]
