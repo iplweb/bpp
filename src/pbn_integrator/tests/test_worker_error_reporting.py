@@ -16,10 +16,13 @@ def test_process_journal_thread_safe_reports_on_failure():
     """Błąd importu źródła w wątku → logger.exception + rollbar + status błędu."""
     from pbn_integrator.importer import sources
 
-    pbn_journal = MagicMock()
-    pbn_journal.pk = 4242
+    # Po optymalizacji pamięci worker dostaje już tylko journal_id i sam ładuje
+    # Journal w wątku — pacujemy Journal.objects.get, by test pozostał szybkim
+    # unitem bez DB, a błąd wstrzykujemy w dopisz_jedno_zrodlo.
+    journal_id = 4242
 
     with (
+        patch.object(sources, "Journal") as mock_journal_cls,
         patch.object(sources, "dopisz_jedno_zrodlo", side_effect=ValueError("boom")),
         # close_old_connections dotyka połączenia DB — pacujemy je, żeby test
         # został szybkim unitem bez marka django_db (i nie był wrażliwy na to,
@@ -28,7 +31,8 @@ def test_process_journal_thread_safe_reports_on_failure():
         patch.object(sources, "logger") as mock_logger,
         patch.object(sources, "rollbar") as mock_rollbar,
     ):
-        result = sources._process_journal_thread_safe(pbn_journal, None, {})
+        mock_journal_cls.objects.get.return_value = MagicMock(pk=journal_id)
+        result = sources._process_journal_thread_safe(journal_id, None, {})
 
     # Kontrakt zwracania statusu zachowany — NIE rzuca, agregator dostaje błąd.
     assert result["success"] is False
