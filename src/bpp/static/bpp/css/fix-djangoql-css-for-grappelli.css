@@ -81,3 +81,28 @@ button.grp-search-button {
 .djangoql-completion {
     z-index: 10000;
 }
+
+/* Komunikat rozbicia „dlaczego 0 wyników": grappelli stawia krzyżyk zamknięcia
+   (<a.close>) inline, a treść djangoql to <div> (block) — przez co spadała pod
+   krzyżyk i wyglądała na rozjechaną. inline-block ustawia ją OBOK krzyżyka. */
+.grp-messagelist .djangoql-empty-breakdown {
+    display: inline-block;
+    vertical-align: top;
+}
+.grp-messagelist .djangoql-empty-breakdown p {
+    margin: 0 0 0.3em;
+}
+.grp-messagelist .djangoql-breakdown-tree,
+.grp-messagelist .djangoql-breakdown-tree ul {
+    margin: 0 0 0 1em;
+    padding: 0;
+    list-style: none;
+}
+.grp-messagelist .djangoql-breakdown-count {
+    font-weight: 700;
+    margin-left: 0.4em;
+}
+.grp-messagelist .djangoql-breakdown-killer_and > .djangoql-breakdown-count,
+.grp-messagelist .djangoql-breakdown-flag {
+    color: #bf3030;
+}

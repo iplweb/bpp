@@ -613,13 +613,24 @@ def test_zapytanie_template_loads_query_ux_assets(superuser_client):
     assert 'id="zapytanie-explain-panel"' in html
 
 
-def test_admin_djangoql_highlight_enabled():
-    """Adminy z BppDjangoQLSearchMixin mają włączoną nakładkę podświetlania."""
+def test_admin_djangoql_highlight_loaded():
+    """Adminy z BppDjangoQLSearchMixin ładują nakładkę podświetlania + skrypt
+    falki błędu (przez własne ``media``, nie wbudowane ``djangoql_highlight``)."""
+    from django.contrib import admin as dj_admin
+
     from bpp.admin.autor import AutorAdmin
-    from bpp.admin.helpers.djangoql import BppDjangoQLSearchMixin
     from bpp.admin.wydawnictwo_ciagle import Wydawnictwo_CiagleAdmin
     from bpp.admin.zrodlo import ZrodloAdmin
+    from bpp.models import Autor, Wydawnictwo_Ciagle, Zrodlo
 
-    assert BppDjangoQLSearchMixin.djangoql_highlight is True
-    for admin_cls in (ZrodloAdmin, AutorAdmin, Wydawnictwo_CiagleAdmin):
-        assert admin_cls.djangoql_highlight is True, admin_cls.__name__
+    for admin_cls, model in (
+        (ZrodloAdmin, Zrodlo),
+        (AutorAdmin, Autor),
+        (Wydawnictwo_CiagleAdmin, Wydawnictwo_Ciagle),
+    ):
+        js = list(admin_cls(model, dj_admin.site).media._js)
+        assert any("highlight.js" in str(p) for p in js), (admin_cls.__name__, js)
+        assert any("djangoql-admin.js" in str(p) for p in js), (
+            admin_cls.__name__,
+            js,
+        )
