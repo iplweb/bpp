@@ -225,6 +225,35 @@ class TestImportDashboardView:
 
         assert response.context["wydzial_domyslny"] is None
 
+    def test_dashboard_lists_only_request_uczelnia_units(self, django_user_model):
+        """Multi-hosted: formularz pokazuje jednostki/wydziały TYLKO tej uczelni."""
+        from bpp.models import Jednostka, Wydzial
+
+        client = Client()
+        user = baker.make(django_user_model, is_superuser=True)
+        client.force_login(user)
+        request_uczelnia = baker.make(Uczelnia, pbn_integracja=True)
+        foreign_uczelnia = baker.make(Uczelnia, pbn_integracja=True)
+
+        mine = baker.make(Jednostka, skupia_pracownikow=True, uczelnia=request_uczelnia)
+        foreign = baker.make(
+            Jednostka, skupia_pracownikow=True, uczelnia=foreign_uczelnia
+        )
+        my_wydzial = baker.make(Wydzial, uczelnia=request_uczelnia)
+        foreign_wydzial = baker.make(Wydzial, uczelnia=foreign_uczelnia)
+
+        with patch.object(
+            Uczelnia.objects, "get_for_request", return_value=request_uczelnia
+        ):
+            response = client.get(reverse("pbn_import:dashboard"))
+
+        jednostki = list(response.context["jednostki"])
+        wydzialy = list(response.context["wydzialy"])
+        assert mine in jednostki
+        assert foreign not in jednostki
+        assert my_wydzial in wydzialy
+        assert foreign_wydzial not in wydzialy
+
     def test_dashboard_single_real_unit_renders_select_not_hidden(
         self, django_user_model
     ):
@@ -469,6 +498,114 @@ class TestStartImportView:
             )
 
         assert ImportSession.objects.filter(user=user).exists()
+
+    def test_start_import_persists_canonical_default_jednostka_id(
+        self, django_user_model
+    ):
+        """Formularz zapisuje też kanoniczny ``default_jednostka_id``/``wydzial_id``.
+
+        Regresja: kroki importu (publication/statement) czytają
+        ``default_jednostka_id``, więc wybór z formularza musi trafić pod ten
+        klucz — inaczej import od źródeł (bez kroku institution_setup) nie zna
+        domyślnej jednostki i rzuca ValueError.
+        """
+        from bpp.models import Jednostka, Wydzial
+
+        client = Client()
+        user = baker.make(django_user_model, is_superuser=True)
+        uczelnia = baker.make(Uczelnia, pbn_integracja=True, uzywaj_wydzialow=True)
+        wydzial = baker.make(Wydzial, uczelnia=uczelnia)
+        jednostka = baker.make(Jednostka, skupia_pracownikow=True, uczelnia=uczelnia)
+        client.force_login(user)
+
+        with (
+            patch("pbn_import.tasks.run_pbn_import") as mock_task,
+            patch("pbn_import.views.get_channel_layer"),
+            patch("pbn_import.views.async_to_sync"),
+        ):
+            mock_task.delay.return_value = MagicMock(id="task-123")
+
+            client.post(
+                reverse("pbn_import:start"),
+                {
+                    "wydzial_domyslny_id": wydzial.pk,
+                    "jednostka_domyslna_id": jednostka.pk,
+                },
+            )
+
+        session = ImportSession.objects.get(user=user)
+        assert session.config["default_jednostka_id"] == jednostka.pk
+        assert session.config["wydzial_id"] == wydzial.pk
+
+    def test_start_import_rejects_foreign_uczelnia_jednostka(self, django_user_model):
+        """Gate-check: jednostka z innej uczelni niż request → blokada startu."""
+        from bpp.models import Jednostka
+
+        client = Client()
+        user = baker.make(django_user_model, is_superuser=True)
+        request_uczelnia = baker.make(
+            Uczelnia, pbn_integracja=True, uzywaj_wydzialow=False
+        )
+        foreign_uczelnia = baker.make(Uczelnia, pbn_integracja=True)
+        foreign_jednostka = baker.make(
+            Jednostka, skupia_pracownikow=True, uczelnia=foreign_uczelnia
+        )
+        client.force_login(user)
+
+        with (
+            patch("pbn_import.tasks.run_pbn_import") as mock_task,
+            patch("pbn_import.views.get_channel_layer"),
+            patch("pbn_import.views.async_to_sync"),
+            patch.object(
+                Uczelnia.objects, "get_for_request", return_value=request_uczelnia
+            ),
+        ):
+            mock_task.delay.return_value = MagicMock(id="task-123")
+
+            client.post(
+                reverse("pbn_import:start"),
+                {"jednostka_domyslna_id": foreign_jednostka.pk},
+            )
+
+        assert not ImportSession.objects.filter(user=user).exists()
+        mock_task.delay.assert_not_called()
+
+    def test_start_import_rejects_foreign_uczelnia_wydzial(self, django_user_model):
+        """Gate-check: wydział z innej uczelni niż request → blokada startu."""
+        from bpp.models import Jednostka, Wydzial
+
+        client = Client()
+        user = baker.make(django_user_model, is_superuser=True)
+        request_uczelnia = baker.make(
+            Uczelnia, pbn_integracja=True, uzywaj_wydzialow=True
+        )
+        foreign_uczelnia = baker.make(Uczelnia, pbn_integracja=True)
+        jednostka = baker.make(
+            Jednostka, skupia_pracownikow=True, uczelnia=request_uczelnia
+        )
+        foreign_wydzial = baker.make(Wydzial, uczelnia=foreign_uczelnia)
+        client.force_login(user)
+
+        with (
+            patch("pbn_import.tasks.run_pbn_import") as mock_task,
+            patch("pbn_import.views.get_channel_layer"),
+            patch("pbn_import.views.async_to_sync"),
+            patch.object(
+                Uczelnia.objects, "get_for_request", return_value=request_uczelnia
+            ),
+        ):
+            mock_task.delay.return_value = MagicMock(id="task-123")
+
+            client.post(
+                reverse("pbn_import:start"),
+                {
+                    "jednostka_domyslna_id": jednostka.pk,
+                    "wydzial_domyslny_id": foreign_wydzial.pk,
+                },
+            )
+
+        assert not ImportSession.objects.filter(user=user).exists()
+        mock_task.delay.assert_not_called()
 
 
 # ============================================================================
