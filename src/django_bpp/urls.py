@@ -395,28 +395,42 @@ if settings.DEBUG and settings.DEBUG_TOOLBAR:
     urlpatterns += debug_toolbar_urls()
 
 
-if not apps.is_installed("microsoft_auth"):
+if apps.is_installed("oidc_integration"):
     #
-    # Jeżeli NIE ma włączonej aplikacji microsoft_auth, to obsługuj
-    # własne logowanie hasłem z front-endu:
+    # Logowanie instytucjonalne przez OIDC (Keycloak). apps.is_installed(
+    # "oidc_integration") jest prawdą tylko gdy OIDC jest skonfigurowane (apka
+    # dokładana warunkowo w settings). OIDC to jeden realm na proces, więc
+    # logowanie jest wybierane PER-UCZELNIA: InstitutionalLoginView odbija na
+    # Keycloaka tylko dla domeny uczelni o skrócie == OIDC_LOGIN_SKROT, dla
+    # pozostałych domen używa Microsoftu (jeśli włączony, globalnie) albo
+    # formularza BPP. Może współistnieć z microsoft_auth w jednym procesie.
+    # Formularz BPP osobno pod local_login_form. Logout świadomy OIDC.
     #
-    # Logout świadomy OIDC: sesja OIDC → wyloguj też z Keycloaka; reszta →
-    # standardowy LogoutView. Bezpieczny nadzbiór, więc używamy go zawsze gdy
-    # apka OIDC jest aktywna.
-    if apps.is_installed("oidc_integration"):
-        from oidc_integration.views import BppOIDCAwareLogoutView as _LogoutView
-    else:
-        _LogoutView = LogoutView
+    from django_bpp.views import InstitutionalLoginView
+    from oidc_integration.views import BppOIDCAwareLogoutView
 
     urlpatterns += [
         url(
-            r"^accounts/login/$",
+            r"^accounts/login/local/$",
             HTMXAwareLoginView.as_view(authentication_form=MyAuthenticationForm),
+            name="local_login_form",
+        ),
+        url(
+            r"^accounts/login/$",
+            InstitutionalLoginView.as_view(),
             name="login_form",
         ),
-        url(r"^logout/$", login_required(_LogoutView.as_view()), name="logout"),
+        url(
+            r"^logout/$",
+            login_required(BppOIDCAwareLogoutView.as_view()),
+            name="logout",
+        ),
     ]
-else:
+elif apps.is_installed("microsoft_auth"):
+    #
+    # Logowanie instytucjonalne przez Microsoft (globalne, jak dotąd): domyślne
+    # logowanie odbija na Microsoft, formularz BPP osobno pod local_login_form.
+    #
     from django_bpp.views import MicrosoftLogoutView
 
     urlpatterns += [
@@ -437,6 +451,18 @@ else:
             MicrosoftLogoutView.as_view(),
             name="logout",
         ),
+    ]
+else:
+    #
+    # Brak logowania instytucjonalnego — własne logowanie hasłem z front-endu.
+    #
+    urlpatterns += [
+        url(
+            r"^accounts/login/$",
+            HTMXAwareLoginView.as_view(authentication_form=MyAuthenticationForm),
+            name="login_form",
+        ),
+        url(r"^logout/$", login_required(LogoutView.as_view()), name="logout"),
     ]
 
 if apps.is_installed("password_policies"):

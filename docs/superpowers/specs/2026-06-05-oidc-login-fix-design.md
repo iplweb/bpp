@@ -59,16 +59,40 @@ Logowanie OIDC (Keycloak, realm KA) nie działa. Z logów:
   odporne na wersje). Efekt: nieudane logowanie OAuth jest audytowane czysto,
   bez 500. Bez własnego widoku callbacka, bez `except KeyError`.
 
-### 3. Menu + routing — `top_bar.html`, `django_bpp/urls.py`, `registration/login.html`
-- `urls.py`: nowa gałąź gdy OIDC włączone (a Microsoft nie) — lustro gałęzi
-  Microsoftu: `local_login_form` (formularz BPP), `login_form` →
-  `RedirectView(pattern_name="oidc_authentication_init", query_string=True)`,
-  `logout` = `BppOIDCAwareLogoutView`.
-- `top_bar.html`: warunek `microsoft_login_enabled` → `microsoft_login_enabled
-  or oidc_login_enabled`; „logowanie instytucjonalne" celuje w
-  `bpp:microsoft_auth_redirect` albo `oidc_authentication_init` zależnie od
-  tego, co włączone; „logowanie BPP" → `local_login_form`.
+### 3. Menu + routing — PER-UCZELNIA (multi-hosted)
+
+Uzupełnienie po analizie: jeden proces obsługuje wiele uczelni po domenie
+(`SiteResolutionMiddleware` → `request._uczelnia`), ale OIDC to **jeden realm
+na proces** (mozilla czyta globalne `OIDC_RP_*`). Microsoft jest globalny i nie
+ma per-uczelnia bindingu. Decyzja usera: **gateuj OIDC po skrócie uczelni,
+Microsoft zostaw globalny**. Precedencja: OIDC (per-uczelnia) > Microsoft
+(globalny) > formularz BPP.
+
+- `oidc_integration/access.py` — `oidc_enabled_for_request(request)`: wspólne
+  źródło prawdy dla menu i routingu. OIDC wł. + brak skrótu → globalnie
+  (instalacja jedno-uczelniana); skrót ustawiony → tylko gdy
+  `request._uczelnia.skrot == OIDC_LOGIN_SKROT`.
+- `bpp/context_processors/oidc.py` — `oidc_login_enabled` liczone per-request
+  przez `oidc_enabled_for_request` (krótkie spięcie gdy OIDC wyłączone).
+- `django_bpp/views.py` — `InstitutionalLoginView` (używany jako `login_form`):
+  OIDC (jeśli dotyczy uczelni) → redirect na `oidc_authentication_init`
+  (z `?next`); inaczej Microsoft (jeśli zainstalowany, globalnie); inaczej
+  formularz BPP. Może współistnieć z `microsoft_auth` w jednym procesie.
+- `django_bpp/urls.py`: gdy `oidc_integration` zainstalowane → `login_form` =
+  `InstitutionalLoginView`, `local_login_form` = formularz BPP, `logout` =
+  `BppOIDCAwareLogoutView`. Gdy tylko `microsoft_auth` → gałąź Microsoft jak
+  dotąd. Gdy nic → tylko logowanie lokalne.
+- `top_bar.html`: warunek `microsoft_login_enabled or oidc_login_enabled`;
+  „logowanie instytucjonalne" celuje w `oidc_authentication_init` gdy
+  `oidc_login_enabled`, inaczej `bpp:microsoft_auth_redirect`; „logowanie BPP"
+  → `local_login_form`.
 - `registration/login.html`: usunąć przycisk OIDC spod formularza.
+
+Znane ograniczenie (poza zakresem): w procesie OIDC+Microsoft jednocześnie
+wylogowanie sesji Microsoft idzie standardowym Django logout (bez provider
+logout do Microsoftu). Guard easyaudit aktywny tylko gdy `oidc_integration`
+zainstalowane (czyli gdy OIDC skonfigurowane) — to wystarcza dla zgłoszonego
+buga OIDC.
 
 ### 4. Testy (TDD)
 - backend: `get_userinfo` normalizuje `mail`→`email`; `verify_claims`

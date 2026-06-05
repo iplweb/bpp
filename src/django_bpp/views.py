@@ -1,6 +1,7 @@
 import logging
 from urllib.parse import urlencode
 
+from django.apps import apps
 from django.conf import settings
 from django.contrib.auth import BACKEND_SESSION_KEY, logout
 from django.contrib.auth.views import LoginView
@@ -42,6 +43,46 @@ class HTMXAwareLoginView(LoginView):
             return response
 
         return super().get(request, *args, **kwargs)
+
+
+def _redirect_preserving_next(request, base_url):
+    nxt = request.GET.get("next")
+    if nxt:
+        return HttpResponseRedirect(f"{base_url}?{urlencode({'next': nxt})}")
+    return HttpResponseRedirect(base_url)
+
+
+class InstitutionalLoginView(View):
+    """Per-uczelnia dyspozytor logowania (używany jako ``login_form``).
+
+    Precedencja: OIDC (gateowany po skrócie uczelni) > Microsoft (globalny) >
+    formularz BPP. Dzięki temu w instalacji wielouczelnianej domena uczelni z
+    OIDC odbija na Keycloaka, domeny pod Microsoftem na Microsoft, a reszta
+    dostaje lokalny formularz — wszystko z jednego procesu, decydowane na
+    podstawie ``request._uczelnia``.
+
+    ``oidc_enabled_for_request`` to wspólne źródło prawdy z context processorem
+    rysującym menu, więc to, co widać, zgadza się z tym, dokąd kieruje login.
+    """
+
+    def dispatch(self, request, *args, **kwargs):
+        from oidc_integration.access import oidc_enabled_for_request
+
+        if oidc_enabled_for_request(request):
+            return _redirect_preserving_next(
+                request, reverse("oidc_authentication_init")
+            )
+        if apps.is_installed("microsoft_auth"):
+            return _redirect_preserving_next(
+                request, reverse("microsoft_auth:to-auth-redirect")
+            )
+
+        # Brak logowania instytucjonalnego dla tej uczelni — formularz BPP.
+        from bpp.forms import MyAuthenticationForm
+
+        return HTMXAwareLoginView.as_view(authentication_form=MyAuthenticationForm)(
+            request, *args, **kwargs
+        )
 
 
 class MicrosoftLogoutView(View):
