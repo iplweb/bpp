@@ -75,3 +75,48 @@ def test_stale_id_falls_through_to_uczelnia_default(session, uczelnia):
 
     assert result is not None
     assert result.uczelnia_id == uczelnia.pk
+
+
+# ============================================================================
+# Regresja end-to-end: dokładnie ścieżka z produkcyjnego tracebacku.
+#
+# Test kontraktowy producent→konsument, którego BRAK pozwolił bugowi wejść na
+# produkcję: formularz (producent) i kroki importu (konsument) były testowane
+# OSOBNO, nikt nie przepuścił configu z formularza przez
+# ``PublicationImporter._setup_uczelnia_and_jednostka`` (metoda, która rzucała
+# ``ValueError`` — wcześniej 0 testów). Resolver-testy wyżej łapią dryf nazw
+# kluczy, ale dopiero ten test pilnuje, że SAM krok importu nie przestanie
+# używać resolvera.
+# ============================================================================
+
+
+@pytest.mark.django_db
+def test_publication_import_setup_resolves_form_choice_without_institution_step(
+    django_user_model,
+):
+    """Import od źródeł (z pominięciem institution_setup) NIE rzuca ValueError.
+
+    Reprodukuje produkcyjny traceback: sesja ma w configu WYŁĄCZNIE klucz
+    formularza ``jednostka_domyslna_id`` (krok ``institution_setup`` — jedyny
+    historyczny zapis ``default_jednostka_id`` — nie biegł). Przed poprawką
+    ``_setup_uczelnia_and_jednostka`` rzucał "Nie znaleziono domyślnej
+    jednostki dla importu publikacji".
+    """
+    from pbn_api.models import Institution
+    from pbn_import.utils.publication_import import PublicationImporter
+
+    uczelnia = baker.make(Uczelnia, pbn_uid=baker.make(Institution))
+    jednostka = baker.make(Jednostka, skupia_pracownikow=True, uczelnia=uczelnia)
+    user = baker.make(django_user_model)
+    # config dokładnie taki, jaki zapisywał formularz PRZED poprawką —
+    # tylko klucz ``jednostka_domyslna_id``, bez kanonicznego ``default_*``.
+    session = baker.make(
+        ImportSession, user=user, config={"jednostka_domyslna_id": jednostka.pk}
+    )
+
+    importer = PublicationImporter(session, client=None, uczelnia=uczelnia)
+
+    result = importer._setup_uczelnia_and_jednostka()
+
+    assert result == uczelnia
+    assert importer.default_jednostka == jednostka
