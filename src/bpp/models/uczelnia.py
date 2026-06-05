@@ -38,6 +38,11 @@ class UczelniaManager(models.Manager):
     # requestu (domena → Site → Uczelnia). Gdy się NIE DA, jedyny dozwolony
     # fallback to „jedyna-albo-None"/„jedyna-albo-fail" — NIGDY zgadywanie
     # pierwszej-z-brzegu (to był footgun ``get_default()``, usunięty).
+    #
+    # UWAGA przy merge z dev: dev przywrócił ``get_default``/``_get_default``
+    # z DeprecationWarning (8c6eb3efd). W tej gałęzi get_default NIE WRACA —
+    # guard test ``test_get_default_usuniete_na_trwale`` tego pilnuje. Wołający
+    # mają używać ``get_for_request`` / ``get_single_uczelnia_or_{none,fail}``.
 
     def get_single_uczelnia_or_none(self):
         """Jedyna uczelnia w systemie albo ``None`` (gdy 0 lub >1).
