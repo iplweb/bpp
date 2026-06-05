@@ -257,7 +257,7 @@
             }
 
             function openDjangoqlDrawer() {
-                var queryEl = document.getElementById('djangoqlQuery');
+                var queryEl = document.getElementById('djangoqlPretty');
                 if (!queryEl) { return; }  // drawer niedostepny dla tego usera
                 var payload = formAsJSON();  // JSON string
                 var body = new URLSearchParams();
@@ -273,7 +273,9 @@
                     if (!r.ok) { throw new Error('HTTP ' + r.status); }
                     return r.json();
                 }).then(function (data) {
-                    document.getElementById('djangoqlQuery').value = data.query || '';
+                    if (window.djangoqlRenderPretty) {
+                        window.djangoqlRenderPretty(data.query || '');
+                    }
                     document.getElementById('djangoqlOpenEditor').href = data.editor_url;
                     var w = document.getElementById('djangoqlWarnings');
                     w.innerHTML = '';
@@ -301,9 +303,11 @@
             }
 
             function copyDjangoqlQuery(btn) {
-                var ta = document.getElementById('djangoqlQuery');
-                if (!ta) { return; }
-                navigator.clipboard.writeText(ta.value).then(function () {
+                var pre = document.getElementById('djangoqlPretty');
+                var raw = document.getElementById('djangoqlQueryRaw');
+                var text = (pre && pre.textContent) || (raw && raw.value) || '';
+                if (!text) { return; }
+                navigator.clipboard.writeText(text).then(function () {
                     btn.classList.add('success');
                 });
             }
@@ -314,7 +318,9 @@
             <div class="reveal" id="djangoqlDrawer" data-reveal aria-labelledby="djangoqlDrawerTitle">
                 <h4 id="djangoqlDrawerTitle">Zapytanie DjangoQL</h4>
                 <p class="help-text">Równoważne zapytanie nad modelem Rekord. Możesz je skopiować lub otworzyć w edytorze zapytań.</p>
-                <textarea id="djangoqlQuery" rows="4" readonly spellcheck="false" style="font-family:monospace;"></textarea>
+                <pre class="djangoql-pretty"><code id="djangoqlPretty"></code></pre>
+                {# Surowe (jednoliniowe) zapytanie — fallback do kopiowania/edytora. #}
+                <input type="hidden" id="djangoqlQueryRaw" value="">
                 <div id="djangoqlWarnings" class="callout warning" style="display:none"></div>
                 <div class="button-group">
                     <button type="button" class="button" id="djangoqlCopy">
@@ -328,6 +334,41 @@
                     <span aria-hidden="true">&times;</span>
                 </button>
             </div>
+            <script src="{% static 'djangoql/js/completion.js' %}"></script>
+            <script src="{% static 'bpp/js/djangoql-pretty.js' %}"></script>
+            <script>
+            (function () {
+                var _dql = null;
+                function getLexer() {
+                    if (_dql) { return _dql.lexer; }
+                    var ta = document.getElementById('djangoqlLexerProbe');
+                    if (!ta) {
+                        ta = document.createElement('textarea');
+                        ta.id = 'djangoqlLexerProbe';
+                        ta.style.display = 'none';
+                        document.body.appendChild(ta);
+                    }
+                    try {
+                        _dql = DjangoQL.init({
+                            introspections: "{% url 'bpp:zapytanie_introspect' 'rekord' %}",
+                            selector: ta,
+                            autoResize: false
+                        });
+                    } catch (e) { return null; }
+                    return _dql.lexer;
+                }
+                window.djangoqlRenderPretty = function (query) {
+                    var raw = document.getElementById('djangoqlQueryRaw');
+                    var pre = document.getElementById('djangoqlPretty');
+                    if (raw) { raw.value = query || ''; }
+                    if (!pre) { return; }
+                    var lexer = getLexer();
+                    pre.innerHTML = (lexer && window.djangoqlPretty)
+                        ? window.djangoqlPretty.formatAndHighlight(query || '', lexer)
+                        : (query || '');
+                };
+            })();
+            </script>
         {% endif %}
     </form>
     <hr size="1"/>
@@ -338,6 +379,19 @@
             min-height: 400px;
             border: none;
         }
+        .djangoql-pretty {
+            font-family: monospace; white-space: pre; overflow-x: auto;
+            background: #f6f6f6; padding: .6rem; border-radius: 3px;
+            line-height: 1.5; margin-bottom: 1rem;
+        }
+        .dql-keyword { color: #8959a8; font-weight: bold; }
+        .dql-op { color: #3e999f; }
+        .dql-name { color: #4271ae; }
+        .dql-dot { color: #999; }
+        .dql-str { color: #718c00; }
+        .dql-num { color: #f5871f; }
+        .dql-bool, .dql-none { color: #c82829; }
+        .dql-paren { color: #555; }
     </style>
     <iframe src="./live-results/" width="100%" id="if"
             name="list_frame" scrolling="no"
