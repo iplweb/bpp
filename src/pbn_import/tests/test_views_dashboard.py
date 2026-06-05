@@ -340,8 +340,15 @@ class TestStartImportView:
         self, uczelnia, django_user_model
     ):
         """Entrypoint MUSI przekazać id uczelni z requestu do zadania w tle."""
+        from bpp.models import Jednostka
+
         uczelnia.pbn_integracja = True
+        # Test dotyczy przepływu uczelnia_id z requestu, nie wydziałów — wyłączamy
+        # wymóg wydziału, by walidacja domyślnej jednostki/wydziału nie blokowała
+        # startu importu (jednostkę domyślną podajemy niżej).
+        uczelnia.uzywaj_wydzialow = False
         uczelnia.save()
+        jednostka = baker.make(Jednostka, skupia_pracownikow=True, uczelnia=uczelnia)
 
         client = Client()
         user = baker.make(django_user_model, is_superuser=True)
@@ -354,7 +361,10 @@ class TestStartImportView:
         ):
             mock_task.delay.return_value = MagicMock(id="task-123")
 
-            client.post(reverse("pbn_import:start"), {"initial": "on"})
+            client.post(
+                reverse("pbn_import:start"),
+                {"initial": "on", "jednostka_domyslna_id": jednostka.pk},
+            )
 
         mock_task.delay.assert_called_once()
         call = mock_task.delay.call_args
