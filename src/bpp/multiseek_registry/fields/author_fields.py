@@ -62,6 +62,12 @@ class SlowaKluczoweQueryObject(BppMultiseekVisibilityMixin, AutocompleteQueryObj
 
         return ret
 
+    def to_djangoql(self, value, operation):
+        # Rekord -> taggit.tag (relacja slowa_kluczowe); match po nazwie tagu.
+        op = "!=" if str(operation) in {str(o) for o in DIFFERENT_ALL} else "="
+        label = str(value).replace("\\", "\\\\").replace('"', '\\"')
+        return f'slowa_kluczowe.name {op} "{label}"'
+
 
 class NazwiskoIImieQueryObject(
     BppMultiseekVisibilityMixin, ForeignKeyDescribeMixin, AutocompleteQueryObject

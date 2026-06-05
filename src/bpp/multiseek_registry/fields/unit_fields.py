@@ -249,3 +249,18 @@ class RodzajJednostkiQueryObject(BppMultiseekVisibilityMixin, ValueListQueryObje
         if operation == DIFFERENT:
             return ~q
         return q
+
+    def to_djangoql(self, value, operation):
+        mapa = {
+            Jednostka.RODZAJ_JEDNOSTKI.NORMALNA.label: (
+                Jednostka.RODZAJ_JEDNOSTKI.NORMALNA.value
+            ),
+            Jednostka.RODZAJ_JEDNOSTKI.KOLO_NAUKOWE.label: (
+                Jednostka.RODZAJ_JEDNOSTKI.KOLO_NAUKOWE.value
+            ),
+        }
+        kod = mapa.get(value)
+        if kod is None:
+            return None
+        op = "!=" if str(operation) == str(DIFFERENT) else "="
+        return f'autorzy.jednostka.rodzaj_jednostki {op} "{kod}"'

@@ -244,3 +244,16 @@ class RodzajKonferenckjiQueryObject(BppMultiseekVisibilityMixin, ValueListQueryO
         if operation == DIFFERENT:
             return ~q
         return q
+
+    _DJANGOQL_TK = {
+        "krajowa": Konferencja.TK_KRAJOWA,
+        "międzynarodowa": Konferencja.TK_MIEDZYNARODOWA,
+        "lokalna": Konferencja.TK_LOKALNA,
+    }
+
+    def to_djangoql(self, value, operation):
+        tk = self._DJANGOQL_TK.get(value)
+        if tk is None:
+            return None
+        op = "!=" if str(operation) in {str(o) for o in DIFFERENT_ALL} else "="
+        return f"konferencja.typ_konferencji {op} {tk}"

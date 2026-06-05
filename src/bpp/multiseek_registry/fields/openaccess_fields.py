@@ -107,6 +107,7 @@ class ZewnetrznaBazaDanychQueryObject(
 ):
     label = "Zewnętrzna baza danych"
     field_name = "zewn_baza_danych"
+    djangoql_field_name = "zewnetrzne_bazy__baza"
     type = AUTOCOMPLETE
     ops = [
         EQUAL_FEMALE,
