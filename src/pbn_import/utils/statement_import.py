@@ -2,7 +2,7 @@
 
 from django.contrib.contenttypes.models import ContentType
 
-from bpp.models import Jednostka, Rekord
+from bpp.models import Rekord
 from pbn_api.models import OswiadczenieInstytucji
 from pbn_integrator.utils import (
     integruj_oswiadczenia_z_instytucji,
@@ -113,11 +113,11 @@ class StatementImporter(ImportStepBase):
             )
             return {"statements_imported": False, "reason": "No Uczelnia PBN UID"}
 
-        # Pobierz jednostkę domyślną z konfiguracji sesji
-        default_jednostka = None
-        jednostka_id = self.session.config.get("default_jednostka_id")
-        if jednostka_id:
-            default_jednostka = Jednostka.objects.filter(pk=jednostka_id).first()
+        # Domyślną jednostkę ustalił już resolver wywołany przez
+        # ``_setup_uczelnia_and_jednostka`` powyżej — reużywamy jej zamiast
+        # czytać config drugi raz (czytanie wyłącznie ``default_jednostka_id``
+        # gubiło wybór z formularza zapisany pod ``jednostka_domyslna_id``).
+        default_jednostka = self.publication_importer.default_jednostka
 
         # Step 2: Download missing publications in batch (NEW STEP)
         self.update_progress(1, 3, "Pobieranie brakujących publikacji")

@@ -91,9 +91,18 @@ class ImportDashboardView(LoginRequiredMixin, ImportPermissionMixin, TemplateVie
         # Sprawdź czy użytkownik ma ważny token PBN
         context["pbn_token_valid"] = self.request.user.pbn_token_possibly_valid()
 
-        # Pobierz wszystkie wydziały i jednostki
-        wydzialy = Wydzial.objects.all()
-        jednostki = Jednostka.objects.filter(skupia_pracownikow=True)
+        # Pobierz wydziały i jednostki — multi-hosted: WYŁĄCZNIE tej uczelni,
+        # z której idzie request. Bez filtra formularz oferował encje obcych
+        # uczelni, co prowadziło do startu importu z domyślną jednostką spoza
+        # właściwej uczelni. Bez uczelni (brak kontekstu) nie ma czego importować.
+        if uczelnia:
+            wydzialy = Wydzial.objects.filter(uczelnia=uczelnia)
+            jednostki = Jednostka.objects.filter(
+                skupia_pracownikow=True, uczelnia=uczelnia
+            )
+        else:
+            wydzialy = Wydzial.objects.none()
+            jednostki = Jednostka.objects.none()
 
         # Jeśli brak wydziałów I brak jednostek - utwórz domyślne
         if not wydzialy.exists() and not jednostki.exists() and uczelnia:
@@ -104,9 +113,11 @@ class ImportDashboardView(LoginRequiredMixin, ImportPermissionMixin, TemplateVie
                 jednostka_domyslna.wydzial = wydzial_domyslny
                 jednostka_domyslna.skupia_pracownikow = True
                 jednostka_domyslna.save(update_fields=["wydzial", "skupia_pracownikow"])
-            # Odśwież querysets
-            wydzialy = Wydzial.objects.all()
-            jednostki = Jednostka.objects.filter(skupia_pracownikow=True)
+            # Odśwież querysets (wciąż zawężone do uczelni kontekstu)
+            wydzialy = Wydzial.objects.filter(uczelnia=uczelnia)
+            jednostki = Jednostka.objects.filter(
+                skupia_pracownikow=True, uczelnia=uczelnia
+            )
 
         context["wydzialy"] = wydzialy
         context["jednostki"] = jednostki
@@ -170,6 +181,24 @@ class StartImportView(LoginRequiredMixin, ImportPermissionMixin, View):
         if uzywaj_wydzialow and wydzial is None:
             errors.append("Wybierz domyślny wydział przed rozpoczęciem importu.")
 
+        # Gate-check multi-hosted: domyślna jednostka i wydział MUSZĄ należeć do
+        # tej samej uczelni, z której idzie request (i do której pójdzie import).
+        # Inaczej import przypisywałby autorów/prace do encji obcej uczelni —
+        # cichy wyciek danych między tenantami. Egzekwujemy nawet gdy formularz
+        # został zmanipulowany (encje zawężamy też w GET, ale POST musi się bronić
+        # sam — nie ufamy danym z requestu).
+        if uczelnia is not None:
+            if jednostka is not None and jednostka.uczelnia_id != uczelnia.pk:
+                errors.append(
+                    "Wybrana domyślna jednostka należy do innej uczelni niż ta, "
+                    "z której uruchamiasz import."
+                )
+            if wydzial is not None and wydzial.uczelnia_id != uczelnia.pk:
+                errors.append(
+                    "Wybrany domyślny wydział należy do innej uczelni niż ta, "
+                    "z której uruchamiasz import."
+                )
+
         if errors:
             for error in errors:
                 messages.error(request, error)
@@ -194,6 +223,14 @@ class StartImportView(LoginRequiredMixin, ImportPermissionMixin, View):
                 "wydzial_domyslny_id": wydzial.pk if wydzial else None,
                 "jednostka_domyslna": jednostka.nazwa if jednostka else "",
                 "jednostka_domyslna_id": jednostka.pk if jednostka else None,
+                # Kanoniczne klucze czytane przez kroki importu
+                # (publication_import / statement_import) ORAZ zapisywane przez
+                # krok institution_setup. Zapisujemy je już TU, na formularzu, by
+                # import startujący od późniejszego kroku (np. od źródeł, z
+                # pominięciem institution_setup) i tak znał domyślną jednostkę.
+                # To naprawia ValueError "Nie znaleziono domyślnej jednostki".
+                "default_jednostka_id": jednostka.pk if jednostka else None,
+                "wydzial_id": wydzial.pk if wydzial else None,
             }
         )
 

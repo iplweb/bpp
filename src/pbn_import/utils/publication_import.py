@@ -2,7 +2,6 @@
 
 from bpp.models import (
     Dyscyplina_Naukowa,
-    Jednostka,
     Rekord,
     Rodzaj_Zrodla,
     Wersja_Tekstu_OpenAccess,
@@ -17,6 +16,7 @@ from pbn_integrator.utils import (
 )
 
 from .base import CancelledException, ImportStepBase
+from .institution_import import resolve_default_jednostka
 
 
 class PublicationImporter(ImportStepBase):
@@ -84,13 +84,13 @@ class PublicationImporter(ImportStepBase):
             )
             return None
 
-        jednostka_id = self.session.config.get("default_jednostka_id")
-        if jednostka_id:
-            self.default_jednostka = Jednostka.objects.get(pk=jednostka_id)
-        else:
-            self.default_jednostka = Jednostka.objects.filter(
-                nazwa="Jednostka Domyślna"
-            ).first()
+        # Multi-hosted: domyślna jednostka pochodzi z wyboru na formularzu
+        # nowego importu (config) albo — gdy go brak — z uczelnia-aware
+        # find-or-create. NIE zgadujemy już po samej nazwie bez filtra uczelni.
+        # Działa też gdy import startuje od późniejszego kroku (np. źródeł),
+        # z pominięciem kroku institution_setup, który dawniej był JEDYNYM
+        # miejscem zapisującym ``default_jednostka_id``.
+        self.default_jednostka = resolve_default_jednostka(self.session, uczelnia)
 
         if not self.default_jednostka:
             raise ValueError(

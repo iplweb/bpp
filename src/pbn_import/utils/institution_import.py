@@ -76,6 +76,37 @@ def znajdz_lub_utworz_jednostke_domyslna(uczelnia, nazwa_domyslna="Jednostka Dom
     )
 
 
+def resolve_default_jednostka(session, uczelnia):
+    """Ustal domyślną jednostkę dla sesji importu (multi-hosted).
+
+    Kolejność prób — pierwsze trafienie wygrywa:
+
+    1. ``config["default_jednostka_id"]`` — kanoniczny klucz zapisywany przez
+       ``InstitutionImporter`` (krok ``institution_setup``) ORAZ przez formularz
+       nowego importu (``StartImportView``).
+    2. ``config["jednostka_domyslna_id"]`` — klucz historycznie zapisywany przez
+       formularz. Zostawiony jako fallback dla sesji utworzonych przed
+       ujednoliceniem kluczy (kompatybilność wsteczna).
+    3. uczelnia-aware ``znajdz_lub_utworz_jednostke_domyslna(uczelnia)`` —
+       find-or-create domyślnej jednostki NALEŻĄCEJ do ``uczelnia``. Zastępuje
+       dawny ślepy fallback ``filter(nazwa="Jednostka Domyślna")`` (dokładne
+       dopasowanie nazwy, bez filtra uczelni — w multi-hosted potrafił trafić
+       w cudzą jednostkę albo zwrócić ``None`` i wywalić import).
+
+    Przy podanej ``uczelnia`` zawsze zwraca Jednostkę (nigdy ``None``).
+    """
+    config = session.config or {}
+    for key in ("default_jednostka_id", "jednostka_domyslna_id"):
+        jednostka_id = config.get(key)
+        if jednostka_id:
+            jednostka = Jednostka.objects.filter(pk=jednostka_id).first()
+            if jednostka is not None:
+                return jednostka
+
+    jednostka, _ = znajdz_lub_utworz_jednostke_domyslna(uczelnia)
+    return jednostka
+
+
 class InstitutionImporter(ImportStepBase):
     """Setup default institutions and departments"""
 
