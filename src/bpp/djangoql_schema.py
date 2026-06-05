@@ -23,7 +23,7 @@ from django.db.models import Q
 from django.utils.html import strip_tags
 from djangoql.extras import AutocompleteField, ExtrasSchema
 
-from bpp.models import Jednostka
+from bpp.models import Charakter_Formalny, Jednostka
 
 #: Pola-etykiety wg priorytetu — czym opisać i po czym szukać obiekt w pickerze.
 #: Opis bibliograficzny jako pierwszy: dla publikacji jest najczytelniejszy.
@@ -52,6 +52,8 @@ _REL_SUFFIX = "__rel"
 _SKIP_FK = ("rekord",)
 #: Wirtualne pole: picker po Jednostce dopasowujący rodzinę MPTT.
 _SUBUNITS_FIELD = "jednostka_z_podjednostkami__rel"
+#: Wirtualne pole: picker po Charakterze Formalnym dopasowujący MPTT-descendants.
+_CHARAKTER_SUB_FIELD = "charakter_z_podrzednymi__rel"
 
 
 def _field_names(model):
@@ -133,6 +135,27 @@ class JednostkaZPodjednostkamiField(AutocompleteField):
         return ~q if operator in ("!=", "not in") else q
 
 
+class CharakterZPodrzednymiField(AutocompleteField):
+    """Picker po Charakter_Formalny: dopasowuje rekordy o tym charakterze ORAZ
+    wszystkich potomkach w drzewie MPTT (sam + descendants).
+
+    Odwzorowuje CharakterFormalnyQueryObject.real_query:
+        Q(charakter_formalny__in=value.get_descendants(include_self=True))
+    """
+
+    def get_lookup(self, path, operator, value):
+        parsed = self.parse_id(value)
+        if not isinstance(parsed, int):
+            q = Q(charakter_formalny__nazwa__icontains=str(value))
+            return ~q if operator in ("!=", "not in") else q
+        try:
+            ch = Charakter_Formalny.objects.get(pk=parsed)
+        except Charakter_Formalny.DoesNotExist:
+            return Q() if operator in ("!=", "not in") else Q(pk__in=[])
+        q = Q(charakter_formalny__in=ch.get_descendants(include_self=True))
+        return ~q if operator in ("!=", "not in") else q
+
+
 def _has_autorzy_jednostka(model):
     """True, gdy model ma odwrotną relację 'autorzy' z FK 'jednostka'
     (Rekord/cache)."""
@@ -148,6 +171,15 @@ def _has_autorzy_jednostka(model):
     }
 
 
+def _has_charakter_formalny(model):
+    """True, gdy model ma FK 'charakter_formalny' (Rekord/cache)."""
+    try:
+        f = model._meta.get_field("charakter_formalny")
+    except FieldDoesNotExist:
+        return False
+    return getattr(f, "many_to_one", False)
+
+
 class RelPickerSchemaMixin:
     """Mixin auto-generujący pickery ``<fk>__rel`` (patrz docstring modułu)."""
 
@@ -156,6 +188,8 @@ class RelPickerSchemaMixin:
         fields += [f.name + _REL_SUFFIX for f in _picker_fks(model)]
         if _has_autorzy_jednostka(model):
             fields.append(_SUBUNITS_FIELD)
+        if _has_charakter_formalny(model):
+            fields.append(_CHARAKTER_SUB_FIELD)
         return fields
 
     def get_field_instance(self, model, field_name):
@@ -166,6 +200,14 @@ class RelPickerSchemaMixin:
                 nullable=True,
                 queryset=_visible_qs(Jednostka),
                 search_fields=_label_fields(Jednostka),
+            )
+        if field_name == _CHARAKTER_SUB_FIELD:
+            return CharakterZPodrzednymiField(
+                model=model,
+                name=_CHARAKTER_SUB_FIELD,
+                nullable=True,
+                queryset=_visible_qs(Charakter_Formalny),
+                search_fields=_label_fields(Charakter_Formalny),
             )
         if field_name.endswith(_REL_SUFFIX):
             fk_name = field_name[: -len(_REL_SUFFIX)]
