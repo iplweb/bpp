@@ -152,9 +152,10 @@ def test_filtr_link_do_pi_przekazuje_uczelnia(uczelnia):
     v = _make_v2(objectId, uczelnia=uczelnia)
 
     link = link_do_pi_filter(objectId, uczelnia)
+    parsed = urlparse(link)
 
     assert link is not None
-    assert "pbn-filtr.example.com" in link
+    assert parsed.hostname == "pbn-filtr.example.com"
     assert str(v.pk) in link
 
 
