@@ -112,6 +112,13 @@ def is_valid_rekord_djangoql(fragment):
     return True
 
 
+def _orm_name(field):
+    """Realna ścieżka ORM pola: djangoql_field_name (override) albo field_name."""
+    return getattr(field, "djangoql_field_name", None) or getattr(
+        field, "field_name", None
+    )
+
+
 def _autocomplete_leaf(field, value, operation):
     """value to pk; resolwujemy obiekt i emitujemy '<sciezka>__rel = "L [pk]"'."""
     op = str(operation)
@@ -135,7 +142,10 @@ def _autocomplete_leaf(field, value, operation):
         return None
     if obj is None:
         return None
-    rel_path = _orm_path_to_djangoql(field.field_name) + "__rel"
+    name = _orm_name(field)
+    if not name:
+        return None
+    rel_path = _orm_path_to_djangoql(name) + "__rel"
     label = str(obj).replace("\\", "\\\\").replace('"', '\\"')
     return f'{rel_path} {rel_op} "{label} [{obj.pk}]"'
 
@@ -155,7 +165,7 @@ def _default_leaf(field, value, operation):
     op = str(operation)
     if getattr(field, "type", None) == AUTOCOMPLETE:
         return _autocomplete_leaf(field, value, operation)
-    name = getattr(field, "field_name", None)
+    name = _orm_name(field)
     if not name:
         return None
     if op in range_operators():

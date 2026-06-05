@@ -345,3 +345,22 @@ def test_malformed_leaf_missing_keys_is_skipped():
     res = multiseek_form_to_djangoql(form, registry)
     assert res.query == "rok = 2020"
     assert len(res.warnings) == 1
+
+
+def test_orm_name_prefers_djangoql_field_name():
+    from bpp.multiseek_registry.djangoql_export import _orm_name
+
+    class F:
+        field_name = "wydzial"
+        djangoql_field_name = "autorzy__jednostka__wydzial"
+
+    assert _orm_name(F()) == "autorzy__jednostka__wydzial"
+
+
+def test_orm_name_falls_back_to_field_name():
+    from bpp.multiseek_registry.djangoql_export import _orm_name
+
+    class F:
+        field_name = "rok"
+
+    assert _orm_name(F()) == "rok"
