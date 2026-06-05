@@ -30,6 +30,7 @@ from .helpers import (
     przetworz_journal_issue,
     przetworz_metadane_konferencji,
     przetworz_slowa_kluczowe,
+    przetworz_tytuly,
 )
 
 # Re-export publisher handling
@@ -177,6 +178,7 @@ __all__ = [
     "przetworz_journal_issue",
     "przetworz_metadane_konferencji",
     "przetworz_slowa_kluczowe",
+    "przetworz_tytuly",
     # Publication imports
     "importuj_artykul",
     "importuj_ksiazke",

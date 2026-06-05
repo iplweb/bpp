@@ -10,6 +10,11 @@ from .abstracts import (
     BazaModeluStreszczen,
 )
 
+# Titles (multilingual)
+from .titles import (
+    BazaModeluTytulow,
+)
+
 # API Export
 from .api_export import (
     ModelOpcjonalnieNieEksportowanyDoAPI,
@@ -169,6 +174,7 @@ __all__ = [
     # Models and Mixins
     "BazaModeluOdpowiedzialnosciAutorow",
     "BazaModeluStreszczen",
+    "BazaModeluTytulow",
     "DodajAutoraMixin",
     "DwaTytuly",
     "LinkDoPBNMixin",

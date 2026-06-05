@@ -10,6 +10,7 @@ from bpp.models import (
     Tryb_OpenAccess_Wydawnictwo_Ciagle,
     Wydawnictwo_Ciagle,
     Wydawnictwo_Ciagle_Streszczenie,
+    Wydawnictwo_Ciagle_Tytul,
 )
 from pbn_api.client import PBNClient
 from pbn_api.models import Publication
@@ -30,6 +31,7 @@ from .helpers import (
     przetworz_journal_issue,
     przetworz_metadane_konferencji,
     przetworz_slowa_kluczowe,
+    przetworz_tytuly,
 )
 
 
@@ -116,14 +118,7 @@ def importuj_artykul(
 
     przetworz_metadane_konferencji(pbn_json, ret)
 
-    if "titles" in pbn_json:
-        titles = pbn_json.pop("titles")
-        try:
-            ret.tytul = titles.pop("eng")
-        except KeyError:
-            ret.tytul = titles.pop("pol")
-
-        assert_dictionary_empty(titles)
+    przetworz_tytuly(pbn_json, ret, Wydawnictwo_Ciagle_Tytul)
 
     assert_dictionary_empty(pbn_json)
     return ret
