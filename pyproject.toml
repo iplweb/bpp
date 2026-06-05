@@ -1,6 +1,6 @@
 [project]
 name = "bpp_iplweb"
-version = "202606.1378"
+version = "202606.1379"
 description = ""
 authors = [
     { name = "Michał Pasternak", email = "michal.dtz@gmail.com" }
@@ -217,7 +217,7 @@ include = [
 ]
 
 [tool.bumpver]
-current_version = "v202606.1378"
+current_version = "v202606.1379"
 version_pattern = "vYYYY0M.BUILD[-TAGNUM]"
 commit_message = "bump version {old_version} -> {new_version}"
 commit = true
@@ -486,7 +486,7 @@ dev = [
     # django-run-site: CLI orchestrator dev stack-u. Dawniej `manage.py run_site`
     # + helpery w `_run_site_helpers/`. Instalowany w dev-deps zeby `uv run run-site`
     # mialo dostep do CLI bez globalnego `uv tool install`. Konfiguracja: runsite.toml.
-    "django-run-site>=0.16.0",
+    "django-run-site>=0.16.1",
     # django-dev-helpers: autologin endpoint + dotfiles dla agentow LLM. Dawniej
     # `src/django_bpp/views_run_site_autologin.py`. Aktywuje sie tylko gdy run-site
     # ustawi DJANGO_DEV_HELPERS_ENABLED=1 — w produkcji no-op.
@@ -497,7 +497,7 @@ dev = [
 
 [tool.towncrier]
 package = "bpp"
-version = "202606.1378"
+version = "202606.1379"
 package_dir = "src"
 filename = "HISTORY.md"
 start_string = "<!-- towncrier release notes start -->\n"

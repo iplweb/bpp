@@ -2,6 +2,7 @@
 Struktura uczelni.
 """
 
+import warnings
 from typing import TYPE_CHECKING, Union
 
 from autoslug import AutoSlugField
@@ -30,6 +31,15 @@ if TYPE_CHECKING:
 
 class UczelniaManager(models.Manager):
     def get_default(self) -> Union["Uczelnia", None]:
+        warnings.warn(
+            "Uczelnia.objects.get_default jest przestarzałe (deprecated) i "
+            "wkrótce zostanie usunięte — nie używać.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        return self._get_default()
+
+    def _get_default(self) -> Union["Uczelnia", None]:
         try:
             return self.all().first()
         except ProgrammingError:
@@ -42,11 +52,11 @@ class UczelniaManager(models.Manager):
         if hasattr(request, "_uczelnia"):
             return request._uczelnia
 
-        return self.get_default()
+        return self._get_default()
 
     @cached_property
     def default(self):
-        return self.get_default()
+        return self._get_default()
 
     def do_roku_default(self=None, request=None):
         # Cienki delegator do funkcji modułowej `do_roku_default` (niżej).

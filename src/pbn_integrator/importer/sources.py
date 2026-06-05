@@ -80,14 +80,21 @@ def dopisz_jedno_zrodlo(pbn_journal, rodzaj_periodyk, dyscypliny_cache):
         Dyscyplina_Zrodla.objects.bulk_create(dyscypliny_zrodel, ignore_conflicts=True)
 
 
-def _process_journal_thread_safe(pbn_journal, rodzaj_periodyk, dyscypliny_cache):
-    """Thread-safe wrapper for processing a single journal."""
+def _process_journal_thread_safe(journal_id, rodzaj_periodyk, dyscypliny_cache):
+    """Thread-safe wrapper for processing a single journal.
+
+    Receives only the journal *id* and loads the full ``Journal`` (with its
+    heavy ``versions`` JSON) here, inside the worker thread, so the object is
+    freed as soon as the thread is done with it. Keeping at most
+    ``max_workers`` journals resident at once is what bounds peak memory.
+    """
     close_old_connections()
     try:
+        pbn_journal = Journal.objects.get(pk=journal_id)
         dopisz_jedno_zrodlo(pbn_journal, rodzaj_periodyk, dyscypliny_cache)
-        return {"success": True, "journal_id": pbn_journal.pk, "error": None}
+        return {"success": True, "journal_id": journal_id, "error": None}
     except Exception as e:
-        return {"success": False, "journal_id": pbn_journal.pk, "error": str(e)}
+        return {"success": False, "journal_id": journal_id, "error": str(e)}
     finally:
         close_old_connections()
 
@@ -100,15 +107,21 @@ def importuj_zrodla(max_workers=None, disable_threading=False):
     rodzaj_periodyk = Rodzaj_Zrodla.objects.get(nazwa="periodyk")
     dyscypliny_cache = {d.nazwa: d for d in Dyscyplina_Naukowa.objects.all()}
 
-    # Filter already imported - supports re-entrancy
+    # Filter already imported - supports re-entrancy.
+    # Gather only primary keys, never the full objects: each ``Journal`` row
+    # carries a large ``versions`` JSON blob, so materializing the whole table
+    # at once is what used to blow up memory. We load each journal lazily,
+    # inside the worker, where it is freed right after processing.
     imported_ids = Zrodlo.objects.filter(pbn_uid__isnull=False).values_list(
         "pbn_uid_id", flat=True
     )
-    journals = list(
-        Journal.objects.filter(status="ACTIVE").exclude(pk__in=Subquery(imported_ids))
+    journal_ids = list(
+        Journal.objects.filter(status="ACTIVE")
+        .exclude(pk__in=Subquery(imported_ids))
+        .values_list("pk", flat=True)
     )
 
-    if not journals:
+    if not journal_ids:
         return
 
     # Determine thread count
@@ -116,9 +129,13 @@ def importuj_zrodla(max_workers=None, disable_threading=False):
         max_workers = max(1, (os.cpu_count() or 4) * 3 // 4)
 
     if disable_threading or max_workers == 1:
-        # Sequential fallback
-        for journal in pbar(journals, label="Dopisywanie źródeł MNISW..."):
-            dopisz_jedno_zrodlo(journal, rodzaj_periodyk, dyscypliny_cache)
+        # Sequential fallback - load one journal at a time.
+        for journal_id in pbar(journal_ids, label="Dopisywanie źródeł MNISW..."):
+            dopisz_jedno_zrodlo(
+                Journal.objects.get(pk=journal_id),
+                rodzaj_periodyk,
+                dyscypliny_cache,
+            )
     else:
         # Parallel execution
         errors = []
@@ -126,11 +143,11 @@ def importuj_zrodla(max_workers=None, disable_threading=False):
             futures = {
                 executor.submit(
                     _process_journal_thread_safe,
-                    journal,
+                    journal_id,
                     rodzaj_periodyk,
                     dyscypliny_cache,
-                ): journal
-                for journal in journals
+                ): journal_id
+                for journal_id in journal_ids
             }
 
             for future in pbar(
