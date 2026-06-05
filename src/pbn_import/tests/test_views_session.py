@@ -136,17 +136,22 @@ class TestImportSessionDetailView:
         assert 'href="#log-panel"' in content
         assert reverse("pbn_import:log_download", args=[session.id]) in content
 
-    def test_detail_view_running_hides_log_tab(self, django_user_model):
-        """Running → brak zakładki „Log" i brak raw_log_text w kontekście."""
+    @pytest.mark.parametrize(
+        "status", ["completed", "failed", "cancelled", "running", "pending"]
+    )
+    def test_detail_view_shows_log_tab_for_every_status(
+        self, django_user_model, status
+    ):
+        """Zakładka „Log" widoczna dla KAŻDEGO statusu (log padłego = najcenniejszy)."""
         client = Client()
         user = baker.make(django_user_model, is_superuser=True)
-        session = baker.make(ImportSession, user=user, status="running")
+        session = baker.make(ImportSession, user=user, status=status)
         client.force_login(user)
 
         response = client.get(reverse("pbn_import:session_detail", args=[session.id]))
 
-        assert "raw_log_text" not in response.context
-        assert 'href="#log-panel"' not in response.content.decode("utf-8")
+        assert "raw_log_text" in response.context
+        assert 'href="#log-panel"' in response.content.decode("utf-8")
 
     def test_detail_view_calculates_duration(self, django_user_model):
         """Test detail view calculates session duration"""
@@ -269,15 +274,27 @@ class TestImportLogDownloadView:
 
         assert response.status_code == 403
 
-    def test_download_404_for_non_completed_session(self, django_user_model):
+    @pytest.mark.parametrize("status", ["failed", "cancelled", "running", "pending"])
+    def test_download_works_for_non_completed_session(self, django_user_model, status):
+        """Pobranie działa dla każdego statusu — log padłego importu jest kluczowy."""
         client = Client()
         user = baker.make(django_user_model, is_superuser=True)
         client.force_login(user)
-        session = baker.make(ImportSession, user=user, status="running")
+        session = baker.make(ImportSession, user=user, status=status)
+        baker.make(
+            ImportLog,
+            session=session,
+            level="error",
+            step="publication_import",
+            message="padło",
+            details={"exception": "ValueError"},
+        )
 
         response = client.get(reverse("pbn_import:log_download", args=[session.id]))
 
-        assert response.status_code == 404
+        assert response.status_code == 200
+        assert response["Content-Type"].startswith("text/plain")
+        assert "padło" in response.content.decode("utf-8")
 
 
 @pytest.mark.django_db

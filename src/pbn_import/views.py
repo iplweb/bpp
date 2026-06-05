@@ -8,7 +8,7 @@ from channels.layers import get_channel_layer
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin, PermissionRequiredMixin
 from django.db.models import Count
-from django.http import Http404, HttpResponse, JsonResponse
+from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
@@ -525,11 +525,10 @@ class ImportSessionDetailView(LoginRequiredMixin, ImportPermissionMixin, DetailV
         # Get configuration
         context["config"] = session.config
 
-        # Symulowany raw log (tekst) — tylko dla zakończonych importów; zakładka
-        # „Log" pokazuje go inline i daje pobranie. Budujemy go tu, żeby <pre>
-        # miało gotowy tekst bez dodatkowego zapytania HTMX.
-        if session.status == "completed":
-            context["raw_log_text"] = render_session_log_text(session)
+        # Symulowany raw log (tekst) — zakładka „Log" pokazuje go inline i daje
+        # pobranie. Budujemy go tu, żeby <pre> miało gotowy tekst bez dodatkowego
+        # zapytania HTMX. Dostępny dla każdego statusu (dla biegnącego = migawka).
+        context["raw_log_text"] = render_session_log_text(session)
 
         # Calculate duration - use model property which handles both completed
         # and running sessions
@@ -577,8 +576,9 @@ class ImportErrorLogsView(LoginRequiredMixin, ImportPermissionMixin, View):
 class ImportLogDownloadView(LoginRequiredMixin, ImportPermissionMixin, View):
     """Pobranie symulowanego raw logu tekstowego (błędy + ostrzeżenia).
 
-    Dostępne tylko dla zakończonych (``completed``) importów — tak samo jak
-    zakładka „Log" na stronie szczegółów sesji.
+    Dostępne dla sesji w dowolnym statusie (także nieudanej/anulowanej/
+    biegnącej) — log nieudanego importu jest najcenniejszy. Dla biegnącego
+    importu to migawka stanu z chwili żądania.
     """
 
     def get(self, request, pk):
@@ -586,9 +586,6 @@ class ImportLogDownloadView(LoginRequiredMixin, ImportPermissionMixin, View):
         # Użytkownik widzi tylko swoje sesje (chyba że superuser).
         if not request.user.is_superuser and session.user != request.user:
             return HttpResponse("Forbidden", status=403)
-
-        if session.status != "completed":
-            raise Http404("Log tekstowy dostępny tylko dla zakończonych importów")
 
         text = render_session_log_text(session)
         response = HttpResponse(text, content_type="text/plain; charset=utf-8")

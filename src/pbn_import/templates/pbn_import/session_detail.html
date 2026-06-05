@@ -143,9 +143,7 @@ document.addEventListener('click', function(e) {
     <ul class="tabs" data-tabs id="session-tabs">
         <li class="tabs-title is-active"><a href="#logs-panel" aria-selected="true">Logi</a></li>
         <li class="tabs-title"><a href="#errors-panel">Błędy i ostrzeżenia</a></li>
-        {% if session.status == 'completed' %}
         <li class="tabs-title"><a href="#log-panel">Log</a></li>
-        {% endif %}
         <li class="tabs-title">
             <a href="#inconsistencies-panel">
                 Nieścisłości
@@ -191,8 +189,8 @@ document.addEventListener('click', function(e) {
             </div>
         </div>
 
-        {% if session.status == 'completed' %}
         {# Raw log (symulowany) — błędy + ostrzeżenia jako tekst, z pobraniem. #}
+        {# Widoczny dla każdego statusu; dla biegnącego importu to migawka. #}
         <div class="tabs-panel" id="log-panel">
             <div class="pbn-import__detail-section">
                 <h2 class="pbn-import__section-title">
@@ -209,7 +207,6 @@ document.addEventListener('click', function(e) {
                 <pre class="pbn-import__log-pre--styled">{{ raw_log_text }}</pre>
             </div>
         </div>
-        {% endif %}
 
         <!-- Inconsistencies Panel -->
         <div class="tabs-panel" id="inconsistencies-panel">
