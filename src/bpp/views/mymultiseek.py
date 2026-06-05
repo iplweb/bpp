@@ -1,4 +1,5 @@
 import json
+import logging
 
 from django.db.models import Sum
 from django.http import HttpResponseBadRequest, JsonResponse
@@ -15,6 +16,8 @@ from bpp.models import Uczelnia
 from bpp.multiseek_registry import registry as multiseek_registry
 from bpp.multiseek_registry.djangoql_export import multiseek_form_to_djangoql
 from bpp.views.zapytanie import WprowadzanieDanychOrSuperuserMixin
+
+logger = logging.getLogger(__name__)
 
 PKT_WEWN = "pkt_wewn"
 PKT_WEWN_BEZ = "pkt_wewn_bez"
@@ -175,8 +178,9 @@ class MultiseekToDjangoQLView(WprowadzanieDanychOrSuperuserMixin, View):
             return HttpResponseBadRequest("Oczekiwano obiektu JSON.")
         try:
             result = multiseek_form_to_djangoql(form_json, multiseek_registry)
-        except (KeyError, TypeError, AttributeError) as exc:
-            return HttpResponseBadRequest(f"Niepoprawna struktura formularza: {exc}")
+        except (KeyError, TypeError, AttributeError):
+            logger.exception("Niepoprawna struktura formularza przesłana do MultiseekToDjangoQLView.")
+            return HttpResponseBadRequest("Niepoprawna struktura formularza.")
         return JsonResponse(
             {
                 "query": result.query,
