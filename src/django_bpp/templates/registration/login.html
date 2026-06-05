@@ -24,14 +24,6 @@
                     </a>
                 </div>
                 {% endif %}
-                {% if oidc_login_enabled %}
-                <div style="margin-top: 1rem;">
-                    <a href="{% url "oidc_authentication_init" %}{% if request.GET.next %}?next={{ request.GET.next|urlencode }}{% endif %}"
-                       class="button expanded">
-                        Zaloguj się przez {{ oidc_login_skrot|default:"OpenID" }}
-                    </a>
-                </div>
-                {% endif %}
                 {% if not microsoft_login_enabled %}
                 <a href="{% url "password_reset" %}">Zapomniałem/am hasła.</a>
                 {% endif %}

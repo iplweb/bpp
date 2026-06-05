@@ -1,5 +1,4 @@
 import logging
-import sys
 
 from django.conf import settings
 from mozilla_django_oidc.auth import OIDCAuthenticationBackend
@@ -7,34 +6,39 @@ from mozilla_django_oidc.auth import OIDCAuthenticationBackend
 logger = logging.getLogger(__name__)
 
 
-def _dump_claims_to_stderr(claims):
-    """Wypisz na stderr klucze i wartości claimów z Keycloaka.
+def _log_claims_debug(claims):
+    """Zaloguj klucze i wartości claimów z Keycloaka na poziomie DEBUG.
 
-    Cel discovery: zobaczyć, co realnie wystawia realm KA, bez interaktywnego
-    klikania — wynik ląduje w konsoli runservera / logu serwera. Banner ułatwia
-    wyłowienie tego w hałasie logów (`grep '\\[OIDC\\]'`).
+    Po fazie discovery nie zaśmiecamy już stderr bannerem — podgląd claimów
+    zostaje dostępny przez ``logging`` na DEBUG (np. do diagnostyki realmu),
+    ale domyślnie milczy. Guard na ``isEnabledFor`` unika składania stringów,
+    gdy DEBUG i tak jest wyłączony.
     """
+    if not logger.isEnabledFor(logging.DEBUG):
+        return
     keys = sorted(claims.keys())
-    banner = "=" * 70
-    print(banner, file=sys.stderr)
-    print("[OIDC] Claimy otrzymane z Keycloaka (userinfo):", file=sys.stderr)
-    print(f"[OIDC] Klucze ({len(keys)}): {', '.join(keys)}", file=sys.stderr)
+    logger.debug("OIDC: otrzymane claimy (%d): %s", len(keys), ", ".join(keys))
     for key in keys:
-        print(f"[OIDC]   {key} = {claims[key]!r}", file=sys.stderr)
-    print(banner, file=sys.stderr, flush=True)
+        logger.debug("OIDC:   %s = %r", key, claims[key])
 
 
 class BppOIDCBackend(OIDCAuthenticationBackend):
     """Backend logowania OpenID Connect (Keycloak) dla BPP.
 
-    Faza 2a (discovery, obecna): zakładaj konto KAŻDEMU zalogowanemu —
-    zwykłe konto, **bez** ``is_staff``/``is_superuser`` — i wypisz na stderr
-    klucze claimów, żeby zobaczyć, co wystawia realm. To krok poznawczy: na
-    podstawie realnych kluczy zaprojektujemy właściwe reguły.
+    Zachowanie: zakładaj konto KAŻDEMU zalogowanemu z realmu — zwykłe konto,
+    **bez** ``is_staff``/``is_superuser``. Dopasowanie istniejących kont i
+    tworzenie nowych odbywa się po e-mailu; ``username`` bierzemy z
+    ``preferred_username``.
 
     ⚠️ „Konto każdemu" oznacza, że dowolna osoba z realmu KA (potencjalnie też
     studenci — patrz scope ``kierunek-oidc``) dostanie konto BPP. Bezpieczne o
-    tyle, że bez ``is_staff`` nie ma dostępu do panelu/edycji. To stan tymczasowy.
+    tyle, że bez ``is_staff`` nie ma dostępu do panelu/edycji.
+
+    Normalizacja claimów: realm KA wystawia adres pod kluczem ``mail``, a
+    ``mozilla-django-oidc`` (``verify_claims``/``filter_users_by_claims``/
+    ``create_user``) oczekuje ``email``. Uzupełniamy ``email`` z ``mail`` w
+    jednym miejscu — ``get_userinfo`` — przez które przechodzą wszystkie te
+    metody (``get_or_create_user`` woła je na wyniku ``get_userinfo``).
 
     Przypisanie uczelni: konto dostaje ``accessible_uczelnie`` (M2M z PR #189)
     z uczelnią o ``skrot`` == skrótowi z konfiguracji OIDC. Ten sam skrót
@@ -42,18 +46,31 @@ class BppOIDCBackend(OIDCAuthenticationBackend):
     ``Uczelnia.skrot`` — dzięki czemu docelowe „3 backendy = 3 uczelnie" same
     przypisują właściwą uczelnię, bez dodatkowej konfiguracji.
 
-    Faza 2b (po obejrzeniu kluczy) — TU wejdą reguły:
-      * gating po rolach/grupach (``realm_access.roles``): „kogo nie wpuszczamy"
-        → ``verify_claims`` zwraca ``False``;
-      * „komu nie tworzymy konta" → warunek w ``create_user``;
-      * mapowanie ról Keycloaka na grupy/uprawnienia → ``update_user``;
-      * powiązanie z istniejącym ``Autor`` przez claim ``person_id`` →
-        ``filter_users_by_claims``.
+    Możliwe rozszerzenia (poza zakresem): gating po rolach/grupach
+    (``realm_access.roles``) w ``verify_claims``; mapowanie ról na grupy/
+    uprawnienia w ``update_user``.
     """
 
+    @staticmethod
+    def _normalized(claims):
+        """Zwróć claimy z uzupełnionym ``email`` z ``mail`` (jeśli trzeba).
+
+        Gdy ``email`` już jest albo nie ma ``mail`` — zwraca wejście bez zmian.
+        W przeciwnym razie zwraca **kopię** z dorobionym ``email`` (oryginalny
+        ``mail`` zostaje zachowany).
+        """
+        if claims.get("email") or not claims.get("mail"):
+            return claims
+        return {**claims, "email": claims["mail"]}
+
+    def get_userinfo(self, access_token, id_token, payload):
+        # Jedyny chokepoint: znormalizuj claimy z userinfo, zanim trafią do
+        # verify_claims / filter_users_by_claims / create_user.
+        claims = super().get_userinfo(access_token, id_token, payload)
+        return self._normalized(claims)
+
     def verify_claims(self, claims):
-        _dump_claims_to_stderr(claims)
-        logger.info("OIDC: otrzymane claimy: %r", claims)
+        _log_claims_debug(claims)
         return super().verify_claims(claims)
 
     def _assign_uczelnia(self, user):
