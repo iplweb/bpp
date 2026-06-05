@@ -364,3 +364,32 @@ def test_orm_name_falls_back_to_field_name():
         field_name = "rok"
 
     assert _orm_name(F()) == "rok"
+
+
+def test_leaf_to_djangoql_collects_warning_from_tuple():
+    from bpp.multiseek_registry import djangoql_export as dx
+
+    class Fake:
+        type = None
+        field_name = "rok"
+
+        def to_djangoql(self, value, operation):
+            return ("rok = 2024", "uwaga testowa")
+
+    reg = type("R", (), {"field_by_name": {"X": Fake()}})()
+    warnings = []
+    frag = dx.leaf_to_djangoql(
+        reg, {"field": "X", "operator": "equals", "value": 2024}, warnings
+    )
+    assert frag == "rok = 2024"
+    assert warnings == ["uwaga testowa"]
+
+
+def test_leaf_to_djangoql_str_still_works():
+    from bpp.multiseek_registry import djangoql_export as dx
+
+    frag = dx.leaf_to_djangoql(
+        registry,
+        {"field": "Tytuł pracy", "operator": str(CONTAINS), "value": "x"},
+    )
+    assert frag == 'tytul_oryginalny ~ "x"'

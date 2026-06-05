@@ -176,11 +176,12 @@ def _default_leaf(field, value, operation):
     return f"{_orm_path_to_djangoql(name)} {dql_op} {render_value(value)}"
 
 
-def leaf_to_djangoql(registry, leaf):
+def leaf_to_djangoql(registry, leaf, warnings=None):
     """Fragment DjangoQL dla pojedynczego warunku, albo None (nieprzekladalny).
 
-    None gdy: nieznane pole, nieobslugiwana operacja, albo fragment nie
-    waliduje sie wzgledem schematu Rekord.
+    Wartosc z dispatchera moze byc str, (str, warning) albo None. Ostrzezenie
+    (jesli jest i podano `warnings`) trafia do listy. None gdy: nieznane pole,
+    nieobslugiwana operacja, albo fragment nie waliduje sie wzgledem schematu.
     """
     if not isinstance(leaf, dict):
         return None
@@ -193,9 +194,12 @@ def leaf_to_djangoql(registry, leaf):
         return None
     override = getattr(field, "to_djangoql", None)
     if callable(override):
-        frag = override(value, operation)
+        result = override(value, operation)
     else:
-        frag = _default_leaf(field, value, operation)
+        result = _default_leaf(field, value, operation)
+    frag, warn = result if isinstance(result, tuple) else (result, None)
+    if warn and warnings is not None:
+        warnings.append(warn)
     if frag is None:
         return None
     return frag if is_valid_rekord_djangoql(frag) else None
@@ -300,7 +304,7 @@ def _invert_fragment(frag):
 def _append_leaf(registry, leaf, parts, warnings):
     prev_op = leaf.get("prev_op")
     if _is_andnot(prev_op):
-        frag = leaf_to_djangoql(registry, leaf)
+        frag = leaf_to_djangoql(registry, leaf, warnings)
         if frag is None:
             warnings.append(
                 f"Pominięto zanegowany warunek: {_leaf_label(leaf)} (nieprzekładalny)"
@@ -315,7 +319,7 @@ def _append_leaf(registry, leaf, parts, warnings):
             return
         parts.append(("and", inverted))
         return
-    frag = leaf_to_djangoql(registry, leaf)
+    frag = leaf_to_djangoql(registry, leaf, warnings)
     if frag is None:
         warnings.append(f"Pominięto warunek: {_leaf_label(leaf)} (nieprzekładalny)")
         return
