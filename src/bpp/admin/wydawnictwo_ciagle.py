@@ -3,7 +3,6 @@ from django import forms
 from django.contrib import admin
 from django.forms.utils import flatatt
 from django.utils.safestring import mark_safe
-from djangoql.admin import DjangoQLSearchMixin
 from dynamic_admin_columns.mixins import DynamicColumnsMixin
 from mptt.forms import TreeNodeChoiceField
 from taggit.forms import TextareaTagWidget
@@ -17,6 +16,7 @@ from bpp.admin.filters import (
     PBN_UID_IDObecnyFilter,
     UtworzonePrzezFilter,
 )
+from bpp.admin.helpers.djangoql import BppDjangoQLSearchMixin
 from bpp.admin.helpers.fieldsets import (
     ADNOTACJE_Z_DATAMI_ORAZ_PBN_FIELDSET,
     DWA_TYTULY,
@@ -38,7 +38,6 @@ from bpp.admin.helpers.widgets import (
     NIZSZE_TEXTFIELD_Z_MAPA_ZNAKOW,
 )
 from bpp.admin.nagroda import NagrodaInline
-from bpp.djangoql_schema import BppQLSchema
 from bpp.models import (  # Publikacja_Habilitacyjna
     Charakter_Formalny,
     Wydawnictwo_Ciagle,
@@ -265,7 +264,7 @@ class Wydawnictwo_Ciagle_Zewnetrzna_Baza_DanychInline(admin.StackedInline):
 class Wydawnictwo_CiagleAdmin(
     DSpaceLinkAdminMixin,
     ConstanceScoringFieldsMixin,
-    DjangoQLSearchMixin,
+    BppDjangoQLSearchMixin,
     OptionalPBNSaveMixin,
     KolumnyZeSkrotamiMixin,
     AdnotacjeZDatamiOrazPBNMixin,
@@ -298,7 +297,6 @@ class Wydawnictwo_CiagleAdmin(
 
     djangoql_completion_enabled_by_default = False
     djangoql_completion = True
-    djangoql_schema = BppQLSchema
 
     formfield_overrides = {
         **NIZSZE_TEXTFIELD_Z_MAPA_ZNAKOW,

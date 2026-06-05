@@ -2,6 +2,44 @@
 
 <!-- towncrier release notes start -->
 
+## bpp 202606.1380 (2026-06-05)
+
+### Naprawione
+
+- Lista (changelist) w panelu administracyjnym dla modeli z eksportem
+  XLSX (m.in. wydawnictwa, autorzy, dyscypliny autorów) wykonywała
+  zapytanie filtrujące i wyszukujące **dwukrotnie** przy każdym
+  wyświetleniu — raz przy sprawdzaniu uprawnień do eksportu
+  (``has_export_permission`` budowało własny ``ChangeList`` tylko po to,
+  by policzyć rekordy), a drugi raz przy renderowaniu listy. Teraz
+  ``ChangeList`` jest budowany raz na żądanie, więc kosztowne zapytanie
+  nie powtarza się. Przy okazji znika zdublowany komunikat o błędzie
+  składni w wyszukiwarce DjangoQL.
+
+### Usprawnienie
+
+- Widok „Szukaj zapytaniem" oraz wyszukiwarki DjangoQL w panelu
+  administracyjnym zyskują wygodniejszy edytor zapytań (dzięki
+  nowej wersji ``djangoql-iplweb``):
+
+  * **Podświetlanie składni** w polu zapytania, a w razie błędu —
+    czerwona falka pod miejscem, które trzeba poprawić (nieznane
+    pole albo błąd składni).
+  * **Zapytania wieloliniowe** — ``Shift+Enter`` wstawia nową linię,
+    zwykły ``Enter`` nadal wykonuje wyszukiwanie.
+  * **Przycisk „Sformatuj"** — czytelnie wcina i łamie długie
+    zapytanie na wiele linii.
+  * **Panel „Wyjaśnij liczby"** — na żądanie pokazuje, ile rekordów
+    pasuje do każdej gałęzi zapytania (czerwone = tu wynik schodzi do
+    zera, bursztynowe = martwa gałąź ``or``). Uzupełnia dotychczasowe
+    rozbicie „dlaczego 0 wyników".
+  * **Podpowiedzi wartości w listach** ``pole in ( … )`` — autocomplete
+    działa też wewnątrz nawiasów listy, nie tylko po operatorze.
+
+  W panelu administracyjnym podświetlanie składni jest włączone dla
+  wszystkich wyszukiwarek DjangoQL.
+
+
 ## bpp 202606.1379 (2026-06-05)
 
 No significant changes.

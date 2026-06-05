@@ -32,7 +32,32 @@ class PrettyXLSXDefaultExportForm(ExportForm):
                 self.fields["format"].initial = "0"
 
 
-class EksportDanychMixin(ExportMixin):
+class PerRequestChangelistInstanceMixin:
+    """Memoizuje ``ChangeList`` w obrębie jednego żądania.
+
+    ``ExportMixin.has_export_permission`` buduje pełny ``ChangeList`` tylko po
+    to, by odczytać ``result_count`` (limit eksportu) — a Django i tak buduje go
+    po raz DRUGI do renderu listy. Bez cache KAŻDY widok listy admina z
+    eksportem składał queryset (filtry + wyszukiwanie) DWUKROTNIE, a przy
+    DjangoQL dublował dodatkowo komunikat błędu składni. Cache per ``request``
+    sprawia, że ``ChangeList`` (a więc i zapytanie) powstaje raz.
+
+    Klucz po ``id(self)``: w obrębie żądania to ten sam (singletonowy) ModelAdmin
+    i ten sam ``request``, więc instancja jest tożsama. Wyjątek
+    (``IncorrectLookupParameters``) nie jest cache'owany.
+    """
+
+    def get_changelist_instance(self, request):
+        cache = getattr(request, "_bpp_changelist_instance_cache", None)
+        if cache is None:
+            cache = request._bpp_changelist_instance_cache = {}
+        key = id(self)
+        if key not in cache:
+            cache[key] = super().get_changelist_instance(request)
+        return cache[key]
+
+
+class EksportDanychMixin(PerRequestChangelistInstanceMixin, ExportMixin):
     """Klasa do eksportu danych, bazująca na django-import-export,
 
     włącza pozwolenie na eksport, gdy na liście admina changelist jest wyświetlane
@@ -78,7 +103,7 @@ class EksportDanychMixin(ExportMixin):
         return response
 
 
-class EksportDanychZFormatowanieMixin(ExportMixin):
+class EksportDanychZFormatowanieMixin(PerRequestChangelistInstanceMixin, ExportMixin):
     """Klasa do eksportu danych z obsługą wyboru formatu (XLSX, BibTeX).
 
     Rozszerza standardową funkcjonalność eksportu o możliwość wyboru między

@@ -5,7 +5,6 @@ from django import forms
 from django.contrib import admin
 from django.db.models import DecimalField, ExpressionWrapper, F, Value
 from django.db.models.functions import Coalesce
-from djangoql.admin import DjangoQLSearchMixin
 from import_export import resources
 
 from bpp.admin.core import DynamicAdminFilterMixin
@@ -13,8 +12,8 @@ from bpp.admin.filters import (
     OrcidAutoraDyscyplinyObecnyFilter,
     PBN_UID_IDAutoraObecnyFilter,
 )
+from bpp.admin.helpers.djangoql import BppDjangoQLSearchMixin
 from bpp.admin.xlsx_export.mixins import EksportDanychMixin
-from bpp.djangoql_schema import BppQLSchema
 from bpp.models import Autor, Autor_Dyscyplina
 
 
@@ -128,11 +127,13 @@ class Autor_DyscyplinaForm(forms.ModelForm):
 
 
 class Autor_DyscyplinaAdmin(
-    DynamicAdminFilterMixin, DjangoQLSearchMixin, EksportDanychMixin, admin.ModelAdmin
+    DynamicAdminFilterMixin,
+    BppDjangoQLSearchMixin,
+    EksportDanychMixin,
+    admin.ModelAdmin,
 ):
     djangoql_completion_enabled_by_default = True
     djangoql_completion = True
-    djangoql_schema = BppQLSchema
 
     max_allowed_export_items = 10000
 

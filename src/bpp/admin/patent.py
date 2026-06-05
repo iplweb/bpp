@@ -1,9 +1,8 @@
 from django import forms
 from django.contrib import admin
-from djangoql.admin import DjangoQLSearchMixin
 from taggit.forms import TextareaTagWidget
 
-from bpp.djangoql_schema import BppQLSchema
+from bpp.admin.helpers.djangoql import BppDjangoQLSearchMixin
 from bpp.models.patent import Patent, Patent_Autor
 from dspace_api.admin_mixins import DSpaceLinkAdminMixin
 
@@ -85,7 +84,7 @@ class PatentResource(resources.Wydawnictwo_ResourceBase):
 
 class Patent_Admin(
     DSpaceLinkAdminMixin,
-    DjangoQLSearchMixin,
+    BppDjangoQLSearchMixin,
     ConstanceScoringFieldsMixin,
     AdnotacjeZDatamiMixin,
     EksportDanychZFormatowanieMixin,
@@ -94,7 +93,6 @@ class Patent_Admin(
 ):
     djangoql_completion_enabled_by_default = False
     djangoql_completion = True
-    djangoql_schema = BppQLSchema
 
     resource_classes = [PatentResource]
     bibtex_resource_class = resources.PatentBibTeXResource
