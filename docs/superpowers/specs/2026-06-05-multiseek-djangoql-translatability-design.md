@@ -83,6 +83,38 @@ if getattr(field, "type", None) == VALUE_LIST:
 → zwróć `f"{rel_path} = None"` (lub `!= None` dla operatorów różności)
 zamiast `None` (nieprzekładalne). Niepuste — bez zmian.
 
+### A4. Pole wirtualne `charakter_z_podrzednymi__rel` (schema)
+
+Plik: `src/bpp/djangoql_schema.py`. Analogiczne do
+`JednostkaZPodjednostkamiField`, ale dla `Charakter_Formalny` i z **inną**
+semantyką MPTT:
+
+- Jednostka: `get_family()` (przodkowie + sam + potomkowie).
+- Charakter: `get_descendants(include_self=True)` (sam + potomkowie) —
+  zgodnie z `CharakterFormalnyQueryObject.real_query`.
+
+```python
+class CharakterZPodrzednymiField(AutocompleteField):
+    def get_lookup(self, path, operator, value):
+        parsed = self.parse_id(value)
+        if not isinstance(parsed, int):
+            q = Q(charakter_formalny__nazwa__icontains=str(value))
+            return ~q if operator in ("!=", "not in") else q
+        try:
+            ch = Charakter_Formalny.objects.get(pk=parsed)
+        except Charakter_Formalny.DoesNotExist:
+            return Q() if operator in ("!=", "not in") else Q(pk__in=[])
+        q = Q(charakter_formalny__in=ch.get_descendants(include_self=True))
+        return ~q if operator in ("!=", "not in") else q
+```
+
+Wpięcie w `RelPickerSchemaMixin`: dodaj `charakter_z_podrzednymi__rel`
+do `get_fields`, gdy model ma FK `charakter_formalny`
+(`_has_charakter_formalny(model)`), oraz obsłuż w `get_field_instance`
+(picker po `Charakter_Formalny`, `search_fields=["nazwa","skrot"]`).
+Pole jest **bezpośrednim** FK na `Rekord` (bez joinu `autorzy`), więc
+działa też w edytorze/adminie nad `Rekord`.
+
 ## B. Plan per-pole
 
 ### B1 — Deklaratywny `djangoql_field_name`, AUTOCOMPLETE → `__rel`
@@ -107,25 +139,24 @@ zamiast `None` (nieprzekładalne). Niepuste — bez zmian.
 | `OpenaccessCzasPublikacjiQueryObject` | `openaccess_czas_publikacji.nazwa = "..."` |
 | `Typ_OdpowiedzialnosciQueryObject` | `autorzy.typ_odpowiedzialnosci.nazwa = "..."` |
 
-`CharakterFormalnyQueryObject` **nie** jest czysto deklaratywne (patrz B3):
-wartość niesie prefiks wcięcia MPTT (`DEFAULT_LEVEL_INDICATOR = "---"`);
-`value_from_web` robi `value.lstrip("-").lstrip(" ")`. Realizacja: albo
-metoda `to_djangoql` (normalizuje wartość, potem `charakter_formalny.nazwa =
-"<znormalizowana>"`), albo deklaratywny hak `djangoql_value_transform`
-(callable wartość→wartość) konsumowany przez `_value_list_leaf`. Wybór:
-**`to_djangoql`** (mniej nowych mechanik, semantyka MPTT-descendants i tak
-wymaga warninga z F).
+`CharakterFormalnyQueryObject` jest osobnym przypadkiem (B3 + H): wartość
+niesie prefiks wcięcia MPTT (`DEFAULT_LEVEL_INDICATOR = "---"`),
+`value_from_web` robi `value.lstrip("-").lstrip(" ")` i zwraca obiekt
+`Charakter_Formalny`. `to_djangoql` resolwuje obiekt i emituje
+`charakter_z_podrzednymi__rel = "nazwa [pk]"` — pole wirtualne MPTT
+odwzorowujące `get_descendants(include_self=True)` z `real_query`
+(**dokładne**, bez stratności, patrz H).
 
 ### B3 — `to_djangoql` (semantyka niestandardowa)
 
 | Pole | DjangoQL |
 |---|---|
-| `CharakterOgolnyQueryObject` | `charakter_formalny.charakter_ogolny = "<const>"` |
+| `CharakterFormalnyQueryObject` | `charakter_z_podrzednymi__rel = "nazwa [pk]"` (pole wirtualne MPTT, **dokładne**; patrz H) |
+| `CharakterOgolnyQueryObject` | `charakter_formalny.charakter_ogolny = "art"` / `"roz"` / `"ksi"` / `"xxx"` |
 | `TypRekorduObject` | `charakter_formalny.publikacja = True` / `.streszczenie = True` / `(.publikacja = False and .streszczenie = False)` |
-| `RodzajKonferenckjiQueryObject` | `konferencja.typ_konferencji = <N>` |
-| `RodzajJednostkiQueryObject` | `autorzy.jednostka.rodzaj_jednostki = <N>` |
-| `TypOgolnyAutorQueryObject` i podklasy | `autorzy.autor__rel = "L [pk]" and autorzy.typ_odpowiedzialnosci.typ_ogolny = <N>` |
-| `CharakterFormalnyQueryObject` | `charakter_formalny.nazwa = "<bez prefiksu --->"` (+ warning gdy ma potomków, F) |
+| `RodzajKonferenckjiQueryObject` | `konferencja.typ_konferencji = 1` (krajowa) / `2` (międz.) / `3` (lokalna) |
+| `RodzajJednostkiQueryObject` | `autorzy.jednostka.rodzaj_jednostki = "normalna"` / `"kolo_naukowe"` |
+| `TypOgolnyAutorQueryObject` i podklasy | `autorzy.autor__rel = "L [pk]" and autorzy.typ_odpowiedzialnosci.typ_ogolny = N` (N: autor 0, redaktor 1, tłumacz 3, recenzent 5 — **same-row**, dokładne) |
 | `ObcaJednostkaQueryObject` | `autorzy.jednostka.skupia_pracownikow = <not value>` |
 | `AfiliujeQueryObject` | `autorzy.afiliuje = <bool>` |
 | `OswiadczenieKENQueryObject` | `autorzy.oswiadczenie_ken = <bool>` |
@@ -133,9 +164,12 @@ wymaga warninga z F).
 | `LicencjaOpenAccessUstawionaQueryObject` | `openaccess_licencja != None` (lub `= None`) |
 | `PublicDostepDniaQueryObject` | `public_dostep_dnia != None` (lub `= None`) |
 | `StronaWWWUstawionaQueryObject` | `(www != "" or public_www != "")` (lub negacja) |
+| `SlowaKluczoweQueryObject` | `slowa_kluczowe.name = "..."` (Rekord → `taggit.tag`) |
+| `ZewnetrznaBazaDanychQueryObject` | `zewnetrzne_bazy.baza__rel = "L [pk]"` (Rekord → `zewnetrznebazydanychview` → `baza`) |
 
-Wartości `<const>`/`<N>` brać z definicji klasy (`bpp.const`,
-`Konferencja.TK_*`, `Jednostka.RODZAJ_JEDNOSTKI`, `charakter_ogolny`).
+Wartości stałych potwierdzone introspekcją: `charakter_ogolny`
+∈ {art, roz, ksi, xxx}; `typ_ogolny` ∈ {0,1,3,5}; `rodzaj_jednostki`
+∈ {normalna, kolo_naukowe}; `typ_konferencji` ∈ {1,2,3}.
 
 ### B4 — Już działają (bez zmian)
 
@@ -161,14 +195,27 @@ wyprodukować niepoprawnego DjangoQL. **Implikacja:** testy round-trip muszą
 potwierdzić, że zamierzone ścieżki faktycznie się walidują (inaczej cicho
 staną się warningami i cel nie zostanie osiągnięty).
 
-## E. Pozostałe szczere warningi (powinno być mało)
+## E. Audyt rejestru: co NIE przekłada się wcale
 
-- `SlowaKluczoweQueryObject`, `ZewnetrznaBazaDanychQueryObject` — match
-  przez dedykowane widoki SQL (`pk__in` subquery). Próbujemy
-  `slowa_kluczowe…` / relacji do zewn. bazy, jeśli schemat ją wystawia;
-  inaczej warning.
-- `NOT_IN_RANGE` i zanegowane *grupy* — DjangoQL nie ma `not(...)`
-  (bez zmian, warning).
+Introspekcja `BppQLSchema(Rekord)` (wykonana) potwierdza, że schemat
+sięga dalej niż zakładano — m.in. `slowa_kluczowe → taggit.tag`,
+`zewnetrzne_bazy → zewnetrznebazydanychview → baza`, pełne poddrzewa
+`autorzy.jednostka.wydzial`, `autorzy.typ_odpowiedzialnosci.typ_ogolny`,
+`charakter_formalny.{charakter_ogolny,publikacja,streszczenie}`,
+`autorzy.autor.aktualna_jednostka__rel`.
+
+**Wniosek: pod pełnym designem ŻADNE pole rejestru nie jest w 100%
+nieprzekładalne.** Każde zarejestrowane `QueryObject` daje co najmniej
+fragment best-effort. Dwa wcześniej podejrzane (`SlowaKluczowe`,
+`ZewnetrznaBazaDanych`) są przekładalne (B3).
+
+Nieprzekładalne pozostają tylko **operacje**, nie pola:
+
+- `NOT_IN_RANGE` (negacja zakresu) — DjangoQL nie ma `not(...)`.
+- Zanegowana **grupa** (ANDNOT na podramce) — j.w.
+
+To są warningi bez fragmentu (bez zmian względem dotychczasowego
+zachowania).
 
 ## F. Best-effort + warning (pola stratne)
 
@@ -176,11 +223,13 @@ Tłumaczone przybliżenie + **warning** wyjaśniający rozbieżność:
 
 - **UNION** (`równy+wspólny` itd.) → identycznie jak EQUAL; gubiona jest
   dystynkcja „inny wiersz autora" (ograniczenie gramatyki DjangoQL).
-- **CharakterFormalny descendants** (MPTT) → tylko dokładny węzeł, bez
-  poddrzewa. Warning gdy węzeł ma potomków.
 - **kolejnosc-ranged autorzy** (`Pierwsze/Ostatnie nazwisko i imię`,
-  `Pierwsza jednostka/wydział`) → `kolejnosc` jest per-wiersz; best-effort
-  pomija je, z warningiem.
+  `Nazwisko i imię 1do3/1do5`, `Pierwsza jednostka`, `Pierwszy wydział`)
+  → `kolejnosc` jest per-wiersz; best-effort pomija filtr kolejności,
+  z warningiem.
+
+`CharakterFormalny` **przestaje** być stratny — pole wirtualne
+`charakter_z_podrzednymi__rel` (H) odwzorowuje MPTT-descendants dokładnie.
 
 ## G. Podgląd w szufladzie: formatowanie + podświetlanie składni
 
@@ -261,6 +310,8 @@ textarea z istniejącym endpointem introspekcji `rekord`
 ## Pliki
 
 - `src/bpp/multiseek_registry/djangoql_export.py` — A1/A2/A3.
+- `src/bpp/djangoql_schema.py` — pole wirtualne `charakter_z_podrzednymi__rel`
+  (A4) + wpięcie w `RelPickerSchemaMixin`.
 - `src/bpp/multiseek_registry/fields/*.py` — atrybuty deklaratywne (B1/B2)
   i metody `to_djangoql` (B3/F) per pole.
 - `src/bpp/static/bpp/js/djangoql-pretty.js` — formatter + highlighter (G).
