@@ -119,3 +119,52 @@ def test_header_contains_session_identity(session):
 
     assert str(session.id) in text
     assert str(session.user) in text
+
+
+def _make_errors(session, n):
+    for i in range(n):
+        baker.make(
+            ImportLog, session=session, level="error", step="s", message=f"ERR_{i}"
+        )
+
+
+def test_limit_caps_preview_and_notes_truncation(session):
+    _make_errors(session, 5)
+
+    text = render_session_log_text(session, limit=3)
+
+    # tylko pierwsze 3 wpisy (chronologicznie ERR_0..ERR_2), nagłówek = total 5
+    assert "ERR_0" in text and "ERR_1" in text and "ERR_2" in text
+    assert "ERR_3" not in text and "ERR_4" not in text
+    assert "Wpisy (błędy + ostrzeżenia): 5" in text
+    assert "podgląd przycięty" in text.lower()
+    assert "pierwsze 3 z 5" in text
+
+
+def test_no_truncation_note_when_within_limit(session):
+    _make_errors(session, 2)
+
+    text = render_session_log_text(session, limit=3)
+
+    assert "ERR_0" in text and "ERR_1" in text
+    assert "podgląd przycięty" not in text.lower()
+
+
+def test_full_render_without_limit_has_no_truncation_note(session):
+    _make_errors(session, 5)
+
+    text = render_session_log_text(session)  # limit=None → pełny log (pobranie)
+
+    assert all(f"ERR_{i}" in text for i in range(5))
+    assert "podgląd przycięty" not in text.lower()
+
+
+def test_count_log_entries_counts_only_errors_and_warnings(session):
+    _make_errors(session, 3)
+    baker.make(ImportLog, session=session, level="warning", step="s", message="w")
+    baker.make(ImportLog, session=session, level="info", step="s", message="i")
+    baker.make(ImportLog, session=session, level="success", step="s", message="ok")
+
+    from pbn_import.utils.log_export import count_log_entries
+
+    assert count_log_entries(session) == 4

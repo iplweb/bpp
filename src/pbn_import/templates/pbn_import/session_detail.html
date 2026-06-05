@@ -204,6 +204,14 @@ document.addEventListener('click', function(e) {
                         Pobierz log (.txt)
                     </a>
                 </p>
+                {% if raw_log_truncated %}
+                <div class="callout warning" data-closable>
+                    Podgląd przycięty: pokazano pierwsze
+                    <strong>{{ raw_log_shown }}</strong> z
+                    <strong>{{ raw_log_total }}</strong> wpisów.
+                    Pełny log pobierz przyciskiem „Pobierz log (.txt)" powyżej.
+                </div>
+                {% endif %}
                 <pre class="pbn-import__log-pre--styled">{{ raw_log_text }}</pre>
             </div>
         </div>

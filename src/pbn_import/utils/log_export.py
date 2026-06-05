@@ -59,21 +59,35 @@ def _render_entry(log: ImportLog) -> list[str]:
     return lines
 
 
-def render_session_log_text(session) -> str:
+# Ile wpisów pokazuje podgląd inline (<pre>) zanim go przytniemy. Pełny log
+# zawsze dostępny przez pobranie .txt — to chroni przeglądarkę przed
+# „mega mega długim" logiem (tysiące wpisów z tracebackami = MB w jednym <pre>).
+PREVIEW_LIMIT = 100
+
+
+def count_log_entries(session) -> int:
+    """Liczba wpisów (błędy + ostrzeżenia), które trafiają do logu sesji."""
+    return ImportLog.objects.filter(session=session, level__in=LOG_LEVELS).count()
+
+
+def render_session_log_text(session, limit: int | None = None) -> str:
     """Zbuduj symulowany raw log (tekst) z błędów i ostrzeżeń sesji.
 
     Args:
         session: instancja ``ImportSession``.
+        limit: gdy podany, renderuj tylko pierwsze ``limit`` wpisów (podgląd
+            inline) i dopisz stopkę o przycięciu. ``None`` → pełny log (pobranie
+            .txt) — bez limitu i bez stopki.
 
     Returns:
         Wielowierszowy tekst gotowy do wyświetlenia w ``<pre>`` lub pobrania
         jako ``.txt``. Zawsze kończy się znakiem nowej linii.
     """
-    logs = list(
-        ImportLog.objects.filter(session=session, level__in=LOG_LEVELS).order_by(
-            "timestamp"
-        )
+    qs = ImportLog.objects.filter(session=session, level__in=LOG_LEVELS).order_by(
+        "timestamp"
     )
+    total = qs.count()
+    logs = list(qs[:limit] if limit is not None else qs)
 
     lines = [
         _HEADER_RULE,
@@ -82,7 +96,7 @@ def render_session_log_text(session) -> str:
         f"Status: {session.get_status_display()} ({session.status})",
         f"Rozpoczęto: {_fmt_time(session.started_at)}",
         f"Zakończono: {_fmt_time(session.completed_at)}",
-        f"Wpisy (błędy + ostrzeżenia): {len(logs)}",
+        f"Wpisy (błędy + ostrzeżenia): {total}",
         _HEADER_RULE,
         "",
     ]
@@ -92,5 +106,11 @@ def render_session_log_text(session) -> str:
     else:
         for log in logs:
             lines.extend(_render_entry(log))
+
+    if limit is not None and total > len(logs):
+        lines.append(
+            f"… podgląd przycięty: pokazano pierwsze {len(logs)} z {total} "
+            f"wpisów. Pełny log pobierz przyciskiem powyżej."
+        )
 
     return "\n".join(lines) + "\n"

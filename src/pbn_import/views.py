@@ -27,7 +27,11 @@ from .utils.institution_import import (
     znajdz_lub_utworz_jednostke_domyslna,
     znajdz_lub_utworz_wydzial_domyslny,
 )
-from .utils.log_export import render_session_log_text
+from .utils.log_export import (
+    PREVIEW_LIMIT,
+    count_log_entries,
+    render_session_log_text,
+)
 from .utils.step_definitions import (
     get_all_disable_keys,
     get_form_steps,
@@ -526,9 +530,15 @@ class ImportSessionDetailView(LoginRequiredMixin, ImportPermissionMixin, DetailV
         context["config"] = session.config
 
         # Symulowany raw log (tekst) — zakładka „Log" pokazuje go inline i daje
-        # pobranie. Budujemy go tu, żeby <pre> miało gotowy tekst bez dodatkowego
-        # zapytania HTMX. Dostępny dla każdego statusu (dla biegnącego = migawka).
-        context["raw_log_text"] = render_session_log_text(session)
+        # pobranie. Podgląd przycinamy do PREVIEW_LIMIT wpisów, żeby „mega mega
+        # długi" log nie zatkał przeglądarki ani nie napuchł HTML-a strony;
+        # pełny log zawsze do pobrania przez .txt. Dostępny dla każdego statusu
+        # (dla biegnącego = migawka).
+        log_total = count_log_entries(session)
+        context["raw_log_text"] = render_session_log_text(session, limit=PREVIEW_LIMIT)
+        context["raw_log_total"] = log_total
+        context["raw_log_shown"] = min(log_total, PREVIEW_LIMIT)
+        context["raw_log_truncated"] = log_total > PREVIEW_LIMIT
 
         # Calculate duration - use model property which handles both completed
         # and running sessions

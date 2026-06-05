@@ -136,6 +136,46 @@ class TestImportSessionDetailView:
         assert 'href="#log-panel"' in content
         assert reverse("pbn_import:log_download", args=[session.id]) in content
 
+    def test_detail_view_truncates_log_preview(self, django_user_model):
+        """Podgląd inline przycięty do PREVIEW_LIMIT; flagi w kontekście + baner."""
+        from unittest.mock import patch
+
+        client = Client()
+        user = baker.make(django_user_model, is_superuser=True)
+        session = baker.make(ImportSession, user=user, status="completed")
+        for i in range(3):
+            baker.make(
+                ImportLog, session=session, level="error", message=f"PREVIEW_ERR_{i}"
+            )
+        client.force_login(user)
+
+        # Mały limit zamiast bakeowania 100+ wpisów.
+        with patch("pbn_import.views.PREVIEW_LIMIT", 2):
+            response = client.get(
+                reverse("pbn_import:session_detail", args=[session.id])
+            )
+
+        assert response.context["raw_log_truncated"] is True
+        assert response.context["raw_log_total"] == 3
+        assert response.context["raw_log_shown"] == 2
+        content = response.content.decode("utf-8")
+        assert "Podgląd przycięty" in content
+        # 3. wpis NIE jest w podglądzie inline (jest tylko w pełnym pobraniu).
+        assert "PREVIEW_ERR_2" not in response.context["raw_log_text"]
+
+    def test_detail_view_no_truncation_banner_for_small_log(self, django_user_model):
+        """Mało wpisów → brak banera i brak flagi przycięcia."""
+        client = Client()
+        user = baker.make(django_user_model, is_superuser=True)
+        session = baker.make(ImportSession, user=user, status="completed")
+        baker.make(ImportLog, session=session, level="error", message="tylko jeden")
+        client.force_login(user)
+
+        response = client.get(reverse("pbn_import:session_detail", args=[session.id]))
+
+        assert response.context["raw_log_truncated"] is False
+        assert "Podgląd przycięty" not in response.content.decode("utf-8")
+
     @pytest.mark.parametrize(
         "status", ["completed", "failed", "cancelled", "running", "pending"]
     )
