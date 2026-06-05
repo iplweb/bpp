@@ -50,6 +50,10 @@ class ObcaJednostkaQueryObject(BppMultiseekVisibilityMixin, BooleanQueryObject):
 
         return ret
 
+    def to_djangoql(self, value, operation):
+        skupia = not bool(value)  # real_query robi value = not value
+        return f"autorzy.jednostka.skupia_pracownikow = {skupia}"
+
 
 class AfiliujeQueryObject(BppMultiseekVisibilityMixin, BooleanQueryObject):
     label = "Afiliuje"
@@ -92,6 +96,13 @@ class DyscyplinaUstawionaQueryObject(BppMultiseekVisibilityMixin, BooleanQueryOb
 
         return ret
 
+    def to_djangoql(self, value, operation):
+        return (
+            "autorzy.dyscyplina_naukowa != None"
+            if value
+            else "autorzy.dyscyplina_naukowa = None"
+        )
+
 
 class StronaWWWUstawionaQueryObject(BppMultiseekVisibilityMixin, BooleanQueryObject):
     label = "Strona WWW ustawiona"
@@ -114,6 +125,11 @@ class StronaWWWUstawionaQueryObject(BppMultiseekVisibilityMixin, BooleanQueryObj
             )
 
         return ret
+
+    def to_djangoql(self, value, operation):
+        if value:
+            return '(www != "" or public_www != "")'
+        return '(www = "" and public_www = "")'
 
 
 class LicencjaOpenAccessUstawionaQueryObject(
@@ -138,6 +154,9 @@ class LicencjaOpenAccessUstawionaQueryObject(
 
         return ret
 
+    def to_djangoql(self, value, operation):
+        return "openaccess_licencja != None" if value else "openaccess_licencja = None"
+
 
 class PublicDostepDniaQueryObject(BppMultiseekVisibilityMixin, BooleanQueryObject):
     label = "Dostęp dnia ustawiony"
@@ -157,6 +176,9 @@ class PublicDostepDniaQueryObject(BppMultiseekVisibilityMixin, BooleanQueryObjec
             return ~ret
 
         return ret
+
+    def to_djangoql(self, value, operation):
+        return "public_dostep_dnia != None" if value else "public_dostep_dnia = None"
 
 
 class KierunekStudiowQueryObject(

@@ -22,3 +22,37 @@ def test_oswiadczenie_ken_false():
         {"field": "Oświadczenie KEN", "operator": str(EQUAL), "value": False},
     )
     assert frag == "autorzy.oswiadczenie_ken = False"
+
+
+@pytest.mark.django_db
+def test_obca_jednostka_inverts_value():
+    # "Obca jednostka = True" oznacza skupia_pracownikow = False
+    field = registry.field_by_name["Obca jednostka"]
+    assert (
+        field.to_djangoql(True, str(EQUAL))
+        == "autorzy.jednostka.skupia_pracownikow = False"
+    )
+
+
+@pytest.mark.django_db
+def test_dyscyplina_ustawiona_true():
+    field = registry.field_by_name["Dyscyplina ustawiona"]
+    assert field.to_djangoql(True, str(EQUAL)) == "autorzy.dyscyplina_naukowa != None"
+
+
+@pytest.mark.django_db
+def test_dyscyplina_ustawiona_false():
+    field = registry.field_by_name["Dyscyplina ustawiona"]
+    assert field.to_djangoql(False, str(EQUAL)) == "autorzy.dyscyplina_naukowa = None"
+
+
+@pytest.mark.django_db
+def test_licencja_oa_ustawiona_true():
+    field = registry.field_by_name["OpenAccess: licencja ustawiona"]
+    assert field.to_djangoql(True, str(EQUAL)) == "openaccess_licencja != None"
+
+
+@pytest.mark.django_db
+def test_strona_www_ustawiona_true():
+    field = registry.field_by_name["Strona WWW ustawiona"]
+    assert field.to_djangoql(True, str(EQUAL)) == '(www != "" or public_www != "")'
