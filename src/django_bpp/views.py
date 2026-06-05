@@ -92,6 +92,13 @@ class MicrosoftLogoutView(View):
     This view properly handles logout by:
     1. Clearing the Django session using logout()
     2. Redirecting to Microsoft logout endpoint with post_logout_redirect_uri
+
+    Świadomość OIDC: w trybie mieszanym (``microsoft_auth`` +
+    ``oidc_integration``) to TEN widok obsługuje ``/logout/`` dla wszystkich
+    backendów (patrz ``django_bpp/urls.py``). Dlatego sam rozpoznaje sesję
+    OIDC i kieruje ją na RP-Initiated Logout Keycloaka zamiast na logout
+    Microsoftu — inaczej user zalogowany przez Keycloaka zostawałby z żywą
+    sesją SSO w Keycloaku (cicha re-autoryzacja przy kolejnym logowaniu).
     """
 
     def get(self, request):
@@ -99,6 +106,24 @@ class MicrosoftLogoutView(View):
 
     def post(self, request):
         return self._logout(request)
+
+    def _oidc_logout_url(self, request):
+        """URL wylogowania z Keycloaka dla sesji OIDC, albo ``None`` dla innych.
+
+        Sesja OIDC rozpoznawana po ``BACKEND_SESSION_KEY`` == ścieżce backendu
+        OIDC — co jest możliwe tylko, gdy ``oidc_integration`` jest aktywne, więc
+        osobny ``apps.is_installed`` jest zbędny. MUSI być wołane PRZED
+        ``logout()``: ``build_provider_logout_url`` czyta ``oidc_id_token`` z
+        sesji, której ``logout()`` już by nie miał.
+        """
+        from oidc_integration.views import OIDC_BACKEND_PATH
+
+        if request.session.get(BACKEND_SESSION_KEY) != OIDC_BACKEND_PATH:
+            return None
+
+        from oidc_integration.logout import build_provider_logout_url
+
+        return build_provider_logout_url(request)
 
     def _logout(self, request):
         """Perform the logout process"""
@@ -109,6 +134,14 @@ class MicrosoftLogoutView(View):
                 "User not authenticated, redirecting directly to post-logout URI"
             )
             return HttpResponseRedirect(post_logout_redirect_uri)
+
+        # Sesja OIDC → wyloguj z Keycloaka, nie z Microsoftu (URL przed logout(),
+        # bo czyta id_token z sesji).
+        oidc_logout_url = self._oidc_logout_url(request)
+        if oidc_logout_url is not None:
+            logout(request)
+            logger.info("OIDC session cleared from Django, redirecting to Keycloak")
+            return HttpResponseRedirect(oidc_logout_url)
 
         # Clear Django session first
         logout(request)

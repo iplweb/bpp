@@ -46,9 +46,20 @@ class BppOIDCBackend(OIDCAuthenticationBackend):
     ``Uczelnia.skrot`` — dzięki czemu docelowe „3 backendy = 3 uczelnie" same
     przypisują właściwą uczelnię, bez dodatkowej konfiguracji.
 
-    Możliwe rozszerzenia (poza zakresem): gating po rolach/grupach
-    (``realm_access.roles``) w ``verify_claims``; mapowanie ról na grupy/
-    uprawnienia w ``update_user``.
+    ⚠️ GATE PRZED PRODUKCJĄ (TODO): obecnie konto powstaje KAŻDEMU ważnemu
+    userowi realmu — to świadoma decyzja fazy discovery, NIE wolno z tym wejść
+    na produkcję. Zanim deployment produkcyjny: dodać jawny gate (rola/grupa,
+    claim pracownik/student, domena e-mail albo inna polityka instytucji) w
+    ``verify_claims``. Którego claimu użyć dowiemy się dopiero z realnych
+    kluczy — dlatego gate'u nie da się sensownie dodać wcześniej.
+
+    Możliwe rozszerzenia (poza zakresem MVP):
+      * gating po rolach/grupach (``realm_access.roles``) w ``verify_claims``
+        (to jest TEN gate produkcyjny — „kogo nie wpuszczamy");
+      * „komu nie tworzymy konta" → warunek w ``create_user``;
+      * mapowanie ról Keycloaka na grupy/uprawnienia → ``update_user``;
+      * powiązanie z istniejącym ``Autor`` przez claim ``person_id`` →
+        ``filter_users_by_claims``.
     """
 
     @staticmethod

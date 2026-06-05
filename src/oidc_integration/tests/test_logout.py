@@ -72,3 +72,52 @@ def test_logout_view_sesja_haslowa_nie_idzie_do_keycloaka(rf):
 
     assert resp.status_code == 302
     assert "kc/logout" not in resp.url
+
+
+# --- Tryb mieszany: MicrosoftLogoutView musi rozpoznać sesję OIDC ---------
+# W deploymencie z microsoft_auth + oidc_integration to MicrosoftLogoutView
+# obsługuje /logout/ dla WSZYSTKICH backendów (patrz django_bpp/urls.py).
+# Sesja OIDC nie może wtedy trafić na logout Microsoftu — inaczej zostaje
+# żywa sesja SSO w Keycloaku.
+
+
+@pytest.mark.django_db
+@override_settings(OIDC_OP_LOGOUT_ENDPOINT="https://kc/logout", LOGOUT_REDIRECT_URL="/")
+def test_microsoft_logout_view_sesja_oidc_idzie_do_keycloaka(rf):
+    from django_bpp.views import MicrosoftLogoutView
+
+    user = baker.make(get_user_model())
+    req = _db_request(
+        rf, **{BACKEND_SESSION_KEY: OIDC_BACKEND_PATH, "oidc_id_token": "TOK"}
+    )
+    req.user = user
+
+    resp = MicrosoftLogoutView.as_view()(req)
+
+    assert resp.status_code == 302
+    assert resp.url.startswith("https://kc/logout")
+    assert "id_token_hint=TOK" in resp.url
+    assert "microsoftonline.com" not in resp.url
+
+
+@pytest.mark.django_db
+@override_settings(OIDC_OP_LOGOUT_ENDPOINT="https://kc/logout", LOGOUT_REDIRECT_URL="/")
+def test_microsoft_logout_view_sesja_microsoft_idzie_do_microsoftu(rf):
+    from django_bpp.views import MicrosoftLogoutView
+
+    user = baker.make(get_user_model())
+    req = _db_request(
+        rf,
+        **{
+            BACKEND_SESSION_KEY: (
+                "microsoft_auth.backends.MicrosoftAuthenticationBackend"
+            )
+        },
+    )
+    req.user = user
+
+    resp = MicrosoftLogoutView.as_view()(req)
+
+    assert resp.status_code == 302
+    assert "microsoftonline.com" in resp.url
+    assert "kc/logout" not in resp.url
