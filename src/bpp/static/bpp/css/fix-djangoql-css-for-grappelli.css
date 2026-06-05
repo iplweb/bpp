@@ -29,11 +29,15 @@ form#grp-changelist-search-form {
     padding-right: 30px;
 }
 
-/* Przełącznik QL — zostaje na swojej statycznej pozycji (lewa krawędź pigułki),
-   ale MUSI malować się nad nakładką, inaczej jest nieklikalny. */
+/* Przełącznik QL — nad nakładką (z-index), pionowo na środku pigułki, lekko
+   od lewej (domyślnie lądował w lewym-górnym rogu). */
 .djangoql-toggle {
     position: absolute !important;
     z-index: 3;
+    top: 50%;
+    left: 6px;
+    transform: translateY(-50%);
+    margin: 0;
 }
 
 /* Lupa — nakładka-blok zepchnęła ją do nowej linii; przywracamy ją na prawą
@@ -51,6 +55,16 @@ button.grp-search-button {
    przepuszcza klik na przełącznik/lupę dzięki ich wyższemu z-index. */
 form#grp-changelist-search-form .dql-highlight {
     display: block;
+}
+
+/* Grappelli koloruje pole wyszukiwania (reguła `textarea{color:#555;
+   background:#fdfdfd;font-weight:bold}`), co „gasiło" podświetlanie — własny
+   tekst i nieprzezroczyste tło textarea malowały się NAD kolorowym backdropem
+   nakładki. Wymuszamy przezroczystość pola (backdrop highlightu staje się
+   widoczny; kursor zachowuje własny caret-color ustawiany z highlight.js). */
+form#grp-changelist-search-form textarea.dql-highlight-input {
+    color: transparent !important;
+    background: transparent !important;
 }
 
 .djangoql-completion {
