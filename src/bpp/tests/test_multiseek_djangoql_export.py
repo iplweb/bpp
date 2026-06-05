@@ -393,3 +393,31 @@ def test_leaf_to_djangoql_str_still_works():
         {"field": "Tytuł pracy", "operator": str(CONTAINS), "value": "x"},
     )
     assert frag == 'tytul_oryginalny ~ "x"'
+
+
+def test_autocomplete_empty_value_is_null():
+    from bpp.multiseek_registry.djangoql_export import _autocomplete_leaf
+    from multiseek.logic import EQUAL_NONE
+
+    class FK:
+        field_name = "zrodlo"
+        type = "autocomplete"
+
+        def value_from_web(self, value):
+            return None
+
+    assert _autocomplete_leaf(FK(), None, str(EQUAL_NONE)) == "zrodlo__rel = None"
+
+
+def test_autocomplete_empty_value_is_null_diff():
+    from bpp.multiseek_registry.djangoql_export import _autocomplete_leaf
+    from multiseek.logic import DIFFERENT_NONE
+
+    class FK:
+        field_name = "zrodlo"
+        type = "autocomplete"
+
+        def value_from_web(self, value):
+            return None
+
+    assert _autocomplete_leaf(FK(), None, str(DIFFERENT_NONE)) == "zrodlo__rel != None"

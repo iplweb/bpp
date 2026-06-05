@@ -130,6 +130,13 @@ def _autocomplete_leaf(field, value, operation):
         rel_op = "="
     else:
         return None
+    name = _orm_name(field)
+    if not name:
+        return None
+    rel_path = _orm_path_to_djangoql(name) + "__rel"
+    if value in (None, ""):
+        # Pusty autocomplete (brak wybranego obiektu) -> filtr is-null.
+        return f"{rel_path} = None" if rel_op == "=" else f"{rel_path} != None"
     try:
         obj = field.value_from_web(value)
     except Exception:  # noqa: BLE001 — nieoczekiwany blad resolucji pk -> nieprzekladalne
@@ -142,10 +149,6 @@ def _autocomplete_leaf(field, value, operation):
         return None
     if obj is None:
         return None
-    name = _orm_name(field)
-    if not name:
-        return None
-    rel_path = _orm_path_to_djangoql(name) + "__rel"
     label = str(obj).replace("\\", "\\\\").replace('"', '\\"')
     return f'{rel_path} {rel_op} "{label} [{obj.pk}]"'
 
