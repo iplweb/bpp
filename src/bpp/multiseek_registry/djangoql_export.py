@@ -150,6 +150,45 @@ def _autocomplete_leaf(field, value, operation):
     return f'{rel_path} {rel_op} "{label} [{obj.pk}]"'
 
 
+def _is_union(operation):
+    """True gdy operator multiseek to wariant UNION (równy+wspólny…)."""
+    from bpp.multiseek_registry.fields.constants import UNION_OPS_ALL
+
+    s = str(operation)
+    return s in {str(o) for o in UNION_OPS_ALL}
+
+
+_UNION_WARNING = (
+    'Operator „wspólny" przełożono jak zwykłą równość — w DjangoQL może objąć '
+    "inny wiersz autora niż pozostałe kryteria."
+)
+
+
+def _value_list_leaf(field, value, operation):
+    """value-list (lista stringów) -> '<sciezka>.<pole> = "wartosc"'.
+
+    Aktywne tylko dla pól z atrybutem `djangoql_value_field`. UNION → '='
+    z ostrzeżeniem. Pusta wartość → '= ""'.
+    """
+    name = _orm_name(field)
+    value_field = getattr(field, "djangoql_value_field", None)
+    if not name or not value_field:
+        return None
+    op = str(operation)
+    diff_strs = {str(o) for o in DIFFERENT_ALL}
+    if op in diff_strs:
+        dql_op = "!="
+    elif op in {str(o) for o in EQUALITY_OPS_ALL} - diff_strs or _is_union(op):
+        dql_op = "="
+    else:
+        return None
+    path = _orm_path_to_djangoql(name)
+    frag = f"{path}.{value_field} {dql_op} {render_value(value or '')}"
+    if _is_union(op):
+        return frag, _UNION_WARNING
+    return frag
+
+
 def _range_leaf(name, value, operation):
     """IN_RANGE/NOT_IN_RANGE: value to [low, high]."""
     if not (isinstance(value, (list, tuple)) and len(value) == 2):
@@ -165,6 +204,8 @@ def _default_leaf(field, value, operation):
     op = str(operation)
     if getattr(field, "type", None) == AUTOCOMPLETE:
         return _autocomplete_leaf(field, value, operation)
+    if getattr(field, "djangoql_value_field", None):
+        return _value_list_leaf(field, value, operation)
     name = _orm_name(field)
     if not name:
         return None
