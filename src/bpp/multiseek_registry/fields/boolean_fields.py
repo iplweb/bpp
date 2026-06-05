@@ -54,6 +54,7 @@ class ObcaJednostkaQueryObject(BppMultiseekVisibilityMixin, BooleanQueryObject):
 class AfiliujeQueryObject(BppMultiseekVisibilityMixin, BooleanQueryObject):
     label = "Afiliuje"
     field_name = "afiliuje"
+    djangoql_field_name = "autorzy__afiliuje"
     ops = [
         EQUAL,
     ]

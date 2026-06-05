@@ -258,6 +258,7 @@ class OswiadczenieKENQueryObject(BppMultiseekVisibilityMixin, BooleanQueryObject
         UNION,
     ]
     field_name = "oswiadczenie_ken"
+    djangoql_field_name = "autorzy__oswiadczenie_ken"
 
     def real_query(self, value, operation):
         if operation in EQUALITY_OPS_ALL:
