@@ -366,7 +366,7 @@ def test_zapytanie_suggestions_tytul_rel_returns_options(superuser_client):
     response = superuser_client.get(url, {"field": "tytul__rel", "search": "profesor"})
     assert response.status_code == 200
     items = response.json()["items"]
-    assert any(f"[{prof.pk}]" in item for item in items)
+    assert any(f"#{prof.pk}" in item for item in items)
 
 
 @pytest.mark.django_db
@@ -541,7 +541,7 @@ def test_zapytanie_suggestions_zrodlo_rel(superuser_client):
     response = superuser_client.get(url, {"field": "zrodlo__rel", "search": "Nature"})
     assert response.status_code == 200
     items = response.json()["items"]
-    assert any(f"[{z.pk}]" in item for item in items)
+    assert any(f"#{z.pk}" in item for item in items)
 
 
 @pytest.mark.django_db
@@ -554,8 +554,8 @@ def test_picker_excludes_hidden_records(superuser_client):
     response = superuser_client.get(url, {"field": "jezyk__rel", "search": "ZZTEST"})
     assert response.status_code == 200
     items = response.json()["items"]
-    assert any(f"[{widoczny.pk}]" in item for item in items)
-    assert not any(f"[{ukryty.pk}]" in item for item in items)
+    assert any(f"#{widoczny.pk}" in item for item in items)
+    assert not any(f"#{ukryty.pk}" in item for item in items)
 
 
 @pytest.mark.django_db
