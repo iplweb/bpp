@@ -3,7 +3,6 @@
 import questionary
 from django.contrib.auth import get_user_model
 
-from bpp.models import Uczelnia
 from pbn_api.management.commands.util import PBNBaseCommand
 from pbn_import.models import ImportSession
 from pbn_import.utils import ImportManager
@@ -159,9 +158,8 @@ class Command(PBNBaseCommand):
             return None
         return user
 
-    def _ensure_pbn_integration(self):
+    def _ensure_pbn_integration(self, uczelnia):
         """Włącz integrację PBN jeśli wyłączona."""
-        uczelnia = Uczelnia.objects.get()
         if uczelnia and not uczelnia.pbn_integracja:
             uczelnia.pbn_integracja = True
             uczelnia.save(update_fields=["pbn_integracja"])
@@ -192,7 +190,8 @@ class Command(PBNBaseCommand):
             return
 
         # Włącz integrację PBN jeśli wyłączona
-        self._ensure_pbn_integration()
+        uczelnia = getattr(self, "_resolved_uczelnia", None)
+        self._ensure_pbn_integration(uczelnia)
 
         # Utwórz klienta PBN używając PBNBaseCommand.get_client()
         client = self.get_client(
@@ -212,7 +211,12 @@ class Command(PBNBaseCommand):
         self.stdout.write(f"Utworzono sesję importu {session.id}")
 
         # Utwórz i uruchom managera importu
-        manager = ImportManager(session=session, client=client, config=session.config)
+        manager = ImportManager(
+            session=session,
+            client=client,
+            config=session.config,
+            uczelnia=uczelnia,
+        )
 
         try:
             self.stdout.write("Rozpoczynam import...")
