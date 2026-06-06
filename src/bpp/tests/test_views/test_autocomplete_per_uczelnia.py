@@ -140,6 +140,101 @@ def test_public_jednostka_autocomplete_zawezony_do_uczelni(
 
 
 @pytest.mark.django_db
+def test_public_autor_autocomplete_plaska_lista_bez_optgroup(
+    uczelnia1, uczelnia2, site1, jednostka_uczelnia1, autor_uczelnia1, settings
+):
+    """Publiczny picker autorów zwraca PŁASKĄ listę (bez optgroup).
+
+    Grupowanie z ``AutorAutocompleteBase`` emitowało nagłówek optgroup w każdej
+    stronie odpowiedzi Select2 → przy przewijaniu „✅ Autorzy z naszej uczelni"
+    powielał się. Publiczny picker ma listę płaską (klucz ``children`` nie
+    występuje).
+    """
+    settings.ALLOWED_HOSTS = ["*"]
+    from model_bakery import baker
+
+    from bpp.views.autocomplete.authors import PublicAutorAutocomplete
+
+    baker.make("bpp.Autor", aktualna_jednostka=jednostka_uczelnia1)
+
+    view = PublicAutorAutocomplete()
+    view.request = make_request_for_site(site1)
+    view.q = ""
+    context = {"object_list": list(view.get_queryset())}
+    results = view.get_results(context)
+
+    assert results, "brak wyników w teście"
+    assert all("children" not in r for r in results), "wciąż są optgroupy"
+    assert all(r["id"] for r in results), "element bez id (nagłówek grupy)"
+
+
+@pytest.mark.django_db
+def test_public_autor_autocomplete_single_install_tylko_uczelnia(
+    uczelnia1, site1, jednostka_uczelnia1, autor_uczelnia1, settings
+):
+    """Single-install: publiczny picker pokazuje TYLKO autorów z uczelni.
+
+    Mixin scope'ujący jest no-op przy jednej uczelni (``tylko_jedna_uczelnia``),
+    więc bez własnego filtra autor zewnętrzny (bez afiliacji) by przeciekł.
+    """
+    settings.ALLOWED_HOSTS = ["*"]
+    from model_bakery import baker
+
+    from bpp.models import Uczelnia
+    from bpp.views.autocomplete.authors import PublicAutorAutocomplete
+
+    assert Uczelnia.objects.count() == 1, "to ma być scenariusz single-install"
+
+    zewnetrzny = baker.make("bpp.Autor", aktualna_jednostka=None)
+
+    view = PublicAutorAutocomplete()
+    view.request = make_request_for_site(site1)
+    view.q = ""
+    pks = set(view.get_queryset().values_list("pk", flat=True))
+    assert autor_uczelnia1.pk in pks
+    assert zewnetrzny.pk not in pks
+
+
+@pytest.mark.django_db
+def test_autor_aktualnie_zatrudniony_tylko_aktualna_jednostka(
+    uczelnia1,
+    uczelnia2,
+    site1,
+    jednostka_uczelnia1,
+    jednostka_uczelnia2,
+    autor_uczelnia1,
+    autor_uczelnia2,
+    settings,
+):
+    """``AutorAktualnieZatrudnionyNaUczelni`` zawęża WYŁĄCZNIE po
+    ``aktualna_jednostka__uczelnia`` — bez żadnych innych warunków.
+
+    Aktualnie zatrudniony w U1 → jest. Aktualny w U2 → odpada. Bez aktualnej
+    jednostki (niezatrudniony / tylko historia) → odpada. Lista płaska.
+    """
+    settings.ALLOWED_HOSTS = ["*"]
+    from model_bakery import baker
+
+    from bpp.views.autocomplete.authors import AutorAktualnieZatrudnionyNaUczelni
+
+    # niezatrudniony aktualnie nigdzie (np. tylko historia) → poza zakresem
+    autor_bez_aktualnej = baker.make("bpp.Autor", aktualna_jednostka=None)
+
+    view = AutorAktualnieZatrudnionyNaUczelni()
+    view.request = make_request_for_site(site1)
+    view.q = ""
+    pks = set(view.get_queryset().values_list("pk", flat=True))
+
+    assert autor_uczelnia1.pk in pks  # aktualnie zatrudniony w U1
+    assert autor_uczelnia2.pk not in pks  # aktualny w U2 → odpada
+    assert autor_bez_aktualnej.pk not in pks  # brak aktualnej jednostki → odpada
+
+    context = {"object_list": list(view.get_queryset())}
+    results = view.get_results(context)
+    assert all("children" not in r for r in results), "lista ma być płaska"
+
+
+@pytest.mark.django_db
 def test_autocomplete_get_queryset_bez_requestu_nie_wywala(uczelnia1, uczelnia2):
     """Mixin toleruje brak self.request (no-op) — kontrakt defensywny bazy.
 

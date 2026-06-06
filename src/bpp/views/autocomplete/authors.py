@@ -195,9 +195,13 @@ class AutorAutocomplete(GroupRequiredMixin, AutorAutocompleteBase):
 class PublicAutorAutocomplete(UczelniaScopedAutocompleteMixin, AutorAutocompleteBase):
     """Public autocomplete for authors (no create, no PBN/MNISW markers).
 
-    Autorzy związani z uczelnią obecnie lub w przeszłości (multi-hosted) —
-    grupy 1+2 z grupowania bazy; grupa „zewnętrzni" odpada. Grupowanie i
-    sortowanie z bazy zachowane.
+    Pokazuje WYŁĄCZNIE autorów z aktualnej uczelni — związanych z nią obecnie
+    (``aktualna_jednostka``) lub historycznie (``Autor_Jednostka``). Autorzy
+    zewnętrzni (nigdy nie afiliowani) odpadają. W odróżnieniu od staffowego
+    ``AutorAutocomplete`` lista jest PŁASKA (bez optgroup): grupowanie z
+    ``AutorAutocompleteBase`` powielało nagłówek „✅ Autorzy z naszej uczelni"
+    w każdej stronie odpowiedzi Select2 → przy przewijaniu nagłówek dublował
+    się. Skoro picker pokazuje już tylko autorów z uczelni, grupy są zbędne.
     """
 
     uczelnia_lookups = (
@@ -205,15 +209,69 @@ class PublicAutorAutocomplete(UczelniaScopedAutocompleteMixin, AutorAutocomplete
         "autor_jednostka__jednostka__uczelnia",
     )
 
+    def get_queryset(self):
+        qs = super().get_queryset()
+
+        # ``UczelniaScopedAutocompleteMixin`` jest no-op przy jednej uczelni
+        # (``tylko_jedna_uczelnia``), a picker ma pokazywać tylko autorów z
+        # uczelni także w single-install — więc zawężamy jawnie, gdy uczelnię da
+        # się ustalić z requestu. Brak uczelni (brak mapowania Site→Uczelnia) →
+        # bez zawężenia (zachowanie defensywne, jak w bazie/mixinie).
+        from django.db.models import Q
+
+        from bpp.models import Uczelnia
+
+        request = getattr(self, "request", None)
+        uczelnia = Uczelnia.objects.get_for_request(request) if request else None
+        if uczelnia is not None:
+            qs = qs.filter(
+                Q(aktualna_jednostka__uczelnia=uczelnia)
+                | Q(autor_jednostka__jednostka__uczelnia=uczelnia)
+            ).distinct()
+        return qs
+
+    def get_results(self, context):
+        """Płaska lista wyników — bez optgroupów (kontrakt: brak duplikacji)."""
+        return autocomplete.Select2QuerySetView.get_results(self, context)
+
     def get_result_label(self, result):
         """Return clean author name without PBN/MNISW markers."""
         return str(result)
 
 
-class AutorZUczelniAutocopmlete(AutorAutocomplete):
-    """Autocomplete for authors from the institution."""
+class AutorAktualnieZatrudnionyNaUczelni(AutorAutocomplete):
+    """Autocomplete autorów AKTUALNIE zatrudnionych w oglądającej uczelni.
 
-    pass
+    Zawęża WYŁĄCZNIE po ``aktualna_jednostka__uczelnia`` == uczelnia z requestu —
+    i tylko tyle. Bez grup „naszej/historycznie/zewnętrzni", bez autorów spoza
+    uczelni, bez historycznie związanych. Lista jest płaska (override
+    ``get_results``), więc nagłówki optgroup nie powielają się przy przewijaniu
+    Select2. Używany w adminie prac doktorskich/habilitacyjnych, gdzie kandydat
+    z definicji jest pracownikiem uczelni.
+
+    Dziedziczy po ``AutorAutocomplete`` dla kontroli dostępu (``group_required``)
+    i możliwości tworzenia nowego autora — ale całkowicie nadpisuje wybór i
+    prezentację wyników.
+    """
+
+    def get_queryset(self):
+        if self.q:
+            qs = Autor.objects.fulltext_filter(self.q)
+        else:
+            qs = Autor.objects.all()
+
+        from bpp.models import Uczelnia
+
+        request = getattr(self, "request", None)
+        uczelnia = Uczelnia.objects.get_for_request(request) if request else None
+        if uczelnia is not None:
+            qs = qs.filter(aktualna_jednostka__uczelnia=uczelnia)
+
+        return qs.select_related("tytul", "pbn_uid").order_by("nazwisko", "imiona")
+
+    def get_results(self, context):
+        """Płaska lista wyników — bez optgroupów."""
+        return autocomplete.Select2QuerySetView.get_results(self, context)
 
 
 class ZapisanyJakoAutocomplete(
