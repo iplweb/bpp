@@ -106,7 +106,7 @@ dependencies = [
     "requests-oauthlib==2.0.0",
     "django-cacheops>=7.2,<8",
     "django-constance>=4.3.5",
-    "djangoql-iplweb>=0.23.0",
+    "djangoql-iplweb>=0.26.0",
     "django-weasyprint>=2.5.0",
     "django-templated-email>=3.0.0",
     "django-formtools>=2.6.1,<3",
@@ -487,7 +487,7 @@ dev = [
     # django-run-site: CLI orchestrator dev stack-u. Dawniej `manage.py run_site`
     # + helpery w `_run_site_helpers/`. Instalowany w dev-deps zeby `uv run run-site`
     # mialo dostep do CLI bez globalnego `uv tool install`. Konfiguracja: runsite.toml.
-    "django-run-site>=0.16.0",
+    "django-run-site>=0.16.1",
     # django-dev-helpers: autologin endpoint + dotfiles dla agentow LLM. Dawniej
     # `src/django_bpp/views_run_site_autologin.py`. Aktywuje sie tylko gdy run-site
     # ustawi DJANGO_DEV_HELPERS_ENABLED=1 — w produkcji no-op.

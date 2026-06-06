@@ -50,10 +50,15 @@ class ObcaJednostkaQueryObject(BppMultiseekVisibilityMixin, BooleanQueryObject):
 
         return ret
 
+    def to_djangoql(self, value, operation):
+        skupia = not bool(value)  # real_query robi value = not value
+        return f"autorzy.jednostka.skupia_pracownikow = {skupia}"
+
 
 class AfiliujeQueryObject(BppMultiseekVisibilityMixin, BooleanQueryObject):
     label = "Afiliuje"
     field_name = "afiliuje"
+    djangoql_field_name = "autorzy__afiliuje"
     ops = [
         EQUAL,
     ]
@@ -91,6 +96,13 @@ class DyscyplinaUstawionaQueryObject(BppMultiseekVisibilityMixin, BooleanQueryOb
 
         return ret
 
+    def to_djangoql(self, value, operation):
+        return (
+            "autorzy.dyscyplina_naukowa != None"
+            if value
+            else "autorzy.dyscyplina_naukowa = None"
+        )
+
 
 class StronaWWWUstawionaQueryObject(BppMultiseekVisibilityMixin, BooleanQueryObject):
     label = "Strona WWW ustawiona"
@@ -113,6 +125,11 @@ class StronaWWWUstawionaQueryObject(BppMultiseekVisibilityMixin, BooleanQueryObj
             )
 
         return ret
+
+    def to_djangoql(self, value, operation):
+        if value:
+            return '(www != "" or public_www != "")'
+        return '(www = "" and public_www = "")'
 
 
 class LicencjaOpenAccessUstawionaQueryObject(
@@ -137,6 +154,9 @@ class LicencjaOpenAccessUstawionaQueryObject(
 
         return ret
 
+    def to_djangoql(self, value, operation):
+        return "openaccess_licencja != None" if value else "openaccess_licencja = None"
+
 
 class PublicDostepDniaQueryObject(BppMultiseekVisibilityMixin, BooleanQueryObject):
     label = "Dostęp dnia ustawiony"
@@ -157,6 +177,9 @@ class PublicDostepDniaQueryObject(BppMultiseekVisibilityMixin, BooleanQueryObjec
 
         return ret
 
+    def to_djangoql(self, value, operation):
+        return "public_dostep_dnia != None" if value else "public_dostep_dnia = None"
+
 
 class KierunekStudiowQueryObject(
     BppMultiseekVisibilityMixin, ForeignKeyDescribeMixin, AutocompleteQueryObject
@@ -171,6 +194,7 @@ class KierunekStudiowQueryObject(
     model = Kierunek_Studiow
     search_fields = ["nazwa"]
     field_name = "kierunek_studiow"
+    djangoql_field_name = "autorzy__kierunek_studiow"
     url = "bpp:kierunek-studiow-autocomplete"
 
     def real_query(self, value, operation):

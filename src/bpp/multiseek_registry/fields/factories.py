@@ -112,6 +112,8 @@ def create_valuelist_query_object(
         "label": label,
         "field_name": field_name,
         "values": model.objects.all(),
+        # Konwersja Multiseek -> DjangoQL: value-list jako string po polu-nazwie.
+        "djangoql_value_field": name_field,
     }
     if ops:
         class_attrs["ops"] = ops

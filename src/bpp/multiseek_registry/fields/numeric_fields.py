@@ -30,6 +30,7 @@ class JezykQueryObject(BppMultiseekVisibilityMixin, QueryObject):
     ops = EQUALITY_OPS_MALE
     values = Jezyk.objects.filter(widoczny=True)
     field_name = "jezyk"
+    djangoql_value_field = "nazwa"
 
     def value_from_web(self, value):
         return Jezyk.objects.filter(nazwa=value).first()
