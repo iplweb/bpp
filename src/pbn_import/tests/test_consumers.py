@@ -1,16 +1,44 @@
 """Tests for PBN import WebSocket consumer payloads."""
 
+import concurrent.futures
 import datetime
 import json
 from unittest.mock import AsyncMock
 
 import pytest
-from asgiref.sync import async_to_sync
+from asgiref.sync import async_to_sync as _asgiref_async_to_sync
 from django.utils import timezone
 from model_bakery import baker
 
 from pbn_import.consumers import ImportProgressConsumer
 from pbn_import.models import ImportLog, ImportSession
+
+
+def async_to_sync(method):
+    """``asgiref.async_to_sync`` odporny na przeciekły działający event loop.
+
+    Te testy są SYNC (``def test_...``) i wołają korutyny konsumera przez
+    ``async_to_sync``. ``asgiref`` odmawia jednak, gdy wątek wołającego ma już
+    DZIAŁAJĄCY event loop ("You cannot use AsyncToSync in the same thread as an
+    async event loop"). Na sharded CI tak właśnie bywa: wcześniejszy test async
+    w tym samym shardzie zostawia działający loop w wątku workera, więc kolejne
+    ``async_to_sync`` tu wywalają się — deterministycznie zależnie od podziału na
+    shardy (lokalnie, w izolacji, nie reprodukuje się).
+
+    Naprawa: wykonujemy wywołanie w ŚWIEŻYM wątku, który z definicji nie ma
+    działającego loopa — więc ``async_to_sync`` zawsze startuje własny. Sygnatura
+    jest drop-in (zwraca callable przyjmujący args/kwargs korutyny), więc miejsca
+    wywołań pozostają bez zmian. Lokalnie (bez przecieku) zachowanie identyczne.
+    """
+
+    def caller(*args, **kwargs):
+        with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
+            future = pool.submit(
+                lambda: _asgiref_async_to_sync(method)(*args, **kwargs)
+            )
+            return future.result()
+
+    return caller
 
 
 def make_consumer(session_id, user):
