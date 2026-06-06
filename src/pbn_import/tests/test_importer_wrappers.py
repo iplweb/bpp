@@ -47,9 +47,7 @@ def test_author_importer_downloads_and_integrates_authors(session, uczelnia):
                 ) as integrate:
                     result = importer.run()
 
-    dl.assert_called_once_with(
-        importer.client, uczelnia.pbn_uid_id, callback=callback
-    )
+    dl.assert_called_once_with(importer.client, uczelnia.pbn_uid_id, callback=callback)
     integrate.assert_called_once_with(
         importer.client,
         uczelnia.pbn_uid_id,
@@ -87,11 +85,14 @@ def test_author_importer_records_download_and_integration_errors(session, uczeln
         "Nie udało się pobrać autorów: download failed",
         "Nie udało się zintegrować autorów: integration failed",
     ]
-    assert list(
-        ImportLog.objects.filter(session=session, level="error")
-        .order_by("pk")
-        .values_list("message", flat=True)
-    ) == importer.errors
+    assert (
+        list(
+            ImportLog.objects.filter(session=session, level="error")
+            .order_by("pk")
+            .values_list("message", flat=True)
+        )
+        == importer.errors
+    )
 
 
 def test_source_importer_success(session):
@@ -136,9 +137,7 @@ def test_source_importer_continues_after_non_auth_download_error(session):
             side_effect=RuntimeError("download failed"),
         ):
             with patch.object(importer, "handle_pbn_error") as handle_pbn_error:
-                with patch(
-                    "pbn_import.utils.source_import.importer.importuj_zrodla"
-                ):
+                with patch("pbn_import.utils.source_import.importer.importuj_zrodla"):
                     result = importer.run()
 
     handle_pbn_error.assert_called_once()
@@ -151,7 +150,9 @@ def test_publisher_importer_success_and_clears_progress(session):
 
     with patch.object(importer, "create_subtask_progress", return_value=callback):
         with patch.object(importer, "clear_subtask_progress") as clear:
-            with patch("pbn_import.utils.publisher_import.pobierz_wydawcow_mnisw") as dl:
+            with patch(
+                "pbn_import.utils.publisher_import.pobierz_wydawcow_mnisw"
+            ) as dl:
                 with patch(
                     "pbn_import.utils.publisher_import.importer.importuj_wydawcow",
                     return_value=5,
@@ -278,7 +279,9 @@ def test_statement_importer_returns_when_publication_setup_missing(session):
     importer = StatementImporter(session, client=MagicMock(), uczelnia=None)
 
     with patch.object(importer, "create_subtask_progress", return_value=MagicMock()):
-        with patch("pbn_import.utils.statement_import.pobierz_oswiadczenia_z_instytucji"):
+        with patch(
+            "pbn_import.utils.statement_import.pobierz_oswiadczenia_z_instytucji"
+        ):
             with patch.object(
                 importer.publication_importer,
                 "_setup_uczelnia_and_jednostka",
@@ -308,7 +311,9 @@ def test_statement_importer_full_success_logs_inconsistency_summary(
         )
 
     with patch.object(importer, "create_subtask_progress", return_value=MagicMock()):
-        with patch("pbn_import.utils.statement_import.pobierz_oswiadczenia_z_instytucji"):
+        with patch(
+            "pbn_import.utils.statement_import.pobierz_oswiadczenia_z_instytucji"
+        ):
             with patch.object(
                 importer.publication_importer,
                 "_setup_uczelnia_and_jednostka",
@@ -383,11 +388,14 @@ def test_statement_importer_records_download_and_integration_errors(session, ucz
         "Nie udało się pobrać oświadczeń: download failed",
         "Nie udało się zintegrować oświadczeń: integration failed",
     ]
-    assert list(
-        ImportLog.objects.filter(session=session, level="error")
-        .order_by("pk")
-        .values_list("message", flat=True)
-    ) == importer.errors
+    assert (
+        list(
+            ImportLog.objects.filter(session=session, level="error")
+            .order_by("pk")
+            .values_list("message", flat=True)
+        )
+        == importer.errors
+    )
 
 
 def test_statement_download_missing_publications_no_statement_ids(session):
@@ -465,7 +473,9 @@ def test_statement_download_missing_publications_handles_batch_error(session):
         "pbn_import.utils.statement_import.OswiadczenieInstytucji.objects"
     ) as statements:
         with patch("pbn_import.utils.statement_import.Rekord.objects") as rekordy:
-            with patch.object(importer, "create_subtask_progress", return_value=MagicMock()):
+            with patch.object(
+                importer, "create_subtask_progress", return_value=MagicMock()
+            ):
                 with patch.object(importer, "clear_subtask_progress") as clear:
                     with patch(
                         "pbn_import.utils.statement_import."

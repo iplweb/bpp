@@ -31,7 +31,9 @@ def uczelnia(db):
 @pytest.fixture
 def importer(session, uczelnia):
     imp = PublicationImporter(session, client=MagicMock(), uczelnia=uczelnia)
-    imp.default_jednostka = baker.make(Jednostka, nazwa="Default unit", uczelnia=uczelnia)
+    imp.default_jednostka = baker.make(
+        Jednostka, nazwa="Default unit", uczelnia=uczelnia
+    )
     return imp
 
 
@@ -139,16 +141,16 @@ def test_download_publications_delegates_pbn_error(importer, uczelnia):
             with patch.object(importer, "handle_pbn_error") as handle_pbn_error:
                 importer._download_publications(1, 3, uczelnia)
 
-    handle_pbn_error.assert_called_once_with(
-        error, "Nie udało się pobrać publikacji"
-    )
+    handle_pbn_error.assert_called_once_with(error, "Nie udało się pobrać publikacji")
 
 
 def test_download_publications_v2_clears_progress_even_on_error(importer):
     error = RuntimeError("v2 failed")
 
     with patch.object(importer, "check_cancelled", return_value=False):
-        with patch.object(importer, "create_subtask_progress", return_value=MagicMock()):
+        with patch.object(
+            importer, "create_subtask_progress", return_value=MagicMock()
+        ):
             with patch.object(
                 importer, "_download_publications_v2_with_callback", side_effect=error
             ):
@@ -203,7 +205,9 @@ def test_import_publications_with_cancellation_imports_and_records_failures(impo
 
     with patch("bpp.util.pbar", side_effect=passthrough_pbar):
         with patch.object(importer, "check_cancelled", return_value=False):
-            with patch.object(importer, "create_subtask_progress", return_value=MagicMock()):
+            with patch.object(
+                importer, "create_subtask_progress", return_value=MagicMock()
+            ):
                 with patch.object(importer, "handle_error") as handle_error:
                     with patch(
                         "pbn_import.utils.publication_import."

@@ -140,7 +140,9 @@ def test_handle_uses_resolved_uczelnia_for_integration_and_manager(django_user_m
     client = MagicMock()
 
     with patch.object(command, "get_client", return_value=client):
-        with patch("pbn_import.management.commands.pbn_import.ImportManager") as manager:
+        with patch(
+            "pbn_import.management.commands.pbn_import.ImportManager"
+        ) as manager:
             manager.return_value.run.return_value = {
                 "initial_setup": {"ok": True},
             }

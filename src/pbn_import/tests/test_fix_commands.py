@@ -451,11 +451,15 @@ def test_book_statement_type_expected_type():
     typ_redaktor = SimpleNamespace(nazwa="redaktor")
 
     assert (
-        command._get_expected_typ(SimpleNamespace(type="AUTHOR"), typ_autor, typ_redaktor)
+        command._get_expected_typ(
+            SimpleNamespace(type="AUTHOR"), typ_autor, typ_redaktor
+        )
         is typ_autor
     )
     assert (
-        command._get_expected_typ(SimpleNamespace(type="EDITOR"), typ_autor, typ_redaktor)
+        command._get_expected_typ(
+            SimpleNamespace(type="EDITOR"), typ_autor, typ_redaktor
+        )
         is typ_redaktor
     )
     with pytest.raises(ValueError, match="Nieznany typ"):

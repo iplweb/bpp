@@ -3,7 +3,6 @@ import sys
 from django import forms
 from django.contrib import admin
 from django.utils.html import format_html
-from djangoql.admin import DjangoQLSearchMixin
 from import_export.admin import ImportMixin
 from mptt.admin import DraggableMPTTAdmin
 

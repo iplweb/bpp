@@ -44,7 +44,9 @@ def test_bpp_admin_url_builds_change_url(django_user_model):
     content_type = ContentType.objects.get_for_model(django_user_model)
     user = django_user_model.objects.create_user(username="admin-url-user")
 
-    assert bpp_admin_url(content_type, user.pk) == f"/admin/bpp/bppuser/{user.pk}/change/"
+    assert (
+        bpp_admin_url(content_type, user.pk) == f"/admin/bpp/bppuser/{user.pk}/change/"
+    )
 
 
 def test_bpp_admin_url_returns_empty_for_missing_parts():

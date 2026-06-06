@@ -10,11 +10,6 @@ from .abstracts import (
     BazaModeluStreszczen,
 )
 
-# Titles (multilingual)
-from .titles import (
-    BazaModeluTytulow,
-)
-
 # API Export
 from .api_export import (
     ModelOpcjonalnieNieEksportowanyDoAPI,
@@ -132,6 +127,11 @@ from .search import (
 # Storage
 from .storage import (
     ModelZMiejscemPrzechowywania,
+)
+
+# Titles (multilingual)
+from .titles import (
+    BazaModeluTytulow,
 )
 
 # Utilities

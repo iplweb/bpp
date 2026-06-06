@@ -159,8 +159,7 @@ def test_sync_single_source_reports_success_and_failure():
             return_value=2021,
         ) as import_points:
             with patch(
-                "pbn_import.utils.source_scoring_import."
-                "_import_disciplines_for_zrodlo"
+                "pbn_import.utils.source_scoring_import._import_disciplines_for_zrodlo"
             ) as import_disciplines:
                 assert _sync_single_source(123, 2017, {"2.3": 10}) == (
                     123,
@@ -187,9 +186,7 @@ def test_run_returns_zero_when_no_sources(session):
     with patch(
         "pbn_import.utils.source_scoring_import.Dyscyplina_Naukowa.objects"
     ) as disciplines:
-        with patch(
-            "pbn_import.utils.source_scoring_import.Zrodlo.objects"
-        ) as sources:
+        with patch("pbn_import.utils.source_scoring_import.Zrodlo.objects") as sources:
             disciplines.all.return_value = []
             sources.exclude.return_value.values_list.return_value = []
 
@@ -215,9 +212,7 @@ def test_run_synchronizes_sources_and_logs_first_errors(session):
     with patch(
         "pbn_import.utils.source_scoring_import.Dyscyplina_Naukowa.objects"
     ) as disciplines:
-        with patch(
-            "pbn_import.utils.source_scoring_import.Zrodlo.objects"
-        ) as sources:
+        with patch("pbn_import.utils.source_scoring_import.Zrodlo.objects") as sources:
             with patch(
                 "pbn_import.utils.source_scoring_import._sync_single_source",
                 side_effect=[(1, True, None), (2, False, "bad source")],

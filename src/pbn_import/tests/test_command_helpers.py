@@ -57,8 +57,7 @@ def test_get_validated_default_jednostka_creates_default_for_single_uczelnia():
             return_value=uczelnia,
         ):
             with patch(
-                "pbn_import.utils.command_helpers."
-                "znajdz_lub_utworz_jednostke_domyslna",
+                "pbn_import.utils.command_helpers.znajdz_lub_utworz_jednostke_domyslna",
                 return_value=(default, False),
             ):
                 assert get_validated_default_jednostka() == default
