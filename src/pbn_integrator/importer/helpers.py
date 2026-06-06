@@ -244,20 +244,58 @@ def pobierz_lub_utworz_zrodlo(
         return Zrodlo.objects.get(pbn_uid_id=pbn_zrodlo_id)
 
 
-def pobierz_jezyk(mainLanguage, pbn_json_title):
-    """Get language object from PBN language code."""
-    try:
-        return Jezyk.objects.get(pbn_uid_id=mainLanguage)
-    except Jezyk.DoesNotExist:
+def get_jezyk_polski():
+    """Zwraca rekord języka polskiego — domyślny język importu z PBN.
+
+    Pole ``jezyk`` w publikacjach jest NOT NULL, więc gdy PBN nie poda języka
+    (albo poda kod, którego nie ma w słowniku ``Jezyk``), rekord i tak musi
+    dostać jakiś język. Zamiast „pierwszego z brzegu" (kolejność w tabeli bywa
+    przypadkowa) używamy deterministycznie polskiego.
+
+    Kanoniczny polski to ``skrot='pol.'`` (patrz migracja 0022 i fixture'y);
+    awaryjnie dopasowujemy po ``nazwa='polski'``. Brak polskiego w bazie to błąd
+    konfiguracji instancji — zgłaszamy go jawnie, nie zwracamy cicho ``None``
+    (FK i tak by tego nie przyjął).
+    """
+    jezyk = (
+        Jezyk.objects.filter(skrot="pol.").first()
+        or Jezyk.objects.filter(nazwa__iexact="polski").first()
+    )
+    if jezyk is None:
+        raise Jezyk.DoesNotExist(
+            "Brak języka polskiego w bazie (skrot='pol.' / nazwa='polski') — "
+            "nie mam domyślnego języka dla importu PBN."
+        )
+    return jezyk
+
+
+def pobierz_jezyk(mainLanguage, pbn_json_title=None, domyslny_jezyk=None):
+    """Zwraca ``Jezyk`` dla kodu PBN; przy braku dopasowania — język domyślny.
+
+    Kolejność prób: ``pbn_uid_id`` → ``skrot__startswith`` → ``domyslny_jezyk``.
+    ``mainLanguage`` bywa ``None`` (PBN nie podał pola) — wtedy od razu idziemy
+    na domyślny. ``domyslny_jezyk`` to ``Jezyk`` wskazany przez wołającego
+    (parametr importu); gdy ``None`` — używamy polskiego (``get_jezyk_polski``).
+    """
+    if mainLanguage:
         try:
-            return Jezyk.objects.get(skrot__startswith=mainLanguage)
+            return Jezyk.objects.get(pbn_uid_id=mainLanguage)
         except Jezyk.DoesNotExist:
-            logger.info(f" &&& JEZYK NIE ISTNIEJE {mainLanguage=}")
-            logger.info(
-                f" *** PRACA {pbn_json_title} zostanie utworzona z jezykiem "
-                f"PIERWSZYM NA LISCIE"
-            )
-            return Jezyk.objects.all().first()
+            try:
+                return Jezyk.objects.get(skrot__startswith=mainLanguage)
+            except Jezyk.DoesNotExist:
+                pass
+
+    if domyslny_jezyk is None:
+        domyslny_jezyk = get_jezyk_polski()
+
+    logger.info(
+        " &&& JEZYK NIE ISTNIEJE %r — PRACA %r dostanie jezyk domyslny %r",
+        mainLanguage,
+        pbn_json_title,
+        domyslny_jezyk,
+    )
+    return domyslny_jezyk
 
 
 def przetworz_journal_issue(pbn_json, ret, zrodlo):

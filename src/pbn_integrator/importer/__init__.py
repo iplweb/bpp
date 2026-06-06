@@ -52,6 +52,7 @@ def importuj_publikacje_po_pbn_uid_id(
     rodzaj_periodyk=None,
     dyscypliny_cache=None,
     inconsistency_callback=None,
+    domyslny_jezyk=None,
 ):
     """Importuje publikację z PBN do BPP.
 
@@ -63,6 +64,8 @@ def importuj_publikacje_po_pbn_uid_id(
                z tym pbn_uid_id już istnieje w BPP
         rodzaj_periodyk: Optional Rodzaj_Zrodla instance for "periodyk"
         dyscypliny_cache: Optional dict mapping discipline names to objects
+        domyslny_jezyk: Język użyty, gdy PBN nie poda języka publikacji albo
+               poda kod nieobecny w słowniku ``Jezyk`` (domyślnie: polski).
     """
     pbn_publication = get_or_download_publication(pbn_uid_id, client)
 
@@ -78,6 +81,7 @@ def importuj_publikacje_po_pbn_uid_id(
                 client=client,
                 force=force,
                 inconsistency_callback=inconsistency_callback,
+                domyslny_jezyk=domyslny_jezyk,
             )
         case "EDITED_BOOK":
             ret = importuj_ksiazke(
@@ -86,6 +90,7 @@ def importuj_publikacje_po_pbn_uid_id(
                 client=client,
                 force=force,
                 inconsistency_callback=inconsistency_callback,
+                domyslny_jezyk=domyslny_jezyk,
             )
         case "CHAPTER":
             ret = importuj_ksiazke(
@@ -94,6 +99,7 @@ def importuj_publikacje_po_pbn_uid_id(
                 client=client,
                 force=force,
                 inconsistency_callback=inconsistency_callback,
+                domyslny_jezyk=domyslny_jezyk,
             )
 
             ret = importuj_rozdzial(
@@ -102,6 +108,7 @@ def importuj_publikacje_po_pbn_uid_id(
                 client=client,
                 force=force,
                 inconsistency_callback=inconsistency_callback,
+                domyslny_jezyk=domyslny_jezyk,
             )
 
         case "ARTICLE":
@@ -113,6 +120,7 @@ def importuj_publikacje_po_pbn_uid_id(
                 rodzaj_periodyk=rodzaj_periodyk,
                 dyscypliny_cache=dyscypliny_cache,
                 inconsistency_callback=inconsistency_callback,
+                domyslny_jezyk=domyslny_jezyk,
             )
         case _:
             raise NotImplementedError(f"Nie obsluze {cv['object']['type']}")

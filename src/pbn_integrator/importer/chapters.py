@@ -26,6 +26,7 @@ from .helpers import (
     assert_dictionary_empty,
     importuj_streszczenia,
     pbn_keywords_to_slowa_kluczowe,
+    pobierz_jezyk,
     przetworz_slowa_kluczowe,
     przetworz_tytuly,
 )
@@ -39,6 +40,7 @@ def importuj_rozdzial(
     client: PBNClient,
     force=False,
     inconsistency_callback=None,
+    domyslny_jezyk: Jezyk = None,
 ):
     """Importuje rozdział z PBN do BPP jako Wydawnictwo_Zwarte z wydawnictwem nadrzędnym.
 
@@ -48,6 +50,8 @@ def importuj_rozdzial(
         client: Klient PBN API
         force: Jeśli True, tworzy nowy rekord nawet jeśli publikacja
                z tym pbn_uid_id już istnieje w BPP
+        domyslny_jezyk: Język użyty, gdy PBN nie poda języka rozdziału albo
+               poda kod nieobecny w słowniku ``Jezyk`` (domyślnie: polski).
     """
     try:
         pbn_publication = Publication.objects.get(pk=mongoId)
@@ -88,6 +92,12 @@ def importuj_rozdzial(
     pbn_chapter_json.pop("title", None)
     pbn_chapter_json.pop("titles", None)
     pbn_chapter_json.pop("type", None)
+    # Sub-słownik rozdziału w ``chapters`` nadrzędnego duplikuje metadane, które
+    # bierzemy skądinąd: ``year`` (rok z wyd. nadrzędnego), ``originalLanguage``
+    # (język bierzemy z ``mainLanguage``). Konsumujemy je, by tripwire
+    # ``assert_dictionary_empty`` nie wywalił importu na redundantnych kluczach.
+    pbn_chapter_json.pop("year", None)
+    pbn_chapter_json.pop("originalLanguage", None)
 
     if "abstracts" in pbn_chapter_json and "abstracts" in pbn_json:
         print(
@@ -96,11 +106,16 @@ def importuj_rozdzial(
         )
         pbn_json.pop("abstracts")
 
-    pbn_wydawca_id = pbn_json.pop("publisher")["id"]
-    try:
-        wydawca = Wydawca.objects.get(pbn_uid_id=pbn_wydawca_id)
-    except Wydawca.DoesNotExist:
-        wydawca = sciagnij_i_zapisz_wydawce(pbn_wydawca_id, client)
+    # Jak w książkach: brak wydawcy w PBN nie może wywalić importu (pole nullable).
+    pbn_wydawca = pbn_json.pop("publisher", None)
+    if pbn_wydawca is not None:
+        pbn_wydawca_id = pbn_wydawca["id"]
+        try:
+            wydawca = Wydawca.objects.get(pbn_uid_id=pbn_wydawca_id)
+        except Wydawca.DoesNotExist:
+            wydawca = sciagnij_i_zapisz_wydawce(pbn_wydawca_id, client)
+    else:
+        wydawca = None
 
     if not isinstance(wydawnictwo_nadrzedne, Wydawnictwo_Zwarte):
         wydawnictwo_nadrzedne = wydawnictwo_nadrzedne.original
@@ -115,10 +130,10 @@ def importuj_rozdzial(
         or "",
         wydawca=wydawca,
         wydawnictwo_nadrzedne=wydawnictwo_nadrzedne,
-        jezyk=Jezyk.objects.get(
-            pbn_uid=pbn_json.pop(
-                "mainLanguage", pbn_chapter_json.pop("mainLanguage", None)
-            )
+        jezyk=pobierz_jezyk(
+            pbn_json.pop("mainLanguage", pbn_chapter_json.pop("mainLanguage", None)),
+            pbn_json.get("title"),
+            domyslny_jezyk,
         ),
         doi=pbn_json.pop("doi", pbn_chapter_json.pop("doi", None)),
         pbn_uid=pbn_publication,

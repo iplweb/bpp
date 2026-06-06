@@ -186,6 +186,20 @@
                 {% endif %}
             </div>
 
+            <div class="pbn-import__modal-field--spaced">
+                <label>Domyślny język publikacji:</label>
+                {# Język użyty, gdy PBN nie poda języka pozycji albo poda kod #}
+                {# spoza słownika. Domyślnie polski; użytkownik może zmienić. #}
+                <select name="jezyk_domyslny_id" id="jezyk_domyslny_select">
+                    {% for j in jezyki %}
+                    <option value="{{ j.pk }}"{% if jezyk_domyslny and jezyk_domyslny.pk == j.pk %} selected{% endif %}>
+                        {{ j.nazwa }}
+                    </option>
+                    {% endfor %}
+                </select>
+                <p class="help-text">Stosowany dla pozycji bez języka w PBN lub z językiem spoza słownika.</p>
+            </div>
+
             <div class="callout primary pbn-import__modal-field--spaced">
                 <h5><span class="fi-info"></span> Wskazówka</h5>
                 <p>Import może potrwać od kilku minut do kilku godzin w zależności od ilości danych.</p>

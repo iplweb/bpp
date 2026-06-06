@@ -16,7 +16,7 @@ from django.views import View
 from django.views.decorators.csrf import csrf_exempt
 from django.views.generic import DetailView, ListView, TemplateView
 
-from bpp.models import Jednostka, Uczelnia, Wydzial
+from bpp.models import Jednostka, Jezyk, Uczelnia, Wydzial
 
 from .models import (
     ImportInconsistency,
@@ -139,6 +139,15 @@ class ImportDashboardView(LoginRequiredMixin, ImportPermissionMixin, TemplateVie
             nazwa__icontains="domyśln"
         ).first()
 
+        # Domyślny język dla publikacji bez (poprawnego) języka w PBN. Lista
+        # widocznych języków + preselekcja polskiego (get_jezyk_polski to ten
+        # sam kontrakt, którego używa importer jako fallback).
+        context["jezyki"] = Jezyk.objects.filter(widoczny=True).order_by("nazwa")
+        context["jezyk_domyslny"] = (
+            Jezyk.objects.filter(skrot="pol.").first()
+            or Jezyk.objects.filter(nazwa__iexact="polski").first()
+        )
+
         # Import steps for dynamic form rendering (from step_definitions.py)
         context["import_steps"] = get_form_steps()
 
@@ -170,6 +179,12 @@ class StartImportView(LoginRequiredMixin, ImportPermissionMixin, View):
         jednostka = (
             Jednostka.objects.filter(pk=jednostka_id).first() if jednostka_id else None
         )
+
+        # Domyślny język jest opcjonalny — przy braku/niepoprawnym wyborze
+        # importer i tak spadnie na polski (resolve_default_jezyk). Bez
+        # gate-checku per-uczelnia: języki są globalne.
+        jezyk_id = request.POST.get("jezyk_domyslny_id")
+        jezyk = Jezyk.objects.filter(pk=jezyk_id).first() if jezyk_id else None
 
         # Domyślna jednostka/wydział muszą być świadomie wybrane przez
         # użytkownika — nie pozwalamy ruszyć importu z pustym polem (w domyślnym
@@ -236,6 +251,11 @@ class StartImportView(LoginRequiredMixin, ImportPermissionMixin, View):
                 # To naprawia ValueError "Nie znaleziono domyślnej jednostki".
                 "default_jednostka_id": jednostka.pk if jednostka else None,
                 "wydzial_id": wydzial.pk if wydzial else None,
+                # Domyślny język importu (fallback dla pozycji bez mainLanguage
+                # albo z kodem spoza słownika Jezyk). Czytany przez
+                # resolve_default_jezyk; None → polski.
+                "default_jezyk": jezyk.nazwa if jezyk else "",
+                "default_jezyk_id": jezyk.pk if jezyk else None,
             }
         )
 

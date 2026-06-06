@@ -107,6 +107,33 @@ def resolve_default_jednostka(session, uczelnia):
     return jednostka
 
 
+def resolve_default_jezyk(session):
+    """Ustal domyślny język dla sesji importu publikacji.
+
+    Język używany, gdy PBN nie poda języka publikacji (``mainLanguage``) albo
+    poda kod nieobecny w słowniku ``Jezyk``. Kolejność — pierwsze trafienie:
+
+    1. ``config["default_jezyk_id"]`` — wybór z formularza nowego importu
+       (``StartImportView``).
+    2. polski (``get_jezyk_polski``) — deterministyczny default, gdy nic nie
+       wybrano albo wybór jest nieaktualny.
+
+    Języki są globalne (nie per-uczelnia), więc — inaczej niż
+    ``resolve_default_jednostka`` — resolver nie potrzebuje ``Uczelnia``.
+    """
+    from bpp.models import Jezyk
+    from pbn_integrator.importer.helpers import get_jezyk_polski
+
+    config = session.config or {}
+    jezyk_id = config.get("default_jezyk_id")
+    if jezyk_id:
+        jezyk = Jezyk.objects.filter(pk=jezyk_id).first()
+        if jezyk is not None:
+            return jezyk
+
+    return get_jezyk_polski()
+
+
 class InstitutionImporter(ImportStepBase):
     """Setup default institutions and departments"""
 

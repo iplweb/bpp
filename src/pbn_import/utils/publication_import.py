@@ -16,7 +16,7 @@ from pbn_integrator.utils import (
 )
 
 from .base import CancelledException, ImportStepBase
-from .institution_import import resolve_default_jednostka
+from .institution_import import resolve_default_jednostka, resolve_default_jezyk
 
 
 class PublicationImporter(ImportStepBase):
@@ -29,6 +29,7 @@ class PublicationImporter(ImportStepBase):
         super().__init__(session, client, uczelnia=uczelnia)
         self.delete_existing = delete_existing
         self.default_jednostka = None
+        self.default_jezyk = None
 
     def run(self):
         """Import publications"""
@@ -96,6 +97,10 @@ class PublicationImporter(ImportStepBase):
             raise ValueError(
                 "Nie znaleziono domyślnej jednostki dla importu publikacji"
             )
+
+        # Domyślny język dla publikacji bez (poprawnego) ``mainLanguage`` —
+        # wybór z formularza nowego importu albo polski. Patrz pobierz_jezyk().
+        self.default_jezyk = resolve_default_jezyk(self.session)
 
         # Ensure OpenAccess version exists
         Wersja_Tekstu_OpenAccess.objects.get_or_create(nazwa="Inna", skrot="OTHER")
@@ -242,6 +247,7 @@ class PublicationImporter(ImportStepBase):
                     default_jednostka=self.default_jednostka,
                     rodzaj_periodyk=rodzaj_periodyk,
                     dyscypliny_cache=dyscypliny_cache,
+                    domyslny_jezyk=self.default_jezyk,
                 )
                 if ret:
                     imported_count += 1

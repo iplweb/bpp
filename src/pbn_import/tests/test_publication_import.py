@@ -35,6 +35,19 @@ def importer(session, uczelnia):
     return imp
 
 
+def test_setup_wires_default_jezyk_from_resolver(importer):
+    """``_setup_uczelnia_and_jednostka`` ustawia ``self.default_jezyk``.
+
+    Bez wyboru w configu resolver zwraca polski — i to on (a nie None) jedzie
+    potem do importera jako ``domyslny_jezyk``.
+    """
+    from bpp.models import Jezyk
+
+    importer._setup_uczelnia_and_jednostka()
+
+    assert importer.default_jezyk == Jezyk.objects.get(skrot="pol.")
+
+
 def test_run_returns_reason_when_uczelnia_setup_is_missing(session):
     importer = PublicationImporter(session, client=MagicMock(), uczelnia=None)
 
@@ -209,6 +222,7 @@ def test_import_publications_with_cancellation_imports_and_records_failures(impo
             "default_jednostka": importer.default_jednostka,
             "rodzaj_periodyk": rodzaj_periodyk,
             "dyscypliny_cache": {dyscyplina.nazwa: dyscyplina},
+            "domyslny_jezyk": importer.default_jezyk,
         }
     handle_error.assert_called_once()
     assert "pub-bad" in handle_error.call_args.args[1]
