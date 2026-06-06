@@ -2,7 +2,6 @@ from dal import autocomplete
 from django import forms
 from django.contrib import admin, messages
 from django.core.exceptions import ValidationError
-from djangoql.admin import DjangoQLSearchMixin
 from dynamic_admin_columns.mixins import DynamicColumnsMixin
 from mptt.forms import TreeNodeChoiceField
 from taggit.forms import TextareaTagWidget
@@ -21,8 +20,8 @@ from bpp.admin.filters import (
     UtworzonePrzezFilter,
 )
 from bpp.admin.helpers import fieldsets
+from bpp.admin.helpers.djangoql import BppDjangoQLSearchMixin
 from bpp.admin.helpers.widgets import COMMA_DECIMAL_FIELD_OVERRIDE
-from bpp.djangoql_schema import BppQLSchema
 from bpp.models import (
     Charakter_Formalny,
     Wydawca,
@@ -450,7 +449,7 @@ class Wydawnictwo_Zwarte_Zewnetrzna_Baza_DanychInline(admin.StackedInline):
 class Wydawnictwo_ZwarteAdmin(
     DSpaceLinkAdminMixin,
     ConstanceScoringFieldsMixin,
-    DjangoQLSearchMixin,
+    BppDjangoQLSearchMixin,
     KolumnyZeSkrotamiMixin,
     helpers.mixins.AdnotacjeZDatamiOrazPBNMixin,
     OptionalPBNSaveMixin,
@@ -480,7 +479,6 @@ class Wydawnictwo_ZwarteAdmin(
     form = Wydawnictwo_ZwarteForm
     djangoql_completion_enabled_by_default = False
     djangoql_completion = True
-    djangoql_schema = BppQLSchema
     search_fields = Wydawnictwo_ZwarteAdmin_Baza.search_fields
     resource_classes = [resources.Wydawnictwo_ZwarteResource]
     bibtex_resource_class = resources.Wydawnictwo_ZwarteBibTeXResource

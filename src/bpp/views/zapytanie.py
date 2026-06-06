@@ -1,16 +1,17 @@
 import json
-import logging
+import re
 
 from django import forms
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import FieldError, ValidationError
 from django.core.paginator import Paginator
-from django.http import Http404, HttpResponse
+from django.http import Http404, HttpResponse, JsonResponse
 from django.urls import NoReverseMatch, reverse
 from django.views.generic import FormView, View
-from djangoql.breakdown import explain_empty
+from djangoql.breakdown import explain
 from djangoql.exceptions import DjangoQLError
+from djangoql.formatter import format_query
 from djangoql.queryset import apply_search
 from djangoql.serializers import SuggestionsAPISerializer
 from djangoql.views import SuggestionsAPIView
@@ -19,8 +20,6 @@ from bpp.const import GR_WPROWADZANIE_DANYCH
 from bpp.djangoql_schema import BppQLSchema
 from bpp.models import Autor
 from bpp.models.cache import Rekord
-
-logger = logging.getLogger(__name__)
 
 # Alias zgodności: schemat przeniesiony do bpp.djangoql_schema (wspólny trzon
 # dla widoku i adminów). Widok i testy odwołują się do BppZapytanieSchema.
@@ -310,6 +309,9 @@ class ZapytanieForm(forms.Form):
                 "placeholder": ('tytul_oryginalny ~ "nowotwor" and rok >= 2020'),
                 "spellcheck": "false",
                 "autocomplete": "off",
+                # `djangoql` -> multiline.js wpina Shift+Enter; nakładkę
+                # highlight.js doczepiamy jawnie w zapytanie.js (po uchwyt).
+                "class": "djangoql",
             }
         ),
         required=False,
@@ -328,38 +330,56 @@ class ZapytanieForm(forms.Form):
     )
 
 
-def _annotate_breakdown(node, is_root=True, on_zero_path=True):
-    """Dodaje do każdego węzła drzewa rozbicia pole ``label`` (tekst albo None)
-    — komunikat wskazujący realnego „winowajcę" zerowego wyniku.
+def _format_error_text(exc):
+    """Czytelny komunikat błędu zapytania (łączy komunikaty ValidationError)."""
+    if isinstance(exc, ValidationError):
+        return "; ".join(exc.messages)
+    return str(exc)
 
-    Idea: idziemy „ścieżką zera". Dziecko jest na ścieżce zera tylko jeśli SAMO
-    ma 0 trafień — bo wtedy jego pustka propaguje się w górę przez AND (każdy
-    zerowy operand zeruje AND) albo współtworzy puste OR. Zero pochłonięte przez
-    NIEPUSTE OR (np. ``(A or B)`` które zwraca >0, mimo że B=0) NIE jest
-    winowajcą — i nie dostaje etykiety (koniec z szumem na martwych gałęziach).
 
-    Etykietę dostaje tylko NAJGŁĘBSZY węzeł na ścieżce zera (ten, poniżej
-    którego nie ma już zera) — czyli realny powód pustki:
-    - liść z 0 trafień → „warunek nie pasuje do niczego",
-    - AND-przecięcie (każdy operand z osobna >0, ale razem 0) → etykieta na AND.
+def _locate_token(query, needle):
+    """1-based ``(line, column)`` wystąpienia ``needle`` w ``query`` albo None.
 
-    Korzeń (główne zapytanie) NIE dostaje etykiety — i tak wiadomo, że ma 0 (po
-    to renderujemy rozbicie). Liczone z samych ``count`` + struktury — bez
-    polegania na rolach z djangoql.
-    """
-    children = node["children"]
-    child_on_zero = [on_zero_path and c["count"] == 0 for c in children]
-    is_deepest_zero = on_zero_path and node["count"] == 0 and not any(child_on_zero)
-    label = None
-    if is_deepest_zero and not is_root:
-        if children:
-            label = "każdy warunek z osobna coś zwraca, ale ich połączenie daje 0"
-        else:
-            label = "ten warunek nie pasuje do żadnego rekordu"
-    node["label"] = label
-    for child, czp in zip(children, child_on_zero, strict=True):
-        _annotate_breakdown(child, is_root=False, on_zero_path=czp)
-    return node
+    Najpierw szuka jako całego słowa (granice nie-słowne, bez kropki z lewej —
+    żeby ``foo`` nie złapało się w ``bar.foo``), z fallbackiem do zwykłego
+    podciągu. Pozwala podświetlić nieznane pole/wartość, którą djangoql wskazuje
+    tylko przez ``exc.value`` (bez pozycji)."""
+    match = re.search(r"(?<![\w.])" + re.escape(needle) + r"(?![\w])", query)
+    pos = match.start() if match else query.find(needle)
+    if pos < 0:
+        return None
+    line = query.count("\n", 0, pos) + 1
+    column = pos - query.rfind("\n", 0, pos)
+    return line, column
+
+
+def _error_location(exc, query):
+    """``(line, column, mark)`` wskazujące miejsce błędu, albo ``(None,)*3``.
+
+    ``mark='to_end'`` — błąd składni/leksera (djangoql niesie ``line``+``column``):
+    podświetlamy ogon zapytania od tej kolumny. ``mark='token'`` — nieznane
+    pole/wartość (djangoql niesie tylko ``value``): lokalizujemy ten jeden token.
+    Most między wyjątkami Pythona a czerwoną falką nakładki ``highlight.js``
+    (idiom z ``djangoql/example_project``)."""
+    line = getattr(exc, "line", None)
+    column = getattr(exc, "column", None)
+    if line and column:
+        return line, column, "to_end"
+    value = getattr(exc, "value", None)
+    if value:
+        loc = _locate_token(query, str(value))
+        if loc:
+            return loc[0], loc[1], "token"
+    return None, None, None
+
+
+def _error_payload(exc, query):
+    """Słownik odpowiedzi JSON błędu: ``{error[, line, column, mark]}``."""
+    payload = {"error": _format_error_text(exc)}
+    line, column, mark = _error_location(exc, query)
+    if line and column:
+        payload.update(line=line, column=column, mark=mark)
+    return payload
 
 
 class ZapytanieView(WprowadzanieDanychOrSuperuserMixin, FormView):
@@ -390,6 +410,7 @@ class ZapytanieView(WprowadzanieDanychOrSuperuserMixin, FormView):
         model = MODELS[model_key]
         queryset = model.objects.all()
         error = None
+        error_location = None
         results_page = None
         count = None
 
@@ -405,43 +426,28 @@ class ZapytanieView(WprowadzanieDanychOrSuperuserMixin, FormView):
             page_number = self.request.GET.get("page") or 1
             results_page = paginator.get_page(page_number)
         except (DjangoQLError, FieldError, ValidationError, ValueError) as exc:
-            error = self._format_error(exc)
+            error = _format_error_text(exc)
+            line, column, mark = _error_location(exc, query)
+            if line and column:
+                error_location = {"line": line, "column": column, "mark": mark}
 
         if results_page is not None and model_key == MODEL_REKORD:
             self._attach_admin_urls(results_page)
 
-        breakdown = None
-        if error is None and count == 0:
-            try:
-                breakdown = explain_empty(
-                    model.objects.all(), query, schema=BppZapytanieSchema
-                )
-            except (DjangoQLError, FieldError, ValidationError, ValueError):
-                logger.exception(
-                    "explain_empty zawiodlo dla zapytania %r (model=%s)",
-                    query,
-                    model_key,
-                )
-                breakdown = None
-            if breakdown is not None:
-                _annotate_breakdown(breakdown)
-
+        # Rozbicie „dlaczego 0 wyników" pokazuje (z podświetlaniem składni) panel
+        # „Wyjaśnij liczby" w JS — auto-otwierany, gdy count == 0 (patrz
+        # autoExplain w szablonie + zapytanie.js). Serwer nie renderuje już
+        # własnego rozbicia.
         context = self.get_context_data(
             form=form,
             results=results_page,
             count=count,
             error=error,
+            error_location=error_location,
             model_key=model_key,
             query=query,
-            breakdown=breakdown,
         )
         return self.render_to_response(context)
-
-    @staticmethod
-    def _format_error(exc):
-        if isinstance(exc, ValidationError):
-            return "; ".join(exc.messages)
-        return str(exc)
 
     @staticmethod
     def _attach_admin_urls(results_page):
@@ -490,3 +496,60 @@ class ZapytanieSuggestionsView(WprowadzanieDanychOrSuperuserMixin, View):
         model = _resolve_model_or_404(model_key)
         view = SuggestionsAPIView.as_view(schema=BppZapytanieSchema(model))
         return view(request)
+
+
+def _query_param(request):
+    return (request.POST.get("q") or request.GET.get("q") or "").strip()
+
+
+class _ZapytanieAjaxView(WprowadzanieDanychOrSuperuserMixin, View):
+    """Baza AJAX-owych endpointów zapytania (format/explain).
+
+    Wspólny odczyt ``q`` (POST z JS, GET dla curl/testów) i obsługa błędu jako
+    JSON 400 z koordynatami do podświetlenia. Reużywa „nie-publicznych"
+    prymitywów djangoql (formatter/breakdown) zamiast własnej logiki."""
+
+    def get(self, request, model_key):
+        return self.handle(request, model_key)
+
+    def post(self, request, model_key):
+        return self.handle(request, model_key)
+
+    def handle(self, request, model_key):  # pragma: no cover - abstrakcyjna
+        raise NotImplementedError
+
+
+class ZapytanieFormatView(_ZapytanieAjaxView):
+    """Pretty-print zapytania przez ``djangoql.formatter.format_query``.
+
+    ``{"formatted": "<wcięte, wieloliniowe zapytanie>"}`` albo ``400
+    {"error", "line", "column", "mark"}``."""
+
+    def handle(self, request, model_key):
+        _resolve_model_or_404(model_key)
+        query = _query_param(request)
+        if not query:
+            return JsonResponse({"formatted": ""})
+        try:
+            return JsonResponse({"formatted": format_query(query)})
+        except DjangoQLError as exc:
+            return JsonResponse(_error_payload(exc, query), status=400)
+
+
+class ZapytanieExplainView(_ZapytanieAjaxView):
+    """Rozbicie zapytania na drzewo liczności gałęzi przez
+    ``djangoql.breakdown.explain`` — na żądanie, dla DOWOLNEGO zapytania (nie
+    tylko zerowego).
+
+    ``{"tree": {text, count, role, children}}`` albo ``400 {"error", …}``."""
+
+    def handle(self, request, model_key):
+        model = _resolve_model_or_404(model_key)
+        query = _query_param(request)
+        if not query:
+            return JsonResponse({"tree": None})
+        try:
+            tree = explain(model.objects.all(), query, schema=BppZapytanieSchema)
+        except (DjangoQLError, FieldError, ValidationError, ValueError) as exc:
+            return JsonResponse(_error_payload(exc, query), status=400)
+        return JsonResponse({"tree": tree})

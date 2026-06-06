@@ -2,12 +2,11 @@ from dal import autocomplete
 from django import forms
 from django.contrib import admin
 from django.core.exceptions import ValidationError
-from djangoql.admin import DjangoQLSearchMixin
 
 from bpp.admin.core import DynamicAdminFilterMixin
 from bpp.admin.filters import PBN_UID_IDObecnyFilter
+from bpp.admin.helpers.djangoql import BppDjangoQLSearchMixin
 from bpp.const import PBN_UID_LEN
-from bpp.djangoql_schema import BppQLSchema
 from bpp.models import Wydawca
 from bpp.models.wydawca import Poziom_Wydawcy
 from pbn_api.models import Publisher
@@ -93,10 +92,9 @@ class WydawcaForm(forms.ModelForm):
 
 
 @admin.register(Wydawca)
-class WydawcaAdmin(DynamicAdminFilterMixin, DjangoQLSearchMixin, admin.ModelAdmin):
+class WydawcaAdmin(DynamicAdminFilterMixin, BppDjangoQLSearchMixin, admin.ModelAdmin):
     djangoql_completion_enabled_by_default = False
     djangoql_completion = True
-    djangoql_schema = BppQLSchema
 
     form = WydawcaForm
 
@@ -135,7 +133,7 @@ class WydawcaAdmin(DynamicAdminFilterMixin, DjangoQLSearchMixin, admin.ModelAdmi
 
     def get_search_results(self, request, queryset, search_term):
         if self.search_mode_toggle_enabled() and self.djangoql_search_enabled(request):
-            return DjangoQLSearchMixin.get_search_results(
+            return BppDjangoQLSearchMixin.get_search_results(
                 self, request, queryset, search_term
             )
 

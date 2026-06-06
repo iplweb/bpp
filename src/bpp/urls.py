@@ -91,6 +91,8 @@ from bpp.views.oai import OAIView
 from bpp.views.profile import ProfilUzytkownikaView
 from bpp.views.xlsx_issn_chunks import xlsx_issn_chunks
 from bpp.views.zapytanie import (
+    ZapytanieExplainView,
+    ZapytanieFormatView,
     ZapytanieIntrospectView,
     ZapytanieSuggestionsView,
     ZapytanieView,
@@ -119,6 +121,16 @@ urlpatterns = [
         "zapytanie/suggestions/<str:model_key>/",
         ZapytanieSuggestionsView.as_view(),
         name="zapytanie_suggestions",
+    ),
+    path(
+        "zapytanie/format/<str:model_key>/",
+        ZapytanieFormatView.as_view(),
+        name="zapytanie_format",
+    ),
+    path(
+        "zapytanie/explain/<str:model_key>/",
+        ZapytanieExplainView.as_view(),
+        name="zapytanie_explain",
     ),
     path(
         "profil/",
