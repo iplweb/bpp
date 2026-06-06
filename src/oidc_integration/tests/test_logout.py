@@ -1,5 +1,7 @@
 """Testy wylogowania OIDC: builder URL-a + backend-aware widok."""
 
+from urllib.parse import urlparse
+
 import pytest
 from django.contrib.auth import BACKEND_SESSION_KEY, get_user_model
 from django.contrib.sessions.backends.db import SessionStore
@@ -119,5 +121,7 @@ def test_microsoft_logout_view_sesja_microsoft_idzie_do_microsoftu(rf):
     resp = MicrosoftLogoutView.as_view()(req)
 
     assert resp.status_code == 302
-    assert "microsoftonline.com" in resp.url
+    host = urlparse(resp.url).hostname
+    assert host is not None
+    assert host == "microsoftonline.com" or host.endswith(".microsoftonline.com")
     assert "kc/logout" not in resp.url
