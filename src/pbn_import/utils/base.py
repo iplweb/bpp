@@ -280,6 +280,10 @@ class ImportStepBase:
             or "autoryzacja" in error_msg.lower()
         )
 
+    # Uwaga: fazy download()/process() NIE są opakowane w transakcję — gdy
+    # ImportManager woła je osobno (method=), atomowość per faza jest
+    # odpowiedzialnością podklasy. Tylko legacy run() (obie fazy) jest atomic.
+
     def download(self):
         """Faza pobierania danych z PBN do lustra. Nadpisz w podklasie."""
         raise NotImplementedError("Krok nie implementuje fazy pobierania")
@@ -296,6 +300,8 @@ class ImportStepBase:
 
     def __call__(self, method: str = "run"):
         """Uruchom wskazaną fazę (run/download/process) z obwiednią start/finish."""
+        if method not in ("run", "download", "process"):
+            raise ValueError(f"Nieznana metoda kroku importu: {method!r}")
         self.start()
         try:
             result = getattr(self, method)()

@@ -59,3 +59,9 @@ def test_base_download_process_not_implemented(session):
         bare.download()
     with pytest.raises(NotImplementedError):
         bare.process()
+
+
+def test_call_unknown_method_raises_valueerror(session):
+    step = _DummyStep(session)
+    with pytest.raises(ValueError):
+        step(method="nope")
