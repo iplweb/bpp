@@ -452,11 +452,14 @@ class ImportPresetsView(LoginRequiredMixin, ImportPermissionMixin, View):
                 "config": {
                     "disable_initial": True,
                     "disable_institutions": True,
-                    "disable_zrodla": True,
+                    "disable_zrodla_download": True,
+                    "disable_zrodla_process": True,
                     "disable_punktacja_zrodel": True,
-                    "disable_wydawcy": True,
-                    "disable_konferencje": True,
-                    # autorzy, publikacje, oswiadczenia, oplaty remain enabled
+                    "disable_wydawcy_download": True,
+                    "disable_wydawcy_process": True,
+                    "disable_konferencje_download": True,
+                    "disable_konferencje_process": True,
+                    # autorzy, publikacje, oswiadczenia, oplaty pozostają włączone
                     "delete_existing": False,
                 },
             },
@@ -467,7 +470,8 @@ class ImportPresetsView(LoginRequiredMixin, ImportPermissionMixin, View):
                 "icon": "fi-book",
                 "config": {
                     **all_disabled,
-                    "disable_zrodla": False,
+                    "disable_zrodla_download": False,
+                    "disable_zrodla_process": False,
                     "disable_punktacja_zrodel": False,
                     "delete_existing": False,
                 },

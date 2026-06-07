@@ -1,5 +1,6 @@
 """Unit tests for pbn_import dashboard and start views"""
 
+import json
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -721,3 +722,22 @@ class TestCancelImportView:
         response = client.post(reverse("pbn_import:cancel", args=[session.id]))
 
         assert response.status_code == 404
+
+
+# ============================================================================
+# PRESETS VIEW TESTS
+# ============================================================================
+
+
+@pytest.mark.django_db
+def test_presets_sources_only_enables_both_source_phases(client, admin_user):
+    client.force_login(admin_user)
+    resp = client.get(reverse("pbn_import:presets"))
+    assert resp.status_code == 200
+    presets = json.loads(resp.content)["presets"]
+    sources_only = next(p for p in presets if p["id"] == "sources_only")
+    cfg = sources_only["config"]
+    assert cfg.get("disable_zrodla_download", False) is False
+    assert cfg.get("disable_zrodla_process", False) is False
+    assert cfg["disable_wydawcy_download"] is True
+    assert cfg["disable_wydawcy_process"] is True
