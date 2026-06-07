@@ -32,6 +32,7 @@ from .helpers import (
     przetworz_metadane_konferencji,
     przetworz_slowa_kluczowe,
     przetworz_tytuly,
+    ustaw_jezyk_oryginalny,
 )
 
 
@@ -100,6 +101,7 @@ def importuj_artykul(
     importuj_openaccess(
         ret, pbn_json, klasa_bazowa_tryb_dostepu=Tryb_OpenAccess_Wydawnictwo_Ciagle
     )
+    ustaw_jezyk_oryginalny(ret, pbn_json)
     try:
         ret.punkty_kbn = zrodlo.punktacja_zrodla_set.get(rok=ret.rok).punkty_kbn
     except Punktacja_Zrodla.DoesNotExist:
