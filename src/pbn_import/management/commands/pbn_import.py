@@ -53,10 +53,12 @@ class Command(PBNBaseCommand):
             help="Bez interaktywnego menu (dla skryptów/automatyzacji)",
         )
 
-        # Granularne flagi faz
+        # Granularne flagi faz. Myślniki w nazwie flagi (konwencja POSIX,
+        # spójna z --base-url itd.); argparse i tak mapuje dest na podkreślenia,
+        # więc dest = disable_<form_field>, dokładnie jak czyta build_config.
         for key, label in IMPORT_STEPS:
             parser.add_argument(
-                f"--disable-{key}",
+                f"--disable-{key.replace('_', '-')}",
                 action="store_true",
                 help=f"Pomiń: {label}",
             )
