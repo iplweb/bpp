@@ -7,7 +7,7 @@ from dataclasses import dataclass
 
 from django.apps import apps
 from django.contrib.contenttypes.models import ContentType
-from django.core.management.base import BaseCommand
+from django.core.management.base import BaseCommand, CommandError
 from django.db import connection, transaction
 from django.db.models import Q
 
@@ -110,6 +110,8 @@ AUTHOR_REFERENCE_DELETES = [
     ),
 ]
 
+DEFAULT_DELETE_BATCH_SIZE = 500
+
 
 class Command(BaseCommand):
     help = (
@@ -134,10 +136,23 @@ class Command(BaseCommand):
             action="store_true",
             help="Pokaz plan czyszczenia bez kasowania danych i bez promptow.",
         )
+        parser.add_argument(
+            "--batch-size",
+            type=int,
+            default=DEFAULT_DELETE_BATCH_SIZE,
+            help=(
+                "Liczba publikacji kasowanych w jednej partii podczas "
+                "raportowania postepu."
+            ),
+        )
         parser.add_argument("--yes-i-am-sure", action="store_true")
         parser.add_argument("--confirm-db", type=str, default=None)
 
     def handle(self, *args, **options):
+        batch_size = options["batch_size"]
+        if batch_size < 1:
+            raise CommandError("--batch-size musi byc liczba dodatnia.")
+
         selected = self._selected_publication_models(options)
         publication_cts = [
             ContentType.objects.get_for_model(model) for model in selected
@@ -167,33 +182,38 @@ class Command(BaseCommand):
             self.stdout.write(f"[ABORT] {exc}")
             raise SystemExit(1) from None
 
+        self._progress("\nPostep czyszczenia:")
         with transaction.atomic():
             cleanup_results = []
             cleanup_results.extend(
                 self._delete_generic_references(
                     AUTHOR_REFERENCE_DELETES,
                     author_cts,
+                    progress_label="czyszcze referencje autorow",
                 )
             )
             cleanup_results.extend(
                 self._delete_generic_references(
                     PUBLICATION_REFERENCE_DELETES,
                     publication_cts,
+                    progress_label="czyszcze referencje publikacji",
                 )
             )
             cleanup_results.extend(
                 self._delete_generic_references(
                     PUBLICATION_DUPLICATE_CANDIDATE_SPECS,
                     publication_cts,
+                    progress_label="czyszcze kandydatow duplikatow",
                 )
             )
             cleanup_results.extend(
                 self._null_generic_references(
                     PUBLICATION_REFERENCE_NULLS,
                     publication_cts,
+                    progress_label="zeruje generyczne referencje",
                 )
             )
-            deleted = self._delete_publications(selected)
+            deleted = self._delete_publications(selected, batch_size)
 
         self._print_cleanup_results(cleanup_results)
         self.stdout.write("\nUsunieto przez kaskady Django:")
@@ -266,12 +286,23 @@ class Command(BaseCommand):
             for model in publication_models
         ]
 
-    def _delete_publications(self, publication_models):
+    def _delete_publications(self, publication_models, batch_size):
         deleted = {}
         for model in publication_models:
-            _, details = model.objects.all().delete()
-            for model_label, count in details.items():
-                deleted[model_label] = deleted.get(model_label, 0) + count
+            pks = list(model.objects.order_by("pk").values_list("pk", flat=True))
+            total = len(pks)
+            self._progress(f"  - {model._meta.label}: usuwam {total} rekordow")
+
+            for start in range(0, total, batch_size):
+                batch = pks[start : start + batch_size]
+                _, details = model.objects.filter(pk__in=batch).delete()
+                for model_label, count in details.items():
+                    deleted[model_label] = deleted.get(model_label, 0) + count
+
+                processed = min(start + batch_size, total)
+                self._progress(
+                    f"    {model._meta.label}: {processed}/{total} identyfikatorow"
+                )
         return deleted
 
     def _count_generic_references(self, specs, content_types):
@@ -280,16 +311,28 @@ class Command(BaseCommand):
             count += model.objects.filter(query).count()
         return count
 
-    def _delete_generic_references(self, specs, content_types):
+    def _delete_generic_references(self, specs, content_types, *, progress_label):
         results = []
-        for model, query in self._grouped_reference_queries(specs, content_types):
-            count, _ = model.objects.filter(query).delete()
+        grouped_queries = list(self._grouped_reference_queries(specs, content_types))
+        self._progress(f"  - {progress_label}: {len(grouped_queries)} grup")
+
+        for index, (model, query) in enumerate(grouped_queries, start=1):
+            queryset = model.objects.filter(query)
+            planned_count = queryset.count()
+            self._progress(
+                f"    [{index}/{len(grouped_queries)}] {model._meta.label}: "
+                f"usuwam {planned_count}"
+            )
+            count, _ = queryset.delete()
             results.append(GenericReferenceResult(model._meta.label, "usunieto", count))
         return results
 
-    def _null_generic_references(self, specs, content_types):
+    def _null_generic_references(self, specs, content_types, *, progress_label):
         results = []
-        for model, query in self._grouped_reference_queries(specs, content_types):
+        grouped_queries = list(self._grouped_reference_queries(specs, content_types))
+        self._progress(f"  - {progress_label}: {len(grouped_queries)} grup")
+
+        for index, (model, query) in enumerate(grouped_queries, start=1):
             fields_to_null = {
                 spec.content_type_field: None
                 for spec in specs
@@ -303,6 +346,10 @@ class Command(BaseCommand):
                 }
             )
             count = model.objects.filter(query).update(**fields_to_null)
+            self._progress(
+                f"    [{index}/{len(grouped_queries)}] {model._meta.label}: "
+                f"wyzerowano {count}"
+            )
             results.append(
                 GenericReferenceResult(model._meta.label, "wyzerowano", count)
             )
@@ -338,3 +385,7 @@ class Command(BaseCommand):
             self.stdout.write(
                 f"  - {result.model_label}: {result.action} {result.count}"
             )
+
+    def _progress(self, message):
+        self.stdout.write(message)
+        self.stdout.flush()

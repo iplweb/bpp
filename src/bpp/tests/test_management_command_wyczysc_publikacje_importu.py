@@ -1,3 +1,5 @@
+from io import StringIO
+
 import pytest
 from django.contrib.contenttypes.models import ContentType
 from django.core.management import call_command
@@ -92,3 +94,25 @@ def test_wyczysc_publikacje_importu_can_clean_only_ciagle():
 
     assert Wydawnictwo_Ciagle.objects.count() == 0
     assert list(Wydawnictwo_Zwarte.objects.values_list("pk", flat=True)) == [zwarte.pk]
+
+
+@pytest.mark.django_db(transaction=True)
+def test_wyczysc_publikacje_importu_reports_progress():
+    baker.make(Wydawnictwo_Ciagle, _quantity=2)
+    stdout = StringIO()
+
+    call_command(
+        "wyczysc_publikacje_importu",
+        "--ciagle",
+        "--yes-i-am-sure",
+        _confirm_db(),
+        "--batch-size=1",
+        stdout=stdout,
+    )
+
+    output = stdout.getvalue()
+    assert "Postep czyszczenia:" in output
+    assert "  - czyszcze referencje publikacji:" in output
+    assert "  - bpp.Wydawnictwo_Ciagle: usuwam 2 rekordow" in output
+    assert "    bpp.Wydawnictwo_Ciagle: 1/2 identyfikatorow" in output
+    assert "    bpp.Wydawnictwo_Ciagle: 2/2 identyfikatorow" in output
