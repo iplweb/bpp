@@ -311,6 +311,8 @@ Dopisz na końcu `src/pbn_integrator/utils/conferences.py` (dołóż importy u g
 import datetime
 import logging
 
+from django.db import IntegrityError, transaction
+
 from bpp.models import Konferencja
 
 logger = logging.getLogger("pbn_integrator")
@@ -334,6 +336,10 @@ def integruj_konferencje(callback=None):
     Aktualizuje pola pochodzące z PBN; nie nadpisuje pól, których PBN nie
     dostarcza (typ_konferencji, bazy indeksujące). Zwraca liczbę
     utworzonych/zaktualizowanych konferencji.
+
+    WAŻNE: czytamy przez ``value_or_none``, bo gołe ``value("object", k)``
+    zwraca STRING-sentinel ``"[brak k]"`` przy braku klucza (base.py:81-88),
+    co dawałoby śmieciowe ``nazwa="[brak fullName]"`` i omijało guard.
     """
     qs = Conference.objects.all()
     total = qs.count()
@@ -347,19 +353,21 @@ def integruj_konferencje(callback=None):
             logger.info("Pomijam usuniętą konferencję PBN %s", conf.mongoId)
             continue
 
-        nazwa = conf.fullName()
+        nazwa = conf.value_or_none("object", "fullName")
         if not nazwa:
             logger.info("Pomijam konferencję PBN %s bez nazwy", conf.mongoId)
             continue
 
-        rozpoczecie = _parse_pbn_date(conf.startDate())
-        zakonczenie = _parse_pbn_date(conf.endDate())
-        miasto = conf.city() or None
-        panstwo = conf.country() or None
-        skrot = conf.value("object", "abbreviation", return_none=True)
+        rozpoczecie = _parse_pbn_date(conf.value_or_none("object", "startDate"))
+        zakonczenie = _parse_pbn_date(conf.value_or_none("object", "endDate"))
+        miasto = conf.value_or_none("object", "city")
+        panstwo = conf.value_or_none("object", "country")
+        skrot = conf.value_or_none("object", "abbreviation")
 
         konferencja = Konferencja.objects.filter(pbn_uid_id=conf.pk).first()
         if konferencja is None:
+            # filter().first() (nie get()) — przy rozpoczecie=None i kilku
+            # ręcznych konferencjach o tej nazwie unikamy MultipleObjectsReturned.
             konferencja = Konferencja.objects.filter(
                 nazwa=nazwa, rozpoczecie=rozpoczecie
             ).first()
@@ -375,8 +383,23 @@ def integruj_konferencje(callback=None):
         konferencja.panstwo = panstwo
         if skrot:
             konferencja.skrocona_nazwa = skrot
-        konferencja.save()
-        przetworzone += 1
+
+        try:
+            # savepoint: IntegrityError bez atomic() zatruwa otaczającą
+            # transakcję (też tę pytestową) → TransactionManagementError.
+            with transaction.atomic():
+                konferencja.save()
+            przetworzone += 1
+        except IntegrityError:
+            # Dwie różne konferencje PBN dzielą (nazwa, rozpoczecie) i żadnej nie
+            # złapaliśmy po pbn_uid — nie przerywaj całej integracji.
+            logger.warning(
+                "Konflikt unikalności (nazwa, rozpoczecie) dla konferencji PBN "
+                "%s (%r, %r) — pomijam",
+                conf.mongoId,
+                nazwa,
+                rozpoczecie,
+            )
 
     return przetworzone
 ```
@@ -1055,10 +1078,16 @@ def session(db):
 
 
 def _patch_setup(monkeypatch, importer_obj):
-    """Pomiń realny setup uczelni/jednostki — zwróć uczelnię ze stepu."""
+    """Pomiń realny setup — ustaw default_jednostka i zwróć uczelnię ze stepu."""
+    importer_obj.default_jednostka = baker.make("bpp.Jednostka")
+
+    def _fake_setup(*a, **k):
+        # Odwzoruj realny kontrakt: setup ustawia default_jednostka na obiekcie.
+        importer_obj.default_jednostka = importer_obj.default_jednostka
+        return importer_obj.uczelnia
+
     monkeypatch.setattr(
-        importer_obj, "_setup_uczelnia_and_jednostka",
-        lambda *a, **k: importer_obj.uczelnia,
+        importer_obj, "_setup_uczelnia_and_jednostka", _fake_setup
     )
 
 
@@ -1177,7 +1206,9 @@ liczniki (każda faza liczy własne kroki).
         self.update_progress(total_steps, total_steps, "Zakończono import publikacji")
         return {
             "publications_imported": True,
-            "default_jednostka": self.default_jednostka.nazwa,
+            "default_jednostka": (
+                self.default_jednostka.nazwa if self.default_jednostka else None
+            ),
             "error_count": len(self.errors),
         }
 ```
@@ -1374,8 +1405,24 @@ Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>"
 
 ## Task 9: Model faz w `step_definitions.py` + resolver zgodności wstecznej
 
+> **⚠ BLOK MIGRACJI KONTRAKTU (Tasks 9–13).** Zmiana kształtu
+> `get_step_definitions` / `get_form_steps` / `get_command_steps` /
+> `get_all_disable_keys` pociąga za sobą konsumentów: `ImportManager` (Task 10),
+> CLI `pbn_import` (Task 11), presety (Task 12), szablon `dashboard.html`
+> (Task 13). **Pełny pakiet `src/pbn_import/` będzie przejściowo CZERWONY**
+> między Taskiem 9 a 13 (np. `test_command_pbn_import.py`,
+> `test_views_dashboard.py` zakładają stary kształt do czasu ich tasków).
+> To jest oczekiwane. Reguła: **każdy task utrzymuje ZIELONE swoje własne
+> nowe/zaktualizowane testy**, a skonsolidowany gate całego pakietu odpala się
+> na końcu Taska 13 oraz w Tasku 15. Nie używaj pełnego pakietu jako bramki
+> w środku bloku.
+
 Przebudowa `ALL_STEP_DEFINITIONS` na fazy i przepisanie helperów. Po tym tasku
 `get_step_definitions` zwraca **płaską listę faz z `method` i `result_key`**.
+
+**Liczność faz (wszystko włączone):** initial(1) + institution(1) + źródła(2)
++ punktacja(1) + wydawcy(2) + konferencje(2) + autorzy(2) + publikacje(2)
++ oświadczenia(2) + opłaty(1) = **16** pozycji.
 
 **Files:**
 - Modify: `src/pbn_import/utils/step_definitions.py`
@@ -1733,16 +1780,121 @@ def get_icon_for_step(step_name):
     return STEP_ICONS.get(step_name, "fi-download")
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [ ] **Step 4: Przepisz 4 istniejące testy złamane zmianą kształtu**
+
+Cztery testy w `test_step_definitions.py` zakładają stary wynik
+`get_step_definitions` (10 kroków, indeksowanie `ALL_STEP_DEFINITIONS[i]`).
+Zastąp je wersjami fazowymi. **Pozostałe testy** (dynamic_args, step_structure,
+get_icon, all_disabled) działają bez zmian — entry fazowe nadal mają
+`name`/`display`/`class`/`required`/`args`, a legacy klucze wyłączają obie fazy.
+
+Zastąp `test_get_step_definitions_default_config`:
+
+```python
+def test_get_step_definitions_default_config():
+    steps = get_step_definitions({})
+    # 6 encji rozdzielonych ×2 fazy + 4 kroki jednofazowe = 16
+    assert len(steps) == 16
+    keys = [s["result_key"] for s in steps]
+    assert keys == [
+        "initial_setup",
+        "institution_setup",
+        "source_import:download",
+        "source_import:process",
+        "source_scoring_import",
+        "publisher_import:download",
+        "publisher_import:process",
+        "conference_import:download",
+        "conference_import:process",
+        "author_import:download",
+        "author_import:process",
+        "publication_import:download",
+        "publication_import:process",
+        "statement_import:download",
+        "statement_import:process",
+        "fee_import",
+    ]
+```
+
+Zastąp `test_get_step_definitions_individual_disable_flags` (legacy klucz
+wyłącza obie fazy encji rozdzielonej; klucz jednofazowy — jedną):
+
+```python
+def test_get_step_definitions_individual_disable_flags():
+    # legacy disable_zrodla wyłącza OBIE fazy źródeł
+    keys = [s["result_key"] for s in get_step_definitions({"disable_zrodla": True})]
+    assert "source_import:download" not in keys
+    assert "source_import:process" not in keys
+    assert len(keys) == 14
+    # krok jednofazowy: jeden klucz znika
+    keys = [s["result_key"] for s in get_step_definitions({"disable_oplaty": True})]
+    assert "fee_import" not in keys
+    assert len(keys) == 15
+    # process-only: punktacja
+    keys = [
+        s["result_key"]
+        for s in get_step_definitions({"disable_punktacja_zrodel": True})
+    ]
+    assert "source_scoring_import" not in keys
+    assert len(keys) == 15
+```
+
+Zastąp `test_get_step_definitions_preserves_order` (kolejność: download danej
+encji przed jej process; kolejność encji jak w `ALL_STEP_DEFINITIONS`):
+
+```python
+def test_get_step_definitions_preserves_order():
+    keys = [s["result_key"] for s in get_step_definitions({})]
+    assert keys.index("source_import:download") < keys.index(
+        "source_import:process"
+    )
+    assert keys.index("source_import:process") < keys.index(
+        "publisher_import:download"
+    )
+    # kolejność encji zgodna z ALL_STEP_DEFINITIONS
+    entity_order = [
+        s["name"] for s in get_step_definitions({}) if s["phase"] != "process"
+    ]
+    expected = [d["name"] for d in ALL_STEP_DEFINITIONS]
+    # pierwsza pozycja każdej encji (single/download) w kolejności definicji
+    seen = []
+    for n in entity_order:
+        if n not in seen:
+            seen.append(n)
+    assert seen == expected
+```
+
+Zastąp `test_get_step_definitions_combination_of_flags` (wyłączone źródła,
+wydawcy, konferencje przez legacy → 16 − 6 = 10):
+
+```python
+def test_get_step_definitions_combination_of_flags():
+    config = {
+        "disable_zrodla": True,
+        "disable_wydawcy": True,
+        "disable_konferencje": True,
+    }
+    steps = get_step_definitions(config)
+    names = {s["name"] for s in steps}
+    assert len(steps) == 10
+    assert "source_import" not in names
+    assert "publisher_import" not in names
+    assert "conference_import" not in names
+    assert "initial_setup" in names
+    assert "institution_setup" in names
+    assert "source_scoring_import" in names
+    assert "author_import" in names
+    assert "publication_import" in names
+```
+
+- [ ] **Step 5: Run test to verify it passes**
 
 Run: `uv run pytest src/pbn_import/tests/test_step_definitions.py -v`
-Expected: PASS (istniejące + 7 nowych).
+Expected: PASS (przepisane 4 + niezmienione + 7 nowych z Kroku 1).
+(Pełny pakiet `src/pbn_import/` jest tu jeszcze CZERWONY — patrz nota bloku
+migracji; to OK, bramka pakietu jest na końcu Taska 13 i w Tasku 15.)
 
-Jeśli istniejące testy w tym pliku zakładały stary kształt `get_form_steps`
-(płaska lista z `form_field`), zaktualizuj je do nowego kontraktu (wiersze
-z `download`/`process`/`single`).
-
-- [ ] **Step 5: Lint + commit**
+- [ ] **Step 6: Lint + commit**
 
 ```bash
 ruff format src/pbn_import/utils/step_definitions.py src/pbn_import/tests/test_step_definitions.py
@@ -2057,10 +2209,12 @@ nad legacy (inaczej `sources_only` zostawiłby źródła wyłączone).
 # --- dopisz do src/pbn_import/tests/test_views_dashboard.py ---
 import json as _json
 
+from django.urls import reverse
+
 
 def test_presets_sources_only_enables_both_source_phases(client, admin_user):
     client.force_login(admin_user)
-    resp = client.get("/pbn_import/presets/")  # dostosuj URL do urls.py
+    resp = client.get(reverse("pbn_import:presets"))
     assert resp.status_code == 200
     presets = _json.loads(resp.content)["presets"]
     sources_only = next(p for p in presets if p["id"] == "sources_only")
@@ -2073,8 +2227,9 @@ def test_presets_sources_only_enables_both_source_phases(client, admin_user):
     assert cfg["disable_wydawcy_process"] is True
 ```
 
-Uwaga: sprawdź realny URL presetów w `src/pbn_import/urls.py` (nazwa route
-`presets`) i podstaw poprawną ścieżkę / `reverse("pbn_import:presets")`.
+Uwaga: nazwa route to `pbn_import:presets` (zweryfikowano w
+`src/pbn_import/urls.py`). Jeśli `admin_user` nie ma uprawnienia
+`ImportPermissionMixin`, nadaj je w teście lub użyj `superuser`.
 
 - [ ] **Step 2: Run test to verify it fails**
 

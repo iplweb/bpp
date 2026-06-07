@@ -352,9 +352,13 @@ zamierzone." Bez `error`, bez przerwania importu.
 
 - `pobierz_konferencje` (`pbn_integrator/utils/conferences.py`) pobiera
   konferencje do lustra `pbn_api.Conference`.
-- Lustro `Conference` udostępnia: `fullName()`, `startDate()`,
-  `endDate()`, `city()`, `country()`, `website` (widoczne w
-  `pbn_api/admin/conference.py`).
+- Lustro `Conference` udostępnia metody `fullName()`, `startDate()`,
+  `endDate()`, `city()`, `country()`, `website()` (widoczne w
+  `pbn_api/admin/conference.py`). **Uwaga:** to metody na bazowym
+  `value("object", k)`, które przy braku klucza zwraca STRING-sentinel
+  `"[brak k]"`, a NIE `None`. Integracja MUSI czytać przez
+  `value_or_none("object", k)` (base.py:90), inaczej powstaną śmieci typu
+  `nazwa="[brak fullName]"`.
 - BPP **ma** model `bpp.models.Konferencja` (`src/bpp/models/konferencja.py`)
   z FK `pbn_uid → pbn_api.Conference`, polami `nazwa`, `skrocona_nazwa`,
   `rozpoczecie`, `zakonczenie`, `miasto`, `panstwo`, `typ_konferencji`,
@@ -381,15 +385,15 @@ def integruj_konferencje(callback=None):
 
 Mapowanie pól:
 
-| `pbn_api.Conference` | `bpp.Konferencja` | uwagi |
+| `pbn_api.Conference` (przez `value_or_none`) | `bpp.Konferencja` | uwagi |
 |---|---|---|
 | obiekt lustra | `pbn_uid` | FK |
-| `fullName()` | `nazwa` | wymagane; pomiń rekord, gdy puste + log warning |
-| `startDate()` | `rozpoczecie` | parse ISO `YYYY-MM-DD`; `None` gdy brak/niepoprawny |
-| `endDate()` | `zakonczenie` | jw. |
-| `city()` | `miasto` | |
-| `country()` | `panstwo` | |
-| `value("object","abbreviation")` *(jeśli klucz istnieje)* | `skrocona_nazwa` | best-effort |
+| `value_or_none("object","fullName")` | `nazwa` | wymagane; pomiń rekord, gdy `None` + log info |
+| `value_or_none("object","startDate")` | `rozpoczecie` | parse ISO `YYYY-MM-DD`; `None` gdy brak/niepoprawny |
+| `value_or_none("object","endDate")` | `zakonczenie` | jw. |
+| `value_or_none("object","city")` | `miasto` | |
+| `value_or_none("object","country")` | `panstwo` | |
+| `value_or_none("object","abbreviation")` | `skrocona_nazwa` | best-effort, tylko gdy nie-`None` |
 
 Pola **nieustawiane** (PBN nie dostarcza jednoznacznie):
 `typ_konferencji`, `baza_scopus`, `baza_wos`, `baza_inna` — zostawiamy
@@ -398,10 +402,17 @@ wartości BPP (lub domyślne przy tworzeniu).
 Logika dopasowania (idempotencja):
 
 1. Konferencja z `pbn_uid == <to lustro>` istnieje → aktualizuj pola PBN.
-2. Wpp. spróbuj dopasować po `unique_together (nazwa, rozpoczecie)` →
-   jeśli istnieje rekord bez `pbn_uid` (wprowadzony ręcznie), **dowiąż**
-   `pbn_uid` i zaktualizuj pola.
+2. Wpp. spróbuj dopasować po `unique_together (nazwa, rozpoczecie)` przez
+   `filter(...).first()` (NIE `get()` — przy `rozpoczecie=None` i kilku
+   ręcznych konferencjach o tej nazwie `get()` rzuciłby
+   `MultipleObjectsReturned`); jeśli istnieje rekord bez `pbn_uid`
+   (wprowadzony ręcznie), **dowiąż** `pbn_uid` i zaktualizuj pola.
 3. Wpp. utwórz nową `Konferencja`.
+
+`save()` opakowany w `transaction.atomic()` (savepoint) + `except
+IntegrityError` z logiem `warning`: dwie różne konferencje PBN mogą dzielić
+`(nazwa, rozpoczecie)` — wtedy pomijamy drugą zamiast wywracać całą integrację
+(savepoint chroni też transakcję testową pytest przed zatruciem).
 
 Pomijamy rekordy lustra ze `status == "DELETED"` (analogicznie do
 istniejących integratorów — log `info`, bez tworzenia).
@@ -452,8 +463,13 @@ def process(self):
   `integruj_konferencje` (§5.2).
 - `src/pbn_import/templates/pbn_import/dashboard.html` — tabela
   dwukolumnowa + JS presetów (§4.4).
-- `src/pbn_import/views.py` — `ImportPresetsView` (granularne klucze;
-  legacy honorowane przez resolver) — drobne.
+- `src/pbn_import/views.py` — `ImportPresetsView` **musi** używać kluczy
+  granularnych. `all_disabled` budowane z `get_all_disable_keys()` jest już
+  granularne, więc preset, który robi `{**all_disabled, "disable_zrodla": False}`
+  (legacy) NIE zadziała — resolver woli granularny (tu: `True`) nad legacy,
+  zostawiając źródła wyłączone. Presety przepisać na granular
+  (`disable_zrodla_download`/`_process`). To NIE jest drobne — bez tego preset
+  „Tylko źródła" wyłącza źródła.
 - `src/pbn_import/management/commands/pbn_import.py` — flagi granularne +
   legacy aliasy + menu (§4.5).
 
@@ -505,9 +521,12 @@ uv run pytest src/pbn_integrator/  # testy integracji konferencji
   encji), nie „wszystkie pobrania, potem wszystkie integracje". To
   świadome — zachowuje obecną semantykę i zależności (np. publikacje
   przed oświadczeniami). Dwukolumnowy UI jest czysto wizualny.
-- **`results` keys**: zmiana z `name` na `name:phase` może dotykać
-  konsumentów `results` (`_display_results` w CLI, ewentualne odczyty w
-  widokach). Przejrzeć i dostosować wyświetlanie.
+- **`results` keys**: zmiana z `name` na `name:phase`. Jedyny konsument
+  `results` poza `ImportManager` to `_display_results` w CLI
+  (`pbn_import.py`) — iteruje `.items()` i sprawdza `"error" in result`,
+  więc klucze `name:phase` nie psują logiki, zmieniają tylko etykiety
+  wyświetlania. Brak innych czytelników w widokach/WS/szablonach
+  (zweryfikowane gretem w Tasku 15). Dostosować tylko wyświetlanie.
 - **`abbreviation` konferencji**: klucz niepotwierdzony w API (admin go
   nie pokazuje). Mapujemy best-effort — tylko gdy obecny; brak nie jest
   błędem.
