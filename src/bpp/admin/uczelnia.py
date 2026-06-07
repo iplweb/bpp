@@ -81,6 +81,18 @@ class UczelniaAdminForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
         self.fields["theme_name"].choices = list(settings.BPP_THEMES)
 
+        # Multi-hosted: ``site`` jest na poziomie DB NOT NULL (migracja 0417),
+        # ale to admin musi je wskazać JAWNIE — to Site wiąże uczelnię z
+        # domeną (host → Site → Uczelnia), nie ma „uczelni domyślnej". Damy
+        # komunikat dziedzinowy zamiast generycznego „To pole jest wymagane.".
+        if "site" in self.fields:
+            self.fields["site"].required = True
+            self.fields["site"].error_messages["required"] = (
+                "Wskaż stronę (domenę / obiekt Site) dla tej uczelni. W trybie "
+                "multi-hosted to powiązanie z domeną wiąże uczelnię z jej "
+                "adresem — nie istnieje „uczelnia domyślna”."
+            )
+
 
 class UczelniaAdmin(
     SiteFilteredAdminMixin,
