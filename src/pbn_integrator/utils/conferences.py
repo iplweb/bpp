@@ -55,17 +55,13 @@ def integruj_konferencje(callback=None):
     WAŻNE: czytamy przez ``value_or_none``, bo gołe ``value("object", k)``
     zwraca STRING-sentinel ``"[brak k]"`` przy braku klucza (base.py:81-88).
     """
-    qs = Conference.objects.all()
+    qs = Conference.objects.exclude(status="DELETED")
     total = qs.count()
     przetworzone = 0
 
     for i, conf in enumerate(qs.iterator(), 1):
         if callback is not None:
             callback.update(i, total, "Integracja konferencji")
-
-        if conf.status == "DELETED":
-            logger.info("Pomijam usuniętą konferencję PBN %s", conf.mongoId)
-            continue
 
         nazwa = conf.value_or_none("object", "fullName")
         if not nazwa:
@@ -80,6 +76,10 @@ def integruj_konferencje(callback=None):
 
         konferencja = Konferencja.objects.filter(pbn_uid_id=conf.pk).first()
         if konferencja is None:
+            # Uwaga: przy rozpoczecie=None i dwóch konferencjach PBN o tej samej
+            # nazwie bez daty zadziała "last-writer-wins" na pbn_uid (NULL=NULL w
+            # filtrze to IS NULL i dopasuje istniejący rekord). Zdarzenie skrajnie
+            # rzadkie; konflikt na (nazwa, rozpoczecie) i tak łapie IntegrityError.
             konferencja = Konferencja.objects.filter(
                 nazwa=nazwa, rozpoczecie=rozpoczecie
             ).first()
@@ -91,6 +91,8 @@ def integruj_konferencje(callback=None):
         konferencja.nazwa = nazwa
         konferencja.rozpoczecie = rozpoczecie
         konferencja.zakonczenie = zakonczenie
+        # Pola mirror-fidelity: nadpisujemy też None (gdy PBN przestał je
+        # dostarczać). Inaczej skrocona_nazwa, która jest guardowana niżej.
         konferencja.miasto = miasto
         konferencja.panstwo = panstwo
         if skrot:
