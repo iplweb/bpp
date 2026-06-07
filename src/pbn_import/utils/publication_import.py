@@ -49,8 +49,6 @@ class PublicationImporter(ImportStepBase):
 
     def process(self):
         """Zaimportuj publikacje z lustra do BPP (opcjonalnie po skasowaniu)."""
-        from pbn_api.models import Publication
-
         uczelnia = self._setup_uczelnia_and_jednostka()
         if uczelnia is None:
             return {"publications_imported": False, "reason": "No Uczelnia PBN UID"}
