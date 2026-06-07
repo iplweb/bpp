@@ -235,6 +235,67 @@ def test_autor_aktualnie_zatrudniony_tylko_aktualna_jednostka(
 
 
 @pytest.mark.django_db
+def test_create_from_string_honoruje_podana_uczelnie(uczelnia1, uczelnia2):
+    """``AutorManager.create_from_string`` czyta ``nowy_autor_z_formularza_pokazuj``
+    z PODANEJ uczelni, nie z pierwszej-z-brzegu (``Uczelnia.objects.first()``).
+    """
+    from bpp.models import Autor
+
+    uczelnia1.nowy_autor_z_formularza_pokazuj = False
+    uczelnia1.save()
+    uczelnia2.nowy_autor_z_formularza_pokazuj = True
+    uczelnia2.save()
+
+    # uczelnia2 (wyższy pk) NIE jest first() — first() to uczelnia1 (False).
+    autor = Autor.objects.create_from_string("Kowalski Jan", uczelnia=uczelnia2)
+    assert autor.pokazuj is True
+
+    autor2 = Autor.objects.create_from_string("Nowak Anna", uczelnia=uczelnia1)
+    assert autor2.pokazuj is False
+
+
+@pytest.mark.django_db
+def test_create_from_string_bez_uczelni_wiele_uczelni_nie_zgaduje(uczelnia1, uczelnia2):
+    """Bez podanej uczelni i przy >1 uczelni: get_single_uczelnia_or_none → None
+    → ``pokazuj=False`` (bezpieczny default), bez zgadywania pierwszej-z-brzegu.
+    """
+    from bpp.models import Autor
+
+    uczelnia1.nowy_autor_z_formularza_pokazuj = True  # first(), gdyby zgadywał
+    uczelnia1.save()
+
+    autor = Autor.objects.create_from_string("Bezuczelni Ktos")
+    assert autor.pokazuj is False
+
+
+@pytest.mark.django_db
+def test_autor_autocomplete_create_object_uzywa_uczelni_z_requestu(
+    uczelnia1, uczelnia2, site2, settings
+):
+    """``AutorAutocomplete.create_object`` ustala ``pokazuj`` nowego autora z
+    uczelni Z REQUESTU (host), nie z pierwszej-z-brzegu.
+    """
+    settings.ALLOWED_HOSTS = ["*"]
+    from bpp.models import Autor, BppUser
+    from bpp.views.autocomplete.authors import AutorAutocomplete
+
+    uczelnia1.nowy_autor_z_formularza_pokazuj = False  # first()
+    uczelnia1.save()
+    uczelnia2.nowy_autor_z_formularza_pokazuj = True
+    uczelnia2.save()
+
+    user = BppUser.objects.create_user(username="ac_creator", is_staff=True)
+
+    view = AutorAutocomplete()
+    view.request = make_request_for_site(site2, user=user)  # → uczelnia2
+
+    obj = view.create_object("Iksinski Piotr")
+
+    assert isinstance(obj, Autor)
+    assert obj.pokazuj is True  # z uczelni2 (request), nie z first()=uczelnia1
+
+
+@pytest.mark.django_db
 def test_autocomplete_get_queryset_bez_requestu_nie_wywala(uczelnia1, uczelnia2):
     """Mixin toleruje brak self.request (no-op) — kontrakt defensywny bazy.
 
