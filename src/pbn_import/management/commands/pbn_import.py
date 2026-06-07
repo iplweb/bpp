@@ -7,22 +7,19 @@ from pbn_api.management.commands.util import PBNBaseCommand
 from pbn_import.models import ImportSession
 from pbn_import.utils import ImportManager
 from pbn_import.utils.step_definitions import (
-    ALL_STEP_DEFINITIONS,
     get_command_steps,
+    get_legacy_command_aliases,
 )
 
 User = get_user_model()
 
 # Import steps from single source of truth (step_definitions.py)
 IMPORT_STEPS = get_command_steps()
+LEGACY_ALIASES = get_legacy_command_aliases()
 
 
 def build_config_from_options(options):
-    """Build session config dict from command line options.
-
-    Maps form_field options (e.g., --disable-zrodla) to disable_key config
-    (e.g., disable_zrodla) using step_definitions as the source of truth.
-    """
+    """Zbuduj config sesji z opcji CLI (fazy granularne + legacy aliasy)."""
     config = {
         "app_id": options.get("app_id"),
         "base_url": options.get("base_url"),
@@ -31,12 +28,15 @@ def build_config_from_options(options):
         "wydzial_domyslny_skrot": options.get("wydzial_domyslny_skrot"),
     }
 
-    # Map form_field to disable_key from step_definitions
-    for step in ALL_STEP_DEFINITIONS:
-        form_field = step["form_field"]
-        disable_key = step["disable_key"]
-        # Get option value using form_field name (from CLI --disable-{form_field})
-        config[disable_key] = options.get(f"disable_{form_field}", False)
+    # Granularne flagi: --disable-{form_field}
+    for form_field, _label in IMPORT_STEPS:
+        config[f"disable_{form_field}"] = options.get(f"disable_{form_field}", False)
+
+    # Legacy aliasy: --disable-{encja} wyłącza obie fazy encji
+    for entity, disable_keys in LEGACY_ALIASES.items():
+        if options.get(f"disable_{entity}"):
+            for dk in disable_keys:
+                config[dk] = True
 
     return config
 
@@ -53,12 +53,19 @@ class Command(PBNBaseCommand):
             help="Bez interaktywnego menu (dla skryptów/automatyzacji)",
         )
 
-        # Opcje disable-* dla kompatybilności wstecznej i trybu batch
+        # Granularne flagi faz
         for key, label in IMPORT_STEPS:
             parser.add_argument(
                 f"--disable-{key}",
                 action="store_true",
                 help=f"Pomiń: {label}",
+            )
+        # Legacy aliasy (wyłączają obie fazy encji) — zgodność wsteczna
+        for entity in LEGACY_ALIASES:
+            parser.add_argument(
+                f"--disable-{entity}",
+                action="store_true",
+                help=f"Pomiń obie fazy: {entity}",
             )
 
         # Dodatkowe opcje
