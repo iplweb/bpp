@@ -45,4 +45,4 @@ class ConferenceImporter(ImportStepBase):
         finally:
             self.clear_subtask_progress()
         self.update_progress(1, 1, "Zakończono integrację konferencji")
-        return {"conferences_integrated": True, "error_count": len(self.errors)}
+        return {"conferences_imported": True, "error_count": len(self.errors)}
