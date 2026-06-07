@@ -142,9 +142,7 @@ def sprobuj_wyslac_do_pbn(  # noqa: C901
 
     open_in_pbn_link = ""
     if obj.pbn_uid_id:
-        open_in_pbn_link = (
-            f'<a target=_blank href="{obj.link_do_pbn()}">Otwórz w PBN</a>. '
-        )
+        open_in_pbn_link = f'<a target=_blank href="{obj.link_do_pbn(uczelnia=uczelnia)}">Otwórz w PBN</a>. '
 
     open_in_pi_link = obj.link_do_pi(uczelnia=uczelnia) or ""
     if open_in_pi_link:
@@ -165,7 +163,7 @@ def sprobuj_wyslac_do_pbn(  # noqa: C901
 
         # Być moze obj.pbn_uid_id uległ zmianie. Jeżeli tak -- zregeneruj link:
         if obj.pbn_uid_id:
-            open_in_pbn_link = f'<a target=_blank href="{obj.link_do_pbn()}">Kliknij tutaj, aby otworzyć w PBN</a>. '
+            open_in_pbn_link = f'<a target=_blank href="{obj.link_do_pbn(uczelnia=uczelnia)}">Kliknij tutaj, aby otworzyć w PBN</a>. '
         open_in_pi_link = obj.link_do_pi(uczelnia=uczelnia) or ""
         if open_in_pi_link:
             open_in_pi_link = f'<a target=_blank href="{open_in_pi_link}">Otwórz w Profilu Instytucji</a>. '
