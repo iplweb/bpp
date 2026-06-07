@@ -181,7 +181,7 @@ class ImportManager:
             logger.warning(
                 f"Pomijanie kroku {step_config['display']} - brak autoryzacji PBN"
             )
-            results[step_config["name"]] = {
+            results[step_config["result_key"]] = {
                 "error": "Brak autoryzacji PBN",
                 "skipped": True,
             }
@@ -210,7 +210,7 @@ class ImportManager:
         if hasattr(e, "content") or "403" in str(e) or "Forbidden" in error_msg:
             has_errors = True
             critical_error = error_msg
-            results[step_config["name"]] = {
+            results[step_config["result_key"]] = {
                 "error": error_msg,
                 "skipped": False,
                 "critical": True,
@@ -223,7 +223,7 @@ class ImportManager:
             return has_errors, critical_error, tb_string, False, None
 
         has_errors = True
-        results[step_config["name"]] = {
+        results[step_config["result_key"]] = {
             "error": error_msg,
             "skipped": False,
         }
@@ -247,8 +247,8 @@ class ImportManager:
         )
 
         try:
-            result = step()
-            results[step_config["name"]] = result
+            result = step(method=step_config["method"])
+            results[step_config["result_key"]] = result
 
             # After initial_setup, refresh the client and authorization
             # This is critical for clean database imports where pbn_uid_id
@@ -266,7 +266,8 @@ class ImportManager:
                 message="Import został anulowany podczas wykonywania kroku",
             )
             logger.warning(
-                f"Import {self.session.id} anulowany podczas kroku {step_config['name']}"
+                f"Import {self.session.id} anulowany podczas kroku "
+                f"{step_config['result_key']}"
             )
             return (
                 has_errors,
