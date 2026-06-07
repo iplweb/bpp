@@ -31,6 +31,7 @@ from .helpers import (
     przetworz_metadane_konferencji,
     przetworz_slowa_kluczowe,
     przetworz_tytuly,
+    ustaw_jezyk_oryginalny,
 )
 
 # Re-export publisher handling
@@ -187,6 +188,7 @@ __all__ = [
     "przetworz_metadane_konferencji",
     "przetworz_slowa_kluczowe",
     "przetworz_tytuly",
+    "ustaw_jezyk_oryginalny",
     # Publication imports
     "importuj_artykul",
     "importuj_ksiazke",

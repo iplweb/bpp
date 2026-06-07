@@ -18,7 +18,12 @@ from .cache import (
     get_status_korekty_przed,
     get_typ_kbn_inne,
 )
-from .helpers import get_or_download_publication, importuj_openaccess, pobierz_jezyk
+from .helpers import (
+    get_or_download_publication,
+    importuj_openaccess,
+    pobierz_jezyk,
+    ustaw_jezyk_oryginalny,
+)
 from .publishers import sciagnij_i_zapisz_wydawce
 
 
@@ -84,6 +89,7 @@ def importuj_ksiazke(
     )
 
     importuj_openaccess(ret, pbn_json)
+    ustaw_jezyk_oryginalny(ret, pbn_json)
 
     ret.save()
 
