@@ -44,6 +44,13 @@ def _parse_pbn_date(value):
         return None
 
 
+def _truncate(value, max_length):
+    """Przytnij string do limitu pola modelu; None zostaje None."""
+    if value is None:
+        return None
+    return str(value)[:max_length]
+
+
 def integruj_konferencje(callback=None):
     """Integruj lustro pbn_api.Conference → bpp.Konferencja.
 
@@ -63,16 +70,16 @@ def integruj_konferencje(callback=None):
         if callback is not None:
             callback.update(i, total, "Integracja konferencji")
 
-        nazwa = conf.value_or_none("object", "fullName")
+        nazwa = _truncate(conf.value_or_none("object", "fullName"), 512)
         if not nazwa:
             logger.info("Pomijam konferencję PBN %s bez nazwy", conf.mongoId)
             continue
 
         rozpoczecie = _parse_pbn_date(conf.value_or_none("object", "startDate"))
         zakonczenie = _parse_pbn_date(conf.value_or_none("object", "endDate"))
-        miasto = conf.value_or_none("object", "city")
-        panstwo = conf.value_or_none("object", "country")
-        skrot = conf.value_or_none("object", "abbreviation")
+        miasto = _truncate(conf.value_or_none("object", "city"), 100)
+        panstwo = _truncate(conf.value_or_none("object", "country"), 100)
+        skrot = _truncate(conf.value_or_none("object", "abbreviation"), 250)
 
         konferencja = Konferencja.objects.filter(pbn_uid_id=conf.pk).first()
         if konferencja is None:

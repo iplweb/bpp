@@ -95,3 +95,23 @@ def test_pomija_rekord_bez_nazwy():
     _make_conference("c5", {"startDate": "2020-01-01"})
     assert integruj_konferencje() == 0
     assert Konferencja.objects.count() == 0
+
+
+@pytest.mark.django_db
+def test_przycina_zbyt_dlugie_pola():
+    _make_conference(
+        "c6",
+        {
+            "fullName": "x" * 600,
+            "abbreviation": "y" * 300,
+            "city": "z" * 150,
+            "country": "w" * 150,
+            "startDate": "2020-01-01",
+        },
+    )
+    assert integruj_konferencje() == 1
+    k = Konferencja.objects.get(pbn_uid_id="c6")
+    assert len(k.nazwa) == 512
+    assert len(k.skrocona_nazwa) == 250
+    assert len(k.miasto) == 100
+    assert len(k.panstwo) == 100
