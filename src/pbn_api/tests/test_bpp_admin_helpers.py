@@ -225,6 +225,67 @@ def test_sprobuj_wyslac_do_pbn_z_oswiadczeniami(
 
 
 @pytest.mark.django_db
+def test_sprobuj_wyslac_do_pbn_link_uzywa_uczelni_z_requestu(
+    pbn_wydawnictwo_zwarte_z_charakterem, pbn_client, rf, pbn_uczelnia
+):
+    """Multi-hosted: link „Otwórz w PBN" w komunikacie sukcesu używa
+    pbn_api_root uczelni Z REQUESTU, a nie zgaduje pierwszej-z-brzegu.
+
+    Przy >1 uczelni ``link_do_pbn()`` bez argumentu degradowałby do None
+    (get_single_uczelnia_or_none → None) → ``href="None"``. Po fixie link
+    dostaje jawnie uczelnię z requestu.
+    """
+    from bpp.models import Uczelnia
+
+    req = rf.get("/")
+    # SiteResolutionMiddleware w produkcji ustawia request._uczelnia; tu
+    # ustawiamy jawnie, żeby resolucja była deterministyczna mimo >1 uczelni.
+    req._uczelnia = pbn_uczelnia
+
+    pbn_uczelnia.pbn_api_root = "https://pbn-zrequestu.example.com"
+    pbn_uczelnia.pbn_wysylaj_bez_oswiadczen = True
+    pbn_uczelnia.save()
+
+    # Druga uczelnia → get_single_uczelnia_or_none() zwróci None (>1).
+    inne_site = baker.make("sites.Site", domain="inna-pbn.example.com")
+    baker.make(
+        Uczelnia,
+        skrot="INNA",
+        nazwa="Inna uczelnia",
+        site=inne_site,
+        pbn_api_root="https://pbn-inna.example.com",
+    )
+
+    pbn_client.transport.return_values[PBN_POST_PUBLICATION_NO_STATEMENTS_URL] = [
+        {"id": "123"}
+    ]
+    pbn_client.transport.return_values[
+        PBN_GET_PUBLICATION_BY_ID_URL.format(id="123")
+    ] = MOCK_RETURNED_MONGODB_DATA
+    pbn_client.transport.return_values[PBN_GET_PUBLICATION_BY_ID_URL.format(id=456)] = (
+        MOCK_RETURNED_MONGODB_DATA
+    )
+    pbn_client.transport.return_values[
+        PBN_GET_INSTITUTION_PUBLICATIONS_V2 + "?publicationId=123&size=10"
+    ] = pbn_pageable_json(MOCK_RETURNED_INSTITUTION_PUBLICATION_V2_DATA)
+    pbn_client.transport.return_values[
+        PBN_GET_INSTITUTION_STATEMENTS + "?publicationId=123&size=5120"
+    ] = pbn_pageable_json([])
+
+    with middleware(req):
+        sprobuj_wyslac_do_pbn_gui(
+            req, pbn_wydawnictwo_zwarte_z_charakterem, pbn_client=pbn_client
+        )
+
+    msg = list(get_messages(req))
+    # Asercja CELOWO na URL publikacji (link_do_pbn), NIE na sam host — host
+    # występuje też w link_do_pi (Profil Instytucji), które uczelnię już
+    # dostaje. Pre-fix link_do_pbn() → None → ten fragment z hostem znika.
+    oczekiwany = "pbn-zrequestu.example.com/core/#/publication/view/"
+    assert any(oczekiwany in m.message for m in msg), [m.message for m in msg]
+
+
+@pytest.mark.django_db
 def test_sprobuj_wyslac_do_pbn_bez_oswiadczen_sukces(
     pbn_wydawnictwo_zwarte_z_charakterem, pbn_client, rf, pbn_uczelnia
 ):

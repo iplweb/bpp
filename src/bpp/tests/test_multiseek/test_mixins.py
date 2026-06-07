@@ -20,7 +20,7 @@ class TestQueryObjectDisabled(BppMultiseekVisibilityMixin, StringQueryObject):
     field_name = "bar"
     public = True
 
-    def option_enabled(self):
+    def option_enabled(self, request=None):
         return False
 
 

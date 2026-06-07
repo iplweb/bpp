@@ -159,6 +159,58 @@ def test_filtr_link_do_pi_przekazuje_uczelnia(uczelnia):
     assert str(v.pk) in link
 
 
+def _make_v2_z_uuid(objectId, uczelnia=None):
+    """Wiersz _V2 z ``uuid`` w json_data — żeby ``link_do_pi`` przeszedł
+    poza wczesny ``return`` (linia: ``if not uuid``)."""
+    return PublikacjaInstytucji_V2.objects.create(
+        uuid=uuid_module.uuid4(),
+        objectId=objectId,
+        json_data={
+            "title": "Test",
+            "objectId": objectId.pk,
+            "uuid": str(uuid_module.uuid4()),
+        },
+        uczelnia=uczelnia,
+    )
+
+
+@pytest.mark.django_db
+def test_v2_link_do_pi_wiele_uczelni_bez_taga_nie_crashuje(uczelnia):
+    """``PublikacjaInstytucji_V2.link_do_pi()``: wiersz bez taga uczelni przy
+    >1 uczelni w systemie NIE rzuca MultipleObjectsReturned — degraduje do
+    None (brak get_default / Uczelnia.objects.get() pierwszej-z-brzegu)."""
+    site2 = baker.make("sites.Site", domain="v2multi.example.com")
+    baker.make(Uczelnia, skrot="V2M", nazwa="Druga", site=site2)
+    assert Uczelnia.objects.count() >= 2
+
+    objectId = _make_publication()
+    v = _make_v2_z_uuid(objectId, uczelnia=None)
+
+    # Pre-fix: Uczelnia.objects.get() → MultipleObjectsReturned.
+    assert v.link_do_pi() is None
+
+
+@pytest.mark.django_db
+def test_v2_link_do_pi_uzywa_self_uczelnia(uczelnia):
+    """``PublikacjaInstytucji_V2.link_do_pi()`` z otagowaną uczelnią buduje
+    link z JEJ pbn_api_root, niezależnie od liczby uczelni w systemie."""
+    site2 = baker.make("sites.Site", domain="v2self.example.com")
+    u2 = baker.make(
+        Uczelnia,
+        skrot="V2S",
+        nazwa="Druga",
+        site=site2,
+        pbn_api_root="https://pbn-v2self.example.com",
+    )
+
+    objectId = _make_publication()
+    v = _make_v2_z_uuid(objectId, uczelnia=u2)
+
+    link = v.link_do_pi()
+    assert link is not None
+    assert urlparse(link).hostname == "pbn-v2self.example.com"
+
+
 @pytest.mark.django_db
 def test_backfill_single_install_taguje_null(uczelnia):
     """Single-install: backfill taguje wiersze NULL jedyną uczelnią."""

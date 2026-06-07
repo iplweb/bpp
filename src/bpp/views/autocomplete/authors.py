@@ -169,8 +169,13 @@ class AutorAutocomplete(GroupRequiredMixin, AutorAutocompleteBase):
     )
 
     def create_object(self, text):
+        # Multi-hosted: nowy autor dziedziczy widoczność (``pokazuj``) z uczelni
+        # Z REQUESTU (host), nie z pierwszej-z-brzegu.
+        from bpp.models.uczelnia import Uczelnia
+
+        uczelnia = Uczelnia.objects.get_for_request(getattr(self, "request", None))
         try:
-            obj = Autor.objects.create_from_string(text)
+            obj = Autor.objects.create_from_string(text, uczelnia=uczelnia)
         except ValueError:
             return self.err
 

@@ -40,10 +40,8 @@ SRC = Path(__file__).resolve().parents[2]  # .../src
 # Whitelist dla ``Uczelnia.objects.first()``. Każdy wpis to ŚWIADOMY fallback
 # bez requestu (warstwa modelu / UI default / demo / debug / komentarz).
 APPROVED_FIRST: dict[str, int] = {
-    "bpp/admin/core.py": 1,  # admin form __init__: default pola 'afiliuje', None-tolerant UI
     "bpp/demo_data/generators/uczelnia.py": 1,  # demo/seed, CLI bez requestu
     "bpp/management/commands/debug_setup_initial_data.py": 1,  # debug command, None-tolerant
-    "bpp/models/autor.py": 1,  # warstwa modelu: domyślne 'pokazuj' nowego autora, None-tolerant
     "bpp/models/jednostka.py": 1,  # KOMENTARZ (nie kod) — zakomentowany default=lambda
 }
 
