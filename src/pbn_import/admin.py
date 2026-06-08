@@ -339,7 +339,11 @@ class ImportInconsistencyAdmin(DynamicAdminFilterMixin, admin.ModelAdmin):
         type_colors = {
             "author_not_found": "pbn-level-badge--warning",
             "author_auto_fixed": "pbn-level-badge--info",
+            "author_matched_by_name": "pbn-level-badge--info",
             "author_needs_manual_fix": "pbn-level-badge--error",
+            "discipline_auto_assigned": "pbn-level-badge--info",
+            "discipline_added_as_sub": "pbn-level-badge--info",
+            "discipline_conflict_no_room": "pbn-level-badge--warning",
             "no_override_without_disciplines": "pbn-level-badge--warning",
             "publication_not_found": "pbn-level-badge--error",
             "author_not_in_bpp": "pbn-level-badge--error",

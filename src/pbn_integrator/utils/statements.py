@@ -270,8 +270,10 @@ def integruj_oswiadczenia_z_instytucji_pojedyncza_praca(  # noqa: C901
 
             if wynik == WynikPrzypisaniaDyscypliny.KONFLIKT_BRAK_MIEJSCA:
                 # Oba sloty Autor_Dyscyplina zajęte inną dyscypliną — NIE
-                # ustawiamy rec.dyscyplina_naukowa na D (rec.save() na końcu
-                # funkcji nie waliduje, więc utrwaliłby niespójną parę).
+                # ustawiamy rec.dyscyplina_naukowa na D. Finalny rec.save()
+                # woła clean()/_waliduj_dyscypline, więc ustawienie D, której
+                # autor nie ma na ten rok, podniosłoby ValidationError
+                # (z powrotem crash). Dlatego zostawiamy rec bez zmian.
                 msg = (
                     f"Autor {rec.autor} ma na rok {rok} dwie inne dyscypliny niż "
                     f"{discipline} (praca: {pub}) — nie przypisuję, wymaga ręcznej "
