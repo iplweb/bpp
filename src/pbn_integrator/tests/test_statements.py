@@ -11,6 +11,7 @@ import pytest
 from model_bakery import baker
 
 from bpp.models import (
+    Autor,
     Autor_Dyscyplina,
     Dyscyplina_Naukowa,
     Typ_Odpowiedzialnosci,
@@ -301,3 +302,98 @@ def test_pbn_zglasza_subdyscypline_autora_ustawia_rec_bez_konfliktu(
     ad = Autor_Dyscyplina.objects.get(autor=autor, rok=rok)
     assert ad.dyscyplina_naukowa == disc_main
     assert ad.subdyscyplina_naukowa == disc_sub
+
+
+@pytest.mark.django_db
+def test_dopasowanie_po_nazwisku_zamiast_author_not_found(
+    pbn_wydawnictwo_ciagle_z_autorem_z_dyscyplina,
+    pbn_institution,
+    typ_odpowiedzialnosci_autor,
+):
+    """Współautor o tym samym imieniu/nazwisku (inne ID) => match by name,
+    NIE author_not_found."""
+    pub = pbn_wydawnictwo_ciagle_z_autorem_z_dyscyplina
+    autor_rec = pub.autorzy_set.first()
+    autor_B = autor_rec.autor  # współautor faktycznie na pracy
+
+    # Autor A: ten sam imię/nazwisko, INNE ID; to on dostaje pbn_uid z oświadczenia
+    scientist = baker.make(Scientist, lastName=autor_B.nazwisko, name=autor_B.imiona)
+    autor_A = baker.make(
+        Autor,
+        nazwisko=autor_B.nazwisko,
+        imiona=autor_B.imiona,
+        pbn_uid=scientist,
+    )
+    assert autor_A.pk != autor_B.pk
+
+    pbn_pub = baker.make(Publication, mongoId="match-name-pub-1")
+    pub.pbn_uid = pbn_pub
+    pub.save()
+
+    oswiadczenie = OswiadczenieInstytucji.objects.create(
+        addedTimestamp=date(2024, 1, 1),
+        inOrcid=False,
+        institutionId=pbn_institution,
+        personId=scientist,
+        publicationId=pbn_pub,
+        type="AUTHOR",
+        disciplines={"name": autor_rec.dyscyplina_naukowa.nazwa},
+    )
+
+    zgloszenia = []
+
+    def callback(**kwargs):
+        zgloszenia.append(kwargs)
+
+    integruj_oswiadczenia_z_instytucji_pojedyncza_praca(
+        oswiadczenie, set(), set(), inconsistency_callback=callback
+    )
+
+    typy = [z["inconsistency_type"] for z in zgloszenia]
+    assert "author_matched_by_name" in typy
+    assert "author_not_found" not in typy
+
+
+@pytest.mark.django_db
+def test_autor_spoza_pracy_wymaga_recznej_korekty(
+    pbn_wydawnictwo_ciagle_z_autorem_z_dyscyplina,
+    pbn_institution,
+    typ_odpowiedzialnosci_autor,
+):
+    """Autor o tym samym imieniu/nazwisku istnieje w BPP, ale NIE jest
+    współautorem tej pracy => manual_fix, autor NIE dopisany."""
+    pub = pbn_wydawnictwo_ciagle_z_autorem_z_dyscyplina
+    liczba_autorow_przed = pub.autorzy_set.count()
+
+    scientist = baker.make(Scientist, lastName="Bałdys-Waligórska", name="Agata")
+    baker.make(
+        Autor, nazwisko="Bałdys-Waligórska", imiona="Agata", pbn_uid=scientist
+    )
+
+    pbn_pub = baker.make(Publication, mongoId="manual-fix-pub-1")
+    pub.pbn_uid = pbn_pub
+    pub.save()
+
+    oswiadczenie = OswiadczenieInstytucji.objects.create(
+        addedTimestamp=date(2024, 1, 1),
+        inOrcid=False,
+        institutionId=pbn_institution,
+        personId=scientist,
+        publicationId=pbn_pub,
+        type="AUTHOR",
+        disciplines={"name": pub.autorzy_set.first().dyscyplina_naukowa.nazwa},
+    )
+
+    zgloszenia = []
+
+    def callback(**kwargs):
+        zgloszenia.append(kwargs)
+
+    integruj_oswiadczenia_z_instytucji_pojedyncza_praca(
+        oswiadczenie, set(), set(), inconsistency_callback=callback
+    )
+
+    typy = [z["inconsistency_type"] for z in zgloszenia]
+    assert "author_needs_manual_fix" in typy
+    # Autor NIE został dopisany do publikacji
+    assert pub.autorzy_set.count() == liczba_autorow_przed

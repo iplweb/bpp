@@ -126,16 +126,6 @@ def integruj_oswiadczenia_z_instytucji_pojedyncza_praca(  # noqa: C901
         logger.info(
             f"===========================================================\nXXX {msg}"
         )
-        if inconsistency_callback:
-            inconsistency_callback(
-                inconsistency_type="author_not_found",
-                pbn_publication=elem.publicationId,
-                pbn_author=elem.personId,
-                bpp_publication=pub,
-                bpp_author=aut,
-                discipline=elem.get_bpp_discipline() if elem.disciplines else None,
-                message=msg,
-            )
 
         try:
             rec = pub.autorzy_set.get(
@@ -204,7 +194,11 @@ def integruj_oswiadczenia_z_instytucji_pojedyncza_praca(  # noqa: C901
                     )
 
                 if rec is None:
-                    msg = "Nie mogę naprawić tego automatycznie - sprawdź ręcznie"
+                    msg = (
+                        f"Autor {aut} (PBN: {elem.personId}) o tym samym imieniu i "
+                        f"nazwisku istnieje w BPP, ale nie figuruje jako współautor "
+                        f"pracy {pub} — wymaga ręcznej korekty."
+                    )
                     logger.info(
                         f"XXX {msg}\n"
                         "==========================================================="
@@ -227,8 +221,8 @@ def integruj_oswiadczenia_z_instytucji_pojedyncza_praca(  # noqa: C901
         if elem.disciplines:
             discipline = elem.get_bpp_discipline()
             msg = (
-                f"Nadpisuję w tej pracy autora {rec.autor} autorem {aut}, "
-                f"wyślij tę pracę do PBN ponownie! (dyscyplina: {discipline})"
+                f"Dopasowano po nazwisku autora {aut} do rekordu {rec.autor} "
+                f"w pracy {pub} (dyscyplina: {discipline})"
             )
             logger.info(
                 f"XXX {msg}\n"
@@ -236,7 +230,7 @@ def integruj_oswiadczenia_z_instytucji_pojedyncza_praca(  # noqa: C901
             )
             if inconsistency_callback:
                 inconsistency_callback(
-                    inconsistency_type="author_auto_fixed",
+                    inconsistency_type="author_matched_by_name",
                     pbn_publication=elem.publicationId,
                     pbn_author=elem.personId,
                     bpp_publication=pub,
@@ -245,7 +239,6 @@ def integruj_oswiadczenia_z_instytucji_pojedyncza_praca(  # noqa: C901
                     message=msg,
                     action_taken=f"Autor zmieniony z {rec.autor} na {aut}",
                 )
-            rec.autor = aut
         else:
             msg = (
                 f"Nie nadpisuję w tej pracy autora {rec.autor} autorem {aut}, "
