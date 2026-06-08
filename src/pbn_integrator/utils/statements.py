@@ -237,7 +237,10 @@ def integruj_oswiadczenia_z_instytucji_pojedyncza_praca(  # noqa: C901
                     bpp_author=aut,
                     discipline=discipline,
                     message=msg,
-                    action_taken=f"Autor zmieniony z {rec.autor} na {aut}",
+                    action_taken=(
+                        f"Dopasowano po nazwisku do {rec.autor}; dyscyplina "
+                        f"{discipline} przypisana bez podmiany autora pracy."
+                    ),
                 )
         else:
             msg = (
