@@ -130,3 +130,23 @@ def test_oba_sloty_zajete_konflikt(autor, dyscyplina_X, dyscyplina_Y, dyscyplina
     ad = Autor_Dyscyplina.objects.get(autor=autor, rok=ROK)
     assert ad.dyscyplina_naukowa == dyscyplina_X  # bez zmian
     assert ad.subdyscyplina_naukowa == dyscyplina_Y  # bez zmian
+
+
+@pytest.mark.django_db
+def test_pusty_sub_procent_none_auto_50_50(autor, dyscyplina_X, dyscyplina_Y):
+    baker.make(
+        Autor_Dyscyplina,
+        autor=autor,
+        rok=ROK,
+        dyscyplina_naukowa=dyscyplina_X,
+        procent_dyscypliny=None,
+        subdyscyplina_naukowa=None,
+    )
+
+    wynik = przypisz_dyscypline_pbn(autor, ROK, dyscyplina_Y)
+
+    assert wynik == WynikPrzypisaniaDyscypliny.DODANO_SUB
+    ad = Autor_Dyscyplina.objects.get(autor=autor, rok=ROK)
+    assert ad.subdyscyplina_naukowa == dyscyplina_Y
+    assert ad.procent_dyscypliny == Decimal("50.00")
+    assert ad.procent_subdyscypliny == Decimal("50.00")
