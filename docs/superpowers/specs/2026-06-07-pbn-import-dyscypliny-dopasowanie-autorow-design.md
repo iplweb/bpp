@@ -125,14 +125,31 @@ dwóch slotów autora — inaczej `_waliduj_dyscypline` (przy ewentualnym `rec.c
 zapisie) znów by rzuciło.
 
 **Uwaga korektności — bezwarunkowy `rec.save()` (statements.py:299).** `rec.save()`
-jest wołany na końcu funkcji ZAWSZE, a Django `save()` NIE woła `clean()` (walidacja
-tylko w jawnym `rec.clean()`). Wcześniej (linia ~245) blok ratunkowy robi
-`rec.autor = aut` (podmiana współautora). Dlatego w gałęzi `KONFLIKT_BRAK_MIEJSCA`
-NIE wolno zostawić `rec.dyscyplina_naukowa_id` ustawionego na D — inaczej zapis
-utrwali parę `(autor, dyscyplina)`, której autor nie ma na ten rok (cicha
-niespójność, bo `save()` nie waliduje). Reguła: na konflikcie zostawiamy
-`rec.dyscyplina_naukowa` taką, jaka była przed próbą (najczęściej `None` dla świeżo
-dopasowanego rekordu); ustawiamy ją na D dopiero, gdy D jest realnym slotem autora.
+jest wołany na końcu funkcji ZAWSZE, a w tym modelu `save()` WOŁA `clean()`
+(`BazaModeluOdpowiedzialnosciAutorow.save()` → `self.clean()` →
+`_waliduj_dyscypline`, `authors.py:99-103`). Dlatego w gałęzi
+`KONFLIKT_BRAK_MIEJSCA` NIE wolno ustawić `rec.dyscyplina_naukowa_id` na D — gdyby D
+nie było żadnym ze slotów autora, finalny `rec.save()` podniósłby `ValidationError`
+i z powrotem wywalił import (dokładnie ten crash, który usuwamy). Reguła: na
+konflikcie zostawiamy `rec.dyscyplina_naukowa` taką, jaka była przed próbą
+(najczęściej `None` dla świeżo dopasowanego rekordu, a `_waliduj_dyscypline`
+przepuszcza `None`); ustawiamy ją na D dopiero, gdy D jest realnym slotem autora.
+
+**Decyzja (rewizja): brak podmiany autora na dopasowaniu po nazwisku.** Gdy PBN
+wskazuje osobę A, a pracę kredytuje współautor B o tym samym imieniu/nazwisku (inne
+ID), NIE podmieniamy `rec.autor` (usuwamy istniejące `rec.autor = aut` w tier 2/3).
+Dyscyplinę przypisujemy autorowi już wpisanemu na pracy (B). Raport
+`author_matched_by_name` jest informacyjny, a `action_taken` nie twierdzi, że autor
+został zmieniony. (Pre-istniejący swap w tier-4 znormalizowanym — `author_replaced` —
+pozostaje poza zakresem; ma ten sam utajony crash i jest do osobnego potraktowania.)
+
+**Część konsumencka (Część 3 end-to-end).** Nowe `inconsistency_type`
+(`author_matched_by_name`, `discipline_auto_assigned`, `discipline_added_as_sub`,
+`discipline_conflict_no_room`) rejestrujemy w `ImportInconsistency.
+INCONSISTENCY_TYPE_CHOICES` (etykiety PL) oraz w mapie odznak admina
+(`discipline_conflict_no_room` → warning, reszta → info) + migracja `AlterField`.
+Bez tego dashboard pokazuje surowe klucze, błędny kolor i nie filtruje po nowych
+typach.
 
 **Transakcje (F3).** Import biegnie w `transaction.atomic()`. Skoro zamieniamy
 `raise` na „raportuj i jedź dalej", `update_or_create` w helperze osłaniamy

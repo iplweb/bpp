@@ -400,8 +400,10 @@ nowym blokiem:
 
             if wynik == WynikPrzypisaniaDyscypliny.KONFLIKT_BRAK_MIEJSCA:
                 # Oba sloty Autor_Dyscyplina zajęte inną dyscypliną — NIE
-                # ustawiamy rec.dyscyplina_naukowa na D (rec.save() na końcu
-                # funkcji nie waliduje, więc utrwaliłby niespójną parę).
+                # ustawiamy rec.dyscyplina_naukowa na D. Finalny rec.save()
+                # woła clean()/_waliduj_dyscypline, więc ustawienie D, której
+                # autor nie ma na ten rok, podniosłoby ValidationError
+                # (z powrotem crash). Dlatego zostawiamy rec bez zmian.
                 msg = (
                     f"Autor {rec.autor} ma na rok {rok} dwie inne dyscypliny niż "
                     f"{discipline} (praca: {pub}) — nie przypisuję, wymaga ręcznej "
@@ -714,3 +716,10 @@ Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>"
 - **Nie dopisujemy autorów do publikacji** — gałąź `manual_fix` świadomie kończy się `return` bez modyfikacji `pub.autorzy_set`.
 - **Transakcje:** helper osłania zapisy `transaction.atomic()`, by `IntegrityError` nie unieważnił zewnętrznej transakcji sesji importu.
 - **Procenty:** auto-uzupełniamy tylko gdy brak danych użytkownika; „100% + pusty sub" traktujemy jako naszą auto-daną (rebalansowalną do 50/50).
+
+## Notatki poimplementacyjne (rozbieżności vs plan)
+
+- **Decyzja użytkownika: brak podmiany autora.** W Tasku 3 usunięto `rec.autor = aut` w tier 2/3 — dyscyplinę przypisujemy autorowi już wpisanemu na pracy, bez przepisywania autorstwa. `author_matched_by_name` jest informacyjny, a `action_taken` tego nie nazywa „podmianą".
+- **`save()` waliduje.** Wbrew pierwotnej przesłance, `rec.save()` woła `clean()` (`authors.py:99-103`). Gałąź konfliktu celowo NIE ustawia `rec.dyscyplina_naukowa`, by uniknąć `ValidationError` na finalnym zapisie (czyli z powrotem crash).
+- **Task 5 (dodany po finalnym review):** rejestracja nowych `inconsistency_type` w `pbn_import` (`INCONSISTENCY_TYPE_CHOICES` + odznaki admina, `discipline_conflict_no_room` → warning + migracja 0012) oraz test integracyjny `discipline_auto_assigned`.
+- **Follow-up (odroczone):** pre-istniejący swap `rec.autor = aut` w tier-4 znormalizowanym (`author_replaced`, statements.py ~166) ma ten sam utajony crash na walidującym `save()` i brak wpisu w mapie odznak admina — do osobnego potraktowania spójnie z decyzją „brak podmiany".
