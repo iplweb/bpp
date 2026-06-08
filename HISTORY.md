@@ -2,6 +2,11 @@
 
 <!-- towncrier release notes start -->
 
+## bpp 202606.1381 (2026-06-08)
+
+No significant changes.
+
+
 ## bpp 202606.1380 (2026-06-05)
 
 ### Naprawione
