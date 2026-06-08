@@ -47,9 +47,7 @@ def test_brak_wiersza_tworzy_z_procentem_100(autor, dyscyplina_X):
 
 @pytest.mark.django_db
 def test_dyscyplina_juz_glowna_brak_zmian(autor, dyscyplina_X):
-    baker.make(
-        Autor_Dyscyplina, autor=autor, rok=ROK, dyscyplina_naukowa=dyscyplina_X
-    )
+    baker.make(Autor_Dyscyplina, autor=autor, rok=ROK, dyscyplina_naukowa=dyscyplina_X)
 
     wynik = przypisz_dyscypline_pbn(autor, ROK, dyscyplina_X)
 
