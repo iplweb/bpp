@@ -6,7 +6,6 @@ import logging
 from typing import TYPE_CHECKING
 
 from django.contrib.postgres.search import TrigramSimilarity
-from django.core.exceptions import ValidationError
 from django.db import transaction
 from django.db.models.functions import Length
 from tqdm import tqdm
@@ -25,6 +24,10 @@ from pbn_api.exceptions import HttpException, StatementDeletionError
 from pbn_api.models import OswiadczenieInstytucji, Publication
 from pbn_integrator.utils import zapisz_oswiadczenie_instytucji
 from pbn_integrator.utils.django_imports import normalize_tytul_publikacji
+from pbn_integrator.utils.dyscypliny import (
+    WynikPrzypisaniaDyscypliny,
+    przypisz_dyscypline_pbn,
+)
 from pbn_integrator.utils.integration import ustaw_pbn_uid_jesli_brak
 
 logger = logging.getLogger(__name__)
@@ -264,21 +267,70 @@ def integruj_oswiadczenia_z_instytucji_pojedyncza_praca(  # noqa: C901
                 )
 
     if elem.disciplines:
-        if elem.get_bpp_discipline().pk != rec.dyscyplina_naukowa_id:
-            rec.dyscyplina_naukowa_id = elem.get_bpp_discipline().pk
-            try:
-                rec.clean()
-            except ValidationError:
-                try:
-                    Autor_Dyscyplina.objects.get(rok=rec.rekord.rok, autor=rec.autor)
-                    raise Exception(
-                        f"Nie ma przypsiania do {elem.get_bpp_discipline()}, ale jakeis inne jest..."
+        discipline = elem.get_bpp_discipline()
+        if discipline.pk != rec.dyscyplina_naukowa_id:
+            rok = rec.rekord.rok
+            wynik = przypisz_dyscypline_pbn(rec.autor, rok, discipline)
+
+            if wynik == WynikPrzypisaniaDyscypliny.KONFLIKT_BRAK_MIEJSCA:
+                # Oba sloty Autor_Dyscyplina zajęte inną dyscypliną — NIE
+                # ustawiamy rec.dyscyplina_naukowa na D (rec.save() na końcu
+                # funkcji nie waliduje, więc utrwaliłby niespójną parę).
+                msg = (
+                    f"Autor {rec.autor} ma na rok {rok} dwie inne dyscypliny niż "
+                    f"{discipline} (praca: {pub}) — nie przypisuję, wymaga ręcznej "
+                    f"weryfikacji."
+                )
+                logger.warning(f"!!! KONFLIKT DYSCYPLIN: {msg}")
+                if inconsistency_callback:
+                    inconsistency_callback(
+                        inconsistency_type="discipline_conflict_no_room",
+                        pbn_publication=elem.publicationId,
+                        pbn_author=elem.personId,
+                        bpp_publication=pub,
+                        bpp_author=rec.autor,
+                        discipline=discipline,
+                        message=msg,
+                        action_taken="Brak zmian — oba sloty dyscyplin zajęte",
                     )
-                except Autor_Dyscyplina.DoesNotExist:
-                    rec.autor.autor_dyscyplina_set.update_or_create(
-                        rok=rec.rekord.rok,
-                        defaults={"dyscyplina_naukowa": elem.get_bpp_discipline()},
+            else:
+                rec.dyscyplina_naukowa_id = discipline.pk
+                if wynik == WynikPrzypisaniaDyscypliny.UTWORZONO:
+                    msg = (
+                        f"Autorowi {rec.autor} przypisano dyscyplinę {discipline} "
+                        f"na podstawie pracy {pub}, rok {rok} — automatycznie, "
+                        f"brak danych w BPP."
                     )
+                    logger.info(f"AUTO-DYSCYPLINA: {msg}")
+                    if inconsistency_callback:
+                        inconsistency_callback(
+                            inconsistency_type="discipline_auto_assigned",
+                            pbn_publication=elem.publicationId,
+                            pbn_author=elem.personId,
+                            bpp_publication=pub,
+                            bpp_author=rec.autor,
+                            discipline=discipline,
+                            message=msg,
+                            action_taken="Utworzono Autor_Dyscyplina (100%)",
+                        )
+                elif wynik == WynikPrzypisaniaDyscypliny.DODANO_SUB:
+                    msg = (
+                        f"Autorowi {rec.autor} dopisano subdyscyplinę {discipline} "
+                        f"na podstawie pracy {pub}, rok {rok} — automatycznie, "
+                        f"brak danych w BPP."
+                    )
+                    logger.info(f"AUTO-SUBDYSCYPLINA: {msg}")
+                    if inconsistency_callback:
+                        inconsistency_callback(
+                            inconsistency_type="discipline_added_as_sub",
+                            pbn_publication=elem.publicationId,
+                            pbn_author=elem.personId,
+                            bpp_publication=pub,
+                            bpp_author=rec.autor,
+                            discipline=discipline,
+                            message=msg,
+                            action_taken="Dopisano subdyscyplinę",
+                        )
 
         # Jeśli dyscyplina jest ustawiana i jednostka to "Obca jednostka",
         # zaktualizuj jednostkę na domyślną i ustaw flagi afiliacji

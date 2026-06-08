@@ -10,7 +10,11 @@ from datetime import date
 import pytest
 from model_bakery import baker
 
-from bpp.models import Typ_Odpowiedzialnosci
+from bpp.models import (
+    Autor_Dyscyplina,
+    Dyscyplina_Naukowa,
+    Typ_Odpowiedzialnosci,
+)
 from pbn_api.models import Institution, OswiadczenieInstytucji, Publication, Scientist
 from pbn_integrator.utils.statements import (
     integruj_oswiadczenia_z_instytucji_pojedyncza_praca,
@@ -175,3 +179,61 @@ def test_integruj_oswiadczenia_nadpisuje_istniejaca_date_gdy_statedTimestamp_dos
     # Sprawdź, że data_oswiadczenia została nadpisana nową datą
     autor_rec.refresh_from_db()
     assert autor_rec.data_oswiadczenia == new_stated_date
+
+
+@pytest.mark.django_db
+def test_konflikt_dyscyplin_nie_wywala_importu(
+    pbn_wydawnictwo_ciagle_z_autorem_z_dyscyplina,
+    pbn_institution,
+    typ_odpowiedzialnosci_autor,
+):
+    """Dwa sloty zajęte + trzecia dyscyplina z PBN => raport, nie wyjątek."""
+    pub = pbn_wydawnictwo_ciagle_z_autorem_z_dyscyplina
+    autor_rec = pub.autorzy_set.first()
+    autor = autor_rec.autor
+    rok = pub.rok
+
+    disc_X = baker.make(Dyscyplina_Naukowa, nazwa="medycyna-X", kod="3.21")
+    disc_Y = baker.make(Dyscyplina_Naukowa, nazwa="psychologia-Y", kod="5.111")
+    disc_Z = baker.make(Dyscyplina_Naukowa, nazwa="bezpieczenstwo-Z", kod="5.3")
+
+    # Autor ma na ten rok dwa sloty zajęte (X + Y)
+    Autor_Dyscyplina.objects.filter(autor=autor, rok=rok).delete()
+    Autor_Dyscyplina.objects.create(
+        autor=autor,
+        rok=rok,
+        dyscyplina_naukowa=disc_X,
+        subdyscyplina_naukowa=disc_Y,
+    )
+
+    pbn_pub = baker.make(Publication, mongoId="konflikt-pub-1")
+    pub.pbn_uid = pbn_pub
+    pub.save()
+
+    oswiadczenie = OswiadczenieInstytucji.objects.create(
+        addedTimestamp=date(2024, 1, 1),
+        inOrcid=False,
+        institutionId=pbn_institution,
+        personId=autor.pbn_uid,
+        publicationId=pbn_pub,
+        type="AUTHOR",
+        disciplines={"name": disc_Z.nazwa},
+    )
+
+    zgloszenia = []
+
+    def callback(**kwargs):
+        zgloszenia.append(kwargs)
+
+    # NIE powinno podnieść wyjątku
+    integruj_oswiadczenia_z_instytucji_pojedyncza_praca(
+        oswiadczenie, set(), set(), inconsistency_callback=callback
+    )
+
+    typy = [z["inconsistency_type"] for z in zgloszenia]
+    assert "discipline_conflict_no_room" in typy
+
+    # Sloty autora bez zmian — Z nie dopisane
+    ad = Autor_Dyscyplina.objects.get(autor=autor, rok=rok)
+    assert ad.dyscyplina_naukowa == disc_X
+    assert ad.subdyscyplina_naukowa == disc_Y
