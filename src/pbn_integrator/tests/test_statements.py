@@ -353,6 +353,10 @@ def test_dopasowanie_po_nazwisku_zamiast_author_not_found(
     assert "author_matched_by_name" in typy
     assert "author_not_found" not in typy
 
+    # Autor pracy NIE został podmieniony (B zostaje, brak swapu na A)
+    autor_rec.refresh_from_db()
+    assert autor_rec.autor == autor_B
+
 
 @pytest.mark.django_db
 def test_autor_spoza_pracy_wymaga_recznej_korekty(
@@ -366,9 +370,7 @@ def test_autor_spoza_pracy_wymaga_recznej_korekty(
     liczba_autorow_przed = pub.autorzy_set.count()
 
     scientist = baker.make(Scientist, lastName="Bałdys-Waligórska", name="Agata")
-    baker.make(
-        Autor, nazwisko="Bałdys-Waligórska", imiona="Agata", pbn_uid=scientist
-    )
+    baker.make(Autor, nazwisko="Bałdys-Waligórska", imiona="Agata", pbn_uid=scientist)
 
     pbn_pub = baker.make(Publication, mongoId="manual-fix-pub-1")
     pub.pbn_uid = pbn_pub
