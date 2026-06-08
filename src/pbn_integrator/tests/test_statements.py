@@ -237,3 +237,67 @@ def test_konflikt_dyscyplin_nie_wywala_importu(
     ad = Autor_Dyscyplina.objects.get(autor=autor, rok=rok)
     assert ad.dyscyplina_naukowa == disc_X
     assert ad.subdyscyplina_naukowa == disc_Y
+
+
+@pytest.mark.django_db
+def test_pbn_zglasza_subdyscypline_autora_ustawia_rec_bez_konfliktu(
+    pbn_wydawnictwo_ciagle_z_autorem_z_dyscyplina,
+    pbn_institution,
+    typ_odpowiedzialnosci_autor,
+):
+    """PBN zgłasza dyscyplinę, którą autor ma jako SUB: rekord pracy dostaje tę
+    dyscyplinę, brak wyjątku, brak raportu konfliktu, Autor_Dyscyplina bez zmian."""
+    pub = pbn_wydawnictwo_ciagle_z_autorem_z_dyscyplina
+    autor_rec = pub.autorzy_set.first()
+    autor = autor_rec.autor
+    rok = pub.rok
+
+    disc_main = baker.make(Dyscyplina_Naukowa, nazwa="glowna-A", kod="1.1")
+    disc_sub = baker.make(Dyscyplina_Naukowa, nazwa="poboczna-B", kod="2.2")
+
+    # Autor: glowna = A, sub = B; rekord pracy początkowo kredytowany pod A
+    Autor_Dyscyplina.objects.filter(autor=autor, rok=rok).delete()
+    Autor_Dyscyplina.objects.create(
+        autor=autor,
+        rok=rok,
+        dyscyplina_naukowa=disc_main,
+        subdyscyplina_naukowa=disc_sub,
+    )
+    autor_rec.dyscyplina_naukowa = disc_main
+    autor_rec.save()
+
+    pbn_pub = baker.make(Publication, mongoId="sub-match-pub-1")
+    pub.pbn_uid = pbn_pub
+    pub.save()
+
+    # PBN zgłasza B (subdyscyplinę autora)
+    oswiadczenie = OswiadczenieInstytucji.objects.create(
+        addedTimestamp=date(2024, 1, 1),
+        inOrcid=False,
+        institutionId=pbn_institution,
+        personId=autor.pbn_uid,
+        publicationId=pbn_pub,
+        type="AUTHOR",
+        disciplines={"name": disc_sub.nazwa},
+    )
+
+    zgloszenia = []
+
+    def callback(**kwargs):
+        zgloszenia.append(kwargs)
+
+    integruj_oswiadczenia_z_instytucji_pojedyncza_praca(
+        oswiadczenie, set(), set(), inconsistency_callback=callback
+    )
+
+    typy = [z["inconsistency_type"] for z in zgloszenia]
+    assert "discipline_conflict_no_room" not in typy
+
+    # Rekord pracy kredytowany teraz pod B (sub) — bo PBN tak zgłosił
+    autor_rec.refresh_from_db()
+    assert autor_rec.dyscyplina_naukowa == disc_sub
+
+    # Autor_Dyscyplina autora niezmienione (B już było subdyscypliną)
+    ad = Autor_Dyscyplina.objects.get(autor=autor, rok=rok)
+    assert ad.dyscyplina_naukowa == disc_main
+    assert ad.subdyscyplina_naukowa == disc_sub
