@@ -1,8 +1,12 @@
+import csv
+import io
 import json
 import logging
 
+from django.contrib.auth.mixins import LoginRequiredMixin
 from django.db.models import Sum
-from django.http import HttpResponseBadRequest, JsonResponse
+from django.http import HttpResponse, HttpResponseBadRequest, JsonResponse
+from django.urls import reverse
 from django.views.decorators.cache import never_cache
 from django.views.generic import View
 from multiseek.logic import get_registry
@@ -12,6 +16,7 @@ from multiseek.views import (
     manually_add_or_remove,
 )
 
+from bpp import const
 from bpp.models import Uczelnia
 from bpp.multiseek_registry import registry as multiseek_registry
 from bpp.multiseek_registry.djangoql_export import multiseek_form_to_djangoql
@@ -22,6 +27,50 @@ logger = logging.getLogger(__name__)
 PKT_WEWN = "pkt_wewn"
 PKT_WEWN_BEZ = "pkt_wewn_bez"
 TABLE = "table"
+MULTISEEK_EXPORT_MAX_ROWS = 5000
+
+MULTISEEK_EXPORT_HEADERS = (
+    "tytul_oryginalny",
+    "autorzy",
+    "rok",
+    "impact_factor",
+    "pk",
+    "bpp_id",
+    "typ_rekordu",
+    "id_rekordu",
+    "pbn_uid_id",
+    "link_do_bpp_url",
+    "link_do_bpp_admin_url",
+    "link_do_pbn_url",
+)
+
+MULTISEEK_EXPORT_XLSX_HEADERS = (
+    "Tytuł oryginalny",
+    "Autorzy",
+    "Rok",
+    "Impact Factor",
+    "PK",
+    "BPP ID",
+    "Typ rekordu",
+    "ID rekordu",
+    "PBN UID",
+    "Link do BPP",
+    "Link do edycji w BPP",
+    "Link do PBN",
+)
+
+MULTISEEK_EXPORT_FIELDS = (
+    "id",
+    "tytul_oryginalny",
+    "opis_bibliograficzny_zapisani_autorzy_cache",
+    "rok",
+    "impact_factor",
+    "punkty_kbn",
+    "pbn_uid_id",
+)
+
+MULTISEEK_EXPORT_XLSX_URL_COLUMNS = (10, 11, 12)
+SPREADSHEET_FORMULA_INJECTION_LEAD = ("=", "+", "-", "@", "\t", "\r", "\n")
 
 EXTRA_TYPES = [
     PKT_WEWN,
@@ -37,12 +86,12 @@ class MyMultiseekResults(MultiseekResults):
     registry = "bpp.multiseek.registry"
 
     def get_queryset(self, only_those_ids=None):
-        if only_those_ids:
-            qset = (
-                get_registry(self.registry)
-                .get_query_for_model(self.get_multiseek_data())
-                .filter(pk__in=only_those_ids)
-            )
+        registry = get_registry(self.registry)
+        if only_those_ids is not None:
+            qset = registry.get_query_for_model(self.get_multiseek_data())
+            if not only_those_ids:
+                return qset.none()
+            qset = qset.filter(pk__in=only_those_ids)
         else:
             qset = super().get_queryset()
 
@@ -56,7 +105,7 @@ class MyMultiseekResults(MultiseekResults):
         flds = ("id", "opis_bibliograficzny_cache")
 
         # wycięte z multiseek/views.py, get_context_data
-        report_type = get_registry(self.registry).get_report_type(
+        report_type = registry.get_report_type(
             self.get_multiseek_data(), request=self.request
         )
 
@@ -87,21 +136,24 @@ class MyMultiseekResults(MultiseekResults):
 
         return ret
 
+    def get_queryset_for_current_mode(self):
+        if not self.request.GET.get("print-removed", False):
+            return self.get_queryset()
+
+        return self.get_queryset(
+            only_those_ids=self.request.session.get(MULTISEEK_SESSION_KEY_REMOVED, [])
+        )
+
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data()
 
-        if not self.request.GET.get("print-removed", False):
-            qset = self.get_queryset()
-        else:
-            qset = self.get_queryset(
-                only_those_ids=self.request.session.get(
-                    MULTISEEK_SESSION_KEY_REMOVED, []
-                )
-            )
+        qset = self.get_queryset_for_current_mode()
+        if self.request.GET.get("print-removed", False):
             ctx["object_list"] = qset
             ctx["print_removed"] = True
 
         ctx["paginator_count"] = qset.count()
+        ctx["multiseek_export_max_rows"] = MULTISEEK_EXPORT_MAX_ROWS
         object_list = ctx["object_list"]
         object_list.count = lambda *args, **kw: ctx["paginator_count"]
 
@@ -122,6 +174,158 @@ class MyMultiseekResults(MultiseekResults):
                 self.request.session["MULTISEEK_TITLE"] = "Rezultat wyszukiwania"
 
         return ctx
+
+
+def _export_value(value):
+    if value is None:
+        return ""
+    return str(value)
+
+
+def _sanitize_spreadsheet_cell(value):
+    if isinstance(value, str) and value.startswith(SPREADSHEET_FORMULA_INJECTION_LEAD):
+        return "'" + value
+    return value
+
+
+def _sanitize_spreadsheet_row(row):
+    return tuple(_sanitize_spreadsheet_cell(value) for value in row)
+
+
+def _pbn_publication_url(pbn_uid_id, pbn_api_root):
+    if not pbn_uid_id or not pbn_api_root:
+        return ""
+    return const.LINK_PBN_DO_PUBLIKACJI.format(
+        pbn_api_root=pbn_api_root,
+        pbn_uid_id=pbn_uid_id,
+    )
+
+
+def _admin_change_url(rekord, request):
+    content_type = rekord.content_type
+    url = reverse(
+        f"admin:{content_type.app_label}_{content_type.model}_change",
+        args=(rekord.object_id,),
+    )
+    return request.build_absolute_uri(url)
+
+
+def _iter_export_rows(queryset, request):
+    uczelnia = Uczelnia.objects.get_for_request(request)
+    pbn_api_root = uczelnia.pbn_api_root if uczelnia is not None else ""
+
+    for rekord in queryset.iterator(chunk_size=1000):
+        yield (
+            rekord.tytul_oryginalny,
+            rekord.opis_bibliograficzny_zapisani_autorzy_cache,
+            rekord.rok,
+            rekord.impact_factor,
+            rekord.punkty_kbn,
+            str(tuple(rekord.pk)),
+            str(rekord.describe_content_type),
+            rekord.object_id,
+            _export_value(rekord.pbn_uid_id),
+            request.build_absolute_uri(rekord.get_absolute_url()),
+            _admin_change_url(rekord, request),
+            _pbn_publication_url(rekord.pbn_uid_id, pbn_api_root),
+        )
+
+
+def _multiseek_export_filename(export_format):
+    return f"multiseek-export.{export_format}"
+
+
+def _csv_export_response(queryset, request):
+    output = io.StringIO()
+    writer = csv.writer(output)
+    writer.writerow(MULTISEEK_EXPORT_HEADERS)
+    writer.writerows(
+        _sanitize_spreadsheet_row(row) for row in _iter_export_rows(queryset, request)
+    )
+
+    response = HttpResponse(output.getvalue(), content_type="text/csv; charset=utf-8")
+    response["Content-Disposition"] = (
+        f'attachment; filename="{_multiseek_export_filename("csv")}"'
+    )
+    return response
+
+
+def _xlsx_export_response(queryset, request):
+    from openpyxl import Workbook
+    from openpyxl.styles import Alignment, Font, PatternFill
+
+    from bpp.util import (
+        sanitize_xlsx_row,
+        worksheet_columns_autosize,
+        worksheet_create_table,
+    )
+
+    workbook = Workbook()
+    worksheet = workbook.active
+    worksheet.title = "Multiseek"
+    worksheet.append(MULTISEEK_EXPORT_XLSX_HEADERS)
+    for row in _iter_export_rows(queryset, request):
+        worksheet.append(sanitize_xlsx_row(row))
+
+    header_fill = PatternFill("solid", fgColor="1F4E78")
+    header_font = Font(color="FFFFFF", bold=True)
+    for cell in worksheet[1]:
+        cell.fill = header_fill
+        cell.font = header_font
+        cell.alignment = Alignment(horizontal="center", vertical="center")
+
+    for row in worksheet.iter_rows(min_row=2):
+        for cell in row:
+            cell.alignment = Alignment(vertical="top", wrap_text=True)
+
+    for row in worksheet.iter_rows(min_row=2, min_col=4, max_col=5):
+        row[0].number_format = "0.000"
+        row[1].number_format = "0.00"
+
+    for row_idx in range(2, worksheet.max_row + 1):
+        for col_idx in MULTISEEK_EXPORT_XLSX_URL_COLUMNS:
+            cell = worksheet.cell(row=row_idx, column=col_idx)
+            if cell.value:
+                cell.value = f'=HYPERLINK("{cell.value}", "[link]")'
+
+    worksheet.freeze_panes = "B1"
+    worksheet_columns_autosize(worksheet)
+    if worksheet.max_row > 1:
+        worksheet_create_table(worksheet, title="MultiseekExport")
+
+    output = io.BytesIO()
+    workbook.save(output)
+    response = HttpResponse(
+        output.getvalue(),
+        content_type=(
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        ),
+    )
+    response["Content-Disposition"] = (
+        f'attachment; filename="{_multiseek_export_filename("xlsx")}"'
+    )
+    return response
+
+
+class MyMultiseekExport(LoginRequiredMixin, MyMultiseekResults):
+    http_method_names = ["get"]
+
+    def get(self, request, export_format, *args, **kwargs):
+        if export_format not in {"csv", "xlsx"}:
+            return HttpResponseBadRequest("Nieznany format eksportu.")
+
+        queryset = self.get_queryset_for_current_mode()
+        count = queryset.count()
+        if count > MULTISEEK_EXPORT_MAX_ROWS:
+            return HttpResponseBadRequest(
+                "Eksport Multiseek jest dostępny dla maksymalnie "
+                f"{MULTISEEK_EXPORT_MAX_ROWS} rekordów."
+            )
+
+        queryset = queryset.select_related(None).only(*MULTISEEK_EXPORT_FIELDS)
+        if export_format == "csv":
+            return _csv_export_response(queryset, request)
+        return _xlsx_export_response(queryset, request)
 
 
 def _normalize_session_removed(request):
@@ -179,7 +383,9 @@ class MultiseekToDjangoQLView(WprowadzanieDanychOrSuperuserMixin, View):
         try:
             result = multiseek_form_to_djangoql(form_json, multiseek_registry)
         except (KeyError, TypeError, AttributeError):
-            logger.exception("Niepoprawna struktura formularza przesłana do MultiseekToDjangoQLView.")
+            logger.exception(
+                "Niepoprawna struktura formularza przesłana do MultiseekToDjangoQLView."
+            )
             return HttpResponseBadRequest("Niepoprawna struktura formularza.")
         return JsonResponse(
             {

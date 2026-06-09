@@ -24,6 +24,7 @@ from bpp.views.admin import (
 from bpp.views.global_nav import global_nav_redir
 from bpp.views.mymultiseek import (
     MultiseekToDjangoQLView,
+    MyMultiseekExport,
     MyMultiseekResults,
     bpp_remove_by_hand,
     bpp_remove_from_removed_by_hand,
@@ -295,6 +296,16 @@ urlpatterns = (
             r"^multiseek/do-djangoql/$",
             MultiseekToDjangoQLView.as_view(),
             name="multiseek-do-djangoql",
+        ),
+        url(
+            r"^multiseek/export/(?P<export_format>[\w-]+)/$",
+            csrf_exempt(
+                MyMultiseekExport.as_view(
+                    registry=settings.MULTISEEK_REGISTRY,
+                    template_name="multiseek/results.html",
+                )
+            ),
+            name="multiseek-export",
         ),
         url(
             r"^multiseek/",
