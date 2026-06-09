@@ -9,6 +9,7 @@ from django.core.files.storage import FileSystemStorage
 from django.db import transaction
 from django.http import Http404
 from django.shortcuts import render
+from django.utils.datastructures import MultiValueDict
 from django.views.generic import TemplateView
 from formtools.wizard.views import SessionWizardView
 from messages_extends import messages
@@ -242,6 +243,14 @@ class Zgloszenie_PublikacjiWizard(UczelniaSettingRequiredMixin, SessionWizardVie
             step1 = self.get_cleaned_data_for_step("1") or {}
             kwargs["rodzaj"] = step0.get("rodzaj")
             kwargs["forma_dostepu"] = step1.get("forma_dostepu")
+            # Pliki kroku 2 zapisujemy sami do extra_data (patrz
+            # process_step_files) i NIE oddajemy ich do storage formtools,
+            # więc przy rewalidacji w render_done `self.files` jest puste.
+            # Flaga mówi formularzowi, że pliki już są — żeby wymóg
+            # „min. 1 plik" dla OGRANICZONY nie wywalił submitu na końcu.
+            kwargs["pliki_juz_zapisane"] = bool(
+                self.storage.extra_data.get(self.PLIKI_EXTRA_KEY)
+            )
         return kwargs
 
     def get_form_instance(self, step):
@@ -348,6 +357,18 @@ class Zgloszenie_PublikacjiWizard(UczelniaSettingRequiredMixin, SessionWizardVie
                 extra = self.storage.extra_data
                 extra[self.PLIKI_EXTRA_KEY] = saved
                 self.storage.extra_data = extra
+            # NIE oddawaj `2-pliki` do formtools. Te pliki zapisaliśmy już
+            # sami do `file_storage` (metadane w extra_data), a
+            # `formtools.storage.set_step_files` zapisałby je PONOWNIE tym
+            # samym storage. Dla plików > FILE_UPLOAD_MAX_MEMORY_SIZE Django
+            # trzyma je jako TemporaryUploadedFile w /tmp i nasz pierwszy
+            # zapis PRZENOSI plik z /tmp; drugi zapis otwierałby już
+            # nieistniejącą ścieżkę → FileNotFoundError → HTTP 500.
+            # Wymóg „min. 1 plik" przy rewalidacji w render_done pokrywa
+            # flaga `pliki_juz_zapisane` (patrz get_form_kwargs).
+            return MultiValueDict(
+                {k: files.getlist(k) for k in files if k != "2-pliki"}
+            )
         return super().process_step_files(form)
 
     def _wyczysc_tmp_pliki(self):

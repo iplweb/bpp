@@ -300,9 +300,15 @@ class Zgloszenie_Publikacji_DaneForm(forms.ModelForm):
             Fieldset("Dane o publikacji", *layout_fields),
         )
 
-    def __init__(self, *args, rodzaj=None, forma_dostepu=None, **kw):
+    def __init__(
+        self, *args, rodzaj=None, forma_dostepu=None, pliki_juz_zapisane=False, **kw
+    ):
         self.rodzaj = rodzaj
         self.forma_dostepu = forma_dostepu
+        # Wizard zapisuje pliki kroku 2 poza storage formtools, więc przy
+        # rewalidacji (render_done) `self.files` jest puste mimo że pliki
+        # są. Ta flaga pozwala `clean()` zaakceptować taki przypadek.
+        self.pliki_juz_zapisane = pliki_juz_zapisane
 
         self.helper = FormHelper()
         self.helper.form_tag = False
@@ -362,7 +368,7 @@ class Zgloszenie_Publikacji_DaneForm(forms.ModelForm):
                 elif not pliki:
                     pliki = []
 
-            if not pliki:
+            if not pliki and not self.pliki_juz_zapisane:
                 raise ValidationError(
                     "Dla dostępu ograniczonego wymagany jest"
                     " przynajmniej jeden plik PDF."

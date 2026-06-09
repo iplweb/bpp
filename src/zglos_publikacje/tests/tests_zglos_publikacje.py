@@ -3,6 +3,7 @@ import os
 import pytest
 from django.contrib.auth.models import Group
 from django.core import mail
+from django.test import override_settings
 from django.urls import reverse
 from model_bakery import baker
 
@@ -64,7 +65,7 @@ def test_krok0_wybor_rodzaju(webtest_app, uczelnia):
     url = reverse("zglos_publikacje:nowe_zgloszenie")
     page = webtest_app.get(url)
     assert page.status_code == 200
-    assert b"Rodzaj publikacji" in page.content
+    assert b"Wybierz rodzaj publikacji" in page.content
 
 
 @pytest.mark.django_db
@@ -74,7 +75,7 @@ def test_krok1_wybor_formy_dostepu(webtest_app, uczelnia):
     page = webtest_app.get(url)
     page2 = _krok0_rodzaj(page)
     assert page2.status_code == 200
-    assert b"Forma" in page2.content
+    assert "Wybierz formę dostępu".encode() in page2.content
 
 
 @pytest.mark.django_db
@@ -182,24 +183,39 @@ def _zrob_submit_calego_formularza(
             jednostka.pk
         )
 
-    page3 = page2.forms[0].submit()
-
-    # Krok 4: opłaty (jeśli widoczny)
+    # Submit kroku 3 (autorzy) albo prowadzi do kroku 4 (opłaty), albo —
+    # gdy uczelnia nie wymaga opłat dla danego rodzaju — od razu kończy
+    # wizard wywołując done(). Finalny submit (ten, który odpala done()
+    # i transaction.on_commit z powiadomieniem e-mail) musi wykonać się
+    # w kontekście capture_on_commit_callbacks, inaczej e-mail nie pójdzie.
     if oczekuj_platnosci:
+        page3 = page2.forms[0].submit()  # krok 3 -> krok 4 (opłaty)
         page3.forms[0]["4-opl_pub_cost_free"] = "true"
-
-    with django_capture_on_commit_callbacks(execute=True):
-        result = page3.forms[0].submit().maybe_follow()
+        with django_capture_on_commit_callbacks(execute=True):
+            result = page3.forms[0].submit().maybe_follow()
+    else:
+        # Bez kroku opłat krok 3 jest ostatni — jego submit kończy wizard.
+        with django_capture_on_commit_callbacks(execute=True):
+            result = page2.forms[0].submit().maybe_follow()
 
     return result
 
 
+@pytest.mark.django_db
 def test_pelny_formularz_artykul(
     webtest_app,
     django_capture_on_commit_callbacks,
+    normal_django_user,
     typy_odpowiedzialnosci,
     uczelnia,
 ):
+    # Skonfiguruj odbiorcę powiadomienia (grupa „zgłoszenia publikacji"),
+    # inaczej zgloszenia_publikacji_emails() jest puste i mail nie wychodzi.
+    normal_django_user.email = EMAIL
+    normal_django_user.save()
+    normal_django_user.groups.add(
+        Group.objects.get_or_create(name=GR_ZGLOSZENIA_PUBLIKACJI)[0]
+    )
     assert zgloszenia_publikacji_emails()
 
     result = _zrob_submit_calego_formularza(
@@ -515,6 +531,75 @@ def test_pelny_formularz_ograniczony_wiele_plikow(
     )
     nazwy = sorted(z.oryginalna_nazwa_pliku for z in zp.zalaczniki.all())
     assert all(n.endswith(".pdf") for n in nazwy)
+
+
+@override_settings(FILE_UPLOAD_MAX_MEMORY_SIZE=0)
+@pytest.mark.django_db
+def test_pelny_formularz_ograniczony_duzy_plik_temporary_upload(
+    webtest_app,
+    django_capture_on_commit_callbacks,
+    typy_odpowiedzialnosci,
+    uczelnia,
+    autor_jan_kowalski,
+    aktualna_jednostka,
+):
+    """Regresja: plik > FILE_UPLOAD_MAX_MEMORY_SIZE trafia do Django jako
+    `TemporaryUploadedFile` (/tmp/tmpXXXX.upload.pdf), nie `InMemoryUploadedFile`.
+
+    Bug: `process_step_files` zapisywał taki plik do `file_storage` —
+    co dla pliku tymczasowego PRZENOSI go z /tmp — a potem oddawał te same
+    obiekty do formtools, którego `set_step_files` próbował zapisać je
+    PONOWNIE tym samym storage. Drugi zapis otwierał już-przeniesioną
+    ścieżkę w /tmp → `FileNotFoundError` → HTTP 500. Mały `example.pdf`
+    (12 KB) tego nie łapał, bo jako `InMemoryUploadedFile` trzyma bajty
+    w pamięci i drugi zapis się udawał.
+
+    `FILE_UPLOAD_MAX_MEMORY_SIZE=0` wymusza `TemporaryUploadedFile` nawet
+    dla małego pliku, więc reprodukuje produkcyjny crash bez przesyłania MB.
+    """
+    result = _zlozenie_ograniczony_z_plikami(
+        webtest_app,
+        django_capture_on_commit_callbacks,
+        autor=autor_jan_kowalski,
+        jednostka=aktualna_jednostka,
+        ile_plikow=1,
+    )
+    assert (
+        b"powiadomiony" in result.content
+        or b"zostanie zaakceptowane" in result.content
+    )
+    zp = Zgloszenie_Publikacji.objects.order_by("-pk").first()
+    assert zp is not None
+    assert zp.zalaczniki.count() == 1
+
+
+@override_settings(FILE_UPLOAD_MAX_MEMORY_SIZE=0)
+@pytest.mark.django_db
+def test_pelny_formularz_ograniczony_wiele_duzych_plikow_temporary_upload(
+    webtest_app,
+    django_capture_on_commit_callbacks,
+    typy_odpowiedzialnosci,
+    uczelnia,
+    autor_jan_kowalski,
+    aktualna_jednostka,
+):
+    """Regresja jw., ale z 3 plikami `TemporaryUploadedFile` naraz —
+    pilnuje, że wszystkie 3 docierają do bazy (a nie tylko ostatni /
+    crash na którymś z nich)."""
+    result = _zlozenie_ograniczony_z_plikami(
+        webtest_app,
+        django_capture_on_commit_callbacks,
+        autor=autor_jan_kowalski,
+        jednostka=aktualna_jednostka,
+        ile_plikow=3,
+    )
+    assert (
+        b"powiadomiony" in result.content
+        or b"zostanie zaakceptowane" in result.content
+    )
+    zp = Zgloszenie_Publikacji.objects.order_by("-pk").first()
+    assert zp is not None
+    assert zp.zalaczniki.count() == 3
 
 
 def _zlozenie_rozdzialu_z_freetextem_wn(
