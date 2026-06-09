@@ -117,8 +117,9 @@ def _trigger_rescan_after_reset(request, reset_label):
     przestaje być spójny z tym, co użytkownik widzi w UI. Bez rescanu mogą
     pojawiać się duplikaty, które po reset-cie powinny zniknąć (lub odwrotnie:
     brakować takich, które wcześniej były ignorowane). Wywołujemy delay()
-    w trybie best-effort — jeżeli scan już biegnie albo dane PBN są stare,
-    informujemy użytkownika ale nie blokujemy operacji resetu.
+    w trybie best-effort — jeżeli scan już biegnie, informujemy użytkownika
+    ale nie blokujemy operacji resetu. Stare dane PBN pokazujemy jako
+    ostrzeżenie, ale skan nadal może wystartować.
     """
     from ..tasks import scan_for_duplicates
 
@@ -134,10 +135,9 @@ def _trigger_rescan_after_reset(request, reset_label):
     if not pbn_data_fresh:
         messages.warning(
             request,
-            f"{reset_label}. Nie udało się automatycznie uruchomić skanowania "
-            f"({pbn_stale_message}); uruchom je ręcznie po pobraniu danych PBN.",
+            f"{reset_label}. Uruchamiasz skanowanie na nieaktualnych danych PBN "
+            f"({pbn_stale_message}); wyniki mogą być nieaktualne.",
         )
-        return
 
     scan_for_duplicates.delay(user_id=request.user.pk)
     messages.success(
