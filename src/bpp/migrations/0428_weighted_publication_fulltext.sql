@@ -1,5 +1,3 @@
-BEGIN;
-
 CREATE OR REPLACE FUNCTION bpp_publication_weighted_search_vector(
     p_tytul_oryginalny TEXT,
     p_tytul TEXT,
@@ -153,10 +151,10 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-UPDATE bpp_wydawnictwo_ciagle SET id = id;
-UPDATE bpp_wydawnictwo_zwarte SET id = id;
-UPDATE bpp_praca_doktorska SET id = id;
-UPDATE bpp_praca_habilitacyjna SET id = id;
-UPDATE bpp_patent SET id = id;
-
-COMMIT;
+-- Przeliczenie search_index dla istniejacych wierszy NIE odbywa sie w tej
+-- migracji — robi to polecenie "manage.py rebuild_search_index" (batchami,
+-- z wylaczonymi triggerami), uruchamiane recznie lub z nocnego crona.
+-- Pelnotabelowe "UPDATE ... SET id = id" w jednej transakcji odpalalo
+-- bpp_refresh_cache() (pg_advisory_xact_lock per wiersz) oraz triggery
+-- denorm (subtransakcja per wiersz) i na duzych bazach konczylo sie
+-- bledem "out of shared memory" (max_locks_per_transaction).
