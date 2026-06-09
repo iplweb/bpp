@@ -12,11 +12,13 @@ from import_export.formats import base_formats
 from bpp.export.bibtex import export_to_bibtex
 from bpp.models import (
     Autor,
+    Jednostka,
     Patent,
     Praca_Doktorska,
     Praca_Habilitacyjna,
     Wydawnictwo_Ciagle,
     Wydawnictwo_Zwarte,
+    Wydzial,
 )
 
 
@@ -262,3 +264,64 @@ class AutorResource(resources.ModelResource):
         model = Autor
         export_order = ["nazwisko", "imiona", "poprzednie_nazwiska"]
         exclude = ["search", "slug", "sort", "expertus_id", "pbn_id"]
+
+
+class WydzialResource(resources.ModelResource):
+    uczelnia = Field(attribute="uczelnia__nazwa")
+
+    class Meta:
+        model = Wydzial
+        fields = (
+            "id",
+            "uczelnia",
+            "nazwa",
+            "skrot_nazwy",
+            "skrot",
+            "opis",
+            "pokazuj_opis",
+            "poprzednie_nazwy",
+            "kolejnosc",
+            "widoczny",
+            "zezwalaj_na_ranking_autorow",
+            "zarzadzaj_automatycznie",
+            "otwarcie",
+            "zamkniecie",
+            "pbn_id",
+            "ostatnio_zmieniony",
+            "adnotacje",
+        )
+        export_order = fields
+
+
+class JednostkaResource(resources.ModelResource):
+    uczelnia = Field(attribute="uczelnia__nazwa")
+    wydzial = Field(attribute="wydzial__nazwa")
+    parent = Field(attribute="parent__nazwa")
+    pbn_uid = Field(attribute="pbn_uid__mongoId")
+
+    class Meta:
+        model = Jednostka
+        fields = (
+            "id",
+            "uczelnia",
+            "wydzial",
+            "parent",
+            "nazwa",
+            "skrot",
+            "opis",
+            "pokazuj_opis",
+            "widoczna",
+            "wchodzi_do_raportow",
+            "email",
+            "www",
+            "pbn_id",
+            "pbn_uid",
+            "skupia_pracownikow",
+            "zarzadzaj_automatycznie",
+            "rodzaj_jednostki",
+            "aktualna",
+            "kolejnosc",
+            "ostatnio_zmieniony",
+            "adnotacje",
+        )
+        export_order = fields

@@ -14,6 +14,8 @@ from .filters import PBN_UID_IDObecnyFilter
 from .helpers import LimitingFormset
 from .helpers.fieldsets import ADNOTACJE_FIELDSET
 from .helpers.mixins import ZapiszZAdnotacjaMixin
+from .xlsx_export import resources
+from .xlsx_export.mixins import EksportDanychMixin
 
 
 class Jednostka_WydzialInline(admin.TabularInline):
@@ -40,11 +42,13 @@ class JednostkaAdmin(
     BppDjangoQLSearchMixin,
     RestrictDeletionToAdministracjaGroupMixin,
     ZapiszZAdnotacjaMixin,
+    EksportDanychMixin,
     BaseBppAdminMixin,
     DraggableMPTTAdmin,
 ):
     djangoql_completion_enabled_by_default = False
     djangoql_completion = True
+    resource_classes = [resources.JednostkaResource]
 
     change_list_template = "admin/grappelli_mptt_change_list.html"
 
