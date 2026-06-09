@@ -17,9 +17,12 @@ from bpp.models import Wydawnictwo_Ciagle
 from bpp.models.cache import Rekord
 from bpp.tests.util import any_ciagle
 from bpp.views.mymultiseek import (
+    MULTISEEK_DEFAULT_REPORT_TITLE,
     MULTISEEK_EXPORT_HEADERS,
     MULTISEEK_EXPORT_MAX_ROWS,
     MULTISEEK_EXPORT_XLSX_HEADERS,
+    MULTISEEK_REPORT_TITLE_SESSION_KEY,
+    XLSX_WORKSHEET_TITLE_MAX_LENGTH,
 )
 
 EXPORT_TITLE_PREFIX = "Eksport Multiseek"
@@ -50,6 +53,12 @@ def _set_multiseek_title_filter(
             "report_type": report_type,
         }
     )
+    session.save()
+
+
+def _set_multiseek_report_title(client, title):
+    session = client.session
+    session[MULTISEEK_REPORT_TITLE_SESSION_KEY] = title
     session.save()
 
 
@@ -143,7 +152,10 @@ def test_multiseek_export_csv(logged_in_client, multiseek_export_rekord):
 
     assert response.status_code == 200
     assert response["Content-Type"] == "text/csv; charset=utf-8"
-    assert 'filename="multiseek-export.csv"' in response["Content-Disposition"]
+    assert (
+        f'filename="eksport-{MULTISEEK_DEFAULT_REPORT_TITLE}.csv"'
+        in response["Content-Disposition"]
+    )
 
     rows = list(csv.reader(io.StringIO(response.content.decode("utf-8"))))
     assert rows[0] == list(MULTISEEK_EXPORT_HEADERS)
@@ -163,6 +175,22 @@ def test_multiseek_export_csv(logged_in_client, multiseek_export_rekord):
         "https://pbn.example.org/core/#/publication/view/"
         "507f1f77bcf86cd799439011/current",
     ]
+
+
+@pytest.mark.django_db
+def test_multiseek_export_filename_uses_report_title(
+    logged_in_client,
+    multiseek_export_rekord,
+):
+    _set_multiseek_title_filter(logged_in_client)
+    _set_multiseek_report_title(logged_in_client, "Raport<br/>autorski")
+
+    response = logged_in_client.get(
+        reverse("multiseek-export", kwargs={"export_format": "csv"})
+    )
+
+    assert response.status_code == 200
+    assert 'filename="eksport-Raport autorski.csv"' in response["Content-Disposition"]
 
 
 @pytest.mark.django_db
@@ -211,12 +239,16 @@ def test_multiseek_export_xlsx(logged_in_client, multiseek_export_rekord):
     assert response["Content-Type"] == (
         "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
-    assert 'filename="multiseek-export.xlsx"' in response["Content-Disposition"]
+    assert (
+        f'filename="eksport-{MULTISEEK_DEFAULT_REPORT_TITLE}.xlsx"'
+        in response["Content-Disposition"]
+    )
 
     from openpyxl import load_workbook
 
     workbook = load_workbook(io.BytesIO(response.content))
     worksheet = workbook.active
+    assert worksheet.title == MULTISEEK_DEFAULT_REPORT_TITLE
     rows = list(worksheet.iter_rows(values_only=True))
     assert rows[0] == MULTISEEK_EXPORT_XLSX_HEADERS
     assert rows[1] == (
@@ -242,6 +274,33 @@ def test_multiseek_export_xlsx(logged_in_client, multiseek_export_rekord):
     assert worksheet["E2"].data_type == "n"
     assert worksheet["D2"].number_format == "0.000"
     assert worksheet["E2"].number_format == "0.00"
+
+
+@pytest.mark.django_db
+def test_multiseek_export_xlsx_sheet_title_uses_limited_report_title(
+    logged_in_client,
+    multiseek_export_rekord,
+):
+    _set_multiseek_title_filter(logged_in_client)
+    _set_multiseek_report_title(
+        logged_in_client,
+        "Raport: A/B*C? \x07[bardzo bardzo bardzo długi]",
+    )
+
+    response = logged_in_client.get(
+        reverse("multiseek-export", kwargs={"export_format": "xlsx"})
+    )
+
+    assert response.status_code == 200
+
+    from openpyxl import load_workbook
+
+    workbook = load_workbook(io.BytesIO(response.content))
+    worksheet_title = workbook.active.title
+    assert worksheet_title.startswith("Raport A B C")
+    assert len(worksheet_title) == XLSX_WORKSHEET_TITLE_MAX_LENGTH
+    assert not set(r"[]:*?/\\").intersection(worksheet_title)
+    assert "\x07" not in worksheet_title
 
 
 @pytest.mark.django_db

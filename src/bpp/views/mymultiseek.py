@@ -1,12 +1,16 @@
 import csv
+import html
 import io
 import json
 import logging
+import re
 
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.db.models import Sum
 from django.http import HttpResponse, HttpResponseBadRequest, JsonResponse
 from django.urls import reverse
+from django.utils.html import strip_tags
+from django.utils.http import content_disposition_header
 from django.views.decorators.cache import never_cache
 from django.views.generic import View
 from multiseek.logic import get_registry
@@ -28,6 +32,9 @@ PKT_WEWN = "pkt_wewn"
 PKT_WEWN_BEZ = "pkt_wewn_bez"
 TABLE = "table"
 MULTISEEK_EXPORT_MAX_ROWS = 5000
+MULTISEEK_REPORT_TITLE_SESSION_KEY = "MULTISEEK_TITLE"
+MULTISEEK_DEFAULT_REPORT_TITLE = "Rezultat wyszukiwania"
+XLSX_WORKSHEET_TITLE_MAX_LENGTH = 31
 
 MULTISEEK_EXPORT_HEADERS = (
     "tytul_oryginalny",
@@ -70,6 +77,14 @@ MULTISEEK_EXPORT_FIELDS = (
 )
 
 MULTISEEK_EXPORT_XLSX_URL_COLUMNS = (10, 11, 12)
+EXPORT_FILENAME_INVALID_CHARS_RE = re.compile(r'[<>:"/\\|?*\x00-\x1f]')
+MULTISEEK_REPORT_TITLE_HTML_BREAK_RE = re.compile(
+    r"</?(?:br|hr|p|div|h[1-6])\b[^>]*>",
+    re.IGNORECASE,
+)
+XLSX_WORKSHEET_TITLE_INVALID_CHARS_RE = re.compile(
+    r"[\[\]:*?/\\\x00-\x08\x0b\x0c\x0e-\x1f]"
+)
 SPREADSHEET_FORMULA_INJECTION_LEAD = ("=", "+", "-", "@", "\t", "\r", "\n")
 
 EXTRA_TYPES = [
@@ -182,6 +197,42 @@ def _export_value(value):
     return str(value)
 
 
+def _single_line_text(value):
+    return re.sub(r"\s+", " ", value).strip()
+
+
+def _plain_multiseek_report_title(value):
+    value = _export_value(value)
+    value = MULTISEEK_REPORT_TITLE_HTML_BREAK_RE.sub(" ", value)
+    value = html.unescape(strip_tags(value))
+    return _single_line_text(value) or MULTISEEK_DEFAULT_REPORT_TITLE
+
+
+def _multiseek_report_title(request):
+    return _plain_multiseek_report_title(
+        request.session.get(
+            MULTISEEK_REPORT_TITLE_SESSION_KEY,
+            MULTISEEK_DEFAULT_REPORT_TITLE,
+        )
+    )
+
+
+def _export_filename(export_format, report_title):
+    title = EXPORT_FILENAME_INVALID_CHARS_RE.sub(" ", report_title)
+    title = _single_line_text(title).strip(". ")
+    if not title:
+        title = "multiseek"
+    return f"eksport-{title}.{export_format}"
+
+
+def _xlsx_worksheet_title(report_title):
+    title = XLSX_WORKSHEET_TITLE_INVALID_CHARS_RE.sub(" ", report_title)
+    title = _single_line_text(title).strip("'")
+    if not title:
+        title = "Multiseek"
+    return title[:XLSX_WORKSHEET_TITLE_MAX_LENGTH]
+
+
 def _sanitize_spreadsheet_cell(value):
     if isinstance(value, str) and value.startswith(SPREADSHEET_FORMULA_INJECTION_LEAD):
         return "'" + value
@@ -231,11 +282,7 @@ def _iter_export_rows(queryset, request):
         )
 
 
-def _multiseek_export_filename(export_format):
-    return f"multiseek-export.{export_format}"
-
-
-def _csv_export_response(queryset, request):
+def _csv_export_response(queryset, request, report_title):
     output = io.StringIO()
     writer = csv.writer(output)
     writer.writerow(MULTISEEK_EXPORT_HEADERS)
@@ -244,13 +291,14 @@ def _csv_export_response(queryset, request):
     )
 
     response = HttpResponse(output.getvalue(), content_type="text/csv; charset=utf-8")
-    response["Content-Disposition"] = (
-        f'attachment; filename="{_multiseek_export_filename("csv")}"'
+    response["Content-Disposition"] = content_disposition_header(
+        as_attachment=True,
+        filename=_export_filename("csv", report_title),
     )
     return response
 
 
-def _xlsx_export_response(queryset, request):
+def _xlsx_export_response(queryset, request, report_title):
     from openpyxl import Workbook
     from openpyxl.styles import Alignment, Font, PatternFill
 
@@ -262,7 +310,7 @@ def _xlsx_export_response(queryset, request):
 
     workbook = Workbook()
     worksheet = workbook.active
-    worksheet.title = "Multiseek"
+    worksheet.title = _xlsx_worksheet_title(report_title)
     worksheet.append(MULTISEEK_EXPORT_XLSX_HEADERS)
     for row in _iter_export_rows(queryset, request):
         worksheet.append(sanitize_xlsx_row(row))
@@ -301,8 +349,9 @@ def _xlsx_export_response(queryset, request):
             "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         ),
     )
-    response["Content-Disposition"] = (
-        f'attachment; filename="{_multiseek_export_filename("xlsx")}"'
+    response["Content-Disposition"] = content_disposition_header(
+        as_attachment=True,
+        filename=_export_filename("xlsx", report_title),
     )
     return response
 
@@ -322,10 +371,11 @@ class MyMultiseekExport(LoginRequiredMixin, MyMultiseekResults):
                 f"{MULTISEEK_EXPORT_MAX_ROWS} rekordów."
             )
 
+        report_title = _multiseek_report_title(request)
         queryset = queryset.select_related(None).only(*MULTISEEK_EXPORT_FIELDS)
         if export_format == "csv":
-            return _csv_export_response(queryset, request)
-        return _xlsx_export_response(queryset, request)
+            return _csv_export_response(queryset, request, report_title)
+        return _xlsx_export_response(queryset, request, report_title)
 
 
 def _normalize_session_removed(request):
