@@ -2,6 +2,27 @@
 
 <!-- towncrier release notes start -->
 
+## bpp 202606.1382 (2026-06-09)
+
+### Naprawione
+
+- Deduplikator autorów uruchamia skanowanie mimo nieaktualnych danych PBN,
+  pokazując ostrzeżenie, oraz normalizuje Unicode'owe myślniki w nazwiskach
+  przed bucketowaniem kandydatów.
+- Dodano brakujące polskie tłumaczenia komunikatów ``django-mptt`` używanych w
+  drzewiastym panelu administracyjnym.
+- Poprawiono kolejność i blokadę kolumn w eksporcie tabeli Jednostka z modułu redagowania.
+
+### Usprawnienie
+
+- Dodano eksport tabel Jednostka i Wydział z modułu redagowania w Django adminie.
+- Dodano eksport wyników Multiseek do CSV i XLSX z limitem 5000 rekordów,
+  linkami BPP/PBN, nazwami plików i arkuszy opartymi o tytuł raportu oraz
+  ochroną komórek arkusza przed interpretacją jako formuły.
+- Ulepszono pełnotekstowe wyszukiwanie publikacji przez ważenie tytułów,
+  autorów, DOI, roku oraz opisu bibliograficznego w cache'owanym indeksie.
+
+
 ## bpp 202606.1381 (2026-06-08)
 
 No significant changes.
