@@ -39,6 +39,20 @@ def test_meta_compound_lastname_parts():
 
 
 @pytest.mark.django_db
+def test_meta_normalizes_unicode_hyphens_before_bucketing():
+    ascii_hyphen = baker.make("bpp.Autor", nazwisko="Kowalski-Nowak")
+    non_breaking_hyphen = baker.make("bpp.Autor", nazwisko="Kowalski\u2011Nowak")
+
+    meta = build_autor_meta()
+    buckets = build_buckets(meta)
+
+    assert meta[non_breaking_hyphen.pk]["nazwisko_norm"] == "kowalski-nowak"
+    assert meta[non_breaking_hyphen.pk]["nazwisko_parts"] == ["kowalski", "nowak"]
+    assert ascii_hyphen.pk in buckets["kowalski-nowak"]
+    assert non_breaking_hyphen.pk in buckets["kowalski-nowak"]
+
+
+@pytest.mark.django_db
 def test_meta_ma_osoba_z_instytucji_true():
     # Scientist nie ma pola "rekord_w_bpp" — to cached_property po stronie
     # Scientist; związek jest definiowany przez Autor.pbn_uid → Scientist.
