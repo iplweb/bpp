@@ -294,32 +294,39 @@ class WydzialResource(resources.ModelResource):
 
 
 class JednostkaResource(resources.ModelResource):
+    prettyxlsx_freeze_panes = "B2"
+
     uczelnia = Field(attribute="uczelnia__nazwa")
     wydzial = Field(attribute="wydzial__nazwa")
     parent = Field(attribute="parent__nazwa")
     pbn_uid = Field(attribute="pbn_uid__mongoId")
 
+    def export(self, *args, **kwargs):
+        dataset = super().export(*args, **kwargs)
+        dataset.prettyxlsx_freeze_panes = self.prettyxlsx_freeze_panes
+        return dataset
+
     class Meta:
         model = Jednostka
         fields = (
-            "id",
+            "nazwa",
+            "skrot",
+            "rodzaj_jednostki",
+            "aktualna",
+            "widoczna",
+            "wchodzi_do_raportow",
+            "skupia_pracownikow",
             "uczelnia",
             "wydzial",
             "parent",
-            "nazwa",
-            "skrot",
+            "id",
             "opis",
             "pokazuj_opis",
-            "widoczna",
-            "wchodzi_do_raportow",
             "email",
             "www",
             "pbn_id",
             "pbn_uid",
-            "skupia_pracownikow",
             "zarzadzaj_automatycznie",
-            "rodzaj_jednostki",
-            "aktualna",
             "kolejnosc",
             "ostatnio_zmieniony",
             "adnotacje",

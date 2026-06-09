@@ -62,7 +62,7 @@ def test_xlsx_export_overflow(urlname, klass, admin_app: DjangoTestApp, settings
         ("wydawnictwo_ciagle", Wydawnictwo_Ciagle, "id"),
         ("wydawnictwo_zwarte", Wydawnictwo_Zwarte, "id"),
         ("autor", Autor, "nazwisko"),
-        ("jednostka", Jednostka, "id"),
+        ("jednostka", Jednostka, "nazwa"),
         ("wydzial", Wydzial, "id"),
     ],
 )
@@ -82,6 +82,33 @@ def test_xlsx_export_data(urlname, klass, cname, admin_app: DjangoTestApp):
 
     wb = openpyxl.load_workbook(BytesIO(xlsx_binary_data.content))
     assert wb.active["A1"].value == cname
+
+
+def test_xlsx_export_jednostka_order_and_freeze_panes(
+    jednostka, admin_app: DjangoTestApp
+):
+    page: DjangoWebtestResponse = admin_app.get(
+        reverse("admin:bpp_jednostka_changelist")
+    )
+
+    xlsx_binary_data = page.click(NAZWA_LINKU_EKSPORTU)
+
+    wb = openpyxl.load_workbook(BytesIO(xlsx_binary_data.content))
+    ws = wb.active
+
+    assert [ws["A1"].value, ws["B1"].value] == ["nazwa", "skrot"]
+    assert ws.freeze_panes == "B2"
+
+
+def test_xlsx_export_wydzial_uses_default_freeze_panes(
+    wydzial, admin_app: DjangoTestApp
+):
+    page: DjangoWebtestResponse = admin_app.get(reverse("admin:bpp_wydzial_changelist"))
+
+    xlsx_binary_data = page.click(NAZWA_LINKU_EKSPORTU)
+
+    wb = openpyxl.load_workbook(BytesIO(xlsx_binary_data.content))
+    assert wb.active.freeze_panes == "F2"
 
 
 @pytest.mark.django_db

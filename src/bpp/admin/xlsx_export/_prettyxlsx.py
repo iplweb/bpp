@@ -28,8 +28,9 @@ class PrettyXLSXFormat(XLSXFormat):
         worksheet_create_table(ws)
 
         if freeze_panes:
-            # Zablokuj pierwsze 2 kolumny (ID, tytuł) oraz wiersz nagłowka
-            ws.freeze_panes = ws["F2"]
+            freeze_panes_cell = getattr(dataset, "prettyxlsx_freeze_panes", "F2")
+            if freeze_panes_cell:
+                ws.freeze_panes = ws[freeze_panes_cell]
 
         stream = BytesIO()
         wb.save(stream)
