@@ -340,6 +340,7 @@ class ImportInconsistencyAdmin(DynamicAdminFilterMixin, admin.ModelAdmin):
             "author_not_found": "pbn-level-badge--warning",
             "author_auto_fixed": "pbn-level-badge--info",
             "author_matched_by_name": "pbn-level-badge--info",
+            "author_replaced": "pbn-level-badge--info",
             "author_needs_manual_fix": "pbn-level-badge--error",
             "discipline_auto_assigned": "pbn-level-badge--info",
             "discipline_added_as_sub": "pbn-level-badge--info",

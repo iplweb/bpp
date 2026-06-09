@@ -160,33 +160,16 @@ def integruj_oswiadczenia_z_instytucji_pojedyncza_praca(  # noqa: C901
 
                 if len(matching_recs) == 1:
                     rec = matching_recs[0]
-
-                    # Jeśli autor w publikacji różni się od autora z PBN,
-                    # zamień na poprawnego (z get_bpp_autor)
-                    if rec.autor != aut:
-                        old_autor = rec.autor
-                        rec.autor = aut
-                        rec.save()
-                        logger.warning(
-                            f"NORMALIZED MATCH + FIX: zamieniono autora w publikacji "
-                            f"'{old_autor.nazwisko} {old_autor.imiona}' -> "
-                            f"'{aut.nazwisko} {aut.imiona}'"
-                        )
-                        if inconsistency_callback:
-                            inconsistency_callback(
-                                inconsistency_type="author_replaced",
-                                pbn_publication=elem.publicationId,
-                                bpp_publication=pub,
-                                old_author=old_autor,
-                                new_author=aut,
-                                message=(f"Zamieniono autora: {old_autor} -> {aut}"),
-                                action_taken="Autor w publikacji został zamieniony",
-                            )
-                    else:
-                        logger.warning(
-                            f"NORMALIZED MATCH in pub: '{aut.nazwisko} {aut.imiona}' "
-                            f"-> '{rec.autor.nazwisko} {rec.autor.imiona}'"
-                        )
+                    # Dopasowano po znormalizowanym imieniu/nazwisku (diakrytyki,
+                    # myślniki). Zgodnie z decyzją „brak podmiany autora" NIE
+                    # podmieniamy rec.autor — zostawiamy współautora wpisanego na
+                    # pracy, a dyscyplinę przypisze blok niżej. Raport
+                    # author_matched_by_name leci wspólnie dla tier 2/3/4 poniżej.
+                    logger.warning(
+                        f"NORMALIZED MATCH in pub: PBN '{aut.nazwisko} "
+                        f"{aut.imiona}' -> rekord '{rec.autor.nazwisko} "
+                        f"{rec.autor.imiona}' (bez podmiany autora)"
+                    )
                 elif len(matching_recs) > 1:
                     logger.warning(
                         f"NORMALIZED MATCH AMBIGUOUS in pub: '{aut.nazwisko} "

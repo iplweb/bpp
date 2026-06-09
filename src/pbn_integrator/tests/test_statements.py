@@ -454,3 +454,58 @@ def test_auto_przypisanie_dyscypliny_z_pbn_bez_crasha(
 
     autor_rec.refresh_from_db()
     assert autor_rec.dyscyplina_naukowa == disc_new
+
+
+@pytest.mark.django_db
+def test_tier4_znormalizowane_dopasowanie_bez_swapu(
+    pbn_wydawnictwo_ciagle_z_autorem_z_dyscyplina,
+    pbn_institution,
+    typ_odpowiedzialnosci_autor,
+):
+    """Dopasowanie po znormalizowanym nazwisku (różnica w diakrytykach) NIE
+    podmienia autora pracy: author_matched_by_name, NIE author_replaced,
+    brak crasha na walidującym save()."""
+    pub = pbn_wydawnictwo_ciagle_z_autorem_z_dyscyplina
+    autor_rec = pub.autorzy_set.first()
+    autor_B = autor_rec.autor
+
+    # B na pracy: wersja bez diakrytyków
+    autor_B.nazwisko = "Letowska"
+    autor_B.imiona = "Anna"
+    autor_B.save()
+
+    # A (osoba z PBN): wersja z diakrytykami, inne ID, ma pbn_uid z oświadczenia
+    scientist = baker.make(Scientist, lastName="Łętowska", name="Anna")
+    autor_A = baker.make(Autor, nazwisko="Łętowska", imiona="Anna", pbn_uid=scientist)
+    assert autor_A.pk != autor_B.pk
+
+    pbn_pub = baker.make(Publication, mongoId="tier4-pub-1")
+    pub.pbn_uid = pbn_pub
+    pub.save()
+
+    oswiadczenie = OswiadczenieInstytucji.objects.create(
+        addedTimestamp=date(2024, 1, 1),
+        inOrcid=False,
+        institutionId=pbn_institution,
+        personId=scientist,
+        publicationId=pbn_pub,
+        type="AUTHOR",
+        disciplines={"name": autor_rec.dyscyplina_naukowa.nazwa},
+    )
+
+    zgloszenia = []
+
+    def callback(**kwargs):
+        zgloszenia.append(kwargs)
+
+    integruj_oswiadczenia_z_instytucji_pojedyncza_praca(
+        oswiadczenie, set(), set(), inconsistency_callback=callback
+    )
+
+    typy = [z["inconsistency_type"] for z in zgloszenia]
+    assert "author_matched_by_name" in typy
+    assert "author_replaced" not in typy
+
+    # Autor pracy NIE został podmieniony (B zostaje)
+    autor_rec.refresh_from_db()
+    assert autor_rec.autor == autor_B
