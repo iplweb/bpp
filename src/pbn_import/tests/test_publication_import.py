@@ -50,16 +50,25 @@ def test_setup_wires_default_jezyk_from_resolver(importer):
     assert importer.default_jezyk == Jezyk.objects.get(skrot="pol.")
 
 
-def test_run_returns_reason_when_uczelnia_setup_is_missing(session):
+def test_download_returns_reason_when_uczelnia_setup_is_missing(session):
     importer = PublicationImporter(session, client=MagicMock(), uczelnia=None)
 
     with patch.object(importer, "_setup_uczelnia_and_jednostka", return_value=None):
-        result = importer.run()
+        result = importer.download()
 
-    assert result == {"authors_imported": False, "reason": "No Uczelnia PBN UID"}
+    assert result == {"publications_imported": False, "reason": "No Uczelnia PBN UID"}
 
 
-def test_run_success_with_delete_existing_calls_steps_in_order(importer, uczelnia):
+def test_process_returns_reason_when_uczelnia_setup_is_missing(session):
+    importer = PublicationImporter(session, client=MagicMock(), uczelnia=None)
+
+    with patch.object(importer, "_setup_uczelnia_and_jednostka", return_value=None):
+        result = importer.process()
+
+    assert result == {"publications_imported": False, "reason": "No Uczelnia PBN UID"}
+
+
+def test_process_success_with_delete_existing_calls_steps_in_order(importer, uczelnia):
     importer.delete_existing = True
 
     with patch.object(
@@ -69,23 +78,15 @@ def test_run_success_with_delete_existing_calls_steps_in_order(importer, uczelni
             importer, "_delete_existing_publications", return_value=None
         ) as delete_existing:
             with patch.object(
-                importer, "_download_publications", return_value=None
-            ) as download:
-                with patch.object(
-                    importer, "_download_publications_v2", return_value=None
-                ) as download_v2:
-                    with patch.object(
-                        importer, "_import_publications", return_value=None
-                    ) as import_publications:
-                        with patch.object(importer, "update_progress") as progress:
-                            result = importer.run()
+                importer, "_import_publications", return_value=None
+            ) as import_publications:
+                with patch.object(importer, "update_progress") as progress:
+                    result = importer.process()
 
     setup.assert_called_once_with()
-    delete_existing.assert_called_once_with(0, 4)
-    download.assert_called_once_with(1, 4, uczelnia)
-    download_v2.assert_called_once_with(2, 4)
-    import_publications.assert_called_once_with(3, 4)
-    progress.assert_called_once_with(4, 4, "Zakończono import publikacji")
+    delete_existing.assert_called_once_with(0, 2)
+    import_publications.assert_called_once_with(1, 2)
+    progress.assert_called_once_with(2, 2, "Zakończono import publikacji")
     assert result == {
         "publications_imported": True,
         "default_jednostka": "Default unit",
@@ -93,18 +94,38 @@ def test_run_success_with_delete_existing_calls_steps_in_order(importer, uczelni
     }
 
 
-def test_run_short_circuits_when_delete_existing_returns_result(importer, uczelnia):
+def test_download_success_calls_download_steps_in_order(importer, uczelnia):
+    with patch.object(
+        importer, "_setup_uczelnia_and_jednostka", return_value=uczelnia
+    ) as setup:
+        with patch.object(
+            importer, "_download_publications", return_value=None
+        ) as download:
+            with patch.object(
+                importer, "_download_publications_v2", return_value=None
+            ) as download_v2:
+                with patch.object(importer, "update_progress") as progress:
+                    result = importer.download()
+
+    setup.assert_called_once_with()
+    download.assert_called_once_with(0, 2, uczelnia)
+    download_v2.assert_called_once_with(1, 2)
+    progress.assert_called_once_with(2, 2, "Zakończono pobieranie publikacji")
+    assert result == {"publications_downloaded": True, "error_count": 0}
+
+
+def test_process_short_circuits_when_delete_existing_returns_result(importer, uczelnia):
     importer.delete_existing = True
 
     with patch.object(importer, "_setup_uczelnia_and_jednostka", return_value=uczelnia):
         with patch.object(
             importer, "_delete_existing_publications", return_value={"cancelled": True}
         ):
-            with patch.object(importer, "_download_publications") as download:
-                result = importer.run()
+            with patch.object(importer, "_import_publications") as import_publications:
+                result = importer.process()
 
     assert result == {"cancelled": True}
-    download.assert_not_called()
+    import_publications.assert_not_called()
 
 
 def test_delete_existing_returns_cancelled_before_deleting(importer):

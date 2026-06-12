@@ -42,7 +42,7 @@ class _SuccessStep:
     def __init__(self, session, client, uczelnia=None, **kwargs):
         self.session = session
 
-    def __call__(self):
+    def __call__(self, method="run"):
         return {"ok": True}
 
 
@@ -50,17 +50,20 @@ class _RaisingStep:
     def __init__(self, session, client, uczelnia=None, **kwargs):
         self.session = session
 
-    def __call__(self):
+    def __call__(self, method="run"):
         raise ValueError("krok się wywalił")
 
 
-def step_cfg(klass, name="zrodla", display="Źródła", required=False):
+def step_cfg(klass, name="zrodla", display="Źródła", required=False, result_key=None):
     return {
         "name": name,
+        "phase": "single",
         "display": display,
         "class": klass,
+        "method": "run",
         "args": {},
         "required": required,
+        "result_key": result_key if result_key is not None else name,
     }
 
 
@@ -283,3 +286,54 @@ def test_pause_resume_cancel_set_status(session):
     session.refresh_from_db()
     assert session.status == "cancelled"
     assert session.completed_at is not None
+
+
+# ===========================================================================
+# Fazy (Task 10): result_key + method dispatch
+# ===========================================================================
+
+
+def test_manager_runs_only_download_phase(db, django_user_model, monkeypatch):
+    from model_bakery import baker
+
+    from pbn_import.utils import source_import
+    from pbn_import.utils.import_manager import ImportManager
+
+    called = []
+    monkeypatch.setattr(
+        source_import,
+        "pobierz_zrodla_mnisw",
+        lambda *a, **k: called.append("pobierz"),
+    )
+    monkeypatch.setattr(
+        source_import.importer,
+        "importuj_zrodla",
+        lambda *a, **k: called.append("importuj"),
+    )
+
+    user = baker.make(django_user_model)
+    session = baker.make("pbn_import.ImportSession", user=user)
+
+    class _Client:
+        def get_languages(self):
+            return []
+
+    manager = ImportManager(
+        session=session,
+        client=_Client(),
+        config={"disable_zrodla_process": True},
+    )
+    manager.steps = [
+        s for s in manager.steps if s["result_key"] == "source_import:download"
+    ]
+    manager.run()
+    assert "pobierz" in called
+    assert "importuj" not in called
+
+
+def test_results_keyed_by_phase(db):
+    from pbn_import.utils.step_definitions import get_step_definitions
+
+    defs = get_step_definitions({})
+    keys = [d["result_key"] for d in defs]
+    assert len(keys) == len(set(keys))

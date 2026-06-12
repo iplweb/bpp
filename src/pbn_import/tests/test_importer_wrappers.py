@@ -189,9 +189,14 @@ def test_conference_importer_success_and_error_paths(session):
 
     with patch.object(importer, "create_subtask_progress", return_value=MagicMock()):
         with patch("pbn_import.utils.conference_import.pobierz_konferencje") as dl:
-            result = importer.run()
+            with patch(
+                "pbn_import.utils.conference_import.integruj_konferencje",
+                return_value=0,
+            ) as integrate:
+                result = importer.run()
 
     dl.assert_called_once()
+    integrate.assert_called_once()
     assert result == {"conferences_imported": True, "error_count": 0}
 
     failing = ConferenceImporter(session, client=MagicMock())
@@ -200,8 +205,12 @@ def test_conference_importer_success_and_error_paths(session):
             "pbn_import.utils.conference_import.pobierz_konferencje",
             side_effect=RuntimeError("conference failed"),
         ):
-            with patch.object(failing, "handle_error") as handle_error:
-                result = failing.run()
+            with patch(
+                "pbn_import.utils.conference_import.integruj_konferencje",
+                return_value=0,
+            ):
+                with patch.object(failing, "handle_error") as handle_error:
+                    result = failing.run()
 
     handle_error.assert_called_once()
     assert result["conferences_imported"] is True

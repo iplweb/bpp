@@ -9,14 +9,16 @@ from model_bakery import baker
 
 from bpp.models import Uczelnia
 from pbn_import.management.commands.pbn_import import (
+    IMPORT_STEPS,
+    LEGACY_ALIASES,
     Command,
     build_config_from_options,
 )
 from pbn_import.models import ImportSession
-from pbn_import.utils.step_definitions import ALL_STEP_DEFINITIONS
 
 
 def command_options(**overrides):
+    """Buduj słownik opcji CLI odpowiadający nowemu modelowi faz granularnych."""
     options = {
         "app_id": "app-id",
         "app_token": "app-token",
@@ -28,8 +30,12 @@ def command_options(**overrides):
         "username": None,
         "noinput": True,
     }
-    for step in ALL_STEP_DEFINITIONS:
-        options[f"disable_{step['form_field']}"] = False
+    # Granularne flagi faz (disable_<form_field> = False domyślnie)
+    for form_field, _label in IMPORT_STEPS:
+        options[f"disable_{form_field}"] = False
+    # Legacy aliasy (disable_<entity> = False domyślnie)
+    for entity in LEGACY_ALIASES:
+        options[f"disable_{entity}"] = False
     options.update(overrides)
     return options
 
@@ -42,10 +48,14 @@ def make_command():
 
 
 def test_build_config_from_options_maps_all_step_disable_keys():
+    """Granularne disable_<form_field> trafiają do config.
+
+    Sprawdzamy też że legacy alias disable_zrodla=True ustawia obie fazy
+    oraz że config zawiera klucz dla każdej granularnej fazy.
+    """
     options = command_options(
         delete_existing=True,
         disable_zrodla=True,
-        disable_publikacje=True,
     )
 
     config = build_config_from_options(options)
@@ -53,11 +63,14 @@ def test_build_config_from_options_maps_all_step_disable_keys():
     assert config["app_id"] == "app-id"
     assert config["base_url"] == "https://pbn.example.test"
     assert config["delete_existing"] is True
-    assert config["disable_zrodla"] is True
-    assert config["disable_publikacje"] is True
 
-    for step in ALL_STEP_DEFINITIONS:
-        assert step["disable_key"] in config
+    # Legacy alias disable_zrodla=True → obie fazy wyłączone
+    assert config["disable_zrodla_download"] is True
+    assert config["disable_zrodla_process"] is True
+
+    # Każda granularna faza ma swój klucz w config
+    for form_field, _label in IMPORT_STEPS:
+        assert f"disable_{form_field}" in config
 
 
 @pytest.mark.django_db
@@ -207,8 +220,16 @@ def test_run_interactive_cancel_on_step_selection():
 
 
 def test_run_interactive_applies_selected_steps_and_delete_choice():
+    """run_interactive ustawia granularne flagi faz na podstawie wyboru.
+
+    W modelu faz granularnych `selected` zawiera form_field poszczególnych faz
+    (np. "initial", "publikacje_download", "publikacje_process").
+    Fazy nieznajdujące się w `selected` mają disable_<form_field>=True.
+    """
     command = make_command()
-    selected = ["initial", "publikacje"]
+    # Wybieramy tylko fazę "initial" i obie fazy publikacji;
+    # fazy zrodla_download/zrodla_process są NIEwybrane → disable=True.
+    selected = ["initial", "publikacje_download", "publikacje_process"]
 
     with patch(
         "pbn_import.management.commands.pbn_import.questionary.checkbox"
@@ -222,6 +243,37 @@ def test_run_interactive_applies_selected_steps_and_delete_choice():
             options = command.run_interactive(command_options(noinput=False))
 
     assert options["delete_existing"] is True
+    # Wybrane fazy → nie wyłączone
     assert options["disable_initial"] is False
-    assert options["disable_publikacje"] is False
-    assert options["disable_zrodla"] is True
+    assert options["disable_publikacje_download"] is False
+    assert options["disable_publikacje_process"] is False
+    # Niewybrane fazy źródeł → wyłączone
+    assert options["disable_zrodla_download"] is True
+    assert options["disable_zrodla_process"] is True
+
+
+# --- Task 11: granularne flagi faz + legacy aliasy ---
+
+
+def _base_options(**over):
+    opts = {
+        "app_id": None,
+        "base_url": None,
+        "delete_existing": False,
+        "wydzial_domyslny": "X",
+        "wydzial_domyslny_skrot": None,
+    }
+    opts.update(over)
+    return opts
+
+
+def test_granular_flag_disables_one_phase():
+    cfg = build_config_from_options(_base_options(disable_zrodla_download=True))
+    assert cfg["disable_zrodla_download"] is True
+    assert cfg.get("disable_zrodla_process", False) is False
+
+
+def test_legacy_flag_disables_both_phases():
+    cfg = build_config_from_options(_base_options(disable_zrodla=True))
+    assert cfg["disable_zrodla_download"] is True
+    assert cfg["disable_zrodla_process"] is True
