@@ -230,6 +230,15 @@ zawyżone przez duplikację z joina.
 **Status: ✅ zrobione** (branch `perf/orm-quick-wins`,
 `test_views/test_mymultiseek_query_count.py`).
 
+**Etap 2 — cache agregatów (✅, branch `perf/multiseek-count-cache`):**
+stronicowanie tych samych wyników nie powtarza skanu — agregaty
+(count + sumy) cache'owane 30 min pod kluczem
+sha256(formularz, removed, print-removed, zalogowanie, uczelnia).
+Decyzja użytkownika 2026-06: implementacja w BPP (nie w pakiecie
+django-multiseek — upstream nawet nie wykonuje tego COUNT-a, a klucz
+zależy od BPP-specyficznych wejść). W dev/local default cache to
+DummyCache — cache działa na produkcji (Redis).
+
 ### 2.3. Browse: zbędne zapytania (PRIORYTET 7)
 
 `src/bpp/views/browse.py` (zweryfikowane):
