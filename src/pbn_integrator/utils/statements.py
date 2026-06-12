@@ -6,7 +6,6 @@ import logging
 from typing import TYPE_CHECKING
 
 from django.contrib.postgres.search import TrigramSimilarity
-from django.core.exceptions import ValidationError
 from django.db import transaction
 from django.db.models.functions import Length
 from tqdm import tqdm
@@ -25,6 +24,10 @@ from pbn_api.exceptions import HttpException, StatementDeletionError
 from pbn_api.models import OswiadczenieInstytucji, Publication
 from pbn_integrator.utils import zapisz_oswiadczenie_instytucji
 from pbn_integrator.utils.django_imports import normalize_tytul_publikacji
+from pbn_integrator.utils.dyscypliny import (
+    WynikPrzypisaniaDyscypliny,
+    przypisz_dyscypline_pbn,
+)
 from pbn_integrator.utils.integration import ustaw_pbn_uid_jesli_brak
 
 logger = logging.getLogger(__name__)
@@ -123,16 +126,6 @@ def integruj_oswiadczenia_z_instytucji_pojedyncza_praca(  # noqa: C901
         logger.info(
             f"===========================================================\nXXX {msg}"
         )
-        if inconsistency_callback:
-            inconsistency_callback(
-                inconsistency_type="author_not_found",
-                pbn_publication=elem.publicationId,
-                pbn_author=elem.personId,
-                bpp_publication=pub,
-                bpp_author=aut,
-                discipline=elem.get_bpp_discipline() if elem.disciplines else None,
-                message=msg,
-            )
 
         try:
             rec = pub.autorzy_set.get(
@@ -167,33 +160,16 @@ def integruj_oswiadczenia_z_instytucji_pojedyncza_praca(  # noqa: C901
 
                 if len(matching_recs) == 1:
                     rec = matching_recs[0]
-
-                    # Jeśli autor w publikacji różni się od autora z PBN,
-                    # zamień na poprawnego (z get_bpp_autor)
-                    if rec.autor != aut:
-                        old_autor = rec.autor
-                        rec.autor = aut
-                        rec.save()
-                        logger.warning(
-                            f"NORMALIZED MATCH + FIX: zamieniono autora w publikacji "
-                            f"'{old_autor.nazwisko} {old_autor.imiona}' -> "
-                            f"'{aut.nazwisko} {aut.imiona}'"
-                        )
-                        if inconsistency_callback:
-                            inconsistency_callback(
-                                inconsistency_type="author_replaced",
-                                pbn_publication=elem.publicationId,
-                                bpp_publication=pub,
-                                old_author=old_autor,
-                                new_author=aut,
-                                message=(f"Zamieniono autora: {old_autor} -> {aut}"),
-                                action_taken="Autor w publikacji został zamieniony",
-                            )
-                    else:
-                        logger.warning(
-                            f"NORMALIZED MATCH in pub: '{aut.nazwisko} {aut.imiona}' "
-                            f"-> '{rec.autor.nazwisko} {rec.autor.imiona}'"
-                        )
+                    # Dopasowano po znormalizowanym imieniu/nazwisku (diakrytyki,
+                    # myślniki). Zgodnie z decyzją „brak podmiany autora" NIE
+                    # podmieniamy rec.autor — zostawiamy współautora wpisanego na
+                    # pracy, a dyscyplinę przypisze blok niżej. Raport
+                    # author_matched_by_name leci wspólnie dla tier 2/3/4 poniżej.
+                    logger.warning(
+                        f"NORMALIZED MATCH in pub: PBN '{aut.nazwisko} "
+                        f"{aut.imiona}' -> rekord '{rec.autor.nazwisko} "
+                        f"{rec.autor.imiona}' (bez podmiany autora)"
+                    )
                 elif len(matching_recs) > 1:
                     logger.warning(
                         f"NORMALIZED MATCH AMBIGUOUS in pub: '{aut.nazwisko} "
@@ -201,7 +177,11 @@ def integruj_oswiadczenia_z_instytucji_pojedyncza_praca(  # noqa: C901
                     )
 
                 if rec is None:
-                    msg = "Nie mogę naprawić tego automatycznie - sprawdź ręcznie"
+                    msg = (
+                        f"Autor {aut} (PBN: {elem.personId}) o tym samym imieniu i "
+                        f"nazwisku istnieje w BPP, ale nie figuruje jako współautor "
+                        f"pracy {pub} — wymaga ręcznej korekty."
+                    )
                     logger.info(
                         f"XXX {msg}\n"
                         "==========================================================="
@@ -224,8 +204,8 @@ def integruj_oswiadczenia_z_instytucji_pojedyncza_praca(  # noqa: C901
         if elem.disciplines:
             discipline = elem.get_bpp_discipline()
             msg = (
-                f"Nadpisuję w tej pracy autora {rec.autor} autorem {aut}, "
-                f"wyślij tę pracę do PBN ponownie! (dyscyplina: {discipline})"
+                f"Dopasowano po nazwisku autora {aut} do rekordu {rec.autor} "
+                f"w pracy {pub} (dyscyplina: {discipline})"
             )
             logger.info(
                 f"XXX {msg}\n"
@@ -233,16 +213,18 @@ def integruj_oswiadczenia_z_instytucji_pojedyncza_praca(  # noqa: C901
             )
             if inconsistency_callback:
                 inconsistency_callback(
-                    inconsistency_type="author_auto_fixed",
+                    inconsistency_type="author_matched_by_name",
                     pbn_publication=elem.publicationId,
                     pbn_author=elem.personId,
                     bpp_publication=pub,
                     bpp_author=aut,
                     discipline=discipline,
                     message=msg,
-                    action_taken=f"Autor zmieniony z {rec.autor} na {aut}",
+                    action_taken=(
+                        f"Dopasowano po nazwisku do {rec.autor}; dyscyplina "
+                        f"{discipline} przypisana bez podmiany autora pracy."
+                    ),
                 )
-            rec.autor = aut
         else:
             msg = (
                 f"Nie nadpisuję w tej pracy autora {rec.autor} autorem {aut}, "
@@ -264,21 +246,72 @@ def integruj_oswiadczenia_z_instytucji_pojedyncza_praca(  # noqa: C901
                 )
 
     if elem.disciplines:
-        if elem.get_bpp_discipline().pk != rec.dyscyplina_naukowa_id:
-            rec.dyscyplina_naukowa_id = elem.get_bpp_discipline().pk
-            try:
-                rec.clean()
-            except ValidationError:
-                try:
-                    Autor_Dyscyplina.objects.get(rok=rec.rekord.rok, autor=rec.autor)
-                    raise Exception(
-                        f"Nie ma przypsiania do {elem.get_bpp_discipline()}, ale jakeis inne jest..."
+        discipline = elem.get_bpp_discipline()
+        if discipline.pk != rec.dyscyplina_naukowa_id:
+            rok = rec.rekord.rok
+            wynik = przypisz_dyscypline_pbn(rec.autor, rok, discipline)
+
+            if wynik == WynikPrzypisaniaDyscypliny.KONFLIKT_BRAK_MIEJSCA:
+                # Oba sloty Autor_Dyscyplina zajęte inną dyscypliną — NIE
+                # ustawiamy rec.dyscyplina_naukowa na D. Finalny rec.save()
+                # woła clean()/_waliduj_dyscypline, więc ustawienie D, której
+                # autor nie ma na ten rok, podniosłoby ValidationError
+                # (z powrotem crash). Dlatego zostawiamy rec bez zmian.
+                msg = (
+                    f"Autor {rec.autor} ma na rok {rok} dwie inne dyscypliny niż "
+                    f"{discipline} (praca: {pub}) — nie przypisuję, wymaga ręcznej "
+                    f"weryfikacji."
+                )
+                logger.warning(f"!!! KONFLIKT DYSCYPLIN: {msg}")
+                if inconsistency_callback:
+                    inconsistency_callback(
+                        inconsistency_type="discipline_conflict_no_room",
+                        pbn_publication=elem.publicationId,
+                        pbn_author=elem.personId,
+                        bpp_publication=pub,
+                        bpp_author=rec.autor,
+                        discipline=discipline,
+                        message=msg,
+                        action_taken="Brak zmian — oba sloty dyscyplin zajęte",
                     )
-                except Autor_Dyscyplina.DoesNotExist:
-                    rec.autor.autor_dyscyplina_set.update_or_create(
-                        rok=rec.rekord.rok,
-                        defaults={"dyscyplina_naukowa": elem.get_bpp_discipline()},
+            else:
+                rec.dyscyplina_naukowa_id = discipline.pk
+                if wynik == WynikPrzypisaniaDyscypliny.UTWORZONO:
+                    msg = (
+                        f"Autorowi {rec.autor} przypisano dyscyplinę {discipline} "
+                        f"na podstawie pracy {pub}, rok {rok} — automatycznie, "
+                        f"brak danych w BPP."
                     )
+                    logger.info(f"AUTO-DYSCYPLINA: {msg}")
+                    if inconsistency_callback:
+                        inconsistency_callback(
+                            inconsistency_type="discipline_auto_assigned",
+                            pbn_publication=elem.publicationId,
+                            pbn_author=elem.personId,
+                            bpp_publication=pub,
+                            bpp_author=rec.autor,
+                            discipline=discipline,
+                            message=msg,
+                            action_taken="Utworzono Autor_Dyscyplina (100%)",
+                        )
+                elif wynik == WynikPrzypisaniaDyscypliny.DODANO_SUB:
+                    msg = (
+                        f"Autorowi {rec.autor} dopisano subdyscyplinę {discipline} "
+                        f"na podstawie pracy {pub}, rok {rok} — automatycznie, "
+                        f"brak danych w BPP."
+                    )
+                    logger.info(f"AUTO-SUBDYSCYPLINA: {msg}")
+                    if inconsistency_callback:
+                        inconsistency_callback(
+                            inconsistency_type="discipline_added_as_sub",
+                            pbn_publication=elem.publicationId,
+                            pbn_author=elem.personId,
+                            bpp_publication=pub,
+                            bpp_author=rec.autor,
+                            discipline=discipline,
+                            message=msg,
+                            action_taken="Dopisano subdyscyplinę",
+                        )
 
         # Jeśli dyscyplina jest ustawiana i jednostka to "Obca jednostka",
         # zaktualizuj jednostkę na domyślną i ustaw flagi afiliacji
@@ -304,6 +337,7 @@ def integruj_oswiadczenia_z_instytucji(
     callback=None,
     inconsistency_callback=None,
     default_jednostka=None,
+    uczelnia=None,
 ):
     """Integrate all institution statements.
 
@@ -313,11 +347,18 @@ def integruj_oswiadczenia_z_instytucji(
         inconsistency_callback: Optional callback for reporting inconsistencies.
         default_jednostka: Optional default unit to assign when updating
             from "Obca jednostka" to a proper unit during discipline assignment.
+        uczelnia: Optional ``Uczelnia`` — gdy podana (i ma ``pbn_uid``),
+            iterujemy TYLKO po jej oświadczeniach (``institutionId ==
+            uczelnia.pbn_uid``). Multi-hosted (Track 7a): integracja dotyczy
+            jednej uczelni. Brak / brak pbn_uid → iteracja globalna (legacy).
     """
     noted_pub = set()
     noted_aut = set()
+    qs = OswiadczenieInstytucji.objects.all()
+    if uczelnia is not None and uczelnia.pbn_uid_id is not None:
+        qs = qs.filter(institutionId_id=uczelnia.pbn_uid_id)
     for elem in pbar(
-        OswiadczenieInstytucji.objects.all(),
+        qs,
         label="integruj_oswiadczenia_z_instytucji",
         callback=callback,
     ):
@@ -345,8 +386,21 @@ def integruj_oswiadczenia_pbn_first_import(  # noqa: C901
         dopisuj_zwrotnie_dyscypliny_autorom: Whether to add disciplines back to authors.
         koryguj_afiliacje: Whether to correct affiliations.
     """
+    # Multi-hosted (Track 7a): gdy mamy klienta z uczelnią (i pbn_uid),
+    # iterujemy TYLKO po oświadczeniach tej uczelni (institutionId ==
+    # uczelnia.pbn_uid). ``client`` może być None (default) → iteracja globalna.
+    oswiadczenia_qs = OswiadczenieInstytucji.objects.all()
+    if (
+        client is not None
+        and client.uczelnia is not None
+        and client.uczelnia.pbn_uid_id is not None
+    ):
+        oswiadczenia_qs = oswiadczenia_qs.filter(
+            institutionId_id=client.uczelnia.pbn_uid_id
+        )
+
     first = True
-    for oswiadczenie in tqdm(OswiadczenieInstytucji.objects.all()):
+    for oswiadczenie in tqdm(oswiadczenia_qs):
         bpp_pub = oswiadczenie.get_bpp_publication()
 
         if bpp_pub is None:
@@ -468,9 +522,12 @@ def usun_wszystkie_oswiadczenia(client):
     Args:
         client: PBN client.
     """
-    for elem in pbar(
-        OswiadczenieInstytucji.objects.all(), label="usun_wszystkie_oswiadczenia"
-    ):
+    # Multi-hosted (Track 7a): kasujemy tylko oświadczenia uczelni klienta
+    # (institutionId == client.uczelnia.pbn_uid), nie wszystkich uczelni.
+    qs = OswiadczenieInstytucji.objects.all()
+    if client.uczelnia is not None and client.uczelnia.pbn_uid_id is not None:
+        qs = qs.filter(institutionId_id=client.uczelnia.pbn_uid_id)
+    for elem in pbar(qs, label="usun_wszystkie_oswiadczenia"):
         with transaction.atomic():
             try:
                 elem.sprobuj_skasowac_z_pbn(pbn_client=client)
@@ -495,10 +552,16 @@ def usun_zerowe_oswiadczenia(client):
     for klass in Wydawnictwo_Ciagle, Wydawnictwo_Zwarte:
         zerowe = klass.objects.exclude(pbn_uid=None).filter(punkty_kbn=0)
 
+        # Multi-hosted (Track 7a): zawężamy do oświadczeń uczelni klienta
+        # (institutionId == client.uczelnia.pbn_uid).
+        osw_qs = OswiadczenieInstytucji.objects.filter(
+            publicationId_id__in=zerowe.values_list("pbn_uid_id", flat=True)
+        )
+        if client.uczelnia is not None and client.uczelnia.pbn_uid_id is not None:
+            osw_qs = osw_qs.filter(institutionId_id=client.uczelnia.pbn_uid_id)
+
         for elem in pbar(
-            OswiadczenieInstytucji.objects.filter(
-                publicationId_id__in=zerowe.values_list("pbn_uid_id", flat=True)
-            ),
+            osw_qs,
             label=f"usun_zerowe dla {klass}",
         ):
             with transaction.atomic():

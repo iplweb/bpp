@@ -41,15 +41,18 @@ class JednostkaManager(FulltextSearchMixin, TreeManager):
             kw["uczelnia"] = kw["wydzial"].uczelnia
         return super().create(*args, **kw)
 
-    def get_default_ordering(self):
-        uczelnia = Uczelnia.objects.get_default()
+    def get_default_ordering(self, uczelnia=None):
+        # Multi-hosted: odczyt PREFERENCJI sortowania. Bez przekazanej uczelni
+        # próbujemy JEDYNEJ w systemie (get_single_uczelnia_or_none: single →
+        # jej preferencja; 0 lub >1 → None → alfabetycznie). NIE ma „uczelni
+        # domyślnej" (zgadywania pierwszej-z-brzegu). Wołający z requestem
+        # może podać uczelnię jawnie.
+        if uczelnia is None:
+            uczelnia = Uczelnia.objects.get_single_uczelnia_or_none()
 
         ordering = SORTUJ_RECZNIE
-        if uczelnia is None:
+        if uczelnia is None or uczelnia.sortuj_jednostki_alfabetycznie:
             ordering = SORTUJ_ALFABETYCZNIE
-        else:
-            if uczelnia.sortuj_jednostki_alfabetycznie:
-                ordering = SORTUJ_ALFABETYCZNIE
 
         return ordering
 

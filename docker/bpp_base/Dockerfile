@@ -94,6 +94,11 @@ COPY src/bpp/static/scss/ src/bpp/static/scss/
 COPY src/bpp/static/bpp/scss/ src/bpp/static/bpp/scss/
 # JS for esbuild bundle
 COPY src/bpp/static/bpp/js/ src/bpp/static/bpp/js/
+# Notifications JS jest teraz dostarczane przez pakiet django-channels-broadcast
+# (zainstalowany przez uv) — collectstatic w runtime stage zaciągnie pliki
+# z venv-a. Stara apka src/notifications/ usunięta na dev w commicie
+# 048c2cfa2 (refactor: usun src/notifications/ — dostarczane przez
+# django-channels-broadcast).
 # JS for esbuild bundle eksploratora powiązań (cytoscape-entry + moduły ES)
 COPY src/powiazania_autorow/static/powiazania_autorow/js/ \
      src/powiazania_autorow/static/powiazania_autorow/js/

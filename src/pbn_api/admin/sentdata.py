@@ -1,13 +1,15 @@
 from django.contrib import admin
 
 from bpp.admin.helpers.pbn_api.gui import sprobuj_wyslac_do_pbn_gui
+from bpp.admin.helpers.site_filtered import SiteFilteredAdminMixin
 from pbn_api.admin.base import BasePBNAPIAdminNoReadonly
 from pbn_api.admin.widgets import JSONWithActionsWidget
 from pbn_api.models import SentData
 
 
 @admin.register(SentData)
-class SentDataAdmin(BasePBNAPIAdminNoReadonly):
+class SentDataAdmin(SiteFilteredAdminMixin, BasePBNAPIAdminNoReadonly):
+    uczelnia_field_path = "uczelnia"
     list_display = [
         "object",
         "last_updated_on",

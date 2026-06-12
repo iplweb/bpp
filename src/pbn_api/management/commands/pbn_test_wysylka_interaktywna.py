@@ -195,7 +195,9 @@ class Command(PBNBaseCommand):
         # Intencja BPP — live count tego co by adapter wysłał teraz.
         try:
             intended_count = len(
-                WydawnictwoPBNAdapter(publication).pbn_get_json_statements()
+                WydawnictwoPBNAdapter(
+                    publication, uczelnia=self._resolved_uczelnia
+                ).pbn_get_json_statements()
             )
             intended_label = str(intended_count)
         except Exception as e:  # noqa: BLE001
@@ -212,7 +214,7 @@ class Command(PBNBaseCommand):
 
     def _step_generate_json(self, publication):
         self._header("KROK 2/8 — Generowanie JSON publikacji")
-        adapter = WydawnictwoPBNAdapter(publication)
+        adapter = WydawnictwoPBNAdapter(publication, uczelnia=self._resolved_uczelnia)
         js = adapter.pbn_get_json()
         bez_oswiadczen = "statements" not in js
         n_statements = len(js.get("statements", [])) if not bez_oswiadczen else 0
@@ -367,7 +369,9 @@ class Command(PBNBaseCommand):
         # — oba nam potrzebne do porównania z PBN GET response, gdzie są
         # ``area`` i ``personId``.
         try:
-            intended = WydawnictwoPBNAdapter(publication).pbn_get_json_statements()
+            intended = WydawnictwoPBNAdapter(
+                publication, uczelnia=self._resolved_uczelnia
+            ).pbn_get_json_statements()
         except Exception as e:  # noqa: BLE001
             self._warn(f"Nie mogę wygenerować intencji BPP (adapter): {e}")
             self._info("Zwracam 'różnice' — user zdecyduje co robić.")
@@ -461,7 +465,9 @@ class Command(PBNBaseCommand):
     def _step_post_statements(self, pbn_client, publication):
         self._header("KROK 8/8 — POST nowych oświadczeń")
         try:
-            payload = WydawnictwoPBNAdapter(publication).pbn_get_api_statements()
+            payload = WydawnictwoPBNAdapter(
+                publication, uczelnia=self._resolved_uczelnia
+            ).pbn_get_api_statements()
         except DaneLokalneWymagajaAktualizacjiException as e:
             self._err(
                 f"Nie mogę przygotować payloadu oświadczeń: {e}. "

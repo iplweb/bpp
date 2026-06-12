@@ -38,6 +38,11 @@ class FetchedPublication:
 class DataProvider(ABC):
     """Bazowa klasa abstrakcyjna dla dostawców danych."""
 
+    # Uczelnia kontekstu (multi-hosted) — ustawiana przez ``get_provider``.
+    # Dostawcy zależni od konfiguracji PBN (``PbnProvider``) czytają z niej
+    # credentiale; dostawcy niezależni (CrossRef, DSpace) ignorują.
+    uczelnia = None
+
     @property
     @abstractmethod
     def name(self) -> str:
@@ -83,8 +88,10 @@ def register_provider(
     return provider_cls
 
 
-def get_provider(name: str) -> DataProvider:
-    return _providers[name]()
+def get_provider(name: str, uczelnia=None) -> DataProvider:
+    provider = _providers[name]()
+    provider.uczelnia = uczelnia
+    return provider
 
 
 def get_available_providers() -> list[str]:

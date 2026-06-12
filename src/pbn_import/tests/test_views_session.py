@@ -121,6 +121,78 @@ class TestImportSessionDetailView:
         assert warning_log in error_logs
         assert info_log not in error_logs
 
+    def test_detail_view_completed_shows_log_tab(self, django_user_model):
+        """Completed → zakładka „Log" + raw_log_text + link do pobrania."""
+        client = Client()
+        user = baker.make(django_user_model, is_superuser=True)
+        session = baker.make(ImportSession, user=user, status="completed")
+        baker.make(ImportLog, session=session, level="error", message="boom")
+        client.force_login(user)
+
+        response = client.get(reverse("pbn_import:session_detail", args=[session.id]))
+
+        assert "raw_log_text" in response.context
+        content = response.content.decode("utf-8")
+        assert 'href="#log-panel"' in content
+        assert reverse("pbn_import:log_download", args=[session.id]) in content
+
+    def test_detail_view_truncates_log_preview(self, django_user_model):
+        """Podgląd inline przycięty do PREVIEW_LIMIT; flagi w kontekście + baner."""
+        from unittest.mock import patch
+
+        client = Client()
+        user = baker.make(django_user_model, is_superuser=True)
+        session = baker.make(ImportSession, user=user, status="completed")
+        for i in range(3):
+            baker.make(
+                ImportLog, session=session, level="error", message=f"PREVIEW_ERR_{i}"
+            )
+        client.force_login(user)
+
+        # Mały limit zamiast bakeowania 100+ wpisów.
+        with patch("pbn_import.views.PREVIEW_LIMIT", 2):
+            response = client.get(
+                reverse("pbn_import:session_detail", args=[session.id])
+            )
+
+        assert response.context["raw_log_truncated"] is True
+        assert response.context["raw_log_total"] == 3
+        assert response.context["raw_log_shown"] == 2
+        content = response.content.decode("utf-8")
+        assert "Podgląd przycięty" in content
+        # 3. wpis NIE jest w podglądzie inline (jest tylko w pełnym pobraniu).
+        assert "PREVIEW_ERR_2" not in response.context["raw_log_text"]
+
+    def test_detail_view_no_truncation_banner_for_small_log(self, django_user_model):
+        """Mało wpisów → brak banera i brak flagi przycięcia."""
+        client = Client()
+        user = baker.make(django_user_model, is_superuser=True)
+        session = baker.make(ImportSession, user=user, status="completed")
+        baker.make(ImportLog, session=session, level="error", message="tylko jeden")
+        client.force_login(user)
+
+        response = client.get(reverse("pbn_import:session_detail", args=[session.id]))
+
+        assert response.context["raw_log_truncated"] is False
+        assert "Podgląd przycięty" not in response.content.decode("utf-8")
+
+    @pytest.mark.parametrize(
+        "status", ["completed", "failed", "cancelled", "running", "pending"]
+    )
+    def test_detail_view_shows_log_tab_for_every_status(
+        self, django_user_model, status
+    ):
+        """Zakładka „Log" widoczna dla KAŻDEGO statusu (log padłego = najcenniejszy)."""
+        client = Client()
+        user = baker.make(django_user_model, is_superuser=True)
+        session = baker.make(ImportSession, user=user, status=status)
+        client.force_login(user)
+
+        response = client.get(reverse("pbn_import:session_detail", args=[session.id]))
+
+        assert "raw_log_text" in response.context
+        assert 'href="#log-panel"' in response.content.decode("utf-8")
+
     def test_detail_view_calculates_duration(self, django_user_model):
         """Test detail view calculates session duration"""
         client = Client()
@@ -181,6 +253,88 @@ class TestImportSessionDetailView:
 # ============================================================================
 # ACTIVE SESSIONS VIEW TESTS
 # ============================================================================
+
+
+@pytest.mark.django_db
+class TestImportLogDownloadView:
+    """Test ImportLogDownloadView — pobieranie tekstowego raw logu."""
+
+    def _make_completed_session_with_error(self, user):
+        session = baker.make(ImportSession, user=user, status="completed")
+        baker.make(
+            ImportLog,
+            session=session,
+            level="error",
+            step="publication_import",
+            message="Nie znaleziono domyślnej jednostki",
+            details={
+                "exception": "ValueError",
+                "traceback": "Traceback...\nValueError",
+            },
+        )
+        return session
+
+    def test_download_requires_login(self, django_user_model):
+        session = baker.make(ImportSession, status="completed")
+        response = Client().get(reverse("pbn_import:log_download", args=[session.id]))
+        assert response.status_code == 302  # redirect to login
+
+    def test_download_returns_text_attachment_for_completed(self, django_user_model):
+        client = Client()
+        user = baker.make(django_user_model, is_superuser=True)
+        client.force_login(user)
+        session = self._make_completed_session_with_error(user)
+
+        response = client.get(reverse("pbn_import:log_download", args=[session.id]))
+
+        assert response.status_code == 200
+        assert response["Content-Type"].startswith("text/plain")
+        assert (
+            f'filename="pbn_import_log_{session.id}.txt"'
+            in response["Content-Disposition"]
+        )
+        body = response.content.decode("utf-8")
+        assert "exception=ValueError" in body
+        assert "Nie znaleziono domyślnej jednostki" in body
+
+    def test_download_forbidden_for_other_users_session(self, django_user_model):
+        from django.contrib.auth.models import Group
+
+        client = Client()
+        owner = baker.make(django_user_model)
+        session = self._make_completed_session_with_error(owner)
+        # Intruz ma uprawnienie do importu (grupa), ale NIE jest superuserem
+        # i NIE jest właścicielem sesji → 403 (nie podejrzy cudzego logu).
+        intruder = baker.make(django_user_model)
+        group, _ = Group.objects.get_or_create(name="wprowadzanie danych")
+        intruder.groups.add(group)
+        client.force_login(intruder)
+
+        response = client.get(reverse("pbn_import:log_download", args=[session.id]))
+
+        assert response.status_code == 403
+
+    @pytest.mark.parametrize("status", ["failed", "cancelled", "running", "pending"])
+    def test_download_works_for_non_completed_session(self, django_user_model, status):
+        """Pobranie działa dla każdego statusu — log padłego importu jest kluczowy."""
+        client = Client()
+        user = baker.make(django_user_model, is_superuser=True)
+        client.force_login(user)
+        session = baker.make(ImportSession, user=user, status=status)
+        baker.make(
+            ImportLog,
+            session=session,
+            level="error",
+            step="publication_import",
+            message="padło",
+            details={"exception": "ValueError"},
+        )
+
+        response = client.get(reverse("pbn_import:log_download", args=[session.id]))
+
+        assert response.status_code == 200
+        assert response["Content-Type"].startswith("text/plain")
+        assert "padło" in response.content.decode("utf-8")
 
 
 @pytest.mark.django_db

@@ -1,7 +1,11 @@
+import logging
+
 from django.contrib.auth import get_user_model
 from django.contrib.contenttypes.models import ContentType
 from django.db import models
 from django.utils import timezone
+
+logger = logging.getLogger("pbn_import")
 
 User = get_user_model()
 
@@ -145,8 +149,15 @@ class ImportSession(models.Model):
                     return True, "Zadanie w tle zostało anulowane zewnętrznie"
 
             except Exception:
-                # Błąd połączenia z brokerem - nie możemy zweryfikować
-                pass
+                # Błąd połączenia z brokerem - nie możemy zweryfikować statusu.
+                # Oczekiwana, przejściowa flaka brokera (Celery/Redis), nie błąd
+                # importu — log debug zostawia ślad, ale bez Rollbara (byłby
+                # szum przy każdym mignięciu połączenia).
+                logger.debug(
+                    "Nie udało się sprawdzić statusu zadania %s w Celery",
+                    self.task_id,
+                    exc_info=True,
+                )
 
         return False, None
 
@@ -224,7 +235,11 @@ class ImportInconsistency(models.Model):
         ("author_not_found", "Autor nie znaleziony w publikacji"),
         ("author_auto_fixed", "Autor automatycznie poprawiony"),
         ("author_replaced", "Autor zamieniony na innego"),
+        ("author_matched_by_name", "Autor dopasowany po imieniu i nazwisku"),
         ("author_needs_manual_fix", "Wymaga ręcznej korekty"),
+        ("discipline_auto_assigned", "Dyscyplina przypisana automatycznie z PBN"),
+        ("discipline_added_as_sub", "Subdyscyplina dopisana automatycznie z PBN"),
+        ("discipline_conflict_no_room", "Konflikt dyscyplin - brak miejsca"),
         ("no_override_without_disciplines", "Brak nadpisania - brak dyscyplin"),
         ("publication_not_found", "Brak publikacji w BPP"),
         ("author_not_in_bpp", "Brak autora w BPP"),

@@ -38,6 +38,9 @@ def clear_match_publications():
 
 def clear_publications():
     """Clear all publication-related data."""
+    # Multi-hosted (Track 4): ŚWIADOMIE globalne czyszczenie — to operacja
+    # reset/reimport całej integracji PBN (nie per-uczelnia akcja użytkownika),
+    # więc kasujemy WSZYSTKIE wiersze SentData niezależnie od tagu uczelni.
     clear_match_publications()
     for model in [OswiadczenieInstytucji, PublikacjaInstytucji, Publication, SentData]:
         model.objects.all()._raw_delete(MODELE_Z_PBN_UID[0].objects.db)

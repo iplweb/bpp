@@ -2,16 +2,18 @@
 Struktura uczelni.
 """
 
-import warnings
 from typing import TYPE_CHECKING, Union
 
 from autoslug import AutoSlugField
-from django.core.exceptions import ImproperlyConfigured, ValidationError
+from django.core.exceptions import (
+    ImproperlyConfigured,
+    ObjectDoesNotExist,
+    ValidationError,
+)
 from django.core.validators import MaxValueValidator, MinValueValidator
-from django.db import ProgrammingError, models
+from django.db import models
 from django.db.models import SET_NULL, Max, URLField
 from django.urls.base import reverse
-from django.utils.functional import cached_property
 from model_utils import Choices
 from tinymce.models import HTMLField
 
@@ -30,33 +32,135 @@ if TYPE_CHECKING:
 
 
 class UczelniaManager(models.Manager):
-    def get_default(self) -> Union["Uczelnia", None]:
-        warnings.warn(
-            "Uczelnia.objects.get_default jest przestarzałe (deprecated) i "
-            "wkrótce zostanie usunięte — nie używać.",
-            DeprecationWarning,
-            stacklevel=2,
-        )
-        return self._get_default()
+    # Multi-hosted: NIE MA „uczelni domyślnej". Realne stany systemu to:
+    # brak uczelni (pusta baza / setup_wizard), jedna uczelnia (zwykle) albo
+    # wiele uczelni (1 instalacja, kilka uczelni). Uczelnię ustala się z
+    # requestu (domena → Site → Uczelnia). Gdy się NIE DA, jedyny dozwolony
+    # fallback to „jedyna-albo-None"/„jedyna-albo-fail" — NIGDY zgadywanie
+    # pierwszej-z-brzegu (to był footgun ``get_default()``, usunięty).
+    #
+    # UWAGA przy merge z dev: dev przywrócił ``get_default``/``_get_default``
+    # z DeprecationWarning (8c6eb3efd). W tej gałęzi get_default NIE WRACA —
+    # guard test ``test_get_default_usuniete_na_trwale`` tego pilnuje. Wołający
+    # mają używać ``get_for_request`` / ``get_single_uczelnia_or_{none,fail}``.
 
-    def _get_default(self) -> Union["Uczelnia", None]:
+    def get_single_uczelnia_or_none(self):
+        """Jedyna uczelnia w systemie albo ``None`` (gdy 0 lub >1).
+
+        Dla kontekstów, w których brak jednoznacznej uczelni jest dopuszczalny
+        (request bez dopasowanej domeny, testy). NIE zgaduje, NIE rzuca.
+        """
         try:
-            return self.all().first()
-        except ProgrammingError:
-            # Błąd może wystapić w sytuacji, gdy do obiektu Uczelnia po stronie kodu zostały
-            # dodane jakieś kolumny, ale nie zostały jeszcze dodane do bazy danych. Próba "grzebnięcia"
-            # po bazie spowoduje błąd. Spróbujemy wobec tego pobrać wyłacznie PK rekordu:
-            return self.all().only("pk").first()
+            return self.get()
+        except (self.model.DoesNotExist, self.model.MultipleObjectsReturned):
+            return None
+
+    def get_single_uczelnia_or_fail(self):
+        """Jedyna uczelnia w systemie albo GŁOŚNY błąd (gdy 0 lub >1).
+
+        Dla kontekstów, które MUSZĄ mieć dokładnie jedną uczelnię (CLI,
+        zadania w tle) i wolą paść czytelnie niż działać na ``None``. Przy >1
+        rzuca ``MultipleObjectsReturned`` z komunikatem; przy 0 propaguje
+        ``DoesNotExist``.
+        """
+        try:
+            return self.get()
+        except self.model.MultipleObjectsReturned as e:
+            raise self.model.MultipleObjectsReturned(
+                "Nie ustalono uczelni z requestu/site, a w systemie jest "
+                "więcej niż jedna uczelnia — nie ma 'uczelni domyślnej'. "
+                "Skonfiguruj mapowanie domena→Site→Uczelnia albo przekaż "
+                "uczelnię jawnie."
+            ) from e
+
+    def _site_dla_requestu(self, request):
+        """Site dla requestu: host → ``Site.domain``, potem ``SITE_ID``.
+
+        Kolejność jak ``SiteResolutionMiddleware`` (host-first) — celowo NIE
+        ``django.contrib.sites.shortcuts.get_current_site``, bo ono
+        priorytetyzuje ``SITE_ID`` (założenie single-site). Zwraca ``Site``
+        albo ``None``.
+        """
+        from django.conf import settings
+        from django.contrib.sites.models import Site
+
+        # Niektórzy wołający (warstwa modelu/CBV bez requestu, mocki w testach)
+        # przekazują None lub obiekt bez ``get_host`` — wtedy nie ma domeny do
+        # rozstrzygnięcia (→ uczelnia_dla_site(None) → jedyna-albo-None).
+        if request is None or not hasattr(request, "get_host"):
+            return None
+
+        hostname = request.get_host().split(":")[0]
+        try:
+            return Site.objects.get(domain=hostname)
+        except Site.DoesNotExist:
+            site_id = getattr(settings, "SITE_ID", None)
+            if site_id is None:
+                return None
+            try:
+                return Site.objects.get(pk=site_id)
+            except Site.DoesNotExist:
+                return None
+
+    def get_for_site(self, site) -> Union["Uczelnia", None]:
+        """Uczelnia powiązana z danym ``Site``, albo ``None``.
+
+        ``site is None`` → ``None`` (NIE uczelnia domyślna). Site bez
+        powiązanej uczelni (rozłączony OneToOne) → ``None``.
+        """
+        if site is None:
+            return None
+        try:
+            return site.uczelnia
+        except ObjectDoesNotExist:
+            return None
+
+    def uczelnia_dla_site(self, site):
+        """Uczelnia dla Site, a gdy się nie da — jedyna-albo-None.
+
+        Wspólny rdzeń dla ``get_for_request`` i ``SiteResolutionMiddleware``:
+        Site → Uczelnia; brak Site / Site bez uczelni → spróbuj jedynej
+        uczelni (0 lub >1 → ``None``, bez zgadywania).
+        """
+        uczelnia = self.get_for_site(site)
+        if uczelnia is None:
+            uczelnia = self.get_single_uczelnia_or_none()
+        return uczelnia
 
     def get_for_request(self, request):
-        if hasattr(request, "_uczelnia"):
+        # 1. Cache ustawiony przez SiteResolutionMiddleware.
+        if request is not None and hasattr(request, "_uczelnia"):
             return request._uczelnia
+        # 2. Domena → Site → Uczelnia; gdy się nie da → jedyna-albo-None.
+        #    GWARANCJA: NIGDY nie rzuca — pusta baza + setup_wizard muszą
+        #    działać bez uczelni (uczelnia = None). Wołający bez requestu
+        #    przekazują None (warstwa modelu/CBV) — też obsłużone.
+        uczelnia = self.uczelnia_dla_site(self._site_dla_requestu(request))
+        if request is not None:
+            request._uczelnia = uczelnia  # cache na czas requestu
+        return uczelnia
 
-        return self._get_default()
+    def get_for_pbn_background(self, uczelnia_id) -> "Uczelnia":
+        """Resolwer uczelni dla PBN-owych zadań w tle (Celery, kolejki).
 
-    @cached_property
-    def default(self):
-        return self._get_default()
+        W instalacji multi-hosted KAŻDY entrypoint (widok) zna konkretną
+        uczelnię z requestu (``get_for_request``) i MUSI przekazać jej
+        ``pk`` do zadania. Brak ``uczelnia_id`` to błąd programistyczny —
+        świadomie NIE robimy fallbacku do „uczelni domyślnej" (taki byt nie
+        istnieje), bo wybrałby pierwszą-z-brzegu uczelnię, która może nie
+        mieć skonfigurowanego PBN (to było źródłem błędu ``403 token
+        aplikacji null``).
+
+        :raises ValueError: gdy ``uczelnia_id`` jest ``None``.
+        :raises Uczelnia.DoesNotExist: gdy uczelnia o danym id nie istnieje.
+        """
+        if uczelnia_id is None:
+            raise ValueError(
+                "Operacja PBN w tle wymaga jawnego uczelnia_id — w trybie "
+                "multi-hosted nie ma fallbacku do uczelni domyślnej. "
+                "Entrypoint (widok) musi przekazać id uczelni z requestu."
+            )
+        return self.get(pk=uczelnia_id)
 
     def do_roku_default(self=None, request=None):
         # Cienki delegator do funkcji modułowej `do_roku_default` (niżej).
@@ -77,7 +181,13 @@ def do_roku_default(request=None):
     drift). Bez `self` działa zarówno serializowalnie, jak i w runtime
     (zwraca prawdziwy rok, nie None).
     """
-    uczelnia = Uczelnia.objects.get_default()
+    # Multi-hosted: uczelnię bierzemy z requestu (gdy podany), NIE z „domyślnej"
+    # (taki byt nie istnieje). Bez requestu (initial pola, migracja, CLI) →
+    # jedyna-albo-None (single-install respektuje swoją metoda_do_roku; przy
+    # 0/>1 → None → year_last_month). Bez zgadywania pierwszej-z-brzegu.
+    uczelnia = getattr(request, "_uczelnia", None)
+    if uczelnia is None:
+        uczelnia = Uczelnia.objects.get_single_uczelnia_or_none()
     if (
         uczelnia is None
         or uczelnia.metoda_do_roku_formularze
@@ -92,6 +202,23 @@ def do_roku_default(request=None):
 
 
 class Uczelnia(ModelZAdnotacjami, ModelZPBN_ID, NazwaISkrot, NazwaWDopelniaczu):
+    site = models.OneToOneField(
+        "sites.Site",
+        verbose_name="Strona (domena)",
+        on_delete=models.PROTECT,
+        related_name="uczelnia",
+        help_text="Powiązanie z obiektem Site (domena internetowa tej uczelni).",
+    )
+
+    theme_name = models.CharField(
+        "Motyw kolorystyczny",
+        max_length=50,
+        default="app-green",
+        # Dozwolone wartości pochodzą z settings.BPP_THEMES, walidowane w
+        # UczelniaAdminForm — celowo BEZ `choices=` na poziomie modelu, żeby
+        # zmiana listy motywów nie generowała migracji.
+    )
+
     slug = AutoSlugField(populate_from="skrot", unique=True)
     logo_www = models.ImageField(
         "Logo na stronę WWW",
@@ -531,6 +658,49 @@ class Uczelnia(ModelZAdnotacjami, ModelZPBN_ID, NazwaISkrot, NazwaWDopelniaczu):
         default=False,
     )
 
+    # Pola przeniesione z django-constance (per-uczelnia zamiast globalnych)
+    google_analytics_property_id = models.CharField(
+        "Google Analytics Property ID",
+        max_length=100,
+        blank=True,
+        default="",
+        help_text="Np. UA-XXXXXXXX-X lub G-XXXXXXXXXX",
+    )
+    google_verification_code = models.CharField(
+        "Kod weryfikacyjny Google Search Console",
+        max_length=100,
+        blank=True,
+        default="",
+    )
+    pokazuj_oswiadczenie_ken = models.BooleanField(
+        "Pokazuj opcję oświadczenia KEN",
+        default=False,
+    )
+    skrot_wydzialu_w_nazwie_jednostki = models.BooleanField(
+        "Wyświetlaj skrót wydziału w nazwie jednostki",
+        default=True,
+    )
+    wydruk_margines_gora = models.CharField(
+        "Margines górny wydruku",
+        max_length=10,
+        default="2cm",
+    )
+    wydruk_margines_dol = models.CharField(
+        "Margines dolny wydruku",
+        max_length=10,
+        default="2cm",
+    )
+    wydruk_margines_lewo = models.CharField(
+        "Margines lewy wydruku",
+        max_length=10,
+        default="2cm",
+    )
+    wydruk_margines_prawo = models.CharField(
+        "Margines prawy wydruku",
+        max_length=10,
+        default="2cm",
+    )
+
     objects = UczelniaManager()
 
     class Meta:
@@ -612,9 +782,12 @@ class Uczelnia(ModelZAdnotacjami, ModelZPBN_ID, NazwaISkrot, NazwaWDopelniaczu):
 
         return WoSClient(self.clarivate_username, self.clarivate_password)
 
-    def pbn_client(self, pbn_user_token=None) -> "pbn_api.client.PBNClient":
+    def pbn_client(self, pbn_user_token=None) -> "pbn_api.client.BppPBNClient":
         """
-        Zwraca klienta PBNu
+        Zwraca klienta PBNu związanego z TĄ uczelnią (``BppPBNClient``).
+
+        Klient zna ``self`` jako swoją ``uczelnia`` — orchestracja czyta z niej
+        flagi zamiast zgadywać ``get_default()`` (kluczowe dla multi-hosted).
         """
         from pbn_api import client
 
@@ -637,7 +810,7 @@ class Uczelnia(ModelZAdnotacjami, ModelZPBN_ID, NazwaISkrot, NazwaWDopelniaczu):
         transport = UczelniaTransport(
             self.pbn_app_name, self.pbn_app_token, self.pbn_api_root, pbn_user_token
         )
-        return client.PBNClient(transport)
+        return client.BppPBNClient(transport, uczelnia=self)
 
     @property
     def orcid_base_url(self):

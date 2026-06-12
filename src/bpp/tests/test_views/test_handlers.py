@@ -3,6 +3,7 @@
 import pytest
 
 
+@pytest.mark.django_db
 def test_handler403_permission_denied(client):
     try:
         client.get("/admin/bpp/")

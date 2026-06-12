@@ -68,10 +68,15 @@ class IndexCopernicusQueryObject(BppMultiseekVisibilityMixin, SafeDecimalQueryOb
     label = "Index Copernicus"
     field_name = "index_copernicus"
 
-    def option_enabled(self):
-        u = Uczelnia.objects.get_default()
-        if u is not None:
-            return u.pokazuj_index_copernicus
+    def option_enabled(self, request=None):
+        # Multi-hosted: odczyt ustawienia widoczności pola dla uczelni Z
+        # REQUESTU (host). ``get_for_request`` sam degraduje przy braku
+        # requestu/dopasowania domeny do JEDYNEJ w systemie (single → jej
+        # ustawienie; 0/>1 → None → pole widoczne, default True). NIE ma
+        # „uczelni domyślnej" i nie zgadujemy pierwszej-z-brzegu.
+        uczelnia = Uczelnia.objects.get_for_request(request)
+        if uczelnia is not None:
+            return uczelnia.pokazuj_index_copernicus
         return True
 
 

@@ -58,7 +58,7 @@ def update_progress(session, step_name, progress, message=None):
 
 
 @shared_task(bind=True)
-def run_pbn_import(self, session_id):
+def run_pbn_import(self, session_id, uczelnia_id=None):
     """Main PBN import task"""
     logger.info(f"Uruchamianie zadania Celery dla sesji importu #{session_id}")
     try:
@@ -73,10 +73,9 @@ def run_pbn_import(self, session_id):
 
         # Get configuration
         config = session.config
-        uczelnia = Uczelnia.objects.get_default()
-
-        if not uczelnia:
-            raise Exception("Brak konfiguracji uczelni")
+        # Multi-hosted: konkretna uczelnia z entrypointu, BEZ fallbacku
+        # do get_default() (patrz UczelniaManager.get_for_pbn_background).
+        uczelnia = Uczelnia.objects.get_for_pbn_background(uczelnia_id)
 
         # Create PBN client
         try:
@@ -94,7 +93,7 @@ def run_pbn_import(self, session_id):
             pbn_client = None
 
         # Create and run ImportManager
-        import_manager = ImportManager(session, pbn_client, config)
+        import_manager = ImportManager(session, pbn_client, config, uczelnia=uczelnia)
 
         # Run the import
         result = import_manager.run()
@@ -163,4 +162,18 @@ def run_pbn_import(self, session_id):
                 },
             )
         except BaseException:
-            pass
+            # Nie udało się nawet ZAPISAĆ błędu (np. baza padła). To NIE może
+            # zniknąć po cichu — inaczej krytyczny błąd importu nie zostawia
+            # żadnego śladu. Zaloguj z tracebackiem i zgłoś do Rollbar.
+            logger.exception(
+                "Nie udało się zapisać krytycznego błędu importu dla sesji %s",
+                session_id,
+            )
+            rollbar.report_exc_info(
+                sys.exc_info(),
+                extra_data={
+                    "session_id": session_id,
+                    "task": "run_pbn_import",
+                    "phase": "error_persistence_failed",
+                },
+            )

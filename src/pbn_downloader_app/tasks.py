@@ -244,17 +244,23 @@ def mark_task_failed(task_record, error):
 
 
 @app.task
-def download_institution_publications(user_id):
+def download_institution_publications(user_id, uczelnia_id):
     """
     Download institution publications using PBN API management commands.
     Uses database-based locking to ensure only one instance runs at a time.
 
     Args:
         user_id: ID of the user initiating the download (must have valid PBN token)
+        uczelnia_id: ID konkretnej uczelni (z entrypointu). Wymagane —
+            multi-hosted nie robi get_default() po stronie zadania.
     """
     from django.core.management import call_command
 
+    from bpp.models import Uczelnia
     from pbn_downloader_app.models import PbnDownloadTask
+
+    # Fail fast: jawna, istniejąca uczelnia (bez fallbacku do domyślnej).
+    Uczelnia.objects.get_for_pbn_background(uczelnia_id)
 
     # Sprawdzenie obecności running-taska wykonuje atomowo
     # `create_task_with_lock` (wewnątrz transaction.atomic + filter().exists()).
@@ -295,7 +301,9 @@ def download_institution_publications(user_id):
             phase_range=35,
         ):
             call_command(
-                "pbn_pobierz_publikacje_z_instytucji_v2", user_token=pbn_user.pbn_token
+                "pbn_pobierz_publikacje_z_instytucji_v2",
+                uczelnia_id=uczelnia_id,
+                user_token=pbn_user.pbn_token,
             )
 
         # Phase 2: Download statements and publications
@@ -312,6 +320,7 @@ def download_institution_publications(user_id):
         ):
             call_command(
                 "pbn_pobierz_oswiadczenia_i_publikacje_v1",
+                uczelnia_id=uczelnia_id,
                 user_token=pbn_user.pbn_token,
             )
 
@@ -327,13 +336,15 @@ def download_institution_publications(user_id):
 
 
 @app.task
-def download_institution_people(user_id):
+def download_institution_people(user_id, uczelnia_id):
     """
     Download institution people using PBN API integrator function.
     Uses database-based locking to ensure only one instance runs at a time.
 
     Args:
         user_id: ID of the user initiating the download (must have valid PBN token)
+        uczelnia_id: ID konkretnej uczelni (z entrypointu). Wymagane —
+            multi-hosted nie robi get_default() po stronie zadania.
     """
     from bpp.models import Uczelnia
     from pbn_downloader_app.models import PbnInstitutionPeopleTask
@@ -350,12 +361,12 @@ def download_institution_people(user_id):
     try:
         user, pbn_user = validate_pbn_user(user_id)
 
-        # Get institution ID
-        uczelnia = Uczelnia.objects.get_default()
+        # Konkretna uczelnia z entrypointu — BEZ fallbacku do get_default().
+        uczelnia = Uczelnia.objects.get_for_pbn_background(uczelnia_id)
         if not uczelnia.pbn_uid_id:
             raise ValueError(
-                "Default institution does not have PBN UID. "
-                "Please run PBN integration first."
+                f"Uczelnia (id={uczelnia.pk}, {uczelnia}) nie ma ustawionego "
+                "PBN UID. Najpierw uruchom integrację PBN dla tej uczelni."
             )
 
         task_record = create_task_with_lock(
@@ -384,7 +395,14 @@ def download_institution_people(user_id):
         ):
             from pbn_integrator.utils import pobierz_ludzi_z_uczelni
 
-            pobierz_ludzi_z_uczelni(pbn_user.pbn_token, uczelnia.pbn_uid_id)
+            # Budujemy klienta z KONKRETNEJ uczelni i podajemy go jako obiekt
+            # (nie token) — inaczej integrator wewnętrznie sięgnąłby po
+            # get_default() przy tworzeniu klienta (multi-hosted bug).
+            pobierz_ludzi_z_uczelni(
+                uczelnia.pbn_client(pbn_user.pbn_token),
+                uczelnia.pbn_uid_id,
+                uczelnia=uczelnia,
+            )
 
         task_record.current_step = "Finalizowanie pobierania osób..."
         task_record.progress_percentage = 95
@@ -397,37 +415,25 @@ def download_institution_people(user_id):
         raise
 
 
-def get_pbn_client(pbn_user):
+def get_pbn_client(pbn_user, uczelnia_id):
     """
-    Create a PBN client with proper configuration.
+    Zbuduj klienta PBN dla konkretnej uczelni.
+
+    Klient powstaje przez kanoniczną metodę ``Uczelnia.pbn_client()`` —
+    bez ręcznego sklejania transportu (koniec z duplikacją). Uczelnia jest
+    rozwiązywana ściśle po id (bez get_default()).
+
+    Args:
+        pbn_user: obiekt użytkownika PBN z ``pbn_token``.
+        uczelnia_id: ID konkretnej uczelni (wymagane).
 
     Returns:
-        tuple: (client, uczelnia) if successful
-
-    Raises:
-        ValueError: If configuration is invalid
+        tuple: (client, uczelnia)
     """
     from bpp.models import Uczelnia
-    from pbn_api.client import PBNClient, RequestsTransport
 
-    uczelnia = Uczelnia.objects.get_default()
-    if not uczelnia:
-        raise ValueError("No default institution configured")
-
-    app_id = uczelnia.pbn_app_name
-    app_token = uczelnia.pbn_app_token
-    base_url = uczelnia.pbn_api_root
-
-    if not all([app_id, app_token, base_url]):
-        raise ValueError(
-            "Institution PBN settings not properly configured "
-            "(app_id, app_token, or base_url missing)"
-        )
-
-    transport = RequestsTransport(app_id, app_token, base_url, pbn_user.pbn_token)
-    client = PBNClient(transport)
-
-    return client, uczelnia
+    uczelnia = Uczelnia.objects.get_for_pbn_background(uczelnia_id)
+    return uczelnia.pbn_client(pbn_user.pbn_token), uczelnia
 
 
 class JournalsProgressCallback:
@@ -452,13 +458,15 @@ class JournalsProgressCallback:
 
 
 @app.task
-def download_journals(user_id):
+def download_journals(user_id, uczelnia_id):
     """
     Download journals from PBN API and integrate with BPP Zrodlo records.
     Uses database-based locking to ensure only one instance runs at a time.
 
     Args:
         user_id: ID of the user initiating the download (must have valid PBN token)
+        uczelnia_id: ID konkretnej uczelni (z entrypointu). Wymagane —
+            multi-hosted nie robi get_default() po stronie zadania.
     """
     from bpp.models import Zrodlo
     from pbn_downloader_app.models import PbnJournalsDownloadTask
@@ -474,7 +482,7 @@ def download_journals(user_id):
     task_record = None
     try:
         user, pbn_user = validate_pbn_user(user_id)
-        client, _uczelnia = get_pbn_client(pbn_user)
+        client, _uczelnia = get_pbn_client(pbn_user, uczelnia_id)
 
         task_record = create_task_with_lock(
             PbnJournalsDownloadTask, user, "Inicjalizacja pobierania zrodel..."

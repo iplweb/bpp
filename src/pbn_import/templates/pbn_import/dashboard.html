@@ -129,15 +129,52 @@
         <div class="pbn-import__modal-content">
             <h4>Dane do importu</h4>
 
-            {% for step in import_steps %}
-            <label>
-                <input type="checkbox" name="{{ step.form_field }}" checked>
-                <span class="{{ step.icon }}"></span> {{ step.display }}
-                {% if step.required %}<small class="text-muted">(wymagane)</small>{% endif %}
-            </label>
-            {% endfor %}
+            {# Tabela: wiersz = encja, kolumny = Pobieranie / Przetwarzanie #}
+            <table class="pbn-import__steps-table">
+                <thead>
+                    <tr>
+                        <th>Etap</th>
+                        <th>Pobieranie</th>
+                        <th>Przetwarzanie</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for step in import_steps %}
+                    <tr>
+                        <td>
+                            <span class="{{ step.icon }}"></span> {{ step.display }}
+                            {% if step.required %}<small class="text-muted">(wymagane)</small>{% endif %}
+                        </td>
+                        {% if step.single %}
+                        {# Krok niepodzielny — jeden checkbox na obie kolumny #}
+                        <td colspan="2">
+                            <label>
+                                <input type="checkbox" name="{{ step.single.form_field }}" checked>
+                                {{ step.single.display }}
+                            </label>
+                        </td>
+                        {% else %}
+                        <td>
+                            {% if step.download %}
+                            <label>
+                                <input type="checkbox" name="{{ step.download.form_field }}" checked>
+                            </label>
+                            {% else %}—{% endif %}
+                        </td>
+                        <td>
+                            {% if step.process %}
+                            <label>
+                                <input type="checkbox" name="{{ step.process.form_field }}" checked>
+                            </label>
+                            {% else %}—{% endif %}
+                        </td>
+                        {% endif %}
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
 
-            <!-- Hidden field - never show delete existing option -->
+            {# Pole ukryte — nigdy nie pokazujemy opcji kasowania #}
             <input type="hidden" name="delete_existing" value="">
 
             {% if uzywaj_wydzialow %}
@@ -184,6 +221,20 @@
                     {% endfor %}
                 </select>
                 {% endif %}
+            </div>
+
+            <div class="pbn-import__modal-field--spaced">
+                <label>Domyślny język publikacji:</label>
+                {# Język użyty, gdy PBN nie poda języka pozycji albo poda kod #}
+                {# spoza słownika. Domyślnie polski; użytkownik może zmienić. #}
+                <select name="jezyk_domyslny_id" id="jezyk_domyslny_select">
+                    {% for j in jezyki %}
+                    <option value="{{ j.pk }}"{% if jezyk_domyslny and jezyk_domyslny.pk == j.pk %} selected{% endif %}>
+                        {{ j.nazwa }}
+                    </option>
+                    {% endfor %}
+                </select>
+                <p class="help-text">Stosowany dla pozycji bez języka w PBN lub z językiem spoza słownika.</p>
             </div>
 
             <div class="callout primary pbn-import__modal-field--spaced">
@@ -346,12 +397,18 @@ function applyPresetConfig(config) {
     // Now apply the preset configuration
     Object.keys(config).forEach(key => {
         if (key.startsWith('disable_')) {
-            // Extract the field name from disable_xxx
             const fieldName = key.replace('disable_', '');
             const input = form.querySelector(`[name="${fieldName}"]`);
             if (input && input.type === 'checkbox') {
-                // If disable_xxx is true, uncheck the checkbox
                 input.checked = !config[key];
+            } else {
+                // Legacy: disable_<encja> dotyczy obu faz encji
+                ['_download', '_process'].forEach(suffix => {
+                    const phaseInput = form.querySelector(`[name="${fieldName}${suffix}"]`);
+                    if (phaseInput && phaseInput.type === 'checkbox') {
+                        phaseInput.checked = !config[key];
+                    }
+                });
             }
         } else if (key === 'delete_existing') {
             const input = form.querySelector('[name="delete_existing"]');

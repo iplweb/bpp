@@ -3,6 +3,7 @@ import sys
 from django import forms
 from django.contrib import admin
 from django.utils.html import format_html
+from import_export.admin import ImportMixin
 from mptt.admin import DraggableMPTTAdmin
 
 from bpp.admin.helpers.djangoql import BppDjangoQLSearchMixin
@@ -14,6 +15,8 @@ from .filters import PBN_UID_IDObecnyFilter
 from .helpers import LimitingFormset
 from .helpers.fieldsets import ADNOTACJE_FIELDSET
 from .helpers.mixins import ZapiszZAdnotacjaMixin
+from .helpers.site_filtered import SiteFilteredAdminMixin
+from .jednostka_import import JednostkaImportResource
 from .xlsx_export import resources
 from .xlsx_export.mixins import EksportDanychMixin
 
@@ -39,6 +42,8 @@ class Autor_JednostkaInline(admin.TabularInline):
 
 
 class JednostkaAdmin(
+    ImportMixin,
+    SiteFilteredAdminMixin,
     BppDjangoQLSearchMixin,
     RestrictDeletionToAdministracjaGroupMixin,
     ZapiszZAdnotacjaMixin,
@@ -46,11 +51,29 @@ class JednostkaAdmin(
     BaseBppAdminMixin,
     DraggableMPTTAdmin,
 ):
+    uczelnia_field_path = "uczelnia"
     djangoql_completion_enabled_by_default = False
     djangoql_completion = True
+    # Eksport (EksportDanychMixin/ExportMixin) bierze resource_classes;
+    # import (ImportMixin) dostaje dedykowany resource przez override nizej —
+    # oba mixiny domyslnie czytaja TEN SAM atrybut resource_classes.
     resource_classes = [resources.JednostkaResource]
 
+    def get_import_resource_classes(self, request):
+        resource_classes = [JednostkaImportResource]
+        self.check_resource_classes(resource_classes)
+        return resource_classes
+
     change_list_template = "admin/grappelli_mptt_change_list.html"
+    # ImportMixin + EksportDanychMixin (ExportMixin) jednoczesnie: import_export
+    # wybiera `import_export_change_list_template` po MRO, a ImportMixin jest
+    # przed ExportMixin -> bez tego renderuje sie szablon TYLKO z importem
+    # (przycisk "Eksport" znika). Wymuszamy polaczony szablon import+export;
+    # rozszerza on `change_list_template` (grappelli_mptt) jako bazowy, wiec
+    # draggable MPTT zostaje zachowany.
+    import_export_change_list_template = (
+        "admin/import_export/change_list_import_export.html"
+    )
 
     list_display_links = ["indented_title"]
 
@@ -122,7 +145,7 @@ class JednostkaAdmin(
         # Zobacz na komentarz do Jednostka.uczelnia.default
         data = super().get_changeform_initial_data(request)
         if "uczelnia" not in data:
-            data["uczelnia"] = Uczelnia.objects.first()
+            data["uczelnia"] = Uczelnia.objects.get_for_request(request)
         return data
 
     def changelist_view(self, request, *args, **kwargs):

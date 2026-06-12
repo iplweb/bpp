@@ -4,7 +4,7 @@ import pytest
 from django.urls import reverse
 from model_bakery import baker
 
-from bpp.models import Autor, Dyscyplina_Naukowa, Jednostka
+from bpp.models import Autor, Dyscyplina_Naukowa, Jednostka, Uczelnia
 from ewaluacja_metryki.models import MetrykaAutora, StatusGenerowania
 
 
@@ -24,6 +24,9 @@ def test_metryki_list_view_logged_in(admin_user, client):
     """Test widoku listy dla zalogowanego użytkownika"""
     client.force_login(admin_user)
 
+    # Jedna uczelnia — scope_metryki jest no-op (tylko_jedna_uczelnia=True)
+    uczelnia = baker.make(Uczelnia)
+
     # Stwórz dane testowe
     autor = baker.make(Autor, nazwisko="Kowalski", imiona="Jan")
     dyscyplina = baker.make(Dyscyplina_Naukowa, nazwa="Informatyka")
@@ -36,6 +39,7 @@ def test_metryki_list_view_logged_in(admin_user, client):
         autor=autor,
         dyscyplina_naukowa=dyscyplina,
         jednostka=jednostka,
+        uczelnia=uczelnia,
         slot_maksymalny=Decimal("4.0"),
         slot_nazbierany=Decimal("3.5"),
         punkty_nazbierane=Decimal("140.0"),
@@ -48,6 +52,7 @@ def test_metryki_list_view_logged_in(admin_user, client):
     baker.make(
         MetrykaAutora,
         dyscyplina_naukowa=dyscyplina2,
+        uczelnia=uczelnia,
         slot_maksymalny=Decimal("4.0"),
         slot_nazbierany=Decimal("3.0"),
         punkty_nazbierane=Decimal("120.0"),
@@ -105,15 +110,24 @@ def test_metryki_list_view_filtering_by_nazwisko(admin_user, client):
 
 @pytest.mark.django_db
 def test_metryki_list_view_filtering_by_jednostka(admin_user, client):
-    """Test filtrowania po jednostce"""
+    """Test filtrowania po jednostce.
+
+    Używa jednej jawnej Uczelni dla obu jednostek i metryk,
+    co zapewnia spójne działanie scope_metryki (single-install no-op
+    lub multi-install z tym samym scopem co request).
+    """
     client.force_login(admin_user)
 
-    jednostka1 = baker.make(Jednostka, nazwa="Instytut Informatyki")
-    jednostka2 = baker.make(Jednostka, nazwa="Instytut Fizyki")
+    # Jedna uczelnia — scope_metryki jest no-op (tylko_jedna_uczelnia=True)
+    # i jednocześnie metryki mają spójne uczelnia_id z request-resolution
+    u = baker.make(Uczelnia)
+    jednostka1 = baker.make(Jednostka, nazwa="Instytut Informatyki", uczelnia=u)
+    jednostka2 = baker.make(Jednostka, nazwa="Instytut Fizyki", uczelnia=u)
 
     metryka1 = baker.make(
         MetrykaAutora,
         jednostka=jednostka1,
+        uczelnia=u,
         slot_maksymalny=Decimal("4.0"),
         slot_nazbierany=Decimal("3.0"),
         punkty_nazbierane=Decimal("120.0"),
@@ -123,6 +137,7 @@ def test_metryki_list_view_filtering_by_jednostka(admin_user, client):
     metryka2 = baker.make(
         MetrykaAutora,
         jednostka=jednostka2,
+        uczelnia=u,
         slot_maksymalny=Decimal("4.0"),
         slot_nazbierany=Decimal("3.0"),
         punkty_nazbierane=Decimal("120.0"),
@@ -176,6 +191,9 @@ def test_statystyki_view(admin_user, client):
     """Test widoku statystyk"""
     client.force_login(admin_user)
 
+    # Jedna uczelnia — scope_metryki jest no-op (tylko_jedna_uczelnia=True)
+    uczelnia = baker.make(Uczelnia)
+
     # Stwórz dyscyplinę raz i użyj dla wszystkich metryk
     # (unika race condition z unikalnym polem kod w Dyscyplina_Naukowa)
     dyscyplina = baker.make(Dyscyplina_Naukowa)
@@ -185,6 +203,7 @@ def test_statystyki_view(admin_user, client):
         baker.make(
             MetrykaAutora,
             dyscyplina_naukowa=dyscyplina,
+            uczelnia=uczelnia,
             slot_maksymalny=Decimal("4.0"),
             slot_nazbierany=Decimal(f"{3.0 + i * 0.2}"),
             punkty_nazbierane=Decimal(f"{120.0 + i * 10}"),
@@ -356,9 +375,14 @@ def test_metryki_list_view_sorting(admin_user, client):
     """Test sortowania listy metryk"""
     client.force_login(admin_user)
 
+    # Jedna uczelnia — scope_metryki jest no-op (tylko_jedna_uczelnia=True);
+    # obie metryki mają to samo uczelnia_id, więc view widzi obie.
+    uczelnia = baker.make(Uczelnia)
+
     # Stwórz metryki z różnymi średnimi
     metryka1 = baker.make(
         MetrykaAutora,
+        uczelnia=uczelnia,
         slot_maksymalny=Decimal("4.0"),
         slot_nazbierany=Decimal("4.0"),
         punkty_nazbierane=Decimal("200.0"),  # średnia 50
@@ -368,6 +392,7 @@ def test_metryki_list_view_sorting(admin_user, client):
 
     metryka2 = baker.make(
         MetrykaAutora,
+        uczelnia=uczelnia,
         slot_maksymalny=Decimal("4.0"),
         slot_nazbierany=Decimal("4.0"),
         punkty_nazbierane=Decimal("120.0"),  # średnia 30

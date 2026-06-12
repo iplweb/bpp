@@ -243,7 +243,17 @@ class Zgloszenie_Publikacji(
             or (self.opl_pub_amount is not None and self.opl_pub_amount != 0)
         )
 
-        uczelnia = Uczelnia.objects.get_default()
+        # Informacja o opłatach może być opcjonalna, w zależności od ustawień obiektu Uczelnia.
+        # Informacja o opłatach może być opcjonalna jeżeli rodzaj zgłaszanej publikacji to "pozostałe"
+
+        # W obydwu przypadkach nie walidujemy (nie uruchamiamy ModelZOplataZaPublikacje.clean)... ale pod jednym
+        # warunkiem: pod takim warunkiem, ze NIC nie zostało wpisane jeżeli chodzi o informację o opłatach
+        # -- czyli, że zmienna zupelny_brak_informacji_o_oplatach jest False.
+
+        if not hasattr(self, "_uczelnia") or self._uczelnia is None:
+            uczelnia = Uczelnia.objects.get()
+        else:
+            uczelnia = self._uczelnia
 
         wymaga_oplatach = self._uczelnia_wymaga_oplatach_dla_rodzaju(uczelnia)
 

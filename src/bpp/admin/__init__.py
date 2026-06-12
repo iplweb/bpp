@@ -254,6 +254,14 @@ class BppUserAdmin(UserAdmin):
             "PBN API",
             {"fields": ("przedstawiaj_w_pbn_jako",)},
         ),
+        (
+            "Dostęp do uczelni",
+            {
+                "fields": ("accessible_uczelnie",),
+                "description": "Superużytkownicy mają automatycznie dostęp "
+                "do wszystkich uczelni.",
+            },
+        ),
     )
 
     autocomplete_fields = ["autor"]

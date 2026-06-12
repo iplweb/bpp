@@ -18,7 +18,11 @@ class Command(PBNBaseCommand):
 
         # 2) pobierze naukowców za pomocą funkcji "pobierz_ludzi_z_uczelni"
         client = self.get_client(app_id, app_token, base_url, user_token)
-        uczelnia = Uczelnia.objects.get_default()
+        uczelnia_id = options.get("uczelnia_id")
+        if uczelnia_id:
+            uczelnia = Uczelnia.objects.get(pk=uczelnia_id)
+        else:
+            uczelnia = Uczelnia.objects.get()
 
         if uczelnia.pbn_uid_id is None:
             raise Exception("Uczelnia nie ma ustawionego pbn_uid_id")

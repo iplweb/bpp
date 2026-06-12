@@ -11,7 +11,6 @@ configured for the project (``bpp.BppUser`` in BPP — table
 ``bpp_bppuser``) rather than hard-coding ``auth_user``.
 """
 
-from django.apps import apps as django_apps
 from django.db import migrations
 
 

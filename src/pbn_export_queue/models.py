@@ -35,13 +35,14 @@ class PBN_Export_QueueManager(models.Manager):
             wysylke_zakonczono=None,
         )
 
-    def sprobuj_utowrzyc_wpis(self, user, rekord):
+    def sprobuj_utowrzyc_wpis(self, user, rekord, uczelnia=None):
         if self.filter_rekord_do_wysylki(rekord).exists():
             raise AlreadyEnqueuedError("ten rekord jest już w kolejce do wysyłki")
 
         return self.create(
             rekord_do_wysylki=rekord,
             zamowil=user,
+            uczelnia=uczelnia,
         )
 
 
@@ -77,6 +78,14 @@ class PBN_Export_Queue(models.Model):
     rekord_do_wysylki = GenericForeignKey()
 
     zamowil = models.ForeignKey(AUTH_USER_MODEL, on_delete=models.CASCADE)
+
+    uczelnia = models.ForeignKey(
+        "bpp.Uczelnia",
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name="pbn_export_queue",
+    )
 
     zamowiono = models.DateTimeField(auto_now_add=True, db_index=True)
 
@@ -373,6 +382,7 @@ class PBN_Export_Queue(models.Model):
                 user=self.zamowil.get_pbn_user(),
                 obj=self.rekord_do_wysylki,
                 force_upload=True,
+                uczelnia=self.uczelnia,
             )
         except Exception as exc:
             return self._handle_pbn_exception(exc)
