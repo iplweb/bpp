@@ -432,7 +432,7 @@ build-backend = "setuptools.build_meta"
 # automatycznie. Opt-out: `--no-dev` lub UV_NO_DEV=1 (uzywane w produkcji
 # docker stage builderowym).
 dev = [
-    "bumpver>=2023.1124",
+    "bumpver>=2026.1132",
     "pytest-recording>=0.12.1",
     "vcrpy>=8.1.1,<9",
     "towncrier>=22.8.0",
