@@ -3,8 +3,6 @@
 import json
 import random
 
-from asgiref.sync import async_to_sync
-from channels.layers import get_channel_layer
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin, PermissionRequiredMixin
 from django.db.models import Count
@@ -280,16 +278,6 @@ class StartImportView(LoginRequiredMixin, ImportPermissionMixin, View):
         session.status = "pending"  # Keep as pending until task starts
         session.save()
 
-        # Send WebSocket notification
-        self.send_websocket_update(
-            session,
-            {
-                "type": "import_started",
-                "session_id": session.id,
-                "message": "Import został rozpoczęty!",
-            },
-        )
-
         messages.success(request, f"Import #{session.id} został rozpoczęty!")
 
         if request.headers.get("HX-Request"):
@@ -297,15 +285,6 @@ class StartImportView(LoginRequiredMixin, ImportPermissionMixin, View):
             response = HttpResponse()
             response["HX-Redirect"] = reverse("pbn_import:dashboard")
             return response
-
-        return redirect("pbn_import:dashboard")
-
-    def send_websocket_update(self, session, data):
-        """Send update via WebSocket"""
-        channel_layer = get_channel_layer()
-        async_to_sync(channel_layer.group_send)(
-            f"import_{session.id}", {"type": "import_update", "data": data}
-        )
 
         return redirect("pbn_import:dashboard")
 
