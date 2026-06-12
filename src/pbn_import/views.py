@@ -35,6 +35,12 @@ from .utils.step_definitions import (
     get_form_steps,
 )
 
+# Maksymalna liczba wierszy ImportLog ładowana do widoków HTMX. Endpointy są
+# re-fetchowane co 5 s podczas długiego importu — bez tego limitu każde
+# odświeżenie ciągnęłoby tysiące wierszy. Pełny log pozostaje pobieralny przez
+# ImportLogDownloadView (nieprzycięty).
+MAX_LOGS_DISPLAY = 200
+
 
 class ImportPermissionMixin(PermissionRequiredMixin):
     """Mixin requiring PBN import permissions"""
@@ -493,12 +499,12 @@ class ImportSessionDetailView(LoginRequiredMixin, ImportPermissionMixin, DetailV
         # Get all logs for this session
         context["logs"] = ImportLog.objects.filter(session=session).order_by(
             "-timestamp"
-        )
+        )[:MAX_LOGS_DISPLAY]
 
         # Get error logs specifically
         context["error_logs"] = ImportLog.objects.filter(
             session=session, level__in=["error", "critical", "warning"]
-        ).order_by("-timestamp")
+        ).order_by("-timestamp")[:MAX_LOGS_DISPLAY]
 
         # Get inconsistencies
         inconsistencies = (
@@ -559,7 +565,9 @@ class ImportAllLogsView(LoginRequiredMixin, ImportPermissionMixin, View):
         if not request.user.is_superuser and session.user != request.user:
             return HttpResponse("Forbidden", status=403)
 
-        logs = ImportLog.objects.filter(session=session).order_by("-timestamp")
+        logs = ImportLog.objects.filter(session=session).order_by("-timestamp")[
+            :MAX_LOGS_DISPLAY
+        ]
         return render(
             request,
             "pbn_import/components/all_logs.html",
@@ -578,7 +586,7 @@ class ImportErrorLogsView(LoginRequiredMixin, ImportPermissionMixin, View):
 
         error_logs = ImportLog.objects.filter(
             session=session, level__in=["error", "critical", "warning"]
-        ).order_by("-timestamp")
+        ).order_by("-timestamp")[:MAX_LOGS_DISPLAY]
         return render(
             request,
             "pbn_import/components/error_logs.html",

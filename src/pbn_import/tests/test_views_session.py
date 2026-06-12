@@ -9,6 +9,27 @@ from django.utils import timezone
 from model_bakery import baker
 
 from pbn_import.models import ImportLog, ImportSession
+from pbn_import.views import MAX_LOGS_DISPLAY
+
+# ============================================================================
+# LOG QUERYSET CAP TESTS (performance)
+# ============================================================================
+
+
+@pytest.mark.django_db
+def test_all_logs_view_caps_results(admin_client):
+    """ImportAllLogsView nie ładuje wszystkich wierszy ImportLog — slice do
+    MAX_LOGS_DISPLAY (HTMX re-fetch co 5 s nie może ciągnąć tysięcy wierszy)."""
+    session = baker.make(ImportSession)
+    baker.make(ImportLog, session=session, _quantity=MAX_LOGS_DISPLAY + 25)
+
+    response = admin_client.get(
+        reverse("pbn_import:all_logs", args=[session.pk]),
+    )
+
+    assert response.status_code == 200
+    assert len(response.context["logs"]) == MAX_LOGS_DISPLAY
+
 
 # ============================================================================
 # SESSION DETAIL VIEW TESTS
