@@ -52,3 +52,23 @@ def test_ma_punktacje_sloty_wykrywa_punktacje_dyscypliny():
         slot=1,
     )
     assert rekord.ma_punktacje_sloty is True
+
+
+@pytest.mark.django_db
+def test_search_index_uzywa_gin():
+    """Indeks pełnotekstowy na bpp_rekord_mat ma być GIN, nie GiST.
+
+    Benchmark na zrzucie produkcyjnym (122k rekordów, 2026-06): GIN
+    czyta 1.7-19.6x szybciej przy kształtach zapytań BPP (prefix :*,
+    AND dwóch termów, websearch, ranking), przy porównywalnym koszcie
+    zapisu i rozmiarze (15 vs 11 MB)."""
+    with connection.cursor() as c:
+        c.execute(
+            "SELECT indexdef FROM pg_indexes "
+            "WHERE tablename='bpp_rekord_mat' "
+            "AND indexdef ILIKE '%search_index%'"
+        )
+        definicje = [row[0] for row in c.fetchall()]
+    assert definicje, "brak indeksu na search_index"
+    for indexdef in definicje:
+        assert "USING gin" in indexdef, indexdef

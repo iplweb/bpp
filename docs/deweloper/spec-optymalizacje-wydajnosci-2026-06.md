@@ -151,6 +151,17 @@ i naprawiony DRUGI bug v2: DELETE jednej z dwóch ról autora
   na zrzucie produkcyjnym, jeśli latencja wyszukiwania pełnotekstowego
   ma znaczenie.
 
+  **Status: ✅ zbenchmarkowane i zrobione** (branch
+  `perf/search-index-gin`, migracja `0431_search_index_gin`).
+  Benchmark na zrzucie produkcyjnym `db-backup-20260603` (122 232
+  rekordy, 178 MB, kontener `bpp_dbserver:psql-18`, kształty zapytań
+  z `FulltextSearchMixin`): prefix `:*` 47.6→12.6 ms (3.8×), AND
+  dwóch termów 47.4→2.4 ms (19.6×), websearch 14.7→8.9 ms (1.7×),
+  ranking top-20 48.7→13.2 ms (3.7×). Zapis (UPDATE 1000 publikacji
+  przez trigger; każda strona mierzona z tylko jednym indeksem,
+  drugi DROP-nięty w transakcji): 66.2 s GiST vs 60.6 s GIN — bez
+  regresji. Rozmiar: 15 MB GIN vs 11 MB GiST. Budowa GIN: 0.4 s.
+
 ### 1.6. Długoterminowo: triggery statement-level (PRIORYTET 10)
 
 Masowe UPDATE odpalają całą procedurę per wiersz (lock, SELECT z GROUP
