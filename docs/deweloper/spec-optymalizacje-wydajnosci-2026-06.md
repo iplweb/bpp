@@ -83,6 +83,10 @@ kilku tysiącach wierszy przed/po + `pg_stat_user_tables.n_dead_tup`
 dla obu tabel mat. Testy: istniejące testy triggera + nowy test
 „edycja publikacji nie zmienia zawartości bpp_autorzy_mat".
 
+**Status: ✅ zrobione** (PR #352, migracja `0429_cache_trigger_v3`;
+benchmark syntetyczny: bulk UPDATE 100 pub × 10 aut. 1.7× szybciej,
+50 pub × 30 aut. 2.8× szybciej).
+
 ### 1.2. `plpy.subtransaction()` per wiersz (PRIORYTET 3)
 
 **Problem.** Linia 558 — każde odpalenie triggera otwiera
@@ -99,6 +103,8 @@ testem; w obecnej formie wyjątek i tak propaguje i wywala transakcję.
 
 **Weryfikacja.** Benchmark jak w 1.1 (szczególnie pojedyncza
 transakcja z >64 zmienionymi wierszami).
+
+**Status: ✅ zrobione** (PR #352, migracja `0429_cache_trigger_v3`).
 
 ### 1.3. `liczba_autorow` — eventual consistency przez denorm (DOKUMENTACJA)
 
@@ -121,6 +127,13 @@ dotknięcia rekordu.
 (`rekord_id`, `autor_id`); gdy różne — odświeżyć obie. Najpierw test
 reprodukujący (UPDATE `autor_id` przez ORM/SQL + asercja na zawartość
 `bpp_autorzy_mat`).
+
+**Status: ✅ zrobione** (PR #352) — bug potwierdzony czerwonym testem;
+v3 czyta `TD["new"]`, a upsert po stabilnym `id = ARRAY[ct,
+pk-wiersza-through]` aktualizuje wiersz w miejscu. Przy okazji wykryty
+i naprawiony DRUGI bug v2: DELETE jednej z dwóch ról autora
+(aut. + red.) kasował z `bpp_autorzy_mat` oba wiersze (DELETE po
+`(rekord_id, autor_id)` zamiast po id wiersza mat).
 
 ### 1.5. Indeksy na tabelach mat — follow-up po 1.1
 
@@ -270,6 +283,16 @@ referencję) i kod powiadomień w `notifications`.
 **Weryfikacja.** Rozmiar `bundle.js` przed/po; smoke-test dźwięku
 powiadomienia (test Playwright lub ręcznie przez `run-site`).
 
+**Status: ✅ zrobione** (branch `perf/frontend-bundle`) — okazało się
+LEPIEJ niż w spec: Tone.js to był martwy kod. Jedyny konsument
+(`notifications-chime.js` z channels_broadcast) nie jest w ogóle
+ładowany, `enableChime()` nigdzie nie jest wołane, a komunikaty idą
+z `sound: false`. Usunięty import + zależność `tone` z package.json.
+Bundle: 1 541 543 B → 943 122 B (**−598 KB, −39%**). Smoke-test
+przeglądarkowy (run-site + Playwright): strony działają,
+channelsBroadcast/Mustache/htmx/jQuery/Foundation obecne, zero błędów
+konsoli związanych z bundle.
+
 ### 3.2. `COMPRESS_JS_FILTERS = []` (PRIORYTET 6)
 
 **Problem.** `src/django_bpp/settings/base.py:585` —
@@ -290,6 +313,11 @@ pliki spoza SCSS pipeline'u (jqueryui, select2 itd., `bare.html:45-58`)
 
 **Weryfikacja.** Czas `manage.py compress --force` przed/po; diff
 rozmiarów plików w `CACHE-*/`.
+
+**Status: ✅ zrobione** (branch `perf/frontend-bundle`) —
+`COMPRESS_JS_FILTERS = []`, filtry CSS zostają (CssAbsoluteFilter
+przepisuje względne `url()` przy konkatenacji — load-bearing;
+CSSMinFilter potrzebny dla nie-zminifikowanych wejść spoza SCSS).
 
 ### 3.3. Selektywna kompilacja Foundation (PRIORYTET 8)
 
