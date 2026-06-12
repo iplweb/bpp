@@ -1,6 +1,5 @@
 """Views for PBN import interface"""
 
-import json
 import random
 
 from django.contrib import messages
@@ -11,7 +10,6 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
 from django.views import View
-from django.views.decorators.csrf import csrf_exempt
 from django.views.generic import DetailView, ListView, TemplateView
 
 from bpp.models import Jednostka, Jezyk, Uczelnia, Wydzial
@@ -466,19 +464,6 @@ class ImportPresetsView(LoginRequiredMixin, ImportPermissionMixin, View):
         ]
 
         return JsonResponse({"presets": presets})
-
-
-class SavePresetView(LoginRequiredMixin, ImportPermissionMixin, View):
-    """Save a custom import preset"""
-
-    @csrf_exempt
-    def post(self, request):
-        data = json.loads(request.body)  # noqa
-
-        # In production, save to database or user preferences
-        # For now, just return success
-
-        return JsonResponse({"success": True, "message": "Preset zapisany pomyślnie!"})
 
 
 class ImportSessionDetailView(LoginRequiredMixin, ImportPermissionMixin, DetailView):
