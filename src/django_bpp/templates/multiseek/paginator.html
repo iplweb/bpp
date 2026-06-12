@@ -1,9 +1,9 @@
 {% load pagination_tags %}
 <div class="multiseek-pagination-wrapper" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap;">
     <ul class="menu hide-for-print" style="margin-bottom: 0;">
-        <li><a href="#"><i class="fi-database"></i> Rekordów: {{ paginator_count }}</a></li>
+        <li><a href="#"><i class="fi-database"></i> Razem: {{ paginator_count }}</a></li>
         {% if not is_live %}
-            <li><a href=".."><i class="fi-arrow-left"></i> Powrót do formularza</a>
+            <li><a href=".."><i class="fi-arrow-left"></i> Powrót</a>
             </li>
         {% endif %}
         {% if paginator_count > 0 and paginator_count < max_rows %}
@@ -16,7 +16,7 @@
                 {% if request.GET.all != "1" %}
                     <li>
                         <a target="_blank" href="/multiseek/results/?all=1"><i class="fi-page-multiple"></i>
-                            Wyświetl&nbsp;wszystkie</a>
+                            Pokaż</a>
                     </li>
                 {% endif %}
             {% else %}
@@ -25,9 +25,23 @@
                             class="fi-print"></i> Drukuj</a>
                 </li>
                 {% if request.GET.all != "1" and paginator.num_pages > 1 %}
-                    <li><a href="?all=1"><i class="fi-page-multiple"></i> Wyświetl wszystkie</a></li>
+                    <li><a href="?all=1"><i class="fi-page-multiple"></i> Pokaż</a></li>
                 {% endif %}
             {% endif %}
+        {% endif %}
+        {% if request.user.is_authenticated and paginator_count > 0 and paginator_count <= multiseek_export_max_rows %}
+            {% url "multiseek-export" "csv" as multiseek_export_csv_url %}
+            {% url "multiseek-export" "xlsx" as multiseek_export_xlsx_url %}
+            <li>
+                <a href="{{ multiseek_export_csv_url }}{% if print_removed %}?print-removed=1{% endif %}">
+                    <i class="fi-download"></i> CSV
+                </a>
+            </li>
+            <li>
+                <a href="{{ multiseek_export_xlsx_url }}{% if print_removed %}?print-removed=1{% endif %}">
+                    <i class="fi-download"></i> XLS
+                </a>
+            </li>
         {% endif %}
     </ul>
     {% if paginator.num_pages > 1 %}

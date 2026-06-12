@@ -17,6 +17,8 @@ from .helpers.fieldsets import ADNOTACJE_FIELDSET
 from .helpers.mixins import ZapiszZAdnotacjaMixin
 from .helpers.site_filtered import SiteFilteredAdminMixin
 from .jednostka_import import JednostkaImportResource
+from .xlsx_export import resources
+from .xlsx_export.mixins import EksportDanychMixin
 
 
 class Jednostka_WydzialInline(admin.TabularInline):
@@ -45,14 +47,22 @@ class JednostkaAdmin(
     BppDjangoQLSearchMixin,
     RestrictDeletionToAdministracjaGroupMixin,
     ZapiszZAdnotacjaMixin,
+    EksportDanychMixin,
     BaseBppAdminMixin,
     DraggableMPTTAdmin,
 ):
     uczelnia_field_path = "uczelnia"
     djangoql_completion_enabled_by_default = False
     djangoql_completion = True
+    # Eksport (EksportDanychMixin/ExportMixin) bierze resource_classes;
+    # import (ImportMixin) dostaje dedykowany resource przez override nizej —
+    # oba mixiny domyslnie czytaja TEN SAM atrybut resource_classes.
+    resource_classes = [resources.JednostkaResource]
 
-    resource_classes = [JednostkaImportResource]
+    def get_import_resource_classes(self, request):
+        resource_classes = [JednostkaImportResource]
+        self.check_resource_classes(resource_classes)
+        return resource_classes
 
     change_list_template = "admin/grappelli_mptt_change_list.html"
 

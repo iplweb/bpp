@@ -1,5 +1,6 @@
 from io import BytesIO
 
+import rollbar
 from django.core.paginator import Paginator
 from django.db.models import Sum
 from django.http import HttpResponse, JsonResponse
@@ -273,10 +274,14 @@ class StartTaskView(View):
             task.status = "failed"
             task.error_message = str(e)
             task.save()
+            # Persist the detail on the task / report to Rollbar, but do not
+            # echo the raw exception text back to the client.
+            rollbar.report_exc_info()
             return JsonResponse(
                 {
                     "success": False,
-                    "error": f"Nie udalo sie uruchomic zadania: {str(e)}",
+                    "error": "Nie udalo sie uruchomic zadania. "
+                    "Szczegoly zapisano w zadaniu i przekazano administratorowi.",
                 }
             )
 

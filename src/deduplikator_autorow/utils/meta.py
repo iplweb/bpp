@@ -24,15 +24,28 @@ from bpp.models import (
 )
 from pbn_api.models import OsobaZInstytucji
 
+DASH_TRANSLATION = str.maketrans(
+    {
+        "\u2010": "-",
+        "\u2011": "-",
+        "\u2012": "-",
+        "\u2013": "-",
+        "\u2014": "-",
+        "\u2015": "-",
+        "\u2212": "-",
+    }
+)
+
 
 def _normalize(s: str | None) -> str:
-    return (s or "").strip().lower()
+    return (s or "").translate(DASH_TRANSLATION).strip().lower()
 
 
 def _split_compound(nazwisko: str | None) -> list[str]:
-    if not nazwisko:
+    normalized = _normalize(nazwisko)
+    if not normalized:
         return []
-    return [_normalize(p) for p in nazwisko.split("-") if p.strip()]
+    return [p for p in normalized.split("-") if p]
 
 
 def _aggregate_publications(model, autorzy_meta: dict[int, dict]) -> None:

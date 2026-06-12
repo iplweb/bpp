@@ -280,20 +280,33 @@ class ImportStepBase:
             or "autoryzacja" in error_msg.lower()
         )
 
+    # Uwaga: fazy download()/process() NIE są opakowane w transakcję — gdy
+    # ImportManager woła je osobno (method=), atomowość per faza jest
+    # odpowiedzialnością podklasy. Tylko legacy run() (obie fazy) jest atomic.
+
+    def download(self):
+        """Faza pobierania danych z PBN do lustra. Nadpisz w podklasie."""
+        raise NotImplementedError("Krok nie implementuje fazy pobierania")
+
+    def process(self):
+        """Faza przetwarzania lustra do modeli BPP. Nadpisz w podklasie."""
+        raise NotImplementedError("Krok nie implementuje fazy przetwarzania")
+
     @transaction.atomic
     def run(self):
-        """Execute the import step - override in subclasses"""
-        raise NotImplementedError("Subclasses must implement run()")
+        """Domyślnie: pobierz, potem przetwórz (zgodność wsteczna)."""
+        self.download()
+        return self.process()
 
-    def __call__(self):
-        """Make the class callable for easier use"""
+    def __call__(self, method: str = "run"):
+        """Uruchom wskazaną fazę (run/download/process) z obwiednią start/finish."""
+        if method not in ("run", "download", "process"):
+            raise ValueError(f"Nieznana metoda kroku importu: {method!r}")
         self.start()
         try:
-            result = self.run()
+            result = getattr(self, method)()
             self.finish()
             return result
         except Exception as e:
-            # handle_error now does Rollbar reporting and logging
             self.handle_error(e, f"Krytyczny błąd w {self.step_name}")
-            # Note: Don't mark_failed here - let ImportManager handle it
             raise

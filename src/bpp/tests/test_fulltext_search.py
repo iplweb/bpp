@@ -1,8 +1,9 @@
 import pytest
 from django.urls.base import reverse
-
 from django.utils.http import urlencode
+from model_bakery import baker
 
+from bpp.models import Rekord, Wydawnictwo_Ciagle
 from bpp.models.autor import Autor
 
 
@@ -28,6 +29,40 @@ def test_tokenizer_minus(wydawnictwo_zwarte, client):
 def test_fulltext_search_mixin(autor_jan_kowalski):
     res = Autor.objects.fulltext_filter("kowalski jan")
     assert autor_jan_kowalski in res
+
+
+@pytest.mark.django_db
+def test_publication_fulltext_search_uses_weighted_cached_fields(
+    autor_jan_kowalski, jednostka
+):
+    publication = baker.make(
+        Wydawnictwo_Ciagle,
+        tytul_oryginalny="Neurokognitywny atlas markerowy",
+        tytul="Neurocognitive marker atlas",
+        rok=2031,
+        doi="10.1234/BPP.FULLTEXT-ATLAS",
+        szczegoly="Opis zawiera fraze neurodetektor",
+    )
+    publication.dodaj_autora(
+        autor_jan_kowalski,
+        jednostka,
+        zapisany_jako="Kowalski Jan",
+    )
+
+    Rekord.objects.full_refresh()
+    record = Rekord.objects.get_for_model(publication)
+
+    queries = [
+        "Neurokognitywny",
+        "Neurokognitywny Kowalski",
+        "Neurokognitywny 2031",
+        "10.1234/BPP.FULLTEXT-ATLAS",
+        "101234BPPFULLTEXTATLAS",
+        "neurodetektor",
+    ]
+
+    for query in queries:
+        assert record in Rekord.objects.fulltext_filter(query)
 
 
 @pytest.mark.django_db

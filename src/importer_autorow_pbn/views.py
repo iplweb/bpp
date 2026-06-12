@@ -1,5 +1,6 @@
 from datetime import datetime
 
+import rollbar
 from django.contrib import messages
 from django.contrib.admin.views.decorators import staff_member_required
 from django.contrib.auth.decorators import login_required
@@ -469,8 +470,14 @@ def create_all_unmatched_scientists(request):
                 employment_data = view._get_employment_data(scientist)
                 _create_autor_jednostka(autor, employment_data)
                 created_count += 1
-            except Exception as e:
-                errors.append(f"{scientist} - błąd: {str(e)}")
+            except Exception:
+                # Report full details to the server (Rollbar) but never leak
+                # the raw exception text back to the client.
+                rollbar.report_exc_info()
+                errors.append(
+                    f"{scientist} - błąd podczas tworzenia autora "
+                    "(szczegóły przekazano administratorowi)"
+                )
 
     if created_count > 0:
         messages.success(

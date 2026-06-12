@@ -10,6 +10,7 @@ from django.db.models import Count
 from django.db.models.functions import Substr
 from django.http import JsonResponse
 from django.utils import timezone
+from django.utils.http import url_has_allowed_host_and_scheme
 
 try:
     from django.core.urlresolvers import reverse
@@ -301,6 +302,16 @@ class Browser(ListView):
                 if params:
                     redirect_url += "?" + params.urlencode()
 
+                # Guard against open redirects: only ever redirect within this
+                # host. The constructed URL is always same-origin (request.path
+                # + urlencoded params), so this guard passes in practice; the
+                # fallback is a constant (not request-derived) so the redirect
+                # sink only ever sees validated-or-literal data.
+                if not url_has_allowed_host_and_scheme(
+                    redirect_url, allowed_hosts={request.get_host()}
+                ):
+                    redirect_url = "/"
+
                 # Add warning message
                 messages.warning(
                     request,
@@ -511,10 +522,11 @@ class LataView(ListView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        uczelnia = Uczelnia.objects.get_for_request(self.request)
-        context["total_publications"] = scope_rekord_do_uczelni(
-            Rekord.objects.all(), uczelnia
-        ).count()
+        # Suma z policzonych juz count-ow per rok (get_queryset liczy je juz
+        # w zakresie uczelni) — bez drugiego skanu tabeli.
+        context["total_publications"] = sum(
+            year_data["count"] for year_data in context["years"]
+        )
 
         # Add current year for reference
         context["current_year"] = timezone.now().year
@@ -560,23 +572,26 @@ class RokView(ListView):
         year = int(self.kwargs.get("rok"))
         context["year"] = year
 
-        # Navigation to previous/next year
+        # Navigation to previous/next year (jedno zapytanie zamiast dwoch EXISTS)
         context["prev_year"] = None
         context["next_year"] = None
 
         uczelnia = Uczelnia.objects.get_for_request(self.request)
-
-        def _scoped(qs):
-            return scope_rekord_do_uczelni(qs, uczelnia)
-
-        if _scoped(Rekord.objects.filter(rok=year - 1)).exists():
+        sasiednie_lata = set(
+            scope_rekord_do_uczelni(
+                Rekord.objects.filter(rok__in=(year - 1, year + 1)), uczelnia
+            )
+            .values_list("rok", flat=True)
+            .distinct()
+        )
+        if year - 1 in sasiednie_lata:
             context["prev_year"] = year - 1
-
-        if _scoped(Rekord.objects.filter(rok=year + 1)).exists():
+        if year + 1 in sasiednie_lata:
             context["next_year"] = year + 1
 
-        # Get total count for the year
-        context["total_count"] = _scoped(Rekord.objects.filter(rok=year)).count()
+        # Paginator ListView policzyl juz COUNT dla tego roku (queryset jest
+        # juz zawezony do uczelni) — nie liczymy drugi raz.
+        context["total_count"] = context["paginator"].count
 
         return context
 

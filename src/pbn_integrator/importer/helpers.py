@@ -298,6 +298,23 @@ def pobierz_jezyk(mainLanguage, pbn_json_title=None, domyslny_jezyk=None):
     return domyslny_jezyk
 
 
+def ustaw_jezyk_oryginalny(ret, pbn_json):
+    """Mapuje ``originalLanguage`` z PBN na ``ret.jezyk_orig`` (round-trip eksportu).
+
+    Adapter eksportu (``_build_language_data``) zapisuje ``originalLanguage`` z
+    ``jezyk_orig`` rekordu (język oryginału dla tłumaczeń). Import musi ten klucz
+    skonsumować — inaczej ``assert_dictionary_empty`` wywala cały import na
+    leftoverze ``{'originalLanguage': ...}``.
+
+    ``jezyk_orig`` jest nullable i dotyczy tylko tłumaczeń, więc gdy kodu nie ma
+    w słowniku ``Jezyk`` zostawiamy ``None`` (NIE język domyślny — inaczej niż
+    ``mainLanguage`` → ``jezyk``). Klucz konsumujemy zawsze, gdy jest obecny.
+    """
+    kod_jezyka = pbn_json.pop("originalLanguage", None)
+    if kod_jezyka:
+        ret.jezyk_orig = _dopasuj_jezyk(kod_jezyka)
+
+
 def przetworz_journal_issue(pbn_json, ret, zrodlo):
     """Process journalIssue data and add to annotations if needed."""
     journalIssue = pbn_json.pop("journalIssue", {})
@@ -379,78 +396,103 @@ def importuj_openaccess(
     oa_json = pbn_json.pop("openAccess", None)
     orig_oa_json = copy.deepcopy(oa_json)  # noqa
     if oa_json is not None:
-        pbn_licencja = oa_json.pop("license").replace("_", "-")
-        try:
-            ret.openaccess_licencja = Licencja_OpenAccess.objects.get(
-                skrot=pbn_licencja
-            )
-        except Licencja_OpenAccess.DoesNotExist as err:
-            raise ValueError(f"W BPP nie istnieje licancja {pbn_licencja=}") from err
-        ret.openaccess_tryb_dostepu = klasa_bazowa_tryb_dostepu.objects.get(
-            skrot=oa_json.pop("mode")
-        )
-        ret.openaccess_czas_publikacji = Czas_Udostepnienia_OpenAccess.objects.get(
-            skrot=oa_json.pop("releaseDateMode")
-        )
-
-        pbn_wersja_tekstu = oa_json.pop("textVersion")
-        try:
-            ret.openaccess_wersja_tekstu = Wersja_Tekstu_OpenAccess.objects.get(
-                skrot=pbn_wersja_tekstu
-            )
-        except Wersja_Tekstu_OpenAccess.DoesNotExist as err:
-            raise NotImplementedError(
-                f"W BPP nie istnieje wersja tekstu openaccess {pbn_wersja_tekstu=}"
-            ) from err
-
-        months = oa_json.pop("months", None)
-        if months:
-            ret.openaccess_ilosc_miesiecy = months
-
-        reldate = oa_json.pop("releaseDate", None)
-        if reldate:
-            reldate = reldate.split("T")[0]
-            ret.openaccess_data_opublikowania = date.fromisoformat(reldate)
-
-            oa_json.pop("releaseDateYear", None)
-            oa_json.pop("releaseDateMonth", None)
-        else:
-            if "releaseDateYear" in oa_json and "releaseDateMonth" in oa_json:
-                strMonth = {
-                    "JANUARY": 1,
-                    "FEBRUARY": 2,
-                    "MARCH": 3,
-                    "APRIL": 4,
-                    "MAY": 5,
-                    "JUNE": 6,
-                    "JULY": 7,
-                    "AUGUST": 8,
-                    "SEPTEMBER": 9,
-                    "OCTOBER": 10,
-                    "NOVEMBER": 11,
-                    "DECEMBER": 12,
-                }
-
-                assert ret.openaccess_data_opublikowania is None
-
-                reldate_year = oa_json.pop("releaseDateYear")
-                if reldate_year is None:
-                    logger.info("bez zartow BLAD DDATY")
-                else:
-                    ret.openaccess_data_opublikowania = date(
-                        int(reldate_year),
-                        strMonth.get(oa_json.pop("releaseDateMonth")),
-                        1,
-                    )
-
-            if "releaseDateYear" in oa_json:  # sam rok
-                ret.openaccess_data_opublikowania = date(
-                    int(oa_json.pop("releaseDateYear")),
-                    1,
-                    1,
+        # Blok openAccess z PBN bywa niekompletny — potrafi nie zawierać
+        # license/mode/releaseDateMode/textVersion. Wszystkie docelowe pola FK
+        # są nullable, więc brak klucza zostawia pole puste, a nie wywala import
+        # KeyError-em. Wartość OBECNA, ale nieznana w słowniku BPP, to realna
+        # luka konfiguracji — wtedy zgłaszamy błąd (jak dotychczas).
+        pbn_licencja = oa_json.pop("license", None)
+        if pbn_licencja:
+            pbn_licencja = pbn_licencja.replace("_", "-")
+            try:
+                ret.openaccess_licencja = Licencja_OpenAccess.objects.get(
+                    skrot=pbn_licencja
                 )
+            except Licencja_OpenAccess.DoesNotExist as err:
+                raise ValueError(
+                    f"W BPP nie istnieje licancja {pbn_licencja=}"
+                ) from err
 
+        pbn_tryb = oa_json.pop("mode", None)
+        if pbn_tryb:
+            ret.openaccess_tryb_dostepu = klasa_bazowa_tryb_dostepu.objects.get(
+                skrot=pbn_tryb
+            )
+
+        pbn_czas = oa_json.pop("releaseDateMode", None)
+        if pbn_czas:
+            ret.openaccess_czas_publikacji = Czas_Udostepnienia_OpenAccess.objects.get(
+                skrot=pbn_czas
+            )
+
+        pbn_wersja_tekstu = oa_json.pop("textVersion", None)
+        if pbn_wersja_tekstu:
+            try:
+                ret.openaccess_wersja_tekstu = Wersja_Tekstu_OpenAccess.objects.get(
+                    skrot=pbn_wersja_tekstu
+                )
+            except Wersja_Tekstu_OpenAccess.DoesNotExist as err:
+                raise NotImplementedError(
+                    f"W BPP nie istnieje wersja tekstu openaccess {pbn_wersja_tekstu=}"
+                ) from err
+
+        _importuj_openaccess_daty(ret, oa_json)
         assert_dictionary_empty(oa_json)
+
+
+def _importuj_openaccess_daty(ret, oa_json):
+    """Ustawia pola dat/miesięcy Open Access z (potencjalnie niekompletnego) bloku.
+
+    Wydzielone z ``importuj_openaccess`` dla czytelności i utrzymania złożoności
+    cyklomatycznej w ryzach. Klucze ``releaseDate*`` konsumujemy w miarę użycia,
+    by ``assert_dictionary_empty`` nie wywalił importu na resztkach.
+    """
+    months = oa_json.pop("months", None)
+    if months:
+        ret.openaccess_ilosc_miesiecy = months
+
+    reldate = oa_json.pop("releaseDate", None)
+    if reldate:
+        reldate = reldate.split("T")[0]
+        ret.openaccess_data_opublikowania = date.fromisoformat(reldate)
+        oa_json.pop("releaseDateYear", None)
+        oa_json.pop("releaseDateMonth", None)
+        return
+
+    if "releaseDateYear" in oa_json and "releaseDateMonth" in oa_json:
+        strMonth = {
+            "JANUARY": 1,
+            "FEBRUARY": 2,
+            "MARCH": 3,
+            "APRIL": 4,
+            "MAY": 5,
+            "JUNE": 6,
+            "JULY": 7,
+            "AUGUST": 8,
+            "SEPTEMBER": 9,
+            "OCTOBER": 10,
+            "NOVEMBER": 11,
+            "DECEMBER": 12,
+        }
+
+        assert ret.openaccess_data_opublikowania is None
+
+        reldate_year = oa_json.pop("releaseDateYear")
+        if reldate_year is None:
+            logger.info("bez zartow BLAD DDATY")
+        else:
+            ret.openaccess_data_opublikowania = date(
+                int(reldate_year),
+                strMonth.get(oa_json.pop("releaseDateMonth")),
+                1,
+            )
+
+    if "releaseDateYear" in oa_json:  # sam rok
+        ret.openaccess_data_opublikowania = date(
+            int(oa_json.pop("releaseDateYear")),
+            1,
+            1,
+        )
 
 
 def get_or_download_publication(mongoId, client):

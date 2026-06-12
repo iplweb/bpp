@@ -276,11 +276,13 @@ class RekordBase(
 
     @cached_property
     def content_type(self):
-        return ContentType.objects.get(pk=self.id[0])
+        # get_for_id korzysta z procesowego cache ContentTypeManager;
+        # gole .get(pk=...) wykonywaloby zapytanie per instancja.
+        return ContentType.objects.get_for_id(self.id[0])
 
     @cached_property
     def describe_content_type(self):
-        return ContentType.objects.get(pk=self.id[0]).model_class()._meta.verbose_name
+        return self.content_type.model_class()._meta.verbose_name
 
     @cached_property
     def object_id(self):

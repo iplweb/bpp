@@ -72,7 +72,12 @@ class PublikacjaInstytucji_V2(models.Model):
         from bpp import const
         from bpp.models import Uczelnia
 
-        uczelnia = self.uczelnia or Uczelnia.objects.get()
+        # Multi-hosted: wiersz lustrzany nie ma requestu. Gdy brak własnego
+        # taga uczelni, próbujemy JEDYNEJ w systemie (single → ona; 0/>1 →
+        # None → link się nie wyrenderuje). NIE ma „uczelni domyślnej" i nie
+        # zgadujemy pierwszej-z-brzegu (dawne ``Uczelnia.objects.get()``
+        # wybuchało MultipleObjectsReturned przy >1 uczelni).
+        uczelnia = self.uczelnia or Uczelnia.objects.get_single_uczelnia_or_none()
         if uczelnia is not None:
             return const.LINK_PI_ADD_STATEMENTS.format(
                 pbn_api_root=uczelnia.pbn_api_root, pbn_uid_id=pbn_uid_id, uuid=uuid

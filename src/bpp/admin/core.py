@@ -190,9 +190,12 @@ def generuj_formularz_dla_autorow(  # noqa
         def __init__(self, *args, **kwargs):  # noqa
             super().__init__(*args, **kwargs)
 
-            # Ustaw inicjalną wartość dla pola 'afiliuje'
+            # Ustaw inicjalną wartość dla pola 'afiliuje'. Formularz inline nie
+            # dysponuje requestem (świadomie — to UI-default nowego wiersza),
+            # więc czytamy JEDYNĄ uczelnię (single → ona; 0/>1 → None →
+            # neutralny default True). NIE zgadujemy pierwszej-z-brzegu.
             domyslnie_afiliuje = True
-            uczelnia = Uczelnia.objects.first()
+            uczelnia = Uczelnia.objects.get_single_uczelnia_or_none()
             if uczelnia is not None:
                 domyslnie_afiliuje = uczelnia.domyslnie_afiliuje
             self.fields["afiliuje"].initial = domyslnie_afiliuje

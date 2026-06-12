@@ -151,7 +151,7 @@
                                         /
                                         {% for typ, lista in praca.wydawnictwo_nadrzedne_w_pbn.autorzy.items %}
                                             {% for autor in lista %}
-                                                {{ autor.lastName }} {{ autor.firstName|default:autor.givenNames|default:"" }}{% if not forloop.last %}, {% endif %}
+                                                {{ autor.lastName }} {{ autor.firstName }}{% if not forloop.last %}, {% endif %}
                                             {% endfor %}
                                             {% if not forloop.last %}, {% endif %}
                                         {% endfor %}

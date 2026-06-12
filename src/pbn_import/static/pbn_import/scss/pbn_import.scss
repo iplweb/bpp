@@ -1148,3 +1148,26 @@ a.pbn-import__session-item {
     padding-top: 15px;
     border-top: 1px solid #e2e8f0;
 }
+
+// Steps table (new-import modal)
+.pbn-import__steps-table {
+    width: 100%;
+
+    th,
+    td {
+        text-align: left;
+        vertical-align: middle;
+    }
+
+    th:nth-child(2),
+    th:nth-child(3),
+    td:nth-child(2),
+    td:nth-child(3) {
+        text-align: center;
+        width: 7rem;
+    }
+
+    label {
+        margin: 0;
+    }
+}

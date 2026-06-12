@@ -31,45 +31,53 @@ class PublicationImporter(ImportStepBase):
         self.default_jednostka = None
         self.default_jezyk = None
 
-    def run(self):
-        """Import publications"""
-        # Setup uczelnia and jednostka
+    def download(self):
+        """Pobierz publikacje instytucji (v1 + v2) z PBN do lustra."""
         uczelnia = self._setup_uczelnia_and_jednostka()
         if uczelnia is None:
-            return {"authors_imported": False, "reason": "No Uczelnia PBN UID"}
+            return {"publications_imported": False, "reason": "No Uczelnia PBN UID"}
 
-        total_steps = 4 if self.delete_existing else 3
+        result = self._download_publications(0, 2, uczelnia)
+        if result:
+            return result
+        result = self._download_publications_v2(1, 2)
+        if result:
+            return result
+
+        self.update_progress(2, 2, "Zakończono pobieranie publikacji")
+        return {"publications_downloaded": True, "error_count": len(self.errors)}
+
+    def process(self):
+        """Zaimportuj publikacje z lustra do BPP (opcjonalnie po skasowaniu)."""
+        uczelnia = self._setup_uczelnia_and_jednostka()
+        if uczelnia is None:
+            return {"publications_imported": False, "reason": "No Uczelnia PBN UID"}
+
+        if not Publication.objects.exists():
+            self.log(
+                "warning",
+                "Brak pobranych publikacji — przetwarzam 0. Uruchom fazę "
+                "pobierania, jeśli to nie zamierzone.",
+            )
+
+        total_steps = 2 if self.delete_existing else 1
         current_step = 0
-
-        # Delete existing if requested
         if self.delete_existing:
             result = self._delete_existing_publications(current_step, total_steps)
             if result:
                 return result
             current_step += 1
 
-        # Download publications
-        result = self._download_publications(current_step, total_steps, uczelnia)
-        if result:
-            return result
-        current_step += 1
-
-        # Download publications v2
-        result = self._download_publications_v2(current_step, total_steps)
-        if result:
-            return result
-        current_step += 1
-
-        # Import publications
         result = self._import_publications(current_step, total_steps)
         if result:
             return result
 
         self.update_progress(total_steps, total_steps, "Zakończono import publikacji")
-
         return {
             "publications_imported": True,
-            "default_jednostka": self.default_jednostka.nazwa,
+            "default_jednostka": (
+                self.default_jednostka.nazwa if self.default_jednostka else None
+            ),
             "error_count": len(self.errors),
         }
 
