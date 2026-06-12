@@ -497,7 +497,10 @@ class LataView(ListView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context["total_publications"] = Rekord.objects.count()
+        # Suma z policzonych juz count-ow per rok — bez drugiego skanu tabeli.
+        context["total_publications"] = sum(
+            year_data["count"] for year_data in context["years"]
+        )
 
         # Add current year for reference
         context["current_year"] = timezone.now().year
@@ -540,18 +543,23 @@ class RokView(ListView):
         year = int(self.kwargs.get("rok"))
         context["year"] = year
 
-        # Navigation to previous/next year
+        # Navigation to previous/next year (jedno zapytanie zamiast dwoch EXISTS)
         context["prev_year"] = None
         context["next_year"] = None
 
-        if Rekord.objects.filter(rok=year - 1).exists():
+        sasiednie_lata = set(
+            Rekord.objects.filter(rok__in=(year - 1, year + 1))
+            .values_list("rok", flat=True)
+            .distinct()
+        )
+        if year - 1 in sasiednie_lata:
             context["prev_year"] = year - 1
-
-        if Rekord.objects.filter(rok=year + 1).exists():
+        if year + 1 in sasiednie_lata:
             context["next_year"] = year + 1
 
-        # Get total count for the year
-        context["total_count"] = Rekord.objects.filter(rok=year).count()
+        # Paginator ListView policzyl juz COUNT dla tego roku — nie liczymy
+        # drugi raz.
+        context["total_count"] = context["paginator"].count
 
         return context
 
