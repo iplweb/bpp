@@ -313,8 +313,6 @@ class TestStartImportView:
 
         with (
             patch("pbn_import.tasks.run_pbn_import") as mock_task,
-            patch("pbn_import.views.get_channel_layer"),
-            patch("pbn_import.views.async_to_sync"),
         ):
             mock_task.delay.return_value = MagicMock(id="task-123")
 
@@ -345,8 +343,6 @@ class TestStartImportView:
 
         with (
             patch("pbn_import.tasks.run_pbn_import") as mock_task,
-            patch("pbn_import.views.get_channel_layer"),
-            patch("pbn_import.views.async_to_sync"),
         ):
             mock_task.delay.return_value = MagicMock(id="task-123")
 
@@ -386,8 +382,6 @@ class TestStartImportView:
 
         with (
             patch("pbn_import.tasks.run_pbn_import") as mock_task,
-            patch("pbn_import.views.get_channel_layer"),
-            patch("pbn_import.views.async_to_sync"),
         ):
             mock_task.delay.return_value = MagicMock(id="task-123")
 
@@ -415,8 +409,6 @@ class TestStartImportView:
 
         with (
             patch("pbn_import.tasks.run_pbn_import") as mock_task,
-            patch("pbn_import.views.get_channel_layer"),
-            patch("pbn_import.views.async_to_sync"),
         ):
             mock_task.delay.return_value = MagicMock(id="task-123")
 
@@ -437,8 +429,6 @@ class TestStartImportView:
 
         with (
             patch("pbn_import.tasks.run_pbn_import") as mock_task,
-            patch("pbn_import.views.get_channel_layer"),
-            patch("pbn_import.views.async_to_sync"),
         ):
             mock_task.delay.return_value = MagicMock(id="task-123")
 
@@ -462,8 +452,6 @@ class TestStartImportView:
 
         with (
             patch("pbn_import.tasks.run_pbn_import") as mock_task,
-            patch("pbn_import.views.get_channel_layer"),
-            patch("pbn_import.views.async_to_sync"),
         ):
             mock_task.delay.return_value = MagicMock(id="task-123")
 
@@ -488,8 +476,6 @@ class TestStartImportView:
 
         with (
             patch("pbn_import.tasks.run_pbn_import") as mock_task,
-            patch("pbn_import.views.get_channel_layer"),
-            patch("pbn_import.views.async_to_sync"),
         ):
             mock_task.delay.return_value = MagicMock(id="task-123")
 
@@ -521,8 +507,6 @@ class TestStartImportView:
 
         with (
             patch("pbn_import.tasks.run_pbn_import") as mock_task,
-            patch("pbn_import.views.get_channel_layer"),
-            patch("pbn_import.views.async_to_sync"),
         ):
             mock_task.delay.return_value = MagicMock(id="task-123")
 
@@ -555,8 +539,6 @@ class TestStartImportView:
 
         with (
             patch("pbn_import.tasks.run_pbn_import") as mock_task,
-            patch("pbn_import.views.get_channel_layer"),
-            patch("pbn_import.views.async_to_sync"),
             patch.object(
                 Uczelnia.objects, "get_for_request", return_value=request_uczelnia
             ),
@@ -589,8 +571,6 @@ class TestStartImportView:
 
         with (
             patch("pbn_import.tasks.run_pbn_import") as mock_task,
-            patch("pbn_import.views.get_channel_layer"),
-            patch("pbn_import.views.async_to_sync"),
             patch.object(
                 Uczelnia.objects, "get_for_request", return_value=request_uczelnia
             ),
@@ -641,7 +621,7 @@ class TestCancelImportView:
         )
         client.force_login(user)
 
-        with patch("celery.current_app"), patch("pbn_import.views.get_channel_layer"):
+        with patch("celery.current_app"):
             client.post(reverse("pbn_import:cancel", args=[session.id]))
 
         session.refresh_from_db()
@@ -693,7 +673,7 @@ class TestCancelImportView:
         )
         client.force_login(user)
 
-        with patch("celery.current_app"), patch("pbn_import.views.get_channel_layer"):
+        with patch("celery.current_app"):
             client.post(reverse("pbn_import:cancel", args=[session.id]))
 
         log = ImportLog.objects.filter(session=session).last()
