@@ -28,9 +28,15 @@ class RecentAuthorPublicationsViewSet(viewsets.ViewSet):
         """
         autor = get_object_or_404(Autor, pk=pk)
 
-        publications = Rekord.objects.filter(autorzy__autor=autor).order_by(
-            "-ostatnio_zmieniony"
-        )[:25]
+        # distinct: autor moze wystapic na rekordzie wielokrotnie (np. autor
+        # i redaktor); only: bez ~40 zbednych kolumn tabeli mat (m.in.
+        # tsvector search_index).
+        publications = (
+            Rekord.objects.filter(autorzy__autor=autor)
+            .order_by("-ostatnio_zmieniony")
+            .distinct()
+            .only("id", "slug", "opis_bibliograficzny_cache", "ostatnio_zmieniony")[:25]
+        )
 
         result = []
         for pub in publications:

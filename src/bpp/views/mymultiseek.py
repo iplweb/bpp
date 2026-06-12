@@ -6,7 +6,7 @@ import logging
 import re
 
 from django.contrib.auth.mixins import LoginRequiredMixin
-from django.db.models import Sum
+from django.db.models import Count, Sum
 from django.http import HttpResponse, HttpResponseBadRequest, JsonResponse
 from django.urls import reverse
 from django.utils.html import strip_tags
@@ -167,19 +167,25 @@ class MyMultiseekResults(MultiseekResults):
             ctx["object_list"] = qset
             ctx["print_removed"] = True
 
-        ctx["paginator_count"] = qset.count()
-        ctx["multiseek_export_max_rows"] = MULTISEEK_EXPORT_MAX_ROWS
-        object_list = ctx["object_list"]
-        object_list.count = lambda *args, **kw: ctx["paginator_count"]
-
         if ctx["report_type"] in EXTRA_TYPES:
-            ctx["sumy"] = qset.aggregate(
+            # Licznik i sumy jednym skanem — przy DISTINCT + join do
+            # bpp_autorzy_mat osobny COUNT podwajalby najdrozsza czesc.
+            agregaty = qset.aggregate(
                 Sum("impact_factor"),
                 Sum("liczba_cytowan"),
                 Sum("punkty_kbn"),
                 Sum("index_copernicus"),
                 Sum("punktacja_wewnetrzna"),
+                paginator_count=Count("pk"),
             )
+            ctx["paginator_count"] = agregaty.pop("paginator_count")
+            ctx["sumy"] = agregaty
+        else:
+            ctx["paginator_count"] = qset.count()
+
+        ctx["multiseek_export_max_rows"] = MULTISEEK_EXPORT_MAX_ROWS
+        object_list = ctx["object_list"]
+        object_list.count = lambda *args, **kw: ctx["paginator_count"]
 
         keys = list(self.request.session.keys())
         if "MULTISEEK_TITLE" not in keys:
