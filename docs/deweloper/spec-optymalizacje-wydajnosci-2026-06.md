@@ -114,6 +114,10 @@ denorm dotknie wiersza publikacji. Zamierzone, ale nieudokumentowane —
 przy opóźnionej kolejce denorm listy pokazują przestarzałą liczbę
 autorów. Akcja: komentarz w SQL + nota w mapa-kodu.md.
 
+**Status: ✅ zrobione** (branch `perf/slug-index`) — komentarz przy polu
+`liczba_autorow` w `src/bpp/models/cache/rekord.py` (mapa-kodu.md jest
+generowana maszynowo, więc nota poszła do kodu).
+
 ### 1.4. Bug poprawności: `UPDATE` z `TD["old"]` (PRIORYTET 9)
 
 **Problem.** Dla `UPDATE` trigger czyta tylko `TD["old"]` (linia 467).
@@ -253,9 +257,26 @@ zapytanie), ale:
 
 - `Rekord.ma_punktacje_sloty` (`rekord.py:302-310`) — dwa `.exists()`;
   da się jednym (`Exists`/union). Tylko strona szczegółów.
+  **✅ zrobione** (branch `perf/slug-index`) — UNION ALL + LIMIT 1.
 - Strona autora (`autor.html` + `Autor.prace_w_latach`,
   `autor.py:366`) — kilka osobnych zapytań DISTINCT per render;
   łączyć tylko, jeśli pojawi się w slow logach.
+
+### 2.6. Brak indeksu na `bpp_rekord_mat.slug` (znalezione po audycie)
+
+**Problem.** `PracaViewBySlug` — kanoniczny publiczny URL rekordu —
+robi `Rekord.objects.get(slug=...)`, a kolumna `slug` (dodana w 0253)
+**nigdy nie miała indeksu**. Każde wejście na stronę rekordu po slug
+= Seq Scan po całej, szerokiej tabeli mat (tsvector itd.).
+
+**Fix.** Migracja `0430_rekord_mat_slug_idx`:
+`CREATE INDEX CONCURRENTLY IF NOT EXISTS bpp_rekord_mat_slug_idx`
+(`atomic = False`). Koszt zapisu mały — po triggerze v3 odświeżenia to
+HOT-friendly UPDATE-y, a slug zmienia się rzadko.
+
+**Status: ✅ zrobione** (branch `perf/slug-index`) — test z
+`enable_seqscan = off` potwierdza Index Scan;
+`test_cache/test_rekord_perf.py`.
 
 ---
 
