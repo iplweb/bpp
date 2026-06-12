@@ -335,6 +335,22 @@ include'ami, import w 6 motywach. Po zmianie `grunt build`
 **Weryfikacja.** Rozmiar `app-*.css` przed/po; wizualna regresja
 kluczowych stron (multiseek, strona autora, rekord) przez `run-site`.
 
+**Status: ✅ zrobione** (branch `perf/foundation-diet`) — z ważną
+korektą szacunku: audyt wykazał tylko **9** komponentów bez użycia
+(accordion-menu, drilldown-menu, responsive-embed, media-object,
+off-canvas, orbit, slider, switch, thumbnail); ciężkie komponenty
+(gridy, forms, typography, button) są używane. Realny zysk:
+**−16,5 KB/motyw (−5,4%)**, nie ~150 KB. Lista include'ów wydzielona
+do wspólnego `_foundation-includes.scss` (1 plik zamiast 6 kopii).
+Weryfikacja wizualna (run-site + Playwright, screenshoty): top-bar,
+breadcrumbs, callout, formularz multiseek — bez regresji.
+
+**Follow-up (zmierzony, świadomie odłożony):** `foundation-grid`
+(float) i `foundation-flex-grid` emitują nakładające się reguły
+`.row/.columns`; usunięcie float-grida dałoby kolejne **−17,7 KB**
+(289,7 → 272,0 KB), ale zmienia kaskadę (clearfixy) i wymaga
+pełnej regresji wizualnej — osobny PR, jeśli warto.
+
 ### 3.4. Nie robić (świadomie odrzucone)
 
 - **Wymiana Grunta na webpack/Vite** — pipeline jest już szybki
