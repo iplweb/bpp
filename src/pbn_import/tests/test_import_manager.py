@@ -72,8 +72,25 @@ def step_cfg(klass, name="zrodla", display="Źródła", required=False, result_k
 # ===========================================================================
 
 
+def test_construction_does_not_probe_pbn(session):
+    """Samo skonstruowanie ImportManagera NIE może uderzać w PBN.
+
+    Sonda autoryzacji (``client.get_languages``) to efekt sieciowy — należy
+    do ``run()``, nie do ``__init__`` (testowalność, brak zaskakujących
+    side-effectów przy budowie obiektu).
+    """
+    client = MagicMock()
+
+    manager = ImportManager(session, client=client)
+
+    client.get_languages.assert_not_called()
+    assert manager.pbn_authorized is False
+    assert manager.pbn_error_message is None
+
+
 def test_no_client_means_unauthorized(session):
     manager = ImportManager(session, client=None)
+    manager._check_pbn_authorization()
 
     assert manager.pbn_authorized is False
     assert manager.pbn_error_message == "Brak konfiguracji klienta PBN"
@@ -84,6 +101,7 @@ def test_working_client_means_authorized(session):
     client.get_languages.return_value = ["pol", "eng"]
 
     manager = ImportManager(session, client=client)
+    manager._check_pbn_authorization()
 
     assert manager.pbn_authorized is True
     client.get_languages.assert_called_once()
@@ -94,6 +112,7 @@ def test_failing_client_means_unauthorized_with_message(session):
     client.get_languages.side_effect = RuntimeError("token wygasł")
 
     manager = ImportManager(session, client=client)
+    manager._check_pbn_authorization()
 
     assert manager.pbn_authorized is False
     assert "token wygasł" in manager.pbn_error_message
