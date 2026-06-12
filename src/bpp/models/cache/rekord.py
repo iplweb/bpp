@@ -232,6 +232,12 @@ class RekordBase(
 
     tytul_oryginalny_sort = models.TextField()
 
+    # UWAGA eventual consistency: trigger bpp_refresh_cache() odświeża
+    # liczba_autorow tylko przy zdarzeniach na wierszu PUBLIKACJI. Edycja
+    # tabeli *_autor sama w sobie nie przelicza tej kolumny — aktualizacja
+    # przychodzi dopiero, gdy flush denorm (opis_bibliograficzny_cache
+    # zależy od *_autor) dotknie wiersza publikacji. Przy opóźnionej
+    # kolejce denorm wartość bywa chwilowo nieaktualna.
     liczba_autorow = models.SmallIntegerField()
 
     liczba_cytowan = models.SmallIntegerField()
@@ -302,13 +308,18 @@ class RekordBase(
 
     @cached_property
     def ma_punktacje_sloty(self):
+        # Jedno zapytanie (UNION ALL + LIMIT 1) zamiast dwóch osobnych EXISTS.
+        pk = [self.id[0], self.id[1]]
         return (
-            Cache_Punktacja_Autora.objects.filter(
-                rekord_id=[self.id[0], self.id[1]]
-            ).exists()
-            or Cache_Punktacja_Dyscypliny.objects.filter(
-                rekord_id=[self.id[0], self.id[1]]
-            ).exists()
+            Cache_Punktacja_Autora.objects.filter(rekord_id=pk)
+            .values_list("pk")
+            .union(
+                Cache_Punktacja_Dyscypliny.objects.filter(rekord_id=pk).values_list(
+                    "pk"
+                ),
+                all=True,
+            )
+            .exists()
         )
 
     @cached_property
