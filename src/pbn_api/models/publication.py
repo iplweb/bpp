@@ -86,13 +86,44 @@ class Publication(LinkDoPBNMixin, BasePBNMongoDBModel):
             ret += len(self.autorzy[elem])
         return ret
 
+    @staticmethod
+    def _normalizuj_autora(autor):
+        """Sprowadza pojedynczego autora z PBN do ``{lastName, firstName}``.
+
+        PBN podaje imię raz jako ``firstName``, raz jako ``givenNames``,
+        a w danych zaciągniętych z API instytucji jako ``name``. Czasem
+        zamiast słownika dostajemy goły UID (string) — wtedy nie mamy
+        danych osobowych i zwracamy puste pola (zamiast wysadzać szablon).
+        """
+        if not isinstance(autor, dict):
+            return {"lastName": "", "firstName": ""}
+        return {
+            "lastName": autor.get("lastName") or "",
+            "firstName": (
+                autor.get("firstName")
+                or autor.get("givenNames")
+                or autor.get("name")
+                or ""
+            ),
+        }
+
     @cached_property
     def autorzy(self):
+        """Autorzy/redaktorzy pogrupowani wg roli, jako listy słowników.
+
+        PBN przechowuje te kolekcje niespójnie: raz jako *dict* kluczowany
+        PBN UID-em autora (``{"<uid>": {...}}``), a raz jako *listę*
+        słowników. Normalizujemy oba kształty do listy znormalizowanych
+        słowników ``{lastName, firstName}``, żeby konsumenci (szablony,
+        ``policz_autorow``) nie musieli znać surowych wariantów PBN.
+        """
         ret = {}
         for elem in ["authors", "editors", "translators", "translationEditors"]:
             elem_dct = self.value_or_none("object", elem)
-            if elem_dct:
-                ret[elem] = elem_dct
+            if not elem_dct:
+                continue
+            kolekcja = elem_dct.values() if isinstance(elem_dct, dict) else elem_dct
+            ret[elem] = [self._normalizuj_autora(autor) for autor in kolekcja]
         return ret
 
     @cached_property

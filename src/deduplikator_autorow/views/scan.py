@@ -26,12 +26,11 @@ def start_scan_view(request):
     # Check if PBN people data is fresh
     pbn_data_fresh, pbn_stale_message, _ = is_pbn_people_data_fresh()
     if not pbn_data_fresh:
-        messages.error(
+        messages.warning(
             request,
-            f"Nie można uruchomić skanowania: {pbn_stale_message}. "
-            "Pobierz aktualne dane z PBN.",
+            f"Uruchamiasz skanowanie na nieaktualnych danych PBN: "
+            f"{pbn_stale_message}. Wyniki mogą być nieaktualne.",
         )
-        return redirect("deduplikator_autorow:duplicate_authors")
 
     # Check if scan is already running
     if get_running_scan():

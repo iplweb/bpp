@@ -24,6 +24,21 @@ def test_general_finds_simple_pair():
 
 
 @pytest.mark.django_db
+def test_general_finds_pair_with_unicode_hyphen_variant():
+    """Nazwiska z różnymi Unicode'owymi myślnikami trafiają do jednego bucketu."""
+    a = baker.make("bpp.Autor", nazwisko="Kowalski-Nowak", imiona="Dorota")
+    b = baker.make("bpp.Autor", nazwisko="Kowalski\u2011Nowak", imiona="Dorota")
+
+    scan = DuplicateScanRun.objects.create()
+    _run_general_phase(scan, min_confidence=50)
+
+    cands = DuplicateCandidate.objects.filter(scan_run=scan, scan_mode="general")
+    assert cands.count() == 1
+    cand = cands.get()
+    assert {cand.main_autor_id, cand.duplicate_autor_id} == {a.pk, b.pk}
+
+
+@pytest.mark.django_db
 def test_general_skips_cluster_with_osoba_instytucji():
     """Klaster {A, B, C} gdzie B ma OsobaZInstytucji → klaster pominięty."""
     baker.make("bpp.Autor", nazwisko="Nowak", imiona="Anna")

@@ -10,7 +10,8 @@ from django.contrib.admin.templatetags.admin_urls import add_preserved_filters
 from django.db import transaction
 from django.http import Http404, HttpResponseRedirect
 from django.shortcuts import render
-from django.utils.html import format_html
+from django.urls import reverse
+from django.utils.html import format_html, format_html_join
 from django_sendfile import sendfile
 from djangoql.admin import DjangoQLSearchMixin
 from templated_email import send_templated_mail
@@ -32,6 +33,12 @@ from .filters import (
 from .forms import ZwrocEmailForm
 
 
+def _nazwa_pliku_do_pobrania(plik, oryginalna_nazwa_pliku=""):
+    if oryginalna_nazwa_pliku:
+        return oryginalna_nazwa_pliku
+    return plik.name.rsplit("/", 1)[-1]
+
+
 class Zgloszenie_Publikacji_AutorInline(admin.StackedInline):
     model = Zgloszenie_Publikacji_Autor
     fields = ["autor", "jednostka", "dyscyplina_naukowa"]
@@ -41,12 +48,24 @@ class Zgloszenie_Publikacji_AutorInline(admin.StackedInline):
 class Zgloszenie_Publikacji_ZalacznikInline(admin.TabularInline):
     model = Zgloszenie_Publikacji_Zalacznik
     fields = [
-        "plik",
+        "plik_do_pobrania",
         "oryginalna_nazwa_pliku",
         "kolejnosc",
     ]
-    readonly_fields = ["plik", "oryginalna_nazwa_pliku"]
+    readonly_fields = ["plik_do_pobrania", "oryginalna_nazwa_pliku"]
     extra = 0
+
+    @admin.display(description="Plik załącznika")
+    def plik_do_pobrania(self, obj):
+        if not obj.pk or not obj.plik:
+            return "-"
+
+        url = reverse(
+            "admin:zglos_publikacje_zgloszenie_publikacji_pobierz_zalacznik",
+            args=[obj.zgloszenie_id, obj.pk],
+        )
+        display_name = _nazwa_pliku_do_pobrania(obj.plik, obj.oryginalna_nazwa_pliku)
+        return format_html('<a href="{}">{}</a>', url, display_name)
 
 
 @admin.register(Zgloszenie_Publikacji)
@@ -92,7 +111,7 @@ class Zgloszenie_PublikacjiAdmin(
         + (
             "email",
             "strona_www",
-            "plik_do_pobrania",
+            "pliki_do_pobrania",
             "wydawca_zgloszenia",
             "wydawca_bpp",
             "wydawca_pbn",
@@ -250,11 +269,13 @@ class Zgloszenie_PublikacjiAdmin(
         if obj is None:
             raise Http404("Zgłoszenie nie istnieje")
 
+        if not self.has_view_permission(request, obj):
+            raise Http404("Zgłoszenie nie istnieje")
+
         if not obj.plik:
             raise Http404("Brak pliku")
 
-        # Użyj oryginalnej nazwy pliku jeśli dostępna, w przeciwnym razie UUID
-        filename = obj.oryginalna_nazwa_pliku or obj.plik.name.split("/")[-1]
+        filename = _nazwa_pliku_do_pobrania(obj.plik, obj.oryginalna_nazwa_pliku)
         return sendfile(
             request,
             obj.plik.path,
@@ -268,16 +289,25 @@ class Zgloszenie_PublikacjiAdmin(
         if obj is None:
             raise Http404("Zgłoszenie nie istnieje")
 
+        if not self.has_view_permission(request, obj):
+            raise Http404("Zgłoszenie nie istnieje")
+
         try:
             zalacznik = obj.zalaczniki.get(pk=zalacznik_id)
         except Zgloszenie_Publikacji_Zalacznik.DoesNotExist:
             raise Http404("Załącznik nie istnieje") from None
 
+        if not zalacznik.plik:
+            raise Http404("Brak pliku")
+
+        filename = _nazwa_pliku_do_pobrania(
+            zalacznik.plik, zalacznik.oryginalna_nazwa_pliku
+        )
         return sendfile(
             request,
             zalacznik.plik.path,
             attachment=True,
-            attachment_filename=zalacznik.oryginalna_nazwa_pliku,
+            attachment_filename=filename,
         )
 
     @admin.display(description="Plik załącznika")
@@ -285,14 +315,12 @@ class Zgloszenie_PublikacjiAdmin(
         """Legacy - pokazuje tylko stare pole plik."""
         if not obj.plik:
             return "-"
-        from django.urls import reverse
 
         url = reverse(
             "admin:zglos_publikacje_zgloszenie_publikacji_pobierz_plik",
             args=[obj.pk],
         )
-        # Wyświetl oryginalną nazwę pliku jeśli dostępna
-        display_name = obj.oryginalna_nazwa_pliku or obj.plik.name.split("/")[-1]
+        display_name = _nazwa_pliku_do_pobrania(obj.plik, obj.oryginalna_nazwa_pliku)
         return format_html(
             '<a href="{}">{}</a>',
             url,
@@ -302,8 +330,6 @@ class Zgloszenie_PublikacjiAdmin(
     @admin.display(description="Pliki")
     def pliki_do_pobrania(self, obj):
         """Wyświetla wszystkie pliki - stare pole plik + nowe załączniki."""
-        from django.urls import reverse
-
         parts = []
 
         # Stare pole plik (legacy)
@@ -312,7 +338,9 @@ class Zgloszenie_PublikacjiAdmin(
                 "admin:zglos_publikacje_zgloszenie_publikacji_pobierz_plik",
                 args=[obj.pk],
             )
-            display_name = obj.oryginalna_nazwa_pliku or obj.plik.name.split("/")[-1]
+            display_name = _nazwa_pliku_do_pobrania(
+                obj.plik, obj.oryginalna_nazwa_pliku
+            )
             parts.append(
                 format_html(
                     '<a href="{}">📄 {} (legacy)</a>',
@@ -331,14 +359,16 @@ class Zgloszenie_PublikacjiAdmin(
                 format_html(
                     '<a href="{}">📎 {}</a>',
                     url,
-                    zalacznik.oryginalna_nazwa_pliku,
+                    _nazwa_pliku_do_pobrania(
+                        zalacznik.plik, zalacznik.oryginalna_nazwa_pliku
+                    ),
                 )
             )
 
         if not parts:
             return "-"
 
-        return format_html("<br/>".join(parts))
+        return format_html_join("<br/>", "{}", ((part,) for part in parts))
 
     def wydzial_pierwszego_autora(self, obj: Zgloszenie_Publikacji):
         try:

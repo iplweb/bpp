@@ -60,3 +60,121 @@ msgstr[0] "rekord"
 msgstr[1] "rekordy"
 msgstr[2] "rekordów"
 msgstr[3] "rekordów"
+
+#. django-mptt 0.18.0: pakiet jest obecnie oznaczony upstream jako
+#. unmaintained, a jego bundlowany katalog pl/LC_MESSAGES/django.po jest
+#. historyczny (2011) i nie zawiera części msgidów używanych przez aktualny
+#. kod admina, formularzy oraz template-tagów. Nie poprawiamy plików w
+#. site-packages, bo znikną przy każdym odtworzeniu środowiska; trzymamy te
+#. brakujące wpisy w projektowym LOCALE_PATHS, które Django ładuje globalnie.
+#.
+#. Poniżej są WYŁĄCZNIE msgidy obecne w zainstalowanym django-mptt 0.18.0,
+#. których nie ma w jego polskim katalogu. Część wpisów jest ogólna
+#. ("All", "title"), więc tłumaczenia są neutralne i zgodne z konwencją
+#. admina, żeby projektowy override nie psuł innych ekranów.
+#: mptt/apps.py:7
+msgid "mptt"
+msgstr "MPTT"
+
+#. Komunikat akcji masowego usuwania w drzewiastym adminie MPTT. Upstream
+#. usunął starszy msgid "Successfully deleted %s items.", który nadal jest
+#. jedyną polską wersją w katalogu pakietu.
+#: mptt/admin.py:100
+#, python-format
+msgid "Successfully deleted %(count)d items."
+msgstr "Usunięto %(count)d elementów."
+
+#. Nagłówek kolumny tworzony przez DraggableMPTTAdmin.indented_title.
+#. Mała litera pasuje do oryginalnego msgidu i standardowych etykiet pól.
+#: mptt/admin.py:160
+msgid "title"
+msgstr "tytuł"
+
+#. Komunikaty AJAX-owego przenoszenia węzłów w DraggableMPTTAdmin. Trafiają
+#. do django.contrib.messages po błędach walidacji/permissions/integrity,
+#. więc powinny być krótkie i techniczne, ale zrozumiałe dla admina.
+#: mptt/admin.py:222
+msgid "Did not understand moving instruction."
+msgstr "Nie rozpoznano polecenia przeniesienia."
+
+#: mptt/admin.py:233
+msgid "Objects have disappeared, try again."
+msgstr "Obiekty zniknęły, spróbuj ponownie."
+
+#: mptt/admin.py:238
+msgid "No permission"
+msgstr "Brak uprawnień"
+
+#: mptt/admin.py:250
+#, python-format
+msgid "Database error: %s"
+msgstr "Błąd bazy danych: %s"
+
+#: mptt/admin.py:275
+#, python-format
+msgid "%s has been successfully moved."
+msgstr "%s został pomyślnie przeniesiony."
+
+#. Etykiety pokazywane w czasie przeciągania wierszy drzewa w adminie.
+#. JavaScript używa ich jako opisów miejsca upuszczenia względem wskazanego
+#. węzła, dlatego dopowiadamy "wskazany", mimo że msgid jest skrótowy.
+#: mptt/admin.py:286
+msgid "move node before node"
+msgstr "przenieś węzeł przed wskazany węzeł"
+
+#: mptt/admin.py:287
+msgid "move node to child position"
+msgstr "przenieś węzeł jako dziecko wskazanego węzła"
+
+#: mptt/admin.py:288
+msgid "move node after node"
+msgstr "przenieś węzeł za wskazany węzeł"
+
+#. Przyciski narzędziowe dodawane do object-tools na liście admina MPTT.
+#: mptt/admin.py:289
+msgid "Collapse tree"
+msgstr "Zwiń drzewo"
+
+#: mptt/admin.py:290
+msgid "Expand tree"
+msgstr "Rozwiń drzewo"
+
+#. Pierwsza opcja filtra listy dla pól powiązanych z drzewem. "Wszystko"
+#. jest neutralne gramatycznie i zgodne z tłumaczeniem django-filter.
+#: mptt/admin.py:408
+msgid "All"
+msgstr "Wszystko"
+
+#. Błąd formularza MPTTAdminForm, gdy użytkownik próbuje ustawić rodzica
+#. tak, że powstałby cykl w drzewie.
+#: mptt/forms.py:199
+msgid "Invalid parent"
+msgstr "Nieprawidłowy rodzic"
+
+#. Komunikat walidacyjny ręcznej rejestracji modelu w mptt.register().
+#: mptt/models.py:318
+msgid "register() expects a Django model class argument"
+msgstr "register() oczekuje argumentu będącego klasą modelu Django"
+
+#. Błąd pomocnika get_cached_trees(), gdy queryset/lista nie jest ułożona
+#. preorderowo. Zostawiamy techniczny termin "depth-first", bo to dokładnie
+#. opisuje wymagane sortowanie struktury MPTT.
+#: mptt/utils.py:295
+#, python-format
+msgid "Node %s not in depth-first order"
+msgstr "Węzeł %s nie jest w kolejności depth-first"
+
+#. Nagłówek własnego filtra admina MPTT. Zachowujemy spacje z msgidu,
+#. ponieważ template zawiera je dosłownie wewnątrz blocktrans.
+#: mptt/templates/admin/mptt_filter.html:3
+#, python-format
+msgid " By %(filter_title)s "
+msgstr " Według: %(filter_title)s "
+
+#. Aktualny django-mptt obsługuje także wariant "all_descendants", więc
+#. msgid z 0.18.0 różni się od starszego wpisu obecnego w polskim katalogu
+#. pakietu ("three, seven or eight arguments").
+#: mptt/templatetags/mptt_tags.py:161
+#, python-format
+msgid "%s tag requires either three, four, seven, eight, or nine arguments"
+msgstr "tag %s wymaga trzech, czterech, siedmiu, ośmiu lub dziewięciu argumentów"

@@ -11,6 +11,18 @@
     display: none !important;
   }
 
+  // Neutralize screen-only min-height:100vh rules. On screen they keep the
+  // footer pinned to the bottom of the viewport; in print 1vh == 1% of the
+  // PAGE box, so they force the content container to fill a whole page and
+  // push the footer onto a second, almost-blank page. See _layout.scss and
+  // _multiseek-base.scss for the source declarations.
+  body,
+  .gradient-background,
+  .grid-container-fluid[data-sticky-container],
+  .multiseek-report-container {
+    min-height: 0 !important;
+  }
+
   // Basic typography
   body, p, div {
     font-size: 9pt;

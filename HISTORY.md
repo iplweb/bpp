@@ -2,6 +2,67 @@
 
 <!-- towncrier release notes start -->
 
+## bpp 202606.1386 (2026-06-12)
+
+### Naprawione
+
+- Wydruki (m.in. raporty z multiseek) nie zajmują już niepotrzebnie
+  dodatkowej, prawie pustej strony. Stopka „Dokument wygenerowano przy
+  pomocy systemu…” była spychana na kolejną stronę, ponieważ kontenery
+  treści miały na ekranie ustawione ``min-height: 100vh`` (przyklejenie
+  stopki do dołu okna). W druku ``100vh`` oznacza całą wysokość kartki,
+  więc treść była rozciągana na pełną stronę. Reguły te są teraz
+  neutralizowane w ``@media print``.
+
+
+## bpp 202606.1385 (2026-06-10)
+
+### Naprawione
+
+- Naprawiono błąd serwera (HTTP 500) przy zgłaszaniu publikacji z
+  załącznikiem PDF większym niż 2,5 MB. W kreatorze „Zgłoś publikację"
+  dodanie takiego pliku w kroku z danymi przerywało wysyłkę z błędem —
+  plik tymczasowy był zapisywany dwukrotnie, a drugi zapis trafiał na
+  już przeniesiony plik. Pliki dowolnej wielkości są teraz przyjmowane
+  poprawnie.
+
+
+## bpp 202606.1384 (2026-06-09)
+
+No significant changes.
+
+
+## bpp 202606.1383 (2026-06-09)
+
+No significant changes.
+
+
+## bpp 202606.1382 (2026-06-09)
+
+### Naprawione
+
+- Deduplikator autorów uruchamia skanowanie mimo nieaktualnych danych PBN,
+  pokazując ostrzeżenie, oraz normalizuje Unicode'owe myślniki w nazwiskach
+  przed bucketowaniem kandydatów.
+- Dodano brakujące polskie tłumaczenia komunikatów ``django-mptt`` używanych w
+  drzewiastym panelu administracyjnym.
+- Poprawiono kolejność i blokadę kolumn w eksporcie tabeli Jednostka z modułu redagowania.
+
+### Usprawnienie
+
+- Dodano eksport tabel Jednostka i Wydział z modułu redagowania w Django adminie.
+- Dodano eksport wyników Multiseek do CSV i XLSX z limitem 5000 rekordów,
+  linkami BPP/PBN, nazwami plików i arkuszy opartymi o tytuł raportu oraz
+  ochroną komórek arkusza przed interpretacją jako formuły.
+- Ulepszono pełnotekstowe wyszukiwanie publikacji przez ważenie tytułów,
+  autorów, DOI, roku oraz opisu bibliograficznego w cache'owanym indeksie.
+
+
+## bpp 202606.1381 (2026-06-08)
+
+No significant changes.
+
+
 ## bpp 202606.1380 (2026-06-05)
 
 ### Naprawione

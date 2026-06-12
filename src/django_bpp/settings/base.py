@@ -590,7 +590,13 @@ COMPRESS_CSS_FILTERS = [
     "compressor.filters.css_default.CssAbsoluteFilter",
     "compressor.filters.cssmin.CSSMinFilter",
 ]
-COMPRESS_JS_FILTERS = ["compressor.filters.jsmin.rJSMinFilter"]
+# Bez filtra JS: wszystkie nietrywialne wejscia (bundle.js itd.) sa juz
+# zminifikowane przez esbuild na etapie grunt build. rJSMinFilter
+# re-minifikowal 1,5 MB bundle'a przy `manage.py compress` na starcie
+# kontenera (zysk ~0 bajtow), a regexowe minifikatory potrafia zepsuc
+# nowoczesna skladnie emitowana przez AST-owy esbuild. {% compress js %}
+# zostaje — daje konkatenacje + hashowane nazwy plikow (cache-busting).
+COMPRESS_JS_FILTERS = []
 
 COMPRESS_ROOT = STATIC_ROOT
 

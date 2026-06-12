@@ -36,12 +36,14 @@ select2(window.jQuery);
 // Set Polish language for Select2
 window.jQuery.fn.select2.defaults.set('language', window.select2PlLanguage);
 
-// ===== 7. MUSTACHE + TONE (for notifications) =====
+// ===== 7. MUSTACHE (for notifications) =====
+// NOTE: Tone.js was removed from the bundle (~450 KB minified). It was only
+// ever consumed by channels_broadcast's optional notifications-chime.js,
+// which BPP does not load (enableChime() is never called; messages are sent
+// with sound: false). If the chime is ever wanted, load Tone.js +
+// notifications-chime.js as separate scripts per channels_broadcast docs.
 import * as Mustache from '../../../../../.venv/lib/python/site-packages/channels_broadcast/static/channels_broadcast/js/mustache.js';
 window.Mustache = Mustache;
-
-import * as Tone from 'tone';
-window.Tone = Tone;
 
 // ===== 8. DJANGO LIBRARIES (from .venv) =====
 // Paths relative to site-packages
@@ -71,4 +73,3 @@ import '../../../../../.venv/lib/python/site-packages/channels_broadcast/static/
 // These are used in HTML templates, so we need to prevent tree-shaking
 void window.channelsBroadcast;
 void window.Mustache;
-void window.Tone;
