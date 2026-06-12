@@ -114,6 +114,10 @@ denorm dotknie wiersza publikacji. Zamierzone, ale nieudokumentowane —
 przy opóźnionej kolejce denorm listy pokazują przestarzałą liczbę
 autorów. Akcja: komentarz w SQL + nota w mapa-kodu.md.
 
+**Status: ✅ zrobione** (branch `perf/slug-index`) — komentarz przy polu
+`liczba_autorow` w `src/bpp/models/cache/rekord.py` (mapa-kodu.md jest
+generowana maszynowo, więc nota poszła do kodu).
+
 ### 1.4. Bug poprawności: `UPDATE` z `TD["old"]` (PRIORYTET 9)
 
 **Problem.** Dla `UPDATE` trigger czyta tylko `TD["old"]` (linia 467).
@@ -146,6 +150,17 @@ i naprawiony DRUGI bug v2: DELETE jednej z dwóch ról autora
   `fastupdate = on` i mniejszym churn-em po 1.1 warto zbenchmarkować
   na zrzucie produkcyjnym, jeśli latencja wyszukiwania pełnotekstowego
   ma znaczenie.
+
+  **Status: ✅ zbenchmarkowane i zrobione** (branch
+  `perf/search-index-gin`, migracja `0431_search_index_gin`).
+  Benchmark na zrzucie produkcyjnym `db-backup-20260603` (122 232
+  rekordy, 178 MB, kontener `bpp_dbserver:psql-18`, kształty zapytań
+  z `FulltextSearchMixin`): prefix `:*` 47.6→12.6 ms (3.8×), AND
+  dwóch termów 47.4→2.4 ms (19.6×), websearch 14.7→8.9 ms (1.7×),
+  ranking top-20 48.7→13.2 ms (3.7×). Zapis (UPDATE 1000 publikacji
+  przez trigger; każda strona mierzona z tylko jednym indeksem,
+  drugi DROP-nięty w transakcji): 66.2 s GiST vs 60.6 s GIN — bez
+  regresji. Rozmiar: 15 MB GIN vs 11 MB GiST. Budowa GIN: 0.4 s.
 
 ### 1.6. Długoterminowo: triggery statement-level (PRIORYTET 10)
 
@@ -215,6 +230,15 @@ zawyżone przez duplikację z joina.
 **Status: ✅ zrobione** (branch `perf/orm-quick-wins`,
 `test_views/test_mymultiseek_query_count.py`).
 
+**Etap 2 — cache agregatów (✅, branch `perf/multiseek-count-cache`):**
+stronicowanie tych samych wyników nie powtarza skanu — agregaty
+(count + sumy) cache'owane 30 min pod kluczem
+sha256(formularz, removed, print-removed, zalogowanie, uczelnia).
+Decyzja użytkownika 2026-06: implementacja w BPP (nie w pakiecie
+django-multiseek — upstream nawet nie wykonuje tego COUNT-a, a klucz
+zależy od BPP-specyficznych wejść). W dev/local default cache to
+DummyCache — cache działa na produkcji (Redis).
+
 ### 2.3. Browse: zbędne zapytania (PRIORYTET 7)
 
 `src/bpp/views/browse.py` (zweryfikowane):
@@ -253,9 +277,47 @@ zapytanie), ale:
 
 - `Rekord.ma_punktacje_sloty` (`rekord.py:302-310`) — dwa `.exists()`;
   da się jednym (`Exists`/union). Tylko strona szczegółów.
+  **✅ zrobione** (branch `perf/slug-index`) — UNION ALL + LIMIT 1.
 - Strona autora (`autor.html` + `Autor.prace_w_latach`,
   `autor.py:366`) — kilka osobnych zapytań DISTINCT per render;
   łączyć tylko, jeśli pojawi się w slow logach.
+
+### 2.6. Brak indeksu na `bpp_rekord_mat.slug` (znalezione po audycie)
+
+**Problem.** `PracaViewBySlug` — kanoniczny publiczny URL rekordu —
+robi `Rekord.objects.get(slug=...)`, a kolumna `slug` (dodana w 0253)
+**nigdy nie miała indeksu**. Każde wejście na stronę rekordu po slug
+= Seq Scan po całej, szerokiej tabeli mat (tsvector itd.).
+
+**Fix.** Migracja `0430_rekord_mat_slug_idx`:
+`CREATE INDEX CONCURRENTLY IF NOT EXISTS bpp_rekord_mat_slug_idx`
+(`atomic = False`). Koszt zapisu mały — po triggerze v3 odświeżenia to
+HOT-friendly UPDATE-y, a slug zmienia się rzadko.
+
+**Status: ✅ zrobione** (branch `perf/slug-index`) — test z
+`enable_seqscan = off` potwierdza Index Scan;
+`test_cache/test_rekord_perf.py`.
+
+### 2.7. AutorzyView: filtr „autorów obcych" (znalezione po audycie)
+
+**Problem.** `_apply_uczelnia_filters`: (a) `annotate(Count("autor_jednostka"))`
+wymuszał GROUP BY po liście autorów × przypisania na każdej stronie
+przeglądarki autorów; (b) `.exclude(autorzyview=None)` („bez prac")
+anti-joinował NIEzmaterializowany widok `bpp_autorzy` — unię 5 tabel
+`*_autor`; (c) zapis `Q(pk=-1) & Q(pk=obca_id) & Q(count<=2)` w exclude()
+ukrywał tylko autorów w OBU sztucznych jednostkach naraz (exclude daje
+warunkom wielowartościowym osobne joiny) — autor wyłącznie w jednej
+sztucznej (np. tylko pk=-1) pozostawał widoczny.
+
+**Fix.** Trzy `Exists()` zamiast Count (w tym trik `EXISTS(... OFFSET 1)`
+na „co najmniej dwa przypisania"); „bez prac" jako `Exists` po
+`bpp_autorzy_mat` (indeks po autor_id); semantyka reguły (decyzja
+użytkownika 2026-06): ukryj autora, gdy KAŻDE jego przypisanie wskazuje
+jednostkę sztuczną (obca_jednostka lub pk=-1).
+
+**Status: ✅ zrobione** (branch `perf/autorzy-view-filters`,
+`test_views/test_browse/test_autorzy_view_filters.py` — 8 testów,
+w tym czerwony na starym kodzie dowód luki „tylko pk=-1").
 
 ---
 
