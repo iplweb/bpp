@@ -303,12 +303,14 @@ class Browser(ListView):
                     redirect_url += "?" + params.urlencode()
 
                 # Guard against open redirects: only ever redirect within this
-                # host (request.path is already a local route, but make the
-                # local-only contract explicit for both readers and analysis).
+                # host. The constructed URL is always same-origin (request.path
+                # + urlencoded params), so this guard passes in practice; the
+                # fallback is a constant (not request-derived) so the redirect
+                # sink only ever sees validated-or-literal data.
                 if not url_has_allowed_host_and_scheme(
                     redirect_url, allowed_hosts={request.get_host()}
                 ):
-                    redirect_url = request.path
+                    redirect_url = "/"
 
                 # Add warning message
                 messages.warning(
