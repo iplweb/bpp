@@ -298,6 +298,27 @@ HOT-friendly UPDATE-y, a slug zmienia się rzadko.
 `enable_seqscan = off` potwierdza Index Scan;
 `test_cache/test_rekord_perf.py`.
 
+### 2.7. AutorzyView: filtr „autorów obcych" (znalezione po audycie)
+
+**Problem.** `_apply_uczelnia_filters`: (a) `annotate(Count("autor_jednostka"))`
+wymuszał GROUP BY po liście autorów × przypisania na każdej stronie
+przeglądarki autorów; (b) `.exclude(autorzyview=None)` („bez prac")
+anti-joinował NIEzmaterializowany widok `bpp_autorzy` — unię 5 tabel
+`*_autor`; (c) zapis `Q(pk=-1) & Q(pk=obca_id) & Q(count<=2)` w exclude()
+ukrywał tylko autorów w OBU sztucznych jednostkach naraz (exclude daje
+warunkom wielowartościowym osobne joiny) — autor wyłącznie w jednej
+sztucznej (np. tylko pk=-1) pozostawał widoczny.
+
+**Fix.** Trzy `Exists()` zamiast Count (w tym trik `EXISTS(... OFFSET 1)`
+na „co najmniej dwa przypisania"); „bez prac" jako `Exists` po
+`bpp_autorzy_mat` (indeks po autor_id); semantyka reguły (decyzja
+użytkownika 2026-06): ukryj autora, gdy KAŻDE jego przypisanie wskazuje
+jednostkę sztuczną (obca_jednostka lub pk=-1).
+
+**Status: ✅ zrobione** (branch `perf/autorzy-view-filters`,
+`test_views/test_browse/test_autorzy_view_filters.py` — 8 testów,
+w tym czerwony na starym kodzie dowód luki „tylko pk=-1").
+
 ---
 
 ## Warstwa 3: pipeline CSS/JS (Grunt + dart-sass + esbuild)

@@ -6,7 +6,7 @@ from cacheops import cached
 from django.conf import settings
 from django.contrib import messages
 from django.contrib.contenttypes.models import ContentType
-from django.db.models import Count
+from django.db.models import Count, Exists, OuterRef
 from django.db.models.functions import Substr
 from django.http import JsonResponse
 from django.utils import timezone
@@ -311,23 +311,54 @@ class AutorzyView(Browser):
             return queryset
 
         if not uczelnia.pokazuj_autorow_obcych_w_przegladaniu_danych:
-            queryset = queryset.annotate(Count("autor_jednostka"))
-            # Wyrzuć autorów przypisanych do Obca + Błędna
+            from bpp.models import Autor_Jednostka
+
+            sztuczne_jednostki = [-1]
+            if uczelnia.obca_jednostka_id is not None:
+                sztuczne_jednostki.append(uczelnia.obca_jednostka_id)
+
+            przypisania = Autor_Jednostka.objects.filter(autor=OuterRef("pk"))
+
+            queryset = queryset.annotate(
+                _ma_przypisania=Exists(przypisania),
+                _ma_prawdziwa_jednostke=Exists(
+                    przypisania.exclude(jednostka_id__in=sztuczne_jednostki)
+                ),
+                # EXISTS(... OFFSET 1) == "ma co najmniej dwa przypisania"
+                _ma_wiele_przypisan=Exists(przypisania.values("pk")[1:]),
+            )
+
+            # Wyrzuć autorów, których WSZYSTKIE przypisania to jednostki
+            # sztuczne: skonfigurowana obca_jednostka lub pk=-1 ("Błędna"
+            # z konwencji starych wdrożeń). Wcześniejszy zapis
+            # Q(pk=-1) & Q(pk=obca_id) & Q(count<=2) w exclude() ukrywał
+            # tylko autorów w OBU sztucznych naraz (exclude daje warunkom
+            # wielowartościowym osobne joiny); autor wyłącznie w jednej
+            # sztucznej jednostce pozostawał widoczny.
             queryset = queryset.exclude(
-                Q(autor_jednostka__jednostka__pk=-1)
-                & Q(autor_jednostka__jednostka__pk=uczelnia.obca_jednostka_id)
-                & Q(autor_jednostka__count__lte=2)
+                _ma_przypisania=True, _ma_prawdziwa_jednostke=False
             )
             queryset = queryset.exclude(
-                aktualna_jednostka=None, autor_jednostka__count=1
+                aktualna_jednostka=None,
+                _ma_przypisania=True,
+                _ma_wiele_przypisan=False,
             )
             queryset = queryset.exclude(
                 aktualna_jednostka_id=uczelnia.obca_jednostka_id,
-                autor_jednostka__count=1,
+                _ma_przypisania=True,
+                _ma_wiele_przypisan=False,
             )
 
         if not uczelnia.pokazuj_autorow_bez_prac_w_przegladaniu_danych:
-            queryset = queryset.exclude(autorzyview=None)
+            from bpp.models.cache import Autorzy
+
+            # Exists po zmaterializowanej bpp_autorzy_mat (indeks po
+            # autor_id) zamiast anti-joina po bpp_autorzy — to widok-unia
+            # 5 tabel *_autor, nie zmaterializowany, wiec kazde zapytanie
+            # skanowalo wszystkie tabele zrodlowe.
+            queryset = queryset.filter(
+                Exists(Autorzy.objects.filter(autor=OuterRef("pk")))
+            )
 
         return queryset
 
