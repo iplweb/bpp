@@ -355,7 +355,9 @@ class CancelImportView(LoginRequiredMixin, ImportPermissionMixin, View):
         if request.headers.get("HX-Request"):
             # Return updated progress component for HTMX
             return render(
-                request, "pbn_import/components/progress.html", {"session": session}
+                request,
+                "pbn_import/components/progress_compact.html",
+                {"session": session},
             )
 
         return redirect("pbn_import:dashboard")
