@@ -69,8 +69,10 @@
                                 // Change cursor to waiting
                                 $('body').css('cursor', 'wait');
 
-                                // Perform redirect
-                                location.href = "/global-nav-redir/" + $(this).val() +
+                                // Perform redirect (encode value to avoid
+                                // reinterpreting DOM text as part of the URL/markup)
+                                location.href = "/global-nav-redir/" +
+                                    encodeURIComponent($(this).val()) +
                                     "?source=admin";
                             });
 

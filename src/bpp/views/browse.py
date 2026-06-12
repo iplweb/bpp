@@ -10,6 +10,7 @@ from django.db.models import Count
 from django.db.models.functions import Substr
 from django.http import JsonResponse
 from django.utils import timezone
+from django.utils.http import url_has_allowed_host_and_scheme
 
 try:
     from django.core.urlresolvers import reverse
@@ -300,6 +301,14 @@ class Browser(ListView):
                 redirect_url = request.path
                 if params:
                     redirect_url += "?" + params.urlencode()
+
+                # Guard against open redirects: only ever redirect within this
+                # host (request.path is already a local route, but make the
+                # local-only contract explicit for both readers and analysis).
+                if not url_has_allowed_host_and_scheme(
+                    redirect_url, allowed_hosts={request.get_host()}
+                ):
+                    redirect_url = request.path
 
                 # Add warning message
                 messages.warning(
