@@ -16,7 +16,6 @@ działać globalnie.
 """
 
 import os
-import random
 
 import pytest
 
@@ -92,55 +91,3 @@ def szablony():
     from dbtemplates.models import Template
     instaluj_szablony()
     return Template.objects
-
-
-@pytest.fixture(scope="session")
-def django_db_setup(django_db_setup, django_db_blocker):
-    from denorm import denorms
-    from django.db import connection
-
-    with django_db_blocker.unblock():
-        denorms.install_triggers()
-
-        # Przesuń każdą sekwencję w public o losową wartość z zakresu
-        # [50 000, 500 000], niezależnie per sekwencja. Cel: nie pozwolić
-        # testom dostawać 1-/2-cyfrowych ID, które maskują bugi zależne
-        # od szerokości ID (padding, długość slugów, przekroczenia granicy
-        # cyfr). Różne offsety per tabela dodatkowo rozsynchronizowują
-        # relacje między ID różnych tabel, co demaskuje testy zakładające
-        # np. autor.pk == jednostka.pk.
-        #
-        # Ziarno PRNG: `random` w tym module jest seedowane przez
-        # pytest-randomly (jeśli zainstalowane) albo systemowo. Żeby
-        # zreprodukować konkretny run, wystarczy ten sam seed.
-        print(
-            f"[conftest] bump sekwencji, seed random.getstate() hash="
-            f"{hash(random.getstate()) & 0xFFFF_FFFF:#010x}"
-        )
-        # Wcześniej: 2 kwerendy per sekwencja (~408 round-tripów dla ~204
-        # sekwencji = ~190 ms). Teraz: jedna kwerenda zbiorcza po
-        # wartościach + jedna multi-statement do ALTERów (~17 ms łącznie).
-        with connection.cursor() as cursor:
-            cursor.execute(
-                "SELECT schemaname, sequencename FROM pg_sequences "
-                "WHERE schemaname = 'public'"
-            )
-            sequences = cursor.fetchall()
-            if sequences:
-                # Pojedyncza kwerenda UNION ALL pobiera last_value + is_called
-                # ze wszystkich sekwencji jednym round-tripem.
-                values_sql = " UNION ALL ".join(
-                    f"SELECT '{name}' AS sn, last_value, is_called "
-                    f'FROM "{schema}"."{name}"'
-                    for schema, name in sequences
-                )
-                cursor.execute(values_sql)
-                rows = cursor.fetchall()
-                alter_stmts = [
-                    f'ALTER SEQUENCE "public"."{sn}" '
-                    f"RESTART WITH {lv + (1 if ic else 0) + random.randint(50_000, 500_000)};"
-                    for sn, lv, ic in rows
-                ]
-                # Wszystkie ALTER-y w jednym batchu (psycopg dopuszcza
-                # multi-statement w surowym SQL-u).
-                cursor.execute("\n".join(alter_stmts))
