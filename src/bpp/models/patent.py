@@ -1,4 +1,4 @@
-from denorm import denormalized, depend_on_related
+from denorm import denormalized, depend_on_fields, depend_on_related
 from django.contrib.postgres.fields import ArrayField
 from django.db import models
 from django.db.models import CASCADE, SET_NULL, JSONField
@@ -200,6 +200,7 @@ class Patent(
         "bpp.Autor",
         only=("nazwisko", "imiona"),
     )
+    @depend_on_fields("tytul_oryginalny")
     def slug(self):
         return self.get_slug()
 

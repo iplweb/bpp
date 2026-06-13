@@ -1,4 +1,4 @@
-from denorm import denormalized, depend_on_related
+from denorm import denormalized, depend_on_fields, depend_on_related
 from django.contrib.postgres.fields import ArrayField
 from django.db import models
 from django.db.models import CASCADE, SET_NULL
@@ -87,6 +87,7 @@ class Praca_Doktorska_Baza(
             "imiona",
         ),
     )
+    @depend_on_fields("autor_id")
     def opis_bibliograficzny_autorzy_cache(self):
         return [f"{self.autor.nazwisko} {self.autor.imiona}"]
 
@@ -99,6 +100,7 @@ class Praca_Doktorska_Baza(
             "imiona",
         ),
     )
+    @depend_on_fields("autor_id")
     def opis_bibliograficzny_zapisani_autorzy_cache(self):
         return f"{self.autor.nazwisko} {self.autor.imiona}"
 
@@ -115,6 +117,7 @@ class Praca_Doktorska_Baza(
         foreign_key="autor",
         only=("nazwisko", "imiona"),
     )
+    @depend_on_fields("tytul_oryginalny")
     def slug(self):
         return self.get_slug()
 
