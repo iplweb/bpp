@@ -371,7 +371,6 @@ dependencies = [
     { name = "django-admin-tools", marker = "platform_python_implementation != 'PyPy'" },
     { name = "django-autocomplete-light", marker = "platform_python_implementation != 'PyPy'" },
     { name = "django-autoslug", marker = "platform_python_implementation != 'PyPy'" },
-    { name = "django-axes", marker = "platform_python_implementation != 'PyPy'" },
     { name = "django-braces", marker = "platform_python_implementation != 'PyPy'" },
     { name = "django-cacheops", marker = "platform_python_implementation != 'PyPy'" },
     { name = "django-celery-email", marker = "platform_python_implementation != 'PyPy'" },
@@ -545,12 +544,12 @@ requires-dist = [
     { name = "dbfread", specifier = ">=2.0.7" },
     { name = "dj-pagination", specifier = "==2.5.0" },
     { name = "django", specifier = ">=5.2.14,<5.3" },
+    { name = "django", specifier = ">=5.2.15,<5.3" },
     { name = "django-admin-sortable2", specifier = ">=2.3.1,<3" },
     { name = "django-admin-tools", specifier = "==0.9.3" },
     { name = "django-auth-ldap", marker = "extra == 'ldap'", specifier = ">=5.3.0" },
     { name = "django-autocomplete-light", specifier = "==4.0.1" },
     { name = "django-autoslug", specifier = "==1.9.9" },
-    { name = "django-axes", specifier = ">=7.0,<9" },
     { name = "django-braces", specifier = ">=1.15.0" },
     { name = "django-cacheops", specifier = ">=7.2,<8" },
     { name = "django-celery-email", specifier = ">=3.0.0" },
@@ -1423,16 +1422,16 @@ wheels = [
 
 [[package]]
 name = "django"
-version = "5.2.14"
+version = "5.2.15"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "asgiref", marker = "platform_python_implementation != 'PyPy'" },
     { name = "sqlparse", marker = "platform_python_implementation != 'PyPy'" },
     { name = "tzdata", marker = "platform_python_implementation != 'PyPy' and sys_platform == 'win32'" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/65/95/95f7faa0950867afaa0bef2460c6263afd6a2c78cc9434046ed28160b015/django-5.2.14.tar.gz", hash = "sha256:58a63ba841662e5c686b57ba1fec52ddd68c0b93bd96ac3029d55728f00bf8a2", size = 10895118, upload-time = "2026-05-05T13:57:31.104Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/2b/e3/31722f7284c9f43333daff9aee9184678e4487adcb5506af0db8cea09ce1/django-5.2.15.tar.gz", hash = "sha256:5154a9bf84ac01dde011e367f355c07dbb329532e06810dcf3ef2af269e236e7", size = 10873669, upload-time = "2026-06-03T13:03:35.892Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/14/44/f172870cf87aa25afef48fb72adba89ee8b77fcab6f3b23d240b923f1528/django-5.2.14-py3-none-any.whl", hash = "sha256:6f712143bd3064310d1f50fac859c3e9a274bdcfc9595339853be7779297fc76", size = 8311320, upload-time = "2026-05-05T13:57:25.795Z" },
+    { url = "https://files.pythonhosted.org/packages/92/b5/38140b1643c00d5c46ce69c78e6980fd285aee223100319631bedee4f5e7/django-5.2.15-py3-none-any.whl", hash = "sha256:0eb4a9bb1853a35b0286dbc6d916bd352c8c2687195a7f2d6f80cefd840e4970", size = 8311957, upload-time = "2026-06-03T13:03:31.329Z" },
 ]
 
 [[package]]
@@ -1500,19 +1499,6 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/6f/6e/6f454a5287127e03214dfd2df10fbd45df87674528ff73bf1fbb3536cdb4/django-autoslug-1.9.9.tar.gz", hash = "sha256:79f88e9433c1c88d8d3f2bec60d65ca98bffaff6c072b78aa5fd99d0e84a13dd", size = 25457, upload-time = "2023-04-03T13:05:46.892Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/87/5c/37bed8c69ad42002a37ba161245342ca15f78a43c75b025ac465d696294c/django_autoslug-1.9.9-py2.py3-none-any.whl", hash = "sha256:81cb018944498f27f439d439687cf902212cafbdb8c74c8ca0307543a3d82907", size = 14392, upload-time = "2023-04-03T13:05:45.702Z" },
-]
-
-[[package]]
-name = "django-axes"
-version = "8.3.1"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "asgiref", marker = "platform_python_implementation != 'PyPy'" },
-    { name = "django", marker = "platform_python_implementation != 'PyPy'" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/f0/b4/00c701a22d46288e3eb1340a1c141f5b4002572ce836a3e8d069f1e1de8a/django_axes-8.3.1.tar.gz", hash = "sha256:d57e923c0ba33cf45275253dd1313c3a3ff04bec686b38d677beb2b3d43c7bcd", size = 254715, upload-time = "2026-02-11T20:19:52.172Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/46/f6/777a5df7d5698eeb23c7c496cc268c0181f0489dbc5b5f2b235b30e5d8dd/django_axes-8.3.1-py3-none-any.whl", hash = "sha256:f7887582fd12713064f1602091ff6152752becae5e891a15bf802746cab0f51a", size = 74213, upload-time = "2026-02-11T20:19:48.646Z" },
 ]
 
 [[package]]
