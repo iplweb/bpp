@@ -655,7 +655,7 @@ provides-extras = ["ldap", "office365", "baseline-rebuild"]
 
 [package.metadata.requires-dev]
 dev = [
-    { name = "bumpver", specifier = ">=2023.1124" },
+    { name = "bumpver", specifier = ">=2026.1132" },
     { name = "django-debug-toolbar", specifier = ">=6.3.0" },
     { name = "django-dev-helpers", specifier = ">=0.1.11" },
     { name = "django-dynamic-fixture", specifier = ">=1.8.0" },
@@ -763,7 +763,7 @@ wheels = [
 
 [[package]]
 name = "bumpver"
-version = "2025.1131"
+version = "2026.1132"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "click", marker = "platform_python_implementation != 'PyPy'" },
@@ -771,9 +771,9 @@ dependencies = [
     { name = "lexid", marker = "platform_python_implementation != 'PyPy'" },
     { name = "toml", marker = "platform_python_implementation != 'PyPy'" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/8f/8a/cc13e816e9f0849dce423b904b06fd91b5444cba6df3200d512a702f2e95/bumpver-2025.1131.tar.gz", hash = "sha256:a35fd2d43a5f65f014035c094866bd3bd6c739606f29fd41246d6ec6e839d3f9", size = 115372, upload-time = "2025-07-02T20:36:11.982Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/25/22/c0c9bf9e7ad6877e4c7c3dedd464e390d9fadb8927c61d6d77547eb17539/bumpver-2026.1132.tar.gz", hash = "sha256:80b223c23fca9bc9dd569b7a44680949d34bee23a738860d9a9b36f1abe3b0e0", size = 116784, upload-time = "2026-05-22T18:40:32.333Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/1d/5b/2d5ea6802495ee4506721977be522804314aa66ad629d9356e3c7e5af4a6/bumpver-2025.1131-py2.py3-none-any.whl", hash = "sha256:c02527f6ed7887afbc06c07630047b24a9f9d02d544a65639e99bf8b92aaa674", size = 65361, upload-time = "2025-07-02T20:36:10.103Z" },
+    { url = "https://files.pythonhosted.org/packages/ab/d6/45c1bf6bcf7b3f174ec0c7fe2d7dce773cbc853cfd8fde06c3153104ffff/bumpver-2026.1132-py2.py3-none-any.whl", hash = "sha256:b060170e7ff5d9ad7043a9d3d6288c7175f9c126744d08a2d6ef9b8377f6bd60", size = 65963, upload-time = "2026-05-22T18:40:30.515Z" },
 ]
 
 [[package]]
