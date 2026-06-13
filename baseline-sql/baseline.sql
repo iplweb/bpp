@@ -20,8 +20,15 @@ SET row_security = off;
 --
 -- Name: pl_PL; Type: COLLATION; Schema: public; Owner: -
 --
-
-CREATE COLLATION public."pl_PL" (provider = libc, locale = 'pl_PL.UTF-8');
+-- USUNIETE RECZNIE: stockowy obraz postgres nie ma wygenerowanego locale libc
+-- pl_PL.UTF-8, wiec CREATE COLLATION wywalalby sie przy ladowaniu baseline na
+-- czystym obrazie. Kolacja byla uzywana wylacznie na stalych literalach ASCII
+-- w widokach bpp_kronika_*_view (no-op dla sortowania) — klauzule COLLATE tez
+-- usunieto ponizej. Istniejace bazy doprowadza do tego stanu migracja
+-- 0443_drop_pl_PL_collation. UWAGA: baseline_rebuild od zera odtworzy te
+-- kolacje (0001_collation.sql) i wymaga obrazu z locale libc + plpython — to
+-- osobny temat.
+--
 
 
 --
@@ -5934,7 +5941,7 @@ CREATE VIEW public.bpp_kronika_patent_view AS
     bpp_patent.tytul_oryginalny_sort,
     bpp_patent.rok,
     bpp_patent_autor.kolejnosc,
-    ('bpp_patent'::text COLLATE public."pl_PL") AS object,
+    ('bpp_patent'::text) AS object,
     bpp_patent.id AS object_pk,
     bpp_patent.id,
     NULL::integer AS zrodlo_id
@@ -5958,7 +5965,7 @@ CREATE VIEW public.bpp_kronika_praca_doktorska_view AS
     bpp_praca_doktorska.tytul_oryginalny_sort,
     bpp_praca_doktorska.rok,
     1 AS kolejnosc,
-    ('bpp_praca_doktorska'::text COLLATE public."pl_PL") AS object,
+    ('bpp_praca_doktorska'::text) AS object,
     bpp_praca_doktorska.id AS object_pk,
     bpp_praca_doktorska.id,
     NULL::integer AS zrodlo_id
@@ -5981,7 +5988,7 @@ CREATE VIEW public.bpp_kronika_praca_habilitacyjna_view AS
     bpp_praca_habilitacyjna.tytul_oryginalny_sort,
     bpp_praca_habilitacyjna.rok,
     1 AS kolejnosc,
-    ('bpp_praca_habilitacyjna'::text COLLATE public."pl_PL") AS object,
+    ('bpp_praca_habilitacyjna'::text) AS object,
     bpp_praca_habilitacyjna.id AS object_pk,
     bpp_praca_habilitacyjna.id,
     NULL::integer AS zrodlo_id
@@ -6121,7 +6128,7 @@ CREATE VIEW public.bpp_kronika_wydawnictwo_ciagle_view AS
     bpp_wydawnictwo_ciagle.tytul_oryginalny_sort,
     bpp_wydawnictwo_ciagle.rok,
     bpp_wydawnictwo_ciagle_autor.kolejnosc,
-    ('bpp_wydawnictwo_ciagle'::text COLLATE public."pl_PL") AS object,
+    ('bpp_wydawnictwo_ciagle'::text) AS object,
     bpp_wydawnictwo_ciagle.id AS object_pk,
     bpp_wydawnictwo_ciagle.id,
     bpp_wydawnictwo_ciagle.zrodlo_id
@@ -6244,7 +6251,7 @@ CREATE VIEW public.bpp_kronika_wydawnictwo_zwarte_view AS
     bpp_wydawnictwo_zwarte.tytul_oryginalny_sort,
     bpp_wydawnictwo_zwarte.rok,
     bpp_wydawnictwo_zwarte_autor.kolejnosc,
-    ('bpp_wydawnictwo_zwarte'::text COLLATE public."pl_PL") AS object,
+    ('bpp_wydawnictwo_zwarte'::text) AS object,
     bpp_wydawnictwo_zwarte.id AS object_pk,
     bpp_wydawnictwo_zwarte.id,
     NULL::integer AS zrodlo_id
