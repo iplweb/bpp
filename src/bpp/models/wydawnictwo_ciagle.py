@@ -1,4 +1,4 @@
-from denorm import denormalized, depend_on_related
+from denorm import denormalized, depend_on_fields, depend_on_related
 from dirtyfields.dirtyfields import DirtyFieldsMixin
 from django.contrib.postgres.fields import ArrayField
 from django.db import models
@@ -265,6 +265,7 @@ class Wydawnictwo_Ciagle(
         only=("nazwisko", "imiona"),
     )
     @depend_on_related("bpp.Zrodlo", only=("nazwa", "skrot"))
+    @depend_on_fields("tytul_oryginalny", "zrodlo_id")
     def slug(self):
         return self.get_slug()
 
