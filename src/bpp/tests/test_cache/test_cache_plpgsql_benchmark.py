@@ -100,6 +100,16 @@ def _bench(cur, setclause):
 
 @pytest.mark.django_db
 def test_plpgsql_port_identical_and_not_slower(standard_data, denorms):
+    # Test przejściowy: porównuje port PL/pgSQL ze starą funkcją V0 w plpython3u
+    # (_swap_to_v0). Po pożegnaniu z plpython3u (DROP EXTENSION, migracja 0442)
+    # nie ma czego porównywać — pomiń. Plik ZOSTAJE (nie usuwamy), by NIE
+    # przetasować shardów pytest-split. Poprawność portu pilnuje
+    # test_cache_plpgsql_port.py (+ test_cache_trigger_v3 / pk_filter / test_cache).
+    with connection.cursor() as cur:
+        cur.execute("SELECT 1 FROM pg_language WHERE lanname = 'plpython3u'")
+        if cur.fetchone() is None:
+            pytest.skip("plpython3u usunięty — porównanie z V0 (plpython) niemożliwe")
+
     j = baker.make(Jednostka)
     for i in range(N):
         wc = baker.make(Wydawnictwo_Ciagle, tytul_oryginalny=f"Bench {i}", punkty_kbn=5)
