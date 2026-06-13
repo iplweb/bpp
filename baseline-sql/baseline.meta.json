@@ -1,5 +1,5 @@
 {
-  "git_sha": "212c7b187cd7b8b3c9c67e788a9f35bc6b9be59b",
+  "git_sha": "a5d218ab2bf22bcfeea440e50539ea82d45748c9",
   "last_migration": {
     "admin": "0003_logentry_add_action_flag_choices",
     "admin_dashboard": "0001_initial",
@@ -71,5 +71,5 @@
     "zglos_publikacje": "0025_alter_obslugujacy_zgloszenia_wydzialow_user"
   },
   "meta_version": 1,
-  "postgres_version": "PostgreSQL 16.13 (Debian 16.13-1.pgdg13+1) on aarch64-unknown-linux-gnu, compiled by gcc (Debian 14.2.0-19) 14.2.0, 64-bit"
+  "postgres_version": "PostgreSQL 16.13 (Debian 16.13-1.pgdg13+1) on x86_64-pc-linux-gnu, compiled by gcc (Debian 14.2.0-19) 14.2.0, 64-bit"
 }
