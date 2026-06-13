@@ -621,3 +621,66 @@ def constance_cache_warmed_up(db):
         config.GOOGLE_VERIFICATION_CODE,
     )
     return config
+
+
+@pytest.fixture(scope="session")
+def django_db_setup(django_db_setup, django_db_blocker):
+    """Rebuild denorm triggers on the freshly-built test DB, then jitter
+    sequences.
+
+    MUSI być w top-level conftest (nie w ``src/fixtures/conftest.py``, który
+    auto-loaduje się tylko dla testów w ``src/fixtures/``) — inaczej triggery
+    denorm dla większości testów pochodzą prosto z ``baseline.sql`` i nikt ich
+    nie odświeża.
+
+    drop_triggers() PRZED install_triggers() — pełny rebuild, nie tylko
+    CREATE OR REPLACE istniejących. Baseline.sql niesie osierocone triggery
+    z denorm 1.11.x (np. ``d_aft_row_upd_on_bpp_wydawnictwo_ciagle``,
+    2-kolumnowy INSERT z ZASZYTYM content_type_id), których 1.12.0 nie
+    nadpisuje, bo self-update trigger zmienił nazwę na ``..._<func>_self``.
+    Taki sierota wstawia stałe content_type_id, a w testach (transakcyjny
+    flush + ``post_migrate``) ID typów treści dryfują → ForeignKeyViolation na
+    ``denorm_dirtyinstance``. drop_triggers() (po fixie wzorca nazw w denorm
+    1.12.1) usuwa wszystkie ``d_*``-triggery, a install_triggers() instaluje
+    świeże, rozwiązujące content_type dynamicznie (patrz
+    ``denorm.helpers.content_type_select_sql``).
+    """
+    from denorm import denorms
+    from django.db import connection
+
+    with django_db_blocker.unblock():
+        denorms.drop_triggers()
+        denorms.install_triggers()
+
+        # Przesuń każdą sekwencję w public o losową wartość z zakresu
+        # [50 000, 500 000], niezależnie per sekwencja. Cel: nie pozwolić
+        # testom dostawać 1-/2-cyfrowych ID, które maskują bugi zależne od
+        # szerokości ID (padding, długość slugów, przekroczenia granicy cyfr).
+        # Różne offsety per tabela dodatkowo rozsynchronizowują relacje między
+        # ID różnych tabel, co demaskuje testy zakładające np.
+        # autor.pk == jednostka.pk. Ziarno PRNG: ``random`` jest seedowane
+        # przez pytest-randomly (jeśli zainstalowane) albo systemowo.
+        with connection.cursor() as cursor:
+            cursor.execute(
+                "SELECT schemaname, sequencename FROM pg_sequences "
+                "WHERE schemaname = 'public'"
+            )
+            sequences = cursor.fetchall()
+            if sequences:
+                # Jedna kwerenda UNION ALL pobiera last_value + is_called ze
+                # wszystkich sekwencji jednym round-tripem; wszystkie ALTER-y
+                # idą jednym multi-statement batchem.
+                values_sql = " UNION ALL ".join(
+                    f"SELECT '{name}' AS sn, last_value, is_called "
+                    f'FROM "{schema}"."{name}"'
+                    for schema, name in sequences
+                )
+                cursor.execute(values_sql)
+                rows = cursor.fetchall()
+                alter_stmts = [
+                    f'ALTER SEQUENCE "public"."{sn}" '
+                    f"RESTART WITH "
+                    f"{lv + (1 if ic else 0) + random.randint(50_000, 500_000)};"
+                    for sn, lv, ic in rows
+                ]
+                cursor.execute("\n".join(alter_stmts))

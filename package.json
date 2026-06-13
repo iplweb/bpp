@@ -1,9 +1,9 @@
 {
     "name": "bpp-iplweb",
-    "version": "v202606.1386",
+    "version": "v202606.1387",
     "license": "MIT",
     "devDependencies": {
-        "esbuild": "^0.27.2",
+        "esbuild": "^0.28.1",
         "grunt": "^1.6.1",
         "grunt-concurrent": "^3.0.0",
         "grunt-contrib-watch": "^1.1.0",
@@ -37,7 +37,6 @@
         "select2-foundation-theme": "https://github.com/mpasternak/select2-foundation.git#modernize-foundation-6.9",
         "sigma": "^3.0.2",
         "three-spritetext": "^1.10.0",
-        "tone": "^15.1.22",
         "what-input": "^5.0.5"
     },
     "optionalDependencies": {

@@ -81,3 +81,56 @@ def test_autor_recent_publications_nonexistent_author():
     response = client.get(url)
 
     assert response.status_code == 404
+
+
+@pytest.mark.django_db
+def test_autor_recent_publications_bez_duplikatow(
+    typy_odpowiedzialnosci, autor_jan_kowalski, jednostka
+):
+    """Autor występujący na rekordzie dwukrotnie (np. autor i redaktor)
+    nie może zduplikować publikacji w odpowiedzi (join do bpp_autorzy_mat
+    wymaga DISTINCT)."""
+    client = APIClient()
+
+    publikacja = baker.make(Wydawnictwo_Ciagle, tytul_oryginalny="Praca podwójna")
+    publikacja.dodaj_autora(
+        autor_jan_kowalski, jednostka, typ_odpowiedzialnosci_skrot="aut."
+    )
+    publikacja.dodaj_autora(
+        autor_jan_kowalski, jednostka, typ_odpowiedzialnosci_skrot="red."
+    )
+
+    url = reverse(
+        "api_v1:recent_author_publications-detail",
+        kwargs={"pk": autor_jan_kowalski.pk},
+    )
+    response = client.get(url)
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["count"] == 1
+    assert len(data["publications"]) == 1
+
+
+@pytest.mark.django_db
+def test_autor_recent_publications_nie_pobiera_zbednych_kolumn():
+    """Endpoint używa tylko kilku kolumn tabeli mat — nie może ciągnąć
+    wszystkich ~47 kolumn, w szczególności tsvectora search_index."""
+    from django.db import connection
+    from django.test.utils import CaptureQueriesContext
+
+    client = APIClient()
+
+    autor = baker.make(Autor, nazwisko="Waski", imiona="Select")
+    publikacja = baker.make(Wydawnictwo_Ciagle, tytul_oryginalny="Praca wąska")
+    baker.make(Wydawnictwo_Ciagle_Autor, rekord=publikacja, autor=autor)
+
+    url = reverse("api_v1:recent_author_publications-detail", kwargs={"pk": autor.pk})
+    with CaptureQueriesContext(connection) as ctx:
+        response = client.get(url)
+
+    assert response.status_code == 200
+    selecty = [q["sql"] for q in ctx.captured_queries if "bpp_rekord_mat" in q["sql"]]
+    assert selecty
+    for sql in selecty:
+        assert "search_index" not in sql

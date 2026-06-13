@@ -473,7 +473,10 @@ def test_rebuild_zwarte(
 
 @pytest.mark.django_db
 def test_rebuild_patent(django_assert_max_num_queries, patent, denorms):
-    with django_assert_max_num_queries(41):
+    # denorm 1.12.x oznacza dirty per-funkcję (jeden marker DirtyInstance na
+    # każdą zdenormalizowaną funkcję), więc rebuild robi więcej flushy niż w
+    # 1.11.x (zbiorczy marker na obiekt). Budżet podniesiony z 41 do 64.
+    with django_assert_max_num_queries(64):
         denorms.rebuildall("Patent")
 
 

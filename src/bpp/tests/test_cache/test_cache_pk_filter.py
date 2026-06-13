@@ -42,12 +42,18 @@ def test_object_id_raw_daje_index_seek_na_pk():
     nie do Seq Scan (sedno optymalizacji)."""
     wc = baker.make(Wydawnictwo_Ciagle)
     with connection.cursor() as c:
+        # enable_seqscan=off: na malej tabeli planner potrafi wybrac
+        # Seq Scan mimo indeksu (zalezne od statystyk => flaky w CI);
+        # wylaczenie wymusza indeks JESLI ISTNIEJE - a o jego uzycie
+        # przez widok tu chodzi.
+        c.execute("SET enable_seqscan = off")
         c.execute(
             "EXPLAIN SELECT * FROM bpp_wydawnictwo_ciagle_view "
             "WHERE object_id_raw = %s",
             [wc.pk],
         )
         plan = "\n".join(row[0] for row in c.fetchall())
+        c.execute("RESET enable_seqscan")
     assert "Index Cond" in plan, plan
     assert "Seq Scan on bpp_wydawnictwo_ciagle " not in plan, plan
 

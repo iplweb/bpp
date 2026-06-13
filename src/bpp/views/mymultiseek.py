@@ -1,4 +1,5 @@
 import csv
+import hashlib
 import html
 import io
 import json
@@ -6,7 +7,8 @@ import logging
 import re
 
 from django.contrib.auth.mixins import LoginRequiredMixin
-from django.db.models import Sum
+from django.core.cache import cache
+from django.db.models import Count, Sum
 from django.http import HttpResponse, HttpResponseBadRequest, JsonResponse
 from django.urls import reverse
 from django.utils.html import strip_tags
@@ -32,6 +34,9 @@ PKT_WEWN = "pkt_wewn"
 PKT_WEWN_BEZ = "pkt_wewn_bez"
 TABLE = "table"
 MULTISEEK_EXPORT_MAX_ROWS = 5000
+
+# TTL cache agregatów wyników (count + sumy) — patrz get_context_data.
+MULTISEEK_AGGREGATE_CACHE_TIMEOUT = 30 * 60
 MULTISEEK_REPORT_TITLE_SESSION_KEY = "MULTISEEK_TITLE"
 MULTISEEK_DEFAULT_REPORT_TITLE = "Rezultat wyszukiwania"
 XLSX_WORKSHEET_TITLE_MAX_LENGTH = 31
@@ -159,6 +164,25 @@ class MyMultiseekResults(MultiseekResults):
             only_those_ids=self.request.session.get(MULTISEEK_SESSION_KEY_REMOVED, [])
         )
 
+    def _aggregate_cache_key(self):
+        """Klucz cache agregatów wyników (count + sumy) — wszystkie wejścia
+        wpływające na wynik: formularz multiseek (z report_type
+        i ordering), lista wyrzuconych rekordów, tryb print-removed,
+        zalogowanie (ukryte statusy) i uczelnia."""
+        uczelnia = Uczelnia.objects.get_for_request(self.request)
+        payload = json.dumps(
+            [
+                self.get_multiseek_data(),
+                sorted(str(x) for x in self.get_removed_records()),
+                bool(self.request.GET.get("print-removed", False)),
+                bool(self.request.user.is_authenticated),
+                getattr(uczelnia, "pk", None),
+            ],
+            sort_keys=True,
+            default=str,
+        )
+        return "multiseek_agregaty:" + hashlib.sha256(payload.encode()).hexdigest()
+
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data()
 
@@ -167,19 +191,36 @@ class MyMultiseekResults(MultiseekResults):
             ctx["object_list"] = qset
             ctx["print_removed"] = True
 
-        ctx["paginator_count"] = qset.count()
+        # Agregaty (COUNT + sumy) sa cache'owane, zeby stronicowanie tych
+        # samych wynikow nie powtarzalo drogiego skanu (DISTINCT + join do
+        # bpp_autorzy_mat) przy kazdej stronie. Staleness ograniczone TTL;
+        # kazda zmiana formularza / wyrzucenie rekordu zmienia klucz.
+        cache_key = self._aggregate_cache_key()
+        agregaty = cache.get(cache_key)
+        if agregaty is None:
+            if ctx["report_type"] in EXTRA_TYPES:
+                # Licznik i sumy jednym skanem — przy DISTINCT + join do
+                # bpp_autorzy_mat osobny COUNT podwajalby najdrozsza czesc.
+                agregaty = qset.aggregate(
+                    Sum("impact_factor"),
+                    Sum("liczba_cytowan"),
+                    Sum("punkty_kbn"),
+                    Sum("index_copernicus"),
+                    Sum("punktacja_wewnetrzna"),
+                    paginator_count=Count("pk"),
+                )
+            else:
+                agregaty = {"paginator_count": qset.count()}
+            cache.set(cache_key, agregaty, MULTISEEK_AGGREGATE_CACHE_TIMEOUT)
+
+        agregaty = dict(agregaty)
+        ctx["paginator_count"] = agregaty.pop("paginator_count")
+        if ctx["report_type"] in EXTRA_TYPES:
+            ctx["sumy"] = agregaty
+
         ctx["multiseek_export_max_rows"] = MULTISEEK_EXPORT_MAX_ROWS
         object_list = ctx["object_list"]
         object_list.count = lambda *args, **kw: ctx["paginator_count"]
-
-        if ctx["report_type"] in EXTRA_TYPES:
-            ctx["sumy"] = qset.aggregate(
-                Sum("impact_factor"),
-                Sum("liczba_cytowan"),
-                Sum("punkty_kbn"),
-                Sum("index_copernicus"),
-                Sum("punktacja_wewnetrzna"),
-            )
 
         keys = list(self.request.session.keys())
         if "MULTISEEK_TITLE" not in keys:
