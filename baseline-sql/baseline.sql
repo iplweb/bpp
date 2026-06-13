@@ -18,13 +18,6 @@ SET client_min_messages = warning;
 SET row_security = off;
 
 --
--- Name: plpython3u; Type: EXTENSION; Schema: -; Owner: -
---
-
-CREATE EXTENSION IF NOT EXISTS plpython3u WITH SCHEMA pg_catalog;
-
-
---
 -- Name: pl_PL; Type: COLLATION; Schema: public; Owner: -
 --
 
@@ -64,78 +57,117 @@ CREATE EXTENSION IF NOT EXISTS unaccent WITH SCHEMA public;
 --
 
 CREATE FUNCTION public.bpp_autor_dyscyplina_change() RETURNS trigger
-    LANGUAGE plpython3u
-    AS $$
-  # Uruchamiane w przypadku zmiany dyscypliny obiektu Autor_Dyscyplina
-  # (tabela bpp_autor_dyscyplina)
+    LANGUAGE plpgsql
+    AS $_$
+DECLARE
+    v_rok           integer;
+    v_autor_id      integer;
+    v_f1_old        integer;
+    v_f1_new        integer;
+    v_f2_old        integer;
+    v_f2_new        integer;
+    v_diff_f1       boolean;
+    v_diff_f2       boolean;
+    v_table         text;
+    v_ct_id         integer;
+    v_dys_ids       integer[];
+    v_dys_rekordy   integer[];
+    v_subdys_ids    integer[];
+    v_subdys_rekordy integer[];
+BEGIN
+    -- Guard: zmiana roku / ID autora nie jest obsługiwana (jak w oryginale).
+    IF NEW.rok IS DISTINCT FROM OLD.rok THEN
+        RAISE EXCEPTION 'Zmiana roku NIE jest obsługiwana';
+    END IF;
+    IF NEW.autor_id IS DISTINCT FROM OLD.autor_id THEN
+        RAISE EXCEPTION 'Zmiana ID autora nie jest obsługiwana';
+    END IF;
 
-  # Ta funkcja wygląda jak wygląda, bo w przypadku zmiany dwóch pól tzn dyscyplina_naukowa
-  # oraz subdyscyplina_naukowa, w najgorszym możliwym przypadku -- zamiany jednego z drugim
-  # będzie potrzebne właśnie takie przemapowanie rzeczy:
+    v_rok      := NEW.rok;
+    v_autor_id := NEW.autor_id;
 
-  if TD['new']['rok'] != TD['old']['rok']:
-    plpy.error("Zmiana roku NIE jest obsługiwana")
-    return
+    v_f1_old := OLD.dyscyplina_naukowa_id;
+    v_f1_new := NEW.dyscyplina_naukowa_id;
+    v_f2_old := OLD.subdyscyplina_naukowa_id;
+    v_f2_new := NEW.subdyscyplina_naukowa_id;
 
-  if TD['new']['autor_id'] != TD['old']['autor_id']:
-    plpy.error("Zmiana ID autora nie jest obsługiwana")
-    return
+    v_diff_f1 := v_f1_old IS DISTINCT FROM v_f1_new;
+    v_diff_f2 := v_f2_old IS DISTINCT FROM v_f2_new;
 
-  rok = TD['new']['rok']
-  autor_id = TD['new']['autor_id']
+    -- Brak zmian dyscyplin — wróć.
+    IF NOT v_diff_f1 AND NOT v_diff_f2 THEN
+        RETURN NEW;
+    END IF;
 
-  f1 = 'dyscyplina_naukowa_id'
-  f2 = 'subdyscyplina_naukowa_id'
+    FOREACH v_table IN ARRAY
+        ARRAY['bpp_wydawnictwo_ciagle', 'bpp_wydawnictwo_zwarte', 'bpp_patent']
+    LOOP
+        SELECT id INTO v_ct_id
+        FROM django_content_type
+        WHERE app_label = 'bpp' AND model = substr(v_table, 5);
 
-  val_f1_old = TD['old'][f1]
-  val_f1_new = TD['new'][f1]
+        v_dys_ids := NULL;
+        v_dys_rekordy := NULL;
+        v_subdys_ids := NULL;
+        v_subdys_rekordy := NULL;
 
-  val_f2_old = TD['old'][f2]
-  val_f2_new = TD['new'][f2]
+        -- FAZA 1: snapshot ID-ków zanim cokolwiek zaktualizujemy.
+        IF v_diff_f1 AND v_f1_old IS NOT NULL THEN
+            EXECUTE format(
+                'SELECT array_agg(a.id), array_agg(a.rekord_id)
+                   FROM %I a, %I p
+                  WHERE a.dyscyplina_naukowa_id = $1
+                    AND p.rok = $2
+                    AND p.id = a.rekord_id
+                    AND a.autor_id = $3',
+                v_table || '_autor', v_table)
+            INTO v_dys_ids, v_dys_rekordy
+            USING v_f1_old, v_rok, v_autor_id;
+        END IF;
 
-  diff_f1 = val_f1_old != val_f1_new
-  diff_f2 = val_f2_old != val_f2_new
+        IF v_diff_f2 AND v_f2_old IS NOT NULL THEN
+            EXECUTE format(
+                'SELECT array_agg(a.id), array_agg(a.rekord_id)
+                   FROM %I a, %I p
+                  WHERE a.dyscyplina_naukowa_id = $1
+                    AND p.rok = $2
+                    AND p.id = a.rekord_id
+                    AND a.autor_id = $3',
+                v_table || '_autor', v_table)
+            INTO v_subdys_ids, v_subdys_rekordy
+            USING v_f2_old, v_rok, v_autor_id;
+        END IF;
 
-  # Brak zmian dyscyplin, wróć
-  if not diff_f1 and not diff_f2:
-    return
+        -- FAZA 2: dopiero teraz UPDATE-y + oznaczanie dirty.
+        IF v_dys_ids IS NOT NULL THEN
+            EXECUTE format(
+                'UPDATE %I SET dyscyplina_naukowa_id = $1 WHERE id = ANY($2)',
+                v_table || '_autor')
+            USING v_f1_new, v_dys_ids;
 
-  qry = """
-    CREATE TEMP TABLE %(temp_table)s AS
-    SELECT %(table)s_autor.id, %(table)s_autor.rekord_id FROM %(table)s, %(table)s_autor
-    WHERE dyscyplina_naukowa_id = %(dyscyplina_id)s
-      AND %(table)s.rok = %(rok)i
-      AND %(table)s.id = %(table)s_autor.rekord_id
-      AND %(table)s_autor.autor_id = %(autor_id)i
-  """
+            INSERT INTO denorm_dirtyinstance(content_type_id, object_id)
+            SELECT v_ct_id, r FROM unnest(v_dys_rekordy) AS r
+            ON CONFLICT DO NOTHING;
+        END IF;
 
-  cqueue = """
-  INSERT INTO denorm_dirtyinstance(content_type_id, object_id) SELECT %(content_type_id)s, rekord_id FROM %(table)s ON CONFLICT DO NOTHING
-  """
+        IF v_subdys_ids IS NOT NULL THEN
+            -- subdyscyplina_naukowa autora -> kolumna dyscyplina_naukowa_id
+            -- wiersza *_autor (te tabele mają tylko jedno pole dyscypliny);
+            -- nowa wartość może być NULL (gdy subdyscyplinę skasowano).
+            EXECUTE format(
+                'UPDATE %I SET dyscyplina_naukowa_id = $1 WHERE id = ANY($2)',
+                v_table || '_autor')
+            USING v_f2_new, v_subdys_ids;
 
-  for table in ['bpp_wydawnictwo_ciagle',
-                'bpp_wydawnictwo_zwarte',
-                'bpp_patent']:
+            INSERT INTO denorm_dirtyinstance(content_type_id, object_id)
+            SELECT v_ct_id, r FROM unnest(v_subdys_rekordy) AS r
+            ON CONFLICT DO NOTHING;
+        END IF;
+    END LOOP;
 
-    rv = plpy.execute("SELECT id FROM django_content_type WHERE app_label = 'bpp' AND model = '%s'" % table[4:], 1)
-    content_type_id = rv[0]['id']
-
-    if diff_f1 and (val_f1_old != None):
-      plpy.execute(qry % dict(temp_table="dys", table=table, dyscyplina_id=val_f1_old, rok=rok, autor_id=autor_id))
-
-    if diff_f2 and (val_f2_old != None):
-      plpy.execute(qry % dict(temp_table="subdys", table=table, dyscyplina_id=val_f2_old, rok=rok, autor_id=autor_id))
-
-    if diff_f1 and (val_f1_old != None):
-      plpy.execute("UPDATE %s_autor SET dyscyplina_naukowa_id = %s WHERE id IN (SELECT id FROM dys)" % (table, val_f1_new))
-      plpy.execute(cqueue % dict(table="dys", content_type_id=content_type_id))
-      plpy.execute("DROP TABLE dys")
-
-    if diff_f2 and (val_f2_old != None):
-      plpy.execute("UPDATE %s_autor SET dyscyplina_naukowa_id = %s WHERE id IN (SELECT id FROM subdys)" % (table, val_f2_new or "NULL"))
-      plpy.execute(cqueue % dict(table="subdys", content_type_id=content_type_id))
-      plpy.execute("DROP TABLE subdys")
-$$;
+    RETURN NEW;
+END;
+$_$;
 
 
 --
@@ -143,41 +175,45 @@ $$;
 --
 
 CREATE FUNCTION public.bpp_autor_dyscyplina_delete() RETURNS trigger
-    LANGUAGE plpython3u
-    AS $$
-  # Uruchamiane w przypadku skasowania wpisu dla roku czyli obiektu Autor_Dyscyplina
-  # (tabela bpp_autor_dyscyplina)
+    LANGUAGE plpgsql
+    AS $_$
+DECLARE
+    v_autor_id integer := OLD.autor_id;
+    v_rok      integer := OLD.rok;
+    v_table    text;
+    v_ct_id    integer;
+BEGIN
+    IF OLD.dyscyplina_naukowa_id IS NULL
+       AND OLD.subdyscyplina_naukowa_id IS NULL THEN
+        RETURN OLD;
+    END IF;
 
-  cqueue = """
-  INSERT INTO denorm_dirtyinstance(content_type_id, object_id) SELECT %(content_type_id)s, rekord_id FROM %(table)s ON CONFLICT DO NOTHING
-  """
+    FOREACH v_table IN ARRAY
+        ARRAY['bpp_wydawnictwo_ciagle', 'bpp_wydawnictwo_zwarte', 'bpp_patent']
+    LOOP
+        SELECT id INTO v_ct_id
+        FROM django_content_type
+        WHERE app_label = 'bpp' AND model = substr(v_table, 5);
 
-  autor_id = TD['old']['autor_id']
-  rok = TD['old']['rok']
+        EXECUTE format(
+            'WITH dys AS (
+                 UPDATE %I a SET dyscyplina_naukowa_id = NULL
+                   FROM %I p
+                  WHERE p.id = a.rekord_id
+                    AND p.rok = $1
+                    AND a.autor_id = $2
+              RETURNING a.rekord_id
+             )
+             INSERT INTO denorm_dirtyinstance(content_type_id, object_id)
+             SELECT $3, rekord_id FROM dys
+             ON CONFLICT DO NOTHING',
+            v_table || '_autor', v_table)
+        USING v_rok, v_autor_id, v_ct_id;
+    END LOOP;
 
-  for field in ['dyscyplina_naukowa_id', 'subdyscyplina_naukowa_id']:
-    if TD['old'][field] is None:
-      continue
-
-    for table in ['bpp_wydawnictwo_ciagle',
-                  'bpp_wydawnictwo_zwarte',
-                  'bpp_patent']:
-      rv = plpy.execute("SELECT id FROM django_content_type WHERE app_label = 'bpp' AND model = '%s'" % table[4:], 1)
-      content_type_id = rv[0]['id']
-
-      plpy.execute("""
-      CREATE TEMP TABLE dys AS
-      SELECT %(table)s_autor.id, %(table)s_autor.rekord_id
-      FROM %(table)s, %(table)s_autor
-      WHERE %(table)s.rok = %(rok)i
-        AND %(table)s.id = %(table)s_autor.rekord_id
-        AND %(table)s_autor.autor_id = %(autor_id)i
-      """ % dict(table=table, autor_id=autor_id, rok=rok))
-      plpy.execute("UPDATE %(table)s_autor SET dyscyplina_naukowa_id = NULL WHERE id IN (SELECT id FROM dys)" % dict(table=table))
-      plpy.execute(cqueue % dict(content_type_id=content_type_id, table="dys"))
-      plpy.execute("DROP TABLE dys")
-
-$$;
+    RETURN OLD;
+END;
+$_$;
 
 
 --
@@ -185,12 +221,15 @@ $$;
 --
 
 CREATE FUNCTION public.bpp_autor_dyscyplina_rozne() RETURNS trigger
-    LANGUAGE plpython3u
+    LANGUAGE plpgsql
     AS $$
-  # Sprawdz czy dyscyplina_naukowa i subdyscyplina_naukowa sa rozne
-  if TD['new']['dyscyplina_naukowa_id'] == TD['new']['subdyscyplina_naukowa_id']:
-    plpy.error("Dyscypliny muszą być różne")
-
+BEGIN
+    IF NEW.dyscyplina_naukowa_id
+       IS NOT DISTINCT FROM NEW.subdyscyplina_naukowa_id THEN
+        RAISE EXCEPTION 'Dyscypliny muszą być różne';
+    END IF;
+    RETURN NEW;
+END;
 $$;
 
 
@@ -199,60 +238,185 @@ $$;
 --
 
 CREATE FUNCTION public.bpp_autor_ustaw_jednostka_aktualna() RETURNS trigger
-    LANGUAGE plpython3u
-    AS $_$
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+    v_autor_id    integer;
+    v_jednostka_id integer;
+    v_funkcja_id  integer;
+BEGIN
+    IF TG_OP = 'UPDATE' THEN
+        IF NEW.autor_id IS DISTINCT FROM OLD.autor_id THEN
+            RAISE EXCEPTION
+                'zmiana ID autora nie jest obsługiwana przez trigger';
+        END IF;
+    END IF;
 
-    action = "new"
-    if TD["event"] == "DELETE":
-        action = "old"
+    IF TG_OP = 'DELETE' THEN
+        v_autor_id := OLD.autor_id;
+    ELSE
+        v_autor_id := NEW.autor_id;
+    END IF;
 
-    if TD["event"] == "UPDATE":
-        if TD["new"]["autor_id"] != TD["old"]["autor_id"]:
-            raise Exception("zmiana ID autora nie jest obsługiwana przez trigger")
-
-    autor_id = TD[action]["autor_id"]
-    q1 = """
-    SELECT
-        jednostka_id,
-        funkcja_id,
-        (coalesce("podstawowe_miejsce_pracy", false)) AS podstawowe_miejsce_pracy,
-        (coalesce("rozpoczal_prace", '0001-01-01'::date)) AS data_rozpoczecia,
-        (coalesce("zakonczyl_prace", '9999-12-31'::date)) AS data_zakonczenia
-    FROM
-        bpp_autor_jednostka
-    WHERE
-        autor_id = $1 AND
-        coalesce("zakonczyl_prace", '9999-12-31'::date) > NOW()::date
+    SELECT jednostka_id, funkcja_id
+    INTO v_jednostka_id, v_funkcja_id
+    FROM bpp_autor_jednostka
+    WHERE autor_id = v_autor_id
+      AND coalesce(zakonczyl_prace, '9999-12-31'::date) > NOW()::date
     ORDER BY
-        podstawowe_miejsce_pracy DESC,
-        data_rozpoczecia DESC,
-        data_zakonczenia DESC,
-        bpp_autor_jednostka.id DESC
-    LIMIT
-        1
-    """
+        coalesce(podstawowe_miejsce_pracy, false) DESC,
+        coalesce(rozpoczal_prace, '0001-01-01'::date) DESC,
+        coalesce(zakonczyl_prace, '9999-12-31'::date) DESC,
+        id DESC
+    LIMIT 1;
 
-    p1 = plpy.prepare(q1, ["int"])
-    rv = plpy.execute(p1, [autor_id])
+    IF FOUND THEN
+        UPDATE bpp_autor
+           SET aktualna_jednostka_id = v_jednostka_id,
+               aktualna_funkcja_id = v_funkcja_id
+         WHERE id = v_autor_id;
+    ELSE
+        -- Brak wpisów -> wyzeruj aktualną jednostkę/funkcję.
+        UPDATE bpp_autor
+           SET aktualna_jednostka_id = NULL,
+               aktualna_funkcja_id = NULL
+         WHERE id = v_autor_id;
+    END IF;
 
-    q2 = """
-    UPDATE
-        bpp_autor
-    SET
-        aktualna_jednostka_id = $1,
-        aktualna_funkcja_id = $2
-    WHERE
-        id = $3
-    """
-    p2 = plpy.prepare(q2, ["int", "int", "int"])
+    IF TG_OP = 'DELETE' THEN
+        RETURN OLD;
+    END IF;
+    RETURN NEW;
+END;
+$$;
 
-    if len(rv) == 1:
-        plpy.execute(p2, [rv[0]["jednostka_id"], rv[0]["funkcja_id"], autor_id])
-    else:
-        # Ustaw aktualna_jednostka=NULL, aktualna_funkcja=NULL i aktualny=False jeżeli nie ma żadnych wpisów
-        plpy.execute(p2, [None, None, autor_id])
 
-$_$;
+--
+-- Name: bpp_delete_autor_patent(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.bpp_delete_autor_patent() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE ct integer;
+BEGIN
+      SELECT id INTO STRICT ct FROM django_content_type WHERE app_label='bpp' AND model='patent';
+      PERFORM pg_advisory_xact_lock(ct, OLD.rekord_id);
+      DELETE FROM bpp_autorzy_mat WHERE id = ARRAY[ct, OLD.id]::integer[];
+      RETURN NULL;
+END $$;
+
+
+--
+-- Name: bpp_delete_autor_wydawnictwo_ciagle(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.bpp_delete_autor_wydawnictwo_ciagle() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE ct integer;
+BEGIN
+      SELECT id INTO STRICT ct FROM django_content_type WHERE app_label='bpp' AND model='wydawnictwo_ciagle';
+      PERFORM pg_advisory_xact_lock(ct, OLD.rekord_id);
+      DELETE FROM bpp_autorzy_mat WHERE id = ARRAY[ct, OLD.id]::integer[];
+      RETURN NULL;
+END $$;
+
+
+--
+-- Name: bpp_delete_autor_wydawnictwo_zwarte(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.bpp_delete_autor_wydawnictwo_zwarte() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE ct integer;
+BEGIN
+      SELECT id INTO STRICT ct FROM django_content_type WHERE app_label='bpp' AND model='wydawnictwo_zwarte';
+      PERFORM pg_advisory_xact_lock(ct, OLD.rekord_id);
+      DELETE FROM bpp_autorzy_mat WHERE id = ARRAY[ct, OLD.id]::integer[];
+      RETURN NULL;
+END $$;
+
+
+--
+-- Name: bpp_delete_rekord_patent(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.bpp_delete_rekord_patent() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE ct integer;
+BEGIN
+      SELECT id INTO STRICT ct FROM django_content_type WHERE app_label='bpp' AND model='patent';
+      PERFORM pg_advisory_xact_lock(ct, OLD.id);
+      DELETE FROM bpp_rekord_mat WHERE id = ARRAY[ct, OLD.id]::integer[];
+      RETURN NULL;
+END $$;
+
+
+--
+-- Name: bpp_delete_rekord_praca_doktorska(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.bpp_delete_rekord_praca_doktorska() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE ct integer;
+BEGIN
+      SELECT id INTO STRICT ct FROM django_content_type WHERE app_label='bpp' AND model='praca_doktorska';
+      PERFORM pg_advisory_xact_lock(ct, OLD.id);
+      DELETE FROM bpp_rekord_mat WHERE id = ARRAY[ct, OLD.id]::integer[];
+      RETURN NULL;
+END $$;
+
+
+--
+-- Name: bpp_delete_rekord_praca_habilitacyjna(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.bpp_delete_rekord_praca_habilitacyjna() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE ct integer;
+BEGIN
+      SELECT id INTO STRICT ct FROM django_content_type WHERE app_label='bpp' AND model='praca_habilitacyjna';
+      PERFORM pg_advisory_xact_lock(ct, OLD.id);
+      DELETE FROM bpp_rekord_mat WHERE id = ARRAY[ct, OLD.id]::integer[];
+      RETURN NULL;
+END $$;
+
+
+--
+-- Name: bpp_delete_rekord_wydawnictwo_ciagle(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.bpp_delete_rekord_wydawnictwo_ciagle() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE ct integer;
+BEGIN
+      SELECT id INTO STRICT ct FROM django_content_type WHERE app_label='bpp' AND model='wydawnictwo_ciagle';
+      PERFORM pg_advisory_xact_lock(ct, OLD.id);
+      DELETE FROM bpp_rekord_mat WHERE id = ARRAY[ct, OLD.id]::integer[];
+      RETURN NULL;
+END $$;
+
+
+--
+-- Name: bpp_delete_rekord_wydawnictwo_zwarte(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.bpp_delete_rekord_wydawnictwo_zwarte() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE ct integer;
+BEGIN
+      SELECT id INTO STRICT ct FROM django_content_type WHERE app_label='bpp' AND model='wydawnictwo_zwarte';
+      PERFORM pg_advisory_xact_lock(ct, OLD.id);
+      DELETE FROM bpp_rekord_mat WHERE id = ARRAY[ct, OLD.id]::integer[];
+      RETURN NULL;
+END $$;
 
 
 --
@@ -260,16 +424,21 @@ $_$;
 --
 
 CREATE FUNCTION public.bpp_jednostka_sprawdz_uczelnia_id() RETURNS trigger
-    LANGUAGE plpython3u
+    LANGUAGE plpgsql
     AS $$
-    uczelnia_id = TD["new"]["uczelnia_id"]
-    wydzial_id = TD["new"]["wydzial_id"]
+DECLARE
+    v_wydzial_uczelnia integer;
+BEGIN
+    IF NEW.wydzial_id IS NOT NULL THEN
+        SELECT uczelnia_id INTO v_wydzial_uczelnia
+        FROM bpp_wydzial WHERE id = NEW.wydzial_id;
 
-    if wydzial_id is not None:
-        q = "SELECT uczelnia_id FROM bpp_wydzial WHERE id = %i" % wydzial_id
-        r = plpy.execute(q)
-        assert r[0]["uczelnia_id"] == uczelnia_id, "Uczelnia jednostki i wydzialu musi byc identyczna"
-
+        IF v_wydzial_uczelnia IS DISTINCT FROM NEW.uczelnia_id THEN
+            RAISE EXCEPTION 'Uczelnia jednostki i wydzialu musi byc identyczna';
+        END IF;
+    END IF;
+    RETURN NEW;
+END;
 $$;
 
 
@@ -278,52 +447,53 @@ $$;
 --
 
 CREATE FUNCTION public.bpp_jednostka_ustaw_wydzial_aktualna() RETURNS trigger
-    LANGUAGE plpython3u
-    AS $_$
-    action = "new"
-    if TD["event"] == "DELETE":
-        action = "old"
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+    v_jednostka_id integer;
+    v_wydzial_id   integer;
+    v_aktualna     boolean;
+BEGIN
+    IF TG_OP = 'UPDATE' THEN
+        IF NEW.jednostka_id IS DISTINCT FROM OLD.jednostka_id THEN
+            RAISE EXCEPTION
+                'zmiana ID jednostki nie jest obsługiwana przez trigger';
+        END IF;
+    END IF;
 
-    if TD["event"] == "UPDATE":
-        if TD["new"]["jednostka_id"] != TD["old"]["jednostka_id"]:
-            raise Exception("zmiana ID jednostki nie jest obsługiwana przez trigger")
+    IF TG_OP = 'DELETE' THEN
+        v_jednostka_id := OLD.jednostka_id;
+    ELSE
+        v_jednostka_id := NEW.jednostka_id;
+    END IF;
 
-    jednostka_id = TD[action]["jednostka_id"]
-    q1 = """
-    SELECT
-        wydzial_id,
-        (coalesce("do", '9999-12-31'::date) > NOW()::date) AS "aktualna"
-    FROM
-        bpp_jednostka_wydzial
-    WHERE
-        jednostka_id = $1
-    ORDER BY
-        (coalesce("od", '0001-01-01'::date)) DESC
-    LIMIT
-        1
-    """
+    SELECT wydzial_id,
+           (coalesce("do", '9999-12-31'::date) > NOW()::date)
+    INTO v_wydzial_id, v_aktualna
+    FROM bpp_jednostka_wydzial
+    WHERE jednostka_id = v_jednostka_id
+    ORDER BY coalesce("od", '0001-01-01'::date) DESC
+    LIMIT 1;
 
-    p1 = plpy.prepare(q1, ["int"])
-    rv = plpy.execute(p1, [jednostka_id])
+    IF FOUND THEN
+        UPDATE bpp_jednostka
+           SET wydzial_id = v_wydzial_id,
+               aktualna = v_aktualna
+         WHERE id = v_jednostka_id;
+    ELSE
+        -- Brak wpisów -> wydział NULL, aktualna = false.
+        UPDATE bpp_jednostka
+           SET wydzial_id = NULL,
+               aktualna = false
+         WHERE id = v_jednostka_id;
+    END IF;
 
-    q2 = """
-    UPDATE
-        bpp_jednostka
-    SET
-        wydzial_id = $1,
-        aktualna = $2
-    WHERE
-        id = $3
-    """
-    p2 = plpy.prepare(q2, ["int", "bool", "int"])
-
-    if len(rv) == 1:
-        plpy.execute(p2, [rv[0]["wydzial_id"], rv[0]["aktualna"], jednostka_id])
-    else:
-        # Ustaw wydział=NULL i aktualna=False jeżeli nie ma żadnych wpisów
-        plpy.execute(p2, [None, False, jednostka_id])
-
-$_$;
+    IF TG_OP = 'DELETE' THEN
+        RETURN OLD;
+    END IF;
+    RETURN NEW;
+END;
+$$;
 
 
 --
@@ -331,20 +501,25 @@ $_$;
 --
 
 CREATE FUNCTION public.bpp_jednostka_wydzial_sprawdz_uczelnia_id() RETURNS trigger
-    LANGUAGE plpython3u
+    LANGUAGE plpgsql
     AS $$
-    jednostka_id = TD["new"]["jednostka_id"]
-    wydzial_id = TD["new"]["wydzial_id"]
+DECLARE
+    v_uczelnia_wydzialu  integer;
+    v_uczelnia_jednostki integer;
+BEGIN
+    IF NEW.wydzial_id IS NOT NULL THEN
+        SELECT uczelnia_id INTO v_uczelnia_wydzialu
+        FROM bpp_wydzial WHERE id = NEW.wydzial_id;
 
-    if wydzial_id is not None:
-      q1 = "SELECT uczelnia_id FROM bpp_wydzial WHERE id = %i" % wydzial_id
-      q2 = "SELECT uczelnia_id FROM bpp_jednostka WHERE id = %i" % jednostka_id
+        SELECT uczelnia_id INTO v_uczelnia_jednostki
+        FROM bpp_jednostka WHERE id = NEW.jednostka_id;
 
-      r1 = plpy.execute(q1)
-      r2 = plpy.execute(q2)
-
-      assert r1[0]["uczelnia_id"] == r2[0]["uczelnia_id"], "Uczelnia jednostki i wydzialu musi byc identyczna"
-
+        IF v_uczelnia_wydzialu IS DISTINCT FROM v_uczelnia_jednostki THEN
+            RAISE EXCEPTION 'Uczelnia jednostki i wydzialu musi byc identyczna';
+        END IF;
+    END IF;
+    RETURN NEW;
+END;
 $$;
 
 
@@ -411,135 +586,165 @@ $$;
 
 
 --
--- Name: bpp_refresh_cache(); Type: FUNCTION; Schema: public; Owner: -
+-- Name: bpp_refresh_autor_patent(); Type: FUNCTION; Schema: public; Owner: -
 --
 
-CREATE FUNCTION public.bpp_refresh_cache() RETURNS trigger
-    LANGUAGE plpython3u
+CREATE FUNCTION public.bpp_refresh_autor_patent() RETURNS trigger
+    LANGUAGE plpgsql
     AS $$
-    # Odswieza bpp_rekord_mat / bpp_autorzy_mat dla POJEDYNCZEGO rekordu.
-    # v3 — patrz naglowek pliku 0429_cache_trigger_v3.sql.
+DECLARE ct integer;
+BEGIN
+      SELECT id INTO STRICT ct FROM django_content_type WHERE app_label='bpp' AND model='patent';
+      PERFORM pg_advisory_xact_lock(ct, NEW.rekord_id);
+      INSERT INTO bpp_autorzy_mat ("rekord_id", "id", "autor_id", "jednostka_id", "kolejnosc", "typ_odpowiedzialnosci_id", "zapisany_jako", "zatrudniony", "afiliuje", "dyscyplina_naukowa_id", "upowaznienie_pbn", "profil_orcid", "kierunek_studiow_id", "oswiadczenie_ken", "przypieta", "data_oswiadczenia")
+      SELECT "rekord_id", "id", "autor_id", "jednostka_id", "kolejnosc", "typ_odpowiedzialnosci_id", "zapisany_jako", "zatrudniony", "afiliuje", "dyscyplina_naukowa_id", "upowaznienie_pbn", "profil_orcid", "kierunek_studiow_id", "oswiadczenie_ken", "przypieta", "data_oswiadczenia" FROM bpp_patent_autorzy
+      WHERE object_id_raw = NEW.rekord_id AND autor_id = NEW.autor_id
+      ON CONFLICT (id) DO UPDATE SET "rekord_id" = EXCLUDED."rekord_id", "autor_id" = EXCLUDED."autor_id", "jednostka_id" = EXCLUDED."jednostka_id", "kolejnosc" = EXCLUDED."kolejnosc", "typ_odpowiedzialnosci_id" = EXCLUDED."typ_odpowiedzialnosci_id", "zapisany_jako" = EXCLUDED."zapisany_jako", "zatrudniony" = EXCLUDED."zatrudniony", "afiliuje" = EXCLUDED."afiliuje", "dyscyplina_naukowa_id" = EXCLUDED."dyscyplina_naukowa_id", "upowaznienie_pbn" = EXCLUDED."upowaznienie_pbn", "profil_orcid" = EXCLUDED."profil_orcid", "kierunek_studiow_id" = EXCLUDED."kierunek_studiow_id", "oswiadczenie_ken" = EXCLUDED."oswiadczenie_ken", "przypieta" = EXCLUDED."przypieta", "data_oswiadczenia" = EXCLUDED."data_oswiadczenia";
+      RETURN NULL;
+END $$;
 
-    table_name = TD["table_name"]
-    event = TD["event"]
-    # DELETE: tozsamosc ze starego wiersza. INSERT/UPDATE: z nowego —
-    # dzieki temu zmiana autor_id/rekord_id in-place trafia w aktualne dane.
-    field = "old" if event == "DELETE" else "new"
 
-    # Routing: tabela triggera -> (bazowa tabela publikacji, czy to through-table autorow)
-    ROUTING = {
-        "bpp_wydawnictwo_ciagle":       ("bpp_wydawnictwo_ciagle", False),
-        "bpp_wydawnictwo_ciagle_autor": ("bpp_wydawnictwo_ciagle", True),
-        "bpp_wydawnictwo_zwarte":       ("bpp_wydawnictwo_zwarte", False),
-        "bpp_wydawnictwo_zwarte_autor": ("bpp_wydawnictwo_zwarte", True),
-        "bpp_patent":                   ("bpp_patent", False),
-        "bpp_patent_autor":             ("bpp_patent", True),
-        "bpp_praca_doktorska":          ("bpp_praca_doktorska", False),
-        "bpp_praca_habilitacyjna":      ("bpp_praca_habilitacyjna", False),
-    }
-    pub_base, is_through = ROUTING[table_name]
-    app_name, model_name = pub_base.split("_", 1)
+--
+-- Name: bpp_refresh_autor_wydawnictwo_ciagle(); Type: FUNCTION; Schema: public; Owner: -
+--
 
-    # Publikacje, ktorych dane autora leza na wierszu publikacji (widok
-    # *_autorzy z INNER JOIN do bpp_autor — wiersz moze wypasc ze zrodla).
-    AUTOR_NA_WIERSZU_PUBLIKACJI = ("bpp_praca_doktorska", "bpp_praca_habilitacyjna")
+CREATE FUNCTION public.bpp_refresh_autor_wydawnictwo_ciagle() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE ct integer;
+BEGIN
+      SELECT id INTO STRICT ct FROM django_content_type WHERE app_label='bpp' AND model='wydawnictwo_ciagle';
+      PERFORM pg_advisory_xact_lock(ct, NEW.rekord_id);
+      INSERT INTO bpp_autorzy_mat ("rekord_id", "id", "autor_id", "jednostka_id", "kolejnosc", "typ_odpowiedzialnosci_id", "zapisany_jako", "zatrudniony", "afiliuje", "dyscyplina_naukowa_id", "upowaznienie_pbn", "profil_orcid", "kierunek_studiow_id", "oswiadczenie_ken", "przypieta", "data_oswiadczenia")
+      SELECT "rekord_id", "id", "autor_id", "jednostka_id", "kolejnosc", "typ_odpowiedzialnosci_id", "zapisany_jako", "zatrudniony", "afiliuje", "dyscyplina_naukowa_id", "upowaznienie_pbn", "profil_orcid", "kierunek_studiow_id", "oswiadczenie_ken", "przypieta", "data_oswiadczenia" FROM bpp_wydawnictwo_ciagle_autorzy
+      WHERE object_id_raw = NEW.rekord_id AND autor_id = NEW.autor_id
+      ON CONFLICT (id) DO UPDATE SET "rekord_id" = EXCLUDED."rekord_id", "autor_id" = EXCLUDED."autor_id", "jednostka_id" = EXCLUDED."jednostka_id", "kolejnosc" = EXCLUDED."kolejnosc", "typ_odpowiedzialnosci_id" = EXCLUDED."typ_odpowiedzialnosci_id", "zapisany_jako" = EXCLUDED."zapisany_jako", "zatrudniony" = EXCLUDED."zatrudniony", "afiliuje" = EXCLUDED."afiliuje", "dyscyplina_naukowa_id" = EXCLUDED."dyscyplina_naukowa_id", "upowaznienie_pbn" = EXCLUDED."upowaznienie_pbn", "profil_orcid" = EXCLUDED."profil_orcid", "kierunek_studiow_id" = EXCLUDED."kierunek_studiow_id", "oswiadczenie_ken" = EXCLUDED."oswiadczenie_ken", "przypieta" = EXCLUDED."przypieta", "data_oswiadczenia" = EXCLUDED."data_oswiadczenia";
+      RETURN NULL;
+END $$;
 
-    # object_id = PK publikacji (dla through-table jest w rekord_id, inaczej w id)
-    object_id = TD[field]["rekord_id"] if is_through else TD[field]["id"]
 
-    # cache content_type_id oraz listy kolumn w GD (per-backend, na czas polaczenia)
-    cache_key = "django_content_type_ver_2"
-    columns_cache_key = "table_columns_ver_2"
-    if GD.get(cache_key) is None:
-        GD[cache_key] = {}
-    if GD.get(columns_cache_key) is None:
-        GD[columns_cache_key] = {}
+--
+-- Name: bpp_refresh_autor_wydawnictwo_zwarte(); Type: FUNCTION; Schema: public; Owner: -
+--
 
-    if pub_base not in GD[cache_key]:
-        res = plpy.execute(
-            "SELECT id FROM django_content_type "
-            "WHERE app_label = '%s' AND model = '%s'" % (app_name, model_name))
-        GD[cache_key][pub_base] = res[0]["id"]
-    content_type_id = GD[cache_key][pub_base]
+CREATE FUNCTION public.bpp_refresh_autor_wydawnictwo_zwarte() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE ct integer;
+BEGIN
+      SELECT id INTO STRICT ct FROM django_content_type WHERE app_label='bpp' AND model='wydawnictwo_zwarte';
+      PERFORM pg_advisory_xact_lock(ct, NEW.rekord_id);
+      INSERT INTO bpp_autorzy_mat ("rekord_id", "id", "autor_id", "jednostka_id", "kolejnosc", "typ_odpowiedzialnosci_id", "zapisany_jako", "zatrudniony", "afiliuje", "dyscyplina_naukowa_id", "upowaznienie_pbn", "profil_orcid", "kierunek_studiow_id", "oswiadczenie_ken", "przypieta", "data_oswiadczenia")
+      SELECT "rekord_id", "id", "autor_id", "jednostka_id", "kolejnosc", "typ_odpowiedzialnosci_id", "zapisany_jako", "zatrudniony", "afiliuje", "dyscyplina_naukowa_id", "upowaznienie_pbn", "profil_orcid", "kierunek_studiow_id", "oswiadczenie_ken", "przypieta", "data_oswiadczenia" FROM bpp_wydawnictwo_zwarte_autorzy
+      WHERE object_id_raw = NEW.rekord_id AND autor_id = NEW.autor_id
+      ON CONFLICT (id) DO UPDATE SET "rekord_id" = EXCLUDED."rekord_id", "autor_id" = EXCLUDED."autor_id", "jednostka_id" = EXCLUDED."jednostka_id", "kolejnosc" = EXCLUDED."kolejnosc", "typ_odpowiedzialnosci_id" = EXCLUDED."typ_odpowiedzialnosci_id", "zapisany_jako" = EXCLUDED."zapisany_jako", "zatrudniony" = EXCLUDED."zatrudniony", "afiliuje" = EXCLUDED."afiliuje", "dyscyplina_naukowa_id" = EXCLUDED."dyscyplina_naukowa_id", "upowaznienie_pbn" = EXCLUDED."upowaznienie_pbn", "profil_orcid" = EXCLUDED."profil_orcid", "kierunek_studiow_id" = EXCLUDED."kierunek_studiow_id", "oswiadczenie_ken" = EXCLUDED."oswiadczenie_ken", "przypieta" = EXCLUDED."przypieta", "data_oswiadczenia" = EXCLUDED."data_oswiadczenia";
+      RETURN NULL;
+END $$;
 
-    rekord_view = pub_base + "_view"
-    autorzy_view = pub_base + "_autorzy"
 
-    mat_arr = "ARRAY[%s, %s]::INTEGER[2]" % (content_type_id, object_id)
+--
+-- Name: bpp_refresh_rekord_patent(); Type: FUNCTION; Schema: public; Owner: -
+--
 
-    def get_table_columns(mat_table):
-        if mat_table not in GD[columns_cache_key]:
-            res = plpy.execute(
-                "SELECT column_name FROM information_schema.columns "
-                "WHERE table_schema = 'public' AND table_name = '%s' "
-                "ORDER BY ordinal_position" % mat_table)
-            GD[columns_cache_key][mat_table] = [r["column_name"] for r in res]
-        return GD[columns_cache_key][mat_table]
+CREATE FUNCTION public.bpp_refresh_rekord_patent() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE ct integer;
+BEGIN
+      SELECT id INTO STRICT ct FROM django_content_type WHERE app_label='bpp' AND model='patent';
+      PERFORM pg_advisory_xact_lock(ct, NEW.id);
+      INSERT INTO bpp_rekord_mat ("id", "tytul_oryginalny", "tytul", "search_index", "rok", "jezyk_id", "typ_kbn_id", "charakter_formalny_id", "zrodlo_id", "wydawnictwo_nadrzedne_id", "wydawnictwo", "informacje", "szczegoly", "uwagi", "impact_factor", "punkty_kbn", "index_copernicus", "punktacja_wewnetrzna", "punktacja_snip", "kwartyl_w_wos", "kwartyl_w_scopus", "adnotacje", "utworzono", "ostatnio_zmieniony", "tytul_oryginalny_sort", "opis_bibliograficzny_cache", "opis_bibliograficzny_autorzy_cache", "opis_bibliograficzny_zapisani_autorzy_cache", "slug", "recenzowana", "liczba_znakow_wydawniczych", "www", "dostep_dnia", "public_www", "public_dostep_dnia", "openaccess_czas_publikacji_id", "openaccess_licencja_id", "openaccess_tryb_dostepu_id", "openaccess_wersja_tekstu_id", "openaccess_ilosc_miesiecy", "openaccess_data_opublikowania", "konferencja_id", "liczba_autorow", "liczba_cytowan", "status_korekty_id", "doi", "pbn_uid_id", "isbn", "e_isbn", "slowa_kluczowe_eng", "wydawca_id")
+      SELECT "id", "tytul_oryginalny", "tytul", "search_index", "rok", "jezyk_id", "typ_kbn_id", "charakter_formalny_id", "zrodlo_id", "wydawnictwo_nadrzedne_id", "wydawnictwo", "informacje", "szczegoly", "uwagi", "impact_factor", "punkty_kbn", "index_copernicus", "punktacja_wewnetrzna", "punktacja_snip", "kwartyl_w_wos", "kwartyl_w_scopus", "adnotacje", "utworzono", "ostatnio_zmieniony", "tytul_oryginalny_sort", "opis_bibliograficzny_cache", "opis_bibliograficzny_autorzy_cache", "opis_bibliograficzny_zapisani_autorzy_cache", "slug", "recenzowana", "liczba_znakow_wydawniczych", "www", "dostep_dnia", "public_www", "public_dostep_dnia", "openaccess_czas_publikacji_id", "openaccess_licencja_id", "openaccess_tryb_dostepu_id", "openaccess_wersja_tekstu_id", "openaccess_ilosc_miesiecy", "openaccess_data_opublikowania", "konferencja_id", "liczba_autorow", "liczba_cytowan", "status_korekty_id", "doi", "pbn_uid_id", "isbn", "e_isbn", "slowa_kluczowe_eng", "wydawca_id" FROM bpp_patent_view
+      WHERE object_id_raw = NEW.id
+      ON CONFLICT (id) DO UPDATE SET "tytul_oryginalny" = EXCLUDED."tytul_oryginalny", "tytul" = EXCLUDED."tytul", "search_index" = EXCLUDED."search_index", "rok" = EXCLUDED."rok", "jezyk_id" = EXCLUDED."jezyk_id", "typ_kbn_id" = EXCLUDED."typ_kbn_id", "charakter_formalny_id" = EXCLUDED."charakter_formalny_id", "zrodlo_id" = EXCLUDED."zrodlo_id", "wydawnictwo_nadrzedne_id" = EXCLUDED."wydawnictwo_nadrzedne_id", "wydawnictwo" = EXCLUDED."wydawnictwo", "informacje" = EXCLUDED."informacje", "szczegoly" = EXCLUDED."szczegoly", "uwagi" = EXCLUDED."uwagi", "impact_factor" = EXCLUDED."impact_factor", "punkty_kbn" = EXCLUDED."punkty_kbn", "index_copernicus" = EXCLUDED."index_copernicus", "punktacja_wewnetrzna" = EXCLUDED."punktacja_wewnetrzna", "punktacja_snip" = EXCLUDED."punktacja_snip", "kwartyl_w_wos" = EXCLUDED."kwartyl_w_wos", "kwartyl_w_scopus" = EXCLUDED."kwartyl_w_scopus", "adnotacje" = EXCLUDED."adnotacje", "utworzono" = EXCLUDED."utworzono", "ostatnio_zmieniony" = EXCLUDED."ostatnio_zmieniony", "tytul_oryginalny_sort" = EXCLUDED."tytul_oryginalny_sort", "opis_bibliograficzny_cache" = EXCLUDED."opis_bibliograficzny_cache", "opis_bibliograficzny_autorzy_cache" = EXCLUDED."opis_bibliograficzny_autorzy_cache", "opis_bibliograficzny_zapisani_autorzy_cache" = EXCLUDED."opis_bibliograficzny_zapisani_autorzy_cache", "slug" = EXCLUDED."slug", "recenzowana" = EXCLUDED."recenzowana", "liczba_znakow_wydawniczych" = EXCLUDED."liczba_znakow_wydawniczych", "www" = EXCLUDED."www", "dostep_dnia" = EXCLUDED."dostep_dnia", "public_www" = EXCLUDED."public_www", "public_dostep_dnia" = EXCLUDED."public_dostep_dnia", "openaccess_czas_publikacji_id" = EXCLUDED."openaccess_czas_publikacji_id", "openaccess_licencja_id" = EXCLUDED."openaccess_licencja_id", "openaccess_tryb_dostepu_id" = EXCLUDED."openaccess_tryb_dostepu_id", "openaccess_wersja_tekstu_id" = EXCLUDED."openaccess_wersja_tekstu_id", "openaccess_ilosc_miesiecy" = EXCLUDED."openaccess_ilosc_miesiecy", "openaccess_data_opublikowania" = EXCLUDED."openaccess_data_opublikowania", "konferencja_id" = EXCLUDED."konferencja_id", "liczba_autorow" = EXCLUDED."liczba_autorow", "liczba_cytowan" = EXCLUDED."liczba_cytowan", "status_korekty_id" = EXCLUDED."status_korekty_id", "doi" = EXCLUDED."doi", "pbn_uid_id" = EXCLUDED."pbn_uid_id", "isbn" = EXCLUDED."isbn", "e_isbn" = EXCLUDED."e_isbn", "slowa_kluczowe_eng" = EXCLUDED."slowa_kluczowe_eng", "wydawca_id" = EXCLUDED."wydawca_id";
+      RETURN NULL;
+END $$;
 
-    def upsert(mat_table, source_view, source_where):
-        # INSERT ... SELECT ... ON CONFLICT (id) DO UPDATE — bez wstepnego
-        # DELETE (patrz naglowek pliku, pkt 1).
-        # INSERT po nazwach kolumn tabeli mat, SELECT po nazwach kolumn widoku.
-        # Odpowiadaja sobie POZYCYJNIE: widok to zrodlo tabeli mat + dorzucone
-        # na koncu object_id_raw. Mapowanie pozycyjne (a nie po nazwie) jest
-        # odporne na to, ze pojedynczy widok moze nazwac kolumne-tablice inaczej
-        # niz tabela mat — np. bpp_praca_doktorska_autorzy ma 'array' zamiast
-        # 'id' (nieaaliasowane ARRAY[...]); unia normalizowala nazwe z pierwszej
-        # galezi, ale pojedynczy widok juz nie.
-        # Cytujemy identyfikatory ("...") — niektore kolumny widokow nazywaja
-        # sie jak slowa zarezerwowane (np. 'array').
-        def q(c):
-            return '"' + c + '"'
 
-        mat_cols = get_table_columns(mat_table)
-        src_cols = [c for c in get_table_columns(source_view) if c != "object_id_raw"]
-        set_clause = ", ".join(
-            "%s = EXCLUDED.%s" % (q(c), q(c)) for c in mat_cols if c != "id")
-        plpy.execute(
-            "INSERT INTO " + mat_table +
-            " (" + ", ".join(q(c) for c in mat_cols) + ") "
-            "SELECT " + ", ".join(q(c) for c in src_cols) + " FROM " + source_view +
-            " WHERE " + source_where +
-            " ON CONFLICT (id) DO UPDATE SET " + set_clause)
+--
+-- Name: bpp_refresh_rekord_praca_doktorska(); Type: FUNCTION; Schema: public; Owner: -
+--
 
-    # Deterministyczny advisory lock (#309): para int4 (ct, obj).
-    plpy.execute("SELECT pg_advisory_xact_lock(%s, %s)" % (content_type_id, object_id))
+CREATE FUNCTION public.bpp_refresh_rekord_praca_doktorska() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE ct integer;
+BEGIN
+      SELECT id INTO STRICT ct FROM django_content_type WHERE app_label='bpp' AND model='praca_doktorska';
+      PERFORM pg_advisory_xact_lock(ct, NEW.id);
+      INSERT INTO bpp_rekord_mat ("id", "tytul_oryginalny", "tytul", "search_index", "rok", "jezyk_id", "typ_kbn_id", "charakter_formalny_id", "zrodlo_id", "wydawnictwo_nadrzedne_id", "wydawnictwo", "informacje", "szczegoly", "uwagi", "impact_factor", "punkty_kbn", "index_copernicus", "punktacja_wewnetrzna", "punktacja_snip", "kwartyl_w_wos", "kwartyl_w_scopus", "adnotacje", "utworzono", "ostatnio_zmieniony", "tytul_oryginalny_sort", "opis_bibliograficzny_cache", "opis_bibliograficzny_autorzy_cache", "opis_bibliograficzny_zapisani_autorzy_cache", "slug", "recenzowana", "liczba_znakow_wydawniczych", "www", "dostep_dnia", "public_www", "public_dostep_dnia", "openaccess_czas_publikacji_id", "openaccess_licencja_id", "openaccess_tryb_dostepu_id", "openaccess_wersja_tekstu_id", "openaccess_ilosc_miesiecy", "openaccess_data_opublikowania", "konferencja_id", "liczba_autorow", "liczba_cytowan", "status_korekty_id", "doi", "pbn_uid_id", "isbn", "e_isbn", "slowa_kluczowe_eng", "wydawca_id")
+      SELECT "id", "tytul_oryginalny", "tytul", "search_index", "rok", "jezyk_id", "typ_kbn_id", "charakter_formalny_id", "zrodlo_id", "wydawnictwo_nadrzedne_id", "wydawnictwo", "informacje", "szczegoly", "uwagi", "impact_factor", "punkty_kbn", "index_copernicus", "punktacja_wewnetrzna", "punktacja_snip", "kwartyl_w_wos", "kwartyl_w_scopus", "adnotacje", "utworzono", "ostatnio_zmieniony", "tytul_oryginalny_sort", "opis_bibliograficzny_cache", "opis_bibliograficzny_autorzy_cache", "opis_bibliograficzny_zapisani_autorzy_cache", "slug", "recenzowana", "liczba_znakow_wydawniczych", "www", "dostep_dnia", "public_www", "public_dostep_dnia", "openaccess_czas_publikacji_id", "openaccess_licencja_id", "openaccess_tryb_dostepu_id", "openaccess_wersja_tekstu_id", "openaccess_ilosc_miesiecy", "openaccess_data_opublikowania", "konferencja_id", "liczba_autorow", "liczba_cytowan", "status_korekty_id", "doi", "pbn_uid_id", "isbn", "e_isbn", "slowa_kluczowe_eng", "wydawca_id" FROM bpp_praca_doktorska_view
+      WHERE object_id_raw = NEW.id
+      ON CONFLICT (id) DO UPDATE SET "tytul_oryginalny" = EXCLUDED."tytul_oryginalny", "tytul" = EXCLUDED."tytul", "search_index" = EXCLUDED."search_index", "rok" = EXCLUDED."rok", "jezyk_id" = EXCLUDED."jezyk_id", "typ_kbn_id" = EXCLUDED."typ_kbn_id", "charakter_formalny_id" = EXCLUDED."charakter_formalny_id", "zrodlo_id" = EXCLUDED."zrodlo_id", "wydawnictwo_nadrzedne_id" = EXCLUDED."wydawnictwo_nadrzedne_id", "wydawnictwo" = EXCLUDED."wydawnictwo", "informacje" = EXCLUDED."informacje", "szczegoly" = EXCLUDED."szczegoly", "uwagi" = EXCLUDED."uwagi", "impact_factor" = EXCLUDED."impact_factor", "punkty_kbn" = EXCLUDED."punkty_kbn", "index_copernicus" = EXCLUDED."index_copernicus", "punktacja_wewnetrzna" = EXCLUDED."punktacja_wewnetrzna", "punktacja_snip" = EXCLUDED."punktacja_snip", "kwartyl_w_wos" = EXCLUDED."kwartyl_w_wos", "kwartyl_w_scopus" = EXCLUDED."kwartyl_w_scopus", "adnotacje" = EXCLUDED."adnotacje", "utworzono" = EXCLUDED."utworzono", "ostatnio_zmieniony" = EXCLUDED."ostatnio_zmieniony", "tytul_oryginalny_sort" = EXCLUDED."tytul_oryginalny_sort", "opis_bibliograficzny_cache" = EXCLUDED."opis_bibliograficzny_cache", "opis_bibliograficzny_autorzy_cache" = EXCLUDED."opis_bibliograficzny_autorzy_cache", "opis_bibliograficzny_zapisani_autorzy_cache" = EXCLUDED."opis_bibliograficzny_zapisani_autorzy_cache", "slug" = EXCLUDED."slug", "recenzowana" = EXCLUDED."recenzowana", "liczba_znakow_wydawniczych" = EXCLUDED."liczba_znakow_wydawniczych", "www" = EXCLUDED."www", "dostep_dnia" = EXCLUDED."dostep_dnia", "public_www" = EXCLUDED."public_www", "public_dostep_dnia" = EXCLUDED."public_dostep_dnia", "openaccess_czas_publikacji_id" = EXCLUDED."openaccess_czas_publikacji_id", "openaccess_licencja_id" = EXCLUDED."openaccess_licencja_id", "openaccess_tryb_dostepu_id" = EXCLUDED."openaccess_tryb_dostepu_id", "openaccess_wersja_tekstu_id" = EXCLUDED."openaccess_wersja_tekstu_id", "openaccess_ilosc_miesiecy" = EXCLUDED."openaccess_ilosc_miesiecy", "openaccess_data_opublikowania" = EXCLUDED."openaccess_data_opublikowania", "konferencja_id" = EXCLUDED."konferencja_id", "liczba_autorow" = EXCLUDED."liczba_autorow", "liczba_cytowan" = EXCLUDED."liczba_cytowan", "status_korekty_id" = EXCLUDED."status_korekty_id", "doi" = EXCLUDED."doi", "pbn_uid_id" = EXCLUDED."pbn_uid_id", "isbn" = EXCLUDED."isbn", "e_isbn" = EXCLUDED."e_isbn", "slowa_kluczowe_eng" = EXCLUDED."slowa_kluczowe_eng", "wydawca_id" = EXCLUDED."wydawca_id";
+      DELETE FROM bpp_autorzy_mat WHERE rekord_id = ARRAY[ct, NEW.id]::integer[];
+      INSERT INTO bpp_autorzy_mat ("rekord_id", "id", "autor_id", "jednostka_id", "kolejnosc", "typ_odpowiedzialnosci_id", "zapisany_jako", "zatrudniony", "afiliuje", "dyscyplina_naukowa_id", "upowaznienie_pbn", "profil_orcid", "kierunek_studiow_id", "oswiadczenie_ken", "przypieta", "data_oswiadczenia")
+      SELECT "rekord_id", "array", "autor_id", "jednostka_id", "kolejnosc", "typ_odpowiedzialnosci_id", "zapisany_jako", "zatrudniony", "afiliuje", "dyscyplina_naukowa_id", "upowaznienie_pbn", "profil_orcid", "kierunek_studiow_id", "oswiadczenie_ken", "przypieta", "data_oswiadczenia" FROM bpp_praca_doktorska_autorzy
+      WHERE object_id_raw = NEW.id
+      ON CONFLICT (id) DO UPDATE SET "rekord_id" = EXCLUDED."rekord_id", "autor_id" = EXCLUDED."autor_id", "jednostka_id" = EXCLUDED."jednostka_id", "kolejnosc" = EXCLUDED."kolejnosc", "typ_odpowiedzialnosci_id" = EXCLUDED."typ_odpowiedzialnosci_id", "zapisany_jako" = EXCLUDED."zapisany_jako", "zatrudniony" = EXCLUDED."zatrudniony", "afiliuje" = EXCLUDED."afiliuje", "dyscyplina_naukowa_id" = EXCLUDED."dyscyplina_naukowa_id", "upowaznienie_pbn" = EXCLUDED."upowaznienie_pbn", "profil_orcid" = EXCLUDED."profil_orcid", "kierunek_studiow_id" = EXCLUDED."kierunek_studiow_id", "oswiadczenie_ken" = EXCLUDED."oswiadczenie_ken", "przypieta" = EXCLUDED."przypieta", "data_oswiadczenia" = EXCLUDED."data_oswiadczenia";
+      RETURN NULL;
+END $$;
 
-    if event == "DELETE":
-        if is_through:
-            # Precyzyjnie po id wiersza mat = ARRAY[ct, pk-wiersza-through].
-            # NIE po (rekord_id, autor_id) — autor w dwoch rolach ma dwa
-            # wiersze i skasowalibysmy oba (patrz naglowek, pkt 4).
-            plpy.execute(
-                "DELETE FROM bpp_autorzy_mat "
-                "WHERE id = ARRAY[%s, %s]::INTEGER[2]"
-                % (content_type_id, TD["old"]["id"]))
-        else:
-            # DELETE bpp_rekord_mat kaskaduje (FK) na bpp_autorzy_mat.
-            plpy.execute("DELETE FROM bpp_rekord_mat WHERE id = " + mat_arr)
-        return
 
-    # INSERT / UPDATE
-    if is_through:
-        # Tylko ten jeden autor; filtr po NOWYCH wartosciach (pkt 3).
-        upsert(
-            "bpp_autorzy_mat",
-            autorzy_view,
-            "object_id_raw = %s AND autor_id = %s"
-            % (object_id, TD["new"]["autor_id"]))
-        return
+--
+-- Name: bpp_refresh_rekord_praca_habilitacyjna(); Type: FUNCTION; Schema: public; Owner: -
+--
 
-    upsert("bpp_rekord_mat", rekord_view, "object_id_raw = %s" % object_id)
+CREATE FUNCTION public.bpp_refresh_rekord_praca_habilitacyjna() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE ct integer;
+BEGIN
+      SELECT id INTO STRICT ct FROM django_content_type WHERE app_label='bpp' AND model='praca_habilitacyjna';
+      PERFORM pg_advisory_xact_lock(ct, NEW.id);
+      INSERT INTO bpp_rekord_mat ("id", "tytul_oryginalny", "tytul", "search_index", "rok", "jezyk_id", "typ_kbn_id", "charakter_formalny_id", "zrodlo_id", "wydawnictwo_nadrzedne_id", "wydawnictwo", "informacje", "szczegoly", "uwagi", "impact_factor", "punkty_kbn", "index_copernicus", "punktacja_wewnetrzna", "punktacja_snip", "kwartyl_w_wos", "kwartyl_w_scopus", "adnotacje", "utworzono", "ostatnio_zmieniony", "tytul_oryginalny_sort", "opis_bibliograficzny_cache", "opis_bibliograficzny_autorzy_cache", "opis_bibliograficzny_zapisani_autorzy_cache", "slug", "recenzowana", "liczba_znakow_wydawniczych", "www", "dostep_dnia", "public_www", "public_dostep_dnia", "openaccess_czas_publikacji_id", "openaccess_licencja_id", "openaccess_tryb_dostepu_id", "openaccess_wersja_tekstu_id", "openaccess_ilosc_miesiecy", "openaccess_data_opublikowania", "konferencja_id", "liczba_autorow", "liczba_cytowan", "status_korekty_id", "doi", "pbn_uid_id", "isbn", "e_isbn", "slowa_kluczowe_eng", "wydawca_id")
+      SELECT "id", "tytul_oryginalny", "tytul", "search_index", "rok", "jezyk_id", "typ_kbn_id", "charakter_formalny_id", "zrodlo_id", "wydawnictwo_nadrzedne_id", "wydawnictwo", "informacje", "szczegoly", "uwagi", "impact_factor", "punkty_kbn", "index_copernicus", "punktacja_wewnetrzna", "punktacja_snip", "kwartyl_w_wos", "kwartyl_w_scopus", "adnotacje", "utworzono", "ostatnio_zmieniony", "tytul_oryginalny_sort", "opis_bibliograficzny_cache", "opis_bibliograficzny_autorzy_cache", "opis_bibliograficzny_zapisani_autorzy_cache", "slug", "recenzowana", "liczba_znakow_wydawniczych", "www", "dostep_dnia", "public_www", "public_dostep_dnia", "openaccess_czas_publikacji_id", "openaccess_licencja_id", "openaccess_tryb_dostepu_id", "openaccess_wersja_tekstu_id", "openaccess_ilosc_miesiecy", "openaccess_data_opublikowania", "konferencja_id", "liczba_autorow", "liczba_cytowan", "status_korekty_id", "doi", "pbn_uid_id", "isbn", "e_isbn", "slowa_kluczowe_eng", "wydawca_id" FROM bpp_praca_habilitacyjna_view
+      WHERE object_id_raw = NEW.id
+      ON CONFLICT (id) DO UPDATE SET "tytul_oryginalny" = EXCLUDED."tytul_oryginalny", "tytul" = EXCLUDED."tytul", "search_index" = EXCLUDED."search_index", "rok" = EXCLUDED."rok", "jezyk_id" = EXCLUDED."jezyk_id", "typ_kbn_id" = EXCLUDED."typ_kbn_id", "charakter_formalny_id" = EXCLUDED."charakter_formalny_id", "zrodlo_id" = EXCLUDED."zrodlo_id", "wydawnictwo_nadrzedne_id" = EXCLUDED."wydawnictwo_nadrzedne_id", "wydawnictwo" = EXCLUDED."wydawnictwo", "informacje" = EXCLUDED."informacje", "szczegoly" = EXCLUDED."szczegoly", "uwagi" = EXCLUDED."uwagi", "impact_factor" = EXCLUDED."impact_factor", "punkty_kbn" = EXCLUDED."punkty_kbn", "index_copernicus" = EXCLUDED."index_copernicus", "punktacja_wewnetrzna" = EXCLUDED."punktacja_wewnetrzna", "punktacja_snip" = EXCLUDED."punktacja_snip", "kwartyl_w_wos" = EXCLUDED."kwartyl_w_wos", "kwartyl_w_scopus" = EXCLUDED."kwartyl_w_scopus", "adnotacje" = EXCLUDED."adnotacje", "utworzono" = EXCLUDED."utworzono", "ostatnio_zmieniony" = EXCLUDED."ostatnio_zmieniony", "tytul_oryginalny_sort" = EXCLUDED."tytul_oryginalny_sort", "opis_bibliograficzny_cache" = EXCLUDED."opis_bibliograficzny_cache", "opis_bibliograficzny_autorzy_cache" = EXCLUDED."opis_bibliograficzny_autorzy_cache", "opis_bibliograficzny_zapisani_autorzy_cache" = EXCLUDED."opis_bibliograficzny_zapisani_autorzy_cache", "slug" = EXCLUDED."slug", "recenzowana" = EXCLUDED."recenzowana", "liczba_znakow_wydawniczych" = EXCLUDED."liczba_znakow_wydawniczych", "www" = EXCLUDED."www", "dostep_dnia" = EXCLUDED."dostep_dnia", "public_www" = EXCLUDED."public_www", "public_dostep_dnia" = EXCLUDED."public_dostep_dnia", "openaccess_czas_publikacji_id" = EXCLUDED."openaccess_czas_publikacji_id", "openaccess_licencja_id" = EXCLUDED."openaccess_licencja_id", "openaccess_tryb_dostepu_id" = EXCLUDED."openaccess_tryb_dostepu_id", "openaccess_wersja_tekstu_id" = EXCLUDED."openaccess_wersja_tekstu_id", "openaccess_ilosc_miesiecy" = EXCLUDED."openaccess_ilosc_miesiecy", "openaccess_data_opublikowania" = EXCLUDED."openaccess_data_opublikowania", "konferencja_id" = EXCLUDED."konferencja_id", "liczba_autorow" = EXCLUDED."liczba_autorow", "liczba_cytowan" = EXCLUDED."liczba_cytowan", "status_korekty_id" = EXCLUDED."status_korekty_id", "doi" = EXCLUDED."doi", "pbn_uid_id" = EXCLUDED."pbn_uid_id", "isbn" = EXCLUDED."isbn", "e_isbn" = EXCLUDED."e_isbn", "slowa_kluczowe_eng" = EXCLUDED."slowa_kluczowe_eng", "wydawca_id" = EXCLUDED."wydawca_id";
+      DELETE FROM bpp_autorzy_mat WHERE rekord_id = ARRAY[ct, NEW.id]::integer[];
+      INSERT INTO bpp_autorzy_mat ("rekord_id", "id", "autor_id", "jednostka_id", "kolejnosc", "typ_odpowiedzialnosci_id", "zapisany_jako", "zatrudniony", "afiliuje", "dyscyplina_naukowa_id", "upowaznienie_pbn", "profil_orcid", "kierunek_studiow_id", "oswiadczenie_ken", "przypieta", "data_oswiadczenia")
+      SELECT "rekord_id", "id", "autor_id", "jednostka_id", "kolejnosc", "typ_odpowiedzialnosci_id", "zapisany_jako", "zatrudniony", "afiliuje", "dyscyplina_naukowa_id", "upowaznienie_pbn", "profil_orcid", "kierunek_studiow_id", "oswiadczenie_ken", "przypieta", "data_oswiadczenia" FROM bpp_praca_habilitacyjna_autorzy
+      WHERE object_id_raw = NEW.id
+      ON CONFLICT (id) DO UPDATE SET "rekord_id" = EXCLUDED."rekord_id", "autor_id" = EXCLUDED."autor_id", "jednostka_id" = EXCLUDED."jednostka_id", "kolejnosc" = EXCLUDED."kolejnosc", "typ_odpowiedzialnosci_id" = EXCLUDED."typ_odpowiedzialnosci_id", "zapisany_jako" = EXCLUDED."zapisany_jako", "zatrudniony" = EXCLUDED."zatrudniony", "afiliuje" = EXCLUDED."afiliuje", "dyscyplina_naukowa_id" = EXCLUDED."dyscyplina_naukowa_id", "upowaznienie_pbn" = EXCLUDED."upowaznienie_pbn", "profil_orcid" = EXCLUDED."profil_orcid", "kierunek_studiow_id" = EXCLUDED."kierunek_studiow_id", "oswiadczenie_ken" = EXCLUDED."oswiadczenie_ken", "przypieta" = EXCLUDED."przypieta", "data_oswiadczenia" = EXCLUDED."data_oswiadczenia";
+      RETURN NULL;
+END $$;
 
-    if pub_base in AUTOR_NA_WIERSZU_PUBLIKACJI:
-        # Widok *_autorzy ma INNER JOIN do bpp_autor — czysty upsert nie
-        # usunalby wiersza, gdy zrodlo nie zwraca nic. DELETE + INSERT,
-        # dokladnie 1 wiersz autora.
-        plpy.execute("DELETE FROM bpp_autorzy_mat WHERE rekord_id = " + mat_arr)
-        upsert("bpp_autorzy_mat", autorzy_view, "object_id_raw = %s" % object_id)
-    # Dla ciagle/zwarte/patent NIE ruszamy bpp_autorzy_mat: wiersze autorow
-    # pochodza wylacznie z tabel *_autor (pkt 2).
-$$;
+
+--
+-- Name: bpp_refresh_rekord_wydawnictwo_ciagle(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.bpp_refresh_rekord_wydawnictwo_ciagle() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE ct integer;
+BEGIN
+      SELECT id INTO STRICT ct FROM django_content_type WHERE app_label='bpp' AND model='wydawnictwo_ciagle';
+      PERFORM pg_advisory_xact_lock(ct, NEW.id);
+      INSERT INTO bpp_rekord_mat ("id", "tytul_oryginalny", "tytul", "search_index", "rok", "jezyk_id", "typ_kbn_id", "charakter_formalny_id", "zrodlo_id", "wydawnictwo_nadrzedne_id", "wydawnictwo", "informacje", "szczegoly", "uwagi", "impact_factor", "punkty_kbn", "index_copernicus", "punktacja_wewnetrzna", "punktacja_snip", "kwartyl_w_wos", "kwartyl_w_scopus", "adnotacje", "utworzono", "ostatnio_zmieniony", "tytul_oryginalny_sort", "opis_bibliograficzny_cache", "opis_bibliograficzny_autorzy_cache", "opis_bibliograficzny_zapisani_autorzy_cache", "slug", "recenzowana", "liczba_znakow_wydawniczych", "www", "dostep_dnia", "public_www", "public_dostep_dnia", "openaccess_czas_publikacji_id", "openaccess_licencja_id", "openaccess_tryb_dostepu_id", "openaccess_wersja_tekstu_id", "openaccess_ilosc_miesiecy", "openaccess_data_opublikowania", "konferencja_id", "liczba_autorow", "liczba_cytowan", "status_korekty_id", "doi", "pbn_uid_id", "isbn", "e_isbn", "slowa_kluczowe_eng", "wydawca_id")
+      SELECT "id", "tytul_oryginalny", "tytul", "search_index", "rok", "jezyk_id", "typ_kbn_id", "charakter_formalny_id", "zrodlo_id", "wydawnictwo_nadrzedne_id", "wydawnictwo", "informacje", "szczegoly", "uwagi", "impact_factor", "punkty_kbn", "index_copernicus", "punktacja_wewnetrzna", "punktacja_snip", "kwartyl_w_wos", "kwartyl_w_scopus", "adnotacje", "utworzono", "ostatnio_zmieniony", "tytul_oryginalny_sort", "opis_bibliograficzny_cache", "opis_bibliograficzny_autorzy_cache", "opis_bibliograficzny_zapisani_autorzy_cache", "slug", "recenzowana", "liczba_znakow_wydawniczych", "www", "dostep_dnia", "public_www", "public_dostep_dnia", "openaccess_czas_publikacji_id", "openaccess_licencja_id", "openaccess_tryb_dostepu_id", "openaccess_wersja_tekstu_id", "openaccess_ilosc_miesiecy", "openaccess_data_opublikowania", "konferencja_id", "liczba_autorow", "liczba_cytowan", "status_korekty_id", "doi", "pbn_uid_id", "isbn", "e_isbn", "slowa_kluczowe_eng", "wydawca_id" FROM bpp_wydawnictwo_ciagle_view
+      WHERE object_id_raw = NEW.id
+      ON CONFLICT (id) DO UPDATE SET "tytul_oryginalny" = EXCLUDED."tytul_oryginalny", "tytul" = EXCLUDED."tytul", "search_index" = EXCLUDED."search_index", "rok" = EXCLUDED."rok", "jezyk_id" = EXCLUDED."jezyk_id", "typ_kbn_id" = EXCLUDED."typ_kbn_id", "charakter_formalny_id" = EXCLUDED."charakter_formalny_id", "zrodlo_id" = EXCLUDED."zrodlo_id", "wydawnictwo_nadrzedne_id" = EXCLUDED."wydawnictwo_nadrzedne_id", "wydawnictwo" = EXCLUDED."wydawnictwo", "informacje" = EXCLUDED."informacje", "szczegoly" = EXCLUDED."szczegoly", "uwagi" = EXCLUDED."uwagi", "impact_factor" = EXCLUDED."impact_factor", "punkty_kbn" = EXCLUDED."punkty_kbn", "index_copernicus" = EXCLUDED."index_copernicus", "punktacja_wewnetrzna" = EXCLUDED."punktacja_wewnetrzna", "punktacja_snip" = EXCLUDED."punktacja_snip", "kwartyl_w_wos" = EXCLUDED."kwartyl_w_wos", "kwartyl_w_scopus" = EXCLUDED."kwartyl_w_scopus", "adnotacje" = EXCLUDED."adnotacje", "utworzono" = EXCLUDED."utworzono", "ostatnio_zmieniony" = EXCLUDED."ostatnio_zmieniony", "tytul_oryginalny_sort" = EXCLUDED."tytul_oryginalny_sort", "opis_bibliograficzny_cache" = EXCLUDED."opis_bibliograficzny_cache", "opis_bibliograficzny_autorzy_cache" = EXCLUDED."opis_bibliograficzny_autorzy_cache", "opis_bibliograficzny_zapisani_autorzy_cache" = EXCLUDED."opis_bibliograficzny_zapisani_autorzy_cache", "slug" = EXCLUDED."slug", "recenzowana" = EXCLUDED."recenzowana", "liczba_znakow_wydawniczych" = EXCLUDED."liczba_znakow_wydawniczych", "www" = EXCLUDED."www", "dostep_dnia" = EXCLUDED."dostep_dnia", "public_www" = EXCLUDED."public_www", "public_dostep_dnia" = EXCLUDED."public_dostep_dnia", "openaccess_czas_publikacji_id" = EXCLUDED."openaccess_czas_publikacji_id", "openaccess_licencja_id" = EXCLUDED."openaccess_licencja_id", "openaccess_tryb_dostepu_id" = EXCLUDED."openaccess_tryb_dostepu_id", "openaccess_wersja_tekstu_id" = EXCLUDED."openaccess_wersja_tekstu_id", "openaccess_ilosc_miesiecy" = EXCLUDED."openaccess_ilosc_miesiecy", "openaccess_data_opublikowania" = EXCLUDED."openaccess_data_opublikowania", "konferencja_id" = EXCLUDED."konferencja_id", "liczba_autorow" = EXCLUDED."liczba_autorow", "liczba_cytowan" = EXCLUDED."liczba_cytowan", "status_korekty_id" = EXCLUDED."status_korekty_id", "doi" = EXCLUDED."doi", "pbn_uid_id" = EXCLUDED."pbn_uid_id", "isbn" = EXCLUDED."isbn", "e_isbn" = EXCLUDED."e_isbn", "slowa_kluczowe_eng" = EXCLUDED."slowa_kluczowe_eng", "wydawca_id" = EXCLUDED."wydawca_id";
+      RETURN NULL;
+END $$;
+
+
+--
+-- Name: bpp_refresh_rekord_wydawnictwo_zwarte(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.bpp_refresh_rekord_wydawnictwo_zwarte() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE ct integer;
+BEGIN
+      SELECT id INTO STRICT ct FROM django_content_type WHERE app_label='bpp' AND model='wydawnictwo_zwarte';
+      PERFORM pg_advisory_xact_lock(ct, NEW.id);
+      INSERT INTO bpp_rekord_mat ("id", "tytul_oryginalny", "tytul", "search_index", "rok", "jezyk_id", "typ_kbn_id", "charakter_formalny_id", "zrodlo_id", "wydawnictwo_nadrzedne_id", "wydawnictwo", "informacje", "szczegoly", "uwagi", "impact_factor", "punkty_kbn", "index_copernicus", "punktacja_wewnetrzna", "punktacja_snip", "kwartyl_w_wos", "kwartyl_w_scopus", "adnotacje", "utworzono", "ostatnio_zmieniony", "tytul_oryginalny_sort", "opis_bibliograficzny_cache", "opis_bibliograficzny_autorzy_cache", "opis_bibliograficzny_zapisani_autorzy_cache", "slug", "recenzowana", "liczba_znakow_wydawniczych", "www", "dostep_dnia", "public_www", "public_dostep_dnia", "openaccess_czas_publikacji_id", "openaccess_licencja_id", "openaccess_tryb_dostepu_id", "openaccess_wersja_tekstu_id", "openaccess_ilosc_miesiecy", "openaccess_data_opublikowania", "konferencja_id", "liczba_autorow", "liczba_cytowan", "status_korekty_id", "doi", "pbn_uid_id", "isbn", "e_isbn", "slowa_kluczowe_eng", "wydawca_id")
+      SELECT "id", "tytul_oryginalny", "tytul", "search_index", "rok", "jezyk_id", "typ_kbn_id", "charakter_formalny_id", "zrodlo_id", "wydawnictwo_nadrzedne_id", "wydawnictwo", "informacje", "szczegoly", "uwagi", "impact_factor", "punkty_kbn", "index_copernicus", "punktacja_wewnetrzna", "punktacja_snip", "kwartyl_w_wos", "kwartyl_w_scopus", "adnotacje", "utworzono", "ostatnio_zmieniony", "tytul_oryginalny_sort", "opis_bibliograficzny_cache", "opis_bibliograficzny_autorzy_cache", "opis_bibliograficzny_zapisani_autorzy_cache", "slug", "recenzowana", "liczba_znakow_wydawniczych", "www", "dostep_dnia", "public_www", "public_dostep_dnia", "openaccess_czas_publikacji_id", "openaccess_licencja_id", "openaccess_tryb_dostepu_id", "openaccess_wersja_tekstu_id", "openaccess_ilosc_miesiecy", "openaccess_data_opublikowania", "konferencja_id", "liczba_autorow", "liczba_cytowan", "status_korekty_id", "doi", "pbn_uid_id", "isbn", "e_isbn", "slowa_kluczowe_eng", "wydawca_id" FROM bpp_wydawnictwo_zwarte_view
+      WHERE object_id_raw = NEW.id
+      ON CONFLICT (id) DO UPDATE SET "tytul_oryginalny" = EXCLUDED."tytul_oryginalny", "tytul" = EXCLUDED."tytul", "search_index" = EXCLUDED."search_index", "rok" = EXCLUDED."rok", "jezyk_id" = EXCLUDED."jezyk_id", "typ_kbn_id" = EXCLUDED."typ_kbn_id", "charakter_formalny_id" = EXCLUDED."charakter_formalny_id", "zrodlo_id" = EXCLUDED."zrodlo_id", "wydawnictwo_nadrzedne_id" = EXCLUDED."wydawnictwo_nadrzedne_id", "wydawnictwo" = EXCLUDED."wydawnictwo", "informacje" = EXCLUDED."informacje", "szczegoly" = EXCLUDED."szczegoly", "uwagi" = EXCLUDED."uwagi", "impact_factor" = EXCLUDED."impact_factor", "punkty_kbn" = EXCLUDED."punkty_kbn", "index_copernicus" = EXCLUDED."index_copernicus", "punktacja_wewnetrzna" = EXCLUDED."punktacja_wewnetrzna", "punktacja_snip" = EXCLUDED."punktacja_snip", "kwartyl_w_wos" = EXCLUDED."kwartyl_w_wos", "kwartyl_w_scopus" = EXCLUDED."kwartyl_w_scopus", "adnotacje" = EXCLUDED."adnotacje", "utworzono" = EXCLUDED."utworzono", "ostatnio_zmieniony" = EXCLUDED."ostatnio_zmieniony", "tytul_oryginalny_sort" = EXCLUDED."tytul_oryginalny_sort", "opis_bibliograficzny_cache" = EXCLUDED."opis_bibliograficzny_cache", "opis_bibliograficzny_autorzy_cache" = EXCLUDED."opis_bibliograficzny_autorzy_cache", "opis_bibliograficzny_zapisani_autorzy_cache" = EXCLUDED."opis_bibliograficzny_zapisani_autorzy_cache", "slug" = EXCLUDED."slug", "recenzowana" = EXCLUDED."recenzowana", "liczba_znakow_wydawniczych" = EXCLUDED."liczba_znakow_wydawniczych", "www" = EXCLUDED."www", "dostep_dnia" = EXCLUDED."dostep_dnia", "public_www" = EXCLUDED."public_www", "public_dostep_dnia" = EXCLUDED."public_dostep_dnia", "openaccess_czas_publikacji_id" = EXCLUDED."openaccess_czas_publikacji_id", "openaccess_licencja_id" = EXCLUDED."openaccess_licencja_id", "openaccess_tryb_dostepu_id" = EXCLUDED."openaccess_tryb_dostepu_id", "openaccess_wersja_tekstu_id" = EXCLUDED."openaccess_wersja_tekstu_id", "openaccess_ilosc_miesiecy" = EXCLUDED."openaccess_ilosc_miesiecy", "openaccess_data_opublikowania" = EXCLUDED."openaccess_data_opublikowania", "konferencja_id" = EXCLUDED."konferencja_id", "liczba_autorow" = EXCLUDED."liczba_autorow", "liczba_cytowan" = EXCLUDED."liczba_cytowan", "status_korekty_id" = EXCLUDED."status_korekty_id", "doi" = EXCLUDED."doi", "pbn_uid_id" = EXCLUDED."pbn_uid_id", "isbn" = EXCLUDED."isbn", "e_isbn" = EXCLUDED."e_isbn", "slowa_kluczowe_eng" = EXCLUDED."slowa_kluczowe_eng", "wydawca_id" = EXCLUDED."wydawca_id";
+      RETURN NULL;
+END $$;
 
 
 --
@@ -3666,80 +3871,6 @@ CREATE FUNCTION public.strip_tags(text) RETURNS text
         E'',
          'gx')
 $_$;
-
-
---
--- Name: trigger_tytul_sort(); Type: FUNCTION; Schema: public; Owner: -
---
-
-CREATE FUNCTION public.trigger_tytul_sort() RETURNS trigger
-    LANGUAGE plpython3u
-    AS $$
-    if TD["new"]["tytul_oryginalny_sort"]:
-      # Jeżeli jest coś w tym polu, to sprawdź, może nie warto go zmieniać
-      # jeżeli nie, to uzupełnij je.
-      if TD["event"] == "UPDATE":
-          if TD["new"]["tytul_oryginalny"] == TD["old"]["tytul_oryginalny"]:
-              if TD["new"].get("jezyk_id") == TD["old"].get("jezyk_id"):
-                return
-
-    version = "get_tytul_sort_ver_6_initialized"
-    cache = version + "_cache"
-
-    jezyk_id = TD["new"].get("jezyk_id", None)
-
-    if jezyk_id is not None:
-        # ma jezyk_id
-
-        if GD.get(cache) is None:
-            # utwórz słownik CACHE
-            GD[cache] = {}
-
-        if GD[cache].get(jezyk_id) is None:
-            query = "SELECT skrot FROM bpp_jezyk WHERE id = %s" % TD["new"]["jezyk_id"]
-            res = plpy.execute(query)
-            GD[cache][jezyk_id] = res[0]["skrot"]
-
-        jezyk = GD[cache].get(jezyk_id)
-
-    else:
-        jezyk = "pol."
-
-
-    tytul_oryginalny = TD["new"]["tytul_oryginalny"]
-
-    if not GD.get(version, None):
-      GD[version] = {
-        'ang.': ["the ", "a "],
-        'niem.': ["der ", "die ", "das ", ],
-        'fr.': ["la ", "le ", "en "],
-        'wł.': ["la ", "en "],
-        'hiszp.': ["de ", "la ", "en "]
-      }
-
-    replaces = GD.get(version).get(jezyk, [" ", "\t"])
-
-#    if jezyk not in ['ang.', 'pol.']:
-#        raise Exception("%r %r %r" % (GD[cache], replaces, jezyk))
-
-    ret = tytul_oryginalny.lower().strip()
-
-    for elem in replaces:
-      while True:
-        if ret.startswith(elem):
-          ret = ret[len(elem):]
-          continue
-        break
-
-    ret = ret.replace("'", "").replace('"', '')
-
-    #if "test" in ret:
-    #     raise Exception("%s.. %s.. %s.. %s.. %s.." % (GD[cache], replaces, jezyk, TD['new']['tytul_oryginalny'], ret))
-
-    TD["new"]["tytul_oryginalny_sort"] = ret
-
-    return "modify"
-$$;
 
 
 --
@@ -13033,6 +13164,102 @@ COPY public.auth_group_permissions (id, group_id, permission_id) FROM stdin;
 298	8	144
 299	8	145
 300	8	146
+301	1	527
+302	1	528
+303	1	529
+304	1	530
+305	1	531
+306	1	532
+307	1	533
+308	1	534
+309	1	535
+310	1	536
+311	1	537
+312	1	538
+313	1	539
+314	1	540
+315	1	541
+316	1	542
+317	1	543
+318	1	544
+319	1	545
+320	1	546
+321	1	547
+322	1	548
+323	1	549
+324	1	550
+325	1	551
+326	1	552
+327	1	553
+328	1	554
+329	1	555
+330	1	556
+331	1	557
+332	1	558
+333	1	563
+334	1	564
+335	1	565
+336	1	566
+337	1	567
+338	1	568
+339	1	569
+340	1	823
+341	1	824
+342	1	825
+343	1	826
+344	1	570
+345	1	711
+346	1	712
+347	1	713
+348	1	714
+349	2	723
+350	2	724
+351	2	725
+352	2	726
+353	3	843
+354	3	844
+355	3	845
+356	3	846
+357	3	847
+358	3	848
+359	3	849
+360	3	850
+361	3	715
+362	3	716
+363	3	717
+364	3	718
+365	3	663
+366	3	664
+367	3	665
+368	3	666
+369	3	667
+370	3	668
+371	3	669
+372	3	670
+373	3	859
+374	3	860
+375	3	861
+376	3	862
+377	5	632
+378	5	633
+379	5	634
+380	5	631
+381	6	799
+382	6	800
+383	6	801
+384	6	802
+385	6	687
+386	6	688
+387	6	689
+388	6	690
+389	6	691
+390	6	692
+391	6	693
+392	6	694
+393	6	695
+394	6	696
+395	6	697
+396	6	698
 \.
 
 
@@ -15221,6 +15448,7 @@ COPY public.django_countdown_sitecountdown (id, countdown_time, message, long_de
 --
 
 COPY public.django_migrations (id, app, name, applied) FROM stdin;
+447	taggit	0005_auto_20220424_2025	2000-01-01 00:00:00+00
 41	pbn_api	0007_publication	2000-01-01 00:00:00+00
 1	contenttypes	0001_initial	2000-01-01 00:00:00+00
 2	auth	0001_initial	2000-01-01 00:00:00+00
@@ -15667,7 +15895,6 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 444	pbn_api	0047_alter_pbn_export_queue_options_and_more	2000-01-01 00:00:00+00
 445	pbn_api	0048_remove_pbn_export_queue_retry_politics_and_more	2000-01-01 00:00:00+00
 446	taggit	0004_alter_taggeditem_content_type_alter_taggeditem_tag	2000-01-01 00:00:00+00
-447	taggit	0005_auto_20220424_2025	2000-01-01 00:00:00+00
 448	multiseek	0001_initial	2000-01-01 00:00:00+00
 449	bpp	0342_remove_dyscyplina_naukowa_pbn_uid	2000-01-01 00:00:00+00
 450	bpp	0343_alter_typ_kbn_options_alter_patent_kc_punkty_kbn_and_more	2000-01-01 00:00:00+00
@@ -16177,6 +16404,12 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 954	denorm	0001_squashed_0012_alter_dirtyinstance_object_id	2000-01-01 00:00:00+00
 955	bpp	0165_cache_punktacja_autora_cache_punktacja_dyscypliny_squashed_0167_auto_20190707_2029	2000-01-01 00:00:00+00
 956	easyaudit	0004_auto_20170620_1354_squashed_0019_alter_crudevent_changed_fields_and_more	2000-01-01 00:00:00+00
+957	bpp	0431_search_index_gin	2000-01-01 00:00:00+00
+958	bpp	0440_port_plpython_to_plpgsql	2000-01-01 00:00:00+00
+959	bpp	0441_drop_trigger_tytul_sort	2000-01-01 00:00:00+00
+960	bpp	0432_cache_trigger_plpgsql	2000-01-01 00:00:00+00
+961	bpp	0433_cache_trigger_when_gate	2000-01-01 00:00:00+00
+962	bpp	0442_drop_plpython3u	2000-01-01 00:00:00+00
 \.
 
 
@@ -16492,25 +16725,16 @@ COPY public.formdefaults_formfielddefaultvalue (id, value, field_id, parent_id, 
 
 COPY public.formdefaults_formfieldrepresentation (id, name, label, klass, "order", parent_id) FROM stdin;
 1	obiekt	Autor	django.forms.models.ModelChoiceField	0	raport_slotow.forms.autor.AutorRaportSlotowForm
-2	od_roku	Od roku	django.forms.fields.IntegerField	1	raport_slotow.forms.autor.AutorRaportSlotowForm
-3	do_roku	Do roku	django.forms.fields.IntegerField	2	raport_slotow.forms.autor.AutorRaportSlotowForm
 4	minimalny_pk	Minimalna wartość PK pracy	django.forms.fields.IntegerField	3	raport_slotow.forms.autor.AutorRaportSlotowForm
 5	dzialanie	Wygeneruj	django.forms.fields.ChoiceField	4	raport_slotow.forms.autor.AutorRaportSlotowForm
 6	slot	Zadana wielkość slotu	django.forms.fields.DecimalField	5	raport_slotow.forms.autor.AutorRaportSlotowForm
 7	_export	Format wyjściowy	django.forms.fields.ChoiceField	6	raport_slotow.forms.autor.AutorRaportSlotowForm
-8	od_roku	Od roku	django.forms.fields.IntegerField	0	raport_slotow.forms.ewaluacja.ParametryRaportSlotowEwaluacjaForm
-9	do_roku	Do roku	django.forms.fields.IntegerField	1	raport_slotow.forms.ewaluacja.ParametryRaportSlotowEwaluacjaForm
 10	_export	Format wyjściowy	django.forms.fields.ChoiceField	2	raport_slotow.forms.ewaluacja.ParametryRaportSlotowEwaluacjaForm
 11	upowaznienie_pbn	Upowaznienie pbn	django.forms.fields.NullBooleanField	3	raport_slotow.forms.ewaluacja.ParametryRaportSlotowEwaluacjaForm
-12	od_roku	Od roku	django.forms.fields.IntegerField	0	raport_slotow.forms.uczelnia.UtworzRaportSlotowUczelniaForm
-13	do_roku	Do roku	django.forms.fields.IntegerField	1	raport_slotow.forms.uczelnia.UtworzRaportSlotowUczelniaForm
 14	akcja	Akcja	django.forms.fields.TypedChoiceField	2	raport_slotow.forms.uczelnia.UtworzRaportSlotowUczelniaForm
-15	slot	Slot	django.forms.fields.DecimalField	3	raport_slotow.forms.uczelnia.UtworzRaportSlotowUczelniaForm
 16	minimalny_pk	Minimalny pk	django.forms.fields.DecimalField	4	raport_slotow.forms.uczelnia.UtworzRaportSlotowUczelniaForm
 17	dziel_na_jednostki_i_wydzialy	Dziel na jednostki i wydziały	django.forms.fields.BooleanField	5	raport_slotow.forms.uczelnia.UtworzRaportSlotowUczelniaForm
 18	pokazuj_zerowych	Dołączaj autorów z zerowymi slotami	django.forms.fields.BooleanField	6	raport_slotow.forms.uczelnia.UtworzRaportSlotowUczelniaForm
-19	od_roku	Od roku	django.forms.fields.IntegerField	0	nowe_raporty.forms_dynamiczne.RaportForm_raport_uczelni
-20	do_roku	Do roku	django.forms.fields.IntegerField	1	nowe_raporty.forms_dynamiczne.RaportForm_raport_uczelni
 21	_export	Format wyjściowy	django.forms.fields.ChoiceField	2	nowe_raporty.forms_dynamiczne.RaportForm_raport_uczelni
 22	tylko_z_jednostek_uczelni	Tylko prace afiliowane	django.forms.fields.BooleanField	3	nowe_raporty.forms_dynamiczne.RaportForm_raport_uczelni
 23	punkty_mnisw_od	od	django.forms.fields.FloatField	4	nowe_raporty.forms_dynamiczne.RaportForm_raport_uczelni
@@ -16518,8 +16742,6 @@ COPY public.formdefaults_formfieldrepresentation (id, name, label, klass, "order
 25	if_od	od	django.forms.fields.FloatField	6	nowe_raporty.forms_dynamiczne.RaportForm_raport_uczelni
 26	if_do	do	django.forms.fields.FloatField	7	nowe_raporty.forms_dynamiczne.RaportForm_raport_uczelni
 27	tylko_punktowane	Tylko prace punktowane (pkt MNiSW > 0)	django.forms.fields.BooleanField	8	nowe_raporty.forms_dynamiczne.RaportForm_raport_uczelni
-28	od_roku	Od roku	django.forms.fields.IntegerField	0	nowe_raporty.forms_dynamiczne.RaportForm_raport_wydzialow
-29	do_roku	Do roku	django.forms.fields.IntegerField	1	nowe_raporty.forms_dynamiczne.RaportForm_raport_wydzialow
 30	_export	Format wyjściowy	django.forms.fields.ChoiceField	2	nowe_raporty.forms_dynamiczne.RaportForm_raport_wydzialow
 31	tylko_z_jednostek_uczelni	Tylko prace afiliowane	django.forms.fields.BooleanField	3	nowe_raporty.forms_dynamiczne.RaportForm_raport_wydzialow
 32	punkty_mnisw_od	od	django.forms.fields.FloatField	4	nowe_raporty.forms_dynamiczne.RaportForm_raport_wydzialow
@@ -16528,8 +16750,6 @@ COPY public.formdefaults_formfieldrepresentation (id, name, label, klass, "order
 35	if_do	do	django.forms.fields.FloatField	7	nowe_raporty.forms_dynamiczne.RaportForm_raport_wydzialow
 36	tylko_punktowane	Tylko prace punktowane (pkt MNiSW > 0)	django.forms.fields.BooleanField	8	nowe_raporty.forms_dynamiczne.RaportForm_raport_wydzialow
 37	obiekt	Wydział	django.forms.models.ModelChoiceField	9	nowe_raporty.forms_dynamiczne.RaportForm_raport_wydzialow
-38	od_roku	Od roku	django.forms.fields.IntegerField	0	nowe_raporty.forms_dynamiczne.RaportForm_raport_jednostek
-39	do_roku	Do roku	django.forms.fields.IntegerField	1	nowe_raporty.forms_dynamiczne.RaportForm_raport_jednostek
 40	_export	Format wyjściowy	django.forms.fields.ChoiceField	2	nowe_raporty.forms_dynamiczne.RaportForm_raport_jednostek
 41	tylko_z_jednostek_uczelni	Tylko prace afiliowane	django.forms.fields.BooleanField	3	nowe_raporty.forms_dynamiczne.RaportForm_raport_jednostek
 42	punkty_mnisw_od	od	django.forms.fields.FloatField	4	nowe_raporty.forms_dynamiczne.RaportForm_raport_jednostek
@@ -16538,8 +16758,6 @@ COPY public.formdefaults_formfieldrepresentation (id, name, label, klass, "order
 45	if_do	do	django.forms.fields.FloatField	7	nowe_raporty.forms_dynamiczne.RaportForm_raport_jednostek
 46	tylko_punktowane	Tylko prace punktowane (pkt MNiSW > 0)	django.forms.fields.BooleanField	8	nowe_raporty.forms_dynamiczne.RaportForm_raport_jednostek
 47	obiekt	Jednostka	django.forms.models.ModelChoiceField	9	nowe_raporty.forms_dynamiczne.RaportForm_raport_jednostek
-48	od_roku	Od roku	django.forms.fields.IntegerField	0	nowe_raporty.forms_dynamiczne.RaportForm_raport_autorow
-49	do_roku	Do roku	django.forms.fields.IntegerField	1	nowe_raporty.forms_dynamiczne.RaportForm_raport_autorow
 50	_export	Format wyjściowy	django.forms.fields.ChoiceField	2	nowe_raporty.forms_dynamiczne.RaportForm_raport_autorow
 51	tylko_z_jednostek_uczelni	Tylko prace afiliowane	django.forms.fields.BooleanField	3	nowe_raporty.forms_dynamiczne.RaportForm_raport_autorow
 52	punkty_mnisw_od	od	django.forms.fields.FloatField	4	nowe_raporty.forms_dynamiczne.RaportForm_raport_autorow
@@ -17286,7 +17504,7 @@ SELECT pg_catalog.setval('public.auth_group_id_seq', 9, true);
 -- Name: auth_group_permissions_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
-SELECT pg_catalog.setval('public.auth_group_permissions_id_seq', 300, true);
+SELECT pg_catalog.setval('public.auth_group_permissions_id_seq', 396, true);
 
 
 --
@@ -17951,7 +18169,7 @@ SELECT pg_catalog.setval('public.django_countdown_sitecountdown_id_seq', 1, fals
 -- Name: django_migrations_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
-SELECT pg_catalog.setval('public.django_migrations_id_seq', 956, true);
+SELECT pg_catalog.setval('public.django_migrations_id_seq', 962, true);
 
 
 --
@@ -23946,10 +24164,10 @@ CREATE INDEX bpp_rekord_mat_r ON public.bpp_rekord_mat USING btree (status_korek
 
 
 --
--- Name: bpp_rekord_mat_search_index_idx; Type: INDEX; Schema: public; Owner: -
+-- Name: bpp_rekord_mat_search_index_gin; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX bpp_rekord_mat_search_index_idx ON public.bpp_rekord_mat USING gist (search_index);
+CREATE INDEX bpp_rekord_mat_search_index_gin ON public.bpp_rekord_mat USING gin (search_index);
 
 
 --
@@ -29006,94 +29224,171 @@ CREATE TRIGGER bpp_jednostka_wydzial_sprawdz_uczelnia_id_trigger BEFORE INSERT O
 
 
 --
--- Name: bpp_patent_autor bpp_patent_autor_cache_trigger; Type: TRIGGER; Schema: public; Owner: -
+-- Name: bpp_patent_autor bpp_patent_autor_cache_del; Type: TRIGGER; Schema: public; Owner: -
 --
 
-CREATE TRIGGER bpp_patent_autor_cache_trigger AFTER INSERT OR DELETE OR UPDATE ON public.bpp_patent_autor FOR EACH ROW EXECUTE FUNCTION public.bpp_refresh_cache();
-
-
---
--- Name: bpp_patent bpp_patent_cache_trigger; Type: TRIGGER; Schema: public; Owner: -
---
-
-CREATE TRIGGER bpp_patent_cache_trigger AFTER INSERT OR DELETE OR UPDATE ON public.bpp_patent FOR EACH ROW EXECUTE FUNCTION public.bpp_refresh_cache();
+CREATE TRIGGER bpp_patent_autor_cache_del AFTER DELETE ON public.bpp_patent_autor FOR EACH ROW EXECUTE FUNCTION public.bpp_delete_autor_patent();
 
 
 --
--- Name: bpp_patent bpp_patent_tytul_oryginalny_sort_trigger; Type: TRIGGER; Schema: public; Owner: -
+-- Name: bpp_patent_autor bpp_patent_autor_cache_ins; Type: TRIGGER; Schema: public; Owner: -
 --
 
-CREATE TRIGGER bpp_patent_tytul_oryginalny_sort_trigger BEFORE INSERT OR UPDATE ON public.bpp_patent FOR EACH ROW EXECUTE FUNCTION public.trigger_tytul_sort();
-
-
---
--- Name: bpp_praca_doktorska bpp_praca_doktorska_cache_trigger; Type: TRIGGER; Schema: public; Owner: -
---
-
-CREATE TRIGGER bpp_praca_doktorska_cache_trigger AFTER INSERT OR DELETE OR UPDATE ON public.bpp_praca_doktorska FOR EACH ROW EXECUTE FUNCTION public.bpp_refresh_cache();
+CREATE TRIGGER bpp_patent_autor_cache_ins AFTER INSERT ON public.bpp_patent_autor FOR EACH ROW EXECUTE FUNCTION public.bpp_refresh_autor_patent();
 
 
 --
--- Name: bpp_praca_doktorska bpp_praca_doktorska_tytul_oryginalny_sort_trigger; Type: TRIGGER; Schema: public; Owner: -
+-- Name: bpp_patent_autor bpp_patent_autor_cache_upd; Type: TRIGGER; Schema: public; Owner: -
 --
 
-CREATE TRIGGER bpp_praca_doktorska_tytul_oryginalny_sort_trigger BEFORE INSERT OR UPDATE ON public.bpp_praca_doktorska FOR EACH ROW EXECUTE FUNCTION public.trigger_tytul_sort();
-
-
---
--- Name: bpp_praca_habilitacyjna bpp_praca_habilitacyjna_cache_trigger; Type: TRIGGER; Schema: public; Owner: -
---
-
-CREATE TRIGGER bpp_praca_habilitacyjna_cache_trigger AFTER INSERT OR DELETE OR UPDATE ON public.bpp_praca_habilitacyjna FOR EACH ROW EXECUTE FUNCTION public.bpp_refresh_cache();
+CREATE TRIGGER bpp_patent_autor_cache_upd AFTER UPDATE ON public.bpp_patent_autor FOR EACH ROW WHEN (((old.kolejnosc IS DISTINCT FROM new.kolejnosc) OR (old.autor_id IS DISTINCT FROM new.autor_id) OR (old.jednostka_id IS DISTINCT FROM new.jednostka_id) OR (old.rekord_id IS DISTINCT FROM new.rekord_id) OR (old.typ_odpowiedzialnosci_id IS DISTINCT FROM new.typ_odpowiedzialnosci_id) OR (old.zatrudniony IS DISTINCT FROM new.zatrudniony) OR (old.afiliuje IS DISTINCT FROM new.afiliuje) OR (old.dyscyplina_naukowa_id IS DISTINCT FROM new.dyscyplina_naukowa_id) OR (old.upowaznienie_pbn IS DISTINCT FROM new.upowaznienie_pbn) OR (old.profil_orcid IS DISTINCT FROM new.profil_orcid) OR (old.data_oswiadczenia IS DISTINCT FROM new.data_oswiadczenia) OR (old.przypieta IS DISTINCT FROM new.przypieta) OR ((old.zapisany_jako)::text IS DISTINCT FROM (new.zapisany_jako)::text))) EXECUTE FUNCTION public.bpp_refresh_autor_patent();
 
 
 --
--- Name: bpp_praca_habilitacyjna bpp_praca_habilitacyjna_tytul_oryginalny_sort_trigger; Type: TRIGGER; Schema: public; Owner: -
+-- Name: bpp_patent bpp_patent_cache_del; Type: TRIGGER; Schema: public; Owner: -
 --
 
-CREATE TRIGGER bpp_praca_habilitacyjna_tytul_oryginalny_sort_trigger BEFORE INSERT OR UPDATE ON public.bpp_praca_habilitacyjna FOR EACH ROW EXECUTE FUNCTION public.trigger_tytul_sort();
-
-
---
--- Name: bpp_wydawnictwo_ciagle_autor bpp_wydawnictwo_ciagle_autor_cache_trigger; Type: TRIGGER; Schema: public; Owner: -
---
-
-CREATE TRIGGER bpp_wydawnictwo_ciagle_autor_cache_trigger AFTER INSERT OR DELETE OR UPDATE ON public.bpp_wydawnictwo_ciagle_autor FOR EACH ROW EXECUTE FUNCTION public.bpp_refresh_cache();
+CREATE TRIGGER bpp_patent_cache_del AFTER DELETE ON public.bpp_patent FOR EACH ROW EXECUTE FUNCTION public.bpp_delete_rekord_patent();
 
 
 --
--- Name: bpp_wydawnictwo_ciagle bpp_wydawnictwo_ciagle_cache_trigger; Type: TRIGGER; Schema: public; Owner: -
+-- Name: bpp_patent bpp_patent_cache_ins; Type: TRIGGER; Schema: public; Owner: -
 --
 
-CREATE TRIGGER bpp_wydawnictwo_ciagle_cache_trigger AFTER INSERT OR DELETE OR UPDATE ON public.bpp_wydawnictwo_ciagle FOR EACH ROW EXECUTE FUNCTION public.bpp_refresh_cache();
-
-
---
--- Name: bpp_wydawnictwo_ciagle bpp_wydawnictwo_ciagle_tytul_oryginalny_sort_trigger; Type: TRIGGER; Schema: public; Owner: -
---
-
-CREATE TRIGGER bpp_wydawnictwo_ciagle_tytul_oryginalny_sort_trigger BEFORE INSERT OR UPDATE ON public.bpp_wydawnictwo_ciagle FOR EACH ROW EXECUTE FUNCTION public.trigger_tytul_sort();
+CREATE TRIGGER bpp_patent_cache_ins AFTER INSERT ON public.bpp_patent FOR EACH ROW EXECUTE FUNCTION public.bpp_refresh_rekord_patent();
 
 
 --
--- Name: bpp_wydawnictwo_zwarte_autor bpp_wydawnictwo_zwarte_autor_cache_trigger; Type: TRIGGER; Schema: public; Owner: -
+-- Name: bpp_patent bpp_patent_cache_upd; Type: TRIGGER; Schema: public; Owner: -
 --
 
-CREATE TRIGGER bpp_wydawnictwo_zwarte_autor_cache_trigger AFTER INSERT OR DELETE OR UPDATE ON public.bpp_wydawnictwo_zwarte_autor FOR EACH ROW EXECUTE FUNCTION public.bpp_refresh_cache();
-
-
---
--- Name: bpp_wydawnictwo_zwarte bpp_wydawnictwo_zwarte_cache_trigger; Type: TRIGGER; Schema: public; Owner: -
---
-
-CREATE TRIGGER bpp_wydawnictwo_zwarte_cache_trigger AFTER INSERT OR DELETE OR UPDATE ON public.bpp_wydawnictwo_zwarte FOR EACH ROW EXECUTE FUNCTION public.bpp_refresh_cache();
+CREATE TRIGGER bpp_patent_cache_upd AFTER UPDATE ON public.bpp_patent FOR EACH ROW WHEN (((old.ostatnio_zmieniony IS DISTINCT FROM new.ostatnio_zmieniony) OR (old.rok IS DISTINCT FROM new.rok) OR (old.recenzowana IS DISTINCT FROM new.recenzowana) OR (old.impact_factor IS DISTINCT FROM new.impact_factor) OR (old.punkty_kbn IS DISTINCT FROM new.punkty_kbn) OR (old.index_copernicus IS DISTINCT FROM new.index_copernicus) OR (old.punktacja_wewnetrzna IS DISTINCT FROM new.punktacja_wewnetrzna) OR (old.utworzono IS DISTINCT FROM new.utworzono) OR (old.status_korekty_id IS DISTINCT FROM new.status_korekty_id) OR (old.dostep_dnia IS DISTINCT FROM new.dostep_dnia) OR (old.public_dostep_dnia IS DISTINCT FROM new.public_dostep_dnia) OR (old.punktacja_snip IS DISTINCT FROM new.punktacja_snip) OR (old.opis_bibliograficzny_cache IS DISTINCT FROM new.opis_bibliograficzny_cache) OR (old.opis_bibliograficzny_autorzy_cache IS DISTINCT FROM new.opis_bibliograficzny_autorzy_cache) OR (old.opis_bibliograficzny_zapisani_autorzy_cache IS DISTINCT FROM new.opis_bibliograficzny_zapisani_autorzy_cache) OR (old.adnotacje IS DISTINCT FROM new.adnotacje) OR ((old.www)::text IS DISTINCT FROM (new.www)::text) OR (old.informacje IS DISTINCT FROM new.informacje) OR ((old.szczegoly)::text IS DISTINCT FROM (new.szczegoly)::text) OR (old.uwagi IS DISTINCT FROM new.uwagi) OR (old.tytul_oryginalny IS DISTINCT FROM new.tytul_oryginalny) OR ((old.public_www)::text IS DISTINCT FROM (new.public_www)::text) OR ((old.slug)::text IS DISTINCT FROM (new.slug)::text) OR (old.slowa_kluczowe_eng IS DISTINCT FROM new.slowa_kluczowe_eng))) EXECUTE FUNCTION public.bpp_refresh_rekord_patent();
 
 
 --
--- Name: bpp_wydawnictwo_zwarte bpp_wydawnictwo_zwarte_tytul_oryginalny_sort_trigger; Type: TRIGGER; Schema: public; Owner: -
+-- Name: bpp_praca_doktorska bpp_praca_doktorska_cache_del; Type: TRIGGER; Schema: public; Owner: -
 --
 
-CREATE TRIGGER bpp_wydawnictwo_zwarte_tytul_oryginalny_sort_trigger BEFORE INSERT OR UPDATE ON public.bpp_wydawnictwo_zwarte FOR EACH ROW EXECUTE FUNCTION public.trigger_tytul_sort();
+CREATE TRIGGER bpp_praca_doktorska_cache_del AFTER DELETE ON public.bpp_praca_doktorska FOR EACH ROW EXECUTE FUNCTION public.bpp_delete_rekord_praca_doktorska();
+
+
+--
+-- Name: bpp_praca_doktorska bpp_praca_doktorska_cache_ins; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER bpp_praca_doktorska_cache_ins AFTER INSERT ON public.bpp_praca_doktorska FOR EACH ROW EXECUTE FUNCTION public.bpp_refresh_rekord_praca_doktorska();
+
+
+--
+-- Name: bpp_praca_doktorska bpp_praca_doktorska_cache_upd; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER bpp_praca_doktorska_cache_upd AFTER UPDATE ON public.bpp_praca_doktorska FOR EACH ROW WHEN (((old.ostatnio_zmieniony IS DISTINCT FROM new.ostatnio_zmieniony) OR (old.rok IS DISTINCT FROM new.rok) OR (old.recenzowana IS DISTINCT FROM new.recenzowana) OR (old.impact_factor IS DISTINCT FROM new.impact_factor) OR (old.punkty_kbn IS DISTINCT FROM new.punkty_kbn) OR (old.index_copernicus IS DISTINCT FROM new.index_copernicus) OR (old.punktacja_wewnetrzna IS DISTINCT FROM new.punktacja_wewnetrzna) OR (old.utworzono IS DISTINCT FROM new.utworzono) OR (old.autor_id IS DISTINCT FROM new.autor_id) OR (old.jednostka_id IS DISTINCT FROM new.jednostka_id) OR (old.jezyk_id IS DISTINCT FROM new.jezyk_id) OR (old.status_korekty_id IS DISTINCT FROM new.status_korekty_id) OR (old.typ_kbn_id IS DISTINCT FROM new.typ_kbn_id) OR (old.dostep_dnia IS DISTINCT FROM new.dostep_dnia) OR (old.public_dostep_dnia IS DISTINCT FROM new.public_dostep_dnia) OR (old.liczba_cytowan IS DISTINCT FROM new.liczba_cytowan) OR (old.punktacja_snip IS DISTINCT FROM new.punktacja_snip) OR (old.opis_bibliograficzny_cache IS DISTINCT FROM new.opis_bibliograficzny_cache) OR (old.opis_bibliograficzny_autorzy_cache IS DISTINCT FROM new.opis_bibliograficzny_autorzy_cache) OR (old.opis_bibliograficzny_zapisani_autorzy_cache IS DISTINCT FROM new.opis_bibliograficzny_zapisani_autorzy_cache) OR (old.adnotacje IS DISTINCT FROM new.adnotacje) OR ((old.isbn)::text IS DISTINCT FROM (new.isbn)::text) OR ((old.e_isbn)::text IS DISTINCT FROM (new.e_isbn)::text) OR (old.tytul_oryginalny IS DISTINCT FROM new.tytul_oryginalny) OR (old.tytul IS DISTINCT FROM new.tytul) OR ((old.www)::text IS DISTINCT FROM (new.www)::text) OR (old.informacje IS DISTINCT FROM new.informacje) OR ((old.szczegoly)::text IS DISTINCT FROM (new.szczegoly)::text) OR (old.uwagi IS DISTINCT FROM new.uwagi) OR ((old.wydawca_opis)::text IS DISTINCT FROM (new.wydawca_opis)::text) OR ((old.public_www)::text IS DISTINCT FROM (new.public_www)::text) OR ((old.doi)::text IS DISTINCT FROM (new.doi)::text) OR ((old.slug)::text IS DISTINCT FROM (new.slug)::text) OR ((old.pbn_uid_id)::text IS DISTINCT FROM (new.pbn_uid_id)::text) OR (old.slowa_kluczowe_eng IS DISTINCT FROM new.slowa_kluczowe_eng))) EXECUTE FUNCTION public.bpp_refresh_rekord_praca_doktorska();
+
+
+--
+-- Name: bpp_praca_habilitacyjna bpp_praca_habilitacyjna_cache_del; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER bpp_praca_habilitacyjna_cache_del AFTER DELETE ON public.bpp_praca_habilitacyjna FOR EACH ROW EXECUTE FUNCTION public.bpp_delete_rekord_praca_habilitacyjna();
+
+
+--
+-- Name: bpp_praca_habilitacyjna bpp_praca_habilitacyjna_cache_ins; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER bpp_praca_habilitacyjna_cache_ins AFTER INSERT ON public.bpp_praca_habilitacyjna FOR EACH ROW EXECUTE FUNCTION public.bpp_refresh_rekord_praca_habilitacyjna();
+
+
+--
+-- Name: bpp_praca_habilitacyjna bpp_praca_habilitacyjna_cache_upd; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER bpp_praca_habilitacyjna_cache_upd AFTER UPDATE ON public.bpp_praca_habilitacyjna FOR EACH ROW WHEN (((old.ostatnio_zmieniony IS DISTINCT FROM new.ostatnio_zmieniony) OR (old.rok IS DISTINCT FROM new.rok) OR (old.recenzowana IS DISTINCT FROM new.recenzowana) OR (old.impact_factor IS DISTINCT FROM new.impact_factor) OR (old.punkty_kbn IS DISTINCT FROM new.punkty_kbn) OR (old.index_copernicus IS DISTINCT FROM new.index_copernicus) OR (old.punktacja_wewnetrzna IS DISTINCT FROM new.punktacja_wewnetrzna) OR (old.utworzono IS DISTINCT FROM new.utworzono) OR (old.autor_id IS DISTINCT FROM new.autor_id) OR (old.jednostka_id IS DISTINCT FROM new.jednostka_id) OR (old.jezyk_id IS DISTINCT FROM new.jezyk_id) OR (old.status_korekty_id IS DISTINCT FROM new.status_korekty_id) OR (old.typ_kbn_id IS DISTINCT FROM new.typ_kbn_id) OR (old.dostep_dnia IS DISTINCT FROM new.dostep_dnia) OR (old.public_dostep_dnia IS DISTINCT FROM new.public_dostep_dnia) OR (old.liczba_cytowan IS DISTINCT FROM new.liczba_cytowan) OR (old.punktacja_snip IS DISTINCT FROM new.punktacja_snip) OR (old.opis_bibliograficzny_cache IS DISTINCT FROM new.opis_bibliograficzny_cache) OR (old.opis_bibliograficzny_autorzy_cache IS DISTINCT FROM new.opis_bibliograficzny_autorzy_cache) OR (old.opis_bibliograficzny_zapisani_autorzy_cache IS DISTINCT FROM new.opis_bibliograficzny_zapisani_autorzy_cache) OR (old.adnotacje IS DISTINCT FROM new.adnotacje) OR ((old.isbn)::text IS DISTINCT FROM (new.isbn)::text) OR ((old.e_isbn)::text IS DISTINCT FROM (new.e_isbn)::text) OR (old.tytul_oryginalny IS DISTINCT FROM new.tytul_oryginalny) OR (old.tytul IS DISTINCT FROM new.tytul) OR ((old.www)::text IS DISTINCT FROM (new.www)::text) OR (old.informacje IS DISTINCT FROM new.informacje) OR ((old.szczegoly)::text IS DISTINCT FROM (new.szczegoly)::text) OR (old.uwagi IS DISTINCT FROM new.uwagi) OR ((old.wydawca_opis)::text IS DISTINCT FROM (new.wydawca_opis)::text) OR ((old.public_www)::text IS DISTINCT FROM (new.public_www)::text) OR ((old.doi)::text IS DISTINCT FROM (new.doi)::text) OR ((old.slug)::text IS DISTINCT FROM (new.slug)::text) OR ((old.pbn_uid_id)::text IS DISTINCT FROM (new.pbn_uid_id)::text) OR (old.slowa_kluczowe_eng IS DISTINCT FROM new.slowa_kluczowe_eng))) EXECUTE FUNCTION public.bpp_refresh_rekord_praca_habilitacyjna();
+
+
+--
+-- Name: bpp_wydawnictwo_ciagle_autor bpp_wydawnictwo_ciagle_autor_cache_del; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER bpp_wydawnictwo_ciagle_autor_cache_del AFTER DELETE ON public.bpp_wydawnictwo_ciagle_autor FOR EACH ROW EXECUTE FUNCTION public.bpp_delete_autor_wydawnictwo_ciagle();
+
+
+--
+-- Name: bpp_wydawnictwo_ciagle_autor bpp_wydawnictwo_ciagle_autor_cache_ins; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER bpp_wydawnictwo_ciagle_autor_cache_ins AFTER INSERT ON public.bpp_wydawnictwo_ciagle_autor FOR EACH ROW EXECUTE FUNCTION public.bpp_refresh_autor_wydawnictwo_ciagle();
+
+
+--
+-- Name: bpp_wydawnictwo_ciagle_autor bpp_wydawnictwo_ciagle_autor_cache_upd; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER bpp_wydawnictwo_ciagle_autor_cache_upd AFTER UPDATE ON public.bpp_wydawnictwo_ciagle_autor FOR EACH ROW WHEN (((old.kolejnosc IS DISTINCT FROM new.kolejnosc) OR (old.autor_id IS DISTINCT FROM new.autor_id) OR (old.jednostka_id IS DISTINCT FROM new.jednostka_id) OR (old.rekord_id IS DISTINCT FROM new.rekord_id) OR (old.typ_odpowiedzialnosci_id IS DISTINCT FROM new.typ_odpowiedzialnosci_id) OR (old.zatrudniony IS DISTINCT FROM new.zatrudniony) OR (old.afiliuje IS DISTINCT FROM new.afiliuje) OR (old.dyscyplina_naukowa_id IS DISTINCT FROM new.dyscyplina_naukowa_id) OR (old.upowaznienie_pbn IS DISTINCT FROM new.upowaznienie_pbn) OR (old.profil_orcid IS DISTINCT FROM new.profil_orcid) OR (old.data_oswiadczenia IS DISTINCT FROM new.data_oswiadczenia) OR (old.przypieta IS DISTINCT FROM new.przypieta) OR (old.kierunek_studiow_id IS DISTINCT FROM new.kierunek_studiow_id) OR (old.oswiadczenie_ken IS DISTINCT FROM new.oswiadczenie_ken) OR ((old.zapisany_jako)::text IS DISTINCT FROM (new.zapisany_jako)::text))) EXECUTE FUNCTION public.bpp_refresh_autor_wydawnictwo_ciagle();
+
+
+--
+-- Name: bpp_wydawnictwo_ciagle bpp_wydawnictwo_ciagle_cache_del; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER bpp_wydawnictwo_ciagle_cache_del AFTER DELETE ON public.bpp_wydawnictwo_ciagle FOR EACH ROW EXECUTE FUNCTION public.bpp_delete_rekord_wydawnictwo_ciagle();
+
+
+--
+-- Name: bpp_wydawnictwo_ciagle bpp_wydawnictwo_ciagle_cache_ins; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER bpp_wydawnictwo_ciagle_cache_ins AFTER INSERT ON public.bpp_wydawnictwo_ciagle FOR EACH ROW EXECUTE FUNCTION public.bpp_refresh_rekord_wydawnictwo_ciagle();
+
+
+--
+-- Name: bpp_wydawnictwo_ciagle bpp_wydawnictwo_ciagle_cache_upd; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER bpp_wydawnictwo_ciagle_cache_upd AFTER UPDATE ON public.bpp_wydawnictwo_ciagle FOR EACH ROW WHEN (((old.ostatnio_zmieniony IS DISTINCT FROM new.ostatnio_zmieniony) OR (old.rok IS DISTINCT FROM new.rok) OR (old.recenzowana IS DISTINCT FROM new.recenzowana) OR (old.impact_factor IS DISTINCT FROM new.impact_factor) OR (old.punkty_kbn IS DISTINCT FROM new.punkty_kbn) OR (old.index_copernicus IS DISTINCT FROM new.index_copernicus) OR (old.punktacja_wewnetrzna IS DISTINCT FROM new.punktacja_wewnetrzna) OR (old.utworzono IS DISTINCT FROM new.utworzono) OR (old.charakter_formalny_id IS DISTINCT FROM new.charakter_formalny_id) OR (old.jezyk_id IS DISTINCT FROM new.jezyk_id) OR (old.status_korekty_id IS DISTINCT FROM new.status_korekty_id) OR (old.typ_kbn_id IS DISTINCT FROM new.typ_kbn_id) OR (old.zrodlo_id IS DISTINCT FROM new.zrodlo_id) OR (old.dostep_dnia IS DISTINCT FROM new.dostep_dnia) OR (old.openaccess_czas_publikacji_id IS DISTINCT FROM new.openaccess_czas_publikacji_id) OR (old.openaccess_licencja_id IS DISTINCT FROM new.openaccess_licencja_id) OR (old.openaccess_tryb_dostepu_id IS DISTINCT FROM new.openaccess_tryb_dostepu_id) OR (old.openaccess_wersja_tekstu_id IS DISTINCT FROM new.openaccess_wersja_tekstu_id) OR (old.public_dostep_dnia IS DISTINCT FROM new.public_dostep_dnia) OR (old.openaccess_ilosc_miesiecy IS DISTINCT FROM new.openaccess_ilosc_miesiecy) OR (old.liczba_znakow_wydawniczych IS DISTINCT FROM new.liczba_znakow_wydawniczych) OR (old.konferencja_id IS DISTINCT FROM new.konferencja_id) OR (old.liczba_cytowan IS DISTINCT FROM new.liczba_cytowan) OR (old.punktacja_snip IS DISTINCT FROM new.punktacja_snip) OR (old.kwartyl_w_scopus IS DISTINCT FROM new.kwartyl_w_scopus) OR (old.kwartyl_w_wos IS DISTINCT FROM new.kwartyl_w_wos) OR (old.openaccess_data_opublikowania IS DISTINCT FROM new.openaccess_data_opublikowania) OR (old.opis_bibliograficzny_cache IS DISTINCT FROM new.opis_bibliograficzny_cache) OR (old.opis_bibliograficzny_autorzy_cache IS DISTINCT FROM new.opis_bibliograficzny_autorzy_cache) OR (old.opis_bibliograficzny_zapisani_autorzy_cache IS DISTINCT FROM new.opis_bibliograficzny_zapisani_autorzy_cache) OR (old.adnotacje IS DISTINCT FROM new.adnotacje) OR (old.tytul_oryginalny IS DISTINCT FROM new.tytul_oryginalny) OR (old.tytul IS DISTINCT FROM new.tytul) OR ((old.www)::text IS DISTINCT FROM (new.www)::text) OR (old.informacje IS DISTINCT FROM new.informacje) OR ((old.szczegoly)::text IS DISTINCT FROM (new.szczegoly)::text) OR (old.uwagi IS DISTINCT FROM new.uwagi) OR ((old.public_www)::text IS DISTINCT FROM (new.public_www)::text) OR ((old.doi)::text IS DISTINCT FROM (new.doi)::text) OR ((old.slug)::text IS DISTINCT FROM (new.slug)::text) OR ((old.pbn_uid_id)::text IS DISTINCT FROM (new.pbn_uid_id)::text) OR (old.slowa_kluczowe_eng IS DISTINCT FROM new.slowa_kluczowe_eng))) EXECUTE FUNCTION public.bpp_refresh_rekord_wydawnictwo_ciagle();
+
+
+--
+-- Name: bpp_wydawnictwo_zwarte_autor bpp_wydawnictwo_zwarte_autor_cache_del; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER bpp_wydawnictwo_zwarte_autor_cache_del AFTER DELETE ON public.bpp_wydawnictwo_zwarte_autor FOR EACH ROW EXECUTE FUNCTION public.bpp_delete_autor_wydawnictwo_zwarte();
+
+
+--
+-- Name: bpp_wydawnictwo_zwarte_autor bpp_wydawnictwo_zwarte_autor_cache_ins; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER bpp_wydawnictwo_zwarte_autor_cache_ins AFTER INSERT ON public.bpp_wydawnictwo_zwarte_autor FOR EACH ROW EXECUTE FUNCTION public.bpp_refresh_autor_wydawnictwo_zwarte();
+
+
+--
+-- Name: bpp_wydawnictwo_zwarte_autor bpp_wydawnictwo_zwarte_autor_cache_upd; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER bpp_wydawnictwo_zwarte_autor_cache_upd AFTER UPDATE ON public.bpp_wydawnictwo_zwarte_autor FOR EACH ROW WHEN (((old.kolejnosc IS DISTINCT FROM new.kolejnosc) OR (old.autor_id IS DISTINCT FROM new.autor_id) OR (old.jednostka_id IS DISTINCT FROM new.jednostka_id) OR (old.rekord_id IS DISTINCT FROM new.rekord_id) OR (old.typ_odpowiedzialnosci_id IS DISTINCT FROM new.typ_odpowiedzialnosci_id) OR (old.zatrudniony IS DISTINCT FROM new.zatrudniony) OR (old.afiliuje IS DISTINCT FROM new.afiliuje) OR (old.dyscyplina_naukowa_id IS DISTINCT FROM new.dyscyplina_naukowa_id) OR (old.upowaznienie_pbn IS DISTINCT FROM new.upowaznienie_pbn) OR (old.profil_orcid IS DISTINCT FROM new.profil_orcid) OR (old.data_oswiadczenia IS DISTINCT FROM new.data_oswiadczenia) OR (old.przypieta IS DISTINCT FROM new.przypieta) OR (old.kierunek_studiow_id IS DISTINCT FROM new.kierunek_studiow_id) OR (old.oswiadczenie_ken IS DISTINCT FROM new.oswiadczenie_ken) OR ((old.zapisany_jako)::text IS DISTINCT FROM (new.zapisany_jako)::text))) EXECUTE FUNCTION public.bpp_refresh_autor_wydawnictwo_zwarte();
+
+
+--
+-- Name: bpp_wydawnictwo_zwarte bpp_wydawnictwo_zwarte_cache_del; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER bpp_wydawnictwo_zwarte_cache_del AFTER DELETE ON public.bpp_wydawnictwo_zwarte FOR EACH ROW EXECUTE FUNCTION public.bpp_delete_rekord_wydawnictwo_zwarte();
+
+
+--
+-- Name: bpp_wydawnictwo_zwarte bpp_wydawnictwo_zwarte_cache_ins; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER bpp_wydawnictwo_zwarte_cache_ins AFTER INSERT ON public.bpp_wydawnictwo_zwarte FOR EACH ROW EXECUTE FUNCTION public.bpp_refresh_rekord_wydawnictwo_zwarte();
+
+
+--
+-- Name: bpp_wydawnictwo_zwarte bpp_wydawnictwo_zwarte_cache_upd; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER bpp_wydawnictwo_zwarte_cache_upd AFTER UPDATE ON public.bpp_wydawnictwo_zwarte FOR EACH ROW WHEN (((old.ostatnio_zmieniony IS DISTINCT FROM new.ostatnio_zmieniony) OR (old.rok IS DISTINCT FROM new.rok) OR (old.recenzowana IS DISTINCT FROM new.recenzowana) OR (old.impact_factor IS DISTINCT FROM new.impact_factor) OR (old.punkty_kbn IS DISTINCT FROM new.punkty_kbn) OR (old.index_copernicus IS DISTINCT FROM new.index_copernicus) OR (old.punktacja_wewnetrzna IS DISTINCT FROM new.punktacja_wewnetrzna) OR (old.utworzono IS DISTINCT FROM new.utworzono) OR (old.liczba_znakow_wydawniczych IS DISTINCT FROM new.liczba_znakow_wydawniczych) OR (old.charakter_formalny_id IS DISTINCT FROM new.charakter_formalny_id) OR (old.jezyk_id IS DISTINCT FROM new.jezyk_id) OR (old.status_korekty_id IS DISTINCT FROM new.status_korekty_id) OR (old.typ_kbn_id IS DISTINCT FROM new.typ_kbn_id) OR (old.wydawnictwo_nadrzedne_id IS DISTINCT FROM new.wydawnictwo_nadrzedne_id) OR (old.dostep_dnia IS DISTINCT FROM new.dostep_dnia) OR (old.openaccess_czas_publikacji_id IS DISTINCT FROM new.openaccess_czas_publikacji_id) OR (old.openaccess_licencja_id IS DISTINCT FROM new.openaccess_licencja_id) OR (old.openaccess_tryb_dostepu_id IS DISTINCT FROM new.openaccess_tryb_dostepu_id) OR (old.openaccess_wersja_tekstu_id IS DISTINCT FROM new.openaccess_wersja_tekstu_id) OR (old.public_dostep_dnia IS DISTINCT FROM new.public_dostep_dnia) OR (old.openaccess_ilosc_miesiecy IS DISTINCT FROM new.openaccess_ilosc_miesiecy) OR (old.konferencja_id IS DISTINCT FROM new.konferencja_id) OR (old.liczba_cytowan IS DISTINCT FROM new.liczba_cytowan) OR (old.punktacja_snip IS DISTINCT FROM new.punktacja_snip) OR (old.wydawca_id IS DISTINCT FROM new.wydawca_id) OR (old.openaccess_data_opublikowania IS DISTINCT FROM new.openaccess_data_opublikowania) OR (old.opis_bibliograficzny_cache IS DISTINCT FROM new.opis_bibliograficzny_cache) OR (old.opis_bibliograficzny_autorzy_cache IS DISTINCT FROM new.opis_bibliograficzny_autorzy_cache) OR (old.opis_bibliograficzny_zapisani_autorzy_cache IS DISTINCT FROM new.opis_bibliograficzny_zapisani_autorzy_cache) OR (old.adnotacje IS DISTINCT FROM new.adnotacje) OR ((old.isbn)::text IS DISTINCT FROM (new.isbn)::text) OR ((old.e_isbn)::text IS DISTINCT FROM (new.e_isbn)::text) OR (old.tytul_oryginalny IS DISTINCT FROM new.tytul_oryginalny) OR (old.tytul IS DISTINCT FROM new.tytul) OR ((old.www)::text IS DISTINCT FROM (new.www)::text) OR (old.informacje IS DISTINCT FROM new.informacje) OR ((old.szczegoly)::text IS DISTINCT FROM (new.szczegoly)::text) OR (old.uwagi IS DISTINCT FROM new.uwagi) OR ((old.wydawca_opis)::text IS DISTINCT FROM (new.wydawca_opis)::text) OR ((old.public_www)::text IS DISTINCT FROM (new.public_www)::text) OR ((old.doi)::text IS DISTINCT FROM (new.doi)::text) OR ((old.slug)::text IS DISTINCT FROM (new.slug)::text) OR ((old.pbn_uid_id)::text IS DISTINCT FROM (new.pbn_uid_id)::text) OR (old.slowa_kluczowe_eng IS DISTINCT FROM new.slowa_kluczowe_eng))) EXECUTE FUNCTION public.bpp_refresh_rekord_wydawnictwo_zwarte();
 
 
 --
