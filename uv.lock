@@ -568,7 +568,7 @@ requires-dist = [
     { name = "django-dirtyfields", specifier = "==1.9.9" },
     { name = "django-dsl", specifier = ">=0.1.14" },
     { name = "django-dynamic-admin-columns", specifier = ">=0.5.0" },
-    { name = "django-easy-audit", specifier = ">=1.3.9a2,<2" },
+    { name = "django-easy-audit", specifier = ">=1.3.9b1,<2" },
     { name = "django-environ", specifier = ">=0.13.0" },
     { name = "django-extensions", specifier = ">=3.2,<5" },
     { name = "django-favicon-plus-reloaded", specifier = ">=1.2,<2" },
@@ -1766,14 +1766,14 @@ wheels = [
 
 [[package]]
 name = "django-easy-audit"
-version = "1.3.9a2"
+version = "1.3.9b1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "django", marker = "platform_python_implementation != 'PyPy'" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/9e/a9/110ed211da538b2619d88a0ccd4ee8ecd8697db0fba9709adba83745ae2b/django_easy_audit-1.3.9a2.tar.gz", hash = "sha256:8d6e15cdefa6e50c85697655e1b1e99b1f8292078445a802880d43431bd693a1", size = 41596, upload-time = "2026-01-08T04:52:55.185Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/36/07/6789ebc33df9ff9d703a0aeecf3f58077ab904d3550ed7effbcf6ee3823a/django_easy_audit-1.3.9b1.tar.gz", hash = "sha256:850f8ff62f84ae7a6d4defedd45d15d20d91cf8aa3a9fda2f8faa38f83820b83", size = 41873, upload-time = "2026-06-08T19:53:47.886Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/a4/5e/1ccaa9ea49064b15cec4fbcb145e18a46384cfe6d9df17e46981f2f86203/django_easy_audit-1.3.9a2-py3-none-any.whl", hash = "sha256:c6755f979b40c742681f39306e26a837ceba05ba473db3f0f5e74ecc269c6cb4", size = 60426, upload-time = "2026-01-08T04:52:53.819Z" },
+    { url = "https://files.pythonhosted.org/packages/dc/e6/71c9b3f85d0ba19e33af188077cdbc5b2bfbe18f62c2c310aaabbd15a5d1/django_easy_audit-1.3.9b1-py3-none-any.whl", hash = "sha256:5507b7b1ac85404d2412fc6a8cde654e23119834014ca99a36ec2afed578d8d4", size = 60544, upload-time = "2026-06-08T19:53:46.828Z" },
 ]
 
 [[package]]
