@@ -1,9 +1,9 @@
 {
     "name": "bpp-iplweb",
-    "version": "v202606.1386",
+    "version": "v202606.1388",
     "license": "MIT",
     "devDependencies": {
-        "esbuild": "^0.27.2",
+        "esbuild": "^0.28.1",
         "grunt": "^1.6.1",
         "grunt-concurrent": "^3.0.0",
         "grunt-contrib-watch": "^1.1.0",

@@ -2,6 +2,75 @@
 
 <!-- towncrier release notes start -->
 
+## bpp 202606.1388 (2026-06-13)
+
+No significant changes.
+
+
+## bpp 202606.1387 (2026-06-13)
+
+### Naprawione
+
+- Triggery denormalizacji (``django-denorm-iplweb``, bump do ``1.12.1``)
+  rozwiązują teraz identyfikator typu treści (``content_type_id``)
+  dynamicznie w momencie zadziałania triggera, zamiast mieć go zaszytego
+  na stałe w treści triggera. Dzięki temu znikają błędy
+  ``ForeignKeyViolation`` na tabeli ``denorm_dirtyinstance``, gdy
+  identyfikatory w ``django_content_type`` zmienią numerację po stronie
+  triggerów — np. po odtworzeniu bazy z innego zrzutu albo po przebudowie
+  typów treści. ``drop_triggers`` poprawnie usuwa też osierocone triggery
+  po wcześniejszych wersjach biblioteki (pełny ``drop`` + ``install``).
+
+### Usprawnienie
+
+- Arkusze CSS motywów są mniejsze (−5%, ok. 16 KB na motyw) po
+  usunięciu dziewięciu nieużywanych komponentów Foundation (m.in.
+  karuzela orbit, suwak slider, przełącznik switch, menu off-canvas).
+  Lista komponentów jest teraz wspólna dla wszystkich sześciu motywów
+  (jeden plik zamiast sześciu kopii), z udokumentowanym audytem użycia.
+- Mniej zbędnych zapytań SQL na często odwiedzanych stronach: wyniki
+  multiwyszukiwarki dla raportów tabelarycznych liczą rekordy i sumy
+  punktacji jednym skanem zamiast dwóch; przeglądanie lat nie wykonuje
+  ponownie tych samych COUNT-ów; eksport multiseek nie odpytuje bazy
+  o typ rekordu dla każdego wiersza z osobna (procesowy cache
+  ``ContentType``); API ostatnich publikacji autora nie pobiera ~40
+  zbędnych kolumn i nie duplikuje publikacji, gdy autor występuje na
+  rekordzie wielokrotnie.
+- Przeglądanie autorów działa szybciej i poprawniej ukrywa autorów
+  obcych: lista nie buduje już GROUP BY po wszystkich przypisaniach
+  autorów, filtr „autorzy bez prac" korzysta ze zmaterializowanej tabeli
+  cache zamiast skanować pięć tabel źródłowych, a autor przypisany
+  wyłącznie do jednostki sztucznej (Obca / „Błędna") jest teraz ukrywany
+  także wtedy, gdy figuruje tylko w jednej z nich.
+- Przeglądanie kolejnych stron wyników multiwyszukiwarki jest szybsze:
+  liczba rekordów i sumy punktacji są liczone raz na zapytanie
+  (cache 30 min), a nie od nowa przy każdej stronie. Zmiana formularza,
+  wyrzucenie rekordu z wyników lub zalogowanie przelicza od razu.
+- Strona pojedynczego rekordu (adres ze slugiem) ładuje się szybciej:
+  kolumna ``slug`` w tabeli cache ``bpp_rekord_mat`` dostała indeks —
+  wcześniej każde wejście na stronę rekordu skanowało całą tabelę.
+  Dodatkowo sprawdzenie „czy rekord ma punktację/sloty" na stronie
+  szczegółów kosztuje jedno zapytanie zamiast dwóch.
+- Strony ładują się szybciej: główny pakiet JavaScript (``bundle.js``)
+  schudł o ~600 KB (−39%) po usunięciu nieużywanej biblioteki Tone.js
+  (dźwięki powiadomień nigdy nie były włączone), a start kontenera nie
+  traci już czasu na ponowną minifikację zminifikowanego wcześniej
+  JavaScriptu (``COMPRESS_JS_FILTERS``).
+- Trigger odświeżający tabele cache (``bpp_rekord_mat`` /
+  ``bpp_autorzy_mat``) działa wydajniej i poprawniej: edycja publikacji
+  nie kasuje już i nie wstawia od nowa wszystkich wierszy autorów
+  (czysty upsert zamiast DELETE z kaskadą FK), masowe operacje nie
+  zużywają subtransakcji per wiersz, zmiana autora wpisu „in-place"
+  poprawnie aktualizuje cache, a usunięcie jednej z dwóch ról tego
+  samego autora (np. autor + redaktor) nie usuwa już obu wierszy
+  z cache autorów.
+- Wyszukiwanie pełnotekstowe działa szybciej: indeks pełnotekstowy
+  tabeli cache rekordów zmienił typ z GiST na GIN. Na danych
+  produkcyjnych typowe kształty zapytań przyspieszają od 1,7× do
+  prawie 20× (zapytania z dwoma słowami), bez zauważalnego kosztu
+  przy zapisie.
+
+
 ## bpp 202606.1386 (2026-06-12)
 
 ### Naprawione

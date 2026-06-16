@@ -1,7 +1,7 @@
 import re
 import warnings
 
-from denorm import denormalized, depend_on_related
+from denorm import denormalized, depend_on_fields, depend_on_related
 from dirtyfields.dirtyfields import DirtyFieldsMixin
 from django.contrib.contenttypes.fields import GenericRelation
 from django.contrib.postgres.fields import ArrayField
@@ -349,6 +349,7 @@ class Wydawnictwo_Zwarte(
         only=("nazwisko", "imiona"),
     )
     @depend_on_related("self", "wydawnictwo_nadrzedne")
+    @depend_on_fields("tytul_oryginalny", "wydawnictwo_nadrzedne_id")
     def slug(self):
         return self.get_slug()
 

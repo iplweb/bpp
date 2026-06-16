@@ -1,10 +1,20 @@
 import pytest
 from model_bakery import baker
 
+from bpp.models.system import Jezyk
+
 
 @pytest.mark.django_db
 def test_adapter_patent():
     from dspace_api.adapters.patent import PatentDSpaceAdapter
+
+    # Patent.jezyk to @cached_property: Jezyk.objects.get(nazwa__icontains="polski").
+    # Test nie może polegać na danych referencyjnych baseline — inny test
+    # transakcyjny potrafi je wyczyścić, co daje order-zależny flake przy
+    # przetasowaniu shardów (pytest-split). Zapewnij dokładnie jeden "polski"
+    # Jezyk: dotwórz TYLKO gdy brak (inaczej baseline + nowy => MultipleObjectsReturned).
+    if not Jezyk.objects.filter(nazwa__icontains="polski").exists():
+        baker.make(Jezyk, nazwa="polski")
 
     rec = baker.make(
         "bpp.Patent",

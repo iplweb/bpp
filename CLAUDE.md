@@ -465,6 +465,33 @@ Konfiguracja jest w `[tool.pytest-testcontainers-django]` w `pyproject.toml`.
 - CI (`docker-compose.test.yml`) ma `PYTEST_TESTCONTAINERS_DISABLE=1` —
   usługi dostarcza tam docker-compose.
 
+### Baseline bazy (django-pg-baseline) — refresh po migracjach
+
+Świeże bazy (testy + świeże instalacje) ładują `baseline-sql/baseline.sql`
+(snapshot schematu + dane referencyjne), a potem stosują **tylko migracje PO
+punkcie baseline**. Po dodaniu migracji zmieniającej schemat **odśwież baseline**:
+
+```bash
+make baseline-update     # IN-PLACE: load baseline + migrate + dump → MAŁY diff
+                         # (delta nowych migracji). DOMYŚLNY sposób po migracji.
+make rebuild-baseline    # OD ZERA: pełny reset, DUŻY diff (churn auth/* itd.).
+                         # TYLKO gdy walidujesz schemat od zera / korupcja.
+```
+
+(pod spodem: `DJANGO_BPP_SKIP_DOTENV=1 uv run python src/manage.py baseline_update`
+/ `baseline_rebuild`.)
+
+- Reguła: **prawie zawsze `baseline-update`** (delta); `rebuild-baseline` to
+  ostateczność — łatwo wyprodukować gigantyczny, zaszumiony diff.
+- Wymaga Dockera + extra: `uv sync --extra baseline-rebuild` (spina własny PG
+  przez testcontainers, obraz `iplweb/bpp_dbserver`).
+- Commituj **oba** pliki: `baseline-sql/baseline.sql` + `baseline-sql/baseline.meta.json`.
+- **Nie** odświeżaj baseline w równoległych feature-branchach (konflikt nie do
+  rozwiązania na jednym wielkim pliku) — rób to **raz, przy scalaniu**.
+- `baseline-update` jest jednocześnie walidacją: stosuje wszystkie zaległe
+  migracje na czystym kontenerze — jak któraś (np. `DROP EXTENSION`) padnie,
+  zobaczysz to tu, zanim trafi do CI.
+
 ### Czytanie checków CI na PR-ach — co NAPRAWDĘ testuje
 
 **NIE ciesz się z zielonego, dopóki realne gejty nie przejdą.** Check
