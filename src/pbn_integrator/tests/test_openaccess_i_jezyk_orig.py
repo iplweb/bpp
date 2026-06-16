@@ -101,9 +101,7 @@ class TestImportujOpenaccess:
         assert pbn_json == {"inne": "dane"}
 
     def test_release_date_iso_z_miesiacami(self, wydawnictwo_ciagle):
-        pbn_json = {
-            "openAccess": {"releaseDate": "2021-05-10T00:00:00", "months": 6}
-        }
+        pbn_json = {"openAccess": {"releaseDate": "2021-05-10T00:00:00", "months": 6}}
 
         importuj_openaccess(
             wydawnictwo_ciagle,

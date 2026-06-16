@@ -1,11 +1,11 @@
 {
-  "git_sha": "c679d3644f99d85f93302a07bcb4c8f3c04bda14",
+  "git_sha": "c490b8d9860bac23c80e9eecc3349affc2f2b4b7",
   "last_migration": {
     "admin": "0003_logentry_add_action_flag_choices",
     "admin_dashboard": "0001_initial",
     "auth": "0012_alter_user_first_name_max_length",
     "axes": "0010_accessattemptexpiration",
-    "bpp": "0428_weighted_publication_fulltext",
+    "bpp": "0430_rekord_mat_slug_idx",
     "channels_broadcast": "0001_initial",
     "constance": "0003_drop_pickle",
     "contenttypes": "0002_remove_content_type_name",

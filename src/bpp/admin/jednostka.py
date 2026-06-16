@@ -65,6 +65,15 @@ class JednostkaAdmin(
         return resource_classes
 
     change_list_template = "admin/grappelli_mptt_change_list.html"
+    # ImportMixin + EksportDanychMixin (ExportMixin) jednoczesnie: import_export
+    # wybiera `import_export_change_list_template` po MRO, a ImportMixin jest
+    # przed ExportMixin -> bez tego renderuje sie szablon TYLKO z importem
+    # (przycisk "Eksport" znika). Wymuszamy polaczony szablon import+export;
+    # rozszerza on `change_list_template` (grappelli_mptt) jako bazowy, wiec
+    # draggable MPTT zostaje zachowany.
+    import_export_change_list_template = (
+        "admin/import_export/change_list_import_export.html"
+    )
 
     list_display_links = ["indented_title"]
 
