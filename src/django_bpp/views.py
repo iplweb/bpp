@@ -10,7 +10,12 @@ from django.shortcuts import render
 from django.urls import reverse
 from django.views import View
 
-from django_bpp.external_auth import EXTERNAL_AUTH_BACKENDS
+from django_bpp.external_auth import (
+    EXTERNAL_AUTH_BACKENDS,
+    MICROSOFT_BACKEND,
+    OIDC_BACKEND,
+    ORCID_BACKEND,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -183,11 +188,11 @@ class MicrosoftLogoutView(View):
 
 
 EXTERNAL_PROVIDER_URLS = {
-    "microsoft_auth.backends.MicrosoftAuthenticationBackend": (
+    MICROSOFT_BACKEND: (
         "Microsoft",
         "https://myaccount.microsoft.com/",
     ),
-    "orcid_integration.backends.OrcidAuthenticationBackend": (
+    ORCID_BACKEND: (
         "ORCID",
         "https://orcid.org/my-orcid",
     ),
@@ -198,10 +203,31 @@ class SmartPasswordChangeView(View):
     """Przekierowuje do odpowiedniej strony zmiany hasła
     w zależności od backendu, którym użytkownik się zalogował."""
 
+    @staticmethod
+    def _external_provider_info(backend):
+        """Zwróć ``(nazwa_dostawcy, url_panelu_konta)`` dla zewnętrznego backendu.
+
+        Dla OIDC (Keycloak) URL panelu konta zależy od instalacji (wyliczany z
+        issuera realmu), więc bierzemy go z ustawień, a nie z mapy statycznej.
+        Każdy backend z ``EXTERNAL_AUTH_BACKENDS`` MUSI dostać tu odpowiedź — brak
+        wpisu nie może kończyć się ``KeyError`` (to był właśnie błąd 500 dla kont
+        zalogowanych przez Keycloaka). Pusty URL jest dopuszczalny: szablon po
+        prostu nie pokaże wtedy przycisku „Zarządzaj kontem".
+        """
+        if backend in EXTERNAL_PROVIDER_URLS:
+            return EXTERNAL_PROVIDER_URLS[backend]
+        if backend == OIDC_BACKEND:
+            return (
+                "system logowania uczelni (Keycloak)",
+                getattr(settings, "OIDC_ACCOUNT_CONSOLE_URL", "") or "",
+            )
+        # Nieznany zewnętrzny backend: nie wywalaj 500, pokaż ogólny komunikat.
+        return ("zewnętrznego dostawcę tożsamości", "")
+
     def dispatch(self, request, *args, **kwargs):
         backend = request.session.get(BACKEND_SESSION_KEY, "")
         if backend in EXTERNAL_AUTH_BACKENDS:
-            provider, url = EXTERNAL_PROVIDER_URLS[backend]
+            provider, url = self._external_provider_info(backend)
             return render(
                 request,
                 "registration/password_change_external.html",

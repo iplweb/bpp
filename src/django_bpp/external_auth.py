@@ -5,8 +5,12 @@ używać stałej bez ciągnięcia `password_policies` (lightweight auth_server
 nie ma password_policies w INSTALLED_APPS).
 """
 
+MICROSOFT_BACKEND = "microsoft_auth.backends.MicrosoftAuthenticationBackend"
+ORCID_BACKEND = "orcid_integration.backends.OrcidAuthenticationBackend"
+OIDC_BACKEND = "oidc_integration.backends.BppOIDCBackend"
+
 EXTERNAL_AUTH_BACKENDS = {
-    "microsoft_auth.backends.MicrosoftAuthenticationBackend",
-    "orcid_integration.backends.OrcidAuthenticationBackend",
-    "oidc_integration.backends.BppOIDCBackend",
+    MICROSOFT_BACKEND,
+    ORCID_BACKEND,
+    OIDC_BACKEND,
 }

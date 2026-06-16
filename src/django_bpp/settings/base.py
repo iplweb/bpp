@@ -297,6 +297,7 @@ TEMPLATES = [
                 "bpp.context_processors.microsoft_auth.microsoft_auth_status",
                 "bpp.context_processors.orcid.orcid_auth_status",
                 "bpp.context_processors.oidc.oidc_auth_status",
+                "bpp.context_processors.external_auth.external_auth_status",
                 "bpp.context_processors.testing.testing",
                 "cookielaw.context_processors.cookielaw",
                 "django_countdown.context_processors.countdown_context",
@@ -1258,6 +1259,11 @@ if _OIDC_CONFIG:
     # end_session: wylogowanie z Keycloaka (RP-Initiated Logout).
     OIDC_OP_LOGOUT_ENDPOINT = _oidc_endpoints.get("end_session", "")
     OIDC_OP_LOGOUT_URL_METHOD = "oidc_integration.logout.build_provider_logout_url"
+
+    # Panel konta Keycloaka (Account Console) — konwencja {issuer}/account.
+    # Tam użytkownik OIDC zmienia hasło; w BPP nie ma takiej możliwości, więc
+    # SmartPasswordChangeView kieruje go pod ten URL zamiast formularza BPP.
+    OIDC_ACCOUNT_CONSOLE_URL = _OIDC_CONFIG["issuer"].rstrip("/") + "/account"
 
     # Keycloak podpisuje id_token RS256; scope email konieczny do auto-create.
     OIDC_RP_SIGN_ALGO = "RS256"
