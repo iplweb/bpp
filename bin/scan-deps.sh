@@ -30,6 +30,7 @@ SEVERITY_FILTER="HIGH,CRITICAL"
 RUN_OSV=true
 RUN_GRYPE=true
 RUN_TRIVY=true
+RUN_PIPAUDIT=true
 GATE=true
 KEEP_TMP=false
 TOTAL_FINDINGS=0
@@ -47,6 +48,7 @@ ${YELLOW}Opcje:${NC}
     --no-osv         Pomiń OSV-Scanner
     --no-grype       Pomiń Grype
     --no-trivy       Pomiń Trivy
+    --no-pipaudit    Pomiń pip-audit (PyPA — gate release-u w CI!)
     --no-gate        Nie failuj na findings (tylko raport, exit 0)
     --keep           Nie kasuj ${WORK_DIR} po zakończeniu
     -h, --help       Pokaż tę pomoc
@@ -62,19 +64,21 @@ ${YELLOW}Wymagane narzędzia:${NC}
     osv-scanner         brew install osv-scanner
     grype               brew install grype
     trivy               brew install trivy
+    pip-audit           bez instalacji — leci przez uvx (jak cyclonedx-py)
 
 ${YELLOW}Przykłady:${NC}
     $SCRIPT_NAME                    # Prod-only, HIGH/CRITICAL, gate
     $SCRIPT_NAME --full             # Cały venv włącznie z dev extras
     $SCRIPT_NAME --all-severity     # Także LOW/MEDIUM
     $SCRIPT_NAME --no-gate          # Raport bez blokowania exit-em
-    $SCRIPT_NAME --no-trivy --no-grype  # Tylko OSV-Scanner
+    $SCRIPT_NAME --no-trivy --no-grype  # Tylko OSV-Scanner + pip-audit
 
 ${YELLOW}Wynik:${NC}
-    SBOM:  ${WORK_DIR}/sbom.json
-    OSV:   ${WORK_DIR}/osv-report.json
-    Grype: ${WORK_DIR}/grype-report.json
-    Trivy: ${WORK_DIR}/trivy-report.json
+    SBOM:      ${WORK_DIR}/sbom.json
+    OSV:       ${WORK_DIR}/osv-report.json
+    Grype:     ${WORK_DIR}/grype-report.json
+    Trivy:     ${WORK_DIR}/trivy-report.json
+    pip-audit: ${WORK_DIR}/pip-audit-report.json
 EOF
 }
 
@@ -85,6 +89,7 @@ while [[ $# -gt 0 ]]; do
         --no-osv)        RUN_OSV=false; shift ;;
         --no-grype)      RUN_GRYPE=false; shift ;;
         --no-trivy)      RUN_TRIVY=false; shift ;;
+        --no-pipaudit)   RUN_PIPAUDIT=false; shift ;;
         --no-gate)       GATE=false; shift ;;
         --keep)          KEEP_TMP=true; shift ;;
         -h|--help)       usage; exit 0 ;;
@@ -116,7 +121,7 @@ cd "$REPO_ROOT"
 mkdir -p "$WORK_DIR"
 trap '[[ "$KEEP_TMP" == false ]] || echo -e "${BLUE}Pliki zostają w: ${WORK_DIR}${NC}"' EXIT
 
-echo -e "${BOLD}${BLUE}=== 1/4 Generuję SBOM (${MODE}) ===${NC}"
+echo -e "${BOLD}${BLUE}=== 1/5 Generuję SBOM (${MODE}) ===${NC}"
 
 if [[ "$MODE" == "prod" ]]; then
     REQ_PATH="${WORK_DIR}/requirements.txt"
@@ -143,7 +148,7 @@ echo -e "${GREEN}✓ SBOM: $SBOM_PATH (${PKG_COUNT} pakietów)${NC}"
 echo
 
 if $RUN_OSV; then
-    echo -e "${BOLD}${BLUE}=== 2/4 OSV-Scanner (Google) ===${NC}"
+    echo -e "${BOLD}${BLUE}=== 2/5 OSV-Scanner (Google) ===${NC}"
     OSV_REPORT="${WORK_DIR}/osv-report.json"
     set +e
     osv-scanner scan source --sbom="$SBOM_PATH" \
@@ -175,7 +180,7 @@ if $RUN_OSV; then
 fi
 
 if $RUN_GRYPE; then
-    echo -e "${BOLD}${BLUE}=== 3/4 Grype (Anchore) ===${NC}"
+    echo -e "${BOLD}${BLUE}=== 3/5 Grype (Anchore) ===${NC}"
     GRYPE_REPORT="${WORK_DIR}/grype-report.json"
 
     GRYPE_ARGS=("sbom:${SBOM_PATH}" -o json --file "$GRYPE_REPORT")
@@ -226,7 +231,7 @@ if $RUN_GRYPE; then
 fi
 
 if $RUN_TRIVY; then
-    echo -e "${BOLD}${BLUE}=== 4/4 Trivy (Aqua Security) ===${NC}"
+    echo -e "${BOLD}${BLUE}=== 4/5 Trivy (Aqua Security) ===${NC}"
     TRIVY_REPORT="${WORK_DIR}/trivy-report.json"
 
     TRIVY_ARGS=(sbom "$SBOM_PATH" --format json --output "$TRIVY_REPORT" --quiet)
@@ -258,6 +263,64 @@ if $RUN_TRIVY; then
         echo -e "  raport: ${TRIVY_REPORT}"
     else
         echo -e "${RED}✗ Trivy nie wygenerował raportu (exit ${trivy_exit})${NC}"
+    fi
+    echo
+fi
+
+if $RUN_PIPAUDIT; then
+    echo -e "${BOLD}${BLUE}=== 5/5 pip-audit (PyPA) ===${NC}"
+    PIPAUDIT_REPORT="${WORK_DIR}/pip-audit-report.json"
+
+    # pip-audit czyta requirements.txt (NIE SBOM). To ten sam skaner co
+    # gate release-u w .github/workflows/dependency-audit.yml — trzymamy
+    # lokalny pre-release guard w parytecie z CI. SEVERITY_FILTER nie ma
+    # tu zastosowania: pip-audit nie ma natywnego filtra severity, gate
+    # opiera się na dostępności fixa (jak w workflow).
+    if [[ "$MODE" == "prod" ]]; then
+        PIPAUDIT_REQ="$REQ_PATH"
+    else
+        # Tryb full skanuje venv przez cyclonedx environment i nie tworzy
+        # requirements.txt — eksportujemy wszystkie extras dla pip-audit.
+        PIPAUDIT_REQ="${WORK_DIR}/requirements-full.txt"
+        uv export --all-extras --format requirements-txt --no-hashes \
+            --quiet -o "$PIPAUDIT_REQ"
+    fi
+
+    # Brak whitelisty CVE. Gdyby trzeba bylo wyciszyc znany non-impact
+    # CVE bez fixa, dodaj PIPAUDIT_IGNORE=(--ignore-vuln <ID>) z komentarzem
+    # i zsynchronizuj z .github/workflows/dependency-audit.yml.
+    set +e
+    uvx --quiet --from pip-audit pip-audit \
+        --requirement "$PIPAUDIT_REQ" \
+        --disable-pip \
+        --no-deps \
+        --format json \
+        --output "$PIPAUDIT_REPORT" 2>/dev/null
+    pipaudit_exit=$?
+    set -e
+
+    if [[ -s "$PIPAUDIT_REPORT" ]]; then
+        PIPAUDIT_VULNS=$(jq '[.dependencies[]?.vulns[]?] | length' \
+            "$PIPAUDIT_REPORT" 2>/dev/null || echo 0)
+
+        if [[ "$PIPAUDIT_VULNS" -gt 0 ]]; then
+            TOTAL_FINDINGS=$((TOTAL_FINDINGS + PIPAUDIT_VULNS))
+            echo -e "${YELLOW}⚠ Znaleziono ${PIPAUDIT_VULNS} CVE${NC}"
+            jq -r '
+                .dependencies[]? | . as $p |
+                .vulns[]? |
+                "\($p.name)@\($p.version)\t\(.id)\t\(
+                    if (.fix_versions | length) > 0
+                    then (.fix_versions | join(", "))
+                    else "no-fix" end
+                )"
+            ' "$PIPAUDIT_REPORT" | sort -u | column -t -s $'\t'
+        else
+            echo -e "${GREEN}✓ Brak znanych CVE${NC}"
+        fi
+        echo -e "  raport: ${PIPAUDIT_REPORT}"
+    else
+        echo -e "${RED}✗ pip-audit nie wygenerował raportu (exit ${pipaudit_exit})${NC}"
     fi
     echo
 fi
