@@ -19,7 +19,8 @@
 #   pip-audit nie ma natywnego severity filter, ale fix-availability juz
 #   jest dobrym proxy: jezeli upstream wypuscil fix, znaczy ze warto bumpnac.
 # - Vuln bez fixa: warning w job summary, nie blokuje (nic nie da sie zrobic).
-# - Whitelist znanych non-impact CVE przez --ignore-vuln (patrz job ponizej).
+# - Whitelist non-impact CVE: opcjonalnie przez --ignore-vuln w jobie
+#   ponizej (obecnie pusta — patrz komentarz przy kroku pip-audit).
 #
 # Defense-in-depth: drugi job (multi-scanner) odpala OSV-Scanner, Grype
 # i Trivy na SBOM-ie wygenerowanym z uv.lock. Wszystkie report-only -
@@ -66,23 +67,16 @@ jobs:
           uv export --no-dev --format requirements-txt --no-hashes --quiet \
             -o /tmp/audit/requirements.txt
 
-      # Whitelist znanych non-impact CVE.
-      # ---
-      # CVE-2026-42304 / GHSA-grgv-6hw6-v9g4 (twisted < 26.4.0rc2):
-      #   DoS w twisted.names.dns.Name.decode przez glebokie DNS compression
-      #   pointer chains. BPP NIE uruchamia DNS-servera Twisted (twisted jest
-      #   transitive zaleznoscia daphne + autobahn dla WebSocket/Channels,
-      #   bez modulu twisted.names). Fix dostepny tylko w 26.4.0rc2 (release
-      #   candidate) - nie wprowadzamy RC do produkcji do czasu stable release.
-      #   Re-evaluate przy bumpie twisted do 26.x stable.
+      # Brak whitelisty CVE: gdy pojawi sie znany non-impact CVE bez
+      # dostepnego fixa, dodaj tu --ignore-vuln <ID> z komentarzem
+      # uzasadniajacym (i zsynchronizuj z bin/scan-deps.sh).
       - name: Run pip-audit (gate on fixable)
         run: |
           uvx --from pip-audit pip-audit \
             --requirement /tmp/audit/requirements.txt \
             --disable-pip \
             --no-deps \
-            --format columns \
-            --ignore-vuln CVE-2026-42304
+            --format columns
 
       - name: Run pip-audit (JSON full report - non-blocking)
         if: always()

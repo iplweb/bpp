@@ -228,6 +228,24 @@ push = false
 [tool.uv]
 environments = ["python_version >= '3.10' and python_version < '3.15' and platform_python_implementation != 'PyPy'"]
 
+# Security floors dla zaleznosci TRANZYTYWNYCH (nie deklarujemy ich jako
+# direct deps - przychodza przez inne pakiety). constraint-dependencies
+# nie DODAJE pakietu do grafu, tylko ogranicza wersje JESLI juz w nim jest.
+# Egzekwuje minimum bezpieczenstwa, zeby przyszly `uv lock` nie cofnal sie
+# ponizej zalatanej wersji. Audyt CVE: czerwiec 2026 (pip-audit / uv-secure).
+#   bleach  >=6.4.0  (via django-flexible-reports) - GHSA-8rfp-98v4-mmr6,
+#                     GHSA-gj48-438w-jh9v
+#   daphne  >=4.2.2  (via channels[daphne])         - PYSEC-2026-213,
+#                     PYSEC-2026-214
+#   pypdf   >=6.13.0 (via xhtml2pdf)                 - CVE-2026-48735,
+#                     CVE-2026-49460, CVE-2026-49461, CVE-2026-54530,
+#                     CVE-2026-54531
+constraint-dependencies = [
+    "bleach>=6.4.0",
+    "daphne>=4.2.2",
+    "pypdf>=6.13.0",
+]
+
 # Polityka: KAZDA NOWA zewnetrzna zaleznosc powinna miec prebuilt wheel dla
 # naszej macierzy (Linux x86_64 + macOS arm64, Python 3.10-3.14). Sdist
 # wykonuje `setup.py` podczas instalacji - klasyczny wektor supply-chain
