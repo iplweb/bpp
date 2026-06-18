@@ -9,6 +9,15 @@ export function wartoscMetryki(ctx, node) {
     return node.data("works") || 0;
 }
 
+// Średnica węzła [px] dla wartości metryki `v` przy maksimum `max` w grafie:
+// skala pierwiastkowa (różnice na małych wartościach lepiej widoczne) +
+// clamp do 12..46. Czysta funkcja — jedyne źródło wzoru dla obu wariantów
+// (skokowego i animowanego).
+export function srednica(v, max) {
+    const d = 12 + 34 * Math.sqrt(v / max);
+    return Math.max(12, Math.min(46, d));
+}
+
 // Przelicza średnice wszystkich węzłów: skala pierwiastkowa + clamp,
 // żeby różne metryki o różnych zakresach dawały czytelny rozrzut.
 export function przeliczRozmiary(ctx) {
@@ -20,8 +29,7 @@ export function przeliczRozmiary(ctx) {
     });
     cy.batch(function () {
         cy.nodes().forEach(function (n) {
-            const d = 12 + 34 * Math.sqrt(wartoscMetryki(ctx, n) / maxV);
-            n.data("rozmiar", Math.max(12, Math.min(46, d)));
+            n.data("rozmiar", srednica(wartoscMetryki(ctx, n), maxV));
         });
     });
 }
@@ -41,8 +49,7 @@ export function przeliczRozmiaryAnim(ctx, czas) {
     const cel = {};
     const start = {};
     cy.nodes().forEach(function (n) {
-        const d = 12 + 34 * Math.sqrt(wartoscMetryki(ctx, n) / maxV);
-        cel[n.id()] = Math.max(12, Math.min(46, d));
+        cel[n.id()] = srednica(wartoscMetryki(ctx, n), maxV);
         start[n.id()] = n.data("rozmiar") || 20;
     });
 

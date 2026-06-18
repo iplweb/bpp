@@ -20,6 +20,7 @@ from bpp.models.praca_habilitacyjna import Praca_Habilitacyjna
 from bpp.models.profile import BppUser
 from bpp.models.wydawnictwo_ciagle import Wydawnictwo_Ciagle
 from bpp.models.wydawnictwo_zwarte import Wydawnictwo_Zwarte
+from bpp.util.orm import build_fulltext_search_query
 from import_common.core import normalized_db_isbn
 from import_common.normalization import normalize_isbn
 
@@ -450,6 +451,16 @@ class AdminNavigationAutocomplete(
     def _build_publication_filter(self, klass):
         """Build filter for publication models."""
         query_filter = Q(tytul_oryginalny__icontains=self.q)
+
+        # Pełnotekstowe wyszukiwanie po ``search_index`` (tytuł waga A,
+        # autorzy waga B, rok, opis bibliograficzny) — identyczne z publiczną
+        # wyszukiwarką spod „/". Dzięki temu wpisanie słowa z TYTUŁU oraz
+        # słowa z NAZWISKA autora naraz odnajduje pracę, czego sam
+        # ``tytul_oryginalny__icontains`` (cały ciąg jako jeden ILIKE) nie
+        # potrafił. Kolumna i indeks GIN już istnieją — bez migracji.
+        search_query = build_fulltext_search_query(self.q)
+        if search_query is not None:
+            query_filter |= Q(search_index=search_query)
 
         # Try to add primary key filter if q is an integer
         try:

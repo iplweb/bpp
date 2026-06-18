@@ -12,6 +12,55 @@ from django.utils import timezone
 from bpp.util.text import fulltext_tokenize
 
 
+def build_fulltext_search_query(qstr, enable_websearch_on_minus_or_quote=True):
+    """Zbuduj ``SearchQuery`` dla pełnotekstowego wyszukiwania w polu typu
+    ``tsvector`` (np. ``search_index``).
+
+    Wspólna logika dla ``FulltextSearchMixin.fulltext_filter`` oraz adminowego
+    autocomplete (``AdminNavigationAutocomplete``) — żeby admin szukał prac
+    identycznie jak publiczna wyszukiwarka spod „/".
+
+    Zwraca ``SearchQuery`` albo ``None``, gdy z zapytania nie da się wyciągnąć
+    żadnych słów (wtedy wołający decyduje, co zrobić z pustym wynikiem).
+    """
+    if qstr is None:
+        return None
+
+    if isinstance(qstr, bytes):
+        qstr = qstr.decode("utf-8")
+
+    # Remove " - " (space-dash-space) from the query string
+    qstr = qstr.replace(" - ", " ")
+
+    words = fulltext_tokenize(qstr)
+    if not words:
+        return None
+
+    if (
+        qstr.find("-") >= 0 or qstr.find('"') >= 0
+    ) and enable_websearch_on_minus_or_quote:
+        # Jezeli użytkownik podał cudzysłów lub minus w zapytaniu i dozwolone jest
+        # przełączenie się na websearch, to skorzystaj z trybu zapytania
+        # ``websearch``:
+        return SearchQuery(qstr, search_type="websearch", config="bpp_nazwy_wlasne")
+
+    # Jeżeli nie ma minusów, cudzysłowów to możesz odpalić dodatkowo tryb
+    # wyszukiwania 'phrase' żeby znaleźć wyrazy w kolejności, tak jak zostały
+    # podane
+
+    q1 = reduce(
+        operator.__and__,
+        [
+            SearchQuery(word + ":*", search_type="raw", config="bpp_nazwy_wlasne")
+            for word in words
+        ],
+    )
+
+    q3 = SearchQuery(qstr, search_type="phrase", config="bpp_nazwy_wlasne")
+
+    return q1 | q3
+
+
 class FulltextSearchMixin:
     fts_field = "search"
 
@@ -30,46 +79,11 @@ class FulltextSearchMixin:
         }
 
     def fulltext_filter(self, qstr, normalization=None):
-        if qstr is None:
+        search_query = build_fulltext_search_query(
+            qstr, self.fts_enable_websearch_on_minus_or_quote
+        )
+        if search_query is None:
             return self.fulltext_empty()
-
-        if isinstance(qstr, bytes):
-            qstr = qstr.decode("utf-8")
-
-        # Remove " - " (space-dash-space) from the query string
-        qstr = qstr.replace(" - ", " ")
-
-        words = fulltext_tokenize(qstr)
-        if not words:
-            return self.fulltext_empty()
-
-        if (
-            qstr.find("-") >= 0 or qstr.find('"') >= 0
-        ) and self.fts_enable_websearch_on_minus_or_quote:
-            # Jezeli użytkownik podał cudzysłów lub minus w zapytaniu i dozwolone jest
-            # przełączenie się na websearch (parametr ``self.fts_enable_websearch_on_minus``,
-            # to skorzystaj z trybu zapytania ``websearch``:
-
-            search_query = SearchQuery(
-                qstr, search_type="websearch", config="bpp_nazwy_wlasne"
-            )
-        else:
-            # Jeżeli nie ma minusów, cudzysłowów to możesz odpalić dodatkowo tryb wyszukiwania
-            # 'phrase' żeby znaleźć wyrazy w kolejności, tak jak zostały podane
-
-            q1 = reduce(
-                operator.__and__,
-                [
-                    SearchQuery(
-                        word + ":*", search_type="raw", config="bpp_nazwy_wlasne"
-                    )
-                    for word in words
-                ],
-            )
-
-            q3 = SearchQuery(qstr, search_type="phrase", config="bpp_nazwy_wlasne")
-
-            search_query = q1 | q3
 
         query = (
             self.filter(**{self.fts_field: search_query})

@@ -301,10 +301,9 @@ compilemessages: $(MO_FILES) ## Skompiluj tłumaczenia Django (*.po → *.mo)
 #	twine upload dist/*whl
 
 
-js-tests: assets ## Uruchom testy JS (QUnit via Puppeteer)
-	$(YARN_CMD) install --optional
-	npx puppeteer browsers install chrome
-	grunt qunit
+js-tests: ## Jednostkowe testy JS (vitest): czysta logika modułów BPP
+	$(YARN_CMD) install --frozen-lockfile
+	npx vitest run
 
 ##@ Dokumentacja
 

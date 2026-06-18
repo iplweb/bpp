@@ -199,10 +199,6 @@ module.exports = function (grunt) {
 
         },
 
-        qunit: {
-            all: []
-        },
-
         shell: {
             // Create a stable .venv/lib/python symlink pointing to the
             // actual python3.XX directory, so bundle-entry.js imports
@@ -258,7 +254,6 @@ module.exports = function (grunt) {
 
     grunt.loadNpmTasks('grunt-sass');
     grunt.loadNpmTasks('grunt-contrib-watch');
-    grunt.loadNpmTasks('grunt-contrib-qunit');
     grunt.loadNpmTasks('grunt-shell');
     grunt.loadNpmTasks('grunt-concurrent');
 
