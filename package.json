@@ -9,7 +9,9 @@
         "grunt-contrib-watch": "^1.1.0",
         "grunt-sass": "^4.0.0",
         "grunt-shell": "^4.0.0",
-        "sass": "~1.99.0"
+        "jsdom": "^25.0.1",
+        "sass": "~1.99.0",
+        "vitest": "^3.2.4"
     },
     "dependencies": {
         "3d-force-graph": "^1.80.0",
@@ -39,13 +41,11 @@
         "three-spritetext": "^1.10.0",
         "what-input": "^5.0.5"
     },
-    "optionalDependencies": {
-        "grunt-contrib-qunit": "^10.1.1",
-        "qunit": "^2.24.2",
-        "sinon": "^21.0.0"
-    },
     "resolutions": {
         "jquery": "^3.7.1",
         "minimatch": "^3.1.2"
+    },
+    "scripts": {
+        "test:js": "vitest run"
     }
 }
