@@ -14,6 +14,10 @@ from ..models import ImportLog
 # Te same poziomy co zakładka „Błędy i ostrzeżenia".
 LOG_LEVELS = ["error", "critical", "warning"]
 
+# Statusy, w których import jeszcze trwa (nie wolno twierdzić, że „przebiegł
+# pomyślnie" — brak wpisów znaczy tylko „jak dotąd bez błędów").
+_ACTIVE_STATUSES = {"pending", "running", "paused"}
+
 _HEADER_RULE = "=" * 80
 _ENTRY_RULE = "-" * 80
 # Klucze ``details`` wypisywane jawnie — reszta trafia do bloku „details:".
@@ -70,6 +74,26 @@ def count_log_entries(session) -> int:
     return ImportLog.objects.filter(session=session, level__in=LOG_LEVELS).count()
 
 
+def _no_entries_note(session) -> str:
+    """Stopka dla pustego logu — sformułowana zależnie od statusu sesji.
+
+    „Brak wpisów" to NIE to samo co „sukces": log odtwarzamy z błędów/ostrzeżeń,
+    więc pusta lista znaczy tylko tyle, że ich (jeszcze) nie ma. Sukces wolno
+    deklarować dopiero po faktycznym zakończeniu (``completed``); w trakcie
+    mówimy o dotychczasowym przebiegu, a dla ``failed``/``cancelled`` nie
+    udajemy, że było dobrze.
+    """
+    status = session.status
+    if status in _ACTIVE_STATUSES:
+        return "(jak dotąd bez błędów i ostrzeżeń — import wciąż trwa)"
+    if status == "completed":
+        return "(brak błędów i ostrzeżeń — import przebiegł pomyślnie)"
+    return (
+        f"(brak zarejestrowanych błędów i ostrzeżeń; "
+        f"status importu: {session.get_status_display()})"
+    )
+
+
 def render_session_log_text(session, limit: int | None = None) -> str:
     """Zbuduj symulowany raw log (tekst) z błędów i ostrzeżeń sesji.
 
@@ -102,7 +126,7 @@ def render_session_log_text(session, limit: int | None = None) -> str:
     ]
 
     if not logs:
-        lines.append("(brak błędów i ostrzeżeń — import przebiegł pomyślnie)")
+        lines.append(_no_entries_note(session))
     else:
         for log in logs:
             lines.extend(_render_entry(log))

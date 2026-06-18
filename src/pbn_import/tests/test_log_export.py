@@ -98,6 +98,38 @@ def test_empty_when_no_errors_or_warnings(session):
     assert "INFO_MSG" not in text
 
 
+def test_empty_completed_claims_success(session):
+    # ``session`` fixture jest ``completed`` — tu wolno powiedzieć „pomyślnie".
+    text = render_session_log_text(session)
+
+    assert "przebieg" in text.lower()
+    assert "pomyślnie" in text.lower()
+
+
+@pytest.mark.parametrize("status", ["pending", "running", "paused"])
+def test_empty_active_session_does_not_claim_success(session, status):
+    # Import wciąż trwa: brak wpisów ≠ sukces. Nie wolno twierdzić „pomyślnie".
+    session.status = status
+    session.save(update_fields=["status"])
+
+    text = render_session_log_text(session)
+
+    assert "pomyślnie" not in text.lower()
+    assert "wciąż trwa" in text.lower()
+
+
+@pytest.mark.parametrize("status", ["failed", "cancelled"])
+def test_empty_failed_or_cancelled_does_not_claim_success(session, status):
+    # Zakończony, ale nie sukcesem — nie udajemy, że „przebiegł pomyślnie".
+    session.status = status
+    session.save(update_fields=["status"])
+
+    text = render_session_log_text(session)
+
+    assert "pomyślnie" not in text.lower()
+    assert session.get_status_display().lower() in text.lower()
+
+
 def test_handles_missing_details_without_crashing(session):
     baker.make(
         ImportLog,
