@@ -130,18 +130,27 @@ class ModelZOpisemBibliograficznym(models.Model):
             "autor", "typ_odpowiedzialnosci"
         ).order_by("kolejnosc")
 
-    def autorzy_dla_opisu_skrocony(self):
+    def autorzy_dla_opisu_skrocony(self, uczelnia=None):
         """Dane dla skróconego widoku listy autorów na stronie rekordu.
 
         Materializuje listę autorów raz i dokleja każdemu wpisowi atrybuty
         ``pozycja`` (1-based numer na liście) oraz ``czy_nasz`` (autor z
-        jednostki skupiającej pracowników uczelni). Zwraca słownik:
+        jednostki skupiającej pracowników oglądającej uczelni). Zwraca słownik:
 
         - ``skrocony``   -- czy włączyć widok zwinięty (autorów > próg),
         - ``wszyscy``    -- pełna lista (z ``pozycja``/``czy_nasz``),
         - ``pierwsi``    -- pierwszych ``LICZBA_PIERWSZYCH_AUTOROW``,
         - ``nasi_dalej`` -- "nasi" autorzy spoza pierwszej piątki,
         - ``liczba``     -- liczba autorów.
+
+        ``uczelnia`` to oglądająca uczelnia (rozwiązana per-host przez
+        ``Uczelnia.objects.get_for_request``). Gdy podana (ma ``pk``), autor
+        jest "nasz" tylko jeśli jego jednostka należy do TEJ uczelni — bez
+        tego, w konfiguracji multi-hosted ta sama praca pokazywałaby tego
+        samego autora jako "naszego" na każdym hoście. Gdy ``uczelnia`` jest
+        ``None`` (lub niezdefiniowana, ``pk=None``), filtrowanie po uczelni
+        nie zachodzi i flaga zależy wyłącznie od ``skupia_pracownikow``
+        (wstecz-kompatybilność z callerami bez kontekstu uczelni).
         """
         autorzy = self.autorzy_dla_opisu()
         # autorzy_dla_opisu() zwraca [] (zamiast QuerySetu) dla niezapisanego
@@ -149,9 +158,15 @@ class ModelZOpisemBibliograficznym(models.Model):
         if hasattr(autorzy, "select_related"):
             autorzy = autorzy.select_related("jednostka")
         wszyscy = list(autorzy)
+        uczelnia_pk = getattr(uczelnia, "pk", None)
         for pozycja, wpis in enumerate(wszyscy, start=1):
             wpis.pozycja = pozycja
-            wpis.czy_nasz = bool(wpis.jednostka.skupia_pracownikow)
+            czy_nasz = bool(wpis.jednostka.skupia_pracownikow)
+            if czy_nasz and uczelnia_pk is not None:
+                # ``uczelnia_id`` to FK-id na już-select_related-owanej
+                # jednostce — porównanie nie generuje dodatkowego zapytania.
+                czy_nasz = wpis.jednostka.uczelnia_id == uczelnia_pk
+            wpis.czy_nasz = czy_nasz
 
         return {
             "skrocony": len(wszyscy) > PROG_SKRACANIA_AUTOROW,

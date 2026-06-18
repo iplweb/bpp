@@ -243,6 +243,19 @@ def generate_coins(praca, autorzy):  # noqa
 
 
 @register.simple_tag
+def autorzy_skrocony(praca, uczelnia=None):
+    """Skrócony widok listy autorów (``autorzy_dla_opisu_skrocony``) z przekazaną
+    oglądającą uczelnią, tak by wyróżnienie "naszego" autora było host-aware.
+
+    Metoda modelu nie może dostać argumentu przez ``{% with %}``/``{{ }}``,
+    więc owijamy ją w simple_tag wywoływany jako
+    ``{% autorzy_skrocony praca uczelnia as box %}``. ``uczelnia`` pochodzi
+    z context processora (``Uczelnia.objects.get_for_request``).
+    """
+    return praca.autorzy_dla_opisu_skrocony(uczelnia=uczelnia)
+
+
+@register.simple_tag
 def autor_nazwa(autor, links="", pokaz_pozycje=False):
     """Renderuje pojedynczego autora na liście na stronie rekordu: nazwisko
     (opcjonalnie linkowane do admina/strony autora), z wyróżnieniem "naszego"
