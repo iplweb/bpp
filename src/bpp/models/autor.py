@@ -14,7 +14,10 @@ from django.db import IntegrityError, models, transaction
 from django.db.models import CASCADE, SET_NULL, Count, Q, Sum, UniqueConstraint
 from django.urls.base import reverse
 from django.utils import timezone
+from django.utils.functional import cached_property
 from tinymce.models import HTMLField
+
+from bpp.util.biogram import FORMAT_MARKDOWN, FORMATY_BIOGRAMU
 
 from bpp import const
 from bpp.core import zbieraj_sloty
@@ -130,6 +133,35 @@ class Autor(LinkDoPBNMixin, ModelZAdnotacjami, ModelZPBN_ID):
     pokazuj_opis = models.BooleanField(
         default=False, help_text="""Czy pokazywać tekst z pola 'Opis' na stronie?"""
     )
+
+    zdjecie = models.ImageField(
+        "Zdjęcie",
+        upload_to="autor_zdjecia",
+        blank=True,
+        null=True,
+        help_text="Zdjęcie profilowe autora. Przy zapisie przez formularz "
+        "jest przeskalowane do kwadratu.",
+    )
+    biogram = models.TextField(
+        "Biogram",
+        blank=True,
+        default="",
+        help_text="Notka biograficzna pokazywana na podstronie autora.",
+    )
+    biogram_format = models.CharField(
+        "Format biogramu",
+        max_length=4,
+        choices=FORMATY_BIOGRAMU,
+        default=FORMAT_MARKDOWN,
+    )
+    uklad_profilu = models.JSONField(
+        "Układ profilu",
+        blank=True,
+        null=True,
+        default=None,
+        help_text="Kolejność, widoczność i limity sekcji podstrony autora. "
+        "Puste = układ domyślny.",
+    )
     poprzednie_nazwiska = models.CharField(
         max_length=1024,
         blank=True,
@@ -207,6 +239,13 @@ class Autor(LinkDoPBNMixin, ModelZAdnotacjami, ModelZPBN_ID):
 
     def get_absolute_url(self):
         return reverse("bpp:browse_autor", args=(self.slug,))
+
+    @cached_property
+    def biogram_html(self):
+        """Bezpieczny HTML biogramu (Markdown/HTML wg ``biogram_format``)."""
+        from bpp.util.biogram import renderuj_biogram
+
+        return renderuj_biogram(self.biogram, self.biogram_format)
 
     def czy_pokazywac_siec_powiazan(self, uczelnia):
         """Efektywne ustawienie "pokazuj sieć powiązań" dla tego autora.

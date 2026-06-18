@@ -1,6 +1,7 @@
 # Zaimportujmy wszystko
 from .abstract import *  # noqa
 from .autor import *  # noqa
+from .wybrana_publikacja import *  # noqa
 from .cache import *  # noqa
 from .dyscyplina_naukowa import *  # noqa
 from .grant import *  # noqa
