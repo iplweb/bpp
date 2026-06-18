@@ -17,13 +17,12 @@ from django.utils import timezone
 from django.utils.functional import cached_property
 from tinymce.models import HTMLField
 
-from bpp.util.biogram import FORMAT_MARKDOWN, FORMATY_BIOGRAMU
-
 from bpp import const
 from bpp.core import zbieraj_sloty
 from bpp.models import LinkDoPBNMixin, ModelZAdnotacjami, ModelZNazwa, NazwaISkrot
 from bpp.models.abstract import ModelZPBN_ID
 from bpp.util import FulltextSearchMixin
+from bpp.util.biogram import FORMAT_MARKDOWN, FORMATY_BIOGRAMU
 
 
 class Tytul(NazwaISkrot):
