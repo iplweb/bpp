@@ -5,47 +5,92 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('bpp', '0443_drop_pl_PL_collation'),
-        ('contenttypes', '0002_remove_content_type_name'),
+        ("bpp", "0443_drop_pl_PL_collation"),
+        ("contenttypes", "0002_remove_content_type_name"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='autor',
-            name='biogram',
-            field=models.TextField(blank=True, default='', help_text='Notka biograficzna pokazywana na podstronie autora.', verbose_name='Biogram'),
+            model_name="autor",
+            name="biogram",
+            field=models.TextField(
+                blank=True,
+                default="",
+                help_text="Notka biograficzna pokazywana na podstronie autora.",
+                verbose_name="Biogram",
+            ),
         ),
         migrations.AddField(
-            model_name='autor',
-            name='biogram_format',
-            field=models.CharField(choices=[('md', 'Markdown'), ('html', 'HTML')], default='md', max_length=4, verbose_name='Format biogramu'),
+            model_name="autor",
+            name="biogram_format",
+            field=models.CharField(
+                choices=[("md", "Markdown"), ("html", "HTML")],
+                default="md",
+                max_length=4,
+                verbose_name="Format biogramu",
+            ),
         ),
         migrations.AddField(
-            model_name='autor',
-            name='uklad_profilu',
-            field=models.JSONField(blank=True, default=None, help_text='Kolejność, widoczność i limity sekcji podstrony autora. Puste = układ domyślny.', null=True, verbose_name='Układ profilu'),
+            model_name="autor",
+            name="uklad_profilu",
+            field=models.JSONField(
+                blank=True,
+                default=None,
+                help_text="Kolejność, widoczność i limity sekcji podstrony autora. Puste = układ domyślny.",
+                null=True,
+                verbose_name="Układ profilu",
+            ),
         ),
         migrations.AddField(
-            model_name='autor',
-            name='zdjecie',
-            field=models.ImageField(blank=True, help_text='Zdjęcie profilowe autora. Przy zapisie przez formularz jest przeskalowane do kwadratu.', null=True, upload_to='autor_zdjecia', verbose_name='Zdjęcie'),
+            model_name="autor",
+            name="zdjecie",
+            field=models.ImageField(
+                blank=True,
+                help_text="Zdjęcie profilowe autora. Przy zapisie przez formularz jest przeskalowane do kwadratu.",
+                null=True,
+                upload_to="autor_zdjecia",
+                verbose_name="Zdjęcie",
+            ),
         ),
         migrations.CreateModel(
-            name='WybranaPublikacjaAutora',
+            name="WybranaPublikacjaAutora",
             fields=[
-                ('id', models.AutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('object_id', models.PositiveIntegerField()),
-                ('kolejnosc', models.PositiveIntegerField(default=0, verbose_name='Kolejność')),
-                ('autor', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='wybrane_publikacje', to='bpp.autor')),
-                ('content_type', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='contenttypes.contenttype')),
+                (
+                    "id",
+                    models.AutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                ("object_id", models.PositiveIntegerField()),
+                (
+                    "kolejnosc",
+                    models.PositiveIntegerField(default=0, verbose_name="Kolejność"),
+                ),
+                (
+                    "autor",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="wybrane_publikacje",
+                        to="bpp.autor",
+                    ),
+                ),
+                (
+                    "content_type",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        to="contenttypes.contenttype",
+                    ),
+                ),
             ],
             options={
-                'verbose_name': 'wybrana publikacja autora',
-                'verbose_name_plural': 'wybrane publikacje autora',
-                'ordering': ('autor', 'kolejnosc'),
-                'unique_together': {('autor', 'content_type', 'object_id')},
+                "verbose_name": "wybrana publikacja autora",
+                "verbose_name_plural": "wybrane publikacje autora",
+                "ordering": ("autor", "kolejnosc"),
+                "unique_together": {("autor", "content_type", "object_id")},
             },
         ),
     ]
