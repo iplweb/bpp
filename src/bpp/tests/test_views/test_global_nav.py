@@ -1,11 +1,11 @@
 import json
 
 import pytest
+from django.contrib.contenttypes.models import ContentType
 from django.http.response import HttpResponseNotAllowed, HttpResponseRedirect
 from django.urls import reverse
+from django.utils.http import urlencode
 from model_bakery import baker
-
-from django.contrib.contenttypes.models import ContentType
 
 from bpp.models.autor import Autor
 from bpp.models.cache import Rekord
@@ -63,6 +63,31 @@ def test_global_nav_redir(model, source, typy_odpowiedzialnosci):
     )
 
     assert isinstance(res, HttpResponseRedirect)
+
+
+@pytest.mark.django_db
+def test_admin_nav_znajduje_prace_po_slowie_z_tytulu_i_nazwisku_autora(
+    admin_client, jednostka, typy_odpowiedzialnosci
+):
+    """Adminowy widget globalnej nawigacji (id_global_nav_value) ma znajdować
+    pracę, gdy wpisze się słowo z TYTUŁU oraz słowo z NAZWISKA autora naraz —
+    tak jak publiczna wyszukiwarka spod "/". Wymaga full-textu po search_index,
+    nie icontains po samym tytule."""
+    praca = baker.make(
+        Wydawnictwo_Ciagle,
+        tytul_oryginalny="Teleportacja kwantowa peptydow",
+    )
+    autor = baker.make(Autor, nazwisko="Kowalczykiewicz", imiona="Jan")
+    praca.dodaj_autora(autor, jednostka, zapisany_jako="Kowalczykiewicz Jan")
+
+    Rekord.objects.full_refresh()
+
+    url = reverse("bpp:admin-navigation-autocomplete")
+    url += "?" + urlencode({"q": "Teleportacja Kowalczykiewicz"})
+    res = admin_client.get(url)
+
+    assert res.status_code == 200
+    assert b"Teleportacja" in res.content
 
 
 def test_global_nav_ukrywanie_statusow_przed_korekta_praca_schowana(

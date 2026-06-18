@@ -19,7 +19,13 @@ def test_uczelnie_z_autorzy_set():
 
 
 @pytest.mark.django_db
-def test_uczelnie_z_jednostki_rekordu_doktorat():
+def test_uczelnie_z_jednostki_rekordu_doktorat(typ_odpowiedzialnosci_autor):
+    # ``Praca_Doktorska.autorzy_set`` sięga do modułowego cache
+    # ``_Praca_Doktorska_PropertyCache.typ_odpowiedzialnosci_autor``, który
+    # robi ``Typ_Odpowiedzialnosci.objects.get(skrot="aut.")``. Ten wiersz
+    # musi istnieć w trakcie testu — sam baseline nie wystarcza, bo test
+    # transakcyjny (live_server/playwright) w tym samym workerze potrafi
+    # zflushować dane referencyjne. Fixture gwarantuje obecność "aut.".
     from dspace_api.selectors import uczelnie_rekordu
 
     u = baker.make("bpp.Uczelnia")
