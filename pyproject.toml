@@ -236,13 +236,13 @@ environments = ["python_version >= '3.10' and python_version < '3.15' and platfo
 #                     GHSA-gj48-438w-jh9v
 #   daphne  >=4.2.2  (via channels[daphne])         - PYSEC-2026-213,
 #                     PYSEC-2026-214
-#   pypdf   >=6.13.0 (via xhtml2pdf)                 - CVE-2026-48735,
+#   pypdf   >=6.13.3 (via xhtml2pdf)                 - CVE-2026-48735,
 #                     CVE-2026-49460, CVE-2026-49461, CVE-2026-54530,
-#                     CVE-2026-54531
+#                     CVE-2026-54531, GHSA-jm82-fx9c-mx94
 constraint-dependencies = [
     "bleach>=6.4.0",
     "daphne>=4.2.2",
-    "pypdf>=6.13.0",
+    "pypdf>=6.13.3",
 ]
 
 # Polityka: KAZDA NOWA zewnetrzna zaleznosc powinna miec prebuilt wheel dla
