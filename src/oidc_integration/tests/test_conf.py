@@ -86,6 +86,52 @@ def test_endpointy_wyprowadzone_z_issuera():
     assert ep["end_session"] == f"{base}/logout"
 
 
+def _bare_env():
+    return {
+        "DJANGO_BPP_OIDC_CLIENT_ID": "abc",
+        "DJANGO_BPP_OIDC_CLIENT_SECRET": "sekret",
+        "DJANGO_BPP_OIDC_ISSUER": ISSUER,
+    }
+
+
+def test_email_claims_default_mail_first():
+    # Bez konfiguracji: domyślnie `mail` ma pierwszeństwo (instytucjonalny),
+    # `email` (prywatny) jest fallbackiem.
+    cfg = discover_oidc_config(_bare_env())
+    assert cfg["email_claims"] == ("mail", "email", "e-mail", "e_mail")
+
+
+def test_username_claims_default():
+    cfg = discover_oidc_config(_bare_env())
+    assert cfg["username_claims"] == ("preferred_username", "email", "sub")
+
+
+def test_email_claims_z_env_csv():
+    env = _bare_env()
+    env["DJANGO_BPP_OIDC_EMAIL_CLAIMS"] = "email, mail"
+    cfg = discover_oidc_config(env)
+    assert cfg["email_claims"] == ("email", "mail")
+
+
+def test_email_claims_prefiks_ma_pierwszenstwo_nad_bare():
+    env = {
+        "DJANGO_BPP_OIDC_UAFM_CLIENT_ID": "abc",
+        "DJANGO_BPP_OIDC_UAFM_CLIENT_SECRET": "sekret",
+        "DJANGO_BPP_OIDC_UAFM_ISSUER": ISSUER,
+        "DJANGO_BPP_OIDC_UAFM_EMAIL_CLAIMS": "mail",
+        "DJANGO_BPP_OIDC_EMAIL_CLAIMS": "email",
+    }
+    cfg = discover_oidc_config(env)
+    assert cfg["email_claims"] == ("mail",)
+
+
+def test_username_claims_z_env_csv():
+    env = _bare_env()
+    env["DJANGO_BPP_OIDC_USERNAME_CLAIMS"] = "sub,preferred_username"
+    cfg = discover_oidc_config(env)
+    assert cfg["username_claims"] == ("sub", "preferred_username")
+
+
 def test_fetch_well_known_fallback_na_bledzie_sieci(monkeypatch):
     import requests
 

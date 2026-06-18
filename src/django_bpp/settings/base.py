@@ -1247,6 +1247,11 @@ if _OIDC_CONFIG:
     OIDC_RP_CLIENT_ID = _OIDC_CONFIG["client_id"]
     OIDC_RP_CLIENT_SECRET = _OIDC_CONFIG["client_secret"]
 
+    # Źródła claimów (konfigurowalne env-em, default mail-first / username z
+    # preferred_username) — czytane przez BppOIDCBackend.
+    OIDC_EMAIL_CLAIMS = _OIDC_CONFIG["email_claims"]
+    OIDC_USERNAME_CLAIMS = _OIDC_CONFIG["username_claims"]
+
     # Endpointy: preferuj .well-known (źródło prawdy serwera), z fallbackiem na
     # konwencję Keycloaka gdy IdP nieosiągalny przy starcie.
     _oidc_endpoints = (

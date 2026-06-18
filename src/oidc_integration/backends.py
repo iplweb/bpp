@@ -5,18 +5,39 @@ from django.conf import settings
 from django.core.exceptions import SuspiciousOperation
 from mozilla_django_oidc.auth import OIDCAuthenticationBackend
 
-logger = logging.getLogger(__name__)
+from oidc_integration.conf import DEFAULT_EMAIL_CLAIMS, DEFAULT_USERNAME_CLAIMS
 
-# Klucze claimów niosące adres e-mail, w kolejności preferencji: standardowy
-# OIDC ``email`` ma pierwszeństwo, dalej warianty pisowni realmu
-# (``e-mail``/``e_mail``), a ``mail`` (LDAP) na końcu jako ostatni fallback.
-# Adres z `mail` bywa prywatny — instytucjonalny siedzi pod `email`/`e-mail`.
-_EMAIL_CLAIM_KEYS = ("email", "e-mail", "e_mail", "mail")
+logger = logging.getLogger(__name__)
 
 # „Zawiera domenę" = wygląda jak adres ``lokalna@domena.tld`` (z kropką w
 # części domenowej). Świadomie minimalistyczne: to nie walidacja RFC, tylko
 # odsianie loginów bez domeny (np. ``jkowalski``) od UPN-ów (``j@uczelnia.pl``).
 _EMAIL_SHAPE_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
+
+
+def _email_claim_keys():
+    """Klucze claimów e-mail wg preferencji (settings → default mail-first).
+
+    Default ``DEFAULT_EMAIL_CLAIMS`` (mail-first) ustala ``conf.py``; settings
+    ``OIDC_EMAIL_CLAIMS`` (wpisywany z env w base.py) może to nadpisać.
+    """
+    return tuple(getattr(settings, "OIDC_EMAIL_CLAIMS", None) or DEFAULT_EMAIL_CLAIMS)
+
+
+def _username_claim_keys():
+    """Klucze claimów dla username wg preferencji (settings → default)."""
+    return tuple(
+        getattr(settings, "OIDC_USERNAME_CLAIMS", None) or DEFAULT_USERNAME_CLAIMS
+    )
+
+
+def _first_claim(claims, keys):
+    """Pierwsza niepusta wartość claimu z ``keys`` (albo ``None``)."""
+    for key in keys:
+        value = claims.get(key)
+        if value:
+            return value
+    return None
 
 
 def _log_claims_debug(claims):
@@ -52,11 +73,13 @@ class BppOIDCBackend(OIDCAuthenticationBackend):
     ``email``, a realm wystawia adres pod różnymi kluczami. Ustalamy ``email``
     w jednym miejscu — ``get_userinfo`` — przez które przechodzą wszystkie te
     metody (``get_or_create_user`` woła je na wyniku ``get_userinfo``).
-    Kolejność preferencji (``_resolve_email``): ``email`` → ``e-mail`` →
-    ``e_mail`` → ``mail``, a w ostateczności ``preferred_username`` jeśli
-    zawiera domenę. Brak adresu → ``SuspiciousOperation`` (login failure).
-    Adres pod ``mail`` bywa prywatny; instytucjonalny realm wystawia zwykle
-    pod ``email``/``e-mail`` — stąd ``mail`` jest ostatni, nie pierwszy.
+    Kolejność preferencji konfigurowalna (``OIDC_EMAIL_CLAIMS``, default
+    mail-first: ``mail`` → ``email`` → ``e-mail`` → ``e_mail``), a w
+    ostateczności ``preferred_username`` jeśli zawiera domenę. Brak adresu →
+    ``SuspiciousOperation`` (login failure). Default mail-first, bo w realmach
+    LDAP-owych (np. UAFM) ``email`` bywa adresem prywatnym, a instytucjonalny
+    siedzi pod ``mail`` — instalacje z odwrotną konwencją przestawiają
+    kolejność env-em ``DJANGO_BPP_OIDC_<SKROT>_EMAIL_CLAIMS``.
 
     Przypisanie uczelni: konto dostaje ``accessible_uczelnie`` (M2M z PR #189)
     z uczelnią o ``skrot`` == skrótowi z konfiguracji OIDC. Ten sam skrót
@@ -82,10 +105,11 @@ class BppOIDCBackend(OIDCAuthenticationBackend):
 
     @staticmethod
     def _resolve_email(claims):
-        """Ustal adres e-mail z claimów wg kolejności preferencji.
+        """Ustal adres e-mail z claimów wg konfigurowalnej kolejności.
 
-        Kolejność: ``email`` → ``e-mail`` → ``e_mail`` → ``mail`` (pierwszy
-        niepusty wygrywa). Gdy żaden nie niesie wartości, spada na
+        Kolejność z ``_email_claim_keys()`` (default mail-first:
+        ``mail`` → ``email`` → ``e-mail`` → ``e_mail``; pierwszy niepusty
+        wygrywa). Gdy żaden nie niesie wartości, spada na
         ``preferred_username`` — ale tylko jeśli ten wygląda jak adres
         (zawiera domenę, np. UPN ``99999@student-afm.edu.pl``).
 
@@ -96,10 +120,10 @@ class BppOIDCBackend(OIDCAuthenticationBackend):
         500), a ``django.security`` loguje go na WARNING. Bez instytucjonalnego
         adresu nie chcemy zakładać/dopasowywać konta.
         """
-        for key in _EMAIL_CLAIM_KEYS:
-            value = claims.get(key)
-            if value:
-                return value
+        keys = _email_claim_keys()
+        value = _first_claim(claims, keys)
+        if value:
+            return value
 
         username = claims.get("preferred_username") or ""
         if _EMAIL_SHAPE_RE.match(username):
@@ -107,7 +131,7 @@ class BppOIDCBackend(OIDCAuthenticationBackend):
 
         raise SuspiciousOperation(
             "OIDC: nie znaleziono adresu e-mail w claimach "
-            f"(email/e-mail/e_mail/mail), a preferred_username={username!r} "
+            f"({'/'.join(keys)}), a preferred_username={username!r} "
             "nie zawiera domeny — odrzucam logowanie."
         )
 
@@ -168,6 +192,9 @@ class BppOIDCBackend(OIDCAuthenticationBackend):
         # Dopilnuj przypisania uczelni także istniejącym kontom przy kolejnym
         # logowaniu (idempotentnie) — np. założonym przed wprowadzeniem tej logiki.
         self._assign_uczelnia(user)
+        # Spróbuj powiązać autora (no-op jeśli już powiązany) — self-healing
+        # dla kont założonych zanim doszło dopasowanie.
+        user.sprobuj_dopasowac_autora()
         return user
 
     def _unique_username(self, base):
@@ -188,14 +215,13 @@ class BppOIDCBackend(OIDCAuthenticationBackend):
     def create_user(self, claims):
         """Załóż zwykłe konto (bez is_staff) na podstawie claimów.
 
-        ``username`` = ``preferred_username`` → ``email`` → ``sub`` (pierwszy
-        niepusty). Hasło ustawiane na nieużywalne — logowanie wyłącznie przez
-        OIDC. Wywoływane tylko, gdy ``filter_users_by_claims`` (domyślnie po
+        ``username`` z ``_username_claim_keys()`` (default
+        ``preferred_username`` → ``email`` → ``sub``; pierwszy niepusty).
+        Hasło ustawiane na nieużywalne — logowanie wyłącznie przez OIDC.
+        Wywoływane tylko, gdy ``filter_users_by_claims`` (domyślnie po
         e-mailu) nie znajdzie istniejącego konta.
         """
-        base_username = (
-            claims.get("preferred_username") or claims.get("email") or claims.get("sub")
-        )
+        base_username = _first_claim(claims, _username_claim_keys())
         username = self._unique_username(base_username)
         email = claims.get("email") or ""
 
@@ -209,6 +235,9 @@ class BppOIDCBackend(OIDCAuthenticationBackend):
         user.save()
 
         self._assign_uczelnia(user)
+        # Powiąż autora po przypisaniu uczelni — dopasowanie jest scope'owane
+        # do accessible_uczelnie, więc kolejność ma znaczenie.
+        user.sprobuj_dopasowac_autora()
 
         logger.info(
             "OIDC: utworzono konto username=%s email=%s (zwykłe, bez is_staff)",

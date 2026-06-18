@@ -60,7 +60,26 @@ def test_normalized_uzupelnia_email_z_mail():
     assert out["mail"] == "jan@uafm.edu.pl"
 
 
-def test_normalized_nie_nadpisuje_istniejacego_email():
+def test_normalized_mail_wygrywa_z_email():
+    # Default mail-first: `mail` (instytucjonalny) ma pierwszeństwo nad `email`
+    # (prywatny). UAFM: email='...@kowalczewski.pl', mail='...@uafm.edu.pl'.
+    out = _backend()._normalized(
+        {"email": "prywatny@kowalczewski.pl", "mail": "instytut@uafm.edu.pl"}
+    )
+    assert out["email"] == "instytut@uafm.edu.pl"
+    # oryginalny prywatny `email` zachowany pod swoim kluczem
+    assert out["mail"] == "instytut@uafm.edu.pl"
+
+
+def test_normalized_email_jako_fallback_gdy_brak_mail():
+    # `email` używany tylko, gdy brak `mail`.
+    out = _backend()._normalized({"email": "prywatny@kowalczewski.pl", "sub": "1"})
+    assert out["email"] == "prywatny@kowalczewski.pl"
+
+
+@override_settings(OIDC_EMAIL_CLAIMS=["email", "mail"])
+def test_normalized_kolejnosc_emaila_konfigurowalna():
+    # Override przez settings: gdy realm woli `email`, można przestawić.
     out = _backend()._normalized(
         {"email": "wlasny@uafm.edu.pl", "mail": "inny@uafm.edu.pl"}
     )
@@ -77,7 +96,8 @@ def test_normalized_uzupelnia_email_z_e_mail_z_podkresleniem():
     assert out["email"] == "jan@uafm.edu.pl"
 
 
-def test_normalized_priorytet_email_przed_wszystkimi():
+def test_normalized_priorytet_mail_przed_wszystkimi():
+    # Default mail-first: `mail` wygrywa ze wszystkimi wariantami.
     out = _backend()._normalized(
         {
             "email": "a@uafm.edu.pl",
@@ -86,14 +106,13 @@ def test_normalized_priorytet_email_przed_wszystkimi():
             "mail": "d@uafm.edu.pl",
         }
     )
+    assert out["email"] == "d@uafm.edu.pl"
+
+
+def test_normalized_priorytet_email_przed_e_mail_gdy_brak_mail():
+    # brak `mail`; dalsza kolejność: email → e-mail → e_mail.
+    out = _backend()._normalized({"email": "a@uafm.edu.pl", "e-mail": "b@uafm.edu.pl"})
     assert out["email"] == "a@uafm.edu.pl"
-
-
-def test_normalized_priorytet_e_mail_przed_mail():
-    # brak `email`; warianty z myślnikiem/podkreśleniem mają pierwszeństwo
-    # przed `mail` (kolejność: email → e-mail → e_mail → mail).
-    out = _backend()._normalized({"e-mail": "b@uafm.edu.pl", "mail": "d@uafm.edu.pl"})
-    assert out["email"] == "b@uafm.edu.pl"
 
 
 def test_normalized_fallback_na_preferred_username_z_domena():
@@ -212,6 +231,25 @@ def test_create_user_username_fallback_do_sub():
 
 
 @pytest.mark.django_db
+@override_settings(OIDC_USERNAME_CLAIMS=["email", "sub"])
+def test_create_user_username_z_settingu():
+    # Override źródła username: gdy konfiguracja woli email zamiast
+    # preferred_username, konto bierze username z email.
+    backend = _backend()
+    backend.UserModel = get_user_model()
+
+    user = backend.create_user(
+        {
+            "preferred_username": "jkowalski",
+            "email": "jan@uafm.edu.pl",
+            "sub": "abc-123",
+        }
+    )
+
+    assert user.username == "jan@uafm.edu.pl"
+
+
+@pytest.mark.django_db
 @override_settings(OIDC_LOGIN_SKROT="UAFM")
 def test_create_user_przypisuje_uczelnie_wg_skrotu():
     uczelnia = baker.make("bpp.Uczelnia", skrot="UAFM")
@@ -236,6 +274,74 @@ def test_create_user_bez_pasujacej_uczelni_nie_przypisuje():
     user = backend.create_user({"preferred_username": "jkowalski"})
 
     assert user.accessible_uczelnie.count() == 0
+
+
+@pytest.mark.django_db
+@override_settings(OIDC_LOGIN_SKROT="UAFM")
+def test_create_user_dopasowuje_autora_w_uczelni():
+    # Po przypisaniu uczelni (skrot UAFM) konto dopasowuje autora z tej
+    # uczelni po e-mailu (= znormalizowany `mail`).
+    uczelnia = baker.make("bpp.Uczelnia", skrot="UAFM")
+    jednostka = baker.make("bpp.Jednostka", uczelnia=uczelnia)
+    autor = baker.make(
+        "bpp.Autor", aktualna_jednostka=jednostka, email="jan@uafm.edu.pl"
+    )
+
+    backend = _backend()
+    backend.UserModel = get_user_model()
+
+    user = backend.create_user(
+        backend._normalized(
+            {"preferred_username": "jkowalski", "mail": "jan@uafm.edu.pl"}
+        )
+    )
+
+    user.refresh_from_db()
+    assert user.autor_id == autor.pk
+
+
+@pytest.mark.django_db
+@override_settings(OIDC_LOGIN_SKROT="UAFM")
+def test_create_user_nie_dopasowuje_autora_z_obcej_uczelni():
+    # Autor istnieje w innej uczelni niż realm OIDC → konto bez powiązania.
+    baker.make("bpp.Uczelnia", skrot="UAFM")
+    obca = baker.make("bpp.Uczelnia", skrot="INNA")
+    jednostka = baker.make("bpp.Jednostka", uczelnia=obca)
+    baker.make("bpp.Autor", aktualna_jednostka=jednostka, email="jan@uafm.edu.pl")
+
+    backend = _backend()
+    backend.UserModel = get_user_model()
+
+    user = backend.create_user(
+        backend._normalized(
+            {"preferred_username": "jkowalski", "mail": "jan@uafm.edu.pl"}
+        )
+    )
+
+    user.refresh_from_db()
+    assert user.autor_id is None
+
+
+@pytest.mark.django_db
+@override_settings(OIDC_LOGIN_SKROT="UAFM")
+def test_update_user_dopasowuje_autora():
+    # Konto założone wcześniej (bez autora) dostaje powiązanie przy kolejnym
+    # logowaniu przez update_user.
+    uczelnia = baker.make("bpp.Uczelnia", skrot="UAFM")
+    jednostka = baker.make("bpp.Jednostka", uczelnia=uczelnia)
+    autor = baker.make(
+        "bpp.Autor", aktualna_jednostka=jednostka, email="jan@uafm.edu.pl"
+    )
+
+    UserModel = get_user_model()
+    user = UserModel.objects.create_user(username="jkowalski", email="jan@uafm.edu.pl")
+
+    backend = _backend()
+    backend.UserModel = UserModel
+    backend.update_user(user, {"email": "jan@uafm.edu.pl"})
+
+    user.refresh_from_db()
+    assert user.autor_id == autor.pk
 
 
 @pytest.mark.django_db
