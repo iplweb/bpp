@@ -53,7 +53,7 @@ dependencies = [
     "django-dirtyfields==1.9.9",
     "django-messages-extends==0.6.3",
     "django-autoslug==1.9.9",
-    "django-autocomplete-light==4.0.1",
+    "django-autocomplete-light==5.0.0",
     "django-admin-tools==0.9.3",
     "xlrd==2.0.2",
     "celery>=5.6.3",
