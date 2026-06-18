@@ -14,10 +14,6 @@
  */
 (function () {
   "use strict";
-  var H = window.DjangoQLHighlight;
-  if (!window.DjangoQL || !H) {
-    return;
-  }
 
   function escapeRe(s) {
     return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -39,6 +35,21 @@
     var line = (before.match(/\n/g) || []).length + 1;
     var column = offset - before.lastIndexOf("\n"); // brak \n: -1 → offset+1
     return { line: line, column: column };
+  }
+
+  // Czyste helpery lokalizacji błędu (string→offset, offset→line/column)
+  // wystawiamy na namespace, żeby były jednostkowo testowalne bez DOM ani
+  // DjangoQL. To jedyna funkcja tego eksportu — `wire()`/DOMReady poniżej
+  // wymagają DjangoQL i odpalają się wyłącznie w przeglądarce.
+  window.bppDjangoQLAdmin = {
+    escapeRe: escapeRe,
+    locateValue: locateValue,
+    lineColFromOffset: lineColFromOffset,
+  };
+
+  var H = window.DjangoQLHighlight;
+  if (!window.DjangoQL || !H) {
+    return;
   }
 
   function wire() {

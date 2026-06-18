@@ -98,5 +98,12 @@
     return render(tokens);
   }
 
-  window.djangoqlPretty = { formatAndHighlight: formatAndHighlight };
+  // `render`/`esc`/`tokenText` są czyste (token[]→HTML, bez DOM) — wystawiamy
+  // je obok `formatAndHighlight` dla testów jednostkowych (vitest).
+  window.djangoqlPretty = {
+    formatAndHighlight: formatAndHighlight,
+    render: render,
+    esc: esc,
+    tokenText: tokenText,
+  };
 })();
