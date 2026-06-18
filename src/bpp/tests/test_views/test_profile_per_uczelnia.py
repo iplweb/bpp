@@ -7,6 +7,8 @@ WSZYSTKICH uczelni (przeoczenie wątku D, który objął tylko ``ewaluacja_metry
 views/``, nie profil w ``bpp/views/``).
 """
 
+from decimal import Decimal
+
 import pytest
 from django.contrib.sites.models import Site
 from model_bakery import baker
@@ -27,17 +29,34 @@ def test_profil_metryki_zaweza_do_uczelni_ogladajacego(
 ):
     from ewaluacja_metryki.models import MetrykaAutora
 
+    # MetrykaAutora.save() PRZELICZA pola pochodne z pól slotów/punktów:
+    #   srednia_za_slot_* = punkty_* / slot_*
+    #   procent_wykorzystania_slotow = (slot_nazbierany / slot_maksymalny) * 100
+    # Losowe wartości baker-a (DecimalField(10,4), niezależne) potrafią dać iloraz
+    # przepełniający procent (DecimalField(5,2), < 10^3) albo średnią — stąd flaky
+    # NumericValueOutOfRange zależny od seeda/sharda. Pinujemy pola WEJŚCIOWE do
+    # zdrowych wartości; test i tak nie patrzy na liczby, tylko na zawężenie po
+    # uczelni.
+    metryka_pola = dict(
+        slot_maksymalny=Decimal("10.0000"),
+        slot_nazbierany=Decimal("5.0000"),
+        punkty_nazbierane=Decimal("50.0000"),
+        slot_wszystkie=Decimal("10.0000"),
+        punkty_wszystkie=Decimal("50.0000"),
+    )
     baker.make(
         MetrykaAutora,
         autor=autor_jan_kowalski,
         dyscyplina_naukowa=dyscyplina1,
         uczelnia=uczelnia,
+        **metryka_pola,
     )
     baker.make(
         MetrykaAutora,
         autor=autor_jan_kowalski,
         dyscyplina_naukowa=dyscyplina1,
         uczelnia=druga_uczelnia_profile,
+        **metryka_pola,
     )
 
     user = baker.make("bpp.BppUser", autor=autor_jan_kowalski)
