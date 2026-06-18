@@ -49,5 +49,4 @@ urlpatterns = [
     ),
     # Configuration presets
     path("presets/", views.ImportPresetsView.as_view(), name="presets"),
-    path("presets/save/", views.SavePresetView.as_view(), name="save_preset"),
 ]

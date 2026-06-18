@@ -43,9 +43,6 @@ class ImportManager:
         # Define import steps with their order
         self.steps = get_step_definitions(self.config)
 
-        # Check PBN authorization status
-        self._check_pbn_authorization()
-
     def _check_pbn_authorization(self):
         """Check if PBN client is properly authorized"""
         if self.client is None:
@@ -400,6 +397,17 @@ class ImportManager:
 
     def run(self):
         """Execute the complete import process"""
+        # Sonda autoryzacji PBN to efekt sieciowy — trzymamy ją poza
+        # __init__ (testowalność) i odpalamy dokładnie raz, na początku run().
+        # Sentinel: __init__ zostawia pbn_authorized=False, pbn_error_message
+        # =None ("jeszcze nie sondowano"). Po realnej sondzie albo
+        # pbn_authorized==True, albo pbn_error_message jest ustawione (także
+        # gdy client is None → "Brak konfiguracji klienta PBN"), więc warunek
+        # poniżej nie odpali jej drugi raz. Re-check po InitialSetup
+        # (_refresh_pbn_client_after_setup) zostaje bez zmian.
+        if not self.pbn_authorized and self.pbn_error_message is None:
+            self._check_pbn_authorization()
+
         logger.info("=" * 60)
         logger.info("IMPORT PBN - START")
         logger.info(f"Sesja: {self.session.id}")

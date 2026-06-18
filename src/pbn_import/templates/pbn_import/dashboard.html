@@ -445,58 +445,5 @@ function toggleError(button) {
 
     return false;
 }
-
-// WebSocket connection for active import
-{% if active_session %}
-const ws = new WebSocket(
-    'ws://' + window.location.host +
-    '/ws/pbn-import/session/{{ active_session.id }}/'
-);
-
-ws.onmessage = function(e) {
-    const data = JSON.parse(e.data);
-
-    switch(data.type) {
-        case 'progress_update':
-            updateProgressDisplay(data);
-            break;
-        case 'log_entry':
-            addLogEntry(data.log);
-            break;
-        case 'completion':
-            // Simple notification, no confetti
-            console.log('Import completed');
-            break;
-    }
-};
-
-ws.onclose = function(e) {
-    console.log('WebSocket connection closed');
-};
-
-function updateProgressDisplay(data) {
-    // Update progress bar and status
-    document.title = 'Import ' + data.progress + '% - BPP';
-}
-
-function showMotivationalToast(message, icon) {
-    // Show motivational message as toast notification
-    const toast = document.createElement('div');
-    toast.className = 'callout success';
-    toast.textContent = icon + ' ' + message;
-    toast.style.position = 'fixed';
-    toast.style.bottom = '20px';
-    toast.style.left = '20px';
-    toast.style.zIndex = '10000';
-    toast.style.animation = 'slideIn 0.5s';
-
-    document.body.appendChild(toast);
-
-    setTimeout(() => {
-        toast.style.animation = 'slideOut 0.5s';
-        setTimeout(() => toast.remove(), 500);
-    }, 5000);
-}
-{% endif %}
 </script>
 {% endblock %}

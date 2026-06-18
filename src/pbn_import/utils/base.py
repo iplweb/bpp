@@ -39,6 +39,11 @@ class TqdmSessionProgress:
 
         progress = int((current / total) * 100) if total > 0 else 0
 
+        # Re-read progress_data before mutating: this callback holds a
+        # possibly-stale in-memory copy and a full scoped save would clobber
+        # concurrent writers (e.g. the step's progress_data["steps"]).
+        self.session.refresh_from_db(fields=["progress_data"])
+
         # Update session progress data
         if "current_subtask" not in self.session.progress_data:
             self.session.progress_data["current_subtask"] = {}
@@ -128,6 +133,12 @@ class ImportStepBase:
             progress_percent=progress_percent,
         )
 
+        # Re-read progress_data (only) before mutating it: a concurrent
+        # throttled TqdmSessionProgress may have written current_subtask from
+        # its own in-memory copy. Refresh ONLY progress_data so the scalar
+        # fields just persisted by update_progress() above are not discarded.
+        self.session.refresh_from_db(fields=["progress_data"])
+
         # Store detailed progress in session data
         if "steps" not in self.session.progress_data:
             self.session.progress_data["steps"] = {}
@@ -139,7 +150,9 @@ class ImportStepBase:
             "message": message,
             "errors": len(self.errors),
         }
-        self.session.save()
+        # Scope the save to progress_data so we don't clobber concurrent
+        # writers of other (scalar) fields.
+        self.session.save(update_fields=["progress_data"])
 
     def start(self):
         """Called when step starts"""
@@ -149,7 +162,7 @@ class ImportStepBase:
         logger.info("=" * 60)
         self.log("info", f"Rozpoczynanie: {self.step_description}")
         self.session.current_step = self.step_name
-        self.session.save()
+        self.session.save(update_fields=["current_step"])
 
     def finish(self):
         """Called when step completes"""
