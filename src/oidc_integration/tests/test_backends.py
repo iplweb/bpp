@@ -67,9 +67,56 @@ def test_normalized_nie_nadpisuje_istniejacego_email():
     assert out["email"] == "wlasny@uafm.edu.pl"
 
 
-def test_normalized_bez_mail_nie_dorabia_email():
-    out = _backend()._normalized({"sub": "123"})
-    assert "email" not in out
+def test_normalized_uzupelnia_email_z_e_mail_z_myslnikiem():
+    out = _backend()._normalized({"e-mail": "jan@uafm.edu.pl", "sub": "1"})
+    assert out["email"] == "jan@uafm.edu.pl"
+
+
+def test_normalized_uzupelnia_email_z_e_mail_z_podkresleniem():
+    out = _backend()._normalized({"e_mail": "jan@uafm.edu.pl", "sub": "1"})
+    assert out["email"] == "jan@uafm.edu.pl"
+
+
+def test_normalized_priorytet_email_przed_wszystkimi():
+    out = _backend()._normalized(
+        {
+            "email": "a@uafm.edu.pl",
+            "e-mail": "b@uafm.edu.pl",
+            "e_mail": "c@uafm.edu.pl",
+            "mail": "d@uafm.edu.pl",
+        }
+    )
+    assert out["email"] == "a@uafm.edu.pl"
+
+
+def test_normalized_priorytet_e_mail_przed_mail():
+    # brak `email`; warianty z myślnikiem/podkreśleniem mają pierwszeństwo
+    # przed `mail` (kolejność: email → e-mail → e_mail → mail).
+    out = _backend()._normalized({"e-mail": "b@uafm.edu.pl", "mail": "d@uafm.edu.pl"})
+    assert out["email"] == "b@uafm.edu.pl"
+
+
+def test_normalized_fallback_na_preferred_username_z_domena():
+    # brak claimów e-mail; preferred_username wygląda jak adres → użyj go
+    out = _backend()._normalized(
+        {"preferred_username": "99999@student-afm.edu.pl", "sub": "1"}
+    )
+    assert out["email"] == "99999@student-afm.edu.pl"
+
+
+def test_normalized_odrzuca_gdy_username_bez_domeny():
+    # brak claimów e-mail, a preferred_username bez domeny → odrzuć logowanie
+    from django.core.exceptions import SuspiciousOperation
+
+    with pytest.raises(SuspiciousOperation):
+        _backend()._normalized({"preferred_username": "jkowalski", "sub": "1"})
+
+
+def test_normalized_odrzuca_gdy_brak_email_i_username():
+    from django.core.exceptions import SuspiciousOperation
+
+    with pytest.raises(SuspiciousOperation):
+        _backend()._normalized({"sub": "123"})
 
 
 @pytest.mark.django_db

@@ -1640,6 +1640,24 @@ LOGGING = {
             "level": "WARNING",
             "propagate": False,
         },
+        # OIDC (Keycloak). Domyślnie WARNING — zwykła praca milczy. Diagnostyka
+        # claimów realmu (`_log_claims_debug` w backends.py zrzuca KAŻDY klucz
+        # i wartość) wymaga opt-in: ustaw DJANGO_BPP_OIDC_DEBUG_CLAIMS=1 i zaloguj
+        # się przez Keycloaka, żeby zobaczyć faktyczne nazwy claimów na stderr.
+        # ⚠️ DEBUG loguje też wartości (adresy e-mail, login) — włączaj tylko
+        # do diagnostyki, nie zostawiaj na produkcji.
+        "oidc_integration": {
+            "handlers": ["console"],
+            "level": (
+                "DEBUG"
+                if os.getenv("DJANGO_BPP_OIDC_DEBUG_CLAIMS") == "1"
+                else "WARNING"
+            ),
+            # propagate=True (inaczej niż sąsiednie loggery): root nie ma tu
+            # własnego handlera, więc propagacja nie dubluje wyjścia, a pozwala
+            # pytestowemu `caplog` (łapie na rootcie) widzieć zrzut claimów.
+            "propagate": True,
+        },
     },
 }
 

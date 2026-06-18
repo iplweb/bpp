@@ -1,9 +1,22 @@
 import logging
+import re
 
 from django.conf import settings
+from django.core.exceptions import SuspiciousOperation
 from mozilla_django_oidc.auth import OIDCAuthenticationBackend
 
 logger = logging.getLogger(__name__)
+
+# Klucze claimów niosące adres e-mail, w kolejności preferencji: standardowy
+# OIDC ``email`` ma pierwszeństwo, dalej warianty pisowni realmu
+# (``e-mail``/``e_mail``), a ``mail`` (LDAP) na końcu jako ostatni fallback.
+# Adres z `mail` bywa prywatny — instytucjonalny siedzi pod `email`/`e-mail`.
+_EMAIL_CLAIM_KEYS = ("email", "e-mail", "e_mail", "mail")
+
+# „Zawiera domenę" = wygląda jak adres ``lokalna@domena.tld`` (z kropką w
+# części domenowej). Świadomie minimalistyczne: to nie walidacja RFC, tylko
+# odsianie loginów bez domeny (np. ``jkowalski``) od UPN-ów (``j@uczelnia.pl``).
+_EMAIL_SHAPE_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 
 
 def _log_claims_debug(claims):
@@ -34,11 +47,16 @@ class BppOIDCBackend(OIDCAuthenticationBackend):
     studenci — patrz scope ``kierunek-oidc``) dostanie konto BPP. Bezpieczne o
     tyle, że bez ``is_staff`` nie ma dostępu do panelu/edycji.
 
-    Normalizacja claimów: realm KA wystawia adres pod kluczem ``mail``, a
-    ``mozilla-django-oidc`` (``verify_claims``/``filter_users_by_claims``/
-    ``create_user``) oczekuje ``email``. Uzupełniamy ``email`` z ``mail`` w
-    jednym miejscu — ``get_userinfo`` — przez które przechodzą wszystkie te
+    Normalizacja claimów: ``mozilla-django-oidc``
+    (``verify_claims``/``filter_users_by_claims``/``create_user``) oczekuje
+    ``email``, a realm wystawia adres pod różnymi kluczami. Ustalamy ``email``
+    w jednym miejscu — ``get_userinfo`` — przez które przechodzą wszystkie te
     metody (``get_or_create_user`` woła je na wyniku ``get_userinfo``).
+    Kolejność preferencji (``_resolve_email``): ``email`` → ``e-mail`` →
+    ``e_mail`` → ``mail``, a w ostateczności ``preferred_username`` jeśli
+    zawiera domenę. Brak adresu → ``SuspiciousOperation`` (login failure).
+    Adres pod ``mail`` bywa prywatny; instytucjonalny realm wystawia zwykle
+    pod ``email``/``e-mail`` — stąd ``mail`` jest ostatni, nie pierwszy.
 
     Przypisanie uczelni: konto dostaje ``accessible_uczelnie`` (M2M z PR #189)
     z uczelnią o ``skrot`` == skrótowi z konfiguracji OIDC. Ten sam skrót
@@ -63,16 +81,51 @@ class BppOIDCBackend(OIDCAuthenticationBackend):
     """
 
     @staticmethod
-    def _normalized(claims):
-        """Zwróć claimy z uzupełnionym ``email`` z ``mail`` (jeśli trzeba).
+    def _resolve_email(claims):
+        """Ustal adres e-mail z claimów wg kolejności preferencji.
 
-        Gdy ``email`` już jest albo nie ma ``mail`` — zwraca wejście bez zmian.
-        W przeciwnym razie zwraca **kopię** z dorobionym ``email`` (oryginalny
-        ``mail`` zostaje zachowany).
+        Kolejność: ``email`` → ``e-mail`` → ``e_mail`` → ``mail`` (pierwszy
+        niepusty wygrywa). Gdy żaden nie niesie wartości, spada na
+        ``preferred_username`` — ale tylko jeśli ten wygląda jak adres
+        (zawiera domenę, np. UPN ``99999@student-afm.edu.pl``).
+
+        Gdy nie da się ustalić adresu (brak claimów e-mail, a
+        ``preferred_username`` bez domeny), podnosi ``SuspiciousOperation``.
+        To celowo — ``mozilla_django_oidc`` łapie ten wyjątek w
+        ``authenticate`` (auth.py) i degraduje do *login failure* (zamiast
+        500), a ``django.security`` loguje go na WARNING. Bez instytucjonalnego
+        adresu nie chcemy zakładać/dopasowywać konta.
         """
-        if claims.get("email") or not claims.get("mail"):
+        for key in _EMAIL_CLAIM_KEYS:
+            value = claims.get(key)
+            if value:
+                return value
+
+        username = claims.get("preferred_username") or ""
+        if _EMAIL_SHAPE_RE.match(username):
+            return username
+
+        raise SuspiciousOperation(
+            "OIDC: nie znaleziono adresu e-mail w claimach "
+            f"(email/e-mail/e_mail/mail), a preferred_username={username!r} "
+            "nie zawiera domeny — odrzucam logowanie."
+        )
+
+    @classmethod
+    def _normalized(cls, claims):
+        """Zwróć claimy z kanonicznym kluczem ``email`` (patrz ``_resolve_email``).
+
+        ``mozilla-django-oidc`` (``verify_claims``/``filter_users_by_claims``/
+        ``create_user``) czyta wyłącznie ``email``; realm bywa wystawia adres
+        pod ``mail``/``e-mail``/``e_mail`` albo wcale (wtedy fallback na
+        ``preferred_username`` z domeną). Gdy ``email`` już niesie docelowy
+        adres — zwraca wejście bez kopii; inaczej **kopię** z ustawionym
+        ``email`` (oryginalne klucze źródłowe zostają zachowane).
+        """
+        email = cls._resolve_email(claims)
+        if claims.get("email") == email:
             return claims
-        return {**claims, "email": claims["mail"]}
+        return {**claims, "email": email}
 
     def get_userinfo(self, access_token, id_token, payload):
         # Jedyny chokepoint: znormalizuj claimy z userinfo, zanim trafią do
