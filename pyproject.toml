@@ -142,7 +142,7 @@ dependencies = [
     "gunicorn>=26.0.0", # authserver WSGI runner (moved from docker/authserver build-time uv pip install)
     "watchdog>=5.0.3", # --reload mode dla uvicorn/celery w dev compose (moved from entrypoint `uv pip install`)
     "sqlparse>=0.5.4", # Dependabot: transitive via Django, bumped to fix DoS in format_list_of_tuples
-    "django-channels-broadcast>=0.2.0",
+    "django-channels-broadcast>=0.2.1",
     "django-countdown>=0.2.0",
     "django-formdefaults>=0.6.2",
     # django-pg-baseline: zewnetrzny pakiet zarzadzajacy baseline.sql + monkey-patch
