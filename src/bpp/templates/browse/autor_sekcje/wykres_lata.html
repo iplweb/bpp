@@ -1,0 +1,15 @@
+{# Wykres słupkowy publikacji w latach. Oczekuje: dane.dane (lista (rok, liczba)), dane.maks. #}
+<div class="author-info-section autor-page__sekcja">
+    <h3><i class="fi-graph-bar autor-page__icon--mr-sm"></i>{{ nazwa }}</h3>
+    <div class="autor-page__wykres-lata">
+        {% for rok, liczba in dane.dane %}
+            <div class="autor-page__slupek" title="{{ rok }}: {{ liczba }}">
+                <div class="autor-page__slupek-liczba">{{ liczba }}</div>
+                <div class="autor-page__slupek-bar"
+                     style="height: {% widthratio liczba dane.maks 120 %}px"></div>
+                <div class="autor-page__slupek-rok">{{ rok }}</div>
+            </div>
+        {% endfor %}
+    </div>
+</div>
+<div class="shaded-hr-div-small"></div>

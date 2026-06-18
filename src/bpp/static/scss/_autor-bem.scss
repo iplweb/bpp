@@ -315,4 +315,113 @@
   &__icon--white {
     color: white;
   }
+
+  // --- Profil: zdjęcie/awatar w nagłówku ---
+  &__avatar {
+    width: 120px;
+    height: 120px;
+    object-fit: cover;
+    border-radius: 8px;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
+  }
+
+  // --- Profil: linki do raportu autora ---
+  &__raport-links {
+    margin: 1rem 0;
+  }
+
+  &__raport-links-buttons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+
+  // --- Profil: sekcje treści ---
+  &__sekcja {
+    margin-bottom: 1rem;
+  }
+
+  &__lista-prac {
+    line-height: 1.7;
+
+    li {
+      margin-bottom: 0.6rem;
+    }
+  }
+
+  &__praca-link {
+    font-size: 0.85em;
+    white-space: nowrap;
+  }
+
+  &__biogram-tresc {
+    line-height: 1.6;
+  }
+
+  // Tabele statystyk (charakter / dyscypliny / źródła / punkty)
+  &__staty {
+    width: auto;
+    min-width: 320px;
+
+    td,
+    th {
+      padding: 4px 12px;
+    }
+
+    td:last-child,
+    th:last-child {
+      text-align: right;
+    }
+  }
+
+  // Wykres słupkowy publikacji w latach
+  &__wykres-lata {
+    display: flex;
+    align-items: flex-end;
+    flex-wrap: wrap;
+    gap: 6px;
+    padding-top: 10px;
+  }
+
+  &__slupek {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-end;
+    min-width: 34px;
+  }
+
+  &__slupek-bar {
+    width: 22px;
+    min-height: 2px;
+    background: #2c3e50;
+    border-radius: 2px 2px 0 0;
+  }
+
+  &__slupek-rok {
+    font-size: 0.7rem;
+    margin-top: 3px;
+    transform: rotate(-45deg);
+  }
+
+  &__slupek-liczba {
+    font-size: 0.7rem;
+    color: #555;
+  }
+
+  // Lista współautorów
+  &__wspolautorzy {
+    list-style: none;
+    margin-left: 0;
+    columns: 2;
+
+    @media screen and (max-width: 39.99875em) {
+      columns: 1;
+    }
+  }
+
+  &__wspolautor-liczba {
+    color: #777;
+    font-size: 0.85em;
+  }
 }

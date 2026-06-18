@@ -1,0 +1,18 @@
+{# Liczba prac wg charakteru formalnego. Oczekuje: dane.wiersze, dane.suma. #}
+<div class="author-info-section autor-page__sekcja">
+    <h3><i class="fi-graph-pie autor-page__icon--mr-sm"></i>{{ nazwa }}</h3>
+    <table class="autor-page__staty">
+        <thead>
+            <tr><th>Charakter formalny</th><th>Liczba prac</th></tr>
+        </thead>
+        <tbody>
+            {% for nazwa_charakteru, liczba in dane.wiersze %}
+                <tr><td>{{ nazwa_charakteru }}</td><td>{{ liczba }}</td></tr>
+            {% endfor %}
+        </tbody>
+        <tfoot>
+            <tr><th>Razem</th><th>{{ dane.suma }}</th></tr>
+        </tfoot>
+    </table>
+</div>
+<div class="shaded-hr-div-small"></div>

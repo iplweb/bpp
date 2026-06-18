@@ -161,9 +161,55 @@ class AutorView(DetailView):
                 Q(primary_author=self.object) | Q(secondary_author=self.object)
             ).exists()
         )
+
+        from bpp.profil_autora_dane import przygotuj_sekcje
+
+        request = getattr(self, "request", None)
         return super().get_context_data(
-            typy=TYPY, ma_powiazania=ma_powiazania, **kwargs
+            typy=TYPY,
+            ma_powiazania=ma_powiazania,
+            sekcje_profilu=przygotuj_sekcje(self.object, request),
+            raport_links=self._raport_links(request),
+            **kwargs,
         )
+
+    def _raport_links(self, request):
+        """Linki do raportu autora — tylko gdy raport jest widoczny dla
+        oglądającego (reużycie ``DefinicjaRaportu.widoczny_dla``). Trzy linki:
+        bieżący rok, ostatnie 4 lata oraz szczegółowy formularz."""
+        if request is None:
+            return []
+
+        from nowe_raporty.models import DefinicjaRaportu
+
+        for definicja in DefinicjaRaportu.objects.filter(slug="raport-autorow"):
+            if definicja.widoczny_dla(request):
+                break
+        else:
+            return []
+
+        rok = timezone.now().date().year
+        pk = self.object.pk
+        return [
+            {
+                "label": f"Raport za rok {rok}",
+                "url": reverse(
+                    "nowe_raporty:raport_generuj",
+                    args=["raport-autorow", pk, rok, rok],
+                ),
+            },
+            {
+                "label": "Raport za ostatnie 4 lata",
+                "url": reverse(
+                    "nowe_raporty:raport_generuj",
+                    args=["raport-autorow", pk, rok - 3, rok],
+                ),
+            },
+            {
+                "label": "Raport szczegółowy…",
+                "url": reverse("nowe_raporty:raport_form", args=["raport-autorow"]),
+            },
+        ]
 
 
 LITERKI = "ABCDEFGHIJKLMNOPQRSTUVWYXZ"

@@ -1,0 +1,14 @@
+{# Współdzielony render listy prac (Rekord). Oczekuje: nazwa, dane.prace. #}
+<div class="author-info-section autor-page__sekcja autor-page__sekcja--lista">
+    <h3><i class="fi-list-bullet autor-page__icon--mr-sm"></i>{{ nazwa }}</h3>
+    <ol class="autor-page__lista-prac">
+        {% for praca in dane.prace %}
+            <li class="autor-page__praca">
+                {{ praca.opis_bibliograficzny_cache|safe }}
+                <a href="{{ praca.get_absolute_url }}"
+                   class="autor-page__praca-link">[szczegóły]</a>
+            </li>
+        {% endfor %}
+    </ol>
+</div>
+<div class="shaded-hr-div-small"></div>
