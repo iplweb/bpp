@@ -11,6 +11,7 @@ from model_bakery import baker
 
 from bpp.models import Uczelnia
 from pbn_import.models import ImportSession
+from pbn_import.utils.institution_import import znajdz_lub_utworz_obca_jednostke
 
 # ============================================================================
 # DASHBOARD VIEW TESTS
@@ -255,6 +256,30 @@ class TestImportDashboardView:
         assert my_wydzial in wydzialy
         assert foreign_wydzial not in wydzialy
 
+    def test_dashboard_warns_when_obca_jednostka_missing(self, django_user_model):
+        """Wejście na dashboard sygnalizuje brak obcej jednostki (gate-check)."""
+        client = Client()
+        user = baker.make(django_user_model, is_superuser=True)
+        baker.make(Uczelnia, pbn_integracja=True)
+        client.force_login(user)
+
+        response = client.get(reverse("pbn_import:dashboard"))
+
+        assert response.context["obca_jednostka_problem"] is not None
+        assert "Brak obcej jednostki" in response.content.decode("utf-8")
+
+    def test_dashboard_no_warning_when_obca_jednostka_present(self, django_user_model):
+        """Gdy obca jednostka jest skonfigurowana — brak ostrzeżenia."""
+        client = Client()
+        user = baker.make(django_user_model, is_superuser=True)
+        uczelnia = baker.make(Uczelnia, pbn_integracja=True)
+        znajdz_lub_utworz_obca_jednostke(uczelnia)
+        client.force_login(user)
+
+        response = client.get(reverse("pbn_import:dashboard"))
+
+        assert response.context["obca_jednostka_problem"] is None
+
     def test_dashboard_single_real_unit_renders_select_not_hidden(
         self, django_user_model
     ):
@@ -309,6 +334,7 @@ class TestStartImportView:
         # uzywaj_wydzialow=False → only the default unit is required.
         uczelnia = baker.make(Uczelnia, pbn_integracja=True, uzywaj_wydzialow=False)
         jednostka = baker.make(Jednostka, skupia_pracownikow=True, uczelnia=uczelnia)
+        znajdz_lub_utworz_obca_jednostke(uczelnia)
         client.force_login(user)
 
         with (
@@ -339,6 +365,7 @@ class TestStartImportView:
         uczelnia = baker.make(Uczelnia, pbn_integracja=True)
         wydzial = baker.make(Wydzial, nazwa="IT Department", uczelnia=uczelnia)
         jednostka = baker.make(Jednostka, skupia_pracownikow=True, uczelnia=uczelnia)
+        znajdz_lub_utworz_obca_jednostke(uczelnia)
         client.force_login(user)
 
         with (
@@ -375,6 +402,7 @@ class TestStartImportView:
         uczelnia.uzywaj_wydzialow = False
         uczelnia.save()
         jednostka = baker.make(Jednostka, skupia_pracownikow=True, uczelnia=uczelnia)
+        znajdz_lub_utworz_obca_jednostke(uczelnia)
 
         client = Client()
         user = baker.make(django_user_model, is_superuser=True)
@@ -472,6 +500,7 @@ class TestStartImportView:
         user = baker.make(django_user_model, is_superuser=True)
         uczelnia = baker.make(Uczelnia, pbn_integracja=True, uzywaj_wydzialow=False)
         jednostka = baker.make(Jednostka, skupia_pracownikow=True, uczelnia=uczelnia)
+        znajdz_lub_utworz_obca_jednostke(uczelnia)
         client.force_login(user)
 
         with (
@@ -503,6 +532,7 @@ class TestStartImportView:
         uczelnia = baker.make(Uczelnia, pbn_integracja=True, uzywaj_wydzialow=True)
         wydzial = baker.make(Wydzial, uczelnia=uczelnia)
         jednostka = baker.make(Jednostka, skupia_pracownikow=True, uczelnia=uczelnia)
+        znajdz_lub_utworz_obca_jednostke(uczelnia)
         client.force_login(user)
 
         with (
@@ -521,6 +551,28 @@ class TestStartImportView:
         session = ImportSession.objects.get(user=user)
         assert session.config["default_jednostka_id"] == jednostka.pk
         assert session.config["wydzial_id"] == wydzial.pk
+
+    def test_start_import_blocked_without_obca_jednostka(self, django_user_model):
+        """Gate-check: brak obcej jednostki uczelni → blokada startu importu."""
+        from bpp.models import Jednostka
+
+        client = Client()
+        user = baker.make(django_user_model, is_superuser=True)
+        uczelnia = baker.make(Uczelnia, pbn_integracja=True, uzywaj_wydzialow=False)
+        jednostka = baker.make(Jednostka, skupia_pracownikow=True, uczelnia=uczelnia)
+        # celowo NIE provisionujemy obcej jednostki
+        client.force_login(user)
+
+        with patch("pbn_import.tasks.run_pbn_import") as mock_task:
+            mock_task.delay.return_value = MagicMock(id="task-123")
+
+            client.post(
+                reverse("pbn_import:start"),
+                {"jednostka_domyslna_id": jednostka.pk},
+            )
+
+        assert not ImportSession.objects.filter(user=user).exists()
+        mock_task.delay.assert_not_called()
 
     def test_start_import_rejects_foreign_uczelnia_jednostka(self, django_user_model):
         """Gate-check: jednostka z innej uczelni niż request → blokada startu."""

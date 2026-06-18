@@ -20,6 +20,7 @@ from .models import (
     ImportSession,
 )
 from .utils.institution_import import (
+    sprawdz_obca_jednostka,
     znajdz_lub_utworz_jednostke_domyslna,
     znajdz_lub_utworz_wydzial_domyslny,
 )
@@ -94,6 +95,13 @@ class ImportDashboardView(LoginRequiredMixin, ImportPermissionMixin, TemplateVie
         context["pbn_configured"] = uczelnia and uczelnia.pbn_integracja
         context["uczelnia"] = uczelnia
         context["uzywaj_wydzialow"] = uczelnia.uzywaj_wydzialow if uczelnia else False
+
+        # Gate-check multi-hosted: obca jednostka MUSI istnieć i być podpięta do
+        # wydziału tej uczelni, inaczej import padnie na triggerze spójności.
+        # Sygnalizujemy to już przy wejściu na stronę (baner w szablonie).
+        context["obca_jednostka_problem"] = (
+            sprawdz_obca_jednostka(uczelnia) if uczelnia else None
+        )
 
         # Sprawdź czy użytkownik ma ważny token PBN
         context["pbn_token_valid"] = self.request.user.pbn_token_possibly_valid()
@@ -170,6 +178,39 @@ class ImportDashboardView(LoginRequiredMixin, ImportPermissionMixin, TemplateVie
 class StartImportView(LoginRequiredMixin, ImportPermissionMixin, View):
     """Start a new import session"""
 
+    @staticmethod
+    def _bledy_kontekstu_uczelni(uczelnia, jednostka, wydzial):
+        """Gate-check multi-hosted: spójność wybranych encji z uczelnią requestu.
+
+        Domyślna jednostka i wydział MUSZĄ należeć do tej samej uczelni, z której
+        idzie request (i do której pójdzie import) — inaczej import przypisywałby
+        autorów/prace do encji obcej uczelni (cichy wyciek danych między
+        tenantami). Egzekwujemy nawet przy zmanipulowanym formularzu (encje
+        zawężamy też w GET, ale POST musi się bronić sam). Dodatkowo obca
+        jednostka uczelni musi być skonfigurowana, bo krok institution_setup
+        padłby na triggerze ``bpp_jednostka_wydzial_sprawdz_uczelnia_id``.
+
+        Zwraca listę komunikatów błędów (pustą, gdy wszystko OK).
+        """
+        if uczelnia is None:
+            return []
+
+        errors = []
+        if jednostka is not None and jednostka.uczelnia_id != uczelnia.pk:
+            errors.append(
+                "Wybrana domyślna jednostka należy do innej uczelni niż ta, "
+                "z której uruchamiasz import."
+            )
+        if wydzial is not None and wydzial.uczelnia_id != uczelnia.pk:
+            errors.append(
+                "Wybrany domyślny wydział należy do innej uczelni niż ta, "
+                "z której uruchamiasz import."
+            )
+        obca_problem = sprawdz_obca_jednostka(uczelnia)
+        if obca_problem:
+            errors.append(obca_problem)
+        return errors
+
     def post(self, request):
         # Get configuration from POST data
         # Checkboxes are inverted - if checkbox is checked, we DON'T disable
@@ -203,23 +244,7 @@ class StartImportView(LoginRequiredMixin, ImportPermissionMixin, View):
         if uzywaj_wydzialow and wydzial is None:
             errors.append("Wybierz domyślny wydział przed rozpoczęciem importu.")
 
-        # Gate-check multi-hosted: domyślna jednostka i wydział MUSZĄ należeć do
-        # tej samej uczelni, z której idzie request (i do której pójdzie import).
-        # Inaczej import przypisywałby autorów/prace do encji obcej uczelni —
-        # cichy wyciek danych między tenantami. Egzekwujemy nawet gdy formularz
-        # został zmanipulowany (encje zawężamy też w GET, ale POST musi się bronić
-        # sam — nie ufamy danym z requestu).
-        if uczelnia is not None:
-            if jednostka is not None and jednostka.uczelnia_id != uczelnia.pk:
-                errors.append(
-                    "Wybrana domyślna jednostka należy do innej uczelni niż ta, "
-                    "z której uruchamiasz import."
-                )
-            if wydzial is not None and wydzial.uczelnia_id != uczelnia.pk:
-                errors.append(
-                    "Wybrany domyślny wydział należy do innej uczelni niż ta, "
-                    "z której uruchamiasz import."
-                )
+        errors += self._bledy_kontekstu_uczelni(uczelnia, jednostka, wydzial)
 
         if errors:
             for error in errors:

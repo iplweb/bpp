@@ -29,6 +29,16 @@
     </div>
     {% endif %}
 
+    {% if obca_jednostka_problem %}
+    <div class="callout alert">
+        <h5><span class="fi-alert"></span> Brak obcej jednostki</h5>
+        <p>{{ obca_jednostka_problem }}</p>
+        <p class="text-muted">Obca jednostka skupia autorów spoza uczelni i jest
+           wymagana do importu. Administrator powinien uruchomić polecenie
+           <code>python src/manage.py create_obca_jednostka</code>.</p>
+    </div>
+    {% endif %}
+
     {% if auto_cancelled_message %}
     <div class="callout alert">
         <h5><span class="fi-alert"></span> Import automatycznie anulowany</h5>

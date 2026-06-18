@@ -7,7 +7,9 @@ from bpp.models import Jednostka, Jednostka_Wydzial, Uczelnia, Wydzial
 from pbn_import.models import ImportLog, ImportSession
 from pbn_import.utils.institution_import import (
     InstitutionImporter,
+    sprawdz_obca_jednostka,
     znajdz_lub_utworz_jednostke_domyslna,
+    znajdz_lub_utworz_obca_jednostke,
     znajdz_lub_utworz_wydzial_domyslny,
     zrob_skrot,
 )
@@ -21,7 +23,10 @@ def session(db, django_user_model):
 
 @pytest.fixture
 def uczelnia(db):
-    return baker.make(Uczelnia)
+    # Krótki, realistyczny skrót — w multi-hosted nazwy domyślnych jednostek /
+    # wydziałów / obcej jednostki sufiksujemy skrótem uczelni (baker domyślnie
+    # generuje skrót max-length, co przepełniłoby kolumny po sufiksacji).
+    return baker.make(Uczelnia, skrot="UCZ")
 
 
 def test_zrob_skrot_keeps_uppercase_and_punctuation_only():
@@ -51,7 +56,22 @@ def test_find_or_create_default_wydzial_creates_with_generated_short_name(uczeln
 
     assert created is True
     assert wydzial.uczelnia == uczelnia
-    assert wydzial.skrot == "WT-J"
+    assert wydzial.skrot == "WT-J-UCZ"
+
+
+def test_find_or_create_default_wydzial_create_path_is_uczelnia_unique(db):
+    u1 = baker.make(Uczelnia, skrot="UML")
+    u2 = baker.make(Uczelnia, skrot="UAFM")
+
+    w1, c1 = znajdz_lub_utworz_wydzial_domyslny(u1)
+    w2, c2 = znajdz_lub_utworz_wydzial_domyslny(u2)
+
+    assert c1 is True and c2 is True
+    assert w1.nazwa == "Wydział Domyślny UML"
+    assert w2.nazwa == "Wydział Domyślny UAFM"
+    # Globalnie unikalne nazwa/skrot — drugi create nie może wywalić IntegrityError.
+    assert w1.skrot != w2.skrot
+    assert w1.skrot == "WD-UML"
 
 
 def test_find_or_create_default_jednostka_reuses_uczelnia_scoped_match(uczelnia):
@@ -73,9 +93,171 @@ def test_find_or_create_default_jednostka_creates_for_uczelnia(uczelnia):
     jednostka, created = znajdz_lub_utworz_jednostke_domyslna(uczelnia)
 
     assert created is True
-    assert jednostka.nazwa == "Jednostka Domyślna"
-    assert jednostka.skrot == "JD"
+    assert jednostka.nazwa == "Jednostka Domyślna UCZ"
+    assert jednostka.skrot == "JD-UCZ"
     assert jednostka.uczelnia == uczelnia
+
+
+def test_find_or_create_default_jednostka_create_path_is_uczelnia_unique(db):
+    u1 = baker.make(Uczelnia, skrot="UML")
+    u2 = baker.make(Uczelnia, skrot="UAFM")
+
+    j1, c1 = znajdz_lub_utworz_jednostke_domyslna(u1)
+    j2, c2 = znajdz_lub_utworz_jednostke_domyslna(u2)
+
+    assert c1 is True and c2 is True
+    assert j1.nazwa == "Jednostka Domyślna UML"
+    assert j2.nazwa == "Jednostka Domyślna UAFM"
+    # Globalnie unikalne nazwa/skrot — drugi create nie wywala IntegrityError.
+    assert j1.skrot != j2.skrot
+    assert j1.skrot == "JD-UML"
+
+
+def test_obca_jednostka_helper_creates_uczelnia_scoped(uczelnia):
+    obca, created = znajdz_lub_utworz_obca_jednostke(uczelnia)
+    uczelnia.refresh_from_db()
+
+    assert created is True
+    assert obca.nazwa == "Obca jednostka UCZ"
+    assert obca.skupia_pracownikow is False
+    assert obca.uczelnia == uczelnia
+    assert uczelnia.obca_jednostka == obca
+    assert Jednostka_Wydzial.objects.filter(
+        jednostka=obca,
+        wydzial__uczelnia=uczelnia,
+    ).exists()
+
+
+def test_obca_jednostka_helper_is_idempotent(uczelnia):
+    first, c1 = znajdz_lub_utworz_obca_jednostke(uczelnia)
+    second, c2 = znajdz_lub_utworz_obca_jednostke(uczelnia)
+
+    assert c1 is True
+    assert c2 is False
+    assert first == second
+    assert (
+        Jednostka.objects.filter(
+            uczelnia=uczelnia,
+            skupia_pracownikow=False,
+        ).count()
+        == 1
+    )
+
+
+def test_obca_jednostka_helper_reuses_existing_fk(uczelnia):
+    existing = baker.make(
+        Jednostka,
+        nazwa="Cokolwiek Obcego",
+        uczelnia=uczelnia,
+        skupia_pracownikow=False,
+    )
+    uczelnia.obca_jednostka = existing
+    uczelnia.save(update_fields=["obca_jednostka"])
+
+    obca, created = znajdz_lub_utworz_obca_jednostke(uczelnia)
+
+    assert created is False
+    assert obca == existing
+
+
+def test_obca_jednostka_helper_reuses_legacy_by_prefix(uczelnia):
+    legacy = baker.make(
+        Jednostka,
+        nazwa="Obca jednostka",
+        uczelnia=uczelnia,
+        skupia_pracownikow=False,
+    )
+
+    obca, created = znajdz_lub_utworz_obca_jednostke(uczelnia)
+    uczelnia.refresh_from_db()
+
+    assert created is False
+    assert obca == legacy
+    assert uczelnia.obca_jednostka == legacy
+
+
+def test_obca_jednostka_helper_two_uczelnie_no_collision(db):
+    u1 = baker.make(Uczelnia, skrot="UML")
+    u2 = baker.make(Uczelnia, skrot="UAFM")
+
+    o1, _ = znajdz_lub_utworz_obca_jednostke(u1)
+    o2, _ = znajdz_lub_utworz_obca_jednostke(u2)
+
+    assert o1.nazwa == "Obca jednostka UML"
+    assert o2.nazwa == "Obca jednostka UAFM"
+    assert o1 != o2
+
+
+def test_sprawdz_obca_jednostka_ok(uczelnia):
+    znajdz_lub_utworz_obca_jednostke(uczelnia)
+    uczelnia.refresh_from_db()
+
+    assert sprawdz_obca_jednostka(uczelnia) is None
+
+
+def test_sprawdz_obca_jednostka_brak_fk(uczelnia):
+    problem = sprawdz_obca_jednostka(uczelnia)
+
+    assert problem is not None
+    assert "create_obca_jednostka" in problem
+
+
+def test_sprawdz_obca_jednostka_cudza_uczelnia(uczelnia):
+    inna = baker.make(Uczelnia, skrot="INNA")
+    obca_innej = baker.make(Jednostka, uczelnia=inna, skupia_pracownikow=False)
+    uczelnia.obca_jednostka = obca_innej
+    uczelnia.save(update_fields=["obca_jednostka"])
+
+    assert sprawdz_obca_jednostka(uczelnia) is not None
+
+
+def test_sprawdz_obca_jednostka_skupia_pracownikow(uczelnia):
+    # Uczelnia.save() pilnuje invariantu przy zapisie uczelni, ale flaga może
+    # zostać przestawiona na samej Jednostce niezależnie (dryf). Walidator musi
+    # to wychwycić przed importem.
+    obca = baker.make(Jednostka, uczelnia=uczelnia, skupia_pracownikow=False)
+    uczelnia.obca_jednostka = obca
+    uczelnia.save(update_fields=["obca_jednostka"])
+    obca.skupia_pracownikow = True
+    obca.save(update_fields=["skupia_pracownikow"])
+    uczelnia.refresh_from_db()
+
+    assert sprawdz_obca_jednostka(uczelnia) is not None
+
+
+def test_sprawdz_obca_jednostka_bez_wydzialu(uczelnia):
+    obca = baker.make(Jednostka, uczelnia=uczelnia, skupia_pracownikow=False)
+    uczelnia.obca_jednostka = obca
+    uczelnia.save(update_fields=["obca_jednostka"])
+
+    assert sprawdz_obca_jednostka(uczelnia) is not None
+
+
+def test_institution_importer_does_not_collide_with_other_uczelnia_obca(session, db):
+    # Uczelnia A już ma globalnie-unikalną "Obca jednostka" (legacy).
+    uczelnia_a = baker.make(Uczelnia, skrot="UA")
+    baker.make(
+        Jednostka,
+        nazwa="Obca jednostka",
+        skrot="O",
+        uczelnia=uczelnia_a,
+        skupia_pracownikow=False,
+    )
+
+    # Import dla uczelni B nie może trafić w cudzą "Obca jednostka" ani wywalić
+    # triggera bpp_jednostka_wydzial_sprawdz_uczelnia_id.
+    uczelnia_b = baker.make(Uczelnia, skrot="UB")
+    result = InstitutionImporter(session, uczelnia=uczelnia_b).run()
+
+    uczelnia_b.refresh_from_db()
+    obca_b = result["obca_jednostka"]
+    assert obca_b.uczelnia == uczelnia_b
+    assert obca_b.nazwa == "Obca jednostka UB"
+    assert uczelnia_b.obca_jednostka == obca_b
+    assert Jednostka_Wydzial.objects.filter(
+        jednostka=obca_b,
+        wydzial__uczelnia=uczelnia_b,
+    ).exists()
 
 
 def test_institution_importer_requires_uczelnia(session):
@@ -104,9 +286,9 @@ def test_institution_importer_creates_defaults_links_and_session_config(
     jednostka = result["jednostka"]
     obca_jednostka = result["obca_jednostka"]
 
-    assert wydzial.nazwa == "Wydział Testów"
-    assert jednostka.nazwa == "Jednostka Domyślna"
-    assert obca_jednostka.nazwa == "Obca jednostka"
+    assert wydzial.nazwa == "Wydział Testów UCZ"
+    assert jednostka.nazwa == "Jednostka Domyślna UCZ"
+    assert obca_jednostka.nazwa == "Obca jednostka UCZ"
     assert obca_jednostka.skupia_pracownikow is False
     assert uczelnia.obca_jednostka == obca_jednostka
     assert Jednostka_Wydzial.objects.filter(
