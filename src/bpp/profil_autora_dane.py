@@ -29,7 +29,9 @@ from bpp.profil_autora import (
     KLUCZ_STATYSTYKI_CHARAKTER,
     KLUCZ_WSPOLAUTORZY,
     KLUCZ_WYBRANE_PUBLIKACJE,
+    KLUCZ_WYKRES_IF_LATA,
     KLUCZ_WYKRES_LATA,
+    KLUCZ_WYKRES_PK_LATA,
     KLUCZ_ZRODLA,
 )
 
@@ -45,6 +47,26 @@ def _prace(autor):
     from bpp.models import Rekord
 
     return Rekord.objects.prace_autora(autor)
+
+
+def _agreguj_po_latach(pary):
+    """Zsumuj wartości w obrębie roku.
+
+    ``pary`` — iterowalne ``(rok, wartosc)``. Pomija wiersze z ``None`` w roku
+    lub wartości. Zwraca ``(dane, maks, suma)``, gdzie ``dane`` to posortowana
+    rosnąco po roku lista ``(rok, suma_w_roku)``. Dla pustego wejścia zwraca
+    ``([], 0, 0)``.
+    """
+    licznik = {}
+    for rok, wartosc in pary:
+        if rok is None or wartosc is None:
+            continue
+        licznik[rok] = licznik.get(rok, 0) + wartosc
+    if not licznik:
+        return [], 0, 0
+    dane = sorted(licznik.items())
+    wartosci = list(licznik.values())
+    return dane, max(wartosci), sum(wartosci)
 
 
 # --- buildery sekcji -------------------------------------------------------
@@ -114,7 +136,27 @@ def _wykres_lata(autor, limit, request):
         return None
     dane = sorted(licznik.items())
     maks = max(licznik.values())
-    return {"dane": dane, "maks": maks}
+    return {"dane": dane, "maks": maks, "etykieta": "prac"}
+
+
+def _wykres_pk_lata(autor, limit, request):
+    # Suma punktów MNiSW (punkty_kbn) na rok. DISTINCT z włączonym ``id``
+    # neutralizuje duplikaty z joinu ``autorzy`` (rok/punkty są funkcją id).
+    triple = _prace(autor).values_list("id", "rok", "punkty_kbn").distinct()
+    dane, maks, _suma = _agreguj_po_latach((rok, pk) for _id, rok, pk in triple)
+    if not dane:
+        return None
+    return {"dane": dane, "maks": maks, "etykieta": "pkt"}
+
+
+def _wykres_if_lata(autor, limit, request):
+    # Suma Impact Factor na rok; sekcja auto-ukrywana, gdy suma IF == 0
+    # (autorzy bez prac z IF nie powinni widzieć pustego wykresu).
+    triple = _prace(autor).values_list("id", "rok", "impact_factor").distinct()
+    dane, maks, suma = _agreguj_po_latach((rok, if_) for _id, rok, if_ in triple)
+    if not dane or not suma:
+        return None
+    return {"dane": dane, "maks": maks, "etykieta": "IF"}
 
 
 def _punkty_lata(autor, limit, request):
@@ -182,6 +224,8 @@ _BUILDERY = {
     KLUCZ_WYBRANE_PUBLIKACJE: _wybrane_publikacje,
     KLUCZ_STATYSTYKI_CHARAKTER: _statystyki_charakter,
     KLUCZ_WYKRES_LATA: _wykres_lata,
+    KLUCZ_WYKRES_PK_LATA: _wykres_pk_lata,
+    KLUCZ_WYKRES_IF_LATA: _wykres_if_lata,
     KLUCZ_PUNKTY_LATA: _punkty_lata,
     KLUCZ_DYSCYPLINY: _dyscypliny,
     KLUCZ_ZRODLA: _zrodla,
