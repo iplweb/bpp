@@ -1,15 +1,15 @@
 {# Współdzielony render listy prac (Rekord). Oczekuje: nazwa, dane.prace. #}
-{# Cała pozycja jest klikalna: data-href + delegowany JS w autor.html. #}
-{# NIE zagnieżdżamy <a> w <a> — opis_bibliograficzny_cache bywa z linkami #}
-{# (DOI itp.), które delegowany handler przepuszcza. #}
+{# Cała pozycja klikalna przez „stretched link": pusty <a> pokrywa kafelek #}
+{# (position:absolute), a wewnętrzne linki opisu (DOI) wynosimy ponad nakładkę #}
+{# przez z-index — działają samodzielnie. Brak zagnieżdżenia <a> w <a>, brak JS. #}
 <div class="author-info-section autor-page__sekcja autor-page__sekcja--lista">
     <h3><i class="fi-list-bullet autor-page__icon--mr-sm"></i>{{ nazwa }}</h3>
     <ol class="autor-page__lista-prac">
         {% for praca in dane.prace %}
-            <li class="autor-page__praca"
-                data-href="{{ praca.get_absolute_url }}"
-                role="link"
-                tabindex="0">
+            <li class="autor-page__praca">
+                <a class="autor-page__praca-overlay"
+                   href="{{ praca.get_absolute_url }}"
+                   aria-label="Szczegóły publikacji"></a>
                 <div class="autor-page__praca-opis">{{ praca.opis_bibliograficzny_cache|safe }}</div>
             </li>
         {% endfor %}

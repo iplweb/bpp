@@ -492,17 +492,6 @@ function copyEmbedCode() {
     document.body.removeChild(textarea);
 }
 
-// Nawigacja do szczegółów pracy. Akceptujemy WYŁĄCZNIE ścieżki względne
-// w obrębie serwisu (pojedynczy wiodący "/"), co odcina javascript:, //host
-// oraz http(s):// — bezpieczne i wystarczające (get_absolute_url zwraca
-// ścieżkę "/...").
-function nawigujDoPracy(praca) {
-    var href = praca.getAttribute('data-href');
-    if (href && /^\/[^/]/.test(href)) {
-        window.location.assign(href);
-    }
-}
-
 // Event delegation handlers
 document.addEventListener('click', function(e) {
     if (e.target.closest('[data-action="toggle-embed"]')) {
@@ -513,24 +502,12 @@ document.addEventListener('click', function(e) {
         e.preventDefault();
         copyEmbedCode();
     }
-    // Klik w całą pozycję listy prac → szczegóły. Pomijamy, gdy kliknięto
-    // wewnętrzny <a> (np. link DOI w opisie) — niech działa naturalnie.
-    var praca = e.target.closest('.autor-page__praca');
-    if (praca && !e.target.closest('a')) {
-        nawigujDoPracy(praca);
-    }
 });
 document.addEventListener('keydown', function(e) {
     var elem = e.target.closest('[data-keydown-toggle]');
     if (elem && (e.key === 'Enter' || e.key === ' ')) {
         e.preventDefault();
         toggleEmbedCode();
-    }
-    // Enter na sfokusowanej pozycji listy prac → szczegóły.
-    var praca = e.target.closest('.autor-page__praca');
-    if (praca && e.key === 'Enter' && !e.target.closest('a')) {
-        e.preventDefault();
-        nawigujDoPracy(praca);
     }
 });
 </script>

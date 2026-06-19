@@ -349,23 +349,24 @@
     }
   }
 
-  // Pozycja listy prac — cała klikalna (data-href + delegowany JS)
+  // Pozycja listy prac — cała klikalna przez nakładkę „stretched link"
   &__praca {
-    cursor: pointer;
+    position: relative;
     padding: 0.4rem 0.5rem;
     border-radius: 4px;
     transition: background-color 0.12s ease-in-out;
 
     &:hover,
-    &:focus {
+    &:focus-within {
       background-color: #f0f4f8;
-      outline: none;
     }
+  }
 
-    // wewnętrzne linki (DOI itp.) zachowują własny kursor
-    a {
-      cursor: pointer;
-    }
+  // Pusty link pokrywający całą pozycję (nawigacja do szczegółów)
+  &__praca-overlay {
+    position: absolute;
+    inset: 0;
+    z-index: 1;
   }
 
   // Skracanie długich opisów bibliograficznych (~3 linie)
@@ -375,6 +376,12 @@
     line-clamp: 3;
     -webkit-box-orient: vertical;
     overflow: hidden;
+
+    // wewnętrzne linki (DOI itp.) ponad nakładką → klikalne samodzielnie
+    a {
+      position: relative;
+      z-index: 2;
+    }
   }
 
   &__biogram-tresc {
