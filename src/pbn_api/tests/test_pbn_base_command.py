@@ -9,7 +9,7 @@ Reguła multi-hosted dla komend CLI:
 """
 
 import pytest
-from django.core.management import CommandError
+from django.core.management import CommandError, call_command
 
 from bpp.models import Uczelnia
 from pbn_api.management.commands.util import PBNBaseCommand
@@ -82,3 +82,28 @@ def test_explicit_uczelnia_id_selects_it(uczelnia):
 def test_unknown_uczelnia_id_raises(uczelnia):
     with pytest.raises(CommandError):
         PBNBaseCommand()._fill_pbn_credentials(_blank_options(uczelnia_id=999999))
+
+
+@pytest.mark.django_db
+def test_command_without_pbn_client_runs_with_multiple_uczelnie(uczelnia):
+    """Komenda dziedzicząca PBNBaseCommand, ale NIE wołająca get_client()
+    (np. ustawianie punktów po imporcie), musi działać przy wielu uczelniach
+    bez --uczelnia-id — credentiale PBN rozwiązujemy leniwie, dopiero gdy
+    realnie powstaje klient."""
+    _second_uczelnia()
+
+    # Nie powinno rzucić CommandError o ">1 uczelni" — komenda nie tyka PBN.
+    call_command("ustaw_zwrotnie_punkty_zwartych")
+
+
+@pytest.mark.django_db
+def test_get_client_still_requires_uczelnia_id_with_multiple(uczelnia):
+    """Gwarancja, że leniwość nie osłabia multi-hosted: komendy PBN-owe
+    nadal dostają twardy CommandError przy >1 uczelni bez --uczelnia-id —
+    tyle że dopiero przy budowie klienta, nie na starcie każdej komendy."""
+    _second_uczelnia()
+
+    cmd = PBNBaseCommand()
+    cmd._pbn_uczelnia_id = None
+    with pytest.raises(CommandError):
+        cmd.get_client()
