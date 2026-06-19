@@ -44,7 +44,9 @@
                 <li class="callout" data-pk="{{ w.pk }}">
                     <div class="grid-x grid-margin-x align-middle">
                         <div class="cell auto wpa-opis">
-                            {{ w.publikacja.opis_bibliograficzny_cache|default:w.publikacja.tytul_oryginalny }}
+                            {# Opis bibliograficzny ma HTML (<b>/<i>); striptags #}
+                            {# → czysty tekst, spójnie z podpowiedziami (JS). #}
+                            {{ w.publikacja.opis_bibliograficzny_cache|default:w.publikacja.tytul_oryginalny|striptags }}
                         </div>
                         <div class="cell shrink">
                             <div class="button-group small">

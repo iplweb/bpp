@@ -360,3 +360,5 @@ def test_autocomplete_zwraca_wlasne_prace(
     assert any("nowaka" in e for e in etykiety)
     # Praca Kowalskiego NIE pojawia się w wynikach Nowaka.
     assert not any("kowalskiego" in e for e in etykiety)
+    # Etykiety to czysty tekst — żadnych surowych tagów HTML z opisu.
+    assert all("<" not in e for e in etykiety)

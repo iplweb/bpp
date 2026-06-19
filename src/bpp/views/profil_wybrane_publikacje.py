@@ -19,6 +19,7 @@ Bezpieczeństwo jest tu krytyczne i egzekwowane SERWEROWO na każdej akcji:
 from django.contrib.contenttypes.models import ContentType
 from django.db import IntegrityError
 from django.http import Http404, JsonResponse
+from django.utils.html import strip_tags
 from django.views.generic import TemplateView, View
 
 from bpp.models import Rekord
@@ -38,8 +39,17 @@ def _wiersze_wybrane(autor):
 
 
 def _opis_rekordu(rekord):
-    """Czytelny opis pracy do listy/podpowiedzi (opis bibliograficzny > tytuł)."""
-    return rekord.opis_bibliograficzny_cache or rekord.tytul_oryginalny
+    """Czytelny opis pracy do podpowiedzi (opis bibliograficzny > tytuł).
+
+    Zwraca CZYSTY TEKST — opis bibliograficzny zawiera HTML (``<b>``/``<i>``),
+    a podpowiedzi w JS wstawiamy przez ``textContent`` (bezpiecznie, bez
+    ryzyka DOM-XSS), więc surowe tagi byłyby widoczne dosłownie. ``strip_tags``
+    daje spójny, czytelny tekst zarówno tu, jak i na liście (szablon: filtr
+    ``striptags``).
+    """
+    return strip_tags(
+        rekord.opis_bibliograficzny_cache or rekord.tytul_oryginalny
+    ).strip()
 
 
 class ProfilWybranePublikacjeView(WymagajAutoraMixin, TemplateView):
