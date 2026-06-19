@@ -46,3 +46,25 @@ def test_powyzej_10_lat_liniowy():
     html = _render(dane)
     assert "<polyline" in html
     assert "autor-page__slupek" not in html
+
+
+def test_liniowy_ma_os_Y_z_maks_i_siatka():
+    # Wariant liniowy (>10 lat): oś Y jako HTML (maks + 0) i siatka jako <line>.
+    dane = [(2000 + i, i + 2) for i in range(12)]
+    maks = max(w for _r, w in dane)
+    html = _render(dane)
+    assert "autor-page__wykres-osY" in html
+    assert str(maks) in html
+    assert "autor-page__wykres-siatka" in html
+    # Pełna i połówkowa linia siatki w grupie transformowanej.
+    assert html.count("<line") >= 2
+
+
+def test_slupkowy_ma_os_Y_z_maks_i_siatka():
+    # Wariant słupkowy (<=10 lat): etykieta maks (HTML) + górna linia siatki.
+    dane = [(2010 + i, (i + 1) * 4) for i in range(5)]
+    maks = max(w for _r, w in dane)
+    html = _render(dane)
+    assert "autor-page__wykres-osY" in html
+    assert str(maks) in html
+    assert "autor-page__wykres-siatka" in html

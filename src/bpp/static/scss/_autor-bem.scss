@@ -404,6 +404,47 @@
     }
   }
 
+  // Pole wykresu: oś Y (HTML) obok obszaru kreślenia (SVG / słupki)
+  &__wykres-pole {
+    display: flex;
+    align-items: stretch;
+    gap: 6px;
+  }
+
+  // Oś Y: etykieta maks u góry, 0 u dołu (HTML, bez dystorsji SVG)
+  &__wykres-osY {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    font-size: 0.7rem;
+    color: #555;
+    text-align: right;
+    flex: 0 0 auto;
+    min-width: 1.5rem;
+
+    // Wariant liniowy: SVG ma stałe 220px wysokości — dopasuj oś.
+    height: 220px;
+  }
+
+  // Oś Y dla wariantu słupkowego: 120px obszaru + miejsce na liczbę/rok.
+  &__wykres-osY--slupki {
+    height: auto;
+    justify-content: flex-start;
+    padding-top: 10px;
+
+    span:last-child {
+      margin-top: auto;
+      padding-bottom: 1.5rem;
+    }
+  }
+
+  // Linia siatki w SVG (wariant liniowy). Lekka szarość, bez dystorsji.
+  &__wykres-siatka {
+    stroke: #d0d0d0;
+    stroke-width: 1;
+    vector-effect: non-scaling-stroke;
+  }
+
   // Wykres słupkowy publikacji w latach
   &__wykres-lata {
     display: flex;
@@ -411,6 +452,24 @@
     flex-wrap: wrap;
     gap: 6px;
     padding-top: 10px;
+  }
+
+  // Słupki z górną linią siatki na wysokości maks (120px obszaru).
+  &__wykres-lata--siatka {
+    position: relative;
+    flex: 1 1 auto;
+  }
+
+  // Górna linia siatki dla słupków: pozioma kreska na poziomie maks.
+  &__wykres-siatka--slupki {
+    position: absolute;
+    left: 0;
+    right: 0;
+    // 10px padding-top + ~0.85rem liczby; linia na szczycie obszaru słupków.
+    top: calc(10px + 0.85rem);
+    height: 0;
+    border-top: 1px solid #d0d0d0;
+    pointer-events: none;
   }
 
   &__slupek {

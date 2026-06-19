@@ -7,25 +7,38 @@
         {# --- Wariant liniowy (SVG). Oś Y odwrócona przez transform, więc #}
         {# współrzędne liczymy widthratio bez odejmowania. --- #}
         {% with ostatni=dane.dane|length|add:"-1" %}
-            <svg class="autor-page__wykres-svg"
-                 viewBox="0 0 1000 220"
-                 preserveAspectRatio="none"
-                 role="img"
-                 aria-label="{{ nazwa }}">
-                <g transform="translate(0,200) scale(1,-1)">
-                    <polyline class="autor-page__wykres-linia"
-                              fill="none"
-                              points="{% for rok, wartosc in dane.dane %}{% widthratio forloop.counter0 ostatni 1000 %},{% widthratio wartosc dane.maks 200 %} {% endfor %}"/>
-                    {% for rok, wartosc in dane.dane %}
-                        <circle class="autor-page__wykres-punkt"
-                                cx="{% widthratio forloop.counter0 ostatni 1000 %}"
-                                cy="{% widthratio wartosc dane.maks 200 %}"
-                                r="6">
-                            <title>{{ rok }}: {{ wartosc }} {{ dane.etykieta }}</title>
-                        </circle>
-                    {% endfor %}
-                </g>
-            </svg>
+            {# Pole wykresu: oś Y (HTML, bez dystorsji) obok SVG z siatką. #}
+            <div class="autor-page__wykres-pole">
+                <div class="autor-page__wykres-osY">
+                    <span>{{ dane.maks }}</span>
+                    <span>0</span>
+                </div>
+                <svg class="autor-page__wykres-svg"
+                     viewBox="0 0 1000 220"
+                     preserveAspectRatio="none"
+                     role="img"
+                     aria-label="{{ nazwa }}">
+                    <g transform="translate(0,200) scale(1,-1)">
+                        {# Siatka: linia maks (y=200) i połówkowa (y=100). #}
+                        {# vector-effect zapobiega dystorsji grubości. #}
+                        <line class="autor-page__wykres-siatka"
+                              x1="0" y1="200" x2="1000" y2="200"/>
+                        <line class="autor-page__wykres-siatka"
+                              x1="0" y1="100" x2="1000" y2="100"/>
+                        <polyline class="autor-page__wykres-linia"
+                                  fill="none"
+                                  points="{% for rok, wartosc in dane.dane %}{% widthratio forloop.counter0 ostatni 1000 %},{% widthratio wartosc dane.maks 200 %} {% endfor %}"/>
+                        {% for rok, wartosc in dane.dane %}
+                            <circle class="autor-page__wykres-punkt"
+                                    cx="{% widthratio forloop.counter0 ostatni 1000 %}"
+                                    cy="{% widthratio wartosc dane.maks 200 %}"
+                                    r="6">
+                                <title>{{ rok }}: {{ wartosc }} {{ dane.etykieta }}</title>
+                            </circle>
+                        {% endfor %}
+                    </g>
+                </svg>
+            </div>
             <div class="autor-page__wykres-osX">
                 <span>{{ dane.dane|first|first }}</span>
                 <span>{{ dane.dane|last|first }}</span>
@@ -33,16 +46,25 @@
         {% endwith %}
     {% else %}
         {# --- Wariant słupkowy --- #}
-        <div class="autor-page__wykres-lata">
-            {% for rok, wartosc in dane.dane %}
-                <div class="autor-page__slupek"
-                     title="{{ rok }}: {{ wartosc }} {{ dane.etykieta }}">
-                    <div class="autor-page__slupek-liczba">{{ wartosc }}</div>
-                    <div class="autor-page__slupek-bar"
-                         style="height: {% widthratio wartosc dane.maks 120 %}px"></div>
-                    <div class="autor-page__slupek-rok">{{ rok }}</div>
-                </div>
-            {% endfor %}
+        <div class="autor-page__wykres-pole">
+            <div class="autor-page__wykres-osY autor-page__wykres-osY--slupki">
+                <span>{{ dane.maks }}</span>
+                <span>0</span>
+            </div>
+            <div class="autor-page__wykres-lata autor-page__wykres-lata--siatka">
+                {# Górna linia siatki na wysokości najwyższego słupka (120px). #}
+                <span class="autor-page__wykres-siatka
+                             autor-page__wykres-siatka--slupki"></span>
+                {% for rok, wartosc in dane.dane %}
+                    <div class="autor-page__slupek"
+                         title="{{ rok }}: {{ wartosc }} {{ dane.etykieta }}">
+                        <div class="autor-page__slupek-liczba">{{ wartosc }}</div>
+                        <div class="autor-page__slupek-bar"
+                             style="height: {% widthratio wartosc dane.maks 120 %}px"></div>
+                        <div class="autor-page__slupek-rok">{{ rok }}</div>
+                    </div>
+                {% endfor %}
+            </div>
         </div>
     {% endif %}
 </div>
