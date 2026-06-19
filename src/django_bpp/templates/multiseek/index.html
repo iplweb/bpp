@@ -16,6 +16,12 @@
         var djangoLanguageCode = '{{ LANGUAGE_CODE }}';
         var multiseekDateFormat = 'yyyy-mm-dd';
         var multiseekDateWeekStart = 1;
+
+        {# saveForm()/submitEvent() z multiseek.js czytaja window.multiseekCSRFToken #}
+        {# i wstawiaja go jako pole csrfmiddlewaretoken do POST-a (np. ./save_form/). #}
+        {# Renderowanie {{ csrf_token }} ustawia tez ciasteczko csrftoken. Bez tej #}
+        {# linii zapis formularza zwraca 403 CSRF — patrz FreshDesk #378. #}
+        var multiseekCSRFToken = '{{ csrf_token }}';
     </script>
     <script src="{% static 'multiseek/js/multiseek.js' %}"></script>
 
