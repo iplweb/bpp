@@ -86,6 +86,10 @@ from bpp.views.browse import (
     ZrodloView,
     bibtex_view,
 )
+from bpp.views.eksport_autora import (
+    AutorEksportBibtexView,
+    AutorEksportRisView,
+)
 from bpp.views.microsoft_auth_redirect import MicrosoftAuthRedirectView
 from bpp.views.oai import OAIView
 from bpp.views.profil_edycja import ProfilBiogramPodgladView, ProfilEdycjaView
@@ -295,6 +299,16 @@ urlpatterns = [
         r"^autor/(?P<pk>\d+)/powiazania/zrodla\.json$",
         GrafPowiazanZrodlaView.as_view(),
         name="browse_autor_powiazania_zrodla",
+    ),
+    url(
+        r"^autor/(?P<pk>\d+)/eksport\.bib$",
+        AutorEksportBibtexView.as_view(),
+        name="autor_eksport_bibtex",
+    ),
+    url(
+        r"^autor/(?P<pk>\d+)/eksport\.ris$",
+        AutorEksportRisView.as_view(),
+        name="autor_eksport_ris",
     ),
     url(r"^autor/(?P<slug>[\w-]+)/$", AutorView.as_view(), name="browse_autor"),
     url(r"^zrodla/$", ZrodlaView.as_view(), name="browse_zrodla"),
