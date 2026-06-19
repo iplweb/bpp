@@ -88,6 +88,7 @@ from bpp.views.browse import (
 )
 from bpp.views.microsoft_auth_redirect import MicrosoftAuthRedirectView
 from bpp.views.oai import OAIView
+from bpp.views.profil_edycja import ProfilBiogramPodgladView, ProfilEdycjaView
 from bpp.views.profile import ProfilUzytkownikaView
 from bpp.views.xlsx_issn_chunks import xlsx_issn_chunks
 from bpp.views.zapytanie import (
@@ -136,6 +137,16 @@ urlpatterns = [
         "profil/",
         ProfilUzytkownikaView.as_view(),
         name="profil-uzytkownika",
+    ),
+    path(
+        "profil/edycja/",
+        ProfilEdycjaView.as_view(),
+        name="profil-edycja",
+    ),
+    path(
+        "profil/edycja/podglad-biogramu/",
+        ProfilBiogramPodgladView.as_view(),
+        name="profil-biogram-podglad",
     ),
     url(
         r"^microsoft-auth-redirect/$",

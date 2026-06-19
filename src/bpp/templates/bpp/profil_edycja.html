@@ -1,0 +1,108 @@
+{% extends "base.html" %}
+
+{% block title %}Edytuj swój profil{% endblock %}
+
+{% block breadcrumbs %}
+    {{ block.super }}
+    <li><a href="/">Strona główna</a></li>
+    <li><a href="{% url 'bpp:profil-uzytkownika' %}">Mój profil</a></li>
+    <li class="current">Edycja</li>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="medium-10 medium-centered columns">
+        <h2><span class="fi-pencil"></span> Edytuj swój profil</h2>
+        <p class="lead">
+            Możesz zmienić swoje zdjęcie oraz biogram pokazywany na
+            <a href="{% url 'bpp:browse_autor' object.pk %}">Twojej podstronie autora</a>.
+        </p>
+
+        <form method="post" enctype="multipart/form-data" id="profil-edycja-form">
+            {% csrf_token %}
+            {{ form.non_field_errors }}
+
+            <fieldset class="fieldset">
+                <legend><span class="fi-photo"></span> Zdjęcie</legend>
+                {% if object.zdjecie %}
+                    <img src="{{ object.zdjecie.url }}"
+                         alt="{{ object }}"
+                         class="autor-page__avatar"/>
+                {% endif %}
+                <label for="{{ form.zdjecie.id_for_label }}">
+                    Nowe zdjęcie (zostanie przeskalowane do kwadratu, maks. 5 MB)
+                </label>
+                {{ form.zdjecie }}
+                {{ form.zdjecie.errors }}
+            </fieldset>
+
+            <fieldset class="fieldset">
+                <legend><span class="fi-quote"></span> Biogram</legend>
+                <label for="{{ form.biogram_format.id_for_label }}">Format</label>
+                {{ form.biogram_format }}
+                {{ form.biogram_format.errors }}
+
+                <div class="grid-x grid-margin-x">
+                    <div class="cell medium-6">
+                        <label for="{{ form.biogram.id_for_label }}">Treść</label>
+                        {{ form.biogram }}
+                        {{ form.biogram.errors }}
+                    </div>
+                    <div class="cell medium-6">
+                        <label>Podgląd na żywo</label>
+                        <div id="biogram-podglad"
+                             class="autor-page__biogram-tresc callout"></div>
+                    </div>
+                </div>
+            </fieldset>
+
+            <button type="submit" class="button primary large">
+                <span class="fi-save"></span> Zapisz zmiany
+            </button>
+            <a href="{% url 'bpp:profil-uzytkownika' %}" class="button secondary large">
+                Anuluj
+            </a>
+        </form>
+    </div>
+</div>
+
+<script>
+(function () {
+    var form = document.getElementById('profil-edycja-form');
+    var biogram = document.getElementById('{{ form.biogram.id_for_label }}');
+    var format = document.getElementById('{{ form.biogram_format.id_for_label }}');
+    var podglad = document.getElementById('biogram-podglad');
+    if (!form || !biogram || !format || !podglad) {
+        return;
+    }
+    var tokenInput = form.querySelector('input[name=csrfmiddlewaretoken]');
+    var token = tokenInput ? tokenInput.value : '';
+    var timer = null;
+
+    function odswiezPodglad() {
+        var dane = new FormData();
+        dane.append('biogram', biogram.value);
+        dane.append('biogram_format', format.value);
+        fetch('{% url "bpp:profil-biogram-podglad" %}', {
+            method: 'POST',
+            headers: {'X-CSRFToken': token},
+            body: dane
+        })
+            .then(function (r) { return r.json(); })
+            .then(function (d) { podglad.innerHTML = d.html; })
+            .catch(function () { /* podgląd jest opcjonalny */ });
+    }
+
+    function zaplanujPodglad() {
+        if (timer) {
+            window.clearTimeout(timer);
+        }
+        timer = window.setTimeout(odswiezPodglad, 300);
+    }
+
+    biogram.addEventListener('input', zaplanujPodglad);
+    format.addEventListener('change', zaplanujPodglad);
+    odswiezPodglad();
+})();
+</script>
+{% endblock %}
