@@ -93,6 +93,11 @@ from bpp.views.eksport_autora import (
 from bpp.views.microsoft_auth_redirect import MicrosoftAuthRedirectView
 from bpp.views.oai import OAIView
 from bpp.views.profil_edycja import ProfilBiogramPodgladView, ProfilEdycjaView
+from bpp.views.profil_wybrane_publikacje import (
+    ProfilWybranePublikacjeAkcjaView,
+    ProfilWybranePublikacjeAutocompleteView,
+    ProfilWybranePublikacjeView,
+)
 from bpp.views.profile import ProfilUzytkownikaView
 from bpp.views.xlsx_issn_chunks import xlsx_issn_chunks
 from bpp.views.zapytanie import (
@@ -151,6 +156,21 @@ urlpatterns = [
         "profil/edycja/podglad-biogramu/",
         ProfilBiogramPodgladView.as_view(),
         name="profil-biogram-podglad",
+    ),
+    path(
+        "profil/edycja/wybrane-publikacje/",
+        ProfilWybranePublikacjeView.as_view(),
+        name="profil-wybrane-publikacje",
+    ),
+    path(
+        "profil/edycja/wybrane-publikacje/akcja/",
+        ProfilWybranePublikacjeAkcjaView.as_view(),
+        name="profil-wybrane-publikacje-akcja",
+    ),
+    path(
+        "profil/edycja/wybrane-publikacje/autocomplete/",
+        ProfilWybranePublikacjeAutocompleteView.as_view(),
+        name="profil-wybrane-publikacje-autocomplete",
     ),
     url(
         r"^microsoft-auth-redirect/$",

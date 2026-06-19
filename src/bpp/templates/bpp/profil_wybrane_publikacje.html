@@ -1,0 +1,247 @@
+{% extends "base.html" %}
+
+{% block title %}Wyróżnione publikacje{% endblock %}
+
+{% block breadcrumbs %}
+    {{ block.super }}
+    <li><a href="/">Strona główna</a></li>
+    <li><a href="{% url 'bpp:profil-uzytkownika' %}">Mój profil</a></li>
+    <li><a href="{% url 'bpp:profil-edycja' %}">Edycja</a></li>
+    <li class="current">Wyróżnione publikacje</li>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="medium-10 medium-centered columns">
+        <h2><span class="fi-star"></span> Wyróżnione publikacje</h2>
+        <p class="lead">
+            Wskaż prace, które mają być pokazane na początku
+            <a href="{% url 'bpp:browse_autor' request.user.autor.pk %}">Twojej
+            podstrony autora</a>. Możesz dodawać, usuwać i zmieniać ich kolejność.
+        </p>
+
+        {% csrf_token %}
+
+        <fieldset class="fieldset">
+            <legend><span class="fi-plus"></span> Dodaj publikację</legend>
+            <label for="wpa-szukaj">
+                Wyszukaj wśród swoich prac i wybierz, by wyróżnić:
+            </label>
+            <input type="text" id="wpa-szukaj"
+                   autocomplete="off"
+                   placeholder="Zacznij wpisywać tytuł swojej pracy…"/>
+            <ul id="wpa-podpowiedzi" class="no-bullet menu vertical"></ul>
+        </fieldset>
+
+        <fieldset class="fieldset">
+            <legend><span class="fi-star"></span> Twoje wyróżnione prace</legend>
+            <p id="wpa-pusta"{% if wybrane %} hidden{% endif %}>
+                <span class="fi-info"></span>
+                Nie wyróżniono jeszcze żadnej pracy.
+            </p>
+            <ol id="wpa-lista" class="no-bullet">
+                {% for w in wybrane %}
+                <li class="callout" data-pk="{{ w.pk }}">
+                    <div class="grid-x grid-margin-x align-middle">
+                        <div class="cell auto wpa-opis">
+                            {{ w.publikacja.opis_bibliograficzny_cache|default:w.publikacja.tytul_oryginalny }}
+                        </div>
+                        <div class="cell shrink">
+                            <div class="button-group small">
+                                <button type="button" class="button secondary wpa-gora"
+                                        title="W górę">
+                                    <span class="fi-arrow-up"></span>
+                                </button>
+                                <button type="button" class="button secondary wpa-dol"
+                                        title="W dół">
+                                    <span class="fi-arrow-down"></span>
+                                </button>
+                                <button type="button" class="button alert wpa-usun"
+                                        title="Usuń z wyróżnionych">
+                                    <span class="fi-trash"></span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </li>
+                {% endfor %}
+            </ol>
+        </fieldset>
+
+        <a href="{% url 'bpp:profil-edycja' %}" class="button secondary large">
+            <span class="fi-arrow-left"></span> Powrót do edycji profilu
+        </a>
+    </div>
+</div>
+
+{# Pojedynczy szablon wiersza listy — klonowany przy dodawaniu w JS. #}
+<template id="wpa-szablon-wiersza">
+    <li class="callout" data-pk="">
+        <div class="grid-x grid-margin-x align-middle">
+            <div class="cell auto wpa-opis"></div>
+            <div class="cell shrink">
+                <div class="button-group small">
+                    <button type="button" class="button secondary wpa-gora"
+                            title="W górę">
+                        <span class="fi-arrow-up"></span>
+                    </button>
+                    <button type="button" class="button secondary wpa-dol"
+                            title="W dół">
+                        <span class="fi-arrow-down"></span>
+                    </button>
+                    <button type="button" class="button alert wpa-usun"
+                            title="Usuń z wyróżnionych">
+                        <span class="fi-trash"></span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </li>
+</template>
+
+<script>
+(function () {
+    var URL_AKCJA = '{% url "bpp:profil-wybrane-publikacje-akcja" %}';
+    var URL_AC = '{% url "bpp:profil-wybrane-publikacje-autocomplete" %}';
+
+    var lista = document.getElementById('wpa-lista');
+    var pusta = document.getElementById('wpa-pusta');
+    var szukaj = document.getElementById('wpa-szukaj');
+    var podpowiedzi = document.getElementById('wpa-podpowiedzi');
+    var szablon = document.getElementById('wpa-szablon-wiersza');
+    var tokenInput = document.querySelector('input[name=csrfmiddlewaretoken]');
+    var token = tokenInput ? tokenInput.value : '';
+    if (!lista || !szukaj || !szablon) {
+        return;
+    }
+
+    function naglowki() {
+        return {'X-CSRFToken': token};
+    }
+
+    {# Wyślij akcję na serwer; dane jako FormData (akcja + pola). #}
+    function wyslij(dane) {
+        return fetch(URL_AKCJA, {
+            method: 'POST',
+            headers: naglowki(),
+            body: dane
+        }).then(function (r) {
+            return r.json().then(function (j) {
+                return {ok: r.ok, status: r.status, json: j};
+            });
+        });
+    }
+
+    function odswiezPusta() {
+        if (!pusta) {
+            return;
+        }
+        pusta.hidden = lista.children.length > 0;
+    }
+
+    {# Zbierz aktualną kolejność PK i utrwal ją na serwerze. #}
+    function zapiszKolejnosc() {
+        var dane = new FormData();
+        dane.append('akcja', 'przesun');
+        Array.prototype.forEach.call(lista.children, function (li) {
+            dane.append('kolejnosc', li.getAttribute('data-pk'));
+        });
+        wyslij(dane);
+    }
+
+    function podepnijPrzyciski(li) {
+        li.querySelector('.wpa-usun').addEventListener('click', function () {
+            var pk = li.getAttribute('data-pk');
+            var dane = new FormData();
+            dane.append('akcja', 'usun');
+            dane.append('pk', pk);
+            wyslij(dane).then(function (wynik) {
+                if (wynik.ok) {
+                    li.parentNode.removeChild(li);
+                    odswiezPusta();
+                }
+            });
+        });
+        li.querySelector('.wpa-gora').addEventListener('click', function () {
+            var poprz = li.previousElementSibling;
+            if (poprz) {
+                lista.insertBefore(li, poprz);
+                zapiszKolejnosc();
+            }
+        });
+        li.querySelector('.wpa-dol').addEventListener('click', function () {
+            var nast = li.nextElementSibling;
+            if (nast) {
+                lista.insertBefore(nast, li);
+                zapiszKolejnosc();
+            }
+        });
+    }
+
+    {# Podepnij istniejące wiersze (wyrenderowane serwerowo). #}
+    Array.prototype.forEach.call(lista.children, podepnijPrzyciski);
+
+    function dodajWiersz(pk, opis) {
+        var li = szablon.content.firstElementChild.cloneNode(true);
+        li.setAttribute('data-pk', pk);
+        li.querySelector('.wpa-opis').textContent = opis;
+        lista.appendChild(li);
+        podepnijPrzyciski(li);
+        odswiezPusta();
+    }
+
+    function wyczyscPodpowiedzi() {
+        podpowiedzi.innerHTML = '';
+    }
+
+    function dodajPrace(id, opis) {
+        var dane = new FormData();
+        dane.append('akcja', 'dodaj');
+        dane.append('rekord', id);
+        wyslij(dane).then(function (wynik) {
+            if (wynik.ok && wynik.json.ok && !wynik.json.duplikat) {
+                dodajWiersz(wynik.json.pk, opis);
+            }
+            szukaj.value = '';
+            wyczyscPodpowiedzi();
+        });
+    }
+
+    function pokazPodpowiedzi(wyniki) {
+        wyczyscPodpowiedzi();
+        wyniki.forEach(function (w) {
+            var li = document.createElement('li');
+            var a = document.createElement('a');
+            a.href = '#';
+            a.textContent = w.label;
+            a.addEventListener('click', function (e) {
+                e.preventDefault();
+                dodajPrace(w.id, w.label);
+            });
+            li.appendChild(a);
+            podpowiedzi.appendChild(li);
+        });
+    }
+
+    var timer = null;
+    function szukajPodpowiedzi() {
+        var q = szukaj.value.trim();
+        if (q.length < 2) {
+            wyczyscPodpowiedzi();
+            return;
+        }
+        fetch(URL_AC + '?q=' + encodeURIComponent(q), {headers: naglowki()})
+            .then(function (r) { return r.json(); })
+            .then(function (d) { pokazPodpowiedzi(d.results || []); })
+            .catch(function () { /* podpowiedzi są opcjonalne */ });
+    }
+
+    szukaj.addEventListener('input', function () {
+        if (timer) {
+            window.clearTimeout(timer);
+        }
+        timer = window.setTimeout(szukajPodpowiedzi, 250);
+    });
+})();
+</script>
+{% endblock %}
