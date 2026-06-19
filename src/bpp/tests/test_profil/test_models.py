@@ -8,9 +8,10 @@ from bpp.models import Autor
 
 
 @pytest.mark.django_db
-def test_autor_ma_domyslnie_pusty_uklad():
-    autor = baker.make(Autor)
-    assert autor.uklad_profilu is None
+def test_uczelnia_ma_domyslnie_pusty_uklad_profilu_autora(uczelnia):
+    # Układ profilu autora jest globalny per-Uczelnia; domyślnie None (= układ
+    # domyślny z rejestru sekcji).
+    assert uczelnia.uklad_profilu_autora is None
 
 
 @pytest.mark.django_db

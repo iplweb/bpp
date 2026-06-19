@@ -167,8 +167,9 @@ class AutorView(DetailView):
         request = getattr(self, "request", None)
         return super().get_context_data(
             typy=TYPY,
+            uczelnia=uczelnia,
             ma_powiazania=ma_powiazania,
-            sekcje_profilu=przygotuj_sekcje(self.object, request),
+            sekcje_profilu=przygotuj_sekcje(self.object, uczelnia, request),
             raport_links=self._raport_links(request),
             **kwargs,
         )

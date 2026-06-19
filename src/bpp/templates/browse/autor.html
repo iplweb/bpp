@@ -11,15 +11,9 @@
 {% endblock %}
 
 {% block content %}
+{# === Nagłówek (full-width nad gridem): H1 + funkcja + przyciski staff === #}
 <div class="author-header">
     <div class="grid-x grid-margin-x align-middle">
-        {% if autor.zdjecie %}
-            <div class="cell shrink">
-                <img src="{{ autor.zdjecie.url }}"
-                     alt="{{ autor }}"
-                     class="autor-page__avatar"/>
-            </div>
-        {% endif %}
         <div class="cell auto">
             <h1 class="autor-page__heading">{{ autor }}</h1>
             {% if autor.aktualna_funkcja.pokazuj_za_nazwiskiem %}
@@ -47,7 +41,7 @@
     </div>
 </div>
 
-<!-- Quick Actions -->
+{# Quick Actions (full-width): pokaż wszystkie prace + sieć powiązań #}
 <div class="autor-page__quick-actions">
     <form method="post"
           action="{% url "bpp:browse_build_search" %}"
@@ -70,9 +64,28 @@
 
 <div class="shaded-hr-div-small"></div>
 
-<div class="row">
-    <div class="large-12 columns">
-        <!-- Current workplace and affiliation -->
+{# === Układ 2-kolumnowy (Foundation grid w HTML; stackuje się na małych) === #}
+<div class="grid-x grid-margin-x autor-page__uklad">
+    {# --- LEWA kolumna (large-4): wizytówka + tożsamość + wyszukiwarka --- #}
+    <div class="cell large-4 autor-page__kolumna-lewa">
+        {% if autor.zdjecie %}
+            <div class="author-info-section autor-page__avatar-section">
+                <img src="{{ autor.zdjecie.url }}"
+                     alt="{{ autor }}"
+                     class="autor-page__avatar"/>
+            </div>
+        {% endif %}
+
+        {# Biogram (stały — nie jest już konfigurowalną sekcją) #}
+        {% if autor.biogram_html %}
+            <div class="author-info-section autor-page__biogram">
+                <h3><i class="fi-quote autor-page__icon--mr-sm"></i> Biogram</h3>
+                <div class="autor-page__biogram-tresc">{{ autor.biogram_html|safe }}</div>
+            </div>
+            <div class="shaded-hr-div-small"></div>
+        {% endif %}
+
+        {# Aktualna jednostka #}
         {% if autor.aktualna_jednostka and autor.aktualna_jednostka != uczelnia.obca_jednostka %}
             <div class="author-info-section">
                 <h3><i class="fi-home"></i> Aktualna jednostka</h3>
@@ -81,7 +94,10 @@
             <div class="shaded-hr-div-small"></div>
         {% endif %}
 
-        <!-- Disciplines -->
+        {# Historia zatrudnienia — wstrzykiwana w §3.7 (osobny commit) #}
+        {% include "browse/autor_sekcje/_historia_zatrudnienia.html" %}
+
+        {# Dyscypliny naukowe (aktualne) #}
         {% if autor.aktualna_dyscyplina or autor.aktualna_subdyscyplina %}
             <div class="author-info-section">
                 <h3><i class="fi-book"></i> Dyscypliny naukowe</h3>
@@ -95,77 +111,78 @@
             <div class="shaded-hr-div-small"></div>
         {% endif %}
 
-        <!-- External identifiers -->
+        {# Identyfikatory zewnętrzne #}
         <div class="author-info-section">
             <h3><i class="fi-link"></i> Identyfikatory</h3>
-                <div class="grid-x grid-margin-x autor-page__grid-gap">
-                    {% if autor.orcid %}
-                        <div class="cell shrink">
-                            <div class="callout autor-page__id-card">
-                                <div class="autor-page__id-label">ORCID</div>
-                                <a href="https://orcid.org/{{ autor.orcid }}"
-                                   target="_blank"
-                                   class="autor-page__id-link">{{ autor.orcid }}</a>
-                            </div>
-                        </div>
-                    {% endif %}
-                    {% if autor.pbn_uid_id %}
-                        <div class="cell shrink">
-                            <div class="callout autor-page__id-card">
-                                <div class="autor-page__id-label">PBN UID</div>
-                                <a href="{{ autor.link_do_pbn }}"
-                                   target="_blank"
-                                   class="autor-page__id-link">{{ autor.pbn_uid_id }}</a>
-                            </div>
-                        </div>
-                    {% endif %}
-                    {% if autor.jest_w_polon %}
-                        <div class="cell shrink">
-                            <div class="callout autor-page__id-card autor-page__id-card--wide">
-                                <div class="autor-page__id-label">
-                                    <span class="fi-shield"></span> Naukowiec z POL-on
-                                </div>
-                                <a href="{{ autor.link_do_pbn }}"
-                                   target="_blank"
-                                   rel="noopener"
-                                   class="autor-page__id-link">
-                                    Zobacz w PBN <span class="fi-arrow-right"></span>
-                                </a>
-                            </div>
-                        </div>
-                    {% endif %}
-                    {% if autor.pbn_id %}
-                        <div class="cell shrink">
-                            <div class="callout autor-page__id-card">
-                                <div class="autor-page__id-label">PBN ID</div>
-                                <div class="autor-page__id-value">{{ autor.pbn_id }}</div>
-                            </div>
-                        </div>
-                    {% endif %}
-                    {% if autor.system_kadrowy_id %}
-                        <div class="cell shrink">
-                            <div class="callout autor-page__id-card">
-                                <div class="autor-page__id-label">System kadrowy</div>
-                                <div class="autor-page__id-value">{{ autor.system_kadrowy_id }}</div>
-                            </div>
-                        </div>
-                    {% endif %}
+            <div class="grid-x grid-margin-x autor-page__grid-gap">
+                {% if autor.orcid %}
                     <div class="cell shrink">
                         <div class="callout autor-page__id-card">
-                            <div class="autor-page__id-label">BPP ID</div>
-                            <span data-tooltip
-                                  class="top autor-page__id-value"
-                                  data-click-open="false"
-                                  tabindex="2"
-                                  title="Unikalny, wewnętrzny identyfikator autora w systemie BPP">
-                                {{ autor.pk }}
-                            </span>
+                            <div class="autor-page__id-label">ORCID</div>
+                            <a href="https://orcid.org/{{ autor.orcid }}"
+                               target="_blank"
+                               class="autor-page__id-link">{{ autor.orcid }}</a>
                         </div>
+                    </div>
+                {% endif %}
+                {% if autor.pbn_uid_id %}
+                    <div class="cell shrink">
+                        <div class="callout autor-page__id-card">
+                            <div class="autor-page__id-label">PBN UID</div>
+                            <a href="{{ autor.link_do_pbn }}"
+                               target="_blank"
+                               class="autor-page__id-link">{{ autor.pbn_uid_id }}</a>
+                        </div>
+                    </div>
+                {% endif %}
+                {% if autor.jest_w_polon %}
+                    <div class="cell shrink">
+                        <div class="callout autor-page__id-card autor-page__id-card--wide">
+                            <div class="autor-page__id-label">
+                                <span class="fi-shield"></span> Naukowiec z POL-on
+                            </div>
+                            <a href="{{ autor.link_do_pbn }}"
+                               target="_blank"
+                               rel="noopener"
+                               class="autor-page__id-link">
+                                Zobacz w PBN <span class="fi-arrow-right"></span>
+                            </a>
+                        </div>
+                    </div>
+                {% endif %}
+                {% if autor.pbn_id %}
+                    <div class="cell shrink">
+                        <div class="callout autor-page__id-card">
+                            <div class="autor-page__id-label">PBN ID</div>
+                            <div class="autor-page__id-value">{{ autor.pbn_id }}</div>
+                        </div>
+                    </div>
+                {% endif %}
+                {% if autor.system_kadrowy_id %}
+                    <div class="cell shrink">
+                        <div class="callout autor-page__id-card">
+                            <div class="autor-page__id-label">System kadrowy</div>
+                            <div class="autor-page__id-value">{{ autor.system_kadrowy_id }}</div>
+                        </div>
+                    </div>
+                {% endif %}
+                <div class="cell shrink">
+                    <div class="callout autor-page__id-card">
+                        <div class="autor-page__id-label">BPP ID</div>
+                        <span data-tooltip
+                              class="top autor-page__id-value"
+                              data-click-open="false"
+                              tabindex="2"
+                              title="Unikalny, wewnętrzny identyfikator autora w systemie BPP">
+                            {{ autor.pk }}
+                        </span>
                     </div>
                 </div>
             </div>
+        </div>
+        <div class="shaded-hr-div-small"></div>
 
-        <!-- Evaluation metrics -->
+        {# Metryki ewaluacyjne #}
         {% if autor.metryki.exists %}
             <div class="author-info-section">
                 <h3><i class="fi-graph-trend"></i> Metryki ewaluacyjne</h3>
@@ -187,7 +204,7 @@
             <div class="shaded-hr-div-small"></div>
         {% endif %}
 
-        <!-- Academic degrees -->
+        {# Stopnie naukowe #}
         {% if autor.praca_doktorska_set.exists or autor.praca_habilitacyjna %}
             <div class="author-info-section">
                 <h3><i class="fi-trophy"></i> Stopnie naukowe</h3>
@@ -213,7 +230,7 @@
             <div class="shaded-hr-div-small"></div>
         {% endif %}
 
-        <!-- Previous names (for authenticated users) -->
+        {# Poprzednie nazwiska (dla zalogowanych) #}
         {% if request.user.is_authenticated %}
             {% if not autor.pokazuj_poprzednie_nazwiska %}
                 {% if autor.poprzednie_nazwiska %}
@@ -225,7 +242,7 @@
             {% endif %}
         {% endif %}
 
-        <!-- Description -->
+        {# Opis (osobny od biogramu — zostaje) #}
         {% if autor.pokazuj_opis and autor.opis %}
             <div class="author-info-section">
                 <h3><i class="fi-info"></i> Opis</h3>
@@ -234,7 +251,7 @@
             <div class="shaded-hr-div-small"></div>
         {% endif %}
 
-        <!-- Citations -->
+        {# Cytowania #}
         {% load czy_pokazywac %}
         {% czy_pokazywac liczbe_cytowan_na_stronie_autora ignoruj_grupe %}
             {% if autor.liczba_cytowan %}
@@ -246,33 +263,36 @@
                 <div class="shaded-hr-div-small"></div>
             {% endif %}
         {% end_czy_pokazywac %}
+
+        {# Wyszukiwarka prac (stała w lewej kolumnie) #}
+        {% include "browse/autor_sekcje/wyszukiwarka.html" %}
+
+        {# Linki do raportu autora — tylko gdy raport jest widoczny #}
+        {# dla oglądającego (logika w AutorView._raport_links). #}
+        {% if raport_links %}
+            <div class="autor-page__raport-links hide-for-print">
+                <h3 class="autor-page__raport-links-title">
+                    <i class="fi-graph-trend autor-page__icon--mr-sm"></i>Raport autora
+                </h3>
+                <div class="autor-page__raport-links-buttons">
+                    {% for link in raport_links %}
+                        <a href="{{ link.url }}" class="button primary">{{ link.label }}</a>
+                    {% endfor %}
+                </div>
+            </div>
+            <div class="shaded-hr-div-small"></div>
+        {% endif %}
+    </div>
+
+    {# --- PRAWA kolumna (large-8): konfigurowalne sekcje (per-Uczelnia) --- #}
+    <div class="cell large-8 autor-page__kolumna-prawa">
+        {% for sekcja in sekcje_profilu %}
+            {% include sekcja.template with dane=sekcja.dane nazwa=sekcja.nazwa klucz=sekcja.klucz %}
+        {% endfor %}
     </div>
 </div>
 
-
-{# Linki do raportu autora — pokazywane tylko, gdy raport jest widoczny #}
-{# dla oglądającego (logika w AutorView._raport_links). #}
-{% if raport_links %}
-    <div class="autor-page__raport-links hide-for-print">
-        <h3 class="autor-page__raport-links-title">
-            <i class="fi-graph-trend autor-page__icon--mr-sm"></i>Raport autora
-        </h3>
-        <div class="autor-page__raport-links-buttons">
-            {% for link in raport_links %}
-                <a href="{{ link.url }}" class="button primary">{{ link.label }}</a>
-            {% endfor %}
-        </div>
-    </div>
-    <div class="shaded-hr-div-small"></div>
-{% endif %}
-
-{# Konfigurowalne sekcje profilu (kolejność/widoczność/limit wg #}
-{# Autor.uklad_profilu albo układ domyślny). Puste sekcje są pomijane. #}
-{% for sekcja in sekcje_profilu %}
-    {% include sekcja.template with dane=sekcja.dane nazwa=sekcja.nazwa klucz=sekcja.klucz %}
-{% endfor %}
-
-<!-- Embed Code Section -->
+{# === Kod do osadzenia (full-width pod gridem) === #}
 <div class="row autor-page__embed-section">
     <div class="large-12 columns">
         <div class="author-info-section">

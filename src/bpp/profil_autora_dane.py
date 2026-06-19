@@ -19,9 +19,7 @@ from django.db.models import Q, Sum
 
 from bpp import const
 from bpp.profil_autora import (
-    KLUCZ_BIOGRAM,
     KLUCZ_DYSCYPLINY,
-    KLUCZ_EKSPORT,
     KLUCZ_NAJLEPSZE_IF,
     KLUCZ_NAJLEPSZE_PK,
     KLUCZ_NAJNOWSZE_ARTYKULY,
@@ -32,7 +30,6 @@ from bpp.profil_autora import (
     KLUCZ_WSPOLAUTORZY,
     KLUCZ_WYBRANE_PUBLIKACJE,
     KLUCZ_WYKRES_LATA,
-    KLUCZ_WYSZUKIWARKA,
     KLUCZ_ZRODLA,
 )
 
@@ -51,17 +48,6 @@ def _prace(autor):
 
 
 # --- buildery sekcji -------------------------------------------------------
-
-
-def _biogram(autor, limit, request):
-    html = autor.biogram_html
-    return {"html": html} if html else None
-
-
-def _wyszukiwarka(autor, limit, request):
-    # Sekcja obowiązkowa — zawsze widoczna, szablon renderuje istniejący
-    # formularz wyszukiwania prac autora.
-    return {}
 
 
 def _najlepsze_pk(autor, limit, request):
@@ -187,15 +173,7 @@ def _wspolautorzy(autor, limit, request):
     return {"wspolautorzy": wspolautorzy} if wspolautorzy else None
 
 
-def _eksport(autor, limit, request):
-    # Eksport zbiorczy (BibTeX/RIS) dostarcza Faza 2; w Fazie 1 sekcja jest
-    # domyślnie wyłączona i nie renderuje treści.
-    return None
-
-
 _BUILDERY = {
-    KLUCZ_BIOGRAM: _biogram,
-    KLUCZ_WYSZUKIWARKA: _wyszukiwarka,
     KLUCZ_NAJLEPSZE_PK: _najlepsze_pk,
     KLUCZ_NAJLEPSZE_IF: _najlepsze_if,
     KLUCZ_NAJNOWSZE_ARTYKULY: _najnowsze_artykuly,
@@ -208,21 +186,21 @@ _BUILDERY = {
     KLUCZ_DYSCYPLINY: _dyscypliny,
     KLUCZ_ZRODLA: _zrodla,
     KLUCZ_WSPOLAUTORZY: _wspolautorzy,
-    KLUCZ_EKSPORT: _eksport,
 }
 
 
-def przygotuj_sekcje(autor, request=None):
-    """Zwróć listę sekcji do wyrenderowania (z danymi), z pominięciem pustych.
+def przygotuj_sekcje(autor, uczelnia=None, request=None):
+    """Zwróć listę sekcji prawej kolumny do wyrenderowania (z danymi).
 
-    Każdy element: ``{"klucz", "nazwa", "template", "dane"}``. ``dane`` to
-    słownik zwrócony przez builder. Sekcje, których builder zwrócił ``None``,
-    są pomijane (auto-ukrywanie pustych).
+    Układ pobierany jest globalnie z ``uczelnia`` (``rozwiaz_uklad``), dane —
+    z ``autor``. Każdy element: ``{"klucz", "nazwa", "template", "dane"}``.
+    ``dane`` to słownik zwrócony przez builder. Sekcje, których builder zwrócił
+    ``None`` (lub które nie mają jeszcze buildera), są pomijane.
     """
     from bpp.profil_autora import rozwiaz_uklad
 
     sekcje = []
-    for s in rozwiaz_uklad(autor):
+    for s in rozwiaz_uklad(uczelnia):
         builder = _BUILDERY.get(s["klucz"])
         if builder is None:
             continue

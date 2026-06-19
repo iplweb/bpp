@@ -219,6 +219,16 @@ class Uczelnia(ModelZAdnotacjami, ModelZPBN_ID, NazwaISkrot, NazwaWDopelniaczu):
         default=OpcjaWyswietlaniaField.POKAZUJ_ZALOGOWANYM,
     )
 
+    uklad_profilu_autora = models.JSONField(
+        "Układ profilu autora",
+        blank=True,
+        null=True,
+        default=None,
+        help_text="Kolejność, widoczność i limity sekcji PRAWEJ kolumny "
+        "podstrony autora (globalnie dla całej uczelni). Lista pozycji "
+        '{"klucz", "widoczna", "limit"}. Puste = układ domyślny.',
+    )
+
     pokazuj_raport_slotow_autor = OpcjaWyswietlaniaField(
         "Pokazuj raport slotów - autor",
         default=OpcjaWyswietlaniaField.POKAZUJ_ZALOGOWANYM,

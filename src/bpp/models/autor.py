@@ -153,14 +153,6 @@ class Autor(LinkDoPBNMixin, ModelZAdnotacjami, ModelZPBN_ID):
         choices=FORMATY_BIOGRAMU,
         default=FORMAT_MARKDOWN,
     )
-    uklad_profilu = models.JSONField(
-        "Układ profilu",
-        blank=True,
-        null=True,
-        default=None,
-        help_text="Kolejność, widoczność i limity sekcji podstrony autora. "
-        "Puste = układ domyślny.",
-    )
     poprzednie_nazwiska = models.CharField(
         max_length=1024,
         blank=True,
