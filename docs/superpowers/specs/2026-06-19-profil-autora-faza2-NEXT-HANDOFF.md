@@ -9,6 +9,39 @@ Poprzednie dokumenty (czytaj dla kontekstu, w tej kolejności):
 > Ten dokument jest samowystarczalny. Świeża sesja ma z niego wznowić bez
 > dostępu do poprzednich rozmów.
 
+## STATUS — sesja nocna 2026-06-19/20 (autonomiczna, wszystko w PR #385)
+
+Wykonane tej nocy (TDD, commit po commicie, każdy push z zielonym CI):
+
+- **§3.1 kalibracja wykresów** — oś Y (etykieta maks + linie siatki) dla
+  wariantu liniowego i słupkowego. Zweryfikowane wizualnie. Commit `c36147c2b`.
+- **§3.3 eksport BibTeX + RIS** — `/bpp/autor/<pk>/eksport.bib` (reuse
+  `bpp/export/bibtex.py`) i `/bpp/autor/<pk>/eksport.ris` (net-new
+  `bpp/export/ris.py`). Przyciski w lewej kolumnie. Limit `MAKS_EKSPORT=5000`.
+  Endpointy zweryfikowane na żywo. Commit `0c5b59605`.
+- **§3.4 picker wyróżnionych prac** — self-service add/remove/reorder w
+  `/bpp/profil/edycja/wybrane-publikacje/`, autocomplete ograniczony do
+  WŁASNYCH prac autora, walidacja własności serwerowo na każdej akcji.
+  Zweryfikowane na żywo. Commity `d359451a4` + `815fecef5` (polish: striptags).
+- **§3.2 edytor kafelkowy układu** — drag-drop (jquery-ui sortable z
+  Grappelli) w `UczelniaAdmin`: kafelek/sekcja z checkboxem widoczności +
+  selectem limitu, serializacja do `{"klucz","widoczna","limit"}`
+  (`waliduj_uklad`). Zweryfikowane wizualnie (14 kafelków). Commit `8bd49089c`.
+- **FIX migracji** — `dev` dodał własną `0444_alter_uczelnia_…`, kolidującą
+  z profilowymi `0444`/`0445` (dwa liście grafu w stanie scalonym z dev, w
+  którym CI testuje PR). Scalono `dev` (czysto), dodano pustą migrację
+  scalającą `0446_merge_…`. Commity `ed9b27f41` (merge) + `5358aec94`.
+
+Stan: 91 testów w `src/bpp/tests/test_profil/` zielonych na świeżym
+kontenerze (pod scalonymi zależnościami: pytest 9, denorm 1.12.2). CI „Tests"
+zielone na pośrednich pushach.
+
+NADAL ODŁOŻONE (NIE robione): `make baseline-update` (przy scalaniu PR; teraz
+doszły migracje 0444-dev + 0446-merge) oraz samo scalenie PR #385 → dev.
+Drobiazg do poprawienia kiedyś: dokumentowany w CLAUDE.md autologin
+`/__autologin__/?token=…` zwraca 404 (pakiet `django-dev-helpers` oczekuje
+`?__autologin__=<token>`); w tej sesji obejście = mintowanie sesji DB.
+
 ## 0. Jak wznowić (środowisko)
 
 - Worktree: `~/Programowanie/bpp-profil-autora`, branch `feature/profil-autora`.
