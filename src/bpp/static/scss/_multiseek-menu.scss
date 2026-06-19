@@ -77,6 +77,22 @@
 .multiseek-pagination-wrapper {
   margin-bottom: 25px;
 
+  // Listwa akcji (Razem / Wyświetl wszystkie / Drukuj / CSV / XLS) po lewej,
+  // pager po prawej. Gdy pager nie mieści się w jednej linii, zawija się pod
+  // listwę z odstępem (row-gap) zamiast przyklejać się bez przerwy. (#376)
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  row-gap: 10px;
+  column-gap: 16px;
+
+  // Pager: do prawej, gdy mieści się obok listwy; po zawinięciu zajmuje
+  // własną linię i zostaje wyrównany do prawej.
+  .multiseek-pagination-pager {
+    margin-left: auto;
+  }
+
   // Menu bar styling
   ul.menu {
     @include multiseek-menu-style;

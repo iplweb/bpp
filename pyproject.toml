@@ -35,7 +35,7 @@ dependencies = [
     "arrow>=1.3,<2",
     "numpy>=2.4.6",
     "pygad>=3.7.0",
-    "django-denorm-iplweb>=1.12.1",
+    "django-denorm-iplweb>=1.12.2",
     "django-tabular-permissions==2.9.3",
     "simplejson>=4.1.1,<5",
     "django-reversion>=6.2.0,<7",
@@ -236,13 +236,13 @@ environments = ["python_version >= '3.10' and python_version < '3.15' and platfo
 #                     GHSA-gj48-438w-jh9v
 #   daphne  >=4.2.2  (via channels[daphne])         - PYSEC-2026-213,
 #                     PYSEC-2026-214
-#   pypdf   >=6.13.0 (via xhtml2pdf)                 - CVE-2026-48735,
+#   pypdf   >=6.13.3 (via xhtml2pdf)                 - CVE-2026-48735,
 #                     CVE-2026-49460, CVE-2026-49461, CVE-2026-54530,
-#                     CVE-2026-54531
+#                     CVE-2026-54531, GHSA-jm82-fx9c-mx94
 constraint-dependencies = [
     "bleach>=6.4.0",
     "daphne>=4.2.2",
-    "pypdf>=6.13.0",
+    "pypdf>=6.13.3",
 ]
 
 # Polityka: KAZDA NOWA zewnetrzna zaleznosc powinna miec prebuilt wheel dla
@@ -462,12 +462,11 @@ dev = [
     "django-webtest==1.9.14",
     "WebTest==3.0.0",
     "psutil>=7.2.2",
-    # pytest 8.x: pytest-testcontainers-django (0.2.0) deklaruje pytest<9.
-    # Wewnetrznie korzysta tylko z stabilnego API hookow (pytest_load_initial_conftests
-    # etc.) — wiec dziala z pytest 9, ale upstream constraint wymusza <9 w
-    # resolverze. Po bumpie pytest-testcontainers-django na pytest>=8,<10
-    # mozna podniesc te wersje. Patrz pytest-env constraint nizej.
-    "pytest>=8,<9",
+    # pytest-testcontainers-django >=0.2.4 podniosl upstream cap do pytest<10
+    # (poprzednie 0.2.3 deklarowalo pytest<9 i blokowalo resolver na 8.x).
+    # Dolna granica 9.0.3 zamyka GHSA-... (vulnerable tmpdir handling, fixed
+    # w 9.0.3). Patrz pytest-env constraint nizej.
+    "pytest>=9.0.3,<10",
     "pytest-django>=4.12.0",
     "pytest-httpserver>=1.1.5",
     "werkzeug>=3.1.6", # Dependabot: transitive via pytest-httpserver, bump for safe_join() fixes
@@ -489,18 +488,16 @@ dev = [
     "ipython>=8.2.0",
     "playwright>=1.60.0,<2",
     "pytest-playwright>=0.8.0",
-    # pytest-env 1.3.0+ wymaga pytest>=9.0.2 (sprawdz `pip show pytest-env`)
-    # — zostaje przy 1.2.0, kompatybilnym z pytest 8.x. Zachowuje sie tak
-    # samo dla naszego usage (env=DJANGO_ALLOW_ASYNC_UNSAFE=1 etc.). Po
-    # bumpie pytest do 9.x, podnies tez te wersje.
-    "pytest-env>=1.1.5,<1.3",
+    # pytest-env 1.3.0+ wymaga pytest>=9.0.2 — spelnione, bo jestesmy na
+    # pytest 9.x. Usage bez zmian (env=DJANGO_ALLOW_ASYNC_UNSAFE=1 etc.).
+    "pytest-env>=1.3",
     "nest-asyncio>=1.6.0",
     "testcontainers[postgres]>=4.14.2",
     # pytest-testcontainers + bridge: dawniej wewnetrzny `src/testcontainers_bpp/`.
     # Plugin auto-loaduje sie przez entry-point `pytest11` — `-p ...` w pytest.ini
     # przestaje byc potrzebne. Konfiguracja w [tool.pytest-testcontainers-django].
-    "pytest-testcontainers>=0.1.0",
-    "pytest-testcontainers-django>=0.2.3",
+    "pytest-testcontainers>=0.2.0",
+    "pytest-testcontainers-django>=0.2.4",
     # django-run-site: CLI orchestrator dev stack-u. Dawniej `manage.py run_site`
     # + helpery w `_run_site_helpers/`. Instalowany w dev-deps zeby `uv run run-site`
     # mialo dostep do CLI bez globalnego `uv tool install`. Konfiguracja: runsite.toml.
