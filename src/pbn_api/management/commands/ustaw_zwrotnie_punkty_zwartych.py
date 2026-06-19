@@ -4,6 +4,18 @@ from bpp.models import Wydawnictwo_Zwarte
 from pbn_api.management.commands.util import PBNBaseCommand, komunikat_bledu
 
 
+class RekordBezPunktowalnegoAutorstwa(Exception):
+    """Rekord nie ma ani autorstwa, ani redakcji — nie ma czego punktować.
+
+    To anomalia DANYCH (np. książka bez przypiętych autorów), nie luka w
+    logice punktacji: skoro brak slotu autorskiego, żadna „szufladka" punktowa
+    nie ma zastosowania. Taki rekord pomijamy i raportujemy ZAWSZE, niezależnie
+    od ``--ignore-errors`` — w odróżnieniu od ``NotImplementedError``, które
+    sygnalizuje realnie nieobsłużoną kombinację typu i bez flagi nadal wywala
+    komendę.
+    """
+
+
 class Command(PBNBaseCommand):
     def add_arguments(self, parser):
         parser.add_argument("--min-rok", type=int, default=2022)
@@ -41,6 +53,11 @@ class Command(PBNBaseCommand):
         for elem in tqdm(queryset, disable=None):
             try:
                 self._przetworz(elem, punkty_dct)
+            except RekordBezPunktowalnegoAutorstwa as exc:
+                # Anomalia danych (rekord bez slotu autorskiego), nie luka w
+                # logice: pomijamy i raportujemy ZAWSZE, niezależnie od
+                # --ignore-errors. Komenda leci dalej.
+                tqdm.write(f"POMINIĘTO pk={elem.pk} ({elem}): {komunikat_bledu(exc)}")
             except Exception as exc:
                 # Bez --ignore-errors zachowujemy stare zachowanie: błąd
                 # jednego rekordu wywala całą komendę (z pełnym tracebackiem).
@@ -73,6 +90,17 @@ class Command(PBNBaseCommand):
             punkty_pk = values["RED"]
         elif rozdzial and autorstwo:
             punkty_pk = values["ROZ"]
+        elif not autorstwo and not redakcja:
+            # Rekord nie ma ani autorstwa, ani redakcji — pusty (lub
+            # pozbawiony ról AUTOR/REDAKTOR) slot autorski. Nie ma czego
+            # punktować: to anomalia danych, nie nieobsłużony typ. Pomijamy
+            # i raportujemy ZAWSZE (handle łapie ten wyjątek osobno).
+            raise RekordBezPunktowalnegoAutorstwa(
+                f"brak punktowalnego autorstwa/redakcji "
+                f"({ksiazka=} {rozdzial=} {redakcja=} {autorstwo=})",
+                elem,
+                elem.autorzy_set.all(),
+            )
         else:
             raise NotImplementedError(
                 f"NIE ZAIMPLEMENTOWANO  {ksiazka=} {rozdzial=} {redakcja=} {autorstwo=}",

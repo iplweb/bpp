@@ -1,10 +1,17 @@
-"""Testy flagi ``--ignore-errors`` dla komend ustawiających punkty zwrotnie.
+"""Testy obsługi rekordów problematycznych w komendach ustawiających punkty.
 
-Rekord-sierota (np. książka bez ani jednego autora/redaktora) nie pasuje do
-żadnej „szufladki" punktowej w ``ustaw_zwrotnie_punkty_zwartych`` i normalnie
-wywala całą komendę ``NotImplementedError``-em po kilkunastu rekordach. Flaga
-``--ignore-errors`` ma taki rekord wypisać i pominąć, lecąc dalej — zamiast
-przerywać przetwarzanie pozostałych setek rekordów.
+Dwie różne klasy rekordów „nie do wpasowania" w szufladki punktowe:
+
+1. **Brak punktowalnego autorstwa/redakcji** (np. książka bez ani jednego
+   autora/redaktora — pusty ``autorzy_set``). To anomalia DANYCH: nie ma slotu
+   autorskiego, więc nie ma czego punktować. Taki rekord jest pomijany i
+   raportowany **ZAWSZE**, niezależnie od ``--ignore-errors`` — bez wywalania
+   komendy.
+
+2. **Prawdziwie nieobsłużona kombinacja typu** (np. referat z autorem — rekord
+   MA punktowalne autorstwo, ale typ slotu nie jest obsłużony). To luka w
+   LOGICE punktacji, nie w danych → nadal twardy ``NotImplementedError``, chyba
+   że ``--ignore-errors`` każe ją pominąć.
 """
 
 import pytest
@@ -12,15 +19,20 @@ from django.core.management import call_command
 from model_bakery import baker
 
 from bpp import const
-from bpp.models import Charakter_Formalny, Wydawca, Wydawnictwo_Zwarte
+from bpp.models import (
+    Charakter_Formalny,
+    Typ_Odpowiedzialnosci,
+    Wydawca,
+    Wydawnictwo_Zwarte,
+    Wydawnictwo_Zwarte_Autor,
+)
 
 
 def _ksiazka_bez_autorow(rok=2023):
     """Książka (charakter_sloty=KSIAZKA) bez żadnego autora ani redaktora.
 
-    To dokładnie konfiguracja, która nie pasuje do żadnej gałęzi if/elif
-    w komendzie (``ksiazka=True``, ``autorstwo=False``, ``redakcja=False``)
-    i normalnie kończy się ``NotImplementedError``.
+    ``ksiazka=True``, ``autorstwo=False``, ``redakcja=False`` — pusty
+    ``autorzy_set``. Brak punktowalnego autorstwa: pomijany ZAWSZE.
     """
     ksiazka = baker.make(
         Charakter_Formalny, charakter_sloty=const.CHARAKTER_SLOTY_KSIAZKA
@@ -34,29 +46,82 @@ def _ksiazka_bez_autorow(rok=2023):
     )
 
 
+def _referat_z_autorem(rok=2023):
+    """Referat (charakter_sloty=REFERAT) z autorem — typ slotu nieobsłużony.
+
+    ``ksiazka=False``, ``rozdzial=False``, ``autorstwo=True``: rekord MA
+    punktowalne autorstwo, ale żadna gałąź if/elif nie obsługuje referatu →
+    prawdziwa luka w logice → ``NotImplementedError``.
+    """
+    referat = baker.make(
+        Charakter_Formalny, charakter_sloty=const.CHARAKTER_SLOTY_REFERAT
+    )
+    rec = baker.make(
+        Wydawnictwo_Zwarte,
+        charakter_formalny=referat,
+        wydawca=baker.make(Wydawca),
+        rok=rok,
+        punkty_kbn=0,
+    )
+    baker.make(
+        Wydawnictwo_Zwarte_Autor,
+        rekord=rec,
+        typ_odpowiedzialnosci=baker.make(
+            Typ_Odpowiedzialnosci, typ_ogolny=const.TO_AUTOR
+        ),
+    )
+    return rec
+
+
 @pytest.mark.django_db
-def test_zwartych_bez_flagi_wywala_sie_na_sierocie():
-    """Status quo: bez flagi rekord-sierota przerywa całą komendę."""
-    _ksiazka_bez_autorow()
+def test_zwartych_bez_autorow_pomijany_zawsze_bez_flagi(capsys):
+    """Książka bez autorów: pomijana i raportowana ZAWSZE, nawet bez flagi."""
+    rec = _ksiazka_bez_autorow()
+
+    # Bez --ignore-errors — i tak nie wywala komendy.
+    call_command("ustaw_zwrotnie_punkty_zwartych")
+
+    rec.refresh_from_db()
+    assert rec.punkty_kbn == 0  # nietknięty — nie było czego punktować
+
+    out = capsys.readouterr().out
+    assert "POMINIĘTO" in out
+    assert str(rec.pk) in out
+    assert "Traceback" not in out
+
+
+@pytest.mark.django_db
+def test_zwartych_bez_autorow_pomijany_takze_z_flaga(capsys):
+    """Z ``--ignore-errors`` zachowanie dla sieroty jest takie samo (pomijany)."""
+    rec = _ksiazka_bez_autorow()
+
+    call_command("ustaw_zwrotnie_punkty_zwartych", ignore_errors=True)
+
+    rec.refresh_from_db()
+    assert rec.punkty_kbn == 0
+
+    out = capsys.readouterr().out
+    assert "POMINIĘTO" in out
+    assert "Traceback" not in out
+
+
+@pytest.mark.django_db
+def test_zwartych_nieobsluzona_kombinacja_wywala_sie_bez_flagi():
+    """Referat z autorem (luka w logice): bez flagi nadal ``NotImplementedError``."""
+    _referat_z_autorem()
 
     with pytest.raises(NotImplementedError):
         call_command("ustaw_zwrotnie_punkty_zwartych")
 
 
 @pytest.mark.django_db
-def test_zwartych_ignore_errors_pomija_sierote(capsys):
-    """Z ``--ignore-errors`` rekord-sierota jest pomijany, komenda kończy OK."""
-    rec = _ksiazka_bez_autorow()
+def test_zwartych_ignore_errors_pomija_nieobsluzona_kombinacje(capsys):
+    """Z ``--ignore-errors`` nawet prawdziwa luka logiki jest pomijana."""
+    _referat_z_autorem()
 
     call_command("ustaw_zwrotnie_punkty_zwartych", ignore_errors=True)
 
-    # Sierota pozostaje nietknięta (nie udało się przypisać punktów) — ale
-    # komenda nie rzuciła wyjątkiem.
-    rec.refresh_from_db()
-    assert rec.punkty_kbn == 0
-
     out = capsys.readouterr().out
-    # Sam komunikat błędu — z identyfikacją rekordu, BEZ tracebacku.
     assert "POMINIĘTO" in out
     assert "NIE ZAIMPLEMENTOWANO" in out
     assert "Traceback" not in out
