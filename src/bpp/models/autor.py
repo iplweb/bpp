@@ -434,6 +434,18 @@ class Autor(LinkDoPBNMixin, ModelZAdnotacjami, ModelZPBN_ID):
             .distinct()
         )
 
+    def historia_zatrudnienia(self):
+        """Pełna historia powiązań autora z jednostkami (podstrona autora).
+
+        Najnowsze rozpoczęcia pracy na górze. ``select_related`` na jednostce
+        i funkcji eliminuje N+1 przy renderze listy.
+        """
+        return (
+            Autor_Jednostka.objects.filter(autor=self)
+            .select_related("jednostka", "funkcja")
+            .order_by("-rozpoczal_prace")
+        )
+
     def zbieraj_sloty(
         self,
         zadany_slot,
