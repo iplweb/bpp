@@ -7,6 +7,18 @@ from pbn_api.client import BppPBNClient, RequestsTransport
 from pbn_client.conf import settings
 
 
+def komunikat_bledu(exc):
+    """Zwięzły komunikat błędu rekordu — sam tekst, bez tracebacku.
+
+    Wyjątki w komendach ``ustaw_zwrotnie_punkty_*`` bywają rzucane z wieloma
+    argumentami (np. ``NotImplementedError(msg, elem, queryset)``); bierzemy
+    pierwszy, tekstowy argument, żeby nie wypisywać brzydkiego repr-a krotki.
+    """
+    if exc.args and isinstance(exc.args[0], str):
+        return exc.args[0]
+    return str(exc)
+
+
 class PBNBaseCommand(BaseCommand):
     def add_arguments(self, parser):
         parser.add_argument(
