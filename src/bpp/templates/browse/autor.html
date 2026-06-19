@@ -502,12 +502,30 @@ document.addEventListener('click', function(e) {
         e.preventDefault();
         copyEmbedCode();
     }
+    // Klik w całą pozycję listy prac → szczegóły. Pomijamy, gdy kliknięto
+    // wewnętrzny <a> (np. link DOI w opisie) — niech działa naturalnie.
+    var praca = e.target.closest('.autor-page__praca');
+    if (praca && !e.target.closest('a')) {
+        var href = praca.getAttribute('data-href');
+        if (href) {
+            window.location.href = href;
+        }
+    }
 });
 document.addEventListener('keydown', function(e) {
     var elem = e.target.closest('[data-keydown-toggle]');
     if (elem && (e.key === 'Enter' || e.key === ' ')) {
         e.preventDefault();
         toggleEmbedCode();
+    }
+    // Enter na sfokusowanej pozycji listy prac → szczegóły.
+    var praca = e.target.closest('.autor-page__praca');
+    if (praca && e.key === 'Enter' && !e.target.closest('a')) {
+        var href = praca.getAttribute('data-href');
+        if (href) {
+            e.preventDefault();
+            window.location.href = href;
+        }
     }
 });
 </script>
