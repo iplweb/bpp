@@ -153,6 +153,20 @@ class UczelniaAdmin(
             },
         ),
         (
+            "Profil autora (podstrona)",
+            {
+                "classes": ("grp-collapse grp-closed",),
+                "description": (
+                    "Układ PRAWEJ kolumny podstrony autora (globalny dla "
+                    "uczelni). JSON: lista pozycji "
+                    '{"klucz": "...", "widoczna": true, "limit": 10}. '
+                    "Puste = układ domyślny. Lewa kolumna (biogram, "
+                    "wyszukiwarka, identyfikatory) jest stała."
+                ),
+                "fields": ("uklad_profilu_autora",),
+            },
+        ),
+        (
             "Wydruki",
             {
                 "classes": ("grp-collapse grp-closed",),

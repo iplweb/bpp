@@ -349,9 +349,32 @@
     }
   }
 
-  &__praca-link {
-    font-size: 0.85em;
-    white-space: nowrap;
+  // Pozycja listy prac — cała klikalna (data-href + delegowany JS)
+  &__praca {
+    cursor: pointer;
+    padding: 0.4rem 0.5rem;
+    border-radius: 4px;
+    transition: background-color 0.12s ease-in-out;
+
+    &:hover,
+    &:focus {
+      background-color: #f0f4f8;
+      outline: none;
+    }
+
+    // wewnętrzne linki (DOI itp.) zachowują własny kursor
+    a {
+      cursor: pointer;
+    }
+  }
+
+  // Skracanie długich opisów bibliograficznych (~3 linie)
+  &__praca-opis {
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
   }
 
   &__biogram-tresc {
@@ -421,6 +444,85 @@
   }
 
   &__wspolautor-liczba {
+    color: #777;
+    font-size: 0.85em;
+  }
+
+  // --- Układ 2-kolumnowy (klasy własne; grid robi Foundation w HTML) ---
+  &__uklad {
+    margin-top: 0.5rem;
+  }
+
+  &__kolumna-lewa {
+    font-size: 0.95rem;
+  }
+
+  // --- Statystyki wg charakteru: wiersz jako link budujący wyszukiwanie ---
+  &__staty-form {
+    display: inline;
+    margin: 0;
+  }
+
+  &__staty-link {
+    background: none;
+    border: none;
+    padding: 0;
+    margin: 0;
+    color: #2980b9;
+    cursor: pointer;
+    text-align: left;
+    font: inherit;
+
+    &:hover,
+    &:focus {
+      text-decoration: underline;
+      outline: none;
+    }
+  }
+
+  // --- Wykres liniowy (SVG) dla długich serii ---
+  &__wykres-svg {
+    width: 100%;
+    height: 220px;
+    overflow: visible;
+  }
+
+  &__wykres-linia {
+    stroke: #2c3e50;
+    stroke-width: 3;
+    vector-effect: non-scaling-stroke;
+  }
+
+  &__wykres-punkt {
+    fill: #2980b9;
+  }
+
+  &__wykres-osX {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.7rem;
+    color: #555;
+    margin-top: 2px;
+  }
+
+  // --- Historia zatrudnienia (lewa kolumna) ---
+  &__historia-lista {
+    list-style: none;
+    margin-left: 0;
+  }
+
+  &__historia-pozycja {
+    margin-bottom: 0.4rem;
+    line-height: 1.4;
+  }
+
+  &__historia-okres {
+    color: #555;
+    font-size: 0.85em;
+    margin-left: 0.25rem;
+  }
+
+  &__historia-funkcja {
     color: #777;
     font-size: 0.85em;
   }
