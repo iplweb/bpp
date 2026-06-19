@@ -488,8 +488,27 @@ class ImportManager:
                 call_command(cmd)
 
             except Exception as e:
-                logger.error(f"Komenda {cmd} nie powiodła się: {e}")
-                # Don't fail the entire import for post-processing errors
+                # Błąd komendy post-importu NIE może zniknąć po cichu (kiedyś
+                # samo logger.error → niewidoczne w UI, punkty się nie ustawiały
+                # bez śladu). Zgłaszamy do Rollbara i zapisujemy jako ImportLog
+                # widoczny w logu sesji importu. Mimo to NIE wywalamy całego
+                # importu — pozostałe komendy post-importu lecą dalej (awaria
+                # jednego typu punktacji nie powinna blokować reszty).
+                logger.exception(f"Komenda post-importu {cmd} nie powiodła się")
+                rollbar.report_exc_info(
+                    sys.exc_info(),
+                    extra_data={
+                        "session_id": self.session.id,
+                        "post_import_command": cmd,
+                    },
+                )
+                ImportLog.objects.create(
+                    session=self.session,
+                    level="error",
+                    step=description,
+                    message=f"Komenda post-importu {cmd} nie powiodła się: {e}",
+                    details={"traceback": traceback.format_exc()},
+                )
 
         # Uruchom denorm_flush po zacommitowaniu transakcji, aby uniknąć deadlocka
         self.session.current_step = "Odświeżanie denormalizacji"

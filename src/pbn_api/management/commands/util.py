@@ -29,7 +29,18 @@ class PBNBaseCommand(BaseCommand):
         parser.add_argument("--user-token", default=None)
 
     def execute(self, *args, **options):
-        self._fill_pbn_credentials(options)
+        # Uczelnię i credentiale PBN rozwiązujemy LENIWIE — dopiero w
+        # get_client() (gdy komenda realnie buduje klienta PBN), a nie tutaj,
+        # dla każdego uruchomienia. Dzięki temu komendy dziedziczące
+        # PBNBaseCommand, które PBN-a w ogóle nie używają (np. ustawianie
+        # punktów po imporcie czy przypisywanie rekordów do jednostek), NIE
+        # wymagają --uczelnia-id i nie wywalają się przy >1 uczelni. Komendy
+        # PBN-owe nadal dostają twardy CommandError — ale w get_client().
+        self._pbn_uczelnia_id = options.get("uczelnia_id")
+        # Inwariant: atrybut istnieje już po execute() (komendy czytają go
+        # wprost, np. WydawnictwoPBNAdapter(uczelnia=self._resolved_uczelnia)).
+        # Leniwe get_client() nadpisze go realną uczelnią, gdy zbuduje klienta.
+        self._resolved_uczelnia = None
         return super().execute(*args, **options)
 
     def _resolve_uczelnia(self, uczelnia_id):
@@ -93,7 +104,27 @@ class PBNBaseCommand(BaseCommand):
                 user = BppUser.objects.first()
                 options["user_token"] = user.pbn_token if user is not None else None
 
-    def get_client(self, app_id, app_token, base_url, user_token, verbose=False):
+    def get_client(
+        self, app_id=None, app_token=None, base_url=None, user_token=None, verbose=False
+    ):
+        # Tu rozwiązujemy uczelnię i uzupełniamy credentiale (leniwie). To
+        # jedyne miejsce, w którym PBN jest faktycznie potrzebny — i jedyne,
+        # w którym może paść CommandError o >1 uczelni bez --uczelnia-id.
+        # Wartości jawnie podane na CLI (app_id itd.) mają priorytet; resztę
+        # bierzemy z wybranej uczelni, a w ostateczności z settings.
+        options = {
+            "uczelnia_id": getattr(self, "_pbn_uczelnia_id", None),
+            "app_id": app_id,
+            "app_token": app_token,
+            "base_url": base_url,
+            "user_token": user_token,
+        }
+        self._fill_pbn_credentials(options)
+        app_id = options["app_id"]
+        app_token = options["app_token"]
+        base_url = options["base_url"]
+        user_token = options["user_token"]
+
         if user_token is None:
             warnings.warn(
                 "user_token not set, expect authorisation problems", stacklevel=2
