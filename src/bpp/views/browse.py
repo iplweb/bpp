@@ -35,6 +35,7 @@ from bpp.models import (
     Zrodlo,
 )
 from bpp.multiseek_registry import (
+    CharakterFormalnyQueryObject,
     JednostkaQueryObject,
     NazwiskoIImieQueryObject,
     RokQueryObject,
@@ -698,6 +699,13 @@ class BuildSearch(RedirectView):
             self.request.POST, "autor", NazwiskoIImieQueryObject
         )
 
+        # Klik w „Statystyki wg charakteru" na podstronie autora POST-uje nazwę
+        # charakteru — CharakterFormalnyQueryObject.value_from_web rozwiązuje ją
+        # po `nazwa` (z potomkami MPTT).
+        charakter_box = zrob_box_z_requestu(
+            self.request.POST, "charakter_formalny", CharakterFormalnyQueryObject
+        )
+
         zakres_lat_box = zrob_box_z_requestu(
             self.request.POST, "zakres_lat", ZakresLatQueryObject
         )
@@ -711,6 +719,7 @@ class BuildSearch(RedirectView):
                 zrodla_box,
                 autorzy_box,
                 typy_box,
+                charakter_box,
                 jednostki_box,
                 wydzialy_box,
                 lata_box,
@@ -721,6 +730,7 @@ class BuildSearch(RedirectView):
                 zrodla_box,
                 autorzy_box,
                 typy_box,
+                charakter_box,
                 jednostki_box,
                 lata_box,
                 zakres_lat_box,
