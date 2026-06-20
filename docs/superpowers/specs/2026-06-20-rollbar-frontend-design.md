@@ -77,8 +77,23 @@ def rollbar_client(request):
 
 ### 3. Snippet — `src/django_bpp/templates/rollbar.html`
 
-Oficjalny snippet `rollbar.js` (async-load `rollbar.min.js` z CDN Rollbara —
-ta sama metoda „zewnętrzny skrypt z CDN" co snippet GA), skonfigurowany:
+Oficjalny snippet `rollbar.js`, ale biblioteka **hostowana lokalnie** (NIE
+z CDN). `rollbar.umd.min.js` pochodzi z pakietu npm `rollbar` i ląduje w
+static BPP; snippet używa swojego loadera z URL-em wskazującym na
+`{% static 'rollbar/rollbar.umd.min.js' %}`, dzięki czemu zachowane jest
+przechwytywanie błędów z czasu ładowania strony (shim kolejkuje wywołania,
+zanim pełna biblioteka się załaduje).
+
+Mechanizm dostarczenia pliku do static (do rozstrzygnięcia w planie, preferowane
+pierwsze):
+- dodać `rollbar` do `package.json` (devDependency) + krok kopiujący
+  `node_modules/rollbar/dist/rollbar.umd.min.js` do
+  `src/django_bpp/static/rollbar/` w buildzie (Grunt) — spójne z zarządzaniem
+  zależnościami front-endu; albo
+- zacommitować zvendorowany plik bezpośrednio w static (prościej, ale aktualizacja
+  wersji ręczna).
+
+Konfiguracja `_rollbarConfig`:
 
 - `accessToken: '{{ ROLLBAR_CLIENT.accessToken }}'`
 - `captureUncaught: true`
@@ -102,6 +117,41 @@ aplikacji), żeby złapać też błędy z czasu ładowania strony:
 - NIE wewnątrz bloku `{% if cookielaw.accepted %}`.
 - NIE cache'owane za zgodą — działa bezwarunkowo, gdy token obecny.
 
+### 5. Source mapy (de-minifikacja stack trace'ów) — W ZAKRESIE
+
+Build już emituje `bundle.js.map` i `cytoscape-bundle.js.map` (esbuild
+`--sourcemap`, `Gruntfile.js`). Brakuje: (a) konfiguracji klienta pod
+multi-host i (b) uploadu map do Rollbara przy release.
+
+**a) Klient (`rollbar.html`) — wzorzec `dynamichost`.** BPP jest multi-hosted:
+ten sam `bundle.js` jest serwowany z wielu domen tenantów
+(`https://<tenant>/static/bpp/js/dist/bundle.js`), więc `minified_url` różni
+się per deployment. Rozwiązanie rekomendowane przez Rollbara:
+- w configu klienta dodać `transform`, który w każdej ramce stack trace'a
+  podmienia realny host na stały token `http://dynamichost`,
+- ustawić `payload.client.javascript.source_map_enabled: true` oraz
+  `code_version: '{{ ROLLBAR_CLIENT.codeVersion }}'`.
+Dzięki temu JEDNA wgrana mapa pasuje do wszystkich tenantów.
+
+**b) Upload map przy release (CI, tylko master).** Krok w pipelinie buildu
+obrazów POST-uje każdą mapę do `https://api.rollbar.com/api/1/sourcemap`:
+- `access_token` — token **serwerowy** (`post_server_item`), wymaga scope do
+  uploadu source map; w CI jako NOWY sekret GitHub Actions (np.
+  `ROLLBAR_SERVER_ACCESS_TOKEN`). To NIE jest token kliencki.
+- `version` — **musi** równać się `VERSION` z `src/django_bpp/version.py` (to,
+  co klient raportuje jako `code_version`). Niespójność = brak dopasowania mapy.
+- `minified_url` — `http://dynamichost/static/bpp/js/dist/bundle.js` (oraz
+  analogicznie dla `cytoscape-bundle.js`).
+- `source_map` — plik `.map`.
+
+**Otwarte pytanie do rozstrzygnięcia w planie:** skąd CI bierze pliki `.map`
+do uploadu. `make assets` biegnie w build-stage Dockera, więc mapy powstają
+WEWNĄTRZ obrazu, nie na runnerze. Opcje: (1) dedykowany job CI robiący `npm ci`
++ build bundla na runnerze i upload (prościej, duplikuje build JS), albo
+(2) ekstrakcja `.map` z gotowego obrazu (`docker cp`) i upload (DRY, więcej
+plumbingu docker). Sekrety NIE mogą trafić do build-stage obrazu — upload
+zawsze z poziomu joba CI z dostępem do sekretu.
+
 ## Testy (TDD)
 
 Plik: `src/bpp/tests/test_rollbar_frontend.py` — wzorowany na istniejącym
@@ -118,6 +168,14 @@ processora + renderu snippetu z tokenem z settings, z użyciem
 4. **Render — brak tokenu:** snippet NIEobecny.
 5. **Privacy lock:** wyrenderowany snippet NIE zawiera `person` ani loginu
    użytkownika (blokada regresji decyzji „bez PII").
+6. **Source map / multi-host:** snippet zawiera `transform` z `dynamichost`
+   oraz `source_map_enabled: true` i `code_version` równy `VERSION`.
+7. **Spójność wersji:** `code_version` renderowany w snippecie == `VERSION`
+   z `django_bpp.version` (ta sama wartość, którą CI poda jako `version` przy
+   uploadzie mapy). Blokuje rozjazd klient↔mapa.
+
+Upload map w CI to skrypt shellowy + wywołanie API — testowany manualnie/przez
+dry-run (poza pytest); w planie opisać weryfikację (np. `--dry-run`/echo URL).
 
 ## Dokumentacja / konfiguracja
 
@@ -132,11 +190,13 @@ processora + renderu snippetu z tokenem z settings, z użyciem
 - Globalne przechwytywanie `uncaught` + `unhandledrejection`.
 - `environment` + `code_version` spójne z backendem.
 - Gejtowane obecnością tokenu, bez PII.
+- Biblioteka `rollbar.js` hostowana lokalnie (static, nie CDN).
+- Source mapy: konfiguracja klienta `dynamichost` (multi-host) + upload map
+  do Rollbara przy release (CI, master) z `version == VERSION`.
 
 **Poza zakresem (przyszłe, osobne):**
 - Ręczna instrumentacja konkretnych przepływów (np. zgłaszanie błędu AJAX
   zapisu formularza multiseek jako `rollbar.error(...)`).
-- Upload source map do Rollbara (de-minifikacja stack trace'ów).
 - Person tracking (gdyby kiedyś zdecydowano inaczej).
 
 ## Ryzyka / uwagi
@@ -144,9 +204,11 @@ processora + renderu snippetu z tokenem z settings, z użyciem
 - **Pomyłka tokenów:** krytyczne, by w `rollbar.html` trafił token
   `post_client_item`, nie sekretny `post_server_item`. Realizowane przez
   osobną zmienną `ROLLBAR_CLIENT_ACCESS_TOKEN`.
-- **CSP:** snippet ładuje skrypt z CDN Rollbara. BPP już ładuje GA z CDN
-  googletagmanager, więc zewnętrzne skrypty są dopuszczone — brak dodatkowej
-  konfiguracji CSP oczekiwany. Zweryfikować przy implementacji.
-- **Bez source map** stack trace'y z `bundle.js` będą zminifikowane — czytelne
-  na poziomie „że błąd jest", mniej na poziomie „w której linii źródła".
-  Upload source map to świadomy follow-up poza zakresem.
+- **CSP:** biblioteka hostowana lokalnie ze static (same-origin), więc nie
+  wymaga dopuszczania zewnętrznego CDN w `script-src`. Zdarzenia POST-owane są
+  do `api.rollbar.com` — jeśli istnieje polityka CSP `connect-src`, dopisać tam
+  domenę Rollbara. Zweryfikować przy implementacji.
+- **Source mapy — DECYZJA UŻYTKOWNIKA (patrz niżej).** Build już emituje
+  `bundle.js.map` (esbuild `--sourcemap`, `Gruntfile.js`). Bez kroku uploadu
+  mapy do Rollbara stack trace'y w panelu pozostaną zminifikowane (czytelne
+  „że błąd jest", mniej „w której linii źródła").
