@@ -301,10 +301,9 @@ compilemessages: $(MO_FILES) ## Skompiluj tłumaczenia Django (*.po → *.mo)
 #	twine upload dist/*whl
 
 
-js-tests: assets ## Uruchom testy JS (QUnit via Puppeteer)
-	$(YARN_CMD) install --optional
-	npx puppeteer browsers install chrome
-	grunt qunit
+js-tests: ## Jednostkowe testy JS (vitest): czysta logika modułów BPP
+	$(YARN_CMD) install --frozen-lockfile
+	npx vitest run
 
 ##@ Dokumentacja
 
@@ -593,7 +592,7 @@ loc: clean ## Pokaż statystyki liczby linii (pygount)
 	pygount -N ... -F "...,staticroot,migrations,fixtures" src --format=summary
 
 
-DOCKER_VERSION=202606.1390
+DOCKER_VERSION=202606.1391
 
 # Cache configuration for docker buildx bake
 # - local: use local cache (default for local builds)
