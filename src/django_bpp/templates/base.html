@@ -2,6 +2,10 @@
 {% load static static cache just_single_quotes bpp_version crispy_forms_tags %}
 
 {% block extrahead %}
+    {% if ROLLBAR_CLIENT %}
+        {% include "rollbar.html" %}
+    {% endif %}
+
     {{ block.super }}
 
     {# jQuery Circle Progress is now included in the main bundle.js #}
