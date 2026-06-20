@@ -543,6 +543,11 @@ document.addEventListener('click', function(e) {
         e.preventDefault();
         copyEmbedCode();
     }
+    // Klik w zdjęcie: tylko modal (data-open Foundation), bez nawigacji
+    // do pełnego obrazu. href zostaje jako fallback przy braku JS.
+    if (e.target.closest('.autor-page__avatar-link')) {
+        e.preventDefault();
+    }
 });
 document.addEventListener('keydown', function(e) {
     var elem = e.target.closest('[data-keydown-toggle]');

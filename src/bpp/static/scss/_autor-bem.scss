@@ -146,8 +146,13 @@
     margin-bottom: 8px;
   }
 
+  // Rok w wyszukiwarce: checkbox i rok ZAWSZE w jednej linii (flex + nowrap),
+  // nigdy checkbox nad rokiem — niezależnie od szerokości kolumny.
   &__checkbox-item--year {
     margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    white-space: nowrap;
   }
 
   &__checkbox {
@@ -360,9 +365,12 @@
   &__avatar-pelne {
     display: block;
     max-width: 100%;
+    max-height: 88vh;
+    width: auto;
     height: auto;
     margin: 0 auto;
-    border-radius: 4px;
+    border-radius: 12px;
+    box-shadow: 0 6px 28px rgba(0, 0, 0, 0.45);
   }
 
   // --- Profil: linki do raportu autora ---
@@ -575,20 +583,29 @@
     margin: 0;
   }
 
+  // Wiersz statystyk to <button> POST-ujący wyszukiwanie, ale ma wyglądać
+  // i zachowywać się jak ZWYKŁY link serwisu: kolor motywu (anchor), brak
+  // ramki/cienia/outline (żadnej „kwadratowej ramki" na hover/focus),
+  // podkreślenie dopiero na hover/focus — dokładnie jak <a> Foundation.
   &__staty-link {
     background: none;
     border: none;
     padding: 0;
     margin: 0;
-    color: #2980b9;
+    color: $anchor-color;
     cursor: pointer;
     text-align: left;
     font: inherit;
+    text-decoration: none;
+    box-shadow: none;
 
     &:hover,
-    &:focus {
+    &:focus,
+    &:focus-visible {
+      color: $anchor-color-hover;
       text-decoration: underline;
       outline: none;
+      box-shadow: none;
     }
   }
 
@@ -638,4 +655,19 @@
     color: #777;
     font-size: 0.85em;
   }
+}
+
+// Modal powiększenia zdjęcia autora — pokazujemy SAMO zdjęcie, bez białego
+// marginesu/tła Foundation Reveal. Selektor dwuklasowy (.reveal.<modal>) bije
+// bazowe `.reveal` niezależnie od kolejności importów (Foundation ładuje się
+// po `_autor-bem`). Okno dopasowane do obrazu, zaokrąglenie daje samo zdjęcie.
+.reveal.autor-page__avatar-modal {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  width: auto;
+  max-width: 92vw;
+  margin-left: auto;
+  margin-right: auto;
 }
