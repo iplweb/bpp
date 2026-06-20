@@ -220,6 +220,45 @@ def _prefill_dyscypliny_z_zgloszen(session):
 
 
 @transaction.atomic
+def _create_single_author(imported, obca):
+    """Utwórz (lub dopasuj po ORCID) rekord ``Autor`` dla pojedynczego
+    ``ImportedAuthor`` i przypisz go do obcej jednostki.
+
+    Wspólny rdzeń dla masowego ``_create_unmatched_authors`` oraz
+    per-wierszowego ``AuthorCreateNewView`` ("Utwórz nowego" z modala
+    edycji). Trzymane w jednym miejscu, żeby logika dedupowania po ORCID
+    nie rozjechała się między ścieżkami.
+
+    Jeśli dostawca podał ORCID i istnieje już ``Autor`` z tym ORCID-em,
+    dopasowuje istniejącego zamiast tworzyć duplikat.
+    """
+    orcid = imported.orcid.strip() or None
+
+    if orcid:
+        existing = Autor.objects.filter(orcid=orcid).first()
+        if existing:
+            existing.dodaj_jednostke(obca)
+            imported.matched_autor = existing
+            imported.matched_jednostka = obca
+            imported.match_status = ImportedAuthor.MatchStatus.MANUAL
+            imported.save()
+            return existing
+
+    autor = Autor.objects.create(
+        imiona=imported.given_name,
+        nazwisko=imported.family_name,
+        orcid=orcid,
+    )
+    autor.dodaj_jednostke(obca)
+
+    imported.matched_autor = autor
+    imported.matched_jednostka = obca
+    imported.match_status = ImportedAuthor.MatchStatus.MANUAL
+    imported.save()
+    return autor
+
+
+@transaction.atomic
 def _create_unmatched_authors(session, obca):
     """Utwórz rekordy Autor dla niedopasowanych
     autorów i przypisz do obcej jednostki."""
@@ -227,28 +266,4 @@ def _create_unmatched_authors(session, obca):
         match_status=(ImportedAuthor.MatchStatus.UNMATCHED)
     )
     for imported in unmatched:
-        orcid = imported.orcid.strip() or None
-
-        # Jeśli ORCID podany i istnieje Autor
-        # z takim ORCID -- dopasuj istniejącego
-        if orcid:
-            existing = Autor.objects.filter(orcid=orcid).first()
-            if existing:
-                imported.matched_autor = existing
-                imported.matched_jednostka = obca
-                imported.match_status = ImportedAuthor.MatchStatus.MANUAL
-                existing.dodaj_jednostke(obca)
-                imported.save()
-                continue
-
-        autor = Autor.objects.create(
-            imiona=imported.given_name,
-            nazwisko=imported.family_name,
-            orcid=orcid,
-        )
-        autor.dodaj_jednostke(obca)
-
-        imported.matched_autor = autor
-        imported.matched_jednostka = obca
-        imported.match_status = ImportedAuthor.MatchStatus.MANUAL
-        imported.save()
+        _create_single_author(imported, obca)
