@@ -42,6 +42,63 @@ def test_uklad_2_kolumnowy_obecny(client):
     assert "autor-page__kolumna-prawa" in tresc
 
 
+def _wytnij_kolumne(tresc, klasa):
+    """Zwróć fragment HTML danej kolumny (od jej diva do końca treści).
+
+    Wystarczy do testu „w której kolumnie" — porównujemy pozycje markerów.
+    """
+    return tresc[tresc.index(klasa) :]
+
+
+@pytest.mark.django_db
+def test_domyslnie_biogram_i_identyfikatory_w_lewej_kolumnie(client):
+    autor = baker.make(Autor, biogram="Tekst biogramu", biogram_format="md")
+    tresc = client.get(autor.get_absolute_url()).content.decode()
+    poz_lewa = tresc.index("autor-page__kolumna-lewa")
+    poz_prawa = tresc.index("autor-page__kolumna-prawa")
+    # biogram i identyfikatory renderują się PRZED początkiem prawej kolumny
+    assert poz_lewa < tresc.index("autor-page__biogram-tresc") < poz_prawa
+    assert poz_lewa < tresc.index("Identyfikatory") < poz_prawa
+    # wyszukiwarka też w lewej (domyślnie)
+    assert poz_lewa < tresc.index("Wyszukaj publikacje autora") < poz_prawa
+
+
+@pytest.mark.django_db
+def test_szerokosc_kolumn_domyslnie_6_6(client):
+    autor = baker.make(Autor)
+    tresc = client.get(autor.get_absolute_url()).content.decode()
+    assert "cell large-6 autor-page__kolumna-lewa" in tresc
+    assert "cell large-6 autor-page__kolumna-prawa" in tresc
+
+
+@pytest.mark.django_db
+def test_przeniesienie_biogramu_do_prawej_kolumny(client, uczelnia):
+    from bpp.profil_autora import KLUCZ_BIOGRAM, KOLUMNA_PRAWA
+
+    uczelnia.uklad_profilu_autora = [
+        {"klucz": KLUCZ_BIOGRAM, "kolumna": KOLUMNA_PRAWA, "widoczna": True}
+    ]
+    uczelnia.save()
+
+    autor = baker.make(Autor, biogram="Tekst biogramu", biogram_format="md")
+    tresc = client.get(autor.get_absolute_url()).content.decode()
+    # biogram musi renderować się ZA początkiem prawej kolumny
+    assert tresc.index("autor-page__biogram-tresc") > tresc.index(
+        "autor-page__kolumna-prawa"
+    )
+
+
+@pytest.mark.django_db
+def test_konfigurowalna_szerokosc_lewej_kolumny(client, uczelnia):
+    uczelnia.szerokosc_lewej_kolumny = 8
+    uczelnia.save()
+
+    autor = baker.make(Autor)
+    tresc = client.get(autor.get_absolute_url()).content.decode()
+    assert "cell large-8 autor-page__kolumna-lewa" in tresc
+    assert "cell large-4 autor-page__kolumna-prawa" in tresc
+
+
 @pytest.mark.django_db
 def test_brak_linkow_raportu_gdy_raport_nieaktywny(client):
     from nowe_raporty.models import DefinicjaRaportu

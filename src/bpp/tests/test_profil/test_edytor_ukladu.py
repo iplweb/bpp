@@ -1,9 +1,10 @@
 """Testy kafelkowego edytora układu profilu autora (widget + form, §3.2).
 
 Edytor zastępuje surowy textarea JSON w ``UczelniaAdmin`` przyjaznym widgetem
-kafelkowym (drag-drop). Unit-testy skupiają się na round-tripie danych:
-``clean_uklad_profilu_autora`` sanityzuje przez ``waliduj_uklad``, a
-``render`` rysuje kafelek dla KAŻDEJ sekcji katalogu.
+kafelkowym z DWIEMA połączonymi strefami (lewa / prawa, drag-drop między nimi).
+Unit-testy skupiają się na round-tripie danych: ``clean_uklad_profilu_autora``
+sanityzuje przez ``waliduj_uklad``, a ``render`` rysuje kafelek dla KAŻDEJ
+sekcji katalogu w jego kolumnie.
 """
 
 import json
@@ -17,9 +18,12 @@ from bpp.models import Uczelnia
 from bpp.profil_autora import (
     DOMYSLNY_LIMIT,
     KATALOG_SEKCJI,
+    KLUCZ_BIOGRAM,
     KLUCZ_NAJLEPSZE_PK,
     KLUCZ_STATYSTYKI_CHARAKTER,
     KLUCZ_WYKRES_LATA,
+    KOLUMNA_LEWA,
+    KOLUMNA_PRAWA,
     rozwiaz_uklad,
 )
 
@@ -147,11 +151,21 @@ def test_render_dolacza_sekcje_spoza_zapisanej_wartosci():
 
 @pytest.mark.django_db
 def test_round_trip_zapisuje_kanoniczny_schemat(uczelnia):
-    # symulacja POST-a tego, co JS zserializował do ukrytego inputa
+    # symulacja POST-a tego, co JS zserializował do ukrytego inputa (z kolumną)
     posted = json.dumps(
         [
-            {"klucz": KLUCZ_NAJLEPSZE_PK, "widoczna": True, "limit": 50},
-            {"klucz": KLUCZ_WYKRES_LATA, "widoczna": False, "limit": None},
+            {
+                "klucz": KLUCZ_NAJLEPSZE_PK,
+                "kolumna": KOLUMNA_PRAWA,
+                "widoczna": True,
+                "limit": 50,
+            },
+            {
+                "klucz": KLUCZ_WYKRES_LATA,
+                "kolumna": KOLUMNA_PRAWA,
+                "widoczna": False,
+                "limit": None,
+            },
         ]
     )
     wynik = _clean_uklad(posted)
@@ -160,14 +174,47 @@ def test_round_trip_zapisuje_kanoniczny_schemat(uczelnia):
     uczelnia.refresh_from_db()
 
     zapis = uczelnia.uklad_profilu_autora
-    # każda pozycja ma DOKŁADNIE schemat {klucz, widoczna, limit}
+    # każda pozycja ma DOKŁADNIE schemat {klucz, kolumna, widoczna, limit}
     for poz in zapis:
-        assert set(poz.keys()) == {"klucz", "widoczna", "limit"}
+        assert set(poz.keys()) == {"klucz", "kolumna", "widoczna", "limit"}
         assert isinstance(poz["widoczna"], bool)
-    assert zapis[0] == {"klucz": KLUCZ_NAJLEPSZE_PK, "widoczna": True, "limit": 50}
-    assert zapis[1] == {"klucz": KLUCZ_WYKRES_LATA, "widoczna": False, "limit": None}
+    assert zapis[0] == {
+        "klucz": KLUCZ_NAJLEPSZE_PK,
+        "kolumna": KOLUMNA_PRAWA,
+        "widoczna": True,
+        "limit": 50,
+    }
+    assert zapis[1] == {
+        "klucz": KLUCZ_WYKRES_LATA,
+        "kolumna": KOLUMNA_PRAWA,
+        "widoczna": False,
+        "limit": None,
+    }
     # i rozwiaz_uklad nadal działa na zapisanej wartości
     assert rozwiaz_uklad(uczelnia)
+
+
+def test_clean_round_trip_przeniesienia_kolumny(uczelnia):
+    # przeniesienie biogramu (domyślnie lewa) do prawej musi przetrwać clean
+    posted = json.dumps(
+        [{"klucz": KLUCZ_BIOGRAM, "kolumna": KOLUMNA_PRAWA, "widoczna": True}]
+    )
+    wynik = _clean_uklad(posted)
+    assert wynik[0]["klucz"] == KLUCZ_BIOGRAM
+    assert wynik[0]["kolumna"] == KOLUMNA_PRAWA
+    uczelnia.uklad_profilu_autora = wynik
+    uczelnia.save()
+    uczelnia.refresh_from_db()
+    res = rozwiaz_uklad(uczelnia)
+    assert KLUCZ_BIOGRAM in [s["klucz"] for s in res[KOLUMNA_PRAWA]]
+
+
+@pytest.mark.django_db
+def test_render_ma_dwie_strefy_z_data_kolumna():
+    widget = EdytorUkladuWidget()
+    html = widget.render("uklad_profilu_autora", None)
+    assert f'data-kolumna="{KOLUMNA_LEWA}"' in html
+    assert f'data-kolumna="{KOLUMNA_PRAWA}"' in html
 
 
 @pytest.mark.django_db

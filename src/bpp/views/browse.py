@@ -166,11 +166,17 @@ class AutorView(DetailView):
         from bpp.profil_autora_dane import przygotuj_sekcje
 
         request = getattr(self, "request", None)
+        # Szerokość kolumn (Foundation, na 12): lewa z konfiguracji uczelni,
+        # prawa dopełnia do 12. Domyślnie 6/6 (jak dziś). getattr — uczelnia
+        # może być None (testy jednostkowe bez request).
+        szer_lewej = getattr(uczelnia, "szerokosc_lewej_kolumny", 6) or 6
         return super().get_context_data(
             typy=TYPY,
             uczelnia=uczelnia,
             ma_powiazania=ma_powiazania,
             sekcje_profilu=przygotuj_sekcje(self.object, uczelnia, request),
+            szer_lewej_kolumny=szer_lewej,
+            szer_prawej_kolumny=12 - szer_lewej,
             historia_zatrudnienia=self.object.historia_zatrudnienia(uczelnia),
             raport_links=self._raport_links(request),
             **kwargs,

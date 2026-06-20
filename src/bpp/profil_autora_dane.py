@@ -254,29 +254,41 @@ _BUILDERY = {
 
 
 def przygotuj_sekcje(autor, uczelnia=None, request=None):
-    """Zwróć listę sekcji prawej kolumny do wyrenderowania (z danymi).
+    """Zwróć sekcje OBU kolumn do wyrenderowania.
 
-    Układ pobierany jest globalnie z ``uczelnia`` (``rozwiaz_uklad``), dane —
-    z ``autor``. Każdy element: ``{"klucz", "nazwa", "template", "dane"}``.
-    ``dane`` to słownik zwrócony przez builder. Sekcje, których builder zwrócił
-    ``None`` (lub które nie mają jeszcze buildera), są pomijane.
+    Układ pobierany jest globalnie z ``uczelnia`` (``rozwiaz_uklad`` → dict
+    ``{"lewa", "prawa"}``), dane — z ``autor``. Zwraca dict tej samej struktury;
+    każdy element to ``{"klucz", "nazwa", "template", "dane"}`` (``dane`` może
+    być ``None`` dla sekcji tylko-szablonowych — partial czyta wtedy ``autor``
+    itd. z kontekstu strony).
+
+    Reguły pomijania:
+    - sekcja TYLKO-SZABLONOWA (``template_only``, np. bloki lewej kolumny) jest
+      ZAWSZE dołączana — partial sam się bramkuje (``{% if %}``);
+    - sekcja DATA-DRIVEN jest pomijana, gdy jej builder zwrócił ``None`` (pusta)
+      lub gdy buildera (jeszcze) nie ma.
     """
-    from bpp.profil_autora import rozwiaz_uklad
+    from bpp.profil_autora import KOLUMNA_LEWA, KOLUMNA_PRAWA, rozwiaz_uklad
 
-    sekcje = []
-    for s in rozwiaz_uklad(uczelnia):
-        builder = _BUILDERY.get(s["klucz"])
-        if builder is None:
-            continue
-        dane = builder(autor, s["limit"], request)
-        if dane is None:
-            continue
-        sekcje.append(
-            {
-                "klucz": s["klucz"],
-                "nazwa": s["nazwa"],
-                "template": s["template"],
-                "dane": dane,
-            }
-        )
-    return sekcje
+    uklad = rozwiaz_uklad(uczelnia)
+    wynik = {KOLUMNA_LEWA: [], KOLUMNA_PRAWA: []}
+    for kolumna, lista in uklad.items():
+        for s in lista:
+            if s["template_only"]:
+                dane = None
+            else:
+                builder = _BUILDERY.get(s["klucz"])
+                if builder is None:
+                    continue
+                dane = builder(autor, s["limit"], request)
+                if dane is None:
+                    continue
+            wynik[kolumna].append(
+                {
+                    "klucz": s["klucz"],
+                    "nazwa": s["nazwa"],
+                    "template": s["template"],
+                    "dane": dane,
+                }
+            )
+    return wynik

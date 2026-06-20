@@ -1,12 +1,14 @@
 """Kafelkowy (drag-drop) edytor układu profilu autora dla ``UczelniaAdmin``.
 
-Zastępuje surowy ``<textarea>`` JSON przyjaznym widgetem: jeden kafelek na
-sekcję PRAWEJ kolumny podstrony autora, z checkboxem widoczności, opcjonalnym
-``<select>`` limitu (tylko sekcje ``ma_limit``) i drag-drop reorderowaniem
-(jquery-ui ``.sortable()`` dostarczane przez Grappelli).
+Zastępuje surowy ``<textarea>`` JSON przyjaznym widgetem: DWIE połączone strefy
+(Lewa / Prawa) z kafelkami sekcji podstrony autora. Każdy kafelek ma checkbox
+widoczności, opcjonalny ``<select>`` limitu (tylko sekcje ``ma_limit``) i da się
+go przeciągnąć MIĘDZY kolumnami (jquery-ui ``.sortable({connectWith})``,
+dostarczane przez Grappelli).
 
-Na zapis serializuje do TEGO SAMEGO schematu JSON, który konsumuje reszta kodu:
-lista pozycji ``{"klucz": str, "widoczna": bool, "limit": int|None}``. JS
+Na zapis serializuje do schematu JSON, który konsumuje reszta kodu: lista
+pozycji ``{"klucz": str, "kolumna": "lewa"|"prawa", "widoczna": bool, "limit":
+int|None}`` (``kolumna`` wynika z tego, w której strefie jest kafelek). JS
 re-serializuje kafelki do ukrytego inputa, a ``waliduj_uklad`` w ``clean``
 sanityzuje cokolwiek przyjdzie POST-em.
 
@@ -22,6 +24,8 @@ from bpp.profil_autora import (
     DOZWOLONE_LIMITY,
     KATALOG_SEKCJI,
     KATALOG_WG_KLUCZA,
+    KOLUMNA_LEWA,
+    KOLUMNA_PRAWA,
     domyslny_uklad,
     waliduj_uklad,
 )
@@ -42,12 +46,13 @@ def _parsuj_wartosc(value):
 
 
 def _uporzadkuj_kafelki(value):
-    """Zbuduj listę kafelków: zapisana kolejność, potem brakujące z katalogu.
+    """Zbuduj kafelki rozdzielone na kolumny: ``{"lewa": [...], "prawa": [...]}``.
 
-    Każdy kafelek to dict ``{typ, widoczna, limit}``. ``typ`` to ``TypSekcji``.
-    Forward-compat: sekcja z katalogu nieobecna w ``value`` jest doklejana z
-    domyślnymi ustawieniami (jak ``rozwiaz_uklad``), więc nowo dodane sekcje
-    zawsze pojawią się w edytorze.
+    Każdy kafelek to dict ``{typ, kolumna, widoczna, limit}``. ``typ`` to
+    ``TypSekcji``. Kolejność: najpierw zapisane pozycje (w ich zapisanej
+    kolumnie), potem sekcje katalogu nieobecne w ``value`` — doklejane z
+    domyślnymi ustawieniami w ich DOMYŚLNEJ kolumnie (forward-compat, jak
+    ``rozwiaz_uklad``), więc nowo dodane sekcje zawsze pojawią się w edytorze.
     """
     zapisany = waliduj_uklad(_parsuj_wartosc(value))
     wg_klucza = {p["klucz"]: p for p in zapisany}
@@ -58,12 +63,14 @@ def _uporzadkuj_kafelki(value):
         if typ.klucz not in wg_klucza:
             kolejnosc.append(typ.klucz)
 
-    kafelki = []
+    kafelki = {KOLUMNA_LEWA: [], KOLUMNA_PRAWA: []}
     for klucz in kolejnosc:
         pozycja = wg_klucza.get(klucz) or domyslne[klucz]
-        kafelki.append(
+        kolumna = pozycja["kolumna"]
+        kafelki[kolumna].append(
             {
                 "typ": KATALOG_WG_KLUCZA[klucz],
+                "kolumna": kolumna,
                 "widoczna": pozycja["widoczna"],
                 "limit": pozycja["limit"],
             }
@@ -86,21 +93,26 @@ class EdytorUkladuWidget(forms.Widget):
     def render(self, name, value, attrs=None, renderer=None):
         kafelki = _uporzadkuj_kafelki(value)
         # Kanoniczna wartość ukrytego inputa — to, co odczyta JS i ewentualny
-        # POST gdy JS nie wystartuje.
+        # POST gdy JS nie wystartuje. Kolejność: lewa, potem prawa (JS i tak
+        # serializuje per-strefa, więc kolejność tu jest tylko fallbackiem).
         serializowane = json.dumps(
             [
                 {
                     "klucz": k["typ"].klucz,
+                    "kolumna": k["kolumna"],
                     "widoczna": k["widoczna"],
                     "limit": k["limit"],
                 }
-                for k in kafelki
+                for k in kafelki[KOLUMNA_LEWA] + kafelki[KOLUMNA_PRAWA]
             ]
         )
         context = {
             "name": name,
             "value_json": serializowane,
-            "kafelki": kafelki,
+            "kafelki_lewa": kafelki[KOLUMNA_LEWA],
+            "kafelki_prawa": kafelki[KOLUMNA_PRAWA],
+            "kolumna_lewa": KOLUMNA_LEWA,
+            "kolumna_prawa": KOLUMNA_PRAWA,
             "dozwolone_limity": DOZWOLONE_LIMITY,
         }
         # get_template(...).render(context) — bez request, więc context

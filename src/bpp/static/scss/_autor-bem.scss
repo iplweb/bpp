@@ -321,10 +321,12 @@
     color: white;
   }
 
-  // Wizytówka: kontener zdjęcia + biogramu. overflow:hidden domyka float
-  // zdjęcia, żeby biogram je opływał, a kolejne sekcje zaczynały się niżej.
+  // Wizytówka: kontener pływającego zdjęcia. NIE ustanawia BFC (brak
+  // overflow:hidden) — dzięki temu pływające zdjęcie „wystaje" poza wizytówkę
+  // i opływa je biogram (sekcja zaraz pod spodem). Float domyka kolumna
+  // (flow-root) + `clear` na pozostałych sekcjach (patrz niżej).
   &__wizytowka {
-    overflow: hidden;
+    margin-bottom: 0;
   }
 
   // --- Profil: zdjęcie/awatar (klikalne → powiększenie w modalu) ---
@@ -581,8 +583,32 @@
     margin-top: 0.5rem;
   }
 
+  // Kolumny ustanawiają BFC (flow-root), więc pływające zdjęcie nigdy nie
+  // wycieka POZA swoją kolumnę. Wewnątrz kolumny biogram (sekcja zaraz po
+  // zdjęciu) opływa zdjęcie, a pozostałe sekcje (mające `clear`) zaczynają się
+  // pod nim — odwzorowuje to dawną wizytówkę (zdjęcie + biogram w jednym
+  // kontenerze). Działa też, gdy zdjęcie zostanie przeniesione do prawej.
+  &__kolumna-lewa,
+  &__kolumna-prawa {
+    display: flow-root;
+  }
+
   &__kolumna-lewa {
     font-size: 0.95rem;
+  }
+
+  // Tylko biogram opływa pływające zdjęcie; reszta sekcji w kolumnie czyści
+  // float, by zaczynać się pod zdjęciem (jak dziś). Biogram sam `clear: none`.
+  &__kolumna-lewa > .author-info-section,
+  &__kolumna-lewa > .shaded-hr-div-small,
+  &__kolumna-prawa > .author-info-section,
+  &__kolumna-prawa > .shaded-hr-div-small {
+    clear: both;
+  }
+
+  &__wizytowka,
+  &__biogram-sekcja {
+    clear: none;
   }
 
   // --- Statystyki wg charakteru: wiersz jako link budujący wyszukiwanie ---

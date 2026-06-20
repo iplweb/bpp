@@ -190,13 +190,13 @@ class UczelniaAdmin(
             {
                 "classes": ("grp-collapse grp-closed",),
                 "description": (
-                    "Układ PRAWEJ kolumny podstrony autora (globalny dla "
-                    "uczelni). Przeciągnij kafelki, aby zmienić kolejność "
-                    "sekcji; odznacz, by ukryć; dla list ustaw limit pozycji. "
-                    "Lewa kolumna (biogram, wyszukiwarka, identyfikatory) jest "
-                    "stała."
+                    "Układ OBU kolumn podstrony autora (globalny dla uczelni). "
+                    "Przeciągnij kafelki, aby zmienić kolejność LUB przenieść "
+                    "sekcję między kolumnami (lewa ⇄ prawa); odznacz, by ukryć; "
+                    "dla list ustaw limit pozycji. Szerokość lewej kolumny "
+                    "(prawa dopełnia do 12) ustawisz osobnym polem."
                 ),
-                "fields": ("uklad_profilu_autora",),
+                "fields": ("szerokosc_lewej_kolumny", "uklad_profilu_autora"),
             },
         ),
         (

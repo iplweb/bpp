@@ -1,35 +1,69 @@
-{# Kafelkowy edytor układu profilu autora (§3.2). Admin → emoji. #}
-{# JS (uklad_profilu_edytor.js) inicjuje jquery-ui .sortable() i #}
-{# re-serializuje kafelki do ukrytego inputa na każdą zmianę. #}
+{# Kafelkowy edytor układu profilu autora — DWIE połączone strefy. Admin → emoji. #}
+{# JS (uklad_profilu_edytor.js) inicjuje jquery-ui .sortable({connectWith}) na #}
+{# obu listach i re-serializuje kafelki do ukrytego inputa na każdą zmianę. #}
+{# Kolumna kafelka wynika z tego, w której strefie się znajduje. #}
 <div class="uklad-profilu-edytor">
   <input type="hidden" name="{{ name }}" id="id_{{ name }}"
          class="uklad-profilu-wartosc" value="{{ value_json }}">
   <p class="help">
-    Przeciągnij kafelki uchwytem ⠿, aby zmienić kolejność sekcji prawej
-    kolumny. Odznacz checkbox, by ukryć sekcję. Dla list ustaw limit pozycji.
+    Przeciągnij kafelki uchwytem ⠿, aby zmienić kolejność LUB przenieść sekcję
+    między kolumnami (lewa ⇄ prawa). Odznacz checkbox, by ukryć sekcję. Dla list
+    ustaw limit pozycji.
   </p>
-  <ul class="uklad-profilu-lista">
-    {% for kafelek in kafelki %}
-      <li class="uklad-profilu-kafelek" data-klucz="{{ kafelek.typ.klucz }}">
-        <span class="uklad-uchwyt" title="Przeciągnij, aby zmienić kolejność">⠿</span>
-        <label class="uklad-etykieta">
-          <input type="checkbox" class="uklad-widoczna"
-                 data-klucz="{{ kafelek.typ.klucz }}"
-                 {% if kafelek.widoczna %}checked{% endif %}>
-          {{ kafelek.typ.nazwa }}
-        </label>
-        {% if kafelek.typ.ma_limit %}
-          <span class="uklad-limit">
-            🔢
-            <select class="uklad-limit-select" data-klucz="{{ kafelek.typ.klucz }}">
-              {% for opcja in dozwolone_limity %}
-                <option value="{{ opcja }}"
-                  {% if kafelek.limit == opcja %}selected{% endif %}>{{ opcja }}</option>
-              {% endfor %}
-            </select>
-          </span>
-        {% endif %}
-      </li>
-    {% endfor %}
-  </ul>
+  <div class="uklad-profilu-strefy">
+    <div class="uklad-profilu-strefa">
+      <h3 class="uklad-profilu-naglowek">⬅️ Lewa kolumna</h3>
+      <ul class="uklad-profilu-lista" data-kolumna="{{ kolumna_lewa }}">
+        {% for kafelek in kafelki_lewa %}
+          <li class="uklad-profilu-kafelek" data-klucz="{{ kafelek.typ.klucz }}">
+            <span class="uklad-uchwyt" title="Przeciągnij, aby zmienić kolejność lub kolumnę">⠿</span>
+            <label class="uklad-etykieta">
+              <input type="checkbox" class="uklad-widoczna"
+                     data-klucz="{{ kafelek.typ.klucz }}"
+                     {% if kafelek.widoczna %}checked{% endif %}>
+              {{ kafelek.typ.nazwa }}
+            </label>
+            {% if kafelek.typ.ma_limit %}
+              <span class="uklad-limit">
+                🔢
+                <select class="uklad-limit-select" data-klucz="{{ kafelek.typ.klucz }}">
+                  {% for opcja in dozwolone_limity %}
+                    <option value="{{ opcja }}"
+                      {% if kafelek.limit == opcja %}selected{% endif %}>{{ opcja }}</option>
+                  {% endfor %}
+                </select>
+              </span>
+            {% endif %}
+          </li>
+        {% endfor %}
+      </ul>
+    </div>
+    <div class="uklad-profilu-strefa">
+      <h3 class="uklad-profilu-naglowek">➡️ Prawa kolumna</h3>
+      <ul class="uklad-profilu-lista" data-kolumna="{{ kolumna_prawa }}">
+        {% for kafelek in kafelki_prawa %}
+          <li class="uklad-profilu-kafelek" data-klucz="{{ kafelek.typ.klucz }}">
+            <span class="uklad-uchwyt" title="Przeciągnij, aby zmienić kolejność lub kolumnę">⠿</span>
+            <label class="uklad-etykieta">
+              <input type="checkbox" class="uklad-widoczna"
+                     data-klucz="{{ kafelek.typ.klucz }}"
+                     {% if kafelek.widoczna %}checked{% endif %}>
+              {{ kafelek.typ.nazwa }}
+            </label>
+            {% if kafelek.typ.ma_limit %}
+              <span class="uklad-limit">
+                🔢
+                <select class="uklad-limit-select" data-klucz="{{ kafelek.typ.klucz }}">
+                  {% for opcja in dozwolone_limity %}
+                    <option value="{{ opcja }}"
+                      {% if kafelek.limit == opcja %}selected{% endif %}>{{ opcja }}</option>
+                  {% endfor %}
+                </select>
+              </span>
+            {% endif %}
+          </li>
+        {% endfor %}
+      </ul>
+    </div>
+  </div>
 </div>
