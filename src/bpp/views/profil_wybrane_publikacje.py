@@ -97,14 +97,19 @@ class ProfilWybranePublikacjeAutocompleteView(WymagajAutoraMixin, View):
     "text": ...}], "pagination": {"more": false}}`` (zasila ``ListSelect2``).
     Pyta wyłącznie ``Rekord.objects.prace_autora(request.user.autor)`` — autor
     nie zobaczy tu (a tym samym nie wyróżni) cudzej pracy.
+
+    Szukamy po PEŁNYM opisie bibliograficznym (``opis_bibliograficzny_cache``),
+    a nie tylko po tytule — więc działa też wyszukiwanie po współautorach,
+    źródle czy roku (jak w globalnej wyszukiwarce). Każde słowo zapytania musi
+    wystąpić (AND), dzięki czemu np. „Nowak 2020" zawęża sensownie.
     """
 
     def get(self, request, *args, **kwargs):
         autor = request.user.autor
         q = (request.GET.get("q") or "").strip()
         qs = Rekord.objects.prace_autora(autor)
-        if q:
-            qs = qs.filter(tytul_oryginalny__icontains=q)
+        for slowo in q.split():
+            qs = qs.filter(opis_bibliograficzny_cache__icontains=slowo)
         qs = qs.order_by("-rok", "tytul_oryginalny_sort")[:LIMIT_AUTOCOMPLETE]
         results = [
             {

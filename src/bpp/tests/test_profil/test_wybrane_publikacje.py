@@ -365,3 +365,34 @@ def test_autocomplete_zwraca_wlasne_prace(
     assert not any("kowalskiego" in e for e in etykiety)
     # Etykiety to czysty tekst — żadnych surowych tagów HTML z opisu.
     assert all("<" not in e for e in etykiety)
+
+
+def test_autocomplete_szuka_po_wspolautorze(
+    client,
+    django_user_model,
+    transactional_db,
+    standard_data,
+    wydawnictwo_zwarte,
+    autor_jan_nowak,
+    jednostka,
+    denorms,
+):
+    # Wyszukiwanie idzie po PEŁNYM opisie bibliograficznym, więc znajduje
+    # własną pracę także po nazwisku WSPÓŁAUTORA (nie tylko po tytule).
+    from bpp.models import Autor
+
+    wspolautor = baker.make(Autor, nazwisko="Osobliwynazwisko", imiona="Zenon")
+    wydawnictwo_zwarte.tytul_oryginalny = "Praca wspólna"
+    wydawnictwo_zwarte.save()
+    wydawnictwo_zwarte.dodaj_autora(autor_jan_nowak, jednostka)
+    wydawnictwo_zwarte.dodaj_autora(wspolautor, jednostka)
+    denorms.flush()
+
+    _zaloguj_jako_autora(client, django_user_model, autor_jan_nowak)
+    resp = client.get(
+        reverse("bpp:profil-wybrane-publikacje-autocomplete"),
+        {"q": "Osobliwynazwisko"},
+    )
+    assert resp.status_code == 200
+    dane = json.loads(resp.content)
+    assert len(dane["results"]) == 1
