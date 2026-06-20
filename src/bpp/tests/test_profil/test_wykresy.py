@@ -3,9 +3,27 @@
 import pytest
 from django.template.loader import render_to_string
 
-from bpp.profil_autora_dane import _agreguj_po_latach
+from bpp.profil_autora_dane import (
+    OKNO_LAT_WYKRESU,
+    _agreguj_po_latach,
+    _ostatnie_lata,
+)
 
 pytestmark = pytest.mark.django_db
+
+
+def test_ostatnie_lata_ogranicza_do_okna():
+    # 25 lat danych → wykres pokazuje tylko ostatnie OKNO_LAT_WYKRESU.
+    dane = [(rok, 1) for rok in range(2000, 2025)]
+    okno = _ostatnie_lata(dane)
+    assert len(okno) == OKNO_LAT_WYKRESU
+    assert okno[-1][0] == 2024
+    assert okno[0][0] == 2024 - OKNO_LAT_WYKRESU + 1
+
+
+def test_ostatnie_lata_krotsza_seria_bez_zmian():
+    dane = [(2020, 1), (2021, 2), (2022, 3)]
+    assert _ostatnie_lata(dane) == dane
 
 
 def test_agreguj_sumuje_wartosci_w_obrebie_roku():

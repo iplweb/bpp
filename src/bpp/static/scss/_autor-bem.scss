@@ -316,13 +316,53 @@
     color: white;
   }
 
-  // --- Profil: zdjęcie/awatar w nagłówku ---
+  // --- Profil: zdjęcie/awatar (klikalne → powiększenie w modalu) ---
+  &__avatar-link {
+    position: relative;
+    display: inline-block;
+    cursor: zoom-in;
+    line-height: 0;
+
+    &:hover .autor-page__avatar-zoom,
+    &:focus .autor-page__avatar-zoom {
+      opacity: 1;
+    }
+  }
+
   &__avatar {
-    width: 120px;
-    height: 120px;
+    width: 100%;
+    max-width: 220px;
+    aspect-ratio: 1 / 1;
     object-fit: cover;
     border-radius: 8px;
-    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
+    box-shadow: 0 1px 6px rgba(0, 0, 0, 0.25);
+  }
+
+  // Lupa w rogu miniatury — podpowiedź, że da się powiększyć.
+  &__avatar-zoom {
+    position: absolute;
+    right: 8px;
+    bottom: 8px;
+    width: 34px;
+    height: 34px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    background: rgba(44, 62, 80, 0.78);
+    border-radius: 50%;
+    opacity: 0;
+    transition: opacity 0.15s ease-in-out;
+    line-height: 1;
+  }
+
+  // Pełne zdjęcie w modalu Reveal.
+  &__avatar-pelne {
+    display: block;
+    max-width: 100%;
+    height: auto;
+    margin: 0 auto;
+    border-radius: 4px;
   }
 
   // --- Profil: linki do raportu autora ---
@@ -402,6 +442,12 @@
     th:last-child {
       text-align: right;
     }
+  }
+
+  // Wykres roczny — węższy blok (domyślnie ostatnie 10 lat), nie rozlewa
+  // się na całą szerokość kolumny.
+  &__wykres {
+    max-width: 480px;
   }
 
   // Pole wykresu: oś Y (HTML) obok obszaru kreślenia (SVG / słupki)

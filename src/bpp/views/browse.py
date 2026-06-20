@@ -171,6 +171,7 @@ class AutorView(DetailView):
             uczelnia=uczelnia,
             ma_powiazania=ma_powiazania,
             sekcje_profilu=przygotuj_sekcje(self.object, uczelnia, request),
+            historia_zatrudnienia=self.object.historia_zatrudnienia(uczelnia),
             raport_links=self._raport_links(request),
             **kwargs,
         )

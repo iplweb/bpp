@@ -66,13 +66,36 @@
 
 {# === Układ 2-kolumnowy (Foundation grid w HTML; stackuje się na małych) === #}
 <div class="grid-x grid-margin-x autor-page__uklad">
-    {# --- LEWA kolumna (large-4): wizytówka + tożsamość + wyszukiwarka --- #}
-    <div class="cell large-4 autor-page__kolumna-lewa">
+    {# --- LEWA kolumna (large-6): wizytówka + tożsamość + wyszukiwarka --- #}
+    <div class="cell large-6 autor-page__kolumna-lewa">
         {% if autor.zdjecie %}
             <div class="author-info-section autor-page__avatar-section">
+                {# Klik w zdjęcie → powiększenie w modalu (Foundation Reveal). #}
+                {# Bez JS <a href> degraduje się do otwarcia pełnego obrazu. #}
+                <a href="{{ autor.zdjecie.url }}"
+                   class="autor-page__avatar-link"
+                   data-open="autor-zdjecie-modal"
+                   title="Kliknij, aby powiększyć zdjęcie">
+                    <img src="{{ autor.zdjecie.url }}"
+                         alt="{{ autor }}"
+                         class="autor-page__avatar"/>
+                    <span class="autor-page__avatar-zoom" aria-hidden="true">
+                        <span class="fi-magnifying-glass"></span>
+                    </span>
+                </a>
+            </div>
+            <div class="reveal autor-page__avatar-modal"
+                 id="autor-zdjecie-modal"
+                 data-reveal>
                 <img src="{{ autor.zdjecie.url }}"
                      alt="{{ autor }}"
-                     class="autor-page__avatar"/>
+                     class="autor-page__avatar-pelne"/>
+                <button class="close-button"
+                        data-close
+                        aria-label="Zamknij powiększenie"
+                        type="button">
+                    <span aria-hidden="true">&times;</span>
+                </button>
             </div>
         {% endif %}
 
@@ -302,8 +325,8 @@
         <div class="shaded-hr-div-small"></div>
     </div>
 
-    {# --- PRAWA kolumna (large-8): konfigurowalne sekcje (per-Uczelnia) --- #}
-    <div class="cell large-8 autor-page__kolumna-prawa">
+    {# --- PRAWA kolumna (large-6): konfigurowalne sekcje (per-Uczelnia) --- #}
+    <div class="cell large-6 autor-page__kolumna-prawa">
         {% for sekcja in sekcje_profilu %}
             {% include sekcja.template with dane=sekcja.dane nazwa=sekcja.nazwa klucz=sekcja.klucz %}
         {% endfor %}

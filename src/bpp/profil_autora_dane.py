@@ -69,6 +69,17 @@ def _agreguj_po_latach(pary):
     return dane, max(wartosci), sum(wartosci)
 
 
+# Wykresy roczne domyślnie pokazują ostatnie N lat (węższy, czytelny wykres;
+# pełna historia bywa zbyt szeroka). Por. spec §3.5 / kalibracja wizualna.
+OKNO_LAT_WYKRESU = 10
+
+
+def _ostatnie_lata(dane):
+    """Ogranicz serię ``(rok, wartosc)`` (rosnąco po roku) do ostatnich
+    ``OKNO_LAT_WYKRESU`` lat z danymi."""
+    return dane[-OKNO_LAT_WYKRESU:]
+
+
 # --- buildery sekcji -------------------------------------------------------
 
 
@@ -134,8 +145,8 @@ def _wykres_lata(autor, limit, request):
     licznik = Counter(rok for _id, rok in pary if rok is not None)
     if not licznik:
         return None
-    dane = sorted(licznik.items())
-    maks = max(licznik.values())
+    dane = _ostatnie_lata(sorted(licznik.items()))
+    maks = max(w for _rok, w in dane)
     return {"dane": dane, "maks": maks, "etykieta": "prac"}
 
 
@@ -143,9 +154,11 @@ def _wykres_pk_lata(autor, limit, request):
     # Suma punktów MNiSW (punkty_kbn) na rok. DISTINCT z włączonym ``id``
     # neutralizuje duplikaty z joinu ``autorzy`` (rok/punkty są funkcją id).
     triple = _prace(autor).values_list("id", "rok", "punkty_kbn").distinct()
-    dane, maks, _suma = _agreguj_po_latach((rok, pk) for _id, rok, pk in triple)
+    dane, _maks, _suma = _agreguj_po_latach((rok, pk) for _id, rok, pk in triple)
     if not dane:
         return None
+    dane = _ostatnie_lata(dane)
+    maks = max(w for _rok, w in dane)
     return {"dane": dane, "maks": maks, "etykieta": "pkt"}
 
 
@@ -153,9 +166,16 @@ def _wykres_if_lata(autor, limit, request):
     # Suma Impact Factor na rok; sekcja auto-ukrywana, gdy suma IF == 0
     # (autorzy bez prac z IF nie powinni widzieć pustego wykresu).
     triple = _prace(autor).values_list("id", "rok", "impact_factor").distinct()
-    dane, maks, suma = _agreguj_po_latach((rok, if_) for _id, rok, if_ in triple)
-    if not dane or not suma:
+    dane, _maks, _suma = _agreguj_po_latach((rok, if_) for _id, rok, if_ in triple)
+    if not dane:
         return None
+    dane = _ostatnie_lata(dane)
+    suma = sum(w for _rok, w in dane)
+    # Auto-ukrycie liczone po OKNIE: gdy w ostatnich latach IF == 0, nie ma
+    # czego pokazywać (starsze wartości i tak są poza wykresem).
+    if not suma:
+        return None
+    maks = max(w for _rok, w in dane)
     return {"dane": dane, "maks": maks, "etykieta": "IF"}
 
 

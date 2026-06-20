@@ -1,6 +1,7 @@
 {# Historia zatrudnienia w jednostkach (lewa kolumna). #}
-{# Dane: autor.historia_zatrudnienia (queryset Autor_Jednostka). #}
-{% with historia=autor.historia_zatrudnienia %}
+{# Dane: context `historia_zatrudnienia` (queryset Autor_Jednostka — bez #}
+{# Obcej jednostki i bez wierszy bez daty rozpoczęcia; patrz AutorView). #}
+{% with historia=historia_zatrudnienia %}
     {% if historia %}
         <div class="author-info-section autor-page__historia">
             <h3><i class="fi-clock autor-page__icon--mr-sm"></i> Historia zatrudnienia</h3>
@@ -9,7 +10,7 @@
                     <li class="autor-page__historia-pozycja">
                         <span class="autor-page__historia-jednostka">{{ hz.jednostka.nazwa }}</span>
                         <span class="autor-page__historia-okres">
-                            {% if hz.rozpoczal_prace %}{{ hz.rozpoczal_prace|date:"Y" }}{% else %}?{% endif %}
+                            {{ hz.rozpoczal_prace|date:"Y" }}
                             –
                             {% if hz.zakonczyl_prace %}{{ hz.zakonczyl_prace|date:"Y" }}{% else %}obecnie{% endif %}
                         </span>
