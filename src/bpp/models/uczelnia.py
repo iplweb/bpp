@@ -313,6 +313,19 @@ class Uczelnia(ModelZAdnotacjami, ModelZPBN_ID, NazwaISkrot, NazwaWDopelniaczu):
         pożądaną dyscyplinę będzie trzeba wybrać ręcznie, niezależnie od ustawienia tego pola. """,
     )
 
+    sugeruj_punktacje = models.BooleanField(
+        "Sugeruj punktację",
+        default=False,
+        help_text="""Gdy zaznaczone, system będzie automatycznie podpowiadał punktację
+        (punkty PK/MNiSW, IF, SNIP itd.) dla wprowadzanego wydawnictwa na podstawie
+        punktacji źródła dla danego roku. Sugestia jest WYŁĄCZNIE podpowiedzią — operator
+        może ją w dowolnej chwili ręcznie zmienić. Dotyczy automatycznego importera publikacji
+        oraz uruchamia automatyczne wypełnianie pól punktacji w module redagowania wydawnictw
+        ciągłych (przycisk "Uzupełnij punktację" jest dostępny niezależnie od tego ustawienia).
+        Gdy odznaczone (domyślnie), system zachowuje dotychczasowe zachowanie i nie proponuje
+        punktacji automatycznie.""",
+    )
+
     sortuj_jednostki_alfabetycznie = models.BooleanField(
         default=True,
         help_text="""Jeżeli ustawione na 'FAŁSZ', sortowanie jednostek będzie odbywało się ręcznie
