@@ -210,7 +210,12 @@ class AutorView(DetailView):
             },
             {
                 "label": "Raport szczegółowy…",
-                "url": reverse("nowe_raporty:raport_form", args=["raport-autorow"]),
+                # ?obiekt=<pk> → formularz raportu od razu z wybranym autorem
+                # (RaportFormView.get_initial czyta ten parametr).
+                "url": (
+                    reverse("nowe_raporty:raport_form", args=["raport-autorow"])
+                    + f"?obiekt={pk}"
+                ),
             },
         ]
 

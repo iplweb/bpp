@@ -248,9 +248,16 @@ class RaportFormView(RaportDostepMixin, FormDefaultsMixin, FormView):
         initial = super().get_initial()
         cfg = POZIOMY[self.definicja.poziom]
         if cfg.ma_pk and not initial.get("obiekt"):
-            queryset = cfg.model.objects.all()
-            if queryset.count() == 1:
-                initial["obiekt"] = queryset.first()
+            # Wstępny wybór z querystringu — np. „Raport szczegółowy" ze
+            # strony autora przekazuje ?obiekt=<pk>, dzięki czemu pole Select2
+            # od razu pokazuje wybrany obiekt (autora/jednostkę/wydział).
+            pk = self.request.GET.get("obiekt")
+            if pk:
+                initial["obiekt"] = cfg.model.objects.filter(pk=pk).first()
+            if not initial.get("obiekt"):
+                queryset = cfg.model.objects.all()
+                if queryset.count() == 1:
+                    initial["obiekt"] = queryset.first()
         return initial
 
     def form_valid(self, form):
