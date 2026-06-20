@@ -4,6 +4,7 @@ from .autor import *  # noqa
 from .wybrana_publikacja import *  # noqa
 from .cache import *  # noqa
 from .dyscyplina_naukowa import *  # noqa
+from .eksport_autora import *  # noqa
 from .grant import *  # noqa
 from .kierunek_studiow import Kierunek_Studiow  # noqa
 from .konferencja import *  # noqa

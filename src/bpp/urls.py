@@ -89,6 +89,9 @@ from bpp.views.browse import (
 from bpp.views.eksport_autora import (
     AutorEksportBibtexView,
     AutorEksportRisView,
+    EksportAutoraDownloadView,
+    EksportAutoraStatusView,
+    StartEksportAutoraView,
 )
 from bpp.views.microsoft_auth_redirect import MicrosoftAuthRedirectView
 from bpp.views.oai import OAIView
@@ -329,6 +332,21 @@ urlpatterns = [
         r"^autor/(?P<pk>\d+)/eksport\.ris$",
         AutorEksportRisView.as_view(),
         name="autor_eksport_ris",
+    ),
+    url(
+        r"^autor/(?P<pk>\d+)/eksport/(?P<format>bib|ris)/$",
+        StartEksportAutoraView.as_view(),
+        name="autor_eksport_start",
+    ),
+    url(
+        r"^eksport-autora/(?P<pk>[0-9a-f-]+)/$",
+        EksportAutoraStatusView.as_view(),
+        name="autor_eksport_status",
+    ),
+    url(
+        r"^eksport-autora/(?P<pk>[0-9a-f-]+)/pobierz/$",
+        EksportAutoraDownloadView.as_view(),
+        name="autor_eksport_pobierz",
     ),
     url(r"^autor/(?P<slug>[\w-]+)/$", AutorView.as_view(), name="browse_autor"),
     url(r"^zrodla/$", ZrodlaView.as_view(), name="browse_zrodla"),
