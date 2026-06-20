@@ -49,3 +49,23 @@ def test_build_search_buduje_box_dla_charakteru(client):
     charakter = [f for f in pola if f["field"] == "Charakter formalny"]
     assert charakter, "brak pola charakteru w zbudowanym formularzu"
     assert charakter[0]["value"] == "Artykuł oryginalny"
+
+
+def test_charakter_value_to_web_pasuje_do_opcji_listy():
+    """Klik w charakter → pole multiseeka pokazuje etykietę (nie pusto).
+
+    Pole jest typu VALUE_LIST: zapisana wartość musi równać się jednej
+    z opcji selecta (``values`` = etykiety MPTT z prefiksem/spacją). Bez
+    ``value_to_web`` zapisana sama nazwa nie trafia w żadną opcję i pole jest
+    puste — mimo że samo wyszukiwanie działa.
+    """
+    from bpp.multiseek_registry.fields.publication_type_fields import (
+        CharakterFormalnyQueryObject,
+    )
+
+    baker.make(Charakter_Formalny, nazwa="Artykuł oryginalny")
+    qo = CharakterFormalnyQueryObject()
+    zmapowana = qo.value_to_web("Artykuł oryginalny")
+    assert zmapowana in list(qo.values)
+    # Idempotencja: zmapowanie gotowej etykiety daje tę samą etykietę.
+    assert qo.value_to_web(zmapowana) == zmapowana
