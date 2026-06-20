@@ -49,6 +49,17 @@ class DataProvider(ABC):
         """Etykieta pola identyfikatora, np. 'DOI'."""
 
     @property
+    def choice_label(self) -> str:
+        """Etykieta opcji na liście wyboru źródła danych.
+
+        Domyślnie identyczna z ``name``, ale provider może ją nadpisać,
+        żeby od razu podpowiedzieć operatorowi, czego dane źródło wymaga
+        (np. „CrossRef — wyszukiwanie po numerze DOI"). Wartość opcji
+        (``value`` radia) pozostaje równa ``name`` — zmienia się tylko
+        tekst widoczny dla użytkownika."""
+        return self.name
+
+    @property
     def input_mode(self) -> str:
         return InputMode.IDENTIFIER
 
@@ -98,6 +109,7 @@ def get_providers_metadata() -> dict[str, dict]:
         instance = cls()
         result[name] = {
             "name": name,
+            "choice_label": instance.choice_label,
             "identifier_label": instance.identifier_label,
             "input_mode": instance.input_mode,
             "input_placeholder": instance.input_placeholder,
