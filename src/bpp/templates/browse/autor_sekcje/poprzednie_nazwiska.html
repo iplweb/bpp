@@ -1,0 +1,12 @@
+{# Poprzednie nazwiska — TYLKO dla zalogowanych i tylko gdy ukryte przed #}
+{# publicznością. Brak / publiczne / niezalogowany → nic. #}
+{% if request.user.is_authenticated %}
+    {% if not autor.pokazuj_poprzednie_nazwiska %}
+        {% if autor.poprzednie_nazwiska %}
+            <div class="author-info-section">
+                <small><strong>Poprzednie nazwiska (ukryte):</strong> {{ autor.poprzednie_nazwiska }}</small>
+            </div>
+            <div class="shaded-hr-div-small"></div>
+        {% endif %}
+    {% endif %}
+{% endif %}
