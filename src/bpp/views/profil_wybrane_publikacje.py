@@ -16,6 +16,8 @@ Bezpieczeństwo jest tu krytyczne i egzekwowane SERWEROWO na każdej akcji:
 * duplikat (``unique_together``) jest przyjaznym no-op, nie 500.
 """
 
+from dal_select2.widgets import ListSelect2
+from django import forms
 from django.contrib.contenttypes.models import ContentType
 from django.db import IntegrityError
 from django.http import Http404, JsonResponse
@@ -28,6 +30,30 @@ from bpp.views.profil_edycja import WymagajAutoraMixin
 
 # Limit podpowiedzi w autouzupełnianiu — autor może mieć setki prac.
 LIMIT_AUTOCOMPLETE = 20
+
+
+class DodajWyrozionaForm(forms.Form):
+    """Pole „dodaj" pickera — Select2 (DAL ``ListSelect2``), spójne z resztą
+    serwisu (ten sam widget i theme co inne autouzupełnienia, np. nawigacja).
+
+    ``Rekord`` ma złożony klucz (``TupleField``), więc nie da się tu użyć
+    ``ModelSelect2`` (zakłada pojedynczy pk) — ``ListSelect2`` operuje na
+    dowolnych parach ``(id, tekst)``, gdzie ``id`` = „<ct>-<obj>". Po wyborze
+    JS woła akcję ``dodaj`` i czyści pole (wartość nie jest walidowana przez
+    formularz — własność sprawdza serwer w akcji)."""
+
+    praca = forms.CharField(
+        required=False,
+        label="",
+        widget=ListSelect2(
+            url="bpp:profil-wybrane-publikacje-autocomplete",
+            attrs={
+                "data-placeholder": "Zacznij wpisywać tytuł swojej pracy…",
+                "data-minimum-input-length": 2,
+                "data-dropdown-css-class": "wpa-dropdown",
+            },
+        ),
+    )
 
 
 def _wiersze_wybrane(autor):
@@ -60,15 +86,17 @@ class ProfilWybranePublikacjeView(WymagajAutoraMixin, TemplateView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context["wybrane"] = _wiersze_wybrane(self.request.user.autor)
+        context["form_dodaj"] = DodajWyrozionaForm()
         return context
 
 
 class ProfilWybranePublikacjeAutocompleteView(WymagajAutoraMixin, View):
     """Autouzupełnianie WŁASNYCH prac autora (źródło dla „dodaj").
 
-    Zwraca JSON ``{"results": [{"id": "<ct>-<obj>", "label": ...}]}``. Pyta
-    wyłącznie ``Rekord.objects.prace_autora(request.user.autor)`` — autor nie
-    zobaczy tu (a tym samym nie wyróżni) cudzej pracy.
+    Format zgodny z DAL/Select2: ``{"results": [{"id": "<ct>-<obj>",
+    "text": ...}], "pagination": {"more": false}}`` (zasila ``ListSelect2``).
+    Pyta wyłącznie ``Rekord.objects.prace_autora(request.user.autor)`` — autor
+    nie zobaczy tu (a tym samym nie wyróżni) cudzej pracy.
     """
 
     def get(self, request, *args, **kwargs):
@@ -81,11 +109,11 @@ class ProfilWybranePublikacjeAutocompleteView(WymagajAutoraMixin, View):
         results = [
             {
                 "id": f"{rekord.pk[0]}-{rekord.pk[1]}",
-                "label": _opis_rekordu(rekord),
+                "text": _opis_rekordu(rekord),
             }
             for rekord in qs
         ]
-        return JsonResponse({"results": results})
+        return JsonResponse({"results": results, "pagination": {"more": False}})
 
 
 class ProfilWybranePublikacjeAkcjaView(WymagajAutoraMixin, View):

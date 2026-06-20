@@ -356,7 +356,10 @@ def test_autocomplete_zwraca_wlasne_prace(
     )
     assert resp.status_code == 200
     dane = json.loads(resp.content)
-    etykiety = [w["label"] for w in dane["results"]]
+    # Format zgodny z DAL/Select2: results[].text + pagination.
+    assert dane["pagination"] == {"more": False}
+    etykiety = [w["text"] for w in dane["results"]]
+    assert all("id" in w and "text" in w for w in dane["results"])
     assert any("nowaka" in e for e in etykiety)
     # Praca Kowalskiego NIE pojawia się w wynikach Nowaka.
     assert not any("kowalskiego" in e for e in etykiety)

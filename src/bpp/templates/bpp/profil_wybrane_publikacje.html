@@ -24,13 +24,14 @@
 
         <fieldset class="fieldset">
             <legend><span class="fi-plus"></span> Dodaj publikację</legend>
-            <label for="wpa-szukaj">
+            <label for="{{ form_dodaj.praca.id_for_label }}">
                 Wyszukaj wśród swoich prac i wybierz, by wyróżnić:
             </label>
-            <input type="text" id="wpa-szukaj"
-                   autocomplete="off"
-                   placeholder="Zacznij wpisywać tytuł swojej pracy…"/>
-            <ul id="wpa-podpowiedzi" class="no-bullet menu vertical"></ul>
+            {# Select2 (DAL ListSelect2) — spójny z resztą serwisu. Media #}
+            {# (jQuery + select2 + DAL) ładuje globalnie pasek nawigacji, więc #}
+            {# nie dołączamy ich ponownie (uniknięcie „select2 already #}
+            {# registered"). Po wyborze JS woła akcję „dodaj" (skrypt niżej). #}
+            {{ form_dodaj.praca }}
         </fieldset>
 
         <fieldset class="fieldset">
@@ -104,16 +105,13 @@
 <script>
 (function () {
     var URL_AKCJA = '{% url "bpp:profil-wybrane-publikacje-akcja" %}';
-    var URL_AC = '{% url "bpp:profil-wybrane-publikacje-autocomplete" %}';
 
     var lista = document.getElementById('wpa-lista');
     var pusta = document.getElementById('wpa-pusta');
-    var szukaj = document.getElementById('wpa-szukaj');
-    var podpowiedzi = document.getElementById('wpa-podpowiedzi');
     var szablon = document.getElementById('wpa-szablon-wiersza');
     var tokenInput = document.querySelector('input[name=csrfmiddlewaretoken]');
     var token = tokenInput ? tokenInput.value : '';
-    if (!lista || !szukaj || !szablon) {
+    if (!lista || !szablon) {
         return;
     }
 
@@ -192,58 +190,30 @@
         odswiezPusta();
     }
 
-    function wyczyscPodpowiedzi() {
-        podpowiedzi.innerHTML = '';
-    }
-
     function dodajPrace(id, opis) {
         var dane = new FormData();
         dane.append('akcja', 'dodaj');
         dane.append('rekord', id);
-        wyslij(dane).then(function (wynik) {
+        return wyslij(dane).then(function (wynik) {
             if (wynik.ok && wynik.json.ok && !wynik.json.duplikat) {
                 dodajWiersz(wynik.json.pk, opis);
             }
-            szukaj.value = '';
-            wyczyscPodpowiedzi();
         });
     }
 
-    function pokazPodpowiedzi(wyniki) {
-        wyczyscPodpowiedzi();
-        wyniki.forEach(function (w) {
-            var li = document.createElement('li');
-            var a = document.createElement('a');
-            a.href = '#';
-            a.textContent = w.label;
-            a.addEventListener('click', function (e) {
-                e.preventDefault();
-                dodajPrace(w.id, w.label);
+    {# Pole „dodaj" to Select2 (DAL ListSelect2) — spójne z resztą serwisu. #}
+    {# Po wyborze pracy dodajemy ją i czyścimy pole, gotowe na kolejny wybór. #}
+    {# Select2 jest wpięty przez jQuery, więc używamy django.jQuery. #}
+    var jq = window.django && window.django.jQuery;
+    if (jq) {
+        var $select = jq('#{{ form_dodaj.praca.id_for_label }}');
+        $select.on('select2:select', function (e) {
+            var dane = e.params.data;
+            dodajPrace(dane.id, dane.text).then(function () {
+                $select.val(null).trigger('change');
             });
-            li.appendChild(a);
-            podpowiedzi.appendChild(li);
         });
     }
-
-    var timer = null;
-    function szukajPodpowiedzi() {
-        var q = szukaj.value.trim();
-        if (q.length < 2) {
-            wyczyscPodpowiedzi();
-            return;
-        }
-        fetch(URL_AC + '?q=' + encodeURIComponent(q), {headers: naglowki()})
-            .then(function (r) { return r.json(); })
-            .then(function (d) { pokazPodpowiedzi(d.results || []); })
-            .catch(function () { /* podpowiedzi są opcjonalne */ });
-    }
-
-    szukaj.addEventListener('input', function () {
-        if (timer) {
-            window.clearTimeout(timer);
-        }
-        timer = window.setTimeout(szukajPodpowiedzi, 250);
-    });
 })();
 </script>
 {% endblock %}
