@@ -11,7 +11,7 @@ from django.contrib.postgres.search import SearchVectorField as VectorField
 from django.core.exceptions import ValidationError
 from django.core.validators import RegexValidator
 from django.db import IntegrityError, models, transaction
-from django.db.models import CASCADE, SET_NULL, Count, Q, Sum, UniqueConstraint
+from django.db.models import CASCADE, SET_NULL, Count, Sum
 from django.urls.base import reverse
 from django.utils import timezone
 from tinymce.models import HTMLField
@@ -575,13 +575,12 @@ class Autor_Jednostka(models.Model):
         ordering = ["autor__nazwisko", "rozpoczal_prace", "jednostka__nazwa"]
         unique_together = [("autor", "jednostka", "rozpoczal_prace")]
         app_label = "bpp"
-        constraints = [
-            UniqueConstraint(
-                fields=["autor_id"],
-                condition=Q(podstawowe_miejsce_pracy=True),
-                name="jedno_podstawowe_miejsce_pracy_na_autora",
-            )
-        ]
+        # Niezmiennik "co najwyzej jedno podstawowe miejsce pracy na autora" NIE
+        # jest tu egzekwowany przez UniqueConstraint (partial unique index byl
+        # natychmiastowy/per-statement i wysadzal legalne przelaczanie domyslnego
+        # miejsca pracy w obrebie jednej transakcji). Zamiast tego pilnuje go
+        # DEFERRED constraint trigger sprawdzajacy stan KONCOWY przy COMMIT —
+        # patrz migracja 0444_deferred_podstawowe_miejsce_pracy.
 
     def __str__(self):
         try:
@@ -610,20 +609,13 @@ class Autor_Jednostka(models.Model):
                     " lub większy, jak obecna data"
                 )
 
-        if self.podstawowe_miejsce_pracy:
-            czy_istnieje = Autor_Jednostka.objects.filter(
-                autor_id=self.autor_id, podstawowe_miejsce_pracy=True
-            )
-            if self.pk:
-                czy_istnieje = czy_istnieje.exclude(pk=self.pk)
-
-            if czy_istnieje.exists():
-                raise ValidationError(
-                    "Ten autor ma już określone podstawowe miejsce pracy. Najpierw usuń podstawowe "
-                    f"miejsce pracy (ustaw wartość na 'Nie' dla jednostki '{czy_istnieje.first().jednostka.nazwa}'), "
-                    f"następnie zapisz rekord autora, następnie ustaw ponownie właściwe podstawowe miejsce pracy "
-                    f"(ustaw wartość na 'Tak') i zapisz po raz kolejny. "
-                )
+        # UWAGA: niezmiennik "jedno podstawowe miejsce pracy na autora" NIE jest
+        # tu walidowany per-instancja. Eager .exists() (widzacy stan sprzed
+        # zapisu) blokowal legalne przelaczanie domyslnego miejsca pracy, bo
+        # przejsciowo istnialy dwa rekordy True. Stan KONCOWY pilnuje DEFERRED
+        # constraint trigger (przy COMMIT), a przyjazny komunikat dla wielu
+        # zaznaczonych naraz daje walidacja formsetu w adminie
+        # (Autor_JednostkaInlineFormSet).
 
     @transaction.atomic
     def ustaw_podstawowe_miejsce_pracy(self):
