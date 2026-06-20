@@ -321,10 +321,18 @@
     color: white;
   }
 
+  // Wizytówka: kontener zdjęcia + biogramu. overflow:hidden domyka float
+  // zdjęcia, żeby biogram je opływał, a kolejne sekcje zaczynały się niżej.
+  &__wizytowka {
+    overflow: hidden;
+  }
+
   // --- Profil: zdjęcie/awatar (klikalne → powiększenie w modalu) ---
+  // Pływa w lewo — biogram opływa je z prawej i od dołu.
   &__avatar-link {
     position: relative;
-    display: inline-block;
+    float: left;
+    margin: 0 1rem 0.5rem 0;
     cursor: zoom-in;
     line-height: 0;
 

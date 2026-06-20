@@ -68,22 +68,34 @@
 <div class="grid-x grid-margin-x autor-page__uklad">
     {# --- LEWA kolumna (large-6): wizytówka + tożsamość + wyszukiwarka --- #}
     <div class="cell large-6 autor-page__kolumna-lewa">
-        {% if autor.zdjecie %}
-            <div class="author-info-section autor-page__avatar-section">
-                {# Klik w zdjęcie → powiększenie w modalu (Foundation Reveal). #}
-                {# Bez JS <a href> degraduje się do otwarcia pełnego obrazu. #}
-                <a href="{{ autor.zdjecie.url }}"
-                   class="autor-page__avatar-link"
-                   data-open="autor-zdjecie-modal"
-                   title="Kliknij, aby powiększyć zdjęcie">
-                    <img src="{{ autor.zdjecie.url }}"
-                         alt="{{ autor }}"
-                         class="autor-page__avatar"/>
-                    <span class="autor-page__avatar-zoom" aria-hidden="true">
-                        <span class="fi-magnifying-glass"></span>
-                    </span>
-                </a>
+        {# Wizytówka: zdjęcie (pływa w lewo) + biogram, który je OPŁYWA — #}
+        {# bez pustego miejsca z prawej. overflow:hidden domyka float. #}
+        {% if autor.zdjecie or autor.biogram_html %}
+            <div class="author-info-section autor-page__wizytowka">
+                {% if autor.zdjecie %}
+                    {# Klik w zdjęcie → powiększenie w modalu (Foundation #}
+                    {# Reveal). Bez JS <a href> otwiera pełny obraz. #}
+                    <a href="{{ autor.zdjecie.url }}"
+                       class="autor-page__avatar-link"
+                       data-open="autor-zdjecie-modal"
+                       title="Kliknij, aby powiększyć zdjęcie">
+                        <img src="{{ autor.zdjecie.url }}"
+                             alt="{{ autor }}"
+                             class="autor-page__avatar"/>
+                        <span class="autor-page__avatar-zoom" aria-hidden="true">
+                            <span class="fi-magnifying-glass"></span>
+                        </span>
+                    </a>
+                {% endif %}
+                {% if autor.biogram_html %}
+                    <h3><i class="fi-quote autor-page__icon--mr-sm"></i> Biogram</h3>
+                    <div class="autor-page__biogram-tresc">{{ autor.biogram_html|safe }}</div>
+                {% endif %}
             </div>
+            <div class="shaded-hr-div-small"></div>
+        {% endif %}
+
+        {% if autor.zdjecie %}
             <div class="reveal autor-page__avatar-modal"
                  id="autor-zdjecie-modal"
                  data-reveal>
@@ -97,15 +109,6 @@
                     <span aria-hidden="true">&times;</span>
                 </button>
             </div>
-        {% endif %}
-
-        {# Biogram (stały — nie jest już konfigurowalną sekcją) #}
-        {% if autor.biogram_html %}
-            <div class="author-info-section autor-page__biogram">
-                <h3><i class="fi-quote autor-page__icon--mr-sm"></i> Biogram</h3>
-                <div class="autor-page__biogram-tresc">{{ autor.biogram_html|safe }}</div>
-            </div>
-            <div class="shaded-hr-div-small"></div>
         {% endif %}
 
         {# Aktualna jednostka #}
