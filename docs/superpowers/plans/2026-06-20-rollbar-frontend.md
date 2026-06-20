@@ -184,17 +184,24 @@ git commit -m "feat(rollbar): context processor + setting dla frontendowego Roll
 ## Task 2: Vendor rollbar.js lokalnie (npm + Grunt copy)
 
 **Files:**
-- Modify: `package.json` (devDependencies), `package-lock.json` (auto)
+- Modify: `package.json` (devDependencies), `yarn.lock` (auto)
 - Modify: `Gruntfile.js` (`shell.copyRollbar` + listy zadań `build` / `build-non-interactive`)
 - Modify: `.gitignore`
+
+**WAŻNE — projekt używa YARN, nie npm.** `docker/bpp_base/Dockerfile` i
+`Makefile` budują przez `yarn install`; commit `c6567c829 back to yarn`
+świadomie usunął `package-lock.json`. NIE używać `npm install` (re-tworzy
+`package-lock.json`). Kanoniczny lockfile to `yarn.lock`.
 
 **Interfaces:**
 - Produces: plik `src/bpp/static/rollbar/rollbar.umd.min.js` (build artifact, niecommitowany), serwowany jako `/static/rollbar/rollbar.umd.min.js`.
 
-- [ ] **Step 1: Install the rollbar npm package as a devDependency**
+- [ ] **Step 1: Install the rollbar package as a devDependency (YARN)**
 
-Run: `npm install --save-dev rollbar`
-Expected: `package.json` zyskuje `rollbar` w `devDependencies`, `package-lock.json` zaktualizowany, pojawia się `node_modules/rollbar/`.
+Run: `npx yarn add --dev rollbar`
+Expected: `package.json` zyskuje `rollbar` w `devDependencies`, `yarn.lock`
+zaktualizowany, pojawia się `node_modules/rollbar/`. NIE powstaje
+`package-lock.json` (gdyby powstał — usunąć).
 
 - [ ] **Step 2: Verify the UMD build exists and note the global name**
 
@@ -267,8 +274,8 @@ Expected: plik istnieje (kilkadziesiąt–kilkaset KB).
 - [ ] **Step 7: Commit**
 
 ```bash
-git add package.json package-lock.json Gruntfile.js .gitignore
-git commit -m "build(rollbar): kopiuj rollbar.umd.min.js do static (npm + grunt)"
+git add package.json yarn.lock Gruntfile.js .gitignore
+git commit -m "build(rollbar): kopiuj rollbar.umd.min.js do static (yarn + grunt)"
 ```
 
 (Plik `src/bpp/static/rollbar/rollbar.umd.min.js` NIE jest commitowany — jest gitignorowany jak `bundle.js`.)
