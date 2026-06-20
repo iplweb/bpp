@@ -93,6 +93,7 @@ from .steps import (
 )
 from .wizard import (
     AuthorCandidatesModalView,
+    AuthorDeleteView,
     AuthorInfoView,
     AuthorMatchView,
     AuthorsConfirmView,
@@ -130,6 +131,7 @@ __all__ = [
     "STEP_VERIFY",
     # Class-based views
     "AuthorCandidatesModalView",
+    "AuthorDeleteView",
     "AuthorInfoView",
     "AuthorMatchView",
     "AuthorSetOrcidView",
