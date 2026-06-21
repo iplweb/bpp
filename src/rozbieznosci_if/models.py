@@ -1,5 +1,11 @@
+import logging
+
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.db import models
+
+from bpp.util import zaloguj_polkniety_wyjatek
+
+logger = logging.getLogger(__name__)
 
 
 class IgnorujRozbieznoscIf(models.Model):
@@ -18,7 +24,13 @@ class IgnorujRozbieznoscIf(models.Model):
     def __str__(self):
         try:
             return f"Ignoruj rozbieżności punktacji IF dla rekordu {self.object}"
-        except BaseException:
+        except Exception:
+            zaloguj_polkniety_wyjatek(
+                f"Tworzenie reprezentacji tekstowej IgnorujRozbieznoscIf "
+                f"(content_type_id={self.content_type_id}, "
+                f"object_id={self.object_id})",
+                logger=logger,
+            )
             return 'Ignoruj rozbieżności punktacji IF dla rekordu "[brak rekordu, został usunięty]"'
 
 

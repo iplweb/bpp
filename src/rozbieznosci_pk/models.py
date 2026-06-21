@@ -1,5 +1,11 @@
+import logging
+
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.db import models
+
+from bpp.util import zaloguj_polkniety_wyjatek
+
+logger = logging.getLogger(__name__)
 
 
 class IgnorujRozbieznoscPk(models.Model):
@@ -18,7 +24,13 @@ class IgnorujRozbieznoscPk(models.Model):
     def __str__(self):
         try:
             return f"Ignoruj rozbieżności punktacji MNiSW dla rekordu {self.object}"
-        except BaseException:
+        except Exception:
+            zaloguj_polkniety_wyjatek(
+                f"Tworzenie reprezentacji tekstowej IgnorujRozbieznoscPk "
+                f"(content_type_id={self.content_type_id}, "
+                f"object_id={self.object_id})",
+                logger=logger,
+            )
             return (
                 'Ignoruj rozbieżności punktacji MNiSW dla rekordu "[brak rekordu, '
                 'został usunięty]"'

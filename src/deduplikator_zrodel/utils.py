@@ -1,8 +1,11 @@
+import logging
+
 from cacheops import cached
 from django.contrib.postgres.search import TrigramSimilarity
 from django.db.models import Count, Q
 
 from bpp.models import Zrodlo
+from bpp.util import zaloguj_polkniety_wyjatek
 from import_common.normalization import (
     normalize_issn,
     normalize_skrot,
@@ -10,6 +13,8 @@ from import_common.normalization import (
 )
 
 from .models import IgnoredSource, NotADuplicate
+
+logger = logging.getLogger(__name__)
 
 
 def znajdz_podobne_zrodla(zrodlo):  # noqa: C901
@@ -335,7 +340,13 @@ def _get_site_domain():
     try:
         current_site = Site.objects.get_current()
         return f"https://{current_site.domain}"
-    except BaseException:
+    except Exception:
+        zaloguj_polkniety_wyjatek(
+            "Pobieranie bieżącej domeny serwisu (Site) przy eksporcie "
+            "duplikatów źródeł do XLSX — używam domeny domyślnej",
+            logger=logger,
+            do_rollbar=True,
+        )
         return "https://bpp.iplweb.pl"
 
 

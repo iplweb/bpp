@@ -2,13 +2,18 @@
 Funkcje analizy duplikatów autorów.
 """
 
+import logging
+
 from bpp.models import Autor
 from bpp.models.cache import Rekord
+from bpp.util import zaloguj_polkniety_wyjatek
 from pbn_api.models import OsobaZInstytucji
 
 from .analysis_meta import _name_or_initial_match
 from .gender import Gender, plcie_sa_rozne, zgadnij_plec_autora
 from .search import szukaj_kopii
+
+logger = logging.getLogger(__name__)
 
 
 def analiza_duplikatow(osoba_z_instytucji: OsobaZInstytucji) -> dict:  # noqa: C901
@@ -29,7 +34,13 @@ def analiza_duplikatow(osoba_z_instytucji: OsobaZInstytucji) -> dict:  # noqa: C
         if not scientist:
             return {"error": "Nie można znaleźć głównego autora"}
         glowny_autor = scientist.rekord_w_bpp
-    except BaseException:
+    except Exception:
+        zaloguj_polkniety_wyjatek(
+            "Ustalanie głównego autora z BPP dla OsobaZInstytucji "
+            f"(pk={osoba_z_instytucji.pk}) w analizie duplikatów",
+            logger=logger,
+            do_rollbar=True,
+        )
         return {"error": "Nie można znaleźć głównego autora"}
 
     if not glowny_autor:

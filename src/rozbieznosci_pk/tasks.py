@@ -1,4 +1,10 @@
+import logging
+
 from celery import shared_task
+
+from bpp.util import zaloguj_polkniety_wyjatek
+
+logger = logging.getLogger(__name__)
 
 
 @shared_task(bind=True)
@@ -53,6 +59,11 @@ def task_ustaw_pk_ze_zrodla(self, pks, user_id=None):
 
                 updated += 1
         except Exception:
+            zaloguj_polkniety_wyjatek(
+                f"Aktualizacja punkty_kbn ze źródła w tasku Celery "
+                f"(Wydawnictwo_Ciagle pk={pk})",
+                logger=logger,
+            )
             errors += 1
 
         # Update progress every 5 items or at the end

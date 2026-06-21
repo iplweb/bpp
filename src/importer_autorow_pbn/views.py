@@ -1,3 +1,4 @@
+import logging
 from datetime import datetime
 
 from django.contrib import messages
@@ -13,12 +14,15 @@ from django.views.decorators.http import require_POST
 from django.views.generic import DetailView, ListView, TemplateView, View
 
 from bpp.models import Autor, Tytul, Uczelnia
+from bpp.util import zaloguj_polkniety_wyjatek
 from import_common.core import matchuj_autora
 from pbn_api.models import Scientist
 from pbn_downloader_app.freshness import is_pbn_people_data_fresh
 
 from .core import get_cache_status
 from .models import CachedScientistMatch, DoNotRemind, MatchCacheRebuildOperation
+
+logger = logging.getLogger(__name__)
 
 
 @method_decorator(staff_member_required, name="dispatch")
@@ -226,8 +230,12 @@ class ImporterAutorowPBNView(ListView):
             params[f"autor_jednostka_set-0-{param_suffix}"] = date_obj.strftime(
                 "%Y-%m-%d"
             )
-        except BaseException:
-            pass
+        except Exception:
+            zaloguj_polkniety_wyjatek(
+                f"Parsowanie daty zatrudnienia z PBN "
+                f"(date_key={date_key}, wartość={employment_data.get(date_key)!r})",
+                logger=logger,
+            )
 
     def _get_tytul_id(self, qualifications):
         """Get or create Tytul based on qualifications"""
@@ -426,8 +434,13 @@ def _create_autor_jednostka(autor, employment_data):
                 aj_data[field_name] = datetime.strptime(
                     employment_data[date_key], "%Y-%m-%d"
                 ).date()
-            except BaseException:
-                pass
+            except Exception:
+                zaloguj_polkniety_wyjatek(
+                    f"Parsowanie daty zatrudnienia z PBN przy tworzeniu "
+                    f"Autor_Jednostka (date_key={date_key}, "
+                    f"wartość={employment_data.get(date_key)!r})",
+                    logger=logger,
+                )
 
     Autor_Jednostka.objects.create(**aj_data)
 
@@ -467,6 +480,11 @@ def create_all_unmatched_scientists(request):
                 _create_autor_jednostka(autor, employment_data)
                 created_count += 1
             except Exception as e:
+                zaloguj_polkniety_wyjatek(
+                    f"Tworzenie nowego Autora z niezmatchowanego naukowca PBN "
+                    f"(scientist={scientist}, mongoId={scientist.pk})",
+                    logger=logger,
+                )
                 errors.append(f"{scientist} - błąd: {str(e)}")
 
     if created_count > 0:

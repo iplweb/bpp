@@ -1,3 +1,4 @@
+import logging
 from datetime import datetime
 from io import BytesIO
 from urllib.parse import quote
@@ -16,8 +17,14 @@ from django.views.generic import ListView
 from openpyxl import Workbook
 
 from bpp.models import Wydawnictwo_Ciagle
-from bpp.util import worksheet_columns_autosize, worksheet_create_table
+from bpp.util import (
+    worksheet_columns_autosize,
+    worksheet_create_table,
+    zaloguj_polkniety_wyjatek,
+)
 from rozbieznosci_if.models import IgnorujRozbieznoscIf, RozbieznosciIfLog
+
+logger = logging.getLogger(__name__)
 
 CURRENT_YEAR = datetime.now().year
 DEFAULT_ROK_OD = 2022
@@ -490,7 +497,14 @@ def ustaw_pole_ze_zrodla(
                 )
 
                 updated += 1
-        except (Wydawnictwo_Ciagle.DoesNotExist, Exception):
+        except Wydawnictwo_Ciagle.DoesNotExist:
+            errors += 1
+        except Exception:
+            zaloguj_polkniety_wyjatek(
+                f"Aktualizacja pola '{field_name}' ze źródła dla "
+                f"Wydawnictwo_Ciagle (pk={pk})",
+                logger=logger,
+            )
             errors += 1
 
     return updated, errors
