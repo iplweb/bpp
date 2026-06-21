@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING
 import rollbar
 from django.db import IntegrityError, transaction
 
-from bpp.util import pbar
+from bpp.util import pbar, zaloguj_polkniety_wyjatek
 from pbn_api.exceptions import HttpException
 from pbn_api.models import (
     Institution,
@@ -338,6 +338,12 @@ def pobierz_mongodb(
         try:
             count = elems.count() if hasattr(elems, "count") else elems.count
         except Exception:
+            zaloguj_polkniety_wyjatek(
+                "Nie udało się ustalić liczby elementów do paska postępu — "
+                "kontynuuję bez znanej liczby",
+                logger=logger,
+                do_rollbar=True,
+            )
             count = None
 
     # Use pbar with callback support for database progress tracking

@@ -1,4 +1,5 @@
 import json
+import logging
 import time
 import traceback
 
@@ -8,6 +9,7 @@ from django.utils import timezone
 from queryset_sequence import QuerySetSequence
 
 from bpp.models import Uczelnia
+from bpp.util import zaloguj_polkniety_wyjatek
 from pbn_api.adapters.wydawnictwo import WydawnictwoPBNAdapter
 from pbn_api.client import PBNClient, RequestsTransport
 from pbn_api.exceptions import (
@@ -17,6 +19,8 @@ from pbn_api.exceptions import (
     PraceSerwisoweException,
 )
 from pbn_wysylka_oswiadczen.queries import get_publications_queryset
+
+logger = logging.getLogger(__name__)
 
 
 def get_pbn_client(user):
@@ -149,6 +153,13 @@ def _send_statements_with_retry(pbn_client, json_data, log_entry):
             raise  # Propagate to main handler
 
         except Exception as e:
+            zaloguj_polkniety_wyjatek(
+                "Błąd podczas wysyłki oświadczeń do PBN "
+                f"(próba {retry_count + 1}/{max_retries}, "
+                f"PbnWysylkaLog pk={log_entry.pk})",
+                logger=logger,
+                do_rollbar=True,
+            )
             last_error = e
             retry_count += 1
             log_entry.retry_count = retry_count

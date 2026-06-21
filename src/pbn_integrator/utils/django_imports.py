@@ -2,6 +2,10 @@
 
 from __future__ import annotations
 
+import logging
+
+logger = logging.getLogger(__name__)
+
 # Import Django-dependent modules only when Django is ready
 try:
     from django.apps import apps
@@ -22,6 +26,16 @@ try:
         normalize_tytul_publikacji = None
 except Exception:  # noqa
     # Django not available or not configured
+    # Import z modułu-liścia (sam logging/sys/rollbar) — NIE z ``bpp.util``,
+    # bo facade wciąga ORM, a tu Django może być jeszcze nie gotowe.
+    from bpp.util.wyjatki import zaloguj_polkniety_wyjatek
+
+    zaloguj_polkniety_wyjatek(
+        "Nie udało się zaimportować zależności Django dla pbn_integrator "
+        "(import_common) — odroczono do _ensure_django_imports()",
+        logger=logger,
+        do_rollbar=False,  # import-time bootstrap; Rollbar może być nieskonfigurowany
+    )
     matchuj_autora = None
     matchuj_wydawce = None
     normalize_doi = None

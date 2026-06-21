@@ -1,9 +1,14 @@
+import logging
 import re
 from datetime import datetime
 
 from django import template
 
+from bpp.util import zaloguj_polkniety_wyjatek
+
 register = template.Library()
+
+logger = logging.getLogger(__name__)
 
 
 @register.filter
@@ -94,7 +99,13 @@ def parse_timestamp(timestamp_str):
         # Remove microseconds if parsing fails
         timestamp_clean = re.sub(r"\.\d+$", "", timestamp_clean)
         return datetime.strptime(timestamp_clean, "%Y-%m-%d %H:%M:%S")
-    except BaseException:
+    except Exception:
+        zaloguj_polkniety_wyjatek(
+            f"Nie udało się sparsować znacznika czasu '{timestamp_str}' "
+            "z historii komunikatów PBN",
+            logger=logger,
+            do_rollbar=True,
+        )
         return None
 
 

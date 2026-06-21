@@ -18,6 +18,7 @@ Examples:
 """
 
 import json
+import logging
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from threading import Lock
@@ -28,6 +29,7 @@ from queryset_sequence import QuerySetSequence
 from tqdm import tqdm
 
 from bpp.models import Wydawnictwo_Ciagle, Wydawnictwo_Zwarte
+from bpp.util import zaloguj_polkniety_wyjatek
 from pbn_api.adapters.wydawnictwo import WydawnictwoPBNAdapter
 from pbn_api.exceptions import (
     CannotDeleteStatementsException,
@@ -36,6 +38,8 @@ from pbn_api.exceptions import (
 )
 from pbn_api.management.commands.util import PBNBaseCommand
 from pbn_api.models import PublikacjaInstytucji_V2, Scientist
+
+logger = logging.getLogger(__name__)
 
 
 def post_discipline_statements_error_handler(json_response):
@@ -227,6 +231,12 @@ def process_single_publication(
                     raise e
 
     except Exception as e:
+        zaloguj_polkniety_wyjatek(
+            "Błąd podczas wysyłki oświadczeń dyscyplin do PBN dla publikacji "
+            f"pk={publication.pk}",
+            logger=logger,
+            do_rollbar=False,
+        )
         result["error"] = str(e)
         if stdout and style and progress_lock:
             with progress_lock:

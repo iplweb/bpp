@@ -1,8 +1,13 @@
 # Register your models here.
 import json
+import logging
 
 from django.forms import widgets
 from django.utils.safestring import mark_safe
+
+from bpp.util import zaloguj_polkniety_wyjatek
+
+logger = logging.getLogger(__name__)
 
 
 class PrettyJSONWidget(widgets.Textarea):
@@ -21,7 +26,12 @@ class PrettyJSONWidget(widgets.Textarea):
             self.attrs["cols"] = min(max(max(row_lengths) + 2, 40), 120)
             return value
         except Exception:
-            # logger.warning("Error while formatting JSON: {}".format(e))
+            zaloguj_polkniety_wyjatek(
+                "Nie udało się sformatować JSON w widżecie PrettyJSONWidget "
+                "— pokazuję wartość surową",
+                logger=logger,
+                do_rollbar=True,
+            )
             return super().format_value(value)
 
 

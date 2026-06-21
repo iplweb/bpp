@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from typing import TYPE_CHECKING
 
 from django.db.models import Q
@@ -9,7 +10,7 @@ from tqdm import tqdm
 
 from bpp.const import PBN_MIN_ROK
 from bpp.models import Wydawnictwo_Ciagle, Wydawnictwo_Zwarte
-from bpp.util import pbar
+from bpp.util import pbar, zaloguj_polkniety_wyjatek
 from pbn_api.exceptions import (
     CannotUploadPublicationFee,
     HttpException,
@@ -30,6 +31,8 @@ from pbn_integrator.utils.publications import _pobierz_prace_po_elemencie
 
 if TYPE_CHECKING:
     from pbn_api.client import PBNClient
+
+logger = logging.getLogger(__name__)
 
 
 def wydawnictwa_zwarte_do_synchronizacji():
@@ -276,6 +279,12 @@ def _handle_no_pbn_uid(client: PBNClient, elem, upload_publication: bool) -> Non
         try:
             client.upload_publication(elem)
         except Exception as e:
+            zaloguj_polkniety_wyjatek(
+                "Błąd podczas wysyłki publikacji bez PBN UID do PBN "
+                f"({elem.tytul_oryginalny!r}, pk={elem.pk})",
+                logger=logger,
+                do_rollbar=True,
+            )
             tqdm.write(
                 f"Podczas aktualizacji pracy {elem.tytul_oryginalny, elem.pk} wystąpił błąd: {e}. "
                 f"Wczytaj dane tej pracy ręcznie. "
