@@ -40,6 +40,20 @@ class Publication(LinkDoPBNMixin, BasePBNMongoDBModel):
     def journal(self):
         return self.value_or_none("object", "journal")
 
+    @cached_property
+    def book(self):
+        """Rodzic (książka) rozdziału, tak jak PBN go osadza w JSON-ie pod
+        ``object.book``. Analogiczne do ``journal`` dla artykułów."""
+        return self.value_or_none("object", "book")
+
+    @cached_property
+    def book_title(self):
+        """Tytuł wydawnictwa nadrzędnego z PBN (``object.book.title``),
+        wystawiony tak, by szablon opisu bibliograficznego mógł go wyrenderować
+        zwykłym ``{{ praca.pbn_uid.book_title }}``."""
+        book = self.book
+        return book.get("title") if book else None
+
     def get_pbn_uuid(self):
         """Nazwa tej funkcji to NIE literówka; alias to PBN UID V2
 
