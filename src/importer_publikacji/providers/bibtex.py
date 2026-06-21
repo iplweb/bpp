@@ -1,3 +1,4 @@
+import logging
 import re
 
 import bibtexparser
@@ -8,6 +9,8 @@ from . import (
     InputMode,
     register_provider,
 )
+
+logger = logging.getLogger(__name__)
 
 # Mapowanie typów BibTeX → CrossRef (dla Komparator.porownaj_type)
 BIBTEX_TYPE_MAP = {
@@ -72,10 +75,15 @@ class BibTeXProvider(DataProvider):
         return identifier.strip()
 
     def fetch(self, identifier: str) -> FetchedPublication | None:
+        # NIE lykamy po cichu: nieoczekiwany blad parsera to bug, ktory ma
+        # trafic do logow + Rollbara (przez @task_failure w celery_tasks),
+        # a nie zniknac jako "dostawca nic nie zwrocil". validate_identifier
+        # juz potwierdzil parsowalnosc synchronicznie przed kolejka.
         try:
             library = bibtexparser.parse_string(identifier)
         except Exception:
-            return None
+            logger.exception("Nieoczekiwany blad parsowania BibTeX w fetch()")
+            raise
         if not library.entries:
             return None
 
@@ -147,7 +155,12 @@ def _parse_authors(author_str: str) -> list[dict]:
         return []
 
     authors = []
-    for part in author_str.split(" and "):
+    # Separator autorow w BibTeX to slowo "and" otoczone DOWOLNYM bialym
+    # znakiem — w realnych wpisach (czasopisma, Zotero) lista autorow jest
+    # zwykle lamana na wiele linii ("... and\n   Nastepny, Autor"), wiec
+    # literalne split(" and ") nie trafia i wszyscy autorzy laduja w jednym
+    # rekordzie (regresja Freshdesk #344). Dzielimy po \s+and\s+.
+    for part in re.split(r"\s+and\s+", author_str):
         part = part.strip()
         if not part:
             continue
@@ -212,7 +225,17 @@ def _clean_doi(doi_str: str) -> str:
 
 
 def _clean_pages(pages_str: str) -> str:
-    """Zamień '--' na '-' w stronach."""
+    """Znormalizuj separator zakresu stron do ASCII '-'.
+
+    BibTeX zapisuje zakres jako '--' (en-dash) lub '---' (em-dash), ale
+    wklejane wpisy czesto maja prawdziwe znaki unicode: en-dash '–', em-dash
+    '—', minus '−', figure dash '‒', horizontal bar '―'. Wszystko sprowadzamy
+    do '-', zeby ``Wydawnictwo_*.pierwsza_strona``/``ostatnia_strona``
+    (split po '-') poprawnie rozbijaly zakres (Freshdesk #344: 'S180—S180').
+    """
     if not pages_str:
         return ""
-    return pages_str.replace("--", "-")
+    for dash in ("–", "—", "−", "‒", "―"):
+        pages_str = pages_str.replace(dash, "-")
+    # '--' / '---' (LaTeX) oraz powtorzone '-' -> pojedynczy '-'.
+    return re.sub(r"-{2,}", "-", pages_str)

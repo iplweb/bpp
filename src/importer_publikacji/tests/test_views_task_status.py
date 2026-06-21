@@ -103,6 +103,42 @@ def test_task_status_terminal_status_redirects_with_hx_redirect(
 
 
 @pytest.mark.django_db
+def test_task_status_progress_partial_keeps_polling(authed_client, fetching_session):
+    """Partial postepu MUSI miec hx-trigger=every 3s, zeby odswiezac status."""
+    client, _ = authed_client
+    url = reverse(
+        "importer_publikacji:task-status",
+        kwargs={"session_id": fetching_session.pk},
+    )
+    with patch("importer_publikacji.views.task_status.AsyncResult") as mock_async:
+        mock_async.return_value = MagicMock(info={"progress": 30, "label": "x"})
+        response = client.get(url, HTTP_HX_REQUEST="true")
+
+    assert b"every 3s" in response.content
+
+
+@pytest.mark.django_db
+def test_task_status_error_partial_stops_polling(authed_client, fetching_session):
+    """Regresja Freshdesk #344: po bledzie partial NIE moze pollowac dalej,
+    inaczej traceback 'mruga' co 3s i nie da sie go zaznaczyc/skopiowac."""
+    client, _ = authed_client
+    fetching_session.status = ImportSession.Status.IMPORT_FAILED
+    fetching_session.last_error_message = "blad"
+    fetching_session.last_error_traceback = "Traceback (most recent call last): ..."
+    fetching_session.save()
+
+    url = reverse(
+        "importer_publikacji:task-status",
+        kwargs={"session_id": fetching_session.pk},
+    )
+    response = client.get(url, HTTP_HX_REQUEST="true")
+
+    assert response.status_code == 200
+    assert b"Traceback" in response.content
+    assert b"every 3s" not in response.content
+
+
+@pytest.mark.django_db
 def test_task_status_failed_renders_error_partial(authed_client, fetching_session):
     client, user = authed_client
     fetching_session.status = ImportSession.Status.IMPORT_FAILED
