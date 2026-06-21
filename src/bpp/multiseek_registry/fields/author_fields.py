@@ -1,5 +1,7 @@
 """Author-related query objects."""
 
+import logging
+
 from django.conf import settings
 from django.db.models import Q
 from django.db.models.expressions import F
@@ -20,8 +22,11 @@ from taggit.models import Tag
 from bpp import const
 from bpp.models import Autor, Autorzy, Dyscyplina_Naukowa, SlowaKluczoweView
 from bpp.multiseek_registry.mixins import BppMultiseekVisibilityMixin
+from bpp.util import zaloguj_polkniety_wyjatek
 
 from .constants import NULL_VALUE, UNION, UNION_NONE, UNION_OPS_ALL
+
+logger = logging.getLogger(__name__)
 
 
 def _is_union_value(operation):
@@ -101,6 +106,10 @@ class NazwiskoIImieQueryObject(
         try:
             obj = self.value_from_web(value)
         except Exception:  # noqa: BLE001 — uszkodzony/nieistniejący pk -> nieprzekładalne
+            zaloguj_polkniety_wyjatek(
+                f"Rozwiązywanie autora z wartości pickera Multiseek (value={value!r})",
+                logger=logger,
+            )
             return None
         if obj is None:
             return None
@@ -259,6 +268,10 @@ class TypOgolnyAutorQueryObject(NazwiskoIImieQueryObject):
         try:
             obj = self.value_from_web(value)
         except Exception:  # noqa: BLE001 — uszkodzony pk -> nieprzekładalne
+            zaloguj_polkniety_wyjatek(
+                f"Rozwiązywanie autora dla eksportu DjangoQL (value={value!r})",
+                logger=logger,
+            )
             return None
         if obj is None:
             return None

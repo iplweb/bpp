@@ -6,6 +6,7 @@ showing differences using a unified diff format similar to the Unix diff(1) comm
 """
 
 import difflib
+import logging
 import sys
 from pathlib import Path
 
@@ -13,10 +14,14 @@ from django.core.management.base import BaseCommand, CommandError
 from django.template import TemplateDoesNotExist
 from django.template.loader import get_template
 
+from bpp.util import zaloguj_polkniety_wyjatek
+
 try:
     from dbtemplates.models import Template
 except ImportError:
     Template = None
+
+logger = logging.getLogger(__name__)
 
 
 class Command(BaseCommand):
@@ -140,7 +145,7 @@ class Command(BaseCommand):
                             f.write(output_content + "\n")
                         self.stdout.write(
                             self.style.SUCCESS(
-                                f'Changed template names written to {options["output"]}'
+                                f"Changed template names written to {options['output']}"
                             )
                         )
                     except OSError as e:
@@ -156,7 +161,7 @@ class Command(BaseCommand):
                         f.write(output_content + "\n")
                     self.stdout.write(
                         self.style.SUCCESS(
-                            f'Differences written to {options["output"]}'
+                            f"Differences written to {options['output']}"
                         )
                     )
                 except OSError as e:
@@ -274,9 +279,9 @@ class Command(BaseCommand):
 
         # Add header and styling
         result = [
-            f"{'='*60}",
+            f"{'=' * 60}",
             f"Template: {db_template.name}",
-            f"{'='*60}",
+            f"{'=' * 60}",
         ]
 
         # Apply coloring if not disabled
@@ -335,11 +340,22 @@ class Command(BaseCommand):
                 rendered = django_template.render(Context({}))
                 return rendered
             except Exception:
-                pass
+                zaloguj_polkniety_wyjatek(
+                    f"Renderowanie szablonu jako fallback do odczytu źródła "
+                    f"(template_name={template_name})",
+                    logger=logger,
+                    do_rollbar=False,
+                )
 
         except TemplateDoesNotExist:
             pass
         except Exception as e:
+            zaloguj_polkniety_wyjatek(
+                f"Wczytywanie źródła szablonu do porównania "
+                f"(template_name={template_name})",
+                logger=logger,
+                do_rollbar=False,
+            )
             # Log the error but continue
             if hasattr(self, "stderr"):
                 self.stderr.write(

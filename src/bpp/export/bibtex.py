@@ -5,7 +5,12 @@ This module provides utilities to export Wydawnictwo_Ciagle and Wydawnictwo_Zwar
 models to BibTeX format.
 """
 
+import logging
 import re
+
+from bpp.util import zaloguj_polkniety_wyjatek
+
+logger = logging.getLogger(__name__)
 
 
 def sanitize_bibtex_string(text: str) -> str:
@@ -55,6 +60,11 @@ def format_authors_bibtex(wydawnictwo) -> str:
                 full_name = f"{autor_obj.autor.nazwisko} {autor_obj.autor.imiona}"
                 authors.append(full_name)
     except Exception:
+        zaloguj_polkniety_wyjatek(
+            f"Formatowanie autorów do BibTeX "
+            f"(wydawnictwo pk={getattr(wydawnictwo, 'pk', None)})",
+            logger=logger,
+        )
         # Fallback to cached authors if available
         if (
             hasattr(wydawnictwo, "opis_bibliograficzny_autorzy_cache")
@@ -87,7 +97,11 @@ def generate_bibtex_key(wydawnictwo) -> str:
             surname = re.sub(r"[^a-zA-Z0-9]", "", surname)
             key_parts.append(surname)
     except Exception:
-        pass
+        zaloguj_polkniety_wyjatek(
+            f"Generowanie klucza BibTeX z nazwiska pierwszego autora "
+            f"(wydawnictwo pk={getattr(wydawnictwo, 'pk', None)})",
+            logger=logger,
+        )
 
     # Add year
     if hasattr(wydawnictwo, "rok") and wydawnictwo.rok:

@@ -4,6 +4,7 @@ Autorzy
 
 from __future__ import annotations
 
+import logging
 from datetime import date, datetime, timedelta
 
 from autoslug import AutoSlugField
@@ -20,7 +21,9 @@ from bpp import const
 from bpp.core import zbieraj_sloty
 from bpp.models import LinkDoPBNMixin, ModelZAdnotacjami, ModelZNazwa, NazwaISkrot
 from bpp.models.abstract import ModelZPBN_ID
-from bpp.util import FulltextSearchMixin
+from bpp.util import FulltextSearchMixin, zaloguj_polkniety_wyjatek
+
+logger = logging.getLogger(__name__)
 
 
 class Tytul(NazwaISkrot):
@@ -593,6 +596,10 @@ class Autor_Jednostka(models.Model):
                 buf = f"{autor_str} ↔ {self.funkcja.nazwa}, {jednostka_str}"
             return buf
         except Exception:
+            zaloguj_polkniety_wyjatek(
+                f"Budowanie reprezentacji tekstowej Autor_Jednostka (pk={self.pk})",
+                logger=logger,
+            )
             # Fallback w przypadku jakichkolwiek błędów podczas usuwania
             return f"Autor_Jednostka #{self.pk if self.pk else 'nowy'}"
 
