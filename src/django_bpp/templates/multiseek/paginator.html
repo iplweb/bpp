@@ -1,5 +1,5 @@
 {% load pagination_tags %}
-<div class="multiseek-pagination-wrapper" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap;">
+<div class="multiseek-pagination-wrapper">
     <ul class="menu hide-for-print" style="margin-bottom: 0;">
         <li><a href="#"><i class="fi-database"></i> Razem: {{ paginator_count }}</a></li>
         {% if not is_live %}
@@ -8,25 +8,25 @@
         {% endif %}
         {% if paginator_count > 0 and paginator_count < max_rows %}
             {% if is_live %}
+                {% if request.GET.all != "1" %}
+                    <li>
+                        <a target="_blank" href="/multiseek/results/?all=1"><i class="fi-page-multiple"></i>
+                            Wyświetl wszystkie</a>
+                    </li>
+                {% endif %}
                 <li>
                     <a target="_blank"
                        href="/multiseek/results/?all=1&print=1{% if print_removed %}&print-removed=1{% endif %}"><i
                             class="fi-print"></i> Drukuj</a>
                 </li>
-                {% if request.GET.all != "1" %}
-                    <li>
-                        <a target="_blank" href="/multiseek/results/?all=1"><i class="fi-page-multiple"></i>
-                            Pokaż</a>
-                    </li>
-                {% endif %}
             {% else %}
+                {% if request.GET.all != "1" and paginator.num_pages > 1 %}
+                    <li><a href="?all=1"><i class="fi-page-multiple"></i> Wyświetl wszystkie</a></li>
+                {% endif %}
                 <li>
                     <a href="?all=1&print=1{% if print_removed %}&print-removed=1{% endif %}"><i
                             class="fi-print"></i> Drukuj</a>
                 </li>
-                {% if request.GET.all != "1" and paginator.num_pages > 1 %}
-                    <li><a href="?all=1"><i class="fi-page-multiple"></i> Pokaż</a></li>
-                {% endif %}
             {% endif %}
         {% endif %}
         {% if request.user.is_authenticated and paginator_count > 0 and paginator_count <= multiseek_export_max_rows %}
@@ -45,7 +45,7 @@
         {% endif %}
     </ul>
     {% if paginator.num_pages > 1 %}
-    <div style="margin-left: auto;">
+    <div class="multiseek-pagination-pager">
         {% paginate %}
     </div>
     {% endif %}
