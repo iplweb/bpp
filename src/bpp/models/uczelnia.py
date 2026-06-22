@@ -418,14 +418,14 @@ class Uczelnia(ModelZAdnotacjami, ModelZPBN_ID, NazwaISkrot, NazwaWDopelniaczu):
 
     wyszukiwanie_rekordy_na_strone_anonim = models.SmallIntegerField(
         "Ilość rekordów na stronę - anonim",
-        default=200,
+        default=2000,
         help_text="Ilość rekordów w wyszukiwaniu powyżej której znika opcja"
         '"Pokaż wszystkie" i "Drukuj" dla użytkownika anonimowego. '
-        "Nie jest zalecane ustawianie powyżej 500. ",
+        "Nie jest zalecane ustawianie powyżej 2000. ",
     )
 
     wyszukiwanie_rekordy_na_strone_zalogowany = models.SmallIntegerField(
-        "Ilość rekordów na stronę - anonim",
+        "Ilość rekordów na stronę - zalogowany",
         default=10000,
         help_text="Ilość rekordów w wyszukiwaniu powyżej której znika opcja"
         '"Pokaż wszystkie" i "Drukuj" dla użytkownika zalogowanego. '

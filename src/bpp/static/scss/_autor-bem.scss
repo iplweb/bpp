@@ -15,20 +15,21 @@
     gap: 0.5rem;
   }
 
-  // Quick actions section
+  // Quick actions section — przyciski "Pokaż wszystkie prace" oraz
+  // "Zobacz sieć powiązań" obok siebie, wyśrodkowane, z odstępem.
+  // Flex + gap daje odstęp w poziomie ORAZ pionie (gdy zawiną się na
+  // wąskim ekranie) — czego samo margin-left nie zapewniało.
   &__quick-actions {
-    text-align: center;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: center;
+    gap: 0.75rem;
     margin-bottom: 30px;
   }
 
   &__quick-actions-form {
     display: inline;
-  }
-
-  // Przycisk "Zobacz sieć powiązań" — odstęp od sąsiada (Pokaż wszystkie
-  // prace / Szukaj publikacji); styl kolorystyczny dziedziczy po sąsiedzie.
-  &__network-btn {
-    margin-left: 0.5rem;
   }
 
   // Show all works button
@@ -182,7 +183,11 @@
 
   // Search button section
   &__search-button-section {
-    text-align: center;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: center;
+    gap: 0.75rem;
     margin-top: 25px;
     padding-top: 20px;
     border-top: 1px solid #e9ecef;
