@@ -84,8 +84,9 @@ class ModelZOpisemBibliograficznym(models.Model):
     """Mixin, umożliwiający renderowanie opisu bibliograficznego dla danego
     obiektu przy pomocy template."""
 
-    tekst_przed_pierwszym_autorem = models.TextField(blank=True, null=True)
-    tekst_po_ostatnim_autorze = models.TextField(blank=True, null=True)
+    # noqa: DJ001 - pre-existing null=True na TextField (sprzed naszego brancha).
+    tekst_przed_pierwszym_autorem = models.TextField(blank=True, null=True)  # noqa: DJ001
+    tekst_po_ostatnim_autorze = models.TextField(blank=True, null=True)  # noqa: DJ001
 
     def opis_bibliograficzny(self, links=None):
         """Renderuje opis bibliograficzny dla danej klasy, używając:
@@ -269,7 +270,7 @@ class ModelZOpisemBibliograficznym(models.Model):
     #     ozac = ", ".join(zapisani)
     #     self.opis_bibliograficzny_zapisani_autorzy_cache = ozac
 
-    class Meta:
+    class Meta:  # noqa: DJ012 - kolejność zastana (sprzed naszego brancha).
         abstract = True
 
 
@@ -289,14 +290,14 @@ class ZapobiegajNiewlasciwymCharakterom(models.Model):
                     {
                         "charakter_formalny": [
                             safestring.mark_safe(
-                                'Jeżeli chcesz dodać rekord o typie "%s"'
-                                ', <a href="%s">kliknij tutaj</a>.'
-                                % (
+                                'Jeżeli chcesz dodać rekord o typie "{}"'
+                                ', <a href="{}">kliknij tutaj</a>.'.format(
                                     self.charakter_formalny.nazwa,
                                     reverse(
-                                        "admin:bpp_%s_add"
-                                        % self.charakter_formalny.nazwa.lower().replace(
-                                            " ", "_"
+                                        "admin:bpp_{}_add".format(
+                                            self.charakter_formalny.nazwa.lower().replace(
+                                                " ", "_"
+                                            )
                                         )
                                     ),
                                 )
