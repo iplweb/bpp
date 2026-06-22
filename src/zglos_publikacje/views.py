@@ -254,6 +254,11 @@ class Zgloszenie_PublikacjiWizard(UczelniaSettingRequiredMixin, SessionWizardVie
             kwargs["pliki_juz_zapisane"] = bool(
                 self.storage.extra_data.get(self.PLIKI_EXTRA_KEY)
             )
+        if step == "4":
+            # Krok opłat to też ModelForm na Zgloszenie_Publikacji → odpala
+            # model.clean (walidacja opłat). Bez uczelni z requestu spada do
+            # Uczelnia.objects.get() (crash przy >1 uczelni — Rollbar #400).
+            kwargs["uczelnia"] = Uczelnia.objects.get_for_request(self.request)
         return kwargs
 
     def get_form_instance(self, step):

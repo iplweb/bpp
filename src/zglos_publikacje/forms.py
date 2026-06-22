@@ -319,7 +319,10 @@ class Zgloszenie_Publikacji_DaneForm(forms.ModelForm):
         super().__init__(*args, **kw)
 
         if uczelnia is None:
-            uczelnia = Uczelnia.objects.get()
+            # Multi-hosted: bez requestu nie zgadujemy — ``get()`` crashował
+            # przy >1 uczelni (MultipleObjectsReturned). ``model.clean``
+            # poprawnie obsługuje ``None``.
+            uczelnia = Uczelnia.objects.get_single_uczelnia_or_none()
 
         # Przepisz uczelnię oglądającego na instancję, żeby walidacja opłat
         # w ``Zgloszenie_Publikacji.clean`` użyła JEJ, a nie zgadywała przez
@@ -499,6 +502,7 @@ class Zgloszenie_Publikacji_KosztPublikacjiForm(forms.ModelForm):
         ]
 
     def __init__(self, *args, **kw):
+        uczelnia = kw.pop("uczelnia", None)
         self.helper = FormHelper()
         self.helper.form_class = "custom"
         self.helper.form_action = "."
@@ -513,6 +517,12 @@ class Zgloszenie_Publikacji_KosztPublikacjiForm(forms.ModelForm):
             ),
         )
         super().__init__(*args, **kw)
+
+        # Multi-hosted: przepisz uczelnię oglądającego na instancję, żeby
+        # walidacja opłat w ``Zgloszenie_Publikacji.clean`` użyła JEJ, a nie
+        # zgadywała przez ``Uczelnia.objects.get()`` (crash przy >1 uczelni,
+        # Rollbar #400).
+        self.instance._uczelnia = uczelnia
 
     def clean_opl_pub_cost_free(self):
         v = self.cleaned_data.get("opl_pub_cost_free")

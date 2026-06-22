@@ -251,7 +251,11 @@ class Zgloszenie_Publikacji(
         # -- czyli, że zmienna zupelny_brak_informacji_o_oplatach jest False.
 
         if not hasattr(self, "_uczelnia") or self._uczelnia is None:
-            uczelnia = Uczelnia.objects.get()
+            # Multi-hosted: bez przekazanej uczelni NIE zgadujemy przez
+            # ``get()`` (crash przy >1 uczelni — Rollbar #400). Gdy nie da
+            # się jednoznacznie ustalić, ``_uczelnia_wymaga_oplatach...``
+            # obsługuje ``None`` (nie wymusza opłat).
+            uczelnia = Uczelnia.objects.get_single_uczelnia_or_none()
         else:
             uczelnia = self._uczelnia
 
