@@ -1,0 +1,15 @@
+{# Najczęstsze źródła / czasopisma. Oczekuje: dane.wiersze. #}
+<div class="author-info-section autor-page__sekcja">
+    <h3><i class="fi-book-bookmark autor-page__icon--mr-sm"></i>{{ nazwa }}</h3>
+    <table class="autor-page__staty">
+        <thead>
+            <tr><th>Źródło</th><th>Liczba prac</th></tr>
+        </thead>
+        <tbody>
+            {% for nazwa_zrodla, liczba in dane.wiersze %}
+                <tr><td>{{ nazwa_zrodla }}</td><td>{{ liczba }}</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+<div class="shaded-hr-div-small"></div>

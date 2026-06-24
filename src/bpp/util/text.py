@@ -218,6 +218,72 @@ class safe_streszczenie_defaults:
     ALLOWED_TAGS = safe_html_defaults.ALLOWED_TAGS + ("sub", "sup")
 
 
+class safe_biogram_defaults:
+    # Biogram autora jest treścią blokową (akapity, nagłówki, listy, linki),
+    # więc dozwolony zestaw jest znacznie szerszy niż globalny ``safe_html``.
+    # Świadomie pomijamy ``img`` (tracking-piksele / mixed content) oraz
+    # ``style``/``class`` (spoofing wyglądu strony) — można dodać później.
+    ALLOWED_TAGS = (
+        "p",
+        "br",
+        "hr",
+        "strong",
+        "b",
+        "em",
+        "i",
+        "u",
+        "strike",
+        "sub",
+        "sup",
+        "a",
+        "ul",
+        "ol",
+        "li",
+        "blockquote",
+        "h2",
+        "h3",
+        "h4",
+        "h5",
+        "h6",
+        "code",
+        "pre",
+        "table",
+        "thead",
+        "tbody",
+        "tr",
+        "td",
+        "th",
+        "dl",
+        "dt",
+        "dd",
+    )
+    ALLOWED_ATTRIBUTES = {"a": ["href", "title"]}
+
+
+def safe_biogram_html(html):
+    """Zwróć bezpieczny HTML biogramu autora.
+
+    W odróżnieniu od ``safe_html``: (a) bogatszy zestaw tagów blokowych,
+    (b) ``clean_content_tags`` usuwa treść ``script``/``style`` (nie zostawia
+    jej jako tekst), (c) linki dostają ``rel="nofollow noopener noreferrer"``.
+    """
+    html = html or ""
+
+    ALLOWED_TAGS = getattr(
+        settings, "BIOGRAM_ALLOWED_TAGS", safe_biogram_defaults.ALLOWED_TAGS
+    )
+    ALLOWED_ATTRIBUTES = getattr(
+        settings, "BIOGRAM_ALLOWED_ATTRIBUTES", safe_biogram_defaults.ALLOWED_ATTRIBUTES
+    )
+    return nh3.clean(
+        html,
+        tags=set(ALLOWED_TAGS),
+        attributes={k: set(v) for k, v in ALLOWED_ATTRIBUTES.items()},
+        clean_content_tags={"script", "style"},
+        link_rel="nofollow noopener noreferrer",
+    )
+
+
 def safe_streszczenie_html(html):
     """Zwróć bezpieczny, zbalansowany HTML streszczenia.
 

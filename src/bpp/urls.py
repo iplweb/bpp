@@ -86,8 +86,21 @@ from bpp.views.browse import (
     ZrodloView,
     bibtex_view,
 )
+from bpp.views.eksport_autora import (
+    AutorEksportBibtexView,
+    AutorEksportRisView,
+    EksportAutoraDownloadView,
+    EksportAutoraStatusView,
+    StartEksportAutoraView,
+)
 from bpp.views.microsoft_auth_redirect import MicrosoftAuthRedirectView
 from bpp.views.oai import OAIView
+from bpp.views.profil_edycja import ProfilBiogramPodgladView, ProfilEdycjaView
+from bpp.views.profil_wybrane_publikacje import (
+    ProfilWybranePublikacjeAkcjaView,
+    ProfilWybranePublikacjeAutocompleteView,
+    ProfilWybranePublikacjeView,
+)
 from bpp.views.profile import ProfilUzytkownikaView
 from bpp.views.xlsx_issn_chunks import xlsx_issn_chunks
 from bpp.views.zapytanie import (
@@ -136,6 +149,31 @@ urlpatterns = [
         "profil/",
         ProfilUzytkownikaView.as_view(),
         name="profil-uzytkownika",
+    ),
+    path(
+        "profil/edycja/",
+        ProfilEdycjaView.as_view(),
+        name="profil-edycja",
+    ),
+    path(
+        "profil/edycja/podglad-biogramu/",
+        ProfilBiogramPodgladView.as_view(),
+        name="profil-biogram-podglad",
+    ),
+    path(
+        "profil/edycja/wybrane-publikacje/",
+        ProfilWybranePublikacjeView.as_view(),
+        name="profil-wybrane-publikacje",
+    ),
+    path(
+        "profil/edycja/wybrane-publikacje/akcja/",
+        ProfilWybranePublikacjeAkcjaView.as_view(),
+        name="profil-wybrane-publikacje-akcja",
+    ),
+    path(
+        "profil/edycja/wybrane-publikacje/autocomplete/",
+        ProfilWybranePublikacjeAutocompleteView.as_view(),
+        name="profil-wybrane-publikacje-autocomplete",
     ),
     url(
         r"^microsoft-auth-redirect/$",
@@ -284,6 +322,31 @@ urlpatterns = [
         r"^autor/(?P<pk>\d+)/powiazania/zrodla\.json$",
         GrafPowiazanZrodlaView.as_view(),
         name="browse_autor_powiazania_zrodla",
+    ),
+    url(
+        r"^autor/(?P<pk>\d+)/eksport\.bib$",
+        AutorEksportBibtexView.as_view(),
+        name="autor_eksport_bibtex",
+    ),
+    url(
+        r"^autor/(?P<pk>\d+)/eksport\.ris$",
+        AutorEksportRisView.as_view(),
+        name="autor_eksport_ris",
+    ),
+    url(
+        r"^autor/(?P<pk>\d+)/eksport/(?P<format>bib|ris)/$",
+        StartEksportAutoraView.as_view(),
+        name="autor_eksport_start",
+    ),
+    url(
+        r"^eksport-autora/(?P<pk>[0-9a-f-]+)/$",
+        EksportAutoraStatusView.as_view(),
+        name="autor_eksport_status",
+    ),
+    url(
+        r"^eksport-autora/(?P<pk>[0-9a-f-]+)/pobierz/$",
+        EksportAutoraDownloadView.as_view(),
+        name="autor_eksport_pobierz",
     ),
     url(r"^autor/(?P<slug>[\w-]+)/$", AutorView.as_view(), name="browse_autor"),
     url(r"^zrodla/$", ZrodlaView.as_view(), name="browse_zrodla"),

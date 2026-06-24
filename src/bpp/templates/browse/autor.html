@@ -11,6 +11,7 @@
 {% endblock %}
 
 {% block content %}
+{# === Nagłówek (full-width nad gridem): H1 + funkcja + przyciski staff === #}
 <div class="author-header">
     <div class="grid-x grid-margin-x align-middle">
         <div class="cell auto">
@@ -40,7 +41,7 @@
     </div>
 </div>
 
-<!-- Quick Actions -->
+{# Quick Actions (full-width): pokaż wszystkie prace + sieć powiązań #}
 <div class="autor-page__quick-actions">
     <form method="post"
           action="{% url "bpp:browse_build_search" %}"
@@ -63,304 +64,26 @@
 
 <div class="shaded-hr-div-small"></div>
 
-<div class="row">
-    <div class="large-12 columns">
-        <!-- Current workplace and affiliation -->
-        {% if autor.aktualna_jednostka and autor.aktualna_jednostka != uczelnia.obca_jednostka %}
-            <div class="author-info-section">
-                <h3><i class="fi-home"></i> Aktualna jednostka</h3>
-                <p><a href="{% url "bpp:browse_jednostka" autor.aktualna_jednostka.slug %}">{{ autor.aktualna_jednostka.nazwa }}</a></p>
-            </div>
-            <div class="shaded-hr-div-small"></div>
-        {% endif %}
+{# === Układ 2-kolumnowy (Foundation grid w HTML; stackuje się na małych) === #}
+<div class="grid-x grid-margin-x autor-page__uklad">
+    {# --- LEWA kolumna: sekcje z rejestru (kolumna=lewa), kolejność i #}
+    {# widoczność z konfiguracji uczelni. Szerokość konfigurowalna. --- #}
+    <div class="cell large-{{ szer_lewej_kolumny }} autor-page__kolumna-lewa">
+        {% for sekcja in sekcje_profilu.lewa %}
+            {% include sekcja.template with dane=sekcja.dane nazwa=sekcja.nazwa klucz=sekcja.klucz %}
+        {% endfor %}
+    </div>
 
-        <!-- Disciplines -->
-        {% if autor.aktualna_dyscyplina or autor.aktualna_subdyscyplina %}
-            <div class="author-info-section">
-                <h3><i class="fi-book"></i> Dyscypliny naukowe</h3>
-                {% if autor.aktualna_dyscyplina %}
-                    <p><strong>Dyscyplina:</strong> {{ autor.aktualna_dyscyplina }}</p>
-                {% endif %}
-                {% if autor.aktualna_subdyscyplina %}
-                    <p><strong>Druga dyscyplina:</strong> {{ autor.aktualna_subdyscyplina }}</p>
-                {% endif %}
-            </div>
-            <div class="shaded-hr-div-small"></div>
-        {% endif %}
-
-        <!-- External identifiers -->
-        <div class="author-info-section">
-            <h3><i class="fi-link"></i> Identyfikatory</h3>
-                <div class="grid-x grid-margin-x autor-page__grid-gap">
-                    {% if autor.orcid %}
-                        <div class="cell shrink">
-                            <div class="callout autor-page__id-card">
-                                <div class="autor-page__id-label">ORCID</div>
-                                <a href="https://orcid.org/{{ autor.orcid }}"
-                                   target="_blank"
-                                   class="autor-page__id-link">{{ autor.orcid }}</a>
-                            </div>
-                        </div>
-                    {% endif %}
-                    {% if autor.pbn_uid_id %}
-                        <div class="cell shrink">
-                            <div class="callout autor-page__id-card">
-                                <div class="autor-page__id-label">PBN UID</div>
-                                <a href="{{ autor.link_do_pbn }}"
-                                   target="_blank"
-                                   class="autor-page__id-link">{{ autor.pbn_uid_id }}</a>
-                            </div>
-                        </div>
-                    {% endif %}
-                    {% if autor.jest_w_polon %}
-                        <div class="cell shrink">
-                            <div class="callout autor-page__id-card autor-page__id-card--wide">
-                                <div class="autor-page__id-label">
-                                    <span class="fi-shield"></span> Naukowiec z POL-on
-                                </div>
-                                <a href="{{ autor.link_do_pbn }}"
-                                   target="_blank"
-                                   rel="noopener"
-                                   class="autor-page__id-link">
-                                    Zobacz w PBN <span class="fi-arrow-right"></span>
-                                </a>
-                            </div>
-                        </div>
-                    {% endif %}
-                    {% if autor.pbn_id %}
-                        <div class="cell shrink">
-                            <div class="callout autor-page__id-card">
-                                <div class="autor-page__id-label">PBN ID</div>
-                                <div class="autor-page__id-value">{{ autor.pbn_id }}</div>
-                            </div>
-                        </div>
-                    {% endif %}
-                    {% if autor.system_kadrowy_id %}
-                        <div class="cell shrink">
-                            <div class="callout autor-page__id-card">
-                                <div class="autor-page__id-label">System kadrowy</div>
-                                <div class="autor-page__id-value">{{ autor.system_kadrowy_id }}</div>
-                            </div>
-                        </div>
-                    {% endif %}
-                    <div class="cell shrink">
-                        <div class="callout autor-page__id-card">
-                            <div class="autor-page__id-label">BPP ID</div>
-                            <span data-tooltip
-                                  class="top autor-page__id-value"
-                                  data-click-open="false"
-                                  tabindex="2"
-                                  title="Unikalny, wewnętrzny identyfikator autora w systemie BPP">
-                                {{ autor.pk }}
-                            </span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-        <!-- Evaluation metrics -->
-        {% if autor.metryki.exists %}
-            <div class="author-info-section">
-                <h3><i class="fi-graph-trend"></i> Metryki ewaluacyjne</h3>
-                <div class="grid-x grid-margin-x autor-page__grid-gap">
-                    {% for metryka in autor.metryki.all %}
-                        <div class="cell shrink">
-                            <a href="{{ metryka.get_absolute_url }}"
-                               class="button primary autor-page__metrics-btn">
-                                <i class="fi-eye autor-page__icon--mr-md"></i>
-                                Metryka dla {{ metryka.dyscyplina_naukowa.nazwa }}
-                                {% if autor.metryki.count > 1 and metryka.jednostka %}
-                                    ({{ metryka.jednostka.skrot|default:metryka.jednostka.nazwa }})
-                                {% endif %}
-                            </a>
-                        </div>
-                    {% endfor %}
-                </div>
-            </div>
-            <div class="shaded-hr-div-small"></div>
-        {% endif %}
-
-        <!-- Academic degrees -->
-        {% if autor.praca_doktorska_set.exists or autor.praca_habilitacyjna %}
-            <div class="author-info-section">
-                <h3><i class="fi-trophy"></i> Stopnie naukowe</h3>
-                {% if autor.praca_doktorska_set.exists %}
-                    {% for praca_doktorska in autor.praca_doktorska_set.all %}
-                        <p>
-                            <strong>Praca doktorska:</strong>
-                            <a href="{% url "bpp:browse_praca_old" "praca_doktorska" praca_doktorska.pk %}">
-                                {{ praca_doktorska|safe }}
-                            </a>
-                        </p>
-                    {% endfor %}
-                {% endif %}
-                {% if autor.praca_habilitacyjna %}
-                    <p>
-                        <strong>Praca habilitacyjna:</strong>
-                        <a href="{% url "bpp:browse_praca_old" "praca_habilitacyjna" autor.praca_habilitacyjna.pk %}">
-                            {{ autor.praca_habilitacyjna|safe }}
-                        </a>
-                    </p>
-                {% endif %}
-            </div>
-            <div class="shaded-hr-div-small"></div>
-        {% endif %}
-
-        <!-- Previous names (for authenticated users) -->
-        {% if request.user.is_authenticated %}
-            {% if not autor.pokazuj_poprzednie_nazwiska %}
-                {% if autor.poprzednie_nazwiska %}
-                    <div class="author-info-section">
-                        <small><strong>Poprzednie nazwiska (ukryte):</strong> {{ autor.poprzednie_nazwiska }}</small>
-                    </div>
-                    <div class="shaded-hr-div-small"></div>
-                {% endif %}
-            {% endif %}
-        {% endif %}
-
-        <!-- Description -->
-        {% if autor.pokazuj_opis and autor.opis %}
-            <div class="author-info-section">
-                <h3><i class="fi-info"></i> Opis</h3>
-                {{ autor.opis|safe }}
-            </div>
-            <div class="shaded-hr-div-small"></div>
-        {% endif %}
-
-        <!-- Citations -->
-        {% load czy_pokazywac %}
-        {% czy_pokazywac liczbe_cytowan_na_stronie_autora ignoruj_grupe %}
-            {% if autor.liczba_cytowan %}
-                <div class="author-info-section">
-                    <h3><i class="fi-graph-trend"></i> Cytowania</h3>
-                    <p><strong>Liczba cytowań:</strong> {{ autor.liczba_cytowan }}</p>
-                    <p><strong>Liczba cytowań z jednostek afiliowanych:</strong> {{ autor.liczba_cytowan_afiliowane|default:"brak" }}</p>
-                </div>
-                <div class="shaded-hr-div-small"></div>
-            {% endif %}
-        {% end_czy_pokazywac %}
+    {# --- PRAWA kolumna: sekcje z rejestru (kolumna=prawa). Szerokość #}
+    {# dopełnia lewą do 12 kolumn Foundation. --- #}
+    <div class="cell large-{{ szer_prawej_kolumny }} autor-page__kolumna-prawa">
+        {% for sekcja in sekcje_profilu.prawa %}
+            {% include sekcja.template with dane=sekcja.dane nazwa=sekcja.nazwa klucz=sekcja.klucz %}
+        {% endfor %}
     </div>
 </div>
 
-
-<!-- Modern Search Form -->
-<div class="search-container autor-page__search-container">
-    <div class="search-header autor-page__search-header">
-        <h3 class="autor-page__search-title">
-            <i class="fi-magnifying-glass autor-page__icon--mr-xl"></i>Wyszukaj publikacje autora
-        </h3>
-        <p class="autor-page__search-subtitle">
-            Znajdź publikacje powiązane z autorem {{ autor }}
-        </p>
-    </div>
-
-    <form method="post"
-          action="{% url "bpp:browse_build_search" %}"
-          class="browserForm">
-        {% csrf_token %}
-        <input type="hidden" name="suggested-title" value="{{ autor }}"/>
-        <input type="hidden" name="autor" value="{{ autor.pk }}"/>
-
-        <div class="card autor-page__search-card">
-            <div class="card-section">
-                <h6 class="autor-page__search-card-title">
-                    <i class="fi-list autor-page__icon--mr-sm"></i>Typ publikacji:
-                </h6>
-                {% include "browse/typy.html" %}
-            </div>
-        </div>
-
-        {% if autor.jednostki_gdzie_ma_publikacje %}
-            <div class="card autor-page__search-card">
-                <div class="card-section">
-                    <h6 class="autor-page__search-card-title">
-                        <i class="fi-home autor-page__icon--mr-sm"></i>Opracowane w jednostkach:
-                    </h6>
-                    <div class="grid-x grid-margin-x">
-                        {% for jednostka in autor.jednostki_gdzie_ma_publikacje %}
-                            <div class="cell medium-6 autor-page__checkbox-item">
-                                <input type="checkbox"
-                                       name="jednostka"
-                                       value="{{ jednostka.pk }}"
-                                       id="jednostka_{{ jednostka.pk }}"
-                                       class="autor-page__checkbox"/>
-                                <label for="jednostka_{{ jednostka.pk }}"
-                                       class="autor-page__checkbox-label">
-                                    {{ jednostka.nazwa }}
-                                    <a href="{% url "bpp:browse_jednostka" jednostka.slug %}"
-                                       class="autor-page__unit-link"
-                                       title="Zobacz jednostkę">
-                                        <i class="fi-home autor-page__unit-icon"></i>
-                                    </a>
-                                </label>
-                            </div>
-                        {% endfor %}
-                    </div>
-                </div>
-            </div>
-        {% endif %}
-
-        <!-- Years Selection Card -->
-        <div class="card autor-page__search-card">
-            <div class="card-section">
-                <h6 class="autor-page__search-card-title">
-                    <i class="fi-calendar autor-page__icon--mr-sm"></i>Opracowane w latach:
-                </h6>
-                <div class="grid-x grid-margin-x">
-                    {% for rok in autor.prace_w_latach reversed %}
-                        <div class="cell small-6 medium-4 large-2 autor-page__checkbox-item--year">
-                            <input type="checkbox"
-                                   name="rok"
-                                   id="rok_{{ rok }}"
-                                   value="{{ rok }}"
-                                   class="autor-page__checkbox"/>
-                            <label for="rok_{{ rok }}"
-                                   class="autor-page__checkbox-label">
-                                {{ rok }}
-                            </label>
-                        </div>
-                    {% endfor %}
-                </div>
-            </div>
-        </div>
-
-        <!-- Report Title Card -->
-        <div class="card autor-page__search-card">
-            <div class="card-section">
-                <h6 class="autor-page__search-card-title">
-                    <i class="fi-page-edit autor-page__icon--mr-sm"></i>Tytuł raportu:
-                </h6>
-                <div class="grid-x grid-margin-x align-middle">
-                    <div class="cell auto">
-                        <input type="text"
-                               name="suggested-title"
-                               value="{{ autor }}"
-                               class="autor-page__title-input"/>
-                    </div>
-                </div>
-                <small class="autor-page__title-hint">
-                    Tytuł wyszukiwania możesz zmienić, klikając go dwukrotnie.
-                </small>
-            </div>
-        </div>
-
-        <!-- Search Button -->
-        <div class="autor-page__search-button-section">
-            <button type="submit"
-                    class="button primary large autor-page__search-btn">
-                <i class="fi-magnifying-glass autor-page__icon--mr-lg autor-page__icon--white"></i>Szukaj publikacji
-            </button>
-            {% if ma_powiazania %}
-                <a href="{% url 'bpp:browse_autor_powiazania' autor.pk %}"
-                   class="button primary large autor-page__search-btn autor-page__network-btn">
-                    <i class="fi-share autor-page__icon--mr-lg autor-page__icon--white"></i>Zobacz sieć powiązań
-                </a>
-            {% endif %}
-        </div>
-    </form>
-</div>
-
-<!-- Embed Code Section -->
+{# === Kod do osadzenia (full-width pod gridem) === #}
 <div class="row autor-page__embed-section">
     <div class="large-12 columns">
         <div class="author-info-section">
@@ -569,6 +292,11 @@ document.addEventListener('click', function(e) {
     if (e.target.closest('[data-action="copy-embed"]')) {
         e.preventDefault();
         copyEmbedCode();
+    }
+    // Klik w zdjęcie: tylko modal (data-open Foundation), bez nawigacji
+    // do pełnego obrazu. href zostaje jako fallback przy braku JS.
+    if (e.target.closest('.autor-page__avatar-link')) {
+        e.preventDefault();
     }
 });
 document.addEventListener('keydown', function(e) {

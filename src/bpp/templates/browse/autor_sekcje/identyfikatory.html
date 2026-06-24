@@ -1,0 +1,71 @@
+{# Identyfikatory zewnętrzne autora (lewa kolumna). BPP ID zawsze obecne, #}
+{# więc sekcja nigdy nie jest pusta — renderuje się zawsze. #}
+<div class="author-info-section">
+    <h3><i class="fi-link"></i> Identyfikatory</h3>
+    <div class="grid-x grid-margin-x autor-page__grid-gap">
+        {% if autor.orcid %}
+            <div class="cell shrink">
+                <div class="callout autor-page__id-card">
+                    <div class="autor-page__id-label">ORCID</div>
+                    <a href="https://orcid.org/{{ autor.orcid }}"
+                       target="_blank"
+                       class="autor-page__id-link">{{ autor.orcid }}</a>
+                </div>
+            </div>
+        {% endif %}
+        {% if autor.pbn_uid_id %}
+            <div class="cell shrink">
+                <div class="callout autor-page__id-card">
+                    <div class="autor-page__id-label">PBN UID</div>
+                    <a href="{{ autor.link_do_pbn }}"
+                       target="_blank"
+                       class="autor-page__id-link">{{ autor.pbn_uid_id }}</a>
+                </div>
+            </div>
+        {% endif %}
+        {% if autor.jest_w_polon %}
+            <div class="cell shrink">
+                <div class="callout autor-page__id-card autor-page__id-card--wide">
+                    <div class="autor-page__id-label">
+                        <span class="fi-shield"></span> Naukowiec z POL-on
+                    </div>
+                    <a href="{{ autor.link_do_pbn }}"
+                       target="_blank"
+                       rel="noopener"
+                       class="autor-page__id-link">
+                        Zobacz w PBN <span class="fi-arrow-right"></span>
+                    </a>
+                </div>
+            </div>
+        {% endif %}
+        {% if autor.pbn_id %}
+            <div class="cell shrink">
+                <div class="callout autor-page__id-card">
+                    <div class="autor-page__id-label">PBN ID</div>
+                    <div class="autor-page__id-value">{{ autor.pbn_id }}</div>
+                </div>
+            </div>
+        {% endif %}
+        {% if autor.system_kadrowy_id %}
+            <div class="cell shrink">
+                <div class="callout autor-page__id-card">
+                    <div class="autor-page__id-label">System kadrowy</div>
+                    <div class="autor-page__id-value">{{ autor.system_kadrowy_id }}</div>
+                </div>
+            </div>
+        {% endif %}
+        <div class="cell shrink">
+            <div class="callout autor-page__id-card">
+                <div class="autor-page__id-label">BPP ID</div>
+                <span data-tooltip
+                      class="top autor-page__id-value"
+                      data-click-open="false"
+                      tabindex="2"
+                      title="Unikalny, wewnętrzny identyfikator autora w systemie BPP">
+                    {{ autor.pk }}
+                </span>
+            </div>
+        </div>
+    </div>
+</div>
+<div class="shaded-hr-div-small"></div>

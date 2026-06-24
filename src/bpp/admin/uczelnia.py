@@ -1,3 +1,5 @@
+import json
+
 from django import forms
 from django.contrib import admin, messages
 from reversion.admin import VersionAdmin
@@ -6,12 +8,42 @@ from ewaluacja_liczba_n.models import LiczbaNDlaUczelni
 from pbn_api.exceptions import PraceSerwisoweException
 
 from ..models import Uczelnia, Ukryj_Status_Korekty, Wydzial
+from ..profil_autora import waliduj_uklad
 
 # Uczelnia
 from .core import BaseBppAdminMixin, RestrictDeletionToAdministracjaGroupMixin
 from .helpers.constance_field_mixin import ConstanceUczelniaFieldsMixin
 from .helpers.fieldsets import ADNOTACJE_FIELDSET
 from .helpers.mixins import ZapiszZAdnotacjaMixin
+from .widgets.uklad_profilu import EdytorUkladuWidget
+
+
+class UczelniaAdminForm(forms.ModelForm):
+    class Meta:
+        model = Uczelnia
+        # Tylko pole z customowym widgetem — admin (modelform_factory)
+        # i tak rozszerza listę pól na podstawie fieldsets, więc to NIE
+        # ogranicza edytowalnych pól w adminie. Trzymamy listę wąsko, żeby
+        # nie naruszyć DJ007 (zakaz `fields = "__all__"`).
+        fields = ["uklad_profilu_autora"]
+        widgets = {"uklad_profilu_autora": EdytorUkladuWidget}
+
+    def clean_uklad_profilu_autora(self):
+        """Sanityzuj zserializowaną wartość edytora do poprawnej listy.
+
+        Widget posta JSON-string (lub listę gdy JS nie wystartował);
+        ``waliduj_uklad`` zrzuca nieznane/zduplikowane klucze i koryguje
+        widoczność/limit. Puste = ``None`` (``rozwiaz_uklad`` to toleruje).
+        """
+        wartosc = self.cleaned_data.get("uklad_profilu_autora")
+        if not wartosc:
+            return None
+        if isinstance(wartosc, str):
+            try:
+                wartosc = json.loads(wartosc)
+            except (ValueError, TypeError):
+                return None
+        return waliduj_uklad(wartosc)
 
 
 class WydzialInlineForm(forms.ModelForm):
@@ -67,6 +99,7 @@ class UczelniaAdmin(
     BaseBppAdminMixin,
     VersionAdmin,
 ):
+    form = UczelniaAdminForm
     list_display = ["nazwa", "nazwa_dopelniacz_field", "skrot", "pbn_uid"]
     autocomplete_fields = ["pbn_uid", "obca_jednostka"]
     fieldsets = (
@@ -150,6 +183,20 @@ class UczelniaAdmin(
                     "sortuj_jednostki_alfabetycznie",
                     "metoda_do_roku_formularze",
                 ),
+            },
+        ),
+        (
+            "Profil autora (podstrona)",
+            {
+                "classes": ("grp-collapse grp-closed",),
+                "description": (
+                    "Układ OBU kolumn podstrony autora (globalny dla uczelni). "
+                    "Przeciągnij kafelki, aby zmienić kolejność LUB przenieść "
+                    "sekcję między kolumnami (lewa ⇄ prawa); odznacz, by ukryć; "
+                    "dla list ustaw limit pozycji. Szerokość lewej kolumny "
+                    "(prawa dopełnia do 12) ustawisz osobnym polem."
+                ),
+                "fields": ("szerokosc_lewej_kolumny", "uklad_profilu_autora"),
             },
         ),
         (

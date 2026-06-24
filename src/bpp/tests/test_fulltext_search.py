@@ -33,8 +33,12 @@ def test_fulltext_search_mixin(autor_jan_kowalski):
 
 @pytest.mark.django_db
 def test_publication_fulltext_search_uses_weighted_cached_fields(
-    autor_jan_kowalski, jednostka
+    autor_jan_kowalski, jednostka, typy_odpowiedzialnosci
 ):
+    # typy_odpowiedzialnosci: gwarantuje istnienie Typ_Odpowiedzialnosci
+    # "aut." wymaganego przez dodaj_autora — bez tego test zależał od danych
+    # bazowych, które poprzedzający test transakcyjny mógł wyczyścić (flush),
+    # co ujawniało się przy zmianie podziału na shardy.
     publication = baker.make(
         Wydawnictwo_Ciagle,
         tytul_oryginalny="Neurokognitywny atlas markerowy",

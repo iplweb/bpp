@@ -1,0 +1,39 @@
+{# Liczba prac wg charakteru formalnego — klik w wiersz buduje wyszukiwanie #}
+{# (autor + charakter formalny) w multiseek. Oczekuje: dane.wiersze (lista #}
+{# (nazwa, liczba)), dane.suma oraz `autor` (z kontekstu strony). #}
+<div class="author-info-section autor-page__sekcja">
+    <h3><i class="fi-graph-pie autor-page__icon--mr-sm"></i>{{ nazwa }}</h3>
+    <table class="autor-page__staty">
+        <thead>
+            <tr><th>Charakter formalny</th><th>Liczba prac</th></tr>
+        </thead>
+        <tbody>
+            {% for nazwa_charakteru, liczba in dane.wiersze %}
+                <tr>
+                    <td>
+                        <form method="post"
+                              action="{% url 'bpp:browse_build_search' %}"
+                              class="autor-page__staty-form">
+                            {% csrf_token %}
+                            <input type="hidden" name="autor" value="{{ autor.pk }}"/>
+                            <input type="hidden"
+                                   name="charakter_formalny"
+                                   value="{{ nazwa_charakteru }}"/>
+                            <input type="hidden"
+                                   name="suggested-title"
+                                   value="{{ autor }} — {{ nazwa_charakteru }}"/>
+                            <button type="submit"
+                                    class="autor-page__staty-link"
+                                    title="Pokaż prace: {{ nazwa_charakteru }}">{{ nazwa_charakteru }}</button>
+                        </form>
+                    </td>
+                    <td>{{ liczba }}</td>
+                </tr>
+            {% endfor %}
+        </tbody>
+        <tfoot>
+            <tr><th>Razem</th><th>{{ dane.suma }}</th></tr>
+        </tfoot>
+    </table>
+</div>
+<div class="shaded-hr-div-small"></div>
