@@ -2,6 +2,19 @@
 
 <!-- towncrier release notes start -->
 
+## bpp 202606.1393 (2026-06-24)
+
+### Naprawione
+
+- Wydruk PDF raportu slotów - autor zawiera teraz wszystkie rekordy autora, a
+  nie tylko pierwszą stronę (wcześniej, przy więcej niż 25 pracach, PDF urywał
+  się na pierwszej stronie i zostawała namiastka pagera). Dodatkowo każda tabela
+  (osobna dla każdej dyscypliny autora) ma nagłówek z nazwą dyscypliny, dzięki
+  czemu przy autorze z kilkoma dyscyplinami wiadomo, której tabela dotyczy, a
+  stopka tabeli z sumą punktów i slotów pokazuje się tylko raz, na końcu tabeli,
+  zamiast powtarzać się na każdej podstronie wielostronicowego wydruku (FD#405).
+
+
 ## bpp 202606.1392 (2026-06-24)
 
 ### Naprawione
