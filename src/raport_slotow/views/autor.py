@@ -146,6 +146,14 @@ class RaportSlotow(BaseRaportAuthMixin, MyExportMixin, MultiTableMixin, Template
 
         return ret
 
+    def get_table_pagination(self, table):
+        # PDF/wydruk musi zawierać WSZYSTKIE wiersze i bez pagera ("1 2 3
+        # … następny"). Domyślnie widok paginuje po 25, więc bez tego PDF
+        # miałby tylko pierwszą stronę rekordów (FD#405).
+        if getattr(self, "_pdf_export", False):
+            return False
+        return super().get_table_pagination(table)
+
     def get_queryset(self):
         return None
 
@@ -186,6 +194,8 @@ class RaportSlotow(BaseRaportAuthMixin, MyExportMixin, MultiTableMixin, Template
                 context = self.get_context_data(**kwargs)
                 return self.render_to_response(context)
             elif export_format == "pdf":
+                # wyłącz paginację dla wydruku — patrz get_table_pagination
+                self._pdf_export = True
                 new_get = copy(self.request.GET)
                 new_get["_export"] = "html"
                 self.request.GET = new_get

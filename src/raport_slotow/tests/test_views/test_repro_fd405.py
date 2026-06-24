@@ -115,6 +115,23 @@ def test_fd405_pdf_pokazuje_tytul_dyscypliny(
 
     assert "Dyscyplina:" in html, "brak nagłówka z nazwą dyscypliny nad tabelą"
     assert str(dyscyplina1) in html
+    # w wydruku nie może być pagera ("1 2 3 … następny") ani linków stron
+    assert "?page=" not in html, "pager (paginacja) wyciekł do PDF"
+
+
+def test_fd405_pdf_wylacza_paginacje():
+    """FD#405: wydruk musi zawierać WSZYSTKIE wiersze (bez pagera) — inaczej
+    PDF urywa się na pierwszych 25 rekordach. get_table_pagination zwraca więc
+    False w trybie PDF, a normalnie deleguje do domyślnej paginacji."""
+    from raport_slotow.views.autor import RaportSlotow
+
+    view = RaportSlotow()
+    view._pdf_export = True
+    # przy eksporcie PDF: brak paginacji (table nie jest nawet dotykany)
+    assert view.get_table_pagination(table=None) is False
+
+    # bez flagi atrybut nie istnieje → ścieżka PDF nie włącza się przypadkiem
+    assert getattr(RaportSlotow(), "_pdf_export", False) is False
 
 
 def _strony_ze_stopka(tfoot_css):
