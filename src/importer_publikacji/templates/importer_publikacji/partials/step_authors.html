@@ -245,6 +245,7 @@
      data-close-on-click="false"
      data-author-info-base="/importer_publikacji/{{ session.pk }}/authors/"
      data-candidates-modal-base="/importer_publikacji/{{ session.pk }}/authors/"
+     data-create-new-base="/importer_publikacji/{{ session.pk }}/authors/"
      style="height:auto;max-height:90vh;overflow-y:auto;top:5vh;bottom:auto">
     <h5 id="modal-author-title"></h5>
 
@@ -302,6 +303,24 @@
                        id="modal-zapisany-jako"
                        style="width:100%">
             </div>
+        </div>
+
+        {# Tworzenie NOWEGO autora bezpośrednio z tego wiersza (Freshdesk #}
+        {# #383) — rozwiązuje niedopasowany wiersz bez wracania do #}
+        {# zbiorczego żółtego przycisku na górze listy. #}
+        <div class="callout secondary"
+             style="margin-top:1rem;padding:0.75rem">
+            <p class="help-text" style="margin-bottom:0.5rem">
+                Brak pasującego autora w BPP? Utwórz nowego z danych
+                dostawcy (nazwisko/imiona powyżej). Zostanie przypisany
+                do obcej jednostki.
+            </p>
+            <button type="button"
+                    class="button warning"
+                    id="modal-create-new-author">
+                <span class="fi-torsos-all"></span>
+                Utwórz nowego autora
+            </button>
         </div>
 
         <div class="text-right"
@@ -898,6 +917,27 @@ $(document).ready(function() {
             );
         }
     );
+
+    // "Utwórz nowego autora" w modalu — POST do per-wierszowego
+    // endpointu create-new, swap wiersza, zamknij modal. Reużywa ten
+    // sam mechanizm co zbiorczy żółty przycisk (Freshdesk #383).
+    $('#modal-create-new-author').on('click', function() {
+        var importedId = $('#modal-author-id').val();
+        if (!importedId) return;
+        var base = $modal.data('create-new-base');
+        var url = base + importedId + '/create-new/';
+        htmx.ajax('POST', url, {
+            target: '#author-row-' + importedId,
+            swap: 'outerHTML',
+            values: {
+                csrfmiddlewaretoken: $modal.find(
+                    '[name=csrfmiddlewaretoken]'
+                ).val(),
+                zapisany_jako: $('#modal-zapisany-jako').val() || ''
+            }
+        });
+        $modal.foundation('close');
+    });
 
     // Submit modal form via HTMX and close
     $('#modal-author-form').on('submit', function(e) {
