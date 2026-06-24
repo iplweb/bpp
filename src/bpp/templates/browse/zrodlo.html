@@ -200,7 +200,9 @@
                     <ul class="accordion" data-accordion data-allow-all-closed="false">
                         {% regroup zrodlo.dyscypliny_aktualna_ewaluacja by rok as disciplines_by_year %}
                         {% for year_group in disciplines_by_year reversed %}
-                            <li class="accordion-item{% if year_group.grouper == 2025 %} is-active{% endif %}" data-accordion-item>
+                            {# Pętla idzie od najnowszego roku (reversed) — domyślnie #}
+                            {# rozwijamy pierwszy, czyli najnowszy rok w bazie (Freshdesk 296). #}
+                            <li class="accordion-item{% if forloop.first %} is-active{% endif %}" data-accordion-item>
                                 <a href="#" class="accordion-title">
                                     <i class="fi-calendar"></i>
                                     Rok {{ year_group.grouper }}
