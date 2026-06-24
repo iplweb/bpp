@@ -350,11 +350,13 @@ jobs:
             --allow=fs.write=/tmp
 
       # -----------------------------------------------------------------
-      # FAZA 2: Trivy gate (TYLKO na master)
+      # FAZA 2: Trivy gate (gdy run_trivy=true lub master)
       # -----------------------------------------------------------------
-      # Skanuje staging tag. CRITICAL z dostepnym fix-em → exit 1,
-      # promocja sie nie wykona (krok "Promote" ma domyslnie
-      # "if: success()"). HIGH → zapis do Step Summary, nie blokuje.
+      # Skanuje staging tag. Gate odpala się dla wywołań workflow_call
+      # (RC przez release-candidate.yml) ORAZ pushów na master.
+      # CRITICAL z dostepnym fix-em → exit 1, promocja sie nie wykona
+      # (krok "Promote" ma domyslnie "if: success()").
+      # HIGH → zapis do Step Summary, nie blokuje.
       #
       # Skipowane sciezki (znane false-positivy w zaleznosciach):
       #   • autobahn/wamp/cryptosign.py — przykladowy klucz w docstringu
@@ -363,7 +365,7 @@ jobs:
       # dopisz tutaj z komentarzem wyjasniajacym dlaczego to nie jest
       # prawdziwy sekret.
       # -----------------------------------------------------------------
-      - name: Trivy CRITICAL gate (master only)
+      - name: Trivy CRITICAL gate (gdy run_trivy / master)
         if: ${{ inputs.run_trivy || github.ref_name == 'master' }}
         env:
           STAGING_TAG: ${{ steps.tag.outputs.staging_tag }}
@@ -427,7 +429,7 @@ jobs:
             exit 1
           fi
 
-      - name: Trivy HIGH report (master only, report-only)
+      - name: Trivy HIGH report (gdy run_trivy / master, report-only)
         # Pokaz liste HIGH w Step Summary, ale nie blokuj. To jest
         # pomocna informacja o "dlugu CVE" — pozwala zdecydowac co bumpnac
         # przy nastepnej aktualizacji zaleznosci, bez zatrzymywania release-u.

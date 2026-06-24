@@ -30,7 +30,7 @@ jobs:
   prepare:
     name: Zbuduj kandydata (bump RC + scan + testy)
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 90
     env:
       COMPOSE_FILES: -f docker-compose.test.yml -f docker-compose.test.ci.yml
     outputs:
@@ -63,19 +63,31 @@ jobs:
                  | sed -E 's@.*refs/heads/(release/.*)$@\1@' | head -1 || true)
 
           if [ -z "$OPEN" ]; then
-            # Nowy cykl: gałąź z dev, bump do rc1 (inkrementuje BUILD + -rc1).
+            # Nowy cykl: policz BASE RAZ (bumpver test daje następny final),
+            # gałąź z dev, ustaw rc1 JAWNIE przez --set-version (BUILD nie
+            # może auto-dryfować przy kolejnych RC, stąd nie --tag-num).
+            CUR="v$(./bin/bpp-version.py)"
+            BASE=$(uv run bumpver test "$CUR" 'vYYYY0M.BUILD[-TAGNUM]' 2>/dev/null \
+                   | awk '/PEP440/{print $NF}')
+            RELEASE_REF="release/v${BASE}"
             git switch -C _rc origin/dev
-            uv run bumpver update --no-fetch --commit --no-push --tag rc --tag-num
+            uv run bumpver update --no-fetch --commit --no-push \
+              --set-version "v${BASE}-rc1"
           else
-            # Kontynuacja: checkout gałęzi, podbierz fixy z dev, kolejny -rcN.
+            # Kontynuacja: checkout gałęzi, podbierz fixy z dev, rc(N+1).
+            # BASE stały (z nazwy gałęzi); rc numer = bieżący+1.
+            RELEASE_REF="$OPEN"
             git switch -C _rc "origin/$OPEN"
             git merge --no-ff --no-edit origin/dev
-            uv run bumpver update --no-fetch --commit --no-push --tag-num
+            CUR_PEP=$(./bin/bpp-version.py)               # np. 202606.1394rc1
+            BASE=$(echo "$CUR_PEP" | sed -E 's/rc[0-9]+$//')
+            RCN=$(echo "$CUR_PEP" | sed -E 's/.*rc([0-9]+)$/\1/')
+            NEXT_RC=$((RCN + 1))
+            uv run bumpver update --no-fetch --commit --no-push \
+              --set-version "v${BASE}-rc${NEXT_RC}"
           fi
 
-          PEP=$(./bin/bpp-version.py)            # np. 202606.1392rc2
-          BASE=$(echo "$PEP" | sed -E 's/rc[0-9]+$//')   # 202606.1392
-          RELEASE_REF="release/v${BASE}"
+          PEP=$(./bin/bpp-version.py)            # np. 202606.1394rc2
           git branch -M _rc "$RELEASE_REF"
           echo "version_tag=${PEP}" >> "$GITHUB_OUTPUT"
           echo "release_ref=${RELEASE_REF}" >> "$GITHUB_OUTPUT"

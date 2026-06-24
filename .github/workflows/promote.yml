@@ -75,12 +75,44 @@ jobs:
           echo "rc_tag=${RC_TAG}" >> "$GITHUB_OUTPUT"
           echo "::notice::Promuję ${RELEASE_REF}: obraz :${RC_TAG} → :${BASE} + :latest"
 
+      - name: Log in to Docker Hub
+        uses: docker/login-action@650006c6eb7dba73a995cc03b0b2d7f5ca915bee # v4.2.0
+        with:
+          username: ${{ vars.DOCKER_USER }}
+          password: ${{ secrets.DOCKER_PAT }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@d7f5e7f509e45cec5c76c4d5afdd7de93d0b3df5 # v4.1.0
+
+      - name: Pre-flight — obrazy RC istnieją w rejestrze
+        env:
+          RC_TAG: ${{ steps.detect.outputs.rc_tag }}
+        # Sprawdź ZANIM ruszymy master/dev — inaczej brak obrazu = half-applied release.
+        run: |
+          set -euo pipefail
+          images=(
+            iplweb/bpp_base
+            iplweb/bpp_appserver
+            iplweb/bpp_workerserver
+            iplweb/bpp_beatserver
+            iplweb/bpp_authserver
+            iplweb/bpp_denorm_queue
+          )
+          for img in "${images[@]}"; do
+            echo "Sprawdzam ${img}:${RC_TAG}"
+            docker buildx imagetools inspect "${img}:${RC_TAG}" >/dev/null \
+              || { echo "::error::Brak ${img}:${RC_TAG} — przerwij PRZED zmianą master."; exit 1; }
+          done
+
       - name: Finalizuj wersję + towncrier
         env:
           BASE: ${{ steps.detect.outputs.base }}
         run: |
           set -euo pipefail
-          uv run bumpver update --no-fetch --commit --no-push --tag final
+          # --set-version (NIE --tag final): --tag final dodatkowo bumpnąłby
+          # BUILD (1394→1395), rozjeżdżając wersję finalną z testowanym RC.
+          uv run bumpver update --no-fetch --commit --no-push \
+            --set-version "v${BASE}"
           uv run towncrier build --yes || echo "towncrier: brak newsfragmentów."
           git add -A
           git commit -m "Changelog dla v${BASE}" || echo "Brak zmian changelogu."
@@ -104,21 +136,12 @@ jobs:
             "refs/tags/v${BASE}" \
             ":refs/heads/${RELEASE_REF}"
 
-      - name: Log in to Docker Hub
-        uses: docker/login-action@650006c6eb7dba73a995cc03b0b2d7f5ca915bee # v4.2.0
-        with:
-          username: ${{ vars.DOCKER_USER }}
-          password: ${{ secrets.DOCKER_PAT }}
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@d7f5e7f509e45cec5c76c4d5afdd7de93d0b3df5 # v4.1.0
-
       - name: Promote obrazów :rc → :wersja + :latest (imagetools)
         env:
           BASE: ${{ steps.detect.outputs.base }}
           RC_TAG: ${{ steps.detect.outputs.rc_tag }}
         run: |
-          set -eu
+          set -euo pipefail
           images=(
             iplweb/bpp_base
             iplweb/bpp_appserver
