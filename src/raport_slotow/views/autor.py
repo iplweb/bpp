@@ -3,16 +3,17 @@ from copy import copy
 
 from django.http import HttpResponse, HttpResponseRedirect
 from django.template.defaultfilters import pluralize
+from django.template.loader import render_to_string
 from django.urls import reverse
 from django.utils import timezone
 from django.utils.functional import cached_property
 from django.views.generic import FormView, TemplateView
 from django_tables2 import MultiTableMixin, RequestConfig
 from django_weasyprint.utils import DjangoURLFetcher
+from formdefaults.helpers import FormDefaultsMixin
 
 from bpp.models import Cache_Punktacja_Autora_Query_View, Dyscyplina_Naukowa
 from django_bpp.version import VERSION
-from formdefaults.helpers import FormDefaultsMixin
 from nowe_raporty.views import BaseRaportAuthMixin
 from raport_slotow.forms.autor import AutorRaportSlotowForm
 from raport_slotow.tables import RaportSlotowAutorTable
@@ -188,26 +189,36 @@ class RaportSlotow(BaseRaportAuthMixin, MyExportMixin, MultiTableMixin, Template
                 new_get = copy(self.request.GET)
                 new_get["_export"] = "html"
                 self.request.GET = new_get
-                context = self.get_context_data(**kwargs)
-                ret = self.render_to_response(context)
+                template_context = self.get_context_data(**kwargs)
+                template_context["wersja"] = VERSION
+                template_context["wygenerowano"] = timezone.make_naive(timezone.now())
 
-                # UWAGA: jeżeli w wygenerowanej stronie WWW cokolwiek będzie dostępne
-                # za hasłem, to może się ona nie wygenerować prawidłowo. Żeby wyrenderować
-                # PDFa, serwer wstecznie odpytuje sam siebie - o CSSy, obrazki, fonty itp.
-                # Jeżeli nagle będziemy mieli jakis zahasłowany statyczny asset, to będzie
-                # trzeba go tutaj udostępnić, żeby WeasyPrint miał ułatwione zadanie.
-                # (mpasternak, 17.03.2021)
+                # PDF renderujemy z osobnego, "gołego" szablonu (bez menu,
+                # stopki serwisu, szablonu powiadomień #messageTemplate ani
+                # JS-a), a CSS jest wpisany w ten szablon w całości. Dzięki
+                # temu WeasyPrint nie musi dociągać zbundlowanego CSS-a
+                # serwisu — co na produkcji bywa zawodne (hashowane statyki +
+                # self-fetch po HTTP) i powodowało wyciek całego "chrome"
+                # strony do PDF-a (FD#405). url_fetcher zostaje jako zabez
+                # pieczenie, ale goły szablon nie odwołuje się do zasobów
+                # zewnętrznych, więc nie jest już krytyczny.
+                html_string = render_to_string(
+                    "raport_slotow/raport_slotow_autor_pdf.html",
+                    template_context,
+                    request=self.request,
+                )
+
                 from weasyprint import HTML
 
                 # disable host and certificate check
-                context = ssl.create_default_context()
-                context.check_hostname = False
-                context.verify_mode = ssl.CERT_NONE
-                url_fetcher = DjangoURLFetcher(ssl_context=context)
+                ssl_context = ssl.create_default_context()
+                ssl_context.check_hostname = False
+                ssl_context.verify_mode = ssl.CERT_NONE
+                url_fetcher = DjangoURLFetcher(ssl_context=ssl_context)
 
                 response = HttpResponse(
                     content=HTML(
-                        string=ret.render().content,
+                        string=html_string,
                         base_url=self.request.build_absolute_uri(),
                         url_fetcher=url_fetcher,
                     ).write_pdf(),
