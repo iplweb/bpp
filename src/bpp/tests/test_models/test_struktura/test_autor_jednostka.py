@@ -1,10 +1,68 @@
 from datetime import date, datetime, timedelta
 
 import pytest
-from django.db import IntegrityError, InternalError, OperationalError
+from django.db import IntegrityError, InternalError, OperationalError, transaction
 from model_bakery import baker
 
 from bpp.models.autor import Autor_Jednostka
+
+
+@pytest.mark.django_db(transaction=True)
+def test_autor_jednostka_zamiana_podstawowego_miejsca_w_jednej_transakcji(
+    autor_jan_kowalski, jednostka, druga_jednostka
+):
+    """Przełączenie podstawowego miejsca pracy z jednostki A na B w obrębie
+    JEDNEJ transakcji musi się udać, nawet jeśli nowe podstawowe miejsce (B)
+    jest zapisywane PRZED odznaczeniem starego (A) — przejściowo istnieją
+    wtedy dwa rekordy z podstawowe_miejsce_pracy=True. Niezmiennik
+    egzekwujemy dopiero przy COMMIT (deferred constraint trigger)."""
+    a = baker.make(
+        Autor_Jednostka,
+        autor=autor_jan_kowalski,
+        jednostka=jednostka,
+        podstawowe_miejsce_pracy=True,
+    )
+    b = baker.make(
+        Autor_Jednostka,
+        autor=autor_jan_kowalski,
+        jednostka=druga_jednostka,
+    )
+
+    with transaction.atomic():
+        # Kolejność "najpierw zaznacz nowe" — to ona wysadzała immediate index.
+        b.podstawowe_miejsce_pracy = True
+        b.save()
+        a.podstawowe_miejsce_pracy = False
+        a.save()
+
+    assert (
+        Autor_Jednostka.objects.filter(
+            autor=autor_jan_kowalski, podstawowe_miejsce_pracy=True
+        ).count()
+        == 1
+    )
+    b.refresh_from_db()
+    assert b.podstawowe_miejsce_pracy is True
+
+
+@pytest.mark.django_db(transaction=True)
+def test_autor_jednostka_dwa_podstawowe_miejsca_pracy_odrzucone(
+    autor_jan_kowalski, jednostka, druga_jednostka
+):
+    """Stan KOŃCOWY z dwoma podstawowymi miejscami pracy nadal jest błędem."""
+    baker.make(
+        Autor_Jednostka,
+        autor=autor_jan_kowalski,
+        jednostka=jednostka,
+        podstawowe_miejsce_pracy=True,
+    )
+    with pytest.raises(IntegrityError):
+        baker.make(
+            Autor_Jednostka,
+            autor=autor_jan_kowalski,
+            jednostka=druga_jednostka,
+            podstawowe_miejsce_pracy=True,
+        )
 
 
 @pytest.mark.django_db
