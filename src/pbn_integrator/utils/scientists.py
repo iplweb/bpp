@@ -41,7 +41,7 @@ def pbn_json_wez_pbn_id_stare(person):
 
 
 def pobierz_i_zapisz_dane_jednej_osoby(
-    client_or_token, personId, from_institution_api
+    client_or_token, personId, from_institution_api, uczelnia=None
 ) -> Scientist:
     """Fetch and save data for a single person.
 
@@ -49,6 +49,7 @@ def pobierz_i_zapisz_dane_jednej_osoby(
         client_or_token: PBN client or token string.
         personId: Person ID.
         from_institution_api: Whether data is from institution API.
+        uczelnia: Optional Uczelnia instance for PBN client creation.
 
     Returns:
         The Scientist object.
@@ -56,7 +57,9 @@ def pobierz_i_zapisz_dane_jednej_osoby(
     client = client_or_token
     if isinstance(client_or_token, str):
         # Create PBN client
-        client = Uczelnia.objects.get_default().pbn_client(client_or_token)
+        if uczelnia is None:
+            uczelnia = Uczelnia.objects.get()
+        client = uczelnia.pbn_client(client_or_token)
 
     scientist = client.get_person_by_id(personId)
     return zapisz_mongodb(
@@ -117,7 +120,22 @@ def _zapisz_osobe_z_instytucji(person):
         raise  # Inne błędy IntegrityError propaguj
 
 
-def pobierz_ludzi_z_uczelni(client_or_token: PBNClient, instutition_id, callback=None):
+def _get_max_workers():
+    """Determine number of threads for parallel downloads."""
+    if CPU_COUNT == "auto":
+        max_workers = os.cpu_count() * 3 // 4
+        return max(max_workers, 1)
+    elif CPU_COUNT == "single":
+        return 1
+    return 4  # Default fallback
+
+
+def pobierz_ludzi_z_uczelni(
+    client_or_token: PBNClient,
+    instutition_id,
+    callback=None,
+    uczelnia=None,
+):
     """Fetch all people from a university.
 
     This procedure fetches data for all people from the university,
@@ -127,25 +145,20 @@ def pobierz_ludzi_z_uczelni(client_or_token: PBNClient, instutition_id, callback
         client_or_token: PBN client or token string.
         instutition_id: Institution ID.
         callback: Optional progress callback.
+        uczelnia: Optional Uczelnia instance for PBN client creation.
     """
     assert instutition_id is not None
 
     client = client_or_token
     if isinstance(client_or_token, str):
         # Create PBN client
-        client = Uczelnia.objects.get_default().pbn_client(client_or_token)
+        if uczelnia is None:
+            uczelnia = Uczelnia.objects.get()
+        client = uczelnia.pbn_client(client_or_token)
 
     elementy = client.get_people_by_institution_id(instutition_id)
 
-    # Determine number of threads (similar to initialize_pool logic)
-    if CPU_COUNT == "auto":
-        max_workers = os.cpu_count() * 3 // 4
-        if max_workers < 1:
-            max_workers = 1
-    elif CPU_COUNT == "single":
-        max_workers = 1
-    else:
-        max_workers = 4  # Default fallback
+    max_workers = _get_max_workers()
 
     # Use ThreadPoolExecutor instead of multiprocessing
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
@@ -173,8 +186,14 @@ def pobierz_ludzi_z_uczelni(client_or_token: PBNClient, instutition_id, callback
         ):
             try:
                 future.result()
-            except Exception as e:
-                logger.info(f"Error processing person: {e}")
+            except Exception:
+                # Catch-all w wątku — pełny traceback + Rollbar, żeby błąd
+                # przetwarzania naukowca nie zniknął bez śladu.
+                logger.exception("Błąd przetwarzania naukowca")
+                rollbar.report_exc_info(
+                    sys.exc_info(),
+                    extra_data={"phase": "integruj_scientists_future_result"},
+                )
 
     from pbn_api.models.institution import Institution
 
@@ -321,13 +340,16 @@ def weryfikuj_orcidy(client: PBNClient, instutition_id):
         )
 
 
-def matchuj_autora_po_stronie_pbn(imiona, nazwisko, orcid):  # noqa: C901
+def matchuj_autora_po_stronie_pbn(imiona, nazwisko, orcid, uczelnia):  # noqa: C901
     """Match an author on the PBN side.
 
     Args:
         imiona: First names.
         nazwisko: Last name.
         orcid: ORCID identifier.
+        uczelnia: Home-uczelnia autora (z aktualna_jednostka) lub None.
+            Gdy None, autor nie jest auto-matchowany po danych zatrudnienia
+            PBN (reguła R2 — odłączony autor = nie pracownik).
 
     Returns:
         Scientist object or None.
@@ -417,9 +439,9 @@ def matchuj_autora_po_stronie_pbn(imiona, nazwisko, orcid):  # noqa: C901
                     cur_elem_points += 1
 
             currentEmployments = elem.value_or_none("object", "currentEmployments")
-            if currentEmployments is not None:
+            if currentEmployments is not None and uczelnia is not None:
                 for pos in currentEmployments:
-                    if pos.get("institutionId") == Uczelnia.objects.default.pbn_uid_id:
+                    if pos.get("institutionId") == uczelnia.pbn_uid_id:
                         can_be_set = True
 
             rated_elems.append((cur_elem_points, elem.pk))
@@ -440,7 +462,10 @@ def integruj_wszystkich_niezintegrowanych_autorow():
 
     for autor in Autor.objects.filter(pk__in=autorzy_z_dyscyplina_ids, pbn_uid_id=None):
         sciencist = matchuj_autora_po_stronie_pbn(
-            autor.imiona, autor.nazwisko, autor.orcid
+            autor.imiona,
+            autor.nazwisko,
+            autor.orcid,
+            autor.aktualna_jednostka.uczelnia if autor.aktualna_jednostka_id else None,
         )
         if sciencist:
             logger.info(

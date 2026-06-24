@@ -17,9 +17,9 @@ For backward compatibility, all classes are re-exported from this module.
 # Base classes and utilities
 # Author autocompletes
 from .authors import (  # noqa: F401
+    AutorAktualnieZatrudnionyNaUczelni,
     AutorAutocomplete,
     AutorAutocompleteBase,
-    AutorZUczelniAutocopmlete,
     Dyscyplina_Naukowa_PrzypisanieAutocomplete,
     PodrzednaPublikacjaHabilitacyjnaAutocomplete,
     PublicAutorAutocomplete,

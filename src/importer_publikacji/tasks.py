@@ -40,7 +40,7 @@ def fetch_session_task(self, session_id, request_user_id):
     session = ImportSession.objects.get(pk=session_id)
     try:
         report_progress(self, "provider_fetch", stages=FETCH_STAGES)
-        provider = get_provider(session.provider_name)
+        provider = get_provider(session.provider_name, uczelnia=session.uczelnia)
         result = provider.fetch(session.identifier)
         if result is None:
             # Oczekiwany failure: dostawca nie zna identyfikatora.
@@ -174,9 +174,10 @@ def create_publication_task(self, session_id, request_user_id, also_pbn):
     storage). Helper używa ``request.user`` do utworzenia wpisu w
     PBN_Export_Queue oraz wywołań ``messages.success/info/error/warning``;
     no-op ``_messages`` połyka te komunikaty bez błędu (w Celery worker-ze
-    nie ma sensownego odbiorcy dla flash messages). ``Uczelnia.get_for_request``
-    bezpiecznie spada do ``get_default()`` gdy ``hasattr(request, "_uczelnia")``
-    jest False, więc nie trzeba podstawiać sesji / cache uczelni.
+    nie ma sensownego odbiorcy dla flash messages). Uczelnia z
+    ``session.uczelnia`` jest podstawiana do request-stubu (``_uczelnia``),
+    więc wpis w kolejce dostaje WŁAŚCIWĄ uczelnię (multi-hosted) — bez
+    zgadywania ``get_default()``.
     """
     from django.contrib.auth import get_user_model
 
@@ -191,7 +192,7 @@ def create_publication_task(self, session_id, request_user_id, also_pbn):
 
         if also_pbn:
             report_progress(self, "link_pbn", stages=CREATE_STAGES)
-            _enqueue_pbn_export(request_user, record)
+            _enqueue_pbn_export(request_user, record, session.uczelnia)
 
         session.status = ImportSession.Status.COMPLETED
         session.created_record_content_type = ContentType.objects.get_for_model(record)
@@ -243,26 +244,29 @@ class _PbnRequestStub:
           ``PBN_Export_Queue.objects.sprobuj_utowrzyc_wpis(request.user, obj)``).
         - ``_messages``: storage dla flash messages (helper woła
           ``messages.success/info/error/warning``).
-    Nieobecność ``_uczelnia`` jest OK — ``Uczelnia.get_for_request``
-    fallbackuje do ``get_default()`` gdy ``hasattr(request, "_uczelnia")``
-    jest False.
+        - ``_uczelnia``: uczelnia z ``ImportSession`` (multi-hosted). Dzięki
+          niej ``Uczelnia.get_for_request(stub)`` zwraca WŁAŚCIWĄ uczelnię,
+          zamiast zgadywać ``get_default()`` (pierwszą-z-brzegu).
     """
 
-    def __init__(self, user):
+    def __init__(self, user, uczelnia=None):
         self.user = user
         self._messages = _NoopMessageStorage()
+        self._uczelnia = uczelnia
 
 
-def _enqueue_pbn_export(request_user, record):
+def _enqueue_pbn_export(request_user, record, uczelnia):
     """Wywołaj helper PBN export z minimalnym request stubem.
 
     Decision: B1 (patrz docstring create_publication_task). Helper
     wymaga ``request.user`` (do utworzenia wpisu w kolejce) oraz
     ``request._messages`` (do wywołań flash messages — odrzucane).
+    ``uczelnia`` (z ``ImportSession``) wędruje do stubu, żeby wpis w
+    kolejce dostał WŁAŚCIWĄ uczelnię (multi-hosted), a nie ``get_default``.
     """
     from bpp.admin.helpers.pbn_api.gui import (
         sprobuj_utworzyc_zlecenie_eksportu_do_PBN_gui,
     )
 
-    request_stub = _PbnRequestStub(request_user)
+    request_stub = _PbnRequestStub(request_user, uczelnia=uczelnia)
     sprobuj_utworzyc_zlecenie_eksportu_do_PBN_gui(request_stub, record)

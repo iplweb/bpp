@@ -1,5 +1,6 @@
 from django.contrib import admin
 
+from bpp.admin.helpers.site_filtered import SiteFilteredAdminMixin
 from bpp.models import Rekord
 from pbn_api.admin.base import BasePBNAPIAdmin
 from pbn_api.admin.filters import (
@@ -10,7 +11,8 @@ from pbn_api.models import PublikacjaInstytucji
 
 
 @admin.register(PublikacjaInstytucji)
-class PublikacjaInstytucjiAdmin(BasePBNAPIAdmin):
+class PublikacjaInstytucjiAdmin(SiteFilteredAdminMixin, BasePBNAPIAdmin):
+    uczelnia_field_path = "uczelnia"
     list_per_page = 25
     actions = None
     autocomplete_fields = [

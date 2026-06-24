@@ -111,7 +111,7 @@ def _pobierz_dane_z_pbn(request, doi):
     pbn_error = None
 
     try:
-        uczelnia = Uczelnia.objects.get_default()
+        uczelnia = Uczelnia.objects.get_for_request(request)
         if not uczelnia or not uczelnia.pbn_integracja:
             return None, "Integracja z PBN nieaktywna"
 

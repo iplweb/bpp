@@ -29,7 +29,7 @@
 
 BRANCH=`git branch | sed -n '/\* /s///p'`
 
-.PHONY: help clean distclean tests test-durations release tests-without-playwright tests-only-playwright docker destroy-test-databases cache-delete buildx-cache-stats buildx-cache-prune buildx-cache-prune-aggressive buildx-cache-prune-registry buildx-cache-export buildx-cache-import buildx-cache-list bump-dev bump-release bump-and-start-dev migrate new-worktree clean-worktree generate-500-page build build-force build-base build-app-services build-appserver-base build-appserver build-workerserver build-beatserver build-authserver build-denorm-queue build-servers check-clean-tree prepare-claude prepare-developer-machine prepare-developer-machine-linux prepare-developer-machine-macos playwright-install
+.PHONY: help clean distclean tests test-durations release tests-without-playwright tests-only-playwright docker destroy-test-databases cache-delete buildx-cache-stats buildx-cache-prune buildx-cache-prune-aggressive buildx-cache-prune-registry buildx-cache-export buildx-cache-import buildx-cache-list bump-dev bump-release bump-and-start-dev migrate new-worktree clean-worktree generate-500-page build build-force build-base build-app-services build-appserver-base build-appserver build-workerserver build-beatserver build-authserver build-denorm-queue build-servers docker-images-on-ci check-clean-tree prepare-claude prepare-developer-machine prepare-developer-machine-linux prepare-developer-machine-macos playwright-install
 
 .DEFAULT_GOAL := help
 
@@ -529,6 +529,34 @@ gh-run-watch-docker-images: ## Obserwuj najnowszy run workflow "Docker - oficjal
 
 gh-run-watch-docker-images-alt: ## Alternatywna wersja gh-run-watch-docker-images (pipe)
 	gh run list --workflow="Docker - oficjalne obrazy" --limit=1 --json databaseId --jq '.[0].databaseId' | xargs gh run watch
+
+docker-images-on-ci: ## Wyślij build "Docker - oficjalne obrazy" na CI i obserwuj go
+	@BRANCH=$$(git rev-parse --abbrev-ref HEAD); \
+	UPSTREAM=$$(git rev-parse --abbrev-ref --symbolic-full-name "@{u}" 2>/dev/null || true); \
+	if [ -z "$$UPSTREAM" ]; then \
+		echo "BŁĄD: Gałąź $$BRANCH nie ma upstreamu. Wypchnij ją najpierw na remote."; \
+		exit 1; \
+	fi; \
+	if [ -n "$$(git status --porcelain)" ]; then \
+		echo "BŁĄD: Working tree zawiera niezcommitowane zmiany. Zcommituj lub stashuj je przed wysłaniem buildu na CI."; \
+		exit 1; \
+	fi; \
+	if [ "$$(git rev-parse HEAD)" != "$$(git rev-parse "$$UPSTREAM")" ]; then \
+		echo "BŁĄD: Lokalna gałąź $$BRANCH nie jest zsynchronizowana z $$UPSTREAM."; \
+		echo "      Wypchnij zmiany przed wysłaniem buildu na CI."; \
+		exit 1; \
+	fi; \
+	echo "Wysyłam build Docker - oficjalne obrazy na CI dla gałęzi: $$BRANCH"; \
+	gh workflow run build-docker-images.yml --ref "$$BRANCH"; \
+	echo "Czekam na pojawienie się runu..."; \
+	sleep 3; \
+	RUN_ID=$$(gh run list --workflow="Docker - oficjalne obrazy" --branch="$$BRANCH" --limit=1 --json databaseId --jq '.[0].databaseId'); \
+	if [ -z "$$RUN_ID" ]; then \
+		echo "BŁĄD: Nie udało się znaleźć nowego runu workflow."; \
+		exit 1; \
+	fi; \
+	echo "Obserwuję run ID: $$RUN_ID"; \
+	gh run watch "$$RUN_ID"
 
 ##@ Wersjonowanie i release
 

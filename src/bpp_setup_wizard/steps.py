@@ -27,3 +27,10 @@ class UczelniaSetupStep(SetupStep):
 
     def get_context(self, request) -> dict:
         return {"subtitle": "Podstawowe dane instytucji"}
+
+    def on_complete(self, form, request):
+        # Multi-hosted: form needs request to auto-link uczelnia.site to
+        # the current Site via get_current_site(request). Without it the
+        # uczelnia would land without a Site FK and fail the NOT NULL
+        # constraint added in migration 0417.
+        return form.save(request=request)

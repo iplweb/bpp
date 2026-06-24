@@ -333,7 +333,7 @@ def _review_context(request, session):
         "data": session.normalized_data,
     }
 
-    uczelnia = Uczelnia.objects.get_default()
+    uczelnia = Uczelnia.objects.get_for_request(request)
     if (
         uczelnia is not None
         and uczelnia.pbn_integracja

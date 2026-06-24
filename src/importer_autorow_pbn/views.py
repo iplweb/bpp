@@ -1,5 +1,6 @@
 from datetime import datetime
 
+import rollbar
 from django.contrib import messages
 from django.contrib.admin.views.decorators import staff_member_required
 from django.contrib.auth.decorators import login_required
@@ -66,7 +67,10 @@ class ImporterAutorowPBNView(ListView):
         # When "pokaz_wszystkich" param is set to "1", show all
         pokaz_wszystkich = self.request.GET.get("pokaz_wszystkich", "0")
         if pokaz_wszystkich != "1":
-            uczelnia = Uczelnia.objects.default
+            # Uczelnia z requestu (multi-hosted): filtr po pbn_uid „naszej"
+            # uczelni musi dotyczyć uczelni bieżącego hosta, nie pierwszej
+            # z brzegu (get_default).
+            uczelnia = Uczelnia.objects.get_for_request(self.request)
             if uczelnia and uczelnia.pbn_uid_id:
                 # Filter by institution ID in currentEmployments JSON
                 queryset = queryset.filter(
@@ -466,8 +470,14 @@ def create_all_unmatched_scientists(request):
                 employment_data = view._get_employment_data(scientist)
                 _create_autor_jednostka(autor, employment_data)
                 created_count += 1
-            except Exception as e:
-                errors.append(f"{scientist} - błąd: {str(e)}")
+            except Exception:
+                # Report full details to the server (Rollbar) but never leak
+                # the raw exception text back to the client.
+                rollbar.report_exc_info()
+                errors.append(
+                    f"{scientist} - błąd podczas tworzenia autora "
+                    "(szczegóły przekazano administratorowi)"
+                )
 
     if created_count > 0:
         messages.success(

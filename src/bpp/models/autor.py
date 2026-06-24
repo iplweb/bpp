@@ -57,17 +57,25 @@ class AutorManager(FulltextSearchMixin, models.Manager):
     # Nie włączaj websearch gdy podano minus (podwójne nazwiska z myślnikiem)
     fts_enable_websearch_on_minus_or_quote = False
 
-    def create_from_string(self, text):
+    def create_from_string(self, text, uczelnia=None):
         """Tworzy rekord autora z ciągu znaków. Używane, gdy dysponujemy
         wpisanym ciągiem znaków z np AutorAutocomplete i chcemy utworzyć
-        autora z nazwiskiem i imieniem w poprawny sposób."""
+        autora z nazwiskiem i imieniem w poprawny sposób.
+
+        ``uczelnia`` (multi-hosted): uczelnia z requestu wołającego — z niej
+        czytamy ``nowy_autor_z_formularza_pokazuj``. Bez niej próbujemy
+        JEDYNEJ w systemie (single → ona; 0/>1 → None → ``pokazuj=False``).
+        NIE zgadujemy pierwszej-z-brzegu (dawny footgun ``.first()`` na
+        managerze Uczelni).
+        """
 
         text = autor_split_string(text)
 
         # Sprawdź ustawienie w modelu Uczelnia, czy nowy autor ma być widoczny
         from bpp.models.uczelnia import Uczelnia
 
-        uczelnia = Uczelnia.objects.first()
+        if uczelnia is None:
+            uczelnia = Uczelnia.objects.get_single_uczelnia_or_none()
         pokazuj = uczelnia.nowy_autor_z_formularza_pokazuj if uczelnia else False
 
         return self.create(
@@ -413,6 +421,7 @@ class Autor(LinkDoPBNMixin, ModelZAdnotacjami, ModelZPBN_ID):
         dyscyplina_id=None,
         jednostka_id=None,
         akcja=None,
+        uczelnia_id=None,
     ):
         return zbieraj_sloty(
             autor_id=self.pk,
@@ -423,6 +432,7 @@ class Autor(LinkDoPBNMixin, ModelZAdnotacjami, ModelZPBN_ID):
             dyscyplina_id=dyscyplina_id,
             jednostka_id=jednostka_id,
             akcja=akcja,
+            uczelnia_id=uczelnia_id,
         )
 
     @property

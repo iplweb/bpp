@@ -40,7 +40,7 @@ def analyze_discipline_swap_opportunities(request):
     from ..models import StatusDisciplineSwapAnalysis
     from ..tasks import analyze_discipline_swap_task
 
-    uczelnia = Uczelnia.objects.first()
+    uczelnia = Uczelnia.objects.get_for_request(request)
 
     if not uczelnia:
         messages.error(request, "Nie znaleziono uczelni w systemie.")

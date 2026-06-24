@@ -23,7 +23,7 @@ class TokenRedirectPage(LoginRequiredMixin, RedirectView):
 
         from django.utils import timezone
 
-        uczelnia = Uczelnia.objects.get_default()
+        uczelnia = Uczelnia.objects.get_for_request(self.request)
 
         # Get the original page from 'next' parameter or HTTP referer
         next_url = self.request.GET.get("next")
@@ -47,13 +47,15 @@ class TokenLandingPage(LoginRequiredMixin, RedirectView):
         import base64
         import json
 
+        from django.utils.http import url_has_allowed_host_and_scheme
+
         ott = self.request.GET.get("ott")
         state = self.request.GET.get("state")
 
         if not ott:
             raise HttpResponseBadRequest("Brak parametru OTT lub pusty")
 
-        uczelnia = Uczelnia.objects.get_default()
+        uczelnia = Uczelnia.objects.get_for_request(self.request)
 
         # Default redirect URL
         redirect_url = "/"
@@ -64,7 +66,13 @@ class TokenLandingPage(LoginRequiredMixin, RedirectView):
                 # Decode base64 state
                 state_json = base64.b64decode(state).decode()
                 state_data = json.loads(state_json)
-                redirect_url = state_data.get("originalPage", "/")
+                candidate = state_data.get("originalPage", "/")
+                # The state parameter round-trips through the browser and is
+                # therefore attacker-controllable; never redirect off-host.
+                if url_has_allowed_host_and_scheme(
+                    candidate, allowed_hosts={self.request.get_host()}
+                ):
+                    redirect_url = candidate
             except (ValueError, json.JSONDecodeError, KeyError):
                 # If state decoding fails, fall back to default
                 pass

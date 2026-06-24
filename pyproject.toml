@@ -154,6 +154,7 @@ dependencies = [
     "django-site-blog>=0.2.1",
     "django-first-run-wizard>=0.1.1",
     "uvicorn-worker>=0.4.0",
+    "mozilla-django-oidc>=4.0,<5",
     "babel>=2.17",
 ]
 

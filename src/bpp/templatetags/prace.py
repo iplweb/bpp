@@ -128,6 +128,23 @@ def jsonify(value):
     return json.dumps(value, ensure_ascii=False)
 
 
+@register.filter(name="link_do_pi")
+def link_do_pi(praca, uczelnia=None):
+    """Zwróć link do Profilu Instytucji rekordu dla danej uczelni.
+
+    Multi-hosted (audyt uczelnia, track 7b): templejt nie umie podać argumentu
+    metodzie, więc filtr przekazuje uczelnię oglądającego (z kontekstu) do
+    ``praca.link_do_pi(uczelnia)`` — link wskazuje na PBN-root TEJ uczelni i
+    rozwiązuje wiersz ``PublikacjaInstytucji_V2`` otagowany TĄ uczelnią.
+    ``uczelnia=None`` (brak uczelni w kontekście) → brak linku (NIE ma
+    „uczelni domyślnej").
+    """
+    method = getattr(praca, "link_do_pi", None)
+    if method is None:
+        return None
+    return method(uczelnia=uczelnia)
+
+
 @register.simple_tag
 def opis_bibliograficzny_cache(pk):
     from bpp.models.cache import Rekord
@@ -223,6 +240,19 @@ def generate_coins(praca, autorzy):  # noqa
 
     # Return the complete COinS span
     return mark_safe(f'<span class="Z3988" title="{coins_string}"></span>')
+
+
+@register.simple_tag
+def autorzy_skrocony(praca, uczelnia=None):
+    """Skrócony widok listy autorów (``autorzy_dla_opisu_skrocony``) z przekazaną
+    oglądającą uczelnią, tak by wyróżnienie "naszego" autora było host-aware.
+
+    Metoda modelu nie może dostać argumentu przez ``{% with %}``/``{{ }}``,
+    więc owijamy ją w simple_tag wywoływany jako
+    ``{% autorzy_skrocony praca uczelnia as box %}``. ``uczelnia`` pochodzi
+    z context processora (``Uczelnia.objects.get_for_request``).
+    """
+    return praca.autorzy_dla_opisu_skrocony(uczelnia=uczelnia)
 
 
 @register.simple_tag

@@ -5,11 +5,13 @@ from ..models import Wydzial  # Publikacja_Habilitacyjna
 from .core import BaseBppAdminMixin, RestrictDeletionToAdministracjaGroupMixin
 from .helpers.fieldsets import ADNOTACJE_FIELDSET
 from .helpers.mixins import ZapiszZAdnotacjaMixin
+from .helpers.site_filtered import SiteFilteredAdminMixin
 from .xlsx_export import resources
 from .xlsx_export.mixins import EksportDanychMixin
 
 
 class WydzialAdmin(
+    SiteFilteredAdminMixin,
     RestrictDeletionToAdministracjaGroupMixin,
     ZapiszZAdnotacjaMixin,
     EksportDanychMixin,
@@ -17,6 +19,7 @@ class WydzialAdmin(
     BaseBppAdminMixin,
     admin.ModelAdmin,
 ):
+    uczelnia_field_path = "uczelnia"
     change_list_template = "adminsortable2/change_list.html"
     resource_classes = [resources.WydzialResource]
 

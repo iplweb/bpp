@@ -29,11 +29,23 @@ class Cache_Punktacja_Dyscypliny(models.Model):
         models.TextField(), blank=True, null=True
     )
 
+    uczelnia = ForeignKey("bpp.Uczelnia", models.CASCADE)
+
     class Meta:
         ordering = ("dyscyplina__nazwa",)
+        indexes = [
+            models.Index(fields=["uczelnia", "dyscyplina"]),
+            models.Index(fields=["rekord_id", "uczelnia", "dyscyplina"]),
+        ]
 
     def serialize(self):
-        return [self.rekord_id, self.dyscyplina_id, str(self.pkd), str(self.slot)]
+        return [
+            self.rekord_id,
+            self.dyscyplina_id,
+            str(self.pkd),
+            str(self.slot),
+            self.uczelnia_id,
+        ]
 
 
 class Cache_Punktacja_Autora_Base(models.Model):
@@ -106,6 +118,7 @@ class Cache_Punktacja_Autora_Query_View(models.Model):
     rekord = ForeignKey("bpp.Rekord", DO_NOTHING)
     autor = ForeignKey(Autor, DO_NOTHING)
     jednostka = ForeignKey("bpp.Jednostka", DO_NOTHING)
+    uczelnia = ForeignKey("bpp.Uczelnia", DO_NOTHING)
     dyscyplina = ForeignKey(Dyscyplina_Naukowa, DO_NOTHING)
     pkdaut = models.DecimalField(max_digits=20, decimal_places=4)
     slot = models.DecimalField(max_digits=20, decimal_places=4)

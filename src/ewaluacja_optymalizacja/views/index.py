@@ -8,7 +8,7 @@ from django.contrib.auth.decorators import login_required
 from django.http import JsonResponse
 from django.shortcuts import render
 
-from bpp.models import Uczelnia
+from raport_slotow.uczelnia_helper import uczelnia_dla_odczytu
 
 from ..models import (
     OptimizationRun,
@@ -55,7 +55,7 @@ def index(request):
     ).all()
 
     # Pobierz uczelnię dla dalszych obliczeń
-    uczelnia = Uczelnia.objects.first()
+    uczelnia = uczelnia_dla_odczytu(request)
 
     # Dla każdego run oblicz procent slotów poza N oraz statystyki przypięć
     runs_with_stats = [_add_run_statistics(run, uczelnia) for run in runs]

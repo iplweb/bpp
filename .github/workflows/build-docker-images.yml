@@ -108,6 +108,11 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           REF_NAME: ${{ github.ref_name }}
+          # head_ref jest ustawione tylko dla pull_request eventów — to nazwa
+          # branchu zrodlowego PR-a (ref_name na PR to "<PR>/merge" ktorego
+          # workflow_dispatch nie akceptuje). Uzywane do hintu w komunikacie
+          # "jak wymusic build".
+          HEAD_REF: ${{ github.head_ref }}
           EVENT_NAME: ${{ github.event_name }}
           REPO: ${{ github.repository }}
           ACTOR: ${{ github.actor }}

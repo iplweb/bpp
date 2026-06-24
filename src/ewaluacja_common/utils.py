@@ -25,6 +25,10 @@ def get_lista_prac(nazwa_dyscypliny):
 
     from bpp.models import Cache_Punktacja_Autora_Query
 
+    # read-side: do rewizji w federacji (R-federacja), nie R1.
+    # dozwoleni_autorzy pochodzi z IloscUdzialowDlaAutoraZaRok (dyscyplina-wide),
+    # brak kontekstu uczelnia/request — zawężenie per-uczelnia wymaga przebudowy
+    # sygnatury w ramach prac federacyjnych.
     return (
         Cache_Punktacja_Autora_Query.objects.filter(
             rekord__rok__gte=const.ROK_MIN,

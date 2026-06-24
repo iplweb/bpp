@@ -328,15 +328,11 @@ def policz_zrodla_z_duplikatami():
     return count
 
 
-def _get_site_domain():
-    """Helper function to get site domain for XLSX export."""
-    from django.contrib.sites.models import Site
+def _get_site_domain(request=None):
+    """Helper function to get site URL for XLSX export."""
+    from bpp.util import site_url_for_request
 
-    try:
-        current_site = Site.objects.get_current()
-        return f"https://{current_site.domain}"
-    except BaseException:
-        return "https://bpp.iplweb.pl"
+    return site_url_for_request(request)
 
 
 def _create_pbn_journal_url(pbn_uid):
@@ -440,7 +436,7 @@ def _format_worksheet_urls(ws, data_rows):
                 cell.font = Font(color="0000FF", underline="single")
 
 
-def export_duplicates_to_xlsx():
+def export_duplicates_to_xlsx(request=None):
     """
     Eksportuje wszystkie źródła z duplikatami do formatu XLSX.
 
@@ -471,7 +467,7 @@ def export_duplicates_to_xlsx():
 
     from bpp.util import worksheet_columns_autosize, worksheet_create_table
 
-    site_domain = _get_site_domain()
+    site_domain = _get_site_domain(request)
 
     # Pobierz źródła ignorowane
     ignored_ids = set(IgnoredSource.objects.values_list("zrodlo_id", flat=True))

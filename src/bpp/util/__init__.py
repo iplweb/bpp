@@ -19,6 +19,7 @@ from bpp.util.bpp_specific import (
     formdefaults_html_before,
     get_fixture,
     pbar,
+    site_url_for_request,
     year_last_month,
 )
 from bpp.util.concurrency import (
@@ -111,6 +112,7 @@ __all__ = [
     "formdefaults_html_before",
     "get_fixture",
     "pbar",
+    "site_url_for_request",
     "year_last_month",
     # concurrency
     "disable_multithreading_by_monkeypatching_pool",
