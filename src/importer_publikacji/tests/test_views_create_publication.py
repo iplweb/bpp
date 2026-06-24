@@ -221,6 +221,114 @@ def test_create_publication_multiple_abstracts(
     assert streszczenia.count() == 2
 
 
+def _make_session_z_zrodlem(
+    user,
+    jezyki,
+    charaktery_formalne,
+    typy_kbn,
+    zrodlo,
+):
+    """Sesja wydawnictwa ciągłego ze źródłem — do testów sugerowania punktacji."""
+    session = _make_session_for_publication(
+        user,
+        jezyki,
+        charaktery_formalne,
+        typy_kbn,
+        None,
+        None,
+    )
+    session.zrodlo = zrodlo
+    session.jest_wydawnictwem_zwartym = False
+    session.save()
+    return session
+
+
+@pytest.mark.django_db
+def test_create_publication_sugeruj_punktacje_wylaczone_nie_uzupelnia(
+    importer_user,
+    jezyki,
+    charaktery_formalne,
+    typy_kbn,
+    statusy_korekt,
+    typy_odpowiedzialnosci,
+    uczelnia,
+    zrodlo,
+):
+    """Flaga `sugeruj_punktacje` = False (domyślnie) → punktacja NIE jest
+    sugerowana automatycznie mimo istnienia Punktacja_Zrodla (obecne zachowanie).
+    """
+    from bpp.models.zrodlo import Punktacja_Zrodla
+
+    assert uczelnia.sugeruj_punktacje is False
+    Punktacja_Zrodla.objects.create(zrodlo=zrodlo, rok=2024, punkty_kbn=70)
+
+    session = _make_session_z_zrodlem(
+        importer_user, jezyki, charaktery_formalne, typy_kbn, zrodlo
+    )
+    record = _create_publication(session)
+
+    assert record.punkty_kbn == 0
+
+
+@pytest.mark.django_db
+def test_create_publication_sugeruj_punktacje_wlaczone_uzupelnia(
+    importer_user,
+    jezyki,
+    charaktery_formalne,
+    typy_kbn,
+    statusy_korekt,
+    typy_odpowiedzialnosci,
+    uczelnia,
+    zrodlo,
+):
+    """Flaga `sugeruj_punktacje` = True → punktacja sugerowana automatycznie
+    z Punktacja_Zrodla. Sugestia jest podpowiedzią — pole pozostaje edytowalne.
+    """
+    from bpp.models.zrodlo import Punktacja_Zrodla
+
+    uczelnia.sugeruj_punktacje = True
+    uczelnia.save()
+    Punktacja_Zrodla.objects.create(zrodlo=zrodlo, rok=2024, punkty_kbn=70)
+
+    session = _make_session_z_zrodlem(
+        importer_user, jezyki, charaktery_formalne, typy_kbn, zrodlo
+    )
+    record = _create_publication(session)
+
+    assert record.punkty_kbn == 70
+
+    # Sugestia to wyłącznie podpowiedź — operator może ją ręcznie zmienić.
+    record.punkty_kbn = 100
+    record.save()
+    record.refresh_from_db()
+    assert record.punkty_kbn == 100
+
+
+@pytest.mark.django_db
+def test_create_publication_sugeruj_punktacje_wlaczone_brak_danych_zrodla(
+    importer_user,
+    jezyki,
+    charaktery_formalne,
+    typy_kbn,
+    statusy_korekt,
+    typy_odpowiedzialnosci,
+    uczelnia,
+    zrodlo,
+):
+    """Flaga włączona, ale brak Punktacja_Zrodla dla roku → brak sugestii,
+    bez błędu (graceful no-op).
+    """
+    uczelnia.sugeruj_punktacje = True
+    uczelnia.save()
+
+    session = _make_session_z_zrodlem(
+        importer_user, jezyki, charaktery_formalne, typy_kbn, zrodlo
+    )
+    record = _create_publication(session)
+
+    assert record.punkty_kbn == 0
+
+
 @pytest.mark.django_db
 def test_create_publication_without_year_raises_validation_error(
     importer_user,

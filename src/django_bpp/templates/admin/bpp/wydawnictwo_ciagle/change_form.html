@@ -279,6 +279,24 @@
 
                     return false;
                 });
+
+                {# Sugeruj punktację — ustawienie na poziomie uczelni. Gdy włączone, #}
+                {# wypełnij pola punktacji automatycznie po ustaleniu źródła i roku. #}
+                {# Sugestia to wyłącznie podpowiedź — operator może ją ręcznie zmienić. #}
+                {% if uczelnia.sugeruj_punktacje %}
+                    function sugerujPunktacjeAutomatycznie() {
+                        var zrodlo, rok;
+                        zrodlo = $("#id_zrodlo").val();
+                        rok = $("#id_rok").val();
+                        if (zrodlo == "" || zrodlo == null || rok == "" || rok == null) {
+                            return;
+                        }
+                        $("#id_wypelnij_pola_punktacji_button").trigger("click");
+                    }
+
+                    $("#id_zrodlo").change(sugerujPunktacjeAutomatycznie);
+                    $("#id_rok").change(sugerujPunktacjeAutomatycznie);
+                {% endif %}
             });
         }(django.jQuery));
     </script>

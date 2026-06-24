@@ -92,3 +92,18 @@ def test_uczelnia_deklaracja_dostepnosci_url(uczelnia, client):
 
     res = client.get("/", follow=True)
     assert b"https://onet.pl" in res.content
+
+
+@pytest.mark.django_db
+def test_uczelnia_sugeruj_punktacje_default(uczelnia):
+    """Domyślnie sugerowanie punktacji jest wyłączone — zachowanie
+    istniejących instalacji pozostaje bez zmian (bez sugestii)."""
+    assert uczelnia.sugeruj_punktacje is False
+
+
+@pytest.mark.django_db
+def test_uczelnia_sugeruj_punktacje_zapisywalne(uczelnia):
+    uczelnia.sugeruj_punktacje = True
+    uczelnia.save()
+    uczelnia.refresh_from_db()
+    assert uczelnia.sugeruj_punktacje is True

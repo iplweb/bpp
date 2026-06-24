@@ -197,7 +197,13 @@ def _create_publication(session):
     _add_authors_to_record(session, record)
     _create_streszczenia(session, record)
 
-    if session.zrodlo and normalized_data.get("year"):
+    uczelnia = Uczelnia.objects._get_default()
+    if (
+        uczelnia is not None
+        and uczelnia.sugeruj_punktacje
+        and session.zrodlo
+        and normalized_data.get("year")
+    ):
         from bpp.models.zrodlo import (
             uzupelnij_punktacje_z_zrodla,
         )

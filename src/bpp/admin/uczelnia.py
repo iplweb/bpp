@@ -166,10 +166,10 @@ class UczelniaAdmin(
             },
         ),
         (
-            "Podpowiadanie dyscyplin",
+            "Podpowiadanie dyscyplin i punktacji",
             {
                 "classes": ("grp-collapse grp-opened",),
-                "fields": ("podpowiadaj_dyscypliny",),
+                "fields": ("podpowiadaj_dyscypliny", "sugeruj_punktacje"),
             },
         ),
         (
