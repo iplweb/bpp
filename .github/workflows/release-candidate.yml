@@ -69,6 +69,9 @@ jobs:
             CUR="v$(./bin/bpp-version.py)"
             BASE=$(uv run bumpver test "$CUR" 'vYYYY0M.BUILD[-TAGNUM]' 2>/dev/null \
                    | awk '/PEP440/{print $NF}')
+            # Guard: pusty BASE (np. bumpver test padł) dałby malformed
+            # "v-rc1" + gałąź "release/v" — przerwij zanim coś powstanie.
+            [ -n "$BASE" ] || { echo "::error::Nie udało się policzyć BASE (bumpver test)."; exit 1; }
             RELEASE_REF="release/v${BASE}"
             git switch -C _rc origin/dev
             uv run bumpver update --no-fetch --commit --no-push \
