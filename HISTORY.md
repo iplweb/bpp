@@ -2,6 +2,24 @@
 
 <!-- towncrier release notes start -->
 
+## bpp 202606.1392 (2026-06-24)
+
+### Naprawione
+
+- Eksport raportu slotów - autor do PDF zawiera teraz wyłącznie sam raport.
+  Wcześniej do pliku PDF potrafiło wyciec menu serwisu, surowy szablon
+  powiadomień (`{{#clickURL}}`) i stopka strony — działo się tak, gdy serwer
+  nie zdążył dociągnąć stylów do wydruku. PDF jest teraz generowany z
+  dedykowanego, samowystarczalnego szablonu, więc wygląda poprawnie niezależnie
+  od stanu plików statycznych (FD#405).
+
+### Usprawnienie
+
+- Zgłoszenia błędów w Rollbarze zawierają teraz w polu ``custom`` login
+  zalogowanego użytkownika (a dla ruchu niezalogowanego — wyraźne oznaczenie
+  użytkownika anonimowego), co ułatwia powiązanie błędu z konkretną osobą.
+
+
 ## bpp 202606.1391 (2026-06-20)
 
 No significant changes.
