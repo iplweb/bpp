@@ -188,6 +188,17 @@ uv run celery -A django_bpp.tasks inspect registered
 issue-by-issue. Fix each manually with the Edit tool. Do NOT run
 `ruff check --fix` or any automated batch fixes.
 
+## Wydania (dwufazowe, CLI)
+
+Wydanie = dwie komendy `gh` (szczegóły: docs/deweloper/wydania.md):
+
+```bash
+gh workflow run release-candidate.yml --ref dev   # zbuduj RC → :staging
+gh workflow run promote.yml                        # RC → :latest (bez rebuildu)
+```
+
+`push:master` NIE buduje już obrazów produkcyjnych — robi to promote (imagetools).
+
 ## Autologin dla agentów (WebFetch / curl bez logowania)
 
 Gdy user uruchomił `run-site run`, dev stack zapisuje gitignored,
