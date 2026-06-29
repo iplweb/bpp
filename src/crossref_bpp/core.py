@@ -581,6 +581,17 @@ class Komparator:
                 rekordy=[licencja],
             )
 
+        # Wpis licencji bez pola ``URL`` (CrossRef czasem podaje samą datę
+        # startu / delay-in-days) — wcześniej funkcja zwracała tu w sposób
+        # ukryty ``None``, co na ścieżce prefill kończyło się ``AttributeError``
+        # przy ``....rekord_po_stronie_bpp`` i HTTP 500 (FD#323). Zwracamy
+        # poprawny obiekt WynikPorownania sygnalizujący brak dopasowania.
+        return WynikPorownania(
+            StatusPorownania.BLAD,
+            "wpis licencji w danych CrossRef nie zawiera adresu URL — "
+            "BPP nie jest w stanie rozpoznać rodzaju licencji",
+        )
+
     @classmethod
     def porownaj_language(cls, wartosc):
         if wartosc not in Jezyk.SKROT_CROSSREF.values:

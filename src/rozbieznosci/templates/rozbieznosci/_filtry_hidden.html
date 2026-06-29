@@ -1,0 +1,8 @@
+{# Ukryte pola filtra — przenoszą stan filtra przez POST akcji (set/ignore). #}
+<input type="hidden" name="rok_od" value="{{ rok_od }}">
+<input type="hidden" name="rok_do" value="{{ rok_do }}">
+<input type="hidden" name="tytul" value="{{ tytul }}">
+<input type="hidden" name="sort" value="{{ current_sort }}">
+<input type="hidden" name="tryb_zrodla" value="{{ tryb_zrodla }}">
+{% if kasuj_przy_pustym_zrodle %}<input type="hidden" name="kasuj_przy_pustym_zrodle" value="1">{% endif %}
+{% if charaktery_zawezone %}{% for cid in wybrane_charaktery_ids %}<input type="hidden" name="charaktery_formalne" value="{{ cid }}">{% endfor %}{% endif %}

@@ -4,7 +4,7 @@ from crossref_bpp.core import Komparator
 from import_common.normalization import normalize_title
 
 
-def convert_crossref_to_changeform_initial_data(z: dict) -> dict:
+def convert_crossref_to_changeform_initial_data(z: dict) -> dict:  # noqa: C901
     """
     Funkcja, która przerabia słownik CrossRef API na słownik
     początkowych argumentów dla changeform. Używany wewnętrznie przez
@@ -19,7 +19,8 @@ def convert_crossref_to_changeform_initial_data(z: dict) -> dict:
 
     try:
         tytul_kontenera = z.get("container-title")[0]
-    except IndexError:
+    except (IndexError, TypeError):
+        # IndexError: pusta lista; TypeError: brak klucza (z.get(...) → None)
         tytul_kontenera = None
 
     zrodlo = None
@@ -119,7 +120,7 @@ def convert_crossref_to_changeform_initial_data(z: dict) -> dict:
         "zrodlo": zrodlo,
         "nr_zeszytu": z.get("issue", ""),
         "strony": z.get("page", ""),
-        "slowa_kluczowe": ", ".join('"%s"' % x for x in z.get("subject", [])),
+        "slowa_kluczowe": ", ".join(f'"{x}"' for x in z.get("subject", [])),
         "wydawca": wydawca_idx,
         "wydawca_opis": wydawca_txt,
         "doi": z.get("DOI"),
@@ -142,7 +143,7 @@ def convert_crossref_to_changeform_initial_data(z: dict) -> dict:
     return ret
 
 
-def merge_crossref_and_pbn_data(crossref_data: dict, pbn_data: dict) -> dict:
+def merge_crossref_and_pbn_data(crossref_data: dict, pbn_data: dict) -> dict:  # noqa: C901
     """
     Funkcja łącząca dane z CrossRef API i PBN API.
     CrossRef jest bazą, PBN wzbogaca dane dodatkowymi polami.

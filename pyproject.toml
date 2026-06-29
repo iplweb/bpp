@@ -1,6 +1,6 @@
 [project]
 name = "bpp_iplweb"
-version = "202606.1393"
+version = "202606.1394"
 description = ""
 authors = [
     { name = "Michał Pasternak", email = "michal.dtz@gmail.com" }
@@ -200,8 +200,8 @@ include = [
     "pbn_export_queue",
     "raport_slotow",
     "ranking_autorow",
+    "rozbieznosci",
     "rozbieznosci_dyscyplin",
-    "rozbieznosci_if",
     "test_bpp"
 ]
 
@@ -217,7 +217,7 @@ include = [
 ]
 
 [tool.bumpver]
-current_version = "v202606.1393"
+current_version = "v202606.1394"
 version_pattern = "vYYYY0M.BUILD[-TAGNUM]"
 commit_message = "bump version {old_version} -> {new_version}"
 commit = true
@@ -496,12 +496,14 @@ dev = [
     # pytest-testcontainers + bridge: dawniej wewnetrzny `src/testcontainers_bpp/`.
     # Plugin auto-loaduje sie przez entry-point `pytest11` — `-p ...` w pytest.ini
     # przestaje byc potrzebne. Konfiguracja w [tool.pytest-testcontainers-django].
-    "pytest-testcontainers>=0.2.0",
-    "pytest-testcontainers-django>=0.2.4",
+    # 0.2.2 / 0.2.5: from_env() honoruje aktywny `docker context`, wiec stack
+    # startuje na OrbStack / colima / Docker Desktop bez recznego DOCKER_HOST.
+    "pytest-testcontainers>=0.2.2",
+    "pytest-testcontainers-django>=0.2.5",
     # django-run-site: CLI orchestrator dev stack-u. Dawniej `manage.py run_site`
     # + helpery w `_run_site_helpers/`. Instalowany w dev-deps zeby `uv run run-site`
     # mialo dostep do CLI bez globalnego `uv tool install`. Konfiguracja: runsite.toml.
-    "django-run-site>=0.16.1",
+    "django-run-site>=0.17.0",
     # django-dev-helpers: autologin endpoint + dotfiles dla agentow LLM. Dawniej
     # `src/django_bpp/views_run_site_autologin.py`. Aktywuje sie tylko gdy run-site
     # ustawi DJANGO_DEV_HELPERS_ENABLED=1 — w produkcji no-op.
@@ -512,7 +514,7 @@ dev = [
 
 [tool.towncrier]
 package = "bpp"
-version = "202606.1393"
+version = "202606.1394"
 package_dir = "src"
 filename = "HISTORY.md"
 start_string = "<!-- towncrier release notes start -->\n"
