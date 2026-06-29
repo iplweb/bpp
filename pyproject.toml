@@ -200,8 +200,8 @@ include = [
     "pbn_export_queue",
     "raport_slotow",
     "ranking_autorow",
+    "rozbieznosci",
     "rozbieznosci_dyscyplin",
-    "rozbieznosci_if",
     "test_bpp"
 ]
 
