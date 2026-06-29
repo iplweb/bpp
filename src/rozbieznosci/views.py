@@ -244,7 +244,14 @@ class UstawWszystkieView(MetrykaMixin, GroupRequiredMixin, View):
     def _redirect_back(self, rok_od, rok_do, tytul, pokaz):
         url = reverse("rozbieznosci:index", kwargs={"metryka": self.metryka.slug})
         qs = _query_string(rok_od, rok_do, tytul, pokaz)
-        return HttpResponseRedirect(f"{url}?{qs}" if qs else url)
+        target_url = f"{url}?{qs}" if qs else url
+        if not url_has_allowed_host_and_scheme(
+            url=target_url,
+            allowed_hosts={self.request.get_host()},
+            require_https=self.request.is_secure(),
+        ):
+            target_url = url
+        return HttpResponseRedirect(target_url)
 
     def get(self, request, *args, **kwargs):
         rok_od, rok_do, tytul, sort, pokaz = _filter_params(request.GET, self.metryka)
