@@ -111,3 +111,47 @@ tej samej relacji tworzy jeden JOIN — wszystkie warunki są sprawdzane
 9 passed in 2.03s  (test_core.py)
 16 passed in 2.21s (src/rozbieznosci/)
 ```
+
+---
+
+## Fix-report — Task 3 Krok 2 (2026-06-29 — subquery + NULL-aware filter)
+
+### Status
+
+DONE. SHA `5b24eebd6`. 17/17 testów zielonych.
+
+### Bug potwierdzony (KROK 1)
+
+Test `test_rozbieznosc_respektuje_rok_pracy` padł z aktualną implementacją.
+Mechanizm buga: `.exclude(**{src: F(field)})` z JOIN-based querysetu
+generuje NOT EXISTS **bez** warunku roku. Gdy źródło miało IF=1.500 w 2022
+(= wartość pracy) i IF=2.500 w 2023 (rok pracy), praca rok=2023 była
+błędnie ukryta — NOT EXISTS znajdował rok 2022 z równą wartością i
+traktował to jako brak rozbieżności.
+
+### Refaktor (KROK 2)
+
+Zastąpiono JOIN-based queryset Subquery/Exists ograniczonym do
+`(zrodlo=OuterRef("zrodlo"), rok=OuterRef("rok"))`.
+
+Dodatkowy problem: `.exclude(**{annotated: F(field)})` na Subquery
+zwracającym NULL (kwartyl_w_scopus=None) generuje SQL `NOT (NULL = 2)` =
+`NOT NULL` = NULL (falsy w WHERE) → wiersz błędnie znikał przy
+`pokaz_puste_zrodla=True`. Naprawiono przez zamianę exclude na Q-filter:
+
+```python
+.filter(
+    Q(**{f"{annotated}__isnull": True})
+    | Q(**{f"{field}__isnull": True})
+    | ~Q(**{annotated: F(field)})
+)
+```
+
+To replikuje semantykę `IS DISTINCT FROM` / NOT EXISTS dla obu stron
+nullable.
+
+### Wynik testów
+
+```
+17 passed in 2.71s (src/rozbieznosci/)
+```
