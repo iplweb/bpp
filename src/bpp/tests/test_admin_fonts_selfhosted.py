@@ -22,6 +22,12 @@ THEMES_DIR = STATIC / "scss" / "themes"
 FONTS_DIR = STATIC / "fonts"
 FONT_FACES = THEMES_DIR / "_font-faces.scss"
 
+# Skanujemy treść SCSS regexem (nie `"host" in text`), bo substringowe
+# sprawdzanie literału-hosta odpala fałszywy alarm CodeQL
+# `py/incomplete-url-substring-sanitization` — heurystyka traktuje
+# `"fonts.googleapis.com" in x` jak (obejście-podatne) sanityzowanie URL-a,
+# choć tutaj tylko przeszukujemy tekst pliku. Jeden regex łapie oba hosty.
+_GOOGLE_FONTS_HOST_RE = re.compile(r"fonts\.(?:googleapis|gstatic)\.com", re.IGNORECASE)
 _EXTERNAL_IMPORT_RE = re.compile(r"@import\s+url\(\s*['\"]?https?:", re.IGNORECASE)
 _LOCAL_SRC_RE = re.compile(r"""url\(\s*['"]?(\.\./fonts/[^)'"]+\.woff2)""")
 # Komentarze blokowe /* ... */ usuwamy przed skanem, żeby benignowa
@@ -36,7 +42,7 @@ def test_admin_theme_scss_does_not_reference_external_fonts():
     offenders = []
     for scss in sorted(THEMES_DIR.glob("*.scss")):
         text = _BLOCK_COMMENT_RE.sub("", scss.read_text(encoding="utf-8"))
-        if "fonts.googleapis.com" in text or "fonts.gstatic.com" in text:
+        if _GOOGLE_FONTS_HOST_RE.search(text):
             offenders.append(f"{scss.name}: host Google")
         if _EXTERNAL_IMPORT_RE.search(text):
             offenders.append(f"{scss.name}: @import url(http...)")
