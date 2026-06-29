@@ -27,7 +27,8 @@ def test_set_aktualizuje_z_zrodla(client_with_group):
         "bpp.Wydawnictwo_Ciagle", zrodlo=zrodlo, rok=2023, impact_factor="1.500"
     )
     url = reverse("rozbieznosci:index", kwargs={"metryka": "if"})
-    client_with_group.get(f"{url}?_set={wc.pk}")
+    resp = client_with_group.post(url, {"_set": wc.pk})
+    assert resp.status_code in (301, 302)
     wc.refresh_from_db()
     assert str(wc.impact_factor) == "2.500"
 
@@ -36,5 +37,21 @@ def test_set_aktualizuje_z_zrodla(client_with_group):
 def test_ignore_dodaje_per_metryka(client_with_group):
     wc = baker.make("bpp.Wydawnictwo_Ciagle")
     url = reverse("rozbieznosci:index", kwargs={"metryka": "kw_wos"})
-    client_with_group.get(f"{url}?_ignore={wc.pk}")
+    resp = client_with_group.post(url, {"_ignore": wc.pk})
+    assert resp.status_code in (301, 302)
     assert IgnorowanaRozbieznosc.objects.filter(metryka="kw_wos", rekord=wc).exists()
+
+
+@pytest.mark.django_db
+def test_get_z_set_nie_zmienia_stanu(client_with_group):
+    """GET z parametrem _set nie może zmieniać stanu — get() jest side-effect-free."""
+    zrodlo = baker.make("bpp.Zrodlo")
+    baker.make("bpp.Punktacja_Zrodla", zrodlo=zrodlo, rok=2023, impact_factor="2.500")
+    wc = baker.make(
+        "bpp.Wydawnictwo_Ciagle", zrodlo=zrodlo, rok=2023, impact_factor="1.500"
+    )
+    url = reverse("rozbieznosci:index", kwargs={"metryka": "if"})
+    resp = client_with_group.get(f"{url}?_set={wc.pk}")
+    assert resp.status_code == 200
+    wc.refresh_from_db()
+    assert str(wc.impact_factor) == "1.500"  # bez zmian

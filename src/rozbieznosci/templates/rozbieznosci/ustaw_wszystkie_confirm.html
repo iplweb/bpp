@@ -5,7 +5,7 @@
 {% block breadcrumbs %}
     <li><a href="/">Strona główna</a></li>
     <li><a href="{% url 'rozbieznosci:index' metryka=metryka.slug %}">Rozbieżności {{ field_label }}</a></li>
-    <li class="active">Potwierdzenie</li>
+    <li class="current">Potwierdzenie</li>
 {% endblock %}
 
 {% block content %}
@@ -50,7 +50,7 @@
                 <span class="fi-check"></span> Tak, zaktualizuj {{ count }}
                 {% if count == 1 %}rekord{% else %}rekordów{% endif %}
             </button>
-            <a href="{% url 'rozbieznosci:index' metryka=metryka.slug %}?rok_od={{ rok_od }}&rok_do={{ rok_do }}{% if tytul %}&tytul={{ tytul }}{% endif %}"
+            <a href="{% url 'rozbieznosci:index' metryka=metryka.slug %}?rok_od={{ rok_od }}&rok_do={{ rok_do }}{% if tytul %}&tytul={{ tytul }}{% endif %}{% if pokaz_puste_zrodla %}&pokaz_puste_zrodla=1{% endif %}"
                class="button secondary">Anuluj</a>
         </form>
     </div>

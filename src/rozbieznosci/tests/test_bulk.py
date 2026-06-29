@@ -51,4 +51,4 @@ def test_confirm_get_pokazuje_liczbe(client_with_group):
     url = reverse("rozbieznosci:ustaw_wszystkie", kwargs={"metryka": "mnisw"})
     resp = client_with_group.get(f"{url}?rok_od=2022&rok_do=2026")
     assert resp.status_code == 200
-    assert b"1" in resp.content
+    assert resp.context["count"] == 1

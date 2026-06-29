@@ -113,7 +113,7 @@ class RozbieznosciView(MetrykaMixin, GroupRequiredMixin, ListView):
         return context
 
     def _handle_ignore(self, request):
-        frm = IgnoreForm(request.GET)
+        frm = IgnoreForm(request.POST)
         if not frm.is_valid():
             return
         pk = frm.cleaned_data["_ignore"]
@@ -135,7 +135,7 @@ class RozbieznosciView(MetrykaMixin, GroupRequiredMixin, ListView):
             messages.warning(request, f"Rekord (ID: {pk}) był już ignorowany.")
 
     def _handle_set(self, request):
-        frm = SetForm(request.GET)
+        frm = SetForm(request.POST)
         if not frm.is_valid():
             return
         pk = frm.cleaned_data["_set"]
@@ -157,11 +157,17 @@ class RozbieznosciView(MetrykaMixin, GroupRequiredMixin, ListView):
             )
 
     def get(self, request, *args, **kwargs):
-        if "_ignore" in request.GET:
-            self._handle_ignore(request)
-        if "_set" in request.GET:
-            self._handle_set(request)
         return super().get(request, *args, **kwargs)
+
+    def post(self, request, *args, **kwargs):
+        if "_set" in request.POST:
+            self._handle_set(request)
+        if "_ignore" in request.POST:
+            self._handle_ignore(request)
+        rok_od, rok_do, tytul, sort, pokaz = _filter_params(request.POST, self.metryka)
+        url = reverse("rozbieznosci:index", kwargs={"metryka": self.metryka.slug})
+        qs = _query_string(rok_od, rok_do, tytul, pokaz)
+        return HttpResponseRedirect(f"{url}?{qs}" if qs else url)
 
 
 class RozbieznosciExportView(MetrykaMixin, GroupRequiredMixin, View):
@@ -292,14 +298,15 @@ class TaskStatusView(MetrykaMixin, GroupRequiredMixin, View):
 
     def get(self, request, metryka, task_id):
         task = AsyncResult(task_id)
+        task_ready = task.ready()
         info = task.info if isinstance(task.info, dict) else {}
         context = {
             "metryka": self.metryka,
             "task_id": task_id,
-            "task_ready": task.ready(),
+            "task_ready": task_ready,
             "page_title": f"Rozbieżności: {self.metryka.label}",
         }
-        if not task.ready():
+        if not task_ready:
             context["info"] = info
         elif task.failed():
             context["error"] = str(task.info)
