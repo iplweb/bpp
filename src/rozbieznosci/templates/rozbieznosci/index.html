@@ -33,7 +33,9 @@
 
 <div class="row">
     <div class="medium-12 columns">
-        <form method="get" class="callout">
+        <form method="get" class="callout" id="rozb-filtry">
+            {# sort niesiony ukrytym polem, by Filtruj/Eksport/Ustaw zachowały sortowanie #}
+            <input type="hidden" name="sort" value="{{ current_sort }}">
             <div class="row">
                 <div class="medium-2 columns">
                     <label>Rok od:
@@ -47,20 +49,11 @@
                                min="1900" max="2100" style="width: 80px;">
                     </label>
                 </div>
-                <div class="medium-4 columns">
+                <div class="medium-8 columns">
                     <label>Tytuł:
                         <input type="text" name="tytul" value="{{ tytul }}"
                                placeholder="Szukaj w tytule...">
                     </label>
-                </div>
-                <div class="medium-4 columns" style="padding-top: 1.5rem;">
-                    <button type="submit" class="button">
-                        <span class="fi-filter"></span> Filtruj
-                    </button>
-                    <a href="{% url 'rozbieznosci:index' metryka=metryka.slug %}"
-                       class="button secondary">
-                        <span class="fi-x"></span> Resetuj
-                    </a>
                 </div>
             </div>
             <div class="row">
@@ -70,7 +63,7 @@
                             Rekordy ze źródłem:
                         </legend>
                         {% for val, label in tryb_zrodla_choices %}
-                        <label style="display: inline-block; margin-right: 1rem;">
+                        <label style="display: block; margin-bottom: 0.25rem; margin-left: 0.75rem;">
                             <input type="radio" name="tryb_zrodla" value="{{ val }}"
                                    {% if tryb_zrodla == val %}checked{% endif %}>
                             {{ label }}
@@ -79,12 +72,17 @@
                     </fieldset>
                 </div>
                 <div class="medium-5 columns" style="padding-top: 0.5rem;">
-                    <details class="rozb-charaktery">
+                    <details class="rozb-charaktery" style="position: relative;">
                         <summary class="button secondary" style="margin: 0;">
                             <span class="fi-filter"></span> Charakter formalny
                         </summary>
+                        {# pozycja absolutna — popup nie rozpycha formularza #}
                         <div class="callout"
-                             style="max-height: 16rem; overflow-y: auto; margin-top: 0.25rem;">
+                             style="position: absolute; z-index: 30; left: 0; top: 100%;
+                                    width: 22rem; max-width: 90vw; max-height: 16rem;
+                                    overflow-y: auto; margin-top: 0.25rem;
+                                    background: #fefefe;
+                                    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.18);">
                             {% for cf in wszystkie_charaktery %}
                             <label style="display: block; margin: 0;">
                                 <input type="checkbox" name="charaktery_formalne"
@@ -98,7 +96,7 @@
                 </div>
             </div>
             <div class="row">
-                <div class="medium-7 columns" style="padding-top: 0.5rem;">
+                <div class="medium-12 columns" style="padding-top: 0.5rem;">
                     <label>
                         <input type="checkbox" name="kasuj_przy_pustym_zrodle"
                                value="1"
@@ -107,18 +105,64 @@
                         kwartyl/punktację w pracy
                     </label>
                 </div>
-                <div class="medium-5 columns" style="padding-top: 0.5rem;">
-                    <a href="{% url 'rozbieznosci:export' metryka=metryka.slug %}?{% if filter_query_string %}{{ filter_query_string }}&{% endif %}sort={{ current_sort }}"
-                       class="button success">
+            </div>
+            {# Pasek akcji pod formularzem. Eksport i "Ustaw wszystkie" SUBMITUJĄ #}
+            {# ten formularz (formaction) — niosą ŻYWY stan pól (tryb, charaktery, #}
+            {# kasuj). "Ustaw wszystkie" (destrukcyjne) odsunięte na prawo. #}
+            <div class="row">
+                <div class="medium-8 columns" style="padding-top: 0.5rem;">
+                    <button type="submit" class="button">
+                        <span class="fi-filter"></span> Filtruj
+                    </button>
+                    <a href="{% url 'rozbieznosci:index' metryka=metryka.slug %}"
+                       class="button secondary">
+                        <span class="fi-x"></span> Resetuj
+                    </a>
+                    <button type="submit" class="button success"
+                            formaction="{% url 'rozbieznosci:export' metryka=metryka.slug %}"
+                            formmethod="get">
                         <span class="fi-download"></span> Eksport XLSX
+                    </button>
+                    <a href="{% url 'admin:rozbieznosci_rozbieznosclog_changelist' %}?metryka={{ metryka.slug }}"
+                       class="button secondary">
+                        <span class="fi-list"></span> Pokaż log zmian
                     </a>
-                    <a href="{% url 'rozbieznosci:ustaw_wszystkie' metryka=metryka.slug %}{% if filter_query_string %}?{{ filter_query_string }}{% endif %}"
-                       class="button warning">
+                </div>
+                <div class="medium-4 columns text-right" style="padding-top: 0.5rem;">
+                    <button type="submit" class="button warning"
+                            formaction="{% url 'rozbieznosci:ustaw_wszystkie' metryka=metryka.slug %}"
+                            formmethod="get">
                         <span class="fi-check"></span> Ustaw wszystkie wg źródła
-                    </a>
+                    </button>
                 </div>
             </div>
         </form>
+        {# Auto-aktualizacja: zmiana pola filtra submituje formularz (do widoku #}
+        {# listy) bez klikania "Filtruj". Wyjątek: pola wyboru charakteru — żeby #}
+        {# dało się zaznaczyć kilka, zastosowanie następuje po zamknięciu popupa. #}
+        <script>
+            (function () {
+                var form = document.getElementById("rozb-filtry");
+                if (!form) return;
+                var charDirty = false;
+                form.addEventListener("change", function (e) {
+                    if (e.target.name === "charaktery_formalne") {
+                        charDirty = true;
+                        return;
+                    }
+                    form.requestSubmit();
+                });
+                var details = form.querySelector("details.rozb-charaktery");
+                if (details) {
+                    details.addEventListener("toggle", function () {
+                        if (!details.open && charDirty) {
+                            charDirty = false;
+                            form.requestSubmit();
+                        }
+                    });
+                }
+            })();
+        </script>
     </div>
 </div>
 

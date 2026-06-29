@@ -50,6 +50,17 @@ a[name="pager"] {
     box-shadow: 0 2px 4px rgba(0, 123, 255, 0.3);
 }
 
+/* Foundation maluje samo <li class="current"> kolorem $primary-color (zależnym
+   od motywu — w zielonym to #28a745), co przy naszym pagerze z wewnętrznym
+   <span> daje brzydką kolorową obwódkę wokół numeru. Zerujemy tło i padding LI
+   (wyższa swoistość niż foundationowe `.pagination .current`); wygląd
+   "tu jesteś" niesie wewnętrzny <span> poniżej. */
+.pagination li.current {
+    background: transparent;
+    border: 0;
+    padding: 0;
+}
+
 .pagination li.current a,
 .pagination li.current span {
     /* Bieżąca strona to nie klikalny przycisk — zamiast pełnego wypełnienia

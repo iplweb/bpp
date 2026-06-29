@@ -32,6 +32,28 @@ def test_formularz_ma_3_tryby_i_kasuj_checkbox(client_with_group):
 
 
 @pytest.mark.django_db
+def test_ustaw_wszystkie_submituje_formularz(client_with_group):
+    """'Ustaw wszystkie' musi być submitem formularza (formaction), żeby niósł
+    żywy stan pól (kasuj/tryb/charaktery) — nie statycznym linkiem."""
+    url = reverse("rozbieznosci:index", kwargs={"metryka": "if"})
+    html = client_with_group.get(url).content.decode()
+    ustaw_url = reverse("rozbieznosci:ustaw_wszystkie", kwargs={"metryka": "if"})
+    export_url = reverse("rozbieznosci:export", kwargs={"metryka": "if"})
+    assert f'formaction="{ustaw_url}"' in html
+    assert f'formaction="{export_url}"' in html
+
+
+@pytest.mark.django_db
+def test_przycisk_pokaz_log_zmian(client_with_group):
+    """Strona ma przycisk 'Pokaż log zmian' linkujący do adminowego logu."""
+    url = reverse("rozbieznosci:index", kwargs={"metryka": "if"})
+    html = client_with_group.get(url).content.decode()
+    log_url = reverse("admin:rozbieznosci_rozbieznosclog_changelist")
+    assert "Pokaż log zmian" in html
+    assert log_url in html
+
+
+@pytest.mark.django_db
 def test_confirm_threaduje_tryb_zrodla(client_with_group):
     """Ekran confirm ma hidden z tryb_zrodla gdy filtr był aktywny."""
     zrodlo = baker.make("bpp.Zrodlo")

@@ -136,6 +136,28 @@ def test_ustaw_wszystkie_brak_zrodla_kasuj_off_komunikuje_pominiete(client_with_
 
 
 @pytest.mark.django_db
+def test_ustaw_wszystkie_kasuj_on_czysci(client_with_group):
+    """POST 'ustaw wszystkie' z kasuj=on dla rekordu bez wartości w źródle:
+    wartość w pracy wyczyszczona, komunikat o aktualizacji."""
+    zrodlo = baker.make("bpp.Zrodlo")
+    wc = baker.make("bpp.Wydawnictwo_Ciagle", zrodlo=zrodlo, rok=2023, kwartyl_w_wos=2)
+    url = reverse("rozbieznosci:ustaw_wszystkie", kwargs={"metryka": "kw_wos"})
+    resp = client_with_group.post(
+        url,
+        {
+            "tryb_zrodla": "wylacznie",
+            "kasuj_przy_pustym_zrodle": "1",
+            "rok_od": 2022,
+            "rok_do": 2026,
+        },
+        follow=True,
+    )
+    wc.refresh_from_db()
+    assert wc.kwartyl_w_wos is None
+    assert any("Zaktualizowano 1" in str(m) for m in resp.context["messages"])
+
+
+@pytest.mark.django_db
 def test_get_z_set_nie_zmienia_stanu(client_with_group):
     """GET z parametrem _set nie może zmieniać stanu — get() jest side-effect-free."""
     zrodlo = baker.make("bpp.Zrodlo")
