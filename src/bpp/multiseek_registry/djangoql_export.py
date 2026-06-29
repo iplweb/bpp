@@ -10,7 +10,7 @@ jest walidowany przeciw BppQLSchema(Rekord) — niepoprawne -> warning.
 import logging
 from dataclasses import dataclass
 from dataclasses import field as dataclass_field
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 from urllib.parse import urlencode
 
 from django.urls import reverse
@@ -20,11 +20,13 @@ from multiseek.logic import (
     ANDNOT,
     AUTOCOMPLETE,
     CONTAINS,
+    DECIMAL,
     DIFFERENT_ALL,
     EQUALITY_OPS_ALL,
     GREATER_OPS_ALL,
     GREATER_OR_EQUAL_OPS_ALL,
     IN_RANGE,
+    INTEGER,
     LESSER_OPS_ALL,
     LESSER_OR_EQUAL_OPS_ALL,
     NOT_CONTAINS,
@@ -197,13 +199,56 @@ def _value_list_leaf(field, value, operation):
     return frag
 
 
+def _coerce_range_bound(value):
+    """Granica zakresu (rok) -> int, albo None gdy nie-liczbowa.
+
+    Multiseek serializuje granice jako stringi ("2000"), a
+    ``RangeQueryObject.value_from_web`` wymusza na nich ``int()``. Robimy to
+    samo przy renderowaniu, by goly literal liczbowy przeszedl walidacje
+    schematu (np. ``rok`` to IntegerField) — bez tego wychodzil cudzyslowiony
+    ``rok >= "2000"``, ktorego DjangoQL nie przyjmuje. None -> lisc pomijany,
+    spojnie z multiseek (ktory tez zwraca None dla nie-liczbowej granicy).
+    """
+    if isinstance(value, bool):
+        return None
+    if isinstance(value, int):
+        return value
+    try:
+        return int(str(value).strip())
+    except (ValueError, TypeError):
+        return None
+
+
+def _render_scalar(field, value):
+    """Literal DjangoQL dla skalarnego porownania, z normalizacja liczb.
+
+    Multiseek trzyma wartosci formularza jako stringi ("5", "0.5"); renderowane
+    doslownie trafialyby w cudzyslow ('impact_factor > "5"'), co DjangoQL
+    odrzuca dla liczbowych pol modelu. Dla pol INTEGER/DECIMAL przepuszczamy
+    wartosc przez ``value_from_web`` (tak jak ``real_query``), wiec wychodzi goly
+    literal liczbowy. None -> lisc nieprzekladalny (spojnie z tym, ze multiseek
+    tez by go nie dopasowal, np. pusta/niepoprawna liczba).
+    """
+    if getattr(field, "type", None) in (INTEGER, DECIMAL):
+        try:
+            coerced = field.value_from_web(value)
+        except (ValueError, TypeError, InvalidOperation):
+            return None
+        if coerced is None:
+            return None
+        return render_value(coerced)
+    return render_value(value)
+
+
 def _range_leaf(name, value, operation):
     """IN_RANGE/NOT_IN_RANGE: value to [low, high]."""
     if not (isinstance(value, (list, tuple)) and len(value) == 2):
         return None
     if str(operation) == str(NOT_IN_RANGE):
         return None  # brak unary not(...) w DjangoQL -> warning (Task 5/6)
-    low, high = value
+    low, high = _coerce_range_bound(value[0]), _coerce_range_bound(value[1])
+    if low is None or high is None:
+        return None
     path = _orm_path_to_djangoql(name)
     return f"({path} >= {render_value(low)} and {path} <= {render_value(high)})"
 
@@ -222,7 +267,10 @@ def _default_leaf(field, value, operation):
     dql_op = scalar_operator_to_djangoql(op)
     if dql_op is None:
         return None
-    return f"{_orm_path_to_djangoql(name)} {dql_op} {render_value(value)}"
+    rendered = _render_scalar(field, value)
+    if rendered is None:
+        return None
+    return f"{_orm_path_to_djangoql(name)} {dql_op} {rendered}"
 
 
 def leaf_to_djangoql(registry, leaf, warnings=None):

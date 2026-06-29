@@ -272,6 +272,20 @@ class CustomRollbarNotifierMiddleware(RollbarNotifierMiddleware):
                     "username": request.user.username,
                     "email": request.user.email,
                 },
+                # Login także w `custom`, by był widoczny wprost na evencie
+                # (sekcja `person` nie zawsze jest pokazywana na liście itemów).
+                "custom": {
+                    "login": request.user.username,
+                    "zalogowany": True,
+                },
+            }
+        else:
+            # Anonim nie ma `person` (brak id), więc oznaczamy go w `custom`.
+            payload_data = {
+                "custom": {
+                    "login": "<użytkownik anonimowy / niezalogowany>",
+                    "zalogowany": False,
+                },
             }
 
         return payload_data

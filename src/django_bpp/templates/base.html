@@ -67,7 +67,10 @@
         });
     </script>
     {% load notifications %}
-    <div id="messageTemplate">
+    {# inline display:none (a nie tylko reguła w SCSS) jest celowy: gdy CSS #}
+    {# serwisu się nie wczyta (np. wydruk / WeasyPrint), surowy szablon #}
+    {# mustache nie może wyciec do treści — patrz FD#405. #}
+    <div id="messageTemplate" style="display: none">
     {% verbatim messageTemplate %}
     <div data-closable
          data-url="{{ closeURL }}"

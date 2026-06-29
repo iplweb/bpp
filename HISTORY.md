@@ -2,6 +2,42 @@
 
 <!-- towncrier release notes start -->
 
+## bpp 202606.1393 (2026-06-24)
+
+### Naprawione
+
+- Wydruk PDF raportu slotów - autor zawiera teraz wszystkie rekordy autora, a
+  nie tylko pierwszą stronę (wcześniej, przy więcej niż 25 pracach, PDF urywał
+  się na pierwszej stronie i zostawała namiastka pagera). Dodatkowo każda tabela
+  (osobna dla każdej dyscypliny autora) ma nagłówek z nazwą dyscypliny, dzięki
+  czemu przy autorze z kilkoma dyscyplinami wiadomo, której tabela dotyczy, a
+  stopka tabeli z sumą punktów i slotów pokazuje się tylko raz, na końcu tabeli,
+  zamiast powtarzać się na każdej podstronie wielostronicowego wydruku (FD#405).
+
+
+## bpp 202606.1392 (2026-06-24)
+
+### Naprawione
+
+- Eksport raportu slotów - autor do PDF zawiera teraz wyłącznie sam raport.
+  Wcześniej do pliku PDF potrafiło wyciec menu serwisu, surowy szablon
+  powiadomień (`{{#clickURL}}`) i stopka strony — działo się tak, gdy serwer
+  nie zdążył dociągnąć stylów do wydruku. PDF jest teraz generowany z
+  dedykowanego, samowystarczalnego szablonu, więc wygląda poprawnie niezależnie
+  od stanu plików statycznych (FD#405).
+
+### Usprawnienie
+
+- Zgłoszenia błędów w Rollbarze zawierają teraz w polu ``custom`` login
+  zalogowanego użytkownika (a dla ruchu niezalogowanego — wyraźne oznaczenie
+  użytkownika anonimowego), co ułatwia powiązanie błędu z konkretną osobą.
+
+
+## bpp 202606.1391 (2026-06-20)
+
+No significant changes.
+
+
 ## bpp 202606.1390 (2026-06-17)
 
 ### Naprawione
