@@ -496,8 +496,10 @@ dev = [
     # pytest-testcontainers + bridge: dawniej wewnetrzny `src/testcontainers_bpp/`.
     # Plugin auto-loaduje sie przez entry-point `pytest11` — `-p ...` w pytest.ini
     # przestaje byc potrzebne. Konfiguracja w [tool.pytest-testcontainers-django].
-    "pytest-testcontainers>=0.2.0",
-    "pytest-testcontainers-django>=0.2.4",
+    # 0.2.2 / 0.2.5: from_env() honoruje aktywny `docker context`, wiec stack
+    # startuje na OrbStack / colima / Docker Desktop bez recznego DOCKER_HOST.
+    "pytest-testcontainers>=0.2.2",
+    "pytest-testcontainers-django>=0.2.5",
     # django-run-site: CLI orchestrator dev stack-u. Dawniej `manage.py run_site`
     # + helpery w `_run_site_helpers/`. Instalowany w dev-deps zeby `uv run run-site`
     # mialo dostep do CLI bez globalnego `uv tool install`. Konfiguracja: runsite.toml.

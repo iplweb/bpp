@@ -50,6 +50,7 @@ default_path = "baseline-sql/baseline.sql"
 strategy = "auto"
 restore_jobs = 8
 fail_fast = true
+fix_search_path = true
 
 [env]
 # Mapowanie zmiennych srodowiskowych dla podprocesow (runserver, celery,

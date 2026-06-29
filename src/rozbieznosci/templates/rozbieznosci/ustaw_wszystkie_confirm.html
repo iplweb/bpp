@@ -38,12 +38,13 @@
             </p>
             {% if use_celery %}
             <p>
-                Operacja będzie wykonana w tle (Celery), zostaniesz przekierowany
-                na stronę statusu zadania.
+                Ze względu na liczbę rekordów operacja może chwilę potrwać —
+                wykonamy ją w tle, a Ty zostaniesz przekierowany/a na stronę
+                z postępem.
             </p>
             {% else %}
             <p>
-                Operacja zostanie wykonana synchronicznie.
+                Operacja zostanie wykonana od razu.
             </p>
             {% endif %}
         </div>
