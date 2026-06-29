@@ -3,7 +3,13 @@ from decimal import Decimal
 import pytest
 from model_bakery import baker
 
-from rozbieznosci.core import get_base_queryset_for_metryka, ustaw_ze_zrodla
+from rozbieznosci.core import (
+    TRYB_ROWNIEZ_ZEROWE,
+    TRYB_WYLACZNIE_ZEROWE,
+    apply_filters,
+    get_base_queryset_for_metryka,
+    ustaw_ze_zrodla,
+)
 from rozbieznosci.metryki import METRYKI_BY_SLUG
 from rozbieznosci.models import IgnorowanaRozbieznosc, RozbieznoscLog
 
@@ -11,6 +17,17 @@ from rozbieznosci.models import IgnorowanaRozbieznosc, RozbieznoscLog
 def _wc_ze_zrodlem(rok, praca_val, zrodlo_val, field):
     zrodlo = baker.make("bpp.Zrodlo")
     baker.make("bpp.Punktacja_Zrodla", zrodlo=zrodlo, rok=rok, **{field: zrodlo_val})
+    return baker.make(
+        "bpp.Wydawnictwo_Ciagle",
+        zrodlo=zrodlo,
+        rok=rok,
+        **{field: praca_val},
+    )
+
+
+def _wc_bez_wpisu_zrodla(rok, praca_val, field):
+    """Praca ze źródłem, ale BEZ wiersza Punktacja_Zrodla dla (zrodlo, rok)."""
+    zrodlo = baker.make("bpp.Zrodlo")
     return baker.make(
         "bpp.Wydawnictwo_Ciagle",
         zrodlo=zrodlo,
@@ -38,7 +55,7 @@ def test_if_zero_zrodla_domyslnie_ukryte():
     # domyślnie (pokaz_puste_zrodla=False) rekord ze źródłem 0 jest ukryty
     assert wc not in list(get_base_queryset_for_metryka(m))
     # po odsłonięciu — widoczny
-    assert wc in list(get_base_queryset_for_metryka(m, pokaz_puste_zrodla=True))
+    assert wc in list(get_base_queryset_for_metryka(m, tryb_zrodla=TRYB_ROWNIEZ_ZEROWE))
 
 
 @pytest.mark.django_db
@@ -50,7 +67,7 @@ def test_kwartyl_null_zrodla_domyslnie_ukryty():
         "bpp.Wydawnictwo_Ciagle", zrodlo=zrodlo, rok=2023, kwartyl_w_scopus=2
     )
     assert wc not in list(get_base_queryset_for_metryka(m))
-    assert wc in list(get_base_queryset_for_metryka(m, pokaz_puste_zrodla=True))
+    assert wc in list(get_base_queryset_for_metryka(m, tryb_zrodla=TRYB_ROWNIEZ_ZEROWE))
 
 
 @pytest.mark.django_db
@@ -263,7 +280,9 @@ def test_kwartyl_oboje_null_nie_sa_rozbieznoscia():
     wc = baker.make(
         "bpp.Wydawnictwo_Ciagle", zrodlo=zrodlo, rok=2023, kwartyl_w_scopus=None
     )
-    assert wc not in list(get_base_queryset_for_metryka(m, pokaz_puste_zrodla=True))
+    assert wc not in list(
+        get_base_queryset_for_metryka(m, tryb_zrodla=TRYB_ROWNIEZ_ZEROWE)
+    )
 
 
 @pytest.mark.django_db
@@ -275,7 +294,7 @@ def test_kwartyl_null_zrodla_vs_wartosc_pracy_jest_rozbieznoscia():
     wc = baker.make(
         "bpp.Wydawnictwo_Ciagle", zrodlo=zrodlo, rok=2023, kwartyl_w_scopus=2
     )
-    assert wc in list(get_base_queryset_for_metryka(m, pokaz_puste_zrodla=True))
+    assert wc in list(get_base_queryset_for_metryka(m, tryb_zrodla=TRYB_ROWNIEZ_ZEROWE))
 
 
 @pytest.mark.django_db
@@ -287,4 +306,204 @@ def test_kwartyl_rowne_wartosci_nie_sa_rozbieznoscia():
     wc = baker.make(
         "bpp.Wydawnictwo_Ciagle", zrodlo=zrodlo, rok=2023, kwartyl_w_scopus=2
     )
-    assert wc not in list(get_base_queryset_for_metryka(m, pokaz_puste_zrodla=True))
+    assert wc not in list(
+        get_base_queryset_for_metryka(m, tryb_zrodla=TRYB_ROWNIEZ_ZEROWE)
+    )
+
+
+# --- Brak wpisu Punktacja_Zrodla za rok pracy (kategoria B) -----------------
+# Praca ma wartość, ale źródło nie ma w ogóle wiersza punktacji za rok pracy.
+# Taki rekord ma się pokazać DOPIERO po zaznaczeniu "Pokaż też puste źródła"
+# (analogicznie do źródła z wartością 0/NULL), i być wyraźnie oznaczony
+# anotacją zrodlo_ma_wpis=False.
+
+
+@pytest.mark.django_db
+def test_if_brak_wpisu_zrodla_z_wartoscia_pracy():
+    """IF: praca ma IF, źródło bez wpisu za rok — ukryty domyślnie, widoczny
+    po checkboxie."""
+    m = METRYKI_BY_SLUG["if"]
+    wc = _wc_bez_wpisu_zrodla(2023, praca_val="1.500", field="impact_factor")
+    assert wc not in list(get_base_queryset_for_metryka(m))
+    assert wc in list(get_base_queryset_for_metryka(m, tryb_zrodla=TRYB_ROWNIEZ_ZEROWE))
+
+
+@pytest.mark.django_db
+def test_if_brak_wpisu_zrodla_praca_zero_nie_jest_rozbieznoscia():
+    """IF: praca ma IF=0 i źródło bez wpisu — obie strony bez wartości,
+    nie jest rozbieżnością nawet po checkboxie."""
+    m = METRYKI_BY_SLUG["if"]
+    wc = _wc_bez_wpisu_zrodla(2023, praca_val="0.000", field="impact_factor")
+    assert wc not in list(
+        get_base_queryset_for_metryka(m, tryb_zrodla=TRYB_ROWNIEZ_ZEROWE)
+    )
+
+
+@pytest.mark.django_db
+def test_mnisw_brak_wpisu_zrodla_z_wartoscia_pracy():
+    """MNiSW: praca ma punkty, źródło bez wpisu — widoczny po checkboxie."""
+    m = METRYKI_BY_SLUG["mnisw"]
+    wc = _wc_bez_wpisu_zrodla(2023, praca_val=Decimal("40.00"), field="punkty_kbn")
+    assert wc not in list(get_base_queryset_for_metryka(m))
+    assert wc in list(get_base_queryset_for_metryka(m, tryb_zrodla=TRYB_ROWNIEZ_ZEROWE))
+
+
+@pytest.mark.django_db
+def test_kwartyl_brak_wpisu_zrodla_z_wartoscia_pracy():
+    """Kwartyl: praca ma kwartyl, źródło bez wpisu — widoczny po checkboxie."""
+    m = METRYKI_BY_SLUG["kw_scopus"]
+    zrodlo = baker.make("bpp.Zrodlo")
+    wc = baker.make(
+        "bpp.Wydawnictwo_Ciagle", zrodlo=zrodlo, rok=2023, kwartyl_w_scopus=2
+    )
+    assert wc not in list(get_base_queryset_for_metryka(m))
+    assert wc in list(get_base_queryset_for_metryka(m, tryb_zrodla=TRYB_ROWNIEZ_ZEROWE))
+
+
+@pytest.mark.django_db
+def test_kwartyl_brak_wpisu_zrodla_praca_null_nie_jest_rozbieznoscia():
+    """Kwartyl: praca kwartyl=NULL i źródło bez wpisu — obie bez wartości,
+    nie jest rozbieżnością nawet po checkboxie."""
+    m = METRYKI_BY_SLUG["kw_scopus"]
+    zrodlo = baker.make("bpp.Zrodlo")
+    wc = baker.make(
+        "bpp.Wydawnictwo_Ciagle", zrodlo=zrodlo, rok=2023, kwartyl_w_scopus=None
+    )
+    assert wc not in list(
+        get_base_queryset_for_metryka(m, tryb_zrodla=TRYB_ROWNIEZ_ZEROWE)
+    )
+
+
+@pytest.mark.django_db
+def test_brak_wpisu_oznaczony_anotacja_zrodlo_ma_wpis():
+    """Rekord bez wpisu źródła ma zrodlo_ma_wpis=False, z wpisem — True."""
+    m = METRYKI_BY_SLUG["if"]
+    wc_brak = _wc_bez_wpisu_zrodla(2023, praca_val="2.500", field="impact_factor")
+    wc_z = _wc_ze_zrodlem(
+        2023, praca_val="1.500", zrodlo_val="2.500", field="impact_factor"
+    )
+    by_pk = {
+        w.pk: w
+        for w in get_base_queryset_for_metryka(m, tryb_zrodla=TRYB_ROWNIEZ_ZEROWE)
+    }
+    assert by_pk[wc_brak.pk].zrodlo_ma_wpis is False
+    assert by_pk[wc_z.pk].zrodlo_ma_wpis is True
+
+
+# --- Tryb WYLACZNIE_ZEROWE -------------------------------------------------
+
+
+@pytest.mark.django_db
+def test_tryb_wylacznie_zerowe_pomija_standardowe_pokazuje_zerowe():
+    """Wyłącznie zerowe: standardowa rozbieżność ukryta, źródło 0 / brak wpisu
+    z wartością w pracy — widoczne."""
+    m = METRYKI_BY_SLUG["if"]
+    wc_std = _wc_ze_zrodlem(
+        2023, praca_val="1.500", zrodlo_val="2.500", field="impact_factor"
+    )
+    wc_brak = _wc_bez_wpisu_zrodla(2023, praca_val="1.500", field="impact_factor")
+    wc_zero = _wc_ze_zrodlem(
+        2023, praca_val="1.500", zrodlo_val="0.000", field="impact_factor"
+    )
+
+    wyl = list(get_base_queryset_for_metryka(m, tryb_zrodla=TRYB_WYLACZNIE_ZEROWE))
+    assert wc_std not in wyl
+    assert wc_brak in wyl
+    assert wc_zero in wyl
+
+    std = list(get_base_queryset_for_metryka(m))
+    assert wc_std in std
+    assert wc_brak not in std
+    assert wc_zero not in std
+
+
+# --- ustaw_ze_zrodla: kasuj_przy_pustym ------------------------------------
+
+
+@pytest.mark.django_db
+def test_ustaw_kasuj_off_nie_rusza_pracy_przy_braku_zrodla():
+    """Brak wpisu źródła, kasuj wyłączone — kwartyl pracy bez zmian."""
+    m = METRYKI_BY_SLUG["kw_wos"]
+    wc = _wc_bez_wpisu_zrodla(2023, praca_val=2, field="kwartyl_w_wos")
+    updated, errors = ustaw_ze_zrodla([wc.pk], m)
+    assert (updated, errors) == (0, 0)
+    wc.refresh_from_db()
+    assert wc.kwartyl_w_wos == 2
+
+
+@pytest.mark.django_db
+def test_ustaw_kasuj_on_czysci_kwartyl_przy_braku_zrodla():
+    """Brak wpisu źródła, kasuj włączone — kwartyl pracy wyczyszczony do None."""
+    m = METRYKI_BY_SLUG["kw_wos"]
+    wc = _wc_bez_wpisu_zrodla(2023, praca_val=2, field="kwartyl_w_wos")
+    updated, errors = ustaw_ze_zrodla([wc.pk], m, kasuj_przy_pustym=True)
+    assert (updated, errors) == (1, 0)
+    wc.refresh_from_db()
+    assert wc.kwartyl_w_wos is None
+    assert RozbieznoscLog.objects.filter(metryka="kw_wos", rekord=wc).count() == 1
+
+
+@pytest.mark.django_db
+def test_ustaw_kasuj_off_nie_zeruje_if_przy_zrodle_zero():
+    """Źródło IF=0, kasuj wyłączone — IF pracy bez zmian."""
+    m = METRYKI_BY_SLUG["if"]
+    wc = _wc_ze_zrodlem(
+        2023, praca_val="2.500", zrodlo_val="0.000", field="impact_factor"
+    )
+    updated, errors = ustaw_ze_zrodla([wc.pk], m)
+    assert (updated, errors) == (0, 0)
+    wc.refresh_from_db()
+    assert str(wc.impact_factor) == "2.500"
+
+
+@pytest.mark.django_db
+def test_ustaw_kasuj_on_zeruje_if_przy_zrodle_zero():
+    """Źródło IF=0, kasuj włączone — IF pracy wyzerowany."""
+    m = METRYKI_BY_SLUG["if"]
+    wc = _wc_ze_zrodlem(
+        2023, praca_val="2.500", zrodlo_val="0.000", field="impact_factor"
+    )
+    updated, errors = ustaw_ze_zrodla([wc.pk], m, kasuj_przy_pustym=True)
+    assert (updated, errors) == (1, 0)
+    wc.refresh_from_db()
+    assert str(wc.impact_factor) == "0.000"
+
+
+# --- apply_filters: charakter formalny -------------------------------------
+
+
+@pytest.mark.django_db
+def test_apply_filters_charaktery_zaweza():
+    """Pusta lista charakterów = brak zawężenia; niepusta = tylko wskazane."""
+    m = METRYKI_BY_SLUG["if"]
+    cf1 = baker.make("bpp.Charakter_Formalny")
+    cf2 = baker.make("bpp.Charakter_Formalny")
+    z1 = baker.make("bpp.Zrodlo")
+    baker.make("bpp.Punktacja_Zrodla", zrodlo=z1, rok=2023, impact_factor="2.500")
+    z2 = baker.make("bpp.Zrodlo")
+    baker.make("bpp.Punktacja_Zrodla", zrodlo=z2, rok=2023, impact_factor="2.500")
+    wc1 = baker.make(
+        "bpp.Wydawnictwo_Ciagle",
+        zrodlo=z1,
+        rok=2023,
+        impact_factor="1.500",
+        charakter_formalny=cf1,
+    )
+    wc2 = baker.make(
+        "bpp.Wydawnictwo_Ciagle",
+        zrodlo=z2,
+        rok=2023,
+        impact_factor="1.500",
+        charakter_formalny=cf2,
+    )
+
+    qs = get_base_queryset_for_metryka(m)
+    tylko_cf1 = list(apply_filters(qs, 2022, 2026, "", [cf1]))
+    assert wc1 in tylko_cf1
+    assert wc2 not in tylko_cf1
+
+    wszystkie = list(
+        apply_filters(get_base_queryset_for_metryka(m), 2022, 2026, "", [])
+    )
+    assert wc1 in wszystkie
+    assert wc2 in wszystkie

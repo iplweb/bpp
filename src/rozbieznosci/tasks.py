@@ -2,7 +2,9 @@ from celery import shared_task
 
 
 @shared_task(bind=True)
-def task_ustaw_ze_zrodla(self, pks, metryka_slug, user_id=None):
+def task_ustaw_ze_zrodla(
+    self, pks, metryka_slug, user_id=None, kasuj_przy_pustym=False
+):
     """Aktualizuje metrykę z punktacji źródła. Progres przez update_state."""
     from rozbieznosci.core import ustaw_ze_zrodla
     from rozbieznosci.metryki import METRYKI_BY_SLUG
@@ -13,7 +15,9 @@ def task_ustaw_ze_zrodla(self, pks, metryka_slug, user_id=None):
     errors = 0
 
     for idx, pk in enumerate(pks, 1):
-        u, e = ustaw_ze_zrodla([pk], metryka, user_id=user_id)
+        u, e = ustaw_ze_zrodla(
+            [pk], metryka, user_id=user_id, kasuj_przy_pustym=kasuj_przy_pustym
+        )
         updated += u
         errors += e
         if idx % 5 == 0 or idx == total:

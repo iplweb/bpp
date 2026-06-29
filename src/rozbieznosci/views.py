@@ -1,4 +1,5 @@
 from io import BytesIO
+from typing import NamedTuple
 
 from braces.views import GroupRequiredMixin
 from celery.result import AsyncResult
@@ -11,10 +12,11 @@ from django.views import View
 from django.views.generic import ListView
 from openpyxl import Workbook
 
-from bpp.models import Wydawnictwo_Ciagle
+from bpp.models import Charakter_Formalny, Wydawnictwo_Ciagle
 from bpp.util import worksheet_columns_autosize, worksheet_create_table
 from rozbieznosci.core import (
     DEFAULT_SORT,
+    DEFAULT_TRYB_ZRODLA,
     apply_filters,
     apply_sorting,
     get_base_queryset_for_metryka,
@@ -25,12 +27,23 @@ from rozbieznosci.forms import (
     CURRENT_YEAR,
     DEFAULT_ROK_OD,
     OFFLOAD_TASKS_WITH_THIS_ELEMENTS_OR_MORE,
+    TRYB_ZRODLA_CHOICES,
     FilterForm,
     IgnoreForm,
     SetForm,
 )
 from rozbieznosci.metryki import METRYKI, METRYKI_BY_SLUG
 from rozbieznosci.models import IgnorowanaRozbieznosc
+
+
+class Filtry(NamedTuple):
+    rok_od: int
+    rok_do: int
+    tytul: str
+    sort: str
+    tryb_zrodla: str
+    kasuj_przy_pustym: bool
+    charaktery: list
 
 
 class MetrykaMixin:
@@ -49,26 +62,33 @@ def _filter_params(source, metryka):
         rok_od = form.cleaned_data["rok_od"]
         rok_do = form.cleaned_data["rok_do"]
         tytul = form.cleaned_data["tytul"]
-        pokaz = form.cleaned_data["pokaz_puste_zrodla"]
+        tryb = form.cleaned_data["tryb_zrodla"]
+        kasuj = form.cleaned_data["kasuj_przy_pustym_zrodle"]
+        charaktery = list(form.cleaned_data["charaktery_formalne"])
     else:
-        rok_od, rok_do, tytul, pokaz = DEFAULT_ROK_OD, CURRENT_YEAR, "", False
+        rok_od, rok_do, tytul = DEFAULT_ROK_OD, CURRENT_YEAR, ""
+        tryb, kasuj, charaktery = DEFAULT_TRYB_ZRODLA, False, []
     sort = source.get("sort", DEFAULT_SORT)
     if sort not in get_valid_sort_fields(metryka):
         sort = DEFAULT_SORT
-    return rok_od, rok_do, tytul, sort, pokaz
+    return Filtry(rok_od, rok_do, tytul, sort, tryb, kasuj, charaktery)
 
 
-def _query_string(rok_od, rok_do, tytul, pokaz):
+def _query_string(f):
     params = {}
-    if rok_od != DEFAULT_ROK_OD:
-        params["rok_od"] = rok_od
-    if rok_do != CURRENT_YEAR:
-        params["rok_do"] = rok_do
-    if tytul:
-        params["tytul"] = tytul
-    if pokaz:
-        params["pokaz_puste_zrodla"] = "1"
-    return urlencode(params)
+    if f.rok_od != DEFAULT_ROK_OD:
+        params["rok_od"] = f.rok_od
+    if f.rok_do != CURRENT_YEAR:
+        params["rok_do"] = f.rok_do
+    if f.tytul:
+        params["tytul"] = f.tytul
+    if f.tryb_zrodla != DEFAULT_TRYB_ZRODLA:
+        params["tryb_zrodla"] = f.tryb_zrodla
+    if f.kasuj_przy_pustym:
+        params["kasuj_przy_pustym_zrodle"] = "1"
+    if f.charaktery:
+        params["charaktery_formalne"] = [c.pk for c in f.charaktery]
+    return urlencode(params, doseq=True)
 
 
 class RozbieznosciView(MetrykaMixin, GroupRequiredMixin, ListView):
@@ -76,30 +96,31 @@ class RozbieznosciView(MetrykaMixin, GroupRequiredMixin, ListView):
     paginate_by = 25
 
     def get_queryset(self):
-        rok_od, rok_do, tytul, sort, pokaz = _filter_params(
-            self.request.GET, self.metryka
-        )
-        qs = get_base_queryset_for_metryka(self.metryka, pokaz_puste_zrodla=pokaz)
-        qs = apply_filters(qs, rok_od, rok_do, tytul)
-        qs = apply_sorting(qs, sort, self.metryka)
+        f = _filter_params(self.request.GET, self.metryka)
+        qs = get_base_queryset_for_metryka(self.metryka, tryb_zrodla=f.tryb_zrodla)
+        qs = apply_filters(qs, f.rok_od, f.rok_do, f.tytul, f.charaktery)
+        qs = apply_sorting(qs, f.sort, self.metryka)
         return qs
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        rok_od, rok_do, tytul, sort, pokaz = _filter_params(
-            self.request.GET, self.metryka
-        )
+        f = _filter_params(self.request.GET, self.metryka)
         field = self.metryka.field_name
         context.update(
             {
                 "metryka": self.metryka,
                 "metryki": METRYKI,
                 "page_title": f"Rozbieżności: {self.metryka.label}",
-                "rok_od": rok_od,
-                "rok_do": rok_do,
-                "tytul": tytul,
-                "current_sort": sort,
-                "pokaz_puste_zrodla": pokaz,
+                "rok_od": f.rok_od,
+                "rok_do": f.rok_do,
+                "tytul": f.tytul,
+                "current_sort": f.sort,
+                "tryb_zrodla": f.tryb_zrodla,
+                "tryb_zrodla_choices": TRYB_ZRODLA_CHOICES,
+                "kasuj_przy_pustym_zrodle": f.kasuj_przy_pustym,
+                "wszystkie_charaktery": Charakter_Formalny.objects.order_by("nazwa"),
+                "wybrane_charaktery_ids": [c.pk for c in f.charaktery],
+                "charaktery_zawezone": bool(f.charaktery),
                 "field_name": field,
                 "field_label": self.metryka.label,
                 "annotated_field": f"punktacja_zrodla_{field}",
@@ -107,7 +128,7 @@ class RozbieznosciView(MetrykaMixin, GroupRequiredMixin, ListView):
                 "sort_field_desc": f"-{field}",
                 "sort_field_zrodla": f"punktacja_zrodla_{field}",
                 "sort_field_zrodla_desc": f"-punktacja_zrodla_{field}",
-                "filter_query_string": _query_string(rok_od, rok_do, tytul, pokaz),
+                "filter_query_string": _query_string(f),
             }
         )
         return context
@@ -139,10 +160,16 @@ class RozbieznosciView(MetrykaMixin, GroupRequiredMixin, ListView):
         if not frm.is_valid():
             return
         pk = frm.cleaned_data["_set"]
+        f = _filter_params(request.POST, self.metryka)
         IgnorowanaRozbieznosc.objects.filter(
             metryka=self.metryka.slug, rekord_id=pk
         ).delete()
-        updated, errors = ustaw_ze_zrodla([pk], self.metryka, user_id=request.user.id)
+        updated, errors = ustaw_ze_zrodla(
+            [pk],
+            self.metryka,
+            user_id=request.user.id,
+            kasuj_przy_pustym=f.kasuj_przy_pustym,
+        )
         if updated:
             messages.success(
                 request,
@@ -153,7 +180,9 @@ class RozbieznosciView(MetrykaMixin, GroupRequiredMixin, ListView):
         else:
             messages.info(
                 request,
-                f"Rekord (ID: {pk}): {self.metryka.label} bez zmian.",
+                f"Rekord (ID: {pk}): pominięty — źródło nie ma wartości "
+                f"{self.metryka.label} za dany rok (zaznacz „kasuj…”, aby "
+                f"wyczyścić wartość w pracy).",
             )
 
     def get(self, request, *args, **kwargs):
@@ -164,11 +193,11 @@ class RozbieznosciView(MetrykaMixin, GroupRequiredMixin, ListView):
             self._handle_set(request)
         if "_ignore" in request.POST:
             self._handle_ignore(request)
-        rok_od, rok_do, tytul, sort, pokaz = _filter_params(request.POST, self.metryka)
+        f = _filter_params(request.POST, self.metryka)
         url = reverse("rozbieznosci:index", kwargs={"metryka": self.metryka.slug})
-        qs = _query_string(rok_od, rok_do, tytul, pokaz)
-        if sort != DEFAULT_SORT:
-            qs = f"{qs}&sort={sort}" if qs else f"sort={sort}"
+        qs = _query_string(f)
+        if f.sort != DEFAULT_SORT:
+            qs = f"{qs}&sort={f.sort}" if qs else f"sort={f.sort}"
         target_url = f"{url}?{qs}" if qs else url
         if not url_has_allowed_host_and_scheme(
             url=target_url,
@@ -181,10 +210,10 @@ class RozbieznosciView(MetrykaMixin, GroupRequiredMixin, ListView):
 
 class RozbieznosciExportView(MetrykaMixin, GroupRequiredMixin, View):
     def get(self, request, *args, **kwargs):
-        rok_od, rok_do, tytul, sort, pokaz = _filter_params(request.GET, self.metryka)
-        qs = get_base_queryset_for_metryka(self.metryka, pokaz_puste_zrodla=pokaz)
-        qs = apply_filters(qs, rok_od, rok_do, tytul)
-        qs = apply_sorting(qs, sort, self.metryka)
+        f = _filter_params(request.GET, self.metryka)
+        qs = get_base_queryset_for_metryka(self.metryka, tryb_zrodla=f.tryb_zrodla)
+        qs = apply_filters(qs, f.rok_od, f.rok_do, f.tytul, f.charaktery)
+        qs = apply_sorting(qs, f.sort, self.metryka)
 
         field = self.metryka.field_name
         annotated = f"punktacja_zrodla_{field}"
@@ -197,27 +226,25 @@ class RozbieznosciExportView(MetrykaMixin, GroupRequiredMixin, View):
             [
                 "Tytuł",
                 "Rok",
-                "Źródło",
                 f"{label} pracy",
+                "Źródło",
                 f"{label} źródła",
-                "Ostatnio zmieniony",
             ]
         )
         for elem in qs:
             v = getattr(elem, field)
             vz = getattr(elem, annotated)
+            if elem.zrodlo_ma_wpis:
+                wartosc_zrodla = float(vz) if vz else 0
+            else:
+                wartosc_zrodla = f"brak wpisu za {elem.rok}"
             ws.append(
                 [
                     elem.tytul_oryginalny,
                     elem.rok,
-                    elem.zrodlo.nazwa if elem.zrodlo else "",
                     float(v) if v else 0,
-                    float(vz) if vz else 0,
-                    (
-                        elem.ostatnio_zmieniony.strftime("%Y-%m-%d %H:%M")
-                        if elem.ostatnio_zmieniony
-                        else ""
-                    ),
+                    elem.zrodlo.nazwa if elem.zrodlo else "",
+                    wartosc_zrodla,
                 ]
             )
 
@@ -229,7 +256,7 @@ class RozbieznosciExportView(MetrykaMixin, GroupRequiredMixin, View):
                 "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
             )
         )
-        filename = f"rozbieznosci_{self.metryka.slug}_{rok_od}_{rok_do}.xlsx"
+        filename = f"rozbieznosci_{self.metryka.slug}_{f.rok_od}_{f.rok_do}.xlsx"
         response["Content-Disposition"] = f'attachment; filename="{filename}"'
         vb = BytesIO()
         wb.save(vb)
@@ -238,12 +265,22 @@ class RozbieznosciExportView(MetrykaMixin, GroupRequiredMixin, View):
         return response
 
 
+def _komunikat_wynik(request, updated, errors, skipped):
+    """Spójny komunikat po akcji ustawiania: zaktualizowano/pominięto/błędy."""
+    msg = f"Zaktualizowano {updated} rekordów."
+    if skipped:
+        msg += f" Pominięto {skipped} (źródło bez wartości za dany rok)."
+    if errors:
+        msg += f" Błędy: {errors}."
+    (messages.warning if errors else messages.success)(request, msg)
+
+
 class UstawWszystkieView(MetrykaMixin, GroupRequiredMixin, View):
     confirm_template_name = "rozbieznosci/ustaw_wszystkie_confirm.html"
 
-    def _redirect_back(self, rok_od, rok_do, tytul, pokaz):
+    def _redirect_back(self, f):
         url = reverse("rozbieznosci:index", kwargs={"metryka": self.metryka.slug})
-        qs = _query_string(rok_od, rok_do, tytul, pokaz)
+        qs = _query_string(f)
         target_url = f"{url}?{qs}" if qs else url
         if not url_has_allowed_host_and_scheme(
             url=target_url,
@@ -254,42 +291,48 @@ class UstawWszystkieView(MetrykaMixin, GroupRequiredMixin, View):
         return HttpResponseRedirect(target_url)
 
     def get(self, request, *args, **kwargs):
-        rok_od, rok_do, tytul, sort, pokaz = _filter_params(request.GET, self.metryka)
-        qs = get_base_queryset_for_metryka(self.metryka, pokaz_puste_zrodla=pokaz)
-        qs = apply_filters(qs, rok_od, rok_do, tytul)
+        f = _filter_params(request.GET, self.metryka)
+        qs = get_base_queryset_for_metryka(self.metryka, tryb_zrodla=f.tryb_zrodla)
+        qs = apply_filters(qs, f.rok_od, f.rok_do, f.tytul, f.charaktery)
         count = qs.count()
         if count == 0:
             messages.warning(request, "Brak rekordów do aktualizacji.")
-            return self._redirect_back(rok_od, rok_do, tytul, pokaz)
+            return self._redirect_back(f)
         return render(
             request,
             self.confirm_template_name,
             {
                 "metryka": self.metryka,
-                "rok_od": rok_od,
-                "rok_do": rok_do,
-                "tytul": tytul,
-                "pokaz_puste_zrodla": pokaz,
+                "rok_od": f.rok_od,
+                "rok_do": f.rok_do,
+                "tytul": f.tytul,
+                "tryb_zrodla": f.tryb_zrodla,
+                "kasuj_przy_pustym_zrodle": f.kasuj_przy_pustym,
+                "wybrane_charaktery_ids": [c.pk for c in f.charaktery],
                 "count": count,
                 "field_label": self.metryka.label,
                 "use_celery": count >= OFFLOAD_TASKS_WITH_THIS_ELEMENTS_OR_MORE,
+                "filter_query_string": _query_string(f),
             },
         )
 
     def post(self, request, *args, **kwargs):
-        rok_od, rok_do, tytul, sort, pokaz = _filter_params(request.POST, self.metryka)
-        qs = get_base_queryset_for_metryka(self.metryka, pokaz_puste_zrodla=pokaz)
-        qs = apply_filters(qs, rok_od, rok_do, tytul)
+        f = _filter_params(request.POST, self.metryka)
+        qs = get_base_queryset_for_metryka(self.metryka, tryb_zrodla=f.tryb_zrodla)
+        qs = apply_filters(qs, f.rok_od, f.rok_do, f.tytul, f.charaktery)
         pks = list(qs.values_list("pk", flat=True))
         count = len(pks)
         if count == 0:
             messages.warning(request, "Brak rekordów do aktualizacji.")
-            return self._redirect_back(rok_od, rok_do, tytul, pokaz)
+            return self._redirect_back(f)
         if count >= OFFLOAD_TASKS_WITH_THIS_ELEMENTS_OR_MORE:
             from rozbieznosci.tasks import task_ustaw_ze_zrodla
 
             task = task_ustaw_ze_zrodla.delay(
-                pks, self.metryka.slug, user_id=request.user.id
+                pks,
+                self.metryka.slug,
+                user_id=request.user.id,
+                kasuj_przy_pustym=f.kasuj_przy_pustym,
             )
             return redirect(
                 reverse(
@@ -300,12 +343,14 @@ class UstawWszystkieView(MetrykaMixin, GroupRequiredMixin, View):
                     },
                 )
             )
-        updated, errors = ustaw_ze_zrodla(pks, self.metryka, user_id=request.user.id)
-        if errors:
-            messages.warning(request, f"Zaktualizowano {updated}. Błędy: {errors}.")
-        else:
-            messages.success(request, f"Zaktualizowano {updated} rekordów.")
-        return self._redirect_back(rok_od, rok_do, tytul, pokaz)
+        updated, errors = ustaw_ze_zrodla(
+            pks,
+            self.metryka,
+            user_id=request.user.id,
+            kasuj_przy_pustym=f.kasuj_przy_pustym,
+        )
+        _komunikat_wynik(request, updated, errors, count - updated - errors)
+        return self._redirect_back(f)
 
 
 class TaskStatusView(MetrykaMixin, GroupRequiredMixin, View):
@@ -330,11 +375,8 @@ class TaskStatusView(MetrykaMixin, GroupRequiredMixin, View):
             result = task.result
             updated = result.get("updated", 0)
             errors = result.get("errors", 0)
-            messages.success(
-                request,
-                f"Zaktualizowano {updated} rekordów."
-                + (f" Błędy: {errors}." if errors else ""),
-            )
+            total = result.get("total", updated + errors)
+            _komunikat_wynik(request, updated, errors, total - updated - errors)
             index = reverse("rozbieznosci:index", kwargs={"metryka": self.metryka.slug})
             if request.headers.get("HX-Request"):
                 resp = HttpResponse(status=200)

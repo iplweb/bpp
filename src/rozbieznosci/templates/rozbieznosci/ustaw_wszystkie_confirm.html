@@ -15,12 +15,22 @@
 
         <div class="callout warning">
             <p>
-                Operacja zaktualizuje wartość <strong>{{ field_label }}</strong>
-                w <strong>{{ count }}</strong>
-                {% if count == 1 %}rekordzie{% else %}rekordach{% endif %}
-                wydawnictw ciągłych — wartością ze źródła
-                (<em>Punktacja Źródła</em>).
+                Operacja przejdzie przez <strong>{{ count }}</strong>
+                {% if count == 1 %}rekord{% else %}rekordów{% endif %}
+                wydawnictw ciągłych i ustawi <strong>{{ field_label }}</strong>
+                wartością ze źródła (<em>Punktacja Źródła</em>).
             </p>
+            {% if kasuj_przy_pustym_zrodle %}
+            <p>
+                <strong>Uwaga:</strong> rekordy bez wartości w źródle
+                (0 / brak wpisu) zostaną <strong>wyczyszczone</strong> w pracy.
+            </p>
+            {% else %}
+            <p>
+                Rekordy bez wartości w źródle (0 / brak wpisu) zostaną
+                <strong>pominięte</strong> (nie kasujemy ich w pracy).
+            </p>
+            {% endif %}
             <p>
                 Filtry: rok od <strong>{{ rok_od }}</strong> do
                 <strong>{{ rok_do }}</strong>{% if tytul %},
@@ -43,14 +53,18 @@
             <input type="hidden" name="rok_od" value="{{ rok_od }}">
             <input type="hidden" name="rok_do" value="{{ rok_do }}">
             <input type="hidden" name="tytul" value="{{ tytul }}">
-            {% if pokaz_puste_zrodla %}
-            <input type="hidden" name="pokaz_puste_zrodla" value="1">
+            <input type="hidden" name="tryb_zrodla" value="{{ tryb_zrodla }}">
+            {% if kasuj_przy_pustym_zrodle %}
+            <input type="hidden" name="kasuj_przy_pustym_zrodle" value="1">
             {% endif %}
+            {% for cid in wybrane_charaktery_ids %}
+            <input type="hidden" name="charaktery_formalne" value="{{ cid }}">
+            {% endfor %}
             <button type="submit" class="button warning">
-                <span class="fi-check"></span> Tak, zaktualizuj {{ count }}
+                <span class="fi-check"></span> Tak, przejdź przez {{ count }}
                 {% if count == 1 %}rekord{% else %}rekordów{% endif %}
             </button>
-            <a href="{% url 'rozbieznosci:index' metryka=metryka.slug %}?rok_od={{ rok_od }}&rok_do={{ rok_do }}{% if tytul %}&tytul={{ tytul }}{% endif %}{% if pokaz_puste_zrodla %}&pokaz_puste_zrodla=1{% endif %}"
+            <a href="{% url 'rozbieznosci:index' metryka=metryka.slug %}{% if filter_query_string %}?{{ filter_query_string }}{% endif %}"
                class="button secondary">Anuluj</a>
         </form>
     </div>
