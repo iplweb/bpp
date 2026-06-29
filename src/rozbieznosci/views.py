@@ -167,6 +167,8 @@ class RozbieznosciView(MetrykaMixin, GroupRequiredMixin, ListView):
         rok_od, rok_do, tytul, sort, pokaz = _filter_params(request.POST, self.metryka)
         url = reverse("rozbieznosci:index", kwargs={"metryka": self.metryka.slug})
         qs = _query_string(rok_od, rok_do, tytul, pokaz)
+        if sort != DEFAULT_SORT:
+            qs = f"{qs}&sort={sort}" if qs else f"sort={sort}"
         return HttpResponseRedirect(f"{url}?{qs}" if qs else url)
 
 

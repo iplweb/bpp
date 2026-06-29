@@ -3,7 +3,7 @@
 {% block title %}Potwierdź aktualizację {{ field_label }}{% endblock %}
 
 {% block breadcrumbs %}
-    <li><a href="/">Strona główna</a></li>
+    {{ block.super }}
     <li><a href="{% url 'rozbieznosci:index' metryka=metryka.slug %}">Rozbieżności {{ field_label }}</a></li>
     <li class="current">Potwierdzenie</li>
 {% endblock %}

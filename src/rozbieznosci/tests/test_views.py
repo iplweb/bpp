@@ -43,6 +43,25 @@ def test_ignore_dodaje_per_metryka(client_with_group):
 
 
 @pytest.mark.django_db
+def test_post_set_zachowuje_sort_w_redirect(client_with_group):
+    """Po POST _set z sort!=DEFAULT_SORT redirect URL zawiera sort=."""
+    zrodlo = baker.make("bpp.Zrodlo")
+    baker.make("bpp.Punktacja_Zrodla", zrodlo=zrodlo, rok=2022, impact_factor="3.000")
+    wc = baker.make(
+        "bpp.Wydawnictwo_Ciagle", zrodlo=zrodlo, rok=2022, impact_factor="1.000"
+    )
+    url = reverse("rozbieznosci:index", kwargs={"metryka": "if"})
+    resp = client_with_group.post(
+        url,
+        {"_set": wc.pk, "sort": "rok", "rok_od": 2022, "rok_do": 2026},
+    )
+    assert resp.status_code in (301, 302)
+    assert "sort=rok" in resp.url
+    wc.refresh_from_db()
+    assert str(wc.impact_factor) == "3.000"
+
+
+@pytest.mark.django_db
 def test_get_z_set_nie_zmienia_stanu(client_with_group):
     """GET z parametrem _set nie może zmieniać stanu — get() jest side-effect-free."""
     zrodlo = baker.make("bpp.Zrodlo")
