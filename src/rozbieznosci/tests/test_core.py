@@ -238,3 +238,53 @@ def test_filtr_zera_respektuje_rok__ukryty():
         impact_factor="1.500",
     )
     assert wc not in list(get_base_queryset_for_metryka(m))
+
+
+@pytest.mark.django_db
+def test_rowne_wartosci_nie_sa_rozbieznoscia():
+    """Źródło i praca mają identyczny IF — to nie jest rozbieżność."""
+    m = METRYKI_BY_SLUG["if"]
+    wc = _wc_ze_zrodlem(
+        2023, praca_val="2.500", zrodlo_val="2.500", field="impact_factor"
+    )
+    assert wc not in list(get_base_queryset_for_metryka(m))
+
+
+@pytest.mark.django_db
+def test_kwartyl_oboje_null_nie_sa_rozbieznoscia():
+    """Źródło i praca mają kwartyl=None — oba NULL, brak rozbieżności.
+
+    NULL IS DISTINCT FROM NULL = FALSE, więc nie powinno trafić do listy
+    nawet przy pokaz_puste_zrodla=True.
+    """
+    m = METRYKI_BY_SLUG["kw_scopus"]
+    zrodlo = baker.make("bpp.Zrodlo")
+    baker.make("bpp.Punktacja_Zrodla", zrodlo=zrodlo, rok=2023, kwartyl_w_scopus=None)
+    wc = baker.make(
+        "bpp.Wydawnictwo_Ciagle", zrodlo=zrodlo, rok=2023, kwartyl_w_scopus=None
+    )
+    assert wc not in list(get_base_queryset_for_metryka(m, pokaz_puste_zrodla=True))
+
+
+@pytest.mark.django_db
+def test_kwartyl_null_zrodla_vs_wartosc_pracy_jest_rozbieznoscia():
+    """Źródło kwartyl=None, praca kwartyl=2 — jedna strona NULL = rozbieżność."""
+    m = METRYKI_BY_SLUG["kw_scopus"]
+    zrodlo = baker.make("bpp.Zrodlo")
+    baker.make("bpp.Punktacja_Zrodla", zrodlo=zrodlo, rok=2023, kwartyl_w_scopus=None)
+    wc = baker.make(
+        "bpp.Wydawnictwo_Ciagle", zrodlo=zrodlo, rok=2023, kwartyl_w_scopus=2
+    )
+    assert wc in list(get_base_queryset_for_metryka(m, pokaz_puste_zrodla=True))
+
+
+@pytest.mark.django_db
+def test_kwartyl_rowne_wartosci_nie_sa_rozbieznoscia():
+    """Źródło kwartyl=2, praca kwartyl=2 — równe wartości, brak rozbieżności."""
+    m = METRYKI_BY_SLUG["kw_scopus"]
+    zrodlo = baker.make("bpp.Zrodlo")
+    baker.make("bpp.Punktacja_Zrodla", zrodlo=zrodlo, rok=2023, kwartyl_w_scopus=2)
+    wc = baker.make(
+        "bpp.Wydawnictwo_Ciagle", zrodlo=zrodlo, rok=2023, kwartyl_w_scopus=2
+    )
+    assert wc not in list(get_base_queryset_for_metryka(m, pokaz_puste_zrodla=True))

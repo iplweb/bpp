@@ -38,15 +38,15 @@ def get_base_queryset_for_metryka(metryka, pokaz_puste_zrodla=False):
         .annotate(**{annotated: Subquery(ps_dla_roku.values(field)[:1])})
         .annotate(_ps_istnieje=Exists(ps_dla_roku))
         .filter(_ps_istnieje=True)
-        # Rok-zgodna rozbieżność: include rows where annotated differs from field.
-        # Używamy Q-filter zamiast exclude(), bo SQL NULL semantics sprawiają,
-        # że NOT (NULL = value) = NOT NULL = NULL (falsy w WHERE), co błędnie
-        # usuwałoby wiersze z annotated=NULL.  Obie strony mogą być NULL
-        # (kwartyle nullable), więc obsługujemy oba kierunki.
+        # Rok-zgodna rozbieżność: IS DISTINCT FROM semantics.
+        # NULL IS DISTINCT FROM NULL = FALSE (oba NULL = brak rozbieżności).
+        # Rozbieżność ⟺ dokładnie jedna strona NULL, ALBO obie non-NULL i różne.
+        # Nie używamy samego `Q(annotated__isnull=True)` — to łapałoby też
+        # przypadek (NULL, NULL), który jest poprawny (brak rozbieżności).
         .filter(
-            Q(**{f"{annotated}__isnull": True})
-            | Q(**{f"{field}__isnull": True})
-            | ~Q(**{annotated: F(field)})
+            (Q(**{f"{annotated}__isnull": True}) & Q(**{f"{field}__isnull": False}))
+            | (Q(**{f"{annotated}__isnull": False}) & Q(**{f"{field}__isnull": True}))
+            | ~Q(**{annotated: F(field)})  # oba non-NULL: różne wartości
         )
         .exclude(
             pk__in=IgnorowanaRozbieznosc.objects.filter(
@@ -102,11 +102,8 @@ def ustaw_ze_zrodla(pks, metryka, user_id=None):
             errors += 1
             continue
 
-        try:
-            punktacja = wc.punktacja_zrodla()
-        except Punktacja_Zrodla.DoesNotExist:
-            continue
-
+        punktacja = wc.punktacja_zrodla()
+        # punktacja_zrodla() zwraca None (nie rzuca) gdy brak PS dla roku
         if punktacja is None:
             continue
 
