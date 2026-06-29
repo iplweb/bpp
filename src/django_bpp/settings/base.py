@@ -436,6 +436,7 @@ INSTALLED_APPS = [
     "loginas",
     "rozbieznosci_if",
     "rozbieznosci_pk",
+    "rozbieznosci",
     "webmaster_verification",
     "favicon",
     "miniblog",
