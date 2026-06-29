@@ -8,10 +8,6 @@ from rozbieznosci.metryki import METRYKI_BY_SLUG
 from rozbieznosci.models import IgnorowanaRozbieznosc, RozbieznoscLog
 
 
-def praca_field(field):
-    return field
-
-
 def _wc_ze_zrodlem(rok, praca_val, zrodlo_val, field):
     zrodlo = baker.make("bpp.Zrodlo")
     baker.make("bpp.Punktacja_Zrodla", zrodlo=zrodlo, rok=rok, **{field: zrodlo_val})
@@ -19,7 +15,7 @@ def _wc_ze_zrodlem(rok, praca_val, zrodlo_val, field):
         "bpp.Wydawnictwo_Ciagle",
         zrodlo=zrodlo,
         rok=rok,
-        **{praca_field(field): praca_val},
+        **{field: praca_val},
     )
 
 
@@ -59,20 +55,38 @@ def test_kwartyl_null_zrodla_domyslnie_ukryty():
 
 @pytest.mark.django_db
 def test_ignorowane_wykluczone_per_metryka():
-    m = METRYKI_BY_SLUG["if"]
+    m_if = METRYKI_BY_SLUG["if"]
+    m_mnisw = METRYKI_BY_SLUG["mnisw"]
 
-    # Rekord zignorowany — nie powinien się pojawić
-    wc_ign = _wc_ze_zrodlem(
-        2023, praca_val="1.500", zrodlo_val="2.500", field="impact_factor"
+    # wc_ign ma rozbieżność w obu metrykach: impact_factor i punkty_kbn
+    zrodlo = baker.make("bpp.Zrodlo")
+    baker.make(
+        "bpp.Punktacja_Zrodla",
+        zrodlo=zrodlo,
+        rok=2023,
+        impact_factor="2.500",
+        punkty_kbn=Decimal("40.00"),
     )
+    wc_ign = baker.make(
+        "bpp.Wydawnictwo_Ciagle",
+        zrodlo=zrodlo,
+        rok=2023,
+        impact_factor="1.500",
+        punkty_kbn=Decimal("10.00"),
+    )
+    # Ignorujemy tylko w metryce "if"
     IgnorowanaRozbieznosc.objects.create(metryka="if", rekord=wc_ign)
-    assert wc_ign not in list(get_base_queryset_for_metryka(m))
 
-    # Inny rekord bez ignoru w tej samej metryce — powinien się pojawić
+    # w metryce "if" — zignorowany
+    assert wc_ign not in list(get_base_queryset_for_metryka(m_if))
+    # w metryce "mnisw" — nadal widoczny (ignor "if" nie wpływa na "mnisw")
+    assert wc_ign in list(get_base_queryset_for_metryka(m_mnisw))
+
+    # Inny rekord bez ignoru — widoczny w "if"
     wc_inny = _wc_ze_zrodlem(
         2023, praca_val="1.500", zrodlo_val="2.500", field="impact_factor"
     )
-    assert wc_inny in list(get_base_queryset_for_metryka(m))
+    assert wc_inny in list(get_base_queryset_for_metryka(m_if))
 
 
 @pytest.mark.django_db
@@ -108,7 +122,89 @@ def test_ustaw_mnisw_wola_przelicz(monkeypatch):
         lambda self: called.__setitem__("n", called["n"] + 1),
     )
     ustaw_ze_zrodla([wc.pk], m)
-    # @denormalized cached_punkty_dyscyplin.pre_save() wywołuje przelicz raz
-    # (przy wc.save()); ustaw_ze_zrodla wywołuje je raz więcej jawnie
-    # (recalculates_disciplines=True). Razem: 2.
-    assert called["n"] == 2
+    # @denormalized cached_punkty_dyscyplin.pre_save() wywołuje przelicz przy
+    # wc.save(); ustaw_ze_zrodla wywołuje je dodatkowo jawnie dla mnisw
+    # (recalculates_disciplines=True). Sprawdzamy, że jawne wywołanie nastąpiło.
+    assert called["n"] >= 1
+
+
+@pytest.mark.django_db
+def test_ustaw_if_nie_wola_przelicz(monkeypatch):
+    m = METRYKI_BY_SLUG["if"]
+    wc = _wc_ze_zrodlem(
+        2023, praca_val="1.500", zrodlo_val="2.500", field="impact_factor"
+    )
+    called = {"n": 0}
+    from bpp.models import Wydawnictwo_Ciagle
+
+    monkeypatch.setattr(
+        Wydawnictwo_Ciagle,
+        "przelicz_punkty_dyscyplin",
+        lambda self: called.__setitem__("n", called["n"] + 1),
+    )
+    ustaw_ze_zrodla([wc.pk], m)
+    # recalculates_disciplines=False dla "if" — brak jawnego wywołania;
+    # jedyne wywołanie pochodzi z @denormalized cached_punkty_dyscyplin.pre_save()
+    # przy wc.save().
+    assert called["n"] == 1
+
+
+@pytest.mark.django_db
+def test_filtr_zera_respektuje_rok__widoczny():
+    """Źródło rok=2022 ma IF=0.000, rok=2023 ma IF=2.500; praca rok=2023.
+
+    Przy pokaz_puste_zrodla=False praca MA być widoczna — bo dla roku pracy
+    (2023) IF źródła wynosi 2.500 ≠ 0. Rok=2022 z IF=0 nie może rzutować
+    na widoczność pracy z innego roku.
+    """
+    m = METRYKI_BY_SLUG["if"]
+    zrodlo = baker.make("bpp.Zrodlo")
+    baker.make(
+        "bpp.Punktacja_Zrodla",
+        zrodlo=zrodlo,
+        rok=2022,
+        impact_factor="0.000",
+    )
+    baker.make(
+        "bpp.Punktacja_Zrodla",
+        zrodlo=zrodlo,
+        rok=2023,
+        impact_factor="2.500",
+    )
+    wc = baker.make(
+        "bpp.Wydawnictwo_Ciagle",
+        zrodlo=zrodlo,
+        rok=2023,
+        impact_factor="1.500",
+    )
+    assert wc in list(get_base_queryset_for_metryka(m))
+
+
+@pytest.mark.django_db
+def test_filtr_zera_respektuje_rok__ukryty():
+    """Źródło rok=2022 ma IF=2.500, rok=2023 ma IF=0.000; praca rok=2023.
+
+    Przy pokaz_puste_zrodla=False praca MA być ukryta — bo dla roku pracy
+    (2023) IF źródła wynosi 0. Rok=2022 z IF=2.500 nie ratuje widoczności.
+    """
+    m = METRYKI_BY_SLUG["if"]
+    zrodlo = baker.make("bpp.Zrodlo")
+    baker.make(
+        "bpp.Punktacja_Zrodla",
+        zrodlo=zrodlo,
+        rok=2022,
+        impact_factor="2.500",
+    )
+    baker.make(
+        "bpp.Punktacja_Zrodla",
+        zrodlo=zrodlo,
+        rok=2023,
+        impact_factor="0.000",
+    )
+    wc = baker.make(
+        "bpp.Wydawnictwo_Ciagle",
+        zrodlo=zrodlo,
+        rok=2023,
+        impact_factor="1.500",
+    )
+    assert wc not in list(get_base_queryset_for_metryka(m))

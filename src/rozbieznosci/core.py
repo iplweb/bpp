@@ -26,9 +26,20 @@ def get_base_queryset_for_metryka(metryka, pokaz_puste_zrodla=False):
     annotated = f"punktacja_zrodla_{field}"
     src = f"zrodlo__punktacja_zrodla__{field}"
 
+    # Warunki roku i pokaz_puste_zrodla muszą być w jednym filter() — to
+    # gwarantuje wspólny JOIN i sprawdzenie zera/NULL DLA ROKU PRACY, a nie
+    # dla dowolnego roku źródła (osobny exclude() tworzyłby niezależny NOT
+    # EXISTS bez warunku roku, łapiąc wiersze z innych lat).
+    join_conditions: dict = {"zrodlo__punktacja_zrodla__rok": F("rok")}
+    if not pokaz_puste_zrodla:
+        if metryka.is_quartile:
+            join_conditions[f"{src}__isnull"] = False
+        else:
+            join_conditions[f"{src}__gt"] = 0
+
     qs = (
         Wydawnictwo_Ciagle.objects.exclude(zrodlo=None)
-        .filter(zrodlo__punktacja_zrodla__rok=F("rok"))
+        .filter(**join_conditions)
         .exclude(**{src: F(field)})
         .exclude(
             pk__in=IgnorowanaRozbieznosc.objects.filter(
@@ -38,12 +49,6 @@ def get_base_queryset_for_metryka(metryka, pokaz_puste_zrodla=False):
         .select_related("zrodlo")
         .annotate(**{annotated: F(src)})
     )
-
-    if not pokaz_puste_zrodla:
-        if metryka.is_quartile:
-            qs = qs.exclude(**{f"{src}__isnull": True})
-        else:
-            qs = qs.exclude(**{src: 0})
 
     return qs
 
