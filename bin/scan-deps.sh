@@ -189,8 +189,16 @@ if $RUN_GRYPE; then
         :
     fi
 
+    # Grype przy starcie sprawdza świeżość bazy CVE i — gdy jest starsza
+    # niż 5 dni — pobiera nową (~1.7 GB) z grype.anchore.io. NIE tłumimy
+    # stderr: tam leci pasek postępu pobierania (oraz ewentualny timeout
+    # CDN). Wcześniej `>/dev/null 2>&1` ukrywał i pobieranie, i błędy, więc
+    # skan wyglądał na zawieszony. Raport JSON i tak trafia do --file, więc
+    # wyciszamy tylko (pusty) stdout, a postęp/logi/błędy są widoczne.
+    echo -e "  ${BLUE}(jeśli baza CVE jest nieaktualna, Grype pobierze" \
+        "~1.7 GB — postęp poniżej)${NC}"
     set +e
-    grype "${GRYPE_ARGS[@]}" >/dev/null 2>&1
+    grype "${GRYPE_ARGS[@]}" >/dev/null
     grype_exit=$?
     set -e
 

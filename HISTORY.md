@@ -2,6 +2,59 @@
 
 <!-- towncrier release notes start -->
 
+## bpp 202606.1394 (2026-06-29)
+
+### Naprawione
+
+- Dodawanie publikacji po DOI z CrossRef nie kończy się już błędem serwera
+  (HTTP 500) dla rekordów z nietypowymi danymi licencji lub brakującym
+  tytułem kontenera (FD#323).
+- Import z CrossRef poprawnie dopasowuje czasopismo, którego tytuł zawiera znak „&" lub inne encje HTML (np. „Leukemia & Lymphoma") — pole źródła nie zostaje już puste (FD#321).
+- Kopiowanie rekordu przyciskiem „toż" nie kończy się już błędem serwera dla rekordów powiązanych z PBN — kopia powstaje bez przeniesienia unikalnego identyfikatora PBN (FD#328).
+- Panel administracyjny nie pobiera już fontów z ``fonts.googleapis.com``
+  przy każdym wyświetleniu strony. Rodziny używane przez przełącznik
+  motywów (Inter, Open Sans, Roboto, Lato, Source Sans Pro) są teraz
+  hostowane lokalnie jako pliki ``.woff2`` w ``static/bpp/fonts/``
+  (podzbiory ``latin`` i ``latin-ext``, z polskimi znakami diakrytycznymi).
+
+  Usuwa to zewnętrzną zależność sieciową: przeglądarka nie łączy się już z
+  serwerami Google, a awaria DNS nie blokuje ładowania panelu (wcześniej
+  ``@import`` z Google potrafił wieszać renderowanie i powodować timeouty
+  testów przeglądarkowych). Ładowanie admina jest też szybsze i nie
+  wycieka informacji o korzystaniu z systemu do podmiotów trzecich.
+- Redakcja monografii na poziomie 1 wydawcy dla autorów z dyscyplin HST (w rekordach mieszanych HST/nie-HST) jest punktowana poprawnie — z mnożnikiem ×2 (40 pkt zamiast 20) (FD#230).
+
+### Usprawnienie
+
+- Funkcje „rozbieżności punktacji IF" i „rozbieżności punktacji MNiSW" zostały
+  połączone w jedną opcję „rozbieżności punktacji/kwartyli", rozszerzoną o
+  kwartyle Scopus i WoS. Domyślnie pomijane są rekordy, w których źródło ma
+  wartość 0 lub brak — można je odsłonić przełącznikiem. Poprawiono też
+  wykrywanie rozbieżności: poprzednio mogło pomijać prace, gdy punktacja źródła
+  z innego roku przypadkiem zgadzała się z wartością pracy.
+- Importer publikacji: autodetekcja języka pracy przypisuje teraz język także
+  dla pozycji w językach spoza pary polski/angielski (np. niemiecki, francuski,
+  rosyjski, ukraiński) — o ile w Danych systemowych istnieje odpowiedni język z
+  ustawionym skrótem CrossRef. Wcześniej taki rekord bywał wykrywany, ale język
+  pozostawał pusty (FD#389).
+- Rozbudowano listę rozbieżności punktacji. Zmieniono kolejność kolumn (tytuł,
+  rok, wartość z pracy, źródło, wartość ze źródła) i usunięto kolumnę „ostatnio
+  zmieniony". Filtr stanu źródła ma teraz trzy tryby: „standardowy", „pokazuj
+  również zerowe rekordy" oraz „pokazuj wyłącznie zerowe rekordy", gdzie „zerowe"
+  oznacza źródło z wartością 0 / pustym kwartylem albo bez wpisu punktacji za rok
+  pracy. Wykrywane są też prace, których źródło nie ma w ogóle wpisu za dany rok,
+  a praca ma niezerową wartość — dotyczy to wszystkich metryk (Impact Factor,
+  MNiSW, kwartyle Scopus i WoS); takie rekordy są wyraźnie oznaczane.
+
+  Dodano filtr po charakterze formalnym (lista z polami wyboru, domyślnie
+  wszystkie zaznaczone). Domyślnie operacja „ustaw wg źródła" / „ustaw wszystkie
+  wg źródła" NIE kasuje wartości w pracy, gdy źródło jest puste — takie rekordy są
+  pomijane, a komunikat podaje, ile pominięto. Nowy przełącznik „W przypadku braku
+  kwartyla/punktacji w źródle, kasuj kwartyl/punktację w pracy" (domyślnie
+  wyłączony) pozwala świadomie wyczyścić wartość w pracy. Te same zmiany objęły
+  eksport XLSX.
+
+
 ## bpp 202606.1393 (2026-06-24)
 
 ### Naprawione
