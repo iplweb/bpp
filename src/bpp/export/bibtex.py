@@ -113,7 +113,7 @@ def generate_bibtex_key(wydawnictwo) -> str:
     return "_".join(key_parts)
 
 
-def wydawnictwo_ciagle_to_bibtex(wydawnictwo_ciagle) -> str:
+def wydawnictwo_ciagle_to_bibtex(wydawnictwo_ciagle) -> str:  # noqa: C901
     """
     Convert Wydawnictwo_Ciagle instance to BibTeX format.
 
@@ -188,7 +188,7 @@ def wydawnictwo_ciagle_to_bibtex(wydawnictwo_ciagle) -> str:
     return bibtex_entry
 
 
-def wydawnictwo_zwarte_to_bibtex(wydawnictwo_zwarte) -> str:
+def wydawnictwo_zwarte_to_bibtex(wydawnictwo_zwarte) -> str:  # noqa: C901
     """
     Convert Wydawnictwo_Zwarte instance to BibTeX format.
 
@@ -375,7 +375,7 @@ def patent_to_bibtex(patent) -> str:
     return bibtex_entry
 
 
-def praca_doktorska_to_bibtex(praca_doktorska) -> str:
+def praca_doktorska_to_bibtex(praca_doktorska) -> str:  # noqa: C901
     """
     Convert Praca_Doktorska instance to BibTeX format.
 
@@ -445,7 +445,7 @@ def praca_doktorska_to_bibtex(praca_doktorska) -> str:
     return bibtex_entry
 
 
-def praca_habilitacyjna_to_bibtex(praca_habilitacyjna) -> str:
+def praca_habilitacyjna_to_bibtex(praca_habilitacyjna) -> str:  # noqa: C901
     """
     Convert Praca_Habilitacyjna instance to BibTeX format.
 

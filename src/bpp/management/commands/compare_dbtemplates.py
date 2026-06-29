@@ -84,7 +84,7 @@ class Command(BaseCommand):
             help="Only display names of changed templates (no diff output)",
         )
 
-    def handle(self, *args, **options):
+    def handle(self, *args, **options):  # noqa: C901
         if Template is None:
             raise CommandError(
                 "dbtemplates is not installed or not properly configured. "
@@ -149,7 +149,7 @@ class Command(BaseCommand):
                             )
                         )
                     except OSError as e:
-                        raise CommandError(f"Error writing to file: {e}")
+                        raise CommandError(f"Error writing to file: {e}") from e
                 else:
                     self.stdout.write(output_content)
         elif output_lines:
@@ -165,7 +165,7 @@ class Command(BaseCommand):
                         )
                     )
                 except OSError as e:
-                    raise CommandError(f"Error writing to file: {e}")
+                    raise CommandError(f"Error writing to file: {e}") from e
             else:
                 self.stdout.write(output_content)
 
@@ -224,7 +224,7 @@ class Command(BaseCommand):
         # Check if templates are identical
         return db_lines != fs_lines
 
-    def compare_template(self, db_template, options):
+    def compare_template(self, db_template, options):  # noqa: C901
         """Compare a single template and return diff output"""
         fs_content = self.get_filesystem_template_content(db_template.name)
 

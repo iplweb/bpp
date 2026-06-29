@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 
 
 @register.filter
-def parse_historia_komunikatow(text):
+def parse_historia_komunikatow(text):  # noqa: C901
     """
     Parse historia komunikatów field into a structured format.
     Returns a list of message blocks with date and content.
