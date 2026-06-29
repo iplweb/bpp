@@ -155,3 +155,51 @@ nullable.
 ```
 17 passed in 2.71s (src/rozbieznosci/)
 ```
+
+---
+
+## Fix-report — Task 3 Krok 3 (2026-06-29 — IS DISTINCT FROM + martwy except)
+
+### Status
+
+DONE. SHA `c7568a8db`. 21/21 testów zielonych.
+
+### FIX 1 — poprawne IS DISTINCT FROM w filtrze rozbieżności
+
+Poprzedni filtr:
+```python
+Q(annotated__isnull=True) | Q(field__isnull=True) | ~Q(annotated=F(field))
+```
+łapał przypadek (NULL, NULL) jako rozbieżność — `Q(annotated__isnull=True)`
+odpala niezależnie od wartości `field`. NULL IS DISTINCT FROM NULL = FALSE
+(oba puste = brak rozbieżności), więc dla kwartyli przy `pokaz_puste_zrodla=True`
+praca z kwartyl=None i PS kwartyl=None błędnie trafiała do listy rozbieżności.
+
+Nowa forma:
+```python
+(Q(annotated__isnull=True) & Q(field__isnull=False))
+| (Q(annotated__isnull=False) & Q(field__isnull=True))
+| ~Q(annotated=F(field))  # oba non-NULL: różne wartości
+```
+Rozbieżność ⟺ dokładnie jedna strona NULL, ALBO obie non-NULL i różne.
+
+### FIX 2 — usunięcie martwego `except Punktacja_Zrodla.DoesNotExist`
+
+`wc.punktacja_zrodla()` nie rzuca `Punktacja_Zrodla.DoesNotExist` — łapie ją
+wewnętrznie i zwraca `None`. Blok try/except był martwym kodem (silent swallow
+wyjątku który nigdy nie dochodził). Zastąpiony komentarzem wyjaśniającym
+kontrakt metody. Import `Punktacja_Zrodla` pozostawiony — używany w
+`get_base_queryset_for_metryka` (linia 33).
+
+### Nowe testy (+4)
+
+- `test_rowne_wartosci_nie_sa_rozbieznoscia` — IF (2.500, 2.500) → brak (FIX 3)
+- `test_kwartyl_oboje_null_nie_sa_rozbieznoscia` — (None, None) → brak
+- `test_kwartyl_null_zrodla_vs_wartosc_pracy_jest_rozbieznoscia` — (None, 2) → rozbieżność
+- `test_kwartyl_rowne_wartosci_nie_sa_rozbieznoscia` — (2, 2) → brak
+
+### Wynik testów
+
+```
+21 passed in 2.73s (src/rozbieznosci/)
+```
