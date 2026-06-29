@@ -1,0 +1,45 @@
+{% load humanize %}
+
+{% if not task_ready %}
+    <!-- Task in progress -->
+    <div class="callout warning">
+        <h4><span class="fi-loop"></span> Zadanie w trakcie wykonywania</h4>
+
+        {% if info %}
+            <div class="progress large" role="progressbar"
+                 aria-valuenow="{{ info.progress|default:0 }}"
+                 aria-valuemin="0" aria-valuemax="100">
+                <div class="progress-meter"
+                     style="width: {{ info.progress|default:0 }}%">
+                    <p class="progress-meter-text">{{ info.progress|default:0 }}%</p>
+                </div>
+            </div>
+
+            <p><strong>Postep:</strong>
+                {{ info.current|default:0|intcomma }} / {{ info.total|intcomma }} rekordow
+            </p>
+            <p><strong>Zaktualizowano:</strong> {{ info.updated|default:0|intcomma }}</p>
+            {% if info.errors %}
+                <p><strong>Bledy:</strong> {{ info.errors|intcomma }}</p>
+            {% endif %}
+        {% else %}
+            <p>Inicjalizacja...</p>
+        {% endif %}
+
+        <p><em>Status odświeża się automatycznie co 5 sekund.</em></p>
+    </div>
+
+{% elif error %}
+    <!-- Task failed -->
+    <div class="callout alert">
+        <h4><span class="fi-x"></span> Wystapil blad</h4>
+        <pre>{{ error }}</pre>
+    </div>
+
+{% else %}
+    <!-- Task completed successfully - should redirect, but fallback display -->
+    <div class="callout success">
+        <h4><span class="fi-check"></span> Aktualizacja zakonczona pomyslnie!</h4>
+        <p>Przekierowywanie...</p>
+    </div>
+{% endif %}

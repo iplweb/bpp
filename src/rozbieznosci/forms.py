@@ -4,6 +4,7 @@ from django import forms
 
 DEFAULT_ROK_OD = 2022
 CURRENT_YEAR = datetime.now().year
+OFFLOAD_TASKS_WITH_THIS_ELEMENTS_OR_MORE = 20
 
 
 class SetForm(forms.Form):
