@@ -217,6 +217,7 @@ urlpatterns = (
         path("rozbieznosci_dyscyplin/", include("rozbieznosci_dyscyplin.urls")),
         path("rozbieznosci_if/", include("rozbieznosci_if.urls")),
         path("rozbieznosci_pk/", include("rozbieznosci_pk.urls")),
+        path("rozbieznosci/", include("rozbieznosci.urls")),
         path("komparator-pbn-udzialy/", include("komparator_pbn_udzialy.urls")),
         path("komparator-publikacji-pbn/", include("komparator_publikacji_pbn.urls")),
         path("komparator-zrodel-pbn/", include("pbn_komparator_zrodel.urls")),
