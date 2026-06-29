@@ -85,15 +85,20 @@ def _auto_match_single_author(session, author_data, order, year):
     - zapisany_jako domyślnie pre-fillowane z family+given dostawcy,
     - bulk_create kandydatów do ImportedAuthor_Candidate (UI modala).
     """
-    family = author_data.get("family", "")
-    given = author_data.get("given", "")
+    # Defense-in-depth: przycinamy do limitow kolumn, zeby zaden wpis (np.
+    # zle sparsowane pole author) nie wywalil calego importu przez
+    # StringDataRightTruncation (Freshdesk #344). Root-cause naprawiony jest
+    # w _parse_authors; tu jest siatka bezpieczenstwa.
+    family = (author_data.get("family") or "")[:255]
+    given = (author_data.get("given") or "")[:255]
+    orcid = (author_data.get("orcid") or "")[:50]
     imported = ImportedAuthor.objects.create(
         session=session,
         order=order,
         family_name=family,
         given_name=given,
-        orcid=author_data.get("orcid", ""),
-        zapisany_jako=f"{family} {given}".strip(),
+        orcid=orcid,
+        zapisany_jako=f"{family} {given}".strip()[:512],
     )
 
     result = Komparator.porownaj_author(author_data)

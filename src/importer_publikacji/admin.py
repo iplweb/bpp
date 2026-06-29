@@ -2,6 +2,7 @@
 
 import html
 import json
+import logging
 
 from django.contrib import admin
 from django.utils.html import format_html
@@ -10,6 +11,8 @@ from django.utils.safestring import mark_safe
 from bpp.admin.core import DynamicAdminFilterMixin
 
 from .models import ImportedAuthor, ImportSession
+
+logger = logging.getLogger(__name__)
 
 
 @admin.register(ImportSession)
@@ -230,6 +233,14 @@ class ImportSessionAdmin(DynamicAdminFilterMixin, admin.ModelAdmin):
                         obj.created_record_content_type.model,
                     )
             except Exception:
+                logger.warning(
+                    "Nie udalo sie zaladowac created_record dla sesji %s "
+                    "(record id=%s, ct=%s)",
+                    obj.pk,
+                    obj.created_record_id,
+                    obj.created_record_content_type,
+                    exc_info=True,
+                )
                 return format_html(
                     "ID: {} ({}) - nie można załadować",
                     obj.created_record_id,
