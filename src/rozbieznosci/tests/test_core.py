@@ -181,6 +181,36 @@ def test_filtr_zera_respektuje_rok__widoczny():
 
 
 @pytest.mark.django_db
+def test_rozbieznosc_respektuje_rok_pracy():
+    """Bug-proof: źródło ma IF=1.500 w roku 2022 (= wartość pracy) i IF=2.500
+    w roku 2023 (= rok pracy, inna wartość).  Praca rok=2023 IF=1.500 różni się
+    od źródła 2023 (2.500) — to realna rozbieżność.  Równa wartość w INNYM roku
+    (2022) nie może jej ukryć.
+    """
+    m = METRYKI_BY_SLUG["if"]
+    zrodlo = baker.make("bpp.Zrodlo")
+    baker.make(
+        "bpp.Punktacja_Zrodla",
+        zrodlo=zrodlo,
+        rok=2022,
+        impact_factor="1.500",
+    )
+    baker.make(
+        "bpp.Punktacja_Zrodla",
+        zrodlo=zrodlo,
+        rok=2023,
+        impact_factor="2.500",
+    )
+    wc = baker.make(
+        "bpp.Wydawnictwo_Ciagle",
+        zrodlo=zrodlo,
+        rok=2023,
+        impact_factor="1.500",
+    )
+    assert wc in list(get_base_queryset_for_metryka(m))
+
+
+@pytest.mark.django_db
 def test_filtr_zera_respektuje_rok__ukryty():
     """Źródło rok=2022 ma IF=2.500, rok=2023 ma IF=0.000; praca rok=2023.
 

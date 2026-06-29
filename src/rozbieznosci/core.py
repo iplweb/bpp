@@ -1,4 +1,4 @@
-from django.db.models import F
+from django.db.models import Exists, F, OuterRef, Q, Subquery
 
 from bpp.models import Punktacja_Zrodla, Wydawnictwo_Ciagle
 from rozbieznosci.models import IgnorowanaRozbieznosc, RozbieznoscLog
@@ -24,31 +24,43 @@ def get_valid_sort_fields(metryka):
 def get_base_queryset_for_metryka(metryka, pokaz_puste_zrodla=False):
     field = metryka.field_name
     annotated = f"punktacja_zrodla_{field}"
-    src = f"zrodlo__punktacja_zrodla__{field}"
 
-    # Warunki roku i pokaz_puste_zrodla muszą być w jednym filter() — to
-    # gwarantuje wspólny JOIN i sprawdzenie zera/NULL DLA ROKU PRACY, a nie
-    # dla dowolnego roku źródła (osobny exclude() tworzyłby niezależny NOT
-    # EXISTS bez warunku roku, łapiąc wiersze z innych lat).
-    join_conditions: dict = {"zrodlo__punktacja_zrodla__rok": F("rok")}
-    if not pokaz_puste_zrodla:
-        if metryka.is_quartile:
-            join_conditions[f"{src}__isnull"] = False
-        else:
-            join_conditions[f"{src}__gt"] = 0
-
+    # Subquery zwraca wartość pola z Punktacja_Zrodla dla roku pracy (rok-zgodna).
+    # Exists sprawdza, czy wiersz PS dla roku pracy w ogóle istnieje — potrzebny
+    # osobno, bo Subquery zwraca NULL zarówno gdy wiersz nie istnieje, jak i gdy
+    # kwartyl jest NULL (nullable pole).  Dzięki temu exclude(annotated__isnull)
+    # i exclude(annotated=0) operują wyłącznie na wartościach z roku pracy.
+    ps_dla_roku = Punktacja_Zrodla.objects.filter(
+        zrodlo=OuterRef("zrodlo"), rok=OuterRef("rok")
+    )
     qs = (
         Wydawnictwo_Ciagle.objects.exclude(zrodlo=None)
-        .filter(**join_conditions)
-        .exclude(**{src: F(field)})
+        .annotate(**{annotated: Subquery(ps_dla_roku.values(field)[:1])})
+        .annotate(_ps_istnieje=Exists(ps_dla_roku))
+        .filter(_ps_istnieje=True)
+        # Rok-zgodna rozbieżność: include rows where annotated differs from field.
+        # Używamy Q-filter zamiast exclude(), bo SQL NULL semantics sprawiają,
+        # że NOT (NULL = value) = NOT NULL = NULL (falsy w WHERE), co błędnie
+        # usuwałoby wiersze z annotated=NULL.  Obie strony mogą być NULL
+        # (kwartyle nullable), więc obsługujemy oba kierunki.
+        .filter(
+            Q(**{f"{annotated}__isnull": True})
+            | Q(**{f"{field}__isnull": True})
+            | ~Q(**{annotated: F(field)})
+        )
         .exclude(
             pk__in=IgnorowanaRozbieznosc.objects.filter(
                 metryka=metryka.slug
             ).values_list("rekord_id", flat=True)
         )
         .select_related("zrodlo")
-        .annotate(**{annotated: F(src)})
     )
+
+    if not pokaz_puste_zrodla:
+        if metryka.is_quartile:
+            qs = qs.exclude(**{f"{annotated}__isnull": True})
+        else:
+            qs = qs.exclude(**{annotated: 0})
 
     return qs
 
