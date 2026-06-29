@@ -1,5 +1,4 @@
 from io import BytesIO
-from urllib.parse import quote
 
 from braces.views import GroupRequiredMixin
 from celery.result import AsyncResult
@@ -7,6 +6,7 @@ from django.contrib import messages
 from django.http import Http404, HttpResponse, HttpResponseRedirect
 from django.shortcuts import redirect, render
 from django.urls import reverse
+from django.utils.http import urlencode
 from django.views import View
 from django.views.generic import ListView
 from openpyxl import Workbook
@@ -59,16 +59,16 @@ def _filter_params(source, metryka):
 
 
 def _query_string(rok_od, rok_do, tytul, pokaz):
-    params = []
+    params = {}
     if rok_od != DEFAULT_ROK_OD:
-        params.append(f"rok_od={rok_od}")
+        params["rok_od"] = rok_od
     if rok_do != CURRENT_YEAR:
-        params.append(f"rok_do={rok_do}")
+        params["rok_do"] = rok_do
     if tytul:
-        params.append(f"tytul={quote(tytul)}")
+        params["tytul"] = tytul
     if pokaz:
-        params.append("pokaz_puste_zrodla=1")
-    return "&".join(params)
+        params["pokaz_puste_zrodla"] = "1"
+    return urlencode(params)
 
 
 class RozbieznosciView(MetrykaMixin, GroupRequiredMixin, ListView):
