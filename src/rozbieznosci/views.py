@@ -6,7 +6,7 @@ from django.contrib import messages
 from django.http import Http404, HttpResponse, HttpResponseRedirect
 from django.shortcuts import redirect, render
 from django.urls import reverse
-from django.utils.http import urlencode
+from django.utils.http import urlencode, url_has_allowed_host_and_scheme
 from django.views import View
 from django.views.generic import ListView
 from openpyxl import Workbook
@@ -169,7 +169,14 @@ class RozbieznosciView(MetrykaMixin, GroupRequiredMixin, ListView):
         qs = _query_string(rok_od, rok_do, tytul, pokaz)
         if sort != DEFAULT_SORT:
             qs = f"{qs}&sort={sort}" if qs else f"sort={sort}"
-        return HttpResponseRedirect(f"{url}?{qs}" if qs else url)
+        target_url = f"{url}?{qs}" if qs else url
+        if not url_has_allowed_host_and_scheme(
+            url=target_url,
+            allowed_hosts={request.get_host()},
+            require_https=request.is_secure(),
+        ):
+            target_url = url
+        return HttpResponseRedirect(target_url)
 
 
 class RozbieznosciExportView(MetrykaMixin, GroupRequiredMixin, View):
