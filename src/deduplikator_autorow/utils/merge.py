@@ -2,6 +2,7 @@
 Funkcje scalania duplikatów autorów.
 """
 
+import logging
 import sys
 import traceback
 
@@ -10,8 +11,11 @@ from django.contrib.contenttypes.models import ContentType
 from django.db import transaction
 
 from bpp.models import Autor
+from bpp.util import zaloguj_polkniety_wyjatek
 
 from .analysis import analiza_duplikatow
+
+logger = logging.getLogger(__name__)
 
 
 def _assign_discipline_if_missing(
@@ -568,4 +572,9 @@ def scal_autorow(
     except Autor.DoesNotExist as e:
         return {"success": False, "error": f"Nie znaleziono autora o ID: {str(e)}"}
     except Exception as e:
+        zaloguj_polkniety_wyjatek(
+            "Scalanie duplikatu autora — nieoczekiwany błąd operacji scalania",
+            logger=logger,
+            do_rollbar=True,
+        )
         return {"success": False, "error": f"Nieoczekiwany błąd: {str(e)}"}

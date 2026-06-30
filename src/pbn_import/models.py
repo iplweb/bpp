@@ -1,7 +1,13 @@
+import logging
+
 from django.contrib.auth import get_user_model
 from django.contrib.contenttypes.models import ContentType
 from django.db import models
 from django.utils import timezone
+
+from bpp.util import zaloguj_polkniety_wyjatek
+
+logger = logging.getLogger(__name__)
 
 User = get_user_model()
 
@@ -146,7 +152,12 @@ class ImportSession(models.Model):
 
             except Exception:
                 # Błąd połączenia z brokerem - nie możemy zweryfikować
-                pass
+                zaloguj_polkniety_wyjatek(
+                    "Błąd weryfikacji statusu zadania Celery "
+                    f"(task_id={self.task_id}) dla sesji importu PBN",
+                    logger=logger,
+                    do_rollbar=True,
+                )
 
         return False, None
 

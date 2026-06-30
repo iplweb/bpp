@@ -10,6 +10,8 @@ from django.core.management import call_command
 from django.db import transaction
 from django.utils import timezone
 
+from bpp.util import zaloguj_polkniety_wyjatek
+
 from ..models import ImportLog, ImportSession
 from .base import CancelledException
 from .step_definitions import get_step_definitions
@@ -267,6 +269,12 @@ class ImportManager:
             )
 
         except Exception as e:
+            zaloguj_polkniety_wyjatek(
+                f"Błąd wykonania kroku importu PBN '{step_config['name']}' "
+                f"(sesja #{self.session.id})",
+                logger=logger,
+                do_rollbar=False,  # Rollbar już w handle_error
+            )
             return self._handle_step_error(
                 e, step_config, results, has_errors, critical_error, tb_string
             )
@@ -420,6 +428,11 @@ class ImportManager:
             return self._finalize_import(results, has_errors, critical_error, tb_string)
 
         except Exception as e:
+            zaloguj_polkniety_wyjatek(
+                f"Krytyczny błąd importu PBN (sesja #{self.session.id})",
+                logger=logger,
+                do_rollbar=False,  # Rollbar już w handle_error
+            )
             return self._handle_critical_error(e)
 
     def _handle_critical_error(self, e):

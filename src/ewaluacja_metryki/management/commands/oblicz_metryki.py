@@ -1,11 +1,15 @@
+import logging
 from decimal import Decimal
 
 from django.core.management.base import BaseCommand
 
 from bpp.models import Uczelnia
+from bpp.util import zaloguj_polkniety_wyjatek
 from ewaluacja_liczba_n.models import IloscUdzialowDlaAutoraZaCalosc
 from ewaluacja_liczba_n.utils import oblicz_liczby_n_dla_ewaluacji_2022_2025
 from ewaluacja_metryki.utils import generuj_metryki
+
+logger = logging.getLogger(__name__)
 
 
 class Command(BaseCommand):
@@ -79,6 +83,12 @@ class Command(BaseCommand):
                     self.style.SUCCESS("✓ Przeliczono liczby N pomyślnie")
                 )
             except Exception as e:
+                zaloguj_polkniety_wyjatek(
+                    "Przeliczanie liczby N dla uczelni przed obliczaniem "
+                    "metryk nie powiodło się — kontynuuję obliczanie metryk",
+                    logger=logger,
+                    do_rollbar=False,
+                )
                 self.stdout.write(
                     self.style.ERROR(f"✗ Błąd przy przeliczaniu liczby N: {str(e)}")
                 )

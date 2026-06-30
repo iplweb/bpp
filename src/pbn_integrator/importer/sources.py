@@ -1,5 +1,6 @@
 """Journal/source handling for PBN importer."""
 
+import logging
 import os
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -15,9 +16,11 @@ from bpp.models import (
     Rodzaj_Zrodla,
     Zrodlo,
 )
-from bpp.util import pbar
+from bpp.util import pbar, zaloguj_polkniety_wyjatek
 from pbn_api.models import Journal
 from pbn_integrator.utils import integruj_zrodla
+
+logger = logging.getLogger(__name__)
 
 MAX_SLUG_RETRIES = 10
 
@@ -94,6 +97,11 @@ def _process_journal_thread_safe(journal_id, rodzaj_periodyk, dyscypliny_cache):
         dopisz_jedno_zrodlo(pbn_journal, rodzaj_periodyk, dyscypliny_cache)
         return {"success": True, "journal_id": journal_id, "error": None}
     except Exception as e:
+        zaloguj_polkniety_wyjatek(
+            f"Błąd podczas importu źródła (Journal pk={journal_id}) z PBN",
+            logger=logger,
+            do_rollbar=True,
+        )
         return {"success": False, "journal_id": journal_id, "error": str(e)}
     finally:
         close_old_connections()

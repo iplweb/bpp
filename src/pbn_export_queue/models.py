@@ -1,3 +1,4 @@
+import logging
 import sys
 import traceback
 from enum import Enum
@@ -11,6 +12,7 @@ from django.db.models import PositiveIntegerField
 from django.urls import reverse
 from django.utils import timezone
 
+from bpp.util import zaloguj_polkniety_wyjatek
 from django_bpp.settings.base import AUTH_USER_MODEL
 from pbn_api.exceptions import (
     AccessDeniedException,
@@ -25,6 +27,8 @@ from pbn_api.exceptions import (
     StatementsResendFailedException,
     WillNotExportError,
 )
+
+logger = logging.getLogger(__name__)
 
 
 class PBN_Export_QueueManager(models.Manager):
@@ -375,6 +379,12 @@ class PBN_Export_Queue(models.Model):
                 force_upload=True,
             )
         except Exception as exc:
+            zaloguj_polkniety_wyjatek(
+                "Błąd podczas wysyłki rekordu do PBN z kolejki eksportu "
+                f"(PBN_Export_Queue pk={self.pk})",
+                logger=logger,
+                do_rollbar=False,  # Rollbar dla nieobsłużonych w _handle_pbn_exception
+            )
             return self._handle_pbn_exception(exc)
 
         if sent_data is None:

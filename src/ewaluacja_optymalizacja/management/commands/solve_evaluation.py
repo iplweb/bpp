@@ -7,10 +7,13 @@ so the file must remain a module (not a package) and must continue to
 expose a ``Command`` class.
 """
 
+import logging
+
 from django.core.management import BaseCommand
 from django.db import transaction
 
 from bpp.models import Dyscyplina_Naukowa, Uczelnia
+from bpp.util import zaloguj_polkniety_wyjatek
 from ewaluacja_liczba_n.models import LiczbaNDlaUczelni
 from ewaluacja_optymalizacja.core import solve_discipline
 from ewaluacja_optymalizacja.solve_helpers import (
@@ -24,6 +27,8 @@ from ewaluacja_optymalizacja.solve_helpers import (
     save_optimization_to_database,
     save_results_to_json_file,
 )
+
+logger = logging.getLogger(__name__)
 
 
 class Command(BaseCommand):
@@ -174,6 +179,12 @@ class Command(BaseCommand):
                 algorithm_mode=algorithm_mode,
             )
         except Exception as e:
+            zaloguj_polkniety_wyjatek(
+                f"Optymalizacja ewaluacji dla dyscypliny '{dyscyplina}' "
+                "nie powiodła się",
+                logger=logger,
+                do_rollbar=False,
+            )
             self.stdout.write(self.style.ERROR(f"Optimization failed: {e}"))
             return
 

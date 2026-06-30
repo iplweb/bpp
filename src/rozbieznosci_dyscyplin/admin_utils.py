@@ -1,12 +1,16 @@
+import logging
+
+from django.contrib.admin import SimpleListFilter
 from django.core.cache import cache
 from django.core.paginator import Paginator
 from django.db import connection
 from django.db.models import Q
 
-from django.contrib.admin import SimpleListFilter
-
 from bpp.admin.filters import SimpleNotNullFilter
 from bpp.models import Uczelnia
+from bpp.util import zaloguj_polkniety_wyjatek
+
+logger = logging.getLogger(__name__)
 
 
 class CachingPaginator(Paginator):
@@ -47,10 +51,15 @@ class CachingPaginator(Paginator):
                         self._count = self.object_list.count()
                     cache.set(key, self._count, 3600)
 
-            except BaseException:
+            except Exception:
                 # AttributeError if object_list has no count() method.
                 # TypeError if object_list.count() requires arguments
                 # (i.e. is of type list).
+                zaloguj_polkniety_wyjatek(
+                    "Liczenie obiektów w CachingPaginator "
+                    "(fallback do len(object_list))",
+                    logger=logger,
+                )
                 self._count = len(self.object_list)
         return self._count
 

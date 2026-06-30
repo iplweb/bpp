@@ -1,3 +1,4 @@
+import logging
 import os
 import sys
 
@@ -20,6 +21,7 @@ from bpp.core import zgloszenia_publikacji_emails
 from bpp.models import Typ_Odpowiedzialnosci, Uczelnia
 from bpp.models.wydawca import Wydawca
 from bpp.models.wydawnictwo_zwarte import Wydawnictwo_Zwarte
+from bpp.util import zaloguj_polkniety_wyjatek
 from bpp.views.mixins import UczelniaSettingRequiredMixin
 from import_common.normalization import normalize_tytul_publikacji
 from pbn_api.models.publication import (
@@ -42,6 +44,8 @@ from zglos_publikacje.models import (
     Zgloszenie_Publikacji_Zalacznik,
     skroc_nazwe_pliku,
 )
+
+logger = logging.getLogger(__name__)
 
 
 class Sukces(TemplateView):
@@ -95,7 +99,13 @@ def _resolve_qss_value(value_str):
             return None, None
         instance = model_class.objects.get(pk=pk)
         return instance, ct
-    except (ContentType.DoesNotExist, Exception):
+    except ContentType.DoesNotExist:
+        return None, None
+    except Exception:
+        zaloguj_polkniety_wyjatek(
+            f"Rozwiązywanie wartości QuerySetSequenceSelect2 (ct_id={ct_id}, pk={pk})",
+            logger=logger,
+        )
         return None, None
 
 

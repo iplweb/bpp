@@ -1,3 +1,4 @@
+import logging
 import sys
 
 import rollbar
@@ -9,12 +10,15 @@ from django.db.models import Count, Q
 from django.shortcuts import get_object_or_404, redirect, render
 
 from bpp.models import Rekord, Rodzaj_Zrodla, Wydawnictwo_Ciagle, Zrodlo
+from bpp.util import zaloguj_polkniety_wyjatek
 from pbn_api.const import ACTIVE, DELETED
 from pbn_api.models import Journal
 from pbn_export_queue.models import PBN_Export_Queue
 
 from .forms import PrzeMapowanieZrodlaForm
 from .models import PrzeMapowanieZrodla
+
+logger = logging.getLogger(__name__)
 
 
 def find_by_issn(journal_skasowane, exclude_id=None):
@@ -568,6 +572,12 @@ def przemapuj_zrodlo(request, zrodlo_id):  # noqa: C901
                                 )
                                 sukces_pbn += 1
                             except Exception as e:
+                                zaloguj_polkniety_wyjatek(
+                                    f"Dodawanie rekordu do kolejki eksportu PBN "
+                                    f"przy przemapowaniu źródła PBN "
+                                    f"(rekord pk={original_rekord.pk})",
+                                    logger=logger,
+                                )
                                 bledy_pbn.append(
                                     f"Rekord {original_rekord.pk}: {str(e)}"
                                 )

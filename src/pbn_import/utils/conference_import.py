@@ -1,8 +1,13 @@
 """Conference import utilities"""
 
+import logging
+
+from bpp.util import zaloguj_polkniety_wyjatek
 from pbn_integrator.utils import pobierz_konferencje
 
 from .base import ImportStepBase
+
+logger = logging.getLogger(__name__)
 
 
 class ConferenceImporter(ImportStepBase):
@@ -31,6 +36,11 @@ class ConferenceImporter(ImportStepBase):
             self.log("success", "Conferences imported successfully")
 
         except Exception as e:
+            zaloguj_polkniety_wyjatek(
+                "Nie udało się zaimportować konferencji z PBN",
+                logger=logger,
+                do_rollbar=False,  # Rollbar już w handle_error
+            )
             self.handle_error(e, "Nie udało się zaimportować konferencji")
         finally:
             self.clear_subtask_progress()

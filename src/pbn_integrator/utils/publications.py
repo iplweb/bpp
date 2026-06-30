@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import TYPE_CHECKING
 
@@ -9,7 +10,7 @@ from tqdm import tqdm
 
 from bpp.const import PBN_MIN_ROK
 from bpp.models import Rekord
-from bpp.util import pbar
+from bpp.util import pbar, zaloguj_polkniety_wyjatek
 from pbn_api.const import ACTIVE
 from pbn_api.exceptions import BrakIDPracyPoStroniePBN, HttpException
 from pbn_api.models import Publication, PublikacjaInstytucji_V2
@@ -31,6 +32,8 @@ from pbn_integrator.utils.threaded_page_getter import (
 
 if TYPE_CHECKING:
     from pbn_api.client import PBNClient
+
+logger = logging.getLogger(__name__)
 
 
 class PublikacjeInstytucjiGetter(ThreadedPageGetter):
@@ -418,6 +421,11 @@ def _download_and_import_single_publication(
     except BrakIDPracyPoStroniePBN:
         return (pbn_uid_id, False, "Publikacja nie istnieje w PBN")
     except Exception as e:
+        zaloguj_polkniety_wyjatek(
+            f"Błąd podczas pobierania i importu publikacji PBN {pbn_uid_id} do BPP",
+            logger=logger,
+            do_rollbar=True,
+        )
         return (pbn_uid_id, False, str(e))
 
 

@@ -1,9 +1,14 @@
+import logging
+
 from django.contrib import admin
 
 from bpp.admin.helpers.pbn_api.gui import sprobuj_wyslac_do_pbn_gui
+from bpp.util import zaloguj_polkniety_wyjatek
 from pbn_api.admin.base import BasePBNAPIAdminNoReadonly
 from pbn_api.admin.widgets import JSONWithActionsWidget
 from pbn_api.models import SentData
+
+logger = logging.getLogger(__name__)
 
 
 @admin.register(SentData)
@@ -84,7 +89,13 @@ class SentDataAdmin(BasePBNAPIAdminNoReadonly):
         if obj.exception:
             try:
                 return obj.exception.split('"details":')[1][:-3]
-            except BaseException:
+            except Exception:
+                zaloguj_polkniety_wyjatek(
+                    f"Nie udało się wyłuskać 'details' z pola exception "
+                    f"obiektu SentData pk={obj.pk} — pokazuję surowy tekst",
+                    logger=logger,
+                    do_rollbar=True,
+                )
                 return obj.exception
 
     exception_details.short_description = "Opis problemu"

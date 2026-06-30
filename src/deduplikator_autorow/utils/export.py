@@ -2,6 +2,7 @@
 Funkcje eksportu duplikatów do plików.
 """
 
+import logging
 from collections import Counter
 from io import BytesIO
 
@@ -9,8 +10,14 @@ from django.contrib.sites.models import Site
 from openpyxl.styles import Font
 from openpyxl.workbook import Workbook
 
-from bpp.util import worksheet_columns_autosize, worksheet_create_table
+from bpp.util import (
+    worksheet_columns_autosize,
+    worksheet_create_table,
+    zaloguj_polkniety_wyjatek,
+)
 from deduplikator_autorow.models import DuplicateCandidate
+
+logger = logging.getLogger(__name__)
 
 
 def _get_site_domain():
@@ -18,7 +25,13 @@ def _get_site_domain():
     try:
         current_site = Site.objects.get_current()
         return f"https://{current_site.domain}"
-    except BaseException:
+    except Exception:
+        zaloguj_polkniety_wyjatek(
+            "Pobieranie bieżącej domeny serwisu (Site) przy eksporcie "
+            "duplikatów do XLSX — używam domeny domyślnej",
+            logger=logger,
+            do_rollbar=True,
+        )
         return "https://bpp.iplweb.pl"
 
 

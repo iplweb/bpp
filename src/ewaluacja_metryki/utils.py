@@ -5,6 +5,7 @@ from django.db import transaction
 from django.db.models import Q, Sum
 
 from bpp.models import Autor_Dyscyplina
+from bpp.util import zaloguj_polkniety_wyjatek
 
 from .models import MetrykaAutora
 
@@ -437,7 +438,13 @@ def _process_single_author(
                 processed=processed,
             )
         except Exception:
-            pass  # Ignore errors in progress reporting
+            # Ignore errors in progress reporting
+            zaloguj_polkniety_wyjatek(
+                "Wywołanie progress_callback przy obliczaniu metryk autora "
+                f"(idx={idx}/{total}) nie powiodło się",
+                logger=logger,
+                do_rollbar=True,
+            )
 
     try:
         with transaction.atomic():
