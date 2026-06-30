@@ -1,6 +1,6 @@
 """Testy charakteryzujące widok ``przemapuj_prace``.
 
-Pinują bieżące zachowanie PRZED refaktorem (zdjęcie ``# noqa: C901``).
+Pinują bieżące zachowanie PRZED refaktorem (zdjęcie ``C901``).
 Pokrywają wszystkie gałęzie: GET, POST/preview, POST/confirm (valid +
 invalid + wyjątek w transakcji) oraz POST bez znanego przycisku.
 """

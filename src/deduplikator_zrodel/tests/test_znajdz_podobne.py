@@ -1,7 +1,7 @@
 """Charakterystyczne testy dla `znajdz_podobne_zrodla`.
 
 Funkcja buduje QuerySet kandydatów na duplikaty danego źródła. Testy pinują
-obecne zachowanie filtrów (przed refaktorem zdejmującym # noqa: C901):
+obecne zachowanie filtrów (przed refaktorem zdejmującym C901):
 
 - kandydat MUSI mieć powiązane wydawnictwo ciągłe (pub_count > 0),
 - własne źródło jest zawsze wykluczone,

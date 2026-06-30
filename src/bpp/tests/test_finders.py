@@ -1,7 +1,7 @@
 """Charakteryzacyjne testy dla bpp.finders.get_files.
 
 Pinują OBECNE zachowanie przeszukiwania storage (filesystem walk),
-aby umożliwić bezpieczny refactor (zdjęcie # noqa: C901).
+aby umożliwić bezpieczny refactor (zdjęcie C901).
 """
 
 from django.core.files.storage import FileSystemStorage

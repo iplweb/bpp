@@ -2,7 +2,7 @@
 
 Pinują AKTUALNE zachowanie search_author_by_lastname oraz
 znajdz_pierwszego_autora_z_duplikatami przed refaktoryzacją (zdjęcie
-# noqa: C901). Skupiają się na obserwowalnym kontrakcie zwracanych wartości
+C901). Skupiają się na obserwowalnym kontrakcie zwracanych wartości
 (Scientist albo None) oraz na gałęziach wykluczania i wczesnych zwrotów.
 """
 

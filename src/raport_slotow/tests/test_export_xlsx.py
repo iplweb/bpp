@@ -2,7 +2,7 @@
 
 Pinują OBECNE zachowanie generatora XLSX (openpyxl): wiersze opisu,
 nagłówek, wiersze danych, wiersz sumy (footer), zdefiniowana tabela
-i autofiltr. Umożliwiają bezpieczny refactor (zdjęcie # noqa: C901).
+i autofiltr. Umożliwiają bezpieczny refactor (zdjęcie C901).
 
 Nie wymagają bazy danych — django_tables2.Table budowany jest z listy
 słowników.

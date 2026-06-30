@@ -1,7 +1,7 @@
 """Charakteryzacyjne testy dla pbn_extras.parse_historia_komunikatow.
 
 Pinują OBECNE zachowanie parsera tekstu historii komunikatów PBN, aby
-umożliwić bezpieczny refactor (zdjęcie # noqa: C901).
+umożliwić bezpieczny refactor (zdjęcie C901).
 """
 
 from datetime import datetime

@@ -2,7 +2,7 @@
 Testy charakteryzujące (pinning) zachowanie widoku przemapuj_zrodlo.
 
 Utrwalają zachowanie ścieżek confirm/preview/typ_wyboru oraz walidacji przed
-refaktoryzacją zdejmującą # noqa: C901. Testy MUSZĄ przechodzić przeciw kodowi
+refaktoryzacją zdejmującą C901. Testy MUSZĄ przechodzić przeciw kodowi
 PRZED refaktoryzacją.
 """
 

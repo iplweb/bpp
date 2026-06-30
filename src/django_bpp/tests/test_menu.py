@@ -1,7 +1,7 @@
 """Charakteryzacyjne testy dla django_bpp.menu.CustomMenu.init_with_context.
 
 Pinują OBECNE zachowanie budowania menu admina zależnie od grup/uprawnień
-użytkownika, aby umożliwić bezpieczny refactor (zdjęcie # noqa: C901).
+użytkownika, aby umożliwić bezpieczny refactor (zdjęcie C901).
 
 Zachowane quirki (NIE są naprawiane w refaktorze):
 - użytkownik bez grup i nie-superuser → IndexError (usuwanie z pustego

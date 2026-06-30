@@ -2,7 +2,7 @@
 Testy charakteryzujące (pinning) zachowanie funkcji znajdz_podobne_zrodla.
 
 Celem tych testów jest UTRWALENIE obecnego zachowania scoringu źródeł przed
-refaktoryzacją zdejmującą # noqa: C901. Pinujemy dla reprezentatywnych wejść:
+refaktoryzacją zdejmującą C901. Pinujemy dla reprezentatywnych wejść:
 - do której kategorii (najlepsze/dobre/akceptowalne) trafia dopasowanie,
 - jaki ma typ dopasowania (reason) oraz dokładny score,
 - kolejność i obcinanie wyników do max_results.

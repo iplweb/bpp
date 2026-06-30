@@ -2,7 +2,7 @@
 
 Pinują BIEŻĄCE zachowanie funkcji aktualizującej liczbę cytowań / DOI /
 PubMed ID z danych klienta WoS — bazą pod behavior-preserving refactor
-(zdjęcie # noqa: C901). Mapowanie kluczy (zachowane):
+(zdjęcie C901). Mapowanie kluczy (zachowane):
 
     item["timesCited"] -> obj.liczba_cytowan
     item["pmid"]       -> obj.pubmed_id

@@ -1,7 +1,7 @@
 """Charakteryzacyjne testy dla scal_autora.
 
 Pinują AKTUALNE zachowanie funkcji scalania duplikatu autora na głównego
-autora przed refaktoryzacją (zdjęcie # noqa: C901). Pokrywają gałęzie
+autora przed refaktoryzacją (zdjęcie C901). Pokrywają gałęzie
 napędzające złożoność: przenoszenie poszczególnych typów relacji (ciągłe,
 zwarte, patenty, prace dokt./hab.), transfer dyscyplin, kolizję istniejącej
 publikacji, usuwanie dyscypliny przy braku u głównego, kolejkę PBN i

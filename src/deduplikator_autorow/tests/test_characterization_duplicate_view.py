@@ -1,6 +1,6 @@
 """Testy charakteryzujące ``duplicate_authors_view``.
 
-Pinują bieżące zachowanie PRZED refaktorem (zdjęcie ``# noqa: C901``).
+Pinują bieżące zachowanie PRZED refaktorem (zdjęcie ``C901``).
 Pokrywają: brak skanu (running / brak), pusty pending, ścieżkę nawigacji,
 wyszukiwanie po nazwisku (z wynikami / bez / skip_count poza zakresem),
 filtr confidence_band (high/low) oraz allow_merge_all / low_confidence_names.
