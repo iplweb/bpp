@@ -10,6 +10,7 @@ INSTALLED_APPS = [
     "channels",
     "channels_broadcast",
     "live_operations",
+    "tests",
 ]
 
 DATABASES = {
