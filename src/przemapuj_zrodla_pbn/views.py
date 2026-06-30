@@ -206,7 +206,109 @@ def find_journals_by_trigram(title, exclude_existing=True, min_similarity=0.5):
     )
 
 
-def znajdz_podobne_zrodla(journal_skasowane, max_results=10):  # noqa: C901
+def _dodaj_issn_dopasowania(
+    matches, nazwa_do_wyszukania, name_attr, has_mnisw, bucket, max_results, seen_ids
+):
+    """Krok ISSN/e-ISSN: rozdziel na (ISSN+NAZWA) i (sam ISSN) i wrzuć do koszyka.
+
+    - ISSN+NAZWA (score 1.0): "najlepsze" gdy ma mniswId, inaczej "dobre".
+    - sam ISSN (score 0.9): zawsze "dobre".
+    """
+    issn_nazwa = []
+    issn_only = []
+    for obj in matches:
+        if obj.pk in seen_ids:
+            continue
+        nazwa_obj = getattr(obj, name_attr)
+        if nazwa_do_wyszukania and nazwa_obj.lower().startswith(
+            nazwa_do_wyszukania.lower()
+        ):
+            issn_nazwa.append(obj)
+        else:
+            issn_only.append(obj)
+
+    for obj in issn_nazwa[:max_results]:
+        seen_ids.add(obj.pk)
+        item = (obj, "ISSN+NAZWA", 1.0)
+        if has_mnisw(obj):
+            bucket["najlepsze"].append(item)
+        else:
+            bucket["dobre"].append(item)
+
+    for obj in issn_only[:max_results]:
+        seen_ids.add(obj.pk)
+        bucket["dobre"].append((obj, "ISSN", 0.9))
+
+
+def _dodaj_prefix_dopasowania(matches, has_mnisw, issn_match, bucket, seen_ids):
+    """Krok PREFIX (score 0.8): "najlepsze" tylko gdy ISSN się zgadza i jest
+    mniswId, w przeciwnym razie "dobre"."""
+    for obj in matches:
+        if obj.pk in seen_ids:
+            continue
+        seen_ids.add(obj.pk)
+        item = (obj, "PREFIX", 0.8)
+        if issn_match(obj) and has_mnisw(obj):
+            bucket["najlepsze"].append(item)
+        else:
+            bucket["dobre"].append(item)
+
+
+def _dodaj_similarity_dopasowania(matches, has_mnisw, bucket, seen_ids):
+    """Krok SIMILARITY: "dobre" gdy ma mniswId i podobieństwo > 0.7, inaczej
+    "akceptowalne"."""
+    for obj in matches:
+        if obj.pk in seen_ids:
+            continue
+        seen_ids.add(obj.pk)
+        podobienstwo = getattr(obj, "similarity", 0.5)
+        item = (obj, "SIMILARITY", podobienstwo)
+        if has_mnisw(obj) and podobienstwo > 0.7:
+            bucket["dobre"].append(item)
+        else:
+            bucket["akceptowalne"].append(item)
+
+
+def _przetworz_strone(
+    *,
+    bucket,
+    nazwa_do_wyszukania,
+    name_attr,
+    has_mnisw,
+    issn_match,
+    issn_matches,
+    finder_prefix,
+    finder_trigram,
+    max_results,
+):
+    """Wykonaj trzy kroki scoringu (ISSN, PREFIX, SIMILARITY) dla jednej tabeli."""
+    seen_ids = set()
+    _dodaj_issn_dopasowania(
+        issn_matches,
+        nazwa_do_wyszukania,
+        name_attr,
+        has_mnisw,
+        bucket,
+        max_results,
+        seen_ids,
+    )
+    if nazwa_do_wyszukania:
+        _dodaj_prefix_dopasowania(
+            finder_prefix(nazwa_do_wyszukania)[:max_results],
+            has_mnisw,
+            issn_match,
+            bucket,
+            seen_ids,
+        )
+        _dodaj_similarity_dopasowania(
+            finder_trigram(nazwa_do_wyszukania)[:max_results],
+            has_mnisw,
+            bucket,
+            seen_ids,
+        )
+
+
+def znajdz_podobne_zrodla(journal_skasowane, max_results=10):
     """
     Znajduje podobne źródła dla skasowanego czasopisma w PBN.
     Szuka w DWÓCH tabelach: Zrodlo (źródła w BPP) i Journal (źródła PBN które NIE są w BPP).
@@ -236,168 +338,58 @@ def znajdz_podobne_zrodla(journal_skasowane, max_results=10):  # noqa: C901
         pass
 
     # CZĘŚĆ 1: SZUKANIE W TABELI ZRODLO (źródła już w BPP)
-    znalezione_zrodla_ids = set()
+    def zrodlo_has_mnisw(zrodlo):
+        return bool(zrodlo.pbn_uid and zrodlo.pbn_uid.mniswId)
 
-    # 1.1. Szukaj po ISSN/e-ISSN w Zrodlo
-    # Pobierz wszystkie aby znaleźć te które mają pasującą nazwę
-    issn_matches = find_by_issn(journal_skasowane, exclude_id=zrodlo_skasowane_id)
+    def zrodlo_issn_match(zrodlo):
+        # PREFIX może być "najlepsze" TYLKO gdy ISSN się zgadza i mamy
+        # skasowane źródło w BPP do porównania.
+        if not (zrodlo_skasowane and journal_skasowane):
+            return False
+        return bool(
+            (journal_skasowane.issn and zrodlo.issn == journal_skasowane.issn)
+            or (journal_skasowane.eissn and zrodlo.e_issn == journal_skasowane.eissn)
+        )
 
-    # Najpierw zbierz te które mają pasującą nazwę + ISSN
-    issn_nazwa_matches_zrodla = []
-    issn_only_matches_zrodla = []
-
-    for zrodlo in issn_matches:
-        if zrodlo.pk not in znalezione_zrodla_ids:
-            # Sprawdź czy nazwa też się zgadza
-            if nazwa_do_wyszukania and zrodlo.nazwa.lower().startswith(
-                nazwa_do_wyszukania.lower()
-            ):
-                issn_nazwa_matches_zrodla.append(zrodlo)
-            else:
-                issn_only_matches_zrodla.append(zrodlo)
-
-    # Dodaj najpierw te z pasującą nazwą (najlepsze dopasowania)
-    for zrodlo in issn_nazwa_matches_zrodla[:max_results]:
-        znalezione_zrodla_ids.add(zrodlo.pk)
-        item = (zrodlo, "ISSN+NAZWA", 1.0)
-        if zrodlo.pbn_uid and zrodlo.pbn_uid.mniswId:
-            results["zrodla_bpp"]["najlepsze"].append(item)
-        else:
-            results["zrodla_bpp"]["dobre"].append(item)
-
-    # Potem dodaj te z samym ISSN (dobre dopasowania)
-    for zrodlo in issn_only_matches_zrodla[:max_results]:
-        znalezione_zrodla_ids.add(zrodlo.pk)
-        item = (zrodlo, "ISSN", 0.9)
-        results["zrodla_bpp"]["dobre"].append(item)
-
-    # 1.2. Szukaj po prefiksie nazwy w Zrodlo
-    if nazwa_do_wyszukania:
-        prefix_matches = find_by_name_prefix(
-            nazwa_do_wyszukania, exclude_id=zrodlo_skasowane_id
-        )[:max_results]
-
-        for zrodlo in prefix_matches:
-            if zrodlo.pk not in znalezione_zrodla_ids:
-                znalezione_zrodla_ids.add(zrodlo.pk)
-                item = (zrodlo, "PREFIX", 0.8)
-
-                # PREFIX może być najlepsze TYLKO jeśli ISSN się zgadza
-                issn_match = False
-                if zrodlo_skasowane and journal_skasowane:
-                    if (
-                        journal_skasowane.issn and zrodlo.issn == journal_skasowane.issn
-                    ) or (
-                        journal_skasowane.eissn
-                        and zrodlo.e_issn == journal_skasowane.eissn
-                    ):
-                        issn_match = True
-
-                if issn_match and zrodlo.pbn_uid and zrodlo.pbn_uid.mniswId:
-                    results["zrodla_bpp"]["najlepsze"].append(item)
-                else:
-                    results["zrodla_bpp"]["dobre"].append(item)
-
-    # 1.3. Szukaj po podobieństwie w Zrodlo
-    if nazwa_do_wyszukania:
-        similarity_matches = find_by_trigram(
-            nazwa_do_wyszukania, exclude_id=zrodlo_skasowane_id, min_similarity=0.5
-        )[:max_results]
-
-        for zrodlo in similarity_matches:
-            if zrodlo.pk not in znalezione_zrodla_ids:
-                znalezione_zrodla_ids.add(zrodlo.pk)
-                podobienstwo = getattr(zrodlo, "similarity", 0.5)
-                item = (zrodlo, "SIMILARITY", podobienstwo)
-
-                if zrodlo.pbn_uid and zrodlo.pbn_uid.mniswId and podobienstwo > 0.7:
-                    results["zrodla_bpp"]["dobre"].append(item)
-                else:
-                    results["zrodla_bpp"]["akceptowalne"].append(item)
+    _przetworz_strone(
+        bucket=results["zrodla_bpp"],
+        nazwa_do_wyszukania=nazwa_do_wyszukania,
+        name_attr="nazwa",
+        has_mnisw=zrodlo_has_mnisw,
+        issn_match=zrodlo_issn_match,
+        issn_matches=find_by_issn(journal_skasowane, exclude_id=zrodlo_skasowane_id),
+        finder_prefix=lambda nazwa: find_by_name_prefix(
+            nazwa, exclude_id=zrodlo_skasowane_id
+        ),
+        finder_trigram=lambda nazwa: find_by_trigram(
+            nazwa, exclude_id=zrodlo_skasowane_id, min_similarity=0.5
+        ),
+        max_results=max_results,
+    )
 
     # CZĘŚĆ 2: SZUKANIE W TABELI JOURNAL (źródła PBN które NIE są w BPP)
-    znalezione_journal_ids = set()
+    def journal_has_mnisw(journal):
+        return bool(journal.mniswId)
 
-    # 2.1. Szukaj po ISSN/e-ISSN w Journal
-    # Pobierz wszystkie aby znaleźć te które mają pasującą nazwę
-    journal_issn_matches = find_journals_by_issn(journal_skasowane)
+    def journal_issn_match(journal):
+        if not journal_skasowane:
+            return False
+        return bool(
+            (journal_skasowane.issn and journal.issn == journal_skasowane.issn)
+            or (journal_skasowane.eissn and journal.eissn == journal_skasowane.eissn)
+        )
 
-    # Najpierw zbierz te które mają pasującą nazwę + ISSN
-    issn_nazwa_matches = []
-    issn_only_matches = []
-
-    for journal in journal_issn_matches:
-        if journal.pk not in znalezione_journal_ids:
-            # Sprawdź czy nazwa też się zgadza
-            if nazwa_do_wyszukania and journal.title.lower().startswith(
-                nazwa_do_wyszukania.lower()
-            ):
-                issn_nazwa_matches.append(journal)
-            else:
-                issn_only_matches.append(journal)
-
-    # Dodaj najpierw te z pasującą nazwą (najlepsze dopasowania)
-    for journal in issn_nazwa_matches[:max_results]:
-        znalezione_journal_ids.add(journal.pk)
-        item = (journal, "ISSN+NAZWA", 1.0)
-        if journal.mniswId:
-            results["journale_pbn"]["najlepsze"].append(item)
-        else:
-            results["journale_pbn"]["dobre"].append(item)
-
-    # Potem dodaj te z samym ISSN (dobre dopasowania)
-    for journal in issn_only_matches[:max_results]:
-        znalezione_journal_ids.add(journal.pk)
-        item = (journal, "ISSN", 0.9)
-        results["journale_pbn"]["dobre"].append(item)
-
-    # 2.2. Szukaj po prefiksie tytułu w Journal
-    if nazwa_do_wyszukania:
-        journal_prefix_matches = find_journals_by_prefix(nazwa_do_wyszukania)[
-            :max_results
-        ]
-
-        for journal in journal_prefix_matches:
-            if journal.pk not in znalezione_journal_ids:
-                znalezione_journal_ids.add(journal.pk)
-                item = (journal, "PREFIX", 0.8)
-
-                # PREFIX może być najlepsze TYLKO jeśli ISSN się zgadza
-                issn_match = False
-                if journal_skasowane:
-                    if (
-                        journal_skasowane.issn
-                        and journal.issn == journal_skasowane.issn
-                    ) or (
-                        journal_skasowane.eissn
-                        and journal.eissn == journal_skasowane.eissn
-                    ):
-                        issn_match = True
-
-                if issn_match and journal.mniswId:
-                    results["journale_pbn"]["najlepsze"].append(item)
-                elif journal.mniswId:
-                    # Jeśli ma mniswId ale ISSN się nie zgadza - to "dobre" nie "najlepsze"
-                    results["journale_pbn"]["dobre"].append(item)
-                else:
-                    results["journale_pbn"]["dobre"].append(item)
-
-    # 2.3. Szukaj po podobieństwie w Journal
-    if nazwa_do_wyszukania:
-        journal_similarity_matches = find_journals_by_trigram(nazwa_do_wyszukania)[
-            :max_results
-        ]
-
-        for journal in journal_similarity_matches:
-            if journal.pk not in znalezione_journal_ids:
-                znalezione_journal_ids.add(journal.pk)
-                podobienstwo = getattr(journal, "similarity", 0.5)
-                item = (journal, "SIMILARITY", podobienstwo)
-
-                if journal.mniswId and podobienstwo > 0.7:
-                    results["journale_pbn"]["dobre"].append(item)
-                else:
-                    results["journale_pbn"]["akceptowalne"].append(item)
+    _przetworz_strone(
+        bucket=results["journale_pbn"],
+        nazwa_do_wyszukania=nazwa_do_wyszukania,
+        name_attr="title",
+        has_mnisw=journal_has_mnisw,
+        issn_match=journal_issn_match,
+        issn_matches=find_journals_by_issn(journal_skasowane),
+        finder_prefix=find_journals_by_prefix,
+        finder_trigram=find_journals_by_trigram,
+        max_results=max_results,
+    )
 
     # Ogranicz każdą kategorię do max_results i posortuj po podobieństwie
     for main_category in results.values():
@@ -434,8 +426,195 @@ def lista_skasowanych_zrodel(request):
     )
 
 
+def _zbuduj_sugerowane_queryset(sugerowane, zrodlo):
+    """Zbuduj queryset źródeł BPP do formularza na podstawie sugestii.
+
+    Gdy są sugestie - ogranicz do nich; w przeciwnym razie pokaż do 20
+    aktywnych źródeł (najpierw z mniswId, potem alfabetycznie)."""
+    wszystkie_zrodla = []
+    for kategoria in ["najlepsze", "dobre", "akceptowalne"]:
+        wszystkie_zrodla.extend(sugerowane["zrodla_bpp"][kategoria])
+
+    if wszystkie_zrodla:
+        # Struktura krotki: (zrodlo, typ_dopasowania, podobienstwo)
+        sugerowane_ids = [item[0].pk for item in wszystkie_zrodla]
+        return Zrodlo.objects.filter(pk__in=sugerowane_ids)
+
+    # Brak sugestii - pokaż wszystkie aktywne źródła
+    return (
+        Zrodlo.objects.filter(pbn_uid__status=ACTIVE)
+        .select_related("pbn_uid")
+        .order_by(
+            models.Case(
+                models.When(pbn_uid__mniswId__isnull=False, then=0),
+                default=1,
+            ),
+            "nazwa",
+        )[:20]
+    )
+
+
+def _zbierz_wszystkie_journale(sugerowane):
+    """Spłaszcz wszystkie sugerowane journale PBN do jednej listy."""
+    wszystkie_journale = []
+    for kategoria in ["najlepsze", "dobre", "akceptowalne"]:
+        wszystkie_journale.extend(sugerowane["journale_pbn"][kategoria])
+    return wszystkie_journale
+
+
+def _utworz_zrodlo_z_journala(request, journal_docelowy):
+    """Utwórz nowe Zrodlo na podstawie wybranego Journal z PBN."""
+    rodzaj_czasopismo = Rodzaj_Zrodla.objects.get(nazwa="czasopismo")
+    zrodlo_nowe = Zrodlo.objects.create(
+        nazwa=journal_docelowy.title or "",
+        issn=journal_docelowy.issn or "",
+        e_issn=journal_docelowy.eissn or "",
+        pbn_uid=journal_docelowy,
+        rodzaj=rodzaj_czasopismo,
+    )
+    messages.info(
+        request,
+        f'Utworzono nowe źródło "{zrodlo_nowe.nazwa}" na podstawie danych z PBN.',
+    )
+    return zrodlo_nowe
+
+
+def _zbierz_rekordy_do_przemapowania(zrodlo):
+    """Zbierz historię i oryginalne rekordy przed przemapowaniem źródła."""
+    rekordy_historia = []
+    rekordy_do_wyslania = []
+    for rekord in Rekord.objects.filter(zrodlo=zrodlo):
+        rekordy_historia.append(
+            {
+                "id": list(rekord.pk),
+                "tytul": rekord.tytul_oryginalny,
+                "rok": rekord.rok,
+                "opis_bibliograficzny": rekord.opis_bibliograficzny_cache or "",
+            }
+        )
+        rekordy_do_wyslania.append(rekord.original)
+    return rekordy_historia, rekordy_do_wyslania
+
+
+def _dodaj_rekordy_do_kolejki_pbn(request, rekordy_do_wyslania):
+    """Dodaj rekordy do kolejki eksportu PBN, zwracając (sukces, lista_bledow)."""
+    sukces_pbn = 0
+    bledy_pbn = []
+    for original_rekord in rekordy_do_wyslania:
+        try:
+            PBN_Export_Queue.objects.sprobuj_utowrzyc_wpis(
+                user=request.user, rekord=original_rekord
+            )
+            sukces_pbn += 1
+        except Exception as e:
+            zaloguj_polkniety_wyjatek(
+                f"Dodawanie rekordu do kolejki eksportu PBN "
+                f"przy przemapowaniu źródła PBN "
+                f"(rekord pk={original_rekord.pk})",
+                logger=logger,
+            )
+            bledy_pbn.append(f"Rekord {original_rekord.pk}: {str(e)}")
+    return sukces_pbn, bledy_pbn
+
+
+def _obsluz_confirm(request, zrodlo, form):
+    """Obsłuż potwierdzone przemapowanie. Zwróć HttpResponse (redirect) lub
+    None gdy należy wyrenderować stronę (np. po błędzie)."""
+    typ_wyboru = form.cleaned_data.get("typ_wyboru")
+
+    # Określ źródło docelowe
+    if typ_wyboru == PrzeMapowanieZrodlaForm.TYP_JOURNAL:
+        journal_docelowy = Journal.objects.get(pk=form.cleaned_data["journal_docelowy"])
+        zrodlo_nowe = _utworz_zrodlo_z_journala(request, journal_docelowy)
+    else:
+        zrodlo_nowe = form.cleaned_data["zrodlo_docelowe"]
+
+    # Walidacja: nie można przemapować na źródło również skasowane
+    if zrodlo_nowe.pbn_uid and zrodlo_nowe.pbn_uid.status == DELETED:
+        messages.error(
+            request,
+            "Nie można przemapować na źródło, które również jest skasowane w PBN!",
+        )
+        return redirect("przemapuj_zrodla_pbn:przemapuj_zrodlo", zrodlo_id=zrodlo.pk)
+
+    try:
+        with transaction.atomic():
+            rekordy_historia, rekordy_do_wyslania = _zbierz_rekordy_do_przemapowania(
+                zrodlo
+            )
+
+            liczba_rekordow_updated = Wydawnictwo_Ciagle.objects.filter(
+                zrodlo=zrodlo
+            ).update(zrodlo=zrodlo_nowe)
+
+            # Zapisz log operacji
+            PrzeMapowanieZrodla.objects.create(
+                zrodlo_skasowane_pbn_uid=zrodlo.pbn_uid,
+                zrodlo_stare=zrodlo,
+                zrodlo_nowe=zrodlo_nowe,
+                liczba_rekordow=liczba_rekordow_updated,
+                utworzono_przez=request.user,
+                rekordy_historia=rekordy_historia,
+            )
+
+            sukces_pbn, bledy_pbn = _dodaj_rekordy_do_kolejki_pbn(
+                request, rekordy_do_wyslania
+            )
+
+            messages.success(
+                request,
+                f"Pomyślnie przemapowano {liczba_rekordow_updated} rekordów "
+                f'ze źródła "{zrodlo}" do źródła "{zrodlo_nowe}". '
+                f"Dodano {sukces_pbn} rekordów do kolejki eksportu PBN.",
+            )
+
+            if bledy_pbn:
+                messages.warning(
+                    request,
+                    f"Wystąpiły błędy przy dodawaniu {len(bledy_pbn)} rekordów do kolejki PBN. "
+                    f"Szczegóły: {'; '.join(bledy_pbn[:5])}",
+                )
+
+            return redirect("przemapuj_zrodla_pbn:lista_skasowanych_zrodel")
+
+    except Exception as e:
+        rollbar.report_exc_info(sys.exc_info())
+        messages.error(request, f"Wystąpił błąd podczas przemapowania: {str(e)}")
+
+    return None
+
+
+def _obsluz_preview(request, zrodlo, form, liczba_rekordow, sugerowane):
+    """Wyrenderuj podgląd zmian przed przemapowaniem."""
+    typ_wyboru = form.cleaned_data.get("typ_wyboru")
+
+    journal_docelowy = None
+    if typ_wyboru == PrzeMapowanieZrodlaForm.TYP_JOURNAL:
+        journal_docelowy = Journal.objects.get(pk=form.cleaned_data["journal_docelowy"])
+        zrodlo_nowe_nazwa = f"{journal_docelowy.title} (NOWE ze źródła PBN)"
+        zrodlo_nowe = None  # Będzie utworzone dopiero po zatwierdzeniu
+    else:
+        zrodlo_nowe = form.cleaned_data["zrodlo_docelowe"]
+        zrodlo_nowe_nazwa = str(zrodlo_nowe)
+
+    rekordy_przyklad = Rekord.objects.filter(zrodlo=zrodlo)[:10]
+
+    context = {
+        "zrodlo": zrodlo,
+        "zrodlo_nowe": zrodlo_nowe,
+        "zrodlo_nowe_nazwa": zrodlo_nowe_nazwa,
+        "journal_docelowy": journal_docelowy,
+        "liczba_rekordow": liczba_rekordow,
+        "rekordy_przyklad": rekordy_przyklad,
+        "form": form,
+        "preview": True,
+        "sugerowane": sugerowane,
+    }
+    return render(request, "przemapuj_zrodla_pbn/przemapuj_zrodlo.html", context)
+
+
 @login_required
-def przemapuj_zrodlo(request, zrodlo_id):  # noqa: C901
+def przemapuj_zrodlo(request, zrodlo_id):
     """Główny widok do przemapowania źródła."""
     zrodlo = get_object_or_404(Zrodlo, pk=zrodlo_id)
 
@@ -451,34 +630,8 @@ def przemapuj_zrodlo(request, zrodlo_id):  # noqa: C901
 
     # Znajdź podobne źródła (w obu tabelach)
     sugerowane = znajdz_podobne_zrodla(zrodlo.pbn_uid)
-
-    # Przygotuj dane dla formularza - tylko źródła z BPP
-    wszystkie_zrodla = []
-    for kategoria in ["najlepsze", "dobre", "akceptowalne"]:
-        wszystkie_zrodla.extend(sugerowane["zrodla_bpp"][kategoria])
-
-    if wszystkie_zrodla:
-        # Struktura krotki: (zrodlo, typ_dopasowania, podobienstwo)
-        sugerowane_ids = [item[0].pk for item in wszystkie_zrodla]
-        sugerowane_queryset = Zrodlo.objects.filter(pk__in=sugerowane_ids)
-    else:
-        # Brak sugestii - pokaż wszystkie aktywne źródła
-        sugerowane_queryset = (
-            Zrodlo.objects.filter(pbn_uid__status=ACTIVE)
-            .select_related("pbn_uid")
-            .order_by(
-                models.Case(
-                    models.When(pbn_uid__mniswId__isnull=False, then=0),
-                    default=1,
-                ),
-                "nazwa",
-            )[:20]
-        )
-
-    # Zbierz wszystkie journale z PBN
-    wszystkie_journale = []
-    for kategoria in ["najlepsze", "dobre", "akceptowalne"]:
-        wszystkie_journale.extend(sugerowane["journale_pbn"][kategoria])
+    sugerowane_queryset = _zbuduj_sugerowane_queryset(sugerowane, zrodlo)
+    wszystkie_journale = _zbierz_wszystkie_journale(sugerowane)
 
     if request.method == "POST":
         form = PrzeMapowanieZrodlaForm(
@@ -488,156 +641,12 @@ def przemapuj_zrodlo(request, zrodlo_id):  # noqa: C901
             sugerowane_journale=wszystkie_journale,
         )
 
-        if "confirm" in request.POST:
-            # Użytkownik potwierdził przemapowanie
-            if form.is_valid():
-                typ_wyboru = form.cleaned_data.get("typ_wyboru")
-
-                # Określ źródło docelowe
-                if typ_wyboru == PrzeMapowanieZrodlaForm.TYP_JOURNAL:
-                    # Użytkownik wybrał Journal z PBN - utwórz nowe Zrodlo
-                    journal_id = form.cleaned_data["journal_docelowy"]
-                    journal_docelowy = Journal.objects.get(pk=journal_id)
-
-                    # Pobierz domyślny rodzaj "czasopismo"
-                    rodzaj_czasopismo = Rodzaj_Zrodla.objects.get(nazwa="czasopismo")
-
-                    # Utwórz nowe Zrodlo na podstawie Journal
-                    zrodlo_nowe = Zrodlo.objects.create(
-                        nazwa=journal_docelowy.title or "",
-                        issn=journal_docelowy.issn or "",
-                        e_issn=journal_docelowy.eissn or "",
-                        pbn_uid=journal_docelowy,
-                        rodzaj=rodzaj_czasopismo,
-                    )
-                    messages.info(
-                        request,
-                        f'Utworzono nowe źródło "{zrodlo_nowe.nazwa}" na podstawie danych z PBN.',
-                    )
-                else:
-                    # Użytkownik wybrał istniejące Zrodlo
-                    zrodlo_nowe = form.cleaned_data["zrodlo_docelowe"]
-
-                # Walidacja: nie można przemapować na źródło również skasowane
-                if zrodlo_nowe.pbn_uid and zrodlo_nowe.pbn_uid.status == DELETED:
-                    messages.error(
-                        request,
-                        "Nie można przemapować na źródło, które również jest skasowane w PBN!",
-                    )
-                    return redirect(
-                        "przemapuj_zrodla_pbn:przemapuj_zrodlo", zrodlo_id=zrodlo.pk
-                    )
-
-                try:
-                    with transaction.atomic():
-                        # Zbierz informacje o rekordach przed przemapowaniem
-                        rekordy = Rekord.objects.filter(zrodlo=zrodlo)
-                        rekordy_historia = []
-                        rekordy_do_wyslania = []
-
-                        for rekord in rekordy:
-                            rekordy_historia.append(
-                                {
-                                    "id": list(rekord.pk),
-                                    "tytul": rekord.tytul_oryginalny,
-                                    "rok": rekord.rok,
-                                    "opis_bibliograficzny": rekord.opis_bibliograficzny_cache
-                                    or "",
-                                }
-                            )
-                            # Zbierz oryginalne rekordy do wysłania do PBN
-                            rekordy_do_wyslania.append(rekord.original)
-
-                        liczba_rekordow_updated = Wydawnictwo_Ciagle.objects.filter(
-                            zrodlo=zrodlo
-                        ).update(zrodlo=zrodlo_nowe)
-
-                        # Zapisz log operacji
-                        PrzeMapowanieZrodla.objects.create(
-                            zrodlo_skasowane_pbn_uid=zrodlo.pbn_uid,
-                            zrodlo_stare=zrodlo,
-                            zrodlo_nowe=zrodlo_nowe,
-                            liczba_rekordow=liczba_rekordow_updated,
-                            utworzono_przez=request.user,
-                            rekordy_historia=rekordy_historia,
-                        )
-
-                        # Dodaj do kolejki PBN
-                        sukces_pbn = 0
-                        bledy_pbn = []
-                        for original_rekord in rekordy_do_wyslania:
-                            try:
-                                PBN_Export_Queue.objects.sprobuj_utowrzyc_wpis(
-                                    user=request.user, rekord=original_rekord
-                                )
-                                sukces_pbn += 1
-                            except Exception as e:
-                                zaloguj_polkniety_wyjatek(
-                                    f"Dodawanie rekordu do kolejki eksportu PBN "
-                                    f"przy przemapowaniu źródła PBN "
-                                    f"(rekord pk={original_rekord.pk})",
-                                    logger=logger,
-                                )
-                                bledy_pbn.append(
-                                    f"Rekord {original_rekord.pk}: {str(e)}"
-                                )
-
-                        messages.success(
-                            request,
-                            f"Pomyślnie przemapowano {liczba_rekordow_updated} rekordów "
-                            f'ze źródła "{zrodlo}" do źródła "{zrodlo_nowe}". '
-                            f"Dodano {sukces_pbn} rekordów do kolejki eksportu PBN.",
-                        )
-
-                        if bledy_pbn:
-                            messages.warning(
-                                request,
-                                f"Wystąpiły błędy przy dodawaniu {len(bledy_pbn)} rekordów do kolejki PBN. "
-                                f"Szczegóły: {'; '.join(bledy_pbn[:5])}",
-                            )
-
-                        return redirect("przemapuj_zrodla_pbn:lista_skasowanych_zrodel")
-
-                except Exception as e:
-                    rollbar.report_exc_info(sys.exc_info())
-                    messages.error(
-                        request, f"Wystąpił błąd podczas przemapowania: {str(e)}"
-                    )
-
-        elif "preview" in request.POST:
-            # Użytkownik chce zobaczyć podgląd
-            if form.is_valid():
-                typ_wyboru = form.cleaned_data.get("typ_wyboru")
-
-                # Określ źródło docelowe dla podglądu
-                journal_docelowy = None
-                if typ_wyboru == PrzeMapowanieZrodlaForm.TYP_JOURNAL:
-                    journal_id = form.cleaned_data["journal_docelowy"]
-                    journal_docelowy = Journal.objects.get(pk=journal_id)
-                    zrodlo_nowe_nazwa = f"{journal_docelowy.title} (NOWE ze źródła PBN)"
-                    zrodlo_nowe = None  # Będzie utworzone dopiero po zatwierdzeniu
-                else:
-                    zrodlo_nowe = form.cleaned_data["zrodlo_docelowe"]
-                    zrodlo_nowe_nazwa = str(zrodlo_nowe)
-
-                # Pobierz przykładowe rekordy
-                rekordy_przyklad = Rekord.objects.filter(zrodlo=zrodlo)[:10]
-
-                context = {
-                    "zrodlo": zrodlo,
-                    "zrodlo_nowe": zrodlo_nowe,
-                    "zrodlo_nowe_nazwa": zrodlo_nowe_nazwa,
-                    "journal_docelowy": journal_docelowy,
-                    "liczba_rekordow": liczba_rekordow,
-                    "rekordy_przyklad": rekordy_przyklad,
-                    "form": form,
-                    "preview": True,
-                    "sugerowane": sugerowane,
-                }
-                return render(
-                    request, "przemapuj_zrodla_pbn/przemapuj_zrodlo.html", context
-                )
-
+        if "confirm" in request.POST and form.is_valid():
+            odpowiedz = _obsluz_confirm(request, zrodlo, form)
+            if odpowiedz is not None:
+                return odpowiedz
+        elif "preview" in request.POST and form.is_valid():
+            return _obsluz_preview(request, zrodlo, form, liczba_rekordow, sugerowane)
     else:
         form = PrzeMapowanieZrodlaForm(
             zrodlo_skasowane=zrodlo,

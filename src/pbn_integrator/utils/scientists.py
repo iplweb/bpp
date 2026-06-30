@@ -321,8 +321,144 @@ def weryfikuj_orcidy(client: PBNClient, instutition_id):
         )
 
 
-def matchuj_autora_po_stronie_pbn(imiona, nazwisko, orcid):  # noqa: C901
+def _qry_po_orcid(orcid):
+    """Zbuduj zapytanie szukające bieżącej wersji rekordu po ORCID."""
+    return Q(versions__contains=[{"current": True, "object": {"orcid": orcid}}])
+
+
+def _qry_po_nazwisku(imiona, nazwisko):
+    """Zbuduj zapytanie szukające bieżącej wersji rekordu po imieniu+nazwisku."""
+    return Q(
+        versions__contains=[
+            {
+                "current": True,
+                "object": {"lastName": nazwisko.strip(), "name": imiona.strip()},
+            }
+        ]
+    )
+
+
+def _loguj_duplikaty(qry):
+    """Wypisz rekordy pasujące do zapytania (gdy jest ich wiele)."""
+    for elem in Scientist.objects.filter(qry):
+        logger.info(f"\t *  {elem.pk} {elem.name} {elem.lastName}")
+
+
+def _match_orcid_z_api_instytucji(imiona, nazwisko, orcid):
+    """ORCID w rekordach zaimportowanych przez API instytucji."""
+    qry = _qry_po_orcid(orcid) & Q(from_institution_api=True)
+    try:
+        return Scientist.objects.get(qry)
+    except Scientist.DoesNotExist:
+        return None
+    except Scientist.MultipleObjectsReturned:
+        logger.info(
+            f"XXX ORCID istnieje wiele razy w bazie PBN w rekordach importowanych przez API instytucji {orcid}"
+        )
+        _loguj_duplikaty(qry)
+        return None
+
+
+def _match_orcid_spoza_api_instytucji(imiona, nazwisko, orcid):
+    """ORCID w rekordach spoza API instytucji."""
+    qry = _qry_po_orcid(orcid)
+    try:
+        return Scientist.objects.exclude(from_institution_api=True).get(qry)
+    except Scientist.DoesNotExist:
+        logger.info(
+            f"*** ORCID nie istnieje w rekordach ani z API instytucji, ani we wszystkich {orcid}"
+        )
+        return None
+    except Scientist.MultipleObjectsReturned:
+        logger.info(
+            f"XXX ORCID istnieje wiele razy w bazie PBN w rekordach importowanych nie-przez API instytucji {orcid}"
+        )
+        _loguj_duplikaty(qry)
+        return None
+
+
+def _match_nazwisko_z_api_instytucji(imiona, nazwisko, orcid):
+    """Imię+nazwisko w rekordach z API instytucji."""
+    qry = _qry_po_nazwisku(imiona, nazwisko)
+    try:
+        return Scientist.objects.filter(from_institution_api=True).get(qry)
+    except Scientist.DoesNotExist:
+        logger.info(
+            f"*** BRAK AUTORA w PBN z API instytucji, istnieje w BPP (im/naz): {nazwisko} {imiona}"
+        )
+        return None
+    except Scientist.MultipleObjectsReturned:
+        logger.info(
+            f"XXX AUTOR istnieje wiele razy w bazie PBN z API INSTYTUCJI (im/naz) {nazwisko} {imiona}"
+        )
+        return None
+
+
+def _wybierz_najlepszego_spoza_api(qry, imiona, nazwisko):
+    """Wybierz najlepiej oceniony rekord spoza API instytucji.
+
+    Punktuje rekordy po obecności wybranych pól; jeżeli żaden z kandydatów
+    nie pracuje w domyślnej jednostce — nie wybiera niczego.
+    """
+    logger.info(
+        f"XXX AUTOR istnieje wiele razy w bazie PBN z danych "
+        f"spoza API INSTYTUCJI {nazwisko} {imiona}, "
+        f"próba dobrania najlepszego"
+    )
+
+    can_be_set = False
+    rated_elems = []
+    for elem in Scientist.objects.exclude(from_institution_api=True).filter(qry):
+        cur_elem_points = 0
+        for attr in [
+            "currentEmployments",
+            "externalIdentifiers",
+            "legacyIdentifiers",
+            "qualifications",
+        ]:
+            if elem.value_or_none("object", attr):
+                cur_elem_points += 1
+
+        currentEmployments = elem.value_or_none("object", "currentEmployments")
+        if currentEmployments is not None:
+            for pos in currentEmployments:
+                if pos.get("institutionId") == Uczelnia.objects.default.pbn_uid_id:
+                    can_be_set = True
+
+        rated_elems.append((cur_elem_points, elem.pk))
+
+    rated_elems.sort(reverse=True)
+    if can_be_set:
+        logger.info(f"--> Sposrod elementow {rated_elems} wybieram pierwszy")
+        return Scientist.objects.get(pk=rated_elems[0][1])
+
+    logger.info(
+        f"XXX Sposrod elementow {rated_elems} NIE WYBIERAM NIC, bo autor nie pracuje w jednostce"
+    )
+    return None
+
+
+def _match_nazwisko_spoza_api_instytucji(imiona, nazwisko, orcid):
+    """Imię+nazwisko w rekordach spoza API instytucji."""
+    qry = _qry_po_nazwisku(imiona, nazwisko)
+    try:
+        return Scientist.objects.exclude(from_institution_api=True).get(qry)
+    except Scientist.DoesNotExist:
+        logger.info(
+            f"*** BRAK AUTORA w PBN z danych spoza API instytucji, istnieje w BPP: {nazwisko} {imiona}"
+        )
+        return None
+    except Scientist.MultipleObjectsReturned:
+        return _wybierz_najlepszego_spoza_api(qry, imiona, nazwisko)
+
+
+def matchuj_autora_po_stronie_pbn(imiona, nazwisko, orcid):
     """Match an author on the PBN side.
+
+    Próbuje kolejnych strategii dopasowania w ustalonej kolejności
+    i zwraca pierwszy trafiony rekord. Gdy podany jest ORCID, najpierw
+    szuka po ORCID (rekordy z API instytucji, potem spoza), a następnie
+    po imieniu+nazwisku (rekordy z API instytucji, potem spoza).
 
     Args:
         imiona: First names.
@@ -332,106 +468,19 @@ def matchuj_autora_po_stronie_pbn(imiona, nazwisko, orcid):  # noqa: C901
     Returns:
         Scientist object or None.
     """
+    strategie = []
     if orcid is not None:
-        # Szukamy w rekordach zaimportowanych przez API instytucji
+        strategie.append(_match_orcid_z_api_instytucji)
+        strategie.append(_match_orcid_spoza_api_instytucji)
+    strategie.append(_match_nazwisko_z_api_instytucji)
+    strategie.append(_match_nazwisko_spoza_api_instytucji)
 
-        qry = Q(versions__contains=[{"current": True, "object": {"orcid": orcid}}]) & Q(
-            from_institution_api=True
-        )
-        try:
-            res = Scientist.objects.get(qry)
+    for strategia in strategie:
+        res = strategia(imiona, nazwisko, orcid)
+        if res is not None:
             return res
-        except Scientist.DoesNotExist:
-            pass
-        except Scientist.MultipleObjectsReturned:
-            logger.info(
-                f"XXX ORCID istnieje wiele razy w bazie PBN w rekordach importowanych przez API instytucji {orcid}"
-            )
-            for elem in Scientist.objects.filter(qry):
-                logger.info(f"\t *  {elem.pk} {elem.name} {elem.lastName}")
 
-        # Szukamy w rekordach wszystkich przez API instytucji
-
-        qry = Q(versions__contains=[{"current": True, "object": {"orcid": orcid}}])
-        try:
-            res = Scientist.objects.exclude(from_institution_api=True).get(qry)
-            return res
-        except Scientist.DoesNotExist:
-            logger.info(
-                f"*** ORCID nie istnieje w rekordach ani z API instytucji, ani we wszystkich {orcid}"
-            )
-        except Scientist.MultipleObjectsReturned:
-            logger.info(
-                f"XXX ORCID istnieje wiele razy w bazie PBN w rekordach importowanych nie-przez API instytucji {orcid}"
-            )
-            for elem in Scientist.objects.filter(qry):
-                logger.info(f"\t *  {elem.pk} {elem.name} {elem.lastName}")
-
-    qry = Q(
-        versions__contains=[
-            {
-                "current": True,
-                "object": {"lastName": nazwisko.strip(), "name": imiona.strip()},
-            }
-        ]
-    )
-    try:
-        res = Scientist.objects.filter(from_institution_api=True).get(qry)
-        return res
-    except Scientist.DoesNotExist:
-        logger.info(
-            f"*** BRAK AUTORA w PBN z API instytucji, istnieje w BPP (im/naz): {nazwisko} {imiona}"
-        )
-    except Scientist.MultipleObjectsReturned:
-        logger.info(
-            f"XXX AUTOR istnieje wiele razy w bazie PBN z API INSTYTUCJI (im/naz) {nazwisko} {imiona}"
-        )
-
-    # Autorzy nie-z-API instytucji
-
-    try:
-        res = Scientist.objects.exclude(from_institution_api=True).get(qry)
-        return res
-    except Scientist.DoesNotExist:
-        logger.info(
-            f"*** BRAK AUTORA w PBN z danych spoza API instytucji, istnieje w BPP: {nazwisko} {imiona}"
-        )
-    except Scientist.MultipleObjectsReturned:
-        logger.info(
-            f"XXX AUTOR istnieje wiele razy w bazie PBN z danych "
-            f"spoza API INSTYTUCJI {nazwisko} {imiona}, "
-            f"próba dobrania najlepszego"
-        )
-
-        can_be_set = False
-        rated_elems = []
-        for elem in Scientist.objects.exclude(from_institution_api=True).filter(qry):
-            cur_elem_points = 0
-            for attr in [
-                "currentEmployments",
-                "externalIdentifiers",
-                "legacyIdentifiers",
-                "qualifications",
-            ]:
-                if elem.value_or_none("object", attr):
-                    cur_elem_points += 1
-
-            currentEmployments = elem.value_or_none("object", "currentEmployments")
-            if currentEmployments is not None:
-                for pos in currentEmployments:
-                    if pos.get("institutionId") == Uczelnia.objects.default.pbn_uid_id:
-                        can_be_set = True
-
-            rated_elems.append((cur_elem_points, elem.pk))
-
-        rated_elems.sort(reverse=True)
-        if can_be_set:
-            logger.info(f"--> Sposrod elementow {rated_elems} wybieram pierwszy")
-            return Scientist.objects.get(pk=rated_elems[0][1])
-        else:
-            logger.info(
-                f"XXX Sposrod elementow {rated_elems} NIE WYBIERAM NIC, bo autor nie pracuje w jednostce"
-            )
+    return None
 
 
 def integruj_wszystkich_niezintegrowanych_autorow():

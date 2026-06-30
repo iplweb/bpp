@@ -63,7 +63,199 @@ def _assign_discipline_if_missing(
     return False
 
 
-def scal_autora(  # noqa: C901
+def _transfer_disciplines(glowny_autor, autor_duplikat, user, log_ctx, results):
+    """
+    Kopiuje przypisania dyscyplin (Autor_Dyscyplina) z duplikatu na głównego
+    autora — tylko te, których główny autor jeszcze nie posiada dla danego roku
+    i dyscypliny. Każdy transfer jest logowany w LogScalania.
+    """
+    from bpp.models import Autor_Dyscyplina
+    from deduplikator_autorow.models import LogScalania
+
+    for dup_disc in Autor_Dyscyplina.objects.filter(autor=autor_duplikat):
+        # Check if main author already has this discipline for this year
+        existing = Autor_Dyscyplina.objects.filter(
+            autor=glowny_autor,
+            rok=dup_disc.rok,
+            dyscyplina_naukowa=dup_disc.dyscyplina_naukowa,
+        ).exists()
+
+        if existing:
+            continue
+
+        # Create new discipline record for main author
+        new_disc = Autor_Dyscyplina.objects.create(
+            autor=glowny_autor,
+            rok=dup_disc.rok,
+            rodzaj_autora=dup_disc.rodzaj_autora,
+            wymiar_etatu=dup_disc.wymiar_etatu,
+            dyscyplina_naukowa=dup_disc.dyscyplina_naukowa,
+            procent_dyscypliny=dup_disc.procent_dyscypliny,
+            subdyscyplina_naukowa=dup_disc.subdyscyplina_naukowa,
+            procent_subdyscypliny=dup_disc.procent_subdyscypliny,
+        )
+        results["disciplines_transferred"].append(
+            f"{dup_disc.dyscyplina_naukowa} ({dup_disc.rok})"
+        )
+
+        # Log discipline transfer
+        LogScalania.objects.create(
+            main_autor=glowny_autor,
+            content_type=ContentType.objects.get_for_model(Autor_Dyscyplina),
+            object_id=new_disc.pk,
+            modified_record=new_disc,
+            dyscyplina_after=dup_disc.dyscyplina_naukowa,
+            operation_type="DISCIPLINE_TRANSFER",
+            operation_details=f"Przeniesiono dyscyplinę {dup_disc.dyscyplina_naukowa} "
+            f"za rok {dup_disc.rok}",
+            created_by=user,
+            disciplines_transferred=1,
+            **log_ctx,
+        )
+
+
+def _transfer_authorship_record(
+    record,
+    glowny_autor,
+    user,
+    skip_pbn,
+    auto_assign_discipline,
+    use_subdiscipline,
+    model_label,
+    log_publication,
+    log_ctx,
+    results,
+):
+    """
+    Przenosi pojedynczy rekord autorstwa (Wydawnictwo_*_Autor / Patent_Autor)
+    z duplikatu na głównego autora.
+
+    Zwraca True jeśli rekord został przemapowany, False jeśli był kolizją z
+    istniejącą publikacją głównego autora i został usunięty.
+    """
+    from bpp.models import Autor_Dyscyplina
+    from deduplikator_autorow.models import LogScalania
+    from pbn_export_queue.models import PBN_Export_Queue
+
+    model = type(record)
+
+    # Store old discipline before any changes
+    old_discipline = record.dyscyplina_naukowa
+
+    # CHECK IF MAIN AUTHOR ALREADY HAS THIS PUBLICATION
+    existing = model.objects.filter(
+        rekord=record.rekord,
+        autor=glowny_autor,
+        typ_odpowiedzialnosci=record.typ_odpowiedzialnosci,
+    ).exists()
+
+    if existing:
+        # Main author already has this publication - delete duplicate's record
+        results["warnings"].append(
+            f"Autor główny już ma publikację {record.rekord} "
+            f"z typem odpowiedzialności {record.typ_odpowiedzialnosci}. "
+            f"Usunięto duplikat."
+        )
+        record.delete()
+        return False
+
+    # Sprawdź dyscypliny
+    rok = record.rekord.rok if record.rekord else None
+    if record.dyscyplina_naukowa:
+        if (
+            rok
+            and not Autor_Dyscyplina.objects.filter(
+                autor=glowny_autor,
+                rok=rok,
+                dyscyplina_naukowa=record.dyscyplina_naukowa,
+            ).exists()
+        ):
+            results["warnings"].append(
+                f"Autor główny nie ma dyscypliny {record.dyscyplina_naukowa} "
+                f"za rok {rok}. Dyscyplina została usunięta z publikacji: "
+                f"{record.rekord}"
+            )
+            record.dyscyplina_naukowa = None
+
+    # Przypisz dyscyplinę jeśli brak i włączona opcja
+    _assign_discipline_if_missing(
+        record,
+        glowny_autor,
+        rok,
+        auto_assign_discipline,
+        use_subdiscipline,
+        results["warnings"],
+    )
+
+    # Przemapuj autora
+    record.autor = glowny_autor
+    record.save()
+
+    # Log publication transfer (tylko dla Wydawnictwo_Ciagle_Autor)
+    if log_publication:
+        LogScalania.objects.create(
+            main_autor=glowny_autor,
+            content_type=ContentType.objects.get_for_model(record.rekord),
+            object_id=record.rekord.pk,
+            modified_record=record.rekord,
+            dyscyplina_before=old_discipline,
+            dyscyplina_after=record.dyscyplina_naukowa,
+            operation_type="PUBLICATION_TRANSFER",
+            operation_details=f"Przeniesiono publikację: {record.rekord}",
+            created_by=user,
+            publications_transferred=1,
+            warnings=(
+                results["warnings"][-1]
+                if old_discipline and not record.dyscyplina_naukowa
+                else ""
+            ),
+            **log_ctx,
+        )
+
+    # Dodaj do kolejki PBN
+    if not skip_pbn and record.rekord:
+        content_type = ContentType.objects.get_for_model(record.rekord)
+        PBN_Export_Queue.objects.create(
+            content_type=content_type,
+            object_id=record.rekord.pk,
+            zamowil=user,
+        )
+        results["publications_queued_for_pbn"].append(str(record.rekord))
+
+    results["updated_records"].append(f"{model_label}: {record.rekord}")
+    results["total_updated"] += 1
+    return True
+
+
+def _transfer_simple_authorship(
+    model, model_label, glowny_autor, autor_duplikat, user, skip_pbn, results
+):
+    """
+    Przenosi proste rekordy autorstwa (Praca_Habilitacyjna / Praca_Doktorska),
+    gdzie sam obiekt jest publikacją — przemapowuje autora i kolejkuje do PBN.
+    """
+    from pbn_export_queue.models import PBN_Export_Queue
+
+    for praca in model.objects.filter(autor=autor_duplikat):
+        # Przemapuj autora
+        praca.autor = glowny_autor
+        praca.save()
+
+        # Dodaj do kolejki PBN
+        if not skip_pbn:
+            content_type = ContentType.objects.get_for_model(praca)
+            PBN_Export_Queue.objects.create(
+                content_type=content_type,
+                object_id=praca.pk,
+                zamowil=user,
+            )
+            results["publications_queued_for_pbn"].append(str(praca))
+
+        results["updated_records"].append(f"{model_label}: {praca}")
+        results["total_updated"] += 1
+
+
+def scal_autora(
     glowny_autor,
     autor_duplikat,
     user,
@@ -88,14 +280,12 @@ def scal_autora(  # noqa: C901
         dict: Wynik operacji scalania zawierający szczegóły przemapowań
     """
     from bpp.models import (
-        Autor_Dyscyplina,
         Patent_Autor,
         Praca_Doktorska,
         Praca_Habilitacyjna,
         Wydawnictwo_Ciagle_Autor,
         Wydawnictwo_Zwarte_Autor,
     )
-    from pbn_export_queue.models import PBN_Export_Queue
 
     results = {
         "success": True,
@@ -106,11 +296,22 @@ def scal_autora(  # noqa: C901
         "disciplines_transferred": [],
     }
 
+    # Modele rekordów autorstwa: (model, etykieta, czy logować transfer publikacji).
+    # Tylko Wydawnictwo_Ciagle_Autor loguje PUBLICATION_TRANSFER w LogScalania —
+    # zachowane jako historyczny quirk oryginalnego kodu.
+    authorship_models = [
+        ("Wydawnictwo_Ciagle_Autor", Wydawnictwo_Ciagle_Autor, True),
+        ("Wydawnictwo_Zwarte_Autor", Wydawnictwo_Zwarte_Autor, False),
+        ("Patent_Autor", Patent_Autor, False),
+    ]
+    # Proste publikacje (sam obiekt jest publikacją).
+    simple_models = [
+        ("Praca_Habilitacyjna", Praca_Habilitacyjna),
+        ("Praca_Doktorska", Praca_Doktorska),
+    ]
+
     try:
         with transaction.atomic():
-            # Import logging model
-            from deduplikator_autorow.models import LogScalania
-
             # Store duplicate info before deletion
             duplicate_autor_str = str(autor_duplikat)
             duplicate_autor_id = autor_duplikat.pk
@@ -123,332 +324,44 @@ def scal_autora(  # noqa: C901
                 autor_duplikat.pbn_uid if hasattr(autor_duplikat, "pbn_uid") else None
             )
 
+            # Wspólny kontekst dla wpisów LogScalania.
+            log_ctx = {
+                "duplicate_autor_str": duplicate_autor_str,
+                "duplicate_autor_id": duplicate_autor_id,
+                "main_scientist": main_scientist,
+                "duplicate_scientist": duplicate_scientist,
+            }
+
             # 0. Transfer disciplines from duplicate to main author
-            duplicate_disciplines = Autor_Dyscyplina.objects.filter(
-                autor=autor_duplikat
-            )
+            _transfer_disciplines(glowny_autor, autor_duplikat, user, log_ctx, results)
 
-            for dup_disc in duplicate_disciplines:
-                # Check if main author already has this discipline for this year
-                existing = Autor_Dyscyplina.objects.filter(
-                    autor=glowny_autor,
-                    rok=dup_disc.rok,
-                    dyscyplina_naukowa=dup_disc.dyscyplina_naukowa,
-                ).exists()
-
-                if not existing:
-                    # Create new discipline record for main author
-                    new_disc = Autor_Dyscyplina.objects.create(
-                        autor=glowny_autor,
-                        rok=dup_disc.rok,
-                        rodzaj_autora=dup_disc.rodzaj_autora,
-                        wymiar_etatu=dup_disc.wymiar_etatu,
-                        dyscyplina_naukowa=dup_disc.dyscyplina_naukowa,
-                        procent_dyscypliny=dup_disc.procent_dyscypliny,
-                        subdyscyplina_naukowa=dup_disc.subdyscyplina_naukowa,
-                        procent_subdyscypliny=dup_disc.procent_subdyscypliny,
-                    )
-                    results["disciplines_transferred"].append(
-                        f"{dup_disc.dyscyplina_naukowa} ({dup_disc.rok})"
+            # 1-3. Rekordy autorstwa (ciągłe, zwarte, patenty)
+            for model_label, model, log_publication in authorship_models:
+                for record in model.objects.filter(autor=autor_duplikat):
+                    _transfer_authorship_record(
+                        record,
+                        glowny_autor,
+                        user,
+                        skip_pbn,
+                        auto_assign_discipline,
+                        use_subdiscipline,
+                        model_label,
+                        log_publication,
+                        log_ctx,
+                        results,
                     )
 
-                    # Log discipline transfer
-                    LogScalania.objects.create(
-                        main_autor=glowny_autor,
-                        duplicate_autor_str=duplicate_autor_str,
-                        duplicate_autor_id=duplicate_autor_id,
-                        main_scientist=main_scientist,
-                        duplicate_scientist=duplicate_scientist,
-                        content_type=ContentType.objects.get_for_model(
-                            Autor_Dyscyplina
-                        ),
-                        object_id=new_disc.pk,
-                        modified_record=new_disc,
-                        dyscyplina_after=dup_disc.dyscyplina_naukowa,
-                        operation_type="DISCIPLINE_TRANSFER",
-                        operation_details=f"Przeniesiono dyscyplinę {dup_disc.dyscyplina_naukowa} "
-                        f"za rok {dup_disc.rok}",
-                        created_by=user,
-                        disciplines_transferred=1,
-                    )
-
-            # 1. Wydawnictwo_Ciagle_Autor
-            wc_autorzy = Wydawnictwo_Ciagle_Autor.objects.filter(autor=autor_duplikat)
-            for wc_autor in wc_autorzy:
-                # Store old discipline before any changes
-                old_discipline = wc_autor.dyscyplina_naukowa
-
-                # CHECK IF MAIN AUTHOR ALREADY HAS THIS PUBLICATION
-                existing = Wydawnictwo_Ciagle_Autor.objects.filter(
-                    rekord=wc_autor.rekord,
-                    autor=glowny_autor,
-                    typ_odpowiedzialnosci=wc_autor.typ_odpowiedzialnosci,
-                ).exists()
-
-                if existing:
-                    # Main author already has this publication - delete duplicate's record
-                    results["warnings"].append(
-                        f"Autor główny już ma publikację {wc_autor.rekord} "
-                        f"z typem odpowiedzialności {wc_autor.typ_odpowiedzialnosci}. "
-                        f"Usunięto duplikat."
-                    )
-                    wc_autor.delete()
-                    continue
-
-                # Sprawdź dyscypliny
-                rok = wc_autor.rekord.rok if wc_autor.rekord else None
-                if wc_autor.dyscyplina_naukowa:
-                    if (
-                        rok
-                        and not Autor_Dyscyplina.objects.filter(
-                            autor=glowny_autor,
-                            rok=rok,
-                            dyscyplina_naukowa=wc_autor.dyscyplina_naukowa,
-                        ).exists()
-                    ):
-                        results["warnings"].append(
-                            f"Autor główny nie ma dyscypliny {wc_autor.dyscyplina_naukowa} "
-                            f"za rok {rok}. Dyscyplina została usunięta z publikacji: "
-                            f"{wc_autor.rekord}"
-                        )
-                        wc_autor.dyscyplina_naukowa = None
-
-                # Przypisz dyscyplinę jeśli brak i włączona opcja
-                _assign_discipline_if_missing(
-                    wc_autor,
+            # 4-5. Prace doktorskie / habilitacyjne
+            for model_label, model in simple_models:
+                _transfer_simple_authorship(
+                    model,
+                    model_label,
                     glowny_autor,
-                    rok,
-                    auto_assign_discipline,
-                    use_subdiscipline,
-                    results["warnings"],
+                    autor_duplikat,
+                    user,
+                    skip_pbn,
+                    results,
                 )
-
-                # Przemapuj autora
-                wc_autor.autor = glowny_autor
-                wc_autor.save()
-
-                # Log publication transfer
-                LogScalania.objects.create(
-                    main_autor=glowny_autor,
-                    duplicate_autor_str=duplicate_autor_str,
-                    duplicate_autor_id=duplicate_autor_id,
-                    main_scientist=main_scientist,
-                    duplicate_scientist=duplicate_scientist,
-                    content_type=ContentType.objects.get_for_model(wc_autor.rekord),
-                    object_id=wc_autor.rekord.pk,
-                    modified_record=wc_autor.rekord,
-                    dyscyplina_before=old_discipline,
-                    dyscyplina_after=wc_autor.dyscyplina_naukowa,
-                    operation_type="PUBLICATION_TRANSFER",
-                    operation_details=f"Przeniesiono publikację: {wc_autor.rekord}",
-                    created_by=user,
-                    publications_transferred=1,
-                    warnings=(
-                        results["warnings"][-1]
-                        if old_discipline and not wc_autor.dyscyplina_naukowa
-                        else ""
-                    ),
-                )
-
-                # Dodaj do kolejki PBN
-                if not skip_pbn and wc_autor.rekord:
-                    content_type = ContentType.objects.get_for_model(wc_autor.rekord)
-                    PBN_Export_Queue.objects.create(
-                        content_type=content_type,
-                        object_id=wc_autor.rekord.pk,
-                        zamowil=user,
-                    )
-                    results["publications_queued_for_pbn"].append(str(wc_autor.rekord))
-
-                results["updated_records"].append(
-                    f"Wydawnictwo_Ciagle_Autor: {wc_autor.rekord}"
-                )
-                results["total_updated"] += 1
-
-            # 2. Wydawnictwo_Zwarte_Autor
-            wz_autorzy = Wydawnictwo_Zwarte_Autor.objects.filter(autor=autor_duplikat)
-            for wz_autor in wz_autorzy:
-                # Store old discipline before any changes
-                old_discipline = wz_autor.dyscyplina_naukowa
-
-                # CHECK IF MAIN AUTHOR ALREADY HAS THIS PUBLICATION
-                existing = Wydawnictwo_Zwarte_Autor.objects.filter(
-                    rekord=wz_autor.rekord,
-                    autor=glowny_autor,
-                    typ_odpowiedzialnosci=wz_autor.typ_odpowiedzialnosci,
-                ).exists()
-
-                if existing:
-                    # Main author already has this publication - delete duplicate's record
-                    results["warnings"].append(
-                        f"Autor główny już ma publikację {wz_autor.rekord} "
-                        f"z typem odpowiedzialności {wz_autor.typ_odpowiedzialnosci}. "
-                        f"Usunięto duplikat."
-                    )
-                    wz_autor.delete()
-                    continue
-
-                # Sprawdź dyscypliny
-                rok = wz_autor.rekord.rok if wz_autor.rekord else None
-                if wz_autor.dyscyplina_naukowa:
-                    if (
-                        rok
-                        and not Autor_Dyscyplina.objects.filter(
-                            autor=glowny_autor,
-                            rok=rok,
-                            dyscyplina_naukowa=wz_autor.dyscyplina_naukowa,
-                        ).exists()
-                    ):
-                        results["warnings"].append(
-                            f"Autor główny nie ma dyscypliny {wz_autor.dyscyplina_naukowa} "
-                            f"za rok {rok}. Dyscyplina została usunięta z publikacji: "
-                            f"{wz_autor.rekord}"
-                        )
-                        wz_autor.dyscyplina_naukowa = None
-
-                # Przypisz dyscyplinę jeśli brak i włączona opcja
-                _assign_discipline_if_missing(
-                    wz_autor,
-                    glowny_autor,
-                    rok,
-                    auto_assign_discipline,
-                    use_subdiscipline,
-                    results["warnings"],
-                )
-
-                # Przemapuj autora
-                wz_autor.autor = glowny_autor
-                wz_autor.save()
-
-                # Dodaj do kolejki PBN
-                if not skip_pbn and wz_autor.rekord:
-                    content_type = ContentType.objects.get_for_model(wz_autor.rekord)
-                    PBN_Export_Queue.objects.create(
-                        content_type=content_type,
-                        object_id=wz_autor.rekord.pk,
-                        zamowil=user,
-                    )
-                    results["publications_queued_for_pbn"].append(str(wz_autor.rekord))
-
-                results["updated_records"].append(
-                    f"Wydawnictwo_Zwarte_Autor: {wz_autor.rekord}"
-                )
-                results["total_updated"] += 1
-
-            # 3. Patent_Autor
-            patent_autorzy = Patent_Autor.objects.filter(autor=autor_duplikat)
-            for patent_autor in patent_autorzy:
-                # Store old discipline before any changes
-                old_discipline = patent_autor.dyscyplina_naukowa
-
-                # CHECK IF MAIN AUTHOR ALREADY HAS THIS PUBLICATION
-                existing = Patent_Autor.objects.filter(
-                    rekord=patent_autor.rekord,
-                    autor=glowny_autor,
-                    typ_odpowiedzialnosci=patent_autor.typ_odpowiedzialnosci,
-                ).exists()
-
-                if existing:
-                    # Main author already has this publication - delete duplicate's record
-                    results["warnings"].append(
-                        f"Autor główny już ma publikację {patent_autor.rekord} "
-                        f"z typem odpowiedzialności {patent_autor.typ_odpowiedzialnosci}. "
-                        f"Usunięto duplikat."
-                    )
-                    patent_autor.delete()
-                    continue
-
-                # Sprawdź dyscypliny
-                rok = patent_autor.rekord.rok if patent_autor.rekord else None
-                if patent_autor.dyscyplina_naukowa:
-                    if (
-                        rok
-                        and not Autor_Dyscyplina.objects.filter(
-                            autor=glowny_autor,
-                            rok=rok,
-                            dyscyplina_naukowa=patent_autor.dyscyplina_naukowa,
-                        ).exists()
-                    ):
-                        results["warnings"].append(
-                            f"Autor główny nie ma dyscypliny "
-                            f"{patent_autor.dyscyplina_naukowa} "
-                            f"za rok {rok}. Dyscyplina została usunięta z publikacji: "
-                            f"{patent_autor.rekord}"
-                        )
-                        patent_autor.dyscyplina_naukowa = None
-
-                # Przypisz dyscyplinę jeśli brak i włączona opcja
-                _assign_discipline_if_missing(
-                    patent_autor,
-                    glowny_autor,
-                    rok,
-                    auto_assign_discipline,
-                    use_subdiscipline,
-                    results["warnings"],
-                )
-
-                # Przemapuj autora
-                patent_autor.autor = glowny_autor
-                patent_autor.save()
-
-                # Dodaj do kolejki PBN
-                if not skip_pbn and patent_autor.rekord:
-                    content_type = ContentType.objects.get_for_model(
-                        patent_autor.rekord
-                    )
-                    PBN_Export_Queue.objects.create(
-                        content_type=content_type,
-                        object_id=patent_autor.rekord.pk,
-                        zamowil=user,
-                    )
-                    results["publications_queued_for_pbn"].append(
-                        str(patent_autor.rekord)
-                    )
-
-                results["updated_records"].append(
-                    f"Patent_Autor: {patent_autor.rekord}"
-                )
-                results["total_updated"] += 1
-
-            # 4. Praca_Habilitacyjna
-            prace_hab = Praca_Habilitacyjna.objects.filter(autor=autor_duplikat)
-            for praca_hab in prace_hab:
-                # Przemapuj autora
-                praca_hab.autor = glowny_autor
-                praca_hab.save()
-
-                # Dodaj do kolejki PBN
-                if not skip_pbn:
-                    content_type = ContentType.objects.get_for_model(praca_hab)
-                    PBN_Export_Queue.objects.create(
-                        content_type=content_type,
-                        object_id=praca_hab.pk,
-                        zamowil=user,
-                    )
-                    results["publications_queued_for_pbn"].append(str(praca_hab))
-
-                results["updated_records"].append(f"Praca_Habilitacyjna: {praca_hab}")
-                results["total_updated"] += 1
-
-            # 5. Praca_Doktorska
-            prace_dokt = Praca_Doktorska.objects.filter(autor=autor_duplikat)
-            for praca_dokt in prace_dokt:
-                # Przemapuj autora
-                praca_dokt.autor = glowny_autor
-                praca_dokt.save()
-
-                # Dodaj do kolejki PBN
-                if not skip_pbn:
-                    content_type = ContentType.objects.get_for_model(praca_dokt)
-                    PBN_Export_Queue.objects.create(
-                        content_type=content_type,
-                        object_id=praca_dokt.pk,
-                        zamowil=user,
-                    )
-                    results["publications_queued_for_pbn"].append(str(praca_dokt))
-
-                results["updated_records"].append(f"Praca_Doktorska: {praca_dokt}")
-                results["total_updated"] += 1
 
             autor_duplikat.delete()
 
