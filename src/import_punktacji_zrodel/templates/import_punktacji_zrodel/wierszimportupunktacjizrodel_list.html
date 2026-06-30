@@ -4,12 +4,10 @@
   <h1>Wyniki importu punktacji źródeł{% if rok %} (rok {{ rok }}){% endif %}</h1>
 
   <div class="callout">
-    <ul class="menu">
-      <li>Wszystkich: <strong>{{ total_count }}</strong></li>
-      <li>Do aktualizacji: <strong>{{ do_aktualizacji_count }}</strong></li>
-      <li>Niedopasowanych: <strong>{{ niedopasowane_count }}</strong></li>
-      <li>Duplikatów: <strong>{{ duplikaty_count }}</strong></li>
-    </ul>
+    <span class="label secondary">Wszystkich: {{ total_count }}</span>
+    <span class="label">Do aktualizacji: {{ do_aktualizacji_count }}</span>
+    <span class="label alert">Niedopasowanych: {{ niedopasowane_count }}</span>
+    <span class="label warning">Duplikatów: {{ duplikaty_count }}</span>
   </div>
 
   {% if byl_dry_run %}
