@@ -126,7 +126,7 @@ def _process_one_journal(i, cz, rok, parent, dry_run, is_dup, dup_of, dup_reason
         nr_wiersza=i + 1,
         dane_z_xls=dane,
         zrodlo=zrodlo,
-        rezultat=dup_prefix + ". ".join(operacje),
+        rezultat=dup_prefix + "\n".join(operacje),
         wymaga_zmian=bool(to_save),
         **dup_kwargs,
     )

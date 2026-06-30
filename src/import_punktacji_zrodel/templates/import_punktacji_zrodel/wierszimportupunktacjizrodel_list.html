@@ -23,12 +23,12 @@
   {% else %}
     <div class="callout success">
       <p>Zmiany zapisane. Aby przenieść wartości na prace (publikacje):</p>
-      <ul class="menu">
-        <li><a class="button" href="{% url 'rozbieznosci:index' metryka='if' %}?rok_od={{ rok }}&rok_do={{ rok }}">
-            rozbieżności punktacji (IF) za {{ rok }}</a></li>
-        <li><a class="button" href="{% url 'rozbieznosci:index' metryka='kw_wos' %}?rok_od={{ rok }}&rok_do={{ rok }}">
-            rozbieżności kwartyla za {{ rok }}</a></li>
-      </ul>
+      <a class="button" style="margin-right: .75rem"
+         href="{% url 'rozbieznosci:index' metryka='if' %}?rok_od={{ rok }}&rok_do={{ rok }}">
+        rozbieżności punktacji (IF) za {{ rok }}</a>
+      <a class="button"
+         href="{% url 'rozbieznosci:index' metryka='kw_wos' %}?rok_od={{ rok }}&rok_do={{ rok }}">
+        rozbieżności kwartyla za {{ rok }}</a>
     </div>
   {% endif %}
 
@@ -58,7 +58,7 @@
             <small>{{ w.dane_z_xls.issn|default:"" }}
                    {{ w.dane_z_xls.e_issn|default:"" }}</small></td>
         <td>{% if w.zrodlo %}{{ w.zrodlo.nazwa }}{% else %}—{% endif %}</td>
-        <td>{{ w.rezultat }}</td>
+        <td>{{ w.rezultat|linebreaksbr }}</td>
       </tr>
     {% empty %}
       <tr><td colspan="4">Brak wierszy.</td></tr>
