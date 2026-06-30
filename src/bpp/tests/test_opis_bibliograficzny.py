@@ -1,14 +1,34 @@
+import os
+
 import pytest
 from dbtemplates.models import Template
+from django.contrib.contenttypes.models import ContentType
 from django.db import IntegrityError
 
-from django.contrib.contenttypes.models import ContentType
-
+import bpp
 from bpp.models import Wydawnictwo_Zwarte
 from bpp.models.szablondlaopisubibliograficznego import (
     SzablonDlaOpisuBibliograficznego,
 )
 from pbn_api.models import Publication
+
+
+def _sync_opis_template_z_dysku():
+    """Wymuś, by dbtemplate ``opis_bibliograficzny.html`` w bazie testowej miał
+    aktualną treść z dysku.
+
+    Baza testowa ładuje baseline, w którym wiersz dbtemplate bywa starszy niż
+    plik na dysku (to dokładnie problem #329 — loader dbtemplates zasłania
+    dysk). Aby przetestować *logikę* szablonu niezależnie od mechanizmu
+    dystrybucji, synchronizujemy wiersz z dyskiem."""
+    sciezka = os.path.join(
+        os.path.dirname(bpp.__file__), "templates", "opis_bibliograficzny.html"
+    )
+    with open(sciezka, encoding="utf-8") as f:
+        tresc = f.read()
+    Template.objects.update_or_create(
+        name="opis_bibliograficzny.html", defaults={"content": tresc}
+    )
 
 
 @pytest.mark.django_db
@@ -97,6 +117,63 @@ def test_opis_bibliograficzny_wydawnictwo_nadrzedne_w_pbn(
 
     opis = wydawnictwo_zwarte.opis_bibliograficzny()
     assert "W: PBN Monografia Testowa." in opis
+
+
+@pytest.mark.django_db
+def test_opis_bibliograficzny_wydawnictwo_nadrzedne_z_pbn_object_book(
+    wydawnictwo_zwarte,
+):
+    """Rozdział zaimportowany z PBN: rodzic siedzi w surowym JSON-ie
+    publikacji (``object.book.title``), bez ustawionego FK BPP ani kurowanego
+    FK PBN. Opis i tak pokazuje 'W: tytuł' (ticket #329)."""
+    pbn_pub = Publication.objects.create(
+        mongoId="test-pbn-rozdzial-id",
+        versions=[
+            {
+                "current": True,
+                "object": {"book": {"title": "Rodzic z surowego PBN"}},
+            }
+        ],
+    )
+    wydawnictwo_zwarte.pbn_uid = pbn_pub
+    wydawnictwo_zwarte.wydawnictwo_nadrzedne = None
+    wydawnictwo_zwarte.wydawnictwo_nadrzedne_w_pbn = None
+    wydawnictwo_zwarte.informacje = ""
+    wydawnictwo_zwarte.zrodlo = None
+    wydawnictwo_zwarte.save()
+
+    _sync_opis_template_z_dysku()
+    opis = wydawnictwo_zwarte.opis_bibliograficzny()
+    assert "W: Rodzic z surowego PBN." in opis
+
+
+@pytest.mark.django_db
+def test_opis_bibliograficzny_fk_bpp_wygrywa_nad_pbn_object_book(
+    wydawnictwo_zwarte,
+):
+    """Gdy ustawiony jest FK BPP, ma pierwszeństwo nad ``object.book`` z PBN."""
+    parent = Wydawnictwo_Zwarte.objects.create(
+        tytul_oryginalny="Rodzic w BPP",
+        charakter_formalny=wydawnictwo_zwarte.charakter_formalny,
+        typ_kbn=wydawnictwo_zwarte.typ_kbn,
+        jezyk=wydawnictwo_zwarte.jezyk,
+        status_korekty=wydawnictwo_zwarte.status_korekty,
+        rok=wydawnictwo_zwarte.rok,
+    )
+    pbn_pub = Publication.objects.create(
+        mongoId="test-pbn-rozdzial-id-2",
+        versions=[{"current": True, "object": {"book": {"title": "Rodzic z PBN"}}}],
+    )
+    wydawnictwo_zwarte.wydawnictwo_nadrzedne = parent
+    wydawnictwo_zwarte.pbn_uid = pbn_pub
+    wydawnictwo_zwarte.wydawnictwo_nadrzedne_w_pbn = None
+    wydawnictwo_zwarte.informacje = ""
+    wydawnictwo_zwarte.zrodlo = None
+    wydawnictwo_zwarte.save()
+
+    opis = wydawnictwo_zwarte.opis_bibliograficzny()
+    assert "W: Rodzic w BPP." in opis
+    assert "Rodzic z PBN" not in opis
 
 
 @pytest.mark.django_db
