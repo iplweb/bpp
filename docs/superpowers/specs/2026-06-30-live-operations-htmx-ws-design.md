@@ -68,7 +68,8 @@ pollingu), oraz ergonomiczne API**, w którym deweloper operuje na obiekcie
 ```
 ┌──────────────────────────────────────────────────────────────┐
 │  Przeglądarka (jedna, stojąca strona operacji)               │
-│   <div id="op-<pk>" hx-ext="ws" ws-connect="/live/<pk>/">    │
+│   <div id="op-<pk>" data-channel="liveop.<pk>" data-token="…">   │
+│   {# JS: channelsBroadcast.init(["liveop.<pk>"],{subscriptionToken}) #}│
 │     <div id="op-status">…</div>      ← regiony OOB-swap       │
 │     <div id="op-progress">…</div>                            │
 │     <div id="op-log">…</div>                                 │
@@ -145,8 +146,8 @@ class ImportPunktacji(LiveOperation):
 | `p.percent(value)` | ustaw pasek (0–100) | `#op-progress` |
 | `p.track(iterable, total=None, label=None, unit="szt.")` | **generator**: iteruje i automatycznie aktualizuje pasek + ETA (tqdm-style), z throttlingiem | `#op-progress` |
 | `p.log(line)` | dopisz linię do strumieniowego logu (raport tekstowy) | `#op-log` (append) |
-| `p.swap(selector, name=None, **context)` | dowolny region: renderuj fragment (auto-nazwa `<app>/<klasa>_<name>.html` albo jawnie) i wstaw OOB | dowolny `id` |
-| `p.html(selector, html, mode="innerHTML")` | jak wyżej, surowy HTML | dowolny `id` |
+| `p.swap(selector, name=None, **context)` | **[tylko Web, §19.5]** dowolny region: renderuj fragment (auto-nazwa `<app>/<klasa>_<name>.html`) i wstaw OOB | dowolny `id` |
+| `p.html(selector, html, mode="innerHTML")` | **[tylko Web, §19.5]** jak wyżej, surowy HTML (TextProgress → `NotImplementedError`) | dowolny `id` |
 | `p.result(context=None, **extra)` | finalizacja sukcesem: render **auto-wyliczonego** szablonu wyniku (§4.4), podmień `#op-result`, oznacz operację jako zakończoną, zatrzymaj pasek | `#op-result` |
 | `p.error(message)` | finalizacja błędem: pokaż komunikat + „Uruchom ponownie" | `#op-result` |
 | `p.check_cancelled()` | zgłasza `OperationCancelled`, jeśli użytkownik anulował (patrz §4.5); wołaj w pętli | — |
@@ -228,10 +229,12 @@ ustawieniach: `LIVE_OPERATIONS = {"BASE_TEMPLATE": "base.html"}` (§15).
   {% live_operation operacja %}   {# templatetag #}
     {# rozwija się do: #}
     <div id="op-{{ operacja.pk }}"
-         hx-ext="ws"
-         ws-connect="{% url 'live_operations:ws' operacja.pk %}">
+         data-liveop-channel="liveop.{{ operacja.pk }}"
+         data-liveop-token="{{ operacja.subscription_token }}">
       {% include "live_operations/_regions.html" %}
     </div>
+    {# live-operations.js czyta data-* i woła channelsBroadcast.init(   #}
+    {# [channel], {subscriptionToken}) — stała ścieżka, nie per-pk URL  #}
   ```
 - Deweloper **nie** przekazuje UID-a. Wiązanie „ta operacja ↔ ta strona"
   wynika z obiektu `operacja` podanego do templatetagu. Kanał = pochodna
@@ -259,8 +262,9 @@ ustawieniach: `LIVE_OPERATIONS = {"BASE_TEMPLATE": "base.html"}` (§15).
     <small>42% · 57/136 · ~8 s</small>
   </div>
   ```
-  HTMX rozszerzenie `ws` traktuje każdą wiadomość jak odpowiedź i robi
-  OOB-swap elementów po `id`. **Zero własnego JS** do swapów.
+  HTML jedzie w **kopercie JSON** (`{"liveop_html": "..."}`, bez top-level
+  `id` — §19.2); plugin `addMessage` klienta `channels_broadcast` wyciąga je i
+  robi OOB-swap po `id` + `htmx.process()`. (NIE `hx-ext="ws"` — §19.1/§19.2.)
 - Append (log) przez `hx-swap-oob="beforeend:#op-log"`:
   ```html
   <div hx-swap-oob="beforeend:#op-log"><div class="log-line">LANCET: zapisano</div></div>
@@ -278,8 +282,10 @@ strona się nie wyładowuje, socket żyje, kolejne wiadomości docierają.
 Znika cała klasa wyścigów „nawigacja vs potwierdzenie".
 
 ### 7.2 Idempotentny snapshot zamiast ACK
-Nie potrzebujemy `acknowledged` ani replay-po-jednym. **Stan operacji jest
-źródłem prawdy** (DB), a fragmenty są jego deterministyczną projekcją.
+Nie potrzebujemy `acknowledged` ani replay-po-jednym. **W v1 (default) źródłem
+prawdy w DB jest stan TERMINALNY** (`finished_*`/`result_context`); postęp jest
+live-only i self-heal — patrz **§19.3** (pełny stan/„cały log" dotyczy dopiero
+odroczonego trybu PERSIST). Fragmenty są deterministyczną projekcją stanu.
 
 ### 7.3 Resync na (re)connect
 `LiveOperationConsumer.connect()`:
@@ -336,7 +342,8 @@ gdy deployment nie ma ASGI. (Cel główny to WS; to tylko siatka.)
     fragment wyniku w `#op-result`). Czyli odświeżenie strony zakończonej
     operacji = od razu wyniki, bez czekania.
 - `LiveOperationListView` — lista operacji użytkownika (jak dziś).
-- WS: `path("live/<uuid:pk>/", LiveOperationConsumer.as_asgi())`.
+- WS: **stała ścieżka** `channels_broadcast` (`/asgi/notifications/`) +
+  `subscription_token` niosący kanał `liveop.<pk>` (§19.1). **Bez** per-pk URL.
 - Szablony regionów: `live_operations/_regions.html`, `_status.html`,
   `_progress.html`, `_log.html`, `_result.html` (deweloper nadpisuje
   `_result.html` per-aplikacja albo podaje własny w `p.result(...)`).
@@ -381,8 +388,10 @@ class LiveOperation(models.Model):       # abstrakcyjny
     # mutacji domenowych; p.* robi group_send od razu (nie on_commit).
 ```
 
-- **Stan live jest trwały i zacommitowany na bieżąco** → snapshot na reconnect
-  widzi rzeczywistość (klucz: §17/B1).
+- **v1 (default):** w DB trwały jest **stan terminalny** (`finished_*`/
+  `result_context`); `status_text/percent/log/log_seq` to placeholder zapisywany
+  dopiero w trybie PERSIST (odroczony) — patrz **§19.3**. W trybie default postęp
+  jest live-only (self-heal), a snapshot odtwarza tylko stan terminalny.
 - `log` jako `JSONField` dla prostoty; dla dużych raportów — osobny model
   `LiveOperationLogLine(parent, nr, text)` (decyzja §13).
 
@@ -406,11 +415,12 @@ class LiveOperation(models.Model):       # abstrakcyjny
 ## 12. Testy
 
 - **Jednostkowe `Progress`:** `track()` liczy procenty/ETA i throttluje;
-  `log()` dopisuje; `result()` ustawia `finished` + `result_html`; każda
+  `log()` dopisuje; `result()` ustawia `finished` + `result_context`; każda
   metoda renderuje poprawny fragment z `hx-swap-oob`.
 - **Consumer (pytest + channels `WebsocketCommunicator`):**
   - connect nieautoryzowany → odrzucony;
-  - connect właściciela → dostaje snapshot (status/percent/log/wynik);
+  - connect właściciela → dostaje snapshot **stanu terminalnego** (v1 default:
+    finished+wynik; status/percent/log live-only — §19.3);
   - po `p.percent(...)` klient dostaje fragment `#op-progress`;
   - reconnect w połowie → dostaje aktualny snapshot (idempotencja);
   - operacja zakończona przed connectem → snapshot od razu zawiera wynik
@@ -440,8 +450,8 @@ class LiveOperation(models.Model):       # abstrakcyjny
 `init()`), podmieniając wyłącznie `addMessage` na **plugin OOB-swap**.
 **htmx-ext-ws NIE jest potrzebny** (i nie ma go dziś w projekcie). `chain_to`
 = `init([nowy_pk], token)` (zamyka stary socket, otwiera nowy). Po stronie
-serwera consumer wysyła **fragmenty HTML** zamiast JSON i robi snapshot na
-connect. Szczegóły: §17.10.
+serwera consumer wysyła HTML **w kopercie JSON** (`{"liveop_html": …}`, §19.2)
+i robi snapshot na connect. Szczegóły: §17.10 + §19.
 
 **Do rozstrzygnięcia przed planem:**
 2. **Log storage**: `JSONField` (proste) vs osobny model wierszy (skalowalne,
@@ -808,3 +818,94 @@ crona, debugowania, CI i ręcznego odpalenia bez przeglądarki.
   renderowanie. Logika domenowa w `run()` jest ta sama.
 - **Granica**: w CLI nie ma „in-place swap"/„deep-link" (to pojęcia webowe);
   CLI drukuje liniowo. To świadomie jedyna różnica widoczna dla użytkownika.
+
+---
+
+## 19. Poprawki po II adversarial review (NADRZĘDNE nad wcześniejszymi sekcjami)
+
+Gdzie poniższe kłóci się z wcześniejszym tekstem, **obowiązuje §19.**
+
+### 19.1 Adresowanie socketu: stała ścieżka + `subscription_token` (NIE per-pk URL)
+Klient `channels_broadcast` łączy się ze **stałą ścieżką** (`/asgi/notifications/`)
+i przekazuje kanał w `?subscription_token=` (token niesie nazwę kanału;
+samo `extraChannels` jest odrzucane przez domyślny authorizer). Dlatego:
+- **USUWAMY** per-pk `ws-connect="/live/<pk>/"` i `path("live/<uuid:pk>/", …)`
+  (stare §3 diagram, §5, §9). Host page **nie** ma `hx-ext="ws"`/`ws-connect`.
+- Host page renderuje `pk` + **`subscription_token`** (podpisany, krótkotrwały,
+  wiążący usera z kanałem `liveop.<pk>`) i woła
+  `channelsBroadcast.init([ "liveop.<pk>" ], { subscriptionToken })`.
+- Serwerowy consumer to (na razie) **stock `NotificationsConsumer`** z
+  `channels_broadcast` — NIE piszemy własnego routingu per-pk.
+
+### 19.2 Transport: HTML w KOPERCIE JSON (klient odrzuca nie-JSON)
+Klient robi `JSON.parse(event.data)` i **dropuje** ramki nie-JSON *przed*
+`addMessage`. Więc:
+- Serwer wysyła `core._send(channel, {"liveop_html": "<div id=… hx-swap-oob>…"})`
+  — HTML **w polu** JSON-a, nie surowy HTML.
+- **Bez top-level `id`** w naszych wiadomościach (klient auto-ACK-uje ramki z
+  `id` do modelu `Notification` — to nie nasza ścieżka). Użyć innego klucza.
+- Plugin `addMessage`: jeśli `msg.liveop_html` → zastosuj OOB-swap +
+  `htmx.process(node)`; w przeciwnym razie oddaj do oryginalnego handlera.
+- (Naprawia fałszywy claim „wysyła HTML zamiast JSON" z §6/§13/§17.10.)
+
+### 19.3 Model gwarancji snapshotu — DEFAULT vs (odroczony) PERSIST
+**v1 default (no-persist):**
+- Źródłem prawdy w DB jest **stan TERMINALNY** (`finished_*`, `result_context`,
+  `traceback`). Snapshot na (re)connect odtwarza **tylko** ten stan.
+- `status`/`percent`/`log` lecą **wyłącznie live** (group_send), **nie** są w DB.
+  Mid-join: percent/status **self-heal** na następnym ticku; **log/percent
+  sprzed podłączenia są NIEodtwarzalne**. To akceptowalny kompromis.
+- ⇒ `log_seq` i dedupe-po-`nr` (§7.3 note, §17.3) oraz „cały log na connect"
+  (§2.4, §7.3) **NIE dotyczą v1 default** — to funkcje trybu PERSIST.
+**PERSIST_PROGRESS = ODROCZONE poza v1.** Wymaga osobnego aliasu `DATABASES`
+(to samo DB, używany poza `atomic()`, `connections['liveops_progress']`) +
+zarządzania połączeniem w workerze (`close_old_connections`). Pakiet sam tego
+nie dostarczy (to konfiguracja deploymentu) → **w v1 NIE implementujemy**;
+zostaje jako udokumentowany przyszły upgrade. Pola `status_text/percent/log/
+log_seq` w modelu: zostają jako placeholder, w v1 zapisywane **tylko** na
+końcu (część snapshotu terminalnego) lub wcale.
+
+### 19.4 (Blocker 3) Stan TERMINALNY commituje się PRZED finalnym push-em
+Wyjątek od reguły „p.* wysyła od razu, nie on_commit": **finalny** `p.result()`
+/ `p.error()` musi:
+1. zapisać i **zacommitować** `finished_*`+`result_context` (poza/ po
+   transakcji domenowej), a DOPIERO potem
+2. wysłać push wyniku — albo równoważnie: push wyniku przez
+   `transaction.on_commit`.
+Inaczej wraca wąskie okno FD#388: klient łączący się po pushu, a przed
+commitem, zobaczy „w toku" bez kolejnego ticku → zawias. To jedyne miejsce,
+gdzie `on_commit` jest wymagane.
+
+### 19.5 `Progress`: rdzeń transport-neutralny vs rozszerzenie webowe
+- **Rdzeń (oba backendy implementują):** `status, percent, track, log, stage,
+  result, check_cancelled, chain_to`.
+- **Tylko `WebProgress`:** `swap(selector,…)`, `html(selector,…)` (dowolny
+  region DOM). `TextProgress` rzuca `NotImplementedError` z jasnym komunikatem
+  („swap/html są webowe; w trybie tekstowym użyj log/status/result").
+  Udokumentować, że `run()` używające `swap/html` nie jest CLI-przenośne.
+- **`p.result(context)` w trybie tekstowym:** jeśli istnieje `*_result.txt` →
+  renderuj go; w przeciwnym razie **domyślny zrzut** `result_context`
+  (czytelne klucz=wartość). `.txt` jest opcjonalny — „jedna `run()`" trzyma się
+  bez zmuszania do drugiego szablonu.
+
+### 19.6 (test/demo) „Najprostszy serwer testowy" — konkretny stack
+Pakiet dostarcza **`example/`** (demo Django project) + **`docker-compose.yml`**:
+- usługi: `redis`, `web` (ASGI: Daphne/uvicorn z `channels`), `worker` (Celery).
+- `manage.py seed_demo` — tworzy usera-właściciela + auto-login (dev token,
+  jak `django-dev-helpers`) + przykładową operację `DemoImport` (5 etapów,
+  upload→analiza→wyniki).
+- **Jedna komenda**: `make demo` (albo `docker compose up`) → otwiera stronę,
+  widać żywy pasek/log/etapy/wynik bez reloadu.
+- **Bez przeglądarki / CI**: `manage.py run_liveop example.DemoImport …`
+  (tryb tekstowy tqdm, §18) i `eager` runner — nie wymaga Redis/ASGI.
+- Testy: 3-poziomowo (§17.6) — consumer (`WebsocketCommunicator`), `Progress`
+  z fake-layer, round-trip na Redis przez `pytest-testcontainers-django`.
+
+### 19.7 Lista zmian nadpisujących wcześniejszy tekst
+- §3 diagram / §5 / §9: bez per-pk `ws-connect`/URL → §19.1.
+- §6 / §13 / §17.10: „HTML zamiast JSON" → koperta JSON §19.2; bez `hx-ext=ws`.
+- §2.4 / §7.2 / §7.3 / §10(„zacommitowany na bieżąco") / §12 / §17.3:
+  pełny-stan/„cały log"/dedupe → tylko tryb PERSIST (odroczony) → §19.3.
+- §12: `result_html` → `result_context`.
+- §17.1: finalny push → `on_commit` → §19.4.
+- §4.2/§18: `swap`/`html` = tylko Web → §19.5.
