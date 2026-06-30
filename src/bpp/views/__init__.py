@@ -13,6 +13,7 @@ except ImportError:
 from django.http import JsonResponse
 from django.http.response import HttpResponse, HttpResponseServerError
 from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.vary import vary_on_headers
 from django.views.defaults import page_not_found, permission_denied
 from django_sendfile import sendfile
 
@@ -165,6 +166,7 @@ def _read_static_robots(settings):
         return f.read()
 
 
+@vary_on_headers("Host")
 def robots_txt(request):
     """Serwuj robots.txt z host-zależną dyrektywą Sitemap.
 
@@ -172,6 +174,13 @@ def robots_txt(request):
     sitemapy. W produkcji do listy Disallow dopisujemy bezwzględny URL
     sitemapy zbudowany z hosta requestu — poprawny dla każdego z domen
     multi-hosted (hardcode jednej domeny byłby błędny dla pozostałych).
+
+    `vary_on_headers("Host")` jest KONIECZNE: widok jest owinięty w
+    `cache_page` (urls.py), a odpowiedź zależy teraz od hosta. Bez
+    `Vary: Host` pierwszy request po wygaśnięciu cache (np. wewnętrzny
+    `appserver:8000` albo probe po IP) zabetonowałby swój host w
+    sitemapie serwowanej WSZYSTKIM domenom na 24h. Vary keyuje cache
+    per-host.
     """
     from django.conf import settings
 

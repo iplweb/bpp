@@ -91,13 +91,13 @@ tu zostaje tylko citation_pmid, którego tamten szablon nie ma.
     {% for autor in autorzy %}
     {
       "@type": "Person",
-      "name": "{{ autor.autor.imiona }} {{ autor.autor.nazwisko }}",
-      "givenName": "{{ autor.autor.imiona }}",
-      "familyName": "{{ autor.autor.nazwisko }}"
+      "name": {{ autor.autor.imiona|add:" "|add:autor.autor.nazwisko|jsonify }},
+      "givenName": {{ autor.autor.imiona|jsonify }},
+      "familyName": {{ autor.autor.nazwisko|jsonify }}
       {% if autor.autor.orcid %},"identifier": {
         "@type": "PropertyValue",
         "propertyID": "ORCID",
-        "value": "{{ autor.autor.orcid }}"
+        "value": {{ autor.autor.orcid|jsonify }}
       }{% endif %}
     }{% if not forloop.last %},{% endif %}
     {% endfor %}

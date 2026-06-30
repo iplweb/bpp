@@ -79,6 +79,49 @@ def test_json_ld_obecny(client, rekord_publikacji):
 
 
 @pytest.mark.django_db(transaction=True)
+def test_json_ld_poprawny_json_przy_groznych_znakach(client, db, transactional_db):
+    """JSON-LD musi być poprawnym JSON-em nawet gdy dane mają " < & </script>.
+
+    Regresja: autoescaping zamieniał cudzysłowy z `jsonify` na `&quot;`, a
+    HTML5 nie dekoduje encji w <script> — JSON-LD był niepoprawny i Google
+    go odrzucał. Filtr `jsonify` zwraca teraz mark_safe + escapuje <, >, &.
+    """
+    import json
+    import re
+
+    rebuild_contenttypes()
+    aut, _ = Typ_Odpowiedzialnosci.objects.get_or_create(
+        skrot="aut.", defaults={"nazwa": "autor"}
+    )
+    ch, _ = Charakter_Formalny.objects.get_or_create(
+        skrot="AC",
+        defaults={"nazwa": "Artykuł", "nazwa_w_primo": "Artykuł"},
+    )
+    c = any_ciagle(
+        tytul_oryginalny='Tytuł z " cudzysłowem & <b>znacznikiem</b>',
+        charakter_formalny=ch,
+        rok=2024,
+    )
+    a = baker.make(Autor, nazwisko='O"Brien & <Co>', imiona="Jan")
+    j = baker.make(Jednostka)
+    Wydawnictwo_Ciagle_Autor.objects.create(
+        rekord=c, autor=a, jednostka=j, typ_odpowiedzialnosci=aut
+    )
+    Rekord.objects.full_refresh()
+    rekord = Rekord.objects.first()
+
+    html = client.get(rekord.get_absolute_url(), follow=True).content.decode("utf-8")
+    payload = re.search(
+        r'<script type="application/ld\+json">(.*?)</script>', html, re.S
+    ).group(1)
+
+    parsed = json.loads(payload)  # rzuci, jeśli JSON-LD jest niepoprawny
+    assert parsed["author"][0]["name"] == 'Jan O"Brien & <Co>'
+    # Brak dosłownego "<" w payloadzie => nie da się wyłamać przez </script>.
+    assert "<" not in payload
+
+
+@pytest.mark.django_db(transaction=True)
 def test_link_kanoniczny(client, rekord_publikacji):
     res = client.get(rekord_publikacji.get_absolute_url(), follow=True)
     head = _head(res)
@@ -110,3 +153,20 @@ def test_robots_txt_wskazuje_sitemap(client):
     assert "/sitemap.xml" in body
     # Lista Disallow ze statycznego pliku nadal obecna.
     assert "Disallow:" in body
+
+
+@pytest.mark.django_db
+def test_robots_txt_sitemap_zalezna_od_hosta(client, settings):
+    """Sitemap musi wskazywać host requestu, a odpowiedź mieć Vary: Host.
+
+    Bez Vary: Host owijający cache_page zaserwowałby pierwszemu hostowi
+    cache współdzielony z innymi domenami multi-hosted.
+    """
+    settings.ALLOWED_HOSTS = ["bpp.uczelnia-a.pl", "bpp.uczelnia-b.pl"]
+
+    res_a = client.get(reverse("robots_txt"), HTTP_HOST="bpp.uczelnia-a.pl")
+    res_b = client.get(reverse("robots_txt"), HTTP_HOST="bpp.uczelnia-b.pl")
+
+    assert "Sitemap: http://bpp.uczelnia-a.pl/sitemap.xml" in res_a.content.decode()
+    assert "Sitemap: http://bpp.uczelnia-b.pl/sitemap.xml" in res_b.content.decode()
+    assert "Host" in res_a.get("Vary", "")

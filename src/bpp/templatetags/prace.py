@@ -119,13 +119,33 @@ def safe_streszczenie(value):
 
 @register.filter(name="jsonify")
 def jsonify(value):
-    """Convert a value to JSON string for use in JSON-LD structured data."""
+    """Convert a value to a JSON literal for use inside a <script> JSON-LD block.
+
+    Zwraca `mark_safe`, więc autoescaping Django NIE zamieni cudzysłowów
+    JSON-a na `&quot;` — to było realnym bugiem: HTML5 nie dekoduje encji
+    w treści `<script>`, więc `"headline": &quot;...&quot;` dawało
+    niepoprawny JSON-LD (Google go odrzucał).
+
+    Skoro pomijamy autoescaping, sami escapujemy znaki groźne wewnątrz
+    `<script>` (`<`, `>`, `&` oraz separatory linii U+2028/U+2029) na
+    sekwencje `\\uXXXX` — to wciąż poprawny JSON, a zarazem uniemożliwia
+    wyłamanie się z taga przez `</script>` (ochrona przed XSS). Ta sama
+    technika co `django.utils.html.json_script`.
+    """
     if value is None:
-        return "null"
+        return mark_safe("null")
     # Handle Django model instances by converting them to string
     if hasattr(value, "_meta"):
         value = str(value)
-    return json.dumps(value, ensure_ascii=False)
+    result = json.dumps(value, ensure_ascii=False)
+    result = (
+        result.replace("<", "\\u003c")
+        .replace(">", "\\u003e")
+        .replace("&", "\\u0026")
+        .replace(" ", "\\u2028")
+        .replace(" ", "\\u2029")
+    )
+    return mark_safe(result)
 
 
 @register.simple_tag
