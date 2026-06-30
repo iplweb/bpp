@@ -65,12 +65,13 @@ class RestartImportView(BaseMixin, RestartLongRunningOperationView):
     pass
 
 
-class ZatwierdzImportView(RestrictToOwnerMixin, LongRunningTaskCallerMixin, DetailView):
+class ZatwierdzImportView(
+    BaseMixin, RestrictToOwnerMixin, LongRunningTaskCallerMixin, DetailView
+):
     """Przełącza dry-run -> commit i ponownie uruchamia przetwarzanie
     na już zapisanym pliku (bez ponownego uploadu)."""
 
-    model = ImportPunktacjiZrodel
-    group_required = "wprowadzanie danych"
+    http_method_names = ["post"]
 
     @transaction.atomic
     def post(self, *args, **kwargs):

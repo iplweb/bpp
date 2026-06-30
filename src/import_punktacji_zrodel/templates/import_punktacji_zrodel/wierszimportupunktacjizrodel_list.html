@@ -71,11 +71,11 @@
   {% if is_paginated %}
     <p>
       {% if page_obj.has_previous %}
-        <a href="?page={{ page_obj.previous_page_number }}">« poprzednia</a>
+        <a href="?{% if request.GET.tylko_do_aktualizacji %}tylko_do_aktualizacji=1&{% endif %}{% if request.GET.tylko_niedopasowane %}tylko_niedopasowane=1&{% endif %}{% if request.GET.tylko_duplikaty %}tylko_duplikaty=1&{% endif %}page={{ page_obj.previous_page_number }}">« poprzednia</a>
       {% endif %}
       strona {{ page_obj.number }} z {{ page_obj.paginator.num_pages }}
       {% if page_obj.has_next %}
-        <a href="?page={{ page_obj.next_page_number }}">następna »</a>
+        <a href="?{% if request.GET.tylko_do_aktualizacji %}tylko_do_aktualizacji=1&{% endif %}{% if request.GET.tylko_niedopasowane %}tylko_niedopasowane=1&{% endif %}{% if request.GET.tylko_duplikaty %}tylko_duplikaty=1&{% endif %}page={{ page_obj.next_page_number }}">następna »</a>
       {% endif %}
     </p>
   {% endif %}
