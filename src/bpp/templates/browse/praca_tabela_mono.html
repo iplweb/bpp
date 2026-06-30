@@ -1,9 +1,8 @@
 {% load prace user_in_group dspace_links %}
 
-{% comment %} Include bibliography metadata in head section {% endcomment %}
-{% if not request.is_ajax %}
-    {% include "browse/bibliography_metadata.html" with praca=praca autorzy=autorzy %}
-{% endif %}
+{# Metadane bibliograficzne (citation_*, DC, PRISM, JSON-LD) są teraz #}
+{# wstrzykiwane do <head> przez browse/praca.html (blok extrahead) — #}
+{# parsery Google Scholar czytają wyłącznie head, nie body. #}
 
 <!-- Main publication container with modern card layout -->
 <div class="praca-mono">

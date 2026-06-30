@@ -39,27 +39,11 @@ like Zotero, Mendeley, EndNote, etc.
     <meta name="DC.relation" content="{{ praca.public_www|default:praca.www }}" />
 {% endif %}
 
-{% comment %} Enhanced Highwire/Google Scholar Tags {% endcomment %}
-{% if praca.doi %}
-    <meta name="citation_doi" content="{{ praca.doi }}" />
-{% endif %}
-{% if praca.isbn %}
-    <meta name="citation_isbn" content="{{ praca.isbn }}" />
-{% endif %}
-{% if praca.issn %}
-    <meta name="citation_issn" content="{{ praca.issn }}" />
-{% endif %}
-{% if praca.wydawca %}
-    <meta name="citation_publisher" content="{{ praca.wydawca }}" />
-{% endif %}
-{% if praca.streszczenia.exists %}
-    {% for streszczenie in praca.streszczenia.all %}
-        {% if forloop.first %}
-            <meta name="citation_abstract" content="{{ streszczenie.streszczenie|striptags|truncatewords:150 }}" />
-        {% endif %}
-    {% endfor %}
-{% endif %}
-<meta name="citation_language" content="{{ praca.jezyk.skrot|default:'pl' }}" />
+{% comment %}
+Pozostałe tagi citation_* (doi, isbn, issn, publisher, abstract, language)
+emituje browse/google_scholar.html, dołączany do <head> obok tego pliku —
+tu zostaje tylko citation_pmid, którego tamten szablon nie ma.
+{% endcomment %}
 {% if praca.pubmed_id %}
     <meta name="citation_pmid" content="{{ praca.pubmed_id }}" />
 {% endif %}

@@ -141,15 +141,44 @@ def handler500(request):
     return HttpResponseServerError(body, content_type="text/html; charset=utf-8")
 
 
+def _read_static_robots(settings):
+    """Zwróć treść statycznego robots.txt (lista Disallow).
+
+    Najpierw STATIC_ROOT (produkcja po collectstatic), w razie braku —
+    przez staticfiles finders (dev/test, gdzie collectstatic nie biegł).
+    """
+    import os
+
+    candidate = os.path.join(settings.STATIC_ROOT or "", "robots.txt")
+    if os.path.exists(candidate):
+        path = candidate
+    else:
+        from django.contrib.staticfiles import finders
+
+        path = finders.find("robots.txt")
+
+    if not path:
+        # Nie powinno się zdarzyć — robots.txt jest w src/bpp/static/.
+        return "User-agent: *\n"
+
+    with open(path, encoding="utf-8") as f:
+        return f.read()
+
+
 def robots_txt(request):
-    """Serve robots.txt - restricted version for test environments."""
+    """Serwuj robots.txt z host-zależną dyrektywą Sitemap.
+
+    W konfiguracji testowej blokujemy całość (Disallow: /) i nie ogłaszamy
+    sitemapy. W produkcji do listy Disallow dopisujemy bezwzględny URL
+    sitemapy zbudowany z hosta requestu — poprawny dla każdego z domen
+    multi-hosted (hardcode jednej domeny byłby błędny dla pozostałych).
+    """
     from django.conf import settings
 
     if getattr(settings, "DJANGO_BPP_ENABLE_TEST_CONFIGURATION", False):
-        content = "User-agent: *\nDisallow: /\n"
-    else:
-        from django.views.static import serve as static_serve
+        return HttpResponse("User-agent: *\nDisallow: /\n", content_type="text/plain")
 
-        return static_serve(request, "robots.txt", document_root=settings.STATIC_ROOT)
-
-    return HttpResponse(content, content_type="text/plain")
+    body = _read_static_robots(settings).rstrip("\n")
+    sitemap_url = request.build_absolute_uri("/sitemap.xml")
+    body = f"{body}\n\nSitemap: {sitemap_url}\n"
+    return HttpResponse(body, content_type="text/plain")
