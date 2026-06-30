@@ -4,7 +4,7 @@ from django.utils.html import mark_safe
 register = template.Library()
 
 
-@register.inclusion_tag("live_operations/_live_operation.html")
+@register.simple_tag
 def live_operation(op):
     """Render the live operation container with WS binding attributes.
 
@@ -14,8 +14,13 @@ def live_operation(op):
            data-liveop-token="<signed-token>">
         ... regions ...
       </div>
+
+    Uses render_op_container so both the templatetag and chain_to share
+    the same rendering path.
     """
-    return {"op": op}
+    from live_operations.rendering import render_op_container
+
+    return mark_safe(render_op_container(op))
 
 
 @register.simple_tag
@@ -43,3 +48,15 @@ def render_op_result(op):
             if k != "operation"
         ]
         return mark_safe("<br>".join(parts))
+
+
+@register.filter
+def get_item(dictionary, key):
+    """Return ``dictionary[key]`` or empty string when key is absent.
+
+    Used in _stages.html to look up per-stage state by variable key:
+      {{ op.stage_states|get_item:stage_name }}
+    """
+    if not isinstance(dictionary, dict):
+        return ""
+    return dictionary.get(key, "")

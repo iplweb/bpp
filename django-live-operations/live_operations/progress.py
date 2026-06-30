@@ -93,6 +93,9 @@ class Progress:
         """
         Context manager for a named stage.
         Updates current_stage and stage_states on the operation object.
+
+        stage_states is keyed by stage name (not index) so templates can
+        look up per-stage state with {{ op.stage_states|get_item:stage_name }}.
         """
         op = self._operation
         stages = list(op.stages) if op.stages else []
@@ -102,22 +105,22 @@ class Progress:
             op.current_stage = idx
             if not isinstance(op.stage_states, dict):
                 op.stage_states = {}
-            op.stage_states[str(idx)] = "active"
+            op.stage_states[name] = "active"
 
         self._on_stage_start(name, idx)
         try:
             yield
             if idx >= 0:
-                op.stage_states[str(idx)] = "done"
+                op.stage_states[name] = "done"
             self._on_stage_end(name, idx, success=True)
         except OperationCancelled:
             if idx >= 0:
-                op.stage_states[str(idx)] = "cancelled"
+                op.stage_states[name] = "cancelled"
             self._on_stage_end(name, idx, success=False)
             raise
         except Exception:
             if idx >= 0:
-                op.stage_states[str(idx)] = "error"
+                op.stage_states[name] = "failed"
             self._on_stage_end(name, idx, success=False)
             raise
 
@@ -142,8 +145,8 @@ class Progress:
             )
 
     def chain_to(self, next_op: Any) -> None:
-        """Chain to next_op. Web: re-init socket. Text: run inline. (Phase 4)"""
-        raise NotImplementedError("chain_to not implemented in v1 (Phase 4)")
+        """Chain to next_op. Web: re-init socket. Text: run inline."""
+        raise NotImplementedError
 
     # ------------------------------------------------------------------ #
     # Web-only (NotImplementedError on base + TextProgress)               #
@@ -190,6 +193,12 @@ class WebProgress(Progress):
             self._channel,
             {"type": "chat_message", "liveop_html": html},
         )
+
+    def _push_message(self, msg: dict) -> None:
+        """Send an arbitrary message dict to the operation channel group."""
+        from asgiref.sync import async_to_sync
+
+        async_to_sync(self._channel_layer.group_send)(self._channel, msg)
 
     def _render(self, template_name: str, context: dict) -> str:
         from django.template.loader import render_to_string
@@ -285,7 +294,7 @@ class WebProgress(Progress):
             push_fn(
                 format_html(
                     '<div id="op-result" hx-swap-oob="true">'
-                    '<div class="error">{}</div></div>',
+                    "<div class=\"error\">{}</div></div>",
                     message,
                 )
             )
@@ -337,11 +346,93 @@ class WebProgress(Progress):
         else:
             self._push(f'<div id="{elem_id}" hx-swap-oob="true">{raw}</div>')
 
+    # ------------------------------------------------------------------ #
+    # Stage hooks (called from Progress.stage context manager)            #
+    # ------------------------------------------------------------------ #
+
+    def _push_stages_fragment(self) -> None:
+        """Render _stages.html and push it as an OOB swap of #op-stages."""
+        op = self._operation
+        inner = self._render("live_operations/_stages.html", {"op": op})
+        self._push(f'<div id="op-stages" hx-swap-oob="true">{inner}</div>')
+
     def _on_stage_start(self, name: str, idx: int) -> None:
-        pass  # Phase 4: push stepper fragment
+        """Persist stage start, push updated stepper, reset progress bar."""
+        op = self._operation
+        if idx >= 0:
+            op.save(update_fields=["current_stage", "stage_states"])
+        self._push_stages_fragment()
+        # Reset progress bar to 0 for the new stage (direct emit, no throttle)
+        self._emit_percent(0)
 
     def _on_stage_end(self, name: str, idx: int, success: bool) -> None:
-        pass  # Phase 4: update stepper
+        """Persist stage end state, push updated stepper."""
+        op = self._operation
+        if idx >= 0:
+            op.save(update_fields=["stage_states"])
+        self._push_stages_fragment()
+
+    # ------------------------------------------------------------------ #
+    # Chaining (§16.2)                                                    #
+    # ------------------------------------------------------------------ #
+
+    def chain_to(self, next_op: Any) -> None:
+        """Finalize the current operation and chain to *next_op*.
+
+        Steps (§16.2):
+        1. Commit current op terminal state (finished, no result context).
+        2. Enqueue next_op so it starts executing.
+        3. Via transaction.on_commit (§19.4 ordering):
+           a. Push OOB HTML: replace current op's container with next_op's.
+           b. Push liveop_chain signal so the JS re-inits the socket to
+              next_op's channel.
+        """
+        from django.db import transaction
+        from django.utils import timezone
+
+        from live_operations.runner import enqueue
+
+        op = self._operation
+
+        if not self._finalized:
+            op.finished_on = timezone.now()
+            op.finished_successfully = True
+            op.save(update_fields=["finished_on", "finished_successfully"])
+            self._finalized = True
+
+        # Enqueue next operation (may run after this transaction commits).
+        enqueue(next_op)
+
+        # Capture locals for closure — op may be mutated after chain_to returns.
+        current_pk = op.pk
+        push_fn = self._push
+        push_msg_fn = self._push_message
+
+        def _push_chain() -> None:
+            from live_operations.rendering import render_op_container
+
+            # OOB container swap: replace the current op's container element
+            # (#op-<current_pk>) with next_op's container (different pk).
+            # The rendered container carries hx-swap-oob="outerHTML:#op-<old>"
+            # so the JS applyOobSwap replaces the old element in the DOM.
+            container_html = render_op_container(
+                next_op, oob_target=f"op-{current_pk}"
+            )
+            push_fn(container_html)
+
+            # Chain signal: JS calls channelsBroadcast.init with new token,
+            # closing the old socket and subscribing to next_op's channel.
+            push_msg_fn(
+                {
+                    "type": "chat_message",
+                    "liveop_chain": {
+                        "channel": next_op.get_channel_name(),
+                        "token": next_op.subscription_token,
+                    },
+                }
+            )
+
+        transaction.on_commit(_push_chain)
 
 
 # --------------------------------------------------------------------------- #
@@ -468,13 +559,30 @@ class TextProgress(Progress):
         self._finalized = True
         print(f"ERROR: {message}", file=self._stream)
 
+    # ------------------------------------------------------------------ #
+    # Stage hooks                                                          #
+    # ------------------------------------------------------------------ #
+
     def _on_stage_start(self, name: str, idx: int) -> None:
-        print(f"\n=== {name} ===", file=self._stream)
+        """Print a stage header: === [N/Total] Name ==="""
+        stages = list(self._operation.stages) if self._operation.stages else []
+        total = len(stages)
+        n = idx + 1 if idx >= 0 else "?"
+        if total > 0:
+            print(f"\n=== [{n}/{total}] {name} ===", file=self._stream)
+        else:
+            print(f"\n=== {name} ===", file=self._stream)
 
     def _on_stage_end(self, name: str, idx: int, success: bool) -> None:
-        pass
+        pass  # no special output on stage exit for text mode
+
+    # ------------------------------------------------------------------ #
+    # Chaining                                                             #
+    # ------------------------------------------------------------------ #
 
     def chain_to(self, next_op: Any) -> None:
         """In text mode, run the next operation inline with the same stream."""
+        from live_operations.runner import task_run
+
         p = TextProgress(next_op, self._stream)
-        next_op.run(p)
+        task_run(next_op, p)
