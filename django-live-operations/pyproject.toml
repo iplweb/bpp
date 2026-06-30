@@ -1,0 +1,45 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "django-live-operations"
+version = "0.1.0"
+description = "Long-running operations with live WebSocket+HTMX UI (no reload, no polling)"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+dependencies = [
+    "django>=4.2",
+    "channels>=4",
+    "django-channels-broadcast>=0.2.1",
+]
+
+[project.optional-dependencies]
+celery = ["celery>=5"]
+cli = ["tqdm>=4"]
+redis = ["channels-redis>=4"]
+dev = [
+    "pytest",
+    "pytest-django",
+    "pytest-asyncio",
+    "channels[daphne]",
+    "ruff",
+    "mkdocs-material",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["live_operations"]
+
+[tool.pytest.ini_options]
+DJANGO_SETTINGS_MODULE = "tests.settings"
+pythonpath = ["."]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+
+[tool.ruff]
+line-length = 88
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I"]

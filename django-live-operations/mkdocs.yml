@@ -1,0 +1,10 @@
+site_name: django-live-operations
+site_description: Long-running Django operations with live WebSocket + HTMX UI
+theme:
+  name: material
+  features:
+    - navigation.sections
+    - toc.integrate
+
+nav:
+  - Home: index.md
