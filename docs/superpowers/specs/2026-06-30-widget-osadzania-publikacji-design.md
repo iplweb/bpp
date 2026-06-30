@@ -271,5 +271,83 @@ Stan ładowania/błędu: `bpp-publikacje__loading`, `bpp-publikacje__error`.
 - Paginacja po stronie widgetu — tylko `limit`; pełna lista pod linkiem do BPP.
 - Czyszczenie/akumulacja cache hostowanego `embed.js` poza standardowymi
   nagłówkami staticów.
-```
+
+## Aktualizacja po self-review (2026-06-30)
+
+Recenzja specu (subagent) ujawniła rozbieżności między założeniami a realnym
+kodem. Poniższe ustalenia **nadpisują** wcześniejsze sformułowania tam, gdzie
+są sprzeczne.
+
+### Widoczność rekordów — oba endpointy filtrują publicznie (B1, B2, P4)
+
+- **Nie istnieje** gotowy reużywalny queryset "publicznych rekordów". Widoczność
+  jest egzekwowana per-widok przez `exclude(status_korekty_id__in=uczelnia.ukryte_statusy(<kontekst>))`
+  (`src/bpp/views/browse.py:702-705`). Manager `RekordManager.prace_jednostki()`
+  (`src/bpp/models/cache/rekord.py:77-94`) zwraca **surowy** Rekord bez filtra.
+- **Decyzja:** oba endpointy (autora i jednostki) filtrują przez
+  `exclude(status_korekty_id__in=uczelnia.ukryte_statusy("podglad"))`, gdzie
+  `uczelnia = Uczelnia.objects.get_default()` (lub `.first()` jak w browse).
+  Kontekst `"podglad"` = ten sam, którego używa publiczny widok szczegółów.
+- **To celowo zmienia istniejący endpoint autora**, który dziś przecieka rekordy
+  niepubliczne (`recent_author_publications.py:34-39` — brak filtra). URL i kształt
+  JSON pozostają wstecznie kompatybilne; jedyna zmiana zachowania to **poprawne
+  ukrycie** rekordów, których publiczna wyszukiwarka i tak nie pokazuje. To fix
+  bezpieczeństwa, nie regresja.
+- **Widoczność encji:** endpoint zwraca **404**, gdy encja nie jest publiczna —
+  jednostka spoza `Jednostka.objects.publiczne()` (`src/bpp/models/struktura.py:71-77`),
+  autor oznaczony jako niewidoczny (reguła jak w publicznym widoku autora).
+
+### Routing slug-vs-int — detekcja w viewsecie, nie kolejność URL (B3)
+
+- Router DRF generuje retrieve z `lookup_value_regex = [^/.]+`, który **łapie też
+  slugi** — dołożenie `<slug:slug>` po `include(router.urls)` nie zadziała
+  (`src/api_v1/urls.py:106-133`).
+- **Decyzja:** identyfikator rozwiązujemy **wewnątrz** akcji retrieve viewsetu:
+  jeśli `lookup.isdigit()` → szukaj po `pk`, w przeciwnym razie po `slug`. Bez
+  zmiany kolejności tras. Krawędziowo: czysto numeryczny slug jednostki
+  (`AutoSlugField` z nazwy typu "2024") zostanie potraktowany jako `pk` → 404,
+  jeśli brak takiego pk. Akceptowalne (rzadkie); udokumentowane.
+
+### XSS w `opis_bibliograficzny` — sanityzacja w loaderze (P2)
+
+- `opis_bibliograficzny_cache` (`src/bpp/models/cache/rekord.py:245`) to HTML z
+  pól wprowadzanych ręcznie przez redaktora. Renderowanie go jako `innerHTML` na
+  **wielu cudzych domenach** to stored-XSS o zwielokrotnionym zasięgu.
+- **Decyzja:** loader sanityzuje opis przy renderowaniu — **allowlist** tagów
+  formatujących (`b, i, em, strong, sub, sup, u`), usunięcie wszystkich pozostałych
+  tagów oraz **wszystkich atrybutów** (w tym `on*`, `src`, `href` w opisie).
+  Implementacja: parsowanie do odłączonego elementu + przejście po węzłach
+  (TreeWalker), bez zależności zewnętrznych. To samodzielny, audytowalny kawałek
+  loadera.
+
+### Sortowanie i pole `rok` (P3)
+
+- Do JSON dodajemy pole **`rok`** (additive, bezpieczne).
+- Oba endpointy sortują spójnie: **`-rok, -ostatnio_zmieniony`**. Zmiana domyślnej
+  kolejności autora nie psuje starych blobów (renderują w kolejności z API);
+  czyni sort spójnym z filtrem `rok_od/rok_do`.
+
+### Cache hostowanego `embed.js` (P1)
+
+- Niehashowany URL `/static/embed/bpp-publikacje.js` **fizycznie działa**
+  (`TolerantManifestStaticFilesStorage`, `src/django_bpp/storage.py`), ale
+  nagłówki cache ustawia **nginx** (kontrakt staticów), nie Django.
+- **Uczciwe ujęcie:** "aktualizacja dla wszystkich naraz" jest ograniczona przez
+  `max-age` nginx — propagacja do powracających gości następuje w ramach tego
+  okna (dla nowych natychmiast). To i tak **radykalnie** lepiej niż zamrożony blob
+  (nigdy). **Rekomendacja deploymentowa** (poza repo): krótszy `Cache-Control`
+  (np. `max-age` ≤ 1h albo `must-revalidate`) dla `/static/embed/`. Nie jest to
+  bloker; pozostajemy przy pliku statycznym zgodnie z decyzją użytkownika.
+
+### Drobne (z recenzji)
+
+- Rekurencja jednostek **działa out-of-the-box**: `Jednostka` to `MPTTModel`
+  (`src/bpp/models/jednostka.py:80`), a `prace_jednostki()` używa
+  `get_descendants(include_self=True)`. Usunięto obawę.
+- Fallback `querySelector('script[src*="bpp-publikacje.js"]')` zwraca pierwszy tag
+  → **nie wspiera multi-widget**; to tylko ścieżka awaryjna, gdy `currentScript`
+  jest `null` (w praktyce dla `async` działa). Udokumentowane.
+- `jednostka.html` nigdy nie miał bloba embed — test sprawdza tylko **obecność
+  nowego linku** (nie "brak starego bloba"). Dla `autor.html`: brak starego bloba
+  **oraz** obecność nowego linku.
 
