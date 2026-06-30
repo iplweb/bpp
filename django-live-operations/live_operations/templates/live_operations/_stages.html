@@ -1,0 +1,5 @@
+<ul class="op-stages">
+{% for stage_name in op.stages %}
+<li class="op-stage{% if op.current_stage == forloop.counter0 %} op-stage--active{% elif forloop.counter0 < op.current_stage %} op-stage--done{% endif %}">{{ stage_name }}</li>
+{% endfor %}
+</ul>

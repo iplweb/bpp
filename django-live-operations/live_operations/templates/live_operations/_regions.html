@@ -1,0 +1,28 @@
+{% load live_operations %}
+<div id="op-status"></div>
+<div id="op-progress"></div>
+<div id="op-log"></div>
+<div id="op-stages">{% if op.stages %}{% include "live_operations/_stages.html" with op=op %}{% endif %}</div>
+<div id="op-result">
+{% if op.get_state == "FINISHED_OK" %}
+{% render_op_result op %}
+{% elif op.get_state == "FINISHED_ERROR" %}
+{% include "live_operations/_error.html" with message=op.traceback %}
+{% elif op.get_state == "CANCELLED" %}
+{% include "live_operations/_cancelled.html" with op=op %}
+{% endif %}
+</div>
+{% url 'live_operations:cancel' pk=op.pk as cancel_url %}
+{% if cancel_url and op.get_state != "FINISHED_OK" and op.get_state != "FINISHED_ERROR" and op.get_state != "CANCELLED" %}
+<form method="post" action="{{ cancel_url }}">
+{% csrf_token %}
+<button type="submit">Anuluj</button>
+</form>
+{% endif %}
+{% url 'live_operations:restart' pk=op.pk as restart_url %}
+{% if restart_url and op.get_state == "FINISHED_ERROR" %}
+<form method="post" action="{{ restart_url }}">
+{% csrf_token %}
+<button type="submit">Ponów</button>
+</form>
+{% endif %}

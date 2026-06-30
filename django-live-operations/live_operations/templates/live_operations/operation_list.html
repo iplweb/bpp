@@ -1,0 +1,8 @@
+{% extends base_template %}
+{% block content %}
+<ul>
+{% for op in operations %}
+<li><a href="{{ op.get_absolute_url }}">{{ op }}</a></li>
+{% endfor %}
+</ul>
+{% endblock %}

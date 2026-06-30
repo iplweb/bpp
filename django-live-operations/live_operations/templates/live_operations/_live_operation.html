@@ -1,0 +1,5 @@
+<div id="op-{{ op.pk }}"
+     data-liveop-channel="{{ op.get_channel_name }}"
+     data-liveop-token="{{ op.subscription_token }}">
+  {% include "live_operations/_regions.html" with op=op %}
+</div>
