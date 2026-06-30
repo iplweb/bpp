@@ -52,6 +52,26 @@ def test_render_op_result_finished_op():
 
 
 @pytest.mark.django_db
+def test_render_op_result_fallback_escapes_values_no_xss():
+    """SECURITY: key=value fallback must escape data-controlled values."""
+    from django.utils import timezone
+
+    user = User.objects.create_user(username="taguser_xss", password="pass")
+    op = DemoOp.objects.create(
+        owner=user,
+        finished_on=timezone.now(),
+        finished_successfully=True,
+        result_context={"evil": "<script>alert('xss')</script>"},
+    )
+
+    tpl = Template("{% load live_operations %}{% render_op_result op %}")
+    output = tpl.render(Context({"op": op}))
+
+    assert "<script>" not in output
+    assert "&lt;script&gt;" in output
+
+
+@pytest.mark.django_db
 def test_render_op_result_running_op_returns_empty():
     user = User.objects.create_user(username="taguser4", password="pass")
     op = DemoOp.objects.create(owner=user)

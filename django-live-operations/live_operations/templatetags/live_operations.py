@@ -42,8 +42,13 @@ def render_op_result(op):
     try:
         return mark_safe(render_to_string(op.get_result_template_name(), render_ctx))
     except Exception:
+        # SECURITY: result_context keys/values are data-controlled and may
+        # contain markup — escape each pair before joining. The <br> separator
+        # is the only trusted markup; everything interpolated is escaped.
+        from django.utils.html import escape
+
         parts = [
-            f"{k}={v}"
+            escape(f"{k}={v}")
             for k, v in render_ctx.items()
             if k != "operation"
         ]
