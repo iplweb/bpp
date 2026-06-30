@@ -53,6 +53,20 @@
                     document.body.appendChild(clone);
                     inserted = clone;
                 }
+            } else if (oob.indexOf("outerHTML:") === 0) {
+                // outerHTML replace by explicit CSS selector
+                // e.g. hx-swap-oob="outerHTML:#op-abc123" replaces the
+                // selected element with this node (oob attr stripped).
+                var outerSelector = oob.slice("outerHTML:".length).trim();
+                var outerTarget = document.querySelector(outerSelector);
+                var outerClone = node.cloneNode(true);
+                outerClone.removeAttribute("hx-swap-oob");
+                if (outerTarget) {
+                    outerTarget.replaceWith(outerClone);
+                } else {
+                    document.body.appendChild(outerClone);
+                }
+                inserted = outerClone;
             } else if (oob.indexOf("beforeend:") === 0) {
                 // beforeend:#some-id — append children
                 var selector = oob.slice("beforeend:".length).trim();
