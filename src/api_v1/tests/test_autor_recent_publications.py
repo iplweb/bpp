@@ -123,9 +123,7 @@ def test_autor_recent_publications_po_slugu():
     baker.make(Wydawnictwo_Ciagle_Autor, rekord=publikacja, autor=autor)
 
     assert autor.slug
-    url = reverse(
-        "api_v1:recent_author_publications-detail", kwargs={"pk": autor.slug}
-    )
+    url = reverse("api_v1:recent_author_publications-detail", kwargs={"pk": autor.slug})
     response = client.get(url)
 
     assert response.status_code == 200
@@ -141,9 +139,7 @@ def test_autor_recent_publications_profil_url():
     client = APIClient()
 
     autor = baker.make(Autor, nazwisko="Profilowy", imiona="Filip")
-    url = reverse(
-        "api_v1:recent_author_publications-detail", kwargs={"pk": autor.pk}
-    )
+    url = reverse("api_v1:recent_author_publications-detail", kwargs={"pk": autor.pk})
     data = client.get(url).json()
     assert "profil_url" in data
     assert autor.slug in data["profil_url"]
@@ -159,9 +155,7 @@ def test_autor_recent_publications_limit_param():
         publikacja = baker.make(Wydawnictwo_Ciagle, tytul_oryginalny=f"Praca {i}")
         baker.make(Wydawnictwo_Ciagle_Autor, rekord=publikacja, autor=autor)
 
-    base = reverse(
-        "api_v1:recent_author_publications-detail", kwargs={"pk": autor.pk}
-    )
+    base = reverse("api_v1:recent_author_publications-detail", kwargs={"pk": autor.pk})
 
     assert client.get(base).json()["count"] == 25
     assert client.get(base, {"limit": 5}).json()["count"] == 5
@@ -179,9 +173,7 @@ def test_autor_recent_publications_filtr_rok():
         )
         baker.make(Wydawnictwo_Ciagle_Autor, rekord=publikacja, autor=autor)
 
-    url = reverse(
-        "api_v1:recent_author_publications-detail", kwargs={"pk": autor.pk}
-    )
+    url = reverse("api_v1:recent_author_publications-detail", kwargs={"pk": autor.pk})
 
     data = client.get(url, {"rok_od": 2010, "rok_do": 2020}).json()
     assert data["count"] == 1
@@ -197,9 +189,7 @@ def test_autor_recent_publications_zawiera_rok():
     publikacja = baker.make(Wydawnictwo_Ciagle, tytul_oryginalny="Z rokiem", rok=2019)
     baker.make(Wydawnictwo_Ciagle_Autor, rekord=publikacja, autor=autor)
 
-    url = reverse(
-        "api_v1:recent_author_publications-detail", kwargs={"pk": autor.pk}
-    )
+    url = reverse("api_v1:recent_author_publications-detail", kwargs={"pk": autor.pk})
     pub = client.get(url).json()["publications"][0]
     assert pub["rok"] == 2019
 
@@ -213,9 +203,7 @@ def test_autor_recent_publications_niewidoczny_autor_404():
     publikacja = baker.make(Wydawnictwo_Ciagle, tytul_oryginalny="Niewidoczna")
     baker.make(Wydawnictwo_Ciagle_Autor, rekord=publikacja, autor=autor)
 
-    url = reverse(
-        "api_v1:recent_author_publications-detail", kwargs={"pk": autor.pk}
-    )
+    url = reverse("api_v1:recent_author_publications-detail", kwargs={"pk": autor.pk})
     assert client.get(url).status_code == 404
 
 
@@ -235,9 +223,7 @@ def test_autor_recent_publications_ukryty_status_pominiety(uczelnia, przed_korek
 
     uczelnia.ukryj_status_korekty_set.create(status_korekty=przed_korekta)
 
-    url = reverse(
-        "api_v1:recent_author_publications-detail", kwargs={"pk": autor.pk}
-    )
+    url = reverse("api_v1:recent_author_publications-detail", kwargs={"pk": autor.pk})
     data = client.get(url).json()
     opisy = " ".join(p["opis_bibliograficzny"] for p in data["publications"])
     assert "Ukryta" not in opisy

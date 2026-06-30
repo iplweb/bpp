@@ -16,9 +16,7 @@ def test_jednostka_recent_publications_endpoint(typy_odpowiedzialnosci):
     publikacja = baker.make(Wydawnictwo_Ciagle, tytul_oryginalny="Praca jednostki")
     publikacja.dodaj_autora(autor, jednostka, typ_odpowiedzialnosci_skrot="aut.")
 
-    url = reverse(
-        "api_v1:recent_unit_publications-detail", kwargs={"pk": jednostka.pk}
-    )
+    url = reverse("api_v1:recent_unit_publications-detail", kwargs={"pk": jednostka.pk})
     response = client.get(url)
 
     assert response.status_code == 200
@@ -38,9 +36,7 @@ def test_jednostka_recent_publications_profil_url(typy_odpowiedzialnosci):
     client = APIClient()
 
     jednostka = baker.make(Jednostka, nazwa="Katedra Profilowa")
-    url = reverse(
-        "api_v1:recent_unit_publications-detail", kwargs={"pk": jednostka.pk}
-    )
+    url = reverse("api_v1:recent_unit_publications-detail", kwargs={"pk": jednostka.pk})
     data = client.get(url).json()
     assert "profil_url" in data
     assert jednostka.slug in data["profil_url"]
@@ -60,9 +56,7 @@ def test_jednostka_recent_publications_rekurencyjnie(typy_odpowiedzialnosci):
     publikacja = baker.make(Wydawnictwo_Ciagle, tytul_oryginalny="Praca zakładu")
     publikacja.dodaj_autora(autor, podrzedna, typ_odpowiedzialnosci_skrot="aut.")
 
-    url = reverse(
-        "api_v1:recent_unit_publications-detail", kwargs={"pk": nadrzedna.pk}
-    )
+    url = reverse("api_v1:recent_unit_publications-detail", kwargs={"pk": nadrzedna.pk})
     data = client.get(url).json()
     assert data["count"] == 1
 
@@ -90,9 +84,7 @@ def test_jednostka_recent_publications_po_slugu(typy_odpowiedzialnosci):
 def test_jednostka_recent_publications_404():
     """Nieistniejąca jednostka → 404."""
     client = APIClient()
-    url = reverse(
-        "api_v1:recent_unit_publications-detail", kwargs={"pk": 999999}
-    )
+    url = reverse("api_v1:recent_unit_publications-detail", kwargs={"pk": 999999})
     assert client.get(url).status_code == 404
 
 
@@ -101,9 +93,7 @@ def test_jednostka_recent_publications_niewidoczna_404():
     """Jednostka niewidoczna publicznie nie ma embedu → 404."""
     client = APIClient()
     jednostka = baker.make(Jednostka, nazwa="Niewidoczna Katedra", widoczna=False)
-    url = reverse(
-        "api_v1:recent_unit_publications-detail", kwargs={"pk": jednostka.pk}
-    )
+    url = reverse("api_v1:recent_unit_publications-detail", kwargs={"pk": jednostka.pk})
     assert client.get(url).status_code == 404
 
 
@@ -126,9 +116,7 @@ def test_jednostka_recent_publications_ukryty_status_pominiety(
 
     uczelnia.ukryj_status_korekty_set.create(status_korekty=przed_korekta)
 
-    url = reverse(
-        "api_v1:recent_unit_publications-detail", kwargs={"pk": jednostka.pk}
-    )
+    url = reverse("api_v1:recent_unit_publications-detail", kwargs={"pk": jednostka.pk})
     data = client.get(url).json()
     assert data["count"] == 1
     assert "Ukryta" not in " ".join(
