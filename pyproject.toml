@@ -189,6 +189,7 @@ include = [
     "import_dyscyplin",
     "import_list_if",
     "import_pracownikow",
+    "import_punktacji_zrodel",
     "integrator2",
     "komparator_pbn",
     "zglos_publikacje",
