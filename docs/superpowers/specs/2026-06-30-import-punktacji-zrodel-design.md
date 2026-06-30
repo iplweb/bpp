@@ -42,8 +42,9 @@ Eksport JCR „Journal Results". Układ:
 - **stopka** — `Copyright (c) <ROK> Clarivate`, `By exporting the selected
   data; ...` (do **pominięcia**).
 
-Charakterystyka danych (z analizy załącznika: 209 wierszy danych, 113
-unikalnych czasopism):
+Charakterystyka danych (z analizy załącznika: 209 wierszy danych, **136**
+unikalnych czasopism — klucz `(issn, e_issn, nazwa)`; z czego 135 ma co
+najmniej jedną importowalną wartość, a `eLife` ma same `N/A`):
 
 - **Jedno czasopismo = wiele wierszy** — po jednym na kategorię WoS
   (np. `CANCER CELL` w `CELL BIOLOGY` i `ONCOLOGY`).
@@ -53,7 +54,9 @@ unikalnych czasopism):
   Q1 w jednej kategorii i Q2 w innej (częste w pliku). Może być `N/A`.
 - `ISSN` może być `N/A` (31 wierszy w załączniku) — wtedy dopasowanie po
   `eISSN`. `eISSN` też bywa `N/A`.
-- Niektóre czasopisma mają `N/A` we wszystkim (np. `eLife`) — pomijane.
+- Niektóre czasopisma mają `N/A` we wszystkim (np. `eLife`) — **parsowane**
+  (nie gubimy ich na etapie parsera; jest 136 grup), ale w raporcie
+  oznaczane „brak danych (N/A) w pliku" i **nie zapisywane**.
 
 ### Kolumny, które importujemy
 
@@ -62,7 +65,7 @@ unikalnych czasopism):
 | `Journal name` | (dopasowanie) `Zrodlo.nazwa` | tytuł |
 | `ISSN` | (dopasowanie) `Zrodlo.issn` | `N/A` → `None` |
 | `eISSN` | (dopasowanie) `Zrodlo.e_issn` | `N/A` → `None` |
-| `<ROK> JIF` | `Punktacja_Zrodla.impact_factor` | `Decimal`, `N/A`→brak |
+| `<ROK> JIF` | `Punktacja_Zrodla.impact_factor` | `Decimal`; `N/A`→nie zapisujemy IF (pole NIE jest nullable, default `0.000`) |
 | `JIF Quartile` | `Punktacja_Zrodla.kwartyl_w_wos` | `Q1..Q4`→`1..4` |
 | (nagłówek `<ROK> JIF` / metadane) | `Punktacja_Zrodla.rok` | autodetekcja |
 
@@ -81,8 +84,15 @@ None), kwartyl_wos (int | None), kategorie (list[(kategoria, kwartyl)])`.
 Logika:
 
 1. **Wybór czytnika po rozszerzeniu:** `.xlsx`/`.xls` → `openpyxl`
-   (read_only, data_only); `.csv` → moduł `csv` (separator `,`, cudzysłów
-   `"`; tolerować śmieciowe `"%,` na końcu wierszy z eksportu CSV).
+   (read_only, data_only); `.csv` → moduł `csv` (`csv.reader`, separator
+   `,`, cudzysłów `"`, kodowanie `utf-8`/`utf-8-sig` — plik bez BOM).
+   **Bez special-case'owania** śmieciowego `"%,` na końcu wierszy:
+   zweryfikowano, że `csv.reader` parsuje wiersz danych na 13 pól (kolumna
+   OA → `'25.49%'` + puste pole na końcu), ale **kolumny 0–10 pozostają
+   wyrównane** (ISSN=idx3, eISSN=idx4, `<ROK> JIF`=idx8, `JIF
+   Quartile`=idx9; `"378,842"` z przecinkiem jest w cudzysłowie, więc OK).
+   Zamiast indeksów na sztywno: zbuduj mapę **nagłówek→indeks** i czytaj
+   kolumny po nazwie.
 2. **Znalezienie nagłówka:** pierwszy wiersz zawierający `Journal name`
    oraz `JIF Quartile` (odporne na wiersz metadanych i pusty).
 3. **Wykrycie roku:** regex `^\s*(\d{4})\s+JIF$` z nagłówka kolumny IF;
@@ -149,7 +159,12 @@ class WierszImportuPunktacjiZrodel(models.Model):
    wiersz-ostrzeżenie w raporcie; używamy `parent.rok` (decyzja człowieka).
    Jeśli `parent.rok` puste — zapisujemy wykryty (`parent.rok = parsed.rok;
    parent.save(update_fields=["rok"])`). Brak roku w ogóle → błąd
-   (wiersz `rezultat` + `send_notification(..., error)`).
+   (wiersz `rezultat` + `send_notification(msg, level=constants.ERROR)`;
+   `constants` z `django.contrib.messages`). Sygnatura mixina:
+   `send_notification(self, msg, level=constants.INFO)`,
+   `send_progress(self, percent)`. `YearField` (= IntegerField) **nie jest
+   nullowalny w `get_or_create`** — dlatego rok efektywny musi być ustalony
+   przed pętlą zapisu.
 3. `dry_run = not parent.zapisz_zmiany_do_bazy`.
 4. **Wykrycie duplikatów** w pliku (ten sam ISSN/eISSN w 2 grupach) — flaga.
 5. Dla każdego czasopisma (`send_progress`):
@@ -182,6 +197,12 @@ Cała operacja idzie w `transaction.atomic` (zapewnia `task_perform`).
 - **do aktualizacji** — różnica wartości lub brak wpisu → pokazane
   `stare → nowe`; po commicie zapisane.
 
+> Uwaga: `Punktacja_Zrodla.impact_factor` **nie jest nullowalny** (default
+> `Decimal("0.000")`). Świeżo `get_or_create`'owany rekord ma więc IF
+> `0.000`, co poprawnie raportujemy jako `0.000 → X` („do aktualizacji").
+> Wartość `N/A` w pliku oznacza **pominięcie zapisu IF** (nie ustawiamy
+> `0.000` na siłę). Kwartyl JEST nullowalny (`None` = „brak").
+
 ## 6. Widoki, URL-e, formularz (wzór: `import_list_ministerialnych`)
 
 - `views.py` — klasy oparte o `long_running.views`:
@@ -207,7 +228,9 @@ Cała operacja idzie w `transaction.atomic` (zapewnia `task_perform`).
 - `forms.py` — `NowyImportForm(ModelForm)`, crispy+foundation; pola: `plik`,
   `rok` (**niewymagane** — autodetekcja), checkboxy IF/kwartyl/ignoruj/
   nie_porównuj/zapisz. `clean_plik`: dozwolone rozszerzenia
-  `.xlsx, .xls, .csv`.
+  `.xlsx, .xls, .csv`. (Dodanie `.csv` do `valid_extensions` **wystarcza** —
+  w siblingu blok MIME nigdy nie odrzuca samodzielnie; CSV bywa raportowany
+  jako `text/csv`/`application/vnd.ms-excel`/`application/octet-stream`.)
 - `templates/import_punktacji_zrodel/` — analogiczne do siblinga
   (`*_form.html`, `*_list.html`, `*_detail.html`,
   `wierszimportupunktacjizrodel_list.html`), `{% extends "base.html" %}`,
@@ -225,17 +248,25 @@ Cała operacja idzie w `transaction.atomic` (zapewnia `task_perform`).
    (jak restart). Plik jest już zapisany w `self.plik` — **bez ponownego
    uploadu**; parser czyta deterministycznie ten sam plik i tym razem
    zapisuje.
-3. Po zapisie panel **„Przenieś wartości na prace"** z linkami:
-   - `rozbieznosci:index metryka=if` (filtr na zaimportowany rok),
-   - `rozbieznosci:index metryka=kw_wos` (filtr na rok).
+3. Po zapisie panel **„Przenieś wartości na prace"** z linkami. `metryka`
+   to **slug w ścieżce**, a rok filtruje się **zakresem** `rok_od`/`rok_do`
+   (nie ma pojedynczego `rok`); pinujemy oba końce na zaimportowany rok:
+   - `reverse("rozbieznosci:index", kwargs={"metryka": "if"}) +
+     f"?rok_od={rok}&rok_do={rok}"`,
+   - analogicznie `metryka="kw_wos"`.
    To realizuje opcjonalne „ustaw IF/kwartyl dla publikacji po imporcie"
    przez istniejący mechanizm bulk-set w `rozbieznosci`.
 
 ## 8. Integracja z projektem
 
-- `INSTALLED_APPS` w `src/django_bpp/settings/base.py` — dopisać
-  `"import_punktacji_zrodel"` (oraz w drugiej liście ~l.959, jeśli dotyczy).
-- `pyproject.toml` — lista appów (`"import_punktacji_zrodel"`).
+- `INSTALLED_APPS` w `src/django_bpp/settings/base.py` — **jedna** lista
+  (`INSTALLED_APPS = [` ~L356, koniec ~L497); dopisać
+  `"import_punktacji_zrodel"` obok pozostałych `import_*`
+  (`import_list_if` ~L387, `import_list_ministerialnych` ~L477). **Nie ma**
+  drugiej listy appów ~L959 (to był błąd w pierwotnym specu).
+- `pyproject.toml` — to **`[tool.setuptools.packages.find].include`**
+  (~L179–206, lista do budowy wheela/sdist, **nie** Django `INSTALLED_APPS`)
+  — dopisać `"import_punktacji_zrodel"` obok innych `import_*`.
 - `src/django_bpp/urls.py` — `path("import_punktacji_zrodel/",
   include("import_punktacji_zrodel.urls"))` (obok pozostałych importów).
 - **Menu** `src/django_bpp/templates/top_bar.html` — **prawa kolumna**
@@ -249,6 +280,9 @@ Cała operacja idzie w `transaction.atomic` (zapewnia `task_perform`).
 - **Uprawnienia:** grupa `"wprowadzanie danych"` (jak siblingi).
 - **Migracja:** `0001_initial` nowej aplikacji (czysto addytywna, 2 modele,
   zero zmian istniejących tabel). **Baseline NIE jest aktualizowany.**
+- **Newsfragment (towncrier):** `src/bpp/newsfragments/+fd388.feature.rst`
+  — typ `feature`, rozszerzenie **`.rst`** (fragmenty `.md` NIE są zbierane
+  do `HISTORY.md`), prefiks `+` (orphan — brak martwego linku do GH).
 
 ## 9. Testy (TDD — pytest, baker)
 
@@ -257,8 +291,10 @@ Cała operacja idzie w `transaction.atomic` (zapewnia `task_perform`).
 - **Parser (jednostkowe, bez DB)** na realnym pliku z FD#388 (kopia w
   `tests/testdata/`): wykrycie roku (2025), pominięcie stopki Clarivate,
   `N/A` w ISSN/IF/kwartylu, scalenie wielokategoryjne → **najlepszy**
-  kwartyl (np. ISSN `0268-3369`: Q1+Q2 → `1`), poprawny `Decimal` IF,
-  liczność (113 czasopism), wsparcie **CSV i XLSX** (ten sam wynik).
+  kwartyl (np. ISSN `0268-3369`, BONE MARROW TRANSPLANTATION: wiersze
+  `Q1,Q2,Q1,Q1` → `min = 1`), poprawny `Decimal` IF,
+  **liczność = 136 czasopism** (`eLife` obecny, z `impact_factor=None` i
+  `kwartyl=None`), wsparcie **CSV i XLSX** (ten sam wynik).
 - **Dopasowanie + zapis (DB)**: `baker.make(Zrodlo, issn=...)`,
   `perform()`:
   - dry-run **nic nie zapisuje** (`Punktacja_Zrodla` bez zmian),
@@ -290,3 +326,17 @@ Plik testowy: `tests/test_repro_fd388.py` (+ `test_parser.py`,
 3. Domyślne wartości toggli: IF=wł., kwartyl=wł., ignoruj_bez_źródła=wył.
    (pokazuj niedopasowane), nie_porównuj_po_tytułach=wył. (dopasowuj też po
    tytule, gdy brak ISSN).
+
+## 12a. Ryzyka do wczesnej weryfikacji w implementacji
+
+- **Format ISSN przy dopasowaniu.** `matchuj_zrodlo` robi **dokładne**
+  `Zrodlo.objects.get(issn=...)` (bez normalizacji w tej ścieżce). Plik JCR
+  trzyma ISSN z myślnikiem (`0140-6736`). Dopasowanie po ISSN zadziała
+  **tylko** jeśli `Zrodlo.issn` też jest z myślnikiem. Wczesny krok
+  implementacji: sprawdzić na realnych danych (na DB devowej z `run-site`
+  albo w teście z `baker.make(Zrodlo, issn="0140-6736")`), czy format się
+  zgadza. Jeśli nie — znormalizować ISSN po obu stronach przed lookupem
+  (jest `normalize_issn` w `import_common`). MVP: przekazujemy ISSN jak w
+  pliku (z myślnikiem); gdy match słaby — fallback po tytule i tak działa.
+- `eLife` (same `N/A`) musi przejść przez parser jako 1 z 136 grup — test
+  na to patrzy (regresja, gdyby ktoś „zoptymalizował" parser by je gubić).
