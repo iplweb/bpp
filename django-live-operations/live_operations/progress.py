@@ -277,9 +277,17 @@ class WebProgress(Progress):
         push_fn = self._push
 
         def _push_error() -> None:
+            # SECURITY: ``message`` may carry untrusted content (exception
+            # text echoing user input, file names, parsed data). Escape it via
+            # format_html so it can never inject markup/JS into the page (XSS).
+            from django.utils.html import format_html
+
             push_fn(
-                f'<div id="op-result" hx-swap-oob="true">'
-                f'<div class="error">{message}</div></div>'
+                format_html(
+                    '<div id="op-result" hx-swap-oob="true">'
+                    '<div class="error">{}</div></div>',
+                    message,
+                )
             )
 
         transaction.on_commit(_push_error)
@@ -316,7 +324,13 @@ class WebProgress(Progress):
         self._push(f'<div id="{elem_id}" hx-swap-oob="true">{inner}</div>')
 
     def html(self, selector: str, raw: str, mode: str = "innerHTML") -> None:
-        """Push raw HTML to *selector* OOB."""
+        """Push raw HTML to *selector* OOB.
+
+        SECURITY: this is a trusted-HTML escape hatch (like ``mark_safe``).
+        ``raw`` is sent verbatim and NOT escaped — never pass untrusted /
+        user-derived content here. For data-bearing regions use ``status``,
+        ``log``, ``result`` or ``swap(name=...)`` (template-rendered, escaped).
+        """
         elem_id = selector.lstrip("#")
         if mode == "beforeend":
             self._push(f'<div hx-swap-oob="beforeend:#{elem_id}">{raw}</div>')

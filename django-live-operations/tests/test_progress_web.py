@@ -159,3 +159,24 @@ def test_result_commits_before_push(op, fake_layer):
     ]
     assert result_messages, "No op-result push found"
     assert "hx-swap-oob" in result_messages[0]
+
+
+@pytest.mark.django_db(transaction=True)
+def test_error_escapes_message_no_xss(op, fake_layer):
+    """SECURITY: error() must escape the message — no raw markup/JS injection."""
+    wp = WebProgress(op, fake_layer)
+    wp.error("<script>alert('xss')</script>")
+
+    pushes = [
+        msg["liveop_html"]
+        for _, msg in fake_layer.sent
+        if "op-result" in msg.get("liveop_html", "")
+    ]
+    assert pushes, "No error push found"
+    frag = pushes[0]
+    # The raw script tag must NOT appear; it must be HTML-escaped.
+    assert "<script>" not in frag
+    assert "&lt;script&gt;" in frag
+    # The wrapper markup itself is still real HTML (oob swap works).
+    assert 'id="op-result"' in frag
+    assert "hx-swap-oob" in frag
