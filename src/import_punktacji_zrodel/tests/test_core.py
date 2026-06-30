@@ -109,3 +109,34 @@ def test_autodetekcja_roku_gdy_brak(admin_user, jcr_xlsx_path):
     analyze_jcr_file(jcr_xlsx_path, imp)
     imp.refresh_from_db()
     assert imp.rok == 2025
+
+
+@pytest.mark.django_db
+def test_ignoruj_zrodla_bez_odpowiednika_pomija_niedopasowane(
+    admin_user, jcr_xlsx_path
+):
+    # Brak Zrodel w bazie + flaga True → żadnych wierszy "Brak źródła"
+    imp = _make_import(
+        admin_user,
+        zapisz_zmiany_do_bazy=False,
+        ignoruj_zrodla_bez_odpowiednika=True,
+    )
+    analyze_jcr_file(jcr_xlsx_path, imp)
+    assert imp.get_details_set().filter(zrodlo__isnull=True).count() == 0
+
+
+@pytest.mark.django_db
+def test_ignoruj_zrodla_bez_odpowiednika_dopasowane_sa_raportowane(
+    admin_user, jcr_xlsx_path
+):
+    # Pasujące źródło nadal dostaje wiersz raportu, nawet z flagą True
+    from bpp.models import Zrodlo
+
+    baker.make(Zrodlo, nazwa="LANCET", issn="0140-6736")
+    imp = _make_import(
+        admin_user,
+        zapisz_zmiany_do_bazy=False,
+        ignoruj_zrodla_bez_odpowiednika=True,
+    )
+    analyze_jcr_file(jcr_xlsx_path, imp)
+    assert imp.get_details_set().filter(zrodlo__isnull=False).count() >= 1

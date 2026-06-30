@@ -54,6 +54,7 @@ def _parse_if(v) -> Decimal | None:
     try:
         return Decimal(s)
     except InvalidOperation:
+        # Niepoprawna/nienumeryczna wartość IF traktowana jak brak danych (None).
         return None
 
 

@@ -97,14 +97,15 @@ def _process_one_journal(i, cz, rok, parent, dry_run, is_dup, dup_of, dup_reason
     )
 
     if zrodlo is None:
-        parent.wierszimportupunktacjizrodel_set.create(
-            nr_wiersza=i + 1,
-            dane_z_xls=dane,
-            zrodlo=None,
-            rezultat=dup_prefix + "Brak źródła w BPP",
-            wymaga_zmian=False,
-            **dup_kwargs,
-        )
+        if not parent.ignoruj_zrodla_bez_odpowiednika:
+            parent.wierszimportupunktacjizrodel_set.create(
+                nr_wiersza=i + 1,
+                dane_z_xls=dane,
+                zrodlo=None,
+                rezultat=dup_prefix + "Brak źródła w BPP",
+                wymaga_zmian=False,
+                **dup_kwargs,
+            )
         return
 
     pz = zrodlo.punktacja_zrodla_set.filter(rok=rok).first()
