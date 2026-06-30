@@ -435,17 +435,15 @@ class LiveOperation(models.Model):       # abstrakcyjny
 - **Wynik jako osobny URL**: tak — host page pod GET renderuje od razu wynik dla
   zakończonej operacji (deep-link/powrót), §9.
 
+**ROZSTRZYGNIĘTE — klient transportu (B2/B3):** reużywamy klienta
+**`channels_broadcast`** (socket + reconnect + auth/token + idempotentne
+`init()`), podmieniając wyłącznie `addMessage` na **plugin OOB-swap**.
+**htmx-ext-ws NIE jest potrzebny** (i nie ma go dziś w projekcie). `chain_to`
+= `init([nowy_pk], token)` (zamyka stary socket, otwiera nowy). Po stronie
+serwera consumer wysyła **fragmenty HTML** zamiast JSON i robi snapshot na
+connect. Szczegóły: §17.10.
+
 **Do rozstrzygnięcia przed planem:**
-0. **[KLUCZOWE] Klient transportu (B2/B3)**: htmx-ext-ws (dociągnąć 1-plikowe
-   rozszerzenie do htmx 1.9.12 + **spike** na teardown/redial socketu przy
-   `chain_to`) **vs** własny mikro-klient (pełna kontrola, ale trzeba
-   zaimplementować OOB-swap + cykl życia socketu i to przetestować).
-   **Rekomendacja: htmx-ext-ws** — mniejsze ryzyko, htmx już jest; mikro-klient
-   tylko jeśli spike pokaże, że ext nie obsługuje teardown-on-swap. Patrz §17.
-1. **Reużycie `channels_broadcast`**: reużyć **tylko auth/token/subscription**
-   (`security.py`), a **transport przepisać** na HTML-fragment/OOB (jego model
-   JSON-dict to dokładnie ta krucha ścieżka, którą zabijamy). NIE dziedziczyć
-   po `NotificationsConsumer`. (§17)
 2. **Log storage**: `JSONField` (proste) vs osobny model wierszy (skalowalne,
    filtrowalne). Rekomendacja: `JSONField` w v1, model wierszy jako opcja.
 3. **htmx `ws` ext**: pakiet shipuje własny mały bund?owany klient (vanilla WS +
@@ -501,7 +499,7 @@ django-live-operations/
       _regions.html _status.html _progress.html _log.html
       _result.html _stages.html _cancelled.html
     static/live_operations/
-      live-operations.js    # mikro-klient WS+OOB (zero zależności build-time)
+      live-operations.js    # plugin do channels_broadcast: addMessage->OOB-swap
   tests/                    # pytest + pytest-django + channels communicator
   example/                  # demo project (upload→analiza→wyniki, 5 etapów)
 ```
@@ -513,11 +511,11 @@ django-live-operations/
   `enqueue(operation)`; dostarczone adaptery: `celery`, `threading`
   (dev/test), `eager`/`sync`. Konsument wybiera w ustawieniach. Pakiet
   **nie** zależy od Celery (Celery to opcjonalny extra).
-- **Mikro-klient zamiast zależności front-end.** `live-operations.js` (kilka
-  KB, vanilla): otwiera WS, na wiadomość = HTML, robi OOB-swap po `id`
-  (`hx-swap-oob`-kompatybilnie); wskaźnik połączenia; auto-reconnect. Nie
-  wymaga od konsumenta kompilacji htmx-ext. (Współpracuje z htmx, ale go nie
-  wymaga.)
+- **Klient = plugin do `channels_broadcast`** (§17.10), nie samodzielny socket.
+  `live-operations.js` (kilka KB) podmienia `addMessage`: na wiadomość-fragment
+  robi OOB-swap po `id` + `htmx.process()` (htmx core już jest). Socket,
+  reconnect, auth i `init()` (dla `chain_to`) dostarcza `channels_broadcast` —
+  nie reimplementujemy ich. Bez `htmx-ext-ws`.
 - **Ustawienia** (`conf.py`):
   ```python
   LIVE_OPERATIONS = {
@@ -597,19 +595,16 @@ def run(self, p):
     p.chain_to(nast)          # finalizuje bieżącą i montuje następną in-place
 ```
 
-Mechanika (kluczowe, że bez nawigacji):
-- `p.chain_to(next_op)` finalizuje bieżącą operację i wysyła OOB-swap
-  **całego kontenera** `#op-root`, w którym nowy element ma świeży
-  `ws-connect` do kanału `next_op`:
-  ```html
-  <div id="op-root" hx-swap-oob="true"
-       data-ws="{% url 'live_operations:ws' next_op.pk %}">
-    {# regiony next_op + auto-start #}
-  </div>
-  ```
-  Mikro-klient (lub htmx-ws) na podmianę elementu z `data-ws`/`ws-connect`
-  **zamyka stary socket i otwiera nowy** do `next_op`. Strona się nie
-  przeładowuje — zmienia się tylko zawartość kontenera i adres socketu.
+Mechanika (kluczowe, że bez nawigacji) — przez `channels_broadcast` (§17.10):
+- `p.chain_to(next_op)` finalizuje bieżącą operację i wysyła dwie rzeczy na
+  bieżącym kanale: (1) OOB-swap **kontenera** `#op-root` na regiony
+  `next_op`, (2) sygnał „chain" z `pk`/tokenem `next_op`.
+- Plugin klienta po sygnale „chain" woła
+  `channelsBroadcast.init([next_op.pk], token)` — idempotentne `init`
+  **zamyka stary socket i otwiera nowy**, zasubskrybowany do kanału
+  `next_op`. Serwer od razu wysyła snapshot `next_op`. Strona się **nie
+  przeładowuje** — zmienia się treść kontenera i kanał socketu. Żadnego
+  ręcznego zarządzania socketem po naszej stronie.
 - `next_op` startuje (enqueue) i od tej chwili działa jak każda operacja:
   snapshot na connect, postęp, wynik.
 - Łańcuch może być dłuższy (A→B→C); każdy człon to samodzielna, wznawialna
@@ -639,18 +634,40 @@ Te punkty są **wiążące** dla planu — bez nich „snapshot = źródło praw
 nieprawdziwe pod modelem workera z jedną transakcją.
 
 ### 17.1 (B1) Dwie ścieżki stanu — live commituje się natychmiast
-- `task_run()` **NIE** opakowuje całego `run()` w jedną transakcję.
-- **Stan live** (`status_text`, `percent`, `log`/`log_seq`, `current_stage`,
-  `stage_states`, na końcu `result_context` + `finished_*`) zapisywany jest
-  **natychmiastowym, niezależnym commit-em** (autocommit / osobny, krótki
-  `atomic` per-zapis, lub dedykowane połączenie). Dzięki temu snapshot
-  konsumenta (osobne połączenie ASGI, READ COMMITTED) **widzi** bieżący stan.
-- **Mutacje domenowe** w `run()` (np. zapisy `Punktacja_Zrodla`) zarządzają
-  własną atomicznością — deweloper opakowuje je `transaction.atomic()` tam,
-  gdzie tego chce. Ich rollback **nie** cofa już-pokazanego postępu (to
-  akceptowalne; postęp to log przebiegu, nie dane domenowe).
-- `p.*` wysyła `group_send` **od razu** (nie `transaction.on_commit`), bo
-  ścieżka live jest już zacommitowana → stream i snapshot są spójne.
+
+**Dwie rzeczy, które trzeba rozdzielić:**
+- `group_send` (push po WS) to **nie** odczyt z bazy → leci natychmiast,
+  transakcja go nie blokuje. **Obserwator widzi postęp na żywo zawsze**,
+  nawet gdy cała praca jest w jednej transakcji.
+- **Snapshot na (re)connect** to **odczyt bazy** przez consumera (osobny
+  proces/połączenie). Widzi tylko **zacommitowane** wiersze. Jeśli postęp
+  jest uwięziony w otwartej transakcji domenowej → snapshot dla wchodzącego
+  w połowie pokaże stan sprzed transakcji. **To jest cała dziura B1** (nie
+  „live nie działa", tylko „resync nieaktualny").
+
+**Rozwiązanie DOMYŚLNE (proste) — commitujemy tylko stan terminalny:**
+- Co MUSI być poprawne na (re)connect to **stan terminalny**: `finished_*` +
+  `result_context` (+ `traceback`). I on **jest** zacommitowany z natury —
+  na końcu `run()`/`task_run()`. Dzięki temu „skończyło się nim strona
+  wstała" pokazuje wynik (pierwotny bug FD#388 nie wraca).
+- **percent / status / log lecą TYLKO live** (`group_send`), bez zapisu do DB
+  w trakcie. `p.*` wysyła **od razu** (nie `on_commit`).
+- **Wejście w połowie**: snapshot pokaże „w toku"; **następny live-tick
+  dogania** (percent/status — self-heal ≤ 1 interwał throttlingu). Log może
+  pominąć linie sprzed podłączenia — akceptowalne (finalny raport jest w
+  `result_context`). **Procentu NIE trzeba commitować.**
+- **Mutacje domenowe** mogą być w jednej wielkiej `transaction.atomic()` na
+  cały przebieg — to kompatybilne, bo postępu i tak nie zapisujemy do DB w
+  trakcie. Rollback transakcji domenowej cofa tylko dane domenowe; pokazany
+  live-postęp to dziennik przebiegu (na błędzie `p.error()`).
+
+**Opcjonalny upgrade (pełna wierność snapshotu) — osobne połączenie:**
+- Gdy ktoś chce ZERO mrugnięcia 0%→42% i KOMPLETNY log także przy późnym
+  wejściu: framework zapisuje `percent/status/log` **osobnym połączeniem w
+  autocommit** (uwaga Django: w `atomic()` nawet `.update()` wpada do
+  transakcji, więc potrzebny dedykowany connection). Snapshot odtwarza wtedy
+  dokładny stan. **Domyślnie wyłączone** (`LIVE_OPERATIONS["PERSIST_PROGRESS"]
+  = False`) — bo dla większości przypadków self-heal wystarcza.
 
 ### 17.2 (W5) Throttling obejmuje TAKŻE zapis do DB
 - `p.percent`/`p.track` koalescjonują **i wysyłkę WS, i commit stanu**:
@@ -705,6 +722,89 @@ group_discard)`. (Wzorzec jak w `channels_broadcast.consumers`.)
 ### 17.9 Status wpływu na resztę speca
 - §10: `result_html` → `result_context`; pole `log_seq`; brak „jednej
   transakcji".
-- §6: wybór klienta = decyzja §13.0; `async_to_sync` jawne.
+- §6: klient = rozszerzony klient `channels_broadcast` (§17.10); `async_to_sync`
+  jawne.
 - §7.2/§7.3: spójność snapshotu zależy od 17.1 (immediate-commit lane).
 - §15: runner: `celery+redis` = live; `eager` = snapshot-only (test).
+
+### 17.10 (B2/B3) Klient: rozszerzamy `channels_broadcast`, NIE htmx-ext-ws
+
+Decyzja (zgodna z kierunkiem usera): **reużywamy istniejący plik klienta
+`channels_broadcast`** (`static/channels_broadcast/js/notifications.js`) i
+**dokładamy mu funkcjonalność htmx (OOB-swap)** przez udokumentowany punkt
+rozszerzenia `addMessage`.
+
+Co dostajemy za darmo z `channels_broadcast` (nie piszemy tego od nowa):
+- otwarcie/utrzymanie socketu, **reconnect z backoffem**, auth/token,
+- **`init(extraChannels)` idempotentne** (ponowne wywołanie czysto zamyka
+  poprzedni socket) → to jest mechanizm `chain_to` (przełączenie na kanał
+  kolejnej operacji bez reloadu).
+
+Co dopisujemy (mała, zbounded'owana robota):
+- **Plugin `addMessage`** dla wiadomości typu „fragment HTML": dla każdego
+  elementu z `id` (lub `hx-swap-oob`) we fragmencie podmienia pasujący węzeł
+  w DOM (tryb `innerHTML`/`outerHTML`/`beforeend` wg atrybutu). Stare akcje
+  klienta (`{url}`→`goTo`, JSON-progress) **wyłączamy** dla naszych operacji.
+- Po swapie **`htmx.process(node)`** (htmx core jest w projekcie, 1.9.12) →
+  `hx-*` w podmienionej treści (np. przyciski w `_result.html`) działają.
+  To jest „rozszerzenie pliku o funkcjonalność htmx", bez `htmx-ext-ws`.
+- Dedupe logu po `data-nr` (§17.3) w tym samym pluginie.
+
+`chain_to` (§16.2): zamiast podmiany elementu `ws-connect`, plugin po odebraniu
+sygnału „chain" woła `channelsBroadcast.init([nast_pk], token)` → stary socket
+zamknięty, nowy otwarty i zasubskrybowany do kanału następnej operacji; serwer
+wysyła jej snapshot. **Brak reloadu, brak ręcznego cyklu życia socketu.**
+
+To zdejmuje blocker B2 (htmx-ext-ws niepotrzebny) i B3 (cyklem życia socketu
+zarządza `channels_broadcast`, nie my). Zależność pakietu: `channels_broadcast`
+(osobny pakiet iplweb, nie BPP) staje się zależnością `django-live-operations` —
+akceptowalne, bo to nie kod domenowy BPP.
+
+---
+
+## 18. Tryb tekstowy (tqdm) — jedna procedura, dwa front-endy (WEB + CLI)
+
+**Wymaganie:** tę samą długodziałającą procedurę `run(self, p)` chcemy
+uruchamiać ZARÓWNO przez WEB (live WS+HTMX), JAK i w trybie tekstowym (tqdm w
+terminalu) — **bez duplikowania logiki**.
+
+**Klucz: `Progress` to interfejs (protokół), nie konkretny transport.** Runner
+wstrzykuje implementację:
+- `WebProgress` — `group_send` fragmentów HTML po WS (rozdziały 4–17),
+- `TextProgress` — renderuje do stdout: tqdm dla pasków, `print`/`tqdm.write`
+  dla logu.
+
+Deweloper pisze `run(self, p)` **raz**; co `p.*` faktycznie robi, decyduje
+wstrzyknięty backend. To czyni „one procedure, WEB + tekst" wbudowaną cechą.
+
+### 18.1 Mapowanie API na tryb tekstowy
+
+| `p.*` | WEB (`WebProgress`) | CLI (`TextProgress`, tqdm) |
+|---|---|---|
+| `p.status(text)` | swap `#op-status` | `tqdm.write(text)` / opis paska |
+| `p.percent(x)` / `p.track(it)` | throttled WS → pasek | `tqdm(it)` — natywny pasek + ETA |
+| `p.log(line)` | append `#op-log` | `tqdm.write(line)` (nie psuje paska) |
+| `with p.stage(name)` | stepper `#op-stages` | nagłówek etapu + nowy pasek per etap |
+| `p.result(ctx)` | fragment → `#op-result` | render `*_result.txt` (jeśli jest) lub zwięzłe podsumowanie |
+| `p.chain_to(next)` | re-init socketu (§17.10) | po prostu `next.run(p)` w tym samym terminalu |
+| `p.check_cancelled()` | flaga z DB / przycisk | Ctrl-C → `OperationCancelled` |
+
+### 18.2 Uruchomienie w CLI
+
+Pakiet dostarcza bazowy management command:
+```
+python manage.py run_liveop <app.Model> --<pole>=...
+```
+albo helper `MyImport(...).run_text()` — tworzy obiekt, wstrzykuje
+`TextProgress`, woła `run()`. **To samo `run()`**, zero WS/ASGI — idealne do
+crona, debugowania, CI i ręcznego odpalenia bez przeglądarki.
+
+### 18.3 Szczegóły
+- **tqdm jako opcjonalny extra** (`django-live-operations[cli]`). Brak tqdm →
+  `TextProgress` degraduje do prostych `print` (pasek jako `42% (57/136)` co N%).
+- **Stan terminalny** w CLI zapisywany do DB tak jak w web (ten sam model),
+  tylko bez `group_send` → CLI-run też jest w historii operacji.
+- **Etapy / log / anulowanie** semantycznie identyczne — różni się wyłącznie
+  renderowanie. Logika domenowa w `run()` jest ta sama.
+- **Granica**: w CLI nie ma „in-place swap"/„deep-link" (to pojęcia webowe);
+  CLI drukuje liniowo. To świadomie jedyna różnica widoczna dla użytkownika.
