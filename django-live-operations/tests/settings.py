@@ -7,11 +7,19 @@ SECRET_KEY = "test-secret-key-not-for-production"
 INSTALLED_APPS = [
     "django.contrib.contenttypes",
     "django.contrib.auth",
+    "django.contrib.sessions",
     "channels",
     "channels_broadcast",
     "live_operations",
     "tests",
 ]
+
+MIDDLEWARE = [
+    "django.contrib.sessions.middleware.SessionMiddleware",
+    "django.contrib.auth.middleware.AuthenticationMiddleware",
+]
+
+ROOT_URLCONF = "tests.root_urls"
 
 DATABASES = {
     "default": {
