@@ -269,6 +269,10 @@ urlpatterns = (
             ),
         ),
         path(
+            "import_punktacji_zrodel/",
+            include("import_punktacji_zrodel.urls"),
+        ),
+        path(
             "importer_publikacji/",
             include(
                 (

@@ -475,6 +475,7 @@ INSTALLED_APPS = [
     "komparator_pbn",
     "import_polon",
     "import_list_ministerialnych",
+    "import_punktacji_zrodel",
     "snapshot_odpiec",
     "stan_systemu",
     "deduplikator_autorow",
