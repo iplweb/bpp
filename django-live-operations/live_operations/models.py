@@ -109,3 +109,71 @@ class LiveOperation(models.Model):
         from live_operations import runner
 
         return runner.enqueue(self)
+
+    # ------------------------------------------------------------------ #
+    # Phase 2: subscription token + snapshot                              #
+    # ------------------------------------------------------------------ #
+
+    @property
+    def subscription_token(self) -> str:
+        """Signed token authorising self.owner to subscribe to this channel."""
+        from live_operations.security import make_subscription_token
+
+        return make_subscription_token(self.owner, self)
+
+    def _render_snapshot_html(self) -> str:
+        """Render the appropriate HTML fragment for the current state.
+
+        §19.3: only terminal state is in DB; running ops get a generic
+        status fragment.
+        """
+        from django.template.loader import render_to_string
+
+        state = self.get_state()
+
+        if state == "FINISHED_OK":
+            render_ctx: dict = dict(self.result_context or {})
+            render_ctx.setdefault("operation", self)
+            try:
+                inner = render_to_string(self.get_result_template_name(), render_ctx)
+            except Exception:
+                inner = ""
+            return f'<div id="op-result" hx-swap-oob="true">{inner}</div>'
+
+        if state == "FINISHED_ERROR":
+            from django.utils.html import format_html
+
+            return format_html(
+                '<div id="op-result" hx-swap-oob="true">'
+                '<div class="error">{}</div></div>',
+                self.traceback or "",
+            )
+
+        if state == "CANCELLED":
+            return (
+                '<div id="op-result" hx-swap-oob="true">'
+                '<div class="cancelled">Operation was cancelled.</div>'
+                "</div>"
+            )
+
+        # STARTED or NOT_STARTED — send running status
+        return render_to_string(
+            "live_operations/_status.html",
+            {"text": "Operation in progress…", "level": "info"},
+        )
+
+    def send_snapshot(self) -> None:
+        """Push current state as an HTML fragment to this operation's channel group.
+
+        Called by LiveOperationConsumer.connect() so a freshly connected
+        client immediately sees the latest state (§7.3 / §19.3).
+
+        Uses channels_broadcast.core._send (same async/sync helper as
+        channels_broadcast itself) so the send works from both sync
+        workers and async consumers.
+        """
+        from channels_broadcast.core import _send
+
+        html = self._render_snapshot_html()
+        channel = self.get_channel_name()
+        _send(channel, {"liveop_html": html})
