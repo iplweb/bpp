@@ -57,6 +57,7 @@ class WynikPorownania:
         *,
         sugerowany=None,
         kandydaci=None,
+        zduplikowane_zrodla=None,
     ):
         self.status = status
         self.opis = opis
@@ -67,6 +68,11 @@ class WynikPorownania:
         # zapisu w tabeli kandydatów importowanego autora.
         self.sugerowany = sugerowany
         self.kandydaci = kandydaci
+        # `zduplikowane_zrodla`: rekordy źródeł, które zablokowały jednoznaczne
+        # dopasowanie, bo są zduplikowane w bazie (ta sama nazwa/skrót, różne
+        # ISSN-y). Warstwa widoku odsyła wtedy użytkownika do deduplikatora
+        # źródeł (FD#422).
+        self.zduplikowane_zrodla = zduplikowane_zrodla or []
 
     @cached_property
     def rekord_po_stronie_bpp(self):
@@ -440,6 +446,11 @@ class Komparator:
         Grupy o sprzecznych ISSN-ach (różne czasopisma, ta sama nazwa) NIE są
         scalane — zostają rozdzielone, więc dalej trafiają w ścieżkę ręcznego
         wyboru zamiast w cichy, potencjalnie błędny auto-match.
+
+        Zwraca krotkę ``(rekordy, blokujace)``: ``rekordy`` to lista po
+        deduplikacji, a ``blokujace`` to rekordy z grup, których NIE scalono
+        z powodu konfliktu ISSN — to one blokują jednoznaczne dopasowanie i na
+        ich podstawie warstwa widoku odsyła do deduplikatora źródeł.
         """
         grupy = {}
         for rekord in rekordy:
@@ -447,12 +458,16 @@ class Komparator:
             grupy.setdefault(klucz, []).append(rekord)
 
         wynik = []
+        blokujace = []
         for grupa in grupy.values():
-            if len(grupa) == 1 or Komparator._issn_konflikt(grupa):
+            if len(grupa) == 1:
+                wynik.append(grupa[0])
+            elif Komparator._issn_konflikt(grupa):
                 wynik.extend(grupa)
+                blokujace.extend(grupa)
             else:
                 wynik.append(Komparator._reprezentant_duplikatow(grupa))
-        return wynik
+        return wynik, blokujace
 
     @classmethod
     def porownaj_short_container_title(cls, wartosc):
@@ -467,12 +482,14 @@ class Komparator:
                 normalize_zrodlo_skrot_for_db_lookup(ciag),
             )
             if tgrm:
+                rekordy, zduplikowane = cls._scal_duplikaty_zrodel(
+                    tgrm, "skrot", normalize_zrodlo_skrot_for_db_lookup
+                )
                 return WynikPorownania(
                     StatusPorownania.LUZNE,
                     "luźne porównanie tytułu wg funkcji podobieństwa trygramów",
-                    rekordy=cls._scal_duplikaty_zrodel(
-                        tgrm, "skrot", normalize_zrodlo_skrot_for_db_lookup
-                    ),
+                    rekordy=rekordy,
+                    zduplikowane_zrodla=zduplikowane,
                 )
 
         return BRAK_DOPASOWANIA
@@ -490,12 +507,14 @@ class Komparator:
                 normalize_zrodlo_nazwa_for_db_lookup(ciag),
             )
             if tgrm:
+                rekordy, zduplikowane = cls._scal_duplikaty_zrodel(
+                    tgrm, "nazwa", normalize_zrodlo_nazwa_for_db_lookup
+                )
                 return WynikPorownania(
                     StatusPorownania.LUZNE,
                     "luźne porównanie tytułu wg funkcji podobieństwa trygramów",
-                    rekordy=cls._scal_duplikaty_zrodel(
-                        tgrm, "nazwa", normalize_zrodlo_nazwa_for_db_lookup
-                    ),
+                    rekordy=rekordy,
+                    zduplikowane_zrodla=zduplikowane,
                 )
 
         return BRAK_DOPASOWANIA
