@@ -1,0 +1,9 @@
+{% extends "base.html" %}
+{% load crispy_forms_tags %}
+{% block title %}Import punktacji źródeł — nowy{% endblock %}
+{% block content %}
+  <h1>Import punktacji źródeł — nowy import</h1>
+  <p>Wczytaj plik z bazy Journal Citation Reports (XLSX lub CSV). Zobaczysz
+     podgląd rozbieżności; zapis nastąpi dopiero po zatwierdzeniu.</p>
+  {% crispy form %}
+{% endblock %}
