@@ -1,4 +1,4 @@
-.PHONY: test docs demo
+.PHONY: test docs demo demo-text
 
 test:
 	uv run pytest
@@ -7,5 +7,9 @@ docs:
 	uv run mkdocs build
 
 demo:
-	@echo "Demo not yet implemented (Phase 5)."
-	@echo "Run: cd example && uv run python manage.py run_liveop"
+	cd example && docker compose up --build
+
+demo-text:
+	cd example && RUNNER=eager uv run python manage.py migrate --run-syncdb --noinput \
+	  && RUNNER=eager uv run python manage.py seed_demo \
+	  && RUNNER=eager uv run python manage.py run_liveop demo.DemoImport

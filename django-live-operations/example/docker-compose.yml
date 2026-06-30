@@ -1,0 +1,46 @@
+services:
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  web:
+    build:
+      context: ..
+      dockerfile: example/Dockerfile
+    command: web
+    ports:
+      - "8000:8000"
+    environment:
+      REDIS_URL: redis://redis:6379/0
+      CELERY_BROKER_URL: redis://redis:6379/0
+      RUNNER: celery
+      SECRET_KEY: demo-docker-key-change-in-production
+      DEBUG: "true"
+    volumes:
+      - static_root:/app/staticroot
+    depends_on:
+      redis:
+        condition: service_healthy
+
+  worker:
+    build:
+      context: ..
+      dockerfile: example/Dockerfile
+    command: worker
+    environment:
+      REDIS_URL: redis://redis:6379/0
+      CELERY_BROKER_URL: redis://redis:6379/0
+      RUNNER: celery
+      SECRET_KEY: demo-docker-key-change-in-production
+    depends_on:
+      redis:
+        condition: service_healthy
+
+volumes:
+  static_root:

@@ -1,0 +1,21 @@
+[project]
+name = "live-ops-demo"
+version = "0.1.0"
+requires-python = ">=3.10"
+dependencies = [
+    "django>=4.2",
+    "channels>=4",
+    "channels[daphne]>=4",
+    "daphne>=4",
+    "django-channels-broadcast",
+    "celery>=5",
+    "channels-redis>=4",
+    "django-live-operations",
+]
+
+[tool.uv.sources]
+django-live-operations = { path = "..", editable = true }
+
+[tool.pytest.ini_options]
+DJANGO_SETTINGS_MODULE = "demo_project.settings"
+pythonpath = ["."]

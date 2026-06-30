@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% block title %}Nowy import — demo{% endblock %}
+{% block content %}
+<h1>Nowy import demonstracyjny</h1>
+<p>Kliknij "Start", żeby uruchomić 5-etapowy import z żywym podglądem postępu.</p>
+<form method="post">
+  {% csrf_token %}
+  {{ form.as_p }}
+  <button type="submit" class="btn">Start</button>
+</form>
+{% endblock %}
