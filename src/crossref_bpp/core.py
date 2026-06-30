@@ -397,6 +397,26 @@ class Komparator:
             kandydaci=kandydaci,
         )
 
+    @staticmethod
+    def _scal_duplikaty_zrodel(rekordy, atrybut, normalizator):
+        """Scal zdublowane źródła o identycznej (znormalizowanej) wartości.
+
+        W bazach trafiają się zdublowane źródła o tej samej nazwie/skrócie
+        (często powstałe właśnie przez nieudane dopasowanie przy imporcie).
+        Wyszukiwanie trygramowe zwraca wtedy >1 rekord, a
+        ``rekord_po_stronie_bpp`` rezygnuje (zwraca None dla liczby ≠ 1), więc
+        źródło zostaje niedopasowane (FD#422). Tu redukujemy każdą grupę
+        duplikatów do jednego reprezentanta — rekordu o najniższym pk, czyli
+        pierwotnego — zostawiając realnie różne źródła nietknięte.
+        """
+        reprezentanci = {}
+        for rekord in rekordy:
+            klucz = normalizator(getattr(rekord, atrybut) or "")
+            obecny = reprezentanci.get(klucz)
+            if obecny is None or rekord.pk < obecny.pk:
+                reprezentanci[klucz] = rekord
+        return list(reprezentanci.values())
+
     @classmethod
     def porownaj_short_container_title(cls, wartosc):
         poszukiwania = [wartosc]
@@ -413,7 +433,9 @@ class Komparator:
                 return WynikPorownania(
                     StatusPorownania.LUZNE,
                     "luźne porównanie tytułu wg funkcji podobieństwa trygramów",
-                    rekordy=tgrm,
+                    rekordy=cls._scal_duplikaty_zrodel(
+                        tgrm, "skrot", normalize_zrodlo_skrot_for_db_lookup
+                    ),
                 )
 
         return BRAK_DOPASOWANIA
@@ -434,7 +456,9 @@ class Komparator:
                 return WynikPorownania(
                     StatusPorownania.LUZNE,
                     "luźne porównanie tytułu wg funkcji podobieństwa trygramów",
-                    rekordy=tgrm,
+                    rekordy=cls._scal_duplikaty_zrodel(
+                        tgrm, "nazwa", normalize_zrodlo_nazwa_for_db_lookup
+                    ),
                 )
 
         return BRAK_DOPASOWANIA
