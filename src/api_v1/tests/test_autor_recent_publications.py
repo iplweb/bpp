@@ -113,6 +113,123 @@ def test_autor_recent_publications_bez_duplikatow(
 
 
 @pytest.mark.django_db
+def test_autor_recent_publications_po_slugu():
+    """Endpoint przyjmuje slug autora obok numerycznego ID (czytelny snippet
+    osadzania zgodny z URL-em profilu)."""
+    client = APIClient()
+
+    autor = baker.make(Autor, nazwisko="Slugowy", imiona="Adam")
+    publikacja = baker.make(Wydawnictwo_Ciagle, tytul_oryginalny="Praca slugowa")
+    baker.make(Wydawnictwo_Ciagle_Autor, rekord=publikacja, autor=autor)
+
+    assert autor.slug
+    url = reverse(
+        "api_v1:recent_author_publications-detail", kwargs={"pk": autor.slug}
+    )
+    response = client.get(url)
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["autor_id"] == autor.pk
+    assert data["count"] == 1
+
+
+@pytest.mark.django_db
+def test_autor_recent_publications_limit_param():
+    """Parametr ?limit ogranicza liczbę pozycji; brak = domyślne 25."""
+    client = APIClient()
+
+    autor = baker.make(Autor, nazwisko="Limit", imiona="Leon")
+    for i in range(30):
+        publikacja = baker.make(Wydawnictwo_Ciagle, tytul_oryginalny=f"Praca {i}")
+        baker.make(Wydawnictwo_Ciagle_Autor, rekord=publikacja, autor=autor)
+
+    base = reverse(
+        "api_v1:recent_author_publications-detail", kwargs={"pk": autor.pk}
+    )
+
+    assert client.get(base).json()["count"] == 25
+    assert client.get(base, {"limit": 5}).json()["count"] == 5
+
+
+@pytest.mark.django_db
+def test_autor_recent_publications_filtr_rok():
+    """Parametry ?rok_od/?rok_do filtrują publikacje po roku."""
+    client = APIClient()
+
+    autor = baker.make(Autor, nazwisko="Rocznik", imiona="Roman")
+    for rok in (2008, 2015, 2022):
+        publikacja = baker.make(
+            Wydawnictwo_Ciagle, tytul_oryginalny=f"Praca {rok}", rok=rok
+        )
+        baker.make(Wydawnictwo_Ciagle_Autor, rekord=publikacja, autor=autor)
+
+    url = reverse(
+        "api_v1:recent_author_publications-detail", kwargs={"pk": autor.pk}
+    )
+
+    data = client.get(url, {"rok_od": 2010, "rok_do": 2020}).json()
+    assert data["count"] == 1
+    assert data["publications"][0]["rok"] == 2015
+
+
+@pytest.mark.django_db
+def test_autor_recent_publications_zawiera_rok():
+    """Odpowiedź zawiera pole `rok` dla każdej publikacji."""
+    client = APIClient()
+
+    autor = baker.make(Autor, nazwisko="Pole", imiona="Rok")
+    publikacja = baker.make(Wydawnictwo_Ciagle, tytul_oryginalny="Z rokiem", rok=2019)
+    baker.make(Wydawnictwo_Ciagle_Autor, rekord=publikacja, autor=autor)
+
+    url = reverse(
+        "api_v1:recent_author_publications-detail", kwargs={"pk": autor.pk}
+    )
+    pub = client.get(url).json()["publications"][0]
+    assert pub["rok"] == 2019
+
+
+@pytest.mark.django_db
+def test_autor_recent_publications_niewidoczny_autor_404():
+    """Autor oznaczony jako niewidoczny (pokazuj=False) nie ma embedu → 404."""
+    client = APIClient()
+
+    autor = baker.make(Autor, nazwisko="Ukryty", imiona="Urban", pokazuj=False)
+    publikacja = baker.make(Wydawnictwo_Ciagle, tytul_oryginalny="Niewidoczna")
+    baker.make(Wydawnictwo_Ciagle_Autor, rekord=publikacja, autor=autor)
+
+    url = reverse(
+        "api_v1:recent_author_publications-detail", kwargs={"pk": autor.pk}
+    )
+    assert client.get(url).status_code == 404
+
+
+@pytest.mark.django_db
+def test_autor_recent_publications_ukryty_status_pominiety(uczelnia, przed_korekta):
+    """Rekord o statusie ukrytym w kontekście 'api' nie może wyciec przez
+    endpoint embedu (regresja: dotąd endpoint nie filtrował widoczności)."""
+    client = APIClient()
+
+    autor = baker.make(Autor, nazwisko="Statusowy", imiona="Stefan")
+    widoczna = baker.make(Wydawnictwo_Ciagle, tytul_oryginalny="Widoczna")
+    baker.make(Wydawnictwo_Ciagle_Autor, rekord=widoczna, autor=autor)
+    ukryta = baker.make(
+        Wydawnictwo_Ciagle, tytul_oryginalny="Ukryta", status_korekty=przed_korekta
+    )
+    baker.make(Wydawnictwo_Ciagle_Autor, rekord=ukryta, autor=autor)
+
+    uczelnia.ukryj_status_korekty_set.create(status_korekty=przed_korekta)
+
+    url = reverse(
+        "api_v1:recent_author_publications-detail", kwargs={"pk": autor.pk}
+    )
+    data = client.get(url).json()
+    opisy = " ".join(p["opis_bibliograficzny"] for p in data["publications"])
+    assert "Ukryta" not in opisy
+    assert data["count"] == 1
+
+
+@pytest.mark.django_db
 def test_autor_recent_publications_nie_pobiera_zbednych_kolumn():
     """Endpoint używa tylko kilku kolumn tabeli mat — nie może ciągnąć
     wszystkich ~47 kolumn, w szczególności tsvectora search_index."""
