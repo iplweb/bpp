@@ -129,8 +129,12 @@ class ImportPunktacji(LiveOperation):
             wynik = dopasuj_i_zapisz(cz, self)
             p.log(f"{cz.nazwa}: {wynik}")          # strumieniowy raport (tqdm-like)
 
-        # finał — podmiana regionu wyników IN-PLACE (bez nawigacji):
-        p.result("import_punktacji/_wyniki.html", {"operacja": self})
+        # finał — podmiana regionu wyników IN-PLACE (bez nawigacji).
+        # BEZ podawania nazwy szablonu: framework sam wylicza go z nazwy
+        # klasy → import_punktacji_zrodel/import_punktacji_result.html
+        # (patrz §4.4). Kontekst opcjonalny — domyślnie {object, operation}.
+        p.result()
+        # albo z dodatkowym kontekstem: p.result(podsumowanie=stats)
 ```
 
 ### 4.2 `Progress` — pełne API
@@ -141,11 +145,18 @@ class ImportPunktacji(LiveOperation):
 | `p.percent(value)` | ustaw pasek (0–100) | `#op-progress` |
 | `p.track(iterable, total=None, label=None, unit="szt.")` | **generator**: iteruje i automatycznie aktualizuje pasek + ETA (tqdm-style), z throttlingiem | `#op-progress` |
 | `p.log(line)` | dopisz linię do strumieniowego logu (raport tekstowy) | `#op-log` (append) |
-| `p.swap(selector, template, context, mode="innerHTML")` | dowolny region: renderuj fragment i wstaw OOB | dowolny `id` |
+| `p.swap(selector, name=None, **context)` | dowolny region: renderuj fragment (auto-nazwa `<app>/<klasa>_<name>.html` albo jawnie) i wstaw OOB | dowolny `id` |
 | `p.html(selector, html, mode="innerHTML")` | jak wyżej, surowy HTML | dowolny `id` |
-| `p.result(template, context)` | finalizacja sukcesem: podmień `#op-result`, oznacz operację jako zakończoną, zatrzymaj pasek | `#op-result` |
+| `p.result(context=None, **extra)` | finalizacja sukcesem: render **auto-wyliczonego** szablonu wyniku (§4.4), podmień `#op-result`, oznacz operację jako zakończoną, zatrzymaj pasek | `#op-result` |
 | `p.error(message)` | finalizacja błędem: pokaż komunikat + „Uruchom ponownie" | `#op-result` |
+| `p.check_cancelled()` | zgłasza `OperationCancelled`, jeśli użytkownik anulował (patrz §4.5); wołaj w pętli | — |
+| `with p.stage(name):` | context manager etapu — rysuje stepper, skopuje postęp/log do bieżącego etapu (§16.1) | `#op-stages` + `#op-progress` |
+| `p.chain_to(next_op)` | finalizuje bieżącą i montuje następną operację **in-place, bez reloadu** (§16.2) | `#op-root` |
 | `p.redirect(url)` | *opcjonalnie* nawiguj (gdy ktoś naprawdę chce zmienić stronę) | — |
+
+Domyślnie **nigdzie nie podaje się nazwy szablonu** — `p.result()` i fragmenty
+regionów wyliczają nazwy z klasy operacji (§4.4). Jawny szablon jest możliwy,
+ale to wyjątek, nie norma.
 
 Zasady wbudowane:
 - **Throttling**: `p.percent`/`p.track` koalescjonuje wysyłki (domyślnie
@@ -158,8 +169,54 @@ Zasady wbudowane:
 ### 4.3 Co znika z DX (vs `long_running`)
 
 - ❌ `asgi_channel_name`, `extraChannels=[pk]`, `redirect_prefix`,
-  `STATE_TO_SUFFIX_MAP`, `get_url("results")`, ręczne notyfikacje.
+  `STATE_TO_SUFFIX_MAP`, `get_url("results")`, ręczne notyfikacje,
+  **ręczne nazwy szablonów** (§4.4).
 - ✅ Zostaje: pole(a) modelu + jedna metoda `run(self, p)`.
+
+### 4.4 Auto-derivacja szablonów + „duży" host page (konwencja > konfiguracja)
+
+Deweloper **nie podaje nazw szablonów**. Framework wylicza je z klasy
+operacji (`app_label` + snake_case nazwy klasy). Dla
+`class ImportPunktacji(LiveOperation)` w aplikacji
+`import_punktacji_zrodel`:
+
+| Rola | Nazwa wyliczona automatycznie | Fallback (z pakietu) |
+|---|---|---|
+| **Host page** („duży" plik, na którym renderują się fragmenty) | `import_punktacji_zrodel/import_punktacji.html` | `live_operations/operation.html` |
+| **Fragment wyniku** (`p.result()`) | `import_punktacji_zrodel/import_punktacji_result.html` | `live_operations/_result.html` |
+| Fragment `p.swap(sel, name="foo")` | `import_punktacji_zrodel/import_punktacji_foo.html` | — |
+| Status / pasek / log | — | `live_operations/_status.html`, `_progress.html`, `_log.html` |
+
+Reguły:
+- **Snake_case z CamelCase**: `ImportPunktacji` → `import_punktacji`
+  (helper `class_to_snake`). `app_label` z `Model._meta.app_label`.
+- **Override punktowy** (wyjątek, nie norma): atrybut klasy
+  `result_template_name = "..."`, `host_template_name = "..."`, albo
+  argument `p.result(template="...")` / `p.swap(..., template="...")`.
+- **Host page = jeden „duży" plik per operacja.** Domyślnie deweloper nie
+  musi go pisać — pakiet ma `live_operations/operation.html`, który
+  `{% extends %}` bazowy szablon projektu i renderuje regiony przez
+  `{% live_operation op %}`. Gdy chce własny layout, tworzy
+  `import_punktacji_zrodel/import_punktacji.html` (auto-wykrywany) i tam
+  rozkłada regiony / dodatkowe sekcje. To realizuje „gdzieś jest duży plik
+  HTML, na którym te fragmenty się renderują".
+- **Domyślnie wszystko to fragmenty.** Regiony (`#op-status/#op-progress/
+  #op-log/#op-result`) są małymi fragmentami wstawianymi OOB w host page.
+  Deweloper nadpisuje tylko te, które chce — zwykle sam `_result`.
+
+Konfigurowalny prefiks szablonu bazowego (co host page rozszerza) w
+ustawieniach: `LIVE_OPERATIONS = {"BASE_TEMPLATE": "base.html"}` (§15).
+
+### 4.5 Anulowanie
+
+- Strona operacji ma przycisk „Anuluj" (POST → `cancel` view) ustawiający
+  `cancel_requested=True` na operacji.
+- W `run()` deweloper sprawdza `p.check_cancelled()` w pętli (np. w
+  `p.track`, który robi to automatycznie co iterację) — rzuca
+  `OperationCancelled`, framework łapie, oznacza operację jako anulowaną i
+  renderuje fragment „anulowano" w `#op-result`.
+- Anulowanie jest kooperacyjne (nie zabija wątku/zadania siłą) — proste,
+  przenośne między backendami zadań (§15).
 
 ---
 
@@ -286,6 +343,8 @@ class LiveOperation(models.Model):       # abstrakcyjny
     started_on = DateTimeField(null=True, blank=True)
     finished_on = DateTimeField(null=True, blank=True)
     finished_successfully = BooleanField(default=False)
+    cancel_requested = BooleanField(default=False)    # kooperacyjne anulowanie
+    cancelled = BooleanField(default=False)
     traceback = TextField(null=True, blank=True)
 
     # Stan do projekcji/resync:
@@ -301,7 +360,11 @@ class LiveOperation(models.Model):       # abstrakcyjny
     # do nadpisania przez dewelopera:
     def run(self, p): raise NotImplementedError
 
-    # framework: task_run() opakowuje run() w transakcję + obsługę błędów,
+    # framework (auto-derivacja §4.4) — deweloper zwykle nie rusza:
+    #   host_template_name  -> "<app>/<snake(klasa)>.html"
+    #   result_template_name-> "<app>/<snake(klasa)>_result.html"
+    #   channel_name        -> f"liveop.{pk}" (ukryte przed deweloperem)
+    # task_run() opakowuje run() w transakcję + obsługę błędów/anulowania,
     # zapisuje stan, woła p.* (które robią group_send fragmentów).
 ```
 
@@ -347,21 +410,32 @@ class LiveOperation(models.Model):       # abstrakcyjny
 
 ---
 
-## 13. Otwarte decyzje (do rozstrzygnięcia przed planem)
+## 13. Decyzje
 
-1. **Nazwa app**: `live_operations` / `liveops` / `long_running2`?
-2. **Zakres v1**: tylko pilotaż w `import_punktacji_zrodel`, czy od razu
-   wspólna baza pod migrację wszystkich?
-3. **Reużycie `channels_broadcast`**: rozszerzyć istniejący consumer/security
-   czy napisać dedykowany `LiveOperationConsumer`?
-4. **Log storage**: `JSONField` (proste) vs osobny model wierszy (skalowalne,
-   filtrowalne — jak dziś `Wiersz…` w importerach).
-5. **htmx `ws` ext**: dociągnąć oficjalne rozszerzenie do bundla (zależność
-   front-endowa) — czy jest już w projekcie? (do sprawdzenia w planie).
-6. **Pull-fallback**: czy w ogóle go chcemy w v1, czy zakładamy, że produkcja
-   ma ASGI (Daphne już jest dla `channels_live_server`/testów Playwright).
-7. **Wynik jako osobny URL**: czy oprócz in-place trzymać też kanoniczny
-   GET wyników (deep-link) — rekomendacja: tak (§9).
+**Rozstrzygnięte (po przeglądzie):**
+- **Dystrybucja**: standalone, reusable **`django-live-operations`** (importowane
+  jako `live_operations`), zdekuplowane od BPP — patrz §15.
+- **Nazwy szablonów**: **auto-derivacja** z klasy operacji (§4.4); brak ręcznych
+  nazw w `p.result()` / fragmentach.
+- **Backend zadań**: **agnostyczny** (nie wiążemy się z Celery) — pluggable
+  runner (Celery / wątek / sync), patrz §15.
+- **Wynik jako osobny URL**: tak — host page pod GET renderuje od razu wynik dla
+  zakończonej operacji (deep-link/powrót), §9.
+
+**Do rozstrzygnięcia przed planem:**
+1. **Reużycie `channels_broadcast`**: rozszerzyć istniejący consumer/security
+   czy napisać dedykowany `LiveOperationConsumer` w pakiecie? (Pakiet ma być
+   samodzielny → raczej własny consumer + opcjonalny adapter.)
+2. **Log storage**: `JSONField` (proste) vs osobny model wierszy (skalowalne,
+   filtrowalne). Rekomendacja: `JSONField` w v1, model wierszy jako opcja.
+3. **htmx `ws` ext**: pakiet shipuje własny mały bund?owany klient (vanilla WS +
+   OOB-swap, bez zależności od kompilacji htmx-ext), czy wymaga htmx-ext-ws od
+   konsumenta? Rekomendacja: shipować samodzielny mikro-klient (zero zależności
+   build-time u konsumenta).
+4. **Pull-fallback** w v1: tak/nie (produkcja BPP ma ASGI/Daphne; pakiet i tak
+   powinien działać bez ASGI w trybie degradacji — rekomendacja: tak, opcjonalny).
+5. **Lokalizacja w monorepo**: katalog `django-live-operations/` w korzeniu repo
+   (własny `pyproject.toml`, dep editable z BPP) — patrz §15.
 
 ---
 
@@ -375,3 +449,164 @@ class LiveOperation(models.Model):       # abstrakcyjny
   / p.log / p.result`. Zero UID-ów, zero kanałów, zero sufiksów URL.
 - **Uniwersalnie**: `p.swap(selector, …)` pozwala aktualizować dowolny region
   dowolnej strony — pasek, log-tqdm, podgląd, wynik — czym tylko chcesz.
+
+---
+
+## 15. Pakiet `django-live-operations` (standalone, reusable)
+
+To **osobny, samodzielny pakiet** — nie część domeny BPP. BPP jest tylko jego
+pierwszym konsumentem.
+
+**Layout (katalog w korzeniu monorepo, własny `pyproject.toml`):**
+```
+django-live-operations/
+  pyproject.toml            # name = "django-live-operations"; import: live_operations
+  README.md
+  live_operations/
+    __init__.py
+    apps.py                 # AppConfig
+    models.py               # LiveOperation (abstract), miksiny stanu
+    progress.py             # Progress + p.stage(), OperationCancelled
+    naming.py               # class_to_snake, resolvery szablonów/kanału
+    runner.py               # backend-agnostyczny enqueue (Celery/thread/sync)
+    consumers.py            # LiveOperationConsumer (Channels)
+    routing.py              # websocket_urlpatterns
+    security.py             # token subskrypcji, autoryzacja właściciela
+    views.py                # Create/Live/List/Cancel/Restart (CBV miksiny)
+    urls.py
+    templatetags/live_operations.py   # {% live_operation op %}
+    conf.py                 # settings dict LIVE_OPERATIONS + defaults
+    templates/live_operations/
+      operation.html        # domyślny host page (fallback)
+      _regions.html _status.html _progress.html _log.html
+      _result.html _stages.html _cancelled.html
+    static/live_operations/
+      live-operations.js    # mikro-klient WS+OOB (zero zależności build-time)
+  tests/                    # pytest + pytest-django + channels communicator
+  example/                  # demo project (upload→analiza→wyniki, 5 etapów)
+```
+
+**Zasady pakietu:**
+- **Zero zależności od BPP.** Importy tylko: Django, `channels`. Żadnego
+  `from bpp...`. (To warunek reusability i późniejszego wydania na PyPI.)
+- **Backend zadań agnostyczny.** `runner.py` definiuje interfejs
+  `enqueue(operation)`; dostarczone adaptery: `celery`, `threading`
+  (dev/test), `eager`/`sync`. Konsument wybiera w ustawieniach. Pakiet
+  **nie** zależy od Celery (Celery to opcjonalny extra).
+- **Mikro-klient zamiast zależności front-end.** `live-operations.js` (kilka
+  KB, vanilla): otwiera WS, na wiadomość = HTML, robi OOB-swap po `id`
+  (`hx-swap-oob`-kompatybilnie); wskaźnik połączenia; auto-reconnect. Nie
+  wymaga od konsumenta kompilacji htmx-ext. (Współpracuje z htmx, ale go nie
+  wymaga.)
+- **Ustawienia** (`conf.py`):
+  ```python
+  LIVE_OPERATIONS = {
+      "BASE_TEMPLATE": "base.html",     # co rozszerza host page
+      "RUNNER": "celery",               # celery|threading|eager
+      "THROTTLE_HZ": 10,                # max wysyłek/s dla percent/track
+      "PULL_FALLBACK": False,           # degradacja bez ASGI (§7.4)
+  }
+  ```
+- **Publiczne API** (stabilne): `LiveOperation`, `Progress`, `OperationCancelled`,
+  miksiny widoków, `{% live_operation %}`. Reszta — wewnętrzne.
+- **Wpięcie do BPP**: dependency editable (`uv add --editable
+  ./django-live-operations`) + `live_operations` w `INSTALLED_APPS` +
+  `routing` w ASGI; potem pilotaż `import_punktacji_zrodel`.
+- **CI/jakość** (docelowo, jak inne pakiety iplweb): macierz Python×Django,
+  `pytest-testcontainers-django` dla Postgresa/kanału, ruff, pre-commit.
+
+---
+
+## 16. Etapy (stages) i łańcuchowanie — wszystko bez reloadu
+
+To bezpośrednio modeluje „normalną" live-operację: **wrzuć plik → analiza →
+wyniki**, gdzie „analiza" sama może mieć N pod-etapów.
+
+### 16.1 Etapy wewnątrz JEDNEJ operacji (zalecane dla „N faz analizy")
+
+Operacja deklaruje etapy; `p.stage(...)` to context manager, który rysuje
+**stepper** (`#op-stages`) i skopuje postęp/log do bieżącego etapu:
+
+```python
+class ImportPunktacji(LiveOperation):
+    stages = ["Wczytanie", "Walidacja", "Dopasowanie", "Zapis", "Raport"]
+
+    def run(self, p):
+        with p.stage("Wczytanie"):
+            dane = wczytaj_plik_jcr(self.plik.path)
+
+        with p.stage("Walidacja"):
+            for cz in p.track(dane.czasopisma, label="Sprawdzam"):
+                waliduj(cz)
+
+        with p.stage("Dopasowanie"):
+            for cz in p.track(dane.czasopisma, label="Dopasowuję"):
+                p.log(f"{cz.nazwa}: {dopasuj(cz)}")
+
+        with p.stage("Zapis"):
+            zapisz(dane, self)
+
+        with p.stage("Raport"):
+            p.result(podsumowanie=policz(dane))     # finał in-place
+```
+
+Zachowanie:
+- **`#op-stages`** renderuje stepper (np. 5 kropek/kroków): zrobione ✓,
+  bieżący ●, przyszłe ○. Wejście w `stage` → oznacz aktywny + render; wyjście
+  bez wyjątku → ✓; wyjątek → ✗ i `p.error`.
+- Pasek `#op-progress` i log dotyczą **bieżącego etapu** (reset paska na
+  wejściu w etap). Opcjonalny pasek „ogólny" = `(zrobione_etapy + ułamek)/N`.
+- Stan etapów jest częścią snapshotu (§7.3) → reconnect pokazuje właściwy
+  etap. Stepper-swap jest idempotentny.
+- **Bez reloadu** — to nadal jedna strona, jeden socket, jedna operacja.
+  Etapy to po prostu strukturyzowane sekcje wewnątrz `run()`.
+
+To pokrywa „mieć np. 5 etapów long-running jak analiza pliku" **bez** mnożenia
+obiektów/kanałów/stron.
+
+### 16.2 Łańcuchowanie ODDZIELNYCH operacji (gdy etapy to osobne byty)
+
+Gdy fazy są naprawdę odrębnymi operacjami (inny model, inne wejście, osobno
+wznawialne, inny `run()`), łączymy je w łańcuch — **też bez reloadu**:
+
+```python
+def run(self, p):
+    ...
+    # zamiast p.result(): przekaż sterowanie kolejnej operacji
+    nast = AnalizaPliku.objects.create(owner=self.owner, plik=self.plik)
+    p.chain_to(nast)          # finalizuje bieżącą i montuje następną in-place
+```
+
+Mechanika (kluczowe, że bez nawigacji):
+- `p.chain_to(next_op)` finalizuje bieżącą operację i wysyła OOB-swap
+  **całego kontenera** `#op-root`, w którym nowy element ma świeży
+  `ws-connect` do kanału `next_op`:
+  ```html
+  <div id="op-root" hx-swap-oob="true"
+       data-ws="{% url 'live_operations:ws' next_op.pk %}">
+    {# regiony next_op + auto-start #}
+  </div>
+  ```
+  Mikro-klient (lub htmx-ws) na podmianę elementu z `data-ws`/`ws-connect`
+  **zamyka stary socket i otwiera nowy** do `next_op`. Strona się nie
+  przeładowuje — zmienia się tylko zawartość kontenera i adres socketu.
+- `next_op` startuje (enqueue) i od tej chwili działa jak każda operacja:
+  snapshot na connect, postęp, wynik.
+- Łańcuch może być dłuższy (A→B→C); każdy człon to samodzielna, wznawialna
+  operacja z własnym deep-linkiem.
+
+### 16.3 Którego użyć?
+
+| Sytuacja | Wybór |
+|---|---|
+| „upload → analiza (kilka faz) → wyniki", jeden spójny przebieg | **Etapy** (§16.1) — jedna operacja, prościej |
+| Fazy = odrębne, wznawialne byty (różne modele/wejścia, osobne uprawnienia, możliwy restart pojedynczej fazy) | **Łańcuch** (§16.2) |
+| Faza opcjonalna/warunkowa, rozgałęzienia | Łańcuch (`p.chain_to` zależny od wyniku) |
+
+### 16.4 Wpływ na model i regiony
+
+- Model: `stages = []` (deklaracja, opcjonalna), `current_stage` (int),
+  `stage_states` (JSON: per-etap status). Wszystko częścią snapshotu.
+- Nowy region `#op-stages` + fragment `_stages.html` (stepper).
+- `p.chain_to` korzysta z istniejącego mechanizmu OOB-swap — żadnej nowej
+  infrastruktury transportowej; to wciąż „projekcja stanu po WS".
