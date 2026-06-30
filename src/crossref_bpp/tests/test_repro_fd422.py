@@ -20,7 +20,7 @@ jednego reprezentanta (rekord o najniższym pk = pierwotny).
 import pytest
 from model_bakery import baker
 
-from bpp.models import Zrodlo
+from bpp.models import Wydawnictwo_Ciagle, Zrodlo
 from crossref_bpp.core import Komparator
 from import_common.core import normalize_zrodlo_nazwa_for_db_lookup
 
@@ -69,3 +69,33 @@ def test_scal_duplikaty_zrodel_nie_scala_roznych_zrodel():
     assert len(sgsp) == 1
     assert sgsp[0].pk == min(z1.pk, z2.pk)
     assert inny in scalone
+
+
+@pytest.mark.django_db
+def test_scal_duplikaty_zrodel_rozne_issn_nie_scalane():
+    # Ta sama nazwa, ale różne niepuste ISSN-y = różne czasopisma.
+    # Nie wolno ich scalić — niejednoznaczność trafia w ręczny wybór.
+    z1 = baker.make(Zrodlo, nazwa="Zeszyty Naukowe", issn="1111-1111")
+    z2 = baker.make(Zrodlo, nazwa="Zeszyty Naukowe", issn="2222-2222")
+
+    scalone = Komparator._scal_duplikaty_zrodel(
+        [z1, z2], "nazwa", normalize_zrodlo_nazwa_for_db_lookup
+    )
+
+    assert len(scalone) == 2
+    assert set(scalone) == {z1, z2}
+
+
+@pytest.mark.django_db
+def test_reprezentant_duplikatow_to_zrodlo_z_publikacjami():
+    # Reprezentantem ma być rekord realnie używany (z publikacjami),
+    # nie ten o najniższym pk, gdy ten pierwszy jest pustym duplikatem.
+    pusty = baker.make(Zrodlo, nazwa="Zeszyty Naukowe SGSP")
+    aktywny = baker.make(Zrodlo, nazwa="Zeszyty Naukowe SGSP")
+    assert pusty.pk < aktywny.pk  # aktywny ma WYŻSZE pk
+    baker.make(Wydawnictwo_Ciagle, zrodlo=aktywny)
+
+    wynik = Komparator.porownaj_container_title("Zeszyty Naukowe SGSP")
+
+    # Mimo wyższego pk wybrany ma być rekord z publikacją.
+    assert wynik.rekord_po_stronie_bpp == aktywny

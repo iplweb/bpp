@@ -398,6 +398,35 @@ class Komparator:
         )
 
     @staticmethod
+    def _issn_konflikt(rekordy):
+        """Czy grupa rekordów deklaruje sprzeczne (niepuste) ISSN-y?
+
+        Prawdziwe duplikaty tego samego czasopisma mają ten sam ISSN (albo
+        część z nich pusty). Różne, niepuste ISSN-y to sygnał, że to dwa
+        różne czasopisma o przypadkowo identycznej nazwie — wtedy NIE wolno
+        ich scalać.
+        """
+        issny = {(r.issn or "").strip() for r in rekordy} - {""}
+        e_issny = {(r.e_issn or "").strip() for r in rekordy} - {""}
+        return len(issny) > 1 or len(e_issny) > 1
+
+    @staticmethod
+    def _reprezentant_duplikatow(rekordy):
+        """Wybierz „aktywny" rekord z grupy duplikatów.
+
+        Preferuj rekord z największą liczbą powiązanych publikacji (to ten
+        realnie używany), a przy remisie najniższe pk (rekord pierwotny).
+        Dzięki temu import nie podpina prac pod martwy, pusty duplikat.
+        """
+        liczby = (
+            Wydawnictwo_Ciagle.objects.filter(zrodlo__in=[r.pk for r in rekordy])
+            .values("zrodlo")
+            .annotate(n=models.Count("pk"))
+        )
+        licznik = {row["zrodlo"]: row["n"] for row in liczby}
+        return max(rekordy, key=lambda r: (licznik.get(r.pk, 0), -r.pk))
+
+    @staticmethod
     def _scal_duplikaty_zrodel(rekordy, atrybut, normalizator):
         """Scal zdublowane źródła o identycznej (znormalizowanej) wartości.
 
@@ -406,16 +435,24 @@ class Komparator:
         Wyszukiwanie trygramowe zwraca wtedy >1 rekord, a
         ``rekord_po_stronie_bpp`` rezygnuje (zwraca None dla liczby ≠ 1), więc
         źródło zostaje niedopasowane (FD#422). Tu redukujemy każdą grupę
-        duplikatów do jednego reprezentanta — rekordu o najniższym pk, czyli
-        pierwotnego — zostawiając realnie różne źródła nietknięte.
+        prawdziwych duplikatów do jednego „aktywnego" reprezentanta.
+
+        Grupy o sprzecznych ISSN-ach (różne czasopisma, ta sama nazwa) NIE są
+        scalane — zostają rozdzielone, więc dalej trafiają w ścieżkę ręcznego
+        wyboru zamiast w cichy, potencjalnie błędny auto-match.
         """
-        reprezentanci = {}
+        grupy = {}
         for rekord in rekordy:
             klucz = normalizator(getattr(rekord, atrybut) or "")
-            obecny = reprezentanci.get(klucz)
-            if obecny is None or rekord.pk < obecny.pk:
-                reprezentanci[klucz] = rekord
-        return list(reprezentanci.values())
+            grupy.setdefault(klucz, []).append(rekord)
+
+        wynik = []
+        for grupa in grupy.values():
+            if len(grupa) == 1 or Komparator._issn_konflikt(grupa):
+                wynik.extend(grupa)
+            else:
+                wynik.append(Komparator._reprezentant_duplikatow(grupa))
+        return wynik
 
     @classmethod
     def porownaj_short_container_title(cls, wartosc):
