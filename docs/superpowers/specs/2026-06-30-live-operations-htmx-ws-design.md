@@ -244,7 +244,14 @@ ustawieniach: `LIVE_OPERATIONS = {"BASE_TEMPLATE": "base.html"}` (§15).
 
 ## 6. Protokół transportu (WS ↔ HTMX)
 
-- Transport: **Django Channels** (ASGI) + oficjalne **htmx `ws`**.
+> **UWAGA (po review, B2/B3):** htmx-ext-ws **nie jest** dziś w projekcie
+> (jest tylko core htmx 1.9.12, `package.json`). Wybór klienta (htmx-ext-ws
+> vs własny mikro-klient) to otwarta **decyzja** — patrz §13/§17. Poniższy
+> opis protokołu jest niezależny od wyboru klienta (oba realizują OOB-swap
+> po `id` z wiadomości WS). Każdy `p.*` z workera (sync) wysyła przez
+> `async_to_sync(channel_layer.group_send)(...)`.
+
+- Transport: **Django Channels** (ASGI) + klient OOB-swap (§13/§17).
 - Serwer wysyła **fragmenty HTML** z atrybutem `hx-swap-oob`:
   ```html
   <div id="op-progress" hx-swap-oob="true">
@@ -283,10 +290,14 @@ Dzięki idempotencji swapów strona po reconnect natychmiast pokazuje
 bieżący stan, niezależnie od tego, ile wiadomości „przegapiła". To
 zastępuje kruchy mechanizm „trwała notyfikacja + ACK".
 
-> Log: by uniknąć duplikacji przy append, log trzymamy w stanie operacji
-> (lista linii lub licznik). Live = `beforeend` pojedynczej linii; reconnect
-> = `innerHTML` całego logu. Dla bardzo długich logów: „ogon N linii +
-> licznik pominiętych".
+> **Log — dedupe przez numer sekwencyjny (§17, W1).** `beforeend` NIE jest
+> idempotentny, więc nie wystarczy „pełny log na reconnect". Każda linia ma
+> `nr` (rosnący). Live-append niesie `nr`; klient stosuje linię tylko gdy
+> `nr > last_seen` (atrybut `data-nr` + drobny hook). Connect wysyła **pełny
+> log** (`innerHTML`) i ustawia `last_seen` = `log_seq`. To eliminuje zarówno
+> duplikację (powtórki ignorowane), jak i lukę (snapshot ma wszystko do
+> `log_seq`). Kolejność w consumerze: **najpierw snapshot, potem dołączenie
+> do grupy** — z dedupe po `nr` okno wyścigu jest nieszkodliwe.
 
 ### 7.4 Degradacja bez ASGI (opcjonalna)
 Gdy WS nie wstaje (brak Daphne/channel-layer), kontener może mieć
@@ -350,8 +361,9 @@ class LiveOperation(models.Model):       # abstrakcyjny
     # Stan do projekcji/resync:
     status_text = CharField(max_length=255, blank=True, default="")
     percent = PositiveSmallIntegerField(default=0)
-    log = JSONField(default=list)          # lista linii (lub osobny model wierszy)
-    result_html = TextField(blank=True, default="")   # zrenderowany fragment wyniku
+    log = JSONField(default=list)          # lista {nr, text} — nr do dedupe (§17, W1)
+    log_seq = PositiveIntegerField(default=0)         # ostatni numer linii logu
+    result_context = JSONField(null=True, blank=True) # KONTEKST wyniku (nie HTML!) §17 W2
 
     class Meta:
         abstract = True
@@ -364,12 +376,13 @@ class LiveOperation(models.Model):       # abstrakcyjny
     #   host_template_name  -> "<app>/<snake(klasa)>.html"
     #   result_template_name-> "<app>/<snake(klasa)>_result.html"
     #   channel_name        -> f"liveop.{pk}" (ukryte przed deweloperem)
-    # task_run() opakowuje run() w transakcję + obsługę błędów/anulowania,
-    # zapisuje stan, woła p.* (które robią group_send fragmentów).
+    # task_run() NIE opakowuje run() w jedną transakcję (§17, B1): stan live
+    # (status/percent/log/stage) commituje się NATYCHMIAST i niezależnie od
+    # mutacji domenowych; p.* robi group_send od razu (nie on_commit).
 ```
 
-- **Stan operacji jest trwały** → snapshot na reconnect jest możliwy bez
-  żadnego ACK.
+- **Stan live jest trwały i zacommitowany na bieżąco** → snapshot na reconnect
+  widzi rzeczywistość (klucz: §17/B1).
 - `log` jako `JSONField` dla prostoty; dla dużych raportów — osobny model
   `LiveOperationLogLine(parent, nr, text)` (decyzja §13).
 
@@ -423,9 +436,16 @@ class LiveOperation(models.Model):       # abstrakcyjny
   zakończonej operacji (deep-link/powrót), §9.
 
 **Do rozstrzygnięcia przed planem:**
-1. **Reużycie `channels_broadcast`**: rozszerzyć istniejący consumer/security
-   czy napisać dedykowany `LiveOperationConsumer` w pakiecie? (Pakiet ma być
-   samodzielny → raczej własny consumer + opcjonalny adapter.)
+0. **[KLUCZOWE] Klient transportu (B2/B3)**: htmx-ext-ws (dociągnąć 1-plikowe
+   rozszerzenie do htmx 1.9.12 + **spike** na teardown/redial socketu przy
+   `chain_to`) **vs** własny mikro-klient (pełna kontrola, ale trzeba
+   zaimplementować OOB-swap + cykl życia socketu i to przetestować).
+   **Rekomendacja: htmx-ext-ws** — mniejsze ryzyko, htmx już jest; mikro-klient
+   tylko jeśli spike pokaże, że ext nie obsługuje teardown-on-swap. Patrz §17.
+1. **Reużycie `channels_broadcast`**: reużyć **tylko auth/token/subscription**
+   (`security.py`), a **transport przepisać** na HTML-fragment/OOB (jego model
+   JSON-dict to dokładnie ta krucha ścieżka, którą zabijamy). NIE dziedziczyć
+   po `NotificationsConsumer`. (§17)
 2. **Log storage**: `JSONField` (proste) vs osobny model wierszy (skalowalne,
    filtrowalne). Rekomendacja: `JSONField` w v1, model wierszy jako opcja.
 3. **htmx `ws` ext**: pakiet shipuje własny mały bund?owany klient (vanilla WS +
@@ -610,3 +630,81 @@ Mechanika (kluczowe, że bez nawigacji):
 - Nowy region `#op-stages` + fragment `_stages.html` (stepper).
 - `p.chain_to` korzysta z istniejącego mechanizmu OOB-swap — żadnej nowej
   infrastruktury transportowej; to wciąż „projekcja stanu po WS".
+
+---
+
+## 17. Rozstrzygnięcia po adversarial review (twarde wymagania implementacji)
+
+Te punkty są **wiążące** dla planu — bez nich „snapshot = źródło prawdy" jest
+nieprawdziwe pod modelem workera z jedną transakcją.
+
+### 17.1 (B1) Dwie ścieżki stanu — live commituje się natychmiast
+- `task_run()` **NIE** opakowuje całego `run()` w jedną transakcję.
+- **Stan live** (`status_text`, `percent`, `log`/`log_seq`, `current_stage`,
+  `stage_states`, na końcu `result_context` + `finished_*`) zapisywany jest
+  **natychmiastowym, niezależnym commit-em** (autocommit / osobny, krótki
+  `atomic` per-zapis, lub dedykowane połączenie). Dzięki temu snapshot
+  konsumenta (osobne połączenie ASGI, READ COMMITTED) **widzi** bieżący stan.
+- **Mutacje domenowe** w `run()` (np. zapisy `Punktacja_Zrodla`) zarządzają
+  własną atomicznością — deweloper opakowuje je `transaction.atomic()` tam,
+  gdzie tego chce. Ich rollback **nie** cofa już-pokazanego postępu (to
+  akceptowalne; postęp to log przebiegu, nie dane domenowe).
+- `p.*` wysyła `group_send` **od razu** (nie `transaction.on_commit`), bo
+  ścieżka live jest już zacommitowana → stream i snapshot są spójne.
+
+### 17.2 (W5) Throttling obejmuje TAKŻE zapis do DB
+- `p.percent`/`p.track` koalescjonują **i wysyłkę WS, i commit stanu**:
+  domyślnie ≤ ~10 Hz **oraz** ≥1% zmiany. 100k iteracji → rząd setek
+  commitów/sekund, nie 100k UPDATE-ów. Akceptujemy sub-sekundowe opóźnienie
+  snapshotu. `p.log` może mieć osobny, wyższy budżet (linie są tanie), ale i
+  tak batch'owany.
+
+### 17.3 (W1) Log: numer sekwencyjny + dedupe klienta
+Jak w §7.3: linie mają `nr`; klient stosuje tylko `nr > last_seen`; connect
+wysyła pełny log + `log_seq`. Snapshot-przed-dołączeniem-do-grupy + dedupe.
+
+### 17.4 (W2) Wynik: przechowujemy KONTEKST, renderujemy na żądanie
+- Model trzyma `result_context` (JSON), **nie** `result_html`. Deep-link GET
+  zakończonej operacji renderuje aktualny szablon z zapisanego kontekstu →
+  poprawki szablonu/CSS działają wstecz, brak puchnięcia DB.
+- Kontrakt: deweloper utrzymuje szablon wyniku kompatybilny wstecz z
+  kontekstem (zwykle `{object, operation, **extra}`).
+
+### 17.5 (W3) „Runner-agnostic" — co naprawdę znaczy live
+- **Live wymaga**: runner **out-of-process** (Celery worker) **+ Redis
+  channel layer** (jest: `settings/base.py` `RedisChannelLayer`).
+- **`eager`/`sync`**: `run()` wykonuje się przed połączeniem socketu →
+  `group_send` trafia w pustą grupę → użytkownik widzi **tylko finalny
+  snapshot**. To tryb test/degradacja, **nie** „live". Udokumentować wprost.
+- **`threading` + `InMemoryChannelLayer`**: dostawa cross-loop jest zawodna
+  (layer związany z pętlą) → do live i tak potrzebny Redis. InMemory tylko do
+  izolowanych testów consumera.
+
+### 17.6 (W4) Test plan — trzy poziomy, świadomie
+- **Consumer (unit)**: `WebsocketCommunicator`, ręczny `group_send` →
+  asercja fragmentu; connect→snapshot; reconnect→idempotencja.
+- **`Progress` (unit)**: wstrzyknięty **fake channel layer** (przechwytuje
+  `group_send`) → asercja, że `p.*` woła `async_to_sync(group_send)` z
+  poprawnym fragmentem; throttling; numeracja logu; stepper.
+- **Round-trip (integration)**: worker→layer→consumer **na Redisie**
+  (`pytest-testcontainers-django`), nie InMemory/eager.
+
+### 17.7 (async/sync) Granica
+Każdy send z sync-workera: `async_to_sync(channel_layer.group_send)(grupa,
+{...})`. Subskrypcja/odsubskrypcja w consumerze: `async_to_sync(group_add/
+group_discard)`. (Wzorzec jak w `channels_broadcast.consumers`.)
+
+### 17.8 (naming) `class_to_snake` — algorytm i ucieczka
+- Algorytm: granice wstaw przed wielką literą poprzedzoną małą/cyfrą oraz
+  w sekwencjach akronimów (`ImportPBN2` → `import_pbn2`, nie `import_p_b_n2`)
+  — użyć sprawdzonej reguły (np. dwa podstawienia regex jak w `inflection`).
+- **Ucieczka**: `host_template_name` / `result_template_name` na klasie albo
+  `template=` w `p.result/p.swap`. Auto-derivacja to domyślny komfort, nie
+  klatka.
+
+### 17.9 Status wpływu na resztę speca
+- §10: `result_html` → `result_context`; pole `log_seq`; brak „jednej
+  transakcji".
+- §6: wybór klienta = decyzja §13.0; `async_to_sync` jawne.
+- §7.2/§7.3: spójność snapshotu zależy od 17.1 (immediate-commit lane).
+- §15: runner: `celery+redis` = live; `eager` = snapshot-only (test).
