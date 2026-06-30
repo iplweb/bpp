@@ -1,4 +1,13 @@
 {% extends "base.html" %}
+{% block extrahead %}{{ block.super }}
+  {# Fallback: gdy websocket nie dostarczy sygnału zakończenia (np. strona #}
+  {# pokazana już po zakończeniu albo brak ASGI), odpytuj router co 15 s — #}
+  {# po zakończeniu przekieruje na wyniki, w trakcie wraca tutaj. #}
+  {% if not object.finished_on %}
+    <meta http-equiv="refresh"
+          content="15; url={% url 'import_punktacji_zrodel:importpunktacjizrodel-router' object.pk %}">
+  {% endif %}
+{% endblock %}
 {% block title %}Import punktacji źródeł — postęp{% endblock %}
 {% block content %}
   <h1>Import punktacji źródeł — przetwarzanie</h1>
