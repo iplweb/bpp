@@ -1,3 +1,4 @@
+from django.urls import reverse
 from rest_framework import viewsets
 from rest_framework.permissions import AllowAny
 
@@ -29,5 +30,11 @@ class RecentUnitPublicationsViewSet(viewsets.ViewSet):
         return odpowiedz_z_publikacjami(
             request,
             base,
-            {"jednostka_id": jednostka.pk, "jednostka_nazwa": str(jednostka)},
+            {
+                "jednostka_id": jednostka.pk,
+                "jednostka_nazwa": str(jednostka),
+                "profil_url": request.build_absolute_uri(
+                    reverse("bpp:browse_jednostka", args=[jednostka.slug])
+                ),
+            },
         )

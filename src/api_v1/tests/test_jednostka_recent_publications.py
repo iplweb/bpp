@@ -33,6 +33,20 @@ def test_jednostka_recent_publications_endpoint(typy_odpowiedzialnosci):
 
 
 @pytest.mark.django_db
+def test_jednostka_recent_publications_profil_url(typy_odpowiedzialnosci):
+    """Odpowiedź zawiera `profil_url` wskazujący stronę jednostki w BPP."""
+    client = APIClient()
+
+    jednostka = baker.make(Jednostka, nazwa="Katedra Profilowa")
+    url = reverse(
+        "api_v1:recent_unit_publications-detail", kwargs={"pk": jednostka.pk}
+    )
+    data = client.get(url).json()
+    assert "profil_url" in data
+    assert jednostka.slug in data["profil_url"]
+
+
+@pytest.mark.django_db
 def test_jednostka_recent_publications_rekurencyjnie(typy_odpowiedzialnosci):
     """Embed jednostki nadrzędnej zawiera dorobek jej pod-jednostek
     (poddrzewo wydział → katedra → zakład)."""

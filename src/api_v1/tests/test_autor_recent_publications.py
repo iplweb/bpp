@@ -135,6 +135,21 @@ def test_autor_recent_publications_po_slugu():
 
 
 @pytest.mark.django_db
+def test_autor_recent_publications_profil_url():
+    """Odpowiedź zawiera `profil_url` wskazujący stronę autora w BPP
+    (link 'pełny profil' w stopce widgetu)."""
+    client = APIClient()
+
+    autor = baker.make(Autor, nazwisko="Profilowy", imiona="Filip")
+    url = reverse(
+        "api_v1:recent_author_publications-detail", kwargs={"pk": autor.pk}
+    )
+    data = client.get(url).json()
+    assert "profil_url" in data
+    assert autor.slug in data["profil_url"]
+
+
+@pytest.mark.django_db
 def test_autor_recent_publications_limit_param():
     """Parametr ?limit ogranicza liczbę pozycji; brak = domyślne 25."""
     client = APIClient()

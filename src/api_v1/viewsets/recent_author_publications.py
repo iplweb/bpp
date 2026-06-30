@@ -1,3 +1,4 @@
+from django.urls import reverse
 from rest_framework import viewsets
 from rest_framework.permissions import AllowAny
 
@@ -28,5 +29,11 @@ class RecentAuthorPublicationsViewSet(viewsets.ViewSet):
         return odpowiedz_z_publikacjami(
             request,
             base,
-            {"autor_id": autor.pk, "autor_nazwa": str(autor)},
+            {
+                "autor_id": autor.pk,
+                "autor_nazwa": str(autor),
+                "profil_url": request.build_absolute_uri(
+                    reverse("bpp:browse_autor", args=[autor.slug])
+                ),
+            },
         )
