@@ -110,6 +110,12 @@ class LiveOperation(models.Model):
 
         return runner.enqueue(self)
 
+    def get_absolute_url(self) -> str:
+        """Return the URL of the live host page for this operation."""
+        from django.urls import reverse
+
+        return reverse("live_operations:live", kwargs={"pk": self.pk})
+
     # ------------------------------------------------------------------ #
     # Phase 2: subscription token + snapshot                              #
     # ------------------------------------------------------------------ #
