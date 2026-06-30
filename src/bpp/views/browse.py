@@ -44,7 +44,10 @@ from bpp.multiseek_registry import (
     ZakresLatQueryObject,
     ZrodloQueryObject,
 )
-from bpp.util.uczelnia_scope import scope_rekord_do_uczelni
+from bpp.util.uczelnia_scope import (
+    scope_jednostki_do_uczelni,
+    scope_rekord_do_uczelni,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -489,6 +492,7 @@ class JednostkiView(Browser):
         qry = super().get_queryset().filter(widoczna=True)
 
         uczelnia = Uczelnia.objects.get_for_request(self.request)
+        qry = scope_jednostki_do_uczelni(qry, uczelnia)
         if uczelnia:
             if uczelnia.sortuj_jednostki_alfabetycznie:
                 ordering = ("nazwa",)
@@ -511,6 +515,7 @@ class JednostkiView(Browser):
         base_qry = Jednostka.objects.filter(widoczna=True)
 
         uczelnia = Uczelnia.objects.get_for_request(self.request)
+        base_qry = scope_jednostki_do_uczelni(base_qry, uczelnia)
         if uczelnia and uczelnia.pokazuj_tylko_jednostki_nadrzedne:
             base_qry = base_qry.filter(parent=None)
 

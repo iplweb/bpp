@@ -29,3 +29,19 @@ def scope_rekord_do_uczelni(qs, uczelnia):
     if uczelnia is None or tylko_jedna_uczelnia():
         return qs
     return qs.filter(autorzy__jednostka__uczelnia=uczelnia).distinct()
+
+
+def scope_jednostki_do_uczelni(qs, uczelnia):
+    """Zawęź queryset ``Jednostka`` do uczelni oglądającego (multi-hosted).
+
+    Atrybucja przez bezpośredni FK ``Jednostka.uczelnia``. Constraint w
+    ``Jednostka_Wydzial.clean()`` wymusza ``wydzial.uczelnia == jednostka.uczelnia``,
+    więc dla jednostek z wydziałem wynik jest tożsamy z filtrem po wydziale;
+    jednostki bez wydziału, należące do uczelni, pozostają widoczne.
+
+    No-op (zwraca ten sam qs) gdy brak uczelni (brak mapowania Site→Uczelnia)
+    albo gdy w systemie jest dokładnie jedna uczelnia — wynik identyczny.
+    """
+    if uczelnia is None or tylko_jedna_uczelnia():
+        return qs
+    return qs.filter(uczelnia=uczelnia)
