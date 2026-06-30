@@ -8,6 +8,7 @@ from django.db import close_old_connections
 from tqdm import tqdm
 
 from bpp.models import Dyscyplina_Naukowa, Punktacja_Zrodla, Zrodlo
+from bpp.util import zaloguj_polkniety_wyjatek
 
 from .base import CancelledException, ImportStepBase
 
@@ -42,6 +43,11 @@ def _sync_single_source(zrodlo_id, min_rok, dyscypliny_dict):
         return (zrodlo_id, True, None)
 
     except Exception as e:
+        zaloguj_polkniety_wyjatek(
+            f"Nie udało się zaimportować punktacji/dyscyplin źródła {zrodlo_id}",
+            logger=logger,
+            do_rollbar=True,
+        )
         return (zrodlo_id, False, str(e))
 
 

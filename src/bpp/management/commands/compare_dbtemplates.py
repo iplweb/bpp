@@ -6,6 +6,7 @@ showing differences using a unified diff format similar to the Unix diff(1) comm
 """
 
 import difflib
+import logging
 import sys
 from pathlib import Path
 
@@ -13,10 +14,14 @@ from django.core.management.base import BaseCommand, CommandError
 from django.template import TemplateDoesNotExist
 from django.template.loader import get_template
 
+from bpp.util import zaloguj_polkniety_wyjatek
+
 try:
     from dbtemplates.models import Template
 except ImportError:
     Template = None
+
+logger = logging.getLogger(__name__)
 
 
 class Command(BaseCommand):
@@ -79,7 +84,7 @@ class Command(BaseCommand):
             help="Only display names of changed templates (no diff output)",
         )
 
-    def handle(self, *args, **options):
+    def handle(self, *args, **options):  # noqa: C901
         if Template is None:
             raise CommandError(
                 "dbtemplates is not installed or not properly configured. "
@@ -140,11 +145,11 @@ class Command(BaseCommand):
                             f.write(output_content + "\n")
                         self.stdout.write(
                             self.style.SUCCESS(
-                                f'Changed template names written to {options["output"]}'
+                                f"Changed template names written to {options['output']}"
                             )
                         )
                     except OSError as e:
-                        raise CommandError(f"Error writing to file: {e}")
+                        raise CommandError(f"Error writing to file: {e}") from e
                 else:
                     self.stdout.write(output_content)
         elif output_lines:
@@ -156,11 +161,11 @@ class Command(BaseCommand):
                         f.write(output_content + "\n")
                     self.stdout.write(
                         self.style.SUCCESS(
-                            f'Differences written to {options["output"]}'
+                            f"Differences written to {options['output']}"
                         )
                     )
                 except OSError as e:
-                    raise CommandError(f"Error writing to file: {e}")
+                    raise CommandError(f"Error writing to file: {e}") from e
             else:
                 self.stdout.write(output_content)
 
@@ -219,7 +224,7 @@ class Command(BaseCommand):
         # Check if templates are identical
         return db_lines != fs_lines
 
-    def compare_template(self, db_template, options):
+    def compare_template(self, db_template, options):  # noqa: C901
         """Compare a single template and return diff output"""
         fs_content = self.get_filesystem_template_content(db_template.name)
 
@@ -274,9 +279,9 @@ class Command(BaseCommand):
 
         # Add header and styling
         result = [
-            f"{'='*60}",
+            f"{'=' * 60}",
             f"Template: {db_template.name}",
-            f"{'='*60}",
+            f"{'=' * 60}",
         ]
 
         # Apply coloring if not disabled
@@ -335,11 +340,22 @@ class Command(BaseCommand):
                 rendered = django_template.render(Context({}))
                 return rendered
             except Exception:
-                pass
+                zaloguj_polkniety_wyjatek(
+                    f"Renderowanie szablonu jako fallback do odczytu źródła "
+                    f"(template_name={template_name})",
+                    logger=logger,
+                    do_rollbar=False,
+                )
 
         except TemplateDoesNotExist:
             pass
         except Exception as e:
+            zaloguj_polkniety_wyjatek(
+                f"Wczytywanie źródła szablonu do porównania "
+                f"(template_name={template_name})",
+                logger=logger,
+                do_rollbar=False,
+            )
             # Log the error but continue
             if hasattr(self, "stderr"):
                 self.stderr.write(

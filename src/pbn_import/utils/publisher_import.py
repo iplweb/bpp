@@ -1,9 +1,14 @@
 """Publisher import utilities"""
 
+import logging
+
+from bpp.util import zaloguj_polkniety_wyjatek
 from pbn_integrator import importer
 from pbn_integrator.utils import pobierz_wydawcow_mnisw
 
 from .base import ImportStepBase
+
+logger = logging.getLogger(__name__)
 
 
 class PublisherImporter(ImportStepBase):
@@ -22,6 +27,11 @@ class PublisherImporter(ImportStepBase):
             pobierz_wydawcow_mnisw(self.client)
             self.log("info", "Publishers downloaded successfully")
         except Exception as e:
+            zaloguj_polkniety_wyjatek(
+                "Nie udało się pobrać wydawców z MNiSW",
+                logger=logger,
+                do_rollbar=False,  # Rollbar już w handle_error
+            )
             self.handle_error(e, "Nie udało się pobrać wydawców")
             # Continue anyway - might have partial data
 
@@ -43,6 +53,11 @@ class PublisherImporter(ImportStepBase):
             self.log("success", "Publishers imported successfully")
 
         except Exception as e:
+            zaloguj_polkniety_wyjatek(
+                "Nie udało się zaimportować wydawców do bazy danych",
+                logger=logger,
+                do_rollbar=False,  # Rollbar już w handle_error
+            )
             self.handle_error(e, "Nie udało się zaimportować wydawców")
         finally:
             self.clear_subtask_progress()

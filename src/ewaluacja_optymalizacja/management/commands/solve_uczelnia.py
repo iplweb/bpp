@@ -2,6 +2,7 @@
 Management command to solve optimization for all disciplines in a university.
 """
 
+import logging
 from decimal import Decimal
 
 from django.core.management import BaseCommand
@@ -9,6 +10,7 @@ from django.db import transaction
 from django.utils import timezone
 
 from bpp.models import Dyscyplina_Naukowa, Uczelnia
+from bpp.util import zaloguj_polkniety_wyjatek
 from ewaluacja_liczba_n.models import IloscUdzialowDlaAutoraZaCalosc
 from ewaluacja_optymalizacja.core import is_low_mono, solve_uczelnia
 from ewaluacja_optymalizacja.models import (
@@ -16,6 +18,8 @@ from ewaluacja_optymalizacja.models import (
     OptimizationPublication,
     OptimizationRun,
 )
+
+logger = logging.getLogger(__name__)
 
 
 class Command(BaseCommand):
@@ -84,6 +88,12 @@ class Command(BaseCommand):
                     )
                 results_count += 1
             except Exception as e:
+                zaloguj_polkniety_wyjatek(
+                    f"Zapis wyników optymalizacji dyscypliny "
+                    f"'{dyscyplina_nazwa}' do bazy nie powiódł się",
+                    logger=logger,
+                    do_rollbar=False,
+                )
                 self.stdout.write(
                     self.style.ERROR(f"Error saving {dyscyplina_nazwa}: {e}")
                 )

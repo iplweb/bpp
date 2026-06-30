@@ -1,3 +1,4 @@
+import logging
 from decimal import Decimal
 
 from django.core.exceptions import ValidationError
@@ -5,7 +6,10 @@ from django.db import models, transaction
 from django.db.models import CASCADE, PositiveSmallIntegerField
 
 from bpp import const
+from bpp.util import zaloguj_polkniety_wyjatek
 from import_common.normalization import normalize_kod_dyscypliny
+
+logger = logging.getLogger(__name__)
 
 
 def waliduj_format_kodu_numer(value):
@@ -156,6 +160,10 @@ class Autor_Dyscyplina(models.Model):
                 ret += f" oraz {self.subdyscyplina_naukowa}"
             return ret
         except Exception:
+            zaloguj_polkniety_wyjatek(
+                f"Budowanie reprezentacji tekstowej Autor_Dyscyplina (pk={self.pk})",
+                logger=logger,
+            )
             # Fallback w przypadku jakichkolwiek błędów podczas usuwania
             return f"Autor_Dyscyplina #{self.pk if self.pk else 'nowy'}"
 

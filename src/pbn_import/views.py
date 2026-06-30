@@ -1,6 +1,7 @@
 """Views for PBN import interface"""
 
 import json
+import logging
 import random
 
 from asgiref.sync import async_to_sync
@@ -17,6 +18,7 @@ from django.views.decorators.csrf import csrf_exempt
 from django.views.generic import DetailView, ListView, TemplateView
 
 from bpp.models import Jednostka, Uczelnia, Wydzial
+from bpp.util import zaloguj_polkniety_wyjatek
 
 from .models import (
     ImportInconsistency,
@@ -31,6 +33,8 @@ from .utils.step_definitions import (
     get_all_disable_keys,
     get_form_steps,
 )
+
+logger = logging.getLogger(__name__)
 
 
 class ImportPermissionMixin(PermissionRequiredMixin):
@@ -280,6 +284,12 @@ class CancelImportView(LoginRequiredMixin, ImportPermissionMixin, View):
                     # in the import loops
 
                 except Exception as e:
+                    zaloguj_polkniety_wyjatek(
+                        "Nie udało się anulować zadania Celery "
+                        f"{session.task_id} dla sesji importu #{session.id}",
+                        logger=logger,
+                        do_rollbar=True,
+                    )
                     ImportLog.objects.create(
                         session=session,
                         level="warning",

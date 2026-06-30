@@ -1,3 +1,4 @@
+import logging
 from io import BytesIO
 
 from django.core.paginator import Paginator
@@ -12,10 +13,12 @@ from openpyxl.styles import Font
 from queryset_sequence import QuerySetSequence
 
 from bpp.const import GR_WPROWADZANIE_DANYCH
-from bpp.util import sanitize_xlsx_row
+from bpp.util import sanitize_xlsx_row, zaloguj_polkniety_wyjatek
 from pbn_wysylka_oswiadczen.models import PbnWysylkaLog, PbnWysylkaOswiadczenTask
 from pbn_wysylka_oswiadczen.queries import get_publications_queryset
 from pbn_wysylka_oswiadczen.tasks import wysylka_oswiadczen_task
+
+logger = logging.getLogger(__name__)
 
 
 def group_required(group_name):
@@ -265,6 +268,12 @@ class StartTaskView(View):
                 }
             )
         except Exception as e:
+            zaloguj_polkniety_wyjatek(
+                "Nie udało się uruchomić zadania Celery wysyłki oświadczeń "
+                f"(PbnWysylkaOswiadczenTask pk={task.pk})",
+                logger=logger,
+                do_rollbar=True,
+            )
             task.status = "failed"
             task.error_message = str(e)
             task.save()
