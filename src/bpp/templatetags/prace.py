@@ -195,11 +195,16 @@ def generate_coins(praca, autorzy):  # noqa
     if hasattr(praca, "numer_zeszytu") and praca.numer_zeszytu:
         coins_data.append(f"rft.issue={quote(str(praca.numer_zeszytu))}")
 
-    # Pages
-    if hasattr(praca, "pierwsza_strona") and praca.pierwsza_strona:
-        coins_data.append(f"rft.spage={praca.pierwsza_strona}")
-    if hasattr(praca, "ostatnia_strona") and praca.ostatnia_strona:
-        coins_data.append(f"rft.epage={praca.ostatnia_strona}")
+    # Pages — pierwsza_strona/ostatnia_strona to metody, więc trzeba je
+    # wywołać; bez () do title= wyciekał repr bound-methody (FD#420).
+    if hasattr(praca, "pierwsza_strona"):
+        spage = praca.pierwsza_strona()
+        if spage:
+            coins_data.append(f"rft.spage={quote(str(spage))}")
+    if hasattr(praca, "ostatnia_strona"):
+        epage = praca.ostatnia_strona()
+        if epage:
+            coins_data.append(f"rft.epage={quote(str(epage))}")
 
     # Identifiers
     if hasattr(praca, "doi") and praca.doi:
