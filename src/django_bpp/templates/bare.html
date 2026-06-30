@@ -11,8 +11,26 @@
         - Bibliografia Publikacji {{ uczelnia.skrot }}
     {% endblock %}</title>
     <meta charset="utf-8"/>
-    <meta name="viewport" content="width=device-width"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1"/>
     <meta name="theme-color" content="#e6e6e6">
+
+    {# SEO: opis strony (snippet w Google). Strony treściowe (opis #}
+    {# publikacji, autor) nadpisują blok własnym, konkretnym opisem. #}
+    {% block meta_description %}
+        <meta name="description"
+              content="Bibliografia Publikacji Pracowników {{ uczelnia.nazwa|default:uczelnia.skrot }} — baza publikacji naukowych."/>
+    {% endblock %}
+
+    {# SEO: link kanoniczny. Domyślnie pusty — strony, które mają #}
+    {# jednoznaczny URL (opis publikacji), wypełniają go same. #}
+    {% block canonical %}{% endblock %}
+
+    {# SEO: Open Graph — podgląd przy udostępnianiu (FB/LinkedIn/Slack). #}
+    {% block opengraph %}
+        <meta property="og:site_name" content="Bibliografia Publikacji {{ uczelnia.skrot }}"/>
+        <meta property="og:type" content="website"/>
+        {% if request %}<meta property="og:url" content="{{ request.build_absolute_uri }}"/>{% endif %}
+    {% endblock %}
 
     {# Preload fontu ikonowego Foundation: bez tego przeglądarka odkrywa #}
     {# foundation-icons.woff dopiero po sparsowaniu CSS-u i napotkaniu #}

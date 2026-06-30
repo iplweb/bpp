@@ -33,9 +33,7 @@ These tags are recognized by Google Scholar and most reference managers
 {% if praca.wydawca %}
     <meta name="citation_publisher" content="{{ praca.wydawca }}">
 {% endif %}
-{% if praca.jezyk %}
-    <meta name="citation_language" content="{% if praca.jezyk.skrot %}{{ praca.jezyk.skrot }}{% else %}pl{% endif %}">
-{% endif %}
+<meta name="citation_language" content="{% if praca.jezyk.skrot %}{{ praca.jezyk.skrot }}{% else %}pl{% endif %}">
 {% if praca.public_www %}
     <meta name="citation_pdf_url" content="{{ praca.public_www }}">
 {% elif praca.www %}
