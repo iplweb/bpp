@@ -22,6 +22,10 @@ class NowyImportForm(forms.ModelForm):
             "nie_porownuj_po_tytulach",
             "zapisz_zmiany_do_bazy",
         ]
+        labels = {
+            "importuj_impact_factor": "Importuj IF",
+            "importuj_kwartyl_wos": "Importuj kwartyl",
+        }
 
     def clean_plik(self):
         plik = self.cleaned_data.get("plik")
