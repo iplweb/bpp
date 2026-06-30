@@ -14,7 +14,6 @@ from crossref_bpp.admin.helpers import (
     merge_crossref_and_pbn_data,
 )
 
-
 # --------------------------------------------------------------------------
 # convert_crossref_to_changeform_initial_data
 # --------------------------------------------------------------------------
@@ -49,9 +48,7 @@ def test_convert_empty_dict():
 
 @pytest.mark.django_db
 def test_convert_title_as_list_joined_with_dot_space():
-    ret = convert_crossref_to_changeform_initial_data(
-        {"title": ["Pierwszy", "Drugi"]}
-    )
+    ret = convert_crossref_to_changeform_initial_data({"title": ["Pierwszy", "Drugi"]})
     assert ret["tytul_oryginalny"] == "Pierwszy. Drugi"
 
 
@@ -63,9 +60,7 @@ def test_convert_title_as_scalar():
 
 @pytest.mark.django_db
 def test_convert_keywords_quoted_and_joined():
-    ret = convert_crossref_to_changeform_initial_data(
-        {"subject": ["alfa", "beta"]}
-    )
+    ret = convert_crossref_to_changeform_initial_data({"subject": ["alfa", "beta"]})
     assert ret["slowa_kluczowe"] == '"alfa", "beta"'
 
 

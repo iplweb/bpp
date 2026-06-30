@@ -81,16 +81,22 @@ def _make_opportunity(
     autor_a = baker.make(
         Autor, nazwisko="Kowalski", imiona="Jan", system_kadrowy_id=123
     )
-    autor_b = baker.make(
-        Autor, nazwisko="Nowak", imiona="Anna", system_kadrowy_id=456
-    )
+    autor_b = baker.make(Autor, nazwisko="Nowak", imiona="Anna", system_kadrowy_id=456)
     metryka_a = _make_metryka(
-        autor_a, dyscyplina, jednostka_a,
-        procent="50.00", nazbierany="2.0000", maksymalny="4.0000",
+        autor_a,
+        dyscyplina,
+        jednostka_a,
+        procent="50.00",
+        nazbierany="2.0000",
+        maksymalny="4.0000",
     )
     metryka_b = _make_metryka(
-        autor_b, dyscyplina, jednostka_b,
-        procent="75.00", nazbierany="3.0000", maksymalny="4.0000",
+        autor_b,
+        dyscyplina,
+        jednostka_b,
+        procent="75.00",
+        nazbierany="3.0000",
+        maksymalny="4.0000",
     )
 
     return baker.make(
@@ -169,7 +175,9 @@ def test_export_empty_has_headers_and_no_filters(client, admin_user, uczelnia):
     assert "attachment; filename=" in response["Content-Disposition"]
 
     ws = _load_sheet(response)
-    headers = [ws.cell(row=1, column=c).value for c in range(1, len(EXPECTED_HEADERS) + 1)]
+    headers = [
+        ws.cell(row=1, column=c).value for c in range(1, len(EXPECTED_HEADERS) + 1)
+    ]
     assert headers == EXPECTED_HEADERS
 
     # Stopka: brak danych -> "Brak filtrów" gdzieś w arkuszu
@@ -188,8 +196,11 @@ def test_export_single_row_cell_values(
 ):
     """Pojedynczy pełny wiersz: pinujemy zawartość kluczowych kolumn."""
     _make_opportunity(
-        uczelnia, dyscyplina, wydawnictwo_zwarte,
-        punkty_kbn="140.00", makes_sense=True,
+        uczelnia,
+        dyscyplina,
+        wydawnictwo_zwarte,
+        punkty_kbn="140.00",
+        makes_sense=True,
         rekord_tytul="Tytuł testowej pracy",
     )
 
@@ -208,7 +219,9 @@ def test_export_single_row_cell_values(
     assert cell(3) == 140.0  # Punktacja źródła (float)
     assert cell(4) == "Nauki testowe"  # Dyscyplina
     assert "Kowalski" in cell(5)  # Autor A
-    assert cell(6) == "pracownik naukowy w liczbie N"  # Rodzaj autora A (lookup skrot N)
+    assert (
+        cell(6) == "pracownik naukowy w liczbie N"
+    )  # Rodzaj autora A (lookup skrot N)
     assert cell(7) == 123  # ID systemu kadrowego A
     assert cell(8) == "Jednostka A"  # Jednostka A
     assert cell(9) == pytest.approx(0.5)  # % wykorzystania slotów A (50/100)
@@ -235,9 +248,7 @@ def test_export_only_sensible_filter_in_footer(
     client, admin_user, uczelnia, dyscyplina, rodzaj_autora_n, wydawnictwo_zwarte
 ):
     """only_sensible=1: w stopce pojawia się 'Tylko sensowne: TAK'."""
-    _make_opportunity(
-        uczelnia, dyscyplina, wydawnictwo_zwarte, makes_sense=True
-    )
+    _make_opportunity(uczelnia, dyscyplina, wydawnictwo_zwarte, makes_sense=True)
     client.force_login(admin_user)
     response = client.get(reverse(EXPORT_URL), {"only_sensible": "1"})
     assert response.status_code == 200
@@ -267,9 +278,7 @@ def test_export_punktacja_zrodla_filter_buckets(
     client, admin_user, uczelnia, dyscyplina, rodzaj_autora_n, wydawnictwo_zwarte
 ):
     """punktacja_zrodla=140-200 zostawia pracę o punktach 140 i odnotowuje filtr."""
-    _make_opportunity(
-        uczelnia, dyscyplina, wydawnictwo_zwarte, punkty_kbn="140.00"
-    )
+    _make_opportunity(uczelnia, dyscyplina, wydawnictwo_zwarte, punkty_kbn="140.00")
     client.force_login(admin_user)
     response = client.get(reverse(EXPORT_URL), {"punktacja_zrodla": "140-200"})
     assert response.status_code == 200
@@ -278,6 +287,4 @@ def test_export_punktacja_zrodla_filter_buckets(
     # wiersz danych obecny (Lp. == 1)
     assert ws.cell(row=2, column=1).value == 1
     col1 = [ws.cell(row=r, column=1).value for r in range(1, ws.max_row + 1)]
-    assert any(
-        v == "Punktacja źródła: 140-200 punktów" for v in col1
-    )
+    assert any(v == "Punktacja źródła: 140-200 punktów" for v in col1)

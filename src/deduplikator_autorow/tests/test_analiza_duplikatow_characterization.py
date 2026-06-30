@@ -15,7 +15,6 @@ import pytest
 from model_bakery import baker
 
 from deduplikator_autorow.utils import analiza_duplikatow
-
 from pbn_api.models import OsobaZInstytucji, Scientist
 
 pytestmark = pytest.mark.django_db
