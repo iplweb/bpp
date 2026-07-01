@@ -38,6 +38,8 @@ class Progress:
         self._last_percent_send_time: float = 0.0
         self._last_percent_value: int = -1
         self._finalized: bool = False
+        self._last_cancel_check_time: float = 0.0
+        self._cancel_check_count: int = 0
 
     # ------------------------------------------------------------------ #
     # Core API                                                             #
@@ -137,7 +139,20 @@ class Progress:
         raise NotImplementedError
 
     def check_cancelled(self) -> None:
-        """Re-read cancel_requested from DB; raise OperationCancelled if set."""
+        """Re-read cancel_requested from DB; raise OperationCancelled if set.
+
+        Throttled: DB is only hit every 0.5 s or every 50 items — whichever
+        comes first — to avoid per-item round-trips in tight loops.
+        """
+        self._cancel_check_count += 1
+        now = time.monotonic()
+        if (
+            now - self._last_cancel_check_time < 0.5
+            and self._cancel_check_count < 50
+        ):
+            return
+        self._last_cancel_check_time = now
+        self._cancel_check_count = 0
         self._operation.refresh_from_db(fields=["cancel_requested"])
         if self._operation.cancel_requested:
             raise OperationCancelled(
@@ -147,6 +162,19 @@ class Progress:
     def chain_to(self, next_op: Any) -> None:
         """Chain to next_op. Web: re-init socket. Text: run inline."""
         raise NotImplementedError
+
+    # ------------------------------------------------------------------ #
+    # Terminal push helpers (no-op on base; WebProgress overrides)        #
+    # ------------------------------------------------------------------ #
+
+    def push_cancelled(self) -> None:
+        """Push terminal cancelled fragment to watching clients (no-op on base)."""
+
+    def push_error(self) -> None:
+        """Push terminal error fragment to watching clients (no-op on base)."""
+
+    def push_finished(self) -> None:
+        """Push terminal result fragment to watching clients (no-op on base)."""
 
     # ------------------------------------------------------------------ #
     # Web-only (NotImplementedError on base + TextProgress)               #
@@ -433,6 +461,58 @@ class WebProgress(Progress):
             )
 
         transaction.on_commit(_push_chain)
+
+    # ------------------------------------------------------------------ #
+    # Terminal push helpers (push-only; runner already saved to DB)       #
+    # ------------------------------------------------------------------ #
+
+    def push_cancelled(self) -> None:
+        """Push cancelled fragment to watching clients via transaction.on_commit."""
+        from django.db import transaction
+
+        op = self._operation
+        push_fn = self._push
+        render_fn = self._render
+
+        def _do_push() -> None:
+            inner = render_fn("live_operations/_cancelled.html", {"op": op})
+            push_fn(f'<div id="op-result" hx-swap-oob="true">{inner}</div>')
+
+        transaction.on_commit(_do_push)
+
+    def push_error(self) -> None:
+        """Push generic error fragment via transaction.on_commit (no traceback)."""
+        from django.db import transaction
+
+        op = self._operation
+        push_fn = self._push
+        render_fn = self._render
+
+        def _do_push() -> None:
+            push_fn(render_fn("live_operations/_error.html", {"op": op}))
+
+        transaction.on_commit(_do_push)
+
+    def push_finished(self) -> None:
+        """Push result fragment via transaction.on_commit."""
+        from django.db import transaction
+
+        op = self._operation
+        push_fn = self._push
+
+        def _do_push() -> None:
+            result_template = op.get_result_template_name()
+            try:
+                from django.template.loader import render_to_string
+
+                render_ctx = dict(op.result_context or {})
+                render_ctx.setdefault("operation", op)
+                inner = render_to_string(result_template, render_ctx)
+            except Exception:
+                inner = ""
+            push_fn(f'<div id="op-result" hx-swap-oob="true">{inner}</div>')
+
+        transaction.on_commit(_do_push)
 
 
 # --------------------------------------------------------------------------- #

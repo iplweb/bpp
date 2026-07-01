@@ -113,7 +113,7 @@ def task_run(operation: Any, progress: Any) -> None:
     if operation.cancel_requested:
         operation.started_on = timezone.now()
         operation.save(update_fields=["started_on"])
-        _handle_cancelled(operation)
+        _handle_cancelled(operation, progress)
         return
 
     # Mark started
@@ -129,12 +129,13 @@ def task_run(operation: Any, progress: Any) -> None:
             operation.finished_successfully = True
             operation.save(update_fields=["finished_on", "finished_successfully"])
             progress._finalized = True
+            progress.push_finished()
 
     except _get_cancelled_class():
-        _handle_cancelled(operation)
+        _handle_cancelled(operation, progress)
 
     except Exception:
-        _handle_error(operation, tb.format_exc())
+        _handle_error(operation, tb.format_exc(), progress)
 
 
 def _get_cancelled_class() -> type:
@@ -143,16 +144,17 @@ def _get_cancelled_class() -> type:
     return OperationCancelled
 
 
-def _handle_cancelled(operation: Any) -> None:
+def _handle_cancelled(operation: Any, progress: Any) -> None:
     from django.utils import timezone
 
     operation.cancelled = True
     operation.finished_on = timezone.now()
     operation.finished_successfully = False
     operation.save(update_fields=["cancelled", "finished_on", "finished_successfully"])
+    progress.push_cancelled()
 
 
-def _handle_error(operation: Any, traceback_str: str) -> None:
+def _handle_error(operation: Any, traceback_str: str, progress: Any) -> None:
     from django.utils import timezone
 
     operation.finished_on = timezone.now()
@@ -161,3 +163,4 @@ def _handle_error(operation: Any, traceback_str: str) -> None:
     operation.save(
         update_fields=["finished_on", "finished_successfully", "traceback"]
     )
+    progress.push_error()
