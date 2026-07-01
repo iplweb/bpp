@@ -176,3 +176,57 @@ def test_other_user_cannot_cancel_op(other_user, demo_op):
     c.force_login(other_user)
     response = c.post(f"/{demo_op.pk}/cancel/")
     assert response.status_code == 404
+
+
+# ------------------------------------------------------------------ #
+# RestartView — FIX 8                                                  #
+# ------------------------------------------------------------------ #
+
+
+@pytest.mark.django_db
+def test_restart_clears_all_state_fields(auth_client, user):
+    """RestartView resets all terminal + progress fields, not just timestamps.
+
+    The eager runner re-runs DemoOp immediately, so some fields (finished_on,
+    started_on, finished_successfully) get new values from the re-run.  We
+    verify they changed from their original values and that the fields the
+    re-run does NOT touch (stage_states, log, log_seq, current_stage) are
+    cleanly zeroed.
+    """
+    from django.utils import timezone
+
+    original_finished_on = timezone.now()
+    op = DemoOp.objects.create(
+        owner=user,
+        started_on=original_finished_on,
+        finished_on=original_finished_on,
+        finished_successfully=True,
+        cancelled=False,
+        cancel_requested=False,
+        traceback="Traceback...",
+        result_context={"x": 1},
+        current_stage=2,
+        stage_states={"Alpha": "done", "Beta": "active"},
+        log=["line 1", "line 2"],
+        percent=80,
+        log_seq=5,
+    )
+    response = auth_client.post(f"/{op.pk}/restart/")
+    assert response.status_code == 302
+
+    op.refresh_from_db()
+
+    # Fields not re-set by the DemoOp re-run must be cleanly zeroed.
+    assert op.cancelled is False
+    assert op.cancel_requested is False
+    assert op.traceback is None
+    assert op.current_stage == -1
+    assert op.stage_states == {}
+    assert op.log == []
+    assert op.log_seq == 0
+    # percent: cleared to 0 by restart; WebProgress doesn't persist it to DB.
+    assert op.percent == 0
+
+    # DemoOp re-ran (eager): finished_on must be a new value, not the original.
+    assert op.finished_on is not None
+    assert op.finished_on != original_finished_on

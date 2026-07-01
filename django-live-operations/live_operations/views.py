@@ -108,6 +108,11 @@ class RestartView(BaseLiveOperationMixin, SingleObjectMixin, View):
         operation.cancel_requested = False
         operation.traceback = None
         operation.result_context = None
+        operation.current_stage = -1
+        operation.stage_states = {}
+        operation.log = []
+        operation.percent = 0
+        operation.log_seq = 0
         operation.save(
             update_fields=[
                 "finished_on",
@@ -117,6 +122,11 @@ class RestartView(BaseLiveOperationMixin, SingleObjectMixin, View):
                 "cancel_requested",
                 "traceback",
                 "result_context",
+                "current_stage",
+                "stage_states",
+                "log",
+                "percent",
+                "log_seq",
             ]
         )
         operation.enqueue()
