@@ -18,7 +18,8 @@ Security model (§8):
 """
 from channels_broadcast.security import issue_subscription_token
 
-TOKEN_TTL_SECONDS = 300
+# 24 h default; override via LIVE_OPERATIONS["TOKEN_TTL_SECONDS"]
+TOKEN_TTL_SECONDS = 86400
 
 
 def make_subscription_token(user, operation) -> str:
@@ -29,10 +30,16 @@ def make_subscription_token(user, operation) -> str:
     ``{user_pk, ["liveop.<pk>"], ttl}`` and is signed with Django's
     ``TimestampSigner`` (same salt as channels_broadcast).
 
+    TTL defaults to 86400 s (24 h); override with
+    ``LIVE_OPERATIONS = {"TOKEN_TTL_SECONDS": N}``.
+
     Verification is delegated entirely to
     ``channels_broadcast.security.verify_subscription_token`` which is
     called by ``NotificationsConsumer._token_channels_from_query`` on every
     WebSocket connect — no separate verify step needed here.
     """
+    from live_operations.conf import get_setting
+
+    ttl = get_setting("TOKEN_TTL_SECONDS", TOKEN_TTL_SECONDS)
     channel = operation.get_channel_name()
-    return issue_subscription_token(user, [channel], ttl=TOKEN_TTL_SECONDS)
+    return issue_subscription_token(user, [channel], ttl=ttl)

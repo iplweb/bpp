@@ -117,6 +117,24 @@ def test_expired_token_is_rejected(user_a, op_a):
     assert channels == []
 
 
-def test_default_ttl_is_300(user_a, op_a):
-    """Default TOKEN_TTL_SECONDS is 300 (5 minutes)."""
-    assert TOKEN_TTL_SECONDS == 300
+def test_default_ttl_is_large(user_a, op_a):
+    """Default TOKEN_TTL_SECONDS is at least 1 hour (3600 s)."""
+    assert TOKEN_TTL_SECONDS >= 3600
+
+
+def test_ttl_overridable_via_live_operations_setting(user_a, op_a, settings):
+    """TOKEN_TTL_SECONDS can be overridden via LIVE_OPERATIONS dict."""
+    settings.LIVE_OPERATIONS = {"TOKEN_TTL_SECONDS": 60}
+    token = make_subscription_token(user_a, op_a)
+    # Token must still be valid immediately after issuance.
+    channels = verify_subscription_token(token, user_a)
+    assert f"liveop.{op_a.pk}" in channels
+
+    # And it should expire after 1.1 s (ttl=60 would be valid; use ttl=1 test
+    # to verify the custom value propagates — here we just assert the token was
+    # issued with our custom ttl by checking it round-trips correctly).
+    settings.LIVE_OPERATIONS = {"TOKEN_TTL_SECONDS": 1}
+    short_token = make_subscription_token(user_a, op_a)
+    time.sleep(1.1)
+    expired_channels = verify_subscription_token(short_token, user_a)
+    assert expired_channels == []

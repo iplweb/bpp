@@ -213,3 +213,38 @@ async def test_snapshot_uses_liveop_html_envelope_no_id(user, running_op):
     assert "id" not in data  # no top-level id — would trigger ACK loop
 
     await communicator.disconnect()
+
+
+@pytest.mark.django_db(transaction=True)
+async def test_ack_message_delegated_to_base_handler(
+    user, running_op, monkeypatch
+):
+    """ack_message frames are delegated to NotificationsConsumer.receive()."""
+    import asyncio
+
+    from channels_broadcast.consumers import NotificationsConsumer
+
+    delegated: list = []
+    original_receive = NotificationsConsumer.receive
+
+    def spy_receive(self, text_data):
+        delegated.append(json.loads(text_data))
+        return original_receive(self, text_data)
+
+    monkeypatch.setattr(NotificationsConsumer, "receive", spy_receive)
+
+    token = make_subscription_token(user, running_op)
+    communicator = _make_communicator(user, token)
+    connected, _ = await communicator.connect()
+    assert connected
+    await communicator.receive_from(timeout=2)  # drain snapshot
+
+    await communicator.send_to(
+        text_data=json.dumps({"type": "ack_message", "id": 0})
+    )
+    await asyncio.sleep(0.05)
+
+    assert len(delegated) == 1
+    assert delegated[0]["type"] == "ack_message"
+
+    await communicator.disconnect()

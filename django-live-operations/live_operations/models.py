@@ -147,12 +147,9 @@ class LiveOperation(models.Model):
             return f'<div id="op-result" hx-swap-oob="true">{inner}</div>'
 
         if state == "FINISHED_ERROR":
-            from django.utils.html import format_html
-
-            return format_html(
-                '<div id="op-result" hx-swap-oob="true">'
-                '<div class="error">{}</div></div>',
-                self.traceback or "",
+            return render_to_string(
+                "live_operations/_error.html",
+                {"op": self},
             )
 
         if state == "CANCELLED":

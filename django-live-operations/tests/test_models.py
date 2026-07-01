@@ -73,3 +73,42 @@ class TestAbstractRun:
         instance = Concrete.__new__(Concrete)
         with pytest.raises(NotImplementedError):
             LiveOperation.run(instance, None)
+
+
+class TestErrorSnapshotNoTraceback:
+    """FIX 5: FINISHED_ERROR snapshot must not leak traceback to the browser."""
+
+    @pytest.mark.django_db
+    def test_error_snapshot_does_not_contain_traceback(self, user):
+        from django.utils import timezone
+
+        op = DemoOp.objects.create(
+            owner=user,
+            started_on=timezone.now(),
+            finished_on=timezone.now(),
+            finished_successfully=False,
+            traceback=(
+                "Traceback (most recent call last):\n"
+                "  File '/app/foo.py', line 42\n"
+                "ValueError: boom"
+            ),
+        )
+        html = op._render_snapshot_html()
+        assert "Traceback (most recent call last)" not in html
+        assert "/app/foo.py" not in html
+        assert str(op.pk) in html
+
+    @pytest.mark.django_db
+    def test_error_snapshot_contains_op_pk(self, user):
+        from django.utils import timezone
+
+        op = DemoOp.objects.create(
+            owner=user,
+            started_on=timezone.now(),
+            finished_on=timezone.now(),
+            finished_successfully=False,
+            traceback="ValueError: secret error details",
+        )
+        html = op._render_snapshot_html()
+        assert str(op.pk) in html
+        assert "secret error details" not in html

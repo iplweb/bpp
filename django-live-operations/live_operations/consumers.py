@@ -11,10 +11,10 @@ On connect:
    LiveOperation subclass instance and call ``send_snapshot()`` so the
    client immediately sees current state.
 
-receive() silently absorbs ``ack_message`` frames — our envelope
-(``{"liveop_html": …}``) never carries a top-level ``id``, so the
-channels_broadcast client never sends ACKs for our messages; any ACK
-arriving is stray and harmless.
+receive() delegates ``ack_message`` frames to the base
+NotificationsConsumer so real Notification objects are properly
+acknowledged. All other client→server messages are silently ignored
+(none are defined in this protocol).
 """
 from __future__ import annotations
 
@@ -58,14 +58,15 @@ class LiveOperationConsumer(NotificationsConsumer):
                 )
 
     def receive(self, text_data: str) -> None:
-        """Silently absorb ack_message frames; ignore everything else."""
+        """Delegate ack_message to base; ignore all other client→server frames."""
         try:
             data = json.loads(text_data)
         except (ValueError, TypeError):
             return
         if data.get("type") == "ack_message":
-            # Stray ACK — we never issue Notification objects, so there is
-            # nothing to acknowledge. Absorb silently.
+            # Delegate to NotificationsConsumer so real Notification objects
+            # are acknowledged (channels_broadcast protocol).
+            super().receive(text_data)
             return
         # No other client→server messages defined in this protocol.
 
