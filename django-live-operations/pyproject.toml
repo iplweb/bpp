@@ -26,6 +26,8 @@ dev = [
     "channels[daphne]",
     "ruff",
     "mkdocs-material",
+    "testcontainers[redis]>=4",
+    "channels-redis>=4",
 ]
 
 [tool.hatch.build.targets.wheel]
@@ -43,3 +45,10 @@ target-version = "py310"
 
 [tool.ruff.lint]
 select = ["E", "F", "W", "I"]
+
+[tool.ruff.lint.per-file-ignores]
+# test_roundtrip.py imports channels/live_operations modules AFTER a
+# pytest.skip(allow_module_level=True) guard that bails out when Docker or
+# testcontainers is unavailable. The imports must follow the guard, so the
+# E402 "module level import not at top of file" is intentional here.
+"tests/test_roundtrip.py" = ["E402"]

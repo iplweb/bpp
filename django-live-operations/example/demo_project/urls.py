@@ -1,7 +1,6 @@
+from demo.views import autologin_view
 from django.contrib import admin
 from django.urls import include, path
-
-from demo.views import autologin_view
 
 urlpatterns = [
     path("admin/", admin.site.urls),

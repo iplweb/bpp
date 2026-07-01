@@ -1,0 +1,30 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.venv/
+*.egg-info/
+dist/
+build/
+
+# Django
+*.sqlite3
+db.sqlite3
+
+# MkDocs
+site/
+
+# Example venv (nested project)
+example/.venv/
+example/db.sqlite3
+example/*.sqlite3
+
+# Test artifacts
+.pytest_cache/
+.coverage
+htmlcov/
+
+# IDE
+.DS_Store
+*.swp
+*~
