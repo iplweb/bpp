@@ -1,10 +1,46 @@
 site_name: django-live-operations
-site_description: Long-running Django operations with live WebSocket + HTMX UI
+site_description: Long-running Django operations with live WebSocket + HTMX UI — no reload, no polling
+
 theme:
   name: material
   features:
     - navigation.sections
+    - navigation.expand
     - toc.integrate
+    - content.code.copy
+  palette:
+    - scheme: default
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - scheme: slate
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+
+markdown_extensions:
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.superfences
+  - pymdownx.inlinehilite
+  - admonition
+  - tables
+  - toc:
+      permalink: true
 
 nav:
   - Home: index.md
+  - Getting Started: getting-started.md
+  - Tutorial: tutorial.md
+  - Concepts: concepts.md
+  - API Reference: api-reference.md
+  - Stages & Chaining: stages-and-chaining.md
+  - Text/CLI Mode: text-mode.md
+  - Deployment: deployment.md
+  - Testing: testing.md
+  - Security: security.md
+  - Architecture: architecture.md
