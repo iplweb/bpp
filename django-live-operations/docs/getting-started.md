@@ -83,6 +83,24 @@ LIVE_OPERATIONS = {
 }
 ```
 
+> **Production requirement:** live updates (WebSocket push) require
+> `RUNNER="celery"` (or `"threading"`) **and** a Redis channel layer.
+> The default `RUNNER="eager"` runs operations synchronously in the
+> HTTP request — no live updates, no Redis required, but the page
+> blocks until the operation finishes and only shows terminal state.
+
+## 4a. Client-side JavaScript
+
+In your base template, include htmx, the channels_broadcast client, and
+live-operations.js (in this order):
+
+```html
+{% load static %}
+<script src="https://unpkg.com/htmx.org@1.9/dist/htmx.min.js"></script>
+<script src="{% static 'channels_broadcast/js/notifications.js' %}"></script>
+<script src="{% static 'live_operations/live-operations.js' %}"></script>
+```
+
 ## 5. Run the demo
 
 ```bash

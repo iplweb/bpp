@@ -141,11 +141,14 @@ urlpatterns = [
 
 ## 7. Client-side scripts
 
-In your base template, include htmx and the channels_broadcast client:
+In your base template, include htmx, the channels_broadcast client, and
+live-operations.js (in this order):
 
 ```html
+{% load static %}
 <script src="https://unpkg.com/htmx.org@1.9/dist/htmx.min.js"></script>
-<script src="{% static 'channels_broadcast/channels_broadcast.js' %}"></script>
+<script src="{% static 'channels_broadcast/js/notifications.js' %}"></script>
+<script src="{% static 'live_operations/live-operations.js' %}"></script>
 ```
 
 Then in the operation host page:
@@ -153,7 +156,6 @@ Then in the operation host page:
 ```html
 {% load live_operations static %}
 {% live_operation object %}
-<script src="{% static 'live_operations/live-operations.js' %}"></script>
 ```
 
 ## 8. Run it

@@ -1,5 +1,12 @@
 # Deployment
 
+> **Live updates require `RUNNER="celery"` + Redis.**
+> The default `RUNNER="eager"` runs operations synchronously in the HTTP
+> request thread — no WebSocket push, no live updates, the page blocks
+> until the operation finishes and only shows the terminal snapshot on
+> connect.  For production always set `RUNNER="celery"` and provide a
+> Redis channel layer.
+
 ## Requirements
 
 - ASGI server (Daphne or uvicorn)
@@ -68,6 +75,22 @@ CELERY_BROKER_URL = os.environ.get(
     "CELERY_BROKER_URL", "redis://redis:6379/0"
 )
 ```
+
+## Client-side JavaScript
+
+In your base template, include htmx, channels_broadcast, and
+live-operations.js (in this order):
+
+```html
+{% load static %}
+<script src="https://unpkg.com/htmx.org@1.9/dist/htmx.min.js"></script>
+<script src="{% static 'channels_broadcast/js/notifications.js' %}"></script>
+<script src="{% static 'live_operations/live-operations.js' %}"></script>
+```
+
+Both `channels_broadcast/js/notifications.js` and
+`live_operations/live-operations.js` are shipped as Django static files by
+their respective packages — `collectstatic` picks them up automatically.
 
 ## Eager mode (snapshot-only, no Redis/Celery)
 
