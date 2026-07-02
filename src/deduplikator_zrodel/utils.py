@@ -1,3 +1,5 @@
+import logging
+
 from cacheops import cached
 from django.contrib.postgres.search import TrigramSimilarity
 from django.db.models import Count, Q
@@ -11,15 +13,63 @@ from import_common.normalization import (
 
 from .models import IgnoredSource, NotADuplicate
 
+logger = logging.getLogger(__name__)
 
-def znajdz_podobne_zrodla(zrodlo):  # noqa: C901
-    """
-    Znajduje potencjalne duplikaty dla danego źródła.
 
-    Returns:
-        QuerySet of Zrodlo objects that might be duplicates
+def _norm(value, normalizer):
+    """Znormalizowana wartość albo None, gdy `value` jest puste/None.
+
+    Odwzorowuje wzorzec `normalizer(x) if x else None` rozsiany po module.
     """
-    # Wyklucz źródła bez publikacji - sprawdzamy czy mają powiązane wydawnictwa ciągłe
+    return normalizer(value) if value else None
+
+
+def _both_equal(a, b):
+    """True, gdy oba argumenty są prawdziwe (truthy) i równe."""
+    return bool(a) and a == b
+
+
+def _both_set_and_different(a, b):
+    """True, gdy oba argumenty są ustawione (truthy) i różne."""
+    return bool(a) and bool(b) and a != b
+
+
+def _trigram_sim(field, value, pk):
+    """Trigram similarity pola `field` względem `value` dla źródła `pk`.
+
+    Zwraca None, gdy nie da się policzyć (brak rekordu / wynik None) —
+    zachowuje stare `except (AttributeError, TypeError): pass`.
+    """
+    try:
+        return (
+            Zrodlo.objects.filter(pk=pk)
+            .annotate(sim=TrigramSimilarity(field, value))
+            .first()
+            .sim
+        )
+    except (AttributeError, TypeError):
+        return None
+
+
+def _excluded_pair_ids(zrodlo):
+    """ID źródeł oznaczonych z `zrodlo` jako NIE-duplikat (w obie strony),
+    z pominięciem samego `zrodlo`."""
+    pairs = NotADuplicate.objects.filter(
+        Q(zrodlo=zrodlo) | Q(duplikat=zrodlo)
+    ).values_list("duplikat_id", "zrodlo_id")
+
+    excluded_ids = set()
+    for dup_id, zr_id in pairs:
+        excluded_ids.add(dup_id)
+        excluded_ids.add(zr_id)
+    excluded_ids.discard(zrodlo.pk)
+    return excluded_ids
+
+
+def _candidates_queryset(zrodlo):
+    """QuerySet kandydatów na duplikaty: źródła z publikacjami, bez samego
+    `zrodlo`, bez par NotADuplicate, bez IgnoredSource, bez innego MNiSW ID."""
+    # Wyklucz źródła bez publikacji - sprawdzamy powiązane wydawnictwa ciągłe
     candidates = (
         Zrodlo.objects.exclude(pk=zrodlo.pk)
         .annotate(pub_count=Count("wydawnictwo_ciagle"))
@@ -27,16 +77,7 @@ def znajdz_podobne_zrodla(zrodlo):  # noqa: C901
     )
 
     # Wyklucz źródła już oznaczone jako "to nie duplikat"
-    excluded_pks = NotADuplicate.objects.filter(
-        Q(zrodlo=zrodlo) | Q(duplikat=zrodlo)
-    ).values_list("duplikat_id", "zrodlo_id")
-
-    excluded_ids = set()
-    for dup_id, zr_id in excluded_pks:
-        excluded_ids.add(dup_id)
-        excluded_ids.add(zr_id)
-    excluded_ids.discard(zrodlo.pk)
-
+    excluded_ids = _excluded_pair_ids(zrodlo)
     if excluded_ids:
         candidates = candidates.exclude(pk__in=excluded_ids)
 
@@ -48,19 +89,22 @@ def znajdz_podobne_zrodla(zrodlo):  # noqa: C901
     # Wyklucz źródła z INNYM MNiSW ID (jeśli główne źródło ma MNiSW ID)
     # Różne MNiSW ID = różne czasopisma ministerialne = NIE duplikaty
     if zrodlo.pbn_uid_id and zrodlo.pbn_uid.mniswId:
-        # Wyklucz źródła które mają mniswId RÓŻNY od głównego źródła
         candidates = candidates.exclude(
             Q(pbn_uid__mniswId__isnull=False)
             & ~Q(pbn_uid__mniswId=zrodlo.pbn_uid.mniswId)
         )
 
-    # Kryteria wyszukiwania
+    return candidates
+
+
+def _base_filters(zrodlo):
+    """Q łączące kryteria: identyczny ISSN/E-ISSN, to samo pbn_uid, podobna
+    nazwa (trigram >= 0.5)."""
     filters = Q()
 
     # 1. Identyczny ISSN lub E-ISSN (po normalizacji)
-    norm_issn = normalize_issn(zrodlo.issn) if zrodlo.issn else None
-    norm_e_issn = normalize_issn(zrodlo.e_issn) if zrodlo.e_issn else None
-
+    norm_issn = _norm(zrodlo.issn, normalize_issn)
+    norm_e_issn = _norm(zrodlo.e_issn, normalize_issn)
     if norm_issn:
         filters |= Q(issn__iregex=r"[\s\.\-]*".join(norm_issn))
     if norm_e_issn:
@@ -73,23 +117,35 @@ def znajdz_podobne_zrodla(zrodlo):  # noqa: C901
     # 3. Podobna nazwa (trigram similarity >= 0.5)
     if zrodlo.nazwa:
         norm_nazwa = normalize_tytul_zrodla(zrodlo.nazwa)
-        similar_by_name = (
+        similar_ids = (
             Zrodlo.objects.annotate(similarity=TrigramSimilarity("nazwa", norm_nazwa))
             .filter(similarity__gte=0.5)
             .exclude(pk=zrodlo.pk)
+            .values_list("pk", flat=True)
         )
-        similar_ids = similar_by_name.values_list("pk", flat=True)
         if similar_ids:
             filters |= Q(pk__in=similar_ids)
 
-    # 4. Podobny skrót
+    return filters
+
+
+def znajdz_podobne_zrodla(zrodlo):
+    """
+    Znajduje potencjalne duplikaty dla danego źródła.
+
+    Returns:
+        QuerySet of Zrodlo objects that might be duplicates
+    """
+    candidates = _candidates_queryset(zrodlo)
+    filters = _base_filters(zrodlo)
+
+    # 4. Podobny skrót — rozszerza filtry o już-pasujących kandydatów ze
+    # zbliżonym skrótem (trigram >= 0.6, niższy próg).
     if zrodlo.skrot:
         norm_skrot = normalize_skrot(zrodlo.skrot)
-        # Użyj trigram dla skrótów, ale z niższym progiem
         candidates_with_filters = candidates.filter(filters).annotate(
             skrot_similarity=TrigramSimilarity("skrot", norm_skrot)
         )
-        # Dodaj te ze skrótem podobnym >= 0.6
         similar_skrot_ids = candidates_with_filters.filter(
             skrot_similarity__gte=0.6
         ).values_list("pk", flat=True)
@@ -102,111 +158,74 @@ def znajdz_podobne_zrodla(zrodlo):  # noqa: C901
     return candidates.filter(filters).distinct()
 
 
-def ocen_podobienstwo(zrodlo_glowne, zrodlo_kandydat):  # noqa: C901
+def _score_nazwa(nazwa_glowna, norm_g, norm_k, kandydat_pk):
+    """Punkty za nazwę: +60 za identyczną (case-insensitive po normalizacji),
+    w przeciwnym razie +40 (trigram > 0.9) / +20 (trigram > 0.7) / 0."""
+    if not (norm_g and norm_k):
+        return 0
+    if norm_g.lower() == norm_k.lower():
+        return 60
+    similarity = _trigram_sim("nazwa", nazwa_glowna, kandydat_pk)
+    if similarity and similarity > 0.9:
+        return 40
+    if similarity and similarity > 0.7:
+        return 20
+    return 0
+
+
+def _score_skrot(skrot_glowny, norm_g, norm_k, kandydat_pk):
+    """Punkty za skrót (niska waga): +10 gdy trigram skrótu > 0.7, inaczej 0."""
+    if not (norm_g and norm_k):
+        return 0
+    similarity = _trigram_sim("skrot", skrot_glowny, kandydat_pk)
+    if similarity and similarity > 0.7:
+        return 10
+    return 0
+
+
+def ocen_podobienstwo(zrodlo_glowne, zrodlo_kandydat):
     """
     Oblicza wskaźnik pewności, że dwa źródła to duplikaty.
 
     Returns:
         int: Punkty pewności (wyższe = większe prawdopodobieństwo duplikatu)
     """
-    score = 0
+    g, k = zrodlo_glowne, zrodlo_kandydat
 
-    # Normalizacja danych
-    norm_issn_g = normalize_issn(zrodlo_glowne.issn) if zrodlo_glowne.issn else None
-    norm_issn_k = normalize_issn(zrodlo_kandydat.issn) if zrodlo_kandydat.issn else None
-
-    norm_e_issn_g = (
-        normalize_issn(zrodlo_glowne.e_issn) if zrodlo_glowne.e_issn else None
+    # 1. ISSN / E-ISSN: po +100 za zgodny numer, +20 bonus gdy oba zgodne.
+    issn_match = _both_equal(
+        _norm(g.issn, normalize_issn), _norm(k.issn, normalize_issn)
     )
-    norm_e_issn_k = (
-        normalize_issn(zrodlo_kandydat.e_issn) if zrodlo_kandydat.e_issn else None
+    e_issn_match = _both_equal(
+        _norm(g.e_issn, normalize_issn), _norm(k.e_issn, normalize_issn)
     )
 
-    norm_nazwa_g = (
-        normalize_tytul_zrodla(zrodlo_glowne.nazwa) if zrodlo_glowne.nazwa else ""
-    )
-    norm_nazwa_k = (
-        normalize_tytul_zrodla(zrodlo_kandydat.nazwa) if zrodlo_kandydat.nazwa else ""
-    )
-
-    norm_skrot_g = normalize_skrot(zrodlo_glowne.skrot) if zrodlo_glowne.skrot else ""
-    norm_skrot_k = (
-        normalize_skrot(zrodlo_kandydat.skrot) if zrodlo_kandydat.skrot else ""
-    )
-
-    # 1. ISSN matching
-    issn_match = False
-    e_issn_match = False
-
-    if norm_issn_g and norm_issn_k and norm_issn_g == norm_issn_k:
-        score += 100
-        issn_match = True
-
-    if norm_e_issn_g and norm_e_issn_k and norm_e_issn_g == norm_e_issn_k:
-        score += 100
-        e_issn_match = True
-
-    # Bonus jeśli oba numery się zgadzają
+    score = 100 * issn_match + 100 * e_issn_match
     if issn_match and e_issn_match:
         score += 20
 
-    # 2. PBN UID matching
-    if (
-        zrodlo_glowne.pbn_uid_id
-        and zrodlo_kandydat.pbn_uid_id
-        and zrodlo_glowne.pbn_uid_id == zrodlo_kandydat.pbn_uid_id
-    ):
+    # 2. PBN UID matching: +80 za to samo pbn_uid.
+    if _both_equal(g.pbn_uid_id, k.pbn_uid_id):
         score += 80
 
-    # 3. Nazwa matching
-    if norm_nazwa_g and norm_nazwa_k:
-        if norm_nazwa_g.lower() == norm_nazwa_k.lower():
-            score += 60
-        else:
-            # Oblicz trigram similarity dla nazwy
-            try:
-                similarity = (
-                    Zrodlo.objects.filter(pk=zrodlo_kandydat.pk)
-                    .annotate(sim=TrigramSimilarity("nazwa", zrodlo_glowne.nazwa))
-                    .first()
-                    .sim
-                )
-                if similarity and similarity > 0.9:
-                    score += 40
-                elif similarity and similarity > 0.7:
-                    score += 20
-            except (AttributeError, TypeError):
-                pass
+    # 3. Nazwa i 4. Skrót.
+    score += _score_nazwa(
+        g.nazwa,
+        _norm(g.nazwa, normalize_tytul_zrodla),
+        _norm(k.nazwa, normalize_tytul_zrodla),
+        k.pk,
+    )
+    score += _score_skrot(
+        g.skrot,
+        _norm(g.skrot, normalize_skrot),
+        _norm(k.skrot, normalize_skrot),
+        k.pk,
+    )
 
-    # 4. Skrót matching (niska waga jak chciał użytkownik)
-    if norm_skrot_g and norm_skrot_k:
-        try:
-            skrot_similarity = (
-                Zrodlo.objects.filter(pk=zrodlo_kandydat.pk)
-                .annotate(sim=TrigramSimilarity("skrot", zrodlo_glowne.skrot))
-                .first()
-                .sim
-            )
-            if skrot_similarity and skrot_similarity > 0.7:
-                score += 10
-        except (AttributeError, TypeError):
-            pass
-
-    # 5. Kary za różnice
-    # Różny rodzaj źródła
-    if (
-        zrodlo_glowne.rodzaj_id
-        and zrodlo_kandydat.rodzaj_id
-        and zrodlo_glowne.rodzaj_id != zrodlo_kandydat.rodzaj_id
-    ):
+    # 5. Kary za różnice: różny rodzaj -15, różny zasięg -10.
+    if _both_set_and_different(g.rodzaj_id, k.rodzaj_id):
         score -= 15
-
-    # Różny zasięg
-    if (
-        zrodlo_glowne.zasieg_id
-        and zrodlo_kandydat.zasieg_id
-        and zrodlo_glowne.zasieg_id != zrodlo_kandydat.zasieg_id
-    ):
+    if _both_set_and_different(g.zasieg_id, k.zasieg_id):
         score -= 10
 
     return score

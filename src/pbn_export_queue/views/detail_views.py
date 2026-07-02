@@ -1,12 +1,14 @@
 """Detail view for PBN export queue."""
 
 import json
+import logging
 import re
 
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.utils.safestring import mark_safe
 from django.views.generic import DetailView
 
+from bpp.util import zaloguj_polkniety_wyjatek
 from pbn_export_queue.models import PBN_Export_Queue
 
 from .constants import AI_PROMPT_TEMPLATE, HELPDESK_EMAIL_TEMPLATE
@@ -19,6 +21,8 @@ from .utils import (
     parse_error_details,
     parse_pbn_api_error,
 )
+
+logger = logging.getLogger(__name__)
 
 
 class PBNExportQueueDetailView(
@@ -262,9 +266,15 @@ class PBNExportQueueDetailView(
                     args=[self.object.object_id],
                 )
                 context["record_admin_url"] = admin_url
-            except BaseException:
+            except Exception:
                 # If URL pattern doesn't exist, skip it
-                pass
+                zaloguj_polkniety_wyjatek(
+                    "Nie udało się zbudować URL-a admina dla rekordu "
+                    f"{content_type.app_label}.{content_type.model} "
+                    f"(object_id={self.object.object_id}) — pomijam link",
+                    logger=logger,
+                    do_rollbar=True,
+                )
 
     def _add_clipboard_data(self, context, sent_data):
         """Pre-fetch clipboard data for Safari compatibility."""

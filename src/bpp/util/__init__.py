@@ -60,6 +60,7 @@ from bpp.util.text import (
     wytnij_isbn_z_uwag,
     zrob_cache,
 )
+from bpp.util.wyjatki import zaloguj_polkniety_wyjatek
 
 # bpp.util jest importowany tranzytywnie przez niemal każdy moduł
 # admin/models, więc eager ``from bpp.util.xlsx import ...`` wciągał openpyxl
@@ -149,6 +150,8 @@ __all__ = [
     "strip_nonalphanumeric",
     "wytnij_isbn_z_uwag",
     "zrob_cache",
+    # wyjatki
+    "zaloguj_polkniety_wyjatek",
     # xlsx
     "_XLSX_FORMULA_INJECTION_LEAD",
     "_calculate_column_width",

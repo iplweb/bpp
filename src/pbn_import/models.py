@@ -5,7 +5,9 @@ from django.contrib.contenttypes.models import ContentType
 from django.db import models
 from django.utils import timezone
 
-logger = logging.getLogger("pbn_import")
+from bpp.util import zaloguj_polkniety_wyjatek
+
+logger = logging.getLogger(__name__)
 
 User = get_user_model()
 
@@ -151,12 +153,14 @@ class ImportSession(models.Model):
             except Exception:
                 # Błąd połączenia z brokerem - nie możemy zweryfikować statusu.
                 # Oczekiwana, przejściowa flaka brokera (Celery/Redis), nie błąd
-                # importu — log debug zostawia ślad, ale bez Rollbara (byłby
-                # szum przy każdym mignięciu połączenia).
-                logger.debug(
-                    "Nie udało się sprawdzić statusu zadania %s w Celery",
-                    self.task_id,
-                    exc_info=True,
+                # importu — logujemy (standard: zaloguj_polkniety_wyjatek), ale
+                # bez Rollbara (do_rollbar=False), bo byłby szum przy każdym
+                # mignięciu połączenia.
+                zaloguj_polkniety_wyjatek(
+                    "Błąd weryfikacji statusu zadania Celery "
+                    f"(task_id={self.task_id}) dla sesji importu PBN",
+                    logger=logger,
+                    do_rollbar=False,
                 )
 
         return False, None

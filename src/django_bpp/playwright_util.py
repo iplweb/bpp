@@ -1,6 +1,12 @@
 """Playwright utility functions for tests."""
 
+import logging
+
 from playwright.sync_api import Page
+
+from bpp.util import zaloguj_polkniety_wyjatek
+
+logger = logging.getLogger(__name__)
 
 
 def wait_for_page_load(
@@ -117,6 +123,12 @@ def select_select2_autocomplete(
     try:
         page.locator(selection_selector).click(timeout=5000)
     except Exception:
+        zaloguj_polkniety_wyjatek(
+            f"Kliknięcie w element Select2 nie powiodło się, fallback do "
+            f"JS-clicku (element_id={element_id})",
+            logger=logger,
+            do_rollbar=False,
+        )
         page.locator(select_selector).evaluate(
             """element => {
                 const sibling = element.nextElementSibling;
@@ -173,6 +185,12 @@ def select_select2_autocomplete(
         matching_option.wait_for(state="visible", timeout=2000)
         matching_option.click()
     except Exception:
+        zaloguj_polkniety_wyjatek(
+            f"Brak opcji Select2 zawierającej szukaną frazę, fallback do "
+            f"Enter na pierwszym wyniku (value={value!r})",
+            logger=logger,
+            do_rollbar=False,
+        )
         # No option literally containing the search term — fall back to
         # selecting the first/highlighted result via Enter.
         search_input.press("Enter")
@@ -183,6 +201,11 @@ def select_select2_autocomplete(
     try:
         page.wait_for_selector(".select2-dropdown", state="hidden", timeout=2000)
     except Exception:
+        zaloguj_polkniety_wyjatek(
+            "Dropdown Select2 nie zamknął się sam, wymuszam zamknięcie przez JS",
+            logger=logger,
+            do_rollbar=False,
+        )
         # Force close if still open
         page.evaluate("django.jQuery('.select2-hidden-accessible').select2('close')")
 

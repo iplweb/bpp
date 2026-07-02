@@ -1,5 +1,7 @@
 """Publication import utilities"""
 
+import logging
+
 from bpp.models import (
     Dyscyplina_Naukowa,
     Rekord,
@@ -8,6 +10,7 @@ from bpp.models import (
     Wydawnictwo_Ciagle,
     Wydawnictwo_Zwarte,
 )
+from bpp.util import zaloguj_polkniety_wyjatek
 from pbn_api.models import Publication
 from pbn_integrator.importer import importuj_publikacje_po_pbn_uid_id
 from pbn_integrator.utils import (
@@ -17,6 +20,8 @@ from pbn_integrator.utils import (
 
 from .base import CancelledException, ImportStepBase
 from .institution_import import resolve_default_jednostka, resolve_default_jezyk
+
+logger = logging.getLogger(__name__)
 
 
 class PublicationImporter(ImportStepBase):
@@ -150,6 +155,12 @@ class PublicationImporter(ImportStepBase):
             pobierz_publikacje_z_instytucji(self.client, callback=download_callback)
             self.log("info", "Publikacje pobrane pomyślnie")
         except Exception as e:
+            zaloguj_polkniety_wyjatek(
+                "Nie udało się pobrać publikacji z instytucji "
+                f"(pbn_uid={uczelnia.pbn_uid_id})",
+                logger=logger,
+                do_rollbar=False,  # Rollbar już w handle_error
+            )
             self.handle_pbn_error(e, "Nie udało się pobrać publikacji")
         return None
 
@@ -173,6 +184,11 @@ class PublicationImporter(ImportStepBase):
             self._download_publications_v2_with_callback(download_v2_callback)
             self.log("info", "Publikacje v2 pobrane pomyślnie")
         except Exception as e:
+            zaloguj_polkniety_wyjatek(
+                "Nie udało się pobrać publikacji z instytucji (wersja 2)",
+                logger=logger,
+                do_rollbar=False,  # Rollbar już w handle_error
+            )
             self.handle_pbn_error(e, "Nie udało się pobrać publikacji v2")
         finally:
             self.clear_subtask_progress()
@@ -200,6 +216,11 @@ class PublicationImporter(ImportStepBase):
             self.log("success", "Publikacje zaimportowane pomyślnie")
 
         except Exception as e:
+            zaloguj_polkniety_wyjatek(
+                "Nie udało się zaimportować publikacji do bazy danych",
+                logger=logger,
+                do_rollbar=False,  # Rollbar już w handle_error
+            )
             self.handle_error(e, "Nie udało się zaimportować publikacji")
             if hasattr(self.session, "statistics"):
                 self.session.statistics.publications_failed += 1
@@ -260,6 +281,11 @@ class PublicationImporter(ImportStepBase):
                 if ret:
                     imported_count += 1
             except Exception as e:
+                zaloguj_polkniety_wyjatek(
+                    f"Nie udało się zaimportować publikacji {pbn_publication.mongoId}",
+                    logger=logger,
+                    do_rollbar=False,  # Rollbar już w handle_error
+                )
                 failed_count += 1
                 self.handle_error(
                     e,

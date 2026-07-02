@@ -216,3 +216,6 @@ TODO-*.md
 .run_site_port
 .run_site_pg_port
 .run_site_redis_port
+
+# SDD workflow scratch (briefs, reports, ledger, diffs)
+.superpowers/

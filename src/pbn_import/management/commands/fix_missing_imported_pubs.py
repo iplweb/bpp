@@ -9,18 +9,22 @@ Ta komenda:
 3. Dla każdej publikacji importuje również oświadczenia
 """
 
+import logging
 from argparse import RawTextHelpFormatter
 
 from django.db import transaction
 from tqdm import tqdm
 
 from bpp.models import Dyscyplina_Naukowa, Rekord, Rodzaj_Zrodla
+from bpp.util import zaloguj_polkniety_wyjatek
 from pbn_api.management.commands.util import PBNBaseCommand
 from pbn_api.models import Publication
 from pbn_import.utils.command_helpers import (
     get_validated_default_jednostka,
     import_publication_with_statements,
 )
+
+logger = logging.getLogger(__name__)
 
 
 class Command(PBNBaseCommand):
@@ -325,6 +329,12 @@ Przykłady użycia:
                 jednostka_name=options.get("jednostka")
             )
         except Exception as e:
+            zaloguj_polkniety_wyjatek(
+                "Nie udało się pobrać/zwalidować domyślnej jednostki "
+                f"(jednostka={options.get('jednostka')!r})",
+                logger=logger,
+                do_rollbar=False,
+            )
             self.stderr.write(self.style.ERROR(str(e)))
             return
 

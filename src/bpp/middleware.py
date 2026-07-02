@@ -144,56 +144,97 @@ class MaliciousRequestBlockingMiddleware(MiddlewareMixin):
     # Blocked path suffixes (for vim backups like file.py~)
     BLOCKED_SUFFIXES = ("~",)
 
-    def process_request(self, request):  # noqa: C901
-        path = request.path
-        path_lower = path.lower()
+    def process_request(self, request):
+        # Each checker inspects ``request`` and returns a
+        # ``(block_reason, identifier)`` tuple when it wants to block, or
+        # ``None`` to let the request fall through to the next check. The
+        # checkers run in declaration order — the same order in which the
+        # original inline checks were written — so the first matching rule
+        # wins and the reported ``block_reason`` is unchanged.
+        checks = (
+            self._check_path_length,
+            self._check_full_url_length,
+            self._check_nested_next,
+            self._check_pagination,
+            self._check_blocked_extension,
+            self._check_blocked_path,
+            self._check_backup_suffix,
+        )
+        for check in checks:
+            result = check(request)
+            if result is not None:
+                return self._block_request(request, *result)
 
+        return None
+
+    def _check_path_length(self, request):
         # Block excessively long paths (potential buffer overflow attempts)
+        path = request.path
         if len(path) > 1024:
-            return self._block_request(request, "path_too_long", path[:100])
+            return ("path_too_long", path[:100])
+        return None
 
+    def _check_full_url_length(self, request):
         # Block excessively long full URLs (path + query string). Catches
         # scanner bots that follow login redirects without cookies and end up
         # accumulating exponentially growing percent-encoded ``?next=`` chains.
         # Skip the check for whitelisted paths (e.g. ``/api/`` endpoints which
         # legitimately carry verbose DataTables query params).
-        if not any(s in path for s in self.URL_LENGTH_WHITELIST_SUBSTRINGS):
-            full_path = request.get_full_path()
-            if len(full_path) > self.MAX_FULL_PATH_LENGTH:
-                return self._block_request(request, "url_too_long", full_path[:100])
+        path = request.path
+        if any(s in path for s in self.URL_LENGTH_WHITELIST_SUBSTRINGS):
+            return None
+        full_path = request.get_full_path()
+        if len(full_path) > self.MAX_FULL_PATH_LENGTH:
+            return ("url_too_long", full_path[:100])
+        return None
 
+    def _check_nested_next(self, request):
         # Block nested ``?next=`` redirect chains. Django decodes one level of
         # percent-encoding when parsing query string, so a legitimate single
         # redirect target (e.g. ``next=/foo/``) never contains ``?next=`` —
         # but a re-redirected scanner trail does (``next=/login/?next=/foo``).
         next_param = request.GET.get("next", "")
         if next_param and "?next=" in next_param.lower():
-            return self._block_request(request, "nested_next", next_param[:100])
+            return ("nested_next", next_param[:100])
+        return None
 
+    def _check_pagination(self, request):
         # Check pagination parameter for SQL injection
         page_param = request.GET.get("page", "")
-        if page_param:
-            # Allow "last" keyword (Django pagination feature)
-            if page_param.lower() != "last":
-                # Block if > 5 chars AND contains non-numeric characters
-                if len(page_param) > 5 and not page_param.isdigit():
-                    return self._block_request(request, "pagination", page_param[:100])
+        if not page_param:
+            return None
+        # Allow "last" keyword (Django pagination feature)
+        if page_param.lower() == "last":
+            return None
+        # Block if > 5 chars AND contains non-numeric characters
+        if len(page_param) > 5 and not page_param.isdigit():
+            return ("pagination", page_param[:100])
+        return None
 
+    def _check_blocked_extension(self, request):
         # Check for blocked file extensions
+        path = request.path
+        path_lower = path.lower()
         for ext in self.BLOCKED_EXTENSIONS:
             if path_lower.endswith(ext):
-                return self._block_request(request, "blocked_extension", path[:100])
+                return ("blocked_extension", path[:100])
+        return None
 
+    def _check_blocked_path(self, request):
         # Check for blocked path patterns
+        path = request.path
+        path_lower = path.lower()
         for blocked_path in self.BLOCKED_PATHS:
             if blocked_path.lower() in path_lower:
-                return self._block_request(request, "blocked_path", path[:100])
+                return ("blocked_path", path[:100])
+        return None
 
+    def _check_backup_suffix(self, request):
         # Check for vim backup files (ending with ~)
+        path = request.path
         for suffix in self.BLOCKED_SUFFIXES:
             if path.endswith(suffix):
-                return self._block_request(request, "backup_file", path[:100])
-
+                return ("backup_file", path[:100])
         return None
 
     def _block_request(self, request, block_reason, identifier):
@@ -347,6 +388,20 @@ class CustomRollbarNotifierMiddleware(RollbarNotifierMiddleware):
                     "id": request.user.id,
                     "username": request.user.username,
                     "email": request.user.email,
+                },
+                # Login także w `custom`, by był widoczny wprost na evencie
+                # (sekcja `person` nie zawsze jest pokazywana na liście itemów).
+                "custom": {
+                    "login": request.user.username,
+                    "zalogowany": True,
+                },
+            }
+        else:
+            # Anonim nie ma `person` (brak id), więc oznaczamy go w `custom`.
+            payload_data = {
+                "custom": {
+                    "login": "<użytkownik anonimowy / niezalogowany>",
+                    "zalogowany": False,
                 },
             }
 

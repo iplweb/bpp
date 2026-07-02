@@ -1,8 +1,13 @@
 """Publication fee import utilities"""
 
+import logging
+
 from bpp.models import Wydawnictwo_Ciagle, Wydawnictwo_Zwarte
+from bpp.util import zaloguj_polkniety_wyjatek
 
 from .base import ImportStepBase
+
+logger = logging.getLogger(__name__)
 
 # Batch size for API calls - balance between API efficiency and memory usage
 BATCH_SIZE = 100
@@ -89,6 +94,12 @@ class FeeImporter(ImportStepBase):
                             processed += 1
 
                 except Exception as e:
+                    zaloguj_polkniety_wyjatek(
+                        "Nie udało się pobrać opłat dla batcha "
+                        f"{klass_name} ({batch_start + 1}-{batch_end})",
+                        logger=logger,
+                        do_rollbar=False,  # Rollbar już w handle_error
+                    )
                     failed += len(batch_records)
                     self.handle_error(
                         e,

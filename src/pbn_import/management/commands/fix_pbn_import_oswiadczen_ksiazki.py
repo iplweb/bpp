@@ -10,12 +10,17 @@ Polecenie porównuje typ odpowiedzialności w oświadczeniach PBN (OswiadczenieI
 z typem w BPP (Wydawnictwo_Zwarte_Autor.typ_odpowiedzialnosci) i naprawia rozbieżności.
 """
 
+import logging
+
 from django.core.management.base import CommandError
 from django.db import transaction
 from tqdm import tqdm
 
 from bpp.management.base import BaseCommand
 from bpp.models import Typ_Odpowiedzialnosci, Wydawnictwo_Zwarte
+from bpp.util import zaloguj_polkniety_wyjatek
+
+logger = logging.getLogger(__name__)
 
 
 class Command(BaseCommand):
@@ -167,6 +172,12 @@ PRZYKŁADY UŻYCIA:
                         result, counters, oswiadczenie, integruj_dyscypliny
                     )
                 except Exception as e:
+                    zaloguj_polkniety_wyjatek(
+                        "Błąd przetwarzania oświadczenia książki "
+                        f"{book.pbn_uid_id} / osoba {oswiadczenie.personId}",
+                        logger=logger,
+                        do_rollbar=False,
+                    )
                     errors.append(
                         f"{book.tytul_oryginalny[:50]} / {oswiadczenie.personId}: {e}"
                     )
@@ -281,6 +292,12 @@ PRZYKŁADY UŻYCIA:
                     default_jednostka=default_jednostka,
                 )
             except Exception as e:
+                zaloguj_polkniety_wyjatek(
+                    "Błąd integracji dyscyplin oświadczenia "
+                    f"{oswiadczenie.publicationId}",
+                    logger=logger,
+                    do_rollbar=False,
+                )
                 if verbose:
                     self.stdout.write(
                         self.style.ERROR(

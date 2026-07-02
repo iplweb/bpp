@@ -1,9 +1,12 @@
+import logging
+
 from django.contrib import admin
 from django.urls import reverse
 from django.utils.html import format_html
 from django.utils.safestring import mark_safe
 
 from bpp.admin.core import DynamicAdminFilterMixin
+from bpp.util import zaloguj_polkniety_wyjatek
 from pbn_api.models import Scientist
 
 from .models import (
@@ -14,6 +17,8 @@ from .models import (
     LogScalania,
     NotADuplicate,
 )
+
+logger = logging.getLogger(__name__)
 
 
 @admin.register(NotADuplicate)
@@ -310,7 +315,13 @@ class LogScalaniaAdmin(DynamicAdminFilterMixin, admin.ModelAdmin):
                 return mark_safe(
                     f'<a href="{url}">{obj.content_type.name} #{obj.object_id}</a>'
                 )
-            except BaseException:
+            except Exception:
+                zaloguj_polkniety_wyjatek(
+                    "Budowanie linku do zmodyfikowanego rekordu w adminie "
+                    f"LogScalania (object_id={obj.object_id})",
+                    logger=logger,
+                    do_rollbar=True,
+                )
                 return f"{obj.content_type.name} #{obj.object_id}"
         return "-"
 
@@ -330,11 +341,23 @@ class LogScalaniaAdmin(DynamicAdminFilterMixin, admin.ModelAdmin):
                 # Try to get string representation of the object
                 try:
                     obj_str = str(obj.modified_record)
-                except BaseException:
+                except Exception:
+                    zaloguj_polkniety_wyjatek(
+                        "Pobieranie reprezentacji tekstowej zmodyfikowanego "
+                        f"rekordu LogScalania (object_id={obj.object_id})",
+                        logger=logger,
+                        do_rollbar=True,
+                    )
                     obj_str = f"{obj.content_type.name} #{obj.object_id}"
 
                 return mark_safe(f'<a href="{url}" target="_blank">{obj_str}</a>')
-            except BaseException:
+            except Exception:
+                zaloguj_polkniety_wyjatek(
+                    "Budowanie linku do zmodyfikowanego rekordu w widoku "
+                    f"szczegółów LogScalania (object_id={obj.object_id})",
+                    logger=logger,
+                    do_rollbar=True,
+                )
                 return f"{obj.content_type.name} #{obj.object_id}"
         return "-"
 

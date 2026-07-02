@@ -1,3 +1,4 @@
+import logging
 from decimal import Decimal
 from hashlib import md5
 
@@ -22,6 +23,9 @@ from bpp.models import (
     Typ_Odpowiedzialnosci,
     Uczelnia,
 )
+from bpp.util import zaloguj_polkniety_wyjatek
+
+logger = logging.getLogger(__name__)
 
 UPOWAZNIENIE_PBN = "upowaznienie_pbn"
 
@@ -89,6 +93,12 @@ class DynamicAdminFilterMixin:
             # Zwróć cyfrę jako HTML dla HTMX innerHTML
             return HttpResponse(f"{count}", content_type="text/html; charset=utf-8")
         except Exception:
+            zaloguj_polkniety_wyjatek(
+                f"Liczenie obiektów dla licznika filtru HTMX "
+                f"(model={self.model._meta.label}, "
+                f"query={request.GET.urlencode()})",
+                logger=logger,
+            )
             # W przypadku błędu zwróć myślnik
             return HttpResponse("-", content_type="text/html; charset=utf-8")
 

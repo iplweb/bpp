@@ -10,8 +10,8 @@ import datetime
 import django.utils.timezone
 from django.db import models
 
-# django.utils.timezone.utc was removed in Django 5.0. Used by
-# src/rozbieznosci_if/migrations/0002_auto_20210323_0106.py.
+# django.utils.timezone.utc was removed in Django 5.0. Referenced by
+# historical migrations (now removed); shim retained for baseline compat.
 if not hasattr(django.utils.timezone, "utc"):
     django.utils.timezone.utc = datetime.timezone.utc
 

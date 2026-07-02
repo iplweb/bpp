@@ -1,9 +1,14 @@
 """Author import utilities"""
 
+import logging
+
+from bpp.util import zaloguj_polkniety_wyjatek
 from pbn_api.models import Scientist
 from pbn_integrator.utils import integruj_autorow_z_uczelni, pobierz_ludzi_z_uczelni
 
 from .base import ImportStepBase
+
+logger = logging.getLogger(__name__)
 
 
 class AuthorImporter(ImportStepBase):
@@ -38,6 +43,12 @@ class AuthorImporter(ImportStepBase):
             )
             self.log("success", "Autorzy pobrani pomyślnie")
         except Exception as e:
+            zaloguj_polkniety_wyjatek(
+                "Nie udało się pobrać autorów z PBN "
+                f"(uczelnia pbn_uid={uczelnia.pbn_uid_id})",
+                logger=logger,
+                do_rollbar=False,  # Rollbar już w handle_error
+            )
             self.handle_error(e, "Nie udało się pobrać autorów")
         finally:
             self.clear_subtask_progress()
@@ -80,6 +91,12 @@ class AuthorImporter(ImportStepBase):
                 stats.save()
             self.log("success", "Autorzy zintegrowani pomyślnie")
         except Exception as e:
+            zaloguj_polkniety_wyjatek(
+                "Nie udało się zintegrować autorów z uczelnią "
+                f"(uczelnia pbn_uid={uczelnia.pbn_uid_id})",
+                logger=logger,
+                do_rollbar=False,  # Rollbar już w handle_error
+            )
             self.handle_error(e, "Nie udało się zintegrować autorów")
             if hasattr(self.session, "statistics"):
                 self.session.statistics.authors_failed += 1

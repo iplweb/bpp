@@ -143,6 +143,7 @@ def _auto_match_type_and_language(session, result):
     from crossref_bpp.core import Komparator
 
     from .views.helpers import _detect_language, _get_crossref_mapper
+    from .views.publikacja import _resolve_jezyk
 
     mapper = _get_crossref_mapper(result.publication_type)
     if mapper and mapper.charakter_formalny_bpp_id:
@@ -156,6 +157,17 @@ def _auto_match_type_and_language(session, result):
         lang_result = Komparator.porownaj_language(language_code)
         if lang_result.rekord_po_stronie_bpp:
             session.jezyk = lang_result.rekord_po_stronie_bpp
+        else:
+            # Komparator akceptuje tylko kody z enuma Jezyk.SKROT_CROSSREF
+            # ({en, es, pl}). Dla pozostałych kodów (de, fr, ru, uk…),
+            # wykrytych przez langdetect lub zwróconych przez źródło,
+            # dopasuj bezpośrednio po skrot_crossref — tak samo jak robi
+            # to ścieżka języka streszczeń (_resolve_jezyk). Dzięki temu
+            # autodetekcja przypisuje język, gdy instalacja ma pasujący
+            # rekord Jezyk, zamiast cicho zostawiać pole puste (FD#389).
+            jezyk = _resolve_jezyk(language_code)
+            if jezyk:
+                session.jezyk = jezyk
 
 
 @shared_task(bind=True)

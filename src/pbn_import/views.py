@@ -1,5 +1,6 @@
 """Views for PBN import interface"""
 
+import logging
 import random
 
 from django.contrib import messages
@@ -13,6 +14,7 @@ from django.views import View
 from django.views.generic import DetailView, ListView, TemplateView
 
 from bpp.models import Jednostka, Jezyk, Uczelnia, Wydzial
+from bpp.util import zaloguj_polkniety_wyjatek
 
 from .models import (
     ImportInconsistency,
@@ -33,6 +35,8 @@ from .utils.step_definitions import (
     get_all_disable_keys,
     get_form_steps,
 )
+
+logger = logging.getLogger(__name__)
 
 # Maksymalna liczba wierszy ImportLog ładowana do widoków HTMX. Endpointy są
 # re-fetchowane co 5 s podczas długiego importu — bez tego limitu każde
@@ -357,6 +361,12 @@ class CancelImportView(LoginRequiredMixin, ImportPermissionMixin, View):
                     # in the import loops
 
                 except Exception as e:
+                    zaloguj_polkniety_wyjatek(
+                        "Nie udało się anulować zadania Celery "
+                        f"{session.task_id} dla sesji importu #{session.id}",
+                        logger=logger,
+                        do_rollbar=True,
+                    )
                     ImportLog.objects.create(
                         session=session,
                         level="warning",

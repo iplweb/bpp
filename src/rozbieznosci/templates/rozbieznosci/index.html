@@ -1,0 +1,291 @@
+{% extends "base.html" %}
+{% load rozbieznosci_extras %}
+
+{% block title %}{{ page_title }}{% endblock %}
+
+{% block breadcrumbs %}
+    {{ block.super }}
+    <li class="current">{{ page_title }}</li>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="medium-12 columns">
+        <h1>{{ page_title }}</h1>
+    </div>
+</div>
+
+{# pasek zakładek metryk #}
+<div class="row">
+    <div class="medium-12 columns">
+        <ul class="tabs">
+            {% for m in metryki %}
+            <li class="tabs-title {% if m.slug == metryka.slug %}is-active{% endif %}">
+                <a href="{% url 'rozbieznosci:index' metryka=m.slug %}{% if filter_query_string %}?{{ filter_query_string }}{% endif %}"
+                   {% if m.slug == metryka.slug %}aria-selected="true"{% endif %}>
+                    {{ m.label }}
+                </a>
+            </li>
+            {% endfor %}
+        </ul>
+    </div>
+</div>
+
+<div class="row">
+    <div class="medium-12 columns">
+        <form method="get" class="callout" id="rozb-filtry">
+            {# sort niesiony ukrytym polem, by Filtruj/Eksport/Ustaw zachowały sortowanie #}
+            <input type="hidden" name="sort" value="{{ current_sort }}">
+            <div class="row">
+                <div class="medium-2 columns">
+                    <label>Rok od:
+                        <input type="number" name="rok_od" value="{{ rok_od }}"
+                               min="1900" max="2100" style="width: 80px;">
+                    </label>
+                </div>
+                <div class="medium-2 columns">
+                    <label>Rok do:
+                        <input type="number" name="rok_do" value="{{ rok_do }}"
+                               min="1900" max="2100" style="width: 80px;">
+                    </label>
+                </div>
+                <div class="medium-8 columns">
+                    <label>Tytuł:
+                        <input type="text" name="tytul" value="{{ tytul }}"
+                               placeholder="Szukaj w tytule...">
+                    </label>
+                </div>
+            </div>
+            <div class="row">
+                <div class="medium-7 columns" style="padding-top: 0.5rem;">
+                    <fieldset style="margin: 0; padding: 0; border: 0;">
+                        <legend style="font-weight: bold; font-size: inherit;">
+                            Rekordy ze źródłem:
+                        </legend>
+                        {% for val, label in tryb_zrodla_choices %}
+                        <label style="display: block; margin-bottom: 0.25rem; margin-left: 0.75rem;">
+                            <input type="radio" name="tryb_zrodla" value="{{ val }}"
+                                   {% if tryb_zrodla == val %}checked{% endif %}>
+                            {{ label }}
+                        </label>
+                        {% endfor %}
+                    </fieldset>
+                </div>
+                <div class="medium-5 columns" style="padding-top: 0.5rem;">
+                    <details class="rozb-charaktery" style="position: relative;">
+                        <summary class="button secondary" style="margin: 0;">
+                            <span class="fi-filter"></span> Charakter formalny
+                        </summary>
+                        {# pozycja absolutna — popup nie rozpycha formularza #}
+                        <div class="callout"
+                             style="position: absolute; z-index: 30; left: 0; top: 100%;
+                                    width: 22rem; max-width: 90vw; max-height: 16rem;
+                                    overflow-y: auto; margin-top: 0.25rem;
+                                    background: #fefefe;
+                                    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.18);">
+                            {% for cf in wszystkie_charaktery %}
+                            <label style="display: block; margin: 0;">
+                                <input type="checkbox" name="charaktery_formalne"
+                                       value="{{ cf.pk }}"
+                                       {% if not charaktery_zawezone or cf.pk in wybrane_charaktery_ids %}checked{% endif %}>
+                                {{ cf.skrot }} — {{ cf.nazwa }}
+                            </label>
+                            {% endfor %}
+                        </div>
+                    </details>
+                </div>
+            </div>
+            <div class="row">
+                <div class="medium-12 columns" style="padding-top: 0.5rem;">
+                    <label>
+                        <input type="checkbox" name="kasuj_przy_pustym_zrodle"
+                               value="1"
+                               {% if kasuj_przy_pustym_zrodle %}checked{% endif %}>
+                        W przypadku braku kwartyla/punktacji w źródle, kasuj
+                        kwartyl/punktację w pracy
+                    </label>
+                </div>
+            </div>
+            {# Pasek akcji pod formularzem. Eksport i "Ustaw wszystkie" SUBMITUJĄ #}
+            {# ten formularz (formaction) — niosą ŻYWY stan pól (tryb, charaktery, #}
+            {# kasuj). "Ustaw wszystkie" (destrukcyjne) odsunięte na prawo. #}
+            <div class="row">
+                <div class="medium-8 columns" style="padding-top: 0.5rem;">
+                    <button type="submit" class="button">
+                        <span class="fi-filter"></span> Filtruj
+                    </button>
+                    <a href="{% url 'rozbieznosci:index' metryka=metryka.slug %}"
+                       class="button secondary">
+                        <span class="fi-x"></span> Resetuj
+                    </a>
+                    <button type="submit" class="button success"
+                            formaction="{% url 'rozbieznosci:export' metryka=metryka.slug %}"
+                            formmethod="get">
+                        <span class="fi-download"></span> Eksport XLSX
+                    </button>
+                    <a href="{% url 'admin:rozbieznosci_rozbieznosclog_changelist' %}?metryka={{ metryka.slug }}"
+                       class="button secondary">
+                        <span class="fi-list"></span> Pokaż log zmian
+                    </a>
+                </div>
+                <div class="medium-4 columns text-right" style="padding-top: 0.5rem;">
+                    <button type="submit" class="button warning"
+                            formaction="{% url 'rozbieznosci:ustaw_wszystkie' metryka=metryka.slug %}"
+                            formmethod="get">
+                        <span class="fi-check"></span> Ustaw wszystkie wg źródła
+                    </button>
+                </div>
+            </div>
+        </form>
+        {# Auto-aktualizacja: zmiana pola filtra submituje formularz (do widoku #}
+        {# listy) bez klikania "Filtruj". Wyjątek: pola wyboru charakteru — żeby #}
+        {# dało się zaznaczyć kilka, zastosowanie następuje po zamknięciu popupa. #}
+        <script>
+            (function () {
+                var form = document.getElementById("rozb-filtry");
+                if (!form) return;
+                var charDirty = false;
+                form.addEventListener("change", function (e) {
+                    if (e.target.name === "charaktery_formalne") {
+                        charDirty = true;
+                        return;
+                    }
+                    form.requestSubmit();
+                });
+                var details = form.querySelector("details.rozb-charaktery");
+                if (details) {
+                    details.addEventListener("toggle", function () {
+                        if (!details.open && charDirty) {
+                            charDirty = false;
+                            form.requestSubmit();
+                        }
+                    });
+                }
+            })();
+        </script>
+    </div>
+</div>
+
+<div class="row">
+    <div class="medium-12 columns">
+        <p>
+            Znaleziono: <strong>{{ page_obj.paginator.count }}</strong> rekordów
+            |
+            <a href="{% url 'admin:rozbieznosci_ignorowanarozbieznosc_changelist' %}?metryka={{ metryka.slug }}">pokaż ignorowane rekordy</a>
+        </p>
+    </div>
+</div>
+
+{% include "pagination/pagination_with_anchor.html" %}
+
+<table>
+    <thead>
+        <tr>
+            <th>Tytuł</th>
+            <th>
+                <a href="?{% if filter_query_string %}{{ filter_query_string }}&{% endif %}sort={% if current_sort == 'rok' %}-rok{% else %}rok{% endif %}">
+                    Rok
+                    {% if current_sort == 'rok' %}<span class="fi-arrow-up"></span>
+                    {% elif current_sort == '-rok' %}<span class="fi-arrow-down"></span>
+                    {% endif %}
+                </a>
+            </th>
+            <th>
+                <a href="?{% if filter_query_string %}{{ filter_query_string }}&{% endif %}sort={% if current_sort == sort_field %}-{{ sort_field }}{% else %}{{ sort_field }}{% endif %}">
+                    {{ field_label }} (praca)
+                    {% if current_sort == sort_field %}<span class="fi-arrow-up"></span>
+                    {% elif current_sort == sort_field_desc %}<span class="fi-arrow-down"></span>
+                    {% endif %}
+                </a>
+            </th>
+            <th>Źródło</th>
+            <th>
+                <a href="?{% if filter_query_string %}{{ filter_query_string }}&{% endif %}sort={% if current_sort == sort_field_zrodla %}-{{ sort_field_zrodla }}{% else %}{{ sort_field_zrodla }}{% endif %}">
+                    {{ field_label }} (źródło)
+                    {% if current_sort == sort_field_zrodla %}<span class="fi-arrow-up"></span>
+                    {% elif current_sort == sort_field_zrodla_desc %}<span class="fi-arrow-down"></span>
+                    {% endif %}
+                </a>
+            </th>
+            <th>Operacje</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for elem in object_list %}
+        <tr>
+            <td style="font-size: 0.85em;">
+                <a href="{% url 'admin:bpp_wydawnictwo_ciagle_change' elem.pk %}">
+                    {{ elem.opis_bibliograficzny_cache|safe }}
+                </a>
+            </td>
+            <td>{{ elem.rok }}</td>
+            <td>{{ elem|attr:field_name }}</td>
+            <td>
+                {% if elem.zrodlo %}
+                <a href="{% url 'admin:bpp_zrodlo_change' elem.zrodlo.pk %}">
+                    {{ elem.zrodlo.nazwa|safe }}
+                </a>
+                {% endif %}
+            </td>
+            <td>
+                {% if not elem.zrodlo_ma_wpis %}
+                <span class="label alert"
+                      title="Źródło nie ma wpisu punktacji za rok {{ elem.rok }}">
+                    <span class="fi-alert"></span> brak wpisu za {{ elem.rok }}
+                </span>
+                {% elif not elem|attr:annotated_field %}
+                <span class="label warning"
+                      title="Źródło ma wpis za {{ elem.rok }}, ale wartość jest pusta (0 / brak)">
+                    <span class="fi-alert"></span> puste w źródle
+                </span>
+                {% else %}
+                {{ elem|attr:annotated_field }}
+                {% endif %}
+            </td>
+            <td>
+                <form method="post"
+                      action="{% url 'rozbieznosci:index' metryka=metryka.slug %}"
+                      style="margin-bottom: 0.5rem;">
+                    {% csrf_token %}
+                    <input type="hidden" name="_ignore" value="{{ elem.pk }}">
+                    {% include "rozbieznosci/_filtry_hidden.html" %}
+                    <button type="submit"
+                            class="button tiny secondary expanded"
+                            data-confirm="Czy jesteś pewny, że chcesz zignorować ten rekord? Tej operacji nie można cofnąć.">
+                        zignoruj
+                    </button>
+                </form>
+                {% if elem.zrodlo_ma_wpis and elem|attr:annotated_field or kasuj_przy_pustym_zrodle %}
+                <form method="post"
+                      action="{% url 'rozbieznosci:index' metryka=metryka.slug %}">
+                    {% csrf_token %}
+                    <input type="hidden" name="_set" value="{{ elem.pk }}">
+                    {% include "rozbieznosci/_filtry_hidden.html" %}
+                    <button type="submit"
+                            class="button tiny success expanded"
+                            data-confirm="Czy jesteś pewny, że chcesz ustawić {{ field_label }} wg źródła? Tej operacji nie można cofnąć.">
+                        ustaw wg źródła
+                    </button>
+                </form>
+                {% else %}
+                <p class="help-text" style="margin: 0;">
+                    Źródło bez wartości za {{ elem.rok }} — zaznacz „kasuj…”,
+                    aby wyczyścić wartość w pracy.
+                </p>
+                {% endif %}
+            </td>
+        </tr>
+        {% empty %}
+        <tr>
+            <td colspan="6" class="text-center">
+                Brak rekordów z rozbieżnymi wartościami {{ field_label }}
+                dla wybranych kryteriów.
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+{% include "pagination/pagination_with_anchor.html" %}
+
+{% endblock %}

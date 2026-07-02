@@ -9,6 +9,7 @@ from celery import shared_task
 from django.utils import timezone
 
 from bpp.models import Uczelnia
+from bpp.util import zaloguj_polkniety_wyjatek
 
 from .models import ImportLog, ImportSession
 from .utils import ImportManager
@@ -41,6 +42,12 @@ def run_pbn_import(self, session_id, uczelnia_id=None):
             pbn_client = uczelnia.pbn_client(session.user.pbn_token)
         except Exception as e:
             # If PBN client cannot be created, check if we need to configure it
+            zaloguj_polkniety_wyjatek(
+                "Nie udało się utworzyć klienta PBN dla sesji importu "
+                f"#{session_id}; kontynuacja bez klienta",
+                logger=logger,
+                do_rollbar=True,
+            )
             ImportLog.objects.create(
                 session=session,
                 level="warning",
@@ -116,4 +123,11 @@ def run_pbn_import(self, session_id, uczelnia_id=None):
                     "task": "run_pbn_import",
                     "phase": "error_persistence_failed",
                 },
+            )
+        except Exception:
+            zaloguj_polkniety_wyjatek(
+                "Nie udało się zapisać statusu błędu sesji importu PBN "
+                f"#{session_id} po krytycznym błędzie importu",
+                logger=logger,
+                do_rollbar=True,
             )

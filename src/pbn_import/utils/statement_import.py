@@ -1,8 +1,11 @@
 """Statement (oświadczenia) import utilities"""
 
+import logging
+
 from django.contrib.contenttypes.models import ContentType
 
 from bpp.models import Rekord
+from bpp.util import zaloguj_polkniety_wyjatek
 from pbn_api.models import OswiadczenieInstytucji
 from pbn_integrator.utils import (
     integruj_oswiadczenia_z_instytucji,
@@ -13,6 +16,8 @@ from pbn_integrator.utils import (
 from ..models import ImportInconsistency
 from .base import ImportStepBase
 from .publication_import import PublicationImporter
+
+logger = logging.getLogger(__name__)
 
 
 class StatementImporter(ImportStepBase):
@@ -96,6 +101,11 @@ class StatementImporter(ImportStepBase):
             pobierz_oswiadczenia_z_instytucji(self.client, callback=subtask_callback)
             self.log("success", "Oświadczenia pobrane pomyślnie")
         except Exception as e:
+            zaloguj_polkniety_wyjatek(
+                "Nie udało się pobrać oświadczeń z instytucji z PBN",
+                logger=logger,
+                do_rollbar=False,  # Rollbar już w handle_error
+            )
             self.handle_error(e, "Nie udało się pobrać oświadczeń")
         finally:
             self.clear_subtask_progress()
@@ -152,6 +162,11 @@ class StatementImporter(ImportStepBase):
                 stats.save()
             self.log("success", "Oświadczenia zintegrowane pomyślnie")
         except Exception as e:
+            zaloguj_polkniety_wyjatek(
+                "Nie udało się zintegrować oświadczeń z instytucji",
+                logger=logger,
+                do_rollbar=False,  # Rollbar już w handle_error
+            )
             self.handle_error(e, "Nie udało się zintegrować oświadczeń")
 
         self.update_progress(2, 2, "Zakończono import oświadczeń")
@@ -223,6 +238,11 @@ class StatementImporter(ImportStepBase):
             return result
 
         except Exception as e:
+            zaloguj_polkniety_wyjatek(
+                "Nie udało się pobrać brakujących publikacji dla oświadczeń",
+                logger=logger,
+                do_rollbar=False,  # Rollbar już w handle_error
+            )
             self.handle_error(e, "Nie udało się pobrać brakujących publikacji")
             return None
         finally:

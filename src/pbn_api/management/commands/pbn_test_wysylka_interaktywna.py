@@ -19,12 +19,14 @@ Użycie:
 """
 
 import json
+import logging
 import time
 from typing import Any
 
 from django.core.management.base import CommandError
 
 from bpp.models import Wydawnictwo_Ciagle, Wydawnictwo_Zwarte
+from bpp.util import zaloguj_polkniety_wyjatek
 from pbn_api.adapters.wydawnictwo import WydawnictwoPBNAdapter
 from pbn_api.const import (
     PBN_DELETE_PUBLICATION_STATEMENT,
@@ -43,6 +45,8 @@ from pbn_api.exceptions import (
 )
 from pbn_api.management.commands.util import PBNBaseCommand
 from pbn_api.models import OswiadczenieInstytucji
+
+logger = logging.getLogger(__name__)
 
 
 class UserAbort(Exception):
@@ -201,6 +205,12 @@ class Command(PBNBaseCommand):
             )
             intended_label = str(intended_count)
         except Exception as e:  # noqa: BLE001
+            zaloguj_polkniety_wyjatek(
+                "Błąd adaptera przy liczeniu intencji oświadczeń BPP dla "
+                f"publikacji pk={publication.pk}",
+                logger=logger,
+                do_rollbar=False,
+            )
             intended_label = f"?? (błąd adaptera: {e})"
 
         self._info(f"Typ:          {type(publication).__name__}")
@@ -373,6 +383,12 @@ class Command(PBNBaseCommand):
                 publication, uczelnia=self._resolved_uczelnia
             ).pbn_get_json_statements()
         except Exception as e:  # noqa: BLE001
+            zaloguj_polkniety_wyjatek(
+                "Błąd adaptera przy generowaniu intencji oświadczeń BPP do "
+                f"porównania z PBN dla publikacji pk={publication.pk}",
+                logger=logger,
+                do_rollbar=False,
+            )
             self._warn(f"Nie mogę wygenerować intencji BPP (adapter): {e}")
             self._info("Zwracam 'różnice' — user zdecyduje co robić.")
             self.stats.append(("Porównanie", "nieznane (błąd adaptera)"))
