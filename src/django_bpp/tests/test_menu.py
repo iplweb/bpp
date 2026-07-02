@@ -7,8 +7,10 @@ Zachowane quirki (NIE są naprawiane w refaktorze):
 - użytkownik bez grup i nie-superuser → IndexError (usuwanie z pustego
   poddrzewa "Dashboard"),
 - usuwanie "zgłoszeń" faktycznie kasuje OSTATNI element REDAKTOR_MENU
-  ("Importer publikacji"), nie "Zgłoszenia publikacji",
-- STRUKTURA_MENU.pop(1) mutuje modułową listę (chronione fixturą snapshotu).
+  ("Importer publikacji"), nie "Zgłoszenia publikacji".
+
+Ukrywanie wydziału buduje LOKALNĄ kopię STRUKTURA_MENU (nie mutuje globala —
+multi-host); fixtura snapshotu została jako defense-in-depth.
 """
 
 import pytest
@@ -22,7 +24,8 @@ from django_bpp.menu import CustomMenu
 
 @pytest.fixture(autouse=True)
 def _snapshot_struktura_menu():
-    """STRUKTURA_MENU jest mutowane przez pop(1) — przywróć po teście."""
+    """Defense-in-depth: przywróć STRUKTURA_MENU po teście, gdyby jakiś kod
+    mutował globalną listę (obecnie ukrywanie wydziału robi lokalną kopię)."""
     saved = list(menu_module.STRUKTURA_MENU)
     yield
     menu_module.STRUKTURA_MENU[:] = saved
@@ -142,9 +145,29 @@ def test_struktura_pokazuje_wydzial_domyslnie():
 def test_struktura_bez_wydzialow_usuwa_pozycje():
     u = baker.make("bpp.BppUser", is_superuser=True, is_staff=True, first_name="Ela")
     links = _struktura_links(_menu_for(u))
-    # STRUKTURA_MENU.pop(1) usuwa pozycję "wydział".
+    # Render z ukrytym wydziałem NIE zawiera pozycji "wydział".
     assert "/admin/bpp/wydzial/" not in links
     assert len(links) == 3
+
+
+@pytest.mark.django_db
+@override_settings(DJANGO_BPP_UCZELNIA_UZYWA_WYDZIALOW=False)
+def test_struktura_hide_wydzial_nie_mutuje_globalnego_menu():
+    """Ukrycie wydziału NIE mutuje modułowego STRUKTURA_MENU.
+
+    Regresja multi-host: decyzja o ukryciu jest per-host (get_for_request),
+    a mutacja globalnej listy (dawne STRUKTURA_MENU.pop(1)) sprawiłaby, że
+    pierwszy request ukrywający wydział skasowałby go z listy dla CAŁEGO
+    workera — kolejne hosty z uzywaj_wydzialow=True już by go nie zobaczyły.
+    """
+    przed = [item[1] for item in menu_module.STRUKTURA_MENU]
+
+    u = baker.make("bpp.BppUser", is_superuser=True, is_staff=True, first_name="Zoe")
+    links = _struktura_links(_menu_for(u))
+    assert "/admin/bpp/wydzial/" not in links  # render ukrywa wydział...
+
+    po = [item[1] for item in menu_module.STRUKTURA_MENU]
+    assert przed == po  # ...ale globalna lista pozostaje NIENARUSZONA
 
 
 @pytest.mark.django_db

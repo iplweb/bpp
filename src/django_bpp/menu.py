@@ -264,10 +264,15 @@ def _add_group_submenus(menu, user, groups, request):
             ),
         ]
 
+    # Multi-host: decyzja o ukryciu wydziału jest per-host (get_for_request),
+    # więc buduj LOKALNĄ kopię listy zamiast mutować globalne STRUKTURA_MENU —
+    # dawny pop(1) trwale kasował wydział dla całego workera, przez co pierwszy
+    # host ukrywający wydział decydował za wszystkie kolejne hosty.
+    struktura_menu = STRUKTURA_MENU
     if _should_hide_wydzial(request):
-        STRUKTURA_MENU.pop(1)
+        struktura_menu = [item for i, item in enumerate(STRUKTURA_MENU) if i != 1]
 
-    flt("struktura", "Struktura", STRUKTURA_MENU, "menu-icon-structure")
+    flt("struktura", "Struktura", struktura_menu, "menu-icon-structure")
     flt(GR_WPROWADZANIE_DANYCH, "Wprowadzanie danych", REDAKTOR_MENU, "menu-icon-edit")
     if GR_ZGLOSZENIA_PUBLIKACJI not in groups and not user.is_superuser:
         # Wyrzuć "zgłoszenia publikacji" z REDAKTOR_MENU
