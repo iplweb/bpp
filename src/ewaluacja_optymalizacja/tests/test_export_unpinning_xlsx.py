@@ -48,9 +48,13 @@ def dyscyplina():
 
 @pytest.fixture
 def rodzaj_autora_n():
-    obj, _ = Rodzaj_Autora.objects.get_or_create(
+    # update_or_create (nie get_or_create): asercja w teście oczekuje
+    # konkretnej nazwy "pracownik naukowy w liczbie N". Baseline bywa
+    # niedeterministyczny per-shard (raz ma Rodzaj_Autora(N), raz nie) —
+    # get_or_create z krótkim defaultem dawał flakę CI zależną od kolejności.
+    obj, _ = Rodzaj_Autora.objects.update_or_create(
         skrot="N",
-        defaults=dict(nazwa="pracownik naukowy", sort=1),
+        defaults=dict(nazwa="pracownik naukowy w liczbie N", sort=1),
     )
     return obj
 
