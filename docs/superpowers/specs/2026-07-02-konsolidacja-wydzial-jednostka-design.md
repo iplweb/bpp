@@ -34,6 +34,30 @@ gdy nic już go nie referuje.
 
 ## Sekcja 1 — Model danych
 
+### Strategia scalenia i nazewnictwo (decyzja)
+
+**Absorpcja-in-place, NIE nowa tabela.** Zachowujemy tożsamość dzisiejszego
+modelu `Jednostka` (jego PK-e i wszystkie dziesiątki przychodzących FK-ów
+zostają nietknięte na poziomie danych). Wiersze `Wydzial` **wmigrowujemy do
+tabeli `Jednostka`** z nowymi PK-ami; repointowane są **tylko konsumenci
+`Wydzial`** (~8 FK), nie konsumenci `Jednostka`.
+
+Uzasadnienie: `Jednostka` jest referowana ekstremalnie mocno (Autor_Jednostka,
+wszystkie *_Autor, cache Autorzy/punktacja, raport_slotow, ewaluacja…),
+`Wydzial` słabo (~8). Fizycznie nowa tabela wymuszałaby repoint OBU stron
+(przekluczowanie i migracja danych każdego FK) — droga najdroższą stroną.
+Kolizja PK (`Wydzial.id=5` vs `Jednostka.id=5`) i tak wymusza jakieś
+przekluczowanie; absorpcja-in-place ogranicza je do samych wierszy `Wydzial`.
+`RenameModel` to operacja metadanych — nie przepycha masowo ogromnej tabeli
+Jednostki. Czysta docelowa schema osiągana kolejnymi migracjami kolumn, bez
+potrzeby nowej tabeli.
+
+**Nazwa modelu: zostaje `Jednostka`.** Wydział to po prostu jednostka o
+rodzaju pełniącym rolę wydziału. Zostawienie nazwy = zero zmian w setkach
+miejsc (importy, API, multiseek, szablony, `Autor_Jednostka`…). Ewentualny
+rename na ładniejszą nazwę (np. `JednostkaOrganizacyjna`) to czysto
+kosmetyczny, opcjonalny krok na później — poza zakresem tej specyfikacji.
+
 ### Nowy słownik `RodzajJednostki`
 
 Edytowalny w adminie (per-tenant — różne uczelnie różne nazewnictwo).
@@ -58,8 +82,19 @@ RodzajJednostki
 
 - `rodzaj` → **FK do `RodzajJednostki`** (zastępuje `rodzaj_jednostki`
   CharField). Migracja mapuje istniejące stringi na wiersze słownika.
-- `parent` (MPTT `TreeForeignKey`) → **jedyny nośnik struktury**.
-  Dotychczasowe grupowanie „wydziałowe" również realizowane przez drzewo.
+- `parent` (self-FK) → **jedyny nośnik struktury**. Dotychczasowe grupowanie
+  „wydziałowe" również realizowane przez drzewo.
+  - **OTWARTA DECYZJA (do planu): biblioteka drzewa.** Dziś django-mptt
+    (nested-set), używany też przez `Charakter_Formalny`. Realna powierzchnia
+    API jest mała (`get_family`, `get_descendants(include_self=True)`,
+    draggable admin, `order_insertion_by`). Opcje: (a) zostać przy mptt —
+    działa, jednostki przesuwa się rzadko, więc koszt zapisu nested-set
+    nieistotny; (b) adjacency-list (`parent_id`) + recursive CTE — prostsza
+    schema, tańsze/bezpieczniejsze zapisy przy przesuwaniu węzłów, kosztem
+    przepisania search/cache na CTE i podmiany draggable admina (Charakter
+    zostaje na mptt lub też migruje). Ten design jest **tree-lib-agnostyczny**:
+    wymaga tylko „potomkowie", „rodzina", „najbliższy przodek z flagą" i
+    draggable admin. Decyzja przy pisaniu planu.
 - `wydzial` (FK→`Wydzial`) → **repoint na FK→`Jednostka`** i zmiana znaczenia:
   to **zdenormalizowany wskaźnik „wydziału raportowego"** = najbliższego
   przodka w drzewie, którego `rodzaj.pelni_role_wydzialu = True`. Utrzymywany
@@ -139,10 +174,33 @@ Podsystemy do przejścia i weryfikacji testami:
 - `ewaluacja_metryki` — filtr `jednostka__wydzial_id`, kolumna XLSX.
 - Manager cache: `Rekord.prace_wydzialu` (`cache/rekord.py:96`).
 
+### Semantyka „raportu wydziałów"
+
+- **Dane:** „raport wydziałów" pokazuje **każdy węzeł typu wydziałowego**
+  (`rodzaj.pelni_role_wydzialu=True`), **niezależnie od pozycji w drzewie** —
+  bo rola wydziału jest wewnętrzną własnością rodzaju, nie poziomu. Stara
+  pętla `Wydzial.objects.all()` → `Jednostka.objects.filter(
+  rodzaj__pelni_role_wydzialu=True)`. Agregacja pod danym wydziałem = prace
+  afiliowane na jednostki w jego **poddrzewie** (`get_descendants`).
+- **Selektor (UI):** ujednolicony **Select2 z optgroup po `rodzaj`** zamiast
+  osobnych autocomplete „wydział" i „jednostka" — jeden picker pogrupowany
+  (Wydziały / Instytuty / Katedry / …), uzupełniany wg rodzaju.
+- **Edge-case: wydział w wydziale → podwójne liczenie.** Jeśli wydział
+  zagnieżdżony jest w innym wydziale, praca z poddrzewa wewnętrznego wpada też
+  do poddrzewa zewnętrznego → double-count w sumie. Dwa warianty (decyzja
+  raportowa, nie schematu):
+  - (a) raport listuje wszystkie węzły-wydziały płasko, każdy raportuje swoje
+    poddrzewo (proste; ryzyko double-count przy zagnieżdżeniu);
+  - (b) suma po „najbliższym wydziale" per praca (bez double-count) — i tu
+    zarabia na siebie zdenormalizowane `Jednostka.wydzial`.
+  Przy realnych danych wydziały rzadko zagnieżdżają się w wydziałach; domyślnie
+  (a), z (b) jako opcją tam, gdzie liczy się dokładna suma bez nakładania.
+
 ### Admin
 
 - `WydzialAdmin`, `WydzialInline` w adminie Uczelni → zastąpione zarządzaniem
-  jednostek-wydziałów w `DraggableMPTTAdmin` Jednostki (drzewo).
+  jednostek-wydziałów w draggable-drzewie admina Jednostki (biblioteka wg
+  otwartej decyzji z Sekcji 1).
 - Kolumny/filtry `wydzial` w adminach jednostki/patentu/kierunku/doktoratu/
   autora → wskazują `Jednostka`.
 - `RodzajJednostki` → własny prosty admin słownikowy.
