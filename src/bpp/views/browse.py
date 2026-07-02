@@ -47,6 +47,7 @@ from bpp.multiseek_registry import (
 from bpp.util.uczelnia_scope import (
     scope_jednostki_do_uczelni,
     scope_rekord_do_uczelni,
+    tylko_jedna_uczelnia,
 )
 
 logger = logging.getLogger(__name__)
@@ -87,25 +88,31 @@ def get_uczelnia_context_data(uczelnia, article_slug=None):
     else:
         context["news"] = visible_articles.filter(status=Article.STATUS.published)[:5]
 
-        # Multi-host: rekordy z autorami z jednostek tej uczelni
-        jednostki_uczelni = uczelnia.jednostka_set.all()
+        # Multi-host: zawężamy do rekordów uczelni oglądającej przez
+        # scope_rekord_do_uczelni. W single-host (jedna uczelnia) helper daje
+        # no-op — rekordy bez wpisanego autorstwa pozostają liczone i widoczne,
+        # parytet z zachowaniem sprzed multi-hosted (patrz test_single_host_parity).
         context["recently_updated"] = (
-            Rekord.objects.filter(autorzy__jednostka__in=jednostki_uczelni)
+            scope_rekord_do_uczelni(Rekord.objects.all(), uczelnia)
             .order_by("-ostatnio_zmieniony")
             .distinct()[:12]
         )
 
-        context["recent_abstracts"] = (
-            Wydawnictwo_Ciagle_Streszczenie.objects.exclude(streszczenie__isnull=True)
-            .exclude(streszczenie__exact="")
-            .filter(rekord__autorzy_set__jednostka__in=jednostki_uczelni)
-            .order_by("-rekord__ostatnio_zmieniony")
-            .distinct()[:5]
-        )
+        recent_abstracts = Wydawnictwo_Ciagle_Streszczenie.objects.exclude(
+            streszczenie__isnull=True
+        ).exclude(streszczenie__exact="")
+        # Ten sam guard co scope_rekord_do_uczelni, ale na querysecie Streszczeń
+        # (helper przyjmuje qs Rekordów). Single-host / brak uczelni => bez filtra.
+        if uczelnia is not None and not tylko_jedna_uczelnia():
+            recent_abstracts = recent_abstracts.filter(
+                rekord__autorzy_set__jednostka__uczelnia=uczelnia
+            )
+        context["recent_abstracts"] = recent_abstracts.order_by(
+            "-rekord__ostatnio_zmieniony"
+        ).distinct()[:5]
+
         context["total_rekord_count"] = (
-            Rekord.objects.filter(autorzy__jednostka__in=jednostki_uczelni)
-            .distinct()
-            .count()
+            scope_rekord_do_uczelni(Rekord.objects.all(), uczelnia).distinct().count()
         )
         context["current_year"] = timezone.now().date().year
 
