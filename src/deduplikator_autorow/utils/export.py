@@ -13,7 +13,6 @@ from bpp.util import (
     site_url_for_request,
     worksheet_columns_autosize,
     worksheet_create_table,
-
 )
 from deduplikator_autorow.models import DuplicateCandidate
 
