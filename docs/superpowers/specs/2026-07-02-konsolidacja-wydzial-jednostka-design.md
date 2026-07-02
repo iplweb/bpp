@@ -77,6 +77,10 @@ RodzajJednostki
   `Wydział` dochodzi jako trzeci (z `pelni_role_wydzialu=True`).
 - `kolo_naukowe` zachowuje swoją dotychczasową specjalną obsługę (metody
   `kola_naukowe()` itp.) — zmienia się tylko nośnik: string → FK.
+- **Odmiana (przypadki gramatyczne):** `RodzajJednostki` docelowo niesie
+  odmianę nazwy. Projektowana i implementowana w **osobnej gałęzi** — poza
+  zakresem tej specyfikacji; przy scalaniu należy uzgodnić kształt pola/
+  powiązania, by słownik z tej migracji i praca nad odmianą się nie rozjechały.
 
 ### Zmiany w `Jednostka`
 
@@ -84,17 +88,20 @@ RodzajJednostki
   CharField). Migracja mapuje istniejące stringi na wiersze słownika.
 - `parent` (self-FK) → **jedyny nośnik struktury**. Dotychczasowe grupowanie
   „wydziałowe" również realizowane przez drzewo.
-  - **OTWARTA DECYZJA (do planu): biblioteka drzewa.** Dziś django-mptt
-    (nested-set), używany też przez `Charakter_Formalny`. Realna powierzchnia
-    API jest mała (`get_family`, `get_descendants(include_self=True)`,
-    draggable admin, `order_insertion_by`). Opcje: (a) zostać przy mptt —
-    działa, jednostki przesuwa się rzadko, więc koszt zapisu nested-set
-    nieistotny; (b) adjacency-list (`parent_id`) + recursive CTE — prostsza
-    schema, tańsze/bezpieczniejsze zapisy przy przesuwaniu węzłów, kosztem
-    przepisania search/cache na CTE i podmiany draggable admina (Charakter
-    zostaje na mptt lub też migruje). Ten design jest **tree-lib-agnostyczny**:
-    wymaga tylko „potomkowie", „rodzina", „najbliższy przodek z flagą" i
-    draggable admin. Decyzja przy pisaniu planu.
+  - **DECYZJA: na razie zostajemy przy django-mptt** (0.18.0, nested-set;
+    używany też przez `Charakter_Formalny`). Powód: jedyny realny motyw do
+    zmiany (konflikt trigger↔nested-set) znika wraz z usunięciem triggera, a
+    przy małym drzewie i rzadkich zapisach żadna inna biblioteka nie daje
+    odczuwalnego zysku; utrzymanie `parent` idzie Pythonowym API mptt
+    (`move_to`/`save`), które poprawnie liczy lft/rght.
+  - **Ryzyko przyjęte świadomie:** mptt zwalnia — ostatni release sie 2025,
+    brak deklarowanego wsparcia Django 6.0. Jeśli/gdy BPP przejdzie na Django
+    6.0, ścieżką wyjścia jest **django-treebeard (Materialized Path)**
+    (aktywny, wspiera Django 6.0/Py3.14) — migracja obu modeli (Jednostka +
+    Charakter_Formalny) jako osobny, przyszły krok. Ten design jest
+    **tree-lib-agnostyczny** (wymaga tylko: potomkowie, rodzina, najbliższy
+    przodek z flagą, draggable admin), więc późniejsza zmiana biblioteki go
+    nie narusza.
 - `wydzial` (FK→`Wydzial`) → **repoint na FK→`Jednostka`** i zmiana znaczenia:
   to **zdenormalizowany wskaźnik „wydziału raportowego"** = najbliższego
   przodka w drzewie, którego `rodzaj.pelni_role_wydzialu = True`. Utrzymywany
