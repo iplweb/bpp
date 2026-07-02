@@ -53,7 +53,35 @@ def autor_split_string(text):
     return text[0], text[1]
 
 
-class AutorManager(FulltextSearchMixin, models.Manager):
+class AutorQuerySet(models.QuerySet):
+    """Zakresy wyszukiwania autora (spec 2026-07-02).
+
+    Kategorie semantyczne — obowiązują tak samo w single- i multi-host (NIE
+    przechodzą przez guard ``tylko_jedna_uczelnia``; to wybór kategorii autora,
+    nie izolacja rekordów). ``uczelnia=None`` → fail-closed (pusty queryset).
+    Zakres WSZYSCY = zwykłe ``Autor.objects.all()`` (bez metody).
+    """
+
+    def aktualnie_zatrudnieni(self, uczelnia):
+        """Autorzy aktualnie zatrudnieni w uczelni (realna jednostka)."""
+        if uczelnia is None:
+            return self.none()
+        return self.filter(
+            aktualna_jednostka__uczelnia=uczelnia,
+            aktualna_jednostka__skupia_pracownikow=True,
+        )
+
+    def kiedykolwiek_zwiazani(self, uczelnia):
+        """Autorzy związani z uczelnią obecnie LUB historycznie."""
+        if uczelnia is None:
+            return self.none()
+        return self.filter(
+            Q(aktualna_jednostka__uczelnia=uczelnia)
+            | Q(autor_jednostka__jednostka__uczelnia=uczelnia)
+        ).distinct()
+
+
+class AutorManager(FulltextSearchMixin, models.Manager.from_queryset(AutorQuerySet)):
     # Nie włączaj websearch gdy podano minus (podwójne nazwiska z myślnikiem)
     fts_enable_websearch_on_minus_or_quote = False
 

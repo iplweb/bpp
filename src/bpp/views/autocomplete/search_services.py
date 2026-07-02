@@ -1,6 +1,5 @@
 """Global search functions for autocomplete views."""
 
-from django.db.models import Q
 from django.db.models.aggregates import Count
 
 from bpp import const
@@ -44,17 +43,16 @@ def globalne_wyszukiwanie_autora(querysets, q, uczelnia=None):
     """Add author search querysets.
 
     Gdy podano ``uczelnia`` (multi-hosted, publiczny global-search), zawęża do
-    autorów związanych z uczelnią obecnie LUB w przeszłości (reguła R3b z
-    ``PublicAutorAutocomplete``). ``uczelnia=None`` → globalnie (admin search).
+    autorów związanych z uczelnią obecnie LUB w przeszłości (zakres
+    ``AutorQuerySet.kiedykolwiek_zwiazani``). ``uczelnia=None`` → globalnie
+    (admin search): tu None znaczy „bez zawężenia", więc NIE delegujemy go do
+    metody (która fail-closuje na None), tylko zwracamy qs bez zmian.
     """
 
     def _scope(qs):
         if uczelnia is None:
             return qs
-        return qs.filter(
-            Q(aktualna_jednostka__uczelnia=uczelnia)
-            | Q(autor_jednostka__jednostka__uczelnia=uczelnia)
-        ).distinct()
+        return qs.kiedykolwiek_zwiazani(uczelnia)
 
     if jest_orcid(q):
         querysets.append(

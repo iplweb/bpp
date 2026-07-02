@@ -206,11 +206,14 @@ def test_autor_aktualnie_zatrudniony_tylko_aktualna_jednostka(
     autor_uczelnia2,
     settings,
 ):
-    """``AutorAktualnieZatrudnionyNaUczelni`` zawęża WYŁĄCZNIE po
-    ``aktualna_jednostka__uczelnia`` — bez żadnych innych warunków.
+    """``AutorAktualnieZatrudnionyNaUczelni`` zawęża po
+    ``aktualna_jednostka__uczelnia`` ORAZ ``skupia_pracownikow=True`` (zakres
+    ``aktualnie_zatrudnieni``).
 
-    Aktualnie zatrudniony w U1 → jest. Aktualny w U2 → odpada. Bez aktualnej
-    jednostki (niezatrudniony / tylko historia) → odpada. Lista płaska.
+    Aktualnie zatrudniony w U1 (realna jednostka) → jest. Aktualny w U2 →
+    odpada. Bez aktualnej jednostki (niezatrudniony / tylko historia) → odpada.
+    Aktualna jednostka obca/techniczna (``skupia_pracownikow=False``) → odpada.
+    Lista płaska.
     """
     settings.ALLOWED_HOSTS = ["*"]
     from model_bakery import baker
@@ -220,6 +223,10 @@ def test_autor_aktualnie_zatrudniony_tylko_aktualna_jednostka(
     # niezatrudniony aktualnie nigdzie (np. tylko historia) → poza zakresem
     autor_bez_aktualnej = baker.make("bpp.Autor", aktualna_jednostka=None)
 
+    # aktualna jednostka obca (nie skupia pracowników) → poza zakresem
+    obca = baker.make("bpp.Jednostka", uczelnia=uczelnia1, skupia_pracownikow=False)
+    autor_w_obcej = baker.make("bpp.Autor", aktualna_jednostka=obca)
+
     view = AutorAktualnieZatrudnionyNaUczelni()
     view.request = make_request_for_site(site1)
     view.q = ""
@@ -228,6 +235,7 @@ def test_autor_aktualnie_zatrudniony_tylko_aktualna_jednostka(
     assert autor_uczelnia1.pk in pks  # aktualnie zatrudniony w U1
     assert autor_uczelnia2.pk not in pks  # aktualny w U2 → odpada
     assert autor_bez_aktualnej.pk not in pks  # brak aktualnej jednostki → odpada
+    assert autor_w_obcej.pk not in pks  # aktualna jednostka obca → odpada
 
     context = {"object_list": list(view.get_queryset())}
     results = view.get_results(context)
