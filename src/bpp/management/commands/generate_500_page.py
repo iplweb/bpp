@@ -41,6 +41,18 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         static_root = Path(settings.STATIC_ROOT)
 
+        # Multi-hosted + SEO: renderowane strony 500 zawierają w <head>
+        # `<meta property="og:url" content="{{ request.build_absolute_uri }}">`
+        # (bare.html). build_absolute_uri woła get_host(), który waliduje
+        # ALLOWED_HOSTS. Renderujemy per-domena fałszywym requestem z
+        # SERVER_NAME = domena Site, więc KAŻDA renderowana domena musi być w
+        # ALLOWED_HOSTS na czas generacji — inaczej DisallowedHost wywala render
+        # (request._uczelnia chroni tylko resolver uczelni, nie og:url).
+        _rendered_hosts = list(Site.objects.values_list("domain", flat=True))
+        settings.ALLOWED_HOSTS = list(settings.ALLOWED_HOSTS) + [
+            h for h in _rendered_hosts if h not in settings.ALLOWED_HOSTS
+        ]
+
         # 1. Generyczny fallback — pojedyncza uczelnia (single-site) albo
         #    neutralna „niezdefiniowana uczelnia" (multi-site bez dopasowania
         #    domeny). nginx serwuje go przez `try_files ... /static/500.html`,
