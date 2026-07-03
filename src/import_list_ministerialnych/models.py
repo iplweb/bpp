@@ -1,12 +1,12 @@
 from django.core.serializers.json import DjangoJSONEncoder
 from django.db import models
+from liveops.models import LiveOperation
 
 from bpp.fields import YearField
 from bpp.models import Zrodlo
-from bpp_liveops.models import BppLiveOperation
 
 
-class ImportListMinisterialnych(BppLiveOperation):
+class ImportListMinisterialnych(LiveOperation):
     rok = YearField()
     plik = models.FileField(upload_to="protected/import_list_ministerialnych/")
     zapisz_zmiany_do_bazy = models.BooleanField(default=False)
@@ -21,9 +21,10 @@ class ImportListMinisterialnych(BppLiveOperation):
         '"Electronics (Switzerland)" oraz "Electronics", gdy w bazie jest wyłącznie źródło "Electronics").',
     )
 
-    def reset_children(self):
-        # Wołane przez BppRestartView przed ponownym zakolejkowaniem —
-        # odpowiednik dawnego long_running on_reset().
+    def on_restart(self):
+        # Hook liveops: wołany przez RestartView przed resetem stanu i
+        # ponownym zakolejkowaniem — odpowiednik dawnego long_running
+        # on_reset(). Kasuje wiersze poprzedniego przebiegu.
         self.wierszimportulistyministerialnej_set.all().delete()
 
     def run(self, p):

@@ -383,10 +383,10 @@ INSTALLED_APPS = [
     "django.contrib.sitemaps",
     "django.contrib.postgres",
     "long_running",
-    # django-liveops + cienka warstwa BPP (BppLiveOperation + centralne
-    # widoki live/cancel/restart). Nastepca `long_running`.
+    # django-liveops — nastepca `long_running`. Routing live/cancel/restart
+    # jest generyczny (op_type) i mieszka w samym pakiecie (liveops.urls),
+    # wiec nie potrzebujemy juz zadnej warstwy posredniej po stronie BPP.
     "liveops",
-    "bpp_liveops",
     "import_pracownikow",
     "import_list_if",
     "password_policies",
@@ -935,16 +935,14 @@ CHANNEL_LAYERS = {
 
 # django-liveops. RUNNER="celery" — operacje wykonuje worker celery (tak jak
 # stary `perform_generic_long_running_task`). BASE_TEMPLATE = bazowy szablon
-# BPP (Foundation). THROTTLE_HZ — max liczba pushy % na sekunde.
-#
-# UWAGA: celowo NIE ustawiamy REQUIRED_GROUP. Gating grup robimy przez braces
-# GroupRequiredMixin w bpp_liveops.views / widokach aplikacji, bo braces
-# ZWALNIA superuserów, a liveopsowe REQUIRED_GROUP rzuca 403 nawet superuserowi
-# — to byłaby regresja względem long_running.
+# BPP (Foundation). THROTTLE_HZ — max liczba pushy % na sekunde. REQUIRED_GROUP
+# bramkuje wszystkie operacje live; od 0.2.0 liveops ZWALNIA superuserów z tej
+# bramki (parytet z braces/adminem), wiec mozna jej uzyc bez regresji.
 LIVEOPS = {
     "BASE_TEMPLATE": "base.html",
     "RUNNER": "celery",
     "THROTTLE_HZ": 10,
+    "REQUIRED_GROUP": "wprowadzanie danych",
 }
 
 # Pozwól anonimowym użytkownikom łączyć się z WebSocketem notyfikacji

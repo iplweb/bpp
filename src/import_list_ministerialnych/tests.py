@@ -857,18 +857,22 @@ def test_run_finalizes_operation_with_result_context():
 
 @pytest.mark.django_db
 def test_central_live_view_renders_host_page(admin_client, admin_user):
-    """Centralny liveops:live rozwiązuje model po UUID i renderuje host-page.
+    """Generyczny liveops:live (op_type) renderuje host-page.
 
-    Waliduje warstwę bpp_liveops: ResolveOperationMixin znajduje konkretny
-    model po UUID, render host-template (import_list_ministerialnych.html) z
-    kontenerem live-operacji (data-liveop-channel/token dla liveops.js), a
-    superuser przechodzi bramkę grupy (braces, superuser-exempt).
+    Waliduje integrację z django-liveops 0.2: get_absolute_url() zawiera
+    op_type (<app_label>.<model_name>), widok pakietu rozwiązuje konkretny
+    model jednym zapytaniem, renderuje host-template z kontenerem
+    live-operacji (data-liveop-channel/token dla liveops.js), a superuser
+    przechodzi bramkę REQUIRED_GROUP (zwolnienie superusera w 0.2).
     """
     op = baker.make(ImportListMinisterialnych, owner=admin_user, rok=2023)
     op.plik.name = "protected/import_list_ministerialnych/dummy.xlsx"
     op.save(update_fields=["plik"])
 
-    response = admin_client.get(f"/live/{op.pk}/")
+    url = op.get_absolute_url()
+    assert url == f"/live/import_list_ministerialnych.importlistministerialnych/{op.pk}/"
+
+    response = admin_client.get(url)
     assert response.status_code == 200
     content = response.content.decode()
     assert "data-liveop-channel" in content

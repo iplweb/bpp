@@ -167,12 +167,13 @@ urlpatterns = (
                 ("import_list_ministerialnych.urls", "import_list_ministerialnych"),
             ),
         ),
-        # Centralny namespace "liveops": generyczne widoki live/cancel/restart
-        # rozwiazujace konkretny model operacji po UUID (patrz bpp_liveops.views).
-        # get_absolute_url() na kazdej operacji robi reverse("liveops:live").
+        # Centralny, generyczny router live-operacji z samego pakietu liveops:
+        # live/cancel/restart rozwiazuja konkretny model po op_type
+        # (<app_label>.<model_name>) — jedno zapytanie, bez skanu. Kazda
+        # operacja robi reverse("liveops:live", op_type=..., pk=...).
         url(
             r"^live/",
-            include(("bpp_liveops.urls", "liveops")),
+            include("liveops.urls"),
         ),
         url(
             r"^import_list_if/",

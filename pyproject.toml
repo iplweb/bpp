@@ -157,7 +157,7 @@ dependencies = [
     "babel>=2.17",
     # django-liveops: framework dla dlugo-dzialajacych operacji z live UI
     # (WebSocket + HTMX). Nastepca wewnetrznego `src/long_running`.
-    "django-liveops>=0.1,<0.2",
+    "django-liveops>=0.2,<0.3",
 ]
 
 [project.optional-dependencies]
