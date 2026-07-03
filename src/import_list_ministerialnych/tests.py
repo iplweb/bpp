@@ -1,6 +1,7 @@
 from unittest.mock import patch
 
 import pytest
+from liveops.testing import MockProgress
 from model_bakery import baker
 
 from bpp.models import Zrodlo
@@ -10,33 +11,6 @@ from import_list_ministerialnych.core import (
 )
 from import_list_ministerialnych.models import ImportListMinisterialnych
 from pbn_api.models import Journal
-
-
-class FakeProgress:
-    """Minimalny obiekt Progress do testów jednostkowych rdzenia importu.
-
-    ``core.analyze_excel_file_import_list_ministerialnych`` używa tylko
-    ``track`` (iterowanie z postępem) i ``log``. Reszta metod jest dla
-    kompletności API liveops.Progress, gdyby rdzeń zaczął ich używać.
-    """
-
-    def track(self, iterable, total=None, label=None, unit="item"):
-        return iter(iterable)
-
-    def log(self, line):
-        pass
-
-    def percent(self, value):
-        pass
-
-    def status(self, text, level="info"):
-        pass
-
-    def result(self, context=None, **extra):
-        pass
-
-    def check_cancelled(self):
-        pass
 
 
 @pytest.mark.django_db
@@ -71,7 +45,7 @@ def test_import_list_ministerialnych_with_mnisw_id():
         importuj_dyscypliny=False,
         ignoruj_zrodla_bez_odpowiednika=False,
     )
-    p = FakeProgress()
+    p = MockProgress(parent_model)
 
     # Mock Excel data with mniswId but no ISSN
     mock_data = [
@@ -141,7 +115,7 @@ def test_import_list_ministerialnych_issn_priority():
         importuj_dyscypliny=False,
         ignoruj_zrodla_bez_odpowiednika=False,
     )
-    p = FakeProgress()
+    p = MockProgress(parent_model)
 
     # Mock Excel data with both ISSN and mniswId
     mock_data = [
@@ -185,7 +159,7 @@ def test_import_list_ministerialnych_no_mnisw_id():
         importuj_dyscypliny=False,
         ignoruj_zrodla_bez_odpowiednika=False,
     )
-    p = FakeProgress()
+    p = MockProgress(parent_model)
 
     # Mock Excel data without mniswId column
     mock_data = [
@@ -229,7 +203,7 @@ def test_import_list_ministerialnych_invalid_mnisw_id():
         importuj_dyscypliny=False,
         ignoruj_zrodla_bez_odpowiednika=False,
     )
-    p = FakeProgress()
+    p = MockProgress(parent_model)
 
     mock_data = [
         {
@@ -286,7 +260,7 @@ def test_import_list_ministerialnych_column_name_with_space():
         importuj_dyscypliny=False,
         ignoruj_zrodla_bez_odpowiednika=False,
     )
-    p = FakeProgress()
+    p = MockProgress(parent_model)
 
     # Mock Excel data with space in column name (common Excel issue)
     mock_data = [
@@ -392,7 +366,7 @@ def test_import_with_duplicate_detection():
         importuj_dyscypliny=False,
         ignoruj_zrodla_bez_odpowiednika=False,
     )
-    p = FakeProgress()
+    p = MockProgress(parent_model)
 
     # Mock data with duplicate ISSN
     mock_data = [
@@ -455,7 +429,7 @@ def test_import_with_multiple_duplicate_reasons():
         importuj_dyscypliny=False,
         ignoruj_zrodla_bez_odpowiednika=False,
     )
-    p = FakeProgress()
+    p = MockProgress(parent_model)
 
     mock_data = [
         {
@@ -612,7 +586,7 @@ def test_import_with_nie_porownuj_po_tytulach_enabled():
         ignoruj_zrodla_bez_odpowiednika=False,
         nie_porownuj_po_tytulach=True,  # Enable the new option
     )
-    p = FakeProgress()
+    p = MockProgress(parent_model)
 
     # Mock Excel data with title "Electronics" but ISSN matching "Electronics (Switzerland)"
     mock_data = [
@@ -659,7 +633,7 @@ def test_import_with_nie_porownuj_po_tytulach_disabled():
         ignoruj_zrodla_bez_odpowiednika=False,
         nie_porownuj_po_tytulach=False,  # Default behavior - use title matching
     )
-    p = FakeProgress()
+    p = MockProgress(parent_model)
 
     # Mock Excel data with matching title but no ISSN
     mock_data = [
@@ -706,7 +680,7 @@ def test_import_title_not_matched_when_nie_porownuj_po_tytulach_enabled():
         ignoruj_zrodla_bez_odpowiednika=False,
         nie_porownuj_po_tytulach=True,  # Skip title matching
     )
-    p = FakeProgress()
+    p = MockProgress(parent_model)
 
     # Mock Excel data with matching title but no identifiers
     mock_data = [
@@ -802,16 +776,12 @@ def test_import_results_view_statistics(admin_client, admin_user):
 def test_run_finalizes_operation_with_result_context():
     """Integracja liveops: run() → core → p.result() finalizuje operację.
 
-    Używa prawdziwego liveops.TextProgress (nie FakeProgress), żeby
+    Używa liveops.testing.MockProgress, żeby
     zweryfikować, że po przejściu run():
     - powstają wiersze importu,
     - operacja jest oznaczona jako zakończona sukcesem,
     - result_context zawiera podsumowanie (total/duplicates).
     """
-    import io
-
-    from liveops.progress import TextProgress
-
     zrodlo = baker.make(Zrodlo, nazwa="Run Journal", issn="1234-5678")
 
     op = baker.make(
@@ -843,7 +813,7 @@ def test_run_finalizes_operation_with_result_context():
         return_value=mock_data,
     ):
         with patch("import_list_ministerialnych.core.napraw_literowki_w_bazie"):
-            op.run(TextProgress(op, io.StringIO()))
+            op.run(MockProgress(op))
 
     op.refresh_from_db()
     assert op.finished_on is not None
@@ -870,7 +840,9 @@ def test_central_live_view_renders_host_page(admin_client, admin_user):
     op.save(update_fields=["plik"])
 
     url = op.get_absolute_url()
-    assert url == f"/live/import_list_ministerialnych.importlistministerialnych/{op.pk}/"
+    assert (
+        url == f"/live/import_list_ministerialnych.importlistministerialnych/{op.pk}/"
+    )
 
     response = admin_client.get(url)
     assert response.status_code == 200

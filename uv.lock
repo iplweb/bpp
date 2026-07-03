@@ -589,7 +589,7 @@ requires-dist = [
     { name = "django-grappelli", specifier = ">=5.0.0,<6" },
     { name = "django-group-by", specifier = "==0.3.1" },
     { name = "django-import-export", git = "https://github.com/mpasternak/django-import-export.git?rev=d6ee0d39194fee31437affbdc6fee5ce549b4b8f" },
-    { name = "django-liveops", specifier = ">=0.2,<0.3" },
+    { name = "django-liveops", specifier = ">=0.3,<0.4" },
     { name = "django-loginas", specifier = "==0.3.14" },
     { name = "django-messages-extends", specifier = "==0.6.3" },
     { name = "django-microsoft-auth", marker = "extra == 'office365'", specifier = ">=3.0.1" },
@@ -1939,16 +1939,16 @@ wheels = [
 
 [[package]]
 name = "django-liveops"
-version = "0.2.0"
+version = "0.3.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "channels", marker = "platform_python_implementation != 'PyPy'" },
     { name = "django", marker = "platform_python_implementation != 'PyPy'" },
     { name = "django-channels-broadcast", marker = "platform_python_implementation != 'PyPy'" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/96/47/c7b5b0476c31bb98ee5877f0992e3c0cb4e33c4cc5a46c518953e996d42b/django_liveops-0.2.0.tar.gz", hash = "sha256:bdcd6e3e3960173d56bc7caec832aab11ba3c030063353c475fd9fd7953da77c", size = 271526, upload-time = "2026-07-03T15:49:02.907Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/2c/90/86f39bce9afedb87ba3769d3a2c6edcf56c3aad64695e70eb9fb1928b4d0/django_liveops-0.3.0.tar.gz", hash = "sha256:2120f5bda23a2c57b9be752b964e5d014e80c0c7706ecb31e435d490b2abc75a", size = 276461, upload-time = "2026-07-03T18:00:20.819Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/b8/06/6799e3a9246df99401125d4b1b7ff868773a1f48672424d75a9cc0ad7112/django_liveops-0.2.0-py3-none-any.whl", hash = "sha256:4e943f50f21769b70c849d8080ff1c0d6d83f05ec1d6d5c04c93d58881698833", size = 71758, upload-time = "2026-07-03T15:49:04.29Z" },
+    { url = "https://files.pythonhosted.org/packages/7d/25/675043a056b2a868909cf001ccc31098d2308e444c38437ec9d6aa49d763/django_liveops-0.3.0-py3-none-any.whl", hash = "sha256:a727840f2de249b003b6b4fb2ddaa71d155dd2d27bfd209bff2991c18d14fc01", size = 76158, upload-time = "2026-07-03T18:00:16.774Z" },
 ]
 
 [[package]]
