@@ -187,26 +187,28 @@ class JednostkaAdmin(
         return self.list_display
 
     def get_list_per_page(self):
-        from django.db import OperationalError, connection
+        from django.db import DatabaseError, connection
 
         # Django evaluates `ModelAdmin.list_per_page` during app-ready
-        # system checks (`apps.populate()`), i.e. before any DB may exist
-        # — this is the hot path for `manage.py baseline_check` or
-        # `makemigrations` on a fresh clone / CI runner without Postgres.
-        # Bail out to the default in two cases: the DB is unreachable at
-        # all (OperationalError), or the connection works but the
-        # uczelnia table hasn't been created yet.
+        # system checks (`apps.populate()`), które `manage.py migrate`
+        # uruchamia PRZED zastosowaniem migracji. W tym oknie schemat bazy
+        # potrafi być starszy niż kod — bail out do wartości domyślnej w
+        # każdym takim „schema-lags-code":
+        #   * DB nieosiągalna (OperationalError) — fresh clone / CI bez PG,
+        #   * tabela `bpp_uczelnia` jeszcze nie istnieje (świeża baza),
+        #   * tabela istnieje, ale świeżo dodana, nie-zmigrowana kolumna
+        #     (np. `site_id` z multi-hosted) — istniejąca instalacja w
+        #     trakcie upgrade'u. Zapytanie rzuca wtedy ProgrammingError;
+        #     bez tego guarda `migrate` padał, więc nie dało się zastosować
+        #     migracji dodającej kolumnę (deadlock upgrade'u).
+        # `DatabaseError` to wspólny rodzic OperationalError/ProgrammingError.
+        req = getattr(self, "request", None)
         try:
             if "bpp_uczelnia" not in connection.introspection.table_names():
                 return BaseBppAdminMixin.list_per_page
-        except OperationalError:
+            uczelnia = Uczelnia.objects.get_for_request(req)
+        except DatabaseError:
             return BaseBppAdminMixin.list_per_page
-
-        req = None
-        if hasattr(self, "request"):
-            req = self.request
-
-        uczelnia = Uczelnia.objects.get_for_request(req)
 
         if uczelnia is None:
             return BaseBppAdminMixin.list_per_page
