@@ -28,9 +28,16 @@ def _format_none(value, none_text="pustego"):
     return none_text if value is None else value
 
 
-def validate_zatrudnienie_starts_with_university(zatrudnienie_value):
+def validate_zatrudnienie_starts_with_university(zatrudnienie_value, uczelnia=None):
     """
-    Check if ZATRUDNIENIE field starts with any university name from the system.
+    Check if ZATRUDNIENIE field starts with a valid university name.
+
+    Multi-hosted: gdy podano ``uczelnia`` (uczelnia importu), akceptowana jest
+    WYŁĄCZNIE jej nazwa — wiersz pracownika innej uczelni współistniejącej w
+    bazie zostaje odrzucony. Bez ``uczelnia`` (stare importy / brak
+    rozstrzygnięcia) — zachowanie wsteczne: dopasowanie do dowolnej uczelni
+    w systemie.
+
     Returns (is_valid, university_name) tuple.
     """
     if not zatrudnienie_value or not isinstance(zatrudnienie_value, str):
@@ -38,14 +45,49 @@ def validate_zatrudnienie_starts_with_university(zatrudnienie_value):
 
     zatrudnienie_clean = zatrudnienie_value.strip()
 
-    # Get all university names from the system
-    university_names = Uczelnia.objects.values_list("nazwa", flat=True)
+    if uczelnia is not None:
+        university_names = [uczelnia.nazwa]
+    else:
+        # Get all university names from the system
+        university_names = Uczelnia.objects.values_list("nazwa", flat=True)
 
     for university_name in university_names:
         if zatrudnienie_clean.startswith(university_name):
             return True, university_name
 
     return False, None
+
+
+def _komunikat_odrzucenia_zatrudnienia(zatrudnienie, uczelnia):
+    """Komunikat REKORD ZIGNOROWANY dla wiersza z niepasującym ZATRUDNIENIE.
+
+    Multi-hosted: gdy import ma przypisaną uczelnię, wskazujemy JEJ nazwę;
+    w trybie wstecznym (bez uczelni) — komunikat jak dawniej.
+    """
+    if uczelnia is not None:
+        powod = f"nie zaczyna się od nazwy uczelni importu ('{uczelnia.nazwa}')."
+    else:
+        powod = "nie zaczyna się od nazwy żadnej uczelni w systemie."
+    return f"REKORD ZIGNOROWANY: Pole 'ZATRUDNIENIE' ('{zatrudnienie}') {powod}"
+
+
+def autor_z_innej_uczelni(autor, uczelnia):
+    """Czy dopasowany autor jest ZATRUDNIONY W INNEJ uczelni niż uczelnia importu.
+
+    Multi-hosted: ``matchuj_autora`` dopasowuje globalnie (po nazwisku/ORCID/PBN),
+    więc dla importu uczelni X może trafić autora uczelni Y. Zapis jego danych
+    (dyscypliny, rodzaj autora, ORCID) byłby mutacją cudzych rekordów. Guard
+    odrzuca tylko autorów o JEDNOZNACZNIE obcej przynależności — z ustawioną
+    ``aktualna_jednostka`` należącą do innej uczelni. Autor bez aktualnej
+    jednostki (nieznana przynależność) NIE jest odrzucany (unikamy regresji dla
+    świeżo utworzonych/niepowiązanych autorów). Bez ``uczelnia`` — brak guardu.
+    """
+    if uczelnia is None or autor is None:
+        return False
+    aktualna_jednostka = autor.aktualna_jednostka
+    if aktualna_jednostka is None:
+        return False
+    return aktualna_jednostka.uczelnia_id != uczelnia.pk
 
 
 def _process_disciplines_from_row(row):
@@ -446,7 +488,7 @@ def analyze_file_import_polon(fn, parent_model: ImportPlikuPolon):
         if not parent_model.ignoruj_miejsce_pracy:
             zatrudnienie = row.get("ZATRUDNIENIE", "")
             is_valid_employment, _ = validate_zatrudnienie_starts_with_university(
-                zatrudnienie
+                zatrudnienie, uczelnia=parent_model.uczelnia
             )
             if not is_valid_employment:
                 WierszImportuPlikuPolon.objects.create(
@@ -456,9 +498,8 @@ def analyze_file_import_polon(fn, parent_model: ImportPlikuPolon):
                     autor=None,
                     dyscyplina_naukowa=None,
                     subdyscyplina_naukowa=None,
-                    rezultat=(
-                        f"REKORD ZIGNOROWANY: Pole 'ZATRUDNIENIE' ('{zatrudnienie}') "
-                        f"nie zaczyna się od nazwy żadnej uczelni w systemie."
+                    rezultat=_komunikat_odrzucenia_zatrudnienia(
+                        zatrudnienie, parent_model.uczelnia
                     ),
                 )
                 parent_model.send_progress(n_row * 100.0 / total)
@@ -478,6 +519,28 @@ def analyze_file_import_polon(fn, parent_model: ImportPlikuPolon):
                 "STOPIEN_TYTUL_AKTUALNY_NA_DZIEN_WYGENEROWANIA_RAPORTU", None
             ),
         )
+
+        # Multi-hosted guard: nie dotykaj autora zatrudnionego w innej uczelni.
+        # matchuj_autora dopasowuje globalnie, więc mógł trafić autora obcej
+        # uczelni — jego danych (dyscypliny, rodzaj, ORCID) nie wolno modyfikować
+        # przy imporcie dla naszej uczelni.
+        if autor_z_innej_uczelni(autor, parent_model.uczelnia):
+            WierszImportuPlikuPolon.objects.create(
+                parent=parent_model,
+                dane_z_xls=row,
+                nr_wiersza=n_row + 1,
+                autor=autor,
+                dyscyplina_naukowa=None,
+                subdyscyplina_naukowa=None,
+                rezultat=(
+                    f"REKORD ZIGNOROWANY: Dopasowany autor ({autor}) jest "
+                    f"zatrudniony w innej uczelni niż uczelnia importu "
+                    f"('{parent_model.uczelnia.nazwa}') — pominięto, aby nie "
+                    f"modyfikować danych obcej uczelni."
+                ),
+            )
+            parent_model.send_progress(n_row * 100.0 / total)
+            continue
 
         # Skip unmatched authors if configured
         if autor is None and parent_model.ukryj_niezmatchowanych_autorow:
