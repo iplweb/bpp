@@ -155,6 +155,9 @@ dependencies = [
     "django-first-run-wizard>=0.1.1",
     "uvicorn-worker>=0.4.0",
     "babel>=2.17",
+    # django-liveops: framework dla dlugo-dzialajacych operacji z live UI
+    # (WebSocket + HTMX). Nastepca wewnetrznego `src/long_running`.
+    "django-liveops>=0.1,<0.2",
 ]
 
 [project.optional-dependencies]

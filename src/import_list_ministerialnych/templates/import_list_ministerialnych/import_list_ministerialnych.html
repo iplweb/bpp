@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% load static liveops %}
+
+{% block extratitle %}
+    Import list ministerialnych - {{ object.plik.name }}
+{% endblock %}
+
+{% block breadcrumbs %}
+    {{ block.super }}
+    <li><a href="{% url "import_list_ministerialnych:index" %}">import list ministerialnych</a></li>
+    <li class="current">import {{ object.plik.name }}</li>
+{% endblock %}
+
+{% block content %}
+    <h1>Import danych {{ object.plik.name }}</h1>
+
+    {# Region live-operacji: kontener z data-liveop-channel/token + strefy #}
+    {# op-status/op-progress/op-log/op-stages/op-result (OOB-swap z workera). #}
+    {% live_operation object %}
+
+    <p>
+        <a href="{% url "import_list_ministerialnych:importlistministerialnych-results" object.pk %}"
+           class="button">
+            <span class="fi-list"></span> Zobacz pełne wyniki importu
+        </a>
+    </p>
+
+    {# Kolejność ładowania jest istotna: htmx → klient channels_broadcast → #}
+    {# liveops.js (patchuje channelsBroadcast.addMessage i inicjuje socket). #}
+    <script src="{% static 'liveops/vendor/htmx.min.js' %}"></script>
+    <script src="{% static 'channels_broadcast/js/notifications.js' %}"></script>
+    <script src="{% static 'liveops/liveops.js' %}"></script>
+{% endblock %}

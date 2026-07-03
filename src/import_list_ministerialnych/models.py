@@ -3,11 +3,10 @@ from django.db import models
 
 from bpp.fields import YearField
 from bpp.models import Zrodlo
-from long_running.models import Operation
-from long_running.notification_mixins import ASGINotificationMixin
+from bpp_liveops.models import BppLiveOperation
 
 
-class ImportListMinisterialnych(ASGINotificationMixin, Operation):
+class ImportListMinisterialnych(BppLiveOperation):
     rok = YearField()
     plik = models.FileField(upload_to="protected/import_list_ministerialnych/")
     zapisz_zmiany_do_bazy = models.BooleanField(default=False)
@@ -22,15 +21,30 @@ class ImportListMinisterialnych(ASGINotificationMixin, Operation):
         '"Electronics (Switzerland)" oraz "Electronics", gdy w bazie jest wyłącznie źródło "Electronics").',
     )
 
-    def on_reset(self):
+    def reset_children(self):
+        # Wołane przez BppRestartView przed ponownym zakolejkowaniem —
+        # odpowiednik dawnego long_running on_reset().
         self.wierszimportulistyministerialnej_set.all().delete()
 
-    def perform(self):
+    def run(self, p):
+        # Punkt wejścia liveops (dawniej Operation.perform()). `p` to obiekt
+        # Progress (Web/Text) — przekazujemy go do rdzenia, który raportuje
+        # postęp i loguje wyniki wierszy. Na końcu finalizujemy operację
+        # p.result(...) z podsumowaniem (trafia do result_context + szablonu
+        # wyniku).
         from import_list_ministerialnych.core import (
             analyze_excel_file_import_list_ministerialnych,
         )
 
-        analyze_excel_file_import_list_ministerialnych(self.plik.path, self)
+        analyze_excel_file_import_list_ministerialnych(self.plik.path, self, p)
+
+        rows = self.get_details_set()
+        p.result(
+            {
+                "total": rows.count(),
+                "duplicates": rows.filter(is_duplicate=True).count(),
+            }
+        )
 
     def get_details_set(self):
         return WierszImportuListyMinisterialnej.objects.filter(parent=self)

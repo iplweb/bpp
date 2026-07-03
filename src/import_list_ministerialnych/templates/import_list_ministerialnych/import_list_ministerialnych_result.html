@@ -1,0 +1,14 @@
+{# Fragment wyniku (liveops result_template_name). Renderowany po p.result() #}
+{# jako OOB-swap #op-result oraz przy wejściu na zakończoną operację. #}
+{# Kontekst: operation, total, duplicates (z result_context). #}
+<div class="panel callout success">
+    <h3><span class="fi-check"></span> Import zakończony</h3>
+    <p>
+        Przetworzono wierszy: <strong>{{ total }}</strong>{% if duplicates %},
+        w tym wykryto duplikatów: <strong>{{ duplicates }}</strong>{% endif %}.
+    </p>
+    <a href="{% url "import_list_ministerialnych:importlistministerialnych-results" operation.pk %}"
+       class="button">
+        <span class="fi-list"></span> Zobacz pełne wyniki importu
+    </a>
+</div>

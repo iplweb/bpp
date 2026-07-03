@@ -1,4 +1,4 @@
-from unittest.mock import Mock, patch
+from unittest.mock import patch
 
 import pytest
 from model_bakery import baker
@@ -10,6 +10,33 @@ from import_list_ministerialnych.core import (
 )
 from import_list_ministerialnych.models import ImportListMinisterialnych
 from pbn_api.models import Journal
+
+
+class FakeProgress:
+    """Minimalny obiekt Progress do testów jednostkowych rdzenia importu.
+
+    ``core.analyze_excel_file_import_list_ministerialnych`` używa tylko
+    ``track`` (iterowanie z postępem) i ``log``. Reszta metod jest dla
+    kompletności API liveops.Progress, gdyby rdzeń zaczął ich używać.
+    """
+
+    def track(self, iterable, total=None, label=None, unit="item"):
+        return iter(iterable)
+
+    def log(self, line):
+        pass
+
+    def percent(self, value):
+        pass
+
+    def status(self, text, level="info"):
+        pass
+
+    def result(self, context=None, **extra):
+        pass
+
+    def check_cancelled(self):
+        pass
 
 
 @pytest.mark.django_db
@@ -44,7 +71,7 @@ def test_import_list_ministerialnych_with_mnisw_id():
         importuj_dyscypliny=False,
         ignoruj_zrodla_bez_odpowiednika=False,
     )
-    parent_model.send_progress = Mock()
+    p = FakeProgress()
 
     # Mock Excel data with mniswId but no ISSN
     mock_data = [
@@ -66,7 +93,9 @@ def test_import_list_ministerialnych_with_mnisw_id():
         return_value=mock_data,
     ):
         with patch("import_list_ministerialnych.core.napraw_literowki_w_bazie"):
-            analyze_excel_file_import_list_ministerialnych("dummy.xlsx", parent_model)
+            analyze_excel_file_import_list_ministerialnych(
+                "dummy.xlsx", parent_model, p
+            )
 
     # Check that the journal was matched and punktacja was set
     assert zrodlo.punktacja_zrodla_set.filter(rok=2023).exists()
@@ -112,7 +141,7 @@ def test_import_list_ministerialnych_issn_priority():
         importuj_dyscypliny=False,
         ignoruj_zrodla_bez_odpowiednika=False,
     )
-    parent_model.send_progress = Mock()
+    p = FakeProgress()
 
     # Mock Excel data with both ISSN and mniswId
     mock_data = [
@@ -133,7 +162,9 @@ def test_import_list_ministerialnych_issn_priority():
         return_value=mock_data,
     ):
         with patch("import_list_ministerialnych.core.napraw_literowki_w_bazie"):
-            analyze_excel_file_import_list_ministerialnych("dummy.xlsx", parent_model)
+            analyze_excel_file_import_list_ministerialnych(
+                "dummy.xlsx", parent_model, p
+            )
 
     # Should match by ISSN (zrodlo2), not by mniswId (zrodlo1)
     wiersz = parent_model.wierszimportulistyministerialnej_set.first()
@@ -154,7 +185,7 @@ def test_import_list_ministerialnych_no_mnisw_id():
         importuj_dyscypliny=False,
         ignoruj_zrodla_bez_odpowiednika=False,
     )
-    parent_model.send_progress = Mock()
+    p = FakeProgress()
 
     # Mock Excel data without mniswId column
     mock_data = [
@@ -175,7 +206,9 @@ def test_import_list_ministerialnych_no_mnisw_id():
         return_value=mock_data,
     ):
         with patch("import_list_ministerialnych.core.napraw_literowki_w_bazie"):
-            analyze_excel_file_import_list_ministerialnych("dummy.xlsx", parent_model)
+            analyze_excel_file_import_list_ministerialnych(
+                "dummy.xlsx", parent_model, p
+            )
 
     # Should still match by ISSN
     wiersz = parent_model.wierszimportulistyministerialnej_set.first()
@@ -196,7 +229,7 @@ def test_import_list_ministerialnych_invalid_mnisw_id():
         importuj_dyscypliny=False,
         ignoruj_zrodla_bez_odpowiednika=False,
     )
-    parent_model.send_progress = Mock()
+    p = FakeProgress()
 
     mock_data = [
         {
@@ -216,7 +249,9 @@ def test_import_list_ministerialnych_invalid_mnisw_id():
         return_value=mock_data,
     ):
         with patch("import_list_ministerialnych.core.napraw_literowki_w_bazie"):
-            analyze_excel_file_import_list_ministerialnych("dummy.xlsx", parent_model)
+            analyze_excel_file_import_list_ministerialnych(
+                "dummy.xlsx", parent_model, p
+            )
 
     # Should fall back to e-issn matching
     wiersz = parent_model.wierszimportulistyministerialnej_set.first()
@@ -251,7 +286,7 @@ def test_import_list_ministerialnych_column_name_with_space():
         importuj_dyscypliny=False,
         ignoruj_zrodla_bez_odpowiednika=False,
     )
-    parent_model.send_progress = Mock()
+    p = FakeProgress()
 
     # Mock Excel data with space in column name (common Excel issue)
     mock_data = [
@@ -272,7 +307,9 @@ def test_import_list_ministerialnych_column_name_with_space():
         return_value=mock_data,
     ):
         with patch("import_list_ministerialnych.core.napraw_literowki_w_bazie"):
-            analyze_excel_file_import_list_ministerialnych("dummy.xlsx", parent_model)
+            analyze_excel_file_import_list_ministerialnych(
+                "dummy.xlsx", parent_model, p
+            )
 
     # Should still match by mniswId despite space in column name
     wiersz = parent_model.wierszimportulistyministerialnej_set.first()
@@ -355,7 +392,7 @@ def test_import_with_duplicate_detection():
         importuj_dyscypliny=False,
         ignoruj_zrodla_bez_odpowiednika=False,
     )
-    parent_model.send_progress = Mock()
+    p = FakeProgress()
 
     # Mock data with duplicate ISSN
     mock_data = [
@@ -386,7 +423,9 @@ def test_import_with_duplicate_detection():
         return_value=mock_data,
     ):
         with patch("import_list_ministerialnych.core.napraw_literowki_w_bazie"):
-            analyze_excel_file_import_list_ministerialnych("dummy.xlsx", parent_model)
+            analyze_excel_file_import_list_ministerialnych(
+                "dummy.xlsx", parent_model, p
+            )
 
     # Check that two rows were created
     assert parent_model.wierszimportulistyministerialnej_set.count() == 2
@@ -416,7 +455,7 @@ def test_import_with_multiple_duplicate_reasons():
         importuj_dyscypliny=False,
         ignoruj_zrodla_bez_odpowiednika=False,
     )
-    parent_model.send_progress = Mock()
+    p = FakeProgress()
 
     mock_data = [
         {
@@ -446,7 +485,9 @@ def test_import_with_multiple_duplicate_reasons():
         return_value=mock_data,
     ):
         with patch("import_list_ministerialnych.core.napraw_literowki_w_bazie"):
-            analyze_excel_file_import_list_ministerialnych("dummy.xlsx", parent_model)
+            analyze_excel_file_import_list_ministerialnych(
+                "dummy.xlsx", parent_model, p
+            )
 
     # Second row should have all three duplicate reasons
     second_row = parent_model.wierszimportulistyministerialnej_set.get(nr_wiersza=4)
@@ -571,7 +612,7 @@ def test_import_with_nie_porownuj_po_tytulach_enabled():
         ignoruj_zrodla_bez_odpowiednika=False,
         nie_porownuj_po_tytulach=True,  # Enable the new option
     )
-    parent_model.send_progress = Mock()
+    p = FakeProgress()
 
     # Mock Excel data with title "Electronics" but ISSN matching "Electronics (Switzerland)"
     mock_data = [
@@ -592,7 +633,9 @@ def test_import_with_nie_porownuj_po_tytulach_enabled():
         return_value=mock_data,
     ):
         with patch("import_list_ministerialnych.core.napraw_literowki_w_bazie"):
-            analyze_excel_file_import_list_ministerialnych("dummy.xlsx", parent_model)
+            analyze_excel_file_import_list_ministerialnych(
+                "dummy.xlsx", parent_model, p
+            )
 
     # Should match by ISSN (zrodlo_electronics_switzerland), NOT by title (zrodlo_electronics)
     wiersz = parent_model.wierszimportulistyministerialnej_set.first()
@@ -616,7 +659,7 @@ def test_import_with_nie_porownuj_po_tytulach_disabled():
         ignoruj_zrodla_bez_odpowiednika=False,
         nie_porownuj_po_tytulach=False,  # Default behavior - use title matching
     )
-    parent_model.send_progress = Mock()
+    p = FakeProgress()
 
     # Mock Excel data with matching title but no ISSN
     mock_data = [
@@ -637,7 +680,9 @@ def test_import_with_nie_porownuj_po_tytulach_disabled():
         return_value=mock_data,
     ):
         with patch("import_list_ministerialnych.core.napraw_literowki_w_bazie"):
-            analyze_excel_file_import_list_ministerialnych("dummy.xlsx", parent_model)
+            analyze_excel_file_import_list_ministerialnych(
+                "dummy.xlsx", parent_model, p
+            )
 
     # Should match by title since nie_porownuj_po_tytulach=False
     wiersz = parent_model.wierszimportulistyministerialnej_set.first()
@@ -661,7 +706,7 @@ def test_import_title_not_matched_when_nie_porownuj_po_tytulach_enabled():
         ignoruj_zrodla_bez_odpowiednika=False,
         nie_porownuj_po_tytulach=True,  # Skip title matching
     )
-    parent_model.send_progress = Mock()
+    p = FakeProgress()
 
     # Mock Excel data with matching title but no identifiers
     mock_data = [
@@ -682,7 +727,9 @@ def test_import_title_not_matched_when_nie_porownuj_po_tytulach_enabled():
         return_value=mock_data,
     ):
         with patch("import_list_ministerialnych.core.napraw_literowki_w_bazie"):
-            analyze_excel_file_import_list_ministerialnych("dummy.xlsx", parent_model)
+            analyze_excel_file_import_list_ministerialnych(
+                "dummy.xlsx", parent_model, p
+            )
 
     # Should NOT match because title matching is disabled and no IDs are provided
     wiersz = parent_model.wierszimportulistyministerialnej_set.first()
@@ -749,3 +796,81 @@ def test_import_results_view_statistics(admin_client, admin_user):
     assert response.context["duplicate_count"] == 4
     assert response.context["identical_punkty_count"] == 3
     assert response.context["identical_dyscypliny_count"] == 2
+
+
+@pytest.mark.django_db
+def test_run_finalizes_operation_with_result_context():
+    """Integracja liveops: run() → core → p.result() finalizuje operację.
+
+    Używa prawdziwego liveops.TextProgress (nie FakeProgress), żeby
+    zweryfikować, że po przejściu run():
+    - powstają wiersze importu,
+    - operacja jest oznaczona jako zakończona sukcesem,
+    - result_context zawiera podsumowanie (total/duplicates).
+    """
+    import io
+
+    from liveops.progress import TextProgress
+
+    zrodlo = baker.make(Zrodlo, nazwa="Run Journal", issn="1234-5678")
+
+    op = baker.make(
+        ImportListMinisterialnych,
+        rok=2023,
+        zapisz_zmiany_do_bazy=False,
+        importuj_punktacje=True,
+        importuj_dyscypliny=False,
+        ignoruj_zrodla_bez_odpowiednika=False,
+    )
+    # run() czyta self.plik.path; wczytaj_plik jest patchowane, więc plik nie
+    # jest realnie otwierany — wystarczy nadać name, by .path nie rzucił.
+    op.plik.name = "protected/import_list_ministerialnych/dummy.xlsx"
+
+    mock_data = [
+        {
+            "Tytul_1": "Run Journal",
+            "Tytul_2": None,
+            "issn": "1234-5678",
+            "issn.1": None,
+            "e-issn": None,
+            "e-issn.1": None,
+            "Punkty": 100,
+        }
+    ]
+
+    with patch(
+        "import_list_ministerialnych.core.wczytaj_plik_importu_dyscyplin_zrodel",
+        return_value=mock_data,
+    ):
+        with patch("import_list_ministerialnych.core.napraw_literowki_w_bazie"):
+            op.run(TextProgress(op, io.StringIO()))
+
+    op.refresh_from_db()
+    assert op.finished_on is not None
+    assert op.finished_successfully is True
+    assert op.result_context["total"] == 1
+    assert op.result_context["duplicates"] == 0
+    assert op.get_details_set().count() == 1
+    wiersz = op.get_details_set().first()
+    assert wiersz.zrodlo == zrodlo
+
+
+@pytest.mark.django_db
+def test_central_live_view_renders_host_page(admin_client, admin_user):
+    """Centralny liveops:live rozwiązuje model po UUID i renderuje host-page.
+
+    Waliduje warstwę bpp_liveops: ResolveOperationMixin znajduje konkretny
+    model po UUID, render host-template (import_list_ministerialnych.html) z
+    kontenerem live-operacji (data-liveop-channel/token dla liveops.js), a
+    superuser przechodzi bramkę grupy (braces, superuser-exempt).
+    """
+    op = baker.make(ImportListMinisterialnych, owner=admin_user, rok=2023)
+    op.plik.name = "protected/import_list_ministerialnych/dummy.xlsx"
+    op.save(update_fields=["plik"])
+
+    response = admin_client.get(f"/live/{op.pk}/")
+    assert response.status_code == 200
+    content = response.content.decode()
+    assert "data-liveop-channel" in content
+    assert "data-liveop-token" in content
+    assert str(op.pk) in content

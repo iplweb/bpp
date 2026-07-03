@@ -12,12 +12,16 @@ from channels.auth import AuthMiddlewareStack
 from channels.routing import ProtocolTypeRouter, URLRouter
 from channels.security.websocket import AllowedHostsOriginValidator
 
-import channels_broadcast.routing
 import pbn_import.routing
 
+# liveops.routing rejestruje LiveOperationConsumer na tej samej sciezce
+# (/asgi/notifications/) co channels_broadcast.NotificationsConsumer —
+# jest jego drop-in nadzbiorem (dorzuca snapshot-on-connect dla kanalow
+# liveop.*). Zastepuje channels_broadcast.routing.
+import liveops.routing
+
 websocket_urlpatterns = (
-    channels_broadcast.routing.websocket_urlpatterns
-    + pbn_import.routing.websocket_urlpatterns
+    liveops.routing.websocket_urlpatterns + pbn_import.routing.websocket_urlpatterns
 )
 
 application = ProtocolTypeRouter(

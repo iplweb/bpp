@@ -2,59 +2,77 @@ import re
 
 from braces.views import GroupRequiredMixin
 from django.db.models import Q
-from django.views.generic import DetailView
+from django.http import Http404
+from django.utils.functional import cached_property
+from django.views.generic import DetailView, ListView
+from liveops.views import CreateLiveOperationView
 
 from import_list_ministerialnych.forms import NowyImportForm
 from import_list_ministerialnych.models import (
     ImportListMinisterialnych,
     WierszImportuListyMinisterialnej,
 )
-from long_running.views import (
-    CreateLongRunningOperationView,
-    LongRunningDetailsView,
-    LongRunningOperationsView,
-    LongRunningResultsView,
-    LongRunningRouterView,
-    RestartLongRunningOperationView,
-)
+
+GROUP_REQUIRED = "wprowadzanie danych"
 
 
-class BaseImportDyscyplinZrodelMixin(GroupRequiredMixin):
-    group_required = "wprowadzanie danych"
+class PokazImporty(GroupRequiredMixin, ListView):
+    """Lista importów bieżącego użytkownika.
+
+    Dawniej long_running.LongRunningOperationsView. Teraz zwykły
+    owner-scoped ListView — strona live (postęp/wynik) jest osobno, pod
+    centralnym ``liveops:live`` (link przez ``object.get_absolute_url``).
+    """
+
+    group_required = GROUP_REQUIRED
     model = ImportListMinisterialnych
 
+    def get_queryset(self):
+        return self.model.objects.filter(owner=self.request.user).order_by(
+            "-created_on"
+        )
 
-class PokazImporty(BaseImportDyscyplinZrodelMixin, LongRunningOperationsView):
-    pass
 
+class UtworzImportDyscyplinZrodel(GroupRequiredMixin, CreateLiveOperationView):
+    """Formularz nowego importu.
 
-class UtworzImportDyscyplinZrodel(
-    BaseImportDyscyplinZrodelMixin, CreateLongRunningOperationView
-):
+    ``CreateLiveOperationView`` (liveops) sam ustawia owner, zapisuje,
+    kolejkuje operację i przekierowuje na ``get_absolute_url()`` czyli
+    centralną stronę live. Gating grupy — braces GroupRequiredMixin
+    (superuser-exempt, jak w long_running).
+    """
+
+    group_required = GROUP_REQUIRED
+    model = ImportListMinisterialnych
     form_class = NowyImportForm
 
 
-class ImportDyscyplinZrodelRouterView(
-    BaseImportDyscyplinZrodelMixin, LongRunningRouterView
-):
-    redirect_prefix = "import_list_ministerialnych:ImportListMinisterialnych"
+class ImportResultsBaseView(GroupRequiredMixin, ListView):
+    """Baza dla filtrowanej tabeli wyników importu.
+
+    Zastępuje dawną long_running.LongRunningResultsView: właściciel-scoping
+    przez ``parent_object`` i queryset z ``get_details_set()``.
+    """
+
+    group_required = GROUP_REQUIRED
+    paginate_by = 25
+    model = ImportListMinisterialnych
+
+    @cached_property
+    def parent_object(self):
+        o = self.model.objects.get(pk=self.kwargs["pk"])
+        if o.owner != self.request.user:
+            raise Http404
+        return o
+
+    def get_queryset(self):
+        return self.parent_object.get_details_set()
+
+    def get_context_data(self, **kwargs):
+        return super().get_context_data(object=self.parent_object, **kwargs)
 
 
-class ImportDyscyplinZrodelDetailsView(
-    BaseImportDyscyplinZrodelMixin, LongRunningDetailsView
-):
-    pass
-
-
-class RestartImportView(
-    BaseImportDyscyplinZrodelMixin, RestartLongRunningOperationView
-):
-    pass
-
-
-class ImportDyscyplinZrodelResultsView(
-    BaseImportDyscyplinZrodelMixin, LongRunningResultsView
-):
+class ImportDyscyplinZrodelResultsView(ImportResultsBaseView):
     def get_queryset(self):
         """Override to handle filtering parameters from URL"""
         queryset = super().get_queryset()
@@ -144,7 +162,7 @@ class ImportDyscyplinZrodelResultsView(
 
 
 class WierszImportuListyMinisterialnejDetailView(GroupRequiredMixin, DetailView):
-    group_required = "wprowadzanie danych"
+    group_required = GROUP_REQUIRED
     model = WierszImportuListyMinisterialnej
     pk_url_kwarg = "row_pk"
 

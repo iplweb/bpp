@@ -6,21 +6,9 @@ from . import views
 urlpatterns = [
     path("", views.PokazImporty.as_view(), name="index"),
     path("nowy/", views.UtworzImportDyscyplinZrodel.as_view(), name="utworz-import"),
-    path(
-        "<uuid:pk>/",
-        views.ImportDyscyplinZrodelRouterView.as_view(),
-        name="importlistministerialnych-router",
-    ),
-    path(
-        "<uuid:pk>/details/",
-        views.ImportDyscyplinZrodelDetailsView.as_view(),
-        name="importlistministerialnych-details",
-    ),
-    path(
-        "<uuid:pk>/regen/",
-        views.RestartImportView.as_view(),
-        name="importlistministerialnych-restart",
-    ),
+    # Strona live (postęp + wynik) NIE jest już tutaj — obsługuje ją centralny
+    # namespace ``liveops`` (reverse "liveops:live"). Router/details/restart
+    # z long_running zostały usunięte.
     path(
         "<uuid:pk>/results/",
         views.ImportDyscyplinZrodelResultsView.as_view(),
