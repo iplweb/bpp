@@ -3,7 +3,7 @@ import logging
 from django.contrib import messages
 from django.contrib.auth.mixins import UserPassesTestMixin
 from django.db import transaction
-from django.http import HttpResponseRedirect
+from django.http import HttpResponseRedirect, JsonResponse
 from django.shortcuts import get_object_or_404, redirect
 from django.urls import reverse
 from django.utils import timezone
@@ -255,6 +255,39 @@ class PrzemapujZrodloView(WprowadzanieDanychRequiredMixin, FormView):
         # Przekieruj do źródła docelowego
         return HttpResponseRedirect(
             reverse("bpp:browse_zrodlo", kwargs={"slug": zrodlo_docelowe.slug})
+        )
+
+
+class ZrodloInfoView(WprowadzanieDanychRequiredMixin, View):
+    """Zwraca JSON z detalami pojedynczego źródła.
+
+    Zasila prawy panel „Źródło docelowe" na stronie przemapowania: po zmianie
+    comboboxa JS fetchuje ten endpoint i wypełnia panel tymi samymi parametrami
+    co panel źródłowy (skrót, ISSN, PBN UID, MNiSW ID, liczba publikacji).
+
+    `mnisw_effective` liczone jest przez tę samą funkcję co walidacja formularza
+    (PrzemapowaZrodloForm._mnisw_id), żeby live-podpowiedź w panelu była zgodna
+    z regułą blokady egzekwowaną po stronie serwera.
+    """
+
+    def get(self, request, pk):
+        zrodlo = get_object_or_404(Zrodlo.objects.select_related("pbn_uid"), pk=pk)
+        pbn = zrodlo.pbn_uid
+        liczba_publikacji = Wydawnictwo_Ciagle.objects.filter(zrodlo=zrodlo).count()
+
+        return JsonResponse(
+            {
+                "bppid": zrodlo.pk,
+                "nazwa": zrodlo.nazwa,
+                "skrot": zrodlo.skrot,
+                "issn": zrodlo.issn,
+                "e_issn": zrodlo.e_issn,
+                "pbn_uid_id": zrodlo.pbn_uid_id,
+                "mniswId": pbn.mniswId if pbn else None,
+                "pbn_status": pbn.status if pbn else None,
+                "mnisw_effective": PrzemapowaZrodloForm._mnisw_id(zrodlo),
+                "liczba_publikacji": liczba_publikacji,
+            }
         )
 
 

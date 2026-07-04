@@ -46,14 +46,19 @@ class Command(BaseCommand):
         parser.add_argument(
             "--batch",
             type=int,
-            default=1000,
-            help="Rozmiar paczki kasowania (domyślnie 1000).",
+            default=0,
+            help=(
+                "Rozmiar paczki kasowania. 0 (domyślnie) = wszystko w JEDNYM "
+                "przebiegu — najszybciej, bo kaskada Django (cascade / SET NULL "
+                "po ~15 tabelach powiązanych) liczona jest raz, a nie raz na "
+                "paczkę. Ustaw dodatnią wartość tylko przy problemach z pamięcią."
+            ),
         )
 
     def handle(self, *args, **options):
         bez_mnisw = options["bez_mnisw"]
         dry_run = options["dry_run"]
-        batch = max(1, options["batch"])
+        batch = options["batch"]
 
         pks = list(
             zrodla_bez_publikacji(bez_mnisw=bez_mnisw).values_list("pk", flat=True)
@@ -66,11 +71,16 @@ class Command(BaseCommand):
             self.stdout.write("--dry-run: nic nie usunięto.")
             return
 
-        deleted = 0
-        for i in range(0, total, batch):
-            chunk = pks[i : i + batch]
-            Zrodlo.objects.filter(pk__in=chunk).delete()
-            deleted += len(chunk)
-            self.stdout.write(f"  usunięto {deleted}/{total}...")
+        if batch and batch < total:
+            deleted = 0
+            for i in range(0, total, batch):
+                chunk = pks[i : i + batch]
+                Zrodlo.objects.filter(pk__in=chunk).delete()
+                deleted += len(chunk)
+                self.stdout.write(f"  usunięto {deleted}/{total}...")
+        else:
+            # Jeden przebieg kolektora kaskady — najszybciej.
+            Zrodlo.objects.filter(pk__in=pks).delete()
+            deleted = total
 
         self.stdout.write(self.style.SUCCESS(f"Usunięto {deleted} źródeł ({opis})."))

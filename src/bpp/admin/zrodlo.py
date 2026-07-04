@@ -163,7 +163,7 @@ class ZrodloAdmin(
     actions = ["usun_zrodla_bez_publikacji_action"]
 
     @admin.action(
-        description="🗑️ Usuń zaznaczone źródła BEZ publikacji (wsadowo, szybko)"
+        description="Usuń zaznaczone źródła BEZ publikacji (bez potwierdzenia)"
     )
     def usun_zrodla_bez_publikacji_action(self, request, queryset):
         """Kasuje zaznaczone źródła, ale WYŁĄCZNIE te bez żadnej publikacji.
@@ -180,11 +180,12 @@ class ZrodloAdmin(
             ).values_list("pk", flat=True)
         )
 
-        deleted = 0
-        for i in range(0, len(do_usuniecia), 1000):
-            chunk = do_usuniecia[i : i + 1000]
-            Zrodlo.objects.filter(pk__in=chunk).delete()
-            deleted += len(chunk)
+        # Jeden przebieg kaskady (nie w paczkach) — kasowanie w paczkach
+        # ponawiałoby dyskrycję powiązań i UPDATE-y SET NULL po ~15 tabelach
+        # raz na paczkę. Dla dziesiątek tysięcy źródeł lepsza jest komenda
+        # `manage.py usun_zrodla_bez_publikacji` (bez limitu czasu requestu).
+        Zrodlo.objects.filter(pk__in=do_usuniecia).delete()
+        deleted = len(do_usuniecia)
 
         skipped = len(selected) - len(do_usuniecia)
         msg = f"Usunięto {deleted} źródeł bez publikacji."

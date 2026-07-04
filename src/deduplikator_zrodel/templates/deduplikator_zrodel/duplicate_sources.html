@@ -1,6 +1,20 @@
 {% extends "base.html" %}
 {% load static %}
 
+{% block extrahead %}
+{{ block.super }}
+<style>
+    .dedup-toolbar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: .5rem;
+    }
+    .dedup-toolbar__actions { display: flex; gap: .25rem; flex-wrap: wrap; }
+</style>
+{% endblock %}
+
 {% block title %}Deduplikator Źródeł{% endblock %}
 
 {% block breadcrumbs %}
@@ -55,34 +69,45 @@
             Brak wyników. Uruchom pierwsze skanowanie, aby znaleźć duplikaty źródeł.
         </div>
     {% else %}
-        {# ---- Filtr statusu ---- #}
-        <ul class="tabs">
-            <li class="tabs-title {% if status == status_pending %}is-active{% endif %}">
-                <a href="?status=pending">Do sprawdzenia</a>
-            </li>
-            <li class="tabs-title {% if status == status_skipped %}is-active{% endif %}">
-                <a href="?status=skipped">Odłożone</a>
-            </li>
-        </ul>
-
-        <p>
-            {% if candidates %}
+        {# ---- Pasek: filtr statusu (lewo) + akcje globalne (prawo) ---- #}
+        <div class="dedup-toolbar">
+            <ul class="tabs" style="border:0; margin-bottom:0;">
+                <li class="tabs-title {% if status == status_pending %}is-active{% endif %}">
+                    <a href="?status=pending">Do sprawdzenia</a>
+                </li>
+                <li class="tabs-title {% if status == status_skipped %}is-active{% endif %}">
+                    <a href="?status=skipped">Odłożone</a>
+                </li>
+            </ul>
+            <div class="dedup-toolbar__actions">
                 <a class="button tiny hollow"
-                   href="{% url 'deduplikator_zrodel:download_duplicates_xlsx' %}">
-                    <span class="fi-download"></span> Pobierz XLSX
+                   href="{% url 'admin:deduplikator_zrodel_ignoredsource_changelist' %}"
+                   target="_blank" rel="noopener"
+                   title="Zobacz źródła ignorowane w deduplikacji (admin)">
+                    <span class="fi-prohibited"></span> Ignorowane
                 </a>
-            {% endif %}
-            {% if status == status_skipped %}
+                {% if candidates %}
+                    <a class="button tiny hollow"
+                       href="{% url 'deduplikator_zrodel:download_duplicates_xlsx' %}">
+                        <span class="fi-download"></span> Pobierz XLSX
+                    </a>
+                {% endif %}
+            </div>
+        </div>
+
+        {% if status == status_skipped %}
+            <p>
                 <form method="post"
                       action="{% url 'deduplikator_zrodel:reset_skipped' %}"
-                      style="display:inline;">
+                      style="display:inline;"
+                      onsubmit="return confirm('Przywrócić wszystkie odłożone pary do listy „do sprawdzenia”?');">
                     {% csrf_token %}
                     <button type="submit" class="button tiny hollow">
                         Przywróć wszystkie odłożone
                     </button>
                 </form>
-            {% endif %}
-        </p>
+            </p>
+        {% endif %}
 
         <table class="hover">
             <thead>
@@ -152,7 +177,8 @@
                         </a>
                         <form method="post"
                               action="{% url 'deduplikator_zrodel:mark_non_duplicate' %}"
-                              style="display:inline;">
+                              style="display:inline;"
+                              onsubmit="return confirm('Oznaczyć tę parę jako NIE duplikaty? Para zniknie z listy.');">
                             {% csrf_token %}
                             <input type="hidden" name="zrodlo_id" value="{{ c.main_zrodlo.pk }}">
                             <input type="hidden" name="duplikat_id" value="{{ c.duplicate_zrodlo.pk }}">
@@ -162,7 +188,8 @@
                         </form>
                         <form method="post"
                               action="{% url 'deduplikator_zrodel:ignore_source' %}"
-                              style="display:inline;">
+                              style="display:inline;"
+                              onsubmit="return confirm('Dodać to źródło do ignorowanych? Wszystkie pary z nim znikną z listy.');">
                             {% csrf_token %}
                             <input type="hidden" name="zrodlo_id" value="{{ c.duplicate_zrodlo.pk }}">
                             <button type="submit" class="button tiny hollow secondary">
@@ -180,7 +207,8 @@
                         {% else %}
                             <form method="post"
                                   action="{% url 'deduplikator_zrodel:skip_candidate' %}"
-                                  style="display:inline;">
+                                  style="display:inline;"
+                                  onsubmit="return confirm('Odłożyć tę parę na później?');">
                                 {% csrf_token %}
                                 <input type="hidden" name="candidate_id" value="{{ c.pk }}">
                                 <button type="submit" class="button tiny hollow">Odłóż</button>
