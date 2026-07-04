@@ -440,6 +440,7 @@ INSTALLED_APPS = [
     "compressor",
     "session_security",
     "channels_broadcast",
+    "liveops",
     "integrator2",
     "nowe_raporty",
     "rozbieznosci_dyscyplin",
@@ -974,6 +975,18 @@ CHANNEL_LAYERS = {
     },
 }
 
+# django-liveops: długo-działające operacje (np. skan duplikatów źródeł) z
+# live-progressem przez WebSocket + HTMX. RUNNER="celery" dispatchuje run()
+# jako shared_task na tym samym workerze co reszta BPP (autodiscover). Live
+# push wymaga Redis channel-layer (skonfigurowany wyżej). W testach RUNNER
+# jest nadpisywany na "eager" (settings/test.py) — skan biegnie synchronicznie
+# bez Redis/workera.
+LIVEOPS = {
+    "BASE_TEMPLATE": "base.html",
+    "RUNNER": "celery",
+    "THROTTLE_HZ": 10,
+}
+
 # Pozwól anonimowym użytkownikom łączyć się z WebSocketem notyfikacji
 # (/asgi/notifications/) i subskrybować globalny kanał "__all__".
 #
@@ -1055,6 +1068,13 @@ TABULAR_PERMISSIONS_CONFIG = {
 
 DBTEMPLATES_USE_REVERSION = True
 DBTEMPLATES_USE_REVERSION_COMPARE = True
+
+# Nasza tabela django_template ma kilka wierszy (override'y frontendu), a admin
+# rozwiazuje ~150 szablonow na strone. Bez tej flagi dbtemplates pytalby DB o
+# kazda taka nazwe (pod DummyCache w dev = ~300 zapytan/strone). Loader trzyma
+# w procesie zbior istniejacych nazw i omija DB dla reszty. Patrz
+# django-dbtemplates-iplweb >= 4.4.0 (DBTEMPLATES_SKIP_UNKNOWN_NAMES).
+DBTEMPLATES_SKIP_UNKNOWN_NAMES = True
 
 DENORM_DISABLE_AUTOTIME_DURING_FLUSH = True
 DENORM_AUTOTIME_FIELD_NAMES = [

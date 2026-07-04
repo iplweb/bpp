@@ -9,13 +9,18 @@ os.environ.setdefault("DJANGO_SETTINGS_MODULE", "django_bpp.settings.local")
 django_asgi_app = get_asgi_application()
 
 # Te importy muszą biec po get_asgi_application(), żeby AppRegistry
-# było zainicjalizowane — channels_broadcast.routing importuje ORM modele.
-import channels_broadcast.routing  # noqa: E402
+# było zainicjalizowane — liveops.routing importuje ORM modele.
+import liveops.routing  # noqa: E402
 from channels.auth import AuthMiddlewareStack  # noqa: E402
 from channels.routing import ProtocolTypeRouter, URLRouter  # noqa: E402
 from channels.security.websocket import AllowedHostsOriginValidator  # noqa: E402
 
-websocket_urlpatterns = channels_broadcast.routing.websocket_urlpatterns
+# liveops.routing binduje ten sam path /asgi/notifications/ co
+# channels_broadcast, ale LiveOperationConsumer DZIEDZICZY po
+# NotificationsConsumer (nadzbiór: realne powiadomienia przez super() +
+# snapshoty liveop.*). To drop-in replacement, więc powiadomienia
+# channels_broadcast działają dalej bez zmian.
+websocket_urlpatterns = liveops.routing.websocket_urlpatterns
 
 application = ProtocolTypeRouter(
     {

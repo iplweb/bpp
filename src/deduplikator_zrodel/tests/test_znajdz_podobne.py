@@ -179,3 +179,13 @@ def test_brak_dopasowania_pomimo_kandydatow(rodzaj, zasieg):
     glowne = _zrodlo(rodzaj, zasieg, nazwa="Foo Journal", skrot="fj", issn="1111-1111")
     inny = _zrodlo(rodzaj, zasieg, nazwa="Zupelnie Inne", skrot="zi", issn="9999-9999")
     assert inny not in list(znajdz_podobne_zrodla(glowne))
+
+
+@pytest.mark.django_db
+def test_dopasowanie_po_zblizonej_nazwie_prefiltr_indeksowy(rodzaj, zasieg):
+    """Nazwa podobna (nie identyczna) nadal łapana po wprowadzeniu prefiltra
+    operatorem % (indeks GIN) + dokładnego progu 0.5 — wynik jak przy
+    pełnym skanie."""
+    glowne = _zrodlo(rodzaj, zasieg, nazwa="Journal of Advanced Testing", skrot="G")
+    kandydat = _zrodlo(rodzaj, zasieg, nazwa="Journal of Advanced Testings", skrot="K")
+    assert kandydat in list(znajdz_podobne_zrodla(glowne))

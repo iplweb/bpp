@@ -409,6 +409,7 @@ dependencies = [
     { name = "django-grappelli", marker = "platform_python_implementation != 'PyPy'" },
     { name = "django-group-by", marker = "platform_python_implementation != 'PyPy'" },
     { name = "django-import-export", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "django-liveops", extra = ["celery"], marker = "platform_python_implementation != 'PyPy'" },
     { name = "django-loginas", marker = "platform_python_implementation != 'PyPy'" },
     { name = "django-messages-extends", marker = "platform_python_implementation != 'PyPy'" },
     { name = "django-minify-html", marker = "platform_python_implementation != 'PyPy'" },
@@ -572,7 +573,7 @@ requires-dist = [
     { name = "django-cookie-law", specifier = "==2.2.0" },
     { name = "django-countdown", specifier = ">=0.2.0" },
     { name = "django-crispy-forms", specifier = ">=2.6,<3" },
-    { name = "django-dbtemplates-iplweb", specifier = ">=4.3.2" },
+    { name = "django-dbtemplates-iplweb", specifier = ">=4.4.0" },
     { name = "django-denorm-iplweb", specifier = ">=1.12.2" },
     { name = "django-dirtyfields", specifier = "==1.9.9" },
     { name = "django-dsl", specifier = ">=0.1.14" },
@@ -590,6 +591,7 @@ requires-dist = [
     { name = "django-grappelli", specifier = ">=5.0.0,<6" },
     { name = "django-group-by", specifier = "==0.3.1" },
     { name = "django-import-export", git = "https://github.com/mpasternak/django-import-export.git?rev=d6ee0d39194fee31437affbdc6fee5ce549b4b8f" },
+    { name = "django-liveops", extras = ["celery"], specifier = ">=0.3,<0.4" },
     { name = "django-loginas", specifier = "==0.3.14" },
     { name = "django-messages-extends", specifier = "==0.6.3" },
     { name = "django-microsoft-auth", marker = "extra == 'office365'", specifier = ">=3.0.1" },
@@ -1675,14 +1677,14 @@ wheels = [
 
 [[package]]
 name = "django-dbtemplates-iplweb"
-version = "4.3.2"
+version = "4.4.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "django-appconf", marker = "platform_python_implementation != 'PyPy'" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/58/89/68a7161426db8837dd7fea0607f63eb2e45c147726544395221f2344c985/django_dbtemplates_iplweb-4.3.2.tar.gz", hash = "sha256:32e2913e48784b1d004a44341bc34a7202117d474099a13adb757a1ad4e10e5d", size = 80089, upload-time = "2026-04-19T20:40:34.912Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/d8/6d/2e4267b5dc5ea2be0e8bad07ca1bcf76fa74d6463b72dc9dd123917c04ce/django_dbtemplates_iplweb-4.4.0.tar.gz", hash = "sha256:8f870373545949f7fc3c7db2bc807b3bdfd769c3d2146f50575e6cc84aa25f1c", size = 85424, upload-time = "2026-07-04T11:05:12.013Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/18/f2/3c3e2b5117e351a1aa0a5a888044e2ebfb85f193036ea9fbc81fbb001015/django_dbtemplates_iplweb-4.3.2-py3-none-any.whl", hash = "sha256:0e3290ed15f5a2c797e72936d8d1f4d06dd7155409183c0af769e532013737d2", size = 86801, upload-time = "2026-04-19T20:40:33.505Z" },
+    { url = "https://files.pythonhosted.org/packages/b7/ec/adb58622c798dfad66a342d8007b842fc3ed95c642738d90c664691e8c7a/django_dbtemplates_iplweb-4.4.0-py3-none-any.whl", hash = "sha256:f2a5acf4420eedbedf7cede2e82c941624192944c0d44c85f3d716374706ef25", size = 93158, upload-time = "2026-07-04T11:05:10.651Z" },
 ]
 
 [[package]]
@@ -1937,6 +1939,25 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/e6/91/c63f136f553ec24fc46ccf20ac7292a8df04815b383975b6f3f7f0060217/django_js_asset-3.1.2.tar.gz", hash = "sha256:1fc7584199ed1941ed7c8e7b87ca5524bb0f2ba941561d2a104e88ee9f07bedd", size = 9471, upload-time = "2025-03-04T15:22:49.789Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/a6/cf/b208767db5e56b5189829f753eec6a14ee75d074922dc2bd19220b22a34d/django_js_asset-3.1.2-py3-none-any.whl", hash = "sha256:b5ffe376aebbd73b7af886d675ac9f43ca63b39540190fa8409c9f8e79145f68", size = 5905, upload-time = "2025-03-04T15:22:51.152Z" },
+]
+
+[[package]]
+name = "django-liveops"
+version = "0.3.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "channels", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "django", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "django-channels-broadcast", marker = "platform_python_implementation != 'PyPy'" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/2c/90/86f39bce9afedb87ba3769d3a2c6edcf56c3aad64695e70eb9fb1928b4d0/django_liveops-0.3.0.tar.gz", hash = "sha256:2120f5bda23a2c57b9be752b964e5d014e80c0c7706ecb31e435d490b2abc75a", size = 276461, upload-time = "2026-07-03T18:00:20.819Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/7d/25/675043a056b2a868909cf001ccc31098d2308e444c38437ec9d6aa49d763/django_liveops-0.3.0-py3-none-any.whl", hash = "sha256:a727840f2de249b003b6b4fb2ddaa71d155dd2d27bfd209bff2991c18d14fc01", size = 76158, upload-time = "2026-07-03T18:00:16.774Z" },
+]
+
+[package.optional-dependencies]
+celery = [
+    { name = "celery", marker = "platform_python_implementation != 'PyPy'" },
 ]
 
 [[package]]
