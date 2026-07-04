@@ -10,8 +10,7 @@ nieprzefiltrowany co do `widoczna` — patrz test
 `test_bazowy_autocomplete_edytorski_widzi_ukryte`. Skoro zwraca ukryte
 jednostki, endpoint `jednostka-autocomplete` MUSI wymagać zalogowania
 (inaczej anonimowy użytkownik dostaje nazwy/id jednostek `widoczna=False`)
-— patrz `test_bazowy_autocomplete_wymaga_logowania` oraz uzasadnienie w
-task-4-report.md.
+— patrz `test_bazowy_autocomplete_wymaga_logowania`.
 """
 
 import pytest
