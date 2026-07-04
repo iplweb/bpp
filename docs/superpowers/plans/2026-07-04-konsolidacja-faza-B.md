@@ -19,7 +19,7 @@ multiseek, DjangoQL, pytest + model_bakery + testcontainers.
 
 - **`uv run` przed KAŻDYM Pythonem.** Nigdy goły `python`/`pytest`.
 - **Max line length: 88** (ruff). `ruff format` + `ruff check` czysto na zmienionych.
-- **NIE modyfikuj istniejących migracji.** Nowe od `0453` (liść = `0452`). Przed
+- **NIE modyfikuj istniejących migracji.** Nowe od `0454` (liść = `0453_zrodlo_trigram_indexes`). Przed
   KAŻDYM pushem `git fetch origin dev` → nowy liść → renumeracja.
 - **Zielony suite per task** = zielono PO każdym commicie (pytest stosuje WSZYSTKIE
   migracje). **Task = jeden commit.** Uwaga: `filter(...=<zła instancja modelu>)` w
@@ -56,20 +56,20 @@ multiseek, DjangoQL, pytest + model_bakery + testcontainers.
 
 ---
 
-## Kolejność (0453–0462)
+## Kolejność (0454–0463)
 
-- **B-I** (0453–0456): schemat/historia/drzewo. `wydzial` (stary FK→Wydzial) żyje,
+- **B-I** (0454–0457): schemat/historia/drzewo. `wydzial` (stary FK→Wydzial) żyje,
   stary kod czyta go dalej → zielono.
-- **B-II** (0457–0459): **atomowy retarget `wydzial`→denorm-korzeń + WSZYSCY jego
+- **B-II** (0458–0460): **atomowy retarget `wydzial`→denorm-korzeń + WSZYSCY jego
   konsumenci** (jeden commit II-1), potem repoint 5 FK (II-2).
-- **B-III** (0460 + kod): usunięcie `rodzaj_jednostki` + czyste UI/admin/browse/cleanup.
-- **B-IV** (0461–0462): recompute `aktualna`/`widoczna` + migracja wartości multiseek.
+- **B-III** (0461 + kod): usunięcie `rodzaj_jednostki` + czyste UI/admin/browse/cleanup.
+- **B-IV** (0462–0463): recompute `aktualna`/`widoczna` + migracja wartości multiseek.
 
 ---
 
-## Sub-plan B-I — Schemat, historia, drzewo (0453–0456)
+## Sub-plan B-I — Schemat, historia, drzewo (0454–0457)
 
-### Task I-1 (0453): additive — flagi + rename pola rankingu + override aktualna
+### Task I-1 (0454): additive — flagi + rename pola rankingu + override aktualna
 - `rodzaj_jednostki.py`: AddField `pokazuj_strukture_podjednostek` (Bool default=False);
   seed „Wydział"=True.
 - `jednostka.py`: **RenameField** `wchodzi_do_raportow`→`wchodzi_do_rankingu_autorow`
@@ -82,8 +82,8 @@ multiseek, DjangoQL, pytest + model_bakery + testcontainers.
 - Test `test_faza_b/test_i1.py`. **Uwaga:** RenameField renames kolumnę; zależne
   widoki `bpp_nowe_sumy_*` auto-śledzą po attnum. **Step 1–5.**
 
-### Task I-2 (0454): DROP 3 triggery + konwersja re-run (historical) + sygnały aktualna
-- `0454_...py`: RunSQL `DROP TRIGGER/FUNCTION IF EXISTS` × (3+3); RunPython konwersja
+### Task I-2 (0455): DROP 3 triggery + konwersja re-run (historical) + sygnały aktualna
+- `0455_...py`: RunSQL `DROP TRIGGER/FUNCTION IF EXISTS` × (3+3); RunPython konwersja
   re-run na `apps.get_model` (explicit `lft/rght/tree_id/level`, `rodzaj_jednostki="normalna"`,
   `widoczna=False/aktualna=False`, `legacy_wydzial_id`, idempotent, kolizje-sufiks).
 - **Sygnały (kod, same commit):** `post_save`/`post_delete` na `Jednostka_Wydzial`
@@ -97,8 +97,8 @@ multiseek, DjangoQL, pytest + model_bakery + testcontainers.
   (`j.wydzial==w`, `aktualna` po delete), `:52-56` (cross-uczelnia raise — walidacja
   zdjęta → test do zmiany na „nie rzuca"), `:63+`, `:87+`. **Step 1–5.**
 
-### Task I-3 (0455): RenameModel Jednostka_Wydzial→Jednostka_Rodzic + parent
-- `0455_...py`: RenameModel; AddField `parent` FK(Jednostka,null); RunPython backfill
+### Task I-3 (0456): RenameModel Jednostka_Wydzial→Jednostka_Rodzic + parent
+- `0456_...py`: RenameModel; AddField `parent` FK(Jednostka,null); RunPython backfill
   `parent` z bieżącego wpisu (przez `legacy_wydzial_id`); RemoveField historia.`wydzial`.
 - Modify (same commit, ~10 plików): rename klasy/managera, `przypisania`/`wydzial_dnia`/
   `wyczysc_przypisania`, **`clean()` — usuń check uczelni** (Zasada #4), Inline rename,
@@ -110,8 +110,8 @@ multiseek, DjangoQL, pytest + model_bakery + testcontainers.
 - **Testy same-commit:** `test_models/test_wydzial.py`, `test_struktura/test_jednostka_wydzial_jednostka.py`,
   `test_struktura/test_jednostka.py` (importują `Jednostka_Wydzial`). **Step 1–5.**
 
-### Task I-4 (0456): re-parent + przepisanie historii + nested-set (czysty Python)
-- `0456_...py` RunPython: (1) SNAPSHOT sub-jednostek (parent NOT NULL, wydzial_id NOT
+### Task I-4 (0457): re-parent + przepisanie historii + nested-set (czysty Python)
+- `0457_...py` RunPython: (1) SNAPSHOT sub-jednostek (parent NOT NULL, wydzial_id NOT
   NULL) PRZED czymkolwiek; (2) `parent`=węzeł(legacy=wydzial_id) TYLKO gdy `parent IS
   NULL` i `wydzial_id NOT NULL`; (3) węzeł-wydział: własny wpis Jednostka_Rodzic
   (parent=NULL, od=otwarcie, do=CLAMP: NULL jeśli ≥dziś; od<do; idempotent guard);
@@ -120,9 +120,9 @@ multiseek, DjangoQL, pytest + model_bakery + testcontainers.
 
 ---
 
-## Sub-plan B-II — Atomowy retarget `wydzial` + repoint 5 FK (0457–0459)
+## Sub-plan B-II — Atomowy retarget `wydzial` + repoint 5 FK (0458–0460)
 
-### Task II-1 (mig 0457+0458, JEDEN commit): retarget `wydzial`→denorm-korzeń + WSZYSCY konsumenci
+### Task II-1 (mig 0458+0459, JEDEN commit): retarget `wydzial`→denorm-korzeń + WSZYSCY konsumenci
 
 **Dlaczego atomowo (BŁĄD #1):** retarget zmienia, na co wskazuje `wydzial` (Wydzial→
 Jednostka-korzeń). W tym samym momencie każdy, kto podaje `Wydzial` do
@@ -130,15 +130,15 @@ Jednostka-korzeń). W tym samym momencie każdy, kto podaje `Wydzial` do
 flipnąć — bo `filter` nie rzuca, tylko cicho zwraca złe wyniki. Nowej formy
 `wydzial=root` nie da się napisać przed retargetem. Więc jeden commit.
 
-**Kolejność migracji w commicie:** (0457) widoki sum → (0458) retarget kolumny.
+**Kolejność migracji w commicie:** (0458) widoki sum → (0459) retarget kolumny.
 
-**(a) Widoki sum (0457, BŁĄD #6/#7):** `DROP VIEW bpp_nowe_sumy_view`→5 komponentów→
+**(a) Widoki sum (0458, BŁĄD #6/#7):** `DROP VIEW bpp_nowe_sumy_view`→5 komponentów→
 recreate: usuń JOIN `bpp_wydzial`, zachowaj `bpp_jednostka.wydzial_id AS wydzial_id`,
 reguła = `WHERE wchodzi_do_rankingu_autorow=true`. Tylko `bpp_nowe_sumy_*` (kronika/
 ewaluacja czyste). Bazuj na baseline (po `108_..bug.sql`). `Nowe_Sumy_View.wydzial`
 → FK→Jednostka (state). Zdjęcie JOIN-u bezpieczne, gdy `wydzial_id` wciąż = Wydzial.
 
-**(b) Retarget `wydzial` (0458, three-step):** `AlterField→IntegerField` → RunPython
+**(b) Retarget `wydzial` (0459, three-step):** `AlterField→IntegerField` → RunPython
 **oblicz korzeń wędrówką po `parent`** (drzewo gotowe po I-4; NIE ślepy remap starego
 `wydzial_id`, bo dla zagnieżdżonych z driftem stary `wydzial_id` ≠ korzeń — BŁĄD #8;
 rooty→NULL) → `AlterField→ForeignKey("self",null=True,SET_NULL)` + `@denormalized`/
@@ -157,7 +157,7 @@ interim `wydzial_id`.
 - `ranking_autorow/views.py:231,300 get_dostepne_wydzialy` → rooty z
   `zezwalaj_na_ranking_autorow=True`; `forms.py:252-257` Subquery; kolo-exclusion
   `views.py:257`→ (uwaga: `rodzaj_jednostki` znika w III-1 — tu użyj FK `rodzaj`,
-  bo pole CharField jeszcze jest do 0460; spójnie z III-1).
+  bo pole CharField jeszcze jest do 0461; spójnie z III-1).
 - `nowe_raporty/poziomy.py:34-37` → `prace_wydzialu(root)`; picker widget →
   `public-jednostka-toplevel-autocomplete` (tworzony niżej).
 - `ewaluacja_metryki/views/list.py:205` (`Wydzial.objects.filter(jednostka__in=…)` —
@@ -204,8 +204,8 @@ cicho źle rutuje; albo most `root→Wydzial(legacy)` w II-1, albo II-1+II-2 lą
 back-to-back ze świadomym oknem. `cache/rekord.py:271` filter-map + `ewaluacja
 list.py:70` — objęte sweepem. **Step 1–10.**
 
-### Task II-2 (0459): repoint 5 FK konsumentów Wydzial→Jednostka + konsumenci
-**Files:** `0459_...py`; FK-decls: `kierunek_studiow.py:7` (PROTECT), `patent.py:106`
+### Task II-2 (0460): repoint 5 FK konsumentów Wydzial→Jednostka + konsumenci
+**Files:** `0460_...py`; FK-decls: `kierunek_studiow.py:7` (PROTECT), `patent.py:106`
 (SET_NULL), `opi_2012.py:20` (CASCADE), `import_dyscyplin/models.py:546` (SET_NULL),
 `zglos_publikacje/models.py:394` (CASCADE).
 - Per FK: `AlterField→IntegerField` / remap (`legacy_wydzial_id`) / `AlterField→FK(Jednostka)`.
@@ -219,10 +219,10 @@ list.py:70` — objęte sweepem. **Step 1–10.**
 
 ---
 
-## Sub-plan B-III — usunięcie `rodzaj_jednostki` + czyste UI/admin/cleanup (0460 + kod)
+## Sub-plan B-III — usunięcie `rodzaj_jednostki` + czyste UI/admin/cleanup (0461 + kod)
 
-### Task III-1 (0460): re-backfill rodzaj + RemoveField `rodzaj_jednostki` + konsumenci
-- `0460_...py`: RunPython rebackfill `rodzaj` WHERE NULL (`{"normalna":"Standard",
+### Task III-1 (0461): re-backfill rodzaj + RemoveField `rodzaj_jednostki` + konsumenci
+- `0461_...py`: RunPython rebackfill `rodzaj` WHERE NULL (`{"normalna":"Standard",
   "kolo_naukowe":"Koło naukowe"}`); RemoveField `rodzaj_jednostki`.
 - **Konsumenci CharField/`RODZAJ_JEDNOSTKI` (same commit — BŁĄD #6, usunięcie klasy
   łamie importy):** `demo_data/generators/jednostki.py:37`, `management/commands/mapuj_kola_naukowe.py:35,45,68`
@@ -231,7 +231,7 @@ list.py:70` — objęte sweepem. **Step 1–10.**
   **`fixtures/conftest_models.py:105`, `ranking_autorow/tests.py:110`,
   `test_views/test_views_browse.py:121`, `test_multiseek/test_multiseek_organizations.py:162`,
   `test_models/test_jednostka_rodzaj_fk.py`** (asertuje CharField wprost — twardo pęka
-  na 0460 RemoveField). Grep-sweep `rodzaj_jednostki`/`RODZAJ_JEDNOSTKI` jak w II-1(f).
+  na 0461 RemoveField). Grep-sweep `rodzaj_jednostki`/`RODZAJ_JEDNOSTKI` jak w II-1(f).
 - **`RodzajJednostkiQueryObject` CAŁY tutaj** (values→`RodzajJednostki.objects.all()`,
   `real_query` `autorzy__jednostka__rodzaj=<row>`, `to_djangoql` — refy w `unit_fields.py`,
   NIE w `djangoql_export.py`). **Step 1–5.**
@@ -263,18 +263,18 @@ list.py:70` — objęte sweepem. **Step 1–10.**
 
 ---
 
-## Sub-plan B-IV — Recompute + multiseek (0461–0462)
+## Sub-plan B-IV — Recompute + multiseek (0462–0463)
 
-### Task IV-1 (0461): przelicz_aktualna (z override) + odkrycie widoczna + aktualna default
-- `0461_...py` + `management/commands/przelicz_aktualna.py` (RunPython **duplikuje
+### Task IV-1 (0462): przelicz_aktualna (z override) + odkrycie widoczna + aktualna default
+- `0462_...py` + `management/commands/przelicz_aktualna.py` (RunPython **duplikuje
   logikę**, NIE woła komendy): **`aktualna_override`≠NULL → użyj override, POMIŃ
   derywację**; inaczej brak wpisów→True, `do IS NULL`→True, wszystkie `do` w
   przeszłości→False. Odkrycie (`widoczna=True`) skonwertowanych węzłów z
   `bpp_wydzial.widoczny` po `legacy_wydzial_id`. AlterField `aktualna` default=True.
   Invalidate cache raz. Test-inwariant „aktualna==derywacja gdy override NULL". **Step 1–5.**
 
-### Task IV-2 (0462): migracja WARTOŚCI zapisanych multiseek
-- `0462_...py` RunPython: parse `multiseek_searchform.data` (JSON, NIE `replace()`);
+### Task IV-2 (0463): migracja WARTOŚCI zapisanych multiseek
+- `0463_...py` RunPython: parse `multiseek_searchform.data` (JSON, NIE `replace()`);
   `field∈{"Wydział","Pierwszy wydział"}` → remap `value` (Wydzial pk → `Jednostka(
   legacy_wydzial_id=pk).pk`); `field=="Rodzaj jednostki"` → remap LABEL
   (`"zwyczajna jednostka (katedra, zakład, pracownia, itp.)"`→`"Standard"`,
