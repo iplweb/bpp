@@ -131,7 +131,19 @@
             var pbnRow = el("dst-pbn-row");
             if (data.pbn_uid_id) {
                 var link = el("dst-pbn-link");
-                var root = link.getAttribute("data-pbn-root") || "";
+                var rawRoot = link.getAttribute("data-pbn-root") || "";
+                var root = "";
+                try {
+                    var parsedRoot = new URL(rawRoot, window.location.origin);
+                    if (
+                        parsedRoot.protocol === "http:" ||
+                        parsedRoot.protocol === "https:"
+                    ) {
+                        root = parsedRoot.origin;
+                    }
+                } catch (e) {
+                    root = "";
+                }
                 link.href =
                     root + "/core/#/journal/view/" + data.pbn_uid_id + "/current";
                 el("dst-pbn").textContent = data.pbn_uid_id;
