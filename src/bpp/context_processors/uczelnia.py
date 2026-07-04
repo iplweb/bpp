@@ -4,7 +4,9 @@ from django.core.cache import cache
 from django.db.models.signals import post_save
 from django.dispatch.dispatcher import receiver
 
+from bpp.models.rzeczownik import Rzeczownik
 from bpp.models.struktura import Uczelnia
+from bpp.nazwy import lemat
 
 
 class NiezdefiniowanaUczelnia:
@@ -29,6 +31,14 @@ BRAK_UCZELNI = {
 }
 
 
+def _lematy():
+    return {
+        "nazwa_uczelni": lemat("UCZELNIA"),
+        "nazwa_wydzialu": lemat("WYDZIAL"),
+        "nazwa_jednostki": lemat("JEDNOSTKA"),
+    }
+
+
 def uczelnia(request):
     timeout, value = cache.get(b"bpp_uczelnia", (0, None))
 
@@ -38,9 +48,9 @@ def uczelnia(request):
 
     u = Uczelnia.objects.get_for_request(request)
     if u is None:
-        return BRAK_UCZELNI
+        return {"uczelnia": NiezdefiniowanaUczelnia, **_lematy()}
 
-    value = {"uczelnia": u}
+    value = {"uczelnia": u, **_lematy()}
     cache.set(b"bpp_uczelnia", (time.time() + 3600, value))
     return value
 
@@ -64,3 +74,9 @@ def invalidate_uczelnia_caches(*args, **kw):
 
     cache.delete(b"bpp_uczelnia")
     get_uczelnia_context_data.invalidate()
+
+
+@receiver(post_save, sender=Rzeczownik)
+def invalidate_lematy_cache(*args, **kw):
+    """Zmiana nazwy w Rzeczowniku ma natychmiast odświeżyć lematy w kontekście."""
+    cache.delete(b"bpp_uczelnia")
