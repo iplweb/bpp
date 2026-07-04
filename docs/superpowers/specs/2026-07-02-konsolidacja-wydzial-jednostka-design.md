@@ -221,14 +221,12 @@ Jednostka_Rodzic  (dawniej Jednostka_Wydzial)
   `daterange … EXCLUDE`) — **zostaje**. Plus `bez_dat_do_w_przyszlosci`.
 - **Daty życia węzła** (dawne `Wydzial.otwarcie`/`zamkniecie`, a dla jednostek
   historia obecności) mieszczą się w `od`/`do` wpisów — zasada niepodważalna #1.
-- **Inwariant osi historia ↔ drzewo (do rozstrzygnięcia w implementacji):**
-  czy bieżący wpis (`do IS NULL`) MUSI spełniać `Jednostka_Rodzic.parent ==
-  Jednostka.parent` (żywy MPTT)? Dla jednostek będących bezpośrednio pod
-  wydziałem — tak (1:1). Dla sub-jednostek (zakład pod katedrą, katedra pod
-  wydziałem) żywy `parent` to katedra, a przynależność wydziałowa wynika ze
-  wspinania po drzewie — **historia dotyczy krawędzi bezpośredniej**
-  (zakład↔katedra), nie zakład↔wydział. Reconciliation historii sub-jednostek
-  = otwarty punkt (patrz „Decyzje z recenzji").
+- **Inwariant osi historia ↔ drzewo (ROZSTRZYGNIĘTY: TAK).** Bieżący wpis
+  (`do IS NULL`) MUSI spełniać `Jednostka_Rodzic.parent == Jednostka.parent`
+  (żywy MPTT). Historia dotyczy **krawędzi bezpośredniej** (zakład↔katedra),
+  nie zakład↔wydział; przynależność wydziałowa w dacie D wyprowadza się przez
+  wspinanie po drzewie i złożenie historii krawędzi. Szczegóły konwersji —
+  patrz „Decyzje z recenzji", pkt 4.
 - **Triggery — usuwane (patrz Zasady niepodważalne #3, trzy sztuki).**
 
 ### Utrzymanie spójności (zamiast triggera)
@@ -647,15 +645,23 @@ Reszta ze ~100 plików to raporty (`ranking_autorow`, `raport_slotow`,
    Nawigacja/browse/menu zawsze renderują drzewo jak jest; bramkowanie znika.
    `__str__` dokleja skrót rodzica gated tylko `SKROT_WYDZIALU_W_NAZWIE`.
 
-**Otwarty punkt (do analizy przed implementacją):** reconciliation historii
-**sub-jednostek**. Gdy zakład zmieniał wydział, bo przenosiła się jego katedra,
-historia należy do krawędzi katedra↔wydział, nie zakład↔wydział. Konwersja
-`Jednostka_Wydzial → Jednostka_Rodzic` 1:1 jest poprawna dla bezpośrednich
-dzieci wydziału; dla głębszych trzeba zdecydować, czy historia ląduje na
-krawędzi bezpośredniej i czy obowiązuje inwariant
-`Jednostka_Rodzic(do=NULL).parent == mptt.parent`. W typowej (płaskiej)
-instalacji problem nie występuje — większość jednostek to bezpośrednie dzieci
-wydziału.
+4. **Historia sub-jednostek = per bezpośrednia krawędź w `Jednostka_Rodzic`**
+   (decyzja 2026-07-04). Historia trzymana jest dla **faktycznego rodzica**
+   (zakład↔katedra, katedra↔wydział), nie dla zdublowanej krawędzi
+   zakład↔wydział. Przynależność wydziałowa w dowolnej dacie D **wyprowadza się**
+   przez wspinanie po drzewie i złożenie historii krawędzi po drodze.
+   - **Inwariant (rozstrzygnięty: TAK):** bieżący wpis `Jednostka_Rodzic(do=NULL)`
+     dla węzła ma `parent == żywy MPTT parent`. Jeden nośnik prawdy o „gdzie
+     węzeł wisi teraz".
+   - **Konwersja (Faza A4):** dla jednostek, które staną się bezpośrednimi
+     dziećmi wydziału (`parent` był NULL) — `Jednostka_Wydzial → Jednostka_Rodzic`
+     1:1 (`parent=węzeł-wydział`). Dla sub-jednostek (miały już `parent=katedra`)
+     — zostaje krawędź do faktycznego rodzica; stara `wydzial`-historia jest
+     redundantna z historią przodka i **nie** jest przepisywana na zakład↔wydział.
+     Jeśli sub-jednostka miała `wydzial` niezgodny z łańcuchem przodków (dane
+     patologiczne) → zalogować do ręcznego przeglądu, nie zgadywać.
+   - W typowej (płaskiej) instalacji sprawa nie występuje — większość jednostek
+     to bezpośrednie dzieci wydziału.
 
 ## Kryteria sukcesu
 
