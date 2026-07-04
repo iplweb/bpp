@@ -41,7 +41,7 @@ def test_liczba_prac_annotation(admin_user, zrodlo):
 
 
 @pytest.mark.django_db
-def test_mnisw_id_display(zrodlo):
+def test_mnisw_id_display(admin_user, zrodlo):
     admin = _admin()
 
     # źródło z pbn_uid i mniswId
@@ -61,9 +61,12 @@ def test_mnisw_id_display(zrodlo):
     # źródło bez pbn_uid w ogóle
     z_bez_pbn = zrodlo
 
-    assert admin.mnisw_id_display(z_z_mnisw) == 12345
-    assert admin.mnisw_id_display(z_bez_mnisw) is None
-    assert admin.mnisw_id_display(z_bez_pbn) is None
+    # kolumna czyta annotację _mnisw_id z get_queryset, więc pobieramy
+    # instancje przez queryset adminu
+    qs = admin.get_queryset(_request(admin_user))
+    assert admin.mnisw_id_display(qs.get(pk=z_z_mnisw.pk)) == 12345
+    assert admin.mnisw_id_display(qs.get(pk=z_bez_mnisw.pk)) is None
+    assert admin.mnisw_id_display(qs.get(pk=z_bez_pbn.pk)) is None
 
 
 @pytest.mark.django_db
@@ -83,6 +86,26 @@ def test_MaPublikacjeFilter(admin_user, zrodlo):
 
     f.value = lambda *a, **kw: "nie"
     z_nie = f.queryset(None, base_qs)
+    assert puste in z_nie
+    assert zrodlo not in z_nie
+
+
+@pytest.mark.django_db
+def test_MaPublikacjeFilter_bez_annotacji(zrodlo):
+    # Filtr musi sam annotować _liczba_prac, gdy queryset jej nie ma
+    # (moduł filtrów jest współdzielony) — inaczej FieldError.
+    baker.make(Wydawnictwo_Ciagle, zrodlo=zrodlo)
+    puste = baker.make(Zrodlo, nazwa="Puste", skrot="Pu.")
+
+    f = MaPublikacjeFilter(None, {}, Zrodlo, None)
+
+    f.value = lambda *a, **kw: "tak"
+    z_tak = f.queryset(None, Zrodlo.objects.all())
+    assert zrodlo in z_tak
+    assert puste not in z_tak
+
+    f.value = lambda *a, **kw: "nie"
+    z_nie = f.queryset(None, Zrodlo.objects.all())
     assert puste in z_nie
     assert zrodlo not in z_nie
 
@@ -120,8 +143,8 @@ def test_MniswIdObecnyFilter(zrodlo):
 
 @pytest.mark.django_db
 def test_changelist_renderuje_sie_z_filtrami(admin_client, zrodlo):
-    # Smoke: annotacja + ordering po polu z JOIN-a (pbn_uid__mniswId) oraz
-    # nowe filtry nie mogą wywalić changelistu.
+    # Smoke: annotacje (Count + mniswId przez JOIN) i nowe filtry nie mogą
+    # wywalić changelistu, także przy sortowaniu po kolumnach z annotacji.
     baker.make(Wydawnictwo_Ciagle, zrodlo=zrodlo)
     baker.make(
         Zrodlo,
@@ -132,7 +155,9 @@ def test_changelist_renderuje_sie_z_filtrami(admin_client, zrodlo):
     url = reverse("admin:bpp_zrodlo_changelist")
 
     assert admin_client.get(url).status_code == 200
-    # sortowanie po kolumnie liczby prac (index 8 w list_display)
+    # sortowanie po mniswID (index 7) — annotacja _mnisw_id po JOIN-ie do Journal
+    assert admin_client.get(url, {"o": "7"}).status_code == 200
+    # sortowanie po liczbie prac (index 8) — annotacja Count z GROUP BY
     assert admin_client.get(url, {"o": "8"}).status_code == 200
     # oba nowe filtry naraz
     assert (

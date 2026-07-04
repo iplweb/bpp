@@ -185,10 +185,12 @@ class MniswIdObecnyFilter(SimpleNotNullFilter):
 
 
 class MaPublikacjeFilter(SimpleListFilter):
-    # Działa na annotacji _liczba_prac dostarczanej przez
-    # ZrodloAdmin.get_queryset (Count("wydawnictwo_ciagle")). Filtrowanie po
-    # annotacji, a nie po wydawnictwo_ciagle__isnull, unika duplikatów wierszy
-    # z JOIN-a (Count + GROUP BY zwija je do jednego wiersza na źródło).
+    # Filtruje po liczbie powiązanych Wydawnictw Ciągłych. Filtrowanie po
+    # annotacji Count (a nie po wydawnictwo_ciagle__isnull) unika duplikatów
+    # wierszy z JOIN-a — Count + GROUP BY zwija je do jednego wiersza na
+    # źródło. ZrodloAdmin.get_queryset zwykle dostarcza już _liczba_prac;
+    # dla bezpieczeństwa (moduł filtrów jest współdzielony) annotujemy ją tu
+    # sami, gdy jej brak — inaczej filtr rzucałby FieldError.
     title = "ma publikacje"
     parameter_name = "ma_publikacje"
 
@@ -197,11 +199,15 @@ class MaPublikacjeFilter(SimpleListFilter):
 
     def queryset(self, request, queryset):
         v = self.value()
+        if v not in ("tak", "nie"):
+            return queryset
+        if "_liczba_prac" not in queryset.query.annotations:
+            queryset = queryset.annotate(
+                _liczba_prac=Count("wydawnictwo_ciagle", distinct=True)
+            )
         if v == "tak":
             return queryset.filter(_liczba_prac__gt=0)
-        elif v == "nie":
-            return queryset.filter(_liczba_prac=0)
-        return queryset
+        return queryset.filter(_liczba_prac=0)
 
 
 class CalkowitaLiczbaAutorowFilter(SimpleIntegerFilter):

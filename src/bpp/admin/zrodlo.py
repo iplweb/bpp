@@ -2,7 +2,7 @@
 from dal import autocomplete
 from django import forms
 from django.contrib import admin
-from django.db.models import Count
+from django.db.models import Count, F
 
 from bpp.admin.helpers.djangoql import BppDjangoQLSearchMixin
 from bpp.models.zrodlo import Redakcja_Zrodla
@@ -158,22 +158,27 @@ class ZrodloAdmin(
         MniswIdObecnyFilter,
         MaPublikacjeFilter,
     ]
-    list_select_related = ["openaccess_licencja", "rodzaj", "pbn_uid"]
+    list_select_related = ["openaccess_licencja", "rodzaj"]
 
     def get_queryset(self, request):
-        # Annotacja liczby publikacji (tylko Wydawnictwo_Ciagle ma FK do
-        # Zrodlo). Zasila kolumnę liczby prac oraz MaPublikacjeFilter.
+        # _liczba_prac: liczba publikacji (tylko Wydawnictwo_Ciagle ma FK do
+        # Zrodlo). distinct=True chroni licznik przed zawyżeniem, gdyby
+        # wyszukiwarka DjangoQL dorzuciła drugi multi-valued JOIN.
+        # _mnisw_id: annotacja pojedynczej kolumny mniswId przez JOIN do
+        # Journal — tańsze niż select_related("pbn_uid"), które ciągnęłoby
+        # ciężki blob JSON Journal.versions dla każdego wiersza listy.
         return (
             super()
             .get_queryset(request)
-            .annotate(_liczba_prac=Count("wydawnictwo_ciagle"))
+            .annotate(
+                _liczba_prac=Count("wydawnictwo_ciagle", distinct=True),
+                _mnisw_id=F("pbn_uid__mniswId"),
+            )
         )
 
-    @admin.display(description="mniswID", ordering="pbn_uid__mniswId")
+    @admin.display(description="mniswID", ordering="_mnisw_id")
     def mnisw_id_display(self, obj):
-        if obj.pbn_uid_id is None:
-            return None
-        return obj.pbn_uid.mniswId
+        return obj._mnisw_id
 
     @admin.display(description="Publikacje", ordering="_liczba_prac")
     def liczba_prac_display(self, obj):

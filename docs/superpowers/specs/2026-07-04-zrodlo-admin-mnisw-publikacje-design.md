@@ -43,32 +43,42 @@ Zero migracji, zero zmian w modelach. Dwa pliki:
    etykiety „nie ma mniswID" / „ma mniswID".
 2. `MaPublikacjeFilter(SimpleListFilter)` — `parameter_name =
    "ma_publikacje"`, tytuł „ma publikacje". Filtruje po annotacji
-   `_liczba_prac` (dostarczanej przez `ZrodloAdmin.get_queryset`):
+   `_liczba_prac`. `ZrodloAdmin.get_queryset` zwykle ją dostarcza; filtr
+   dodatkowo sam annotuje ją, gdy jej brak (moduł filtrów jest współdzielony
+   — inaczej `FieldError` przy reużyciu):
    - `"nie"` → `.filter(_liczba_prac=0)`
    - `"tak"` → `.filter(_liczba_prac__gt=0)`
 
 ### `src/bpp/admin/zrodlo.py`
 
 1. `get_queryset(self, request)` — `super().get_queryset(request).annotate(
-   _liczba_prac=Count("wydawnictwo_ciagle"))`.
+   _liczba_prac=Count("wydawnictwo_ciagle", distinct=True),
+   _mnisw_id=F("pbn_uid__mniswId"))`. `distinct=True` chroni licznik przed
+   zawyżeniem, gdyby wyszukiwarka DjangoQL dorzuciła drugi multi-valued JOIN.
 2. Metoda `mnisw_id_display` — `@admin.display(description="mniswID",
-   ordering="pbn_uid__mniswId")`, zwraca `obj.pbn_uid.mniswId if
-   obj.pbn_uid_id else None`.
+   ordering="_mnisw_id")`, zwraca `obj._mnisw_id`.
 3. Metoda `liczba_prac_display` — `@admin.display(description="Publikacje",
    ordering="_liczba_prac")`, zwraca `obj._liczba_prac`.
 4. `list_display` += `"mnisw_id_display"`, `"liczba_prac_display"`.
 5. `list_filter` += `MniswIdObecnyFilter`, `MaPublikacjeFilter`.
-6. `list_select_related` += `"pbn_uid"` (uniknięcie N+1 przy kolumnie
-   mniswID).
+
+Kolumnę mniswID dostarcza annotacja `_mnisw_id=F("pbn_uid__mniswId")`, a nie
+`list_select_related("pbn_uid")` — `select_related` ciągnąłby ciężki blob
+JSON `Journal.versions` dla każdego wiersza listy, a potrzebna jest tylko
+jedna liczba. Annotacja przez JOIN jest równie wolna od N+1, ale pobiera samą
+kolumnę mniswId.
 
 ## Workflow usuwania
 
 Filtr „ma publikacje = nie ma" + „mniswID = nie ma mniswID" → zaznacz
 wszystko → akcja „Usuń wybrane źródła".
 
-## Testy (`src/bpp/tests/`)
+## Testy (`src/bpp/tests/test_admin/test_zrodlo.py`)
 
-TDD, pytest + `model_bakery.baker`, `@pytest.mark.django_db`:
+TDD, pytest + `model_bakery.baker`, `@pytest.mark.django_db`. Poza testami
+jednostkowymi kolumn i filtrów: smoke-test changelistu (`admin_client`,
+HTTP 200 przy sortowaniu po obu annotowanych kolumnach i przy obu filtrach
+naraz) oraz towncrier newsfragment (`feature`).
 
 - annotacja/kolumna liczby prac: źródło z N wydawnictwami ciągłymi → N;
   źródło bez prac → 0.
