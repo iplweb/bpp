@@ -4,9 +4,11 @@ Testy nowej infrastruktury zastępującej 3 triggery bazodanowe sygnałami
 Pythona (migracja 0455) oraz idempotentności konwersji Wydzial → Jednostka.
 """
 
+import importlib
 from datetime import date, timedelta
 
 import pytest
+from django.apps import apps as global_apps
 from django.core.management import call_command
 from django.db import connection
 from model_bakery import baker
@@ -18,6 +20,13 @@ from bpp.models import (
     Uczelnia,
     Wydzial,
 )
+
+# Moduł migracji ma nazwę zaczynającą się od cyfry — nie zaimportujemy go
+# zwykłym ``import``; helper konwersji wyciągamy przez importlib, by testować
+# DOKŁADNIE logikę RunPython z 0455 (nie proxy w komendzie Fazy A, która NIE
+# ma auto-suffiksu kolizji).
+_mig_0455 = importlib.import_module("bpp.migrations.0455_faza_b_i2")
+rerun_konwersja_wydzialy = _mig_0455.rerun_konwersja_wydzialy
 
 
 @pytest.mark.django_db
@@ -103,3 +112,55 @@ def test_konwersja_wydzialy_idempotentna():
     call_command("konwertuj_wydzialy_na_jednostki")
 
     assert Jednostka.objects.filter(legacy_wydzial_id__in=[w1.id, w2.id]).count() == 2
+
+
+@pytest.mark.django_db
+def test_konwersja_wydzialy_kolizja_nazwy_auto_suffiks():
+    """Kolizja ``nazwa``/``skrot`` Wydziału z istniejącą Jednostką NIE wywala
+    migracji ``IntegrityError`` — helper 0455 dokleja deterministyczny suffiks
+    wyprowadzony ze stabilnego ``Wydzial.id`` (== ``legacy_wydzial_id``).
+
+    To testuje DOKŁADNIE RunPython z migracji 0455 (helper importowany wprost),
+    a nie komendę Fazy A, która kopiuje verbatim i nie broni się przed kolizją.
+    """
+    RodzajJednostki.objects.get_or_create(nazwa="Wydział")
+    u = baker.make(Uczelnia)
+
+    # Istniejąca Jednostka rezerwuje nazwę i skrót (oba unique=True):
+    baker.make(Jednostka, uczelnia=u, nazwa="Kolizja", skrot="KOL")
+
+    # Wydzial utworzony przez stary kod w oknie A→B — te same nazwa/skrót:
+    w = baker.make(Wydzial, uczelnia=u, nazwa="Kolizja", skrot="KOL", skrot_nazwy=None)
+
+    # Nie może rzucić IntegrityError:
+    rerun_konwersja_wydzialy(global_apps, None)
+
+    wezel = Jednostka.objects.get(legacy_wydzial_id=w.id)
+    assert wezel.nazwa == f"Kolizja [W{w.id}]"
+    assert wezel.skrot == f"KOL-W{w.id}"
+    assert wezel.widoczna is False
+    assert wezel.aktualna is False
+
+    # Idempotencja: ponowny przebieg nie tworzy duplikatu ani nie suffiksuje
+    # powtórnie (skip po legacy_wydzial_id na wejściu pętli).
+    rerun_konwersja_wydzialy(global_apps, None)
+
+    wezly = Jednostka.objects.filter(legacy_wydzial_id=w.id)
+    assert wezly.count() == 1
+    assert wezly.get().nazwa == f"Kolizja [W{w.id}]"
+
+
+@pytest.mark.django_db
+def test_konwersja_wydzialy_bez_kolizji_kopiuje_verbatim():
+    """Bez kolizji helper 0455 kopiuje ``nazwa``/``skrot`` bez suffiksu —
+    auto-suffiks dotyka WYŁĄCZNIE pól, które faktycznie kolidują."""
+    RodzajJednostki.objects.get_or_create(nazwa="Wydział")
+    u = baker.make(Uczelnia)
+    w = baker.make(Wydzial, uczelnia=u, nazwa="Unikat", skrot="UNI", skrot_nazwy="Uni.")
+
+    rerun_konwersja_wydzialy(global_apps, None)
+
+    wezel = Jednostka.objects.get(legacy_wydzial_id=w.id)
+    assert wezel.nazwa == "Unikat"
+    assert wezel.skrot == "UNI"
+    assert wezel.skrot_nazwy == "Uni."
