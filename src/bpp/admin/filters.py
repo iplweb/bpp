@@ -173,6 +173,37 @@ class PBN_UID_IDObecnyFilter(SimpleNotNullFilter):
     parameter_name = "pbn_uid_id"
 
 
+class MniswIdObecnyFilter(SimpleNotNullFilter):
+    # Uwaga: to NIE jest to samo, co PBN_UID_IDObecnyFilter. Źródło może mieć
+    # pbn_uid (powiązany Journal), ale ten Journal może mieć mniswId = NULL.
+    title = "mniswID"
+    parameter_name = "mnisw_id"
+    db_field_name = "pbn_uid__mniswId"
+
+    def lookups(self, request, model_admin):
+        return [("brak", "nie ma mniswID"), ("jest", "ma mniswID")]
+
+
+class MaPublikacjeFilter(SimpleListFilter):
+    # Działa na annotacji _liczba_prac dostarczanej przez
+    # ZrodloAdmin.get_queryset (Count("wydawnictwo_ciagle")). Filtrowanie po
+    # annotacji, a nie po wydawnictwo_ciagle__isnull, unika duplikatów wierszy
+    # z JOIN-a (Count + GROUP BY zwija je do jednego wiersza na źródło).
+    title = "ma publikacje"
+    parameter_name = "ma_publikacje"
+
+    def lookups(self, request, model_admin):
+        return [("tak", "ma publikacje"), ("nie", "nie ma publikacji")]
+
+    def queryset(self, request, queryset):
+        v = self.value()
+        if v == "tak":
+            return queryset.filter(_liczba_prac__gt=0)
+        elif v == "nie":
+            return queryset.filter(_liczba_prac=0)
+        return queryset
+
+
 class CalkowitaLiczbaAutorowFilter(SimpleIntegerFilter):
     title = "całkowita liczba autorów"
     parameter_name = "calkowita_liczba_autorow"
