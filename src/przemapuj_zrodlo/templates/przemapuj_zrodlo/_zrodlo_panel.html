@@ -1,0 +1,55 @@
+{# Panel z parametrami źródła. Reużywany dla obu kolumn: #}
+{#  - źródłowego (prefix "src", statyczny, zawsze wypełniony), #}
+{#  - docelowego (prefix "dst", pola wypełniane też przez JS po zmianie comboboxa). #}
+{# `id`-ki są prefiksowane, żeby oba wystąpienia nie kolidowały. #}
+<div class="callout {{ panel_class }}" id="{{ prefix }}-panel">
+    <h5><span class="fi-info"></span> {{ panel_title }}</h5>
+
+    {# Placeholder — widoczny tylko gdy panel nie ma jeszcze źródła (dot. docelowego). #}
+    <div id="{{ prefix }}-placeholder"{% if zrodlo %} hidden{% endif %}>
+        <p style="margin-bottom: 0; font-style: italic;">
+            Wybierz źródło docelowe z listy poniżej, aby zobaczyć jego parametry.
+        </p>
+    </div>
+
+    <div id="{{ prefix }}-content"{% if not zrodlo %} hidden{% endif %}>
+        <p><strong>Nazwa:</strong> <span id="{{ prefix }}-nazwa">{{ zrodlo.nazwa }}</span></p>
+
+        <p id="{{ prefix }}-skrot-row"{% if not zrodlo.skrot %} hidden{% endif %}>
+            <strong>Skrót:</strong> <span id="{{ prefix }}-skrot">{{ zrodlo.skrot }}</span>
+        </p>
+
+        <p id="{{ prefix }}-issn-row"{% if not zrodlo.issn %} hidden{% endif %}>
+            <strong>ISSN:</strong> <span id="{{ prefix }}-issn">{{ zrodlo.issn }}</span>
+        </p>
+
+        <p id="{{ prefix }}-eissn-row"{% if not zrodlo.e_issn %} hidden{% endif %}>
+            <strong>e-ISSN:</strong> <span id="{{ prefix }}-eissn">{{ zrodlo.e_issn }}</span>
+        </p>
+
+        <p id="{{ prefix }}-pbn-row"{% if not zrodlo.pbn_uid_id %} hidden{% endif %}>
+            <strong>PBN UID:</strong>
+            <a id="{{ prefix }}-pbn-link"
+               href="{{ uczelnia.pbn_api_root }}/core/#/journal/view/{{ zrodlo.pbn_uid_id }}/current"
+               target="_blank"
+               data-pbn-root="{{ uczelnia.pbn_api_root }}">
+                <span id="{{ prefix }}-pbn">{{ zrodlo.pbn_uid_id }}</span>
+            </a>
+        </p>
+
+        <p id="{{ prefix }}-mnisw-row"{% if not zrodlo.pbn_uid.mniswId %} hidden{% endif %}>
+            <strong>MNiSW ID:</strong>
+            <span id="{{ prefix }}-mnisw">{{ zrodlo.pbn_uid.mniswId }}</span><br>
+            <small style="font-size: 0.875rem; color: #666;">
+                Czasopismo z oficjalnej listy Ministerstwa
+            </small>
+        </p>
+
+        <p><strong>BPP ID:</strong> <span id="{{ prefix }}-bppid">{{ zrodlo.pk }}</span></p>
+
+        <p style="margin-bottom: 0;">
+            <strong>Liczba publikacji:</strong>
+            <span id="{{ prefix }}-liczba">{{ liczba_publikacji|default:"" }}</span>
+        </p>
+    </div>
+</div>

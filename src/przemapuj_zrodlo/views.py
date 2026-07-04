@@ -112,6 +112,14 @@ class PrzemapujZrodloView(WprowadzanieDanychRequiredMixin, FormView):
         context["zrodlo_zrodlowe"] = self.zrodlo_zrodlowe
         context["liczba_publikacji"] = self.liczba_publikacji
 
+        # Efektywne MNiSW ID źródła (None gdy nieministerialne / usunięte z PBN).
+        # Osadzane jako data-atrybut, żeby JS mógł live-sprawdzać regułę blokady
+        # (źródło ministerialne wolno przemapować tylko na to samo MNiSW ID) —
+        # tą samą funkcją, którą egzekwuje walidacja formularza.
+        context["src_mnisw_effective"] = PrzemapowaZrodloForm._mnisw_id(
+            self.zrodlo_zrodlowe
+        )
+
         # Pobierz przykładowe publikacje (pierwsze 10)
         context["przykladowe_publikacje"] = Wydawnictwo_Ciagle.objects.filter(
             zrodlo=self.zrodlo_zrodlowe
