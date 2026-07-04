@@ -109,6 +109,12 @@ class Jednostka(ModelZAdnotacjami, ModelZPBN_ID, ModelZPBN_UID, MPTTModel):
     (czyli jej obecność w strukturach wydziału nie została zakończona z określoną datą), to pole to będzie miało
     wartość 'PRAWDA'.""",
     )
+    aktualna_override = models.BooleanField(
+        "Ręczne nadpisanie «aktualna»",
+        null=True,
+        blank=True,
+        help_text="Puste = licz z historii; ustawione = trzymaj tę wartość",
+    )
 
     nazwa = models.CharField(max_length=512, unique=True)
     skrot = models.CharField("Skrót", max_length=128, unique=True)
@@ -120,11 +126,12 @@ class Jednostka(ModelZAdnotacjami, ModelZPBN_ID, ModelZPBN_UID, MPTTModel):
     slug = AutoSlugField(populate_from="nazwa", max_length=512, unique=True)
 
     widoczna = models.BooleanField(default=True, db_index=True)
-    wchodzi_do_raportow = models.BooleanField(
-        "Wchodzi do raportów",
+    wchodzi_do_rankingu_autorow = models.BooleanField(
+        "Wlicza prace jednostki do rankingu autorów",
         default=True,
         db_index=True,
-        help_text="Jeżeli odznaczone, prace z jednostki nie sumują się w rankingu autorów.",
+        help_text="Jeżeli odznaczone, prace z tej jednostki NIE sumują się w rankingu "
+        "autorów.",
     )
     email = models.EmailField("E-mail", max_length=128, blank=True, default="")
     www = models.URLField("WWW", max_length=1024, blank=True, default="")

@@ -13,6 +13,9 @@ class RodzajJednostki(models.Model):
     kolejnosc = models.PositiveIntegerField(default=0)
     wyklucz_z_rankingu_autorow = models.BooleanField(default=False)
     pokazuj_jako_odrebna_sekcje = models.BooleanField(default=False)
+    pokazuj_strukture_podjednostek = models.BooleanField(
+        "Pokazuj stronę w stylu wydziału", default=False
+    )
 
     class Meta:
         verbose_name = "rodzaj jednostki"

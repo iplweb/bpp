@@ -62,7 +62,7 @@ class JednostkaSerializer(serializers.ModelSerializer):
             "opis",
             "slug",
             "widoczna",
-            "wchodzi_do_raportow",
+            "wchodzi_do_rankingu_autorow",
             "skupia_pracownikow",
             "wydzial",
             "uczelnia",

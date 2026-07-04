@@ -320,7 +320,7 @@ class JednostkaResource(resources.ModelResource):
             "rodzaj_jednostki",
             "aktualna",
             "widoczna",
-            "wchodzi_do_raportow",
+            "wchodzi_do_rankingu_autorow",
             "skupia_pracownikow",
             "uczelnia",
             "wydzial",

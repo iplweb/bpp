@@ -85,7 +85,7 @@ class JednostkaAdmin(
         "wydzial_skrot",
         "widoczna",
         "rodzaj_jednostki",
-        "wchodzi_do_raportow",
+        "wchodzi_do_rankingu_autorow",
         "skupia_pracownikow",
         "pbn_uid_id",
     ]
@@ -97,7 +97,7 @@ class JednostkaAdmin(
     list_filter = (
         "wydzial",
         "widoczna",
-        "wchodzi_do_raportow",
+        "wchodzi_do_rankingu_autorow",
         "skupia_pracownikow",
         "zarzadzaj_automatycznie",
         "rodzaj_jednostki",
@@ -130,7 +130,7 @@ class JednostkaAdmin(
                     "rodzaj_jednostki",
                     "opis",
                     "widoczna",
-                    "wchodzi_do_raportow",
+                    "wchodzi_do_rankingu_autorow",
                     "skupia_pracownikow",
                     "zarzadzaj_automatycznie",
                     "email",

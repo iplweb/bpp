@@ -270,14 +270,14 @@ def test_ranking_autorow_form_jednostki_when_not_using_wydzialy(uczelnia):
         Jednostka,
         uczelnia=uczelnia,
         widoczna=True,
-        wchodzi_do_raportow=True,
+        wchodzi_do_rankingu_autorow=True,
         nazwa="Jednostka 1",
     )
     baker.make(
         Jednostka,
         uczelnia=uczelnia,
         widoczna=True,
-        wchodzi_do_raportow=True,
+        wchodzi_do_rankingu_autorow=True,
         nazwa="Jednostka 2",
     )
 
@@ -361,12 +361,12 @@ def test_ranking_autorow_view_filters_by_jednostki(
 
     # Set up jednostka
     jednostka.widoczna = True
-    jednostka.wchodzi_do_raportow = True
+    jednostka.wchodzi_do_rankingu_autorow = True
     jednostka.save()
 
     # Create another jednostka
     druga_jednostka = baker.make(
-        Jednostka, uczelnia=uczelnia, widoczna=True, wchodzi_do_raportow=True
+        Jednostka, uczelnia=uczelnia, widoczna=True, wchodzi_do_rankingu_autorow=True
     )
 
     # Set up publikacja
@@ -402,14 +402,14 @@ def test_ranking_autorow_context_with_jednostki(rf, uczelnia):
         Jednostka,
         uczelnia=uczelnia,
         widoczna=True,
-        wchodzi_do_raportow=True,
+        wchodzi_do_rankingu_autorow=True,
         nazwa="Jednostka A",
     )
     baker.make(
         Jednostka,
         uczelnia=uczelnia,
         widoczna=True,
-        wchodzi_do_raportow=True,
+        wchodzi_do_rankingu_autorow=True,
         nazwa="Jednostka B",
     )
 

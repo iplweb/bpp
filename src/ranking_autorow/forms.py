@@ -155,7 +155,7 @@ class RankingAutorowForm(forms.Form):
 
         # Filter Jednostka to show only those with associated works
         jednostka_with_works = (
-            Jednostka.objects.filter(widoczna=True, wchodzi_do_raportow=True)
+            Jednostka.objects.filter(widoczna=True, wchodzi_do_rankingu_autorow=True)
             .filter(
                 Q(
                     Exists(
@@ -256,7 +256,7 @@ class RankingAutorowForm(forms.Form):
                         Jednostka.objects.filter(
                             wydzial=OuterRef("pk"),
                             widoczna=True,
-                            wchodzi_do_raportow=True,
+                            wchodzi_do_rankingu_autorow=True,
                         ).filter(
                             Q(
                                 Exists(

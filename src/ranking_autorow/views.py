@@ -313,7 +313,7 @@ class RankingAutorow(ExportMixin, SingleTableView):
         return None
 
     def get_dostepne_jednostki(self):
-        return Jednostka.objects.filter(widoczna=True, wchodzi_do_raportow=True)
+        return Jednostka.objects.filter(widoczna=True, wchodzi_do_rankingu_autorow=True)
 
     def get_jednostki(self):
         # Handle single jednostka selection

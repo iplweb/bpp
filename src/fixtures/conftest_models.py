@@ -149,7 +149,7 @@ def obca_jednostka(wydzial):
         skupia_pracownikow=False,
         zarzadzaj_automatycznie=False,
         widoczna=False,
-        wchodzi_do_raportow=False,
+        wchodzi_do_rankingu_autorow=False,
     )
 
 
