@@ -268,6 +268,10 @@ urlpatterns = (
                 namespace="deduplikator_zrodel",
             ),
         ),
+        # Centralny router django-liveops (live/cancel/restart dla KAŻDEJ
+        # podklasy LiveOperation). op.get_absolute_url() reversuje
+        # "liveops:live". Montowany raz.
+        path("live/", include("liveops.urls")),
         path(
             "import_punktacji_zrodel/",
             include("import_punktacji_zrodel.urls"),

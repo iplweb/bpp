@@ -166,7 +166,7 @@
 
         <script type="text/javascript">
             $(document).ready(function () {
-                channelsBroadcast.init(document.getElementById('extra-channels').textContent);
+                {% block channels_broadcast_init %}channelsBroadcast.init(document.getElementById('extra-channels').textContent);{% endblock %}
 
                 $(document).on('closed.zf', function (event) {
                     if ($(event.target).hasClass("ajax-on-close")) {
