@@ -1,6 +1,7 @@
 import itertools
 from urllib.parse import urlencode
 
+from django.db.models import Q
 from django.db.models.aggregates import Sum
 from django.http.response import HttpResponseRedirect
 from django.template.defaultfilters import safe
@@ -21,7 +22,6 @@ from bpp.models import (
     Typ_KBN,
     Uczelnia,
 )
-from bpp.models.struktura import Wydzial
 from bpp.util.uczelnia_scope import tylko_jedna_uczelnia
 
 from .forms import RankingAutorowForm
@@ -228,7 +228,12 @@ class RankingAutorow(ExportMixin, SingleTableView):
         if uczelnia and uczelnia.uzywaj_wydzialow and not jednostki:
             wydzialy = self.get_wydzialy()
             if wydzialy:
-                qset = qset.filter(jednostka__wydzial__in=wydzialy)
+                # Faza B (#438): „wydziały" = jednostki-korzenie. Poddrzewo
+                # łapie ``jednostka__wydzial__in``; prace samego korzenia —
+                # ``jednostka__in`` (korzeń ma ``wydzial=NULL``).
+                qset = qset.filter(
+                    Q(jednostka__wydzial__in=wydzialy) | Q(jednostka__in=wydzialy)
+                )
 
         # Multi-hosted: ranking = obecni pracownicy tej uczelni.
         # No-op na single-install (guard) — wynik bez zmian.
@@ -253,8 +258,10 @@ class RankingAutorow(ExportMixin, SingleTableView):
         qset = qset.exclude(autor__pokazuj=False)
 
         if self.bez_kol_naukowych:
+            # Faza B (#438): wykluczenie kół po fladze FK ``rodzaj`` (spójnie z
+            # III-1, gdzie znika CharField ``rodzaj_jednostki``).
             qset = qset.exclude(
-                autor__aktualna_jednostka__rodzaj_jednostki=Jednostka.RODZAJ_JEDNOSTKI.KOLO_NAUKOWE
+                autor__aktualna_jednostka__rodzaj__wyklucz_z_rankingu_autorow=True
             )
 
         if self.bez_nieaktualnych:
@@ -297,7 +304,10 @@ class RankingAutorow(ExportMixin, SingleTableView):
         return self._apply_exclusions(qset)
 
     def get_dostepne_wydzialy(self):
-        return Wydzial.objects.filter(zezwalaj_na_ranking_autorow=True)
+        # Faza B (#438): „wydziały" = jednostki-korzenie (parent IS NULL).
+        return Jednostka.objects.filter(
+            parent__isnull=True, zezwalaj_na_ranking_autorow=True
+        )
 
     def get_wydzialy(self):
         # Handle single wydzial selection

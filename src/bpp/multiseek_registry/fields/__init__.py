@@ -4,7 +4,6 @@ This package provides backward compatibility - all classes and functions
 that were previously in fields.py are re-exported here.
 """
 
-from django.conf import settings
 from multiseek.logic import ReportType
 
 # Re-export author fields
@@ -125,18 +124,15 @@ from .unit_fields import (
 )
 
 # Build the multiseek_fields registry
+# Faza B (#438), wariant 1: WydzialQueryObject/PierwszyWydzial rejestrowane
+# ZAWSZE (bez bramki env ``DJANGO_BPP_UCZELNIA_UZYWA_WYDZIALOW``). Widoczność
+# per-uczelnia idzie przez ``option_enabled`` (czyta ``uczelnia.uzywaj_
+# wydzialow``) — uczelnia bez wydziałów chowa pole.
 multiseek_fields = [
     TytulPracyQueryObject(),
     NazwiskoIImieQueryObject(),
     JednostkaQueryObject(),
-]
-
-if getattr(settings, "DJANGO_BPP_UCZELNIA_UZYWA_WYDZIALOW", True):
-    multiseek_fields += [
-        WydzialQueryObject(),
-    ]
-
-multiseek_fields += [
+    WydzialQueryObject(),
     Typ_OdpowiedzialnosciQueryObject(),
     TypOgolnyAutorQueryObject(),
     TypOgolnyRedaktorQueryObject(),
@@ -153,14 +149,7 @@ multiseek_fields += [
     WydawnictwoNadrzedneQueryObject(),
     PierwszeNazwiskoIImie(),
     PierwszaJednostkaQueryObject(),
-]
-
-if getattr(settings, "DJANGO_BPP_UCZELNIA_UZYWA_WYDZIALOW", True):
-    multiseek_fields += [
-        PierwszyWydzialQueryObject(),
-    ]
-
-multiseek_fields += [
+    PierwszyWydzialQueryObject(),
     NazwiskoIImie1do3(),
     NazwiskoIImie1do5(),
     OstatnieNazwiskoIImie(),

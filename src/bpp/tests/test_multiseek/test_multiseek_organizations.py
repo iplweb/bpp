@@ -63,15 +63,20 @@ def test_JednostkaQueryObject(jednostka):
 
 
 def test_WydzialQueryObject(wydzial):
+    # Faza B (#438): „wydział" w multiseeku to jednostka-korzeń (self-FK),
+    # więc real_query przyjmuje root-Jednostkę (węzeł-lustro), nie Wydzial.
+    from bpp.models.struktura_konwersja import znajdz_lub_utworz_wezel_wydzialu
+
+    root, _ = znajdz_lub_utworz_wezel_wydzialu(wydzial)
     n = WydzialQueryObject()
 
-    ret = n.real_query(wydzial, logic.EQUAL)
+    ret = n.real_query(root, logic.EQUAL)
     Rekord.objects.filter(ret)
 
-    ret = n.real_query(wydzial, logic.DIFFERENT)
+    ret = n.real_query(root, logic.DIFFERENT)
     Rekord.objects.filter(ret)
 
-    ret = n.real_query(wydzial, UNION)
+    ret = n.real_query(root, UNION)
     Rekord.objects.filter(ret)
 
     ret = n.real_query(None, logic.EQUAL)
@@ -85,15 +90,18 @@ def test_WydzialQueryObject(wydzial):
 
 
 def test_PierwszyWydzialQueryObject(wydzial):
+    from bpp.models.struktura_konwersja import znajdz_lub_utworz_wezel_wydzialu
+
+    root, _ = znajdz_lub_utworz_wezel_wydzialu(wydzial)
     n = PierwszyWydzialQueryObject()
 
-    ret = n.real_query(wydzial, logic.EQUAL)
+    ret = n.real_query(root, logic.EQUAL)
     Rekord.objects.filter(ret)
 
-    ret = n.real_query(wydzial, logic.DIFFERENT)
+    ret = n.real_query(root, logic.DIFFERENT)
     Rekord.objects.filter(ret)
 
-    ret = n.real_query(wydzial, UNION)
+    ret = n.real_query(root, UNION)
     Rekord.objects.filter(ret)
 
     ret = n.real_query(None, logic.EQUAL)

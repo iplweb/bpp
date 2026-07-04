@@ -7,8 +7,9 @@ import pytest
 from django.contrib.auth.models import Group
 from model_bakery import baker
 
-from bpp.models import Autor, Jednostka, Uczelnia, Wydzial
+from bpp.models import Autor, Jednostka, Wydzial
 from bpp.models.cache import Rekord
+from bpp.models.struktura_konwersja import znajdz_lub_utworz_wezel_wydzialu
 from bpp.models.system import Charakter_Formalny, Typ_Odpowiedzialnosci
 from bpp.models.wydawnictwo_ciagle import Wydawnictwo_Ciagle_Autor
 from bpp.tests.util import (
@@ -62,10 +63,11 @@ def test_wydzial_with_single_jednostka_redirects(setup_group, logged_in_client):
     """Wydzial z jedną jednostką przekierowuje na stronę jednostki."""
     u = any_uczelnia(nazwa="uczelnia", skrot="uu")
     w = Wydzial.objects.create(nazwa="wydzial", uczelnia=u)
+    wezel, _ = znajdz_lub_utworz_wezel_wydzialu(w)
     j = Jednostka.objects.create(
         nazwa="jedyna jednostka",
         skrot="JJ",
-        wydzial=w,
+        parent=wezel,
         uczelnia=u,
         aktualna=True,
         widoczna=True,
@@ -83,10 +85,11 @@ def test_wydzial_with_multiple_jednostki_shows_page(setup_group, logged_in_clien
     """Wydzial z wieloma jednostkami wyświetla stronę wydziału."""
     u = any_uczelnia(nazwa="uczelnia", skrot="uu")
     w = Wydzial.objects.create(nazwa="wydzial", uczelnia=u)
+    wezel, _ = znajdz_lub_utworz_wezel_wydzialu(w)
     Jednostka.objects.create(
         nazwa="jednostka 1",
         skrot="J1",
-        wydzial=w,
+        parent=wezel,
         uczelnia=u,
         aktualna=True,
         widoczna=True,
@@ -94,7 +97,7 @@ def test_wydzial_with_multiple_jednostki_shows_page(setup_group, logged_in_clien
     Jednostka.objects.create(
         nazwa="jednostka 2",
         skrot="J2",
-        wydzial=w,
+        parent=wezel,
         uczelnia=u,
         aktualna=True,
         widoczna=True,
@@ -111,10 +114,11 @@ def test_wydzial_with_single_kolo_naukowe_redirects(setup_group, logged_in_clien
     """Wydzial z jednym kołem naukowym przekierowuje na stronę koła."""
     u = any_uczelnia(nazwa="uczelnia", skrot="uu")
     w = Wydzial.objects.create(nazwa="wydzial", uczelnia=u)
+    wezel, _ = znajdz_lub_utworz_wezel_wydzialu(w)
     j = Jednostka.objects.create(
         nazwa="koło naukowe",
         skrot="KN",
-        wydzial=w,
+        parent=wezel,
         uczelnia=u,
         aktualna=True,
         widoczna=True,
@@ -131,8 +135,11 @@ def test_wydzial_with_single_kolo_naukowe_redirects(setup_group, logged_in_clien
 @pytest.mark.django_db
 def test_browse_jednostka(setup_group, logged_in_client):
     u = any_uczelnia(nazwa="uczelnia", skrot="uu")
-    w = Wydzial.objects.create(nazwa="wydzial", uczelnia=u)
-    j = Jednostka.objects.create(nazwa="jednostka", wydzial=w, uczelnia=u)
+    w = Wydzial.objects.create(nazwa="wydzial", skrot="WDZ", uczelnia=u)
+    wezel, _ = znajdz_lub_utworz_wezel_wydzialu(w)
+    j = Jednostka.objects.create(
+        nazwa="jednostka", skrot="JEDN", parent=wezel, uczelnia=u
+    )
 
     res = logged_in_client.get(reverse("bpp:browse_jednostka", args=(j.slug,)))
     assert res.status_code == 200
@@ -301,7 +308,7 @@ def test_autorzy_view_empty_page_redirects(client, setup_group):
     messages_list = list(response.wsgi_request._messages)
     assert len(messages_list) == 1
     assert "Podana strona nie istnieje" in str(messages_list[0])
-    assert messages_list[0].level_tag == 'warning'
+    assert messages_list[0].level_tag == "warning"
 
 
 @pytest.mark.django_db
@@ -347,7 +354,7 @@ def test_autorzy_view_page_not_integer_redirects(client, setup_group):
     assert response.status_code == 200
     assert "page=1" in response.redirect_chain[0][0]
     # Check warning message
-    messages_list = list(response.context['messages'])
+    messages_list = list(response.context["messages"])
     assert len(messages_list) == 1
     assert "Podana strona nie istnieje" in str(messages_list[0])
 
@@ -397,7 +404,5 @@ def test_get_available_letters_respects_queryset_filter():
     baker.make(Autor, nazwisko="Adam", pokazuj=True)
     baker.make(Autor, nazwisko="Bartek", pokazuj=False)
 
-    letters = get_available_letters(
-        Autor.objects.filter(pokazuj=True), "nazwisko"
-    )
+    letters = get_available_letters(Autor.objects.filter(pokazuj=True), "nazwisko")
     assert letters == {"A"}

@@ -81,9 +81,14 @@ class Wydzial(ModelZAdnotacjami, ModelZPBN_ID):
         """Lista jednostek - dla WWW"""
         from .jednostka import Jednostka
 
-        return Jednostka.objects.filter(wydzial=self, widoczna=True).order_by(
-            *Jednostka.objects.get_default_ordering()
-        )
+        # Faza B (#438): po retargecie ``Jednostka.wydzial`` to self-FK do
+        # KORZENIA drzewa (Jednostka), a nie Wydzial. Ten Wydzial mapuje na
+        # węzeł-korzeń o ``legacy_wydzial_id == self.pk`` — filtrujemy przez
+        # niego (``wydzial__legacy_wydzial_id``), a nie przez ``wydzial=self``
+        # (które po cichu porównywałoby Jednostka-pk do Wydzial-pk).
+        return Jednostka.objects.filter(
+            wydzial__legacy_wydzial_id=self.pk, widoczna=True
+        ).order_by(*Jednostka.objects.get_default_ordering())
 
     def aktualne_jednostki(self):
         """Lista jednostek aktualnie przypisanych do danego wydziału,
@@ -129,7 +134,9 @@ class Wydzial(ModelZAdnotacjami, ModelZPBN_ID):
                 rodzaj_jednostki=Jednostka.RODZAJ_JEDNOSTKI.KOLO_NAUKOWE
             )
             .filter(
-                Q(wydzial=self, aktualna=True)
+                # Faza B (#438): ``wydzial`` to self-FK do korzenia — ten
+                # Wydzial = węzeł o ``legacy_wydzial_id == self.pk``.
+                Q(wydzial__legacy_wydzial_id=self.pk, aktualna=True)
                 | Q(
                     wydzial=None,
                     pk__in=Jednostka_Rodzic.objects.filter(

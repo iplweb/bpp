@@ -127,11 +127,19 @@ class ImportDashboardView(LoginRequiredMixin, ImportPermissionMixin, TemplateVie
         if not wydzialy.exists() and not jednostki.exists() and uczelnia:
             wydzial_domyslny, _ = znajdz_lub_utworz_wydzial_domyslny(uczelnia)
             jednostka_domyslna, _ = znajdz_lub_utworz_jednostke_domyslna(uczelnia)
-            # Przypisz wydział do jednostki jeśli brak
-            if jednostka_domyslna.wydzial is None:
-                jednostka_domyslna.wydzial = wydzial_domyslny
+            # Faza B (#438): ``Jednostka.wydzial`` to zdenormalizowany self-FK
+            # do korzenia — nie przypisujemy Wydzialu. Podpinamy jednostkę pod
+            # węzeł-lustro wydziału domyślnego (MPTT ``parent``); denorm wyliczy
+            # ``wydzial`` przy zapisie.
+            if jednostka_domyslna.parent is None:
+                from bpp.models.struktura_konwersja import (
+                    znajdz_lub_utworz_wezel_wydzialu,
+                )
+
+                wezel, _ = znajdz_lub_utworz_wezel_wydzialu(wydzial_domyslny)
+                jednostka_domyslna.parent = wezel
                 jednostka_domyslna.skupia_pracownikow = True
-                jednostka_domyslna.save(update_fields=["wydzial", "skupia_pracownikow"])
+                jednostka_domyslna.save()
             # Odśwież querysets (wciąż zawężone do uczelni kontekstu)
             wydzialy = Wydzial.objects.filter(uczelnia=uczelnia)
             jednostki = Jednostka.objects.filter(

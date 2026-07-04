@@ -151,9 +151,22 @@ def _send_notification_email(publication_object, request):
             break
 
     if jednostka_do_powiadomienia is not None:
-        recipient_list = Obslugujacy_Zgloszenia_Wydzialow.objects.emaile_dla_wydzialu(
-            jednostka_do_powiadomienia.wydzial
-        )
+        # Faza B (#438), most II-1→II-2: po retargecie
+        # ``jednostka.wydzial`` jest jednostką-korzeniem (self-FK), a
+        # ``Obslugujacy_Zgloszenia_Wydzialow.wydzial`` to wciąż FK→Wydzial
+        # (repoint w II-2 / 0460). Mapujemy korzeń z powrotem na Wydzial przez
+        # ``legacy_wydzial_id``. Ten most znika w II-2 (routing przejdzie na
+        # ``emaile_dla_obslugujacego(jednostka.get_root())``).
+        from bpp.models import Wydzial
+
+        korzen = jednostka_do_powiadomienia.wydzial
+        wydzial = None
+        if korzen is not None and korzen.legacy_wydzial_id is not None:
+            wydzial = Wydzial.objects.filter(id=korzen.legacy_wydzial_id).first()
+        if wydzial is not None:
+            recipient_list = (
+                Obslugujacy_Zgloszenia_Wydzialow.objects.emaile_dla_wydzialu(wydzial)
+            )
 
     if not recipient_list:
         recipient_list = zgloszenia_publikacji_emails()

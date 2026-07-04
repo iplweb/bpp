@@ -3,7 +3,7 @@ from model_bakery import baker
 from multiseek.logic import EQUAL
 
 from bpp.models import Kierunek_Studiow
-from bpp.models.struktura import Wydzial
+from bpp.models.struktura import Jednostka
 from bpp.multiseek_registry import registry
 from bpp.multiseek_registry.djangoql_export import leaf_to_djangoql
 
@@ -12,7 +12,9 @@ pytestmark = pytest.mark.serial
 
 @pytest.mark.django_db
 def test_wydzial_maps_to_nested_rel():
-    w = baker.make(Wydzial, nazwa="Wydział Lekarski")
+    # Faza B (#438): „wydział" w multiseeku to jednostka top-level (picker
+    # Jednostka), więc wartość rozwiązuje się jako Jednostka-korzeń.
+    w = baker.make(Jednostka, nazwa="Wydział Lekarski", parent=None)
     frag = leaf_to_djangoql(
         registry, {"field": "Wydział", "operator": str(EQUAL), "value": w.pk}
     )

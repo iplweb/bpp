@@ -21,8 +21,13 @@ def _wezel(wydzial):
 
 @pytest.mark.django_db
 def test_jednostka_wydzial_aktualna():
-    """Sprawdź, czy dodanie obiektów Jednostka_Rodzic spowoduje zmodyfikowanie
-    atrybutów "aktualna" oraz "wydzial_id" na obiekcie Jednostka"""
+    """Sprawdź, czy dodanie obiektów Jednostka_Rodzic zmodyfikuje atrybut
+    ``aktualna`` na obiekcie Jednostka.
+
+    Faza B (#438), II-1: sygnał NIE utrzymuje już ``wydzial`` — po retargecie
+    ``Jednostka.wydzial`` jest zdenormalizowanym self-FK do korzenia drzewa
+    MPTT (``parent``), a NIE derywatem z historii ``Jednostka_Rodzic``. Tu
+    testujemy więc tylko ``aktualna`` (``j`` jest rootem → ``wydzial`` NULL)."""
 
     u = baker.make(Uczelnia)
     w = baker.make(Wydzial, uczelnia=u)
@@ -33,14 +38,12 @@ def test_jednostka_wydzial_aktualna():
     jw = Jednostka_Rodzic.objects.create(jednostka=j, parent=_wezel(w))
 
     j.refresh_from_db()
-    assert j.wydzial == w
     assert j.aktualna
 
     jw.do = datetime.now().date() - timedelta(days=30)
     jw.save()
 
     j.refresh_from_db()
-    assert j.wydzial == w
     assert j.aktualna is False
 
     jw.delete()
@@ -62,12 +65,14 @@ def test_jednostka_before_insert():
     w1 = baker.make(Wydzial, uczelnia=u1)
     w2 = baker.make(Wydzial, uczelnia=u2)
 
-    # Cross-uczelnia — po zdjęciu triggera zapisuje się bez błędu:
-    j = baker.make(Jednostka, uczelnia=u2, wydzial=w1)
+    # Cross-uczelnia — po zdjęciu triggera zapisuje się bez błędu. Faza B
+    # (#438): przynależność do wydziału wyrażamy przez MPTT ``parent`` (węzeł-
+    # lustro), a ``wydzial`` (denorm) wylicza się jako korzeń.
+    j = baker.make(Jednostka, uczelnia=u2, parent=_wezel(w1))
     j.refresh_from_db()
-    assert j.wydzial == w1
+    assert j.wydzial == _wezel(w1)
 
-    j2 = baker.make(Jednostka, uczelnia=u2, wydzial=w2)
+    j2 = baker.make(Jednostka, uczelnia=u2, parent=_wezel(w2))
 
     for elem in [j, j2, w2, w1, u2, u1]:
         elem.delete()
@@ -90,11 +95,11 @@ def test_jednostka_wydzial_before_insert():
     j1 = baker.make(Jednostka, uczelnia=u1)
     assert j1.wydzial is None
 
-    # Cross-uczelnia — zapisuje się bez wyjątku po zdjęciu triggera:
+    # Cross-uczelnia — zapisuje się bez wyjątku po zdjęciu triggera. Faza B
+    # (#438), II-1: historia ``Jednostka_Rodzic`` NIE steruje już ``wydzial``
+    # (denorm z MPTT ``parent``), więc nie asertujemy tu ``wydzial``.
     jw_cross = Jednostka_Rodzic.objects.create(jednostka=j1, parent=_wezel(w2))
     j1.refresh_from_db()
-    # Sygnał przeliczył wydzial na najświeższy wpis (tu: w2):
-    assert j1.wydzial == w2
     jw_cross.delete()
 
     jw = Jednostka_Rodzic.objects.create(jednostka=j1, parent=_wezel(w1))
@@ -136,7 +141,7 @@ def test_jednostka_wydzial_bez_dat_do_w_przyszlosci_constraint():
     """Sprawdź, czy przypisanie daty 'do' w przyszłości da błąd"""
     u1 = baker.make(Uczelnia)
     w1 = baker.make(Wydzial, uczelnia=u1)
-    j1 = baker.make(Jednostka, wydzial=w1, uczelnia=u1)
+    j1 = baker.make(Jednostka, uczelnia=u1)
     jw = Jednostka_Rodzic(
         jednostka=j1,
         parent=_wezel(w1),
@@ -176,7 +181,7 @@ def test_jednostka_wydzial_time_trigger_delete_1():
     jw1.save()
 
     j2.refresh_from_db()
-    assert j2.wydzial == w1
+    # Faza B (#438), II-1: ``wydzial`` nie jest już derywatem historii.
     assert j2.aktualna is True
 
     for elem in u1, w1, j1, j2, jw1:
@@ -286,7 +291,7 @@ def test_jednostka_save_trigger_data_w_przyszlosci():
     """Sprawdź, czy podanie daty "do" w przyszłości nie przejdzie"""
     u1 = baker.make(Uczelnia)
     w1 = baker.make(Wydzial, uczelnia=u1)
-    j1 = baker.make(Jednostka, wydzial=w1, uczelnia=u1)
+    j1 = baker.make(Jednostka, uczelnia=u1)
     jw = Jednostka_Rodzic(
         jednostka=j1,
         parent=_wezel(w1),
@@ -313,9 +318,11 @@ def test_jednostka_save_trigger_dwa_zakresy_bug():
         jednostka=j1, parent=_wezel(w2), od=datetime(2013, 1, 2), do=None
     )
 
-    # Jednostka ma mieć ustalony wydział nr 2
+    # Faza B (#438), II-1: ``wydzial`` nie jest już derywatem historii
+    # (denorm z MPTT ``parent``). Testujemy, że wielozakresowa historia
+    # zapisuje się bez błędu i że sygnał utrzymuje ``aktualna``.
     j1.refresh_from_db()
-    assert j1.wydzial == w2
+    assert j1.aktualna is True
 
     jw.do = datetime(2013, 1, 3)
     jw.save()
@@ -324,9 +331,8 @@ def test_jednostka_save_trigger_dwa_zakresy_bug():
         jednostka=j1, parent=_wezel(w1), od=datetime(2013, 1, 4), do=None
     )
 
-    # Jednostka ma mieć ustalony wydział nr 1
     j1.refresh_from_db()
-    assert j1.wydzial == w1
+    assert j1.aktualna is True
 
 
 @pytest.mark.django_db

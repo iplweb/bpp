@@ -10,6 +10,7 @@ from bpp.demo_data.progress import make_progress
 from bpp.demo_data.themes.base import Theme
 from bpp.demo_data.themes.compose import apply_prefix, compose_jednostka_nazwa
 from bpp.models import Jednostka, Uczelnia, Wydzial
+from bpp.models.struktura_konwersja import znajdz_lub_utworz_wezel_wydzialu
 
 
 def create_jednostki(
@@ -27,11 +28,16 @@ def create_jednostki(
     wydzialy = list(wydzialy)
     objs: list[Jednostka] = []
     for w_idx, wydzial in enumerate(wydzialy, start=1):
+        # Faza B (#438): jednostki wiszą pod węzłem-lustrem wydziału (root
+        # MPTT). ``wydzial`` (self-FK) = ten węzeł (dziecko roota → korzeń =
+        # root). Ustawiamy wprost, bo bulk_create omija denorm pre_save.
+        wezel, _ = znajdz_lub_utworz_wezel_wydzialu(wydzial)
         for j_idx in range(1, per_wydzial + 1):
             objs.append(
                 Jednostka(
                     uczelnia=uczelnia,
-                    wydzial=wydzial,
+                    parent=wezel,
+                    wydzial=wezel,
                     nazwa=apply_prefix(compose_jednostka_nazwa(theme, rng), prefix),
                     skrot=f"DJ{w_idx}-{j_idx}",
                     rodzaj_jednostki=Jednostka.RODZAJ_JEDNOSTKI.NORMALNA,

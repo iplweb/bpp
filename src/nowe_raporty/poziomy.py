@@ -13,7 +13,7 @@ from django import forms
 from bpp.models import Uczelnia
 from bpp.models.autor import Autor
 from bpp.models.cache import Rekord
-from bpp.models.struktura import Jednostka, Wydzial
+from bpp.models.struktura import Jednostka
 from bpp.util.uczelnia_scope import scope_rekord_do_uczelni
 
 from .models import DefinicjaRaportu
@@ -77,11 +77,15 @@ POZIOMY = {
         _base_jednostka,
         lambda: _pole("Jednostka", Jednostka, "bpp:public-jednostka-autocomplete"),
     ),
+    # Faza B (#438): „wydział" = jednostka-korzeń (parent IS NULL). Picker i
+    # obiekt raportu to teraz Jednostka top-level, nie Wydzial.
     DefinicjaRaportu.POZIOM_WYDZIAL: PoziomConfig(
-        Wydzial,
+        Jednostka,
         True,
         _base_wydzial,
-        lambda: _pole("Wydział", Wydzial, "bpp:wydzial-autocomplete"),
+        lambda: _pole(
+            "Wydział", Jednostka, "bpp:public-jednostka-toplevel-autocomplete"
+        ),
     ),
     DefinicjaRaportu.POZIOM_UCZELNIA: PoziomConfig(
         Uczelnia,

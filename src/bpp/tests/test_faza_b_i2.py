@@ -50,7 +50,8 @@ def test_sygnal_ustawia_wydzial_i_aktualna():
     Jednostka_Rodzic.objects.create(jednostka=j, parent=_wezel(w))
 
     j.refresh_from_db()
-    assert j.wydzial == w
+    # Faza B (#438), II-1: sygnał NIE utrzymuje już ``wydzial`` (denorm z MPTT
+    # ``parent``); testujemy tylko ``aktualna``.
     assert j.aktualna is True
 
 
@@ -66,7 +67,6 @@ def test_sygnal_respektuje_aktualna_override_false():
 
     j.refresh_from_db()
     assert j.aktualna is False  # override wygrywa nad derywacją (True)
-    assert j.wydzial == w  # wydzial_id nadal derywowany
 
 
 @pytest.mark.django_db
@@ -83,7 +83,6 @@ def test_sygnal_respektuje_aktualna_override_true():
 
     j.refresh_from_db()
     assert j.aktualna is True  # override wygrywa nad derywacją (False)
-    assert j.wydzial == w
 
 
 @pytest.mark.django_db

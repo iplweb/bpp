@@ -3,7 +3,7 @@ from django.contrib.admin import SimpleListFilter
 from django.db.models import Window
 from django.db.models.functions import ExtractWeekDay, FirstValue
 
-from bpp.models import Wydzial
+from bpp.models import Jednostka
 from zglos_publikacje.models import Zgloszenie_Publikacji_Autor
 
 
@@ -13,14 +13,17 @@ class WydzialJednostkiPierwszegoAutora(SimpleListFilter):
     db_field_name = "zgloszenie_publikacji_autor__jednostka__wydzial"
 
     def lookups(self, request, model_admin):
+        # Faza B (#438): „wydział" = jednostka-korzeń (self-FK). ``jednostka__
+        # wydzial__pk`` to teraz pk korzenia — listujemy korzenie.
         return [
             (x.pk, x.nazwa)
-            for x in Wydzial.objects.filter(
+            for x in Jednostka.objects.filter(
+                parent__isnull=True,
                 pk__in=Zgloszenie_Publikacji_Autor.objects.filter(
                     jednostka__skupia_pracownikow=True
                 )
                 .values_list("jednostka__wydzial__pk")
-                .distinct()
+                .distinct(),
             )
         ]
 
@@ -34,8 +37,10 @@ class WydzialJednostkiPierwszegoAutora(SimpleListFilter):
         if not v:
             return queryset
 
+        # Faza B (#438): ``v`` to pk jednostki-korzenia; jednostki „w tym
+        # wydziale" = poddrzewo korzenia (``wydzial_id == v``, self-FK).
         jednostki_wybranego_wydzialu = list(
-            Wydzial.objects.get(pk=v).aktualne_jednostki().values_list("pk", flat=True)
+            Jednostka.objects.filter(wydzial_id=v).values_list("pk", flat=True)
         )
 
         pierwsze_nieobce_jednostki = (

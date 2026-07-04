@@ -16,6 +16,7 @@ from bpp.models import (
     Wydawnictwo_Ciagle,
     Wydzial,
 )
+from bpp.models.struktura_konwersja import znajdz_lub_utworz_wezel_wydzialu
 from bpp.views.autocomplete.simple import LataAutocomplete
 
 
@@ -25,7 +26,10 @@ def jednostka_drugiej_uczelni(db):
     uczelnia2 = Uczelnia.objects.create(skrot="DRL", nazwa="Druga", site=site)
     wydzial = Wydzial.objects.create(uczelnia=uczelnia2, skrot="W2", nazwa="Wydz II")
     return Jednostka.objects.create(
-        nazwa="Jedn II", skrot="JDL", wydzial=wydzial, uczelnia=uczelnia2
+        nazwa="Jedn II",
+        skrot="JDL",
+        parent=znajdz_lub_utworz_wezel_wydzialu(wydzial)[0],
+        uczelnia=uczelnia2,
     )
 
 

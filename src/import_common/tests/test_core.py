@@ -11,6 +11,7 @@ from bpp.models import (
     Wydzial,
     Zrodlo,
 )
+from bpp.models.struktura_konwersja import znajdz_lub_utworz_wezel_wydzialu
 from import_common.core import (
     _isbn_matches,
     _part_numbers_compatible,
@@ -43,12 +44,15 @@ def test_matchuj_wydzial(szukany_string, db):
 )
 def test_matchuj_jednostke(szukany_string, uczelnia, wydzial, db):
     j1 = baker.make(
-        Jednostka, nazwa="Jednostka Pierwsza", wydzial=wydzial, uczelnia=uczelnia
+        Jednostka,
+        nazwa="Jednostka Pierwsza",
+        parent=znajdz_lub_utworz_wezel_wydzialu(wydzial)[0],
+        uczelnia=uczelnia,
     )
     baker.make(
         Jednostka,
         nazwa="Jednostka Pierwsza i Jeszcze",
-        wydzial=wydzial,
+        parent=znajdz_lub_utworz_wezel_wydzialu(wydzial)[0],
         uczelnia=uczelnia,
     )
 

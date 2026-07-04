@@ -238,6 +238,15 @@ def importuj_afiliacje(plik_xls, text_mangle):
 def importuj_imiona_sheet(sheet, wydzial):
     labels = ["_id", "tytul", "imiona", "nazwisko", "afiliacja"]
 
+    # Faza B (#438): ``afiliacja_na_rok`` filtruje po ``jednostka__wydzial``,
+    # które jest teraz self-FK do jednostki-korzenia. Mapujemy Wydzial na jego
+    # węzeł-lustro (root Jednostka), żeby dopasowanie działało po retargecie.
+    from bpp.models.struktura_konwersja import znajdz_lub_utworz_wezel_wydzialu
+
+    wezel_wydzialu = (
+        znajdz_lub_utworz_wezel_wydzialu(wydzial)[0] if wydzial is not None else None
+    )
+
     def zmien_imiona(a, dct):
         i = dct["imiona"].value
         if len(a.imiona) < len(i):
@@ -278,7 +287,7 @@ def importuj_imiona_sheet(sheet, wydzial):
             # 2 lub więcej -- sprawdź, ilu pasuje pod wydział podany jako parametr
             results = []
             for a in autor:
-                if a.afiliacja_na_rok(2012, wydzial, rozszerzona=True):
+                if a.afiliacja_na_rok(2012, wezel_wydzialu, rozszerzona=True):
                     results.append(a)
 
             if len(results) == 1:

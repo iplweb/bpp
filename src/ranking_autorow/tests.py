@@ -25,6 +25,20 @@ from bpp.tests.util import (
 from ranking_autorow.forms import RankingAutorowForm
 from ranking_autorow.views import RankingAutorow
 
+
+def _wydzial_root(wydzial):
+    """Faza B (#438): węzeł-lustro (root Jednostka) dla wydziału, z włączonym
+    rankingiem autorów — pełni w rankingu rolę „wydziału" (jednostki wiszą pod
+    nim, a denorm ``wydzial`` wskazuje ten korzeń)."""
+    from bpp.models.struktura_konwersja import znajdz_lub_utworz_wezel_wydzialu
+
+    root, _ = znajdz_lub_utworz_wezel_wydzialu(wydzial)
+    if not root.zezwalaj_na_ranking_autorow:
+        root.zezwalaj_na_ranking_autorow = True
+        root.save()
+    return root
+
+
 TEST123 = "TEST123"
 
 
@@ -107,7 +121,17 @@ def test_ranking_autorow_bez_kol_naukowych(
     rf,
     uczelnia,
 ):
+    # Faza B (#438): wykluczenie kół po FK ``rodzaj`` + flaga.
+    from bpp.models import RodzajJednostki
+
+    rodzaj, _ = RodzajJednostki.objects.get_or_create(
+        nazwa="Koło naukowe", defaults={"wyklucz_z_rankingu_autorow": True}
+    )
+    if not rodzaj.wyklucz_z_rankingu_autorow:
+        rodzaj.wyklucz_z_rankingu_autorow = True
+        rodzaj.save()
     jednostka.rodzaj_jednostki = Jednostka.RODZAJ_JEDNOSTKI.KOLO_NAUKOWE
+    jednostka.rodzaj = rodzaj
     jednostka.save()
 
     wydawnictwo_ciagle_z_autorem.punkty_pk = 20
@@ -164,8 +188,10 @@ def test_ranking_autorow_wybor_wydzialu(
     wydzial.zezwalaj_na_ranking_autorow = True
     wydzial.save()
 
-    jw1 = baker.make(Jednostka, wydzial=wydzial, uczelnia=uczelnia)
-    jw2 = baker.make(Jednostka, wydzial=drugi_wydzial, uczelnia=uczelnia)
+    root1 = _wydzial_root(wydzial)
+    root2 = _wydzial_root(drugi_wydzial)
+    jw1 = baker.make(Jednostka, parent=root1, uczelnia=uczelnia)
+    jw2 = baker.make(Jednostka, parent=root2, uczelnia=uczelnia)
 
     autor_jan_nowak.dodaj_jednostke(jw1)
     autor_jan_kowalski.dodaj_jednostke(jw2)
@@ -197,14 +223,14 @@ def test_ranking_autorow_wybor_wydzialu(
 
     # Test by accessing the report URL directly with parameters
     result = admin_app.get(
-        reverse("bpp:ranking-autorow", args=(rok, rok)) + f"?wydzial={wydzial.pk}"
+        reverse("bpp:ranking-autorow", args=(rok, rok)) + f"?wydzial={root1.pk}"
     )
     assert b"Kowalski" not in result.content
     assert b"Nowak" in result.content
 
     # Wydzial 2
     result = admin_app.get(
-        reverse("bpp:ranking-autorow", args=(rok, rok)) + f"?wydzial={drugi_wydzial.pk}"
+        reverse("bpp:ranking-autorow", args=(rok, rok)) + f"?wydzial={root2.pk}"
     )
     assert b"Kowalski" in result.content
     assert b"Nowak" not in result.content
@@ -224,8 +250,10 @@ def test_ranking_autorow_wszystkie_wydzialy(
     wydzial.zezwalaj_na_ranking_autorow = True
     wydzial.save()
 
-    jw1 = baker.make(Jednostka, wydzial=wydzial, uczelnia=uczelnia)
-    jw2 = baker.make(Jednostka, wydzial=drugi_wydzial, uczelnia=uczelnia)
+    root1 = _wydzial_root(wydzial)
+    root2 = _wydzial_root(drugi_wydzial)
+    jw1 = baker.make(Jednostka, parent=root1, uczelnia=uczelnia)
+    jw2 = baker.make(Jednostka, parent=root2, uczelnia=uczelnia)
 
     autor_jan_nowak.dodaj_jednostke(jw1)
     autor_jan_kowalski.dodaj_jednostke(jw2)
@@ -698,6 +726,7 @@ def test_ranking_z_wydzialem(ranking_data):
     """Zsumuje punktacje ze wszystkich prac, ze wszystkich wydziałów dla roku."""
     client = ranking_data["client"]
     w2 = ranking_data["w2"]
+    w2_root = _wydzial_root(w2)
 
     response = client.get(
         reverse(
@@ -708,7 +737,7 @@ def test_ranking_z_wydzialem(ranking_data):
             ),
         )
         + "?wydzial="
-        + str(w2.pk)
+        + str(w2_root.pk)
         + "",
         follow=True,
     )

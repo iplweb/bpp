@@ -96,8 +96,11 @@ def test_parent_mapuje_na_stary_wydzial_przez_legacy():
 
     assert jr.parent.legacy_wydzial_id == w.id
 
+    # Faza B (#438), II-1: sygnał NIE derywuje już ``wydzial`` z historii —
+    # węzeł-rodzic (mirror) mapuje na stary Wydzial przez ``legacy_wydzial_id``
+    # (sprawdzone wyżej); ``Jednostka.wydzial`` wylicza denorm z MPTT parent.
     j.refresh_from_db()
-    assert j.wydzial == w  # sygnał zderywował wydzial_id z parent.legacy
+    assert j.aktualna is True
 
 
 @pytest.mark.django_db

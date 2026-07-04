@@ -86,8 +86,21 @@ def autor_jan_kowalski(db, tytuly) -> Autor:
 
 
 def _jednostka_maker(nazwa, skrot, wydzial, **kwargs):
+    # Faza B (#438): ``Jednostka.wydzial`` to self-FK do korzenia (denorm).
+    # Jednostka „w wydziale" wisi pod węzłem-lustrem tego Wydzialu (root),
+    # a denorm wylicza ``wydzial`` przy zapisie. ``wydzial=`` NIE trafia już
+    # do ``create()``.
+    from bpp.models.struktura_konwersja import znajdz_lub_utworz_wezel_wydzialu
+
+    parent = kwargs.pop("parent", None)
+    if parent is None and wydzial is not None:
+        parent, _ = znajdz_lub_utworz_wezel_wydzialu(wydzial)
     ret = Jednostka.objects.get_or_create(
-        nazwa=nazwa, skrot=skrot, wydzial=wydzial, uczelnia=wydzial.uczelnia, **kwargs
+        nazwa=nazwa,
+        skrot=skrot,
+        parent=parent,
+        uczelnia=wydzial.uczelnia,
+        **kwargs,
     )[0]
     ret.refresh_from_db()
     return ret
@@ -100,9 +113,21 @@ def jednostka(wydzial, db):
 
 @pytest.fixture(scope="function")
 def kolo_naukowe(jednostka: Jednostka):
+    from bpp.models import RodzajJednostki
+
+    # Faza B (#438): wykluczenie kół z rankingu idzie teraz przez FK ``rodzaj``
+    # + flagę ``wyklucz_z_rankingu_autorow`` (nie po CharField). Ustawiamy oba,
+    # żeby fixture działał zarówno przed, jak i po usunięciu CharField (III-1).
+    rodzaj, _ = RodzajJednostki.objects.get_or_create(
+        nazwa="Koło naukowe", defaults={"wyklucz_z_rankingu_autorow": True}
+    )
+    if not rodzaj.wyklucz_z_rankingu_autorow:
+        rodzaj.wyklucz_z_rankingu_autorow = True
+        rodzaj.save()
     jednostka.nazwa = "Studenckie Koło Naukowe Przykładowe"
     jednostka.skrot = "SKN"
     jednostka.rodzaj_jednostki = Jednostka.RODZAJ_JEDNOSTKI.KOLO_NAUKOWE
+    jednostka.rodzaj = rodzaj
     jednostka.save()
     return jednostka
 

@@ -99,16 +99,28 @@ def any_jednostka(nazwa=None, skrot=None, wydzial_skrot="WDZ", **kw):
         if uczelnia is None:
             uczelnia = baker.make(Uczelnia)
 
+    # Faza B (#438): ``Jednostka.wydzial`` to zdenormalizowany self-FK do
+    # KORZENIA drzewa. Żeby jednostka miała „wydział", musi wisieć pod
+    # węzłem-lustrem tego Wydzialu (root Jednostka). Denorm wyliczy ``wydzial``
+    # przy zapisie. ``wydzial=`` NIE jest już przekazywane do ``create()``.
+    parent = kw.pop("parent", None)
     try:
         wydzial = kw.pop("wydzial")
     except KeyError:
-        try:
-            wydzial = Wydzial.objects.get(skrot=wydzial_skrot)
-        except Wydzial.DoesNotExist:
-            wydzial = baker.make(Wydzial, uczelnia=uczelnia)
+        wydzial = None
+        if parent is None:
+            try:
+                wydzial = Wydzial.objects.get(skrot=wydzial_skrot)
+            except Wydzial.DoesNotExist:
+                wydzial = baker.make(Wydzial, uczelnia=uczelnia)
+
+    if parent is None and wydzial is not None:
+        from bpp.models.struktura_konwersja import znajdz_lub_utworz_wezel_wydzialu
+
+        parent, _ = znajdz_lub_utworz_wezel_wydzialu(wydzial)
 
     ret = Jednostka.objects.create(
-        nazwa=nazwa, skrot=skrot, wydzial=wydzial, uczelnia=uczelnia, **kw
+        nazwa=nazwa, skrot=skrot, parent=parent, uczelnia=uczelnia, **kw
     )
     ret.refresh_from_db()
     return ret

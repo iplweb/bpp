@@ -33,6 +33,20 @@ def _wezel(wydzial):
     return wezel
 
 
+def _jednostka_w_wydziale(uczelnia, wydzial, parent=None):
+    """Jednostka należąca do ``wydzial`` w modelu PO retargecie (II-1 / 0459).
+
+    Faza B (#438): ``Jednostka.wydzial`` to self-FK do korzenia z DB-constraint
+    → nie da się ustawić ``wydzial_id`` na pk Wydzialu (stan sprzed 0457 jest
+    nieodtwarzalny). Jednostka wisi więc pod węzłem-lustrem wydziału (root),
+    a denorm wylicza ``wydzial`` = ten korzeń. ``apply_faza_b_i4`` uruchamiamy
+    na tak ustrukturyzowanych danych (re-parent płaskich = no-op; testujemy
+    przepisanie historii / nested-set / idempotencję)."""
+    if parent is None:
+        parent = _wezel(wydzial)
+    return baker.make(Jednostka, uczelnia=uczelnia, parent=parent)
+
+
 @pytest.fixture
 def uczelnia(db):
     return baker.make(Uczelnia)
@@ -45,9 +59,12 @@ def uczelnia(db):
 def test_plaska_jednostka_pod_wezlem_wydzialu(uczelnia):
     w = baker.make(Wydzial, uczelnia=uczelnia)
     wezel = _wezel(w)
-    j = baker.make(Jednostka, uczelnia=uczelnia, parent=None, wydzial=w)
+    j = _jednostka_w_wydziale(uczelnia, w)
 
-    assert j.parent_id is None
+    # Faza B (#438), II-1: jednostka jest już pod węzłem-lustrem (stan po
+    # retargecie). ``_apply`` (re-parent płaskich) jest tu no-opem — sprawdzamy
+    # że NIE psuje istniejącej struktury (idempotencja).
+    assert j.parent_id == wezel.pk
 
     _apply()
 
@@ -66,8 +83,8 @@ def test_plaska_jednostka_pod_wezlem_wydzialu(uczelnia):
 def test_subjednostka_historia_na_krawedzi_realnego_rodzica(uczelnia):
     w = baker.make(Wydzial, uczelnia=uczelnia)
     wezel = _wezel(w)
-    katedra = baker.make(Jednostka, uczelnia=uczelnia, parent=None, wydzial=w)
-    zaklad = baker.make(Jednostka, uczelnia=uczelnia, parent=katedra, wydzial=w)
+    katedra = _jednostka_w_wydziale(uczelnia, w)
+    zaklad = _jednostka_w_wydziale(uczelnia, w, parent=katedra)
     # Historia sub-jednostki po backfillu I-3 wskazuje węzeł-wydział.
     wpis = baker.make(
         Jednostka_Rodzic, jednostka=zaklad, parent=wezel, od=None, do=None
@@ -93,7 +110,7 @@ def test_direct_child_historia_nienaruszona(uczelnia):
     wezel1 = _wezel(w1)
     wezel2 = _wezel(w2)
     # Płaska jednostka, obecnie w w2:
-    j = baker.make(Jednostka, uczelnia=uczelnia, parent=None, wydzial=w2)
+    j = _jednostka_w_wydziale(uczelnia, w2)
     # Historia: kiedyś w1 (zamknięty), teraz w2 (otwarty).
     stary = baker.make(
         Jednostka_Rodzic,
@@ -186,8 +203,8 @@ def test_subjednostka_wiele_wydzialow_nie_przepisuje(uczelnia, capsys):
     w2 = baker.make(Wydzial, uczelnia=uczelnia)
     wezel1 = _wezel(w1)
     wezel2 = _wezel(w2)
-    katedra = baker.make(Jednostka, uczelnia=uczelnia, parent=None, wydzial=w2)
-    zaklad = baker.make(Jednostka, uczelnia=uczelnia, parent=katedra, wydzial=w2)
+    katedra = _jednostka_w_wydziale(uczelnia, w2)
+    zaklad = _jednostka_w_wydziale(uczelnia, w2, parent=katedra)
     # Sub-jednostka z DWOMA różnymi wydziałami w historii:
     w_stary = baker.make(
         Jednostka_Rodzic,
@@ -217,8 +234,8 @@ def test_subjednostka_wiele_wydzialow_nie_przepisuje(uczelnia, capsys):
 def test_nested_set_poprawny(uczelnia):
     w = baker.make(Wydzial, uczelnia=uczelnia)
     wezel = _wezel(w)
-    katedra = baker.make(Jednostka, uczelnia=uczelnia, parent=None, wydzial=w)
-    zaklad = baker.make(Jednostka, uczelnia=uczelnia, parent=katedra, wydzial=w)
+    katedra = _jednostka_w_wydziale(uczelnia, w)
+    zaklad = _jednostka_w_wydziale(uczelnia, w, parent=katedra)
 
     _apply()
 
@@ -247,8 +264,8 @@ def test_migracja_idempotentna(uczelnia):
         Wydzial, uczelnia=uczelnia, otwarcie=date(1990, 1, 1), zamkniecie=None
     )
     wezel = _wezel(w)
-    katedra = baker.make(Jednostka, uczelnia=uczelnia, parent=None, wydzial=w)
-    zaklad = baker.make(Jednostka, uczelnia=uczelnia, parent=katedra, wydzial=w)
+    katedra = _jednostka_w_wydziale(uczelnia, w)
+    zaklad = _jednostka_w_wydziale(uczelnia, w, parent=katedra)
     baker.make(Jednostka_Rodzic, jednostka=zaklad, parent=wezel, od=None, do=None)
 
     _apply()

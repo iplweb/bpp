@@ -12,11 +12,10 @@ except ImportError:
 from django.conf import settings
 from model_bakery import baker
 
-from fixtures import JEDNOSTKA_PODRZEDNA, JEDNOSTKA_UCZELNI
-
 from bpp.models import Autor_Jednostka, Uczelnia
 from bpp.models.autor import Autor
 from bpp.views.browse import JednostkiView
+from fixtures import JEDNOSTKA_PODRZEDNA, JEDNOSTKA_UCZELNI
 
 
 def test_browse_jednostka_link_osadzania(jednostka, client):
@@ -105,16 +104,23 @@ def test_browse_pokazuj_tylko_jednostki_nadrzedne_nie(
     assert JEDNOSTKA_PODRZEDNA in normalize_html(res.rendered_content)
 
 
-def test_browse_pokazuj_tylko_jednostki_nadrzedne_tak(
-    jednostka_podrzedna, jednostka, client, uczelnia
-):
+def test_browse_pokazuj_tylko_jednostki_nadrzedne_tak(uczelnia, client, db):
+    # Faza B (#438): po retargecie fixture ``jednostka`` wisi pod ukrytym
+    # węzłem-lustrem (nie jest top-level). Filtr „tylko nadrzędne" = ``parent
+    # IS NULL``, więc budujemy jawnie widoczną jednostkę top-level + dziecko.
+    from bpp.tests.util import any_jednostka
+
+    top = any_jednostka(nazwa="Jednostka Nadrzędna T", wydzial=None, uczelnia=uczelnia)
+    any_jednostka(nazwa="Jednostka Podrzędna T", uczelnia=uczelnia, parent=top)
+
     uczelnia.pokazuj_tylko_jednostki_nadrzedne = True
     uczelnia.save()
 
     url = reverse("bpp:browse_jednostki")
     res = client.get(url)
-    assert JEDNOSTKA_UCZELNI in normalize_html(res.rendered_content)
-    assert JEDNOSTKA_PODRZEDNA not in normalize_html(res.rendered_content)
+    content = normalize_html(res.rendered_content)
+    assert "Jednostka Nadrzędna T" in content
+    assert "Jednostka Podrzędna T" not in content
 
 
 @pytest.mark.parametrize("arg_res", [True, False])

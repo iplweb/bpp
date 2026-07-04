@@ -12,6 +12,7 @@ from bpp.models import (
     Uczelnia,
     Wydzial,
 )
+from bpp.models.struktura_konwersja import znajdz_lub_utworz_wezel_wydzialu
 from raport_slotow.models.uczelnia import RaportSlotowUczelnia
 
 
@@ -66,9 +67,7 @@ def druga_uczelnia(db):
     site, _ = Site.objects.get_or_create(
         domain="druga.testserver", defaults={"name": "druga"}
     )
-    return Uczelnia.objects.create(
-        skrot="DR", nazwa="Druga uczelnia", site=site
-    )
+    return Uczelnia.objects.create(skrot="DR", nazwa="Druga uczelnia", site=site)
 
 
 @pytest.fixture
@@ -79,7 +78,7 @@ def jednostka_drugiej_uczelni(druga_uczelnia, db):
     return Jednostka.objects.create(
         nazwa="Jedn. Drugiej Ucz.",
         skrot="JDU",
-        wydzial=wydzial,
+        parent=znajdz_lub_utworz_wezel_wydzialu(wydzial)[0],
         uczelnia=druga_uczelnia,
     )
 
@@ -123,8 +122,6 @@ def zwarte_dwie_uczelnie(
     )
     wydawnictwo_zwarte.punkty_kbn = 20
     wydawnictwo_zwarte.wydawca = wydawca
-    wydawnictwo_zwarte.charakter_formalny = Charakter_Formalny.objects.get(
-        skrot="KSP"
-    )
+    wydawnictwo_zwarte.charakter_formalny = Charakter_Formalny.objects.get(skrot="KSP")
     wydawnictwo_zwarte.save()
     return wydawnictwo_zwarte

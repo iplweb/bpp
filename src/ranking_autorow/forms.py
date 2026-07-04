@@ -14,7 +14,7 @@ from django import forms
 from django.core import validators
 from django.db.models import Exists, OuterRef, Q
 
-from bpp.models import Charakter_Formalny, Jednostka, Typ_KBN, Uczelnia, Wydzial
+from bpp.models import Charakter_Formalny, Jednostka, Typ_KBN, Uczelnia
 
 
 def ustaw_rok(rok, lata):
@@ -61,13 +61,14 @@ class RankingAutorowForm(forms.Form):
         label="Ogranicz do wydziału:",
         required=False,
         widget=autocomplete.ModelSelect2(
-            url="bpp:wydzial-autocomplete",
+            url="bpp:public-jednostka-toplevel-autocomplete",
             attrs={
                 "data-placeholder": "Wybierz wydział...",
                 "data-allow-clear": "true",
             },
         ),
-        queryset=Wydzial.objects.none(),  # Will be set in __init__
+        # Faza B (#438): „wydział" = jednostka-korzeń (parent IS NULL).
+        queryset=Jednostka.objects.none(),  # Will be set in __init__
         help_text="Jeżeli nie wybierzesz wydziału, system wygeneruje dane dla wszystkich wydziałów.",
     )
 
@@ -248,9 +249,15 @@ class RankingAutorowForm(forms.Form):
         layout_fields.append(Row(F4Column("jednostka", css_class="large-12 small-12")))
 
         if uzywaj_wydzialow:
-            # Filter Wydzial to show only those with associated works through their jednostki
+            # Faza B (#438): „wydziały" = jednostki-korzenie (parent IS NULL)
+            # z pracami w poddrzewie. ``wydzial=OuterRef("pk")`` (self-FK)
+            # łapie jednostki, których korzeniem jest dany root.
             wydzial_with_works = (
-                Wydzial.objects.filter(widoczny=True, zezwalaj_na_ranking_autorow=True)
+                Jednostka.objects.filter(
+                    parent__isnull=True,
+                    widoczna=True,
+                    zezwalaj_na_ranking_autorow=True,
+                )
                 .filter(
                     Exists(
                         Jednostka.objects.filter(

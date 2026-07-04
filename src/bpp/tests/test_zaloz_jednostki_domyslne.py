@@ -8,15 +8,24 @@ from model_bakery import baker
 from bpp.models import Autor_Jednostka, Jednostka
 
 
+def _wezel(wydzial):
+    # Faza B (#438): „wydział" = węzeł-lustro (root Jednostka); jednostki wiszą
+    # pod nim, a denorm ``wydzial`` (korzeń) wskazuje ten węzeł.
+    from bpp.models.struktura_konwersja import znajdz_lub_utworz_wezel_wydzialu
+
+    return znajdz_lub_utworz_wezel_wydzialu(wydzial)[0]
+
+
 @pytest.mark.django_db
 def test_zaloz_jednostki_domyslne_happy(uczelnia, wydzial):
     """Puste jednostki znikają, zostaje jedna domyślna na wydział."""
-    baker.make(Jednostka, uczelnia=uczelnia, wydzial=wydzial)
-    baker.make(Jednostka, uczelnia=uczelnia, wydzial=wydzial)
+    wezel = _wezel(wydzial)
+    baker.make(Jednostka, uczelnia=uczelnia, parent=wezel)
+    baker.make(Jednostka, uczelnia=uczelnia, parent=wezel)
 
     call_command("zaloz_jednostki_domyslne", uczelnia.skrot)
 
-    jednostki = Jednostka.objects.filter(uczelnia=uczelnia, wydzial=wydzial)
+    jednostki = Jednostka.objects.filter(uczelnia=uczelnia, wydzial=wezel)
     assert jednostki.count() == 1
     assert jednostki.get().nazwa == f"Jednostka Domyślna - {wydzial.nazwa}"
 
@@ -24,7 +33,7 @@ def test_zaloz_jednostki_domyslne_happy(uczelnia, wydzial):
 @pytest.mark.django_db
 def test_niepusta_jednostka_blokuje_i_nic_nie_kasuje(uczelnia, wydzial):
     """Jednostka z zatrudnieniem → CommandError, stan bazy nietknięty."""
-    jednostka = baker.make(Jednostka, uczelnia=uczelnia, wydzial=wydzial)
+    jednostka = baker.make(Jednostka, uczelnia=uczelnia, parent=_wezel(wydzial))
     baker.make(Autor_Jednostka, jednostka=jednostka)
 
     with pytest.raises(CommandError):
@@ -40,8 +49,9 @@ def test_niepusta_jednostka_blokuje_i_nic_nie_kasuje(uczelnia, wydzial):
 @pytest.mark.django_db
 def test_dry_run_niczego_nie_zmienia(uczelnia, wydzial):
     """--dry-run pokazuje plan, ale nie zapisuje zmian."""
-    baker.make(Jednostka, uczelnia=uczelnia, wydzial=wydzial)
-    baker.make(Jednostka, uczelnia=uczelnia, wydzial=wydzial)
+    wezel = _wezel(wydzial)
+    baker.make(Jednostka, uczelnia=uczelnia, parent=wezel)
+    baker.make(Jednostka, uczelnia=uczelnia, parent=wezel)
     przed = set(
         Jednostka.objects.filter(uczelnia=uczelnia).values_list("pk", flat=True)
     )

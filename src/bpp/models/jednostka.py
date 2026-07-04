@@ -5,6 +5,7 @@ Struktura uczelni.
 from datetime import date, timedelta
 
 from autoslug import AutoSlugField
+from denorm import denormalized, depend_on_fields, depend_on_related
 from django.conf import settings
 from django.contrib.postgres.search import SearchVectorField as VectorField
 from django.core.exceptions import ValidationError
@@ -34,12 +35,10 @@ SORTUJ_ALFABETYCZNIE = ("nazwa",)
 
 
 class JednostkaManager(FulltextSearchMixin, TreeManager):
-    def create(self, *args, **kw):
-        if "wydzial" in kw and not ("uczelnia" in kw or "uczelnia_id" in kw):
-            # Kompatybilność wsteczna, z czasów, gdy nie było metryczki historycznej
-            # dla obecności jednostki w wydziałach
-            kw["uczelnia"] = kw["wydzial"].uczelnia
-        return super().create(*args, **kw)
+    # Faza B (#438): usunięto kompat-kwarg ``wydzial=`` z ``create()`` —
+    # ``wydzial`` jest teraz zdenormalizowanym self-FK (denorm nadpisuje przy
+    # zapisie), więc nie da się (i nie należy) go podać ręcznie. Wołający
+    # ustawiają ``parent`` (drzewo) i ``uczelnia`` wprost.
 
     def get_default_ordering(self, uczelnia=None):
         # Multi-hosted: odczyt PREFERENCJI sortowania. Bez przekazanej uczelni
@@ -100,9 +99,25 @@ class Jednostka(ModelZAdnotacjami, ModelZPBN_ID, ModelZPBN_UID, MPTTModel):
         # default=lambda: Uczelnia.objects.first()
     )
 
-    wydzial = models.ForeignKey(
-        Wydzial, CASCADE, verbose_name="Wydział", blank=True, null=True
+    @denormalized(
+        models.ForeignKey,
+        "self",
+        verbose_name="Wydział",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="+",
     )
+    @depend_on_fields("parent")
+    @depend_on_related("self", "parent", only=("wydzial_id",))
+    def wydzial(self):
+        # Faza B (#438): zdenormalizowany wskaźnik KORZENIA drzewa MPTT.
+        # Root (parent IS NULL) → NULL; potomek → korzeń swojego poddrzewa.
+        # Kaskada tranzytywna (denorm) przelicza poddrzewo przy re-parencie.
+        if self.parent_id is None:
+            return None
+        return self.parent.wydzial or self.parent
+
     aktualna = models.BooleanField(
         default=False,
         help_text="""Jeżeli dana jednostka wchodzi w struktury wydziału
@@ -527,27 +542,27 @@ class Jednostka_Rodzic(models.Model):
 
 @receiver(post_save, sender=Jednostka_Rodzic)
 @receiver(post_delete, sender=Jednostka_Rodzic)
-def ustaw_wydzial_i_aktualna_jednostki(sender, instance, **kwargs):
-    """Zastępuje trigger bazodanowy ``bpp_jednostka_ustaw_wydzial_aktualna``
-    (zdjęty w migracji 0455, Faza B / issue #438).
+def ustaw_aktualna_jednostki(sender, instance, **kwargs):
+    """Zastępuje część triggera ``bpp_jednostka_ustaw_wydzial_aktualna``
+    dotyczącą pola ``aktualna`` (zdjęty w migracji 0455, Faza B / issue #438).
 
-    Po każdej zmianie wpisów ``Jednostka_Rodzic`` danej jednostki przelicza
-    i zapisuje na ``Jednostka`` pola ``wydzial_id`` oraz ``aktualna``,
-    odwzorowując logikę starego triggera 1:1:
+    **Zmiana w II-1 (0459):** sygnał NIE utrzymuje już interim ``wydzial_id``
+    — po retargecie ``Jednostka.wydzial`` jest zdenormalizowanym self-FK do
+    korzenia drzewa MPTT, utrzymywanym przez ``django-denorm-iplweb`` na
+    podstawie ``parent`` (a NIE historii ``Jednostka_Rodzic``). Sygnał liczy
+    wyłącznie ``aktualna``.
+
+    Po każdej zmianie wpisów ``Jednostka_Rodzic`` danej jednostki:
 
     * bierze NAJŚWIEŻSZY wpis (``ORDER BY coalesce(od, 0001-01-01) DESC``),
-    * ``wydzial_id`` = ``parent.legacy_wydzial_id`` tego wpisu (węzeł-rodzic
-      mapuje na stary Wydzial przez ``legacy_wydzial_id`` — Faza B, I-3);
-      brak wpisu / parent bez legacy_wydzial_id → ``NULL``,
     * ``aktualna`` = ``coalesce(do, 9999-12-31) > dzisiaj`` (interim: bieżący
       wpis → True, wpis zakończony / brak wpisów → False).
 
-    Różnica względem triggera (Faza B): jeśli ``Jednostka.aktualna_override``
-    jest ustawione (nie-NULL), NIE derywujemy ``aktualna`` — trzymamy override.
+    Jeśli ``Jednostka.aktualna_override`` jest ustawione (nie-NULL), NIE
+    derywujemy ``aktualna`` — trzymamy override.
 
     Zapis przez ``.update()`` (bypass ``save()`` na Jednostce → brak
-    rekurencji sygnałów). Walidacji uczelni NIE odtwarzamy (Zasada #4
-    federacji — dwa triggery walidacyjne zdjęte bez zamiennika).
+    rekurencji sygnałów).
     """
     jednostka_id = instance.jednostka_id
 
@@ -555,22 +570,13 @@ def ustaw_wydzial_i_aktualna_jednostki(sender, instance, **kwargs):
         Jednostka_Rodzic.objects.filter(jednostka_id=jednostka_id)
         .annotate(_od_not_null=Coalesce("od", date(1, 1, 1)))
         .order_by("-_od_not_null")
-        .select_related("parent")
         .first()
     )
 
-    if najswiezszy is not None and najswiezszy.parent_id is not None:
-        wydzial_id = najswiezszy.parent.legacy_wydzial_id
-        do = najswiezszy.do if najswiezszy.do is not None else date(9999, 12, 31)
-        aktualna = do > date.today()
-    elif najswiezszy is not None:
-        # Wpis istnieje, ale bez węzła-rodzica (parent=NULL) — brak wydziału,
-        # aktualność liczona z daty „do" jak wyżej.
-        wydzial_id = None
+    if najswiezszy is not None:
         do = najswiezszy.do if najswiezszy.do is not None else date(9999, 12, 31)
         aktualna = do > date.today()
     else:
-        wydzial_id = None
         aktualna = False
 
     override = (
@@ -581,9 +587,7 @@ def ustaw_wydzial_i_aktualna_jednostki(sender, instance, **kwargs):
     if override is not None:
         aktualna = override
 
-    Jednostka.objects.filter(pk=jednostka_id).update(
-        wydzial_id=wydzial_id, aktualna=aktualna
-    )
+    Jednostka.objects.filter(pk=jednostka_id).update(aktualna=aktualna)
 
 
 @receiver(post_save, sender=Jednostka)

@@ -10,7 +10,13 @@ def test_Uczelnia_wydzialy(uczelnia, wydzial):
     assert uczelnia.wydzialy().exists()
 
 
-def test_Uczelnia_jednostki(uczelnia, jednostka):
+def test_Uczelnia_jednostki(uczelnia):
+    # Faza B (#438): ``Uczelnia.jednostki()`` = jednostki TOP-LEVEL (parent IS
+    # NULL) i widoczne. Fixture ``jednostka`` wisi teraz pod ukrytym węzłem-
+    # lustrem (nie-top-level), więc tworzymy jednostkę top-level wprost.
+    from bpp.tests.util import any_jednostka
+
+    any_jednostka(wydzial=None, uczelnia=uczelnia)
     assert uczelnia.jednostki().exists()
 
 

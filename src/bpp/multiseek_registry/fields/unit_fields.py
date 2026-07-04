@@ -16,8 +16,7 @@ from multiseek.logic import (
     ValueListQueryObject,
 )
 
-from bpp.models import Autorzy, Jednostka
-from bpp.models.struktura import Wydzial
+from bpp.models import Autorzy, Jednostka, Uczelnia
 from bpp.multiseek_registry.mixins import BppMultiseekVisibilityMixin
 from bpp.util import zaloguj_polkniety_wyjatek
 
@@ -196,21 +195,34 @@ class PierwszaJednostkaQueryObject(JednostkaQueryObject):
 class WydzialQueryObject(
     BppMultiseekVisibilityMixin, ForeignKeyDescribeMixin, AutocompleteQueryObject
 ):
+    # Faza B (#438): „wydział" = jednostka-korzeń (self-FK, NULL dla top-level).
+    # Picker = jednostki top-level; ``real_query`` przez denorm ``wydzial``
+    # (poddrzewo) + ``jednostka=value`` (prace samego korzenia). Operatory
+    # męskie (EQUAL/DIFFERENT/UNION) zostają. Pole rejestrowane ZAWSZE;
+    # widoczność per-uczelnia przez ``option_enabled`` (``uzywaj_wydzialow``).
     label = "Wydział"
     type = AUTOCOMPLETE
     ops = [EQUAL, DIFFERENT, UNION]
-    model = Wydzial
+    model = Jednostka
     search_fields = ["nazwa"]
     field_name = "wydzial"
     djangoql_field_name = "autorzy__jednostka__wydzial"
-    url = "bpp:public-wydzial-autocomplete"
+    url = "bpp:public-jednostka-toplevel-autocomplete"
+
+    def option_enabled(self, request=None):
+        uczelnia = Uczelnia.objects.get_for_request(request)
+        if uczelnia is not None:
+            return uczelnia.uzywaj_wydzialow
+        return True
 
     def real_query(self, value, operation):
         if operation in EQUALITY_OPS_ALL:
-            ret = Q(autorzy__jednostka__wydzial=value)
+            ret = Q(autorzy__jednostka__wydzial=value) | Q(autorzy__jednostka=value)
 
         elif operation in UNION_OPS_ALL:
-            q = Autorzy.objects.filter(jednostka__wydzial=value).values("rekord_id")
+            q = Autorzy.objects.filter(
+                Q(jednostka__wydzial=value) | Q(jednostka=value)
+            ).values("rekord_id")
             ret = Q(pk__in=q)
 
         else:
@@ -228,12 +240,14 @@ class PierwszyWydzialQueryObject(WydzialQueryObject):
 
     def real_query(self, value, operation):
         if operation in EQUALITY_OPS_ALL:
-            ret = Q(autorzy__jednostka__wydzial=value, autorzy__kolejnosc=0)
+            ret = Q(autorzy__jednostka__wydzial=value, autorzy__kolejnosc=0) | Q(
+                autorzy__jednostka=value, autorzy__kolejnosc=0
+            )
 
         elif operation in UNION_OPS_ALL:
-            q = Autorzy.objects.filter(jednostka__wydzial=value, kolejnosc=0).values(
-                "rekord_id"
-            )
+            q = Autorzy.objects.filter(
+                Q(jednostka__wydzial=value) | Q(jednostka=value), kolejnosc=0
+            ).values("rekord_id")
             ret = Q(pk__in=q)
 
         else:

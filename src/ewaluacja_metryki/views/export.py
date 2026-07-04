@@ -3,7 +3,7 @@ from django.db.models import Q
 from django.utils.decorators import method_decorator
 from django.views import View
 
-from bpp.models import Jednostka, Wydzial
+from bpp.models import Jednostka
 from ewaluacja_common.models import Rodzaj_Autora
 
 from ..models import MetrykaAutora
@@ -560,9 +560,11 @@ class ExportListaXLSX(View):
         wydzial_id = request.GET.get("wydzial")
         if wydzial_id and visible_columns["uzywa_wydzialow"]:
             try:
-                wydzial = Wydzial.objects.get(pk=wydzial_id)
+                # Faza B (#438): „wydział" = jednostka-korzeń (pk z pickera
+                # top-level), nie Wydzial.
+                wydzial = Jednostka.objects.get(pk=wydzial_id)
                 filter_info.append(f"Wydział: {wydzial.nazwa}")
-            except Wydzial.DoesNotExist:
+            except Jednostka.DoesNotExist:
                 pass
 
         dyscyplina_id = request.GET.get("dyscyplina")

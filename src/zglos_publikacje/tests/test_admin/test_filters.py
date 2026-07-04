@@ -35,14 +35,21 @@ def test_WydzialJednostkiPierwszegoAutora_queryset(
     # (matches QueryDict.lists() from real requests). Passing a plain
     # string makes __init__ do `value[-1]`, which silently returns the
     # last character of the string instead of the last list element.
-    params = {"wydz1a": [str(wydzial.pk)]}
-    req = rf.get("/", {"wydz1a": str(wydzial.pk)})
+    # Faza B (#438): filtr listuje jednostki-korzenie; „wydział" 1-go autora to
+    # korzeń jego jednostki (węzeł-lustro), nie obiekt Wydzial.
+    root = aktualna_jednostka.wydzial
+    params = {"wydz1a": [str(root.pk)]}
+    req = rf.get("/", {"wydz1a": str(root.pk)})
     filtr = WydzialJednostkiPierwszegoAutora(req, params, Zgloszenie_Publikacji, None)
     qs = filtr.queryset(req, Zgloszenie_Publikacji.objects.all())
     assert qs.count() == 1
 
-    params = {"wydz1a": [str(drugi_wydzial.pk)]}
-    req = rf.get("/", {"wydz1a": str(drugi_wydzial.pk)})
+    # Wydział, w którym 1-szy autor NIE jest → 0 (węzeł-lustro pustego wydziału).
+    from bpp.models.struktura_konwersja import znajdz_lub_utworz_wezel_wydzialu
+
+    drugi_root = znajdz_lub_utworz_wezel_wydzialu(drugi_wydzial)[0]
+    params = {"wydz1a": [str(drugi_root.pk)]}
+    req = rf.get("/", {"wydz1a": str(drugi_root.pk)})
     filtr = WydzialJednostkiPierwszegoAutora(req, params, Zgloszenie_Publikacji, None)
     qs = filtr.queryset(req, Zgloszenie_Publikacji.objects.all())
     assert qs.count() == 0

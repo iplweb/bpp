@@ -65,3 +65,19 @@ class PublicJednostkaAutocomplete(
     """Public autocomplete for public organizational units (per-uczelnia, multi-hosted)."""
 
     qset = Jednostka.objects.publiczne().select_related("wydzial")
+
+
+class PublicJednostkaToplevelAutocomplete(
+    UczelniaScopedAutocompleteMixin, _JednostkaAutocompleteBase
+):
+    """Faza B (#438): publiczny autocomplete jednostek TOP-LEVEL (``parent IS
+    NULL``) — czyli „wydziałów" w nowym modelu. Zawężony per-uczelnia i do
+    widocznych węzłów. Zastępuje dawny ``public-wydzial-autocomplete`` jako
+    picker „wydziału" w raportach/multiseeku.
+    """
+
+    qset = (
+        Jednostka.objects.widoczne()
+        .filter(parent__isnull=True)
+        .select_related("wydzial")
+    )

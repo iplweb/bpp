@@ -1,7 +1,7 @@
 from django.db.models import Avg, Count, Q
 from django.views.generic import ListView
 
-from bpp.models import Jednostka, Wydzial
+from bpp.models import Jednostka
 from ewaluacja_common.models import Rodzaj_Autora
 from raport_slotow.uczelnia_helper import uczelnia_dla_odczytu
 
@@ -200,17 +200,24 @@ class MetrykiListView(EwaluacjaRequiredMixin, ListView):
         context["jednostki"] = jednostki_queryset.order_by("nazwa")
 
         if context["uzywa_wydzialow"]:
-            # Buduj listę wydziałów na podstawie aktualnych jednostek autorów z metrykami
-            context["wydzialy"] = (
-                Wydzial.objects.filter(
-                    jednostka__in=Autor.objects.filter(
-                        pk__in=scoped_metryki_autorzy,
-                    )
-                    .values_list("aktualna_jednostka", flat=True)
-                    .distinct()
-                )
+            # Faza B (#438): „wydziały" = jednostki-korzenie. Dawny
+            # ``Wydzial.objects.filter(jednostka__in=…)`` (reverse-rel po FK→
+            # Wydzial) po retargecie znika (FieldError). Budujemy listę
+            # korzeni z pola ``wydzial`` (self-FK) aktualnych jednostek autorów.
+            aktualne_jednostki_ids = (
+                Autor.objects.filter(pk__in=scoped_metryki_autorzy)
+                .values_list("aktualna_jednostka", flat=True)
                 .distinct()
-                .order_by("nazwa")
+            )
+            root_ids = [
+                r
+                for r in Jednostka.objects.filter(pk__in=aktualne_jednostki_ids)
+                .values_list("wydzial_id", flat=True)
+                .distinct()
+                if r is not None
+            ]
+            context["wydzialy"] = Jednostka.objects.filter(pk__in=root_ids).order_by(
+                "nazwa"
             )
             # Check if there's only one faculty
             context["tylko_jeden_wydzial"] = context["wydzialy"].count() == 1

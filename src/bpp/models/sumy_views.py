@@ -17,7 +17,11 @@ class Nowe_SumyQuerySet(QuerySet, GroupByMixin):
 class Nowe_Sumy_View(ModelZLiczbaCytowan, ModelPunktowany, models.Model):
     autor = models.OneToOneField("Autor", on_delete=DO_NOTHING)
     jednostka = models.OneToOneField("Jednostka", on_delete=DO_NOTHING)
-    wydzial = models.ForeignKey("Wydzial", on_delete=DO_NOTHING)
+    # Faza B (#438): kolumna widoku ``wydzial_id`` to teraz
+    # ``bpp_jednostka.wydzial_id`` = jednostka-korzeń (self-FK), nie Wydzial.
+    # ``related_name="+"`` — oba pola (``jednostka`` i ``wydzial``) celują w
+    # Jednostkę, więc bez tego kolidują odwrotne akcesory (fields.E305).
+    wydzial = models.ForeignKey("Jednostka", on_delete=DO_NOTHING, related_name="+")
     rok = models.IntegerField()
 
     afiliuje = models.BooleanField()
