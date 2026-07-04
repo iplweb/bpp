@@ -125,8 +125,7 @@ def analyze_unpinning_opportunities(request):
     from ..models import StatusUnpinningAnalyzy
     from ..tasks import run_unpinning_after_metrics_wrapper
 
-    # Pobierz pierwszą uczelnię (zakładamy, że jest tylko jedna)
-    uczelnia = Uczelnia.objects.first()
+    uczelnia = Uczelnia.objects.get_for_request(request)
 
     if not uczelnia:
         messages.error(request, "Nie znaleziono uczelni w systemie.")

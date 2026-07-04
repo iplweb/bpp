@@ -238,13 +238,17 @@ def _styled_item(label, url, css_classes):
     return item
 
 
-def _should_hide_wydzial():
-    """Czy ukryć pozycję „wydział" w menu Struktura (na podst. ustawień/uczelni)."""
+def _should_hide_wydzial(request):
+    """Czy ukryć pozycję „wydział" w menu Struktura (na podst. ustawień/uczelni).
+
+    Multi-hosted: uczelnia z requestu (który host oglądamy), NIE get_default() —
+    przywrócone po scaleniu dev, którego refaktor C901 wrócił do get_default().
+    """
     from django.conf import settings
 
     from bpp.models import Uczelnia
 
-    uczelnia = Uczelnia.objects.get_default()
+    uczelnia = Uczelnia.objects.get_for_request(request)
     uzywaj_wydzialow = True
     if uczelnia is not None:
         uzywaj_wydzialow = uczelnia.uzywaj_wydzialow
@@ -255,7 +259,7 @@ def _should_hide_wydzial():
     ) and STRUKTURA_MENU[1][1].find("wydzial") >= 0
 
 
-def _add_group_submenus(menu, user, groups):
+def _add_group_submenus(menu, user, groups, request):
     """Dodaj poddrzewa menu zależne od grup/uprawnień użytkownika."""
 
     def flt(n1, n2, v, icon_class=None):
@@ -275,10 +279,15 @@ def _add_group_submenus(menu, user, groups):
             ),
         ]
 
-    if _should_hide_wydzial():
-        STRUKTURA_MENU.pop(1)
+    # Multi-host: decyzja o ukryciu wydziału jest per-host (get_for_request),
+    # więc buduj LOKALNĄ kopię listy zamiast mutować globalne STRUKTURA_MENU —
+    # dawny pop(1) trwale kasował wydział dla całego workera, przez co pierwszy
+    # host ukrywający wydział decydował za wszystkie kolejne hosty.
+    struktura_menu = STRUKTURA_MENU
+    if _should_hide_wydzial(request):
+        struktura_menu = [item for i, item in enumerate(STRUKTURA_MENU) if i != 1]
 
-    flt("struktura", "Struktura", STRUKTURA_MENU, "menu-icon-structure")
+    flt("struktura", "Struktura", struktura_menu, "menu-icon-structure")
     flt(GR_WPROWADZANIE_DANYCH, "Wprowadzanie danych", REDAKTOR_MENU, "menu-icon-edit")
     if GR_ZGLOSZENIA_PUBLIKACJI not in groups and not user.is_superuser:
         # Wyrzuć "zgłoszenia publikacji" z REDAKTOR_MENU
@@ -381,7 +390,7 @@ class CustomMenu(Menu):
         if len(self.children) >= 2:
             self.children[1].css_classes = ["menu-icon-dashboard"]  # Dashboard (Panel)
 
-        _add_group_submenus(self, user, groups)
+        _add_group_submenus(self, user, groups, context["request"])
         self.children.append(_build_user_menu(user))
 
         return super().init_with_context(context)

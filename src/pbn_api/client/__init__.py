@@ -5,13 +5,12 @@ This module provides the PBNClient class for interacting with the Polish Bibliog
 Network (PBN) API.
 """
 
-import sys
-from collections.abc import Iterable
-from pprint import pprint
+from pbn_client import PBNClient
+from pbn_client.auth import OAuthMixin
 
 # Re-export constants for backwards compatibility
 # (previously these were importable from pbn_api.client)
-from pbn_api.const import (
+from pbn_client.const import (
     DEFAULT_BASE_URL,
     NEEDS_PBN_AUTH_MSG,
     PBN_DELETE_PUBLICATION_STATEMENT,
@@ -27,10 +26,7 @@ from pbn_api.const import (
     PBN_POST_PUBLICATIONS_URL,
     PBN_SEARCH_PUBLICATIONS_URL,
 )
-
-from .auth import OAuthMixin
-from .disciplines import DisciplinesMixin
-from .mixins import (
+from pbn_client.mixins import (
     ConferencesMixin,
     DictionariesMixin,
     InstitutionsMixin,
@@ -41,14 +37,17 @@ from .mixins import (
     PublishersMixin,
     SearchMixin,
 )
-from .pagination import PageableResource
+from pbn_client.pagination import PageableResource
+from pbn_client.transport import PBNClientTransport, RequestsTransport
+from pbn_client.utils import smart_content
+
+from .disciplines import DisciplinesMixin
 from .publication_sync import PublicationSyncMixin
-from .transport import PBNClientTransport, RequestsTransport
-from .utils import smart_content
 
 __all__ = [
     # Client classes
     "PBNClient",
+    "BppPBNClient",
     "PBNClientTransport",
     "RequestsTransport",
     "PageableResource",
@@ -82,87 +81,15 @@ __all__ = [
 ]
 
 
-class PBNClient(
-    ConferencesMixin,
-    DictionariesMixin,
-    InstitutionsMixin,
-    InstitutionsProfileMixin,
-    JournalsMixin,
-    PersonMixin,
-    PublicationsMixin,
-    PublishersMixin,
-    SearchMixin,
-    PublicationSyncMixin,
-    DisciplinesMixin,
-):
-    """Main client for interacting with the PBN API."""
+class BppPBNClient(PBNClient, PublicationSyncMixin, DisciplinesMixin):
+    """Klient PBN świadomy konkretnej ``Uczelnia`` (Warstwa 2, BPP-aware).
 
-    _interactive = False
+    Dziedziczy czyste operacje protokołu z ``pbn_client.PBNClient`` i dokłada
+    orchestrację synchronizacji BPP↔PBN (``PublicationSyncMixin`` +
+    ``DisciplinesMixin``). ``uczelnia`` jest JEDYNYM źródłem prawdy o uczelni —
+    orchestracja czyta z niej flagi zamiast zgadywać ``get_default()``.
+    """
 
-    def __init__(self, transport: RequestsTransport):
-        self.transport = transport
-
-    def _get_command_function(self, cmd):
-        """Get function to execute from command name."""
-        try:
-            return getattr(self, cmd[0])
-        except AttributeError as e:
-            if self._interactive:
-                print(f"No such command: {cmd}")
-                return None
-            raise e
-
-    def _extract_arguments(self, lst):
-        """Extract positional and keyword arguments from command list."""
-        args = ()
-        kw = {}
-        for elem in lst:
-            if elem.find(":") >= 1:
-                k, n = elem.split(":", 1)
-                kw[k] = n
-            else:
-                args += (elem,)
-        return args, kw
-
-    def _print_non_interactive_result(self, res):
-        """Print result in non-interactive mode."""
-        import json
-
-        print(json.dumps(res))
-
-    def _print_interactive_result(self, res):
-        """Print result in interactive mode."""
-        if type(res) is dict:
-            pprint(res)
-        elif isinstance(res, Iterable):
-            if self._interactive and hasattr(res, "total_elements"):
-                print(
-                    "Incoming data: no_elements=",
-                    res.total_elements,
-                    "no_pages=",
-                    res.total_pages,
-                )
-                input("Press ENTER to continue> ")
-            for elem in res:
-                pprint(elem)
-
-    def exec(self, cmd):
-        fun = self._get_command_function(cmd)
-        if fun is None:
-            return
-
-        args, kw = self._extract_arguments(cmd[1:])
-        res = fun(*args, **kw)
-
-        if not sys.stdout.isatty():
-            self._print_non_interactive_result(res)
-        else:
-            self._print_interactive_result(res)
-
-    def interactive(self):
-        self._interactive = True
-        while True:
-            cmd = input("cmd> ")
-            if cmd == "exit":
-                break
-            self.exec(cmd.split(" "))
+    def __init__(self, transport, uczelnia):
+        super().__init__(transport)
+        self.uczelnia = uczelnia

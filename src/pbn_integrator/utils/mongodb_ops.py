@@ -338,11 +338,15 @@ def pobierz_mongodb(
         try:
             count = elems.count() if hasattr(elems, "count") else elems.count
         except Exception:
+            # Benign: count służy WYŁĄCZNIE do paska postępu. Brak liczby =
+            # pasek bez totalu, nie błąd importu — logujemy (standard:
+            # zaloguj_polkniety_wyjatek), ale bez Rollbara (do_rollbar=False),
+            # nie zaśmiecamy go nieistotnym fallbackiem.
             zaloguj_polkniety_wyjatek(
                 "Nie udało się ustalić liczby elementów do paska postępu — "
                 "kontynuuję bez znanej liczby",
                 logger=logger,
-                do_rollbar=True,
+                do_rollbar=False,
             )
             count = None
 

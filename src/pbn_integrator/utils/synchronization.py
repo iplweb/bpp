@@ -3,14 +3,16 @@
 from __future__ import annotations
 
 import logging
+import sys
 from typing import TYPE_CHECKING
 
+import rollbar
 from django.db.models import Q
 from tqdm import tqdm
 
 from bpp.const import PBN_MIN_ROK
 from bpp.models import Wydawnictwo_Ciagle, Wydawnictwo_Zwarte
-from bpp.util import pbar, zaloguj_polkniety_wyjatek
+from bpp.util import pbar
 from pbn_api.exceptions import (
     CannotUploadPublicationFee,
     HttpException,
@@ -204,13 +206,17 @@ def synchronizuj_publikacje(
 
     if only_bad:
         zwarte_baza = zwarte_baza.filter(
-            pk__in=SentData.objects.bad_uploads(Wydawnictwo_Zwarte)
+            pk__in=SentData.objects.bad_uploads(
+                Wydawnictwo_Zwarte, uczelnia=client.uczelnia
+            )
         )
 
     if only_new:
         # Nie synchronizuj prac ktore juz sa w SentData
         zwarte_baza = zwarte_baza.exclude(
-            pk__in=SentData.objects.ids_for_model(Wydawnictwo_Zwarte)
+            pk__in=SentData.objects.ids_for_model(
+                Wydawnictwo_Zwarte, uczelnia=client.uczelnia
+            )
             .values_list("pk", flat=True)
             .distinct()
         )
@@ -244,13 +250,17 @@ def synchronizuj_publikacje(
 
     if only_bad:
         ciagle_baza = ciagle_baza.filter(
-            pk__in=SentData.objects.bad_uploads(Wydawnictwo_Ciagle)
+            pk__in=SentData.objects.bad_uploads(
+                Wydawnictwo_Ciagle, uczelnia=client.uczelnia
+            )
         )
 
     if only_new:
         # Nie synchronizuj prac ktore juz sa w SentData
         ciagle_baza = ciagle_baza.exclude(
-            pk__in=SentData.objects.ids_for_model(Wydawnictwo_Ciagle)
+            pk__in=SentData.objects.ids_for_model(
+                Wydawnictwo_Ciagle, uczelnia=client.uczelnia
+            )
             .values_list("pk", flat=True)
             .distinct()
         )
@@ -279,11 +289,16 @@ def _handle_no_pbn_uid(client: PBNClient, elem, upload_publication: bool) -> Non
         try:
             client.upload_publication(elem)
         except Exception as e:
-            zaloguj_polkniety_wyjatek(
-                "Błąd podczas wysyłki publikacji bez PBN UID do PBN "
-                f"({elem.tytul_oryginalny!r}, pk={elem.pk})",
-                logger=logger,
-                do_rollbar=True,
+            # Catch-all — błąd uploadu nie może zostać tylko na ekranie
+            # (tqdm.write). Pełny traceback do logów + Rollbar.
+            logger.exception(
+                "Błąd uploadu publikacji %s (pk=%s) do PBN",
+                elem.tytul_oryginalny,
+                elem.pk,
+            )
+            rollbar.report_exc_info(
+                sys.exc_info(),
+                extra_data={"pk": elem.pk, "phase": "upload_publication"},
             )
             tqdm.write(
                 f"Podczas aktualizacji pracy {elem.tytul_oryginalny, elem.pk} wystąpił błąd: {e}. "

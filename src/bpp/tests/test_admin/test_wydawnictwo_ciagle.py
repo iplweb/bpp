@@ -102,7 +102,11 @@ def test_wydawnictwo_ciagle_admin_zapisz_i_wyslij_do_pbn_change_tak(
         cf.save()
 
         pub = baker.make(Publication)
-        SentData.objects.create(object=wydawnictwo_ciagle, data_sent={}, pbn_uid=pub)
+        # Multi-hosted (Track 4): SentData taguje uczelnię — akcja PBN szuka
+        # wpisu przez get_for_rec(obj, uczelnia), więc musi być otagowany.
+        SentData.objects.create(
+            object=wydawnictwo_ciagle, data_sent={}, pbn_uid=pub, uczelnia=uczelnia
+        )
 
         url = "admin:bpp_wydawnictwo_ciagle_change"
         page = admin_app.get(reverse(url, args=(wydawnictwo_ciagle.pk,)))

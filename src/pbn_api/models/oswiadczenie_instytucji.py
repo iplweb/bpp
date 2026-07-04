@@ -28,6 +28,19 @@ class OswiadczenieInstytucji(LinkDoPBNMixin, models.Model):
     institutionId = models.ForeignKey("pbn_api.Institution", on_delete=models.CASCADE)
     personId = models.ForeignKey("pbn_api.Scientist", on_delete=models.CASCADE)
     publicationId = models.ForeignKey("pbn_api.Publication", on_delete=models.CASCADE)
+    # Multi-hosted (audyt uczelnia 2026-06-04): lustro danych PBN. FK nullable
+    # ŚWIADOMIE — wiersz wiąże się z instytucją przez ``institutionId``
+    # (== ``uczelnia.pbn_uid``), więc brak tagu uczelni to brak wygody
+    # filtrowania, nie korupcja. Write-side tagowanie odłożone. UWAGA:
+    # override ``delete()`` kasuje ``SentData`` po ``publicationId`` — po
+    # tagowaniu SentData per-uczelnia (Track 4) trzeba tu zawęzić też uczelnię.
+    uczelnia = models.ForeignKey(
+        "bpp.Uczelnia",
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name="oswiadczenia_instytucji",
+    )
     type = models.CharField(max_length=50)
     disciplines = models.JSONField(blank=True, null=True)
 
@@ -168,6 +181,12 @@ class OswiadczenieInstytucji(LinkDoPBNMixin, models.Model):
         return Dyscyplina_Naukowa.objects.get(nazwa=self.disciplines["name"])
 
     def sprobuj_skasowac_z_pbn(self, request=None, pbn_client=None):
+        # Multi-hosted (LATER, notka): token PBN pochodzi z JEDNEJ uczelni
+        # (uprawnienia zalogowanego autora). Dla pracy wielo-uczelnianej docelowo
+        # próbować uczelnię główną (z requestu) ORAZ obce (federacyjne), tolerując
+        # porażki federacyjne (brak tokenu do obcej uczelni = oczekiwane, nie błąd
+        # krytyczny). Patrz docs/superpowers/2026-06-04-handoff-track7-pbn-lustro.md
+        # sekcja „Federacyjna wysyłka/kasowanie oświadczeń".
         from bpp.models import Uczelnia
 
         if pbn_client is None:
@@ -189,7 +208,23 @@ class OswiadczenieInstytucji(LinkDoPBNMixin, models.Model):
         # Jeżeli usunięte zostało jakiekolwiek oświadczenie to automatycznie dane SentData przestają
         # być aktualne, a system się na nich opiera. Zatem w tej sytuacji, kasujemy również
         # wysłane dane:
+        from bpp.models import Uczelnia
         from pbn_api.models import SentData
 
-        SentData.objects.filter(pbn_uid_id=self.publicationId_id).delete(*args, **kw)
+        # Multi-hosted (Track 7a): kasujemy SentData po ``pbn_uid_id`` publikacji
+        # ALE zawężamy do uczelni, której to oświadczenie dotyczy. Uczelnię
+        # wyprowadzamy DETERMINISTYCZNIE z ``self.institutionId`` (== PBN UID
+        # instytucji uczelni, czyli ``uczelnia.pbn_uid``) — to wiersz-lustro
+        # PBN, więc institutionId jest zawsze ustawione. SentData jest per-uczelnia
+        # (Track 4), więc skasowanie oświadczenia uczelni A musi unieważnić TYLKO
+        # stan wysyłki A, nie B. Gdy ``institutionId`` nie mapuje na żadną lokalną
+        # uczelnię (obca instytucja — nie powinno się zdarzyć dla naszych
+        # oświadczeń), zostawiamy dawny globalny delete (bezpieczny fallback).
+        uczelnia = Uczelnia.objects.filter(pbn_uid_id=self.institutionId_id).first()
+        qs = SentData.objects.filter(pbn_uid_id=self.publicationId_id)
+        if uczelnia is not None:
+            qs = qs.filter(uczelnia=uczelnia)
+        # QuerySet.delete() nie przyjmuje argumentów (w przeciwieństwie do
+        # Model.delete()); nie propagujemy tu ``*args, **kw``.
+        qs.delete()
         return super().delete(*args, **kw)

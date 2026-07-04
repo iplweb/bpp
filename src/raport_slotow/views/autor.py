@@ -17,6 +17,7 @@ from django_bpp.version import VERSION
 from nowe_raporty.views import BaseRaportAuthMixin
 from raport_slotow.forms.autor import AutorRaportSlotowForm
 from raport_slotow.tables import RaportSlotowAutorTable
+from raport_slotow.uczelnia_helper import uczelnia_dla_odczytu
 from raport_slotow.util import InitialValuesFromGETMixin, MyExportMixin, MyTableExport
 
 from .. import const
@@ -97,6 +98,7 @@ class RaportSlotow(BaseRaportAuthMixin, MyExportMixin, MultiTableMixin, Template
         ret = []
         cpaq = Cache_Punktacja_Autora_Query_View.objects.filter(
             autor=self.autor,
+            uczelnia=uczelnia_dla_odczytu(self.request),
             rekord__rok__gte=self.kwargs["od_roku"],
             rekord__rok__lte=self.kwargs["do_roku"],
             pkdaut__gt=0,

@@ -2,9 +2,11 @@
 
 import logging
 import os
+import sys
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
+import rollbar
 from django.db import DataError, IntegrityError, close_old_connections, transaction
 from django.db.models import Subquery
 
@@ -16,7 +18,7 @@ from bpp.models import (
     Rodzaj_Zrodla,
     Zrodlo,
 )
-from bpp.util import pbar, zaloguj_polkniety_wyjatek
+from bpp.util import pbar
 from pbn_api.models import Journal
 from pbn_integrator.utils import integruj_zrodla
 
@@ -97,10 +99,14 @@ def _process_journal_thread_safe(journal_id, rodzaj_periodyk, dyscypliny_cache):
         dopisz_jedno_zrodlo(pbn_journal, rodzaj_periodyk, dyscypliny_cache)
         return {"success": True, "journal_id": journal_id, "error": None}
     except Exception as e:
-        zaloguj_polkniety_wyjatek(
-            f"Błąd podczas importu źródła (Journal pk={journal_id}) z PBN",
-            logger=logger,
-            do_rollbar=True,
+        # Catch-all w wątku roboczym — błąd źródła nie może zniknąć po cichu.
+        # Pełny traceback do logów + Rollbar; status i tak wraca do agregatora.
+        # Odwołujemy się do journal_id (nie pbn_journal.pk) — gdy Journal.get()
+        # padnie, pbn_journal jest niezdefiniowany; journal_id jest zawsze znany.
+        logger.exception("Błąd importu źródła PBN %s", journal_id)
+        rollbar.report_exc_info(
+            sys.exc_info(),
+            extra_data={"journal_id": journal_id, "phase": "dopisz_jedno_zrodlo"},
         )
         return {"success": False, "journal_id": journal_id, "error": str(e)}
     finally:

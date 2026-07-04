@@ -2,10 +2,11 @@ from django.db.models import Avg, Count, Q
 from django.views.generic import ListView
 
 from bpp.models import Jednostka, Wydzial
-from bpp.models.uczelnia import Uczelnia
 from ewaluacja_common.models import Rodzaj_Autora
+from raport_slotow.uczelnia_helper import uczelnia_dla_odczytu
 
 from ..models import MetrykaAutora, StatusGenerowania
+from ..uczelnia_scope import scope_metryki
 from .mixins import EwaluacjaRequiredMixin, ma_pelne_uprawnienia_ewaluacji
 
 
@@ -122,21 +123,29 @@ class MetrykiListView(EwaluacjaRequiredMixin, ListView):
     def get_queryset(self):
         from django.db.models import Count, OuterRef, Subquery
 
-        # Subquery to count disciplines for each author
+        # Subquery to count disciplines for each author within their own uczelnia
         discipline_count = (
-            MetrykaAutora.objects.filter(autor=OuterRef("autor"))
+            MetrykaAutora.objects.filter(
+                autor=OuterRef("autor"),
+                uczelnia=OuterRef("uczelnia"),
+            )
             .values("autor")
             .annotate(count=Count("dyscyplina_naukowa"))
             .values("count")
         )
 
-        queryset = (
+        uczelnia = uczelnia_dla_odczytu(self.request)
+        queryset = scope_metryki(
             super()
             .get_queryset()
             .select_related(
-                "autor", "dyscyplina_naukowa", "jednostka", "jednostka__wydzial"
+                "autor",
+                "dyscyplina_naukowa",
+                "jednostka",
+                "jednostka__wydzial",
             )
-            .annotate(autor_discipline_count=Subquery(discipline_count))
+            .annotate(autor_discipline_count=Subquery(discipline_count)),
+            uczelnia,
         )
 
         queryset = self._apply_filters(queryset)
@@ -164,14 +173,23 @@ class MetrykiListView(EwaluacjaRequiredMixin, ListView):
 
         context = {}
 
-        # Sprawdź czy uczelnia używa wydziałów
-        uczelnia = Uczelnia.objects.get_default()
+        # Sprawdź czy uczelnia używa wydziałów (scope per oglądanej uczelni)
+        uczelnia = uczelnia_dla_odczytu(self.request)
         context["uzywa_wydzialow"] = uczelnia.uzywaj_wydzialow if uczelnia else False
+
+        # Autorzy mający metryki w bieżącej uczelni (scoped)
+        scoped_metryki_autorzy = (
+            scope_metryki(MetrykaAutora.objects.all(), uczelnia)
+            .values_list("autor_id", flat=True)
+            .distinct()
+        )
 
         # Jeśli wydzial jest wybrany, filtruj jednostki tylko z tego wydziału
         wydzial_id = self.request.GET.get("wydzial")
         jednostki_queryset = Jednostka.objects.filter(
-            pk__in=Autor.objects.filter(metryki__isnull=False)
+            pk__in=Autor.objects.filter(
+                pk__in=scoped_metryki_autorzy,
+            )
             .values_list("aktualna_jednostka", flat=True)
             .distinct()
         ).distinct()
@@ -185,7 +203,9 @@ class MetrykiListView(EwaluacjaRequiredMixin, ListView):
             # Buduj listę wydziałów na podstawie aktualnych jednostek autorów z metrykami
             context["wydzialy"] = (
                 Wydzial.objects.filter(
-                    jednostka__in=Autor.objects.filter(metryki__isnull=False)
+                    jednostka__in=Autor.objects.filter(
+                        pk__in=scoped_metryki_autorzy,
+                    )
                     .values_list("aktualna_jednostka", flat=True)
                     .distinct()
                 )
@@ -203,8 +223,14 @@ class MetrykiListView(EwaluacjaRequiredMixin, ListView):
         """Get dyscypliny list for filters."""
         from bpp.models import Dyscyplina_Naukowa
 
+        uczelnia = uczelnia_dla_odczytu(self.request)
+        scoped_dyscypliny_ids = (
+            scope_metryki(MetrykaAutora.objects.all(), uczelnia)
+            .values_list("dyscyplina_naukowa_id", flat=True)
+            .distinct()
+        )
         dyscypliny = (
-            Dyscyplina_Naukowa.objects.filter(metrykaautora__isnull=False)
+            Dyscyplina_Naukowa.objects.filter(pk__in=scoped_dyscypliny_ids)
             .distinct()
             .order_by("nazwa")
         )
@@ -226,7 +252,8 @@ class MetrykiListView(EwaluacjaRequiredMixin, ListView):
 
     def _get_status_context(self):
         """Get generation status and progress information."""
-        status = StatusGenerowania.get_or_create()
+        uczelnia = uczelnia_dla_odczytu(self.request)
+        status = StatusGenerowania.get_or_create(uczelnia=uczelnia)
         context = {
             "status_generowania": status,
             "dostepne_rodzaje_autorow": Rodzaj_Autora.objects.filter(
@@ -256,6 +283,8 @@ class MetrykiListView(EwaluacjaRequiredMixin, ListView):
             # Get all works for this author/discipline
             if metryka.prace_nazbierane:
                 # Query by stable rekord_id
+                # read-side multi-uczelnia: zawężone transitive po autor_id+dyscyplina_id;
+                # rewizja per-uczelnia metryk należy do federacji, nie R1.
                 prace = Cache_Punktacja_Autora_Query.objects.filter(
                     rekord_id__in=metryka.prace_nazbierane,
                     autor_id=metryka.autor_id,
