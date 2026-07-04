@@ -26,11 +26,6 @@ class NiezdefiniowanaUczelnia:
         return False
 
 
-BRAK_UCZELNI = {
-    "uczelnia": NiezdefiniowanaUczelnia,
-}
-
-
 def _lematy():
     return {
         "nazwa_uczelni": lemat("UCZELNIA"),

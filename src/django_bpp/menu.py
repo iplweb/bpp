@@ -18,7 +18,12 @@ from bpp.nazwy import lemat
 
 
 def _tytul(uid, liczba=None):
-    return capfirst(odmien_lub_wyraz(lemat(uid), MIANOWNIK, liczba))
+    lem = lemat(uid)
+    if liczba:
+        forma = odmien_lub_wyraz(lem, MIANOWNIK, liczba)
+    else:
+        forma = odmien_lub_wyraz(lem, MIANOWNIK)
+    return capfirst(forma)
 
 
 _tytul_lazy = _lazy(_tytul, str)
