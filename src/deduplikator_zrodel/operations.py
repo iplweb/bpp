@@ -62,8 +62,10 @@ def seed_queryset():
     Ten sam zakres co dzisiejsze `znajdz_pierwszego_zrodlo_z_duplikatami`
     (base_queryset) — zamierzony, nie regresja. Patrz spec §Ryzyka.
     """
-    return Zrodlo.objects.annotate(pub_count=Count("wydawnictwo_ciagle")).filter(
-        pub_count__gt=0, pbn_uid__mniswId__isnull=False
+    return (
+        Zrodlo.objects.annotate(pub_count=Count("wydawnictwo_ciagle"))
+        .filter(pub_count__gt=0, pbn_uid__mniswId__isnull=False)
+        .select_related("pbn_uid")
     )
 
 
@@ -75,11 +77,31 @@ def _pub_count(zrodlo):
     return value
 
 
+def _mnisw_rank(zrodlo):
+    """1 gdy źródło jest „ministerialne" (efektywne MNiSW ID), inaczej 0.
+
+    Używa DOKŁADNIE tej samej reguły co walidacja przemapowania
+    (`PrzemapowaZrodloForm._mnisw_id`: mniswId obecne AND status != DELETED),
+    żeby orientacja pary nie mogła zaproponować kierunku, który walidacja i
+    tak odrzuci."""
+    from przemapuj_zrodlo.forms import PrzemapowaZrodloForm
+
+    return 1 if PrzemapowaZrodloForm._mnisw_id(zrodlo) is not None else 0
+
+
 def _canonical(a, b):
-    """(main, duplikat): main = źródło o większej liczbie publikacji;
-    remis → mniejszy pk zostaje główny."""
-    a_key = (_pub_count(a), -a.pk)
-    b_key = (_pub_count(b), -b.pk)
+    """(main, duplikat): main = źródło DOCELOWE przemapowania.
+
+    Priorytet kluczy (malejąco):
+      1. „ministerialność" (efektywne MNiSW ID) — źródło ministerialne NIE
+         może być stroną przepinaną, bo remap źródła z MNiSW ID na cel bez
+         tego samego MNiSW ID jest odrzucany. Więc gdy dokładnie jedno źródło
+         pary jest ministerialne, ono zostaje `main` (celem).
+      2. liczba publikacji (minimalizuje liczbę przenoszonych rekordów),
+      3. remis → mniejszy pk zostaje główny.
+    """
+    a_key = (_mnisw_rank(a), _pub_count(a), -a.pk)
+    b_key = (_mnisw_rank(b), _pub_count(b), -b.pk)
     return (a, b) if a_key >= b_key else (b, a)
 
 

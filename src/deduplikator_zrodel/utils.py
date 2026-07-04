@@ -161,7 +161,9 @@ def znajdz_podobne_zrodla(zrodlo):
     if not filters:
         return Zrodlo.objects.none()
 
-    return candidates.filter(filters).distinct()
+    # select_related("pbn_uid") — orientacja pary (_canonical → _mnisw_rank)
+    # czyta pbn_uid.mniswId/status każdego kandydata; bez tego N+1 w skanie.
+    return candidates.filter(filters).distinct().select_related("pbn_uid")
 
 
 def _score_nazwa(nazwa_glowna, norm_g, norm_k, kandydat_pk):

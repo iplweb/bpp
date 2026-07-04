@@ -120,6 +120,79 @@ def test_canonical_main_is_higher_pubcount(rodzaj, zasieg, admin_user):
 
 
 @pytest.mark.django_db
+def test_canonical_ministerial_is_main_even_with_fewer_pubs(rodzaj, zasieg, admin_user):
+    """Źródło z (efektywnym) MNiSW ID MUSI być stroną docelową (`main`),
+    nawet gdy ma MNIEJ publikacji niż duplikat.
+
+    Przepięcie źródła ministerialnego na cel bez tego samego MNiSW ID jest
+    odrzucane przez walidację przemapowania — więc deduplikator nie może
+    proponować takiego kierunku. Orientacja po mniswId ma priorytet nad
+    liczbą publikacji.
+    """
+    # Ministerialne, ale z MNIEJSZĄ liczbą publikacji (1).
+    seed = _zrodlo(
+        rodzaj,
+        zasieg,
+        nazwa="Acta Testica",
+        skrot="AT",
+        issn="1234-5678",
+        pbn_uid=baker.make(Journal, mniswId=111),
+    )
+    # Nieministerialne, ale z WIĘKSZĄ liczbą publikacji (3).
+    dup = _zrodlo(rodzaj, zasieg, nazwa="Acta Testica", skrot="AT", issn="1234-5678")
+    baker.make(Wydawnictwo_Ciagle, zrodlo=dup, _quantity=2)
+
+    op = ScanZrodelForDuplicates.objects.create(owner=admin_user)
+    perform_scan(op, TextProgress(op))
+
+    c = SourceDuplicateCandidate.objects.get(scan=op)
+    assert c.main_zrodlo_id == seed.id  # ministerialne = cel
+    assert c.duplicate_zrodlo_id == dup.id  # nieministerialne = przepinane
+    assert c.main_pub_count == 1
+    assert c.duplicate_pub_count == 3
+
+
+@pytest.mark.django_db
+def test_canonical_prefers_ministerial_over_pubcount(rodzaj, zasieg):
+    """Bezpośredni test `_canonical`: mniswId bije liczbę publikacji, niezależnie
+    od kolejności argumentów."""
+    from deduplikator_zrodel.operations import _canonical
+
+    minz = _zrodlo(
+        rodzaj, zasieg, z_publikacja=False, pbn_uid=baker.make(Journal, mniswId=5)
+    )
+    nonmin = _zrodlo(rodzaj, zasieg, z_publikacja=False)
+    minz.pub_count = 1
+    nonmin.pub_count = 99
+
+    for a, b in [(nonmin, minz), (minz, nonmin)]:
+        main, dup = _canonical(a, b)
+        assert main.pk == minz.pk
+        assert dup.pk == nonmin.pk
+
+
+@pytest.mark.django_db
+def test_canonical_deleted_mnisw_not_ministerial(rodzaj, zasieg):
+    """Źródło z mniswId ale statusem DELETED nie jest „ministerialne" (zgodnie
+    z regułą walidacji) — orientacja spada z powrotem do liczby publikacji."""
+    from deduplikator_zrodel.operations import _canonical
+
+    delz = _zrodlo(
+        rodzaj,
+        zasieg,
+        z_publikacja=False,
+        pbn_uid=baker.make(Journal, mniswId=5, status="DELETED"),
+    )
+    other = _zrodlo(rodzaj, zasieg, z_publikacja=False)
+    delz.pub_count = 1
+    other.pub_count = 99
+
+    main, dup = _canonical(delz, other)
+    assert main.pk == other.pk  # DELETED nie liczy się jako ministerialne
+    assert dup.pk == delz.pk
+
+
+@pytest.mark.django_db
 def test_notaduplicate_pair_excluded(rodzaj, zasieg, admin_user):
     """Para oznaczona NotADuplicate nie trafia do wyników."""
     from deduplikator_zrodel.models import NotADuplicate
