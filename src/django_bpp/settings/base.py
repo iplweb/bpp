@@ -1056,6 +1056,13 @@ TABULAR_PERMISSIONS_CONFIG = {
 DBTEMPLATES_USE_REVERSION = True
 DBTEMPLATES_USE_REVERSION_COMPARE = True
 
+# Nasza tabela django_template ma kilka wierszy (override'y frontendu), a admin
+# rozwiazuje ~150 szablonow na strone. Bez tej flagi dbtemplates pytalby DB o
+# kazda taka nazwe (pod DummyCache w dev = ~300 zapytan/strone). Loader trzyma
+# w procesie zbior istniejacych nazw i omija DB dla reszty. Patrz
+# django-dbtemplates-iplweb >= 4.4.0 (DBTEMPLATES_SKIP_UNKNOWN_NAMES).
+DBTEMPLATES_SKIP_UNKNOWN_NAMES = True
+
 DENORM_DISABLE_AUTOTIME_DURING_FLUSH = True
 DENORM_AUTOTIME_FIELD_NAMES = [
     "ostatnio_zmieniony",

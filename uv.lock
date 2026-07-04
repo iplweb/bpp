@@ -572,7 +572,7 @@ requires-dist = [
     { name = "django-cookie-law", specifier = "==2.2.0" },
     { name = "django-countdown", specifier = ">=0.2.0" },
     { name = "django-crispy-forms", specifier = ">=2.6,<3" },
-    { name = "django-dbtemplates-iplweb", specifier = ">=4.3.2" },
+    { name = "django-dbtemplates-iplweb", specifier = ">=4.4.0" },
     { name = "django-denorm-iplweb", specifier = ">=1.12.2" },
     { name = "django-dirtyfields", specifier = "==1.9.9" },
     { name = "django-dsl", specifier = ">=0.1.14" },
@@ -1675,14 +1675,14 @@ wheels = [
 
 [[package]]
 name = "django-dbtemplates-iplweb"
-version = "4.3.2"
+version = "4.4.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "django-appconf", marker = "platform_python_implementation != 'PyPy'" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/58/89/68a7161426db8837dd7fea0607f63eb2e45c147726544395221f2344c985/django_dbtemplates_iplweb-4.3.2.tar.gz", hash = "sha256:32e2913e48784b1d004a44341bc34a7202117d474099a13adb757a1ad4e10e5d", size = 80089, upload-time = "2026-04-19T20:40:34.912Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/d8/6d/2e4267b5dc5ea2be0e8bad07ca1bcf76fa74d6463b72dc9dd123917c04ce/django_dbtemplates_iplweb-4.4.0.tar.gz", hash = "sha256:8f870373545949f7fc3c7db2bc807b3bdfd769c3d2146f50575e6cc84aa25f1c", size = 85424, upload-time = "2026-07-04T11:05:12.013Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/18/f2/3c3e2b5117e351a1aa0a5a888044e2ebfb85f193036ea9fbc81fbb001015/django_dbtemplates_iplweb-4.3.2-py3-none-any.whl", hash = "sha256:0e3290ed15f5a2c797e72936d8d1f4d06dd7155409183c0af769e532013737d2", size = 86801, upload-time = "2026-04-19T20:40:33.505Z" },
+    { url = "https://files.pythonhosted.org/packages/b7/ec/adb58622c798dfad66a342d8007b842fc3ed95c642738d90c664691e8c7a/django_dbtemplates_iplweb-4.4.0-py3-none-any.whl", hash = "sha256:f2a5acf4420eedbedf7cede2e82c941624192944c0d44c85f3d716374706ef25", size = 93158, upload-time = "2026-07-04T11:05:10.651Z" },
 ]
 
 [[package]]
