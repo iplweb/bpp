@@ -79,13 +79,17 @@ jest usuwany dopiero na końcu, gdy nic już go nie referuje.
      derywacja `aktualna` (+ dawniej `wydzial`). Zastąpiony Pythonem.
    - `bpp_jednostka_sprawdz_uczelnia_id` (**ON `bpp_jednostka`**, czyta
      `NEW.wydzial_id` i `bpp_wydzial`) — walidacja „uczelnia jednostki ==
-     uczelnia jej wydziału". Zastąpiony constraintem/walidacją na
-     `Jednostka_Rodzic` (uczelnia rodzica == uczelnia dziecka).
+     uczelnia jej wydziału". **USUWANY, NIE zastępowany** — federacja dopuszcza
+     przenoszenie jednostki między uczelniami (patrz Zasada #4).
    - `bpp_jednostka_wydzial_sprawdz_uczelnia_id` (ON `bpp_jednostka_wydzial`,
-     czyta `bpp_wydzial`) — j.w. na tabeli historii.
+     czyta `bpp_wydzial`) — j.w. na tabeli historii. **USUWANY, NIE zastępowany.**
    Kod Pythona dodatkowo utrzymuje księgowość nested-set MPTT (czego triggery
-   nie robiły). **Każdy trigger ma jawny DROP w planie migracji** — inaczej
-   drop kolumny `wydzial_id` / tabeli `bpp_wydzial` wywala każdy zapis.
+   nie robiły). **DROP triggerów historii MUSI nastąpić PRZED konwersją
+   `Jednostka_Wydzial → Jednostka_Rodzic`** (runda 3) — trigger jest przypięty do
+   OID tabeli i przeżywa `RenameModel`, więc pierwszy zapis konwersji rzuciłby
+   `relation "bpp_jednostka_wydzial" does not exist` / `record NEW has no field
+   wydzial_id`. Kolejność w planie: DROP wszystkich trzech na starcie Fazy B
+   (krok B0), przed jakimkolwiek zapisem.
    - **UWAGA (runda 2): to NIE są jedyne obiekty DB czytające `wydzial_id`.**
      Poza tymi trzema są też: (a) **denorm-triggery** auto-generowane przez
      `django-denorm` na `bpp_jednostka` (z `@depend_on_related(…,"wydzial_id")`
@@ -94,6 +98,14 @@ jest usuwany dopiero na końcu, gdy nic już go nie referuje.
      (`bpp_nowe_sumy_*_view`) JOIN-ujących `bpp_wydzial`. W `baseline.sql` jest
      ~80 wystąpień `wydzial_id`. Pełna inwentaryzacja + kolejność drop/regen —
      patrz „Pułapki implementacyjne" i Faza B.
+
+4. **Federacja: uczelnia NIE jest granicą nieprzekraczalną.** W instalacjach
+   federacyjnych jednostka może w czasie przechodzić między uczelniami. Dlatego
+   **nie ma constraintu „uczelnia rodzica == uczelnia dziecka"** (dawny trigger
+   uczelniany usuwany bez zamiennika). `Jednostka.uczelnia` to stan bieżący;
+   historia krawędzi (`Jednostka_Rodzic`) może legalnie przekraczać granicę
+   uczelni. Bieżące raporty pozostają uczelniano-izolowane (poddrzewo = jedna
+   uczelnia); tylko historia bywa międzyuczelniana.
 
 ---
 
@@ -223,10 +235,22 @@ Jednostka_Rodzic  (dawniej Jednostka_Wydzial)
   od–do". Dawny `Jednostka_Wydzial.wydzial` był NOT NULL — po uogólnieniu na
   „rodzica" brak rodzica jest legalnym stanem historycznym.
 - Manager rozcinający zakresy dat (`Jednostka_Wydzial_Manager`) przenosi się
-  1:1 — logika interwałów jest generyczna. Check `uczelnia_id` staje się
-  „uczelnia rodzica == uczelnia dziecka" (o ile `parent` nie-NULL).
+  1:1 — logika interwałów jest generyczna.
+- **Sprawdzanie zgodności uczelni — USUWANE, NIE odtwarzane (decyzja usera
+  2026-07-04, federacja).** Dawny trigger wymuszał „uczelnia rodzica ==
+  uczelnia dziecka". W instalacjach **federacyjnych** jednostka może w czasie
+  przechodzić między uczelniami — czyli wpis historyczny `Jednostka_Rodzic`
+  legalnie łączy dziecko z rodzicem z INNEJ uczelni. Constraint wymuszający
+  równość uczelni zablokowałby poprawny zapis takiego przeniesienia, więc
+  **nie wprowadzamy go** ani jako trigger, ani jako CHECK.
+  - Implikacja: `Jednostka.uczelnia` to stan **bieżący** (może się zmienić
+    przy przeniesieniu); przynależność uczelniana w dacie D wynika z historii
+    krawędzi, jak przynależność wydziałowa. Izolacja multi-tenant w raportach
+    bieżących trzyma się (bieżące poddrzewo = jedna uczelnia); wyłącznie
+    HISTORIA może przekraczać granicę uczelni.
 - Constraint GiST `unikalny_zakres_dat_dla_jednostki` (btree_gist +
-  `daterange … EXCLUDE`) — **zostaje**. Plus `bez_dat_do_w_przyszlosci`.
+  `daterange … EXCLUDE`) — **zostaje** (brak nakładania okresów; nie zakłada
+  nic o uczelniach). Plus `bez_dat_do_w_przyszlosci` — **zostaje**.
 - **Daty życia węzła** (dawne `Wydzial.otwarcie`/`zamkniecie`, a dla jednostek
   historia obecności) mieszczą się w `od`/`do` wpisów — zasada niepodważalna #1.
 - **Inwariant osi historia ↔ drzewo (ROZSTRZYGNIĘTY: TAK).** Bieżący wpis
@@ -313,9 +337,14 @@ agreguje swoje poddrzewo (`child.get_descendants(include_self=True)`):
    „per wydział". Po migracji jest rootem → naiwne „sekcja per root" wygeneruje
    sekcję per każda taka sierota → wynik ≠ dotychczasowy (łamie kryterium #4).
    Potrzebna jawna reguła filtrowania rootów raportowanych. **NIE po rodzaju
-   „Wydział"** — to byłby marker wydziału zakazany Zasadą #2. Filtr oparty na
-   neutralnych polach: `widoczna=True` / `wchodzi_do_raportow=True` — do
-   ustalenia per raport, tak by odtworzyć dotychczasowy zbiór sekcji.
+   „Wydział"** (marker zakazany Zasadą #2) ani po `widoczna` (runda 3: `widoczna`
+   NIE odtwarza zbioru sekcji — sierota „Obca jednostka" bywa `widoczna=True` a
+   sekcją nie jest; były wydział `widoczny=False` dziś raportuje się normalnie).
+   **Mechanizm: pole per-węzeł `wchodzi_do_raportow`, ZASIANE w Fazie B dla
+   byłych wydziałów** (przez `legacy_wydzial_id`) — to dane per-węzeł, nie marker
+   w kodzie, więc Zasada #2 nietknięta. Skutek: **Kryterium #4 zmiękczone** —
+   zbiór sekcji jest konfigurowalny per instalacja (domyślnie = byłe wydziały),
+   a nie sztywno „identyczny jak dotąd".
 
 Jedna mechanika obsługuje wszystkie instalacje bez pojęcia „wydziału".
 
@@ -431,13 +460,16 @@ potomków (mechanika jak w Multiseek wyżej).
 
 `Obslugujacy_Zgloszenia_Wydzialow.wydzial` (dziś FK→`Wydzial`) → **FK→`Jednostka`
 top-level** (były wydział, root drzewa). Reguła routingu zgłoszenia:
-**bierzemy PIERWSZĄ jednostkę autora → wspinamy się do jej top-level przodka
-(root) → obsługujący przypisany do tego roota.** Czyli obsługujący przypisuje
-się do węzła najwyższego poziomu, a zgłoszenie trafia doń przez korzeń drzewa
-pierwszej jednostki autora.
+**bierzemy pierwszą jednostkę autora → wspinamy się do jej top-level przodka
+(root) → obsługujący przypisany do tego roota.** Obsługujący przypisuje się do
+węzła najwyższego poziomu, a zgłoszenie trafia doń przez korzeń drzewa jednostki
+autora.
 
+- **Zachować dzisiejszą selekcję jednostki** (`zglos_publikacje/views.py:143-151`):
+  to „pierwsza jednostka autora z `skupia_pracownikow=True`", nie dowolna
+  pierwsza. Podmieniamy WYŁĄCZNIE `jednostka.wydzial` → `jednostka.get_root()`.
 - `zglos_publikacje/views.py:154-155` (`emaile_dla_wydzialu(jednostka.wydzial)`)
-  → `emaile_dla_obslugujacego(pierwsza_jednostka.get_root())`.
+  → `emaile_dla_obslugujacego(wybrana_jednostka.get_root())`.
 - `zglos_publikacje/admin/filters.py:13,22` (`jednostka__wydzial`) →
   filtr po korzeniu drzewa jednostki.
 - Fallback gdy autor bez jednostki / brak obsługującego dla roota: zachować
@@ -495,11 +527,20 @@ domyślnym managerze + triggery na `bpp_jednostka` sprawiają, że **usunięcie
 `wydzial_id` i zmiany kodu MUSZĄ jechać w jednym release**. Plan dzieli się na
 trzy fazy o różnej wdrażalności:
 
-### Faza A — addytywna, NIEOBSERWOWALNA dla starego kodu (`Wydzial` żyje)
+### Faza A — addytywna, węzły UKRYTE (`Wydzial` żyje)
 
-Zasada fazy A (runda 2): **nic, co dodajemy, nie może wyciec do starego kodu.**
-Węzły-wydziały powstają UKRYTE; żadnej konwersji historii, żadnego flipu
-`aktualna` — to wszystko w Fazie B (razem z kodem, który to rozumie).
+Zasada fazy A: **nic, co dodajemy, nie może wyciec do starego kodu.** Węzły-
+wydziały powstają UKRYTE (`widoczna=False`); żadnej konwersji historii, żadnego
+flipu `aktualna` — to wszystko w Fazie B (razem z kodem, który to rozumie).
+
+**UWAGA (runda 3): `widoczna=False` NIE wystarcza — trzy kanały ignorują to
+pole** i wyciekłyby ukryte węzły w oknie A→B: `/api/v1/jednostka/`
+(`api_v1/viewsets/struktura.py:12`, `.all()`), `JednostkaSitemap`
+(`sitemaps.py:22,32`, `.all()` → sitemap.xml/Google), `JednostkaAutocomplete`
+edytorski (`views/autocomplete/units.py:17`, `.all()` → edytor przypnie pracę do
+ukrytego węzła). Krok A4 łata te trzy (to zarazem naprawa **istniejącego dziś**
+wycieku jednostek `widoczna=False`). Browse, publiczny autocomplete, multiseek i
+global search (trigger `search=NULL` gdy `widoczna=False`) już filtrują poprawnie.
 
 A1. **`RodzajJednostki` + seed** (Standard, Koło naukowe z flagami, Wydział).
    `unique` na `nazwa` (idempotencja seedu). Dodać `Jednostka.rodzaj` FK
@@ -521,46 +562,71 @@ A3. **Konwersja `Wydzial` → `Jednostka`** (idempotentna po `legacy_wydzial_id`
    pod starym kodem), rodzaj=Wydział, `uczelnia`, `parent=NULL`,
    `legacy_wydzial_id=W.id`, kopiując `nazwa`/`skrot`/`skrot_nazwy`/`opis`/
    `poprzednie_nazwy`/`pbn_id`/`zezwalaj_na_ranking_autorow`/`pokazuj_opis`/
-   `zarzadzaj_automatycznie`, `kolejnosc` (clamp≥0). Jawne `lft/rght/tree_id/
-   level` (INSERT wymaga NOT NULL). Re-run rozpoznaje po `legacy_wydzial_id`.
+   `zarzadzaj_automatycznie`/**`widoczny`** (źródło późniejszego flipu w B8),
+   `kolejnosc` (clamp≥0). Jawne `lft/rght/tree_id/level` (INSERT wymaga NOT NULL).
+   Re-run rozpoznaje po `legacy_wydzial_id`.
+A4. **Filtr `widoczna=True` na trzech przeciekających querysetach** (patrz wyżej):
+   `/api/v1/jednostka/`, `JednostkaSitemap`, `JednostkaAutocomplete`. Wdrażalne
+   przy starym kodzie (to zawężenie, nie zmiana modelu) i naprawia istniejący
+   wyciek.
 
 ### Faza B — atomowy release kod+schemat (jeden deploy, NIE rozdzielać)
 
 Kolejność w fazie B jest KRYTYCZNA (zależności DB).
 
-B1. **`Jednostka_Rodzic` — rename `Jednostka_Wydzial` + konwersja historii**
-   TUTAJ (nie w A — inaczej żywe triggery na `bpp_jednostka_wydzial` i stary
-   kod piszący przez `Jednostka_Wydzial` łamią fazę A). `parent` FK→`Jednostka`,
-   nullable. Konwersja `wydzial→parent` wg `legacy_wydzial_id`: bezpośrednie
-   dzieci 1:1; sub-jednostki — krawędź do faktycznego rodzica (patrz „Decyzje").
+B0. **DROP wszystkich trzech triggerów struktury NA STARCIE** (przed jakimkolwiek
+   zapisem konwersji) — triggery historii czytają `bpp_jednostka_wydzial`/
+   `NEW.wydzial_id` po nazwie i przeżywają `RenameModel`; pierwszy zapis w B1/B2
+   by je wywalił (runda 3). Plus **re-run A2+A3** (idempotentny) dla `Wydzial`-i
+   utworzonych w oknie A→B przez stary kod (admin/pbn_import) — inaczej wypadną
+   z mapowania `legacy_wydzial_id`.
+B1. **`Jednostka_Rodzic`** — `RenameModel Jednostka_Wydzial → Jednostka_Rodzic`
+   + **AddField `parent` (FK→`Jednostka`, nullable) + backfill wg
+   `legacy_wydzial_id` + RemoveField `wydzial`** (to NIE `RenameField` — zmienia
+   się target FK `bpp_wydzial`→`bpp_jednostka`, a dane to PK wydziałów).
+   Konwersja: bezpośrednie dzieci 1:1; sub-jednostki — patrz B2 + „Decyzje".
+   `related_name` zmienia się (`jednostka_wydzial_set`→`jednostka_rodzic_set`;
+   użycia w `fixtures/conftest_models.py:107,119` + testy).
 B2. **Przepięcie struktury (parent) — TYLKO gdy `parent IS NULL`** + reguła
    konfliktu (jednostka z `parent` w innym wydziale → log + żywy parent, raport).
    Daty `otwarcie`/`zamkniecie` wydziału → wpisy `Jednostka_Rodzic` (od/do).
+   - **Wiersze historii sub-jednostek (runda 3, WAŻNE):** wpisy `Jednostka_Rodzic`
+     sub-jednostki (miała `parent≠NULL`) **przepisujemy na krawędź do faktycznego
+     rodzica z zachowaniem `od`/`do`** (reinterpretacja okresu) — NIE kasujemy
+     ich (utrata daty zamknięcia + regresja: „brak wpisów → aktualna=True"
+     uczyniłaby historyczną jednostkę publiczną) i NIE zostawiamy z
+     `parent=węzeł-wydział` (złamałoby inwariant `bieżący.parent == MPTT parent`).
+     Przypadek „wiele różnych wydziałów w historii przy niezmiennym rodzicu" →
+     log do przeglądu (federacja/dane patologiczne).
 B3. **Przepięcie FK konsumentów** (8 FK) na `węzeł(legacy_wydzial_id)`:
    `Kierunek_Studiow` (PROTECT — PRZED czymkolwiek), `Patent`, `opi_2012`,
    `Zgloszenie`, `Obslugujacy_Zgloszenia_Wydzialow`, `import_dyscyplin`.
 B4. **Redefinicja 6 widoków sum PRZED `RemoveField`** — `bpp_nowe_sumy_*_view`
    (+ unia) JOIN-ują `bpp_wydzial`/`wydzial_id`; agregacja po poddrzewie/rodzicu,
    bez `wydzial`. `Nowe_Sumy_View.unique_together` (model) też aktualizowany.
-B5. **DROP triggerów + denorm:** trzy triggery struktury (`ustaw_wydzial_aktualna`,
-   `bpp_jednostka_sprawdz_uczelnia_id`, `…_wydzial_sprawdz_uczelnia_id`) +
-   `denorm drop`. **Usunąć `wydzial_id` z `@depend_on_related` w
+B5. **`denorm drop`** + **usunąć `wydzial_id` z `@depend_on_related` w
    `praca_doktorska.py:76`** (inaczej denorm odtworzy trigger na martwą kolumnę).
-   Zamienniki: walidacja uczelni na `Jednostka_Rodzic`, sygnały `aktualna`.
-B6. **`RemoveField Jednostka.wydzial`** + usunięcie `rodzaj_jednostki` (CharField)
+   Triggery struktury już zdjęte w B0. **Zamiennik: TYLKO sygnały `aktualna` na
+   `Jednostka_Rodzic`** — walidacji uczelni NIE odtwarzamy (federacja, Zasada #4).
+B6. **Re-backfill `rodzaj` FK** (`WHERE rodzaj IS NULL`, mapowanie stringów jak
+   w A1 — łapie jednostki tworzone starym kodem w oknie A→B), potem
+   **`RemoveField Jednostka.wydzial` + usunięcie `rodzaj_jednostki`** (CharField)
    — RAZEM z kodem przestającym je czytać (`select_related`, `__str__`, admin,
    cache, raporty, multiseek). Sedno atomowości fazy B.
 B7. **`denorm init`** (regeneracja denorm-triggerów bez `wydzial_id`).
 B8. **`przelicz_aktualna`** (recompute całości wg nowej semantyki: brak
-   historii → True) + **flip `widoczna=True`** dla węzłów-wydziałów, które mają
-   być publiczne. Od teraz aktualna utrzymywana sygnałami na `Jednostka_Rodzic`;
-   **`Jednostka.aktualna` default → `True`** (węzeł bez historii żyje).
+   historii → True) + **flip `widoczna` wg `Wydzial.widoczny`** (JOIN po
+   `legacy_wydzial_id` — `bpp_wydzial` jeszcze żyje). Od teraz aktualna
+   utrzymywana sygnałami na `Jednostka_Rodzic`; **`Jednostka.aktualna` default →
+   `True`** (węzeł bez historii żyje). **Seed `wchodzi_do_raportow=True` dla
+   węzłów byłych wydziałów** (po `legacy_wydzial_id`) — zbiór sekcji raportów.
 B9. **Migracja WARTOŚCI zapisanych multiseek** — PK wydziału → PK węzła po
    `legacy_wydzial_id`; `RodzajJednostkiQueryObject` mapuje **LABELS** (nie kody!)
    → wiersz `RodzajJednostki`; operator „+ podrzędne".
 B10. **Kod konsumentów** (Sekcja 2): raporty (`get_descendants`, „rozbij na
-   dzieci"/rooty uczelni, filtr sierot po `widoczna`/`wchodzi_do_raportow` —
-   **NIE po rodzaju** (Zasada #2)), admin (filtr `parent`), browse (301),
+   dzieci"/rooty uczelni, filtr sekcji po **`wchodzi_do_raportow`** zasianym w B8
+   dla byłych wydziałów — **NIE po rodzaju ani `widoczna`**, Zasada #2 + runda 3),
+   admin (filtr `parent`), browse (301),
    API (deprecation), importy, `system.py` (grupy bez `Wydzial`), routing
    zgłoszeń (patrz niżej), usunięcie bramkowania `uzywaj_wydzialow` (menu,
    browse, ranking, ewaluacja, pbn_import, setup wizard; env usuwana).
@@ -740,7 +806,10 @@ Reszta ze ~100 plików to raporty (`ranking_autorow`, `raport_slotow`,
    dają wyniki identyczne jak przed migracją na tych samych danych
    (agregacja poddrzewa węzła-(byłego-wydziału) = ten sam zbiór jednostek).
 4. „Rozbij na wydziały" działa jako „rozbij na bezpośrednie dzieci wybranego
-   węzła" — dla klienta z wydziałami wynik jak dotąd.
+   węzła"; zbiór sekcji = węzły z `wchodzi_do_raportow=True` (zasiane z byłych
+   wydziałów). Dla klienta z wydziałami wynik jak dotąd; zbiór sekcji
+   konfigurowalny per instalacja (zmiękczenie z rundy 3 — `widoczna` nie
+   odtwarza dokładnie dawnego zbioru).
 5. Admin jednostki: filtr po jednostce nadrzędnej (`parent`, autocomplete).
 6. Stare URL-e wydziałów → 301 na jednostki (brak martwych linków).
 7. `/api/v1/wydzial/` działa (deprecated) przez okres przejściowy.
@@ -750,9 +819,10 @@ Reszta ze ~100 plików to raporty (`ranking_autorow`, `raport_slotow`,
    „szukaj po wydziale" = „Jednostka=X + potomne".
 9. `RodzajJednostki` edytowalny per-tenant; koło naukowe = rodzaj z flagą
    `wyklucz_z_rankingu_autorow` (te same wykluczenia z rankingu co dotąd).
-10. **Trzy triggery** zdjęte z jawnymi DROP-ami; walidacja uczelni przeniesiona;
-    `aktualna` utrzymywana sygnałami na `Jednostka_Rodzic`; command
-    `przelicz_aktualna` + test spójności łapią drift z `bulk_*`/`loaddata`.
+10. **Trzy triggery** zdjęte jawnymi DROP-ami **PRZED konwersją historii** (B0);
+    walidacja uczelni **NIE odtwarzana** (federacja, Zasada #4); `aktualna`
+    utrzymywana sygnałami na `Jednostka_Rodzic`; command `przelicz_aktualna` +
+    test spójności łapią drift z `bulk_*`/`loaddata`.
 11. **Byłe wydziały (rooty) widoczne** w `publiczne()`, formularzu zgłoszeń i
     publicznym autocomplete (`aktualna=True`); instalacja płaska bez regresji.
 12. **`zezwalaj_na_ranking_autorow` per-węzeł zachowany** — ranking wyłącza te
