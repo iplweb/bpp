@@ -86,6 +86,14 @@ jest usuwany dopiero na końcu, gdy nic już go nie referuje.
    Kod Pythona dodatkowo utrzymuje księgowość nested-set MPTT (czego triggery
    nie robiły). **Każdy trigger ma jawny DROP w planie migracji** — inaczej
    drop kolumny `wydzial_id` / tabeli `bpp_wydzial` wywala każdy zapis.
+   - **UWAGA (runda 2): to NIE są jedyne obiekty DB czytające `wydzial_id`.**
+     Poza tymi trzema są też: (a) **denorm-triggery** auto-generowane przez
+     `django-denorm` na `bpp_jednostka` (z `@depend_on_related(…,"wydzial_id")`
+     w `praca_doktorska.py:76`) — po `RemoveField` rzucają „column wydzial_id
+     does not exist" aż do regeneracji; (b) **6 widoków sum**
+     (`bpp_nowe_sumy_*_view`) JOIN-ujących `bpp_wydzial`. W `baseline.sql` jest
+     ~80 wystąpień `wydzial_id`. Pełna inwentaryzacja + kolejność drop/regen —
+     patrz „Pułapki implementacyjne" i Faza B.
 
 ---
 
@@ -304,9 +312,10 @@ agreguje swoje poddrzewo (`child.get_descendants(include_self=True)`):
    (obce jednostki, „Jednostka domyślna" itp.) nie trafia do żadnej sekcji
    „per wydział". Po migracji jest rootem → naiwne „sekcja per root" wygeneruje
    sekcję per każda taka sierota → wynik ≠ dotychczasowy (łamie kryterium #4).
-   Potrzebna jawna reguła filtrowania rootów raportowanych (np. tylko rooty
-   rodzaju „Wydział", albo tylko `widoczna=True` / `wchodzi_do_raportow=True`) —
-   do ustalenia per raport, tak by odtworzyć dotychczasowy zbiór sekcji.
+   Potrzebna jawna reguła filtrowania rootów raportowanych. **NIE po rodzaju
+   „Wydział"** — to byłby marker wydziału zakazany Zasadą #2. Filtr oparty na
+   neutralnych polach: `widoczna=True` / `wchodzi_do_raportow=True` — do
+   ustalenia per raport, tak by odtworzyć dotychczasowy zbiór sekcji.
 
 Jedna mechanika obsługuje wszystkie instalacje bez pojęcia „wydziału".
 
@@ -418,6 +427,22 @@ potomków (mechanika jak w Multiseek wyżej).
   jednostek (bez filtra po roli — nie ma roli; ewentualnie po rodzaju, jeśli
   konkretne miejsce tego potrzebuje).
 
+### Routing zgłoszeń — obsługujący (decyzja usera 2026-07-04)
+
+`Obslugujacy_Zgloszenia_Wydzialow.wydzial` (dziś FK→`Wydzial`) → **FK→`Jednostka`
+top-level** (były wydział, root drzewa). Reguła routingu zgłoszenia:
+**bierzemy PIERWSZĄ jednostkę autora → wspinamy się do jej top-level przodka
+(root) → obsługujący przypisany do tego roota.** Czyli obsługujący przypisuje
+się do węzła najwyższego poziomu, a zgłoszenie trafia doń przez korzeń drzewa
+pierwszej jednostki autora.
+
+- `zglos_publikacje/views.py:154-155` (`emaile_dla_wydzialu(jednostka.wydzial)`)
+  → `emaile_dla_obslugujacego(pierwsza_jednostka.get_root())`.
+- `zglos_publikacje/admin/filters.py:13,22` (`jednostka__wydzial`) →
+  filtr po korzeniu drzewa jednostki.
+- Fallback gdy autor bez jednostki / brak obsługującego dla roota: zachować
+  dotychczasowe zachowanie (brak przypisania / kontakt uczelniany).
+
 ### API (kontrakt — deprecation, nie usunięcie)
 
 - `WydzialViewSet` (`/api/v1/wydzial/`) + `WydzialSerializer` → **deprecated**,
@@ -470,77 +495,119 @@ domyślnym managerze + triggery na `bpp_jednostka` sprawiają, że **usunięcie
 `wydzial_id` i zmiany kodu MUSZĄ jechać w jednym release**. Plan dzieli się na
 trzy fazy o różnej wdrażalności:
 
-### Faza A — addytywna (wdrażalna przy STARYM kodzie, `Wydzial` żyje)
+### Faza A — addytywna, NIEOBSERWOWALNA dla starego kodu (`Wydzial` żyje)
+
+Zasada fazy A (runda 2): **nic, co dodajemy, nie może wyciec do starego kodu.**
+Węzły-wydziały powstają UKRYTE; żadnej konwersji historii, żadnego flipu
+`aktualna` — to wszystko w Fazie B (razem z kodem, który to rozumie).
 
 A1. **`RodzajJednostki` + seed** (Standard, Koło naukowe z flagami, Wydział).
-   Dodać `Jednostka.rodzaj` FK **obok** `rodzaj_jednostki` (jeszcze nie
-   usuwać stringa), backfill z mapowania stringów. Dodać per-węzeł pola
-   przeniesione z `Wydzial` (`zezwalaj_na_ranking_autorow`, `poprzednie_nazwy`,
+   `unique` na `nazwa` (idempotencja seedu). Dodać `Jednostka.rodzaj` FK
+   **obok** `rodzaj_jednostki` (`null=True` na razie; `on_delete=PROTECT` —
+   słownik edytowalny per-tenant), backfill z mapowania stringów. Dodać
+   per-węzeł pola z `Wydzial` (`zezwalaj_na_ranking_autorow`, `poprzednie_nazwy`,
    `skrot_nazwy`) jako nullable/default. Dodać `Jednostka.legacy_wydzial_id`
-   (nullable, indeks). `Wydzial` nietknięty.
-A2. **Walidacja przed konwersją (read-only skan):** kolizje globalnie-unikalnych
-   `nazwa` / `skrot` / **`slug`** / `skrot_nazwy` między wydziałami a
-   jednostkami. Slug krytyczny dla redirectów 301 (`browse_wydzial` po slugu) —
-   AutoSlug po cichu dokłada sufiks → stary URL trafiłby w 404/inną jednostkę.
-   Rozwiązać ręcznie/z sufiksem PRZED konwersją.
-A3. **Konwersja `Wydzial` → `Jednostka`** (jedna migracja, idempotentna po
-   `legacy_wydzial_id`): dla każdego `Wydzial` utwórz `Jednostka`
-   (rodzaj=Wydział, `uczelnia`, `parent=NULL` (root), `legacy_wydzial_id=W.id`,
-   kopiując `nazwa`/`skrot`/`skrot_nazwy`/`opis`/`kolejnosc`/`widoczny`/
-   `poprzednie_nazwy`/`pbn_id`/`zezwalaj_na_ranking_autorow`). Daty
-   `otwarcie`/`zamkniecie` → wpis `Jednostka_Rodzic` (od/do) jednostek dzieci
-   lub metadana węzła. Re-run rozpoznaje istniejące po `legacy_wydzial_id`.
-A4. **Przepięcie struktury (parent) — TYLKO gdy `parent IS NULL`:** dla każdej
-   `Jednostka` z `wydzial=W` i `parent IS NULL` ustaw `parent =
-   węzeł(legacy=W)`. **Nie ruszaj** jednostek już mających `parent` (katedra→
-   zakład zostaje). Reguła konfliktu (jednostka ma `parent` w INNYM wydziale
-   niż `wydzial` — na multi-tenant wystąpi): zalogować + zostawić żywy `parent`,
-   raport niespójności do ręcznego przeglądu. Skonwertować historię
-   `Jednostka_Wydzial` → `Jednostka_Rodzic` wg mapowania (dla bezpośrednich
-   dzieci wydziału 1:1; sub-jednostki — patrz „Decyzje z recenzji").
-A5. **`MPTT rebuild()` OD RAZU** — kroki raportowe i denormalizacje polegają na
-   poprawnych lft/rght; nie odkładać do końca.
-A6. **Backfill `aktualna`** wg nowej semantyki (root/brak historii → True).
+   (nullable, indeks). **`AlterField Jednostka.slug` → `max_length≥512`**
+   (dziś 50! `Wydzial.slug`=512 → długie nazwy przepełnią). `Wydzial` nietknięty.
+A2. **Walidacja przed konwersją (read-only skan, raport):** kolizje
+   globalnie-unikalnych `nazwa`/`skrot`/`slug`/`skrot_nazwy` wydział↔jednostka;
+   `Wydzial.kolejnosc` ujemne (Jednostka=`PositiveIntegerField`, CHECK≥0);
+   `Wydzial.zamkniecie` w przyszłości (CHECK `bez_dat_do_w_przyszlosci`).
+   Skan generuje deterministyczny plan naprawy (auto-sufiks/clamp) — bez
+   „ręcznego rozwiązania", bo migracja leci w auto-deploy multi-tenant.
+A3. **Konwersja `Wydzial` → `Jednostka`** (idempotentna po `legacy_wydzial_id`):
+   dla każdego `Wydzial` utwórz `Jednostka` z **`widoczna=False`,
+   `aktualna=False`** (UKRYTE — nie wyciekają do `publiczne()`/sitemap/search
+   pod starym kodem), rodzaj=Wydział, `uczelnia`, `parent=NULL`,
+   `legacy_wydzial_id=W.id`, kopiując `nazwa`/`skrot`/`skrot_nazwy`/`opis`/
+   `poprzednie_nazwy`/`pbn_id`/`zezwalaj_na_ranking_autorow`/`pokazuj_opis`/
+   `zarzadzaj_automatycznie`, `kolejnosc` (clamp≥0). Jawne `lft/rght/tree_id/
+   level` (INSERT wymaga NOT NULL). Re-run rozpoznaje po `legacy_wydzial_id`.
 
 ### Faza B — atomowy release kod+schemat (jeden deploy, NIE rozdzielać)
 
-B1. **Przepięcie FK konsumentów** (8 FK) na `węzeł(legacy_wydzial_id)`:
-   `Kierunek_Studiow` (PROTECT — przepiąć PRZED czymkolwiek), `Patent`,
-   `opi_2012`, `zglos Zgloszenie`, `Obslugujacy_Zgloszenia_Wydzialow`,
-   `import_dyscyplin`. Zmiana targetu FK na `Jednostka`.
-B2. **DROP trzech triggerów** (`ustaw_wydzial_aktualna`,
-   `bpp_jednostka_sprawdz_uczelnia_id`, `bpp_jednostka_wydzial_sprawdz_uczelnia_id`)
-   + założenie zamienników (walidacja uczelni na `Jednostka_Rodzic`, sygnały
-   `aktualna`). **Przed** dropem kolumny.
-B3. **`RemoveField Jednostka.wydzial`** + usunięcie `rodzaj_jednostki`
-   (CharField) — RAZEM z kodem, który przestaje je czytać (`select_related`,
-   `__str__`, admin, cache, raporty, multiseek). To sedno atomowości fazy B.
-B4. **`Nowe_Sumy_View`** — nowa definicja SQL (agregacja po poddrzewie/rodzicu,
-   bez `wydzial`).
-B5. **Migracja wartości zapisanych multiseek** (PK wydziału → PK węzła po
-   `legacy_wydzial_id`; operator „+ podrzędne").
-B6. **Kod konsumentów** (Sekcja 2): raporty (`get_descendants` + „rozbij na
-   dzieci"/rooty uczelni + filtr sierot), admin (filtr `parent`), browse (301),
-   API (deprecation), importy, `system.py` (grupy uprawnień bez `Wydzial`).
-B7. **Usunięcie bramkowania `uzywaj_wydzialow`** — wszystkie `if
-   uczelnia.uzywaj_wydzialow` (menu, browse, ranking, ewaluacja, pbn_import,
-   setup wizard) → drzewo renderowane bezwarunkowo; `__str__` dokleja skrót
-   rodzica gated tylko `SKROT_WYDZIALU_W_NAZWIE`. env
-   `DJANGO_BPP_UCZELNIA_UZYWA_WYDZIALOW` usuwana.
+Kolejność w fazie B jest KRYTYCZNA (zależności DB).
+
+B1. **`Jednostka_Rodzic` — rename `Jednostka_Wydzial` + konwersja historii**
+   TUTAJ (nie w A — inaczej żywe triggery na `bpp_jednostka_wydzial` i stary
+   kod piszący przez `Jednostka_Wydzial` łamią fazę A). `parent` FK→`Jednostka`,
+   nullable. Konwersja `wydzial→parent` wg `legacy_wydzial_id`: bezpośrednie
+   dzieci 1:1; sub-jednostki — krawędź do faktycznego rodzica (patrz „Decyzje").
+B2. **Przepięcie struktury (parent) — TYLKO gdy `parent IS NULL`** + reguła
+   konfliktu (jednostka z `parent` w innym wydziale → log + żywy parent, raport).
+   Daty `otwarcie`/`zamkniecie` wydziału → wpisy `Jednostka_Rodzic` (od/do).
+B3. **Przepięcie FK konsumentów** (8 FK) na `węzeł(legacy_wydzial_id)`:
+   `Kierunek_Studiow` (PROTECT — PRZED czymkolwiek), `Patent`, `opi_2012`,
+   `Zgloszenie`, `Obslugujacy_Zgloszenia_Wydzialow`, `import_dyscyplin`.
+B4. **Redefinicja 6 widoków sum PRZED `RemoveField`** — `bpp_nowe_sumy_*_view`
+   (+ unia) JOIN-ują `bpp_wydzial`/`wydzial_id`; agregacja po poddrzewie/rodzicu,
+   bez `wydzial`. `Nowe_Sumy_View.unique_together` (model) też aktualizowany.
+B5. **DROP triggerów + denorm:** trzy triggery struktury (`ustaw_wydzial_aktualna`,
+   `bpp_jednostka_sprawdz_uczelnia_id`, `…_wydzial_sprawdz_uczelnia_id`) +
+   `denorm drop`. **Usunąć `wydzial_id` z `@depend_on_related` w
+   `praca_doktorska.py:76`** (inaczej denorm odtworzy trigger na martwą kolumnę).
+   Zamienniki: walidacja uczelni na `Jednostka_Rodzic`, sygnały `aktualna`.
+B6. **`RemoveField Jednostka.wydzial`** + usunięcie `rodzaj_jednostki` (CharField)
+   — RAZEM z kodem przestającym je czytać (`select_related`, `__str__`, admin,
+   cache, raporty, multiseek). Sedno atomowości fazy B.
+B7. **`denorm init`** (regeneracja denorm-triggerów bez `wydzial_id`).
+B8. **`przelicz_aktualna`** (recompute całości wg nowej semantyki: brak
+   historii → True) + **flip `widoczna=True`** dla węzłów-wydziałów, które mają
+   być publiczne. Od teraz aktualna utrzymywana sygnałami na `Jednostka_Rodzic`;
+   **`Jednostka.aktualna` default → `True`** (węzeł bez historii żyje).
+B9. **Migracja WARTOŚCI zapisanych multiseek** — PK wydziału → PK węzła po
+   `legacy_wydzial_id`; `RodzajJednostkiQueryObject` mapuje **LABELS** (nie kody!)
+   → wiersz `RodzajJednostki`; operator „+ podrzędne".
+B10. **Kod konsumentów** (Sekcja 2): raporty (`get_descendants`, „rozbij na
+   dzieci"/rooty uczelni, filtr sierot po `widoczna`/`wchodzi_do_raportow` —
+   **NIE po rodzaju** (Zasada #2)), admin (filtr `parent`), browse (301),
+   API (deprecation), importy, `system.py` (grupy bez `Wydzial`), routing
+   zgłoszeń (patrz niżej), usunięcie bramkowania `uzywaj_wydzialow` (menu,
+   browse, ranking, ewaluacja, pbn_import, setup wizard; env usuwana).
 
 ### Faza C — sprzątanie (po weryfikacji fazy B na danych)
 
 C1. **Drop `Wydzial`** — gdy nic go nie referuje. Wyczyścić osierocone
    `ContentType`/`Permission` po `Wydzial`/`Jednostka_Wydzial`/
    `Obslugujacy_Zgloszenia_Wydzialow` (przypisane do grup w `system.py`!).
-C2. **Drop `Jednostka.legacy_wydzial_id`** (mapowanie już niepotrzebne) +
-   **`RemoveField Uczelnia.uzywaj_wydzialow`** (po usunięciu bramkowania w B7).
-C3. **Rebuild cache** (`Rekord`/`Autorzy`/`punktacja`) + `rebuild_jednostka` +
+C2. **`RemoveField Uczelnia.uzywaj_wydzialow`** (po usunięciu bramkowania w B10).
+C3. **`legacy_wydzial_id` — NIE dropować dopóki trwa deprecation API**
+   `/api/v1/wydzial/` (to jedyny stabilny identyfikator byłych wydziałów;
+   redirect 301 też może z niego korzystać przez `legacy_slug`). Drop dopiero
+   po zakończeniu okresu przejściowego API (osobny, późniejszy krok).
+C4. **Rebuild cache** (`Rekord`/`Autorzy`/`punktacja`) + `rebuild_jednostka` +
    ostateczny MPTT `rebuild()`.
-C4. **Baseline** — `make baseline-update` RAZ, przy scalaniu (nie w
+C5. **Baseline** — `make baseline-update` RAZ, przy scalaniu (nie w
    równoległych branchach).
 
 ---
+
+## Pułapki implementacyjne (do rozwiązania w planie wdrożenia)
+
+Mechanika złapana w recenzjach 2026-07-04 — szczegóły dla planu, nie decyzje
+projektowe:
+
+- **`rebuild()` MPTT w migracji** — historyczny model z `apps.get_model()` ma
+  zwykły `Manager` bez `.rebuild()` (produkcyjny to monkeypatch,
+  `jednostka.py:59-69`). Migracja liczy lft/rght ręcznie albo woła rebuild na
+  żywym modelu ze świadomością pułapki świeżych instalacji. INSERT węzłów (A3)
+  wymaga jawnych `lft/rght/tree_id/level`.
+- **Denorm — rutyna, nie blokada** (potwierdzone z userem): `denorm drop`
+  przed zmianą schematu, `denorm init` po; dodatkowo wyrzucić `wydzial_id` z
+  `@depend_on_related` (`praca_doktorska.py:76`). To jedyne wystąpienie.
+- **Ordering sekcji raportów** — `Wydzial.Meta.ordering=["kolejnosc","skrot"]`
+  vs `Jednostka=["kolejnosc","nazwa"]`. Po konwersji kolejność sekcji może się
+  różnić; jeśli kryterium #4 ma być literalne, wymusić sort po `skrot` w
+  raportach rozbijających na węzły.
+- **`JednostkaCreateManager` (duplikat)** (`wydzial.py:152-164`) + kompat-kwarg
+  `wydzial=` w `JednostkaManager.create()` — używane przez importy i testy;
+  zdecydować: usunąć kompat czy zmapować `wydzial=` → `parent=`.
+- **Slug 301 po drop `Wydzial`** — redirect `browse_wydzial/<slug>` potrzebuje
+  `legacy_slug` na węźle (mapowanie sluga wydziału → węzeł), skoro
+  `legacy_wydzial_id` mapuje PK. Żyje tak długo jak redirecty/deprecation API.
+- **`aktualna` — reguła, nie jednorazówka:** `default=True` na polu + sygnał na
+  `Jednostka_Rodzic` nadpisujący z historii; `przelicz_aktualna` z semantyką
+  „brak wpisów → True" (ODWROTNĄ do starego triggera).
 
 ## Ryzyka i strategie
 
@@ -645,7 +712,7 @@ Reszta ze ~100 plików to raporty (`ranking_autorow`, `raport_slotow`,
    Nawigacja/browse/menu zawsze renderują drzewo jak jest; bramkowanie znika.
    `__str__` dokleja skrót rodzica gated tylko `SKROT_WYDZIALU_W_NAZWIE`.
 
-4. **Historia sub-jednostek = per bezpośrednia krawędź w `Jednostka_Rodzic`**
+5. **Historia sub-jednostek = per bezpośrednia krawędź w `Jednostka_Rodzic`**
    (decyzja 2026-07-04). Historia trzymana jest dla **faktycznego rodzica**
    (zakład↔katedra, katedra↔wydział), nie dla zdublowanej krawędzi
    zakład↔wydział. Przynależność wydziałowa w dowolnej dacie D **wyprowadza się**
@@ -653,7 +720,7 @@ Reszta ze ~100 plików to raporty (`ranking_autorow`, `raport_slotow`,
    - **Inwariant (rozstrzygnięty: TAK):** bieżący wpis `Jednostka_Rodzic(do=NULL)`
      dla węzła ma `parent == żywy MPTT parent`. Jeden nośnik prawdy o „gdzie
      węzeł wisi teraz".
-   - **Konwersja (Faza A4):** dla jednostek, które staną się bezpośrednimi
+   - **Konwersja (Faza B1/B2):** dla jednostek, które staną się bezpośrednimi
      dziećmi wydziału (`parent` był NULL) — `Jednostka_Wydzial → Jednostka_Rodzic`
      1:1 (`parent=węzeł-wydział`). Dla sub-jednostek (miały już `parent=katedra`)
      — zostaje krawędź do faktycznego rodzica; stara `wydzial`-historia jest
