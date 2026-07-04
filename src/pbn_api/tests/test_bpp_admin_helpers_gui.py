@@ -1,17 +1,15 @@
 from unittest.mock import patch
 
 import pytest
+from django.contrib.messages import get_messages
 from django.urls import reverse
 from model_bakery import baker
-
-from pbn_api.tests.utils import middleware
-from pbn_export_queue.models import PBN_Export_Queue
-
-from django.contrib.messages import get_messages
 
 from bpp.admin.helpers.pbn_api.gui import sprobuj_utworzyc_zlecenie_eksportu_do_PBN_gui
 from bpp.const import RODZAJ_PBN_ARTYKUL
 from bpp.models import Charakter_Formalny
+from pbn_api.tests.utils import middleware
+from pbn_export_queue.models import PBN_Export_Queue
 
 
 @pytest.mark.django_db
@@ -63,6 +61,36 @@ def test_sprobuj_utworzyc_zlecenie_eksportu_do_PBN_gui_success(
     assert expected_link in message
     assert f"Utworzono zlecenie wysyłki rekordu {wydawnictwo_ciagle}" in message
     assert "Kliknij tutaj, aby śledzić stan" in message
+
+
+@pytest.mark.django_db
+def test_sprobuj_utworzyc_zlecenie_eksportu_do_PBN_gui_stores_uczelnia(
+    rf, wydawnictwo_ciagle, admin_user, uczelnia
+):
+    """Multi-hosted: pojedyncza ścieżka GUI zapisuje uczelnię (z requestu) na
+    wpisie kolejki — tak jak batch — żeby wysyłka w tle nie zgadywała PBN."""
+    req = rf.get("/")
+    req.user = admin_user
+
+    wydawnictwo_ciagle.charakter_formalny = baker.make(
+        Charakter_Formalny, rodzaj_pbn=RODZAJ_PBN_ARTYKUL
+    )
+    wydawnictwo_ciagle.save()
+
+    uczelnia.pbn_integracja = True
+    uczelnia.pbn_aktualizuj_na_biezaco = True
+    uczelnia.save()
+
+    with middleware(req):
+        with patch("pbn_export_queue.tasks.task_sprobuj_wyslac_do_pbn.delay_on_commit"):
+            sprobuj_utworzyc_zlecenie_eksportu_do_PBN_gui(req, wydawnictwo_ciagle)
+
+    queue_entry = PBN_Export_Queue.objects.get(
+        content_type__model="wydawnictwo_ciagle",
+        object_id=wydawnictwo_ciagle.pk,
+        zamowil=admin_user,
+    )
+    assert queue_entry.uczelnia == uczelnia
 
 
 @pytest.mark.django_db

@@ -10,6 +10,7 @@ from django.db.models import Count, Exists, OuterRef
 from django.db.models.functions import Substr
 from django.http import JsonResponse
 from django.utils import timezone
+from django.utils.http import url_has_allowed_host_and_scheme
 
 try:
     from django.core.urlresolvers import reverse
@@ -43,6 +44,11 @@ from bpp.multiseek_registry import (
     ZakresLatQueryObject,
     ZrodloQueryObject,
 )
+from bpp.util.uczelnia_scope import (
+    scope_jednostki_do_uczelni,
+    scope_rekord_do_uczelni,
+    tylko_jedna_uczelnia,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -68,21 +74,46 @@ def get_uczelnia_context_data(uczelnia, article_slug=None):
     """Shared function to get context data for uczelnia view."""
     context = {"object": uczelnia, "uczelnia": uczelnia}
 
+    # Multi-host: filtruj artykuły po Site bieżącej uczelni. siteblog.Article
+    # ma M2M `sites`; pusty M2M = artykuł widoczny wszędzie (zgodnie z
+    # help_textem w siteblog). on_site (CurrentSiteManager) jest strict —
+    # wymusza Site_id i wyklucza puste M2M — więc używamy własnego Q.
+    site_id = uczelnia.site_id
+    visible_articles = Article.objects.filter(
+        Q(sites=site_id) | Q(sites__isnull=True)
+    ).distinct()
+
     if article_slug:
-        context["article"] = get_object_or_404(Article, slug=article_slug)
+        context["article"] = get_object_or_404(visible_articles, slug=article_slug)
     else:
-        context["news"] = Article.objects.filter(status=Article.STATUS.published)[:5]
-        # Add 5 most recently updated records
-        context["recently_updated"] = Rekord.objects.order_by("-ostatnio_zmieniony")[
-            :12
-        ]
-        # Add 5 recent records with abstracts
-        context["recent_abstracts"] = (
-            Wydawnictwo_Ciagle_Streszczenie.objects.exclude(streszczenie__isnull=True)
-            .exclude(streszczenie__exact="")
-            .order_by("-rekord__ostatnio_zmieniony")[:5]
+        context["news"] = visible_articles.filter(status=Article.STATUS.published)[:5]
+
+        # Multi-host: zawężamy do rekordów uczelni oglądającej przez
+        # scope_rekord_do_uczelni. W single-host (jedna uczelnia) helper daje
+        # no-op — rekordy bez wpisanego autorstwa pozostają liczone i widoczne,
+        # parytet z zachowaniem sprzed multi-hosted (patrz test_single_host_parity).
+        context["recently_updated"] = (
+            scope_rekord_do_uczelni(Rekord.objects.all(), uczelnia)
+            .order_by("-ostatnio_zmieniony")
+            .distinct()[:12]
         )
-        context["total_rekord_count"] = Rekord.objects.count()
+
+        recent_abstracts = Wydawnictwo_Ciagle_Streszczenie.objects.exclude(
+            streszczenie__isnull=True
+        ).exclude(streszczenie__exact="")
+        # Ten sam guard co scope_rekord_do_uczelni, ale na querysecie Streszczeń
+        # (helper przyjmuje qs Rekordów). Single-host / brak uczelni => bez filtra.
+        if uczelnia is not None and not tylko_jedna_uczelnia():
+            recent_abstracts = recent_abstracts.filter(
+                rekord__autorzy_set__jednostka__uczelnia=uczelnia
+            )
+        context["recent_abstracts"] = recent_abstracts.order_by(
+            "-rekord__ostatnio_zmieniony"
+        ).distinct()[:5]
+
+        context["total_rekord_count"] = (
+            scope_rekord_do_uczelni(Rekord.objects.all(), uczelnia).distinct().count()
+        )
         context["current_year"] = timezone.now().date().year
 
     return context
@@ -281,6 +312,16 @@ class Browser(ListView):
                 if params:
                     redirect_url += "?" + params.urlencode()
 
+                # Guard against open redirects: only ever redirect within this
+                # host. The constructed URL is always same-origin (request.path
+                # + urlencoded params), so this guard passes in practice; the
+                # fallback is a constant (not request-derived) so the redirect
+                # sink only ever sees validated-or-literal data.
+                if not url_has_allowed_host_and_scheme(
+                    redirect_url, allowed_hosts={request.get_host()}
+                ):
+                    redirect_url = "/"
+
                 # Add warning message
                 messages.warning(
                     request,
@@ -447,17 +488,9 @@ class JednostkiView(Browser):
     paginate_by = 150
 
     def get_paginate_by(self, queryset):
-        uczelnia = None
-
-        if hasattr(self, "request") and self.request is not None:
-            uczelnia = Uczelnia.objects.get_for_request(self.request)
-
-        if uczelnia is None:
-            uczelnia = Uczelnia.objects.get_default()
-
+        uczelnia = Uczelnia.objects.get_for_request(getattr(self, "request", None))
         if uczelnia is None:
             return self.paginate_by
-
         return uczelnia.ilosc_jednostek_na_strone
 
     def get_queryset(self):
@@ -466,6 +499,7 @@ class JednostkiView(Browser):
         qry = super().get_queryset().filter(widoczna=True)
 
         uczelnia = Uczelnia.objects.get_for_request(self.request)
+        qry = scope_jednostki_do_uczelni(qry, uczelnia)
         if uczelnia:
             if uczelnia.sortuj_jednostki_alfabetycznie:
                 ordering = ("nazwa",)
@@ -488,6 +522,7 @@ class JednostkiView(Browser):
         base_qry = Jednostka.objects.filter(widoczna=True)
 
         uczelnia = Uczelnia.objects.get_for_request(self.request)
+        base_qry = scope_jednostki_do_uczelni(base_qry, uczelnia)
         if uczelnia and uczelnia.pokazuj_tylko_jednostki_nadrzedne:
             base_qry = base_qry.filter(parent=None)
 
@@ -518,9 +553,11 @@ class LataView(ListView):
     paginate_by = None
 
     def get_queryset(self):
+        uczelnia = Uczelnia.objects.get_for_request(self.request)
+        qs = scope_rekord_do_uczelni(Rekord.objects.all(), uczelnia)
         return [
             {"year": row["rok"], "count": row["count"]}
-            for row in Rekord.objects.values("rok")
+            for row in qs.values("rok")
             .annotate(count=Count("*"))
             .filter(count__gt=0)
             .order_by("-rok")
@@ -528,7 +565,8 @@ class LataView(ListView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        # Suma z policzonych juz count-ow per rok — bez drugiego skanu tabeli.
+        # Suma z policzonych juz count-ow per rok (get_queryset liczy je juz
+        # w zakresie uczelni) — bez drugiego skanu tabeli.
         context["total_publications"] = sum(
             year_data["count"] for year_data in context["years"]
         )
@@ -567,7 +605,10 @@ class RokView(ListView):
             raise Http404("Nieprawidłowy rok") from e
 
         # Get publications for this year
-        return Rekord.objects.filter(rok=year).order_by("-ostatnio_zmieniony")
+        uczelnia = Uczelnia.objects.get_for_request(self.request)
+        return scope_rekord_do_uczelni(
+            Rekord.objects.filter(rok=year), uczelnia
+        ).order_by("-ostatnio_zmieniony")
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -578,8 +619,11 @@ class RokView(ListView):
         context["prev_year"] = None
         context["next_year"] = None
 
+        uczelnia = Uczelnia.objects.get_for_request(self.request)
         sasiednie_lata = set(
-            Rekord.objects.filter(rok__in=(year - 1, year + 1))
+            scope_rekord_do_uczelni(
+                Rekord.objects.filter(rok__in=(year - 1, year + 1)), uczelnia
+            )
             .values_list("rok", flat=True)
             .distinct()
         )
@@ -588,8 +632,8 @@ class RokView(ListView):
         if year + 1 in sasiednie_lata:
             context["next_year"] = year + 1
 
-        # Paginator ListView policzyl juz COUNT dla tego roku — nie liczymy
-        # drugi raz.
+        # Paginator ListView policzyl juz COUNT dla tego roku (queryset jest
+        # juz zawezony do uczelni) — nie liczymy drugi raz.
         context["total_count"] = context["paginator"].count
 
         return context
@@ -692,7 +736,14 @@ class BuildSearch(RedirectView):
 
 class PracaViewMixin:
     def get(self, request, *args, **kwargs):
+        from raport_slotow.uczelnia_helper import uczelnia_dla_odczytu
+
         self.object = self.get_object()
+
+        # Multi-hosted: tabela punktacji na stronie rekordu pokazuje sloty/
+        # punkty tylko uczelni oglądającego (CPD po uczelni, CPA po
+        # jednostka__uczelnia). No-op przy single-install.
+        self.object._uczelnia_ogladajacego = uczelnia_dla_odczytu(request)
 
         if request.user.is_anonymous:
             # Jeżeli użytkownik jest anonimowy, to może obejmować go ukrywanie statusów

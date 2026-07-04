@@ -76,6 +76,9 @@ class IloscUdzialowDlaAutoraZaRok(IloscUdzialowDlaAutoraBase):
         blank=True,
         help_text="Link do oryginalnego rekordu Autor_Dyscyplina za dany rok",
     )
+    uczelnia = models.ForeignKey(
+        "bpp.Uczelnia", on_delete=models.CASCADE, null=True, blank=True
+    )
 
     # Override ilosc_udzialow to add validator for yearly limit
     ilosc_udzialow = LiczbaNField(validators=[MaxValueValidator(4)])
@@ -84,7 +87,7 @@ class IloscUdzialowDlaAutoraZaRok(IloscUdzialowDlaAutoraBase):
         verbose_name = "Ilość udziałów dla autora za rok"
         verbose_name_plural = "Ilości udziałów dla autorów za rok"
         unique_together = [
-            ("autor", "dyscyplina_naukowa", "rok"),
+            ("autor", "dyscyplina_naukowa", "rok", "uczelnia"),
         ]
 
 
@@ -97,6 +100,9 @@ class IloscUdzialowDlaAutoraZaCalosc(IloscUdzialowDlaAutoraBase):
         verbose_name="Rodzaj autora",
         null=True,
         blank=True,
+    )
+    uczelnia = models.ForeignKey(
+        "bpp.Uczelnia", on_delete=models.CASCADE, null=True, blank=True
     )
 
     komentarz = models.TextField(
@@ -112,7 +118,7 @@ class IloscUdzialowDlaAutoraZaCalosc(IloscUdzialowDlaAutoraBase):
         verbose_name = "Ilość udziałów dla autora za cały okres"
         verbose_name_plural = "Ilości udziałów dla autorów za cały okres"
         unique_together = [
-            ("autor", "dyscyplina_naukowa", "rodzaj_autora"),
+            ("autor", "dyscyplina_naukowa", "rodzaj_autora", "uczelnia"),
         ]
 
 

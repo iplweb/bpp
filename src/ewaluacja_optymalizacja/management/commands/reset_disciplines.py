@@ -1,3 +1,4 @@
+import logging
 import sys
 import time
 
@@ -5,6 +6,9 @@ from django.core.management import BaseCommand
 from django.db import transaction
 
 from bpp.models import Patent_Autor, Wydawnictwo_Ciagle_Autor, Wydawnictwo_Zwarte_Autor
+from bpp.util import zaloguj_polkniety_wyjatek
+
+logger = logging.getLogger(__name__)
 
 
 class Command(BaseCommand):
@@ -41,8 +45,13 @@ class Command(BaseCommand):
             from denorm.models import DirtyInstance
 
             return DirtyInstance.objects.count()
-        except BaseException:
+        except Exception:
             # If DirtyInstance model doesn't exist, return 0
+            zaloguj_polkniety_wyjatek(
+                "Odczyt liczby brudnych wpisów denorm (DirtyInstance) — zwracam 0",
+                logger=logger,
+                do_rollbar=False,
+            )
             return 0
 
     def handle(self, dry_run, no_wait, year_from, year_to, *args, **options):

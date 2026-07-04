@@ -45,7 +45,7 @@ class OrcidAuthenticationBackend:
             )
             return None
 
-        uczelnia = Uczelnia.objects.get_default()
+        uczelnia = Uczelnia.objects.get_for_request(request)
         if uczelnia and uczelnia.orcid_tylko_dla_pracownikow:
             if not (user.is_staff or user.is_superuser):
                 logger.info(

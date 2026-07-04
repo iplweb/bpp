@@ -6,7 +6,7 @@ from django.db.models.query_utils import Q
 from bpp.models import Jednostka
 
 from .base import JednostkaMixin
-from .mixins import SanitizedAutocompleteMixin
+from .mixins import SanitizedAutocompleteMixin, UczelniaScopedAutocompleteMixin
 
 
 class JednostkaAutocomplete(
@@ -23,13 +23,17 @@ class JednostkaAutocomplete(
         return qs.order_by(*Jednostka.objects.get_default_ordering())
 
 
-class WidocznaJednostkaAutocomplete(JednostkaAutocomplete):
-    """Autocomplete for visible organizational units."""
+class WidocznaJednostkaAutocomplete(
+    UczelniaScopedAutocompleteMixin, JednostkaAutocomplete
+):
+    """Autocomplete for visible organizational units (per-uczelnia, multi-hosted)."""
 
     qset = Jednostka.objects.widoczne().select_related("wydzial")
 
 
-class PublicJednostkaAutocomplete(JednostkaAutocomplete):
-    """Public autocomplete for public organizational units."""
+class PublicJednostkaAutocomplete(
+    UczelniaScopedAutocompleteMixin, JednostkaAutocomplete
+):
+    """Public autocomplete for public organizational units (per-uczelnia, multi-hosted)."""
 
     qset = Jednostka.objects.publiczne().select_related("wydzial")

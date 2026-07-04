@@ -61,12 +61,15 @@ def dyscyplina_raportowana(db, uczelnia):
 
 
 @pytest.fixture
-def autor_z_dyscyplina(db, dyscyplina_raportowana):
+def autor_z_dyscyplina(db, uczelnia, dyscyplina_raportowana):
     """Utwórz autora z przypisaną dyscypliną."""
     from ewaluacja_common.models import Rodzaj_Autora
 
     autor = baker.make("bpp.Autor", nazwisko="Kowalski", imiona="Jan")
-    jednostka = baker.make("bpp.Jednostka")
+    # Jednostka MUSI być w tej samej uczelni — inaczej baker auto-tworzy drugą
+    # uczelnię (Jednostka.uczelnia to wymagany FK) i request nie ustali której
+    # uczelni dotyczy widok (multi-hosted: brak „domyślnej").
+    jednostka = baker.make("bpp.Jednostka", uczelnia=uczelnia)
 
     rodzaj_autora, _ = Rodzaj_Autora.objects.get_or_create(
         skrot="N",
@@ -316,12 +319,16 @@ def druga_dyscyplina_raportowana(db, uczelnia):
 
 
 @pytest.fixture
-def autor_z_subdyscyplina(db, dyscyplina_raportowana, druga_dyscyplina_raportowana):
+def autor_z_subdyscyplina(
+    db, uczelnia, dyscyplina_raportowana, druga_dyscyplina_raportowana
+):
     """Utwórz autora z dwiema dyscyplinami (główna + subdyscyplina)."""
     from ewaluacja_common.models import Rodzaj_Autora
 
     autor = baker.make("bpp.Autor", nazwisko="Nowak", imiona="Anna")
-    jednostka = baker.make("bpp.Jednostka")
+    # Jednostka w tej samej uczelni — inaczej baker auto-tworzy drugą uczelnię
+    # i request (multi-hosted) nie ustali której uczelni dotyczy widok.
+    jednostka = baker.make("bpp.Jednostka", uczelnia=uczelnia)
 
     rodzaj_autora, _ = Rodzaj_Autora.objects.get_or_create(
         skrot="N",

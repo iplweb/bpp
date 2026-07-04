@@ -30,6 +30,16 @@ class TestManagerSprobuj_Utowrzyc_Wpis:
         assert result.zamowil == admin_user
         assert result.rekord_do_wysylki == wydawnictwo_ciagle
 
+    def test_sprobuj_utowrzyc_wpis_stores_uczelnia(
+        self, wydawnictwo_ciagle, admin_user, uczelnia
+    ):
+        """Wpis kolejki zapamiętuje konkretną uczelnię (multi-hosted)."""
+        result = PBN_Export_Queue.objects.sprobuj_utowrzyc_wpis(
+            admin_user, wydawnictwo_ciagle, uczelnia=uczelnia
+        )
+
+        assert result.uczelnia == uczelnia
+
     def test_sprobuj_utowrzyc_wpis_already_enqueued(
         self, wydawnictwo_ciagle, admin_user
     ):

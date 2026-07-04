@@ -184,6 +184,173 @@ def submenu_multicolumn(label, column1_tuples, column2_tuples, icon_class=None):
     return parent
 
 
+# First 5 theme options for column 1
+THEME_ITEMS_COL1 = [
+    ("Domyślny (ciemny)", "default", "theme-selector-default"),
+    ("Klasyczny jasny", "classic-light", "theme-selector-classic-light"),
+    ("Granatowy akademicki", "navy-academic", "theme-selector-navy-academic"),
+    ("Szary profesjonalny", "gray-professional", "theme-selector-gray-professional"),
+    ("Kremowo-zielony", "cream-green", "theme-selector-cream-green"),
+]
+
+# Remaining theme options for column 2
+THEME_ITEMS_COL2 = [
+    ("Minimalistyczny jasny", "minimal-light", "theme-selector-minimal-light"),
+    ("Złoty", "golden", "theme-selector-golden"),
+    ("Srebrny", "srebrny", "theme-selector-srebrny"),
+    ("Brat Ludwika", "mario-bros", "theme-selector-mario-bros"),
+    ("Brat Mariana", "luigi", "theme-selector-luigi"),
+]
+
+# Font options for column 2
+FONT_ITEMS = [
+    ("Domyślna czcionka", "default", "font-selector-default"),
+    ("Inter", "inter-small", "font-selector-inter-small"),
+    ("Open Sans", "opensans-small", "font-selector-opensans-small"),
+    ("Roboto", "roboto-small", "font-selector-roboto-small"),
+    ("Lato", "lato-small", "font-selector-lato-small"),
+    ("Source Sans Pro", "sourcesans-small", "font-selector-sourcesans-small"),
+    ("Segoe UI", "segoeui-small", "font-selector-segoeui-small"),
+    ("Arial", "arial-small", "font-selector-arial-small"),
+    ("Verdana", "verdana-small", "font-selector-verdana-small"),
+    ("Calibri", "calibri-small", "font-selector-calibri-small"),
+]
+
+
+def _styled_item(label, url, css_classes):
+    item = items.MenuItem(label, url=url)
+    item.css_classes = css_classes
+    return item
+
+
+def _should_hide_wydzial(request):
+    """Czy ukryć pozycję „wydział" w menu Struktura (na podst. ustawień/uczelni).
+
+    Multi-hosted: uczelnia z requestu (który host oglądamy), NIE get_default() —
+    przywrócone po scaleniu dev, którego refaktor C901 wrócił do get_default().
+    """
+    from django.conf import settings
+
+    from bpp.models import Uczelnia
+
+    uczelnia = Uczelnia.objects.get_for_request(request)
+    uzywaj_wydzialow = True
+    if uczelnia is not None:
+        uzywaj_wydzialow = uczelnia.uzywaj_wydzialow
+
+    return (
+        (not getattr(settings, "DJANGO_BPP_UCZELNIA_UZYWA_WYDZIALOW", True))
+        or (not uzywaj_wydzialow)
+    ) and STRUKTURA_MENU[1][1].find("wydzial") >= 0
+
+
+def _add_group_submenus(menu, user, groups, request):
+    """Dodaj poddrzewa menu zależne od grup/uprawnień użytkownika."""
+
+    def flt(n1, n2, v, icon_class=None):
+        if user.is_superuser or n1 in groups:
+            menu.children += [
+                submenu(n2, v, icon_class),
+            ]
+
+    flt("web", "WWW", WEB_MENU, "menu-icon-web")
+    flt("dane systemowe", "PBN API", PBN_MENU, "menu-icon-api")
+
+    # Combine "Dane" and "systemowe" into single 2-column menu
+    if user.is_superuser or "dane systemowe" in groups:
+        menu.children += [
+            submenu_multicolumn(
+                "Dane systemowe", SYSTEM_MENU, SYSTEM_MENU_2, "menu-icon-settings"
+            ),
+        ]
+
+    # Multi-host: decyzja o ukryciu wydziału jest per-host (get_for_request),
+    # więc buduj LOKALNĄ kopię listy zamiast mutować globalne STRUKTURA_MENU —
+    # dawny pop(1) trwale kasował wydział dla całego workera, przez co pierwszy
+    # host ukrywający wydział decydował za wszystkie kolejne hosty.
+    struktura_menu = STRUKTURA_MENU
+    if _should_hide_wydzial(request):
+        struktura_menu = [item for i, item in enumerate(STRUKTURA_MENU) if i != 1]
+
+    flt("struktura", "Struktura", struktura_menu, "menu-icon-structure")
+    flt(GR_WPROWADZANIE_DANYCH, "Wprowadzanie danych", REDAKTOR_MENU, "menu-icon-edit")
+    if GR_ZGLOSZENIA_PUBLIKACJI not in groups and not user.is_superuser:
+        # Wyrzuć "zgłoszenia publikacji" z REDAKTOR_MENU
+        del menu.children[-1].children[-1]
+
+    flt("raporty", "Raporty", RAPORTY_MENU, "menu-icon-reports")
+    flt("administracja", "Administracja", ADMIN_MENU, "menu-icon-admin")
+
+    # Add Docker services to Administracja menu (superusers only)
+    if user.is_superuser:
+        for label, url in DOCKER_SERVICES_MENU:
+            menu.children[-1].children.append(items.MenuItem(label, url))
+
+
+def _build_user_menu(user):
+    """Zbuduj menu „Mój profil" (akcje użytkownika + motywy + czcionki)."""
+    username = (
+        user.first_name or user.username or user.get_short_name() or user.get_username()
+    )
+
+    # Column 1: user actions and first themes
+    column1_children = [_styled_item(username, "#", ["column-1"])]
+
+    if user.has_usable_password():
+        column1_children.append(
+            _styled_item(
+                str(_("Change password")),
+                reverse("admin:password_change"),
+                ["column-1"],
+            )
+        )
+
+    column1_children.append(
+        _styled_item(str(_("Log out")), reverse("admin:logout"), ["column-1"])
+    )
+    column1_children.append(_styled_item("---", "#", ["theme-separator", "column-1"]))
+    for theme_name, theme_key, css_class in THEME_ITEMS_COL1:
+        column1_children.append(
+            _styled_item(
+                theme_name,
+                f"#theme-{theme_key}",
+                ["theme-selector-item", css_class, "column-1"],
+            )
+        )
+
+    # Column 2: remaining themes, spacers, then fonts
+    column2_children = []
+    for theme_name, theme_key, css_class in THEME_ITEMS_COL2:
+        column2_children.append(
+            _styled_item(
+                theme_name,
+                f"#theme-{theme_key}",
+                ["theme-selector-item", css_class, "column-2"],
+            )
+        )
+
+    # Add 4 empty spacer entries above fonts in column 2
+    for _i in range(4):
+        column2_children.append(_styled_item("", "#", ["menu-spacer", "column-2"]))
+
+    column2_children.append(_styled_item("---", "#", ["font-separator", "column-2"]))
+    for font_name, font_key, css_class in FONT_ITEMS:
+        column2_children.append(
+            _styled_item(
+                font_name,
+                f"#font-{font_key}",
+                ["font-selector-item", css_class, "column-2"],
+            )
+        )
+
+    # Combine all children in order (column1 first, then column2)
+    user_menu = items.MenuItem(
+        "Mój profil", children=column1_children + column2_children
+    )
+    user_menu.css_classes = ["menu-icon-user", "has-columns"]
+    return user_menu
+
+
 class CustomMenu(Menu):
     def __init__(self, **kwargs):
         Menu.__init__(self, **kwargs)
@@ -198,175 +365,17 @@ class CustomMenu(Menu):
             # items.Bookmarks(),  # Hidden - user requested to hide bookmarks menu
         ]
 
-    def init_with_context(self, context):  # noqa: C901
+    def init_with_context(self, context):
         user = context["request"].user
         if not hasattr(user, "__admin_menu_groups"):
             user.__admin_menu_groups = [x.name for x in user.cached_groups]
         groups = user.__admin_menu_groups
 
-        def flt(n1, n2, v, icon_class=None):
-            if user.is_superuser or n1 in groups:
-                self.children += [
-                    submenu(n2, v, icon_class),
-                ]
-
         # Dashboard is now second item (index 1), add icon
         if len(self.children) >= 2:
             self.children[1].css_classes = ["menu-icon-dashboard"]  # Dashboard (Panel)
 
-        flt("web", "WWW", WEB_MENU, "menu-icon-web")
-
-        flt("dane systemowe", "PBN API", PBN_MENU, "menu-icon-api")
-
-        # Combine "Dane" and "systemowe" into single 2-column menu
-        if user.is_superuser or "dane systemowe" in groups:
-            self.children += [
-                submenu_multicolumn(
-                    "Dane systemowe", SYSTEM_MENU, SYSTEM_MENU_2, "menu-icon-settings"
-                ),
-            ]
-
-        from django.conf import settings
-
-        from bpp.models import Uczelnia
-
-        uczelnia = Uczelnia.objects.get_default()
-        uzywaj_wydzialow = True
-        if uczelnia is not None:
-            uzywaj_wydzialow = uczelnia.uzywaj_wydzialow
-
-        if (
-            (not getattr(settings, "DJANGO_BPP_UCZELNIA_UZYWA_WYDZIALOW", True))
-            or (not uzywaj_wydzialow)
-        ) and STRUKTURA_MENU[1][1].find("wydzial") >= 0:
-            STRUKTURA_MENU.pop(1)
-
-        flt("struktura", "Struktura", STRUKTURA_MENU, "menu-icon-structure")
-        flt(
-            GR_WPROWADZANIE_DANYCH,
-            "Wprowadzanie danych",
-            REDAKTOR_MENU,
-            "menu-icon-edit",
-        )
-        if GR_ZGLOSZENIA_PUBLIKACJI not in groups and not user.is_superuser:
-            # Wyrzuć "zgłoszenia publikacji" z REDAKTOR_MENU
-            del self.children[-1].children[-1]
-
-        flt("raporty", "Raporty", RAPORTY_MENU, "menu-icon-reports")
-        flt("administracja", "Administracja", ADMIN_MENU, "menu-icon-admin")
-
-        # Add Docker services to Administracja menu (superusers only)
-        if user.is_superuser:
-            for label, url in DOCKER_SERVICES_MENU:
-                self.children[-1].children.append(items.MenuItem(label, url))
-
-        # Create user menu with "Mój profil" label and dropdown - add at the end
-        username = (
-            user.first_name
-            or user.username
-            or user.get_short_name()
-            or user.get_username()
-        )
-
-        # Prepare column 1 items (user actions and themes)
-        column1_children = []
-
-        # Add username as first item (not clickable - no URL)
-        username_item = items.MenuItem(username, url="#")
-        username_item.css_classes = ["column-1"]
-        column1_children.append(username_item)
-
-        # Add "Change password" if user has usable password
-        if user.has_usable_password():
-            change_pwd_item = items.MenuItem(
-                str(_("Change password")), reverse("admin:password_change")
-            )
-            change_pwd_item.css_classes = ["column-1"]
-            column1_children.append(change_pwd_item)
-
-        # Add "Log out"
-        logout_item = items.MenuItem(str(_("Log out")), reverse("admin:logout"))
-        logout_item.css_classes = ["column-1"]
-        column1_children.append(logout_item)
-
-        # Add separator for theme options
-        separator = items.MenuItem("---", url="#")
-        separator.css_classes = ["theme-separator", "column-1"]
-        column1_children.append(separator)
-
-        # First 5 theme options for column 1
-        theme_items_col1 = [
-            ("Domyślny (ciemny)", "default", "theme-selector-default"),
-            ("Klasyczny jasny", "classic-light", "theme-selector-classic-light"),
-            ("Granatowy akademicki", "navy-academic", "theme-selector-navy-academic"),
-            (
-                "Szary profesjonalny",
-                "gray-professional",
-                "theme-selector-gray-professional",
-            ),
-            ("Kremowo-zielony", "cream-green", "theme-selector-cream-green"),
-        ]
-
-        for theme_name, theme_key, css_class in theme_items_col1:
-            theme_item = items.MenuItem(theme_name, url=f"#theme-{theme_key}")
-            theme_item.css_classes = ["theme-selector-item", css_class, "column-1"]
-            column1_children.append(theme_item)
-
-        # Prepare column 2 items (remaining themes and fonts)
-        column2_children = []
-
-        # Remaining theme options for column 2
-        theme_items_col2 = [
-            ("Minimalistyczny jasny", "minimal-light", "theme-selector-minimal-light"),
-            ("Złoty", "golden", "theme-selector-golden"),
-            ("Srebrny", "srebrny", "theme-selector-srebrny"),
-            ("Brat Ludwika", "mario-bros", "theme-selector-mario-bros"),
-            ("Brat Mariana", "luigi", "theme-selector-luigi"),
-        ]
-
-        for theme_name, theme_key, css_class in theme_items_col2:
-            theme_item = items.MenuItem(theme_name, url=f"#theme-{theme_key}")
-            theme_item.css_classes = ["theme-selector-item", css_class, "column-2"]
-            column2_children.append(theme_item)
-
-        # Add 4 empty spacer entries above fonts in column 2
-        for _i in range(4):
-            spacer_item = items.MenuItem("", url="#")
-            spacer_item.css_classes = ["menu-spacer", "column-2"]
-            column2_children.append(spacer_item)
-
-        # Add separator for font options
-        font_separator = items.MenuItem("---", url="#")
-        font_separator.css_classes = ["font-separator", "column-2"]
-        column2_children.append(font_separator)
-
-        # Font options for column 2
-        font_items = [
-            ("Domyślna czcionka", "default", "font-selector-default"),
-            ("Inter", "inter-small", "font-selector-inter-small"),
-            ("Open Sans", "opensans-small", "font-selector-opensans-small"),
-            ("Roboto", "roboto-small", "font-selector-roboto-small"),
-            ("Lato", "lato-small", "font-selector-lato-small"),
-            ("Source Sans Pro", "sourcesans-small", "font-selector-sourcesans-small"),
-            ("Segoe UI", "segoeui-small", "font-selector-segoeui-small"),
-            ("Arial", "arial-small", "font-selector-arial-small"),
-            ("Verdana", "verdana-small", "font-selector-verdana-small"),
-            ("Calibri", "calibri-small", "font-selector-calibri-small"),
-        ]
-
-        for font_name, font_key, css_class in font_items:
-            font_item = items.MenuItem(font_name, url=f"#font-{font_key}")
-            font_item.css_classes = ["font-selector-item", css_class, "column-2"]
-            column2_children.append(font_item)
-
-        # Combine all children in order (column1 first, then column2)
-        user_children = column1_children + column2_children
-
-        # Create user menu item with icon class and columns support - label is "Mój profil"
-        user_menu = items.MenuItem("Mój profil", children=user_children)
-        user_menu.css_classes = ["menu-icon-user", "has-columns"]
-
-        # Add user menu to children
-        self.children.append(user_menu)
+        _add_group_submenus(self, user, groups, context["request"])
+        self.children.append(_build_user_menu(user))
 
         return super().init_with_context(context)

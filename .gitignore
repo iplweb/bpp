@@ -45,6 +45,7 @@ htmlcov/
 nosetests.xml
 coverage.xml
 coverage.json
+coverage-*.json
 cov_html/
 *,cover
 

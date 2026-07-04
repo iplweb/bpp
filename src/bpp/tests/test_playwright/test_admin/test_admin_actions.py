@@ -75,9 +75,13 @@ def test_admin_domyslnie_afiliuje_istniejacy_rekord(
     from bpp.models.wydawnictwo_zwarte import Wydawnictwo_Zwarte
 
     # twórz nowy obiekt, nie używaj z fixtury, bo db i transactional_db
-    baker.make(Uczelnia, domyslnie_afiliuje=expected)
+    uczelnia = baker.make(Uczelnia, domyslnie_afiliuje=expected)
     autor = baker.make(Autor, nazwisko="Kowal", imiona="Ski")
-    jednostka = baker.make(Jednostka, nazwa="Lol", skrot="WT")
+    # Przypnij jednostkę do TEJ uczelni — bez tego baker przez FK
+    # Jednostka.uczelnia tworzy DRUGĄ uczelnię, get_single_uczelnia_or_none()
+    # zwraca wtedy None (>1) i default afiliacji degraduje do True, psując
+    # asercję dla expected=False.
+    jednostka = baker.make(Jednostka, nazwa="Lol", skrot="WT", uczelnia=uczelnia)
 
     klasa_model = {
         "Wydawnictwo_Ciagle": Wydawnictwo_Ciagle,

@@ -302,7 +302,7 @@ def download_duplicates_xlsx(request):
 
     try:
         # Generuj plik XLSX
-        xlsx_content = export_duplicates_to_xlsx()
+        xlsx_content = export_duplicates_to_xlsx(request)
 
         # Stwórz odpowiedź HTTP z plikiem
         response = HttpResponse(

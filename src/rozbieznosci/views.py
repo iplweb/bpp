@@ -12,8 +12,9 @@ from django.views import View
 from django.views.generic import ListView
 from openpyxl import Workbook
 
-from bpp.models import Charakter_Formalny, Wydawnictwo_Ciagle
+from bpp.models import Charakter_Formalny, Uczelnia, Wydawnictwo_Ciagle
 from bpp.util import worksheet_columns_autosize, worksheet_create_table
+from bpp.util.uczelnia_scope import tylko_jedna_uczelnia
 from rozbieznosci.core import (
     DEFAULT_SORT,
     DEFAULT_TRYB_ZRODLA,
@@ -91,6 +92,24 @@ def _query_string(f):
     return urlencode(params, doseq=True)
 
 
+def _scope_do_uczelni(qs, request):
+    """Zawęź queryset rozbieżności do uczelni oglądającej (multi-hosted).
+
+    Queryset to ``Wydawnictwo_Ciagle`` (rekord), więc atrybucja przez
+    ``autorzy_set__jednostka__uczelnia`` — reguła wspólna ze stroną główną
+    (``scope_rekord_do_uczelni``): rekord należy do uczelni, gdy którakolwiek
+    jednostka zapisana na autorstwie należy do tej uczelni.
+
+    No-op (zwraca ten sam qs) gdy brak mapowania Site→Uczelnia (fail-open, jak
+    ``scope_rekord_do_uczelni``) albo gdy w systemie jest jedna uczelnia
+    (guard ``tylko_jedna_uczelnia`` — single-host = brak zawężenia).
+    """
+    uczelnia = Uczelnia.objects.get_for_request(request)
+    if uczelnia is None or tylko_jedna_uczelnia():
+        return qs
+    return qs.filter(autorzy_set__jednostka__uczelnia=uczelnia).distinct()
+
+
 class RozbieznosciView(MetrykaMixin, GroupRequiredMixin, ListView):
     template_name = "rozbieznosci/index.html"
     paginate_by = 25
@@ -100,6 +119,7 @@ class RozbieznosciView(MetrykaMixin, GroupRequiredMixin, ListView):
         qs = get_base_queryset_for_metryka(self.metryka, tryb_zrodla=f.tryb_zrodla)
         qs = apply_filters(qs, f.rok_od, f.rok_do, f.tytul, f.charaktery)
         qs = apply_sorting(qs, f.sort, self.metryka)
+        qs = _scope_do_uczelni(qs, self.request)
         return qs
 
     def get_context_data(self, **kwargs):
@@ -214,6 +234,7 @@ class RozbieznosciExportView(MetrykaMixin, GroupRequiredMixin, View):
         qs = get_base_queryset_for_metryka(self.metryka, tryb_zrodla=f.tryb_zrodla)
         qs = apply_filters(qs, f.rok_od, f.rok_do, f.tytul, f.charaktery)
         qs = apply_sorting(qs, f.sort, self.metryka)
+        qs = _scope_do_uczelni(qs, request)
 
         field = self.metryka.field_name
         annotated = f"punktacja_zrodla_{field}"
@@ -294,6 +315,7 @@ class UstawWszystkieView(MetrykaMixin, GroupRequiredMixin, View):
         f = _filter_params(request.GET, self.metryka)
         qs = get_base_queryset_for_metryka(self.metryka, tryb_zrodla=f.tryb_zrodla)
         qs = apply_filters(qs, f.rok_od, f.rok_do, f.tytul, f.charaktery)
+        qs = _scope_do_uczelni(qs, request)
         count = qs.count()
         if count == 0:
             messages.warning(request, "Brak rekordów do aktualizacji.")
@@ -320,6 +342,7 @@ class UstawWszystkieView(MetrykaMixin, GroupRequiredMixin, View):
         f = _filter_params(request.POST, self.metryka)
         qs = get_base_queryset_for_metryka(self.metryka, tryb_zrodla=f.tryb_zrodla)
         qs = apply_filters(qs, f.rok_od, f.rok_do, f.tytul, f.charaktery)
+        qs = _scope_do_uczelni(qs, request)
         pks = list(qs.values_list("pk", flat=True))
         count = len(pks)
         if count == 0:

@@ -1,3 +1,5 @@
+import logging
+
 from adminsortable2.admin import SortableAdminMixin
 from django.contrib import admin
 from django.contrib.admin.templatetags.admin_urls import add_preserved_filters
@@ -8,6 +10,9 @@ from django.utils.text import Truncator
 
 from bpp.admin.core import DynamicAdminFilterMixin, generuj_formularz_dla_autorow
 from bpp.admin.helpers import get_rekord_id_from_GET_qs
+from bpp.util import zaloguj_polkniety_wyjatek
+
+logger = logging.getLogger(__name__)
 
 
 class Wydawnictwo_Autor_Base(
@@ -90,8 +95,12 @@ class Wydawnictwo_Autor_Base(
                 try:
                     rec = self.base_rekord_class.objects.get(pk=int(v))
                     extra_context["rekord"] = rec
-                except BaseException:
-                    pass
+                except Exception:
+                    zaloguj_polkniety_wyjatek(
+                        f"Pobieranie rekordu dla przycisku 'Edycja rekordu' "
+                        f"w changelist autorów (rekord__id__exact={v})",
+                        logger=logger,
+                    )
             except (ValueError, TypeError):
                 pass
 

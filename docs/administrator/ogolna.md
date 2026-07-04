@@ -110,7 +110,7 @@ formularza, następnie zaznacz lub odznacz opcję "Publiczny" i zapisz rekord
     powiązań autor + rekord dla danego roku, dla danego autora - we wszystkich rekordach, które
     mają „starą” subdyscyplinę - na pustą.
 
-4.  **usunięcie przypisania** autora do dyscypliny (rekord `Autor_Dyscyplina`) powoduje ustawienie  
+4.  **usunięcie przypisania** autora do dyscypliny (rekord `Autor_Dyscyplina`) powoduje ustawienie
     wartości pustej (`NULL`) dla danego roku, dla danego autora - we wszystkich rekordach, do
     których przypisany jest dany autor.
 

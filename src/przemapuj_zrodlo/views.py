@@ -1,3 +1,5 @@
+import logging
+
 from django.contrib import messages
 from django.contrib.auth.mixins import UserPassesTestMixin
 from django.db import transaction
@@ -8,12 +10,15 @@ from django.utils import timezone
 from django.views.generic import FormView, View
 
 from bpp.const import GR_WPROWADZANIE_DANYCH
-from bpp.models import Wydawnictwo_Ciagle, Zrodlo
+from bpp.models import Uczelnia, Wydawnictwo_Ciagle, Zrodlo
+from bpp.util import zaloguj_polkniety_wyjatek
 from pbn_api.exceptions import AlreadyEnqueuedError
 from pbn_export_queue.models import PBN_Export_Queue
 
 from .forms import PrzemapowaZrodloForm
 from .models import PrzemapowaZrodla
+
+logger = logging.getLogger(__name__)
 
 
 class WprowadzanieDanychRequiredMixin(UserPassesTestMixin):
@@ -145,15 +150,24 @@ class PrzemapujZrodloView(WprowadzanieDanychRequiredMixin, FormView):
         sukces_pbn = 0
         bledy_pbn = []
 
+        # Rozwiąż uczelnię raz, poza pętlą (na multi-hosted decyduje o tym,
+        # do którego PBN-a wpis zostanie wysłany).
+        uczelnia = Uczelnia.objects.get_for_request(self.request)
+
         for pub in publikacje_do_wyslania:
             try:
                 PBN_Export_Queue.objects.sprobuj_utowrzyc_wpis(
-                    user=self.request.user, rekord=pub
+                    user=self.request.user, rekord=pub, uczelnia=uczelnia
                 )
                 sukces_pbn += 1
             except AlreadyEnqueuedError:
                 bledy_pbn.append(f"Publikacja {pub.pk} jest już w kolejce")
             except Exception as e:
+                zaloguj_polkniety_wyjatek(
+                    f"Dodawanie publikacji do kolejki eksportu PBN "
+                    f"przy przemapowaniu źródła (rekord pk={pub.pk})",
+                    logger=logger,
+                )
                 bledy_pbn.append(f"Publikacja {pub.pk}: {str(e)}")
 
         return sukces_pbn, bledy_pbn

@@ -1,3 +1,5 @@
+import logging
+
 from django import forms
 from django.contrib import admin, messages
 from django.core.exceptions import ValidationError
@@ -9,11 +11,14 @@ from djangoql.admin import DjangoQLSearchMixin
 
 from bpp.models import Jednostka, Uczelnia
 from bpp.models.cache import Rekord
+from bpp.util import zaloguj_polkniety_wyjatek
 from pbn_api.admin.base import BaseMongoDBAdmin
 from pbn_api.admin.filters import MaDOIFilter, OdpowiednikWBPPFilter
 from pbn_api.admin.widgets import PrettyJSONWidgetReadonly
 from pbn_api.models import OswiadczenieInstytucji, Publication
 from pbn_integrator.utils import zapisz_oswiadczenie_instytucji
+
+logger = logging.getLogger(__name__)
 
 
 class PublicationFromMongoIdForm(forms.ModelForm):
@@ -231,6 +236,12 @@ class PublicationAdmin(
         try:
             client = uczelnia.pbn_client(request.user.pbn_token)
         except Exception as e:
+            zaloguj_polkniety_wyjatek(
+                "Nie udało się utworzyć klienta PBN przy imporcie publikacji "
+                f"(uczelnia pk={uczelnia.pk})",
+                logger=logger,
+                do_rollbar=True,
+            )
             self.message_user(
                 request, f"Nie można utworzyć klienta PBN: {e}", level=messages.ERROR
             )
@@ -290,6 +301,12 @@ class PublicationAdmin(
 
         except Exception as e:
             # Log oświadczenia error but don't fail the whole import
+            zaloguj_polkniety_wyjatek(
+                "Błąd podczas pobierania/integracji oświadczeń instytucji dla "
+                f"publikacji PBN {publication.pk} — import publikacji się powiódł",
+                logger=logger,
+                do_rollbar=True,
+            )
             self.message_user(
                 request,
                 f"Publikacja zaimportowana, ale wystąpił błąd z oświadczeniami: {str(e)}",
@@ -379,6 +396,12 @@ class PublicationAdmin(
                 )
 
         except Exception as e:
+            zaloguj_polkniety_wyjatek(
+                f"Błąd podczas importu publikacji PBN {publication.pk} do BPP "
+                f"(force={force})",
+                logger=logger,
+                do_rollbar=True,
+            )
             self.message_user(
                 request, f"Błąd podczas importu: {str(e)}", level=messages.ERROR
             )

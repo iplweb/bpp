@@ -14,8 +14,15 @@ class SlotKalkulator_Wydawnictwo_Zwarte_Baza:
     (80, 200 itp).
     """
 
-    def __init__(self, original, tryb_kalkulacji, wiele_hst=False, poziom_wydawcy=None):
-        self.original = original
+    def __init__(
+        self,
+        original,
+        tryb_kalkulacji,
+        wiele_hst=False,
+        poziom_wydawcy=None,
+        uczelnia=None,
+    ):
+        super().__init__(original, uczelnia=uczelnia)
         self.tryb_kalkulacji = tryb_kalkulacji
         self.wiele_hst = wiele_hst
         self.poziom_wydawcy = poziom_wydawcy

@@ -26,6 +26,7 @@ setenv_default("DSPACE_CREDENTIALS_KEY", "beRCn4RUNneKiOizMZEEZDjeZVwdOJ6m2etsvw
 from .base import *  # noqa
 from .base import (  # noqa
     DATABASES,
+    DJANGO_BPP_HOSTNAMES,
     INSTALLED_APPS,
     MIDDLEWARE,
     REDIS_HOST,
@@ -57,7 +58,7 @@ ALLOWED_HOSTS = [
     "mac-mini",
     "publikacje-test",
     "test.unexistenttld",
-    env("DJANGO_BPP_HOSTNAME"),  # noqa
+    *DJANGO_BPP_HOSTNAMES,
 ]
 
 CELERY_ALWAYS_EAGER = False

@@ -10,11 +10,18 @@ class SlotMixin:
     """Mixin używany przez Wydawnictwo_Zwarte, Wydawnictwo_Ciagle i Patent
     do przeprowadzania kalkulacji na slotach."""
 
-    def __init__(self, original):
+    def __init__(self, original, uczelnia=None):
         self.original = original
+        self.uczelnia = uczelnia
+
+    def _autorzy_qs(self):
+        qs = self.original.autorzy_set.all()
+        if self.uczelnia is not None:
+            qs = qs.filter(jednostka__uczelnia=self.uczelnia)
+        return qs
 
     def wszyscy(self):
-        return self.original.autorzy_set.count()
+        return self._autorzy_qs().count()
 
     def autorzy_z_dyscypliny(self, dyscyplina_naukowa, typ_ogolny=None):
         ret = []
@@ -24,7 +31,7 @@ class SlotMixin:
             # Czy typ ogólny autora (autor, redaktor) to ten, którego poszukujemy?
             elem_kw = {"typ_odpowiedzialnosci__typ_ogolny": typ_ogolny}
 
-        for elem in self.original.autorzy_set.filter(
+        for elem in self._autorzy_qs().filter(
             afiliuje=True,
             przypieta=True,
             # explicte -- nie chcemy, aby to pole brało udział w kalkulacjach
@@ -47,7 +54,7 @@ class SlotMixin:
             return set()
 
         ret = set()
-        for wa in self.original.autorzy_set.all():
+        for wa in self._autorzy_qs():
             d = wa.okresl_dyscypline()
             if d is None:
                 continue

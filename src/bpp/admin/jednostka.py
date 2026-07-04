@@ -3,6 +3,7 @@ import sys
 from django import forms
 from django.contrib import admin
 from django.utils.html import format_html
+from import_export.admin import ImportMixin
 from mptt.admin import DraggableMPTTAdmin
 
 from bpp.admin.helpers.djangoql import BppDjangoQLSearchMixin
@@ -14,6 +15,8 @@ from .filters import PBN_UID_IDObecnyFilter
 from .helpers import LimitingFormset
 from .helpers.fieldsets import ADNOTACJE_FIELDSET
 from .helpers.mixins import ZapiszZAdnotacjaMixin
+from .helpers.site_filtered import SiteFilteredAdminMixin
+from .jednostka_import import JednostkaImportResource
 from .xlsx_export import resources
 from .xlsx_export.mixins import EksportDanychMixin
 
@@ -39,6 +42,8 @@ class Autor_JednostkaInline(admin.TabularInline):
 
 
 class JednostkaAdmin(
+    ImportMixin,
+    SiteFilteredAdminMixin,
     BppDjangoQLSearchMixin,
     RestrictDeletionToAdministracjaGroupMixin,
     ZapiszZAdnotacjaMixin,
@@ -46,11 +51,29 @@ class JednostkaAdmin(
     BaseBppAdminMixin,
     DraggableMPTTAdmin,
 ):
+    uczelnia_field_path = "uczelnia"
     djangoql_completion_enabled_by_default = False
     djangoql_completion = True
+    # Eksport (EksportDanychMixin/ExportMixin) bierze resource_classes;
+    # import (ImportMixin) dostaje dedykowany resource przez override nizej —
+    # oba mixiny domyslnie czytaja TEN SAM atrybut resource_classes.
     resource_classes = [resources.JednostkaResource]
 
+    def get_import_resource_classes(self, request):
+        resource_classes = [JednostkaImportResource]
+        self.check_resource_classes(resource_classes)
+        return resource_classes
+
     change_list_template = "admin/grappelli_mptt_change_list.html"
+    # ImportMixin + EksportDanychMixin (ExportMixin) jednoczesnie: import_export
+    # wybiera `import_export_change_list_template` po MRO, a ImportMixin jest
+    # przed ExportMixin -> bez tego renderuje sie szablon TYLKO z importem
+    # (przycisk "Eksport" znika). Wymuszamy polaczony szablon import+export;
+    # rozszerza on `change_list_template` (grappelli_mptt) jako bazowy, wiec
+    # draggable MPTT zostaje zachowany.
+    import_export_change_list_template = (
+        "admin/import_export/change_list_import_export.html"
+    )
 
     list_display_links = ["indented_title"]
 
@@ -122,7 +145,7 @@ class JednostkaAdmin(
         # Zobacz na komentarz do Jednostka.uczelnia.default
         data = super().get_changeform_initial_data(request)
         if "uczelnia" not in data:
-            data["uczelnia"] = Uczelnia.objects.first()
+            data["uczelnia"] = Uczelnia.objects.get_for_request(request)
         return data
 
     def changelist_view(self, request, *args, **kwargs):
@@ -164,26 +187,28 @@ class JednostkaAdmin(
         return self.list_display
 
     def get_list_per_page(self):
-        from django.db import OperationalError, connection
+        from django.db import DatabaseError, connection
 
         # Django evaluates `ModelAdmin.list_per_page` during app-ready
-        # system checks (`apps.populate()`), i.e. before any DB may exist
-        # — this is the hot path for `manage.py baseline_check` or
-        # `makemigrations` on a fresh clone / CI runner without Postgres.
-        # Bail out to the default in two cases: the DB is unreachable at
-        # all (OperationalError), or the connection works but the
-        # uczelnia table hasn't been created yet.
+        # system checks (`apps.populate()`), które `manage.py migrate`
+        # uruchamia PRZED zastosowaniem migracji. W tym oknie schemat bazy
+        # potrafi być starszy niż kod — bail out do wartości domyślnej w
+        # każdym takim „schema-lags-code":
+        #   * DB nieosiągalna (OperationalError) — fresh clone / CI bez PG,
+        #   * tabela `bpp_uczelnia` jeszcze nie istnieje (świeża baza),
+        #   * tabela istnieje, ale świeżo dodana, nie-zmigrowana kolumna
+        #     (np. `site_id` z multi-hosted) — istniejąca instalacja w
+        #     trakcie upgrade'u. Zapytanie rzuca wtedy ProgrammingError;
+        #     bez tego guarda `migrate` padał, więc nie dało się zastosować
+        #     migracji dodającej kolumnę (deadlock upgrade'u).
+        # `DatabaseError` to wspólny rodzic OperationalError/ProgrammingError.
+        req = getattr(self, "request", None)
         try:
             if "bpp_uczelnia" not in connection.introspection.table_names():
                 return BaseBppAdminMixin.list_per_page
-        except OperationalError:
+            uczelnia = Uczelnia.objects.get_for_request(req)
+        except DatabaseError:
             return BaseBppAdminMixin.list_per_page
-
-        req = None
-        if hasattr(self, "request"):
-            req = self.request
-
-        uczelnia = Uczelnia.objects.get_for_request(req)
 
         if uczelnia is None:
             return BaseBppAdminMixin.list_per_page

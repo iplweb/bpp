@@ -119,13 +119,50 @@ def safe_streszczenie(value):
 
 @register.filter(name="jsonify")
 def jsonify(value):
-    """Convert a value to JSON string for use in JSON-LD structured data."""
+    """Convert a value to a JSON literal for use inside a <script> JSON-LD block.
+
+    Zwraca `mark_safe`, więc autoescaping Django NIE zamieni cudzysłowów
+    JSON-a na `&quot;` — to było realnym bugiem: HTML5 nie dekoduje encji
+    w treści `<script>`, więc `"headline": &quot;...&quot;` dawało
+    niepoprawny JSON-LD (Google go odrzucał).
+
+    Skoro pomijamy autoescaping, sami escapujemy znaki groźne wewnątrz
+    `<script>` (`<`, `>`, `&` oraz separatory linii U+2028/U+2029) na
+    sekwencje `\\uXXXX` — to wciąż poprawny JSON, a zarazem uniemożliwia
+    wyłamanie się z taga przez `</script>` (ochrona przed XSS). Ta sama
+    technika co `django.utils.html.json_script`.
+    """
     if value is None:
-        return "null"
+        return mark_safe("null")
     # Handle Django model instances by converting them to string
     if hasattr(value, "_meta"):
         value = str(value)
-    return json.dumps(value, ensure_ascii=False)
+    result = json.dumps(value, ensure_ascii=False)
+    result = (
+        result.replace("<", "\\u003c")
+        .replace(">", "\\u003e")
+        .replace("&", "\\u0026")
+        .replace(" ", "\\u2028")
+        .replace(" ", "\\u2029")
+    )
+    return mark_safe(result)
+
+
+@register.filter(name="link_do_pi")
+def link_do_pi(praca, uczelnia=None):
+    """Zwróć link do Profilu Instytucji rekordu dla danej uczelni.
+
+    Multi-hosted (audyt uczelnia, track 7b): templejt nie umie podać argumentu
+    metodzie, więc filtr przekazuje uczelnię oglądającego (z kontekstu) do
+    ``praca.link_do_pi(uczelnia)`` — link wskazuje na PBN-root TEJ uczelni i
+    rozwiązuje wiersz ``PublikacjaInstytucji_V2`` otagowany TĄ uczelnią.
+    ``uczelnia=None`` (brak uczelni w kontekście) → brak linku (NIE ma
+    „uczelni domyślnej").
+    """
+    method = getattr(praca, "link_do_pi", None)
+    if method is None:
+        return None
+    return method(uczelnia=uczelnia)
 
 
 @register.simple_tag
@@ -228,6 +265,19 @@ def generate_coins(praca, autorzy):  # noqa
 
     # Return the complete COinS span
     return mark_safe(f'<span class="Z3988" title="{coins_string}"></span>')
+
+
+@register.simple_tag
+def autorzy_skrocony(praca, uczelnia=None):
+    """Skrócony widok listy autorów (``autorzy_dla_opisu_skrocony``) z przekazaną
+    oglądającą uczelnią, tak by wyróżnienie "naszego" autora było host-aware.
+
+    Metoda modelu nie może dostać argumentu przez ``{% with %}``/``{{ }}``,
+    więc owijamy ją w simple_tag wywoływany jako
+    ``{% autorzy_skrocony praca uczelnia as box %}``. ``uczelnia`` pochodzi
+    z context processora (``Uczelnia.objects.get_for_request``).
+    """
+    return praca.autorzy_dla_opisu_skrocony(uczelnia=uczelnia)
 
 
 @register.simple_tag

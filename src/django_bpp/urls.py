@@ -269,6 +269,10 @@ urlpatterns = (
             ),
         ),
         path(
+            "import_punktacji_zrodel/",
+            include("import_punktacji_zrodel.urls"),
+        ),
+        path(
             "importer_publikacji/",
             include(
                 (
@@ -364,7 +368,11 @@ urlpatterns = (
         #     cache_page(7*24*3600)(sitemaps_views.sitemap), {'sitemaps': django_bpp_sitemaps},
         #     name='sitemaps'),
         # url(r'^sitemap\.xml', include('static_sitemaps.urls')),
-        path("", include("static_sitemaps.urls")),
+        *(
+            [path("", include("static_sitemaps.urls"))]
+            if getattr(settings, "ENABLE_SITEMAPS", True)
+            else []
+        ),
         url(r"", include("webmaster_verification.urls")),
         url(
             r"^global-nav-redir/(?P<param>.+)/$",
@@ -389,6 +397,15 @@ if "microsoft_auth" in getattr(settings, "INSTALLED_APPS", []):
     ]
 
 
+# Logowanie OpenID Connect — addytywne, montowane tylko gdy apka aktywna.
+# Trasy mozilla-django-oidc: oidc/authenticate/ (start), oidc/callback/ (powrót).
+# Redirect URI do zarejestrowania w Keycloaku: https://<host>/oidc/callback/
+if apps.is_installed("oidc_integration"):
+    urlpatterns += [
+        path("oidc/", include("mozilla_django_oidc.urls")),
+    ]
+
+
 if settings.DJANGO_BPP_ENABLE_PROMETHEUS:
     urlpatterns += [
         path("", include("django_prometheus.urls")),
@@ -401,20 +418,42 @@ if settings.DEBUG and settings.DEBUG_TOOLBAR:
     urlpatterns += debug_toolbar_urls()
 
 
-if not apps.is_installed("microsoft_auth"):
+if apps.is_installed("oidc_integration"):
     #
-    # Jeżeli NIE ma włączonej aplikacji microsoft_auth, to obsługuj
-    # własne logowanie hasłem z front-endu:
+    # Logowanie instytucjonalne przez OIDC (Keycloak). apps.is_installed(
+    # "oidc_integration") jest prawdą tylko gdy OIDC jest skonfigurowane (apka
+    # dokładana warunkowo w settings). OIDC to jeden realm na proces, więc
+    # logowanie jest wybierane PER-UCZELNIA: InstitutionalLoginView odbija na
+    # Keycloaka tylko dla domeny uczelni o skrócie == OIDC_LOGIN_SKROT, dla
+    # pozostałych domen używa Microsoftu (jeśli włączony, globalnie) albo
+    # formularza BPP. Może współistnieć z microsoft_auth w jednym procesie.
+    # Formularz BPP osobno pod local_login_form. Logout świadomy OIDC.
     #
+    from django_bpp.views import InstitutionalLoginView
+    from oidc_integration.views import BppOIDCAwareLogoutView
+
     urlpatterns += [
         url(
-            r"^accounts/login/$",
+            r"^accounts/login/local/$",
             HTMXAwareLoginView.as_view(authentication_form=MyAuthenticationForm),
+            name="local_login_form",
+        ),
+        url(
+            r"^accounts/login/$",
+            InstitutionalLoginView.as_view(),
             name="login_form",
         ),
-        url(r"^logout/$", login_required(LogoutView.as_view()), name="logout"),
+        url(
+            r"^logout/$",
+            login_required(BppOIDCAwareLogoutView.as_view()),
+            name="logout",
+        ),
     ]
-else:
+elif apps.is_installed("microsoft_auth"):
+    #
+    # Logowanie instytucjonalne przez Microsoft (globalne, jak dotąd): domyślne
+    # logowanie odbija na Microsoft, formularz BPP osobno pod local_login_form.
+    #
     from django_bpp.views import MicrosoftLogoutView
 
     urlpatterns += [
@@ -435,6 +474,18 @@ else:
             MicrosoftLogoutView.as_view(),
             name="logout",
         ),
+    ]
+else:
+    #
+    # Brak logowania instytucjonalnego — własne logowanie hasłem z front-endu.
+    #
+    urlpatterns += [
+        url(
+            r"^accounts/login/$",
+            HTMXAwareLoginView.as_view(authentication_form=MyAuthenticationForm),
+            name="login_form",
+        ),
+        url(r"^logout/$", login_required(LogoutView.as_view()), name="logout"),
     ]
 
 if apps.is_installed("password_policies"):

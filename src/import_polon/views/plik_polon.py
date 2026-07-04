@@ -1,7 +1,6 @@
 from braces.views import GroupRequiredMixin
-from django.db.models import Count, Q
+from django.db.models import Q
 
-from bpp.models import Autor_Dyscyplina
 from import_polon.forms import NowyImportForm, WierszImportuPlikuPolonFilterForm
 from import_polon.models import ImportPlikuPolon
 from long_running.views import (
@@ -25,6 +24,17 @@ class PokazImporty(BaseImportPlikuPolonMixin, LongRunningOperationsView):
 
 class UtworzImportPlikuPolon(BaseImportPlikuPolonMixin, CreateLongRunningOperationView):
     form_class = NowyImportForm
+
+    def form_valid(self, form):
+        # Multi-hosted: przypnij import do uczelni z requestu (domena→Site→
+        # Uczelnia). Zawęża późniejszą walidację ZATRUDNIENIE, dopasowanie
+        # autora i raport niezmatchowanych do tej jednej uczelni. Gdy nie da
+        # się rozstrzygnąć (single-host bez domeny / pusta baza) → None →
+        # zachowanie wsteczne bez zawężenia.
+        from bpp.models import Uczelnia
+
+        form.instance.uczelnia = Uczelnia.objects.get_for_request(self.request)
+        return super().form_valid(form)
 
 
 class ImportPolonRouterView(BaseImportPlikuPolonMixin, LongRunningRouterView):
@@ -107,30 +117,12 @@ class ImportPolonResultsView(BaseImportPlikuPolonMixin, LongRunningResultsView):
             or self.request.GET.get("pokaz_tylko_roznice")
         )
 
-        # Get unmatched Autor_Dyscyplina records for this import year
+        # Autorzy z dyscyplinami dla roku importu, których nie było w pliku.
+        # Multi-hosted: zawężone do aktualnie zatrudnionych w uczelni importu
+        # (patrz ImportPlikuPolon.autorzy_niezmatchowani) — bez tego raport
+        # wyciekałby autorów innych uczelni współistniejących w bazie.
         import_object = ImportPlikuPolon.objects.get(pk=self.kwargs["pk"])
-
-        # Get all authors that were matched in the import
-        matched_authors = base_queryset.filter(autor__isnull=False).values_list(
-            "autor_id", flat=True
-        )
-
-        # Get all Autor_Dyscyplina records for the import year
-        # that are NOT in the matched authors
-        unmatched_autor_dyscyplina = (
-            Autor_Dyscyplina.objects.filter(rok=import_object.rok)
-            .exclude(autor_id__in=matched_authors)
-            .select_related(
-                "autor", "dyscyplina_naukowa", "subdyscyplina_naukowa", "rodzaj_autora"
-            )
-            .annotate(
-                liczba_prac=Count(
-                    "autor__autorzy",
-                    filter=Q(autor__autorzy__rekord__rok=import_object.rok),
-                )
-            )
-            .order_by("autor__nazwisko", "autor__imiona")
-        )
+        unmatched_autor_dyscyplina = import_object.autorzy_niezmatchowani()
 
         context["unmatched_autor_dyscyplina"] = unmatched_autor_dyscyplina
         context["unmatched_count"] = unmatched_autor_dyscyplina.count()

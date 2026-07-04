@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block title %}Import punktacji źródeł{% endblock %}
+{% block content %}
+  <h1>Import punktacji źródeł</h1>
+  <p><a class="button" href="{% url 'import_punktacji_zrodel:new' %}">
+     <i class="fi-plus"></i> Nowy import</a></p>
+  <table>
+    <thead><tr><th>Utworzono</th><th>Rok</th><th>Status</th></tr></thead>
+    <tbody>
+    {% for op in object_list %}
+      <tr>
+        <td><a href="{% url 'import_punktacji_zrodel:importpunktacjizrodel-router' op.pk %}">
+            {{ op.created_on }}</a></td>
+        <td>{{ op.rok|default:"—" }}</td>
+        <td>{% if op.finished_successfully %}gotowe
+            {% elif op.started_on %}w toku{% else %}oczekuje{% endif %}</td>
+      </tr>
+    {% empty %}
+      <tr><td colspan="3">Brak importów.</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+{% endblock %}
