@@ -424,6 +424,7 @@ INSTALLED_APPS = [
     # dal 3.3.0-release, musi być naprawiony o ten błąd:
     # https://github.com/yourlabs/django-autocomplete-light/issues/981
     "bpp",
+    "ai_search",
     "crossref_bpp",
     "pbn_api",
     "dspace_api",
@@ -1858,4 +1859,28 @@ OAUTH2_PROVIDER = {
     "ROTATE_REFRESH_TOKEN": True,
     "ACCESS_TOKEN_EXPIRE_SECONDS": 60 * 30,  # 30 min
     "REFRESH_TOKEN_EXPIRE_SECONDS": 60 * 60 * 24 * 7,  # 7 dni (NIE None!)
+}
+
+# --- Wyszukiwanie przez AI (ai_search) ---
+BPP_AI_SEARCH_ENABLED = env("BPP_AI_SEARCH_ENABLED", default=False, cast=bool)
+BPP_AI_MODEL = env("BPP_AI_MODEL", default="claude-sonnet-5")
+BPP_AI_DAILY_BUDGET_PLN = env("BPP_AI_DAILY_BUDGET_PLN", default="20", cast=str)
+BPP_AI_MONTHLY_BUDGET_PLN = env("BPP_AI_MONTHLY_BUDGET_PLN", default="300", cast=str)
+BPP_AI_MAX_RETRIES = env("BPP_AI_MAX_RETRIES", default=1, cast=int)
+BPP_AI_LLM_TIMEOUT = env("BPP_AI_LLM_TIMEOUT", default=30, cast=int)
+BPP_AI_SCHEMA_CACHE_TTL = env("BPP_AI_SCHEMA_CACHE_TTL", default=86400, cast=int)
+BPP_AI_FX_CACHE_TTL = env("BPP_AI_FX_CACHE_TTL", default=86400, cast=int)
+BPP_AI_FX_FALLBACK = env("BPP_AI_FX_FALLBACK", default="4.5", cast=str)
+# Cennik per model, USD za 1M tokenów. `intro_until` (ISO date) -> do tej daty
+# obowiązują ceny intro. cache_read/cache_write to mnożniki ceny input.
+BPP_AI_PRICING = {
+    "claude-sonnet-5": {
+        "input": "3.0",
+        "output": "15.0",
+        "intro_input": "2.0",
+        "intro_output": "10.0",
+        "intro_until": "2026-08-31",
+        "cache_read_mult": "0.1",
+        "cache_write_mult": "1.25",
+    },
 }
