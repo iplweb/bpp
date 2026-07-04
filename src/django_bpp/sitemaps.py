@@ -35,6 +35,9 @@ class JednostkaSitemap(BppSitemap):
     url = "bpp:browse_jednostka"
     url_obj_field = "slug"
 
+    def items(self):
+        return self.klass.objects.widoczne()
+
 
 class UczelniaSitemap(BppSitemap):
     changefreq = "yearly"
