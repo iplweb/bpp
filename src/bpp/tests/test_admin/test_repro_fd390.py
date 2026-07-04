@@ -95,3 +95,23 @@ def test_repro_fd390_b_delete_superuser_bez_ograniczen(autor_w_dwoch_uczelniach)
     assert (
         aa.has_delete_permission(_request(uczelnia_b, is_superuser=True), autor) is True
     )
+
+
+def test_repro_fd390_c_inline_zatrudnien_zawezony_do_uczelni(
+    autor_w_dwoch_uczelniach,
+):
+    """Inline zatrudnień: nie-superuser widzi/edytuje tylko wpisy Autor_Jednostka
+    bieżącej uczelni — nie może ruszyć wpisów cudzej uczelni na wspólnym autorze.
+    """
+    from bpp.admin.autor import Autor_JednostkaInline
+
+    autor, uczelnia_a, uczelnia_b = autor_w_dwoch_uczelniach
+    inline = Autor_JednostkaInline(Autor, djadmin.site)
+
+    qs_b = inline.get_queryset(_request(uczelnia_b)).filter(autor=autor)
+    assert {aj.jednostka.uczelnia_id for aj in qs_b} == {uczelnia_b.pk}
+
+    qs_su = inline.get_queryset(_request(uczelnia_b, is_superuser=True)).filter(
+        autor=autor
+    )
+    assert {aj.jednostka.uczelnia_id for aj in qs_su} == {uczelnia_a.pk, uczelnia_b.pk}

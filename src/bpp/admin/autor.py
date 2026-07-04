@@ -146,6 +146,23 @@ class Autor_JednostkaInline(admin.TabularInline):
     form = Autor_JednostkaInlineForm
     extra = 1
 
+    def get_queryset(self, request):
+        # FD#390: ten inline jest współdzielony przez AutorAdmin i
+        # JednostkaAdmin. Poszerzony scope AutorAdmin (kiedykolwiek_zwiazani)
+        # udostępnia stronę edycji WSPÓLNEGO autora personelowi innej uczelni;
+        # bez zawężenia mógłby on skasować/zakończyć wpisy zatrudnienia CUDZEJ
+        # uczelni (trigger przeliczyłby wtedy aktualna_jednostka i wyrzucił
+        # autora z aktywnej kadry tamtej uczelni). Nie-superuser widzi i edytuje
+        # tylko wpisy bieżącej uczelni. W JednostkaAdmin to no-op — jednostka
+        # rodzica i tak należy do jego uczelni. Superuser — bez zawężenia.
+        qs = super().get_queryset(request)
+        if request.user.is_superuser:
+            return qs
+        uczelnia = getattr(request, "_uczelnia", None)
+        if uczelnia:
+            return qs.filter(jednostka__uczelnia=uczelnia)
+        return qs
+
 
 # Autorzy
 
