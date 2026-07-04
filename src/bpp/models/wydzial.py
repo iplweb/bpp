@@ -187,8 +187,20 @@ def usun_wezel_lustro_wydzialu(sender, instance, **kwargs):
     ``legacy_wydzial_id == wydzial.id``) gdy Wydzial jest kasowany — bez tego
     zostałaby sierota wskazująca na nieistniejący już wydział. Model lustra
     jest LAZY (tworzone dopiero przy linkowaniu), więc to rzadkie, ale tanie.
-    Usunięcie węzła kaskaduje na wpisy ``Jednostka_Rodzic.parent`` (CASCADE).
+
+    **Guard bezdzietności (I-4).** Po I-4 (migracja 0457) węzeł-lustro MA
+    DZIECI — pod niego podpięte są realne jednostki (``parent``, TreeForeignKey
+    CASCADE) oraz wpisy ``Jednostka_Rodzic.parent`` (CASCADE). Bezwarunkowe
+    ``.delete()`` skaskadowałoby wtedy na całą realną strukturę = KATASTROFALNA
+    utrata danych. Dlatego kasujemy węzeł WYŁĄCZNIE, gdy jest bezdzietny
+    (transient lustro sprzed podpięcia). Węzeł z realnymi dziećmi ZOSTAJE
+    nietknięty przy kasowaniu starego ``Wydzial``.
     """
     from .jednostka import Jednostka
 
-    Jednostka.objects.filter(legacy_wydzial_id=instance.id).delete()
+    for node in Jednostka.objects.filter(legacy_wydzial_id=instance.id):
+        if Jednostka.objects.filter(parent=node).exists():
+            # Węzeł ma realne dzieci (po I-4) — NIE kasuj (CASCADE zniszczyłby
+            # poddrzewo + metryczkę historyczną).
+            continue
+        node.delete()
