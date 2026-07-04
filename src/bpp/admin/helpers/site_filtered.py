@@ -23,8 +23,19 @@ class SiteFilteredAdminMixin:
             return qs
         uczelnia = getattr(request, "_uczelnia", None)
         if uczelnia and self.uczelnia_field_path:
-            return qs.filter(**{self.uczelnia_field_path: uczelnia})
+            return self.filter_queryset_for_uczelnia(qs, uczelnia)
         return qs
+
+    def filter_queryset_for_uczelnia(self, qs, uczelnia):
+        """Zawęź queryset do danych bieżącej uczelni.
+
+        Domyślnie: prosty filtr po ``uczelnia_field_path``. Klasy pochodne
+        mogą nadpisać tę metodę, gdy „przynależność do uczelni" jest
+        bardziej złożona niż pojedyncza ścieżka FK (np. ``AutorAdmin``
+        dopuszcza edycję autora związanego z uczelnią KIEDYKOLWIEK —
+        obecnie lub historycznie).
+        """
+        return qs.filter(**{self.uczelnia_field_path: uczelnia})
 
     def formfield_for_foreignkey(self, db_field, request, **kwargs):
         """Filtruje dropdown FK do obiektów z aktualnej uczelni."""

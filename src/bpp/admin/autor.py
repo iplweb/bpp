@@ -200,6 +200,16 @@ class AutorAdmin(
     admin.ModelAdmin,
 ):
     uczelnia_field_path = "aktualna_jednostka__uczelnia"
+
+    def filter_queryset_for_uczelnia(self, qs, uczelnia):
+        # FD#390: autor jest edytowalny w panelu uczelni, jeśli był z nią
+        # związany KIEDYKOLWIEK (obecnie LUB historycznie) — nie tylko gdy
+        # jego aktualna_jednostka należy akurat do tej uczelni. W multi-homed
+        # jeden autor (wspólna baza) bywa aktualnie „przypisany" do innej
+        # uczelni, a historycznie należał też do tej; personel „wprowadzanie
+        # danych" tej uczelni musi go móc otworzyć (wcześniej: 404).
+        return qs.kiedykolwiek_zwiazani(uczelnia)
+
     djangoql_completion_enabled_by_default = False
     djangoql_completion = True
 

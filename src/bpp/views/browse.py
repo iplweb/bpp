@@ -192,8 +192,15 @@ class AutorView(DetailView):
                 Q(primary_author=self.object) | Q(secondary_author=self.object)
             ).exists()
         )
+        # Multi-homed: link do PBN musi znać uczelnię z requestu — szablon
+        # nie umie przekazać argumentu do metody, więc liczymy go tu. Bez
+        # tego ``autor.link_do_pbn`` (bezargumentowo) degraduje do
+        # ``get_single_uczelnia_or_none() → None`` przy >1 uczelni (FD#390).
         return super().get_context_data(
-            typy=TYPY, ma_powiazania=ma_powiazania, **kwargs
+            typy=TYPY,
+            ma_powiazania=ma_powiazania,
+            link_do_pbn=self.object.link_do_pbn(uczelnia),
+            **kwargs,
         )
 
 
