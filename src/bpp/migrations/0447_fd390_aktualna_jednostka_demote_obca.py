@@ -12,16 +12,16 @@ def _exec_sql_file(filename):
 
 
 def load_sql(apps, schema_editor):
-    _exec_sql_file("0446_fd390_aktualna_jednostka_demote_obca.sql")
+    _exec_sql_file("0447_fd390_aktualna_jednostka_demote_obca.sql")
 
 
 def unload_sql(apps, schema_editor):
-    _exec_sql_file("0446_fd390_aktualna_jednostka_demote_obca_reverse.sql")
+    _exec_sql_file("0447_fd390_aktualna_jednostka_demote_obca_reverse.sql")
 
 
 class Migration(migrations.Migration):
     dependencies = [
-        ("bpp", "0445_merge_20260622_1134"),
+        ("bpp", "0446_rzeczownik_tylko_mianownik"),
     ]
 
     operations = [
