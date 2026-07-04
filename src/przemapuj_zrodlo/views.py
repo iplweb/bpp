@@ -283,6 +283,16 @@ class ZrodloInfoView(WprowadzanieDanychRequiredMixin, View):
         pbn = zrodlo.pbn_uid
         liczba_publikacji = Wydawnictwo_Ciagle.objects.filter(zrodlo=zrodlo).count()
 
+        # Zrodlo nie ma daty utworzenia — jedyny czasowy ślad to
+        # `ostatnio_zmieniony` (auto_now = ostatnia modyfikacja). Kolejność
+        # utworzenia oddaje pk (mniejszy = wcześniej) i to porównuje JS.
+        zmieniony = zrodlo.ostatnio_zmieniony
+        ostatnio_zmieniony = (
+            timezone.localtime(zmieniony).strftime("%Y-%m-%d %H:%M")
+            if zmieniony
+            else ""
+        )
+
         return JsonResponse(
             {
                 "bppid": zrodlo.pk,
@@ -295,6 +305,8 @@ class ZrodloInfoView(WprowadzanieDanychRequiredMixin, View):
                 "pbn_status": pbn.status if pbn else None,
                 "mnisw_effective": PrzemapowaZrodloForm._mnisw_id(zrodlo),
                 "liczba_publikacji": liczba_publikacji,
+                "ostatnio_zmieniony": ostatnio_zmieniony,
+                "admin_url": reverse("admin:bpp_zrodlo_change", args=[zrodlo.pk]),
             }
         )
 

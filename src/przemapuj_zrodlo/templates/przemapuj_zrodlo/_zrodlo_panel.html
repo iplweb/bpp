@@ -45,11 +45,29 @@
             </small>
         </p>
 
-        <p><strong>BPP ID:</strong> <span id="{{ prefix }}-bppid">{{ zrodlo.pk }}</span></p>
+        <p>
+            <strong>BPP ID:</strong> <span id="{{ prefix }}-bppid">{{ zrodlo.pk }}</span>
+            {# Badge wieku: JS pokaże „utworzone wcześniej/później" po porównaniu #}
+            {# pk obu źródeł (mniejszy pk = rekord utworzony wcześniej). #}
+            <span id="{{ prefix }}-wiek" class="przemapuj-wiek" hidden></span>
+        </p>
 
-        <p style="margin-bottom: 0;">
+        <p id="{{ prefix }}-zmien-row">
+            <strong>Ostatnia modyfikacja:</strong>
+            <span id="{{ prefix }}-zmien">{{ zrodlo.ostatnio_zmieniony|date:"Y-m-d H:i" }}</span>
+        </p>
+
+        <p style="margin-bottom: 0.5rem;">
             <strong>Liczba publikacji:</strong>
             <span id="{{ prefix }}-liczba">{{ liczba_publikacji|default:"" }}</span>
+        </p>
+
+        <p id="{{ prefix }}-admin-row" style="margin-bottom: 0;"{% if not zrodlo %} hidden{% endif %}>
+            <a id="{{ prefix }}-admin-link"
+               href="{% if zrodlo %}{% url 'admin:bpp_zrodlo_change' zrodlo.pk %}{% endif %}"
+               target="_blank">
+                <span class="fi-wrench"></span> Otwórz w panelu administracyjnym
+            </a>
         </p>
     </div>
 </div>

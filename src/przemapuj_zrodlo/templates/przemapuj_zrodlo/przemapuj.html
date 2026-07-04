@@ -163,6 +163,17 @@ Kontynuować?">
 <style>
     .przemapuj-match { color: #2e7d32; font-weight: bold; }
     .przemapuj-mismatch { color: #c0392b; font-weight: bold; }
+    .przemapuj-wiek {
+        display: inline-block;
+        font-size: 0.75rem;
+        padding: 0.1rem 0.45rem;
+        border-radius: 3px;
+        margin-left: 0.4rem;
+        color: #fff;
+        white-space: nowrap;
+    }
+    .przemapuj-wiek.older { background: #2e7d32; }
+    .przemapuj-wiek.newer { background: #777; }
 </style>
 <script src="{% static 'przemapuj_zrodlo/przemapuj.js' %}"></script>
 {% endblock %}

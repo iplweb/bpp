@@ -90,6 +90,40 @@ def test_panel_docelowy_ostrzega_o_niezgodnym_mnisw(
     admin_page.wait_for_selector("#dst-mnisw-warning", state="visible", timeout=15000)
 
 
+def test_panel_docelowy_admin_link_data_i_badge_wieku(
+    channels_live_server, admin_page: Page, transactional_db
+):
+    """Po wczytaniu celu panel pokazuje link do admina, datę ostatniej
+    modyfikacji oraz badge wieku (źródło ma niższy pk = utworzone wcześniej)."""
+    from django.urls import reverse as dj_reverse
+
+    src, dst_ok, _ = _setup_zrodla()  # src powstaje przed dst_ok → src.pk < dst_ok.pk
+
+    admin_page.goto(_url(channels_live_server, src, dst_ok.pk))
+    wait_for_page_load(admin_page)
+
+    admin_page.wait_for_selector("#dst-content", state="visible", timeout=15000)
+    admin_page.wait_for_function(
+        "() => document.getElementById('dst-nazwa').textContent.trim()"
+        " === 'Cel zgodny'",
+        timeout=15000,
+    )
+
+    # Link do admina celu.
+    admin_href = admin_page.get_attribute("#dst-admin-link", "href") or ""
+    assert dj_reverse("admin:bpp_zrodlo_change", args=[dst_ok.pk]) in admin_href
+
+    # Data ostatniej modyfikacji — niepusta (nie „—").
+    zmien = admin_page.text_content("#dst-zmien").strip()
+    assert zmien and zmien != "—"
+
+    # Badge wieku: src (niższy pk) = wcześniej, dst = później.
+    admin_page.wait_for_selector("#src-wiek", state="visible", timeout=15000)
+    admin_page.wait_for_selector("#dst-wiek", state="visible", timeout=15000)
+    assert "wcześniej" in admin_page.text_content("#src-wiek")
+    assert "później" in admin_page.text_content("#dst-wiek")
+
+
 def test_panel_docelowy_reaguje_na_zmiane_selecta(
     channels_live_server, admin_page: Page, transactional_db
 ):

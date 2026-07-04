@@ -26,6 +26,24 @@ def test_source_panel_shows_bppid(client_with_group):
 
 
 @pytest.mark.django_db
+def test_source_panel_shows_admin_link_and_modified_and_age_badge(client_with_group):
+    """Panel źródłowy pokazuje link do admina źródła, datę ostatniej modyfikacji
+    oraz element badge wieku (wypełniany JS-em po wczytaniu celu)."""
+    from django.urls import reverse
+
+    zrodlo = baker.make("bpp.Zrodlo", nazwa="X")
+    baker.make("bpp.Wydawnictwo_Ciagle", zrodlo=zrodlo)
+
+    url = reverse("przemapuj_zrodlo:przemapuj", args=[zrodlo.slug])
+    content = client_with_group.get(url).content.decode()
+
+    assert reverse("admin:bpp_zrodlo_change", args=[zrodlo.pk]) in content
+    assert "Ostatnia modyfikacja" in content
+    assert 'id="src-wiek"' in content
+    assert 'id="src-admin-link"' in content
+
+
+@pytest.mark.django_db
 def test_target_panel_container_present(client_with_group):
     """Prawy panel „Źródło docelowe" istnieje w DOM (kontener dla JS)."""
     zrodlo = baker.make("bpp.Zrodlo")

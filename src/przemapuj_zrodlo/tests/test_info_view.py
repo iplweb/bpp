@@ -82,6 +82,24 @@ def test_zrodlo_info_deleted_mnisw_effective_is_none(client_with_group):
 
 
 @pytest.mark.django_db
+def test_zrodlo_info_zawiera_admin_url_i_ostatnio_zmieniony(client_with_group):
+    """Endpoint zwraca link do admina źródła oraz datę ostatniej modyfikacji
+    (jedyny czasowy ślad na Zrodlo — nie ma daty utworzenia)."""
+    import re
+
+    from django.urls import reverse
+
+    zrodlo = baker.make("bpp.Zrodlo", nazwa="Z datą")
+
+    url = reverse("przemapuj_zrodlo:info", args=[zrodlo.pk])
+    data = json.loads(client_with_group.get(url).content)
+
+    assert data["admin_url"] == reverse("admin:bpp_zrodlo_change", args=[zrodlo.pk])
+    # ostatnio_zmieniony (auto_now) — sformatowany „YYYY-MM-DD HH:MM".
+    assert re.match(r"^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$", data["ostatnio_zmieniony"])
+
+
+@pytest.mark.django_db
 def test_zrodlo_info_404_for_missing(client_with_group):
     """Nieistniejące źródło → 404."""
     url = reverse("przemapuj_zrodlo:info", args=[999999])

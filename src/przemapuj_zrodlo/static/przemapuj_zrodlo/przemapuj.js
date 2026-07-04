@@ -80,6 +80,12 @@
             el("dst-placeholder").hidden = false;
             el("dst-content").hidden = true;
             el("dst-mnisw-warning").hidden = true;
+            // Bez celu nie ma porównania wieku — schowaj oba badge.
+            [el("src-wiek"), el("dst-wiek")].forEach(function (b) {
+                if (b) {
+                    b.hidden = true;
+                }
+            });
         }
 
         function applyMniswRule(data) {
@@ -134,6 +140,18 @@
                 pbnRow.hidden = true;
             }
 
+            // Data ostatniej modyfikacji celu (Zrodlo nie ma daty utworzenia).
+            el("dst-zmien").textContent = data.ostatnio_zmieniony || "—";
+
+            // Link do panelu administracyjnego celu.
+            var adminRow = el("dst-admin-row");
+            if (data.admin_url) {
+                el("dst-admin-link").href = data.admin_url;
+                adminRow.hidden = false;
+            } else {
+                adminRow.hidden = true;
+            }
+
             // Podświetlenie zgodności ISSN / e-ISSN (zielony gdy identyczne).
             highlight(
                 "dst-issn",
@@ -145,6 +163,37 @@
             );
 
             applyMniswRule(data);
+            applyWiek(data.bppid);
+        }
+
+        function setWiekBadge(spanId, older) {
+            var b = el(spanId);
+            if (!b) {
+                return;
+            }
+            b.hidden = false;
+            b.classList.remove("older", "newer");
+            b.classList.add(older ? "older" : "newer");
+            b.textContent = older ? "utworzone wcześniej" : "utworzone później";
+        }
+
+        function applyWiek(dstBppid) {
+            // Kolejność utworzenia oddaje pk: mniejszy = utworzony wcześniej.
+            var srcPk = parseInt(txt("src-bppid"), 10);
+            var dstPk = parseInt(dstBppid, 10);
+            var srcBadge = el("src-wiek");
+            var dstBadge = el("dst-wiek");
+            [srcBadge, dstBadge].forEach(function (b) {
+                if (b) {
+                    b.hidden = true;
+                }
+            });
+            if (isNaN(srcPk) || isNaN(dstPk) || srcPk === dstPk) {
+                return;
+            }
+            var srcOlder = srcPk < dstPk;
+            setWiekBadge("src-wiek", srcOlder);
+            setWiekBadge("dst-wiek", !srcOlder);
         }
 
         function update(pk) {
