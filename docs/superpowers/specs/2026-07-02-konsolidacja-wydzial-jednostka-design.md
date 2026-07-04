@@ -202,6 +202,14 @@ RodzajJednostki
   `aktualna=True`) usunąłby je z formularza zgłoszeń (`zglos_publikacje/
   forms.py`) i publicznego autocomplete (`views/autocomplete/units.py`).
   „Brak historii" = „węzeł żyje bezterminowo", nie „węzeł nieaktualny".
+  - **TRZY OSIE „nieaktualności" — nie mylić** (decyzja usera 2026-07-04):
+    - **`aktualna`** — „czy istnieje TERAZ" — **derywowana z dat historii**
+      (`Jednostka_Rodzic.do`), NIE klikana ręcznie. Nośnik wymogu temporalnego.
+    - **`widoczna`** — „czy pokazywać publicznie" — ręczny przełącznik.
+    - **`wchodzi_do_raportow`** — „czy jest sekcją raportu" — ręczny (zasiany).
+    „Zamknięcie" wydziału/jednostki = ustawienie daty `do` w historii (→
+    `aktualna` samo na `False`), a nie odklikanie flagi. Ukrycie/wyłączenie z
+    raportów to osobne, ręczne akcje.
 - **`tmp` kolumna `legacy_wydzial_id`** (nullable, indeks) — TRWAŁE mapowanie
   `Wydzial.id → Jednostka.id` dla węzłów powstałych z konwersji. Nośnik
   idempotencji i migracji wartości (multiseek, FK). Kasowana w kroku „drop
@@ -589,7 +597,11 @@ B1. **`Jednostka_Rodzic`** — `RenameModel Jednostka_Wydzial → Jednostka_Rodz
    użycia w `fixtures/conftest_models.py:107,119` + testy).
 B2. **Przepięcie struktury (parent) — TYLKO gdy `parent IS NULL`** + reguła
    konfliktu (jednostka z `parent` w innym wydziale → log + żywy parent, raport).
-   Daty `otwarcie`/`zamkniecie` wydziału → wpisy `Jednostka_Rodzic` (od/do).
+   Daty `otwarcie`/`zamkniecie` wydziału → **WŁASNY wpis `Jednostka_Rodzic`
+   węzła-wydziału** (`jednostka=węzeł`, `parent=NULL` — root pod uczelnią,
+   `od=otwarcie`, `do=zamkniecie`). Zamknięty wydział ma więc `do` w przeszłości
+   → `aktualna` derywuje się na `False` (rozstrzyga „lub" z rundy 3: to wpis
+   samego węzła, nie metadana i nie wpisy dzieci).
    - **Wiersze historii sub-jednostek (runda 3, WAŻNE):** wpisy `Jednostka_Rodzic`
      sub-jednostki (miała `parent≠NULL`) **przepisujemy na krawędź do faktycznego
      rodzica z zachowaniem `od`/`do`** (reinterpretacja okresu) — NIE kasujemy
