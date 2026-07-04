@@ -210,6 +210,23 @@ class AutorAdmin(
         # danych" tej uczelni musi go móc otworzyć (wcześniej: 404).
         return qs.kiedykolwiek_zwiazani(uczelnia)
 
+    def has_delete_permission(self, request, obj=None):
+        # FD#390: EDYCJA wspólnego autora jest dozwolona z każdej uczelni,
+        # w której bywał (poszerzony queryset wyżej) — ale USUWANIE zawężamy
+        # do własnej uczelni. Skasowanie rekordu autora, którego aktualną
+        # jednostką jest INNA uczelnia (jest tam aktywnym pracownikiem),
+        # byłoby zniszczeniem cudzych danych przez wspólną bazę. Superuser
+        # bez zmian; autor bez aktualnej jednostki (niczyj) — decyduje super().
+        if obj is not None and not request.user.is_superuser:
+            uczelnia = getattr(request, "_uczelnia", None)
+            if (
+                uczelnia
+                and obj.aktualna_jednostka_id
+                and obj.aktualna_jednostka.uczelnia_id != uczelnia.pk
+            ):
+                return False
+        return super().has_delete_permission(request, obj)
+
     djangoql_completion_enabled_by_default = False
     djangoql_completion = True
 

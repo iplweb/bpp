@@ -8,9 +8,11 @@ A. Link "PBN UID" / "Naukowiec z POL-on" nie linkuje — szablon woła
    ``get_single_uczelnia_or_none()`` zwraca ``None`` i link jest pusty.
    Powinien użyć uczelni z hosta requestu.
 
-Testy B i C żyją w:
-- ``src/bpp/tests/test_admin/test_repro_fd390.py`` (edycja autora / 404),
-- ``src/pbn_integrator/tests/test_repro_fd390.py`` (write-side uczelni).
+Pozostałe defekty FD#390 mają repro-testy obok:
+- ``src/bpp/tests/test_models/test_repro_fd390.py`` — trigger wyboru
+  ``aktualna_jednostka`` (realna jednostka bije obcą),
+- ``src/bpp/tests/test_admin/test_repro_fd390.py`` — edycja/usuwanie autora
+  w adminie multi-homed (scope + cross-tenant delete).
 """
 
 try:

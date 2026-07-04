@@ -11,6 +11,8 @@ musi móc otworzyć takiego autora do edycji — poprzednio ``SiteFilteredAdminM
 zawężał queryset do ``aktualna_jednostka__uczelnia`` i dawał 404.
 """
 
+from types import SimpleNamespace
+
 import pytest
 from django.contrib import admin as djadmin
 from model_bakery import baker
@@ -59,3 +61,37 @@ def test_repro_fd390_b_obcy_autor_niewidoczny(autor_w_dwoch_uczelniach):
 
     scoped_c = aa.filter_queryset_for_uczelnia(Autor.objects.all(), uczelnia_c)
     assert autor not in scoped_c
+
+
+def _request(uczelnia, *, is_superuser=False, has_perm=True):
+    """Minimalny request-stub dla has_delete_permission."""
+    user = SimpleNamespace(
+        is_superuser=is_superuser,
+        is_active=True,
+        is_staff=True,
+        has_perm=lambda *a, **k: has_perm,
+    )
+    return SimpleNamespace(user=user, _uczelnia=uczelnia)
+
+
+def test_repro_fd390_b_delete_cross_tenant_zablokowany(autor_w_dwoch_uczelniach):
+    """Cross-tenant delete: nie-superuser z uczelni, która NIE jest aktualną
+    uczelnią autora, nie może go usunąć (choć może edytować)."""
+    autor, uczelnia_a, uczelnia_b = autor_w_dwoch_uczelniach
+    aa = AutorAdmin(Autor, djadmin.site)
+
+    # aktualna_jednostka autora należy do uczelni A (realna bije obcą — trigger).
+    assert autor.aktualna_jednostka.uczelnia_id == uczelnia_a.pk
+
+    # Panel uczelni B (obca dla tego autora) → delete zablokowany...
+    assert aa.has_delete_permission(_request(uczelnia_b), autor) is False
+    # ...ale własna uczelnia A (z uprawnieniem) → delete dozwolony.
+    assert aa.has_delete_permission(_request(uczelnia_a), autor) is True
+
+
+def test_repro_fd390_b_delete_superuser_bez_ograniczen(autor_w_dwoch_uczelniach):
+    autor, _, uczelnia_b = autor_w_dwoch_uczelniach
+    aa = AutorAdmin(Autor, djadmin.site)
+    assert (
+        aa.has_delete_permission(_request(uczelnia_b, is_superuser=True), autor) is True
+    )

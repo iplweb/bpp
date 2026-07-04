@@ -8,13 +8,24 @@
 -- utworzona później porywała `aktualna_jednostka`, przez co na stronie uczelni A
 -- autor „pokazywał się jako z obcej uczelni" (zepsute linki, edycja 404, PBN UID).
 --
--- Fix: dołożenie JOIN do bpp_jednostka i PIERWSZEGO klucza sortowania
--- `skupia_pracownikow DESC` — realna jednostka pracownicza (skupia_pracownikow
--- = TRUE) zawsze wygrywa z obcą (FALSE). Reszta porządku bez zmian. Autor
--- przypięty WYŁĄCZNIE do obcych jednostek nadal dostaje obcą jako aktualną
--- (demotowanie działa tylko przy konflikcie z realną). Zakończone zatrudnienia
--- dalej są odfiltrowane WHERE-m przed sortowaniem, więc realna-ale-zakończona
--- nie „ożywa".
+-- Fix (dwie części):
+--
+-- 1) DEFINICJA settera: JOIN do bpp_jednostka + klucz sortowania
+--    `skupia_pracownikow DESC` wstawiony PO `podstawowe_miejsce_pracy` (a przed
+--    datami) — jawnie oznaczone „podstawowe miejsce pracy" nadal ma pierwszeństwo,
+--    ale przy jego braku realna jednostka pracownicza (skupia_pracownikow=TRUE)
+--    bije obcą (FALSE). Autor wyłącznie w obcych jednostkach nadal dostaje obcą
+--    (demotowanie działa tylko przy konflikcie z realną). Zakończone
+--    zatrudnienia dalej odfiltrowane WHERE-m przed sortowaniem.
+--
+-- 2) BACKFILL istniejących danych: sam CREATE OR REPLACE nie przelicza już
+--    zapisanych `bpp_autor.aktualna_jednostka_id` — trigger odpala się dopiero
+--    przy następnym zapisie `bpp_autor_jednostka`. Bez backfillu autorzy
+--    „zaparkowani" na obcej jednostce (stara kolejność) zostaliby zepsuci do
+--    czasu ręcznej edycji. Jednorazowy UPDATE poniżej przelicza aktualną
+--    jednostkę TYLKO dla autorów, których bieżąca aktualna_jednostka jest obca
+--    (skupia_pracownikow=FALSE) i dla których nowa kolejność daje inną jednostkę
+--    — tanio i bez ruszania poprawnych rekordów.
 
 BEGIN;
 
@@ -47,8 +58,8 @@ BEGIN
     WHERE aj.autor_id = v_autor_id
       AND coalesce(aj.zakonczyl_prace, '9999-12-31'::date) > NOW()::date
     ORDER BY
-        coalesce(j.skupia_pracownikow, true) DESC,
         coalesce(aj.podstawowe_miejsce_pracy, false) DESC,
+        coalesce(j.skupia_pracownikow, true) DESC,
         coalesce(aj.rozpoczal_prace, '0001-01-01'::date) DESC,
         coalesce(aj.zakonczyl_prace, '9999-12-31'::date) DESC,
         aj.id DESC
@@ -73,5 +84,37 @@ BEGIN
     RETURN NEW;
 END;
 $$;
+
+
+-- Backfill: przelicz aktualną jednostkę autorów zaparkowanych na obcej
+-- jednostce, według NOWEJ kolejności. Zawężone (kandydaci) → tanie.
+WITH kandydaci AS (
+    SELECT id AS autor_id
+    FROM bpp_autor
+    WHERE aktualna_jednostka_id IN (
+        SELECT id FROM bpp_jednostka WHERE NOT skupia_pracownikow
+    )
+),
+best AS (
+    SELECT DISTINCT ON (aj.autor_id)
+           aj.autor_id, aj.jednostka_id, aj.funkcja_id
+    FROM bpp_autor_jednostka aj
+    JOIN bpp_jednostka j ON j.id = aj.jednostka_id
+    WHERE aj.autor_id IN (SELECT autor_id FROM kandydaci)
+      AND coalesce(aj.zakonczyl_prace, '9999-12-31'::date) > NOW()::date
+    ORDER BY
+        aj.autor_id,
+        coalesce(aj.podstawowe_miejsce_pracy, false) DESC,
+        coalesce(j.skupia_pracownikow, true) DESC,
+        coalesce(aj.rozpoczal_prace, '0001-01-01'::date) DESC,
+        coalesce(aj.zakonczyl_prace, '9999-12-31'::date) DESC,
+        aj.id DESC
+)
+UPDATE bpp_autor a
+   SET aktualna_jednostka_id = best.jednostka_id,
+       aktualna_funkcja_id = best.funkcja_id
+  FROM best
+ WHERE best.autor_id = a.id
+   AND best.jednostka_id IS DISTINCT FROM a.aktualna_jednostka_id;
 
 COMMIT;
