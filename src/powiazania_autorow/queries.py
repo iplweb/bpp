@@ -224,11 +224,13 @@ def _metryki_prac(autor_ids):
     }
 
 
-def _pbn_root():
-    """Root API PBN-u Uczelni domyślnej (raz na request)."""
-    from bpp.models import Uczelnia
+def _pbn_root(uczelnia):
+    """Root API PBN danej uczelni (pobierany raz na request).
 
-    uczelnia = Uczelnia.objects.get_default()
+    Multi-hosted: uczelnię bierze wołający z requestu
+    (``Uczelnia.objects.get_for_request(request)``) — NIE zgadujemy
+    ``get_default()``. ``None`` gdy brak uczelni → brak linków PBN.
+    """
     return uczelnia.pbn_api_root if uczelnia is not None else None
 
 

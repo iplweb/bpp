@@ -5,9 +5,7 @@ import sys
 import traceback
 
 import rollbar
-from asgiref.sync import async_to_sync
 from celery import shared_task
-from channels.layers import get_channel_layer
 from django.utils import timezone
 
 from bpp.models import Uczelnia
@@ -19,47 +17,8 @@ from .utils import ImportManager
 logger = logging.getLogger("pbn_import")
 
 
-def send_websocket_update(session, data):
-    """Send update via WebSocket"""
-    channel_layer = get_channel_layer()
-    if channel_layer:
-        try:
-            async_to_sync(channel_layer.group_send)(
-                f"import_{session.id}", {"type": "import_update", "data": data}
-            )
-        except Exception as e:
-            logger.warning(f"WebSocket error: {e}")
-
-
-def update_progress(session, step_name, progress, message=None):
-    """Update session progress"""
-    session.current_step = step_name
-    session.current_step_progress = progress
-
-    # The overall_progress is calculated as a property, no need to set it
-    session.save()
-
-    # Log the progress
-    if message:
-        ImportLog.objects.create(
-            session=session, level="info", step=step_name, message=message
-        )
-
-    # Send WebSocket update (overall_progress is calculated from the property)
-    send_websocket_update(
-        session,
-        {
-            "type": "progress_update",
-            "step": step_name,
-            "progress": progress,
-            "overall_progress": session.overall_progress,  # This reads the property
-            "message": message,
-        },
-    )
-
-
 @shared_task(bind=True)
-def run_pbn_import(self, session_id):
+def run_pbn_import(self, session_id, uczelnia_id=None):
     """Main PBN import task"""
     logger.info(f"Uruchamianie zadania Celery dla sesji importu #{session_id}")
     try:
@@ -74,10 +33,9 @@ def run_pbn_import(self, session_id):
 
         # Get configuration
         config = session.config
-        uczelnia = Uczelnia.objects.get_default()
-
-        if not uczelnia:
-            raise Exception("Brak konfiguracji uczelni")
+        # Multi-hosted: konkretna uczelnia z entrypointu, BEZ fallbacku
+        # do get_default() (patrz UczelniaManager.get_for_pbn_background).
+        uczelnia = Uczelnia.objects.get_for_pbn_background(uczelnia_id)
 
         # Create PBN client
         try:
@@ -101,7 +59,7 @@ def run_pbn_import(self, session_id):
             pbn_client = None
 
         # Create and run ImportManager
-        import_manager = ImportManager(session, pbn_client, config)
+        import_manager = ImportManager(session, pbn_client, config, uczelnia=uczelnia)
 
         # Run the import
         result = import_manager.run()
@@ -128,16 +86,6 @@ def run_pbn_import(self, session_id):
             message=f"Import zakończony ze statusem: {session.get_status_display()}",
         )
 
-        # Send completion notification
-        send_websocket_update(
-            session,
-            {
-                "type": "completion",
-                "success": session.status == "completed",
-                "message": f"Import #{session.id} został zakończony",
-            },
-        )
-
     except ImportSession.DoesNotExist:
         logger.error(f"Sesja {session_id} nie została znaleziona")
     except Exception as e:
@@ -160,13 +108,20 @@ def run_pbn_import(self, session_id):
                 message=f"Krytyczny błąd importu: {str(e)}",
                 details={"traceback": tb_string},
             )
-
-            send_websocket_update(
-                session,
-                {
-                    "type": "completion",
-                    "success": False,
-                    "message": f"Import #{session.id} zakończył się błędem",
+        except BaseException:
+            # Nie udało się nawet ZAPISAĆ błędu (np. baza padła). To NIE może
+            # zniknąć po cichu — inaczej krytyczny błąd importu nie zostawia
+            # żadnego śladu. Zaloguj z tracebackiem i zgłoś do Rollbar.
+            logger.exception(
+                "Nie udało się zapisać krytycznego błędu importu dla sesji %s",
+                session_id,
+            )
+            rollbar.report_exc_info(
+                sys.exc_info(),
+                extra_data={
+                    "session_id": session_id,
+                    "task": "run_pbn_import",
+                    "phase": "error_persistence_failed",
                 },
             )
         except Exception:

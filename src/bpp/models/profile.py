@@ -44,6 +44,16 @@ class BppUser(AbstractUser, ModelZAdnotacjami):
     pbn_token = models.CharField(max_length=128, default="", blank=True)
     pbn_token_updated = models.DateTimeField(null=True, blank=True)
 
+    accessible_uczelnie = models.ManyToManyField(
+        "bpp.Uczelnia",
+        verbose_name="Dostępne uczelnie",
+        blank=True,
+        related_name="staff_users",
+        help_text="Uczelnie, do których użytkownik ma dostęp w panelu "
+        "administracyjnym. Puste = dostęp do wszystkich "
+        "(kompatybilność wsteczna).",
+    )
+
     przedstawiaj_w_pbn_jako = models.ForeignKey(
         "bpp.BppUser",
         blank=True,
@@ -81,20 +91,39 @@ class BppUser(AbstractUser, ModelZAdnotacjami):
         """Próbuje automatycznie dopasować autora do użytkownika.
 
         Kolejność dopasowania:
-        1. Po adresie email (case-insensitive)
+        1. Po adresie email (case-insensitive, dokładnie 1 wynik)
         2. Po imieniu i nazwisku (case-insensitive, dokładnie 1 wynik)
 
         Nic nie robi jeśli autor jest już ustawiony.
+
+        Dwa ograniczenia istotne w instalacji wielouczelnianej (jedna baza,
+        wiele ``Uczelnia``):
+
+        * **Pomija autorów już powiązanych z innym kontem** (``user__isnull=
+          True``) — ``BppUser.autor`` to ``OneToOne``, więc przejęcie zajętego
+          autora i tak skończyłoby się ``IntegrityError``. Cicho pomijamy.
+        * **Zawęża do uczelni, do których konto ma uprawnienia**
+          (``accessible_uczelnie`` → ``aktualna_jednostka.uczelnia``). Puste
+          ``accessible_uczelnie`` = brak ograniczenia (kompatybilność wsteczna,
+          „puste = wszystkie").
         """
         if self.autor_id is not None:
             return
 
         from bpp.models import Autor
 
+        # Tylko wolni autorzy (OneToOne) — zajętych nie wolno przejmować.
+        kandydaci = Autor.objects.filter(user__isnull=True)
+
+        # Scope po uczelni z uprawnień konta; puste = bez ograniczenia.
+        uczelnie_ids = list(self.accessible_uczelnie.values_list("pk", flat=True))
+        if uczelnie_ids:
+            kandydaci = kandydaci.filter(aktualna_jednostka__uczelnia__in=uczelnie_ids)
+
         # Próba dopasowania po emailu
         if self.email and self.email != PUSTY_ADRES_EMAIL:
             wynik = (
-                Autor.objects.filter(email__iexact=self.email)
+                kandydaci.filter(email__iexact=self.email)
                 .exclude(email="")
                 .exclude(email=PUSTY_ADRES_EMAIL)
             )
@@ -105,7 +134,7 @@ class BppUser(AbstractUser, ModelZAdnotacjami):
 
         # Próba dopasowania po imieniu i nazwisku
         if self.first_name and self.last_name:
-            wynik = Autor.objects.filter(
+            wynik = kandydaci.filter(
                 imiona__iexact=self.first_name,
                 nazwisko__iexact=self.last_name,
             )

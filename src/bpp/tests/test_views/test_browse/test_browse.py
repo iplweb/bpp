@@ -13,10 +13,10 @@ except ImportError:
 from model_bakery import baker
 from multiseek.logic import EQUAL, EQUAL_FEMALE, EQUAL_NONE
 from multiseek.views import MULTISEEK_SESSION_KEY
+from siteblog.models import Article
 
 from bpp.models import Rekord, Wydawnictwo_Zwarte
 from bpp.views.browse import BuildSearch, PracaViewBySlug
-from siteblog.models import Article
 
 
 def test_buildSearch(settings):
@@ -168,6 +168,7 @@ def test_artykuly(uczelnia, client):
     a = Article.objects.create(
         title=TYTUL, article_body="456", status=Article.STATUS.draft, slug="1"
     )
+    a.sites.set([uczelnia.site])
 
     res = client.get(reverse("bpp:browse_uczelnia", args=(uczelnia.slug,)))
     assert TYTUL.encode("utf-8") not in res.content
@@ -189,6 +190,7 @@ def test_artykul_ze_skrotem(uczelnia, client):
         status=Article.STATUS.published,
         slug="1",
     )
+    a.sites.set([uczelnia.site])
     # Invalidate cacheops cache for get_uczelnia_context_data
     invalidate_all()
 

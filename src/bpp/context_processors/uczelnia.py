@@ -29,8 +29,15 @@ BRAK_UCZELNI = {
 }
 
 
+def _cache_key_for_request(request):
+    site = getattr(request, "site", None)
+    site_pk = getattr(site, "pk", 0)
+    return f"bpp_uczelnia_{site_pk}"
+
+
 def uczelnia(request):
-    timeout, value = cache.get(b"bpp_uczelnia", (0, None))
+    cache_key = _cache_key_for_request(request)
+    timeout, value = cache.get(cache_key, (0, None))
 
     if value is not None:
         if time.time() < timeout:
@@ -41,17 +48,18 @@ def uczelnia(request):
         return BRAK_UCZELNI
 
     value = {"uczelnia": u}
-    cache.set(b"bpp_uczelnia", (time.time() + 3600, value))
+    cache.set(cache_key, (time.time() + 3600, value))
     return value
 
 
 @receiver(post_save, sender=Uczelnia)
-def invalidate_uczelnia_caches(*args, **kw):
+def invalidate_uczelnia_caches(sender, instance, **kw):
     """Wyczyść cache zależne od ustawień uczelni po jej zapisie.
 
     Dwie niezależne warstwy trzymają migawkę obiektu ``Uczelnia``:
 
-    * ``b"bpp_uczelnia"`` — cache context processora (górny pasek),
+    * cache context processora (górny pasek) — kluczowany per-site
+      (``bpp_uczelnia_{site_pk}``), plus legacy klucz ``b"bpp_uczelnia"``,
     * ``get_uczelnia_context_data`` — ``@cached`` z cacheops, kontekst
       strony głównej. To cache *funkcji*, więc cacheops NIE czyści go
       automatycznie przy zapisie modelu (robi to tylko dla zapytań ORM) —
@@ -62,5 +70,9 @@ def invalidate_uczelnia_caches(*args, **kw):
     """
     from bpp.views.browse import get_uczelnia_context_data
 
+    site = getattr(instance, "site", None)
+    site_pk = getattr(site, "pk", 0)
+    cache.delete(f"bpp_uczelnia_{site_pk}")
+    # Legacy klucz (sprzed kluczowania per-site) — backward compatibility.
     cache.delete(b"bpp_uczelnia")
     get_uczelnia_context_data.invalidate()

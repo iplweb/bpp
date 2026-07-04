@@ -1,12 +1,12 @@
+import channels_broadcast.core as notifications_core
 import pytest
+from channels_broadcast.models import Notification
 from django.core.files.base import ContentFile
 from django.db import connection, transaction
 from django.db.models import Max
 from django.test.utils import CaptureQueriesContext
 
-import channels_broadcast.core as notifications_core
 from bpp.models import Autor_Dyscyplina
-from channels_broadcast.models import Notification
 from import_dyscyplin.models import Import_Dyscyplin
 from import_dyscyplin.tasks import (
     integruj_import_dyscyplin,

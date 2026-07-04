@@ -33,15 +33,26 @@ class TextNotificator:
         return self.output
 
 
-def sprobuj_wyslac_do_pbn_celery(user, obj, force_upload=False, pbn_client=None):
+def sprobuj_wyslac_do_pbn_celery(
+    user, obj, force_upload=False, pbn_client=None, uczelnia=None
+):
     sprawdz_czy_ustawiono_wysylke_tego_charakteru_formalnego(obj.charakter_formalny)
 
     try:
         uczelnia = sprawdz_wysylke_do_pbn_w_parametrach_uczelni(
-            Uczelnia.objects.get_default()
+            # Caller (kolejka) przekazuje uczelnia=self.uczelnia; fallback to
+            # single-install: .get() (przy >1 rzuca — multi-hosted ma podać).
+            uczelnia or Uczelnia.objects.get()
         )
-    except BrakZdefiniowanegoObiektuUczelniaWSystemieError:
-        raise ValueError("W systemie brak obiektu Uczelnia.")
+    except (
+        BrakZdefiniowanegoObiektuUczelniaWSystemieError,
+        Uczelnia.DoesNotExist,
+    ) as e:
+        # .get() rzuca DoesNotExist gdy 0 rekordow Uczelnia (dawne
+        # get_default() zwracalo None -> param-check rzucal Brak...Error).
+        # MultipleObjectsReturned (>1) celowo NIE jest tu lapane: multi-hosted
+        # caller musi podac uczelnia jawnie, a glosny blad to sygnalizuje.
+        raise ValueError("W systemie brak obiektu Uczelnia.") from e
 
     if uczelnia is False:
         raise ValueError("Wysyłka do PBN nie skonfigurowana w obiekcie Uczelnia")

@@ -9,7 +9,7 @@ from django.db import models, transaction
 from django.db.models import Count, Q
 from django.shortcuts import get_object_or_404, redirect, render
 
-from bpp.models import Rekord, Rodzaj_Zrodla, Wydawnictwo_Ciagle, Zrodlo
+from bpp.models import Rekord, Rodzaj_Zrodla, Uczelnia, Wydawnictwo_Ciagle, Zrodlo
 from bpp.util import zaloguj_polkniety_wyjatek
 from pbn_api.const import ACTIVE, DELETED
 from pbn_api.models import Journal
@@ -500,10 +500,14 @@ def _dodaj_rekordy_do_kolejki_pbn(request, rekordy_do_wyslania):
     """Dodaj rekordy do kolejki eksportu PBN, zwracając (sukces, lista_bledow)."""
     sukces_pbn = 0
     bledy_pbn = []
+    # Rozwiąż uczelnię raz, poza pętlą (na multi-hosted decyduje, do którego
+    # PBN-a wpis zostanie wysłany). Przywrócone po scaleniu dev — refaktor C901
+    # na dev zgubił ten argument.
+    uczelnia = Uczelnia.objects.get_for_request(request)
     for original_rekord in rekordy_do_wyslania:
         try:
             PBN_Export_Queue.objects.sprobuj_utowrzyc_wpis(
-                user=request.user, rekord=original_rekord
+                user=request.user, rekord=original_rekord, uczelnia=uczelnia
             )
             sukces_pbn += 1
         except Exception as e:

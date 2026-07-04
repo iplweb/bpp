@@ -14,11 +14,13 @@ def test_metryka_autora_create():
     autor = baker.make(Autor)
     dyscyplina = baker.make(Dyscyplina_Naukowa)
     jednostka = baker.make(Jednostka)
+    uczelnia = baker.make("bpp.Uczelnia")
 
     metryka = MetrykaAutora.objects.create(
         autor=autor,
         dyscyplina_naukowa=dyscyplina,
         jednostka=jednostka,
+        uczelnia=uczelnia,
         slot_maksymalny=Decimal("4.0"),
         slot_nazbierany=Decimal("3.5"),
         punkty_nazbierane=Decimal("140.0"),
@@ -96,19 +98,15 @@ def test_metryka_autora_czy_pelne_wykorzystanie():
 
 
 @pytest.mark.django_db
-def test_status_generowania_singleton():
-    """Test że StatusGenerowania działa jako singleton"""
-    status1 = StatusGenerowania.get_or_create()
-    status2 = StatusGenerowania.get_or_create()
+def test_status_generowania_get_or_create_idempotent():
+    """Test że get_or_create jest idempotentne dla tej samej uczelni (NULL = brak)"""
+    from model_bakery import baker
 
-    assert status1.pk == 1
-    assert status2.pk == 1
-    assert status1.pk == status2.pk
+    u = baker.make("bpp.Uczelnia")
+    status1 = StatusGenerowania.get_or_create(uczelnia=u)
+    status2 = StatusGenerowania.get_or_create(uczelnia=u)
 
-    # Próba utworzenia nowego też da pk=1
-    status3 = StatusGenerowania()
-    status3.save()
-    assert status3.pk == 1
+    assert status1.pk == status2.pk  # ten sam rekord dla tej samej uczelni
 
 
 @pytest.mark.django_db
@@ -177,14 +175,18 @@ def test_status_generowania_czas_trwania():
 
 @pytest.mark.django_db
 def test_metryka_autora_unique_together():
-    """Test że para autor-dyscyplina musi być unikalna"""
+    """Test że trójka autor-dyscyplina-uczelnia musi być unikalna"""
+    from django.db import IntegrityError
+
     autor = baker.make(Autor)
     dyscyplina = baker.make(Dyscyplina_Naukowa)
+    uczelnia = baker.make("bpp.Uczelnia")
 
     baker.make(
         MetrykaAutora,
         autor=autor,
         dyscyplina_naukowa=dyscyplina,
+        uczelnia=uczelnia,
         slot_maksymalny=Decimal("4.0"),
         slot_nazbierany=Decimal("3.0"),
         punkty_nazbierane=Decimal("120.0"),
@@ -192,13 +194,12 @@ def test_metryka_autora_unique_together():
         punkty_wszystkie=Decimal("120.0"),
     )
 
-    # Próba utworzenia drugiej metryki dla tej samej pary powinna się nie udać
-    from django.db import IntegrityError
-
+    # Próba utworzenia drugiej metryki dla tej samej trójki powinna się nie udać
     with pytest.raises(IntegrityError):
         MetrykaAutora.objects.create(
             autor=autor,
             dyscyplina_naukowa=dyscyplina,
+            uczelnia=uczelnia,
             slot_maksymalny=Decimal("4.0"),
             slot_nazbierany=Decimal("3.0"),
             punkty_nazbierane=Decimal("120.0"),

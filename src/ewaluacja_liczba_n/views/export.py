@@ -7,6 +7,7 @@ from openpyxl.styles import Alignment, Font, PatternFill
 from openpyxl.worksheet.table import Table, TableStyleInfo
 
 from bpp.const import GR_WPROWADZANIE_DANYCH
+from bpp.models import Uczelnia
 
 from ..excel_export import LiczbaNExcelExporter
 from ..models import IloscUdzialowDlaAutoraZaCalosc, IloscUdzialowDlaAutoraZaRok
@@ -20,8 +21,9 @@ class AutorzyLiczbaNExporter(LiczbaNExcelExporter):
 
     def _get_filtered_udzialy_queryset(self, request):
         """Get filtered queryset based on request parameters."""
+        uczelnia = Uczelnia.objects.get_for_request(request)
         udzialy = IloscUdzialowDlaAutoraZaRok.objects.filter(
-            rok__gte=2022, rok__lte=2025
+            uczelnia=uczelnia, rok__gte=2022, rok__lte=2025
         )
 
         # Apply filters from URL
@@ -204,7 +206,8 @@ class UdzialyZaCaloscExporter(LiczbaNExcelExporter):
 
     def _get_filtered_udzialy_calosc_queryset(self, request):
         """Get filtered udzialy za calosc queryset."""
-        udzialy = IloscUdzialowDlaAutoraZaCalosc.objects.all()
+        uczelnia = Uczelnia.objects.get_for_request(request)
+        udzialy = IloscUdzialowDlaAutoraZaCalosc.objects.filter(uczelnia=uczelnia)
 
         search = request.GET.get("search")
         if search:

@@ -93,6 +93,9 @@ env = environ.Env(
     # Konfiguracja Django
     #
     DJANGO_BPP_HOSTNAME=(str, "localhost"),
+    # Multi-hosted: comma-separated lista nazw hostów (np. "u1.example,u2.example").
+    # Pusta wartość = używaj DJANGO_BPP_HOSTNAME (single-host, backward compat).
+    DJANGO_BPP_HOSTNAMES=(str, ""),
     DJANGO_BPP_DB_NAME=(str, "bpp"),
     DJANGO_BPP_DB_USER=(str, "bpp"),
     DJANGO_BPP_DB_PASSWORD=(str, "password"),
@@ -205,7 +208,10 @@ LOCALE_PATHS = [
     os.path.join(BASE_DIR, "locale"),
 ]
 
-SITE_ID = 1  # dla static-sitemaps
+# SITE_ID służy jako fallback dla SiteResolutionMiddleware gdy hostname
+# nie pasuje do żadnego obiektu Site. W multi-hosted ustawia się na ID
+# domyślnego Site. static-sitemaps również wymaga tej wartości.
+SITE_ID = env("DJANGO_BPP_SITE_ID", default=1, cast=int)
 USE_I18N = True
 USE_TZ = True
 
@@ -290,6 +296,8 @@ TEMPLATES = [
                 "bpp.context_processors.pbn_token_aktualny.pbn_token_aktualny",
                 "bpp.context_processors.microsoft_auth.microsoft_auth_status",
                 "bpp.context_processors.orcid.orcid_auth_status",
+                "bpp.context_processors.oidc.oidc_auth_status",
+                "bpp.context_processors.external_auth.external_auth_status",
                 "bpp.context_processors.testing.testing",
                 "cookielaw.context_processors.cookielaw",
                 "django_countdown.context_processors.countdown_context",
@@ -307,6 +315,7 @@ MIDDLEWARE = [
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
+    "bpp.middleware.SiteResolutionMiddleware",  # After auth - resolves Site/Uczelnia from hostname
     "django_countdown.middleware.CountdownBlockingMiddleware",  # After auth - needs request.user
     "first_run_wizard.middleware.FirstRunWizardMiddleware",  # After auth middleware to have request.user
     "django.contrib.messages.middleware.MessageMiddleware",
@@ -591,50 +600,85 @@ COMPRESS_CSS_FILTERS = [
 COMPRESS_JS_FILTERS = []
 
 COMPRESS_ROOT = STATIC_ROOT
-COMPRESS_OFFLINE_CONTEXT = [
-    {
-        "THEME_NAME": "scss/app-blue.css",
-        "STATIC_URL": STATIC_URL,
-        "LANGUAGE_CODE": "pl",
-    },
-    {
-        "THEME_NAME": "scss/app-green.css",
-        "STATIC_URL": STATIC_URL,
-        "LANGUAGE_CODE": "pl",
-    },
-    {
-        "THEME_NAME": "scss/app-orange.css",
-        "STATIC_URL": STATIC_URL,
-        "LANGUAGE_CODE": "pl",
-    },
-    {
-        "THEME_NAME": "scss/app-vizja.css",
-        "STATIC_URL": STATIC_URL,
-        "LANGUAGE_CODE": "pl",
-    },
-    {
-        "THEME_NAME": "scss/app-mwsl.css",
-        "STATIC_URL": STATIC_URL,
-        "LANGUAGE_CODE": "pl",
-    },
-    {
-        "THEME_NAME": "scss/app-uafm.css",
-        "STATIC_URL": STATIC_URL,
-        "LANGUAGE_CODE": "pl",
-    },
+
+# Jedyne źródło prawdy dla listy motywów kolorystycznych front-endu:
+# (wartość pliku SCSS bez rozszerzenia, etykieta widoczna w adminie uczelni).
+# Admin (UczelniaAdminForm) czyta tę listę, a COMPRESS_OFFLINE_CONTEXT poniżej
+# jest z niej wyliczany — dodanie motywu = jeden wpis tutaj (+ ręcznie target
+# w Gruntfile.js). Walidacja wyboru żyje w formularzu, NIE w `choices` pola
+# modelu, dzięki czemu zmiana listy nie wymaga migracji.
+BPP_THEMES = [
+    ("app-green", "Zielony"),
+    ("app-blue", "Niebieski"),
+    ("app-orange", "Pomarańczowy"),
+    ("app-vizja", "Bursztynowo-granatowy (VIZJA)"),
+    ("app-mwsl", "Pomarańczowo-granatowy (MWSL)"),
+    ("app-uafm", "Czerwono-błękitny (UAFM)"),
 ]
 
-DJANGO_BPP_HOSTNAME = env("DJANGO_BPP_HOSTNAME")
+COMPRESS_OFFLINE_CONTEXT = [
+    {
+        "THEME_NAME": f"scss/{value}.css",
+        "STATIC_URL": STATIC_URL,
+        "LANGUAGE_CODE": "pl",
+    }
+    for value, _label in BPP_THEMES
+]
+
+# Lista hostów obsługiwanych przez deployment.
+# Konfiguracja jawnie XOR: ustaw ALBO DJANGO_BPP_HOSTNAME (single, bez
+# przecinka), ALBO DJANGO_BPP_HOSTNAMES (multi-host, CSV z minimum dwoma
+# hostami). Ustawienie obu = ImproperlyConfigured (intencja niejasna).
+_hostname = os.environ.get("DJANGO_BPP_HOSTNAME", "").strip()
+_hostnames_csv = os.environ.get("DJANGO_BPP_HOSTNAMES", "").strip()
+
+if _hostname and _hostnames_csv:
+    raise ImproperlyConfigured(
+        "Ustaw albo DJANGO_BPP_HOSTNAME (single host, bez przecinka), albo "
+        "DJANGO_BPP_HOSTNAMES (multi-host, comma-separated, minimum dwa). "
+        "Oba naraz są niejednoznaczne — wybierz jedno."
+    )
+
+if _hostnames_csv:
+    if "," not in _hostnames_csv:
+        raise ImproperlyConfigured(
+            f"DJANGO_BPP_HOSTNAMES musi zawierać minimum dwa hosty "
+            f"oddzielone przecinkiem (otrzymano: {_hostnames_csv!r}). "
+            f"Dla single-host użyj DJANGO_BPP_HOSTNAME."
+        )
+    DJANGO_BPP_HOSTNAMES = [h.strip() for h in _hostnames_csv.split(",") if h.strip()]
+    if len(DJANGO_BPP_HOSTNAMES) < 2:
+        raise ImproperlyConfigured(
+            f"DJANGO_BPP_HOSTNAMES po sparsowaniu daje mniej niż dwa hosty "
+            f"(otrzymano: {DJANGO_BPP_HOSTNAMES!r}). "
+            f"Dla single-host użyj DJANGO_BPP_HOSTNAME."
+        )
+elif _hostname:
+    if "," in _hostname:
+        raise ImproperlyConfigured(
+            f"DJANGO_BPP_HOSTNAME nie może zawierać przecinka "
+            f"(otrzymano: {_hostname!r}). Dla multi-host użyj "
+            f"DJANGO_BPP_HOSTNAMES."
+        )
+    DJANGO_BPP_HOSTNAMES = [_hostname]
+else:
+    # Żadne nie ustawione — fallback do default ("localhost") z env declaration
+    DJANGO_BPP_HOSTNAMES = [env("DJANGO_BPP_HOSTNAME")]
+
+# Canonical/primary hostname — pierwszy z listy. Używany m.in. przez
+# Rollbar jako identyfikacja deployment'u (oznaczenie instalacji); per-request
+# vhost gdzie padło zgłoszenie ma osobny klucz w extra_data middleware'u.
+DJANGO_BPP_HOSTNAME = DJANGO_BPP_HOSTNAMES[0]
 
 ALLOWED_HOSTS = [
     "127.0.0.1",
     "appserver",
     "appserver:8000",
     "test.unexistenttld",
-    DJANGO_BPP_HOSTNAME,
+    *DJANGO_BPP_HOSTNAMES,
 ]
 
-CSRF_TRUSTED_ORIGINS = ["https://" + DJANGO_BPP_HOSTNAME]
+CSRF_TRUSTED_ORIGINS = ["https://" + h for h in DJANGO_BPP_HOSTNAMES]
 
 # Optional extra CSRF origins for dev with non-standard ports
 # (comma-separated, e.g. "https://bpp.localnet:10443,https://localhost:10443")
@@ -1178,6 +1222,69 @@ AUTHENTICATION_BACKENDS = list(AUTHENTICATION_BACKENDS) + [
 ]
 
 #
+# Konfiguracja logowania OpenID Connect (Keycloak) — opcjonalna i ADDYTYWNA.
+#
+# Aktywuje się TYLKO gdy w środowisku jest komplet DJANGO_BPP_OIDC_*_{CLIENT_ID,
+# CLIENT_SECRET,ISSUER} (z prefiksem skrótu uczelni lub bez). Nie przejmuje
+# strony logowania — dokłada się jako kolejna metoda obok hasła/Microsoft/ORCID.
+# Backend jest DOPISYWANY do listy (ModelBackend zostaje → logowanie hasłem
+# działa równolegle).
+#
+from oidc_integration.conf import (  # noqa: E402
+    discover_oidc_config,
+    fetch_well_known_endpoints,
+)
+
+_OIDC_CONFIG = discover_oidc_config()
+OIDC_LOGIN_ENABLED = _OIDC_CONFIG is not None
+OIDC_LOGIN_SKROT = (_OIDC_CONFIG or {}).get("skrot") or ""
+
+if _OIDC_CONFIG:
+    if "oidc_integration" not in INSTALLED_APPS:
+        INSTALLED_APPS = list(INSTALLED_APPS) + ["oidc_integration"]
+
+    OIDC_RP_CLIENT_ID = _OIDC_CONFIG["client_id"]
+    OIDC_RP_CLIENT_SECRET = _OIDC_CONFIG["client_secret"]
+
+    # Źródła claimów (konfigurowalne env-em, default mail-first / username z
+    # preferred_username) — czytane przez BppOIDCBackend.
+    OIDC_EMAIL_CLAIMS = _OIDC_CONFIG["email_claims"]
+    OIDC_USERNAME_CLAIMS = _OIDC_CONFIG["username_claims"]
+
+    # Endpointy: preferuj .well-known (źródło prawdy serwera), z fallbackiem na
+    # konwencję Keycloaka gdy IdP nieosiągalny przy starcie.
+    _oidc_endpoints = (
+        fetch_well_known_endpoints(_OIDC_CONFIG["issuer"]) or _OIDC_CONFIG["endpoints"]
+    )
+    OIDC_OP_AUTHORIZATION_ENDPOINT = _oidc_endpoints["authorization"]
+    OIDC_OP_TOKEN_ENDPOINT = _oidc_endpoints["token"]
+    OIDC_OP_USER_ENDPOINT = _oidc_endpoints.get("userinfo", "")
+    OIDC_OP_JWKS_ENDPOINT = _oidc_endpoints["jwks"]
+    # end_session: wylogowanie z Keycloaka (RP-Initiated Logout).
+    OIDC_OP_LOGOUT_ENDPOINT = _oidc_endpoints.get("end_session", "")
+    OIDC_OP_LOGOUT_URL_METHOD = "oidc_integration.logout.build_provider_logout_url"
+
+    # Panel konta Keycloaka (Account Console) — konwencja {issuer}/account.
+    # Tam użytkownik OIDC zmienia hasło; w BPP nie ma takiej możliwości, więc
+    # SmartPasswordChangeView kieruje go pod ten URL zamiast formularza BPP.
+    OIDC_ACCOUNT_CONSOLE_URL = _OIDC_CONFIG["issuer"].rstrip("/") + "/account"
+
+    # Keycloak podpisuje id_token RS256; scope email konieczny do auto-create.
+    OIDC_RP_SIGN_ALGO = "RS256"
+    OIDC_RP_SCOPES = "openid email profile"
+    OIDC_CREATE_USER = True
+    # Zapamiętaj id_token w sesji — potrzebny jako id_token_hint przy logout.
+    OIDC_STORE_ID_TOKEN = True
+
+    AUTHENTICATION_BACKENDS = list(AUTHENTICATION_BACKENDS) + [
+        "oidc_integration.backends.BppOIDCBackend",
+    ]
+
+#
+# Koniec konfiguracji OpenID Connect
+#
+
+#
 # django-axes — ochrona przed zgadywaniem hasła (brute-force / credential stuffing)
 #
 # AxesStandaloneBackend NIE uwierzytelnia sam — tylko sprawdza, czy dana próba
@@ -1360,13 +1467,20 @@ TINYMCE_DEFAULT_CONFIG = {
 
 #
 # django-static-sitemaps
+# W trybie multi-hosted można wyłączyć sitemaps ustawiając
+# DJANGO_BPP_ENABLE_SITEMAPS=False, ponieważ static-sitemaps
+# generuje sitemapę tylko dla jednej domeny (SITE_ID).
 #
 
-STATICSITEMAPS_ROOT_SITEMAP = "django_bpp.sitemaps.django_bpp_sitemaps"
+ENABLE_SITEMAPS = env("DJANGO_BPP_ENABLE_SITEMAPS", default=True, cast=bool)
 
-STATICSITEMAPS_REFRESH_AFTER = 24 * 60
-
-STATICSITEMAPS_ROOT_DIR = os.path.relpath(STATIC_ROOT, os.getcwd())
+if ENABLE_SITEMAPS:
+    STATICSITEMAPS_ROOT_SITEMAP = "django_bpp.sitemaps.django_bpp_sitemaps"
+    STATICSITEMAPS_REFRESH_AFTER = 24 * 60
+    STATICSITEMAPS_ROOT_DIR = os.path.relpath(STATIC_ROOT, os.getcwd())
+else:
+    if "static_sitemaps" in INSTALLED_APPS:
+        INSTALLED_APPS.remove("static_sitemaps")
 
 #
 # "Audyt" bezpieczeństwa
@@ -1530,6 +1644,24 @@ LOGGING = {
             "level": "WARNING",
             "propagate": False,
         },
+        # OIDC (Keycloak). Domyślnie WARNING — zwykła praca milczy. Diagnostyka
+        # claimów realmu (`_log_claims_debug` w backends.py zrzuca KAŻDY klucz
+        # i wartość) wymaga opt-in: ustaw DJANGO_BPP_OIDC_DEBUG_CLAIMS=1 i zaloguj
+        # się przez Keycloaka, żeby zobaczyć faktyczne nazwy claimów na stderr.
+        # ⚠️ DEBUG loguje też wartości (adresy e-mail, login) — włączaj tylko
+        # do diagnostyki, nie zostawiaj na produkcji.
+        "oidc_integration": {
+            "handlers": ["console"],
+            "level": (
+                "DEBUG"
+                if os.getenv("DJANGO_BPP_OIDC_DEBUG_CLAIMS") == "1"
+                else "WARNING"
+            ),
+            # propagate=True (inaczej niż sąsiednie loggery): root nie ma tu
+            # własnego handlera, więc propagacja nie dubluje wyjścia, a pozwala
+            # pytestowemu `caplog` (łapie na rootcie) widzieć zrzut claimów.
+            "propagate": True,
+        },
     },
 }
 
@@ -1553,93 +1685,11 @@ CACHEOPS_REDIS = {
 CONSTANCE_BACKEND = "constance.backends.database.DatabaseBackend"
 CONSTANCE_DATABASE_CACHE_BACKEND = "constance_cache"
 
-CONSTANCE_CONFIG = {
-    # Punktacja
-    "UZYWAJ_PUNKTACJI_WEWNETRZNEJ": (
-        env("DJANGO_BPP_UZYWAJ_PUNKTACJI_WEWNETRZNEJ"),
-        "Używaj punktacji wewnętrznej w systemie",
-        bool,
-    ),
-    "POKAZUJ_INDEX_COPERNICUS": (
-        True,
-        "Pokazuj pole Index Copernicus w formularzach",
-        bool,
-    ),
-    "POKAZUJ_PUNKTACJA_SNIP": (
-        True,
-        "Pokazuj pole punktacji SNIP w formularzach",
-        bool,
-    ),
-    # Funkcjonalność
-    "POKAZUJ_OSWIADCZENIE_KEN": (
-        env("DJANGO_BPP_POKAZUJ_OSWIADCZENIE_KEN"),
-        "Pokazuj opcję oświadczenia KEN",
-        bool,
-    ),
-    # Struktura uczelni
-    "SKROT_WYDZIALU_W_NAZWIE_JEDNOSTKI": (
-        env("DJANGO_BPP_SKROT_WYDZIALU_W_NAZWIE_JEDNOSTKI"),
-        "Wyświetlaj skrót wydziału w nazwie jednostki",
-        bool,
-    ),
-    "UCZELNIA_UZYWA_WYDZIALOW": (
-        env("DJANGO_BPP_UCZELNIA_UZYWA_WYDZIALOW"),
-        "Uczelnia używa struktury wydziałowej",
-        bool,
-    ),
-    # Integracje Google
-    "GOOGLE_ANALYTICS_PROPERTY_ID": (
-        env("DJANGO_BPP_GOOGLE_ANALYTICS_PROPERTY_ID"),
-        "Google Analytics Property ID (np. UA-XXXXXXXX-X lub G-XXXXXXXXXX)",
-        str,
-    ),
-    "GOOGLE_VERIFICATION_CODE": (
-        env("DJANGO_BPP_GOOGLE_VERIFICATION_CODE"),
-        "Kod weryfikacyjny Google Search Console",
-        str,
-    ),
-    # Wydruk - marginesy
-    "WYDRUK_MARGINES_GORA": (
-        "2cm",
-        "Margines górny wydruku (np. 2cm, 20mm, 0.8in)",
-        str,
-    ),
-    "WYDRUK_MARGINES_DOL": (
-        "2cm",
-        "Margines dolny wydruku (np. 2cm, 20mm, 0.8in)",
-        str,
-    ),
-    "WYDRUK_MARGINES_LEWO": (
-        "2cm",
-        "Margines lewy wydruku (np. 2cm, 20mm, 0.8in)",
-        str,
-    ),
-    "WYDRUK_MARGINES_PRAWO": (
-        "2cm",
-        "Margines prawy wydruku (np. 2cm, 20mm, 0.8in)",
-        str,
-    ),
-}
-
-CONSTANCE_CONFIG_FIELDSETS = {
-    "Punktacja": (
-        "UZYWAJ_PUNKTACJI_WEWNETRZNEJ",
-        "POKAZUJ_INDEX_COPERNICUS",
-        "POKAZUJ_PUNKTACJA_SNIP",
-    ),
-    "Funkcjonalność": ("POKAZUJ_OSWIADCZENIE_KEN",),
-    "Struktura uczelni": (
-        "SKROT_WYDZIALU_W_NAZWIE_JEDNOSTKI",
-        "UCZELNIA_UZYWA_WYDZIALOW",
-    ),
-    "Integracje Google": (
-        "GOOGLE_ANALYTICS_PROPERTY_ID",
-        "GOOGLE_VERIFICATION_CODE",
-    ),
-    "Wydruk": (
-        "WYDRUK_MARGINES_GORA",
-        "WYDRUK_MARGINES_DOL",
-        "WYDRUK_MARGINES_LEWO",
-        "WYDRUK_MARGINES_PRAWO",
-    ),
-}
+# Ustawienia per-uczelnia przeniesione do modelu Uczelnia:
+# UZYWAJ_PUNKTACJI_WEWNETRZNEJ, POKAZUJ_INDEX_COPERNICUS, POKAZUJ_PUNKTACJA_SNIP,
+# POKAZUJ_OSWIADCZENIE_KEN, SKROT_WYDZIALU_W_NAZWIE_JEDNOSTKI,
+# UCZELNIA_UZYWA_WYDZIALOW, GOOGLE_ANALYTICS_PROPERTY_ID,
+# GOOGLE_VERIFICATION_CODE, WYDRUK_MARGINES_*
+# Puste CONSTANCE_CONFIG zachowane dla backward compat z django-constance.
+CONSTANCE_CONFIG = {}
+CONSTANCE_CONFIG_FIELDSETS = {}
