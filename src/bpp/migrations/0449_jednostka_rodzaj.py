@@ -6,7 +6,7 @@ from django.db import migrations, models
 
 class Migration(migrations.Migration):
     dependencies = [
-        ("bpp", "0446_seed_rodzajjednostki"),
+        ("bpp", "0448_seed_rodzajjednostki"),
     ]
 
     operations = [

@@ -5,7 +5,7 @@ from django.db import migrations, models
 
 class Migration(migrations.Migration):
     dependencies = [
-        ("bpp", "0444_alter_uczelnia_wyszukiwanie_rekordy_na_strone_anonim_and_more"),
+        ("bpp", "0446_rzeczownik_tylko_mianownik"),
     ]
 
     operations = [
