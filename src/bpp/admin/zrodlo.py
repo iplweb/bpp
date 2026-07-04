@@ -1,7 +1,7 @@
 # Proste tabele
 from dal import autocomplete
 from django import forms
-from django.contrib import admin
+from django.contrib import admin, messages
 from django.db.models import Count, F
 
 from bpp.admin.helpers.djangoql import BppDjangoQLSearchMixin
@@ -159,6 +159,38 @@ class ZrodloAdmin(
         MaPublikacjeFilter,
     ]
     list_select_related = ["openaccess_licencja", "rodzaj"]
+
+    actions = ["usun_zrodla_bez_publikacji_action"]
+
+    @admin.action(
+        description="🗑️ Usuń zaznaczone źródła BEZ publikacji (wsadowo, szybko)"
+    )
+    def usun_zrodla_bez_publikacji_action(self, request, queryset):
+        """Kasuje zaznaczone źródła, ale WYŁĄCZNIE te bez żadnej publikacji.
+
+        Działa na queryset (przy „zaznacz wszystkie pasujące" / select_across
+        wysyłane są tylko PK ze strony, więc nie ma problemu z limitem pól
+        POST). Omija zbieranie powiązań (collector) — kasuje wsadowo, więc
+        radzi sobie z dziesiątkami tysięcy źródeł. Źródła z publikacjami są
+        pomijane (bezpiecznik)."""
+        selected = list(queryset.values_list("pk", flat=True))
+        do_usuniecia = list(
+            Zrodlo.objects.filter(
+                pk__in=selected, wydawnictwo_ciagle__isnull=True
+            ).values_list("pk", flat=True)
+        )
+
+        deleted = 0
+        for i in range(0, len(do_usuniecia), 1000):
+            chunk = do_usuniecia[i : i + 1000]
+            Zrodlo.objects.filter(pk__in=chunk).delete()
+            deleted += len(chunk)
+
+        skipped = len(selected) - len(do_usuniecia)
+        msg = f"Usunięto {deleted} źródeł bez publikacji."
+        if skipped:
+            msg += f" Pominięto {skipped} (mają publikacje)."
+        self.message_user(request, msg, level=messages.SUCCESS)
 
     def get_queryset(self, request):
         # _liczba_prac: liczba publikacji (tylko Wydawnictwo_Ciagle ma FK do
