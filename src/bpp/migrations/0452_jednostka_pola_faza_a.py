@@ -6,7 +6,7 @@ from django.db import migrations, models
 
 class Migration(migrations.Migration):
     dependencies = [
-        ("bpp", "0450_backfill_jednostka_rodzaj"),
+        ("bpp", "0451_backfill_jednostka_rodzaj"),
     ]
 
     operations = [

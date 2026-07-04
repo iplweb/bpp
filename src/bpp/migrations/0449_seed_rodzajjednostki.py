@@ -27,5 +27,5 @@ def unseed(apps, schema_editor):
 
 
 class Migration(migrations.Migration):
-    dependencies = [("bpp", "0447_rodzajjednostki")]
+    dependencies = [("bpp", "0448_rodzajjednostki")]
     operations = [migrations.RunPython(seed, unseed)]

@@ -5,7 +5,7 @@ from django.db import migrations, models
 
 class Migration(migrations.Migration):
     dependencies = [
-        ("bpp", "0446_rzeczownik_tylko_mianownik"),
+        ("bpp", "0447_fd390_aktualna_jednostka_demote_obca"),
     ]
 
     operations = [

@@ -19,7 +19,7 @@ def noop(apps, schema_editor):
 
 class Migration(migrations.Migration):
     dependencies = [
-        ("bpp", "0449_jednostka_rodzaj"),
-        ("bpp", "0448_seed_rodzajjednostki"),
+        ("bpp", "0450_jednostka_rodzaj"),
+        ("bpp", "0449_seed_rodzajjednostki"),
     ]
     operations = [migrations.RunPython(backfill, noop)]
