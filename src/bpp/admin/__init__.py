@@ -48,6 +48,7 @@ from .konferencja import KonferencjaAdmin  # noqa
 from .patent import Patent_Admin  # noqa
 from .praca_doktorska import Praca_DoktorskaAdmin  # noqa
 from .praca_habilitacyjna import Praca_HabilitacyjnaAdmin  # noqa
+from .rodzaj_jednostki import RodzajJednostkiAdmin  # noqa
 from .seria_wydawnicza import Seria_WydawniczaAdmin  # noqa
 from .szablondlaopisubibliograficznego import SzablonDlaOpisuBibliograficznego  # noqa
 from .uczelnia import UczelniaAdmin  # NOQA
