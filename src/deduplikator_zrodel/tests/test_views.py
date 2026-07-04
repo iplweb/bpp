@@ -270,3 +270,23 @@ def test_live_page_shows_cancel_form_while_running(admin_client, admin_user):
         "liveops:cancel", kwargs={"op_type": op.op_type_key(), "pk": op.pk}
     )
     assert cancel_url in content
+
+
+@pytest.mark.django_db
+def test_list_shows_mnisw_id_badge(
+    admin_client, make_zrodlo, completed_scan, make_candidate
+):
+    """Lista KONIECZNIE pokazuje mniswID (lub jego brak) dla obu źródeł —
+    to wskazuje, które źródło powinno zostać główne."""
+    from model_bakery import baker
+
+    from pbn_api.models import Journal
+
+    scan = completed_scan()
+    main = make_zrodlo(nazwa="Z-MNISW", pbn_uid=baker.make(Journal, mniswId=31337))
+    dup = make_zrodlo(nazwa="Z-BEZMNISW")  # bez pbn_uid
+    make_candidate(scan, main, dup)
+
+    content = admin_client.get(LIST_URL).content.decode()
+    assert "31337" in content
+    assert "brak mniswID" in content

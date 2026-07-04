@@ -104,12 +104,19 @@
                                 {{ c.main_zrodlo.nazwa|default:c.main_nazwa }}
                             </a>
                         </strong><br>
+                        {% if c.main_zrodlo.pbn_uid.mniswId %}
+                            <span class="label success" title="Ma punktację ministerialną">
+                                mniswID: {{ c.main_zrodlo.pbn_uid.mniswId }}
+                            </span>
+                        {% else %}
+                            <span class="label alert" title="Brak ministerialnego ID">
+                                brak mniswID
+                            </span>
+                        {% endif %}
+                        <br>
                         <small>
                             ISSN: {{ c.main_zrodlo.issn|default:"—" }} /
                             e-ISSN: {{ c.main_zrodlo.e_issn|default:"—" }}
-                            {% if c.main_zrodlo.pbn_uid %}
-                                · PBN: {{ c.main_zrodlo.pbn_uid.mniswId|default:"—" }}
-                            {% endif %}
                             · {{ c.main_pub_count }} publ.
                         </small>
                     </td>
@@ -121,12 +128,19 @@
                                 {{ c.duplicate_zrodlo.nazwa|default:c.duplicate_nazwa }}
                             </a>
                         </strong><br>
+                        {% if c.duplicate_zrodlo.pbn_uid.mniswId %}
+                            <span class="label success" title="Ma punktację ministerialną">
+                                mniswID: {{ c.duplicate_zrodlo.pbn_uid.mniswId }}
+                            </span>
+                        {% else %}
+                            <span class="label alert" title="Brak ministerialnego ID">
+                                brak mniswID
+                            </span>
+                        {% endif %}
+                        <br>
                         <small>
                             ISSN: {{ c.duplicate_zrodlo.issn|default:"—" }} /
                             e-ISSN: {{ c.duplicate_zrodlo.e_issn|default:"—" }}
-                            {% if c.duplicate_zrodlo.pbn_uid %}
-                                · PBN: {{ c.duplicate_zrodlo.pbn_uid.mniswId|default:"—" }}
-                            {% endif %}
                             · {{ c.duplicate_pub_count }} publ.
                         </small>
                     </td>

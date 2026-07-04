@@ -117,7 +117,14 @@ def _base_filters(zrodlo):
     if zrodlo.nazwa:
         norm_nazwa = normalize_tytul_zrodla(zrodlo.nazwa)
         similar_ids = (
-            Zrodlo.objects.annotate(similarity=TrigramSimilarity("nazwa", norm_nazwa))
+            Zrodlo.objects
+            # Prefiltr operatorem `%` (__trigram_similar) — używa indeksu GIN
+            # trigram (bpp_zrodlo_nazwa_trgm), zamiast pełnego skanu tabeli.
+            # Próg pg_trgm domyślnie 0.3 ≤ 0.5, więc to NADZBIÓR wyniku
+            # `similarity >= 0.5`; dokładny próg dokłada filtr niżej —
+            # wynik identyczny, ale liczony tylko na małym, przyciętym zbiorze.
+            .filter(nazwa__trigram_similar=norm_nazwa)
+            .annotate(similarity=TrigramSimilarity("nazwa", norm_nazwa))
             .filter(similarity__gte=0.5)
             .exclude(pk=zrodlo.pk)
             .values_list("pk", flat=True)
