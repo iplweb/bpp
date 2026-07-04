@@ -35,6 +35,11 @@ urlpatterns = [
         name="error_logs",
     ),
     path(
+        "session/<int:pk>/log.txt/",
+        views.ImportLogDownloadView.as_view(),
+        name="log_download",
+    ),
+    path(
         "session/<int:pk>/inconsistencies/",
         views.ImportInconsistenciesView.as_view(),
         name="inconsistencies",
@@ -44,5 +49,4 @@ urlpatterns = [
     ),
     # Configuration presets
     path("presets/", views.ImportPresetsView.as_view(), name="presets"),
-    path("presets/save/", views.SavePresetView.as_view(), name="save_preset"),
 ]

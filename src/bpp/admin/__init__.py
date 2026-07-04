@@ -97,8 +97,8 @@ class Zewnetrzna_Baza_DanychAdmin(
 class RzeczownikAdmin(
     RestrictDeletionToAdministracjaGroupAdmin, BaseBppAdminMixin, admin.ModelAdmin
 ):
-    list_display = ["uid", "m", "d", "c", "b", "n", "ms", "w"]
-    search_fields = ["uid", "m", "d", "c", "b", "n", "ms", "w"]
+    list_display = ["uid", "m"]
+    search_fields = ["uid", "m"]
     list_filter = ["uid"]
     readonly_fields = ["uid"]
 
@@ -254,6 +254,14 @@ class BppUserAdmin(UserAdmin):
         (
             "PBN API",
             {"fields": ("przedstawiaj_w_pbn_jako",)},
+        ),
+        (
+            "Dostęp do uczelni",
+            {
+                "fields": ("accessible_uczelnie",),
+                "description": "Superużytkownicy mają automatycznie dostęp "
+                "do wszystkich uczelni.",
+            },
         ),
     )
 

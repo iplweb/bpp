@@ -131,7 +131,12 @@ Przykłady użycia:
 
         # Konwertuj do listy jeśli to QuerySet (dla możliwości filtrowania po typie)
         if hasattr(missing, "count"):
-            missing_count = missing.count()
+            try:
+                missing_count = missing.count()
+            except TypeError:
+                # ``get_missing_publications`` returns a plain list when --type
+                # filtering is used; list.count() requires an argument.
+                missing_count = len(missing)
             missing_list = list(missing)
         else:
             missing_list = list(missing)

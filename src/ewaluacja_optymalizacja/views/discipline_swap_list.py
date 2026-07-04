@@ -11,7 +11,8 @@ from django.http import HttpResponse
 from django.shortcuts import redirect, render
 from django.views.decorators.http import require_POST
 
-from bpp.models import Dyscyplina_Naukowa, Uczelnia
+from bpp.models import Dyscyplina_Naukowa
+from raport_slotow.uczelnia_helper import uczelnia_dla_odczytu
 
 logger = logging.getLogger(__name__)
 
@@ -100,7 +101,7 @@ def discipline_swap_opportunities_list(request):
     """
     from ..models import DisciplineSwapOpportunity, StatusDisciplineSwapAnalysis
 
-    uczelnia = Uczelnia.objects.first()
+    uczelnia = uczelnia_dla_odczytu(request)
 
     if not uczelnia:
         messages.error(request, "Nie znaleziono uczelni w systemie.")
@@ -386,7 +387,7 @@ def export_discipline_swap_xlsx(request):
 
     from ..models import DisciplineSwapOpportunity
 
-    uczelnia = Uczelnia.objects.first()
+    uczelnia = uczelnia_dla_odczytu(request)
 
     if not uczelnia:
         messages.error(request, "Nie znaleziono uczelni.")

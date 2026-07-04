@@ -3,6 +3,7 @@ import logging
 from django.contrib import admin
 
 from bpp.admin.helpers.pbn_api.gui import sprobuj_wyslac_do_pbn_gui
+from bpp.admin.helpers.site_filtered import SiteFilteredAdminMixin
 from bpp.util import zaloguj_polkniety_wyjatek
 from pbn_api.admin.base import BasePBNAPIAdminNoReadonly
 from pbn_api.admin.widgets import JSONWithActionsWidget
@@ -12,7 +13,8 @@ logger = logging.getLogger(__name__)
 
 
 @admin.register(SentData)
-class SentDataAdmin(BasePBNAPIAdminNoReadonly):
+class SentDataAdmin(SiteFilteredAdminMixin, BasePBNAPIAdminNoReadonly):
+    uczelnia_field_path = "uczelnia"
     list_display = [
         "object",
         "last_updated_on",

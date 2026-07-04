@@ -10,6 +10,7 @@ expose a ``Command`` class.
 import logging
 
 from django.core.management import BaseCommand
+from django.core.management.base import CommandError
 from django.db import transaction
 
 from bpp.models import Dyscyplina_Naukowa, Uczelnia
@@ -120,6 +121,36 @@ class Command(BaseCommand):
                 "re-pin authors who have free slots to unselected publications"
             ),
         )
+        parser.add_argument(
+            "--uczelnia",
+            type=int,
+            default=None,
+            help="University ID (wymagane gdy w systemie jest >1 uczelnia)",
+        )
+
+    def _resolve_uczelnia(self, uczelnia_id):
+        """Uczelnia dla komendy CLI (single-or-fail).
+
+        - ``--uczelnia`` zawsze honorowane (i walidowane),
+        - przy dokładnie jednej uczelni używamy jej (``get()`` — count==1),
+        - przy wielu uczelniach brak ``--uczelnia`` to ``CommandError`` —
+          bez cichego wyboru pierwszej-z-brzegu (bug multi-hosted).
+        """
+        if uczelnia_id is not None:
+            try:
+                return Uczelnia.objects.get(pk=uczelnia_id)
+            except Uczelnia.DoesNotExist as e:
+                raise CommandError(f"Brak uczelni o id={uczelnia_id}.") from e
+
+        count = Uczelnia.objects.count()
+        if count == 0:
+            raise CommandError("Brak uczelni w bazie danych.")
+        if count == 1:
+            return Uczelnia.objects.get()
+        raise CommandError(
+            "W systemie jest więcej niż jedna uczelnia — podaj --uczelnia, "
+            "żeby ograniczyć optymalizację do jednej uczelni."
+        )
 
     @transaction.atomic
     def handle(  # noqa: C901
@@ -135,9 +166,12 @@ class Command(BaseCommand):
         auto_unpin,
         analyze_pinning,
         enable_pinning,
+        uczelnia,
         *args,
         **options,
     ):
+        uczelnia_obj = self._resolve_uczelnia(uczelnia)
+
         def log_callback(msg, style=None):
             if style == "ERROR":
                 self.stdout.write(self.style.ERROR(msg))
@@ -148,7 +182,7 @@ class Command(BaseCommand):
             else:
                 self.stdout.write(msg)
 
-        liczba_n = self._lookup_liczba_n(dyscyplina)
+        liczba_n = self._lookup_liczba_n(dyscyplina, uczelnia_obj)
 
         # Pre-optimization: capacity-based unpinning analysis / application
         if analyze_unpinning or auto_unpin:
@@ -278,16 +312,18 @@ class Command(BaseCommand):
                 algorithm_mode,
             )
 
-    def _lookup_liczba_n(self, dyscyplina):
+    def _lookup_liczba_n(self, dyscyplina, uczelnia):
         """Look up the institutional N-limit (3N - sankcje) for the discipline.
+
+        ``uczelnia`` to JAWNIE rozstrzygnięta uczelnia (single-or-fail /
+        ``--uczelnia``) — NIE zgadujemy pierwszej-z-brzegu.
 
         Logs a SUCCESS or WARNING message via ``self.stdout`` and
         returns ``float`` or ``None`` when no limit is configured.
         """
         try:
-            uczelnia = Uczelnia.objects.first()
             dyscyplina_obj = Dyscyplina_Naukowa.objects.get(nazwa=dyscyplina)
-            if uczelnia and dyscyplina_obj:
+            if dyscyplina_obj:
                 liczba_n_obj = LiczbaNDlaUczelni.objects.get(
                     uczelnia=uczelnia, dyscyplina_naukowa=dyscyplina_obj
                 )

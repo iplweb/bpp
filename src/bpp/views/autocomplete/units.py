@@ -7,7 +7,7 @@ from django.db.models.query_utils import Q
 from bpp.models import Jednostka
 
 from .base import JednostkaMixin
-from .mixins import SanitizedAutocompleteMixin
+from .mixins import SanitizedAutocompleteMixin, UczelniaScopedAutocompleteMixin
 
 
 class _JednostkaAutocompleteBase(
@@ -46,17 +46,22 @@ class JednostkaAutocomplete(LoginRequiredMixin, _JednostkaAutocompleteBase):
     """
 
 
-class WidocznaJednostkaAutocomplete(_JednostkaAutocompleteBase):
-    """Autocomplete for visible organizational units.
+class WidocznaJednostkaAutocomplete(
+    UczelniaScopedAutocompleteMixin, _JednostkaAutocompleteBase
+):
+    """Autocomplete for visible organizational units (per-uczelnia, multi-hosted).
 
     Bound to `jednostka-widoczna-autocomplete`, used by the (anonymous)
-    multiseek search -- must stay accessible without login.
+    multiseek search -- must stay accessible without login, so it inherits
+    from the ungated `_JednostkaAutocompleteBase`, not `JednostkaAutocomplete`.
     """
 
     qset = Jednostka.objects.widoczne().select_related("wydzial")
 
 
-class PublicJednostkaAutocomplete(_JednostkaAutocompleteBase):
-    """Public autocomplete for public organizational units."""
+class PublicJednostkaAutocomplete(
+    UczelniaScopedAutocompleteMixin, _JednostkaAutocompleteBase
+):
+    """Public autocomplete for public organizational units (per-uczelnia, multi-hosted)."""
 
     qset = Jednostka.objects.publiczne().select_related("wydzial")

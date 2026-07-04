@@ -23,10 +23,17 @@ class ImportManager:
     """Orchestrates the entire PBN import process"""
 
     def __init__(
-        self, session: ImportSession, client, config: dict[str, Any] | None = None
+        self,
+        session: ImportSession,
+        client,
+        config: dict[str, Any] | None = None,
+        uczelnia=None,
     ):
         self.session = session
         self.client = client
+        # Uczelnia importu (multi-hosted) — propagowana do kroków, żeby NIE
+        # zgadywały get_default() i nie przebudowały klienta na złą uczelnię.
+        self.uczelnia = uczelnia
         self.config = config or {}
         self.pbn_authorized = False
         self.pbn_error_message = None
@@ -37,9 +44,6 @@ class ImportManager:
 
         # Define import steps with their order
         self.steps = get_step_definitions(self.config)
-
-        # Check PBN authorization status
-        self._check_pbn_authorization()
 
     def _check_pbn_authorization(self):
         """Check if PBN client is properly authorized"""
@@ -94,7 +98,7 @@ class ImportManager:
             session=self.session, level__in=["error", "critical"]
         ).exists()
 
-    def _refresh_pbn_client_after_setup(self):
+    def _refresh_pbn_client_after_setup(self, uczelnia=None):
         """Refresh PBN client after initial setup changes configuration.
 
         On a clean database, pbn_uid_id may be None when the import starts.
@@ -102,10 +106,10 @@ class ImportManager:
         configuration. This method refreshes the client after InitialSetup
         to ensure proper authorization for subsequent API calls.
         """
-        from bpp.models import Uczelnia
-
-        # Refresh uczelnia from database to get changes made by InitialSetup
-        uczelnia = Uczelnia.objects.get_default()
+        # Refresh uczelnia from database to get changes made by
+        # InitialSetup
+        if uczelnia is None:
+            uczelnia = self.uczelnia
 
         if uczelnia is None:
             logger.warning("Nie znaleziono uczelni po InitialSetup")
@@ -176,7 +180,7 @@ class ImportManager:
             logger.warning(
                 f"Pomijanie kroku {step_config['display']} - brak autoryzacji PBN"
             )
-            results[step_config["name"]] = {
+            results[step_config["result_key"]] = {
                 "error": "Brak autoryzacji PBN",
                 "skipped": True,
             }
@@ -205,7 +209,7 @@ class ImportManager:
         if hasattr(e, "content") or "403" in str(e) or "Forbidden" in error_msg:
             has_errors = True
             critical_error = error_msg
-            results[step_config["name"]] = {
+            results[step_config["result_key"]] = {
                 "error": error_msg,
                 "skipped": False,
                 "critical": True,
@@ -218,7 +222,7 @@ class ImportManager:
             return has_errors, critical_error, tb_string, False, None
 
         has_errors = True
-        results[step_config["name"]] = {
+        results[step_config["result_key"]] = {
             "error": error_msg,
             "skipped": False,
         }
@@ -230,7 +234,10 @@ class ImportManager:
         """Execute a single import step"""
         step_class = step_config["class"]
         step = step_class(
-            session=self.session, client=self.client, **step_config["args"]
+            session=self.session,
+            client=self.client,
+            uczelnia=self.uczelnia,
+            **step_config["args"],
         )
 
         logger.info(
@@ -239,8 +246,8 @@ class ImportManager:
         )
 
         try:
-            result = step()
-            results[step_config["name"]] = result
+            result = step(method=step_config["method"])
+            results[step_config["result_key"]] = result
 
             # After initial_setup, refresh the client and authorization
             # This is critical for clean database imports where pbn_uid_id
@@ -258,7 +265,8 @@ class ImportManager:
                 message="Import został anulowany podczas wykonywania kroku",
             )
             logger.warning(
-                f"Import {self.session.id} anulowany podczas kroku {step_config['name']}"
+                f"Import {self.session.id} anulowany podczas kroku "
+                f"{step_config['result_key']}"
             )
             return (
                 has_errors,
@@ -397,6 +405,17 @@ class ImportManager:
 
     def run(self):
         """Execute the complete import process"""
+        # Sonda autoryzacji PBN to efekt sieciowy — trzymamy ją poza
+        # __init__ (testowalność) i odpalamy dokładnie raz, na początku run().
+        # Sentinel: __init__ zostawia pbn_authorized=False, pbn_error_message
+        # =None ("jeszcze nie sondowano"). Po realnej sondzie albo
+        # pbn_authorized==True, albo pbn_error_message jest ustawione (także
+        # gdy client is None → "Brak konfiguracji klienta PBN"), więc warunek
+        # poniżej nie odpali jej drugi raz. Re-check po InitialSetup
+        # (_refresh_pbn_client_after_setup) zostaje bez zmian.
+        if not self.pbn_authorized and self.pbn_error_message is None:
+            self._check_pbn_authorization()
+
         logger.info("=" * 60)
         logger.info("IMPORT PBN - START")
         logger.info(f"Sesja: {self.session.id}")
@@ -482,8 +501,27 @@ class ImportManager:
                 call_command(cmd)
 
             except Exception as e:
-                logger.error(f"Komenda {cmd} nie powiodła się: {e}")
-                # Don't fail the entire import for post-processing errors
+                # Błąd komendy post-importu NIE może zniknąć po cichu (kiedyś
+                # samo logger.error → niewidoczne w UI, punkty się nie ustawiały
+                # bez śladu). Zgłaszamy do Rollbara i zapisujemy jako ImportLog
+                # widoczny w logu sesji importu. Mimo to NIE wywalamy całego
+                # importu — pozostałe komendy post-importu lecą dalej (awaria
+                # jednego typu punktacji nie powinna blokować reszty).
+                logger.exception(f"Komenda post-importu {cmd} nie powiodła się")
+                rollbar.report_exc_info(
+                    sys.exc_info(),
+                    extra_data={
+                        "session_id": self.session.id,
+                        "post_import_command": cmd,
+                    },
+                )
+                ImportLog.objects.create(
+                    session=self.session,
+                    level="error",
+                    step=description,
+                    message=f"Komenda post-importu {cmd} nie powiodła się: {e}",
+                    details={"traceback": traceback.format_exc()},
+                )
 
         # Uruchom denorm_flush po zacommitowaniu transakcji, aby uniknąć deadlocka
         self.session.current_step = "Odświeżanie denormalizacji"

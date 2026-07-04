@@ -25,8 +25,13 @@ def _safe_next_url(next_url, request):
 
 
 def _get_orcid_client(request):
-    """Return ``(uczelnia, OrcidClient)`` or raise Http404."""
-    uczelnia = Uczelnia.objects.get_default()
+    """Return ``(uczelnia, OrcidClient)`` or raise Http404.
+
+    Uczelnia z requestu (multi-hosted): credentiale ORCID są per-uczelnia,
+    więc NIE wolno zgadywać ``get_default()`` — inaczej w instalacji
+    wielouczelnianej logowalibyśmy do konta ORCID złej uczelni.
+    """
+    uczelnia = Uczelnia.objects.get_for_request(request)
     if uczelnia is None or not uczelnia.orcid_enabled:
         raise Http404
 

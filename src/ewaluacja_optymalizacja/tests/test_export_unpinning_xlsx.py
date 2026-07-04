@@ -30,7 +30,15 @@ EXPORT_URL = "ewaluacja_optymalizacja:unpinning-export-xlsx"
 
 @pytest.fixture
 def uczelnia():
-    return baker.make(Uczelnia, nazwa="Testowa Uczelnia")
+    # Multi-hosted: mapuj domenę klienta testowego ("testserver") na uczelnię,
+    # by uczelnia_dla_odczytu(request) w eksporcie ją rozstrzygnął (po scaleniu
+    # dev eksport używa multi-host resolvera, nie Uczelnia.objects.first()).
+    from django.contrib.sites.models import Site
+
+    site, _ = Site.objects.get_or_create(
+        domain="testserver", defaults={"name": "testserver"}
+    )
+    return baker.make(Uczelnia, nazwa="Testowa Uczelnia", site=site)
 
 
 @pytest.fixture
@@ -40,9 +48,13 @@ def dyscyplina():
 
 @pytest.fixture
 def rodzaj_autora_n():
-    obj, _ = Rodzaj_Autora.objects.get_or_create(
+    # update_or_create (nie get_or_create): asercja w teście oczekuje
+    # konkretnej nazwy "pracownik naukowy w liczbie N". Baseline bywa
+    # niedeterministyczny per-shard (raz ma Rodzaj_Autora(N), raz nie) —
+    # get_or_create z krótkim defaultem dawał flakę CI zależną od kolejności.
+    obj, _ = Rodzaj_Autora.objects.update_or_create(
         skrot="N",
-        defaults=dict(nazwa="pracownik naukowy", sort=1),
+        defaults=dict(nazwa="pracownik naukowy w liczbie N", sort=1),
     )
     return obj
 

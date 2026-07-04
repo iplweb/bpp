@@ -31,10 +31,10 @@ def oblicz_srednia_liczbe_n_dla_dyscyplin(uczelnia, rok_min=2022, rok_max=2025):
         }
     )
 
-    # Pobierz wszystkie udziały dla autorów w okresie ewaluacji
-    udzialy = IloscUdzialowDlaAutoraZaRok.objects.filter(**rok_kw).select_related(
-        "autor", "dyscyplina_naukowa"
-    )
+    # Pobierz wszystkie udziały dla autorów w okresie ewaluacji dla tej uczelni
+    udzialy = IloscUdzialowDlaAutoraZaRok.objects.filter(
+        uczelnia=uczelnia, **rok_kw
+    ).select_related("autor", "dyscyplina_naukowa")
 
     # Dla każdego udziału znajdź odpowiedni rodzaj autora
     from bpp.models.dyscyplina_naukowa import Autor_Dyscyplina
@@ -88,12 +88,13 @@ def oblicz_srednia_liczbe_n_dla_dyscyplin(uczelnia, rok_min=2022, rok_max=2025):
             )
 
 
-def oblicz_dyscypliny_nieraportowane(rok=2025):
+def oblicz_dyscypliny_nieraportowane(uczelnia, rok=2025):
     """
     Oblicza zbiór ID dyscyplin nieraportowanych na podstawie sumy udziałów.
     Dyscyplina jest nieraportowana gdy suma udziałów < 12.
 
     Args:
+        uczelnia: Uczelnia dla której wykonujemy obliczenia
         rok: Rok dla którego sprawdzamy (domyślnie 2025)
 
     Returns:
@@ -102,7 +103,7 @@ def oblicz_dyscypliny_nieraportowane(rok=2025):
     from django.db.models import Sum
 
     sumy = (
-        IloscUdzialowDlaAutoraZaRok.objects.filter(rok=rok)
+        IloscUdzialowDlaAutoraZaRok.objects.filter(uczelnia=uczelnia, rok=rok)
         .values("dyscyplina_naukowa_id")
         .annotate(suma=Sum("ilosc_udzialow"))
     )
@@ -114,7 +115,9 @@ def oblicz_dyscypliny_nieraportowane(rok=2025):
     }
 
 
-def dolicz_bonus_za_nieraportowana(nieraportowane_ids, rok_min=2022, rok_max=2025):
+def dolicz_bonus_za_nieraportowana(
+    uczelnia, nieraportowane_ids, rok_min=2022, rok_max=2025
+):
     """
     Dolicza +1 slot dla autorów z dwoma dyscyplinami, gdzie jedna jest nieraportowana.
 
@@ -127,6 +130,7 @@ def dolicz_bonus_za_nieraportowana(nieraportowane_ids, rok_min=2022, rok_max=202
     i odpowiedni komentarz. Jeśli suma przekroczy 4.0, zostanie zredukowana do 4.0.
 
     Args:
+        uczelnia: Uczelnia dla której wykonujemy obliczenia
         nieraportowane_ids: set ID dyscyplin nieraportowanych
         rok_min, rok_max: zakres lat ewaluacji
     """
@@ -143,9 +147,9 @@ def dolicz_bonus_za_nieraportowana(nieraportowane_ids, rok_min=2022, rok_max=202
     }
 
     # Dla każdego rekordu IloscUdzialowDlaAutoraZaCalosc sprawdź warunki
-    for rekord in IloscUdzialowDlaAutoraZaCalosc.objects.select_related(
-        "autor", "dyscyplina_naukowa", "rodzaj_autora"
-    ):
+    for rekord in IloscUdzialowDlaAutoraZaCalosc.objects.filter(
+        uczelnia=uczelnia
+    ).select_related("autor", "dyscyplina_naukowa", "rodzaj_autora"):
         # Pobierz Autor_Dyscyplina dla tego autora (dowolny rok z zakresu)
         autor_dyscyplina = Autor_Dyscyplina.objects.filter(
             autor_id=rekord.autor_id,
@@ -196,14 +200,16 @@ def dolicz_bonus_za_nieraportowana(nieraportowane_ids, rok_min=2022, rok_max=202
 
 
 @transaction.atomic
-def oblicz_sumy_udzialow_za_calosc(rok_min=2022, rok_max=2025):
+def oblicz_sumy_udzialow_za_calosc(uczelnia, rok_min=2022, rok_max=2025):
     """
-    Oblicza sumę udziałów dla każdego autora, dyscypliny i rodzaju autora za cały okres ewaluacji.
+    Oblicza sumę udziałów dla każdego autora, dyscypliny i rodzaju autora
+    za cały okres ewaluacji, tylko dla danej uczelni.
 
     Tworzy osobny wpis dla każdego rodzaju autora (N, D, B, Z).
     Pomija rekordy gdzie rodzaj autora jest None.
 
     Args:
+        uczelnia: Uczelnia dla której wykonujemy obliczenia
         rok_min: Pierwszy rok okresu ewaluacji
         rok_max: Ostatni rok okresu ewaluacji
     """
@@ -211,8 +217,8 @@ def oblicz_sumy_udzialow_za_calosc(rok_min=2022, rok_max=2025):
 
     from bpp.models.dyscyplina_naukowa import Autor_Dyscyplina
 
-    # Wyczyść istniejące dane
-    IloscUdzialowDlaAutoraZaCalosc.objects.all().delete()
+    # Wyczyść istniejące dane dla tej uczelni
+    IloscUdzialowDlaAutoraZaCalosc.objects.filter(uczelnia=uczelnia).delete()
 
     # Słownik do grupowania: klucz = (autor_id, dyscyplina_id, rodzaj_autora_id)
     # wartość = {'suma_udzialow': ..., 'suma_monografie': ..., 'lata': set()}
@@ -224,9 +230,9 @@ def oblicz_sumy_udzialow_za_calosc(rok_min=2022, rok_max=2025):
         }
     )
 
-    # Pobierz wszystkie udziały za okres ewaluacji
+    # Pobierz wszystkie udziały za okres ewaluacji dla tej uczelni
     udzialy = IloscUdzialowDlaAutoraZaRok.objects.filter(
-        rok__gte=rok_min, rok__lte=rok_max
+        uczelnia=uczelnia, rok__gte=rok_min, rok__lte=rok_max
     ).select_related("autor", "dyscyplina_naukowa")
 
     # Dla każdego udziału znajdź rodzaj autora i zgrupuj
@@ -296,6 +302,7 @@ def oblicz_sumy_udzialow_za_calosc(rok_min=2022, rok_max=2025):
             autor_id=autor_id,
             dyscyplina_naukowa_id=dyscyplina_id,
             rodzaj_autora_id=rodzaj_autora_id,
+            uczelnia=uczelnia,
             ilosc_udzialow=suma_udzialow_final,
             ilosc_udzialow_monografie=suma_monografie_final,
             komentarz=komentarz,
@@ -319,10 +326,10 @@ def oblicz_liczbe_n_na_koniec_2025(uczelnia):
     # Słownik do przechowywania sum udziałów dla każdej dyscypliny w roku 2025
     dyscyplina_stats_2025 = defaultdict(lambda: Decimal("0"))
 
-    # Pobierz wszystkie udziały dla autorów w roku 2025
-    udzialy_2025 = IloscUdzialowDlaAutoraZaRok.objects.filter(rok=2025).select_related(
-        "autor", "dyscyplina_naukowa"
-    )
+    # Pobierz wszystkie udziały dla autorów w roku 2025 dla tej uczelni
+    udzialy_2025 = IloscUdzialowDlaAutoraZaRok.objects.filter(
+        uczelnia=uczelnia, rok=2025
+    ).select_related("autor", "dyscyplina_naukowa")
 
     # Dla każdego udziału sumuj nieważone udziały
     for udzial in udzialy_2025:
@@ -355,50 +362,64 @@ def oblicz_liczby_n_dla_ewaluacji_2022_2025(uczelnia, rok_min=2022, rok_max=2025
 
     warunek_lat = dict(rok__gte=rok_min, rok__lte=rok_max)
 
-    IloscUdzialowDlaAutoraZaRok.objects.filter(**warunek_lat).delete()
+    # Usuń tylko rekordy tej uczelni (nie mazać danych innych uczelni)
+    IloscUdzialowDlaAutoraZaRok.objects.filter(
+        uczelnia=uczelnia, **warunek_lat
+    ).delete()
 
     wymiary_etatu = []
 
-    for ad in Autor_Dyscyplina.objects.filter(**warunek_lat):
+    # Iteruj tylko autorów należących do tej uczelni z aktywną jednostką
+    # skupiającą pracowników; aktualna_jednostka=None → wykluczone przez
+    # __uczelnia lookup
+    for ad in Autor_Dyscyplina.objects.filter(
+        autor__aktualna_jednostka__uczelnia=uczelnia,
+        autor__aktualna_jednostka__skupia_pracownikow=True,
+        **warunek_lat,
+    ):
         if ad.wymiar_etatu is not None:
             wymiary_etatu.append(ad.wymiar_etatu)
 
         # Sprawdź czy autorowi należy liczyć sloty
         if ad.rodzaj_autora and not ad.rodzaj_autora.licz_sloty:
             # Autor typu Z (licz_sloty=False) - utwórz wpis z udziałami = 0.0
-            # Dzięki temu autor będzie widoczny w tabelach, ale nie będzie wliczany do liczby N
+            # Dzięki temu autor będzie widoczny w tabelach, ale nie będzie
+            # wliczany do liczby N
             for dyscyplina, _ in ad.policz_udzialy():
                 IloscUdzialowDlaAutoraZaRok.objects.create(
                     rok=ad.rok,
                     autor=ad.autor,
                     dyscyplina_naukowa=dyscyplina,
+                    uczelnia=uczelnia,
                     ilosc_udzialow=Decimal("0.0"),
                     ilosc_udzialow_monografie=Decimal("0.0"),
                     autor_dyscyplina=ad,
                 )
         else:
-            # Normalny autor (licz_sloty=True lub rodzaj_autora=None) - oblicz rzeczywiste udziały
+            # Normalny autor (licz_sloty=True lub rodzaj_autora=None) —
+            # oblicz rzeczywiste udziały
             for dyscyplina, ilosc_udzialow in ad.policz_udzialy():
                 IloscUdzialowDlaAutoraZaRok.objects.create(
                     rok=ad.rok,
                     autor=ad.autor,
                     dyscyplina_naukowa=dyscyplina,
+                    uczelnia=uczelnia,
                     ilosc_udzialow=ilosc_udzialow,
                     ilosc_udzialow_monografie=ilosc_udzialow / Decimal("2.0"),
                     autor_dyscyplina=ad,
                 )
 
     # Krok 1: Oblicz sumy udziałów za całość (BEZ bonusu +1)
-    oblicz_sumy_udzialow_za_calosc(rok_min, rok_max)
+    oblicz_sumy_udzialow_za_calosc(uczelnia, rok_min, rok_max)
 
     # Krok 2: Policz średnią dla dyscyplin (BEZ bonusu!)
     oblicz_srednia_liczbe_n_dla_dyscyplin(uczelnia, rok_min, rok_max)
 
     # Krok 3: Określ dyscypliny nieraportowane (suma 2025 < 12)
-    nieraportowane_ids = oblicz_dyscypliny_nieraportowane(rok_max)
+    nieraportowane_ids = oblicz_dyscypliny_nieraportowane(uczelnia, rok_max)
 
     # Krok 4: Doliczyć +1 slot gdzie potrzeba (NA KOŃCU - nie wpływa na średnią!)
-    dolicz_bonus_za_nieraportowana(nieraportowane_ids, rok_min, rok_max)
+    dolicz_bonus_za_nieraportowana(uczelnia, nieraportowane_ids, rok_min, rok_max)
 
     #         # Jeżeli suma udziałów za 4 lata jest mniejsza jak 1 i jest włączona odpowiednia flaga
     #         # to zwiększ do 1 slota:

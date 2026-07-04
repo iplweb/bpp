@@ -59,7 +59,7 @@ class GetPBNPublicationsByBase(LoginRequiredMixin, View):
         if not ni:
             return JsonResponse({"error": API_BRAK_PARAMETRU})
 
-        uczelnia = Uczelnia.objects.get_default()
+        uczelnia = Uczelnia.objects.get_for_request(request)
         if not uczelnia:
             return JsonResponse({"error": "W systemie brak obiektu Uczelnia"})
 
