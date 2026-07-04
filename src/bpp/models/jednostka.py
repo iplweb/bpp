@@ -160,6 +160,14 @@ class Jednostka(ModelZAdnotacjami, ModelZPBN_ID, ModelZPBN_UID, MPTTModel):
         choices=RODZAJ_JEDNOSTKI.choices,
     )
 
+    rodzaj = models.ForeignKey(
+        "bpp.RodzajJednostki",
+        null=True,
+        blank=True,
+        on_delete=models.PROTECT,
+        related_name="jednostki",
+    )
+
     search = VectorField(blank=True, null=True)
 
     kolejnosc = models.PositiveIntegerField(default=0, blank=False, null=False)
