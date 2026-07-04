@@ -7,11 +7,26 @@ To activate your custom menu add the following to your settings.py::
 """
 
 from admin_tools.menu import Menu, items
+from django.template.defaultfilters import capfirst
 from django.urls import reverse
+from django.utils.functional import lazy as _lazy
 from django.utils.translation import gettext_lazy as _
+from polish_inflection import MIANOWNIK, MNOGA, odmien_lub_wyraz
 
-from bpp import jezyk_polski
 from bpp.const import GR_WPROWADZANIE_DANYCH, GR_ZGLOSZENIA_PUBLIKACJI
+from bpp.nazwy import lemat
+
+
+def _tytul(uid, liczba=None):
+    lem = lemat(uid)
+    if liczba:
+        forma = odmien_lub_wyraz(lem, MIANOWNIK, liczba)
+    else:
+        forma = odmien_lub_wyraz(lem, MIANOWNIK)
+    return capfirst(forma)
+
+
+_tytul_lazy = _lazy(_tytul, str)
 
 PBN_MENU = [
     ("Instytucje", "/admin/pbn_api/institution"),
@@ -94,9 +109,9 @@ WEB_MENU = [
 ]
 
 STRUKTURA_MENU = [
-    (jezyk_polski.lazy_rzeczownik_title("UCZELNIA"), "/admin/bpp/uczelnia/"),
-    (jezyk_polski.lazy_rzeczownik_title("WYDZIAL_PL"), "/admin/bpp/wydzial/"),
-    (jezyk_polski.lazy_rzeczownik_title("JEDNOSTKA_PL"), "/admin/bpp/jednostka/"),
+    (_tytul_lazy("UCZELNIA"), "/admin/bpp/uczelnia/"),
+    (_tytul_lazy("WYDZIAL", MNOGA), "/admin/bpp/wydzial/"),
+    (_tytul_lazy("JEDNOSTKA", MNOGA), "/admin/bpp/jednostka/"),
     ("Kierunki studiów", "/admin/bpp/kierunek_studiow/"),
 ]
 

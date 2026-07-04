@@ -43,9 +43,9 @@
             </li>
             <li>
                 <a href="#" aria-haspopup="menu"><i class="fi-list" aria-hidden="true"></i> przeglądaj</a>
-                <ul class="menu vertical" role="menu">{% load deklinacja %}
-                    <li role="menuitem"><a href="/"><i class="fi-foundation" aria-hidden="true"></i> {% rzeczownik_uczelnia %}</a></li>
-                    <li role="menuitem"><a href="{% url "bpp:browse_jednostki" %}"><i class="fi-results-demographics" aria-hidden="true"></i> {% rzeczownik_jednostki_m %}</a></li>
+                <ul class="menu vertical" role="menu">{% load polish_inflection %}
+                    <li role="menuitem"><a href="/"><i class="fi-foundation" aria-hidden="true"></i> {% odmien nazwa_uczelni "mianownik" %}</a></li>
+                    <li role="menuitem"><a href="{% url "bpp:browse_jednostki" %}"><i class="fi-results-demographics" aria-hidden="true"></i> {% odmien nazwa_jednostki "mianownik" liczba="mnoga" %}</a></li>
                     <li role="menuitem"><a href="{% url "bpp:browse_autorzy" %}"><i class="fi-torsos-all" aria-hidden="true"></i> autorzy</a></li>
                     <li role="menuitem"><a href="{% url "bpp:browse_zrodla" %}"><i class="fi-book" aria-hidden="true"></i> źródła</a></li>
                     <li role="menuitem"><a href="{% url "bpp:browse_lata" %}"><i class="fi-calendar" aria-hidden="true"></i> wg roku</a></li>
