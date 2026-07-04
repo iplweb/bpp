@@ -9,7 +9,7 @@ from bpp.models import Jednostka, Wydzial, Uczelnia
 
 
 class JednostkaViewSet(viewsets.ReadOnlyModelViewSet):
-    queryset = Jednostka.objects.all()
+    queryset = Jednostka.objects.widoczne()
     serializer_class = JednostkaSerializer
 
 
