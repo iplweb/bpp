@@ -328,10 +328,10 @@ class Jednostka(ModelZAdnotacjami, ModelZPBN_ID, ModelZPBN_UID, MPTTModel):
         )
 
     def przypisania(self):
-        return Jednostka_Wydzial.objects.filter(jednostka_id=self.pk).order_by("od")
+        return Jednostka_Rodzic.objects.filter(jednostka_id=self.pk).order_by("od")
 
     def przypisania_dla_czasokresu(self, od, do):
-        return Jednostka_Wydzial.objects.dla_czasokresu(od=od, do=do).filter(
+        return Jednostka_Rodzic.objects.dla_czasokresu(od=od, do=do).filter(
             jednostka_id=self.pk
         )
 
@@ -339,13 +339,17 @@ class Jednostka(ModelZAdnotacjami, ModelZPBN_ID, ModelZPBN_UID, MPTTModel):
         return self.przypisania_dla_czasokresu(data, data).first()
 
     def wydzial_dnia(self, data):
-        try:
-            return self.przypisanie_dla_dnia(data).wydzial
-        except AttributeError:
-            return
+        # Faza B (#438): metryczka historyczna trzyma teraz węzeł-rodzic
+        # (Jednostka), a nie Wydzial. Stary Wydzial odzyskujemy przez
+        # legacy_wydzial_id węzła — utrzymuje kontrakt (zwraca Wydzial lub None)
+        # do czasu usunięcia strony wydziału (B-III).
+        przypisanie = self.przypisanie_dla_dnia(data)
+        if przypisanie is None or przypisanie.parent_id is None:
+            return None
+        return Wydzial.objects.filter(id=przypisanie.parent.legacy_wydzial_id).first()
 
 
-class Jednostka_Wydzial_Manager(models.Manager):
+class Jednostka_Rodzic_Manager(models.Manager):
     def od_do_not_null(self):
         return self.get_queryset().annotate(
             od_not_null=Coalesce("od", date(1, 1, 1)),
@@ -413,8 +417,8 @@ class Jednostka_Wydzial_Manager(models.Manager):
                 jw.do = new_do
                 jw.save()
 
-                Jednostka_Wydzial.objects.create(
-                    jednostka=jw.jednostka, wydzial=jw.wydzial, od=new_od, do=old_do
+                Jednostka_Rodzic.objects.create(
+                    jednostka=jw.jednostka, parent=jw.parent, od=new_od, do=old_do
                 )
                 continue
 
@@ -446,33 +450,35 @@ class Jednostka_Wydzial_Manager(models.Manager):
                 continue
 
 
-class Jednostka_Wydzial(models.Model):
+class Jednostka_Rodzic(models.Model):
     jednostka = models.ForeignKey(Jednostka, CASCADE)
-    wydzial = models.ForeignKey(Wydzial, CASCADE)
+    parent = models.ForeignKey(
+        Jednostka,
+        CASCADE,
+        null=True,
+        blank=True,
+        related_name="jednostka_rodzic_parent_set",
+    )
     od = models.DateField(null=True, blank=True)
     do = models.DateField(null=True, blank=True)
 
-    objects = Jednostka_Wydzial_Manager()
+    objects = Jednostka_Rodzic_Manager()
 
     class Meta:
-        verbose_name = "powiązanie jednostka-wydział"
-        verbose_name_plural = "powiązania jednostka-wydział"
+        verbose_name = "powiązanie jednostka-rodzic"
+        verbose_name_plural = "powiązania jednostka-rodzic"
         ordering = ("-od",)
 
     def __str__(self):
-        return f"{self.jednostka} - {self.wydzial} ({self.od}, {self.do})"
+        return f"{self.jednostka} - {self.parent} ({self.od}, {self.do})"
 
     def clean(self):
-        try:
-            _ = self.wydzial
-        except (ValueError, TypeError, Wydzial.DoesNotExist):
-            raise ValidationError({"wydzial": "Określ wydział"}) from None
-
-        if self.wydzial.uczelnia_id != self.jednostka.uczelnia_id:
-            raise ValidationError(
-                {"wydzial": "Uczelnia dla wydziału i jednostki musi być identyczna."}
-            )
-
+        # Faza B (#438): walidacja równości uczelni (wydzial.uczelnia ==
+        # jednostka.uczelnia) USUNIĘTA — federacja (Zasada #4) dopuszcza
+        # krawędzie między-uczelniane. Check obecności starego pola „wydzial"
+        # też znika (pole zastąpione nullowalnym „parent"). Zostają checki
+        # niezależne od uczelni: zakres dat, tożsamość jednostki, nakładanie
+        # zakresów, data „do" w przyszłości.
         if self.od is not None and self.do is not None:
             if self.od >= self.do:
                 raise ValidationError(
@@ -484,19 +490,19 @@ class Jednostka_Wydzial(models.Model):
 
         if self.pk:
             try:
-                old = Jednostka_Wydzial.objects.get(pk=self.pk)
+                old = Jednostka_Rodzic.objects.get(pk=self.pk)
                 if old.jednostka_id != self.jednostka_id:
                     raise ValidationError(
                         {
                             "jednostka": "Zmiana ID jednostki dla tych obiektów nie jest obsługiwana."
                         }
                     )
-            except Jednostka_Wydzial.DoesNotExist:
+            except Jednostka_Rodzic.DoesNotExist:
                 pass
 
         # Sprawdz zakres dat
         cnt = (
-            Jednostka_Wydzial.objects.dla_czasokresu(self.od, self.do)
+            Jednostka_Rodzic.objects.dla_czasokresu(self.od, self.do)
             .filter(jednostka_id=self.jednostka_id)
             .exclude(id=self.id)
             .count()
@@ -519,18 +525,20 @@ class Jednostka_Wydzial(models.Model):
             )
 
 
-@receiver(post_save, sender=Jednostka_Wydzial)
-@receiver(post_delete, sender=Jednostka_Wydzial)
+@receiver(post_save, sender=Jednostka_Rodzic)
+@receiver(post_delete, sender=Jednostka_Rodzic)
 def ustaw_wydzial_i_aktualna_jednostki(sender, instance, **kwargs):
     """Zastępuje trigger bazodanowy ``bpp_jednostka_ustaw_wydzial_aktualna``
     (zdjęty w migracji 0455, Faza B / issue #438).
 
-    Po każdej zmianie wpisów ``Jednostka_Wydzial`` danej jednostki przelicza
+    Po każdej zmianie wpisów ``Jednostka_Rodzic`` danej jednostki przelicza
     i zapisuje na ``Jednostka`` pola ``wydzial_id`` oraz ``aktualna``,
     odwzorowując logikę starego triggera 1:1:
 
     * bierze NAJŚWIEŻSZY wpis (``ORDER BY coalesce(od, 0001-01-01) DESC``),
-    * ``wydzial_id`` = wydział tego wpisu; brak wpisów → ``NULL``,
+    * ``wydzial_id`` = ``parent.legacy_wydzial_id`` tego wpisu (węzeł-rodzic
+      mapuje na stary Wydzial przez ``legacy_wydzial_id`` — Faza B, I-3);
+      brak wpisu / parent bez legacy_wydzial_id → ``NULL``,
     * ``aktualna`` = ``coalesce(do, 9999-12-31) > dzisiaj`` (interim: bieżący
       wpis → True, wpis zakończony / brak wpisów → False).
 
@@ -544,14 +552,21 @@ def ustaw_wydzial_i_aktualna_jednostki(sender, instance, **kwargs):
     jednostka_id = instance.jednostka_id
 
     najswiezszy = (
-        Jednostka_Wydzial.objects.filter(jednostka_id=jednostka_id)
+        Jednostka_Rodzic.objects.filter(jednostka_id=jednostka_id)
         .annotate(_od_not_null=Coalesce("od", date(1, 1, 1)))
         .order_by("-_od_not_null")
+        .select_related("parent")
         .first()
     )
 
-    if najswiezszy is not None:
-        wydzial_id = najswiezszy.wydzial_id
+    if najswiezszy is not None and najswiezszy.parent_id is not None:
+        wydzial_id = najswiezszy.parent.legacy_wydzial_id
+        do = najswiezszy.do if najswiezszy.do is not None else date(9999, 12, 31)
+        aktualna = do > date.today()
+    elif najswiezszy is not None:
+        # Wpis istnieje, ale bez węzła-rodzica (parent=NULL) — brak wydziału,
+        # aktualność liczona z daty „do" jak wyżej.
+        wydzial_id = None
         do = najswiezszy.do if najswiezszy.do is not None else date(9999, 12, 31)
         aktualna = do > date.today()
     else:

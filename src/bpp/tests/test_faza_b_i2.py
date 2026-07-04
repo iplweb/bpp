@@ -15,11 +15,19 @@ from model_bakery import baker
 
 from bpp.models import (
     Jednostka,
-    Jednostka_Wydzial,
+    Jednostka_Rodzic,
     RodzajJednostki,
     Uczelnia,
     Wydzial,
 )
+
+
+def _wezel(wydzial):
+    """LAZY węzeł-lustro Jednostka dla wydziału (#438) — tworzony przy linku."""
+    from bpp.models.struktura_konwersja import znajdz_lub_utworz_wezel_wydzialu
+
+    return znajdz_lub_utworz_wezel_wydzialu(wydzial)[0]
+
 
 # Moduł migracji ma nazwę zaczynającą się od cyfry — nie zaimportujemy go
 # zwykłym ``import``; helper konwersji wyciągamy przez importlib, by testować
@@ -31,7 +39,7 @@ rerun_konwersja_wydzialy = _mig_0455.rerun_konwersja_wydzialy
 
 @pytest.mark.django_db
 def test_sygnal_ustawia_wydzial_i_aktualna():
-    """Po utworzeniu wpisu Jednostka_Wydzial przez ORM sygnał ustawia
+    """Po utworzeniu wpisu Jednostka_Rodzic przez ORM sygnał ustawia
     wydzial_id oraz aktualna na Jednostce (interim: bieżący wpis → True)."""
     u = baker.make(Uczelnia)
     w = baker.make(Wydzial, uczelnia=u)
@@ -39,7 +47,7 @@ def test_sygnal_ustawia_wydzial_i_aktualna():
 
     assert j.wydzial is None
 
-    Jednostka_Wydzial.objects.create(jednostka=j, wydzial=w)
+    Jednostka_Rodzic.objects.create(jednostka=j, parent=_wezel(w))
 
     j.refresh_from_db()
     assert j.wydzial == w
@@ -54,7 +62,7 @@ def test_sygnal_respektuje_aktualna_override_false():
     w = baker.make(Wydzial, uczelnia=u)
     j = baker.make(Jednostka, uczelnia=u, aktualna_override=False)
 
-    Jednostka_Wydzial.objects.create(jednostka=j, wydzial=w)
+    Jednostka_Rodzic.objects.create(jednostka=j, parent=_wezel(w))
 
     j.refresh_from_db()
     assert j.aktualna is False  # override wygrywa nad derywacją (True)
@@ -69,8 +77,8 @@ def test_sygnal_respektuje_aktualna_override_true():
     w = baker.make(Wydzial, uczelnia=u)
     j = baker.make(Jednostka, uczelnia=u, aktualna_override=True)
 
-    Jednostka_Wydzial.objects.create(
-        jednostka=j, wydzial=w, do=date.today() - timedelta(days=5)
+    Jednostka_Rodzic.objects.create(
+        jednostka=j, parent=_wezel(w), do=date.today() - timedelta(days=5)
     )
 
     j.refresh_from_db()

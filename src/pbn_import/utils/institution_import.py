@@ -1,6 +1,7 @@
 """Institution import utilities"""
 
-from bpp.models import Jednostka, Jednostka_Wydzial, Wydzial
+from bpp.models import Jednostka, Jednostka_Rodzic, Wydzial
+from bpp.models.struktura_konwersja import znajdz_lub_utworz_wezel_wydzialu
 
 from .base import ImportStepBase
 
@@ -144,7 +145,10 @@ def znajdz_lub_utworz_obca_jednostke(uczelnia, wydzial=None):
     # `uczelnia`, więc trigger spójności uczelni przechodzi.
     if wydzial is None:
         wydzial, _ = znajdz_lub_utworz_wydzial_domyslny(uczelnia)
-    Jednostka_Wydzial.objects.get_or_create(jednostka=obca, wydzial=wydzial)
+    # Faza B (#438): metryczka wskazuje węzeł-rodzic; LAZY resolve wydział →
+    # węzeł-lustro (tworzony w tym miejscu linkowania, jeśli jeszcze go nie ma).
+    wezel, _ = znajdz_lub_utworz_wezel_wydzialu(wydzial)
+    Jednostka_Rodzic.objects.get_or_create(jednostka=obca, parent=wezel)
 
     if uczelnia.obca_jednostka_id != obca.pk:
         uczelnia.obca_jednostka = obca
@@ -184,9 +188,9 @@ def sprawdz_obca_jednostka(uczelnia):
             "Obca jednostka ma skupia_pracownikow=True — musi być faktycznie "
             "obca." + napraw
         )
-    podpieta = Jednostka_Wydzial.objects.filter(
+    podpieta = Jednostka_Rodzic.objects.filter(
         jednostka=obca,
-        wydzial__uczelnia=uczelnia,
+        parent__uczelnia=uczelnia,
     ).exists()
     if not podpieta:
         return (
@@ -301,9 +305,11 @@ class InstitutionImporter(ImportStepBase):
         if created:
             self.log("info", "Created default unit: Jednostka Domyślna")
 
-        # Link unit to department
-        jw, created = Jednostka_Wydzial.objects.get_or_create(
-            jednostka=jednostka, wydzial=wydzial
+        # Link unit to department. Faza B (#438): LAZY resolve wydział →
+        # węzeł-rodzic (tworzony tu, jeśli jeszcze nie istnieje).
+        wezel, _ = znajdz_lub_utworz_wezel_wydzialu(wydzial)
+        jw, created = Jednostka_Rodzic.objects.get_or_create(
+            jednostka=jednostka, parent=wezel
         )
         if created:
             self.log(

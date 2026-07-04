@@ -9,7 +9,7 @@ from mptt.admin import DraggableMPTTAdmin
 from bpp.admin.helpers.djangoql import BppDjangoQLSearchMixin
 from bpp.models import Autor_Jednostka, Uczelnia
 
-from ..models.struktura import Jednostka, Jednostka_Wydzial
+from ..models.struktura import Jednostka, Jednostka_Rodzic
 from .core import BaseBppAdminMixin, RestrictDeletionToAdministracjaGroupMixin
 from .filters import PBN_UID_IDObecnyFilter
 from .helpers import LimitingFormset
@@ -21,8 +21,11 @@ from .xlsx_export import resources
 from .xlsx_export.mixins import EksportDanychMixin
 
 
-class Jednostka_WydzialInline(admin.TabularInline):
-    model = Jednostka_Wydzial
+class Jednostka_RodzicInline(admin.TabularInline):
+    model = Jednostka_Rodzic
+    # Jednostka_Rodzic ma DWA FK do Jednostka (jednostka, parent) — inline na
+    # JednostkaAdmin musi jawnie wskazać po którym się wiąże.
+    fk_name = "jednostka"
     extra = 1
 
 
@@ -107,7 +110,7 @@ class JednostkaAdmin(
     search_fields = ["nazwa", "skrot", "wydzial__nazwa"]
 
     inlines = (
-        Jednostka_WydzialInline,
+        Jednostka_RodzicInline,
         Autor_JednostkaInline,
     )
 

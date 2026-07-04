@@ -35,7 +35,8 @@ def scope_jednostki_do_uczelni(qs, uczelnia):
     """Zawęź queryset ``Jednostka`` do uczelni oglądającego (multi-hosted).
 
     Atrybucja przez bezpośredni FK ``Jednostka.uczelnia``. Constraint w
-    ``Jednostka_Wydzial.clean()`` wymusza ``wydzial.uczelnia == jednostka.uczelnia``,
+    ``Jednostka.uczelnia`` jest źródłem prawdy atrybucji; historyczna metryczka
+    ``Jednostka_Rodzic`` nie waliduje już równości uczelni (federacja, #438),
     więc dla jednostek z wydziałem wynik jest tożsamy z filtrem po wydziale;
     jednostki bez wydziału, należące do uczelni, pozostają widoczne.
 

@@ -78,7 +78,7 @@ from bpp.models.openaccess import (
 from bpp.models.praca_habilitacyjna import Publikacja_Habilitacyjna
 from bpp.models.profile import BppUser
 from bpp.models.seria_wydawnicza import Seria_Wydawnicza
-from bpp.models.struktura import Jednostka_Wydzial
+from bpp.models.struktura import Jednostka_Rodzic
 from bpp.models.system import Charakter_PBN
 from bpp.models.wydawca import Poziom_Wydawcy, Wydawca
 from deduplikator_autorow.models import IgnoredScientist, LogScalania, NotADuplicate
@@ -153,7 +153,7 @@ groups = {
         LiczbaNDlaUczelni,
         Wydzial,
         Jednostka,
-        Jednostka_Wydzial,
+        Jednostka_Rodzic,
         Ukryj_Status_Korekty,
     ],
     GR_WPROWADZANIE_DANYCH: [

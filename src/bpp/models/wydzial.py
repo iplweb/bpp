@@ -7,7 +7,7 @@ from collections import defaultdict
 from autoslug import AutoSlugField
 from django.db import models
 from django.db.models import CASCADE, Q
-from django.db.models.signals import post_save
+from django.db.models.signals import post_delete, post_save
 from django.dispatch import receiver
 from django.urls.base import reverse
 from django.utils import timezone
@@ -99,15 +99,19 @@ class Wydzial(ModelZAdnotacjami, ModelZPBN_ID):
     def historyczne_jednostki(self):
         """Lista przeszłych (historycznych) jednostek, które kiedyś były przypisane
         do danego wydziału, bez kół naukowych"""
-        from .jednostka import Jednostka, Jednostka_Wydzial
+        from .jednostka import Jednostka, Jednostka_Rodzic
 
         today = timezone.now().date()
 
+        # Faza B (#438): metryczka historyczna wskazuje węzeł-rodzic; ten
+        # wydział mapuje węzeł o legacy_wydzial_id == self.pk.
         return (
             Jednostka.objects.all()
             .exclude(aktualna=True)
             .filter(
-                pk__in=Jednostka_Wydzial.objects.filter(wydzial=self)
+                pk__in=Jednostka_Rodzic.objects.filter(
+                    parent__legacy_wydzial_id=self.pk
+                )
                 .exclude(do=None)
                 .exclude(do__gte=today)
                 .values_list("jednostka_id", flat=True)
@@ -116,7 +120,7 @@ class Wydzial(ModelZAdnotacjami, ModelZPBN_ID):
         )
 
     def kola_naukowe(self):
-        from .jednostka import Jednostka, Jednostka_Wydzial
+        from .jednostka import Jednostka, Jednostka_Rodzic
 
         today = timezone.now().date()
 
@@ -128,7 +132,9 @@ class Wydzial(ModelZAdnotacjami, ModelZPBN_ID):
                 Q(wydzial=self, aktualna=True)
                 | Q(
                     wydzial=None,
-                    pk__in=Jednostka_Wydzial.objects.filter(wydzial=self)
+                    pk__in=Jednostka_Rodzic.objects.filter(
+                        parent__legacy_wydzial_id=self.pk
+                    )
                     .exclude(do=None)
                     .exclude(do__lt=today),
                 )
@@ -173,3 +179,16 @@ def invalidate_uczelnia_cache_on_wydzial_change(sender, instance, **kwargs):
     from bpp.views.browse import get_uczelnia_context_data
 
     get_uczelnia_context_data.invalidate()
+
+
+@receiver(post_delete, sender=Wydzial)
+def usun_wezel_lustro_wydzialu(sender, instance, **kwargs):
+    """Faza B (#438): sprząta węzeł-lustro (Jednostka o
+    ``legacy_wydzial_id == wydzial.id``) gdy Wydzial jest kasowany — bez tego
+    zostałaby sierota wskazująca na nieistniejący już wydział. Model lustra
+    jest LAZY (tworzone dopiero przy linkowaniu), więc to rzadkie, ale tanie.
+    Usunięcie węzła kaskaduje na wpisy ``Jednostka_Rodzic.parent`` (CASCADE).
+    """
+    from .jednostka import Jednostka
+
+    Jednostka.objects.filter(legacy_wydzial_id=instance.id).delete()

@@ -109,7 +109,12 @@ def kolo_naukowe(jednostka: Jednostka):
 
 @pytest.fixture(scope="function")
 def aktualna_jednostka(jednostka: Jednostka, wydzial, db):
-    jednostka.jednostka_wydzial_set.create(wydzial=wydzial)
+    # Faza B (#438): metryczka wskazuje węzeł-rodzic; LAZY get-or-create
+    # węzła-lustra dla wydziału (legacy_wydzial_id → Wydzial).
+    from bpp.models.struktura_konwersja import znajdz_lub_utworz_wezel_wydzialu
+
+    wezel, _ = znajdz_lub_utworz_wezel_wydzialu(wydzial)
+    jednostka.jednostka_rodzic_set.create(parent=wezel)
     jednostka.refresh_from_db()
     return jednostka
 
@@ -121,7 +126,10 @@ def drugi_wydzial(uczelnia):
 
 @pytest.fixture
 def druga_aktualna_jednostka(druga_jednostka, drugi_wydzial):
-    druga_jednostka.jednostka_wydzial_set.create(wydzial=drugi_wydzial)
+    from bpp.models.struktura_konwersja import znajdz_lub_utworz_wezel_wydzialu
+
+    wezel, _ = znajdz_lub_utworz_wezel_wydzialu(drugi_wydzial)
+    druga_jednostka.jednostka_rodzic_set.create(parent=wezel)
     druga_jednostka.refresh_from_db()
     return druga_jednostka
 
