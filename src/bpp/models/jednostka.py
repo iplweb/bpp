@@ -114,7 +114,7 @@ class Jednostka(ModelZAdnotacjami, ModelZPBN_ID, ModelZPBN_UID, MPTTModel):
         default=True,
         help_text="Gdy to pole jest zaznaczone, system wyświetli pole 'Opis' na podstronie jednostki.",
     )
-    slug = AutoSlugField(populate_from="nazwa", unique=True)
+    slug = AutoSlugField(populate_from="nazwa", max_length=512, unique=True)
 
     widoczna = models.BooleanField(default=True, db_index=True)
     wchodzi_do_raportow = models.BooleanField(
@@ -167,6 +167,16 @@ class Jednostka(ModelZAdnotacjami, ModelZPBN_ID, ModelZPBN_UID, MPTTModel):
         on_delete=models.PROTECT,
         related_name="jednostki",
     )
+
+    zezwalaj_na_ranking_autorow = models.BooleanField(
+        "Zezwalaj na generowanie rankingu autorów dla tej jednostki",
+        default=True,
+    )
+    poprzednie_nazwy = models.CharField(max_length=4096, blank=True, default="")
+    skrot_nazwy = models.CharField(  # noqa: DJ001
+        max_length=250, blank=True, null=True
+    )
+    legacy_wydzial_id = models.IntegerField(null=True, blank=True, db_index=True)
 
     search = VectorField(blank=True, null=True)
 
