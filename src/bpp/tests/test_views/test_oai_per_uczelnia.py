@@ -12,9 +12,14 @@ def test_oai_listrecords_wyklucza_obca_uczelnie(
     jednostka_uczelnia2,
     autor_uczelnia1,
     autor_uczelnia2,
+    typ_odpowiedzialnosci_autor,
     client,
     settings,
 ):
+    # ``dodaj_autora`` domyślnie szuka Typ_Odpowiedzialnosci "aut." — nie
+    # polegaj na ambientowych danych referencyjnych (inne testy, np. z
+    # ``typy_odpowiedzialnosci`` / transaction=True, potrafią wyczyścić tę
+    # tabelę), tylko zapewnij "aut." jawnie tym idempotentnym fixture.
     settings.ALLOWED_HOSTS = ["*"]  # pozwól na HTTP_HOST domeny uczelni
     chf = baker.make("bpp.Charakter_Formalny", skrot="OAI-TST", nazwa_w_primo="Artykuł")
     w1 = baker.make(
