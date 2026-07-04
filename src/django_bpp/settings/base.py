@@ -362,6 +362,7 @@ INSTALLED_APPS = [
     "first_run_wizard",  # Pluggable first-run wizard engine (PyPI)
     "daphne",
     "tinymce",
+    "django_polish_inflection",
     "formtools",
     "denorm.apps.DenormAppConfig",
     "reversion",
@@ -1393,6 +1394,9 @@ DJANGO_BPP_SKROT_WYDZIALU_W_NAZWIE_JEDNOSTKI = env(
 )
 
 DJANGO_BPP_UCZELNIA_UZYWA_WYDZIALOW = env("DJANGO_BPP_UCZELNIA_UZYWA_WYDZIALOW")
+
+# polish-inflection: słowo spoza słownika SGJP → passthrough (nie błąd renderu)
+POLISH_INFLECTION_STRICT = False
 
 #
 # Po zalogowaniu się do PBN ustalamy, że token jest ważny [TYLE] godzin
