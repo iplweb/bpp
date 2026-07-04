@@ -2,7 +2,6 @@ from datetime import date, datetime, timedelta
 
 import pytest
 from django.core.exceptions import ValidationError
-from django.db import InternalError, OperationalError
 from django.db.utils import IntegrityError
 from model_bakery import baker
 
@@ -41,8 +40,10 @@ def test_jednostka_wydzial_aktualna():
 
 @pytest.mark.django_db(transaction=True)
 def test_jednostka_before_insert():
-    """Sprawdź, że nie da się przypisać jednostki do wydziału z innej uczelni
-    przez edycje tabeli bpp_jednostka"""
+    """Faza B (#438): trigger walidacyjny bpp_jednostka_sprawdz_uczelnia_id
+    został zdjęty (federacja, Zasada #4 — bez zamiennika). Przypisanie
+    jednostki do wydziału z innej uczelni NIE rzuca już wyjątku na poziomie
+    bazy — zapis się udaje."""
 
     u1 = baker.make(Uczelnia)
     u2 = baker.make(Uczelnia)
@@ -50,19 +51,24 @@ def test_jednostka_before_insert():
     w1 = baker.make(Wydzial, uczelnia=u1)
     w2 = baker.make(Wydzial, uczelnia=u2)
 
-    with pytest.raises((OperationalError, InternalError)):
-        j = baker.make(Jednostka, uczelnia=u2, wydzial=w1)
+    # Cross-uczelnia — po zdjęciu triggera zapisuje się bez błędu:
+    j = baker.make(Jednostka, uczelnia=u2, wydzial=w1)
+    j.refresh_from_db()
+    assert j.wydzial == w1
 
-    j = baker.make(Jednostka, uczelnia=u2, wydzial=w2)
+    j2 = baker.make(Jednostka, uczelnia=u2, wydzial=w2)
 
-    for elem in [j, w2, w1, u2, u1]:
+    for elem in [j, j2, w2, w1, u2, u1]:
         elem.delete()
 
 
 @pytest.mark.django_db(transaction=True)
 def test_jednostka_wydzial_before_insert():
-    """Sprawdź, że nie da się przypisać jednostki do wydziału z innej uczelni
-    przez edycje tabeli bpp_jednostka_wydzial"""
+    """Faza B (#438): trigger bpp_jednostka_wydzial_sprawdz_uczelnia_id
+    zdjęty (federacja — bez zamiennika). Przypisanie jednostki do wydziału
+    z innej uczelni przez tabelę bpp_jednostka_wydzial NIE rzuca już wyjątku
+    na poziomie bazy. (Walidacja pozostaje w Jednostka_Wydzial.clean(), co
+    pokrywa test_jednostka_save_trigger_rozne_uczelnie.)"""
 
     u1 = baker.make(Uczelnia)
     u2 = baker.make(Uczelnia)
@@ -73,9 +79,12 @@ def test_jednostka_wydzial_before_insert():
     j1 = baker.make(Jednostka, uczelnia=u1)
     assert j1.wydzial is None
 
-    jw = Jednostka_Wydzial(jednostka=j1, wydzial=w2)
-    with pytest.raises((OperationalError, InternalError)):
-        jw.save()
+    # Cross-uczelnia — zapisuje się bez wyjątku po zdjęciu triggera:
+    jw_cross = Jednostka_Wydzial.objects.create(jednostka=j1, wydzial=w2)
+    j1.refresh_from_db()
+    # Sygnał przeliczył wydzial na najświeższy wpis (tu: w2):
+    assert j1.wydzial == w2
+    jw_cross.delete()
 
     jw = Jednostka_Wydzial.objects.create(jednostka=j1, wydzial=w1)
 
@@ -130,7 +139,12 @@ def test_jednostka_wydzial_bez_dat_do_w_przyszlosci_constraint():
 
 @pytest.mark.django_db(transaction=True)
 def test_jednostka_wydzial_time_trigger_delete_1():
-    """Sprawdź, czy po zmianie jednostka_id trigger zwróci błąd."""
+    """Faza B (#438): stary trigger bpp_jednostka_ustaw_wydzial_aktualna
+    rzucał wyjątek DB przy zmianie jednostka_id. Trigger zdjęty — zapis na
+    poziomie bazy już NIE rzuca (guard „zmiana ID jednostki nie jest
+    obsługiwana" żyje teraz tylko w Jednostka_Wydzial.clean(), co pokrywa
+    test_jednostka_wydzial_save_trigger_zmiana_jednostka_id). Sygnał po
+    zapisie przelicza pola dla nowej jednostki."""
 
     u1 = baker.make(Uczelnia)
     w1 = baker.make(Wydzial, uczelnia=u1)
@@ -144,9 +158,12 @@ def test_jednostka_wydzial_time_trigger_delete_1():
     )
 
     jw1.jednostka = j2
+    # Po zdjęciu triggera zapis się udaje (brak wyjątku DB):
+    jw1.save()
 
-    with pytest.raises((OperationalError, InternalError)):
-        jw1.save()
+    j2.refresh_from_db()
+    assert j2.wydzial == w1
+    assert j2.aktualna is True
 
     for elem in u1, w1, j1, j2, jw1:
         elem.delete()
@@ -380,9 +397,7 @@ def test_wyczysc_przypisania_zakres_obejmuje_parenta(wydzial, jednostka):
         jednostka, date(2012, 1, 1), date(2012, 12, 31)
     )
     assert (
-        Jednostka_Wydzial.objects.filter(
-            jednostka=jednostka, wydzial=wydzial
-        ).count()
+        Jednostka_Wydzial.objects.filter(jednostka=jednostka, wydzial=wydzial).count()
         == 2
     )
     assert jednostka.wydzial_dnia(date(2011, 12, 31)) == wydzial
@@ -397,16 +412,22 @@ def test_wyczysc_przypisania_wiele_zakresow_w_jednym_wywolaniu(wydzial, jednostk
     zostać prawidłowo zmodyfikowane w jednym wywołaniu."""
     # Trzy nieprzenikające się rekordy, wszystkie zachodzą na 2012:
     Jednostka_Wydzial.objects.create(
-        wydzial=wydzial, jednostka=jednostka,
-        od=date(2010, 1, 1), do=date(2012, 3, 31),
+        wydzial=wydzial,
+        jednostka=jednostka,
+        od=date(2010, 1, 1),
+        do=date(2012, 3, 31),
     )
     Jednostka_Wydzial.objects.create(
-        wydzial=wydzial, jednostka=jednostka,
-        od=date(2012, 5, 1), do=date(2012, 8, 31),
+        wydzial=wydzial,
+        jednostka=jednostka,
+        od=date(2012, 5, 1),
+        do=date(2012, 8, 31),
     )
     Jednostka_Wydzial.objects.create(
-        wydzial=wydzial, jednostka=jednostka,
-        od=date(2012, 10, 1), do=date(2014, 12, 31),
+        wydzial=wydzial,
+        jednostka=jednostka,
+        od=date(2012, 10, 1),
+        do=date(2014, 12, 31),
     )
 
     Jednostka_Wydzial.objects.wyczysc_przypisania(
@@ -428,8 +449,10 @@ def test_wyczysc_przypisania_parent_od_none_wymaga_parent_do(wydzial, jednostka)
 
     Jeśli to się kiedyś zmieni, ten test też trzeba zaktualizować."""
     Jednostka_Wydzial.objects.create(
-        wydzial=wydzial, jednostka=jednostka,
-        od=date(2010, 1, 1), do=date(2014, 12, 31),
+        wydzial=wydzial,
+        jednostka=jednostka,
+        od=date(2010, 1, 1),
+        do=date(2014, 12, 31),
     )
 
     with pytest.raises(TypeError):

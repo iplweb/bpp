@@ -12,7 +12,7 @@ from django.db import models
 from django.db.models import CASCADE
 from django.db.models.functions import Coalesce
 from django.db.models.query_utils import Q
-from django.db.models.signals import post_save
+from django.db.models.signals import post_delete, post_save
 from django.dispatch import receiver
 from django.urls.base import reverse
 from django.utils import timezone
@@ -517,6 +517,58 @@ class Jednostka_Wydzial(models.Model):
                     "do": 'Data w polu "Do" nie może być większa lub równa, niż data aktualna (dzisiejsza).'
                 }
             )
+
+
+@receiver(post_save, sender=Jednostka_Wydzial)
+@receiver(post_delete, sender=Jednostka_Wydzial)
+def ustaw_wydzial_i_aktualna_jednostki(sender, instance, **kwargs):
+    """Zastępuje trigger bazodanowy ``bpp_jednostka_ustaw_wydzial_aktualna``
+    (zdjęty w migracji 0455, Faza B / issue #438).
+
+    Po każdej zmianie wpisów ``Jednostka_Wydzial`` danej jednostki przelicza
+    i zapisuje na ``Jednostka`` pola ``wydzial_id`` oraz ``aktualna``,
+    odwzorowując logikę starego triggera 1:1:
+
+    * bierze NAJŚWIEŻSZY wpis (``ORDER BY coalesce(od, 0001-01-01) DESC``),
+    * ``wydzial_id`` = wydział tego wpisu; brak wpisów → ``NULL``,
+    * ``aktualna`` = ``coalesce(do, 9999-12-31) > dzisiaj`` (interim: bieżący
+      wpis → True, wpis zakończony / brak wpisów → False).
+
+    Różnica względem triggera (Faza B): jeśli ``Jednostka.aktualna_override``
+    jest ustawione (nie-NULL), NIE derywujemy ``aktualna`` — trzymamy override.
+
+    Zapis przez ``.update()`` (bypass ``save()`` na Jednostce → brak
+    rekurencji sygnałów). Walidacji uczelni NIE odtwarzamy (Zasada #4
+    federacji — dwa triggery walidacyjne zdjęte bez zamiennika).
+    """
+    jednostka_id = instance.jednostka_id
+
+    najswiezszy = (
+        Jednostka_Wydzial.objects.filter(jednostka_id=jednostka_id)
+        .annotate(_od_not_null=Coalesce("od", date(1, 1, 1)))
+        .order_by("-_od_not_null")
+        .first()
+    )
+
+    if najswiezszy is not None:
+        wydzial_id = najswiezszy.wydzial_id
+        do = najswiezszy.do if najswiezszy.do is not None else date(9999, 12, 31)
+        aktualna = do > date.today()
+    else:
+        wydzial_id = None
+        aktualna = False
+
+    override = (
+        Jednostka.objects.filter(pk=jednostka_id)
+        .values_list("aktualna_override", flat=True)
+        .first()
+    )
+    if override is not None:
+        aktualna = override
+
+    Jednostka.objects.filter(pk=jednostka_id).update(
+        wydzial_id=wydzial_id, aktualna=aktualna
+    )
 
 
 @receiver(post_save, sender=Jednostka)
