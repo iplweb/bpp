@@ -439,20 +439,28 @@ potomków (mechanika jak w Multiseek wyżej).
   `rebuild_slugs`, `create_demo_data`, generatory demo (`wydzialy.py`,
   `jednostki.py`) → dostosowane (wydział = węzeł-rodzic).
 
-### Flaga „używaj wydziałów" — DWA nośniki (recenzja 2026-07-04)
+### Flaga „używaj wydziałów" — USUWANA CAŁKOWICIE (decyzja 2026-07-04)
 
-Uwaga: to nie jest tylko env-flaga. Istnieją **oba**:
+To były DWA nośniki, **oba usuwane**:
 - **`Uczelnia.uzywaj_wydzialow`** — pole BooleanField MODELU
-  (`models/uczelnia.py:504`), ustawiane m.in. w `bpp_setup_wizard/forms.py:82-99`.
-- env `DJANGO_BPP_UCZELNIA_UZYWA_WYDZIALOW`.
+  (`models/uczelnia.py:504`) → `RemoveField` (Faza C, po przepięciu call-site'ów).
+- env `DJANGO_BPP_UCZELNIA_UZYWA_WYDZIALOW` → usuwana z settings/kodu.
 
-Znaczenie zmienia się z „czy istnieją wydziały" na **„czy pokazywać dodatkowy
-górny poziom drzewa w nawigacji/menu/browse"**. Instalacja płaska
-(`Uczelnia → Jednostka`) po prostu nie ma pośrednich węzłów i flaga steruje
-tylko prezentacją. Rozproszone użycia (menu, browse, ranking, ewaluacja,
-pbn_import, setup wizard, `Jednostka.__str__` —
-`DJANGO_BPP_SKROT_WYDZIALU_W_NAZWIE_JEDNOSTKI`) → przemapowane na nowe
-znaczenie (skrót rodzica zamiast skrótu wydziału).
+**Nowa reguła: nawigacja/browse/menu ZAWSZE renderują drzewo jak jest.** Brak
+bramkowania „czy istnieją wydziały" — instalacja płaska (`Uczelnia → Jednostka`)
+po prostu ma płytkie drzewo i renderuje się naturalnie. Wszystkie rozproszone
+warunki `if uczelnia.uzywaj_wydzialow` (menu `django_bpp/menu.py`, browse,
+ranking, ewaluacja, pbn_import) → **usuwane** (gałąź „z wydziałami" staje się
+bezwarunkowa; gałąź „bez" znika).
+
+- **`bpp_setup_wizard/forms.py:82-99`** — pole/krok „używaj wydziałów" wypada
+  z wizarda; setup zawsze zakłada drzewo.
+- **`Jednostka.__str__`** — dziś dokleja skrót wydziału, bramkowany przez
+  `uzywaj_wydzialow` I `DJANGO_BPP_SKROT_WYDZIALU_W_NAZWIE_JEDNOSTKI`. Po
+  usunięciu pierwszego zostaje sam `SKROT_WYDZIALU_W_NAZWIE` (osobny,
+  kosmetyczny przełącznik formatowania) → dokleja **skrót bezpośredniego
+  rodzica** zamiast wydziału. Ten env-flag ZOSTAJE (to formatowanie nazwy, nie
+  struktura).
 
 ---
 
@@ -516,13 +524,19 @@ B5. **Migracja wartości zapisanych multiseek** (PK wydziału → PK węzła po
 B6. **Kod konsumentów** (Sekcja 2): raporty (`get_descendants` + „rozbij na
    dzieci"/rooty uczelni + filtr sierot), admin (filtr `parent`), browse (301),
    API (deprecation), importy, `system.py` (grupy uprawnień bez `Wydzial`).
+B7. **Usunięcie bramkowania `uzywaj_wydzialow`** — wszystkie `if
+   uczelnia.uzywaj_wydzialow` (menu, browse, ranking, ewaluacja, pbn_import,
+   setup wizard) → drzewo renderowane bezwarunkowo; `__str__` dokleja skrót
+   rodzica gated tylko `SKROT_WYDZIALU_W_NAZWIE`. env
+   `DJANGO_BPP_UCZELNIA_UZYWA_WYDZIALOW` usuwana.
 
 ### Faza C — sprzątanie (po weryfikacji fazy B na danych)
 
 C1. **Drop `Wydzial`** — gdy nic go nie referuje. Wyczyścić osierocone
    `ContentType`/`Permission` po `Wydzial`/`Jednostka_Wydzial`/
    `Obslugujacy_Zgloszenia_Wydzialow` (przypisane do grup w `system.py`!).
-C2. **Drop `Jednostka.legacy_wydzial_id`** (mapowanie już niepotrzebne).
+C2. **Drop `Jednostka.legacy_wydzial_id`** (mapowanie już niepotrzebne) +
+   **`RemoveField Uczelnia.uzywaj_wydzialow`** (po usunięciu bramkowania w B7).
 C3. **Rebuild cache** (`Rekord`/`Autorzy`/`punktacja`) + `rebuild_jednostka` +
    ostateczny MPTT `rebuild()`.
 C4. **Baseline** — `make baseline-update` RAZ, przy scalaniu (nie w
@@ -629,6 +643,9 @@ Reszta ze ~100 plików to raporty (`ranking_autorow`, `raport_slotow`,
 3. **Pola per-węzeł z `Wydzial` lądują na `Jednostka`:**
    `zezwalaj_na_ranking_autorow` (per-węzeł, ≠ per-rodzaj flaga),
    `poprzednie_nazwy`, `skrot_nazwy`; `otwarcie`/`zamkniecie` → historia od/do.
+4. **Flaga `uczelnia.uzywaj_wydzialow` USUWANA całkowicie** (pole modelu + env).
+   Nawigacja/browse/menu zawsze renderują drzewo jak jest; bramkowanie znika.
+   `__str__` dokleja skrót rodzica gated tylko `SKROT_WYDZIALU_W_NAZWIE`.
 
 **Otwarty punkt (do analizy przed implementacją):** reconciliation historii
 **sub-jednostek**. Gdy zakład zmieniał wydział, bo przenosiła się jego katedra,
@@ -670,8 +687,10 @@ wydziału.
 13. **Brak osieroconych `ContentType`/`Permission`** po `Wydzial`/
     `Jednostka_Wydzial`/`Obslugujacy_Zgloszenia_Wydzialow` (grupy uprawnień OK).
 14. Redirecty 301 działają — brak kolizji `slug` wydział↔jednostka.
-15. Cała suita testów zielona; baseline odświeżony.
-16. Migracja idempotentna (trwałe `legacy_wydzial_id`) i przetestowana na ≥1
+15. **Flaga `uzywaj_wydzialow` usunięta** (pole + env); nawigacja zawsze
+    renderuje drzewo; brak martwych gałęzi `if uzywaj_wydzialow`.
+16. Cała suita testów zielona; baseline odświeżony.
+17. Migracja idempotentna (trwałe `legacy_wydzial_id`) i przetestowana na ≥1
     realnym dumpie multi-tenant.
 
 ## Świadomie odłożone (YAGNI)
