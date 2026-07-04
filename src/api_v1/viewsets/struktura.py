@@ -2,10 +2,10 @@ from rest_framework import viewsets
 
 from api_v1.serializers.struktura import (
     JednostkaSerializer,
-    WydzialSerializer,
     UczelniaSerializer,
+    WydzialSerializer,
 )
-from bpp.models import Jednostka, Wydzial, Uczelnia
+from bpp.models import Jednostka, Uczelnia, Wydzial
 
 
 class JednostkaViewSet(viewsets.ReadOnlyModelViewSet):
