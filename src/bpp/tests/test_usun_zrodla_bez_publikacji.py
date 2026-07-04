@@ -65,3 +65,33 @@ def test_admin_action_usun_bez_publikacji_select_across(admin_client):
     assert not Zrodlo.objects.filter(pk=pusty1.pk).exists()
     assert not Zrodlo.objects.filter(pk=pusty2.pk).exists()
     assert Zrodlo.objects.filter(pk=z_pub.pk).exists()
+
+
+@pytest.mark.django_db
+def test_admin_action_kasuje_wsadowo_po_batchu(admin_client, monkeypatch):
+    """Akcja admina kasuje w paczkach (USUN_ZRODLA_BATCH). Wymuszamy mały batch,
+    by przejść przez wiele przebiegów — każda paczka commituje się osobno, więc
+    padnięcie requestu na dużym zbiorze nie cofa całego postępu.
+
+    Test przechodzi wiele paczek (5 źródeł, batch=2 → 3 przebiegi) i sprawdza,
+    że wszystkie puste źródła zniknęły, a źródło z publikacją zostało."""
+    from bpp.admin import zrodlo as zrodlo_admin
+
+    monkeypatch.setattr(zrodlo_admin, "USUN_ZRODLA_BATCH", 2)
+
+    puste = [baker.make(Zrodlo) for _ in range(5)]
+    z_pub = baker.make(Zrodlo)
+    baker.make(Wydawnictwo_Ciagle, zrodlo=z_pub)
+
+    resp = admin_client.post(
+        "/admin/bpp/zrodlo/",
+        {
+            "action": "usun_zrodla_bez_publikacji_action",
+            "select_across": "1",
+            "index": "0",
+            "_selected_action": [str(z_pub.pk)],
+        },
+    )
+    assert resp.status_code in (200, 302)
+    assert Zrodlo.objects.filter(pk__in=[z.pk for z in puste]).count() == 0
+    assert Zrodlo.objects.filter(pk=z_pub.pk).exists()

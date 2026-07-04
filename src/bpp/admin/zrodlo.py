@@ -24,6 +24,15 @@ from .helpers.fieldsets import ADNOTACJE_FIELDSET, MODEL_PUNKTOWANY_Z_KWARTYLAMI
 from .helpers.mixins import ZapiszZAdnotacjaMixin
 from .helpers.widgets import CHARMAP_SINGLE_LINE, COMMA_DECIMAL_FIELD_OVERRIDE
 
+# Rozmiar paczki kasowania w akcji admina „Usuń źródła bez publikacji".
+# Kasujemy wsadowo (nie jednym przebiegiem), bo request admina na dziesiątki
+# tysięcy źródeł potrafi przekroczyć limit czasu — a każda paczka commituje się
+# osobno (akcja nie jest atomic, ATOMIC_REQUESTS=False), więc padnięcie w połowie
+# NIE cofa całego postępu: już skasowane paczki zostają, a ponowne uruchomienie
+# akcji dokańcza resztę. Dla naprawdę wielkich zbiorów i tak preferowana jest
+# komenda `manage.py usun_zrodla_bez_publikacji` (bez limitu czasu requestu).
+USUN_ZRODLA_BATCH = 5000
+
 # Źródła indeksowane
 
 
@@ -180,11 +189,14 @@ class ZrodloAdmin(
             ).values_list("pk", flat=True)
         )
 
-        # Jeden przebieg kaskady (nie w paczkach) — kasowanie w paczkach
-        # ponawiałoby dyskrycję powiązań i UPDATE-y SET NULL po ~15 tabelach
-        # raz na paczkę. Dla dziesiątek tysięcy źródeł lepsza jest komenda
-        # `manage.py usun_zrodla_bez_publikacji` (bez limitu czasu requestu).
-        Zrodlo.objects.filter(pk__in=do_usuniecia).delete()
+        # Kasuj w paczkach po USUN_ZRODLA_BATCH — każda paczka commituje się
+        # osobno, więc timeout requestu na dużym zbiorze nie cofa całego postępu
+        # (patrz komentarz przy stałej). Kolektor kaskady liczony jest raz na
+        # paczkę — świadomy kompromis: odporność na timeout ważniejsza tu niż
+        # ostatnie sekundy czasu.
+        for i in range(0, len(do_usuniecia), USUN_ZRODLA_BATCH):
+            chunk = do_usuniecia[i : i + USUN_ZRODLA_BATCH]
+            Zrodlo.objects.filter(pk__in=chunk).delete()
         deleted = len(do_usuniecia)
 
         skipped = len(selected) - len(do_usuniecia)
