@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% load static liveops %}
+
+{% block title %}Skanowanie duplikatów źródeł{% endblock %}
+
+{% block breadcrumbs %}
+    <li><a href="/">Strona główna</a></li>
+    <li><a href="{% url "deduplikator_zrodel:duplicate_sources" %}">Deduplikator źródeł</a></li>
+    <li>Skanowanie</li>
+{% endblock %}
+
+{# Wyłącz globalny init socketu z base.html — na tej stronie JEDYNYM #}
+{# inicjalizatorem channels_broadcast jest liveops.js (patrz spec §1). #}
+{% block channels_broadcast_init %}{% endblock %}
+
+{% block extrahead %}
+{{ block.super }}
+{# htmx i channels_broadcast/notifications.js są już w globalnym bundlu — #}
+{# tu doładowujemy TYLKO plugin liveops. #}
+<script src="{% static 'liveops/liveops.js' %}"></script>
+{% endblock %}
+
+{% block content %}
+<div class="row column">
+    <h1>{{ object.live_title }}</h1>
+    <p>
+        <a href="{% url 'deduplikator_zrodel:duplicate_sources' %}">
+            &larr; Powrót do listy duplikatów
+        </a>
+    </p>
+    {% live_operation object %}
+</div>
+{% endblock %}

@@ -439,6 +439,7 @@ INSTALLED_APPS = [
     "compressor",
     "session_security",
     "channels_broadcast",
+    "liveops",
     "integrator2",
     "nowe_raporty",
     "rozbieznosci_dyscyplin",
@@ -971,6 +972,18 @@ CHANNEL_LAYERS = {
             "prefix": get_channels_prefix(),
         },
     },
+}
+
+# django-liveops: długo-działające operacje (np. skan duplikatów źródeł) z
+# live-progressem przez WebSocket + HTMX. RUNNER="celery" dispatchuje run()
+# jako shared_task na tym samym workerze co reszta BPP (autodiscover). Live
+# push wymaga Redis channel-layer (skonfigurowany wyżej). W testach RUNNER
+# jest nadpisywany na "eager" (settings/test.py) — skan biegnie synchronicznie
+# bez Redis/workera.
+LIVEOPS = {
+    "BASE_TEMPLATE": "base.html",
+    "RUNNER": "celery",
+    "THROTTLE_HZ": 10,
 }
 
 # Pozwól anonimowym użytkownikom łączyć się z WebSocketem notyfikacji
