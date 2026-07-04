@@ -6,8 +6,12 @@ Trzy kanały nie mogą zwracać jednostek `widoczna=False`:
 - publiczny autocomplete (`bpp.views.autocomplete.units.PublicJednostkaAutocomplete`)
 
 Bazowy `JednostkaAutocomplete` (`.all()`) jest natomiast celowo
-nieprzefiltrowany — patrz test `test_bazowy_autocomplete_edytorski_widzi_ukryte`
-oraz uzasadnienie w task-4-report.md.
+nieprzefiltrowany co do `widoczna` — patrz test
+`test_bazowy_autocomplete_edytorski_widzi_ukryte`. Skoro zwraca ukryte
+jednostki, endpoint `jednostka-autocomplete` MUSI wymagać zalogowania
+(inaczej anonimowy użytkownik dostaje nazwy/id jednostek `widoczna=False`)
+— patrz `test_bazowy_autocomplete_wymaga_logowania` oraz uzasadnienie w
+task-4-report.md.
 """
 
 import pytest
@@ -70,10 +74,53 @@ def test_bazowy_autocomplete_edytorski_widzi_ukryte():
     (bpp/admin/core.py, autor.py, praca_doktorska.py,
     praca_habilitacyjna.py) — edytor musi móc przypisać autora/pracę
     do jednostki ukrytej (np. rozwiązanej, ale jeszcze historycznie
-    obecnej w danych). Dlatego baza celowo NIE filtruje `widoczna`.
+    obecnej w danych). Dlatego baza celowo NIE filtruje `widoczna`
+    na poziomie querysetu.
     """
     ukryta = baker.make(Jednostka, widoczna=False, nazwa="UkrytaEdytorska")
     view = JednostkaAutocomplete()
     view.q = None
     nazwy = [j.nazwa for j in view.get_queryset()]
     assert ukryta.nazwa in nazwy
+
+
+@pytest.mark.django_db
+def test_bazowy_autocomplete_wymaga_logowania_anonim_zablokowany(client):
+    """Skoro `JednostkaAutocomplete` (`.all()`) zwraca też jednostki
+    `widoczna=False`, endpoint HTTP `jednostka-autocomplete` musi być
+    zagrodzony logowaniem — inaczej anonimowy użytkownik dostaje
+    nazwy/id ukrytych jednostek (#438, finding Critical #1).
+    """
+    baker.make(Jednostka, widoczna=False, nazwa="UkrytaHTTP")
+    resp = client.get("/bpp/jednostka-autocomplete/")
+    # LoginRequiredMixin (braces.views) przekierowuje do loginu.
+    assert resp.status_code == 302
+    assert "login" in resp.url
+
+
+@pytest.mark.django_db
+def test_bazowy_autocomplete_zalogowany_edytor_widzi_ukryte(client, admin_user):
+    """Zalogowany (staff) użytkownik nadal widzi ukryte jednostki przez
+    HTTP -- to zachowanie jest wymagane dla edytora i nie może zniknąć
+    razem z poprawką bezpieczeństwa.
+    """
+    ukryta = baker.make(Jednostka, widoczna=False, nazwa="UkrytaHTTPEdytor")
+    client.force_login(admin_user)
+    resp = client.get("/bpp/jednostka-autocomplete/")
+    assert resp.status_code == 200
+    nazwy = [r["text"] for r in resp.json()["results"]]
+    assert ukryta.nazwa in nazwy
+
+
+@pytest.mark.django_db
+def test_widoczna_i_public_autocomplete_pozostaja_anonimowe(client):
+    """`WidocznaJednostkaAutocomplete` (multiseek) i
+    `PublicJednostkaAutocomplete` muszą zostać anonimowo dostępne --
+    restrukturyzacja bazy pod #438 nie może ich przypadkiem zagrodzić
+    logowaniem (nie dziedziczą już z gated `JednostkaAutocomplete`).
+    """
+    resp = client.get("/bpp/jednostka-widoczna-autocomplete/")
+    assert resp.status_code == 200
+
+    resp = client.get("/bpp/public-jednostka-autocomplete/")
+    assert resp.status_code == 200
