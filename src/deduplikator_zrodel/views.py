@@ -4,7 +4,7 @@ from cacheops import invalidate_model
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.db import transaction
-from django.db.models import Q
+from django.db.models import Count, Q
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.views.decorators.http import require_POST
@@ -75,10 +75,20 @@ def active_scan():
 
 
 def visible_candidates(scan, status):
-    """Kandydaci skanu w danym statusie, z DYNAMICZNYM wykluczeniem źródeł
-    ignorowanych i par oznaczonych jako NotADuplicate (bez re-skanu)."""
-    qs = scan.candidates.filter(status=status).select_related(
-        "main_zrodlo__pbn_uid", "duplicate_zrodlo__pbn_uid"
+    """Kandydaci skanu w danym statusie, z DYNAMICZNYM wykluczeniem (bez
+    re-skanu): źródeł ignorowanych, par NotADuplicate oraz par już
+    przemapowanych (przemapuj_zrodlo przenosi publikacje, więc przemapowana
+    strona ma 0 publikacji — a kandydat powstawał tylko dla źródeł z
+    publikacjami)."""
+    qs = (
+        scan.candidates.filter(status=status)
+        .select_related("main_zrodlo__pbn_uid", "duplicate_zrodlo__pbn_uid")
+        .annotate(
+            _main_live_pub=Count("main_zrodlo__wydawnictwo_ciagle", distinct=True),
+            _dup_live_pub=Count("duplicate_zrodlo__wydawnictwo_ciagle", distinct=True),
+        )
+        .exclude(_main_live_pub=0)
+        .exclude(_dup_live_pub=0)
     )
 
     ignored_ids = list(IgnoredSource.objects.values_list("zrodlo_id", flat=True))

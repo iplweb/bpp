@@ -66,10 +66,12 @@
         </ul>
 
         <p>
-            <a class="button tiny hollow"
-               href="{% url 'deduplikator_zrodel:download_duplicates_xlsx' %}">
-                <span class="fi-download"></span> Pobierz XLSX
-            </a>
+            {% if candidates %}
+                <a class="button tiny hollow"
+                   href="{% url 'deduplikator_zrodel:download_duplicates_xlsx' %}">
+                    <span class="fi-download"></span> Pobierz XLSX
+                </a>
+            {% endif %}
             {% if status == status_skipped %}
                 <form method="post"
                       action="{% url 'deduplikator_zrodel:reset_skipped' %}"
@@ -95,7 +97,13 @@
             {% for c in candidates %}
                 <tr>
                     <td>
-                        <strong>{{ c.main_zrodlo.nazwa|default:c.main_nazwa }}</strong><br>
+                        <strong>
+                            <a href="{% url 'bpp:browse_zrodlo' slug=c.main_zrodlo.slug %}"
+                               target="_blank" rel="noopener"
+                               title="Szczegóły źródła">
+                                {{ c.main_zrodlo.nazwa|default:c.main_nazwa }}
+                            </a>
+                        </strong><br>
                         <small>
                             ISSN: {{ c.main_zrodlo.issn|default:"—" }} /
                             e-ISSN: {{ c.main_zrodlo.e_issn|default:"—" }}
@@ -106,7 +114,13 @@
                         </small>
                     </td>
                     <td>
-                        <strong>{{ c.duplicate_zrodlo.nazwa|default:c.duplicate_nazwa }}</strong><br>
+                        <strong>
+                            <a href="{% url 'bpp:browse_zrodlo' slug=c.duplicate_zrodlo.slug %}"
+                               target="_blank" rel="noopener"
+                               title="Szczegóły źródła">
+                                {{ c.duplicate_zrodlo.nazwa|default:c.duplicate_nazwa }}
+                            </a>
+                        </strong><br>
                         <small>
                             ISSN: {{ c.duplicate_zrodlo.issn|default:"—" }} /
                             e-ISSN: {{ c.duplicate_zrodlo.e_issn|default:"—" }}

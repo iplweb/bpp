@@ -9,6 +9,7 @@ dodatnim score jako `SourceDuplicateCandidate` — raz na nieuporządkowaną par
 import logging
 
 from django.db.models import Count
+from django.utils import timezone
 
 from bpp.models import Zrodlo
 
@@ -17,8 +18,42 @@ from .utils import ocen_podobienstwo, znajdz_podobne_zrodla
 
 logger = logging.getLogger(__name__)
 
-# Co ile źródeł zapisywać `sources_scanned` do DB (batch — nie po każdym).
+# Co ile źródeł zapisywać `sources_scanned` do DB / odświeżać status (batch).
 PROGRESS_BATCH = 25
+
+
+def _fmt_duration(seconds):
+    """Czytelny czas trwania: '2 min 30 s' / '45 s' / '1 h 05 min'."""
+    seconds = int(max(seconds, 0))
+    h, rem = divmod(seconds, 3600)
+    m, s = divmod(rem, 60)
+    if h:
+        return f"{h} h {m:02d} min"
+    if m:
+        return f"{m} min {s:02d} s"
+    return f"{s} s"
+
+
+def format_progress_status(scanned, total, found, *, started_on=None, now=None):
+    """Tekstowy status skanu: liczniki + (gdy się da) szacowany czas końca.
+
+    Czysta funkcja — ETA liczona z `started_on`/`now`; bez nich pokazuje tylko
+    liczniki (np. na starcie, gdy nic jeszcze nie przeskanowano)."""
+    parts = [
+        f"Przeskanowano {scanned}/{total} źródeł",
+        f"znaleziono {found} duplikatów",
+    ]
+    if scanned and total and started_on and now:
+        elapsed = (now - started_on).total_seconds()
+        if elapsed > 0:
+            rate = scanned / elapsed
+            remaining = max(total - scanned, 0)
+            if rate > 0 and remaining:
+                eta_seconds = remaining / rate
+                finish = now + timezone.timedelta(seconds=eta_seconds)
+                parts.append(f"pozostało ~{_fmt_duration(eta_seconds)}")
+                parts.append(f"szac. zakończenie {timezone.localtime(finish):%H:%M:%S}")
+    return " · ".join(parts)
 
 
 def seed_queryset():
@@ -67,6 +102,8 @@ def perform_scan(operation, p):
     found = 0
     scanned = 0
 
+    p.status(format_progress_status(0, total, 0))
+
     for zrodlo in p.track(seeds.iterator(), total=total, label="Skanowanie źródeł"):
         for kandydat in znajdz_podobne_zrodla(zrodlo):
             score = ocen_podobienstwo(zrodlo, kandydat)
@@ -95,9 +132,19 @@ def perform_scan(operation, p):
         if scanned % PROGRESS_BATCH == 0:
             operation.sources_scanned = scanned
             operation.save(update_fields=["sources_scanned"])
+            p.status(
+                format_progress_status(
+                    scanned,
+                    total,
+                    found,
+                    started_on=operation.started_on,
+                    now=timezone.now(),
+                )
+            )
 
     operation.sources_scanned = scanned
     operation.duplicates_found = found
     operation.save(update_fields=["sources_scanned", "duplicates_found"])
 
+    p.status(format_progress_status(scanned, total, found))
     p.result(context={"duplicates_found": found})

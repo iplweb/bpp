@@ -148,3 +148,27 @@ def test_ignored_source_excluded(rodzaj, zasieg, admin_user):
     perform_scan(op, TextProgress(op))
 
     assert SourceDuplicateCandidate.objects.filter(scan=op).count() == 0
+
+
+# --- format_progress_status (czysty helper ETA/liczników) --------------------
+
+from datetime import datetime, timedelta  # noqa: E402
+from datetime import timezone as _dt_tz  # noqa: E402
+
+from deduplikator_zrodel.operations import format_progress_status  # noqa: E402
+
+
+def test_format_progress_status_without_eta_when_nothing_scanned():
+    s = format_progress_status(0, 500, 0)
+    assert "0/500" in s
+    assert "pozostało" not in s  # brak danych do ETA
+
+
+def test_format_progress_status_with_counts_and_eta():
+    t0 = datetime(2026, 1, 1, 12, 0, 0, tzinfo=_dt_tz.utc)
+    now = t0 + timedelta(seconds=60)  # 60 s, 50/100 → ~60 s pozostało
+    s = format_progress_status(50, 100, 7, started_on=t0, now=now)
+    assert "50/100" in s
+    assert "7" in s
+    assert "pozostało" in s
+    assert "zakończenie" in s

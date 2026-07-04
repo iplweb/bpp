@@ -239,3 +239,34 @@ def test_start_scan_eager_runs_and_live_page_renders(admin_client, make_zrodlo):
 
     listing = admin_client.get(LIST_URL).content.decode()
     assert "Acta E2E" in listing
+
+
+@pytest.mark.django_db
+def test_list_excludes_candidate_after_remap(
+    admin_client, make_zrodlo, completed_scan, make_candidate
+):
+    """Po przemapowaniu duplikat ma 0 publikacji → para znika z listy
+    (przemapuj_zrodlo przenosi publikacje, nie kasuje źródła)."""
+    scan = completed_scan()
+    main = make_zrodlo(nazwa="REMAP-MAIN")  # zachowuje publikacje
+    dup = make_zrodlo(nazwa="REMAP-DUP", z_publikacja=False)  # 0 publikacji
+    make_candidate(scan, main, dup)
+
+    content = admin_client.get(LIST_URL).content.decode()
+    assert "REMAP-DUP" not in content
+
+
+@pytest.mark.django_db
+def test_live_page_shows_cancel_form_while_running(admin_client, admin_user):
+    """Strona live pokazuje pewny (plain POST) formularz Anuluj, gdy skan trwa."""
+    op = ScanZrodelForDuplicates.objects.create(
+        owner=admin_user, started_on=timezone.now()
+    )
+    resp = admin_client.get(op.get_absolute_url())
+    assert resp.status_code == 200
+    content = resp.content.decode()
+    assert "Anuluj skanowanie" in content
+    cancel_url = reverse(
+        "liveops:cancel", kwargs={"op_type": op.op_type_key(), "pk": op.pk}
+    )
+    assert cancel_url in content
