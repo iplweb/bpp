@@ -56,6 +56,19 @@ multiseek, DjangoQL, pytest + model_bakery + testcontainers.
 
 ---
 
+## Mechanizm przejściowy: węzeł-lustro (wyłoniony w I-3, nie było w pierwotnym planie)
+
+W Fazie B współistnieją stary `Wydzial` (drop w Fazie C) i drzewo `Jednostka`.
+`Jednostka_Rodzic.parent` wskazuje Jednostkę, więc kod linkujący jednostkę do
+wydziału potrzebuje **węzła-lustra** (ukryta Jednostka z `legacy_wydzial_id==Wydzial.id`).
+Realizacja (I-3): `struktura_konwersja.py::znajdz_lub_utworz_wezel_wydzialu(wydzial)`
+(get-or-create, collision-safe, MPTT root, `widoczna=False/aktualna=False`, rodzaj
+„Wydział"), wołany **LAZY** — tylko w link-sites (`institution_import`,
+`import_jednostki_ipis`), NIE eager na `post_save` Wydziału (eager zawyżałby
+`Jednostka.objects.count()` suite-wide). `post_delete` Wydziału usuwa lustro-sierotę.
+Znika w Fazie C. **⚠ I-4:** `post_delete` lustra CASCADE'uje na `Jednostka_Rodzic.parent`
+— przy podpięciu realnych dzieci pod lustra pamiętać o tym.
+
 ## Kolejność (0454–0463)
 
 - **B-I** (0454–0457): schemat/historia/drzewo. `wydzial` (stary FK→Wydzial) żyje,
