@@ -102,6 +102,9 @@ CACHES = {
 
 TEMPLATES[0]["OPTIONS"]["loaders"] = [  # noqa
     "admin_tools.template_loaders.Loader",
+    # DBTEMPLATES_SKIP_UNKNOWN_NAMES (base.py) sprawia, ze ten loader nie pyta
+    # DB o nazwy spoza tabeli — krytyczne w dev, gdzie CACHES["default"] to
+    # DummyCache (nizej) i negatywne lookupy nie byly cache'owane.
     "dbtemplates.loader.Loader",
     "django.template.loaders.filesystem.Loader",
     "django.template.loaders.app_directories.Loader",

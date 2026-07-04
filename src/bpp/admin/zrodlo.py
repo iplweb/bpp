@@ -2,6 +2,7 @@
 from dal import autocomplete
 from django import forms
 from django.contrib import admin
+from django.db.models import Count, F
 
 from bpp.admin.helpers.djangoql import BppDjangoQLSearchMixin
 from bpp.models.zrodlo import Redakcja_Zrodla
@@ -14,7 +15,11 @@ from ..models import (  # Publikacja_Habilitacyjna
     Zrodlo,
 )
 from .core import BaseBppAdminMixin
-from .filters import PBN_UID_IDObecnyFilter
+from .filters import (
+    MaPublikacjeFilter,
+    MniswIdObecnyFilter,
+    PBN_UID_IDObecnyFilter,
+)
 from .helpers.fieldsets import ADNOTACJE_FIELDSET, MODEL_PUNKTOWANY_Z_KWARTYLAMI_BAZA
 from .helpers.mixins import ZapiszZAdnotacjaMixin
 from .helpers.widgets import CHARMAP_SINGLE_LINE, COMMA_DECIMAL_FIELD_OVERRIDE
@@ -132,7 +137,17 @@ class ZrodloAdmin(
     ]
 
     autocomplete_fields = ["pbn_uid"]
-    list_display = ["nazwa", "skrot", "rodzaj", "www", "issn", "e_issn", "pbn_uid_id"]
+    list_display = [
+        "nazwa",
+        "skrot",
+        "rodzaj",
+        "www",
+        "issn",
+        "e_issn",
+        "pbn_uid_id",
+        "mnisw_id_display",
+        "liczba_prac_display",
+    ]
     list_filter = [
         "rodzaj",
         "zasieg",
@@ -140,8 +155,35 @@ class ZrodloAdmin(
         "openaccess_tryb_dostepu",
         "openaccess_licencja",
         PBN_UID_IDObecnyFilter,
+        MniswIdObecnyFilter,
+        MaPublikacjeFilter,
     ]
     list_select_related = ["openaccess_licencja", "rodzaj"]
+
+    def get_queryset(self, request):
+        # _liczba_prac: liczba publikacji (tylko Wydawnictwo_Ciagle ma FK do
+        # Zrodlo). distinct=True chroni licznik przed zawyżeniem, gdyby
+        # wyszukiwarka DjangoQL dorzuciła drugi multi-valued JOIN.
+        # _mnisw_id: annotacja pojedynczej kolumny mniswId przez JOIN do
+        # Journal — tańsze niż select_related("pbn_uid"), które ciągnęłoby
+        # ciężki blob JSON Journal.versions dla każdego wiersza listy.
+        return (
+            super()
+            .get_queryset(request)
+            .annotate(
+                _liczba_prac=Count("wydawnictwo_ciagle", distinct=True),
+                _mnisw_id=F("pbn_uid__mniswId"),
+            )
+        )
+
+    @admin.display(description="mniswID", ordering="_mnisw_id")
+    def mnisw_id_display(self, obj):
+        return obj._mnisw_id
+
+    @admin.display(description="Publikacje", ordering="_liczba_prac")
+    def liczba_prac_display(self, obj):
+        return obj._liczba_prac
+
     fieldsets = (
         (
             None,

@@ -4,7 +4,9 @@ from django.core.cache import cache
 from django.db.models.signals import post_save
 from django.dispatch.dispatcher import receiver
 
+from bpp.models.rzeczownik import Rzeczownik
 from bpp.models.struktura import Uczelnia
+from bpp.nazwy import lemat
 
 
 class NiezdefiniowanaUczelnia:
@@ -24,9 +26,12 @@ class NiezdefiniowanaUczelnia:
         return False
 
 
-BRAK_UCZELNI = {
-    "uczelnia": NiezdefiniowanaUczelnia,
-}
+def _lematy():
+    return {
+        "nazwa_uczelni": lemat("UCZELNIA"),
+        "nazwa_wydzialu": lemat("WYDZIAL"),
+        "nazwa_jednostki": lemat("JEDNOSTKA"),
+    }
 
 
 def _cache_key_for_request(request):
@@ -45,9 +50,9 @@ def uczelnia(request):
 
     u = Uczelnia.objects.get_for_request(request)
     if u is None:
-        return BRAK_UCZELNI
+        return {"uczelnia": NiezdefiniowanaUczelnia, **_lematy()}
 
-    value = {"uczelnia": u}
+    value = {"uczelnia": u, **_lematy()}
     cache.set(cache_key, (time.time() + 3600, value))
     return value
 
@@ -76,3 +81,19 @@ def invalidate_uczelnia_caches(sender, instance, **kw):
     # Legacy klucz (sprzed kluczowania per-site) — backward compatibility.
     cache.delete(b"bpp_uczelnia")
     get_uczelnia_context_data.invalidate()
+
+
+@receiver(post_save, sender=Rzeczownik)
+def invalidate_lematy_cache(*args, **kw):
+    """Zmiana nazwy w Rzeczowniku odświeża lematy w kontekście.
+
+    Lematy są globalne (tabela ``Rzeczownik``), ale trafiają do cache'u
+    context processora kluczowanego per-site (``bpp_uczelnia_{site_pk}``),
+    więc trzeba wyczyścić klucze wszystkich site'ów (plus brak-site i legacy).
+    """
+    from django.contrib.sites.models import Site
+
+    cache.delete(b"bpp_uczelnia")  # legacy (sprzed kluczowania per-site)
+    cache.delete("bpp_uczelnia_0")  # brak request.site (single-host)
+    for site_pk in Site.objects.values_list("pk", flat=True):
+        cache.delete(f"bpp_uczelnia_{site_pk}")

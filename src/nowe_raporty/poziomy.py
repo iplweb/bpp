@@ -75,7 +75,7 @@ POZIOMY = {
         Jednostka,
         True,
         _base_jednostka,
-        lambda: _pole("Jednostka", Jednostka, "bpp:jednostka-autocomplete"),
+        lambda: _pole("Jednostka", Jednostka, "bpp:public-jednostka-autocomplete"),
     ),
     DefinicjaRaportu.POZIOM_WYDZIAL: PoziomConfig(
         Wydzial,

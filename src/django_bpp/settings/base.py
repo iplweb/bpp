@@ -371,6 +371,7 @@ INSTALLED_APPS = [
     "first_run_wizard",  # Pluggable first-run wizard engine (PyPI)
     "daphne",
     "tinymce",
+    "django_polish_inflection",
     "formtools",
     "denorm.apps.DenormAppConfig",
     "reversion",
@@ -1068,6 +1069,13 @@ TABULAR_PERMISSIONS_CONFIG = {
 DBTEMPLATES_USE_REVERSION = True
 DBTEMPLATES_USE_REVERSION_COMPARE = True
 
+# Nasza tabela django_template ma kilka wierszy (override'y frontendu), a admin
+# rozwiazuje ~150 szablonow na strone. Bez tej flagi dbtemplates pytalby DB o
+# kazda taka nazwe (pod DummyCache w dev = ~300 zapytan/strone). Loader trzyma
+# w procesie zbior istniejacych nazw i omija DB dla reszty. Patrz
+# django-dbtemplates-iplweb >= 4.4.0 (DBTEMPLATES_SKIP_UNKNOWN_NAMES).
+DBTEMPLATES_SKIP_UNKNOWN_NAMES = True
+
 DENORM_DISABLE_AUTOTIME_DURING_FLUSH = True
 DENORM_AUTOTIME_FIELD_NAMES = [
     "ostatnio_zmieniony",
@@ -1520,6 +1528,9 @@ DJANGO_BPP_SKROT_WYDZIALU_W_NAZWIE_JEDNOSTKI = env(
 )
 
 DJANGO_BPP_UCZELNIA_UZYWA_WYDZIALOW = env("DJANGO_BPP_UCZELNIA_UZYWA_WYDZIALOW")
+
+# polish-inflection: słowo spoza słownika SGJP → passthrough (nie błąd renderu)
+POLISH_INFLECTION_STRICT = False
 
 #
 # Po zalogowaniu się do PBN ustalamy, że token jest ważny [TYLE] godzin

@@ -6,9 +6,16 @@ from bpp.models import Rzeczownik
 
 @pytest.mark.django_db
 def test_rzeczownik_str():
-    rzeczownik = baker.make(
-        Rzeczownik, uid="UCZELNIA", m="uczelniaM", d="uczelniD", c="uczelniC"
-    )
-    expected_str = "Rzeczownik UID=UCZELNIA (uczelniaM, uczelniD, uczelniC, ...)"
+    r = baker.make(Rzeczownik, uid="JEDNOSTKA", m="dział")
+    assert str(r) == "Rzeczownik JEDNOSTKA = dział"
 
-    assert str(rzeczownik) == expected_str
+
+@pytest.mark.django_db
+def test_rzeczownik_mianownik_alias():
+    r = baker.make(Rzeczownik, uid="WYDZIAL", m="klinika")
+    assert r.mianownik == "klinika"
+
+
+@pytest.mark.django_db
+def test_wiersze_pl_usuniete():
+    assert not Rzeczownik.objects.filter(uid__endswith="_PL").exists()
