@@ -112,6 +112,31 @@ def test_dictionary_models_remain_in_graph():
 
 
 @pytest.mark.django_db
+def test_bppuser_values_never_emitted():
+    """describe_schema_for_llm (auto-mode) nie wolno wyemitować loginów
+    BppUser przez jedyną eksponowaną relację: ``bpp.autor`` pole ``user``.
+
+    djangoql-iplweb>=0.30.1 w auto-mode zaczął emitować konkretne wartości
+    dla małych słowników (``related_values``/``match_field``) — bez
+    jawnego ``fk_options`` wyciekłyby tu loginy (np. "admin")."""
+    import json
+
+    from djangoql.llm import describe_schema_for_llm
+    from model_bakery import baker
+
+    baker.make("bpp.BppUser", username="secret_login")
+
+    d = describe_schema_for_llm(BppQLSchema(Rekord), format="json", max_fk_options=100)
+
+    assert "bpp.autor" in d["models"]
+    user_field = d["models"]["bpp.autor"]["user"]
+    assert "related_values" not in user_field
+    assert "match_field" not in user_field
+    assert "related_examples" not in user_field
+    assert "secret_login" not in json.dumps(d)
+
+
+@pytest.mark.django_db
 def test_graph_significantly_smaller():
     """Graf modeli mocno się kurczy po wykluczeniu aplikacji roboczych.
 
