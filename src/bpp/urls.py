@@ -41,6 +41,7 @@ from bpp.views.autocomplete import (
     PodrzednaPublikacjaHabilitacyjnaAutocomplete,
     PublicAutorAutocomplete,
     PublicJednostkaAutocomplete,
+    PublicJednostkaNieToplevelAutocomplete,
     PublicJednostkaToplevelAutocomplete,
     PublicKonferencjaAutocomplete,
     PublicStatusKorektyAutocomplete,
@@ -419,6 +420,11 @@ urlpatterns = [
         r"^public-jednostka-toplevel-autocomplete/$",
         PublicJednostkaToplevelAutocomplete.as_view(),
         name="public-jednostka-toplevel-autocomplete",
+    ),
+    url(
+        r"^public-jednostka-nietoplevel-autocomplete/$",
+        PublicJednostkaNieToplevelAutocomplete.as_view(),
+        name="public-jednostka-nietoplevel-autocomplete",
     ),
     url(
         r"^zewnetrzna-baza-danych-autocomplete/$",

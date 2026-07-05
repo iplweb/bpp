@@ -825,3 +825,104 @@ def test_ranking_eksport_csv(ranking_data):
     )
     # suma punktacji
     assert b",44.444," in response.content
+
+
+# --- Faza B (#438): picker/walidacja pola „jednostka" + kolumny tabeli ---
+
+
+@pytest.mark.django_db
+def test_ranking_form_jednostka_queryset_wyklucza_korzenie_gdy_wydzialy(uczelnia):
+    """Issue 2b: gdy uczelnia UŻYWA wydziałów, lista „jednostka" nie pokazuje
+    korzeni (to „wydziały", wybierane osobnym selektorem), a picker celuje w
+    wariant „nie-toplevel"."""
+    uczelnia.uzywaj_wydzialow = True
+    uczelnia.save()
+
+    korzen = baker.make(
+        Jednostka, uczelnia=uczelnia, parent=None, widoczna=True, aktualna=True
+    )
+    dziecko = baker.make(
+        Jednostka, uczelnia=uczelnia, parent=korzen, widoczna=True, aktualna=True
+    )
+
+    form = RankingAutorowForm(lata=[2020, 2021, 2022])
+    qs = form.fields["jednostka"].queryset
+
+    assert korzen not in qs, "korzeń (wydział) nie powinien być na liście jednostek"
+    assert dziecko in qs, "jednostka podrzędna powinna być wybieralna"
+    # ``widget.url`` (DAL) zwraca już zreverse'owaną ścieżkę.
+    assert form.fields["jednostka"].widget.url == reverse(
+        "bpp:public-jednostka-nietoplevel-autocomplete"
+    )
+
+
+@pytest.mark.django_db
+def test_ranking_form_jednostka_queryset_zawiera_korzenie_bez_wydzialow(uczelnia):
+    """Bez wydziałów jednostki-korzenie (spromowane wydmuszki) SĄ zwykłymi
+    jednostkami — muszą być wybieralne, a picker to domyślny autocomplete."""
+    uczelnia.uzywaj_wydzialow = False
+    uczelnia.save()
+
+    korzen = baker.make(
+        Jednostka, uczelnia=uczelnia, parent=None, widoczna=True, aktualna=True
+    )
+
+    form = RankingAutorowForm(lata=[2020, 2021, 2022])
+    qs = form.fields["jednostka"].queryset
+
+    assert korzen in qs
+    assert form.fields["jednostka"].widget.url == reverse(
+        "bpp:public-jednostka-autocomplete"
+    )
+
+
+@pytest.mark.django_db
+def test_ranking_form_akceptuje_jednostke_bez_prac(uczelnia):
+    """Issue 1: jednostka publiczna BEZ prac bezpośrednich musi się walidować
+    (dawny ``jednostka_with_works`` ją odrzucał → „Wybierz poprawną opcję")."""
+    uczelnia.uzywaj_wydzialow = False
+    uczelnia.save()
+
+    bez_prac = baker.make(
+        Jednostka, uczelnia=uczelnia, parent=None, widoczna=True, aktualna=True
+    )
+
+    form = RankingAutorowForm(lata=[2020, 2021, 2022])
+    # Sedno issue 1: pole waliduje przynależność do queryset-u pickera.
+    assert bez_prac in form.fields["jednostka"].queryset
+    cleaned = form.fields["jednostka"].clean(str(bez_prac.pk))
+    assert cleaned == bez_prac
+
+
+@pytest.mark.django_db
+def test_ranking_table_kolumny_jednostka_wydzial_maja_rozne_naglowki():
+    """Issue 3: kolumny „jednostka" i „wydzial" mają odrębne nagłówki (nie dwa
+    razy „Nazwa" wyprowadzone z accessora)."""
+    from ranking_autorow.views import RankingAutorowJednostkaWydzialTable
+
+    table = RankingAutorowJednostkaWydzialTable([])
+    assert table.columns["jednostka"].header == "Jednostka"
+    assert table.columns["wydzial"].header == "Wydział"
+
+
+@pytest.mark.django_db
+def test_ranking_view_ukrywa_kolumne_wydzial_bez_wydzialow(rf, uczelnia):
+    """Issue 3: kolumna „Wydział" ukryta, gdy uczelnia nie używa wydziałów;
+    widoczna, gdy używa."""
+    from django.contrib.auth.models import AnonymousUser
+
+    # Osobne requesty — ``get_for_request`` cache'uje uczelnię na
+    # ``request._uczelnia``, więc jeden request niósłby stan sprzed toggle'a.
+    uczelnia.uzywaj_wydzialow = False
+    uczelnia.save()
+    req1 = rf.get("/")
+    req1.user = AnonymousUser()
+    view = RankingAutorow(request=req1, kwargs=dict(od_roku=0, do_roku=3030))
+    assert "wydzial" in view.get_table_kwargs().get("exclude", ())
+
+    uczelnia.uzywaj_wydzialow = True
+    uczelnia.save()
+    req2 = rf.get("/")
+    req2.user = AnonymousUser()
+    view = RankingAutorow(request=req2, kwargs=dict(od_roku=0, do_roku=3030))
+    assert "wydzial" not in view.get_table_kwargs().get("exclude", ())
