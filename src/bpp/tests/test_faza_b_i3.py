@@ -38,18 +38,25 @@ def test_wezel_lustro_nie_powstaje_eager():
 
 @pytest.mark.django_db
 def test_znajdz_lub_utworz_wezel_tworzy_na_zadanie():
-    """LAZY helper tworzy ukryty węzeł-lustro (legacy_wydzial_id == wydzial.id,
-    widoczna=False, aktualna=False) dopiero na żądanie."""
+    """LAZY helper tworzy węzeł-lustro (legacy_wydzial_id == wydzial.id,
+    aktualna=False) dopiero na żądanie. Po IV-1 (#438) węzeł DZIEDZICZY
+    widoczność ze źródłowego ``Wydzial.widoczny`` (spójnie z odkryciem w
+    migracji 0462) — tu Wydzial ma domyślnie ``widoczny=True``."""
     u = baker.make(Uczelnia)
-    w = baker.make(Wydzial, uczelnia=u)
+    w = baker.make(Wydzial, uczelnia=u, widoczny=True)
 
     wezel, created = znajdz_lub_utworz_wezel_wydzialu(w)
 
     assert created is True
     assert wezel.legacy_wydzial_id == w.id
-    assert wezel.widoczna is False
+    assert wezel.widoczna is True
     assert wezel.aktualna is False
     assert wezel.uczelnia_id == u.id
+
+    # Wydział ukryty → węzeł-lustro również ukryty.
+    w_hid = baker.make(Wydzial, uczelnia=u, widoczny=False)
+    wezel_hid, _ = znajdz_lub_utworz_wezel_wydzialu(w_hid)
+    assert wezel_hid.widoczna is False
 
 
 @pytest.mark.django_db

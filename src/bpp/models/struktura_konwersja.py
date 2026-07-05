@@ -74,7 +74,12 @@ def znajdz_lub_utworz_wezel_wydzialu(wydzial):
         rodzaj=rodzaj_wydzial,
         legacy_wydzial_id=wydzial.id,
         parent=None,
-        widoczna=False,
+        # IV-1 (#438): węzeł-lustro dziedziczy widoczność ze źródłowego
+        # Wydziału (spójnie z jednorazowym „odkryciem" w migracji 0462) —
+        # runtime-tworzony wydział (pbn_import) ma widoczny węzeł, gdy sam
+        # jest widoczny. ``aktualna`` zostaje False do czasu, aż węzeł
+        # dostanie wpis Jednostka_Rodzic (sygnał zderywuje finalną wartość).
+        widoczna=wydzial.widoczny,
         aktualna=False,
         zezwalaj_na_ranking_autorow=wydzial.zezwalaj_na_ranking_autorow,
         pokazuj_opis=wydzial.pokazuj_opis,

@@ -103,7 +103,9 @@ def test_jednostka_wydzial_aktualna():
     jw.delete()
     j.refresh_from_db()
     assert j.wydzial is None
-    assert j.aktualna is False
+    # IV-1 (#438): ujednolicona finalna logika — brak wpisów Jednostka_Rodzic
+    # → aktualna=True (dawniej interim sygnał dawał tu False).
+    assert j.aktualna is True
 
 
 @pytest.mark.django_db(transaction=True)
@@ -261,7 +263,9 @@ def test_jednostka_wydzial_time_trigger_delete_2():
     j1.refresh_from_db()
 
     assert j1.wydzial is None
-    assert j1.aktualna is False
+    # IV-1 (#438): brak wpisów Jednostka_Rodzic → aktualna=True (finalna,
+    # ujednolicona logika; dawniej interim sygnał dawał False).
+    assert j1.aktualna is True
 
     for elem in u1, w1, j1:
         elem.delete()

@@ -120,7 +120,7 @@ class Jednostka(ModelZAdnotacjami, ModelZPBN_ID, ModelZPBN_UID, MPTTModel):
         return self.parent.wydzial or self.parent
 
     aktualna = models.BooleanField(
-        default=False,
+        default=True,
         help_text="""Jeżeli dana jednostka wchodzi w struktury wydziału
     (czyli jej obecność w strukturach wydziału nie została zakończona z określoną datą), to pole to będzie miało
     wartość 'PRAWDA'.""",
@@ -608,6 +608,75 @@ class Jednostka_Rodzic(models.Model):
             )
 
 
+def wylicz_aktualna(najswiezszy_do, ma_wpis, override, dzis=None):
+    """FINALNA logika pola ``Jednostka.aktualna`` (issue #438, Faza B, IV-1).
+
+    Jedno źródło prawdy dla sygnału ``ustaw_aktualna_jednostki``, komendy
+    ``przelicz_aktualna`` i (zduplikowanej inline) migracji ``0462``.
+
+    * ``override`` (``aktualna_override``) nie-NULL → użyj override, POMIŃ
+      derywację.
+    * ``ma_wpis`` False (brak wpisów ``Jednostka_Rodzic``) → ``True``.
+    * najświeższy wpis ``do IS NULL`` → ``True`` (``coalesce(do, 9999) > dziś``).
+    * najświeższy wpis ``do`` w przeszłości → ``False``.
+
+    ``najswiezszy_do`` to pole ``do`` NAJŚWIEŻSZEGO wpisu (max
+    ``coalesce(od, 0001-01-01)``); ``ma_wpis`` mówi, czy jakikolwiek wpis
+    istnieje (odróżnia „brak wpisów → True" od „wpis z ``do``").
+    """
+    if override is not None:
+        return override
+    if not ma_wpis:
+        return True
+    if dzis is None:
+        dzis = date.today()
+    do = najswiezszy_do if najswiezszy_do is not None else date(9999, 12, 31)
+    return do > dzis
+
+
+def _najswiezsze_do_per_jednostka():
+    """Mapa ``jednostka_id -> do`` NAJŚWIEŻSZEGO wpisu ``Jednostka_Rodzic``
+    (max ``coalesce(od, 0001-01-01)``), jednym zapytaniem (``DISTINCT ON``).
+
+    Brak jednostki w mapie ⇒ nie ma żadnego wpisu (``ma_wpis`` = False).
+    """
+    return dict(
+        Jednostka_Rodzic.objects.annotate(_od=Coalesce("od", date(1, 1, 1)))
+        .order_by("jednostka_id", "-_od")
+        .distinct("jednostka_id")
+        .values_list("jednostka_id", "do")
+    )
+
+
+def przelicz_aktualna_wszystkich():
+    """Przelicz ``aktualna`` dla WSZYSTKICH jednostek wg finalnej logiki
+    (``wylicz_aktualna``). Idempotentne, bez N+1 (najświeższy wpis per
+    jednostka jednym ``DISTINCT ON``, zapis dwoma ``.update()``). Zwraca
+    liczbę zmienionych wierszy. Używane przez komendę ``przelicz_aktualna``;
+    migracja ``0462`` duplikuje tę logikę inline na modelach historycznych.
+    """
+    najswiezsze = _najswiezsze_do_per_jednostka()
+    dzis = date.today()
+
+    aktualne, nieaktualne = [], []
+    for pk, override in Jednostka.objects.values_list("pk", "aktualna_override"):
+        ma_wpis = pk in najswiezsze
+        val = wylicz_aktualna(najswiezsze.get(pk), ma_wpis, override, dzis)
+        (aktualne if val else nieaktualne).append(pk)
+
+    zmienione = (
+        Jednostka.objects.filter(pk__in=aktualne)
+        .exclude(aktualna=True)
+        .update(aktualna=True)
+    )
+    zmienione += (
+        Jednostka.objects.filter(pk__in=nieaktualne)
+        .exclude(aktualna=False)
+        .update(aktualna=False)
+    )
+    return zmienione
+
+
 @receiver(post_save, sender=Jednostka_Rodzic)
 @receiver(post_delete, sender=Jednostka_Rodzic)
 def ustaw_aktualna_jednostki(sender, instance, **kwargs):
@@ -620,14 +689,11 @@ def ustaw_aktualna_jednostki(sender, instance, **kwargs):
     podstawie ``parent`` (a NIE historii ``Jednostka_Rodzic``). Sygnał liczy
     wyłącznie ``aktualna``.
 
-    Po każdej zmianie wpisów ``Jednostka_Rodzic`` danej jednostki:
-
-    * bierze NAJŚWIEŻSZY wpis (``ORDER BY coalesce(od, 0001-01-01) DESC``),
-    * ``aktualna`` = ``coalesce(do, 9999-12-31) > dzisiaj`` (interim: bieżący
-      wpis → True, wpis zakończony / brak wpisów → False).
-
-    Jeśli ``Jednostka.aktualna_override`` jest ustawione (nie-NULL), NIE
-    derywujemy ``aktualna`` — trzymamy override.
+    Po każdej zmianie wpisów ``Jednostka_Rodzic`` danej jednostki bierze
+    NAJŚWIEŻSZY wpis (max ``coalesce(od, 0001-01-01)``) i deleguje do
+    ``wylicz_aktualna`` (FINALNA logika, ujednolicona w IV-1 z jednorazowym
+    przeliczeniem): brak wpisów → True, ``do IS NULL`` → True, ``do`` w
+    przeszłości → False; ``aktualna_override`` nie-NULL nadpisuje wszystko.
 
     Zapis przez ``.update()`` (bypass ``save()`` na Jednostce → brak
     rekurencji sygnałów).
@@ -641,19 +707,17 @@ def ustaw_aktualna_jednostki(sender, instance, **kwargs):
         .first()
     )
 
-    if najswiezszy is not None:
-        do = najswiezszy.do if najswiezszy.do is not None else date(9999, 12, 31)
-        aktualna = do > date.today()
-    else:
-        aktualna = False
-
     override = (
         Jednostka.objects.filter(pk=jednostka_id)
         .values_list("aktualna_override", flat=True)
         .first()
     )
-    if override is not None:
-        aktualna = override
+
+    aktualna = wylicz_aktualna(
+        najswiezszy.do if najswiezszy is not None else None,
+        najswiezszy is not None,
+        override,
+    )
 
     Jednostka.objects.filter(pk=jednostka_id).update(aktualna=aktualna)
 
