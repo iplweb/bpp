@@ -14,6 +14,7 @@ from django.db.models import Q
 
 from bpp.models import Autor, Autor_Dyscyplina, Tytul, Uczelnia
 from bpp.util import pbar
+from pbn_api.const import DELETED
 from pbn_api.models import Scientist
 from pbn_integrator.utils.constants import CPU_COUNT
 from pbn_integrator.utils.django_imports import _ensure_django_imports
@@ -308,6 +309,12 @@ def integruj_autorow_z_uczelni(
             if not import_unexistent:
                 # Brak autora po stronie BPP, nie chcemy tworzyć nowych rekordów
                 logger.info(f"Brak dopasowania w jednostce dla autora {person}")
+                continue
+
+            if person.status == DELETED:
+                # Naukowiec skasowany w PBN i bez odpowiednika w BPP — nie
+                # twórz nowego autora. (Match istniejącego to osobna ścieżka.)
+                logger.info(f"Pomijam skasowanego w PBN autora {person}")
                 continue
 
             utworz_wpis_dla_jednego_autora(person)
