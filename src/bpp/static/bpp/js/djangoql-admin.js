@@ -37,14 +37,24 @@
     return { line: line, column: column };
   }
 
-  // Czyste helpery lokalizacji błędu (string→offset, offset→line/column)
-  // wystawiamy na namespace, żeby były jednostkowo testowalne bez DOM ani
-  // DjangoQL. To jedyna funkcja tego eksportu — `wire()`/DOMReady poniżej
-  // wymagają DjangoQL i odpalają się wyłącznie w przeglądarce.
+  // Czy podświetlanie ma być aktywne? Idzie za przełącznikiem trybu
+  // wyszukiwania: gdy admin ma checkbox `.djangoql-toggle` (rysowany przez
+  // completion_admin.js, gdy nadpisano `search_fields`), to jego stan decyduje
+  // — zaznaczony = tryb DjangoQL = koloruj składnię; odznaczony = zwykłe
+  // wyszukiwanie podłańcuchowe = pole ma wyglądać jak normalny input. Bez
+  // przełącznika DjangoQL jest wymuszony, więc podświetlamy zawsze.
+  function highlightEnabled(toggle) {
+    return toggle ? Boolean(toggle.checked) : true;
+  }
+
+  // Czyste helpery (lokalizacja błędu + decyzja o podświetlaniu) wystawiamy na
+  // namespace, żeby były jednostkowo testowalne bez DOM ani DjangoQL. `wire()`
+  // /DOMReady poniżej wymagają DjangoQL i odpalają się wyłącznie w przeglądarce.
   window.bppDjangoQLAdmin = {
     escapeRe: escapeRe,
     locateValue: locateValue,
     lineColFromOffset: lineColFromOffset,
+    highlightEnabled: highlightEnabled,
   };
 
   var H = window.DjangoQLHighlight;
@@ -60,6 +70,40 @@
     // Jedyne miejsce, które dołącza nakładkę w adminie — mamy uchwyt.
     var overlay = H.attachOverlay(textarea);
     if (!overlay) {
+      return;
+    }
+
+    // Nakładka ma iść za przełącznikiem trybu: przy odznaczonym „używaj
+    // DjangoQL" chowamy backdrop i zdejmujemy transparentność tekstu, żeby
+    // pole wyglądało jak zwykły input; przy zaznaczonym — kolorujemy.
+    var toggle = document.querySelector("input.djangoql-toggle");
+
+    function setHighlightEnabled(on) {
+      if (on) {
+        textarea.classList.add("dql-highlight-input");
+        overlay.backdrop.style.display = "";
+        overlay.repaint(); // wartość mogła się zmienić, gdy nakładka spała
+      } else {
+        // Widać wpisywane znaki wprost (bez transparentnego tekstu), a
+        // kolorowany backdrop jest schowany.
+        textarea.classList.remove("dql-highlight-input");
+        overlay.backdrop.style.display = "none";
+      }
+    }
+
+    var enabled = highlightEnabled(toggle);
+    setHighlightEnabled(enabled);
+    if (toggle) {
+      // completion_admin.js trzyma swój handler na `.onchange`; my dokładamy
+      // słuchacza przez addEventListener, więc oba odpalają się niezależnie.
+      toggle.addEventListener("change", function (e) {
+        setHighlightEnabled(highlightEnabled(e.target));
+      });
+    }
+
+    // Falkę błędu rysujemy tylko w trybie DjangoQL — w zwykłym wyszukiwaniu
+    // nie ma błędnego zapytania DjangoQL do oznaczenia.
+    if (!enabled) {
       return;
     }
     var loc = document.querySelector(".bpp-dql-error-loc");
