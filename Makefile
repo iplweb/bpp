@@ -583,6 +583,38 @@ check-clean-tree: ## Zawołaj błąd, jeśli working tree brudne (pre-release gu
 
 release: check-clean-tree full-tests new-release ## Pełny release (tree clean + full-tests + new-release)
 
+.PHONY: release-candidate release-promote
+release-candidate: ## Faza 1: utnij kandydata (RC → :staging) i obserwuj run [SKIP_TESTS=1 SKIP_SCAN=1]
+	@FLAGS=""; \
+	if [ -n "$$SKIP_TESTS" ]; then FLAGS="$$FLAGS -f skip_tests=true"; fi; \
+	if [ -n "$$SKIP_SCAN" ]; then FLAGS="$$FLAGS -f skip_scan=true"; fi; \
+	echo "Odpalam release-candidate.yml (--ref dev)$$FLAGS ..."; \
+	gh workflow run release-candidate.yml --ref dev $$FLAGS; \
+	echo "Czekam na pojawienie się runu..."; \
+	sleep 3; \
+	RUN_ID=$$(gh run list --workflow=release-candidate.yml --limit=1 --json databaseId --jq '.[0].databaseId'); \
+	if [ -z "$$RUN_ID" ]; then \
+		echo "BŁĄD: Nie udało się znaleźć nowego runu workflow."; \
+		exit 1; \
+	fi; \
+	echo "Obserwuję run ID: $$RUN_ID"; \
+	gh run watch "$$RUN_ID"
+
+release-promote: ## Faza 2: promuj kandydata do produkcji (:latest, bez rebuildu) i obserwuj run [VERSION=vXXX]
+	@FLAGS=""; \
+	if [ -n "$$VERSION" ]; then FLAGS="-f version=$$VERSION"; fi; \
+	echo "Odpalam promote.yml$$FLAGS ..."; \
+	gh workflow run promote.yml $$FLAGS; \
+	echo "Czekam na pojawienie się runu..."; \
+	sleep 3; \
+	RUN_ID=$$(gh run list --workflow=promote.yml --limit=1 --json databaseId --jq '.[0].databaseId'); \
+	if [ -z "$$RUN_ID" ]; then \
+		echo "BŁĄD: Nie udało się znaleźć nowego runu workflow."; \
+		exit 1; \
+	fi; \
+	echo "Obserwuję run ID: $$RUN_ID"; \
+	gh run watch "$$RUN_ID"
+
 set-version-from-vcs: ## Ustaw wersję bumpver na podstawie git describe
 	$(eval CUR_VERSION_VCS=$(shell git describe | sed s/\-/\./ | sed s/\-/\+/))
 	bumpver update --no-commit --set-version=$(CUR_VERSION_VCS)

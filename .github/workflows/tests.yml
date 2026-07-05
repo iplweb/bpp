@@ -121,6 +121,7 @@ jobs:
     name: Check baseline freshness
     if: |
       !(github.ref == 'refs/heads/dev' && contains(github.event.head_commit.message, 'Merge tag'))
+      && !(github.ref == 'refs/heads/master' && startsWith(github.event.head_commit.message, 'Release v'))
 
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -158,6 +159,7 @@ jobs:
     name: Build test-runner image
     if: |
       !(github.ref == 'refs/heads/dev' && contains(github.event.head_commit.message, 'Merge tag'))
+      && !(github.ref == 'refs/heads/master' && startsWith(github.event.head_commit.message, 'Release v'))
 
     runs-on: ubuntu-latest
     timeout-minutes: 30
@@ -273,6 +275,7 @@ jobs:
     needs: prepare-image
     if: |
       !(github.ref == 'refs/heads/dev' && contains(github.event.head_commit.message, 'Merge tag'))
+      && !(github.ref == 'refs/heads/master' && startsWith(github.event.head_commit.message, 'Release v'))
 
     runs-on: ubuntu-latest
     timeout-minutes: 35
@@ -361,6 +364,7 @@ jobs:
     name: JS unit tests (vitest)
     if: |
       !(github.ref == 'refs/heads/dev' && contains(github.event.head_commit.message, 'Merge tag'))
+      && !(github.ref == 'refs/heads/master' && startsWith(github.event.head_commit.message, 'Release v'))
 
     runs-on: ubuntu-latest
     timeout-minutes: 10

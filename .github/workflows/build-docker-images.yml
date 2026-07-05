@@ -19,7 +19,7 @@ name: Docker - oficjalne obrazy
 #     bo nikt tego tagu nie zna). Staging tag umozliwia Trivy skanowanie
 #     obrazu tak, jak bylby po release.
 #
-#   Faza 2 — Trivy gate (TYLKO na master)
+#   Faza 2 — Trivy gate (release-candidate przez workflow_call)
 #     Skan staging tagu. Polityka:
 #       • CRITICAL (z dostepnym fix-em) → HARD FAIL. Promocja sie nie
 #         wykona, wiec kanoniczny tag nigdy nie powstanie w rejestrze.
@@ -34,11 +34,12 @@ name: Docker - oficjalne obrazy
 #     jawnie tymczasowy).
 #
 #   Faza 3 — Promote staging → canonical tag
-#     Po przejsciu Trivy (na master) lub bezwarunkowo (na feature branch),
+#     Po przejsciu Trivy (release-candidate) lub bezwarunkowo (feature branch),
 #     `docker buildx imagetools create` *kopiuje manifest* z staging tagu
 #     pod kanoniczny tag — to jest operacja na metadanych rejestru, bez
 #     rebuildu, bez re-pushu warstw. Koszt ~sekunda per obraz.
-#     Na master dodatkowo ustawia tag ":latest".
+#     Reusable call moze dodatkowo ustawic ruchomy kanal, np. ":staging".
+#     Produkcyjny ":latest" ustawia dopiero promote.yml z gotowego RC.
 #
 # Wazne zastrzezenie o rejestrze Docker Hub:
 #   Raz pushniety digest zyje w rejestrze do momentu recznego DELETE przez
@@ -61,17 +62,32 @@ name: Docker - oficjalne obrazy
 # =============================================================================
 
 on:
-  push:
-    branches:
-      - master
-      - main
-      # feature/**, fix/**, hotfix/** removed - build only on [docker-build] flag
+  # UWAGA: push:master USUNIĘTY. Produkcyjny :latest rusza WYŁĄCZNIE promote.yml
+  # (imagetools z gotowego RC) — build-once-promote, jedno źródło prawdy o prod.
   pull_request:
-    # Buduje na każdy push do PR-a (oraz na otwarcie/reopen).
     types: [opened, synchronize, reopened]
   workflow_dispatch:
-    # Ręczne wywołanie z GUI GitHub lub przez
-    # `gh workflow run build-docker-images.yml --ref <branch>`.
+  workflow_call:
+    inputs:
+      ref:
+        description: Git ref do zbudowania (np. release/v202606.1392)
+        type: string
+        required: true
+      version_tag:
+        description: Immutable docker-tag do publikacji (pep440, np. 202606.1392rc1)
+        type: string
+        required: true
+      channel:
+        description: Opcjonalny ruchomy tag-kanał (np. staging). Pusty = brak.
+        type: string
+        default: ""
+      run_trivy:
+        description: Uruchom bramę Trivy CRITICAL przed promocją
+        type: boolean
+        default: true
+    secrets:
+      DOCKER_PAT:
+        required: true
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -80,8 +96,9 @@ concurrency:
 jobs:
   check-flag:
     # Guard job decyduje czy budowac obraz Docker.
-    # - master/main push:           buduj zawsze (release flow, dowolny actor)
-    # - workflow_dispatch:           buduj zawsze (manual override, dowolny actor)
+    # - workflow_call:               buduj zawsze (release-candidate.yml)
+    # - workflow_dispatch:           buduj zawsze (manual override, dowolny actor),
+    #                                 ale NIGDY nie ruszaj :latest
     # - PR push / feature push:      buduj tylko gdy:
     #                                 • actor=mpasternak
     #                                 • ORAZ commit message zawiera [docker-build]
@@ -117,7 +134,15 @@ jobs:
           REPO: ${{ github.repository }}
           ACTOR: ${{ github.actor }}
           GIT_SHA: ${{ github.sha }}
+          VERSION_TAG: ${{ inputs.version_tag }}
         run: |
+          # Wywołanie reusable (workflow_call): silnik buduje bezwarunkowo.
+          if [ -n "${VERSION_TAG:-}" ]; then
+            echo "should_build=true" >> "$GITHUB_OUTPUT"
+            echo "::notice::Docker build — workflow_call (version_tag=${VERSION_TAG})"
+            exit 0
+          fi
+
           # Dedupe: push event na branchu z otwartym PR-em jest duplikatem
           # pull_request eventu dla tego samego commita. Pomijamy push run,
           # zeby nie budowac i nie pushowac tego samego SHA dwa razy do
@@ -136,13 +161,8 @@ jobs:
             fi
           fi
 
-          # Zawsze: master/main push (release) i workflow_dispatch (manual)
-          if [ "$EVENT_NAME" = "push" ] \
-             && { [ "$REF_NAME" = "master" ] || [ "$REF_NAME" = "main" ]; }; then
-            echo "should_build=true" >> "$GITHUB_OUTPUT"
-            echo "::notice::Docker build — push na ${REF_NAME} (release flow)"
-            exit 0
-          fi
+          # Zawsze: workflow_dispatch (manual). Takie buildy publikują tylko
+          # tag brancha/refa, nigdy produkcyjny :latest.
           if [ "$EVENT_NAME" = "workflow_dispatch" ]; then
             echo "should_build=true" >> "$GITHUB_OUTPUT"
             echo "::notice::Docker build — workflow_dispatch (manual override)"
@@ -205,6 +225,14 @@ jobs:
 
       - name: Checkout code
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          # Pusty ref (dispatch/PR) = domyślny ref eventu; przy workflow_call
+          # budujemy dokładnie gałąź wydania.
+          ref: ${{ inputs.ref }}
+
+      - name: Resolve checked-out commit
+        id: source
+        run: echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
 
       - name: Get version from Makefile
         id: version
@@ -221,8 +249,11 @@ jobs:
           HEAD_REF: ${{ github.head_ref }}
           BASE_VERSION: ${{ steps.version.outputs.version }}
           GIT_SHA: ${{ github.sha }}
+          CHECKED_OUT_SHA: ${{ steps.source.outputs.sha }}
           EVENT_NAME: ${{ github.event_name }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
+          INPUT_VERSION_TAG: ${{ inputs.version_tag }}
+          INPUT_CHANNEL: ${{ inputs.channel }}
         run: |
           # -----------------------------------------------------------------
           # Dwa-trzy rodzaje tagow dla kazdego obrazu (patrz naglowek pliku):
@@ -234,9 +265,9 @@ jobs:
           #
           # final_tag:   kanoniczny tag — tworzony DOPIERO po skanie przez
           #              promocje manifestu (imagetools create).
-          #              • master       → DOCKER_VERSION z Makefile (np. "2025.12.1")
+          #              • workflow_call→ version_tag z caller workflow
           #              • pull_request → "<PR#>-merge" (jesli jest PR)
-          #              • feature/fix  → sanitized branch name
+          #              • manual/branch→ sanitized ref name
           #
           # branch_tag:  DODATKOWY alias = sanityzowana nazwa source brancha.
           #              Ustawiany TYLKO dla pull_request eventow, zeby tester
@@ -244,33 +275,36 @@ jobs:
           #              zamiast pamietac numer PR. Dla feature/fix push
           #              brancha bez PR-a final_tag = branch_tag, wiec nie
           #              ma sensu duplikowac.
-          #
-          # tag_latest:  czy dodatkowo pushowac ":latest" po promocji
-          #              (tylko na master).
+          # Produkcyjny :latest jest ustawiany wyłącznie przez promote.yml.
           # -----------------------------------------------------------------
 
-          SHORT_SHA="${GIT_SHA:0:7}"
+          SOURCE_SHA="${CHECKED_OUT_SHA:-$GIT_SHA}"
+          SHORT_SHA="${SOURCE_SHA:0:7}"
           STAGING_TAG="sha-${SHORT_SHA}"
           echo "staging_tag=${STAGING_TAG}" >> "$GITHUB_OUTPUT"
 
-          if [ "$REF_NAME" = "master" ]; then
-            echo "final_tag=${BASE_VERSION}" >> "$GITHUB_OUTPUT"
-            echo "tag_latest=true" >> "$GITHUB_OUTPUT"
+          # Wywołanie reusable: tag i kanał z inputów (omija logikę ref-based).
+          if [ -n "${INPUT_VERSION_TAG:-}" ]; then
+            echo "final_tag=${INPUT_VERSION_TAG}" >> "$GITHUB_OUTPUT"
+            echo "channel_tag=${INPUT_CHANNEL}" >> "$GITHUB_OUTPUT"
             echo "branch_tag=" >> "$GITHUB_OUTPUT"
-          elif [ "$EVENT_NAME" = "pull_request" ] && [ -n "$PR_NUMBER" ]; then
+            exit 0
+          fi
+
+          if [ "$EVENT_NAME" = "pull_request" ] && [ -n "$PR_NUMBER" ]; then
             echo "final_tag=${PR_NUMBER}-merge" >> "$GITHUB_OUTPUT"
-            echo "tag_latest=false" >> "$GITHUB_OUTPUT"
             BRANCH_TAG=$(echo "$HEAD_REF" \
               | sed 's/[^a-zA-Z0-9._-]/-/g' \
               | tr '[:upper:]' '[:lower:]')
             echo "branch_tag=${BRANCH_TAG}" >> "$GITHUB_OUTPUT"
+            echo "channel_tag=" >> "$GITHUB_OUTPUT"
           else
             BRANCH_TAG=$(echo "$REF_NAME" \
               | sed 's/[^a-zA-Z0-9._-]/-/g' \
               | tr '[:upper:]' '[:lower:]')
             echo "final_tag=${BRANCH_TAG}" >> "$GITHUB_OUTPUT"
-            echo "tag_latest=false" >> "$GITHUB_OUTPUT"
             echo "branch_tag=" >> "$GITHUB_OUTPUT"
+            echo "channel_tag=" >> "$GITHUB_OUTPUT"
           fi
 
       # -----------------------------------------------------------------
@@ -282,14 +316,15 @@ jobs:
       # -----------------------------------------------------------------
       - name: Build and push to staging tag
         env:
-          GIT_SHA: ${{ github.sha }}
+          GIT_SHA: ${{ steps.source.outputs.sha }}
           DOCKER_VERSION: ${{ steps.tag.outputs.staging_tag }}
           TAG_LATEST: "false"
           PUSH: "true"
           # Wynikiem ekspresji jest literal "release" albo "dev" — nie ma
           # tu untrusted input z github.event.*. Ref name jest weryfikowane
-          # przez równość z literałem, więc nie ma ryzyka injection.
-          BPP_BUILD_FLAVOR: ${{ github.ref_name == 'master' && 'release' || 'dev' }}
+          # przez równość z literałem, więc nie ma ryzyka injection. Reusable
+          # RC build też jest release-flavored, bo te same bajty idą na prod.
+          BPP_BUILD_FLAVOR: ${{ inputs.version_tag != '' && 'release' || (github.ref_name == 'master' && 'release' || 'dev') }}
           # Kanoniczny tag finalny — wpisany do obrazu jako BPP_IMAGE_TAG
           # ENV, żeby stopka dla dev buildów wyświetlała "119-merge" obok
           # commit SHA. Wartość pochodzi ze stepa `tag` powyżej.
@@ -312,11 +347,13 @@ jobs:
             --allow=fs.write=/tmp
 
       # -----------------------------------------------------------------
-      # FAZA 2: Trivy gate (TYLKO na master)
+      # FAZA 2: Trivy gate (gdy run_trivy=true lub master)
       # -----------------------------------------------------------------
-      # Skanuje staging tag. CRITICAL z dostepnym fix-em → exit 1,
-      # promocja sie nie wykona (krok "Promote" ma domyslnie
-      # "if: success()"). HIGH → zapis do Step Summary, nie blokuje.
+      # Skanuje staging tag. Gate odpala się dla wywołań workflow_call
+      # (RC przez release-candidate.yml) ORAZ pushów na master.
+      # CRITICAL z dostepnym fix-em → exit 1, promocja sie nie wykona
+      # (krok "Promote" ma domyslnie "if: success()").
+      # HIGH → zapis do Step Summary, nie blokuje.
       #
       # Skipowane sciezki (znane false-positivy w zaleznosciach):
       #   • autobahn/wamp/cryptosign.py — przykladowy klucz w docstringu
@@ -325,8 +362,8 @@ jobs:
       # dopisz tutaj z komentarzem wyjasniajacym dlaczego to nie jest
       # prawdziwy sekret.
       # -----------------------------------------------------------------
-      - name: Trivy CRITICAL gate (master only)
-        if: github.ref_name == 'master'
+      - name: Trivy CRITICAL gate (gdy run_trivy / master)
+        if: ${{ inputs.run_trivy || github.ref_name == 'master' }}
         env:
           STAGING_TAG: ${{ steps.tag.outputs.staging_tag }}
         run: |
@@ -389,11 +426,11 @@ jobs:
             exit 1
           fi
 
-      - name: Trivy HIGH report (master only, report-only)
+      - name: Trivy HIGH report (gdy run_trivy / master, report-only)
         # Pokaz liste HIGH w Step Summary, ale nie blokuj. To jest
         # pomocna informacja o "dlugu CVE" — pozwala zdecydowac co bumpnac
         # przy nastepnej aktualizacji zaleznosci, bez zatrzymywania release-u.
-        if: github.ref_name == 'master'
+        if: ${{ inputs.run_trivy || github.ref_name == 'master' }}
         continue-on-error: true
         env:
           STAGING_TAG: ${{ steps.tag.outputs.staging_tag }}
@@ -459,10 +496,10 @@ jobs:
         env:
           STAGING_TAG: ${{ steps.tag.outputs.staging_tag }}
           FINAL_TAG: ${{ steps.tag.outputs.final_tag }}
-          TAG_LATEST: ${{ steps.tag.outputs.tag_latest }}
           # Alias-tag dla source brancha PR-a (pusty dla master/non-PR);
           # patrz komentarz w stepie "Compute Docker tags".
           BRANCH_TAG: ${{ steps.tag.outputs.branch_tag }}
+          CHANNEL_TAG: ${{ steps.tag.outputs.channel_tag }}
         run: |
           set -eu
           images=(
@@ -474,7 +511,7 @@ jobs:
             iplweb/bpp_denorm_queue
           )
 
-          echo "::notice::Promocja: ${STAGING_TAG} → ${FINAL_TAG} (latest=${TAG_LATEST}, branch=${BRANCH_TAG:-})"
+          echo "::notice::Promocja: ${STAGING_TAG} → ${FINAL_TAG} (branch=${BRANCH_TAG:-})"
 
           for img in "${images[@]}"; do
             echo "::group::Promote ${img}: ${STAGING_TAG} → ${FINAL_TAG}"
@@ -482,10 +519,11 @@ jobs:
               -t "${img}:${FINAL_TAG}" \
               "${img}:${STAGING_TAG}"
 
-            if [ "$TAG_LATEST" = "true" ]; then
-              echo "→ also tagging :latest"
+            # Kanał deployu (np. :staging) — ruchomy alias na ten sam digest.
+            if [ -n "${CHANNEL_TAG:-}" ]; then
+              echo "→ also tagging :${CHANNEL_TAG} (kanał)"
               docker buildx imagetools create \
-                -t "${img}:latest" \
+                -t "${img}:${CHANNEL_TAG}" \
                 "${img}:${STAGING_TAG}"
             fi
 
@@ -505,9 +543,6 @@ jobs:
             echo ""
             echo "Staging tag: \`${STAGING_TAG}\`"
             echo "Final tag:   \`${FINAL_TAG}\`"
-            if [ "$TAG_LATEST" = "true" ]; then
-              echo "Also:        \`:latest\`"
-            fi
             if [ -n "${BRANCH_TAG:-}" ] && [ "$BRANCH_TAG" != "$FINAL_TAG" ]; then
               echo "Branch alias: \`:${BRANCH_TAG}\`"
             fi
