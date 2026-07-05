@@ -8,6 +8,8 @@ import sys
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import TYPE_CHECKING
 
+import rollbar
+
 from bpp.models import Rekord
 from pbn_api.models import OswiadczenieInstytucji, Publication
 from pbn_integrator.utils.multiprocessing_utils import (
@@ -187,9 +189,14 @@ def _integruj_publikacje_threaded(  # noqa: C901
             return batch_no, True, None
 
         except Exception as e:
-            # Log errors with thread safety
+            # Catch-all w wątku roboczym — błąd MUSI zostawić ślad (pełny
+            # traceback + Rollbar), inaczej cały batch znika po cichu.
             with _print_lock:
-                logger.info(f"\nError in batch {batch_no}: {str(e)}")
+                logger.exception("Błąd w batchu integracji %s", batch_no)
+            rollbar.report_exc_info(
+                sys.exc_info(),
+                extra_data={"batch_no": batch_no, "phase": "integruj_single_part"},
+            )
             return batch_no, False, str(e)
 
         finally:
@@ -232,8 +239,18 @@ def _integruj_publikacje_threaded(  # noqa: C901
                     if not success and error:
                         errors.append(f"Batch {batch_no}: {error}")
                 except Exception as e:
+                    # future.result() rzucił — nie chowaj tego pod logger.info.
                     with _print_lock:
-                        logger.info(f"\nUnexpected error in batch {batch_no}: {str(e)}")
+                        logger.exception(
+                            "Nieoczekiwany błąd przy odbiorze batcha %s", batch_no
+                        )
+                    rollbar.report_exc_info(
+                        sys.exc_info(),
+                        extra_data={
+                            "batch_no": batch_no,
+                            "phase": "integruj_future_result",
+                        },
+                    )
                     errors.append(f"Batch {batch_no}: {str(e)}")
 
             # Report any errors at the end
@@ -301,6 +318,8 @@ def integruj_publikacje_instytucji(
     skip_pages=0,
     callback=None,
     use_threads=False,
+    disable_multiprocessing=False,
+    uczelnia=None,
 ):
     """Integrate institution publications.
 
@@ -308,22 +327,37 @@ def integruj_publikacje_instytucji(
         skip_pages: Number of batches to skip.
         callback: Optional callback function for progress tracking.
         use_threads: If True, uses the threaded implementation instead of multiprocessing.
+        disable_multiprocessing: If True, runs in single-process/single-thread mode.
+        uczelnia: Optional ``Uczelnia`` — gdy podana (i ma ``pbn_uid``), bierzemy
+            TYLKO publikacje z oświadczeń tej uczelni (``institutionId ==
+            uczelnia.pbn_uid``). Multi-hosted (Track 7a). Zawężamy zewnętrzny
+            queryset ``pubs`` PRZED rozesłaniem do workerów (multiprocessing /
+            wątki), więc workerzy dostają już listę intów (pk) — bez picklowania
+            instancji modelu. Brak / brak pbn_uid → zachowanie globalne.
     """
-    pubs = (
-        OswiadczenieInstytucji.objects.all()
-        .values_list("publicationId_id", flat=True)
-        .order_by("-pk")
-        .distinct()
-    )
+    pubs = OswiadczenieInstytucji.objects.all()
+    if uczelnia is not None and uczelnia.pbn_uid_id is not None:
+        pubs = pubs.filter(institutionId_id=uczelnia.pbn_uid_id)
+    pubs = pubs.values_list("publicationId_id", flat=True).order_by("-pk").distinct()
 
     if use_threads:
         return _integruj_publikacje_threaded(
             pubs,
+            disable_threading=disable_multiprocessing,
             skip_pages=skip_pages,
             callback=callback,
         )
     else:
-        # Zostawiamy wersje z multiprocessing ALE wyłączamy to
+        # Wersja z multiprocessing. Historycznie multiprocessing był tu
+        # bezwarunkowo wyłączony (``disable_multiprocessing=True`` na sztywno),
+        # bo dla integracji publikacji instytucji workerzy bywali zawodni.
+        # Zachowujemy ten bezpieczny default: gdy wywołujący NIE poda flagi
+        # (``disable_multiprocessing=False``), nadal wymuszamy single-process.
+        # Flaga ``--disable-multiprocessing`` z linii poleceń (True) niczego
+        # nie zmienia (i tak single-process) — ale przekazujemy ją jawnie,
+        # więc sygnatura jest spójna z ``integruj_wszystkie_publikacje`` i
+        # wywołanie z komendy nie wybucha ``TypeError`` (``dm`` trafiał wcześniej
+        # pozycyjnie w ``skip_pages``).
         return _integruj_publikacje(
             pubs,
             disable_multiprocessing=True,

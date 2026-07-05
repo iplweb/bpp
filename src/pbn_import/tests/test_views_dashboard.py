@@ -1,5 +1,6 @@
 """Unit tests for pbn_import dashboard and start views"""
 
+import json
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -10,6 +11,7 @@ from model_bakery import baker
 
 from bpp.models import Uczelnia
 from pbn_import.models import ImportSession
+from pbn_import.utils.institution_import import znajdz_lub_utworz_obca_jednostke
 
 # ============================================================================
 # DASHBOARD VIEW TESTS
@@ -225,6 +227,59 @@ class TestImportDashboardView:
 
         assert response.context["wydzial_domyslny"] is None
 
+    def test_dashboard_lists_only_request_uczelnia_units(self, django_user_model):
+        """Multi-hosted: formularz pokazuje jednostki/wydziały TYLKO tej uczelni."""
+        from bpp.models import Jednostka, Wydzial
+
+        client = Client()
+        user = baker.make(django_user_model, is_superuser=True)
+        client.force_login(user)
+        request_uczelnia = baker.make(Uczelnia, pbn_integracja=True)
+        foreign_uczelnia = baker.make(Uczelnia, pbn_integracja=True)
+
+        mine = baker.make(Jednostka, skupia_pracownikow=True, uczelnia=request_uczelnia)
+        foreign = baker.make(
+            Jednostka, skupia_pracownikow=True, uczelnia=foreign_uczelnia
+        )
+        my_wydzial = baker.make(Wydzial, uczelnia=request_uczelnia)
+        foreign_wydzial = baker.make(Wydzial, uczelnia=foreign_uczelnia)
+
+        with patch.object(
+            Uczelnia.objects, "get_for_request", return_value=request_uczelnia
+        ):
+            response = client.get(reverse("pbn_import:dashboard"))
+
+        jednostki = list(response.context["jednostki"])
+        wydzialy = list(response.context["wydzialy"])
+        assert mine in jednostki
+        assert foreign not in jednostki
+        assert my_wydzial in wydzialy
+        assert foreign_wydzial not in wydzialy
+
+    def test_dashboard_warns_when_obca_jednostka_missing(self, django_user_model):
+        """Wejście na dashboard sygnalizuje brak obcej jednostki (gate-check)."""
+        client = Client()
+        user = baker.make(django_user_model, is_superuser=True)
+        baker.make(Uczelnia, pbn_integracja=True)
+        client.force_login(user)
+
+        response = client.get(reverse("pbn_import:dashboard"))
+
+        assert response.context["obca_jednostka_problem"] is not None
+        assert "Brak obcej jednostki" in response.content.decode("utf-8")
+
+    def test_dashboard_no_warning_when_obca_jednostka_present(self, django_user_model):
+        """Gdy obca jednostka jest skonfigurowana — brak ostrzeżenia."""
+        client = Client()
+        user = baker.make(django_user_model, is_superuser=True)
+        uczelnia = baker.make(Uczelnia, pbn_integracja=True)
+        znajdz_lub_utworz_obca_jednostke(uczelnia)
+        client.force_login(user)
+
+        response = client.get(reverse("pbn_import:dashboard"))
+
+        assert response.context["obca_jednostka_problem"] is None
+
     def test_dashboard_single_real_unit_renders_select_not_hidden(
         self, django_user_model
     ):
@@ -279,12 +334,11 @@ class TestStartImportView:
         # uzywaj_wydzialow=False → only the default unit is required.
         uczelnia = baker.make(Uczelnia, pbn_integracja=True, uzywaj_wydzialow=False)
         jednostka = baker.make(Jednostka, skupia_pracownikow=True, uczelnia=uczelnia)
+        znajdz_lub_utworz_obca_jednostke(uczelnia)
         client.force_login(user)
 
         with (
             patch("pbn_import.tasks.run_pbn_import") as mock_task,
-            patch("pbn_import.views.get_channel_layer"),
-            patch("pbn_import.views.async_to_sync"),
         ):
             mock_task.delay.return_value = MagicMock(id="task-123")
 
@@ -311,12 +365,11 @@ class TestStartImportView:
         uczelnia = baker.make(Uczelnia, pbn_integracja=True)
         wydzial = baker.make(Wydzial, nazwa="IT Department", uczelnia=uczelnia)
         jednostka = baker.make(Jednostka, skupia_pracownikow=True, uczelnia=uczelnia)
+        znajdz_lub_utworz_obca_jednostke(uczelnia)
         client.force_login(user)
 
         with (
             patch("pbn_import.tasks.run_pbn_import") as mock_task,
-            patch("pbn_import.views.get_channel_layer"),
-            patch("pbn_import.views.async_to_sync"),
         ):
             mock_task.delay.return_value = MagicMock(id="task-123")
 
@@ -336,6 +389,42 @@ class TestStartImportView:
         assert session.config["wydzial_domyslny"] == "IT Department"
         assert session.config["wydzial_domyslny_id"] == wydzial.pk
 
+    def test_start_import_passes_uczelnia_id_from_request(
+        self, uczelnia, django_user_model
+    ):
+        """Entrypoint MUSI przekazać id uczelni z requestu do zadania w tle."""
+        from bpp.models import Jednostka
+
+        uczelnia.pbn_integracja = True
+        # Test dotyczy przepływu uczelnia_id z requestu, nie wydziałów — wyłączamy
+        # wymóg wydziału, by walidacja domyślnej jednostki/wydziału nie blokowała
+        # startu importu (jednostkę domyślną podajemy niżej).
+        uczelnia.uzywaj_wydzialow = False
+        uczelnia.save()
+        jednostka = baker.make(Jednostka, skupia_pracownikow=True, uczelnia=uczelnia)
+        znajdz_lub_utworz_obca_jednostke(uczelnia)
+
+        client = Client()
+        user = baker.make(django_user_model, is_superuser=True)
+        client.force_login(user)
+
+        with (
+            patch("pbn_import.tasks.run_pbn_import") as mock_task,
+        ):
+            mock_task.delay.return_value = MagicMock(id="task-123")
+
+            client.post(
+                reverse("pbn_import:start"),
+                {"initial": "on", "jednostka_domyslna_id": jednostka.pk},
+            )
+
+        mock_task.delay.assert_called_once()
+        call = mock_task.delay.call_args
+        passed = call.kwargs.get("uczelnia_id")
+        if passed is None and len(call.args) > 1:
+            passed = call.args[1]
+        assert passed == uczelnia.pk
+
     def test_start_import_redirects_to_dashboard(self, django_user_model):
         """Test start import redirects to dashboard after creation"""
         from bpp.models import Jednostka
@@ -348,8 +437,6 @@ class TestStartImportView:
 
         with (
             patch("pbn_import.tasks.run_pbn_import") as mock_task,
-            patch("pbn_import.views.get_channel_layer"),
-            patch("pbn_import.views.async_to_sync"),
         ):
             mock_task.delay.return_value = MagicMock(id="task-123")
 
@@ -370,8 +457,6 @@ class TestStartImportView:
 
         with (
             patch("pbn_import.tasks.run_pbn_import") as mock_task,
-            patch("pbn_import.views.get_channel_layer"),
-            patch("pbn_import.views.async_to_sync"),
         ):
             mock_task.delay.return_value = MagicMock(id="task-123")
 
@@ -395,8 +480,6 @@ class TestStartImportView:
 
         with (
             patch("pbn_import.tasks.run_pbn_import") as mock_task,
-            patch("pbn_import.views.get_channel_layer"),
-            patch("pbn_import.views.async_to_sync"),
         ):
             mock_task.delay.return_value = MagicMock(id="task-123")
 
@@ -417,12 +500,11 @@ class TestStartImportView:
         user = baker.make(django_user_model, is_superuser=True)
         uczelnia = baker.make(Uczelnia, pbn_integracja=True, uzywaj_wydzialow=False)
         jednostka = baker.make(Jednostka, skupia_pracownikow=True, uczelnia=uczelnia)
+        znajdz_lub_utworz_obca_jednostke(uczelnia)
         client.force_login(user)
 
         with (
             patch("pbn_import.tasks.run_pbn_import") as mock_task,
-            patch("pbn_import.views.get_channel_layer"),
-            patch("pbn_import.views.async_to_sync"),
         ):
             mock_task.delay.return_value = MagicMock(id="task-123")
 
@@ -432,6 +514,131 @@ class TestStartImportView:
             )
 
         assert ImportSession.objects.filter(user=user).exists()
+
+    def test_start_import_persists_canonical_default_jednostka_id(
+        self, django_user_model
+    ):
+        """Formularz zapisuje też kanoniczny ``default_jednostka_id``/``wydzial_id``.
+
+        Regresja: kroki importu (publication/statement) czytają
+        ``default_jednostka_id``, więc wybór z formularza musi trafić pod ten
+        klucz — inaczej import od źródeł (bez kroku institution_setup) nie zna
+        domyślnej jednostki i rzuca ValueError.
+        """
+        from bpp.models import Jednostka, Wydzial
+
+        client = Client()
+        user = baker.make(django_user_model, is_superuser=True)
+        uczelnia = baker.make(Uczelnia, pbn_integracja=True, uzywaj_wydzialow=True)
+        wydzial = baker.make(Wydzial, uczelnia=uczelnia)
+        jednostka = baker.make(Jednostka, skupia_pracownikow=True, uczelnia=uczelnia)
+        znajdz_lub_utworz_obca_jednostke(uczelnia)
+        client.force_login(user)
+
+        with (
+            patch("pbn_import.tasks.run_pbn_import") as mock_task,
+        ):
+            mock_task.delay.return_value = MagicMock(id="task-123")
+
+            client.post(
+                reverse("pbn_import:start"),
+                {
+                    "wydzial_domyslny_id": wydzial.pk,
+                    "jednostka_domyslna_id": jednostka.pk,
+                },
+            )
+
+        session = ImportSession.objects.get(user=user)
+        assert session.config["default_jednostka_id"] == jednostka.pk
+        assert session.config["wydzial_id"] == wydzial.pk
+
+    def test_start_import_blocked_without_obca_jednostka(self, django_user_model):
+        """Gate-check: brak obcej jednostki uczelni → blokada startu importu."""
+        from bpp.models import Jednostka
+
+        client = Client()
+        user = baker.make(django_user_model, is_superuser=True)
+        uczelnia = baker.make(Uczelnia, pbn_integracja=True, uzywaj_wydzialow=False)
+        jednostka = baker.make(Jednostka, skupia_pracownikow=True, uczelnia=uczelnia)
+        # celowo NIE provisionujemy obcej jednostki
+        client.force_login(user)
+
+        with patch("pbn_import.tasks.run_pbn_import") as mock_task:
+            mock_task.delay.return_value = MagicMock(id="task-123")
+
+            client.post(
+                reverse("pbn_import:start"),
+                {"jednostka_domyslna_id": jednostka.pk},
+            )
+
+        assert not ImportSession.objects.filter(user=user).exists()
+        mock_task.delay.assert_not_called()
+
+    def test_start_import_rejects_foreign_uczelnia_jednostka(self, django_user_model):
+        """Gate-check: jednostka z innej uczelni niż request → blokada startu."""
+        from bpp.models import Jednostka
+
+        client = Client()
+        user = baker.make(django_user_model, is_superuser=True)
+        request_uczelnia = baker.make(
+            Uczelnia, pbn_integracja=True, uzywaj_wydzialow=False
+        )
+        foreign_uczelnia = baker.make(Uczelnia, pbn_integracja=True)
+        foreign_jednostka = baker.make(
+            Jednostka, skupia_pracownikow=True, uczelnia=foreign_uczelnia
+        )
+        client.force_login(user)
+
+        with (
+            patch("pbn_import.tasks.run_pbn_import") as mock_task,
+            patch.object(
+                Uczelnia.objects, "get_for_request", return_value=request_uczelnia
+            ),
+        ):
+            mock_task.delay.return_value = MagicMock(id="task-123")
+
+            client.post(
+                reverse("pbn_import:start"),
+                {"jednostka_domyslna_id": foreign_jednostka.pk},
+            )
+
+        assert not ImportSession.objects.filter(user=user).exists()
+        mock_task.delay.assert_not_called()
+
+    def test_start_import_rejects_foreign_uczelnia_wydzial(self, django_user_model):
+        """Gate-check: wydział z innej uczelni niż request → blokada startu."""
+        from bpp.models import Jednostka, Wydzial
+
+        client = Client()
+        user = baker.make(django_user_model, is_superuser=True)
+        request_uczelnia = baker.make(
+            Uczelnia, pbn_integracja=True, uzywaj_wydzialow=True
+        )
+        foreign_uczelnia = baker.make(Uczelnia, pbn_integracja=True)
+        jednostka = baker.make(
+            Jednostka, skupia_pracownikow=True, uczelnia=request_uczelnia
+        )
+        foreign_wydzial = baker.make(Wydzial, uczelnia=foreign_uczelnia)
+        client.force_login(user)
+
+        with (
+            patch("pbn_import.tasks.run_pbn_import") as mock_task,
+            patch.object(
+                Uczelnia.objects, "get_for_request", return_value=request_uczelnia
+            ),
+        ):
+            mock_task.delay.return_value = MagicMock(id="task-123")
+
+            client.post(
+                reverse("pbn_import:start"),
+                {
+                    "jednostka_domyslna_id": jednostka.pk,
+                    "wydzial_domyslny_id": foreign_wydzial.pk,
+                },
+            )
+
+        assert not ImportSession.objects.filter(user=user).exists()
+        mock_task.delay.assert_not_called()
 
 
 # ============================================================================
@@ -466,7 +673,7 @@ class TestCancelImportView:
         )
         client.force_login(user)
 
-        with patch("celery.current_app"), patch("pbn_import.views.get_channel_layer"):
+        with patch("celery.current_app"):
             client.post(reverse("pbn_import:cancel", args=[session.id]))
 
         session.refresh_from_db()
@@ -518,7 +725,7 @@ class TestCancelImportView:
         )
         client.force_login(user)
 
-        with patch("celery.current_app"), patch("pbn_import.views.get_channel_layer"):
+        with patch("celery.current_app"):
             client.post(reverse("pbn_import:cancel", args=[session.id]))
 
         log = ImportLog.objects.filter(session=session).last()
@@ -547,3 +754,22 @@ class TestCancelImportView:
         response = client.post(reverse("pbn_import:cancel", args=[session.id]))
 
         assert response.status_code == 404
+
+
+# ============================================================================
+# PRESETS VIEW TESTS
+# ============================================================================
+
+
+@pytest.mark.django_db
+def test_presets_sources_only_enables_both_source_phases(client, admin_user):
+    client.force_login(admin_user)
+    resp = client.get(reverse("pbn_import:presets"))
+    assert resp.status_code == 200
+    presets = json.loads(resp.content)["presets"]
+    sources_only = next(p for p in presets if p["id"] == "sources_only")
+    cfg = sources_only["config"]
+    assert cfg.get("disable_zrodla_download", False) is False
+    assert cfg.get("disable_zrodla_process", False) is False
+    assert cfg["disable_wydawcy_download"] is True
+    assert cfg["disable_wydawcy_process"] is True

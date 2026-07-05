@@ -253,6 +253,9 @@ class Zgloszenie_PublikacjiWizard(UczelniaSettingRequiredMixin, SessionWizardVie
             step1 = self.get_cleaned_data_for_step("1") or {}
             kwargs["rodzaj"] = step0.get("rodzaj")
             kwargs["forma_dostepu"] = step1.get("forma_dostepu")
+            # Multi-hosted: forma musi dostać uczelnię z requestu, inaczej
+            # spada do Uczelnia.objects.get() (crash przy >1 uczelni).
+            kwargs["uczelnia"] = Uczelnia.objects.get_for_request(self.request)
             # Pliki kroku 2 zapisujemy sami do extra_data (patrz
             # process_step_files) i NIE oddajemy ich do storage formtools,
             # więc przy rewalidacji w render_done `self.files` jest puste.
@@ -261,6 +264,11 @@ class Zgloszenie_PublikacjiWizard(UczelniaSettingRequiredMixin, SessionWizardVie
             kwargs["pliki_juz_zapisane"] = bool(
                 self.storage.extra_data.get(self.PLIKI_EXTRA_KEY)
             )
+        if step == "4":
+            # Krok opłat to też ModelForm na Zgloszenie_Publikacji → odpala
+            # model.clean (walidacja opłat). Bez uczelni z requestu spada do
+            # Uczelnia.objects.get() (crash przy >1 uczelni — Rollbar #400).
+            kwargs["uczelnia"] = Uczelnia.objects.get_for_request(self.request)
         return kwargs
 
     def get_form_instance(self, step):

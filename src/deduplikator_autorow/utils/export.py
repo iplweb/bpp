@@ -6,33 +6,22 @@ import logging
 from collections import Counter
 from io import BytesIO
 
-from django.contrib.sites.models import Site
 from openpyxl.styles import Font
 from openpyxl.workbook import Workbook
 
 from bpp.util import (
+    site_url_for_request,
     worksheet_columns_autosize,
     worksheet_create_table,
-    zaloguj_polkniety_wyjatek,
 )
 from deduplikator_autorow.models import DuplicateCandidate
 
 logger = logging.getLogger(__name__)
 
 
-def _get_site_domain():
-    """Pobierz domenę serwisu do konstrukcji pełnych URLi."""
-    try:
-        current_site = Site.objects.get_current()
-        return f"https://{current_site.domain}"
-    except Exception:
-        zaloguj_polkniety_wyjatek(
-            "Pobieranie bieżącej domeny serwisu (Site) przy eksporcie "
-            "duplikatów do XLSX — używam domeny domyślnej",
-            logger=logger,
-            do_rollbar=True,
-        )
-        return "https://bpp.iplweb.pl"
+def _get_site_domain(request=None):
+    """Pobierz bazowy URL serwisu do konstrukcji pełnych URLi."""
+    return site_url_for_request(request)
 
 
 def _create_pbn_url(autor):
@@ -100,7 +89,7 @@ def _format_url_hyperlinks(ws, data_rows_count):
                 cell.font = Font(color="0000FF", underline="single")
 
 
-def export_duplicates_to_xlsx():
+def export_duplicates_to_xlsx(request=None):
     """
     Eksportuje kandydatów na duplikaty do formatu XLSX.
 
@@ -127,7 +116,7 @@ def export_duplicates_to_xlsx():
     Returns:
         bytes: Zawartość pliku XLSX
     """
-    site_domain = _get_site_domain()
+    site_domain = _get_site_domain(request)
 
     # JEDNO zapytanie zamiast tysięcy! Materializujemy raz, żeby Counter
     # i list-comprehension nie wykonywały dwóch iteracji po queryset

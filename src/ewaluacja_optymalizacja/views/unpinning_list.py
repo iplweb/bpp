@@ -11,7 +11,7 @@ from django.shortcuts import redirect, render
 from django.views.decorators.http import require_POST
 from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
 
-from bpp.models import Uczelnia
+from raport_slotow.uczelnia_helper import uczelnia_dla_odczytu
 
 logger = logging.getLogger(__name__)
 
@@ -108,8 +108,7 @@ def unpinning_opportunities_list(request):
 
     from ..models import StatusUnpinningAnalyzy, UnpinningOpportunity
 
-    # Pobierz pierwszą uczelnię (zakładamy, że jest tylko jedna)
-    uczelnia = Uczelnia.objects.first()
+    uczelnia = uczelnia_dla_odczytu(request)
 
     if not uczelnia:
         messages.error(request, "Nie znaleziono uczelni w systemie.")
@@ -572,8 +571,9 @@ def export_unpinning_opportunities_xlsx(request):
     from django.http import HttpResponse
     from openpyxl import Workbook
 
-    # Pobierz pierwszą uczelnię (zakładamy, że jest tylko jedna)
-    uczelnia = Uczelnia.objects.first()
+    # Multi-hosted: uczelnia oglądającego z requestu (NIE .first() —
+    # przywrócone po scaleniu dev, którego refaktor eksportu wrócił do .first()).
+    uczelnia = uczelnia_dla_odczytu(request)
     if not uczelnia:
         messages.error(request, "Nie znaleziono uczelni w systemie.")
         return redirect("ewaluacja_optymalizacja:index")

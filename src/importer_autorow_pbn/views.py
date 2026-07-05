@@ -70,7 +70,10 @@ class ImporterAutorowPBNView(ListView):
         # When "pokaz_wszystkich" param is set to "1", show all
         pokaz_wszystkich = self.request.GET.get("pokaz_wszystkich", "0")
         if pokaz_wszystkich != "1":
-            uczelnia = Uczelnia.objects.default
+            # Uczelnia z requestu (multi-hosted): filtr po pbn_uid „naszej"
+            # uczelni musi dotyczyć uczelni bieżącego hosta, nie pierwszej
+            # z brzegu (get_default).
+            uczelnia = Uczelnia.objects.get_for_request(self.request)
             if uczelnia and uczelnia.pbn_uid_id:
                 # Filter by institution ID in currentEmployments JSON
                 queryset = queryset.filter(
@@ -479,13 +482,20 @@ def create_all_unmatched_scientists(request):
                 employment_data = view._get_employment_data(scientist)
                 _create_autor_jednostka(autor, employment_data)
                 created_count += 1
-            except Exception as e:
+            except Exception:
+                # Loguj pełne szczegóły do Rollbara i logu (standard dev), ale
+                # NIGDY nie wyciekaj surowego tekstu wyjątku do klienta (hardening
+                # brancha — bez str(e) w komunikacie).
                 zaloguj_polkniety_wyjatek(
                     f"Tworzenie nowego Autora z niezmatchowanego naukowca PBN "
                     f"(scientist={scientist}, mongoId={scientist.pk})",
                     logger=logger,
+                    do_rollbar=True,
                 )
-                errors.append(f"{scientist} - błąd: {str(e)}")
+                errors.append(
+                    f"{scientist} - błąd podczas tworzenia autora "
+                    "(szczegóły przekazano administratorowi)"
+                )
 
     if created_count > 0:
         messages.success(

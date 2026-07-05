@@ -1,6 +1,7 @@
 import logging
 from io import BytesIO
 
+import rollbar
 from django.core.paginator import Paginator
 from django.db.models import Sum
 from django.http import HttpResponse, JsonResponse
@@ -13,6 +14,7 @@ from openpyxl.styles import Font
 from queryset_sequence import QuerySetSequence
 
 from bpp.const import GR_WPROWADZANIE_DANYCH
+from bpp.models import Uczelnia
 from bpp.util import sanitize_xlsx_row, zaloguj_polkniety_wyjatek
 from pbn_wysylka_oswiadczen.models import PbnWysylkaLog, PbnWysylkaOswiadczenTask
 from pbn_wysylka_oswiadczen.queries import get_publications_queryset
@@ -254,9 +256,13 @@ class StartTaskView(View):
                 resume_mode=resume_mode,
             )
 
-        # Start Celery task
+        # Start Celery task — entrypoint zna uczelnię z requestu i przekazuje
+        # jej id do zadania (zadanie NIE robi get_default()).
+        uczelnia = Uczelnia.objects.get_for_request(request)
         try:
-            celery_result = wysylka_oswiadczen_task.delay(task.pk)
+            celery_result = wysylka_oswiadczen_task.delay(
+                task.pk, uczelnia_id=uczelnia.pk if uczelnia else None
+            )
             task.celery_task_id = celery_result.id
             task.save()
 
@@ -277,10 +283,14 @@ class StartTaskView(View):
             task.status = "failed"
             task.error_message = str(e)
             task.save()
+            # Persist the detail on the task / report to Rollbar, but do not
+            # echo the raw exception text back to the client.
+            rollbar.report_exc_info()
             return JsonResponse(
                 {
                     "success": False,
-                    "error": f"Nie udalo sie uruchomic zadania: {str(e)}",
+                    "error": "Nie udalo sie uruchomic zadania. "
+                    "Szczegoly zapisano w zadaniu i przekazano administratorowi.",
                 }
             )
 

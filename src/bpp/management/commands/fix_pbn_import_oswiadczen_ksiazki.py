@@ -278,7 +278,7 @@ PRZYKŁADY UŻYCIA:
         self.stdout.write("")
         self.stdout.write("Integracja dyscyplin dla naprawionych rekordów...")
 
-        default_jednostka = Uczelnia.objects.default.domyslna_jednostka
+        default_jednostka = Uczelnia.objects.get().domyslna_jednostka
         noted_pub = set()
         noted_aut = set()
 

@@ -1,7 +1,10 @@
 from django.db.models import Avg, Count, Sum
 from django.views.generic import ListView
 
+from raport_slotow.uczelnia_helper import uczelnia_dla_odczytu
+
 from ..models import MetrykaAutora
+from ..uczelnia_scope import scope_metryki
 from .mixins import EwaluacjaRequiredMixin, ma_pelne_uprawnienia_ewaluacji
 
 
@@ -26,28 +29,38 @@ class StatystykiView(
     context_object_name = "top_autorzy_pkd"  # Renamed for clarity
 
     def get_queryset(self):
-        # Top 20 autorów wg średniej PKDaut/slot
-        return MetrykaAutora.objects.select_related(
-            "autor", "dyscyplina_naukowa", "jednostka"
+        # Top 20 autorów wg średniej PKDaut/slot (scoped do uczelni)
+        uczelnia = uczelnia_dla_odczytu(self.request)
+        return scope_metryki(
+            MetrykaAutora.objects.select_related(
+                "autor", "dyscyplina_naukowa", "jednostka"
+            ),
+            uczelnia,
         ).order_by("-srednia_za_slot_nazbierana")[:20]
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
 
+        uczelnia = uczelnia_dla_odczytu(self.request)
+        # Scoped base queryset — wszystkie metryki dla oglądanej uczelni
+        wszystkie = scope_metryki(MetrykaAutora.objects.all(), uczelnia)
+
         # Keep the old name for backward compatibility in template
         context["top_autorzy"] = context["top_autorzy_pkd"]
 
-        # Top 20 autorów wg slotów wypełnionych (the absolute top - highest slot filling AND highest PKDaut/slot)
+        # Top 20 autorów wg slotów wypełnionych
         context["top_autorzy_sloty"] = (
-            MetrykaAutora.objects.select_related(
-                "autor", "dyscyplina_naukowa", "jednostka"
+            scope_metryki(
+                MetrykaAutora.objects.select_related(
+                    "autor", "dyscyplina_naukowa", "jednostka"
+                ),
+                uczelnia,
             )
-            .filter(slot_nazbierany__gt=0)  # Exclude those with zero slots
+            .filter(slot_nazbierany__gt=0)
             .order_by("-slot_nazbierany", "-srednia_za_slot_nazbierana")[:20]
         )
 
         # Statystyki globalne
-        wszystkie = MetrykaAutora.objects.all()
         context["statystyki_globalne"] = wszystkie.aggregate(
             liczba_wierszy=Count("id"),
             liczba_autorow=Count("autor", distinct=True),
@@ -59,8 +72,11 @@ class StatystykiView(
 
         # Najniższe 20 autorów wg PKDaut/slot (nie-zerowych)
         context["bottom_autorzy_pkd"] = (
-            MetrykaAutora.objects.select_related(
-                "autor", "dyscyplina_naukowa", "jednostka"
+            scope_metryki(
+                MetrykaAutora.objects.select_related(
+                    "autor", "dyscyplina_naukowa", "jednostka"
+                ),
+                uczelnia,
             )
             .filter(srednia_za_slot_nazbierana__gt=0)
             .order_by("srednia_za_slot_nazbierana")[:20]
@@ -68,8 +84,11 @@ class StatystykiView(
 
         # Najniższe 20 autorów wg slotów wypełnionych (nie-zerowych)
         context["bottom_autorzy_sloty"] = (
-            MetrykaAutora.objects.select_related(
-                "autor", "dyscyplina_naukowa", "jednostka"
+            scope_metryki(
+                MetrykaAutora.objects.select_related(
+                    "autor", "dyscyplina_naukowa", "jednostka"
+                ),
+                uczelnia,
             )
             .filter(slot_nazbierany__gt=0)
             .order_by("slot_nazbierany")[:20]
@@ -79,8 +98,11 @@ class StatystykiView(
         from bpp.models import Autor_Dyscyplina
 
         autorzy_zerowi_raw = (
-            MetrykaAutora.objects.select_related(
-                "autor", "dyscyplina_naukowa", "jednostka"
+            scope_metryki(
+                MetrykaAutora.objects.select_related(
+                    "autor", "dyscyplina_naukowa", "jednostka"
+                ),
+                uczelnia,
             )
             .filter(srednia_za_slot_nazbierana=0)
             .order_by("autor__nazwisko", "autor__imiona")
@@ -105,7 +127,8 @@ class StatystykiView(
             )
 
             lata_list = list(lata_dyscypliny)
-            # Dodaj do listy tylko jeśli autor ma przynajmniej jeden rok z jest_w_n=True
+            # Dodaj do listy tylko jeśli autor ma przynajmniej jeden rok
+            # z jest_w_n=True
             if lata_list:
                 metryka.lata_zerowe = lata_list
                 autorzy_zerowi.append(metryka)
@@ -113,8 +136,8 @@ class StatystykiView(
         context["autorzy_zerowi"] = autorzy_zerowi
 
         # Statystyki wg jednostek
-        jednostki_stats = (
-            MetrykaAutora.objects.values("jednostka__nazwa", "jednostka__skrot")
+        context["jednostki_stats"] = (
+            wszystkie.values("jednostka__nazwa", "jednostka__skrot")
             .annotate(
                 liczba_autorow=Count("id"),
                 srednia_wykorzystania=Avg("procent_wykorzystania_slotow"),
@@ -123,13 +146,10 @@ class StatystykiView(
             )
             .order_by("-srednia_pkd_slot")[:10]
         )
-        context["jednostki_stats"] = jednostki_stats
 
         # Statystyki wg dyscyplin
-        dyscypliny_stats = (
-            MetrykaAutora.objects.values(
-                "dyscyplina_naukowa__nazwa", "dyscyplina_naukowa__kod"
-            )
+        context["dyscypliny_stats"] = (
+            wszystkie.values("dyscyplina_naukowa__nazwa", "dyscyplina_naukowa__kod")
             .annotate(
                 liczba_autorow=Count("id"),
                 srednia_wykorzystania=Avg("procent_wykorzystania_slotow"),
@@ -138,9 +158,8 @@ class StatystykiView(
             )
             .order_by("-srednia_pkd_slot")
         )
-        context["dyscypliny_stats"] = dyscypliny_stats
 
-        # Rozkład wykorzystania slotów
+        # Rozkład wykorzystania slotów (wszystkie = już scoped)
         context["wykorzystanie_ranges"] = {
             "0-25%": wszystkie.filter(procent_wykorzystania_slotow__lt=25).count(),
             "25-50%": wszystkie.filter(

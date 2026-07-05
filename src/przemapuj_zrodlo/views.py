@@ -3,14 +3,14 @@ import logging
 from django.contrib import messages
 from django.contrib.auth.mixins import UserPassesTestMixin
 from django.db import transaction
-from django.http import HttpResponseRedirect
+from django.http import HttpResponseRedirect, JsonResponse
 from django.shortcuts import get_object_or_404, redirect
 from django.urls import reverse
 from django.utils import timezone
 from django.views.generic import FormView, View
 
 from bpp.const import GR_WPROWADZANIE_DANYCH
-from bpp.models import Wydawnictwo_Ciagle, Zrodlo
+from bpp.models import Uczelnia, Wydawnictwo_Ciagle, Zrodlo
 from bpp.util import zaloguj_polkniety_wyjatek
 from pbn_api.exceptions import AlreadyEnqueuedError
 from pbn_export_queue.models import PBN_Export_Queue
@@ -63,19 +63,11 @@ class PrzemapujZrodloView(WprowadzanieDanychRequiredMixin, FormView):
             Zrodlo.objects.select_related("pbn_uid"), slug=self.kwargs["slug"]
         )
 
-        # Sprawdź czy źródło można przemapować (nie ma MNISW ID lub jest usunięte)
-        if (
-            self.zrodlo_zrodlowe.pbn_uid_id
-            and self.zrodlo_zrodlowe.pbn_uid.mniswId
-            and self.zrodlo_zrodlowe.pbn_uid.status != "DELETED"
-        ):
-            messages.error(
-                request,
-                f'Źródło "{self.zrodlo_zrodlowe.nazwa}" jest na oficjalnej liście ministerstwa '
-                f"(MNiSW ID: {self.zrodlo_zrodlowe.pbn_uid.mniswId}). "
-                "Przemapowanie nie jest możliwe dla źródeł ministerialnych.",
-            )
-            return redirect("bpp:browse_zrodlo", slug=self.zrodlo_zrodlowe.slug)
+        # Uwaga: dla źródeł ministerialnych (z MNiSW ID) przemapowanie jest
+        # dozwolone WYŁĄCZNIE na inne źródło o TYM SAMYM MNiSW ID (deduplikacja
+        # tego samego czasopisma). Ta reguła jest egzekwowana w walidacji
+        # formularza (PrzemapowaZrodloForm.clean_zrodlo_docelowe), bo dopiero
+        # tam znane jest źródło docelowe. Strona ładuje się zawsze.
 
         # Zlicz publikacje w źródle
         self.liczba_publikacji = Wydawnictwo_Ciagle.objects.filter(
@@ -120,6 +112,14 @@ class PrzemapujZrodloView(WprowadzanieDanychRequiredMixin, FormView):
         context["zrodlo_zrodlowe"] = self.zrodlo_zrodlowe
         context["liczba_publikacji"] = self.liczba_publikacji
 
+        # Efektywne MNiSW ID źródła (None gdy nieministerialne / usunięte z PBN).
+        # Osadzane jako data-atrybut, żeby JS mógł live-sprawdzać regułę blokady
+        # (źródło ministerialne wolno przemapować tylko na to samo MNiSW ID) —
+        # tą samą funkcją, którą egzekwuje walidacja formularza.
+        context["src_mnisw_effective"] = PrzemapowaZrodloForm._mnisw_id(
+            self.zrodlo_zrodlowe
+        )
+
         # Pobierz przykładowe publikacje (pierwsze 10)
         context["przykladowe_publikacje"] = Wydawnictwo_Ciagle.objects.filter(
             zrodlo=self.zrodlo_zrodlowe
@@ -150,10 +150,14 @@ class PrzemapujZrodloView(WprowadzanieDanychRequiredMixin, FormView):
         sukces_pbn = 0
         bledy_pbn = []
 
+        # Rozwiąż uczelnię raz, poza pętlą (na multi-hosted decyduje o tym,
+        # do którego PBN-a wpis zostanie wysłany).
+        uczelnia = Uczelnia.objects.get_for_request(self.request)
+
         for pub in publikacje_do_wyslania:
             try:
                 PBN_Export_Queue.objects.sprobuj_utowrzyc_wpis(
-                    user=self.request.user, rekord=pub
+                    user=self.request.user, rekord=pub, uczelnia=uczelnia
                 )
                 sukces_pbn += 1
             except AlreadyEnqueuedError:
@@ -259,6 +263,51 @@ class PrzemapujZrodloView(WprowadzanieDanychRequiredMixin, FormView):
         # Przekieruj do źródła docelowego
         return HttpResponseRedirect(
             reverse("bpp:browse_zrodlo", kwargs={"slug": zrodlo_docelowe.slug})
+        )
+
+
+class ZrodloInfoView(WprowadzanieDanychRequiredMixin, View):
+    """Zwraca JSON z detalami pojedynczego źródła.
+
+    Zasila prawy panel „Źródło docelowe" na stronie przemapowania: po zmianie
+    comboboxa JS fetchuje ten endpoint i wypełnia panel tymi samymi parametrami
+    co panel źródłowy (skrót, ISSN, PBN UID, MNiSW ID, liczba publikacji).
+
+    `mnisw_effective` liczone jest przez tę samą funkcję co walidacja formularza
+    (PrzemapowaZrodloForm._mnisw_id), żeby live-podpowiedź w panelu była zgodna
+    z regułą blokady egzekwowaną po stronie serwera.
+    """
+
+    def get(self, request, pk):
+        zrodlo = get_object_or_404(Zrodlo.objects.select_related("pbn_uid"), pk=pk)
+        pbn = zrodlo.pbn_uid
+        liczba_publikacji = Wydawnictwo_Ciagle.objects.filter(zrodlo=zrodlo).count()
+
+        # Zrodlo nie ma daty utworzenia — jedyny czasowy ślad to
+        # `ostatnio_zmieniony` (auto_now = ostatnia modyfikacja). Kolejność
+        # utworzenia oddaje pk (mniejszy = wcześniej) i to porównuje JS.
+        zmieniony = zrodlo.ostatnio_zmieniony
+        ostatnio_zmieniony = (
+            timezone.localtime(zmieniony).strftime("%Y-%m-%d %H:%M")
+            if zmieniony
+            else ""
+        )
+
+        return JsonResponse(
+            {
+                "bppid": zrodlo.pk,
+                "nazwa": zrodlo.nazwa,
+                "skrot": zrodlo.skrot,
+                "issn": zrodlo.issn,
+                "e_issn": zrodlo.e_issn,
+                "pbn_uid_id": zrodlo.pbn_uid_id,
+                "mniswId": pbn.mniswId if pbn else None,
+                "pbn_status": pbn.status if pbn else None,
+                "mnisw_effective": PrzemapowaZrodloForm._mnisw_id(zrodlo),
+                "liczba_publikacji": liczba_publikacji,
+                "ostatnio_zmieniony": ostatnio_zmieniony,
+                "admin_url": reverse("admin:bpp_zrodlo_change", args=[zrodlo.pk]),
+            }
         )
 
 

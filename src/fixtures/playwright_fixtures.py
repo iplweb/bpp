@@ -73,6 +73,7 @@ def preauth_asgi_page(preauth_page: Page, channels_live_server, transactional_db
     import time
 
     from channels_broadcast.core import get_channel_name_for_user
+
     from django_bpp.playwright_util import (
         wait_for_channel_subscription,
         wait_for_page_load,
@@ -141,6 +142,7 @@ def preauth_asgi_page_per_test(
     import time
 
     from channels_broadcast.core import get_channel_name_for_user
+
     from django_bpp.playwright_util import (
         wait_for_channel_subscription,
         wait_for_page_load,

@@ -9,6 +9,7 @@ from django.shortcuts import redirect, render
 from django.views.decorators.http import require_POST
 
 from bpp.models import Uczelnia
+from raport_slotow.uczelnia_helper import uczelnia_dla_odczytu
 
 from ..models import (
     OptimizationAuthorResult,
@@ -158,8 +159,7 @@ def optimize_with_unpinning(request):
         )
         return redirect("ewaluacja_optymalizacja:index")
 
-    # Pobierz pierwszą uczelnię (zakładamy, że jest tylko jedna)
-    uczelnia = Uczelnia.objects.first()
+    uczelnia = Uczelnia.objects.get_for_request(request)
 
     if not uczelnia:
         messages.error(request, "Nie znaleziono uczelni w systemie.")
@@ -344,7 +344,7 @@ def optimize_unpin_status(request, task_id):
     from ewaluacja_liczba_n.models import LiczbaNDlaUczelni
 
     task = AsyncResult(task_id)
-    uczelnia = Uczelnia.objects.first()
+    uczelnia = uczelnia_dla_odczytu(request)
 
     context = {
         "task_id": task_id,

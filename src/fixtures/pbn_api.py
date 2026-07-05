@@ -7,7 +7,7 @@ from model_bakery import baker
 from bpp import const
 from bpp.const import RODZAJ_PBN_KSIAZKA
 from bpp.models import Charakter_Formalny, Jezyk, Uczelnia, Wydawnictwo_Ciagle
-from pbn_api.client import PBN_GET_LANGUAGES_URL, PBNClient
+from pbn_api.client import PBN_GET_LANGUAGES_URL, BppPBNClient
 from pbn_api.models import Institution, Language, Publication, Scientist
 from pbn_api.tests.utils import MockTransport
 
@@ -73,9 +73,9 @@ MOCK_RETURNED_INSTITUTION_PUBLICATION_V2_DATA = [
 
 
 @pytest.fixture
-def pbn_client() -> PBNClient:
+def pbn_client(uczelnia) -> BppPBNClient:
     transport = MockTransport()
-    return PBNClient(transport=transport)
+    return BppPBNClient(transport=transport, uczelnia=uczelnia)
 
 
 @pytest.fixture
@@ -227,11 +227,11 @@ def pbn_wydawnictwo_zwarte_z_charakterem(
 
 @pytest.fixture
 def pbn_uczelnia(pbn_client) -> Uczelnia:
-    uczelnia = Uczelnia.objects.get_default()
-    if uczelnia is None:
-        uczelnia = baker.make(
-            Uczelnia,
-        )
+    # MUSI być TYM SAMYM obiektem, który trzyma klient (``self.uczelnia``),
+    # bo orchestracja czyta flagi z obiektu w pamięci klienta. Świeży
+    # ``get_default()`` zwróciłby inny obiekt Pythona (ten sam wiersz DB),
+    # przez co mutacje flag w teście nie byłyby widziane przez klienta.
+    uczelnia = pbn_client.uczelnia
 
     uczelnia.pbn_client = lambda *args, **kw: pbn_client
     pbn_client.transport.return_values[PBN_GET_LANGUAGES_URL] = {"1": "23"}

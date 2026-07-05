@@ -39,6 +39,11 @@ class TqdmSessionProgress:
 
         progress = int((current / total) * 100) if total > 0 else 0
 
+        # Re-read progress_data before mutating: this callback holds a
+        # possibly-stale in-memory copy and a full scoped save would clobber
+        # concurrent writers (e.g. the step's progress_data["steps"]).
+        self.session.refresh_from_db(fields=["progress_data"])
+
         # Update session progress data
         if "current_subtask" not in self.session.progress_data:
             self.session.progress_data["current_subtask"] = {}
@@ -88,9 +93,12 @@ class ImportStepBase:
     step_name: str = "Unknown Step"
     step_description: str = "Przetwarzanie..."
 
-    def __init__(self, session: ImportSession, client=None):
+    def __init__(self, session: ImportSession, client=None, uczelnia=None):
         self.session = session
         self.client = client
+        # Uczelnia kontekstu importu (multi-hosted) — kroki czytają z niej
+        # config zamiast zgadywać get_default().
+        self.uczelnia = uczelnia
         self.start_time = None
         self.processed_count = 0
         self.total_count = 0
@@ -125,6 +133,12 @@ class ImportStepBase:
             progress_percent=progress_percent,
         )
 
+        # Re-read progress_data (only) before mutating it: a concurrent
+        # throttled TqdmSessionProgress may have written current_subtask from
+        # its own in-memory copy. Refresh ONLY progress_data so the scalar
+        # fields just persisted by update_progress() above are not discarded.
+        self.session.refresh_from_db(fields=["progress_data"])
+
         # Store detailed progress in session data
         if "steps" not in self.session.progress_data:
             self.session.progress_data["steps"] = {}
@@ -136,7 +150,9 @@ class ImportStepBase:
             "message": message,
             "errors": len(self.errors),
         }
-        self.session.save()
+        # Scope the save to progress_data so we don't clobber concurrent
+        # writers of other (scalar) fields.
+        self.session.save(update_fields=["progress_data"])
 
     def start(self):
         """Called when step starts"""
@@ -146,7 +162,7 @@ class ImportStepBase:
         logger.info("=" * 60)
         self.log("info", f"Rozpoczynanie: {self.step_description}")
         self.session.current_step = self.step_name
-        self.session.save()
+        self.session.save(update_fields=["current_step"])
 
     def finish(self):
         """Called when step completes"""
@@ -277,20 +293,33 @@ class ImportStepBase:
             or "autoryzacja" in error_msg.lower()
         )
 
+    # Uwaga: fazy download()/process() NIE są opakowane w transakcję — gdy
+    # ImportManager woła je osobno (method=), atomowość per faza jest
+    # odpowiedzialnością podklasy. Tylko legacy run() (obie fazy) jest atomic.
+
+    def download(self):
+        """Faza pobierania danych z PBN do lustra. Nadpisz w podklasie."""
+        raise NotImplementedError("Krok nie implementuje fazy pobierania")
+
+    def process(self):
+        """Faza przetwarzania lustra do modeli BPP. Nadpisz w podklasie."""
+        raise NotImplementedError("Krok nie implementuje fazy przetwarzania")
+
     @transaction.atomic
     def run(self):
-        """Execute the import step - override in subclasses"""
-        raise NotImplementedError("Subclasses must implement run()")
+        """Domyślnie: pobierz, potem przetwórz (zgodność wsteczna)."""
+        self.download()
+        return self.process()
 
-    def __call__(self):
-        """Make the class callable for easier use"""
+    def __call__(self, method: str = "run"):
+        """Uruchom wskazaną fazę (run/download/process) z obwiednią start/finish."""
+        if method not in ("run", "download", "process"):
+            raise ValueError(f"Nieznana metoda kroku importu: {method!r}")
         self.start()
         try:
-            result = self.run()
+            result = getattr(self, method)()
             self.finish()
             return result
         except Exception as e:
-            # handle_error now does Rollbar reporting and logging
             self.handle_error(e, f"Krytyczny błąd w {self.step_name}")
-            # Note: Don't mark_failed here - let ImportManager handle it
             raise

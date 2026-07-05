@@ -6,6 +6,7 @@ from django.utils.decorators import method_decorator
 from django.views import View
 
 from ewaluacja_common.models import Rodzaj_Autora
+from raport_slotow.uczelnia_helper import uczelnia_dla_odczytu
 
 from ..models import StatusGenerowania
 from ..tasks import generuj_metryki_task_parallel
@@ -36,7 +37,8 @@ class UruchomGenerowanieView(View):
             return redirect("ewaluacja_metryki:lista")
 
         # Sprawdź czy generowanie nie jest już w trakcie
-        status = StatusGenerowania.get_or_create()
+        uczelnia = uczelnia_dla_odczytu(request)
+        status = StatusGenerowania.get_or_create(uczelnia=uczelnia)
         if status.w_trakcie:
             if request.headers.get("HX-Request"):
                 # Dla HTMX zwróć aktualny status
@@ -71,7 +73,12 @@ class UruchomGenerowanieView(View):
         # Oblicz liczbę autorów do przetworzenia (aby ustawić status od razu)
         from ewaluacja_liczba_n.models import IloscUdzialowDlaAutoraZaCalosc
 
-        total_count = IloscUdzialowDlaAutoraZaCalosc.objects.all().count()
+        if uczelnia:
+            total_count = IloscUdzialowDlaAutoraZaCalosc.objects.filter(
+                uczelnia=uczelnia
+            ).count()
+        else:
+            total_count = IloscUdzialowDlaAutoraZaCalosc.objects.count()
 
         # Uruchom równoległy task (z domyślnym przeliczaniem liczby N)
         result = generuj_metryki_task_parallel.delay(
@@ -81,6 +88,7 @@ class UruchomGenerowanieView(View):
             nadpisz=nadpisz,
             przelicz_liczbe_n=True,  # Zawsze przeliczaj liczbę N przy generowaniu metryk
             rodzaje_autora=rodzaje_autora,
+            uczelnia_id=uczelnia.pk if uczelnia else None,
         )
 
         # KLUCZOWE: Ustaw status w_trakcie=True OD RAZU w widoku
@@ -126,7 +134,8 @@ class StatusGenerowaniaView(View):
     """Widok zwracający status generowania jako JSON (dla AJAX)"""
 
     def get(self, request, *args, **kwargs):
-        status = StatusGenerowania.get_or_create()
+        uczelnia = uczelnia_dla_odczytu(request)
+        status = StatusGenerowania.get_or_create(uczelnia=uczelnia)
 
         return JsonResponse(
             {
@@ -169,7 +178,8 @@ class StatusGenerowaniaPartialView(View):
         from django.shortcuts import render
 
         # Pobierz status generowania
-        status = StatusGenerowania.get_or_create()
+        uczelnia = uczelnia_dla_odczytu(request)
+        status = StatusGenerowania.get_or_create(uczelnia=uczelnia)
 
         # Sprawdź czy poprzedni status był w trakcie (dla odświeżenia strony po zakończeniu)
         previous_status_was_running = (

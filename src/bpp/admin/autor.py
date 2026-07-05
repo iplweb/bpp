@@ -28,6 +28,7 @@ from .filters import (
     PBNIDObecnyFilter,
 )
 from .helpers.fieldsets import ADNOTACJE_FIELDSET, ZapiszZAdnotacjaMixin
+from .helpers.site_filtered import SiteFilteredAdminMixin
 from .helpers.widgets import CHARMAP_SINGLE_LINE
 from .xlsx_export import resources
 from .xlsx_export.mixins import EksportDanychMixin
@@ -145,6 +146,23 @@ class Autor_JednostkaInline(admin.TabularInline):
     form = Autor_JednostkaInlineForm
     extra = 1
 
+    def get_queryset(self, request):
+        # FD#390: ten inline jest współdzielony przez AutorAdmin i
+        # JednostkaAdmin. Poszerzony scope AutorAdmin (kiedykolwiek_zwiazani)
+        # udostępnia stronę edycji WSPÓLNEGO autora personelowi innej uczelni;
+        # bez zawężenia mógłby on skasować/zakończyć wpisy zatrudnienia CUDZEJ
+        # uczelni (trigger przeliczyłby wtedy aktualna_jednostka i wyrzucił
+        # autora z aktywnej kadry tamtej uczelni). Nie-superuser widzi i edytuje
+        # tylko wpisy bieżącej uczelni. W JednostkaAdmin to no-op — jednostka
+        # rodzica i tak należy do jego uczelni. Superuser — bez zawężenia.
+        qs = super().get_queryset(request)
+        if request.user.is_superuser:
+            return qs
+        uczelnia = getattr(request, "_uczelnia", None)
+        if uczelnia:
+            return qs.filter(jednostka__uczelnia=uczelnia)
+        return qs
+
 
 # Autorzy
 
@@ -190,6 +208,7 @@ class AutorForm(forms.ModelForm):
 
 
 class AutorAdmin(
+    SiteFilteredAdminMixin,
     BppDjangoQLSearchMixin,
     ZapiszZAdnotacjaMixin,
     EksportDanychMixin,
@@ -197,6 +216,34 @@ class AutorAdmin(
     DynamicColumnsMixin,
     admin.ModelAdmin,
 ):
+    uczelnia_field_path = "aktualna_jednostka__uczelnia"
+
+    def filter_queryset_for_uczelnia(self, qs, uczelnia):
+        # FD#390: autor jest edytowalny w panelu uczelni, jeśli był z nią
+        # związany KIEDYKOLWIEK (obecnie LUB historycznie) — nie tylko gdy
+        # jego aktualna_jednostka należy akurat do tej uczelni. W multi-homed
+        # jeden autor (wspólna baza) bywa aktualnie „przypisany" do innej
+        # uczelni, a historycznie należał też do tej; personel „wprowadzanie
+        # danych" tej uczelni musi go móc otworzyć (wcześniej: 404).
+        return qs.kiedykolwiek_zwiazani(uczelnia)
+
+    def has_delete_permission(self, request, obj=None):
+        # FD#390: EDYCJA wspólnego autora jest dozwolona z każdej uczelni,
+        # w której bywał (poszerzony queryset wyżej) — ale USUWANIE zawężamy
+        # do własnej uczelni. Skasowanie rekordu autora, którego aktualną
+        # jednostką jest INNA uczelnia (jest tam aktywnym pracownikiem),
+        # byłoby zniszczeniem cudzych danych przez wspólną bazę. Superuser
+        # bez zmian; autor bez aktualnej jednostki (niczyj) — decyduje super().
+        if obj is not None and not request.user.is_superuser:
+            uczelnia = getattr(request, "_uczelnia", None)
+            if (
+                uczelnia
+                and obj.aktualna_jednostka_id
+                and obj.aktualna_jednostka.uczelnia_id != uczelnia.pk
+            ):
+                return False
+        return super().has_delete_permission(request, obj)
+
     djangoql_completion_enabled_by_default = False
     djangoql_completion = True
 

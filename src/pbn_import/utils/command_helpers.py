@@ -36,10 +36,19 @@ def get_validated_default_jednostka(jednostka_name=None, uczelnia=None):
         CommandError: Gdy brak domyślnej uczelni lub podana jednostka nie istnieje.
     """
     if uczelnia is None:
-        uczelnia = Uczelnia.objects.get_default()
-
-    if uczelnia is None:
-        raise CommandError("Brak domyślnej uczelni w systemie")
+        # Multi-hosted CLI: bez jawnej uczelni bierzemy JEDYNĄ w systemie;
+        # przy 0 lub >1 dajemy CZYTELNY CommandError (NIE „domyślna" uczelnia,
+        # taki byt nie istnieje). CLI ma podać uczelnię jawnie przy >1.
+        count = Uczelnia.objects.count()
+        if count == 1:
+            uczelnia = Uczelnia.objects.get()
+        elif count == 0:
+            raise CommandError("Brak uczelni w systemie.")
+        else:
+            raise CommandError(
+                "W systemie jest więcej niż jedna uczelnia — podaj uczelnię "
+                "jawnie (np. --uczelnia)."
+            )
 
     if jednostka_name:
         try:

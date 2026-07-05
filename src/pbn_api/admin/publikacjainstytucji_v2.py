@@ -1,12 +1,19 @@
 from django.contrib import admin
 from django.db import models
 
+from bpp.admin.helpers.site_filtered import SiteFilteredAdminMixin
 from pbn_api.admin import BasePBNAPIAdmin, PrettyJSONWidgetReadonly
+from pbn_api.admin.base import InstytucjaColumnAdminMixin
+from pbn_api.admin.filters import InstytucjaPBNFilterV2
 from pbn_api.models import PublikacjaInstytucji_V2
 
 
 @admin.register(PublikacjaInstytucji_V2)
-class PublikacjaInstytucjiAdmin(BasePBNAPIAdmin):
+class PublikacjaInstytucjiAdmin(
+    SiteFilteredAdminMixin, InstytucjaColumnAdminMixin, BasePBNAPIAdmin
+):
+    uczelnia_field_path = "uczelnia"
+    instytucja_pbn_field = "uczelnia"
     list_per_page = 25
     actions = None
 
@@ -17,6 +24,7 @@ class PublikacjaInstytucjiAdmin(BasePBNAPIAdmin):
     list_display = ["__str__", "objectId", "created_on", "last_updated"]
 
     list_filter = [
+        InstytucjaPBNFilterV2,
         "created_on",
         "last_updated",
         "objectId__year",
