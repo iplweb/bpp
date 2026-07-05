@@ -175,6 +175,15 @@ jobs:
     uses: ./.github/workflows/build-docker-images.yml
     permissions:
       contents: read
+      # Reusable build-docker-images.yml ma job `check-flag`, ktory deklaruje
+      # `pull-requests: read` (uzywa `gh pr list`/`gh pr view` na sciezce
+      # pull_request/workflow_dispatch — dedup i hint). GitHub waliduje
+      # uprawnienia reusable workflow STATYCZNIE: caller musi nadac >= tego,
+      # co deklaruje dowolny nested job, niezaleznie od tego ze na sciezce
+      # workflow_call (VERSION_TAG ustawiony) check-flag konczy sie wczesnie
+      # i tego scope'u nie tyka. Bez tej linii: "requesting 'pull-requests:
+      # read', but is only allowed 'pull-requests: none'".
+      pull-requests: read
     with:
       ref: ${{ needs.prepare.outputs.release_ref }}
       version_tag: ${{ needs.prepare.outputs.version_tag }}
