@@ -13,6 +13,7 @@ except ImportError:
 from django.http import JsonResponse
 from django.http.response import HttpResponse, HttpResponseServerError
 from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.vary import vary_on_headers
 from django.views.defaults import page_not_found, permission_denied
 from django_sendfile import sendfile
 
@@ -23,8 +24,7 @@ def root(request):
     """Wyświetl stronę główną z pierwszą dostępną w bazie danych
     uczelnią, lub wyświetl komunikat jeżeli nie ma żadnych uczelni wpisanych do
     bazy danych."""
-    # TODO: jeżeli będzie więcej, niż jeden obiekt Uczelnia...?
-    uczelnia = Uczelnia.objects.first()
+    uczelnia = Uczelnia.objects.get_for_request(request)
 
     if uczelnia is None:
         return shortcuts.render(request, "browse/brak_uczelni.html")
@@ -141,15 +141,52 @@ def handler500(request):
     return HttpResponseServerError(body, content_type="text/html; charset=utf-8")
 
 
+def _read_static_robots(settings):
+    """Zwróć treść statycznego robots.txt (lista Disallow).
+
+    Najpierw STATIC_ROOT (produkcja po collectstatic), w razie braku —
+    przez staticfiles finders (dev/test, gdzie collectstatic nie biegł).
+    """
+    import os
+
+    candidate = os.path.join(settings.STATIC_ROOT or "", "robots.txt")
+    if os.path.exists(candidate):
+        path = candidate
+    else:
+        from django.contrib.staticfiles import finders
+
+        path = finders.find("robots.txt")
+
+    if not path:
+        # Nie powinno się zdarzyć — robots.txt jest w src/bpp/static/.
+        return "User-agent: *\n"
+
+    with open(path, encoding="utf-8") as f:
+        return f.read()
+
+
+@vary_on_headers("Host")
 def robots_txt(request):
-    """Serve robots.txt - restricted version for test environments."""
+    """Serwuj robots.txt z host-zależną dyrektywą Sitemap.
+
+    W konfiguracji testowej blokujemy całość (Disallow: /) i nie ogłaszamy
+    sitemapy. W produkcji do listy Disallow dopisujemy bezwzględny URL
+    sitemapy zbudowany z hosta requestu — poprawny dla każdego z domen
+    multi-hosted (hardcode jednej domeny byłby błędny dla pozostałych).
+
+    `vary_on_headers("Host")` jest KONIECZNE: widok jest owinięty w
+    `cache_page` (urls.py), a odpowiedź zależy teraz od hosta. Bez
+    `Vary: Host` pierwszy request po wygaśnięciu cache (np. wewnętrzny
+    `appserver:8000` albo probe po IP) zabetonowałby swój host w
+    sitemapie serwowanej WSZYSTKIM domenom na 24h. Vary keyuje cache
+    per-host.
+    """
     from django.conf import settings
 
     if getattr(settings, "DJANGO_BPP_ENABLE_TEST_CONFIGURATION", False):
-        content = "User-agent: *\nDisallow: /\n"
-    else:
-        from django.views.static import serve as static_serve
+        return HttpResponse("User-agent: *\nDisallow: /\n", content_type="text/plain")
 
-        return static_serve(request, "robots.txt", document_root=settings.STATIC_ROOT)
-
-    return HttpResponse(content, content_type="text/plain")
+    body = _read_static_robots(settings).rstrip("\n")
+    sitemap_url = request.build_absolute_uri("/sitemap.xml")
+    body = f"{body}\n\nSitemap: {sitemap_url}\n"
+    return HttpResponse(body, content_type="text/plain")

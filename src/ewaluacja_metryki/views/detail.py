@@ -3,8 +3,10 @@ from django.shortcuts import redirect
 from django.views.generic import DetailView
 
 from ewaluacja_common.models import Rodzaj_Autora
+from raport_slotow.uczelnia_helper import uczelnia_dla_odczytu
 
 from ..models import MetrykaAutora
+from ..uczelnia_scope import scope_metryki
 from .mixins import EwaluacjaRequiredMixin, ma_pelne_uprawnienia_ewaluacji
 
 
@@ -37,6 +39,10 @@ class MetrykaDetailView(EwaluacjaRequiredMixin, DetailView):
                 raise PermissionDenied(
                     "Brak uprawnień do przeglądania metryk innego autora."
                 )
+
+        # Ogranicz do uczelni oglądającego (defense-in-depth: przy multi-install
+        # ta sama para autor+dyscyplina może istnieć w >1 uczelni).
+        queryset = scope_metryki(queryset, uczelnia_dla_odczytu(self.request))
 
         try:
             obj = queryset.get(
@@ -132,6 +138,8 @@ class MetrykaDetailView(EwaluacjaRequiredMixin, DetailView):
             # JSONField stores tuples as lists: (51, 123) -> [51, 123]
 
             # Query by stable rekord_id (survives cache rebuilds from pin/unpin)
+            # read-side multi-uczelnia: zawężone transitive po autor_id+dyscyplina_id;
+            # rewizja per-uczelnia metryk należy do federacji, nie R1.
             prace_nazbierane = (
                 Cache_Punktacja_Autora_Query.objects.filter(
                     rekord_id__in=metryka.prace_nazbierane,
@@ -177,6 +185,8 @@ class MetrykaDetailView(EwaluacjaRequiredMixin, DetailView):
             # Convert JSON lists to tuples for PostgreSQL tuple matching
 
             # Query by stable rekord_id
+            # read-side multi-uczelnia: zawężone transitive po autor_id+dyscyplina_id;
+            # rewizja per-uczelnia metryk należy do federacji, nie R1.
             prace_wszystkie = (
                 Cache_Punktacja_Autora_Query.objects.filter(
                     rekord_id__in=metryka.prace_wszystkie,
@@ -250,6 +260,8 @@ class MetrykaDetailView(EwaluacjaRequiredMixin, DetailView):
         if metryka.prace_wszystkie:
             # Convert JSON lists to tuples for PostgreSQL tuple matching
             # Query by stable rekord_id (survives cache rebuilds)
+            # read-side multi-uczelnia: zawężone transitive po autor_id+dyscyplina_id;
+            # rewizja per-uczelnia metryk należy do federacji, nie R1.
             prace_wszystkie = (
                 Cache_Punktacja_Autora_Query.objects.filter(
                     rekord_id__in=metryka.prace_wszystkie,
@@ -358,7 +370,7 @@ class MetrykaDetailView(EwaluacjaRequiredMixin, DetailView):
         return context
 
     def _get_position_context(self, metryka):
-        """Get author's position in unit rankings."""
+        """Get author's position in unit rankings (scoped to metryka's uczelnia)."""
         context = {}
 
         if metryka.jednostka:
@@ -366,6 +378,7 @@ class MetrykaDetailView(EwaluacjaRequiredMixin, DetailView):
                 MetrykaAutora.objects.filter(
                     jednostka=metryka.jednostka,
                     dyscyplina_naukowa=metryka.dyscyplina_naukowa,
+                    uczelnia=metryka.uczelnia,
                     srednia_za_slot_nazbierana__gt=metryka.srednia_za_slot_nazbierana,
                 ).count()
                 + 1
@@ -374,6 +387,7 @@ class MetrykaDetailView(EwaluacjaRequiredMixin, DetailView):
             context["liczba_w_jednostce"] = MetrykaAutora.objects.filter(
                 jednostka=metryka.jednostka,
                 dyscyplina_naukowa=metryka.dyscyplina_naukowa,
+                uczelnia=metryka.uczelnia,
             ).count()
 
         return context
@@ -386,9 +400,12 @@ class MetrykaDetailView(EwaluacjaRequiredMixin, DetailView):
             self.request.user
         )
 
-        # Pobierz inne dyscypliny tego samego autora
+        # Pobierz inne dyscypliny tego samego autora — tylko tej samej uczelni
         inne_dyscypliny = (
-            MetrykaAutora.objects.filter(autor=metryka.autor)
+            MetrykaAutora.objects.filter(
+                autor=metryka.autor,
+                uczelnia=metryka.uczelnia,
+            )
             .exclude(pk=metryka.pk)
             .select_related("dyscyplina_naukowa")
             .order_by("dyscyplina_naukowa__nazwa")

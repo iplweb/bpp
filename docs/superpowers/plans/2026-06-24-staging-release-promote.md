@@ -470,12 +470,13 @@ jobs:
           BASE: ${{ steps.detect.outputs.base }}
         run: |
           set -euo pipefail
-          uv run bumpver update --no-fetch --commit --no-push --tag final
+          uv run bumpver update --no-fetch --commit --no-push \
+            --set-version "v${BASE}"
           uv run towncrier build --yes || echo "towncrier: brak newsfragmentów."
           git add -A
           git commit -m "Changelog dla v${BASE}" || echo "Brak zmian changelogu."
 
-      - name: Merge → master, tag, back-merge → dev, push
+      - name: Przygotuj master/dev/tag lokalnie
         env:
           BASE: ${{ steps.detect.outputs.base }}
           RELEASE_REF: ${{ steps.detect.outputs.release_ref }}
@@ -488,7 +489,13 @@ jobs:
           git switch -C _dev origin/dev
           git merge --no-ff "v${BASE}" -m "Merge tag 'v${BASE}' into dev"
 
-          git push origin \
+      - name: Pre-flight — atomic git push będzie możliwy
+        env:
+          BASE: ${{ steps.detect.outputs.base }}
+          RELEASE_REF: ${{ steps.detect.outputs.release_ref }}
+        run: |
+          set -euo pipefail
+          git push --atomic --dry-run origin \
             _master:refs/heads/master \
             _dev:refs/heads/dev \
             "refs/tags/v${BASE}" \
@@ -530,6 +537,18 @@ jobs:
             echo ""
             echo "Źródło RC: \`:${RC_TAG}\` → \`:${BASE}\` + \`:latest\` (bez rebuildu)"
           } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Push master/dev/tag i usuń release branch
+        env:
+          BASE: ${{ steps.detect.outputs.base }}
+          RELEASE_REF: ${{ steps.detect.outputs.release_ref }}
+        run: |
+          set -euo pipefail
+          git push --atomic origin \
+            _master:refs/heads/master \
+            _dev:refs/heads/dev \
+            "refs/tags/v${BASE}" \
+            ":refs/heads/${RELEASE_REF}"
 ```
 
 - [ ] **Step 2: Walidacja YAML**

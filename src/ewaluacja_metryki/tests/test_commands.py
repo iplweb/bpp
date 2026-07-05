@@ -12,6 +12,7 @@ from bpp.models import (
     Autor_Jednostka,
     Dyscyplina_Naukowa,
     Jednostka,
+    Uczelnia,
 )
 from ewaluacja_liczba_n.models import IloscUdzialowDlaAutoraZaCalosc
 from ewaluacja_metryki.models import MetrykaAutora
@@ -22,6 +23,7 @@ def test_oblicz_metryki_command_basic(rodzaj_autora_n):
     """Test podstawowego działania komendy oblicz_metryki"""
 
     # Stwórz dane testowe
+    uczelnia = baker.make(Uczelnia)
     jednostka = baker.make(Jednostka, nazwa="Instytut")
     autor = baker.make(
         Autor, nazwisko="Testowy", imiona="Jan", aktualna_jednostka=jednostka
@@ -40,6 +42,7 @@ def test_oblicz_metryki_command_basic(rodzaj_autora_n):
         dyscyplina_naukowa=dyscyplina,
         ilosc_udzialow=Decimal("4.0"),
         ilosc_udzialow_monografie=Decimal("1.0"),
+        uczelnia=uczelnia,
     )
 
     # Stwórz Autor_Dyscyplina z rodzajem 'N'
@@ -65,7 +68,13 @@ def test_oblicz_metryki_command_basic(rodzaj_autora_n):
 
         # Wywołaj komendę
         out = StringIO()
-        call_command("oblicz_metryki", "--bez-liczby-n", stdout=out)
+        call_command(
+            "oblicz_metryki",
+            "--bez-liczby-n",
+            "--uczelnia-id",
+            str(uczelnia.pk),
+            stdout=out,
+        )
 
         output = out.getvalue()
 
@@ -93,6 +102,7 @@ def test_oblicz_metryki_command_basic(rodzaj_autora_n):
 @pytest.mark.django_db
 def test_oblicz_metryki_command_filters(rodzaj_autora_n):
     """Test filtrowania po autorze, dyscyplinie i jednostce"""
+    uczelnia = baker.make(Uczelnia)
 
     # Stwórz jednostki najpierw
     jednostka1 = baker.make(Jednostka, nazwa="Jednostka1")
@@ -126,6 +136,7 @@ def test_oblicz_metryki_command_filters(rodzaj_autora_n):
         dyscyplina_naukowa=dyscyplina1,
         ilosc_udzialow=Decimal("4.0"),
         ilosc_udzialow_monografie=Decimal("1.0"),
+        uczelnia=uczelnia,
     )
     baker.make(
         IloscUdzialowDlaAutoraZaCalosc,
@@ -133,6 +144,7 @@ def test_oblicz_metryki_command_filters(rodzaj_autora_n):
         dyscyplina_naukowa=dyscyplina2,
         ilosc_udzialow=Decimal("4.0"),
         ilosc_udzialow_monografie=Decimal("1.0"),
+        uczelnia=uczelnia,
     )
 
     # Stwórz Autor_Dyscyplina z rodzajem 'N' dla obu autorów
@@ -162,21 +174,39 @@ def test_oblicz_metryki_command_filters(rodzaj_autora_n):
         }
 
         # Test filtra po autorze
-        call_command("oblicz_metryki", "--bez-liczby-n", autor_id=autor1.pk)
+        call_command(
+            "oblicz_metryki",
+            "--bez-liczby-n",
+            "--uczelnia-id",
+            str(uczelnia.pk),
+            autor_id=autor1.pk,
+        )
         assert MetrykaAutora.objects.filter(autor=autor1).exists()
         assert not MetrykaAutora.objects.filter(autor=autor2).exists()
 
         MetrykaAutora.objects.all().delete()
 
         # Test filtra po dyscyplinie
-        call_command("oblicz_metryki", "--bez-liczby-n", dyscyplina_id=dyscyplina2.pk)
+        call_command(
+            "oblicz_metryki",
+            "--bez-liczby-n",
+            "--uczelnia-id",
+            str(uczelnia.pk),
+            dyscyplina_id=dyscyplina2.pk,
+        )
         assert not MetrykaAutora.objects.filter(dyscyplina_naukowa=dyscyplina1).exists()
         assert MetrykaAutora.objects.filter(dyscyplina_naukowa=dyscyplina2).exists()
 
         MetrykaAutora.objects.all().delete()
 
         # Test filtra po jednostce
-        call_command("oblicz_metryki", "--bez-liczby-n", jednostka_id=jednostka1.pk)
+        call_command(
+            "oblicz_metryki",
+            "--bez-liczby-n",
+            "--uczelnia-id",
+            str(uczelnia.pk),
+            jednostka_id=jednostka1.pk,
+        )
         assert MetrykaAutora.objects.filter(autor=autor1).exists()
         assert not MetrykaAutora.objects.filter(autor=autor2).exists()
 
@@ -184,7 +214,7 @@ def test_oblicz_metryki_command_filters(rodzaj_autora_n):
 @pytest.mark.django_db
 def test_oblicz_metryki_command_error_handling(rodzaj_autora_n):
     """Test obsługi błędów w komendzie"""
-
+    uczelnia = baker.make(Uczelnia)
     autor = baker.make(Autor, nazwisko="Błędny")
     dyscyplina = baker.make(Dyscyplina_Naukowa)
 
@@ -194,6 +224,7 @@ def test_oblicz_metryki_command_error_handling(rodzaj_autora_n):
         dyscyplina_naukowa=dyscyplina,
         ilosc_udzialow=Decimal("4.0"),
         ilosc_udzialow_monografie=Decimal("1.0"),
+        uczelnia=uczelnia,
     )
 
     # Stwórz Autor_Dyscyplina z rodzajem 'N'
@@ -210,7 +241,13 @@ def test_oblicz_metryki_command_error_handling(rodzaj_autora_n):
         mock_calculate.side_effect = Exception("Test error")
 
         out = StringIO()
-        call_command("oblicz_metryki", "--bez-liczby-n", stdout=out)
+        call_command(
+            "oblicz_metryki",
+            "--bez-liczby-n",
+            "--uczelnia-id",
+            str(uczelnia.pk),
+            stdout=out,
+        )
 
         output = out.getvalue()
 
@@ -226,7 +263,7 @@ def test_oblicz_metryki_command_error_handling(rodzaj_autora_n):
 @pytest.mark.django_db
 def test_oblicz_metryki_command_parameters(rodzaj_autora_n):
     """Test parametrów rok_min, rok_max i minimalny_pk"""
-
+    uczelnia = baker.make(Uczelnia)
     autor = baker.make(Autor)
     dyscyplina = baker.make(Dyscyplina_Naukowa)
 
@@ -236,6 +273,7 @@ def test_oblicz_metryki_command_parameters(rodzaj_autora_n):
         dyscyplina_naukowa=dyscyplina,
         ilosc_udzialow=Decimal("4.0"),
         ilosc_udzialow_monografie=Decimal("1.0"),
+        uczelnia=uczelnia,
     )
 
     # Stwórz Autor_Dyscyplina z rodzajem 'N' w zakresie lat testowanych (2020-2023)
@@ -264,6 +302,8 @@ def test_oblicz_metryki_command_parameters(rodzaj_autora_n):
         call_command(
             "oblicz_metryki",
             "--bez-liczby-n",
+            "--uczelnia-id",
+            str(uczelnia.pk),
             rok_min=2020,
             rok_max=2023,
             minimalny_pk=5.0,
@@ -292,6 +332,7 @@ def test_oblicz_metryki_command_rodzaj_autora_filter(
     rodzaj_autora_n, rodzaj_autora_b, rodzaj_autora_d, rodzaj_autora_z
 ):
     """Test filtrowania po rodzaju autora"""
+    uczelnia = baker.make(Uczelnia)
 
     # Stwórz trzech autorów z różnymi rodzajami
     autor_n = baker.make(Autor, nazwisko="Pracownik")
@@ -307,6 +348,7 @@ def test_oblicz_metryki_command_rodzaj_autora_filter(
         dyscyplina_naukowa=dyscyplina,
         ilosc_udzialow=Decimal("4.0"),
         ilosc_udzialow_monografie=Decimal("1.0"),
+        uczelnia=uczelnia,
     )
     baker.make(
         IloscUdzialowDlaAutoraZaCalosc,
@@ -314,6 +356,7 @@ def test_oblicz_metryki_command_rodzaj_autora_filter(
         dyscyplina_naukowa=dyscyplina,
         ilosc_udzialow=Decimal("4.0"),
         ilosc_udzialow_monografie=Decimal("1.0"),
+        uczelnia=uczelnia,
     )
     baker.make(
         IloscUdzialowDlaAutoraZaCalosc,
@@ -321,6 +364,7 @@ def test_oblicz_metryki_command_rodzaj_autora_filter(
         dyscyplina_naukowa=dyscyplina,
         ilosc_udzialow=Decimal("4.0"),
         ilosc_udzialow_monografie=Decimal("1.0"),
+        uczelnia=uczelnia,
     )
 
     # Autor_Dyscyplina - N, D, B
@@ -358,7 +402,13 @@ def test_oblicz_metryki_command_rodzaj_autora_filter(
 
         # Domyślnie powinno generować dla wszystkich rodzajów (N, D, B, Z, " ")
         out = StringIO()
-        call_command("oblicz_metryki", "--bez-liczby-n", stdout=out)
+        call_command(
+            "oblicz_metryki",
+            "--bez-liczby-n",
+            "--uczelnia-id",
+            str(uczelnia.pk),
+            stdout=out,
+        )
 
         assert MetrykaAutora.objects.filter(autor=autor_n).exists()
         assert MetrykaAutora.objects.filter(autor=autor_d).exists()
@@ -373,7 +423,13 @@ def test_oblicz_metryki_command_rodzaj_autora_filter(
         # Z opcją --rodzaje-autora N powinno generować tylko dla N
         out = StringIO()
         call_command(
-            "oblicz_metryki", "--bez-liczby-n", "--rodzaje-autora", "N", stdout=out
+            "oblicz_metryki",
+            "--bez-liczby-n",
+            "--uczelnia-id",
+            str(uczelnia.pk),
+            "--rodzaje-autora",
+            "N",
+            stdout=out,
         )
 
         assert MetrykaAutora.objects.filter(autor=autor_n).exists()
@@ -390,7 +446,13 @@ def test_oblicz_metryki_command_rodzaj_autora_filter(
         # Z opcją --rodzaje-autora B powinno generować tylko dla B
         out = StringIO()
         call_command(
-            "oblicz_metryki", "--bez-liczby-n", "--rodzaje-autora", "B", stdout=out
+            "oblicz_metryki",
+            "--bez-liczby-n",
+            "--uczelnia-id",
+            str(uczelnia.pk),
+            "--rodzaje-autora",
+            "B",
+            stdout=out,
         )
 
         assert not MetrykaAutora.objects.filter(autor=autor_n).exists()

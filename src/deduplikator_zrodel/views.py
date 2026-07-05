@@ -1,21 +1,28 @@
+from datetime import timedelta
+
 from cacheops import invalidate_model
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.db import transaction
+from django.db.models import Count, Q
 from django.shortcuts import get_object_or_404, redirect, render
-from django.urls import reverse
+from django.utils import timezone
 from django.views.decorators.http import require_POST
 
 from bpp.const import GR_WPROWADZANIE_DANYCH
 from bpp.models import Zrodlo
 from django_bpp.version import VERSION
 
-from .models import IgnoredSource, NotADuplicate
-from .utils import (
-    analiza_duplikatow,
-    policz_zrodla_z_duplikatami,
-    znajdz_pierwszego_zrodlo_z_duplikatami,
+from .models import (
+    IgnoredSource,
+    NotADuplicate,
+    ScanZrodelForDuplicates,
+    SourceDuplicateCandidate,
 )
+
+# Nieukończony skan starszy niż to = osierocony (martwy worker / zgubiony
+# task Celery); NIE blokuje uruchomienia nowego.
+SCAN_STALE_AFTER = timedelta(hours=2)
 
 
 def group_required(*group_names):
@@ -44,107 +51,144 @@ def group_required(*group_names):
     return decorator
 
 
+def latest_completed_scan():
+    """Najnowszy ukończony pomyślnie skan (źródło danych dla listy)."""
+    return (
+        ScanZrodelForDuplicates.objects.filter(
+            finished_on__isnull=False, finished_successfully=True, cancelled=False
+        )
+        .order_by("-finished_on")
+        .first()
+    )
+
+
+def active_scan():
+    """Nieukończony, NIE-osierocony skan (blokuje uruchomienie kolejnego)."""
+    cutoff = timezone.now() - SCAN_STALE_AFTER
+    return (
+        ScanZrodelForDuplicates.objects.filter(
+            finished_on__isnull=True, cancelled=False, created_on__gte=cutoff
+        )
+        .order_by("-created_on")
+        .first()
+    )
+
+
+def visible_candidates(scan, status):
+    """Kandydaci skanu w danym statusie, z DYNAMICZNYM wykluczeniem (bez
+    re-skanu): źródeł ignorowanych, par NotADuplicate oraz par już
+    przemapowanych (przemapuj_zrodlo przenosi publikacje, więc przemapowana
+    strona ma 0 publikacji — a kandydat powstawał tylko dla źródeł z
+    publikacjami)."""
+    qs = (
+        scan.candidates.filter(status=status)
+        .select_related("main_zrodlo__pbn_uid", "duplicate_zrodlo__pbn_uid")
+        .annotate(
+            _main_live_pub=Count("main_zrodlo__wydawnictwo_ciagle", distinct=True),
+            _dup_live_pub=Count("duplicate_zrodlo__wydawnictwo_ciagle", distinct=True),
+        )
+        .exclude(_main_live_pub=0)
+        .exclude(_dup_live_pub=0)
+    )
+
+    ignored_ids = list(IgnoredSource.objects.values_list("zrodlo_id", flat=True))
+    if ignored_ids:
+        qs = qs.exclude(main_zrodlo_id__in=ignored_ids).exclude(
+            duplicate_zrodlo_id__in=ignored_ids
+        )
+
+    # NotADuplicate zapisywany w obie strony; defensywnie wykluczamy oba
+    # kierunki pary.
+    nd_q = Q()
+    for z_id, d_id in NotADuplicate.objects.values_list("zrodlo_id", "duplikat_id"):
+        nd_q |= Q(main_zrodlo_id=z_id, duplicate_zrodlo_id=d_id)
+        nd_q |= Q(main_zrodlo_id=d_id, duplicate_zrodlo_id=z_id)
+    if nd_q:
+        qs = qs.exclude(nd_q)
+
+    return qs
+
+
 @login_required
 @group_required(GR_WPROWADZANIE_DANYCH)
 def duplicate_sources_view(request):
-    """Główny widok deduplikatora źródeł"""
+    """Lista par duplikatów z ostatniego ukończonego skanu."""
+    status = request.GET.get("status", SourceDuplicateCandidate.Status.PENDING)
+    if status not in SourceDuplicateCandidate.Status.values:
+        status = SourceDuplicateCandidate.Status.PENDING
 
-    # Pobierz listę pominiętych źródeł z sesji
-    skipped_sources = request.session.get("skipped_sources", [])
+    scan = latest_completed_scan()
+    candidates = visible_candidates(scan, status) if scan else []
 
-    # Znajdź pierwsze źródło z duplikatami
-    zrodlo = znajdz_pierwszego_zrodlo_z_duplikatami(excluded_ids=skipped_sources)
-
-    if not zrodlo:
-        # Brak źródeł do deduplikacji
-        return render(
-            request,
-            "deduplikator_zrodel/duplicate_sources.html",
-            {
-                "zrodlo": None,
-                "duplikaty": [],
-                "total_sources_with_duplicates": 0,
-                "bpp_version": VERSION,
-            },
-        )
-
-    # Analizuj duplikaty
-    duplikaty = analiza_duplikatow(zrodlo)
-
-    # Jeśli lista duplikatów jest pusta, przejdź automatycznie do następnego źródła
-    if not duplikaty:
-        # Dodaj do pominiętych
-        if "skipped_sources" not in request.session:
-            request.session["skipped_sources"] = []
-        if zrodlo.pk not in request.session["skipped_sources"]:
-            request.session["skipped_sources"].append(zrodlo.pk)
-        request.session.modified = True
-
-        # Komunikat
-        messages.info(
-            request,
-            f"Źródło {zrodlo.nazwa} nie ma już duplikatów do sprawdzenia. "
-            f"Przechodzę do następnego źródła.",
-        )
-
-        # Redirect do siebie - znajdzie kolejne źródło
-        return redirect("deduplikator_zrodel:duplicate_sources")
-
-    # Przygotuj dane dla szablonu
-    duplikaty_z_danymi = []
-    for kandydat, score in duplikaty:
-        # Pobierz dane PBN jeśli istnieją
-        pbn_data = None
-        mnisw_id = None
-        if kandydat.pbn_uid:
-            pbn_data = {
-                "issn": kandydat.pbn_uid.issn,
-                "e_issn": kandydat.pbn_uid.eissn,
-                "title": kandydat.pbn_uid.title,
-            }
-            mnisw_id = kandydat.pbn_uid.mniswId
-
-        # Zbuduj URL przemapowania z parametrem GET źródła docelowego
-        przemapuj_base_url = reverse(
-            "przemapuj_zrodlo:przemapuj", kwargs={"slug": kandydat.slug}
-        )
-        przemapuj_url = f"{przemapuj_base_url}?zrodlo_docelowe={zrodlo.pk}"
-
-        duplikaty_z_danymi.append(
-            {
-                "zrodlo": kandydat,
-                "score": score,
-                "pbn_data": pbn_data,
-                "mnisw_id": mnisw_id,
-                "przemapuj_url": przemapuj_url,
-            }
-        )
-
-    # Dane PBN dla głównego źródła
-    main_pbn_data = None
-    main_mnisw_id = None
-    if zrodlo.pbn_uid:
-        main_pbn_data = {
-            "issn": zrodlo.pbn_uid.issn,
-            "e_issn": zrodlo.pbn_uid.eissn,
-            "title": zrodlo.pbn_uid.title,
-        }
-        main_mnisw_id = zrodlo.pbn_uid.mniswId
-
-    # Policz przybliżoną liczbę źródeł z duplikatami
-    total_with_duplicates = policz_zrodla_z_duplikatami()
-
+    running = active_scan()
     context = {
-        "zrodlo": zrodlo,
-        "duplikaty": duplikaty_z_danymi,
-        "main_pbn_data": main_pbn_data,
-        "main_mnisw_id": main_mnisw_id,
-        "total_sources_with_duplicates": total_with_duplicates,
-        "skipped_count": len(skipped_sources),
+        "scan": scan,
+        "candidates": candidates,
+        "status": status,
+        "status_pending": SourceDuplicateCandidate.Status.PENDING,
+        "status_skipped": SourceDuplicateCandidate.Status.SKIPPED,
+        "running_scan": running,
+        "running_scan_is_mine": bool(running and running.owner_id == request.user.pk),
         "bpp_version": VERSION,
     }
-
     return render(request, "deduplikator_zrodel/duplicate_sources.html", context)
+
+
+@login_required
+@group_required(GR_WPROWADZANIE_DANYCH)
+@require_POST
+def start_scan(request):
+    """Uruchom skan w tle (django-liveops) i przekieruj na stronę live."""
+    if active_scan():
+        messages.warning(
+            request,
+            "Skanowanie jest już w trakcie. Poczekaj na jego zakończenie.",
+        )
+        return redirect("deduplikator_zrodel:duplicate_sources")
+
+    op = ScanZrodelForDuplicates.objects.create(owner=request.user)
+    op.enqueue()
+    return redirect(op.get_absolute_url())
+
+
+@login_required
+@group_required(GR_WPROWADZANIE_DANYCH)
+@require_POST
+def skip_candidate(request):
+    """Odłóż kandydata na później (PENDING → SKIPPED)."""
+    candidate = get_object_or_404(
+        SourceDuplicateCandidate, pk=request.POST.get("candidate_id")
+    )
+    candidate.status = SourceDuplicateCandidate.Status.SKIPPED
+    candidate.save(update_fields=["status"])
+    return redirect("deduplikator_zrodel:duplicate_sources")
+
+
+@login_required
+@group_required(GR_WPROWADZANIE_DANYCH)
+@require_POST
+def unskip_candidate(request):
+    """Cofnij odłożenie (SKIPPED → PENDING)."""
+    candidate = get_object_or_404(
+        SourceDuplicateCandidate, pk=request.POST.get("candidate_id")
+    )
+    candidate.status = SourceDuplicateCandidate.Status.PENDING
+    candidate.save(update_fields=["status"])
+    return redirect("deduplikator_zrodel:duplicate_sources")
+
+
+@login_required
+@group_required(GR_WPROWADZANIE_DANYCH)
+@require_POST
+def reset_skipped(request):
+    """Przywróć wszystkie odłożone pary ostatniego skanu do PENDING."""
+    scan = latest_completed_scan()
+    if scan:
+        scan.candidates.filter(status=SourceDuplicateCandidate.Status.SKIPPED).update(
+            status=SourceDuplicateCandidate.Status.PENDING
+        )
+    messages.success(request, "Przywrócono odłożone pary.")
+    return redirect("deduplikator_zrodel:duplicate_sources")
 
 
 @login_required
@@ -165,7 +209,6 @@ def mark_non_duplicate(request):
         duplikat = get_object_or_404(Zrodlo, pk=duplikat_id)
 
         with transaction.atomic():
-            # Utwórz wpis NotADuplicate (w obie strony dla pewności)
             NotADuplicate.objects.get_or_create(
                 zrodlo=zrodlo, duplikat=duplikat, defaults={"created_by": request.user}
             )
@@ -173,7 +216,6 @@ def mark_non_duplicate(request):
                 zrodlo=duplikat, duplikat=zrodlo, defaults={"created_by": request.user}
             )
 
-        # Unieważnij cache aby natychmiast pokazać zmiany
         invalidate_model(Zrodlo)
 
         messages.success(
@@ -207,20 +249,11 @@ def ignore_source(request):
             zrodlo=zrodlo, defaults={"reason": reason, "created_by": request.user}
         )
 
-        # Unieważnij cache aby natychmiast pokazać zmiany
         invalidate_model(Zrodlo)
 
         messages.success(
             request, f"Źródło '{zrodlo.nazwa}' zostało dodane do listy ignorowanych."
         )
-
-        # Usuń z sesyjnej listy pominiętych jeśli tam jest
-        if (
-            "skipped_sources" in request.session
-            and zrodlo.pk in request.session["skipped_sources"]
-        ):
-            request.session["skipped_sources"].remove(zrodlo.pk)
-            request.session.modified = True
 
     except Zrodlo.DoesNotExist:
         messages.error(request, "Nie znaleziono źródła o podanym ID.")
@@ -230,90 +263,31 @@ def ignore_source(request):
 
 @login_required
 @group_required(GR_WPROWADZANIE_DANYCH)
-def skip_current(request):
-    """Pomija bieżące źródło i przechodzi do następnego"""
-
-    zrodlo_id = request.GET.get("zrodlo_id")
-
-    if zrodlo_id:
-        if "skipped_sources" not in request.session:
-            request.session["skipped_sources"] = []
-
-        try:
-            zrodlo_id = int(zrodlo_id)
-            if zrodlo_id not in request.session["skipped_sources"]:
-                request.session["skipped_sources"].append(zrodlo_id)
-                request.session.modified = True
-                messages.info(request, "Pominięto bieżące źródło.")
-        except (ValueError, TypeError):
-            messages.error(request, "Nieprawidłowy ID źródła.")
-
-    return redirect("deduplikator_zrodel:duplicate_sources")
-
-
-@login_required
-@group_required(GR_WPROWADZANIE_DANYCH)
-def go_previous(request):
-    """Cofa się do poprzedniego źródła"""
-
-    if "skipped_sources" in request.session and request.session["skipped_sources"]:
-        # Usuń ostatnie źródło z listy pominiętych
-        request.session["skipped_sources"].pop()
-        request.session.modified = True
-        messages.info(request, "Cofnięto do poprzedniego źródła.")
-    else:
-        messages.warning(request, "Brak poprzednich źródeł do cofnięcia.")
-
-    return redirect("deduplikator_zrodel:duplicate_sources")
-
-
-@login_required
-@group_required(GR_WPROWADZANIE_DANYCH)
-def reset_skipped(request):
-    """Resetuje listę pominiętych źródeł"""
-
-    if "skipped_sources" in request.session:
-        del request.session["skipped_sources"]
-        request.session.modified = True
-
-    # Unieważnij cache aby pokazać świeże dane
-    invalidate_model(Zrodlo)
-
-    messages.success(request, "Zresetowano listę pominiętych źródeł.")
-    return redirect("deduplikator_zrodel:duplicate_sources")
-
-
-@login_required
-@group_required(GR_WPROWADZANIE_DANYCH)
 def download_duplicates_xlsx(request):
-    """
-    Widok do pobierania listy duplikatów źródeł w formacie XLSX.
-
-    Generuje plik XLSX ze wszystkimi źródłami z duplikatami,
-    zawierający główne źródło, jego ISSN/E-ISSN, PBN UID, duplikat i jego dane.
-    """
+    """Pobiera listę duplikatów źródeł (ostatni skan) w formacie XLSX."""
     import datetime
     import sys
 
     import rollbar
     from django.http import HttpResponse
 
-    from .utils import export_duplicates_to_xlsx
+    from .utils import export_candidates_to_xlsx
 
     try:
-        # Generuj plik XLSX
-        xlsx_content = export_duplicates_to_xlsx()
+        scan = latest_completed_scan()
+        candidates = (
+            list(visible_candidates(scan, SourceDuplicateCandidate.Status.PENDING))
+            if scan
+            else []
+        )
+        xlsx_content = export_candidates_to_xlsx(candidates, request)
 
-        # Stwórz odpowiedź HTTP z plikiem
         response = HttpResponse(
             xlsx_content,
             content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         )
-
-        # Nazwa pliku z datą
         filename = f"duplikaty_zrodel_{datetime.date.today().strftime('%Y-%m-%d')}.xlsx"
         response["Content-Disposition"] = f'attachment; filename="{filename}"'
-
         return response
 
     except Exception as e:

@@ -35,7 +35,7 @@ produkcji).
 ## 3. Cykl życia (UX docelowy)
 
 ```bash
-# 1) Utnij kandydata → buduje 5 obrazów, przesuwa :staging, NIE rusza :latest
+# 1) Utnij kandydata → buduje 6 obrazów, przesuwa :staging, NIE rusza :latest
 gh workflow run release-candidate.yml --ref dev
 #    → wersja v202606.1392-rc1; obrazy :202606.1392rc1 (pep440) + :staging
 
@@ -115,10 +115,9 @@ Refaktor obecnego pliku. Staje się **`workflow_call`** (zachowuje też
   przez imagetools — jedno źródło prawdy o produkcji.
 - **Inputs** (`workflow_call`):
   - `ref` — git ref do zbudowania (gałąź `release/v…`).
-  - `version_tag` — immutable tag do wypchnięcia (np. `202606.1392-rc1`).
+  - `version_tag` — immutable tag do wypchnięcia (np. `202606.1392rc1`).
   - `channel` (opcjonalny) — dodatkowy ruchomy tag (np. `staging`).
   - `run_trivy` (bool, default `true`) — brama CRITICAL.
-- **Outputs:** mapa digestów per obraz (do pinowania przez wołającego).
 - **Zachowuje** wewnętrzny wzorzec: build → `sha-<commit>` → Trivy gate (CRITICAL
   fail / HIGH report) → promote `sha-*` na `version_tag` (+ `channel` jeśli
   podany). **Nie dotyka** `:latest` ani kanonicznego final.
@@ -168,12 +167,15 @@ gdy otwartych jest >1 gałęzi `release/*`. Przebieg:
    -m "Release v<BASE>"`; `git tag -a v<BASE> -m "Release v<BASE>"`.
 6. `git switch -C _dev origin/dev`; `git merge --no-ff v<BASE> -m "Merge tag
    'v<BASE>' into dev"` (komunikat, który `tests.yml` celowo pomija na dev).
-7. `git push origin _master:master _dev:dev refs/tags/v<BASE>
-   :refs/heads/release/v<BASE>` (push master+dev+tag, skasuj gałąź wydania).
-8. **Promote obrazów (imagetools, bez rebuildu):** dla każdego z 5 obrazów
+7. `git push --atomic --dry-run ...` dla master+dev+tag+kasowania release branch,
+   żeby sprawdzić uprawnienia i fast-forward przed ruszeniem tagów obrazów.
+8. **Promote obrazów (imagetools, bez rebuildu):** dla każdego z 6 obrazów
    `docker buildx imagetools create -t <repo>:<BASE> -t <repo>:latest
    <repo>:<BASE>rcN` (pep440, np. `202606.1392rc2`).
-9. (Trivy NIE jest powtarzany — bramowano przy cut-RC; te same bajty.)
+9. `git push --atomic origin ...` (push master+dev+tag i dopiero wtedy skasuj
+   gałąź wydania). Jeśli promote obrazów padnie, git zostaje nietknięty, a
+   `release/*` zostaje do retry.
+10. (Trivy NIE jest powtarzany — bramowano przy cut-RC; te same bajty.)
 
 ## 7. Mapa workflowów po zmianie
 
@@ -229,7 +231,7 @@ znika — każdy plik ma jedną rolę.
 ## 9. Co MUSI zrobić user (poza CI)
 
 **Przed pierwszym promote:** zmienić deploy stagingu, żeby pullował `:staging`
-(wszystkie 5 obrazów: appserver, workerserver, beatserver, authserver,
+(wszystkie 6 obrazów: base, appserver, workerserver, beatserver, authserver,
 denorm-queue) zamiast `:latest`. Produkcja zostaje na `:latest`.
 
 ## 10. Plan wdrożenia

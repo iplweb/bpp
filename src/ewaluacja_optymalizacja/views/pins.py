@@ -111,7 +111,7 @@ def reset_discipline_pins(request, pk):
     # Uruchom zadanie optymalizacji dla tej dyscypliny
     logger.info(f"Starting optimization for discipline '{dyscyplina.nazwa}'")
 
-    uczelnia = Uczelnia.objects.first()
+    uczelnia = Uczelnia.objects.get_for_request(request)
 
     try:
         liczba_n_obj = LiczbaNDlaUczelni.objects.get(
@@ -156,8 +156,7 @@ def reset_all_pins(request):
 
     from ..tasks import reset_all_pins_task
 
-    # Pobierz pierwszą uczelnię (zakładamy, że jest tylko jedna)
-    uczelnia = Uczelnia.objects.first()
+    uczelnia = Uczelnia.objects.get_for_request(request)
 
     if not uczelnia:
         messages.error(request, "Nie znaleziono uczelni w systemie.")

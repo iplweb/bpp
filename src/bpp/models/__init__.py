@@ -13,6 +13,7 @@ from .praca_doktorska import *  # noqa
 from .praca_habilitacyjna import *  # noqa
 from .profile import *  # noqa
 from .repozytorium import *  # noqa
+from .rodzaj_jednostki import RodzajJednostki  # noqa
 from .rzeczownik import *  # noqa
 from .seria_wydawnicza import *  # noqa
 from .struktura import *  # noqa

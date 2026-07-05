@@ -13,6 +13,7 @@ from django.db.models.expressions import RawSQL
 from bpp import const
 from bpp.models import (
     BazaModeluStreszczen,
+    BazaModeluTytulow,
     DodajAutoraMixin,
     ManagerModeliZOplataZaPublikacjeMixin,
     MaProcentyMixin,
@@ -412,6 +413,20 @@ class Wydawnictwo_Zwarte_Zewnetrzna_Baza_Danych(models.Model):
     class Meta:
         verbose_name = "powiązanie wyd. zwartego z zewn. bazami danych"
         verbose_name_plural = "powiązania wyd. zwartych z zewn. bazami danych"
+
+
+class Wydawnictwo_Zwarte_Tytul(BazaModeluTytulow):
+    rekord = models.ForeignKey(
+        Wydawnictwo_Zwarte, CASCADE, related_name="dodatkowe_tytuly"
+    )
+
+    class Meta:
+        verbose_name = "dodatkowy tytuł wydawnictwa zwartego"
+        verbose_name_plural = "dodatkowe tytuły wydawnictw zwartych"
+        unique_together = [("rekord", "kod_jezyka_pbn")]
+
+    def __str__(self):
+        return f"Tytuł rekordu {self.rekord_id} w języku {self.kod_jezyka_pbn}"
 
 
 class Wydawnictwo_Zwarte_Streszczenie(BazaModeluStreszczen):

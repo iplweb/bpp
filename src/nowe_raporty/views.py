@@ -244,6 +244,15 @@ class RaportFormView(RaportDostepMixin, FormDefaultsMixin, FormView):
     def get_form_title(self):
         return self.definicja.nazwa
 
+    def get_form_kwargs(self):
+        # Multi-hosted: przekazujemy request do formularza, żeby BaseRaportForm
+        # wziął uczelnię z ``request._uczelnia`` (host), a nie zgadywał. Ścieżki
+        # bez tego (post_migrate, introspekcja formdefaults) dostają request=None
+        # → uczelnia=None (None-tolerant).
+        kwargs = super().get_form_kwargs()
+        kwargs["request"] = self.request
+        return kwargs
+
     def get_initial(self):
         initial = super().get_initial()
         cfg = POZIOMY[self.definicja.poziom]

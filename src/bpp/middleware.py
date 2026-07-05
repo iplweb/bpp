@@ -144,56 +144,97 @@ class MaliciousRequestBlockingMiddleware(MiddlewareMixin):
     # Blocked path suffixes (for vim backups like file.py~)
     BLOCKED_SUFFIXES = ("~",)
 
-    def process_request(self, request):  # noqa: C901
-        path = request.path
-        path_lower = path.lower()
+    def process_request(self, request):
+        # Each checker inspects ``request`` and returns a
+        # ``(block_reason, identifier)`` tuple when it wants to block, or
+        # ``None`` to let the request fall through to the next check. The
+        # checkers run in declaration order — the same order in which the
+        # original inline checks were written — so the first matching rule
+        # wins and the reported ``block_reason`` is unchanged.
+        checks = (
+            self._check_path_length,
+            self._check_full_url_length,
+            self._check_nested_next,
+            self._check_pagination,
+            self._check_blocked_extension,
+            self._check_blocked_path,
+            self._check_backup_suffix,
+        )
+        for check in checks:
+            result = check(request)
+            if result is not None:
+                return self._block_request(request, *result)
 
+        return None
+
+    def _check_path_length(self, request):
         # Block excessively long paths (potential buffer overflow attempts)
+        path = request.path
         if len(path) > 1024:
-            return self._block_request(request, "path_too_long", path[:100])
+            return ("path_too_long", path[:100])
+        return None
 
+    def _check_full_url_length(self, request):
         # Block excessively long full URLs (path + query string). Catches
         # scanner bots that follow login redirects without cookies and end up
         # accumulating exponentially growing percent-encoded ``?next=`` chains.
         # Skip the check for whitelisted paths (e.g. ``/api/`` endpoints which
         # legitimately carry verbose DataTables query params).
-        if not any(s in path for s in self.URL_LENGTH_WHITELIST_SUBSTRINGS):
-            full_path = request.get_full_path()
-            if len(full_path) > self.MAX_FULL_PATH_LENGTH:
-                return self._block_request(request, "url_too_long", full_path[:100])
+        path = request.path
+        if any(s in path for s in self.URL_LENGTH_WHITELIST_SUBSTRINGS):
+            return None
+        full_path = request.get_full_path()
+        if len(full_path) > self.MAX_FULL_PATH_LENGTH:
+            return ("url_too_long", full_path[:100])
+        return None
 
+    def _check_nested_next(self, request):
         # Block nested ``?next=`` redirect chains. Django decodes one level of
         # percent-encoding when parsing query string, so a legitimate single
         # redirect target (e.g. ``next=/foo/``) never contains ``?next=`` —
         # but a re-redirected scanner trail does (``next=/login/?next=/foo``).
         next_param = request.GET.get("next", "")
         if next_param and "?next=" in next_param.lower():
-            return self._block_request(request, "nested_next", next_param[:100])
+            return ("nested_next", next_param[:100])
+        return None
 
+    def _check_pagination(self, request):
         # Check pagination parameter for SQL injection
         page_param = request.GET.get("page", "")
-        if page_param:
-            # Allow "last" keyword (Django pagination feature)
-            if page_param.lower() != "last":
-                # Block if > 5 chars AND contains non-numeric characters
-                if len(page_param) > 5 and not page_param.isdigit():
-                    return self._block_request(request, "pagination", page_param[:100])
+        if not page_param:
+            return None
+        # Allow "last" keyword (Django pagination feature)
+        if page_param.lower() == "last":
+            return None
+        # Block if > 5 chars AND contains non-numeric characters
+        if len(page_param) > 5 and not page_param.isdigit():
+            return ("pagination", page_param[:100])
+        return None
 
+    def _check_blocked_extension(self, request):
         # Check for blocked file extensions
+        path = request.path
+        path_lower = path.lower()
         for ext in self.BLOCKED_EXTENSIONS:
             if path_lower.endswith(ext):
-                return self._block_request(request, "blocked_extension", path[:100])
+                return ("blocked_extension", path[:100])
+        return None
 
+    def _check_blocked_path(self, request):
         # Check for blocked path patterns
+        path = request.path
+        path_lower = path.lower()
         for blocked_path in self.BLOCKED_PATHS:
             if blocked_path.lower() in path_lower:
-                return self._block_request(request, "blocked_path", path[:100])
+                return ("blocked_path", path[:100])
+        return None
 
+    def _check_backup_suffix(self, request):
         # Check for vim backup files (ending with ~)
+        path = request.path
         for suffix in self.BLOCKED_SUFFIXES:
             if path.endswith(suffix):
-                return self._block_request(request, "backup_file", path[:100])
-
+                return ("backup_file", path[:100])
         return None
 
     def _block_request(self, request, block_reason, identifier):
@@ -252,13 +293,89 @@ class NonHtmlDebugToolbarMiddleware(MiddlewareMixin):
         return response
 
 
+class SiteResolutionMiddleware(MiddlewareMixin):
+    """Resolve the current Site and Uczelnia from the request hostname.
+
+    Sets ``request.site`` and ``request._uczelnia`` so that downstream code
+    (views, context processors, managers) can access the current university
+    without additional DB queries.
+
+    Fallback order:
+    1. Match hostname against ``Site.domain``
+    2. Use ``settings.SITE_ID`` (backward compat for single-site deployments)
+    """
+
+    def process_request(self, request):
+        from bpp.models.uczelnia import Uczelnia
+
+        # Rozdzielczość Site i Uczelni jest WSPÓLNA z
+        # ``Uczelnia.objects.get_for_request`` (jeden resolver, host-first).
+        site = Uczelnia.objects._site_dla_requestu(request)
+        request.site = site
+
+        # Multi-hosted: uczelnia z Site (domena), a gdy się nie da — jedyna
+        # uczelnia w systemie. Brak → None; jedna → ta; wiele bez wskazania
+        # z domeny → None (ŻADNA, nie zgadujemy „domyślnej").
+        request._uczelnia = Uczelnia.objects.uczelnia_dla_site(site)
+
+    def process_view(self, request, view_func, view_args, view_kwargs):
+        """Block admin access for staff users without access to current site.
+
+        Anonymous users and public pages are not affected.
+        Superusers always have access to all sites.
+        """
+        if not getattr(request, "path", "").startswith("/admin/"):
+            return None
+
+        user = getattr(request, "user", None)
+        if user is None or not user.is_authenticated or user.is_superuser:
+            return None
+
+        uczelnia = getattr(request, "_uczelnia", None)
+        if uczelnia is None:
+            return None
+
+        # If user has any accessible_uczelnie configured, enforce the check.
+        # If user has none (backward compat / not yet configured), allow.
+        if (
+            user.accessible_uczelnie.exists()
+            and not user.accessible_uczelnie.filter(pk=uczelnia.pk).exists()
+        ):
+            from django.http import HttpResponseForbidden
+
+            return HttpResponseForbidden(
+                "Nie masz dostępu do tej uczelni. Skontaktuj się z administratorem."
+            )
+
+        return None
+
+
 class CustomRollbarNotifierMiddleware(RollbarNotifierMiddleware):
     def get_extra_data(self, request, exc):
         from django.conf import settings
+        from django.core.exceptions import DisallowedHost
 
-        return {
+        data = {
+            # Identyfikacja instalacji (canonical hostname, pierwsza pozycja
+            # z DJANGO_BPP_HOSTNAMES). W single-host = pełna informacja.
             "DJANGO_BPP_HOSTNAME": settings.DJANGO_BPP_HOSTNAME,
         }
+
+        if request is not None:
+            try:
+                data["request_host"] = request.get_host()
+            except DisallowedHost:
+                # request.get_host() może rzucić DisallowedHost — być może
+                # to właśnie ten exception już raportujemy. Nie blokuj
+                # wzbogacania payloadu, zaznacz informacją.
+                data["request_host"] = "<DisallowedHost>"
+
+            uczelnia = getattr(request, "_uczelnia", None)
+            if uczelnia is not None:
+                data["uczelnia_skrot"] = getattr(uczelnia, "skrot", None)
+                data["uczelnia_pk"] = uczelnia.pk
+
+        return data
 
     def get_payload_data(self, request, exc):
         payload_data = dict()

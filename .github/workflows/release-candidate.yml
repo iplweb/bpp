@@ -24,13 +24,15 @@ concurrency:
   cancel-in-progress: false
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   prepare:
     name: Zbuduj kandydata (bump RC + scan + testy)
     runs-on: ubuntu-latest
     timeout-minutes: 90
+    permissions:
+      contents: write
     env:
       COMPOSE_FILES: -f docker-compose.test.yml -f docker-compose.test.ci.yml
     outputs:
@@ -38,10 +40,11 @@ jobs:
       release_ref: ${{ steps.bump.outputs.release_ref }}
     steps:
       - name: Checkout (pełna historia + tagi)
-        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           fetch-depth: 0
           token: ${{ secrets.GITHUB_TOKEN }}
+          persist-credentials: false
 
       - name: Konfiguracja git
         run: |
@@ -59,8 +62,15 @@ jobs:
         run: |
           set -euo pipefail
           # Wykryj otwartą gałąź wydania (origin/release/*).
-          OPEN=$(git ls-remote --heads origin 'refs/heads/release/*' \
-                 | sed -E 's@.*refs/heads/(release/.*)$@\1@' | head -1 || true)
+          mapfile -t BRANCHES < <(git ls-remote --heads origin 'refs/heads/release/*' \
+            | sed -E 's@.*refs/heads/(release/.*)$@\1@')
+
+          if [ "${#BRANCHES[@]}" -gt 1 ]; then
+            echo "::error::Otwartych >1 wydań: ${BRANCHES[*]}. Domknij/promuj jedno przed kolejnym RC."
+            exit 1
+          fi
+
+          OPEN="${BRANCHES[0]:-}"
 
           if [ -z "$OPEN" ]; then
             # Nowy cykl: policz BASE RAZ (bumpver test daje następny final),
@@ -153,16 +163,23 @@ jobs:
       - name: Push gałęzi wydania
         env:
           RELEASE_REF: ${{ steps.bump.outputs.release_ref }}
-        run: git push origin "HEAD:refs/heads/${RELEASE_REF}"
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          git push \
+            "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" \
+            "HEAD:refs/heads/${RELEASE_REF}"
 
   build:
     name: Build obrazów RC → :staging
     needs: prepare
     uses: ./.github/workflows/build-docker-images.yml
+    permissions:
+      contents: read
     with:
       ref: ${{ needs.prepare.outputs.release_ref }}
       version_tag: ${{ needs.prepare.outputs.version_tag }}
       channel: staging
       run_trivy: true
       tag_latest: false
-    secrets: inherit
+    secrets:
+      DOCKER_PAT: ${{ secrets.DOCKER_PAT }}

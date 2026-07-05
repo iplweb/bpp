@@ -202,37 +202,49 @@ def test_cofnij_przemapowanie_already_reverted(client_with_group, user_with_grou
 
 
 @pytest.mark.django_db
-def test_przemapuj_zrodlo_blocked_for_mnisw_source(client_with_group):
-    """Test blokady przemapowania dla źródła z MNISW ID (na liście ministerstwa)."""
+def test_przemapuj_ministerial_na_inny_mnisw_odrzucone(client_with_group):
+    """Źródło ministerialne NIE może być przemapowane na czasopismo o INNYM
+    MNiSW ID (to byłoby przenoszenie publikacji między różnymi czasopismami).
+    Strona się ładuje — blokada jest w walidacji formularza."""
     from pbn_api.models import Journal
 
-    # Utwórz źródło z Journal który ma MNISW ID i status != DELETED
-    journal = Journal.objects.create(
-        mongoId="test_journal_12345",
-        status="CURRENT",
-        verificationLevel="VERIFIED",
-        verified=True,
-        versions=[
-            {
-                "current": True,
-                "object": {
-                    "title": "Test Journal with MNISW",
-                    "mniswId": 12345,
-                },
-            }
-        ],
-        mniswId=12345,
-        title="Test Journal with MNISW",
-    )
-    zrodlo = baker.make("bpp.Zrodlo", pbn_uid=journal)
-    baker.make("bpp.Wydawnictwo_Ciagle", zrodlo=zrodlo)
+    src_journal = baker.make(Journal, mniswId=12345, status="CURRENT", title="Src")
+    dst_journal = baker.make(Journal, mniswId=99999, status="CURRENT", title="Dst")
+    zrodlo = baker.make("bpp.Zrodlo", pbn_uid=src_journal)
+    docelowe = baker.make("bpp.Zrodlo", pbn_uid=dst_journal)
+    pub = baker.make("bpp.Wydawnictwo_Ciagle", zrodlo=zrodlo)
 
     url = reverse("przemapuj_zrodlo:przemapuj", args=[zrodlo.slug])
-    response = client_with_group.get(url)
+    assert client_with_group.get(url).status_code == 200
 
-    # Powinien przekierować z komunikatem o blokadzie
-    assert response.status_code == 302
-    assert response.url == reverse("bpp:browse_zrodlo", args=[zrodlo.slug])
+    resp = client_with_group.post(
+        url, {"zrodlo_docelowe": docelowe.pk, "potwierdzenie": "on"}
+    )
+    # Formularz odrzucony (re-render 200); publikacja NIE przeniesiona.
+    assert resp.status_code == 200
+    pub.refresh_from_db()
+    assert pub.zrodlo_id == zrodlo.pk
+
+
+@pytest.mark.django_db
+def test_przemapuj_ministerial_na_ten_sam_mnisw_dozwolone(client_with_group):
+    """Źródło ministerialne MOŻNA przemapować na czasopismo o TYM SAMYM
+    MNiSW ID — to deduplikacja tego samego czasopisma."""
+    from pbn_api.models import Journal
+
+    src_journal = baker.make(Journal, mniswId=12345, status="CURRENT", title="Src")
+    dst_journal = baker.make(Journal, mniswId=12345, status="CURRENT", title="Dst")
+    zrodlo = baker.make("bpp.Zrodlo", pbn_uid=src_journal)
+    docelowe = baker.make("bpp.Zrodlo", pbn_uid=dst_journal)
+    pub = baker.make("bpp.Wydawnictwo_Ciagle", zrodlo=zrodlo)
+
+    url = reverse("przemapuj_zrodlo:przemapuj", args=[zrodlo.slug])
+    resp = client_with_group.post(
+        url, {"zrodlo_docelowe": docelowe.pk, "potwierdzenie": "on"}
+    )
+    assert resp.status_code == 302
+    pub.refresh_from_db()
+    assert pub.zrodlo_id == docelowe.pk
 
 
 @pytest.mark.django_db

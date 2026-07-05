@@ -113,6 +113,20 @@ def test_browse_autor():
     return autor
 
 
+def test_browse_autor_link_osadzania(autor_jan_kowalski, client):
+    """Strona autora zawiera drobny link do dokumentacji widgetu osadzania
+    (z prefillem slugu) — i NIE zawiera już dawnego bloba z kodem."""
+    res = client.get(reverse("bpp:browse_autor", args=(autor_jan_kowalski.slug,)))
+    content = res.rendered_content
+
+    assert "Osadź publikacje tego autora" in content
+    assert "widget-publikacji" in content
+    assert f"autor={autor_jan_kowalski.slug}" in content
+    # dawny blob (kopiowanie kodu JS) został usunięty
+    assert "Kopiuj kod" not in content
+    assert "Kod do osadzenia publikacji na stronie WWW" not in content
+
+
 def test_browse_autor_dwa_doktoraty(typy_odpowiedzialnosci, autor_jan_kowalski, client):
     tytuly_prac = ["Praca 1", "Praca 2"]
     for praca in tytuly_prac:

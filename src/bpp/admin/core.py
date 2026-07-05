@@ -1,3 +1,4 @@
+import logging
 from decimal import Decimal
 from hashlib import md5
 
@@ -22,6 +23,9 @@ from bpp.models import (
     Typ_Odpowiedzialnosci,
     Uczelnia,
 )
+from bpp.util import zaloguj_polkniety_wyjatek
+
+logger = logging.getLogger(__name__)
 
 UPOWAZNIENIE_PBN = "upowaznienie_pbn"
 
@@ -66,7 +70,8 @@ class DynamicAdminFilterMixin:
             query_string = request.GET.urlencode()
             query_hash = md5(query_string.encode()).hexdigest()
             model_label = self.model._meta.label
-            cache_key = f"filter_count_{model_label}_{query_hash}"
+            site_pk = getattr(getattr(request, "site", None), "pk", 0)
+            cache_key = f"filter_count_{site_pk}_{model_label}_{query_hash}"
 
             # Sprawdź czy wynik jest już w cache
             count = cache.get(cache_key)
@@ -88,6 +93,12 @@ class DynamicAdminFilterMixin:
             # Zwróć cyfrę jako HTML dla HTMX innerHTML
             return HttpResponse(f"{count}", content_type="text/html; charset=utf-8")
         except Exception:
+            zaloguj_polkniety_wyjatek(
+                f"Liczenie obiektów dla licznika filtru HTMX "
+                f"(model={self.model._meta.label}, "
+                f"query={request.GET.urlencode()})",
+                logger=logger,
+            )
             # W przypadku błędu zwróć myślnik
             return HttpResponse("-", content_type="text/html; charset=utf-8")
 
@@ -189,9 +200,12 @@ def generuj_formularz_dla_autorow(  # noqa
         def __init__(self, *args, **kwargs):  # noqa
             super().__init__(*args, **kwargs)
 
-            # Ustaw inicjalną wartość dla pola 'afiliuje'
+            # Ustaw inicjalną wartość dla pola 'afiliuje'. Formularz inline nie
+            # dysponuje requestem (świadomie — to UI-default nowego wiersza),
+            # więc czytamy JEDYNĄ uczelnię (single → ona; 0/>1 → None →
+            # neutralny default True). NIE zgadujemy pierwszej-z-brzegu.
             domyslnie_afiliuje = True
-            uczelnia = Uczelnia.objects.first()
+            uczelnia = Uczelnia.objects.get_single_uczelnia_or_none()
             if uczelnia is not None:
                 domyslnie_afiliuje = uczelnia.domyslnie_afiliuje
             self.fields["afiliuje"].initial = domyslnie_afiliuje
