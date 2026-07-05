@@ -13,7 +13,7 @@ from datetime import timedelta
 
 import pytest
 
-from bpp.models import Jednostka_Rodzic, RodzajJednostki
+from bpp.models import Jednostka, Jednostka_Rodzic, RodzajJednostki
 from bpp.tests.util import any_jednostka
 
 
@@ -136,3 +136,27 @@ def test_Jednostka_aktualne_podjednostki_liczy_cale_poddrzewo(wezel, uczelnia):
     aktualne = wezel.aktualne_podjednostki()
     assert instytut in aktualne
     assert katedra in aktualne
+
+
+@pytest.mark.django_db
+def test_Jednostka_podjednostki_dzialaja_dla_niekorzenia(wezel, uczelnia):
+    """Regresja (#438): metody strukturalne muszą działać także dla węzła
+    NIE-korzenia. Dotąd ``wydzial=self`` łapało tylko korzeń, więc „Instytut"
+    z rodzajem ``pokazuj_strukture_podjednostek`` renderował PUSTĄ stronę mimo
+    katedr. Teraz nie-korzeń używa MPTT ``get_descendants``."""
+    instytut = _dziecko(wezel, uczelnia, aktualna=True, widoczna=True)
+    katedra = any_jednostka(
+        uczelnia=uczelnia,
+        wydzial=None,
+        parent=instytut,
+        aktualna=True,
+        widoczna=True,
+    )
+
+    # ``self`` musi być świeży (jak w widoku DetailView) -- lft/rght instytutu
+    # zmieniły się w bazie po wstawieniu katedry.
+    instytut = Jednostka.objects.get(pk=instytut.pk)
+
+    assert katedra in instytut.aktualne_podjednostki()
+    # a poddrzewo instytutu NIE zawiera samego instytutu ani rodzeństwa wyżej
+    assert instytut not in instytut.aktualne_podjednostki()
