@@ -84,6 +84,14 @@ def _promuj_jednoelementowe_wydzialy(apps):
     więc NIE jest brana za lustro (nie promujemy jej powtórnie).
     """
     Jednostka = apps.get_model("bpp", "Jednostka")
+    Wydzial = apps.get_model("bpp", "Wydzial")
+
+    # #438: widoczność źródłowych wydziałów. Promowana jednostka PRZEJMUJE rolę
+    # wydziału, więc UKRYTY wydział ukrywa też promowaną (inaczej ukryty
+    # „wydmuszka"-wydział znikał, a jego jedyna, widoczna jednostka zostawała
+    # widoczna). Widocznego wydziału NIE forsujemy na jednostkę — zostaje jej
+    # własna widoczność (0462 i tak nie rusza promowanych, ``jest_lustrem=False``).
+    wydzial_widoczny = dict(Wydzial.objects.values_list("id", "widoczny"))
 
     promoted = {}
     # Materializacja listy PRZED pętlą — kasujemy lustra w trakcie iteracji.
@@ -112,7 +120,11 @@ def _promuj_jednoelementowe_wydzialy(apps):
         jedyna = czlonkowie.get()
         # Promocja do roota — ODPIĘCIE od (org-)rodzica, jeśli był. ``update``
         # (nie ``save``) omija sygnały/denorm; nested-set przelicza krok 5.
-        Jednostka.objects.filter(pk=jedyna.pk).update(parent_id=None)
+        aktualizacja = {"parent_id": None}
+        # Ukryty wydział → ukryta promowana (przejmuje rolę wydziału).
+        if wydzial_widoczny.get(mirror.legacy_wydzial_id) is False:
+            aktualizacja["widoczna"] = False
+        Jednostka.objects.filter(pk=jedyna.pk).update(**aktualizacja)
         # ``legacy_wydzial_id`` ustawi krok 6 (po 2–5) — TERAZ zapisujemy tylko
         # jaki wydział ta jednostka zastępuje.
         promoted[jedyna.pk] = mirror.legacy_wydzial_id

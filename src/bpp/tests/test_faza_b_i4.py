@@ -328,6 +328,47 @@ def test_krok3_pomija_promowana_jednostke_nie_fabrykuje_historii(uczelnia):
     assert not Jednostka_Rodzic.objects.filter(jednostka=promowana).exists()
 
 
+@pytest.mark.django_db
+def test_promocja_ukrytego_wydzialu_ukrywa_jednostke(uczelnia):
+    """#438: promocja 1-jednostkowego UKRYTEGO wydziału → promowana jednostka
+    też UKRYTA (przejmuje rolę wydziału). Bez tego ukryty „wydmuszka"-wydział
+    znikał, a jego jedyna, WIDOCZNA jednostka zostawała widoczna.
+
+    ``Wydzial.id == mirror.legacy_wydzial_id`` (harness): dzięki temu FK ``wydzial``
+    członka (self-FK do Jednostki o pk == legacy) pozostaje ważny, a lookup
+    widoczności wydziału po ``legacy`` znajduje właściwy Wydzial."""
+    mirror = _lustro_wydzialu(uczelnia)  # legacy = mirror.pk
+    baker.make(
+        Wydzial, id=mirror.legacy_wydzial_id, uczelnia=uczelnia, widoczny=False
+    )
+    jedyna = _czlonek(uczelnia, mirror)
+    Jednostka.objects.filter(pk=jedyna.pk).update(widoczna=True)  # sama widoczna
+
+    _promuj()
+
+    jedyna.refresh_from_db()
+    assert jedyna.parent_id is None  # promowana do roota
+    assert jedyna.widoczna is False  # przejęła niewidoczność ukrytego wydziału
+
+
+@pytest.mark.django_db
+def test_promocja_widocznego_wydzialu_zostawia_widocznosc_jednostki(uczelnia):
+    """#438 (kontrast): WIDOCZNY wydział NIE forsuje widoczności — promowana
+    zostaje ze swoją własną (tu: widoczna)."""
+    mirror = _lustro_wydzialu(uczelnia)
+    baker.make(
+        Wydzial, id=mirror.legacy_wydzial_id, uczelnia=uczelnia, widoczny=True
+    )
+    jedyna = _czlonek(uczelnia, mirror)
+    Jednostka.objects.filter(pk=jedyna.pk).update(widoczna=True)
+
+    _promuj()
+
+    jedyna.refresh_from_db()
+    assert jedyna.parent_id is None
+    assert jedyna.widoczna is True  # widoczny wydział → własna widoczność zostaje
+
+
 # ---------------------------------------------------------------------------
 # (g) guard post_delete: węzeł z dziećmi PRZEŻYWA; bezdzietny transient znika
 # ---------------------------------------------------------------------------
