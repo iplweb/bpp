@@ -81,6 +81,7 @@ SYSTEM_MENU = [
 ]
 
 SYSTEM_MENU_2 = [
+    ("Rodzaje jednostek", "/admin/bpp/rodzajjednostki/"),
     ("Rodzaje źródeł", "/admin/bpp/rodzaj_zrodla/"),
     ("Rodzaje praw patentowych", "/admin/bpp/rodzaj_prawa_patentowego/"),
     ("Statusy korekt", "/admin/bpp/status_korekty/"),
