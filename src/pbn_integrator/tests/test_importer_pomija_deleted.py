@@ -131,9 +131,7 @@ def test_integruj_autorow_pomija_deleted_bez_odpowiednika():
     """DELETED naukowiec bez dopasowania w BPP nie tworzy nowego Autora."""
     _make_scientist("s_del", "DELETED")
 
-    integruj_autorow_z_uczelni(
-        client=None, instutition_id=None, import_unexistent=True
-    )
+    integruj_autorow_z_uczelni(client=None, instutition_id=None, import_unexistent=True)
 
     assert Autor.objects.filter(pbn_uid_id="s_del").count() == 0
 
@@ -143,8 +141,6 @@ def test_integruj_autorow_tworzy_active():
     """Kontrola: ACTIVE naukowiec bez dopasowania nadal jest tworzony."""
     _make_scientist("s_act", "ACTIVE")
 
-    integruj_autorow_z_uczelni(
-        client=None, instutition_id=None, import_unexistent=True
-    )
+    integruj_autorow_z_uczelni(client=None, instutition_id=None, import_unexistent=True)
 
     assert Autor.objects.filter(pbn_uid_id="s_act").count() == 1
