@@ -4,6 +4,7 @@ from django.core.management import BaseCommand, CommandError, CommandParser
 from django.db import transaction
 
 from bpp.models import Autorzy, AutorzyView, Jednostka, Kierunek_Studiow, Wydzial
+from bpp.models.struktura_konwersja import znajdz_lub_utworz_wezel_wydzialu
 
 
 class Command(BaseCommand):
@@ -39,8 +40,11 @@ class Command(BaseCommand):
                 nazwa = jednostka.nazwa.lower()
                 skrot = jednostka.skrot.lower()
 
+                # Faza B (#438) II-2: ``Kierunek_Studiow.wydzial`` FK->Jednostka
+                # (korzeń drzewa) — potrzebny węzeł-lustro dla ``wydzial``.
+                jednostka_wydzialu, _ = znajdz_lub_utworz_wezel_wydzialu(wydzial)
                 kierunek_studiow = Kierunek_Studiow.objects.get_or_create(
-                    nazwa=nazwa, skrot=skrot, wydzial=wydzial
+                    nazwa=nazwa, skrot=skrot, wydzial=jednostka_wydzialu
                 )[0]
 
                 for wa in [

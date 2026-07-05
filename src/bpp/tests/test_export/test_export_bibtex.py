@@ -250,6 +250,9 @@ class TestBibTeXExport:
         # Create test data
         autor = baker.make(Autor, nazwisko="Tesla", imiona="Nikola")
         wydzial = baker.make("bpp.Wydzial", nazwa="Faculty of Engineering")
+        # Faza B (#438) II-2: ``Patent.wydzial`` to FK->Jednostka (korzeń
+        # drzewa, węzeł-lustro dawnego Wydzialu).
+        jednostka_wydzialu, _ = znajdz_lub_utworz_wezel_wydzialu(wydzial)
 
         patent = baker.make(
             Patent,
@@ -260,7 +263,7 @@ class TestBibTeXExport:
             data_zgloszenia=datetime.date(2023, 1, 1),
             data_decyzji=datetime.date(2023, 6, 1),
             www="https://patent.example.com",
-            wydzial=wydzial,
+            wydzial=jednostka_wydzialu,
         )
 
         # Add author

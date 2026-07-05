@@ -45,8 +45,10 @@ class PatentSerializer(
     # "bpp.Rodzaj_Prawa_Patentowego", CASCADE, null=True, blank=True
     # )
 
+    # Faza B (#438) II-2: ``Patent.wydzial`` to teraz FK->Jednostka (korzeń
+    # drzewa, mirror dawnego Wydzial) — link musi wskazywać jednostka-detail.
     wydzial = serializers.HyperlinkedRelatedField(
-        view_name="api_v1:wydzial-detail", read_only=True
+        view_name="api_v1:jednostka-detail", read_only=True
     )
 
     autorzy_set = serializers.HyperlinkedRelatedField(

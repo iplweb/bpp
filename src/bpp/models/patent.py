@@ -103,7 +103,7 @@ class Patent(
 
     wdrozenie = models.BooleanField("Wdrożenie", null=True, blank=True, default=None)
 
-    wydzial = models.ForeignKey("bpp.Wydzial", SET_NULL, null=True, blank=True)
+    wydzial = models.ForeignKey("bpp.Jednostka", SET_NULL, null=True, blank=True)
 
     autor_rekordu_klass = Patent_Autor
     autorzy = models.ManyToManyField(Autor, through=autor_rekordu_klass)

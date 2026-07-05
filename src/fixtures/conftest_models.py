@@ -208,9 +208,14 @@ def zrodlo(db):
 @pytest.fixture
 def kierunek_studiow(wydzial):
     from bpp.models import Kierunek_Studiow
+    from bpp.models.struktura_konwersja import znajdz_lub_utworz_wezel_wydzialu
+
+    # Faza B (#438) II-2: ``Kierunek_Studiow.wydzial`` to FK->Jednostka
+    # (korzeń drzewa, węzeł-lustro dawnego Wydzialu).
+    jednostka_wydzialu, _ = znajdz_lub_utworz_wezel_wydzialu(wydzial)
 
     return Kierunek_Studiow.objects.get_or_create(
-        wydzial=wydzial,
+        wydzial=jednostka_wydzialu,
         nazwa="memetyka użytkowa",
         skrot="mem. uż.",
         opis="testowy kierunek studiów",

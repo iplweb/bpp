@@ -200,8 +200,16 @@ def importuj_sheet_osoby_nie_ujete(sheet, text_mangle):
                 )
                 continue
 
+            # Faza B (#438) II-2: ``wydzial`` FK->Jednostka (korzeń drzewa,
+            # mirror dawnego Wydzial) — potrzebny węzeł-lustro dla wydzial_rok.
+            from bpp.models.struktura_konwersja import (
+                znajdz_lub_utworz_wezel_wydzialu,
+            )
+
+            jednostka_wydzialu, _ = znajdz_lub_utworz_wezel_wydzialu(wydzial_rok)
+
             Opi_2012_Afiliacja_Do_Wydzialu.objects.get_or_create(
-                autor=autor, wydzial=wydzial_rok, rok=rok
+                autor=autor, wydzial=jednostka_wydzialu, rok=rok
             )
 
         autor.dodaj_jednostke(jednostka, rok, funkcja)
