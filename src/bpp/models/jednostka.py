@@ -2,6 +2,7 @@
 Struktura uczelni.
 """
 
+from collections import defaultdict
 from datetime import date, timedelta
 
 from autoslug import AutoSlugField
@@ -355,6 +356,65 @@ class Jednostka(ModelZAdnotacjami, ModelZPBN_ID, ModelZPBN_UID, MPTTModel):
         if przypisanie is None or przypisanie.parent_id is None:
             return None
         return Wydzial.objects.filter(id=przypisanie.parent.legacy_wydzial_id).first()
+
+    #
+    # Metody węzła dla strukturalnego stylu browse (Faza B, III-2, #438).
+    #
+    # Zastępują dawne ``Wydzial.jednostki/aktualne_jednostki/kola_naukowe/
+    # historyczne_jednostki`` (models/wydzial.py) -- ale działają na WĘŹLE
+    # (``self``, bezpośrednie dzieci), a nie przez denorm ``legacy_wydzial_id``
+    # obejmujący całe poddrzewo. Używane przez ``JednostkaView`` w stylu
+    # strukturalnym (``self.rodzaj.pokazuj_strukture_podjednostek``), czyli
+    # dawnej stronie wydziału.
+    #
+
+    def aktualne_podjednostki(self):
+        """Bezpośrednie, aktualne, widoczne dzieci węzła -- bez jednostek
+        oznaczonych jako odrębna sekcja (np. koła naukowe)."""
+        return (
+            self.get_children()
+            .filter(widoczna=True, aktualna=True)
+            .exclude(rodzaj__pokazuj_jako_odrebna_sekcje=True)
+            .order_by(*Jednostka.objects.get_default_ordering())
+        )
+
+    def kola_naukowe(self):
+        """Bezpośrednie dzieci węzła oznaczone jako odrębna sekcja (np. koła
+        naukowe) -- pokazywane osobno od zwykłych podjednostek."""
+        return (
+            self.get_children()
+            .filter(rodzaj__pokazuj_jako_odrebna_sekcje=True, widoczna=True)
+            .order_by(*Jednostka.objects.get_default_ordering())
+        )
+
+    def historyczne_podjednostki(self):
+        """Jednostki, które historycznie były bezpośrednio pod tym węzłem
+        (metryczka ``Jednostka_Rodzic`` z ``parent=self`` i ``do`` w
+        przeszłości), a obecnie już nie są (``aktualna`` != True)."""
+        today = timezone.now().date()
+
+        return (
+            Jednostka.objects.exclude(aktualna=True)
+            .filter(
+                pk__in=Jednostka_Rodzic.objects.filter(parent=self)
+                .exclude(do=None)
+                .exclude(do__gte=today)
+                .values_list("jednostka_id", flat=True)
+            )
+            .order_by(*Jednostka.objects.get_default_ordering())
+        )
+
+    def wymaga_nawigacji(self):
+        """Jeżeli węzeł ma co najmniej dwie z trzech kategorii podjednostek
+        (aktualne, koła naukowe, historyczne), to wymaga wyświetlenia
+        nawigacji na podstronie strukturalnej -- zwraca wówczas True."""
+        res = defaultdict(int)
+
+        res[self.aktualne_podjednostki().exists()] += 1
+        res[self.historyczne_podjednostki().exists()] += 1
+        res[self.kola_naukowe().exists()] += 1
+
+        return res[True] >= 2
 
 
 class Jednostka_Rodzic_Manager(models.Manager):

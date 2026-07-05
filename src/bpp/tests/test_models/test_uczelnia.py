@@ -6,7 +6,16 @@ from model_bakery import baker
 from bpp.models import Uczelnia
 
 
-def test_Uczelnia_wydzialy(uczelnia, wydzial):
+def test_Uczelnia_wydzialy(uczelnia):
+    # Faza B (#438): ``Uczelnia.wydzialy()`` nie zwraca już modeli
+    # ``Wydzial`` -- pokazuje widoczne jednostki TOP-LEVEL (tak samo jak
+    # ``jednostki()``). Węzły-lustra wydziałów są tworzone jako
+    # ``widoczna=False`` (patrz ``struktura_konwersja.py``), więc fixture
+    # ``wydzial`` sama w sobie tu nie wystarczy -- potrzebna widoczna
+    # jednostka top-level.
+    from bpp.tests.util import any_jednostka
+
+    any_jednostka(wydzial=None, uczelnia=uczelnia)
     assert uczelnia.wydzialy().exists()
 
 

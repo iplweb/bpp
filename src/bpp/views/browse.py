@@ -143,31 +143,46 @@ class UczelniaView(DetailView):
         return super().get_context_data(**context)
 
 
-class WydzialView(DetailView):
-    template_name = "browse/wydzial.html"
-    model = Wydzial
+def browse_wydzial_redirect(request, slug):
+    """Legacy URL (`/wydzial/<slug>/`) -- przekierowanie 301 na odpowiednik
+    dawnego wydziału w drzewie ``Jednostka``.
 
-    def get(self, request, *args, **kwargs):
-        self.object = self.get_object()
-
-        # Zbierz wszystkie jednostki z trzech kategorii
-        aktualne = list(self.object.aktualne_jednostki())
-        kola = list(self.object.kola_naukowe())
-        historyczne = list(self.object.historyczne_jednostki())
-
-        wszystkie = aktualne + kola + historyczne
-
-        if len(wszystkie) == 1:
-            jednostka = wszystkie[0]
-            return redirect("bpp:browse_jednostka", slug=jednostka.slug)
-
-        context = self.get_context_data(object=self.object)
-        return self.render_to_response(context)
+    Faza B (#438), III-2: strona wydziału jako osobny widok znika --
+    ``WydzialView`` usunięty. Stary URL musi jednak dalej działać (linki
+    zewnętrzne, wyszukiwarki, zakładki) -- szukamy więc ``Wydzial`` po
+    ``slug`` (model żyje do Fazy C wyłącznie na potrzeby tego lookupu), a
+    następnie węzła-lustra (``Jednostka.legacy_wydzial_id == wydzial.pk``,
+    patrz ``struktura_konwersja.py``) i przekierowujemy na jego stronę.
+    """
+    wydzial = get_object_or_404(Wydzial, slug=slug)
+    jednostka = get_object_or_404(Jednostka, legacy_wydzial_id=wydzial.pk)
+    return redirect("bpp:browse_jednostka", slug=jednostka.slug, permanent=True)
 
 
 class JednostkaView(DetailView):
     template_name = "browse/jednostka.html"
     model = Jednostka
+
+    def get(self, request, *args, **kwargs):
+        self.object = self.get_object()
+
+        rodzaj = self.object.rodzaj
+        if rodzaj is not None and rodzaj.pokazuj_strukture_podjednostek:
+            # Styl strukturalny (dawna strona wydziału): jeżeli węzeł ma
+            # dokładnie jedną podjednostkę (aktualną, koło naukowe lub
+            # historyczną), przeskocz od razu na jej stronę -- tak jak robił
+            # to dawny ``WydzialView``.
+            aktualne = list(self.object.aktualne_podjednostki())
+            kola = list(self.object.kola_naukowe())
+            historyczne = list(self.object.historyczne_podjednostki())
+
+            wszystkie = aktualne + kola + historyczne
+
+            if len(wszystkie) == 1:
+                return redirect("bpp:browse_jednostka", slug=wszystkie[0].slug)
+
+        context = self.get_context_data(object=self.object)
+        return self.render_to_response(context)
 
     def get_context_data(self, **kwargs):
         return super().get_context_data(typy=TYPY, **kwargs)

@@ -81,11 +81,11 @@ from bpp.views.browse import (
     RekordToPracaView,
     RokView,
     UczelniaView,
-    WydzialView,
     WyswietlDeklaracjeDostepnosci,
     ZrodlaView,
     ZrodloView,
     bibtex_view,
+    browse_wydzial_redirect,
 )
 from bpp.views.microsoft_auth_redirect import MicrosoftAuthRedirectView
 from bpp.views.oai import OAIView
@@ -245,7 +245,11 @@ urlpatterns = [
         JednostkiView.as_view(),
         name="browse_jednostki_literka",
     ),
-    url(r"^wydzial/(?P<slug>[\w-]+)/$", WydzialView.as_view(), name="browse_wydzial"),
+    url(
+        r"^wydzial/(?P<slug>[\w-]+)/$",
+        browse_wydzial_redirect,
+        name="browse_wydzial",
+    ),
     url(
         r"^uczelnia/(?P<slug>[\w-]+)/$", UczelniaView.as_view(), name="browse_uczelnia"
     ),

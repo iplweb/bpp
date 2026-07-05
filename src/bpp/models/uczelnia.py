@@ -712,10 +712,18 @@ class Uczelnia(ModelZAdnotacjami, ModelZPBN_ID, NazwaISkrot, NazwaWDopelniaczu):
         return reverse("bpp:browse_uczelnia", args=(self.slug,))
 
     def wydzialy(self):
-        """Widoczne wydziały -- do pokazania na WWW"""
-        from .wydzial import Wydzial
+        """Widoczne jednostki najwyższego poziomu -- do pokazania na WWW w
+        sekcji "Wybierz wydział".
 
-        return Wydzial.objects.filter(uczelnia=self, widoczny=True)
+        Faza B (#438): model ``Wydzial`` nie jest już renderowany na WWW
+        jako osobna strona -- struktura organizacyjna to teraz drzewo
+        ``Jednostka``. Zwracamy widoczne korzenie (``parent=None``); to ta
+        sama definicja co ``jednostki()`` poniżej -- różnica jest wyłącznie
+        w etykiecie/konfiguracji sekcji na stronie głównej (per-uczelnia).
+        """
+        from .jednostka import Jednostka
+
+        return Jednostka.objects.filter(uczelnia=self, widoczna=True, parent=None)
 
     def jednostki(self):
         from .jednostka import Jednostka
