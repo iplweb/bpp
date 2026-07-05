@@ -338,9 +338,7 @@ def test_promocja_ukrytego_wydzialu_ukrywa_jednostke(uczelnia):
     członka (self-FK do Jednostki o pk == legacy) pozostaje ważny, a lookup
     widoczności wydziału po ``legacy`` znajduje właściwy Wydzial."""
     mirror = _lustro_wydzialu(uczelnia)  # legacy = mirror.pk
-    baker.make(
-        Wydzial, id=mirror.legacy_wydzial_id, uczelnia=uczelnia, widoczny=False
-    )
+    baker.make(Wydzial, id=mirror.legacy_wydzial_id, uczelnia=uczelnia, widoczny=False)
     jedyna = _czlonek(uczelnia, mirror)
     Jednostka.objects.filter(pk=jedyna.pk).update(widoczna=True)  # sama widoczna
 
@@ -356,9 +354,7 @@ def test_promocja_widocznego_wydzialu_zostawia_widocznosc_jednostki(uczelnia):
     """#438 (kontrast): WIDOCZNY wydział NIE forsuje widoczności — promowana
     zostaje ze swoją własną (tu: widoczna)."""
     mirror = _lustro_wydzialu(uczelnia)
-    baker.make(
-        Wydzial, id=mirror.legacy_wydzial_id, uczelnia=uczelnia, widoczny=True
-    )
+    baker.make(Wydzial, id=mirror.legacy_wydzial_id, uczelnia=uczelnia, widoczny=True)
     jedyna = _czlonek(uczelnia, mirror)
     Jednostka.objects.filter(pk=jedyna.pk).update(widoczna=True)
 

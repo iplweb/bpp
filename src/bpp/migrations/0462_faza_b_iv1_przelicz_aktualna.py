@@ -76,12 +76,12 @@ def odkryj_widoczna(apps, schema_editor):
     widoczne = [pk for pk, w in widoczny.items() if w]
     ukryte = [pk for pk, w in widoczny.items() if not w]
 
-    Jednostka.objects.filter(
-        legacy_wydzial_id__in=widoczne, jest_lustrem=True
-    ).update(widoczna=True)
-    Jednostka.objects.filter(
-        legacy_wydzial_id__in=ukryte, jest_lustrem=True
-    ).update(widoczna=False)
+    Jednostka.objects.filter(legacy_wydzial_id__in=widoczne, jest_lustrem=True).update(
+        widoczna=True
+    )
+    Jednostka.objects.filter(legacy_wydzial_id__in=ukryte, jest_lustrem=True).update(
+        widoczna=False
+    )
 
 
 def ukryj_widoczna(apps, schema_editor):
@@ -90,9 +90,9 @@ def ukryj_widoczna(apps, schema_editor):
     ``widoczna=False``). Tylko ``rodzaj="Wydział"`` — promowanej realnej
     jednostki (I-4) nie ukrywamy."""
     Jednostka = apps.get_model("bpp", "Jednostka")
-    Jednostka.objects.filter(
-        legacy_wydzial_id__isnull=False, jest_lustrem=True
-    ).update(widoczna=False)
+    Jednostka.objects.filter(legacy_wydzial_id__isnull=False, jest_lustrem=True).update(
+        widoczna=False
+    )
 
 
 def invalidate_cache(apps, schema_editor):

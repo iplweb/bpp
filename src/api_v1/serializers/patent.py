@@ -6,7 +6,6 @@ from api_v1.serializers.util import (
     Wydawnictwo_AutorSerializerMixin,
     WydawnictwoSerializerMixin,
 )
-
 from bpp.models import Patent, Patent_Autor
 
 

@@ -67,9 +67,7 @@ def _pole(label, model, url, queryset=None):
 
 
 class PoziomConfig:
-    def __init__(
-        self, model, ma_pk, base_queryset, pole_factory, obiekt_queryset=None
-    ):
+    def __init__(self, model, ma_pk, base_queryset, pole_factory, obiekt_queryset=None):
         self.model = model
         self.ma_pk = ma_pk
         self.base_queryset = base_queryset

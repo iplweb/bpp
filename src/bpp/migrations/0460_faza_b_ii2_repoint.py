@@ -61,9 +61,7 @@ def _bezpieczny_remap_wydzial(Model, mapa):
     korupcja FK). Zamrażamy pk-i docelowych wierszy PRZED jakimkolwiek update
     i aktualizujemy po pk (na to odporne)."""
     plan = {
-        old_id: list(
-            Model.objects.filter(wydzial=old_id).values_list("pk", flat=True)
-        )
+        old_id: list(Model.objects.filter(wydzial=old_id).values_list("pk", flat=True))
         for old_id in mapa
     }
     for old_id, new_id in mapa.items():
