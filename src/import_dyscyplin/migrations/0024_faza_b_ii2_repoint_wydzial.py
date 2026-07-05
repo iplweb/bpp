@@ -44,8 +44,21 @@ def remap_import_dyscyplin_row_wydzial(apps, schema_editor):
         )
         Import_Dyscyplin_Row.objects.filter(wydzial__in=brakujace).update(wydzial=None)
 
+    # Snapshot pk PRZED update-ami (spójne z ``0026``/``0460``): naiwne
+    # ``filter(wydzial=old).update(wydzial=new)`` nadpisuje TĘ SAMĄ kolumnę, po
+    # której selektuje — gdy pk węzła-lustra (new_id) pokrywa się z pk innego,
+    # późniejszego wydziału (old_id), wiersz zostaje przepięty DRUGI raz (cicha
+    # korupcja FK). Update po zamrożonym pk jest odporny.
+    plan = {
+        old_id: list(
+            Import_Dyscyplin_Row.objects.filter(wydzial=old_id)
+            .order_by()  # zrzuca Meta.ordering — spójne z resztą
+            .values_list("pk", flat=True)
+        )
+        for old_id in mapa
+    }
     for old_id, new_id in mapa.items():
-        Import_Dyscyplin_Row.objects.filter(wydzial=old_id).update(wydzial=new_id)
+        Import_Dyscyplin_Row.objects.filter(pk__in=plan[old_id]).update(wydzial=new_id)
 
 
 class Migration(migrations.Migration):

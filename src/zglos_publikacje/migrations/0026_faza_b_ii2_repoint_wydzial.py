@@ -65,9 +65,9 @@ def remap_obslugujacy_wydzial(apps, schema_editor):
     # korupcja FK routingu zgłoszeń). Update po zamrożonym pk jest odporny.
     plan = {
         old_id: list(
-            Obslugujacy_Zgloszenia_Wydzialow.objects.filter(
-                wydzial=old_id
-            ).values_list("pk", flat=True)
+            Obslugujacy_Zgloszenia_Wydzialow.objects.filter(wydzial=old_id)
+            .order_by()  # zrzuca Meta.ordering (wydzial__nazwa) — patrz wyżej
+            .values_list("pk", flat=True)
         )
         for old_id in mapa
     }
