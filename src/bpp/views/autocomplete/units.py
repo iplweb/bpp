@@ -81,3 +81,22 @@ class PublicJednostkaToplevelAutocomplete(
         .filter(parent__isnull=True)
         .select_related("wydzial")
     )
+
+
+class PublicJednostkaNieToplevelAutocomplete(
+    UczelniaScopedAutocompleteMixin, _JednostkaAutocompleteBase
+):
+    """Faza B (#438): publiczny autocomplete jednostek NIE-TOP-LEVEL
+    (``parent IS NOT NULL``) — czyli „jednostek" (nie „wydziałów") w nowym
+    modelu. Używany jako picker „jednostki" w raportach uczelni, które
+    UŻYWAJĄ wydziałów: wydziały (korzenie) wybiera się osobnym selektorem
+    „wydział", więc lista „jednostka" nie powinna ich pokazywać (inaczej
+    użytkownik wybrałby korzeń, który waliduje się jako „nie do wyboru",
+    bo prace ma tylko w poddrzewie — nie bezpośrednio).
+    """
+
+    qset = (
+        Jednostka.objects.publiczne()
+        .filter(parent__isnull=False)
+        .select_related("wydzial")
+    )

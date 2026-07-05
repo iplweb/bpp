@@ -93,6 +93,7 @@ from .simple import (  # noqa: F401
 from .units import (  # noqa: F401
     JednostkaAutocomplete,
     PublicJednostkaAutocomplete,
+    PublicJednostkaNieToplevelAutocomplete,
     PublicJednostkaToplevelAutocomplete,
     WidocznaJednostkaAutocomplete,
 )

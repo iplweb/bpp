@@ -152,8 +152,12 @@ class RankingAutorowJednostkaWydzialTable(RankingAutorowTable):
         )
         order_by = ("-impact_factor_sum", "autor__nazwisko")
 
-    jednostka = Column(accessor="jednostka__nazwa")
-    wydzial = Column(accessor="jednostka__wydzial__nazwa")
+    # Faza B (#438): jawne nagłówki. Bez nich django_tables2 wyprowadza
+    # verbose_name z ostatniego segmentu accessora — a oba (``jednostka__nazwa``
+    # i ``jednostka__wydzial__nazwa``) rozwiązują się do pola ``Jednostka.nazwa``
+    # (verbose_name „nazwa") → dwie identyczne kolumny „Nazwa".
+    jednostka = Column("Jednostka", accessor="jednostka__nazwa")
+    wydzial = Column("Wydział", accessor="jednostka__wydzial__nazwa")
 
 
 class RankingAutorow(ExportMixin, SingleTableView):
@@ -426,11 +430,20 @@ class RankingAutorow(ExportMixin, SingleTableView):
 
     def get_table_kwargs(self):
         uczelnia = Uczelnia.objects.get_for_request(self.request)
-        pokazuj = uczelnia.pokazuj_liczbe_cytowan_w_rankingu
+        exclude = []
 
+        pokazuj = uczelnia.pokazuj_liczbe_cytowan_w_rankingu
         if pokazuj == OpcjaWyswietlaniaField.POKAZUJ_NIGDY or (
             pokazuj == OpcjaWyswietlaniaField.POKAZUJ_ZALOGOWANYM
             and self.request.user.is_anonymous
         ):
-            return {"exclude": ("liczba_cytowan_sum",)}
-        return {}
+            exclude.append("liczba_cytowan_sum")
+
+        # Faza B (#438): kolumna „Wydział" ma sens tylko, gdy uczelnia używa
+        # wydziałów. Bez wydziałów jednostki są korzeniami (``wydzial=NULL``) →
+        # kolumna byłaby pusta; ukrywamy ją. (``exclude`` nieistniejącej
+        # kolumny — gdy tabela bez rozbicia — django_tables2 ignoruje.)
+        if not (uczelnia and uczelnia.uzywaj_wydzialow):
+            exclude.append("wydzial")
+
+        return {"exclude": tuple(exclude)} if exclude else {}

@@ -145,7 +145,8 @@ class RankingAutorowForm(forms.Form):
             uczelnia.ranking_autorow_rozbij_domyslnie if uczelnia else False
         )
 
-        # Import models here to avoid circular imports
+        # Import models here to avoid circular imports (używane niżej przy
+        # budowie listy „wydziałów" mających prace w poddrzewie).
         from bpp.models import (
             Patent_Autor,
             Praca_Doktorska,
@@ -154,40 +155,31 @@ class RankingAutorowForm(forms.Form):
             Wydawnictwo_Zwarte_Autor,
         )
 
-        # Filter Jednostka to show only those with associated works
-        jednostka_with_works = (
-            Jednostka.objects.filter(widoczna=True, wchodzi_do_rankingu_autorow=True)
-            .filter(
-                Q(
-                    Exists(
-                        Wydawnictwo_Ciagle_Autor.objects.filter(
-                            jednostka=OuterRef("pk")
-                        )
-                    )
-                )
-                | Q(
-                    Exists(
-                        Wydawnictwo_Zwarte_Autor.objects.filter(
-                            jednostka=OuterRef("pk")
-                        )
-                    )
-                )
-                | Q(Exists(Patent_Autor.objects.filter(jednostka=OuterRef("pk"))))
-                | Q(Exists(Praca_Doktorska.objects.filter(jednostka=OuterRef("pk"))))
-                | Q(
-                    Exists(Praca_Habilitacyjna.objects.filter(jednostka=OuterRef("pk")))
-                )
-            )
-            .distinct()
-        )
+        # Czy uczelnia używa wydziałów? Steruje pickerem jednostki (poniżej)
+        # oraz osobnym selektorem „wydział" (dalej).
+        uzywaj_wydzialow = uczelnia.uzywaj_wydzialow if uczelnia else True
 
-        self.fields["jednostka"].queryset = jednostka_with_works
+        # Faza B (#438): queryset WALIDACYJNY pola „jednostka" musi być
+        # NADZBIOREM tego, co pokazuje picker (autocomplete) — inaczej wybór
+        # opcji widocznej w pickerze wywala „Wybierz poprawną opcję" (dawny
+        # ``jednostka_with_works`` był węższy niż picker ``publiczne()``:
+        # picker pokazywał m.in. korzenie-„wydziały" i jednostki bez prac
+        # bezpośrednich, a walidacja je odrzucała). Trzymamy walidację na
+        # ``publiczne()`` (nadzbiór per-uczelnia scope'owanego pickera).
+        #
+        # Gdy uczelnia UŻYWA wydziałów: „wydziały" (korzenie) wybiera osobny
+        # selektor, więc z listy „jednostka" wykluczamy korzenie i przełączamy
+        # picker na wariant „nie-toplevel" (parent IS NOT NULL).
+        jednostka_qs = Jednostka.objects.publiczne()
+        if uzywaj_wydzialow:
+            jednostka_qs = jednostka_qs.filter(parent__isnull=False)
+            self.fields[
+                "jednostka"
+            ].widget.url = "bpp:public-jednostka-nietoplevel-autocomplete"
+        self.fields["jednostka"].queryset = jednostka_qs
 
         self.helper = FormHelper()
         self.helper.form_method = "post"
-
-        # Check if uczelnia uses wydzialy
-        uzywaj_wydzialow = uczelnia.uzywaj_wydzialow if uczelnia else True
 
         # Build layout fields based on uzywaj_wydzialow
         layout_fields = [
@@ -306,7 +298,14 @@ class RankingAutorowForm(forms.Form):
                 .distinct()
             )
 
-            self.fields["wydzial"].queryset = wydzial_with_works
+            # Faza B (#438): walidacja pola „wydział" = NADZBIÓR pickera
+            # (``public-jednostka-toplevel-autocomplete`` = widoczne korzenie
+            # per-uczelnia), żeby wybór z pickera nie wywalał „Wybierz
+            # poprawną opcję". ``wydzial_with_works`` (węższy, works-aware)
+            # służy TYLKO decyzji, czy w ogóle pokazać selektor.
+            self.fields["wydzial"].queryset = Jednostka.objects.widoczne().filter(
+                parent__isnull=True
+            )
 
             # Only show wydzial field when there's more than one wydział
             if wydzial_with_works.count() > 1:
