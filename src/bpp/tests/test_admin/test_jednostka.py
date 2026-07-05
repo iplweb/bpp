@@ -47,3 +47,41 @@ def test_admin_struktura_JednostkaAdmin_uczelnia_jednostki_wg_kolejnosci(
     assert (
         admin_client.get(reverse("admin:bpp_jednostka_changelist")).status_code == 200
     )
+
+
+def test_JednostkaAdmin_list_filter_parent_zawęża_do_dzieci(
+    admin_client, jednostka: Jednostka, jednostka_podrzedna: Jednostka, druga_jednostka
+):
+    # Regresja/domknięcie III-3: `JednostkaNadrzednaFilter` (#438 Faza B,
+    # III-3a, własny DAL-owy autocomplete zamiast
+    # `admin_auto_filters.AutocompleteFilterFactory`) musi realnie zawężać
+    # queryset changelisty po `parent`, nie tylko renderować widget.
+    response = admin_client.get(
+        reverse("admin:bpp_jednostka_changelist"), {"parent": jednostka.pk}
+    )
+    assert response.status_code == 200
+
+    result_list = list(response.context["cl"].result_list)
+    assert jednostka_podrzedna in result_list
+    assert jednostka not in result_list
+    assert druga_jednostka not in result_list
+
+
+def test_JednostkaNadrzednaFilter_widget_i_media_w_changeliście(admin_client):
+    # Smoke test Media/widgetu (#438 Faza B, III-3a): changelist NIE wciąga
+    # automatycznie mediów widgetów pól z `list_filter` (w odróżnieniu od
+    # formularza zmiany) — bez własnej `Media` na filtrze Select2/DAL nie
+    # zainicjalizowałby się w ogóle. Sprawdzamy, że statyki Select2/DAL oraz
+    # sam widget (`data-autocomplete-light-url` na pole `parent`) trafiają
+    # do wyrenderowanej strony changelisty.
+    response = admin_client.get(reverse("admin:bpp_jednostka_changelist"))
+    assert response.status_code == 200
+
+    content = response.content.decode()
+    # Substringi bez rozszerzenia - ManifestStaticFilesStorage w testach
+    # hashuje nazwy plików (np. `select2.min.61e40dc7cb03.js`), więc dokładna
+    # nazwa pliku `select2.js` by tu nie wystąpiła.
+    assert "autocomplete_light/select2" in content
+    assert "admin/js/vendor/select2/select2.full" in content
+    assert 'id="id_parent"' in content
+    assert "data-autocomplete-light-url" in content

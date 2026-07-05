@@ -1,6 +1,5 @@
 import sys
 
-from admin_auto_filters.filters import AutocompleteFilterFactory
 from django import forms
 from django.contrib import admin
 from django.utils.html import format_html
@@ -12,7 +11,7 @@ from bpp.models import Autor_Jednostka, Uczelnia
 
 from ..models.struktura import Jednostka, Jednostka_Rodzic
 from .core import BaseBppAdminMixin, RestrictDeletionToAdministracjaGroupMixin
-from .filters import PBN_UID_IDObecnyFilter
+from .filters import JednostkaNadrzednaFilter, PBN_UID_IDObecnyFilter
 from .helpers import LimitingFormset
 from .helpers.fieldsets import ADNOTACJE_FIELDSET
 from .helpers.mixins import ZapiszZAdnotacjaMixin
@@ -101,7 +100,7 @@ class JednostkaAdmin(
     fields = None
     list_filter = (
         "wydzial",
-        AutocompleteFilterFactory("Jednostka nadrzędna", "parent"),
+        JednostkaNadrzednaFilter,
         "widoczna",
         "wchodzi_do_rankingu_autorow",
         "skupia_pracownikow",

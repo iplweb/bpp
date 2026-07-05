@@ -456,10 +456,6 @@ INSTALLED_APPS = [
     "api_v1",
     "adminsortable2",
     "import_export",
-    # Autocomplete-backed list_filter (Jednostka.parent w JednostkaAdmin) —
-    # tylko statyki/template dla AutocompleteFilterFactory, sam autocomplete
-    # JSON serwuje wbudowany Django admin (JednostkaAdmin.search_fields).
-    "admin_auto_filters",
     "ewaluacja_common",
     "ewaluacja2021",
     "ewaluacja_liczba_n",

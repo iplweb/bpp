@@ -1096,7 +1096,6 @@
             <div class="filter-panel-content">
                 {% should_show_filter_counts cl as show_counts %}
                 {% for spec in cl.filter_specs %}
-                    {% get_filter_choices_without_selected spec cl as filter_choices %}
                     {% get_selected_filter_value spec cl as selected_value %}
                     {% get_selected_filter_count_url spec cl as selected_count_url %}
                     <div class="filter-group">
@@ -1116,33 +1115,42 @@
                             </span>
                             <span class="filter-toggle-icon">▶</span>
                         </h3>
-                        <ul class="filter-options collapsed" id="filter-{{ forloop.counter }}">
-                            {% for choice in filter_choices %}
-                                <li class="filter-option{% if choice.selected %} selected{% endif %}">
-                                        {% if choice.selected %}
-                                            <span class="filter-check-icon">✓</span>
+                        {% if spec.custom_widget_template %}
+                            {# Filtr z własnym widgetem (np. autocomplete DAL) - #}
+                            {# `spec.choices()` jest celowo puste, patrz filters.py. #}
+                            <div class="filter-options collapsed" id="filter-{{ forloop.counter }}">
+                                {% include spec.custom_widget_template %}
+                            </div>
+                        {% else %}
+                            {% get_filter_choices_without_selected spec cl as filter_choices %}
+                            <ul class="filter-options collapsed" id="filter-{{ forloop.counter }}">
+                                {% for choice in filter_choices %}
+                                    <li class="filter-option{% if choice.selected %} selected{% endif %}">
+                                            {% if choice.selected %}
+                                                <span class="filter-check-icon">✓</span>
+                                            {% endif %}
+                                        <a href="{{ choice.query_string|iriencode }}"
+                                           title="{{ choice.display }}"
+                                           hx-get="{{ choice.query_string|iriencode }}"
+                                           hx-target="#grp-content-container"
+                                           hx-select="#grp-content-container"
+                                           hx-swap="innerHTML swap:0.3s"
+                                           hx-push-url="true"
+                                           hx-indicator="#filter-loading-indicator"
+                                           class="filter-option-link">
+                                            {{ choice.display }}
+                                        </a>
+                                        {% if show_counts %}
+                                            <span class="filter-count"
+                                                  hx-get="{% get_filter_count_url choice cl %}"
+                                                  hx-trigger="intersect once"
+                                                  hx-target="this"
+                                                  hx-swap="innerHTML"></span>
                                         {% endif %}
-                                    <a href="{{ choice.query_string|iriencode }}"
-                                       title="{{ choice.display }}"
-                                       hx-get="{{ choice.query_string|iriencode }}"
-                                       hx-target="#grp-content-container"
-                                       hx-select="#grp-content-container"
-                                       hx-swap="innerHTML swap:0.3s"
-                                       hx-push-url="true"
-                                       hx-indicator="#filter-loading-indicator"
-                                       class="filter-option-link">
-                                        {{ choice.display }}
-                                    </a>
-                                    {% if show_counts %}
-                                        <span class="filter-count"
-                                              hx-get="{% get_filter_count_url choice cl %}"
-                                              hx-trigger="intersect once"
-                                              hx-target="this"
-                                              hx-swap="innerHTML"></span>
-                                    {% endif %}
-                                </li>
-                            {% endfor %}
-                        </ul>
+                                    </li>
+                                {% endfor %}
+                            </ul>
+                        {% endif %}
                     </div>
                 {% endfor %}
             </div>
