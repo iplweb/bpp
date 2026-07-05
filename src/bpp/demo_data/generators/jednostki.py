@@ -9,7 +9,7 @@ from bpp.demo_data.manifest import Manifest
 from bpp.demo_data.progress import make_progress
 from bpp.demo_data.themes.base import Theme
 from bpp.demo_data.themes.compose import apply_prefix, compose_jednostka_nazwa
-from bpp.models import Jednostka, Uczelnia, Wydzial
+from bpp.models import Jednostka, RodzajJednostki, Uczelnia, Wydzial
 from bpp.models.struktura_konwersja import znajdz_lub_utworz_wezel_wydzialu
 
 
@@ -27,6 +27,13 @@ def create_jednostki(
 ) -> list[Jednostka]:
     wydzialy = list(wydzialy)
     objs: list[Jednostka] = []
+    # Faza B (#438), III-1: ``rodzaj_jednostki`` (CharField) zniknął — nowe
+    # jednostki demo dostają FK ``rodzaj`` na słownikowy wpis „Standard"
+    # (seed 0449). ``get_or_create`` (nie ``get``) — słownik jest
+    # per-tenant edytowalny (mogl zostac usuniety/nigdy niezaladowany, np.
+    # test DB po ``TransactionTestCase``-owym flushu, ktory kasuje dane
+    # migracji danych bez ich odtwarzania).
+    rodzaj_standard, _ = RodzajJednostki.objects.get_or_create(nazwa="Standard")
     for w_idx, wydzial in enumerate(wydzialy, start=1):
         # Faza B (#438): jednostki wiszą pod węzłem-lustrem wydziału (root
         # MPTT). ``wydzial`` (self-FK) = ten węzeł (dziecko roota → korzeń =
@@ -40,7 +47,7 @@ def create_jednostki(
                     wydzial=wezel,
                     nazwa=apply_prefix(compose_jednostka_nazwa(theme, rng), prefix),
                     skrot=f"DJ{w_idx}-{j_idx}",
-                    rodzaj_jednostki=Jednostka.RODZAJ_JEDNOSTKI.NORMALNA,
+                    rodzaj=rodzaj_standard,
                     # MPTT NOT NULL fields — wartosci tymczasowe; rebuild()
                     # ponizej ustawia poprawne lft/rght/tree_id/level.
                     lft=0,

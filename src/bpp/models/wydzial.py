@@ -93,11 +93,9 @@ class Wydzial(ModelZAdnotacjami, ModelZPBN_ID):
     def aktualne_jednostki(self):
         """Lista jednostek aktualnie przypisanych do danego wydziału,
         bez kół naukowych."""
-        from .jednostka import Jednostka
-
         return (
             self.jednostki()
-            .exclude(rodzaj_jednostki=Jednostka.RODZAJ_JEDNOSTKI.KOLO_NAUKOWE)
+            .exclude(rodzaj__nazwa="Koło naukowe")
             .exclude(aktualna=False)
         )
 
@@ -130,9 +128,7 @@ class Wydzial(ModelZAdnotacjami, ModelZPBN_ID):
         today = timezone.now().date()
 
         return (
-            Jednostka.objects.filter(
-                rodzaj_jednostki=Jednostka.RODZAJ_JEDNOSTKI.KOLO_NAUKOWE
-            )
+            Jednostka.objects.filter(rodzaj__nazwa="Koło naukowe")
             .filter(
                 # Faza B (#438): ``wydzial`` to self-FK do korzenia — ten
                 # Wydzial = węzeł o ``legacy_wydzial_id == self.pk``.

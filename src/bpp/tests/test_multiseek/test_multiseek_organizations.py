@@ -15,7 +15,6 @@ Ten moduł zawiera testy dla QueryObject dotyczących organizacji:
 import pytest
 from multiseek import logic
 
-from bpp.models import Jednostka
 from bpp.models.cache import Rekord
 from bpp.multiseek_registry import (
     EQUAL_PLUS_SUB_FEMALE,
@@ -166,9 +165,9 @@ def test_ObcaJednostkaQueryObject(
     ],
 )
 def test_RodzajJednostkiQueryObject(param):
-    ret = RodzajJednostkiQueryObject().real_query(
-        Jednostka.RODZAJ_JEDNOSTKI.NORMALNA.label, param
-    )
+    # Faza B (#438), III-1: wartość to nazwa słownikowa ``RodzajJednostki``
+    # (FK), nie kod starego CharField.
+    ret = RodzajJednostkiQueryObject().real_query("Standard", param)
     assert Rekord.objects.filter(*(ret,)).count() == 0
 
 

@@ -3,7 +3,7 @@ import argparse
 from django.core.management import BaseCommand, CommandError, CommandParser
 from django.db import transaction
 
-from bpp.models import Autorzy, Jednostka
+from bpp.models import Autorzy, Jednostka, RodzajJednostki
 
 
 class Command(BaseCommand):
@@ -31,9 +31,11 @@ class Command(BaseCommand):
 
     @transaction.atomic
     def handle(self, jednostka, rok, dry_run, *args, **options):
-        for _jedn in Jednostka.objects.exclude(
-            rodzaj_jednostki=Jednostka.RODZAJ_JEDNOSTKI.KOLO_NAUKOWE
-        ):
+        # Faza B (#438), III-1: rodzaj jednostki to teraz FK ``rodzaj``
+        # (słownik ``RodzajJednostki``), nie CharField.
+        kolo_naukowe_rodzaj = RodzajJednostki.objects.get(nazwa="Koło naukowe")
+
+        for _jedn in Jednostka.objects.exclude(rodzaj=kolo_naukowe_rodzaj):
             if (
                 _jedn.nazwa.lower().find("koło naukowe") >= 0
                 or _jedn.nazwa.lower().find("skn ") >= 0
@@ -42,7 +44,7 @@ class Command(BaseCommand):
                     f"Jednostka {_jedn.nazwa} wydaje się byc kołem naukowym, "
                     f"ale nie ma określonego własciwego rodzaju jednostki. Ustawiam rodzaj na koło naukowe"
                 )
-                _jedn.rodzaj_jednostki = Jednostka.RODZAJ_JEDNOSTKI.KOLO_NAUKOWE
+                _jedn.rodzaj = kolo_naukowe_rodzaj
                 _jedn.save()
 
         jednostka_id = -1
@@ -64,9 +66,7 @@ class Command(BaseCommand):
                     f"Rekord: {aj.rekord.tytul_oryginalny}, {aj.rekord_id}"
                 )
 
-            kolo_naukowe = autor.jednostki.filter(
-                rodzaj_jednostki=Jednostka.RODZAJ_JEDNOSTKI.KOLO_NAUKOWE
-            )
+            kolo_naukowe = autor.jednostki.filter(rodzaj=kolo_naukowe_rodzaj)
 
             if not kolo_naukowe.exists():
                 print(

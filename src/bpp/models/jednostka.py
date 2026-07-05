@@ -174,17 +174,10 @@ class Jednostka(ModelZAdnotacjami, ModelZPBN_ID, ModelZPBN_UID, MPTTModel):
         systemów informatycznych""",
     )
 
-    class RODZAJ_JEDNOSTKI(models.TextChoices):
-        NORMALNA = "normalna", "zwyczajna jednostka (katedra, zakład, pracownia, itp.)"
-        KOLO_NAUKOWE = "kolo_naukowe", "koło naukowe"
-
-    rodzaj_jednostki = models.CharField(
-        max_length=20,
-        db_index=True,
-        default=RODZAJ_JEDNOSTKI.NORMALNA,
-        choices=RODZAJ_JEDNOSTKI.choices,
-    )
-
+    # Faza B (#438), III-1: stary CharField ``rodzaj_jednostki`` +
+    # ``RODZAJ_JEDNOSTKI`` (TextChoices) usunięte — jedyne źródło prawdy to
+    # FK ``rodzaj`` (→ ``RodzajJednostki``, słownik per-tenant edytowalny w
+    # adminie). Migracja 0461 usuwa kolumnę po ostatnim re-backfillu.
     rodzaj = models.ForeignKey(
         "bpp.RodzajJednostki",
         null=True,

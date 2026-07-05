@@ -306,6 +306,9 @@ class JednostkaResource(resources.ModelResource):
     wydzial = Field(attribute="wydzial__nazwa")
     parent = Field(attribute="parent__nazwa")
     pbn_uid = Field(attribute="pbn_uid__mongoId")
+    # Faza B (#438), III-1: ``rodzaj_jednostki`` (CharField) zastąpiony FK
+    # ``rodzaj`` — eksportujemy czytelną nazwę słownikową (jak ``wydzial``).
+    rodzaj = Field(attribute="rodzaj__nazwa")
 
     def export(self, *args, **kwargs):
         dataset = super().export(*args, **kwargs)
@@ -317,7 +320,7 @@ class JednostkaResource(resources.ModelResource):
         fields = (
             "nazwa",
             "skrot",
-            "rodzaj_jednostki",
+            "rodzaj",
             "aktualna",
             "widoczna",
             "wchodzi_do_rankingu_autorow",

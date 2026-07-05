@@ -121,7 +121,8 @@ def test_ranking_autorow_bez_kol_naukowych(
     rf,
     uczelnia,
 ):
-    # Faza B (#438): wykluczenie kół po FK ``rodzaj`` + flaga.
+    # Faza B (#438), III-1: wykluczenie kół po FK ``rodzaj`` + flaga
+    # (CharField ``rodzaj_jednostki`` usunięty).
     from bpp.models import RodzajJednostki
 
     rodzaj, _ = RodzajJednostki.objects.get_or_create(
@@ -130,7 +131,6 @@ def test_ranking_autorow_bez_kol_naukowych(
     if not rodzaj.wyklucz_z_rankingu_autorow:
         rodzaj.wyklucz_z_rankingu_autorow = True
         rodzaj.save()
-    jednostka.rodzaj_jednostki = Jednostka.RODZAJ_JEDNOSTKI.KOLO_NAUKOWE
     jednostka.rodzaj = rodzaj
     jednostka.save()
 

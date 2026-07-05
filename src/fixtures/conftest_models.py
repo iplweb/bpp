@@ -115,9 +115,9 @@ def jednostka(wydzial, db):
 def kolo_naukowe(jednostka: Jednostka):
     from bpp.models import RodzajJednostki
 
-    # Faza B (#438): wykluczenie kół z rankingu idzie teraz przez FK ``rodzaj``
-    # + flagę ``wyklucz_z_rankingu_autorow`` (nie po CharField). Ustawiamy oba,
-    # żeby fixture działał zarówno przed, jak i po usunięciu CharField (III-1).
+    # Faza B (#438), III-1: wykluczenie kół z rankingu idzie przez FK
+    # ``rodzaj`` + flagę ``wyklucz_z_rankingu_autorow`` (CharField
+    # ``rodzaj_jednostki`` usunięty).
     rodzaj, _ = RodzajJednostki.objects.get_or_create(
         nazwa="Koło naukowe", defaults={"wyklucz_z_rankingu_autorow": True}
     )
@@ -126,7 +126,6 @@ def kolo_naukowe(jednostka: Jednostka):
         rodzaj.save()
     jednostka.nazwa = "Studenckie Koło Naukowe Przykładowe"
     jednostka.skrot = "SKN"
-    jednostka.rodzaj_jednostki = Jednostka.RODZAJ_JEDNOSTKI.KOLO_NAUKOWE
     jednostka.rodzaj = rodzaj
     jednostka.save()
     return jednostka

@@ -7,7 +7,7 @@ import pytest
 from django.contrib.auth.models import Group
 from model_bakery import baker
 
-from bpp.models import Autor, Jednostka, Wydzial
+from bpp.models import Autor, Jednostka, RodzajJednostki, Wydzial
 from bpp.models.cache import Rekord
 from bpp.models.struktura_konwersja import znajdz_lub_utworz_wezel_wydzialu
 from bpp.models.system import Charakter_Formalny, Typ_Odpowiedzialnosci
@@ -122,7 +122,7 @@ def test_wydzial_with_single_kolo_naukowe_redirects(setup_group, logged_in_clien
         uczelnia=u,
         aktualna=True,
         widoczna=True,
-        rodzaj_jednostki=Jednostka.RODZAJ_JEDNOSTKI.KOLO_NAUKOWE,
+        rodzaj=RodzajJednostki.objects.get(nazwa="Koło naukowe"),
     )
 
     res = logged_in_client.get(

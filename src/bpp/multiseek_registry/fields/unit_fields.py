@@ -16,7 +16,7 @@ from multiseek.logic import (
     ValueListQueryObject,
 )
 
-from bpp.models import Autorzy, Jednostka, Uczelnia
+from bpp.models import Autorzy, Jednostka, RodzajJednostki, Uczelnia
 from bpp.multiseek_registry.mixins import BppMultiseekVisibilityMixin
 from bpp.util import zaloguj_polkniety_wyjatek
 
@@ -302,9 +302,27 @@ class PierwszyWydzialQueryObject(WydzialQueryObject):
 
 
 class RodzajJednostkiQueryObject(BppMultiseekVisibilityMixin, ValueListQueryObject):
+    # Faza B (#438), III-1: CharField ``rodzaj_jednostki`` + TextChoices
+    # ``RODZAJ_JEDNOSTKI`` usunięte — filtrujemy przez FK ``rodzaj``
+    # (słownik ``RodzajJednostki``, per-tenant edytowalny w adminie).
+    # ``field_name`` zostaje ``"rodzaj_jednostki"`` — to etykieta
+    # PERSYSTENCJI zapisanych wyszukiwań (identycznie jak przy
+    # ``WydzialQueryObject.field_name == "wydzial"`` mimo zmiany semantyki
+    # pola), nie nazwa kolumny/lookupu.
     label = "Rodzaj jednostki"
     field_name = "rodzaj_jednostki"
-    values = Jednostka.RODZAJ_JEDNOSTKI.labels
+
+    def _values(self):
+        # Lista dynamiczna (property, wzorem ``CharakterFormalnyQueryObject``)
+        # — słownik jest edytowalny w adminie, nie da się go zamrozić w
+        # czasie importu modułu.
+        return list(
+            RodzajJednostki.objects.order_by("kolejnosc", "nazwa").values_list(
+                "nazwa", flat=True
+            )
+        )
+
+    values = property(_values)
 
     def value_from_web(self, value):
         if value not in self.values:
@@ -312,27 +330,12 @@ class RodzajJednostkiQueryObject(BppMultiseekVisibilityMixin, ValueListQueryObje
         return value
 
     def real_query(self, value, operation):
-        if value == Jednostka.RODZAJ_JEDNOSTKI.NORMALNA.label:
-            tk = Jednostka.RODZAJ_JEDNOSTKI.NORMALNA.value
-        else:
-            tk = Jednostka.RODZAJ_JEDNOSTKI.KOLO_NAUKOWE.value
-
-        q = Q(**{"autorzy__jednostka__rodzaj_jednostki": tk})
+        q = Q(**{"autorzy__jednostka__rodzaj__nazwa": value})
         if operation == DIFFERENT:
             return ~q
         return q
 
     def to_djangoql(self, value, operation):
-        mapa = {
-            Jednostka.RODZAJ_JEDNOSTKI.NORMALNA.label: (
-                Jednostka.RODZAJ_JEDNOSTKI.NORMALNA.value
-            ),
-            Jednostka.RODZAJ_JEDNOSTKI.KOLO_NAUKOWE.label: (
-                Jednostka.RODZAJ_JEDNOSTKI.KOLO_NAUKOWE.value
-            ),
-        }
-        kod = mapa.get(value)
-        if kod is None:
-            return None
         op = "!=" if str(operation) == str(DIFFERENT) else "="
-        return f'autorzy.jednostka.rodzaj_jednostki {op} "{kod}"'
+        escaped = str(value).replace("\\", "\\\\").replace('"', '\\"')
+        return f'autorzy.jednostka.rodzaj.nazwa {op} "{escaped}"'
