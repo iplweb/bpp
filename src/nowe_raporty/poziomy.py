@@ -45,6 +45,15 @@ def _base_uczelnia(obiekt, tylko_afiliowane):
     return scope_rekord_do_uczelni(qs, obiekt)
 
 
+def _wydzial_queryset():
+    """#438: „wydział" = widoczna jednostka-korzeń (``parent IS NULL``). JEDNO
+    źródło prawdy dla pola formularza ORAZ pobrania obiektu po pk
+    (``get_object``/``get_initial``) — inaczej generujący URL (poza walidacją
+    formularza) przyjąłby DOWOLNY pk Jednostki (stary bookmark
+    ``?...=<Wydzial.pk>`` → losowa jednostka / wyciek ukrytej)."""
+    return Jednostka.objects.widoczne().filter(parent__isnull=True)
+
+
 def _pole(label, model, url, queryset=None):
     # ``queryset`` domyślnie = ``model.objects.all()``, ale poziom „wydział"
     # (#438) MUSI zawęzić do widocznych korzeni — inaczej ModelChoiceField
@@ -58,14 +67,26 @@ def _pole(label, model, url, queryset=None):
 
 
 class PoziomConfig:
-    def __init__(self, model, ma_pk, base_queryset, pole_factory):
+    def __init__(
+        self, model, ma_pk, base_queryset, pole_factory, obiekt_queryset=None
+    ):
         self.model = model
         self.ma_pk = ma_pk
         self.base_queryset = base_queryset
         self.pole_factory = pole_factory  # () -> forms.Field | None
+        # () -> QuerySet: z czego wolno pobrać ``obiekt`` po pk (get_object /
+        # get_initial). Domyślnie ``model.objects.all()``; poziom „wydział"
+        # zawęża do widocznych korzeni (spójnie z polem formularza), żeby
+        # generujący URL nie przyjął dowolnego pk Jednostki.
+        self._obiekt_queryset = obiekt_queryset
 
     def pole_obiektu(self):
         return self.pole_factory()
+
+    def obiekt_queryset(self):
+        if self._obiekt_queryset is not None:
+            return self._obiekt_queryset()
+        return self.model._default_manager.all()
 
 
 POZIOMY = {
@@ -91,8 +112,9 @@ POZIOMY = {
             "Wydział",
             Jednostka,
             "bpp:public-jednostka-toplevel-autocomplete",
-            queryset=Jednostka.objects.widoczne().filter(parent__isnull=True),
+            queryset=_wydzial_queryset(),
         ),
+        obiekt_queryset=_wydzial_queryset,
     ),
     DefinicjaRaportu.POZIOM_UCZELNIA: PoziomConfig(
         Uczelnia,

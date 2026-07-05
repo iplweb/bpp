@@ -46,6 +46,17 @@ def test_wydzial_pk_remapped_from_int_value_written_back_as_string():
     assert new_fd[1]["value"] == "9001"
 
 
+def test_pusty_wezel_grupy_nie_wywala_migracji():
+    """Regresja (#438): zdegenerowany pusty węzeł-grupa ``[]`` w form_data NIE
+    może wywalić migracji IndexError-em (był bug ``node[0]`` na pustej liście).
+    Reszta form_data ma się nadal przemapować."""
+    form_data = [None, [], _entry("Wydział", "500")]
+    new_fd, changed = _remap(form_data, {500: 9001})
+    assert changed is True
+    assert [] in new_fd  # pusty węzeł zachowany bez zmian
+    assert _entry("Wydział", "9001") in new_fd
+
+
 def test_pierwszy_wydzial_pk_remapped():
     form_data = [None, _entry("Pierwszy wydział", "77")]
     new_fd, changed = _remap(form_data, {77: 8002})

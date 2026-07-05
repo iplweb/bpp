@@ -132,6 +132,12 @@ def _remap_nodes(nodes, wydzial_mapa, target_pks, valid_rodzaj, search_id):
     changed = False
     for node in nodes:
         if isinstance(node, list):
+            if not node:
+                # Zdegenerowany pusty węzeł-grupa (ręcznie zepsute dane) —
+                # zostaw bez zmian; bez tego ``node[0]`` niżej rzuca IndexError
+                # i wywala CAŁĄ migrację (odwrotnie niż inne guardy w tym pliku).
+                result.append(node)
+                continue
             # Grupa: [prev_op, węzeł, węzeł, ...] — zachowaj prev_op (node[0]).
             inner, inner_changed = _remap_nodes(
                 node[1:], wydzial_mapa, target_pks, valid_rodzaj, search_id

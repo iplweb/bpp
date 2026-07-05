@@ -241,7 +241,10 @@ class Jednostka(ModelZAdnotacjami, ModelZPBN_ID, ModelZPBN_UID, MPTTModel):
 
         try:
             wydzial = self.wydzial
-        except (ValueError, TypeError, Wydzial.DoesNotExist):  # TODO catch-all
+        except (ValueError, TypeError, Jednostka.DoesNotExist):
+            # Faza B (#438): ``wydzial`` to teraz self-FK -> Jednostka, więc
+            # dangling/deferred dostęp rzuca Jednostka.DoesNotExist (dawny
+            # guard na Wydzial.DoesNotExist był martwy po retargecie).
             wydzial = None
 
         if wydzial is not None:
@@ -386,25 +389,49 @@ class Jednostka(ModelZAdnotacjami, ModelZPBN_ID, ModelZPBN_UID, MPTTModel):
     # (``wydzial__legacy_wydzial_id=<wydzial.pk>``). III-2 zwęził to omyłkowo do
     # ``self.get_children()`` (TYLKO bezpośrednie dzieci MPTT) -> strona
     # wydziału stawała się pusta, gdy jednostki wisiały głębiej (wydział ->
-    # instytut -> katedra). Przywracamy poddrzewo: ``wydzial`` to zdenorm.
-    # self-FK do KORZENIA drzewa, więc każdy potomek (dziecko, wnuk, ...) niesie
-    # ``wydzial=<korzeń>``. Podmiana odwzorowuje dawne metody 1:1:
-    # ``wydzial__legacy_wydzial_id=self.pk`` (self=Wydzial) ->
-    # ``wydzial=self`` (self=węzeł-korzeń); ``parent__legacy_wydzial_id=self.pk``
-    # (rodzic historycznej metryczki był lustrem wydziału) -> rodzic w poddrzewie
-    # (``parent=self`` dla korzenia LUB ``parent__wydzial=self`` dla potomka).
+    # instytut -> katedra). Przywracamy poddrzewo przez MPTT
+    # ``self.get_descendants()`` (lft/rght range), które działa dla KAŻDEGO
+    # węzła — także nie-korzenia. WAŻNE: nie używamy ``wydzial=self``, bo
+    # zdenorm. ``wydzial`` wskazuje KORZEŃ drzewa (a nie ``self``), więc
+    # ``wydzial=self`` dawałoby PUSTKĘ dla węzła w środku drzewa (np. rodzaj z
+    # flagą ``pokazuj_strukture_podjednostek`` przypisany do „Instytutu")
+    # -> pusta strona mimo dzieci. Poddrzewo liczymy helperami
+    # ``_poddrzewo_jednostki`` / ``_poddrzewo_jednostki_z_soba``: dla KORZENIA
+    # zdenorm. ``wydzial`` (pk-owe, odporne na nieaktualne lft/rght instancji --
+    # jak w dawnych metodach), dla węzła nie-korzenia MPTT ``get_descendants``
+    # (w widoku ``self`` jest świeżo wczytany, więc lft/rght aktualne).
+    # Odwzorowanie: ``wydzial__legacy_wydzial_id=self.pk`` -> poddrzewo jednostek;
+    # ``parent__legacy_wydzial_id=self.pk`` -> rodzic metryczki w poddrzewie.
     #
+
+    def _poddrzewo_jednostki(self):
+        """Queryset jednostek z PODDRZEWA tego węzła (bez samego węzła).
+
+        Korzeń: zdenorm. ``wydzial=self`` (pk-owe, odporne na nieaktualne
+        lft/rght). Nie-korzeń: MPTT ``get_descendants`` (``wydzial`` potomka
+        wskazuje KORZEŃ, nie ``self``, więc ``wydzial=self`` dałoby pustkę)."""
+        if self.parent_id is None:
+            return Jednostka.objects.filter(wydzial=self)
+        return self.get_descendants()
+
+    def _poddrzewo_jednostki_z_soba(self):
+        """Jak ``_poddrzewo_jednostki``, ale WŁĄCZNIE z samym węzłem -- dla
+        metryczek ``Jednostka_Rodzic`` z rodzicem w poddrzewie."""
+        if self.parent_id is None:
+            return Jednostka.objects.filter(Q(pk=self.pk) | Q(wydzial=self))
+        return self.get_descendants(include_self=True)
 
     def aktualne_podjednostki(self):
         """Aktualne, widoczne jednostki z PODDRZEWA tego węzła -- bez jednostek
         oznaczonych jako odrębna sekcja (np. koła naukowe).
 
-        Wierny port dawnej ``Wydzial.aktualne_jednostki``: ``wydzial=self``
-        obejmuje cały poddrzew (wnuki, prawnuki, ...), nie tylko bezpośrednie
-        dzieci -- ``rodzaj__nazwa="Koło naukowe"`` zamieniono na flagę
+        Wierny port dawnej ``Wydzial.aktualne_jednostki`` (poddrzewo -- patrz
+        komentarz wyżej): obejmuje wnuki, prawnuki, ..., i działa też dla węzła
+        nie-korzenia; ``rodzaj__nazwa="Koło naukowe"`` -> flaga
         ``rodzaj__pokazuj_jako_odrebna_sekcje`` (spójność Fazy B)."""
         return (
-            Jednostka.objects.filter(wydzial=self, widoczna=True)
+            self._poddrzewo_jednostki()
+            .filter(widoczna=True)
             .exclude(rodzaj__pokazuj_jako_odrebna_sekcje=True)
             .exclude(aktualna=False)
             .order_by(*Jednostka.objects.get_default_ordering())
@@ -414,22 +441,22 @@ class Jednostka(ModelZAdnotacjami, ModelZPBN_ID, ModelZPBN_UID, MPTTModel):
         """Koła naukowe (rodzaj z flagą ``pokazuj_jako_odrebna_sekcje``) z
         PODDRZEWA węzła -- pokazywane osobno od zwykłych podjednostek.
 
-        Wierny port dawnej ``Wydzial.kola_naukowe``: aktualne przez denorm
-        ``wydzial=self``, historyczne (odłączone od drzewa, ``wydzial=None``)
-        przez wciąż-ważną metryczkę ``Jednostka_Rodzic`` z rodzicem w
-        poddrzewie. ``rodzaj__nazwa="Koło naukowe"`` -> flaga
+        Wierny port dawnej ``Wydzial.kola_naukowe``: aktualne przez poddrzewo
+        (helper ``_poddrzewo_jednostki``), historyczne (odłączone od drzewa,
+        ``wydzial=None``) przez wciąż-ważną metryczkę ``Jednostka_Rodzic`` z
+        rodzicem w poddrzewie. ``rodzaj__nazwa="Koło naukowe"`` -> flaga
         ``pokazuj_jako_odrebna_sekcje``; ``parent__legacy_wydzial_id`` ->
-        poddrzewo (``parent=self`` LUB ``parent__wydzial=self``)."""
+        rodzic w poddrzewie (helper ``_poddrzewo_jednostki_z_soba``)."""
         today = timezone.now().date()
 
         return (
             Jednostka.objects.filter(rodzaj__pokazuj_jako_odrebna_sekcje=True)
             .filter(
-                Q(wydzial=self, aktualna=True, widoczna=True)
+                Q(pk__in=self._poddrzewo_jednostki(), aktualna=True, widoczna=True)
                 | Q(
                     wydzial=None,
                     pk__in=Jednostka_Rodzic.objects.filter(
-                        Q(parent=self) | Q(parent__wydzial=self)
+                        parent__in=self._poddrzewo_jednostki_z_soba()
                     )
                     .exclude(do=None)
                     .exclude(do__lt=today)
@@ -445,17 +472,17 @@ class Jednostka(ModelZAdnotacjami, ModelZPBN_ID, ModelZPBN_UID, MPTTModel):
         przeszłości), a obecnie już nie (``aktualna`` != True).
 
         Wierny port dawnej ``Wydzial.historyczne_jednostki``:
-        ``parent__legacy_wydzial_id=self.pk`` -> rodzic w poddrzewie
-        (``parent=self`` dla korzenia LUB ``parent__wydzial=self`` dla
-        potomka) -- obejmuje historię z całego poddrzewa, nie tylko
-        bezpośrednich dzieci."""
+        ``parent__legacy_wydzial_id=self.pk`` -> rodzic w poddrzewie (helper
+        ``_poddrzewo_jednostki_z_soba``) -- obejmuje historię z całego
+        poddrzewa, nie tylko bezpośrednich dzieci, i działa też dla węzła
+        nie-korzenia."""
         today = timezone.now().date()
 
         return (
             Jednostka.objects.exclude(aktualna=True)
             .filter(
                 pk__in=Jednostka_Rodzic.objects.filter(
-                    Q(parent=self) | Q(parent__wydzial=self)
+                    parent__in=self._poddrzewo_jednostki_z_soba()
                 )
                 .exclude(do=None)
                 .exclude(do__gte=today)

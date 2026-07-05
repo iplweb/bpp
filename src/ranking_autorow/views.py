@@ -225,11 +225,17 @@ class RankingAutorow(ExportMixin, SingleTableView):
 
     def _apply_location_filters(self, qset):
         jednostki = self.get_jednostki()
-        if jednostki:
+        # F4 (#438): jak dla ``wydzial`` niżej — rozróżniamy „brak parametru"
+        # (None → bez filtra) od „parametr podany, ale spoza dostępnych"
+        # (pusty queryset → filtr STOSUJEMY, wynik pusty). Bez tego wybór
+        # jednostki poprawnej w pickerze, ale spoza ``get_dostepne_jednostki``
+        # (np. ``wchodzi_do_rankingu_autorow=False``) dawał ``if jednostki:``
+        # == False → CICHY pełny ranking pod filtrem jednostki.
+        if jednostki is not None:
             qset = qset.filter(jednostka__in=jednostki)
 
         uczelnia = Uczelnia.objects.get_for_request(self.request)
-        if uczelnia and uczelnia.uzywaj_wydzialow and not jednostki:
+        if uczelnia and uczelnia.uzywaj_wydzialow and jednostki is None:
             wydzialy = self.get_wydzialy()
             # F4 (#438): rozróżniamy „brak parametru ``wydzial``" (None → bez
             # filtra) od „parametr podany, ale nie pasuje do żadnego korzenia"

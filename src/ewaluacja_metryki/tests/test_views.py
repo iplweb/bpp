@@ -207,6 +207,43 @@ def test_metryki_list_filtr_wydzial_lapie_metryki_przy_samym_korzeniu(
 
 
 @pytest.mark.django_db
+def test_metryki_dropdown_wydzialow_zawiera_korzen_z_autorem_na_roocie(
+    admin_user, client
+):
+    """F4 (#438): wydział, w którym autor siedzi WPROST na jednostce-korzeniu
+    (``wydzial=NULL``), MUSI pojawić się na liście ``wydzialy`` w filtrze.
+    Przed fixem korzeń (wydzial_id NULL) wypadał z listy (i mógł błędnie
+    zapalić ``tylko_jeden_wydzial`` → ukrycie całego filtra)."""
+    from denorm import denorms
+
+    client.force_login(admin_user)
+    u = baker.make(Uczelnia)
+    korzen = baker.make(Jednostka, nazwa="Wydział Korzeń", uczelnia=u, parent=None)
+    denorms.flush()
+    korzen.refresh_from_db()
+    assert korzen.wydzial_id is None
+
+    autor = baker.make(Autor, nazwisko="Rootowy", aktualna_jednostka=korzen)
+    baker.make(
+        MetrykaAutora,
+        autor=autor,
+        dyscyplina_naukowa=baker.make(Dyscyplina_Naukowa),
+        jednostka=korzen,
+        uczelnia=u,
+        slot_maksymalny=Decimal("4.0"),
+        slot_nazbierany=Decimal("3.0"),
+        punkty_nazbierane=Decimal("120.0"),
+        slot_wszystkie=Decimal("3.0"),
+        punkty_wszystkie=Decimal("120.0"),
+    )
+
+    response = client.get(reverse("ewaluacja_metryki:lista"))
+
+    assert response.status_code == 200
+    assert korzen in list(response.context["wydzialy"])
+
+
+@pytest.mark.django_db
 def test_export_filtr_wydzial_lapie_metryki_przy_samym_korzeniu():
     """F3 (#438): ten sam inwariant co wyżej, ale dla ścieżki eksportu XLSX
     (``ExportListaXLSX._apply_filters_to_queryset``)."""
