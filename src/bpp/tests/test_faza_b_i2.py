@@ -47,6 +47,7 @@ def _wezel(wydzial):
 # niezależny od CharField/FK, wciąż w pełni testowalny).
 _mig_0455 = importlib.import_module("bpp.migrations.0455_faza_b_i2")
 _bez_kolizji = _mig_0455._bez_kolizji
+_pbn_id_bez_kolizji = _mig_0455._pbn_id_bez_kolizji
 
 
 @pytest.mark.django_db
@@ -189,3 +190,41 @@ def test_konwersja_wydzialy_bez_kolizji_kopiuje_verbatim():
     assert nazwa == "Unikat"
     assert skrot == "UNI"
     assert skrot_nazwy == "Uni."
+
+
+@pytest.mark.django_db
+def test_konwersja_wydzialy_kolizja_pbn_id_zeruje_na_wezle():
+    """Kolizja ``pbn_id`` Wydziału z ``pbn_id`` istniejącej, NIEPOWIĄZANEJ
+    Jednostki NIE wywala migracji ``IntegrityError`` (``pbn_id`` jest
+    ``unique=True``) — helper 0455 (``_pbn_id_bez_kolizji``) zwraca ``None``,
+    więc tworzony węzeł-lustro USTĘPUJE, a realna jednostka zachowuje swój
+    identyfikator PBN.
+
+    Regresja realnego dumpu UMLub: Wydzial „Wydział Nauk o Zdrowiu"
+    (pbn_id=832) i niepowiązana pracownia dzieliły ``pbn_id=832`` — konwersja
+    wsadowa (0455) leciała ``UniqueViolation`` przy INSERT węzła.
+    """
+    u = baker.make(Uczelnia)
+
+    # Istniejąca, realna Jednostka rezerwuje pbn_id (unique=True):
+    istniejaca = baker.make(Jednostka, uczelnia=u, pbn_id=832)
+
+    # Wydzial ze WSPÓLNYM pbn_id — węzeł-lustro nie może go skopiować:
+    w = baker.make(Wydzial, uczelnia=u, pbn_id=832)
+
+    assert _pbn_id_bez_kolizji(Jednostka, w.pbn_id) is None
+
+    # Realna jednostka NIE zostaje tknięta — nadal trzyma 832:
+    istniejaca.refresh_from_db()
+    assert istniejaca.pbn_id == 832
+
+
+@pytest.mark.django_db
+def test_konwersja_wydzialy_pbn_id_bez_kolizji_kopiuje_verbatim():
+    """Bez kolizji helper 0455 (``_pbn_id_bez_kolizji``) kopiuje ``pbn_id``
+    Wydziału verbatim; ``None`` zostaje ``None`` (NULL nie narusza UNIQUE)."""
+    u = baker.make(Uczelnia)
+    w = baker.make(Wydzial, uczelnia=u, pbn_id=555)
+
+    assert _pbn_id_bez_kolizji(Jednostka, w.pbn_id) == 555
+    assert _pbn_id_bez_kolizji(Jednostka, None) is None

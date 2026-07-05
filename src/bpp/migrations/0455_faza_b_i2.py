@@ -56,6 +56,32 @@ def _bez_kolizji(Jednostka, field, value, w_id, max_length, suffix):
     return f"{base}{suffix}"
 
 
+def _pbn_id_bez_kolizji(Jednostka, pbn_id):
+    """Zwraca ``pbn_id`` jeśli nie koliduje z ``pbn_id`` istniejącej
+    ``Jednostka``; w przeciwnym razie ``None``.
+
+    ``Jednostka.pbn_id`` jest ``unique=True`` (globalnie w tabeli), a
+    ``Wydzial.pbn_id`` bywa RÓWNY ``pbn_id`` istniejącej, NIEPOWIĄZANEJ
+    ``Jednostka`` — w realnych danych (UMLub) ten sam PBN id widnieje i na
+    wydziale, i na jednostce (np. Wydzial „Wydział Nauk o Zdrowiu" oraz
+    niepowiązana pracownia współdzielą ``pbn_id=832``). Bez tego INSERT
+    węzła-lustra leci ``IntegrityError`` (``UniqueViolation``) w
+    nienadzorowanym auto-deployu z takiego dumpu.
+
+    Suffiks (jak dla ``nazwa``/``skrot``) jest tu NIEMOŻLIWY — ``pbn_id`` to
+    integer o globalnej unikalności, nie ma jak go deterministycznie „dokleić".
+    Rozstrzygnięcie: tworzony węzeł jest UKRYTY i NIEAKTUALNY, a ``pbn_id`` to
+    pole ``[Przestarzałe]``/historyczne — więc to WĘZEŁ USTĘPUJE
+    (``pbn_id=None``), NIE odbieramy identyfikatora istniejącej (realnej)
+    jednostce. ``None``/puste zostawiamy bez zmian — NULL nie narusza UNIQUE.
+    """
+    if pbn_id is None:
+        return None
+    if Jednostka.objects.filter(pbn_id=pbn_id).exists():
+        return None
+    return pbn_id
+
+
 def rerun_konwersja_wydzialy(apps, schema_editor):
     """Idempotentna reimplementacja ``konwertuj_wydzialy_na_jednostki``
     (komenda Fazy A) na modelach historycznych.
@@ -91,6 +117,8 @@ def rerun_konwersja_wydzialy(apps, schema_editor):
         skrot_nazwy = _bez_kolizji(
             Jednostka, "skrot_nazwy", w.skrot_nazwy, w.id, 250, f"-W{w.id}"
         )
+        # pbn_id (unique=True) — węzeł ustępuje na kolizji z realną jednostką.
+        pbn_id = _pbn_id_bez_kolizji(Jednostka, w.pbn_id)
         Jednostka.objects.create(
             nazwa=nazwa,
             skrot=skrot,
@@ -98,7 +126,7 @@ def rerun_konwersja_wydzialy(apps, schema_editor):
             opis=w.opis,
             adnotacje=w.adnotacje,
             poprzednie_nazwy=w.poprzednie_nazwy,
-            pbn_id=w.pbn_id,
+            pbn_id=pbn_id,
             uczelnia=w.uczelnia,
             rodzaj=rodzaj_wydzial,
             rodzaj_jednostki="normalna",

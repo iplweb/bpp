@@ -38,6 +38,26 @@ def _bez_kolizji(model, field, value, max_length, suffix):
     return f"{base}{suffix}"
 
 
+def _pbn_id_bez_kolizji(model, pbn_id):
+    """Zwraca ``pbn_id`` jeśli nie koliduje z ``pbn_id`` istniejącej
+    ``Jednostka``; w przeciwnym razie ``None``.
+
+    Ta sama logika co ``_pbn_id_bez_kolizji`` w migracji ``0455``:
+    ``Jednostka.pbn_id`` jest ``unique=True`` globalnie, a ``Wydzial.pbn_id``
+    bywa równy ``pbn_id`` istniejącej, NIEPOWIĄZANEJ jednostki (np. ``pbn_import``
+    tworzy runtime wydział o PBN id już zajętym przez pracownię). ``pbn_id`` to
+    integer — suffiks (jak dla ``nazwa``) niemożliwy; tworzony węzeł-lustro jest
+    ukryty, a pole jest ``[Przestarzałe]`` → WĘZEŁ USTĘPUJE (``pbn_id=None``),
+    NIE odbieramy identyfikatora istniejącej jednostce. ``None`` zostawiamy bez
+    zmian (NULL nie narusza UNIQUE).
+    """
+    if pbn_id is None:
+        return None
+    if model.objects.filter(pbn_id=pbn_id).exists():
+        return None
+    return pbn_id
+
+
 def znajdz_lub_utworz_wezel_wydzialu(wydzial):
     """LAZY get-or-create węzła-lustra ``Jednostka`` dla ``wydzial`` (po
     ``legacy_wydzial_id``). Zwraca ``(jednostka, created)``.
@@ -61,6 +81,8 @@ def znajdz_lub_utworz_wezel_wydzialu(wydzial):
     skrot_nazwy = _bez_kolizji(
         Jednostka, "skrot_nazwy", wydzial.skrot_nazwy, 250, f"-W{wydzial.id}"
     )
+    # pbn_id (unique=True) — węzeł ustępuje na kolizji z realną jednostką.
+    pbn_id = _pbn_id_bez_kolizji(Jednostka, wydzial.pbn_id)
 
     jednostka = Jednostka.objects.create(
         nazwa=nazwa,
@@ -69,7 +91,7 @@ def znajdz_lub_utworz_wezel_wydzialu(wydzial):
         opis=wydzial.opis,
         adnotacje=wydzial.adnotacje,
         poprzednie_nazwy=wydzial.poprzednie_nazwy,
-        pbn_id=wydzial.pbn_id,
+        pbn_id=pbn_id,
         uczelnia=wydzial.uczelnia,
         rodzaj=rodzaj_wydzial,
         legacy_wydzial_id=wydzial.id,

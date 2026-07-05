@@ -74,6 +74,32 @@ def _wezel(wydzial):
 
 
 @pytest.mark.django_db
+def test_wezel_wydzialu_kolizja_pbn_id_nie_wywala_integrity_error():
+    """Runtime get-or-create węzła-lustra dla Wydziału o ``pbn_id`` już zajętym
+    przez istniejącą, NIEPOWIĄZANĄ Jednostkę NIE leci ``IntegrityError``
+    (``pbn_id`` jest ``unique=True``) — węzeł powstaje z ``pbn_id=None``, a
+    realna jednostka zachowuje swój identyfikator PBN.
+
+    Regresja: ``znajdz_lub_utworz_wezel_wydzialu`` kopiował ``pbn_id`` verbatim;
+    w danych, gdzie wydział i jednostka dzielą PBN id (realny dump UMLub:
+    pbn_id=832), pierwszy link wydziału (np. z ``pbn_import``) wywracał się.
+    """
+    from bpp.models.struktura_konwersja import znajdz_lub_utworz_wezel_wydzialu
+
+    u = baker.make(Uczelnia)
+    istniejaca = baker.make(Jednostka, uczelnia=u, pbn_id=832)
+    w = baker.make(Wydzial, uczelnia=u, pbn_id=832)
+
+    wezel, created = znajdz_lub_utworz_wezel_wydzialu(w)
+
+    assert created is True
+    assert wezel.legacy_wydzial_id == w.id
+    assert wezel.pbn_id is None  # węzeł ustąpił
+    istniejaca.refresh_from_db()
+    assert istniejaca.pbn_id == 832  # realna jednostka nietknięta
+
+
+@pytest.mark.django_db
 def test_jednostka_wydzial_aktualna():
     """Sprawdź, czy dodanie obiektów Jednostka_Rodzic zmodyfikuje atrybut
     ``aktualna`` na obiekcie Jednostka.
