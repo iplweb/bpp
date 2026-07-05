@@ -215,6 +215,48 @@ class WydzialQueryObject(
             return uczelnia.uzywaj_wydzialow
         return True
 
+    def value_from_web(self, value):
+        # F4 (#438): „wydział" = jednostka-KORZEŃ (parent IS NULL). Ograniczamy
+        # rozwiązywanie wartości do rootów, żeby stary zapisany search z pk
+        # nie-roota / dawnego Wydzialu dał GŁOŚNY brak dopasowania (None), a nie
+        # cichy zły raport na przypadkowej jednostce o kolidującym pk.
+        try:
+            value_i = int(value)
+        except (TypeError, ValueError):
+            return None
+        return self.model.objects.filter(parent__isnull=True, pk=value_i).first()
+
+    def to_djangoql(self, value, operation):
+        """F5 (#438): eksport DjangoQL tłumaczy TYLKO część poddrzewową
+        (``autorzy.jednostka.wydzial__rel``). Union ``| autorzy__jednostka=value``
+        (prace przypięte do samego korzenia) nie ma odpowiednika w DjangoQL bez
+        osobnego pola wirtualnego, więc emitujemy ostrzeżenie o nierównoważnej
+        translacji (precedens: ``JednostkaQueryObject.to_djangoql``)."""
+        op = str(operation)
+        try:
+            obj = self.value_from_web(value)
+        except Exception:  # noqa: BLE001 — uszkodzony/nieistniejacy pk -> nieprzekladalne
+            zaloguj_polkniety_wyjatek(
+                f"Rozwiązywanie wydziału dla eksportu DjangoQL (value={value!r})",
+                logger=logger,
+            )
+            return None
+        if obj is None:
+            return None
+        label = str(obj).replace("\\", "\\\\").replace('"', '\\"')
+        suffix = f'"{label} [{obj.pk}]"'
+        warning = (
+            'Filtr „wydział" przełożono tylko na poddrzewo — eksport DjangoQL '
+            "pomija prace przypięte do samej jednostki-korzenia."
+        )
+        if op == str(EQUAL):
+            return f"autorzy.jednostka.wydzial__rel = {suffix}", warning
+        if op == str(DIFFERENT):
+            return f"autorzy.jednostka.wydzial__rel != {suffix}", warning
+        if op == str(UNION):
+            return f"autorzy.jednostka.wydzial__rel = {suffix}", warning
+        return None
+
     def real_query(self, value, operation):
         if operation in EQUALITY_OPS_ALL:
             ret = Q(autorzy__jednostka__wydzial=value) | Q(autorzy__jednostka=value)

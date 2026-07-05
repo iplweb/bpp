@@ -8,6 +8,60 @@ from model_bakery import baker
 from bpp.models.struktura import Jednostka, Jednostka_Rodzic, Uczelnia, Wydzial
 
 
+@pytest.mark.django_db
+def test_denorm_wydzial_kaskada_glebokie_drzewo():
+    """Faza B (#438), II-1: denorm ``wydzial`` == KORZEŃ drzewa MPTT na KAŻDYM
+    poziomie (wydział→instytut→katedra→zakład). To inwariant, na którym stoją
+    wszystkie raporty poddrzewa; wcześniej asertowany tylko dla direct-childa."""
+    from denorm import denorms
+
+    u = baker.make(Uczelnia)
+    root = baker.make(Jednostka, uczelnia=u, parent=None)
+    instytut = baker.make(Jednostka, uczelnia=u, parent=root)
+    katedra = baker.make(Jednostka, uczelnia=u, parent=instytut)
+    zaklad = baker.make(Jednostka, uczelnia=u, parent=katedra)
+
+    denorms.flush()
+    for j in (root, instytut, katedra, zaklad):
+        j.refresh_from_db()
+
+    assert root.wydzial_id is None  # korzeń → NULL
+    assert instytut.wydzial_id == root.pk  # głębokość 1
+    assert katedra.wydzial_id == root.pk  # głębokość 2
+    assert zaklad.wydzial_id == root.pk  # głębokość 3
+
+
+@pytest.mark.django_db
+def test_denorm_wydzial_reparent_przelicza_cale_poddrzewo():
+    """Re-parent poddrzewa pod inny korzeń → ``wydzial`` CAŁEGO poddrzewa
+    (nie tylko przenoszonego węzła) przelicza się na nowy korzeń po
+    ``denorms.flush()`` — kaskada tranzytywna denorm."""
+    from denorm import denorms
+
+    u = baker.make(Uczelnia)
+    root1 = baker.make(Jednostka, uczelnia=u, parent=None)
+    root2 = baker.make(Jednostka, uczelnia=u, parent=None)
+    katedra = baker.make(Jednostka, uczelnia=u, parent=root1)
+    zaklad = baker.make(Jednostka, uczelnia=u, parent=katedra)
+
+    denorms.flush()
+    katedra.refresh_from_db()
+    zaklad.refresh_from_db()
+    assert katedra.wydzial_id == root1.pk
+    assert zaklad.wydzial_id == root1.pk
+
+    # Przenieś katedrę (wraz z zakładem) spod root1 pod root2.
+    katedra.parent = root2
+    katedra.save()
+    denorms.flush()
+
+    katedra.refresh_from_db()
+    zaklad.refresh_from_db()
+    assert katedra.wydzial_id == root2.pk
+    # Kluczowe: zakład (głębiej niż przenoszony węzeł) też przelicza korzeń.
+    assert zaklad.wydzial_id == root2.pk
+
+
 def _wezel(wydzial):
     """LAZY węzeł-lustro Jednostka dla wydziału (#438) — tworzony przy linku.
 

@@ -154,6 +154,83 @@ def test_metryki_list_view_filtering_by_jednostka(admin_user, client):
 
 
 @pytest.mark.django_db
+def test_metryki_list_filtr_wydzial_lapie_metryki_przy_samym_korzeniu(
+    admin_user, client
+):
+    """F3 (#438): filtr ``?wydzial=<korzeń>`` MUSI łapać metryki autora
+    siedzącego w SAMEJ jednostce-korzeniu (``wydzial=NULL``), nie tylko w
+    poddrzewie. Przed fixem (``jednostka__wydzial_id`` bez ``| jednostka_id``)
+    metryki przy korzeniu CICHO znikały z widoku."""
+    from denorm import denorms
+
+    client.force_login(admin_user)
+    u = baker.make(Uczelnia)
+    korzen = baker.make(Jednostka, nazwa="Wydział X", uczelnia=u, parent=None)
+    katedra = baker.make(Jednostka, nazwa="Katedra X", uczelnia=u, parent=korzen)
+    denorms.flush()
+    katedra.refresh_from_db()
+    assert katedra.wydzial_id == korzen.pk
+    assert korzen.wydzial_id is None
+
+    m_korzen = baker.make(
+        MetrykaAutora,
+        autor=baker.make(Autor, nazwisko="Korzeniowy"),
+        dyscyplina_naukowa=baker.make(Dyscyplina_Naukowa),
+        jednostka=korzen,
+        uczelnia=u,
+        slot_maksymalny=Decimal("4.0"),
+        slot_nazbierany=Decimal("3.0"),
+        punkty_nazbierane=Decimal("120.0"),
+        slot_wszystkie=Decimal("3.0"),
+        punkty_wszystkie=Decimal("120.0"),
+    )
+    m_katedra = baker.make(
+        MetrykaAutora,
+        autor=baker.make(Autor, nazwisko="Katedralny"),
+        dyscyplina_naukowa=baker.make(Dyscyplina_Naukowa),
+        jednostka=katedra,
+        uczelnia=u,
+        slot_maksymalny=Decimal("4.0"),
+        slot_nazbierany=Decimal("3.0"),
+        punkty_nazbierane=Decimal("120.0"),
+        slot_wszystkie=Decimal("3.0"),
+        punkty_wszystkie=Decimal("120.0"),
+    )
+
+    url = reverse("ewaluacja_metryki:lista")
+    response = client.get(url, {"wydzial": korzen.pk})
+
+    assert response.status_code == 200
+    metryki = list(response.context["metryki"])
+    assert m_korzen in metryki  # przy SAMYM korzeniu — łapane dopiero po fixie
+    assert m_katedra in metryki  # poddrzewo
+
+
+@pytest.mark.django_db
+def test_export_filtr_wydzial_lapie_metryki_przy_samym_korzeniu():
+    """F3 (#438): ten sam inwariant co wyżej, ale dla ścieżki eksportu XLSX
+    (``ExportListaXLSX._apply_filters_to_queryset``)."""
+    from denorm import denorms
+    from django.test import RequestFactory
+
+    from ewaluacja_metryki.views.export import ExportListaXLSX
+
+    u = baker.make(Uczelnia)
+    korzen = baker.make(Jednostka, uczelnia=u, parent=None)
+    katedra = baker.make(Jednostka, uczelnia=u, parent=korzen)
+    denorms.flush()
+
+    m_korzen = baker.make(MetrykaAutora, jednostka=korzen, uczelnia=u)
+    m_katedra = baker.make(MetrykaAutora, jednostka=katedra, uczelnia=u)
+
+    req = RequestFactory().get("/", {"wydzial": str(korzen.pk)})
+    qs = ExportListaXLSX()._apply_filters_to_queryset(MetrykaAutora.objects.all(), req)
+    pks = set(qs.values_list("pk", flat=True))
+    assert m_korzen.pk in pks  # przy SAMYM korzeniu
+    assert m_katedra.pk in pks  # poddrzewo
+
+
+@pytest.mark.django_db
 def test_metryka_detail_view(admin_user, client):
     """Test widoku szczegółów metryki"""
     client.force_login(admin_user)

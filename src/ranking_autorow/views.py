@@ -227,7 +227,12 @@ class RankingAutorow(ExportMixin, SingleTableView):
         uczelnia = Uczelnia.objects.get_for_request(self.request)
         if uczelnia and uczelnia.uzywaj_wydzialow and not jednostki:
             wydzialy = self.get_wydzialy()
-            if wydzialy:
+            # F4 (#438): rozróżniamy „brak parametru ``wydzial``" (None → bez
+            # filtra) od „parametr podany, ale nie pasuje do żadnego korzenia"
+            # (pusty queryset → filtr STOSUJEMY, wynik pusty). Bez tego stary
+            # bookmark ``?wydzial=<Wydzial.pk>`` (pk spoza rootów) dawał
+            # ``if wydzialy:`` == False → CICHY pełny ranking pod filtrem wydziału.
+            if wydzialy is not None:
                 # Faza B (#438): „wydziały" = jednostki-korzenie. Poddrzewo
                 # łapie ``jednostka__wydzial__in``; prace samego korzenia —
                 # ``jednostka__in`` (korzeń ma ``wydzial=NULL``).

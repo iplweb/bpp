@@ -1,6 +1,6 @@
 # Register your models here.
 from django.contrib.admin import SimpleListFilter
-from django.db.models import Window
+from django.db.models import Q, Window
 from django.db.models.functions import ExtractWeekDay, FirstValue
 
 from bpp.models import Jednostka
@@ -38,9 +38,13 @@ class WydzialJednostkiPierwszegoAutora(SimpleListFilter):
             return queryset
 
         # Faza B (#438): ``v`` to pk jednostki-korzenia; jednostki „w tym
-        # wydziale" = poddrzewo korzenia (``wydzial_id == v``, self-FK).
+        # wydziale" = poddrzewo korzenia (``wydzial_id == v``, self-FK) ORAZ
+        # sam korzeń (``pk == v``; korzeń ma ``wydzial=NULL``, więc bez tego
+        # gubimy zgłoszenia autora siedzącego bezpośrednio w jednostce-wydziale).
         jednostki_wybranego_wydzialu = list(
-            Jednostka.objects.filter(wydzial_id=v).values_list("pk", flat=True)
+            Jednostka.objects.filter(Q(wydzial_id=v) | Q(pk=v)).values_list(
+                "pk", flat=True
+            )
         )
 
         pierwsze_nieobce_jednostki = (

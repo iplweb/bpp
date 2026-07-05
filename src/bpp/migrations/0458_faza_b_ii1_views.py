@@ -31,6 +31,7 @@ class Migration(migrations.Migration):
             model_name="nowe_sumy_view",
             name="wydzial",
             field=models.ForeignKey(
+                null=True,
                 on_delete=django.db.models.deletion.DO_NOTHING,
                 related_name="+",
                 to="bpp.jednostka",

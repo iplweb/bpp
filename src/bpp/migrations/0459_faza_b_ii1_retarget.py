@@ -26,6 +26,32 @@ import django.db.models.deletion
 from django.core.management import call_command
 from django.db import migrations, models
 
+# Faza B (#438), F1: mapa CharField ``rodzaj_jednostki`` → nazwa ``RodzajJednostki``
+# (identyczna z backfillem 0451). Jednostki utworzone w adminie MIĘDZY Fazą A a B
+# mają ``rodzaj_jednostki`` ustawione, ale ``rodzaj`` (FK) NULL, bo 0451 objął
+# tylko wiersze istniejące w chwili Fazy A. Re-backfill domyka to okno driftu,
+# zanim FK-owa logika wykluczania kół (``ranking_autorow``) zacznie działać.
+RODZAJ_CHARFIELD_MAPA = {"normalna": "Standard", "kolo_naukowe": "Koło naukowe"}
+
+
+def rebackfill_rodzaj_z_charfield(apps, schema_editor):
+    """Idempotentnie uzupełnij FK ``rodzaj`` z CharField ``rodzaj_jednostki``.
+
+    Dotyka WYŁĄCZNIE wierszy z ``rodzaj_id IS NULL`` i niepustym CharField —
+    więc bezpieczne przy wielokrotnym uruchomieniu (III-1 też re-backfilluje).
+    """
+    Jednostka = apps.get_model("bpp", "Jednostka")
+    RodzajJednostki = apps.get_model("bpp", "RodzajJednostki")
+
+    for kod, nazwa in RODZAJ_CHARFIELD_MAPA.items():
+        rodzaj = RodzajJednostki.objects.filter(nazwa=nazwa).first()
+        if rodzaj is None:
+            # Brak wiersza słownika (nietypowa instalacja) — nic do przypięcia.
+            continue
+        Jednostka.objects.filter(rodzaj__isnull=True, rodzaj_jednostki=kod).update(
+            rodzaj=rodzaj
+        )
+
 
 def drop_denorm_triggers(apps, schema_editor):
     """Zdejmij WSZYSTKIE triggery denorm przed retargetem kolumny."""
@@ -83,6 +109,9 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
+        # F1: domknij drift ``rodzaj_jednostki`` (CharField) → ``rodzaj`` (FK)
+        # PRZED momentem, gdy FK-owe wykluczanie kół z rankingu wchodzi w życie.
+        migrations.RunPython(rebackfill_rodzaj_z_charfield, migrations.RunPython.noop),
         migrations.RunPython(drop_denorm_triggers, migrations.RunPython.noop),
         # Krok 1: FK→Wydzial → IntegerField (kolumna zostaje ``wydzial_id``).
         migrations.AlterField(

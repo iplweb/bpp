@@ -45,10 +45,14 @@ def _base_uczelnia(obiekt, tylko_afiliowane):
     return scope_rekord_do_uczelni(qs, obiekt)
 
 
-def _pole(label, model, url):
+def _pole(label, model, url, queryset=None):
+    # ``queryset`` domyślnie = ``model.objects.all()``, ale poziom „wydział"
+    # (#438) MUSI zawęzić do widocznych korzeni — inaczej ModelChoiceField
+    # zwaliduje DOWOLNY pk Jednostki (widget ogranicza tylko UI), więc stary
+    # bookmark ``?...=<Wydzial.pk>`` mógłby trafić w pk niepowiązanej jednostki.
     return forms.ModelChoiceField(
         label=label,
-        queryset=model.objects.all(),
+        queryset=model.objects.all() if queryset is None else queryset,
         widget=autocomplete.ModelSelect2(url=url),
     )
 
@@ -84,7 +88,10 @@ POZIOMY = {
         True,
         _base_wydzial,
         lambda: _pole(
-            "Wydział", Jednostka, "bpp:public-jednostka-toplevel-autocomplete"
+            "Wydział",
+            Jednostka,
+            "bpp:public-jednostka-toplevel-autocomplete",
+            queryset=Jednostka.objects.widoczne().filter(parent__isnull=True),
         ),
     ),
     DefinicjaRaportu.POZIOM_UCZELNIA: PoziomConfig(

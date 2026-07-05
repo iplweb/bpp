@@ -21,7 +21,13 @@ class Nowe_Sumy_View(ModelZLiczbaCytowan, ModelPunktowany, models.Model):
     # ``bpp_jednostka.wydzial_id`` = jednostka-korzeń (self-FK), nie Wydzial.
     # ``related_name="+"`` — oba pola (``jednostka`` i ``wydzial``) celują w
     # Jednostkę, więc bez tego kolidują odwrotne akcesory (fields.E305).
-    wydzial = models.ForeignKey("Jednostka", on_delete=DO_NOTHING, related_name="+")
+    # ``null=True`` (F7): kolumna widoku jest nullable dla jednostek-korzeni
+    # (``wydzial=NULL``); bez tego ``__str__`` (``{self.wydzial=}``) rzuca
+    # ``RelatedObjectDoesNotExist`` na wierszu korzenia. Model na widoku
+    # (``managed=False``) — zmiana wyłącznie stanu, nie dotyka DDL.
+    wydzial = models.ForeignKey(
+        "Jednostka", on_delete=DO_NOTHING, related_name="+", null=True
+    )
     rok = models.IntegerField()
 
     afiliuje = models.BooleanField()

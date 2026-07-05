@@ -237,6 +237,48 @@ def test_ranking_autorow_wybor_wydzialu(
 
 
 @pytest.mark.django_db
+def test_ranking_autorow_stale_pk_wydzialu_nie_zwraca_pelnego(
+    wydzial,
+    drugi_wydzial,
+    autor_jan_kowalski,
+    autor_jan_nowak,
+    admin_app,
+    uczelnia,
+    typy_odpowiedzialnosci,
+    rok,
+):
+    """F4 (#438): ``?wydzial=<pk spoza rootów>`` (stary bookmark ``Wydzial.pk``
+    albo pk jednostki-dziecka) NIE może CICHO zwrócić pełnego rankingu. Filtr
+    ma zostać zastosowany, a wynik ma być PUSTY (nieznaleziony korzeń)."""
+    wydzial.zezwalaj_na_ranking_autorow = True
+    wydzial.save()
+
+    root1 = _wydzial_root(wydzial)
+    root2 = _wydzial_root(drugi_wydzial)
+    # jw1 NIE jest korzeniem (parent=root1) — jego pk nie jest ważnym „wydziałem".
+    jw1 = baker.make(Jednostka, parent=root1, uczelnia=uczelnia)
+    jw2 = baker.make(Jednostka, parent=root2, uczelnia=uczelnia)
+
+    autor_jan_nowak.dodaj_jednostke(jw1)
+    autor_jan_kowalski.dodaj_jednostke(jw2)
+
+    wc1 = baker.make(Wydawnictwo_Ciagle, impact_factor=10, rok=timezone.now().year)
+    wc1.dodaj_autora(autor_jan_nowak, jw1)
+
+    wc2 = baker.make(Wydawnictwo_Ciagle, impact_factor=10, rok=timezone.now().year)
+    wc2.dodaj_autora(autor_jan_kowalski, jw2)
+
+    # jw1.pk to jednostka-dziecko, więc get_dostepne_wydzialy() (parent IS NULL)
+    # go nie zawiera → get_wydzialy() zwraca PUSTY queryset. Po fixie filtr
+    # stosujemy (``wydzialy is not None``) → pusty wynik, a NIE pełny ranking.
+    result = admin_app.get(
+        reverse("bpp:ranking-autorow", args=(rok, rok)) + f"?wydzial={jw1.pk}"
+    )
+    assert b"Kowalski" not in result.content
+    assert b"Nowak" not in result.content
+
+
+@pytest.mark.django_db
 def test_ranking_autorow_wszystkie_wydzialy(
     wydzial,
     drugi_wydzial,

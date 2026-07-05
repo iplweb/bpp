@@ -67,7 +67,12 @@ class MetrykiListView(EwaluacjaRequiredMixin, ListView):
         # Filtrowanie po wydziale
         wydzial_id = self.request.GET.get("wydzial")
         if wydzial_id:
-            queryset = queryset.filter(jednostka__wydzial_id=wydzial_id)
+            # Faza B (#438): „wydział" = jednostka-korzeń (self-FK). Poddrzewo
+            # łapie ``jednostka__wydzial_id``; metryki autorów przy SAMYM
+            # korzeniu (``wydzial=NULL``) — ``jednostka_id`` (bez tego znikają).
+            queryset = queryset.filter(
+                Q(jednostka__wydzial_id=wydzial_id) | Q(jednostka_id=wydzial_id)
+            )
 
         # Filtrowanie po dyscyplinie
         dyscyplina_id = self.request.GET.get("dyscyplina")

@@ -209,7 +209,12 @@ class ExportListaXLSX(View):
 
         wydzial_id = request.GET.get("wydzial")
         if wydzial_id:
-            queryset = queryset.filter(jednostka__wydzial_id=wydzial_id)
+            # Faza B (#438): „wydział" = jednostka-korzeń (self-FK). Poddrzewo
+            # łapie ``jednostka__wydzial_id``; metryki przy SAMYM korzeniu
+            # (``wydzial=NULL``) — ``jednostka_id`` (bez tego znikają z eksportu).
+            queryset = queryset.filter(
+                Q(jednostka__wydzial_id=wydzial_id) | Q(jednostka_id=wydzial_id)
+            )
 
         dyscyplina_id = request.GET.get("dyscyplina")
         if dyscyplina_id:
