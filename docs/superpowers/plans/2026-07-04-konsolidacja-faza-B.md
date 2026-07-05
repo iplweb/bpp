@@ -29,6 +29,11 @@ multiseek, DjangoQL, pytest + model_bakery + testcontainers.
   `Jednostka_Wydzial.clean()` uczelniany — usuwane bez zamiennika).
 - **Idempotencja:** `legacy_wydzial_id` = trwały klucz. Każdy RunPython re-runnable.
 - **Migracje = historical models** (`apps.get_model`), NIE real models/komendy.
+- **⚠ RELEASE-ATOMOWOŚĆ (fable II-1 F2):** CAŁA Faza B (II-1..IV-1, migracje 0458–0463)
+  MUSI iść JEDNYM deployem. Po retargecie (II-1) węzły-wydziały są `widoczna=False`
+  aż do odkrycia w IV-1 — więc release samego II-1 (bez IV-1) dałby PUSTE pickery
+  wydziału, pustą listę „tylko nadrzędne" w browse i 404 w `JednostkaSerializer.wydzial`.
+  Nigdy nie wypuszczać II-1 osobno.
 - **Baseline:** `make baseline-update` RAZ, przy scalaniu.
 
 ---
