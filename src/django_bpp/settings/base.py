@@ -1871,6 +1871,9 @@ BPP_AI_LLM_TIMEOUT = env("BPP_AI_LLM_TIMEOUT", default=30, cast=int)
 BPP_AI_SCHEMA_CACHE_TTL = env("BPP_AI_SCHEMA_CACHE_TTL", default=86400, cast=int)
 BPP_AI_FX_CACHE_TTL = env("BPP_AI_FX_CACHE_TTL", default=86400, cast=int)
 BPP_AI_FX_FALLBACK = env("BPP_AI_FX_FALLBACK", default="4.5", cast=str)
+# Próg kardynalności dla wartości relacji-słowników w opisie schematu dla
+# LLM (0 = brak wartości).
+BPP_AI_MAX_FK_OPTIONS = env("BPP_AI_MAX_FK_OPTIONS", default=100, cast=int)
 # Cennik per model, USD za 1M tokenów. `intro_until` (ISO date) -> do tej daty
 # obowiązują ceny intro. cache_read/cache_write to mnożniki ceny input.
 BPP_AI_PRICING = {

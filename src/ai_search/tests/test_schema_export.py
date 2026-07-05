@@ -29,14 +29,23 @@ def _clear():
 @pytest.mark.django_db
 def test_schema_shape_rekord():
     data = schema_export.schema_for_llm("rekord")
-    assert "grammar" in data and "models" in data
-    assert "negation" in data["grammar"]
+    assert isinstance(data, str)
+    assert "# DjangoQL schema" in data
+    assert "start model: bpp.rekord" in data
 
 
 @pytest.mark.django_db
 def test_schema_shape_autor():
     data = schema_export.schema_for_llm("autor")
-    assert data["models"]  # niepusty słownik modeli
+    assert isinstance(data, str)
+    assert data.strip()  # niepusty string
+    assert "bpp.autor" in data
+
+
+@pytest.mark.django_db
+def test_schema_does_not_leak_password_field():
+    data = schema_export.schema_for_llm("rekord")
+    assert "password" not in data.lower()
 
 
 @pytest.mark.django_db
