@@ -36,40 +36,46 @@
     </div>
 
     <!-- Unit Hierarchy Cards -->
-    {% if jednostka.parent or jednostka.children.exists %}
-        <div class="grid-x grid-margin-x unit-hierarchy">
-            {% if jednostka.parent %}
-                <div class="cell medium-6">
-                    <div class="callout hierarchy-card hierarchy-parent">
-                        <h6>
-                            <i class="fi-arrow-up"></i>Wchodzi w skład:
-                        </h6>
-                        <a href="{% url "bpp:browse_jednostka" jednostka.parent.slug %}">
-                            {{ jednostka.parent }}
-                        </a>
+    {# W stylu wydziału (pokazuj_strukture_podjednostek) NIE pokazujemy kart #}
+    {# hierarchii "Wchodzi w skład" / "Jednostki podrzędne" -- strukturę #}
+    {# podjednostek pokazuje sekcja strukturalna niżej. Na zwykłej jednostce #}
+    {# karty zostają bez zmian. #}
+    {% if not jednostka.rodzaj.pokazuj_strukture_podjednostek %}
+        {% if jednostka.parent or jednostka.children.exists %}
+            <div class="grid-x grid-margin-x unit-hierarchy">
+                {% if jednostka.parent %}
+                    <div class="cell medium-6">
+                        <div class="callout hierarchy-card hierarchy-parent">
+                            <h6>
+                                <i class="fi-arrow-up"></i>Wchodzi w skład:
+                            </h6>
+                            <a href="{% url "bpp:browse_jednostka" jednostka.parent.slug %}">
+                                {{ jednostka.parent }}
+                            </a>
+                        </div>
                     </div>
-                </div>
-            {% endif %}
+                {% endif %}
 
-            {% if jednostka.children.exists %}
-                <div class="cell medium-6">
-                    <div class="callout hierarchy-card hierarchy-children">
-                        <h6>
-                            <i class="fi-arrow-down"></i>Jednostki podrzędne:
-                        </h6>
-                        <ul class="no-bullet">
-                            {% for child in jednostka.children.all %}
-                                <li>
-                                    <a href="{% url "bpp:browse_jednostka" child.slug %}">
-                                        {{ child }}
-                                    </a>
-                                </li>
-                            {% endfor %}
-                        </ul>
+                {% if jednostka.children.exists %}
+                    <div class="cell medium-6">
+                        <div class="callout hierarchy-card hierarchy-children">
+                            <h6>
+                                <i class="fi-arrow-down"></i>Jednostki podrzędne:
+                            </h6>
+                            <ul class="no-bullet">
+                                {% for child in jednostka.children.all %}
+                                    <li>
+                                        <a href="{% url "bpp:browse_jednostka" child.slug %}">
+                                            {{ child }}
+                                        </a>
+                                    </li>
+                                {% endfor %}
+                            </ul>
+                        </div>
                     </div>
-                </div>
-            {% endif %}
-        </div>
+                {% endif %}
+            </div>
+        {% endif %}
     {% endif %}
 
     <!-- Unit Description -->
@@ -80,20 +86,24 @@
     {% endif %}
 
     <!-- Quick Actions -->
-    <div class="jednostka__quick-actions">
-        <form method="post" action="{% url "bpp:browse_build_search" %}" class="jednostka__quick-actions-form">
-            {% csrf_token %}
-            <input type="hidden" name="jednostka" value="{{ jednostka.pk }}"/>
-            {% for descendant in jednostka.get_descendants %}
-                <input type="hidden" name="jednostka" value="{{ descendant.pk }}"/>
-            {% endfor %}
-            <input type="hidden" name="suggested-title" value="{{ jednostka }}"/>
-            <button type="submit"
-                    class="button primary large jednostka__btn-primary">
-                <i class="fi-list-bullet jednostka__icon--mr-sm"></i>Pokaż wszystkie publikacje
-            </button>
-        </form>
-    </div>
+    {# W stylu wydziału nie pokazujemy "Pokaż wszystkie publikacje" -- prac w #}
+    {# całym wydziale jest po prostu za dużo, żeby generować taki raport. #}
+    {% if not jednostka.rodzaj.pokazuj_strukture_podjednostek %}
+        <div class="jednostka__quick-actions">
+            <form method="post" action="{% url "bpp:browse_build_search" %}" class="jednostka__quick-actions-form">
+                {% csrf_token %}
+                <input type="hidden" name="jednostka" value="{{ jednostka.pk }}"/>
+                {% for descendant in jednostka.get_descendants %}
+                    <input type="hidden" name="jednostka" value="{{ descendant.pk }}"/>
+                {% endfor %}
+                <input type="hidden" name="suggested-title" value="{{ jednostka }}"/>
+                <button type="submit"
+                        class="button primary large jednostka__btn-primary">
+                    <i class="fi-list-bullet jednostka__icon--mr-sm"></i>Pokaż wszystkie publikacje
+                </button>
+            </form>
+        </div>
+    {% endif %}
 
 
     {% if jednostka.rodzaj.pokazuj_strukture_podjednostek %}
