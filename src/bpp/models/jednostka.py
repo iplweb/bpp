@@ -218,11 +218,26 @@ class Jednostka(ModelZAdnotacjami, ModelZPBN_ID, ModelZPBN_UID, MPTTModel):
     def __str__(self):
         ret = self.nazwa
 
-        if (
-            settings.DJANGO_BPP_SKROT_WYDZIALU_W_NAZWIE_JEDNOSTKI is False
-            or settings.DJANGO_BPP_UCZELNIA_UZYWA_WYDZIALOW is False
-        ):
+        if settings.DJANGO_BPP_SKROT_WYDZIALU_W_NAZWIE_JEDNOSTKI is False:
             return ret
+
+        # Faza B (#438): flaga „używaj wydziałów" żyje teraz WYŁĄCZNIE na
+        # modelu Uczelnia (bez globalnego env). ``self.uczelnia`` to FK do
+        # obiektu, który każda Jednostka MUSI mieć (pole wymagane) — w
+        # praktyce to .get() Django (cache'owany przez cacheops dla
+        # ``bpp.uczelnia`` na produkcji; ten sam koszt ponosi już
+        # ``self.wydzial`` niżej). Odczyt jest DEFENSYWNY: ``__str__`` bywa
+        # wołany z audytu ``post_delete`` (easyaudit ``object_repr``), gdy
+        # Uczelnia jest już skasowana w kaskadzie — wtedy FK rzuca
+        # ``DoesNotExist`` i repr NIE może wybuchać (traktujemy brak uczelni
+        # jak „pokaż wydział"). Bez ``uczelnia_id`` (niezapisany obiekt w
+        # pamięci) też pomijamy sprawdzenie.
+        if self.uczelnia_id is not None:
+            try:
+                if self.uczelnia.uzywaj_wydzialow is False:
+                    return ret
+            except Uczelnia.DoesNotExist:
+                pass
 
         try:
             wydzial = self.wydzial

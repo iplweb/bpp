@@ -1,5 +1,6 @@
 import sys
 
+from admin_auto_filters.filters import AutocompleteFilterFactory
 from django import forms
 from django.contrib import admin
 from django.utils.html import format_html
@@ -95,10 +96,12 @@ class JednostkaAdmin(
 
     list_select_related = [
         "wydzial",
+        "rodzaj",
     ]
     fields = None
     list_filter = (
         "wydzial",
+        AutocompleteFilterFactory("Jednostka nadrzędna", "parent"),
         "widoczna",
         "wchodzi_do_rankingu_autorow",
         "skupia_pracownikow",

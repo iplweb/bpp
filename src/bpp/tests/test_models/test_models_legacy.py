@@ -65,10 +65,12 @@ def test_jednostka(jednostka_setup):
     any_wydzial(skrot="BAR")
     j = any_jednostka(nazwa="foo", wydzial_skrot="BAR")
 
-    # Check if wydzial should be included in the string representation
-    if getattr(settings, "DJANGO_BPP_UCZELNIA_UZYWA_WYDZIALOW", True) and getattr(
-        settings, "DJANGO_BPP_SKROT_WYDZIALU_W_NAZWIE_JEDNOSTKI", True
-    ):
+    # Faza B (#438): "uzywaj wydzialow" zyje na modelu Uczelnia (default
+    # True — `j.uczelnia` jest tu swiezo utworzona przez `any_wydzial`/
+    # `any_jednostka`, wiec flaga nie byla nigdzie nadpisywana). Jedynym
+    # jeszcze-env-owym przelacznikiem formatowania jest SKROT_WYDZIALU_W_NAZWIE.
+    assert j.uczelnia.uzywaj_wydzialow is True
+    if getattr(settings, "DJANGO_BPP_SKROT_WYDZIALU_W_NAZWIE_JEDNOSTKI", True):
         assert str(j) == "foo (BAR)"
     else:
         assert str(j) == "foo"

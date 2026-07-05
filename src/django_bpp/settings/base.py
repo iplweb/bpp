@@ -139,7 +139,6 @@ env = environ.Env(
     # Wyświetlanie nazwy wydziału przez jednostki
     #
     DJANGO_BPP_SKROT_WYDZIALU_W_NAZWIE_JEDNOSTKI=(bool, True),
-    DJANGO_BPP_UCZELNIA_UZYWA_WYDZIALOW=(bool, True),
     #
     # Ile dni trzymać wyniki działań Celery - domyślnie tydzień
     #
@@ -457,6 +456,10 @@ INSTALLED_APPS = [
     "api_v1",
     "adminsortable2",
     "import_export",
+    # Autocomplete-backed list_filter (Jednostka.parent w JednostkaAdmin) —
+    # tylko statyki/template dla AutocompleteFilterFactory, sam autocomplete
+    # JSON serwuje wbudowany Django admin (JednostkaAdmin.search_fields).
+    "admin_auto_filters",
     "ewaluacja_common",
     "ewaluacja2021",
     "ewaluacja_liczba_n",
@@ -1526,8 +1529,6 @@ FORMDEFAULTS_CAN_EDIT_SYSTEM_WIDE = "bpp.formdefaults_perms.can_edit_system_wide
 DJANGO_BPP_SKROT_WYDZIALU_W_NAZWIE_JEDNOSTKI = env(
     "DJANGO_BPP_SKROT_WYDZIALU_W_NAZWIE_JEDNOSTKI"
 )
-
-DJANGO_BPP_UCZELNIA_UZYWA_WYDZIALOW = env("DJANGO_BPP_UCZELNIA_UZYWA_WYDZIALOW")
 
 # polish-inflection: słowo spoza słownika SGJP → passthrough (nie błąd renderu)
 POLISH_INFLECTION_STRICT = False

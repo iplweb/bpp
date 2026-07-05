@@ -60,7 +60,6 @@ from bpp.models import (
     Wydawnictwo_Zwarte_Autor,
     Wydawnictwo_Zwarte_Streszczenie,
     Wydawnictwo_Zwarte_Zewnetrzna_Baza_Danych,
-    Wydzial,
     Wymiar_Etatu,
     Zewnetrzna_Baza_Danych,
     Zrodlo,
@@ -151,7 +150,6 @@ groups = {
     "struktura": [
         Uczelnia,
         LiczbaNDlaUczelni,
-        Wydzial,
         Jednostka,
         Jednostka_Rodzic,
         Ukryj_Status_Korekty,

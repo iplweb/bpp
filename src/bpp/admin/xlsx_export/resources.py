@@ -17,7 +17,6 @@ from bpp.models import (
     Praca_Habilitacyjna,
     Wydawnictwo_Ciagle,
     Wydawnictwo_Zwarte,
-    Wydzial,
 )
 from bpp.util import site_url_for_request
 
@@ -270,33 +269,6 @@ class AutorResource(resources.ModelResource):
         model = Autor
         export_order = ["nazwisko", "imiona", "poprzednie_nazwiska"]
         exclude = ["search", "slug", "sort", "expertus_id", "pbn_id"]
-
-
-class WydzialResource(resources.ModelResource):
-    uczelnia = Field(attribute="uczelnia__nazwa")
-
-    class Meta:
-        model = Wydzial
-        fields = (
-            "id",
-            "uczelnia",
-            "nazwa",
-            "skrot_nazwy",
-            "skrot",
-            "opis",
-            "pokazuj_opis",
-            "poprzednie_nazwy",
-            "kolejnosc",
-            "widoczny",
-            "zezwalaj_na_ranking_autorow",
-            "zarzadzaj_automatycznie",
-            "otwarcie",
-            "zamkniecie",
-            "pbn_id",
-            "ostatnio_zmieniony",
-            "adnotacje",
-        )
-        export_order = fields
 
 
 class JednostkaResource(resources.ModelResource):

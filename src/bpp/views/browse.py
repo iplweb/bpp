@@ -3,7 +3,6 @@ import logging
 import re
 
 from cacheops import cached
-from django.conf import settings
 from django.contrib import messages
 from django.contrib.contenttypes.models import ContentType
 from django.db.models import Count, Exists, OuterRef
@@ -721,7 +720,10 @@ class BuildSearch(RedirectView):
             self.request.POST, "zakres_lat", ZakresLatQueryObject
         )
 
-        if getattr(settings, "DJANGO_BPP_UCZELNIA_UZYWA_WYDZIALOW", True):
+        uczelnia = Uczelnia.objects.get_for_request(self.request)
+        uzywaj_wydzialow = uczelnia.uzywaj_wydzialow if uczelnia else True
+
+        if uzywaj_wydzialow:
             wydzialy_box = zrob_box_z_requestu(
                 self.request.POST, "wydzial", WydzialQueryObject
             )

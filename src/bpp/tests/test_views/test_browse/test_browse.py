@@ -46,6 +46,11 @@ def test_buildSearch(settings):
         POST = mydct(dct)
         META = {}
         session = {}
+        # Faza B (#438): BuildSearch.post czyta ``uzywaj_wydzialow`` z uczelni
+        # requestu (get_for_request). Ustawiony cache ``_uczelnia`` = None
+        # zwraca uczelnię bez zapytania do bazy — test zostaje bez DB, a przy
+        # braku uczelni gałąź domyślnie zakłada użycie wydziałów (True).
+        _uczelnia = None
 
         def build_absolute_uri(self, *args, **kw):
             return "/absolute/uri"
