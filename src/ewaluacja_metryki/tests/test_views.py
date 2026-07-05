@@ -220,8 +220,32 @@ def test_export_filtr_wydzial_lapie_metryki_przy_samym_korzeniu():
     katedra = baker.make(Jednostka, uczelnia=u, parent=korzen)
     denorms.flush()
 
-    m_korzen = baker.make(MetrykaAutora, jednostka=korzen, uczelnia=u)
-    m_katedra = baker.make(MetrykaAutora, jednostka=katedra, uczelnia=u)
+    # Decimal fields są przypięte jawnie (bez tego baker.make losuje
+    # slot_maksymalny/slot_nazbierany losowo, a MetrykaAutora.save()
+    # przelicza z nich procent_wykorzystania_slotow = slot_nazbierany /
+    # slot_maksymalny * 100 — przy niefortunnym losowaniu (mały mianownik,
+    # duży licznik) wynik przekracza limit numeric(5,2) i psql rzuca
+    # NumericValueOutOfRange; flaky na CI, deterministyczne po przypięciu).
+    m_korzen = baker.make(
+        MetrykaAutora,
+        jednostka=korzen,
+        uczelnia=u,
+        slot_maksymalny=Decimal("4.0"),
+        slot_nazbierany=Decimal("3.0"),
+        punkty_nazbierane=Decimal("120.0"),
+        slot_wszystkie=Decimal("3.0"),
+        punkty_wszystkie=Decimal("120.0"),
+    )
+    m_katedra = baker.make(
+        MetrykaAutora,
+        jednostka=katedra,
+        uczelnia=u,
+        slot_maksymalny=Decimal("4.0"),
+        slot_nazbierany=Decimal("3.0"),
+        punkty_nazbierane=Decimal("120.0"),
+        slot_wszystkie=Decimal("3.0"),
+        punkty_wszystkie=Decimal("120.0"),
+    )
 
     req = RequestFactory().get("/", {"wydzial": str(korzen.pk)})
     qs = ExportListaXLSX()._apply_filters_to_queryset(MetrykaAutora.objects.all(), req)
