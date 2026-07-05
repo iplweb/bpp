@@ -341,3 +341,159 @@ def test_post_delete_guard_bezdzietny_wezel_znika(uczelnia):
     w.delete()
 
     assert not Jednostka.objects.filter(pk=wid).exists()
+
+
+# ---------------------------------------------------------------------------
+# (h) #438 — 1-jednostkowy wydział: promocja do roota zamiast pustej wydmuszki
+# ---------------------------------------------------------------------------
+#
+# Uwaga o realizmie testów: ``apply_faza_b_i4`` uruchamiamy na ŻYWYM schemacie
+# (``global_apps``), gdzie ``Jednostka.wydzial`` to zdenormalizowany self-FK do
+# KORZENIA (retarget 0459 już zastosowany). Tożsamość „jednostka należy do
+# wydziału W" z etapu PRZED-retargetowego (``wydzial_id == Wydzial.pk``) jest na
+# żywym schemacie nieodtwarzalna wprost (self-FK + denorm). Odtwarzamy ją
+# WIERNIE dla logiki kroku 0: węzeł-lustro ma ``legacy_wydzial_id`` ustawione na
+# WŁASNY pk (dowolny poprawny klucz, tu = pk lustra, by FK ``wydzial`` członka
+# miał na co wskazywać), a członek ma ``wydzial_id == mirror.legacy_wydzial_id``.
+# Krok 0 filtruje DOKŁADNIE ``wydzial_id == mirror.legacy_wydzial_id`` — więc
+# ta konstrukcja ćwiczy realną ścieżkę identyfikacji i całą mechanikę promocji
+# (odpięcie, usunięcie lustra, brak wiszących FK, nested-set).
+
+
+def _lustro_wydzialu(uczelnia, legacy=None):
+    """Root ``Jednostka`` w roli węzła-lustra (``legacy_wydzial_id`` ustawione).
+
+    Domyślnie ``legacy_wydzial_id = własny pk`` — dowolny poprawny klucz, przy
+    którym FK ``Jednostka.wydzial`` (self-FK) członka może go wskazywać bez
+    naruszenia więzów (pk lustra ISTNIEJE w ``bpp_jednostka``)."""
+    mirror = baker.make(Jednostka, uczelnia=uczelnia, parent=None)
+    legacy = legacy if legacy is not None else mirror.pk
+    Jednostka.objects.filter(pk=mirror.pk).update(legacy_wydzial_id=legacy)
+    mirror.refresh_from_db()
+    return mirror
+
+
+def _czlonek(uczelnia, mirror, parent=None):
+    """Jednostka będąca członkiem wydziału ``mirror`` w sensie
+    PRZED-retargetowym: ``wydzial_id == mirror.legacy_wydzial_id``. ``parent``:
+    None (płaska) albo org-rodzic (jednostka spoza wydziału)."""
+    j = baker.make(Jednostka, uczelnia=uczelnia, parent=parent)
+    Jednostka.objects.filter(pk=j.pk).update(wydzial_id=mirror.legacy_wydzial_id)
+    j.refresh_from_db()
+    return j
+
+
+def _promuj():
+    _mig._promuj_jednoelementowe_wydzialy(global_apps)
+
+
+@pytest.mark.django_db
+def test_jednoelementowy_wydzial_plaski_promuje_do_roota(uczelnia):
+    """Wydział z 1 PŁASKĄ jednostką → jednostka promowana do roota
+    (``parent=None``), węzeł-lustro USUNIĘTY (brak wydmuszki)."""
+    mirror = _lustro_wydzialu(uczelnia)
+    j = _czlonek(uczelnia, mirror)  # płaska (parent=None)
+
+    _promuj()
+
+    j.refresh_from_db()
+    assert j.parent_id is None  # root
+    assert not Jednostka.objects.filter(pk=mirror.pk).exists()  # brak wydmuszki
+    assert Jednostka.objects.filter(pk=j.pk).exists()
+
+
+@pytest.mark.django_db
+def test_jednoelementowy_wydzial_org_rodzic_odpina_i_promuje(uczelnia):
+    """Wydział z 1 jednostką mającą ORG-RODZICA (odpowiednik RN-2 →
+    „Prorektor ds nauki") → jednostka ODPIĘTA od org-rodzica i promowana do
+    roota; org-rodzic ŻYJE dalej; węzeł-lustro usunięty."""
+    org_rodzic = baker.make(Jednostka, uczelnia=uczelnia, parent=None)
+    mirror = _lustro_wydzialu(uczelnia)
+    j = _czlonek(uczelnia, mirror, parent=org_rodzic)
+    assert j.parent_id == org_rodzic.pk
+
+    _promuj()
+
+    j.refresh_from_db()
+    assert j.parent_id is None  # odpięta od org-rodzica, root
+    assert Jednostka.objects.filter(pk=org_rodzic.pk).exists()  # org-rodzic żyje
+    assert not Jednostka.objects.filter(pk=mirror.pk).exists()
+
+
+@pytest.mark.django_db
+def test_promocja_bez_wiszacych_jednostka_rodzic(uczelnia):
+    """Po promocji ŻADEN wpis ``Jednostka_Rodzic`` nie wskazuje usuniętego
+    lustra (naiwny backfill 0456 wskazał je w lustro → CASCADE sprząta)."""
+    mirror = _lustro_wydzialu(uczelnia)
+    j = _czlonek(uczelnia, mirror)
+    wpis = baker.make(Jednostka_Rodzic, jednostka=j, parent=mirror, od=None, do=None)
+
+    _promuj()
+
+    assert not Jednostka_Rodzic.objects.filter(pk=wpis.pk).exists()  # skasowany
+    assert not Jednostka_Rodzic.objects.filter(parent_id=mirror.pk).exists()
+    assert not Jednostka_Rodzic.objects.filter(jednostka_id=mirror.pk).exists()
+
+
+@pytest.mark.django_db
+def test_dwuelementowy_wydzial_zachowuje_lustro(uczelnia):
+    """REGRESJA: wydział z ≥2 jednostkami → lustro POZOSTAJE, jednostki bez
+    zmian (promocja dotyczy DOKŁADNIE jednej jednostki)."""
+    mirror = _lustro_wydzialu(uczelnia)
+    m1 = _czlonek(uczelnia, mirror)
+    m2 = _czlonek(uczelnia, mirror)
+
+    _promuj()
+
+    assert Jednostka.objects.filter(pk=mirror.pk).exists()  # lustro żyje
+    m1.refresh_from_db()
+    m2.refresh_from_db()
+    assert m1.parent_id is None and m2.parent_id is None  # niezmienione
+
+
+@pytest.mark.django_db
+def test_zeroelementowy_wydzial_zachowuje_lustro(uczelnia):
+    """Wydział z 0 jednostek → lustro POZOSTAJE (dotychczasowe zachowanie)."""
+    mirror = _lustro_wydzialu(uczelnia)
+
+    _promuj()
+
+    assert Jednostka.objects.filter(pk=mirror.pk).exists()
+
+
+@pytest.mark.django_db
+def test_pelny_apply_promuje_jednostke_root_nested_set(uczelnia):
+    """Pełny ``apply_faza_b_i4``: 1-jednostkowy wydział → jednostka jest ROOTEM
+    z poprawnym nested-set (samodzielne drzewo: lft=1/rght=2/level=0), lustra
+    brak; kroki 2–5 spójne z brakiem lustra."""
+    mirror = _lustro_wydzialu(uczelnia)
+    j = _czlonek(uczelnia, mirror)
+
+    _apply()
+
+    assert not Jednostka.objects.filter(pk=mirror.pk).exists()
+    j.refresh_from_db()
+    assert j.parent_id is None
+    assert j.level == 0
+    assert j.lft == 1
+    assert j.rght == 2  # samodzielne drzewo (bez dzieci)
+    # Jedyny root → samodzielne tree_id; brak wpisu historii po usuniętym lustrze.
+    assert not Jednostka_Rodzic.objects.filter(parent_id=mirror.pk).exists()
+
+
+@pytest.mark.django_db
+def test_promocja_idempotentna(uczelnia):
+    """Ponowny krok 0 nie zmienia już-promowanej struktury (lustro nie
+    istnieje, ``wydzial_id`` członka nie zmieniło się przez re-parent)."""
+    mirror = _lustro_wydzialu(uczelnia)
+    j = _czlonek(uczelnia, mirror)
+
+    _promuj()
+    j.refresh_from_db()
+    first = (j.parent_id, Jednostka.objects.filter(pk=mirror.pk).exists())
+
+    _promuj()  # re-run
+    j.refresh_from_db()
+    second = (j.parent_id, Jednostka.objects.filter(pk=mirror.pk).exists())
+
+    assert first == second == (None, False)

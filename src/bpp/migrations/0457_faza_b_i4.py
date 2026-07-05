@@ -2,8 +2,14 @@
 
 Ustawienie FAKTYCZNEJ struktury drzewa `Jednostka`:
 
+0. PROMOCJA jedno-jednostkowych wydziałów (#438): wydział z DOKŁADNIE JEDNĄ
+   jednostką NIE dostaje pustej wydmuszki-lustra — jego jedyna jednostka jest
+   promowana do ROOTA (`parent=None`), a węzeł-lustro usuwany (CASCADE sprząta
+   wpisy `Jednostka_Rodzic`). Robione PRZED snapshotem/re-parentem, bo promocja
+   odpina (org-)rodzica; usunięcie lustra przed krokami 2–4 (iterują po
+   `legacy_wydzial_id__isnull=False`) gwarantuje brak wiszących FK.
 1. SNAPSHOT sub-jednostek (parent NOT NULL, wydzial_id NOT NULL) PRZED
-   czymkolwiek — krok 2 zmienia `parent` i zatarłby rozróżnienie.
+   re-parentem — krok 2 zmienia `parent` i zatarłby rozróżnienie.
 2. Re-parent PŁASKICH jednostek (parent IS NULL, wydzial_id NOT NULL) pod
    węzeł-wydział (`legacy_wydzial_id == wydzial_id`). Węzły-wydziały (rooty)
    i sieroty (wydzial_id NULL) zostają rootami.
@@ -27,6 +33,54 @@ przeliczalny wielokrotnie. `reverse_code=noop`.
 from datetime import date
 
 from django.db import migrations
+
+
+def _promuj_jednoelementowe_wydzialy(apps):
+    """Krok 0 (#438): wydział z DOKŁADNIE JEDNĄ jednostką → promocja tej
+    jednostki do ROOTA zamiast pustej wydmuszki-lustra.
+
+    Identyfikacja (przesądzona przez właściciela): liczba jednostek wydziału W
+    = ``Jednostka.objects.filter(wydzial_id=W.id)`` na etapie PRZED retargetem
+    (0459) — ``wydzial_id`` to wciąż stary FK→Wydzial, a węzeł-lustro ma
+    ``wydzial_id NULL`` (dodatkowo wykluczone przez ``legacy_wydzial_id
+    IS NULL``), więc nie liczy się do swojego wydziału. ``== 1`` → promuj.
+
+    Jednostka może być PŁASKA (``parent IS NULL``) albo mieć ORG-RODZICA
+    (``parent`` wskazuje jednostkę spoza wydziału). W OBU wypadkach ustawiamy
+    ``parent=None`` — jawne życzenie właściciela: promocja ODPINA od
+    org-rodzica.
+
+    Spójność (ŻADNYCH wiszących FK): usuwamy węzeł-lustro ``.delete()`` —
+    CASCADE na ``Jednostka_Rodzic.parent`` i ``Jednostka_Rodzic.jednostka``
+    kasuje wpisy WSKAZUJĄCE lustro (naiwny backfill 0456 wycelował je w lustro)
+    ORAZ ewentualny własny wpis lustra; ``Jednostka.wydzial`` (SET_NULL) zeruje
+    denorm. Jedyna jednostka jest odpięta PRZED usunięciem, więc lustro jest
+    bezdzietne i CASCADE po ``Jednostka.parent`` nie tknie realnych jednostek.
+    Lustro znika PRZED krokami 2–4 (iterują po ``legacy_wydzial_id__isnull=
+    False``) → nie powstaje wpis historii lustra (krok 3) ani przepisanie po
+    nieistniejącym lustrze (krok 4).
+
+    Idempotentne: uruchamiane jako krok 0 (przed re-parentem); po pierwszym
+    przebiegu 1-elementowe lustra już nie istnieją, a re-parent NIE zmienia
+    ``wydzial_id``, więc ponowny przebieg nie promuje błędnie wydziałów ≥2.
+    """
+    Jednostka = apps.get_model("bpp", "Jednostka")
+
+    # Materializacja listy PRZED pętlą — kasujemy lustra w trakcie iteracji.
+    for mirror in list(Jednostka.objects.filter(legacy_wydzial_id__isnull=False)):
+        czlonkowie = Jednostka.objects.filter(
+            wydzial_id=mirror.legacy_wydzial_id,
+            legacy_wydzial_id__isnull=True,
+        )
+        if czlonkowie.count() != 1:
+            continue
+        jedyna = czlonkowie.get()
+        # Promocja do roota — ODPIĘCIE od (org-)rodzica, jeśli był. ``update``
+        # (nie ``save``) omija sygnały/denorm; nested-set przelicza krok 5.
+        Jednostka.objects.filter(pk=jedyna.pk).update(parent_id=None)
+        # Usuń lustro: CASCADE sprząta wpisy Jednostka_Rodzic wskazujące lustro
+        # (i własny wpis lustra), SET_NULL zeruje denorm ``wydzial``.
+        mirror.delete()
 
 
 def _reparent_plaskie(apps):
@@ -192,10 +246,15 @@ def _przelicz_nested_set(apps):
 
 
 def apply_faza_b_i4(apps, schema_editor):
-    """Orkiestracja kroków 1–5 w zadanej KOLEJNOŚCI."""
+    """Orkiestracja kroków 0–5 w zadanej KOLEJNOŚCI."""
     Jednostka = apps.get_model("bpp", "Jednostka")
 
-    # (1) SNAPSHOT sub-jednostek PRZED czymkolwiek (krok 2 zmienia parent).
+    # (0) #438: 1-elementowy wydział → promuj jednostkę do roota, bez wydmuszki.
+    # PRZED snapshotem (krok 1): promocja odpina org-rodzica (parent=None), więc
+    # promowana jednostka NIE może wpaść do snapshotu sub-jednostek (krok 4).
+    _promuj_jednoelementowe_wydzialy(apps)
+
+    # (1) SNAPSHOT sub-jednostek PRZED re-parentem (krok 2 zmienia parent).
     sub_parent_map = dict(
         Jednostka.objects.filter(
             parent__isnull=False, wydzial_id__isnull=False
