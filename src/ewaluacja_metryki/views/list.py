@@ -200,7 +200,12 @@ class MetrykiListView(EwaluacjaRequiredMixin, ListView):
         ).distinct()
 
         if wydzial_id:
-            jednostki_queryset = jednostki_queryset.filter(wydzial_id=wydzial_id)
+            # Poddrzewo wydziału (``wydzial_id``) + SAM korzeń (``pk``): korzeń
+            # ma ``wydzial=NULL``, więc bez ``| Q(pk=…)`` jednostki-roota nie
+            # dałoby się wybrać z listy.
+            jednostki_queryset = jednostki_queryset.filter(
+                Q(wydzial_id=wydzial_id) | Q(pk=wydzial_id)
+            )
 
         context["jednostki"] = jednostki_queryset.order_by("nazwa")
 
@@ -214,13 +219,17 @@ class MetrykiListView(EwaluacjaRequiredMixin, ListView):
                 .values_list("aktualna_jednostka", flat=True)
                 .distinct()
             )
-            root_ids = [
-                r
-                for r in Jednostka.objects.filter(pk__in=aktualne_jednostki_ids)
-                .values_list("wydzial_id", flat=True)
-                .distinct()
-                if r is not None
-            ]
+            # „Wydział" aktualnej jednostki = jej denorm. ``wydzial`` (korzeń);
+            # dla jednostki będącej SAMYM korzeniem (``wydzial_id=NULL``) —
+            # jej WŁASNE pk. Bez tego wydziały, w których autorzy siedzą wprost
+            # na roocie, znikały z filtra (i mogły błędnie zapalić
+            # ``tylko_jeden_wydzial`` → ukrycie całego filtra).
+            root_ids = {
+                wydzial_id if wydzial_id is not None else pk
+                for pk, wydzial_id in Jednostka.objects.filter(
+                    pk__in=aktualne_jednostki_ids
+                ).values_list("pk", "wydzial_id")
+            }
             context["wydzialy"] = Jednostka.objects.filter(pk__in=root_ids).order_by(
                 "nazwa"
             )

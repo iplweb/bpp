@@ -27,3 +27,22 @@ def test_poziom_wydzial_queryset_tylko_widoczne_korzenie():
     assert korzen.pk in pks  # widoczny korzeń — dozwolony
     assert dziecko.pk not in pks  # nie-korzeń — odrzucony przez walidację
     assert ukryty_korzen.pk not in pks  # ukryty korzeń — odrzucony
+
+
+@pytest.mark.django_db
+def test_poziom_wydzial_obiekt_queryset_tylko_widoczne_korzenie():
+    """#438 (finding 5): ``obiekt_queryset`` (get_object na URL-u generowania,
+    POZA walidacją formularza) też zawęża do widocznych korzeni — inaczej
+    bookmark ``?pk=<dowolna jednostka>`` generował cichy zły raport / wyciek
+    ukrytej jednostki."""
+    u = baker.make(Uczelnia)
+    korzen = baker.make(Jednostka, uczelnia=u, parent=None, widoczna=True)
+    dziecko = baker.make(Jednostka, uczelnia=u, parent=korzen, widoczna=True)
+    ukryty_korzen = baker.make(Jednostka, uczelnia=u, parent=None, widoczna=False)
+
+    qs = POZIOMY[DefinicjaRaportu.POZIOM_WYDZIAL].obiekt_queryset()
+    pks = set(qs.values_list("pk", flat=True))
+
+    assert korzen.pk in pks
+    assert dziecko.pk not in pks  # nie-korzeń → get_object da 404
+    assert ukryty_korzen.pk not in pks
