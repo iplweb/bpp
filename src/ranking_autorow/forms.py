@@ -252,8 +252,13 @@ class RankingAutorowForm(forms.Form):
                 )
                 .filter(
                     Exists(
+                        # Faza B (#438): kandydaci „z pracami" to PODDRZEWO
+                        # korzenia (``wydzial=root``) ORAZ SAM korzeń
+                        # (``pk=root``; korzeń ma ``wydzial=NULL``, więc bez
+                        # tego prace autorów siedzących wprost na wydziale nie
+                        # liczyłyby się → selektor mógł zniknąć).
                         Jednostka.objects.filter(
-                            wydzial=OuterRef("pk"),
+                            Q(wydzial=OuterRef("pk")) | Q(pk=OuterRef("pk")),
                             widoczna=True,
                             wchodzi_do_rankingu_autorow=True,
                         ).filter(

@@ -895,6 +895,44 @@ def test_ranking_form_akceptuje_jednostke_bez_prac(uczelnia):
 
 
 @pytest.mark.django_db
+def test_ranking_view_jednostka_spoza_dostepnych_daje_pusty_nie_pelny(
+    wydawnictwo_ciagle_z_autorem, jednostka, rf, uczelnia
+):
+    """Regresja (#438): wybór jednostki poprawnej w pickerze, ale spoza
+    ``get_dostepne_jednostki`` (``wchodzi_do_rankingu_autorow=False``) MUSI dać
+    PUSTY wynik (filtr zastosowany), a NIE cichy pełny ranking (był bug
+    ``if jednostki:`` — pusty queryset falsy → filtr pomijany)."""
+    uczelnia.uzywaj_wydzialow = False
+    uczelnia.save()
+
+    jednostka.widoczna = True
+    jednostka.wchodzi_do_rankingu_autorow = True
+    jednostka.save()
+    wydawnictwo_ciagle_z_autorem.punkty_pk = 20
+    wydawnictwo_ciagle_z_autorem.impact_factor = 20
+    wydawnictwo_ciagle_z_autorem.save()
+
+    poza = baker.make(
+        Jednostka,
+        uczelnia=uczelnia,
+        widoczna=True,
+        aktualna=True,
+        wchodzi_do_rankingu_autorow=False,
+    )
+
+    # bez filtra: 1 wynik
+    view = RankingAutorow(request=rf.get("/"), kwargs=dict(od_roku=0, do_roku=3030))
+    assert view.get_queryset().count() == 1
+
+    # z filtrem na jednostkę spoza dostępnych → pusto (nie pełny ranking)
+    view = RankingAutorow(
+        request=rf.get(f"/?jednostka={poza.pk}"),
+        kwargs=dict(od_roku=0, do_roku=3030),
+    )
+    assert view.get_queryset().count() == 0
+
+
+@pytest.mark.django_db
 def test_ranking_table_kolumny_jednostka_wydzial_maja_rozne_naglowki():
     """Issue 3: kolumny „jednostka" i „wydzial" mają odrębne nagłówki (nie dwa
     razy „Nazwa" wyprowadzone z accessora)."""
