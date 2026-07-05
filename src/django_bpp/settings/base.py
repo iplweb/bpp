@@ -816,6 +816,13 @@ CELERYBEAT_SCHEDULE = {
         "task": "bpp.tasks.usun_stare_logi_logowania_easyaudit",
         "schedule": crontab(hour=2, minute=0, day_of_month=1),
     },
+    # Odśwież cache'owany, zwarty opis schematu (dla LLM) wyszukiwania przez
+    # AI — zawiera suggest_options z bazy (wartości słownikowe), więc bez
+    # regeneracji trzymałby stare dane aż do wygaśnięcia TTL.
+    "ai-search-regenerate-schemas": {
+        "task": "ai_search.tasks.regenerate_schemas",
+        "schedule": crontab(hour=3, minute=45),  # Daily at 3:45 AM
+    },
 }
 
 

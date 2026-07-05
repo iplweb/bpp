@@ -20,3 +20,5 @@ repozytorium. Poniższe strony rozwijają wybrane tematy:
 - [WeasyPrint na macOS](weasyprint-macos.md) — konfiguracja PDF lokalnie.
 - [Testy: Channels broadcast (flake)](testy-channels-broadcast.md) —
   diagnostyka niestabilnego testu.
+- [Wyszukiwanie przez AI](ai-search.md) — feature „zapytaj po polsku"
+  (NL->DjangoQL), env-vary, koszty, cache schematu.

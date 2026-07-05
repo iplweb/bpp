@@ -67,6 +67,53 @@ def test_post_blocked_by_budget(staff_client, settings):
 
 
 @pytest.mark.django_db
+def test_post_translate_raises_shows_friendly_error(staff_client, settings):
+    settings.BPP_AI_SEARCH_ENABLED = True
+    with (
+        mock.patch(
+            "ai_search.views.translator.translate",
+            side_effect=Exception("boom"),
+        ),
+        mock.patch("ai_search.views.rollbar.report_exc_info") as report,
+    ):
+        r = staff_client.post(
+            reverse("ai_search:index"),
+            {"model": "rekord", "pytanie": "cokolwiek"},
+        )
+    assert r.status_code == 200
+    assert "chwilowo niedostępna" in r.content.decode()
+    report.assert_called_once()
+    assert AISearchQuery.objects.count() == 0
+
+
+@pytest.mark.django_db
+def test_post_pricing_keyerror_logs_zero_cost(staff_client, settings):
+    settings.BPP_AI_SEARCH_ENABLED = True
+    res = translator.TranslationResult(
+        query="rok = 2024", usage={"input_tokens": 10, "output_tokens": 5}, attempts=1
+    )
+    with (
+        mock.patch("ai_search.views.translator.translate", return_value=res),
+        mock.patch("ai_search.views.fx.usd_to_pln_rate", return_value=Decimal("4.1")),
+        mock.patch(
+            "ai_search.views.pricing.cost_usd_from_usage",
+            side_effect=KeyError("nieznany-model"),
+        ),
+        mock.patch("ai_search.views.rollbar.report_exc_info") as report,
+    ):
+        r = staff_client.post(
+            reverse("ai_search:index"),
+            {"model": "rekord", "pytanie": "publikacje z 2024"},
+        )
+    assert r.status_code == 302
+    report.assert_called_once()
+    log = AISearchQuery.objects.get()
+    assert log.success is True
+    assert log.cost_usd == Decimal("0")
+    assert log.cost_pln == Decimal("0")
+
+
+@pytest.mark.django_db
 def test_post_null_query_shows_error(staff_client, settings):
     settings.BPP_AI_SEARCH_ENABLED = True
     res = translator.TranslationResult(
