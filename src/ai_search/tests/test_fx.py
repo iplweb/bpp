@@ -34,6 +34,14 @@ def _nbp_response(mid):
     return m
 
 
+def _raw_response(payload):
+    """HTTP 200 z dowolnym (potencjalnie zniekształconym) ciałem JSON."""
+    m = mock.Mock()
+    m.raise_for_status = mock.Mock()
+    m.json.return_value = payload
+    return m
+
+
 @pytest.mark.django_db
 def test_fetches_from_nbp_and_persists():
     with mock.patch("ai_search.fx.requests.get", return_value=_nbp_response(4.11)):
@@ -64,3 +72,39 @@ def test_terminal_fallback_when_nothing_available(settings):
     with mock.patch("ai_search.fx.requests.get", side_effect=OSError("boom")):
         rate = fx.usd_to_pln_rate()
     assert rate == Decimal("4.5")
+
+
+@pytest.mark.django_db
+def test_empty_rates_list_falls_back_without_raising():
+    """HTTP 200 z pustą listą ``rates`` (IndexError) nie może uciec —
+    docstring gwarantuje „Nigdy nie podnosi wyjątku”."""
+    FxRate.store("4.02")
+    with mock.patch(
+        "ai_search.fx.requests.get", return_value=_raw_response({"rates": []})
+    ):
+        rate = fx.usd_to_pln_rate()
+    assert rate == Decimal("4.0200")
+
+
+@pytest.mark.django_db
+def test_null_mid_falls_back_without_raising():
+    """HTTP 200 z ``mid=null`` → ``Decimal("None")`` (decimal.InvalidOperation,
+    podklasa ArithmeticError, NIE ValueError) nie może uciec."""
+    FxRate.store("4.03")
+    with mock.patch(
+        "ai_search.fx.requests.get",
+        return_value=_raw_response({"rates": [{"mid": None}]}),
+    ):
+        rate = fx.usd_to_pln_rate()
+    assert rate == Decimal("4.0300")
+
+
+@pytest.mark.django_db
+def test_rates_not_a_list_falls_back_without_raising(settings):
+    """HTTP 200 z ``rates=null`` → ``None[0]`` (TypeError) nie może uciec."""
+    settings.BPP_AI_FX_FALLBACK = "4.44"
+    with mock.patch(
+        "ai_search.fx.requests.get", return_value=_raw_response({"rates": None})
+    ):
+        rate = fx.usd_to_pln_rate()
+    assert rate == Decimal("4.44")

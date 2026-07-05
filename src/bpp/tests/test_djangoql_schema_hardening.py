@@ -140,10 +140,11 @@ def test_bppuser_values_never_emitted():
 def test_graph_significantly_smaller():
     """Graf modeli mocno się kurczy po wykluczeniu aplikacji roboczych.
 
-    Przed uszczelnieniem: 216 modeli (BFS z Rekord). Po: 87 (bpp + pbn_api +
-    pbn_export_queue + taggit — żadna z wykluczonych app_labels). Próg < 100
-    zamiast przykładowego < 60 z briefu, bo `pbn_api` (celowo NIE wykluczone,
-    niesie `pbn_uid`) oraz jego własne relacje (Publication, Institution,
-    Scientist, Journal, …) dociągają część grafu z powrotem — patrz raport."""
+    Przed uszczelnieniem: 216 modeli (BFS z Rekord). Po: 86 (bpp + pbn_api +
+    taggit — żadna z wykluczonych app_labels; `pbn_export_queue` NIE jest
+    osiągalne w grafie). Próg < 100 zamiast przykładowego < 60 z briefu, bo
+    `pbn_api` (celowo NIE wykluczone, niesie `pbn_uid`) oraz jego własne relacje
+    (Publication, Institution, Scientist, Journal, …) dociągają część grafu z
+    powrotem — patrz raport."""
     schema = BppQLSchema(Rekord)
     assert len(schema.models) < 100

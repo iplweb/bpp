@@ -1,5 +1,4 @@
 import logging
-from datetime import date
 from decimal import Decimal
 from urllib.parse import urlencode
 
@@ -7,6 +6,7 @@ import rollbar
 from django.conf import settings
 from django.http import Http404, HttpResponseRedirect
 from django.urls import reverse
+from django.utils import timezone
 from django.views.generic import FormView
 
 from ai_search import backends, budget, fx, pricing, translator
@@ -86,7 +86,7 @@ class ZapytanieAIView(WprowadzanieDanychOrSuperuserMixin, FormView):
             rate = fx.usd_to_pln_rate()
             try:
                 cost_usd = pricing.cost_usd_from_usage(
-                    result.usage, settings.BPP_AI_MODEL, date.today()
+                    result.usage, settings.BPP_AI_MODEL, timezone.localdate()
                 )
             except KeyError:
                 rollbar.report_exc_info()

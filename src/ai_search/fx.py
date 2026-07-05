@@ -35,7 +35,17 @@ def usd_to_pln_rate() -> Decimal:
         cache.set(_CACHE_KEY, str(rate), settings.BPP_AI_FX_CACHE_TTL)
         FxRate.store(rate)
         return rate
-    except (requests.RequestException, OSError, KeyError, ValueError) as exc:
+    except (
+        requests.RequestException,
+        OSError,
+        LookupError,
+        TypeError,
+        ValueError,
+        ArithmeticError,
+    ) as exc:
+        # LookupError = KeyError + IndexError (brakujące/puste "rates"),
+        # ArithmeticError = decimal.InvalidOperation (mid=null/nieliczbowe),
+        # TypeError = nie-lista/skalar w JSON — wszystko degraduje do fallbacku.
         logger.warning("NBP FX niedostępny (%s), używam fallbacku", exc)
 
     last = FxRate.latest()

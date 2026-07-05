@@ -6,8 +6,9 @@ DSLQuery``) albo dowolny lokalny serwer zgodny z OpenAI Chat Completions API
 (backend wybierany przez ``ai_search.backends.active_backend_name()``, patrz
 ``backends.py``) — waliduje zwrócone zapytanie realnym parserem DjangoQL
 (``apply_search`` + ``BppQLSchema``) i — jeśli składnia jest zła — ponawia
-próbę, przekazując modelowi dokładny komunikat błędu (linia/kolumna), do
-``settings.BPP_AI_MAX_RETRIES`` razy.
+próbę, przekazując modelowi dokładny komunikat błędu (linia/kolumna),
+maksymalnie ``min(settings.BPP_AI_MAX_RETRIES, 2)`` razy — twardy limit 2
+ponowień, niezależnie od ustawienia.
 """
 
 import logging
