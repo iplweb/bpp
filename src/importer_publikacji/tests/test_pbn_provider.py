@@ -224,6 +224,23 @@ def test_fetch_success_article(mock_get_client, mock_save):
 
 @patch("importer_publikacji.providers.pbn._save_to_pbn_publication")
 @patch("importer_publikacji.providers.pbn._get_pbn_client")
+def test_fetch_uzywa_uczelni_providera_nie_get_default(mock_get_client, mock_save):
+    """Multi-hosted: ``fetch`` buduje klienta z uczelni ustawionej na
+    providerze (z ``ImportSession.uczelnia``), nie zgaduje ``get_default()``."""
+    mock_client = MagicMock()
+    mock_client.get_publication_by_id.return_value = SAMPLE_PBN_ARTICLE
+    mock_get_client.return_value = mock_client
+
+    sentinel_uczelnia = object()
+    provider = PBNProvider()
+    provider.uczelnia = sentinel_uczelnia
+    provider.fetch(SAMPLE_PBN_UID)
+
+    mock_get_client.assert_called_once_with(sentinel_uczelnia)
+
+
+@patch("importer_publikacji.providers.pbn._save_to_pbn_publication")
+@patch("importer_publikacji.providers.pbn._get_pbn_client")
 def test_fetch_saves_to_publication(mock_get_client, mock_save):
     mock_client = MagicMock()
     mock_client.get_publication_by_id.return_value = SAMPLE_PBN_ARTICLE

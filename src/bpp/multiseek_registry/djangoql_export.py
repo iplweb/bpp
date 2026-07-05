@@ -110,6 +110,11 @@ def is_valid_rekord_djangoql(fragment):
         ast = DjangoQLParser().parse(fragment)
         _REKORD_SCHEMA.validate(ast)
     except Exception:  # noqa: BLE001 — best-effort validity gate (klasyfikuje, nie tlumi)
+        # Niepoprawny fragment to oczekiwany wynik walidacji, nie błąd serwera —
+        # debug z tracebackiem, bez Rollbara.
+        logger.debug(
+            "Niepoprawny fragment DjangoQL (fragment=%r)", fragment, exc_info=True
+        )
         return False
     return True
 

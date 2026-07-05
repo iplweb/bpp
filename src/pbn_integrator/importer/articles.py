@@ -10,6 +10,7 @@ from bpp.models import (
     Tryb_OpenAccess_Wydawnictwo_Ciagle,
     Wydawnictwo_Ciagle,
     Wydawnictwo_Ciagle_Streszczenie,
+    Wydawnictwo_Ciagle_Tytul,
 )
 from pbn_api.client import PBNClient
 from pbn_api.models import Publication
@@ -30,6 +31,8 @@ from .helpers import (
     przetworz_journal_issue,
     przetworz_metadane_konferencji,
     przetworz_slowa_kluczowe,
+    przetworz_tytuly,
+    ustaw_jezyk_oryginalny,
 )
 
 
@@ -42,6 +45,7 @@ def importuj_artykul(
     rodzaj_periodyk=None,
     dyscypliny_cache=None,
     inconsistency_callback=None,
+    domyslny_jezyk=None,
 ):
     """Importuje artykuł z PBN do BPP jako Wydawnictwo_Ciagle.
 
@@ -53,6 +57,8 @@ def importuj_artykul(
                z tym pbn_uid_id już istnieje w BPP
         rodzaj_periodyk: Optional Rodzaj_Zrodla instance for "periodyk"
         dyscypliny_cache: Optional dict mapping discipline names to objects
+        domyslny_jezyk: Język użyty, gdy PBN nie poda języka publikacji albo
+               poda kod nieobecny w słowniku ``Jezyk`` (domyślnie: polski).
     """
     try:
         pbn_publication = Publication.objects.get(pk=mongoId)
@@ -71,8 +77,9 @@ def importuj_artykul(
         pbn_zrodlo_id, client, rodzaj_periodyk, dyscypliny_cache
     )
 
-    mainLanguage = pbn_json.pop("mainLanguage")
-    jezyk = pobierz_jezyk(mainLanguage, pbn_json.get("title"))
+    # PBN nie zawsze podaje mainLanguage — brak pola nie może wywalić importu.
+    mainLanguage = pbn_json.pop("mainLanguage", None)
+    jezyk = pobierz_jezyk(mainLanguage, pbn_json.get("title"), domyslny_jezyk)
 
     ret = Wydawnictwo_Ciagle(
         tytul_oryginalny=pbn_json.pop("title"),
@@ -94,6 +101,7 @@ def importuj_artykul(
     importuj_openaccess(
         ret, pbn_json, klasa_bazowa_tryb_dostepu=Tryb_OpenAccess_Wydawnictwo_Ciagle
     )
+    ustaw_jezyk_oryginalny(ret, pbn_json)
     try:
         ret.punkty_kbn = zrodlo.punktacja_zrodla_set.get(rok=ret.rok).punkty_kbn
     except Punktacja_Zrodla.DoesNotExist:
@@ -116,14 +124,7 @@ def importuj_artykul(
 
     przetworz_metadane_konferencji(pbn_json, ret)
 
-    if "titles" in pbn_json:
-        titles = pbn_json.pop("titles")
-        try:
-            ret.tytul = titles.pop("eng")
-        except KeyError:
-            ret.tytul = titles.pop("pol")
-
-        assert_dictionary_empty(titles)
+    przetworz_tytuly(pbn_json, ret, Wydawnictwo_Ciagle_Tytul)
 
     assert_dictionary_empty(pbn_json)
     return ret

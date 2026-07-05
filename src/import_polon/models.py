@@ -1,5 +1,6 @@
 from django.core.serializers.json import DjangoJSONEncoder
 from django.db import models
+from django.db.models import Count, Q
 
 from bpp.fields import YearField
 from bpp.models import Autor, Dyscyplina_Naukowa
@@ -49,6 +50,18 @@ class ImportPlikuPolon(ASGINotificationMixin, Operation):
         verbose_name="Ignoruj miejsce pracy",
         help_text="Pomiń walidację pola ZATRUDNIENIE (czy zaczyna się od nazwy uczelni)",
     )
+    # Multi-hosted: uczelnia, DLA której robiony jest import. Ustawiana z
+    # requestu (domena→Site→Uczelnia) przy tworzeniu importu. Zawęża walidację
+    # ZATRUDNIENIE, dopasowanie autora i raport niezmatchowanych do jednej
+    # uczelni. ``null=True`` — zgodność wstecz ze starymi importami i single-
+    # host bez rozstrzygnięcia (wtedy zachowanie jak dawniej, bez zawężenia).
+    uczelnia = models.ForeignKey(
+        "bpp.Uczelnia",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        help_text="Uczelnia, dla której wykonywany jest import (multi-hosted).",
+    )
 
     def on_reset(self):
         self.wierszimportuplikupolon_set.all().delete()
@@ -60,6 +73,42 @@ class ImportPlikuPolon(ASGINotificationMixin, Operation):
 
     def get_details_set(self):
         return WierszImportuPlikuPolon.objects.filter(parent=self)
+
+    def autorzy_niezmatchowani(self):
+        """Autor_Dyscyplina dla roku importu, których autora NIE było w pliku.
+
+        Multi-hosted: gdy znana jest ``uczelnia`` importu, lista jest zawężona
+        do autorów AKTUALNIE ZATRUDNIONYCH w tej uczelni (``aktualna_jednostka``
+        w uczelni + jednostka ``skupia_pracownikow``). Bez tego zawężenia raport
+        wyciekałby autorów innych uczelni współistniejących w bazie. Gdy
+        ``uczelnia`` nieznana (stare importy / brak rozstrzygnięcia) — zachowanie
+        wsteczne: wszyscy z dyscypliną dla roku, bez zawężenia.
+        """
+        from bpp.models import Autor_Dyscyplina
+
+        matched_authors = (
+            self.get_details_set()
+            .filter(autor__isnull=False)
+            .values_list("autor_id", flat=True)
+        )
+
+        qs = Autor_Dyscyplina.objects.filter(rok=self.rok)
+        if self.uczelnia_id is not None:
+            qs = qs.filter(autor__in=Autor.objects.aktualnie_zatrudnieni(self.uczelnia))
+
+        return (
+            qs.exclude(autor_id__in=matched_authors)
+            .select_related(
+                "autor", "dyscyplina_naukowa", "subdyscyplina_naukowa", "rodzaj_autora"
+            )
+            .annotate(
+                liczba_prac=Count(
+                    "autor__autorzy",
+                    filter=Q(autor__autorzy__rekord__rok=self.rok),
+                )
+            )
+            .order_by("autor__nazwisko", "autor__imiona")
+        )
 
 
 class WierszImportuPlikuPolon(models.Model):

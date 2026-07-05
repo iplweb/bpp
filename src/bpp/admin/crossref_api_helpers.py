@@ -5,6 +5,7 @@ o danym numerze ID."""
 from bpp import const
 from crossref_bpp.admin.helpers import convert_crossref_to_changeform_initial_data
 from crossref_bpp.core import Komparator
+from crossref_bpp.duplikaty import ostrzez_o_zduplikowanych_zrodlach_crossref
 from crossref_bpp.models import CrossrefAPICache
 
 from ..views.api import ostatnia_dyscyplina, ostatnia_jednostka
@@ -74,6 +75,7 @@ class UzupelniajWstepneDanePoCrossRefAPIMixin(
     def get_changeform_initial_data(self, request):
         z = self.get_crossref_api_data(request)
         if z is not None:
+            ostrzez_o_zduplikowanych_zrodlach_crossref(request, z)
             return convert_crossref_to_changeform_initial_data(z)
 
         return super().get_changeform_initial_data(request)

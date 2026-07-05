@@ -106,7 +106,7 @@
                         <div class="cell shrink">
                             <div class="callout autor-page__id-card">
                                 <div class="autor-page__id-label">PBN UID</div>
-                                <a href="{{ autor.link_do_pbn }}"
+                                <a href="{{ link_do_pbn }}"
                                    target="_blank"
                                    class="autor-page__id-link">{{ autor.pbn_uid_id }}</a>
                             </div>
@@ -118,7 +118,7 @@
                                 <div class="autor-page__id-label">
                                     <span class="fi-shield"></span> Naukowiec z POL-on
                                 </div>
-                                <a href="{{ autor.link_do_pbn }}"
+                                <a href="{{ link_do_pbn }}"
                                    target="_blank"
                                    rel="noopener"
                                    class="autor-page__id-link">
@@ -360,224 +360,18 @@
     </form>
 </div>
 
-<!-- Embed Code Section -->
+{# Link do dokumentacji widgetu osadzania publikacji na stronie WWW #}
 <div class="row autor-page__embed-section">
     <div class="large-12 columns">
-        <div class="author-info-section">
-            <h3 class="autor-page__embed-toggle"
-                data-action="toggle-embed"
-                data-keydown-toggle="true"
-                tabindex="0"
-                role="button">
-                <span><i class="fi-page-export"></i> Kod do osadzenia publikacji na stronie WWW</span>
-                <span id="embed-toggle-icon" class="autor-page__embed-toggle-icon">&#9654;</span>
-            </h3>
-            <p class="autor-page__embed-hint">
-                Naciśnij Enter lub spację aby rozwinąć i skopiować kod JavaScript
-            </p>
-        </div>
-        <div class="shaded-hr-div-small"></div>
-
-        <div id="embed-content" style="display: none;">
-            <div class="autor-page__embed-content-wrapper">
-        <div>
-            <p class="autor-page__embed-instruction">
-                <strong>Instrukcja:</strong> Skopiuj poniższy kod i wklej go w miejscu na swojej stronie WWW,
-                gdzie chcesz wyświetlić listę swoich najnowszych publikacji z systemu BPP.
-            </p>
-        </div>
-
-        <div class="autor-page__embed-code-wrapper">
-            <pre id="embed-code" class="autor-page__embed-code"><code>&lt;!-- BPP - Lista publikacji autora {{ autor }} --&gt;
-&lt;!-- Ten kod automatycznie pobiera i wyświetla 25 najnowszych publikacji z systemu BPP --&gt;
-&lt;div id="bpp-publikacje" style="font-family: Arial, sans-serif;"&gt;
-    &lt;div style="text-align: center; padding: 20px; color: #666;"&gt;
-        Ładowanie publikacji...
-    &lt;/div&gt;
-&lt;/div&gt;
-
-&lt;script&gt;
-(function() {
-    // Konfiguracja - te wartości są już ustawione dla Twojego profilu
-    const BPP_SERVER = '{{ request.scheme }}://{{ request.get_host }}';  // Adres serwera BPP
-    const AUTOR_ID = {{ autor.pk }};  // Twój identyfikator w systemie BPP
-
-    // Funkcja pobierająca i wyświetlająca publikacje
-    async function zaladujPublikacjeBPP() {
-        const container = document.getElementById('bpp-publikacje');
-
-        try {
-            // Pobierz dane z API BPP
-            const response = await fetch(`${BPP_SERVER}/api/v1/recent_author_publications/${AUTOR_ID}/`);
-
-            if (!response.ok) {
-                throw new Error('Nie udało się pobrać danych');
-            }
-
-            const data = await response.json();
-
-            // Wyczyść kontener
-            container.innerHTML = '';
-
-            // Sprawdź czy są publikacje
-            if (data.publications && data.publications.length > 0) {
-                // Utwórz nagłówek
-                const header = document.createElement('h3');
-                header.textContent = 'Publikacje';
-                header.style.cssText = 'color: #2c3e50; margin-bottom: 20px; font-size: 1.5rem;';
-                container.appendChild(header);
-
-                // Utwórz listę publikacji
-                const list = document.createElement('ol');
-                list.style.cssText = 'padding-left: 20px; line-height: 1.8;';
-
-                data.publications.forEach(pub => {
-                    const item = document.createElement('li');
-                    item.style.cssText = 'margin-bottom: 15px; color: #333;';
-
-                    // Opis bibliograficzny
-                    const opis = document.createElement('span');
-                    opis.innerHTML = pub.opis_bibliograficzny;
-                    item.appendChild(opis);
-
-                    // Link do szczegółów
-                    const link = document.createElement('a');
-                    link.href = pub.url;
-                    link.target = '_blank';
-                    link.textContent = ' [szczegóły]';
-                    link.style.cssText = 'color: #3498db; text-decoration: none; font-size: 0.9em;';
-                    link.onmouseover = function() { this.style.textDecoration = 'underline'; };
-                    link.onmouseout = function() { this.style.textDecoration = 'none'; };
-                    item.appendChild(link);
-
-                    list.appendChild(item);
-                });
-
-                container.appendChild(list);
-
-                // Dodaj stopkę z informacją
-                const footer = document.createElement('p');
-                footer.style.cssText = 'margin-top: 20px; padding-top: 15px; border-top: 1px solid #e9ecef; color: #7f8c8d; font-size: 0.85em; font-style: italic;';
-                footer.innerHTML = `Wyświetlono ${data.count} ostatnich publikacji. ` +
-                                 `&lt;a href="${BPP_SERVER}/bpp/autor/{{ autor.slug }}/" target="_blank" style="color: #3498db;"&gt;` +
-                                 `Zobacz pełny profil w systemie BPP &rarr;&lt;/a&gt;`;
-                container.appendChild(footer);
-
-            } else {
-                container.innerHTML = '&lt;p style="color: #7f8c8d;"&gt;Brak publikacji do wyświetlenia.&lt;/p&gt;';
-            }
-
-        } catch (error) {
-            // Obsługa błędów
-            console.error('Błąd BPP:', error);
-            container.innerHTML = `
-                &lt;div style="padding: 20px; background: #fee; border: 1px solid #fcc; border-radius: 4px; color: #c00;"&gt;
-                    Nie udało się załadować listy publikacji.
-                    &lt;a href="${BPP_SERVER}/bpp/autor/{{ autor.slug }}/" target="_blank" style="color: #3498db;"&gt;
-                        Zobacz publikacje w systemie BPP
-                    &lt;/a&gt;
-                &lt;/div&gt;
-            `;
-        }
-    }
-
-    // Uruchom po załadowaniu strony
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', zaladujPublikacjeBPP);
-    } else {
-        zaladujPublikacjeBPP();
-    }
-})();
-&lt;/script&gt;</code></pre>
-
-            <button data-action="copy-embed"
-                    id="copy-button"
-                    class="autor-page__copy-btn">
-                <i class="fi-clipboard"></i> Kopiuj kod
-            </button>
-        </div>
-
-        <div class="autor-page__embed-tip">
-            <p class="autor-page__embed-tip-text">
-                <strong>Podpowiedź:</strong> Ten kod jest w pełni samodzielny i będzie działał na każdej stronie HTML.
-                Automatycznie pobiera najnowsze publikacje z systemu BPP i wyświetla je w czytelnej formie.
-            </p>
-        </div>
-            </div>
-        </div>
+        <p class="autor-page__embed-link">
+            <small>
+                <i class="fi-page-export"></i>
+                Osadź publikacje tego autora na swojej stronie WWW &mdash;
+                <a href="https://iplweb.github.io/bpp/uzytkownik/widget-publikacji/?autor={{ autor.slug }}&amp;serwer={{ request.scheme }}://{{ request.get_host }}"
+                   target="_blank" rel="noopener">kliknij tutaj</a>.
+            </small>
+        </p>
     </div>
 </div>
-
-<script>
-function toggleEmbedCode() {
-    const content = document.getElementById('embed-content');
-    const icon = document.getElementById('embed-toggle-icon');
-
-    if (content.style.display === 'none') {
-        content.style.display = 'block';
-        icon.style.transform = 'rotate(90deg)';
-    } else {
-        content.style.display = 'none';
-        icon.style.transform = 'rotate(0deg)';
-    }
-}
-
-function copyEmbedCode() {
-    const codeElement = document.getElementById('embed-code');
-    const button = document.getElementById('copy-button');
-    const codeText = codeElement.textContent || codeElement.innerText;
-
-    // Utwórz tymczasowy element textarea
-    const textarea = document.createElement('textarea');
-    textarea.value = codeText;
-    textarea.style.position = 'fixed';
-    textarea.style.top = '-9999px';
-    document.body.appendChild(textarea);
-
-    // Zaznacz i skopiuj
-    textarea.select();
-    textarea.setSelectionRange(0, 99999); // Dla urządzeń mobilnych
-
-    try {
-        document.execCommand('copy');
-
-        // Zmień tekst przycisku na potwierdzenie
-        const originalHTML = button.innerHTML;
-        button.innerHTML = '<i class="fi-check"></i> Skopiowano!';
-        button.style.backgroundColor = '#27ae60';
-
-        // Przywróć oryginalny tekst po 2 sekundach
-        setTimeout(() => {
-            button.innerHTML = originalHTML;
-            button.style.backgroundColor = '#3498db';
-        }, 2000);
-    } catch (err) {
-        console.error('Nie udało się skopiować:', err);
-        alert('Nie udało się skopiować kodu. Zaznacz go ręcznie i użyj Ctrl+C (lub Cmd+C na Mac).');
-    }
-
-    // Usuń tymczasowy element
-    document.body.removeChild(textarea);
-}
-
-// Event delegation handlers
-document.addEventListener('click', function(e) {
-    if (e.target.closest('[data-action="toggle-embed"]')) {
-        e.preventDefault();
-        toggleEmbedCode();
-    }
-    if (e.target.closest('[data-action="copy-embed"]')) {
-        e.preventDefault();
-        copyEmbedCode();
-    }
-});
-document.addEventListener('keydown', function(e) {
-    var elem = e.target.closest('[data-keydown-toggle]');
-    if (elem && (e.key === 'Enter' || e.key === ' ')) {
-        e.preventDefault();
-        toggleEmbedCode();
-    }
-});
-</script>
 
 {% endblock %}

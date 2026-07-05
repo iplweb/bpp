@@ -1,0 +1,379 @@
+import pytest
+
+from bpp.models import (
+    Autor_Dyscyplina,
+    Charakter_Formalny,
+)
+from bpp.models.cache import Cache_Punktacja_Dyscypliny
+
+
+@pytest.mark.django_db
+def test_cache_punktacja_dyscypliny_ma_uczelnia(uczelnia, dyscyplina1):
+    obj = Cache_Punktacja_Dyscypliny(
+        rekord_id=[1, 1],
+        dyscyplina=dyscyplina1,
+        pkd=10,
+        slot=1,
+        uczelnia=uczelnia,
+    )
+    assert obj.uczelnia_id == uczelnia.pk
+    assert obj.serialize()[-1] == uczelnia.pk
+
+
+@pytest.mark.django_db
+def test_slotmixin_wszyscy_scoped_po_uczelni(zwarte_dwie_uczelnie, jednostka):
+    from bpp.models.sloty.wydawnictwo_zwarte import (
+        SlotKalkulator_Wydawnictwo_Zwarte_Prog3,
+    )
+
+    kalk_all = SlotKalkulator_Wydawnictwo_Zwarte_Prog3(
+        zwarte_dwie_uczelnie, tryb_kalkulacji=None
+    )
+    kalk_u1 = SlotKalkulator_Wydawnictwo_Zwarte_Prog3(
+        zwarte_dwie_uczelnie, tryb_kalkulacji=None, uczelnia=jednostka.uczelnia
+    )
+    assert kalk_all.wszyscy() == 2
+    assert kalk_u1.wszyscy() == 1
+
+
+@pytest.mark.django_db
+def test_uczelnie_rekordu_zwraca_obie(
+    zwarte_dwie_uczelnie, jednostka, druga_uczelnia
+):
+    assert set(zwarte_dwie_uczelnie.uczelnie_rekordu()) == {
+        jednostka.uczelnia,
+        druga_uczelnia,
+    }
+
+
+@pytest.mark.django_db
+def test_islot_jawna_uczelnia_scoped(zwarte_dwie_uczelnie, jednostka):
+    from bpp.models.sloty.core import ISlot
+
+    kalk = ISlot(zwarte_dwie_uczelnie, uczelnia=jednostka.uczelnia)
+    assert kalk.uczelnia == jednostka.uczelnia
+    assert kalk.wszyscy() == 1
+
+
+@pytest.mark.django_db
+def test_islot_none_cross_uczelnia_failuje(zwarte_dwie_uczelnie, druga_uczelnia):
+    from bpp.models.sloty.core import CannotAdapt, ISlot
+
+    # 2 uczelnie w systemie + praca cross-uczelnia => niejednoznaczne => CannotAdapt
+    with pytest.raises(CannotAdapt):
+        ISlot(zwarte_dwie_uczelnie)
+
+
+@pytest.mark.django_db
+def test_islot_none_jedna_uczelnia_systemu_rozstrzyga(zwarte_z_dyscyplinami, uczelnia):
+    from bpp.models.sloty.core import ISlot
+
+    # tylko jedna uczelnia w systemie => ISlot(obj) rozstrzyga ją
+    kalk = ISlot(zwarte_z_dyscyplinami)
+    assert kalk.uczelnia == uczelnia
+
+
+@pytest.mark.django_db
+def test_rebuild_tworzy_wiersze_per_uczelnia(
+    zwarte_dwie_uczelnie, jednostka, druga_uczelnia
+):
+    from bpp.models.cache import (
+        Cache_Punktacja_Autora,
+        Cache_Punktacja_Dyscypliny,
+    )
+    from bpp.models.sloty.core import IPunktacjaCacher
+
+    cacher = IPunktacjaCacher(zwarte_dwie_uczelnie)
+    cacher.removeEntries()
+    cacher.rebuildEntries()
+
+    cpd = Cache_Punktacja_Dyscypliny.objects.filter(
+        rekord_id=[cacher.ctype, zwarte_dwie_uczelnie.pk]
+    )
+    assert cpd.count() == 2
+    assert set(cpd.values_list("uczelnia_id", flat=True)) == {
+        jednostka.uczelnia_id,
+        druga_uczelnia.pk,
+    }
+    for row in cpd:
+        assert len(row.autorzy_z_dyscypliny) == 1
+
+    cpa = Cache_Punktacja_Autora.objects.filter(
+        rekord_id=[cacher.ctype, zwarte_dwie_uczelnie.pk]
+    )
+    assert cpa.count() == 2
+    assert {c.jednostka.uczelnia_id for c in cpa} == {
+        jednostka.uczelnia_id,
+        druga_uczelnia.pk,
+    }
+
+
+@pytest.mark.django_db
+def test_przelicz_per_uczelnia_dzielnik_k1(zwarte_dwie_uczelnie):
+    from bpp.models.cache import Cache_Punktacja_Autora
+
+    zwarte_dwie_uczelnie.przelicz_punkty_dyscyplin()
+
+    cpa_nowak = Cache_Punktacja_Autora.objects.get(autor__nazwisko="Nowak")
+    cpa_kowalski = Cache_Punktacja_Autora.objects.get(autor__nazwisko="Kowalski")
+    # k=1 w obrębie każdej uczelni => każdy ma pełny slot, suma = 2.0
+    assert cpa_nowak.slot == cpa_kowalski.slot
+    assert cpa_nowak.slot + cpa_kowalski.slot == 2
+
+
+@pytest.mark.django_db
+def test_przelicz_zwrotka_deterministyczna(zwarte_dwie_uczelnie):
+    a = zwarte_dwie_uczelnie.przelicz_punkty_dyscyplin()
+    b = zwarte_dwie_uczelnie.przelicz_punkty_dyscyplin()
+    assert str(a) == str(b)
+
+
+@pytest.mark.django_db
+def test_widok_nie_duplikuje_miedzy_uczelniami(zwarte_dwie_uczelnie):
+    from django.contrib.contenttypes.models import ContentType
+
+    from bpp.models.cache import Cache_Punktacja_Autora_Query_View
+
+    zwarte_dwie_uczelnie.przelicz_punkty_dyscyplin()
+    ctype = ContentType.objects.get_for_model(zwarte_dwie_uczelnie).pk
+
+    rows = Cache_Punktacja_Autora_Query_View.objects.filter(
+        rekord_id=[ctype, zwarte_dwie_uczelnie.pk]
+    )
+    # 2 autorow x 2 dyscyplina-agregaty bez joina po uczelni = 4 (kartezjan).
+    # Z naprawą: 2.
+    assert rows.count() == 2
+
+
+@pytest.mark.django_db
+def test_ukryte_statusy_gatuje_jedna_uczelnie(
+    zwarte_dwie_uczelnie, jednostka, druga_uczelnia
+):
+    from bpp.models import Ukryj_Status_Korekty
+    from bpp.models.sloty.core import IPunktacjaCacher
+
+    # Druga uczelnia ukrywa status korekty tej pracy dla slotów; pierwsza nie.
+    Ukryj_Status_Korekty.objects.create(
+        uczelnia=druga_uczelnia,
+        status_korekty=zwarte_dwie_uczelnie.status_korekty,
+        sloty=True,
+    )
+
+    ctype = IPunktacjaCacher(zwarte_dwie_uczelnie).ctype
+    zwarte_dwie_uczelnie.przelicz_punkty_dyscyplin()
+
+    uczelnie = set(
+        Cache_Punktacja_Dyscypliny.objects.filter(
+            rekord_id=[ctype, zwarte_dwie_uczelnie.pk]
+        ).values_list("uczelnia_id", flat=True)
+    )
+    assert jednostka.uczelnia_id in uczelnie
+    assert druga_uczelnia.pk not in uczelnie
+
+
+@pytest.mark.django_db
+def test_wypadniecie_uczelni_kasuje_sieroty(
+    zwarte_dwie_uczelnie, jednostka, druga_uczelnia
+):
+    from bpp.models.sloty.core import IPunktacjaCacher
+
+    ctype = IPunktacjaCacher(zwarte_dwie_uczelnie).ctype
+    zwarte_dwie_uczelnie.przelicz_punkty_dyscyplin()
+    assert (
+        Cache_Punktacja_Dyscypliny.objects.filter(
+            rekord_id=[ctype, zwarte_dwie_uczelnie.pk]
+        ).count()
+        == 2
+    )
+
+    # Przenieś autora drugiej uczelni do pierwszej jednostki i przelicz ponownie.
+    wa = zwarte_dwie_uczelnie.autorzy_set.get(autor__nazwisko="Kowalski")
+    wa.jednostka = jednostka
+    wa.save()
+
+    zwarte_dwie_uczelnie.przelicz_punkty_dyscyplin()
+    uczelnie = set(
+        Cache_Punktacja_Dyscypliny.objects.filter(
+            rekord_id=[ctype, zwarte_dwie_uczelnie.pk]
+        ).values_list("uczelnia_id", flat=True)
+    )
+    assert uczelnie == {jednostka.uczelnia_id}  # brak sieroty druga_uczelnia
+
+
+@pytest.mark.django_db
+def test_view_eksponuje_uczelnia(zwarte_dwie_uczelnie, jednostka, druga_uczelnia):
+    from django.contrib.contenttypes.models import ContentType
+
+    from bpp.models.cache import Cache_Punktacja_Autora_Query_View
+
+    zwarte_dwie_uczelnie.przelicz_punkty_dyscyplin()
+    ctype = ContentType.objects.get_for_model(zwarte_dwie_uczelnie).pk
+
+    rows = Cache_Punktacja_Autora_Query_View.objects.filter(
+        rekord_id=[ctype, zwarte_dwie_uczelnie.pk]
+    )
+    for row in rows:
+        assert row.uczelnia_id == row.jednostka.uczelnia_id
+    assert set(rows.values_list("uczelnia_id", flat=True)) == {
+        jednostka.uczelnia_id,
+        druga_uczelnia.pk,
+    }
+
+
+@pytest.mark.django_db
+def test_cpd_uczelnia_not_null(dyscyplina1):
+    from django.db import IntegrityError, transaction
+
+    from bpp.models.cache import Cache_Punktacja_Dyscypliny
+
+    with pytest.raises(IntegrityError):
+        with transaction.atomic():
+            Cache_Punktacja_Dyscypliny.objects.create(
+                rekord_id=[1, 1],
+                dyscyplina=dyscyplina1,
+                pkd=10,
+                slot=1,
+            )
+
+
+@pytest.mark.django_db
+def test_invariant_jedna_uczelnia_k2(
+    wydawnictwo_zwarte,
+    autor_jan_nowak,
+    autor_jan_kowalski,
+    jednostka,
+    dyscyplina1,
+    rodzaj_autora_n,
+    charaktery_formalne,
+    wydawca,
+    typy_odpowiedzialnosci,
+    rok,
+):
+    from bpp.models.cache import Cache_Punktacja_Autora
+
+    # Obaj autorzy w TEJ SAMEJ uczelni i dyscyplinie => k=2, slot dzielony.
+    Autor_Dyscyplina.objects.create(
+        autor=autor_jan_nowak,
+        dyscyplina_naukowa=dyscyplina1,
+        rok=rok,
+        rodzaj_autora=rodzaj_autora_n,
+    )
+    Autor_Dyscyplina.objects.create(
+        autor=autor_jan_kowalski,
+        dyscyplina_naukowa=dyscyplina1,
+        rok=rok,
+        rodzaj_autora=rodzaj_autora_n,
+    )
+    wydawnictwo_zwarte.dodaj_autora(
+        autor_jan_nowak, jednostka, dyscyplina_naukowa=dyscyplina1
+    )
+    wydawnictwo_zwarte.dodaj_autora(
+        autor_jan_kowalski, jednostka, dyscyplina_naukowa=dyscyplina1
+    )
+    wydawnictwo_zwarte.punkty_kbn = 20
+    wydawnictwo_zwarte.wydawca = wydawca
+    wydawnictwo_zwarte.charakter_formalny = Charakter_Formalny.objects.get(skrot="KSP")
+    wydawnictwo_zwarte.save()
+
+    wydawnictwo_zwarte.przelicz_punkty_dyscyplin()
+    slots = list(
+        Cache_Punktacja_Autora.objects.filter(
+            autor__in=[autor_jan_nowak, autor_jan_kowalski]
+        ).values_list("slot", flat=True)
+    )
+    assert len(slots) == 2
+    assert sum(slots) == 1  # k=2 w jednej uczelni: po pół slotu, suma 1.0
+
+
+# ---------------------------------------------------------------------------
+# Hardening #1 — wiele_hst liczone per-uczelnia
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture
+def zwarte_cross_hst(
+    wydawnictwo_zwarte,
+    autor_jan_nowak,
+    autor_jan_kowalski,
+    jednostka,
+    jednostka_drugiej_uczelni,
+    dyscyplina1_hst,
+    dyscyplina2,
+    rodzaj_autora_n,
+    charaktery_formalne,
+    wydawca,
+    typy_odpowiedzialnosci,
+    rok,
+):
+    """Praca z autorem HST w uczelni A i autorem nie-HST w uczelni B.
+
+    Globalnie: dyscypliny_rekordu() → {HST, nie-HST} → wiele_hst=True.
+    Per-uczelnia: każda uczelnia ma jednorodny zestaw → wiele_hst=False.
+    """
+    Autor_Dyscyplina.objects.create(
+        autor=autor_jan_nowak,
+        dyscyplina_naukowa=dyscyplina1_hst,
+        rok=rok,
+        rodzaj_autora=rodzaj_autora_n,
+    )
+    Autor_Dyscyplina.objects.create(
+        autor=autor_jan_kowalski,
+        dyscyplina_naukowa=dyscyplina2,
+        rok=rok,
+        rodzaj_autora=rodzaj_autora_n,
+    )
+    wydawnictwo_zwarte.dodaj_autora(
+        autor_jan_nowak, jednostka, dyscyplina_naukowa=dyscyplina1_hst
+    )
+    wydawnictwo_zwarte.dodaj_autora(
+        autor_jan_kowalski,
+        jednostka_drugiej_uczelni,
+        dyscyplina_naukowa=dyscyplina2,
+    )
+    wydawnictwo_zwarte.punkty_kbn = 20
+    wydawnictwo_zwarte.wydawca = wydawca
+    wydawnictwo_zwarte.charakter_formalny = Charakter_Formalny.objects.get(
+        skrot="KSP"
+    )
+    wydawnictwo_zwarte.save()
+    return wydawnictwo_zwarte
+
+
+@pytest.mark.django_db
+def test_wszystkie_dyscypliny_rekordu_bez_uczelni_zwraca_obie(
+    zwarte_cross_hst, dyscyplina1_hst, dyscyplina2
+):
+    """Bez filtrowania uczelni: globalnie obie dyscypliny są widoczne."""
+    pks = {row[0] for row in zwarte_cross_hst.wszystkie_dyscypliny_rekordu()}
+    assert dyscyplina1_hst.pk in pks
+    assert dyscyplina2.pk in pks
+
+
+@pytest.mark.django_db
+def test_wszystkie_dyscypliny_rekordu_uczelnia_a_zwraca_tylko_hst(
+    zwarte_cross_hst, jednostka, dyscyplina1_hst, dyscyplina2
+):
+    """Per uczelnia A (HST): widoczna tylko dyscyplina HST."""
+    pks = {
+        row[0]
+        for row in zwarte_cross_hst.wszystkie_dyscypliny_rekordu(
+            uczelnia=jednostka.uczelnia
+        )
+    }
+    assert dyscyplina1_hst.pk in pks
+    assert dyscyplina2.pk not in pks
+
+
+@pytest.mark.django_db
+def test_wszystkie_dyscypliny_rekordu_uczelnia_b_zwraca_tylko_nie_hst(
+    zwarte_cross_hst, jednostka_drugiej_uczelni, dyscyplina1_hst, dyscyplina2
+):
+    """Per uczelnia B (nie-HST): widoczna tylko dyscyplina nie-HST."""
+    pks = {
+        row[0]
+        for row in zwarte_cross_hst.wszystkie_dyscypliny_rekordu(
+            uczelnia=jednostka_drugiej_uczelni.uczelnia
+        )
+    }
+    assert dyscyplina2.pk in pks
+    assert dyscyplina1_hst.pk not in pks

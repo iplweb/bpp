@@ -83,8 +83,15 @@ def sprobuj_utworzyc_zlecenie_eksportu_do_PBN_gui(request, obj):
         messages.error(request, "Wysyłka do PBN nie skonfigurowana w obiektu Uczelnia.")
         return
 
+    # Multi-hosted: wpis kolejki niesie uczelnię z requestu (jak batch path),
+    # żeby wysyłka w tle użyła właściwej konfiguracji PBN zamiast zgadywać.
+    from bpp.models.uczelnia import Uczelnia
+
+    uczelnia = Uczelnia.objects.get_for_request(request)
     try:
-        ret = PBN_Export_Queue.objects.sprobuj_utowrzyc_wpis(request.user, obj)
+        ret = PBN_Export_Queue.objects.sprobuj_utowrzyc_wpis(
+            request.user, obj, uczelnia=uczelnia
+        )
     except AlreadyEnqueuedError:
         messages.warning(
             request, f"Rekord {obj} jest już w kolejce do eksportu do PBN."

@@ -29,4 +29,3 @@ Algorytm ustalania aktualnego miejsca pracy działa w sposób następujący:
 !!! warning
 
     dany autor może mieć tylko jedno powiązanie oznaczone jako *Podstawowe miejsce pracy*.
-

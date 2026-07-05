@@ -39,14 +39,18 @@ def test_PBNClient_test_upload_publication_nie_trzeba(
     js = WydawnictwoPBNAdapter(
         pbn_wydawnictwo_zwarte_z_autorem_z_dyscyplina
     ).pbn_get_json()
+    # Tagujemy SentData uczelnią clienta — od Track 4 lookup wysyłki zawęża
+    # po uczelni (``self.uczelnia``), więc seed musi mieć tę samą uczelnię.
     SentData.objects.create_or_update_before_upload(
-        pbn_wydawnictwo_zwarte_z_autorem_z_dyscyplina, js
+        pbn_wydawnictwo_zwarte_z_autorem_z_dyscyplina, js, uczelnia=pbn_client.uczelnia
     )
 
     baker.make(Publication, pk="test-123")
 
     SentData.objects.mark_as_successful(
-        pbn_wydawnictwo_zwarte_z_autorem_z_dyscyplina, pbn_uid_id="test-123"
+        pbn_wydawnictwo_zwarte_z_autorem_z_dyscyplina,
+        pbn_uid_id="test-123",
+        uczelnia=pbn_client.uczelnia,
     )
 
     with pytest.raises(SameDataUploadedRecently):

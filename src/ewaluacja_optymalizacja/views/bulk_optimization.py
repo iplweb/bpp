@@ -200,8 +200,7 @@ def start_bulk_optimization(request):
             )
             return redirect("ewaluacja_optymalizacja:index")
 
-        # Pobierz pierwszą uczelnię (zakładamy, że jest tylko jedna)
-        uczelnia = Uczelnia.objects.first()
+        uczelnia = Uczelnia.objects.get_for_request(request)
 
         if not uczelnia:
             messages.error(request, "Nie znaleziono uczelni w systemie.")

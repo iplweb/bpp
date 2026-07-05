@@ -1,10 +1,8 @@
 """Views for PBN import interface"""
 
-import json
+import logging
 import random
 
-from asgiref.sync import async_to_sync
-from channels.layers import get_channel_layer
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin, PermissionRequiredMixin
 from django.db.models import Count
@@ -13,10 +11,10 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
 from django.views import View
-from django.views.decorators.csrf import csrf_exempt
 from django.views.generic import DetailView, ListView, TemplateView
 
-from bpp.models import Jednostka, Uczelnia, Wydzial
+from bpp.models import Jednostka, Jezyk, Uczelnia, Wydzial
+from bpp.util import zaloguj_polkniety_wyjatek
 
 from .models import (
     ImportInconsistency,
@@ -24,13 +22,27 @@ from .models import (
     ImportSession,
 )
 from .utils.institution_import import (
+    sprawdz_obca_jednostka,
     znajdz_lub_utworz_jednostke_domyslna,
     znajdz_lub_utworz_wydzial_domyslny,
+)
+from .utils.log_export import (
+    PREVIEW_LIMIT,
+    count_log_entries,
+    render_session_log_text,
 )
 from .utils.step_definitions import (
     get_all_disable_keys,
     get_form_steps,
 )
+
+logger = logging.getLogger(__name__)
+
+# Maksymalna liczba wierszy ImportLog ładowana do widoków HTMX. Endpointy są
+# re-fetchowane co 5 s podczas długiego importu — bez tego limitu każde
+# odświeżenie ciągnęłoby tysiące wierszy. Pełny log pozostaje pobieralny przez
+# ImportLogDownloadView (nieprzycięty).
+MAX_LOGS_DISPLAY = 200
 
 
 class ImportPermissionMixin(PermissionRequiredMixin):
@@ -83,17 +95,33 @@ class ImportDashboardView(LoginRequiredMixin, ImportPermissionMixin, TemplateVie
         context["motivational_message"] = self.get_motivational_message()
 
         # Check if PBN is configured
-        uczelnia = Uczelnia.objects.get_default()
+        uczelnia = Uczelnia.objects.get_for_request(self.request)
         context["pbn_configured"] = uczelnia and uczelnia.pbn_integracja
         context["uczelnia"] = uczelnia
         context["uzywaj_wydzialow"] = uczelnia.uzywaj_wydzialow if uczelnia else False
 
+        # Gate-check multi-hosted: obca jednostka MUSI istnieć i być podpięta do
+        # wydziału tej uczelni, inaczej import padnie na triggerze spójności.
+        # Sygnalizujemy to już przy wejściu na stronę (baner w szablonie).
+        context["obca_jednostka_problem"] = (
+            sprawdz_obca_jednostka(uczelnia) if uczelnia else None
+        )
+
         # Sprawdź czy użytkownik ma ważny token PBN
         context["pbn_token_valid"] = self.request.user.pbn_token_possibly_valid()
 
-        # Pobierz wszystkie wydziały i jednostki
-        wydzialy = Wydzial.objects.all()
-        jednostki = Jednostka.objects.filter(skupia_pracownikow=True)
+        # Pobierz wydziały i jednostki — multi-hosted: WYŁĄCZNIE tej uczelni,
+        # z której idzie request. Bez filtra formularz oferował encje obcych
+        # uczelni, co prowadziło do startu importu z domyślną jednostką spoza
+        # właściwej uczelni. Bez uczelni (brak kontekstu) nie ma czego importować.
+        if uczelnia:
+            wydzialy = Wydzial.objects.filter(uczelnia=uczelnia)
+            jednostki = Jednostka.objects.filter(
+                skupia_pracownikow=True, uczelnia=uczelnia
+            )
+        else:
+            wydzialy = Wydzial.objects.none()
+            jednostki = Jednostka.objects.none()
 
         # Jeśli brak wydziałów I brak jednostek - utwórz domyślne
         if not wydzialy.exists() and not jednostki.exists() and uczelnia:
@@ -104,9 +132,11 @@ class ImportDashboardView(LoginRequiredMixin, ImportPermissionMixin, TemplateVie
                 jednostka_domyslna.wydzial = wydzial_domyslny
                 jednostka_domyslna.skupia_pracownikow = True
                 jednostka_domyslna.save(update_fields=["wydzial", "skupia_pracownikow"])
-            # Odśwież querysets
-            wydzialy = Wydzial.objects.all()
-            jednostki = Jednostka.objects.filter(skupia_pracownikow=True)
+            # Odśwież querysets (wciąż zawężone do uczelni kontekstu)
+            wydzialy = Wydzial.objects.filter(uczelnia=uczelnia)
+            jednostki = Jednostka.objects.filter(
+                skupia_pracownikow=True, uczelnia=uczelnia
+            )
 
         context["wydzialy"] = wydzialy
         context["jednostki"] = jednostki
@@ -122,6 +152,15 @@ class ImportDashboardView(LoginRequiredMixin, ImportPermissionMixin, TemplateVie
         context["jednostka_domyslna"] = jednostki.filter(
             nazwa__icontains="domyśln"
         ).first()
+
+        # Domyślny język dla publikacji bez (poprawnego) języka w PBN. Lista
+        # widocznych języków + preselekcja polskiego (get_jezyk_polski to ten
+        # sam kontrakt, którego używa importer jako fallback).
+        context["jezyki"] = Jezyk.objects.filter(widoczny=True).order_by("nazwa")
+        context["jezyk_domyslny"] = (
+            Jezyk.objects.filter(skrot="pol.").first()
+            or Jezyk.objects.filter(nazwa__iexact="polski").first()
+        )
 
         # Import steps for dynamic form rendering (from step_definitions.py)
         context["import_steps"] = get_form_steps()
@@ -143,6 +182,39 @@ class ImportDashboardView(LoginRequiredMixin, ImportPermissionMixin, TemplateVie
 class StartImportView(LoginRequiredMixin, ImportPermissionMixin, View):
     """Start a new import session"""
 
+    @staticmethod
+    def _bledy_kontekstu_uczelni(uczelnia, jednostka, wydzial):
+        """Gate-check multi-hosted: spójność wybranych encji z uczelnią requestu.
+
+        Domyślna jednostka i wydział MUSZĄ należeć do tej samej uczelni, z której
+        idzie request (i do której pójdzie import) — inaczej import przypisywałby
+        autorów/prace do encji obcej uczelni (cichy wyciek danych między
+        tenantami). Egzekwujemy nawet przy zmanipulowanym formularzu (encje
+        zawężamy też w GET, ale POST musi się bronić sam). Dodatkowo obca
+        jednostka uczelni musi być skonfigurowana, bo krok institution_setup
+        padłby na triggerze ``bpp_jednostka_wydzial_sprawdz_uczelnia_id``.
+
+        Zwraca listę komunikatów błędów (pustą, gdy wszystko OK).
+        """
+        if uczelnia is None:
+            return []
+
+        errors = []
+        if jednostka is not None and jednostka.uczelnia_id != uczelnia.pk:
+            errors.append(
+                "Wybrana domyślna jednostka należy do innej uczelni niż ta, "
+                "z której uruchamiasz import."
+            )
+        if wydzial is not None and wydzial.uczelnia_id != uczelnia.pk:
+            errors.append(
+                "Wybrany domyślny wydział należy do innej uczelni niż ta, "
+                "z której uruchamiasz import."
+            )
+        obca_problem = sprawdz_obca_jednostka(uczelnia)
+        if obca_problem:
+            errors.append(obca_problem)
+        return errors
+
     def post(self, request):
         # Get configuration from POST data
         # Checkboxes are inverted - if checkbox is checked, we DON'T disable
@@ -155,11 +227,19 @@ class StartImportView(LoginRequiredMixin, ImportPermissionMixin, View):
             Jednostka.objects.filter(pk=jednostka_id).first() if jednostka_id else None
         )
 
+        # Domyślny język jest opcjonalny — przy braku/niepoprawnym wyborze
+        # importer i tak spadnie na polski (resolve_default_jezyk). Bez
+        # gate-checku per-uczelnia: języki są globalne.
+        jezyk_id = request.POST.get("jezyk_domyslny_id")
+        jezyk = Jezyk.objects.filter(pk=jezyk_id).first() if jezyk_id else None
+
         # Domyślna jednostka/wydział muszą być świadomie wybrane przez
         # użytkownika — nie pozwalamy ruszyć importu z pustym polem (w domyślnym
         # widoku nic nie jest pre-zaznaczone, chyba że istnieje placeholder
         # "Domyślna…"). Wydział egzekwujemy tylko gdy uczelnia używa wydziałów.
-        uczelnia = Uczelnia.objects.get_default()
+        # Multi-hosted: uczelnię bierzemy z requestu (NIE get_default) — tak samo
+        # jak entrypoint zadania w tle kilka linii niżej.
+        uczelnia = Uczelnia.objects.get_for_request(request)
         uzywaj_wydzialow = uczelnia.uzywaj_wydzialow if uczelnia else False
 
         errors = []
@@ -167,6 +247,8 @@ class StartImportView(LoginRequiredMixin, ImportPermissionMixin, View):
             errors.append("Wybierz domyślną jednostkę przed rozpoczęciem importu.")
         if uzywaj_wydzialow and wydzial is None:
             errors.append("Wybierz domyślny wydział przed rozpoczęciem importu.")
+
+        errors += self._bledy_kontekstu_uczelni(uczelnia, jednostka, wydzial)
 
         if errors:
             for error in errors:
@@ -192,6 +274,19 @@ class StartImportView(LoginRequiredMixin, ImportPermissionMixin, View):
                 "wydzial_domyslny_id": wydzial.pk if wydzial else None,
                 "jednostka_domyslna": jednostka.nazwa if jednostka else "",
                 "jednostka_domyslna_id": jednostka.pk if jednostka else None,
+                # Kanoniczne klucze czytane przez kroki importu
+                # (publication_import / statement_import) ORAZ zapisywane przez
+                # krok institution_setup. Zapisujemy je już TU, na formularzu, by
+                # import startujący od późniejszego kroku (np. od źródeł, z
+                # pominięciem institution_setup) i tak znał domyślną jednostkę.
+                # To naprawia ValueError "Nie znaleziono domyślnej jednostki".
+                "default_jednostka_id": jednostka.pk if jednostka else None,
+                "wydzial_id": wydzial.pk if wydzial else None,
+                # Domyślny język importu (fallback dla pozycji bez mainLanguage
+                # albo z kodem spoza słownika Jezyk). Czytany przez
+                # resolve_default_jezyk; None → polski.
+                "default_jezyk": jezyk.nazwa if jezyk else "",
+                "default_jezyk_id": jezyk.pk if jezyk else None,
             }
         )
 
@@ -206,20 +301,15 @@ class StartImportView(LoginRequiredMixin, ImportPermissionMixin, View):
         # Launch Celery task
         from .tasks import run_pbn_import
 
-        result = run_pbn_import.delay(session.id)
+        # Multi-hosted: entrypoint zna konkretną uczelnię z requestu i MUSI
+        # przekazać jej id do zadania w tle (zadanie NIE robi get_default()).
+        uczelnia = Uczelnia.objects.get_for_request(request)
+        result = run_pbn_import.delay(
+            session.id, uczelnia_id=uczelnia.pk if uczelnia else None
+        )
         session.task_id = result.id
         session.status = "pending"  # Keep as pending until task starts
         session.save()
-
-        # Send WebSocket notification
-        self.send_websocket_update(
-            session,
-            {
-                "type": "import_started",
-                "session_id": session.id,
-                "message": "Import został rozpoczęty!",
-            },
-        )
 
         messages.success(request, f"Import #{session.id} został rozpoczęty!")
 
@@ -228,15 +318,6 @@ class StartImportView(LoginRequiredMixin, ImportPermissionMixin, View):
             response = HttpResponse()
             response["HX-Redirect"] = reverse("pbn_import:dashboard")
             return response
-
-        return redirect("pbn_import:dashboard")
-
-    def send_websocket_update(self, session, data):
-        """Send update via WebSocket"""
-        channel_layer = get_channel_layer()
-        async_to_sync(channel_layer.group_send)(
-            f"import_{session.id}", {"type": "import_update", "data": data}
-        )
 
         return redirect("pbn_import:dashboard")
 
@@ -280,6 +361,12 @@ class CancelImportView(LoginRequiredMixin, ImportPermissionMixin, View):
                     # in the import loops
 
                 except Exception as e:
+                    zaloguj_polkniety_wyjatek(
+                        "Nie udało się anulować zadania Celery "
+                        f"{session.task_id} dla sesji importu #{session.id}",
+                        logger=logger,
+                        do_rollbar=True,
+                    )
                     ImportLog.objects.create(
                         session=session,
                         level="warning",
@@ -301,7 +388,9 @@ class CancelImportView(LoginRequiredMixin, ImportPermissionMixin, View):
         if request.headers.get("HX-Request"):
             # Return updated progress component for HTMX
             return render(
-                request, "pbn_import/components/progress.html", {"session": session}
+                request,
+                "pbn_import/components/progress_compact.html",
+                {"session": session},
             )
 
         return redirect("pbn_import:dashboard")
@@ -383,11 +472,14 @@ class ImportPresetsView(LoginRequiredMixin, ImportPermissionMixin, View):
                 "config": {
                     "disable_initial": True,
                     "disable_institutions": True,
-                    "disable_zrodla": True,
+                    "disable_zrodla_download": True,
+                    "disable_zrodla_process": True,
                     "disable_punktacja_zrodel": True,
-                    "disable_wydawcy": True,
-                    "disable_konferencje": True,
-                    # autorzy, publikacje, oswiadczenia, oplaty remain enabled
+                    "disable_wydawcy_download": True,
+                    "disable_wydawcy_process": True,
+                    "disable_konferencje_download": True,
+                    "disable_konferencje_process": True,
+                    # autorzy, publikacje, oswiadczenia, oplaty pozostają włączone
                     "delete_existing": False,
                 },
             },
@@ -398,7 +490,8 @@ class ImportPresetsView(LoginRequiredMixin, ImportPermissionMixin, View):
                 "icon": "fi-book",
                 "config": {
                     **all_disabled,
-                    "disable_zrodla": False,
+                    "disable_zrodla_download": False,
+                    "disable_zrodla_process": False,
                     "disable_punktacja_zrodel": False,
                     "delete_existing": False,
                 },
@@ -406,19 +499,6 @@ class ImportPresetsView(LoginRequiredMixin, ImportPermissionMixin, View):
         ]
 
         return JsonResponse({"presets": presets})
-
-
-class SavePresetView(LoginRequiredMixin, ImportPermissionMixin, View):
-    """Save a custom import preset"""
-
-    @csrf_exempt
-    def post(self, request):
-        data = json.loads(request.body)  # noqa
-
-        # In production, save to database or user preferences
-        # For now, just return success
-
-        return JsonResponse({"success": True, "message": "Preset zapisany pomyślnie!"})
 
 
 class ImportSessionDetailView(LoginRequiredMixin, ImportPermissionMixin, DetailView):
@@ -441,12 +521,12 @@ class ImportSessionDetailView(LoginRequiredMixin, ImportPermissionMixin, DetailV
         # Get all logs for this session
         context["logs"] = ImportLog.objects.filter(session=session).order_by(
             "-timestamp"
-        )
+        )[:MAX_LOGS_DISPLAY]
 
         # Get error logs specifically
         context["error_logs"] = ImportLog.objects.filter(
             session=session, level__in=["error", "critical", "warning"]
-        ).order_by("-timestamp")
+        ).order_by("-timestamp")[:MAX_LOGS_DISPLAY]
 
         # Get inconsistencies
         inconsistencies = (
@@ -480,6 +560,17 @@ class ImportSessionDetailView(LoginRequiredMixin, ImportPermissionMixin, DetailV
         # Get configuration
         context["config"] = session.config
 
+        # Symulowany raw log (tekst) — zakładka „Log" pokazuje go inline i daje
+        # pobranie. Podgląd przycinamy do PREVIEW_LIMIT wpisów, żeby „mega mega
+        # długi" log nie zatkał przeglądarki ani nie napuchł HTML-a strony;
+        # pełny log zawsze do pobrania przez .txt. Dostępny dla każdego statusu
+        # (dla biegnącego = migawka).
+        log_total = count_log_entries(session)
+        context["raw_log_text"] = render_session_log_text(session, limit=PREVIEW_LIMIT)
+        context["raw_log_total"] = log_total
+        context["raw_log_shown"] = min(log_total, PREVIEW_LIMIT)
+        context["raw_log_truncated"] = log_total > PREVIEW_LIMIT
+
         # Calculate duration - use model property which handles both completed
         # and running sessions
         context["duration"] = session.duration
@@ -496,7 +587,9 @@ class ImportAllLogsView(LoginRequiredMixin, ImportPermissionMixin, View):
         if not request.user.is_superuser and session.user != request.user:
             return HttpResponse("Forbidden", status=403)
 
-        logs = ImportLog.objects.filter(session=session).order_by("-timestamp")
+        logs = ImportLog.objects.filter(session=session).order_by("-timestamp")[
+            :MAX_LOGS_DISPLAY
+        ]
         return render(
             request,
             "pbn_import/components/all_logs.html",
@@ -515,12 +608,34 @@ class ImportErrorLogsView(LoginRequiredMixin, ImportPermissionMixin, View):
 
         error_logs = ImportLog.objects.filter(
             session=session, level__in=["error", "critical", "warning"]
-        ).order_by("-timestamp")
+        ).order_by("-timestamp")[:MAX_LOGS_DISPLAY]
         return render(
             request,
             "pbn_import/components/error_logs.html",
             {"error_logs": error_logs, "session": session, "user": request.user},
         )
+
+
+class ImportLogDownloadView(LoginRequiredMixin, ImportPermissionMixin, View):
+    """Pobranie symulowanego raw logu tekstowego (błędy + ostrzeżenia).
+
+    Dostępne dla sesji w dowolnym statusie (także nieudanej/anulowanej/
+    biegnącej) — log nieudanego importu jest najcenniejszy. Dla biegnącego
+    importu to migawka stanu z chwili żądania.
+    """
+
+    def get(self, request, pk):
+        session = get_object_or_404(ImportSession, pk=pk)
+        # Użytkownik widzi tylko swoje sesje (chyba że superuser).
+        if not request.user.is_superuser and session.user != request.user:
+            return HttpResponse("Forbidden", status=403)
+
+        text = render_session_log_text(session)
+        response = HttpResponse(text, content_type="text/plain; charset=utf-8")
+        response["Content-Disposition"] = (
+            f'attachment; filename="pbn_import_log_{session.id}.txt"'
+        )
+        return response
 
 
 class ImportInconsistenciesView(LoginRequiredMixin, ImportPermissionMixin, View):

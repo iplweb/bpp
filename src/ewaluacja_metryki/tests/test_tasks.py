@@ -1,6 +1,7 @@
 from unittest.mock import patch
 
 import pytest
+from model_bakery import baker
 
 
 @pytest.mark.django_db
@@ -98,8 +99,11 @@ def test_finalizuj_generowanie_metryk():
     from ewaluacja_metryki.models import StatusGenerowania
     from ewaluacja_metryki.tasks import finalizuj_generowanie_metryk
 
+    # Jedna uczelnia wymagana przez finalizuj_generowanie_metryk (per-uczelnia status)
+    uczelnia = baker.make("bpp.Uczelnia")
+
     # Przygotuj status generowania
-    status = StatusGenerowania.get_or_create()
+    status = StatusGenerowania.get_or_create(uczelnia=uczelnia)
     status.rozpocznij_generowanie(task_id="test-task-id", liczba_do_przetworzenia=5)
 
     # Przygotuj wyniki z tasków
@@ -137,14 +141,14 @@ def test_finalizuj_generowanie_metryk():
     ]
 
     # Symuluj atomowe update'y licznika przez poszczególne taski
-    # (w prawdziwym scenariuszu każdy task wywołuje StatusGenerowania.objects.update(...))
-    for result in results:
-        StatusGenerowania.objects.update(
+    # (każdy task wywołuje StatusGenerowania.objects.filter(uczelnia_id=...).update(...))
+    for _result in results:
+        StatusGenerowania.objects.filter(uczelnia_id=uczelnia.pk).update(
             liczba_przetworzonych=F("liczba_przetworzonych") + 1
         )
 
-    # Wywołaj callback
-    result = finalizuj_generowanie_metryk(results)
+    # Wywołaj callback z uczelnia_id (per-uczelnia scope)
+    result = finalizuj_generowanie_metryk(results, uczelnia_id=uczelnia.pk)
 
     # Sprawdź wynik - teraz używa liczba_przetworzonych z bazy (5 - wszystkie taski się zakończyły)
     assert result["success"] is True
@@ -216,7 +220,7 @@ def test_oblicz_metryki_dla_autora_task_inkrementuje_licznik():
 
 
 @pytest.mark.django_db
-def test_generuj_metryki_task_parallel_uruchamia_chord():
+def test_generuj_metryki_task_parallel_uruchamia_chord(uczelnia):
     """Test że równoległy task tworzy chord z taskami"""
     from unittest.mock import MagicMock
 
@@ -228,18 +232,19 @@ def test_generuj_metryki_task_parallel_uruchamia_chord():
         with patch(
             "ewaluacja_liczba_n.models.IloscUdzialowDlaAutoraZaCalosc"
         ) as mock_ilosc:
-            # Mock queryset chain: all() -> filter() -> values_list()
+            # Mock queryset chain: filter(uczelnia=...) -> filter(rodzaj_autora__skrot__in=...)
+            # -> values_list() — task używa .filter() zamiast .all() (per-uczelnia scope)
             mock_queryset = MagicMock()
             mock_queryset.filter.return_value = mock_queryset
             mock_queryset.values_list.return_value = [1, 2, 3]
-            mock_ilosc.objects.all.return_value = mock_queryset
+            mock_ilosc.objects.filter.return_value = mock_queryset
 
-            # Mock MetrykaAutora
+            # Mock MetrykaAutora — task używa .filter(uczelnia=...) zamiast .all()
             with patch(
                 "ewaluacja_metryki.tasks.MetrykaAutora", create=True
             ) as mock_metryka:
-                mock_metryka.objects.all.return_value.count.return_value = 0
-                mock_metryka.objects.all.return_value.delete.return_value = None
+                mock_metryka.objects.filter.return_value.count.return_value = 0
+                mock_metryka.objects.filter.return_value.delete.return_value = None
 
                 # Mock StatusGenerowania żeby nie zapisywał do bazy
                 with patch(

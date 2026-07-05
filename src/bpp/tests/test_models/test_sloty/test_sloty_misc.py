@@ -8,7 +8,7 @@ For cache tests, see test_sloty_cache.py
 
 import pytest
 
-from bpp.models import Rekord, Typ_KBN, Uczelnia
+from bpp.models import Rekord, Typ_KBN
 from bpp.models.sloty.core import ISlot
 from bpp.models.sloty.exceptions import CannotAdapt
 
@@ -90,9 +90,7 @@ def test_ISlot_ukryty_status_nie_licz_punktow(
     zwarte_z_dyscyplinami.status_korekty = przed_korekta
     zwarte_z_dyscyplinami.save()
 
-    Uczelnia.objects.get_default().ukryj_status_korekty_set.create(
-        status_korekty=przed_korekta
-    )
+    uczelnia.ukryj_status_korekty_set.create(status_korekty=przed_korekta)
 
     with pytest.raises(CannotAdapt):
         ISlot(zwarte_z_dyscyplinami)

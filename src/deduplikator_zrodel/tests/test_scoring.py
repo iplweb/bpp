@@ -27,6 +27,7 @@ from model_bakery import baker
 
 from bpp.models.zrodlo import Rodzaj_Zrodla, Zasieg_Zrodla, Zrodlo
 from deduplikator_zrodel.utils import ocen_podobienstwo
+from pbn_api.models import Journal
 
 
 @pytest.fixture
@@ -136,3 +137,63 @@ def test_score_jest_addytywny(rodzaj, zasieg):
     # 100 + 60 = 160 gwarantowane; identyczny skrót dorzuci +10
     assert score >= 160
     assert score <= 170
+
+
+@pytest.mark.django_db
+def test_to_samo_pbn_uid_daje_80(rodzaj, zasieg):
+    """Oba źródła wskazujące na ten sam pbn_api.Journal — +80."""
+    journal = baker.make(Journal)
+    a = _make_zrodlo(rodzaj, zasieg, nazwa="A", skrot="A", pbn_uid=journal)
+    b = _make_zrodlo(rodzaj, zasieg, nazwa="B", skrot="B", pbn_uid=journal)
+    assert ocen_podobienstwo(a, b) == 80
+
+
+@pytest.mark.django_db
+def test_rozne_pbn_uid_nie_daje_punktow(rodzaj, zasieg):
+    """Różne obiekty Journal — żadnych punktów za PBN UID."""
+    a = _make_zrodlo(rodzaj, zasieg, nazwa="A", skrot="A", pbn_uid=baker.make(Journal))
+    b = _make_zrodlo(rodzaj, zasieg, nazwa="B", skrot="B", pbn_uid=baker.make(Journal))
+    assert ocen_podobienstwo(a, b) == 0
+
+
+@pytest.mark.django_db
+def test_jeden_pbn_uid_brak_drugiego_nie_daje_punktow(rodzaj, zasieg):
+    """Gdy tylko jedno źródło ma pbn_uid — brak dopasowania PBN."""
+    a = _make_zrodlo(rodzaj, zasieg, nazwa="A", skrot="A", pbn_uid=baker.make(Journal))
+    b = _make_zrodlo(rodzaj, zasieg, nazwa="B", skrot="B")
+    assert ocen_podobienstwo(a, b) == 0
+
+
+@pytest.mark.django_db
+def test_pbn_plus_issn_addytywne(rodzaj, zasieg):
+    """ISSN (100) + PBN UID (80) = 180."""
+    journal = baker.make(Journal)
+    a = _make_zrodlo(
+        rodzaj, zasieg, nazwa="A", skrot="A", issn="1234-5678", pbn_uid=journal
+    )
+    b = _make_zrodlo(
+        rodzaj, zasieg, nazwa="B", skrot="B", issn="1234-5678", pbn_uid=journal
+    )
+    assert ocen_podobienstwo(a, b) == 180
+
+
+@pytest.mark.django_db
+def test_bardzo_podobna_nazwa_trigram_daje_punkty(rodzaj, zasieg):
+    """Nazwy różniące się jednym znakiem (różne po normalizacji, ale wysoki
+    trigram) trafiają do gałęzi trigramowej i dają dodatnie punkty (>0.7 → +20
+    lub >0.9 → +40)."""
+    a = _make_zrodlo(rodzaj, zasieg, nazwa="Acta Biochimica Polonica", skrot="zzz1")
+    b = _make_zrodlo(rodzaj, zasieg, nazwa="Acta Biochimica Polonicx", skrot="qqq2")
+    score = ocen_podobienstwo(a, b)
+    # Różne skróty (zzz1/qqq2) nie dorzucą nic; cały wynik pochodzi z trigramu
+    # nazwy. Pin: gałąź trigramowa daje 20 lub 40 (zależnie od progu).
+    assert score in (20, 40)
+
+
+@pytest.mark.django_db
+def test_niepodobna_nazwa_trigram_nie_daje_punktow(rodzaj, zasieg):
+    """Nazwy o niskim podobieństwie trigramowym (poniżej 0.7) nie dają
+    punktów za nazwę."""
+    a = _make_zrodlo(rodzaj, zasieg, nazwa="Acta Biochimica", skrot="zzz1")
+    b = _make_zrodlo(rodzaj, zasieg, nazwa="Zoologica Universalis", skrot="qqq2")
+    assert ocen_podobienstwo(a, b) == 0
