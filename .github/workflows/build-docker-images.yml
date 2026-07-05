@@ -85,10 +85,6 @@ on:
         description: Uruchom bramę Trivy CRITICAL przed promocją
         type: boolean
         default: true
-      tag_latest:
-        description: Czy ruszyć :latest (produkcja). Normalnie tylko promote.yml — zostaw false.
-        type: boolean
-        default: false
     secrets:
       DOCKER_PAT:
         required: true
@@ -100,8 +96,9 @@ concurrency:
 jobs:
   check-flag:
     # Guard job decyduje czy budowac obraz Docker.
-    # - master/main push:           buduj zawsze (release flow, dowolny actor)
-    # - workflow_dispatch:           buduj zawsze (manual override, dowolny actor)
+    # - workflow_call:               buduj zawsze (release-candidate.yml)
+    # - workflow_dispatch:           buduj zawsze (manual override, dowolny actor),
+    #                                 ale NIGDY nie ruszaj :latest
     # - PR push / feature push:      buduj tylko gdy:
     #                                 • actor=mpasternak
     #                                 • ORAZ commit message zawiera [docker-build]
@@ -164,13 +161,8 @@ jobs:
             fi
           fi
 
-          # Zawsze: master/main push (release) i workflow_dispatch (manual)
-          if [ "$EVENT_NAME" = "push" ] \
-             && { [ "$REF_NAME" = "master" ] || [ "$REF_NAME" = "main" ]; }; then
-            echo "should_build=true" >> "$GITHUB_OUTPUT"
-            echo "::notice::Docker build — push na ${REF_NAME} (release flow)"
-            exit 0
-          fi
+          # Zawsze: workflow_dispatch (manual). Takie buildy publikują tylko
+          # tag brancha/refa, nigdy produkcyjny :latest.
           if [ "$EVENT_NAME" = "workflow_dispatch" ]; then
             echo "should_build=true" >> "$GITHUB_OUTPUT"
             echo "::notice::Docker build — workflow_dispatch (manual override)"
@@ -262,7 +254,6 @@ jobs:
           PR_NUMBER: ${{ github.event.pull_request.number }}
           INPUT_VERSION_TAG: ${{ inputs.version_tag }}
           INPUT_CHANNEL: ${{ inputs.channel }}
-          INPUT_TAG_LATEST: ${{ inputs.tag_latest }}
         run: |
           # -----------------------------------------------------------------
           # Dwa-trzy rodzaje tagow dla kazdego obrazu (patrz naglowek pliku):
@@ -274,9 +265,9 @@ jobs:
           #
           # final_tag:   kanoniczny tag — tworzony DOPIERO po skanie przez
           #              promocje manifestu (imagetools create).
-          #              • master       → DOCKER_VERSION z Makefile (np. "2025.12.1")
+          #              • workflow_call→ version_tag z caller workflow
           #              • pull_request → "<PR#>-merge" (jesli jest PR)
-          #              • feature/fix  → sanitized branch name
+          #              • manual/branch→ sanitized ref name
           #
           # branch_tag:  DODATKOWY alias = sanityzowana nazwa source brancha.
           #              Ustawiany TYLKO dla pull_request eventow, zeby tester
@@ -284,9 +275,7 @@ jobs:
           #              zamiast pamietac numer PR. Dla feature/fix push
           #              brancha bez PR-a final_tag = branch_tag, wiec nie
           #              ma sensu duplikowac.
-          #
-          # tag_latest:  czy dodatkowo pushowac ":latest" po promocji
-          #              (tylko na master).
+          # Produkcyjny :latest jest ustawiany wyłącznie przez promote.yml.
           # -----------------------------------------------------------------
 
           SOURCE_SHA="${CHECKED_OUT_SHA:-$GIT_SHA}"
@@ -297,20 +286,13 @@ jobs:
           # Wywołanie reusable: tag i kanał z inputów (omija logikę ref-based).
           if [ -n "${INPUT_VERSION_TAG:-}" ]; then
             echo "final_tag=${INPUT_VERSION_TAG}" >> "$GITHUB_OUTPUT"
-            echo "tag_latest=${INPUT_TAG_LATEST}" >> "$GITHUB_OUTPUT"
             echo "channel_tag=${INPUT_CHANNEL}" >> "$GITHUB_OUTPUT"
             echo "branch_tag=" >> "$GITHUB_OUTPUT"
             exit 0
           fi
 
-          if [ "$REF_NAME" = "master" ]; then
-            echo "final_tag=${BASE_VERSION}" >> "$GITHUB_OUTPUT"
-            echo "tag_latest=true" >> "$GITHUB_OUTPUT"
-            echo "branch_tag=" >> "$GITHUB_OUTPUT"
-            echo "channel_tag=" >> "$GITHUB_OUTPUT"
-          elif [ "$EVENT_NAME" = "pull_request" ] && [ -n "$PR_NUMBER" ]; then
+          if [ "$EVENT_NAME" = "pull_request" ] && [ -n "$PR_NUMBER" ]; then
             echo "final_tag=${PR_NUMBER}-merge" >> "$GITHUB_OUTPUT"
-            echo "tag_latest=false" >> "$GITHUB_OUTPUT"
             BRANCH_TAG=$(echo "$HEAD_REF" \
               | sed 's/[^a-zA-Z0-9._-]/-/g' \
               | tr '[:upper:]' '[:lower:]')
@@ -321,7 +303,6 @@ jobs:
               | sed 's/[^a-zA-Z0-9._-]/-/g' \
               | tr '[:upper:]' '[:lower:]')
             echo "final_tag=${BRANCH_TAG}" >> "$GITHUB_OUTPUT"
-            echo "tag_latest=false" >> "$GITHUB_OUTPUT"
             echo "branch_tag=" >> "$GITHUB_OUTPUT"
             echo "channel_tag=" >> "$GITHUB_OUTPUT"
           fi
@@ -515,7 +496,6 @@ jobs:
         env:
           STAGING_TAG: ${{ steps.tag.outputs.staging_tag }}
           FINAL_TAG: ${{ steps.tag.outputs.final_tag }}
-          TAG_LATEST: ${{ steps.tag.outputs.tag_latest }}
           # Alias-tag dla source brancha PR-a (pusty dla master/non-PR);
           # patrz komentarz w stepie "Compute Docker tags".
           BRANCH_TAG: ${{ steps.tag.outputs.branch_tag }}
@@ -531,20 +511,13 @@ jobs:
             iplweb/bpp_denorm_queue
           )
 
-          echo "::notice::Promocja: ${STAGING_TAG} → ${FINAL_TAG} (latest=${TAG_LATEST}, branch=${BRANCH_TAG:-})"
+          echo "::notice::Promocja: ${STAGING_TAG} → ${FINAL_TAG} (branch=${BRANCH_TAG:-})"
 
           for img in "${images[@]}"; do
             echo "::group::Promote ${img}: ${STAGING_TAG} → ${FINAL_TAG}"
             docker buildx imagetools create \
               -t "${img}:${FINAL_TAG}" \
               "${img}:${STAGING_TAG}"
-
-            if [ "$TAG_LATEST" = "true" ]; then
-              echo "→ also tagging :latest"
-              docker buildx imagetools create \
-                -t "${img}:latest" \
-                "${img}:${STAGING_TAG}"
-            fi
 
             # Kanał deployu (np. :staging) — ruchomy alias na ten sam digest.
             if [ -n "${CHANNEL_TAG:-}" ]; then
@@ -570,9 +543,6 @@ jobs:
             echo ""
             echo "Staging tag: \`${STAGING_TAG}\`"
             echo "Final tag:   \`${FINAL_TAG}\`"
-            if [ "$TAG_LATEST" = "true" ]; then
-              echo "Also:        \`:latest\`"
-            fi
             if [ -n "${BRANCH_TAG:-}" ] && [ "$BRANCH_TAG" != "$FINAL_TAG" ]; then
               echo "Branch alias: \`:${BRANCH_TAG}\`"
             fi

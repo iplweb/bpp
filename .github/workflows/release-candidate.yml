@@ -179,7 +179,6 @@ jobs:
       ref: ${{ needs.prepare.outputs.release_ref }}
       version_tag: ${{ needs.prepare.outputs.version_tag }}
       channel: staging
-      run_trivy: true
-      tag_latest: false
+      run_trivy: ${{ !inputs.skip_scan }}
     secrets:
       DOCKER_PAT: ${{ secrets.DOCKER_PAT }}

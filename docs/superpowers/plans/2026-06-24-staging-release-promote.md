@@ -37,7 +37,7 @@
 - Modify: `.github/workflows/build-docker-images.yml` (`on:` blok ~63-74; `check-flag` ~107-115; `docker` checkout ~201-202; `Compute Docker tags` ~208-269; `Trivy` ~323-324, ~391; `Promote` ~453-496)
 
 **Interfaces:**
-- Produces (workflow_call): inputs `ref:string`, `version_tag:string`, `channel:string=""`, `run_trivy:boolean=true`, `tag_latest:boolean=false`. Buduje 6 obrazów, promuje `sha-<sha>` → `:<version_tag>` (+ `:<channel>` jeśli podany, + `:latest` jeśli `tag_latest`).
+- Produces (workflow_call): inputs `ref:string`, `version_tag:string`, `channel:string=""`, `run_trivy:boolean=true`. Buduje 6 obrazów, promuje `sha-<sha>` → `:<version_tag>` (+ `:<channel>` jeśli podany). Produkcyjny `:latest` rusza wyłącznie przez `promote.yml`.
 
 - [ ] **Step 1: Zamień blok `on:` — usuń push:master, dodaj workflow_call**
 
@@ -68,10 +68,6 @@ on:
         description: Uruchom bramę Trivy CRITICAL przed promocją
         type: boolean
         default: true
-      tag_latest:
-        description: Czy ruszyć :latest (produkcja). Normalnie tylko promote.yml — zostaw false.
-        type: boolean
-        default: false
 ```
 
 - [ ] **Step 2: `check-flag` — zawsze buduj gdy wywołane przez workflow_call**
@@ -113,7 +109,6 @@ W stepie `Compute Docker tags (staging + final)` dodaj do `env:` (po `PR_NUMBER:
 ```yaml
           INPUT_VERSION_TAG: ${{ inputs.version_tag }}
           INPUT_CHANNEL: ${{ inputs.channel }}
-          INPUT_TAG_LATEST: ${{ inputs.tag_latest }}
 ```
 
 W skrypcie, zaraz po wyliczeniu `STAGING_TAG` i jego echo (po linii `echo "staging_tag=${STAGING_TAG}" >> "$GITHUB_OUTPUT"`), wstaw gałąź workflow_call:
@@ -122,20 +117,17 @@ W skrypcie, zaraz po wyliczeniu `STAGING_TAG` i jego echo (po linii `echo "stagi
           # Wywołanie reusable: tag i kanał z inputów (omija logikę ref-based).
           if [ -n "${INPUT_VERSION_TAG:-}" ]; then
             echo "final_tag=${INPUT_VERSION_TAG}" >> "$GITHUB_OUTPUT"
-            echo "tag_latest=${INPUT_TAG_LATEST}" >> "$GITHUB_OUTPUT"
             echo "channel_tag=${INPUT_CHANNEL}" >> "$GITHUB_OUTPUT"
             echo "branch_tag=" >> "$GITHUB_OUTPUT"
             exit 0
           fi
 ```
 
-W każdej z 3 istniejących gałęzi ref-based (`master` / `pull_request` / `else`) dodaj pustą linię outputu kanału, żeby step zawsze ją ustawiał. W każdej dopisz:
+W każdej z gałęzi ref-based (`pull_request` / `else`) dodaj pustą linię outputu kanału, żeby step zawsze ją ustawiał. W każdej dopisz:
 
 ```bash
             echo "channel_tag=" >> "$GITHUB_OUTPUT"
 ```
-
-(np. w gałęzi `master` obok `echo "branch_tag=" >> "$GITHUB_OUTPUT"`; analogicznie w pozostałych dwóch.)
 
 - [ ] **Step 5: Trivy — brama sterowana inputem**
 
@@ -155,7 +147,7 @@ W stepie `Promote staging tag to canonical tag(s)` dodaj do `env:` (po `BRANCH_T
           CHANNEL_TAG: ${{ steps.tag.outputs.channel_tag }}
 ```
 
-W pętli `for img`, zaraz po bloku `if [ "$TAG_LATEST" = "true" ]; then ... fi` (po `:latest`), wstaw:
+W pętli `for img`, zaraz po promocji `FINAL_TAG`, wstaw:
 
 ```bash
             # Kanał deployu (np. :staging) — ruchomy alias na ten sam digest.
@@ -349,8 +341,7 @@ jobs:
       ref: ${{ needs.prepare.outputs.release_ref }}
       version_tag: ${{ needs.prepare.outputs.version_tag }}
       channel: staging
-      run_trivy: true
-      tag_latest: false
+      run_trivy: ${{ !inputs.skip_scan }}
     secrets: inherit
 ```
 
@@ -718,7 +709,7 @@ Expected: **identyczny digest** (te same bajty co staging).
 
 **Type/nazwa consistency:**
 - Outputy `prepare`: `version_tag`, `release_ref` ↔ użyte w `build.with` (Task 2). ✓
-- `inputs` silnika: `ref/version_tag/channel/run_trivy/tag_latest` ↔ `build.with` (Task 2) + obsługa w Task 1 (steps 1,4,5,6). ✓
+- `inputs` silnika: `ref/version_tag/channel/run_trivy` ↔ `build.with` (Task 2) + obsługa w Task 1 (steps 1,4,5,6). ✓
 - `steps.detect.outputs`: `release_ref/base/rc_tag` ↔ użyte w kolejnych stepach promote (Task 3). ✓
 - Docker-tag pep440 (`./bin/bpp-version.py`) konsekwentnie jako źródło RC (Task 2 bump, Task 3 detect). ✓
 ```
