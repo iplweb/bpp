@@ -40,6 +40,7 @@ class TranslationResult:
     usage: dict = field(default_factory=dict)
     attempts: int = 0
     retried: bool = False
+    budget_blocked: bool = False
 
 
 def validate_query(query: str, model_key: str):
@@ -86,16 +87,31 @@ def _accumulate(total: dict, part: dict):
         total[k] = total.get(k, 0) + v
 
 
-def translate(pytanie: str, model_key: str) -> TranslationResult:
+def translate(pytanie: str, model_key: str, budget_check=None) -> TranslationResult:
     """NL (polski) -> DjangoQL. Waliduje i, przy błędzie składni, zwraca do
-    modelu konkretny komunikat DjangoQL (linia/kolumna) i ponawia — bounded."""
+    modelu konkretny komunikat DjangoQL (linia/kolumna) i ponawia — bounded.
+
+    ``budget_check`` (opcjonalnie) to callable bez argumentów zwracający
+    obiekt z atrybutami ``.ok``/``.reason`` (np. ``budget.check_budget``).
+    Jest sprawdzany na POCZĄTKU każdej iteracji pętli — także przed każdym
+    retry — żeby budżet wyczerpany W TRAKCIE bounded-retry przerwał dalsze
+    (płatne) wywołania modelu."""
     system = prompts.build_system(schema_export.schema_for_llm(model_key), model_key)
-    max_retries = settings.BPP_AI_MAX_RETRIES
+    # cap 2 per spec (domyślnie 1, ale niezależnie od ustawienia max. 2 retry)
+    max_retries = min(settings.BPP_AI_MAX_RETRIES, 2)
     total_usage: dict = {}
     result = TranslationResult()
     content = pytanie
 
     for attempt in range(max_retries + 1):
+        if budget_check is not None:
+            status = budget_check()
+            if not status.ok:
+                result.budget_blocked = True
+                result.error = status.reason
+                result.query = None
+                return result
+
         result.attempts = attempt + 1
         resp = _call_model(system, [{"role": "user", "content": content}])
         _accumulate(total_usage, _extract_usage(resp))

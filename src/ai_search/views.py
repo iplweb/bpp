@@ -40,7 +40,9 @@ class ZapytanieAIView(WprowadzanieDanychOrSuperuserMixin, FormView):
             )
 
         try:
-            result = translator.translate(pytanie, model_key)
+            result = translator.translate(
+                pytanie, model_key, budget_check=budget.check_budget
+            )
         except Exception:  # błędy SDK/sieci — log + generyczny komunikat
             rollbar.report_exc_info()
             logger.exception("Błąd tłumaczenia AI")
@@ -54,6 +56,15 @@ class ZapytanieAIView(WprowadzanieDanychOrSuperuserMixin, FormView):
 
         self._log(result, model_key, pytanie)
 
+        if result.budget_blocked:
+            # Budżet wyczerpał się W TRAKCIE bounded-retry, po co najmniej
+            # jednej płatnej próbie — w odróżnieniu od pre-checku wyżej
+            # (tam: brak wywołania, brak logu), tu koszt już poniesiony
+            # jest zalogowany przez self._log() powyżej.
+            return self.render_to_response(
+                self.get_context_data(form=form, blad=result.error)
+            )
+
         if result.query:
             self.request.session["ai_search_last_question"] = pytanie
             params = urlencode({"model": model_key, "query": result.query})
@@ -63,7 +74,6 @@ class ZapytanieAIView(WprowadzanieDanychOrSuperuserMixin, FormView):
             self.get_context_data(
                 form=form,
                 blad=result.error or "Nie udało się przetłumaczyć pytania.",
-                wygenerowany_query=result.query,
             )
         )
 

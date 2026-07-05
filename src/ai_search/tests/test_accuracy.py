@@ -1,9 +1,10 @@
 """Smoke-test dokładności tłumaczenia NL->DjangoQL na realnym modelu.
 
-Wymaga ``ANTHROPIC_API_KEY`` (realne wywołanie SDK, koszt + czas sieciowy) —
-pomijany domyślnie i wykluczony z CI (patrz ``[tool.pytest.ini_options]``
-w pyproject.toml, `norecursedirs`/`addopts` albo dedykowany marker, jeśli CI
-selekcjonuje po ścieżkach).
+Wymaga ``ANTHROPIC_API_KEY`` (realne wywołanie SDK, koszt + czas sieciowy).
+Nie ma żadnego strukturalnego wykluczenia z CI po ścieżce/markerze —
+pomijany jest wyłącznie przez ``pytestmark = pytest.mark.skipif(not
+ANTHROPIC, ...)`` poniżej: gdy zmienna środowiskowa jest ustawiona (np.
+lokalnie albo w dedykowanym jobie CI z sekretem), test się wykona.
 
 Docelowo 30-50 par pytanie->fragment DSL; tu smoke set (kilka
 reprezentatywnych przypadków) — pełny zestaw accuracy wymaga ręcznej

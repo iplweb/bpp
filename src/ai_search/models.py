@@ -46,7 +46,7 @@ class FxRate(models.Model):
     fetched_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        ordering = ("-fetched_at",)
+        ordering = ("-fetched_at", "-id")
 
     @classmethod
     def latest(cls):

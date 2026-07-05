@@ -67,6 +67,36 @@ def test_post_blocked_by_budget(staff_client, settings):
 
 
 @pytest.mark.django_db
+def test_post_budget_blocked_mid_retry_logs_cost_and_renders_message(
+    staff_client, settings
+):
+    """Blok budżetu W TRAKCIE retry (po >=1 płatnej próbie) — w odróżnieniu
+    od pre-checku (test_post_blocked_by_budget) — loguje poniesiony koszt
+    i renderuje komunikat budżetowy."""
+    settings.BPP_AI_SEARCH_ENABLED = True
+    res = translator.TranslationResult(
+        query=None,
+        error="Dzienny limit kosztów AI został osiągnięty.",
+        usage={"input_tokens": 10, "output_tokens": 5},
+        attempts=1,
+        budget_blocked=True,
+    )
+    with (
+        mock.patch("ai_search.views.translator.translate", return_value=res),
+        mock.patch("ai_search.views.fx.usd_to_pln_rate", return_value=Decimal("4.1")),
+    ):
+        r = staff_client.post(
+            reverse("ai_search:index"),
+            {"model": "rekord", "pytanie": "cokolwiek"},
+        )
+    assert r.status_code == 200
+    assert "limit" in r.content.decode().lower()
+    log = AISearchQuery.objects.get()
+    assert log.success is False
+    assert log.cost_pln > 0
+
+
+@pytest.mark.django_db
 def test_post_translate_raises_shows_friendly_error(staff_client, settings):
     settings.BPP_AI_SEARCH_ENABLED = True
     with (

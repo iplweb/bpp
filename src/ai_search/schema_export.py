@@ -1,13 +1,9 @@
-import logging
-
 from django.conf import settings
 from django.core.cache import cache
 from djangoql.llm import describe_schema_for_llm
 
 from bpp.djangoql_schema import BppQLSchema
 from bpp.views.zapytanie import MODELS
-
-logger = logging.getLogger(__name__)
 
 
 def _cache_key(model_key: str) -> str:
