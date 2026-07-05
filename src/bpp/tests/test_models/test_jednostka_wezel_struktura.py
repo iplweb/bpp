@@ -1,10 +1,12 @@
-"""Faza B (#438), III-2: metody węzła strukturalnego browse na ``Jednostka``.
+"""Faza B (#438): metody węzła strukturalnego browse na ``Jednostka``.
 
 Zastępują dawne ``Wydzial.jednostki/aktualne_jednostki/kola_naukowe/
-historyczne_jednostki`` (patrz ``test_wydzial.py``) -- ale działają na
-WĘŹLE (bezpośrednie dzieci przez ``get_children()``/``Jednostka_Rodzic``
-z ``parent=self``), a nie przez denorm ``legacy_wydzial_id`` obejmujący
-całe poddrzewo wydziału.
+historyczne_jednostki`` (patrz ``test_wydzial.py``) i -- po naprawie regresji
+III-2 -- odwzorowują ich SEMANTYKĘ PODDRZEWA: wierny port operuje na denorm
+``wydzial`` (self-FK do KORZENIA drzewa) oraz na metryczce ``Jednostka_Rodzic``
+z rodzicem w poddrzewie, więc obejmuje potomków GŁĘBSZYCH niż bezpośrednie
+dzieci (wnuki, prawnuki itd.). III-2 zwężał to omyłkowo do ``get_children()``
+(tylko bezpośrednie dzieci) -> pusta strona wydziału.
 """
 
 from datetime import timedelta
@@ -99,11 +101,14 @@ def test_Jednostka_wymaga_nawigacji_prawdziwe_gdy_dwie_kategorie(wezel, uczelnia
 
 
 @pytest.mark.django_db
-def test_Jednostka_historyczne_podjednostki_nie_liczy_wnukow(
+def test_Jednostka_historyczne_podjednostki_liczy_wnukow_z_poddrzewa(
     wezel, uczelnia, yesterday
 ):
-    """Historyczne podjednostki to WYŁĄCZNIE bezpośrednie dzieci węzła --
-    metryczka wnuka (dziecko dziecka) nie powinna być tu widoczna."""
+    """SEMANTYKA PODDRZEWA (naprawa regresji III-2): historyczna metryczka
+    WNUKA (dziecko dziecka) -- którego rodzic leży w poddrzewie węzła --
+    JEST widoczna w ``historyczne_podjednostki`` węzła-korzenia. Dawniej
+    (get_children) wnuk był tu pominięty -> strona wydziału gubiła historię
+    z głębszych poziomów."""
     dziecko = _dziecko(wezel, uczelnia, aktualna=True, widoczna=True)
     wnuk = any_jednostka(
         uczelnia=uczelnia, wydzial=None, parent=dziecko, aktualna=False, widoczna=True
@@ -115,4 +120,19 @@ def test_Jednostka_historyczne_podjednostki_nie_liczy_wnukow(
         do=yesterday - timedelta(days=5),
     )
 
-    assert wnuk not in wezel.historyczne_podjednostki()
+    assert wnuk in wezel.historyczne_podjednostki()
+
+
+@pytest.mark.django_db
+def test_Jednostka_aktualne_podjednostki_liczy_cale_poddrzewo(wezel, uczelnia):
+    """Głęboka struktura (wydział -> instytut -> katedra): strona wydziału
+    (węzeł-korzeń) pokazuje WSZYSTKIE aktualne, widoczne jednostki potomne,
+    nie tylko bezpośrednie dzieci. To sedno naprawy issue 1 (#438)."""
+    instytut = _dziecko(wezel, uczelnia, aktualna=True, widoczna=True)
+    katedra = any_jednostka(
+        uczelnia=uczelnia, wydzial=None, parent=instytut, aktualna=True, widoczna=True
+    )
+
+    aktualne = wezel.aktualne_podjednostki()
+    assert instytut in aktualne
+    assert katedra in aktualne

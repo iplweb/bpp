@@ -6,7 +6,7 @@ from django.contrib.contenttypes.models import ContentType
 from django.db.models import Count, F, IntegerField, Max, Q
 from django.db.models.functions import Cast
 
-from bpp.models import BppUser, Wydawnictwo_Zwarte
+from bpp.models import BppUser, Uczelnia, Wydawnictwo_Zwarte
 from bpp.models.struktura import Jednostka
 
 
@@ -215,6 +215,64 @@ class MaPublikacjeFilter(SimpleListFilter):
 class CalkowitaLiczbaAutorowFilter(SimpleIntegerFilter):
     title = "całkowita liczba autorów"
     parameter_name = "calkowita_liczba_autorow"
+
+
+class WydzialFilter(SimpleListFilter):
+    """Filtr changelisty JednostkaAdmin po „wydziale" (Faza B, #438).
+
+    Zastępuje goły ``list_filter = ("wydzial", ...)``, który generował
+    dropdown ze WSZYSTKIMI jednostkami (denorm ``wydzial`` jest self-FK do
+    dowolnego węzła-korzenia). Tu:
+
+    * opcje to WYŁĄCZNIE jednostki-korzenie (``parent IS NULL``) -- czyli
+      dawne „wydziały" po konsolidacji (w multi-hosted zawężone do uczelni z
+      requestu, spójnie z ``SiteFilteredAdminMixin``; superuser widzi wszystkie);
+    * wybór filtruje CAŁE PODDRZEWO korzenia
+      (``Q(wydzial_id=v) | Q(pk=v)`` -- potomkowie niosą ``wydzial=korzeń``,
+      a ``| Q(pk=v)`` dokłada sam korzeń, wzorzec unii z reszty Fazy B);
+    * filtr jest UKRYTY, gdy uczelnia nie używa wydziałów
+      (``uzywaj_wydzialow=False``).
+    """
+
+    title = "Wydział"
+    parameter_name = "wydzial"
+
+    def __init__(self, request, params, model, model_admin):
+        # SimpleListFilter.__init__ nie zapisuje ``request`` -- potrzebujemy go
+        # w ``has_output`` (bramka ``uzywaj_wydzialow``), więc trzymamy go sami.
+        self.request = request
+        super().__init__(request, params, model, model_admin)
+
+    def _uczelnia(self):
+        return Uczelnia.objects.get_for_request(self.request)
+
+    def has_output(self):
+        # Ukryj filtr, gdy instytucja jest 1-progowa (nie używa wydziałów).
+        # ``get_for_request`` degraduje do jedynej-albo-None (nie rzuca) --
+        # gdy nie da się ustalić uczelni, nie ukrywamy (zachowanie domyślne).
+        uczelnia = self._uczelnia()
+        if uczelnia is not None and not uczelnia.uzywaj_wydzialow:
+            return False
+        return super().has_output()
+
+    def lookups(self, request, model_admin):
+        qs = Jednostka.objects.filter(parent__isnull=True, widoczna=True)
+        # Multi-hosted: zwykły admin widzi tylko korzenie swojej uczelni
+        # (parytet z SiteFilteredAdminMixin.get_queryset); superuser -- wszystkie.
+        if not request.user.is_superuser:
+            uczelnia = getattr(request, "_uczelnia", None)
+            if uczelnia is not None:
+                qs = qs.filter(uczelnia=uczelnia)
+        return [
+            (j.pk, str(j))
+            for j in qs.order_by(*Jednostka.objects.get_default_ordering())
+        ]
+
+    def queryset(self, request, queryset):
+        v = self.value()
+        if v:
+            return queryset.filter(Q(wydzial_id=v) | Q(pk=v))
+        return queryset
 
 
 class JednostkaFilter(SimpleListFilter):

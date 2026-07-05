@@ -2,6 +2,15 @@
 {# Patrz JednostkaNadrzednaFilter w bpp/admin/filters.py (#438 Faza B, III-3a). #}
 {# Renderowany przez change_list.html wewnątrz .filter-group / .filter-options #}
 {# (nagłówek "Jednostka nadrzędna" rysuje już change_list.html - tu tylko widget). #}
+<style>
+  {# Select2 w panelu filtrów admina: dropdown musi wyskoczyć PONAD changelist #}
+  {# i NIE być przycięty przez wąski sidebar filtrów (#changelist-filter). #}
+  #changelist-filter .jednostka-nadrzedna-filter { overflow: visible; }
+  #changelist-filter li:has(.jednostka-nadrzedna-filter) { overflow: visible; }
+  .jednostka-nadrzedna-filter .select2-container { width: 100% !important; }
+  .select2-container--open { z-index: 1100 !important; }
+  .select2-container--open .select2-dropdown { z-index: 1100 !important; }
+</style>
 <div class="jednostka-nadrzedna-filter">
   {{ spec.media }}
   <form method="get" id="jednostka-nadrzedna-filter-form">

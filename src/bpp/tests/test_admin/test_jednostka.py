@@ -5,6 +5,7 @@ from django.db import ProgrammingError
 from django.urls import reverse
 
 from bpp.admin.core import BaseBppAdminMixin
+from bpp.admin.filters import WydzialFilter
 from bpp.admin.jednostka import JednostkaAdmin
 from bpp.models import Jednostka, Uczelnia
 
@@ -65,6 +66,84 @@ def test_JednostkaAdmin_list_filter_parent_zawęża_do_dzieci(
     assert jednostka_podrzedna in result_list
     assert jednostka not in result_list
     assert druga_jednostka not in result_list
+
+
+def test_JednostkaAdmin_WydzialFilter_filtruje_poddrzewo(
+    admin_client, jednostka: Jednostka, jednostka_podrzedna: Jednostka, druga_jednostka
+):
+    # WydzialFilter (#438 issue 2): wybór korzenia zawęża do CAŁEGO poddrzewa
+    # (korzeń + wszyscy potomkowie przez denorm ``wydzial``), nie tylko
+    # bezpośrednich dzieci. ``jednostka_podrzedna`` to WNUK korzenia
+    # (parent=jednostka, jednostka.parent=korzeń) -- musi trafić do wyniku.
+    root = jednostka.parent  # węzeł-lustro wydziału (korzeń drzewa MPTT)
+    response = admin_client.get(
+        reverse("admin:bpp_jednostka_changelist"), {"wydzial": root.pk}
+    )
+    assert response.status_code == 200
+
+    result_list = list(response.context["cl"].result_list)
+    assert jednostka in result_list  # bezpośrednie dziecko korzenia
+    assert jednostka_podrzedna in result_list  # wnuk korzenia (poddrzewo)
+    assert druga_jednostka in result_list  # inne dziecko korzenia
+    assert root in result_list  # sam korzeń (| Q(pk=v))
+
+
+def test_JednostkaAdmin_WydzialFilter_opcje_tylko_korzenie(
+    rf, admin_user, jednostka: Jednostka, jednostka_podrzedna: Jednostka
+):
+    # Opcje filtra to WYŁĄCZNIE jednostki-korzenie (parent IS NULL), a nie
+    # cała lista jednostek (denorm ``wydzial`` self-FK celuje w dowolny węzeł).
+    request = rf.get(reverse("admin:bpp_jednostka_changelist"))
+    request.user = admin_user
+    ma = JednostkaAdmin(Jednostka, admin.site)
+    flt = WydzialFilter(request, {}, Jednostka, ma)
+
+    lookup_pks = {pk for pk, _ in flt.lookups(request, ma)}
+    root = jednostka.parent
+    assert root.pk in lookup_pks
+    assert jednostka.pk not in lookup_pks  # dziecko -- nie korzeń
+    assert jednostka_podrzedna.pk not in lookup_pks  # wnuk -- nie korzeń
+
+
+def test_JednostkaAdmin_WydzialFilter_ukryty_gdy_uczelnia_bez_wydzialow(
+    admin_client, uczelnia: Uczelnia, jednostka: Jednostka
+):
+    # Filtr ukrywa się (``has_output`` False), gdy uczelnia jest 1-progowa.
+    uczelnia.uzywaj_wydzialow = False
+    uczelnia.save()
+    response = admin_client.get(reverse("admin:bpp_jednostka_changelist"))
+    assert response.status_code == 200
+    assert not any(
+        isinstance(spec, WydzialFilter) for spec in response.context["cl"].filter_specs
+    )
+
+
+def test_JednostkaAdmin_WydzialFilter_widoczny_gdy_uczelnia_z_wydzialami(
+    admin_client, uczelnia: Uczelnia, jednostka: Jednostka
+):
+    uczelnia.uzywaj_wydzialow = True
+    uczelnia.save()
+    response = admin_client.get(reverse("admin:bpp_jednostka_changelist"))
+    assert response.status_code == 200
+    assert any(
+        isinstance(spec, WydzialFilter) for spec in response.context["cl"].filter_specs
+    )
+
+
+def test_JednostkaAdmin_formularz_pokazuje_podjednostki(
+    admin_client, jednostka: Jednostka, jednostka_podrzedna: Jednostka
+):
+    # Issue 4 (#438): formularz zmiany jednostki renderuje inline z
+    # jednostkami podrzędnymi (bezpośrednie dzieci) -- i nie wybucha na
+    # self-FK inline. ``jednostka_podrzedna`` ma ``parent=jednostka``.
+    response = admin_client.get(
+        reverse("admin:bpp_jednostka_change", args=(jednostka.pk,))
+    )
+    assert response.status_code == 200
+
+    content = response.content.decode()
+    assert "jednostki podrzędne" in content.lower()
+    assert jednostka_podrzedna.nazwa in content
 
 
 def test_JednostkaNadrzednaFilter_widget_i_media_w_changeliście(admin_client):

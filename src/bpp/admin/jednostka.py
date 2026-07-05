@@ -2,6 +2,7 @@ import sys
 
 from django import forms
 from django.contrib import admin
+from django.urls import reverse
 from django.utils.html import format_html
 from import_export.admin import ImportMixin
 from mptt.admin import DraggableMPTTAdmin
@@ -11,7 +12,7 @@ from bpp.models import Autor_Jednostka, Uczelnia
 
 from ..models.struktura import Jednostka, Jednostka_Rodzic
 from .core import BaseBppAdminMixin, RestrictDeletionToAdministracjaGroupMixin
-from .filters import JednostkaNadrzednaFilter, PBN_UID_IDObecnyFilter
+from .filters import JednostkaNadrzednaFilter, PBN_UID_IDObecnyFilter, WydzialFilter
 from .helpers import LimitingFormset
 from .helpers.fieldsets import ADNOTACJE_FIELDSET
 from .helpers.mixins import ZapiszZAdnotacjaMixin
@@ -27,6 +28,40 @@ class Jednostka_RodzicInline(admin.TabularInline):
     # JednostkaAdmin musi jawnie wskazać po którym się wiąże.
     fk_name = "jednostka"
     extra = 1
+
+
+class PodjednostkiInline(admin.TabularInline):
+    """Read-only lista jednostek PODRZĘDNYCH (bezpośrednich dzieci, ``parent=
+    self``) w formularzu JednostkaAdmin -- pokazywana NAD inlinem
+    autor-jednostka (Faza B, #438, issue 4).
+
+    W adminie edytujemy jeden poziom drzewa naraz, więc pokazujemy tylko
+    bezpośrednie dzieci (nie całe poddrzewo). Inline jest wyłącznie do
+    podglądu: bez dodawania/kasowania, pola tylko-do-odczytu, z linkiem do
+    formularza zmiany każdej podjednostki. ``fk_name`` jawnie wskazuje
+    self-FK ``parent`` (Jednostka ma DWA odwołania do samej siebie:
+    ``parent`` w drzewie i denorm ``wydzial``)."""
+
+    model = Jednostka
+    fk_name = "parent"
+    extra = 0
+    can_delete = False
+    show_change_link = True
+    verbose_name = "jednostka podrzędna"
+    verbose_name_plural = "jednostki podrzędne (bezpośrednie)"
+    fields = ("nazwa_link", "skrot", "rodzaj", "aktualna", "widoczna")
+    readonly_fields = ("nazwa_link", "skrot", "rodzaj", "aktualna", "widoczna")
+
+    def has_add_permission(self, request, obj=None):
+        return False
+
+    def nazwa_link(self, instance):
+        if instance.pk is None:
+            return ""
+        url = reverse("admin:bpp_jednostka_change", args=(instance.pk,))
+        return format_html('<a href="{}">{}</a>', url, instance.nazwa)
+
+    nazwa_link.short_description = "Nazwa jednostki"
 
 
 class Autor_JednostkaForm(forms.ModelForm):
@@ -99,7 +134,7 @@ class JednostkaAdmin(
     ]
     fields = None
     list_filter = (
-        "wydzial",
+        WydzialFilter,
         JednostkaNadrzednaFilter,
         "widoczna",
         "wchodzi_do_rankingu_autorow",
@@ -113,6 +148,7 @@ class JednostkaAdmin(
 
     inlines = (
         Jednostka_RodzicInline,
+        PodjednostkiInline,
         Autor_JednostkaInline,
     )
 

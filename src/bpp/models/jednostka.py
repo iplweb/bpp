@@ -376,42 +376,87 @@ class Jednostka(ModelZAdnotacjami, ModelZPBN_ID, ModelZPBN_UID, MPTTModel):
     # Metody węzła dla strukturalnego stylu browse (Faza B, III-2, #438).
     #
     # Zastępują dawne ``Wydzial.jednostki/aktualne_jednostki/kola_naukowe/
-    # historyczne_jednostki`` (models/wydzial.py) -- ale działają na WĘŹLE
-    # (``self``, bezpośrednie dzieci), a nie przez denorm ``legacy_wydzial_id``
-    # obejmujący całe poddrzewo. Używane przez ``JednostkaView`` w stylu
-    # strukturalnym (``self.rodzaj.pokazuj_strukture_podjednostek``), czyli
-    # dawnej stronie wydziału.
+    # historyczne_jednostki`` (models/wydzial.py). Używane przez
+    # ``JednostkaView`` w stylu strukturalnym
+    # (``self.rodzaj.pokazuj_strukture_podjednostek``), czyli dawnej stronie
+    # wydziału.
+    #
+    # SEMANTYKA PODDRZEWA (regresja III-2 naprawiona): dawne metody ``Wydzial``
+    # pokazywały CAŁE poddrzewo wydziału przez denorm FK
+    # (``wydzial__legacy_wydzial_id=<wydzial.pk>``). III-2 zwęził to omyłkowo do
+    # ``self.get_children()`` (TYLKO bezpośrednie dzieci MPTT) -> strona
+    # wydziału stawała się pusta, gdy jednostki wisiały głębiej (wydział ->
+    # instytut -> katedra). Przywracamy poddrzewo: ``wydzial`` to zdenorm.
+    # self-FK do KORZENIA drzewa, więc każdy potomek (dziecko, wnuk, ...) niesie
+    # ``wydzial=<korzeń>``. Podmiana odwzorowuje dawne metody 1:1:
+    # ``wydzial__legacy_wydzial_id=self.pk`` (self=Wydzial) ->
+    # ``wydzial=self`` (self=węzeł-korzeń); ``parent__legacy_wydzial_id=self.pk``
+    # (rodzic historycznej metryczki był lustrem wydziału) -> rodzic w poddrzewie
+    # (``parent=self`` dla korzenia LUB ``parent__wydzial=self`` dla potomka).
     #
 
     def aktualne_podjednostki(self):
-        """Bezpośrednie, aktualne, widoczne dzieci węzła -- bez jednostek
-        oznaczonych jako odrębna sekcja (np. koła naukowe)."""
+        """Aktualne, widoczne jednostki z PODDRZEWA tego węzła -- bez jednostek
+        oznaczonych jako odrębna sekcja (np. koła naukowe).
+
+        Wierny port dawnej ``Wydzial.aktualne_jednostki``: ``wydzial=self``
+        obejmuje cały poddrzew (wnuki, prawnuki, ...), nie tylko bezpośrednie
+        dzieci -- ``rodzaj__nazwa="Koło naukowe"`` zamieniono na flagę
+        ``rodzaj__pokazuj_jako_odrebna_sekcje`` (spójność Fazy B)."""
         return (
-            self.get_children()
-            .filter(widoczna=True, aktualna=True)
+            Jednostka.objects.filter(wydzial=self, widoczna=True)
             .exclude(rodzaj__pokazuj_jako_odrebna_sekcje=True)
+            .exclude(aktualna=False)
             .order_by(*Jednostka.objects.get_default_ordering())
         )
 
     def kola_naukowe(self):
-        """Bezpośrednie dzieci węzła oznaczone jako odrębna sekcja (np. koła
-        naukowe) -- pokazywane osobno od zwykłych podjednostek."""
+        """Koła naukowe (rodzaj z flagą ``pokazuj_jako_odrebna_sekcje``) z
+        PODDRZEWA węzła -- pokazywane osobno od zwykłych podjednostek.
+
+        Wierny port dawnej ``Wydzial.kola_naukowe``: aktualne przez denorm
+        ``wydzial=self``, historyczne (odłączone od drzewa, ``wydzial=None``)
+        przez wciąż-ważną metryczkę ``Jednostka_Rodzic`` z rodzicem w
+        poddrzewie. ``rodzaj__nazwa="Koło naukowe"`` -> flaga
+        ``pokazuj_jako_odrebna_sekcje``; ``parent__legacy_wydzial_id`` ->
+        poddrzewo (``parent=self`` LUB ``parent__wydzial=self``)."""
+        today = timezone.now().date()
+
         return (
-            self.get_children()
-            .filter(rodzaj__pokazuj_jako_odrebna_sekcje=True, widoczna=True)
+            Jednostka.objects.filter(rodzaj__pokazuj_jako_odrebna_sekcje=True)
+            .filter(
+                Q(wydzial=self, aktualna=True, widoczna=True)
+                | Q(
+                    wydzial=None,
+                    pk__in=Jednostka_Rodzic.objects.filter(
+                        Q(parent=self) | Q(parent__wydzial=self)
+                    )
+                    .exclude(do=None)
+                    .exclude(do__lt=today)
+                    .values_list("jednostka_id", flat=True),
+                )
+            )
             .order_by(*Jednostka.objects.get_default_ordering())
         )
 
     def historyczne_podjednostki(self):
-        """Jednostki, które historycznie były bezpośrednio pod tym węzłem
-        (metryczka ``Jednostka_Rodzic`` z ``parent=self`` i ``do`` w
-        przeszłości), a obecnie już nie są (``aktualna`` != True)."""
+        """Jednostki, które historycznie należały do PODDRZEWA tego węzła
+        (metryczka ``Jednostka_Rodzic`` z rodzicem w poddrzewie i ``do`` w
+        przeszłości), a obecnie już nie (``aktualna`` != True).
+
+        Wierny port dawnej ``Wydzial.historyczne_jednostki``:
+        ``parent__legacy_wydzial_id=self.pk`` -> rodzic w poddrzewie
+        (``parent=self`` dla korzenia LUB ``parent__wydzial=self`` dla
+        potomka) -- obejmuje historię z całego poddrzewa, nie tylko
+        bezpośrednich dzieci."""
         today = timezone.now().date()
 
         return (
             Jednostka.objects.exclude(aktualna=True)
             .filter(
-                pk__in=Jednostka_Rodzic.objects.filter(parent=self)
+                pk__in=Jednostka_Rodzic.objects.filter(
+                    Q(parent=self) | Q(parent__wydzial=self)
+                )
                 .exclude(do=None)
                 .exclude(do__gte=today)
                 .values_list("jednostka_id", flat=True)
