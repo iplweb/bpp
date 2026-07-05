@@ -1,10 +1,13 @@
 """Tłumacz pytań w języku polskim na zapytania DjangoQL (LLM + walidacja).
 
-Wywołuje model (SDK ``anthropic``, ``messages.parse`` z ustrukturyzowanym
-``output_format=DSLQuery``), waliduje zwrócone zapytanie realnym parserem
-DjangoQL (``apply_search`` + ``BppQLSchema``) i — jeśli składnia jest zła —
-ponawia próbę, przekazując modelowi dokładny komunikat błędu (linia/kolumna),
-do ``settings.BPP_AI_MAX_RETRIES`` razy.
+Wywołuje model przez ``ai_search.backends.get_backend()`` — natywny SDK
+``anthropic`` (``messages.parse`` z ustrukturyzowanym ``output_format=
+DSLQuery``) albo dowolny lokalny serwer zgodny z OpenAI Chat Completions API
+(backend wybierany przez ``ai_search.backends.active_backend_name()``, patrz
+``backends.py``) — waliduje zwrócone zapytanie realnym parserem DjangoQL
+(``apply_search`` + ``BppQLSchema``) i — jeśli składnia jest zła — ponawia
+próbę, przekazując modelowi dokładny komunikat błędu (linia/kolumna), do
+``settings.BPP_AI_MAX_RETRIES`` razy.
 """
 
 import logging

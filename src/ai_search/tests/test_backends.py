@@ -2,6 +2,7 @@ import json
 from unittest import mock
 
 import pytest
+from django.core.exceptions import ImproperlyConfigured
 
 from ai_search import backends
 
@@ -19,6 +20,21 @@ def test_get_backend_openai(settings):
 def test_get_backend_unknown_falls_back_to_anthropic(settings):
     settings.BPP_AI_BACKEND = "cos-nieznanego"
     assert isinstance(backends.get_backend(), backends.AnthropicBackend)
+
+
+def test_active_backend_name_openai_exact(settings):
+    settings.BPP_AI_BACKEND = "openai"
+    assert backends.active_backend_name() == "openai"
+
+
+@pytest.mark.parametrize(
+    "value", ["Anthropic", " anthropic", "claude", "cos-nieznanego", ""]
+)
+def test_active_backend_name_anything_else_is_anthropic(settings, value):
+    """Literówka lub nieznana wartość MUSI trafić na bezpieczną (płatną +
+    budżetowaną) ścieżkę anthropic, nigdy na darmową openai-ścieżkę."""
+    settings.BPP_AI_BACKEND = value
+    assert backends.active_backend_name() == "anthropic"
 
 
 def _system_blocks():
@@ -132,6 +148,15 @@ def test_openai_backend_call_flattens_multiple_system_blocks(settings):
 
     create_kwargs = fake_client.chat.completions.create.call_args.kwargs
     assert create_kwargs["messages"][0]["content"] == "CZESC1\nCZESC2"
+
+
+def test_openai_backend_empty_base_url_raises_clear_config_error(settings):
+    settings.BPP_AI_BACKEND = "openai"
+    settings.BPP_AI_BASE_URL = ""
+    with pytest.raises(ImproperlyConfigured, match="BPP_AI_BASE_URL"):
+        backends.OpenAICompatibleBackend().call(
+            _system_blocks(), [{"role": "user", "content": "x"}]
+        )
 
 
 def test_openai_backend_uses_api_key_when_set(settings):

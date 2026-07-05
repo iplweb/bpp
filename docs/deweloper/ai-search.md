@@ -156,6 +156,14 @@ wyjściowy jest już w tokenach angielskich/DjangoQL):
 - **Qwen3** — rekomendacja główna (najlepszy stosunek JSON+PL wśród
   modeli tej klasy). **4B/8B** dla lekkich instalacji, **14B/32B** dla
   lepszej trafności na pytaniach dwuznacznych po polsku.
+  **Uwaga:** Qwen3 domyślnie ma włączony tryb „thinking" — potrafi
+  wygenerować blok rozumowania PRZED właściwym JSON-em, co przy stałym
+  `max_tokens=500` (patrz `backends.py`) grozi ucięciem odpowiedzi zanim
+  dojdzie do samego JSON-a. Wyłącz myślenie (np. prompt kończący się
+  `/no_think` albo odpowiednia flaga serwera inferencji). Walidator
+  DjangoQL + bounded-retry i tak wyłapią taki przypadek (zwrócony
+  niepoprawny JSON), ale lepiej uniknąć strat tokenów/czasu i wyłączyć
+  myślenie u źródła.
 - **Llama 3.1 8B** (128k ctx), **Gemma 2 9B**, **Mistral** — alternatywy,
   jeśli Qwen3 nie jest dostępny lub preferowany.
 - Dla twardej gwarancji poprawnej składni JSON: **llama.cpp z GBNF**

@@ -178,6 +178,53 @@ def test_post_openai_backend_skips_budget_and_logs_zero_cost(staff_client, setti
 
 
 @pytest.mark.django_db
+def test_post_miscased_backend_is_treated_as_anthropic_budget_applies(
+    staff_client, settings
+):
+    """Literówka w BPP_AI_BACKEND (np. 'Anthropic' zamiast 'anthropic') NIE
+    MOŻE ominąć budżetu — to jest sedno FIX 1: `get_backend()` i widok mają
+    być zgodne, więc dla dowolnej wartości ≠ dokładnie 'openai' widok musi
+    zablokować zapytanie pre-checkiem budżetu, dokładnie jak dla
+    'anthropic' (patrz test_post_blocked_by_budget)."""
+    settings.BPP_AI_SEARCH_ENABLED = True
+    settings.BPP_AI_BACKEND = "Anthropic"  # zła wielkość liter - literówka
+    settings.BPP_AI_DAILY_BUDGET_PLN = "0"  # budżet "wyczerpany"
+    r = staff_client.post(
+        reverse("ai_search:index"),
+        {"model": "rekord", "pytanie": "cokolwiek"},
+    )
+    assert r.status_code == 200
+    assert "limit" in r.content.decode().lower()
+    assert AISearchQuery.objects.count() == 0
+
+
+@pytest.mark.django_db
+def test_post_miscased_backend_logs_real_cost_not_zero(staff_client, settings):
+    """Dla tej samej literówki, gdy budżet NIE jest wyczerpany: koszt/kurs
+    muszą być liczone tak jak dla 'anthropic' (niezerowe), a nie potraktowane
+    jak darmowy backend lokalny (por. test_post_openai_backend_skips_budget_
+    and_logs_zero_cost, gdzie cost_pln == 0)."""
+    settings.BPP_AI_SEARCH_ENABLED = True
+    settings.BPP_AI_BACKEND = "Anthropic"  # zła wielkość liter - literówka
+    res = translator.TranslationResult(
+        query="rok = 2024", usage={"input_tokens": 10, "output_tokens": 5}, attempts=1
+    )
+    with (
+        mock.patch("ai_search.views.translator.translate", return_value=res) as tr,
+        mock.patch("ai_search.views.fx.usd_to_pln_rate", return_value=Decimal("4.1")),
+    ):
+        r = staff_client.post(
+            reverse("ai_search:index"),
+            {"model": "rekord", "pytanie": "publikacje z 2024"},
+        )
+    assert r.status_code == 302
+    assert tr.call_args.kwargs["budget_check"] is not None
+    log = AISearchQuery.objects.get()
+    assert log.success is True
+    assert log.cost_pln > 0
+
+
+@pytest.mark.django_db
 def test_post_null_query_shows_error(staff_client, settings):
     settings.BPP_AI_SEARCH_ENABLED = True
     res = translator.TranslationResult(

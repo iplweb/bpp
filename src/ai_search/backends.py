@@ -23,6 +23,7 @@ from dataclasses import dataclass, field
 
 import anthropic
 from django.conf import settings
+from django.core.exceptions import ImproperlyConfigured
 from pydantic import BaseModel, ConfigDict, ValidationError
 
 logger = logging.getLogger(__name__)
@@ -82,6 +83,13 @@ class OpenAICompatibleBackend:
     def _client(self):
         from openai import OpenAI
 
+        if not settings.BPP_AI_BASE_URL:
+            raise ImproperlyConfigured(
+                "Backend AI ustawiony na 'openai' (BPP_AI_BACKEND), ale "
+                "BPP_AI_BASE_URL jest puste — ustaw BPP_AI_BASE_URL na adres "
+                "lokalnego serwera zgodnego z OpenAI Chat Completions API "
+                "(np. http://localhost:11434/v1 dla Ollama)."
+            )
         return OpenAI(
             base_url=settings.BPP_AI_BASE_URL,
             api_key=settings.BPP_AI_API_KEY or "sk-noauth",
@@ -135,8 +143,21 @@ class OpenAICompatibleBackend:
         )
 
 
+def active_backend_name() -> str:
+    """Znormalizowana nazwa backendu: ``"openai"`` tylko dla dokładnie
+    ``"openai"``; wszystko inne (w tym literówki typu ``"Anthropic"``,
+    ``" anthropic"``, wartości puste/nieznane) -> ``"anthropic"``.
+
+    To jest JEDYNE źródło prawdy o wyborze backendu — używane zarówno przez
+    ``get_backend()`` (poniżej), jak i przez ``views.py`` przy decyzji o
+    zastosowaniu budżetu/kosztu. Bezpieczny default: niejednoznaczna wartość
+    trafia na płatną ścieżkę OBJĘTĄ budżetem, nigdy na darmową-ścieżkę z
+    realnym (niekontrolowanym) wydatkiem."""
+    return "openai" if settings.BPP_AI_BACKEND == "openai" else "anthropic"
+
+
 def get_backend():
-    """Wybiera backend wg ``settings.BPP_AI_BACKEND`` (domyślnie anthropic)."""
-    if settings.BPP_AI_BACKEND == "openai":
+    """Wybiera backend wg ``active_backend_name()`` (domyślnie anthropic)."""
+    if active_backend_name() == "openai":
         return OpenAICompatibleBackend()
     return AnthropicBackend()

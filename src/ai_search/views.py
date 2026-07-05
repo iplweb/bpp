@@ -9,7 +9,7 @@ from django.http import Http404, HttpResponseRedirect
 from django.urls import reverse
 from django.views.generic import FormView
 
-from ai_search import budget, fx, pricing, translator
+from ai_search import backends, budget, fx, pricing, translator
 from ai_search.forms import AISearchForm
 from ai_search.models import AISearchQuery
 from bpp.views.zapytanie import WprowadzanieDanychOrSuperuserMixin
@@ -32,7 +32,7 @@ class ZapytanieAIView(WprowadzanieDanychOrSuperuserMixin, FormView):
     def form_valid(self, form):
         model_key = form.cleaned_data["model"]
         pytanie = form.cleaned_data["pytanie"].strip()
-        is_anthropic = settings.BPP_AI_BACKEND == "anthropic"
+        is_anthropic = backends.active_backend_name() == "anthropic"
 
         if is_anthropic:
             status = budget.check_budget()
@@ -82,7 +82,7 @@ class ZapytanieAIView(WprowadzanieDanychOrSuperuserMixin, FormView):
         )
 
     def _log(self, result, model_key, pytanie):
-        if settings.BPP_AI_BACKEND == "anthropic":
+        if backends.active_backend_name() == "anthropic":
             rate = fx.usd_to_pln_rate()
             try:
                 cost_usd = pricing.cost_usd_from_usage(
