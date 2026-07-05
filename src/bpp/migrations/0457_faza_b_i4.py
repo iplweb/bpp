@@ -32,13 +32,14 @@ Ustawienie FAKTYCZNEJ struktury drzewa `Jednostka`:
    realnej jednostki za syntetyczne lustro i nie dopisały jej lewej historii.
    Po tym kroku `legacy_wydzial_id` jest jednolitym wskaźnikiem „węzeł
    reprezentujący stary Wydzial" — dla lustra ORAZ promowanej jednostki;
-   rozróżnia je `rodzaj` ("Wydział" vs Standard/Koło), więc mapowanie po
-   `legacy_wydzial_id` (0460 repoint, 0463 multiseek) obejmuje OBA, a logika
-   „to lustro?" (sygnał kasujący, 0462 widoczność) filtruje po `rodzaj`.
+   rozróżnia je `jest_lustrem` (True dla syntetycznego lustra, False dla
+   promowanej realnej jednostki), więc mapowanie po `legacy_wydzial_id`
+   (0460 repoint, 0463 multiseek) obejmuje OBA, a logika „to lustro?" (sygnał
+   kasujący, 0462 widoczność) filtruje po `jest_lustrem`.
 
 Idempotencja: parent już ustawiony → krok 2 no-op; wpisy węzłów → guard;
 przepisania sub-jednostek → no-op (parent już = MPTT rodzic); nested-set
-przeliczalny wielokrotnie; krok 0 pomija już-promowane (rodzaj≠"Wydział"),
+przeliczalny wielokrotnie; krok 0 pomija już-promowane (jest_lustrem=False),
 więc krok 6 dostaje pustą mapę na re-runie. `reverse_code=noop`.
 """
 
@@ -79,8 +80,8 @@ def _promuj_jednoelementowe_wydzialy(apps):
     Idempotentne: uruchamiane jako krok 0 (przed re-parentem); po pierwszym
     przebiegu 1-elementowe lustra już nie istnieją, a re-parent NIE zmienia
     ``wydzial_id``, więc ponowny przebieg nie promuje błędnie wydziałów ≥2.
-    Kandydatów na lustro zawężamy do ``rodzaj="Wydział"`` — na re-runie
-    promowana jednostka MA już ``legacy_wydzial_id``, ale rodzaj Standard/Koło,
+    Kandydatów na lustro zawężamy do ``jest_lustrem=True`` — na re-runie
+    promowana jednostka MA już ``legacy_wydzial_id``, ale ``jest_lustrem=False``,
     więc NIE jest brana za lustro (nie promujemy jej powtórnie).
     """
     Jednostka = apps.get_model("bpp", "Jednostka")
@@ -310,16 +311,16 @@ def _ustaw_legacy_promowanym(apps, promoted):
     ``legacy_wydzial_id`` = pk zastąpionego wydziału.
 
     DLACZEGO DOPIERO TERAZ (po krokach 2–5), a nie w kroku 0 razem z promocją:
-    kroki 3/4 iterują po ``legacy_wydzial_id__isnull=False`` traktując takie
-    wiersze jak syntetyczne węzły-lustra — dopisałyby promowanej REALNEJ
-    jednostce własny wpis historii (krok 3, z dat wydziału) i wciągnęły ją do
-    ``mirror_ids`` (krok 4). Ustawiając ``legacy_wydzial_id`` PO nich, mamy
-    pewność, że w krokach 2–5 promowana jednostka jest zwykłą jednostką.
+    DODATKOWE zabezpieczenie. Podstawowym rozróżnieniem lustro/promowana jest
+    ``jest_lustrem`` (kroki 3/4 filtrują ``jest_lustrem=True``, więc promowana
+    — ``jest_lustrem=False`` — i tak jest pomijana i nie dostaje sfabrykowanej
+    historii). Ustawianie ``legacy_wydzial_id`` PO krokach 2–5 daje pewność
+    niezależnie od tego markera.
 
     Po tym kroku ``legacy_wydzial_id`` reprezentuje „węzeł zastępujący stary
-    Wydzial" dla lustra ORAZ promowanej jednostki; rozróżnia je ``rodzaj``
-    ("Wydział" vs Standard/Koło) — patrz sygnał ``usun_wezel_lustro_wydzialu``
-    i migracja 0462, które filtrują po ``rodzaj``.
+    Wydzial" dla lustra ORAZ promowanej jednostki; rozróżnia je ``jest_lustrem``
+    (True lustro / False promowana) — patrz sygnał ``usun_wezel_lustro_wydzialu``
+    i migracja 0462, które filtrują po ``jest_lustrem``.
     """
     Jednostka = apps.get_model("bpp", "Jednostka")
     for jednostka_pk, wydzial_id in promoted.items():

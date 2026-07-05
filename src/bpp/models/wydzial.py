@@ -191,13 +191,13 @@ def usun_wezel_lustro_wydzialu(sender, instance, **kwargs):
     zostałaby sierota wskazująca na nieistniejący już wydział. Model lustra
     jest LAZY (tworzone dopiero przy linkowaniu), więc to rzadkie, ale tanie.
 
-    **Guard rodzaju (I-4, #438).** ``legacy_wydzial_id`` NIE oznacza już
+    **Guard markera lustra (I-4, #438).** ``legacy_wydzial_id`` NIE oznacza już
     wyłącznie syntetycznego lustra: 1-elementowy wydział jest w I-4 (0457)
     „promowany" — jego jedyna, REALNA jednostka staje się rootem i dostaje
     ``legacy_wydzial_id`` zastąpionego wydziału (żeby mapowania 0460/0463
-    ją obejmowały). Taka jednostka ma jednak ``rodzaj`` Standard/Koło, a
-    syntetyczne lustro — ``rodzaj="Wydział"``. Kasujemy WYŁĄCZNIE lustra
-    (``rodzaj="Wydział"``); promowana realna jednostka z dorobkiem ZOSTAJE,
+    ją obejmowały). Taka jednostka ma jednak ``jest_lustrem=False``, a
+    syntetyczne lustro — ``jest_lustrem=True``. Kasujemy WYŁĄCZNIE lustra
+    (``jest_lustrem=True``); promowana realna jednostka z dorobkiem ZOSTAJE,
     nawet gdy jej stary Wydzial jest kasowany.
 
     **Guard bezdzietności (I-4).** Po I-4 węzeł-lustro MA DZIECI — pod niego

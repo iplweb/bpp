@@ -61,14 +61,15 @@ def przelicz_aktualna(apps, schema_editor):
 
 
 def odkryj_widoczna(apps, schema_editor):
-    """F2: syntetyczne węzły-lustra (``legacy_wydzial_id IS NOT NULL`` ORAZ
-    ``rodzaj="Wydział"``) dziedziczą widoczność ze źródłowego
-    ``Wydzial.widoczny`` — widoczne wydziały → widoczne węzły, ukryte → ukryte.
+    """F2: syntetyczne węzły-lustra (``jest_lustrem=True``) dziedziczą
+    widoczność ze źródłowego ``Wydzial.widoczny`` — widoczne wydziały →
+    widoczne węzły, ukryte → ukryte.
 
-    Filtr ``rodzaj="Wydział"`` WYKLUCZA promowane realne jednostki (I-4/0457:
+    Filtr ``jest_lustrem=True`` WYKLUCZA promowane realne jednostki (I-4/0457:
     1-elementowy wydział → jego jedyna jednostka jako root też ma
-    ``legacy_wydzial_id``, ale rodzaj Standard/Koło). Takiej jednostce NIE
-    nadpisujemy jej własnej widoczności widocznością martwego wydziału."""
+    ``legacy_wydzial_id``, ale ``jest_lustrem=False``). Takiej jednostce NIE
+    nadpisujemy jej własnej widoczności widocznością martwego wydziału (jej
+    widoczność ustawia krok 0 promocji w 0457)."""
     Jednostka = apps.get_model("bpp", "Jednostka")
     Wydzial = apps.get_model("bpp", "Wydzial")
 
@@ -87,7 +88,7 @@ def odkryj_widoczna(apps, schema_editor):
 def ukryj_widoczna(apps, schema_editor):
     """Reverse: przywróć syntetyczne węzły-lustra do stanu ukrytego (jak przy
     konwersji — ``struktura_konwersja`` / migracja ``0455`` tworzyły je
-    ``widoczna=False``). Tylko ``rodzaj="Wydział"`` — promowanej realnej
+    ``widoczna=False``). Tylko ``jest_lustrem=True`` — promowanej realnej
     jednostki (I-4) nie ukrywamy."""
     Jednostka = apps.get_model("bpp", "Jednostka")
     Jednostka.objects.filter(legacy_wydzial_id__isnull=False, jest_lustrem=True).update(
