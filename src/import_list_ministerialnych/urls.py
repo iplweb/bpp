@@ -1,7 +1,8 @@
 from django.urls import path
 
-app_name = "import_list_ministerialnych"
 from . import views
+
+app_name = "import_list_ministerialnych"
 
 urlpatterns = [
     path("", views.PokazImporty.as_view(), name="index"),

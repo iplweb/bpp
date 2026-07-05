@@ -7,7 +7,7 @@ from import_list_ministerialnych.util import (
 )
 
 
-def detect_duplicates(data):
+def detect_duplicates(data):  # noqa: C901
     """
     Detect duplicate journals in the Excel data based on ISSN, E-ISSN, and mniswId.
 
@@ -78,7 +78,7 @@ def detect_duplicates(data):
     return duplicates
 
 
-def analyze_excel_file_import_list_ministerialnych(
+def analyze_excel_file_import_list_ministerialnych(  # noqa: C901
     fn, parent_model: ImportListMinisterialnych, p
 ):
     napraw_literowki_w_bazie()
@@ -101,7 +101,7 @@ def analyze_excel_file_import_list_ministerialnych(
             p.log(error_msg)
             # Podnosimy wyjątek — runner liveops złapie go i oznaczy operację
             # jako zakończoną błędem (dawniej robił to task_perform).
-            raise ValueError(error_msg)
+            raise ValueError(error_msg) from e
         else:
             # Re-raise other ValueErrors
             raise
