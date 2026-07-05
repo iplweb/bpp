@@ -39,6 +39,47 @@ def test_bppuser_fields_truncated_to_allowlist():
 
 
 @pytest.mark.django_db
+def test_uczelnia_fields_truncated_to_allowlist():
+    """Uczelnia: tylko id/nazwa/skrot/pbn_uid (± picker pbn_uid__rel) — bez
+    pól konfiguracyjnych (integracje, hasła zewnętrznych API, ustawienia UI)."""
+    schema = BppQLSchema(Rekord)
+    label = "bpp.uczelnia"
+    if label not in schema.models:
+        pytest.skip("bpp.uczelnia nieosiągalny w grafie — allowlista bez znaczenia")
+    fields = set(schema.models[label])
+    allowed = {"id", "nazwa", "skrot", "pbn_uid"}
+    assert fields <= allowed | {f"{name}__rel" for name in allowed}
+    for config_field in (
+        "pbn_integracja",
+        "wyszukiwanie_rekordy_na_strone_anonim",
+        "pbn_api_user",
+        "clarivate_password",
+        "dspace_api_password",
+        "orcid_client_secret",
+    ):
+        assert config_field not in fields
+
+
+@pytest.mark.django_db
+def test_uczelnia_picker_does_not_bypass_filter():
+    """Pickery ``<fk>__rel`` nie omijają include_fields: żaden picker uczelni
+    nie wskazuje na pole spoza allowlisty (np. relacji config-owej)."""
+    schema = BppQLSchema(Rekord)
+    label = "bpp.uczelnia"
+    if label not in schema.models:
+        pytest.skip("bpp.uczelnia nieosiągalny w grafie — test bez znaczenia")
+    fields = set(schema.models[label])
+    allowed_base = {"id", "nazwa", "skrot", "pbn_uid"}
+    for name in fields:
+        if name.endswith("__rel"):
+            base = name[: -len("__rel")]
+            assert base in allowed_base, (
+                f"picker {name!r} wskazuje na pole spoza include_fields "
+                f"({base!r} nie jest w {allowed_base!r}) — filtr obejdziony"
+            )
+
+
+@pytest.mark.django_db
 def test_excluded_model_absent_from_graph():
     """Model z twardej listy wykluczeń (easyaudit) nie występuje w grafie."""
     schema = BppQLSchema(Rekord)
