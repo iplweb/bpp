@@ -11,6 +11,24 @@ Serwer staging musi ciągnąć tag `:staging` (NIE `:latest`) wszystkich 6 obraz
 
 ## Cykl
 
+Najprościej z Makefile (owija `gh workflow run` + od razu podłącza `gh run
+watch` pod świeży run):
+
+```bash
+make release-candidate     # 1) utnij kandydata (RC → :staging) i obserwuj
+# … staging pulluje :staging, testujesz …
+make release-promote       # 2a) OK → promuj (finalizacja + :latest, bez rebuildu)
+# 2b) „kupa" → fix na dev i ponów: make release-candidate (kolejny -rcN)
+```
+
+Flagi (zmienne `make`):
+
+- `make release-candidate SKIP_TESTS=1 SKIP_SCAN=1` — awaryjnie pomiń testy/skan CVE.
+- `make release-promote VERSION=v202606.1392` — gdy otwartych jest >1 gałęzi
+  `release/*` (inaczej promowana jest jedyna otwarta).
+
+Pod spodem to zwykłe `workflow_dispatch`:
+
 ```bash
 # 1) Utnij kandydata → buduje obrazy, przesuwa :staging
 gh workflow run release-candidate.yml --ref dev
@@ -24,7 +42,7 @@ gh workflow run promote.yml
 gh workflow run release-candidate.yml --ref dev
 ```
 
-Podgląd: `gh run watch $(gh run list --workflow=promote.yml -L1 --json databaseId --jq '.[0].databaseId')`.
+Sam podgląd runu: `gh run watch $(gh run list --workflow=promote.yml -L1 --json databaseId --jq '.[0].databaseId')`.
 
 ## Dowód build-once-promote
 
