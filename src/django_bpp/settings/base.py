@@ -313,6 +313,7 @@ TEMPLATES = [
                 "cookielaw.context_processors.cookielaw",
                 "django_countdown.context_processors.countdown_context",
                 "nowe_raporty.menu.raporty_menu",
+                "ai_search.context_processors.ai_search_flags",
             ],
         },
     },

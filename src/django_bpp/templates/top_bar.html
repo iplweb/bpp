@@ -39,6 +39,15 @@
                             </a>
                         </li>
                     {% endif %}
+                    {% load query_editor %}
+                    {% if request.user|can_use_query_editor and BPP_AI_SEARCH_ENABLED %}
+                        <li role="menuitem">
+                            <a href="{% url "ai_search:index" %}">
+                                <i class="fi-lightbulb" aria-hidden="true"></i>
+                                przez sztuczną inteligencję
+                            </a>
+                        </li>
+                    {% endif %}
                 </ul>
             </li>
             <li>
