@@ -105,7 +105,7 @@ def test_openai_backend_call_parses_valid_json(settings):
         )
 
     ctor.assert_called_once_with(
-        base_url="http://localhost:11434/v1", api_key="sk-noauth", timeout=30
+        base_url="http://localhost:11434/v1", api_key="not-needed", timeout=30
     )
     assert result.parsed.query == "rok = 2024"
     assert result.parsed.error is None

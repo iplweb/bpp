@@ -92,7 +92,7 @@ class OpenAICompatibleBackend:
             )
         return OpenAI(
             base_url=settings.BPP_AI_BASE_URL,
-            api_key=settings.BPP_AI_API_KEY or "sk-noauth",
+            api_key=settings.BPP_AI_API_KEY or "not-needed",
             timeout=settings.BPP_AI_LLM_TIMEOUT,
         )
 
