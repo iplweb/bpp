@@ -100,3 +100,20 @@ class PublicJednostkaNieToplevelAutocomplete(
         .filter(parent__isnull=False)
         .select_related("wydzial")
     )
+
+
+class PublicJednostkaWydzialRankinguAutocomplete(
+    UczelniaScopedAutocompleteMixin, _JednostkaAutocompleteBase
+):
+    """Faza B (#438): picker „wydziału" w rankingu autorów — widoczne korzenie
+    (``parent IS NULL``), które DOPUSZCZAJĄ ranking (``zezwalaj_na_ranking_
+    autorow=True``). Bez filtra ``zezwalaj`` picker oferował wydziały wyłączone
+    z rankingu → wybór dawał CICHO pusty wynik (widok odrzuca je w
+    ``get_dostepne_wydzialy``). Węższy niż ``…-toplevel-…``; per-uczelnia.
+    """
+
+    qset = (
+        Jednostka.objects.widoczne()
+        .filter(parent__isnull=True, zezwalaj_na_ranking_autorow=True)
+        .select_related("wydzial")
+    )

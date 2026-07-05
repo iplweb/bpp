@@ -61,7 +61,10 @@ class RankingAutorowForm(forms.Form):
         label="Ogranicz do wydziału:",
         required=False,
         widget=autocomplete.ModelSelect2(
-            url="bpp:public-jednostka-toplevel-autocomplete",
+            # 8a (#438): picker filtrowany po ``zezwalaj_na_ranking_autorow`` —
+            # nie oferuje wydziałów wyłączonych z rankingu (inaczej ich wybór
+            # dawał cicho pusty wynik).
+            url="bpp:public-jednostka-wydzial-rankingu-autocomplete",
             attrs={
                 "data-placeholder": "Wybierz wydział...",
                 "data-allow-clear": "true",
@@ -303,13 +306,15 @@ class RankingAutorowForm(forms.Form):
                 .distinct()
             )
 
-            # Faza B (#438): walidacja pola „wydział" = NADZBIÓR pickera
-            # (``public-jednostka-toplevel-autocomplete`` = widoczne korzenie
-            # per-uczelnia), żeby wybór z pickera nie wywalał „Wybierz
-            # poprawną opcję". ``wydzial_with_works`` (węższy, works-aware)
-            # służy TYLKO decyzji, czy w ogóle pokazać selektor.
+            # 8a (#438): walidacja pola „wydział" = NADZBIÓR pickera
+            # (``…-wydzial-rankingu-…`` = widoczne korzenie z
+            # ``zezwalaj_na_ranking_autorow=True``, per-uczelnia). Tak jak
+            # picker zawężamy do dopuszczających ranking — inaczej wydział
+            # wyłączony z rankingu przechodził walidację i dawał CICHO pusty
+            # wynik. ``wydzial_with_works`` (węższy, works-aware) służy TYLKO
+            # decyzji, czy w ogóle pokazać selektor.
             self.fields["wydzial"].queryset = Jednostka.objects.widoczne().filter(
-                parent__isnull=True
+                parent__isnull=True, zezwalaj_na_ranking_autorow=True
             )
 
             # Only show wydzial field when there's more than one wydział

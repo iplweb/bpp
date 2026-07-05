@@ -43,6 +43,7 @@ from bpp.views.autocomplete import (
     PublicJednostkaAutocomplete,
     PublicJednostkaNieToplevelAutocomplete,
     PublicJednostkaToplevelAutocomplete,
+    PublicJednostkaWydzialRankinguAutocomplete,
     PublicKonferencjaAutocomplete,
     PublicStatusKorektyAutocomplete,
     PublicTaggitTagAutocomplete,
@@ -425,6 +426,11 @@ urlpatterns = [
         r"^public-jednostka-nietoplevel-autocomplete/$",
         PublicJednostkaNieToplevelAutocomplete.as_view(),
         name="public-jednostka-nietoplevel-autocomplete",
+    ),
+    url(
+        r"^public-jednostka-wydzial-rankingu-autocomplete/$",
+        PublicJednostkaWydzialRankinguAutocomplete.as_view(),
+        name="public-jednostka-wydzial-rankingu-autocomplete",
     ),
     url(
         r"^zewnetrzna-baza-danych-autocomplete/$",

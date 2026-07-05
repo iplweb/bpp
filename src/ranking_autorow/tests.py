@@ -964,3 +964,36 @@ def test_ranking_view_ukrywa_kolumne_wydzial_bez_wydzialow(rf, uczelnia):
     req2.user = AnonymousUser()
     view = RankingAutorow(request=req2, kwargs=dict(od_roku=0, do_roku=3030))
     assert "wydzial" not in view.get_table_kwargs().get("exclude", ())
+
+
+@pytest.mark.django_db
+def test_wydzial_rankingu_autocomplete_wyklucza_bez_zezwolenia(uczelnia):
+    """8a (#438): picker „wydziału" w rankingu (``…-wydzial-rankingu-…``) NIE
+    oferuje korzeni wyłączonych z rankingu (``zezwalaj_na_ranking_autorow=
+    False``) — inaczej ich wybór dawał cicho pusty wynik."""
+    from bpp.views.autocomplete.units import (
+        PublicJednostkaWydzialRankinguAutocomplete,
+    )
+
+    rankowalny = baker.make(
+        Jednostka,
+        uczelnia=uczelnia,
+        parent=None,
+        widoczna=True,
+        aktualna=True,
+        zezwalaj_na_ranking_autorow=True,
+    )
+    niedostepny = baker.make(
+        Jednostka,
+        uczelnia=uczelnia,
+        parent=None,
+        widoczna=True,
+        aktualna=True,
+        zezwalaj_na_ranking_autorow=False,
+    )
+
+    pks = set(
+        PublicJednostkaWydzialRankinguAutocomplete.qset.values_list("pk", flat=True)
+    )
+    assert rankowalny.pk in pks
+    assert niedostepny.pk not in pks  # wyłączony z rankingu — nie w pickerze

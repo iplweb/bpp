@@ -95,6 +95,7 @@ from .units import (  # noqa: F401
     PublicJednostkaAutocomplete,
     PublicJednostkaNieToplevelAutocomplete,
     PublicJednostkaToplevelAutocomplete,
+    PublicJednostkaWydzialRankinguAutocomplete,
     WidocznaJednostkaAutocomplete,
 )
 
