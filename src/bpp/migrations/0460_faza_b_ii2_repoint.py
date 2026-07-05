@@ -49,6 +49,27 @@ def _mapa_legacy_wydzial(apps):
     )
 
 
+def _bezpieczny_remap_wydzial(Model, mapa):
+    """Przepnij kolumnę ``wydzial`` (stare pk ``Wydzial``) na pk węzłów-luster
+    ODPORNIE na nakładanie się przestrzeni pk.
+
+    Naiwne ``for old,new in mapa: filter(wydzial=old).update(wydzial=new)``
+    nadpisuje TĘ SAMĄ kolumnę, po której selektuje: gdy ``new`` (pk lustra)
+    równa się innemu, PÓŹNIEJ przetwarzanemu ``old`` (pk wydziału) — realne,
+    gdy max(Wydzial.pk) > max(Jednostka.pk) i lustra wpadają w zakres pk
+    wydziałów — wiersz przepięty wcześniej zostaje przepięty DRUGI raz (cicha
+    korupcja FK). Zamrażamy pk-i docelowych wierszy PRZED jakimkolwiek update
+    i aktualizujemy po pk (na to odporne)."""
+    plan = {
+        old_id: list(
+            Model.objects.filter(wydzial=old_id).values_list("pk", flat=True)
+        )
+        for old_id in mapa
+    }
+    for old_id, new_id in mapa.items():
+        Model.objects.filter(pk__in=plan[old_id]).update(wydzial=new_id)
+
+
 def remap_kierunek_studiow_wydzial(apps, schema_editor):
     """PROTECT + pole NOT NULL: brak węzła-lustra → fail loud (raise)."""
     Kierunek_Studiow = apps.get_model("bpp", "Kierunek_Studiow")
@@ -63,8 +84,7 @@ def remap_kierunek_studiow_wydzial(apps, schema_editor):
             "(fail-loud, nie da się cicho zamienić FK chronionego PROTECT)."
         )
 
-    for old_id, new_id in mapa.items():
-        Kierunek_Studiow.objects.filter(wydzial=old_id).update(wydzial=new_id)
+    _bezpieczny_remap_wydzial(Kierunek_Studiow, mapa)
 
 
 def remap_patent_wydzial(apps, schema_editor):
@@ -85,8 +105,7 @@ def remap_patent_wydzial(apps, schema_editor):
         )
         Patent.objects.filter(wydzial__in=brakujace).update(wydzial=None)
 
-    for old_id, new_id in mapa.items():
-        Patent.objects.filter(wydzial=old_id).update(wydzial=new_id)
+    _bezpieczny_remap_wydzial(Patent, mapa)
 
 
 def remap_opi_2012_afiliacja_wydzial(apps, schema_editor):
@@ -111,10 +130,7 @@ def remap_opi_2012_afiliacja_wydzial(apps, schema_editor):
             f"dla wydzial_id w {brakujace} — usunięto {usuniete} wiersz(y)."
         )
 
-    for old_id, new_id in mapa.items():
-        Opi_2012_Afiliacja_Do_Wydzialu.objects.filter(wydzial=old_id).update(
-            wydzial=new_id
-        )
+    _bezpieczny_remap_wydzial(Opi_2012_Afiliacja_Do_Wydzialu, mapa)
 
 
 class Migration(migrations.Migration):

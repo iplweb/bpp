@@ -68,6 +68,18 @@ def _promuj_jednoelementowe_wydzialy(apps):
 
     # Materializacja listy PRZED pętlą — kasujemy lustra w trakcie iteracji.
     for mirror in list(Jednostka.objects.filter(legacy_wydzial_id__isnull=False)):
+        # Guard (ochrona przed CASCADE): normalnie lustro jest na tym etapie
+        # bezdzietne (płaskie jednostki re-parentuje dopiero krok 2). Jeśli
+        # jednak COKOLWIEK wisi bezpośrednio pod lustrem (ręczny re-parent w
+        # oknie A→B), NIE ruszamy tego wydziału — ``mirror.delete()`` niżej
+        # CASCADE-owałby po ``Jednostka.parent`` realne jednostki + poddrzewa.
+        if Jednostka.objects.filter(parent_id=mirror.pk).exists():
+            print(
+                f"[0457 krok0] lustro wydzialu legacy={mirror.legacy_wydzial_id} "
+                "ma nieoczekiwane dzieci (re-parent w oknie A→B) — POMIJAM "
+                "promocję i kasację (ochrona przed CASCADE realnych jednostek)."
+            )
+            continue
         czlonkowie = Jednostka.objects.filter(
             wydzial_id=mirror.legacy_wydzial_id,
             legacy_wydzial_id__isnull=True,

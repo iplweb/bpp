@@ -421,6 +421,29 @@ def test_jednoelementowy_wydzial_org_rodzic_odpina_i_promuje(uczelnia):
 
 
 @pytest.mark.django_db
+def test_lustro_z_nieoczekiwanym_dzieckiem_nie_kasowane(uczelnia):
+    """Guard (#438): nieoczekiwane dziecko wpięte BEZPOŚREDNIO pod lustro
+    (ręczny re-parent w oknie A→B) z ``wydzial_id=NULL`` (nie liczone jako
+    członek → count członków == 1) — krok 0 MUSI pominąć ten wydział, inaczej
+    ``mirror.delete()`` CASCADE-uje obce dziecko + jego poddrzewo."""
+    org_rodzic = baker.make(Jednostka, uczelnia=uczelnia, parent=None)
+    mirror = _lustro_wydzialu(uczelnia)
+    jedyna = _czlonek(uczelnia, mirror, parent=org_rodzic)  # 1 członek
+
+    obce = baker.make(Jednostka, uczelnia=uczelnia, parent=mirror)
+    # wydzial_id NULL → obce NIE jest członkiem (count == 1); bez guardu krok 0
+    # promowałby ``jedyna`` i kasował lustro → CASCADE po parent zabrałby obce.
+    Jednostka.objects.filter(pk=obce.pk).update(wydzial_id=None)
+
+    _promuj()
+
+    assert Jednostka.objects.filter(pk=mirror.pk).exists()  # lustro NIE skasowane
+    assert Jednostka.objects.filter(pk=obce.pk).exists()  # obce dziecko ŻYJE
+    jedyna.refresh_from_db()
+    assert jedyna.parent_id == org_rodzic.pk  # NIE promowana (wydział pominięty)
+
+
+@pytest.mark.django_db
 def test_promocja_bez_wiszacych_jednostka_rodzic(uczelnia):
     """Po promocji ŻADEN wpis ``Jednostka_Rodzic`` nie wskazuje usuniętego
     lustra (naiwny backfill 0456 wskazał je w lustro → CASCADE sprząta)."""

@@ -58,8 +58,21 @@ def remap_obslugujacy_wydzial(apps, schema_editor):
             f"{usuniete} wiersz(y)."
         )
 
+    # Snapshot pk PRZED update-ami: naiwne
+    # ``filter(wydzial=old).update(wydzial=new)`` nadpisuje TĘ SAMĄ kolumnę, po
+    # której selektuje — gdy pk węzła-lustra (new_id) pokrywa się z pk innego,
+    # późniejszego wydziału (old_id), wiersz zostaje przepięty DRUGI raz (cicha
+    # korupcja FK routingu zgłoszeń). Update po zamrożonym pk jest odporny.
+    plan = {
+        old_id: list(
+            Obslugujacy_Zgloszenia_Wydzialow.objects.filter(
+                wydzial=old_id
+            ).values_list("pk", flat=True)
+        )
+        for old_id in mapa
+    }
     for old_id, new_id in mapa.items():
-        Obslugujacy_Zgloszenia_Wydzialow.objects.filter(wydzial=old_id).update(
+        Obslugujacy_Zgloszenia_Wydzialow.objects.filter(pk__in=plan[old_id]).update(
             wydzial=new_id
         )
 
