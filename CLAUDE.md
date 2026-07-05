@@ -190,7 +190,19 @@ issue-by-issue. Fix each manually with the Edit tool. Do NOT run
 
 ## Wydania (dwufazowe, CLI)
 
-Wydanie = dwie komendy `gh` (szczegóły: docs/deweloper/wydania.md):
+Wydanie = dwie komendy (szczegóły: docs/deweloper/wydania.md). Preferowane
+skróty `make` (owijają `gh workflow run` + od razu `gh run watch`):
+
+```bash
+make release-candidate    # Faza 1: zbuduj RC → :staging (nie rusza prod)
+# … staging pulluje :staging, testujesz …
+make release-promote      # Faza 2: RC → :latest (bez rebuildu, imagetools)
+```
+
+Flagi: `make release-candidate SKIP_TESTS=1 SKIP_SCAN=1` (awaryjnie),
+`make release-promote VERSION=vXXX` (gdy otwartych >1 gałęzi `release/*`).
+
+Pod spodem to zwykłe `workflow_dispatch`:
 
 ```bash
 gh workflow run release-candidate.yml --ref dev   # zbuduj RC → :staging
