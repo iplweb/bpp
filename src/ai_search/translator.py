@@ -10,27 +10,17 @@ do ``settings.BPP_AI_MAX_RETRIES`` razy.
 import logging
 from dataclasses import dataclass, field
 
-import anthropic
 from django.conf import settings
 from django.core.exceptions import FieldError, ValidationError
 from djangoql.exceptions import DjangoQLError
 from djangoql.queryset import apply_search
-from pydantic import BaseModel, ConfigDict
 
-from ai_search import prompts, schema_export
+from ai_search import backends, prompts, schema_export
 from bpp.djangoql_helpers import _error_location, _format_error_text
 from bpp.djangoql_schema import BppQLSchema
 from bpp.views.zapytanie import MODELS
 
 logger = logging.getLogger(__name__)
-
-
-class DSLQuery(BaseModel):
-    """Ustrukturyzowana odpowiedź modelu (``output_format``)."""
-
-    model_config = ConfigDict(extra="forbid")
-    query: str | None
-    error: str | None
 
 
 @dataclass
@@ -56,30 +46,13 @@ def validate_query(query: str, model_key: str):
         return _format_error_text(exc), loc
 
 
-def _client() -> anthropic.Anthropic:
-    return anthropic.Anthropic(timeout=settings.BPP_AI_LLM_TIMEOUT)
+def _call_model(system, messages) -> backends.LLMResult:
+    """Pojedyncze wywołanie modelu (wydzielone dla testowalności).
 
-
-def _call_model(system, messages):
-    """Pojedyncze wywołanie modelu (wydzielone dla testowalności)."""
-    return _client().messages.parse(
-        model=settings.BPP_AI_MODEL,
-        max_tokens=500,
-        thinking={"type": "disabled"},
-        system=system,
-        messages=messages,
-        output_format=DSLQuery,
-    )
-
-
-def _extract_usage(resp) -> dict:
-    u = resp.usage
-    return {
-        "input_tokens": getattr(u, "input_tokens", 0) or 0,
-        "output_tokens": getattr(u, "output_tokens", 0) or 0,
-        "cache_read_tokens": getattr(u, "cache_read_input_tokens", 0) or 0,
-        "cache_write_tokens": getattr(u, "cache_creation_input_tokens", 0) or 0,
-    }
+    Deleguje do backendu wybranego przez ``settings.BPP_AI_BACKEND``
+    (``ai_search.backends.get_backend``) — natywny Anthropic albo dowolny
+    lokalny serwer zgodny z OpenAI Chat Completions API."""
+    return backends.get_backend().call(system, messages)
 
 
 def _accumulate(total: dict, part: dict):
@@ -110,19 +83,23 @@ def translate(pytanie: str, model_key: str, budget_check=None) -> TranslationRes
                 result.budget_blocked = True
                 result.error = status.reason
                 result.query = None
+                # Blok następuje PRZED wykonaniem tej iteracji — jeśli został
+                # ustawiony przez poprzednią (udaną) iterację, nie jest już
+                # miarodajny: żadne wywołanie w TEJ iteracji się nie odbyło.
+                result.retried = False
                 return result
 
         result.attempts = attempt + 1
-        resp = _call_model(system, [{"role": "user", "content": content}])
-        _accumulate(total_usage, _extract_usage(resp))
+        result_obj = _call_model(system, [{"role": "user", "content": content}])
+        _accumulate(total_usage, result_obj.usage)
         result.usage = total_usage
 
-        if getattr(resp, "stop_reason", None) == "refusal":
+        if result_obj.stop_reason == "refusal":
             result.query = None
             result.error = "Model odmówił odpowiedzi na to pytanie."
             return result
 
-        parsed = resp.parsed_output
+        parsed = result_obj.parsed
         if parsed.query is None:
             result.query = None
             result.error = parsed.error or "Nie można wyrazić pytania w DSL."

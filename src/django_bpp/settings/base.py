@@ -1872,6 +1872,15 @@ OAUTH2_PROVIDER = {
 # --- Wyszukiwanie przez AI (ai_search) ---
 BPP_AI_SEARCH_ENABLED = env("BPP_AI_SEARCH_ENABLED", default=False, cast=bool)
 BPP_AI_MODEL = env("BPP_AI_MODEL", default="claude-sonnet-5")
+# Backend LLM: "anthropic" (natywny SDK, domyślny, płatny, budżet PLN) albo
+# "openai" (lokalny/self-hosted serwer OpenAI-compatible — Ollama, llama.cpp,
+# vLLM, LM Studio, LocalAI — darmowy, budżet nieaktywny).
+BPP_AI_BACKEND = env("BPP_AI_BACKEND", default="anthropic")
+# Dla backendu "openai": adres API zgodny z OpenAI (np.
+# http://localhost:11434/v1 dla Ollama).
+BPP_AI_BASE_URL = env("BPP_AI_BASE_URL", default="")
+# Dla backendu "openai": klucz API (puste dla serwerów bez auth, np. Ollama).
+BPP_AI_API_KEY = env("BPP_AI_API_KEY", default="")
 BPP_AI_DAILY_BUDGET_PLN = env("BPP_AI_DAILY_BUDGET_PLN", default="20", cast=str)
 BPP_AI_MONTHLY_BUDGET_PLN = env("BPP_AI_MONTHLY_BUDGET_PLN", default="300", cast=str)
 BPP_AI_MAX_RETRIES = env("BPP_AI_MAX_RETRIES", default=1, cast=int)

@@ -109,6 +109,7 @@ dependencies = [
     "django-constance>=4.3.5",
     "djangoql-iplweb>=0.31.1",
     "anthropic>=0.40",
+    "openai>=1.50",
     "django-weasyprint>=2.5.0",
     "django-templated-email>=3.0.0",
     "django-formtools>=2.7,<3",

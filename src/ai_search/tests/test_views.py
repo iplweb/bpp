@@ -144,6 +144,40 @@ def test_post_pricing_keyerror_logs_zero_cost(staff_client, settings):
 
 
 @pytest.mark.django_db
+def test_post_openai_backend_skips_budget_and_logs_zero_cost(staff_client, settings):
+    """Backend lokalny (openai-compatible): brak pre-checku budżetu, brak
+    `budget_check` przekazanego do translatora, koszt/kurs zawsze 0 — bez
+    wołania pricing/fx (nieistotny cennik dla modelu lokalnego)."""
+    settings.BPP_AI_SEARCH_ENABLED = True
+    settings.BPP_AI_BACKEND = "openai"
+    settings.BPP_AI_DAILY_BUDGET_PLN = "0"  # budżet "wyczerpany" — ma być ignorowany
+    res = translator.TranslationResult(
+        query="rok = 2024", usage={"input_tokens": 10, "output_tokens": 5}, attempts=1
+    )
+    with (
+        mock.patch(
+            "ai_search.views.translator.translate", return_value=res
+        ) as translate_mock,
+        mock.patch("ai_search.views.pricing.cost_usd_from_usage") as pricing_mock,
+        mock.patch("ai_search.views.fx.usd_to_pln_rate") as fx_mock,
+    ):
+        r = staff_client.post(
+            reverse("ai_search:index"),
+            {"model": "rekord", "pytanie": "publikacje z 2024"},
+        )
+    assert r.status_code == 302
+    assert reverse("bpp:zapytanie") in r.url
+    assert translate_mock.call_args.kwargs["budget_check"] is None
+    pricing_mock.assert_not_called()
+    fx_mock.assert_not_called()
+    log = AISearchQuery.objects.get()
+    assert log.success is True
+    assert log.cost_usd == Decimal("0")
+    assert log.fx_rate == Decimal("0")
+    assert log.cost_pln == Decimal("0")
+
+
+@pytest.mark.django_db
 def test_post_null_query_shows_error(staff_client, settings):
     settings.BPP_AI_SEARCH_ENABLED = True
     res = translator.TranslationResult(

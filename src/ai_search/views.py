@@ -32,16 +32,20 @@ class ZapytanieAIView(WprowadzanieDanychOrSuperuserMixin, FormView):
     def form_valid(self, form):
         model_key = form.cleaned_data["model"]
         pytanie = form.cleaned_data["pytanie"].strip()
+        is_anthropic = settings.BPP_AI_BACKEND == "anthropic"
 
-        status = budget.check_budget()
-        if not status.ok:
-            return self.render_to_response(
-                self.get_context_data(form=form, blad=status.reason)
-            )
+        if is_anthropic:
+            status = budget.check_budget()
+            if not status.ok:
+                return self.render_to_response(
+                    self.get_context_data(form=form, blad=status.reason)
+                )
 
         try:
             result = translator.translate(
-                pytanie, model_key, budget_check=budget.check_budget
+                pytanie,
+                model_key,
+                budget_check=budget.check_budget if is_anthropic else None,
             )
         except Exception:  # błędy SDK/sieci — log + generyczny komunikat
             rollbar.report_exc_info()
@@ -78,16 +82,21 @@ class ZapytanieAIView(WprowadzanieDanychOrSuperuserMixin, FormView):
         )
 
     def _log(self, result, model_key, pytanie):
-        rate = fx.usd_to_pln_rate()
-        try:
-            cost_usd = pricing.cost_usd_from_usage(
-                result.usage, settings.BPP_AI_MODEL, date.today()
-            )
-        except KeyError:
-            rollbar.report_exc_info()
-            logger.error(
-                "Brak ceny dla modelu %s — koszt nieznany", settings.BPP_AI_MODEL
-            )
+        if settings.BPP_AI_BACKEND == "anthropic":
+            rate = fx.usd_to_pln_rate()
+            try:
+                cost_usd = pricing.cost_usd_from_usage(
+                    result.usage, settings.BPP_AI_MODEL, date.today()
+                )
+            except KeyError:
+                rollbar.report_exc_info()
+                logger.error(
+                    "Brak ceny dla modelu %s — koszt nieznany", settings.BPP_AI_MODEL
+                )
+                cost_usd = Decimal("0")
+        else:
+            # Backend lokalny (openai-compatible) — darmowy, brak cennika/FX.
+            rate = Decimal("0")
             cost_usd = Decimal("0")
         AISearchQuery.objects.create(
             user=self.request.user if self.request.user.is_authenticated else None,

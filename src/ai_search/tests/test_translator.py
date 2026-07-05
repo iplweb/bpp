@@ -2,22 +2,22 @@ from unittest import mock
 
 import pytest
 
-from ai_search import budget, translator
+from ai_search import backends, budget, translator
 
 
 def _fake_response(query, error=None, usage=None):
-    parsed = translator.DSLQuery(query=query, error=error)
-    resp = mock.Mock()
-    resp.parsed_output = parsed
-    resp.stop_reason = "end_turn"
+    parsed = backends.DSLQuery(query=query, error=error)
     u = usage or {}
-    resp.usage = mock.Mock(
-        input_tokens=u.get("input_tokens", 10),
-        output_tokens=u.get("output_tokens", 5),
-        cache_read_input_tokens=u.get("cache_read_tokens", 0),
-        cache_creation_input_tokens=u.get("cache_write_tokens", 0),
+    return backends.LLMResult(
+        parsed=parsed,
+        usage={
+            "input_tokens": u.get("input_tokens", 10),
+            "output_tokens": u.get("output_tokens", 5),
+            "cache_read_tokens": u.get("cache_read_tokens", 0),
+            "cache_write_tokens": u.get("cache_write_tokens", 0),
+        },
+        stop_reason="end_turn",
     )
-    return resp
 
 
 @pytest.fixture(autouse=True)

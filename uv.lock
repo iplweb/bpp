@@ -458,6 +458,7 @@ dependencies = [
     { name = "mozilla-django-oidc", marker = "platform_python_implementation != 'PyPy'" },
     { name = "nh3", marker = "platform_python_implementation != 'PyPy'" },
     { name = "numpy", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "openai", marker = "platform_python_implementation != 'PyPy'" },
     { name = "openpyxl", marker = "platform_python_implementation != 'PyPy'" },
     { name = "ortools", marker = "platform_python_implementation != 'PyPy'" },
     { name = "pandas", marker = "platform_python_implementation != 'PyPy'" },
@@ -643,6 +644,7 @@ requires-dist = [
     { name = "mozilla-django-oidc", specifier = ">=5.0.2,<6" },
     { name = "nh3", specifier = ">=0.3.6" },
     { name = "numpy", specifier = ">=2.4.6" },
+    { name = "openai", specifier = ">=1.50" },
     { name = "openpyxl", specifier = ">=3.1.5" },
     { name = "ortools", specifier = ">=9.15.6755" },
     { name = "pandas", specifier = ">=3.0.3" },
@@ -3788,6 +3790,25 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/0b/5f/19930f824ffeb0ad4372da4812c50edbd1434f678c90c2733e1188edfc63/oauthlib-3.3.1.tar.gz", hash = "sha256:0f0f8aa759826a193cf66c12ea1af1637f87b9b4622d46e866952bb022e538c9", size = 185918, upload-time = "2025-06-19T22:48:08.269Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/be/9c/92789c596b8df838baa98fa71844d84283302f7604ed565dafe5a6b5041a/oauthlib-3.3.1-py3-none-any.whl", hash = "sha256:88119c938d2b8fb88561af5f6ee0eec8cc8d552b7bb1f712743136eb7523b7a1", size = 160065, upload-time = "2025-06-19T22:48:06.508Z" },
+]
+
+[[package]]
+name = "openai"
+version = "2.44.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "anyio", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "distro", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "httpx", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "jiter", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "pydantic", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "sniffio", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "tqdm", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "typing-extensions", marker = "platform_python_implementation != 'PyPy'" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/49/f5/7c7cb955305cb41f7f3c5fd7e0e38bf6bbf2658468863d4b7b868a5cb8df/openai-2.44.0.tar.gz", hash = "sha256:68a5a5ffad82b8ff7d451c437529fb64f7c3b8123aaf0c021966a882d9e3947d", size = 988753, upload-time = "2026-06-24T20:56:02.293Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/ae/f4/561ed79fd94876160018a5e75254cfcb9b0e62d4dded9dcb20072e86d623/openai-2.44.0-py3-none-any.whl", hash = "sha256:0a2a3ab2e29aeda368700f662ff9ba0f9df17ba4c54577a64e08b8115a3cc0ad", size = 1366216, upload-time = "2026-06-24T20:55:58.882Z" },
 ]
 
 [[package]]
