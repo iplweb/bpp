@@ -136,6 +136,57 @@ def test_jednostka_pokazuj_opis(jednostka, client, arg_res):
     assert result is arg_res
 
 
+def test_browse_jednostka_styl_wydzialu_ukrywa_hierarchie_i_przycisk(uczelnia, client):
+    """Faza B (#438): strona w stylu wydziału (rodzaj z flagą
+    ``pokazuj_strukture_podjednostek``) NIE pokazuje kart hierarchii
+    „Wchodzi w skład" / „Jednostki podrzędne" ani przycisku „Pokaż wszystkie
+    publikacje". Strukturę pokazują sekcje strukturalne niżej, a prac w całym
+    wydziale jest za dużo na jeden raport. Na zwykłej jednostce te elementy
+    zostają (patrz ``test_browse_jednostka_nadrzedna``)."""
+    from bpp.models import RodzajJednostki
+    from bpp.tests.util import any_jednostka
+
+    rodzaj_wydzial = RodzajJednostki.objects.get(nazwa="Wydział")
+
+    # Wydział ma rodzica (test ukrycia „Wchodzi w skład") i dwie podjednostki
+    # (>1, żeby JednostkaView nie przeskoczył redirectem na jedyną podjednostkę).
+    nadrzedna = any_jednostka(
+        nazwa="Jednostka nadrzędna WZ", uczelnia=uczelnia, wydzial=None, parent=None
+    )
+    wydzial = any_jednostka(
+        nazwa="Wydział Testowy WZ",
+        uczelnia=uczelnia,
+        wydzial=None,
+        parent=nadrzedna,
+        rodzaj=rodzaj_wydzial,
+    )
+    dziecko = any_jednostka(
+        nazwa="Katedra Pierwsza WZ",
+        uczelnia=uczelnia,
+        wydzial=None,
+        parent=wydzial,
+        aktualna=True,
+        widoczna=True,
+    )
+    any_jednostka(
+        nazwa="Katedra Druga WZ",
+        uczelnia=uczelnia,
+        wydzial=None,
+        parent=wydzial,
+        aktualna=True,
+        widoczna=True,
+    )
+
+    url = reverse("bpp:browse_jednostka", args=(wydzial.slug,))
+    content = normalize_html(client.get(url).rendered_content)
+
+    assert "Wchodzi w skład" not in content
+    assert "Jednostki podrzędne" not in content
+    assert "Pokaż wszystkie publikacje" not in content
+    # ...ale sekcja strukturalna dalej renderuje podjednostki:
+    assert dziecko.nazwa in content
+
+
 def test_jednostka_aktualni_pracownicy(
     jednostka, autor_jan_nowak, autor_jan_kowalski, wydawnictwo_ciagle, client
 ):
