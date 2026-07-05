@@ -209,10 +209,11 @@ def usun_wezel_lustro_wydzialu(sender, instance, **kwargs):
     """
     from .jednostka import Jednostka
 
-    # ``rodzaj="Wydział"`` odsiewa promowane realne jednostki (I-4): mają
-    # ``legacy_wydzial_id``, ale nie są syntetycznym lustrem.
+    # ``jest_lustrem=True`` odsiewa promowane realne jednostki (I-4): mają
+    # ``legacy_wydzial_id``, ale nie są syntetycznym lustrem (stabilny marker,
+    # nie edytowalna nazwa rodzaju).
     for node in Jednostka.objects.filter(
-        legacy_wydzial_id=instance.id, rodzaj__nazwa="Wydział"
+        legacy_wydzial_id=instance.id, jest_lustrem=True
     ):
         if Jednostka.objects.filter(parent=node).exists():
             # Węzeł ma realne dzieci (po I-4) — NIE kasuj (CASCADE zniszczyłby

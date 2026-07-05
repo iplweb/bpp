@@ -298,6 +298,36 @@ def test_migracja_idempotentna(uczelnia):
     )
 
 
+@pytest.mark.django_db
+def test_krok3_pomija_promowana_jednostke_nie_fabrykuje_historii(uczelnia):
+    """Finding 1 (#438): krok 3 (``_wpis_historii_wezlow``) NIE tworzy wpisu
+    historii dla PROMOWANEJ realnej jednostki (``jest_lustrem=False``), nawet
+    gdy ma ona ``legacy_wydzial_id`` wskazujący istniejący, ZAMKNIĘTY Wydzial.
+
+    To stan re-runu: po kroku 6 promowana jednostka ma ``legacy_wydzial_id``.
+    Bez markera ``jest_lustrem`` krok 3 brał ją za lustro i tworzył
+    ``Jednostka_Rodzic(parent=None, do=zamkniecie)`` → zamknięta historia na
+    ŻYWEJ jednostce → ``aktualna=False`` (cicha korupcja). Reprodukcja
+    recenzenta, ale wprost na kroku (harness self-FK ``wydzial`` uniemożliwia
+    ustawienie ``legacy=Wydzial.pk`` przez ``_czlonek``)."""
+    w = baker.make(
+        Wydzial,
+        uczelnia=uczelnia,
+        otwarcie=date(2000, 1, 1),
+        zamkniecie=date(2010, 1, 1),  # ZAMKNIĘTY — dawałby do=2010-01-01
+    )
+    # Promowana realna jednostka: legacy=w.id, ale jest_lustrem=False.
+    promowana = baker.make(Jednostka, uczelnia=uczelnia, parent=None)
+    Jednostka.objects.filter(pk=promowana.pk).update(
+        legacy_wydzial_id=w.id, jest_lustrem=False
+    )
+
+    _mig._wpis_historii_wezlow(global_apps)
+
+    # ŻADNEGO wpisu historii dla promowanej (krok 3 pomija nie-lustra):
+    assert not Jednostka_Rodzic.objects.filter(jednostka=promowana).exists()
+
+
 # ---------------------------------------------------------------------------
 # (g) guard post_delete: węzeł z dziećmi PRZEŻYWA; bezdzietny transient znika
 # ---------------------------------------------------------------------------
@@ -375,14 +405,18 @@ def _lustro_wydzialu(uczelnia, legacy=None):
     którym FK ``Jednostka.wydzial`` (self-FK) członka może go wskazywać bez
     naruszenia więzów (pk lustra ISTNIEJE w ``bpp_jednostka``).
 
-    ``rodzaj="Wydział"`` jest ISTOTNE: krok 0 promocji (i sygnał kasujący)
-    identyfikują lustro po tym rodzaju, odróżniając je od promowanej realnej
-    jednostki (rodzaj Standard/Koło)."""
+    ``jest_lustrem=True`` jest ISTOTNE: krok 0 promocji, kroki 3/4 historii i
+    sygnał kasujący identyfikują lustro po TYM markerze (stabilnym, nie po
+    edytowalnej nazwie rodzaju), odróżniając je od promowanej realnej jednostki
+    (``jest_lustrem=False``). ``rodzaj="Wydział"`` zostaje dla realizmu
+    (prawdziwe lustra mają ten rodzaj dla wyświetlania w stylu wydziału)."""
     mirror = baker.make(
         Jednostka, uczelnia=uczelnia, parent=None, rodzaj=_rodzaj("Wydział")
     )
     legacy = legacy if legacy is not None else mirror.pk
-    Jednostka.objects.filter(pk=mirror.pk).update(legacy_wydzial_id=legacy)
+    Jednostka.objects.filter(pk=mirror.pk).update(
+        legacy_wydzial_id=legacy, jest_lustrem=True
+    )
     mirror.refresh_from_db()
     return mirror
 
@@ -556,8 +590,8 @@ def test_post_delete_nie_kasuje_promowanej_jednostki(uczelnia):
     """#438: promowana REALNA jednostka (I-4/0457 krok 6) niesie
     ``legacy_wydzial_id`` starego wydziału, ale ``rodzaj != "Wydział"`` — sygnał
     ``post_delete`` Wydziału (``usun_wezel_lustro_wydzialu``) kasuje TYLKO
-    syntetyczne lustra (``rodzaj="Wydział"``), więc promowana jednostka z
-    dorobkiem PRZEŻYWA kasowanie starego Wydziału. Bez guardu rodzaju byłby to
+    syntetyczne lustra (``jest_lustrem=True``), więc promowana jednostka z
+    dorobkiem PRZEŻYWA kasowanie starego Wydziału. Bez markera lustra byłby to
     wektor utraty danych.
 
     Stan końcowy konstruujemy wprost (lustro + promowana o tym samym
@@ -565,13 +599,15 @@ def test_post_delete_nie_kasuje_promowanej_jednostki(uczelnia):
     ``test_jednoelementowy_wydzial_plaski_promuje_do_roota``."""
     w = baker.make(Wydzial, uczelnia=uczelnia)
 
-    # Syntetyczne lustro (rodzaj="Wydział") o legacy == w.id — MA zginąć.
+    # Syntetyczne lustro (jest_lustrem=True) o legacy == w.id — MA zginąć.
     lustro = baker.make(
         Jednostka, uczelnia=uczelnia, parent=None, rodzaj=_rodzaj("Wydział")
     )
-    Jednostka.objects.filter(pk=lustro.pk).update(legacy_wydzial_id=w.id)
+    Jednostka.objects.filter(pk=lustro.pk).update(
+        legacy_wydzial_id=w.id, jest_lustrem=True
+    )
 
-    # Promowana realna jednostka (rodzaj Standard) o TYM SAMYM legacy — ZOSTAJE.
+    # Promowana realna jednostka (jest_lustrem=False) o TYM SAMYM legacy — ZOSTAJE.
     promowana = baker.make(
         Jednostka, uczelnia=uczelnia, parent=None, rodzaj=_rodzaj("Standard")
     )

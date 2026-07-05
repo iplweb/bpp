@@ -100,6 +100,14 @@ def rerun_konwersja_wydzialy(apps, schema_editor):
     Jednostka = apps.get_model("bpp", "Jednostka")
     RodzajJednostki = apps.get_model("bpp", "RodzajJednostki")
 
+    # Faza B (#438): ustaw trwały marker ``jest_lustrem`` na węzłach-lustrach
+    # utworzonych WCZEŚNIEJ (Faza A / lazy factory), zanim istniało pole. Stary
+    # marker po nazwie rodzaju używamy JEDEN OSTATNI RAZ, w tym punkcie, by
+    # ustanowić stabilny ``jest_lustrem`` — dalej wszędzie filtrujemy po nim.
+    Jednostka.objects.filter(
+        legacy_wydzial_id__isnull=False, rodzaj__nazwa="Wydział"
+    ).update(jest_lustrem=True)
+
     wydzialy = list(Wydzial.objects.all())
     if not wydzialy:
         return
@@ -131,6 +139,7 @@ def rerun_konwersja_wydzialy(apps, schema_editor):
             rodzaj=rodzaj_wydzial,
             rodzaj_jednostki="normalna",
             legacy_wydzial_id=w.id,
+            jest_lustrem=True,
             parent=None,
             widoczna=False,
             aktualna=False,
@@ -152,6 +161,13 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
+        migrations.AddField(
+            model_name="jednostka",
+            name="jest_lustrem",
+            field=models.BooleanField(
+                default=False, verbose_name="Syntetyczny węzeł-lustro wydziału"
+            ),
+        ),
         migrations.RunSQL(DROP_TRIGGERS_SQL, reverse_sql=migrations.RunSQL.noop),
         migrations.RunPython(
             rerun_konwersja_wydzialy, reverse_code=migrations.RunPython.noop

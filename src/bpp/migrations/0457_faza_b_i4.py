@@ -87,12 +87,10 @@ def _promuj_jednoelementowe_wydzialy(apps):
 
     promoted = {}
     # Materializacja listy PRZED pętlą — kasujemy lustra w trakcie iteracji.
-    # ``rodzaj="Wydział"`` odsiewa już-promowane realne jednostki (re-run).
-    for mirror in list(
-        Jednostka.objects.filter(
-            legacy_wydzial_id__isnull=False, rodzaj__nazwa="Wydział"
-        )
-    ):
+    # ``jest_lustrem=True`` bierze TYLKO syntetyczne lustra; promowana realna
+    # jednostka (po re-runie ma już ``legacy_wydzial_id``) ma ``jest_lustrem=
+    # False``, więc nie jest brana za lustro i nie promujemy jej powtórnie.
+    for mirror in list(Jednostka.objects.filter(jest_lustrem=True)):
         # Guard (ochrona przed CASCADE): normalnie lustro jest na tym etapie
         # bezdzietne (płaskie jednostki re-parentuje dopiero krok 2). Jeśli
         # jednak COKOLWIEK wisi bezpośrednio pod lustrem (ręczny re-parent w
@@ -155,7 +153,13 @@ def _wpis_historii_wezlow(apps):
     dzis = date.today()
     wydzialy = {w.id: w for w in Wydzial.objects.all()}
 
-    for node in Jednostka.objects.filter(legacy_wydzial_id__isnull=False):
+    # Finding 1 (#438): TYLKO syntetyczne lustra dostają własny wpis historii.
+    # Bez ``jest_lustrem=True`` na re-runie promowana jednostka (ma już
+    # ``legacy_wydzial_id``) dostałaby sfabrykowaną, ZAMKNIĘTĄ historię →
+    # ``aktualna=False`` na żywej jednostce (cicha korupcja).
+    for node in Jednostka.objects.filter(
+        legacy_wydzial_id__isnull=False, jest_lustrem=True
+    ):
         # Idempotentny guard: nie duplikuj wpisu z pustym rodzicem.
         if Jednostka_Rodzic.objects.filter(
             jednostka_id=node.pk, parent__isnull=True
@@ -200,10 +204,12 @@ def _przepisz_historie_subjednostek(apps, sub_parent_map):
     Jednostka = apps.get_model("bpp", "Jednostka")
     Jednostka_Rodzic = apps.get_model("bpp", "Jednostka_Rodzic")
 
+    # Finding 1 (#438): tylko syntetyczne lustra (nie promowane realne
+    # jednostki, które po re-runie też mają ``legacy_wydzial_id``).
     mirror_ids = set(
-        Jednostka.objects.filter(legacy_wydzial_id__isnull=False).values_list(
-            "id", flat=True
-        )
+        Jednostka.objects.filter(
+            legacy_wydzial_id__isnull=False, jest_lustrem=True
+        ).values_list("id", flat=True)
     )
 
     for sub_id, mptt_parent_id in sub_parent_map.items():

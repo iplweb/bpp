@@ -95,6 +95,7 @@ def znajdz_lub_utworz_wezel_wydzialu(wydzial):
         uczelnia=wydzial.uczelnia,
         rodzaj=rodzaj_wydzial,
         legacy_wydzial_id=wydzial.id,
+        jest_lustrem=True,  # #438: syntetyczny węzeł-lustro (marker tożsamości)
         parent=None,
         # IV-1 (#438): węzeł-lustro dziedziczy widoczność ze źródłowego
         # Wydziału (spójnie z jednorazowym „odkryciem" w migracji 0462) —

@@ -196,6 +196,18 @@ class Jednostka(ModelZAdnotacjami, ModelZPBN_ID, ModelZPBN_UID, MPTTModel):
         max_length=250, blank=True, null=True
     )
     legacy_wydzial_id = models.IntegerField(null=True, blank=True, db_index=True)
+    # Faza B (#438): stabilny marker TOŻSAMOŚCI KONWERSJI. Rozdziela trzy
+    # niezależne pojęcia, dotąd sklejone w nazwie rodzaju "Wydział":
+    #  - ``legacy_wydzial_id`` — KTÓRY stary Wydzial reprezentuje ten węzeł
+    #    (mają OBA: syntetyczne lustro I promowana 1-jednostkowa) → mapowanie FK,
+    #  - ``jest_lustrem`` — czy to SYNTETYCZNY węzeł-lustro (True), czy REALNA
+    #    jednostka promowana do roota (False) → logika kasowania/widoczności/
+    #    historii lustra filtruje PO TYM (nie po edytowalnej nazwie rodzaju),
+    #  - ``rodzaj.pokazuj_strukture_podjednostek`` — czy wyświetlać stronę w
+    #    stylu wydziału (edytowalna preferencja UI, osobna sprawa).
+    jest_lustrem = models.BooleanField(
+        "Syntetyczny węzeł-lustro wydziału", default=False
+    )
 
     search = VectorField(blank=True, null=True)
 
