@@ -360,13 +360,27 @@ def test_post_delete_guard_bezdzietny_wezel_znika(uczelnia):
 # (odpięcie, usunięcie lustra, brak wiszących FK, nested-set).
 
 
+def _rodzaj(nazwa):
+    from bpp.models.rodzaj_jednostki import RodzajJednostki
+
+    return RodzajJednostki.objects.get_or_create(nazwa=nazwa)[0]
+
+
 def _lustro_wydzialu(uczelnia, legacy=None):
-    """Root ``Jednostka`` w roli węzła-lustra (``legacy_wydzial_id`` ustawione).
+    """Root ``Jednostka`` w roli SYNTETYCZNEGO węzła-lustra
+    (``legacy_wydzial_id`` ustawione, ``rodzaj="Wydział"`` — jak realne lustra
+    z 0455/``struktura_konwersja``).
 
     Domyślnie ``legacy_wydzial_id = własny pk`` — dowolny poprawny klucz, przy
     którym FK ``Jednostka.wydzial`` (self-FK) członka może go wskazywać bez
-    naruszenia więzów (pk lustra ISTNIEJE w ``bpp_jednostka``)."""
-    mirror = baker.make(Jednostka, uczelnia=uczelnia, parent=None)
+    naruszenia więzów (pk lustra ISTNIEJE w ``bpp_jednostka``).
+
+    ``rodzaj="Wydział"`` jest ISTOTNE: krok 0 promocji (i sygnał kasujący)
+    identyfikują lustro po tym rodzaju, odróżniając je od promowanej realnej
+    jednostki (rodzaj Standard/Koło)."""
+    mirror = baker.make(
+        Jednostka, uczelnia=uczelnia, parent=None, rodzaj=_rodzaj("Wydział")
+    )
     legacy = legacy if legacy is not None else mirror.pk
     Jednostka.objects.filter(pk=mirror.pk).update(legacy_wydzial_id=legacy)
     mirror.refresh_from_db()
@@ -374,30 +388,42 @@ def _lustro_wydzialu(uczelnia, legacy=None):
 
 
 def _czlonek(uczelnia, mirror, parent=None):
-    """Jednostka będąca członkiem wydziału ``mirror`` w sensie
-    PRZED-retargetowym: ``wydzial_id == mirror.legacy_wydzial_id``. ``parent``:
-    None (płaska) albo org-rodzic (jednostka spoza wydziału)."""
-    j = baker.make(Jednostka, uczelnia=uczelnia, parent=parent)
+    """REALNA jednostka będąca członkiem wydziału ``mirror`` w sensie
+    PRZED-retargetowym: ``wydzial_id == mirror.legacy_wydzial_id``,
+    ``rodzaj="Standard"`` (NIE lustro). ``parent``: None (płaska) albo
+    org-rodzic (jednostka spoza wydziału)."""
+    j = baker.make(
+        Jednostka, uczelnia=uczelnia, parent=parent, rodzaj=_rodzaj("Standard")
+    )
     Jednostka.objects.filter(pk=j.pk).update(wydzial_id=mirror.legacy_wydzial_id)
     j.refresh_from_db()
     return j
 
 
 def _promuj():
-    _mig._promuj_jednoelementowe_wydzialy(global_apps)
+    """Krok 0 (promocja) + krok 6 (ustawienie ``legacy_wydzial_id`` promowanym)
+    — jak w ``apply_faza_b_i4``, ale bez kroków 2–5. Zwraca mapę promowanych."""
+    promoted = _mig._promuj_jednoelementowe_wydzialy(global_apps)
+    _mig._ustaw_legacy_promowanym(global_apps, promoted)
+    return promoted
 
 
 @pytest.mark.django_db
 def test_jednoelementowy_wydzial_plaski_promuje_do_roota(uczelnia):
     """Wydział z 1 PŁASKĄ jednostką → jednostka promowana do roota
-    (``parent=None``), węzeł-lustro USUNIĘTY (brak wydmuszki)."""
+    (``parent=None``), węzeł-lustro USUNIĘTY (brak wydmuszki), a promowana
+    jednostka PRZEJMUJE ``legacy_wydzial_id`` zastąpionego wydziału (#438,
+    krok 6 — by mapowania 0460/0463 ją obejmowały)."""
     mirror = _lustro_wydzialu(uczelnia)
+    legacy = mirror.legacy_wydzial_id
     j = _czlonek(uczelnia, mirror)  # płaska (parent=None)
 
-    _promuj()
+    promoted = _promuj()
 
+    assert promoted == {j.pk: legacy}
     j.refresh_from_db()
     assert j.parent_id is None  # root
+    assert j.legacy_wydzial_id == legacy  # przejęła identyfikator wydziału
     assert not Jednostka.objects.filter(pk=mirror.pk).exists()  # brak wydmuszki
     assert Jednostka.objects.filter(pk=j.pk).exists()
 
@@ -467,6 +493,7 @@ def test_pelny_apply_promuje_jednostke_root_nested_set(uczelnia):
     z poprawnym nested-set (samodzielne drzewo: lft=1/rght=2/level=0), lustra
     brak; kroki 2–5 spójne z brakiem lustra."""
     mirror = _lustro_wydzialu(uczelnia)
+    legacy = mirror.legacy_wydzial_id
     j = _czlonek(uczelnia, mirror)
 
     _apply()
@@ -474,6 +501,8 @@ def test_pelny_apply_promuje_jednostke_root_nested_set(uczelnia):
     assert not Jednostka.objects.filter(pk=mirror.pk).exists()
     j.refresh_from_db()
     assert j.parent_id is None
+    # Krok 6 (po nested-set): promowana jednostka przejmuje legacy wydziału.
+    assert j.legacy_wydzial_id == legacy
     assert j.level == 0
     assert j.lft == 1
     assert j.rght == 2  # samodzielne drzewo (bez dzieci)
@@ -497,3 +526,35 @@ def test_promocja_idempotentna(uczelnia):
     second = (j.parent_id, Jednostka.objects.filter(pk=mirror.pk).exists())
 
     assert first == second == (None, False)
+
+
+@pytest.mark.django_db
+def test_post_delete_nie_kasuje_promowanej_jednostki(uczelnia):
+    """#438: promowana REALNA jednostka (I-4/0457 krok 6) niesie
+    ``legacy_wydzial_id`` starego wydziału, ale ``rodzaj != "Wydział"`` — sygnał
+    ``post_delete`` Wydziału (``usun_wezel_lustro_wydzialu``) kasuje TYLKO
+    syntetyczne lustra (``rodzaj="Wydział"``), więc promowana jednostka z
+    dorobkiem PRZEŻYWA kasowanie starego Wydziału. Bez guardu rodzaju byłby to
+    wektor utraty danych.
+
+    Stan końcowy konstruujemy wprost (lustro + promowana o tym samym
+    ``legacy_wydzial_id``) — mechanikę promocja→legacy testuje osobno
+    ``test_jednoelementowy_wydzial_plaski_promuje_do_roota``."""
+    w = baker.make(Wydzial, uczelnia=uczelnia)
+
+    # Syntetyczne lustro (rodzaj="Wydział") o legacy == w.id — MA zginąć.
+    lustro = baker.make(
+        Jednostka, uczelnia=uczelnia, parent=None, rodzaj=_rodzaj("Wydział")
+    )
+    Jednostka.objects.filter(pk=lustro.pk).update(legacy_wydzial_id=w.id)
+
+    # Promowana realna jednostka (rodzaj Standard) o TYM SAMYM legacy — ZOSTAJE.
+    promowana = baker.make(
+        Jednostka, uczelnia=uczelnia, parent=None, rodzaj=_rodzaj("Standard")
+    )
+    Jednostka.objects.filter(pk=promowana.pk).update(legacy_wydzial_id=w.id)
+
+    w.delete()
+
+    assert not Jednostka.objects.filter(pk=lustro.pk).exists()  # lustro sprzątnięte
+    assert Jednostka.objects.filter(pk=promowana.pk).exists()  # promowana żyje

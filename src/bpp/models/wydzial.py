@@ -191,17 +191,29 @@ def usun_wezel_lustro_wydzialu(sender, instance, **kwargs):
     zostałaby sierota wskazująca na nieistniejący już wydział. Model lustra
     jest LAZY (tworzone dopiero przy linkowaniu), więc to rzadkie, ale tanie.
 
-    **Guard bezdzietności (I-4).** Po I-4 (migracja 0457) węzeł-lustro MA
-    DZIECI — pod niego podpięte są realne jednostki (``parent``, TreeForeignKey
-    CASCADE) oraz wpisy ``Jednostka_Rodzic.parent`` (CASCADE). Bezwarunkowe
-    ``.delete()`` skaskadowałoby wtedy na całą realną strukturę = KATASTROFALNA
-    utrata danych. Dlatego kasujemy węzeł WYŁĄCZNIE, gdy jest bezdzietny
-    (transient lustro sprzed podpięcia). Węzeł z realnymi dziećmi ZOSTAJE
-    nietknięty przy kasowaniu starego ``Wydzial``.
+    **Guard rodzaju (I-4, #438).** ``legacy_wydzial_id`` NIE oznacza już
+    wyłącznie syntetycznego lustra: 1-elementowy wydział jest w I-4 (0457)
+    „promowany" — jego jedyna, REALNA jednostka staje się rootem i dostaje
+    ``legacy_wydzial_id`` zastąpionego wydziału (żeby mapowania 0460/0463
+    ją obejmowały). Taka jednostka ma jednak ``rodzaj`` Standard/Koło, a
+    syntetyczne lustro — ``rodzaj="Wydział"``. Kasujemy WYŁĄCZNIE lustra
+    (``rodzaj="Wydział"``); promowana realna jednostka z dorobkiem ZOSTAJE,
+    nawet gdy jej stary Wydzial jest kasowany.
+
+    **Guard bezdzietności (I-4).** Po I-4 węzeł-lustro MA DZIECI — pod niego
+    podpięte są realne jednostki (``parent``, TreeForeignKey CASCADE) oraz
+    wpisy ``Jednostka_Rodzic.parent`` (CASCADE). Bezwarunkowe ``.delete()``
+    skaskadowałoby wtedy na całą realną strukturę = KATASTROFALNA utrata
+    danych. Dlatego kasujemy węzeł WYŁĄCZNIE, gdy jest bezdzietny (transient
+    lustro sprzed podpięcia). Węzeł z realnymi dziećmi ZOSTAJE nietknięty.
     """
     from .jednostka import Jednostka
 
-    for node in Jednostka.objects.filter(legacy_wydzial_id=instance.id):
+    # ``rodzaj="Wydział"`` odsiewa promowane realne jednostki (I-4): mają
+    # ``legacy_wydzial_id``, ale nie są syntetycznym lustrem.
+    for node in Jednostka.objects.filter(
+        legacy_wydzial_id=instance.id, rodzaj__nazwa="Wydział"
+    ):
         if Jednostka.objects.filter(parent=node).exists():
             # Węzeł ma realne dzieci (po I-4) — NIE kasuj (CASCADE zniszczyłby
             # poddrzewo + metryczkę historyczną).

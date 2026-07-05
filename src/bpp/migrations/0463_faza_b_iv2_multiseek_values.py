@@ -23,6 +23,12 @@ Remap (tylko ``value`` — NIE ruszamy nazw pól ani operatorów):
 
 A. ``"Wydział"`` / ``"Pierwszy wydział"``:
    ``mapa = {legacy_wydzial_id: jednostka.id}`` (węzły-wydziały po konsolidacji).
+   Mapa obejmuje OBA rodzaje węzłów niosących ``legacy_wydzial_id``: syntetyczne
+   lustra (``rodzaj="Wydział"``) ORAZ promowane realne jednostki (I-4/0457 krok
+   6 — 1-elementowy wydział, którego jedyna jednostka stała się rootem i dostała
+   ``legacy_wydzial_id`` zastąpionego wydziału). Dzięki temu zapisany search po
+   promowanym wydziale remapuje się na promowaną jednostkę zamiast zostać
+   zdropowany.
    - ``int(value) in mapa`` → ``value = str(mapa[pk])`` (nowy pk węzła; BEZ labela —
      JS sam odtworzy label przez ``value_to_web`` przy wczytaniu).
    - ``int(value)`` już wskazuje węzeł docelowy (``in target_pks``) → SKIP (re-run

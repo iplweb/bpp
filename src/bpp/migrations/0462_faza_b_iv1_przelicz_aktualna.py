@@ -61,9 +61,14 @@ def przelicz_aktualna(apps, schema_editor):
 
 
 def odkryj_widoczna(apps, schema_editor):
-    """F2: węzły-wydziały (``legacy_wydzial_id IS NOT NULL``) dziedziczą
-    widoczność ze źródłowego ``Wydzial.widoczny`` — widoczne wydziały →
-    widoczne węzły, ukryte → ukryte."""
+    """F2: syntetyczne węzły-lustra (``legacy_wydzial_id IS NOT NULL`` ORAZ
+    ``rodzaj="Wydział"``) dziedziczą widoczność ze źródłowego
+    ``Wydzial.widoczny`` — widoczne wydziały → widoczne węzły, ukryte → ukryte.
+
+    Filtr ``rodzaj="Wydział"`` WYKLUCZA promowane realne jednostki (I-4/0457:
+    1-elementowy wydział → jego jedyna jednostka jako root też ma
+    ``legacy_wydzial_id``, ale rodzaj Standard/Koło). Takiej jednostce NIE
+    nadpisujemy jej własnej widoczności widocznością martwego wydziału."""
     Jednostka = apps.get_model("bpp", "Jednostka")
     Wydzial = apps.get_model("bpp", "Wydzial")
 
@@ -71,15 +76,23 @@ def odkryj_widoczna(apps, schema_editor):
     widoczne = [pk for pk, w in widoczny.items() if w]
     ukryte = [pk for pk, w in widoczny.items() if not w]
 
-    Jednostka.objects.filter(legacy_wydzial_id__in=widoczne).update(widoczna=True)
-    Jednostka.objects.filter(legacy_wydzial_id__in=ukryte).update(widoczna=False)
+    Jednostka.objects.filter(
+        legacy_wydzial_id__in=widoczne, rodzaj__nazwa="Wydział"
+    ).update(widoczna=True)
+    Jednostka.objects.filter(
+        legacy_wydzial_id__in=ukryte, rodzaj__nazwa="Wydział"
+    ).update(widoczna=False)
 
 
 def ukryj_widoczna(apps, schema_editor):
-    """Reverse: przywróć węzły-wydziały do stanu ukrytego (jak przy konwersji
-    — ``struktura_konwersja`` / migracja ``0455`` tworzyły je ``widoczna=False``)."""
+    """Reverse: przywróć syntetyczne węzły-lustra do stanu ukrytego (jak przy
+    konwersji — ``struktura_konwersja`` / migracja ``0455`` tworzyły je
+    ``widoczna=False``). Tylko ``rodzaj="Wydział"`` — promowanej realnej
+    jednostki (I-4) nie ukrywamy."""
     Jednostka = apps.get_model("bpp", "Jednostka")
-    Jednostka.objects.filter(legacy_wydzial_id__isnull=False).update(widoczna=False)
+    Jednostka.objects.filter(
+        legacy_wydzial_id__isnull=False, rodzaj__nazwa="Wydział"
+    ).update(widoczna=False)
 
 
 def invalidate_cache(apps, schema_editor):

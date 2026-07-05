@@ -262,6 +262,55 @@ def test_remap_saved_searches_end_to_end():
 
 
 @pytest.mark.django_db
+def test_remap_saved_searches_obejmuje_promowany_wydzial():
+    """#438: zapisany search po PROMOWANYM 1-jednostkowym wydziale (I-4/0457)
+    remapuje się na promowaną jednostkę, NIE jest dropowany.
+
+    Promowana jednostka to REALNA jednostka (``rodzaj="Standard"``) z
+    ``legacy_wydzial_id`` zastąpionego wydziału — a ``wydzial_mapa`` w
+    ``remap_saved_searches`` buduje się z ``legacy_wydzial_id`` NIEZALEŻNIE od
+    rodzaju, więc obejmuje ją tak samo jak syntetyczne lustro."""
+    from multiseek.models import SearchForm
+
+    from bpp.models import Jednostka, RodzajJednostki, Uczelnia
+
+    uczelnia = baker.make(Uczelnia)
+    rodzaj_std, _ = RodzajJednostki.objects.get_or_create(nazwa="Standard")
+    # Promowana realna jednostka: root, rodzaj Standard, legacy starego wydziału.
+    promowana = baker.make(
+        Jednostka,
+        uczelnia=uczelnia,
+        parent=None,
+        wydzial=None,
+        rodzaj=rodzaj_std,
+        legacy_wydzial_id=321,
+    )
+    owner = baker.make("bpp.BppUser")
+
+    data = {
+        "form_data": [
+            None,
+            {"field": "Wydział", "operator": "equals", "value": "321", "prev_op": None},
+        ]
+    }
+    sf = SearchForm.objects.create(
+        name="promowany-0463", owner=owner, public=False, data=json.dumps(data)
+    )
+
+    mod.remap_saved_searches(global_apps, None)
+
+    sf.refresh_from_db()
+    out = json.loads(sf.data)["form_data"]
+    # Wpis NIE zdropowany — przemapowany na pk promowanej jednostki.
+    assert out[1] == {
+        "field": "Wydział",
+        "operator": "equals",
+        "value": str(promowana.pk),
+        "prev_op": None,
+    }
+
+
+@pytest.mark.django_db
 def test_remap_saved_searches_ignores_broken_json():
     from multiseek.models import SearchForm
 

@@ -8,6 +8,8 @@ Ustawienie FAKTYCZNEJ struktury drzewa `Jednostka`:
    wpisy `Jednostka_Rodzic`). Robione PRZED snapshotem/re-parentem, bo promocja
    odpina (org-)rodzica; usunięcie lustra przed krokami 2–4 (iterują po
    `legacy_wydzial_id__isnull=False`) gwarantuje brak wiszących FK.
+   `legacy_wydzial_id` promowanej jednostki ustawiamy DOPIERO w kroku 6 —
+   patrz tam, czemu nie tu.
 1. SNAPSHOT sub-jednostek (parent NOT NULL, wydzial_id NOT NULL) PRZED
    re-parentem — krok 2 zmienia `parent` i zatarłby rozróżnienie.
 2. Re-parent PŁASKICH jednostek (parent IS NULL, wydzial_id NOT NULL) pod
@@ -24,10 +26,20 @@ Ustawienie FAKTYCZNEJ struktury drzewa `Jednostka`:
    log + SKIP (NIE zgaduj przepisania).
 5. Przeliczenie nested-set (`lft`/`rght`/`tree_id`/`level`) w czystym
    Pythonie (DFS per drzewo) — historical model nie ma `objects.rebuild()`.
+6. LEGACY promowanych (#438): promowanym jednostkom z kroku 0 ustaw
+   `legacy_wydzial_id` = pk zastąpionego wydziału — DOPIERO TERAZ (po 2–5),
+   by kroki 3/4 (iterują po `legacy_wydzial_id__isnull=False`) nie wzięły
+   realnej jednostki za syntetyczne lustro i nie dopisały jej lewej historii.
+   Po tym kroku `legacy_wydzial_id` jest jednolitym wskaźnikiem „węzeł
+   reprezentujący stary Wydzial" — dla lustra ORAZ promowanej jednostki;
+   rozróżnia je `rodzaj` ("Wydział" vs Standard/Koło), więc mapowanie po
+   `legacy_wydzial_id` (0460 repoint, 0463 multiseek) obejmuje OBA, a logika
+   „to lustro?" (sygnał kasujący, 0462 widoczność) filtruje po `rodzaj`.
 
 Idempotencja: parent już ustawiony → krok 2 no-op; wpisy węzłów → guard;
 przepisania sub-jednostek → no-op (parent już = MPTT rodzic); nested-set
-przeliczalny wielokrotnie. `reverse_code=noop`.
+przeliczalny wielokrotnie; krok 0 pomija już-promowane (rodzaj≠"Wydział"),
+więc krok 6 dostaje pustą mapę na re-runie. `reverse_code=noop`.
 """
 
 from datetime import date
@@ -60,14 +72,27 @@ def _promuj_jednoelementowe_wydzialy(apps):
     False``) → nie powstaje wpis historii lustra (krok 3) ani przepisanie po
     nieistniejącym lustrze (krok 4).
 
+    Zwraca mapę ``{promowana_jednostka_pk: zastąpiony_wydzial_id}`` — krok 6
+    (``_ustaw_legacy_promowanym``) ustawia z niej ``legacy_wydzial_id`` PO
+    krokach 2–5.
+
     Idempotentne: uruchamiane jako krok 0 (przed re-parentem); po pierwszym
     przebiegu 1-elementowe lustra już nie istnieją, a re-parent NIE zmienia
     ``wydzial_id``, więc ponowny przebieg nie promuje błędnie wydziałów ≥2.
+    Kandydatów na lustro zawężamy do ``rodzaj="Wydział"`` — na re-runie
+    promowana jednostka MA już ``legacy_wydzial_id``, ale rodzaj Standard/Koło,
+    więc NIE jest brana za lustro (nie promujemy jej powtórnie).
     """
     Jednostka = apps.get_model("bpp", "Jednostka")
 
+    promoted = {}
     # Materializacja listy PRZED pętlą — kasujemy lustra w trakcie iteracji.
-    for mirror in list(Jednostka.objects.filter(legacy_wydzial_id__isnull=False)):
+    # ``rodzaj="Wydział"`` odsiewa już-promowane realne jednostki (re-run).
+    for mirror in list(
+        Jednostka.objects.filter(
+            legacy_wydzial_id__isnull=False, rodzaj__nazwa="Wydział"
+        )
+    ):
         czlonkowie = Jednostka.objects.filter(
             wydzial_id=mirror.legacy_wydzial_id,
             legacy_wydzial_id__isnull=True,
@@ -78,9 +103,14 @@ def _promuj_jednoelementowe_wydzialy(apps):
         # Promocja do roota — ODPIĘCIE od (org-)rodzica, jeśli był. ``update``
         # (nie ``save``) omija sygnały/denorm; nested-set przelicza krok 5.
         Jednostka.objects.filter(pk=jedyna.pk).update(parent_id=None)
+        # ``legacy_wydzial_id`` ustawi krok 6 (po 2–5) — TERAZ zapisujemy tylko
+        # jaki wydział ta jednostka zastępuje.
+        promoted[jedyna.pk] = mirror.legacy_wydzial_id
         # Usuń lustro: CASCADE sprząta wpisy Jednostka_Rodzic wskazujące lustro
         # (i własny wpis lustra), SET_NULL zeruje denorm ``wydzial``.
         mirror.delete()
+
+    return promoted
 
 
 def _reparent_plaskie(apps):
@@ -245,14 +275,36 @@ def _przelicz_nested_set(apps):
             stack.pop()
 
 
+def _ustaw_legacy_promowanym(apps, promoted):
+    """Krok 6 (#438): promowanym jednostkom (mapa z kroku 0) ustaw
+    ``legacy_wydzial_id`` = pk zastąpionego wydziału.
+
+    DLACZEGO DOPIERO TERAZ (po krokach 2–5), a nie w kroku 0 razem z promocją:
+    kroki 3/4 iterują po ``legacy_wydzial_id__isnull=False`` traktując takie
+    wiersze jak syntetyczne węzły-lustra — dopisałyby promowanej REALNEJ
+    jednostce własny wpis historii (krok 3, z dat wydziału) i wciągnęły ją do
+    ``mirror_ids`` (krok 4). Ustawiając ``legacy_wydzial_id`` PO nich, mamy
+    pewność, że w krokach 2–5 promowana jednostka jest zwykłą jednostką.
+
+    Po tym kroku ``legacy_wydzial_id`` reprezentuje „węzeł zastępujący stary
+    Wydzial" dla lustra ORAZ promowanej jednostki; rozróżnia je ``rodzaj``
+    ("Wydział" vs Standard/Koło) — patrz sygnał ``usun_wezel_lustro_wydzialu``
+    i migracja 0462, które filtrują po ``rodzaj``.
+    """
+    Jednostka = apps.get_model("bpp", "Jednostka")
+    for jednostka_pk, wydzial_id in promoted.items():
+        Jednostka.objects.filter(pk=jednostka_pk).update(legacy_wydzial_id=wydzial_id)
+
+
 def apply_faza_b_i4(apps, schema_editor):
-    """Orkiestracja kroków 0–5 w zadanej KOLEJNOŚCI."""
+    """Orkiestracja kroków 0–6 w zadanej KOLEJNOŚCI."""
     Jednostka = apps.get_model("bpp", "Jednostka")
 
     # (0) #438: 1-elementowy wydział → promuj jednostkę do roota, bez wydmuszki.
     # PRZED snapshotem (krok 1): promocja odpina org-rodzica (parent=None), więc
     # promowana jednostka NIE może wpaść do snapshotu sub-jednostek (krok 4).
-    _promuj_jednoelementowe_wydzialy(apps)
+    # ``legacy_wydzial_id`` promowanych ustawia krok 6 (po 2–5).
+    promoted = _promuj_jednoelementowe_wydzialy(apps)
 
     # (1) SNAPSHOT sub-jednostek PRZED re-parentem (krok 2 zmienia parent).
     sub_parent_map = dict(
@@ -265,6 +317,7 @@ def apply_faza_b_i4(apps, schema_editor):
     _wpis_historii_wezlow(apps)  # (3)
     _przepisz_historie_subjednostek(apps, sub_parent_map)  # (4)
     _przelicz_nested_set(apps)  # (5)
+    _ustaw_legacy_promowanym(apps, promoted)  # (6)
 
 
 class Migration(migrations.Migration):
