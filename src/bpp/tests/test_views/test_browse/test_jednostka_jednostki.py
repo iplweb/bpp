@@ -203,9 +203,7 @@ def test_browse_jednostka_styl_wydzialu_uklad_dawnego_wydzial_html(uczelnia, cli
     assert dziecko.nazwa in content
 
 
-def test_browse_jednostka_styl_wydzialu_nie_korzen_fallback_jednostki(
-    uczelnia, client
-):
+def test_browse_jednostka_styl_wydzialu_nie_korzen_fallback_jednostki(uczelnia, client):
     """Węzeł w stylu wydziału położony GŁĘBIEJ w drzewie (ma rodzica) nie
     może użyć POST ``wydzial=pk`` — ``WydzialQueryObject.value_from_web``
     rozwiązuje wyłącznie korzenie (``parent IS NULL``), a denorm
@@ -250,6 +248,80 @@ def test_browse_jednostka_styl_wydzialu_nie_korzen_fallback_jednostki(
     assert 'name="wydzial"' not in content
     for pk in (wydzial.pk, dziecko.pk, dziecko2.pk):
         assert f'name="jednostka" value="{pk}"' in content
+
+
+def test_browse_jednostka_styl_wydzialu_bez_wydzialow_jednostka_nadrzedna(
+    uczelnia, client
+):
+    """#438: strona w stylu wydziału na uczelni, która NIE używa wydziałów,
+    ale ma strukturę drzewa — przycisk „Pokaż wszystkie publikacje" na
+    korzeniu Z poddrzewem POST-uje ``jednostka_nadrzedna=pk`` (neutralny
+    odpowiednik ``wydzial=pk``), a nie długą jawną listę potomków ani
+    ``wydzial=pk`` (którego BuildSearch by nie pokazał w tej uczelni)."""
+    from bpp.models import RodzajJednostki
+    from bpp.tests.util import any_jednostka
+
+    uczelnia.uzywaj_wydzialow = False
+    uczelnia.save()
+
+    rodzaj = RodzajJednostki.objects.get(nazwa="Wydział")
+    korzen = any_jednostka(
+        nazwa="Instytut Główny IG",
+        uczelnia=uczelnia,
+        wydzial=None,
+        parent=None,
+        rodzaj=rodzaj,
+    )
+    any_jednostka(
+        nazwa="Dział Pierwszy IG",
+        uczelnia=uczelnia,
+        wydzial=None,
+        parent=korzen,
+        aktualna=True,
+        widoczna=True,
+    )
+    any_jednostka(
+        nazwa="Dział Drugi IG",
+        uczelnia=uczelnia,
+        wydzial=None,
+        parent=korzen,
+        aktualna=True,
+        widoczna=True,
+    )
+
+    url = reverse("bpp:browse_jednostka", args=(korzen.slug,))
+    content = normalize_html(client.get(url).rendered_content)
+
+    assert f'name="jednostka_nadrzedna" value="{korzen.pk}"' in content
+    assert 'name="wydzial"' not in content
+    assert 'name="jednostka"' not in content
+
+
+def test_browse_jednostka_styl_wydzialu_korzen_lisc_fallback_jednostki(
+    uczelnia, client
+):
+    """#438: korzeń w stylu wydziału BEZ podjednostek (poddrzewo puste) nie ma
+    po czym filtrować całym poddrzewem — przycisk wysyła jawną listę
+    (``jednostka=pk``), a nie ``wydzial=pk`` (jak dawniej dla każdego korzenia
+    przy ``uzywaj_wydzialow``). Gate: ``not parent_id and ma_poddrzewo``."""
+    from bpp.models import RodzajJednostki
+    from bpp.tests.util import any_jednostka
+
+    rodzaj = RodzajJednostki.objects.get(nazwa="Wydział")
+    korzen = any_jednostka(
+        nazwa="Wydział-liść WL",
+        uczelnia=uczelnia,
+        wydzial=None,
+        parent=None,
+        rodzaj=rodzaj,
+    )
+
+    url = reverse("bpp:browse_jednostka", args=(korzen.slug,))
+    content = normalize_html(client.get(url).rendered_content)
+
+    assert f'name="jednostka" value="{korzen.pk}"' in content
+    assert 'name="wydzial"' not in content
+    assert 'name="jednostka_nadrzedna"' not in content
 
 
 def test_browse_jednostka_zwykla_ma_przycisk_pokaz_wszystkie(jednostka, client):

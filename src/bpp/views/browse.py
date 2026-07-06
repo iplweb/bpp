@@ -35,6 +35,7 @@ from bpp.models import (
     Zrodlo,
 )
 from bpp.multiseek_registry import (
+    JednostkaNadrzednaQueryObject,
     JednostkaQueryObject,
     NazwiskoIImieQueryObject,
     RokQueryObject,
@@ -730,32 +731,31 @@ class BuildSearch(RedirectView):
             self.request.POST, "zakres_lat", ZakresLatQueryObject
         )
 
-        uczelnia = Uczelnia.objects.get_for_request(self.request)
-        uzywaj_wydzialow = uczelnia.uzywaj_wydzialow if uczelnia else True
+        # #438: oba pola „poddrzewowe" (Wydział / Jednostka nadrzędna) budujemy
+        # BEZWARUNKOWO. Gdy danego parametru nie ma w POST, ``zrob_box_z_
+        # requestu`` zwraca [], a ``zrob_formularz`` pomija puste boxy (no-op),
+        # więc obecność obu w wywołaniu nie dokłada nic dla uczelni, która ich
+        # nie używa. Dzięki temu POST z przycisku „Pokaż wszystkie publikacje"
+        # (``wydzial`` gdy uczelnia używa wydziałów, ``jednostka_nadrzedna`` gdy
+        # nie) jest ZAWSZE honorowany — wcześniej gałąź ``not uzywaj_wydzialow``
+        # po cichu wyrzucała wartość, dając pusty raport.
+        wydzialy_box = zrob_box_z_requestu(
+            self.request.POST, "wydzial", WydzialQueryObject
+        )
+        jednostki_nadrzedne_box = zrob_box_z_requestu(
+            self.request.POST, "jednostka_nadrzedna", JednostkaNadrzednaQueryObject
+        )
 
-        if uzywaj_wydzialow:
-            wydzialy_box = zrob_box_z_requestu(
-                self.request.POST, "wydzial", WydzialQueryObject
-            )
-
-            self.request.session[MULTISEEK_SESSION_KEY] = zrob_formularz(
-                zrodla_box,
-                autorzy_box,
-                typy_box,
-                jednostki_box,
-                wydzialy_box,
-                lata_box,
-                zakres_lat_box,
-            )
-        else:
-            self.request.session[MULTISEEK_SESSION_KEY] = zrob_formularz(
-                zrodla_box,
-                autorzy_box,
-                typy_box,
-                jednostki_box,
-                lata_box,
-                zakres_lat_box,
-            )
+        self.request.session[MULTISEEK_SESSION_KEY] = zrob_formularz(
+            zrodla_box,
+            autorzy_box,
+            typy_box,
+            jednostki_box,
+            wydzialy_box,
+            jednostki_nadrzedne_box,
+            lata_box,
+            zakres_lat_box,
+        )
 
         self.request.session["MULTISEEK_TITLE"] = self.request.POST.get(
             "suggested-title", ""

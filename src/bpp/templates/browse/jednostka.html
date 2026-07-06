@@ -72,18 +72,23 @@
         </div>
 
         <!-- Quick Actions -->
-        {# Węzeł-korzeń: krótki POST ``wydzial=pk`` jak w dawnym wydzial.html #}
-        {# (WydzialQueryObject rozwiązuje wyłącznie korzenie i filtruje po #}
-        {# denormie ``jednostka.wydzial`` = całe poddrzewo jednym wpisem, #}
-        {# zamiast mega-długiej listy jednostek w formularzu multiseeka). #}
-        {# Węzeł głębiej w drzewie albo uczelnia z wyłączonymi wydziałami: #}
-        {# fallback na jawną listę jednostki + potomków, bo POST ``wydzial`` #}
-        {# byłby wtedy zignorowany (BuildSearch) albo dał pusty raport. #}
+        {# Korzeń Z poddrzewem: krótki POST filtra poddrzewa zamiast mega- #}
+        {# długiej listy potomków. WydzialQueryObject / JednostkaNadrzedna #}
+        {# rozwiązują wyłącznie korzenie i filtrują po denormie #}
+        {# ``jednostka.wydzial`` = całe poddrzewo jednym wpisem. Uczelnia #}
+        {# z wydziałami → ``wydzial``; bez wydziałów → ``jednostka_nadrzedna`` #}
+        {# (BuildSearch honoruje oba bezwarunkowo). Korzeń-liść albo węzeł #}
+        {# głębiej w drzewie: jawna lista jednostki + potomków, bo POST #}
+        {# poddrzewa byłby wtedy pusty/zignorowany albo dał pusty raport. #}
         <div class="jednostka__quick-actions">
             <form method="post" action="{% url "bpp:browse_build_search" %}" class="jednostka__quick-actions-form">
                 {% csrf_token %}
-                {% if uczelnia.uzywaj_wydzialow and not jednostka.parent_id %}
-                    <input type="hidden" name="wydzial" value="{{ jednostka.pk }}"/>
+                {% if not jednostka.parent_id and jednostka.ma_poddrzewo %}
+                    {% if uczelnia.uzywaj_wydzialow %}
+                        <input type="hidden" name="wydzial" value="{{ jednostka.pk }}"/>
+                    {% else %}
+                        <input type="hidden" name="jednostka_nadrzedna" value="{{ jednostka.pk }}"/>
+                    {% endif %}
                 {% else %}
                     <input type="hidden" name="jednostka" value="{{ jednostka.pk }}"/>
                     {% for descendant in jednostka.get_descendants %}

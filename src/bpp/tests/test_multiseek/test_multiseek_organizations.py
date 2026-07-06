@@ -233,3 +233,76 @@ def test_KierunekStudiowQueryObject_none_value_yields_empty_match(
 
     ret = KierunekStudiowQueryObject().real_query(None, logic.EQUAL)
     assert Rekord.objects.filter(ret).count() == 0
+
+
+# --- #438: pole „Jednostka nadrzędna" (odpowiednik „Wydział" dla uczelni bez
+#     wydziałów, ale ze strukturą drzewa jednostek) ---
+
+
+def _req(uczelnia):
+    """Lekki request z ustawionym cache ``_uczelnia`` -- ``get_for_request``
+    zwraca go bez zapytania do bazy (patrz ``Uczelnia.get_for_request``)."""
+    import types
+
+    return types.SimpleNamespace(_uczelnia=uczelnia)
+
+
+@pytest.mark.django_db
+def test_JednostkaNadrzedna_enabled_uczelnia_bez_wydzialow_ze_struktura(uczelnia):
+    from bpp.multiseek_registry import JednostkaNadrzednaQueryObject
+    from bpp.tests.util import any_jednostka
+
+    uczelnia.uzywaj_wydzialow = False
+    uczelnia.save()
+    korzen = any_jednostka(
+        nazwa="Instytut Główny IG", uczelnia=uczelnia, wydzial=None, parent=None
+    )
+    any_jednostka(nazwa="Dział IG", uczelnia=uczelnia, wydzial=None, parent=korzen)
+
+    assert JednostkaNadrzednaQueryObject().option_enabled(_req(uczelnia)) is True
+
+
+@pytest.mark.django_db
+def test_JednostkaNadrzedna_ukryte_gdy_uczelnia_uzywa_wydzialow(uczelnia):
+    # Uczelnia z wydziałami: strukturę obsługuje pole „Wydział", nowe ukryte.
+    from bpp.multiseek_registry import JednostkaNadrzednaQueryObject
+    from bpp.tests.util import any_jednostka
+
+    uczelnia.uzywaj_wydzialow = True
+    uczelnia.save()
+    korzen = any_jednostka(
+        nazwa="Wydział W", uczelnia=uczelnia, wydzial=None, parent=None
+    )
+    any_jednostka(nazwa="Katedra W", uczelnia=uczelnia, wydzial=None, parent=korzen)
+
+    assert JednostkaNadrzednaQueryObject().option_enabled(_req(uczelnia)) is False
+
+
+@pytest.mark.django_db
+def test_JednostkaNadrzedna_ukryte_gdy_plaska_struktura(uczelnia):
+    from bpp.multiseek_registry import JednostkaNadrzednaQueryObject
+    from bpp.tests.util import any_jednostka
+
+    uczelnia.uzywaj_wydzialow = False
+    uczelnia.save()
+    any_jednostka(nazwa="Korzeń płaski", uczelnia=uczelnia, wydzial=None, parent=None)
+
+    assert JednostkaNadrzednaQueryObject().option_enabled(_req(uczelnia)) is False
+
+
+def test_JednostkaNadrzedna_ukryte_gdy_brak_uczelni():
+    from bpp.multiseek_registry import JednostkaNadrzednaQueryObject
+
+    assert JednostkaNadrzednaQueryObject().option_enabled(_req(None)) is False
+
+
+@pytest.mark.django_db
+def test_Wydzial_option_enabled_bez_zmian_regresja(uczelnia):
+    # Regresja: „Wydział" nadal sterowane WYŁĄCZNIE flagą ``uzywaj_wydzialow``.
+    uczelnia.uzywaj_wydzialow = False
+    uczelnia.save()
+    assert WydzialQueryObject().option_enabled(_req(uczelnia)) is False
+
+    uczelnia.uzywaj_wydzialow = True
+    uczelnia.save()
+    assert WydzialQueryObject().option_enabled(_req(uczelnia)) is True

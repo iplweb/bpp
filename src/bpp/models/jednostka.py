@@ -453,6 +453,16 @@ class Jednostka(ModelZAdnotacjami, ModelZPBN_ID, ModelZPBN_UID, MPTTModel):
             return Jednostka.objects.filter(Q(pk=self.pk) | Q(wydzial=self))
         return self.get_descendants(include_self=True)
 
+    def ma_poddrzewo(self):
+        """Czy ten węzeł ma jakiekolwiek podjednostki (poddrzewo)?
+
+        #438: predykat przycisku „Pokaż wszystkie publikacje" na stronie
+        jednostki w stylu wydziału. Korzeń Z poddrzewem POST-uje krótki filtr
+        wydziału / jednostki-nadrzędnej (całe poddrzewo jednym wpisem) zamiast
+        mega-długiej jawnej listy potomków; korzeń-liść nie ma po czym
+        filtrować poddrzewem, więc dostaje zwykłą listę jednoelementową."""
+        return self._poddrzewo_jednostki().exists()
+
     def aktualne_podjednostki(self):
         """Aktualne, widoczne jednostki z PODDRZEWA tego węzła -- bez jednostek
         oznaczonych jako odrębna sekcja (np. koła naukowe).

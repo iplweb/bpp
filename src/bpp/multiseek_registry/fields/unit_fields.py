@@ -317,6 +317,30 @@ class PierwszyWydzialQueryObject(WydzialQueryObject):
         return ret
 
 
+class JednostkaNadrzednaQueryObject(WydzialQueryObject):
+    # #438: odpowiednik „Wydział" dla uczelni, która NIE używa wydziałów, ale ma
+    # strukturę drzewa jednostek (korzeń + podjednostki). Dziedziczy CAŁE
+    # zapytanie po „Wydział" (``real_query``/``value_from_web``/``to_djangoql``
+    # — filtr po denormie ``wydzial`` = całe poddrzewo korzenia); różni się
+    # tylko etykietą i widocznością. Etykieta jest STATYCZNA, bo w multiseeku
+    # ``label`` to klucz tożsamości/persystencji pola (``make_field`` serializuje
+    # ``{"field": label}``, ``get_field_by_name`` mapuje po label, rejestr to
+    # globalny singleton budowany raz bez requestu) — dynamiczna etykieta
+    # rozjechałaby zapisane wyszukiwania. Rozłączność z „Wydział" po fladze:
+    # „Wydział" widoczne gdy ``uzywaj_wydzialow``, to pole — gdy NIE
+    # ``uzywaj_wydzialow`` i istnieje poddrzewo.
+    label = "Jednostka nadrzędna"
+    field_name = "jednostka_nadrzedna"
+
+    def option_enabled(self, request=None):
+        uczelnia = Uczelnia.objects.get_for_request(request)
+        if uczelnia is None:
+            return False
+        if uczelnia.uzywaj_wydzialow:
+            return False
+        return uczelnia.ma_jednostki_glowne_z_podjednostkami()
+
+
 class RodzajJednostkiQueryObject(BppMultiseekVisibilityMixin, ValueListQueryObject):
     # Faza B (#438), III-1: CharField ``rodzaj_jednostki`` + TextChoices
     # ``RODZAJ_JEDNOSTKI`` usunięte — filtrujemy przez FK ``rodzaj``

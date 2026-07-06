@@ -730,6 +730,20 @@ class Uczelnia(ModelZAdnotacjami, ModelZPBN_ID, NazwaISkrot, NazwaWDopelniaczu):
 
         return Jednostka.objects.filter(uczelnia=self, widoczna=True, parent=None)
 
+    def ma_jednostki_glowne_z_podjednostkami(self):
+        """Czy w tej uczelni istnieje jednostka-korzeń mająca podjednostki?
+
+        #438: włącza w multiseeku pole „Jednostka nadrzędna" (filtr po
+        poddrzewie korzenia) dla uczelni, która NIE używa wydziałów, ale ma
+        strukturę drzewa jednostek. Denorm ``Jednostka.wydzial`` wskazuje
+        KORZEŃ poddrzewa i jest NULL dla samych korzeni, więc dowolny wiersz z
+        ``wydzial != NULL`` to potomek — czyli jakiś korzeń MA podjednostki.
+        Jeden indeksowany ``.exists()`` (FK ``wydzial`` jest zaindeksowany).
+        """
+        from .jednostka import Jednostka
+
+        return Jednostka.objects.filter(uczelnia=self, wydzial__isnull=False).exists()
+
     def clean(self):
         if self.obca_jednostka is not None:
             if self.obca_jednostka.skupia_pracownikow:

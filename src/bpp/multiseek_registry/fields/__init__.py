@@ -116,6 +116,7 @@ from .string_fields import (
 # Re-export unit fields
 from .unit_fields import (
     AktualnaJednostkaAutoraQueryObject,
+    JednostkaNadrzednaQueryObject,
     JednostkaQueryObject,
     PierwszaJednostkaQueryObject,
     PierwszyWydzialQueryObject,
@@ -133,6 +134,7 @@ multiseek_fields = [
     NazwiskoIImieQueryObject(),
     JednostkaQueryObject(),
     WydzialQueryObject(),
+    JednostkaNadrzednaQueryObject(),
     Typ_OdpowiedzialnosciQueryObject(),
     TypOgolnyAutorQueryObject(),
     TypOgolnyRedaktorQueryObject(),
@@ -247,6 +249,7 @@ __all__ = [
     "AktualnaJednostkaAutoraQueryObject",
     "PierwszaJednostkaQueryObject",
     "WydzialQueryObject",
+    "JednostkaNadrzednaQueryObject",
     "PierwszyWydzialQueryObject",
     "RodzajJednostkiQueryObject",
     # Publication type fields
