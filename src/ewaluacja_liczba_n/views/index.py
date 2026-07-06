@@ -28,7 +28,7 @@ class LiczbaNIndexView(GroupRequiredMixin, TemplateView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        uczelnia = Uczelnia.objects.get_default()
+        uczelnia = Uczelnia.objects.get_for_request(self.request)
 
         # Pobierz wszystkie dane liczby N dla uczelni (średnia z 2022-2025)
         wszystkie_liczby_n = (
@@ -96,7 +96,7 @@ class ObliczLiczbeNView(GroupRequiredMixin, View):
     group_required = GR_WPROWADZANIE_DANYCH
 
     def post(self, request, *args, **kwargs):
-        uczelnia = Uczelnia.objects.get_default()
+        uczelnia = Uczelnia.objects.get_for_request(request)
 
         try:
             oblicz_liczby_n_dla_ewaluacji_2022_2025(uczelnia)

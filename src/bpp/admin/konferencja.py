@@ -1,9 +1,9 @@
 from django import forms
 from django.contrib import admin
+from siteblog.admin import SmallerTextarea
 
 from bpp.admin.helpers import LimitingFormset
 from bpp.models import Wydawnictwo_Ciagle, Wydawnictwo_Zwarte
-from siteblog.admin import SmallerTextarea
 
 from ..models.konferencja import Konferencja
 from .core import BaseBppAdminMixin

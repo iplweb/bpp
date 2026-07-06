@@ -90,9 +90,6 @@ class WydawnictwoPBNAdapter:
         if request is not None and uczelnia is None:
             uczelnia = Uczelnia.objects.get_for_request(request)
 
-        if uczelnia is None:
-            uczelnia = Uczelnia.objects.get_default()
-
         if uczelnia is not None:
             if uczelnia.pbn_api_nie_wysylaj_prac_bez_pk:
                 self.export_pk_zero = False

@@ -1,6 +1,9 @@
+import logging
 import re
 
 import bibtexparser
+
+from bpp.util import zaloguj_polkniety_wyjatek
 
 from . import (
     DataProvider,
@@ -8,6 +11,8 @@ from . import (
     InputMode,
     register_provider,
 )
+
+logger = logging.getLogger(__name__)
 
 # Mapowanie typów BibTeX → CrossRef (dla Komparator.porownaj_type)
 BIBTEX_TYPE_MAP = {
@@ -66,6 +71,10 @@ class BibTeXProvider(DataProvider):
         try:
             library = bibtexparser.parse_string(identifier)
         except Exception:
+            zaloguj_polkniety_wyjatek(
+                "Walidacja identyfikatora BibTeX (bibtexparser)",
+                logger=logger,
+            )
             return None
         if not library.entries:
             return None
@@ -75,6 +84,10 @@ class BibTeXProvider(DataProvider):
         try:
             library = bibtexparser.parse_string(identifier)
         except Exception:
+            zaloguj_polkniety_wyjatek(
+                "Parsowanie kodu BibTeX przy pobieraniu publikacji (bibtexparser)",
+                logger=logger,
+            )
             return None
         if not library.entries:
             return None

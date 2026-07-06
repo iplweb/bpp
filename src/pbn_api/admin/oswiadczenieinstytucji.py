@@ -1,8 +1,10 @@
 from django.contrib import admin
 
+from bpp.admin.helpers.site_filtered import SiteFilteredAdminMixin
 from bpp.models import Rekord
-from pbn_api.admin.base import BasePBNAPIAdmin
+from pbn_api.admin.base import BasePBNAPIAdmin, InstytucjaColumnAdminMixin
 from pbn_api.admin.filters import (
+    InstytucjaPBNFilter,
     OdpowiednikOswiadczeniaInstytucjiAutorWBPPFilter,
     OdpowiednikOswiadczeniaInstytucjiPublikacjaWBPPFilter,
 )
@@ -11,7 +13,10 @@ from pbn_api.models import OswiadczenieInstytucji
 
 
 @admin.register(OswiadczenieInstytucji)
-class OswiadczeniaInstytucjiAdmin(BasePBNAPIAdmin):
+class OswiadczeniaInstytucjiAdmin(
+    SiteFilteredAdminMixin, InstytucjaColumnAdminMixin, BasePBNAPIAdmin
+):
+    uczelnia_field_path = "uczelnia"
     autocomplete_fields = ["institutionId", "personId", "publicationId"]
 
     list_select_related = ["publicationId", "personId", "institutionId"]
@@ -51,6 +56,7 @@ class OswiadczeniaInstytucjiAdmin(BasePBNAPIAdmin):
     ]
 
     list_filter = [
+        InstytucjaPBNFilter,
         OdpowiednikOswiadczeniaInstytucjiPublikacjaWBPPFilter,
         OdpowiednikOswiadczeniaInstytucjiAutorWBPPFilter,
         "type",

@@ -2,14 +2,18 @@
 
 import html
 import json
+import logging
 
 from django.contrib import admin
 from django.utils.html import format_html
 from django.utils.safestring import mark_safe
 
 from bpp.admin.core import DynamicAdminFilterMixin
+from bpp.util import zaloguj_polkniety_wyjatek
 
 from .models import ImportedAuthor, ImportSession
+
+logger = logging.getLogger(__name__)
 
 
 @admin.register(ImportSession)
@@ -230,6 +234,12 @@ class ImportSessionAdmin(DynamicAdminFilterMixin, admin.ModelAdmin):
                         obj.created_record_content_type.model,
                     )
             except Exception:
+                zaloguj_polkniety_wyjatek(
+                    f"Renderowanie linku do utworzonego rekordu w adminie "
+                    f"importera (created_record_id={obj.created_record_id}, "
+                    f"content_type={obj.created_record_content_type})",
+                    logger=logger,
+                )
                 return format_html(
                     "ID: {} ({}) - nie można załadować",
                     obj.created_record_id,

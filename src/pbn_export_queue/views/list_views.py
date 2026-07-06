@@ -1,13 +1,18 @@
 """List views for PBN export queue."""
 
+import logging
+
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.db.models import F
 from django.db.models.functions import Coalesce
 from django.views.generic import ListView
 
+from bpp.util import zaloguj_polkniety_wyjatek
 from pbn_export_queue.models import PBN_Export_Queue, RodzajBledu
 
 from .mixins import PBNExportQueuePermissionMixin
+
+logger = logging.getLogger(__name__)
 
 
 class BasePBNExportQueueListView(
@@ -76,8 +81,13 @@ class BasePBNExportQueueListView(
                         in record.opis_bibliograficzny_cache.lower()
                     ):
                         matching_ids.append(item.pk)
-            except BaseException:
-                pass
+            except Exception:
+                zaloguj_polkniety_wyjatek(
+                    "Błąd podczas dopasowywania tytułu rekordu do zapytania "
+                    f"wyszukiwania (PBN_Export_Queue pk={item.pk}) — pomijam pozycję",
+                    logger=logger,
+                    do_rollbar=True,
+                )
 
         return matching_ids
 

@@ -4,7 +4,7 @@ from collections import namedtuple
 import pytest
 from django.urls import reverse
 
-from bpp.models import Autor_Dyscyplina, Typ_Odpowiedzialnosci, Uczelnia
+from bpp.models import Autor_Dyscyplina, Typ_Odpowiedzialnosci
 from bpp.models.zrodlo import Punktacja_Zrodla
 from bpp.tests.util import CURRENT_YEAR, any_autor, any_habilitacja, any_zrodlo
 from bpp.views.api import (
@@ -87,8 +87,6 @@ def test_GetPBNPublicationsByISBN_jedna_praca(
     UID_REKORDU = "foobar"
     TYTUL_REKORDU = "Jakis tytul"
 
-    orig = Uczelnia.objects.get_default
-
     pub1 = pbn_publication_json(
         mongoId=UID_REKORDU, year=ROK, isbn=ISBN, title=TYTUL_REKORDU
     )
@@ -100,17 +98,15 @@ def test_GetPBNPublicationsByISBN_jedna_praca(
 
     req = rf.post("/", data=dict(t=ISBN, rok="2021"))
     req.user = admin_user
+    # Multi-hosted: jawnie ustawiamy uczelnię requestu (NIE ma get_default).
+    req._uczelnia = pbn_uczelnia
 
-    pbn_client.transport.return_values[
-        "/api/v1/search/publications?size=10"
-    ] = pbn_pageable_json([pub1])
+    pbn_client.transport.return_values["/api/v1/search/publications?size=10"] = (
+        pbn_pageable_json([pub1])
+    )
     pbn_client.transport.return_values[f"/api/v1/publications/id/{UID_REKORDU}"] = pub1
-    try:
-        Uczelnia.objects.get_default = lambda *args, **kw: pbn_uczelnia
 
-        res = GetPBNPublicationsByISBN(request=req).post(req)
-    finally:
-        Uczelnia.objects.get_default = orig
+    res = GetPBNPublicationsByISBN(request=req).post(req)
 
     assert json.loads(res.content)["id"] == UID_REKORDU
 
@@ -123,8 +119,6 @@ def test_GetPBNPublicationsByISBN_wiele_isbn(
     ISBN = "123"
     UID_REKORDU = "foobar"
     TYTUL_REKORDU = "Jakis tytul"
-
-    orig = Uczelnia.objects.get_default
 
     pub1 = pbn_publication_json(
         mongoId=UID_REKORDU, year=ROK, isbn=ISBN, title=TYTUL_REKORDU
@@ -140,19 +134,16 @@ def test_GetPBNPublicationsByISBN_wiele_isbn(
 
     req = rf.post("/", data=dict(t=ISBN, rok="2021"))
     req.user = admin_user
+    # Multi-hosted: jawnie ustawiamy uczelnię requestu (NIE ma get_default).
+    req._uczelnia = pbn_uczelnia
 
-    pbn_client.transport.return_values[
-        "/api/v1/search/publications?size=10"
-    ] = pbn_pageable_json([pub1, pub2])
+    pbn_client.transport.return_values["/api/v1/search/publications?size=10"] = (
+        pbn_pageable_json([pub1, pub2])
+    )
     pbn_client.transport.return_values[f"/api/v1/publications/id/{UID_REKORDU}"] = pub1
     pbn_client.transport.return_values[f"/api/v1/publications/id/{UID_REKORDU}2"] = pub2
 
-    try:
-        Uczelnia.objects.get_default = lambda *args, **kw: pbn_uczelnia
-
-        res = GetPBNPublicationsByISBN(request=req).post(req)
-    finally:
-        Uczelnia.objects.get_default = orig
+    res = GetPBNPublicationsByISBN(request=req).post(req)
 
     assert json.loads(res.content)["id"] == UID_REKORDU
 

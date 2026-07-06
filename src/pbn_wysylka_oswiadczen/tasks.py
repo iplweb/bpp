@@ -1,4 +1,5 @@
 import json
+import logging
 import time
 import traceback
 
@@ -8,8 +9,8 @@ from django.utils import timezone
 from queryset_sequence import QuerySetSequence
 
 from bpp.models import Uczelnia
+from bpp.util import zaloguj_polkniety_wyjatek
 from pbn_api.adapters.wydawnictwo import WydawnictwoPBNAdapter
-from pbn_api.client import PBNClient, RequestsTransport
 from pbn_api.exceptions import (
     CannotDeleteStatementsException,
     DaneLokalneWymagajaAktualizacjiException,
@@ -18,19 +19,26 @@ from pbn_api.exceptions import (
 )
 from pbn_wysylka_oswiadczen.queries import get_publications_queryset
 
+logger = logging.getLogger(__name__)
 
-def get_pbn_client(user):
+
+def get_pbn_client(user, uczelnia_id):
     """
-    Create a PBN client for the given user.
+    Zbuduj klienta PBN dla użytkownika i KONKRETNEJ uczelni.
+
+    Klient powstaje przez kanoniczną metodę ``Uczelnia.pbn_client()`` (bez
+    ręcznego sklejania transportu). Uczelnia rozwiązywana ściśle po id —
+    multi-hosted nie robi get_default() po stronie zadania w tle.
 
     Args:
-        user: Django user with PBN token
+        user: Django user z tokenem PBN.
+        uczelnia_id: ID konkretnej uczelni (wymagane).
 
     Returns:
-        PBNClient: Configured PBN API client
+        PBNClient: skonfigurowany klient PBN API.
 
     Raises:
-        ValueError: If configuration is invalid
+        ValueError: brak/nieważny token lub brak uczelnia_id.
     """
     pbn_user = user.get_pbn_user()
 
@@ -40,21 +48,8 @@ def get_pbn_client(user):
     if not pbn_user.pbn_token_possibly_valid():
         raise ValueError("Token PBN wygasl. Zaloguj sie ponownie do PBN.")
 
-    uczelnia = Uczelnia.objects.get_default()
-    if not uczelnia:
-        raise ValueError("Brak domyslnej uczelni w systemie.")
-
-    app_id = uczelnia.pbn_app_name
-    app_token = uczelnia.pbn_app_token
-    base_url = uczelnia.pbn_api_root
-
-    if not all([app_id, app_token, base_url]):
-        raise ValueError(
-            "Ustawienia PBN uczelni niekompletne (brak app_id, app_token lub base_url)"
-        )
-
-    transport = RequestsTransport(app_id, app_token, base_url, pbn_user.pbn_token)
-    return PBNClient(transport)
+    uczelnia = Uczelnia.objects.get_for_pbn_background(uczelnia_id)
+    return uczelnia.pbn_client(pbn_user.pbn_token)
 
 
 def _delete_existing_statements(publication, pbn_client, log_entry):
@@ -149,6 +144,13 @@ def _send_statements_with_retry(pbn_client, json_data, log_entry):
             raise  # Propagate to main handler
 
         except Exception as e:
+            zaloguj_polkniety_wyjatek(
+                "Błąd podczas wysyłki oświadczeń do PBN "
+                f"(próba {retry_count + 1}/{max_retries}, "
+                f"PbnWysylkaLog pk={log_entry.pk})",
+                logger=logger,
+                do_rollbar=True,
+            )
             last_error = e
             retry_count += 1
             log_entry.retry_count = retry_count
@@ -211,7 +213,9 @@ def process_single_publication(publication, pbn_client, task, log_model):
 
     # Step 3: Get statements data
     try:
-        json_data = WydawnictwoPBNAdapter(publication).pbn_get_api_statements()
+        json_data = WydawnictwoPBNAdapter(
+            publication, uczelnia=pbn_client.uczelnia
+        ).pbn_get_api_statements()
     except DaneLokalneWymagajaAktualizacjiException as e:
         log_entry.error_message = f"Dane lokalne wymagaja aktualizacji: {str(e)}"
         log_entry.save()
@@ -283,7 +287,7 @@ def _process_publications_loop(
 
 
 @shared_task(bind=True)
-def wysylka_oswiadczen_task(self, task_id: int):
+def wysylka_oswiadczen_task(self, task_id: int, uczelnia_id: int = None):
     """
     Main Celery task for sending statements to PBN.
 
@@ -308,8 +312,8 @@ def wysylka_oswiadczen_task(self, task_id: int):
     task.save()
 
     try:
-        # Get PBN client
-        pbn_client = get_pbn_client(task.user)
+        # Get PBN client — konkretna uczelnia z entrypointu (bez get_default)
+        pbn_client = get_pbn_client(task.user, uczelnia_id)
 
         # Build publication list
         ciagle_qs, zwarte_qs = get_publications_queryset(

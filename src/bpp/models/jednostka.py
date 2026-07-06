@@ -41,15 +41,18 @@ class JednostkaManager(FulltextSearchMixin, TreeManager):
             kw["uczelnia"] = kw["wydzial"].uczelnia
         return super().create(*args, **kw)
 
-    def get_default_ordering(self):
-        uczelnia = Uczelnia.objects.get_default()
+    def get_default_ordering(self, uczelnia=None):
+        # Multi-hosted: odczyt PREFERENCJI sortowania. Bez przekazanej uczelni
+        # próbujemy JEDYNEJ w systemie (get_single_uczelnia_or_none: single →
+        # jej preferencja; 0 lub >1 → None → alfabetycznie). NIE ma „uczelni
+        # domyślnej" (zgadywania pierwszej-z-brzegu). Wołający z requestem
+        # może podać uczelnię jawnie.
+        if uczelnia is None:
+            uczelnia = Uczelnia.objects.get_single_uczelnia_or_none()
 
         ordering = SORTUJ_RECZNIE
-        if uczelnia is None:
+        if uczelnia is None or uczelnia.sortuj_jednostki_alfabetycznie:
             ordering = SORTUJ_ALFABETYCZNIE
-        else:
-            if uczelnia.sortuj_jednostki_alfabetycznie:
-                ordering = SORTUJ_ALFABETYCZNIE
 
         return ordering
 
@@ -114,7 +117,7 @@ class Jednostka(ModelZAdnotacjami, ModelZPBN_ID, ModelZPBN_UID, MPTTModel):
         default=True,
         help_text="Gdy to pole jest zaznaczone, system wyświetli pole 'Opis' na podstronie jednostki.",
     )
-    slug = AutoSlugField(populate_from="nazwa", unique=True)
+    slug = AutoSlugField(populate_from="nazwa", max_length=512, unique=True)
 
     widoczna = models.BooleanField(default=True, db_index=True)
     wchodzi_do_raportow = models.BooleanField(
@@ -159,6 +162,24 @@ class Jednostka(ModelZAdnotacjami, ModelZPBN_ID, ModelZPBN_UID, MPTTModel):
         default=RODZAJ_JEDNOSTKI.NORMALNA,
         choices=RODZAJ_JEDNOSTKI.choices,
     )
+
+    rodzaj = models.ForeignKey(
+        "bpp.RodzajJednostki",
+        null=True,
+        blank=True,
+        on_delete=models.PROTECT,
+        related_name="jednostki",
+    )
+
+    zezwalaj_na_ranking_autorow = models.BooleanField(
+        "Zezwalaj na generowanie rankingu autorów dla tej jednostki",
+        default=True,
+    )
+    poprzednie_nazwy = models.CharField(max_length=4096, blank=True, default="")
+    skrot_nazwy = models.CharField(  # noqa: DJ001
+        max_length=250, blank=True, null=True
+    )
+    legacy_wydzial_id = models.IntegerField(null=True, blank=True, db_index=True)
 
     search = VectorField(blank=True, null=True)
 

@@ -12,12 +12,16 @@ def zbieraj_sloty(
     dyscyplina_id=None,
     jednostka_id=None,
     akcja=None,
+    uczelnia_id=None,
 ):
     from bpp.models.cache import Cache_Punktacja_Autora_Query
 
     rekordy = Cache_Punktacja_Autora_Query.objects.filter(
         rekord__rok__gte=rok_min, rekord__rok__lte=rok_max, autor_id=autor_id
     )
+    if uczelnia_id is not None:
+        rekordy = rekordy.filter(jednostka__uczelnia_id=uczelnia_id)
+
     if dyscyplina_id is not None:
         rekordy = rekordy.filter(dyscyplina_id=dyscyplina_id)
 

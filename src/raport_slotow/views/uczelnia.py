@@ -1,9 +1,13 @@
 import urllib
 
+from django.contrib.auth.mixins import LoginRequiredMixin
+from django.utils import timezone
 from django_filters.views import FilterMixin
 from django_tables2 import RequestConfig, SingleTableMixin
-
 from formdefaults.helpers import FormDefaultsMixin
+
+from bpp.views.mixins import UczelniaSettingRequiredMixin
+from django_bpp.version import VERSION
 from long_running.tasks import perform_generic_long_running_task
 from long_running.views import (
     CreateLongRunningOperationView,
@@ -24,15 +28,8 @@ from raport_slotow.tables import (
     RaportSlotowUczelniaBezJednostekIWydzialowTable,
     RaportSlotowUczelniaTable,
 )
+from raport_slotow.uczelnia_helper import uczelnia_dla_odczytu
 from raport_slotow.util import MyExportMixin
-
-from django.contrib.auth.mixins import LoginRequiredMixin
-
-from django.utils import timezone
-
-from bpp.views.mixins import UczelniaSettingRequiredMixin
-
-from django_bpp.version import VERSION
 
 
 class ListaRaportSlotowUczelnia(
@@ -59,6 +56,10 @@ class UtworzRaportSlotowUczelnia(
     title = "Raport slotów - uczelnia"
     model = RaportSlotowUczelnia
     task = perform_generic_long_running_task
+
+    def form_valid(self, form):
+        form.instance.uczelnia = uczelnia_dla_odczytu(self.request)
+        return super().form_valid(form)
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)

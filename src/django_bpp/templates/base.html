@@ -71,7 +71,10 @@
         });
     </script>
     {% load notifications %}
-    <div id="messageTemplate">
+    {# inline display:none (a nie tylko reguła w SCSS) jest celowy: gdy CSS #}
+    {# serwisu się nie wczyta (np. wydruk / WeasyPrint), surowy szablon #}
+    {# mustache nie może wyciec do treści — patrz FD#405. #}
+    <div id="messageTemplate" style="display: none">
     {% verbatim messageTemplate %}
     <div data-closable
          data-url="{{ closeURL }}"
@@ -167,7 +170,7 @@
 
         <script type="text/javascript">
             $(document).ready(function () {
-                channelsBroadcast.init(document.getElementById('extra-channels').textContent);
+                {% block channels_broadcast_init %}channelsBroadcast.init(document.getElementById('extra-channels').textContent);{% endblock %}
 
                 $(document).on('closed.zf', function (event) {
                     if ($(event.target).hasClass("ajax-on-close")) {

@@ -27,7 +27,7 @@ executable = ".venv/bin/python"
 [postgres]
 # Wlasny obraz BPP zamiast vanilla postgres:16 — ma plpython3u i locale
 # pl_PL.UTF-8 (wymagane przez schemat denormalizatorow + raporty).
-image = "iplweb/bpp_dbserver:psql-16.13"
+image = "iplweb/bpp_dbserver:psql-18.3"
 user = "bpp"
 password = "password"
 db = "bpp"
@@ -50,6 +50,7 @@ default_path = "baseline-sql/baseline.sql"
 strategy = "auto"
 restore_jobs = 8
 fail_fast = true
+fix_search_path = true
 
 [env]
 # Mapowanie zmiennych srodowiskowych dla podprocesow (runserver, celery,

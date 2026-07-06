@@ -445,4 +445,8 @@ def test_zapis_uczelni_inwaliduje_cache_strony_glownej(uczelnia, mocker):
     uczelnia.save()
 
     invalidate.assert_called_once_with()
-    delete.assert_called_once_with(b"bpp_uczelnia")
+    # Po wprowadzeniu kluczowania cache context-processora per-site, sygnał kasuje
+    # ZARÓWNO klucz per-site (bpp_uczelnia_<site_pk>) JAK I legacy b"bpp_uczelnia".
+    assert delete.call_count == 2
+    delete.assert_any_call(f"bpp_uczelnia_{uczelnia.site_id}")
+    delete.assert_any_call(b"bpp_uczelnia")

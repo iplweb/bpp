@@ -13,7 +13,7 @@ from ewaluacja_liczba_n.utils import oblicz_sumy_udzialow_za_calosc
 
 @pytest.mark.django_db
 def test_oblicz_sumy_udzialow_za_calosc_jeden_rodzaj_autora(
-    dyscyplina1, rodzaj_autora_n
+    uczelnia, dyscyplina1, rodzaj_autora_n
 ):
     """Test tworzenia wpisu dla jednego rodzaju autora przez wszystkie lata."""
     autor = baker.make(Autor)
@@ -29,17 +29,18 @@ def test_oblicz_sumy_udzialow_za_calosc_jeden_rodzaj_autora(
             rodzaj_autora=rodzaj_autora_n,
         )
 
-        # Utwórz udziały dla każdego roku
+        # Utwórz udziały dla każdego roku (z uczelnia)
         IloscUdzialowDlaAutoraZaRok.objects.create(
             rok=rok,
             autor=autor,
             dyscyplina_naukowa=dyscyplina1,
+            uczelnia=uczelnia,
             ilosc_udzialow=Decimal("1.0"),
             ilosc_udzialow_monografie=Decimal("0.5"),
         )
 
     # Oblicz sumy za cały okres
-    oblicz_sumy_udzialow_za_calosc(2022, 2025)
+    oblicz_sumy_udzialow_za_calosc(uczelnia, 2022, 2025)
 
     # Sprawdź wynik - powinien być jeden wpis dla rodzaju N
     wynik = IloscUdzialowDlaAutoraZaCalosc.objects.get(
@@ -58,7 +59,7 @@ def test_oblicz_sumy_udzialow_za_calosc_jeden_rodzaj_autora(
 
 @pytest.mark.django_db
 def test_oblicz_sumy_udzialow_za_calosc_wiele_rodzajow_autora(
-    dyscyplina1, rodzaj_autora_n, rodzaj_autora_d
+    uczelnia, dyscyplina1, rodzaj_autora_n, rodzaj_autora_d
 ):
     """Test tworzenia oddzielnych wpisów dla różnych rodzajów autora."""
     autor = baker.make(Autor)
@@ -93,18 +94,19 @@ def test_oblicz_sumy_udzialow_za_calosc_wiele_rodzajow_autora(
         rodzaj_autora=rodzaj_autora_n,
     )
 
-    # Utwórz udziały dla każdego roku
+    # Utwórz udziały dla każdego roku (z uczelnia)
     for rok in [2022, 2023, 2024]:
         IloscUdzialowDlaAutoraZaRok.objects.create(
             rok=rok,
             autor=autor,
             dyscyplina_naukowa=dyscyplina1,
+            uczelnia=uczelnia,
             ilosc_udzialow=Decimal("1.0"),
             ilosc_udzialow_monografie=Decimal("0.5"),
         )
 
     # Oblicz sumy za cały okres
-    oblicz_sumy_udzialow_za_calosc(2022, 2025)
+    oblicz_sumy_udzialow_za_calosc(uczelnia, 2022, 2025)
 
     # Sprawdź że są 2 osobne wpisy: jeden dla N, jeden dla D
     assert IloscUdzialowDlaAutoraZaCalosc.objects.count() == 2
@@ -133,7 +135,7 @@ def test_oblicz_sumy_udzialow_za_calosc_wiele_rodzajow_autora(
 
 
 @pytest.mark.django_db
-def test_oblicz_sumy_udzialow_za_calosc_brak_rodzaju_autora(dyscyplina1):
+def test_oblicz_sumy_udzialow_za_calosc_brak_rodzaju_autora(uczelnia, dyscyplina1):
     """Test pomijania autorów bez przypisanego rodzaju autora."""
     autor = baker.make(Autor)
 
@@ -148,17 +150,18 @@ def test_oblicz_sumy_udzialow_za_calosc_brak_rodzaju_autora(dyscyplina1):
             rodzaj_autora=None,  # Brak rodzaju autora
         )
 
-        # Utwórz udziały dla każdego roku
+        # Utwórz udziały dla każdego roku (z uczelnia)
         IloscUdzialowDlaAutoraZaRok.objects.create(
             rok=rok,
             autor=autor,
             dyscyplina_naukowa=dyscyplina1,
+            uczelnia=uczelnia,
             ilosc_udzialow=Decimal("1.0"),
             ilosc_udzialow_monografie=Decimal("0.5"),
         )
 
     # Oblicz sumy za cały okres
-    oblicz_sumy_udzialow_za_calosc(2022, 2025)
+    oblicz_sumy_udzialow_za_calosc(uczelnia, 2022, 2025)
 
     # Sprawdź że NIE został utworzony żaden wpis (rekordy z rodzaj_autora=None są pomijane)
     assert IloscUdzialowDlaAutoraZaCalosc.objects.count() == 0

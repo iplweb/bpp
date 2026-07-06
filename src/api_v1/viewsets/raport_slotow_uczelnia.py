@@ -36,6 +36,9 @@ class RaportSlotowUczelniaWierszViewSet(viewsets.ReadOnlyModelViewSet):
     filterset_class = RaportSlotowUczelniaWierszFilterSet
 
     def get_queryset(self):
+        # read-side multi-uczelnia: per-user ownership (parent__owner=request.user)
+        # already scopes this to the requesting user's own reports; cross-university
+        # leakage is prevented transitively — no redundant uczelnia filter needed.
         return RaportSlotowUczelniaWiersz.objects.filter(
             parent__owner=self.request.user
         )
@@ -50,6 +53,9 @@ class RaportSlotowUczelniaViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated, IsGrupaRaportyWyswietlanie]
 
     def get_queryset(self):
+        # read-side multi-uczelnia: per-user ownership (owner=request.user) already
+        # scopes this to the requesting user's own reports; cross-university leakage
+        # is prevented transitively — no redundant uczelnia filter needed.
         return RaportSlotowUczelnia.objects.filter(owner=self.request.user)
 
     serializer_class = RaportSlotowUczelniaSerializer

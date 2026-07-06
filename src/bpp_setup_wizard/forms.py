@@ -110,7 +110,7 @@ class UczelniaSetupForm(forms.ModelForm):
 
         return cleaned_data
 
-    def save(self, commit=True):
+    def save(self, commit=True, request=None):
         uczelnia = super().save(commit=False)
 
         # Set the fields that should always be True
@@ -128,6 +128,11 @@ class UczelniaSetupForm(forms.ModelForm):
         uczelnia.pbn_aktualizuj_na_biezaco = (
             True  # Włącz opcjonalną aktualizację przy edycji
         )
+
+        if uczelnia.site_id is None and request is not None:
+            from django.contrib.sites.shortcuts import get_current_site
+
+            uczelnia.site = get_current_site(request)
 
         if commit:
             uczelnia.save()

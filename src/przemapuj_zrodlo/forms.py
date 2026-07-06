@@ -39,15 +39,42 @@ class PrzemapowaZrodloForm(forms.Form):
         super().__init__(*args, **kwargs)
         self.zrodlo_zrodlowe = zrodlo_zrodlowe
 
+    @staticmethod
+    def _mnisw_id(zrodlo):
+        """MNiSW ID źródła ministerialnego (pbn_uid z mniswId, status != DELETED),
+        albo None gdy źródło nie jest „ministerialne"."""
+        if zrodlo is None:
+            return None
+        pbn = getattr(zrodlo, "pbn_uid", None)
+        if pbn and pbn.mniswId and pbn.status != "DELETED":
+            return pbn.mniswId
+        return None
+
     def clean_zrodlo_docelowe(self):
         zrodlo_docelowe = self.cleaned_data.get("zrodlo_docelowe")
 
+        if not (self.zrodlo_zrodlowe and zrodlo_docelowe):
+            return zrodlo_docelowe
+
         # Walidacja: źródło docelowe nie może być tym samym co źródłowe
-        if self.zrodlo_zrodlowe and zrodlo_docelowe:
-            if zrodlo_docelowe.pk == self.zrodlo_zrodlowe.pk:
-                raise forms.ValidationError(
-                    "Źródło docelowe nie może być takie samo jak źródło źródłowe. "
-                    "Wybierz inne źródło."
-                )
+        if zrodlo_docelowe.pk == self.zrodlo_zrodlowe.pk:
+            raise forms.ValidationError(
+                "Źródło docelowe nie może być takie samo jak źródło źródłowe. "
+                "Wybierz inne źródło."
+            )
+
+        # Źródło ministerialne (z MNiSW ID) można przemapować WYŁĄCZNIE na
+        # źródło o tym samym MNiSW ID — wtedy to deduplikacja tego samego
+        # czasopisma ministerialnego (bezpieczne dla punktacji; PBN i tak ma
+        # publikacje pod tym czasopismem). Przenoszenie publikacji z czasopisma
+        # ministerialnego do INNEGO jest zablokowane.
+        src_mnisw = self._mnisw_id(self.zrodlo_zrodlowe)
+        if src_mnisw is not None and self._mnisw_id(zrodlo_docelowe) != src_mnisw:
+            raise forms.ValidationError(
+                f'Źródło "{self.zrodlo_zrodlowe.nazwa}" jest na oficjalnej liście '
+                f"ministerstwa (MNiSW ID: {src_mnisw}). Można je przemapować "
+                f"tylko na źródło o TYM SAMYM MNiSW ID (deduplikacja tego samego "
+                f"czasopisma)."
+            )
 
         return zrodlo_docelowe
