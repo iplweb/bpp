@@ -6,6 +6,7 @@ from django.db.models.functions import Cast
 
 from bpp.models import BppUser, Wydawnictwo_Zwarte
 from bpp.models.struktura import Jednostka
+from pbn_api.const import ACTIVE, DELETED
 
 
 class SimpleIntegerFilter(SimpleListFilter):
@@ -171,6 +172,72 @@ class PBN_UID_IDAutoraObecnyFilter(SimpleNotNullFilter):
 class PBN_UID_IDObecnyFilter(SimpleNotNullFilter):
     title = "PBN UID"
     parameter_name = "pbn_uid_id"
+
+
+class PBNStatusFilter(SimpleListFilter):
+    """Filtruje po statusie powiązanej pracy PBN (``pbn_uid.status``).
+
+    Wyłapuje rekordy powiązane z pracą skasowaną w PBN (``DELETED``), aktywną
+    (``ACTIVE``) albo bez powiązania (``pbn_uid`` puste). Statusy DELETED/ACTIVE
+    żyją na lustrze ``pbn_api.Publication`` — traversujemy przez ``pbn_uid``.
+    """
+
+    title = "PBN: status"
+    parameter_name = "pbn_status"
+
+    def lookups(self, request, model_admin):
+        return [
+            ("deleted", "skasowany w PBN"),
+            ("active", "aktywny w PBN"),
+            ("brak", "brak powiązania"),
+        ]
+
+    def queryset(self, request, queryset):
+        v = self.value()
+        if v == "deleted":
+            return queryset.filter(pbn_uid__status=DELETED)
+        elif v == "active":
+            return queryset.filter(pbn_uid__status=ACTIVE)
+        elif v == "brak":
+            return queryset.filter(pbn_uid_id__isnull=True)
+        return queryset
+
+
+class MniswIdObecnyFilter(SimpleNotNullFilter):
+    # Uwaga: to NIE jest to samo, co PBN_UID_IDObecnyFilter. Źródło może mieć
+    # pbn_uid (powiązany Journal), ale ten Journal może mieć mniswId = NULL.
+    title = "mniswID"
+    parameter_name = "mnisw_id"
+    db_field_name = "pbn_uid__mniswId"
+
+    def lookups(self, request, model_admin):
+        return [("brak", "nie ma mniswID"), ("jest", "ma mniswID")]
+
+
+class MaPublikacjeFilter(SimpleListFilter):
+    # Filtruje po liczbie powiązanych Wydawnictw Ciągłych. Filtrowanie po
+    # annotacji Count (a nie po wydawnictwo_ciagle__isnull) unika duplikatów
+    # wierszy z JOIN-a — Count + GROUP BY zwija je do jednego wiersza na
+    # źródło. ZrodloAdmin.get_queryset zwykle dostarcza już _liczba_prac;
+    # dla bezpieczeństwa (moduł filtrów jest współdzielony) annotujemy ją tu
+    # sami, gdy jej brak — inaczej filtr rzucałby FieldError.
+    title = "ma publikacje"
+    parameter_name = "ma_publikacje"
+
+    def lookups(self, request, model_admin):
+        return [("tak", "ma publikacje"), ("nie", "nie ma publikacji")]
+
+    def queryset(self, request, queryset):
+        v = self.value()
+        if v not in ("tak", "nie"):
+            return queryset
+        if "_liczba_prac" not in queryset.query.annotations:
+            queryset = queryset.annotate(
+                _liczba_prac=Count("wydawnictwo_ciagle", distinct=True)
+            )
+        if v == "tak":
+            return queryset.filter(_liczba_prac__gt=0)
+        return queryset.filter(_liczba_prac=0)
 
 
 class CalkowitaLiczbaAutorowFilter(SimpleIntegerFilter):

@@ -5,6 +5,7 @@ from django.db import transaction
 from django.db.models import Q, Sum
 
 from bpp.models import Autor_Dyscyplina
+from bpp.util import zaloguj_polkniety_wyjatek
 
 from .models import MetrykaAutora
 
@@ -32,6 +33,7 @@ def get_default_rodzaje_autora():
 def oblicz_metryki_dla_autora(
     autor,
     dyscyplina,
+    uczelnia,
     rok_min=2022,
     rok_max=2025,
     minimalny_pk=Decimal("0.01"),
@@ -43,6 +45,7 @@ def oblicz_metryki_dla_autora(
     Args:
         autor: Obiekt Autor
         dyscyplina: Obiekt Dyscyplina_Naukowa
+        uczelnia: Obiekt Uczelnia (wymagany - metryki są per uczelnia)
         rok_min: Początkowy rok okresu ewaluacji
         rok_max: Końcowy rok okresu ewaluacji
         minimalny_pk: Minimalny próg punktów
@@ -55,9 +58,9 @@ def oblicz_metryki_dla_autora(
     if slot_maksymalny is None:
         from ewaluacja_liczba_n.models import IloscUdzialowDlaAutoraZaCalosc
 
-        # Agreguj slot limits across all rodzaj_autora types
+        # Agreguj slot limits dla danej uczelni (fix: nie sumuj wszystkich uczelni)
         aggregated = IloscUdzialowDlaAutoraZaCalosc.objects.filter(
-            autor=autor, dyscyplina_naukowa=dyscyplina
+            autor=autor, dyscyplina_naukowa=dyscyplina, uczelnia=uczelnia
         ).aggregate(total_slots=Sum("ilosc_udzialow"))
 
         if aggregated["total_slots"] is not None:
@@ -88,6 +91,8 @@ def oblicz_metryki_dla_autora(
     if autor_dyscyplina and autor_dyscyplina.rodzaj_autora:
         rodzaj_autora_skrot = autor_dyscyplina.rodzaj_autora.skrot
 
+    uczelnia_id = uczelnia.pk if uczelnia is not None else None
+
     # Oblicz metryki algorytmem plecakowym
     (
         punkty_nazbierane,
@@ -99,12 +104,15 @@ def oblicz_metryki_dla_autora(
         rok_max=rok_max,
         minimalny_pk=minimalny_pk,
         dyscyplina_id=dyscyplina.pk,
+        uczelnia_id=uczelnia_id,
     )
 
     # Convert cache PKs to stable rekord_ids (survives cache rebuilds from pin/unpin)
     from bpp.models.cache import Cache_Punktacja_Autora_Query
 
     if prace_nazbierane_ids:
+        # read-side multi-uczelnia: zawężone transitive po autor_id+dyscyplina_id;
+        # rewizja per-uczelnia metryk należy do federacji, nie R1.
         prace_nazbierane_rekord_ids = list(
             Cache_Punktacja_Autora_Query.objects.filter(
                 pk__in=prace_nazbierane_ids
@@ -125,10 +133,13 @@ def oblicz_metryki_dla_autora(
         minimalny_pk=minimalny_pk,
         dyscyplina_id=dyscyplina.pk,
         akcja="wszystko",
+        uczelnia_id=uczelnia_id,
     )
 
     # Convert cache PKs to stable rekord_ids
     if prace_wszystkie_ids:
+        # read-side multi-uczelnia: zawężone transitive po autor_id+dyscyplina_id;
+        # rewizja per-uczelnia metryk należy do federacji, nie R1.
         prace_wszystkie_rekord_ids = list(
             Cache_Punktacja_Autora_Query.objects.filter(
                 pk__in=prace_wszystkie_ids
@@ -164,12 +175,13 @@ def oblicz_metryki_dla_autora(
     # update_or_create() doesn't reliably detect changes in JSONField (prace_nazbierane)
     with transaction.atomic():
         MetrykaAutora.objects.filter(
-            autor=autor, dyscyplina_naukowa=dyscyplina
+            autor=autor, dyscyplina_naukowa=dyscyplina, uczelnia=uczelnia
         ).delete()
 
         metryka = MetrykaAutora.objects.create(
             autor=autor,
             dyscyplina_naukowa=dyscyplina,
+            uczelnia=uczelnia,
             jednostka=jednostka,
             slot_maksymalny=slot_maksymalny,
             slot_nazbierany=slot_nazbierany_decimal,
@@ -233,10 +245,15 @@ def przelicz_metryki_dla_publikacji(publikacja, rok_min=2022, rok_max=2025):
 
     # Przelicz metryki dla wszystkich par (autor, dyscyplina)
     for autor, dyscyplina in autorzy_do_przeliczenia:
+        jednostka = autor.aktualna_jednostka
+        if jednostka is None or not jednostka.skupia_pracownikow:
+            continue  # reguła R2: brak home-uczelni → brak metryki
+        uczelnia = jednostka.uczelnia
         try:
             metryka, _ = oblicz_metryki_dla_autora(
                 autor=autor,
                 dyscyplina=dyscyplina,
+                uczelnia=uczelnia,
                 rok_min=rok_min,
                 rok_max=rok_max,
             )
@@ -265,14 +282,16 @@ def _prepare_rodzaje_autora(rodzaje_autora):
     return rodzaje_autora
 
 
-def _get_ilosc_udzialow_queryset(ilosc_udzialow_queryset):
+def _get_ilosc_udzialow_queryset(ilosc_udzialow_queryset, uczelnia=None):
     """Pobiera queryset IloscUdzialowDlaAutoraZaCalosc."""
     from ewaluacja_liczba_n.models import IloscUdzialowDlaAutoraZaCalosc
 
-    if ilosc_udzialow_queryset is None:
-        return IloscUdzialowDlaAutoraZaCalosc.objects.all()
-    else:
+    if ilosc_udzialow_queryset is not None:
         return ilosc_udzialow_queryset
+    qs = IloscUdzialowDlaAutoraZaCalosc.objects.all()
+    if uczelnia is not None:
+        qs = qs.filter(uczelnia=uczelnia)
+    return qs
 
 
 def _should_skip_author(autor, dyscyplina, rodzaje_autora, rok_min=2022, rok_max=2025):
@@ -316,10 +335,12 @@ def _should_skip_author(autor, dyscyplina, rodzaje_autora, rok_min=2022, rok_max
 
 
 def _calculate_metrics_data(
-    autor, dyscyplina, slot_maksymalny, rok_min, rok_max, minimalny_pk
+    autor, dyscyplina, uczelnia, slot_maksymalny, rok_min, rok_max, minimalny_pk
 ):
     """Oblicza dane metryk dla autora."""
     from bpp.models.cache import Cache_Punktacja_Autora_Query
+
+    uczelnia_id = uczelnia.pk if uczelnia is not None else None
 
     # Oblicz metryki algorytmem plecakowym
     (
@@ -332,10 +353,13 @@ def _calculate_metrics_data(
         rok_max=rok_max,
         minimalny_pk=minimalny_pk,
         dyscyplina_id=dyscyplina.pk,
+        uczelnia_id=uczelnia_id,
     )
 
     # Convert cache PKs to stable rekord_ids
     if prace_nazbierane_ids:
+        # read-side multi-uczelnia: zawężone transitive po autor_id+dyscyplina_id;
+        # rewizja per-uczelnia metryk należy do federacji, nie R1.
         prace_nazbierane_rekord_ids = list(
             Cache_Punktacja_Autora_Query.objects.filter(
                 pk__in=prace_nazbierane_ids
@@ -356,10 +380,13 @@ def _calculate_metrics_data(
         minimalny_pk=minimalny_pk,
         dyscyplina_id=dyscyplina.pk,
         akcja="wszystko",
+        uczelnia_id=uczelnia_id,
     )
 
     # Convert cache PKs to stable rekord_ids
     if prace_wszystkie_ids:
+        # read-side multi-uczelnia: zawężone transitive po autor_id+dyscyplina_id;
+        # rewizja per-uczelnia metryk należy do federacji, nie R1.
         prace_wszystkie_rekord_ids = list(
             Cache_Punktacja_Autora_Query.objects.filter(
                 pk__in=prace_wszystkie_ids
@@ -381,6 +408,7 @@ def _calculate_metrics_data(
 def _create_or_update_metryka(
     autor,
     dyscyplina,
+    uczelnia,
     jednostka,
     slot_maksymalny,
     metrics_data,
@@ -392,6 +420,7 @@ def _create_or_update_metryka(
     return MetrykaAutora.objects.update_or_create(
         autor=autor,
         dyscyplina_naukowa=dyscyplina,
+        uczelnia=uczelnia,
         defaults={
             "jednostka": jednostka,
             "slot_maksymalny": slot_maksymalny,
@@ -424,6 +453,7 @@ def _process_single_author(
     """Przetwarza pojedynczego autora i zwraca wynik."""
     autor = ilosc_udzialow.autor
     dyscyplina = ilosc_udzialow.dyscyplina_naukowa
+    uczelnia = ilosc_udzialow.uczelnia
     slot_maksymalny = ilosc_udzialow.ilosc_udzialow
 
     # Wywołaj progress callback jeśli jest dostępny
@@ -437,7 +467,13 @@ def _process_single_author(
                 processed=processed,
             )
         except Exception:
-            pass  # Ignore errors in progress reporting
+            # Ignore errors in progress reporting
+            zaloguj_polkniety_wyjatek(
+                "Wywołanie progress_callback przy obliczaniu metryk autora "
+                f"(idx={idx}/{total}) nie powiodło się",
+                logger=logger,
+                do_rollbar=True,
+            )
 
     try:
         with transaction.atomic():
@@ -466,7 +502,13 @@ def _process_single_author(
 
             # Oblicz dane metryk
             metrics_data = _calculate_metrics_data(
-                autor, dyscyplina, slot_maksymalny, rok_min, rok_max, minimalny_pk
+                autor,
+                dyscyplina,
+                uczelnia,
+                slot_maksymalny,
+                rok_min,
+                rok_max,
+                minimalny_pk,
             )
 
             # Pobierz rodzaj autora
@@ -478,6 +520,7 @@ def _process_single_author(
             metryka, created = _create_or_update_metryka(
                 autor,
                 dyscyplina,
+                uczelnia,
                 jednostka,
                 slot_maksymalny,
                 metrics_data,
@@ -512,6 +555,7 @@ def generuj_metryki(
     progress_callback=None,
     logger_output=None,
     ilosc_udzialow_queryset=None,
+    uczelnia=None,
 ):
     """
     Generuje metryki ewaluacyjne dla autorów.
@@ -536,7 +580,7 @@ def generuj_metryki(
             - total: całkowita liczba autorów do przetworzenia
     """
     rodzaje_autora = _prepare_rodzaje_autora(rodzaje_autora)
-    ilosc_udzialow_qs = _get_ilosc_udzialow_queryset(ilosc_udzialow_queryset)
+    ilosc_udzialow_qs = _get_ilosc_udzialow_queryset(ilosc_udzialow_queryset, uczelnia)
 
     total = ilosc_udzialow_qs.count()
 
@@ -545,7 +589,10 @@ def generuj_metryki(
         logger_output.write(f"Znaleziono {total} autorów do przetworzenia")
 
     if nadpisz:
-        MetrykaAutora.objects.all().delete()
+        qs = MetrykaAutora.objects.all()
+        if uczelnia is not None:
+            qs = qs.filter(uczelnia=uczelnia)
+        qs.delete()
 
     processed = 0
     skipped = 0
@@ -553,7 +600,7 @@ def generuj_metryki(
 
     # Przetwarzaj autorów po kolei z aktualizacją statusu
     for idx, ilosc_udzialow in enumerate(
-        ilosc_udzialow_qs.select_related("autor", "dyscyplina_naukowa"), 1
+        ilosc_udzialow_qs.select_related("autor", "dyscyplina_naukowa", "uczelnia"), 1
     ):
         result, msg = _process_single_author(
             ilosc_udzialow,

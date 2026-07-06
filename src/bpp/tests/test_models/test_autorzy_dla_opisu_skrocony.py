@@ -226,3 +226,108 @@ def test_skrocony_na_niezapisanym_rekordzie_nie_wybucha():
     assert box["skrocony"] is False
     assert box["wszyscy"] == []
     assert box["liczba"] == 0
+
+
+@pytest.mark.django_db
+def test_czy_nasz_filtruje_po_uczelni_ogladajacej(
+    wydawnictwo_ciagle, jednostka_uczelnia1, uczelnia1, uczelnia2
+):
+    """Autor z jednostki uczelni1 jest "nasz" TYLKO gdy oglądamy z uczelni1.
+
+    Regresja multi-hosted: ta sama praca na dwóch różnych hostach/uczelniach
+    pokazywała tego samego autora jako "naszego" na obu — bo ``czy_nasz``
+    nie uwzględniało oglądającej uczelni, tylko ``skupia_pracownikow``.
+    """
+    _dodaj_autorow(wydawnictwo_ciagle, [jednostka_uczelnia1])
+
+    box_u1 = wydawnictwo_ciagle.autorzy_dla_opisu_skrocony(uczelnia=uczelnia1)
+    assert box_u1["wszyscy"][0].czy_nasz is True
+
+    box_u2 = wydawnictwo_ciagle.autorzy_dla_opisu_skrocony(uczelnia=uczelnia2)
+    assert box_u2["wszyscy"][0].czy_nasz is False
+
+
+@pytest.mark.django_db
+def test_czy_nasz_obca_jednostka_nigdy_nasza_mimo_uczelni(
+    wydawnictwo_ciagle, obca_jednostka, uczelnia
+):
+    """Obca jednostka (skupia_pracownikow=False) nie jest "nasza", nawet jeśli
+    należy do oglądającej uczelni — ``skupia_pracownikow`` ma pierwszeństwo."""
+    # obca_jednostka należy (przez wydzial) do fixture'owej `uczelnia`.
+    assert obca_jednostka.uczelnia_id == uczelnia.pk
+    _dodaj_autorow(wydawnictwo_ciagle, [obca_jednostka])
+
+    box = wydawnictwo_ciagle.autorzy_dla_opisu_skrocony(uczelnia=uczelnia)
+    assert box["wszyscy"][0].czy_nasz is False
+
+
+@pytest.mark.django_db
+def test_czy_nasz_bez_uczelni_zachowuje_stare_zachowanie(
+    wydawnictwo_ciagle, jednostka
+):
+    """Bez podanej uczelni (uczelnia=None) flaga zależy wyłącznie od
+    ``skupia_pracownikow`` — wstecz-kompatybilność z istniejącymi callerami."""
+    _dodaj_autorow(wydawnictwo_ciagle, [jednostka])
+
+    box = wydawnictwo_ciagle.autorzy_dla_opisu_skrocony()
+    assert box["wszyscy"][0].czy_nasz is True
+
+
+@pytest.mark.django_db
+def test_simple_tag_autorzy_skrocony_przekazuje_uczelnie(
+    wydawnictwo_ciagle, jednostka_uczelnia1, uczelnia1, uczelnia2
+):
+    """Tag ``autorzy_skrocony`` przekazuje oglądającą uczelnię do metody, więc
+    "nasz" autor jest host-aware już na poziomie szablonu."""
+    from bpp.templatetags.prace import autorzy_skrocony
+
+    _dodaj_autorow(wydawnictwo_ciagle, [jednostka_uczelnia1])
+
+    box_u1 = autorzy_skrocony(wydawnictwo_ciagle, uczelnia1)
+    assert box_u1["wszyscy"][0].czy_nasz is True
+
+    box_u2 = autorzy_skrocony(wydawnictwo_ciagle, uczelnia2)
+    assert box_u2["wszyscy"][0].czy_nasz is False
+
+
+@pytest.mark.django_db
+def test_render_nasz_autor_jest_host_aware(
+    client,
+    settings,
+    wydawnictwo_ciagle,
+    jednostka_uczelnia1,
+    site1,
+    site2,
+    uczelnia1,
+    uczelnia2,
+    denorms,
+):
+    """Regresja multi-hosted (objaw zgłoszony przez użytkownika): ta sama praca
+    z autorem z uczelni1 jest podświetlona jako "nasz" na hoście uczelni1, ale
+    NIE na hoście uczelni2 — bo oglądająca uczelnia rozwiązywana jest per-host.
+    """
+    settings.ALLOWED_HOSTS = list(settings.ALLOWED_HOSTS) + [
+        site1.domain,
+        site2.domain,
+    ]
+    _dodaj_autorow(wydawnictwo_ciagle, [jednostka_uczelnia1])
+    denorms.flush()
+
+    url = reverse(
+        "bpp:browse_praca",
+        args=(
+            ContentType.objects.get(
+                app_label="bpp", model="wydawnictwo_ciagle"
+            ).pk,
+            wydawnictwo_ciagle.pk,
+        ),
+    )
+    nasz = "praca-mono__author-name--nasz"
+
+    res_u1 = client.get(url, HTTP_HOST=site1.domain, follow=True)
+    assert res_u1.status_code == 200
+    assert nasz in res_u1.content.decode("utf-8")  # nasz host -> podświetlony
+
+    res_u2 = client.get(url, HTTP_HOST=site2.domain, follow=True)
+    assert res_u2.status_code == 200
+    assert nasz not in res_u2.content.decode("utf-8")  # obcy host -> nie

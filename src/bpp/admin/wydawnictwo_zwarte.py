@@ -17,6 +17,7 @@ from bpp.admin.filters import (
     MaWydawnictwoNadrzedneFilter,
     OstatnioZmienionePrzezFilter,
     PBN_UID_IDObecnyFilter,
+    PBNStatusFilter,
     UtworzonePrzezFilter,
 )
 from bpp.admin.helpers import fieldsets
@@ -28,6 +29,7 @@ from bpp.models import (
     Wydawnictwo_Zwarte,
     Wydawnictwo_Zwarte_Autor,
     Wydawnictwo_Zwarte_Streszczenie,
+    Wydawnictwo_Zwarte_Tytul,
     Wydawnictwo_Zwarte_Zewnetrzna_Baza_Danych,
 )
 from bpp.models.konferencja import Konferencja
@@ -65,6 +67,12 @@ from .wydawnictwo_ciagle import CleanDOIWWWPublicWWWMixin
 from .xlsx_export import resources
 from .xlsx_export.mixins import EksportDanychZFormatowanieMixin, ExportActionsMixin
 from .zglos_publikacje_helpers import UzupelniajWstepneDanePoNumerzeZgloszeniaMixin
+
+
+class Wydawnictwo_Zwarte_TytulInline(admin.StackedInline):
+    model = Wydawnictwo_Zwarte_Tytul
+    extra = 0
+    fields = ["jezyk", "kod_jezyka_pbn", "tytul"]
 
 
 class Wydawnictwo_Zwarte_StreszczenieInline(
@@ -147,6 +155,7 @@ class Wydawnictwo_ZwarteAdmin_Baza(BaseBppAdminMixin, admin.ModelAdmin):
         OstatnioZmienionePrzezFilter,
         UtworzonePrzezFilter,
         PBN_UID_IDObecnyFilter,
+        PBNStatusFilter,
         BezJakichkolwiekDyscyplinFilter,
     ]
 
@@ -482,6 +491,7 @@ class Wydawnictwo_ZwarteAdmin(
         Wydawnictwo_Zwarte_Zewnetrzna_Baza_DanychInline,
         Grant_RekorduInline,
         Element_RepozytoriumInline,
+        Wydawnictwo_Zwarte_TytulInline,
         Wydawnictwo_Zwarte_StreszczenieInline,
     )
 

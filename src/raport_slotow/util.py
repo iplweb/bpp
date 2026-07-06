@@ -59,6 +59,93 @@ def clone_temporary_table(source_table, target_table, using=DEFAULT_DB_ALIAS):
         cursor.execute(sql)
 
 
+def _write_export_description(ws, export_description):
+    """Wypisz wiersze opisu nad tabelą. Dwuelementowe krotki dostają
+    pogrubioną, wyrównaną do prawej etykietę i wyrównaną do lewej wartość."""
+    for elem in export_description:
+        if isinstance(elem, Iterable):
+            ws.append(elem)
+            if len(elem) == 2:
+                ws[ws.max_row][0].font = openpyxl.styles.Font(bold=True)
+                ws[ws.max_row][0].alignment = openpyxl.styles.Alignment(
+                    horizontal="right"
+                )
+                ws[ws.max_row][1].alignment = openpyxl.styles.Alignment(
+                    horizontal="left"
+                )
+        else:
+            ws.append([elem])
+
+    ws.append([])
+
+
+def _build_footer_row(columns, table_columns, table_name):
+    """Zbuduj wiersz sumy i ustaw funkcje sumujące na kolumnach tabeli.
+
+    Sumowana kolumna po stronie XLSX tworzona jest w taki sposób, że jeżeli
+    jakakolwiek kolumna tabeli ma footer, to jest tam wstawiana suma za pomocą
+    funkcji =SUBTOTAL(109, ...). Pierwsza kolumna (o indeksie zerowym) używana
+    jest dla napisu "Suma".
+    """
+    footer_row = []
+    for no, elem in enumerate(columns):
+        if no == 0:
+            footer_row.append("Suma")
+            table_columns[0].totalsRowLabel = footer_row[0]
+            continue
+
+        if elem.has_footer():
+            table_columns[no].totalsRowFunction = "sum"
+            footer_row.append(f"=SUBTOTAL(109,{table_name}[{elem.header}])")
+            continue
+
+        footer_row.append("")
+    return footer_row
+
+
+def _add_table(ws, table_name, first_table_row, table_columns):
+    max_column_letter = get_column_letter(ws.max_column)
+    max_row = ws.max_row
+
+    style = TableStyleInfo(
+        name="TableStyleMedium9",
+        showFirstColumn=False,
+        showLastColumn=False,
+        showRowStripes=True,
+        showColumnStripes=True,
+    )
+    tab = Table(
+        displayName=table_name,
+        ref=f"A{first_table_row}:{max_column_letter}{max_row}",
+        autoFilter=AutoFilter(
+            ref=f"A{first_table_row}:{max_column_letter}{max_row - 1}"
+        ),
+        totalsRowShown=True,
+        totalsRowCount=1,
+        tableStyleInfo=style,
+        tableColumns=table_columns,
+    )
+    ws.add_table(tab)
+
+
+def _autofit_columns(ws, max_width=75):
+    for col in ws.columns:
+        max_length = 0
+        column = col[0].column_letter  # Get the column name
+        # Since Openpyxl 2.6, the column name is ".column_letter" as .column
+        # became the column number (1-based)
+        for cell in col:
+            try:  # Necessary to avoid error on empty cells
+                if len(str(cell.value)) > max_length:
+                    max_length = len(cell.value)
+            except (ValueError, TypeError):
+                pass
+        adjusted_width = (max_length + 2) * 1.1
+        if adjusted_width > max_width:
+            adjusted_width = max_width
+        ws.column_dimensions[column].width = adjusted_width
+
+
 class MyTableExport(TableExport):
     """
     Fix https://github.com/jazzband/tablib/issues/252
@@ -86,33 +173,19 @@ class MyTableExport(TableExport):
     def export(self):
         return getattr(self, f"export_{self.format}")()
 
-    def export_xlsx(self):  # noqa: C901
+    def export_xlsx(self):
         wb = openpyxl.Workbook()
         ws = wb.active
         ws.title = "Sheet 1"
 
         table_name = "Table1"
 
-        # Write the header row and make cells bold
         tablib_dataset = self.dataset
 
         if self.export_description:
-            for elem in self.export_description:
-                if isinstance(elem, Iterable):
-                    ws.append(elem)
-                    if len(elem) == 2:
-                        ws[ws.max_row][0].font = openpyxl.styles.Font(bold=True)
-                        ws[ws.max_row][0].alignment = openpyxl.styles.Alignment(
-                            horizontal="right"
-                        )
-                        ws[ws.max_row][1].alignment = openpyxl.styles.Alignment(
-                            horizontal="left"
-                        )
-                else:
-                    ws.append([elem])
+            _write_export_description(ws, self.export_description)
 
-            ws.append([])
-
+        # Write the header row and make cells bold
         ws.append(tablib_dataset.headers)
 
         table_columns = tuple(
@@ -120,29 +193,7 @@ class MyTableExport(TableExport):
             for h, header in enumerate(tablib_dataset.headers, start=1)
         )
 
-        # Sumowana kolumna po stronie XLSX tworzona jest w taki sposób, że jeżeli jakakolwiek
-        # kolumna tabeli ma footer, to jest tam wstawiana suma za pomocą funkcji =SUBTOTAL(9, ...)
-        #
-        # W przypadku gdyby to nie wystarczało w przyszłości, to do django_tables2.TableColumn
-        # należałoby dopisać kod funkcji XLSa.
-        #
-        # Do tego, pierwsza kolumna (o indeksie zerowym) uzywana jest dla napisu "Suma"
-
-        footer_row = []
-        for no, elem in enumerate(self.table.columns):
-            if no == 0:
-                footer_row.append("Suma")
-                total_column = table_columns[0]
-                total_column.totalsRowLabel = footer_row[0]
-                continue
-
-            if elem.has_footer():
-                count_column = table_columns[no]
-                count_column.totalsRowFunction = "sum"
-                footer_row.append(f"=SUBTOTAL(109,{table_name}[{elem.header}])")
-                continue
-
-            footer_row.append("")
+        footer_row = _build_footer_row(self.table.columns, table_columns, table_name)
 
         for cell in ws[ws.max_row : ws.max_row]:
             cell.font = openpyxl.styles.Font(bold=True)
@@ -153,46 +204,9 @@ class MyTableExport(TableExport):
         ws.append(footer_row)
 
         if tablib_dataset:
-            max_column = ws.max_column
-            max_column_letter = get_column_letter(max_column)
-            max_row = ws.max_row
+            _add_table(ws, table_name, first_table_row, table_columns)
 
-            style = TableStyleInfo(
-                name="TableStyleMedium9",
-                showFirstColumn=False,
-                showLastColumn=False,
-                showRowStripes=True,
-                showColumnStripes=True,
-            )
-            tab = Table(
-                displayName=table_name,
-                ref=f"A{first_table_row}:{max_column_letter}{max_row}",
-                autoFilter=AutoFilter(
-                    ref=f"A{first_table_row}:{max_column_letter}{max_row - 1}"
-                ),
-                totalsRowShown=True,
-                totalsRowCount=1,
-                tableStyleInfo=style,
-                tableColumns=table_columns,
-            )
-
-            ws.add_table(tab)
-
-        max_width = 75
-        for _ncol, col in enumerate(ws.columns):
-            max_length = 0
-            column = col[0].column_letter  # Get the column name
-            # Since Openpyxl 2.6, the column name is  ".column_letter" as .column became the column number (1-based)
-            for cell in col:
-                try:  # Necessary to avoid error on empty cells
-                    if len(str(cell.value)) > max_length:
-                        max_length = len(cell.value)
-                except (ValueError, TypeError):
-                    pass
-            adjusted_width = (max_length + 2) * 1.1
-            if adjusted_width > max_width:
-                adjusted_width = max_width
-            ws.column_dimensions[column].width = adjusted_width
+        _autofit_columns(ws)
 
         with NamedTemporaryFile() as tmp:
             wb.save(tmp.name)

@@ -1,15 +1,16 @@
 """Publication import utilities"""
 
+import logging
+
 from bpp.models import (
     Dyscyplina_Naukowa,
-    Jednostka,
     Rekord,
     Rodzaj_Zrodla,
-    Uczelnia,
     Wersja_Tekstu_OpenAccess,
     Wydawnictwo_Ciagle,
     Wydawnictwo_Zwarte,
 )
+from bpp.util import zaloguj_polkniety_wyjatek
 from pbn_api.models import Publication
 from pbn_integrator.importer import importuj_publikacje_po_pbn_uid_id
 from pbn_integrator.utils import (
@@ -18,6 +19,9 @@ from pbn_integrator.utils import (
 )
 
 from .base import CancelledException, ImportStepBase
+from .institution_import import resolve_default_jednostka, resolve_default_jezyk
+
+logger = logging.getLogger(__name__)
 
 
 class PublicationImporter(ImportStepBase):
@@ -26,56 +30,66 @@ class PublicationImporter(ImportStepBase):
     step_name = "publication_import"
     step_description = "Import publikacji"
 
-    def __init__(self, session, client=None, delete_existing=False):
-        super().__init__(session, client)
+    def __init__(self, session, client=None, delete_existing=False, uczelnia=None):
+        super().__init__(session, client, uczelnia=uczelnia)
         self.delete_existing = delete_existing
         self.default_jednostka = None
+        self.default_jezyk = None
 
-    def run(self):
-        """Import publications"""
-        # Setup uczelnia and jednostka
+    def download(self):
+        """Pobierz publikacje instytucji (v1 + v2) z PBN do lustra."""
         uczelnia = self._setup_uczelnia_and_jednostka()
         if uczelnia is None:
-            return {"authors_imported": False, "reason": "No Uczelnia PBN UID"}
+            return {"publications_imported": False, "reason": "No Uczelnia PBN UID"}
 
-        total_steps = 4 if self.delete_existing else 3
+        result = self._download_publications(0, 2, uczelnia)
+        if result:
+            return result
+        result = self._download_publications_v2(1, 2)
+        if result:
+            return result
+
+        self.update_progress(2, 2, "Zakończono pobieranie publikacji")
+        return {"publications_downloaded": True, "error_count": len(self.errors)}
+
+    def process(self):
+        """Zaimportuj publikacje z lustra do BPP (opcjonalnie po skasowaniu)."""
+        uczelnia = self._setup_uczelnia_and_jednostka()
+        if uczelnia is None:
+            return {"publications_imported": False, "reason": "No Uczelnia PBN UID"}
+
+        if not Publication.objects.exists():
+            self.log(
+                "warning",
+                "Brak pobranych publikacji — przetwarzam 0. Uruchom fazę "
+                "pobierania, jeśli to nie zamierzone.",
+            )
+
+        total_steps = 2 if self.delete_existing else 1
         current_step = 0
-
-        # Delete existing if requested
         if self.delete_existing:
             result = self._delete_existing_publications(current_step, total_steps)
             if result:
                 return result
             current_step += 1
 
-        # Download publications
-        result = self._download_publications(current_step, total_steps, uczelnia)
-        if result:
-            return result
-        current_step += 1
-
-        # Download publications v2
-        result = self._download_publications_v2(current_step, total_steps)
-        if result:
-            return result
-        current_step += 1
-
-        # Import publications
         result = self._import_publications(current_step, total_steps)
         if result:
             return result
 
         self.update_progress(total_steps, total_steps, "Zakończono import publikacji")
-
         return {
             "publications_imported": True,
-            "default_jednostka": self.default_jednostka.nazwa,
+            "default_jednostka": (
+                self.default_jednostka.nazwa if self.default_jednostka else None
+            ),
             "error_count": len(self.errors),
         }
 
-    def _setup_uczelnia_and_jednostka(self):
+    def _setup_uczelnia_and_jednostka(self, uczelnia=None):
         """Setup uczelnia and default jednostka for import."""
-        uczelnia = Uczelnia.objects.get_default()
+        if uczelnia is None:
+            uczelnia = self.uczelnia
 
         if not uczelnia or not uczelnia.pbn_uid_id:
             self.log(
@@ -84,18 +98,22 @@ class PublicationImporter(ImportStepBase):
             )
             return None
 
-        jednostka_id = self.session.config.get("default_jednostka_id")
-        if jednostka_id:
-            self.default_jednostka = Jednostka.objects.get(pk=jednostka_id)
-        else:
-            self.default_jednostka = Jednostka.objects.filter(
-                nazwa="Jednostka Domyślna"
-            ).first()
+        # Multi-hosted: domyślna jednostka pochodzi z wyboru na formularzu
+        # nowego importu (config) albo — gdy go brak — z uczelnia-aware
+        # find-or-create. NIE zgadujemy już po samej nazwie bez filtra uczelni.
+        # Działa też gdy import startuje od późniejszego kroku (np. źródeł),
+        # z pominięciem kroku institution_setup, który dawniej był JEDYNYM
+        # miejscem zapisującym ``default_jednostka_id``.
+        self.default_jednostka = resolve_default_jednostka(self.session, uczelnia)
 
         if not self.default_jednostka:
             raise ValueError(
                 "Nie znaleziono domyślnej jednostki dla importu publikacji"
             )
+
+        # Domyślny język dla publikacji bez (poprawnego) ``mainLanguage`` —
+        # wybór z formularza nowego importu albo polski. Patrz pobierz_jezyk().
+        self.default_jezyk = resolve_default_jezyk(self.session)
 
         # Ensure OpenAccess version exists
         Wersja_Tekstu_OpenAccess.objects.get_or_create(nazwa="Inna", skrot="OTHER")
@@ -137,6 +155,12 @@ class PublicationImporter(ImportStepBase):
             pobierz_publikacje_z_instytucji(self.client, callback=download_callback)
             self.log("info", "Publikacje pobrane pomyślnie")
         except Exception as e:
+            zaloguj_polkniety_wyjatek(
+                "Nie udało się pobrać publikacji z instytucji "
+                f"(pbn_uid={uczelnia.pbn_uid_id})",
+                logger=logger,
+                do_rollbar=False,  # Rollbar już w handle_error
+            )
             self.handle_pbn_error(e, "Nie udało się pobrać publikacji")
         return None
 
@@ -160,6 +184,11 @@ class PublicationImporter(ImportStepBase):
             self._download_publications_v2_with_callback(download_v2_callback)
             self.log("info", "Publikacje v2 pobrane pomyślnie")
         except Exception as e:
+            zaloguj_polkniety_wyjatek(
+                "Nie udało się pobrać publikacji z instytucji (wersja 2)",
+                logger=logger,
+                do_rollbar=False,  # Rollbar już w handle_error
+            )
             self.handle_pbn_error(e, "Nie udało się pobrać publikacji v2")
         finally:
             self.clear_subtask_progress()
@@ -187,6 +216,11 @@ class PublicationImporter(ImportStepBase):
             self.log("success", "Publikacje zaimportowane pomyślnie")
 
         except Exception as e:
+            zaloguj_polkniety_wyjatek(
+                "Nie udało się zaimportować publikacji do bazy danych",
+                logger=logger,
+                do_rollbar=False,  # Rollbar już w handle_error
+            )
             self.handle_error(e, "Nie udało się zaimportować publikacji")
             if hasattr(self.session, "statistics"):
                 self.session.statistics.publications_failed += 1
@@ -242,10 +276,16 @@ class PublicationImporter(ImportStepBase):
                     default_jednostka=self.default_jednostka,
                     rodzaj_periodyk=rodzaj_periodyk,
                     dyscypliny_cache=dyscypliny_cache,
+                    domyslny_jezyk=self.default_jezyk,
                 )
                 if ret:
                     imported_count += 1
             except Exception as e:
+                zaloguj_polkniety_wyjatek(
+                    f"Nie udało się zaimportować publikacji {pbn_publication.mongoId}",
+                    logger=logger,
+                    do_rollbar=False,  # Rollbar już w handle_error
+                )
                 failed_count += 1
                 self.handle_error(
                     e,

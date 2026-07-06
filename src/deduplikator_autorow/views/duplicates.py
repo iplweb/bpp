@@ -37,60 +37,41 @@ from .helpers import (
     group_required,
 )
 
+TEMPLATE_DUPLICATE_AUTHORS = "deduplikator_autorow/duplicate_authors.html"
 
-@group_required(GR_WPROWADZANIE_DANYCH)
-def duplicate_authors_view(request):  # noqa: C901
-    """
-    Widok pokazujący główny rekord autora wraz z możliwymi duplikatami
-    i ich publikacjami (do 500 na duplikat).
 
-    Uses pre-computed duplicates from DuplicateCandidate table.
-    """
-    from bpp.models import Autor_Dyscyplina
+def _normalize_choice(value, allowed, default):
+    """Zwróć ``value`` jeśli jest w ``allowed``, inaczej ``default``."""
+    return value if value in allowed else default
 
-    # Get scan status
-    running_scan = get_running_scan()
-    completed_scan = get_latest_usable_scan()
 
-    # Filter mode: pbn|general|both (default both)
-    mode = request.GET.get("mode", "both")
-    if mode not in ("pbn", "general", "both"):
-        mode = "both"
+def _parse_skip_count(request):
+    """Wczytaj skip_count z GET jako int, z fallbackiem 0."""
+    try:
+        return int(request.GET.get("skip_count", 0))
+    except (ValueError, TypeError):
+        return 0
 
-    # Filter confidence band: all|high|low (default all). high=>=50%, low=<50%.
-    # Próg porównujemy do confidence_percent jako ułamka, bo display % jest
-    # liczone z confidence_percent * 100 z klampem.
-    confidence_band = request.GET.get("confidence", "all")
-    if confidence_band not in ("all", "high", "low"):
-        confidence_band = "all"
-    confidence_threshold_frac = MIN_PEWNOSC_DO_WYSWIETLENIA / 100.0
 
-    # Common context
-    not_duplicate_count = NotADuplicate.objects.count()
-    ignored_authors_count = IgnoredScientist.objects.count()
-    latest_pbn_download = PbnDownloadTask.get_latest_task()
-
-    # Check PBN people data freshness
+def _build_base_context(request, running_scan, completed_scan, mode):
+    """Zbuduj wspólny kontekst używany we wszystkich scenariuszach widoku."""
     pbn_data_fresh, pbn_stale_message, pbn_last_download = is_pbn_people_data_fresh()
-
     recent_merges = (
         LogScalania.objects.filter(created_by=request.user)
         .select_related("main_autor", "dyscyplina_before", "dyscyplina_after")
         .order_by("-created_on")[:10]
     )
-
-    # Base context for all scenarios
-    context = {
+    return {
         "scientist": None,
         "glowny_autor": None,
-        "latest_pbn_download": latest_pbn_download,
+        "latest_pbn_download": PbnDownloadTask.get_latest_task(),
         "duplikaty_z_publikacjami": [],
         "analiza": None,
         "has_skipped_authors": False,
         "has_previous_authors": False,
         "total_authors_with_duplicates": 0,
-        "not_duplicate_count": not_duplicate_count,
-        "ignored_authors_count": ignored_authors_count,
+        "not_duplicate_count": NotADuplicate.objects.count(),
+        "ignored_authors_count": IgnoredScientist.objects.count(),
         "search_lastname": "",
         "search_results_count": None,
         "recent_merges": recent_merges,
@@ -111,17 +92,9 @@ def duplicate_authors_view(request):  # noqa: C901
         "pbn_last_download": pbn_last_download,
     }
 
-    # If no completed scan, show "run scan first" message
-    if not completed_scan:
-        if running_scan:
-            messages.info(
-                request,
-                f"Skanowanie w toku: {running_scan.progress_percent}% "
-                f"({running_scan.authors_scanned}/{running_scan.total_authors_to_scan} autorów)",
-            )
-        return render(request, "deduplikator_autorow/duplicate_authors.html", context)
 
-    # Count pending candidates
+def _add_pending_counts(context, completed_scan, confidence_band):
+    """Policz PENDING-ujące kandydaty i wstaw liczniki do kontekstu."""
     base_pending_qs = DuplicateCandidate.objects.filter(
         scan_run=completed_scan,
         status=DuplicateCandidate.Status.PENDING,
@@ -135,115 +108,101 @@ def duplicate_authors_view(request):  # noqa: C901
     ).count()
     context["confidence_band"] = confidence_band
 
-    # Handle search by lastname
-    search_lastname = request.GET.get("search_lastname", "").strip()
-    context["search_lastname"] = search_lastname
 
-    if search_lastname:
-        # Search within stored candidates - confidence_band celowo NIE filtruje
-        # wyboru głównego autora (filtr per-autor stosujemy niżej, na liście
-        # candidates_for_author).
-        candidates = (
-            DuplicateCandidate.objects.filter(
-                scan_run=completed_scan,
-                status=DuplicateCandidate.Status.PENDING,
-                main_autor__nazwisko__icontains=search_lastname,
-            )
-            .select_related("main_autor", "duplicate_autor")
-            .order_by("-priority", "-confidence_score")
+def _resolve_by_search(request, completed_scan, mode, search_lastname, context):
+    """Wybierz głównego autora i jego kandydatów na podstawie nazwiska.
+
+    confidence_band celowo NIE filtruje wyboru głównego autora (filtr per-autor
+    stosujemy później, na liście candidates_for_author).
+    """
+    candidates = (
+        DuplicateCandidate.objects.filter(
+            scan_run=completed_scan,
+            status=DuplicateCandidate.Status.PENDING,
+            main_autor__nazwisko__icontains=search_lastname,
         )
-        if mode != "both":
-            candidates = candidates.filter(scan_mode=mode)
+        .select_related("main_autor", "duplicate_autor")
+        .order_by("-priority", "-confidence_score")
+    )
+    if mode != "both":
+        candidates = candidates.filter(scan_mode=mode)
 
-        context["search_results_count"] = (
-            candidates.values("main_autor").distinct().count()
-        )
+    context["search_results_count"] = candidates.values("main_autor").distinct().count()
 
-        if candidates.exists():
-            search_author_ids = list(
-                candidates.values_list("main_autor", flat=True)
-                .distinct()
-                .order_by("main_autor")
-            )
-            try:
-                skip_count = int(request.GET.get("skip_count", 0))
-            except (ValueError, TypeError):
-                skip_count = 0
-            if skip_count >= len(search_author_ids):
-                skip_count = 0
-            glowny_autor_id = search_author_ids[skip_count]
-            glowny_autor = Autor.objects.get(pk=glowny_autor_id)
-            candidates_for_author = candidates.filter(main_autor=glowny_autor)
-            context["skip_count"] = skip_count
-            context["search_total_authors"] = len(search_author_ids)
-            context["search_has_prev"] = skip_count > 0
-            context["search_has_next"] = skip_count < len(search_author_ids) - 1
-        else:
-            glowny_autor = None
-            candidates_for_author = DuplicateCandidate.objects.none()
-    else:
-        # Handle navigation - use skip_count as offset
-        try:
-            skip_count = int(request.GET.get("skip_count", 0))
-        except (ValueError, TypeError):
-            skip_count = 0
+    if not candidates.exists():
+        return None, DuplicateCandidate.objects.none()
 
-        # Get next author with pending duplicates using offset.
-        # confidence_band NIE jest tu przekazywane — chcemy iterować po
-        # WSZYSTKICH głównych autorach niezależnie od pewności ich kandydatów,
-        # filtr stosujemy niżej tylko na widocznym podzbiorze.
-        glowny_autor, candidates_for_author, skip_count = _get_next_candidate_group(
-            completed_scan,
-            skip_count=skip_count,
-            mode=mode,
-        )
-        context["skip_count"] = skip_count
+    search_author_ids = list(
+        candidates.values_list("main_autor", flat=True)
+        .distinct()
+        .order_by("main_autor")
+    )
+    skip_count = _parse_skip_count(request)
+    if skip_count >= len(search_author_ids):
+        skip_count = 0
+    glowny_autor = Autor.objects.get(pk=search_author_ids[skip_count])
+    candidates_for_author = candidates.filter(main_autor=glowny_autor)
+    context["skip_count"] = skip_count
+    context["search_total_authors"] = len(search_author_ids)
+    context["search_has_prev"] = skip_count > 0
+    context["search_has_next"] = skip_count < len(search_author_ids) - 1
+    return glowny_autor, candidates_for_author
 
-    # Filter per-author by confidence band (NOT main author selection).
-    # Liczniki "X / Y" oraz per-band wyliczamy zanim podstawimy filtr.
+
+def _resolve_by_navigation(request, completed_scan, mode, context):
+    """Wybierz kolejnego głównego autora poprzez offset skip_count.
+
+    confidence_band NIE jest tu przekazywane — chcemy iterować po WSZYSTKICH
+    głównych autorach niezależnie od pewności ich kandydatów, filtr stosujemy
+    później tylko na widocznym podzbiorze.
+    """
+    glowny_autor, candidates_for_author, skip_count = _get_next_candidate_group(
+        completed_scan,
+        skip_count=_parse_skip_count(request),
+        mode=mode,
+    )
+    context["skip_count"] = skip_count
+    return glowny_autor, candidates_for_author
+
+
+def _apply_confidence_band(
+    candidates_for_author, glowny_autor, confidence_band, threshold, context
+):
+    """Policz liczniki per-band i przefiltruj listę widocznych kandydatów."""
     if glowny_autor:
-        candidates_total_for_main = candidates_for_author.count()
-        candidates_high_for_main = candidates_for_author.filter(
-            confidence_percent__gte=confidence_threshold_frac
-        ).count()
-        candidates_low_for_main = candidates_total_for_main - candidates_high_for_main
+        total = candidates_for_author.count()
+        high = candidates_for_author.filter(confidence_percent__gte=threshold).count()
+        low = total - high
     else:
-        candidates_total_for_main = 0
-        candidates_high_for_main = 0
-        candidates_low_for_main = 0
+        total = high = low = 0
     if confidence_band == "high":
         candidates_for_author = candidates_for_author.filter(
-            confidence_percent__gte=confidence_threshold_frac
+            confidence_percent__gte=threshold
         )
     elif confidence_band == "low":
         candidates_for_author = candidates_for_author.filter(
-            confidence_percent__lt=confidence_threshold_frac
+            confidence_percent__lt=threshold
         )
-    context["candidates_total_for_main"] = candidates_total_for_main
-    context["candidates_high_for_main"] = candidates_high_for_main
-    context["candidates_low_for_main"] = candidates_low_for_main
+    context["candidates_total_for_main"] = total
+    context["candidates_high_for_main"] = high
+    context["candidates_low_for_main"] = low
+    return candidates_for_author
 
-    if not glowny_autor:
-        if pending_count == 0:
-            messages.info(
-                request,
-                "Brak duplikatów do sprawdzenia. Wszystkie zostały już przetworzone.",
-            )
-        return render(request, "deduplikator_autorow/duplicate_authors.html", context)
 
-    # Build context for the main author
+def _build_main_author_context(context, glowny_autor, candidates_for_author):
+    """Uzupełnij kontekst danymi głównego autora i jego duplikatów."""
+    from bpp.models import Autor_Dyscyplina
+
     context["glowny_autor"] = glowny_autor
 
     # Try to get scientist for main author (for backward compatibility)
     if glowny_autor.pbn_uid:
         context["scientist"] = glowny_autor.pbn_uid
 
-    # Build duplicate list from stored candidates
-    duplikaty_z_publikacjami = []
-    for candidate in candidates_for_author:
-        pub_data = _build_context_from_candidate(candidate, glowny_autor)
-        duplikaty_z_publikacjami.append(pub_data)
-
+    duplikaty_z_publikacjami = [
+        _build_context_from_candidate(candidate, glowny_autor)
+        for candidate in candidates_for_author
+    ]
     context["duplikaty_z_publikacjami"] = duplikaty_z_publikacjami
     context["first_candidate"] = (
         candidates_for_author.first() if candidates_for_author else None
@@ -280,7 +239,75 @@ def duplicate_authors_view(request):  # noqa: C901
     context["glowne_publikacje_count"] = glowny_autor_qs.count()
     context["glowne_publikacje_year_range"] = _calculate_year_range(glowny_autor_qs)
 
-    return render(request, "deduplikator_autorow/duplicate_authors.html", context)
+
+@group_required(GR_WPROWADZANIE_DANYCH)
+def duplicate_authors_view(request):
+    """
+    Widok pokazujący główny rekord autora wraz z możliwymi duplikatami
+    i ich publikacjami (do 500 na duplikat).
+
+    Uses pre-computed duplicates from DuplicateCandidate table.
+    """
+    running_scan = get_running_scan()
+    completed_scan = get_latest_usable_scan()
+
+    # Filter mode: pbn|general|both (default both)
+    mode = _normalize_choice(
+        request.GET.get("mode", "both"), ("pbn", "general", "both"), "both"
+    )
+    # Filter confidence band: all|high|low (default all). high=>=50%, low=<50%.
+    # Próg porównujemy do confidence_percent jako ułamka, bo display % jest
+    # liczone z confidence_percent * 100 z klampem.
+    confidence_band = _normalize_choice(
+        request.GET.get("confidence", "all"), ("all", "high", "low"), "all"
+    )
+    confidence_threshold_frac = MIN_PEWNOSC_DO_WYSWIETLENIA / 100.0
+
+    context = _build_base_context(request, running_scan, completed_scan, mode)
+
+    # If no completed scan, show "run scan first" message
+    if not completed_scan:
+        if running_scan:
+            messages.info(
+                request,
+                f"Skanowanie w toku: {running_scan.progress_percent}% "
+                f"({running_scan.authors_scanned}/{running_scan.total_authors_to_scan} autorów)",
+            )
+        return render(request, TEMPLATE_DUPLICATE_AUTHORS, context)
+
+    _add_pending_counts(context, completed_scan, confidence_band)
+
+    # Handle search by lastname
+    search_lastname = request.GET.get("search_lastname", "").strip()
+    context["search_lastname"] = search_lastname
+
+    if search_lastname:
+        glowny_autor, candidates_for_author = _resolve_by_search(
+            request, completed_scan, mode, search_lastname, context
+        )
+    else:
+        glowny_autor, candidates_for_author = _resolve_by_navigation(
+            request, completed_scan, mode, context
+        )
+
+    candidates_for_author = _apply_confidence_band(
+        candidates_for_author,
+        glowny_autor,
+        confidence_band,
+        confidence_threshold_frac,
+        context,
+    )
+
+    if not glowny_autor:
+        if context["pending_candidates_count"] == 0:
+            messages.info(
+                request,
+                "Brak duplikatów do sprawdzenia. Wszystkie zostały już przetworzone.",
+            )
+        return render(request, TEMPLATE_DUPLICATE_AUTHORS, context)
+
+    _build_main_author_context(context, glowny_autor, candidates_for_author)
+    return render(request, TEMPLATE_DUPLICATE_AUTHORS, context)
 
 
 @group_required(GR_WPROWADZANIE_DANYCH)

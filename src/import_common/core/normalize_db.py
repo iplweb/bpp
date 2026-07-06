@@ -5,6 +5,8 @@ wartości w bazie z wartościami pochodzącymi z importu, oraz odpowiadające
 im funkcje pythonowe normalizujące napis tak samo jak ORM-owy odpowiednik.
 """
 
+import html
+
 import dateutil
 from django.db.models import Value
 from django.db.models.functions import Lower, Replace, Trim
@@ -35,6 +37,11 @@ normalized_db_zrodlo_skrot = Trim(
 
 
 def normalize_zrodlo_skrot_for_db_lookup(s):
+    # html.unescape: CrossRef API zwraca tytuły z encjami HTML (np.
+    # "Leuk. &amp; Lymphoma"), a w bazie zapisany jest goły znak
+    # ("Leuk. & Lymphoma"). Bez dekodowania encja zaburza podobieństwo
+    # trygramowe i dopasowanie źródła znika (FD#321).
+    s = html.unescape(s)
     return s.lower().replace(" ", "").strip().replace("-", "").replace(".", "")
 
 
@@ -60,6 +67,11 @@ normalized_db_zrodlo_nazwa = Trim(
 
 
 def normalize_zrodlo_nazwa_for_db_lookup(s):
+    # html.unescape: CrossRef API zwraca tytuły z encjami HTML (np.
+    # "Leukemia &amp; Lymphoma"), a w bazie zapisana jest goła nazwa
+    # ("Leukemia & Lymphoma"). Bez dekodowania encja zaburza podobieństwo
+    # trygramowe i dopasowanie źródła znika (FD#321).
+    s = html.unescape(s)
     return s.lower().replace(" ", "").strip()
 
 

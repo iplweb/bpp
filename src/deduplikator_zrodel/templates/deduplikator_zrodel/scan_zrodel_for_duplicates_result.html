@@ -1,0 +1,19 @@
+{% load i18n %}
+<div class="callout success">
+    <h4>Skanowanie zakończone</h4>
+    <p>
+        Znaleziono
+        {% if operation.result_context.duplicates_found is not None %}
+            {{ operation.result_context.duplicates_found }}
+        {% else %}
+            {{ operation.duplicates_found }}
+        {% endif %}
+        potencjalnych duplikatów
+        (przeskanowano {{ operation.total_sources }} źródeł).
+    </p>
+    {# Fallback bez-JS: przy włączonym JS liveops.js robi auto-redirect na #}
+    {# get_success_url() zanim ten link jest potrzebny. #}
+    <a class="button" href="{% url 'deduplikator_zrodel:duplicate_sources' %}">
+        Zobacz listę duplikatów
+    </a>
+</div>

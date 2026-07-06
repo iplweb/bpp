@@ -88,7 +88,6 @@ class RankingAutorowForm(forms.Form):
     rozbij_na_jednostki = forms.BooleanField(
         label="Rozbij punktację na jednostki i wydziały",
         required=False,
-        initial=lambda: Uczelnia.objects.first().ranking_autorow_rozbij_domyslnie,
     )
 
     tylko_afiliowane = forms.BooleanField(
@@ -137,8 +136,13 @@ class RankingAutorowForm(forms.Form):
         ),
     )
 
-    def __init__(self, lata, *args, **kwargs):
+    def __init__(self, lata, *args, request=None, **kwargs):
         super().__init__(*args, **kwargs)
+
+        uczelnia = Uczelnia.objects.get_for_request(request)
+        self.fields["rozbij_na_jednostki"].initial = (
+            uczelnia.ranking_autorow_rozbij_domyslnie if uczelnia else False
+        )
 
         # Import models here to avoid circular imports
         from bpp.models import (
@@ -182,7 +186,6 @@ class RankingAutorowForm(forms.Form):
         self.helper.form_method = "post"
 
         # Check if uczelnia uses wydzialy
-        uczelnia = Uczelnia.objects.first()
         uzywaj_wydzialow = uczelnia.uzywaj_wydzialow if uczelnia else True
 
         # Build layout fields based on uzywaj_wydzialow

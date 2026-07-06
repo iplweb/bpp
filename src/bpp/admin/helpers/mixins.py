@@ -50,7 +50,7 @@ class OptionalPBNSaveMixin:
     ):
         from bpp.models import Uczelnia
 
-        uczelnia = Uczelnia.objects.get_default()
+        uczelnia = Uczelnia.objects.get_for_request(request)
         if uczelnia is not None:
             if uczelnia.pbn_integracja and uczelnia.pbn_aktualizuj_na_biezaco:
                 context.update({"show_save_and_pbn": True})

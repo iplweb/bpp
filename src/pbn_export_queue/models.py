@@ -1,3 +1,4 @@
+import logging
 import sys
 import traceback
 from enum import Enum
@@ -11,6 +12,7 @@ from django.db.models import PositiveIntegerField
 from django.urls import reverse
 from django.utils import timezone
 
+from bpp.util import zaloguj_polkniety_wyjatek
 from django_bpp.settings.base import AUTH_USER_MODEL
 from pbn_api.exceptions import (
     AccessDeniedException,
@@ -26,6 +28,8 @@ from pbn_api.exceptions import (
     WillNotExportError,
 )
 
+logger = logging.getLogger(__name__)
+
 
 class PBN_Export_QueueManager(models.Manager):
     def filter_rekord_do_wysylki(self, rekord):
@@ -35,13 +39,14 @@ class PBN_Export_QueueManager(models.Manager):
             wysylke_zakonczono=None,
         )
 
-    def sprobuj_utowrzyc_wpis(self, user, rekord):
+    def sprobuj_utowrzyc_wpis(self, user, rekord, uczelnia=None):
         if self.filter_rekord_do_wysylki(rekord).exists():
             raise AlreadyEnqueuedError("ten rekord jest już w kolejce do wysyłki")
 
         return self.create(
             rekord_do_wysylki=rekord,
             zamowil=user,
+            uczelnia=uczelnia,
         )
 
 
@@ -77,6 +82,14 @@ class PBN_Export_Queue(models.Model):
     rekord_do_wysylki = GenericForeignKey()
 
     zamowil = models.ForeignKey(AUTH_USER_MODEL, on_delete=models.CASCADE)
+
+    uczelnia = models.ForeignKey(
+        "bpp.Uczelnia",
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name="pbn_export_queue",
+    )
 
     zamowiono = models.DateTimeField(auto_now_add=True, db_index=True)
 
@@ -373,8 +386,15 @@ class PBN_Export_Queue(models.Model):
                 user=self.zamowil.get_pbn_user(),
                 obj=self.rekord_do_wysylki,
                 force_upload=True,
+                uczelnia=self.uczelnia,
             )
         except Exception as exc:
+            zaloguj_polkniety_wyjatek(
+                "Błąd podczas wysyłki rekordu do PBN z kolejki eksportu "
+                f"(PBN_Export_Queue pk={self.pk})",
+                logger=logger,
+                do_rollbar=False,  # Rollbar dla nieobsłużonych w _handle_pbn_exception
+            )
             return self._handle_pbn_exception(exc)
 
         if sent_data is None:

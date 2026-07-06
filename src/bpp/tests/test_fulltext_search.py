@@ -33,12 +33,14 @@ def test_fulltext_search_mixin(autor_jan_kowalski):
 
 @pytest.mark.django_db
 def test_publication_fulltext_search_uses_weighted_cached_fields(
-    autor_jan_kowalski, jednostka, typy_odpowiedzialnosci
+    autor_jan_kowalski, jednostka, typ_odpowiedzialnosci_autor
 ):
-    # typy_odpowiedzialnosci: gwarantuje istnienie Typ_Odpowiedzialnosci
-    # "aut." wymaganego przez dodaj_autora — bez tego test zależał od danych
-    # bazowych, które poprzedzający test transakcyjny mógł wyczyścić (flush),
-    # co ujawniało się przy zmianie podziału na shardy.
+    # typ_odpowiedzialnosci_autor jest wymagany jawnie: dodaj_autora robi
+    # Typ_Odpowiedzialnosci.objects.get(skrot="aut."). Te dane pochodzą z
+    # baseline, ale testy transakcyjne (transaction=True) czyszczą tabele
+    # referencyjne bez ich odtworzenia — przy nieszczęśliwej kolejności
+    # shardowania ten test trafiał na pustą tabelę. Fixture czyni go
+    # samowystarczalnym.
     publication = baker.make(
         Wydawnictwo_Ciagle,
         tytul_oryginalny="Neurokognitywny atlas markerowy",

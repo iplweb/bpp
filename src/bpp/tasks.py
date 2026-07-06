@@ -58,7 +58,31 @@ def usun_stare_logi_logowania_easyaudit(
     return deleted
 
 
-def _zaktualizuj_liczbe_cytowan(klasy=None):  # noqa: C901
+# Mapowanie kluczy z odpowiedzi WoS API na atrybuty modelu publikacji.
+# Każdy wpis: (klucz_w_odpowiedzi, atrybut_modelu).
+_POLA_CYTOWAN = (
+    ("timesCited", "liczba_cytowan"),
+    ("pmid", "pubmed_id"),
+    ("doi", "doi"),
+)
+
+
+def _zaktualizuj_pola_z_wos(obj, item):
+    """Nadpisz pola `obj` wartościami z `item` (odpowiedź WoS).
+
+    Pole jest aktualizowane tylko gdy nowa wartość nie jest None ORAZ różni
+    się od bieżącej. Zwraca True, jeśli cokolwiek się zmieniło.
+    """
+    changed = False
+    for klucz, atrybut in _POLA_CYTOWAN:
+        wartosc = item.get(klucz)
+        if wartosc is not None and getattr(obj, atrybut) != wartosc:
+            setattr(obj, atrybut, wartosc)
+            changed = True
+    return changed
+
+
+def _zaktualizuj_liczbe_cytowan(klasy=None):
     if klasy is None:
         klasy = (
             Wydawnictwo_Ciagle,
@@ -86,30 +110,8 @@ def _zaktualizuj_liczbe_cytowan(klasy=None):  # noqa: C901
 
             for grp in client.query_multiple(filtered):
                 for k, item in grp.items():
-                    changed = False
-
-                    timesCited = item.get("timesCited")
-                    doi = item.get("doi")
-                    pubmed_id = item.get("pmid")
-
                     obj = klass.objects.get(pk=k)
-
-                    if timesCited is not None:
-                        if obj.liczba_cytowan != timesCited:
-                            obj.liczba_cytowan = timesCited
-                            changed = True
-
-                    if pubmed_id is not None:
-                        if obj.pubmed_id != pubmed_id:
-                            obj.pubmed_id = pubmed_id
-                            changed = True
-
-                    if doi is not None:
-                        if obj.doi != doi:
-                            obj.doi = doi
-                            changed = True
-
-                    if changed:
+                    if _zaktualizuj_pola_z_wos(obj, item):
                         obj.save()
 
 

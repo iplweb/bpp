@@ -33,6 +33,12 @@ class MetrykaAutora(models.Model):
         db_index=False,
     )
 
+    uczelnia = models.ForeignKey(
+        "bpp.Uczelnia",
+        on_delete=models.CASCADE,
+        help_text="Uczelnia, dla której policzono metrykę (multi-hosted)",
+    )
+
     # Dane z algorytmu plecakowego (nazbierane optymalne)
     slot_maksymalny = models.DecimalField(
         max_digits=10,
@@ -123,12 +129,13 @@ class MetrykaAutora(models.Model):
     class Meta:
         verbose_name = "Metryka autora"
         verbose_name_plural = "Metryki autorów"
-        unique_together = [("autor", "dyscyplina_naukowa")]
+        unique_together = [("autor", "dyscyplina_naukowa", "uczelnia")]
         ordering = ["-srednia_za_slot_nazbierana", "autor__nazwisko", "autor__imiona"]
         indexes = [
             models.Index(fields=["-srednia_za_slot_nazbierana"]),
             models.Index(fields=["jednostka", "-srednia_za_slot_nazbierana"]),
             models.Index(fields=["dyscyplina_naukowa", "-srednia_za_slot_nazbierana"]),
+            models.Index(fields=["uczelnia", "-srednia_za_slot_nazbierana"]),
         ]
 
     def __str__(self):
@@ -188,7 +195,7 @@ class MetrykaAutora(models.Model):
 
 
 class StatusGenerowania(models.Model):
-    """Model przechowujący informację o ostatnim generowaniu metryk (singleton)"""
+    """Model przechowujący informację o ostatnim generowaniu metryk (per uczelnia)."""
 
     data_rozpoczecia = models.DateTimeField(
         null=True, blank=True, help_text="Data rozpoczęcia ostatniego generowania"
@@ -227,6 +234,19 @@ class StatusGenerowania(models.Model):
         help_text="ID zadania Celery",
     )
 
+    # Zostaje nullable: moduł ewaluacja_optymalizacja (poza zakresem federacji)
+    # używa StatusGenerowania.get_or_create() bez argumentu w 3 miejscach
+    # (views/unpinning_analysis.py:39,149, views/unpinning_list.py:137),
+    # co rozwiązuje się do wiersza uczelnia=None. Pełny per-uczelnia status
+    # należy do późniejszych prac federacyjnych.
+    uczelnia = models.OneToOneField(
+        "bpp.Uczelnia",
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        help_text="Uczelnia, której dotyczy ten status (multi-hosted)",
+    )
+
     class Meta:
         verbose_name = "Status generowania metryk"
         verbose_name_plural = "Status generowania metryk"
@@ -239,15 +259,10 @@ class StatusGenerowania(models.Model):
         else:
             return "Brak informacji o generowaniu"
 
-    def save(self, *args, **kwargs):
-        # Singleton - zawsze nadpisuj rekord o id=1
-        self.pk = 1
-        super().save(*args, **kwargs)
-
     @classmethod
-    def get_or_create(cls):
-        """Pobierz lub utwórz instancję singleton"""
-        obj, created = cls.objects.get_or_create(pk=1)
+    def get_or_create(cls, uczelnia=None):
+        """Pobierz lub utwórz status dla danej uczelni (per-uczelnia, multi-hosted)."""
+        obj, created = cls.objects.get_or_create(uczelnia=uczelnia)
         return obj
 
     def rozpocznij_generowanie(self, task_id="", liczba_do_przetworzenia=0):

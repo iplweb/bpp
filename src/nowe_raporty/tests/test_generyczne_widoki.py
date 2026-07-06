@@ -35,7 +35,7 @@ def test_uczelnia_bez_pola_obiektu():
 
 
 @pytest.mark.django_db
-def test_generyczny_formularz_renderuje_sie(webtest_app):
+def test_generyczny_formularz_renderuje_sie(webtest_app, uczelnia):
     seed_default_reports()  # raport-autorow -> WSZYSCY (anonim widzi)
     res = webtest_app.get(reverse("nowe_raporty:raport_form", args=["raport-autorow"]))
     assert res.status_code == 200
@@ -64,7 +64,7 @@ def test_formularz_zly_obiekt_w_querystringu_nie_wywala(webtest_app):
 
 
 @pytest.mark.django_db
-def test_kilka_raportow_na_tym_samym_poziomie(webtest_app):
+def test_kilka_raportow_na_tym_samym_poziomie(webtest_app, uczelnia):
     seed_default_reports()
     report = DefinicjaRaportu.objects.get(slug="raport-autorow").report
     baker.make(
@@ -144,7 +144,7 @@ def test_nazwa_pliku_eksportu_opisowa(webtest_app, typy_odpowiedzialnosci):
 
 
 @pytest.mark.django_db
-def test_create_entries_rejestruje_formdefaults_per_definicja():
+def test_create_entries_rejestruje_formdefaults_per_definicja(uczelnia):
     from formdefaults.models import FormRepresentation
 
     from nowe_raporty.apps import create_entries

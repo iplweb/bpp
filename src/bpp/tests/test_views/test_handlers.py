@@ -3,6 +3,10 @@
 import pytest
 
 
+# django-easy-audit's middleware registers a transaction.on_commit callback on
+# every request, which touches the DB connection — so even this redirect-only
+# request needs database access (jak pozostałe testy handlerów niżej).
+@pytest.mark.django_db
 def test_handler403_permission_denied(client):
     try:
         client.get("/admin/bpp/")
