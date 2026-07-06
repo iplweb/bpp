@@ -267,6 +267,23 @@ class Jednostka(ModelZAdnotacjami, ModelZPBN_ID, ModelZPBN_UID, MPTTModel):
 
         return ret
 
+    def przyjmuje_afiliacje(self):
+        """Czy autor pracy może afiliować (``afiliuje=True``) do tej jednostki.
+
+        Zwraca ``False`` dla jednostek obcych (``skupia_pracownikow=False``)
+        oraz jednostek, których rodzaj zabrania afiliacji
+        (``RodzajJednostki.autor_moze_afiliowac=False``, np. węzeł-lustro
+        „Wydział" z #438). Instancyjny odpowiednik warunków sprawdzanych w
+        ``BazaModeluOdpowiedzialnosciAutorow._waliduj_afiliacje`` — dzięki temu
+        ścieżki tworzące przypisania (np. importer publikacji) mogą sprawdzić
+        legalność afiliacji ZANIM zawołają ``full_clean``.
+        """
+        if self.skupia_pracownikow is False:
+            return False
+        if self.rodzaj_id is not None and self.rodzaj.autor_moze_afiliowac is False:
+            return False
+        return True
+
     def dodaj_autora(
         self, autor, funkcja=None, rozpoczal_prace=None, zakonczyl_prace=None
     ):
