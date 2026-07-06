@@ -1,9 +1,12 @@
+import logging
+
 from django.contrib import admin
 from django.urls import reverse
 from django.utils.html import format_html
 from django.utils.safestring import mark_safe
 
 from bpp.admin.core import DynamicAdminFilterMixin
+from bpp.util import zaloguj_polkniety_wyjatek
 from pbn_api.models import Scientist
 
 from .models import (
@@ -15,9 +18,14 @@ from .models import (
     NotADuplicate,
 )
 
+logger = logging.getLogger(__name__)
+
 
 @admin.register(NotADuplicate)
 class NotADuplicateAdmin(DynamicAdminFilterMixin, admin.ModelAdmin):
+    def has_module_permission(self, request):
+        return request.user.is_superuser
+
     list_display = [
         "autor",
         "created_by",
@@ -79,6 +87,9 @@ class NotADuplicateAdmin(DynamicAdminFilterMixin, admin.ModelAdmin):
 
 @admin.register(IgnoredScientist)
 class IgnoredScientistAdmin(DynamicAdminFilterMixin, admin.ModelAdmin):
+    def has_module_permission(self, request):
+        return request.user.is_superuser
+
     list_display = [
         "get_scientist_display",
         "get_autor_display",
@@ -136,6 +147,9 @@ class IgnoredScientistAdmin(DynamicAdminFilterMixin, admin.ModelAdmin):
 
 @admin.register(IgnoredAuthor)
 class IgnoredAuthorAdmin(DynamicAdminFilterMixin, admin.ModelAdmin):
+    def has_module_permission(self, request):
+        return request.user.is_superuser
+
     list_display = [
         "get_autor_display",
         "reason",
@@ -172,6 +186,9 @@ class IgnoredAuthorAdmin(DynamicAdminFilterMixin, admin.ModelAdmin):
 
 @admin.register(LogScalania)
 class LogScalaniaAdmin(DynamicAdminFilterMixin, admin.ModelAdmin):
+    def has_module_permission(self, request):
+        return request.user.is_superuser
+
     list_display = [
         "get_operation_icon",
         "get_merge_description",
@@ -298,7 +315,13 @@ class LogScalaniaAdmin(DynamicAdminFilterMixin, admin.ModelAdmin):
                 return mark_safe(
                     f'<a href="{url}">{obj.content_type.name} #{obj.object_id}</a>'
                 )
-            except BaseException:
+            except Exception:
+                zaloguj_polkniety_wyjatek(
+                    "Budowanie linku do zmodyfikowanego rekordu w adminie "
+                    f"LogScalania (object_id={obj.object_id})",
+                    logger=logger,
+                    do_rollbar=True,
+                )
                 return f"{obj.content_type.name} #{obj.object_id}"
         return "-"
 
@@ -318,11 +341,23 @@ class LogScalaniaAdmin(DynamicAdminFilterMixin, admin.ModelAdmin):
                 # Try to get string representation of the object
                 try:
                     obj_str = str(obj.modified_record)
-                except BaseException:
+                except Exception:
+                    zaloguj_polkniety_wyjatek(
+                        "Pobieranie reprezentacji tekstowej zmodyfikowanego "
+                        f"rekordu LogScalania (object_id={obj.object_id})",
+                        logger=logger,
+                        do_rollbar=True,
+                    )
                     obj_str = f"{obj.content_type.name} #{obj.object_id}"
 
                 return mark_safe(f'<a href="{url}" target="_blank">{obj_str}</a>')
-            except BaseException:
+            except Exception:
+                zaloguj_polkniety_wyjatek(
+                    "Budowanie linku do zmodyfikowanego rekordu w widoku "
+                    f"szczegółów LogScalania (object_id={obj.object_id})",
+                    logger=logger,
+                    do_rollbar=True,
+                )
                 return f"{obj.content_type.name} #{obj.object_id}"
         return "-"
 
@@ -376,6 +411,9 @@ class LogScalaniaAdmin(DynamicAdminFilterMixin, admin.ModelAdmin):
 
 @admin.register(DuplicateScanRun)
 class DuplicateScanRunAdmin(DynamicAdminFilterMixin, admin.ModelAdmin):
+    def has_module_permission(self, request):
+        return request.user.is_superuser
+
     list_display = [
         "id",
         "status",
@@ -489,6 +527,9 @@ class DuplicateScanRunAdmin(DynamicAdminFilterMixin, admin.ModelAdmin):
 
 @admin.register(DuplicateCandidate)
 class DuplicateCandidateAdmin(DynamicAdminFilterMixin, admin.ModelAdmin):
+    def has_module_permission(self, request):
+        return request.user.is_superuser
+
     list_display = [
         "id",
         "get_main_autor_link",

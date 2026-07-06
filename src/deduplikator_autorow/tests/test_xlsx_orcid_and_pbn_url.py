@@ -14,14 +14,20 @@ from deduplikator_autorow.utils import export_duplicates_to_xlsx
 @pytest.fixture
 def candidate_with_orcid_and_pbn(db):
     """Para autorów z ORCID i PBN UID, oraz Uczelnia z pbn_api_root."""
+    from django.contrib.sites.models import Site
+
     from bpp.models import Uczelnia
 
+    site, _ = Site.objects.get_or_create(
+        domain="testserver", defaults={"name": "testserver"}
+    )
     uczelnia, _ = Uczelnia.objects.get_or_create(
         nazwa="Test U",
         defaults={
             "skrot": "TU",
             "slug": "test-u",
             "pbn_api_root": "https://pbn-micro-alpha.opi.org.pl",
+            "site": site,
         },
     )
     if not uczelnia.pbn_api_root:

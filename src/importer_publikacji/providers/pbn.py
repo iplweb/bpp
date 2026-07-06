@@ -33,12 +33,15 @@ PBN_LICENSE_MAP = {
 }
 
 
-def _get_pbn_client():
-    from bpp.models import Uczelnia
+def _get_pbn_client(uczelnia):
+    """Buduje read-only klienta PBN z app-credentiali podanej uczelni.
+
+    Wymaga JAWNEJ uczelni (multi-hosted) — bez zgadywania ``get_default()``.
+    Caller (provider/widok) ma uczelnię z requestu lub z ``ImportSession``.
+    """
     from pbn_api.client import PBNClient
     from pbn_api.client.transport import RequestsTransport
 
-    uczelnia = Uczelnia.objects.get_default()
     if not uczelnia or not all(
         [
             uczelnia.pbn_app_name,
@@ -210,7 +213,7 @@ class PBNProvider(DataProvider):
             return None
 
         try:
-            client = _get_pbn_client()
+            client = _get_pbn_client(self.uczelnia)
         except ValueError:
             logger.warning("Brak konfiguracji PBN w Uczelnia")
             return None

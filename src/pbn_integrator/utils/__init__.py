@@ -35,7 +35,10 @@ from pbn_integrator.utils.cleanup import (  # noqa
 )
 
 # Conferences
-from pbn_integrator.utils.conferences import pobierz_konferencje  # noqa
+from pbn_integrator.utils.conferences import (  # noqa
+    integruj_konferencje,
+    pobierz_konferencje,
+)
 
 # Constants
 from pbn_integrator.utils.constants import (  # noqa
@@ -230,6 +233,7 @@ __all__ = [
     "pobierz_instytucje",
     "pobierz_instytucje_polon",
     # Conferences
+    "integruj_konferencje",
     "pobierz_konferencje",
     # Journals
     "ZrodlaGetter",

@@ -1,5 +1,7 @@
 """Unit/department-related query objects."""
 
+import logging
+
 from django.db.models import Q
 from multiseek.logic import (
     AUTOCOMPLETE,
@@ -17,6 +19,7 @@ from multiseek.logic import (
 from bpp.models import Autorzy, Jednostka
 from bpp.models.struktura import Wydzial
 from bpp.multiseek_registry.mixins import BppMultiseekVisibilityMixin
+from bpp.util import zaloguj_polkniety_wyjatek
 
 from .author_fields import ForeignKeyDescribeMixin
 from .constants import (
@@ -26,6 +29,8 @@ from .constants import (
     UNION_FEMALE,
     UNION_OPS_ALL,
 )
+
+logger = logging.getLogger(__name__)
 
 
 class JednostkaQueryObject(
@@ -85,6 +90,10 @@ class JednostkaQueryObject(
         try:
             obj = self.value_from_web(value)
         except Exception:  # noqa: BLE001 — uszkodzony/nieistniejacy pk -> nieprzekladalne
+            zaloguj_polkniety_wyjatek(
+                f"Rozwiązywanie jednostki dla eksportu DjangoQL (value={value!r})",
+                logger=logger,
+            )
             return None
         if obj is None:
             return None

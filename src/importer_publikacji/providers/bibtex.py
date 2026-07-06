@@ -3,6 +3,8 @@ import re
 
 import bibtexparser
 
+from bpp.util import zaloguj_polkniety_wyjatek
+
 from . import (
     DataProvider,
     FetchedPublication,
@@ -69,6 +71,10 @@ class BibTeXProvider(DataProvider):
         try:
             library = bibtexparser.parse_string(identifier)
         except Exception:
+            zaloguj_polkniety_wyjatek(
+                "Walidacja identyfikatora BibTeX (bibtexparser)",
+                logger=logger,
+            )
             return None
         if not library.entries:
             return None

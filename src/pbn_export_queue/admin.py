@@ -6,6 +6,7 @@ from django.urls import reverse
 from django.utils.safestring import mark_safe
 
 from bpp.admin.core import DynamicAdminFilterMixin
+from bpp.admin.helpers.site_filtered import SiteFilteredAdminMixin
 
 from .models import PBN_Export_Queue
 
@@ -42,7 +43,10 @@ class RenderHTMLWidget(forms.Textarea):
 
 
 @admin.register(PBN_Export_Queue)
-class PBN_Export_QueueAdmin(DynamicAdminFilterMixin, admin.ModelAdmin):
+class PBN_Export_QueueAdmin(
+    SiteFilteredAdminMixin, DynamicAdminFilterMixin, admin.ModelAdmin
+):
+    uczelnia_field_path = "uczelnia"
     list_per_page = 10
     list_display = [
         "rekord_do_wysylki",

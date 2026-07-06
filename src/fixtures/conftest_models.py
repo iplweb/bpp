@@ -23,9 +23,14 @@ def rok():
 
 @pytest.fixture(scope="function")
 def uczelnia(db):
+    from django.contrib.sites.models import Site
+
+    site, _ = Site.objects.get_or_create(
+        domain="testserver", defaults={"name": "testserver"}
+    )
     return Uczelnia.objects.get_or_create(
         skrot="TE",
-        nazwa="Testowa uczelnia",
+        defaults={"nazwa": "Testowa uczelnia", "site": site},
     )[0]
 
 

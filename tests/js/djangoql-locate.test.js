@@ -8,10 +8,12 @@ import { describe, test, expect, beforeAll } from "vitest";
 
 let locateValue;
 let lineColFromOffset;
+let highlightEnabled;
 
 beforeAll(async () => {
     await import("../../src/bpp/static/bpp/js/djangoql-admin.js");
-    ({ locateValue, lineColFromOffset } = window.bppDjangoQLAdmin);
+    ({ locateValue, lineColFromOffset, highlightEnabled } =
+        window.bppDjangoQLAdmin);
 });
 
 describe("lineColFromOffset (0-based offset → 1-based line/column)", () => {
@@ -50,5 +52,19 @@ describe("locateValue (offset tokenu z granicami słownymi)", () => {
 
     test("brak wartości → -1", () => {
         expect(locateValue("rok = 1", "niema")).toBe(-1);
+    });
+});
+
+describe("highlightEnabled (podświetlanie idzie za przełącznikiem trybu)", () => {
+    test("brak przełącznika → DjangoQL wymuszony → zawsze podświetlaj", () => {
+        expect(highlightEnabled(null)).toBe(true);
+    });
+
+    test("przełącznik zaznaczony → tryb DjangoQL → podświetlaj", () => {
+        expect(highlightEnabled({ checked: true })).toBe(true);
+    });
+
+    test("przełącznik odznaczony → zwykłe wyszukiwanie → nie podświetlaj", () => {
+        expect(highlightEnabled({ checked: false })).toBe(false);
     });
 });

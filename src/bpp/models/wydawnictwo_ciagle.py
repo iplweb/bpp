@@ -6,6 +6,7 @@ from django.db.models import CASCADE, SET_NULL, JSONField
 
 from bpp.models import (
     BazaModeluStreszczen,
+    BazaModeluTytulow,
     ManagerModeliZOplataZaPublikacjeMixin,
     MaProcentyMixin,
     ModelZeSlowamiKluczowymi,
@@ -295,6 +296,20 @@ class Wydawnictwo_Ciagle_Zewnetrzna_Baza_Danych(models.Model):
 
     def __str__(self):
         return f"{self.baza}"
+
+
+class Wydawnictwo_Ciagle_Tytul(BazaModeluTytulow):
+    rekord = models.ForeignKey(
+        Wydawnictwo_Ciagle, CASCADE, related_name="dodatkowe_tytuly"
+    )
+
+    class Meta:
+        verbose_name = "dodatkowy tytuł wydawnictwa ciągłego"
+        verbose_name_plural = "dodatkowe tytuły wydawnictw ciągłych"
+        unique_together = [("rekord", "kod_jezyka_pbn")]
+
+    def __str__(self):
+        return f"Tytuł rekordu {self.rekord_id} w języku {self.kod_jezyka_pbn}"
 
 
 class Wydawnictwo_Ciagle_Streszczenie(BazaModeluStreszczen):

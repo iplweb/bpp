@@ -19,6 +19,7 @@
 
 
     {% load crispy_forms_tags bpp_formdefaults %}
+    {% include "includes/disclaimer_import_if.html" %}
     <div class="formdefaults-wrap">{% bpp_formdefaults_button form %}</div>
     {% crispy form %}
 {% endblock %}

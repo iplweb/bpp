@@ -4,7 +4,7 @@ from django.utils.translation import ngettext
 from bpp.admin.helpers.pbn_api.gui import (
     sprobuj_wyslac_do_pbn_gui,
 )
-from bpp.models import Status_Korekty
+from bpp.models import Status_Korekty, Uczelnia
 from pbn_export_queue.tasks import queue_pbn_export_batch
 
 
@@ -83,12 +83,17 @@ def wyslij_do_pbn_w_tle(modeladmin, request, queryset):
     # Collect record IDs
     record_ids = list(queryset.values_list("id", flat=True))
 
+    # Multi-hosted: zapamiętaj uczelnię z requestu, żeby wysyłka w tle
+    # użyła właściwej konfiguracji PBN (a nie pierwszej-z-brzegu).
+    uczelnia = Uczelnia.objects.get_for_request(request)
+
     # Queue the batch export in background
     queue_pbn_export_batch.delay(
         app_label=app_label,
         model_name=model_name,
         record_ids=record_ids,
         user_id=request.user.id,
+        uczelnia_id=uczelnia.pk if uczelnia else None,
     )
 
     modeladmin.message_user(

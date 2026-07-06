@@ -79,6 +79,47 @@ class OdpowiednikZrodlaWBPPFilter(OdpowiednikWBPPFilter):
     klass = Zrodlo
 
 
+class InstytucjaPBNFilter(SimpleListFilter):
+    """Filtr po instytucji PBN — dla luster niosących ``institutionId``.
+
+    Wybór wypełniamy uczelniami (nazwa czytelna dla człowieka), a wartością
+    filtra jest ``pbn_uid_id`` — surowy UID instytucji PBN, tożsamy z
+    ``institutionId``. Na instalacji z ≤1 uczelnią ``lookups`` zwraca ``[]``,
+    więc Django w ogóle nie renderuje filtra (``has_output``). To bramka
+    „tylko gdy >1 uczelnia".
+    """
+
+    title = "Instytucja PBN"
+    parameter_name = "instytucja_pbn"
+    # Pole, po którym zawężamy queryset. Podklasy (np. V2) mogą je nadpisać.
+    field_name = "institutionId_id"
+
+    def lookups(self, request, model_admin):
+        from bpp.models import Uczelnia
+
+        choices = list(
+            Uczelnia.objects.exclude(pbn_uid_id=None)
+            .values_list("pbn_uid_id", "nazwa")
+            .order_by("nazwa")
+        )
+        if len(choices) <= 1:
+            return []
+        return choices
+
+    def queryset(self, request, queryset):
+        v = self.value()
+        if v:
+            return queryset.filter(**{self.field_name: v})
+        return queryset
+
+
+class InstytucjaPBNFilterV2(InstytucjaPBNFilter):
+    """Wariant dla ``PublikacjaInstytucji_V2`` — nie ma ``institutionId``,
+    więc mapujemy przez otagowaną ``uczelnia`` (``uczelnia.pbn_uid_id``)."""
+
+    field_name = "uczelnia__pbn_uid_id"
+
+
 class MaMNISWIDFilter(SimpleNotNullFilter):
     title = "Rekord ma MNISW ID"
     parameter_name = "mniswId"

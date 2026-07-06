@@ -9,6 +9,7 @@ from django.utils.html import format_html
 from django.utils.safestring import mark_safe
 
 from bpp.admin.core import DynamicAdminFilterMixin
+from bpp.util import zaloguj_polkniety_wyjatek
 
 from .models import ImportedAuthor, ImportSession
 
@@ -233,13 +234,11 @@ class ImportSessionAdmin(DynamicAdminFilterMixin, admin.ModelAdmin):
                         obj.created_record_content_type.model,
                     )
             except Exception:
-                logger.warning(
-                    "Nie udalo sie zaladowac created_record dla sesji %s "
-                    "(record id=%s, ct=%s)",
-                    obj.pk,
-                    obj.created_record_id,
-                    obj.created_record_content_type,
-                    exc_info=True,
+                zaloguj_polkniety_wyjatek(
+                    f"Renderowanie linku do utworzonego rekordu w adminie "
+                    f"importera (created_record_id={obj.created_record_id}, "
+                    f"content_type={obj.created_record_content_type})",
+                    logger=logger,
                 )
                 return format_html(
                     "ID: {} ({}) - nie można załadować",

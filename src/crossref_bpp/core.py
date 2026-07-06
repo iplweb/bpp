@@ -57,6 +57,7 @@ class WynikPorownania:
         *,
         sugerowany=None,
         kandydaci=None,
+        zduplikowane_zrodla=None,
     ):
         self.status = status
         self.opis = opis
@@ -67,6 +68,11 @@ class WynikPorownania:
         # zapisu w tabeli kandydatów importowanego autora.
         self.sugerowany = sugerowany
         self.kandydaci = kandydaci
+        # `zduplikowane_zrodla`: rekordy źródeł, które zablokowały jednoznaczne
+        # dopasowanie, bo są zduplikowane w bazie (ta sama nazwa/skrót, różne
+        # ISSN-y). Warstwa widoku odsyła wtedy użytkownika do deduplikatora
+        # źródeł (FD#422).
+        self.zduplikowane_zrodla = zduplikowane_zrodla or []
 
     @cached_property
     def rekord_po_stronie_bpp(self):
@@ -397,6 +403,72 @@ class Komparator:
             kandydaci=kandydaci,
         )
 
+    @staticmethod
+    def _issn_konflikt(rekordy):
+        """Czy grupa rekordów deklaruje sprzeczne (niepuste) ISSN-y?
+
+        Prawdziwe duplikaty tego samego czasopisma mają ten sam ISSN (albo
+        część z nich pusty). Różne, niepuste ISSN-y to sygnał, że to dwa
+        różne czasopisma o przypadkowo identycznej nazwie — wtedy NIE wolno
+        ich scalać.
+        """
+        issny = {(r.issn or "").strip() for r in rekordy} - {""}
+        e_issny = {(r.e_issn or "").strip() for r in rekordy} - {""}
+        return len(issny) > 1 or len(e_issny) > 1
+
+    @staticmethod
+    def _reprezentant_duplikatow(rekordy):
+        """Wybierz „aktywny" rekord z grupy duplikatów.
+
+        Preferuj rekord z największą liczbą powiązanych publikacji (to ten
+        realnie używany), a przy remisie najniższe pk (rekord pierwotny).
+        Dzięki temu import nie podpina prac pod martwy, pusty duplikat.
+        """
+        liczby = (
+            Wydawnictwo_Ciagle.objects.filter(zrodlo__in=[r.pk for r in rekordy])
+            .values("zrodlo")
+            .annotate(n=models.Count("pk"))
+        )
+        licznik = {row["zrodlo"]: row["n"] for row in liczby}
+        return max(rekordy, key=lambda r: (licznik.get(r.pk, 0), -r.pk))
+
+    @staticmethod
+    def _scal_duplikaty_zrodel(rekordy, atrybut, normalizator):
+        """Scal zdublowane źródła o identycznej (znormalizowanej) wartości.
+
+        W bazach trafiają się zdublowane źródła o tej samej nazwie/skrócie
+        (często powstałe właśnie przez nieudane dopasowanie przy imporcie).
+        Wyszukiwanie trygramowe zwraca wtedy >1 rekord, a
+        ``rekord_po_stronie_bpp`` rezygnuje (zwraca None dla liczby ≠ 1), więc
+        źródło zostaje niedopasowane (FD#422). Tu redukujemy każdą grupę
+        prawdziwych duplikatów do jednego „aktywnego" reprezentanta.
+
+        Grupy o sprzecznych ISSN-ach (różne czasopisma, ta sama nazwa) NIE są
+        scalane — zostają rozdzielone, więc dalej trafiają w ścieżkę ręcznego
+        wyboru zamiast w cichy, potencjalnie błędny auto-match.
+
+        Zwraca krotkę ``(rekordy, blokujace)``: ``rekordy`` to lista po
+        deduplikacji, a ``blokujace`` to rekordy z grup, których NIE scalono
+        z powodu konfliktu ISSN — to one blokują jednoznaczne dopasowanie i na
+        ich podstawie warstwa widoku odsyła do deduplikatora źródeł.
+        """
+        grupy = {}
+        for rekord in rekordy:
+            klucz = normalizator(getattr(rekord, atrybut) or "")
+            grupy.setdefault(klucz, []).append(rekord)
+
+        wynik = []
+        blokujace = []
+        for grupa in grupy.values():
+            if len(grupa) == 1:
+                wynik.append(grupa[0])
+            elif Komparator._issn_konflikt(grupa):
+                wynik.extend(grupa)
+                blokujace.extend(grupa)
+            else:
+                wynik.append(Komparator._reprezentant_duplikatow(grupa))
+        return wynik, blokujace
+
     @classmethod
     def porownaj_short_container_title(cls, wartosc):
         poszukiwania = [wartosc]
@@ -410,10 +482,14 @@ class Komparator:
                 normalize_zrodlo_skrot_for_db_lookup(ciag),
             )
             if tgrm:
+                rekordy, zduplikowane = cls._scal_duplikaty_zrodel(
+                    tgrm, "skrot", normalize_zrodlo_skrot_for_db_lookup
+                )
                 return WynikPorownania(
                     StatusPorownania.LUZNE,
                     "luźne porównanie tytułu wg funkcji podobieństwa trygramów",
-                    rekordy=tgrm,
+                    rekordy=rekordy,
+                    zduplikowane_zrodla=zduplikowane,
                 )
 
         return BRAK_DOPASOWANIA
@@ -431,10 +507,14 @@ class Komparator:
                 normalize_zrodlo_nazwa_for_db_lookup(ciag),
             )
             if tgrm:
+                rekordy, zduplikowane = cls._scal_duplikaty_zrodel(
+                    tgrm, "nazwa", normalize_zrodlo_nazwa_for_db_lookup
+                )
                 return WynikPorownania(
                     StatusPorownania.LUZNE,
                     "luźne porównanie tytułu wg funkcji podobieństwa trygramów",
-                    rekordy=tgrm,
+                    rekordy=rekordy,
+                    zduplikowane_zrodla=zduplikowane,
                 )
 
         return BRAK_DOPASOWANIA
@@ -580,6 +660,17 @@ class Komparator:
                 "okreslony rodzaj licencji",
                 rekordy=[licencja],
             )
+
+        # Wpis licencji bez pola ``URL`` (CrossRef czasem podaje samą datę
+        # startu / delay-in-days) — wcześniej funkcja zwracała tu w sposób
+        # ukryty ``None``, co na ścieżce prefill kończyło się ``AttributeError``
+        # przy ``....rekord_po_stronie_bpp`` i HTTP 500 (FD#323). Zwracamy
+        # poprawny obiekt WynikPorownania sygnalizujący brak dopasowania.
+        return WynikPorownania(
+            StatusPorownania.BLAD,
+            "wpis licencji w danych CrossRef nie zawiera adresu URL — "
+            "BPP nie jest w stanie rozpoznać rodzaju licencji",
+        )
 
     @classmethod
     def porownaj_language(cls, wartosc):

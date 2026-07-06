@@ -8,6 +8,7 @@ from tqdm import tqdm
 
 from bpp.models import Dyscyplina_Naukowa, Jednostka, Rekord, Rodzaj_Zrodla
 from pbn_api.client import PBNClient
+from pbn_api.const import DELETED
 from pbn_api.models import Publication
 
 # Re-export publication import functions
@@ -30,6 +31,8 @@ from .helpers import (
     przetworz_journal_issue,
     przetworz_metadane_konferencji,
     przetworz_slowa_kluczowe,
+    przetworz_tytuly,
+    ustaw_jezyk_oryginalny,
 )
 
 # Re-export publisher handling
@@ -51,6 +54,7 @@ def importuj_publikacje_po_pbn_uid_id(
     rodzaj_periodyk=None,
     dyscypliny_cache=None,
     inconsistency_callback=None,
+    domyslny_jezyk=None,
 ):
     """Importuje publikację z PBN do BPP.
 
@@ -62,10 +66,17 @@ def importuj_publikacje_po_pbn_uid_id(
                z tym pbn_uid_id już istnieje w BPP
         rodzaj_periodyk: Optional Rodzaj_Zrodla instance for "periodyk"
         dyscypliny_cache: Optional dict mapping discipline names to objects
+        domyslny_jezyk: Język użyty, gdy PBN nie poda języka publikacji albo
+               poda kod nieobecny w słowniku ``Jezyk`` (domyślnie: polski).
     """
     pbn_publication = get_or_download_publication(pbn_uid_id, client)
 
     assert pbn_publication is not None
+
+    # Praca usunięta po stronie PBN nie może materializować się jako świeży
+    # rekord BPP. To choke point dla WSZYSTKICH wejść (batch i import po UID).
+    if pbn_publication.status == DELETED:
+        return None
 
     cv = pbn_publication.current_version
 
@@ -77,6 +88,7 @@ def importuj_publikacje_po_pbn_uid_id(
                 client=client,
                 force=force,
                 inconsistency_callback=inconsistency_callback,
+                domyslny_jezyk=domyslny_jezyk,
             )
         case "EDITED_BOOK":
             ret = importuj_ksiazke(
@@ -85,6 +97,7 @@ def importuj_publikacje_po_pbn_uid_id(
                 client=client,
                 force=force,
                 inconsistency_callback=inconsistency_callback,
+                domyslny_jezyk=domyslny_jezyk,
             )
         case "CHAPTER":
             ret = importuj_ksiazke(
@@ -93,6 +106,7 @@ def importuj_publikacje_po_pbn_uid_id(
                 client=client,
                 force=force,
                 inconsistency_callback=inconsistency_callback,
+                domyslny_jezyk=domyslny_jezyk,
             )
 
             ret = importuj_rozdzial(
@@ -101,6 +115,7 @@ def importuj_publikacje_po_pbn_uid_id(
                 client=client,
                 force=force,
                 inconsistency_callback=inconsistency_callback,
+                domyslny_jezyk=domyslny_jezyk,
             )
 
         case "ARTICLE":
@@ -112,6 +127,7 @@ def importuj_publikacje_po_pbn_uid_id(
                 rodzaj_periodyk=rodzaj_periodyk,
                 dyscypliny_cache=dyscypliny_cache,
                 inconsistency_callback=inconsistency_callback,
+                domyslny_jezyk=domyslny_jezyk,
             )
         case _:
             raise NotImplementedError(f"Nie obsluze {cv['object']['type']}")
@@ -123,7 +139,9 @@ def importuj_publikacje_instytucji(
     client: PBNClient, default_jednostka: Jednostka, pbn_uid_id=None
 ):
     niechciane = list(Rekord.objects.values_list("pbn_uid_id", flat=True))
-    chciane = Publication.objects.all().exclude(pk__in=niechciane)
+    chciane = (
+        Publication.objects.all().exclude(status=DELETED).exclude(pk__in=niechciane)
+    )
 
     if pbn_uid_id:
         chciane = chciane.filter(pk=pbn_uid_id)
@@ -177,6 +195,8 @@ __all__ = [
     "przetworz_journal_issue",
     "przetworz_metadane_konferencji",
     "przetworz_slowa_kluczowe",
+    "przetworz_tytuly",
+    "ustaw_jezyk_oryginalny",
     # Publication imports
     "importuj_artykul",
     "importuj_ksiazke",

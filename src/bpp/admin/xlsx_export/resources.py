@@ -3,7 +3,6 @@
 Klasy określające w jaki sposób dane są eksportowane z systemu.
 """
 
-from django.contrib.sites.models import Site
 from django.urls import reverse
 from import_export import resources
 from import_export.fields import Field
@@ -20,6 +19,7 @@ from bpp.models import (
     Wydawnictwo_Zwarte,
     Wydzial,
 )
+from bpp.util import site_url_for_request
 
 
 class BibTeXFormat(base_formats.Format):
@@ -95,13 +95,19 @@ class Wydawnictwo_ResourceBase(resources.ModelResource):
     bpp_strona_url = Field(attribute="pk")
     bpp_admin_url = Field(attribute="pk")
 
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        # request przekazany przez ImportExportModelAdmin via
+        # get_export_resource_kwargs(request, **kwargs).
+        self.request = kwargs.get("request")
+
     def dehydrate_pbn_url(self, obj):
         pbn_uid_id = getattr(obj, "pbn_uid_id", None)
         if pbn_uid_id:
             return obj.pbn_uid.link_do_pbn()
 
     def get_site_url(self):
-        return "https://" + Site.objects.all().first().domain
+        return site_url_for_request(self.request)
 
     def dehydrate_bpp_strona_url(self, obj):
         return self.get_site_url() + reverse(

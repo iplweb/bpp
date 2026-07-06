@@ -1,9 +1,79 @@
+import logging
 import re
 from datetime import datetime
 
 from django import template
 
+from bpp.util import zaloguj_polkniety_wyjatek
+
 register = template.Library()
+
+logger = logging.getLogger(__name__)
+
+
+# Format: 2025-09-04 19:40:42.324808+00:00
+_TIMESTAMP_PATTERN = r"(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d+\+\d{2}:\d{2})"
+_SEPARATOR_PATTERN = r"={3,}"
+
+# Reguły klasyfikacji typu wiadomości — pierwsza pasująca (kolejność jak
+# w pierwotnym łańcuchu if/elif). Zachowane semantyki: w obrębie linii
+# wygrywa pierwsza reguła, a kolejne linie nadpisują typ wiadomości.
+_TYPE_RULES = (
+    (("błąd", "error", "traceback"), "error"),
+    (("pomyślnie", "success"), "success"),
+    (("autoryzacji", "auth"), "warning"),
+    (("ponownie wysłano",), "resend"),
+)
+
+
+def _classify_line(line):
+    """Zwróć typ wiadomości dla danej linii albo None, gdy nic nie pasuje."""
+    low = line.lower()
+    for keywords, msg_type in _TYPE_RULES:
+        if any(keyword in low for keyword in keywords):
+            return msg_type
+    return None
+
+
+def _new_message(timestamp_str):
+    return {
+        "timestamp": timestamp_str,
+        "datetime": parse_timestamp(timestamp_str),
+        "content": [],
+        "type": "info",  # Default type
+    }
+
+
+def _split_into_messages(text):
+    """Podziel surowy tekst na listę bloków-wiadomości (z surową treścią)."""
+    messages = []
+    current_message = None
+    lines = text.split("\n")
+
+    i = 0
+    while i < len(lines):
+        line = lines[i].strip()
+        timestamp_match = re.match(_TIMESTAMP_PATTERN, line)
+
+        if timestamp_match:
+            if current_message and current_message["content"]:
+                messages.append(current_message)
+            current_message = _new_message(timestamp_match.group(1))
+            # Skip the separator line if present
+            next_line = lines[i + 1].strip() if i + 1 < len(lines) else ""
+            if re.match(_SEPARATOR_PATTERN, next_line):
+                i += 1
+        elif current_message is not None and line:
+            current_message["content"].append(line)
+            msg_type = _classify_line(line)
+            if msg_type:
+                current_message["type"] = msg_type
+
+        i += 1
+
+    if current_message and current_message["content"]:
+        messages.append(current_message)
+    return messages
 
 
 @register.filter
@@ -15,63 +85,7 @@ def parse_historia_komunikatow(text):
     if not text:
         return []
 
-    # Pattern to match timestamp lines with separator
-    # Format: 2025-09-04 19:40:42.324808+00:00
-    timestamp_pattern = r"(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d+\+\d{2}:\d{2})"
-    separator_pattern = r"={3,}"
-
-    messages = []
-    current_message = None
-
-    lines = text.split("\n")
-    i = 0
-
-    while i < len(lines):
-        line = lines[i].strip()
-
-        # Check if this line contains a timestamp
-        timestamp_match = re.match(timestamp_pattern, line)
-        if timestamp_match:
-            # Save the previous message if exists
-            if current_message and current_message["content"]:
-                messages.append(current_message)
-
-            # Start a new message
-            timestamp_str = timestamp_match.group(1)
-            current_message = {
-                "timestamp": timestamp_str,
-                "datetime": parse_timestamp(timestamp_str),
-                "content": [],
-                "type": "info",  # Default type
-            }
-
-            # Skip the separator line if present
-            if i + 1 < len(lines) and re.match(separator_pattern, lines[i + 1].strip()):
-                i += 1
-
-        elif current_message is not None and line:
-            # Add content to current message
-            current_message["content"].append(line)
-
-            # Determine message type based on content
-            if (
-                "błąd" in line.lower()
-                or "error" in line.lower()
-                or "traceback" in line.lower()
-            ):
-                current_message["type"] = "error"
-            elif "pomyślnie" in line.lower() or "success" in line.lower():
-                current_message["type"] = "success"
-            elif "autoryzacji" in line.lower() or "auth" in line.lower():
-                current_message["type"] = "warning"
-            elif "ponownie wysłano" in line.lower():
-                current_message["type"] = "resend"
-
-        i += 1
-
-    # Don't forget the last message
-    if current_message and current_message["content"]:
-        messages.append(current_message)
+    messages = _split_into_messages(text)
 
     # Process content for each message
     for msg in messages:
@@ -94,7 +108,13 @@ def parse_timestamp(timestamp_str):
         # Remove microseconds if parsing fails
         timestamp_clean = re.sub(r"\.\d+$", "", timestamp_clean)
         return datetime.strptime(timestamp_clean, "%Y-%m-%d %H:%M:%S")
-    except BaseException:
+    except Exception:
+        zaloguj_polkniety_wyjatek(
+            f"Nie udało się sparsować znacznika czasu '{timestamp_str}' "
+            "z historii komunikatów PBN",
+            logger=logger,
+            do_rollbar=True,
+        )
         return None
 
 

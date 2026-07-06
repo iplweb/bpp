@@ -3,6 +3,7 @@ from django_minify_html.middleware import MinifyHtmlMiddleware
 from .base import *  # noqa
 from .base import (  # noqa
     DJANGO_BPP_ENABLE_TEST_CONFIGURATION,
+    DJANGO_BPP_HOSTNAMES,
     INSTALLED_APPS,
     MIDDLEWARE,
     REDIS_HOST,
@@ -116,7 +117,7 @@ ALLOWED_HOSTS = [
     "127.0.0.1",
     "appserver",
     "appserver:8000",
-    env("DJANGO_BPP_HOSTNAME"),  # noqa
+    *DJANGO_BPP_HOSTNAMES,
 ]
 
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")

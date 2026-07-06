@@ -1,4 +1,4 @@
-{% extends "base.html" %}{% load deklinacja %}
+{% extends "base.html" %}{% load polish_inflection %}
 
 {% load columns %}
 {% load static %}
@@ -8,14 +8,14 @@
 {% endblock %}
 
 {% block extratitle %}
-    Indeks {% rzeczownik_jednostek_d %}{% if wybrana != None %} - litera {{ wybrana }}{% endif %}
+    Indeks {% odmien nazwa_jednostki "dopelniacz" liczba="mnoga" %}{% if wybrana != None %} - litera {{ wybrana }}{% endif %}
 {% endblock %}
 
 {% block breadcrumbs %}
     {{ block.super }}
     <li {% if wybrana == None %}class="current"{% endif %}>
         {% if wybrana != None %}<a href="{% url "bpp:browse_jednostki" %}">{% endif %}
-            {% rzeczownik_jednostki %}
+            {% odmien nazwa_jednostki "mianownik" liczba="mnoga" %}
         {% if wybrana != None %}</a>{% endif %}
     </li>
 
@@ -32,15 +32,15 @@
         <div class="grid-x grid-margin-x align-middle">
             <div class="cell auto">
                 <h2>
-                    <i class="fi-home"></i>Indeks {% rzeczownik_jednostek_d %}
+                    <i class="fi-home"></i>Indeks {% odmien nazwa_jednostki "dopelniacz" liczba="mnoga" %}
                     {% if wybrana %} - litera {{ wybrana }}{% endif %}
                 </h2>
                 {% if paginator %}
                     <p>
                         {% if object_list %}
-                            Wyświetlono {{ object_list|length }} z {{ paginator.count }} {% rzeczownik_jednostek_d %}
+                            Wyświetlono {{ object_list|length }} z {{ paginator.count }} {% odmien nazwa_jednostki "dopelniacz" liczba="mnoga" %}
                         {% else %}
-                            Brak {% rzeczownik_jednostek_d %} do wyświetlenia
+                            Brak {% odmien nazwa_jednostki "dopelniacz" liczba="mnoga" %} do wyświetlenia
                         {% endif %}
                     </p>
                 {% endif %}
@@ -140,13 +140,13 @@
     {% else %}
         <div class="callout warning">
             <h4>
-                <i class="fi-alert"></i>Nie znaleziono {% rzeczownik_jednostek_d %}
+                <i class="fi-alert"></i>Nie znaleziono {% odmien nazwa_jednostki "dopelniacz" liczba="mnoga" %}
             </h4>
             <p>
-                Brak {% rzeczownik_jednostek_d %} spełniających podane kryteria wyszukiwania.
+                Brak {% odmien nazwa_jednostki "dopelniacz" liczba="mnoga" %} spełniających podane kryteria wyszukiwania.
             </p>
             <a href="{% url "bpp:browse_jednostki" %}" class="button">
-                <i class="fi-arrow-left"></i>Pokaż wszystkie {% rzeczownik_jednostki_w %}
+                <i class="fi-arrow-left"></i>Pokaż wszystkie {% odmien nazwa_jednostki "wolacz" liczba="mnoga" %}
             </a>
         </div>
     {% endif %}
@@ -156,7 +156,7 @@
         <div class="modern-pagination">
             <div class="pagination-info">
                 Strona {{ page_obj.number }} z {{ paginator.num_pages }}
-                ({{ paginator.count }} {% if paginator.count == 1 %}{% rzeczownik_jednostka %}{% elif paginator.count < 5 %}{% rzeczownik_jednostek_d %}{% else %}{% rzeczownik_jednostek_d %}{% endif %})
+                ({{ paginator.count }} {% odmiana_liczebnikowa nazwa_jednostki paginator.count %})
             </div>
 
             <ul class="pagination" role="navigation" aria-label="Pagination">

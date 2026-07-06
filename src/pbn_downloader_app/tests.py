@@ -23,6 +23,77 @@ from pbn_downloader_app.views import (
 User = get_user_model()
 
 
+def _authorized_request(path):
+    """Zbuduj request z użytkownikiem mającym ważny token PBN i uprawnienia."""
+    from unittest.mock import MagicMock
+
+    factory = RequestFactory()
+    request = factory.post(path)
+
+    user = User.objects.create_user("testuser", password="testpass")
+    group, _ = Group.objects.get_or_create(name=GR_WPROWADZANIE_DANYCH)
+    user.groups.add(group)
+    request.user = user
+    request.session = {}
+
+    pbn_user = MagicMock()
+    pbn_user.pbn_token = "valid-token"
+    pbn_user.pbn_token_possibly_valid.return_value = True
+    user.get_pbn_user = lambda: pbn_user
+    return request, user
+
+
+def _delay_uczelnia_id(mock_task):
+    """Wyciągnij uczelnia_id przekazane do .delay() (kwarg lub 2. pozycyjny)."""
+    mock_task.delay.assert_called_once()
+    call = mock_task.delay.call_args
+    uczelnia_id = call.kwargs.get("uczelnia_id")
+    if uczelnia_id is None and len(call.args) > 1:
+        uczelnia_id = call.args[1]
+    return uczelnia_id
+
+
+@pytest.mark.django_db
+def test_start_pbn_download_passes_uczelnia_id(uczelnia):
+    """Entrypoint pobierania publikacji MUSI przekazać id uczelni do zadania."""
+    from unittest.mock import patch
+
+    request, user = _authorized_request("/api/start-download/")
+
+    with patch(
+        "pbn_downloader_app.views.download_institution_publications"
+    ) as mock_task:
+        StartPbnDownloadView().post(request)
+
+    assert _delay_uczelnia_id(mock_task) == uczelnia.pk
+
+
+@pytest.mark.django_db
+def test_start_people_download_passes_uczelnia_id(uczelnia):
+    """Entrypoint pobierania osób MUSI przekazać id uczelni do zadania."""
+    from unittest.mock import patch
+
+    request, user = _authorized_request("/api/start-people-download/")
+
+    with patch("pbn_downloader_app.views.download_institution_people") as mock_task:
+        StartPbnPeopleDownloadView().post(request)
+
+    assert _delay_uczelnia_id(mock_task) == uczelnia.pk
+
+
+@pytest.mark.django_db
+def test_start_journals_download_passes_uczelnia_id(uczelnia):
+    """Entrypoint pobierania źródeł MUSI przekazać id uczelni do zadania."""
+    from unittest.mock import patch
+
+    request, user = _authorized_request("/api/start-journals-download/")
+
+    with patch("pbn_downloader_app.views.download_journals") as mock_task:
+        StartJournalsDownloadView().post(request)
+
+    assert _delay_uczelnia_id(mock_task) == uczelnia.pk
+
+
 @pytest.mark.django_db
 def test_pbn_download_task_model():
     """Test PbnDownloadTask model functionality."""

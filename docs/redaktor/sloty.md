@@ -16,22 +16,22 @@
 
 System rozróżnia cztery rodzaje autorów w powiązaniach autor-dyscyplina:
 
-**N - naukowiec w N**  
+**N - naukowiec w N**
 - Wliczany do liczby N (parametr ewaluacyjny)
 - Liczone są dla niego sloty
 - Standardowy pracownik naukowy zaliczany do ewaluacji
 
-**D - doktorant**  
+**D - doktorant**
 - Nie jest wliczany do liczby N
 - Liczone są dla niego sloty
 - Osoba na studiach doktoranckich
 
-**B - badawczy**  
+**B - badawczy**
 - Nie jest wliczany do liczby N
 - Liczone są dla niego sloty
 - Pracownik o charakterze badawczym (np. post-doc, badacz bez etatu naukowego)
 
-**Z - inny lub techniczny**  
+**Z - inny lub techniczny**
 - Nie jest wliczany do liczby N
 - Nie liczą się dla niego sloty
 - Pracownik techniczny, administracyjny lub inny niebędący pracownikiem badawczym
