@@ -50,6 +50,11 @@ class JednostkaQueryObject(
     url = "bpp:jednostka-widoczna-autocomplete"
 
     def real_query(self, value, operation):
+        if value is None:
+            # ``value_from_web`` zwróciło None (nierozwiązywalny/stały pk) →
+            # głośny brak dopasowania. BEZ tego Q(...=None) daje szeroki błędny
+            # match (a DIFFERENT wręcz odwraca go w "wszystko"), zamiast pustki.
+            return Q(pk__in=[])
         if operation in EQUALITY_OPS_ALL:
             ret = Q(autorzy__jednostka=value)
 
@@ -130,6 +135,8 @@ class AktualnaJednostkaAutoraQueryObject(JednostkaQueryObject):
     url = "bpp:jednostka-widoczna-autocomplete"
 
     def real_query(self, value, operation):
+        if value is None:
+            return Q(pk__in=[])  # nierozwiązywalna wartość → pusto (#438/F4)
         if operation in EQUALITY_OPS_ALL:
             ret = Q(autorzy__autor__aktualna_jednostka=value)
 
@@ -168,6 +175,8 @@ class PierwszaJednostkaQueryObject(JednostkaQueryObject):
     field_name = "pierwsza_jednostka"
 
     def real_query(self, value, operation):
+        if value is None:
+            return Q(pk__in=[])  # nierozwiązywalna wartość → pusto (#438/F4)
         if operation in EQUALITY_OPS_ALL:
             ret = Q(autorzy__jednostka=value, autorzy__kolejnosc=0)
 
@@ -258,6 +267,11 @@ class WydzialQueryObject(
         return None
 
     def real_query(self, value, operation):
+        if value is None:
+            # F4: nierozwiązywalny/stały pk (nie-root, dawny Wydzial) → głośny
+            # brak dopasowania. BEZ tego Q(autorzy__jednostka__wydzial=None)
+            # łapie wszystkich autorów w jednostkach-korzeniach (denorm=NULL).
+            return Q(pk__in=[])
         if operation in EQUALITY_OPS_ALL:
             ret = Q(autorzy__jednostka__wydzial=value) | Q(autorzy__jednostka=value)
 
@@ -281,6 +295,8 @@ class PierwszyWydzialQueryObject(WydzialQueryObject):
     field_name = "pierwszy_wydzial"
 
     def real_query(self, value, operation):
+        if value is None:
+            return Q(pk__in=[])  # nierozwiązywalna wartość → pusto (#438/F4)
         if operation in EQUALITY_OPS_ALL:
             ret = Q(autorzy__jednostka__wydzial=value, autorzy__kolejnosc=0) | Q(
                 autorzy__jednostka=value, autorzy__kolejnosc=0
@@ -330,6 +346,11 @@ class RodzajJednostkiQueryObject(BppMultiseekVisibilityMixin, ValueListQueryObje
         return value
 
     def real_query(self, value, operation):
+        if value is None:
+            # ``value_from_web`` zwraca None dla wartości spoza słownika
+            # ``RodzajJednostki`` → pusto (a nie ``rodzaj IS NULL`` / przy
+            # DIFFERENT ``rodzaj IS NOT NULL`` = szeroki match). (#438)
+            return Q(pk__in=[])
         q = Q(**{"autorzy__jednostka__rodzaj__nazwa": value})
         if operation == DIFFERENT:
             return ~q

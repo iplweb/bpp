@@ -31,16 +31,20 @@ A. ``"Wydział"`` / ``"Pierwszy wydział"``:
    zdropowany.
    - ``int(value) in mapa`` → ``value = str(mapa[pk])`` (nowy pk węzła; BEZ labela —
      JS sam odtworzy label przez ``value_to_web`` przy wczytaniu).
-   - ``int(value)`` już wskazuje węzeł docelowy (``in target_pks``) → SKIP (re-run
-     idempotentny; sprawdzane PRZED mapą, więc nawet przy hipotetycznej kolizji
-     pk nigdy nie remapujemy dwa razy).
+   - ``int(value)`` już wskazuje węzeł docelowy (``in target_pks``) i NIE jest
+     starym pk w ``wydzial_mapa`` → SKIP (re-run idempotentny).
    - w p.p. → **DROP tego wpisu + log** (id searcha, stary pk). Reszta searcha
      nietknięta. Po dropie wpis znika, więc kolejny run już go nie widzi
      (drop też idempotentny).
-   Bezpieczeństwo kolizji pk: opieramy się na inwariancie Fazy B (II-1/II-2), że
-   przestrzenie pk węzłów i starych ``Wydzial`` są rozłączne; dodatkowo
-   ``target_pks`` sprawdzamy pierwsze, więc już-przemapowana wartość nigdy nie
-   zostanie potraktowana jako niemapowalna ani przemapowana ponownie.
+   Kolejność guardów (kolizja pk): pk-e węzłów (``Jednostka``) i starych
+   ``Wydzial`` pochodzą z NIEZALEŻNYCH sekwencji, więc liczbowo się PRZECINAJĄ —
+   inwariant rozłączności jest fałszywy (choćby przez promocje z 0457, gdzie
+   promowana jednostka-root trafia do ``target_pks`` z arbitralnym pk). Dlatego
+   ``wydzial_mapa`` (kluczowana starym pk Wydzialu = to, czym ``value`` JEST na
+   pierwszym przebiegu) sprawdzamy PRZED ``target_pks``: inaczej stary pk
+   kolidujący z pk promowanej jednostki zostałby błędnie zeskipowany i wskazywał
+   cudzy wydział. Idempotencja re-runu jest wtedy słabsza, ale forward leci raz
+   (reverse = noop), więc poprawność pierwszego przebiegu ma priorytet.
 
 B. ``"Rodzaj jednostki"``: stary label → nowa nazwa ``RodzajJednostki``:
    - ``"zwyczajna jednostka (katedra, zakład, pracownia, itp.)"`` → ``"Standard"``
@@ -81,17 +85,27 @@ def _remap_wydzial_entry(entry, wydzial_mapa, target_pks, search_id):
         # zostaw; to nie nasz przypadek (jak guard w ``value_from_web``).
         return entry, False
 
-    if pk in target_pks:
-        # Już wskazuje węzeł docelowy — re-run, nic nie rób (idempotencja).
-        return entry, False
-
     if pk in wydzial_mapa:
+        # Na pierwszym przebiegu ``value`` jest DEFINICYJNIE starym pk Wydzialu,
+        # a ``wydzial_mapa`` jest kluczowana właśnie ``legacy_wydzial_id`` — więc
+        # to autorytatywny test remapu. MUSI być sprawdzany PRZED ``target_pks``:
+        # pk-e ``Wydzial`` i ``Jednostka`` pochodzą z niezależnych sekwencji, więc
+        # stary pk Wydzialu potrafi liczbowo kolidować z pk promowanej
+        # jednostki-roota (I-4/0457) siedzącej w ``target_pks``. Gdyby guard
+        # idempotencji szedł pierwszy, taka kolizja zacieniłaby remap i wpis
+        # zostałby przy starej wartości → wskazywałby cudzy wydział.
         new_value = str(wydzial_mapa[pk])
         if entry.get("value") == new_value:
             return entry, False
         new_entry = dict(entry)
         new_entry["value"] = new_value
         return new_entry, True
+
+    if pk in target_pks:
+        # Już wskazuje węzeł docelowy (a NIE jest starym pk w mapie) — re-run,
+        # nic nie rób (idempotencja). Uwaga: forward leci raz, reverse to noop,
+        # więc ten przypadek to praktycznie tylko ręczne ponowienie migracji.
+        return entry, False
 
     # Stary pk bez odpowiednika po konsolidacji — niemapowalny.
     logger.warning(

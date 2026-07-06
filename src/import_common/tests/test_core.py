@@ -59,6 +59,37 @@ def test_matchuj_jednostke(szukany_string, uczelnia, wydzial, db):
     assert matchuj_jednostke(szukany_string) == j1
 
 
+@pytest.mark.django_db
+def test_matchuj_jednostke_disambiguacja_po_promowanym_wydziale(uczelnia):
+    """#438: dopasowanie po NAZWIE wydziału musi działać dla PROMOWANEGO
+    1-jednostkowego wydziału (0457), gdzie denorm-korzeń to REALNA jednostka
+    (jej własna nazwa ≠ nazwa wydziału). Match po ``wydzial__nazwa`` by tu
+    zawiódł; tożsamość wydziału niesie ``root.legacy_wydzial_id``."""
+    w = baker.make(Wydzial, nazwa="Wydział Nauk Ścisłych")
+    # Promowany root: realna jednostka o INNEJ nazwie, z legacy starego wydziału.
+    promowany_root = baker.make(
+        Jednostka,
+        uczelnia=uczelnia,
+        parent=None,
+        wydzial=None,
+        nazwa="Instytut Matematyki",
+        legacy_wydzial_id=w.id,
+        jest_lustrem=False,
+    )
+    inny_root = znajdz_lub_utworz_wezel_wydzialu(baker.make(Wydzial, nazwa="Inny"))[0]
+
+    # Ambiguacja PREFIKSOWA (nazwa jest UNIQUE, więc nie da się dwóch identycznych):
+    # "Katedra" jest prefiksem obu → MultipleObjectsReturned → disambiguacja po
+    # wydziale. ``cel`` wisi pod promowanym wydziałem.
+    cel = baker.make(
+        Jednostka, nazwa="Katedra Alfa", parent=promowany_root, uczelnia=uczelnia
+    )
+    baker.make(Jednostka, nazwa="Katedra Beta", parent=inny_root, uczelnia=uczelnia)
+
+    got = matchuj_jednostke("Katedra", wydzial="Wydział Nauk Ścisłych")
+    assert got == cel
+
+
 def test_matchuj_autora_imiona_nazwisko(autor_jan_nowak):
     a = matchuj_autora("Jan", "Nowak", jednostka=None)
     assert a == autor_jan_nowak

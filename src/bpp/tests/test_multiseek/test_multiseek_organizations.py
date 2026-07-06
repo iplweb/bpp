@@ -182,3 +182,38 @@ def test_RodzajJednostkiQueryObject(param):
 def test_KierunekStudiowQueryObject(param, kierunek_studiow):
     ret = KierunekStudiowQueryObject().real_query(kierunek_studiow, param)
     assert Rekord.objects.filter(*(ret,)).count() == 0
+
+
+# --- #438: nierozwiązywalna wartość (value_from_web → None) → PUSTY wynik ----
+
+
+@pytest.mark.django_db
+def test_WydzialQueryObject_none_value_yields_empty_match(
+    wydawnictwo_zwarte, autor_jan_kowalski, jednostka
+):
+    """#438/F4: nierozwiązywalny pk wydziału (``value_from_web`` → None) MUSI dać
+    PUSTY wynik ("głośny brak dopasowania"), a nie szeroki match. Bez guardu
+    ``Q(autorzy__jednostka__wydzial=None)`` łapie KAŻDEGO autora w
+    jednostce-korzeniu (denorm ``wydzial`` = NULL dla rootów)."""
+    jednostka.parent = None
+    jednostka.wydzial = None
+    jednostka.save()
+    wydawnictwo_zwarte.dodaj_autora(autor_jan_kowalski, jednostka)
+    assert Rekord.objects.count() == 1  # sanity: rekord w cache
+
+    ret = WydzialQueryObject().real_query(None, logic.EQUAL)
+    assert Rekord.objects.filter(ret).count() == 0
+
+
+@pytest.mark.django_db
+def test_JednostkaQueryObject_none_value_different_yields_empty_match(
+    wydawnictwo_zwarte, autor_jan_kowalski, jednostka
+):
+    """#438: value=None + operator DIFFERENT NIE może dać
+    ``~Q(autorzy__jednostka=None)`` = "wszystkie rekordy z autorem w jednostce".
+    Nierozwiązywalna wartość → pusto, niezależnie od operatora."""
+    wydawnictwo_zwarte.dodaj_autora(autor_jan_kowalski, jednostka)
+    assert Rekord.objects.count() == 1
+
+    ret = JednostkaQueryObject().real_query(None, logic.DIFFERENT)
+    assert Rekord.objects.filter(ret).count() == 0

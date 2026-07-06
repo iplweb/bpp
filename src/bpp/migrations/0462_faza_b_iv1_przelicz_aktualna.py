@@ -14,8 +14,16 @@ Kroki:
      ``widoczna = Wydzial.widoczny`` źródłowego wydziału.
   3. ``AlterField`` ``aktualna`` default False→True (state+schema; model już
      ma default=True).
-  4. ``invalidate_cache`` — bulk ``.update()`` omija sygnał
-     ``invalidate_uczelnia_cache_on_jednostka_change``, więc czyścimy raz.
+
+Uwaga: NIE inwalidujemy tu cache strony głównej (``get_uczelnia_context_data``).
+Poprzednia wersja wołała ``get_uczelnia_context_data.invalidate()`` bez
+argumentów — to było dwojako złe: (a) cacheops ``@cached`` kluczuje po
+argumentach, więc bezargumentowy ``invalidate()`` kasował nieistniejący klucz
+zerowo-argumentowy i NIE czyścił nic (funkcja jest zawsze wołana z ``uczelnia``);
+(b) przy ``CACHEOPS_DEGRADE_ON_FAILURE=False`` (default, nienadpisany w BPP)
+błąd połączenia z Redisem propaguje z ``_delete`` → RunPython rzuca → ROLLBACK
+całej migracji, łamiąc atomowość releasu. Migracja nie może zależeć od Redisa.
+Cache i tak wygasa po TTL (1h), a właściwe inwalidacje robią sygnały runtime.
 """
 
 from datetime import date
@@ -96,14 +104,6 @@ def ukryj_widoczna(apps, schema_editor):
     )
 
 
-def invalidate_cache(apps, schema_editor):
-    """Bulk ``.update()`` omija sygnał invalidujący cache strony głównej —
-    czyścimy go raz (spójnie z ``invalidate_uczelnia_cache_on_jednostka_change``)."""
-    from bpp.views.browse import get_uczelnia_context_data
-
-    get_uczelnia_context_data.invalidate()
-
-
 class Migration(migrations.Migration):
     dependencies = [
         ("bpp", "0461_faza_b_iii1_usun_rodzaj_jednostki"),
@@ -122,5 +122,4 @@ class Migration(migrations.Migration):
     wartość 'PRAWDA'.""",
             ),
         ),
-        migrations.RunPython(invalidate_cache, migrations.RunPython.noop),
     ]

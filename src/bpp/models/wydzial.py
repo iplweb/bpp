@@ -200,12 +200,15 @@ def usun_wezel_lustro_wydzialu(sender, instance, **kwargs):
     (``jest_lustrem=True``); promowana realna jednostka z dorobkiem ZOSTAJE,
     nawet gdy jej stary Wydzial jest kasowany.
 
-    **Guard bezdzietności (I-4).** Po I-4 węzeł-lustro MA DZIECI — pod niego
-    podpięte są realne jednostki (``parent``, TreeForeignKey CASCADE) oraz
-    wpisy ``Jednostka_Rodzic.parent`` (CASCADE). Bezwarunkowe ``.delete()``
-    skaskadowałoby wtedy na całą realną strukturę = KATASTROFALNA utrata
-    danych. Dlatego kasujemy węzeł WYŁĄCZNIE, gdy jest bezdzietny (transient
-    lustro sprzed podpięcia). Węzeł z realnymi dziećmi ZOSTAJE nietknięty.
+    **Guard referencji (I-4 + II-2/0460).** Po I-4 węzeł-lustro MA DZIECI — pod
+    niego podpięte są realne jednostki (``parent``, TreeForeignKey CASCADE) oraz
+    wpisy ``Jednostka_Rodzic.parent`` (CASCADE). Dodatkowo 0460 przepięło na
+    ``Jednostka`` FK konsumentów wydziału: ``Kierunek_Studiow.wydzial`` (PROTECT),
+    ``Patent.wydzial`` (SET_NULL), ``Opi_2012_Afiliacja_Do_Wydzialu.wydzial``
+    (CASCADE). Bezwarunkowe ``.delete()`` skaskadowałoby / wyzerowałoby /
+    zprotectowałoby te dane. Dlatego kasujemy węzeł WYŁĄCZNIE, gdy NIC go nie
+    referencuje (transient lustro sprzed jakiegokolwiek podlinkowania). Sam
+    check dzieci-Jednostek nie wystarcza — trzeba objąć wszystkie FK/O2O.
     """
     from .jednostka import Jednostka
 
@@ -215,8 +218,40 @@ def usun_wezel_lustro_wydzialu(sender, instance, **kwargs):
     for node in Jednostka.objects.filter(
         legacy_wydzial_id=instance.id, jest_lustrem=True
     ):
-        if Jednostka.objects.filter(parent=node).exists():
-            # Węzeł ma realne dzieci (po I-4) — NIE kasuj (CASCADE zniszczyłby
-            # poddrzewo + metryczkę historyczną).
+        if _wezel_lustro_ma_referencje(node):
+            # Cokolwiek wskazuje na węzeł (dzieci po I-4 LUB konsument z 0460)
+            # → NIE kasuj: CASCADE/SET_NULL/PROTECT zniszczyłby/uszkodził cudze
+            # dane albo wywaliłby kasowanie Wydziału.
             continue
         node.delete()
+
+
+def _wezel_lustro_ma_referencje(node):
+    """True, gdy jakiś wiersz referencuje ``node`` — wtedy NIE jest transientnym
+    lustrem i kasowanie uszkodziłoby cudze dane (CASCADE / SET_NULL / PROTECT).
+
+    Jawna, kuratorowana lista relacji: dzieci-``Jednostki`` (drzewo + denorm),
+    wpisy historii struktury oraz konsumenci przepięci w 0460. Świadomie NIE
+    iterujemy ``node._meta.related_objects`` — obejmuje ono m.in. modele oparte
+    o tabele tymczasowe (``bpp_temporary_*``), których zapytanie rzuca
+    ProgrammingError i wywala całą transakcję kasowania."""
+    from .jednostka import Jednostka, Jednostka_Rodzic
+    from .kierunek_studiow import Kierunek_Studiow
+    from .opi_2012 import Opi_2012_Afiliacja_Do_Wydzialu
+    from .patent import Patent
+
+    # Dzieci-Jednostki: przez drzewo (``parent``) lub denorm-korzeń (``wydzial``).
+    if Jednostka.objects.filter(Q(parent=node) | Q(wydzial=node)).exists():
+        return True
+    # Historia struktury (CASCADE na obu FK).
+    if Jednostka_Rodzic.objects.filter(Q(parent=node) | Q(jednostka=node)).exists():
+        return True
+    # Konsumenci przepięci w 0460: Kierunek (PROTECT), Patent (SET_NULL),
+    # Opi_2012 (CASCADE) — każdy referuje ``Jednostka`` przez pole ``wydzial``.
+    if Kierunek_Studiow.objects.filter(wydzial=node).exists():
+        return True
+    if Patent.objects.filter(wydzial=node).exists():
+        return True
+    if Opi_2012_Afiliacja_Do_Wydzialu.objects.filter(wydzial=node).exists():
+        return True
+    return False

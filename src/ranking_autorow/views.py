@@ -320,8 +320,10 @@ class RankingAutorow(ExportMixin, SingleTableView):
 
     def get_dostepne_wydzialy(self):
         # Faza B (#438): „wydziały" = jednostki-korzenie (parent IS NULL).
+        # ``widoczna=True`` (parytet z ``get_dostepne_jednostki``): ukryty root
+        # nie może być wybieralny ani renderowalny przez ?wydzial=<pk>.
         return Jednostka.objects.filter(
-            parent__isnull=True, zezwalaj_na_ranking_autorow=True
+            parent__isnull=True, widoczna=True, zezwalaj_na_ranking_autorow=True
         )
 
     def get_wydzialy(self):

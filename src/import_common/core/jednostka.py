@@ -17,6 +17,25 @@ def wytnij_skrot(jednostka):
     return jednostka, None
 
 
+def _wydzial_filtr(wydzial):
+    """``Q`` zawężające jednostki do wydziału podanego NAZWĄ (import legacy).
+
+    Faza B (#438): „wydział" jednostki to zdenormalizowany korzeń
+    (``jednostka.wydzial``), a tożsamość dawnego wydziału niesie
+    ``root.legacy_wydzial_id``. Dopasowanie po ``wydzial__nazwa`` jest zawodne:
+    promowany 1-jednostkowy wydział (0457) ma root == realna jednostka (jej
+    własna nazwa ≠ nazwa wydziału), a syntetyczne lustro może mieć suffix
+    ``[W<id>]`` na kolizji (F6). Rozwiązujemy więc nazwę → ``Wydzial`` → korzeń
+    po ``legacy_wydzial_id``. Fallback na nazwę korzenia, gdy nie ma już wiersza
+    ``Wydzial`` o tej nazwie (zachowanie sprzed fixu)."""
+    from .tytul_funkcja import matchuj_wydzial
+
+    w = matchuj_wydzial(wydzial)
+    if w is not None:
+        return Q(wydzial__legacy_wydzial_id=w.id)
+    return Q(wydzial__nazwa__iexact=wydzial)
+
+
 def matchuj_jednostke(nazwa, wydzial=None):
     if nazwa is None:
         return
@@ -47,7 +66,7 @@ def matchuj_jednostke(nazwa, wydzial=None):
 
         return Jednostka.objects.get(
             Q(nazwa__istartswith=nazwa) | Q(skrot__istartswith=nazwa),
-            Q(wydzial__nazwa__iexact=wydzial),
+            _wydzial_filtr(wydzial),
         )
 
     except Jednostka.MultipleObjectsReturned as e:
@@ -56,5 +75,5 @@ def matchuj_jednostke(nazwa, wydzial=None):
 
         return Jednostka.objects.get(
             Q(nazwa__iexact=nazwa) | Q(skrot__iexact=nazwa),
-            Q(wydzial__nazwa__iexact=wydzial),
+            _wydzial_filtr(wydzial),
         )

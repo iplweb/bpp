@@ -120,6 +120,24 @@ def test_unmappable_wydzial_pk_dropped_rest_untouched():
     assert new_fd == [None, _entry("Tytuł oryginalny", "abc", prev_op="and")]
 
 
+# --- Kolizja pk stary-Wydzial vs promowana-jednostka -----------------------
+
+
+def test_wydzial_pk_colliding_with_target_node_is_remapped_not_skipped():
+    """Regresja (#438): stary pk Wydziału może LICZBOWO kolidować z pk
+    promowanej jednostki-roota siedzącej w ``target_pks`` — pk-e ``Wydzial`` i
+    ``Jednostka`` pochodzą z niezależnych sekwencji, więc rozłączność z docstringa
+    jest fałszywa. Guard idempotencji (``pk in target_pks``) NIE może wtedy
+    zacienić właściwego remapu: na pierwszym przebiegu ``value`` jest DEFINICYJNIE
+    starym pk Wydzialu, więc ``wydzial_mapa`` jest autorytatywna."""
+    # Wydzial 100 → węzeł-lustro 5000; Wydzial 200 → promowana jednostka pk=100.
+    mapa = {100: 5000, 200: 100}
+    form_data = [None, _entry("Wydział", "100")]
+    new_fd, changed = _remap(form_data, mapa)
+    assert changed is True
+    assert new_fd == [None, _entry("Wydział", "5000")]
+
+
 # --- Idempotencja -----------------------------------------------------------
 
 

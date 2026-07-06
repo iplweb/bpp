@@ -503,6 +503,41 @@ def test_ranking_autorow_context_with_jednostki(rf, uczelnia):
 
 
 @pytest.mark.django_db
+def test_ranking_autorow_get_dostepne_wydzialy_pomija_ukryte(rf, uczelnia):
+    """#438: ukryty root (``widoczna=False``) z ``zezwalaj_na_ranking_autorow``
+    NIE może trafić do pickera/resolvera wydziałów rankingu — inaczej
+    ``?wydzial=<ukryty_pk>`` wyrenderuje ukryty wydział. Parytet z
+    ``get_dostepne_jednostki`` (które filtruje ``widoczna=True``)."""
+    widoczny = baker.make(
+        Jednostka,
+        uczelnia=uczelnia,
+        parent=None,
+        wydzial=None,
+        widoczna=True,
+        zezwalaj_na_ranking_autorow=True,
+    )
+    ukryty = baker.make(
+        Jednostka,
+        uczelnia=uczelnia,
+        parent=None,
+        wydzial=None,
+        widoczna=False,
+        zezwalaj_na_ranking_autorow=True,
+    )
+
+    view = RankingAutorow()
+    view.request = rf.get(f"/?wydzial={ukryty.pk}")
+    view.kwargs = dict(od_roku=2020, do_roku=2022)
+
+    dostepne = view.get_dostepne_wydzialy()
+    assert widoczny in dostepne
+    assert ukryty not in dostepne
+
+    # Resolver ?wydzial=<ukryty> nie może zwrócić ukrytego roota.
+    assert list(view.get_wydzialy()) == []
+
+
+@pytest.mark.django_db
 def test_ranking_autorow_filter_by_charakter_formalny(
     wydawnictwo_ciagle_z_autorem,
     wydawnictwo_zwarte_z_autorem,

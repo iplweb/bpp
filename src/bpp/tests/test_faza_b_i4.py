@@ -410,6 +410,29 @@ def test_post_delete_guard_bezdzietny_wezel_znika(uczelnia):
     assert not Jednostka.objects.filter(pk=wid).exists()
 
 
+@pytest.mark.django_db
+def test_post_delete_nie_kasuje_lustra_z_konsumentem_0460(uczelnia):
+    """#438: bezdzietny węzeł-lustro, na który wskazuje FK konsumenta z 0460
+    (tu: ``Patent.wydzial``, SET_NULL), NIE może zostać skasowany przez
+    ``post_delete`` Wydziału — inaczej kasowanie CICHO zeruje/kaskaduje cudze
+    dane (Patent traci przypięty wydział; ``Opi_2012`` skaskadowałby wiersz;
+    ``Kierunek`` rzuciłby ProtectedError → rollback kasowania Wydziału). Guard
+    bezdzietności nie wystarcza: sprawdzał tylko dzieci-Jednostki, nie
+    przepięte FK. Węzeł jest „transientny" (kasowalny) TYLKO gdy nic go nie
+    referencuje."""
+    from bpp.models.patent import Patent
+
+    w = baker.make(Wydzial, uczelnia=uczelnia)
+    wezel = _wezel(w)
+    patent = baker.make(Patent, wydzial=wezel)
+
+    w.delete()
+
+    assert Jednostka.objects.filter(pk=wezel.pk).exists()
+    patent.refresh_from_db()
+    assert patent.wydzial_id == wezel.pk
+
+
 # ---------------------------------------------------------------------------
 # (h) #438 — 1-jednostkowy wydział: promocja do roota zamiast pustej wydmuszki
 # ---------------------------------------------------------------------------
