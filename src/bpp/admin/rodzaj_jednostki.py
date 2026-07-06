@@ -13,6 +13,7 @@ class RodzajJednostkiAdmin(SortableAdminMixin, admin.ModelAdmin):
         "wyklucz_z_rankingu_autorow",
         "pokazuj_jako_odrebna_sekcje",
         "pokazuj_strukture_podjednostek",
+        "autor_moze_afiliowac",
     ]
     search_fields = ["nazwa", "skrot"]
 

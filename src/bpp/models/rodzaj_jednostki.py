@@ -16,6 +16,13 @@ class RodzajJednostki(models.Model):
     pokazuj_strukture_podjednostek = models.BooleanField(
         "Pokazuj stronę w stylu wydziału", default=False
     )
+    autor_moze_afiliowac = models.BooleanField(
+        "Autor może afiliować",
+        default=True,
+        help_text="Gdy odznaczone, autorów prac nie można afiliować na jednostki "
+        "tego rodzaju — np. wydziały: afiliacja powinna wskazywać jednostkę "
+        "podrzędną, nie sam wydział.",
+    )
 
     class Meta:
         verbose_name = "rodzaj jednostki"
