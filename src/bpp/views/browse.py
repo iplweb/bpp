@@ -152,10 +152,20 @@ def browse_wydzial_redirect(request, slug):
     ``slug`` (model żyje do Fazy C wyłącznie na potrzeby tego lookupu), a
     następnie węzła-lustra (``Jednostka.legacy_wydzial_id == wydzial.pk``,
     patrz ``struktura_konwersja.py``) i przekierowujemy na jego stronę.
+
+    Fallback: gdy slug nie odpowiada żadnemu legacy ``Wydzial`` (albo
+    wydział nie ma węzła-lustra), ale istnieje ``Jednostka`` o dokładnie
+    tym slugu (np. wydział założony od razu w drzewie, bez modelu
+    Wydzial), przekierowujemy wprost na /jednostka/<ten-sam-slug>/.
+    W pozostałych przypadkach 404.
     """
-    wydzial = get_object_or_404(Wydzial, slug=slug)
-    jednostka = get_object_or_404(Jednostka, legacy_wydzial_id=wydzial.pk)
-    return redirect("bpp:browse_jednostka", slug=jednostka.slug, permanent=True)
+    wydzial = Wydzial.objects.filter(slug=slug).first()
+    if wydzial is not None:
+        jednostka = Jednostka.objects.filter(legacy_wydzial_id=wydzial.pk).first()
+        if jednostka is not None:
+            return redirect("bpp:browse_jednostka", slug=jednostka.slug, permanent=True)
+    get_object_or_404(Jednostka, slug=slug)
+    return redirect("bpp:browse_jednostka", slug=slug, permanent=True)
 
 
 class JednostkaView(DetailView):

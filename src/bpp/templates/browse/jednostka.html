@@ -18,123 +18,86 @@
 {% endblock %}
 
 {% block content %}
-    <!-- Modern Header Section -->
-    <div class="unit-header jednostka__header">
-        <div class="grid-x grid-margin-x align-middle">
-            <div class="cell auto">
-                <h1 class="jednostka__title">{{ jednostka }}</h1>
-                {% if jednostka.kierownik %}
-                    <div class="subheader jednostka__subheader">
-                        <i class="fi-torso jednostka__icon--mr-xs"></i>Kierownik: {{ jednostka.kierownik }}
-                    </div>
-                {% endif %}
-            </div>
-            <div class="cell shrink">
-                {% include "browse/go_to_admin_change.html" with url="admin:bpp_jednostka_change" pk=jednostka.pk group="struktura" %}
+    {% if jednostka.rodzaj.pokazuj_strukture_podjednostek %}
+        {# Styl wydziałowy (dawna strona wydziału, Faza B / #438, III-2): #}
+        {# węzeł tego rodzaju (np. "Wydział") nie pokazuje własnych prac ani #}
+        {# kart hierarchii "Wchodzi w skład"/"Jednostki podrzędne" -- układ to #}
+        {# wierny port dawnego wydzial.html: panel nagłówka ze statami w #}
+        {# środku, wyśrodkowany przycisk wszystkich publikacji, potem sekcje #}
+        {# podjednostek/kół naukowych/jednostek historycznych. #}
+
+        <!-- Modern Header Section -->
+        <div class="modern-header">
+            <div class="grid-x grid-margin-x">
+                <div class="cell auto">
+                    <h1 class="page-title">
+                        <i class="fi-foundation"></i>{{ jednostka }}
+                    </h1>
+
+                    {% if jednostka.pokazuj_opis and jednostka.opis %}
+                        <div class="wydzial-description">
+                            {{ jednostka.opis|safe }}
+                        </div>
+                    {% endif %}
+
+                    {% cache 3600 jednostka_struktura_stats jednostka.pk %}
+                        {% with total_jednostki=jednostka.aktualne_podjednostki.count kola_count=jednostka.kola_naukowe.count hist_count=jednostka.historyczne_podjednostki.count %}
+                            <div class="wydzial-stats">
+                                {% if total_jednostki > 0 %}
+                                    <div class="stat-item stat-jednostki">
+                                        <div>Jednostki aktualne</div>
+                                        <div>{{ total_jednostki }}</div>
+                                    </div>
+                                {% endif %}
+                                {% if kola_count > 0 %}
+                                    <div class="stat-item stat-kola">
+                                        <div>Koła naukowe</div>
+                                        <div>{{ kola_count }}</div>
+                                    </div>
+                                {% endif %}
+                                {% if hist_count > 0 %}
+                                    <div class="stat-item stat-historyczne">
+                                        <div>Jednostki historyczne</div>
+                                        <div>{{ hist_count }}</div>
+                                    </div>
+                                {% endif %}
+                            </div>
+                        {% endwith %}
+                    {% endcache %}
+                </div>
+                <div class="cell shrink">
+                    {% include "browse/go_to_admin_change.html" with url="admin:bpp_jednostka_change" pk=jednostka.pk group="struktura" %}
+                </div>
             </div>
         </div>
-    </div>
 
-    <!-- Unit Hierarchy Cards -->
-    {# W stylu wydziału (pokazuj_strukture_podjednostek) NIE pokazujemy kart #}
-    {# hierarchii "Wchodzi w skład" / "Jednostki podrzędne" -- strukturę #}
-    {# podjednostek pokazuje sekcja strukturalna niżej. Na zwykłej jednostce #}
-    {# karty zostają bez zmian. #}
-    {% if not jednostka.rodzaj.pokazuj_strukture_podjednostek %}
-        {% if jednostka.parent or jednostka.children.exists %}
-            <div class="grid-x grid-margin-x unit-hierarchy">
-                {% if jednostka.parent %}
-                    <div class="cell medium-6">
-                        <div class="callout hierarchy-card hierarchy-parent">
-                            <h6>
-                                <i class="fi-arrow-up"></i>Wchodzi w skład:
-                            </h6>
-                            <a href="{% url "bpp:browse_jednostka" jednostka.parent.slug %}">
-                                {{ jednostka.parent }}
-                            </a>
-                        </div>
-                    </div>
-                {% endif %}
-
-                {% if jednostka.children.exists %}
-                    <div class="cell medium-6">
-                        <div class="callout hierarchy-card hierarchy-children">
-                            <h6>
-                                <i class="fi-arrow-down"></i>Jednostki podrzędne:
-                            </h6>
-                            <ul class="no-bullet">
-                                {% for child in jednostka.children.all %}
-                                    <li>
-                                        <a href="{% url "bpp:browse_jednostka" child.slug %}">
-                                            {{ child }}
-                                        </a>
-                                    </li>
-                                {% endfor %}
-                            </ul>
-                        </div>
-                    </div>
-                {% endif %}
-            </div>
-        {% endif %}
-    {% endif %}
-
-    <!-- Unit Description -->
-    {% if jednostka.pokazuj_opis and jednostka.opis %}
-        <div class="callout jednostka__description">
-            {{ jednostka.opis|safe }}
-        </div>
-    {% endif %}
-
-    <!-- Quick Actions -->
-    {# W stylu wydziału nie pokazujemy "Pokaż wszystkie publikacje" -- prac w #}
-    {# całym wydziale jest po prostu za dużo, żeby generować taki raport. #}
-    {% if not jednostka.rodzaj.pokazuj_strukture_podjednostek %}
+        <!-- Quick Actions -->
+        {# Węzeł-korzeń: krótki POST ``wydzial=pk`` jak w dawnym wydzial.html #}
+        {# (WydzialQueryObject rozwiązuje wyłącznie korzenie i filtruje po #}
+        {# denormie ``jednostka.wydzial`` = całe poddrzewo jednym wpisem, #}
+        {# zamiast mega-długiej listy jednostek w formularzu multiseeka). #}
+        {# Węzeł głębiej w drzewie albo uczelnia z wyłączonymi wydziałami: #}
+        {# fallback na jawną listę jednostki + potomków, bo POST ``wydzial`` #}
+        {# byłby wtedy zignorowany (BuildSearch) albo dał pusty raport. #}
         <div class="jednostka__quick-actions">
             <form method="post" action="{% url "bpp:browse_build_search" %}" class="jednostka__quick-actions-form">
                 {% csrf_token %}
-                <input type="hidden" name="jednostka" value="{{ jednostka.pk }}"/>
-                {% for descendant in jednostka.get_descendants %}
-                    <input type="hidden" name="jednostka" value="{{ descendant.pk }}"/>
-                {% endfor %}
+                {% if uczelnia.uzywaj_wydzialow and not jednostka.parent_id %}
+                    <input type="hidden" name="wydzial" value="{{ jednostka.pk }}"/>
+                {% else %}
+                    <input type="hidden" name="jednostka" value="{{ jednostka.pk }}"/>
+                    {% for descendant in jednostka.get_descendants %}
+                        <input type="hidden" name="jednostka" value="{{ descendant.pk }}"/>
+                    {% endfor %}
+                {% endif %}
                 <input type="hidden" name="suggested-title" value="{{ jednostka }}"/>
-                <button type="submit"
-                        class="button primary large jednostka__btn-primary">
-                    <i class="fi-list-bullet jednostka__icon--mr-sm"></i>Pokaż wszystkie publikacje
+                <button type="submit" class="button button-show-all">
+                    <i class="fi-list-bullet"></i>Pokaż wszystkie publikacje
                 </button>
             </form>
         </div>
-    {% endif %}
 
-
-    {% if jednostka.rodzaj.pokazuj_strukture_podjednostek %}
-        {# Styl strukturalny (dawna strona wydziału, Faza B / #438, III-2): #}
-        {# węzeł tego rodzaju (np. "Wydział") nie pokazuje własnych prac, #}
-        {# tylko strukturę podjednostek/kół naukowych/jednostek historycznych. #}
-        {% cache 3600 jednostka_struktura_stats jednostka.pk %}
-            {% with total_jednostki=jednostka.aktualne_podjednostki.count kola_count=jednostka.kola_naukowe.count hist_count=jednostka.historyczne_podjednostki.count %}
-                <div class="wydzial-stats">
-                    {% if total_jednostki > 0 %}
-                        <div class="stat-item stat-jednostki">
-                            <div>Jednostki aktualne</div>
-                            <div>{{ total_jednostki }}</div>
-                        </div>
-                    {% endif %}
-                    {% if kola_count > 0 %}
-                        <div class="stat-item stat-kola">
-                            <div>Koła naukowe</div>
-                            <div>{{ kola_count }}</div>
-                        </div>
-                    {% endif %}
-                    {% if hist_count > 0 %}
-                        <div class="stat-item stat-historyczne">
-                            <div>Jednostki historyczne</div>
-                            <div>{{ hist_count }}</div>
-                        </div>
-                    {% endif %}
-                </div>
-            {% endwith %}
-        {% endcache %}
-
+        <!-- Modern Navigation -->
         {% if jednostka.wymaga_nawigacji %}
             <div data-sticky-container id="navStickyContainer" class="wydzial-nav">
                 <div data-sticky class="sticky"
@@ -298,6 +261,83 @@
             }
         </script>
     {% else %}
+    <!-- Modern Header Section -->
+    <div class="unit-header jednostka__header">
+        <div class="grid-x grid-margin-x align-middle">
+            <div class="cell auto">
+                <h1 class="jednostka__title">{{ jednostka }}</h1>
+                {% if jednostka.kierownik %}
+                    <div class="subheader jednostka__subheader">
+                        <i class="fi-torso jednostka__icon--mr-xs"></i>Kierownik: {{ jednostka.kierownik }}
+                    </div>
+                {% endif %}
+            </div>
+            <div class="cell shrink">
+                {% include "browse/go_to_admin_change.html" with url="admin:bpp_jednostka_change" pk=jednostka.pk group="struktura" %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Unit Hierarchy Cards -->
+    {% if jednostka.parent or jednostka.children.exists %}
+        <div class="grid-x grid-margin-x unit-hierarchy">
+            {% if jednostka.parent %}
+                <div class="cell medium-6">
+                    <div class="callout hierarchy-card hierarchy-parent">
+                        <h6>
+                            <i class="fi-arrow-up"></i>Wchodzi w skład:
+                        </h6>
+                        <a href="{% url "bpp:browse_jednostka" jednostka.parent.slug %}">
+                            {{ jednostka.parent }}
+                        </a>
+                    </div>
+                </div>
+            {% endif %}
+
+            {% if jednostka.children.exists %}
+                <div class="cell medium-6">
+                    <div class="callout hierarchy-card hierarchy-children">
+                        <h6>
+                            <i class="fi-arrow-down"></i>Jednostki podrzędne:
+                        </h6>
+                        <ul class="no-bullet">
+                            {% for child in jednostka.children.all %}
+                                <li>
+                                    <a href="{% url "bpp:browse_jednostka" child.slug %}">
+                                        {{ child }}
+                                    </a>
+                                </li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                </div>
+            {% endif %}
+        </div>
+    {% endif %}
+
+    <!-- Unit Description -->
+    {% if jednostka.pokazuj_opis and jednostka.opis %}
+        <div class="callout jednostka__description">
+            {{ jednostka.opis|safe }}
+        </div>
+    {% endif %}
+
+    <!-- Quick Actions -->
+    <div class="jednostka__quick-actions">
+        <form method="post" action="{% url "bpp:browse_build_search" %}" class="jednostka__quick-actions-form">
+            {% csrf_token %}
+            <input type="hidden" name="jednostka" value="{{ jednostka.pk }}"/>
+            {% for descendant in jednostka.get_descendants %}
+                <input type="hidden" name="jednostka" value="{{ descendant.pk }}"/>
+            {% endfor %}
+            <input type="hidden" name="suggested-title" value="{{ jednostka }}"/>
+            <button type="submit"
+                    class="button primary large jednostka__btn-primary">
+                <i class="fi-list-bullet jednostka__icon--mr-sm"></i>Pokaż wszystkie publikacje
+            </button>
+        </form>
+    </div>
+
     <!-- Modern Search Form -->
     <div class="search-container jednostka__search-container">
         <div class="search-header jednostka__search-header">

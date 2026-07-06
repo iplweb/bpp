@@ -136,28 +136,28 @@ def test_jednostka_pokazuj_opis(jednostka, client, arg_res):
     assert result is arg_res
 
 
-def test_browse_jednostka_styl_wydzialu_ukrywa_hierarchie_i_przycisk(uczelnia, client):
+def test_browse_jednostka_styl_wydzialu_uklad_dawnego_wydzial_html(uczelnia, client):
     """Faza B (#438): strona w stylu wydziału (rodzaj z flagą
-    ``pokazuj_strukture_podjednostek``) NIE pokazuje kart hierarchii
-    „Wchodzi w skład" / „Jednostki podrzędne" ani przycisku „Pokaż wszystkie
-    publikacje". Strukturę pokazują sekcje strukturalne niżej, a prac w całym
-    wydziale jest za dużo na jeden raport. Na zwykłej jednostce te elementy
-    zostają (patrz ``test_browse_jednostka_nadrzedna``)."""
+    ``pokazuj_strukture_podjednostek``) odtwarza układ dawnego wydzial.html:
+    panel ``modern-header`` z nazwą i statami W ŚRODKU panelu, pod panelem
+    wyśrodkowany przycisk „Pokaż wszystkie publikacje", dalej sekcje
+    strukturalne. Węzeł-korzeń wysyła krótki POST ``wydzial=pk`` (jak dawny
+    wydzial.html) zamiast listy wszystkich potomków. Karty hierarchii
+    „Wchodzi w skład" / „Jednostki podrzędne" pozostają ukryte — strukturę
+    pokazują sekcje. Na zwykłej jednostce bez zmian (patrz
+    ``test_browse_jednostka_nadrzedna``)."""
     from bpp.models import RodzajJednostki
     from bpp.tests.util import any_jednostka
 
     rodzaj_wydzial = RodzajJednostki.objects.get(nazwa="Wydział")
 
-    # Wydział ma rodzica (test ukrycia „Wchodzi w skład") i dwie podjednostki
-    # (>1, żeby JednostkaView nie przeskoczył redirectem na jedyną podjednostkę).
-    nadrzedna = any_jednostka(
-        nazwa="Jednostka nadrzędna WZ", uczelnia=uczelnia, wydzial=None, parent=None
-    )
+    # Wydział jako korzeń drzewa, z dwiema podjednostkami (>1, żeby
+    # JednostkaView nie przeskoczył redirectem na jedyną podjednostkę).
     wydzial = any_jednostka(
         nazwa="Wydział Testowy WZ",
         uczelnia=uczelnia,
         wydzial=None,
-        parent=nadrzedna,
+        parent=None,
         rodzaj=rodzaj_wydzial,
     )
     dziecko = any_jednostka(
@@ -180,11 +180,84 @@ def test_browse_jednostka_styl_wydzialu_ukrywa_hierarchie_i_przycisk(uczelnia, c
     url = reverse("bpp:browse_jednostka", args=(wydzial.slug,))
     content = normalize_html(client.get(url).rendered_content)
 
+    # Karty hierarchii nadal ukryte:
     assert "Wchodzi w skład" not in content
     assert "Jednostki podrzędne" not in content
-    assert "Pokaż wszystkie publikacje" not in content
-    # ...ale sekcja strukturalna dalej renderuje podjednostki:
+
+    # Panel nagłówka jak w dawnym wydzial.html, staty w środku panelu,
+    # przycisk dopiero pod panelem:
+    idx_header = content.find("modern-header")
+    idx_stats = content.find("wydzial-stats")
+    idx_przycisk = content.find("Pokaż wszystkie publikacje")
+    assert idx_header != -1
+    assert idx_stats != -1
+    assert idx_przycisk != -1
+    assert idx_header < idx_stats < idx_przycisk
+
+    # Korzeń drzewa: krótki POST ``wydzial=pk`` jak w dawnym wydzial.html,
+    # bez wyliczania wszystkich potomków (mega-długi formularz multiseeka):
+    assert f'name="wydzial" value="{wydzial.pk}"' in content
+    assert 'name="jednostka"' not in content
+
+    # ...a sekcja strukturalna dalej renderuje podjednostki:
     assert dziecko.nazwa in content
+
+
+def test_browse_jednostka_styl_wydzialu_nie_korzen_fallback_jednostki(
+    uczelnia, client
+):
+    """Węzeł w stylu wydziału położony GŁĘBIEJ w drzewie (ma rodzica) nie
+    może użyć POST ``wydzial=pk`` — ``WydzialQueryObject.value_from_web``
+    rozwiązuje wyłącznie korzenie (``parent IS NULL``), a denorm
+    ``jednostka.wydzial`` wskazuje korzeń całego drzewa, nie ten węzeł.
+    Przycisk wysyła wtedy jawną listę: jednostkę + wszystkich potomków."""
+    from bpp.models import RodzajJednostki
+    from bpp.tests.util import any_jednostka
+
+    rodzaj_wydzial = RodzajJednostki.objects.get(nazwa="Wydział")
+
+    nadrzedna = any_jednostka(
+        nazwa="Jednostka nadrzędna NK", uczelnia=uczelnia, wydzial=None, parent=None
+    )
+    wydzial = any_jednostka(
+        nazwa="Wydział Zagnieżdżony NK",
+        uczelnia=uczelnia,
+        wydzial=None,
+        parent=nadrzedna,
+        rodzaj=rodzaj_wydzial,
+    )
+    dziecko = any_jednostka(
+        nazwa="Katedra Zagnieżdżona Pierwsza NK",
+        uczelnia=uczelnia,
+        wydzial=None,
+        parent=wydzial,
+        aktualna=True,
+        widoczna=True,
+    )
+    dziecko2 = any_jednostka(
+        nazwa="Katedra Zagnieżdżona Druga NK",
+        uczelnia=uczelnia,
+        wydzial=None,
+        parent=wydzial,
+        aktualna=True,
+        widoczna=True,
+    )
+
+    url = reverse("bpp:browse_jednostka", args=(wydzial.slug,))
+    content = normalize_html(client.get(url).rendered_content)
+
+    assert "Wchodzi w skład" not in content
+    assert 'name="wydzial"' not in content
+    for pk in (wydzial.pk, dziecko.pk, dziecko2.pk):
+        assert f'name="jednostka" value="{pk}"' in content
+
+
+def test_browse_jednostka_zwykla_ma_przycisk_pokaz_wszystkie(jednostka, client):
+    """Na zwykłej jednostce (rodzaj bez ``pokazuj_strukture_podjednostek``)
+    przycisk „Pokaż wszystkie publikacje" jest widoczny."""
+    url = reverse("bpp:browse_jednostka", args=(jednostka.slug,))
+    content = normalize_html(client.get(url).rendered_content)
+    assert "Pokaż wszystkie publikacje" in content
 
 
 def test_jednostka_aktualni_pracownicy(

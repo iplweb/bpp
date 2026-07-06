@@ -76,7 +76,8 @@ def test_browse_wydzial_redirects_to_browse_jednostka(setup_group, logged_in_cli
 @pytest.mark.django_db
 def test_browse_wydzial_redirect_404_bez_wezla_lustra(setup_group, logged_in_client):
     """Gdy wydział nie ma jeszcze węzła-lustra (lazy, patrz
-    struktura_konwersja.py), legacy URL zwraca 404 zamiast 500."""
+    struktura_konwersja.py) ani żadna Jednostka nie nosi tego sluga,
+    legacy URL zwraca 404 zamiast 500."""
     u = any_uczelnia(nazwa="uczelnia", skrot="uu")
     w = Wydzial.objects.create(nazwa="wydzial bez lustra", uczelnia=u)
 
@@ -84,6 +85,22 @@ def test_browse_wydzial_redirect_404_bez_wezla_lustra(setup_group, logged_in_cli
         reverse("bpp:browse_wydzial", args=(w.slug,)), follow=False
     )
     assert res.status_code == 404
+
+
+@pytest.mark.django_db
+def test_browse_wydzial_redirect_fallback_slug_jednostki(setup_group, logged_in_client):
+    """Gdy slug nie odpowiada żadnemu legacy ``Wydzial``, ale istnieje węzeł
+    ``Jednostka`` o dokładnie tym slugu (np. wydział założony od razu w
+    drzewie, bez modelu Wydzial), /wydzial/<slug>/ przekierowuje 301 na
+    /jednostka/<ten-sam-slug>/."""
+    u = any_uczelnia(nazwa="uczelnia", skrot="uu")
+    j = any_jednostka(nazwa="Wydział Nowego Typu", uczelnia=u, wydzial=None)
+
+    res = logged_in_client.get(
+        reverse("bpp:browse_wydzial", args=(j.slug,)), follow=False
+    )
+    assert res.status_code == 301
+    assert res.url == reverse("bpp:browse_jednostka", args=(j.slug,))
 
 
 @pytest.mark.django_db
