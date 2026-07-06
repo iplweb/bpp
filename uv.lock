@@ -672,7 +672,7 @@ dev = [
     { name = "django-debug-toolbar", specifier = ">=6.3.0" },
     { name = "django-dev-helpers", specifier = ">=0.1.11" },
     { name = "django-dynamic-fixture", specifier = ">=1.8.0" },
-    { name = "django-run-site", specifier = ">=0.17.0" },
+    { name = "django-run-site", specifier = ">=0.19.0" },
     { name = "django-webtest", specifier = "==1.9.14" },
     { name = "djlint", specifier = ">=1.39.5,<2" },
     { name = "ipdb", specifier = ">=0.13.9" },
@@ -2162,15 +2162,15 @@ wheels = [
 
 [[package]]
 name = "django-run-site"
-version = "0.17.0"
+version = "0.19.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "docker", marker = "platform_python_implementation != 'PyPy'" },
     { name = "testcontainers", extra = ["redis"], marker = "platform_python_implementation != 'PyPy'" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/20/2c/00c04e0e397bf76019c97e8a5c07fdabb72144e59121f11688eabb3e6be9/django_run_site-0.17.0.tar.gz", hash = "sha256:acb25dcc51a10a9ac2aa78fbc49fd2cf18a3e4db26f97e975c17ab090c80a326", size = 204884, upload-time = "2026-06-29T11:08:08.549Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/f7/6b/091ec1663ebae9c0efa0cce503fab7ab718c93b34ed2be08d2bd5ae9d715/django_run_site-0.19.0.tar.gz", hash = "sha256:6c1dceb6ec7d2e0d61f312a47a10bad9de61bba17196142780c460e896a110f4", size = 225129, upload-time = "2026-07-06T19:44:33.984Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/90/07/5e81cc96c4ae0a8b3aac4df9c80ec4e9abb7af3fa42eea731de326adf4a2/django_run_site-0.17.0-py3-none-any.whl", hash = "sha256:ea536869fafb041617aa417fe2feaf7be1853050f7a4a4cb77bf0d4d259b477c", size = 108896, upload-time = "2026-06-29T11:08:07.041Z" },
+    { url = "https://files.pythonhosted.org/packages/9f/46/f0082b1c8b10eced4537058334537b7dbc1b713e21758ed25fd1dc31f40c/django_run_site-0.19.0-py3-none-any.whl", hash = "sha256:7f74d4102a90b01b4fff81650ba1bd12f57a219fc0a641fd29bde38f54703859", size = 110806, upload-time = "2026-07-06T19:44:32.296Z" },
 ]
 
 [[package]]
