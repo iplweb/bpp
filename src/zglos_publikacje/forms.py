@@ -305,6 +305,7 @@ class Zgloszenie_Publikacji_DaneForm(forms.ModelForm):
     ):
         self.rodzaj = rodzaj
         self.forma_dostepu = forma_dostepu
+        uczelnia = kw.pop("uczelnia", None)
         # Wizard zapisuje pliki kroku 2 poza storage formtools, więc przy
         # rewalidacji (render_done) `self.files` jest puste mimo że pliki
         # są. Ta flaga pozwala `clean()` zaakceptować taki przypadek.
@@ -317,8 +318,21 @@ class Zgloszenie_Publikacji_DaneForm(forms.ModelForm):
 
         super().__init__(*args, **kw)
 
-        uczelnia = Uczelnia.objects.get_default()
-        if not uczelnia.pytaj_o_zgode_na_publikacje_pelnego_tekstu:
+        if uczelnia is None:
+            # Multi-hosted: bez requestu nie zgadujemy — ``get()`` crashował
+            # przy >1 uczelni (MultipleObjectsReturned). ``model.clean``
+            # poprawnie obsługuje ``None``.
+            uczelnia = Uczelnia.objects.get_single_uczelnia_or_none()
+
+        # Przepisz uczelnię oglądającego na instancję, żeby walidacja opłat
+        # w ``Zgloszenie_Publikacji.clean`` użyła JEJ, a nie zgadywała przez
+        # ``Uczelnia.objects.get()`` (crash przy >1 uczelni, multi-hosted).
+        self.instance._uczelnia = uczelnia
+
+        if (
+            uczelnia is not None
+            and not uczelnia.pytaj_o_zgode_na_publikacje_pelnego_tekstu
+        ):
             self.fields.pop("zgoda_na_publikacje_pelnego_tekstu", None)
 
         self._usun_pola_wg_formy_dostepu(forma_dostepu)
@@ -488,6 +502,7 @@ class Zgloszenie_Publikacji_KosztPublikacjiForm(forms.ModelForm):
         ]
 
     def __init__(self, *args, **kw):
+        uczelnia = kw.pop("uczelnia", None)
         self.helper = FormHelper()
         self.helper.form_class = "custom"
         self.helper.form_action = "."
@@ -502,6 +517,12 @@ class Zgloszenie_Publikacji_KosztPublikacjiForm(forms.ModelForm):
             ),
         )
         super().__init__(*args, **kw)
+
+        # Multi-hosted: przepisz uczelnię oglądającego na instancję, żeby
+        # walidacja opłat w ``Zgloszenie_Publikacji.clean`` użyła JEJ, a nie
+        # zgadywała przez ``Uczelnia.objects.get()`` (crash przy >1 uczelni,
+        # Rollbar #400).
+        self.instance._uczelnia = uczelnia
 
     def clean_opl_pub_cost_free(self):
         v = self.cleaned_data.get("opl_pub_cost_free")

@@ -1,0 +1,79 @@
+/*!
+ * BPP — domyślne, minimalne style widgetu osadzania publikacji.
+ *
+ * Celowo nieagresywne: dziedziczą font ze strony hosta, używają względnych
+ * jednostek i nie ustawiają tła. Każdą regułę można nadpisać własnym CSS-em
+ * (wyższa specyficzność) albo wyłączyć całość atrybutem data-no-css.
+ *
+ * Kontrakt klas (publiczny — patrz dokumentacja):
+ *   .bpp-publikacje              kontener
+ *   .bpp-publikacje__lista       lista (ol) w wariancie 'lista'
+ *   .bpp-publikacje__item        pozycja listy (li)
+ *   .bpp-publikacje__tabela      tabela w wariancie 'tabela'
+ *   .bpp-publikacje__wiersz      wiersz tabeli (tr)
+ *   .bpp-publikacje__opis        opis bibliograficzny
+ *   .bpp-publikacje__link        link [szczegóły]
+ *   .bpp-publikacje__link-cell   komórka linku (tabela)
+ *   .bpp-publikacje__stopka      stopka z licznikiem i linkiem do profilu
+ *   .bpp-publikacje__empty       komunikat "brak publikacji"
+ *   .bpp-publikacje__loading     stan ładowania
+ *   .bpp-publikacje__error       komunikat błędu
+ */
+
+.bpp-publikacje {
+  line-height: 1.6;
+}
+
+.bpp-publikacje__lista {
+  margin: 0;
+  padding-left: 1.4em;
+}
+
+.bpp-publikacje__item {
+  margin-bottom: 0.75em;
+}
+
+.bpp-publikacje__tabela {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.bpp-publikacje__tabela td {
+  padding: 0.5em 0.75em 0.5em 0;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+  vertical-align: top;
+}
+
+.bpp-publikacje__link-cell {
+  white-space: nowrap;
+  text-align: right;
+}
+
+.bpp-publikacje__link {
+  font-size: 0.9em;
+  text-decoration: none;
+}
+
+.bpp-publikacje__link:hover {
+  text-decoration: underline;
+}
+
+.bpp-publikacje__stopka {
+  margin-top: 1em;
+  padding-top: 0.75em;
+  border-top: 1px solid rgba(0, 0, 0, 0.1);
+  font-size: 0.85em;
+  font-style: italic;
+}
+
+.bpp-publikacje__empty,
+.bpp-publikacje__loading {
+  font-style: italic;
+  opacity: 0.75;
+}
+
+.bpp-publikacje__error {
+  padding: 0.75em 1em;
+  border: 1px solid rgba(170, 0, 0, 0.4);
+  border-radius: 4px;
+}

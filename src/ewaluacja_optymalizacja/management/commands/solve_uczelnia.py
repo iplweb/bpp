@@ -2,13 +2,16 @@
 Management command to solve optimization for all disciplines in a university.
 """
 
+import logging
 from decimal import Decimal
 
 from django.core.management import BaseCommand
+from django.core.management.base import CommandError
 from django.db import transaction
 from django.utils import timezone
 
 from bpp.models import Dyscyplina_Naukowa, Uczelnia
+from bpp.util import zaloguj_polkniety_wyjatek
 from ewaluacja_liczba_n.models import IloscUdzialowDlaAutoraZaCalosc
 from ewaluacja_optymalizacja.core import is_low_mono, solve_uczelnia
 from ewaluacja_optymalizacja.models import (
@@ -16,6 +19,8 @@ from ewaluacja_optymalizacja.models import (
     OptimizationPublication,
     OptimizationRun,
 )
+
+logger = logging.getLogger(__name__)
 
 
 class Command(BaseCommand):
@@ -30,7 +35,7 @@ class Command(BaseCommand):
             "--uczelnia",
             type=int,
             default=None,
-            help="University ID (if not specified, uses first available)",
+            help="University ID (wymagane gdy w systemie jest >1 uczelnia)",
         )
         parser.add_argument(
             "--min-liczba-n",
@@ -45,25 +50,36 @@ class Command(BaseCommand):
             help="Save results to database (default: True)",
         )
 
+    def _resolve_uczelnia(self, uczelnia_id):
+        """Uczelnia dla komendy CLI (single-or-fail).
+
+        - ``--uczelnia`` zawsze honorowane (i walidowane),
+        - przy dokładnie jednej uczelni używamy jej (``get()`` — count==1),
+        - przy wielu uczelniach brak ``--uczelnia`` to ``CommandError`` —
+          bez cichego wyboru pierwszej-z-brzegu (bug multi-hosted).
+        """
+        if uczelnia_id is not None:
+            try:
+                return Uczelnia.objects.get(pk=uczelnia_id)
+            except Uczelnia.DoesNotExist as e:
+                raise CommandError(f"Brak uczelni o id={uczelnia_id}.") from e
+
+        count = Uczelnia.objects.count()
+        if count == 0:
+            raise CommandError("Brak uczelni w bazie danych.")
+        if count == 1:
+            return Uczelnia.objects.get()
+        raise CommandError(
+            "W systemie jest więcej niż jedna uczelnia — podaj --uczelnia, "
+            "żeby ograniczyć optymalizację do jednej uczelni."
+        )
+
     def handle(self, uczelnia, min_liczba_n, save_to_db, *args, **options):
         self.stdout.write("=" * 80)
         self.stdout.write("SOLVING OPTIMIZATION FOR UNIVERSITY")
         self.stdout.write("=" * 80)
 
-        # Get university
-        if uczelnia:
-            try:
-                uczelnia_obj = Uczelnia.objects.get(pk=uczelnia)
-            except Uczelnia.DoesNotExist:
-                self.stdout.write(
-                    self.style.ERROR(f"University with ID {uczelnia} not found")
-                )
-                return
-        else:
-            uczelnia_obj = Uczelnia.objects.first()
-            if not uczelnia_obj:
-                self.stdout.write(self.style.ERROR("No university found in database"))
-                return
+        uczelnia_obj = self._resolve_uczelnia(uczelnia)
 
         self.stdout.write(f"University: {uczelnia_obj}")
         self.stdout.write(f"Minimum liczba N: {min_liczba_n}")
@@ -84,6 +100,12 @@ class Command(BaseCommand):
                     )
                 results_count += 1
             except Exception as e:
+                zaloguj_polkniety_wyjatek(
+                    f"Zapis wyników optymalizacji dyscypliny "
+                    f"'{dyscyplina_nazwa}' do bazy nie powiódł się",
+                    logger=logger,
+                    do_rollbar=False,
+                )
                 self.stdout.write(
                     self.style.ERROR(f"Error saving {dyscyplina_nazwa}: {e}")
                 )

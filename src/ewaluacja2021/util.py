@@ -14,7 +14,6 @@ from decimal import Decimal
 from enum import Enum
 from typing import TYPE_CHECKING, Any
 
-from django.contrib.sites.models import Site
 from django.utils.functional import cached_property
 from unidecode import unidecode
 
@@ -110,7 +109,12 @@ def output_table_to_xlsx(  # noqa: C901 — złożoność pre-existing, nie z te
 
     first_table_row = ws.max_row
 
-    site_name = Site.objects.first().domain
+    # CLI/Celery context — brak requestu. Helper (bez „uczelni domyślnej")
+    # bierze bazowy URL z pierwszego Site (lub localhost).
+    from bpp.util import site_url_for_request
+
+    site_url = site_url_for_request()
+    site_name = site_url.removeprefix("https://").removeprefix("http://")
     url = first_column_url.format(site_name=site_name)
     autor_url = f"https://{site_name}/bpp/autor/"
     for row in dataset:

@@ -14,6 +14,7 @@ from bpp.models import (
     Wydawnictwo_Ciagle_Autor,
     Wydawnictwo_Zwarte_Autor,
 )
+from raport_slotow.uczelnia_helper import uczelnia_dla_odczytu
 
 from ...models import (
     OptimizationRun,
@@ -35,7 +36,7 @@ def evaluation_browser(request):
     Główna strona przeglądarki ewaluacji.
     Wyświetla podsumowanie dyscyplin i tabelę publikacji z filtrami.
     """
-    uczelnia = Uczelnia.objects.first()
+    uczelnia = uczelnia_dla_odczytu(request)
     if not uczelnia:
         messages.error(request, "Nie znaleziono uczelni.")
         return redirect("ewaluacja_optymalizacja:index")
@@ -65,7 +66,7 @@ def evaluation_browser(request):
 @login_required
 def browser_summary(request):
     """HTMX partial - podsumowanie punktacji dyscyplin."""
-    uczelnia = Uczelnia.objects.first()
+    uczelnia = uczelnia_dla_odczytu(request)
     if not uczelnia:
         return HttpResponseBadRequest("Nie znaleziono uczelni")
 
@@ -86,7 +87,7 @@ def browser_summary(request):
 @login_required
 def browser_table(request):
     """HTMX partial - tabela publikacji z paginacją i filtrami."""
-    uczelnia = Uczelnia.objects.first()
+    uczelnia = uczelnia_dla_odczytu(request)
     if not uczelnia:
         return HttpResponseBadRequest("Nie znaleziono uczelni")
 
@@ -125,7 +126,7 @@ def browser_table(request):
 @require_POST
 def browser_toggle_pin(request, model_type, pk):
     """Toggle przypieta na rekordzie autor-publikacja."""
-    uczelnia = Uczelnia.objects.first()
+    uczelnia = Uczelnia.objects.get_for_request(request)
     if not uczelnia:
         return HttpResponseBadRequest("Nie znaleziono uczelni")
 
@@ -179,7 +180,7 @@ def browser_toggle_pin(request, model_type, pk):
 @require_POST
 def browser_swap_discipline(request, model_type, pk):
     """Zamień dyscyplinę na drugą dla autora z dwoma dyscyplinami."""
-    uczelnia = Uczelnia.objects.first()
+    uczelnia = Uczelnia.objects.get_for_request(request)
     if not uczelnia:
         return HttpResponseBadRequest("Nie znaleziono uczelni")
 
@@ -256,7 +257,7 @@ def browser_recalc_status(request):
     """HTMX polling - status przeliczania."""
     from ewaluacja_liczba_n.models import LiczbaNDlaUczelni
 
-    uczelnia = Uczelnia.objects.first()
+    uczelnia = uczelnia_dla_odczytu(request)
     if not uczelnia:
         return HttpResponseBadRequest("Nie znaleziono uczelni")
 

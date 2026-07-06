@@ -1,6 +1,8 @@
 """Initial setup for PBN import - languages, countries, disciplines"""
 
-from bpp.models import Uczelnia
+import logging
+
+from bpp.util import zaloguj_polkniety_wyjatek
 from import_common.core import matchuj_uczelnie
 from pbn_integrator.utils import (
     integruj_jezyki,
@@ -10,6 +12,8 @@ from pbn_integrator.utils import (
 
 from .base import ImportStepBase
 
+logger = logging.getLogger(__name__)
+
 
 class InitialSetup(ImportStepBase):
     """Handle initial setup: languages, countries, disciplines, and institution matching"""
@@ -17,13 +21,15 @@ class InitialSetup(ImportStepBase):
     step_name = "initial_setup"
     step_description = "Konfiguracja początkowa"
 
-    def run(self):
+    def run(self, uczelnia=None):
         """Execute initial setup"""
+        if uczelnia is None:
+            uczelnia = self.uczelnia
+
         # Check if we have a PBN client
         if self.client is None:
             self.log("warning", "Brak klienta PBN - próba utworzenia")
             # Try to get or create PBN client
-            uczelnia = Uczelnia.objects.get_default()
             if uczelnia:
                 try:
                     self.client = uczelnia.pbn_client()
@@ -53,7 +59,7 @@ class InitialSetup(ImportStepBase):
             # For other errors, we can try minimal setup
             self.log("warning", f"Nie można zintegrować języków z PBN: {error_msg}")
             self.log("info", "Próba uruchomienia minimalnej konfiguracji")
-            return self._run_minimal_setup(Uczelnia.objects.get_default())
+            return self._run_minimal_setup(uczelnia)
 
         # Step 2: Countries
         self.update_progress(1, 4, "Importowanie krajów")
@@ -61,6 +67,11 @@ class InitialSetup(ImportStepBase):
         try:
             integruj_kraje(self.client)
         except Exception as e:
+            zaloguj_polkniety_wyjatek(
+                "Nie udało się zintegrować krajów z PBN",
+                logger=logger,
+                do_rollbar=False,  # Rollbar już w handle_error
+            )
             self.handle_pbn_error(e, "Nie udało się zintegrować krajów")
 
         # Step 3: Disciplines
@@ -70,6 +81,11 @@ class InitialSetup(ImportStepBase):
             self.client.download_disciplines()
             self.client.sync_disciplines()
         except Exception as e:
+            zaloguj_polkniety_wyjatek(
+                "Nie udało się pobrać/zsynchronizować dyscyplin z PBN",
+                logger=logger,
+                do_rollbar=False,  # Rollbar już w handle_error
+            )
             self.handle_pbn_error(e, "Nie udało się pobrać dyscyplin")
 
         # Step 4: Institutions and auto-match Uczelnia
@@ -82,12 +98,16 @@ class InitialSetup(ImportStepBase):
         try:
             pobierz_instytucje_polon(self.client, callback=subtask_callback)
         except Exception as e:
+            zaloguj_polkniety_wyjatek(
+                "Nie udało się pobrać instytucji z POLON",
+                logger=logger,
+                do_rollbar=False,  # Rollbar już w handle_error
+            )
             self.handle_pbn_error(e, "Nie udało się pobrać instytucji")
         finally:
             self.clear_subtask_progress()
 
         # Auto-match Uczelnia and enable PBN integration
-        uczelnia = Uczelnia.objects.get_default()
         self._finalize_uczelnia_setup(uczelnia)
 
         self.update_progress(4, 4, "Zakończono konfigurację początkową")

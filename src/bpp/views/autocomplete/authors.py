@@ -1,6 +1,7 @@
 """Author-related autocomplete views."""
 
 import json
+from collections import OrderedDict
 
 from braces.views import GroupRequiredMixin
 from dal import autocomplete
@@ -13,7 +14,7 @@ from queryset_sequence import QuerySetSequence
 from bpp.const import GR_WPROWADZANIE_DANYCH
 from bpp.jezyk_polski import warianty_zapisanego_nazwiska
 from bpp.models import Autor_Dyscyplina
-from bpp.models.autor import Autor
+from bpp.models.autor import Autor, Autor_Jednostka
 from bpp.models.patent import Patent, Patent_Autor
 from bpp.models.wydawnictwo_ciagle import Wydawnictwo_Ciagle, Wydawnictwo_Ciagle_Autor
 from bpp.models.wydawnictwo_zwarte import Wydawnictwo_Zwarte, Wydawnictwo_Zwarte_Autor
@@ -28,31 +29,106 @@ class AutorAutocompleteBase(
 ):
     """Base autocomplete for authors with PBN indicators."""
 
+    GROUP_NASZA_UCZELNIA = 1
+    GROUP_HISTORYCZNIE = 2
+    GROUP_ZEWNETRZNI = 3
+
+    GROUP_LABELS = {
+        GROUP_NASZA_UCZELNIA: "✅ Autorzy z naszej uczelni",
+        GROUP_HISTORYCZNIE: "🏛️ Autorzy powiązani historycznie z naszą uczelnią",
+        GROUP_ZEWNETRZNI: "🌐 Autorzy zewnętrzni",
+    }
+
     def get_queryset(self):
-        from django.db.models import Exists, OuterRef
-
-        qs = Autor.objects.select_related("tytul", "pbn_uid")
-
-        # Annotate with information if person is from institution (OsobaZInstytucji)
-        qs = qs.annotate(
-            ma_osobe_z_instytucji=Exists(
-                OsobaZInstytucji.objects.filter(personId_id=OuterRef("pbn_uid_id"))
-            )
+        from django.db.models import (
+            Case,
+            Exists,
+            IntegerField,
+            OuterRef,
+            Value,
+            When,
         )
 
         if self.q:
-            return (
-                Autor.objects.fulltext_filter(self.q)
-                .select_related("tytul", "pbn_uid")
-                .annotate(
-                    ma_osobe_z_instytucji=Exists(
-                        OsobaZInstytucji.objects.filter(
-                            personId_id=OuterRef("pbn_uid_id")
-                        )
-                    )
+            qs = Autor.objects.fulltext_filter(self.q)
+        else:
+            qs = Autor.objects.all()
+
+        uczelnia = getattr(getattr(self, "request", None), "_uczelnia", None)
+
+        # Multi-hosted (Track 7a): wskaźnik "✅ jest w PBN naszej instytucji"
+        # ma odzwierciedlać instytucję PBN OGLĄDAJĄCEJ uczelni
+        # (``uczelnia.pbn_uid``), nie dowolnej. ``OsobaZInstytucji`` to lustro
+        # per-instytucja (institutionId == uczelnia.pbn_uid), więc zawężamy
+        # subquery. Brak uczelni / brak pbn_uid → subquery globalne (dawne
+        # zachowanie, single-install / uczelnia bez konfiguracji PBN).
+        osoba_z_instytucji_qs = OsobaZInstytucji.objects.filter(
+            personId_id=OuterRef("pbn_uid_id")
+        )
+        if uczelnia is not None and uczelnia.pbn_uid_id is not None:
+            osoba_z_instytucji_qs = osoba_z_instytucji_qs.filter(
+                institutionId_id=uczelnia.pbn_uid_id
+            )
+
+        qs = qs.select_related("tytul", "pbn_uid").annotate(
+            ma_osobe_z_instytucji=Exists(osoba_z_instytucji_qs)
+        )
+
+        if uczelnia:
+            ma_jednostke_w_naszej = Exists(
+                Autor_Jednostka.objects.filter(
+                    autor=OuterRef("pk"),
+                    jednostka__uczelnia=uczelnia,
                 )
             )
+            qs = qs.annotate(
+                ma_jednostke_w_naszej=ma_jednostke_w_naszej,
+                grupa_uczelnia=Case(
+                    When(
+                        aktualna_jednostka__uczelnia=uczelnia,
+                        then=Value(self.GROUP_NASZA_UCZELNIA),
+                    ),
+                    When(
+                        ma_jednostke_w_naszej=True,
+                        then=Value(self.GROUP_HISTORYCZNIE),
+                    ),
+                    default=Value(self.GROUP_ZEWNETRZNI),
+                    output_field=IntegerField(),
+                ),
+            ).order_by("grupa_uczelnia", "nazwisko", "imiona")
+
         return qs
+
+    def get_results(self, context):
+        """Group authors into optgroups by their relation to the current uczelnia."""
+        uczelnia = getattr(getattr(self, "request", None), "_uczelnia", None)
+        if uczelnia is None:
+            return super().get_results(context)
+
+        groups = OrderedDict((grp_no, []) for grp_no in self.GROUP_LABELS)
+        for result in context["object_list"]:
+            grp_no = getattr(result, "grupa_uczelnia", self.GROUP_ZEWNETRZNI)
+            groups.setdefault(grp_no, []).append(result)
+
+        output = []
+        for grp_no, items in groups.items():
+            if not items:
+                continue
+            output.append(
+                {
+                    "id": None,
+                    "text": self.GROUP_LABELS.get(grp_no, ""),
+                    "children": [
+                        {
+                            "id": self.get_result_value(r),
+                            "text": self.get_result_label(r),
+                            "selected_text": self.get_selected_result_label(r),
+                        }
+                        for r in items
+                    ],
+                }
+            )
+        return output
 
     def get_result_label(self, result):
         # Handle error objects or non-Autor instances
@@ -93,8 +169,13 @@ class AutorAutocomplete(GroupRequiredMixin, AutorAutocompleteBase):
     )
 
     def create_object(self, text):
+        # Multi-hosted: nowy autor dziedziczy widoczność (``pokazuj``) z uczelni
+        # Z REQUESTU (host), nie z pierwszej-z-brzegu.
+        from bpp.models.uczelnia import Uczelnia
+
+        uczelnia = Uczelnia.objects.get_for_request(getattr(self, "request", None))
         try:
-            obj = Autor.objects.create_from_string(text)
+            obj = Autor.objects.create_from_string(text, uczelnia=uczelnia)
         except ValueError:
             return self.err
 
@@ -117,17 +198,70 @@ class AutorAutocomplete(GroupRequiredMixin, AutorAutocompleteBase):
 
 
 class PublicAutorAutocomplete(AutorAutocompleteBase):
-    """Public autocomplete for authors (no create, no PBN/MNISW markers)."""
+    """Public autocomplete for authors (no create, no PBN/MNISW markers).
+
+    Pokazuje WYŁĄCZNIE autorów związanych z uczelnią oglądającego — obecnie lub
+    historycznie (zakres ``AutorQuerySet.kiedykolwiek_zwiazani``). Autorzy
+    zewnętrzni (nigdy nie afiliowani) odpadają — także w single-install
+    (świadome zawężenie: zakres semantyczny, nie izolacja). Brak ustalonej
+    uczelni → pusto (fail-closed). W odróżnieniu od staffowego
+    ``AutorAutocomplete`` lista jest PŁASKA (bez optgroup): grupowanie z
+    ``AutorAutocompleteBase`` powielało nagłówek „✅ Autorzy z naszej uczelni"
+    w każdej stronie odpowiedzi Select2 → przy przewijaniu nagłówek dublował
+    się. Skoro picker pokazuje już tylko autorów z uczelni, grupy są zbędne.
+    """
+
+    def get_queryset(self):
+        from bpp.models import Uczelnia
+
+        request = getattr(self, "request", None)
+        uczelnia = Uczelnia.objects.get_for_request(request) if request else None
+        return super().get_queryset().kiedykolwiek_zwiazani(uczelnia)
+
+    def get_results(self, context):
+        """Płaska lista wyników — bez optgroupów (kontrakt: brak duplikacji)."""
+        return autocomplete.Select2QuerySetView.get_results(self, context)
 
     def get_result_label(self, result):
         """Return clean author name without PBN/MNISW markers."""
         return str(result)
 
 
-class AutorZUczelniAutocopmlete(AutorAutocomplete):
-    """Autocomplete for authors from the institution."""
+class AutorAktualnieZatrudnionyNaUczelni(AutorAutocomplete):
+    """Autocomplete autorów AKTUALNIE zatrudnionych w oglądającej uczelni.
 
-    pass
+    Zawęża WYŁĄCZNIE po ``aktualna_jednostka__uczelnia`` == uczelnia z requestu —
+    i tylko tyle. Bez grup „naszej/historycznie/zewnętrzni", bez autorów spoza
+    uczelni, bez historycznie związanych. Lista jest płaska (override
+    ``get_results``), więc nagłówki optgroup nie powielają się przy przewijaniu
+    Select2. Używany w adminie prac doktorskich/habilitacyjnych, gdzie kandydat
+    z definicji jest pracownikiem uczelni.
+
+    Dziedziczy po ``AutorAutocomplete`` dla kontroli dostępu (``group_required``)
+    i możliwości tworzenia nowego autora — ale całkowicie nadpisuje wybór i
+    prezentację wyników.
+    """
+
+    def get_queryset(self):
+        if self.q:
+            qs = Autor.objects.fulltext_filter(self.q)
+        else:
+            qs = Autor.objects.all()
+
+        from bpp.models import Uczelnia
+
+        request = getattr(self, "request", None)
+        uczelnia = Uczelnia.objects.get_for_request(request) if request else None
+
+        return (
+            qs.aktualnie_zatrudnieni(uczelnia)
+            .select_related("tytul", "pbn_uid")
+            .order_by("nazwisko", "imiona")
+        )
+
+    def get_results(self, context):
+        """Płaska lista wyników — bez optgroupów."""
+        return autocomplete.Select2QuerySetView.get_results(self, context)
 
 
 class ZapisanyJakoAutocomplete(

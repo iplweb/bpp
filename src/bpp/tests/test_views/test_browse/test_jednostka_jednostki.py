@@ -19,6 +19,17 @@ from bpp.models.autor import Autor
 from bpp.views.browse import JednostkiView
 
 
+def test_browse_jednostka_link_osadzania(jednostka, client):
+    """Strona jednostki zawiera drobny link do dokumentacji widgetu osadzania
+    (z prefillem slugu jednostki)."""
+    res = client.get(reverse("bpp:browse_jednostka", args=(jednostka.slug,)))
+    content = res.rendered_content
+
+    assert "Osadź publikacje tej jednostki" in content
+    assert "widget-publikacji" in content
+    assert f"jednostka={jednostka.slug}" in content
+
+
 @pytest.mark.django_db
 def test_jednostka_nie_wyswietlaj_autorow_gdy_wielu(client, jednostka):
     for n in range(settings.MAX_NO_AUTHORS_ON_BROWSE_JEDNOSTKA_PAGE + 1):

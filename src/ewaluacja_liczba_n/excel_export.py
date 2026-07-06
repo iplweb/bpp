@@ -139,7 +139,7 @@ class LiczbaNExcelExporter:
 
     def export(self, request) -> HttpResponse:
         """Generate and return the Excel export response."""
-        uczelnia = Uczelnia.objects.get_default()
+        uczelnia = Uczelnia.objects.get_for_request(request)
         wb = Workbook()
 
         # Sheet 1: Summary of Liczba N for institution

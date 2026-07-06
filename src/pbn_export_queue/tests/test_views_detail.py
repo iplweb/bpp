@@ -146,6 +146,69 @@ def test_pbnexportqueuedetailview_get_context_data_with_sentdata(
 
 
 @pytest.mark.django_db
+def test_add_sent_data_context_untagged_multi_install_returns_newest(
+    admin_user, wydawnictwo_ciagle, uczelnia, uczelnia2_for_detail
+):
+    """Untagged (uczelnia=None) wpis kolejki przy ≥2 wierszach SentData
+    (różne uczelnie) NIE może rzucić MultipleObjectsReturned — degraduje
+    do najświeższego wiersza (najnowszy last_updated_on)."""
+    from pbn_api.models.sentdata import SentData
+
+    content_type = ContentType.objects.get_for_model(wydawnictwo_ciagle)
+
+    # Dwa wiersze SentData dla tego samego rekordu, różne uczelnie.
+    older = baker.make(
+        SentData,
+        content_type=content_type,
+        object_id=wydawnictwo_ciagle.pk,
+        uczelnia=uczelnia,
+        data_sent={"który": "stary"},
+    )
+    newer = baker.make(
+        SentData,
+        content_type=content_type,
+        object_id=wydawnictwo_ciagle.pk,
+        uczelnia=uczelnia2_for_detail,
+        data_sent={"który": "nowy"},
+    )
+    # Wymuś, że ``newer`` ma faktycznie późniejsze last_updated_on
+    # (auto_now ustawia je przy każdym save; oba mogą wpaść w ten sam tick).
+    SentData.objects.filter(pk=older.pk).update(last_updated_on="2020-01-01T00:00:00Z")
+    SentData.objects.filter(pk=newer.pk).update(last_updated_on="2024-01-01T00:00:00Z")
+
+    # Untagged wpis kolejki (legacy / multi-install niezbackfillowany).
+    queue_item = baker.make(
+        PBN_Export_Queue,
+        rekord_do_wysylki=wydawnictwo_ciagle,
+        zamowil=admin_user,
+        uczelnia=None,
+    )
+
+    request = RequestFactory().get("/")
+    request.user = admin_user
+
+    view = PBNExportQueueDetailView()
+    view.request = request
+    view.object = queue_item
+
+    context = {}
+    # NIE może rzucić MultipleObjectsReturned.
+    result = view._add_sent_data_context(context)
+
+    assert result is not None
+    assert result.pk == newer.pk
+    assert context["sent_data"].pk == newer.pk
+
+
+@pytest.fixture
+def uczelnia2_for_detail(db):
+    """Druga uczelnia dla testów untagged multi-install w detalu kolejki."""
+    from bpp.models import Uczelnia
+
+    return baker.make(Uczelnia, skrot="U2D", nazwa="Druga uczelnia detal")
+
+
+@pytest.mark.django_db
 def test_pbnexportqueuedetailview_get_context_data_without_sentdata(
     client, admin_user, wydawnictwo_ciagle
 ):

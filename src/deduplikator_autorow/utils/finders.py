@@ -10,7 +10,41 @@ from .analysis import autor_ma_publikacje_z_lat
 from .search import szukaj_kopii
 
 
-def znajdz_pierwszego_autora_z_duplikatami(  # noqa: C901
+def _ma_nowe_publikacje(rekord_w_bpp, duplikaty, limit: int) -> bool:
+    """
+    Czy główny autor (rekord_w_bpp) lub którykolwiek z pierwszych ``limit``
+    duplikatów ma publikacje z lat 2022-2025.
+    """
+    if autor_ma_publikacje_z_lat(rekord_w_bpp):
+        return True
+    for duplikat in duplikaty[:limit]:
+        if autor_ma_publikacje_z_lat(duplikat):
+            return True
+    return False
+
+
+def _osoby_z_instytucji_query(excluded_authors: list[Scientist]):
+    """
+    Buduje queryset OsobaZInstytucji (posortowany po nazwisku) z wykluczeniem
+    autorów jawnie wskazanych oraz ignorowanych (IgnoredScientist).
+    """
+    excluded_scientist_ids = [author.pk for author in excluded_authors]
+    ignored_scientist_ids = list(
+        IgnoredScientist.objects.values_list("scientist_id", flat=True)
+    )
+
+    osoby_query = (
+        OsobaZInstytucji.objects.select_related("personId").all().order_by("lastName")
+    )
+
+    all_excluded_ids = excluded_scientist_ids + ignored_scientist_ids
+    if all_excluded_ids:
+        osoby_query = osoby_query.exclude(personId__pk__in=all_excluded_ids)
+
+    return osoby_query
+
+
+def znajdz_pierwszego_autora_z_duplikatami(
     excluded_authors: list[Scientist] | None = None,
 ) -> Scientist | None:
     """
@@ -31,23 +65,9 @@ def znajdz_pierwszego_autora_z_duplikatami(  # noqa: C901
     if excluded_authors is None:
         excluded_authors = []
 
-    # Pobierz IDs wykluczonych autorów
-    excluded_scientist_ids = [author.pk for author in excluded_authors]
-
-    # Pobierz IDs ignorowanych autorów
-    ignored_scientist_ids = list(
-        IgnoredScientist.objects.values_list("scientist_id", flat=True)
-    )
-
-    # Przeszukaj wszystkie rekordy OsobaZInstytucji, wykluczając określonych autorów
-    osoby_query = (
-        OsobaZInstytucji.objects.select_related("personId").all().order_by("lastName")
-    )
-
-    # Exclude both explicitly excluded and ignored authors
-    all_excluded_ids = excluded_scientist_ids + ignored_scientist_ids
-    if all_excluded_ids:
-        osoby_query = osoby_query.exclude(personId__pk__in=all_excluded_ids)
+    # Przeszukaj wszystkie rekordy OsobaZInstytucji, wykluczając określonych
+    # i ignorowanych autorów
+    osoby_query = _osoby_z_instytucji_query(excluded_authors)
 
     # Zbierz autorów z duplikatami, podzielonych na dwie grupy
     autorzy_z_nowymi_publikacjami = []
@@ -67,30 +87,20 @@ def znajdz_pierwszego_autora_z_duplikatami(  # noqa: C901
         # Wyszukaj duplikaty dla tego autora
         duplikaty = szukaj_kopii(osoba_z_instytucji)
 
-        # Jeśli znaleziono duplikaty
-        if duplikaty.exists():
-            # Sprawdź czy główny autor lub któryś z duplikatów ma publikacje z lat 2022-2025
-            ma_nowe_publikacje = autor_ma_publikacje_z_lat(scientist.rekord_w_bpp)
+        if not duplikaty.exists():
+            continue
 
-            # Sprawdź również duplikaty
-            if not ma_nowe_publikacje:
-                for duplikat in duplikaty[
-                    :10
-                ]:  # Sprawdź pierwsze 10 duplikatów dla wydajności
-                    if autor_ma_publikacje_z_lat(duplikat):
-                        ma_nowe_publikacje = True
-                        break
+        # Sprawdź czy główny autor lub któryś z pierwszych 10 duplikatów ma
+        # publikacje z lat 2022-2025 i dodaj do odpowiedniej grupy
+        if _ma_nowe_publikacje(scientist.rekord_w_bpp, duplikaty, 10):
+            autorzy_z_nowymi_publikacjami.append(scientist)
+        else:
+            autorzy_bez_nowych_publikacji.append(scientist)
 
-            # Dodaj do odpowiedniej listy
-            if ma_nowe_publikacje:
-                autorzy_z_nowymi_publikacjami.append(scientist)
-            else:
-                autorzy_bez_nowych_publikacji.append(scientist)
-
-            # Jeśli mamy już 50 autorów z nowymi publikacjami, możemy zwrócić pierwszego
-            # (optymalizacja dla dużych baz danych)
-            if len(autorzy_z_nowymi_publikacjami) >= 50:
-                return autorzy_z_nowymi_publikacjami[0]
+        # Jeśli mamy już 50 autorów z nowymi publikacjami, możemy zwrócić pierwszego
+        # (optymalizacja dla dużych baz danych)
+        if len(autorzy_z_nowymi_publikacjami) >= 50:
+            return autorzy_z_nowymi_publikacjami[0]
 
     # Zwróć pierwszego autora z nowymi publikacjami, jeśli taki istnieje
     if autorzy_z_nowymi_publikacjami:
@@ -104,7 +114,20 @@ def znajdz_pierwszego_autora_z_duplikatami(  # noqa: C901
     return None
 
 
-def search_author_by_lastname(search_term, excluded_authors=None):  # noqa: C901
+def _osoba_z_instytucji_autora(autor) -> OsobaZInstytucji | None:
+    """
+    Zwraca OsobaZInstytucji powiązaną z autorem przez pbn_uid (Scientist),
+    albo None jeśli autor nie ma pbn_uid lub powiązanej OsobaZInstytucji.
+    """
+    if not autor.pbn_uid_id:
+        return None
+    try:
+        return autor.pbn_uid.osobazinstytucji
+    except Scientist.osobazinstytucji.RelatedObjectDoesNotExist:
+        return None
+
+
+def search_author_by_lastname(search_term, excluded_authors=None):
     """
     Wyszukuje pierwszego autora z duplikatami według części nazwiska.
     Priorytetyzuje autorów z publikacjami z lat 2022-2025.
@@ -137,36 +160,23 @@ def search_author_by_lastname(search_term, excluded_authors=None):  # noqa: C901
 
     # Znajdź autorów z duplikatami i podziel ich na grupy
     for autor in matching_authors[:200]:  # Sprawdź więcej autorów niż poprzednio
-        # Sprawdź czy autor ma odpowiednik w Scientist
-        if autor.pbn_uid_id:
-            try:
-                if autor.pbn_uid.osobazinstytucji:
-                    duplikaty = szukaj_kopii(autor.pbn_uid.osobazinstytucji)
-                    if duplikaty.exists():
-                        # Sprawdź czy autor lub jego duplikaty mają publikacje z lat 2022-2025
-                        ma_nowe_publikacje = autor_ma_publikacje_z_lat(autor)
+        osoba_z_instytucji = _osoba_z_instytucji_autora(autor)
+        if not osoba_z_instytucji:
+            continue
 
-                        # Sprawdź również duplikaty
-                        if not ma_nowe_publikacje:
-                            for duplikat in duplikaty[
-                                :5
-                            ]:  # Sprawdź pierwsze 5 duplikatów
-                                if autor_ma_publikacje_z_lat(duplikat):
-                                    ma_nowe_publikacje = True
-                                    break
+        duplikaty = szukaj_kopii(osoba_z_instytucji)
+        if not duplikaty.exists():
+            continue
 
-                        # Dodaj do odpowiedniej listy
-                        if ma_nowe_publikacje:
-                            autorzy_z_nowymi_publikacjami.append(autor.pbn_uid)
-                        else:
-                            autorzy_bez_nowych_publikacji.append(autor.pbn_uid)
+        # Sprawdź czy autor lub pierwszych 5 duplikatów ma publikacje 2022-2025
+        if _ma_nowe_publikacje(autor, duplikaty, 5):
+            autorzy_z_nowymi_publikacjami.append(autor.pbn_uid)
+        else:
+            autorzy_bez_nowych_publikacji.append(autor.pbn_uid)
 
-                        # Jeśli mamy już 20 autorów z nowymi publikacjami, możemy zwrócić pierwszego
-                        if len(autorzy_z_nowymi_publikacjami) >= 20:
-                            return autorzy_z_nowymi_publikacjami[0]
-
-            except Scientist.osobazinstytucji.RelatedObjectDoesNotExist:
-                continue
+        # Jeśli mamy już 20 autorów z nowymi publikacjami, możemy zwrócić pierwszego
+        if len(autorzy_z_nowymi_publikacjami) >= 20:
+            return autorzy_z_nowymi_publikacjami[0]
 
     # Zwróć pierwszego autora z nowymi publikacjami, jeśli taki istnieje
     if autorzy_z_nowymi_publikacjami:

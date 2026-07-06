@@ -275,4 +275,18 @@
         </form>
     </div>
 
+    {# Link do dokumentacji widgetu osadzania publikacji na stronie WWW #}
+    <div class="row jednostka__embed-link-row">
+        <div class="large-12 columns">
+            <p class="jednostka__embed-link">
+                <small>
+                    <i class="fi-page-export"></i>
+                    Osadź publikacje tej jednostki na swojej stronie WWW &mdash;
+                    <a href="https://iplweb.github.io/bpp/uzytkownik/widget-publikacji/?jednostka={{ jednostka.slug }}&amp;serwer={{ request.scheme }}://{{ request.get_host }}"
+                       target="_blank" rel="noopener">kliknij tutaj</a>.
+                </small>
+            </p>
+        </div>
+    </div>
+
 {% endblock %}

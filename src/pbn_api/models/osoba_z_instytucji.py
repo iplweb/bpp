@@ -8,6 +8,21 @@ class OsobaZInstytucji(models.Model):
     firstName = models.TextField()
     lastName = models.TextField()
     institutionId = models.ForeignKey("pbn_api.Institution", on_delete=models.PROTECT)
+    # Multi-hosted (audyt uczelnia 2026-06-04): to lustro danych PBN. FK
+    # ``uczelnia`` jest nullable ŚWIADOMIE — wiersz i tak jest jednoznacznie
+    # związany z instytucją PBN przez ``institutionId`` (odpowiednik uczelni
+    # w PBN, == ``uczelnia.pbn_uid``), więc brak twardego tagu uczelni to
+    # brak wygody filtrowania, NIE korupcja danych. Pełne per-uczelnia
+    # tagowanie write-side odłożone (integrator nie wpisuje tu uczelni).
+    # UWAGA: ``personId`` jest OneToOne — w multi-hosted ostatnia uczelnia
+    # nadpisuje wiersz (konflikt strukturalny do rozważenia osobno).
+    uczelnia = models.ForeignKey(
+        "bpp.Uczelnia",
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name="osoby_z_instytucji",
+    )
     institutionName = models.TextField()
     title = models.TextField(blank=True, default="")
     polonUuid = models.UUIDField(unique=True)

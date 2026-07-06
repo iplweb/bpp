@@ -5,12 +5,17 @@ This module contains the phase 1 (per-author) and phase 2 (institution-level)
 optimization functions, as well as validation and result building functions.
 """
 
+import logging
 from dataclasses import dataclass
 
 from ortools.sat.python import cp_model
 
+from bpp.util import zaloguj_polkniety_wyjatek
+
 from .data_structures import SCALE, OptimizationResults, Pub, is_low_mono, slot_units
 from .solver import SolutionCallback, configure_solver, solve_author_knapsack
+
+logger = logging.getLogger(__name__)
 
 
 def run_phase1_per_author_optimization(
@@ -126,7 +131,11 @@ def _calculate_optimality_gap(solver) -> tuple[float | None, float | None]:
             gap_percent = ((best_bound - obj_value) / best_bound) * 100
             return gap_percent, best_bound
     except Exception:
-        pass
+        zaloguj_polkniety_wyjatek(
+            "Obliczanie luki optymalności (optimality gap) z wyników solvera",
+            logger=logger,
+            do_rollbar=True,
+        )
     return None, None
 
 

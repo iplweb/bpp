@@ -188,6 +188,29 @@ uv run celery -A django_bpp.tasks inspect registered
 issue-by-issue. Fix each manually with the Edit tool. Do NOT run
 `ruff check --fix` or any automated batch fixes.
 
+## Wydania (dwufazowe, CLI)
+
+Wydanie = dwie komendy (szczegóły: docs/deweloper/wydania.md). Preferowane
+skróty `make` (owijają `gh workflow run` + od razu `gh run watch`):
+
+```bash
+make release-candidate    # Faza 1: zbuduj RC → :staging (nie rusza prod)
+# … staging pulluje :staging, testujesz …
+make release-promote      # Faza 2: RC → :latest (bez rebuildu, imagetools)
+```
+
+Flagi: `make release-candidate SKIP_TESTS=1 SKIP_SCAN=1` (awaryjnie),
+`make release-promote VERSION=vXXX` (gdy otwartych >1 gałęzi `release/*`).
+
+Pod spodem to zwykłe `workflow_dispatch`:
+
+```bash
+gh workflow run release-candidate.yml --ref dev   # zbuduj RC → :staging
+gh workflow run promote.yml                        # RC → :latest (bez rebuildu)
+```
+
+`push:master` NIE buduje już obrazów produkcyjnych — robi to promote (imagetools).
+
 ## Autologin dla agentów (WebFetch / curl bez logowania)
 
 Gdy user uruchomił `run-site run`, dev stack zapisuje gitignored,
@@ -333,9 +356,11 @@ Do `$STATIC_ROOT` (volume/katalog runtime) pisze `cp -ru` + runtime
 
 ## Docker image publishing (staging-tag + Trivy gate)
 
-Workflow `.github/workflows/build-docker-images.yml` publikuje obrazy
-Docker w trzech fazach, zeby skaner bezpieczenstwa mogl faktycznie
-zablokowac release zanim kanoniczny tag pojawi sie w rejestrze.
+Workflow `.github/workflows/build-docker-images.yml` jest silnikiem builda:
+buduje obrazy do tagu `sha-<short_sha>`, skanuje je Trivy i dopiero potem
+przepina manifest pod kanoniczny tag podany przez wywolujacego. Produkcyjny
+`:latest` nie powstaje juz na pushu do `master` — robi to wylacznie
+`.github/workflows/promote.yml` z gotowego RC.
 
 **Dlaczego nie prosty „build → push → scan"?**
 Docker Hub nie ma mechanizmu „un-push". Jesli Trivy znajdzie CRITICAL
@@ -349,7 +374,7 @@ publiczny technicznie, ale niekanoniczny — zadna dokumentacja, zadne
 deployment scripty nie referencuja `sha-*`, wiec w praktyce nikt go
 nie pullnie.
 
-**Faza 2 — Trivy gate (TYLKO master)**
+**Faza 2 — Trivy gate (release-candidate / master legacy)**
 Skan staging tagu. Polityka:
 - **CRITICAL** (z dostepnym fix-em) → hard fail, workflow sie wywala,
   promocja sie NIE wykonuje. Kanoniczny tag wersji nigdy nie powstaje.
@@ -368,7 +393,8 @@ sa jawnie tymczasowe (nie release).
 `docker buildx imagetools create -t <canonical> <staging>` kopiuje
 manifest w rejestrze. Nie rebuilduje, nie re-pushuje warstw — tylko
 zapisuje metadane z referencja do istniejacych layers. ~sek per obraz.
-Na master dodatkowo tworzy tag `:latest`.
+Przy `release-candidate.yml` dodatkowo przepina kanal `:staging`.
+Tag `:latest` rusza dopiero w `promote.yml`, z immutable RC tagu.
 
 **Zastrzezenie o rejestrze:**
 Raz pushniety digest (nawet pod staging tagiem) zyje w Docker Hub do
@@ -397,6 +423,27 @@ usuwajacy tagi starsze niz N dni.
 - Use `model_bakery.baker.make` for creating database objects
 - Fixtures in `src/conftest.py` and subdirectories
 - Full suite timeout: at least 600000ms (10 minutes)
+
+### Uruchamiaj testy LOKALNIE — nie spychaj wszystkiego na CI
+
+**Domyślnie odpalaj testy na swojej maszynie.** „Środowiskowo-ciężkie",
+„zostawmy to CI", „Playwright wymaga setupu" to NIE są powody, żeby pominąć
+lokalny przebieg — to najwyżej powód, żeby najpierw zrobić warunki wstępne
+(`make assets`, `make playwright-install`). Brak warunku wstępnego = wykonaj go,
+nie pomijaj testu.
+
+- **Praca nad zdalnym branchem / w PR:** odpalenie lokalnego `make tests`
+  **równolegle** z czekaniem na CI jest OK i **zalecane** — szybszy feedback,
+  łapiesz regresje zanim CI je zwróci, nie marnujesz rundy CI. Te dwa kanały się
+  nie wykluczają; rób oba.
+- Pełne `make tests` przerywa się na pierwszym błędnym kroku (`make` zwraca na
+  Error 1), więc gdy `tests-without-playwright` padnie, kroki
+  `tests-only-playwright` i `js-tests` się NIE wykonają. Po naprawie Pythona
+  **dokończ** pozostałe kroki (albo ponów całe `make tests`), zamiast uznać je
+  za „pominięte".
+- Jedyny akceptowalny powód, by czegoś nie odpalić lokalnie: fizyczny brak
+  możliwości (np. brak działającego Dockera dla testcontainers) — wtedy powiedz
+  to wprost, a nie „jest ciężkie".
 
 ### Testy Playwright (`src/integration_tests/`) lokalnie
 

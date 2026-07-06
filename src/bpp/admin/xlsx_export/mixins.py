@@ -1,3 +1,5 @@
+import logging
+
 from django.conf import settings
 from django.contrib import messages
 from django.contrib.admin.options import IncorrectLookupParameters
@@ -7,8 +9,12 @@ from import_export.admin import ExportMixin
 from import_export.forms import ExportForm
 from import_export.signals import post_export
 
+from bpp.util import zaloguj_polkniety_wyjatek
+
 from .formats import PrettyXLSX
 from .resources import BibTeXFormat
+
+logger = logging.getLogger(__name__)
 
 
 class PrettyXLSXDefaultExportForm(ExportForm):
@@ -222,6 +228,10 @@ class ExportActionsMixin:
                 response["Content-Disposition"] = 'attachment; filename="export.bib"'
                 return response
             except Exception as e:
+                zaloguj_polkniety_wyjatek(
+                    "Eksport wybranych rekordów do BibTeX w adminie",
+                    logger=logger,
+                )
                 self.message_user(
                     request, f"Error exporting to BibTeX: {e}", level=messages.ERROR
                 )
@@ -256,6 +266,10 @@ class ExportActionsMixin:
                 )
                 return response
             except Exception as e:
+                zaloguj_polkniety_wyjatek(
+                    "Eksport wybranych rekordów do XLSX w adminie",
+                    logger=logger,
+                )
                 self.message_user(
                     request, f"Error exporting to XLSX: {e}", level=messages.ERROR
                 )

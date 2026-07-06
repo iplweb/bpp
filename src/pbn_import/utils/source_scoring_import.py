@@ -8,6 +8,7 @@ from django.db import close_old_connections
 from tqdm import tqdm
 
 from bpp.models import Dyscyplina_Naukowa, Punktacja_Zrodla, Zrodlo
+from bpp.util import zaloguj_polkniety_wyjatek
 
 from .base import CancelledException, ImportStepBase
 
@@ -42,6 +43,11 @@ def _sync_single_source(zrodlo_id, min_rok, dyscypliny_dict):
         return (zrodlo_id, True, None)
 
     except Exception as e:
+        zaloguj_polkniety_wyjatek(
+            f"Nie udało się zaimportować punktacji/dyscyplin źródła {zrodlo_id}",
+            logger=logger,
+            do_rollbar=True,
+        )
         return (zrodlo_id, False, str(e))
 
 
@@ -106,8 +112,10 @@ class SourceScoringImporter(ImportStepBase):
     step_name = "source_scoring_import"
     step_description = "Synchronizacja punktów i dyscyplin źródeł"
 
-    def __init__(self, session, client=None, min_rok=2017, max_workers=None):
-        super().__init__(session, client)
+    def __init__(
+        self, session, client=None, min_rok=2017, max_workers=None, uczelnia=None
+    ):
+        super().__init__(session, client, uczelnia=uczelnia)
         self.min_rok = min_rok
         self.max_workers = (
             max_workers if max_workers is not None else (os.cpu_count() or 8)

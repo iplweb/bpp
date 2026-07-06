@@ -11,6 +11,7 @@ class MetrykaAutoraAdmin(DynamicAdminFilterMixin, admin.ModelAdmin):
     list_display = [
         "autor",
         "dyscyplina_naukowa",
+        "uczelnia",
         "jednostka",
         "slot_maksymalny",
         "slot_nazbierany",
@@ -20,7 +21,12 @@ class MetrykaAutoraAdmin(DynamicAdminFilterMixin, admin.ModelAdmin):
         "data_obliczenia",
     ]
 
-    list_filter = ["dyscyplina_naukowa", "jednostka", "procent_wykorzystania_slotow"]
+    list_filter = [
+        "uczelnia",
+        "dyscyplina_naukowa",
+        "jednostka",
+        "procent_wykorzystania_slotow",
+    ]
 
     search_fields = ["autor__nazwisko", "autor__imiona", "jednostka__nazwa"]
 
@@ -34,7 +40,7 @@ class MetrykaAutoraAdmin(DynamicAdminFilterMixin, admin.ModelAdmin):
     fieldsets = [
         (
             "Podstawowe informacje",
-            {"fields": ("autor", "dyscyplina_naukowa", "jednostka")},
+            {"fields": ("autor", "dyscyplina_naukowa", "uczelnia", "jednostka")},
         ),
         ("Parametry ewaluacji", {"fields": ("rok_min", "rok_max", "slot_maksymalny")}),
         (
@@ -109,9 +115,10 @@ class StatusGenerowaniaAdmin(admin.ModelAdmin):
     status_display.short_description = "Status"
 
     def has_add_permission(self, request):
-        # Singleton - nie pozwalaj dodawać nowych
+        # Wiersze per uczelnia tworzy proces generowania (get_or_create),
+        # nie ręcznie w adminie.
         return False
 
     def has_delete_permission(self, request, obj=None):
-        # Singleton - nie pozwalaj usuwać
+        # Status per uczelnia zarządzany automatycznie — bez ręcznego usuwania.
         return False

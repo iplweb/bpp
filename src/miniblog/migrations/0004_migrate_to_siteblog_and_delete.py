@@ -17,7 +17,6 @@ original miniblog semantics ("visible on all sites").
 """
 from django.db import migrations
 
-
 SQL_COPY_ROWS = """
 INSERT INTO siteblog_article (
     id, created, modified, status, status_changed,

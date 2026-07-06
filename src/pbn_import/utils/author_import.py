@@ -1,9 +1,14 @@
 """Author import utilities"""
 
-from bpp.models import Uczelnia
+import logging
+
+from bpp.util import zaloguj_polkniety_wyjatek
+from pbn_api.models import Scientist
 from pbn_integrator.utils import integruj_autorow_z_uczelni, pobierz_ludzi_z_uczelni
 
 from .base import ImportStepBase
+
+logger = logging.getLogger(__name__)
 
 
 class AuthorImporter(ImportStepBase):
@@ -12,42 +17,62 @@ class AuthorImporter(ImportStepBase):
     step_name = "author_import"
     step_description = "Import autorów"
 
-    def run(self):
-        """Import authors"""
-        uczelnia = Uczelnia.objects.get_default()
-
+    def _resolve_uczelnia(self):
+        """Zwróć uczelnię kontekstu importu lub None (z logiem) gdy brak pbn_uid."""
+        uczelnia = self.uczelnia
         if not uczelnia or not uczelnia.pbn_uid_id:
             self.log(
-                "warning", "Nie znaleziono Uczelni z PBN UID, pomijanie importu autorów"
+                "warning",
+                "Nie znaleziono Uczelni z PBN UID, pomijanie importu autorów",
             )
+            return None
+        return uczelnia
+
+    def download(self):
+        """Pobierz autorów uczelni z PBN do lustra."""
+        uczelnia = self._resolve_uczelnia()
+        if uczelnia is None:
             return {"authors_imported": False, "reason": "No Uczelnia PBN UID"}
 
-        # Download authors from PBN
-        self.update_progress(0, 2, "Pobieranie autorów z PBN")
+        self.update_progress(0, 1, "Pobieranie autorów z PBN")
         self.log("info", f"Pobieranie autorów dla instytucji {uczelnia.pbn_uid_id}")
-
-        # Create progress callback
         subtask_callback = self.create_subtask_progress("Pobieranie autorów")
-
         try:
             pobierz_ludzi_z_uczelni(
                 self.client, uczelnia.pbn_uid_id, callback=subtask_callback
             )
-            self.log("info", "Authors downloaded successfully")
+            self.log("success", "Autorzy pobrani pomyślnie")
         except Exception as e:
+            zaloguj_polkniety_wyjatek(
+                "Nie udało się pobrać autorów z PBN "
+                f"(uczelnia pbn_uid={uczelnia.pbn_uid_id})",
+                logger=logger,
+                do_rollbar=False,  # Rollbar już w handle_error
+            )
             self.handle_error(e, "Nie udało się pobrać autorów")
         finally:
             self.clear_subtask_progress()
+        self.update_progress(1, 1, "Zakończono pobieranie autorów")
+        return {"authors_downloaded": True, "error_count": len(self.errors)}
 
-        # Integrate authors
-        self.update_progress(1, 2, "Integrowanie autorów")
+    def process(self):
+        """Zintegruj autorów z lustra do BPP (z uczelnią)."""
+        uczelnia = self._resolve_uczelnia()
+        if uczelnia is None:
+            return {"authors_imported": False, "reason": "No Uczelnia PBN UID"}
+
+        if not Scientist.objects.exists():
+            self.log(
+                "warning",
+                "Brak pobranych autorów — przetwarzam 0. Uruchom fazę "
+                "pobierania, jeśli to nie zamierzone.",
+            )
+
+        self.update_progress(0, 1, "Integrowanie autorów")
         self.log("info", "Integrating authors with university")
-
-        # Create progress callback for integration phase
         integration_callback = self.create_subtask_progress(
             "Integrowanie autorów z uczelnią"
         )
-
         try:
             integruj_autorow_z_uczelni(
                 self.client,
@@ -55,13 +80,8 @@ class AuthorImporter(ImportStepBase):
                 import_unexistent=True,
                 callback=integration_callback,
             )
-
-            # Clear the integration subtask progress
             self.clear_subtask_progress()
-
-            # Update statistics if available
             if hasattr(self.session, "statistics"):
-                # We could query the database for actual count
                 from bpp.models import Autor
 
                 stats = self.session.statistics
@@ -69,17 +89,19 @@ class AuthorImporter(ImportStepBase):
                     pbn_uid_id__isnull=False
                 ).count()
                 stats.save()
-
-            self.log("success", "Authors integrated successfully")
-
+            self.log("success", "Autorzy zintegrowani pomyślnie")
         except Exception as e:
+            zaloguj_polkniety_wyjatek(
+                "Nie udało się zintegrować autorów z uczelnią "
+                f"(uczelnia pbn_uid={uczelnia.pbn_uid_id})",
+                logger=logger,
+                do_rollbar=False,  # Rollbar już w handle_error
+            )
             self.handle_error(e, "Nie udało się zintegrować autorów")
             if hasattr(self.session, "statistics"):
                 self.session.statistics.authors_failed += 1
                 self.session.statistics.save()
-
-        self.update_progress(2, 2, "Zakończono import autorów")
-
+        self.update_progress(1, 1, "Zakończono import autorów")
         return {
             "authors_imported": True,
             "uczelnia_pbn_uid": uczelnia.pbn_uid_id,
