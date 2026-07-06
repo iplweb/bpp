@@ -260,7 +260,10 @@ class Jednostka(ModelZAdnotacjami, ModelZPBN_ID, ModelZPBN_UID, MPTTModel):
             wydzial = None
 
         if wydzial is not None:
-            ret += f" ({self.wydzial.skrot})"
+            # Używamy lokalnej ``wydzial`` (przechwyconej pod try/except powyżej),
+            # NIE ``self.wydzial`` — inaczej ponowny dostęp do FK omija defensywny
+            # guard, który ma chronić repr wołany z audytu post_delete.
+            ret += f" ({wydzial.skrot})"
 
         return ret
 
