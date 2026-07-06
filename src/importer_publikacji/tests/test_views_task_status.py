@@ -1,8 +1,10 @@
+from datetime import timedelta
 from unittest.mock import MagicMock, patch
 
 import pytest
 from django.contrib.auth.models import Group
 from django.urls import reverse
+from django.utils import timezone
 from model_bakery import baker
 
 from bpp.const import GR_WPROWADZANIE_DANYCH
@@ -169,6 +171,57 @@ def test_task_status_pending_renders_initialization_message(
 
     assert response.status_code == 200
     assert b"Inicjalizacja" in response.content or b"Trwa" in response.content
+
+
+@pytest.mark.django_db
+def test_task_status_stalled_fetching_session_marked_failed(
+    authed_client, fetching_session
+):
+    """Watchdog: sesja tkwiąca w FETCHING dłużej niż próg zostaje przy
+    kolejnym pollu przełączona na IMPORT_FAILED (bez tego wisiała wiecznie,
+    bo martwy/zgubiony worker nie wykonuje bloku except taska — FD).
+    """
+    client, _ = authed_client
+    # Cofnij `modified` poza próg watchdoga. `.update()` omija auto_now,
+    # inaczej save nadpisałby modified na "teraz".
+    stale = timezone.now() - timedelta(seconds=10_000)
+    ImportSession.objects.filter(pk=fetching_session.pk).update(modified=stale)
+
+    url = reverse(
+        "importer_publikacji:task-status",
+        kwargs={"session_id": fetching_session.pk},
+    )
+    response = client.get(url, HTTP_HX_REQUEST="true")
+
+    fetching_session.refresh_from_db()
+    assert fetching_session.status == ImportSession.Status.IMPORT_FAILED
+    assert fetching_session.last_failed_stage == "fetch"
+    assert fetching_session.celery_task_id == ""
+    assert response.status_code == 200
+    # Ekran błędu z komunikatem watchdoga ("...trwała zbyt długo...").
+    assert b"zbyt d" in response.content
+
+
+@pytest.mark.django_db
+def test_task_status_fresh_fetching_not_marked_stalled(authed_client, fetching_session):
+    """Świeża sesja FETCHING (poniżej progu) NIE jest ubijana — dalej
+    renderujemy progress. Ochrona przed false-positive watchdoga.
+    """
+    client, _ = authed_client
+    url = reverse(
+        "importer_publikacji:task-status",
+        kwargs={"session_id": fetching_session.pk},
+    )
+
+    with patch("importer_publikacji.views.task_status.AsyncResult") as mock_async:
+        mock_async.return_value = MagicMock(
+            info={"progress": 10, "label": "Pobieram dane od dostawcy..."}
+        )
+        response = client.get(url, HTTP_HX_REQUEST="true")
+
+    fetching_session.refresh_from_db()
+    assert fetching_session.status == ImportSession.Status.FETCHING
+    assert response.status_code == 200
 
 
 @pytest.mark.django_db
