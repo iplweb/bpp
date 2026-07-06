@@ -18,6 +18,6 @@ class Command(PBNBaseCommand):
         obj = ContentType.objects.get(
             app_label="bpp", model=model_name
         ).get_object_for_this_type(id=id)
-        adapted = WydawnictwoPBNAdapter(obj)
+        adapted = WydawnictwoPBNAdapter(obj, uczelnia=self._resolved_uczelnia)
         data = adapted.pbn_get_json()
         print(json.dumps(data, indent=4, sort_keys=True))

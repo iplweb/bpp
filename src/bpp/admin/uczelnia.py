@@ -1,5 +1,7 @@
 from django import forms
+from django.conf import settings
 from django.contrib import admin, messages
+from django.core.exceptions import ImproperlyConfigured
 from reversion.admin import VersionAdmin
 
 from ewaluacja_liczba_n.models import LiczbaNDlaUczelni
@@ -12,6 +14,7 @@ from .core import BaseBppAdminMixin, RestrictDeletionToAdministracjaGroupMixin
 from .helpers.constance_field_mixin import ConstanceUczelniaFieldsMixin
 from .helpers.fieldsets import ADNOTACJE_FIELDSET
 from .helpers.mixins import ZapiszZAdnotacjaMixin
+from .helpers.site_filtered import SiteFilteredAdminMixin
 
 
 class WydzialInlineForm(forms.ModelForm):
@@ -60,14 +63,57 @@ class Ukryj_Status_KorektyInline(admin.StackedInline):
     extra = 0
 
 
+class UczelniaAdminForm(forms.ModelForm):
+    # `theme_name` to na poziomie modelu zwykły CharField (bez `choices`),
+    # więc deklarujemy je tu jako ChoiceField, a listę motywów pobieramy z
+    # settings.BPP_THEMES — jedynego źródła prawdy. Dzięki temu dorzucenie
+    # motywu w settings od razu pojawia się w dropdownie, bez migracji.
+    theme_name = forms.ChoiceField(label="Motyw kolorystyczny")
+
+    class Meta:
+        model = Uczelnia
+        # Tylko pole, które tu nadpisujemy — admin i tak regeneruje pełną
+        # listę pól z fieldsets przez modelform_factory, ten Meta.fields jest
+        # wtedy przesłaniany. Wystarcza do samodzielnego instancjonowania formy.
+        fields = ["theme_name"]
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["theme_name"].choices = list(settings.BPP_THEMES)
+
+        # Multi-hosted: ``site`` jest na poziomie DB NOT NULL (migracja 0417),
+        # ale to admin musi je wskazać JAWNIE — to Site wiąże uczelnię z
+        # domeną (host → Site → Uczelnia), nie ma „uczelni domyślnej". Damy
+        # komunikat dziedzinowy zamiast generycznego „To pole jest wymagane.".
+        if "site" in self.fields:
+            self.fields["site"].required = True
+            self.fields["site"].error_messages["required"] = (
+                "Wskaż stronę (domenę / obiekt Site) dla tej uczelni. W trybie "
+                "multi-hosted to powiązanie z domeną wiąże uczelnię z jej "
+                "adresem — nie istnieje „uczelnia domyślna”."
+            )
+
+
 class UczelniaAdmin(
+    SiteFilteredAdminMixin,
     ConstanceUczelniaFieldsMixin,
     RestrictDeletionToAdministracjaGroupMixin,
     ZapiszZAdnotacjaMixin,
     BaseBppAdminMixin,
     VersionAdmin,
 ):
+    form = UczelniaAdminForm
     list_display = ["nazwa", "nazwa_dopelniacz_field", "skrot", "pbn_uid"]
+
+    def get_queryset(self, request):
+        qs = super(SiteFilteredAdminMixin, self).get_queryset(request)
+        if request.user.is_superuser:
+            return qs
+        uczelnia = getattr(request, "_uczelnia", None)
+        if uczelnia:
+            return qs.filter(pk=uczelnia.pk)
+        return qs
+
     autocomplete_fields = ["pbn_uid", "obca_jednostka"]
     fieldsets = (
         (
@@ -77,6 +123,8 @@ class UczelniaAdmin(
                     "nazwa",
                     "nazwa_dopelniacz_field",
                     "skrot",
+                    "site",
+                    "theme_name",
                     "pbn_uid",
                     "pbn_id",
                     "favicon_ico",
@@ -162,6 +210,10 @@ class UczelniaAdmin(
                     "wydruk_parametry_zapytania",
                     "drukuj_oswiadczenia",
                     "drukuj_alternatywne_oswiadczenia",
+                    "wydruk_margines_gora",
+                    "wydruk_margines_dol",
+                    "wydruk_margines_lewo",
+                    "wydruk_margines_prawo",
                 ),
             },
         ),
@@ -190,6 +242,26 @@ class UczelniaAdmin(
             {
                 "classes": ("grp-collapse grp-opened",),
                 "fields": ("przydzielaj_1_slot_gdy_udzial_mniejszy",),
+            },
+        ),
+        (
+            "Struktura uczelni",
+            {
+                "classes": ("grp-collapse grp-closed",),
+                "fields": (
+                    "skrot_wydzialu_w_nazwie_jednostki",
+                    "pokazuj_oswiadczenie_ken",
+                ),
+            },
+        ),
+        (
+            "Integracje Google",
+            {
+                "classes": ("grp-collapse grp-closed",),
+                "fields": (
+                    "google_analytics_property_id",
+                    "google_verification_code",
+                ),
             },
         ),
         ADNOTACJE_FIELDSET,
@@ -249,11 +321,26 @@ class UczelniaAdmin(
     ]
 
     def save_model(self, request, obj, form, change):
+        if obj.site_id is None and not change:
+            from django.contrib.sites.shortcuts import get_current_site
+
+            obj.site = get_current_site(request)
+
         ret = super().save_model(request, obj, form, change)
 
         if obj.pbn_integracja:
+            try:
+                client = obj.pbn_client()
+            except ImproperlyConfigured as e:
+                messages.warning(
+                    request,
+                    f"Integracja z PBN jest włączona, ale konfiguracja jest niekompletna: {e}. "
+                    f"Uzupełnij brakujące dane (nazwa aplikacji i token) lub wyłącz "
+                    f"integrację z PBN w sekcji „Integracja z PBN API”.",
+                )
+                return ret
+
             # Wykonaj próbne pobranie rekordu z PBNu
-            client = obj.pbn_client()
             try:
                 client.get_languages()
             except PraceSerwisoweException:

@@ -2,9 +2,15 @@
 Template tags for admin filter panel helpers.
 """
 
+import logging
+
 from django import template
 from django.conf import settings
 from django.urls import reverse
+
+from bpp.util import zaloguj_polkniety_wyjatek
+
+logger = logging.getLogger(__name__)
 
 register = template.Library()
 
@@ -136,6 +142,10 @@ def get_filter_count_url(choice, cl):
         else:
             return base_url
     except Exception:
+        zaloguj_polkniety_wyjatek(
+            f"Budowanie URL licznika filtru admin (url_name={url_name})",
+            logger=logger,
+        )
         # W przypadku błędu zwróć pusty string
         # (HTMX nie wywoła requestu dla pustego URL)
         return ""

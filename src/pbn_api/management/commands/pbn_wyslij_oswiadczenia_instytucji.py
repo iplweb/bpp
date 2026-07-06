@@ -18,6 +18,7 @@ Examples:
 """
 
 import json
+import logging
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from threading import Lock
@@ -28,6 +29,7 @@ from queryset_sequence import QuerySetSequence
 from tqdm import tqdm
 
 from bpp.models import Wydawnictwo_Ciagle, Wydawnictwo_Zwarte
+from bpp.util import zaloguj_polkniety_wyjatek
 from pbn_api.adapters.wydawnictwo import WydawnictwoPBNAdapter
 from pbn_api.exceptions import (
     CannotDeleteStatementsException,
@@ -36,6 +38,8 @@ from pbn_api.exceptions import (
 )
 from pbn_api.management.commands.util import PBNBaseCommand
 from pbn_api.models import PublikacjaInstytucji_V2, Scientist
+
+logger = logging.getLogger(__name__)
 
 
 def post_discipline_statements_error_handler(json_response):
@@ -129,7 +133,7 @@ def post_discipline_statements_error_handler(json_response):
     return parsed_data
 
 
-def process_single_publication(
+def process_single_publication(  # noqa: C901
     publication: Wydawnictwo_Ciagle | Wydawnictwo_Ciagle,
     pbn_client,
     dry_run=False,
@@ -208,7 +212,7 @@ def process_single_publication(
                         try:
                             error_json = json.loads(e.content)
                         except json.decoder.JSONDecodeError:
-                            raise e
+                            raise e from None
 
                         res = post_discipline_statements_error_handler(error_json)
                         # Store parsed errors in result for potential debugging
@@ -227,6 +231,12 @@ def process_single_publication(
                     raise e
 
     except Exception as e:
+        zaloguj_polkniety_wyjatek(
+            "Błąd podczas wysyłki oświadczeń dyscyplin do PBN dla publikacji "
+            f"pk={publication.pk}",
+            logger=logger,
+            do_rollbar=False,
+        )
         result["error"] = str(e)
         if stdout and style and progress_lock:
             with progress_lock:
@@ -271,7 +281,7 @@ class Command(PBNBaseCommand):
             help="Disable threading for debugging purposes",
         )
 
-    def handle(self, app_id, app_token, base_url, user_token, *args, **options):
+    def handle(self, app_id, app_token, base_url, user_token, *args, **options):  # noqa: C901
         publication_id = options.get("publication_id")
         year = options.get("year")
         dry_run = options["dry_run"]
@@ -411,13 +421,15 @@ class Command(PBNBaseCommand):
             content_type = ContentType.objects.get(app_label="bpp", model=model_name)
             model_class = content_type.model_class()
         except ContentType.DoesNotExist:
-            raise CommandError(f"Model '{model_name}' not found in BPP app")
+            raise CommandError(f"Model '{model_name}' not found in BPP app") from None
 
         # Get the publication record
         try:
             publication = model_class.objects.get(pk=pk)
         except model_class.DoesNotExist:
-            raise CommandError(f"Publication {model_name}:{pk} does not exist")
+            raise CommandError(
+                f"Publication {model_name}:{pk} does not exist"
+            ) from None
 
         # Check if publication has PBN UID
         if not hasattr(publication, "pbn_uid_id") or publication.pbn_uid_id is None:

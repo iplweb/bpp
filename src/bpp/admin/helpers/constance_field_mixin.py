@@ -1,44 +1,42 @@
 """
-Mixin do dynamicznego ukrywania pól w panelu admina na podstawie ustawień constance.
+Mixin do dynamicznego ukrywania pól w panelu admina na podstawie ustawień uczelni.
 
 Umożliwia ukrywanie pól punktacji (index_copernicus, punktacja_snip, punktacja_wewnetrzna)
-w formularzach edycji publikacji, gdy odpowiednie ustawienia constance są wyłączone.
+w formularzach edycji publikacji, gdy odpowiednie ustawienia uczelni są wyłączone.
 """
 
 import copy
 
 
-def get_constance_scoring_settings():
+def get_scoring_settings(uczelnia=None):
     """
-    Pobiera ustawienia dotyczące widoczności pól punktacji z constance.
+    Pobiera ustawienia dotyczące widoczności pól punktacji z obiektu Uczelnia.
+
+    Args:
+        uczelnia: Obiekt Uczelnia (opcjonalny). Jeśli None, zwraca domyślne wartości.
 
     Returns:
         dict: Słownik z ustawieniami widoczności pól
     """
-    try:
-        from constance import config
-
-        # bool() coerces real values *and* constance's AsyncValueProxy
-        # (returned when an asyncio loop is running in this thread — e.g.
-        # tests sharing an xdist worker with prior async tests) to a true
-        # Python bool, so callers can rely on `isinstance(_, bool)`.
+    if uczelnia is not None:
         return {
-            "POKAZUJ_INDEX_COPERNICUS": bool(config.POKAZUJ_INDEX_COPERNICUS),
-            "POKAZUJ_PUNKTACJA_SNIP": bool(config.POKAZUJ_PUNKTACJA_SNIP),
-            "UZYWAJ_PUNKTACJI_WEWNETRZNEJ": bool(
-                config.UZYWAJ_PUNKTACJI_WEWNETRZNEJ
-            ),
+            "POKAZUJ_INDEX_COPERNICUS": uczelnia.pokazuj_index_copernicus,
+            "POKAZUJ_PUNKTACJA_SNIP": uczelnia.pokazuj_punktacja_snip,
+            "UZYWAJ_PUNKTACJI_WEWNETRZNEJ": uczelnia.pokazuj_punktacje_wewnetrzna,
         }
-    except (ImportError, AttributeError):
-        # Fallback - wszystkie widoczne
-        return {
-            "POKAZUJ_INDEX_COPERNICUS": True,
-            "POKAZUJ_PUNKTACJA_SNIP": True,
-            "UZYWAJ_PUNKTACJI_WEWNETRZNEJ": True,
-        }
+    # Fallback - wszystkie widoczne
+    return {
+        "POKAZUJ_INDEX_COPERNICUS": True,
+        "POKAZUJ_PUNKTACJA_SNIP": True,
+        "UZYWAJ_PUNKTACJI_WEWNETRZNEJ": True,
+    }
 
 
-# Mapowanie ustawień constance na nazwy pól w modelach
+# Backward compatibility alias
+get_constance_scoring_settings = get_scoring_settings
+
+
+# Mapowanie ustawień na nazwy pól w modelach
 CONSTANCE_TO_FIELD_MAP = {
     "POKAZUJ_INDEX_COPERNICUS": ("index_copernicus", "pokazuj_index_copernicus"),
     "POKAZUJ_PUNKTACJA_SNIP": ("punktacja_snip", "pokazuj_punktacja_snip"),
@@ -83,16 +81,13 @@ class ConstanceScoringFieldsMixin:
     Mixin do dynamicznego ukrywania pól punktacji w adminie publikacji.
 
     Ukrywa pola index_copernicus, punktacja_snip, punktacja_wewnetrzna
-    na podstawie ustawień constance.
+    na podstawie ustawień uczelni.
     """
 
     def get_fieldsets(self, request, obj=None):
-        """
-        Dynamicznie modyfikuje fieldsets, ukrywając pola punktacji
-        które są wyłączone w constance.
-        """
         fieldsets = super().get_fieldsets(request, obj)
-        settings = get_constance_scoring_settings()
+        uczelnia = getattr(request, "_uczelnia", None)
+        settings = get_scoring_settings(uczelnia)
 
         fields_to_remove = set()
         for constance_key, field_names in CONSTANCE_TO_FIELD_MAP.items():
@@ -108,16 +103,13 @@ class ConstanceUczelniaFieldsMixin:
     Mixin do dynamicznego ukrywania pól pokazuj_* w adminie Uczelnia.
 
     Ukrywa pola pokazuj_index_copernicus, pokazuj_punktacja_snip,
-    pokazuj_punktacje_wewnetrzna na podstawie ustawień constance.
+    pokazuj_punktacje_wewnetrzna na podstawie ustawień uczelni.
     """
 
     def get_fieldsets(self, request, obj=None):
-        """
-        Dynamicznie modyfikuje fieldsets, ukrywając pola pokazuj_*
-        które są zbędne gdy dana punktacja jest globalnie wyłączona.
-        """
         fieldsets = super().get_fieldsets(request, obj)
-        settings = get_constance_scoring_settings()
+        uczelnia = getattr(request, "_uczelnia", None)
+        settings = get_scoring_settings(uczelnia)
 
         fields_to_remove = set()
         for constance_key, field_names in CONSTANCE_TO_FIELD_MAP.items():

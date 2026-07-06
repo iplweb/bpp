@@ -47,7 +47,7 @@ jobs:
     timeout-minutes: 5
 
     steps:
-      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           fetch-depth: 0
 
@@ -56,7 +56,7 @@ jobs:
       # so the heavy toolchain the test jobs need is unnecessary for
       # linting. uv is only a fast launcher for pre-commit (via uvx).
       - name: Install uv
-        uses: astral-sh/setup-uv@fac544c07dec837d0ccb6301d7b5580bf5edae39 # v8.2.0
+        uses: astral-sh/setup-uv@d31148d669074a8d0a63714ba94f3201e7020bc3 # v8.3.0
         with:
           enable-cache: true
 
@@ -121,6 +121,7 @@ jobs:
     name: Check baseline freshness
     if: |
       !(github.ref == 'refs/heads/dev' && contains(github.event.head_commit.message, 'Merge tag'))
+      && !(github.ref == 'refs/heads/master' && startsWith(github.event.head_commit.message, 'Release v'))
 
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -129,7 +130,7 @@ jobs:
       contents: read
 
     steps:
-    - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+    - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
 
     - name: Install system build deps (for uv sync)
       run: |
@@ -137,7 +138,7 @@ jobs:
         xargs -a docker/bpp_base/build.txt sudo apt-get install -y
 
     - name: Install uv
-      uses: astral-sh/setup-uv@fac544c07dec837d0ccb6301d7b5580bf5edae39 # v8.2.0
+      uses: astral-sh/setup-uv@d31148d669074a8d0a63714ba94f3201e7020bc3 # v8.3.0
       with:
         enable-cache: false
 
@@ -158,6 +159,7 @@ jobs:
     name: Build test-runner image
     if: |
       !(github.ref == 'refs/heads/dev' && contains(github.event.head_commit.message, 'Merge tag'))
+      && !(github.ref == 'refs/heads/master' && startsWith(github.event.head_commit.message, 'Release v'))
 
     runs-on: ubuntu-latest
     timeout-minutes: 30
@@ -180,7 +182,7 @@ jobs:
       IMAGE_REPO: ghcr.io/iplweb/bpp-test-runner
 
     steps:
-    - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+    - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
 
     # baseline_check przeniesiony do osobnego joba `baseline-check`, ktory
     # biegnie ROWNOLEGLE z tym buildem (wczesniej jego ~37s apt+uv sync+check
@@ -189,12 +191,12 @@ jobs:
     # drifcie jest tanszy niz 37s na kazdym runie.
 
     - name: Set up Docker Buildx
-      uses: docker/setup-buildx-action@d7f5e7f509e45cec5c76c4d5afdd7de93d0b3df5 # v4.1.0
+      uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c # v4.2.0
       with:
         driver: docker-container
 
     - name: Log in to GHCR
-      uses: docker/login-action@650006c6eb7dba73a995cc03b0b2d7f5ca915bee # v4.2.0
+      uses: docker/login-action@af1e73f918a031802d376d3c8bbc3fe56130a9b0 # v4.4.0
       with:
         registry: ghcr.io
         username: ${{ github.actor }}
@@ -208,7 +210,7 @@ jobs:
         echo "image=${IMAGE_REPO}:sha-${SHA}" >> "$GITHUB_OUTPUT"
 
     - name: Build & push test-runner image
-      uses: docker/build-push-action@f9f3042f7e2789586610d6e8b85c8f03e5195baf # v7.2.0
+      uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
       with:
         context: .
         file: docker/bpp_base/Dockerfile
@@ -273,6 +275,7 @@ jobs:
     needs: prepare-image
     if: |
       !(github.ref == 'refs/heads/dev' && contains(github.event.head_commit.message, 'Merge tag'))
+      && !(github.ref == 'refs/heads/master' && startsWith(github.event.head_commit.message, 'Release v'))
 
     runs-on: ubuntu-latest
     timeout-minutes: 35
@@ -299,10 +302,10 @@ jobs:
       NUM_SHARDS: "12"
 
     steps:
-    - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+    - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
 
     - name: Log in to GHCR
-      uses: docker/login-action@650006c6eb7dba73a995cc03b0b2d7f5ca915bee # v4.2.0
+      uses: docker/login-action@af1e73f918a031802d376d3c8bbc3fe56130a9b0 # v4.4.0
       with:
         registry: ghcr.io
         username: ${{ github.actor }}
@@ -361,6 +364,7 @@ jobs:
     name: JS unit tests (vitest)
     if: |
       !(github.ref == 'refs/heads/dev' && contains(github.event.head_commit.message, 'Merge tag'))
+      && !(github.ref == 'refs/heads/master' && startsWith(github.event.head_commit.message, 'Release v'))
 
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -369,10 +373,10 @@ jobs:
       contents: read
 
     steps:
-    - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+    - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
 
     - name: Set up Node
-      uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+      uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
       with:
         node-version: "20"
         cache: yarn

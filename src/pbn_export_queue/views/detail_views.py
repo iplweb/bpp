@@ -1,12 +1,14 @@
 """Detail view for PBN export queue."""
 
 import json
+import logging
 import re
 
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.utils.safestring import mark_safe
 from django.views.generic import DetailView
 
+from bpp.util import zaloguj_polkniety_wyjatek
 from pbn_export_queue.models import PBN_Export_Queue
 
 from .constants import AI_PROMPT_TEMPLATE, HELPDESK_EMAIL_TEMPLATE
@@ -19,6 +21,8 @@ from .utils import (
     parse_error_details,
     parse_pbn_api_error,
 )
+
+logger = logging.getLogger(__name__)
 
 
 class PBNExportQueueDetailView(
@@ -149,7 +153,7 @@ class PBNExportQueueDetailView(
         from bpp.models import Uczelnia
         from pbn_api.const import PBN_POST_PUBLICATION_NO_STATEMENTS_URL
 
-        uczelnia = Uczelnia.objects.get_default()
+        uczelnia = Uczelnia.objects.get_for_request(self.request)
         if uczelnia and uczelnia.pbn_api_root:
             return (
                 uczelnia.pbn_api_root.rstrip("/")
@@ -194,28 +198,47 @@ class PBNExportQueueDetailView(
 
     def _add_sent_data_context(self, context):
         """Add SentData related context if it exists."""
-        try:
-            from pbn_api.models.sentdata import SentData
+        from pbn_api.models.sentdata import SentData
 
-            sent_data = SentData.objects.get(
-                content_type=self.object.content_type,
-                object_id=self.object.object_id,
-            )
-            context["sent_data"] = sent_data
-
-            if sent_data.pbn_uid_id:
-                context["pbn_publication_url"] = (
-                    f"https://pbn.nauka.gov.pl/works/publication/{sent_data.pbn_uid_id}"
-                )
-
-            # Parse PBN API error if this was a failed submission
-            if self.object.zakonczono_pomyslnie is False and sent_data.exception:
-                context["pbn_error_info"] = parse_pbn_api_error(sent_data.exception)
-
-            return sent_data
-
-        except SentData.DoesNotExist:
+        # Multi-hosted (Track 4): zawężamy do uczelni wpisu kolejki, żeby
+        # przy ≥2 uczelniach wysyłających ten rekord nie dostać
+        # ``MultipleObjectsReturned``. Wpis kolejki zna swoją uczelnię
+        # (``self.object.uczelnia`` — ta sama, której client wysyłał).
+        # Filtrujemy po (content_type, object_id) — nie przez GFK — bo
+        # rekord BPP mógł zostać w międzyczasie skasowany, a SentData wciąż
+        # istnieje (zachowanie identyczne jak poprzedni ``.get()``). Tag
+        # uczelni dokładamy tylko gdy wpis kolejki go ma (legacy = NULL →
+        # globalny lookup, działa dla single-install i untagged rows).
+        #
+        # Untagged wpis (``uczelnia_id is None``) w multi-install (≥2
+        # uczelnie) celowo NIE jest backfillowany przez migrację 0072, więc
+        # globalny lookup może trafić na ≥2 wiersze SentData. To widok
+        # display-only — nie wolno mu 500-ować. Zamiast ``.get()`` (które
+        # rzuciłoby ``MultipleObjectsReturned``) bierzemy ``.first()`` po
+        # posortowaniu malejąco wg ``last_updated_on``: pokazujemy najświeższy
+        # stan wysyłki, a brak wierszy daje ``None`` (zachowana semantyka
+        # poprzedniego ``DoesNotExist → None``).
+        qs = SentData.objects.filter(
+            content_type=self.object.content_type,
+            object_id=self.object.object_id,
+        )
+        if self.object.uczelnia_id is not None:
+            qs = qs.filter(uczelnia=self.object.uczelnia)
+        sent_data = qs.order_by("-last_updated_on").first()
+        if sent_data is None:
             return None
+        context["sent_data"] = sent_data
+
+        if sent_data.pbn_uid_id:
+            context["pbn_publication_url"] = (
+                f"https://pbn.nauka.gov.pl/works/publication/{sent_data.pbn_uid_id}"
+            )
+
+        # Parse PBN API error if this was a failed submission
+        if self.object.zakonczono_pomyslnie is False and sent_data.exception:
+            context["pbn_error_info"] = parse_pbn_api_error(sent_data.exception)
+
+        return sent_data
 
     def _add_pbn_error_from_komunikat(self, context):
         """Add PBN error info extracted from komunikat if not already in context."""
@@ -243,9 +266,15 @@ class PBNExportQueueDetailView(
                     args=[self.object.object_id],
                 )
                 context["record_admin_url"] = admin_url
-            except BaseException:
+            except Exception:
                 # If URL pattern doesn't exist, skip it
-                pass
+                zaloguj_polkniety_wyjatek(
+                    "Nie udało się zbudować URL-a admina dla rekordu "
+                    f"{content_type.app_label}.{content_type.model} "
+                    f"(object_id={self.object.object_id}) — pomijam link",
+                    logger=logger,
+                    do_rollbar=True,
+                )
 
     def _add_clipboard_data(self, context, sent_data):
         """Pre-fetch clipboard data for Safari compatibility."""

@@ -1,5 +1,6 @@
 """Action views for PBN export queue (resend, wake up, etc.)."""
 
+import logging
 import sys
 
 import rollbar
@@ -13,9 +14,12 @@ from django.views import View
 from django.views.decorators.http import require_POST
 
 from bpp.const import GR_WPROWADZANIE_DANYCH
+from bpp.util import zaloguj_polkniety_wyjatek
 from pbn_export_queue.models import PBN_Export_Queue, RodzajBledu
 
 from .mixins import PBNExportQueuePermissionMixin
+
+logger = logging.getLogger(__name__)
 
 
 def _check_permission(user):
@@ -371,8 +375,13 @@ def _get_ids_matching_title(queryset, search_query):
             ):
                 if search_lower in record.opis_bibliograficzny_cache.lower():
                     ids_from_title.append(item.pk)
-        except BaseException:
-            pass
+        except Exception:
+            zaloguj_polkniety_wyjatek(
+                "Błąd podczas dopasowywania tytułu rekordu do zapytania "
+                f"wyszukiwania (PBN_Export_Queue pk={item.pk}) — pomijam pozycję",
+                logger=logger,
+                do_rollbar=True,
+            )
     return ids_from_title
 
 

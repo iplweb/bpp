@@ -1,8 +1,10 @@
 from django.contrib import admin
 
+from bpp.admin.helpers.site_filtered import SiteFilteredAdminMixin
 from bpp.models import Rekord
-from pbn_api.admin.base import BasePBNAPIAdmin
+from pbn_api.admin.base import BasePBNAPIAdmin, InstytucjaColumnAdminMixin
 from pbn_api.admin.filters import (
+    InstytucjaPBNFilter,
     OdpowiednikPublikacjiInstytucjiAutorWBPPFilter,
     OdpowiednikPublikacjiInstytucjiPublikacjaWBPPFilter,
 )
@@ -10,7 +12,10 @@ from pbn_api.models import PublikacjaInstytucji
 
 
 @admin.register(PublikacjaInstytucji)
-class PublikacjaInstytucjiAdmin(BasePBNAPIAdmin):
+class PublikacjaInstytucjiAdmin(
+    SiteFilteredAdminMixin, InstytucjaColumnAdminMixin, BasePBNAPIAdmin
+):
+    uczelnia_field_path = "uczelnia"
     list_per_page = 25
     actions = None
     autocomplete_fields = [
@@ -37,6 +42,7 @@ class PublikacjaInstytucjiAdmin(BasePBNAPIAdmin):
         "snapshot",
     ]
     list_filter = [
+        InstytucjaPBNFilter,
         "userType",
         "publicationType",
         "publicationYear",

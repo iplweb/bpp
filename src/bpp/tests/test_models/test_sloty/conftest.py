@@ -1,14 +1,17 @@
 import pytest
-
-from ewaluacja_common.models import Rodzaj_Autora
+from django.contrib.sites.models import Site
 
 from bpp import const
 from bpp.models import (
     Autor_Dyscyplina,
     Charakter_Formalny,
+    Jednostka,
+    Uczelnia,
     Wydawnictwo_Ciagle,
     Wydawnictwo_Zwarte,
+    Wydzial,
 )
+from ewaluacja_common.models import Rodzaj_Autora
 
 
 @pytest.fixture
@@ -192,3 +195,70 @@ def referat_z_dyscyplinami(zwarte_z_dyscyplinami, charakter_referat):
     zwarte_z_dyscyplinami.save()
 
     return zwarte_z_dyscyplinami
+
+
+@pytest.fixture
+def druga_uczelnia(db):
+    site, _ = Site.objects.get_or_create(
+        domain="druga.testserver", defaults={"name": "druga"}
+    )
+    return Uczelnia.objects.create(
+        skrot="DR", nazwa="Druga uczelnia", site=site
+    )
+
+
+@pytest.fixture
+def jednostka_drugiej_uczelni(druga_uczelnia, db):
+    wydzial = Wydzial.objects.create(
+        uczelnia=druga_uczelnia, skrot="W2", nazwa="Wydział II"
+    )
+    return Jednostka.objects.create(
+        nazwa="Jedn. Drugiej Ucz.",
+        skrot="JDU",
+        wydzial=wydzial,
+        uczelnia=druga_uczelnia,
+    )
+
+
+@pytest.fixture
+def zwarte_dwie_uczelnie(
+    wydawnictwo_zwarte,
+    autor_jan_nowak,
+    autor_jan_kowalski,
+    jednostka,
+    jednostka_drugiej_uczelni,
+    dyscyplina1,
+    rodzaj_autora_n,
+    charaktery_formalne,
+    wydawca,
+    typy_odpowiedzialnosci,
+    rok,
+):
+    # Obaj autorzy w TEJ SAMEJ dyscyplinie, ale w różnych uczelniach.
+    Autor_Dyscyplina.objects.create(
+        autor=autor_jan_nowak,
+        dyscyplina_naukowa=dyscyplina1,
+        rok=rok,
+        rodzaj_autora=rodzaj_autora_n,
+    )
+    Autor_Dyscyplina.objects.create(
+        autor=autor_jan_kowalski,
+        dyscyplina_naukowa=dyscyplina1,
+        rok=rok,
+        rodzaj_autora=rodzaj_autora_n,
+    )
+    wydawnictwo_zwarte.dodaj_autora(
+        autor_jan_nowak, jednostka, dyscyplina_naukowa=dyscyplina1
+    )
+    wydawnictwo_zwarte.dodaj_autora(
+        autor_jan_kowalski,
+        jednostka_drugiej_uczelni,
+        dyscyplina_naukowa=dyscyplina1,
+    )
+    wydawnictwo_zwarte.punkty_kbn = 20
+    wydawnictwo_zwarte.wydawca = wydawca
+    wydawnictwo_zwarte.charakter_formalny = Charakter_Formalny.objects.get(
+        skrot="KSP"
+    )
+    wydawnictwo_zwarte.save()
+    return wydawnictwo_zwarte

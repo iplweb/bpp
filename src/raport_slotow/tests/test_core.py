@@ -48,3 +48,24 @@ def test_autorzy_zerowi(rekord_slotu, autor_z_dyscyplina):
 @pytest.mark.django_db
 def test_autorzy_zerowi_rok_powyzej(rekord_slotu, autor_jan_nowak, rok):
     assert autorzy_zerowi(od_roku=rok + 20).count() == 0
+
+
+@pytest.mark.django_db
+def test_autorzy_z_punktami_filtr_uczelni(
+    zwarte_dwie_uczelnie, jednostka, druga_uczelnia
+):
+    from raport_slotow.core import autorzy_z_punktami
+
+    zwarte_dwie_uczelnie.przelicz_punkty_dyscyplin()
+    wszyscy = set(
+        autorzy_z_punktami().values_list(
+            "autor_id", "rekord__rok", "dyscyplina_id"
+        )
+    )
+    tylko_u1 = set(
+        autorzy_z_punktami(uczelnia=jednostka.uczelnia).values_list(
+            "autor_id", "rekord__rok", "dyscyplina_id"
+        )
+    )
+    assert tylko_u1 <= wszyscy
+    assert len(tylko_u1) <= len(wszyscy)

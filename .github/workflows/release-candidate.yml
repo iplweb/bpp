@@ -1,0 +1,203 @@
+name: Release candidate (kandydat → staging)
+
+# Pierwsza z dwóch komend wydania (druga: promote.yml). Buduje kandydata na
+# gałęzi release/v<BASE>, skanuje, testuje i publikuje obrazy :<BASE>rcN +
+# :staging. NIE rusza master/dev/:latest. Wywołanie:
+#   gh workflow run release-candidate.yml --ref dev
+# Powtórne wywołanie (gdy gałąź release/* otwarta) → kolejne -rcN.
+# Promote dopiero przez: gh workflow run promote.yml
+
+on:
+  workflow_dispatch:
+    inputs:
+      skip_tests:
+        description: Pomiń testy (AWARYJNIE).
+        type: boolean
+        default: false
+      skip_scan:
+        description: Pomiń skan CVE (AWARYJNIE).
+        type: boolean
+        default: false
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  prepare:
+    name: Zbuduj kandydata (bump RC + scan + testy)
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    permissions:
+      contents: write
+    env:
+      COMPOSE_FILES: -f docker-compose.test.yml -f docker-compose.test.ci.yml
+    outputs:
+      version_tag: ${{ steps.bump.outputs.version_tag }}
+      release_ref: ${{ steps.bump.outputs.release_ref }}
+    steps:
+      - name: Checkout (pełna historia + tagi)
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+          persist-credentials: false
+
+      - name: Konfiguracja git
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git fetch --tags origin dev
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@d31148d669074a8d0a63714ba94f3201e7020bc3 # v8.3.0
+        with:
+          enable-cache: true
+
+      - name: Bump RC (nowy cykl lub kolejne -rcN)
+        id: bump
+        run: |
+          set -euo pipefail
+          # Wykryj otwartą gałąź wydania (origin/release/*).
+          mapfile -t BRANCHES < <(git ls-remote --heads origin 'refs/heads/release/*' \
+            | sed -E 's@.*refs/heads/(release/.*)$@\1@')
+
+          if [ "${#BRANCHES[@]}" -gt 1 ]; then
+            echo "::error::Otwartych >1 wydań: ${BRANCHES[*]}. Domknij/promuj jedno przed kolejnym RC."
+            exit 1
+          fi
+
+          OPEN="${BRANCHES[0]:-}"
+
+          if [ -z "$OPEN" ]; then
+            # Nowy cykl: policz BASE RAZ (bumpver test daje następny final),
+            # gałąź z dev, ustaw rc1 JAWNIE przez --set-version (BUILD nie
+            # może auto-dryfować przy kolejnych RC, stąd nie --tag-num).
+            #
+            # UWAGA: uzywamy `uvx bumpver` (izolowany tool env, ~5 pakietow),
+            # a NIE `uv run bumpver`. `uv run` na goRym hoscie runnera synchro-
+            # nizowalby CALY projekt bpp (300+ pakietow) tylko po to, by odpalic
+            # utility do wersjonowania — a to buduje natywne rozszerzenia ze
+            # zrodel (pycairo przez xhtml2pdf→svglib→rlpycairo) i wywala sie na
+            # runnerze bez naglowkow cairo/kompilatora. bumpver czyta tylko
+            # ./pyproject.toml i edytuje pliki — nie potrzebuje env projektu.
+            # NIE dopisuj `2>/dev/null` — ukrylo by realny blad (patrz historia:
+            # cichy exit 1 gdy sync sie sypal, bo stderr szedl do /dev/null).
+            CUR="v$(./bin/bpp-version.py)"
+            BASE=$(uvx bumpver test "$CUR" 'vYYYY0M.BUILD[-TAGNUM]' \
+                   | awk '/PEP440/{print $NF}')
+            # Guard: pusty BASE (np. bumpver test padł) dałby malformed
+            # "v-rc1" + gałąź "release/v" — przerwij zanim coś powstanie.
+            [ -n "$BASE" ] || { echo "::error::Nie udało się policzyć BASE (bumpver test)."; exit 1; }
+            RELEASE_REF="release/v${BASE}"
+            git switch -C _rc origin/dev
+            uvx bumpver update --no-fetch --commit --no-push \
+              --set-version "v${BASE}-rc1"
+          else
+            # Kontynuacja: checkout gałęzi, podbierz fixy z dev, rc(N+1).
+            # BASE stały (z nazwy gałęzi); rc numer = bieżący+1.
+            RELEASE_REF="$OPEN"
+            git switch -C _rc "origin/$OPEN"
+            git merge --no-ff --no-edit origin/dev
+            CUR_PEP=$(./bin/bpp-version.py)               # np. 202606.1394rc1
+            BASE=$(echo "$CUR_PEP" | sed -E 's/rc[0-9]+$//')
+            RCN=$(echo "$CUR_PEP" | sed -E 's/.*rc([0-9]+)$/\1/')
+            NEXT_RC=$((RCN + 1))
+            uvx bumpver update --no-fetch --commit --no-push \
+              --set-version "v${BASE}-rc${NEXT_RC}"
+          fi
+
+          PEP=$(./bin/bpp-version.py)            # np. 202606.1394rc2
+          git branch -M _rc "$RELEASE_REF"
+          echo "version_tag=${PEP}" >> "$GITHUB_OUTPUT"
+          echo "release_ref=${RELEASE_REF}" >> "$GITHUB_OUTPUT"
+          echo "::notice::Kandydat ${PEP} na gałęzi ${RELEASE_REF}"
+
+          # Zamroź lockfile dla tego RC.
+          uv lock
+          git add uv.lock
+          git commit -m "Aktualizacja uv.lock dla ${PEP}" || echo "uv.lock bez zmian."
+
+      - name: Zainstaluj skanery CVE
+        if: ${{ !inputs.skip_scan }}
+        run: |
+          curl -sSL -o /usr/local/bin/osv-scanner \
+            https://github.com/google/osv-scanner/releases/latest/download/osv-scanner_linux_amd64
+          chmod +x /usr/local/bin/osv-scanner
+          curl -sSfL https://raw.githubusercontent.com/anchore/grype/main/install.sh \
+            | sh -s -- -b /usr/local/bin
+          curl -sSfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh \
+            | sh -s -- -b /usr/local/bin
+
+      - name: Skan CVE (bramka)
+        if: ${{ !inputs.skip_scan }}
+        run: ./bin/scan-deps.sh
+
+      - name: Przygotuj ci-output
+        if: ${{ !inputs.skip_tests }}
+        run: mkdir -p ci-output
+
+      - name: Zbuduj obraz test-runner
+        if: ${{ !inputs.skip_tests }}
+        run: docker compose $COMPOSE_FILES build test-runner
+
+      - name: Wystartuj usługi
+        if: ${{ !inputs.skip_tests }}
+        run: docker compose $COMPOSE_FILES up -d db redis
+
+      - name: Czekaj na usługi
+        if: ${{ !inputs.skip_tests }}
+        timeout-minutes: 2
+        run: |
+          until docker compose $COMPOSE_FILES exec db pg_isready -U bpp; do
+            echo "Czekam na PostgreSQL..."; sleep 2
+          done
+          until docker compose $COMPOSE_FILES exec redis redis-cli ping; do
+            echo "Czekam na Redis..."; sleep 2
+          done
+
+      - name: TESTY (pełna suita)
+        if: ${{ !inputs.skip_tests }}
+        timeout-minutes: 45
+        run: |
+          docker compose $COMPOSE_FILES run --rm \
+            test-runner uv run pytest -n auto --timeout 300
+
+      - name: Sprzątanie usług
+        if: ${{ always() && !inputs.skip_tests }}
+        run: docker compose $COMPOSE_FILES down -v
+
+      - name: Push gałęzi wydania
+        env:
+          RELEASE_REF: ${{ steps.bump.outputs.release_ref }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          git push \
+            "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" \
+            "HEAD:refs/heads/${RELEASE_REF}"
+
+  build:
+    name: Build obrazów RC → :staging
+    needs: prepare
+    uses: ./.github/workflows/build-docker-images.yml
+    permissions:
+      contents: read
+      # Reusable build-docker-images.yml ma job `check-flag`, ktory deklaruje
+      # `pull-requests: read` (uzywa `gh pr list`/`gh pr view` na sciezce
+      # pull_request/workflow_dispatch — dedup i hint). GitHub waliduje
+      # uprawnienia reusable workflow STATYCZNIE: caller musi nadac >= tego,
+      # co deklaruje dowolny nested job, niezaleznie od tego ze na sciezce
+      # workflow_call (VERSION_TAG ustawiony) check-flag konczy sie wczesnie
+      # i tego scope'u nie tyka. Bez tej linii: "requesting 'pull-requests:
+      # read', but is only allowed 'pull-requests: none'".
+      pull-requests: read
+    with:
+      ref: ${{ needs.prepare.outputs.release_ref }}
+      version_tag: ${{ needs.prepare.outputs.version_tag }}
+      channel: staging
+      run_trivy: ${{ !inputs.skip_scan }}
+    secrets:
+      DOCKER_PAT: ${{ secrets.DOCKER_PAT }}

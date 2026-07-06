@@ -1,11 +1,16 @@
 """Phase 3 capacity-based pinning analysis + application."""
 
+import logging
+
 from denorm import denorms
 
+from bpp.util import zaloguj_polkniety_wyjatek
 from ewaluacja_optymalizacja.core import (
     analyze_pinning_candidates,
     apply_pinning_candidates,
 )
+
+logger = logging.getLogger(__name__)
 
 
 def handle_phase3_pinning(
@@ -110,4 +115,11 @@ def handle_phase3_pinning(
                 style.SUCCESS(f"\nPhase 3 complete. Previous points: {old_points:.1f}")
             )
         except Exception as e:
+            zaloguj_polkniety_wyjatek(
+                "Ponowne uruchomienie optymalizacji (solve_evaluation) w "
+                f"fazie 3 dla dyscypliny '{dyscyplina_obj.nazwa}' nie powiodło "
+                "się",
+                logger=logger,
+                do_rollbar=True,
+            )
             stdout.write(style.ERROR(f"Error during re-run: {e}"))

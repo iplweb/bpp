@@ -80,13 +80,13 @@ class TestPbnImportujUidCommand:
             )
 
     def test_fails_without_uczelnia(self, db):
-        """Command should fail if no default Uczelnia exists."""
+        """Command should fail if there is no Uczelnia at all."""
         Uczelnia.objects.all().delete()
 
         stdout = StringIO()
         stderr = StringIO()
 
-        with pytest.raises(CommandError, match="Brak domyślnej uczelni"):
+        with pytest.raises(CommandError, match="Brak uczelni"):
             with patch(
                 "pbn_import.management.commands.pbn_importuj_uid."
                 "PBNBaseCommand.get_client"

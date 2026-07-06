@@ -28,8 +28,8 @@ from bpp.views.api.uzupelnij_rok import (
 )
 from bpp.views.autocomplete import (
     AdminNavigationAutocomplete,
+    AutorAktualnieZatrudnionyNaUczelni,
     AutorAutocomplete,
-    AutorZUczelniAutocopmlete,
     Dyscyplina_Naukowa_PrzypisanieAutocomplete,
     Dyscyplina_NaukowaAutocomplete,
     GlobalNavigationAutocomplete,
@@ -437,7 +437,7 @@ urlpatterns = [
     ),
     url(
         r"^autor-z-uczelni-autocomplete/$",
-        AutorZUczelniAutocopmlete.as_view(),
+        AutorAktualnieZatrudnionyNaUczelni.as_view(),
         name="autor-z-uczelni-autocomplete",
     ),
     url(

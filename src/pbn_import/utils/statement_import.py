@@ -1,8 +1,11 @@
 """Statement (oświadczenia) import utilities"""
 
+import logging
+
 from django.contrib.contenttypes.models import ContentType
 
-from bpp.models import Jednostka, Rekord
+from bpp.models import Rekord
+from bpp.util import zaloguj_polkniety_wyjatek
 from pbn_api.models import OswiadczenieInstytucji
 from pbn_integrator.utils import (
     integruj_oswiadczenia_z_instytucji,
@@ -14,6 +17,8 @@ from ..models import ImportInconsistency
 from .base import ImportStepBase
 from .publication_import import PublicationImporter
 
+logger = logging.getLogger(__name__)
+
 
 class StatementImporter(ImportStepBase):
     """Import statements from PBN"""
@@ -21,9 +26,13 @@ class StatementImporter(ImportStepBase):
     step_name = "statement_import"
     step_description = "Import oświadczeń"
 
-    def __init__(self, session, client=None):
-        super().__init__(session, client)
-        self.publication_importer = PublicationImporter(session, client)
+    def __init__(self, session, client=None, uczelnia=None):
+        super().__init__(session, client, uczelnia=uczelnia)
+        # Propaguj kontekst uczelni dalej — wewnętrzny PublicationImporter też
+        # jest multi-hosted i nie może zgadywać get_default().
+        self.publication_importer = PublicationImporter(
+            session, client, uczelnia=uczelnia
+        )
 
     def _create_inconsistency_callback(self):
         """Create callback for recording statement integration inconsistencies."""
@@ -83,40 +92,45 @@ class StatementImporter(ImportStepBase):
 
         return inconsistency_callback
 
-    def run(self):
-        """Import statements"""
-        # Step 1: Download statements
-        self.update_progress(0, 3, "Pobieranie oświadczeń z PBN")
+    def download(self):
+        """Pobierz oświadczenia instytucji z PBN do lustra."""
+        self.update_progress(0, 1, "Pobieranie oświadczeń z PBN")
         self.log("info", "Pobieranie oświadczeń z instytucji")
-
-        # Create progress callback for sub-task tracking
         subtask_callback = self.create_subtask_progress("Pobieranie oświadczeń")
-
         try:
             pobierz_oswiadczenia_z_instytucji(self.client, callback=subtask_callback)
-            self.log("info", "Oświadczenia pobrane pomyślnie")
+            self.log("success", "Oświadczenia pobrane pomyślnie")
         except Exception as e:
+            zaloguj_polkniety_wyjatek(
+                "Nie udało się pobrać oświadczeń z instytucji z PBN",
+                logger=logger,
+                do_rollbar=False,  # Rollbar już w handle_error
+            )
             self.handle_error(e, "Nie udało się pobrać oświadczeń")
         finally:
             self.clear_subtask_progress()
+        self.update_progress(1, 1, "Zakończono pobieranie oświadczeń")
+        return {"statements_downloaded": True, "error_count": len(self.errors)}
 
-        # Setup publication importer for any missing publications
+    def process(self):
+        """Dociągnij brakujące publikacje i zintegruj oświadczenia."""
+        if not OswiadczenieInstytucji.objects.exists():
+            self.log(
+                "warning",
+                "Brak pobranych oświadczeń — przetwarzam 0. Uruchom fazę "
+                "pobierania, jeśli to nie zamierzone.",
+            )
+
         uczelnia = self.publication_importer._setup_uczelnia_and_jednostka()
         if not uczelnia:
             self.log(
-                "warning",
-                "Brak Uczelni z PBN UID, pomijanie integracji oświadczeń",
+                "warning", "Brak Uczelni z PBN UID, pomijanie integracji oświadczeń"
             )
             return {"statements_imported": False, "reason": "No Uczelnia PBN UID"}
 
-        # Pobierz jednostkę domyślną z konfiguracji sesji
-        default_jednostka = None
-        jednostka_id = self.session.config.get("default_jednostka_id")
-        if jednostka_id:
-            default_jednostka = Jednostka.objects.filter(pk=jednostka_id).first()
+        default_jednostka = self.publication_importer.default_jednostka
 
-        # Step 2: Download missing publications in batch (NEW STEP)
-        self.update_progress(1, 3, "Pobieranie brakujących publikacji")
+        self.update_progress(0, 2, "Pobieranie brakujących publikacji")
         result = self._download_missing_publications(default_jednostka)
         if result:
             self.log(
@@ -125,22 +139,16 @@ class StatementImporter(ImportStepBase):
                 f"({result['failed']} błędów)",
             )
 
-        # Step 3: Integrate statements (no longer needs missing publication callback)
-        self.update_progress(2, 3, "Integrowanie oświadczeń")
+        self.update_progress(1, 2, "Integrowanie oświadczeń")
         self.log("info", "Integrowanie oświadczeń")
-
         try:
-            # Create inconsistency callback to log issues found during integration
             inconsistency_callback = self._create_inconsistency_callback()
-
-            # Pass None for missing_publication_callback - publications already downloaded
             integruj_oswiadczenia_z_instytucji(
                 missing_publication_callback=None,
                 inconsistency_callback=inconsistency_callback,
                 default_jednostka=default_jednostka,
+                uczelnia=uczelnia,
             )
-
-            # Log inconsistency summary
             inconsistency_count = self.session.inconsistencies.count()
             if inconsistency_count > 0:
                 self.log(
@@ -148,20 +156,20 @@ class StatementImporter(ImportStepBase):
                     f"Znaleziono {inconsistency_count} nieścisłości podczas "
                     f"integracji oświadczeń",
                 )
-
-            # Update statistics
             if hasattr(self.session, "statistics"):
                 stats = self.session.statistics
                 stats.statements_imported += 1
                 stats.save()
-
             self.log("success", "Oświadczenia zintegrowane pomyślnie")
-
         except Exception as e:
+            zaloguj_polkniety_wyjatek(
+                "Nie udało się zintegrować oświadczeń z instytucji",
+                logger=logger,
+                do_rollbar=False,  # Rollbar już w handle_error
+            )
             self.handle_error(e, "Nie udało się zintegrować oświadczeń")
 
-        self.update_progress(3, 3, "Zakończono import oświadczeń")
-
+        self.update_progress(2, 2, "Zakończono import oświadczeń")
         return {"statements_imported": True, "error_count": len(self.errors)}
 
     def _download_missing_publications(self, default_jednostka):
@@ -230,6 +238,11 @@ class StatementImporter(ImportStepBase):
             return result
 
         except Exception as e:
+            zaloguj_polkniety_wyjatek(
+                "Nie udało się pobrać brakujących publikacji dla oświadczeń",
+                logger=logger,
+                do_rollbar=False,  # Rollbar już w handle_error
+            )
             self.handle_error(e, "Nie udało się pobrać brakujących publikacji")
             return None
         finally:

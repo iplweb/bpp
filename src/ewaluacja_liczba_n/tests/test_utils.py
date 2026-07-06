@@ -17,6 +17,7 @@ from ewaluacja_liczba_n.utils import (
 @pytest.mark.parametrize("zaokraglaj", [True, False])
 def test_oblicz_liczby_n_dla_ewaluacji_2022_2025_prosty(
     uczelnia,
+    jednostka,
     autor_jan_nowak,
     dyscyplina1,
     zaokraglaj,
@@ -26,6 +27,9 @@ def test_oblicz_liczby_n_dla_ewaluacji_2022_2025_prosty(
     # miała liczbę N większą od 12. W ten sposób nie zostanie usunięta z wykazu
     # dyscyplin raportowanych.
     # WAŻNE: Tworzymy dane dla roku 2022 i 2025, aby dyscyplina miała N >= 12 na koniec 2025
+    # Jednostka musi skupiać pracowników żeby autorzy byli uwzględniani w pipeline
+    jednostka.skupia_pracownikow = True
+    jednostka.save()
     for rok in [2022, 2025]:
         ad_kwargs = dict(
             dyscyplina_naukowa=dyscyplina1,
@@ -35,10 +39,12 @@ def test_oblicz_liczby_n_dla_ewaluacji_2022_2025_prosty(
             rok=rok,
         )
         for _elem in range(12 * 5):
-            autor = baker.make(Autor)
+            autor = baker.make(Autor, aktualna_jednostka=jednostka)
             Autor_Dyscyplina.objects.create(autor=autor, **ad_kwargs)
 
-    # Dodaj autor_jan_nowak tylko dla roku 2022
+    # Dodaj autor_jan_nowak tylko dla roku 2022 (przypisz do jednostki uczelni)
+    autor_jan_nowak.aktualna_jednostka = jednostka
+    autor_jan_nowak.save()
     Autor_Dyscyplina.objects.create(
         autor=autor_jan_nowak,
         dyscyplina_naukowa=dyscyplina1,
@@ -96,11 +102,12 @@ def test_oblicz_srednia_liczbe_n_dla_dyscyplin_podstawowy(
         rodzaj_autora=rodzaj_autora_n,
     )
 
-    # Utwórz udziały
+    # Utwórz udziały (z uczelnia żeby funkcja je znalazła)
     IloscUdzialowDlaAutoraZaRok.objects.create(
         rok=2022,
         autor=autor1,
         dyscyplina_naukowa=dyscyplina1,
+        uczelnia=uczelnia,
         ilosc_udzialow=Decimal("2.0"),
         ilosc_udzialow_monografie=Decimal("1.0"),
     )
@@ -109,6 +116,7 @@ def test_oblicz_srednia_liczbe_n_dla_dyscyplin_podstawowy(
         rok=2022,
         autor=autor2,
         dyscyplina_naukowa=dyscyplina1,
+        uczelnia=uczelnia,
         ilosc_udzialow=Decimal("1.0"),
         ilosc_udzialow_monografie=Decimal("0.5"),
     )
@@ -148,6 +156,7 @@ def test_oblicz_srednia_liczbe_n_dla_dyscyplin_wieloletni(
             rok=rok,
             autor=autor,
             dyscyplina_naukowa=dyscyplina1,
+            uczelnia=uczelnia,
             ilosc_udzialow=Decimal("1.0"),
             ilosc_udzialow_monografie=Decimal("0.5"),
         )
@@ -195,11 +204,12 @@ def test_oblicz_srednia_liczbe_n_tylko_pracownicy_n(
         rodzaj_autora=rodzaj_autora_d,
     )
 
-    # Utwórz udziały dla obu
+    # Utwórz udziały dla obu (z uczelnia)
     IloscUdzialowDlaAutoraZaRok.objects.create(
         rok=2022,
         autor=autor_n,
         dyscyplina_naukowa=dyscyplina1,
+        uczelnia=uczelnia,
         ilosc_udzialow=Decimal("2.0"),
         ilosc_udzialow_monografie=Decimal("1.0"),
     )
@@ -208,6 +218,7 @@ def test_oblicz_srednia_liczbe_n_tylko_pracownicy_n(
         rok=2022,
         autor=autor_d,
         dyscyplina_naukowa=dyscyplina1,
+        uczelnia=uczelnia,
         ilosc_udzialow=Decimal("2.0"),
         ilosc_udzialow_monografie=Decimal("1.0"),
     )
@@ -251,11 +262,12 @@ def test_oblicz_srednia_liczbe_n_autor_b_nie_liczony(
         rodzaj_autora=rodzaj_autora_b,
     )
 
-    # Utwórz udziały dla obu
+    # Utwórz udziały dla obu (z uczelnia)
     IloscUdzialowDlaAutoraZaRok.objects.create(
         rok=2022,
         autor=autor_n,
         dyscyplina_naukowa=dyscyplina1,
+        uczelnia=uczelnia,
         ilosc_udzialow=Decimal("2.0"),
         ilosc_udzialow_monografie=Decimal("1.0"),
     )
@@ -264,6 +276,7 @@ def test_oblicz_srednia_liczbe_n_autor_b_nie_liczony(
         rok=2022,
         autor=autor_b,
         dyscyplina_naukowa=dyscyplina1,
+        uczelnia=uczelnia,
         ilosc_udzialow=Decimal("2.0"),
         ilosc_udzialow_monografie=Decimal("1.0"),
     )
@@ -296,11 +309,12 @@ def test_oblicz_srednia_liczbe_n_brak_wymiaru_etatu(
         rodzaj_autora=rodzaj_autora_n,
     )
 
-    # Utwórz udział
+    # Utwórz udział (z uczelnia)
     IloscUdzialowDlaAutoraZaRok.objects.create(
         rok=2022,
         autor=autor,
         dyscyplina_naukowa=dyscyplina1,
+        uczelnia=uczelnia,
         ilosc_udzialow=Decimal("2.0"),
         ilosc_udzialow_monografie=Decimal("1.0"),
     )
@@ -316,11 +330,15 @@ def test_oblicz_srednia_liczbe_n_brak_wymiaru_etatu(
 
 
 @pytest.mark.django_db
-def test_autor_typu_z_ma_udzialy_zero(uczelnia, dyscyplina1, rodzaj_autora_z):
+def test_autor_typu_z_ma_udzialy_zero(
+    uczelnia, jednostka, dyscyplina1, rodzaj_autora_z
+):
     """
     Test że autor typu Z (licz_sloty=False) ma udziały = 0.0 ale jest widoczny w tabelach.
     """
-    autor = baker.make(Autor)
+    jednostka.skupia_pracownikow = True
+    jednostka.save()
+    autor = baker.make(Autor, aktualna_jednostka=jednostka)
 
     # Autor typu Z w roku 2025
     Autor_Dyscyplina.objects.create(
@@ -346,14 +364,16 @@ def test_autor_typu_z_ma_udzialy_zero(uczelnia, dyscyplina1, rodzaj_autora_z):
 
 @pytest.mark.django_db
 def test_autor_typu_z_nie_wliczany_do_liczby_n(
-    uczelnia, dyscyplina1, rodzaj_autora_n, rodzaj_autora_z
+    uczelnia, jednostka, dyscyplina1, rodzaj_autora_n, rodzaj_autora_z
 ):
     """
     Test że autorzy typu Z nie są wliczani do liczby N, mimo że są widoczni w listach.
     """
+    jednostka.skupia_pracownikow = True
+    jednostka.save()
     # 15 autorów typu N
     for _i in range(15):
-        autor = baker.make(Autor)
+        autor = baker.make(Autor, aktualna_jednostka=jednostka)
         Autor_Dyscyplina.objects.create(
             autor=autor,
             rok=2025,
@@ -365,7 +385,7 @@ def test_autor_typu_z_nie_wliczany_do_liczby_n(
 
     # 10 autorów typu Z (nie powinni być wliczani do N)
     for _i in range(10):
-        autor = baker.make(Autor)
+        autor = baker.make(Autor, aktualna_jednostka=jednostka)
         Autor_Dyscyplina.objects.create(
             autor=autor,
             rok=2025,
@@ -390,12 +410,14 @@ def test_autor_typu_z_nie_wliczany_do_liczby_n(
 
 @pytest.mark.django_db
 def test_autor_zmienia_typ_z_n_na_z(
-    uczelnia, dyscyplina1, rodzaj_autora_n, rodzaj_autora_z
+    uczelnia, jednostka, dyscyplina1, rodzaj_autora_n, rodzaj_autora_z
 ):
     """
     Test że jeśli autor zmienia typ z N na Z, to ma różne udziały w różnych latach.
     """
-    autor = baker.make(Autor)
+    jednostka.skupia_pracownikow = True
+    jednostka.save()
+    autor = baker.make(Autor, aktualna_jednostka=jednostka)
 
     # Rok 2024: autor typu N
     Autor_Dyscyplina.objects.create(

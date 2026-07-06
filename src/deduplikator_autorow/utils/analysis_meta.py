@@ -32,26 +32,14 @@ def _name_or_initial_match(a: str, b: str) -> bool:
     return False
 
 
-def analiza_pary_meta(a: dict, b: dict) -> tuple[int, list[str]]:  # noqa: C901
-    """Zwraca (score, reasons) dla pary (a, b) na bazie meta-cache.
-
-    HARD REJECTION: jeżeli obie strony mają imiona, ale nie ma między nimi
-    żadnego punktu wspólnego (ani pełne imię, ani 3-prefix, ani inicjał),
-    a jednocześnie NIE wykryto pełnej zamiany imię↔nazwisko, kandydat jest
-    natychmiast odrzucany. Zwracamy mocno ujemny score gwarantujący filtr
-    `score >= min_confidence` w `search_general.generate_pairs`. To nie jest
-    duplikat — żaden bonus z innych kryteriów (ORCID, nazwisko, lata) nie
-    może tego nadpisać. 'Jan' i 'Agnieszka' to różne osoby.
-    """
-    # Wczesne policzenie sygnałów dopasowania imion + ewentualnego swap-a.
-    common_imie = set(a["imiona_norm"]) & set(b["imiona_norm"])
+def _signals(a: dict, b: dict) -> dict:
+    """Policz sygnały dopasowania imion + swap-a (raz, używane wielokrotnie)."""
     similar_imie = 0
     for ia in a["imiona_norm"]:
         for ib in b["imiona_norm"]:
             if len(ia) >= 3 and len(ib) >= 3 and ia != ib:
                 if ia.startswith(ib[:3]) or ib.startswith(ia[:3]):
                     similar_imie += 1
-    init_count_imie = _common_initials(a["imiona_norm"], b["imiona_norm"])
     # Swap obejmuje też przypadek z inicjałem: 'Jan Kowalski' ↔ 'Kowalski J.'
     # gdzie database swap (imiona='Kowalski', nazwisko='J.') ma inicjał 'J'
     # pasujący do imienia 'Jan' z drugiej strony.
@@ -69,14 +57,155 @@ def analiza_pary_meta(a: dict, b: dict) -> tuple[int, list[str]]:  # noqa: C901
             for imie in a["imiona_norm"]
         )
     )
+    return {
+        "common_imie": set(a["imiona_norm"]) & set(b["imiona_norm"]),
+        "similar_imie": similar_imie,
+        "init_count_imie": _common_initials(a["imiona_norm"], b["imiona_norm"]),
+        "wykryto_swap": wykryto_swap,
+    }
+
+
+def _rule_publikacje(a: dict, b: dict, sig: dict) -> tuple[int, str]:
+    pubs_b = b["publikacje_count"]
+    if pubs_b <= 5:
+        return 10, f"mało publikacji ({pubs_b}) - prawdopodobny duplikat"
+    if pubs_b <= 10:
+        return -10, f"średnio publikacji ({pubs_b}) - możliwy duplikat"
+    return -20, f"wiele publikacji ({pubs_b}) - mało prawdopodobny duplikat"
+
+
+def _rule_tytul(a: dict, b: dict, sig: dict) -> tuple[int, str] | None:
+    if not b["ma_tytul"] and a["ma_tytul"]:
+        return 15, "brak tytułu naukowego u kandydata - prawdopodobny duplikat"
+    if b["ma_tytul"] and a["ma_tytul"]:
+        if a.get("tytul_id") == b.get("tytul_id"):
+            return 10, "identyczny tytuł naukowy"
+        return -15, "różny tytuł naukowy"
+    return None
+
+
+def _rule_orcid(a: dict, b: dict, sig: dict) -> tuple[int, str] | None:
+    if not b["ma_orcid"] and a["ma_orcid"]:
+        return 15, "brak ORCID u kandydata - prawdopodobny duplikat"
+    if b["ma_orcid"] and a["ma_orcid"]:
+        if a.get("orcid_value") == b.get("orcid_value"):
+            return 50, "identyczny ORCID - to ten sam autor"
+        return -50, "różny ORCID - to różni autorzy"
+    return None
+
+
+def _rule_nazwisko(a: dict, b: dict, sig: dict) -> tuple[int, str] | None:
+    if not (a["nazwisko_norm"] and b["nazwisko_norm"]):
+        return None
+    if a["nazwisko_norm"] == b["nazwisko_norm"]:
+        return 40, "identyczne nazwisko"
+    if (
+        a["nazwisko_norm"] in b["nazwisko_norm"]
+        or b["nazwisko_norm"] in a["nazwisko_norm"]
+    ):
+        return 30, "podobne nazwisko (zawieranie)"
+    parts_a = set(a.get("nazwisko_parts") or [])
+    parts_b = set(b.get("nazwisko_parts") or [])
+    common_parts = parts_a & parts_b
+    if common_parts and (len(parts_a) > 1 or len(parts_b) > 1):
+        if parts_a == parts_b:
+            # Pełny zestaw członów się zgadza (np. permutacja
+            # 'gal-cisoń' ↔ 'cisoń-gal').
+            return 35, "identyczne człony nazwiska złożonego (permutacja)"
+        return 20, (
+            f"wspólny człon nazwiska złożonego ({', '.join(sorted(common_parts))})"
+        )
+    return None
+
+
+def _rule_swap(a: dict, b: dict, sig: dict) -> tuple[int, str] | None:
+    if sig["wykryto_swap"]:
+        return 50, "wykryto pełną zamianę imienia z nazwiskiem"
+    return None
+
+
+def _rule_wspolne_imie(a: dict, b: dict, sig: dict) -> tuple[int, str] | None:
+    n = len(sig["common_imie"])
+    if n:
+        return 30 * n, f"wspólne imię ({n})"
+    return None
+
+
+def _rule_podobne_imie(a: dict, b: dict, sig: dict) -> tuple[int, str] | None:
+    n = sig["similar_imie"]
+    if n:
+        return 15 * n, f"podobne imię ({n})"
+    return None
+
+
+def _rule_inicjaly(a: dict, b: dict, sig: dict) -> tuple[int, str] | None:
+    n = sig["init_count_imie"]
+    if n:
+        return 5 * n, f"pasujące inicjały ({n})"
+    return None
+
+
+def _rule_brak_imion(a: dict, b: dict, sig: dict) -> tuple[int, str] | None:
+    if not b["imiona_norm"] and a["imiona_norm"]:
+        return 10, "brak imion u kandydata"
+    return None
+
+
+def _rule_lata(a: dict, b: dict, sig: dict) -> tuple[int, str] | None:
+    common_lata = a["lata_publikacji"] & b["lata_publikacji"]
+    if common_lata:
+        return 20, f"wspólne lata publikacji: {sorted(common_lata)}"
+    if not (a["lata_publikacji"] and b["lata_publikacji"]):
+        return None
+    min_dist = min(
+        abs(ra - rb) for ra in a["lata_publikacji"] for rb in b["lata_publikacji"]
+    )
+    if min_dist <= 2:
+        return 15, f"bliskie lata publikacji (różnica {min_dist})"
+    if min_dist <= 7:
+        return -5, f"średnia odległość lat publikacji ({min_dist})"
+    return -20, f"duża odległość lat publikacji ({min_dist})"
+
+
+# Kolejność reguł = kolejność powodów w wyniku (musi pozostać identyczna).
+_RULES = (
+    _rule_publikacje,
+    _rule_tytul,
+    _rule_orcid,
+    _rule_nazwisko,
+    _rule_swap,
+    _rule_wspolne_imie,
+    _rule_podobne_imie,
+    _rule_inicjaly,
+    _rule_brak_imion,
+    _rule_lata,
+)
+
+
+def analiza_pary_meta(a: dict, b: dict) -> tuple[int, list[str]]:
+    """Zwraca (score, reasons) dla pary (a, b) na bazie meta-cache.
+
+    HARD REJECTION: jeżeli obie strony mają imiona, ale nie ma między nimi
+    żadnego punktu wspólnego (ani pełne imię, ani 3-prefix, ani inicjał),
+    a jednocześnie NIE wykryto pełnej zamiany imię↔nazwisko, kandydat jest
+    natychmiast odrzucany. Zwracamy mocno ujemny score gwarantujący filtr
+    `score >= min_confidence` w `search_general.generate_pairs`. To nie jest
+    duplikat — żaden bonus z innych kryteriów (ORCID, nazwisko, lata) nie
+    może tego nadpisać. 'Jan' i 'Agnieszka' to różne osoby.
+
+    Scoring jest tabelą reguł ``_RULES`` — każda reguła zwraca
+    ``(waga, powód)`` albo ``None`` (brak wkładu). Pętla akumuluje punkty i
+    powody w kolejności reguł; ta kolejność jest częścią kontraktu.
+    """
+    sig = _signals(a, b)
 
     if (
         a["imiona_norm"]
         and b["imiona_norm"]
-        and not common_imie
-        and similar_imie == 0
-        and init_count_imie == 0
-        and not wykryto_swap
+        and not sig["common_imie"]
+        and sig["similar_imie"] == 0
+        and sig["init_count_imie"] == 0
+        and not sig["wykryto_swap"]
     ):
         return -1000, [
             f"odrzucono: zupełnie różne imiona "
@@ -86,103 +215,11 @@ def analiza_pary_meta(a: dict, b: dict) -> tuple[int, list[str]]:  # noqa: C901
 
     score = 0
     reasons: list[str] = []
-
-    pubs_b = b["publikacje_count"]
-    if pubs_b <= 5:
-        score += 10
-        reasons.append(f"mało publikacji ({pubs_b}) - prawdopodobny duplikat")
-    elif pubs_b <= 10:
-        score -= 10
-        reasons.append(f"średnio publikacji ({pubs_b}) - możliwy duplikat")
-    else:
-        score -= 20
-        reasons.append(f"wiele publikacji ({pubs_b}) - mało prawdopodobny duplikat")
-
-    if not b["ma_tytul"] and a["ma_tytul"]:
-        score += 15
-        reasons.append("brak tytułu naukowego u kandydata - prawdopodobny duplikat")
-    elif b["ma_tytul"] and a["ma_tytul"]:
-        if a.get("tytul_id") == b.get("tytul_id"):
-            score += 10
-            reasons.append("identyczny tytuł naukowy")
-        else:
-            score -= 15
-            reasons.append("różny tytuł naukowy")
-
-    if not b["ma_orcid"] and a["ma_orcid"]:
-        score += 15
-        reasons.append("brak ORCID u kandydata - prawdopodobny duplikat")
-    elif b["ma_orcid"] and a["ma_orcid"]:
-        if a.get("orcid_value") == b.get("orcid_value"):
-            score += 50
-            reasons.append("identyczny ORCID - to ten sam autor")
-        else:
-            score -= 50
-            reasons.append("różny ORCID - to różni autorzy")
-
-    if a["nazwisko_norm"] and b["nazwisko_norm"]:
-        if a["nazwisko_norm"] == b["nazwisko_norm"]:
-            score += 40
-            reasons.append("identyczne nazwisko")
-        elif (
-            a["nazwisko_norm"] in b["nazwisko_norm"]
-            or b["nazwisko_norm"] in a["nazwisko_norm"]
-        ):
-            score += 30
-            reasons.append("podobne nazwisko (zawieranie)")
-        else:
-            parts_a = set(a.get("nazwisko_parts") or [])
-            parts_b = set(b.get("nazwisko_parts") or [])
-            common_parts = parts_a & parts_b
-            if common_parts and (len(parts_a) > 1 or len(parts_b) > 1):
-                if parts_a == parts_b:
-                    # Pełny zestaw członów się zgadza (np. permutacja
-                    # 'gal-cisoń' ↔ 'cisoń-gal').
-                    score += 35
-                    reasons.append("identyczne człony nazwiska złożonego (permutacja)")
-                else:
-                    score += 20
-                    reasons.append(
-                        f"wspólny człon nazwiska złożonego "
-                        f"({', '.join(sorted(common_parts))})"
-                    )
-
-    if wykryto_swap:
-        score += 50
-        reasons.append("wykryto pełną zamianę imienia z nazwiskiem")
-
-    if common_imie:
-        score += 30 * len(common_imie)
-        reasons.append(f"wspólne imię ({len(common_imie)})")
-
-    if similar_imie:
-        score += 15 * similar_imie
-        reasons.append(f"podobne imię ({similar_imie})")
-
-    if init_count_imie:
-        score += 5 * init_count_imie
-        reasons.append(f"pasujące inicjały ({init_count_imie})")
-
-    if not b["imiona_norm"] and a["imiona_norm"]:
-        score += 10
-        reasons.append("brak imion u kandydata")
-
-    common_lata = a["lata_publikacji"] & b["lata_publikacji"]
-    if common_lata:
-        score += 20
-        reasons.append(f"wspólne lata publikacji: {sorted(common_lata)}")
-    elif a["lata_publikacji"] and b["lata_publikacji"]:
-        min_dist = min(
-            abs(ra - rb) for ra in a["lata_publikacji"] for rb in b["lata_publikacji"]
-        )
-        if min_dist <= 2:
-            score += 15
-            reasons.append(f"bliskie lata publikacji (różnica {min_dist})")
-        elif min_dist <= 7:
-            score -= 5
-            reasons.append(f"średnia odległość lat publikacji ({min_dist})")
-        else:
-            score -= 20
-            reasons.append(f"duża odległość lat publikacji ({min_dist})")
+    for rule in _RULES:
+        result = rule(a, b, sig)
+        if result is not None:
+            weight, reason = result
+            score += weight
+            reasons.append(reason)
 
     return score, reasons

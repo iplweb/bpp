@@ -14,17 +14,23 @@ class LinkDoPBNMixin:
     def link_do_pbn_wartosc_id(self):
         return getattr(self, self.atrybut_dla_url_do_pbn)
 
-    def link_do_pbn(self):
+    def link_do_pbn(self, uczelnia=None):
         assert self.url_do_pbn, "Określ parametr self.url_do_pbn"
 
-        from bpp.models import Uczelnia
+        # Multi-hosted: bez przekazanej uczelni próbujemy JEDYNEJ w systemie
+        # (get_single_uczelnia_or_none: single → ona; 0/>1 → None). NIE ma
+        # „uczelni domyślnej" (zgadywania pierwszej-z-brzegu). Bez ustalonej
+        # uczelni — nie linkujemy.
+        if uczelnia is None:
+            from bpp.models import Uczelnia
 
-        uczelnia = Uczelnia.objects.get_default()
-        if uczelnia is not None:
-            return self.url_do_pbn.format(
-                pbn_api_root=uczelnia.pbn_api_root,
-                pbn_uid_id=self.link_do_pbn_wartosc_id(),
-            )
+            uczelnia = Uczelnia.objects.get_single_uczelnia_or_none()
+        if uczelnia is None:
+            return None
+        return self.url_do_pbn.format(
+            pbn_api_root=uczelnia.pbn_api_root,
+            pbn_uid_id=self.link_do_pbn_wartosc_id(),
+        )
 
     def _get_lookup_id(self):
         """Get the lookup ID for PublikacjaInstytucji_V2 query.
@@ -80,11 +86,14 @@ class LinkDoPBNMixin:
         # pbn_api.models.Publication
         return self.current_version.get("versionHash", None)
 
-    def _format_link_pi(self, pbn_uid_id, uuid=None, versionHash=None):
+    def _format_link_pi(self, pbn_uid_id, uuid=None, versionHash=None, uczelnia=None):
         """Format the link to PI based on available data."""
-        from bpp.models import Uczelnia
+        # Multi-hosted: bez przekazanej uczelni próbujemy JEDYNEJ w systemie
+        # (single → ona; 0/>1 → None). NIE ma „uczelni domyślnej".
+        if uczelnia is None:
+            from bpp.models import Uczelnia
 
-        uczelnia = Uczelnia.objects.get_default()
+            uczelnia = Uczelnia.objects.get_single_uczelnia_or_none()
         if uczelnia is None:
             return None
 
@@ -104,7 +113,7 @@ class LinkDoPBNMixin:
 
         return None
 
-    def link_do_pi(self):
+    def link_do_pi(self, uczelnia=None):
         pbn_uid_id = self.link_do_pbn_wartosc_id()
 
         if not pbn_uid_id:
@@ -114,20 +123,26 @@ class LinkDoPBNMixin:
 
         lookup_id = self._get_lookup_id()
 
+        # Multi-hosted (audyt uczelnia, track 7b): gdy podano ``uczelnia``,
+        # zawężamy lookup ``_V2`` do tej uczelni (≥2 wiersze per objectId w
+        # multi-install). Bez uczelni — zachowanie jak dotąd (globalny lookup +
+        # MultipleObjectsReturned-fallback dla legacy/untagged danych).
+        qs = PublikacjaInstytucji_V2.objects.filter(objectId_id=lookup_id)
+        if uczelnia is not None:
+            qs = qs.filter(uczelnia=uczelnia)
+
         try:
-            uuid = PublikacjaInstytucji_V2.objects.get(objectId_id=lookup_id).pk
-            return self._format_link_pi(pbn_uid_id, uuid=uuid)
+            uuid = qs.get().pk
+            return self._format_link_pi(pbn_uid_id, uuid=uuid, uczelnia=uczelnia)
         except PublikacjaInstytucji_V2.MultipleObjectsReturned:
-            duplicates = list(
-                PublikacjaInstytucji_V2.objects.filter(
-                    objectId_id=lookup_id
-                ).values_list("pk", "created_on")
-            )
+            duplicates = list(qs.values_list("pk", "created_on"))
             uuid = self._report_and_get_first_duplicate(lookup_id, duplicates)
-            return self._format_link_pi(pbn_uid_id, uuid=uuid)
+            return self._format_link_pi(pbn_uid_id, uuid=uuid, uczelnia=uczelnia)
         except PublikacjaInstytucji_V2.DoesNotExist:
             versionHash = self._get_version_hash_from_fallback()
-            return self._format_link_pi(pbn_uid_id, versionHash=versionHash)
+            return self._format_link_pi(
+                pbn_uid_id, versionHash=versionHash, uczelnia=uczelnia
+            )
 
 
 class ModelZPBN_UID(LinkDoPBNMixin, models.Model):

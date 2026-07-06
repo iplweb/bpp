@@ -1,8 +1,8 @@
 """
-Context processor udostępniający ustawienia z django-constance dla szablonów.
+Context processor udostępniający ustawienia per-uczelnia dla szablonów.
 
-Zapewnia fallback do Django settings (zmiennych środowiskowych) w przypadku,
-gdy constance nie jest jeszcze skonfigurowane (np. podczas migracji).
+Ustawienia przeniesione z django-constance do modelu Uczelnia.
+Fallback do wartości domyślnych gdy brak uczelni w request.
 """
 
 _CONSTANCE_KEYS = (
@@ -23,55 +23,46 @@ _CONSTANCE_KEYS = (
 
 def constance_config(request):
     """
-    Udostępnia wybrane ustawienia z django-constance dla szablonów.
+    Udostępnia ustawienia per-uczelnia dla szablonów.
 
-    Używa ``constance.utils.get_values_for_keys`` zamiast
-    ``getattr(config, key)``. Powód: od constance 4.x
-    ``Config.__getattr__`` wykrywa aktywną pętlę asyncio (a Django
-    test client w nowszych wersjach startuje ją wewnętrznie) i
-    zwraca ``AsyncValueProxy`` — stringifikacja takiego proxy w
-    szablonie (``{{ VAR|default:"..." }}``) emituje
-    ``RuntimeWarning: Synchronous access to Constance setting '...'
-    inside an async loop``. ``get_values_for_keys`` idzie prosto do
-    backendu, bez tej detekcji, więc działa identycznie w sync i
-    async kontekście.
-
-    Fallback: jeżeli constance nie jest skonfigurowane, używa wartości
-    z Django settings (ze zmiennych środowiskowych).
+    Odczytuje wartości z obiektu Uczelnia powiązanego z bieżącym request
+    (ustawionego przez SiteResolutionMiddleware).
 
     Returns:
         dict: Słownik z ustawieniami dostępnymi w szablonach
     """
-    try:
-        from constance.utils import get_values_for_keys
+    uczelnia = getattr(request, "_uczelnia", None)
 
-        return get_values_for_keys(_CONSTANCE_KEYS)
-    except (ImportError, AttributeError):
-        from django.conf import settings
-
+    if uczelnia is not None:
         return {
-            "UZYWAJ_PUNKTACJI_WEWNETRZNEJ": getattr(
-                settings, "UZYWAJ_PUNKTACJI_WEWNETRZNEJ", True
+            "UZYWAJ_PUNKTACJI_WEWNETRZNEJ": uczelnia.pokazuj_punktacje_wewnetrzna,
+            "POKAZUJ_INDEX_COPERNICUS": uczelnia.pokazuj_index_copernicus,
+            "POKAZUJ_PUNKTACJA_SNIP": uczelnia.pokazuj_punktacja_snip,
+            "POKAZUJ_OSWIADCZENIE_KEN": uczelnia.pokazuj_oswiadczenie_ken,
+            "SKROT_WYDZIALU_W_NAZWIE_JEDNOSTKI": (
+                uczelnia.skrot_wydzialu_w_nazwie_jednostki
             ),
-            "POKAZUJ_INDEX_COPERNICUS": True,
-            "POKAZUJ_PUNKTACJA_SNIP": True,
-            "POKAZUJ_OSWIADCZENIE_KEN": getattr(
-                settings, "BPP_POKAZUJ_OSWIADCZENIE_KEN", False
-            ),
-            "SKROT_WYDZIALU_W_NAZWIE_JEDNOSTKI": getattr(
-                settings, "DJANGO_BPP_SKROT_WYDZIALU_W_NAZWIE_JEDNOSTKI", True
-            ),
-            "UCZELNIA_UZYWA_WYDZIALOW": getattr(
-                settings, "DJANGO_BPP_UCZELNIA_UZYWA_WYDZIALOW", True
-            ),
-            "GOOGLE_ANALYTICS_PROPERTY_ID": getattr(
-                settings, "GOOGLE_ANALYTICS_PROPERTY_ID", None
-            ),
-            "GOOGLE_VERIFICATION_CODE": getattr(
-                settings, "WEBMASTER_VERIFICATION", {}
-            ).get("google", ""),
-            "WYDRUK_MARGINES_GORA": "2cm",
-            "WYDRUK_MARGINES_DOL": "2cm",
-            "WYDRUK_MARGINES_LEWO": "2cm",
-            "WYDRUK_MARGINES_PRAWO": "2cm",
+            "UCZELNIA_UZYWA_WYDZIALOW": uczelnia.uzywaj_wydzialow,
+            "GOOGLE_ANALYTICS_PROPERTY_ID": uczelnia.google_analytics_property_id,
+            "GOOGLE_VERIFICATION_CODE": uczelnia.google_verification_code,
+            "WYDRUK_MARGINES_GORA": uczelnia.wydruk_margines_gora,
+            "WYDRUK_MARGINES_DOL": uczelnia.wydruk_margines_dol,
+            "WYDRUK_MARGINES_LEWO": uczelnia.wydruk_margines_lewo,
+            "WYDRUK_MARGINES_PRAWO": uczelnia.wydruk_margines_prawo,
         }
+
+    # Fallback — brak uczelni w request
+    return {
+        "UZYWAJ_PUNKTACJI_WEWNETRZNEJ": True,
+        "POKAZUJ_INDEX_COPERNICUS": True,
+        "POKAZUJ_PUNKTACJA_SNIP": True,
+        "POKAZUJ_OSWIADCZENIE_KEN": False,
+        "SKROT_WYDZIALU_W_NAZWIE_JEDNOSTKI": True,
+        "UCZELNIA_UZYWA_WYDZIALOW": True,
+        "GOOGLE_ANALYTICS_PROPERTY_ID": "",
+        "GOOGLE_VERIFICATION_CODE": "",
+        "WYDRUK_MARGINES_GORA": "2cm",
+        "WYDRUK_MARGINES_DOL": "2cm",
+        "WYDRUK_MARGINES_LEWO": "2cm",
+        "WYDRUK_MARGINES_PRAWO": "2cm",
+    }

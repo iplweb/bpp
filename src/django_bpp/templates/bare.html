@@ -11,8 +11,36 @@
         - Bibliografia Publikacji {{ uczelnia.skrot }}
     {% endblock %}</title>
     <meta charset="utf-8"/>
-    <meta name="viewport" content="width=device-width"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1"/>
     <meta name="theme-color" content="#e6e6e6">
+
+    {# SEO: opis strony (snippet w Google). Strony treściowe (opis #}
+    {# publikacji, autor) nadpisują blok własnym, konkretnym opisem. #}
+    {% block meta_description %}
+        <meta name="description"
+              content="Bibliografia Publikacji Pracowników {{ uczelnia.nazwa|default:uczelnia.skrot }} — baza publikacji naukowych."/>
+    {% endblock %}
+
+    {# SEO: link kanoniczny. Domyślnie pusty — strony, które mają #}
+    {# jednoznaczny URL (opis publikacji), wypełniają go same. #}
+    {% block canonical %}{% endblock %}
+
+    {# SEO: Open Graph — podgląd przy udostępnianiu (FB/LinkedIn/Slack). #}
+    {% block opengraph %}
+        <meta property="og:site_name" content="Bibliografia Publikacji {{ uczelnia.skrot }}"/>
+        <meta property="og:type" content="website"/>
+        {% if request %}<meta property="og:url" content="{{ request.build_absolute_uri }}"/>{% endif %}
+    {% endblock %}
+
+    {# Preload fontu ikonowego Foundation: bez tego przeglądarka odkrywa #}
+    {# foundation-icons.woff dopiero po sparsowaniu CSS-u i napotkaniu #}
+    {# elementu .fi-* — co w oknie ładowania pokazuje tofu (kwadraciki #}
+    {# z kodem) zamiast ikon. Preload pobiera font od razu, równolegle. #}
+    {# crossorigin jest wymagane: fonty zawsze fetchowane w trybie CORS, #}
+    {# bez tego atrybutu preload nie zmatchuje i font pobrałby się dwa razy. #}
+    <link rel="preload" as="font" type="font/woff"
+          href="{% static "foundation-datepicker/foundation/fonts/foundation-icons.woff" %}"
+          crossorigin>
 
     {% if uczelnia.pokazuj_deklaracje_dostepnosci == 1 %}
         <meta name="deklaracja-dostępności" content="{{ uczelnia.deklaracja_dostepnosci_url }}"/>
@@ -56,6 +84,24 @@
         <link rel="stylesheet" href="{% static "cookielaw/css/cookielaw.css" %}"/>
         <link rel="stylesheet" href="{% static "datatables.net-zf/css/dataTables.foundation.css" %}"/>
     {% endcompress %}
+
+    {# Nadpisanie @font-face Foundation Icons: vendorowy foundation-icons.css #}
+    {# (z node_modules, nie wolno go edytować — nadpisze go make assets) nie #}
+    {# ustawia font-display, więc domyślne 'auto' po block-period pokazuje #}
+    {# fallback → tofu. Redeklaracja tej samej rodziny PO vendorze wygrywa #}
+    {# w kaskadzie i wymusza font-display: block: zamiast kwadracików widać #}
+    {# pustkę, a po doczytaniu fontu ikona doskakuje. URL woff = ten z #}
+    {# preloadu wyżej, więc przeglądarka deduplikuje pobranie. #}
+    <style>
+        @font-face {
+            font-family: "foundation-icons";
+            src: url("{% static "foundation-datepicker/foundation/fonts/foundation-icons.woff" %}") format("woff"),
+                 url("{% static "foundation-datepicker/foundation/fonts/foundation-icons.ttf" %}") format("truetype");
+            font-weight: normal;
+            font-style: normal;
+            font-display: block;
+        }
+    </style>
 
     {# JavaScript bundle - built with esbuild, includes jQuery and all JS deps. #}
     {# Owinięte w {% compress js %}, żeby django-compressor wyemitował plik z #}

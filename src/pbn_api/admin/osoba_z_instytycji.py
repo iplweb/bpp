@@ -1,11 +1,15 @@
 from django.contrib import admin
 
+from bpp.admin.helpers.site_filtered import SiteFilteredAdminMixin
 from pbn_api.admin.mixins import ReadOnlyListChangeFormAdminMixin
 from pbn_api.models import OsobaZInstytucji
 
 
 @admin.register(OsobaZInstytucji)
-class OsobaZInstytucjiAdmin(ReadOnlyListChangeFormAdminMixin, admin.ModelAdmin):
+class OsobaZInstytucjiAdmin(
+    SiteFilteredAdminMixin, ReadOnlyListChangeFormAdminMixin, admin.ModelAdmin
+):
+    uczelnia_field_path = "uczelnia"
     show_full_result_count = False
     autocomplete_fields = ["institutionId", "personId"]
     list_display = [
