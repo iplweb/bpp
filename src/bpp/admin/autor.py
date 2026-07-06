@@ -1,6 +1,7 @@
 from dal import autocomplete
 from django import forms
 from django.contrib import admin
+from django.core.files.uploadedfile import UploadedFile
 from dynamic_admin_columns.mixins import DynamicColumnsMixin
 
 from bpp.admin.helpers.djangoql import BppDjangoQLSearchMixin
@@ -14,7 +15,9 @@ from ..models import (  # Publikacja_Habilitacyjna
     Autor_Jednostka,
     Dyscyplina_Naukowa,
     Jednostka,
+    WybranaPublikacjaAutora,
 )
+from ..util.obrazy import MAKS_ROZMIAR_PLIKU_ZDJECIA, przetworz_zdjecie_autora
 from .actions import ustaw_pokazuj_false, ustaw_pokazuj_true
 from .core import BaseBppAdminMixin
 from .filters import (
@@ -195,6 +198,9 @@ class AutorForm(forms.ModelForm):
             "zmarl",
             "opis",
             "pokazuj_opis",
+            "zdjecie",
+            "biogram",
+            "biogram_format",
             "poprzednie_nazwiska",
             "pokazuj_poprzednie_nazwiska",
             "orcid",
@@ -205,6 +211,28 @@ class AutorForm(forms.ModelForm):
             "adnotacje",
         ]
         widgets = {"imiona": CHARMAP_SINGLE_LINE, "nazwisko": CHARMAP_SINGLE_LINE}
+
+    def clean_zdjecie(self):
+        """Waliduj rozmiar i przeskaluj świeżo wgrane zdjęcie do kwadratu WebP.
+
+        Istniejący (niezmieniony) plik przechodzi bez przetwarzania.
+        """
+        plik = self.cleaned_data.get("zdjecie")
+        if not isinstance(plik, UploadedFile):
+            return plik
+        if plik.size > MAKS_ROZMIAR_PLIKU_ZDJECIA:
+            raise forms.ValidationError("Maksymalny rozmiar pliku zdjęcia to 5 MB.")
+        return przetworz_zdjecie_autora(plik, nazwa=plik.name)
+
+
+class WybranaPublikacjaAutoraInline(admin.TabularInline):
+    # Relacja do Autora to zwykły FK `autor`; content_type+object_id wskazują
+    # polimorficzną publikację (GenericForeignKey). W Fazie 1 edycja ręczna;
+    # przyjazny picker dostarcza self-service edytor z Fazy 2.
+    model = WybranaPublikacjaAutora
+    fk_name = "autor"
+    extra = 0
+    fields = ["content_type", "object_id", "kolejnosc"]
 
 
 class AutorAdmin(
@@ -296,6 +324,7 @@ class AutorAdmin(
         Autor_DyscyplinaInline,
         Autor_AbsencjaInline,
         IloscUdzialowDlaAutoraZaRokInline,
+        WybranaPublikacjaAutoraInline,
     ]
     list_filter = [
         JednostkaFilter,
@@ -357,6 +386,19 @@ class AutorAdmin(
                     "zmarl",
                     "poprzednie_nazwiska",
                     "pokazuj_poprzednie_nazwiska",
+                ),
+            },
+        ),
+        (
+            "Profil na podstronie autora",
+            {
+                "classes": ("grp-collapse grp-closed",),
+                "fields": (
+                    "zdjecie",
+                    "biogram",
+                    "biogram_format",
+                    "opis",
+                    "pokazuj_opis",
                 ),
             },
         ),

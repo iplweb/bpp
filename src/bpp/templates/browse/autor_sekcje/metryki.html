@@ -1,0 +1,21 @@
+{# Metryki ewaluacyjne autora (lewa kolumna). Brak metryk → nic. #}
+{% if autor.metryki.exists %}
+    <div class="author-info-section">
+        <h3><i class="fi-graph-trend"></i> Metryki ewaluacyjne</h3>
+        <div class="grid-x grid-margin-x autor-page__grid-gap">
+            {% for metryka in autor.metryki.all %}
+                <div class="cell shrink">
+                    <a href="{{ metryka.get_absolute_url }}"
+                       class="button primary autor-page__metrics-btn">
+                        <i class="fi-eye autor-page__icon--mr-md"></i>
+                        Metryka dla {{ metryka.dyscyplina_naukowa.nazwa }}
+                        {% if autor.metryki.count > 1 and metryka.jednostka %}
+                            ({{ metryka.jednostka.skrot|default:metryka.jednostka.nazwa }})
+                        {% endif %}
+                    </a>
+                </div>
+            {% endfor %}
+        </div>
+    </div>
+    <div class="shaded-hr-div-small"></div>
+{% endif %}

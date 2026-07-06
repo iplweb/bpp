@@ -1,3 +1,5 @@
+import json
+
 from django import forms
 from django.conf import settings
 from django.contrib import admin, messages
@@ -8,6 +10,7 @@ from ewaluacja_liczba_n.models import LiczbaNDlaUczelni
 from pbn_api.exceptions import PraceSerwisoweException
 
 from ..models import Uczelnia, Ukryj_Status_Korekty, Wydzial
+from ..profil_autora import waliduj_uklad
 
 # Uczelnia
 from .core import BaseBppAdminMixin, RestrictDeletionToAdministracjaGroupMixin
@@ -15,6 +18,7 @@ from .helpers.constance_field_mixin import ConstanceUczelniaFieldsMixin
 from .helpers.fieldsets import ADNOTACJE_FIELDSET
 from .helpers.mixins import ZapiszZAdnotacjaMixin
 from .helpers.site_filtered import SiteFilteredAdminMixin
+from .widgets.uklad_profilu import EdytorUkladuWidget
 
 
 class WydzialInlineForm(forms.ModelForm):
@@ -72,10 +76,11 @@ class UczelniaAdminForm(forms.ModelForm):
 
     class Meta:
         model = Uczelnia
-        # Tylko pole, które tu nadpisujemy — admin i tak regeneruje pełną
+        # Tylko pola, które tu nadpisujemy — admin i tak regeneruje pełną
         # listę pól z fieldsets przez modelform_factory, ten Meta.fields jest
         # wtedy przesłaniany. Wystarcza do samodzielnego instancjonowania formy.
-        fields = ["theme_name"]
+        fields = ["theme_name", "uklad_profilu_autora"]
+        widgets = {"uklad_profilu_autora": EdytorUkladuWidget}
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -92,6 +97,23 @@ class UczelniaAdminForm(forms.ModelForm):
                 "multi-hosted to powiązanie z domeną wiąże uczelnię z jej "
                 "adresem — nie istnieje „uczelnia domyślna”."
             )
+
+    def clean_uklad_profilu_autora(self):
+        """Sanityzuj zserializowaną wartość edytora do poprawnej listy.
+
+        Widget posta JSON-string (lub listę gdy JS nie wystartował);
+        ``waliduj_uklad`` zrzuca nieznane/zduplikowane klucze i koryguje
+        widoczność/limit. Puste = ``None`` (``rozwiaz_uklad`` to toleruje).
+        """
+        wartosc = self.cleaned_data.get("uklad_profilu_autora")
+        if not wartosc:
+            return None
+        if isinstance(wartosc, str):
+            try:
+                wartosc = json.loads(wartosc)
+            except (ValueError, TypeError):
+                return None
+        return waliduj_uklad(wartosc)
 
 
 class UczelniaAdmin(
@@ -198,6 +220,20 @@ class UczelniaAdmin(
                     "sortuj_jednostki_alfabetycznie",
                     "metoda_do_roku_formularze",
                 ),
+            },
+        ),
+        (
+            "Profil autora (podstrona)",
+            {
+                "classes": ("grp-collapse grp-closed",),
+                "description": (
+                    "Układ OBU kolumn podstrony autora (globalny dla uczelni). "
+                    "Przeciągnij kafelki, aby zmienić kolejność LUB przenieść "
+                    "sekcję między kolumnami (lewa ⇄ prawa); odznacz, by ukryć; "
+                    "dla list ustaw limit pozycji. Szerokość lewej kolumny "
+                    "(prawa dopełnia do 12) ustawisz osobnym polem."
+                ),
+                "fields": ("szerokosc_lewej_kolumny", "uklad_profilu_autora"),
             },
         ),
         (

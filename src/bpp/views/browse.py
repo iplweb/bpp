@@ -36,6 +36,7 @@ from bpp.models import (
     Zrodlo,
 )
 from bpp.multiseek_registry import (
+    CharakterFormalnyQueryObject,
     JednostkaQueryObject,
     NazwiskoIImieQueryObject,
     RokQueryObject,
@@ -192,16 +193,79 @@ class AutorView(DetailView):
                 Q(primary_author=self.object) | Q(secondary_author=self.object)
             ).exists()
         )
+
+        from bpp.profil_autora_dane import przygotuj_sekcje
+
+        request = getattr(self, "request", None)
+        # Szerokość kolumn (Foundation, na 12): lewa z konfiguracji uczelni,
+        # prawa dopełnia do 12. Domyślnie 6/6 (jak dziś). getattr — uczelnia
+        # może być None (testy jednostkowe bez request).
+        szer_lewej = getattr(uczelnia, "szerokosc_lewej_kolumny", 6) or 6
         # Multi-homed: link do PBN musi znać uczelnię z requestu — szablon
         # nie umie przekazać argumentu do metody, więc liczymy go tu. Bez
         # tego ``autor.link_do_pbn`` (bezargumentowo) degraduje do
         # ``get_single_uczelnia_or_none() → None`` przy >1 uczelni (FD#390).
-        return super().get_context_data(
+        context = super().get_context_data(
             typy=TYPY,
             ma_powiazania=ma_powiazania,
             link_do_pbn=self.object.link_do_pbn(uczelnia),
+            sekcje_profilu=przygotuj_sekcje(self.object, uczelnia, request),
+            szer_lewej_kolumny=szer_lewej,
+            szer_prawej_kolumny=12 - szer_lewej,
+            historia_zatrudnienia=self.object.historia_zatrudnienia(uczelnia),
+            raport_links=self._raport_links(request),
             **kwargs,
         )
+        # NIE nadpisuj None-em sentinela ``NiezdefiniowanaUczelnia`` wstrzykiwanego
+        # przez context-processor: przy braku uczelni (pusta baza) szablon i tak
+        # potrzebuje obiektu z ``.skrot`` (breadcrumb w base.html rozwiązuje
+        # ``uczelnia.skrot`` twardo). Gdy uczelnia istnieje — przekaż ją jawnie.
+        if uczelnia is not None:
+            context["uczelnia"] = uczelnia
+        return context
+
+    def _raport_links(self, request):
+        """Linki do raportu autora — tylko gdy raport jest widoczny dla
+        oglądającego (reużycie ``DefinicjaRaportu.widoczny_dla``). Trzy linki:
+        bieżący rok, ostatnie 4 lata oraz szczegółowy formularz."""
+        if request is None:
+            return []
+
+        from nowe_raporty.models import DefinicjaRaportu
+
+        for definicja in DefinicjaRaportu.objects.filter(slug="raport-autorow"):
+            if definicja.widoczny_dla(request):
+                break
+        else:
+            return []
+
+        rok = timezone.now().date().year
+        pk = self.object.pk
+        return [
+            {
+                "label": f"Raport za rok {rok}",
+                "url": reverse(
+                    "nowe_raporty:raport_generuj",
+                    args=["raport-autorow", pk, rok, rok],
+                ),
+            },
+            {
+                "label": "Raport za ostatnie 4 lata",
+                "url": reverse(
+                    "nowe_raporty:raport_generuj",
+                    args=["raport-autorow", pk, rok - 3, rok],
+                ),
+            },
+            {
+                "label": "Raport szczegółowy…",
+                # ?obiekt=<pk> → formularz raportu od razu z wybranym autorem
+                # (RaportFormView.get_initial czyta ten parametr).
+                "url": (
+                    reverse("nowe_raporty:raport_form", args=["raport-autorow"])
+                    + f"?obiekt={pk}"
+                ),
+            },
+        ]
 
 
 LITERKI = "ABCDEFGHIJKLMNOPQRSTUVWYXZ"
@@ -702,6 +766,13 @@ class BuildSearch(RedirectView):
             self.request.POST, "autor", NazwiskoIImieQueryObject
         )
 
+        # Klik w „Statystyki wg charakteru" na podstronie autora POST-uje nazwę
+        # charakteru — CharakterFormalnyQueryObject.value_from_web rozwiązuje ją
+        # po `nazwa` (z potomkami MPTT).
+        charakter_box = zrob_box_z_requestu(
+            self.request.POST, "charakter_formalny", CharakterFormalnyQueryObject
+        )
+
         zakres_lat_box = zrob_box_z_requestu(
             self.request.POST, "zakres_lat", ZakresLatQueryObject
         )
@@ -715,6 +786,7 @@ class BuildSearch(RedirectView):
                 zrodla_box,
                 autorzy_box,
                 typy_box,
+                charakter_box,
                 jednostki_box,
                 wydzialy_box,
                 lata_box,
@@ -725,6 +797,7 @@ class BuildSearch(RedirectView):
                 zrodla_box,
                 autorzy_box,
                 typy_box,
+                charakter_box,
                 jednostki_box,
                 lata_box,
                 zakres_lat_box,
