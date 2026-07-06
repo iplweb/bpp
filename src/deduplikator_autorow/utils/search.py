@@ -52,7 +52,104 @@ def initial_match_filter(field: str, initial: str) -> Q:
     )
 
 
-def szukaj_kopii(osoba_z_instytucji: OsobaZInstytucji) -> QuerySet[Autor]:  # noqa: C901
+def _nazwisko_query(nazwisko: str) -> Q:
+    """
+    Buduje warunek Q dopasowujący kandydatów po samym nazwisku:
+    pełne nazwisko, odwrócone dwuczłonowe, części złożonego oraz nazwisko
+    jako pełny człon w nazwisku złożonym.
+    """
+    # 1. Pełne nazwisko - dokładne dopasowanie (case insensitive)
+    q = Q(nazwisko__iexact=nazwisko)
+
+    if "-" in nazwisko:
+        czesci_nazwiska = nazwisko.split("-")
+
+        # 2. Nazwisko odwrócone (np. "Gal-Cisoń" -> "Cisoń-Gal")
+        if len(czesci_nazwiska) == 2:
+            odwrocone_nazwisko = f"{czesci_nazwiska[1]}-{czesci_nazwiska[0]}"
+            q |= Q(nazwisko__iexact=odwrocone_nazwisko)
+
+        # 3. Części nazwiska złożonego (np. "Gal-Cisoń" -> "Gal" lub "Cisoń")
+        for czesc in czesci_nazwiska:
+            czesc = czesc.strip()
+            if len(czesc) > 2:  # Tylko części dłuższe niż 2 znaki
+                q |= Q(nazwisko__iexact=czesc)
+
+    # 4. Nazwisko jako pełny człon w nazwisku złożonym
+    # np. "Woźniak" dopasuje "Kowalska-Woźniak" lub "Woźniak-Kowalska"
+    # ale NIE "Przewoźniak" (bo Woźniak to tylko część słowa)
+    # Warunek: nazwisko musi być na początku (przed myślnikiem) lub na końcu (po myślniku)
+    if len(nazwisko) > 3:
+        # Dopasuj: "Nazwisko-..." lub "...-Nazwisko"
+        q |= Q(nazwisko__istartswith=nazwisko + "-")
+        q |= Q(nazwisko__iendswith="-" + nazwisko)
+
+    return q
+
+
+def _swap_query(nazwisko: str, imiona: str) -> Q:
+    """
+    Buduje warunek Q dla zamiany imienia z nazwiskiem (swap detection):
+    nazwisko duplikatu == imię głównego ORAZ imię duplikatu == nazwisko głównego.
+    Wymaga minimum 3 znaków aby uniknąć fałszywych dopasowań.
+    """
+    q = Q()
+    if imiona and len(nazwisko) >= 3:
+        for imie_glownego in imiona.split():
+            if len(imie_glownego) >= 3:
+                # Obie strony zamiany muszą się zgadzać (AND, nie OR)
+                q |= Q(nazwisko__iexact=imie_glownego) & word_match_filter(
+                    "imiona", nazwisko
+                )
+    return q
+
+
+def _imiona_filter(imiona: str, nazwisko: str) -> Q:
+    """
+    Buduje dodatkowy filtr Q po imionach: dokładne/podobne dopasowanie pełnych
+    imion, dopasowanie inicjałów oraz swap (imię duplikatu == nazwisko głównego).
+    """
+    filtr_imion = Q()
+
+    for imie in imiona.split():
+        if not imie:
+            continue
+
+        # Sprawdź czy to inicjał (1-2 znaki, ewentualnie z kropką)
+        is_initial = len(imie) <= 2 or (len(imie) == 2 and imie[1] == ".")
+
+        if is_initial:
+            # Dla inicjałów - szukaj inicjału lub imion zaczynających się od tej litery
+            inicjal = imie[0].upper()
+            filtr_imion |= initial_match_filter("imiona", inicjal)
+            filtr_imion |= Q(imiona__istartswith=inicjal)
+            continue
+
+        # Dla pełnych imion - bardziej restrykcyjne dopasowanie
+        # Dokładne dopasowanie imienia (jako pełne słowo)
+        filtr_imion |= word_match_filter("imiona", imie)
+
+        # Podobne imiona (pierwsze 3+ znaki) - dla imion >= 3 znaków
+        # np. "Jan" dopasuje "Janek", "Janusz"
+        if len(imie) >= 3:
+            prefix = imie[:3]
+            filtr_imion |= Q(imiona__istartswith=prefix)
+
+        # Dopasuj pełne imię do inicjału duplikatu
+        # "Jan" powinien pasować do "J."
+        inicjal = imie[0].upper()
+        filtr_imion |= initial_match_filter("imiona", inicjal)
+
+    # Dla swap detection - imię duplikatu może być równe nazwisku głównego
+    # np. główny: "Kowalski Janusz" -> duplikat: "Janusz Kowalski"
+    # Imię duplikatu ("Kowalski") = nazwisko głównego ("Kowalski")
+    if len(nazwisko) >= 5:
+        filtr_imion |= word_match_filter("imiona", nazwisko)
+
+    return filtr_imion
+
+
+def szukaj_kopii(osoba_z_instytucji: OsobaZInstytucji) -> QuerySet[Autor]:
     """
     Funkcja wyszukuje potencjalnie zdublowanych autorów w systemie BPP
     na podstawie głównego autora z OsobaZInstytucji.
@@ -92,97 +189,19 @@ def szukaj_kopii(osoba_z_instytucji: OsobaZInstytucji) -> QuerySet[Autor]:  # no
     if not nazwisko:
         return Autor.objects.none()
 
-    # Rozpocznij budowanie zapytania
-    q = Q()
-
-    # 1. Pełne nazwisko - dokładne dopasowanie (case insensitive)
-    q |= Q(nazwisko__iexact=nazwisko)
-
-    # 2. Nazwisko odwrócone (np. "Gal-Cisoń" -> "Cisoń-Gal")
-    if "-" in nazwisko:
-        czesci_nazwiska = nazwisko.split("-")
-        if len(czesci_nazwiska) == 2:
-            odwrocone_nazwisko = f"{czesci_nazwiska[1]}-{czesci_nazwiska[0]}"
-            q |= Q(nazwisko__iexact=odwrocone_nazwisko)
-
-    # 3. Części nazwiska złożonego (np. "Gal-Cisoń" -> "Gal" lub "Cisoń")
-    if "-" in nazwisko:
-        czesci_nazwiska = nazwisko.split("-")
-        for czesc in czesci_nazwiska:
-            czesc = czesc.strip()
-            if len(czesc) > 2:  # Tylko części dłuższe niż 2 znaki
-                q |= Q(nazwisko__iexact=czesc)
-
-    # 4. Nazwisko jako pełny człon w nazwisku złożonym
-    # np. "Woźniak" dopasuje "Kowalska-Woźniak" lub "Woźniak-Kowalska"
-    # ale NIE "Przewoźniak" (bo Woźniak to tylko część słowa)
-    # Warunek: nazwisko musi być na początku (przed myślnikiem) lub na końcu (po myślniku)
-    if len(nazwisko) > 3:
-        # Dopasuj: "Nazwisko-..." lub "...-Nazwisko"
-        q |= Q(nazwisko__istartswith=nazwisko + "-")
-        q |= Q(nazwisko__iendswith="-" + nazwisko)
-
-    # 6. Zamiana imienia z nazwiskiem (swap detection) - OBA warunki muszą być spełnione
-    # Sprawdzamy czy:
-    # - nazwisko duplikatu == imię głównego autora ORAZ
-    # - imię duplikatu == nazwisko głównego autora
-    # Wymaga minimum 3 znaków aby uniknąć fałszywych dopasowań
-    if imiona and len(nazwisko) >= 3:
-        for imie_glownego in imiona.split():
-            if len(imie_glownego) >= 3:
-                # Obie strony zamiany muszą się zgadzać (AND, nie OR)
-                swap_condition = Q(nazwisko__iexact=imie_glownego) & word_match_filter(
-                    "imiona", nazwisko
-                )
-                q |= swap_condition
+    # Zbuduj zapytanie na podstawie nazwiska + ewentualnej zamiany imię/nazwisko
+    q = _nazwisko_query(nazwisko) | _swap_query(nazwisko, imiona)
 
     # Wyszukaj kandydatów na duplikaty
     kandydaci = Autor.objects.filter(q).exclude(pk=glowny_autor.pk)
 
     # Dodatkowe filtrowanie po imieniu jeśli jest dostępne
-    if imiona:
-        # Pobierz wszystkie imiona
-        lista_imion = imiona.split()
-
-        if lista_imion:
-            filtr_imion = Q()
-
-            for imie in lista_imion:
-                if len(imie) > 0:
-                    # Sprawdź czy to inicjał (1-2 znaki, ewentualnie z kropką)
-                    is_initial = len(imie) <= 2 or (len(imie) == 2 and imie[1] == ".")
-
-                    if is_initial:
-                        # Dla inicjałów - szukaj inicjału lub imion zaczynających się od tej litery
-                        inicjal = imie[0].upper()
-                        filtr_imion |= initial_match_filter("imiona", inicjal)
-                        filtr_imion |= Q(imiona__istartswith=inicjal)
-                    else:
-                        # Dla pełnych imion - bardziej restrykcyjne dopasowanie
-                        # Dokładne dopasowanie imienia (jako pełne słowo)
-                        filtr_imion |= word_match_filter("imiona", imie)
-
-                        # Podobne imiona (pierwsze 3+ znaki) - dla imion >= 3 znaków
-                        # np. "Jan" dopasuje "Janek", "Janusz"
-                        if len(imie) >= 3:
-                            prefix = imie[:3]
-                            filtr_imion |= Q(imiona__istartswith=prefix)
-
-                        # Dopasuj pełne imię do inicjału duplikatu
-                        # "Jan" powinien pasować do "J."
-                        inicjal = imie[0].upper()
-                        filtr_imion |= initial_match_filter("imiona", inicjal)
-
-            # Dla swap detection - imię duplikatu może być równe nazwisku głównego
-            # np. główny: "Kowalski Janusz" -> duplikat: "Janusz Kowalski"
-            # Imię duplikatu ("Kowalski") = nazwisko głównego ("Kowalski")
-            if len(nazwisko) >= 5:
-                filtr_imion |= word_match_filter("imiona", nazwisko)
-
-            # Zastosuj filtr imion jako dodatkowy warunek OR z pustymi imionami
-            kandydaci = kandydaci.filter(
-                filtr_imion | Q(imiona__isnull=True) | Q(imiona__exact="")
-            )
+    if imiona and imiona.split():
+        filtr_imion = _imiona_filter(imiona, nazwisko)
+        # Zastosuj filtr imion jako dodatkowy warunek OR z pustymi imionami
+        kandydaci = kandydaci.filter(
+            filtr_imion | Q(imiona__isnull=True) | Q(imiona__exact="")
+        )
 
     kandydaci = kandydaci.exclude(
         pk__in=NotADuplicate.objects.values_list("autor_id", flat=True)

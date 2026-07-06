@@ -150,9 +150,16 @@ echo
 if $RUN_OSV; then
     echo -e "${BOLD}${BLUE}=== 2/5 OSV-Scanner (Google) ===${NC}"
     OSV_REPORT="${WORK_DIR}/osv-report.json"
+    # NIE tłumimy stderr: OSV-Scanner przy pierwszym uruchomieniu pobiera
+    # bazy podatności OSV.dev (per ekosystem) i pokazuje na stderr postęp.
+    # Raport JSON idzie do --output, więc na stderr są tylko postęp/logi.
+    # (exit≠0 = znalazł CVE — i tak czytamy raport niżej, więc widoczność
+    # stderr nie zmienia logiki gate'u.)
+    echo -e "  ${BLUE}(pierwszy raz OSV-Scanner pobiera bazy OSV.dev —" \
+        "postęp poniżej)${NC}"
     set +e
     osv-scanner scan source --sbom="$SBOM_PATH" \
-        --format=json --output="$OSV_REPORT" 2>/dev/null
+        --format=json --output="$OSV_REPORT"
     osv_exit=$?
     set -e
 
@@ -189,8 +196,16 @@ if $RUN_GRYPE; then
         :
     fi
 
+    # Grype przy starcie sprawdza świeżość bazy CVE i — gdy jest starsza
+    # niż 5 dni — pobiera nową (~1.7 GB) z grype.anchore.io. NIE tłumimy
+    # stderr: tam leci pasek postępu pobierania (oraz ewentualny timeout
+    # CDN). Wcześniej `>/dev/null 2>&1` ukrywał i pobieranie, i błędy, więc
+    # skan wyglądał na zawieszony. Raport JSON i tak trafia do --file, więc
+    # wyciszamy tylko (pusty) stdout, a postęp/logi/błędy są widoczne.
+    echo -e "  ${BLUE}(jeśli baza CVE jest nieaktualna, Grype pobierze" \
+        "~1.7 GB — postęp poniżej)${NC}"
     set +e
-    grype "${GRYPE_ARGS[@]}" >/dev/null 2>&1
+    grype "${GRYPE_ARGS[@]}" >/dev/null
     grype_exit=$?
     set -e
 
@@ -242,8 +257,14 @@ if $RUN_TRIVY; then
         TRIVY_ARGS+=(--severity "$SEVERITY_FILTER")
     fi
 
+    # Jak Grype: Trivy gdy ma nieaktualną bazę CVE pobiera ~100 MB z
+    # mirror.gcr.io. NIE tłumimy stderr — wcześniej `2>/dev/null` zamieniał
+    # nieudane/zerwane pobranie bazy w gołe „exit 1" bez śladu przyczyny.
+    # Raport JSON idzie do --output, więc stderr to tylko postęp/logi/błędy.
+    echo -e "  ${BLUE}(jeśli baza CVE jest nieaktualna, Trivy pobierze" \
+        "~100 MB — postęp poniżej)${NC}"
     set +e
-    trivy "${TRIVY_ARGS[@]}" 2>/dev/null
+    trivy "${TRIVY_ARGS[@]}"
     trivy_exit=$?
     set -e
 
@@ -289,13 +310,20 @@ if $RUN_PIPAUDIT; then
     # Brak whitelisty CVE. Gdyby trzeba bylo wyciszyc znany non-impact
     # CVE bez fixa, dodaj PIPAUDIT_IGNORE=(--ignore-vuln <ID>) z komentarzem
     # i zsynchronizuj z .github/workflows/dependency-audit.yml.
+    # NIE tłumimy stderr: pip-audit odpytuje serwis podatności PyPI dla
+    # każdego z ~270 pakietów (stąd potrafi „wisieć" parę–kilkanaście s) i
+    # pokazuje na stderr spinner „Collecting known vulnerabilities…". Raport
+    # JSON idzie do --output. uvx --quiet zostaje — to tylko cisza resolvera
+    # uvx (pobieranie samego pip-audita), nie pip-audita.
+    echo -e "  ${BLUE}(pip-audit odpytuje serwis CVE PyPI per-pakiet —" \
+        "to chwilę trwa, spinner poniżej)${NC}"
     set +e
     uvx --quiet --from pip-audit pip-audit \
         --requirement "$PIPAUDIT_REQ" \
         --disable-pip \
         --no-deps \
         --format json \
-        --output "$PIPAUDIT_REPORT" 2>/dev/null
+        --output "$PIPAUDIT_REPORT"
     pipaudit_exit=$?
     set -e
 

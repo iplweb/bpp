@@ -14,6 +14,7 @@ from favicon.models import Favicon, FaviconImg
 from flexible_reports import models as flexible_models
 from formdefaults.models import FormFieldRepresentation, FormRepresentation
 from multiseek.models import SearchForm
+from siteblog.models import Article
 
 from bpp.const import (
     GR_RAPORTY_WYSWIETLANIE,
@@ -84,7 +85,6 @@ from deduplikator_autorow.models import IgnoredScientist, LogScalania, NotADupli
 from ewaluacja_common.models import Rodzaj_Autora
 from ewaluacja_liczba_n.models import IloscUdzialowDlaAutoraZaRok, LiczbaNDlaUczelni
 from import_polon.models import ImportPolonOverride
-from siteblog.models import Article
 from pbn_api.models import (
     Conference,
     Discipline,

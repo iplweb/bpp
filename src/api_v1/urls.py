@@ -19,6 +19,7 @@ from api_v1.viewsets.raport_slotow_uczelnia import (
     RaportSlotowUczelniaWierszViewSet,
 )
 from api_v1.viewsets.recent_author_publications import RecentAuthorPublicationsViewSet
+from api_v1.viewsets.recent_unit_publications import RecentUnitPublicationsViewSet
 from api_v1.viewsets.struktura import JednostkaViewSet, UczelniaViewSet, WydzialViewSet
 from api_v1.viewsets.system import (
     Charakter_FormalnyViewSet,
@@ -107,6 +108,11 @@ router.register(
     r"recent_author_publications",
     RecentAuthorPublicationsViewSet,
     basename="recent_author_publications",
+)
+router.register(
+    r"recent_unit_publications",
+    RecentUnitPublicationsViewSet,
+    basename="recent_unit_publications",
 )
 
 #

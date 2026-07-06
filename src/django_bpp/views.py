@@ -1,6 +1,7 @@
 import logging
 from urllib.parse import urlencode
 
+from django.apps import apps
 from django.conf import settings
 from django.contrib.auth import BACKEND_SESSION_KEY, logout
 from django.contrib.auth.views import LoginView
@@ -9,7 +10,12 @@ from django.shortcuts import render
 from django.urls import reverse
 from django.views import View
 
-from django_bpp.external_auth import EXTERNAL_AUTH_BACKENDS
+from django_bpp.external_auth import (
+    EXTERNAL_AUTH_BACKENDS,
+    MICROSOFT_BACKEND,
+    OIDC_BACKEND,
+    ORCID_BACKEND,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -44,6 +50,46 @@ class HTMXAwareLoginView(LoginView):
         return super().get(request, *args, **kwargs)
 
 
+def _redirect_preserving_next(request, base_url):
+    nxt = request.GET.get("next")
+    if nxt:
+        return HttpResponseRedirect(f"{base_url}?{urlencode({'next': nxt})}")
+    return HttpResponseRedirect(base_url)
+
+
+class InstitutionalLoginView(View):
+    """Per-uczelnia dyspozytor logowania (używany jako ``login_form``).
+
+    Precedencja: OIDC (gateowany po skrócie uczelni) > Microsoft (globalny) >
+    formularz BPP. Dzięki temu w instalacji wielouczelnianej domena uczelni z
+    OIDC odbija na Keycloaka, domeny pod Microsoftem na Microsoft, a reszta
+    dostaje lokalny formularz — wszystko z jednego procesu, decydowane na
+    podstawie ``request._uczelnia``.
+
+    ``oidc_enabled_for_request`` to wspólne źródło prawdy z context processorem
+    rysującym menu, więc to, co widać, zgadza się z tym, dokąd kieruje login.
+    """
+
+    def dispatch(self, request, *args, **kwargs):
+        from oidc_integration.access import oidc_enabled_for_request
+
+        if oidc_enabled_for_request(request):
+            return _redirect_preserving_next(
+                request, reverse("oidc_authentication_init")
+            )
+        if apps.is_installed("microsoft_auth"):
+            return _redirect_preserving_next(
+                request, reverse("microsoft_auth:to-auth-redirect")
+            )
+
+        # Brak logowania instytucjonalnego dla tej uczelni — formularz BPP.
+        from bpp.forms import MyAuthenticationForm
+
+        return HTMXAwareLoginView.as_view(authentication_form=MyAuthenticationForm)(
+            request, *args, **kwargs
+        )
+
+
 class MicrosoftLogoutView(View):
     """
     Custom logout view for Microsoft authentication.
@@ -51,6 +97,13 @@ class MicrosoftLogoutView(View):
     This view properly handles logout by:
     1. Clearing the Django session using logout()
     2. Redirecting to Microsoft logout endpoint with post_logout_redirect_uri
+
+    Świadomość OIDC: w trybie mieszanym (``microsoft_auth`` +
+    ``oidc_integration``) to TEN widok obsługuje ``/logout/`` dla wszystkich
+    backendów (patrz ``django_bpp/urls.py``). Dlatego sam rozpoznaje sesję
+    OIDC i kieruje ją na RP-Initiated Logout Keycloaka zamiast na logout
+    Microsoftu — inaczej user zalogowany przez Keycloaka zostawałby z żywą
+    sesją SSO w Keycloaku (cicha re-autoryzacja przy kolejnym logowaniu).
     """
 
     def get(self, request):
@@ -58,6 +111,24 @@ class MicrosoftLogoutView(View):
 
     def post(self, request):
         return self._logout(request)
+
+    def _oidc_logout_url(self, request):
+        """URL wylogowania z Keycloaka dla sesji OIDC, albo ``None`` dla innych.
+
+        Sesja OIDC rozpoznawana po ``BACKEND_SESSION_KEY`` == ścieżce backendu
+        OIDC — co jest możliwe tylko, gdy ``oidc_integration`` jest aktywne, więc
+        osobny ``apps.is_installed`` jest zbędny. MUSI być wołane PRZED
+        ``logout()``: ``build_provider_logout_url`` czyta ``oidc_id_token`` z
+        sesji, której ``logout()`` już by nie miał.
+        """
+        from oidc_integration.views import OIDC_BACKEND_PATH
+
+        if request.session.get(BACKEND_SESSION_KEY) != OIDC_BACKEND_PATH:
+            return None
+
+        from oidc_integration.logout import build_provider_logout_url
+
+        return build_provider_logout_url(request)
 
     def _logout(self, request):
         """Perform the logout process"""
@@ -68,6 +139,14 @@ class MicrosoftLogoutView(View):
                 "User not authenticated, redirecting directly to post-logout URI"
             )
             return HttpResponseRedirect(post_logout_redirect_uri)
+
+        # Sesja OIDC → wyloguj z Keycloaka, nie z Microsoftu (URL przed logout(),
+        # bo czyta id_token z sesji).
+        oidc_logout_url = self._oidc_logout_url(request)
+        if oidc_logout_url is not None:
+            logout(request)
+            logger.info("OIDC session cleared from Django, redirecting to Keycloak")
+            return HttpResponseRedirect(oidc_logout_url)
 
         # Clear Django session first
         logout(request)
@@ -109,11 +188,11 @@ class MicrosoftLogoutView(View):
 
 
 EXTERNAL_PROVIDER_URLS = {
-    "microsoft_auth.backends.MicrosoftAuthenticationBackend": (
+    MICROSOFT_BACKEND: (
         "Microsoft",
         "https://myaccount.microsoft.com/",
     ),
-    "orcid_integration.backends.OrcidAuthenticationBackend": (
+    ORCID_BACKEND: (
         "ORCID",
         "https://orcid.org/my-orcid",
     ),
@@ -124,10 +203,31 @@ class SmartPasswordChangeView(View):
     """Przekierowuje do odpowiedniej strony zmiany hasła
     w zależności od backendu, którym użytkownik się zalogował."""
 
+    @staticmethod
+    def _external_provider_info(backend):
+        """Zwróć ``(nazwa_dostawcy, url_panelu_konta)`` dla zewnętrznego backendu.
+
+        Dla OIDC (Keycloak) URL panelu konta zależy od instalacji (wyliczany z
+        issuera realmu), więc bierzemy go z ustawień, a nie z mapy statycznej.
+        Każdy backend z ``EXTERNAL_AUTH_BACKENDS`` MUSI dostać tu odpowiedź — brak
+        wpisu nie może kończyć się ``KeyError`` (to był właśnie błąd 500 dla kont
+        zalogowanych przez Keycloaka). Pusty URL jest dopuszczalny: szablon po
+        prostu nie pokaże wtedy przycisku „Zarządzaj kontem".
+        """
+        if backend in EXTERNAL_PROVIDER_URLS:
+            return EXTERNAL_PROVIDER_URLS[backend]
+        if backend == OIDC_BACKEND:
+            return (
+                "system logowania uczelni (Keycloak)",
+                getattr(settings, "OIDC_ACCOUNT_CONSOLE_URL", "") or "",
+            )
+        # Nieznany zewnętrzny backend: nie wywalaj 500, pokaż ogólny komunikat.
+        return ("zewnętrznego dostawcę tożsamości", "")
+
     def dispatch(self, request, *args, **kwargs):
         backend = request.session.get(BACKEND_SESSION_KEY, "")
         if backend in EXTERNAL_AUTH_BACKENDS:
-            provider, url = EXTERNAL_PROVIDER_URLS[backend]
+            provider, url = self._external_provider_info(backend)
             return render(
                 request,
                 "registration/password_change_external.html",

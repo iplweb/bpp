@@ -129,6 +129,11 @@ from .storage import (
     ModelZMiejscemPrzechowywania,
 )
 
+# Titles (multilingual)
+from .titles import (
+    BazaModeluTytulow,
+)
+
 # Utilities
 from .utils import (
     ImpactFactorField,
@@ -169,6 +174,7 @@ __all__ = [
     # Models and Mixins
     "BazaModeluOdpowiedzialnosciAutorow",
     "BazaModeluStreszczen",
+    "BazaModeluTytulow",
     "DodajAutoraMixin",
     "DwaTytuly",
     "LinkDoPBNMixin",

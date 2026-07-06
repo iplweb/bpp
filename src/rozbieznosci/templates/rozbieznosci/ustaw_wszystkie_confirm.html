@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+
+{% block title %}Potwierdź aktualizację {{ field_label }}{% endblock %}
+
+{% block breadcrumbs %}
+    {{ block.super }}
+    <li><a href="{% url 'rozbieznosci:index' metryka=metryka.slug %}">Rozbieżności {{ field_label }}</a></li>
+    <li class="current">Potwierdzenie</li>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="medium-12 columns">
+        <h2>Potwierdź aktualizację {{ field_label }}</h2>
+
+        <div class="callout warning">
+            <p>
+                Operacja przejdzie przez <strong>{{ count }}</strong>
+                {% if count == 1 %}rekord{% else %}rekordów{% endif %}
+                wydawnictw ciągłych i ustawi <strong>{{ field_label }}</strong>
+                wartością ze źródła (<em>Punktacja Źródła</em>).
+            </p>
+            {% if kasuj_przy_pustym_zrodle %}
+            <p>
+                <strong>Uwaga:</strong> rekordy bez wartości w źródle
+                (0 / brak wpisu) zostaną <strong>wyczyszczone</strong> w pracy.
+            </p>
+            {% else %}
+            <p>
+                Rekordy bez wartości w źródle (0 / brak wpisu) zostaną
+                <strong>pominięte</strong> (nie kasujemy ich w pracy).
+            </p>
+            {% endif %}
+            <p>
+                Filtry: rok od <strong>{{ rok_od }}</strong> do
+                <strong>{{ rok_do }}</strong>{% if tytul %},
+                tytuł zawiera „<strong>{{ tytul }}</strong>"{% endif %}.
+            </p>
+            {% if use_celery %}
+            <p>
+                Ze względu na liczbę rekordów operacja może chwilę potrwać —
+                wykonamy ją w tle, a Ty zostaniesz przekierowany/a na stronę
+                z postępem.
+            </p>
+            {% else %}
+            <p>
+                Operacja zostanie wykonana od razu.
+            </p>
+            {% endif %}
+        </div>
+
+        <form method="post">
+            {% csrf_token %}
+            <input type="hidden" name="rok_od" value="{{ rok_od }}">
+            <input type="hidden" name="rok_do" value="{{ rok_do }}">
+            <input type="hidden" name="tytul" value="{{ tytul }}">
+            <input type="hidden" name="tryb_zrodla" value="{{ tryb_zrodla }}">
+            {% if kasuj_przy_pustym_zrodle %}
+            <input type="hidden" name="kasuj_przy_pustym_zrodle" value="1">
+            {% endif %}
+            {% for cid in wybrane_charaktery_ids %}
+            <input type="hidden" name="charaktery_formalne" value="{{ cid }}">
+            {% endfor %}
+            <button type="submit" class="button warning">
+                <span class="fi-check"></span> Tak, przejdź przez {{ count }}
+                {% if count == 1 %}rekord{% else %}rekordów{% endif %}
+            </button>
+            <a href="{% url 'rozbieznosci:index' metryka=metryka.slug %}{% if filter_query_string %}?{{ filter_query_string }}{% endif %}"
+               class="button secondary">Anuluj</a>
+        </form>
+    </div>
+</div>
+{% endblock %}

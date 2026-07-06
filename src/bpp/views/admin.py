@@ -20,12 +20,17 @@ class TozView(RedirectView):
         try:
             w = self.klass.objects.get(pk=pk)
         except self.klass.DoesNotExist:
-            raise Http404
+            raise Http404 from None
 
         w_copy = copy.copy(w)
         w_copy.id = None
         w_copy.tytul_oryginalny = "[ ** KOPIA ** ]" + w_copy.tytul_oryginalny
         w_copy.slug = None
+        if hasattr(w_copy, "pbn_uid_id"):
+            # pbn_uid to OneToOneField (unique=True) — kopia nie moze
+            # wspoldzielic identyfikatora PBN z oryginalem, bo save()
+            # rzuciłby IntegrityError (FD#328).
+            w_copy.pbn_uid_id = None
         w_copy.save()
 
         for wca in self.klass_autor.objects.filter(rekord=w):
@@ -34,7 +39,7 @@ class TozView(RedirectView):
             wca_copy.rekord = w_copy
             wca_copy.save()
 
-        return reverse("admin:bpp_%s_change" % self.klass_name, args=(w_copy.pk,))
+        return reverse(f"admin:bpp_{self.klass_name}_change", args=(w_copy.pk,))
 
 
 class WydawnictwoCiagleTozView(TozView):

@@ -1,3 +1,4 @@
+import logging
 import sys
 import uuid
 from functools import update_wrapper
@@ -19,6 +20,7 @@ from templated_email import send_templated_mail
 
 from bpp.admin.core import DynamicAdminFilterMixin
 from bpp.admin.helpers.fieldsets import MODEL_Z_OPLATA_ZA_PUBLIKACJE
+from bpp.util import zaloguj_polkniety_wyjatek
 from import_common.normalization import extract_doi_from_url
 from zglos_publikacje.models import (
     Zgloszenie_Publikacji,
@@ -33,6 +35,8 @@ from .filters import (
     WydzialJednostkiPierwszegoAutora,
 )
 from .forms import ZwrocEmailForm
+
+logger = logging.getLogger(__name__)
 
 
 def _nazwa_pliku_do_pobrania(plik, oryginalna_nazwa_pliku=""):
@@ -423,7 +427,13 @@ class Zgloszenie_PublikacjiAdmin(
                 .first()
                 .jednostka.wydzial.nazwa
             )
-        except BaseException:
-            pass
+        except Exception:
+            # Kolumna admina — brak autora/jednostki/wydziału to często
+            # oczekiwany brak danych; logujemy traceback, bez alarmu Rollbara.
+            zaloguj_polkniety_wyjatek(
+                f"Ustalanie wydziału pierwszego autora zgłoszenia (pk={obj.pk})",
+                logger=logger,
+                do_rollbar=False,
+            )
 
     wydzial_pierwszego_autora.short_description = "Wydział pierwszego autora"

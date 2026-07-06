@@ -5,6 +5,43 @@
     {{ rekord.tytul_oryginalny|striptags }}
 {% endblock %}
 
+{# Kanoniczny URL rekordu = adres po slugu (widok i tak tam przekierowuje). #}
+{# Bez tego warianty z parametrami zapytania rozpraszałyby ranking. #}
+{% block canonical %}
+    {% if request %}
+        <link rel="canonical"
+              href="{{ request.scheme }}://{{ request.get_host }}{% if rekord.slug %}{% url 'bpp:browse_praca_by_slug' rekord.slug %}{% else %}{{ rekord.get_absolute_url }}{% endif %}"/>
+    {% endif %}
+{% endblock %}
+
+{# Opis (snippet w Google) z opisu bibliograficznego rekordu. #}
+{% block meta_description %}
+    <meta name="description"
+          content="{{ rekord.opis_bibliograficzny_cache|striptags|truncatewords:40 }}"/>
+{% endblock %}
+
+{# Open Graph — podgląd publikacji przy udostępnianiu w sieci. #}
+{% block opengraph %}
+    <meta property="og:type" content="article"/>
+    <meta property="og:site_name" content="Bibliografia Publikacji {{ uczelnia.skrot }}"/>
+    <meta property="og:title" content="{{ rekord.tytul_oryginalny|striptags }}"/>
+    <meta property="og:description"
+          content="{{ rekord.opis_bibliograficzny_cache|striptags|truncatewords:40 }}"/>
+    {% if request %}
+        <meta property="og:url"
+              content="{{ request.scheme }}://{{ request.get_host }}{% if rekord.slug %}{% url 'bpp:browse_praca_by_slug' rekord.slug %}{% else %}{{ rekord.get_absolute_url }}{% endif %}"/>
+    {% endif %}
+{% endblock %}
+
+{# Metadane cytowań (Highwire/Google Scholar, Dublin Core, PRISM, JSON-LD) #}
+{# MUSZĄ być w <head> — parsery Scholara i menedżery bibliografii ignorują #}
+{# <meta> w body. Dlatego wstrzykujemy je przez extrahead, nie w content. #}
+{% block extrahead %}
+    {{ block.super }}
+    {% include "browse/bibliography_metadata.html" with praca=rekord.original autorzy=rekord.original.autorzy_dla_opisu %}
+    {% include "browse/google_scholar.html" with praca=rekord.original autorzy=rekord.original.autorzy_dla_opisu rekord=rekord %}
+{% endblock %}
+
 
 {% block breadcrumbs %}
     {{ block.super }}
@@ -15,5 +52,4 @@
 
 {% block content %}
     {% include "browse/praca_tabela_mono.html" with praca=rekord.original autorzy=rekord.original.autorzy_dla_opisu rekord=rekord links="normal"%}
-    {% include "browse/google_scholar.html" with praca=rekord.original autorzy=rekord.original.autorzy_dla_opisu rekord=rekord %}
 {% endblock %}

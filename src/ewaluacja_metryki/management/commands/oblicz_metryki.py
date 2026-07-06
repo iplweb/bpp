@@ -1,11 +1,15 @@
+import logging
 from decimal import Decimal
 
 from django.core.management.base import BaseCommand
 
 from bpp.models import Uczelnia
+from bpp.util import zaloguj_polkniety_wyjatek
 from ewaluacja_liczba_n.models import IloscUdzialowDlaAutoraZaCalosc
 from ewaluacja_liczba_n.utils import oblicz_liczby_n_dla_ewaluacji_2022_2025
 from ewaluacja_metryki.utils import generuj_metryki
+
+logger = logging.getLogger(__name__)
 
 
 class Command(BaseCommand):
@@ -53,10 +57,17 @@ class Command(BaseCommand):
             choices=["N", "D", "B", "Z", " "],
             default=["N", "D", "B", "Z", " "],
             help=(
-                "Rodzaje autorów do przetworzenia (N=pracownik, B=pracownik badawczy, D=doktorant, "
-                "Z=inny zatrudniony, ' '=brak danych). "
-                "Domyślnie: wszystkie"
+                "Rodzaje autorów do przetworzenia "
+                "(N=pracownik, B=pracownik badawczy, "
+                "D=doktorant, Z=inny zatrudniony, "
+                "' '=brak danych). Domyślnie: wszystkie"
             ),
+        )
+        parser.add_argument(
+            "--uczelnia-id",
+            type=int,
+            default=None,
+            help="ID uczelni (domyślnie: pierwsza uczelnia w bazie)",
         )
 
     def handle(self, *args, **options):
@@ -67,18 +78,34 @@ class Command(BaseCommand):
         bez_liczby_n = options["bez_liczby_n"]
         rodzaje_autora = options.get("rodzaje_autora", ["N", "D", "B", "Z", " "])
 
+        # Rozwiąż uczelnię raz — wymagana do scope'owania zarówno źródłowego QS
+        # jak i scoped delete wewnątrz generuj_metryki (nadpisz).
+        # single-or-fail: .get() rzuca DoesNotExist lub MultipleObjectsReturned
+        # gdy brak lub >1 uczelni bez --uczelnia-id — to zamierzone zachowanie.
+        uczelnia_id = options["uczelnia_id"]
+        uczelnia = (
+            Uczelnia.objects.get(pk=uczelnia_id)
+            if uczelnia_id
+            else Uczelnia.objects.get()
+        )
+
         # Krok 1: Przelicz liczby N, chyba że pominięto
         if not bez_liczby_n:
             self.stdout.write(
                 self.style.WARNING("Krok 1/2: Przeliczanie liczby N dla uczelni...")
             )
             try:
-                uczelnia = Uczelnia.objects.get_default()
                 oblicz_liczby_n_dla_ewaluacji_2022_2025(uczelnia=uczelnia)
                 self.stdout.write(
                     self.style.SUCCESS("✓ Przeliczono liczby N pomyślnie")
                 )
             except Exception as e:
+                zaloguj_polkniety_wyjatek(
+                    "Przeliczanie liczby N dla uczelni przed obliczaniem "
+                    "metryk nie powiodło się — kontynuuję obliczanie metryk",
+                    logger=logger,
+                    do_rollbar=False,
+                )
                 self.stdout.write(
                     self.style.ERROR(f"✗ Błąd przy przeliczaniu liczby N: {str(e)}")
                 )
@@ -113,8 +140,10 @@ class Command(BaseCommand):
         rodzaje_str = ", ".join([rodzaje_nazwy.get(r, r) for r in rodzaje_autora])
         self.stdout.write(f"Rodzaje autorów: {rodzaje_str}")
 
-        # Filtruj IloscUdzialowDlaAutoraZaCalosc
-        ilosc_udzialow_qs = IloscUdzialowDlaAutoraZaCalosc.objects.all()
+        # Filtruj IloscUdzialowDlaAutoraZaCalosc — scope per uczelnia od razu
+        ilosc_udzialow_qs = IloscUdzialowDlaAutoraZaCalosc.objects.filter(
+            uczelnia=uczelnia
+        )
 
         if options["autor_id"]:
             ilosc_udzialow_qs = ilosc_udzialow_qs.filter(autor_id=options["autor_id"])
@@ -143,6 +172,7 @@ class Command(BaseCommand):
             rodzaje_autora=rodzaje_autora,
             logger_output=self.stdout,
             ilosc_udzialow_queryset=ilosc_udzialow_qs,
+            uczelnia=uczelnia,
         )
 
         # Wyświetl podsumowanie

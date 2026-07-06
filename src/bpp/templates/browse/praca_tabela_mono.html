@@ -1,9 +1,8 @@
 {% load prace user_in_group dspace_links %}
 
-{% comment %} Include bibliography metadata in head section {% endcomment %}
-{% if not request.is_ajax %}
-    {% include "browse/bibliography_metadata.html" with praca=praca autorzy=autorzy %}
-{% endif %}
+{# Metadane bibliograficzne (citation_*, DC, PRISM, JSON-LD) są teraz #}
+{# wstrzykiwane do <head> przez browse/praca.html (blok extrahead) — #}
+{# parsery Google Scholar czytają wyłącznie head, nie body. #}
 
 <!-- Main publication container with modern card layout -->
 <div class="praca-mono">
@@ -25,7 +24,7 @@
         </h2>
 
         <!-- Authors Section -->
-        {% with box=praca.autorzy_dla_opisu_skrocony %}
+        {% autorzy_skrocony praca uczelnia as box %}
         <div class="praca-mono__authors-section{% if box.skrocony %} praca-mono__authors-section--collapsible{% endif %}">
 
             {% if box.skrocony %}
@@ -57,7 +56,6 @@
                 {% endif %}
             </div>
         </div>
-        {% endwith %}
     </div>
 
     <!-- Main content in two columns -->
@@ -292,21 +290,21 @@
                             </div>
                         {% endif %}
 
-                        {% if not request.user.is_anonymous and praca.link_do_pi %}
+                        {% if not request.user.is_anonymous and praca|link_do_pi:uczelnia %}
                             <div class="external-link-item link-pi">
                                 <span class="fi-home link-icon" aria-hidden="true"></span>
                                 <div class="link-content">
                                     <div class="link-label">Profil instytucji</div>
-                                    <div class="link-value">{{ praca.link_do_pi|truncatechars:40 }}</div>
+                                    <div class="link-value">{{ praca|link_do_pi:uczelnia|truncatechars:40 }}</div>
                                 </div>
                                 <div class="link-actions">
                                     <button class="button copy-button" type="button"
-                                            data-copy-text="{{ praca.link_do_pi }}"
+                                            data-copy-text="{{ praca|link_do_pi:uczelnia }}"
                                             title="Kopiuj adres">
                                         <i class="fi-clipboard"></i>
                                     </button>
                                     <button class="button open-button" type="button"
-                                            data-open-url="{{ praca.link_do_pi }}" data-target="_blank"
+                                            data-open-url="{{ praca|link_do_pi:uczelnia }}" data-target="_blank"
                                             title="Otwórz w Profilu instytucji">
                                         <i class="fi-arrow-right"></i> Otwórz
                                     </button>

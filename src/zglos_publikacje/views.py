@@ -1,3 +1,4 @@
+import logging
 import os
 import sys
 
@@ -20,6 +21,7 @@ from bpp.core import zgloszenia_publikacji_emails
 from bpp.models import Typ_Odpowiedzialnosci, Uczelnia
 from bpp.models.wydawca import Wydawca
 from bpp.models.wydawnictwo_zwarte import Wydawnictwo_Zwarte
+from bpp.util import zaloguj_polkniety_wyjatek
 from bpp.views.mixins import UczelniaSettingRequiredMixin
 from import_common.normalization import normalize_tytul_publikacji
 from pbn_api.models.publication import (
@@ -42,6 +44,8 @@ from zglos_publikacje.models import (
     Zgloszenie_Publikacji_Zalacznik,
     skroc_nazwe_pliku,
 )
+
+logger = logging.getLogger(__name__)
 
 
 class Sukces(TemplateView):
@@ -95,7 +99,13 @@ def _resolve_qss_value(value_str):
             return None, None
         instance = model_class.objects.get(pk=pk)
         return instance, ct
-    except (ContentType.DoesNotExist, Exception):
+    except ContentType.DoesNotExist:
+        return None, None
+    except Exception:
+        zaloguj_polkniety_wyjatek(
+            f"Rozwiązywanie wartości QuerySetSequenceSelect2 (ct_id={ct_id}, pk={pk})",
+            logger=logger,
+        )
         return None, None
 
 
@@ -243,6 +253,9 @@ class Zgloszenie_PublikacjiWizard(UczelniaSettingRequiredMixin, SessionWizardVie
             step1 = self.get_cleaned_data_for_step("1") or {}
             kwargs["rodzaj"] = step0.get("rodzaj")
             kwargs["forma_dostepu"] = step1.get("forma_dostepu")
+            # Multi-hosted: forma musi dostać uczelnię z requestu, inaczej
+            # spada do Uczelnia.objects.get() (crash przy >1 uczelni).
+            kwargs["uczelnia"] = Uczelnia.objects.get_for_request(self.request)
             # Pliki kroku 2 zapisujemy sami do extra_data (patrz
             # process_step_files) i NIE oddajemy ich do storage formtools,
             # więc przy rewalidacji w render_done `self.files` jest puste.
@@ -251,6 +264,11 @@ class Zgloszenie_PublikacjiWizard(UczelniaSettingRequiredMixin, SessionWizardVie
             kwargs["pliki_juz_zapisane"] = bool(
                 self.storage.extra_data.get(self.PLIKI_EXTRA_KEY)
             )
+        if step == "4":
+            # Krok opłat to też ModelForm na Zgloszenie_Publikacji → odpala
+            # model.clean (walidacja opłat). Bez uczelni z requestu spada do
+            # Uczelnia.objects.get() (crash przy >1 uczelni — Rollbar #400).
+            kwargs["uczelnia"] = Uczelnia.objects.get_for_request(self.request)
         return kwargs
 
     def get_form_instance(self, step):
