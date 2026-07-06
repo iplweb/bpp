@@ -453,6 +453,28 @@ def test_post_delete_nie_kasuje_lustra_z_konsumentem_cross_app(uczelnia):
     assert Obslugujacy_Zgloszenia_Wydzialow.objects.filter(wydzial=wezel).exists()
 
 
+@pytest.mark.django_db
+def test_post_delete_nie_kasuje_lustra_z_ukrytym_konsumentem(uczelnia):
+    """#438: konsument z ``related_name="+"`` (UKRYTA relacja odwrotna) —
+    ``Import_Dyscyplin_Row.wydzial`` (SET_NULL) — jest POMIJANY przez
+    ``_meta.related_objects`` (Django wyklucza ukryte odwrotne FK/O2O). Guard
+    musi iterować z ``include_hidden=True``, inaczej kasowanie lustra CICHO
+    zeruje wydział w wierszach importu dyscyplin. Wzorzec ``"+"`` jest w tym
+    repo używany dla drugich FK do Jednostki, więc to nie jest jednostkowy
+    wyjątek."""
+    from import_dyscyplin.models import Import_Dyscyplin_Row
+
+    w = baker.make(Wydzial, uczelnia=uczelnia)
+    wezel = _wezel(w)
+    row = baker.make(Import_Dyscyplin_Row, wydzial=wezel)
+
+    w.delete()
+
+    assert Jednostka.objects.filter(pk=wezel.pk).exists()
+    row.refresh_from_db()
+    assert row.wydzial_id == wezel.pk
+
+
 # ---------------------------------------------------------------------------
 # (h) #438 — 1-jednostkowy wydział: promocja do roota zamiast pustej wydmuszki
 # ---------------------------------------------------------------------------

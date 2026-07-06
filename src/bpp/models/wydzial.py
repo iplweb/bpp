@@ -231,16 +231,23 @@ def _wezel_lustro_ma_referencje(node):
     wtedy NIE jest transientnym lustrem i kasowanie uszkodziłoby cudze dane
     (CASCADE / SET_NULL / PROTECT).
 
-    Iterujemy WSZYSTKIE odwrotne relacje (``related_objects``), pomijając modele
-    ``managed=False``. Dwa powody pominięcia: (a) tabele tymczasowe
-    ``bpp_temporary_*`` (cache/punktacja) potrafią nie istnieć w danym momencie
-    i zapytanie rzuca ProgrammingError wywalający transakcję; (b) widoki DB
-    (np. ``Nowe_Sumy_View``, DO_NOTHING) są DERYWOWANE — nie ma tam trwałych
-    danych do stracenia. Generyczność jest tu ISTOTNA: inwentarz II-2 ma 8
-    konsumentów (m.in. przepięci poza bpp — ``Obslugujacy_Zgloszenia_Wydzialow``
-    CASCADE w zglos_publikacje, ``Import_Dyscyplin_Row`` SET_NULL) — kuratorowana
-    lista już raz je zgubiła, a nowe FK dojdą bez aktualizacji tej funkcji."""
-    for rel in node._meta.related_objects:
+    Iterujemy WSZYSTKIE odwrotne relacje przez ``get_fields(include_hidden=True)``
+    (a NIE ``related_objects``, które POMIJA ukryte odwrotne FK/O2O z
+    ``related_name="+"`` — a ten wzorzec jest w repo używany dla drugich FK do
+    ``Jednostka``: ``Import_Dyscyplin_Row.wydzial`` SET_NULL, denorm
+    ``Jednostka.wydzial``). Pomijamy modele ``managed=False``: (a) tabele
+    tymczasowe ``bpp_temporary_*`` (cache/punktacja) potrafią nie istnieć w danym
+    momencie i zapytanie rzuca ProgrammingError wywalający transakcję; (b) widoki
+    DB (np. ``Nowe_Sumy_View``, DO_NOTHING) są DERYWOWANE — brak trwałych danych.
+    Generyczność jest tu ISTOTNA: inwentarz II-2 ma 8 konsumentów (m.in.
+    przepięci poza bpp — ``Obslugujacy_Zgloszenia_Wydzialow`` CASCADE w
+    zglos_publikacje, ``Import_Dyscyplin_Row`` SET_NULL) — kuratorowana lista już
+    raz je zgubiła, a nowe FK dojdą bez aktualizacji tej funkcji."""
+    from django.db.models.fields.reverse_related import ForeignObjectRel
+
+    for rel in node._meta.get_fields(include_hidden=True):
+        if not isinstance(rel, ForeignObjectRel):
+            continue
         related_model = rel.related_model
         if not related_model._meta.managed:
             continue
