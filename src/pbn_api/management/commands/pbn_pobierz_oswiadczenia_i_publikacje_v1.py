@@ -1,7 +1,12 @@
+import logging
+
 from tqdm import tqdm
 
+from bpp.util import zaloguj_polkniety_wyjatek
 from pbn_api.management.commands.util import PBNBaseCommand
 from pbn_integrator import utils as integrator
+
+logger = logging.getLogger(__name__)
 
 
 class Command(PBNBaseCommand):
@@ -52,6 +57,11 @@ class Command(PBNBaseCommand):
                     )
                 )
             except Exception as e:
+                zaloguj_polkniety_wyjatek(
+                    "Błąd podczas pobierania oświadczeń instytucji z PBN",
+                    logger=logger,
+                    do_rollbar=False,
+                )
                 tqdm.write(
                     self.style.ERROR(f"✗ Error downloading institution statements: {e}")
                 )
@@ -77,6 +87,11 @@ class Command(PBNBaseCommand):
                     )
                 )
             except Exception as e:
+                zaloguj_polkniety_wyjatek(
+                    "Błąd podczas pobierania publikacji instytucji z PBN",
+                    logger=logger,
+                    do_rollbar=False,
+                )
                 tqdm.write(
                     self.style.ERROR(
                         f"✗ Error downloading institution publications: {e}"

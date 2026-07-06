@@ -1,6 +1,7 @@
 from braces.views import GroupRequiredMixin, JSONResponseMixin
 from celery import uuid
 from celery.result import AsyncResult
+from channels_broadcast.mixins import ChannelSubscriberSingleObjectMixin
 from django.contrib import messages
 from django.db import transaction
 from django.db.models import Q
@@ -21,7 +22,6 @@ from import_dyscyplin.tasks import (
     przeanalizuj_import_dyscyplin,
     stworz_kolumny,
 )
-from channels_broadcast.mixins import ChannelSubscriberSingleObjectMixin
 
 from .forms import Import_DyscyplinForm
 from .models import Import_Dyscyplin

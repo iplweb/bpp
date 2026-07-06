@@ -171,8 +171,6 @@ def test_walidacja_plikow_dla_dostepu_ograniczonego_z_dict():
     W wizardie, gdy formularz jest walidowany ponownie w render_done(),
     self.files może być zwykłym dict, a nie QueryDict.
     """
-    from django.core.files.uploadedfile import SimpleUploadedFile
-
     baker.make(Uczelnia)
 
     # Najpierw sprawdźmy czy formularz bez błędów w polach dochodzi do clean()

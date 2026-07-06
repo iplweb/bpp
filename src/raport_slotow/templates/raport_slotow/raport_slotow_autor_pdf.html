@@ -1,0 +1,90 @@
+{% load render_table from django_tables2 %}<!DOCTYPE html>
+{# Goły szablon raportu slotów-autora przeznaczony WYŁĄCZNIE do PDF-a #}
+{# (WeasyPrint). Świadomie NIE rozszerza base.html — nie ma tu menu, #}
+{# stopki serwisu, szablonu powiadomień #messageTemplate ani JS-a, więc #}
+{# nic z "chrome" strony nie może wyciec do PDF-a (FD#405). #}
+{# CSS jest wpisany poniżej w całości: WeasyPrint nie musi dociągać #}
+{# zbundlowanego CSS-a serwisu (co na produkcji bywa zawodne — hashowane #}
+{# statyki + self-fetch po HTTP), więc wydruk jest deterministyczny. #}
+<html lang="pl">
+<head>
+    <meta charset="utf-8">
+    <title>Raport slotów - {{ autor }} za {{ od_roku }} - {{ do_roku }}</title>
+    <style>
+        @page {
+            size: A4 landscape;
+            margin: 1.2cm 1cm;
+        }
+        body {
+            font-family: "DejaVu Sans", Arial, sans-serif;
+            font-size: 8pt;
+            color: #000;
+        }
+        h1 { font-size: 14pt; margin: 0 0 .2em; }
+        h2 { font-size: 11pt; margin: 0 0 .4em; font-weight: normal; }
+        h3 {
+            font-size: 10pt;
+            margin: 1em 0 .2em;
+            /* nie odrywaj nagłówka dyscypliny od jej tabeli */
+            page-break-after: avoid;
+        }
+        h4 { font-size: 9pt; margin: .4em 0; font-weight: normal; }
+        .meta { margin-bottom: .4em; }
+        .meta strong { margin-right: .2em; }
+        .meta-sep { padding-left: 2em; }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: .5em;
+            table-layout: fixed;
+        }
+        /* powtarzaj nagłówek tabeli na każdej stronie wydruku */
+        thead { display: table-header-group; }
+        /* stopkę z sumą pokaż TYLKO RAZ na końcu tabeli, a nie na każdej
+           podstronie (domyslne table-footer-group powtarza ja na kazdej) */
+        tfoot { display: table-row-group; }
+        tfoot td, tfoot th { font-weight: bold; background: #f3f3f3; }
+        tr { page-break-inside: avoid; }
+        th, td {
+            border: .5pt solid #999;
+            padding: 2pt 3pt;
+            text-align: left;
+            vertical-align: top;
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+        }
+        th { background: #e8e8e8; font-weight: bold; }
+        a { color: #000; text-decoration: none; }
+        .pdf-footer {
+            margin-top: .8em;
+            font-size: 7pt;
+            color: #555;
+            border-top: .5pt solid #ccc;
+            padding-top: .3em;
+        }
+    </style>
+</head>
+<body>
+    <h1>Raport slotów</h1>
+    <h2>{{ autor }} za {{ od_roku }} - {{ do_roku }}</h2>
+
+    <div class="meta">
+        {% if autor.orcid %}<strong>ORCID:</strong> {{ autor.orcid }}<span class="meta-sep"></span>{% endif %}
+        {% if autor.pbn_id %}<strong>PBN ID:</strong> {{ autor.pbn_id }}<span class="meta-sep"></span>{% endif %}
+        {% if autor.pbn_uuid %}<strong>PBN UUID:</strong> {{ autor.pbn_uuid }}<span class="meta-sep"></span>{% endif %}
+        <strong>BPP ID:</strong> {{ autor.pk }}
+    </div>
+    <h4>{{ opis_dzialania }}</h4>
+
+    {% for table in tables %}
+        {% if table.dyscyplina_naukowa %}
+            <h3>Dyscyplina: {{ table.dyscyplina_naukowa }}</h3>
+        {% endif %}
+        {% render_table table %}
+    {% endfor %}
+
+    <div class="pdf-footer">
+        Wygenerowano dnia {{ wygenerowano }}, BPP wersja {{ wersja }}.
+    </div>
+</body>
+</html>

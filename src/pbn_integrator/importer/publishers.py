@@ -8,6 +8,7 @@ from django.db import transaction
 from bpp import const
 from bpp.models import Wydawca
 from bpp.models.wydawca import Poziom_Wydawcy
+from pbn_api.const import DELETED
 from pbn_api.models import Publisher
 from pbn_integrator.utils import zapisz_mongodb
 
@@ -130,6 +131,10 @@ def importuj_jednego_wydawce(publisher, verbosity=1):
             has_wydawca = True
 
     if not has_wydawca:
+        # Wydawca skasowany w PBN i bez odpowiednika w BPP — nie twórz nowego.
+        # (Match istniejącego zostawiamy nietknięty — to osobna ścieżka.)
+        if publisher.status == DELETED:
+            return False
         # Nie ma takiego wydawcy w bazie, utwórz go:
         _utworz_nowego_wydawce(publisher, points_to_poziom_map, verbosity)
         return True

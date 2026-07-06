@@ -1,0 +1,190 @@
+name: Promote (RC → produkcja)
+
+# Druga komenda wydania. Finalizuje otwarte wydanie i przepina :latest na
+# zatwierdzony obraz RC — BEZ rebuildu (imagetools). Wywołanie:
+#   gh workflow run promote.yml
+# Gdy otwartych jest >1 gałęzi release/* — podaj którą:
+#   gh workflow run promote.yml -f version=v202606.1392
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Wersja do promocji (np. v202606.1392). Puste = jedyna otwarta release/*."
+        type: string
+        default: ""
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  promote:
+    name: Finalizuj + przepnij :latest
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout (pełna historia + tagi)
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+          persist-credentials: false
+
+      - name: Konfiguracja git
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git fetch --tags origin master dev '+refs/heads/release/*:refs/remotes/origin/release/*'
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@d31148d669074a8d0a63714ba94f3201e7020bc3 # v8.3.0
+        with:
+          enable-cache: true
+
+      - name: Wykryj gałąź wydania + odczytaj RC
+        id: detect
+        env:
+          INPUT_VERSION: ${{ inputs.version }}
+        run: |
+          set -euo pipefail
+          if [ -n "${INPUT_VERSION:-}" ]; then
+            BASE="${INPUT_VERSION#v}"
+            RELEASE_REF="release/v${BASE}"
+            git rev-parse --verify "origin/${RELEASE_REF}" >/dev/null 2>&1 \
+              || { echo "::error::Brak gałęzi origin/${RELEASE_REF}"; exit 1; }
+          else
+            mapfile -t BRANCHES < <(git ls-remote --heads origin 'refs/heads/release/*' \
+              | sed -E 's@.*refs/heads/(release/.*)$@\1@')
+            if [ "${#BRANCHES[@]}" -eq 0 ]; then
+              echo "::error::Brak otwartego wydania do promocji."; exit 1
+            fi
+            if [ "${#BRANCHES[@]}" -gt 1 ]; then
+              echo "::error::Otwartych >1 wydań: ${BRANCHES[*]}. Podaj -f version=vXXX."; exit 1
+            fi
+            RELEASE_REF="${BRANCHES[0]}"
+            BASE="${RELEASE_REF#release/v}"
+          fi
+
+          git switch -C "$RELEASE_REF" "origin/$RELEASE_REF"
+          RC_TAG=$(./bin/bpp-version.py)        # np. 202606.1392rc2 (immutable docker-tag źródłowy)
+          echo "release_ref=${RELEASE_REF}" >> "$GITHUB_OUTPUT"
+          echo "base=${BASE}" >> "$GITHUB_OUTPUT"
+          echo "rc_tag=${RC_TAG}" >> "$GITHUB_OUTPUT"
+          echo "::notice::Promuję ${RELEASE_REF}: obraz :${RC_TAG} → :${BASE} + :latest"
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@af1e73f918a031802d376d3c8bbc3fe56130a9b0 # v4.4.0
+        with:
+          username: ${{ vars.DOCKER_USER }}
+          password: ${{ secrets.DOCKER_PAT }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c # v4.2.0
+
+      - name: Pre-flight — obrazy RC istnieją w rejestrze
+        env:
+          RC_TAG: ${{ steps.detect.outputs.rc_tag }}
+        # Sprawdź ZANIM ruszymy master/dev — inaczej brak obrazu = half-applied release.
+        run: |
+          set -euo pipefail
+          images=(
+            iplweb/bpp_base
+            iplweb/bpp_appserver
+            iplweb/bpp_workerserver
+            iplweb/bpp_beatserver
+            iplweb/bpp_authserver
+            iplweb/bpp_denorm_queue
+          )
+          for img in "${images[@]}"; do
+            echo "Sprawdzam ${img}:${RC_TAG}"
+            docker buildx imagetools inspect "${img}:${RC_TAG}" >/dev/null \
+              || { echo "::error::Brak ${img}:${RC_TAG} — przerwij PRZED zmianą master."; exit 1; }
+          done
+
+      - name: Finalizuj wersję + towncrier
+        env:
+          BASE: ${{ steps.detect.outputs.base }}
+        run: |
+          set -euo pipefail
+          # --set-version (NIE --tag final): --tag final dodatkowo bumpnąłby
+          # BUILD (1394→1395), rozjeżdżając wersję finalną z testowanym RC.
+          uv run bumpver update --no-fetch --commit --no-push \
+            --set-version "v${BASE}"
+          uv run towncrier build --yes || echo "towncrier: brak newsfragmentów."
+          git add -A
+          git commit -m "Changelog dla v${BASE}" || echo "Brak zmian changelogu."
+
+      - name: Przygotuj master/dev/tag lokalnie
+        env:
+          BASE: ${{ steps.detect.outputs.base }}
+          RELEASE_REF: ${{ steps.detect.outputs.release_ref }}
+        run: |
+          set -euo pipefail
+          git switch -C _master origin/master
+          git merge --no-ff "$RELEASE_REF" -m "Release v${BASE}"
+          git tag -a "v${BASE}" -m "Release v${BASE}"
+
+          git switch -C _dev origin/dev
+          git merge --no-ff "v${BASE}" -m "Merge tag 'v${BASE}' into dev"
+
+      - name: Pre-flight — atomic git push będzie możliwy
+        env:
+          BASE: ${{ steps.detect.outputs.base }}
+          RELEASE_REF: ${{ steps.detect.outputs.release_ref }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          REMOTE="https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          git push --atomic --dry-run "$REMOTE" \
+            _master:refs/heads/master \
+            _dev:refs/heads/dev \
+            "refs/tags/v${BASE}" \
+            ":refs/heads/${RELEASE_REF}"
+
+      - name: Promote obrazów :rc → :wersja + :latest (imagetools)
+        env:
+          BASE: ${{ steps.detect.outputs.base }}
+          RC_TAG: ${{ steps.detect.outputs.rc_tag }}
+        run: |
+          set -euo pipefail
+          images=(
+            iplweb/bpp_base
+            iplweb/bpp_appserver
+            iplweb/bpp_workerserver
+            iplweb/bpp_beatserver
+            iplweb/bpp_authserver
+            iplweb/bpp_denorm_queue
+          )
+          for img in "${images[@]}"; do
+            echo "::group::Promote ${img}: ${RC_TAG} → ${BASE} + latest"
+            docker buildx imagetools create \
+              -t "${img}:${BASE}" \
+              -t "${img}:latest" \
+              "${img}:${RC_TAG}"
+            echo "::endgroup::"
+          done
+          {
+            echo "## ✅ Promoted v${BASE}"
+            echo ""
+            echo "Źródło RC: \`:${RC_TAG}\` → \`:${BASE}\` + \`:latest\` (bez rebuildu)"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Push master/dev/tag i usuń release branch
+        env:
+          BASE: ${{ steps.detect.outputs.base }}
+          RELEASE_REF: ${{ steps.detect.outputs.release_ref }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          REMOTE="https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          git push --atomic "$REMOTE" \
+            _master:refs/heads/master \
+            _dev:refs/heads/dev \
+            "refs/tags/v${BASE}" \
+            ":refs/heads/${RELEASE_REF}"

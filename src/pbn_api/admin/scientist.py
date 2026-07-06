@@ -1,3 +1,4 @@
+import logging
 from datetime import datetime
 
 from django.contrib import admin
@@ -5,6 +6,7 @@ from django.urls import reverse
 from django.utils.http import urlencode
 
 from bpp.admin.filters import OrcidObecnyFilter
+from bpp.util import zaloguj_polkniety_wyjatek
 from pbn_api.admin.base import BaseMongoDBAdmin
 from pbn_api.admin.filters import (
     OdpowiednikAutoraWBPPFilter,
@@ -12,6 +14,8 @@ from pbn_api.admin.filters import (
     PolonUidObecnyFilter,
 )
 from pbn_api.models import Scientist
+
+logger = logging.getLogger(__name__)
 
 
 @admin.register(Scientist)
@@ -85,8 +89,13 @@ class ScientistAdmin(BaseMongoDBAdmin):
         try:
             date_obj = datetime.strptime(date_str, "%Y-%m-%d")
             params[prefix] = date_obj.strftime("%Y-%m-%d")
-        except BaseException:
-            pass
+        except Exception:
+            zaloguj_polkniety_wyjatek(
+                f"Nie udało się sparsować daty zatrudnienia '{date_str}' "
+                f"(parametr {prefix}) przy tworzeniu autora z PBN",
+                logger=logger,
+                do_rollbar=True,
+            )
 
     def _add_employment_params(self, params, employment_data):
         """Add employment data parameters."""
@@ -280,7 +289,13 @@ class ScientistAdmin(BaseMongoDBAdmin):
                             )
                     except Exception:
                         # Jeśli nic nie zadziała, pomiń tę dyscyplinę
-                        pass
+                        zaloguj_polkniety_wyjatek(
+                            "Nie udało się dopasować dyscypliny PBN "
+                            f"(UUID {discipline_uuid}, rok {year}) przy tworzeniu "
+                            "autora z PBN — dyscyplina pominięta",
+                            logger=logger,
+                            do_rollbar=True,
+                        )
 
         return disciplines
 

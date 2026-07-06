@@ -128,64 +128,72 @@ class GlobalNavigationAutocomplete(
             for model, results in groups.items()
         ]
 
-    def get_queryset(self):
-        if not hasattr(self, "q"):
-            return []
+    def _uczelnia_scope(self):
+        """Uczelnia oglądającego do zawężenia global-searcha.
 
-        if not self.q:
-            return []
+        ``None`` (brak zawężenia) gdy brak requestu albo single-install
+        (guard ``tylko_jedna_uczelnia`` — wyniki/wydajność jak dawniej).
+        """
+        from bpp.util.uczelnia_scope import tylko_jedna_uczelnia
 
-        querysets = []
-        globalne_wyszukiwanie_jednostki(querysets, self.q)
+        if not hasattr(self, "request") or tylko_jedna_uczelnia():
+            return None
+        return Uczelnia.objects.get_for_request(self.request)
 
-        globalne_wyszukiwanie_autora(querysets, self.q)
+    def _rekord_querysets(self, uczelnia):
+        """Querysety Rekordów do global-searcha, zawężone do uczelni."""
+        from bpp.util.uczelnia_scope import scope_rekord_do_uczelni
 
-        globalne_wyszukiwanie_zrodla(querysets, self.q)
+        ftx = scope_rekord_do_uczelni(Rekord.objects.fulltext_filter(self.q), uczelnia)
 
-        # Rekord
-
-        rekord_qset_ftx = Rekord.objects.fulltext_filter(self.q)
-
-        rekord_qset_doi = Rekord.objects.filter(doi__iexact=self.q)
-        rekord_qset_isbn = Rekord.objects.filter(isbn__iexact=self.q)
-        rekord_qset_pbn = None
+        qry = Q(pk__in=Rekord.objects.filter(doi__iexact=self.q).values_list("pk"))
+        qry |= Q(pk__in=Rekord.objects.filter(isbn__iexact=self.q))
         if jest_pbn_uid(self.q):
-            rekord_qset_pbn = Rekord.objects.filter(pbn_uid_id=self.q)
-
-        qry = Q(pk__in=rekord_qset_doi.values_list("pk"))
-        qry |= Q(pk__in=rekord_qset_isbn)
-        if rekord_qset_pbn:
-            qry |= Q(pk__in=rekord_qset_pbn.values_list("pk"))
-
-        rekord_qset = Rekord.objects.filter(qry).only("tytul_oryginalny")
+            qry |= Q(pk__in=Rekord.objects.filter(pbn_uid_id=self.q).values_list("pk"))
+        glowny = scope_rekord_do_uczelni(
+            Rekord.objects.filter(qry).only("tytul_oryginalny"), uczelnia
+        )
 
         if hasattr(self, "request") and self.request.user.is_anonymous:
-            uczelnia = Uczelnia.objects.get_for_request(self.request)
-            if uczelnia is not None:
-                rekord_qset_ftx = rekord_qset_ftx.exclude(
-                    status_korekty_id__in=uczelnia.ukryte_statusy("podglad")
-                )
+            uczelnia_status = Uczelnia.objects.get_for_request(self.request)
+            if uczelnia_status is not None:
+                ukryte = uczelnia_status.ukryte_statusy("podglad")
+                ftx = ftx.exclude(status_korekty_id__in=ukryte)
+                glowny = glowny.exclude(status_korekty_id__in=ukryte)
 
-                rekord_qset = rekord_qset.exclude(
-                    status_korekty_id__in=uczelnia.ukryte_statusy("podglad")
-                )
-        querysets.append(rekord_qset_ftx)
-        querysets.append(rekord_qset)
+        rekordy = [ftx, glowny]
 
-        this_is_an_id = False
         try:
             this_is_an_id = int(self.q)
         except (TypeError, ValueError):
-            pass
-
-        if this_is_an_id:
-            querysets.append(
-                Rekord.objects.annotate(
-                    _object_id=RawSQL("(id)[2]", [], output_field=IntegerField())
+            this_is_an_id = None
+        if this_is_an_id is not None:
+            rekordy.append(
+                scope_rekord_do_uczelni(
+                    Rekord.objects.annotate(
+                        _object_id=RawSQL("(id)[2]", [], output_field=IntegerField())
+                    )
+                    .filter(_object_id=this_is_an_id)
+                    .only("tytul_oryginalny"),
+                    uczelnia,
                 )
-                .filter(_object_id=this_is_an_id)
-                .only("tytul_oryginalny")
             )
+        return rekordy
+
+    def get_queryset(self):
+        if not hasattr(self, "q") or not self.q:
+            return []
+
+        # Multi-hosted: publiczny global-search zawężamy do uczelni oglądającego
+        # (jednostki/autorzy/rekordy). Zrodlo nie ma FK uczelnia (słownik
+        # współdzielony). No-op przy single-install (uczelnia → None).
+        uczelnia = self._uczelnia_scope()
+
+        querysets = []
+        globalne_wyszukiwanie_jednostki(querysets, self.q, uczelnia=uczelnia)
+        globalne_wyszukiwanie_autora(querysets, self.q, uczelnia=uczelnia)
+        globalne_wyszukiwanie_zrodla(querysets, self.q)
+        querysets.extend(self._rekord_querysets(uczelnia))
 
         ret = QuerySetSequence(*querysets)
         return self.mixup_querysets(ret)

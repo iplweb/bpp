@@ -1,10 +1,14 @@
+import logging
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from threading import Lock
 
 from tqdm import tqdm
 
+from bpp.util import zaloguj_polkniety_wyjatek
 from pbn_api.management.commands.util import PBNBaseCommand
 from pbn_integrator import utils as integrator
+
+logger = logging.getLogger(__name__)
 
 
 def process_single_page_v2(
@@ -45,6 +49,12 @@ def process_single_page_v2(
                 integrator.zapisz_publikacje_instytucji_v2(client, elem)
                 result["success_count"] += 1
             except Exception as e:
+                zaloguj_polkniety_wyjatek(
+                    "Błąd podczas zapisu pojedynczej publikacji instytucji "
+                    f"(uuid={elem.get('uuid', 'unknown')}) ze strony {page_num}",
+                    logger=logger,
+                    do_rollbar=False,
+                )
                 result["error_count"] += 1
                 error_msg = (
                     f"Error processing publication {elem.get('uuid', 'unknown')}: {e}"
@@ -55,6 +65,11 @@ def process_single_page_v2(
                         tqdm.write(style.ERROR(error_msg))
 
     except Exception as e:
+        zaloguj_polkniety_wyjatek(
+            f"Błąd podczas przetwarzania strony {page_num} publikacji instytucji",
+            logger=logger,
+            do_rollbar=False,
+        )
         result["success"] = False
         result["error"] = str(e)
         if stdout and style and progress_lock:

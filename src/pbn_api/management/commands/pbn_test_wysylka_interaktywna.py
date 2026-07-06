@@ -19,12 +19,14 @@ Użycie:
 """
 
 import json
+import logging
 import time
 from typing import Any
 
 from django.core.management.base import CommandError
 
 from bpp.models import Wydawnictwo_Ciagle, Wydawnictwo_Zwarte
+from bpp.util import zaloguj_polkniety_wyjatek
 from pbn_api.adapters.wydawnictwo import WydawnictwoPBNAdapter
 from pbn_api.const import (
     PBN_DELETE_PUBLICATION_STATEMENT,
@@ -43,6 +45,8 @@ from pbn_api.exceptions import (
 )
 from pbn_api.management.commands.util import PBNBaseCommand
 from pbn_api.models import OswiadczenieInstytucji
+
+logger = logging.getLogger(__name__)
 
 
 class UserAbort(Exception):
@@ -195,10 +199,18 @@ class Command(PBNBaseCommand):
         # Intencja BPP — live count tego co by adapter wysłał teraz.
         try:
             intended_count = len(
-                WydawnictwoPBNAdapter(publication).pbn_get_json_statements()
+                WydawnictwoPBNAdapter(
+                    publication, uczelnia=self._resolved_uczelnia
+                ).pbn_get_json_statements()
             )
             intended_label = str(intended_count)
         except Exception as e:  # noqa: BLE001
+            zaloguj_polkniety_wyjatek(
+                "Błąd adaptera przy liczeniu intencji oświadczeń BPP dla "
+                f"publikacji pk={publication.pk}",
+                logger=logger,
+                do_rollbar=False,
+            )
             intended_label = f"?? (błąd adaptera: {e})"
 
         self._info(f"Typ:          {type(publication).__name__}")
@@ -212,7 +224,7 @@ class Command(PBNBaseCommand):
 
     def _step_generate_json(self, publication):
         self._header("KROK 2/8 — Generowanie JSON publikacji")
-        adapter = WydawnictwoPBNAdapter(publication)
+        adapter = WydawnictwoPBNAdapter(publication, uczelnia=self._resolved_uczelnia)
         js = adapter.pbn_get_json()
         bez_oswiadczen = "statements" not in js
         n_statements = len(js.get("statements", [])) if not bez_oswiadczen else 0
@@ -367,8 +379,16 @@ class Command(PBNBaseCommand):
         # — oba nam potrzebne do porównania z PBN GET response, gdzie są
         # ``area`` i ``personId``.
         try:
-            intended = WydawnictwoPBNAdapter(publication).pbn_get_json_statements()
+            intended = WydawnictwoPBNAdapter(
+                publication, uczelnia=self._resolved_uczelnia
+            ).pbn_get_json_statements()
         except Exception as e:  # noqa: BLE001
+            zaloguj_polkniety_wyjatek(
+                "Błąd adaptera przy generowaniu intencji oświadczeń BPP do "
+                f"porównania z PBN dla publikacji pk={publication.pk}",
+                logger=logger,
+                do_rollbar=False,
+            )
             self._warn(f"Nie mogę wygenerować intencji BPP (adapter): {e}")
             self._info("Zwracam 'różnice' — user zdecyduje co robić.")
             self.stats.append(("Porównanie", "nieznane (błąd adaptera)"))
@@ -461,7 +481,9 @@ class Command(PBNBaseCommand):
     def _step_post_statements(self, pbn_client, publication):
         self._header("KROK 8/8 — POST nowych oświadczeń")
         try:
-            payload = WydawnictwoPBNAdapter(publication).pbn_get_api_statements()
+            payload = WydawnictwoPBNAdapter(
+                publication, uczelnia=self._resolved_uczelnia
+            ).pbn_get_api_statements()
         except DaneLokalneWymagajaAktualizacjiException as e:
             self._err(
                 f"Nie mogę przygotować payloadu oświadczeń: {e}. "

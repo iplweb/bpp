@@ -40,13 +40,7 @@ def may_contain_match(directory, patterns):
     return any(pattern.startswith(directory) for pattern in patterns)
 
 
-def get_files(storage, match_patterns="*", ignore_patterns=None, location=""):  # noqa: C901
-    if ignore_patterns is None:
-        ignore_patterns = []
-    if match_patterns is None:
-        match_patterns = []
-
-    directories, files = storage.listdir(location)
+def _iter_matching_files(files, match_patterns, ignore_patterns, location):
     for fn in files:
         if django_utils.matches_patterns(fn, ignore_patterns):
             continue
@@ -55,6 +49,11 @@ def get_files(storage, match_patterns="*", ignore_patterns=None, location=""):  
         if not django_utils.matches_patterns(fn, match_patterns):
             continue
         yield fn
+
+
+def _iter_matching_subdirs(
+    storage, directories, match_patterns, ignore_patterns, location
+):
     for dir in directories:
         if django_utils.matches_patterns(dir, ignore_patterns):
             continue
@@ -63,8 +62,20 @@ def get_files(storage, match_patterns="*", ignore_patterns=None, location=""):  
         if may_contain_match(dir, match_patterns) or django_utils.matches_patterns(
             dir, match_patterns
         ):
-            for fn in get_files(storage, match_patterns, ignore_patterns, dir):
-                yield fn
+            yield from get_files(storage, match_patterns, ignore_patterns, dir)
+
+
+def get_files(storage, match_patterns="*", ignore_patterns=None, location=""):
+    if ignore_patterns is None:
+        ignore_patterns = []
+    if match_patterns is None:
+        match_patterns = []
+
+    directories, files = storage.listdir(location)
+    yield from _iter_matching_files(files, match_patterns, ignore_patterns, location)
+    yield from _iter_matching_subdirs(
+        storage, directories, match_patterns, ignore_patterns, location
+    )
 
 
 class YarnFinder(FileSystemFinder):

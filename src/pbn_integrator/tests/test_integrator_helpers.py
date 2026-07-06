@@ -9,10 +9,12 @@ These are unit tests that do not require database access unless explicitly marke
 
 import pytest
 
+from bpp.models import Jezyk
 from pbn_integrator.importer import (
     assert_dictionary_empty,
     pbn_keywords_to_slowa_kluczowe,
 )
+from pbn_integrator.importer.helpers import get_jezyk_polski, pobierz_jezyk
 
 
 class TestAssertDictionaryEmpty:
@@ -88,3 +90,49 @@ class TestPbnKeywordsToSlowaKluczowe:
         keywords = {"pol": []}
         result = pbn_keywords_to_slowa_kluczowe(keywords)
         assert result == []
+
+
+# Migracja bpp/0022 seeduje polski (skrot='pol.') i angielski (skrot='ang.'),
+# więc testy bazują na istniejących rekordach zamiast je duplikować.
+
+
+@pytest.mark.django_db
+def test_get_jezyk_polski_zwraca_jezyk_polski():
+    """get_jezyk_polski zwraca rekord języka polskiego (skrot='pol.')."""
+    assert get_jezyk_polski() == Jezyk.objects.get(skrot="pol.")
+
+
+@pytest.mark.django_db
+def test_get_jezyk_polski_brak_w_bazie_rzuca():
+    """Brak polskiego w bazie to błąd konfiguracji — nie cichy None."""
+    Jezyk.objects.filter(skrot="pol.").delete()
+    Jezyk.objects.filter(nazwa__iexact="polski").delete()
+    with pytest.raises(Jezyk.DoesNotExist):
+        get_jezyk_polski()
+
+
+@pytest.mark.django_db
+def test_pobierz_jezyk_rozpoznaje_jezyk_po_skrocie():
+    """Znany kod PBN (po skrócie) zwraca właściwy język, nie domyślny."""
+    assert pobierz_jezyk("ang", "Some title") == Jezyk.objects.get(skrot="ang.")
+
+
+@pytest.mark.django_db
+def test_pobierz_jezyk_nieznany_kod_zwraca_domyslny_polski():
+    """Nieznany kod języka spada na domyślny — polski, nie 'pierwszy w bazie'."""
+    assert pobierz_jezyk("xyz-nieznany", "Some title") == Jezyk.objects.get(
+        skrot="pol."
+    )
+
+
+@pytest.mark.django_db
+def test_pobierz_jezyk_brak_kodu_zwraca_domyslny_polski():
+    """Brak mainLanguage (None) nie wywala importu — spada na polski."""
+    assert pobierz_jezyk(None, None) == Jezyk.objects.get(skrot="pol.")
+
+
+@pytest.mark.django_db
+def test_pobierz_jezyk_uzywa_podanego_domyslnego_jezyka():
+    """Jawnie podany domyslny_jezyk wygrywa nad wbudowanym polskim."""
+    angielski = Jezyk.objects.get(skrot="ang.")
+    assert pobierz_jezyk("xyz-nieznany", None, domyslny_jezyk=angielski) == angielski

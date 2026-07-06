@@ -4,6 +4,7 @@ Autorzy
 
 from __future__ import annotations
 
+import logging
 from datetime import date, datetime, timedelta
 
 from autoslug import AutoSlugField
@@ -20,7 +21,9 @@ from bpp import const
 from bpp.core import zbieraj_sloty
 from bpp.models import LinkDoPBNMixin, ModelZAdnotacjami, ModelZNazwa, NazwaISkrot
 from bpp.models.abstract import ModelZPBN_ID
-from bpp.util import FulltextSearchMixin
+from bpp.util import FulltextSearchMixin, zaloguj_polkniety_wyjatek
+
+logger = logging.getLogger(__name__)
 
 
 class Tytul(NazwaISkrot):
@@ -53,21 +56,57 @@ def autor_split_string(text):
     return text[0], text[1]
 
 
-class AutorManager(FulltextSearchMixin, models.Manager):
+class AutorQuerySet(models.QuerySet):
+    """Zakresy wyszukiwania autora (spec 2026-07-02).
+
+    Kategorie semantyczne — obowiązują tak samo w single- i multi-host (NIE
+    przechodzą przez guard ``tylko_jedna_uczelnia``; to wybór kategorii autora,
+    nie izolacja rekordów). ``uczelnia=None`` → fail-closed (pusty queryset).
+    Zakres WSZYSCY = zwykłe ``Autor.objects.all()`` (bez metody).
+    """
+
+    def aktualnie_zatrudnieni(self, uczelnia):
+        """Autorzy aktualnie zatrudnieni w uczelni (realna jednostka)."""
+        if uczelnia is None:
+            return self.none()
+        return self.filter(
+            aktualna_jednostka__uczelnia=uczelnia,
+            aktualna_jednostka__skupia_pracownikow=True,
+        )
+
+    def kiedykolwiek_zwiazani(self, uczelnia):
+        """Autorzy związani z uczelnią obecnie LUB historycznie."""
+        if uczelnia is None:
+            return self.none()
+        return self.filter(
+            Q(aktualna_jednostka__uczelnia=uczelnia)
+            | Q(autor_jednostka__jednostka__uczelnia=uczelnia)
+        ).distinct()
+
+
+class AutorManager(FulltextSearchMixin, models.Manager.from_queryset(AutorQuerySet)):
     # Nie włączaj websearch gdy podano minus (podwójne nazwiska z myślnikiem)
     fts_enable_websearch_on_minus_or_quote = False
 
-    def create_from_string(self, text):
+    def create_from_string(self, text, uczelnia=None):
         """Tworzy rekord autora z ciągu znaków. Używane, gdy dysponujemy
         wpisanym ciągiem znaków z np AutorAutocomplete i chcemy utworzyć
-        autora z nazwiskiem i imieniem w poprawny sposób."""
+        autora z nazwiskiem i imieniem w poprawny sposób.
+
+        ``uczelnia`` (multi-hosted): uczelnia z requestu wołającego — z niej
+        czytamy ``nowy_autor_z_formularza_pokazuj``. Bez niej próbujemy
+        JEDYNEJ w systemie (single → ona; 0/>1 → None → ``pokazuj=False``).
+        NIE zgadujemy pierwszej-z-brzegu (dawny footgun ``.first()`` na
+        managerze Uczelni).
+        """
 
         text = autor_split_string(text)
 
         # Sprawdź ustawienie w modelu Uczelnia, czy nowy autor ma być widoczny
         from bpp.models.uczelnia import Uczelnia
 
-        uczelnia = Uczelnia.objects.first()
+        if uczelnia is None:
+            uczelnia = Uczelnia.objects.get_single_uczelnia_or_none()
         pokazuj = uczelnia.nowy_autor_z_formularza_pokazuj if uczelnia else False
 
         return self.create(
@@ -413,6 +452,7 @@ class Autor(LinkDoPBNMixin, ModelZAdnotacjami, ModelZPBN_ID):
         dyscyplina_id=None,
         jednostka_id=None,
         akcja=None,
+        uczelnia_id=None,
     ):
         return zbieraj_sloty(
             autor_id=self.pk,
@@ -423,6 +463,7 @@ class Autor(LinkDoPBNMixin, ModelZAdnotacjami, ModelZPBN_ID):
             dyscyplina_id=dyscyplina_id,
             jednostka_id=jednostka_id,
             akcja=akcja,
+            uczelnia_id=uczelnia_id,
         )
 
     @property
@@ -593,6 +634,10 @@ class Autor_Jednostka(models.Model):
                 buf = f"{autor_str} ↔ {self.funkcja.nazwa}, {jednostka_str}"
             return buf
         except Exception:
+            zaloguj_polkniety_wyjatek(
+                f"Budowanie reprezentacji tekstowej Autor_Jednostka (pk={self.pk})",
+                logger=logger,
+            )
             # Fallback w przypadku jakichkolwiek błędów podczas usuwania
             return f"Autor_Jednostka #{self.pk if self.pk else 'nowy'}"
 

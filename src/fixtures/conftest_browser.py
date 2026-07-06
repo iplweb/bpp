@@ -2,7 +2,6 @@
 
 import pytest
 from django.apps import apps
-from django.core.exceptions import ImproperlyConfigured
 from django_webtest import DjangoTestApp
 
 try:

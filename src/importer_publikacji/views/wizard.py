@@ -142,6 +142,7 @@ class FetchView(ImporterPermissionMixin, View):
 
         session = ImportSession.objects.create(
             created_by=request.user,
+            uczelnia=Uczelnia.objects.get_for_request(request),
             provider_name=provider_name,
             identifier=normalized,
             status=ImportSession.Status.FETCHING,
