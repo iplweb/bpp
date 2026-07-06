@@ -1,0 +1,6 @@
+Uwaga dla instalacji wielopodmiotowych: migracja ustawiająca „wydziałowi"
+zakaz afiliacji (``RodzajJednostki.autor_moze_afiliowac=False``) rozpoznaje
+rodzaj po nazwie „Wydział". Jeśli w danym tenancie zmieniono nazwę tego
+rodzaju w słowniku, flagę trzeba ustawić ręcznie w panelu administracyjnym
+(słownik „Rodzaje jednostek"), aby zadziałały zabezpieczenia przed afiliacją
+autorów do wydziału.
