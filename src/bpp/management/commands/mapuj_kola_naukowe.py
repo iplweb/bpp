@@ -54,7 +54,7 @@ class Command(BaseCommand):
             raise CommandError(
                 f'Brak jednostki o nazwie "{jednostka}". '
                 f"Uzyj parametru --jednostka i podaj inną nazwę"
-            )
+            ) from None
 
         for aj in Autorzy.objects.filter(jednostka__pk=jednostka_id, rekord__rok=rok):
             # Znajdź dla autora jednostkę będącą kołem naukowym

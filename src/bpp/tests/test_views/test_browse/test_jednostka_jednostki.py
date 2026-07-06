@@ -31,7 +31,7 @@ def test_browse_jednostka_link_osadzania(jednostka, client):
 
 @pytest.mark.django_db
 def test_jednostka_nie_wyswietlaj_autorow_gdy_wielu(client, jednostka):
-    for n in range(settings.MAX_NO_AUTHORS_ON_BROWSE_JEDNOSTKA_PAGE + 1):
+    for _n in range(settings.MAX_NO_AUTHORS_ON_BROWSE_JEDNOSTKA_PAGE + 1):
         jednostka.dodaj_autora(baker.make(Autor))
 
     res = client.get(reverse("bpp:browse_jednostka", args=(jednostka.slug,)))

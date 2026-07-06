@@ -26,7 +26,7 @@ class Command(BaseCommand):
             raise CommandError(
                 f'Brak jednostki o nazwie "{jednostka}". '
                 f"Uzyj parametru --jednostka i podaj inną nazwę"
-            )
+            ) from None
 
         for wydzialokierunek in Wydzial.objects.filter(nazwa__startswith="Studenci - "):
             wnazwa = wydzialokierunek.nazwa.replace("Studenci - ", "").strip()

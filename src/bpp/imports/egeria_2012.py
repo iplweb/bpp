@@ -146,8 +146,11 @@ def mangle_labels(labels):
     new_labels = []
     appender = 2008
 
-    fun = lambda element: element
-    new_fun = lambda element: element.strip() + "_" + str(appender)
+    def fun(element):
+        return element
+
+    def new_fun(element):
+        return element.strip() + "_" + str(appender)
 
     for element in labels:
         if element.lower() == "stanowisko":
@@ -183,8 +186,8 @@ def importuj_sheet_osoby_nie_ujete(sheet, text_mangle):
             continue
 
         for rok in range(2009, 2013):
-            stanowisko = "stanowisko_%s" % rok
-            wydzial = "Wydział_%s" % rok
+            stanowisko = f"stanowisko_{rok}"
+            wydzial = f"Wydział_{rok}"
             # jest jeszcze stopień
 
             if dct[stanowisko].value == "#N/D!":
@@ -240,7 +243,7 @@ def importuj_afiliacje(plik_xls, text_mangle):
             pass
 
         else:
-            raise Exception("Nieznany tytuł arkusza: %r" % name)
+            raise Exception(f"Nieznany tytuł arkusza: {name!r}")
 
 
 def importuj_imiona_sheet(sheet, wydzial):
@@ -263,9 +266,8 @@ def importuj_imiona_sheet(sheet, wydzial):
 
     def poinformuj(ile, dct):
         print(
-            "*** DLA AUTORA %s %s JEST %s DOPASOWAN!!!"
-            % tuple(
-                [
+            "*** DLA AUTORA {} {} JEST {} DOPASOWAN!!!".format(
+                *[
                     str(x).encode("utf-8")
                     for x in [dct["imiona"].value, dct["nazwisko"].value, ile]
                 ]

@@ -71,10 +71,10 @@ def any_wydzial(nazwa=None, skrot=None, uczelnia_skrot="UCL", **kw):
         uczelnia = any_uczelnia()
 
     if nazwa is None:
-        nazwa = "Wydział %s" % wydzial_cnt
+        nazwa = f"Wydział {wydzial_cnt}"
 
     if skrot is None:
-        skrot = "W%s" % wydzial_cnt
+        skrot = f"W{wydzial_cnt}"
 
     wydzial_cnt += 1
 
@@ -87,10 +87,10 @@ def any_jednostka(nazwa=None, skrot=None, wydzial_skrot="WDZ", **kw):
     :rtype: bpp.models.Jednostka
     """
     if nazwa is None:
-        nazwa = "Jednostka %s" % random.randint(0, 500000)
+        nazwa = f"Jednostka {random.randint(0, 500000)}"
 
     if skrot is None:
-        skrot = "J. %s" % random.randint(0, 5000000)
+        skrot = f"J. {random.randint(0, 5000000)}"
 
     try:
         uczelnia = kw.pop("uczelnia")
@@ -172,7 +172,7 @@ def any_zwarte_base(klass, **kw):
     set_default("informacje", "zrodlo-informacje dla zwarte", kw)
 
     if klass not in [Patent]:
-        set_default("miejsce_i_rok", "Lublin %s" % CURRENT_YEAR, kw)
+        set_default("miejsce_i_rok", f"Lublin {CURRENT_YEAR}", kw)
         set_default("wydawca_opis", "Wydawnictwo FOLIUM", kw)
         set_default("isbn", "123-IS-BN-34", kw)
         set_default("redakcja", "Redakcja", kw)
@@ -217,10 +217,10 @@ def any_zrodlo(**kw):
     :rtype: bpp.models.Zrodlo
     """
     if "nazwa" not in kw:
-        kw["nazwa"] = "Zrodlo %s" % time.time()
+        kw["nazwa"] = f"Zrodlo {time.time()}"
 
     if "skrot" not in kw:
-        kw["skrot"] = "Zrod. %s" % time.time()
+        kw["skrot"] = f"Zrod. {time.time()}"
 
     return baker.make(Zrodlo, **kw)
 

@@ -87,14 +87,22 @@ class Patent(
 
     data_zgloszenia = models.DateField("Data zgłoszenia", null=True, blank=True)
 
-    numer_zgloszenia = models.CharField(
-        "Numer zgłoszenia", max_length=255, null=True, blank=True
+    numer_zgloszenia = models.CharField(  # noqa: DJ001
+        # legacy null=True (jest na produkcji); zmiana wymagałaby migracji.
+        "Numer zgłoszenia",
+        max_length=255,
+        null=True,
+        blank=True,
     )
 
     data_decyzji = models.DateField(null=True, blank=True)
 
-    numer_prawa_wylacznego = models.CharField(
-        "Numer prawa wyłącznego", max_length=255, null=True, blank=True
+    numer_prawa_wylacznego = models.CharField(  # noqa: DJ001
+        # legacy null=True (jest na produkcji); zmiana wymagałaby migracji.
+        "Numer prawa wyłącznego",
+        max_length=255,
+        null=True,
+        blank=True,
     )
 
     rodzaj_prawa = models.ForeignKey(
