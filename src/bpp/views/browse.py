@@ -205,9 +205,8 @@ class AutorView(DetailView):
         # nie umie przekazać argumentu do metody, więc liczymy go tu. Bez
         # tego ``autor.link_do_pbn`` (bezargumentowo) degraduje do
         # ``get_single_uczelnia_or_none() → None`` przy >1 uczelni (FD#390).
-        return super().get_context_data(
+        context = super().get_context_data(
             typy=TYPY,
-            uczelnia=uczelnia,
             ma_powiazania=ma_powiazania,
             link_do_pbn=self.object.link_do_pbn(uczelnia),
             sekcje_profilu=przygotuj_sekcje(self.object, uczelnia, request),
@@ -217,6 +216,13 @@ class AutorView(DetailView):
             raport_links=self._raport_links(request),
             **kwargs,
         )
+        # NIE nadpisuj None-em sentinela ``NiezdefiniowanaUczelnia`` wstrzykiwanego
+        # przez context-processor: przy braku uczelni (pusta baza) szablon i tak
+        # potrzebuje obiektu z ``.skrot`` (breadcrumb w base.html rozwiązuje
+        # ``uczelnia.skrot`` twardo). Gdy uczelnia istnieje — przekaż ją jawnie.
+        if uczelnia is not None:
+            context["uczelnia"] = uczelnia
+        return context
 
     def _raport_links(self, request):
         """Linki do raportu autora — tylko gdy raport jest widoczny dla
