@@ -32,7 +32,12 @@ def _wydzial_filtr(wydzial):
 
     w = matchuj_wydzial(wydzial)
     if w is not None:
-        return Q(wydzial__legacy_wydzial_id=w.id)
+        # Jednostki POD korzeniem (denorm wydzial → root) ORAZ sam KORZEŃ:
+        # promowana jednostka-root ma denorm ``wydzial=None``, więc pierwsza
+        # gałąź by ją wykluczyła — trzeba dołączyć root po legacy_wydzial_id.
+        return Q(wydzial__legacy_wydzial_id=w.id) | Q(
+            parent__isnull=True, legacy_wydzial_id=w.id
+        )
     return Q(wydzial__nazwa__iexact=wydzial)
 
 

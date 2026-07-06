@@ -227,31 +227,23 @@ def usun_wezel_lustro_wydzialu(sender, instance, **kwargs):
 
 
 def _wezel_lustro_ma_referencje(node):
-    """True, gdy jakiś wiersz referencuje ``node`` — wtedy NIE jest transientnym
-    lustrem i kasowanie uszkodziłoby cudze dane (CASCADE / SET_NULL / PROTECT).
+    """True, gdy JAKIKOLWIEK trwały wiersz referencuje ``node`` przez FK/O2O —
+    wtedy NIE jest transientnym lustrem i kasowanie uszkodziłoby cudze dane
+    (CASCADE / SET_NULL / PROTECT).
 
-    Jawna, kuratorowana lista relacji: dzieci-``Jednostki`` (drzewo + denorm),
-    wpisy historii struktury oraz konsumenci przepięci w 0460. Świadomie NIE
-    iterujemy ``node._meta.related_objects`` — obejmuje ono m.in. modele oparte
-    o tabele tymczasowe (``bpp_temporary_*``), których zapytanie rzuca
-    ProgrammingError i wywala całą transakcję kasowania."""
-    from .jednostka import Jednostka, Jednostka_Rodzic
-    from .kierunek_studiow import Kierunek_Studiow
-    from .opi_2012 import Opi_2012_Afiliacja_Do_Wydzialu
-    from .patent import Patent
-
-    # Dzieci-Jednostki: przez drzewo (``parent``) lub denorm-korzeń (``wydzial``).
-    if Jednostka.objects.filter(Q(parent=node) | Q(wydzial=node)).exists():
-        return True
-    # Historia struktury (CASCADE na obu FK).
-    if Jednostka_Rodzic.objects.filter(Q(parent=node) | Q(jednostka=node)).exists():
-        return True
-    # Konsumenci przepięci w 0460: Kierunek (PROTECT), Patent (SET_NULL),
-    # Opi_2012 (CASCADE) — każdy referuje ``Jednostka`` przez pole ``wydzial``.
-    if Kierunek_Studiow.objects.filter(wydzial=node).exists():
-        return True
-    if Patent.objects.filter(wydzial=node).exists():
-        return True
-    if Opi_2012_Afiliacja_Do_Wydzialu.objects.filter(wydzial=node).exists():
-        return True
+    Iterujemy WSZYSTKIE odwrotne relacje (``related_objects``), pomijając modele
+    ``managed=False``. Dwa powody pominięcia: (a) tabele tymczasowe
+    ``bpp_temporary_*`` (cache/punktacja) potrafią nie istnieć w danym momencie
+    i zapytanie rzuca ProgrammingError wywalający transakcję; (b) widoki DB
+    (np. ``Nowe_Sumy_View``, DO_NOTHING) są DERYWOWANE — nie ma tam trwałych
+    danych do stracenia. Generyczność jest tu ISTOTNA: inwentarz II-2 ma 8
+    konsumentów (m.in. przepięci poza bpp — ``Obslugujacy_Zgloszenia_Wydzialow``
+    CASCADE w zglos_publikacje, ``Import_Dyscyplin_Row`` SET_NULL) — kuratorowana
+    lista już raz je zgubiła, a nowe FK dojdą bez aktualizacji tej funkcji."""
+    for rel in node._meta.related_objects:
+        related_model = rel.related_model
+        if not related_model._meta.managed:
+            continue
+        if related_model._base_manager.filter(**{rel.field.name: node}).exists():
+            return True
     return False

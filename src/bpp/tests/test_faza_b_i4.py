@@ -433,6 +433,26 @@ def test_post_delete_nie_kasuje_lustra_z_konsumentem_0460(uczelnia):
     assert patent.wydzial_id == wezel.pk
 
 
+@pytest.mark.django_db
+def test_post_delete_nie_kasuje_lustra_z_konsumentem_cross_app(uczelnia):
+    """#438: konsument II-2 przepięty w INNEJ appce (zglos_publikacje/0026:
+    Obslugujacy_Zgloszenia_Wydzialow.wydzial → Jednostka CASCADE) też musi
+    chronić bezdzietne lustro. Kuratorowana lista bpp/0460 go NIE obejmowała
+    (inwentarz FK ma 8 konsumentów, nie 3) → cicha CASCADE-utrata przypisań
+    obsługi zgłoszeń. Guard musi być generyczny (wszyscy managed-referrerzy)."""
+    from zglos_publikacje.models import Obslugujacy_Zgloszenia_Wydzialow
+
+    w = baker.make(Wydzial, uczelnia=uczelnia)
+    wezel = _wezel(w)
+    user = baker.make("bpp.BppUser")
+    Obslugujacy_Zgloszenia_Wydzialow.objects.create(user=user, wydzial=wezel)
+
+    w.delete()
+
+    assert Jednostka.objects.filter(pk=wezel.pk).exists()
+    assert Obslugujacy_Zgloszenia_Wydzialow.objects.filter(wydzial=wezel).exists()
+
+
 # ---------------------------------------------------------------------------
 # (h) #438 — 1-jednostkowy wydział: promocja do roota zamiast pustej wydmuszki
 # ---------------------------------------------------------------------------

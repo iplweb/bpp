@@ -217,3 +217,19 @@ def test_JednostkaQueryObject_none_value_different_yields_empty_match(
 
     ret = JednostkaQueryObject().real_query(None, logic.DIFFERENT)
     assert Rekord.objects.filter(ret).count() == 0
+
+
+@pytest.mark.django_db
+def test_KierunekStudiowQueryObject_none_value_yields_empty_match(
+    wydawnictwo_zwarte, autor_jan_kowalski, jednostka
+):
+    """#438: nierozwiązywalny pk kierunku (``value_from_web`` → None, np.
+    skasowany kierunek w zapisanym searchu) → PUSTY wynik. Bez guardu
+    ``Q(autorzy__kierunek_studiow=None)`` łapie WSZYSTKIE rekordy z autorem
+    bez kierunku (przytłaczająca większość), a DIFFERENT odwraca w "prawie
+    wszystko"."""
+    wydawnictwo_zwarte.dodaj_autora(autor_jan_kowalski, jednostka)
+    assert Rekord.objects.count() == 1
+
+    ret = KierunekStudiowQueryObject().real_query(None, logic.EQUAL)
+    assert Rekord.objects.filter(ret).count() == 0

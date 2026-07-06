@@ -23,7 +23,11 @@ zerowo-argumentowy i NIE czyścił nic (funkcja jest zawsze wołana z ``uczelnia
 (b) przy ``CACHEOPS_DEGRADE_ON_FAILURE=False`` (default, nienadpisany w BPP)
 błąd połączenia z Redisem propaguje z ``_delete`` → RunPython rzuca → ROLLBACK
 całej migracji, łamiąc atomowość releasu. Migracja nie może zależeć od Redisa.
-Cache i tak wygasa po TTL (1h), a właściwe inwalidacje robią sygnały runtime.
+Kasowany krok był więc no-opem obarczonym ryzykiem — usunięcie jest bezpieczne;
+cache strony głównej odświeża się po TTL (1h). UWAGA: ten sam bezargumentowy
+``.invalidate()`` siedzi w sygnałach runtime (wydzial.py, jednostka.py,
+browse.py, context_processors/uczelnia.py) — one też są no-opami. To latentny
+bug POZA zakresem tej migracji (nie polegamy tu na nim), wart osobnego zgłoszenia.
 """
 
 from datetime import date

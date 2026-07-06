@@ -90,6 +90,38 @@ def test_matchuj_jednostke_disambiguacja_po_promowanym_wydziale(uczelnia):
     assert got == cel
 
 
+@pytest.mark.django_db
+def test_matchuj_jednostke_dopasowanie_SAMEGO_promowanego_korzenia(uczelnia):
+    """#438: sam promowany KORZEŃ (realna jednostka będąca rootem) też musi być
+    znajdowalny przez swój wydział. Korzeń ma denorm ``wydzial=None``, więc
+    ``Q(wydzial__legacy_wydzial_id=...)`` sam go wyklucza — filtr musi dołączyć
+    ``Q(parent__isnull=True, legacy_wydzial_id=...)``."""
+    w = baker.make(Wydzial, nazwa="Wydział Nauk Ścisłych")
+    inny_w = baker.make(Wydzial, nazwa="Wydział Humanistyczny")
+    # Dwa promowane korzenie prefiksowo pasujące do "Instytut", w różnych wydziałach.
+    cel = baker.make(
+        Jednostka,
+        uczelnia=uczelnia,
+        parent=None,
+        wydzial=None,
+        nazwa="Instytut Matematyki",
+        legacy_wydzial_id=w.id,
+        jest_lustrem=False,
+    )
+    baker.make(
+        Jednostka,
+        uczelnia=uczelnia,
+        parent=None,
+        wydzial=None,
+        nazwa="Instytut Filozofii",
+        legacy_wydzial_id=inny_w.id,
+        jest_lustrem=False,
+    )
+
+    got = matchuj_jednostke("Instytut", wydzial="Wydział Nauk Ścisłych")
+    assert got == cel
+
+
 def test_matchuj_autora_imiona_nazwisko(autor_jan_nowak):
     a = matchuj_autora("Jan", "Nowak", jednostka=None)
     assert a == autor_jan_nowak

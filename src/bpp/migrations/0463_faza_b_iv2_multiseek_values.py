@@ -45,6 +45,12 @@ A. ``"Wydział"`` / ``"Pierwszy wydział"``:
    kolidujący z pk promowanej jednostki zostałby błędnie zeskipowany i wskazywał
    cudzy wydział. Idempotencja re-runu jest wtedy słabsza, ale forward leci raz
    (reverse = noop), więc poprawność pierwszego przebiegu ma priorytet.
+   Rezydualny (zaakceptowany) przypadek: NIEMAPOWALNY stary pk (brak węzła), który
+   liczbowo koliduje z pk w ``target_pks``, trafia w SKIP zamiast w DROP+log —
+   zostaje cicho przy starej wartości. Wymaga podwójnej koincydencji (usunięty
+   wydział + kolizja pk) i dotyczy tylko forward-once; alternatywą byłoby całkiem
+   usunąć guard ``target_pks`` (wtedy taka kolizja → DROP+log), ale kosztem
+   idempotencji re-runu — świadomie zostawiamy guard.
 
 B. ``"Rodzaj jednostki"``: stary label → nowa nazwa ``RodzajJednostki``:
    - ``"zwyczajna jednostka (katedra, zakład, pracownia, itp.)"`` → ``"Standard"``
