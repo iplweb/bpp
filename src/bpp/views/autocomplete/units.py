@@ -65,3 +65,55 @@ class PublicJednostkaAutocomplete(
     """Public autocomplete for public organizational units (per-uczelnia, multi-hosted)."""
 
     qset = Jednostka.objects.publiczne().select_related("wydzial")
+
+
+class PublicJednostkaToplevelAutocomplete(
+    UczelniaScopedAutocompleteMixin, _JednostkaAutocompleteBase
+):
+    """Faza B (#438): publiczny autocomplete jednostek TOP-LEVEL (``parent IS
+    NULL``) — czyli „wydziałów" w nowym modelu. Zawężony per-uczelnia i do
+    widocznych węzłów. Zastępuje dawny ``public-wydzial-autocomplete`` jako
+    picker „wydziału" w raportach/multiseeku.
+    """
+
+    qset = (
+        Jednostka.objects.widoczne()
+        .filter(parent__isnull=True)
+        .select_related("wydzial")
+    )
+
+
+class PublicJednostkaNieToplevelAutocomplete(
+    UczelniaScopedAutocompleteMixin, _JednostkaAutocompleteBase
+):
+    """Faza B (#438): publiczny autocomplete jednostek NIE-TOP-LEVEL
+    (``parent IS NOT NULL``) — czyli „jednostek" (nie „wydziałów") w nowym
+    modelu. Używany jako picker „jednostki" w raportach uczelni, które
+    UŻYWAJĄ wydziałów: wydziały (korzenie) wybiera się osobnym selektorem
+    „wydział", więc lista „jednostka" nie powinna ich pokazywać (inaczej
+    użytkownik wybrałby korzeń, który waliduje się jako „nie do wyboru",
+    bo prace ma tylko w poddrzewie — nie bezpośrednio).
+    """
+
+    qset = (
+        Jednostka.objects.publiczne()
+        .filter(parent__isnull=False)
+        .select_related("wydzial")
+    )
+
+
+class PublicJednostkaWydzialRankinguAutocomplete(
+    UczelniaScopedAutocompleteMixin, _JednostkaAutocompleteBase
+):
+    """Faza B (#438): picker „wydziału" w rankingu autorów — widoczne korzenie
+    (``parent IS NULL``), które DOPUSZCZAJĄ ranking (``zezwalaj_na_ranking_
+    autorow=True``). Bez filtra ``zezwalaj`` picker oferował wydziały wyłączone
+    z rankingu → wybór dawał CICHO pusty wynik (widok odrzuca je w
+    ``get_dostepne_wydzialy``). Węższy niż ``…-toplevel-…``; per-uczelnia.
+    """
+
+    qset = (
+        Jednostka.objects.widoczne()
+        .filter(parent__isnull=True, zezwalaj_na_ranking_autorow=True)
+        .select_related("wydzial")
+    )

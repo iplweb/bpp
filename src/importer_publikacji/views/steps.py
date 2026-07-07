@@ -357,9 +357,11 @@ def _review_context(request, session):
     return ctx
 
 
-def _render_review_step(request, session):
+def _render_review_step(request, session, error=None):
     """Renderuj partial przeglądu z HX-Push-Url."""
     ctx = _review_context(request, session)
+    if error:
+        ctx["error"] = error
     url = reverse(
         "importer_publikacji:review",
         kwargs={"session_id": session.pk},
@@ -369,7 +371,9 @@ def _render_review_step(request, session):
     return _push_url(response, url)
 
 
-def _render_review_full(request, session):
+def _render_review_full(request, session, error=None):
     """Renderuj pełną stronę z krokiem przeglądu."""
     ctx = _review_context(request, session)
+    if error:
+        ctx["error"] = error
     return _render_full_page(request, STEP_REVIEW, ctx)

@@ -17,6 +17,7 @@ from bpp.admin.filters import (
     MaWydawnictwoNadrzedneFilter,
     OstatnioZmienionePrzezFilter,
     PBN_UID_IDObecnyFilter,
+    PBNStatusFilter,
     UtworzonePrzezFilter,
 )
 from bpp.admin.helpers import fieldsets
@@ -154,6 +155,7 @@ class Wydawnictwo_ZwarteAdmin_Baza(BaseBppAdminMixin, admin.ModelAdmin):
         OstatnioZmienionePrzezFilter,
         UtworzonePrzezFilter,
         PBN_UID_IDObecnyFilter,
+        PBNStatusFilter,
         BezJakichkolwiekDyscyplinFilter,
     ]
 

@@ -217,5 +217,8 @@ TODO-*.md
 .run_site_pg_port
 .run_site_redis_port
 
+# Rollbar.js kopiowany z node_modules przez grunt (build artifact, nie commitować)
+src/bpp/static/rollbar/
+
 # SDD workflow scratch (briefs, reports, ledger, diffs)
 .superpowers/

@@ -71,6 +71,11 @@
         {% endif %}
     </td>
     <td>
+        {% if row_error %}
+            <div class="callout alert" style="padding:0.4rem;margin-bottom:0.4rem">
+                <small>{{ row_error }}</small>
+            </div>
+        {% endif %}
         <button type="button"
                 class="button small secondary btn-edit-author">
             <span class="fi-pencil"></span>

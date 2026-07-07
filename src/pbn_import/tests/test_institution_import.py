@@ -3,7 +3,7 @@
 import pytest
 from model_bakery import baker
 
-from bpp.models import Jednostka, Jednostka_Wydzial, Uczelnia, Wydzial
+from bpp.models import Jednostka, Jednostka_Rodzic, Uczelnia, Wydzial
 from pbn_import.models import ImportLog, ImportSession
 from pbn_import.utils.institution_import import (
     InstitutionImporter,
@@ -13,6 +13,13 @@ from pbn_import.utils.institution_import import (
     znajdz_lub_utworz_wydzial_domyslny,
     zrob_skrot,
 )
+
+
+def _wezel(wydzial):
+    """LAZY węzeł-lustro Jednostka dla wydziału (#438) — tworzony przy linku."""
+    from bpp.models.struktura_konwersja import znajdz_lub_utworz_wezel_wydzialu
+
+    return znajdz_lub_utworz_wezel_wydzialu(wydzial)[0]
 
 
 @pytest.fixture
@@ -122,9 +129,9 @@ def test_obca_jednostka_helper_creates_uczelnia_scoped(uczelnia):
     assert obca.skupia_pracownikow is False
     assert obca.uczelnia == uczelnia
     assert uczelnia.obca_jednostka == obca
-    assert Jednostka_Wydzial.objects.filter(
+    assert Jednostka_Rodzic.objects.filter(
         jednostka=obca,
-        wydzial__uczelnia=uczelnia,
+        parent__uczelnia=uczelnia,
     ).exists()
 
 
@@ -254,9 +261,9 @@ def test_institution_importer_does_not_collide_with_other_uczelnia_obca(session,
     assert obca_b.uczelnia == uczelnia_b
     assert obca_b.nazwa == "Obca jednostka UB"
     assert uczelnia_b.obca_jednostka == obca_b
-    assert Jednostka_Wydzial.objects.filter(
+    assert Jednostka_Rodzic.objects.filter(
         jednostka=obca_b,
-        wydzial__uczelnia=uczelnia_b,
+        parent__uczelnia=uczelnia_b,
     ).exists()
 
 
@@ -291,13 +298,13 @@ def test_institution_importer_creates_defaults_links_and_session_config(
     assert obca_jednostka.nazwa == "Obca jednostka UCZ"
     assert obca_jednostka.skupia_pracownikow is False
     assert uczelnia.obca_jednostka == obca_jednostka
-    assert Jednostka_Wydzial.objects.filter(
+    assert Jednostka_Rodzic.objects.filter(
         jednostka=jednostka,
-        wydzial=wydzial,
+        parent=_wezel(wydzial),
     ).exists()
-    assert Jednostka_Wydzial.objects.filter(
+    assert Jednostka_Rodzic.objects.filter(
         jednostka=obca_jednostka,
-        wydzial=wydzial,
+        parent=_wezel(wydzial),
     ).exists()
     assert session.config == {
         "default_jednostka_id": jednostka.id,
@@ -318,8 +325,8 @@ def test_institution_importer_reuses_existing_objects(session, uczelnia):
     )
     uczelnia.obca_jednostka = obca
     uczelnia.save(update_fields=["obca_jednostka"])
-    Jednostka_Wydzial.objects.create(jednostka=jednostka, wydzial=wydzial)
-    Jednostka_Wydzial.objects.create(jednostka=obca, wydzial=wydzial)
+    Jednostka_Rodzic.objects.create(jednostka=jednostka, parent=_wezel(wydzial))
+    Jednostka_Rodzic.objects.create(jednostka=obca, parent=_wezel(wydzial))
 
     result = InstitutionImporter(session, uczelnia=uczelnia).run()
 
@@ -329,7 +336,14 @@ def test_institution_importer_reuses_existing_objects(session, uczelnia):
         "obca_jednostka": obca,
     }
     assert Wydzial.objects.filter(uczelnia=uczelnia).count() == 1
-    assert Jednostka.objects.filter(uczelnia=uczelnia).count() == 2
+    # Faza B (#438): węzeł-lustro wydziału (legacy_wydzial_id != NULL) też jest
+    # Jednostką tej uczelni — liczymy tylko „prawdziwe" jednostki.
+    assert (
+        Jednostka.objects.filter(
+            uczelnia=uczelnia, legacy_wydzial_id__isnull=True
+        ).count()
+        == 2
+    )
     assert ImportLog.objects.filter(
         session=session,
         message__contains="Using existing department",

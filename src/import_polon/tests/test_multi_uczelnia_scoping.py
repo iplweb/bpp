@@ -17,6 +17,7 @@ import pytest
 from model_bakery import baker
 
 from bpp.models import Autor, Jednostka, Uczelnia, Wydzial
+from bpp.models.struktura_konwersja import znajdz_lub_utworz_wezel_wydzialu
 from import_polon.core import analyze_file_import_polon
 from import_polon.models import ImportPlikuPolon
 
@@ -27,7 +28,10 @@ def _autor_zatrudniony(uczelnia, nazwisko, imiona="Jan"):
     """Autor aktualnie zatrudniony w ``uczelnia`` (realna jednostka)."""
     wydzial = baker.make(Wydzial, uczelnia=uczelnia)
     jednostka = baker.make(
-        Jednostka, uczelnia=uczelnia, wydzial=wydzial, skupia_pracownikow=True
+        Jednostka,
+        uczelnia=uczelnia,
+        parent=znajdz_lub_utworz_wezel_wydzialu(wydzial)[0],
+        skupia_pracownikow=True,
     )
     return baker.make(
         Autor, nazwisko=nazwisko, imiona=imiona, aktualna_jednostka=jednostka

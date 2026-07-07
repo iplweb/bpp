@@ -10,7 +10,7 @@ from bpp.models.autor import Autor
 from bpp.models.patent import Patent
 from bpp.models.praca_doktorska import Praca_Doktorska
 from bpp.models.praca_habilitacyjna import Praca_Habilitacyjna
-from bpp.models.struktura import Uczelnia, Wydzial
+from bpp.models.struktura import Uczelnia
 from bpp.models.wydawnictwo_ciagle import Wydawnictwo_Ciagle
 from bpp.models.wydawnictwo_zwarte import Wydawnictwo_Zwarte
 
@@ -48,16 +48,6 @@ class UczelniaSitemap(BppSitemap):
     def items(self):
         # Funkcja musi zwrócić posortowane wyniki, w przeciwnym wypadku będzie ostrzeżenie
         return super().items().order_by("slug")
-
-
-class WydzialSitemap(BppSitemap):
-    changefreq = "yearly"
-    klass = Wydzial
-    url = "bpp:browse_wydzial"
-    url_obj_field = "slug"
-
-    def items(self):
-        return self.klass.objects.filter(widoczny=True)
 
 
 class AlphabeticBppSitemap(BppSitemap):
@@ -114,7 +104,6 @@ class PatentSitemap(PracaBppSitemap):
 django_bpp_sitemaps = {
     "jednostka": JednostkaSitemap,
     "uczelnia": UczelniaSitemap,
-    "wydzial": WydzialSitemap,
 }
 
 for litera in "aąbcćdefghijklłmnńoópqrsśtuvwxyzźż":

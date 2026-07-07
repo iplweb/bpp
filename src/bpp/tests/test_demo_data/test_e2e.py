@@ -55,7 +55,10 @@ def test_e2e_medium_scale(fixtures_loaded, tmp_path):
         f"--confirm-db={db_name}",
     )
     assert Wydzial.objects.count() == 2
-    assert Jednostka.objects.count() == 6
+    # Faza B (#438): jednostki wiszą pod węzłami-lustrami wydziałów (1 lustro
+    # na wydział) → 6 realnych + 2 węzły-lustra.
+    assert Jednostka.objects.count() == 8
+    assert Jednostka.objects.filter(legacy_wydzial_id__isnull=True).count() == 6
     assert Autor.objects.count() == 20
     # 100% z dyscyplina, 3 lata, 20 autorow → 60 rekordow dyscyplin
     assert Autor_Dyscyplina.objects.count() == 60

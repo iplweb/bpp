@@ -69,7 +69,13 @@ def test_znajdz_lub_zrob_stanowisko():
 @pytest.mark.django_db
 def test_dopasuj_jednostke():
     mangle = UML_Egeria_2012_Mangle
-    j1 = any_jednostka(nazwa="Foo")
+    # Nazwa musi być odporna na kolizje z losowymi jednostkami z sąsiednich
+    # testów (np. innej jednostki nazwanej "Foo") — dopasuj_jednostke() robi
+    # lookup nazwa__icontains, więc krótki, pospolity token jak "Foo" łatwo
+    # pasuje więcej niż jednej jednostce (Jednostka.objects.get() rzuca
+    # wtedy MultipleObjectsReturned). Długi, unikalny token to eliminuje.
+    unikalna_nazwa = "ZzUnikalnaJednostkaTestowaDopasujJednostke438Kx9Qz7"
+    j1 = any_jednostka(nazwa=unikalna_nazwa)
     j2 = any_jednostka(  # noqa
         nazwa="Sam. Pracownia Propedeutyki Radiologii Stom. i Szczęk-Twarz"
     )
@@ -86,7 +92,7 @@ def test_dopasuj_jednostke():
         == j3
     )
 
-    assert dopasuj_jednostke("Foo", mangle) == j1
+    assert dopasuj_jednostke(unikalna_nazwa, mangle) == j1
 
     assert (
         dopasuj_jednostke(

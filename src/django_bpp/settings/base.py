@@ -139,7 +139,6 @@ env = environ.Env(
     # Wyświetlanie nazwy wydziału przez jednostki
     #
     DJANGO_BPP_SKROT_WYDZIALU_W_NAZWIE_JEDNOSTKI=(bool, True),
-    DJANGO_BPP_UCZELNIA_UZYWA_WYDZIALOW=(bool, True),
     #
     # Ile dni trzymać wyniki działań Celery - domyślnie tydzień
     #
@@ -156,6 +155,8 @@ env = environ.Env(
     # Rollbar access settings
     #
     ROLLBAR_ACCESS_TOKEN=(str, None),
+    # Publiczny token klienta (post_client_item) do frontendowego Rollbara.
+    ROLLBAR_CLIENT_ACCESS_TOKEN=(str, ""),
     #
     # Prometheus
     #
@@ -293,6 +294,7 @@ TEMPLATES = [
                 "bpp.context_processors.constance_config.constance_config",
                 "bpp.context_processors.global_nav.user",
                 "bpp.context_processors.google_analytics.google_analytics",
+                "bpp.context_processors.rollbar.rollbar_client",
                 "bpp.context_processors.pbn_token_aktualny.pbn_token_aktualny",
                 "bpp.context_processors.microsoft_auth.microsoft_auth_status",
                 "bpp.context_processors.orcid.orcid_auth_status",
@@ -719,6 +721,19 @@ CELERY_TRACK_STARTED = False
 # Workerzy emituja eventy lifecycle (online/heartbeat/offline + task-received/
 # started/succeeded/failed) na brokerze. Bez tego Flower nie widzi workerow.
 CELERY_WORKER_SEND_TASK_EVENTS = True
+
+# --- Importer publikacji ---------------------------------------------------
+# Watchdog sesji importu: sesja w stanie in-flight (FETCHING/CREATING) dłużej
+# niż tyle sekund jest uznawana za martwą (zgubiony/ubity worker Celery — task
+# nie wykona bloku except) i przy kolejnym pollu przełączana na IMPORT_FAILED.
+# Patrz importer_publikacji.models.ImportSession.is_stalled(). Świadomie duży
+# margines, żeby nie ubijać legalnie długiego dopasowania autorów.
+IMPORTER_STALL_TIMEOUT = env("IMPORTER_STALL_TIMEOUT", default=180, cast=int)
+
+# Twardy timeout (sekundy) requestu HTTP do API CrossRef przy pobieraniu DOI.
+# Bez tego obowiązuje domyślny 30 s biblioteki `crossref` — ustawiamy jawnie,
+# żeby był widoczny i konfigurowalny. Patrz crossref_bpp.models.
+CROSSREF_API_TIMEOUT = env("CROSSREF_API_TIMEOUT", default=30, cast=int)
 
 CELERY_ROUTES = [
     {"denorm.tasks.flush_single": {"queue": "denorm"}},
@@ -1527,8 +1542,6 @@ DJANGO_BPP_SKROT_WYDZIALU_W_NAZWIE_JEDNOSTKI = env(
     "DJANGO_BPP_SKROT_WYDZIALU_W_NAZWIE_JEDNOSTKI"
 )
 
-DJANGO_BPP_UCZELNIA_UZYWA_WYDZIALOW = env("DJANGO_BPP_UCZELNIA_UZYWA_WYDZIALOW")
-
 # polish-inflection: słowo spoza słownika SGJP → passthrough (nie błąd renderu)
 POLISH_INFLECTION_STRICT = False
 
@@ -1575,6 +1588,11 @@ ROLLBAR = {
         re.compile(r".*\{\{\s*clickURL\s*\}\}$"),
     ),
 }
+
+# Publiczny token klienta (post_client_item) do frontendowego Rollbara.
+# INNY niż sekretny ROLLBAR["access_token"] (post_server_item) — ten można
+# bezpiecznie renderować w przeglądarce. Pusty = front-end Rollbar wyłączony.
+ROLLBAR_CLIENT_ACCESS_TOKEN = env("ROLLBAR_CLIENT_ACCESS_TOKEN")
 
 #
 # Prometheus

@@ -66,10 +66,17 @@ def wydzial_uczelnia2(uczelnia2):
 
 @pytest.fixture
 def jednostka_uczelnia1(wydzial_uczelnia1):
-    """Unit belonging to uczelnia1."""
+    """Unit belonging to uczelnia1.
+
+    Faza B (#438): jednostka wisi pod węzłem-lustrem wydziału (root Jednostka);
+    denorm ``wydzial`` (korzeń) wyliczy się przy zapisie.
+    """
+    from bpp.models.struktura_konwersja import znajdz_lub_utworz_wezel_wydzialu
+
+    wezel, _ = znajdz_lub_utworz_wezel_wydzialu(wydzial_uczelnia1)
     return Jednostka.objects.create(
         uczelnia=wydzial_uczelnia1.uczelnia,
-        wydzial=wydzial_uczelnia1,
+        parent=wezel,
         skrot="J1-U1",
         nazwa="Jednostka Pierwsza U1",
     )
@@ -77,10 +84,13 @@ def jednostka_uczelnia1(wydzial_uczelnia1):
 
 @pytest.fixture
 def jednostka_uczelnia2(wydzial_uczelnia2):
-    """Unit belonging to uczelnia2."""
+    """Unit belonging to uczelnia2 (Faza B #438: pod węzłem-lustrem)."""
+    from bpp.models.struktura_konwersja import znajdz_lub_utworz_wezel_wydzialu
+
+    wezel, _ = znajdz_lub_utworz_wezel_wydzialu(wydzial_uczelnia2)
     return Jednostka.objects.create(
         uczelnia=wydzial_uczelnia2.uczelnia,
-        wydzial=wydzial_uczelnia2,
+        parent=wezel,
         skrot="J1-U2",
         nazwa="Jednostka Pierwsza U2",
     )

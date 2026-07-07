@@ -98,9 +98,15 @@ class WydzialGetOrCreateWidget(ForeignKeyWidget):
         if not nazwa:
             return None
 
+        # Faza B (#438): jednostka wisi pod węzłem-lustrem wydziału (denorm
+        # ``wydzial`` = korzeń), więc widget zwraca WĘZEŁ-lustro (Jednostka),
+        # a pole zasobu pisze do ``parent`` (patrz atrybut niżej). Wydzial
+        # nadal tworzymy/odnajdujemy (żyje do Fazy C) i mapujemy na węzeł.
+        from bpp.models.struktura_konwersja import znajdz_lub_utworz_wezel_wydzialu
+
         existing = Wydzial.objects.filter(nazwa=nazwa).first()
         if existing is not None:
-            return existing
+            return znajdz_lub_utworz_wezel_wydzialu(existing)[0]
 
         uczelnia_value = (row or {}).get(COLUMN_UCZELNIA)
         if not uczelnia_value:
@@ -124,12 +130,13 @@ class WydzialGetOrCreateWidget(ForeignKeyWidget):
         )
         skrot = unique_skrot(abbreviate_wydzial(nazwa), used_skroty, max_len=10)
         skrot_nazwy = unique_skrot(nazwa, used_skrot_nazwy, max_len=250)
-        return Wydzial.objects.create(
+        nowy = Wydzial.objects.create(
             uczelnia=uczelnia,
             nazwa=nazwa,
             skrot=skrot,
             skrot_nazwy=skrot_nazwy,
         )
+        return znajdz_lub_utworz_wezel_wydzialu(nowy)[0]
 
 
 class JednostkaImportResource(resources.ModelResource):
@@ -148,9 +155,11 @@ class JednostkaImportResource(resources.ModelResource):
         attribute="uczelnia",
         widget=ForeignKeyWidget(Uczelnia, field="nazwa"),
     )
+    # Faza B (#438): pole „wydział" pisze do ``parent`` (węzeł-lustro), a
+    # denorm ``wydzial`` (korzeń) wyliczy się przy zapisie jednostki.
     wydzial = fields.Field(
         column_name=COLUMN_WYDZIAL,
-        attribute="wydzial",
+        attribute="parent",
         widget=WydzialGetOrCreateWidget(),
     )
     nazwa = fields.Field(

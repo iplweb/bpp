@@ -146,8 +146,11 @@ def mangle_labels(labels):
     new_labels = []
     appender = 2008
 
-    fun = lambda element: element
-    new_fun = lambda element: element.strip() + "_" + str(appender)
+    def fun(element):
+        return element
+
+    def new_fun(element):
+        return element.strip() + "_" + str(appender)
 
     for element in labels:
         if element.lower() == "stanowisko":
@@ -183,8 +186,8 @@ def importuj_sheet_osoby_nie_ujete(sheet, text_mangle):
             continue
 
         for rok in range(2009, 2013):
-            stanowisko = "stanowisko_%s" % rok
-            wydzial = "Wydział_%s" % rok
+            stanowisko = f"stanowisko_{rok}"
+            wydzial = f"Wydział_{rok}"
             # jest jeszcze stopień
 
             if dct[stanowisko].value == "#N/D!":
@@ -200,8 +203,16 @@ def importuj_sheet_osoby_nie_ujete(sheet, text_mangle):
                 )
                 continue
 
+            # Faza B (#438) II-2: ``wydzial`` FK->Jednostka (korzeń drzewa,
+            # mirror dawnego Wydzial) — potrzebny węzeł-lustro dla wydzial_rok.
+            from bpp.models.struktura_konwersja import (
+                znajdz_lub_utworz_wezel_wydzialu,
+            )
+
+            jednostka_wydzialu, _ = znajdz_lub_utworz_wezel_wydzialu(wydzial_rok)
+
             Opi_2012_Afiliacja_Do_Wydzialu.objects.get_or_create(
-                autor=autor, wydzial=wydzial_rok, rok=rok
+                autor=autor, wydzial=jednostka_wydzialu, rok=rok
             )
 
         autor.dodaj_jednostke(jednostka, rok, funkcja)
@@ -232,11 +243,20 @@ def importuj_afiliacje(plik_xls, text_mangle):
             pass
 
         else:
-            raise Exception("Nieznany tytuł arkusza: %r" % name)
+            raise Exception(f"Nieznany tytuł arkusza: {name!r}")
 
 
 def importuj_imiona_sheet(sheet, wydzial):
     labels = ["_id", "tytul", "imiona", "nazwisko", "afiliacja"]
+
+    # Faza B (#438): ``afiliacja_na_rok`` filtruje po ``jednostka__wydzial``,
+    # które jest teraz self-FK do jednostki-korzenia. Mapujemy Wydzial na jego
+    # węzeł-lustro (root Jednostka), żeby dopasowanie działało po retargecie.
+    from bpp.models.struktura_konwersja import znajdz_lub_utworz_wezel_wydzialu
+
+    wezel_wydzialu = (
+        znajdz_lub_utworz_wezel_wydzialu(wydzial)[0] if wydzial is not None else None
+    )
 
     def zmien_imiona(a, dct):
         i = dct["imiona"].value
@@ -246,9 +266,8 @@ def importuj_imiona_sheet(sheet, wydzial):
 
     def poinformuj(ile, dct):
         print(
-            "*** DLA AUTORA %s %s JEST %s DOPASOWAN!!!"
-            % tuple(
-                [
+            "*** DLA AUTORA {} {} JEST {} DOPASOWAN!!!".format(
+                *[
                     str(x).encode("utf-8")
                     for x in [dct["imiona"].value, dct["nazwisko"].value, ile]
                 ]
@@ -278,7 +297,7 @@ def importuj_imiona_sheet(sheet, wydzial):
             # 2 lub więcej -- sprawdź, ilu pasuje pod wydział podany jako parametr
             results = []
             for a in autor:
-                if a.afiliacja_na_rok(2012, wydzial, rozszerzona=True):
+                if a.afiliacja_na_rok(2012, wezel_wydzialu, rozszerzona=True):
                     results.append(a)
 
             if len(results) == 1:

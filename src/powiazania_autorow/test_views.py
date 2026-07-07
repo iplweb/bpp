@@ -3,6 +3,7 @@ from django.urls import reverse
 from model_bakery import baker
 
 from bpp.models import Autor
+from bpp.models.struktura_konwersja import znajdz_lub_utworz_wezel_wydzialu
 from powiazania_autorow.models import AuthorConnection
 
 
@@ -389,7 +390,11 @@ def test_siec_filtr_zatrudnieni_pomija_obca_uczelnie(client, jednostka):
 
     obca_uczelnia = baker.make(Uczelnia, nazwa="Obca", skrot="OB")
     obcy_wydzial = baker.make(Wydzial, uczelnia=obca_uczelnia)
-    obca_jednostka = baker.make(Jednostka, uczelnia=obca_uczelnia, wydzial=obcy_wydzial)
+    obca_jednostka = baker.make(
+        Jednostka,
+        uczelnia=obca_uczelnia,
+        parent=znajdz_lub_utworz_wezel_wydzialu(obcy_wydzial)[0],
+    )
 
     centrum = baker.make(Autor, pokazuj=True, aktualna_jednostka=jednostka)
     nasz = baker.make(Autor, pokazuj=True, aktualna_jednostka=jednostka)

@@ -51,7 +51,10 @@ class ModelZeStatusem(models.Model):
 
 class ModelZCharakterem(models.Model):
     charakter_formalny = models.ForeignKey(
-        "bpp.Charakter_Formalny", CASCADE, verbose_name="Charakter formalny"
+        "bpp.Charakter_Formalny",
+        CASCADE,
+        verbose_name="Charakter formalny",
+        limit_choices_to={"ukryty": False},
     )
 
     class Meta:

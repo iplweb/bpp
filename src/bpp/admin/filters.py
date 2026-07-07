@@ -1,11 +1,14 @@
+from dal import autocomplete
+from django import forms
 from django.contrib.admin.filters import SimpleListFilter
 from django.contrib.admin.models import ADDITION, CHANGE, LogEntry
 from django.contrib.contenttypes.models import ContentType
 from django.db.models import Count, F, IntegerField, Max, Q
 from django.db.models.functions import Cast
 
-from bpp.models import BppUser, Wydawnictwo_Zwarte
+from bpp.models import BppUser, Uczelnia, Wydawnictwo_Zwarte
 from bpp.models.struktura import Jednostka
+from pbn_api.const import ACTIVE, DELETED
 
 
 class SimpleIntegerFilter(SimpleListFilter):
@@ -173,6 +176,35 @@ class PBN_UID_IDObecnyFilter(SimpleNotNullFilter):
     parameter_name = "pbn_uid_id"
 
 
+class PBNStatusFilter(SimpleListFilter):
+    """Filtruje po statusie powiązanej pracy PBN (``pbn_uid.status``).
+
+    Wyłapuje rekordy powiązane z pracą skasowaną w PBN (``DELETED``), aktywną
+    (``ACTIVE``) albo bez powiązania (``pbn_uid`` puste). Statusy DELETED/ACTIVE
+    żyją na lustrze ``pbn_api.Publication`` — traversujemy przez ``pbn_uid``.
+    """
+
+    title = "PBN: status"
+    parameter_name = "pbn_status"
+
+    def lookups(self, request, model_admin):
+        return [
+            ("deleted", "skasowany w PBN"),
+            ("active", "aktywny w PBN"),
+            ("brak", "brak powiązania"),
+        ]
+
+    def queryset(self, request, queryset):
+        v = self.value()
+        if v == "deleted":
+            return queryset.filter(pbn_uid__status=DELETED)
+        elif v == "active":
+            return queryset.filter(pbn_uid__status=ACTIVE)
+        elif v == "brak":
+            return queryset.filter(pbn_uid_id__isnull=True)
+        return queryset
+
+
 class MniswIdObecnyFilter(SimpleNotNullFilter):
     # Uwaga: to NIE jest to samo, co PBN_UID_IDObecnyFilter. Źródło może mieć
     # pbn_uid (powiązany Journal), ale ten Journal może mieć mniswId = NULL.
@@ -213,6 +245,64 @@ class MaPublikacjeFilter(SimpleListFilter):
 class CalkowitaLiczbaAutorowFilter(SimpleIntegerFilter):
     title = "całkowita liczba autorów"
     parameter_name = "calkowita_liczba_autorow"
+
+
+class WydzialFilter(SimpleListFilter):
+    """Filtr changelisty JednostkaAdmin po „wydziale" (Faza B, #438).
+
+    Zastępuje goły ``list_filter = ("wydzial", ...)``, który generował
+    dropdown ze WSZYSTKIMI jednostkami (denorm ``wydzial`` jest self-FK do
+    dowolnego węzła-korzenia). Tu:
+
+    * opcje to WYŁĄCZNIE jednostki-korzenie (``parent IS NULL``) -- czyli
+      dawne „wydziały" po konsolidacji (w multi-hosted zawężone do uczelni z
+      requestu, spójnie z ``SiteFilteredAdminMixin``; superuser widzi wszystkie);
+    * wybór filtruje CAŁE PODDRZEWO korzenia
+      (``Q(wydzial_id=v) | Q(pk=v)`` -- potomkowie niosą ``wydzial=korzeń``,
+      a ``| Q(pk=v)`` dokłada sam korzeń, wzorzec unii z reszty Fazy B);
+    * filtr jest UKRYTY, gdy uczelnia nie używa wydziałów
+      (``uzywaj_wydzialow=False``).
+    """
+
+    title = "Wydział"
+    parameter_name = "wydzial"
+
+    def __init__(self, request, params, model, model_admin):
+        # SimpleListFilter.__init__ nie zapisuje ``request`` -- potrzebujemy go
+        # w ``has_output`` (bramka ``uzywaj_wydzialow``), więc trzymamy go sami.
+        self.request = request
+        super().__init__(request, params, model, model_admin)
+
+    def _uczelnia(self):
+        return Uczelnia.objects.get_for_request(self.request)
+
+    def has_output(self):
+        # Ukryj filtr, gdy instytucja jest 1-progowa (nie używa wydziałów).
+        # ``get_for_request`` degraduje do jedynej-albo-None (nie rzuca) --
+        # gdy nie da się ustalić uczelni, nie ukrywamy (zachowanie domyślne).
+        uczelnia = self._uczelnia()
+        if uczelnia is not None and not uczelnia.uzywaj_wydzialow:
+            return False
+        return super().has_output()
+
+    def lookups(self, request, model_admin):
+        qs = Jednostka.objects.filter(parent__isnull=True, widoczna=True)
+        # Multi-hosted: zwykły admin widzi tylko korzenie swojej uczelni
+        # (parytet z SiteFilteredAdminMixin.get_queryset); superuser -- wszystkie.
+        if not request.user.is_superuser:
+            uczelnia = getattr(request, "_uczelnia", None)
+            if uczelnia is not None:
+                qs = qs.filter(uczelnia=uczelnia)
+        return [
+            (j.pk, str(j))
+            for j in qs.order_by(*Jednostka.objects.get_default_ordering())
+        ]
+
+    def queryset(self, request, queryset):
+        v = self.value()
+        if v:
+            return queryset.filter(Q(wydzial_id=v) | Q(pk=v))
+        return queryset
 
 
 class JednostkaFilter(SimpleListFilter):
@@ -333,3 +423,140 @@ class MaSystemKadrowyIDFilter(SimpleNotNullFilter):
 class MaKonferencjeFilter(SimpleNotNullFilter):
     title = "Ma konferencję"
     parameter_name = "konferencja"
+
+
+class JednostkaNadrzednaFilterForm(forms.Form):
+    """Formularz jednopolowy stojący za `JednostkaNadrzednaFilter`.
+
+    Istnieje wyłącznie po to, by przez `forms.ModelChoiceField` przypiąć do
+    `ModelSelect2.choices` właściwy `ModelChoiceIterator` — bez tego widget
+    nie potrafiłby po przeładowaniu strony wyrenderować etykiety aktualnie
+    wybranej jednostki (dostałby tylko jej pk).
+    """
+
+    parent = forms.ModelChoiceField(
+        queryset=Jednostka.objects.all().select_related("wydzial"),
+        required=False,
+        label="",
+        widget=autocomplete.ModelSelect2(
+            url="bpp:jednostka-autocomplete",
+            attrs={
+                "data-placeholder": "Wybierz jednostkę…",
+                "style": "width: 100%;",
+            },
+        ),
+    )
+
+
+class JednostkaNadrzednaFilter(SimpleListFilter):
+    """Filtr changelisty `parent` (kolumna „Jednostka nadrzędna") w JednostkaAdmin.
+
+    Własny, minimalny odpowiednik `admin_auto_filters.AutocompleteFilterFactory`
+    (usuniętego w #438 Faza B, III-3a, na życzenie ownera — druga zależność
+    dokładałaby DRUGI silnik autocomplete obok już używanego w BPP
+    django-autocomplete-light/DAL). Zamiast tego reużywa istniejący DAL-owy
+    widok `bpp:jednostka-autocomplete` (ten sam, którego używają
+    `admin/core.py`, `admin/autor.py`, `admin/praca_habilitacyjna.py` itd.).
+    Wzorowany na `dal_admin_filters.AutocompleteFilter`
+    (github.com/shamanu4/dal_admin_filters) — zvendorowany ręcznie jako
+    jedna mała klasa + template, BEZ instalowania tego pakietu.
+
+    Powód istnienia niestandardowego rozwiązania: lista jednostek jest zbyt
+    duża na zwykły dropdown filtra (`list_filter = ("parent", ...)`
+    wygenerowałoby select ze wszystkimi jednostkami w bazie) — potrzebny
+    autocomplete AJAX-owy.
+
+    Klucz do działania — DWIE osobne przeszkody:
+
+    1. Media. Changelist Django NIE wciąga automatycznie mediów widgetów
+       pól z `list_filter` (w przeciwieństwie do formularza zmiany, gdzie
+       `ModelAdmin.media` sumuje media pól formularza) — stąd `media`
+       niżej, renderowane jawnie przez template (patrz
+       `templates/admin/filters/jednostka_nadrzedna_filter.html`).
+
+    2. Panel filtrów BPP. `src/django_bpp/templates/admin/change_list.html`
+       NIE korzysta ze standardowego mechanizmu Django
+       (`{% admin_list_filter cl spec %}`, który renderowałby `spec.template`
+       przez `get_template(...).render(...)`) — ma własny, HTMX-owy panel
+       filtrów, który dla KAŻDEGO filtra po prostu iteruje
+       `spec.choices(cl)` i wypisuje listę linków (patrz
+       `admin_filter_helpers.get_filter_choices_without_selected`). `spec.template`
+       byłby więc martwym kodem w tym projekcie. Zamiast tego ten filtr
+       wystawia `custom_widget_template` — atrybut, którego `change_list.html`
+       jawnie szuka (`{% if spec.custom_widget_template %}`), by dla TEGO
+       jednego filtra wyrenderować nasz template zamiast listy `<a>`.
+       Żaden inny filtr w projekcie tego atrybutu nie ma, więc reszta
+       panelu (i wszystkie INNE adminy) renderuje się dokładnie jak dotąd.
+    """
+
+    title = "Jednostka nadrzędna"
+    parameter_name = "parent"
+    template = "admin/filters/jednostka_nadrzedna_filter.html"
+    custom_widget_template = "admin/filters/jednostka_nadrzedna_filter.html"
+
+    def lookups(self, request, model_admin):
+        # SimpleListFilter.has_output() (a więc i obecność filtra w ogóle w
+        # sidebarze) wymaga niepustej listy `lookups()` — patrz
+        # django.contrib.admin.filters.SimpleListFilter.has_output(). Sama
+        # wartość placeholdera nigdy się nie renderuje: wybór idzie AJAX-em
+        # przez widget Select2/DAL w naszym `template`, a `choices()` poniżej
+        # jest celowo pusty.
+        return (("_", "_"),)
+
+    def choices(self, changelist):
+        # Domyślna implementacja SimpleListFilter.choices() budowałaby listę
+        # linków z `lookups()` — nieużywaną przez nasz template. Metoda musi
+        # istnieć (wywołuje ją panel filtrów BPP przez
+        # `admin_filter_helpers.get_filter_choices_without_selected`), ale
+        # nie ma czego tu wypisywać — wybór idzie AJAX-em przez widget.
+        return ()
+
+    def queryset(self, request, queryset):
+        value = self.value()
+        if value:
+            return queryset.filter(parent_id=value)
+        return queryset
+
+    def get_form(self):
+        return JednostkaNadrzednaFilterForm(initial={"parent": self.value()})
+
+    def selected_display(self):
+        """Etykieta aktualnie wybranej jednostki — do nagłówka filtra.
+
+        Odpowiednik `choice.display` ze standardowych filtrów, którego
+        panel BPP oczekuje z `admin_filter_helpers.get_selected_filter_value`
+        (patrz tam: sprawdza `spec.selected_display` przed sięgnięciem po
+        `spec.choices()`, bo nasze `choices()` jest celowo puste).
+        """
+        value = self.value()
+        if not value:
+            return ""
+        try:
+            return str(Jednostka.objects.get(pk=value))
+        except (Jednostka.DoesNotExist, ValueError, TypeError):
+            return ""
+
+    def preserved_get_params(self):
+        """Pozostałe parametry GET do zachowania przy submicie filtra.
+
+        Bez tego wybór jednostki nadrzędnej zgubiłby inne aktywne filtry
+        i wyszukiwanie (formularz filtra submituje przez GET tylko swoje
+        własne pole). `p` (numer strony) też pomijamy — zmiana filtra ma
+        wracać na pierwszą stronę wyników.
+        """
+        return [
+            (key, value)
+            for key, values in self.request.GET.lists()
+            for value in values
+            if key not in (self.parameter_name, "p")
+        ]
+
+    def clear_query_string(self):
+        qd = self.request.GET.copy()
+        qd.pop(self.parameter_name, None)
+        qd.pop("p", None)
+        return qd.urlencode()
+
+    @property
+    def media(self):
+        return self.get_form().media

@@ -201,6 +201,8 @@ make release-promote      # Faza 2: RC → :latest (bez rebuildu, imagetools)
 
 Flagi: `make release-candidate SKIP_TESTS=1 SKIP_SCAN=1` (awaryjnie),
 `make release-promote VERSION=vXXX` (gdy otwartych >1 gałęzi `release/*`).
+`WEB=1` (na obu targetach) dodatkowo otwiera stronę runu w Actions w
+przeglądarce (`gh run view --web`) obok streamu w konsoli.
 
 Pod spodem to zwykłe `workflow_dispatch`:
 

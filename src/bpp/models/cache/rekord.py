@@ -94,12 +94,16 @@ class RekordManager(FulltextSearchMixin, models.Manager):
         ).distinct()
 
     def prace_wydzialu(self, wydzial, afiliowane=None):
+        # Faza B (#438): ``wydzial`` to teraz jednostka-KORZEŃ (self-FK). Prace
+        # poddrzewa łapie ``autorzy__jednostka__wydzial=korzeń``; prace samego
+        # korzenia — ``autorzy__jednostka=korzeń`` (korzeń ma ``wydzial=NULL``).
+        w_poddrzewie = models.Q(autorzy__jednostka__wydzial=wydzial) | models.Q(
+            autorzy__jednostka=wydzial
+        )
         if afiliowane is None:
-            return self.filter(autorzy__jednostka__wydzial=wydzial).distinct()
+            return self.filter(w_poddrzewie).distinct()
 
-        return self.filter(
-            autorzy__jednostka__wydzial=wydzial, autorzy__afiliuje=afiliowane
-        ).distinct()
+        return self.filter(w_poddrzewie, autorzy__afiliuje=afiliowane).distinct()
 
     def redaktorzy_z_jednostki(self, jednostka):
         from bpp.models import Typ_Odpowiedzialnosci

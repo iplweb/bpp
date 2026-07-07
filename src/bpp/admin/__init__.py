@@ -60,7 +60,6 @@ from .wydawnictwo_zwarte import (  # noqa
     Wydawnictwo_ZwarteAdmin_Baza,
 )
 from .wydawnictwo_zwarte_autor import Wydawnictwo_Zwarte_Autor_Admin  # noqa
-from .wydzial import WydzialAdmin  # noqa
 
 
 class JezykAdmin(RestrictDeletionToAdministracjaGroupAdmin):
@@ -118,7 +117,10 @@ class Charakter_PBNAdmin(
         "opis",
         "charaktery_formalne",
         "typy_kbn",
+        "ukryty",
     ]
+    list_editable = ["ukryty"]
+    list_filter = ["ukryty"]
     readonly_fields = ["identyfikator", "wlasciwy_dla", "opis", "help_text"]
 
     def charaktery_formalne(self, rec):
@@ -146,7 +148,9 @@ admin.site.register(Tytul, NazwaISkrotAdmin)
 class Typ_KBNAdmin(
     RestrictDeletionToAdministracjaGroupAdmin, BaseBppAdminMixin, admin.ModelAdmin
 ):
-    list_display = ["nazwa", "skrot", "artykul_pbn", "charakter_pbn"]
+    list_display = ["nazwa", "skrot", "artykul_pbn", "charakter_pbn", "ukryty"]
+    list_editable = ["ukryty"]
+    list_filter = ["ukryty"]
 
 
 admin.site.register(Typ_KBN, Typ_KBNAdmin)

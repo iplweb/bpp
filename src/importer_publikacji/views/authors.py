@@ -85,15 +85,20 @@ def _auto_match_single_author(session, author_data, order, year):
     - zapisany_jako domyślnie pre-fillowane z family+given dostawcy,
     - bulk_create kandydatów do ImportedAuthor_Candidate (UI modala).
     """
-    family = author_data.get("family", "")
-    given = author_data.get("given", "")
+    # Defense-in-depth: przycinamy do limitow kolumn, zeby zaden wpis (np.
+    # zle sparsowane pole author) nie wywalil calego importu przez
+    # StringDataRightTruncation (Freshdesk #344). Root-cause naprawiony jest
+    # w _parse_authors; tu jest siatka bezpieczenstwa.
+    family = (author_data.get("family") or "")[:255]
+    given = (author_data.get("given") or "")[:255]
+    orcid = (author_data.get("orcid") or "")[:50]
     imported = ImportedAuthor.objects.create(
         session=session,
         order=order,
         family_name=family,
         given_name=given,
-        orcid=author_data.get("orcid", ""),
-        zapisany_jako=f"{family} {given}".strip(),
+        orcid=orcid,
+        zapisany_jako=f"{family} {given}".strip()[:512],
     )
 
     result = Komparator.porownaj_author(author_data)
@@ -220,6 +225,45 @@ def _prefill_dyscypliny_z_zgloszen(session):
 
 
 @transaction.atomic
+def _create_single_author(imported, obca):
+    """Utwórz (lub dopasuj po ORCID) rekord ``Autor`` dla pojedynczego
+    ``ImportedAuthor`` i przypisz go do obcej jednostki.
+
+    Wspólny rdzeń dla masowego ``_create_unmatched_authors`` oraz
+    per-wierszowego ``AuthorCreateNewView`` ("Utwórz nowego" z modala
+    edycji). Trzymane w jednym miejscu, żeby logika dedupowania po ORCID
+    nie rozjechała się między ścieżkami.
+
+    Jeśli dostawca podał ORCID i istnieje już ``Autor`` z tym ORCID-em,
+    dopasowuje istniejącego zamiast tworzyć duplikat.
+    """
+    orcid = imported.orcid.strip() or None
+
+    if orcid:
+        existing = Autor.objects.filter(orcid=orcid).first()
+        if existing:
+            existing.dodaj_jednostke(obca)
+            imported.matched_autor = existing
+            imported.matched_jednostka = obca
+            imported.match_status = ImportedAuthor.MatchStatus.MANUAL
+            imported.save()
+            return existing
+
+    autor = Autor.objects.create(
+        imiona=imported.given_name,
+        nazwisko=imported.family_name,
+        orcid=orcid,
+    )
+    autor.dodaj_jednostke(obca)
+
+    imported.matched_autor = autor
+    imported.matched_jednostka = obca
+    imported.match_status = ImportedAuthor.MatchStatus.MANUAL
+    imported.save()
+    return autor
+
+
+@transaction.atomic
 def _create_unmatched_authors(session, obca):
     """Utwórz rekordy Autor dla niedopasowanych
     autorów i przypisz do obcej jednostki."""
@@ -227,28 +271,4 @@ def _create_unmatched_authors(session, obca):
         match_status=(ImportedAuthor.MatchStatus.UNMATCHED)
     )
     for imported in unmatched:
-        orcid = imported.orcid.strip() or None
-
-        # Jeśli ORCID podany i istnieje Autor
-        # z takim ORCID -- dopasuj istniejącego
-        if orcid:
-            existing = Autor.objects.filter(orcid=orcid).first()
-            if existing:
-                imported.matched_autor = existing
-                imported.matched_jednostka = obca
-                imported.match_status = ImportedAuthor.MatchStatus.MANUAL
-                existing.dodaj_jednostke(obca)
-                imported.save()
-                continue
-
-        autor = Autor.objects.create(
-            imiona=imported.given_name,
-            nazwisko=imported.family_name,
-            orcid=orcid,
-        )
-        autor.dodaj_jednostke(obca)
-
-        imported.matched_autor = autor
-        imported.matched_jednostka = obca
-        imported.match_status = ImportedAuthor.MatchStatus.MANUAL
-        imported.save()
+        _create_single_author(imported, obca)

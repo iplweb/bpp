@@ -480,6 +480,20 @@ class Zgloszenie_Publikacji_AutorForm(forms.ModelForm):
         )
         super().__init__(*args, **kw)
 
+    def clean_jednostka(self):
+        # #438: zgłoszony autor zawsze dostaje ``afiliuje=True`` (formularz nie
+        # ma pola do odznaczenia), więc jednostka MUSI przyjmować afiliację.
+        # Odrzucamy tu — czytelnie na polu „Jednostka" — zamiast pozwolić na
+        # nieczytelny błąd walidacji modelu (o polu 'Afiliuje') przy zapisie.
+        jednostka = self.cleaned_data.get("jednostka")
+        if jednostka is not None and not jednostka.przyjmuje_afiliacje():
+            raise forms.ValidationError(
+                f"Do jednostki „{jednostka}” nie można afiliować autora "
+                "(np. jest to wydział albo jednostka obca). Wybierz jednostkę "
+                "podrzędną, do której autor faktycznie się afiliuje."
+            )
+        return jednostka
+
 
 Zgloszenie_Publikacji_AutorFormSet = inlineformset_factory(
     Zgloszenie_Publikacji,

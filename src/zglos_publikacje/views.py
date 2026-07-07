@@ -151,8 +151,12 @@ def _send_notification_email(publication_object, request):
             break
 
     if jednostka_do_powiadomienia is not None:
-        recipient_list = Obslugujacy_Zgloszenia_Wydzialow.objects.emaile_dla_wydzialu(
-            jednostka_do_powiadomienia.wydzial
+        # Faza B (#438) II-2: ``Obslugujacy_Zgloszenia_Wydzialow.wydzial`` to
+        # teraz FK→Jednostka (korzeń drzewa) — routing wprost przez
+        # ``get_root()`` jednostki autora (dla korzenia zwraca ją samą).
+        manager = Obslugujacy_Zgloszenia_Wydzialow.objects
+        recipient_list = manager.emaile_dla_obslugujacego(
+            jednostka_do_powiadomienia.get_root()
         )
 
     if not recipient_list:
