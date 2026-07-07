@@ -284,6 +284,58 @@ class Jednostka(ModelZAdnotacjami, ModelZPBN_ID, ModelZPBN_UID, MPTTModel):
             return False
         return True
 
+    def przeszkody_w_kasowaniu(self):
+        """Lista ``(etykieta, liczba)`` niepustych odwrotnych relacji FK
+        wskazujących na tę jednostkę z REALNYCH, zarządzanych tabel.
+
+        Pusta lista ⇔ jednostkę można bezpiecznie skasować (nic się przez nią
+        nie kaskaduje). Zasada „ściśle zero": każda referencja z tabeli blokuje
+        (podjednostki ``children``, ``Autor_Jednostka``, własna historia
+        ``Jednostka_Rodzic`` itd.). Świadomie POMIJANE:
+
+        * modele NIEzarządzane w Django (``managed=False``) — u nas to warstwa
+          odczytowa cache (widoki SQL ``AutorzyView``, ``Nowe_Sumy_View`` oraz
+          alias-y na tabele bazowe ``Cache_Punktacja_Autora_*``). Nie są
+          samodzielnym źródłem danych blokujących kasowanie (realne wiersze
+          publikacji i tak trzymają je zarządzane tabele ``Wydawnictwo_*_Autor``
+          / ``Cache_Punktacja_Autora``), a liczenie odwrotnego O2O do widoku
+          przez akcesor rzucałoby ``DoesNotExist``.
+
+        KLUCZOWE: iterujemy po ``get_candidate_relations_to_delete`` — DOKŁADNIE
+        tym samym zbiorze relacji, który widzi kolektor kasowania Django
+        (``include_hidden=True``). ``_meta.related_objects`` POMIJA ukryte
+        relacje (``related_name="+"``, np. ``Import_Dyscyplin_Row.wydzial``),
+        które kolektor mimo to kaskaduje — użycie ich pominęłoby realne
+        referencje i pozwoliło na ciche SET_NULL/CASCADE. Kandydaci to tylko
+        FK/O2O (bez M2M), więc znika też potrzeba osobnego skipu M2M.
+
+        Relacje generyczne (reversion/easyaudit/cacheops) nie mają tu
+        ``GenericRelation``, więc nie są kandydatami do kasowania i nie
+        blokują — log audytu nie powinien wstrzymywać kasowania pustej
+        jednostki.
+        """
+        from django.db.models.deletion import get_candidate_relations_to_delete
+
+        przeszkody = []
+        for rel in get_candidate_relations_to_delete(self._meta):
+            related_model = rel.related_model
+            if not related_model._meta.managed:
+                continue
+            # Liczymy przez POLE (nie akcesor) — jednolicie dla FK i O2O,
+            # bez ryzyka ``DoesNotExist`` na pustym odwrotnym O2O.
+            liczba = related_model._base_manager.filter(
+                **{rel.field.name: self}
+            ).count()
+            if liczba:
+                przeszkody.append(
+                    (str(related_model._meta.verbose_name_plural), liczba)
+                )
+        return przeszkody
+
+    def czy_mozna_skasowac(self):
+        """True ⇔ jednostka jest w pełni pusta (brak przeszkód w kasowaniu)."""
+        return not self.przeszkody_w_kasowaniu()
+
     def dodaj_autora(
         self, autor, funkcja=None, rozpoczal_prace=None, zakonczyl_prace=None
     ):
