@@ -78,30 +78,34 @@ def przeszkody_w_kasowaniu(self) -> list[tuple[str, int]]:
     Pusta lista ⇔ jednostkę można skasować."""
 ```
 
-Zasady iteracji (wynik adwersaryjnego review):
+Zasady iteracji (wynik dwóch adwersaryjnych review — spec + implementacja Fable):
 
-- Iteruj po `self._meta.related_objects` (odwrotne FK/O2O oraz odwrotne M2M).
+- Iteruj po `get_candidate_relations_to_delete(self._meta)` — DOKŁADNIE tym
+  zbiorze, który widzi kolektor kasowania Django (`include_hidden=True`).
+  **NIE** po `self._meta.related_objects`: ten POMIJA ukryte relacje odwrotne
+  (`related_name="+"`, np. realny managed FK `Import_Dyscyplin_Row.wydzial`),
+  które kolektor mimo to kaskaduje — użycie `related_objects` przepuściłoby
+  taką jednostkę jako „pustą" i po cichu zrobiło SET_NULL/CASCADE (Fable B1).
+  Kandydaci to tylko FK/O2O (bez M2M), więc znika osobny skip M2M.
 - **Liczenie jednolicie przez POLE, nie akcesor** — kluczowe, bo:
   - odwrotny **O2O** (`Nowe_Sumy_View`, accessor `nowe_sumy_view`) NIE ma
     `.count()`, a samo dotknięcie akcesora rzuca `RelatedObjectDoesNotExist`;
   - dlatego licz: `rel.related_model._base_manager.filter(**{rel.field.name:
-    self}).count()` — działa jednakowo dla FK, O2O i M2M-through.
+    self}).count()` — działa jednakowo dla FK i O2O (i zgadza się z managerem,
+    którego używa sam kolektor kasowania).
 - **Pomiń modele niezarządzane** (`rel.related_model._meta.managed is False`)
-  — to widoki SQL (patrz decyzja 1), tanio je wyklucza i skraca listę
-  z ~35 relacji do garstki realnych.
-- **Pomiń zduplikowany odwrotny M2M**: `related_objects` zawiera i odwrotny
-  M2M `autor` (accessor `autor_set`, `auto_created` przez `Autor.jednostki`),
-  i FK modelu-łączącego `Autor_Jednostka`. Ta sama więź trafiłaby na listę
-  dwa razy. Pomiń `rel.many_to_many and rel.field.auto_created` — model
-  łączący (`Autor_Jednostka`) i tak pokrywa tę relację.
+  — u nas to warstwa odczytowa cache (widoki SQL oraz alias-y na tabele
+  bazowe, patrz decyzja 1). Realne wiersze publikacji i tak trzymają
+  zarządzane tabele (`Wydawnictwo_*_Autor`, `Cache_Punktacja_Autora`), więc
+  jednostka z publikacjami zostaje zablokowana przez nie. Pomija to też
+  odwrotny O2O do widoku (`Nowe_Sumy_View`), którego liczenie przez akcesor
+  rzucałoby `DoesNotExist`.
 - Podjednostki (`children`, self-FK `parent`) pojawiają się tu naturalnie
-  jako jedna z relacji — NIE ma osobnej gałęzi kodu „czy ma dzieci".
-- Denorm self-FK `wydzial` (`related_name="+"`) jest HIDDEN i `related_objects`
-  go POMIJA (nie ma go tam — wbrew pierwotnej, błędnej uwadze w tym specu).
-  To nieszkodliwe dla „ściśle zero": węzeł, na który wskazuje cudzy `wydzial`,
-  jest korzeniem z poddrzewem, więc blokuje go bezpośrednie `children`.
-  NIE używać `get_fields(include_hidden=True)` — trafiłoby na akcesor `+`
-  bez managera i crashowało.
+  jako jedna z relacji-kandydatów — NIE ma osobnej gałęzi kodu „czy ma dzieci".
+- Ukryte FK (`related_name="+"`, np. denorm self-FK `wydzial`,
+  `Import_Dyscyplin_Row.wydzial`) SĄ objęte, bo `get_candidate_relations_to_
+  delete` używa `include_hidden=True` — dokładnie jak kolektor kasowania.
+  Liczymy je przez `rel.field.name` (nie przez akcesor `+`, który nie istnieje).
 - Etykieta krotki = `rel.related_model._meta.verbose_name_plural`
   (już zlokalizowane), zwracana dla każdej relacji z `count() > 0`.
 
@@ -209,10 +213,20 @@ obiekty przez `has_delete_permission` ich adminów; brak uprawnień daje
 
 ## Ślad po review
 
-Adwersaryjny self-review (czysty subagent, Django 5.2.15) wykrył i naprawiono
-w tym specu: sprzeczność akcji masowej z mechanizmem `protected` (→ decyzja 2
-wszystko-albo-nic), crash na odwrotnym O2O `Nowe_Sumy_View` (→ liczenie przez
-`rel.field.name`), błędną uwagę o `wydzial` w `related_objects` (relacja
-hidden), przeobiecujące „ściśle zero wszystkiego" (→ tylko zarządzane tabele,
-bez widoków i relacji generycznych), podwójne liczenie M2M `autor` vs
-model-łączący, oraz ryzyko XSS w wpisach `protected` (→ escape/format_html).
+Adwersaryjny self-review speca (czysty subagent, Django 5.2.15) wykrył i
+naprawiono w specu: sprzeczność akcji masowej z mechanizmem `protected`
+(→ decyzja 2 wszystko-albo-nic), crash na odwrotnym O2O `Nowe_Sumy_View`
+(→ liczenie przez `rel.field.name`), przeobiecujące „ściśle zero wszystkiego"
+(→ tylko zarządzane tabele), podwójne liczenie M2M `autor`, oraz ryzyko XSS
+w `protected` (→ escape/format_html).
+
+Adwersaryjny review IMPLEMENTACJI (Fable) wykrył BLOCKER B1: skan po
+`_meta.related_objects` POMIJAŁ ukryte FK (`related_name="+"`), które kolektor
+kasowania mimo to kaskaduje — realny przypadek `Import_Dyscyplin_Row.wydzial`
+przechodził jako „pusty". Naprawa: iteracja po `get_candidate_relations_to_
+delete` (`include_hidden=True`), plus test-regres. Ponadto: guard
+`delete_model` rzuca teraz `PermissionDenied` (a nie `message_user`+`return`,
+który zostawiał fałszywy „usunięto" + wpis DELETION), oraz dodano test bramki
+grupy `administracja` (superuser bez grupy nie kasuje). Znane, świadomie
+NIEnaprawione (pomijalne): mikro-race w `delete_selected_tree` oraz koszt
+~24 COUNT/jednostkę na ścieżce kasowania (nie hot-path).

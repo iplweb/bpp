@@ -1,8 +1,9 @@
 import sys
 
 from django import forms
-from django.contrib import admin, messages
+from django.contrib import admin
 from django.contrib.admin.actions import delete_selected
+from django.core.exceptions import PermissionDenied
 from django.urls import reverse
 from django.utils.html import format_html
 from django.utils.translation import gettext
@@ -247,14 +248,15 @@ class JednostkaAdmin(
 
     def delete_model(self, request, obj):
         """Defense-in-depth dla pojedynczego kasowania: nie kasuj niepustej
-        jednostki nawet gdyby ścieżka ominęła ``get_deleted_objects``."""
+        jednostki nawet gdyby ścieżka ominęła ``get_deleted_objects``.
+
+        Rzucamy ``PermissionDenied`` (a nie ``message_user`` + ``return``) —
+        inaczej Django ``_delete_view`` domknąłby flow komunikatem „usunięto
+        pomyślnie" i wpisem DELETION w LogEntry mimo braku kasowania."""
         if not obj.czy_mozna_skasowac():
-            self.message_user(
-                request,
-                gettext("Nie skasowano „%s” — jednostka nie jest pusta.") % obj,
-                level=messages.ERROR,
+            raise PermissionDenied(
+                gettext("Nie skasowano „%s” — jednostka nie jest pusta.") % obj
             )
-            return
         super().delete_model(request, obj)
 
     def indented_title(self, item):

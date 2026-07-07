@@ -55,6 +55,20 @@ def test_przeszkody_w_kasowaniu_z_wlasna_historia(jednostka: Jednostka):
 
 
 @pytest.mark.django_db
+def test_przeszkody_w_kasowaniu_lapie_ukryty_fk(jednostka: Jednostka):
+    # Regresja (Fable B1): FK z ``related_name="+"`` (np.
+    # ``Import_Dyscyplin_Row.wydzial``) jest niewidoczny w
+    # ``_meta.related_objects``, ale kolektor kasowania Django go kaskaduje
+    # (SET_NULL/CASCADE). Jednostka wskazywana WYŁĄCZNIE przez ukryty FK NIE
+    # może przejść jako „pusta" — inaczej kasowanie po cichu ruszyłoby te dane.
+    from import_dyscyplin.models import Import_Dyscyplin_Row
+
+    baker.make(Import_Dyscyplin_Row, wydzial=jednostka, jednostka=None)
+
+    assert jednostka.czy_mozna_skasowac() is False
+
+
+@pytest.mark.django_db
 def test_przeszkody_w_kasowaniu_nie_rzuca_na_odwrotnym_o2o(jednostka: Jednostka):
     # Regresja: Jednostka ma odwrotny O2O do niezarządzanego widoku
     # (Nowe_Sumy_View). Liczenie przez akcesor rzuciłoby DoesNotExist —

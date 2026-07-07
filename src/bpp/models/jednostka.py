@@ -293,24 +293,31 @@ class Jednostka(ModelZAdnotacjami, ModelZPBN_ID, ModelZPBN_UID, MPTTModel):
         (podjednostki ``children``, ``Autor_Jednostka``, własna historia
         ``Jednostka_Rodzic`` itd.). Świadomie POMIJANE:
 
-        * odwrotne relacje M2M (``rel.many_to_many``) — model łączący (np.
-          ``Autor_Jednostka``) i tak pokrywa tę samą więź osobnym FK, więc bez
-          tego liczylibyśmy ją podwójnie;
-        * modele niezarządzane (``managed=False``) — to widoki SQL cache
-          (``AutorzyView``, ``Cache_Punktacja_Autora_*``, ``Nowe_Sumy_View``);
-          widok nie przechowuje danych (przelicza się z tabel bazowych), więc
-          fizycznie nie może „blokować" kasowania. Pomija to też odwrotny O2O
-          do widoku, którego liczenie przez akcesor rzucałoby ``DoesNotExist``.
+        * modele NIEzarządzane w Django (``managed=False``) — u nas to warstwa
+          odczytowa cache (widoki SQL ``AutorzyView``, ``Nowe_Sumy_View`` oraz
+          alias-y na tabele bazowe ``Cache_Punktacja_Autora_*``). Nie są
+          samodzielnym źródłem danych blokujących kasowanie (realne wiersze
+          publikacji i tak trzymają je zarządzane tabele ``Wydawnictwo_*_Autor``
+          / ``Cache_Punktacja_Autora``), a liczenie odwrotnego O2O do widoku
+          przez akcesor rzucałoby ``DoesNotExist``.
+
+        KLUCZOWE: iterujemy po ``get_candidate_relations_to_delete`` — DOKŁADNIE
+        tym samym zbiorze relacji, który widzi kolektor kasowania Django
+        (``include_hidden=True``). ``_meta.related_objects`` POMIJA ukryte
+        relacje (``related_name="+"``, np. ``Import_Dyscyplin_Row.wydzial``),
+        które kolektor mimo to kaskaduje — użycie ich pominęłoby realne
+        referencje i pozwoliło na ciche SET_NULL/CASCADE. Kandydaci to tylko
+        FK/O2O (bez M2M), więc znika też potrzeba osobnego skipu M2M.
 
         Relacje generyczne (reversion/easyaudit/cacheops) nie mają tu
-        ``GenericRelation``, więc nie pojawiają się w ``related_objects`` i nie
+        ``GenericRelation``, więc nie są kandydatami do kasowania i nie
         blokują — log audytu nie powinien wstrzymywać kasowania pustej
         jednostki.
         """
+        from django.db.models.deletion import get_candidate_relations_to_delete
+
         przeszkody = []
-        for rel in self._meta.related_objects:
-            if rel.many_to_many:
-                continue
+        for rel in get_candidate_relations_to_delete(self._meta):
             related_model = rel.related_model
             if not related_model._meta.managed:
                 continue

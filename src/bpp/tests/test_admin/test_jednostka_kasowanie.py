@@ -79,6 +79,23 @@ def test_kasowanie_masowe_blokuje_cala_partie(
 
 
 @pytest.mark.django_db
+def test_superuser_bez_grupy_nie_skasuje(client, jednostka: Jednostka):
+    # Regresja: bramka grupy `administracja` (RestrictDeletionToAdministracja-
+    # GroupMixin) MUSI zostać nienaruszona — sam superuser (bez grupy) nie
+    # kasuje pustej jednostki. Nowy warunek „pusta" jest DODATKOWY, nie
+    # zastępuje grupowego.
+    user = BppUser.objects.create_superuser(
+        username="bezgrupy", password="haslo", email="b@example.org"
+    )
+    client.force_login(user)
+    pk = jednostka.pk
+
+    client.post(_delete_url(jednostka), {"post": "yes"})
+
+    assert Jednostka.objects.filter(pk=pk).exists()
+
+
+@pytest.mark.django_db
 def test_kasowanie_masowe_samych_pustych_usuwa(
     administracja_client, jednostka: Jednostka, druga_jednostka: Jednostka
 ):
