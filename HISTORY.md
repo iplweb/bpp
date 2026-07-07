@@ -2,6 +2,130 @@
 
 <!-- towncrier release notes start -->
 
+## bpp 202607.1396 (2026-07-07)
+
+### Naprawione
+
+- Import z PBN pomija obiekty usunięte po stronie PBN (``status == "DELETED"``),
+  gdy nie mają jeszcze odpowiednika w BPP — wcześniej taka praca, wydawca lub
+  naukowiec (import autorów z uczelni) był tworzony jako nowy rekord w BPP
+  (``Wydawnictwo_Ciagle``/``Wydawnictwo_Zwarte``, ``Wydawca``, ``Autor``).
+  Dopasowywanie istniejących rekordów BPP pozostaje bez zmian. ([#pbn-import-pomijaj-deleted](https://github.com/iplweb/bpp/issues/pbn-import-pomijaj-deleted))
+- Formularz zgłoszenia publikacji nie pozwala już wybrać dla autora jednostki,
+  do której nie można się afiliować (węzeł rodzaju „Wydział" albo jednostka
+  obca). Zamiast nieczytelnego błędu walidacji przy zapisie zgłaszający dostaje
+  komunikat wprost na polu „Jednostka" z prośbą o wskazanie jednostki
+  podrzędnej. Zgłoszony autor jest zawsze afiliowany, więc wybór jednostki
+  nieprzyjmującej afiliacji nie miał sensu. ([#438](https://github.com/iplweb/bpp/issues/438))
+- Importer publikacji nie pozwala już utworzyć pracy, w której autor
+  afiliuje do jednostki nieprzyjmującej afiliacji (np. węzła rodzaju
+  „Wydział"). Sprawdzenie odbywa się na etapie formularza przeglądu — przed
+  zleceniem zadania w tle — więc osoba importująca dostaje czytelny
+  komunikat wskazujący autora i jednostkę do poprawienia, zamiast błędu
+  walidacji w trakcie tworzenia rekordu. Dodano pomocniczą metodę
+  ``Jednostka.przyjmuje_afiliacje()``, która rozstrzyga, czy do danej
+  jednostki można afiliować (jednostka obca lub rodzaj z wyłączoną
+  afiliacją zwracają „nie"). ([#438](https://github.com/iplweb/bpp/issues/438))
+- Adres ``/bpp/wydzial/<slug>/`` przekierowuje teraz także wtedy, gdy
+  slug nie odpowiada żadnemu dawnemu wydziałowi, ale istnieje jednostka
+  o dokładnie tym slugu (np. wydział założony od razu w drzewie
+  jednostek) — użytkownik trafia wówczas wprost na
+  ``/bpp/jednostka/<ten-sam-slug>/``. Dotychczasowe przekierowania
+  dawnych wydziałów na ich węzły-lustra działają bez zmian; nieznane
+  slugi nadal zwracają 404.
+- Importer publikacji: sesja pobierania danych (np. z CrossRef po DOI) nie
+  zawiesza się już na stałe na „Pobieram dane od dostawcy…". Gdy zadanie w tle
+  zginęło poza kontrolą aplikacji (ubity/zgubiony worker Celery), status sesji
+  zostawał w nieskończoność w stanie „Trwa pobieranie", a strona odświeżała się w
+  kółko. Dodano watchdog: sesja tkwiąca zbyt długo w pobieraniu/tworzeniu rekordu
+  jest automatycznie oznaczana jako błąd z możliwością ponowienia. Timeout
+  zapytania HTTP do CrossRef jest teraz ustawiony jawnie i konfigurowalny
+  (`IMPORTER_STALL_TIMEOUT`, `CROSSREF_API_TIMEOUT`).
+- Naprawiono losowe błędy „relacja raport_slotow_raportzerowyentry
+  nie istnieje" przy oglądaniu raportu slotów — autorzy zerowi.
+  Wyniki raportu odczytywane są z tymczasowej (sesyjnej) tabeli
+  PostgreSQL, a odpowiedź renderowana była leniwie — pod serwerem
+  ASGI równoległy request (np. websocket powiadomień otwierany przez
+  przeglądarkę) mógł w międzyczasie zamknąć połączenie z bazą, przez
+  co tabela tymczasowa znikała przed odczytem. Strona raportu
+  renderuje się teraz w całości w obrębie tego samego połączenia.
+
+  Dodatkowo przezroczysty reconnect do bazy danych (silnik
+  ``django_bpp.db_connclosed_fix``) loguje ostrzeżenie zamiast
+  działać po cichu — utrata stanu sesji PostgreSQL (tabele
+  tymczasowe, advisory locks) jest teraz widoczna w logach.
+- Podświetlanie składni w polu wyszukiwania admina włącza się teraz warunkowo —
+  tylko gdy zaznaczono przełącznik „używaj DjangoQL". Przy zwykłym wyszukiwaniu
+  podłańcuchowym pole wygląda jak normalny input (wcześniej kolorowanie składni
+  było aktywne niezależnie od stanu przełącznika).
+- Strona jednostki wyświetlana w stylu wydziału (rodzaj jednostki z
+  zaznaczoną opcją „Pokazuj stronę w stylu wydziału") odtwarza układ
+  dawnej strony wydziału: panel nagłówka z nazwą, opisem i zestawieniem
+  liczb (jednostki aktualne, koła naukowe, jednostki historyczne),
+  pod nim wyśrodkowany przycisk „Pokaż wszystkie publikacje" filtrujący
+  po wydziale (jak na dawnej stronie wydziału — jeden zwięzły wpis
+  w formularzu wyszukiwania zamiast listy wszystkich podjednostek),
+  a dalej sekcje strukturalne. Link „Otwórz do edycji" znajduje się
+  w prawym górnym rogu panelu. Karty hierarchii „Wchodzi w skład" oraz „Jednostki
+  podrzędne" pozostają w tym stylu ukryte — strukturę podjednostek
+  prezentują sekcje strukturalne. Na zwykłych jednostkach bez zmian.
+- W formularzach raportów poziomu „jednostka" (np. „Raport jednostek")
+  pole „Jednostka" nie oferuje już jednostek najwyższego poziomu
+  (wydziałów), gdy uczelnia ma włączone używanie wydziałów — dla
+  wydziałów przeznaczony jest osobny raport poziomu „wydział". Lista
+  podpowiedzi i walidacja pola działają teraz tak samo, jak w rankingu
+  autorów.
+
+### Dokumentacja
+
+- Uwaga dla instalacji wielopodmiotowych: migracja ustawiająca „wydziałowi"
+  zakaz afiliacji (``RodzajJednostki.autor_moze_afiliowac=False``) rozpoznaje
+  rodzaj po nazwie „Wydział". Jeśli w danym tenancie zmieniono nazwę tego
+  rodzaju w słowniku, flagę trzeba ustawić ręcznie w panelu administracyjnym
+  (słownik „Rodzaje jednostek"), aby zadziałały zabezpieczenia przed afiliacją
+  autorów do wydziału. ([#438](https://github.com/iplweb/bpp/issues/438))
+
+### Usprawnienie
+
+- Admin ``Wydawnictwo ciągłe`` i ``Wydawnictwo zwarte`` ma nowy filtr „PBN:
+  status" — pozwala wyłapać rekordy powiązane z pracą skasowaną w PBN
+  (``DELETED``), aktywną (``ACTIVE``) albo bez powiązania. To samo zawężenie
+  działa też w wyszukiwaniu DjangoQL: ``pbn_uid.status = "DELETED"``. ([#admin-filtr-pbn-status](https://github.com/iplweb/bpp/issues/admin-filtr-pbn-status))
+- Nowa komenda ``audytuj_afiliacje_jednostek`` — raportuje wiersze przypisań
+  autorów (publikacje ciągłe, zwarte, patenty, zgłoszenia) z zaznaczoną
+  afiliacją do jednostki, której rodzaj nie dopuszcza afiliacji (np. węzła
+  „Wydział" powstałego z konwersji). Z opcją ``--napraw`` odznacza w takich
+  wierszach afiliację. Przydatna do porządkowania danych zastanych po
+  konwersji Wydział→Jednostka. ([#438](https://github.com/iplweb/bpp/issues/438))
+- Na podstronie źródła panel „Dyscypliny naukowe w ewaluacji” pokazuje
+  teraz dyscypliny aż do najnowszego roku obecnego w bazie danych i to
+  właśnie ten najnowszy rok jest domyślnie rozwinięty. Wcześniej zakres
+  prezentowanych lat oraz domyślnie otwarty rok były ustawione na sztywno,
+  przez co świeżo wgrane dyscypliny (np. za kolejny rok ewaluacji) nie były
+  widoczne bez zmiany w kodzie (Freshdesk 296).
+- Słownik „rodzaje jednostek" ma nową opcję „Autor może afiliować".
+  Gdy jest odznaczona, przy zapisie pracy z autorem afiliującym na
+  jednostkę tego rodzaju system zgłosi błąd walidacji — analogicznie do
+  obcej jednostki. Rodzaj „Wydział" ma tę opcję domyślnie wyłączoną:
+  afiliacja powinna wskazywać jednostkę podrzędną (instytut, katedrę,
+  klinikę), a nie sam wydział. Opcję można zmienić w adminie, w słowniku
+  rodzajów jednostek.
+- Uczelnia, która nie używa wydziałów, ale ma strukturę drzewa
+  jednostek (jednostka główna z podjednostkami), dostaje w
+  wyszukiwarce publikacji nowe pole „Jednostka nadrzędna”. Działa
+  jak dawny filtr „Wydział”: obejmuje jednym wpisem całe poddrzewo
+  wybranej jednostki-korzenia, zamiast wymagać wskazania każdej
+  podjednostki osobno. Pole pojawia się wyłącznie wtedy, gdy taka
+  struktura faktycznie istnieje; uczelnie z wydziałami korzystają
+  dalej z pola „Wydział”.
+
+  Na stronie jednostki-korzenia (widok w stylu wydziału) przycisk
+  „Pokaż wszystkie publikacje” ustala teraz ten filtr poddrzewa,
+  zamiast budować długą listę wszystkich jednostek potomnych — także
+  w uczelniach bez wydziałów. Jednostki bez podjednostek i jednostki
+  położone głębiej w drzewie działają jak dotychczas (jawna lista).
+
+
 ## bpp 202607.1395 (2026-07-05)
 
 ### Naprawione
