@@ -584,7 +584,7 @@ check-clean-tree: ## Zawołaj błąd, jeśli working tree brudne (pre-release gu
 release: check-clean-tree full-tests new-release ## Pełny release (tree clean + full-tests + new-release)
 
 .PHONY: release-candidate release-promote
-release-candidate: ## Faza 1: utnij kandydata (RC → :staging) i obserwuj run [SKIP_TESTS=1 SKIP_SCAN=1]
+release-candidate: ## Faza 1: utnij kandydata (RC → :staging) i obserwuj run [SKIP_TESTS=1 SKIP_SCAN=1 WEB=1]
 	@FLAGS=""; \
 	if [ -n "$$SKIP_TESTS" ]; then FLAGS="$$FLAGS -f skip_tests=true"; fi; \
 	if [ -n "$$SKIP_SCAN" ]; then FLAGS="$$FLAGS -f skip_scan=true"; fi; \
@@ -598,9 +598,10 @@ release-candidate: ## Faza 1: utnij kandydata (RC → :staging) i obserwuj run [
 		exit 1; \
 	fi; \
 	echo "Obserwuję run ID: $$RUN_ID"; \
+	if [ -n "$$WEB" ]; then gh run view "$$RUN_ID" --web; fi; \
 	gh run watch "$$RUN_ID"
 
-release-promote: ## Faza 2: promuj kandydata do produkcji (:latest, bez rebuildu) i obserwuj run [VERSION=vXXX]
+release-promote: ## Faza 2: promuj kandydata do produkcji (:latest, bez rebuildu) i obserwuj run [VERSION=vXXX WEB=1]
 	@FLAGS=""; \
 	if [ -n "$$VERSION" ]; then FLAGS="-f version=$$VERSION"; fi; \
 	echo "Odpalam promote.yml$$FLAGS ..."; \
@@ -613,6 +614,7 @@ release-promote: ## Faza 2: promuj kandydata do produkcji (:latest, bez rebuildu
 		exit 1; \
 	fi; \
 	echo "Obserwuję run ID: $$RUN_ID"; \
+	if [ -n "$$WEB" ]; then gh run view "$$RUN_ID" --web; fi; \
 	gh run watch "$$RUN_ID"
 
 set-version-from-vcs: ## Ustaw wersję bumpver na podstawie git describe
