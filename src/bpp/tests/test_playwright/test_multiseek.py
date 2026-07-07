@@ -33,7 +33,22 @@ def test_wyrzuc(wydawnictwo_zwarte, page: Page, live_server):
     # complete. ``domcontentloaded`` on the frame returns once the new
     # document is parsed — ``.evaluate`` would otherwise race the previous
     # execution context being torn down by the navigation.
-    iframe_frame = page.frame(name="list_frame")
+    #
+    # ``page.frame(name=...)`` transiently returns ``None`` while the POST-driven
+    # navigation is committing (the frame is detached then re-attached under the
+    # same name). Under parallel CI load this window is wide enough that a single
+    # lookup lands on the ``None`` gap → ``AttributeError`` on ``wait_for_load_state``.
+    # Poll until the frame object is available before using it.
+    iframe_frame = None
+    for _ in range(100):  # up to ~10s at 100ms per tick
+        iframe_frame = page.frame(name="list_frame")
+        if iframe_frame is not None:
+            break
+        page.wait_for_timeout(100)
+    assert iframe_frame is not None, (
+        "iframe 'list_frame' nie pojawiła się po POST do ./live-results/ "
+        "(nawigacja iframe nie zdążyła się zarejestrować)."
+    )
     iframe_frame.wait_for_load_state("domcontentloaded")
 
     # Then wait for the actual result element to render
