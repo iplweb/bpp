@@ -16,8 +16,7 @@ Założenia:
 * Tam, gdzie wiersz nie ma jednostki, tworzona jest jednostka
   ``"Jednostka Wydziału <X>"`` (gdzie ``<X>`` to fragment nazwy
   wydziału po prefiksie ``"Wydział "``).
-* Skróty (``Wydzial.skrot`` -- max 10, ``Wydzial.skrot_nazwy`` -- max
-  250, ``Jednostka.skrot`` -- max 128) są generowane jako unikalne.
+* Skróty (``Jednostka.skrot`` -- max 128) są generowane jako unikalne.
 """
 
 from __future__ import annotations
@@ -27,7 +26,6 @@ from import_export.widgets import ForeignKeyWidget
 
 from bpp.models.jednostka import Jednostka
 from bpp.models.uczelnia import Uczelnia
-from bpp.models.wydzial import Wydzial
 
 COLUMN_UCZELNIA = "Uczelnia"
 COLUMN_WYDZIAL = "Wydział"
@@ -80,16 +78,17 @@ def domyslna_nazwa_jednostki(wydzial_nazwa: str) -> str:
 
 
 class WydzialGetOrCreateWidget(ForeignKeyWidget):
-    """ForeignKey widget z get_or_create po ``nazwa``.
+    """ForeignKey widget: get-or-create jednostki TOP-LEVEL po ``nazwa``.
 
-    Tworzy nowy ``Wydzial`` (z auto-generowanym ``skrot``/``skrot_nazwy``),
-    jeżeli wydział o tej nazwie nie istnieje. Uczelnia odczytywana jest
-    z kolumny ``Uczelnia`` w danym wierszu -- obiekt ``Jednostka``
-    dopiero powstaje, więc nie można sięgnąć przez FK na obiekcie.
+    Faza C (#438): model ``Wydzial`` usunięty — „wydział" to jednostka z
+    ``parent IS NULL``. Widget zwraca root-``Jednostka``, a pole zasobu pisze
+    go do ``parent`` importowanej jednostki. Uczelnia odczytywana z kolumny
+    ``Uczelnia`` (obiekt ``Jednostka`` dopiero powstaje, więc nie da się
+    sięgnąć przez FK na obiekcie).
     """
 
     def __init__(self, **kwargs):
-        super().__init__(Wydzial, field="nazwa", **kwargs)
+        super().__init__(Jednostka, field="nazwa", **kwargs)
 
     def clean(self, value, row=None, **kwargs):
         if not value:
@@ -98,15 +97,20 @@ class WydzialGetOrCreateWidget(ForeignKeyWidget):
         if not nazwa:
             return None
 
-        # Faza B (#438): jednostka wisi pod węzłem-lustrem wydziału (denorm
-        # ``wydzial`` = korzeń), więc widget zwraca WĘZEŁ-lustro (Jednostka),
-        # a pole zasobu pisze do ``parent`` (patrz atrybut niżej). Wydzial
-        # nadal tworzymy/odnajdujemy (żyje do Fazy C) i mapujemy na węzeł.
-        from bpp.models.struktura_konwersja import znajdz_lub_utworz_wezel_wydzialu
-
-        existing = Wydzial.objects.filter(nazwa=nazwa).first()
+        # ``Jednostka.nazwa`` jest UNIQUE globalnie (nie per-poziom), więc
+        # szukamy BEZ ograniczenia ``parent__isnull`` — inaczej ``create()``
+        # wybuchłby ``IntegrityError`` na kolizji z jednostką niższego poziomu
+        # (Fable F8). Istniejąca jednostka podrzędna o tej nazwie nie może
+        # pełnić roli wydziału → błąd jawny zamiast cichego złego drzewa.
+        existing = Jednostka.objects.filter(nazwa=nazwa).first()
         if existing is not None:
-            return znajdz_lub_utworz_wezel_wydzialu(existing)[0]
+            if existing.parent_id is not None:
+                raise ValueError(
+                    f"Jednostka '{nazwa}' istnieje już jako jednostka "
+                    f"podrzędna (pod '{existing.parent}') i nie może pełnić "
+                    "roli wydziału (jednostki najwyższego poziomu)."
+                )
+            return existing
 
         uczelnia_value = (row or {}).get(COLUMN_UCZELNIA)
         if not uczelnia_value:
@@ -122,21 +126,14 @@ class WydzialGetOrCreateWidget(ForeignKeyWidget):
                 "Utwórz ją ręcznie i ponów import."
             ) from exc
 
-        used_skroty = set(Wydzial.objects.values_list("skrot", flat=True))
-        used_skrot_nazwy = set(
-            Wydzial.objects.exclude(skrot_nazwy=None).values_list(
-                "skrot_nazwy", flat=True
-            )
-        )
-        skrot = unique_skrot(abbreviate_wydzial(nazwa), used_skroty, max_len=10)
-        skrot_nazwy = unique_skrot(nazwa, used_skrot_nazwy, max_len=250)
-        nowy = Wydzial.objects.create(
+        used_skroty = set(Jednostka.objects.values_list("skrot", flat=True))
+        skrot = unique_skrot(abbreviate_wydzial(nazwa), used_skroty, max_len=128)
+        return Jednostka.objects.create(
             uczelnia=uczelnia,
             nazwa=nazwa,
             skrot=skrot,
-            skrot_nazwy=skrot_nazwy,
+            parent=None,
         )
-        return znajdz_lub_utworz_wezel_wydzialu(nowy)[0]
 
 
 class JednostkaImportResource(resources.ModelResource):
@@ -155,7 +152,7 @@ class JednostkaImportResource(resources.ModelResource):
         attribute="uczelnia",
         widget=ForeignKeyWidget(Uczelnia, field="nazwa"),
     )
-    # Faza B (#438): pole „wydział" pisze do ``parent`` (węzeł-lustro), a
+    # Faza C (#438): pole „wydział" pisze do ``parent`` (root-Jednostka), a
     # denorm ``wydzial`` (korzeń) wyliczy się przy zapisie jednostki.
     wydzial = fields.Field(
         column_name=COLUMN_WYDZIAL,
