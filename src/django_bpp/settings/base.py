@@ -155,6 +155,8 @@ env = environ.Env(
     # Rollbar access settings
     #
     ROLLBAR_ACCESS_TOKEN=(str, None),
+    # Publiczny token klienta (post_client_item) do frontendowego Rollbara.
+    ROLLBAR_CLIENT_ACCESS_TOKEN=(str, ""),
     #
     # Prometheus
     #
@@ -292,6 +294,7 @@ TEMPLATES = [
                 "bpp.context_processors.constance_config.constance_config",
                 "bpp.context_processors.global_nav.user",
                 "bpp.context_processors.google_analytics.google_analytics",
+                "bpp.context_processors.rollbar.rollbar_client",
                 "bpp.context_processors.pbn_token_aktualny.pbn_token_aktualny",
                 "bpp.context_processors.microsoft_auth.microsoft_auth_status",
                 "bpp.context_processors.orcid.orcid_auth_status",
@@ -1585,6 +1588,11 @@ ROLLBAR = {
         re.compile(r".*\{\{\s*clickURL\s*\}\}$"),
     ),
 }
+
+# Publiczny token klienta (post_client_item) do frontendowego Rollbara.
+# INNY niż sekretny ROLLBAR["access_token"] (post_server_item) — ten można
+# bezpiecznie renderować w przeglądarce. Pusty = front-end Rollbar wyłączony.
+ROLLBAR_CLIENT_ACCESS_TOKEN = env("ROLLBAR_CLIENT_ACCESS_TOKEN")
 
 #
 # Prometheus

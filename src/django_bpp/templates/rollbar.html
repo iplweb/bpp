@@ -1,0 +1,28 @@
+{% load static %}
+{# Rollbar front-end (client-side error monitoring). #}
+{# Ładowane wcześnie w <head>, by łapać też błędy z czasu ładowania strony. #}
+{# Biblioteka hostowana lokalnie ze static (nie CDN). #}
+{# Bez danych użytkownika (person) i bez gejtowania zgodą cookie. #}
+<script src="{% static 'rollbar/rollbar.umd.min.js' %}"></script>
+<script>
+    (function () {
+        var _rollbarConfig = {
+            accessToken: "{{ ROLLBAR_CLIENT.accessToken }}",
+            captureUncaught: true,
+            captureUnhandledRejections: true,
+            payload: {
+                environment: "{{ ROLLBAR_CLIENT.environment }}",
+                client: {
+                    javascript: {
+                        code_version: "{{ ROLLBAR_CLIENT.codeVersion }}",
+                        source_map_enabled: false
+                    }
+                }
+            }
+        };
+        var ns = window.Rollbar || window.rollbar;
+        if (ns && typeof ns.init === "function") {
+            window.Rollbar = ns.init(_rollbarConfig);
+        }
+    })();
+</script>
