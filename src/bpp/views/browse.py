@@ -31,7 +31,6 @@ from bpp.models import (
     Rekord,
     Uczelnia,
     Wydawnictwo_Ciagle_Streszczenie,
-    Wydzial,
     Zrodlo,
 )
 from bpp.multiseek_registry import (
@@ -144,27 +143,16 @@ class UczelniaView(DetailView):
 
 
 def browse_wydzial_redirect(request, slug):
-    """Legacy URL (`/wydzial/<slug>/`) -- przekierowanie 301 na odpowiednik
-    dawnego wydziału w drzewie ``Jednostka``.
+    """Legacy URL (`/wydzial/<slug>/`) -- trwałe (301) przekierowanie na
+    `/jednostka/<slug>/`.
 
-    Faza B (#438), III-2: strona wydziału jako osobny widok znika --
-    ``WydzialView`` usunięty. Stary URL musi jednak dalej działać (linki
-    zewnętrzne, wyszukiwarki, zakładki) -- szukamy więc ``Wydzial`` po
-    ``slug`` (model żyje do Fazy C wyłącznie na potrzeby tego lookupu), a
-    następnie węzła-lustra (``Jednostka.legacy_wydzial_id == wydzial.pk``,
-    patrz ``struktura_konwersja.py``) i przekierowujemy na jego stronę.
-
-    Fallback: gdy slug nie odpowiada żadnemu legacy ``Wydzial`` (albo
-    wydział nie ma węzła-lustra), ale istnieje ``Jednostka`` o dokładnie
-    tym slugu (np. wydział założony od razu w drzewie, bez modelu
-    Wydzial), przekierowujemy wprost na /jednostka/<ten-sam-slug>/.
-    W pozostałych przypadkach 404.
+    Faza C (#438): model ``Wydzial`` usunięty. „Wydział" to jednostka
+    top-level (``parent IS NULL``) o tym samym slugu -- mapowanie 1:1
+    zachowane od Fazy B, gdy węzły-lustra dostały slug dawnego wydziału.
+    Stary URL musi dalej działać (linki zewnętrzne, wyszukiwarki, zakładki),
+    więc kierujemy go wprost na jednostkę o tym slugu. Brak takiej jednostki
+    → 404 (martwy link degraduje się czytelnie, nie robi 500).
     """
-    wydzial = Wydzial.objects.filter(slug=slug).first()
-    if wydzial is not None:
-        jednostka = Jednostka.objects.filter(legacy_wydzial_id=wydzial.pk).first()
-        if jednostka is not None:
-            return redirect("bpp:browse_jednostka", slug=jednostka.slug, permanent=True)
     get_object_or_404(Jednostka, slug=slug)
     return redirect("bpp:browse_jednostka", slug=slug, permanent=True)
 

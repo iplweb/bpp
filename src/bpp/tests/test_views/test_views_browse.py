@@ -60,39 +60,9 @@ def test_browse_wydzial(setup_group, logged_in_client):
 
 @pytest.mark.django_db
 def test_browse_wydzial_redirects_to_browse_jednostka(setup_group, logged_in_client):
-    """Legacy URL /wydzial/<slug>/ przekierowuje 301 na węzeł-lustro tego
-    wydziału w drzewie Jednostka (Faza B, III-2, #438)."""
-    u = any_uczelnia(nazwa="uczelnia", skrot="uu")
-    w = Wydzial.objects.create(nazwa="wydzial", uczelnia=u)
-    wezel, _ = znajdz_lub_utworz_wezel_wydzialu(w)
-
-    res = logged_in_client.get(
-        reverse("bpp:browse_wydzial", args=(w.slug,)), follow=False
-    )
-    assert res.status_code == 301
-    assert res.url == reverse("bpp:browse_jednostka", args=(wezel.slug,))
-
-
-@pytest.mark.django_db
-def test_browse_wydzial_redirect_404_bez_wezla_lustra(setup_group, logged_in_client):
-    """Gdy wydział nie ma jeszcze węzła-lustra (lazy, patrz
-    struktura_konwersja.py) ani żadna Jednostka nie nosi tego sluga,
-    legacy URL zwraca 404 zamiast 500."""
-    u = any_uczelnia(nazwa="uczelnia", skrot="uu")
-    w = Wydzial.objects.create(nazwa="wydzial bez lustra", uczelnia=u)
-
-    res = logged_in_client.get(
-        reverse("bpp:browse_wydzial", args=(w.slug,)), follow=False
-    )
-    assert res.status_code == 404
-
-
-@pytest.mark.django_db
-def test_browse_wydzial_redirect_fallback_slug_jednostki(setup_group, logged_in_client):
-    """Gdy slug nie odpowiada żadnemu legacy ``Wydzial``, ale istnieje węzeł
-    ``Jednostka`` o dokładnie tym slugu (np. wydział założony od razu w
-    drzewie, bez modelu Wydzial), /wydzial/<slug>/ przekierowuje 301 na
-    /jednostka/<ten-sam-slug>/."""
+    """Faza C (#438): legacy URL /wydzial/<slug>/ przekierowuje 301 na
+    /jednostka/<slug>/ — „wydział" to jednostka top-level o tym samym slugu
+    (mapowanie 1:1 zachowane od Fazy B)."""
     u = any_uczelnia(nazwa="uczelnia", skrot="uu")
     j = any_jednostka(nazwa="Wydział Nowego Typu", uczelnia=u, wydzial=None)
 
@@ -101,6 +71,19 @@ def test_browse_wydzial_redirect_fallback_slug_jednostki(setup_group, logged_in_
     )
     assert res.status_code == 301
     assert res.url == reverse("bpp:browse_jednostka", args=(j.slug,))
+
+
+@pytest.mark.django_db
+def test_browse_wydzial_redirect_404_gdy_brak_jednostki(setup_group, logged_in_client):
+    """Slug bez odpowiadającej Jednostki → 404 (nie 500), żeby martwe linki
+    zewnętrzne/zakładki degradowały się czytelnie."""
+    any_uczelnia(nazwa="uczelnia", skrot="uu")
+
+    res = logged_in_client.get(
+        reverse("bpp:browse_wydzial", args=("nie-ma-takiego-wydzialu",)),
+        follow=False,
+    )
+    assert res.status_code == 404
 
 
 @pytest.mark.django_db
