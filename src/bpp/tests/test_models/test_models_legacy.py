@@ -65,10 +65,12 @@ def test_jednostka(jednostka_setup):
     any_wydzial(skrot="BAR")
     j = any_jednostka(nazwa="foo", wydzial_skrot="BAR")
 
-    # Check if wydzial should be included in the string representation
-    if getattr(settings, "DJANGO_BPP_UCZELNIA_UZYWA_WYDZIALOW", True) and getattr(
-        settings, "DJANGO_BPP_SKROT_WYDZIALU_W_NAZWIE_JEDNOSTKI", True
-    ):
+    # Faza B (#438): "uzywaj wydzialow" zyje na modelu Uczelnia (default
+    # True — `j.uczelnia` jest tu swiezo utworzona przez `any_wydzial`/
+    # `any_jednostka`, wiec flaga nie byla nigdzie nadpisywana). Jedynym
+    # jeszcze-env-owym przelacznikiem formatowania jest SKROT_WYDZIALU_W_NAZWIE.
+    assert j.uczelnia.uzywaj_wydzialow is True
+    if getattr(settings, "DJANGO_BPP_SKROT_WYDZIALU_W_NAZWIE_JEDNOSTKI", True):
         assert str(j) == "foo (BAR)"
     else:
         assert str(j) == "foo"
@@ -149,32 +151,41 @@ def test_autor():
 @pytest.mark.django_db
 def test_afiliacja_na_rok():
     """Test sprawdzania afiliacji autora na rok."""
+    # Faza B (#438): ``afiliacja_na_rok`` filtruje po ``jednostka__wydzial``,
+    # które jest teraz self-FK do jednostki-korzenia. Przekazujemy węzły-
+    # korzenie (``j.wydzial`` = węzeł-lustro wydziału ``w``), nie obiekty
+    # Wydzial.
+    from bpp.models.struktura_konwersja import znajdz_lub_utworz_wezel_wydzialu
+
     w = any_wydzial()
     n = any_wydzial(skrot="w2", nazwa="w2")
     j = any_jednostka(wydzial=w)
     a = baker.make(Autor)
 
+    w_node = j.wydzial
+    n_node, _ = znajdz_lub_utworz_wezel_wydzialu(n)
+
     aj = Autor_Jednostka.objects.create(
         autor=a, jednostka=j, funkcja=baker.make(Funkcja_Autora)
     )
 
-    assert a.afiliacja_na_rok(2030, w) is None
-    assert a.afiliacja_na_rok(2030, n) is None
+    assert a.afiliacja_na_rok(2030, w_node) is None
+    assert a.afiliacja_na_rok(2030, n_node) is None
 
     aj.rozpoczal_prace = date(2012, 1, 1)
     aj.save()
 
-    assert a.afiliacja_na_rok(2030, w) is True
-    assert a.afiliacja_na_rok(2011, w) is None
-    assert a.afiliacja_na_rok(2030, n) is None
+    assert a.afiliacja_na_rok(2030, w_node) is True
+    assert a.afiliacja_na_rok(2011, w_node) is None
+    assert a.afiliacja_na_rok(2030, n_node) is None
 
     aj.zakonczyl_prace = date(2013, 12, 31)
     aj.save()
 
-    assert a.afiliacja_na_rok(2030, w) is None
-    assert a.afiliacja_na_rok(2011, w) is None
-    assert a.afiliacja_na_rok(2012, w) is True
-    assert a.afiliacja_na_rok(2030, n) is None
+    assert a.afiliacja_na_rok(2030, w_node) is None
+    assert a.afiliacja_na_rok(2011, w_node) is None
+    assert a.afiliacja_na_rok(2012, w_node) is True
+    assert a.afiliacja_na_rok(2030, n_node) is None
 
 
 @pytest.mark.django_db
@@ -186,6 +197,9 @@ def test_dodaj_jednostke():
     w2 = any_wydzial(nazwa="XX", skrot="YY")
     j = any_jednostka(wydzial=w)
     j2 = any_jednostka(wydzial=w2)
+    # Faza B (#438): korzenie zamiast obiektów Wydzial (patrz wyżej).
+    w = j.wydzial
+    w2 = j2.wydzial
 
     def ma_byc(ile=1):
         assert Autor_Jednostka.objects.count() == ile

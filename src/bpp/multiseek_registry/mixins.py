@@ -39,7 +39,7 @@ class BppMultiseekVisibilityMixin:
     def visibility_options(self):
         return self._get_or_create()
 
-    def option_enabled(self):
+    def option_enabled(self, request=None):
         return True
 
     @property
@@ -47,7 +47,9 @@ class BppMultiseekVisibilityMixin:
         return self.visibility_options.sort_order
 
     def enabled(self, request=None):
-        if not self.option_enabled():
+        # Multi-hosted: przekazujemy request niżej, żeby option_enabled mogło
+        # ustalić uczelnię z hosta (np. IndexCopernicus → pokazuj_index_copernicus).
+        if not self.option_enabled(request):
             return False
 
         vis = self.visibility_options

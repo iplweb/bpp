@@ -2,7 +2,7 @@ from django.contrib.contenttypes.models import ContentType
 from django.db import transaction
 from django.utils.functional import cached_property
 
-from bpp.models import Dyscyplina_Naukowa, Uczelnia, Wydawca
+from bpp.models import Dyscyplina_Naukowa, Wydawca
 from bpp.models.cache import Cache_Punktacja_Autora, Cache_Punktacja_Dyscypliny
 from bpp.models.patent import Patent
 from bpp.models.sloty.wydawnictwo_ciagle import SlotKalkulator_Wydawnictwo_Ciagle_Prog3
@@ -23,6 +23,27 @@ from .wydawnictwo_ciagle import (
 )
 
 
+def _rozstrzygnij_uczelnie(original):
+    """ISlot bez jawnej uczelni: zwróć jednoznaczną uczelnię albo CannotAdapt."""
+    from bpp.models.uczelnia import Uczelnia
+
+    if Uczelnia.objects.count() == 1:
+        return Uczelnia.objects.get()
+
+    uczelnie = list(original.uczelnie_rekordu())
+    if len(uczelnie) == 1:
+        return uczelnie[0]
+    if len(uczelnie) == 0:
+        raise CannotAdapt(
+            "Rekord nie ma afiliujących i przypiętych autorów — "
+            "nie można ustalić uczelni."
+        )
+    raise CannotAdapt(
+        "Rekord ma autorów z wielu uczelni — podaj uczelnię jawnie "
+        "(ISlot(rekord, uczelnia=...)); bez niej wynik jest niejednoznaczny."
+    )
+
+
 def ISlot(original, uczelnia=None):  # noqa
     if isinstance(original, Patent):
         raise CannotAdapt("Sloty dla patentów nie są liczone")
@@ -30,22 +51,26 @@ def ISlot(original, uczelnia=None):  # noqa
     if hasattr(original, "typ_kbn") and original.typ_kbn.skrot == "PW":
         raise CannotAdapt("Sloty dla prac wieloośrodkowych nie są liczone.")
 
-    if uczelnia is None:
-        uczelnia = Uczelnia.objects.get_default()
+    if hasattr(original, "rok") and original.rok is None:
+        raise CannotAdapt("Rekord nie ma ustawionego roku — sloty nie są liczone.")
 
-    if (
-        uczelnia is not None
-        and hasattr(original, "status_korekty_id")
-        and original.status_korekty_id in uczelnia.ukryte_statusy("sloty")
-    ):
+    if uczelnia is None:
+        uczelnia = _rozstrzygnij_uczelnie(original)
+
+    if hasattr(
+        original, "status_korekty_id"
+    ) and original.status_korekty_id in uczelnia.ukryte_statusy("sloty"):
         raise CannotAdapt(
             "Sloty nie będą liczone, zgodnie z ustawieniami obiektu Uczelnia dla ukrywanych "
             "statusów korekt. "
         )
 
-    if hasattr(original, "rok") and original.rok is None:
-        raise CannotAdapt("Rekord nie ma ustawionego roku — sloty nie są liczone.")
+    kalkulator = _dopasuj_kalkulator(original, uczelnia)
+    kalkulator.uczelnia = uczelnia
+    return kalkulator
 
+
+def _dopasuj_kalkulator(original, uczelnia=None):  # noqa: C901
     if isinstance(original, Wydawnictwo_Ciagle):
         if original.rok in [2017, 2018]:
             if original.punkty_kbn >= 30:
@@ -147,7 +172,7 @@ def ISlot(original, uczelnia=None):  # noqa
 
         rodzaje_hst = {
             Dyscyplina_Naukowa.objects.get(pk=x[0]).dyscyplina_hst
-            for x in original.wszystkie_dyscypliny_rekordu()
+            for x in original.wszystkie_dyscypliny_rekordu(uczelnia)
         }
 
         match len(rodzaje_hst):
@@ -289,16 +314,13 @@ def ISlot(original, uczelnia=None):  # noqa
 
 
 class IPunktacjaCacher:
-    def __init__(self, original, uczelnia=None):
+    def __init__(self, original):
         self.original = original
-        self.slot = None
-        self.uczelnia = uczelnia
 
     def canAdapt(self):
         try:
-            self.slot = ISlot(self.original, uczelnia=self.uczelnia)
+            _dopasuj_kalkulator(self.original)
             return True
-
         except CannotAdapt:
             return False
 
@@ -325,46 +347,63 @@ class IPunktacjaCacher:
 
     def serialize(self):
         """
-        Zwraca słownik JSON z zawartością danych rekordu
+        Zwraca krotkę (autorzy, dyscypliny) z deterministycznie posortowaną
+        zawartością cache dla tego rekordu.
         """
-        ret1 = []
-        for elem in self.cache_punktacja_autora:
-            ret1.append(elem.serialize())
-
-        ret2 = []
-        for elem in self.cache_punktacja_dyscypliny:
-            ret2.append(elem.serialize())
-
+        ret1 = [
+            elem.serialize()
+            for elem in self.cache_punktacja_autora.order_by(
+                "jednostka__uczelnia_id", "autor__nazwisko", "dyscyplina__nazwa", "pk"
+            )
+        ]
+        ret2 = [
+            elem.serialize()
+            for elem in self.cache_punktacja_dyscypliny.order_by(
+                "uczelnia_id", "dyscyplina__nazwa", "pk"
+            )
+        ]
         return ret1, ret2
 
     def get_pk(self):
         return (self.ctype, self.original.pk)
 
+    def _uczelnie_do_przeliczenia(self):
+        from bpp.models.uczelnia import Uczelnia
+
+        # Fast-track dla single-install: jedna uczelnia w systemie => bez
+        # enumeracji autorów rekordu (wszyscy autorzy i tak należą do tej
+        # jednej uczelni). Jedno zapytanie zamiast JOIN-a po autorach.
+        uczelnie_systemu = list(Uczelnia.objects.all()[:2])
+        if len(uczelnie_systemu) == 1:
+            return uczelnie_systemu
+        return self.original.uczelnie_rekordu()
+
     @transaction.atomic
     def rebuildEntries(self):
+        for uczelnia in self._uczelnie_do_przeliczenia():
+            try:
+                kalk = ISlot(self.original, uczelnia=uczelnia)
+            except CannotAdapt:
+                # Nie liczy się (typ/punkty/rok) lub ukryty status dla tej uczelni
+                continue
+            self._zapisz(kalk, uczelnia)
+
+    def _zapisz(self, kalk, uczelnia):
         pk = self.get_pk()
 
-        # Jeżeli nie można zaadaptować danego rekordu do kalkulatora
-        # punktacji, to po skasowaniu ewentualnej scache'owanej punktacji
-        # wyjdź z funkcji:
-        if self.canAdapt() is False:
-            return
-
-        _slot_cache = {}
-
-        for dyscyplina in self.slot.dyscypliny:
-            _slot_cache[dyscyplina] = self.slot.slot_dla_dyscypliny(dyscyplina)
-            azd = self.slot.autorzy_z_dyscypliny(dyscyplina)
+        for dyscyplina in kalk.dyscypliny:
+            azd = kalk.autorzy_z_dyscypliny(dyscyplina)
             if not azd:
-                # Na ten moment nie chcemy wpisów odnosnie dyscyplin i slotów, gdy nie ma
+                # Nie chcemy wpisów odnośnie dyscyplin i slotów, gdy nie ma
                 # w nich żadnych autorów (zgłoszenie w Mantis #1009)
                 continue
 
             Cache_Punktacja_Dyscypliny.objects.create(
                 rekord_id=[pk[0], pk[1]],
                 dyscyplina=dyscyplina,
-                pkd=self.slot.punkty_pkd(dyscyplina),
-                slot=_slot_cache[dyscyplina],
+                uczelnia=uczelnia,
+                pkd=kalk.punkty_pkd(dyscyplina),
+                slot=kalk.slot_dla_dyscypliny(dyscyplina),
                 autorzy_z_dyscypliny=[a.pk for a in azd],
                 zapisani_autorzy_z_dyscypliny=[a.zapisany_jako for a in azd],
             )
@@ -372,7 +411,13 @@ class IPunktacjaCacher:
         if not self.original.pk:
             return
 
-        for wa in self.original.autorzy_set.all():
+        # UWAGA (read-side): autorzy_z_dyscypliny zapisani w
+        # Cache_Punktacja_Dyscypliny mogą zawierać PK autora z jednostki
+        # skupia_pracownikow=False, dla którego NIE powstaje wiersz
+        # Cache_Punktacja_Autora (ten filtr go pomija). Konsumenci widoku
+        # nie powinni zakładać relacji 1:1 między listą autorów w CPD a
+        # wierszami CPA.
+        for wa in self.original.autorzy_set.filter(jednostka__uczelnia=uczelnia):
             if (
                 not wa.afiliuje
                 or not wa.jednostka.skupia_pracownikow
@@ -388,7 +433,7 @@ class IPunktacjaCacher:
             if dyscyplina is None:
                 continue
 
-            pkdaut = self.slot.pkd_dla_autora(wa)
+            pkdaut = kalk.pkd_dla_autora(wa)
             if pkdaut is None:
                 continue
             Cache_Punktacja_Autora.objects.create(
@@ -397,5 +442,5 @@ class IPunktacjaCacher:
                 jednostka_id=wa.jednostka_id,
                 dyscyplina_id=dyscyplina.pk,
                 pkdaut=pkdaut,
-                slot=self.slot.slot_dla_autora_z_dyscypliny(dyscyplina),
+                slot=kalk.slot_dla_autora_z_dyscypliny(dyscyplina),
             )

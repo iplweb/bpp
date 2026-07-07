@@ -4,6 +4,7 @@ import pytest
 
 from import_common.core import normalize_date
 from import_common.normalization import (
+    extract_doi_from_url,
     extract_part_number,
     normalize_doi,
     normalize_kod_dyscypliny,
@@ -290,3 +291,40 @@ def test_normalize_nazwisko_matching_case_lech_maranda():
     assert normalize_nazwisko_do_porownania(
         "Lech-Marańda"
     ) == normalize_nazwisko_do_porownania("Lech Marańda")  # noqa: E501
+
+
+@pytest.mark.parametrize(
+    "i,o",
+    [
+        # Pełne adresy DOI -> znormalizowany DOI.
+        ("https://doi.org/10.1234/abc.def", "10.1234/abc.def"),
+        ("http://dx.doi.org/10.1234/ABC", "10.1234/abc"),
+        ("https://doi.org/10.1038/nature12373", "10.1038/nature12373"),
+        # DOI gdzieś w środku tekstu / URL-a.
+        (
+            "https://journal.example.com/articles/10.5555/12345678",
+            "10.5555/12345678",
+        ),
+        ("Zobacz pracę: 10.1234/xyz proszę", "10.1234/xyz"),
+        # Goły DOI.
+        ("10.1000/182", "10.1000/182"),
+        # Query string i kotwica obcinane.
+        ("https://doi.org/10.1234/abc?utm=foo", "10.1234/abc"),
+        ("https://doi.org/10.1234/abc#section", "10.1234/abc"),
+        # Sklejona interpunkcja na końcu zdania.
+        ("DOI to 10.1234/abc.def.", "10.1234/abc.def"),
+        # Adresy, których NIE da się zinterpretować jako DOI -> None.
+        ("https://example.com/papers/123", None),
+        ("https://example.com/10x/foo", None),
+        ("nie ma tu żadnego doi", None),
+        ("", None),
+        (None, None),
+    ],
+)
+def test_extract_doi_from_url(i, o):
+    assert extract_doi_from_url(i) == o
+
+
+def test_extract_doi_from_url_never_raises_on_non_doi():
+    """Wymóg z Freshdesk #380: adres niebędący DOI ma zwrócić None bez wyjątku."""
+    assert extract_doi_from_url("totalnie losowy ciąg !@#$ http://x.pl") is None

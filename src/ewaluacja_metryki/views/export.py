@@ -3,8 +3,7 @@ from django.db.models import Q
 from django.utils.decorators import method_decorator
 from django.views import View
 
-from bpp.models import Jednostka, Wydzial
-from bpp.models.uczelnia import Uczelnia
+from bpp.models import Jednostka
 from ewaluacja_common.models import Rodzaj_Autora
 
 from ..models import MetrykaAutora
@@ -60,6 +59,8 @@ class ExportStatystykiXLSX(View):
     def get(self, request, table_type):
         from django.http import HttpResponse
 
+        from raport_slotow.uczelnia_helper import uczelnia_dla_odczytu
+
         from ..export_helpers import (
             auto_adjust_column_widths,
             export_bottom_pkd,
@@ -72,6 +73,8 @@ class ExportStatystykiXLSX(View):
             export_wykorzystanie,
             export_zerowi,
         )
+        from ..models import MetrykaAutora
+        from ..uczelnia_scope import scope_metryki
 
         # Dispatch table to appropriate export handler
         table_handlers = {
@@ -93,12 +96,22 @@ class ExportStatystykiXLSX(View):
             self._setup_workbook_and_styles()
         )
 
+        uczelnia = uczelnia_dla_odczytu(request)
+        base_qs = scope_metryki(MetrykaAutora.objects.all(), uczelnia)
+
         # Call the appropriate handler
         handler = table_handlers[table_type]
         if table_type == "globalne":
-            handler(ws, header_font, header_fill, header_alignment)
+            handler(ws, header_font, header_fill, header_alignment, base_qs=base_qs)
         else:
-            handler(ws, header_font, header_fill, header_alignment, thin_border)
+            handler(
+                ws,
+                header_font,
+                header_fill,
+                header_alignment,
+                thin_border,
+                base_qs=base_qs,
+            )
 
         auto_adjust_column_widths(ws)
 
@@ -196,7 +209,12 @@ class ExportListaXLSX(View):
 
         wydzial_id = request.GET.get("wydzial")
         if wydzial_id:
-            queryset = queryset.filter(jednostka__wydzial_id=wydzial_id)
+            # Faza B (#438): „wydział" = jednostka-korzeń (self-FK). Poddrzewo
+            # łapie ``jednostka__wydzial_id``; metryki przy SAMYM korzeniu
+            # (``wydzial=NULL``) — ``jednostka_id`` (bez tego znikają z eksportu).
+            queryset = queryset.filter(
+                Q(jednostka__wydzial_id=wydzial_id) | Q(jednostka_id=wydzial_id)
+            )
 
         dyscyplina_id = request.GET.get("dyscyplina")
         if dyscyplina_id:
@@ -242,17 +260,26 @@ class ExportListaXLSX(View):
             return queryset.order_by(*sort_mapping[sort])
         return queryset.order_by(sort)
 
-    def _determine_visible_columns(self):
+    def _determine_visible_columns(self, request):
         """Determine which columns should be visible in export."""
         from bpp.models import Dyscyplina_Naukowa
+        from raport_slotow.uczelnia_helper import uczelnia_dla_odczytu
 
-        uczelnia = Uczelnia.objects.get_default()
+        from ..models import MetrykaAutora
+        from ..uczelnia_scope import scope_metryki
+
+        uczelnia = uczelnia_dla_odczytu(request)
         uzywa_wydzialow = uczelnia.uzywaj_wydzialow if uczelnia else False
 
-        wszystkie_dyscypliny = Dyscyplina_Naukowa.objects.filter(
-            metrykaautora__isnull=False
+        scoped_disc_ids = (
+            scope_metryki(MetrykaAutora.objects.all(), uczelnia)
+            .values_list("dyscyplina_naukowa_id", flat=True)
+            .distinct()
+        )
+        dyscypliny = Dyscyplina_Naukowa.objects.filter(
+            pk__in=scoped_disc_ids
         ).distinct()
-        tylko_jedna_dyscyplina = wszystkie_dyscypliny.count() == 1
+        tylko_jedna_dyscyplina = dyscypliny.count() == 1
 
         return {
             "uzywa_wydzialow": uzywa_wydzialow,
@@ -538,9 +565,11 @@ class ExportListaXLSX(View):
         wydzial_id = request.GET.get("wydzial")
         if wydzial_id and visible_columns["uzywa_wydzialow"]:
             try:
-                wydzial = Wydzial.objects.get(pk=wydzial_id)
+                # Faza B (#438): „wydział" = jednostka-korzeń (pk z pickera
+                # top-level), nie Wydzial.
+                wydzial = Jednostka.objects.get(pk=wydzial_id)
                 filter_info.append(f"Wydział: {wydzial.nazwa}")
-            except Wydzial.DoesNotExist:
+            except Jednostka.DoesNotExist:
                 pass
 
         dyscyplina_id = request.GET.get("dyscyplina")
@@ -592,29 +621,41 @@ class ExportListaXLSX(View):
     def get(self, request):
         from django.db.models import Count, OuterRef, Subquery
 
+        from raport_slotow.uczelnia_helper import uczelnia_dla_odczytu
+
+        from ..uczelnia_scope import scope_metryki
+
         # Setup workbook and styles
         styles = self._setup_workbook_styles()
         ws = styles["ws"]
         wb = styles["wb"]
 
-        # Build queryset with discipline count annotation
+        uczelnia = uczelnia_dla_odczytu(request)
+
+        # Subquery to count disciplines for each author within their own uczelnia
         discipline_count = (
-            MetrykaAutora.objects.filter(autor=OuterRef("autor"))
+            MetrykaAutora.objects.filter(
+                autor=OuterRef("autor"),
+                uczelnia=OuterRef("uczelnia"),
+            )
             .values("autor")
             .annotate(count=Count("dyscyplina_naukowa"))
             .values("count")
         )
 
-        queryset = MetrykaAutora.objects.select_related(
-            "autor", "dyscyplina_naukowa", "jednostka", "jednostka__wydzial"
-        ).annotate(autor_discipline_count=Subquery(discipline_count))
+        queryset = scope_metryki(
+            MetrykaAutora.objects.select_related(
+                "autor", "dyscyplina_naukowa", "jednostka", "jednostka__wydzial"
+            ).annotate(autor_discipline_count=Subquery(discipline_count)),
+            uczelnia,
+        )
 
         # Apply filters and sorting
         queryset = self._apply_filters_to_queryset(queryset, request)
         queryset = self._apply_sorting_to_queryset(queryset, request)
 
         # Determine visible columns
-        visible_columns = self._determine_visible_columns()
+        visible_columns = self._determine_visible_columns(request)
 
         # Create and write headers
         headers = self._create_headers(visible_columns)

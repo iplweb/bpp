@@ -37,6 +37,14 @@ class ImportTaskStatusView(ImporterPermissionMixin, View):
         if session.status in TERMINAL_STATUSES:
             return self._redirect_to_continue(session, is_htmx)
 
+        # Watchdog: sesja w locie (FETCHING/CREATING) tkwiąca ponad próg to
+        # martwy/zgubiony worker — task nie wykona bloku except, więc bez tego
+        # sesja wisiałaby wiecznie. Poll (every 3s) jest tu, gdy user patrzy
+        # na spinner, więc self-heal ma natychmiastowy efekt bez osobnej infry.
+        if session.is_stalled():
+            session.mark_stalled()
+            return self._render_error(request, session, is_htmx)
+
         info = None
         if session.celery_task_id:
             task = AsyncResult(session.celery_task_id)

@@ -38,6 +38,11 @@ class FetchedPublication:
 class DataProvider(ABC):
     """Bazowa klasa abstrakcyjna dla dostawców danych."""
 
+    # Uczelnia kontekstu (multi-hosted) — ustawiana przez ``get_provider``.
+    # Dostawcy zależni od konfiguracji PBN (``PbnProvider``) czytają z niej
+    # credentiale; dostawcy niezależni (CrossRef, DSpace) ignorują.
+    uczelnia = None
+
     @property
     @abstractmethod
     def name(self) -> str:
@@ -47,6 +52,17 @@ class DataProvider(ABC):
     @abstractmethod
     def identifier_label(self) -> str:
         """Etykieta pola identyfikatora, np. 'DOI'."""
+
+    @property
+    def choice_label(self) -> str:
+        """Etykieta opcji na liście wyboru źródła danych.
+
+        Domyślnie identyczna z ``name``, ale provider może ją nadpisać,
+        żeby od razu podpowiedzieć operatorowi, czego dane źródło wymaga
+        (np. „CrossRef — wyszukiwanie po numerze DOI"). Wartość opcji
+        (``value`` radia) pozostaje równa ``name`` — zmienia się tylko
+        tekst widoczny dla użytkownika."""
+        return self.name
 
     @property
     def input_mode(self) -> str:
@@ -83,8 +99,10 @@ def register_provider(
     return provider_cls
 
 
-def get_provider(name: str) -> DataProvider:
-    return _providers[name]()
+def get_provider(name: str, uczelnia=None) -> DataProvider:
+    provider = _providers[name]()
+    provider.uczelnia = uczelnia
+    return provider
 
 
 def get_available_providers() -> list[str]:
@@ -98,6 +116,7 @@ def get_providers_metadata() -> dict[str, dict]:
         instance = cls()
         result[name] = {
             "name": name,
+            "choice_label": instance.choice_label,
             "identifier_label": instance.identifier_label,
             "input_mode": instance.input_mode,
             "input_placeholder": instance.input_placeholder,

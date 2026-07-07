@@ -1,3 +1,4 @@
+import logging
 import sys
 import uuid
 from functools import update_wrapper
@@ -12,12 +13,15 @@ from django.http import Http404, HttpResponseRedirect
 from django.shortcuts import render
 from django.urls import reverse
 from django.utils.html import format_html, format_html_join
+from django.utils.http import urlencode
 from django_sendfile import sendfile
 from djangoql.admin import DjangoQLSearchMixin
 from templated_email import send_templated_mail
 
 from bpp.admin.core import DynamicAdminFilterMixin
 from bpp.admin.helpers.fieldsets import MODEL_Z_OPLATA_ZA_PUBLIKACJE
+from bpp.util import zaloguj_polkniety_wyjatek
+from import_common.normalization import extract_doi_from_url
 from zglos_publikacje.models import (
     Zgloszenie_Publikacji,
     Zgloszenie_Publikacji_Autor,
@@ -31,6 +35,8 @@ from .filters import (
     WydzialJednostkiPierwszegoAutora,
 )
 from .forms import ZwrocEmailForm
+
+logger = logging.getLogger(__name__)
 
 
 def _nazwa_pliku_do_pobrania(plik, oryginalna_nazwa_pliku=""):
@@ -111,6 +117,7 @@ class Zgloszenie_PublikacjiAdmin(
         + (
             "email",
             "strona_www",
+            "importer_z_adresu",
             "pliki_do_pobrania",
             "wydawca_zgloszenia",
             "wydawca_bpp",
@@ -125,7 +132,7 @@ class Zgloszenie_PublikacjiAdmin(
         )
     )
 
-    readonly_fields = ["pliki_do_pobrania"]
+    readonly_fields = ["pliki_do_pobrania", "importer_z_adresu"]
 
     inlines = [
         Zgloszenie_Publikacji_AutorInline,
@@ -370,6 +377,47 @@ class Zgloszenie_PublikacjiAdmin(
 
         return format_html_join("<br/>", "{}", ((part,) for part in parts))
 
+    @admin.display(description="Importer publikacji")
+    def importer_z_adresu(self, obj: Zgloszenie_Publikacji):
+        """Przycisk „użyj importera" przekazujący adres pracy do importera.
+
+        Jeśli z pola „Dostępna w sieci pod adresem" (lub z pola DOI
+        zgłoszenia) da się wyłuskać DOI, importer dostanie go w polu
+        identyfikatora. Jeśli adres nie jest DOI-em — importer otwiera się
+        z pustym polem DOI (bez błędu), import kontynuujemy ręcznie.
+        """
+        doi = extract_doi_from_url(obj.strona_www) or extract_doi_from_url(
+            getattr(obj, "doi", None)
+        )
+
+        params = {"provider": "CrossRef"}
+        if doi:
+            params["identifier"] = doi
+
+        url = "{}?{}".format(
+            reverse("importer_publikacji:index"),
+            urlencode(params),
+        )
+
+        if doi:
+            etykieta = format_html(
+                "Rozpoznano DOI: <strong>{}</strong>",
+                doi,
+            )
+        else:
+            etykieta = format_html(
+                "{}",
+                "Adresu nie rozpoznano jako DOI — importer otworzy się "
+                "z pustym polem DOI.",
+            )
+
+        return format_html(
+            '<a class="button" href="{}" target="_blank" '
+            'rel="noopener">📥 Użyj importera</a><br/>{}',
+            url,
+            etykieta,
+        )
+
     def wydzial_pierwszego_autora(self, obj: Zgloszenie_Publikacji):
         try:
             return (
@@ -379,7 +427,13 @@ class Zgloszenie_PublikacjiAdmin(
                 .first()
                 .jednostka.wydzial.nazwa
             )
-        except BaseException:
-            pass
+        except Exception:
+            # Kolumna admina — brak autora/jednostki/wydziału to często
+            # oczekiwany brak danych; logujemy traceback, bez alarmu Rollbara.
+            zaloguj_polkniety_wyjatek(
+                f"Ustalanie wydziału pierwszego autora zgłoszenia (pk={obj.pk})",
+                logger=logger,
+                do_rollbar=False,
+            )
 
     wydzial_pierwszego_autora.short_description = "Wydział pierwszego autora"

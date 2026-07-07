@@ -39,34 +39,62 @@ def jest_pbn_uid(s):
     return jest_czyms(s, const.PBN_UID_LEN)
 
 
-def globalne_wyszukiwanie_autora(querysets, q):
-    """Add author search querysets."""
+def globalne_wyszukiwanie_autora(querysets, q, uczelnia=None):
+    """Add author search querysets.
+
+    Gdy podano ``uczelnia`` (multi-hosted, publiczny global-search), zawęża do
+    autorów związanych z uczelnią obecnie LUB w przeszłości (zakres
+    ``AutorQuerySet.kiedykolwiek_zwiazani``). ``uczelnia=None`` → globalnie
+    (admin search): tu None znaczy „bez zawężenia", więc NIE delegujemy go do
+    metody (która fail-closuje na None), tylko zwracamy qs bez zmian.
+    """
+
+    def _scope(qs):
+        if uczelnia is None:
+            return qs
+        return qs.kiedykolwiek_zwiazani(uczelnia)
+
     if jest_orcid(q):
         querysets.append(
-            Autor.objects.filter(orcid__icontains=q)
-            .only(*AUTOR_ONLY)
-            .select_related(*AUTOR_SELECT_RELATED)
+            _scope(
+                Autor.objects.filter(orcid__icontains=q)
+                .only(*AUTOR_ONLY)
+                .select_related(*AUTOR_SELECT_RELATED)
+            )
         )
 
     if jest_pbn_uid(q):
         querysets.append(
-            Autor.objects.filter(pbn_uid_id=q).only(*AUTOR_ONLY).select_related("tytul")
+            _scope(
+                Autor.objects.filter(pbn_uid_id=q)
+                .only(*AUTOR_ONLY)
+                .select_related("tytul")
+            )
         )
 
     querysets.append(
-        Autor.objects.fulltext_filter(q)
-        .annotate(Count("wydawnictwo_ciagle"))
-        .only(*AUTOR_ONLY)
-        .select_related(*AUTOR_SELECT_RELATED)
-        .order_by("-search__rank", "-wydawnictwo_ciagle__count")
+        _scope(
+            Autor.objects.fulltext_filter(q)
+            .annotate(Count("wydawnictwo_ciagle"))
+            .only(*AUTOR_ONLY)
+            .select_related(*AUTOR_SELECT_RELATED)
+            .order_by("-search__rank", "-wydawnictwo_ciagle__count")
+        )
     )
 
 
-def globalne_wyszukiwanie_jednostki(querysets, s):
-    """Add unit search querysets."""
+def globalne_wyszukiwanie_jednostki(querysets, s, uczelnia=None):
+    """Add unit search querysets.
+
+    Gdy podano ``uczelnia`` (multi-hosted, publiczny global-search), zawęża
+    jednostki po FK ``uczelnia``. ``None`` → globalnie (admin search).
+    """
 
     def _fun(qry):
-        return qry.only("pk", "nazwa", "wydzial__skrot").select_related("wydzial")
+        qry = qry.only("pk", "nazwa", "wydzial__skrot").select_related("wydzial")
+        if uczelnia is not None:
+            qry = qry.filter(uczelnia=uczelnia)
+        return qry
 
     querysets.append(_fun(Jednostka.objects.fulltext_filter(s)))
 

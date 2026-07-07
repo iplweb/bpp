@@ -1,6 +1,9 @@
 from django.core.exceptions import PermissionDenied
 from django.views import View
 
+from raport_slotow.uczelnia_helper import uczelnia_dla_odczytu
+
+from ..uczelnia_scope import scope_metryki
 from .mixins import EwaluacjaRequiredMixin, ma_pelne_uprawnienia_ewaluacji
 
 
@@ -67,12 +70,17 @@ class PrzypnijDyscyplineView(
 
         # Redirect back to the detail view
         # Get MetrykaAutora for the author and discipline to redirect to the correct detail page
+        # Scoped to viewing uczelnia (defense-in-depth: multi-install, .first() picks
+        # the viewing-uczelnia's metryka when author exists in >1 uczelnia).
         from django.urls import reverse
 
         from ..models import MetrykaAutora
 
-        metryka = MetrykaAutora.objects.filter(
-            autor_id=autor_id, dyscyplina_naukowa_id=dyscyplina_id
+        metryka = scope_metryki(
+            MetrykaAutora.objects.filter(
+                autor_id=autor_id, dyscyplina_naukowa_id=dyscyplina_id
+            ),
+            uczelnia_dla_odczytu(request),
         ).first()
 
         if metryka:
@@ -140,12 +148,17 @@ class OdepnijDyscyplineView(
 
         # Redirect back to the detail view
         # Get MetrykaAutora for the author and discipline to redirect to the correct detail page
+        # Scoped to viewing uczelnia (defense-in-depth: multi-install, .first() picks
+        # the viewing-uczelnia's metryka when author exists in >1 uczelnia).
         from django.urls import reverse
 
         from ..models import MetrykaAutora
 
-        metryka = MetrykaAutora.objects.filter(
-            autor_id=autor_id, dyscyplina_naukowa_id=dyscyplina_id
+        metryka = scope_metryki(
+            MetrykaAutora.objects.filter(
+                autor_id=autor_id, dyscyplina_naukowa_id=dyscyplina_id
+            ),
+            uczelnia_dla_odczytu(request),
         ).first()
 
         if metryka:

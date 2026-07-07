@@ -13,10 +13,10 @@ except ImportError:
 from model_bakery import baker
 from multiseek.logic import EQUAL, EQUAL_FEMALE, EQUAL_NONE
 from multiseek.views import MULTISEEK_SESSION_KEY
+from siteblog.models import Article
 
 from bpp.models import Rekord, Wydawnictwo_Zwarte
 from bpp.views.browse import BuildSearch, PracaViewBySlug
-from siteblog.models import Article
 
 
 def test_buildSearch(settings):
@@ -46,6 +46,11 @@ def test_buildSearch(settings):
         POST = mydct(dct)
         META = {}
         session = {}
+        # Faza B (#438): BuildSearch.post czyta ``uzywaj_wydzialow`` z uczelni
+        # requestu (get_for_request). Ustawiony cache ``_uczelnia`` = None
+        # zwraca uczelnię bez zapytania do bazy — test zostaje bez DB, a przy
+        # braku uczelni gałąź domyślnie zakłada użycie wydziałów (True).
+        _uczelnia = None
 
         def build_absolute_uri(self, *args, **kw):
             return "/absolute/uri"
@@ -87,6 +92,40 @@ def test_buildSearch(settings):
     }
 
     assert json.loads(request.session[MULTISEEK_SESSION_KEY]) == expected
+
+
+def test_buildSearch_jednostka_nadrzedna_honorowana(settings):
+    """#438: POST ``jednostka_nadrzedna`` trafia do formularza multiseeka jako
+    kryterium „Jednostka nadrzędna". BuildSearch buduje ten box BEZWARUNKOWO
+    (pusty POST = no-op, ``zrob_box_z_requestu`` → []), więc przycisk „Pokaż
+    wszystkie publikacje" na stronie jednostki-korzenia działa też dla uczelni
+    bez wydziałów — bez tego BuildSearch po cichu wyrzucał wartość i dawał
+    pusty raport."""
+    dct = {"jednostka_nadrzedna": [123]}
+
+    class mydct(dict):
+        def getlist(self, value):
+            return self.get(value)
+
+    class request:
+        POST = mydct(dct)
+        META = {}
+        session = {}
+        _uczelnia = None
+
+        def build_absolute_uri(self, *args, **kw):
+            return "/absolute/uri"
+
+    settings.LANGUAGE_CODE = "en"
+    tbs = BuildSearch()
+    tbs.request = request()
+    tbs.post(request)
+
+    form = json.loads(request.session[MULTISEEK_SESSION_KEY])["form_data"]
+    kryteria = [c for c in form if c]
+    crit = [c for c in kryteria if c["field"] == "Jednostka nadrzędna"]
+    assert len(crit) == 1
+    assert crit[0]["value"] == 123
 
 
 pattern = re.compile("Strona WWW")
@@ -168,6 +207,7 @@ def test_artykuly(uczelnia, client):
     a = Article.objects.create(
         title=TYTUL, article_body="456", status=Article.STATUS.draft, slug="1"
     )
+    a.sites.set([uczelnia.site])
 
     res = client.get(reverse("bpp:browse_uczelnia", args=(uczelnia.slug,)))
     assert TYTUL.encode("utf-8") not in res.content
@@ -189,6 +229,7 @@ def test_artykul_ze_skrotem(uczelnia, client):
         status=Article.STATUS.published,
         slug="1",
     )
+    a.sites.set([uczelnia.site])
     # Invalidate cacheops cache for get_uczelnia_context_data
     invalidate_all()
 

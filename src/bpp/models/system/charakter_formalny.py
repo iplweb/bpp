@@ -46,6 +46,14 @@ class Charakter_PBN(models.Model):
     opis = models.CharField(max_length=500)
     help_text = models.TextField(blank=True)
 
+    ukryty = models.BooleanField(
+        "Ukryj na listach wyboru",
+        default=False,
+        help_text="""Jeżeli zaznaczone, ten charakter PBN nie będzie
+        proponowany na listach wyboru przy konfiguracji charakterów
+        formalnych i typów MNiSW. Istniejące powiązania pozostają bez zmian.""",
+    )
+
     class Meta:
         ordering = ["identyfikator"]
         verbose_name = "Charakter PBN"
@@ -128,6 +136,7 @@ class Charakter_Formalny(NazwaISkrot, MPTTModel):
         blank=True,
         null=True,
         default=None,
+        limit_choices_to={"ukryty": False},
         help_text="""Wartość wybrana w tym polu zostanie użyta jako zawartość tagu &lt;is>
                                       w plikach eksportu do PBN""",
         on_delete=CASCADE,
@@ -153,6 +162,14 @@ class Charakter_Formalny(NazwaISkrot, MPTTModel):
     )
 
     wliczaj_do_rankingu = models.BooleanField(default=True)
+
+    ukryty = models.BooleanField(
+        "Ukryj na listach wyboru",
+        default=False,
+        help_text="""Jeżeli zaznaczone, ten charakter formalny nie będzie
+        proponowany na listach wyboru przy wprowadzaniu nowych rekordów.
+        Istniejące rekordy korzystające z tej wartości pozostają bez zmian.""",
+    )
 
     class Meta:
         ordering = ["nazwa"]

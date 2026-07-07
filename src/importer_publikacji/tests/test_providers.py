@@ -2,6 +2,7 @@ from importer_publikacji.providers import (
     FetchedPublication,
     get_available_providers,
     get_provider,
+    get_providers_metadata,
 )
 from importer_publikacji.providers.crossref import (
     CrossRefProvider,
@@ -21,6 +22,24 @@ def test_crossref_provider_name():
     provider = CrossRefProvider()
     assert provider.name == "CrossRef"
     assert provider.identifier_label == "Identyfikator DOI"
+
+
+def test_crossref_choice_label_mentions_doi():
+    """Etykieta opcji CrossRef ma jasno wskazywać wymóg numeru DOI
+    (Freshdesk #381) — operator nie powinien tego wiedzieć z góry."""
+    provider = CrossRefProvider()
+    assert provider.choice_label == "CrossRef — wyszukiwanie po numerze DOI"
+    assert "DOI" in provider.choice_label
+
+
+def test_providers_metadata_exposes_choice_label():
+    """Metadane przekazywane do formularza zawierają choice_label."""
+    meta = get_providers_metadata()
+    assert meta["CrossRef"]["choice_label"] == (
+        "CrossRef — wyszukiwanie po numerze DOI"
+    )
+    # Provider bez nadpisania choice_label spada do nazwy.
+    assert meta["BibTeX"]["choice_label"] == "BibTeX"
 
 
 def test_crossref_validate_identifier_valid():

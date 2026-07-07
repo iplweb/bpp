@@ -4,7 +4,7 @@ from django.db.models import CASCADE
 from bpp.fields import YearField
 from bpp.models import Wydawnictwo_Zwarte
 from bpp.models.autor import Autor
-from bpp.models.struktura import Wydzial
+from bpp.models.jednostka import Jednostka
 from bpp.util import zrob_cache
 
 
@@ -12,12 +12,15 @@ class Opi_2012_Afiliacja_Do_Wydzialu(models.Model):
     """Tymczasowa klasa, zawierająca przypisania autorów do wydziałów, ponieważ
     dla pewnej grupy autorów otrzymałem w plikach XLS jedynie afiliację do wydziału,
     nie zaś do jednostki.
+
+    Faza B (#438) II-2: ``wydzial`` wskazuje teraz węzeł ``Jednostka`` (korzeń
+    drzewa, mirror dawnego ``Wydzial`` — patrz ``struktura_konwersja.py``).
     """
 
     # db_index=False: redundantny względem unique_together
     # (autor, wydzial, rok) — autor jest wiodącą kolumną tego indeksu.
     autor = models.ForeignKey(Autor, CASCADE, db_index=False)
-    wydzial = models.ForeignKey(Wydzial, CASCADE)
+    wydzial = models.ForeignKey(Jednostka, CASCADE)
     rok = YearField(db_index=True)
 
     class Meta:

@@ -1,3 +1,4 @@
+import logging
 import os
 import tempfile
 
@@ -7,9 +8,15 @@ from crispy_forms_foundation.layout import Column, Fieldset, Layout, Row
 from django import forms
 from django.core.exceptions import ValidationError
 
-from bpp.util import formdefaults_html_after, formdefaults_html_before
+from bpp.util import (
+    formdefaults_html_after,
+    formdefaults_html_before,
+    zaloguj_polkniety_wyjatek,
+)
 from import_polon.models import ImportPlikuAbsencji, ImportPlikuPolon
 from import_polon.utils import read_excel_or_csv_dataframe_guess_encoding
+
+logger = logging.getLogger(__name__)
 
 
 def validate_polon_headers(file_path):
@@ -56,6 +63,10 @@ def validate_polon_headers(file_path):
         return missing_headers
 
     except Exception as e:
+        zaloguj_polkniety_wyjatek(
+            f"Walidacja nagłówków pliku importu POLON (file_path={file_path!r})",
+            logger=logger,
+        )
         return [f"Błąd podczas odczytu nagłówków: {str(e)}"]
 
 
@@ -93,6 +104,10 @@ def validate_absencje_headers(file_path):
         return missing_headers
 
     except Exception as e:
+        zaloguj_polkniety_wyjatek(
+            f"Walidacja nagłówków pliku importu absencji (file_path={file_path!r})",
+            logger=logger,
+        )
         return [f"Błąd podczas odczytu nagłówków: {str(e)}"]
 
 

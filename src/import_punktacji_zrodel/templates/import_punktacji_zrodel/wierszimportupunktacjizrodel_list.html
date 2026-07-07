@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+{% block title %}Import punktacji źródeł — wyniki{% endblock %}
+{% block content %}
+  <h1>Wyniki importu punktacji źródeł{% if rok %} (rok {{ rok }}){% endif %}</h1>
+
+  <div class="callout">
+    <span class="label secondary">Wszystkich: {{ total_count }}</span>
+    <span class="label">Do aktualizacji: {{ do_aktualizacji_count }}</span>
+    <span class="label alert">Niedopasowanych: {{ niedopasowane_count }}</span>
+    <span class="label warning">Duplikatów: {{ duplikaty_count }}</span>
+  </div>
+
+  {% if byl_dry_run %}
+    <div class="callout warning">
+      <p>To był <strong>podgląd</strong> — nic nie zapisano do bazy.</p>
+      <form method="post"
+            action="{% url 'import_punktacji_zrodel:zatwierdz' object.pk %}">
+        {% csrf_token %}
+        <button type="submit" class="button alert">
+          Zatwierdź i zapisz do bazy</button>
+      </form>
+    </div>
+  {% else %}
+    <div class="callout success">
+      <p>Zmiany zapisane. Aby przenieść wartości na prace (publikacje):</p>
+      <a class="button" style="margin-right: .75rem"
+         href="{% url 'rozbieznosci:index' metryka='if' %}?rok_od={{ rok }}&rok_do={{ rok }}">
+        rozbieżności punktacji (IF) za {{ rok }}</a>
+      <a class="button"
+         href="{% url 'rozbieznosci:index' metryka='kw_wos' %}?rok_od={{ rok }}&rok_do={{ rok }}">
+        rozbieżności kwartyla za {{ rok }}</a>
+    </div>
+  {% endif %}
+
+  <form method="get" class="callout">
+    <label><input type="checkbox" name="tylko_do_aktualizacji" value="1"
+      {% if request.GET.tylko_do_aktualizacji %}checked{% endif %}>
+      tylko do aktualizacji</label>
+    <label><input type="checkbox" name="tylko_niedopasowane" value="1"
+      {% if request.GET.tylko_niedopasowane %}checked{% endif %}>
+      tylko niedopasowane</label>
+    <label><input type="checkbox" name="tylko_duplikaty" value="1"
+      {% if request.GET.tylko_duplikaty %}checked{% endif %}>
+      tylko duplikaty</label>
+    <button type="submit" class="button">Filtruj</button>
+  </form>
+
+  <table>
+    <thead><tr>
+      <th>#</th><th>Czasopismo (plik)</th><th>Źródło w BPP</th>
+      <th>Rezultat</th>
+    </tr></thead>
+    <tbody>
+    {% for w in object_list %}
+      <tr {% if w.is_duplicate %}class="warning"{% endif %}>
+        <td>{{ w.nr_wiersza }}</td>
+        <td>{{ w.dane_z_xls.nazwa }}<br>
+            <small>{{ w.dane_z_xls.issn|default:"" }}
+                   {{ w.dane_z_xls.e_issn|default:"" }}</small></td>
+        <td>{% if w.zrodlo %}{{ w.zrodlo.nazwa }}{% else %}—{% endif %}</td>
+        <td>{{ w.rezultat|linebreaksbr }}</td>
+      </tr>
+    {% empty %}
+      <tr><td colspan="4">Brak wierszy.</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+
+  {% if is_paginated %}
+    <p>
+      {% if page_obj.has_previous %}
+        <a href="?{% if request.GET.tylko_do_aktualizacji %}tylko_do_aktualizacji=1&{% endif %}{% if request.GET.tylko_niedopasowane %}tylko_niedopasowane=1&{% endif %}{% if request.GET.tylko_duplikaty %}tylko_duplikaty=1&{% endif %}page={{ page_obj.previous_page_number }}">« poprzednia</a>
+      {% endif %}
+      strona {{ page_obj.number }} z {{ page_obj.paginator.num_pages }}
+      {% if page_obj.has_next %}
+        <a href="?{% if request.GET.tylko_do_aktualizacji %}tylko_do_aktualizacji=1&{% endif %}{% if request.GET.tylko_niedopasowane %}tylko_niedopasowane=1&{% endif %}{% if request.GET.tylko_duplikaty %}tylko_duplikaty=1&{% endif %}page={{ page_obj.next_page_number }}">następna »</a>
+      {% endif %}
+    </p>
+  {% endif %}
+{% endblock %}

@@ -2,6 +2,12 @@ from django.conf import settings
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
 from django.db import models
+from django.utils import timezone
+
+# Domyślny próg watchdoga sesji (sekundy). Sesja w stanie in-flight
+# (FETCHING/CREATING) dłużej niż tyle jest uznawana za martwą — patrz
+# ImportSession.is_stalled(). Nadpisywalny ustawieniem IMPORTER_STALL_TIMEOUT.
+DEFAULT_STALL_TIMEOUT = 180
 
 
 class ImportSession(models.Model):
@@ -35,6 +41,18 @@ class ImportSession(models.Model):
         blank=True,
         related_name="importer_modified_sessions",
         verbose_name="ostatnio zmodyfikował",
+    )
+    uczelnia = models.ForeignKey(
+        "bpp.Uczelnia",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="importer_publikacji_sessions",
+        verbose_name="uczelnia",
+        help_text=(
+            "Uczelnia hosta, z którego utworzono sesję (multi-hosted). "
+            "Steruje konfiguracją PBN użytą do sprawdzenia/eksportu."
+        ),
     )
     provider_name = models.CharField(
         "dostawca danych",
@@ -195,6 +213,53 @@ class ImportSession(models.Model):
             f"importer_publikacji:{name}",
             kwargs={"session_id": self.pk},
         )
+
+    # Statusy "w locie": task Celery jeszcze pracuje (albo powinien). Tylko
+    # dla nich watchdog może orzec zawieszenie — stan terminalny nigdy nie
+    # jest "zawieszony".
+    _INFLIGHT_STATUSES = (Status.FETCHING, Status.CREATING)
+
+    def is_stalled(self, *, now=None):
+        """Czy sesja tkwi w stanie in-flight (FETCHING/CREATING) dłużej niż
+        próg watchdoga.
+
+        Rozwiązuje realny defekt: gdy worker Celery zginie (SIGABRT/OOM/
+        deploy) albo task nigdy nie zostanie podniesiony, blok ``except`` w
+        ``fetch_session_task``/``create_publication_task`` się NIE wykona,
+        więc ``status`` zostaje na zawsze w FETCHING/CREATING, a frontend
+        (HTMX ``every 3s``) w kółko pokazuje "Pobieram dane od dostawcy...".
+        Taki task nie rzuca łapalnego wyjątku i nie trafia do Rollbara.
+
+        Próg liczony od ``modified`` — każdy zapis postępu odsuwa go, więc
+        legalnie długi (ale żywy) import nie jest fałszywie ubijany.
+
+        Args:
+            now: bieżący czas (wstrzykiwalny w testach). Domyślnie
+                ``timezone.now()``.
+        """
+        if self.status not in self._INFLIGHT_STATUSES:
+            return False
+        timeout = getattr(settings, "IMPORTER_STALL_TIMEOUT", DEFAULT_STALL_TIMEOUT)
+        now = now or timezone.now()
+        return (now - self.modified).total_seconds() > timeout
+
+    def mark_stalled(self):
+        """Przełącz zawieszoną sesję na IMPORT_FAILED z user-safe komunikatem.
+
+        Ustawia ``last_failed_stage`` zgodnie z etapem in-flight (fetch/create),
+        żeby istniejący ``ImportTaskRetryView`` ponowił WŁAŚCIWY task. Czyści
+        ``celery_task_id`` — tak samo jak wszystkie terminalne ścieżki tasków.
+        """
+        stage = "fetch" if self.status == self.Status.FETCHING else "create"
+        self.status = self.Status.IMPORT_FAILED
+        self.last_failed_stage = stage
+        self.last_error_message = (
+            "Problem: operacja trwała zbyt długo lub została przerwana. "
+            "Spróbuj ponownie."
+        )
+        self.last_error_traceback = ""
+        self.celery_task_id = ""
+        self.save()
 
 
 class ImportedAuthor(models.Model):

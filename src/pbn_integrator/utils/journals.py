@@ -63,67 +63,73 @@ def pobierz_zrodla_mnisw(client: PBNClient, callback=None):
     )
 
 
-def integruj_zrodla(disable_progress_bar=False):  # noqa: C901
+def _zrodlo_query(zrodlo):
+    """Build the combined ``Q`` lookup matching a ``Zrodlo`` to PBN journals."""
+    queries = []
+
+    if zrodlo.issn:
+        queries.append(Q(issn=zrodlo.issn) | Q(eissn=zrodlo.issn))
+
+    if zrodlo.e_issn:
+        queries.append(Q(eissn=zrodlo.e_issn) | Q(issn=zrodlo.e_issn))
+
+    queries.append(Q(title__iexact=zrodlo.nazwa))
+
+    return reduce(operator.or_, queries)
+
+
+def _najlepszy_journal(zrodlo, qry):
+    """Return the best-matching PBN ``Journal`` for ``qry`` or ``None``.
+
+    On multiple matches, prefer one carrying a ``mniswId``; otherwise pick
+    the journal with the largest ``versions`` blob (longest description).
+    """
+    try:
+        return Journal.objects.get(qry)
+    except Journal.DoesNotExist:
+        return None
+    except Journal.MultipleObjectsReturned:
+        # warnings.warn(
+        #     f"Znaleziono liczne dopasowania w PBN dla {zrodlo}, szukam czy jakies ma mniswId"
+        # )
+        for u in Journal.objects.filter(qry):
+            if u.mniswId is not None:
+                return u
+
+        print(
+            f"Znaleziono liczne dopasowania w PBN dla {zrodlo}, żadnie nie ma mniswId, wybieram to z "
+            f"najdłuższym opisem"
+        )
+        return (
+            Journal.objects.filter(qry)
+            .annotate(
+                json_len=Func(
+                    F("versions"),
+                    function="pg_column_size",
+                    output_field=IntegerField(),
+                )
+            )
+            .order_by("-json_len")
+            .first()
+        )
+
+
+def integruj_zrodla(disable_progress_bar=False):
     """Integrate BPP sources with PBN journals.
 
     Args:
         disable_progress_bar: Whether to disable progress bar.
     """
-
-    def fun(qry):
-        found = False
-        try:
-            u = Journal.objects.get(qry)
-            found = True
-        except Journal.DoesNotExist:
-            return False
-        except Journal.MultipleObjectsReturned:
-            # warnings.warn(
-            #     f"Znaleziono liczne dopasowania w PBN dla {zrodlo}, szukam czy jakies ma mniswId"
-            # )
-            for u in Journal.objects.filter(qry):
-                if u.mniswId is not None:
-                    found = True
-                    break
-
-            if not found:
-                print(
-                    f"Znaleziono liczne dopasowania w PBN dla {zrodlo}, żadnie nie ma mniswId, wybieram to z "
-                    f"najdłuższym opisem"
-                )
-                u = (
-                    Journal.objects.filter(qry)
-                    .annotate(
-                        json_len=Func(
-                            F("versions"),
-                            function="pg_column_size",
-                            output_field=IntegerField(),
-                        )
-                    )
-                    .order_by("-json_len")
-                    .first()
-                )
-
-        zrodlo.pbn_uid = u
-        zrodlo.save()
-        return True
-
     for zrodlo in pbar(
         Zrodlo.objects.filter(pbn_uid_id=None),
         label="Integracja zrodel",
         disable_progress_bar=disable_progress_bar,
     ):
-        queries = []
+        u = _najlepszy_journal(zrodlo, _zrodlo_query(zrodlo))
 
-        if zrodlo.issn:
-            queries.append(Q(issn=zrodlo.issn) | Q(eissn=zrodlo.issn))
-
-        if zrodlo.e_issn:
-            queries.append(Q(eissn=zrodlo.e_issn) | Q(issn=zrodlo.e_issn))
-
-        queries.append(Q(title__iexact=zrodlo.nazwa))
-
-        if fun(reduce(operator.or_, queries)):
+        if u is not None:
+            zrodlo.pbn_uid = u
+            zrodlo.save()
             print(f"\nZNALEZIONO dopasowania w PBN dla {zrodlo} -> {zrodlo.pbn_uid}")
             continue
 

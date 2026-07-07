@@ -1,7 +1,8 @@
 # Proste tabele
 from dal import autocomplete
 from django import forms
-from django.contrib import admin
+from django.contrib import admin, messages
+from django.db.models import Count, F
 
 from bpp.admin.helpers.djangoql import BppDjangoQLSearchMixin
 from bpp.models.zrodlo import Redakcja_Zrodla
@@ -14,10 +15,24 @@ from ..models import (  # Publikacja_Habilitacyjna
     Zrodlo,
 )
 from .core import BaseBppAdminMixin
-from .filters import PBN_UID_IDObecnyFilter
+from .filters import (
+    MaPublikacjeFilter,
+    MniswIdObecnyFilter,
+    PBN_UID_IDObecnyFilter,
+    PBNStatusFilter,
+)
 from .helpers.fieldsets import ADNOTACJE_FIELDSET, MODEL_PUNKTOWANY_Z_KWARTYLAMI_BAZA
 from .helpers.mixins import ZapiszZAdnotacjaMixin
 from .helpers.widgets import CHARMAP_SINGLE_LINE, COMMA_DECIMAL_FIELD_OVERRIDE
+
+# Rozmiar paczki kasowania w akcji admina „Usuń źródła bez publikacji".
+# Kasujemy wsadowo (nie jednym przebiegiem), bo request admina na dziesiątki
+# tysięcy źródeł potrafi przekroczyć limit czasu — a każda paczka commituje się
+# osobno (akcja nie jest atomic, ATOMIC_REQUESTS=False), więc padnięcie w połowie
+# NIE cofa całego postępu: już skasowane paczki zostają, a ponowne uruchomienie
+# akcji dokańcza resztę. Dla naprawdę wielkich zbiorów i tak preferowana jest
+# komenda `manage.py usun_zrodla_bez_publikacji` (bez limitu czasu requestu).
+USUN_ZRODLA_BATCH = 5000
 
 # Źródła indeksowane
 
@@ -132,7 +147,17 @@ class ZrodloAdmin(
     ]
 
     autocomplete_fields = ["pbn_uid"]
-    list_display = ["nazwa", "skrot", "rodzaj", "www", "issn", "e_issn", "pbn_uid_id"]
+    list_display = [
+        "nazwa",
+        "skrot",
+        "rodzaj",
+        "www",
+        "issn",
+        "e_issn",
+        "pbn_uid_id",
+        "mnisw_id_display",
+        "liczba_prac_display",
+    ]
     list_filter = [
         "rodzaj",
         "zasieg",
@@ -140,8 +165,72 @@ class ZrodloAdmin(
         "openaccess_tryb_dostepu",
         "openaccess_licencja",
         PBN_UID_IDObecnyFilter,
+        PBNStatusFilter,
+        MniswIdObecnyFilter,
+        MaPublikacjeFilter,
     ]
     list_select_related = ["openaccess_licencja", "rodzaj"]
+
+    actions = ["usun_zrodla_bez_publikacji_action"]
+
+    @admin.action(
+        description="Usuń zaznaczone źródła BEZ publikacji (bez potwierdzenia)"
+    )
+    def usun_zrodla_bez_publikacji_action(self, request, queryset):
+        """Kasuje zaznaczone źródła, ale WYŁĄCZNIE te bez żadnej publikacji.
+
+        Działa na queryset (przy „zaznacz wszystkie pasujące" / select_across
+        wysyłane są tylko PK ze strony, więc nie ma problemu z limitem pól
+        POST). Omija zbieranie powiązań (collector) — kasuje wsadowo, więc
+        radzi sobie z dziesiątkami tysięcy źródeł. Źródła z publikacjami są
+        pomijane (bezpiecznik)."""
+        selected = list(queryset.values_list("pk", flat=True))
+        do_usuniecia = list(
+            Zrodlo.objects.filter(
+                pk__in=selected, wydawnictwo_ciagle__isnull=True
+            ).values_list("pk", flat=True)
+        )
+
+        # Kasuj w paczkach po USUN_ZRODLA_BATCH — każda paczka commituje się
+        # osobno, więc timeout requestu na dużym zbiorze nie cofa całego postępu
+        # (patrz komentarz przy stałej). Kolektor kaskady liczony jest raz na
+        # paczkę — świadomy kompromis: odporność na timeout ważniejsza tu niż
+        # ostatnie sekundy czasu.
+        for i in range(0, len(do_usuniecia), USUN_ZRODLA_BATCH):
+            chunk = do_usuniecia[i : i + USUN_ZRODLA_BATCH]
+            Zrodlo.objects.filter(pk__in=chunk).delete()
+        deleted = len(do_usuniecia)
+
+        skipped = len(selected) - len(do_usuniecia)
+        msg = f"Usunięto {deleted} źródeł bez publikacji."
+        if skipped:
+            msg += f" Pominięto {skipped} (mają publikacje)."
+        self.message_user(request, msg, level=messages.SUCCESS)
+
+    def get_queryset(self, request):
+        # _liczba_prac: liczba publikacji (tylko Wydawnictwo_Ciagle ma FK do
+        # Zrodlo). distinct=True chroni licznik przed zawyżeniem, gdyby
+        # wyszukiwarka DjangoQL dorzuciła drugi multi-valued JOIN.
+        # _mnisw_id: annotacja pojedynczej kolumny mniswId przez JOIN do
+        # Journal — tańsze niż select_related("pbn_uid"), które ciągnęłoby
+        # ciężki blob JSON Journal.versions dla każdego wiersza listy.
+        return (
+            super()
+            .get_queryset(request)
+            .annotate(
+                _liczba_prac=Count("wydawnictwo_ciagle", distinct=True),
+                _mnisw_id=F("pbn_uid__mniswId"),
+            )
+        )
+
+    @admin.display(description="mniswID", ordering="_mnisw_id")
+    def mnisw_id_display(self, obj):
+        return obj._mnisw_id
+
+    @admin.display(description="Publikacje", ordering="_liczba_prac")
+    def liczba_prac_display(self, obj):
+        return obj._liczba_prac
+
     fieldsets = (
         (
             None,

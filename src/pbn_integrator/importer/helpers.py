@@ -20,6 +20,63 @@ from pbn_integrator.utils import zapisz_mongodb
 
 logger = logging.getLogger(__name__)
 
+# taggit trzyma tagi w stockowym modelu Tag, gdzie name i slug to varchar(100).
+# Słowa kluczowe z PBN bywają sklejone w jeden bardzo długi ciąg (brak
+# separatorów) i przekraczają ten limit — wtedy INSERT do taggit_tag wywala cały
+# import na DataError (StringDataRightTruncation). Zamiast tracić całą
+# publikację, pomijamy za długie tagi (patrz: przetworz_slowa_kluczowe).
+MAKSYMALNA_DLUGOSC_TAGU = 100
+
+
+def _dopisz_do_adnotacji(ret, naglowek, wartosci):
+    """Dopisuje znacznik + listę wartości do pola ``adnotacje`` rekordu.
+
+    Adnotacje to wewnętrzny „śmietnik" na metadane, których nie ma gdzie indziej
+    zapisać (analogicznie jak Conference / Proceedings / JournalIssue). Każda
+    wartość ląduje w osobnej linii pod znacznikiem ``naglowek``, dzięki czemu da
+    się je później znaleźć (grep) i poprawić ręcznie. Nie zapisuje rekordu —
+    robi to wołający.
+    """
+    linie = "\n".join(f"  - {wartosc}" for wartosc in wartosci)
+    ret.adnotacje = f"{ret.adnotacje or ''}{naglowek}:\n{linie}\n"
+
+
+def _znajdz_jezyk(kod_jezyka):
+    """Zwraca obiekt ``Jezyk`` dla kodu języka z PBN (np. ``deu``) albo ``None``.
+
+    Kody w słownikach ``titles``/``abstracts``/``mainLanguage`` PBN to klucze
+    główne modelu ``pbn_api.Language`` (``code``), czyli to samo, co
+    ``Jezyk.pbn_uid_id``. Dopasowanie: najpierw po ``pbn_uid_id``, potem po
+    ``skrot__startswith``.
+
+    Oba lookupy znoszą BRUDNE DANE słownika ``Jezyk`` bez wywalania importu:
+
+    - ``DoesNotExist`` (Rollbar #350) — kodu nie ma w słowniku; brak języka to
+      nie błąd (surowy kod i tak zachowujemy w ``kod_jezyka_pbn``),
+    - ``MultipleObjectsReturned`` (Rollbar #411) — w bazie są ZDUBLOWANE rekordy
+      ``Jezyk`` (np. dwa wskazujące ten sam ``Language``, albo o skrócie z tym
+      samym prefiksem). To realna wada danych do osobnego sprzątnięcia (dedup =
+      osobny ticket), ale NIE może wywalać importu — degradujemy do ``None``.
+
+    Pusty/``None`` kod od razu daje ``None`` (PBN nie podał języka).
+    """
+    if not kod_jezyka:
+        return None
+
+    for lookup in ({"pbn_uid_id": kod_jezyka}, {"skrot__startswith": kod_jezyka}):
+        try:
+            return Jezyk.objects.get(**lookup)
+        except Jezyk.DoesNotExist:
+            continue
+        except Jezyk.MultipleObjectsReturned:
+            logger.warning(
+                "Zdublowane rekordy Jezyk dla %s — brudne dane słownika, "
+                "degraduję do braku dopasowania (dedup: osobny ticket).",
+                lookup,
+            )
+            return None
+    return None
+
 
 def assert_dictionary_empty(dct, warn=False):
     if dct.keys():
@@ -29,6 +86,47 @@ def assert_dictionary_empty(dct, warn=False):
             return
 
         raise AssertionError(msg)
+
+
+def skonsumuj_nieobsluzone_klucze(dct, ret, *, kontekst="obiekt PBN"):
+    """Miękki odpowiednik ``assert_dictionary_empty`` dla POZIOMU OBIEKTU PBN.
+
+    PBN dorzuca do payloadu klucze, których jeszcze nie mapujemy (Rollbar #420:
+    ``reviewers``; podobnie przyszłe warianty). Twarde ``assert_dictionary_empty``
+    wywalało cały import rekordu na takim DRYFIE SCHEMATU — jeden nowy klucz PBN
+    = wysyp AssertionError na wszystkich rekordach, które go mają.
+
+    Zamiast tego nieznane klucze:
+
+    - logujemy jako sygnał „nowy klucz PBN do obsłużenia" (WARNING),
+    - zrzucamy do ``adnotacje`` pod znacznikiem ``PBN: nieobsłużone klucze`` —
+      nic nie ginie, da się je znaleźć grepem i domapować później,
+    - a rekord importujemy MIMO dryfu.
+
+    Używane WYŁĄCZNIE na poziomie obiektu publikacji (artykuł/rozdział), gdzie
+    PBN realnie dorzuca nowe pola. Wąskie pod-słowniki (autorzy, openAccess,
+    journalIssue, naukowcy) zachowują twarde ``assert_dictionary_empty`` — tam
+    leftover to zwykle realny błąd mapowania, nie dryf schematu.
+
+    ``ret`` musi być już zapisany (potrzebny ``pk`` do ``save``).
+    """
+    if not dct:
+        return
+
+    klucze = sorted(dct.keys())
+    logger.warning(
+        "Nieobsłużone klucze PBN (%s) dla %r: %s — dryf schematu, zrzucam do "
+        "adnotacji i importuję rekord mimo to.",
+        kontekst,
+        ret,
+        klucze,
+    )
+    _dopisz_do_adnotacji(
+        ret, "PBN: nieobsłużone klucze", [f"{k}: {dct[k]}" for k in klucze]
+    )
+    if ret.pk:
+        ret.save(update_fields=["adnotacje"])
+    dct.clear()
 
 
 def pbn_keywords_to_slowa_kluczowe(keywords, lang="pol"):
@@ -52,45 +150,121 @@ def pbn_keywords_to_slowa_kluczowe(keywords, lang="pol"):
     return set(slowa_kluczowe.split(separator))
 
 
+def _rozbij_sklejone_slowa_kluczowe(slowa, sklejone, rozbite):
+    """Hotfix: pojedyncze „słowo kluczowe", które w PBN jest całą frazą sklejoną
+    bez separatorów, rozbij na właściwy zbiór słów."""
+    if len(slowa) == 1 and sklejone in slowa:
+        return set(rozbite)
+    return slowa
+
+
+def _dodaj_slowa_kluczowe_pl(pbn_keywords_pl, ret):
+    """Dodaje tagi PL, pomijając te dłuższe niż taggitowy limit varchar(100).
+
+    Za długie tagi nie są tracone — lądują w ``adnotacje`` pod ``tagsTooLong``.
+    """
+    poprawne = [tag for tag in pbn_keywords_pl if len(tag) <= MAKSYMALNA_DLUGOSC_TAGU]
+    za_dlugie = sorted(
+        tag for tag in pbn_keywords_pl if len(tag) > MAKSYMALNA_DLUGOSC_TAGU
+    )
+
+    if poprawne:
+        ret.slowa_kluczowe.add(*poprawne)
+
+    if za_dlugie:
+        logger.warning(
+            "Pomijam %d za długich słów kluczowych (>%d znaków) dla %r — "
+            "zapisuję je do adnotacji pod znacznikiem 'tagsTooLong'.",
+            len(za_dlugie),
+            MAKSYMALNA_DLUGOSC_TAGU,
+            ret,
+        )
+        for tag in za_dlugie:
+            logger.warning("tagsTooLong dla %r: %s", ret, tag)
+        _dopisz_do_adnotacji(ret, "tagsTooLong", za_dlugie)
+        if ret.pk:
+            ret.save(update_fields=["adnotacje"])
+
+
 def przetworz_slowa_kluczowe(pbn_keywords_pl, pbn_keywords_en, ret):
-    """Process and add keywords (Polish and English) to the record."""
+    """Process and add keywords (Polish and English) to the record.
+
+    Tagi (słowa kluczowe PL) dłuższe niż ``MAKSYMALNA_DLUGOSC_TAGU`` nie mieszczą
+    się w taggitowym ``Tag.name``/``Tag.slug`` (varchar(100)). Zamiast wywalać
+    cały import na ``DataError``, pomijamy takie tagi, logujemy je i zapisujemy do
+    pola ``adnotacje`` pod znacznikiem ``tagsTooLong`` — rekord się zaimportuje, a
+    tagi zostaną widoczne do ręcznej korekty.
+    """
     if pbn_keywords_pl:
-        if len(pbn_keywords_pl) == 1:
-            # hotfix...
-            if (
-                "pasze pasze lecznicze substancje przeciwbakteryjne antybiotyki "
-                "antybiotykooporność zdrowie publiczne urzędowa kontrola"
-                in pbn_keywords_pl
-            ):
-                pbn_keywords_pl = {
-                    "pasze",
-                    "pasze lecznicze",
-                    "substancje przeciwbakteryjne",
-                    "antybiotyki",
-                    "antybiotykooporność",
-                    "zdrowie publiczne",
-                    "urzędowa kontrola",
-                }
-        ret.slowa_kluczowe.add(*(pbn_keywords_pl))
+        pbn_keywords_pl = _rozbij_sklejone_slowa_kluczowe(
+            pbn_keywords_pl,
+            "pasze pasze lecznicze substancje przeciwbakteryjne antybiotyki "
+            "antybiotykooporność zdrowie publiczne urzędowa kontrola",
+            [
+                "pasze",
+                "pasze lecznicze",
+                "substancje przeciwbakteryjne",
+                "antybiotyki",
+                "antybiotykooporność",
+                "zdrowie publiczne",
+                "urzędowa kontrola",
+            ],
+        )
+        _dodaj_slowa_kluczowe_pl(pbn_keywords_pl, ret)
 
     if pbn_keywords_en:
-        if len(pbn_keywords_en) == 1:
-            if (
-                "animal feed medicated feed antibacterial substances antibiotics "
-                "antimicrobial resistance public health official controll"
-                in pbn_keywords_en
-            ):
-                pbn_keywords_en = {
-                    "animal feed",
-                    "medicated feed",
-                    "antibacterial substances",
-                    "antibiotics",
-                    "antimicrobial resistance",
-                    "public health",
-                    "official control",
-                }
-
+        pbn_keywords_en = _rozbij_sklejone_slowa_kluczowe(
+            pbn_keywords_en,
+            "animal feed medicated feed antibacterial substances antibiotics "
+            "antimicrobial resistance public health official controll",
+            [
+                "animal feed",
+                "medicated feed",
+                "antibacterial substances",
+                "antibiotics",
+                "antimicrobial resistance",
+                "public health",
+                "official control",
+            ],
+        )
         ret.slowa_kluczowe_eng = pbn_keywords_en
+
+
+def przetworz_tytuly(pbn_json, ret, klasa_tytulu):
+    """Ustawia tytuł alternatywny (``tytul``) i zapisuje tytuły w innych językach.
+
+    PBN trzyma tytuły wariantowe w słowniku ``titles`` (klucze to kody języków,
+    np. ``eng``, ``pol``, ``deu``, ``rus``, ``lit``). Tytuł oryginalny siedzi już
+    w ``tytul_oryginalny`` (z pola ``title``); do ``tytul`` (tytuł przetłumaczony)
+    bierzemy angielski, a jak go nie ma — polski.
+
+    Tytuły w POZOSTAŁYCH językach trafiają do osobnych wierszy ``klasa_tytulu``
+    (analogicznie do streszczeń) — po jednym na język. Dzięki temu nic nie ginie,
+    są edytowalne w adminie i powiązane ze słownikiem ``Jezyk``. ``klasa_tytulu``
+    to konkretny model potomny (``Wydawnictwo_Ciagle_Tytul`` /
+    ``Wydawnictwo_Zwarte_Tytul``), tak jak ``importuj_streszczenia`` dostaje swoją
+    klasę bazową.
+
+    Musi być wołane PO ``ret.save()`` — wiersze potomne potrzebują ``ret.pk``.
+    """
+    titles = pbn_json.pop("titles", None)
+    if not titles:
+        return
+
+    for kod_jezyka in ("eng", "pol"):
+        if kod_jezyka in titles:
+            ret.tytul = titles.pop(kod_jezyka)
+            ret.save(update_fields=["tytul"])
+            break
+
+    for kod_jezyka, tytul in titles.items():
+        klasa_tytulu.objects.create(
+            rekord=ret,
+            jezyk=_znajdz_jezyk(kod_jezyka),
+            kod_jezyka_pbn=kod_jezyka,
+            tytul=tytul,
+        )
+    titles.clear()
 
 
 def pobierz_lub_utworz_zrodlo(
@@ -130,20 +304,71 @@ def pobierz_lub_utworz_zrodlo(
         return Zrodlo.objects.get(pbn_uid_id=pbn_zrodlo_id)
 
 
-def pobierz_jezyk(mainLanguage, pbn_json_title):
-    """Get language object from PBN language code."""
-    try:
-        return Jezyk.objects.get(pbn_uid_id=mainLanguage)
-    except Jezyk.DoesNotExist:
-        try:
-            return Jezyk.objects.get(skrot__startswith=mainLanguage)
-        except Jezyk.DoesNotExist:
-            logger.info(f" &&& JEZYK NIE ISTNIEJE {mainLanguage=}")
-            logger.info(
-                f" *** PRACA {pbn_json_title} zostanie utworzona z jezykiem "
-                f"PIERWSZYM NA LISCIE"
-            )
-            return Jezyk.objects.all().first()
+def get_jezyk_polski():
+    """Zwraca rekord języka polskiego — domyślny język importu z PBN.
+
+    Pole ``jezyk`` w publikacjach jest NOT NULL, więc gdy PBN nie poda języka
+    (albo poda kod, którego nie ma w słowniku ``Jezyk``), rekord i tak musi
+    dostać jakiś język. Zamiast „pierwszego z brzegu" (kolejność w tabeli bywa
+    przypadkowa) używamy deterministycznie polskiego.
+
+    Kanoniczny polski to ``skrot='pol.'`` (patrz migracja 0022 i fixture'y);
+    awaryjnie dopasowujemy po ``nazwa='polski'``. Brak polskiego w bazie to błąd
+    konfiguracji instancji — zgłaszamy go jawnie, nie zwracamy cicho ``None``
+    (FK i tak by tego nie przyjął).
+    """
+    jezyk = (
+        Jezyk.objects.filter(skrot="pol.").first()
+        or Jezyk.objects.filter(nazwa__iexact="polski").first()
+    )
+    if jezyk is None:
+        raise Jezyk.DoesNotExist(
+            "Brak języka polskiego w bazie (skrot='pol.' / nazwa='polski') — "
+            "nie mam domyślnego języka dla importu PBN."
+        )
+    return jezyk
+
+
+def pobierz_jezyk(mainLanguage, pbn_json_title=None, domyslny_jezyk=None):
+    """Zwraca ``Jezyk`` dla kodu PBN; przy braku dopasowania — język domyślny.
+
+    Dopasowanie po ``_znajdz_jezyk`` (``pbn_uid_id`` → ``skrot__startswith``,
+    odporne na brak i na zdublowane rekordy ``Jezyk``); przy braku dopasowania —
+    ``domyslny_jezyk``. ``mainLanguage`` bywa ``None`` (PBN nie podał pola) — wtedy
+    od razu idziemy na domyślny. ``domyslny_jezyk`` to ``Jezyk`` wskazany przez
+    wołającego (parametr importu); gdy ``None`` — polski (``get_jezyk_polski``).
+    """
+    jezyk = _znajdz_jezyk(mainLanguage)
+    if jezyk is not None:
+        return jezyk
+
+    if domyslny_jezyk is None:
+        domyslny_jezyk = get_jezyk_polski()
+
+    logger.info(
+        " &&& JEZYK NIE ISTNIEJE %r — PRACA %r dostanie jezyk domyslny %r",
+        mainLanguage,
+        pbn_json_title,
+        domyslny_jezyk,
+    )
+    return domyslny_jezyk
+
+
+def ustaw_jezyk_oryginalny(ret, pbn_json):
+    """Mapuje ``originalLanguage`` z PBN na ``ret.jezyk_orig`` (round-trip eksportu).
+
+    Adapter eksportu (``_build_language_data``) zapisuje ``originalLanguage`` z
+    ``jezyk_orig`` rekordu (język oryginału dla tłumaczeń). Import musi ten klucz
+    skonsumować — inaczej ``assert_dictionary_empty`` wywala cały import na
+    leftoverze ``{'originalLanguage': ...}``.
+
+    ``jezyk_orig`` jest nullable i dotyczy tylko tłumaczeń, więc gdy kodu nie ma
+    w słowniku ``Jezyk`` zostawiamy ``None`` (NIE język domyślny — inaczej niż
+    ``mainLanguage`` → ``jezyk``). Klucz konsumujemy zawsze, gdy jest obecny.
+    """
+    kod_jezyka = pbn_json.pop("originalLanguage", None)
+    if kod_jezyka:
+        ret.jezyk_orig = _znajdz_jezyk(kod_jezyka)
 
 
 def przetworz_journal_issue(pbn_json, ret, zrodlo):
@@ -200,17 +425,15 @@ def importuj_streszczenia(pbn_json, ret, klasa_bazowa):
     abstracts = pbn_json.pop("abstracts", {})
 
     for language, value in abstracts.items():
-        try:
-            jezyk = Jezyk.objects.get(pbn_uid_id=language)
-        except Jezyk.DoesNotExist:
-            try:
-                jezyk = Jezyk.objects.get(skrot__startswith=language)
-            except Jezyk.DoesNotExist:
-                logger.info(
-                    f"NIE ZAIMPORTUJE STRESZCZENIA ZA {ret=} poniewaz jego jezyk to "
-                    f"{language=} a nie mam go w tabeli Jezyki"
-                )
-                continue
+        jezyk = _znajdz_jezyk(language)
+        if jezyk is None:
+            logger.info(
+                "NIE ZAIMPORTUJE STRESZCZENIA ZA %r poniewaz jego jezyk to %r "
+                "a nie mam go (jednoznacznie) w tabeli Jezyki",
+                ret,
+                language,
+            )
+            continue
 
         klasa_bazowa.objects.create(
             rekord=ret,
@@ -227,78 +450,103 @@ def importuj_openaccess(
     oa_json = pbn_json.pop("openAccess", None)
     orig_oa_json = copy.deepcopy(oa_json)  # noqa
     if oa_json is not None:
-        pbn_licencja = oa_json.pop("license").replace("_", "-")
-        try:
-            ret.openaccess_licencja = Licencja_OpenAccess.objects.get(
-                skrot=pbn_licencja
-            )
-        except Licencja_OpenAccess.DoesNotExist as err:
-            raise ValueError(f"W BPP nie istnieje licancja {pbn_licencja=}") from err
-        ret.openaccess_tryb_dostepu = klasa_bazowa_tryb_dostepu.objects.get(
-            skrot=oa_json.pop("mode")
-        )
-        ret.openaccess_czas_publikacji = Czas_Udostepnienia_OpenAccess.objects.get(
-            skrot=oa_json.pop("releaseDateMode")
-        )
-
-        pbn_wersja_tekstu = oa_json.pop("textVersion")
-        try:
-            ret.openaccess_wersja_tekstu = Wersja_Tekstu_OpenAccess.objects.get(
-                skrot=pbn_wersja_tekstu
-            )
-        except Wersja_Tekstu_OpenAccess.DoesNotExist as err:
-            raise NotImplementedError(
-                f"W BPP nie istnieje wersja tekstu openaccess {pbn_wersja_tekstu=}"
-            ) from err
-
-        months = oa_json.pop("months", None)
-        if months:
-            ret.openaccess_ilosc_miesiecy = months
-
-        reldate = oa_json.pop("releaseDate", None)
-        if reldate:
-            reldate = reldate.split("T")[0]
-            ret.openaccess_data_opublikowania = date.fromisoformat(reldate)
-
-            oa_json.pop("releaseDateYear", None)
-            oa_json.pop("releaseDateMonth", None)
-        else:
-            if "releaseDateYear" in oa_json and "releaseDateMonth" in oa_json:
-                strMonth = {
-                    "JANUARY": 1,
-                    "FEBRUARY": 2,
-                    "MARCH": 3,
-                    "APRIL": 4,
-                    "MAY": 5,
-                    "JUNE": 6,
-                    "JULY": 7,
-                    "AUGUST": 8,
-                    "SEPTEMBER": 9,
-                    "OCTOBER": 10,
-                    "NOVEMBER": 11,
-                    "DECEMBER": 12,
-                }
-
-                assert ret.openaccess_data_opublikowania is None
-
-                reldate_year = oa_json.pop("releaseDateYear")
-                if reldate_year is None:
-                    logger.info("bez zartow BLAD DDATY")
-                else:
-                    ret.openaccess_data_opublikowania = date(
-                        int(reldate_year),
-                        strMonth.get(oa_json.pop("releaseDateMonth")),
-                        1,
-                    )
-
-            if "releaseDateYear" in oa_json:  # sam rok
-                ret.openaccess_data_opublikowania = date(
-                    int(oa_json.pop("releaseDateYear")),
-                    1,
-                    1,
+        # Blok openAccess z PBN bywa niekompletny — potrafi nie zawierać
+        # license/mode/releaseDateMode/textVersion. Wszystkie docelowe pola FK
+        # są nullable, więc brak klucza zostawia pole puste, a nie wywala import
+        # KeyError-em. Wartość OBECNA, ale nieznana w słowniku BPP, to realna
+        # luka konfiguracji — wtedy zgłaszamy błąd (jak dotychczas).
+        pbn_licencja = oa_json.pop("license", None)
+        if pbn_licencja:
+            pbn_licencja = pbn_licencja.replace("_", "-")
+            try:
+                ret.openaccess_licencja = Licencja_OpenAccess.objects.get(
+                    skrot=pbn_licencja
                 )
+            except Licencja_OpenAccess.DoesNotExist as err:
+                raise ValueError(
+                    f"W BPP nie istnieje licancja {pbn_licencja=}"
+                ) from err
 
+        pbn_tryb = oa_json.pop("mode", None)
+        if pbn_tryb:
+            ret.openaccess_tryb_dostepu = klasa_bazowa_tryb_dostepu.objects.get(
+                skrot=pbn_tryb
+            )
+
+        pbn_czas = oa_json.pop("releaseDateMode", None)
+        if pbn_czas:
+            ret.openaccess_czas_publikacji = Czas_Udostepnienia_OpenAccess.objects.get(
+                skrot=pbn_czas
+            )
+
+        pbn_wersja_tekstu = oa_json.pop("textVersion", None)
+        if pbn_wersja_tekstu:
+            try:
+                ret.openaccess_wersja_tekstu = Wersja_Tekstu_OpenAccess.objects.get(
+                    skrot=pbn_wersja_tekstu
+                )
+            except Wersja_Tekstu_OpenAccess.DoesNotExist as err:
+                raise NotImplementedError(
+                    f"W BPP nie istnieje wersja tekstu openaccess {pbn_wersja_tekstu=}"
+                ) from err
+
+        _importuj_openaccess_daty(ret, oa_json)
         assert_dictionary_empty(oa_json)
+
+
+def _importuj_openaccess_daty(ret, oa_json):
+    """Ustawia pola dat/miesięcy Open Access z (potencjalnie niekompletnego) bloku.
+
+    Wydzielone z ``importuj_openaccess`` dla czytelności i utrzymania złożoności
+    cyklomatycznej w ryzach. Klucze ``releaseDate*`` konsumujemy w miarę użycia,
+    by ``assert_dictionary_empty`` nie wywalił importu na resztkach.
+    """
+    months = oa_json.pop("months", None)
+    if months:
+        ret.openaccess_ilosc_miesiecy = months
+
+    reldate = oa_json.pop("releaseDate", None)
+    if reldate:
+        reldate = reldate.split("T")[0]
+        ret.openaccess_data_opublikowania = date.fromisoformat(reldate)
+        oa_json.pop("releaseDateYear", None)
+        oa_json.pop("releaseDateMonth", None)
+        return
+
+    if "releaseDateYear" in oa_json and "releaseDateMonth" in oa_json:
+        strMonth = {
+            "JANUARY": 1,
+            "FEBRUARY": 2,
+            "MARCH": 3,
+            "APRIL": 4,
+            "MAY": 5,
+            "JUNE": 6,
+            "JULY": 7,
+            "AUGUST": 8,
+            "SEPTEMBER": 9,
+            "OCTOBER": 10,
+            "NOVEMBER": 11,
+            "DECEMBER": 12,
+        }
+
+        assert ret.openaccess_data_opublikowania is None
+
+        reldate_year = oa_json.pop("releaseDateYear")
+        if reldate_year is None:
+            logger.info("bez zartow BLAD DDATY")
+        else:
+            ret.openaccess_data_opublikowania = date(
+                int(reldate_year),
+                strMonth.get(oa_json.pop("releaseDateMonth")),
+                1,
+            )
+
+    if "releaseDateYear" in oa_json:  # sam rok
+        ret.openaccess_data_opublikowania = date(
+            int(oa_json.pop("releaseDateYear")),
+            1,
+            1,
+        )
 
 
 def get_or_download_publication(mongoId, client):

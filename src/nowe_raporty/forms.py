@@ -17,6 +17,8 @@ from bpp.models import Uczelnia
 from bpp.models.cache import Rekord
 from bpp.util import formdefaults_html_after, formdefaults_html_before, year_last_month
 
+from .models import DefinicjaRaportu
+
 
 def wez_lata():
     lata = (
@@ -39,6 +41,11 @@ class BaseRaportForm(forms.Form):
     do_roku = forms.IntegerField(initial=Uczelnia.objects.do_roku_default)
 
     OBJ_FIELD = Row(Column("obiekt"))
+
+    # Poziom raportu (``DefinicjaRaportu.POZIOM_*``) — ustawiany przez
+    # ``form_class_dla`` na dynamicznej podklasie; steruje per-uczelnia
+    # zawężaniem pola ``obiekt`` w ``__init__``.
+    POZIOM = None
 
     _export = forms.ChoiceField(
         label="Format wyjściowy", choices=OUTPUT_FORMATS, required=True
@@ -86,13 +93,39 @@ class BaseRaportForm(forms.Form):
                     }
                 )
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, request=None, **kwargs):
         super().__init__(*args, **kwargs)
 
-        uczelnia = Uczelnia.objects.get_default()
+        # Multi-hosted: uczelnię bierzemy WYŁĄCZNIE z requestu
+        # (``request._uczelnia``, ustawiane przez SiteResolutionMiddleware wg
+        # hosta). Bez requestu — post_migrate (nowe_raporty.apps.create_entries
+        # → form_class(), user=None), introspekcja formdefaults, testy — uczelnia
+        # = None. NIE szukamy „domyślnej" uczelni: taki byt NIE istnieje (realne
+        # stany: brak / jedna / wiele). None-tolerant — pola opcjonalne znikają,
+        # gdy nie ma uczelni z requestu albo nie pokazuje punktacji wewnętrznej.
+        uczelnia = getattr(request, "_uczelnia", None)
         if not (uczelnia and uczelnia.pokazuj_punktacje_wewnetrzna):
             self.fields.pop("punktacja_wewnetrzna_od", None)
             self.fields.pop("punktacja_wewnetrzna_do", None)
+
+        # Faza B (#438): gdy uczelnia UŻYWA wydziałów, pole „Jednostka" nie
+        # może oferować korzeni (``parent IS NULL``) — to „wydziały", które
+        # mają własny raport poziomu „wydział"; wybór korzenia dawałby raport
+        # tylko z prac przypiętych bezpośrednio do niego (zwykle pusty).
+        # Zawężamy queryset WALIDACYJNY i przełączamy picker na wariant
+        # „nie-toplevel" — analogicznie do ranking_autorow.forms.
+        if (
+            self.POZIOM == DefinicjaRaportu.POZIOM_JEDNOSTKA
+            and "obiekt" in self.fields
+            and uczelnia is not None
+            and uczelnia.uzywaj_wydzialow
+        ):
+            self.fields["obiekt"].queryset = self.fields["obiekt"].queryset.filter(
+                parent__isnull=False
+            )
+            self.fields[
+                "obiekt"
+            ].widget.url = "bpp:public-jednostka-nietoplevel-autocomplete"
 
         self.helper = FormHelper()
         self.helper.form_class = "custom"
@@ -184,7 +217,10 @@ def form_class_dla(definicja):
 
     cfg = POZIOMY[definicja.poziom]
     pole = cfg.pole_obiektu()
-    attrs = {"__module__": "nowe_raporty.forms_dynamiczne"}
+    attrs = {
+        "__module__": "nowe_raporty.forms_dynamiczne",
+        "POZIOM": definicja.poziom,
+    }
     if pole is not None:
         attrs["obiekt"] = pole
         attrs["OBJ_FIELD"] = Row(Column("obiekt"))

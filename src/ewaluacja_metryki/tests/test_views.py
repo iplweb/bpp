@@ -4,7 +4,7 @@ import pytest
 from django.urls import reverse
 from model_bakery import baker
 
-from bpp.models import Autor, Dyscyplina_Naukowa, Jednostka
+from bpp.models import Autor, Dyscyplina_Naukowa, Jednostka, Uczelnia
 from ewaluacja_metryki.models import MetrykaAutora, StatusGenerowania
 
 
@@ -24,6 +24,9 @@ def test_metryki_list_view_logged_in(admin_user, client):
     """Test widoku listy dla zalogowanego użytkownika"""
     client.force_login(admin_user)
 
+    # Jedna uczelnia — scope_metryki jest no-op (tylko_jedna_uczelnia=True)
+    uczelnia = baker.make(Uczelnia)
+
     # Stwórz dane testowe
     autor = baker.make(Autor, nazwisko="Kowalski", imiona="Jan")
     dyscyplina = baker.make(Dyscyplina_Naukowa, nazwa="Informatyka")
@@ -36,6 +39,7 @@ def test_metryki_list_view_logged_in(admin_user, client):
         autor=autor,
         dyscyplina_naukowa=dyscyplina,
         jednostka=jednostka,
+        uczelnia=uczelnia,
         slot_maksymalny=Decimal("4.0"),
         slot_nazbierany=Decimal("3.5"),
         punkty_nazbierane=Decimal("140.0"),
@@ -48,6 +52,7 @@ def test_metryki_list_view_logged_in(admin_user, client):
     baker.make(
         MetrykaAutora,
         dyscyplina_naukowa=dyscyplina2,
+        uczelnia=uczelnia,
         slot_maksymalny=Decimal("4.0"),
         slot_nazbierany=Decimal("3.0"),
         punkty_nazbierane=Decimal("120.0"),
@@ -105,15 +110,24 @@ def test_metryki_list_view_filtering_by_nazwisko(admin_user, client):
 
 @pytest.mark.django_db
 def test_metryki_list_view_filtering_by_jednostka(admin_user, client):
-    """Test filtrowania po jednostce"""
+    """Test filtrowania po jednostce.
+
+    Używa jednej jawnej Uczelni dla obu jednostek i metryk,
+    co zapewnia spójne działanie scope_metryki (single-install no-op
+    lub multi-install z tym samym scopem co request).
+    """
     client.force_login(admin_user)
 
-    jednostka1 = baker.make(Jednostka, nazwa="Instytut Informatyki")
-    jednostka2 = baker.make(Jednostka, nazwa="Instytut Fizyki")
+    # Jedna uczelnia — scope_metryki jest no-op (tylko_jedna_uczelnia=True)
+    # i jednocześnie metryki mają spójne uczelnia_id z request-resolution
+    u = baker.make(Uczelnia)
+    jednostka1 = baker.make(Jednostka, nazwa="Instytut Informatyki", uczelnia=u)
+    jednostka2 = baker.make(Jednostka, nazwa="Instytut Fizyki", uczelnia=u)
 
     metryka1 = baker.make(
         MetrykaAutora,
         jednostka=jednostka1,
+        uczelnia=u,
         slot_maksymalny=Decimal("4.0"),
         slot_nazbierany=Decimal("3.0"),
         punkty_nazbierane=Decimal("120.0"),
@@ -123,6 +137,7 @@ def test_metryki_list_view_filtering_by_jednostka(admin_user, client):
     metryka2 = baker.make(
         MetrykaAutora,
         jednostka=jednostka2,
+        uczelnia=u,
         slot_maksymalny=Decimal("4.0"),
         slot_nazbierany=Decimal("3.0"),
         punkty_nazbierane=Decimal("120.0"),
@@ -136,6 +151,144 @@ def test_metryki_list_view_filtering_by_jednostka(admin_user, client):
     assert response.status_code == 200
     assert metryka1 in response.context["metryki"]
     assert metryka2 not in response.context["metryki"]
+
+
+@pytest.mark.django_db
+def test_metryki_list_filtr_wydzial_lapie_metryki_przy_samym_korzeniu(
+    admin_user, client
+):
+    """F3 (#438): filtr ``?wydzial=<korzeń>`` MUSI łapać metryki autora
+    siedzącego w SAMEJ jednostce-korzeniu (``wydzial=NULL``), nie tylko w
+    poddrzewie. Przed fixem (``jednostka__wydzial_id`` bez ``| jednostka_id``)
+    metryki przy korzeniu CICHO znikały z widoku."""
+    from denorm import denorms
+
+    client.force_login(admin_user)
+    u = baker.make(Uczelnia)
+    korzen = baker.make(Jednostka, nazwa="Wydział X", uczelnia=u, parent=None)
+    katedra = baker.make(Jednostka, nazwa="Katedra X", uczelnia=u, parent=korzen)
+    denorms.flush()
+    katedra.refresh_from_db()
+    assert katedra.wydzial_id == korzen.pk
+    assert korzen.wydzial_id is None
+
+    m_korzen = baker.make(
+        MetrykaAutora,
+        autor=baker.make(Autor, nazwisko="Korzeniowy"),
+        dyscyplina_naukowa=baker.make(Dyscyplina_Naukowa),
+        jednostka=korzen,
+        uczelnia=u,
+        slot_maksymalny=Decimal("4.0"),
+        slot_nazbierany=Decimal("3.0"),
+        punkty_nazbierane=Decimal("120.0"),
+        slot_wszystkie=Decimal("3.0"),
+        punkty_wszystkie=Decimal("120.0"),
+    )
+    m_katedra = baker.make(
+        MetrykaAutora,
+        autor=baker.make(Autor, nazwisko="Katedralny"),
+        dyscyplina_naukowa=baker.make(Dyscyplina_Naukowa),
+        jednostka=katedra,
+        uczelnia=u,
+        slot_maksymalny=Decimal("4.0"),
+        slot_nazbierany=Decimal("3.0"),
+        punkty_nazbierane=Decimal("120.0"),
+        slot_wszystkie=Decimal("3.0"),
+        punkty_wszystkie=Decimal("120.0"),
+    )
+
+    url = reverse("ewaluacja_metryki:lista")
+    response = client.get(url, {"wydzial": korzen.pk})
+
+    assert response.status_code == 200
+    metryki = list(response.context["metryki"])
+    assert m_korzen in metryki  # przy SAMYM korzeniu — łapane dopiero po fixie
+    assert m_katedra in metryki  # poddrzewo
+
+
+@pytest.mark.django_db
+def test_metryki_dropdown_wydzialow_zawiera_korzen_z_autorem_na_roocie(
+    admin_user, client
+):
+    """F4 (#438): wydział, w którym autor siedzi WPROST na jednostce-korzeniu
+    (``wydzial=NULL``), MUSI pojawić się na liście ``wydzialy`` w filtrze.
+    Przed fixem korzeń (wydzial_id NULL) wypadał z listy (i mógł błędnie
+    zapalić ``tylko_jeden_wydzial`` → ukrycie całego filtra)."""
+    from denorm import denorms
+
+    client.force_login(admin_user)
+    u = baker.make(Uczelnia)
+    korzen = baker.make(Jednostka, nazwa="Wydział Korzeń", uczelnia=u, parent=None)
+    denorms.flush()
+    korzen.refresh_from_db()
+    assert korzen.wydzial_id is None
+
+    autor = baker.make(Autor, nazwisko="Rootowy", aktualna_jednostka=korzen)
+    baker.make(
+        MetrykaAutora,
+        autor=autor,
+        dyscyplina_naukowa=baker.make(Dyscyplina_Naukowa),
+        jednostka=korzen,
+        uczelnia=u,
+        slot_maksymalny=Decimal("4.0"),
+        slot_nazbierany=Decimal("3.0"),
+        punkty_nazbierane=Decimal("120.0"),
+        slot_wszystkie=Decimal("3.0"),
+        punkty_wszystkie=Decimal("120.0"),
+    )
+
+    response = client.get(reverse("ewaluacja_metryki:lista"))
+
+    assert response.status_code == 200
+    assert korzen in list(response.context["wydzialy"])
+
+
+@pytest.mark.django_db
+def test_export_filtr_wydzial_lapie_metryki_przy_samym_korzeniu():
+    """F3 (#438): ten sam inwariant co wyżej, ale dla ścieżki eksportu XLSX
+    (``ExportListaXLSX._apply_filters_to_queryset``)."""
+    from denorm import denorms
+    from django.test import RequestFactory
+
+    from ewaluacja_metryki.views.export import ExportListaXLSX
+
+    u = baker.make(Uczelnia)
+    korzen = baker.make(Jednostka, uczelnia=u, parent=None)
+    katedra = baker.make(Jednostka, uczelnia=u, parent=korzen)
+    denorms.flush()
+
+    # Decimal fields są przypięte jawnie (bez tego baker.make losuje
+    # slot_maksymalny/slot_nazbierany losowo, a MetrykaAutora.save()
+    # przelicza z nich procent_wykorzystania_slotow = slot_nazbierany /
+    # slot_maksymalny * 100 — przy niefortunnym losowaniu (mały mianownik,
+    # duży licznik) wynik przekracza limit numeric(5,2) i psql rzuca
+    # NumericValueOutOfRange; flaky na CI, deterministyczne po przypięciu).
+    m_korzen = baker.make(
+        MetrykaAutora,
+        jednostka=korzen,
+        uczelnia=u,
+        slot_maksymalny=Decimal("4.0"),
+        slot_nazbierany=Decimal("3.0"),
+        punkty_nazbierane=Decimal("120.0"),
+        slot_wszystkie=Decimal("3.0"),
+        punkty_wszystkie=Decimal("120.0"),
+    )
+    m_katedra = baker.make(
+        MetrykaAutora,
+        jednostka=katedra,
+        uczelnia=u,
+        slot_maksymalny=Decimal("4.0"),
+        slot_nazbierany=Decimal("3.0"),
+        punkty_nazbierane=Decimal("120.0"),
+        slot_wszystkie=Decimal("3.0"),
+        punkty_wszystkie=Decimal("120.0"),
+    )
+
+    req = RequestFactory().get("/", {"wydzial": str(korzen.pk)})
+    qs = ExportListaXLSX()._apply_filters_to_queryset(MetrykaAutora.objects.all(), req)
+    pks = set(qs.values_list("pk", flat=True))
+    assert m_korzen.pk in pks  # przy SAMYM korzeniu
+    assert m_katedra.pk in pks  # poddrzewo
 
 
 @pytest.mark.django_db
@@ -176,6 +329,9 @@ def test_statystyki_view(admin_user, client):
     """Test widoku statystyk"""
     client.force_login(admin_user)
 
+    # Jedna uczelnia — scope_metryki jest no-op (tylko_jedna_uczelnia=True)
+    uczelnia = baker.make(Uczelnia)
+
     # Stwórz dyscyplinę raz i użyj dla wszystkich metryk
     # (unika race condition z unikalnym polem kod w Dyscyplina_Naukowa)
     dyscyplina = baker.make(Dyscyplina_Naukowa)
@@ -185,6 +341,7 @@ def test_statystyki_view(admin_user, client):
         baker.make(
             MetrykaAutora,
             dyscyplina_naukowa=dyscyplina,
+            uczelnia=uczelnia,
             slot_maksymalny=Decimal("4.0"),
             slot_nazbierany=Decimal(f"{3.0 + i * 0.2}"),
             punkty_nazbierane=Decimal(f"{120.0 + i * 10}"),
@@ -356,9 +513,14 @@ def test_metryki_list_view_sorting(admin_user, client):
     """Test sortowania listy metryk"""
     client.force_login(admin_user)
 
+    # Jedna uczelnia — scope_metryki jest no-op (tylko_jedna_uczelnia=True);
+    # obie metryki mają to samo uczelnia_id, więc view widzi obie.
+    uczelnia = baker.make(Uczelnia)
+
     # Stwórz metryki z różnymi średnimi
     metryka1 = baker.make(
         MetrykaAutora,
+        uczelnia=uczelnia,
         slot_maksymalny=Decimal("4.0"),
         slot_nazbierany=Decimal("4.0"),
         punkty_nazbierane=Decimal("200.0"),  # średnia 50
@@ -368,6 +530,7 @@ def test_metryki_list_view_sorting(admin_user, client):
 
     metryka2 = baker.make(
         MetrykaAutora,
+        uczelnia=uczelnia,
         slot_maksymalny=Decimal("4.0"),
         slot_nazbierany=Decimal("4.0"),
         punkty_nazbierane=Decimal("120.0"),  # średnia 30

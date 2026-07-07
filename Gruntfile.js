@@ -246,6 +246,11 @@ module.exports = function (grunt) {
                     "src/bpp/static/bpp/js/dist/bundle.js && " +
                     "rm -f src/bpp/static/bpp/js/dist/bundle.js.bak"
             },
+            copyRollbar: {
+                command: 'mkdir -p src/bpp/static/rollbar && ' +
+                         'cp node_modules/rollbar/dist/rollbar.umd.min.js ' +
+                         'src/bpp/static/rollbar/rollbar.umd.min.js'
+            },
             collectstatic: {
                 command: 'uv run src/manage.py collectstatic --noinput -v0 --traceback'
             }
@@ -265,6 +270,7 @@ module.exports = function (grunt) {
         'shell:esbuildCytoscape',
         'shell:esbuildThree',
         'shell:patchBundle',
+        'shell:copyRollbar',
         'shell:collectstatic'
     ]);
     grunt.registerTask('build-non-interactive', [
@@ -273,7 +279,8 @@ module.exports = function (grunt) {
         'shell:esbuild',
         'shell:esbuildCytoscape',
         'shell:esbuildThree',
-        'shell:patchBundle'
+        'shell:patchBundle',
+        'shell:copyRollbar'
     ]);
 
     // Rename the original watch task and create an alias that builds first

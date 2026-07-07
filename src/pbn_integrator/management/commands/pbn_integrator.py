@@ -147,7 +147,256 @@ class Command(PBNBaseCommand):
             "--disable-progress-bar", action="store_true", default=False
         )
 
-    def handle(  # noqa: C901
+    def _run_stage(self, flag, enable_all, start, end, stage, func):
+        """Uruchom etap jeśli odpowiednia flaga jest włączona."""
+        check_end_before(stage, end)
+        if (flag or enable_all) and start <= stage:
+            func()
+
+    def _handle_clears(self, clear_all, clear_match, clear_pubs):
+        if clear_all:
+            integrator.clear_all()
+            sys.exit(0)
+        if clear_match:
+            integrator.clear_match_publications()
+            sys.exit(0)
+        if clear_pubs:
+            integrator.clear_publications()
+            sys.exit(0)
+
+    def _handle_system_and_sources(self, opts, client, s, e):
+        """Etapy 0-3: system data, źródła, instytucje."""
+        ea = opts["enable_all"]
+        dpb = opts["disable_progress_bar"]
+
+        self._run_stage(
+            opts["enable_system_data"],
+            ea,
+            s,
+            e,
+            0,
+            lambda: (
+                integruj_jezyki(client),
+                integruj_kraje(client),
+                client.download_disciplines(),
+                client.sync_disciplines(),
+            ),
+        )
+        self._run_stage(
+            opts["enable_pobierz_zrodla"],
+            ea,
+            s,
+            e,
+            1,
+            lambda: pobierz_zrodla(client),
+        )
+        self._run_stage(
+            opts["enable_integruj_zrodla"],
+            ea,
+            s,
+            e,
+            2,
+            lambda: integruj_zrodla(dpb),
+        )
+        self._run_stage(
+            opts["enable_institutions"],
+            ea,
+            s,
+            e,
+            3,
+            lambda: (
+                pobierz_instytucje(client),
+                integruj_uczelnie(),
+                integruj_instytucje(),
+            ),
+        )
+
+    def _handle_people(self, opts, client, s, e):
+        """Etapy 6-9: pobieranie i integracja ludzi.
+
+        Macierzysta uczelnia bierze się z ``client.uczelnia`` (jej
+        ``pbn_uid_id``) i jest używana do matchowania autorów po danych
+        zatrudnienia PBN (patrz reguła R2 w
+        ``matchuj_autora_po_stronie_pbn``).
+        """
+        ea = opts["enable_all"]
+        pbn_uid_id = client.uczelnia.pbn_uid_id
+
+        self._run_stage(
+            opts["enable_download_people_institution"],
+            ea,
+            s,
+            e,
+            6,
+            lambda: pobierz_ludzi_z_uczelni(client, pbn_uid_id),
+        )
+        self._run_stage(
+            opts["enable_integrate_people_institution"],
+            ea,
+            s,
+            e,
+            7,
+            lambda: integruj_autorow_z_uczelni(client, pbn_uid_id),
+        )
+        self._run_stage(
+            opts["enable_integrate_people_all"],
+            ea,
+            s,
+            e,
+            8,
+            integruj_wszystkich_niezintegrowanych_autorow,
+        )
+        self._run_stage(
+            opts["enable_check_orcid_people"],
+            ea,
+            s,
+            e,
+            9,
+            lambda: weryfikuj_orcidy(client, pbn_uid_id),
+        )
+
+    def _handle_publishers_and_conferences(self, opts, client, s, e):
+        """Etapy 10-11: wydawcy i konferencje."""
+        ea = opts["enable_all"]
+
+        self._run_stage(
+            opts["enable_publishers"],
+            ea,
+            s,
+            e,
+            10,
+            lambda: (
+                pobierz_wydawcow_wszystkich(client),
+                pobierz_wydawcow_mnisw(client),
+                integruj_wydawcow(),
+                call_command("pbn_importuj_wydawcow"),
+            ),
+        )
+        self._run_stage(
+            opts["enable_conferences"],
+            ea,
+            s,
+            e,
+            11,
+            lambda: pobierz_konferencje(client),
+        )
+
+    def _handle_publications(self, opts, client, s, e):
+        """Etapy 12-21: pobieranie i integracja publikacji."""
+        ea = opts["enable_all"]
+        skip_pages = opts["skip_pages"]
+        dm = opts["disable_multiprocessing"]
+
+        self._run_stage(
+            opts["enable_pobierz_rekordy_publikacji_instytucji"],
+            ea,
+            s,
+            e,
+            12,
+            lambda: pobierz_rekordy_publikacji_instytucji(client),
+        )
+        self._run_stage(
+            opts["enable_pobierz_publikacje_instytucji"],
+            ea,
+            s,
+            e,
+            13,
+            lambda: pobierz_publikacje_z_instytucji(client),
+        )
+        self._run_stage(
+            opts["enable_pobierz_oswiadczenia_instytucji"],
+            ea,
+            s,
+            e,
+            14,
+            lambda: pobierz_oswiadczenia_z_instytucji(client),
+        )
+        self._run_stage(
+            opts["enable_odswiez_tabele_publikacji"],
+            ea,
+            s,
+            e,
+            15,
+            lambda: pobierz_skasowane_prace(client),
+        )
+        self._run_stage(
+            opts["enable_odswiez_tabele_publikacji"],
+            ea,
+            s,
+            e,
+            16,
+            lambda: odswiez_tabele_publikacji(client),
+        )
+        self._run_stage(
+            opts["enable_integruj_publikacje_instytucji"],
+            ea,
+            s,
+            e,
+            17,
+            lambda: integruj_publikacje_instytucji(
+                disable_multiprocessing=dm,
+                skip_pages=skip_pages,
+                uczelnia=client.uczelnia,
+            ),
+        )
+        self._run_stage(
+            opts["enable_pobierz_oswiadczenia_instytucji"],
+            ea,
+            s,
+            e,
+            18,
+            lambda: integruj_oswiadczenia_z_instytucji(uczelnia=client.uczelnia),
+        )
+        self._run_stage(
+            opts["enable_pobierz_po_doi"],
+            ea,
+            s,
+            e,
+            19,
+            lambda: pobierz_prace_po_doi(client),
+        )
+        self._run_stage(
+            opts["enable_pobierz_po_isbn"],
+            ea,
+            s,
+            e,
+            20,
+            lambda: pobierz_prace_po_isbn(client),
+        )
+        self._run_stage(
+            opts["enable_integruj_wszystkie_publikacje"],
+            ea,
+            s,
+            e,
+            21,
+            lambda: (
+                wyswietl_niezmatchowane_ze_zblizonymi_tytulami(),
+                sprawdz_ilosc_autorow_przy_zmatchowaniu(),
+            ),
+        )
+
+    def _handle_sync(self, opts, uczelnia, client):
+        """Etap końcowy: synchronizacja publikacji z PBN."""
+        if opts["enable_delete_all"]:
+            usun_wszystkie_oswiadczenia(client)
+        if opts["enable_delete_zeros"]:
+            usun_zerowe_oswiadczenia(client)
+
+        if opts["enable_sync"]:
+            export_pk_zero = opts["export_pk_zero"]
+
+            if export_pk_zero is None:
+                export_pk_zero = not uczelnia.pbn_api_nie_wysylaj_prac_bez_pk
+
+            synchronizuj_publikacje(
+                client=client,
+                force_upload=opts["force_upload"],
+                only_bad=opts["only_bad"],
+                only_new=opts["only_new"],
+                export_pk_zero=export_pk_zero,
+            )
+
+    def handle(
         self,
         app_id,
         app_token,
@@ -196,228 +445,41 @@ class Command(PBNBaseCommand):
         if disable_multiprocessing:
             integrator.CPU_COUNT = "single"
 
-        uczelnia = Uczelnia.objects.get_default()
+        uczelnia_id = options.get("uczelnia_id")
+        uczelnia = (
+            Uczelnia.objects.get(pk=uczelnia_id)
+            if uczelnia_id
+            else Uczelnia.objects.get()
+        )
         if uczelnia is not None:
             if not uczelnia.pbn_integracja:
                 raise IntegracjaWylaczonaException()
         client = self.get_client(app_id, app_token, base_url, user_token)
 
-        if clear_all:
-            integrator.clear_all()
-            sys.exit(0)
-
-        if clear_match_publications:
-            integrator.clear_match_publications()
-            sys.exit(0)
-
-        if clear_publications:
-            integrator.clear_publications()
-            sys.exit(0)
+        self._handle_clears(clear_all, clear_match_publications, clear_publications)
 
         if just_one_stage:
             end_before_stage = start_from_stage + 1
 
-        stage = 0
-        if (enable_system_data or enable_all) and start_from_stage <= stage:
-            integruj_jezyki(client)
-            integruj_kraje(client)
-            client.download_disciplines()
-            client.sync_disciplines()
+        s = start_from_stage
+        e = end_before_stage
 
-        stage = 1
-        check_end_before(stage, end_before_stage)
-        if (enable_pobierz_zrodla or enable_all) and start_from_stage <= stage:
-            pobierz_zrodla(client)
+        # Zbierz wszystkie opcje do słownika
+        opts = {k: v for k, v in locals().items() if k.startswith("enable_")}
+        opts.update(
+            {
+                "disable_progress_bar": disable_progress_bar,
+                "disable_multiprocessing": disable_multiprocessing,
+                "skip_pages": skip_pages,
+                "force_upload": force_upload,
+                "only_bad": only_bad,
+                "only_new": only_new,
+                "export_pk_zero": export_pk_zero,
+            }
+        )
 
-        stage = 2
-        check_end_before(stage, end_before_stage)
-        if (enable_integruj_zrodla or enable_all) and start_from_stage <= stage:
-            integruj_zrodla(disable_progress_bar)
-
-        stage = 3
-        check_end_before(stage, end_before_stage)
-        if (enable_institutions or enable_all) and start_from_stage <= stage:
-            # Pobieranie instytucji musi odbywac się przed pobieraniem ludzi
-            pobierz_instytucje(client)
-            integruj_uczelnie()
-            integruj_instytucje()
-
-        # stage = 4
-        # check_end_before(stage, end_before_stage)
-        # if (enable_download_people_all or enable_all) and start_from_stage <= stage:
-        #     os.makedirs("pbn_json_data", exist_ok=True)
-        #     pobierz_ludzi_offline(client)
-        #
-        # stage = 5
-        # check_end_before(stage, end_before_stage)
-        # if (enable_download_people_all or enable_all) and start_from_stage <= stage:
-        #     wgraj_ludzi_z_offline_do_bazy()
-
-        stage = 6
-        check_end_before(stage, end_before_stage)
-
-        if (
-            enable_download_people_institution or enable_all
-        ) and start_from_stage <= stage:
-            pobierz_ludzi_z_uczelni(client, Uczelnia.objects.default.pbn_uid_id)
-        stage = 7
-        check_end_before(stage, end_before_stage)
-
-        if (
-            enable_integrate_people_institution or enable_all
-        ) and start_from_stage <= stage:
-            integruj_autorow_z_uczelni(client, Uczelnia.objects.default.pbn_uid_id)
-        stage = 8
-
-        if (enable_integrate_people_all or enable_all) and start_from_stage <= stage:
-            integruj_wszystkich_niezintegrowanych_autorow()
-        stage = 9
-
-        if (enable_check_orcid_people or enable_all) and start_from_stage <= stage:
-            weryfikuj_orcidy(client, Uczelnia.objects.default.pbn_uid_id)
-        stage = 10
-        check_end_before(stage, end_before_stage)
-
-        if (enable_publishers or enable_all) and start_from_stage <= stage:
-            pobierz_wydawcow_wszystkich(client)
-            pobierz_wydawcow_mnisw(client)
-            integruj_wydawcow()
-            call_command("pbn_importuj_wydawcow")
-            # zamapuj_wydawcow nie trzeba, bo zostanie wywołany przez pbn_importuj_wydawców gdyby coś
-            # call_command("zamapuj_wydawcow")
-
-        stage = 11
-        check_end_before(stage, end_before_stage)
-
-        if (enable_conferences or enable_all) and start_from_stage <= stage:
-            pobierz_konferencje(client)
-
-        stage = 12
-        check_end_before(stage, end_before_stage)
-
-        #
-        # Pobieranie wszystkich publikacji z całego PBNu - bez wiekszego sensu
-        # do obecnych zastosowań
-        #
-        # if (
-        #     enable_pobierz_wszystkie_publikacje
-        # ) and start_from_stage <= stage:
-        #     os.makedirs("pbn_json_data", exist_ok=True)
-        #     pobierz_prace_offline(client)
-        #
-        # stage = 13
-        # check_end_before(stage, end_before_stage)
-        #
-        # Wgrywanie wszystkich prac z offline do bazy
-        #
-        # if (
-        #     enable_pobierz_wszystkie_publikacje
-        # ) and start_from_stage <= stage:
-        #     wgraj_prace_z_offline_do_bazy()
-        #
-
-        #
-        # Pobieranie oswiadczen i publikacji z insytucji
-        #
-
-        if (
-            enable_pobierz_rekordy_publikacji_instytucji or enable_all
-        ) and start_from_stage <= stage:
-            pobierz_rekordy_publikacji_instytucji(client)
-
-        stage = 13
-        check_end_before(stage, end_before_stage)
-        if (
-            enable_pobierz_publikacje_instytucji or enable_all
-        ) and start_from_stage <= stage:
-            pobierz_publikacje_z_instytucji(client)
-
-        stage = 14
-        check_end_before(stage, end_before_stage)
-
-        if (
-            enable_pobierz_oswiadczenia_instytucji or enable_all
-        ) and start_from_stage <= stage:
-            pobierz_oswiadczenia_z_instytucji(client)
-
-        stage = 15
-
-        if (
-            enable_odswiez_tabele_publikacji or enable_all
-        ) and start_from_stage <= stage:
-            pobierz_skasowane_prace(client)
-
-        stage = 16
-        check_end_before(stage, end_before_stage)
-
-        if (
-            enable_odswiez_tabele_publikacji or enable_all
-        ) and start_from_stage <= stage:
-            odswiez_tabele_publikacji(client)
-
-        stage = 17
-        check_end_before(stage, end_before_stage)
-
-        # if (enable_integruj_wszystkie_publikacje) and start_from_stage <= stage:
-        #     integruj_wszystkie_publikacje(
-        #         disable_multiprocessing, skip_pages=skip_pages
-        #     )
-
-        if (
-            enable_integruj_publikacje_instytucji or enable_all
-        ) and start_from_stage <= stage:
-            integruj_publikacje_instytucji(
-                disable_multiprocessing, skip_pages=skip_pages
-            )
-
-        stage = 18
-        check_end_before(stage, end_before_stage)
-
-        if (
-            enable_pobierz_oswiadczenia_instytucji or enable_all
-        ) and start_from_stage <= stage:
-            integruj_oswiadczenia_z_instytucji()
-
-        stage = 19
-        check_end_before(stage, end_before_stage)
-
-        if (enable_pobierz_po_doi or enable_all) and start_from_stage <= stage:
-            pobierz_prace_po_doi(client)
-
-        stage = 20
-        check_end_before(stage, end_before_stage)
-
-        if (enable_pobierz_po_isbn or enable_all) and start_from_stage <= stage:
-            pobierz_prace_po_isbn(client)
-
-        stage = 21
-        check_end_before(stage, end_before_stage)
-
-        if (
-            enable_integruj_wszystkie_publikacje or enable_all
-        ) and start_from_stage <= stage:
-            wyswietl_niezmatchowane_ze_zblizonymi_tytulami()
-            sprawdz_ilosc_autorow_przy_zmatchowaniu()
-
-        stage = 22
-        check_end_before(stage, end_before_stage)
-
-        if enable_delete_all:
-            usun_wszystkie_oswiadczenia(client)
-
-        if enable_delete_zeros:
-            usun_zerowe_oswiadczenia(client)
-
-        if enable_sync:
-            uczelnia = Uczelnia.objects.get_default()
-
-            if export_pk_zero is None:
-                export_pk_zero = not uczelnia.pbn_api_nie_wysylaj_prac_bez_pk
-
-            synchronizuj_publikacje(
-                client=client,
-                force_upload=force_upload,
-                only_bad=only_bad,
-                only_new=only_new,
-                export_pk_zero=export_pk_zero,
-            )
+        self._handle_system_and_sources(opts, client, s, e)
+        self._handle_people(opts, client, s, e)
+        self._handle_publishers_and_conferences(opts, client, s, e)
+        self._handle_publications(opts, client, s, e)
+        self._handle_sync(opts, uczelnia, client)

@@ -105,6 +105,7 @@ class Typ_KBN(NazwaISkrot):
         blank=True,
         null=True,
         default=None,
+        limit_choices_to={"ukryty": False},
         help_text="""Wartość wybrana w tym polu zostanie użyta jako
         fallback, tzn. jeżeli dla charakteru formalnego danego rekordu nie
         określono odpowiedniego charakteru PBN, to zostanie użyta wartość
@@ -113,6 +114,14 @@ class Typ_KBN(NazwaISkrot):
     )
 
     wliczaj_do_rankingu = models.BooleanField(default=True)
+
+    ukryty = models.BooleanField(
+        "Ukryj na listach wyboru",
+        default=False,
+        help_text="""Jeżeli zaznaczone, ten typ MNiSW/MEiN nie będzie
+        proponowany na listach wyboru przy wprowadzaniu nowych rekordów.
+        Istniejące rekordy korzystające z tej wartości pozostają bez zmian.""",
+    )
 
     class Meta:
         verbose_name = "typ MNiSW/MEiN"

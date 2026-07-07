@@ -20,6 +20,7 @@ class Charakter_FormalnyAdmin(
         "charakter_pbn",
         "charakter_sloty",
         "rodzaj_pbn",
+        "ukryty",
     ]
     list_filter = (
         "publikacja",
@@ -27,6 +28,7 @@ class Charakter_FormalnyAdmin(
         "nazwa_w_primo",
         "charakter_pbn",
         "rodzaj_pbn",
+        "ukryty",
     )
     search_fields = ["skrot", "nazwa"]
 

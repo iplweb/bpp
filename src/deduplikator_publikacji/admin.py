@@ -5,6 +5,9 @@ from .models import PublicationDuplicateCandidate, PublicationDuplicateScanRun
 
 @admin.register(PublicationDuplicateScanRun)
 class PublicationDuplicateScanRunAdmin(admin.ModelAdmin):
+    def has_module_permission(self, request):
+        return request.user.is_superuser
+
     list_display = [
         "pk",
         "status",
@@ -31,6 +34,9 @@ class PublicationDuplicateScanRunAdmin(admin.ModelAdmin):
 
 @admin.register(PublicationDuplicateCandidate)
 class PublicationDuplicateCandidateAdmin(admin.ModelAdmin):
+    def has_module_permission(self, request):
+        return request.user.is_superuser
+
     list_display = [
         "pk",
         "original_title_short",

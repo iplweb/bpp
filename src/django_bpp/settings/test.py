@@ -11,7 +11,14 @@
 # tylko dla testów, więc nakładamy je bezwarunkowo.
 
 from .local import *  # noqa
-from .local import INSTALLED_APPS, MIDDLEWARE  # noqa
+from .local import INSTALLED_APPS, LIVEOPS, MIDDLEWARE  # noqa
+
+# django-liveops: w testach uruchamiaj operacje SYNCHRONICZNIE w wątku
+# żądania (bez Redis/Celery workera). run() biegnie od razu, p.track/p.result
+# działają, a terminalny stan (result_context/duplicates_found) zapisuje się
+# zanim asserty go czytają. Push przez WebSocket i tak trafia w pustą grupę —
+# nieszkodliwe dla testów logiki skanu.
+LIVEOPS = {**LIVEOPS, "RUNNER": "eager"}
 
 # Setup wizard middleware nie ma sensu w testach (i przeszkadza fixture'om).
 MIDDLEWARE = [

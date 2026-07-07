@@ -43,9 +43,9 @@
             </li>
             <li>
                 <a href="#" aria-haspopup="menu"><i class="fi-list" aria-hidden="true"></i> przeglądaj</a>
-                <ul class="menu vertical" role="menu">{% load deklinacja %}
-                    <li role="menuitem"><a href="/"><i class="fi-foundation" aria-hidden="true"></i> {% rzeczownik_uczelnia %}</a></li>
-                    <li role="menuitem"><a href="{% url "bpp:browse_jednostki" %}"><i class="fi-results-demographics" aria-hidden="true"></i> {% rzeczownik_jednostki_m %}</a></li>
+                <ul class="menu vertical" role="menu">{% load polish_inflection %}
+                    <li role="menuitem"><a href="/"><i class="fi-foundation" aria-hidden="true"></i> {% odmien nazwa_uczelni "mianownik" %}</a></li>
+                    <li role="menuitem"><a href="{% url "bpp:browse_jednostki" %}"><i class="fi-results-demographics" aria-hidden="true"></i> {% odmien nazwa_jednostki "mianownik" liczba="mnoga" %}</a></li>
                     <li role="menuitem"><a href="{% url "bpp:browse_autorzy" %}"><i class="fi-torsos-all" aria-hidden="true"></i> autorzy</a></li>
                     <li role="menuitem"><a href="{% url "bpp:browse_zrodla" %}"><i class="fi-book" aria-hidden="true"></i> źródła</a></li>
                     <li role="menuitem"><a href="{% url "bpp:browse_lata" %}"><i class="fi-calendar" aria-hidden="true"></i> wg roku</a></li>
@@ -189,18 +189,13 @@
                                         ministerialnych</a></li>
                                     <li><a href="{% url "import_list_if:index" %}"><i class="fi-graph-bar"></i> import list IF</a></li>
                                     <li><a href="{% url "import_dyscyplin:index" %}"><i class="fi-folder"></i> import dyscyplin</a></li>
-                                    <hr/>
-                                    <li><a href="{% url "bpp:xlsx-issn-chunks" %}"><i class="fi-download"></i> eksport ISSNów</a></li>
                                 </ul>
                                 <ul class="menu vertical column-2">
                                     <li><a href="{% url "admin:rozbieznosci_dyscyplin_rozbieznosciview_changelist" %}?q-l=on&q=rok%3E%3D2022&pracuje_na_uczelni=tak">
                                         <i class="fi-results-demographics"></i> rozbieżności dyscyplin autorów</a></li>
                                     <li><a href="{% url "admin:rozbieznosci_dyscyplin_rozbieznoscizrodelview_changelist" %}?q-l=on&q=rok%3E%3D2022&pracuje_na_uczelni=tak">
                                         <i class="fi-page-search"></i> rozbieżności dyscyplin źródeł</a></li>
-                                    <li><a href="{% url "rozbieznosci_if:index" %}"><i class="fi-graph-pie"></i> rozbieżności
-                                        punktacji IF</a></li>
-                                    <li><a href="{% url "rozbieznosci_pk:index" %}"><i class="fi-graph-pie"></i> rozbieżności
-                                        punktacji MNiSW</a></li>
+                                    <li><a href="{% url "rozbieznosci:index" metryka="if" %}"><i class="fi-graph-pie"></i> rozbieżności punktacji/kwartyli</a></li>
                                     <hr>
                                     <li><a href="{% url "deduplikator_autorow:duplicate_authors" %}">
                                         <i class="fi-filter"></i> deduplikator autorów</a></li>
@@ -208,6 +203,9 @@
                                         <i class="fi-page-copy"></i> deduplikator publikacji</a></li>
                                     <li><a href="{% url "deduplikator_zrodel:duplicate_sources" %}">
                                         <i class="fi-page-multiple"></i> deduplikator źródeł</a></li>
+                                    <hr>
+                                    <li><a href="{% url "bpp:xlsx-issn-chunks" %}"><i class="fi-download"></i> eksport ISSNów</a></li>
+                                    <li><a href="{% url "import_punktacji_zrodel:index" %}"><i class="fi-graph-bar"></i> import punktacji źródeł</a></li>
                                 </ul>
                             {% endif %}
                         </div>
@@ -287,7 +285,7 @@
                                 <i class="fi-torso" aria-hidden="true"></i> mój profil
                             </a>
                         </li>
-                        {% if not microsoft_login_enabled %}
+                        {% if not logged_in_via_external_auth %}
                             <li><a id="password-change-link" href="{% url "password_change" %}"><i class="fi-key"></i> zmiana hasła</a></li>
                         {% endif %}
                         {% if request.user.is_superuser %}
@@ -461,13 +459,18 @@
             {% endif %}
 
             {% if request.user.is_anonymous %}
-                {% if microsoft_login_enabled %}
+                {% if microsoft_login_enabled or oidc_login_enabled %}
                     <li>
                         <a href="#" aria-haspopup="menu"><i class="fi-lock" aria-hidden="true"></i>
                         zaloguj</a>
                         <ul class="menu vertical" role="menu">
+                            {% if oidc_login_enabled %}
+                            <li><a href="{% url "oidc_authentication_init" %}?next={{ request.get_full_path|urlencode }}">
+                                <i class="fi-cloud"></i> logowanie instytucjonalne</a></li>
+                            {% else %}
                             <li><a href="{% url "bpp:microsoft_auth_redirect" %}?next={{ request.get_full_path|urlencode }}">
                                 <i class="fi-cloud"></i> logowanie instytucjonalne</a></li>
+                            {% endif %}
                             {% if orcid_login_enabled %}
                             <li><a href="{% url "orcid_integration:login" %}?next={{ request.get_full_path|urlencode }}">
                                 <span class="fi-torso"></span> logowanie ORCID</a></li>

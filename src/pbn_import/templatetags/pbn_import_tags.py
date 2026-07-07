@@ -11,12 +11,17 @@ from bpp.models import Uczelnia
 register = template.Library()
 
 
-@register.simple_tag
-def pbn_publication_url(pbn_publication_id):
+@register.simple_tag(takes_context=True)
+def pbn_publication_url(context, pbn_publication_id):
     """Generate URL to publication in PBN system."""
     if not pbn_publication_id:
         return ""
-    uczelnia = Uczelnia.objects.get_default()
+    request = context.get("request")
+    # Multi-hosted: uczelnia z requestu; bez requestu → None → publiczny root
+    # PBN (NIE „domyślna" uczelnia).
+    uczelnia = (
+        Uczelnia.objects.get_for_request(request) if request is not None else None
+    )
     pbn_root = uczelnia.pbn_api_root if uczelnia else "https://pbn.nauka.gov.pl"
     # Remove trailing slash if present
     pbn_root = pbn_root.rstrip("/")

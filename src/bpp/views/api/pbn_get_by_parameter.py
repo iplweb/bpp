@@ -1,3 +1,4 @@
+import logging
 import sys
 
 import rollbar
@@ -12,6 +13,8 @@ from pbn_api.exceptions import NeedsPBNAuthorisationException, PraceSerwisoweExc
 from pbn_api.models import Publication
 from pbn_integrator.utils import _pobierz_prace_po_elemencie
 
+logger = logging.getLogger(__name__)
+
 
 class GetPBNPublicationsByBase(LoginRequiredMixin, View):
     def get_rok(
@@ -21,7 +24,10 @@ class GetPBNPublicationsByBase(LoginRequiredMixin, View):
         rok = request.POST.get("rok", "").strip()[:1024]
         try:
             rok = int(rok)
-        except BaseException:
+        except (ValueError, TypeError):
+            # Niepoprawny rok w zapytaniu usera to oczekiwane złe wejście,
+            # nie błąd serwera — debug, bez Rollbara.
+            logger.debug("Niepoprawny rok w zapytaniu PBN (rok=%r)", rok)
             rok = None
         return rok
 
@@ -53,7 +59,7 @@ class GetPBNPublicationsByBase(LoginRequiredMixin, View):
         if not ni:
             return JsonResponse({"error": API_BRAK_PARAMETRU})
 
-        uczelnia = Uczelnia.objects.get_default()
+        uczelnia = Uczelnia.objects.get_for_request(request)
         if not uczelnia:
             return JsonResponse({"error": "W systemie brak obiektu Uczelnia"})
 

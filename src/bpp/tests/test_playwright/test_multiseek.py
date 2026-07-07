@@ -1,8 +1,18 @@
 import pytest
+from django.test import Client
 from django.urls.base import reverse
+from model_bakery import baker
 from playwright.sync_api import Page, expect
 
+from bpp.models import BppUser
 from bpp.models.cache import Rekord
+
+
+def _login_cookie(user):
+    """Zaloguj usera Clientem i zwróć ciasteczko sesji (dla kontekstu Playwright)."""
+    client = Client()
+    client.force_login(user)
+    return client.cookies["sessionid"].value
 
 
 @pytest.mark.django_db
@@ -23,7 +33,22 @@ def test_wyrzuc(wydawnictwo_zwarte, page: Page, live_server):
     # complete. ``domcontentloaded`` on the frame returns once the new
     # document is parsed — ``.evaluate`` would otherwise race the previous
     # execution context being torn down by the navigation.
-    iframe_frame = page.frame(name="list_frame")
+    #
+    # ``page.frame(name=...)`` transiently returns ``None`` while the POST-driven
+    # navigation is committing (the frame is detached then re-attached under the
+    # same name). Under parallel CI load this window is wide enough that a single
+    # lookup lands on the ``None`` gap → ``AttributeError`` on ``wait_for_load_state``.
+    # Poll until the frame object is available before using it.
+    iframe_frame = None
+    for _ in range(100):  # up to ~10s at 100ms per tick
+        iframe_frame = page.frame(name="list_frame")
+        if iframe_frame is not None:
+            break
+        page.wait_for_timeout(100)
+    assert iframe_frame is not None, (
+        "iframe 'list_frame' nie pojawiła się po POST do ./live-results/ "
+        "(nawigacja iframe nie zdążyła się zarejestrować)."
+    )
     iframe_frame.wait_for_load_state("domcontentloaded")
 
     # Then wait for the actual result element to render
@@ -127,3 +152,52 @@ def test_index_copernicus_widoczny(page: Page, live_server, uczelnia):
     page.wait_for_load_state("domcontentloaded")
 
     assert "Index Copernicus" in page.content()
+
+
+@pytest.mark.django_db
+def test_save_form_csrf(page: Page, live_server):
+    """Reprodukcja FreshDesk #378: zalogowany staff zapisuje formularz.
+
+    saveForm() z multiseek.js czyta ``window.multiseekCSRFToken`` i POST-uje go
+    jako ``csrfmiddlewaretoken`` na ``./save_form/``. Gdy szablon nie renderuje
+    tego tokenu, POST konczy sie 403 (CSRF), a uzytkownik dostaje alert o bledzie
+    serwera ("formularz NIE zostal zapisany"). Ten test przechodzi caly flow w
+    przegladarce: prompt o nazwe -> confirm o publicznosci -> POST i sprawdza, ze
+    serwer NIE odrzucil zapisu oraz ze formularz faktycznie zostal zapisany.
+    """
+    admin = baker.make(BppUser, is_superuser=True, is_staff=True)
+    sid = _login_cookie(admin)
+    page.context.add_cookies(
+        [{"name": "sessionid", "value": sid, "url": live_server.url}]
+    )
+
+    # saveForm() pyta o nazwe (prompt) i o publicznosc (confirm), a na koncu
+    # pokazuje alert. Obslugujemy dialogi automatycznie, zeby flow doszedl do
+    # POST-a na ./save_form/.
+    def handle_dialog(dialog):
+        if dialog.type == "prompt":
+            dialog.accept("formularz #378")
+        else:
+            dialog.accept()
+
+    page.on("dialog", handle_dialog)
+
+    page.goto(live_server.url + reverse("multiseek:index"))
+    page.evaluate("Cookielaw.accept()")
+    page.wait_for_selector("#saveFormButton", state="visible")
+
+    # saveForm odpala POST po dwoch setTimeout(500ms), wiec czekamy na response.
+    with page.expect_response(
+        lambda r: r.url.endswith("/save_form/") and r.request.method == "POST",
+        timeout=15000,
+    ) as resp_info:
+        page.click("#saveFormButton")
+
+    response = resp_info.value
+    assert response.status != 403, (
+        "POST /save_form/ zwrocil 403 — token CSRF (window.multiseekCSRFToken) "
+        "nie dotarl do POST-a. Regresja FreshDesk #378."
+    )
+    assert "saved" in response.text(), (
+        f"Zapis formularza nie powiodl sie, odpowiedz serwera: {response.text()}"
+    )

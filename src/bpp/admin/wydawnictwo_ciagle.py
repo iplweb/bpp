@@ -14,7 +14,9 @@ from bpp.admin.filters import (
     MaKonferencjeFilter,
     OstatnioZmienionePrzezFilter,
     PBN_UID_IDObecnyFilter,
+    PBNStatusFilter,
     UtworzonePrzezFilter,
+    ZrodloUsunieteWPBNFilter,
 )
 from bpp.admin.helpers.djangoql import BppDjangoQLSearchMixin
 from bpp.admin.helpers.fieldsets import (
@@ -42,6 +44,7 @@ from bpp.models import (  # Publikacja_Habilitacyjna
     Charakter_Formalny,
     Wydawnictwo_Ciagle,
     Wydawnictwo_Ciagle_Streszczenie,
+    Wydawnictwo_Ciagle_Tytul,
     Wydawnictwo_Ciagle_Zewnetrzna_Baza_Danych,
     Zrodlo,
     nie_zawiera_adresu_doi_org,
@@ -247,6 +250,12 @@ class Wydawnictwo_Ciagle_Zewnetrzna_Baza_DanychForm(forms.ModelForm):
         fields = ["baza", "info"]
 
 
+class Wydawnictwo_Ciagle_TytulInline(admin.StackedInline):
+    model = Wydawnictwo_Ciagle_Tytul
+    extra = 0
+    fields = ["jezyk", "kod_jezyka_pbn", "tytul"]
+
+
 class Wydawnictwo_Ciagle_StreszczenieInline(
     KorzystaZCrossRefAPIStreszczenieInlineMixin, admin.StackedInline
 ):
@@ -374,6 +383,8 @@ class Wydawnictwo_CiagleAdmin(
         OstatnioZmienionePrzezFilter,
         UtworzonePrzezFilter,
         PBN_UID_IDObecnyFilter,
+        PBNStatusFilter,
+        ZrodloUsunieteWPBNFilter,
         BezJakichkolwiekDyscyplinFilter,
     ]
 
@@ -414,6 +425,7 @@ class Wydawnictwo_CiagleAdmin(
         Wydawnictwo_Ciagle_Zewnetrzna_Baza_DanychInline,
         Grant_RekorduInline,
         Element_RepozytoriumInline,
+        Wydawnictwo_Ciagle_TytulInline,
         Wydawnictwo_Ciagle_StreszczenieInline,
     )
 

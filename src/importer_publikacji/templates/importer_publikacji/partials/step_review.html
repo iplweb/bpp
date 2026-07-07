@@ -5,6 +5,13 @@
         Krok 5: Przegląd końcowy
     </h4>
 
+    {% if error %}
+        <div class="callout alert" role="alert">
+            <span class="fi-x-circle"></span>
+            {{ error }}
+        </div>
+    {% endif %}
+
     <div class="callout secondary">
         <h6>Dane publikacji</h6>
         <table>

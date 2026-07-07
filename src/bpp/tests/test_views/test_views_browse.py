@@ -7,8 +7,9 @@ import pytest
 from django.contrib.auth.models import Group
 from model_bakery import baker
 
-from bpp.models import Autor, Jednostka, Uczelnia, Wydzial
+from bpp.models import Autor, Jednostka, RodzajJednostki, Wydzial
 from bpp.models.cache import Rekord
+from bpp.models.struktura_konwersja import znajdz_lub_utworz_wezel_wydzialu
 from bpp.models.system import Charakter_Formalny, Typ_Odpowiedzialnosci
 from bpp.models.wydawnictwo_ciagle import Wydawnictwo_Ciagle_Autor
 from bpp.tests.util import (
@@ -17,6 +18,7 @@ from bpp.tests.util import (
     any_doktorat,
     any_habilitacja,
     any_jednostka,
+    any_uczelnia,
 )
 from bpp.util import rebuild_contenttypes
 from bpp.views.browse import AutorView, AutorzyView, get_available_letters
@@ -42,14 +44,14 @@ def test_root_empty(setup_group, logged_in_client):
 
 @pytest.mark.django_db
 def test_root_with_uczelnia(setup_group, logged_in_client):
-    Uczelnia.objects.create(nazwa="uczelnia 123", skrot="uu123")
+    any_uczelnia(nazwa="uczelnia 123", skrot="uu123")
     res = logged_in_client.get("/", follow=False)
     assert b"uczelnia 123" in res.content
 
 
 @pytest.mark.django_db
 def test_browse_wydzial(setup_group, logged_in_client):
-    u = Uczelnia.objects.create(nazwa="uczelnia", skrot="uu")
+    u = any_uczelnia(nazwa="uczelnia", skrot="uu")
     Wydzial.objects.create(nazwa="wydzial", uczelnia=u)
     res = logged_in_client.get(reverse("bpp:browse_uczelnia", args=("uu",)))
     assert res.status_code == 200
@@ -57,35 +59,104 @@ def test_browse_wydzial(setup_group, logged_in_client):
 
 
 @pytest.mark.django_db
-def test_wydzial_with_single_jednostka_redirects(setup_group, logged_in_client):
-    """Wydzial z jedną jednostką przekierowuje na stronę jednostki."""
-    u = Uczelnia.objects.create(nazwa="uczelnia", skrot="uu")
+def test_browse_naglowek_jednostki_gdy_uczelnia_nie_uzywa_wydzialow(
+    setup_group, logged_in_client
+):
+    """Uczelnia bez wydziałów (struktura 1-progowa): nagłówek sekcji na
+    stronie głównej to „Wybierz jednostkę", a nie „Wybierz wydział" (#438)."""
+    u = any_uczelnia(nazwa="uczelnia", skrot="uu")
+    u.uzywaj_wydzialow = False
+    u.save()
+    res = logged_in_client.get(reverse("bpp:browse_uczelnia", args=("uu",)))
+    assert res.status_code == 200
+    content = res.content.decode()
+    assert "Wybierz jednostkę" in content
+    assert "Wybierz wydział" not in content
+
+
+@pytest.mark.django_db
+def test_browse_wydzial_redirects_to_browse_jednostka(setup_group, logged_in_client):
+    """Legacy URL /wydzial/<slug>/ przekierowuje 301 na węzeł-lustro tego
+    wydziału w drzewie Jednostka (Faza B, III-2, #438)."""
+    u = any_uczelnia(nazwa="uczelnia", skrot="uu")
     w = Wydzial.objects.create(nazwa="wydzial", uczelnia=u)
+    wezel, _ = znajdz_lub_utworz_wezel_wydzialu(w)
+
+    res = logged_in_client.get(
+        reverse("bpp:browse_wydzial", args=(w.slug,)), follow=False
+    )
+    assert res.status_code == 301
+    assert res.url == reverse("bpp:browse_jednostka", args=(wezel.slug,))
+
+
+@pytest.mark.django_db
+def test_browse_wydzial_redirect_404_bez_wezla_lustra(setup_group, logged_in_client):
+    """Gdy wydział nie ma jeszcze węzła-lustra (lazy, patrz
+    struktura_konwersja.py) ani żadna Jednostka nie nosi tego sluga,
+    legacy URL zwraca 404 zamiast 500."""
+    u = any_uczelnia(nazwa="uczelnia", skrot="uu")
+    w = Wydzial.objects.create(nazwa="wydzial bez lustra", uczelnia=u)
+
+    res = logged_in_client.get(
+        reverse("bpp:browse_wydzial", args=(w.slug,)), follow=False
+    )
+    assert res.status_code == 404
+
+
+@pytest.mark.django_db
+def test_browse_wydzial_redirect_fallback_slug_jednostki(setup_group, logged_in_client):
+    """Gdy slug nie odpowiada żadnemu legacy ``Wydzial``, ale istnieje węzeł
+    ``Jednostka`` o dokładnie tym slugu (np. wydział założony od razu w
+    drzewie, bez modelu Wydzial), /wydzial/<slug>/ przekierowuje 301 na
+    /jednostka/<ten-sam-slug>/."""
+    u = any_uczelnia(nazwa="uczelnia", skrot="uu")
+    j = any_jednostka(nazwa="Wydział Nowego Typu", uczelnia=u, wydzial=None)
+
+    res = logged_in_client.get(
+        reverse("bpp:browse_wydzial", args=(j.slug,)), follow=False
+    )
+    assert res.status_code == 301
+    assert res.url == reverse("bpp:browse_jednostka", args=(j.slug,))
+
+
+@pytest.mark.django_db
+def test_jednostka_styl_strukturalny_jedno_dziecko_redirects(
+    setup_group, logged_in_client
+):
+    """Węzeł strukturalny (rodzaj "Wydział") z jedną podjednostką
+    przekierowuje na jej stronę -- tak jak dawny WydzialView."""
+    u = any_uczelnia(nazwa="uczelnia", skrot="uu")
+    w = Wydzial.objects.create(nazwa="wydzial", uczelnia=u)
+    wezel, _ = znajdz_lub_utworz_wezel_wydzialu(w)
     j = Jednostka.objects.create(
         nazwa="jedyna jednostka",
         skrot="JJ",
-        wydzial=w,
+        parent=wezel,
         uczelnia=u,
         aktualna=True,
         widoczna=True,
     )
 
     res = logged_in_client.get(
-        reverse("bpp:browse_wydzial", args=(w.slug,)), follow=False
+        reverse("bpp:browse_jednostka", args=(wezel.slug,)), follow=False
     )
     assert res.status_code == 302
     assert res.url == reverse("bpp:browse_jednostka", args=(j.slug,))
 
 
 @pytest.mark.django_db
-def test_wydzial_with_multiple_jednostki_shows_page(setup_group, logged_in_client):
-    """Wydzial z wieloma jednostkami wyświetla stronę wydziału."""
-    u = Uczelnia.objects.create(nazwa="uczelnia", skrot="uu")
+def test_jednostka_styl_strukturalny_wiele_dzieci_shows_page(
+    setup_group, logged_in_client
+):
+    """Węzeł strukturalny z wieloma podjednostkami wyświetla stronę w
+    stylu strukturalnym (dawna strona wydziału)."""
+    u = any_uczelnia(nazwa="uczelnia", skrot="uu")
     w = Wydzial.objects.create(nazwa="wydzial", uczelnia=u)
+    wezel, _ = znajdz_lub_utworz_wezel_wydzialu(w)
     Jednostka.objects.create(
         nazwa="jednostka 1",
         skrot="J1",
-        wydzial=w,
+        parent=wezel,
         uczelnia=u,
         aktualna=True,
         widoczna=True,
@@ -93,45 +164,75 @@ def test_wydzial_with_multiple_jednostki_shows_page(setup_group, logged_in_clien
     Jednostka.objects.create(
         nazwa="jednostka 2",
         skrot="J2",
-        wydzial=w,
+        parent=wezel,
         uczelnia=u,
         aktualna=True,
         widoczna=True,
     )
 
     res = logged_in_client.get(
-        reverse("bpp:browse_wydzial", args=(w.slug,)), follow=False
+        reverse("bpp:browse_jednostka", args=(wezel.slug,)), follow=False
     )
     assert res.status_code == 200
+    assert b"Jednostki aktualne" in res.content
 
 
 @pytest.mark.django_db
-def test_wydzial_with_single_kolo_naukowe_redirects(setup_group, logged_in_client):
-    """Wydzial z jednym kołem naukowym przekierowuje na stronę koła."""
-    u = Uczelnia.objects.create(nazwa="uczelnia", skrot="uu")
+def test_jednostka_styl_strukturalny_jedno_kolo_naukowe_redirects(
+    setup_group, logged_in_client
+):
+    """Węzeł strukturalny z jednym kołem naukowym przekierowuje na stronę
+    koła."""
+    u = any_uczelnia(nazwa="uczelnia", skrot="uu")
     w = Wydzial.objects.create(nazwa="wydzial", uczelnia=u)
+    wezel, _ = znajdz_lub_utworz_wezel_wydzialu(w)
     j = Jednostka.objects.create(
         nazwa="koło naukowe",
         skrot="KN",
-        wydzial=w,
+        parent=wezel,
         uczelnia=u,
         aktualna=True,
         widoczna=True,
-        rodzaj_jednostki=Jednostka.RODZAJ_JEDNOSTKI.KOLO_NAUKOWE,
+        rodzaj=RodzajJednostki.objects.get(nazwa="Koło naukowe"),
     )
 
     res = logged_in_client.get(
-        reverse("bpp:browse_wydzial", args=(w.slug,)), follow=False
+        reverse("bpp:browse_jednostka", args=(wezel.slug,)), follow=False
     )
     assert res.status_code == 302
     assert res.url == reverse("bpp:browse_jednostka", args=(j.slug,))
 
 
 @pytest.mark.django_db
+def test_jednostka_styl_prac_dla_rodzaju_standard(setup_group, logged_in_client):
+    """Węzeł rodzaju "Standard" (bez pokazuj_strukture_podjednostek)
+    renderuje dotychczasowy styl prac -- nie strukturalny."""
+    u = any_uczelnia(nazwa="uczelnia", skrot="uu")
+    w = Wydzial.objects.create(nazwa="wydzial", skrot="WDZ", uczelnia=u)
+    wezel, _ = znajdz_lub_utworz_wezel_wydzialu(w)
+    j = Jednostka.objects.create(
+        nazwa="jednostka standardowa",
+        skrot="JSTD",
+        parent=wezel,
+        uczelnia=u,
+        rodzaj=RodzajJednostki.objects.get(nazwa="Standard"),
+    )
+
+    res = logged_in_client.get(reverse("bpp:browse_jednostka", args=(j.slug,)))
+    assert res.status_code == 200
+    content = res.content.decode()
+    assert "Wyszukaj publikacje" in content
+    assert "Jednostki aktualne" not in content
+
+
+@pytest.mark.django_db
 def test_browse_jednostka(setup_group, logged_in_client):
-    u = Uczelnia.objects.create(nazwa="uczelnia", skrot="uu")
-    w = Wydzial.objects.create(nazwa="wydzial", uczelnia=u)
-    j = Jednostka.objects.create(nazwa="jednostka", wydzial=w, uczelnia=u)
+    u = any_uczelnia(nazwa="uczelnia", skrot="uu")
+    w = Wydzial.objects.create(nazwa="wydzial", skrot="WDZ", uczelnia=u)
+    wezel, _ = znajdz_lub_utworz_wezel_wydzialu(w)
+    j = Jednostka.objects.create(
+        nazwa="jednostka", skrot="JEDN", parent=wezel, uczelnia=u
+    )
 
     res = logged_in_client.get(reverse("bpp:browse_jednostka", args=(j.slug,)))
     assert res.status_code == 200
@@ -285,7 +386,7 @@ def test_oai_list_records(oai_data):
 def test_autorzy_view_empty_page_redirects(client, setup_group):
     """Test: AutorzyView redirects to page 1 when EmptyPage occurs."""
     # Create test data - need 100+ authors for 2+ pages (paginate_by=50)
-    Uczelnia.objects.create(nazwa="Test University", skrot="TU")
+    any_uczelnia(nazwa="Test University", skrot="TU")
     baker.make(Autor, nazwisko="Test", imiona="Autor", pokazuj=True, _quantity=100)
 
     # Try to access non-existent page (we have 2 pages, try page 10)
@@ -300,13 +401,13 @@ def test_autorzy_view_empty_page_redirects(client, setup_group):
     messages_list = list(response.wsgi_request._messages)
     assert len(messages_list) == 1
     assert "Podana strona nie istnieje" in str(messages_list[0])
-    assert messages_list[0].level_tag == 'warning'
+    assert messages_list[0].level_tag == "warning"
 
 
 @pytest.mark.django_db
 def test_autorzy_view_empty_page_preserves_search(client, setup_group):
     """Test: Redirect preserves search parameter."""
-    Uczelnia.objects.create(nazwa="Test University", skrot="TU")
+    any_uczelnia(nazwa="Test University", skrot="TU")
     baker.make(Autor, nazwisko="Test", imiona="Autor", pokazuj=True, _quantity=100)
 
     url = reverse("bpp:browse_autorzy") + "?page=10&search=Test"
@@ -321,7 +422,7 @@ def test_autorzy_view_empty_page_preserves_search(client, setup_group):
 @pytest.mark.django_db
 def test_autorzy_view_empty_page_preserves_literka_in_path(client, setup_group):
     """Test: Redirect preserves literka in URL path."""
-    Uczelnia.objects.create(nazwa="Test University", skrot="TU")
+    any_uczelnia(nazwa="Test University", skrot="TU")
     # Create 100 authors starting with 'A'
     baker.make(Autor, nazwisko="Atest", imiona="Autor", pokazuj=True, _quantity=100)
 
@@ -337,7 +438,7 @@ def test_autorzy_view_empty_page_preserves_literka_in_path(client, setup_group):
 @pytest.mark.django_db
 def test_autorzy_view_page_not_integer_redirects(client, setup_group):
     """Test: Non-integer page values redirect to page 1."""
-    Uczelnia.objects.create(nazwa="Test University", skrot="TU")
+    any_uczelnia(nazwa="Test University", skrot="TU")
     baker.make(Autor, nazwisko="Test", imiona="Autor", pokazuj=True, _quantity=100)
 
     url = reverse("bpp:browse_autorzy") + "?page=abc"
@@ -346,7 +447,7 @@ def test_autorzy_view_page_not_integer_redirects(client, setup_group):
     assert response.status_code == 200
     assert "page=1" in response.redirect_chain[0][0]
     # Check warning message
-    messages_list = list(response.context['messages'])
+    messages_list = list(response.context["messages"])
     assert len(messages_list) == 1
     assert "Podana strona nie istnieje" in str(messages_list[0])
 
@@ -360,7 +461,7 @@ def test_autorzy_view_page_not_integer_redirects(client, setup_group):
 @pytest.mark.django_db
 def test_get_available_letters_polish_diacritics_canonical():
     """Polskie znaki diakrytyczne mapują się na kanoniczną literkę."""
-    Uczelnia.objects.create(nazwa="X", skrot="X")
+    any_uczelnia(nazwa="X", skrot="X")
     baker.make(Autor, nazwisko="Ąbrowski", pokazuj=True)
     baker.make(Autor, nazwisko="ćwiek", pokazuj=True)
     baker.make(Autor, nazwisko="Łyk", pokazuj=True)
@@ -378,7 +479,7 @@ def test_get_available_letters_polish_diacritics_canonical():
 @pytest.mark.django_db
 def test_get_available_letters_runs_single_query(django_assert_num_queries):
     """Regresja: jedno zapytanie, niezależnie od liczby liter."""
-    Uczelnia.objects.create(nazwa="X", skrot="X")
+    any_uczelnia(nazwa="X", skrot="X")
     baker.make(Autor, nazwisko="Adam", pokazuj=True)
     baker.make(Autor, nazwisko="Bartek", pokazuj=True)
     baker.make(Autor, nazwisko="Cezary", pokazuj=True)
@@ -392,11 +493,9 @@ def test_get_available_letters_runs_single_query(django_assert_num_queries):
 @pytest.mark.django_db
 def test_get_available_letters_respects_queryset_filter():
     """Pre-filtry queryseta są zachowane (nie pokazujemy ukrytych autorów)."""
-    Uczelnia.objects.create(nazwa="X", skrot="X")
+    any_uczelnia(nazwa="X", skrot="X")
     baker.make(Autor, nazwisko="Adam", pokazuj=True)
     baker.make(Autor, nazwisko="Bartek", pokazuj=False)
 
-    letters = get_available_letters(
-        Autor.objects.filter(pokazuj=True), "nazwisko"
-    )
+    letters = get_available_letters(Autor.objects.filter(pokazuj=True), "nazwisko")
     assert letters == {"A"}

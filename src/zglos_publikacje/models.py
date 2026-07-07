@@ -243,7 +243,21 @@ class Zgloszenie_Publikacji(
             or (self.opl_pub_amount is not None and self.opl_pub_amount != 0)
         )
 
-        uczelnia = Uczelnia.objects.get_default()
+        # Informacja o opłatach może być opcjonalna, w zależności od ustawień obiektu Uczelnia.
+        # Informacja o opłatach może być opcjonalna jeżeli rodzaj zgłaszanej publikacji to "pozostałe"
+
+        # W obydwu przypadkach nie walidujemy (nie uruchamiamy ModelZOplataZaPublikacje.clean)... ale pod jednym
+        # warunkiem: pod takim warunkiem, ze NIC nie zostało wpisane jeżeli chodzi o informację o opłatach
+        # -- czyli, że zmienna zupelny_brak_informacji_o_oplatach jest False.
+
+        if not hasattr(self, "_uczelnia") or self._uczelnia is None:
+            # Multi-hosted: bez przekazanej uczelni NIE zgadujemy przez
+            # ``get()`` (crash przy >1 uczelni — Rollbar #400). Gdy nie da
+            # się jednoznacznie ustalić, ``_uczelnia_wymaga_oplatach...``
+            # obsługuje ``None`` (nie wymusza opłat).
+            uczelnia = Uczelnia.objects.get_single_uczelnia_or_none()
+        else:
+            uczelnia = self._uczelnia
 
         wymaga_oplatach = self._uczelnia_wymaga_oplatach_dla_rodzaju(uczelnia)
 
@@ -352,12 +366,14 @@ class Zgloszenie_Publikacji_Zalacznik(models.Model):
 
 
 class Obslugujacy_Zgloszenia_WydzialowManager(models.Manager):
-    def emaile_dla_wydzialu(self, wydzial):
-        # Jeżeli jest ktokolwiek przypisany do danego wydziału, to zwróć go:
-        if self.filter(wydzial=wydzial).exists():
+    def emaile_dla_obslugujacego(self, jednostka_root):
+        # Faza B (#438) II-2: ``wydzial`` to teraz FK→Jednostka (korzeń
+        # drzewa). Jeżeli jest ktokolwiek przypisany do tego korzenia, zwróć
+        # jego maile.
+        if self.filter(wydzial=jednostka_root).exists():
             ret = []
             for email in (
-                self.filter(wydzial=wydzial)
+                self.filter(wydzial=jednostka_root)
                 .values_list("user__email", flat=True)
                 .distinct()
             ):
@@ -377,7 +393,9 @@ class Obslugujacy_Zgloszenia_Wydzialow(models.Model):
         # [user, wydzial] (user jest kolumną wiodącą).
         db_index=False,
     )
-    wydzial = models.ForeignKey("bpp.Wydzial", models.CASCADE, verbose_name="Wydział")
+    # Faza B (#438) II-2: FK→Jednostka (korzeń drzewa, mirror dawnego
+    # Wydzial). Nazwa pola i ``verbose_name`` zostają — patrz brief II-2.
+    wydzial = models.ForeignKey("bpp.Jednostka", models.CASCADE, verbose_name="Wydział")
 
     objects = Obslugujacy_Zgloszenia_WydzialowManager()
 

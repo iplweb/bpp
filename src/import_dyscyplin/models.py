@@ -8,7 +8,7 @@ from django_fsm import GET_STATE, FSMField, transition
 from model_utils.models import TimeStampedModel
 
 from bpp.fields import YearField
-from bpp.models import Autor, Autor_Dyscyplina, Dyscyplina_Naukowa, Jednostka, Wydzial
+from bpp.models import Autor, Autor_Dyscyplina, Dyscyplina_Naukowa, Jednostka
 from django_bpp.settings.base import AUTH_USER_MODEL
 from import_common.exceptions import (
     BadNoOfSheetsException,
@@ -543,7 +543,13 @@ class Import_Dyscyplin_Row(models.Model):
     jednostka = models.ForeignKey(Jednostka, null=True, on_delete=models.SET_NULL)
 
     nazwa_wydzialu = models.CharField(max_length=512, blank=True, default="")
-    wydzial = models.ForeignKey(Wydzial, null=True, on_delete=models.SET_NULL)
+    # Faza B (#438) II-2: wskazuje na węzeł Jednostka (korzeń drzewa, mirror
+    # dawnego Wydzial — patrz bpp.models.struktura_konwersja). ``related_name
+    # ="+"`` — bez tego zderzenie z reverse accessorem pola ``jednostka``
+    # (obie FK do tego samego modelu ``Jednostka``).
+    wydzial = models.ForeignKey(
+        Jednostka, null=True, on_delete=models.SET_NULL, related_name="+"
+    )
 
     dyscyplina = models.CharField(max_length=200, db_index=True, blank=True, default="")
     kod_dyscypliny = models.CharField(

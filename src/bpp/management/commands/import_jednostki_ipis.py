@@ -1,7 +1,8 @@
 from django.core.management import BaseCommand
 from django.db import transaction
 
-from bpp.models import Jednostka, Jednostka_Wydzial, Uczelnia, Wydzial
+from bpp.models import Jednostka, Jednostka_Rodzic, Uczelnia, Wydzial
+from bpp.models.struktura_konwersja import znajdz_lub_utworz_wezel_wydzialu
 from import_common.core import wytnij_skrot
 
 
@@ -14,10 +15,26 @@ class Command(BaseCommand):
         "Czyści dane z PBNu oraz dane z bazy BPP (autorzy, źródła, wydawcy, publikacje)"
     )
 
+    def add_arguments(self, parser):
+        super().add_arguments(parser)
+        parser.add_argument(
+            "--uczelnia-id",
+            type=int,
+            default=None,
+            help=("ID uczelni (domyślnie: pierwsza uczelnia w bazie)"),
+        )
+
     @transaction.atomic
     def handle(self, *args, **options):
-        uczelnia = Uczelnia.objects.get_default()
+        uczelnia_id = options.get("uczelnia_id")
+        if uczelnia_id:
+            uczelnia = Uczelnia.objects.get(pk=uczelnia_id)
+        else:
+            uczelnia = Uczelnia.objects.get()
         wydzial = Wydzial.objects.get(skrot="WD")  # wydział domyslny
+        # Faza B (#438): wpisy metryczki wskazują węzeł-rodzic (Jednostka);
+        # LAZY resolve wydział → węzeł-lustro (tworzony tu, jeśli brak).
+        wezel_wydzialu, _ = znajdz_lub_utworz_wezel_wydzialu(wydzial)
         for elem in open(
             "/Users/mpasternak/Programowanie/bpp/jednostki-uniq.txt"
         ).readlines():
@@ -44,8 +61,8 @@ class Command(BaseCommand):
             jednostka = Jednostka.objects.get_or_create(
                 nazwa=jednostka, skrot=skrot, uczelnia=uczelnia
             )[0]
-            Jednostka_Wydzial.objects.get_or_create(
-                jednostka=jednostka, wydzial=wydzial
+            Jednostka_Rodzic.objects.get_or_create(
+                jednostka=jednostka, parent=wezel_wydzialu
             )
 
             if zespol:
@@ -55,6 +72,6 @@ class Command(BaseCommand):
                     parent=jednostka,
                     uczelnia=uczelnia,
                 )[0]
-                Jednostka_Wydzial.objects.get_or_create(
-                    jednostka=zespol, wydzial=wydzial
+                Jednostka_Rodzic.objects.get_or_create(
+                    jednostka=zespol, parent=wezel_wydzialu
                 )

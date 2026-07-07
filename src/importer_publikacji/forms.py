@@ -57,7 +57,10 @@ class FetchForm(forms.Form):
         super().__init__(*args, **kwargs)
         providers = get_available_providers()
         self.providers_metadata = get_providers_metadata()
-        self.fields["provider"].choices = [(p, p) for p in providers]
+        self.fields["provider"].choices = [
+            (p, self.providers_metadata.get(p, {}).get("choice_label", p))
+            for p in providers
+        ]
         if last_provider and last_provider in providers:
             self.fields["provider"].initial = last_provider
         elif providers:
@@ -92,12 +95,12 @@ class VerifyForm(forms.Form):
     """Formularz weryfikacji typu publikacji."""
 
     charakter_formalny = forms.ModelChoiceField(
-        queryset=Charakter_Formalny.objects.all(),
+        queryset=Charakter_Formalny.objects.filter(ukryty=False),
         label="Charakter formalny",
         required=True,
     )
     typ_kbn = forms.ModelChoiceField(
-        queryset=Typ_KBN.objects.all(),
+        queryset=Typ_KBN.objects.filter(ukryty=False),
         label="Typ MNiSW",
         required=True,
     )

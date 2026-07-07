@@ -48,6 +48,7 @@ from .konferencja import KonferencjaAdmin  # noqa
 from .patent import Patent_Admin  # noqa
 from .praca_doktorska import Praca_DoktorskaAdmin  # noqa
 from .praca_habilitacyjna import Praca_HabilitacyjnaAdmin  # noqa
+from .rodzaj_jednostki import RodzajJednostkiAdmin  # noqa
 from .seria_wydawnicza import Seria_WydawniczaAdmin  # noqa
 from .szablondlaopisubibliograficznego import SzablonDlaOpisuBibliograficznego  # noqa
 from .uczelnia import UczelniaAdmin  # NOQA
@@ -59,7 +60,6 @@ from .wydawnictwo_zwarte import (  # noqa
     Wydawnictwo_ZwarteAdmin_Baza,
 )
 from .wydawnictwo_zwarte_autor import Wydawnictwo_Zwarte_Autor_Admin  # noqa
-from .wydzial import WydzialAdmin  # noqa
 
 
 class JezykAdmin(RestrictDeletionToAdministracjaGroupAdmin):
@@ -96,8 +96,8 @@ class Zewnetrzna_Baza_DanychAdmin(
 class RzeczownikAdmin(
     RestrictDeletionToAdministracjaGroupAdmin, BaseBppAdminMixin, admin.ModelAdmin
 ):
-    list_display = ["uid", "m", "d", "c", "b", "n", "ms", "w"]
-    search_fields = ["uid", "m", "d", "c", "b", "n", "ms", "w"]
+    list_display = ["uid", "m"]
+    search_fields = ["uid", "m"]
     list_filter = ["uid"]
     readonly_fields = ["uid"]
 
@@ -117,7 +117,10 @@ class Charakter_PBNAdmin(
         "opis",
         "charaktery_formalne",
         "typy_kbn",
+        "ukryty",
     ]
+    list_editable = ["ukryty"]
+    list_filter = ["ukryty"]
     readonly_fields = ["identyfikator", "wlasciwy_dla", "opis", "help_text"]
 
     def charaktery_formalne(self, rec):
@@ -145,7 +148,9 @@ admin.site.register(Tytul, NazwaISkrotAdmin)
 class Typ_KBNAdmin(
     RestrictDeletionToAdministracjaGroupAdmin, BaseBppAdminMixin, admin.ModelAdmin
 ):
-    list_display = ["nazwa", "skrot", "artykul_pbn", "charakter_pbn"]
+    list_display = ["nazwa", "skrot", "artykul_pbn", "charakter_pbn", "ukryty"]
+    list_editable = ["ukryty"]
+    list_filter = ["ukryty"]
 
 
 admin.site.register(Typ_KBN, Typ_KBNAdmin)
@@ -253,6 +258,14 @@ class BppUserAdmin(UserAdmin):
         (
             "PBN API",
             {"fields": ("przedstawiaj_w_pbn_jako",)},
+        ),
+        (
+            "Dostęp do uczelni",
+            {
+                "fields": ("accessible_uczelnie",),
+                "description": "Superużytkownicy mają automatycznie dostęp "
+                "do wszystkich uczelni.",
+            },
         ),
     )
 

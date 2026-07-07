@@ -17,6 +17,7 @@ from django.urls import reverse
 from bpp.const import CHARAKTER_OGOLNY_ROZDZIAL
 from bpp.models import Wydawnictwo_Ciagle, Wydawnictwo_Zwarte
 from crossref_bpp.core import Komparator
+from crossref_bpp.duplikaty import ostrzez_o_zduplikowanych_zrodlach
 from import_common.normalization import normalize_doi
 
 from ..crossref_fields import categorize_crossref_fields
@@ -205,6 +206,17 @@ def _source_initial_auto_match(session):
     return initial
 
 
+def _ostrzez_o_duplikatach_zrodla(request, session):
+    """Po auto-matchu źródła odeślij do deduplikatora, jeśli dopasowanie
+    zablokowały zduplikowane źródła (ta sama nazwa, różne ISSN)."""
+    source_title = (session.normalized_data or {}).get("source_title")
+    if not source_title:
+        return
+    ostrzez_o_zduplikowanych_zrodlach(
+        request, Komparator.porownaj_container_title(source_title)
+    )
+
+
 def _source_context(request, session, form=None):
     """Przygotuj kontekst dla kroku źródła."""
     is_chapter = _is_chapter(session)
@@ -213,6 +225,7 @@ def _source_context(request, session, form=None):
         initial = _source_initial_from_session(session)
         if not initial:
             initial = _source_initial_auto_match(session)
+            _ostrzez_o_duplikatach_zrodla(request, session)
         form = SourceForm(initial=initial)
 
     return {
@@ -333,7 +346,7 @@ def _review_context(request, session):
         "data": session.normalized_data,
     }
 
-    uczelnia = Uczelnia.objects.get_default()
+    uczelnia = Uczelnia.objects.get_for_request(request)
     if (
         uczelnia is not None
         and uczelnia.pbn_integracja
@@ -344,9 +357,11 @@ def _review_context(request, session):
     return ctx
 
 
-def _render_review_step(request, session):
+def _render_review_step(request, session, error=None):
     """Renderuj partial przeglądu z HX-Push-Url."""
     ctx = _review_context(request, session)
+    if error:
+        ctx["error"] = error
     url = reverse(
         "importer_publikacji:review",
         kwargs={"session_id": session.pk},
@@ -356,7 +371,9 @@ def _render_review_step(request, session):
     return _push_url(response, url)
 
 
-def _render_review_full(request, session):
+def _render_review_full(request, session, error=None):
     """Renderuj pełną stronę z krokiem przeglądu."""
     ctx = _review_context(request, session)
+    if error:
+        ctx["error"] = error
     return _render_full_page(request, STEP_REVIEW, ctx)

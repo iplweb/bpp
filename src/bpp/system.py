@@ -14,6 +14,7 @@ from favicon.models import Favicon, FaviconImg
 from flexible_reports import models as flexible_models
 from formdefaults.models import FormFieldRepresentation, FormRepresentation
 from multiseek.models import SearchForm
+from siteblog.models import Article
 
 from bpp.const import (
     GR_RAPORTY_WYSWIETLANIE,
@@ -45,6 +46,7 @@ from bpp.models import (
     Redakcja_Zrodla,
     Rodzaj_Prawa_Patentowego,
     Rodzaj_Zrodla,
+    RodzajJednostki,
     Status_Korekty,
     Typ_KBN,
     Typ_Odpowiedzialnosci,
@@ -59,7 +61,6 @@ from bpp.models import (
     Wydawnictwo_Zwarte_Autor,
     Wydawnictwo_Zwarte_Streszczenie,
     Wydawnictwo_Zwarte_Zewnetrzna_Baza_Danych,
-    Wydzial,
     Wymiar_Etatu,
     Zewnetrzna_Baza_Danych,
     Zrodlo,
@@ -77,14 +78,13 @@ from bpp.models.openaccess import (
 from bpp.models.praca_habilitacyjna import Publikacja_Habilitacyjna
 from bpp.models.profile import BppUser
 from bpp.models.seria_wydawnicza import Seria_Wydawnicza
-from bpp.models.struktura import Jednostka_Wydzial
+from bpp.models.struktura import Jednostka_Rodzic
 from bpp.models.system import Charakter_PBN
 from bpp.models.wydawca import Poziom_Wydawcy, Wydawca
 from deduplikator_autorow.models import IgnoredScientist, LogScalania, NotADuplicate
 from ewaluacja_common.models import Rodzaj_Autora
 from ewaluacja_liczba_n.models import IloscUdzialowDlaAutoraZaRok, LiczbaNDlaUczelni
 from import_polon.models import ImportPolonOverride
-from siteblog.models import Article
 from pbn_api.models import (
     Conference,
     Discipline,
@@ -111,6 +111,7 @@ groups = {
         Charakter_Formalny,
         Crossref_Mapper,
         Kierunek_Studiow,
+        RodzajJednostki,
         Charakter_PBN,
         Funkcja_Autora,
         Zrodlo_Informacji,
@@ -151,9 +152,8 @@ groups = {
     "struktura": [
         Uczelnia,
         LiczbaNDlaUczelni,
-        Wydzial,
         Jednostka,
-        Jednostka_Wydzial,
+        Jednostka_Rodzic,
         Ukryj_Status_Korekty,
     ],
     GR_WPROWADZANIE_DANYCH: [

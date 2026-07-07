@@ -24,6 +24,7 @@ from ..permissions import ImporterPermissionMixin
 from ..providers import InputMode, get_provider
 from ..tasks import create_publication_task, fetch_session_task
 from .authors import (
+    _create_single_author,
     _create_unmatched_authors,
     _orcid_settable_qs,
 )
@@ -142,6 +143,7 @@ class FetchView(ImporterPermissionMixin, View):
 
         session = ImportSession.objects.create(
             created_by=request.user,
+            uczelnia=Uczelnia.objects.get_for_request(request),
             provider_name=provider_name,
             identifier=normalized,
             status=ImportSession.Status.FETCHING,
@@ -447,6 +449,69 @@ class AuthorDeleteView(ImporterPermissionMixin, View):
         return _render_authors_step(request, session)
 
 
+class AuthorCreateNewView(ImporterPermissionMixin, View):
+    """Utwórz NOWEGO autora dla pojedynczego wiersza ("Edytuj" → "Utwórz
+    nowego autora").
+
+    Pozwala rozwiązać niedopasowany wiersz bezpośrednio z modala edycji,
+    bez wracania do zbiorczego żółtego przycisku na górze listy. Tworzy
+    (lub dopasowuje po ORCID) rekord ``Autor`` z danych dostawcy
+    i przypisuje go do obcej jednostki — reużywa ``_create_single_author``,
+    czyli ten sam rdzeń co masowy ``CreateUnmatchedAuthorsView``.
+
+    Opcjonalne pola POST ``nazwisko`` / ``imiona`` / ``zapisany_jako``
+    pozwalają skorygować dane przed utworzeniem (np. literówka w danych
+    dostawcy). Puste pola → użycie wartości z ``ImportedAuthor``.
+    """
+
+    def post(self, request, session_id, author_id):
+        session = get_object_or_404(ImportSession, pk=session_id)
+        imported_author = get_object_or_404(
+            ImportedAuthor,
+            pk=author_id,
+            session=session,
+        )
+
+        uczelnia = Uczelnia.objects.get_for_request(request)
+        obca = uczelnia.obca_jednostka if uczelnia else None
+        if not obca:
+            return render(
+                request,
+                "importer_publikacji/partials/author_row.html",
+                {
+                    "session": session,
+                    "author": imported_author,
+                    "row_error": (
+                        "Brak skonfigurowanej obcej jednostki w "
+                        "ustawieniach uczelni. Skontaktuj się z "
+                        "administratorem."
+                    ),
+                },
+            )
+
+        # Korekta danych przed utworzeniem (opcjonalna).
+        nazwisko = (request.POST.get("nazwisko") or "").strip()
+        imiona = (request.POST.get("imiona") or "").strip()
+        zapisany_jako = (request.POST.get("zapisany_jako") or "").strip()
+        if nazwisko:
+            imported_author.family_name = nazwisko
+        if imiona:
+            imported_author.given_name = imiona
+        if zapisany_jako:
+            imported_author.zapisany_jako = zapisany_jako
+
+        _create_single_author(imported_author, obca)
+
+        return render(
+            request,
+            "importer_publikacji/partials/author_row.html",
+            {
+                "session": session,
+                "author": imported_author,
+            },
+        )
+
+
 class AuthorsConfirmView(ImporterPermissionMixin, View):
     """Potwierdź wszystkie dopasowania autorów."""
 
@@ -589,6 +654,23 @@ class CreateView(ImporterPermissionMixin, View):
                 response["HX-Redirect"] = url
                 return response
             return HttpResponseRedirect(url)
+
+        # #438: pre-flight afiliacji — zanim wejdziemy dalej w importera
+        # (enqueue taska), odmów utworzenia pracy, gdy któryś dopasowany autor
+        # afiliowałby do jednostki nieprzyjmującej afiliacji (np. wydział).
+        # User dostaje komunikat na przeglądzie i może poprawić dopasowanie.
+        from django.core.exceptions import ValidationError
+
+        from .publikacja import waliduj_afiliacje_sesji
+        from .steps import _render_review_full, _render_review_step
+
+        try:
+            waliduj_afiliacje_sesji(session)
+        except ValidationError as exc:
+            error = " ".join(exc.messages)
+            if request.headers.get("HX-Request"):
+                return _render_review_step(request, session, error=error)
+            return _render_review_full(request, session, error=error)
 
         also_pbn = "_create_and_pbn" in request.POST
 

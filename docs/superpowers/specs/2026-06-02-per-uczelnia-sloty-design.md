@@ -1,0 +1,389 @@
+# Design — per-uczelnia liczenie slotów/punktacji (warstwa write-side)
+
+Data: 2026-06-02
+Gałąź: `feature/multi-hosted-config`
+Kontekst: następny wątek po cleanupie `get_default` (patrz
+`docs/superpowers/HANDOFF-multi-hosted.md`, sekcja A).
+
+## Cel i zakres
+
+W instalacji wielouczelnianej jeden rekord może mieć autorów z wielu uczelni
+(autor → afiliacja na jednostkę → jednostka ma uczelnię). Punktacja i sloty
+muszą być liczone i **zapisywane osobno per uczelnia**, za każdym razem dla
+**subsetu autorów z danej uczelni**.
+
+**W zakresie tego spec (write-side foundation):**
+- zmiana schematu cache (`Cache_Punktacja_Dyscypliny` zyskuje klucz uczelni),
+- parametryzacja kalkulatora slotów uczelnią (filtr zbioru autorów),
+- orkiestracja cachera: pętla po uczelniach rekordu,
+- naprawa bazowego widoku SQL (join musi uwzględniać uczelnię),
+- migracja + backfill przez przeliczenie (denorm rebuild).
+
+**Poza zakresem (osobny, następny spec — read-side):**
+- filtrowanie odczytów po uczelni oglądającego (`get_for_request`): raporty,
+  `ewaluacja_optymalizacja`, `ewaluacja_metryki`, `ewaluacja2021`, oświadczenia
+  (pełna inwentaryzacja niżej, sekcja „Następny krok: read-side"). „Liczba N",
+  rankingi i API konsumują cache pośrednio (przez `Rekord`/serializery) — do
+  zweryfikowania w read-side spec, nie inwentaryzowane tu jako bezpośredni
+  importerzy,
+- pipeline tabel tymczasowych `Cache_Punktacja_Autora_Sum` /
+  `_Sum_Group` (raport_slotow),
+- integrator per-uczelnia (handoff §B), drobne (handoff §C).
+
+## Reguła wiodąca (decyzja domenowa usera)
+
+**True per-university partition.** Dla pracy współautorskiej między uczelniami
+slot każdego autora liczony jest z **dzielnikiem zawężonym do autorów danej
+uczelni** — zarówno `k` (liczba autorów z dyscypliny), jak i `m` (wszyscy
+autorzy rekordu) liczone są na subsetcie autorów z tej uczelni. W rezultacie
+`pkdaut`/`slot` różnią się per uczelnia, a `Cache_Punktacja_Dyscypliny` to
+agregat per (rekord, uczelnia, dyscyplina).
+
+> Zastrzeżenie (zanotowane, decyzja usera): to świadome odejście od reguły
+> „matematyka slotów zależy od roku, nie uczelni" z wcześniejszego handoffu.
+> Per-instytucjonalne przeliczanie dzielnika zmienia liczby względem stanu
+> obecnego dla prac współautorskich między uczelniami. User potwierdził to
+> dwukrotnie, świadomie, jako regułę docelową. Caveat regulacyjny (udział
+> jednostkowy wg MEiN bywa liczony z pełnej współautorskości) odnotowany na
+> wypadek audytu liczb.
+
+## Invariant zgodności
+
+Przy **dokładnie jednej** uczelni (stan każdej żywej instalacji dziś) nowy kod
+musi dawać liczby **identyczne** jak obecnie. Zachowanie wielouczelniane to
+nowa zdolność, uśpiona dopóki nie istnieje druga `Uczelnia`. Mechanizm:
+`uczelnia=None` w kalkulatorze ⇒ brak filtra autorów ⇒ ścieżka jak dziś.
+
+## Stan obecny (zmapowany)
+
+Pliki:
+- `src/bpp/models/sloty/core.py` — `ISlot(original, uczelnia=None)`
+  (dopasowanie kalkulatora), `IPunktacjaCacher` (materializacja cache).
+- `src/bpp/models/sloty/common.py` — `SlotMixin`: `wszyscy()`,
+  `autorzy_z_dyscypliny()`, `dyscypliny`, `liczba_k`, `k_przez_m`,
+  `pkd_dla_autora` — wszystkie czytają autorów przez `original.autorzy_set`.
+- `src/bpp/models/abstract/disciplines.py` —
+  `ModelZPrzeliczaniemDyscyplin.przelicz_punkty_dyscyplin(uczelnia=None)`
+  (wejście denorm; dziś `get_default()` fallback — TODO do usunięcia).
+- `src/bpp/models/cache/punktacja.py` — modele cache.
+- `src/bpp/migrations/0204_cache_punktacja_autora_query_view.sql` — definicja
+  widoku `bpp_cache_punktacja_autora_view`.
+
+Wyzwalanie przeliczenia: pole `@denormalized cached_punkty_dyscyplin` na
+`Wydawnictwo_Ciagle` / `Wydawnictwo_Zwarte` / `Patent` woła
+`self.przelicz_punkty_dyscyplin()` przy zmianie pól autorów (django-denorm).
+Backfill ≈ pełny denorm rebuild (`denorms.flush()` / rebuildall).
+
+Dzielnik (mechanika, `common.py`):
+- `liczba_k(d)` = `len(autorzy_z_dyscypliny(d))` — autorzy afiliujący/przypięci
+  z dyscypliny,
+- `wszyscy()` = `autorzy_set.count()` — wszyscy autorzy rekordu (`m`),
+- `pkd_dla_autora` = `pkd / liczba_k`, udziały oparte też o `k/m`.
+
+## Zmiany schematu
+
+- `Cache_Punktacja_Dyscypliny`: **dodać `uczelnia` FK**
+  (`ForeignKey(Uczelnia, on_delete=CASCADE, null=True)`) — klucz partycji
+  (tabela nie ma `jednostka`, więc uczelni nie da się wyprowadzić). `serialize()`
+  uwzględnia `uczelnia_id`.
+- `Cache_Punktacja_Autora`: **bez nowej kolumny** — uczelnia wynika z
+  `jednostka.uczelnia`. Zmieniają się tylko liczone `slot`/`pkdaut`. Wiersz
+  pozostaje keyowany `(rekord, autor, jednostka, dyscyplina)`; jeden wiersz
+  autorstwa mapuje na dokładnie jedną jednostkę → jedną uczelnię.
+- Indeks: `Cache_Punktacja_Dyscypliny(rekord_id, uczelnia, dyscyplina)` pod
+  naprawiony join widoku i przyszłe odczyty per uczelnia.
+
+Wpływ na `serialize()` / denorm: `Cache_Punktacja_Dyscypliny.serialize()` zyskuje
+`uczelnia_id`, a `przelicz_punkty_dyscyplin()` zwraca payload wielouczelniany.
+To zmienia łańcuch zapisywany w polu `@denormalized cached_punkty_dyscyplin`
+(`TextField`) oraz wszelkie testy asertujące dokładny kształt `serialize()` —
+trzeba je zaktualizować. Brak zmiany kontraktu odczytu (dalej lista list).
+
+Uzasadnienie asymetrii (normalize vs denormalize): Autora ma `jednostka`, więc
+uczelnia jest w pełni wyprowadzalna — brak kolumny = zero ryzyka
+niespójności; koszt to jeden dodatkowy join (przez `bpp_jednostka`) w widoku
+i zapytaniach grupujących per uczelnia. Decyzja usera: trzymać wyprowadzaną.
+
+## Kalkulator slotów (`ISlot(publikacja, uczelnia=None)` — opcjonalna uczelnia)
+
+> **Korekta (2026-06-04, hardening #1 — commit `c687ceb07`):** reguła „wybór
+> progu/klasy `_dopasuj_kalkulator` jest niezależny od uczelni" została
+> ŚWIADOMIE ZREWIDOWANA dla `wiele_hst`. `_dopasuj_kalkulator(original,
+> uczelnia=None)` liczy `rodzaje_hst` z `wszystkie_dyscypliny_rekordu(uczelnia)`
+> ZAWĘŻONEGO per-uczelnia — bo mnożnik HST 1.5× to cecha per-dyscyplina/uczelnia,
+> a globalne `wiele_hst` psułoby liczby dla prac cross-uczelnia. `canAdapt()`
+> woła bez uczelni (globalny boolean adapt-check). Single-install: filtr no-op →
+> liczby identyczne. Patrz Audyt 4a. Reszta sekcji (poniżej) opisuje pierwotny
+> zamysł — selekcja progu poza HST nadal jest uczelnia-niezależna.
+
+Kalkulacje robi się przez `ISlot(publikacja)`; dla wygody przyjmuje opcjonalną
+`uczelnia`. Wybór progu/klasy (`_dopasuj_kalkulator`) jest niezależny od uczelni
+— od niej zależy tylko liczenie autorów (dzielnik). Split na uczelnie robi cacher
+(patrz Orkiestracja), `ISlot` dostarcza scoped kalkulator.
+
+- `ISlot(original, uczelnia=None)`:
+  1. guards: `Patent`/`PW`/`rok is None` → `CannotAdapt`,
+  2. jeśli `uczelnia is None` → **rozstrzygnij albo failuj** (`_rozstrzygnij_uczelnie`):
+     - `Uczelnia.objects.count() == 1` → ta jedna (fast-track single-install),
+     - praca ma autorów z **dokładnie 1** uczelni → ta uczelnia,
+     - praca ma autorów z **>1** uczelni → `CannotAdapt` (niejednoznaczne —
+       podaj uczelnię jawnie),
+     - 0 afiliujących autorów → `CannotAdapt`,
+  3. bramka `ukryte_statusy("sloty")` na (rozstrzygniętej/jawnej) uczelni →
+     `CannotAdapt`,
+  4. `kalk = _dopasuj_kalkulator(original); kalk.uczelnia = uczelnia; return kalk`
+     (świeża instancja — brak `copy`/zatrucia `cached_property`).
+- **Usuwa** wewnętrzny `get_default()` (zamyka TODO). Bramka `ukryte_statusy`
+  ZOSTAJE w `ISlot` (teraz zawsze jest jakaś uczelnia: jawna lub rozstrzygnięta).
+- `SlotMixin.__init__(self, original, uczelnia=None)`; trzy szwy filtrują po
+  `jednostka__uczelnia` gdy `self.uczelnia` ustawione (helper `_autorzy_qs()`):
+  - `wszyscy()` → `_autorzy_qs().count()` (`m`),
+  - `autorzy_z_dyscypliny(d)` → `_autorzy_qs().filter(afiliuje, przypieta, d…)`
+    (`k` + lista),
+  - `dyscypliny` (cached_property) → tylko dyscypliny mające autora z `U`.
+- `ModelZPrzeliczaniemDyscyplin.uczelnie_rekordu()` — distinct `Uczelnia` z
+  `autorzy_set.filter(afiliuje=True, przypieta=True)` po `jednostka__uczelnia_id`.
+  Używane przez `_rozstrzygnij_uczelnie` i przez cacher (pętla). Luźny nadzbiór
+  dozwolony.
+
+Ryzyko: pominięty odczyt `autorzy_set` przeciekłby autorów spoza uczelni.
+Mitygacja: test, w którym pominięcie zmieniłoby liczbę (asercja na dzielnik).
+
+**Delta dla 3 callerów `ISlot(obj)` (display)** — `_rozstrzygnij_uczelnie` ją
+NIWELUJE w single-install: `ISlot(obj)` rozstrzyga do tej jednej uczelni i stosuje
+jej bramkę `ukryte_statusy` — czyli ZACHOWANIE JAK STARY `get_default`. Delta
+istnieje tylko w multi-install dla pracy cross-uczelnia, gdzie `ISlot(obj)`
+świadomie `CannotAdapt` (zamiast zgadywać uczelnię). Callery
+(`ewaluacja_optymalizuj_publikacje/views.py:240`,
+`ewaluacja_dwudyscyplinowcy/core.py:77`, `bpp/admin/helpers/pbn_api/gui.py:25`)
+już obsługują `CannotAdapt`; właściwe przekazanie uczelni oglądającego to
+read-side.
+
+Invariant `jednostka`: pole `jednostka` na wierszu autorstwa
+(`BazaModeluOdpowiedzialnosciAutorow.jednostka`, `src/bpp/models/abstract/
+authors.py:23`) jest **NOT NULL** — każdy autor na rekordzie ma jednostkę, więc
+zawsze ma uczelnię. Nie ma więc przypadku „autor bez uczelni", a filtr
+`jednostka__uczelnia=U` na `wszyscy()`/`m` zawęża wyłącznie po realnej
+przynależności (współautorzy z innej uczelni wypadają z `m` danej uczelni —
+to właśnie sedno partycji, nie efekt nullowy).
+
+## Orkiestracja cachera (`IPunktacjaCacher` BEZ parametru uczelni)
+
+`IPunktacjaCacher(original)` — **bez uczelni** (zweryfikowane: żaden caller nigdy
+nie podawał drugiego argumentu). Cała logika wieloucz. jest wewnątrz; callerzy
+bez zmian. Cacher zawsze podaje uczelnię JAWNIE do `ISlot`, więc nie wpada w
+„ambiguous raise" `_rozstrzygnij_uczelnie`.
+
+- `removeEntries()` — **zawsze kasuje cały rekord** po `rekord_id` (obie tabele).
+  Zawsze przebudowujemy wszystkie uczelnie, więc pełny delete sprząta też sieroty
+  po uczelniach, które wypadły (np. po zmianie afiliacji ostatniego autora).
+- `rebuildEntries()` — ustala listę uczelni i liczy per uczelnia, gatując
+  niedopasowane przez `try/except CannotAdapt` (bramka `ukryte_statusy` jest w
+  `ISlot`, więc rzuca `CannotAdapt` dla uczelni, która ukrywa status):
+
+  ```python
+  def rebuildEntries(self):
+      for uczelnia in self._uczelnie_do_przeliczenia():
+          try:
+              kalk = ISlot(self.original, uczelnia=uczelnia)
+          except CannotAdapt:
+              continue  # nie liczy się (typ/punkty/rok) lub ukryty status
+          self._zapisz(kalk, uczelnia)
+
+  def _uczelnie_do_przeliczenia(self):
+      from bpp.models.uczelnia import Uczelnia
+      if Uczelnia.objects.count() == 1:          # FAST-TRACK single-install
+          return Uczelnia.objects.all()
+      return self.original.uczelnie_rekordu()     # MULTI
+  ```
+
+  `_zapisz(kalk, U)`: `Cache_Punktacja_Dyscypliny` tagowane `uczelnia=U`,
+  `autorzy_z_dyscypliny` z `kalk` (scoped); `Cache_Punktacja_Autora` z
+  `original.autorzy_set.filter(jednostka__uczelnia=U)`. W single-install filtr
+  obejmuje wszystkich autorów (no-op) — liczby identyczne jak dziś.
+
+> Fast-track jest SYSTEMOWY (`count()==1`), nie per-rekord: nieafiliujący
+> współautor z innej uczelni nie wchodzi do `uczelnie_rekordu` (filtr
+> afiliuje+przypięta), ale `wszyscy()`/`m` policzyłby go bez filtra → zła liczba.
+> Tylko „jedna uczelnia w całym systemie" gwarantuje unscoped==scoped. W
+> fast-track i tak liczymy przez `ISlot(original, uczelnia=ta_jedna)` (scoped,
+> filtr = no-op), więc kod jest jednolity; oszczędzamy tylko zapytanie
+> `uczelnie_rekordu`.
+
+- `przelicz_punkty_dyscyplin(self)` (wejście denorm) — **traci parametr `uczelnia`
+  i `get_default()`** (zamyka parked TODO). To dokładnie oryginał minus
+  `get_default`: `ipc = IPunktacjaCacher(self); ipc.removeEntries();
+  if ipc.canAdapt(): ipc.rebuildEntries(); return ipc.serialize()`. Logika
+  wieloucz. siedzi w `rebuildEntries`.
+- `cached_punkty_dyscyplin` (`@denormalized`) woła bez argumentów ⇒ auto-rebuild
+  produkuje wszystkie uczelnie.
+
+Zwracana wartość `przelicz_punkty_dyscyplin()` / `serialize()`: trafia do pola
+`@denormalized cached_punkty_dyscyplin` (TextField, artefakt denorm/change-
+detection, NIE parsowany merytorycznie — zweryfikowane). Z wieloma uczelniami
+`serialize()` zwraca wiersze wielu uczelni; musi być **deterministyczny**
+(inaczej denorm wiecznie brudny). Wymuszamy `order_by` z `uczelnia_id`/`pk` jako
+ostatecznym tie-breakerem.
+
+## Bezpośredni callerzy rebuildu (write-path) — inwentaryzacja i zakres
+
+Poza polem `@denormalized` istnieje kilkanaście miejsc konstruujących
+`IPunktacjaCacher(x)` i wołających `removeEntries(); rebuildEntries()` ręcznie.
+Ponieważ `IPunktacjaCacher` NIE MA parametru uczelni (cała logika wieloucz. jest
+wewnątrz), **żaden z tych call-sites się nie zmienia** — i w single-install działa
+identycznie. Podział wg traktowania:
+
+**A. Trwały write-path (realna zmiana danych):** wzorzec
+`cacher.removeEntries(); cacher.rebuildEntries()` automatycznie liczy wszystkie
+uczelnie rekordu. **Zero zmian kodu.** Ewentualna migracja do
+`x.przelicz_punkty_dyscyplin()` jest kosmetyczna (DRY):
+- `src/bpp/admin/core.py:122` — zapis rekordu w adminie,
+- `src/ewaluacja_metryki/views/pin_unpin.py:61,134` — pin/odpięcie,
+- `src/ewaluacja_optymalizuj_publikacje/views.py:144,173,210` — zmiana
+  przypięcia/dyscypliny (DECYZJA optymalizacyjna jest federacyjna i odłożona;
+  rebuild po realnej zmianie danych jest poprawny per uczelnia).
+
+Twardy wymóg write-side: `removeEntries()` MUSI kasować komplet wierszy rekordu
+(jak dziś) — inaczej zostałyby sieroty po uczelniach, które wypadły.
+
+**B. Symulacja optymalizacji (efemeryczne what-if — moduł federacyjny, ODŁOŻONE):**
+nietknięte w tym spec; konstruktor zostaje kompatybilny, więc w single-install
+działają. Federacyjna poprawność (maks. wynik w obrębie WSZYSTKICH uczelni
+federacji, nie pojedynczej) to osobny, późniejszy temat:
+- `src/ewaluacja_optymalizacja/utils.py:179`,
+- `src/ewaluacja_optymalizacja/tasks/unpinning/simulation.py:116`,
+- `src/ewaluacja_optymalizacja/tasks/discipline_swap/simulation.py:48`,
+- `src/ewaluacja_optymalizacja/core/__init__.py:344`.
+
+## Naprawa widoku SQL (poprawność, nie do odłożenia)
+
+Nowa migracja DROP+CREATE `bpp_cache_punktacja_autora_view`, by join trafiał
+też w uczelnię — inaczej rekord 2-uczelniany daje kartezjański iloczyn wierszy
+między uczelniami:
+
+```sql
+CREATE VIEW bpp_cache_punktacja_autora_view AS
+SELECT a.id, a.rekord_id, a.pkdaut, a.slot, a.autor_id, a.dyscyplina_id,
+       a.jednostka_id,
+       d.autorzy_z_dyscypliny, d.zapisani_autorzy_z_dyscypliny
+FROM bpp_cache_punktacja_autora a
+JOIN bpp_jednostka j ON j.id = a.jednostka_id
+JOIN bpp_cache_punktacja_dyscypliny d
+  ON a.rekord_id = d.rekord_id
+ AND a.dyscyplina_id = d.dyscyplina_id
+ AND d.uczelnia_id = j.uczelnia_id;
+```
+
+Model `managed=False` widoku (`Cache_Punktacja_Autora_Query_View`) **nie**
+dostaje na razie nowego pola — ekspozycja `uczelnia` w odczytach to read-side.
+
+## Migracja i backfill
+
+- Migracja 1: dodanie nullable `uczelnia` FK + indeks (szybka, bez ciężkiego
+  kroku danych blokującego tabelę).
+- Migracja 2 (osobny plik): DROP+CREATE widoku z joinem uwzględniającym
+  uczelnię.
+- Backfill = **pełny denorm rebuild po deployu** (udokumentowany krok
+  deploymentu), który repopuluje per uczelnia nowym kodem. Single-install ⇒
+  liczby identyczne. Opcjonalna późniejsza migracja zacieśnia `uczelnia` do
+  non-null po przeliczeniu.
+- Zgodnie z regułą projektu: **żadnych edycji istniejących migracji** — same
+  nowe pliki.
+
+## Testy
+
+- Unit: jeden rekord współautorski, 2 uczelnie → asercja, że `k`, `m`, `slot`,
+  `pkdaut` każdej uczelni używają tylko jej autorów (różne dzielniki), oraz że
+  `Cache_Punktacja_Dyscypliny` daje 2 wiersze z poprawną `uczelnia` i
+  zawężonym `autorzy_z_dyscypliny`.
+- Invariant: fixture jednouczelniany → liczby identyczne z obecnymi
+  oczekiwaniami (ochrona przed regresją).
+- `ukryte_statusy` per uczelnia: rekord liczony dla U1, `CannotAdapt` dla U2 →
+  wiersze tylko dla U1.
+- Widok: rekord 2-uczelniany → brak kartezjańskiej duplikacji; wiersz autora
+  joinuje tylko agregat dyscypliny swojej uczelni.
+- `uczelnie_rekordu()`: nie **pomija** żadnej uczelni mającej policzalnego
+  autora (nadzbiór jest OK — uczelnia bez autorów daje zero wierszy, bez błędu).
+- Wypadnięcie uczelni: po przeniesieniu ostatniego autora U2 do U1 i przeliczeniu
+  — brak osieroconych wierszy U2.
+- Determinizm zwrotki `przelicz_punkty_dyscyplin()`: dwa przeliczenia tego samego
+  rekordu dają identyczny string (denorm nie jest wiecznie brudny).
+- `_rozstrzygnij_uczelnie` (kontrakt `ISlot(obj)` bez uczelni):
+  - multi-install + praca z 1 uczelni → `ISlot(obj)` liczy (rozstrzyga tę uczelnię),
+  - multi-install + praca cross-uczelnia → `ISlot(obj)` rzuca `CannotAdapt`,
+  - single-install → `ISlot(obj)` rozstrzyga tę jedną (jak stary `get_default`).
+
+## Komendy weryfikacji
+
+- Testy: `uv run pytest src/bpp/tests/test_models/test_sloty/ -q -p no:cacheprovider`
+- Lint: `uv run ruff check <pliki>` (NIE `--fix`).
+- `uv run python src/manage.py makemigrations --check --dry-run`
+  (z `PYTEST_TESTCONTAINERS_DISABLE=1 DJANGO_BPP_SKIP_DOTENV=1` gdy brak bazy).
+
+## Następny krok: read-side (osobny spec)
+
+Po wdrożeniu write-side cache zawiera wiersze per (rekord, uczelnia). Dopóki
+odczyty NIE filtrują po uczelni, w instalacji wielouczelnianej liczyłyby
+podwójnie/międzyuczelniano. **Single-install jest bezpieczny** (jedna uczelnia
+= jeden komplet wierszy), więc read-side może iść jako kolejny, oddzielny spec.
+
+Kontrakt read-side: filtrować po uczelni **oglądającego** (`get_for_request`),
+analogicznie jak `Cache_Punktacja_Autora` po `jednostka__uczelnia`, a
+`Cache_Punktacja_Dyscypliny` po `uczelnia`. Widok `managed=False`
+(`Cache_Punktacja_Autora_Query_View`) trzeba wtedy rozszerzyć o `uczelnia`
+(z `bpp_jednostka.uczelnia_id`) i pipeline tabel tymczasowych musi nieść
+uczelnię.
+
+**Pojęcie federacji (kluczowe dla optymalizacji):** instalacja wielouczelniana
+to **federacja** uczelni. Optymalizacja (dobór przypięć/dyscyplin maksymalizujący
+wynik ewaluacji) musi maksymalizować wynik w obrębie **całej federacji**
+(wszystkich uczelni razem), nie pojedynczej uczelni. To NIE jest prosty filtr
+per-uczelnia jak w raportach — to inny problem optymalizacyjny ponad
+partycjonowanym cache. Cache per (rekord, uczelnia) jest właściwym podłożem
+(suma per uczelnia), ale logika decyzyjna jest federacyjna → **odłożona**.
+
+Zinwentaryzowani konsumenci (write-side ich NIE rusza), z adnotacjami usera:
+
+- **raport_slotow** (`core.py`, `tables.py`, `filters.py`, `views/autor.py`,
+  `models/uczelnia.py`) — **ISTOTNE**, główny konsument widoku + tabel
+  `_Sum`/`_Sum_Group`. Czysty read-side: filtr po uczelni oglądającego.
+  Priorytet następnego spec.
+- **ewaluacja_optymalizacja** (`core/data_loader.py`,
+  `core/optimization_phases.py`, `tasks/unpinning/*`, `utils.py`, `views/*`,
+  `views/evaluation_browser/prefetch.py`) — **FEDERACJA, ODŁOŻONE**. Tu trzeba
+  liczyć na najwyższy wynik nie w obrębie jednej uczelni, lecz wszystkich
+  (federacji). Osobny, późniejszy temat (też pisze cache w symulacjach — patrz
+  sekcja „Bezpośredni callerzy rebuildu", grupa B; konstruktor zostaje
+  kompatybilny, single-install działa).
+- **ewaluacja_optymalizuj_publikacje** (`views.py`) — **FEDERACJA, ODŁOŻONE**.
+  Optymalizacja jednej publikacji musi uwzględniać cele wszystkich uczelni
+  (federacji). Część write-path (rebuild po zmianie) ujęta w grupie A wyżej;
+  logika decyzyjna federacyjna odłożona.
+- **ewaluacja_metryki** — DWUstronne: `views/{detail,list}.py` to **tylko
+  odczyt** (zostawiamy / prosty filtr przy odczycie); `views/pin_unpin.py`
+  to **write-path** (rebuild po pin/unpin) — ujęty w grupie A. (Korekta: moduł
+  nie jest „tylko odczytem".)
+- **ewaluacja2021** (`core/*`, `models.py`, `reports.py`) — **STATUS NIEJASNY**.
+  Web URL-e **wyłączone** (zakomentowane w `django_bpp/urls.py`: „Disabled
+  ewaluacja2021 (contains 3N reports)"), ale: jest w `INSTALLED_APPS`,
+  `ewaluacja_common/utils.py` importuje z niego `const`, ma żywe management
+  commands (`raport_3n_genetyczny/plecakowy`, `przelicz_liczbe_n_dla_uczelni`,
+  `odepnij_dyscypliny`). Decyzja „używać/naprawiać?” do podjęcia w read-side
+  spec — najpierw potwierdzić, czy raporty 3N są jeszcze w użyciu.
+- **oswiadczenia** (`views.py`) — read-only (`Cache_Punktacja_Autora.filter`).
+  Status priorytetu: do ustalenia (user: „nie wiem”). Filtr po uczelni przy
+  odczycie wystarczy.
+- **ewaluacja_common** (`utils.py`) — read-only
+  (`Cache_Punktacja_Autora_Query.filter`). Status: do ustalenia.
+- **bpp** (`core.py` read-only `Cache_Punktacja_Autora_Query.filter`;
+  `management/commands/zbieraj_sloty.py` raport per autor) — read-only. Status:
+  do ustalenia.
+
+Tabele tymczasowe pipeline'u raportów (`Cache_Punktacja_Autora_Sum`,
+`_Sum_Group`, `bpp_temporary_cpaq*`, `bpp_temporary_cpasg*`) — przebudowa pod
+uczelnię należy do read-side.
+
+## Pozostaje parked (poza ścieżką read-side)
+
+- Integrator per-uczelnia (handoff §B).
+- Drobne (handoff §C).

@@ -94,12 +94,16 @@ class RekordManager(FulltextSearchMixin, models.Manager):
         ).distinct()
 
     def prace_wydzialu(self, wydzial, afiliowane=None):
+        # Faza B (#438): ``wydzial`` to teraz jednostka-KORZEŃ (self-FK). Prace
+        # poddrzewa łapie ``autorzy__jednostka__wydzial=korzeń``; prace samego
+        # korzenia — ``autorzy__jednostka=korzeń`` (korzeń ma ``wydzial=NULL``).
+        w_poddrzewie = models.Q(autorzy__jednostka__wydzial=wydzial) | models.Q(
+            autorzy__jednostka=wydzial
+        )
         if afiliowane is None:
-            return self.filter(autorzy__jednostka__wydzial=wydzial).distinct()
+            return self.filter(w_poddrzewie).distinct()
 
-        return self.filter(
-            autorzy__jednostka__wydzial=wydzial, autorzy__afiliuje=afiliowane
-        ).distinct()
+        return self.filter(w_poddrzewie, autorzy__afiliuje=afiliowane).distinct()
 
     def redaktorzy_z_jednostki(self, jednostka):
         from bpp.models import Typ_Odpowiedzialnosci
@@ -306,17 +310,31 @@ class RekordBase(
     def form_post_pk(self):
         return "{" + f"{self.pk[0]:d},{self.pk[1]:d}" + "}"
 
+    def _uczelnia_punktacji(self):
+        """Uczelnia oglądającego ustawiona przez widok rekordu (multi-hosted).
+
+        Tabela punktacji na publicznej stronie rekordu ma pokazywać sloty/
+        punkty tylko uczelni z requestu. Widok (``PracaViewMixin``) ustawia
+        ``rekord._uczelnia_ogladajacego``; gdy atrybutu brak (admin, inne
+        konteksty) albo single-install — zwracamy ``None`` (brak zawężenia).
+        """
+        from bpp.util.uczelnia_scope import tylko_jedna_uczelnia
+
+        uczelnia = getattr(self, "_uczelnia_ogladajacego", None)
+        if uczelnia is None or tylko_jedna_uczelnia():
+            return None
+        return uczelnia
+
     @cached_property
     def ma_punktacje_sloty(self):
-        # Jedno zapytanie (UNION ALL + LIMIT 1) zamiast dwóch osobnych EXISTS.
-        pk = [self.id[0], self.id[1]]
+        # Jedno zapytanie (UNION ALL + LIMIT 1) zamiast dwóch osobnych EXISTS
+        # (optymalizacja z dev). Reużywamy uczelnia-scoped querysetów
+        # punktacja_autora/punktacja_dyscypliny, żeby zachować multi-hosted
+        # zawężenie do uczelni oglądającego (single-install => brak filtra).
         return (
-            Cache_Punktacja_Autora.objects.filter(rekord_id=pk)
-            .values_list("pk")
+            self.punktacja_autora.values_list("pk")
             .union(
-                Cache_Punktacja_Dyscypliny.objects.filter(rekord_id=pk).values_list(
-                    "pk"
-                ),
+                self.punktacja_dyscypliny.values_list("pk"),
                 all=True,
             )
             .exists()
@@ -332,13 +350,21 @@ class RekordBase(
 
     @cached_property
     def punktacja_dyscypliny(self):
-        return Cache_Punktacja_Dyscypliny.objects.filter(
+        qs = Cache_Punktacja_Dyscypliny.objects.filter(
             rekord_id=[self.id[0], self.id[1]]
         )
+        uczelnia = self._uczelnia_punktacji()
+        if uczelnia is not None:
+            qs = qs.filter(uczelnia=uczelnia)
+        return qs
 
     @cached_property
     def punktacja_autora(self):
-        return Cache_Punktacja_Autora.objects.filter(rekord_id=[self.id[0], self.id[1]])
+        qs = Cache_Punktacja_Autora.objects.filter(rekord_id=[self.id[0], self.id[1]])
+        uczelnia = self._uczelnia_punktacji()
+        if uczelnia is not None:
+            qs = qs.filter(jednostka__uczelnia=uczelnia)
+        return qs
 
     @cached_property
     def pierwszy_autor_afiliowany(self):

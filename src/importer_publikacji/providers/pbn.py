@@ -33,12 +33,15 @@ PBN_LICENSE_MAP = {
 }
 
 
-def _get_pbn_client():
-    from bpp.models import Uczelnia
+def _get_pbn_client(uczelnia):
+    """Buduje read-only klienta PBN z app-credentiali podanej uczelni.
+
+    Wymaga JAWNEJ uczelni (multi-hosted) — bez zgadywania ``get_default()``.
+    Caller (provider/widok) ma uczelnię z requestu lub z ``ImportSession``.
+    """
     from pbn_api.client import PBNClient
     from pbn_api.client.transport import RequestsTransport
 
-    uczelnia = Uczelnia.objects.get_default()
     if not uczelnia or not all(
         [
             uczelnia.pbn_app_name,
@@ -155,6 +158,20 @@ def _extract_isbn(obj: dict) -> str | None:
     return None
 
 
+def _extract_issn(value: str | None) -> str | None:
+    """Odfiltruj syntetyczny placeholder ISSN z PBN.
+
+    PBN dla czasopism bez ISSN podsyła wewnętrzny identyfikator ``xpbn-<uuid>``
+    (41 znaków) — nie jest to ISSN, a do tego przekracza ``max_length=32`` pól
+    ISSN w BPP (dosłowny zapis wywalał ``DataError: value too long``).
+    Traktujemy go jako *brak* ISSN.
+    """
+    value = (value or "").strip()
+    if not value or value.startswith("xpbn-"):
+        return None
+    return value
+
+
 def _get_current_version_object(data: dict) -> dict | None:
     """Wyciągnij obiekt z bieżącej wersji publikacji PBN."""
     versions = data.get("versions", [])
@@ -210,7 +227,7 @@ class PBNProvider(DataProvider):
             return None
 
         try:
-            client = _get_pbn_client()
+            client = _get_pbn_client(self.uczelnia)
         except ValueError:
             logger.warning("Brak konfiguracji PBN w Uczelnia")
             return None
@@ -250,8 +267,8 @@ class PBNProvider(DataProvider):
             year=_extract_year(obj),
             authors=_extract_authors(obj),
             source_title=journal.get("title"),
-            issn=journal.get("issn"),
-            e_issn=journal.get("eissn"),
+            issn=_extract_issn(journal.get("issn")),
+            e_issn=_extract_issn(journal.get("eissn")),
             isbn=_extract_isbn(obj),
             publisher=journal.get("publisher"),
             publication_type=PBN_TYPE_MAP.get(obj.get("type", "")),

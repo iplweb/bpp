@@ -304,6 +304,40 @@ def normalize_doi(s: str) -> None | str:
     )
 
 
+# Wzorzec DOI wg ISO 26324 / DOI handbook: prefiks "10." + rejestrant +
+# znak "/" + sufiks. Nie próbujemy walidować sufiksu (DOI dopuszcza niemal
+# dowolne znaki) — łapiemy najdłuższy sensowny ciąg do pierwszego białego
+# znaku, znaku zapytania lub kotwicy (#).
+_DOI_IN_TEXT_RE = re.compile(r"10\.\d{4,9}/[^\s?#]+", re.IGNORECASE)
+
+
+def extract_doi_from_url(s: None | str) -> None | str:
+    """Wyłuskaj DOI z dowolnego ciągu (np. adresu URL pracy).
+
+    Zwraca znormalizowany DOI (przez :func:`normalize_doi`), jeśli w
+    ``s`` da się rozpoznać wzorzec ``10.xxxx/...``. W przeciwnym razie
+    zwraca ``None`` — adres, którego NIE da się zinterpretować jako DOI,
+    nie jest błędem; po prostu nie ma DOI do przekazania.
+
+    >>> extract_doi_from_url("https://doi.org/10.1234/abc.def")
+    '10.1234/abc.def'
+    >>> extract_doi_from_url("https://example.com/papers/123") is None
+    True
+    >>> extract_doi_from_url(None) is None
+    True
+    """
+    if not s:
+        return None
+
+    match = _DOI_IN_TEXT_RE.search(s)
+    if match is None:
+        return None
+
+    # Obetnij częste „ogony" interpunkcyjne sklejone z DOI w tekście.
+    doi = match.group(0).rstrip(".,;)]}>\"'")
+    return normalize_doi(doi)
+
+
 def normalize_filename(s: str) -> str:
     s = normalize_file(s).replace(" ", "_").replace(",", "_")
 

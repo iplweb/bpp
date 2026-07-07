@@ -53,6 +53,11 @@ urlpatterns = [
         name="author-delete",
     ),
     path(
+        "<int:session_id>/authors/<int:author_id>/create-new/",
+        views.AuthorCreateNewView.as_view(),
+        name="author-create-new",
+    ),
+    path(
         "<int:session_id>/authors/<int:author_id>/candidates-modal/",
         views.AuthorCandidatesModalView.as_view(),
         name="author-candidates-modal",

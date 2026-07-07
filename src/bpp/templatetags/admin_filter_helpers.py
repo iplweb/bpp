@@ -2,9 +2,15 @@
 Template tags for admin filter panel helpers.
 """
 
+import logging
+
 from django import template
 from django.conf import settings
 from django.urls import reverse
+
+from bpp.util import zaloguj_polkniety_wyjatek
+
+logger = logging.getLogger(__name__)
 
 register = template.Library()
 
@@ -73,6 +79,14 @@ def get_selected_filter_value(spec, cl):
     Returns:
         String with selected filter display value, or empty string if none selected
     """
+    # Filtry z własnym widgetem (`spec.custom_widget_template`, np.
+    # `JednostkaNadrzednaFilter`) mają celowo puste `choices()` — wybór idzie
+    # AJAX-em, nie z listy linków. Taki filtr wystawia `selected_display()`
+    # zamiast tego, żeby nagłówek panelu i tak pokazał aktualny wybór.
+    selected_display = getattr(spec, "selected_display", None)
+    if callable(selected_display):
+        return selected_display() or ""
+
     choices = list(spec.choices(cl))
 
     # First choice is typically "All" - if it's selected, return empty
@@ -136,6 +150,10 @@ def get_filter_count_url(choice, cl):
         else:
             return base_url
     except Exception:
+        zaloguj_polkniety_wyjatek(
+            f"Budowanie URL licznika filtru admin (url_name={url_name})",
+            logger=logger,
+        )
         # W przypadku błędu zwróć pusty string
         # (HTMX nie wywoła requestu dla pustego URL)
         return ""

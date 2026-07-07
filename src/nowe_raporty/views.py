@@ -244,11 +244,24 @@ class RaportFormView(RaportDostepMixin, FormDefaultsMixin, FormView):
     def get_form_title(self):
         return self.definicja.nazwa
 
+    def get_form_kwargs(self):
+        # Multi-hosted: przekazujemy request do formularza, żeby BaseRaportForm
+        # wziął uczelnię z ``request._uczelnia`` (host), a nie zgadywał. Ścieżki
+        # bez tego (post_migrate, introspekcja formdefaults) dostają request=None
+        # → uczelnia=None (None-tolerant).
+        kwargs = super().get_form_kwargs()
+        kwargs["request"] = self.request
+        return kwargs
+
     def get_initial(self):
         initial = super().get_initial()
         cfg = POZIOMY[self.definicja.poziom]
         if cfg.ma_pk and not initial.get("obiekt"):
-            queryset = cfg.model.objects.all()
+            # #438: liczymy z zawężonego querysetu poziomu (dla „wydziału" =
+            # widoczne korzenie), nie ``cfg.model.objects.all()`` — inaczej
+            # instalacja z 1 wydziałem, ale wieloma jednostkami, gubiła
+            # auto-preselekcję ``obiekt`` (count liczył WSZYSTKIE jednostki).
+            queryset = cfg.obiekt_queryset()
             if queryset.count() == 1:
                 initial["obiekt"] = queryset.first()
         return initial
@@ -280,7 +293,11 @@ class RaportGenerujView(RaportDostepMixin, GenerujRaportBase):
     def get_object(self, queryset=None):
         cfg = POZIOMY[self.definicja.poziom]
         if cfg.ma_pk:
-            return get_object_or_404(cfg.model, pk=self.kwargs["pk"])
+            # #438: pobieramy z zawężonego querysetu poziomu (dla „wydziału" =
+            # widoczne korzenie), nie z ``cfg.model`` — inaczej generujący URL
+            # przyjąłby DOWOLNY pk Jednostki (walidacja jest tylko na polu
+            # formularza, a bookmark celuje wprost w URL generowania).
+            return get_object_or_404(cfg.obiekt_queryset(), pk=self.kwargs["pk"])
         return Uczelnia.objects.get_for_request(self.request)
 
     def get_base_queryset(self):

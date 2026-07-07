@@ -11,7 +11,6 @@ from django.db import transaction
 from bpp.models import (
     Status_Korekty,
     Typ_Odpowiedzialnosci,
-    Uczelnia,
     Wydawnictwo_Ciagle,
     Wydawnictwo_Zwarte,
 )
@@ -107,7 +106,7 @@ def _create_wydawnictwo_zwarte(session, common_fields, normalized_data):
     return Wydawnictwo_Zwarte.objects.create(**common_fields)
 
 
-def _add_authors_to_record(session, record):
+def _add_authors_to_record(session, record, uczelnia=None):
     """Dodaj dopasowanych autorów do rekordu."""
     authors = (
         session.authors.exclude(match_status=(ImportedAuthor.MatchStatus.UNMATCHED))
@@ -121,7 +120,9 @@ def _add_authors_to_record(session, record):
 
     typ_aut = Typ_Odpowiedzialnosci.objects.get(skrot="aut.")
 
-    uczelnia = Uczelnia.objects.get_default()
+    if uczelnia is None:
+        # Uczelnia sesji (multi-hosted) — obca_jednostka jest per-uczelnia.
+        uczelnia = session.uczelnia
     obca = uczelnia.obca_jednostka if uczelnia else None
 
     for imported_author in authors:
@@ -148,9 +149,77 @@ def _add_authors_to_record(session, record):
         )
 
 
+def _autorzy_bez_prawa_afiliacji(session, uczelnia=None):
+    """Dopasowani autorzy sesji, którzy przy tworzeniu pracy afiliowaliby
+    (``afiliuje=True``) do jednostki nieprzyjmującej afiliacji.
+
+    Zwraca listę ``ImportedAuthor`` (pusta == brak problemów). Logika afiliacji
+    (jednostka obca → ``afiliuje=False``) jest lustrem
+    ``_add_authors_to_record``, żeby pre-check zgadzał się z faktycznym
+    zapisem. Respektuje ``BPP_WALIDUJ_AFILIACJE_AUTOROW`` — gdy walidacja jest
+    globalnie wyłączona, zwraca pustą listę (tak jak ``_waliduj_afiliacje``).
+    """
+    from django.conf import settings
+
+    if not getattr(settings, "BPP_WALIDUJ_AFILIACJE_AUTOROW", True):
+        return []
+
+    if uczelnia is None:
+        uczelnia = session.uczelnia
+    obca = uczelnia.obca_jednostka if uczelnia else None
+
+    authors = (
+        session.authors.exclude(match_status=ImportedAuthor.MatchStatus.UNMATCHED)
+        .select_related(
+            "matched_autor",
+            "matched_jednostka",
+            "matched_jednostka__rodzaj",
+        )
+        .order_by("order")
+    )
+
+    problemy = []
+    for imported_author in authors:
+        jednostka = imported_author.matched_jednostka
+        if not imported_author.matched_autor or jednostka is None:
+            continue
+        jest_obca = bool(obca and jednostka == obca)
+        afiliuje = not jest_obca
+        if afiliuje and not jednostka.przyjmuje_afiliacje():
+            problemy.append(imported_author)
+    return problemy
+
+
+def waliduj_afiliacje_sesji(session, uczelnia=None):
+    """Guard afiliacji: rzuca ``ValidationError``, gdy któryś dopasowany autor
+    afiliowałby do jednostki nieprzyjmującej afiliacji (rodzaj „Wydział" itp.).
+
+    Wołany PRZED utworzeniem pracy — synchronicznie na etapie formularza UI
+    (``CreateView.post``, żeby user dostał komunikat i poprawił dopasowanie)
+    oraz jako twardy guard na początku ``_create_publication`` (pokrywa też
+    ścieżkę retry i wywołania programistyczne).
+    """
+    problemy = _autorzy_bez_prawa_afiliacji(session, uczelnia)
+    if not problemy:
+        return
+    linie = "; ".join(
+        f"{ia.matched_autor} → „{ia.matched_jednostka}”" for ia in problemy
+    )
+    raise ValidationError(
+        "Nie można utworzyć pracy — część autorów jest przypisana z afiliacją "
+        "do jednostki, która nie przyjmuje afiliacji (np. wydział). Zmień "
+        "jednostkę tych autorów na przyjmującą afiliację albo dopasuj ich do "
+        f"jednostki obcej: {linie}."
+    )
+
+
 @transaction.atomic
 def _create_publication(session):
     """Utwórz rekord publikacji na podstawie sesji."""
+    # Twardy guard afiliacji — przed jakimkolwiek zapisem do bazy (transakcja
+    # atomowa i tak by wycofała, ale tu odmawiamy zanim cokolwiek powstanie).
+    waliduj_afiliacje_sesji(session)
+
     normalized_data = session.normalized_data
 
     if not normalized_data.get("year"):

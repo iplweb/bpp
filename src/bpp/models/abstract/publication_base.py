@@ -38,7 +38,12 @@ class ModelRecenzowany(models.Model):
 class ModelTypowany(models.Model):
     """Model zawierający typ MNiSW/MEiN oraz język."""
 
-    typ_kbn = models.ForeignKey("Typ_KBN", CASCADE, verbose_name="typ MNiSW/MEiN")
+    typ_kbn = models.ForeignKey(
+        "Typ_KBN",
+        CASCADE,
+        verbose_name="typ MNiSW/MEiN",
+        limit_choices_to={"ukryty": False},
+    )
     jezyk = models.ForeignKey(
         "Jezyk", CASCADE, verbose_name="Język", limit_choices_to={"widoczny": True}
     )

@@ -17,6 +17,7 @@ from raport_slotow.filters import RaportZerowyFilter
 from raport_slotow.forms.zerowy import RaportSlotowZerowyParametryFormularz
 from raport_slotow.models import RaportZerowyEntry
 from raport_slotow.tables import RaportSlotowZerowyTable
+from raport_slotow.uczelnia_helper import uczelnia_dla_odczytu
 from raport_slotow.util import MyExportMixin, create_temporary_table_as
 
 
@@ -70,17 +71,33 @@ class RaportSlotowZerowyWyniki(
         if self.request.GET.get("submit") == "Pobierz XLS":
             return self.create_export("xlsx")
 
-        return super().render_to_response(context, **kwargs)
+        response = super().render_to_response(context, **kwargs)
+        if hasattr(response, "render"):
+            # Wynik czyta z tabeli TYMCZASOWEJ (sesyjnej) PostgreSQL. Render
+            # musi się odbyć jeszcze w ciele widoku — pod ASGI leniwy render
+            # TemplateResponse leci osobnym sync_to_async-chunkiem i inny
+            # request współdzielący wątek może w międzyczasie zamknąć
+            # połączenie (temp table znika → "relacja nie istnieje").
+            response.render()
+        return response
 
     def get_queryset(self):
         od_roku = self.form.cleaned_data["od_roku"]
 
         do_roku = self.form.cleaned_data["do_roku"]
 
+        # Strona 'existent' (punkty) zawężona do uczelni oglądającego —
+        # autor z punktami na innej uczelni nie może „znikać" z raportu
+        # zerowego tej uczelni. Strona 'defined' (deklaracje) pozostaje
+        # globalna (deklaracja dyscypliny jest niezależna od afiliacji).
+        request = getattr(self, "request", None)
+        uczelnia = uczelnia_dla_odczytu(request) if request is not None else None
+
         res = autorzy_zerowi(
             min_pk=self.form.cleaned_data["min_pk"],
             od_roku=od_roku,
             do_roku=do_roku,
+            uczelnia=uczelnia,
         )
         create_temporary_table_as("raport_slotow_raportzerowyentry", res)
         with connection.cursor() as cursor:
