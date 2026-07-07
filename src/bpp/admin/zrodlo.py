@@ -19,6 +19,7 @@ from .filters import (
     MaPublikacjeFilter,
     MniswIdObecnyFilter,
     PBN_UID_IDObecnyFilter,
+    PBNStatusFilter,
 )
 from .helpers.fieldsets import ADNOTACJE_FIELDSET, MODEL_PUNKTOWANY_Z_KWARTYLAMI_BAZA
 from .helpers.mixins import ZapiszZAdnotacjaMixin
@@ -164,6 +165,7 @@ class ZrodloAdmin(
         "openaccess_tryb_dostepu",
         "openaccess_licencja",
         PBN_UID_IDObecnyFilter,
+        PBNStatusFilter,
         MniswIdObecnyFilter,
         MaPublikacjeFilter,
     ]
