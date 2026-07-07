@@ -20,24 +20,26 @@
 
 ---
 
-## ⚠ DECYZJE DO POTWIERDZENIA PRZED WYKONANIEM
+## ✅ DECYZJE (ROZSTRZYGNIĘTE 2026-07-07)
 
-Trzy rzeczy, które zmieniają zakres tasków. Rekomendacje + domyślne założenie planu poniżej; potwierdź lub zmień.
+- **D1 → Opcja A.** Redirect `/wydzial/<slug>/` mapuje 1:1 po slugu `Jednostka` i tak ma zostać. (Task 7 bez zmian.)
+- **D2 → NIE.** Pole `Jednostka.wydzial` ZOSTAJE pod tą nazwą — bez renamu. **Task R1 SKREŚLONY.**
+- **D3 → ODŁOŻONE.** Rename modelu `Jednostka` poza zakresem. (Task R2 = won't-do.)
 
-### D1 — Los `browse_wydzial_redirect` (stare URL-e `/wydzial/<slug>/`)
+Poniżej pełny kontekst decyzji (dla wykonawcy).
+
+### D1 — Los `browse_wydzial_redirect` (stare URL-e `/wydzial/<slug>/`) — ROZSTRZYGNIĘTE: Opcja A
 Redirect mapuje stary slug wydziału → węzeł przez `Wydzial.slug` + `legacy_wydzial_id`. Drop OBU (model + pole) kasuje to mapowanie. **`django.contrib.redirects` NIE jest zainstalowane** (sprawdzone), więc nie ma gotowego fallbacku.
 - **Opcja A (rekomendowana, domyślna w planie):** zachowaj istniejący fallback po slugu Jednostki. Redirect zostaje jako `RedirectView`/funkcja, która: jeśli istnieje `Jednostka` o dokładnie tym slugu → 301; inaczej 404. Promowane 1-jednostkowe wydziały (0457) mają root == realna jednostka, więc ich slug ZWYKLE się zgadza. Syntetyczne lustra z suffiksem `[W<id>]` w nazwie → slug się różni → te URL-e dają 404. Koszt: część starych linków wydziałowych 404-uje. Tanie, bez nowej infry.
 - **Opcja B:** przed dropem `legacy_wydzial_id` (Task 10) dodaj `django.contrib.redirects` (INSTALLED_APPS + `RedirectFallbackMiddleware` + migracja) i data-migracją zbackfilluj `Redirect(old_path=/wydzial/<slug>/, new_path=/jednostka/<node.slug>/)` z żywego `Wydzial`+węzła, PÓKI oba jeszcze istnieją. Zero martwych linków. Koszt: nowa aplikacja + middleware + trwała tabela redirectów.
 
 **Domyślnie plan realizuje Opcję A** (Task 7). Jeśli chcesz B — powiedz, dopiszę data-migrację w Task 7/10.
 
-### D2 — Rename `Jednostka.wydzial` → `jednostka_toplevel`
-Denorm self-FK nazywa się `wydzial`, choć od Fazy B wskazuje KORZEŃ drzewa, nie „wydział". ~80 miejsc czyta `.wydzial`/`jednostka__wydzial`/`select_related("wydzial")` (spec: „kosmetyka nazwy", YAGNI).
-- **Rekomendacja:** ZRÓB, ale jako **ostatni, osobny task (Task R1) i osobny commit** — łatwo cofnąć/wydzielić do osobnego PR. To największa mechaniczna część Fazy C i jedyna z realnym ryzykiem cichego `filter(pk)`. Zostawienie pola `wydzial` po wymazaniu pojęcia wydziału to dług nazewniczy, który będzie mylił każdego następnego czytelnika.
-- **Domyślnie plan zawiera Task R1 jako opcjonalny** (za rdzeniem). Potwierdź „tak/nie/osobny-PR".
+### D2 — Rename `Jednostka.wydzial` → `jednostka_toplevel` — ROZSTRZYGNIĘTE: NIE
+Denorm self-FK nazywa się `wydzial`, choć od Fazy B wskazuje KORZEŃ drzewa. **Decyzja usera: zostaw nazwę `wydzial` bez zmian.** Task R1 skreślony — zero renamu pola w Fazie C, zero ryzyka cichego `filter(pk)` z tego tytułu.
 
-### D3 — Rename modelu `Jednostka` → `JednostkaOrganizacyjna`
-- **Rekomendacja: ODŁÓŻ.** Czysty churn (model referowany dosłownie wszędzie + ~950 migracji), zero funkcjonalnego zysku, ogromny diff. Poza tym planem. (Task R2 = jawnie „nie robimy teraz".)
+### D3 — Rename modelu `Jednostka` → `JednostkaOrganizacyjna` — ROZSTRZYGNIĘTE: ODŁOŻONE
+Poza zakresem Fazy C. (Task R2 = won't-do.)
 
 ---
 
@@ -66,7 +68,7 @@ Denorm self-FK nazywa się `wydzial`, choć od Fazy B wskazuje KORZEŃ drzewa, n
 - `Uczelnia.uzywaj_wydzialow` (flaga per-uczelnia — Decyzja #5, ZOSTAJE; tylko audit labela).
 - `WydzialQueryObject`/`PierwszyWydzialQueryObject`/`JednostkaNadrzednaQueryObject` (multiseek — operują na denorm `Jednostka.wydzial`, NIE na modelu `Wydzial`).
 - `Obslugujacy_Zgloszenia_Wydzialow` (już `Jednostka`-backed).
-- `Jednostka.wydzial` denorm field (chyba że D2=tak → Task R1).
+- `Jednostka.wydzial` denorm field (D2=nie — nazwa `wydzial` zostaje).
 - `PublicJednostkaWydzialRankinguAutocomplete` (`units.py` — Jednostka-backed, zastąpił stary public-wydzial-autocomplete).
 
 ---
@@ -580,21 +582,21 @@ gh pr create --base dev --title "feat(#438): Faza C — drop modelu Wydzial + sp
 
 ---
 
-## Appendix (opcjonalne — patrz D2/D3)
+## Appendix — decyzje zamknięte
 
-### Task R1 (opcjonalny, D2=tak): Rename `Jednostka.wydzial` → `jednostka_toplevel`
-~80 miejsc czyta `.wydzial`/`jednostka__wydzial`/`select_related("wydzial")` (lista w inwentaryzacji, sekcja §12). **Osobny commit / rozważ osobny PR.** Kroki: (1) `RenameField('jednostka','wydzial','jednostka_toplevel')` w migracji; (2) denorm decl (`jednostka.py:104-120`) — zmień nazwę metody + `@denormalized` field name; (3) grep-sweep WSZYSTKICH `\.wydzial\b`/`jednostka__wydzial`/`"wydzial"` (select_related/values/Column accessor/multiseek `djangoql_field_name`/serializery) — flip RAZEM (pułapka `filter(pk)`); (4) test-inwariant „`j.jednostka_toplevel == j.get_root()` (lub None dla roota)". ⚠ Multiseek `WydzialQueryObject.djangoql_field_name = "autorzy__jednostka__wydzial"` też się zmienia — i migracja WARTOŚCI zapisanych DjangoQL, jeśli używają `wydzial`.
+### Task R1 — SKREŚLONY (D2=nie)
+Rename `Jednostka.wydzial` → `jednostka_toplevel` **nie jest robiony** w Fazie C. Pole zostaje pod nazwą `wydzial`.
 
-### Task R2 (NIE robimy): Rename `Jednostka` → `JednostkaOrganizacyjna`
-Odłożone (D3). Czysty churn, poza zakresem Fazy C.
+### Task R2 — won't-do (D3=odłożone)
+Rename `Jednostka` → `JednostkaOrganizacyjna` odłożony, poza zakresem Fazy C.
 
 ---
 
 ## Self-review (writing-plans)
 
-- **Pokrycie zakresu Fazy C (spec §294-296 + user):** drop `Wydzial` (T9) ✓, drop `legacy_wydzial_id` (T10) ✓, twarde usunięcie `/api/v1/wydzial/` (T5) ✓, autocomplete (T6) ✓, browse redirect (T7) ✓, ContentType/Permission (T11) ✓, `uzywaj_wydzialow` audit (ZOSTAJE, T12) ✓, rename `wydzial`→`jednostka_toplevel` (T R1, opcjonalny per D2) ✓, rebuild cache + baseline (T13) ✓. Follow-upy PR#446 (F6 sufiks `[W<id>]`, F7 ranking, cache/rekord.py:275) — NIE w tym planie (data-dependent / osobne); dopisać jeśli user chce.
+- **Pokrycie zakresu Fazy C (spec §294-296 + user):** drop `Wydzial` (T9) ✓, drop `legacy_wydzial_id` (T10) ✓, twarde usunięcie `/api/v1/wydzial/` (T5) ✓, autocomplete (T6) ✓, browse redirect (T7) ✓, ContentType/Permission (T11) ✓, `uzywaj_wydzialow` audit (ZOSTAJE, T12) ✓, rename `wydzial`→`jednostka_toplevel` SKREŚLONY (D2=nie), rebuild cache + baseline (T13) ✓. Follow-upy PR#446 (F6 sufiks `[W<id>]`, F7 ranking, cache/rekord.py:275) — NIE w tym planie (data-dependent / osobne); dopisać jeśli user chce.
 - **Ordering:** funkcjonalne repointy (C-1) PRZED usuwaniem powierzchni (C-2) PRZED `DeleteModel` (C-3) PRZED drop pól (C-4) — bo grep-gate w T9/T10 wymaga zera żywych referencji. ✓
 - **Pułapka `filter(pk)`:** repointy podające instancję modelu (T1,T2,T4) mają test-inwariant + są atomowe (jeden commit). ✓
 - **Migracje:** renumeracja `git fetch origin dev` przed KAŻDYM taskiem migracyjnym (T9,T10,T11,T13). Liść na dziś: `0465_merge_20260707_0736`; Phase C = 0466-0468. ✓
 - **Placeholdery:** load-bearing taski (T1,T2,T7,T9,T10,T11) mają realny kod; mechaniczne usunięcia (T5,T6,T8) mają dokładne lokalizacje + test. T3,T4 mają krok „przeczytaj X" tam, gdzie ciało helpera trzeba dopracować przy wykonaniu (orchestrator demo-data, ciała komend). ✓
-- **Decyzje otwarte:** D1 (redirect — domyślnie Opcja A), D2 (rename wydzial — domyślnie Task R1 opcjonalny), D3 (rename Jednostka — odłożone). Do potwierdzenia przez usera.
+- **Decyzje ROZSTRZYGNIĘTE (2026-07-07):** D1=Opcja A (redirect po slugu jednostki), D2=NIE (pole `wydzial` bez renamu, R1 skreślony), D3=odłożone (R2 won't-do).
