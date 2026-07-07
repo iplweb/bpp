@@ -59,11 +59,13 @@ def test_source_form_renders_autocomplete_attrs():
 def test_source_form_valid_with_zrodlo():
     """Formularz powinien być poprawny z wybranym źródłem."""
     zrodlo = baker.make(Zrodlo)
-    form = SourceForm(data={
-        "zrodlo": zrodlo.pk,
-        "wydawca": "",
-        "wydawca_opis": "",
-    })
+    form = SourceForm(
+        data={
+            "zrodlo": zrodlo.pk,
+            "wydawca": "",
+            "wydawca_opis": "",
+        }
+    )
     assert form.is_valid(), form.errors
 
 
@@ -71,11 +73,13 @@ def test_source_form_valid_with_zrodlo():
 def test_source_form_valid_with_wydawca():
     """Formularz powinien być poprawny z wybranym wydawcą."""
     wydawca = baker.make(Wydawca)
-    form = SourceForm(data={
-        "zrodlo": "",
-        "wydawca": wydawca.pk,
-        "wydawca_opis": "",
-    })
+    form = SourceForm(
+        data={
+            "zrodlo": "",
+            "wydawca": wydawca.pk,
+            "wydawca_opis": "",
+        }
+    )
     assert form.is_valid(), form.errors
 
 
@@ -83,11 +87,13 @@ def test_source_form_valid_with_wydawca():
 def test_source_form_valid_empty():
     """Formularz powinien być poprawny bez danych
     (walidacja wymagalności jest w widoku)."""
-    form = SourceForm(data={
-        "zrodlo": "",
-        "wydawca": "",
-        "wydawca_opis": "",
-    })
+    form = SourceForm(
+        data={
+            "zrodlo": "",
+            "wydawca": "",
+            "wydawca_opis": "",
+        }
+    )
     assert form.is_valid()
 
 

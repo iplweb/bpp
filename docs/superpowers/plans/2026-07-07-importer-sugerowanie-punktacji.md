@@ -1241,6 +1241,15 @@ git commit -m "feat(importer): zastosuj wybrana punktacje przy tworzeniu rekordu
 
 **Files:** brak zmian kodu (walidacja).
 
+- [ ] **Step 0: Podciągnij najnowszy dev PRZED baseline (instrukcja właściciela)**
+
+Przed `make baseline-update` i przed pushem: `git fetch origin dev && git merge
+origin/dev` (rozwiąż ew. konflikty). Następnie **zweryfikuj, że `baseline-sql/baseline.sql`
+ma poprawkę `search_path` na `public`** (dev zawiera fix; baseline musi go mieć,
+inaczej odtworzenie schematu ląduje w złym schemacie):
+`grep -n "search_path" baseline-sql/baseline.sql` — musi ustawiać `public`.
+Dopiero po tym rób baseline-update (żeby delta powstała na aktualnym dev).
+
 - [ ] **Step 1: Odśwież baseline (po migracjach 0014/0015)**
 
 Run: `cd /Users/mpasternak/Programowanie/bpp-384-sugeruj-punktacje-importer && make baseline-update`

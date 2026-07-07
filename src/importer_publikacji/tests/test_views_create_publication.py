@@ -309,15 +309,23 @@ def test_create_view_without_year_task_marks_session_failed(
 
 @pytest.mark.django_db
 def test_create_ciagle_operator_nadpisuje_punkty_kbn_po_zrodle(
-    importer_user, charaktery_formalne, typy_kbn, jezyki, statusy_korekt,
-    typy_odpowiedzialnosci
+    importer_user,
+    charaktery_formalne,
+    typy_kbn,
+    jezyki,
+    statusy_korekt,
+    typy_odpowiedzialnosci,
 ):
     from decimal import Decimal
 
     from bpp.models import Punktacja_Zrodla, Zrodlo
 
     session = _make_session_for_publication(
-        importer_user, jezyki, charaktery_formalne, typy_kbn, statusy_korekt,
+        importer_user,
+        jezyki,
+        charaktery_formalne,
+        typy_kbn,
+        statusy_korekt,
         typy_odpowiedzialnosci,
     )
     zrodlo = baker.make(Zrodlo)

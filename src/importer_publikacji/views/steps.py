@@ -468,9 +468,7 @@ def _punktacja_context(request, session, form=None):
 
 def _render_punktacja_step(request, session, form=None):
     ctx = _punktacja_context(request, session, form)
-    url = reverse(
-        "importer_publikacji:punktacja", kwargs={"session_id": session.pk}
-    )
+    url = reverse("importer_publikacji:punktacja", kwargs={"session_id": session.pk})
     response = render(request, STEP_PUNKTACJA, ctx)
     response = _with_breadcrumbs_oob(response, request, session)
     return _push_url(response, url)

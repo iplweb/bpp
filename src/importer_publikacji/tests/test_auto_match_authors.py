@@ -212,9 +212,7 @@ def test_author_match_view_zapisuje_typ_redaktor(session, importer_client):
     autor = baker.make(Autor)
     imp = baker.make(ImportedAuthor, session=session, order=0)
     url = reverse("importer_publikacji:author-match", args=[session.pk, imp.pk])
-    response = importer_client.post(
-        url, {"autor": autor.pk, "typ": const.TO_REDAKTOR}
-    )
+    response = importer_client.post(url, {"autor": autor.pk, "typ": const.TO_REDAKTOR})
     assert response.status_code == 200
     imp.refresh_from_db()
     assert imp.typ_ogolny == const.TO_REDAKTOR
