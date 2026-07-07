@@ -719,6 +719,19 @@ CELERY_TRACK_STARTED = False
 # started/succeeded/failed) na brokerze. Bez tego Flower nie widzi workerow.
 CELERY_WORKER_SEND_TASK_EVENTS = True
 
+# --- Importer publikacji ---------------------------------------------------
+# Watchdog sesji importu: sesja w stanie in-flight (FETCHING/CREATING) dłużej
+# niż tyle sekund jest uznawana za martwą (zgubiony/ubity worker Celery — task
+# nie wykona bloku except) i przy kolejnym pollu przełączana na IMPORT_FAILED.
+# Patrz importer_publikacji.models.ImportSession.is_stalled(). Świadomie duży
+# margines, żeby nie ubijać legalnie długiego dopasowania autorów.
+IMPORTER_STALL_TIMEOUT = env("IMPORTER_STALL_TIMEOUT", default=180, cast=int)
+
+# Twardy timeout (sekundy) requestu HTTP do API CrossRef przy pobieraniu DOI.
+# Bez tego obowiązuje domyślny 30 s biblioteki `crossref` — ustawiamy jawnie,
+# żeby był widoczny i konfigurowalny. Patrz crossref_bpp.models.
+CROSSREF_API_TIMEOUT = env("CROSSREF_API_TIMEOUT", default=30, cast=int)
+
 CELERY_ROUTES = [
     {"denorm.tasks.flush_single": {"queue": "denorm"}},
 ]
