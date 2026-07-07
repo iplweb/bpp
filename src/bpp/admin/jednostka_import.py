@@ -143,8 +143,8 @@ class JednostkaImportResource(resources.ModelResource):
       brakujące tworzone.
     * Wydziały i jednostki bez wartości w odpowiedniej kolumnie są
       zastępowane wartościami domyślnymi (patrz docstring modułu).
-    * ``Wydzial`` jest tworzony przez :class:`WydzialGetOrCreateWidget`,
-      jeżeli nie istnieje.
+    * Węzeł „wydziału" (top-level ``Jednostka``, ``parent IS NULL``) jest
+      tworzony przez :class:`WydzialGetOrCreateWidget`, jeżeli nie istnieje.
     """
 
     uczelnia = fields.Field(
