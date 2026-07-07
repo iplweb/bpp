@@ -16,6 +16,19 @@ class RekordBezPunktowalnegoAutorstwa(Exception):
     """
 
 
+class RekordBezWydawcy(Exception):
+    """Rekord zwarty bez wydawcy — nie ma podstawy do tieru punktacji.
+
+    Import PBN świadomie tworzy wydawnictwa zwarte bez wydawcy (PBN bywa
+    niekompletny; ``wydawca`` jest nullable — redagowane/self-published wchodzą
+    bez wydawcy). Punktacja zwartych opiera się na ``wydawca.get_tier(rok)`` —
+    bez wydawcy nie ma z czego policzyć tieru (Rollbar #436: ``'NoneType'
+    object has no attribute 'get_tier'``). To anomalia DANYCH, nie luka w
+    logice: pomijamy i raportujemy ZAWSZE (jak brak autorstwa), niezależnie od
+    ``--ignore-errors``.
+    """
+
+
 class Command(PBNBaseCommand):
     def add_arguments(self, parser):
         parser.add_argument("--min-rok", type=int, default=2022)
@@ -53,10 +66,10 @@ class Command(PBNBaseCommand):
         for elem in tqdm(queryset, disable=None):
             try:
                 self._przetworz(elem, punkty_dct)
-            except RekordBezPunktowalnegoAutorstwa as exc:
-                # Anomalia danych (rekord bez slotu autorskiego), nie luka w
-                # logice: pomijamy i raportujemy ZAWSZE, niezależnie od
-                # --ignore-errors. Komenda leci dalej.
+            except (RekordBezPunktowalnegoAutorstwa, RekordBezWydawcy) as exc:
+                # Anomalie danych (rekord bez slotu autorskiego albo bez
+                # wydawcy), nie luki w logice: pomijamy i raportujemy ZAWSZE,
+                # niezależnie od --ignore-errors. Komenda leci dalej.
                 tqdm.write(f"POMINIĘTO pk={elem.pk} ({elem}): {komunikat_bledu(exc)}")
             except Exception as exc:
                 # Bez --ignore-errors zachowujemy stare zachowanie: błąd
@@ -69,6 +82,15 @@ class Command(PBNBaseCommand):
                 tqdm.write(f"POMINIĘTO pk={elem.pk} ({elem}): {komunikat_bledu(exc)}")
 
     def _przetworz(self, elem, punkty_dct):
+        if elem.wydawca is None:
+            # Bez wydawcy nie ma podstawy do tieru punktacji (patrz
+            # RekordBezWydawcy). Handle łapie ten wyjątek osobno i pomija rekord.
+            raise RekordBezWydawcy(
+                f"rekord zwarty bez wydawcy — brak podstawy do tieru "
+                f"punktacji (rok={elem.rok})",
+                elem,
+            )
+
         poziom_wydawcy = elem.wydawca.get_tier(elem.rok)
         if poziom_wydawcy == -1:
             poziom_wydawcy = 0
