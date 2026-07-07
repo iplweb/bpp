@@ -8,9 +8,9 @@ w jednej transakcji.
 from django.core.exceptions import ValidationError
 from django.db import transaction
 
+from bpp import const
 from bpp.models import (
     Status_Korekty,
-    Typ_Odpowiedzialnosci,
     Wydawnictwo_Ciagle,
     Wydawnictwo_Zwarte,
 )
@@ -118,7 +118,8 @@ def _add_authors_to_record(session, record, uczelnia=None):
         .order_by("order")
     )
 
-    typ_aut = Typ_Odpowiedzialnosci.objects.get(skrot="aut.")
+    # Rola importowanego autora (typ_ogolny) → kanoniczny skrot Typ_Odpowiedzialnosci.
+    SKROT_DLA_TYPU = {const.TO_AUTOR: "aut.", const.TO_REDAKTOR: "red."}
 
     if uczelnia is None:
         # Uczelnia sesji (multi-hosted) — obca_jednostka jest per-uczelnia.
@@ -143,7 +144,9 @@ def _add_authors_to_record(session, record, uczelnia=None):
             autor=imported_author.matched_autor,
             jednostka=(imported_author.matched_jednostka),
             zapisany_jako=zapisany_jako,
-            typ_odpowiedzialnosci_skrot=typ_aut.skrot,
+            typ_odpowiedzialnosci_skrot=SKROT_DLA_TYPU.get(
+                imported_author.typ_ogolny, "aut."
+            ),
             dyscyplina_naukowa=(imported_author.matched_dyscyplina),
             afiliuje=afiliuje,
         )
