@@ -4,6 +4,8 @@ from django.contrib.contenttypes.models import ContentType
 from django.db import models
 from django.utils import timezone
 
+from bpp import const
+
 # Domyślny próg watchdoga sesji (sekundy). Sesja w stanie in-flight
 # (FETCHING/CREATING) dłużej niż tyle jest uznawana za martwą — patrz
 # ImportSession.is_stalled(). Nadpisywalny ustawieniem IMPORTER_STALL_TIMEOUT.
@@ -330,6 +332,14 @@ class ImportedAuthor(models.Model):
         null=True,
         blank=True,
         verbose_name="dyscyplina",
+    )
+    typ_ogolny = models.SmallIntegerField(
+        "typ autora",
+        choices=[
+            (const.TO_AUTOR, "autor"),
+            (const.TO_REDAKTOR, "redaktor"),
+        ],
+        default=const.TO_AUTOR,
     )
     dyscyplina_source = models.CharField(
         "źródło dyscypliny",
