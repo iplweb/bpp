@@ -33,13 +33,15 @@ class ZapiszDoBazyMixin(RestrictToOwnerMixin, LongRunningTaskCallerMixin, Detail
 
     @transaction.atomic
     def post(self, *args, **kwargs):
-        self.object = self.get_object()
-        # Guard: tylko zakończony dry-run można domknąć zapisem. Import już
-        # zapisany do bazy pomijamy — ochrona przed podwójnym zapisem.
-        if (
-            self.object.finished_on is not None
-            and not self.object.zapisz_zmiany_do_bazy
-        ):
+        # select_for_update: blokuje wiersz na czas transakcji, więc dwa
+        # równoległe POST-y nie przejdą obu przez guard i nie odpalą podwójnego
+        # zapisu — drugi czeka, po commicie widzi już zapisz_zmiany_do_bazy=True.
+        self.object = self.get_object(self.get_queryset().select_for_update())
+        # Guard: domknąć zapisem można tylko dry-run zakończony POMYŚLNIE —
+        # użytkownik musiał zobaczyć podgląd. Odsiewa import w trakcie, zakończony
+        # błędem oraz już zapisany do bazy (ochrona przed podwójnym zapisem).
+        if self.object.finished_successfully and not self.object.zapisz_zmiany_do_bazy:
+            # Flaga trafi do bazy przez pełny save() w mark_reset() poniżej.
             self.object.zapisz_zmiany_do_bazy = True
             self.object.mark_reset()
             self.task_on_commit(pk=self.object.pk)
