@@ -372,6 +372,11 @@ class AuthorMatchView(ImporterPermissionMixin, View):
         if zj:
             imported_author.zapisany_jako = zj
 
+        # Typ autora (autor/redaktor) — również niezależny od dopasowania.
+        typ = form.cleaned_data.get("typ")
+        if typ is not None:
+            imported_author.typ_ogolny = typ
+
         if form.cleaned_data.get("autor"):
             imported_author.matched_autor = form.cleaned_data["autor"]
             imported_author.match_status = ImportedAuthor.MatchStatus.MANUAL
