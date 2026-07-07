@@ -54,8 +54,12 @@ edytowalne; operator przyjmuje, zmienia albo zostawia.
 - Nowy krok wizarda „Punktacja" dla obu typów (`jest_wydawnictwem_zwartym`).
 - Ścieżka ciągłych: `punkty_kbn` z `Punktacja_Zrodla` dla (źródło, rok).
 - Ścieżka zwartych: derywacja z poziomu wydawcy + klasyfikacji rekordu
-  (książka/rozdział wg `charakter_sloty`; w importerze zawsze autorstwo — patrz
-  §7), na bazie progów z komendy `ustaw_zwrotnie_punkty_zwartych`.
+  (książka/rozdział wg `charakter_sloty`; autorstwo/redakcja wg **realnych ról**
+  autorów — patrz §4b, §7), na bazie progów z komendy `ustaw_zwrotnie_punkty_zwartych`.
+- **Typ autora (autor/redaktor) w kroku autorów** (§4b): nowe pole `typ_ogolny`
+  na `ImportedAuthor`, wybór w modalu edycji autora, respektowane przy tworzeniu
+  rekordu. Naprawa u źródła — importer zaczyna poprawnie importować monografie
+  redagowane, a sugestia rozróżnia 200/100 (autorska/redagowana).
 - Jawne „brak danych" dla źródła/wydawcy/poziomu/roku.
 - **Ostrzeżenie HST** (tanie, v1): gdy któryś dopasowany autor ma dyscyplinę
   z dziedziny HST, pokaż warning „autorzy z dyscyplin HST — właściwy próg może
@@ -66,8 +70,6 @@ edytowalne; operator przyjmuje, zmienia albo zostawia.
 
 - Nowa flaga per-instytucja (§8).
 - **Augmentacja HST progów** w samej wartości sugestii (tylko warning, §9-A).
-- Rozróżnianie autorstwo/redakcja w importerze — dziś importer i tak tworzy
-  wszystkich jako autorów (§7, F1); pełna obsługa redakcji to osobny temat.
 - Sugerowanie IF/kwartyli dla zwartych (nie dotyczy).
 
 ## 4. Architektura — nowy krok wizarda „Punktacja"
@@ -103,6 +105,30 @@ Krok zna z sesji: typ (`session.jest_wydawnictwem_zwartym`), źródło/wydawcę
 (`session.zrodlo` / `session.wydawca`), charakter (`session.charakter_formalny`),
 rok (`session.normalized_data.get("year")`), dopasowanych autorów
 (`session.authors`).
+
+## 4b. Podsystem: typ autora (autor/redaktor) w kroku autorów
+
+Dziś importer tworzy **wszystkich** autorów jako „aut." (`_add_authors_to_record`
+twardo `Typ_Odpowiedzialnosci.objects.get(skrot="aut.")`, `publikacja.py:121`);
+`ImportedAuthor` nie ma pola roli. Bez tego (a) importer nie potrafi zaimportować
+redaktora, (b) sugestia dla zwartych nie odróżni monografii autorskiej od
+redagowanej. Dodajemy więc wybór roli — to warunek poprawności §7.
+
+Wtyczka jest gotowa: through-modele `Wydawnictwo_*_Autor` mają
+`typ_odpowiedzialnosci`, a `dodaj_autora(...)` przyjmuje `typ_odpowiedzialnosci_skrot`.
+
+**Powierzchnia zmian:**
+
+| Zmiana | Miejsce |
+|--------|---------|
+| Pole `typ_ogolny` (SmallInteger, choices `TO_AUTOR`/`TO_REDAKTOR`, default `TO_AUTOR`) | `ImportedAuthor`, `models.py:265` (po `matched_dyscyplina`) + migracja od `0013_merge_20260604_1952` |
+| Pole `typ` w `AuthorMatchForm` (`TypedChoiceField(coerce=int)`, opcje autor/redaktor, `required=False`) | `forms.py:155` |
+| Zapis roli (niezależnie od dopasowania, jak `zapisany_jako`) | `AuthorMatchView.post`, `wizard.py:344` |
+| Mapowanie `typ_ogolny → skrot` (`TO_AUTOR→"aut."`, `TO_REDAKTOR→"red."`), przekazane do `dodaj_autora` | `_add_authors_to_record`, `publikacja.py:121,146` |
+| Kolumna „Typ" + `data-typ` + `<select>` w modalu + `typ` w `values:{}` submit + **korekta indeksów DataTables** `textCols`/`selectCols` (`:362-367`) + prefill `openAuthorModal` (`:807`) | `partials/step_authors.html`, `partials/author_row.html` |
+
+Domyślna rola przy auto-match = autor (model default). `typ_ogolny` jest
+metadanowo dostępne dla kroku Punktacja bez odpytywania rekordu (F2).
 
 ## 5. Kontrakt „Sugestia" (współdzielony value object)
 
@@ -184,18 +210,18 @@ redakcja) -> SugestiaPunktacji` — na gołych prymitywach (F2), **nie** na reko
 - prawidłowa kombinacja → `punkty` wg tabeli, `podstawa=f"Wydawca poziom
   {opis_poziomu} ({typ})"`.
 
-**Klasyfikacja w importerze (F1, F7):**
+**Klasyfikacja w importerze (F1, F7 — realne role po §4b):**
 
 - `ksiazka = charakter_sloty == CHARAKTER_SLOTY_KSIAZKA`,
   `rozdzial = charakter_sloty == CHARAKTER_SLOTY_ROZDZIAL` — z
   `session.charakter_formalny` (parytet z komendą; **nie** `_is_chapter`, które
   patrzy na `charakter_ogolny`);
-- `autorstwo = session.authors.exclude(matched_autor=None).exists()` (≥1
-  dopasowany autor), `redakcja = False` — bo `_add_authors_to_record`
-  (`publikacja.py:121`) tworzy **wszystkich** jako „aut."; `ImportedAuthor` nie ma
-  pola roli. Sugestia jest więc spójna z tym, co realnie powstanie.
-- **Caveat w UI:** „Sugestia zakłada autorstwo. Dla monografii/rozdziału
-  redagowanego wpisz punktację ręcznie."
+- `autorstwo`/`redakcja` z **realnych ról** dopasowanych autorów sesji (§4b):
+  `autorstwo = matched.filter(typ_ogolny=TO_AUTOR).exists()`,
+  `redakcja = matched.filter(typ_ogolny=TO_REDAKTOR).exists()`, gdzie
+  `matched = session.authors.exclude(matched_autor=None)`. Odpowiada to
+  `warunek_autorstwo/redakcja` komendy (te same `typ_ogolny`), ale liczone z
+  sesji, nie z rekordu (F2). Sugestia jest spójna z tym, co realnie powstanie.
 - **brak wydawcy** (`session.wydawca is None`) — widok nie woła funkcji, tylko
   pokazuje „brak danych, wpisz ręcznie" (`BRAK_WYDAWCY`).
 
@@ -238,8 +264,10 @@ a kalkulator slotów (`bpp/models/sloty/core.py:197-248`) dla rekordów HST
 **wymaga** wartości augmentowanych (300/150/75, 120/40) w `punkty_kbn` — sugestia
 200 dla monografii HST **zepsuje sloty**. v1: **nie** augmentujemy wartości
 (dług), ale pokazujemy **ostrzeżenie**, gdy dopasowani autorzy mają dyscypliny
-HST (sesja ma `matched_dyscyplina`). Predykat „dyscyplina jest HST" do ustalenia
-w planie (dziedzina/`Dyscyplina_Naukowa`). Sugestia i tak edytowalna.
+HST. Predykat: `Dyscyplina_Naukowa.dyscyplina_hst` (`dyscyplina_naukowa.py:75` —
+`kod_dziedziny() in const.DZIEDZINY_HST`), po `ImportedAuthor.matched_dyscyplina`:
+`any(a.matched_dyscyplina.dyscyplina_hst for a in session.authors.exclude(
+matched_dyscyplina=None))`. Sugestia i tak edytowalna.
 
 **B. Rekord nie istnieje w trakcie wizarda — ROZSTRZYGNIĘTE.** `warunek_*` czytają
 `self.autorzy_set` (reverse-FK) i na instancji bez PK rzucają `ValueError`;
@@ -270,6 +298,12 @@ wpisać ręcznie / pominąć.
 - `_create_publication`: ciągłe — IF/kwartyle z `Punktacja_Zrodla` zostają, a
   `punkty_kbn` = wartość operatora (nadpisanie po `uzupelnij_punktacje_z_zrodla`);
   zwarte — `punkty_kbn` = wartość operatora.
+- **Typ autora (§4b):** POST na `author-match` z `typ=TO_REDAKTOR` zapisuje
+  `ImportedAuthor.typ_ogolny`; `_add_authors_to_record` tworzy through-row z
+  `typ_odpowiedzialnosci.typ_ogolny == TO_REDAKTOR` dla redaktora, `TO_AUTOR`
+  domyślnie (**nowy** test — dziś żaden nie sprawdza `typ_odpowiedzialnosci`
+  utworzonych wierszy); domyślny `typ_ogolny == TO_AUTOR` na świeżym
+  `ImportedAuthor`.
 
 ## 11. Poza zakresem
 
