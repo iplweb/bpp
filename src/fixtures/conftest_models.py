@@ -86,8 +86,21 @@ def autor_jan_kowalski(db, tytuly) -> Autor:
 
 
 def _jednostka_maker(nazwa, skrot, wydzial, **kwargs):
+    # Faza B (#438): ``Jednostka.wydzial`` to self-FK do korzenia (denorm).
+    # Jednostka „w wydziale" wisi pod węzłem-lustrem tego Wydzialu (root),
+    # a denorm wylicza ``wydzial`` przy zapisie. ``wydzial=`` NIE trafia już
+    # do ``create()``.
+    from bpp.models.struktura_konwersja import znajdz_lub_utworz_wezel_wydzialu
+
+    parent = kwargs.pop("parent", None)
+    if parent is None and wydzial is not None:
+        parent, _ = znajdz_lub_utworz_wezel_wydzialu(wydzial)
     ret = Jednostka.objects.get_or_create(
-        nazwa=nazwa, skrot=skrot, wydzial=wydzial, uczelnia=wydzial.uczelnia, **kwargs
+        nazwa=nazwa,
+        skrot=skrot,
+        parent=parent,
+        uczelnia=wydzial.uczelnia,
+        **kwargs,
     )[0]
     ret.refresh_from_db()
     return ret
@@ -100,16 +113,32 @@ def jednostka(wydzial, db):
 
 @pytest.fixture(scope="function")
 def kolo_naukowe(jednostka: Jednostka):
+    from bpp.models import RodzajJednostki
+
+    # Faza B (#438), III-1: wykluczenie kół z rankingu idzie przez FK
+    # ``rodzaj`` + flagę ``wyklucz_z_rankingu_autorow`` (CharField
+    # ``rodzaj_jednostki`` usunięty).
+    rodzaj, _ = RodzajJednostki.objects.get_or_create(
+        nazwa="Koło naukowe", defaults={"wyklucz_z_rankingu_autorow": True}
+    )
+    if not rodzaj.wyklucz_z_rankingu_autorow:
+        rodzaj.wyklucz_z_rankingu_autorow = True
+        rodzaj.save()
     jednostka.nazwa = "Studenckie Koło Naukowe Przykładowe"
     jednostka.skrot = "SKN"
-    jednostka.rodzaj_jednostki = Jednostka.RODZAJ_JEDNOSTKI.KOLO_NAUKOWE
+    jednostka.rodzaj = rodzaj
     jednostka.save()
     return jednostka
 
 
 @pytest.fixture(scope="function")
 def aktualna_jednostka(jednostka: Jednostka, wydzial, db):
-    jednostka.jednostka_wydzial_set.create(wydzial=wydzial)
+    # Faza B (#438): metryczka wskazuje węzeł-rodzic; LAZY get-or-create
+    # węzła-lustra dla wydziału (legacy_wydzial_id → Wydzial).
+    from bpp.models.struktura_konwersja import znajdz_lub_utworz_wezel_wydzialu
+
+    wezel, _ = znajdz_lub_utworz_wezel_wydzialu(wydzial)
+    jednostka.jednostka_rodzic_set.create(parent=wezel)
     jednostka.refresh_from_db()
     return jednostka
 
@@ -121,7 +150,10 @@ def drugi_wydzial(uczelnia):
 
 @pytest.fixture
 def druga_aktualna_jednostka(druga_jednostka, drugi_wydzial):
-    druga_jednostka.jednostka_wydzial_set.create(wydzial=drugi_wydzial)
+    from bpp.models.struktura_konwersja import znajdz_lub_utworz_wezel_wydzialu
+
+    wezel, _ = znajdz_lub_utworz_wezel_wydzialu(drugi_wydzial)
+    druga_jednostka.jednostka_rodzic_set.create(parent=wezel)
     druga_jednostka.refresh_from_db()
     return druga_jednostka
 
@@ -149,7 +181,7 @@ def obca_jednostka(wydzial):
         skupia_pracownikow=False,
         zarzadzaj_automatycznie=False,
         widoczna=False,
-        wchodzi_do_raportow=False,
+        wchodzi_do_rankingu_autorow=False,
     )
 
 
@@ -175,9 +207,14 @@ def zrodlo(db):
 @pytest.fixture
 def kierunek_studiow(wydzial):
     from bpp.models import Kierunek_Studiow
+    from bpp.models.struktura_konwersja import znajdz_lub_utworz_wezel_wydzialu
+
+    # Faza B (#438) II-2: ``Kierunek_Studiow.wydzial`` to FK->Jednostka
+    # (korzeń drzewa, węzeł-lustro dawnego Wydzialu).
+    jednostka_wydzialu, _ = znajdz_lub_utworz_wezel_wydzialu(wydzial)
 
     return Kierunek_Studiow.objects.get_or_create(
-        wydzial=wydzial,
+        wydzial=jednostka_wydzialu,
         nazwa="memetyka użytkowa",
         skrot="mem. uż.",
         opis="testowy kierunek studiów",

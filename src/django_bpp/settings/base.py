@@ -139,7 +139,6 @@ env = environ.Env(
     # Wyświetlanie nazwy wydziału przez jednostki
     #
     DJANGO_BPP_SKROT_WYDZIALU_W_NAZWIE_JEDNOSTKI=(bool, True),
-    DJANGO_BPP_UCZELNIA_UZYWA_WYDZIALOW=(bool, True),
     #
     # Ile dni trzymać wyniki działań Celery - domyślnie tydzień
     #
@@ -1526,8 +1525,6 @@ FORMDEFAULTS_CAN_EDIT_SYSTEM_WIDE = "bpp.formdefaults_perms.can_edit_system_wide
 DJANGO_BPP_SKROT_WYDZIALU_W_NAZWIE_JEDNOSTKI = env(
     "DJANGO_BPP_SKROT_WYDZIALU_W_NAZWIE_JEDNOSTKI"
 )
-
-DJANGO_BPP_UCZELNIA_UZYWA_WYDZIALOW = env("DJANGO_BPP_UCZELNIA_UZYWA_WYDZIALOW")
 
 # polish-inflection: słowo spoza słownika SGJP → passthrough (nie błąd renderu)
 POLISH_INFLECTION_STRICT = False

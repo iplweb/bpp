@@ -1,7 +1,7 @@
 from django.db.models import Avg, Count, Q
 from django.views.generic import ListView
 
-from bpp.models import Jednostka, Wydzial
+from bpp.models import Jednostka
 from ewaluacja_common.models import Rodzaj_Autora
 from raport_slotow.uczelnia_helper import uczelnia_dla_odczytu
 
@@ -67,7 +67,12 @@ class MetrykiListView(EwaluacjaRequiredMixin, ListView):
         # Filtrowanie po wydziale
         wydzial_id = self.request.GET.get("wydzial")
         if wydzial_id:
-            queryset = queryset.filter(jednostka__wydzial_id=wydzial_id)
+            # Faza B (#438): „wydział" = jednostka-korzeń (self-FK). Poddrzewo
+            # łapie ``jednostka__wydzial_id``; metryki autorów przy SAMYM
+            # korzeniu (``wydzial=NULL``) — ``jednostka_id`` (bez tego znikają).
+            queryset = queryset.filter(
+                Q(jednostka__wydzial_id=wydzial_id) | Q(jednostka_id=wydzial_id)
+            )
 
         # Filtrowanie po dyscyplinie
         dyscyplina_id = self.request.GET.get("dyscyplina")
@@ -195,22 +200,38 @@ class MetrykiListView(EwaluacjaRequiredMixin, ListView):
         ).distinct()
 
         if wydzial_id:
-            jednostki_queryset = jednostki_queryset.filter(wydzial_id=wydzial_id)
+            # Poddrzewo wydziału (``wydzial_id``) + SAM korzeń (``pk``): korzeń
+            # ma ``wydzial=NULL``, więc bez ``| Q(pk=…)`` jednostki-roota nie
+            # dałoby się wybrać z listy.
+            jednostki_queryset = jednostki_queryset.filter(
+                Q(wydzial_id=wydzial_id) | Q(pk=wydzial_id)
+            )
 
         context["jednostki"] = jednostki_queryset.order_by("nazwa")
 
         if context["uzywa_wydzialow"]:
-            # Buduj listę wydziałów na podstawie aktualnych jednostek autorów z metrykami
-            context["wydzialy"] = (
-                Wydzial.objects.filter(
-                    jednostka__in=Autor.objects.filter(
-                        pk__in=scoped_metryki_autorzy,
-                    )
-                    .values_list("aktualna_jednostka", flat=True)
-                    .distinct()
-                )
+            # Faza B (#438): „wydziały" = jednostki-korzenie. Dawny
+            # ``Wydzial.objects.filter(jednostka__in=…)`` (reverse-rel po FK→
+            # Wydzial) po retargecie znika (FieldError). Budujemy listę
+            # korzeni z pola ``wydzial`` (self-FK) aktualnych jednostek autorów.
+            aktualne_jednostki_ids = (
+                Autor.objects.filter(pk__in=scoped_metryki_autorzy)
+                .values_list("aktualna_jednostka", flat=True)
                 .distinct()
-                .order_by("nazwa")
+            )
+            # „Wydział" aktualnej jednostki = jej denorm. ``wydzial`` (korzeń);
+            # dla jednostki będącej SAMYM korzeniem (``wydzial_id=NULL``) —
+            # jej WŁASNE pk. Bez tego wydziały, w których autorzy siedzą wprost
+            # na roocie, znikały z filtra (i mogły błędnie zapalić
+            # ``tylko_jeden_wydzial`` → ukrycie całego filtra).
+            root_ids = {
+                wydzial_id if wydzial_id is not None else pk
+                for pk, wydzial_id in Jednostka.objects.filter(
+                    pk__in=aktualne_jednostki_ids
+                ).values_list("pk", "wydzial_id")
+            }
+            context["wydzialy"] = Jednostka.objects.filter(pk__in=root_ids).order_by(
+                "nazwa"
             )
             # Check if there's only one faculty
             context["tylko_jeden_wydzial"] = context["wydzialy"].count() == 1

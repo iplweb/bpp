@@ -653,6 +653,29 @@ def test_procent_odpowiedzialnosci_baseModel_AutorFormset_dobrze_potem_zle_dwoch
             )
         admin_page.fill("#id_autorzy_set-1-procent", "50.00")
 
+        # Self-healing guard against the historical select2 flake: under parallel
+        # CI load the row-1 autor select occasionally ends up pointing at autor1
+        # (same value as row 0), which then blows up server-side as a
+        # UniqueViolation on (rekord, autor, typ_odpowiedzialnosci) — surfacing
+        # only as an opaque 500 + wait_for_function timeout. If we detect two rows
+        # with the same autor before submit, re-select autor2 and re-check.
+        for _ in range(3):
+            autor0 = admin_page.locator("#id_autorzy_set-0-autor").input_value()
+            autor1_val = admin_page.locator("#id_autorzy_set-1-autor").input_value()
+            if autor0 != autor1_val:
+                break
+            select_select2_autocomplete(
+                admin_page, "id_autorzy_set-1-autor", autor2.nazwisko, timeout=4000
+            )
+        assert (
+            admin_page.locator("#id_autorzy_set-0-autor").input_value()
+            != admin_page.locator("#id_autorzy_set-1-autor").input_value()
+        ), (
+            "Oba wiersze formsetu wskazują tego samego autora — select2 nie "
+            "wybrał autor2 (regresja flaka pod obciążeniem). Submit dałby 500 "
+            "(UniqueViolation na rekord/autor/typ_odpowiedzialnosci)."
+        )
+
         # Submit form - should succeed
         admin_page.evaluate('django.jQuery("input[type=submit].grp-default").click()')
         admin_page.wait_for_load_state("domcontentloaded", timeout=10000)
@@ -664,9 +687,13 @@ def test_procent_odpowiedzialnosci_baseModel_AutorFormset_dobrze_potem_zle_dwoch
             timeout=10000,
         )
 
-        # Get the saved record and navigate to edit page
+        # Get the saved record and navigate to edit page. Fetch by autor1 (a
+        # uuid-unique author created only for this test) instead of
+        # ``.objects.first()`` — the live-server DB is committed and shared across
+        # tests in the session, so ``.first()`` can return an unrelated
+        # publication left behind by a sibling test running in parallel.
         model = apps.get_app_config("bpp").get_model(klass)
-        created_publication = model.objects.first()
+        created_publication = model.objects.filter(autorzy=autor1).distinct().get()
         url = channels_live_server.url + reverse(
             f"admin:bpp_{klass}_change", args=(created_publication.pk,)
         )

@@ -7,7 +7,7 @@ from reversion.admin import VersionAdmin
 from ewaluacja_liczba_n.models import LiczbaNDlaUczelni
 from pbn_api.exceptions import PraceSerwisoweException
 
-from ..models import Uczelnia, Ukryj_Status_Korekty, Wydzial
+from ..models import Uczelnia, Ukryj_Status_Korekty
 
 # Uczelnia
 from .core import BaseBppAdminMixin, RestrictDeletionToAdministracjaGroupMixin
@@ -15,13 +15,6 @@ from .helpers.constance_field_mixin import ConstanceUczelniaFieldsMixin
 from .helpers.fieldsets import ADNOTACJE_FIELDSET
 from .helpers.mixins import ZapiszZAdnotacjaMixin
 from .helpers.site_filtered import SiteFilteredAdminMixin
-
-
-class WydzialInlineForm(forms.ModelForm):
-    class Meta:
-        fields = ["nazwa", "skrot", "widoczny", "kolejnosc"]
-        model = Wydzial
-        widgets = {"kolejnosc": forms.HiddenInput}
 
 
 class LiczbaNDlaUczelniInline(admin.TabularInline):
@@ -39,14 +32,6 @@ class LiczbaNDlaUczelniInline(admin.TabularInline):
 
     class Meta:
         fields = ["dyscyplina_naukowa", "liczba_n"]
-
-
-class WydzialInline(admin.TabularInline):
-    classes = ["grp-collapse grp-closed grp-never-open-automatically"]
-    model = Wydzial
-    form = WydzialInlineForm
-    extra = 0
-    sortable_field_name = "kolejnosc"
 
 
 class Ukryj_Status_KorektyInline(admin.StackedInline):
@@ -315,7 +300,6 @@ class UczelniaAdmin(
     )
 
     inlines = [
-        WydzialInline,
         Ukryj_Status_KorektyInline,
         LiczbaNDlaUczelniInline,
     ]

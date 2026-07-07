@@ -562,6 +562,23 @@ class CreateView(ImporterPermissionMixin, View):
                 return response
             return HttpResponseRedirect(url)
 
+        # #438: pre-flight afiliacji — zanim wejdziemy dalej w importera
+        # (enqueue taska), odmów utworzenia pracy, gdy któryś dopasowany autor
+        # afiliowałby do jednostki nieprzyjmującej afiliacji (np. wydział).
+        # User dostaje komunikat na przeglądzie i może poprawić dopasowanie.
+        from django.core.exceptions import ValidationError
+
+        from .publikacja import waliduj_afiliacje_sesji
+        from .steps import _render_review_full, _render_review_step
+
+        try:
+            waliduj_afiliacje_sesji(session)
+        except ValidationError as exc:
+            error = " ".join(exc.messages)
+            if request.headers.get("HX-Request"):
+                return _render_review_step(request, session, error=error)
+            return _render_review_full(request, session, error=error)
+
         also_pbn = "_create_and_pbn" in request.POST
 
         # Persist for retry path (Task 10 reads this)

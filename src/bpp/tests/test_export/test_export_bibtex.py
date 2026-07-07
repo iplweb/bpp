@@ -27,6 +27,7 @@ from bpp.models import (
     Wydawnictwo_Zwarte,
     Zrodlo,
 )
+from bpp.models.struktura_konwersja import znajdz_lub_utworz_wezel_wydzialu
 
 
 @pytest.mark.django_db
@@ -48,9 +49,9 @@ class TestBibTeXExport:
 
         for input_str, expected in test_cases:
             result = sanitize_bibtex_string(input_str)
-            assert (
-                result == expected
-            ), f"Input: {input_str}, Expected: {expected}, Got: {result}"
+            assert result == expected, (
+                f"Input: {input_str}, Expected: {expected}, Got: {result}"
+            )
 
     def test_generate_bibtex_key(self):
         """Test BibTeX key generation."""
@@ -249,6 +250,9 @@ class TestBibTeXExport:
         # Create test data
         autor = baker.make(Autor, nazwisko="Tesla", imiona="Nikola")
         wydzial = baker.make("bpp.Wydzial", nazwa="Faculty of Engineering")
+        # Faza B (#438) II-2: ``Patent.wydzial`` to FK->Jednostka (korzeń
+        # drzewa, węzeł-lustro dawnego Wydzialu).
+        jednostka_wydzialu, _ = znajdz_lub_utworz_wezel_wydzialu(wydzial)
 
         patent = baker.make(
             Patent,
@@ -259,7 +263,7 @@ class TestBibTeXExport:
             data_zgloszenia=datetime.date(2023, 1, 1),
             data_decyzji=datetime.date(2023, 6, 1),
             www="https://patent.example.com",
-            wydzial=wydzial,
+            wydzial=jednostka_wydzialu,
         )
 
         # Add author
@@ -292,7 +296,10 @@ class TestBibTeXExport:
             "bpp.Wydzial", nazwa="Faculty of Science", uczelnia=uczelnia
         )
         jednostka = baker.make(
-            "bpp.Jednostka", nazwa="Department", wydzial=wydzial, uczelnia=uczelnia
+            "bpp.Jednostka",
+            nazwa="Department",
+            parent=znajdz_lub_utworz_wezel_wydzialu(wydzial)[0],
+            uczelnia=uczelnia,
         )
 
         praca = baker.make(
@@ -327,7 +334,10 @@ class TestBibTeXExport:
             "bpp.Wydzial", nazwa="Faculty of Medicine", uczelnia=uczelnia
         )
         jednostka = baker.make(
-            "bpp.Jednostka", nazwa="Department", wydzial=wydzial, uczelnia=uczelnia
+            "bpp.Jednostka",
+            nazwa="Department",
+            parent=znajdz_lub_utworz_wezel_wydzialu(wydzial)[0],
+            uczelnia=uczelnia,
         )
 
         praca = baker.make(
@@ -364,7 +374,10 @@ class TestBibTeXExport:
         uczelnia = baker.make("bpp.Uczelnia", nazwa="University")
         wydzial = baker.make("bpp.Wydzial", nazwa="Faculty", uczelnia=uczelnia)
         jednostka = baker.make(
-            "bpp.Jednostka", nazwa="Department", wydzial=wydzial, uczelnia=uczelnia
+            "bpp.Jednostka",
+            nazwa="Department",
+            parent=znajdz_lub_utworz_wezel_wydzialu(wydzial)[0],
+            uczelnia=uczelnia,
         )
 
         # Create publications of all types
@@ -446,7 +459,10 @@ class TestBibTeXExport:
         uczelnia = baker.make("bpp.Uczelnia", nazwa="University")
         wydzial = baker.make("bpp.Wydzial", nazwa="Faculty", uczelnia=uczelnia)
         jednostka = baker.make(
-            "bpp.Jednostka", nazwa="Department", wydzial=wydzial, uczelnia=uczelnia
+            "bpp.Jednostka",
+            nazwa="Department",
+            parent=znajdz_lub_utworz_wezel_wydzialu(wydzial)[0],
+            uczelnia=uczelnia,
         )
 
         ciagle = baker.make(Wydawnictwo_Ciagle, tytul_oryginalny="Test Article")
@@ -475,13 +491,13 @@ class TestBibTeXExport:
         ]
 
         for model, expected_title in models_to_test:
-            assert hasattr(
-                model, "to_bibtex"
-            ), f"{model._meta.model_name} missing to_bibtex method"
+            assert hasattr(model, "to_bibtex"), (
+                f"{model._meta.model_name} missing to_bibtex method"
+            )
             bibtex = model.to_bibtex()
-            assert isinstance(
-                bibtex, str
-            ), f"{model._meta.model_name} to_bibtex should return string"
-            assert (
-                expected_title in bibtex
-            ), f"{expected_title} not found in bibtex for {model._meta.model_name}"
+            assert isinstance(bibtex, str), (
+                f"{model._meta.model_name} to_bibtex should return string"
+            )
+            assert expected_title in bibtex, (
+                f"{expected_title} not found in bibtex for {model._meta.model_name}"
+            )

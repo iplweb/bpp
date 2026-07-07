@@ -357,20 +357,20 @@ class Autor(LinkDoPBNMixin, ModelZAdnotacjami, ModelZPBN_ID):
         koniec_pracy = date(rok, 12, 31)
 
         if Autor_Jednostka.objects.filter(
+            Q(jednostka__wydzial=wydzial) | Q(jednostka=wydzial),
             autor=self,
             rozpoczal_prace__lte=start_pracy,
             zakonczyl_prace__gte=koniec_pracy,
-            jednostka__wydzial=wydzial,
         ):
             return True
 
         # A może ma wpisaną tylko datę początku pracy? W takiej sytuacji
         # stwierdzamy, że autor NADAL tam pracuje, bo nie ma końca, więc:
         if Autor_Jednostka.objects.filter(
+            Q(jednostka__wydzial=wydzial) | Q(jednostka=wydzial),
             autor=self,
             rozpoczal_prace__lte=start_pracy,
             zakonczyl_prace=None,
-            jednostka__wydzial=wydzial,
         ):
             return True
 
@@ -386,7 +386,9 @@ class Autor(LinkDoPBNMixin, ModelZAdnotacjami, ModelZPBN_ID):
         # być przydatne np przy importowaniu imion i innych rzeczy, więc sprawdźmy w sytuacj
         # gdy jest rozszerzona afiliacja:
 
-        if Autor_Jednostka.objects.filter(autor=self, jednostka__wydzial=wydzial):
+        if Autor_Jednostka.objects.filter(
+            Q(jednostka__wydzial=wydzial) | Q(jednostka=wydzial), autor=self
+        ):
             return True
 
     def get_full_name(self):

@@ -81,6 +81,7 @@ SYSTEM_MENU = [
 ]
 
 SYSTEM_MENU_2 = [
+    ("Rodzaje jednostek", "/admin/bpp/rodzajjednostki/"),
     ("Rodzaje źródeł", "/admin/bpp/rodzaj_zrodla/"),
     ("Rodzaje praw patentowych", "/admin/bpp/rodzaj_prawa_patentowego/"),
     ("Statusy korekt", "/admin/bpp/status_korekty/"),
@@ -110,7 +111,14 @@ WEB_MENU = [
 
 STRUKTURA_MENU = [
     (_tytul_lazy("UCZELNIA"), "/admin/bpp/uczelnia/"),
-    (_tytul_lazy("WYDZIAL", MNOGA), "/admin/bpp/wydzial/"),
+    # Faza B (#438), III-3: WydzialAdmin usunięty razem z inline/resource
+    # (Wydzial jako MODEL żyje do Fazy C, ale nie ma już własnego admina).
+    # Zarządzanie „wydziałami" przeszło na korzenie drzewa MPTT w
+    # JednostkaAdmin (ta sama konsolidacja co strona publiczna w III-2) —
+    # link filtruje listę do węzłów bez rodzica, czyli odpowiedników dawnych
+    # Wydziałów. Zobacz też ``_should_hide_wydzial`` niżej (sprawdza ETYKIETĘ
+    # tego wpisu, NIE URL — URL już nie zawiera słowa „wydzial").
+    (_tytul_lazy("WYDZIAL", MNOGA), "/admin/bpp/jednostka/?parent__isnull=True"),
     (_tytul_lazy("JEDNOSTKA", MNOGA), "/admin/bpp/jednostka/"),
     ("Kierunki studiów", "/admin/bpp/kierunek_studiow/"),
 ]
@@ -244,8 +252,6 @@ def _should_hide_wydzial(request):
     Multi-hosted: uczelnia z requestu (który host oglądamy), NIE get_default() —
     przywrócone po scaleniu dev, którego refaktor C901 wrócił do get_default().
     """
-    from django.conf import settings
-
     from bpp.models import Uczelnia
 
     uczelnia = Uczelnia.objects.get_for_request(request)
@@ -253,10 +259,10 @@ def _should_hide_wydzial(request):
     if uczelnia is not None:
         uzywaj_wydzialow = uczelnia.uzywaj_wydzialow
 
-    return (
-        (not getattr(settings, "DJANGO_BPP_UCZELNIA_UZYWA_WYDZIALOW", True))
-        or (not uzywaj_wydzialow)
-    ) and STRUKTURA_MENU[1][1].find("wydzial") >= 0
+    # Guard po ETYKIECIE (nie po URL-u) — od III-3 URL wpisu wskazuje
+    # przefiltrowany JednostkaAdmin (``/admin/bpp/jednostka/?parent__isnull=
+    # True``), więc już nie zawiera słowa „wydzial".
+    return (not uzywaj_wydzialow) and "wydzia" in str(STRUKTURA_MENU[1][0]).lower()
 
 
 def _add_group_submenus(menu, user, groups, request):

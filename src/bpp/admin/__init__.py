@@ -60,7 +60,6 @@ from .wydawnictwo_zwarte import (  # noqa
     Wydawnictwo_ZwarteAdmin_Baza,
 )
 from .wydawnictwo_zwarte_autor import Wydawnictwo_Zwarte_Autor_Admin  # noqa
-from .wydzial import WydzialAdmin  # noqa
 
 
 class JezykAdmin(RestrictDeletionToAdministracjaGroupAdmin):

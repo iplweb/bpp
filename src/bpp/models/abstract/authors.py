@@ -221,16 +221,31 @@ class BazaModeluOdpowiedzialnosciAutorow(models.Model):
 
     def _waliduj_afiliacje(self):
         """Validate affiliation - author can't affiliate to foreign unit."""
-        if (
+        if not (
             self.afiliuje
             and self.jednostka_id is not None
-            and self.jednostka.skupia_pracownikow is False
             and getattr(settings, "BPP_WALIDUJ_AFILIACJE_AUTOROW", True)
         ):
+            return
+
+        if self.jednostka.skupia_pracownikow is False:
             raise ValidationError(
                 {
                     "afiliuje": "Jeżeli autor opracował tą pracę w obcej jednostce, to pole "
                     "'Afiliuje' nie powinno być zaznaczone."
+                }
+            )
+
+        # #438: rodzaj jednostki (słownik RodzajJednostki) może wyłączać
+        # afiliację — np. „Wydział": autor afiliuje na jednostkę podrzędną,
+        # nie na sam wydział-korzeń.
+        rodzaj = self.jednostka.rodzaj
+        if rodzaj is not None and rodzaj.autor_moze_afiliowac is False:
+            raise ValidationError(
+                {
+                    "afiliuje": f"Jednostka „{self.jednostka}” jest rodzaju "
+                    f"„{rodzaj}”, który nie dopuszcza afiliacji autorów. "
+                    "Odznacz pole 'Afiliuje' albo wybierz jednostkę podrzędną."
                 }
             )
 

@@ -41,6 +41,9 @@ from bpp.views.autocomplete import (
     PodrzednaPublikacjaHabilitacyjnaAutocomplete,
     PublicAutorAutocomplete,
     PublicJednostkaAutocomplete,
+    PublicJednostkaNieToplevelAutocomplete,
+    PublicJednostkaToplevelAutocomplete,
+    PublicJednostkaWydzialRankinguAutocomplete,
     PublicKonferencjaAutocomplete,
     PublicStatusKorektyAutocomplete,
     PublicTaggitTagAutocomplete,
@@ -80,11 +83,11 @@ from bpp.views.browse import (
     RekordToPracaView,
     RokView,
     UczelniaView,
-    WydzialView,
     WyswietlDeklaracjeDostepnosci,
     ZrodlaView,
     ZrodloView,
     bibtex_view,
+    browse_wydzial_redirect,
 )
 from bpp.views.microsoft_auth_redirect import MicrosoftAuthRedirectView
 from bpp.views.oai import OAIView
@@ -244,7 +247,11 @@ urlpatterns = [
         JednostkiView.as_view(),
         name="browse_jednostki_literka",
     ),
-    url(r"^wydzial/(?P<slug>[\w-]+)/$", WydzialView.as_view(), name="browse_wydzial"),
+    url(
+        r"^wydzial/(?P<slug>[\w-]+)/$",
+        browse_wydzial_redirect,
+        name="browse_wydzial",
+    ),
     url(
         r"^uczelnia/(?P<slug>[\w-]+)/$", UczelniaView.as_view(), name="browse_uczelnia"
     ),
@@ -409,6 +416,21 @@ urlpatterns = [
         r"^public-jednostka-autocomplete/$",
         PublicJednostkaAutocomplete.as_view(),
         name="public-jednostka-autocomplete",
+    ),
+    url(
+        r"^public-jednostka-toplevel-autocomplete/$",
+        PublicJednostkaToplevelAutocomplete.as_view(),
+        name="public-jednostka-toplevel-autocomplete",
+    ),
+    url(
+        r"^public-jednostka-nietoplevel-autocomplete/$",
+        PublicJednostkaNieToplevelAutocomplete.as_view(),
+        name="public-jednostka-nietoplevel-autocomplete",
+    ),
+    url(
+        r"^public-jednostka-wydzial-rankingu-autocomplete/$",
+        PublicJednostkaWydzialRankinguAutocomplete.as_view(),
+        name="public-jednostka-wydzial-rankingu-autocomplete",
     ),
     url(
         r"^zewnetrzna-baza-danych-autocomplete/$",

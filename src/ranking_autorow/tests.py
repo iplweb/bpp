@@ -25,6 +25,20 @@ from bpp.tests.util import (
 from ranking_autorow.forms import RankingAutorowForm
 from ranking_autorow.views import RankingAutorow
 
+
+def _wydzial_root(wydzial):
+    """Faza B (#438): węzeł-lustro (root Jednostka) dla wydziału, z włączonym
+    rankingiem autorów — pełni w rankingu rolę „wydziału" (jednostki wiszą pod
+    nim, a denorm ``wydzial`` wskazuje ten korzeń)."""
+    from bpp.models.struktura_konwersja import znajdz_lub_utworz_wezel_wydzialu
+
+    root, _ = znajdz_lub_utworz_wezel_wydzialu(wydzial)
+    if not root.zezwalaj_na_ranking_autorow:
+        root.zezwalaj_na_ranking_autorow = True
+        root.save()
+    return root
+
+
 TEST123 = "TEST123"
 
 
@@ -107,7 +121,17 @@ def test_ranking_autorow_bez_kol_naukowych(
     rf,
     uczelnia,
 ):
-    jednostka.rodzaj_jednostki = Jednostka.RODZAJ_JEDNOSTKI.KOLO_NAUKOWE
+    # Faza B (#438), III-1: wykluczenie kół po FK ``rodzaj`` + flaga
+    # (CharField ``rodzaj_jednostki`` usunięty).
+    from bpp.models import RodzajJednostki
+
+    rodzaj, _ = RodzajJednostki.objects.get_or_create(
+        nazwa="Koło naukowe", defaults={"wyklucz_z_rankingu_autorow": True}
+    )
+    if not rodzaj.wyklucz_z_rankingu_autorow:
+        rodzaj.wyklucz_z_rankingu_autorow = True
+        rodzaj.save()
+    jednostka.rodzaj = rodzaj
     jednostka.save()
 
     wydawnictwo_ciagle_z_autorem.punkty_pk = 20
@@ -164,8 +188,10 @@ def test_ranking_autorow_wybor_wydzialu(
     wydzial.zezwalaj_na_ranking_autorow = True
     wydzial.save()
 
-    jw1 = baker.make(Jednostka, wydzial=wydzial, uczelnia=uczelnia)
-    jw2 = baker.make(Jednostka, wydzial=drugi_wydzial, uczelnia=uczelnia)
+    root1 = _wydzial_root(wydzial)
+    root2 = _wydzial_root(drugi_wydzial)
+    jw1 = baker.make(Jednostka, parent=root1, uczelnia=uczelnia)
+    jw2 = baker.make(Jednostka, parent=root2, uczelnia=uczelnia)
 
     autor_jan_nowak.dodaj_jednostke(jw1)
     autor_jan_kowalski.dodaj_jednostke(jw2)
@@ -197,16 +223,58 @@ def test_ranking_autorow_wybor_wydzialu(
 
     # Test by accessing the report URL directly with parameters
     result = admin_app.get(
-        reverse("bpp:ranking-autorow", args=(rok, rok)) + f"?wydzial={wydzial.pk}"
+        reverse("bpp:ranking-autorow", args=(rok, rok)) + f"?wydzial={root1.pk}"
     )
     assert b"Kowalski" not in result.content
     assert b"Nowak" in result.content
 
     # Wydzial 2
     result = admin_app.get(
-        reverse("bpp:ranking-autorow", args=(rok, rok)) + f"?wydzial={drugi_wydzial.pk}"
+        reverse("bpp:ranking-autorow", args=(rok, rok)) + f"?wydzial={root2.pk}"
     )
     assert b"Kowalski" in result.content
+    assert b"Nowak" not in result.content
+
+
+@pytest.mark.django_db
+def test_ranking_autorow_stale_pk_wydzialu_nie_zwraca_pelnego(
+    wydzial,
+    drugi_wydzial,
+    autor_jan_kowalski,
+    autor_jan_nowak,
+    admin_app,
+    uczelnia,
+    typy_odpowiedzialnosci,
+    rok,
+):
+    """F4 (#438): ``?wydzial=<pk spoza rootów>`` (stary bookmark ``Wydzial.pk``
+    albo pk jednostki-dziecka) NIE może CICHO zwrócić pełnego rankingu. Filtr
+    ma zostać zastosowany, a wynik ma być PUSTY (nieznaleziony korzeń)."""
+    wydzial.zezwalaj_na_ranking_autorow = True
+    wydzial.save()
+
+    root1 = _wydzial_root(wydzial)
+    root2 = _wydzial_root(drugi_wydzial)
+    # jw1 NIE jest korzeniem (parent=root1) — jego pk nie jest ważnym „wydziałem".
+    jw1 = baker.make(Jednostka, parent=root1, uczelnia=uczelnia)
+    jw2 = baker.make(Jednostka, parent=root2, uczelnia=uczelnia)
+
+    autor_jan_nowak.dodaj_jednostke(jw1)
+    autor_jan_kowalski.dodaj_jednostke(jw2)
+
+    wc1 = baker.make(Wydawnictwo_Ciagle, impact_factor=10, rok=timezone.now().year)
+    wc1.dodaj_autora(autor_jan_nowak, jw1)
+
+    wc2 = baker.make(Wydawnictwo_Ciagle, impact_factor=10, rok=timezone.now().year)
+    wc2.dodaj_autora(autor_jan_kowalski, jw2)
+
+    # jw1.pk to jednostka-dziecko, więc get_dostepne_wydzialy() (parent IS NULL)
+    # go nie zawiera → get_wydzialy() zwraca PUSTY queryset. Po fixie filtr
+    # stosujemy (``wydzialy is not None``) → pusty wynik, a NIE pełny ranking.
+    result = admin_app.get(
+        reverse("bpp:ranking-autorow", args=(rok, rok)) + f"?wydzial={jw1.pk}"
+    )
+    assert b"Kowalski" not in result.content
     assert b"Nowak" not in result.content
 
 
@@ -224,8 +292,10 @@ def test_ranking_autorow_wszystkie_wydzialy(
     wydzial.zezwalaj_na_ranking_autorow = True
     wydzial.save()
 
-    jw1 = baker.make(Jednostka, wydzial=wydzial, uczelnia=uczelnia)
-    jw2 = baker.make(Jednostka, wydzial=drugi_wydzial, uczelnia=uczelnia)
+    root1 = _wydzial_root(wydzial)
+    root2 = _wydzial_root(drugi_wydzial)
+    jw1 = baker.make(Jednostka, parent=root1, uczelnia=uczelnia)
+    jw2 = baker.make(Jednostka, parent=root2, uczelnia=uczelnia)
 
     autor_jan_nowak.dodaj_jednostke(jw1)
     autor_jan_kowalski.dodaj_jednostke(jw2)
@@ -270,14 +340,14 @@ def test_ranking_autorow_form_jednostki_when_not_using_wydzialy(uczelnia):
         Jednostka,
         uczelnia=uczelnia,
         widoczna=True,
-        wchodzi_do_raportow=True,
+        wchodzi_do_rankingu_autorow=True,
         nazwa="Jednostka 1",
     )
     baker.make(
         Jednostka,
         uczelnia=uczelnia,
         widoczna=True,
-        wchodzi_do_raportow=True,
+        wchodzi_do_rankingu_autorow=True,
         nazwa="Jednostka 2",
     )
 
@@ -361,12 +431,12 @@ def test_ranking_autorow_view_filters_by_jednostki(
 
     # Set up jednostka
     jednostka.widoczna = True
-    jednostka.wchodzi_do_raportow = True
+    jednostka.wchodzi_do_rankingu_autorow = True
     jednostka.save()
 
     # Create another jednostka
     druga_jednostka = baker.make(
-        Jednostka, uczelnia=uczelnia, widoczna=True, wchodzi_do_raportow=True
+        Jednostka, uczelnia=uczelnia, widoczna=True, wchodzi_do_rankingu_autorow=True
     )
 
     # Set up publikacja
@@ -402,14 +472,14 @@ def test_ranking_autorow_context_with_jednostki(rf, uczelnia):
         Jednostka,
         uczelnia=uczelnia,
         widoczna=True,
-        wchodzi_do_raportow=True,
+        wchodzi_do_rankingu_autorow=True,
         nazwa="Jednostka A",
     )
     baker.make(
         Jednostka,
         uczelnia=uczelnia,
         widoczna=True,
-        wchodzi_do_raportow=True,
+        wchodzi_do_rankingu_autorow=True,
         nazwa="Jednostka B",
     )
 
@@ -430,6 +500,41 @@ def test_ranking_autorow_context_with_jednostki(rf, uczelnia):
 
     # Check subtitle is set correctly
     assert context["table_subtitle"] == "Jednostka A"
+
+
+@pytest.mark.django_db
+def test_ranking_autorow_get_dostepne_wydzialy_pomija_ukryte(rf, uczelnia):
+    """#438: ukryty root (``widoczna=False``) z ``zezwalaj_na_ranking_autorow``
+    NIE może trafić do pickera/resolvera wydziałów rankingu — inaczej
+    ``?wydzial=<ukryty_pk>`` wyrenderuje ukryty wydział. Parytet z
+    ``get_dostepne_jednostki`` (które filtruje ``widoczna=True``)."""
+    widoczny = baker.make(
+        Jednostka,
+        uczelnia=uczelnia,
+        parent=None,
+        wydzial=None,
+        widoczna=True,
+        zezwalaj_na_ranking_autorow=True,
+    )
+    ukryty = baker.make(
+        Jednostka,
+        uczelnia=uczelnia,
+        parent=None,
+        wydzial=None,
+        widoczna=False,
+        zezwalaj_na_ranking_autorow=True,
+    )
+
+    view = RankingAutorow()
+    view.request = rf.get(f"/?wydzial={ukryty.pk}")
+    view.kwargs = dict(od_roku=2020, do_roku=2022)
+
+    dostepne = view.get_dostepne_wydzialy()
+    assert widoczny in dostepne
+    assert ukryty not in dostepne
+
+    # Resolver ?wydzial=<ukryty> nie może zwrócić ukrytego roota.
+    assert list(view.get_wydzialy()) == []
 
 
 @pytest.mark.django_db
@@ -698,6 +803,7 @@ def test_ranking_z_wydzialem(ranking_data):
     """Zsumuje punktacje ze wszystkich prac, ze wszystkich wydziałów dla roku."""
     client = ranking_data["client"]
     w2 = ranking_data["w2"]
+    w2_root = _wydzial_root(w2)
 
     response = client.get(
         reverse(
@@ -708,7 +814,7 @@ def test_ranking_z_wydzialem(ranking_data):
             ),
         )
         + "?wydzial="
-        + str(w2.pk)
+        + str(w2_root.pk)
         + "",
         follow=True,
     )
@@ -754,3 +860,175 @@ def test_ranking_eksport_csv(ranking_data):
     )
     # suma punktacji
     assert b",44.444," in response.content
+
+
+# --- Faza B (#438): picker/walidacja pola „jednostka" + kolumny tabeli ---
+
+
+@pytest.mark.django_db
+def test_ranking_form_jednostka_queryset_wyklucza_korzenie_gdy_wydzialy(uczelnia):
+    """Issue 2b: gdy uczelnia UŻYWA wydziałów, lista „jednostka" nie pokazuje
+    korzeni (to „wydziały", wybierane osobnym selektorem), a picker celuje w
+    wariant „nie-toplevel"."""
+    uczelnia.uzywaj_wydzialow = True
+    uczelnia.save()
+
+    korzen = baker.make(
+        Jednostka, uczelnia=uczelnia, parent=None, widoczna=True, aktualna=True
+    )
+    dziecko = baker.make(
+        Jednostka, uczelnia=uczelnia, parent=korzen, widoczna=True, aktualna=True
+    )
+
+    form = RankingAutorowForm(lata=[2020, 2021, 2022])
+    qs = form.fields["jednostka"].queryset
+
+    assert korzen not in qs, "korzeń (wydział) nie powinien być na liście jednostek"
+    assert dziecko in qs, "jednostka podrzędna powinna być wybieralna"
+    # ``widget.url`` (DAL) zwraca już zreverse'owaną ścieżkę.
+    assert form.fields["jednostka"].widget.url == reverse(
+        "bpp:public-jednostka-nietoplevel-autocomplete"
+    )
+
+
+@pytest.mark.django_db
+def test_ranking_form_jednostka_queryset_zawiera_korzenie_bez_wydzialow(uczelnia):
+    """Bez wydziałów jednostki-korzenie (spromowane wydmuszki) SĄ zwykłymi
+    jednostkami — muszą być wybieralne, a picker to domyślny autocomplete."""
+    uczelnia.uzywaj_wydzialow = False
+    uczelnia.save()
+
+    korzen = baker.make(
+        Jednostka, uczelnia=uczelnia, parent=None, widoczna=True, aktualna=True
+    )
+
+    form = RankingAutorowForm(lata=[2020, 2021, 2022])
+    qs = form.fields["jednostka"].queryset
+
+    assert korzen in qs
+    assert form.fields["jednostka"].widget.url == reverse(
+        "bpp:public-jednostka-autocomplete"
+    )
+
+
+@pytest.mark.django_db
+def test_ranking_form_akceptuje_jednostke_bez_prac(uczelnia):
+    """Issue 1: jednostka publiczna BEZ prac bezpośrednich musi się walidować
+    (dawny ``jednostka_with_works`` ją odrzucał → „Wybierz poprawną opcję")."""
+    uczelnia.uzywaj_wydzialow = False
+    uczelnia.save()
+
+    bez_prac = baker.make(
+        Jednostka, uczelnia=uczelnia, parent=None, widoczna=True, aktualna=True
+    )
+
+    form = RankingAutorowForm(lata=[2020, 2021, 2022])
+    # Sedno issue 1: pole waliduje przynależność do queryset-u pickera.
+    assert bez_prac in form.fields["jednostka"].queryset
+    cleaned = form.fields["jednostka"].clean(str(bez_prac.pk))
+    assert cleaned == bez_prac
+
+
+@pytest.mark.django_db
+def test_ranking_view_jednostka_spoza_dostepnych_daje_pusty_nie_pelny(
+    wydawnictwo_ciagle_z_autorem, jednostka, rf, uczelnia
+):
+    """Regresja (#438): wybór jednostki poprawnej w pickerze, ale spoza
+    ``get_dostepne_jednostki`` (``wchodzi_do_rankingu_autorow=False``) MUSI dać
+    PUSTY wynik (filtr zastosowany), a NIE cichy pełny ranking (był bug
+    ``if jednostki:`` — pusty queryset falsy → filtr pomijany)."""
+    uczelnia.uzywaj_wydzialow = False
+    uczelnia.save()
+
+    jednostka.widoczna = True
+    jednostka.wchodzi_do_rankingu_autorow = True
+    jednostka.save()
+    wydawnictwo_ciagle_z_autorem.punkty_pk = 20
+    wydawnictwo_ciagle_z_autorem.impact_factor = 20
+    wydawnictwo_ciagle_z_autorem.save()
+
+    poza = baker.make(
+        Jednostka,
+        uczelnia=uczelnia,
+        widoczna=True,
+        aktualna=True,
+        wchodzi_do_rankingu_autorow=False,
+    )
+
+    # bez filtra: 1 wynik
+    view = RankingAutorow(request=rf.get("/"), kwargs=dict(od_roku=0, do_roku=3030))
+    assert view.get_queryset().count() == 1
+
+    # z filtrem na jednostkę spoza dostępnych → pusto (nie pełny ranking)
+    view = RankingAutorow(
+        request=rf.get(f"/?jednostka={poza.pk}"),
+        kwargs=dict(od_roku=0, do_roku=3030),
+    )
+    assert view.get_queryset().count() == 0
+
+
+@pytest.mark.django_db
+def test_ranking_table_kolumny_jednostka_wydzial_maja_rozne_naglowki():
+    """Issue 3: kolumny „jednostka" i „wydzial" mają odrębne nagłówki (nie dwa
+    razy „Nazwa" wyprowadzone z accessora)."""
+    from ranking_autorow.views import RankingAutorowJednostkaWydzialTable
+
+    table = RankingAutorowJednostkaWydzialTable([])
+    assert table.columns["jednostka"].header == "Jednostka"
+    assert table.columns["wydzial"].header == "Wydział"
+
+
+@pytest.mark.django_db
+def test_ranking_view_ukrywa_kolumne_wydzial_bez_wydzialow(rf, uczelnia):
+    """Issue 3: kolumna „Wydział" ukryta, gdy uczelnia nie używa wydziałów;
+    widoczna, gdy używa."""
+    from django.contrib.auth.models import AnonymousUser
+
+    # Osobne requesty — ``get_for_request`` cache'uje uczelnię na
+    # ``request._uczelnia``, więc jeden request niósłby stan sprzed toggle'a.
+    uczelnia.uzywaj_wydzialow = False
+    uczelnia.save()
+    req1 = rf.get("/")
+    req1.user = AnonymousUser()
+    view = RankingAutorow(request=req1, kwargs=dict(od_roku=0, do_roku=3030))
+    assert "wydzial" in view.get_table_kwargs().get("exclude", ())
+
+    uczelnia.uzywaj_wydzialow = True
+    uczelnia.save()
+    req2 = rf.get("/")
+    req2.user = AnonymousUser()
+    view = RankingAutorow(request=req2, kwargs=dict(od_roku=0, do_roku=3030))
+    assert "wydzial" not in view.get_table_kwargs().get("exclude", ())
+
+
+@pytest.mark.django_db
+def test_wydzial_rankingu_autocomplete_wyklucza_bez_zezwolenia(uczelnia):
+    """8a (#438): picker „wydziału" w rankingu (``…-wydzial-rankingu-…``) NIE
+    oferuje korzeni wyłączonych z rankingu (``zezwalaj_na_ranking_autorow=
+    False``) — inaczej ich wybór dawał cicho pusty wynik."""
+    from bpp.views.autocomplete.units import (
+        PublicJednostkaWydzialRankinguAutocomplete,
+    )
+
+    rankowalny = baker.make(
+        Jednostka,
+        uczelnia=uczelnia,
+        parent=None,
+        widoczna=True,
+        aktualna=True,
+        zezwalaj_na_ranking_autorow=True,
+    )
+    niedostepny = baker.make(
+        Jednostka,
+        uczelnia=uczelnia,
+        parent=None,
+        widoczna=True,
+        aktualna=True,
+        zezwalaj_na_ranking_autorow=False,
+    )
+
+    pks = set(
+        PublicJednostkaWydzialRankinguAutocomplete.qset.values_list("pk", flat=True)
+    )
+    assert rankowalny.pk in pks
+    assert niedostepny.pk not in pks  # wyłączony z rankingu — nie w pickerze
