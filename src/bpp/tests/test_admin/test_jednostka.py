@@ -146,6 +146,25 @@ def test_JednostkaAdmin_formularz_pokazuje_podjednostki(
     assert jednostka_podrzedna.nazwa in content
 
 
+def test_JednostkaAdmin_uczelnia_skrot_zwraca_skrot_uczelni(jednostka: Jednostka):
+    # Kolumna „Uczelnia" na changeliście pokazuje SKRÓT uczelni jednostki.
+    ma = JednostkaAdmin(Jednostka, admin.site)
+    assert ma.uczelnia_skrot(jednostka) == jednostka.uczelnia.skrot
+
+
+def test_JednostkaAdmin_changelist_pokazuje_kolumne_uczelnia(
+    admin_client, jednostka: Jednostka
+):
+    # Kolumna „Uczelnia" (uczelnia_skrot) renderuje się na changeliście i
+    # zawiera skrót uczelni danej jednostki (fixture: skrot="TE").
+    response = admin_client.get(reverse("admin:bpp_jednostka_changelist"))
+    assert response.status_code == 200
+
+    content = response.content.decode()
+    assert "column-uczelnia_skrot" in content
+    assert jednostka.uczelnia.skrot in content
+
+
 def test_JednostkaNadrzednaFilter_widget_i_media_w_changeliście(admin_client):
     # Smoke test Media/widgetu (#438 Faza B, III-3a): changelist NIE wciąga
     # automatycznie mediów widgetów pól z `list_filter` (w odróżnieniu od

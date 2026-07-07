@@ -120,6 +120,7 @@ class JednostkaAdmin(
         "indented_title",
         "skrot",
         "parent_nazwa",
+        "uczelnia_skrot",
         "wydzial_skrot",
         "widoczna",
         "rodzaj",
@@ -131,6 +132,7 @@ class JednostkaAdmin(
     list_select_related = [
         "wydzial",
         "rodzaj",
+        "uczelnia",
     ]
     fields = None
     list_filter = (
@@ -215,6 +217,12 @@ class JednostkaAdmin(
             return item.wydzial.skrot
 
     wydzial_skrot.short_description = "Wydział"
+
+    def uczelnia_skrot(self, item):
+        if item.uczelnia_id:
+            return item.uczelnia.skrot
+
+    uczelnia_skrot.short_description = "Uczelnia"
 
     def parent_nazwa(self, item):
         if item.parent_id:
