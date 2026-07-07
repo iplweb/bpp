@@ -4,6 +4,8 @@ This package provides backward compatibility - all functions that were previousl
 in importer.py are re-exported here.
 """
 
+import logging
+
 from tqdm import tqdm
 
 from bpp.models import Dyscyplina_Naukowa, Jednostka, Rekord, Rodzaj_Zrodla
@@ -45,6 +47,32 @@ from .publishers import (
 # Re-export source handling
 from .sources import dopisz_jedno_zrodlo, importuj_zrodla
 
+logger = logging.getLogger(__name__)
+
+
+def _pomin_niekompletny(pbn_uid_id, powod, obiekt):
+    """Loguje pominięcie strukturalnie niekompletnego rekordu PBN i zwraca ``None``.
+
+    PBN potrafi zwrócić rekordy-widma (skasowane/wycofane albo w połowie
+    zdenormalizowane) bez pól niezbędnych do materializacji rekordu BPP: bez
+    wersji bieżącej, bez ``type`` obiektu, albo ``CHAPTER`` bez wskazania książki
+    nadrzędnej (``book``). Takiego rekordu nie da się sensownie zaimportować —
+    zamiast wywalać cały import ``KeyError``-em (szum w Rollbarze, jeden rekord
+    na jedno wystąpienie) pomijamy go, raportując JAWNIE jako znaną kategorię
+    (WARNING, greppable po ``pbn_uid_id``). Batch leci dalej.
+
+    To bramka minimum-viable-record. Świadomie łapie WYŁĄCZNIE braki
+    STRUKTURALNE — braki opcjonalne (publisher, mainLanguage, pages) obsługują
+    poszczególne importery przez łagodną degradację (rekord i tak wchodzi).
+    """
+    logger.warning(
+        "Pomijam niekompletny rekord PBN %s: %s (klucze obiektu: %s)",
+        pbn_uid_id,
+        powod,
+        sorted(obiekt.keys()) if obiekt else obiekt,
+    )
+    return None
+
 
 def importuj_publikacje_po_pbn_uid_id(
     pbn_uid_id,
@@ -80,17 +108,21 @@ def importuj_publikacje_po_pbn_uid_id(
 
     cv = pbn_publication.current_version
 
-    match cv["object"].pop("type"):
-        case "BOOK":
-            ret = importuj_ksiazke(
-                pbn_publication.pk,
-                default_jednostka=default_jednostka,
-                client=client,
-                force=force,
-                inconsistency_callback=inconsistency_callback,
-                domyslny_jezyk=domyslny_jezyk,
-            )
-        case "EDITED_BOOK":
+    # Bramka minimum-viable-record: bez wersji bieżącej / obiektu nie ma z czego
+    # tworzyć rekordu.
+    if cv is None or not cv.get("object"):
+        return _pomin_niekompletny(
+            pbn_uid_id, "brak wersji bieżącej / obiektu w PBN", None
+        )
+
+    obiekt = cv["object"]
+    typ = obiekt.get("type")
+    if not typ:
+        # Brak ``type`` (Rollbar #413) — nie wiadomo nawet, jak rekord importować.
+        return _pomin_niekompletny(pbn_uid_id, "brak pola 'type' w obiekcie", obiekt)
+
+    match typ:
+        case "BOOK" | "EDITED_BOOK":
             ret = importuj_ksiazke(
                 pbn_publication.pk,
                 default_jednostka=default_jednostka,
@@ -100,15 +132,21 @@ def importuj_publikacje_po_pbn_uid_id(
                 domyslny_jezyk=domyslny_jezyk,
             )
         case "CHAPTER":
-            ret = importuj_ksiazke(
-                cv["object"]["book"]["id"],
+            pbn_book_id = (obiekt.get("book") or {}).get("id")
+            if not pbn_book_id:
+                # CHAPTER bez książki nadrzędnej (Rollbar #412) — rozdziału-sieroty
+                # nie da się powiązać z wydawnictwem zwartym.
+                return _pomin_niekompletny(
+                    pbn_uid_id, "CHAPTER bez książki nadrzędnej ('book')", obiekt
+                )
+            importuj_ksiazke(
+                pbn_book_id,
                 default_jednostka=default_jednostka,
                 client=client,
                 force=force,
                 inconsistency_callback=inconsistency_callback,
                 domyslny_jezyk=domyslny_jezyk,
             )
-
             ret = importuj_rozdzial(
                 pbn_publication.pk,
                 default_jednostka=default_jednostka,
@@ -117,7 +155,6 @@ def importuj_publikacje_po_pbn_uid_id(
                 inconsistency_callback=inconsistency_callback,
                 domyslny_jezyk=domyslny_jezyk,
             )
-
         case "ARTICLE":
             ret = importuj_artykul(
                 pbn_publication.pk,
@@ -130,7 +167,11 @@ def importuj_publikacje_po_pbn_uid_id(
                 domyslny_jezyk=domyslny_jezyk,
             )
         case _:
-            raise NotImplementedError(f"Nie obsluze {cv['object']['type']}")
+            # Nieobsługiwany, ale OBECNY typ to dryf schematu PBN, nie awaria —
+            # pomijamy rekord zamiast wywalać batch NotImplementedError-em.
+            return _pomin_niekompletny(
+                pbn_uid_id, f"nieobsługiwany type={typ!r}", obiekt
+            )
 
     return ret
 
