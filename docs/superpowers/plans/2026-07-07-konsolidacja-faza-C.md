@@ -28,6 +28,45 @@
 
 Poniżej pełny kontekst decyzji (dla wykonawcy).
 
+---
+
+## 🔴 REWIZJA PO ADWERSARYJNYM REVIEW FABLE (2026-07-07) — AUTORYTET WYKONANIA
+
+Review Fable znalazł 12 findingów; 3 BLOCKERy i 3 HIGH zweryfikowane w kodzie (file:line). **Ta sekcja nadpisuje treść tasków niżej tam, gdzie się różni.** Inwentaryzacja pierwotna była NIEKOMPLETNA — pominęła `pbn_import`, `import_dyscyplin/core`, `egeria_2012` (żywi funkcjonalni konsumenci) i zależności cross-app migracji.
+
+### Zrewidowana lista tasków (15 zamiast 13)
+
+**C-1 — przepięcia funkcjonalne (model żyje, suite zielony):**
+- **T1** — matchowanie: `matchuj_wydzial` + `_wydzial_filtr` (`import_common`) **ORAZ** `import_dyscyplin/core.py::_matchuj_wydzial_z_cache` (F3) → wszystkie konsumują `Jednostka` bezpośrednio. Match po `nazwa` **OR `poprzednie_nazwy`** roota (F6 — promowany root ma nazwę jednostki, nie wydziału; backfill w T10).
+- **T2** — importer-widget XLSX → top-level `Jednostka`, lookup po `nazwa` **bez** ograniczenia `parent__isnull` (F8: `Jednostka.nazwa` unikalne globalnie → kolizja z nie-rootem = `IntegrityError`); kolizję obsłuż jawnie.
+- **T3** — demo-data → **per-object `Jednostka.objects.create()`** (F7: `bulk_create` łamie MPTT — pola drzewa NOT NULL bez default); manifest `"bpp.Jednostka"`; tolerancyjny skip nierozwiązywalnych labeli w cleanup (F11).
+- **T4** — komendy + admin `site_filtered` (F12: `mapuj_kierunki_studiow` też `:45-47`).
+- **T5 (NOWY, F2 BLOCKER)** — `pbn_import`: `znajdz_lub_utworz_wydzial_domyslny` (`institution_import.py:23-54`) tworzy `Wydzial` → przepnij na tworzenie top-level `Jednostka`; `views.py:118,144,230` (lista/rozwiązanie wydziału z POST + session `wydzial_domyslny_id`) + `dashboard.html` → rooty `Jednostka`; testy `test_institution_import.py`, `test_views_dashboard.py`, `test_command_pbn_import.py`.
+
+**C-2 — usunięcie read-only powierzchni:**
+- **T6** — API v1 (F12: brak istniejącego testu wydzial — po prostu DODAJ test 404).
+- **T7** — autocomplete (F12: zaktualizuj `test_autocomplete/test_autocomplete_security.py:214` `bpp:public-wydzial-autocomplete`).
+- **T8** — browse redirect (Opcja A, bez zmian).
+- **T9** — settings/dashboard/cacheops.
+
+**C-3 — drop modelu:**
+- **T10 (NOWY, F6)** — migracja `0466_faza_c_backfill_poprzednie_nazwy`: PRZED dropem, dopóki `Wydzial` I `legacy_wydzial_id` żyją, dopisz `Wydzial.nazwa` do `poprzednie_nazwy` roota (po `legacy_wydzial_id`), idempotentnie. Zachowuje mapowanie nazwa→root po dropie (T1 na tym poletku matchuje).
+- **T11** — usunięcie `struktura_konwersja.py` + model `Wydzial` + **przepięcie `egeria_2012.py`** (F3: `Wydzial.objects.get` + `znajdz_lub_utworz`; zachowaj `dopasuj_autora` używane przez `egeria_2017_pbn_ids.py:6`) + **rewrite `Jednostka.wydzial_dnia()` W TYM commicie** (F4: `jednostka.py:408` `Wydzial.objects.filter(...)` → `przypisanie.parent`; NIE w T12) + **migracja test/fixtur** (F5: `fixtures/conftest_models.py` fixture `wydzial`, `bpp/tests/util.py::any_wydzial`, ~25 plików testów) + `DeleteModel` z **cross-app deps** (F1). Migracja `0467_faza_c_drop_wydzial`, `dependencies = [("bpp","0466_faza_c_backfill_poprzednie_nazwy"), ("import_dyscyplin","0024_faza_b_ii2_repoint_wydzial"), ("zglos_publikacje","0026_faza_b_ii2_repoint_wydzial")]`. Grep-gate (F10): `git grep -nE "\bWydzial\b|bpp\.Wydzial" -- src/ ':!*/migrations/*'` → PUSTO (BEZ `grep -v test`).
+
+**C-4:** **T12** — drop `legacy_wydzial_id` + `jest_lustrem` (migracja `0468_faza_c_drop_legacy_markery`). `wydzial_dnia` już przepięte w T11.
+
+**C-5:** **T13** — czyszczenie `ContentType`/`Permission` (migracja `0469_faza_c_czysc_contenttype_wydzial`). Test NIE-vacuous (F9): utwórz CT+Permission, wywołaj `czysc(apps,…)` wprost, asertuj usunięcie. Docstring migracji: nota o CASCADE `easyaudit.CRUDEvent.content_type` (kasuje audit-trail Wydziału — intended).
+
+**C-6:** **T14** — audit labela (`uzywaj_wydzialow` ZOSTAJE).
+
+**C-7:** **T15** — baseline-update (0466-0469) + rebuild cache + pełna suita + PR. Hygiene: usuń martwy `src/bpp/fixtures/um_lublin_wydzial.json` (F12).
+
+### Numeracja migracji (zrewidowana): 0466 backfill → 0467 DeleteModel → 0468 drop-legacy → 0469 czysc-CT.
+
+### VERIFIED OK przez Fable (nie ruszać): brak widoków/triggerów DB na `bpp_wydzial` po Fazie B (0455 zdjął triggery, 0458 przebudował `bpp_nowe_sumy_*` bez JOIN-u); `0465_merge_20260707_0736` = jedyny liść bpp; multiseek `WydzialQueryObject` nie tyka modelu; brak pozostałych FK/M2M do `Wydzial`; `JednostkaSerializer.wydzial` już celuje w jednostka-detail.
+
+---
+
 ### D1 — Los `browse_wydzial_redirect` (stare URL-e `/wydzial/<slug>/`) — ROZSTRZYGNIĘTE: Opcja A
 Redirect mapuje stary slug wydziału → węzeł przez `Wydzial.slug` + `legacy_wydzial_id`. Drop OBU (model + pole) kasuje to mapowanie. **`django.contrib.redirects` NIE jest zainstalowane** (sprawdzone), więc nie ma gotowego fallbacku.
 - **Opcja A (rekomendowana, domyślna w planie):** zachowaj istniejący fallback po slugu Jednostki. Redirect zostaje jako `RedirectView`/funkcja, która: jeśli istnieje `Jednostka` o dokładnie tym slugu → 301; inaczej 404. Promowane 1-jednostkowe wydziały (0457) mają root == realna jednostka, więc ich slug ZWYKLE się zgadza. Syntetyczne lustra z suffiksem `[W<id>]` w nazwie → slug się różni → te URL-e dają 404. Koszt: część starych linków wydziałowych 404-uje. Tanie, bez nowej infry.
