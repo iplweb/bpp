@@ -328,6 +328,60 @@ def test_upload_punktacja_zrodla_overwrite():
 
 
 # =============================================================================
+# Regresja: bibliotekarze wpisują liczby z polskim przecinkiem dziesiętnym
+# ("3,2"). Bez normalizacji przecinek -> kropka DecimalField wywala
+# ValidationError / decimal.InvalidOperation w transakcji i zapis znika,
+# a frontend dostaje 500. Patrz Rollbar: UploadPunktacjaZrodlaView.post.
+# =============================================================================
+
+
+@pytest.mark.django_db
+def test_upload_punktacja_zrodla_przecinek_create():
+    """Ścieżka create: brak wpisu Punktacja_Zrodla, wartości z przecinkiem."""
+    from decimal import Decimal
+
+    z = any_zrodlo()
+    fr = FakeRequest(dict(impact_factor="3,2", punkty_kbn="12,5"))
+    res = UploadPunktacjaZrodlaView().post(fr, z.pk, CURRENT_YEAR)
+
+    assert res.status_code == 200
+    assert Punktacja_Zrodla.objects.count() == 1
+    pz = Punktacja_Zrodla.objects.get()
+    assert pz.impact_factor == Decimal("3.2")
+    assert pz.punkty_kbn == Decimal("12.5")
+
+
+@pytest.mark.django_db
+def test_upload_punktacja_zrodla_przecinek_overwrite():
+    """Ścieżka update/overwrite: istniejący wpis, wartości z przecinkiem."""
+    from decimal import Decimal
+
+    z = any_zrodlo()
+    Punktacja_Zrodla.objects.create(rok=CURRENT_YEAR, zrodlo=z, impact_factor=1)
+
+    fr = FakeRequest(dict(impact_factor="3,2", punktacja_snip="0,125", overwrite="1"))
+    res = UploadPunktacjaZrodlaView().post(fr, z.pk, CURRENT_YEAR)
+
+    assert res.status_code == 200
+    assert Punktacja_Zrodla.objects.count() == 1
+    pz = Punktacja_Zrodla.objects.get()
+    assert pz.impact_factor == Decimal("3.2")
+    assert pz.punktacja_snip == Decimal("0.125")
+
+
+@pytest.mark.django_db
+def test_upload_punktacja_zrodla_niepoprawna_liczba():
+    """Po normalizacji nadal śmieć -> 400 z kontekstem, nie goły 500."""
+    z = any_zrodlo()
+    fr = FakeRequest(dict(impact_factor="abc"))
+    res = UploadPunktacjaZrodlaView().post(fr, z.pk, CURRENT_YEAR)
+
+    assert res.status_code == 400
+    assert "impact_factor" in res.content.decode()
+    assert Punktacja_Zrodla.objects.count() == 0
+
+
+# =============================================================================
 # Regresja bezpieczeństwa: te endpointy MUSZĄ wymagać logowania.
 # Bez auth dało się anonimowo zapisywać do Punktacja_Zrodla i wyciągać
 # metadane autorów. Patrz: ANALYSIS.md #1 (2026-05-02).
