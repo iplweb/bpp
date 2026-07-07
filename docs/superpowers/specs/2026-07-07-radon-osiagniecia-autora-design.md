@@ -7,204 +7,218 @@
 ## Cel
 
 Na podstronie autora (`/autor/<pk|slug>/`) dla naukowców posiadających ORCID
-dodać sekcję z ich osiągnięciami naukowymi pobranymi **na żywo z RAD-on
-OpenData** — **po stronie klienta** (fetch z przeglądarki), z podpisem drobnymi
-literami „informacje pobrane z RAD-on".
+dodać sekcję z ich osiągnięciami pobranymi **na żywo z RAD-on OpenData** —
+**po stronie klienta** (fetch z przeglądarki), z podpisem drobnymi literami
+„informacje pobrane z RAD-on".
+
+Pokazujemy to, czego BPP nie ma we własnej bazie: **stopnie/tytuły naukowe,
+zatrudnienie, projekty naukowe (z kwotami), patenty i prawa ochronne,
+osiągnięcia artystyczne (z nagrodami)**. **Publikacji NIE pobieramy** — BPP ma
+je we własnej bazie.
 
 Kod odpytujący RAD-on ma być **wydzielonym, przenośnym modułem JS** (bez
 zależności od BPP), tak by dało się go wyjąć i użyć gdzie indziej.
 
 ## Ustalenia badawcze (przetestowane na żywo 2026-07-07)
 
-Reverse-engineering + testy żywego API. Fakty, na których stoi ten projekt:
+Reverse-engineering + testy żywego API. **Cała rodzina `/opendata/*` ma CORS
+otwarty** (preflight/GET/POST odbijają `Origin` → fetch z przeglądarki działa;
+zweryfikowane na `scientist/search`, `polon/projects`, `polon/products`,
+`polon/artisticAchievements`, `polon/publications`).
 
-### Usługa `scientist` (dane zintegrowane) — TO JEST nasze źródło
+Wszystkie endpointy: baza `https://radon.nauka.gov.pl/opendata`, odpowiedź
+`{results[], pagination{maxCount, token}, version}`, paginacja kursorem
+`token` (`null`/pominięty na starcie).
 
-- **Endpoint:** `POST https://radon.nauka.gov.pl/opendata/scientist/search`
-- **Ciało żądania** (schemat `ScientistQueryParameters`):
+### A. `scientist` (dane zintegrowane) — CV: stopnie/tytuły/zatrudnienie
+
+- **`POST /opendata/scientist/search`**, ciało:
   ```json
   {"resultNumbers": 10, "token": null, "body": {"firstName": "...", "lastName": "..."}}
   ```
-  - `token` MUSI być `null` lub pominięty przy pierwszym żądaniu
-    (`""` zwraca `400 Malformed token`).
-  - `resultNumbers` ≤ 100; paginacja kursorem `pagination.token`.
-  - `body` = `ScientistSearchCriteria`: `firstName`, `lastName`, `uid`,
-    `employmentMarker`, `calculatedEduLevel`, `academicDegreeMarker`,
-    `academicTitleMarker`, `dataSources`, `lastRefresh`.
-    **Nie ma kryterium `orcid`** — po ORCID NIE da się filtrować.
-- **CORS: OTWARTY** — preflight `OPTIONS` zwraca
-  `Access-Control-Allow-Origin: <odbite Origin>`, `Allow-Methods: POST`,
-  `Allow-Headers: content-type`. Fetch z przeglądarki działa.
-- **Odpowiedź** (`ScientistResult`): `{results[], pagination{maxCount, token},
-  version}`. Każdy `Scientist`:
-  - `personalData`: **`orcid`**, `id` (uid POL-on, 40-hex), `firstName`,
-    `middleName`, `lastName`, `lastNamePrefix`.
-  - `academicDegrees[]`: `academicDegreeName` („Doktor" / „Doktor
-    habilitowany"), `grantingYear`, `grantingInstitutionName`,
-    `degreeClassification[]` (dziedzina/dyscyplina).
-  - `academicTitles[]`: `academicTitleName` (profesura), `grantingYear`.
-  - `professionalTitles[]`: `professionalTitleName` (Magister…),
-    `graduationYear`, `institutionName`, `courseName`.
-  - `employments[]`: `employingInstitutionName`, `startDate`,
-    `basicPlaceOfWork`, `declaredDisciplines`.
-  - `calculatedEduLevel` (np. „dr hab. inż."), `dataSources`.
+  `token` MUSI być `null`/pominięty na starcie (`""` → `400 Malformed token`).
+  Kryteria (`body`): `firstName`, `lastName`, `uid`, markery. **Bez filtra
+  `orcid`.**
+- Rekord: `personalData{orcid, id(uid POL-on 40-hex), firstName, middleName,
+  lastName}`, `academicDegrees[]` (Doktor/Doktor habilitowany + `grantingYear`
+  + `grantingInstitutionName` + `degreeClassification`), `academicTitles[]`
+  (profesura + rok), `professionalTitles[]` (magisterium + rok + uczelnia),
+  `employments[]`, `calculatedEduLevel`, `dataSources`.
+- **Wynik zawiera `personalData.orcid`** → dopasowanie po nazwisku, weryfikacja
+  po ORCID.
 
-**Kluczowe:** wynik zawiera `personalData.orcid`. Dzięki temu szukamy po
-nazwisku, a właściwą osobę wybieramy porównując ORCID z wynikiem — homonimy
-znikają w 100%.
+### B. `polon/projects` — PROJEKTY NAUKOWE (filtr po kierowniku)
 
-Dowód (żywe API, „Kowalczewski"):
-```
-Jacek     Kowalczewski — ORCID 0000-0002-4977-3923 — prof. dr hab. — dr 1994, hab. 2004
-Przemysław Kowalczewski — ORCID 0000-0002-0153-4624 — dr hab. inż. — dr 2016, hab. 2023
-```
+- **`GET /opendata/polon/projects`** z parametrami:
+  `projectManagerFirstName`, `projectManagerLastName`, `disciplineName`,
+  `disciplineCode`, `entityShowingAchievementsName`, `projectStartDate`,
+  `projectEndDate`, `resultNumbers`, `token`.
+- Rekord: `projectTitlePl`/`projectTitleEn`, `acronym`, `totalFunds`,
+  `receivedFunds`, `nationalFunds`, `foreignFunds`, `projectStartDate`,
+  `projectEndDate`, `projectGrantDate`, `projectClassification`,
+  `financedCompetition`, `financingInstitutions[]`, `implementingInstitutions[]`,
+  `disciplines[]`, `dataSource`, oraz **`projectManagers[]`** z polami
+  `firstName`, `middleName`, `lastName`, **`ORCID`**, `kindManager`,
+  `institutionName`, `startDate`, `endDate`.
+- **Weryfikacja:** `projectManagers[].ORCID == autor.orcid` (potwierdzone na
+  żywo: Kowalczewski → 3 projekty, manager ORCID = `0000-0002-0153-4624`,
+  kwoty w `totalFunds`).
 
-### Czego świadomie NIE używamy (i dlaczego)
+### C. `polon/products` — PATENTY I PRAWA OCHRONNE (filtr po wynalazcy)
 
-- **Usługa `employees` (POL-on)** (`/opendata/polon/employees`): NIE zawiera
-  ORCID i ignoruje parametr `?orcid=`. Odrzucona na rzecz `scientist`.
-- **Ludzie Nauki** (`ludzie.nauka.gov.pl/api/profiles-api`): ma projekty /
-  publikacje / patenty / osiągnięcia per-osobę, ale **CORS zamknięty**
-  (brak nagłówków ACAO → przeglądarka blokuje) i wyszukiwarka za OAuth,
-  a `profileId` nie da się wyprowadzić z ORCID. **Świadomie wykluczone** —
-  wymagałoby proxy w BPP i ręcznego mostu. Poza zakresem.
-- **Usługi zintegrowane `project` / `publication` / `product`**: kryteria
-  wyszukiwania nie zawierają osoby/ORCID/uid (tylko tytuł/DOI/status) — nie
-  da się dostać „projektów tej osoby". Poza zakresem.
+- **`GET /opendata/polon/products`**:
+  `inventorFirstName`, `inventorLastName`, `institutionName`,
+  `productTitle`, `protectionTypeCode`, `publicationDateFrom/To`,
+  `resultNumbers`, `token`.
+- Rekord: `productTitles[]`, `protectionType`, `protectionTitle`,
+  `publicationNumber`, `publicationDate`, `applicationDate`,
+  `grantingInstitutionName`, `productDescription`, `applicants[]`, oraz
+  **`inventors[]`** → `persons[]` z `firstName`, `lastName`,
+  **`relatedOrcid`** (bywa `null`).
+- **Weryfikacja:** `inventors[].persons[].relatedOrcid == autor.orcid`; gdy
+  `relatedOrcid` puste — dopasowanie tylko po nazwisku (słabsze; oznaczamy jako
+  „niezweryfikowane po ORCID" wewnętrznie, patrz reguła niżej).
 
-Konsekwencja: sekcja pokazuje **stopnie / tytuły / wykształcenie /
-zatrudnienie / dyscypliny**. Projektów/publikacji/patentów/osiągnięć-nagród
-NIE — nie są dostępne per-osobę w sposób client-side z RAD-on.
+### D. `polon/artisticAchievements` — OSIĄGNIĘCIA ARTYSTYCZNE (filtr po autorze)
+
+- **`GET /opendata/polon/artisticAchievements`**:
+  `authorFirstName`, `authorLastName`, `institutionName`, `title`,
+  `achievementKindCode`, `implementationYearFrom/To`, `resultNumbers`, `token`.
+- Rekord: `title`, `discipline`, `achievementKind`, `achievementType`,
+  `implementationYear`, `firstPublicationYear`, `publisherName`,
+  `achievementRange`, **`awards[]`** (`competitionName`, `awardYear`,
+  `awardingInstitution`), oraz **`authors[]`** (`AuthorData`) z `firstName`,
+  `lastName`, **`orcid`**.
+- **Weryfikacja:** `authors[].orcid == autor.orcid`. (Domena akademii sztuk —
+  dla większości autorów `maxCount=0`; sekcja typu chowa się pusta.)
+
+### Czego świadomie NIE używamy
+
+- **Publikacje** (`polon/publications`, filtr `orcidId` istnieje) — **BPP ma
+  publikacje we własnej bazie**. Poza zakresem.
+- **`polon/employees`** — brak ORCID, odrzucone na rzecz `scientist`.
+- **Ludzie Nauki** (`ludzie.nauka.gov.pl`) — CORS zamknięty, OAuth,
+  `profileId` nie z ORCID. Poza zakresem.
+- **Usługi zintegrowane `project`/`publication`/`product`** — kryteria bez
+  osoby; używamy per-osobowych usług POL-on (B/C/D powyżej).
 
 ## Zakres
 
 ### Wchodzi
 
 1. **Przenośny moduł JS „odpytywacz RAD-on"** (`radon-client`), bez zależności
-   od BPP, z czystym API:
-   - `searchScientists({firstName, lastName, resultNumbers})` →
-     `Promise<Scientist[]>` (POST + normalizacja odpowiedzi, obsługa
-     paginacji tylko dla pierwszej strony — do dopasowania wystarczy).
-   - `matchByOrcid(scientists, orcid)` → `Scientist | null` — normalizuje
-     ORCID (usuwa `https://orcid.org/`, spacje, myślniki do porównania) i
-     zwraca rekord o zgodnym ORCID; gdy brak zgodnego → `null`.
-   - `extractAchievements(scientist)` → znormalizowany obiekt:
-     `{stopnie: [{typ, rok, uczelnia, dyscyplina}], tytuly: [{nazwa, rok}],
-     wyksztalcenie: [{tytul, rok, uczelnia, kierunek}],
-     zatrudnienie: [{instytucja, od, podstawowe, dyscypliny}],
-     poziom, zrodla}`.
-   - Konfigurowalny `baseUrl` (domyślnie
-     `https://radon.nauka.gov.pl/opendata`) — do wydzielenia/testów.
-   - Zero zależności zewnętrznych; `fetch` natywny.
-2. **Warstwa integracji BPP** (cienka, osobny plik JS) — spina moduł z DOM-em:
-   czyta `data-*` (imię, nazwisko, orcid) z kontenera sekcji, woła
-   `searchScientists` → `matchByOrcid` → `extractAchievements`, renderuje HTML,
+   od BPP, natywny `fetch`, konfigurowalny `baseUrl` (domyślnie
+   `https://radon.nauka.gov.pl/opendata`), z metodami:
+   - `searchScientist({firstName, lastName})` → `Scientist[]` (POST
+     `scientist/search`).
+   - `fetchProjects({firstName, lastName})` → `Project[]`
+     (GET `polon/projects`).
+   - `fetchPatents({firstName, lastName})` → `Patent[]`
+     (GET `polon/products`).
+   - `fetchArtisticAchievements({firstName, lastName})` → `Achievement[]`
+     (GET `polon/artisticAchievements`).
+   - Helper `orcidMatches(a, b)` — normalizuje (usuwa URL/spacje/myślniki,
+     case-insensitive) i porównuje.
+   - Selektory: `pickScientistByOrcid`, `filterProjectsByOrcid` (po
+     `projectManagers[].ORCID`), `filterPatentsByOrcid` (po
+     `inventors[].persons[].relatedOrcid`), `filterAchievementsByOrcid` (po
+     `authors[].orcid`).
+   - Normalizatory `extract*` → płaskie obiekty do renderu (patrz „Pola
+     wyświetlane").
+   - Zero zależności zewnętrznych; sprawdzone na NPM — gotowego klienta
+     RAD-on/POL-on nie ma (repo OPI to notebooki R/Python).
+2. **Warstwa integracji BPP** (cienki, osobny plik JS) — czyta `data-*`
+   (imię, nazwisko, orcid) z kontenera sekcji, woła powyższe metody
+   równolegle (`Promise.allSettled`), filtruje po ORCID, renderuje pod-bloki,
    dokleja podpis „informacje pobrane z RAD-on".
 3. **Sekcja w rejestrze profilu** (`bpp.profil_autora`): nowy klucz
-   `KLUCZ_RADON = "radon_osiagniecia"`, `TypSekcji(..., template_only=True)`.
-   Renderowana tylko gdy `autor.orcid` niepusty. Kolumna domyślna: LEWA
-   (przy „Stopnie naukowe"/„Historia zatrudnienia"), do przestawienia jak
-   każda sekcja.
-4. **Partial szablonu** `autor_sekcje/radon_osiagniecia.html`: kontener z
-   `data-orcid`, `data-imie`, `data-nazwisko`, stan „ładowanie…", miejsce na
-   wynik, podpis. Reszta dzieje się w JS.
-5. **Degradacja bez błędów:** brak sieci / 0 wyników / brak dopasowania po
-   ORCID → sekcja chowa swój kontener (nie zostaje pusty nagłówek), brak
-   wyjątków w konsoli poza jednym `console.debug`.
+   `KLUCZ_RADON = "radon_osiagniecia"`, `TypSekcji(..., template_only=True)`,
+   renderowana tylko gdy `autor.orcid`. Kolumna domyślna: LEWA.
+4. **Partial** `autor_sekcje/radon_osiagniecia.html`: kontener z
+   `data-orcid`/`data-imie`/`data-nazwisko`, stan „ładowanie…", cztery
+   pod-kontenery (CV / projekty / patenty / osiągnięcia artystyczne), podpis.
+5. **Degradacja bez błędów, per pod-blok:** każdy typ danych ładuje się
+   niezależnie; brak sieci / 0 wyników / brak ORCID-matcha → dany pod-blok się
+   chowa; gdy wszystkie puste → cała sekcja się chowa.
+
+### Pola wyświetlane (per typ)
+
+- **CV (scientist):** stopnie „Doktor 2016, UP Poznań", „Doktor habilitowany
+  2023", tytuł profesorski (rok), zatrudnienie (instytucja + od), dyscypliny.
+- **Projekty:** tytuł PL, program/konkurs (`financedCompetition`),
+  kwota (`totalFunds`), lata (`projectStartDate`–`projectEndDate`),
+  instytucja finansująca, rola (`projectManagers[].kindManager`).
+- **Patenty:** tytuł (`productTitles`), typ ochrony (`protectionType`),
+  nr i data publikacji, instytucja udzielająca.
+- **Osiągnięcia artystyczne:** tytuł, rodzaj, rok, nagrody (`awards[]`:
+  konkurs + rok).
 
 ### Świadomie poza zakresem
 
-- Ludzie Nauki (projekty/publikacje/patenty/osiągnięcia), proxy w BPP,
-  pole `radon_profil_id`, OAuth — **nie robimy**.
-- Cache po stronie serwera / zapisywanie pobranych danych w BPP — nie; dane
-  są ulotne, pobierane na żywo w przeglądarce.
-- Filtrowanie/rozstrzyganie homonimów inne niż po ORCID.
-
-## Architektura i przepływ
-
-```
-Django (AutorView)                 Przeglądarka (client-side)
-─────────────────                  ──────────────────────────
-render sekcji radon_osiagniecia →  <div data-orcid data-imie data-nazwisko>
-  (tylko gdy autor.orcid)            │
-                                     ├─ integracja.js czyta data-*
-                                     ├─ radon-client.searchScientists({imie,nazwisko})
-                                     │     POST radon.nauka.gov.pl/opendata/scientist/search
-                                     ├─ radon-client.matchByOrcid(wyniki, orcid_z_BPP)
-                                     ├─ radon-client.extractAchievements(trafiony)
-                                     └─ render HTML + „informacje pobrane z RAD-on"
-```
-
-Podział odpowiedzialności (granice modułów):
-
-- `radon-client` — **czysta logika RAD-on**: HTTP + normalizacja. Testowalna
-  w izolacji (mock `fetch`). Nie dotyka DOM-u, nie zna BPP. To jest
-  „wydzielony odpytywacz".
-- `integracja` — **klej DOM↔klient**: I/O na stronie, rendering, degradacja.
-- Szablon/rejestr — **osadzenie**: gdzie i kiedy sekcja się pojawia.
+Publikacje; Ludzie Nauki; proxy/OAuth; pola/migracje na modelu; cache po
+stronie serwera; rozstrzyganie homonimów inne niż po ORCID.
 
 ## Model danych
 
-**Brak zmian modelu, brak migracji.** Używamy istniejącego `Autor.orcid`
-(+ imię/nazwisko). Nic nie zapisujemy.
+**Brak zmian modelu, brak migracji.** Używamy `Autor.orcid` + imię/nazwisko.
+Nic nie zapisujemy — dane ulotne, pobierane na żywo w przeglądarce.
 
-## Dopasowanie po ORCID (algorytm)
+## Reguła dopasowania po ORCID
 
-1. Zapytanie: `searchScientists({firstName: autor.imiona, lastName:
-   autor.nazwisko})`. (Imiona z BPP mogą zawierać drugie imię — do zapytania
-   bierzemy pierwszy człon; RAD-on i tak filtruje po `firstName`/`lastName`.)
-2. Normalizacja ORCID po obu stronach: do 16 cyfr/`X` (usuń URL, spacje,
-   myślniki), porównanie case-insensitive.
-3. `matchByOrcid`: zwróć rekord ze zgodnym `personalData.orcid`.
-4. Gdy 0 zgodnych → sekcja się chowa (świadomie NIE pokazujemy „najlepszego
-   zgadnięcia" — bez ORCID-matcha ryzyko pomyłki jest za duże).
+1. Normalizacja ORCID po obu stronach do 16 znaków (cyfry + `X`), porównanie
+   case-insensitive.
+2. **scientist / projekty / osiągnięcia artystyczne:** pokazujemy wyłącznie
+   rekordy ze zgodnym ORCID (`personalData.orcid` / `projectManagers[].ORCID`
+   / `authors[].orcid`). Brak zgodnego → pod-blok pusty → schowany.
+3. **patenty:** rekord ze zgodnym `relatedOrcid` pokazujemy zawsze; rekord z
+   `relatedOrcid == null` (dane POL-on niekompletne) pokazujemy tylko gdy
+   nazwisko+imię są jednoznaczne dla tego autora — inaczej pomijamy. (Patenty
+   bez ORCID to jedyny słabszy przypadek; świadomie ostrożni.)
 
 ## Bezpieczeństwo / prywatność
 
-- Wywołanie idzie do publicznego, rządowego API RAD-on (dane jawne z POL-on).
-- ORCID i imię/nazwisko autora są już publiczne na podstronie — nie wyciekają
-  nowe dane wrażliwe.
-- Brak sekretów, tokenów, kluczy w JS. Brak `credentials` w `fetch`
-  (żądanie anonimowe, mimo że API odbija `Allow-Credentials`).
-- Sekcja wyłącznie gdy `autor.orcid` — nie odpytujemy RAD-on masowo/bez
-  potrzeby.
-- Odporność na treść z API: renderujemy przez `textContent`/tworzenie węzłów,
-  **nie** `innerHTML` z surowych pól — zero XSS z odpowiedzi RAD-on.
+- Wywołania do publicznego, rządowego API RAD-on (dane jawne POL-on/PBN).
+- ORCID + imię/nazwisko są już publiczne na podstronie — brak nowego wycieku.
+- Brak sekretów/tokenów w JS. Brak `credentials` w `fetch`.
+- Sekcja tylko gdy `autor.orcid` — nie odpytujemy RAD-on bez potrzeby.
+- Render przez `textContent`/tworzenie węzłów, **nie** `innerHTML` z surowych
+  pól API → zero XSS z odpowiedzi RAD-on.
 
 ## Obsługa błędów (żadnych cichych połknięć)
 
-- Błąd sieci / !ok / timeout → `console.debug("[radon] …", err)` + schowanie
-  kontenera. Nie `throw` w górę (nie wywalamy strony), ale i nie „pass" —
-  logujemy powód.
+- Każde zapytanie w `Promise.allSettled`; odrzucone/`!ok`/timeout →
+  `console.debug("[radon] <endpoint>", err)` + schowanie danego pod-bloku.
+  Nie `throw` w górę (nie wywalamy strony), ale zawsze logujemy powód.
 - Nieoczekiwany kształt odpowiedzi → traktowany jak brak wyniku (log + chowaj).
 
 ## Testy
 
-**JS (jest/istniejący runner JS w repo):**
-- `searchScientists`: buduje poprawne ciało (`token: null`, `body:{…}`),
-  parsuje `results`, obsługuje pustą listę.
-- `matchByOrcid`: trafia przy różnych formatach ORCID (URL, z myślnikami,
-  bez), zwraca `null` bez dopasowania, rozróżnia 2 osoby o tym samym nazwisku.
-- `extractAchievements`: mapuje stopnie/tytuły/zatrudnienie; odporny na
-  brakujące/`null` pola.
-- Degradacja: mock `fetch` odrzucony → brak wyjątku, kontener schowany.
+**JS:**
+- Każda metoda `fetch*`: buduje poprawny URL/ciało, parsuje `results`,
+  obsługuje pustkę i błąd sieci (mock `fetch`).
+- `orcidMatches`: różne formaty (URL, myślniki, spacje), case, `null`.
+- Selektory `filter*ByOrcid`: rozróżniają dwie osoby o tym samym nazwisku po
+  ORCID; projekty po `projectManagers[].ORCID`; patenty po
+  `inventors[].persons[].relatedOrcid`; osiągnięcia po `authors[].orcid`.
+- `extract*`: mapują pola do renderu; odporne na brakujące/`null`.
+- Degradacja: część zapytań odrzucona → pozostałe pod-bloki renderują,
+  odrzucone chowają się, brak wyjątku globalnego.
 
 **Python (pytest):**
-- Render sekcji: gdy `autor.orcid` ustawiony → kontener z poprawnymi
-  `data-orcid`/`data-imie`/`data-nazwisko` obecny; gdy pusty ORCID → sekcji
-  nie ma.
-- Sekcja obecna w `KATALOG_SEKCJI`, przechodzi `waliduj_uklad`/`rozwiaz_uklad`
-  (forward-compat: dokleja się do istniejących układów bez migracji danych).
+- Render sekcji: `autor.orcid` ustawiony → kontener z poprawnymi `data-*`;
+  pusty ORCID → brak sekcji.
+- Sekcja w `KATALOG_SEKCJI`, przechodzi `waliduj_uklad`/`rozwiaz_uklad`
+  (forward-compat: dokleja się bez migracji danych).
 
-**Świadomie bez testu E2E odpytującego żywy RAD-on** (flaky, zależny od sieci
-zewnętrznej). Logika klienta testowana na mockach; kontrakt API udokumentowany
-w tym specu.
+**Bez E2E odpytującego żywy RAD-on** (flaky/sieć zewnętrzna). Kontrakt API
+udokumentowany w tym specu; logika na mockach.
 
 ## Ryzyka
 
-- RAD-on zmieni kształt API / kryteria / CORS → sekcja degraduje się do
-  „schowana" (bez błędu). Kontrakt spisany tu; łatwo zaktualizować moduł.
-- Autor bez rekordu w RAD-on (nie-naukowiec z ORCID, obcokrajowiec) → brak
-  dopasowania → sekcja schowana. Oczekiwane.
-- Nazwisko/imię w BPP odbiega od POL-on (warianty, znaki) → brak dopasowania.
-  Akceptowalne; ORCID-match jest twardym warunkiem poprawności.
+- RAD-on zmieni API/kryteria/CORS → dany pod-blok degraduje do „schowany".
+  Kontrakt spisany tu.
+- Autor bez rekordów w RAD-on → pod-bloki puste → schowane. Oczekiwane.
+- Rozjazd imię/nazwisko BPP vs POL-on → brak dopasowania. Akceptowalne;
+  ORCID-match jest twardym warunkiem poprawności (poza opisanym wyjątkiem
+  patentów bez ORCID).
+- Patenty bez `relatedOrcid` → ostrożna reguła nazwiskowa; ryzyko rzadkie.
