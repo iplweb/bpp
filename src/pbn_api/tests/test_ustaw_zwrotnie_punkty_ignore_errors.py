@@ -46,6 +46,26 @@ def _ksiazka_bez_autorow(rok=2023):
     )
 
 
+def _ksiazka_bez_wydawcy(rok=2023):
+    """Książka (charakter_sloty=KSIAZKA) BEZ wydawcy (``wydawca=None``).
+
+    Import PBN świadomie tworzy wydawnictwa zwarte bez wydawcy (PBN bywa
+    niekompletny; ``wydawca`` jest nullable). Punktacja opiera się na
+    ``wydawca.get_tier(rok)`` — bez wydawcy nie ma tieru (Rollbar #436:
+    ``'NoneType' object has no attribute 'get_tier'``). Pomijany ZAWSZE.
+    """
+    ksiazka = baker.make(
+        Charakter_Formalny, charakter_sloty=const.CHARAKTER_SLOTY_KSIAZKA
+    )
+    return baker.make(
+        Wydawnictwo_Zwarte,
+        charakter_formalny=ksiazka,
+        wydawca=None,
+        rok=rok,
+        punkty_kbn=0,
+    )
+
+
 def _referat_z_autorem(rok=2023):
     """Referat (charakter_sloty=REFERAT) z autorem — typ slotu nieobsłużony.
 
@@ -102,6 +122,23 @@ def test_zwartych_bez_autorow_pomijany_takze_z_flaga(capsys):
 
     out = capsys.readouterr().out
     assert "POMINIĘTO" in out
+    assert "Traceback" not in out
+
+
+@pytest.mark.django_db
+def test_zwartych_bez_wydawcy_pomijany_zawsze_bez_flagi(capsys):
+    """Książka bez wydawcy (#436): pomijana i raportowana ZAWSZE, bez wywalania."""
+    rec = _ksiazka_bez_wydawcy()
+
+    # Bez --ignore-errors — i tak nie wywala komendy na braku wydawcy.
+    call_command("ustaw_zwrotnie_punkty_zwartych")
+
+    rec.refresh_from_db()
+    assert rec.punkty_kbn == 0  # nietknięty — brak podstawy do tieru wydawcy
+
+    out = capsys.readouterr().out
+    assert "POMINIĘTO" in out
+    assert str(rec.pk) in out
     assert "Traceback" not in out
 
 

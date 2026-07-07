@@ -64,7 +64,9 @@ class BasePBNMongoDBModel(BasePBNModel):
     def current_version(self):
         if self.versions:
             for elem in self.versions:
-                if elem["current"]:
+                # ``.get`` zamiast ``[...]``: wersja bez klucza ``current``
+                # (wariant dryfu schematu PBN) nie może wywalać KeyError-em.
+                if elem.get("current"):
                     return elem
 
     def value(self, *path, return_none=False):
