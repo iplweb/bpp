@@ -118,8 +118,9 @@ class ImportPolonResultsView(BaseImportPlikuPolonMixin, LongRunningResultsView):
         )
 
         # Autorzy z dyscyplinami dla roku importu, których nie było w pliku.
-        # Multi-hosted: zawężone do aktualnie zatrudnionych w uczelni importu
-        # (patrz ImportPlikuPolon.autorzy_niezmatchowani) — bez tego raport
+        # Multi-hosted: zawężone do autorów związanych z uczelnią importu przez
+        # realną jednostkę (obecnie lub historycznie; jednostki obce pomijane —
+        # patrz ImportPlikuPolon.autorzy_niezmatchowani) — bez tego raport
         # wyciekałby autorów innych uczelni współistniejących w bazie.
         import_object = ImportPlikuPolon.objects.get(pk=self.kwargs["pk"])
         unmatched_autor_dyscyplina = import_object.autorzy_niezmatchowani()
