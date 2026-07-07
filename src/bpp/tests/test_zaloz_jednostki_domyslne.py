@@ -8,32 +8,36 @@ from model_bakery import baker
 from bpp.models import Autor_Jednostka, Jednostka
 
 
-def _wezel(wydzial):
-    # Faza B (#438): „wydział" = węzeł-lustro (root Jednostka); jednostki wiszą
-    # pod nim, a denorm ``wydzial`` (korzeń) wskazuje ten węzeł.
-    from bpp.models.struktura_konwersja import znajdz_lub_utworz_wezel_wydzialu
-
-    return znajdz_lub_utworz_wezel_wydzialu(wydzial)[0]
+@pytest.fixture
+def wydzial_root(uczelnia):
+    # Faza C (#438): „wydział" = jednostka top-level (parent IS NULL); jednostki
+    # wiszą pod nim, a ich denorm ``wydzial`` (korzeń) wskazuje ten root.
+    return baker.make(
+        Jednostka,
+        uczelnia=uczelnia,
+        parent=None,
+        nazwa="Wydział Testowy",
+        skrot="WT",
+    )
 
 
 @pytest.mark.django_db
-def test_zaloz_jednostki_domyslne_happy(uczelnia, wydzial):
+def test_zaloz_jednostki_domyslne_happy(uczelnia, wydzial_root):
     """Puste jednostki znikają, zostaje jedna domyślna na wydział."""
-    wezel = _wezel(wydzial)
-    baker.make(Jednostka, uczelnia=uczelnia, parent=wezel)
-    baker.make(Jednostka, uczelnia=uczelnia, parent=wezel)
+    baker.make(Jednostka, uczelnia=uczelnia, parent=wydzial_root)
+    baker.make(Jednostka, uczelnia=uczelnia, parent=wydzial_root)
 
     call_command("zaloz_jednostki_domyslne", uczelnia.skrot)
 
-    jednostki = Jednostka.objects.filter(uczelnia=uczelnia, wydzial=wezel)
+    jednostki = Jednostka.objects.filter(uczelnia=uczelnia, wydzial=wydzial_root)
     assert jednostki.count() == 1
-    assert jednostki.get().nazwa == f"Jednostka Domyślna - {wydzial.nazwa}"
+    assert jednostki.get().nazwa == f"Jednostka Domyślna - {wydzial_root.nazwa}"
 
 
 @pytest.mark.django_db
-def test_niepusta_jednostka_blokuje_i_nic_nie_kasuje(uczelnia, wydzial):
+def test_niepusta_jednostka_blokuje_i_nic_nie_kasuje(uczelnia, wydzial_root):
     """Jednostka z zatrudnieniem → CommandError, stan bazy nietknięty."""
-    jednostka = baker.make(Jednostka, uczelnia=uczelnia, parent=_wezel(wydzial))
+    jednostka = baker.make(Jednostka, uczelnia=uczelnia, parent=wydzial_root)
     baker.make(Autor_Jednostka, jednostka=jednostka)
 
     with pytest.raises(CommandError):
@@ -47,11 +51,10 @@ def test_niepusta_jednostka_blokuje_i_nic_nie_kasuje(uczelnia, wydzial):
 
 
 @pytest.mark.django_db
-def test_dry_run_niczego_nie_zmienia(uczelnia, wydzial):
+def test_dry_run_niczego_nie_zmienia(uczelnia, wydzial_root):
     """--dry-run pokazuje plan, ale nie zapisuje zmian."""
-    wezel = _wezel(wydzial)
-    baker.make(Jednostka, uczelnia=uczelnia, parent=wezel)
-    baker.make(Jednostka, uczelnia=uczelnia, parent=wezel)
+    baker.make(Jednostka, uczelnia=uczelnia, parent=wydzial_root)
+    baker.make(Jednostka, uczelnia=uczelnia, parent=wydzial_root)
     przed = set(
         Jednostka.objects.filter(uczelnia=uczelnia).values_list("pk", flat=True)
     )

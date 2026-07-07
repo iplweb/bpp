@@ -11,7 +11,7 @@ from django.db.models import Q
 from flexible_reports.models import Datasource
 from openpyxl.styles import Alignment
 
-from bpp.models import Jednostka, Rekord, Wydzial
+from bpp.models import Jednostka, Rekord
 from bpp.util import pbar, worksheet_columns_autosize, worksheet_create_table
 from import_common.normalization import normalize_filename
 
@@ -41,7 +41,8 @@ class Command(BaseCommand):
         )
 
         queries = []
-        for wydzial in Wydzial.objects.all():
+        # Faza C (#438): „wydział" = jednostka top-level (parent IS NULL).
+        for wydzial in Jednostka.objects.filter(parent__isnull=True):
 
             class FakeObj:
                 pk = wydzial.pk
