@@ -48,6 +48,11 @@ urlpatterns = [
         name="author-info",
     ),
     path(
+        "<int:session_id>/authors/<int:author_id>/delete/",
+        views.AuthorDeleteView.as_view(),
+        name="author-delete",
+    ),
+    path(
         "<int:session_id>/authors/<int:author_id>/create-new/",
         views.AuthorCreateNewView.as_view(),
         name="author-create-new",

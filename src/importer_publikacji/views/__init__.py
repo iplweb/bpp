@@ -94,6 +94,7 @@ from .steps import (
 from .wizard import (
     AuthorCandidatesModalView,
     AuthorCreateNewView,
+    AuthorDeleteView,
     AuthorInfoView,
     AuthorMatchView,
     AuthorsConfirmView,
@@ -132,6 +133,7 @@ __all__ = [
     # Class-based views
     "AuthorCandidatesModalView",
     "AuthorCreateNewView",
+    "AuthorDeleteView",
     "AuthorInfoView",
     "AuthorMatchView",
     "AuthorSetOrcidView",
