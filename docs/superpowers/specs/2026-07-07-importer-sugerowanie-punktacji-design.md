@@ -4,6 +4,7 @@
 **Data:** 2026-07-07
 **Gałąź:** `fd-384-sugeruj-punktacje-importer` (baza: `dev`)
 **Zastępuje:** zamknięty PR #404 (`fd-384-sugeruj-punktacje`)
+**Rewizja:** po self-review (fable) — findingi F1–F10 wniesione.
 
 ## 1. Kontekst i problem
 
@@ -13,208 +14,268 @@ jako „przełącznik »sugeruj punktację« dla całej instytucji", i pierwotny
 wziął to **dosłownie**: dodał `Uczelnia.sugeruj_punktacje` (BooleanField) i za tą
 flagą zagatował cichy, automatyczny auto-fill punktacji ze źródła.
 
-Po weryfikacji ze zgłaszającym ustalono, że to **nie** jest realna potrzeba.
-Realnie chodzi o **jawną podpowiedź w toku importu**: operator ma zobaczyć, na
+Realna potrzeba to **jawna podpowiedź w toku importu**: operator ma zobaczyć, na
 jakiej podstawie i ile punktów system proponuje, i móc to zaakceptować, zmienić
-albo pominąć. Cichy globalny auto-fill jest nieprzejrzysty i myli operatora
-(dlatego w ogóle powstała uwaga).
+albo pominąć. Cichy globalny auto-fill jest nieprzejrzysty i myli operatora.
 
 Ustalenia weryfikacyjne:
 
-- `Uczelnia.sugeruj_punktacje` **nie istnieje** na `dev` — było wprowadzone
-  wyłącznie przez zamknięty PR #404 i zniknęło wraz z gałęzią. Nie ma czego
-  chronić przy migracjach.
+- `Uczelnia.sugeruj_punktacje` **nie istnieje** na `dev` — było wyłącznie w
+  zamkniętym PR #404. Nie ma czego chronić przy migracjach.
 - Pre-istniejąca, podobnie brzmiąca flaga to `podpowiadaj_dyscypliny`
   (`bpp/models/uczelnia.py:435`) — dotyczy **dyscyplin, nie punktacji**, jest
   w aktywnym użyciu i **pozostaje nietknięta**.
 
 ## 2. Cel
 
-Dodać w importerze publikacji **dedykowany krok „Punktacja"**, który po
-ustaleniu źródła / wydawcy i typu publikacji pokazuje **czarno na białym**:
+Dodać w importerze publikacji **dedykowany krok „Punktacja"** (między
+potwierdzeniem autorów a przeglądem końcowym), który pokazuje **czarno na
+białym**:
 
-1. **Źródło** (dla wyd. ciągłego) i jego punktacja za dany rok — albo wyraźną
-   informację, że **brak danych** dla tego źródła/roku.
-2. **Wydawca** (dla wyd. zwartego) i jego **poziom** za dany rok — albo
-   informację, że **brak danych** (brak wydawcy / brak poziomu dla roku).
-3. **Sugestię punktów** `punkty_kbn` (ile dać) — albo informację, że **nie da
-   się zaproponować, z wytłumaczeniem dlaczego** (np. brak wydawcy, brak
-   punktowalnego autorstwa, brak punktacji źródła).
+1. **Wyd. ciągłe (artykuł):** źródło i jego punktacja `punkty_kbn` z
+   `Punktacja_Zrodla` za dany rok — albo wyraźne **„brak danych"** dla
+   źródła/roku.
+2. **Wyd. zwarte (monografia/rozdział):** wydawca i jego **poziom** za rok.
+   Rozróżnienie:
+   - **brak wydawcy** → „brak danych, nie można zaproponować";
+   - **wydawca bez poziomu za rok** (`get_tier == -1` lub `poziom == NULL`) →
+     traktowany jako **„spoza wykazu" (poziom 0)** z jawną adnotacją; sugestia
+     wg progów poziomu 0 (20/5/5).
+3. **Sugestię punktów** `punkty_kbn` — albo informację, że **nie da się
+   zaproponować, z wytłumaczeniem dlaczego**.
 
 Sugestia jest **wyłącznie podpowiedzią** — pole „punkty MNiSW" jest zawsze
-edytowalne; operator może przyjąć proponowaną wartość, wpisać własną albo
-zostawić puste.
+edytowalne; operator przyjmuje, zmienia albo zostawia.
 
 ## 3. Zakres
 
 **W zakresie (v1):**
 
-- Nowy krok wizarda „Punktacja" dla obu typów: wyd. ciągłe (artykuł) i wyd.
-  zwarte (monografia / rozdział / redakcja).
-- Ścieżka ciągłych: punktacja z `Punktacja_Zrodla` dla (źródło, rok).
-- Ścieżka zwartych: derywacja `punkty_kbn` z poziomu wydawcy dla roku +
-  klasyfikacji rekordu (książka/rozdział × autorstwo/redakcja), na bazie
-  progów już zdefiniowanych w komendzie `ustaw_zwrotnie_punkty_zwartych`.
-- Wyświetlanie źródła/wydawcy i ich danych punktacyjnych z jawnym „brak danych".
-- Zapis wybranej wartości do rekordu przy tworzeniu.
+- Nowy krok wizarda „Punktacja" dla obu typów (`jest_wydawnictwem_zwartym`).
+- Ścieżka ciągłych: `punkty_kbn` z `Punktacja_Zrodla` dla (źródło, rok).
+- Ścieżka zwartych: derywacja z poziomu wydawcy + klasyfikacji rekordu
+  (książka/rozdział wg `charakter_sloty`; w importerze zawsze autorstwo — patrz
+  §7), na bazie progów z komendy `ustaw_zwrotnie_punkty_zwartych`.
+- Jawne „brak danych" dla źródła/wydawcy/poziomu/roku.
+- **Ostrzeżenie HST** (tanie, v1): gdy któryś dopasowany autor ma dyscyplinę
+  z dziedziny HST, pokaż warning „autorzy z dyscyplin HST — właściwy próg może
+  być wyższy (np. 300 dla monografii)". Bez zmiany samej sugestii (patrz §9-A).
+- Zapis wybranej wartości i uwzględnienie jej przy tworzeniu rekordu.
 
 **Poza zakresem (v1):**
 
-- Nowa flaga per-instytucja (świadoma decyzja — patrz §8).
-- Augmentacja HST progów (patrz §9, ryzyko A).
-- Sugerowanie pól pochodnych innych niż `punkty_kbn` w ścieżce zwartych
-  (IF/kwartyle nie dotyczą zwartych).
+- Nowa flaga per-instytucja (§8).
+- **Augmentacja HST progów** w samej wartości sugestii (tylko warning, §9-A).
+- Rozróżnianie autorstwo/redakcja w importerze — dziś importer i tak tworzy
+  wszystkich jako autorów (§7, F1); pełna obsługa redakcji to osobny temat.
+- Sugerowanie IF/kwartyli dla zwartych (nie dotyczy).
 
-## 4. Architektura — nowy krok wizarda
+## 4. Architektura — nowy krok wizarda „Punktacja"
 
-Importer to sekwencja widoków HTMX w `src/importer_publikacji/views/wizard.py`,
-każdy renderujący partial `templates/importer_publikacji/partials/step_*.html`.
-Kolejność: Fetch → Verify → **Source** → Authors → **Review** → Create → Done.
+Importer to sekwencja widoków HTMX w `src/importer_publikacji/views/wizard.py`.
+**Nie ma liniowego rejestru „następny krok"** — każdy POST-handler ustawia
+`session.status` i **zwraca renderer następnego kroku**. Łańcuch:
 
-Dodajemy krok **Punktacja** po `Authors`, przed `Review` (po Authors, bo
-klasyfikacja zwartych zależy od ról autorów — patrz §7 i §9-B):
+`Verify.post → _render_source_step` · `Source.post → _render_authors_step` ·
+`AuthorsConfirmView.post → _render_review_step` · `ReviewView`/`CreateView`.
+Rekord powstaje dopiero w `create_publication_task` (Celery) **po** Review.
 
-- **Widok** `PunktacjaView` (wzorzec z pozostałych kroków wizarda), URL name
-  `punktacja`, partial `step_punktacja.html`.
-- Renderer `_render_punktacja_step` w `views/steps.py` (spójnie z
-  `_render_source_step` itd.).
-- Krok już zna z sesji importu:
-  - typ publikacji: `VerifyForm.jest_wydawnictwem_zwartym` +
-    `_is_chapter()` (`steps.py`, po `charakter_ogolny`),
-  - źródło / wydawcę: z `SourceForm` (`zrodlo` / `wydawca`),
-  - rok publikacji.
-- Formularz kroku ma jedno pole edytowalne: `punkty_kbn` („punkty MNiSW"),
-  wypełnione proponowaną wartością (jeśli jest), plus akcja „ustaw
-  automatycznie / sugeruj punktację" (re-oblicza sugestię). Nawigacja
-  Wstecz/Dalej jak w pozostałych krokach.
+Wpięcie kroku **Punktacja** między potwierdzeniem autorów a Review wymaga:
+
+| Zmiana | Plik / miejsce |
+|--------|----------------|
+| Nowa wartość `Status.PUNKTACJA` | `models.py:16` (TextChoices) + migracja |
+| Wpisy w `get_continue_url` | `models.py:195` — `AUTHORS_MATCHED → "punktacja"`, `PUNKTACJA → "review"` |
+| Przełączenie wyjścia z autorów | `wizard.py:546` `AuthorsConfirmView.post`: `_render_review_step` → `_render_punktacja_step` |
+| Nowy widok `PunktacjaView` (get/post) | `wizard.py` (wzorzec `SourceView`) |
+| Renderery `_render_punktacja_step/_full` + `_punktacja_context` | `views/steps.py` (wzorzec `_render_source_*`) |
+| Stała `STEP_PUNKTACJA` | `views/helpers.py:25` |
+| URL `name="punktacja"` | `urls.py` (między `authors-confirm` a `review`) |
+| Re-export `PunktacjaView` + renderery | `views/__init__.py` |
+| Szablon `partials/step_punktacja.html` | mirror `step_source.html`; „Wstecz" → `authors`, submit → `punktacja` |
+| Nawigacja „Wstecz" w Review | `partials/step_review.html` → `punktacja` |
+
+`PunktacjaView.post` zapisuje wybraną wartość do `session.matched_data["punkty_kbn"]`
+(JSONField — bez migracji; ten sam wzorzec co `matched_data["wydawca_opis"]`
+w `SourceView`), ustawia `status = PUNKTACJA`, zwraca `_render_review_step`.
+
+Krok zna z sesji: typ (`session.jest_wydawnictwem_zwartym`), źródło/wydawcę
+(`session.zrodlo` / `session.wydawca`), charakter (`session.charakter_formalny`),
+rok (`session.normalized_data.get("year")`), dopasowanych autorów
+(`session.authors`).
 
 ## 5. Kontrakt „Sugestia" (współdzielony value object)
 
-Obie ścieżki zwracają jednolity, mały obiekt wartości, który wprost napędza
-„czarno na białym" UI oraz zapis:
+Czysta, bezstanowa funkcja liczy sugestię i zwraca dataclass — bez zapisu, bez
+efektów ubocznych. Obie ścieżki (ciągłe/zwarte) i oba wywołania (importer/komenda)
+używają tego samego typu:
 
+```python
+class RodzajBraku(enum.Enum):
+    BRAK_DANYCH_ZRODLA = "brak_danych_zrodla"        # ciągłe: brak Punktacja_Zrodla
+    BRAK_ROKU = "brak_roku"                           # brak roku publikacji
+    BRAK_WYDAWCY = "brak_wydawcy"                      # zwarte: brak wydawcy (anomalia danych)
+    BRAK_AUTORSTWA = "brak_autorstwa"                  # zwarte: brak autorstwa/redakcji (anomalia danych)
+    NIEOBSLUZONA_KOMBINACJA = "nieobsluzona_kombinacja"  # zwarte: nieobsłużony typ (luka logiki)
+
+@dataclass
+class SugestiaPunktacji:
+    punkty: Decimal | None          # proponowane punkty_kbn; None gdy nie da się
+    podstawa: str                   # np. "Punktacja źródła 2024", "Wydawca poziom II (monografia)"
+    rodzaj_braku: RodzajBraku | None = None
+    powod_braku: str | None = None  # człowiek-czytelny komunikat „dlaczego nie da się"
 ```
-Sugestia:
-    punkty: Decimal | None        # proponowane punkty_kbn, None gdy nie da się
-    podstawa: str                 # np. "Punktacja źródła 2024", "Wydawca poziom II"
-    powod_braku: str | None       # człowiek-czytelne „dlaczego nie da się"
-    dane_zrodla: dict | None      # snapshot Punktacja_Zrodla (ciągłe) do wyświetlenia
-    poziom_wydawcy: int | None    # 1/2/None (zwarte) do wyświetlenia
-```
 
-`powod_braku` i `podstawa` są komunikatami dla operatora — nie zjadamy błędów,
-tylko je nazywamy (zgodnie z CLAUDE.md „no silent failures").
+Dane do wyświetlenia (instancja `Punktacja_Zrodla`, poziom wydawcy) zbiera widok
+bezpośrednio z sesji do kontekstu szablonu — **nie** przez snapshot w dataclassie
+(F10). `rodzaj_braku` rozróżnia **anomalię danych** od **luki w logice** — to
+pozwala komendzie zachować dotychczasową semantykę (§7, F5). Nie zjadamy błędów,
+tylko je nazywamy (CLAUDE.md „no silent failures").
 
-## 6. Ścieżka ciągłych (artykuł) — reuse istniejącego
+## 6. Ścieżka ciągłych (artykuł)
 
-Mechanizm punktacji źródła już istnieje i jest przetestowany:
+**Funkcja** `zaproponuj_punkty_ciagle(zrodlo, rok) -> SugestiaPunktacji`
+(lokalizacja: nowy moduł `bpp/models/sugestia_punktacji.py` albo obok
+`Punktacja_Zrodla` w `zrodlo.py`):
 
-- `uzupelnij_punktacje_z_zrodla(rekord, zrodlo, rok)` (`bpp/models/zrodlo.py:25`)
-  kopiuje pola `POLA_PUNKTACJI` z `Punktacja_Zrodla` na rekord.
-- `Punktacja_Zrodla` (`bpp/models/zrodlo.py:92`) — per-rok punktacja źródła.
-- API `PunktacjaZrodlaView` (`bpp/views/api/__init__.py:41`) — JSON punktacji.
-- Komenda `ustaw_zwrotnie_punkty_ciaglych._przetworz` robi de facto to samo
-  (`Punktacja_Zrodla.get(rok).punkty_kbn`).
+- `rok` puste → `punkty=None`, `rodzaj_braku=BRAK_ROKU`,
+  `powod_braku="Brak roku publikacji — nie można dobrać punktacji źródła"`;
+- jest `Punktacja_Zrodla` dla (źródło, rok) → `punkty = pz.punkty_kbn`,
+  `podstawa=f"Punktacja źródła {rok}"`;
+- brak → `punkty=None`, `rodzaj_braku=BRAK_DANYCH_ZRODLA`,
+  `powod_braku=f"Brak punktacji źródła »{zrodlo}« za {rok}"`.
 
-**Nowa czysta funkcja** `zaproponuj_punkty_ciagle(zrodlo, rok) -> Sugestia`
-(lokalizacja: przy `Punktacja_Zrodla` w `bpp/models/zrodlo.py` lub w module
-sugestii importera):
+**Bez PBN-owego fallbacku „5 pkt"** (komenda `_ciaglych` ma go celowo; importer
+pokazuje uczciwe „brak danych").
 
-- jest `Punktacja_Zrodla` dla (źródło, rok) → `punkty = punkty_kbn`,
-  `podstawa = "Punktacja źródła {rok}"`, `dane_zrodla = {…}`;
-- brak → `punkty = None`, `powod_braku = "Brak punktacji źródła »{zrodlo}« za
-  {rok}"`.
-
-**Uwaga (rozbieżność polityki):** komenda PBN ma fallback „brak danych → 5 pkt".
-W importerze **nie** stosujemy tego fallbacku — pokazujemy „brak danych", żeby
-operator zdecydował świadomie. Ekstrakcja czystej funkcji pozwala komendzie
-zachować swój fallback, a importerowi pokazać uczciwe „brak danych".
+**Zapis przy tworzeniu (F3).** W `_create_publication` (`publikacja.py:269-274`)
+dla ciągłych **zostaje** `uzupelnij_punktacje_z_zrodla(record, zrodlo, rok)` — on
+kopiuje **cały** `POLA_PUNKTACJI` (`impact_factor, punkty_kbn, index_copernicus,
+punktacja_wewnetrzna, punktacja_snip, kwartyl_w_scopus, kwartyl_w_wos`). **Po nim**
+nadpisujemy `record.punkty_kbn` wartością operatora z `matched_data["punkty_kbn"]`
+(o ile ustawiona) i zapisujemy. Dzięki temu IF/kwartyle/SNIP z źródła zostają,
+a `punkty_kbn` ma finalne słowo operatora.
 
 ## 7. Ścieżka zwartych (monografia/rozdział) — ekstrakcja z komendy
 
-Kanoniczna derywacja `punkty_kbn` dla zwartych **już istnieje**, ale inline w
+Kanoniczna derywacja `punkty_kbn` dla zwartych istnieje inline w
 `ustaw_zwrotnie_punkty_zwartych._przetworz`
-(`src/pbn_api/management/commands/ustaw_zwrotnie_punkty_zwartych.py:84`):
+(`src/pbn_api/management/commands/ustaw_zwrotnie_punkty_zwartych.py:84-134`):
 
-- `poziom = wydawca.get_tier(rok)` (−1 → 0),
-- tabela progów `punkty_dct[poziom]`:
+- `poziom = wydawca.get_tier(rok)` (−1 gdy brak wiersza `Poziom_Wydawcy`),
+- tabela progów `punkty_dct[poziom]` (indeks 0/1/2):
   - poziom 0 (spoza wykazu): `{KS: 20, RED: 5, ROZ: 5}`
   - poziom I: `{KS: 80, RED: 20, ROZ: 20}`
   - poziom II: `{KS: 200, RED: 100, ROZ: 50}`
-- klasyfikacja: `warunek_ksiazka()`, `warunek_rozdzial()`, `warunek_autorstwo()`,
-  `warunek_redakcja()` (`bpp/models/wydawnictwo_zwarte.py`),
+- klasyfikacja: `warunek_ksiazka/rozdzial` (po `charakter_sloty`),
+  `warunek_autorstwo/redakcja` (po rolach `autorzy_set`),
 - mapowanie: książka+autorstwo→KS, książka+redakcja→RED, rozdział+autorstwo→ROZ.
 
-Komenda już definiuje **nazwane wyjątki na braki danych**, które mapują się 1:1
-na `powod_braku`:
+**Funkcja** `zaproponuj_punkty_zwarte(*, poziom, ksiazka, rozdzial, autorstwo,
+redakcja) -> SugestiaPunktacji` — na gołych prymitywach (F2), **nie** na rekordzie:
 
-- `RekordBezWydawcy` → „Brak wydawcy — nie ma podstawy do poziomu punktacji"
-- `RekordBezPunktowalnegoAutorstwa` → „Brak punktowalnego autorstwa/redakcji"
-- kombinacja nieobsłużona → „Nieobsłużony typ publikacji ({…})"
+- normalizacja poziomu: `poziom in (-1, None) → 0` (F6 — `Poziom_Wydawcy.poziom`
+  jest nullable; komenda ma tu utajony `punkty_dct[None]` TypeError, którego
+  ekstrakcja się pozbywa);
+- `not autorstwo and not redakcja` → `punkty=None`,
+  `rodzaj_braku=BRAK_AUTORSTWA`;
+- `ksiazka and rozdzial` (jednocześnie) → `punkty=None`,
+  `rodzaj_braku=NIEOBSLUZONA_KOMBINACJA`;
+- prawidłowa kombinacja → `punkty` wg tabeli, `podstawa=f"Wydawca poziom
+  {opis_poziomu} ({typ})"`.
 
-**Plan:**
+**Klasyfikacja w importerze (F1, F7):**
 
-1. Wyekstrahować `_przetworz` do czystej funkcji
-   `zaproponuj_punkty_zwarte(rekord_lub_dane, wydawca, rok) -> Sugestia`
-   (zwraca `Sugestia`, nie zapisuje, nie rzuca — braki danych zamienia na
-   `powod_braku`). Tabela progów staje się nazwaną stałą.
-2. `ustaw_zwrotnie_punkty_zwartych` **przepisać na tę funkcję** (zachowując
-   swoją politykę: pomiń/raportuj przy `powod_braku`), żeby nie było dwóch
-   źródeł prawdy dla progów.
-3. Nowy krok importera używa tej samej funkcji.
+- `ksiazka = charakter_sloty == CHARAKTER_SLOTY_KSIAZKA`,
+  `rozdzial = charakter_sloty == CHARAKTER_SLOTY_ROZDZIAL` — z
+  `session.charakter_formalny` (parytet z komendą; **nie** `_is_chapter`, które
+  patrzy na `charakter_ogolny`);
+- `autorstwo = session.authors.exclude(matched_autor=None).exists()` (≥1
+  dopasowany autor), `redakcja = False` — bo `_add_authors_to_record`
+  (`publikacja.py:121`) tworzy **wszystkich** jako „aut."; `ImportedAuthor` nie ma
+  pola roli. Sugestia jest więc spójna z tym, co realnie powstanie.
+- **Caveat w UI:** „Sugestia zakłada autorstwo. Dla monografii/rozdziału
+  redagowanego wpisz punktację ręcznie."
+- **brak wydawcy** (`session.wydawca is None`) — widok nie woła funkcji, tylko
+  pokazuje „brak danych, wpisz ręcznie" (`BRAK_WYDAWCY`).
 
-Na etapie importu klasyfikacja opiera się na `charakter_formalny` / `typ_kbn`
-oraz rolach autorów zebranych w krokach wcześniejszych — do potwierdzenia, że
-`warunek_*` da się policzyć na jeszcze-niezapisanym rekordzie (patrz §9,
-ryzyko B).
+**Refaktor komendy (F5).** `ustaw_zwrotnie_punkty_zwartych._przetworz`:
 
-## 8. Zapis do rekordu i brak flagi
+1. Zachowuje wczesny guard `elem.wydawca is None → RekordBezWydawcy`.
+2. Liczy `ksiazka/rozdzial/autorstwo/redakcja` z rekordu (`warunek_*`).
+3. Woła `zaproponuj_punkty_zwarte(...)`.
+4. Tłumaczy wynik:
+   - `sugestia.punkty is not None` → `elem.punkty_kbn = sugestia.punkty; save()`;
+   - `rodzaj_braku == BRAK_AUTORSTWA` → `raise RekordBezPunktowalnegoAutorstwa`
+     (skip+raport ZAWSZE, jak dziś);
+   - `rodzaj_braku == NIEOBSLUZONA_KOMBINACJA` → `raise NotImplementedError`
+     (**twardy crash bez `--ignore-errors`**, jak dziś).
 
-- Wybrana wartość `punkty_kbn` trafia do rekordu **przy tworzeniu**
-  (`common_fields` w `importer_publikacji/views/publikacja.py::_create_publication`),
-  zamiast dzisiejszego cichego post-hoc `uzupelnij_punktacje_z_zrodla`
-  (ciągłe) i braku jakiejkolwiek punktacji (zwarte).
-- **Brak nowej flagi w ścieżce krytycznej** (decyzja właściciela). Akcja
-  „sugeruj punktację" jest zawsze dostępna w kroku. Ewentualny per-instytucja
-  *default* (auto-proponuj po wejściu w krok) można dodać później, gdyby klient
-  nalegał na dosłowne „dla całej instytucji" — poza zakresem v1.
+Tabela progów staje się nazwaną stałą współdzieloną (jedno źródło prawdy).
+Test regresyjny (§10) potwierdza identyczne wyniki i identyczne skip/raise.
+
+**Zapis przy tworzeniu.** Dla zwartych `_create_publication` ustawia
+`record.punkty_kbn = matched_data["punkty_kbn"]` (o ile ustawiona) — bez pól
+źródłowych (zwarte nie mają `Punktacja_Zrodla`).
+
+## 8. Zapis do sesji i brak flagi
+
+- Wartość `punkty_kbn` wybrana w kroku żyje w `session.matched_data["punkty_kbn"]`
+  (JSONField, string/decimal — bez migracji). Odczyt w `_create_publication`.
+- **Migracja** potrzebna tylko dla nowej wartości `Status.PUNKTACJA` (AlterField
+  choices — metadanowa, bez zmiany SQL). Nowa migracja (CLAUDE.md: nie edytować
+  istniejących). Po niej `make baseline-update` (choices-only — baseline
+  prawdopodobnie bez zmian, ale walidujemy).
+- **Brak nowej flagi per-instytucja** (decyzja właściciela). Akcja „sugeruj
+  punktację" zawsze dostępna. Ewentualny per-instytucja *default* (auto-proponuj)
+  — poza zakresem v1.
 
 ## 9. Ryzyka i niuanse
 
-**A. Progi HST.** Komenda `ustaw_zwrotnie_punkty_zwartych` używa progów
-**bazowych** (20/80/200…), bez augmentacji HST (kalkulator slotów
-`bpp/models/sloty/core.py` HST uwzględnia: 120/300 itd.). v1 sugestii idzie za
-komendą — progi bazowe. Ponieważ sugestia jest edytowalna, to akceptowalny
-kompromis; augmentację HST oznaczamy jako znany, udokumentowany dług.
+**A. Progi HST — sugestia bazowa jest dla rekordów czysto-HST aktywnie błędna.**
+Komenda `ustaw_zwrotnie_punkty_zwartych` używa progów **bazowych** (20/80/200),
+a kalkulator slotów (`bpp/models/sloty/core.py:197-248`) dla rekordów HST
+**wymaga** wartości augmentowanych (300/150/75, 120/40) w `punkty_kbn` — sugestia
+200 dla monografii HST **zepsuje sloty**. v1: **nie** augmentujemy wartości
+(dług), ale pokazujemy **ostrzeżenie**, gdy dopasowani autorzy mają dyscypliny
+HST (sesja ma `matched_dyscyplina`). Predykat „dyscyplina jest HST" do ustalenia
+w planie (dziedzina/`Dyscyplina_Naukowa`). Sugestia i tak edytowalna.
 
-**B. `warunek_*` na niezapisanym rekordzie.** Klasyfikacja zwartych
-(`warunek_ksiazka/rozdzial/autorstwo/redakcja`) zależy od ról autorów i
-charakteru. Do potwierdzenia w implementacji, czy da się ją policzyć na danych
-sesji importu przed zapisem rekordu; jeśli nie — krok liczy sugestię po
-skompletowaniu danych (już po kroku Authors, co porządkuje kolejność:
-Punktacja po Authors, przed Review).
+**B. Rekord nie istnieje w trakcie wizarda — ROZSTRZYGNIĘTE.** `warunek_*` czytają
+`self.autorzy_set` (reverse-FK) i na instancji bez PK rzucają `ValueError`;
+rekord powstaje dopiero w Celery po Review. Dlatego funkcja bierze **prymitywy**,
+liczone z sesji (importer) albo z rekordu (komenda). Żadnego liczenia na
+niezapisanym rekordzie.
 
-**C. Kiedy pokazywać krok.** Krok pokazujemy zawsze (spójna nawigacja), ale
-treść adaptuje się do dostępnych danych: gdy nie ma ani źródła, ani wydawcy →
-komunikat „brak danych do zaproponowania punktów, wpisz ręcznie lub pomiń".
+**C. Braki danych do obsłużenia w kroku:** brak roku (`normalized_data["year"]`
+puste aż do Create — `BRAK_ROKU`), brak źródła, brak wydawcy, brak poziomu
+(→ spoza wykazu). Gdy nie ma z czego liczyć — krok pokazuje komunikat i pozwala
+wpisać ręcznie / pominąć.
 
 ## 10. Testy (pytest, testcontainers)
 
-- `zaproponuj_punkty_zwarte`: poziom I/II/spoza wykazu × książka/rozdział ×
-  autorstwo/redakcja → oczekiwane progi; brak wydawcy → `powod_braku`; brak
-  autorstwa → `powod_braku`.
-- `zaproponuj_punkty_ciagle`: jest `Punktacja_Zrodla` → wartość; brak → `None`
-  + `powod_braku` (bez fallbacku 5 pkt).
-- `ustaw_zwrotnie_punkty_zwartych` po refaktorze: te same wyniki co przed
-  (regresja — komenda nie zmienia zachowania, w tym pomijania/raportowania).
-- Krok wizarda: dla ciągłego z `Punktacja_Zrodla` proponuje wartość, edytowalną;
-  dla zwartego wg poziomu wydawcy; zapis `punkty_kbn` do rekordu; „brak danych"
-  renderuje się gdy brak źródła/wydawcy/poziomu.
+- `zaproponuj_punkty_zwarte`: poziom 0/I/II × książka/rozdział × autorstwo/redakcja
+  → oczekiwane progi; `poziom=None/-1 → 0`; brak autorstwa → `BRAK_AUTORSTWA`;
+  książka+rozdział → `NIEOBSLUZONA_KOMBINACJA`.
+- `zaproponuj_punkty_ciagle`: jest `Punktacja_Zrodla` → wartość; brak →
+  `BRAK_DANYCH_ZRODLA` (bez fallbacku 5 pkt); `rok=None` → `BRAK_ROKU`.
+- **Regresja komendy** `ustaw_zwrotnie_punkty_zwartych` po refaktorze: te same
+  `punkty_kbn` co przed; `RekordBezPunktowalnegoAutorstwa` nadal skip+raport;
+  nieobsłużona kombinacja nadal `NotImplementedError` bez `--ignore-errors`;
+  `RekordBezWydawcy` nadal skip.
+- Krok wizarda: ciągłe z `Punktacja_Zrodla` → proponuje wartość, edytowalną, POST
+  zapisuje `matched_data["punkty_kbn"]` i przechodzi do Review; zwarte wg poziomu
+  wydawcy; „brak danych" renderuje się dla braku źródła/wydawcy/poziomu/roku;
+  `Status.PUNKTACJA` + `get_continue_url` prowadzi do właściwego kroku.
+- `_create_publication`: ciągłe — IF/kwartyle z `Punktacja_Zrodla` zostają, a
+  `punkty_kbn` = wartość operatora (nadpisanie po `uzupelnij_punktacje_z_zrodla`);
+  zwarte — `punkty_kbn` = wartość operatora.
 
 ## 11. Poza zakresem
 
 - Per-instytucja flaga / dosłowne „dla całej instytucji".
-- HST-augmentowane progi w sugestii.
-- Sugerowanie IF/kwartyli dla zwartych (nie dotyczy).
-- Zmiany w adminie (to jest ścieżka importera; admin ma własny przycisk
-  „Uzupełnij punktację", który zostaje).
+- HST-augmentowane progi w wartości sugestii (tylko warning).
+- Rozróżnianie autorstwo/redakcja w imporcie (importer tworzy wszystkich jako
+  autorów).
+- Sugerowanie IF/kwartyli dla zwartych.
+- Zmiany w adminie (admin ma własny „Uzupełnij punktację", zostaje).
