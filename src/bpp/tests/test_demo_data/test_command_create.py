@@ -51,10 +51,9 @@ def test_command_smoke_minimal(fixtures_loaded, tmp_path):
     )
 
     assert manifest.exists()
-    assert Wydzial.objects.count() == 1
-    # Faza B (#438): +1 węzeł-lustro wydziału (root) obok 1 realnej jednostki.
+    # Faza C (#438): „wydział" = jednostka top-level; 1 root + 1 dziecko = 2.
     assert Jednostka.objects.count() == 2
-    assert Jednostka.objects.filter(legacy_wydzial_id__isnull=True).count() == 1
+    assert Jednostka.objects.filter(parent__isnull=True).count() == 1
     assert Autor.objects.count() == 3
     assert Wydawnictwo_Ciagle.objects.count() == 3
     # WZ tworzy + potencjalne nadrzedne, stad >=

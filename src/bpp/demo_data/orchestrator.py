@@ -284,7 +284,14 @@ def run_cleanup(opts: CleanupOptions, *, stdin=None, stdout=None):
 
     for label, pks in manifest.objects_in_cleanup_order():
         app_label, model_name = label.split(".")
-        model = apps.get_model(app_label, model_name)
+        try:
+            model = apps.get_model(app_label, model_name)
+        except LookupError:
+            # Faza C (#438): manifest ze starego demo (sprzed dropu modelu,
+            # np. "bpp.Wydzial") może wskazywać nieistniejący już model —
+            # pomiń z ostrzeżeniem zamiast wywalać cały cleanup.
+            stdout.write(f"[SKIP] nieznany model '{label}' w manifeście — pomijam\n")
+            continue
         # WAZNE: sort DESC, zeby intra-model FK (np.
         # Wydawnictwo_Zwarte.wydawnictwo_nadrzedne) nie wybuchl.
         sorted_pks = sorted(pks, reverse=True)
