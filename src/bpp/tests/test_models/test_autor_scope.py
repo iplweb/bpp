@@ -15,7 +15,6 @@ from model_bakery import baker
 
 from bpp.models import Autor
 from bpp.models.autor import Autor_Jednostka
-from bpp.models.struktura_konwersja import znajdz_lub_utworz_wezel_wydzialu
 
 
 def _wpis_historyczny(autor, jednostka):
@@ -37,7 +36,7 @@ def obca_jednostka_uczelni(uczelnia, wydzial):
     return baker.make(
         "bpp.Jednostka",
         uczelnia=uczelnia,
-        parent=znajdz_lub_utworz_wezel_wydzialu(wydzial)[0],
+        parent=wydzial,
         skupia_pracownikow=False,
     )
 

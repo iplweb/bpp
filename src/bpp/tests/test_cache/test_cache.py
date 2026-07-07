@@ -13,7 +13,6 @@ from bpp.models import (
     Tytul,
     Uczelnia,
     Wydawnictwo_Zwarte,
-    Wydzial,
     Zrodlo_Informacji,
 )
 from bpp.models.autor import Autor
@@ -24,7 +23,6 @@ from bpp.models.openaccess import (
     Wersja_Tekstu_OpenAccess,
 )
 from bpp.models.struktura import Jednostka
-from bpp.models.struktura_konwersja import znajdz_lub_utworz_wezel_wydzialu
 from bpp.models.system import Charakter_Formalny, Jezyk, Typ_KBN, Typ_Odpowiedzialnosci
 from bpp.models.wydawnictwo_ciagle import Wydawnictwo_Ciagle, Wydawnictwo_Ciagle_Autor
 from bpp.models.zrodlo import Zrodlo
@@ -328,18 +326,17 @@ def test_caching_kasowanie_charakteru_formalnego(
 def test_caching_kasowanie_wydzialu(
     autor_jan_kowalski, jednostka, wydzial, wydawnictwo_ciagle, typy_odpowiedzialnosci
 ):
-    # Faza B (#438): po retargecie ``jednostka.wydzial`` to węzeł-korzeń
-    # (self-FK), a NIE Wydzial. Kasowanie starego ``Wydzial`` NIE kasuje już
-    # jednostek (koniec CASCADE→Wydzial — rozwiązanie concernu I-4). Żeby
-    # przetestować inwalidację cache przy usunięciu jednostki, kasujemy
-    # węzeł-korzeń (CASCADE po MPTT ``parent`` na dziecko).
+    # Faza C (#438): ``jednostka.wydzial`` (denorm) to korzeń MPTT = jednostka
+    # top-level pełniąca rolę wydziału (fixture ``wydzial``). Żeby przetestować
+    # inwalidację cache przy usunięciu jednostki, kasujemy ten korzeń — CASCADE
+    # po MPTT ``parent`` usuwa dziecko.
     korzen = jednostka.wydzial
-    assert korzen.legacy_wydzial_id == wydzial.id
+    assert korzen == wydzial
 
     wydawnictwo_ciagle.dodaj_autora(autor_jan_kowalski, jednostka)
 
     assert Rekord.objects.all().count() == 1
-    # węzeł-lustro + realna jednostka:
+    # wydział (root) + realna jednostka:
     assert Jednostka.objects.all().count() == 2
     korzen.delete()
 
@@ -358,12 +355,12 @@ def test_caching_kasowanie_uczelni(
     typy_odpowiedzialnosci,
 ):
     assert wydzial.uczelnia == uczelnia
-    # Faza B (#438): ``jednostka.wydzial`` to węzeł-korzeń (self-FK).
-    assert jednostka.wydzial.legacy_wydzial_id == wydzial.id
+    # Faza C (#438): ``jednostka.wydzial`` (denorm) to korzeń = wydział fixture.
+    assert jednostka.wydzial == wydzial
     wydawnictwo_ciagle.dodaj_autora(autor_jan_kowalski, jednostka)
 
     assert Rekord.objects.all().count() == 1
-    # węzeł-lustro + realna jednostka (obie CASCADE po uczelni):
+    # wydział (root) + realna jednostka (obie CASCADE po uczelni):
     assert Jednostka.objects.all().count() == 2
     uczelnia.delete()
 
@@ -532,12 +529,12 @@ def cache_setup(db):
     aut = Typ_Odpowiedzialnosci.objects.get(skrot="aut.")
 
     uczelnia = baker.make(Uczelnia)
-    wydzial = baker.make(Wydzial, uczelnia=uczelnia)
+    wydzial = baker.make(Jednostka, uczelnia=uczelnia, parent=None)
     j = baker.make(
         Jednostka,
         nazwa="Foo Bar",
         uczelnia=uczelnia,
-        parent=znajdz_lub_utworz_wezel_wydzialu(wydzial)[0],
+        parent=wydzial,
     )
 
     a = autor_publikacji(j)

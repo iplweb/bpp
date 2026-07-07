@@ -288,7 +288,7 @@ def run_cleanup(opts: CleanupOptions, *, stdin=None, stdout=None):
             model = apps.get_model(app_label, model_name)
         except LookupError:
             # Faza C (#438): manifest ze starego demo (sprzed dropu modelu,
-            # np. "bpp.Wydzial") może wskazywać nieistniejący już model —
+            # np. dawny model wydziału) może wskazywać nieistniejący już model —
             # pomiń z ostrzeżeniem zamiast wywalać cały cleanup.
             stdout.write(f"[SKIP] nieznany model '{label}' w manifeście — pomijam\n")
             continue

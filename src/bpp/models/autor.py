@@ -12,7 +12,7 @@ from django.contrib.postgres.search import SearchVectorField as VectorField
 from django.core.exceptions import ValidationError
 from django.core.validators import RegexValidator
 from django.db import IntegrityError, models, transaction
-from django.db.models import CASCADE, SET_NULL, Count, Sum
+from django.db.models import CASCADE, SET_NULL, Count, Q, Sum
 from django.urls.base import reverse
 from django.utils import timezone
 from tinymce.models import HTMLField

@@ -19,6 +19,31 @@ Reversible = no-op (dane historyczne — nie odtwarzamy dawnego stanu pola).
 from django.db import migrations
 
 SEP = "\n"
+MAX_LEN = 4096
+
+
+def nowa_poprzednie_nazwy(poprzednie, nazwa_wydzialu, nazwa_roota):
+    """Czysta logika: zwraca nową wartość ``poprzednie_nazwy`` po dołożeniu
+    ``nazwa_wydzialu``, albo ``None`` gdy nic nie trzeba zmieniać.
+
+    Pomija (zwraca None) gdy: nazwa wydziału pusta; równa nazwie roota (root
+    to węzeł-lustro — match po ``nazwa__iexact``); już wpisana (idempotencja);
+    dołożenie przepełniłoby ``CharField(4096)``. Wydzielona z ``apps.get_model``,
+    by dało się ją przetestować także po usunięciu modelu ``Wydzial`` (0467).
+    """
+    nazwa_wydzialu = (nazwa_wydzialu or "").strip()
+    if not nazwa_wydzialu:
+        return None
+    if nazwa_wydzialu.casefold() == (nazwa_roota or "").strip().casefold():
+        return None
+    istniejace = [n.strip() for n in (poprzednie or "").split(SEP) if n.strip()]
+    if any(n.casefold() == nazwa_wydzialu.casefold() for n in istniejace):
+        return None  # już wpisane — idempotencja
+    istniejace.append(nazwa_wydzialu)
+    nowa = SEP.join(istniejace)
+    if len(nowa) > MAX_LEN:
+        return None  # nie przepełniaj kolumny — skrajnie nieprawdopodobne
+    return nowa
 
 
 def backfill_poprzednie_nazwy(apps, schema_editor):
@@ -30,27 +55,9 @@ def backfill_poprzednie_nazwy(apps, schema_editor):
         wydzial = Wydzial.objects.filter(pk=root.legacy_wydzial_id).first()
         if wydzial is None:
             continue
-        nazwa_wydzialu = (wydzial.nazwa or "").strip()
-        if not nazwa_wydzialu:
+        nowa = nowa_poprzednie_nazwy(root.poprzednie_nazwy, wydzial.nazwa, root.nazwa)
+        if nowa is None:
             continue
-
-        # root nosi już nazwę wydziału (węzeł-lustro) → match po nazwa__iexact,
-        # nic nie dokładamy.
-        if nazwa_wydzialu.casefold() == (root.nazwa or "").strip().casefold():
-            continue
-
-        istniejace = [
-            n.strip() for n in (root.poprzednie_nazwy or "").split(SEP) if n.strip()
-        ]
-        if any(n.casefold() == nazwa_wydzialu.casefold() for n in istniejace):
-            continue  # już wpisane — idempotencja
-
-        istniejace.append(nazwa_wydzialu)
-        nowa = SEP.join(istniejace)
-        if len(nowa) > 4096:
-            # nie przepełniaj CharField(4096) — skrajnie nieprawdopodobne
-            continue
-
         root.poprzednie_nazwy = nowa
         root.save(update_fields=["poprzednie_nazwy"])
 

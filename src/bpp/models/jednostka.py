@@ -29,7 +29,6 @@ from bpp.models.autor import Autor, Autor_Jednostka
 from bpp.util import FulltextSearchMixin
 
 from .uczelnia import Uczelnia
-from .wydzial import Wydzial
 
 SORTUJ_RECZNIE = ("kolejnosc", "nazwa")
 SORTUJ_ALFABETYCZNIE = ("nazwa",)
@@ -256,7 +255,7 @@ class Jednostka(ModelZAdnotacjami, ModelZPBN_ID, ModelZPBN_UID, MPTTModel):
         except (ValueError, TypeError, Jednostka.DoesNotExist):
             # Faza B (#438): ``wydzial`` to teraz self-FK -> Jednostka, więc
             # dangling/deferred dostęp rzuca Jednostka.DoesNotExist (dawny
-            # guard na Wydzial.DoesNotExist był martwy po retargecie).
+            # guard na DoesNotExist dawnego wydziału był martwy po retargecie).
             wydzial = None
 
         if wydzial is not None:
@@ -398,14 +397,13 @@ class Jednostka(ModelZAdnotacjami, ModelZPBN_ID, ModelZPBN_UID, MPTTModel):
         return self.przypisania_dla_czasokresu(data, data).first()
 
     def wydzial_dnia(self, data):
-        # Faza B (#438): metryczka historyczna trzyma teraz węzeł-rodzic
-        # (Jednostka), a nie Wydzial. Stary Wydzial odzyskujemy przez
-        # legacy_wydzial_id węzła — utrzymuje kontrakt (zwraca Wydzial lub None)
-        # do czasu usunięcia strony wydziału (B-III).
+        # Faza C (#438): „wydział" to węzeł-rodzic (Jednostka top-level).
+        # Metryczka historyczna trzyma ten węzeł wprost — zwracamy go (lub
+        # None, gdy jednostka nie miała rodzica w danym dniu).
         przypisanie = self.przypisanie_dla_dnia(data)
         if przypisanie is None or przypisanie.parent_id is None:
             return None
-        return Wydzial.objects.filter(id=przypisanie.parent.legacy_wydzial_id).first()
+        return przypisanie.parent
 
     #
     # Metody węzła dla strukturalnego stylu browse (Faza B, III-2, #438).

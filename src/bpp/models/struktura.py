@@ -11,8 +11,3 @@ from .uczelnia import (  # noqa: F401
     UczelniaManager,
     Ukryj_Status_Korekty,
 )
-from .wydzial import (  # noqa: F401
-    JednostkaCreateManager,
-    Wydzial,
-    invalidate_uczelnia_cache_on_wydzial_change,
-)

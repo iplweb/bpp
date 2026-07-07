@@ -5,21 +5,17 @@ from django.utils import timezone
 from model_bakery import baker
 
 from bpp.models import Autor_Jednostka
-from bpp.models.struktura import Jednostka, Jednostka_Rodzic, Wydzial
-
-
-def _wezel(wydzial):
-    """LAZY węzeł-lustro Jednostka dla wydziału (#438) — tworzony przy linku."""
-    from bpp.models.struktura_konwersja import znajdz_lub_utworz_wezel_wydzialu
-
-    return znajdz_lub_utworz_wezel_wydzialu(wydzial)[0]
+from bpp.models.struktura import Jednostka, Jednostka_Rodzic
 
 
 @pytest.mark.django_db
 def test_jednostka_publiczna(wydzial, uczelnia):
     j = baker.make(Jednostka, widoczna=True, uczelnia=uczelnia, aktualna=True)
-    Jednostka_Rodzic.objects.create(jednostka=j, parent=_wezel(wydzial))
-    assert Jednostka.objects.publiczne().count() == 1
+    Jednostka_Rodzic.objects.create(jednostka=j, parent=wydzial)
+    # Faza C (#438): „wydział" (fixture) jest teraz też Jednostką widoczną i
+    # aktualną, więc również jest publiczny — sprawdzamy obecność j wprost,
+    # zamiast liczyć globalnie.
+    assert j in Jednostka.objects.publiczne()
 
 
 @pytest.mark.django_db
@@ -35,9 +31,9 @@ def test_jednostka_widoczne():
 @pytest.mark.django_db
 def test_jednostka_test_wydzial_dnia_pusty():
     j = baker.make(Jednostka, nazwa="Jednostka")
-    w = baker.make(Wydzial, nazwa="Wydzial", uczelnia=j.uczelnia)
+    w = baker.make(Jednostka, nazwa="Wydzial", uczelnia=j.uczelnia, parent=None)
 
-    Jednostka_Rodzic.objects.create(jednostka=j, parent=_wezel(w))
+    Jednostka_Rodzic.objects.create(jednostka=j, parent=w)
 
     assert j.wydzial_dnia(date(1, 1, 1)) == w
     assert j.wydzial_dnia(date(2030, 1, 1)) == w
@@ -47,10 +43,10 @@ def test_jednostka_test_wydzial_dnia_pusty():
 @pytest.mark.django_db
 def test_jednostka_test_wydzial_dnia():
     j = baker.make(Jednostka)
-    w = baker.make(Wydzial, uczelnia=j.uczelnia)
+    w = baker.make(Jednostka, uczelnia=j.uczelnia, parent=None)
 
     Jednostka_Rodzic.objects.create(
-        jednostka=j, parent=_wezel(w), od=date(2015, 1, 1), do=date(2015, 2, 1)
+        jednostka=j, parent=w, od=date(2015, 1, 1), do=date(2015, 2, 1)
     )
 
     assert j.wydzial_dnia(date(1, 1, 1)) is None
@@ -63,9 +59,9 @@ def test_jednostka_test_wydzial_dnia():
 @pytest.mark.django_db
 def test_jednostka_test_przypisania_dla_czasokresu():
     j = baker.make(Jednostka)
-    w = baker.make(Wydzial, uczelnia=j.uczelnia)
+    w = baker.make(Jednostka, uczelnia=j.uczelnia, parent=None)
     Jednostka_Rodzic.objects.create(
-        jednostka=j, parent=_wezel(w), od=date(2015, 1, 1), do=date(2015, 2, 1)
+        jednostka=j, parent=w, od=date(2015, 1, 1), do=date(2015, 2, 1)
     )
 
     ret = j.przypisania_dla_czasokresu(date(2015, 2, 1), date(2015, 2, 20))

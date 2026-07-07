@@ -6,7 +6,7 @@ import pytest
 from model_bakery import baker
 
 from bpp.models.autor import Autor, Tytul
-from bpp.models.struktura import Jednostka, Uczelnia, Wydzial
+from bpp.models.struktura import Jednostka, Uczelnia
 from bpp.models.zrodlo import Zrodlo
 
 from .const import JEDNOSTKA_PODRZEDNA, JEDNOSTKA_UCZELNI
@@ -43,8 +43,9 @@ def uczelnia_z_obca_jednostka(uczelnia, obca_jednostka):
 
 @pytest.mark.django_db
 def _wydzial_maker(nazwa, skrot, uczelnia, **kwargs):
-    return Wydzial.objects.get_or_create(
-        uczelnia=uczelnia, skrot=skrot, nazwa=nazwa, **kwargs
+    # Faza C (#438): „wydział" = jednostka top-level (``parent IS NULL``).
+    return Jednostka.objects.get_or_create(
+        uczelnia=uczelnia, skrot=skrot, nazwa=nazwa, parent=None, **kwargs
     )[0]
 
 
@@ -86,15 +87,12 @@ def autor_jan_kowalski(db, tytuly) -> Autor:
 
 
 def _jednostka_maker(nazwa, skrot, wydzial, **kwargs):
-    # Faza B (#438): ``Jednostka.wydzial`` to self-FK do korzenia (denorm).
-    # Jednostka „w wydziale" wisi pod węzłem-lustrem tego Wydzialu (root),
-    # a denorm wylicza ``wydzial`` przy zapisie. ``wydzial=`` NIE trafia już
-    # do ``create()``.
-    from bpp.models.struktura_konwersja import znajdz_lub_utworz_wezel_wydzialu
-
+    # Faza C (#438): „wydział" to jednostka top-level (root). Jednostka
+    # „w wydziale" wisi wprost pod nim (MPTT ``parent``), a denorm ``wydzial``
+    # (korzeń) wylicza się przy zapisie.
     parent = kwargs.pop("parent", None)
     if parent is None and wydzial is not None:
-        parent, _ = znajdz_lub_utworz_wezel_wydzialu(wydzial)
+        parent = wydzial
     ret = Jednostka.objects.get_or_create(
         nazwa=nazwa,
         skrot=skrot,
@@ -133,27 +131,21 @@ def kolo_naukowe(jednostka: Jednostka):
 
 @pytest.fixture(scope="function")
 def aktualna_jednostka(jednostka: Jednostka, wydzial, db):
-    # Faza B (#438): metryczka wskazuje węzeł-rodzic; LAZY get-or-create
-    # węzła-lustra dla wydziału (legacy_wydzial_id → Wydzial).
-    from bpp.models.struktura_konwersja import znajdz_lub_utworz_wezel_wydzialu
-
-    wezel, _ = znajdz_lub_utworz_wezel_wydzialu(wydzial)
-    jednostka.jednostka_rodzic_set.create(parent=wezel)
+    # Faza C (#438): „wydział" to jednostka top-level; metryczka wskazuje
+    # wprost na nią (parent).
+    jednostka.jednostka_rodzic_set.create(parent=wydzial)
     jednostka.refresh_from_db()
     return jednostka
 
 
 @pytest.fixture
 def drugi_wydzial(uczelnia):
-    return baker.make(Wydzial, uczelnia=uczelnia)
+    return baker.make(Jednostka, uczelnia=uczelnia, parent=None)
 
 
 @pytest.fixture
 def druga_aktualna_jednostka(druga_jednostka, drugi_wydzial):
-    from bpp.models.struktura_konwersja import znajdz_lub_utworz_wezel_wydzialu
-
-    wezel, _ = znajdz_lub_utworz_wezel_wydzialu(drugi_wydzial)
-    druga_jednostka.jednostka_rodzic_set.create(parent=wezel)
+    druga_jednostka.jednostka_rodzic_set.create(parent=drugi_wydzial)
     druga_jednostka.refresh_from_db()
     return druga_jednostka
 
@@ -207,14 +199,11 @@ def zrodlo(db):
 @pytest.fixture
 def kierunek_studiow(wydzial):
     from bpp.models import Kierunek_Studiow
-    from bpp.models.struktura_konwersja import znajdz_lub_utworz_wezel_wydzialu
 
-    # Faza B (#438) II-2: ``Kierunek_Studiow.wydzial`` to FK->Jednostka
-    # (korzeń drzewa, węzeł-lustro dawnego Wydzialu).
-    jednostka_wydzialu, _ = znajdz_lub_utworz_wezel_wydzialu(wydzial)
-
+    # Faza C (#438) II-2: ``Kierunek_Studiow.wydzial`` to FK->Jednostka
+    # (jednostka top-level = dawny „wydział").
     return Kierunek_Studiow.objects.get_or_create(
-        wydzial=jednostka_wydzialu,
+        wydzial=wydzial,
         nazwa="memetyka użytkowa",
         skrot="mem. uż.",
         opis="testowy kierunek studiów",

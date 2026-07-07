@@ -7,9 +7,8 @@ import pytest
 from django.contrib.auth.models import Group
 from model_bakery import baker
 
-from bpp.models import Autor, Jednostka, RodzajJednostki, Wydzial
+from bpp.models import Autor, Jednostka, RodzajJednostki
 from bpp.models.cache import Rekord
-from bpp.models.struktura_konwersja import znajdz_lub_utworz_wezel_wydzialu
 from bpp.models.system import Charakter_Formalny, Typ_Odpowiedzialnosci
 from bpp.models.wydawnictwo_ciagle import Wydawnictwo_Ciagle_Autor
 from bpp.tests.util import (
@@ -35,6 +34,19 @@ def setup_group(db):
     Group.objects.get_or_create(name="wprowadzanie danych")
 
 
+def _rodzaj_wydzial():
+    # Faza C (#438): rolę „wydziału" (strona w stylu strukturalnym) pełni
+    # jednostka top-level z rodzajem o ``pokazuj_strukture_podjednostek=True``.
+    # Dawniej ustawiał to węzeł-lustro (znajdz_lub_utworz_wezel_wydzialu).
+    rodzaj, _ = RodzajJednostki.objects.get_or_create(
+        nazwa="Wydział", defaults={"pokazuj_strukture_podjednostek": True}
+    )
+    if not rodzaj.pokazuj_strukture_podjednostek:
+        rodzaj.pokazuj_strukture_podjednostek = True
+        rodzaj.save()
+    return rodzaj
+
+
 @pytest.mark.django_db
 def test_root_empty(setup_group, logged_in_client):
     res = logged_in_client.get("/")
@@ -52,7 +64,7 @@ def test_root_with_uczelnia(setup_group, logged_in_client):
 @pytest.mark.django_db
 def test_browse_wydzial(setup_group, logged_in_client):
     u = any_uczelnia(nazwa="uczelnia", skrot="uu")
-    Wydzial.objects.create(nazwa="wydzial", uczelnia=u)
+    Jednostka.objects.create(nazwa="wydzial", uczelnia=u, parent=None)
     res = logged_in_client.get(reverse("bpp:browse_uczelnia", args=("uu",)))
     assert res.status_code == 200
     assert "Wybierz wydział" in res.content.decode()
@@ -93,19 +105,20 @@ def test_jednostka_styl_strukturalny_jedno_dziecko_redirects(
     """Węzeł strukturalny (rodzaj "Wydział") z jedną podjednostką
     przekierowuje na jej stronę -- tak jak dawny WydzialView."""
     u = any_uczelnia(nazwa="uczelnia", skrot="uu")
-    w = Wydzial.objects.create(nazwa="wydzial", uczelnia=u)
-    wezel, _ = znajdz_lub_utworz_wezel_wydzialu(w)
+    w = Jednostka.objects.create(
+        nazwa="wydzial", uczelnia=u, parent=None, rodzaj=_rodzaj_wydzial()
+    )
     j = Jednostka.objects.create(
         nazwa="jedyna jednostka",
         skrot="JJ",
-        parent=wezel,
+        parent=w,
         uczelnia=u,
         aktualna=True,
         widoczna=True,
     )
 
     res = logged_in_client.get(
-        reverse("bpp:browse_jednostka", args=(wezel.slug,)), follow=False
+        reverse("bpp:browse_jednostka", args=(w.slug,)), follow=False
     )
     assert res.status_code == 302
     assert res.url == reverse("bpp:browse_jednostka", args=(j.slug,))
@@ -118,12 +131,13 @@ def test_jednostka_styl_strukturalny_wiele_dzieci_shows_page(
     """Węzeł strukturalny z wieloma podjednostkami wyświetla stronę w
     stylu strukturalnym (dawna strona wydziału)."""
     u = any_uczelnia(nazwa="uczelnia", skrot="uu")
-    w = Wydzial.objects.create(nazwa="wydzial", uczelnia=u)
-    wezel, _ = znajdz_lub_utworz_wezel_wydzialu(w)
+    w = Jednostka.objects.create(
+        nazwa="wydzial", uczelnia=u, parent=None, rodzaj=_rodzaj_wydzial()
+    )
     Jednostka.objects.create(
         nazwa="jednostka 1",
         skrot="J1",
-        parent=wezel,
+        parent=w,
         uczelnia=u,
         aktualna=True,
         widoczna=True,
@@ -131,14 +145,14 @@ def test_jednostka_styl_strukturalny_wiele_dzieci_shows_page(
     Jednostka.objects.create(
         nazwa="jednostka 2",
         skrot="J2",
-        parent=wezel,
+        parent=w,
         uczelnia=u,
         aktualna=True,
         widoczna=True,
     )
 
     res = logged_in_client.get(
-        reverse("bpp:browse_jednostka", args=(wezel.slug,)), follow=False
+        reverse("bpp:browse_jednostka", args=(w.slug,)), follow=False
     )
     assert res.status_code == 200
     assert b"Jednostki aktualne" in res.content
@@ -151,20 +165,21 @@ def test_jednostka_styl_strukturalny_jedno_kolo_naukowe_redirects(
     """Węzeł strukturalny z jednym kołem naukowym przekierowuje na stronę
     koła."""
     u = any_uczelnia(nazwa="uczelnia", skrot="uu")
-    w = Wydzial.objects.create(nazwa="wydzial", uczelnia=u)
-    wezel, _ = znajdz_lub_utworz_wezel_wydzialu(w)
+    w = Jednostka.objects.create(
+        nazwa="wydzial", uczelnia=u, parent=None, rodzaj=_rodzaj_wydzial()
+    )
     j = Jednostka.objects.create(
         nazwa="koło naukowe",
         skrot="KN",
-        parent=wezel,
+        parent=w,
         uczelnia=u,
         aktualna=True,
         widoczna=True,
-        rodzaj=RodzajJednostki.objects.get(nazwa="Koło naukowe"),
+        rodzaj=RodzajJednostki.objects.get_or_create(nazwa="Koło naukowe")[0],
     )
 
     res = logged_in_client.get(
-        reverse("bpp:browse_jednostka", args=(wezel.slug,)), follow=False
+        reverse("bpp:browse_jednostka", args=(w.slug,)), follow=False
     )
     assert res.status_code == 302
     assert res.url == reverse("bpp:browse_jednostka", args=(j.slug,))
@@ -175,14 +190,13 @@ def test_jednostka_styl_prac_dla_rodzaju_standard(setup_group, logged_in_client)
     """Węzeł rodzaju "Standard" (bez pokazuj_strukture_podjednostek)
     renderuje dotychczasowy styl prac -- nie strukturalny."""
     u = any_uczelnia(nazwa="uczelnia", skrot="uu")
-    w = Wydzial.objects.create(nazwa="wydzial", skrot="WDZ", uczelnia=u)
-    wezel, _ = znajdz_lub_utworz_wezel_wydzialu(w)
+    w = Jednostka.objects.create(nazwa="wydzial", skrot="WDZ", uczelnia=u, parent=None)
     j = Jednostka.objects.create(
         nazwa="jednostka standardowa",
         skrot="JSTD",
-        parent=wezel,
+        parent=w,
         uczelnia=u,
-        rodzaj=RodzajJednostki.objects.get(nazwa="Standard"),
+        rodzaj=RodzajJednostki.objects.get_or_create(nazwa="Standard")[0],
     )
 
     res = logged_in_client.get(reverse("bpp:browse_jednostka", args=(j.slug,)))
@@ -195,10 +209,9 @@ def test_jednostka_styl_prac_dla_rodzaju_standard(setup_group, logged_in_client)
 @pytest.mark.django_db
 def test_browse_jednostka(setup_group, logged_in_client):
     u = any_uczelnia(nazwa="uczelnia", skrot="uu")
-    w = Wydzial.objects.create(nazwa="wydzial", skrot="WDZ", uczelnia=u)
-    wezel, _ = znajdz_lub_utworz_wezel_wydzialu(w)
+    w = Jednostka.objects.create(nazwa="wydzial", skrot="WDZ", uczelnia=u, parent=None)
     j = Jednostka.objects.create(
-        nazwa="jednostka", skrot="JEDN", parent=wezel, uczelnia=u
+        nazwa="jednostka", skrot="JEDN", parent=w, uczelnia=u
     )
 
     res = logged_in_client.get(reverse("bpp:browse_jednostka", args=(j.slug,)))

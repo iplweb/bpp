@@ -12,7 +12,6 @@ from bpp.models import (
     Jednostka,
     Wydawnictwo_Ciagle,
     Wydawnictwo_Zwarte,
-    Wydzial,
 )
 
 
@@ -87,7 +86,8 @@ def test_command_preflight_fails_when_no_dyscyplina():
             "--yes-i-am-sure",
             f"--confirm-db={connection.settings_dict['NAME']}",
         )
-    assert Wydzial.objects.count() == 0  # nic nie stworzone
+    # nic nie stworzone (żadna jednostka top-level = dawny „wydział")
+    assert Jednostka.objects.filter(parent__isnull=True).count() == 0
 
 
 @pytest.mark.django_db(transaction=True)
@@ -105,7 +105,7 @@ def test_command_aborts_without_flags_non_tty(fixtures_loaded, tmp_path):
             "--wydawcow=1",
             "--seed=1",
         )
-    assert Wydzial.objects.count() == 0
+    assert Jednostka.objects.filter(parent__isnull=True).count() == 0
 
 
 @pytest.mark.django_db(transaction=True)
@@ -125,7 +125,7 @@ def test_command_aborts_wrong_db_name(fixtures_loaded):
             "--yes-i-am-sure",
             "--confirm-db=zla_nazwa",
         )
-    assert Wydzial.objects.count() == 0
+    assert Jednostka.objects.filter(parent__isnull=True).count() == 0
 
 
 @pytest.mark.django_db(transaction=True)

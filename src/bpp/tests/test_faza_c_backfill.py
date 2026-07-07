@@ -1,122 +1,61 @@
 """Faza C / issue #438 — backfill ``poprzednie_nazwy`` (migracja 0466).
 
-PRZED usunięciem modelu ``Wydzial`` dopisujemy nazwę każdego wydziału do
-``poprzednie_nazwy`` jego węzła-korzenia (po ``legacy_wydzial_id``), aby
-matchowanie importu (``matchuj_wydzial``, T1) dalej odnajdywało root po
+PRZED usunięciem modelu ``Wydzial`` (0467) migracja 0466 dopisuje nazwę każdego
+wydziału do ``poprzednie_nazwy`` jego węzła-korzenia (po ``legacy_wydzial_id``),
+aby matchowanie importu (``matchuj_wydzial``, T1) dalej odnajdywało root po
 dawnej nazwie wydziału — nawet gdy root został PROMOWANY z realnej jednostki
 i nosi jej nazwę, a nie nazwę wydziału.
+
+Testujemy CZYSTĄ logikę scalania (``nowa_poprzednie_nazwy``), a nie przejście
+przez ORM — model ``Wydzial`` i tabela ``bpp_wydzial`` nie istnieją już w
+zmigrowanej bazie testowej (0467), więc nie da się ich tu utworzyć.
 """
 
 from importlib import import_module
 
-import pytest
-from django.apps import apps as global_apps
-from model_bakery import baker
-
-from bpp.models import Jednostka, Uczelnia, Wydzial
-
 _mig = import_module("bpp.migrations.0466_faza_c_backfill_poprzednie_nazwy")
+_nowa = _mig.nowa_poprzednie_nazwy
 
 
-@pytest.fixture
-def uczelnia(db):
-    return baker.make(Uczelnia)
-
-
-@pytest.mark.django_db
-def test_backfill_dopisuje_nazwe_wydzialu_do_promowanego_roota(uczelnia):
-    """Root promowany z realnej jednostki nosi jej nazwę — nazwa wydziału
-    trafia do ``poprzednie_nazwy``, więc match po dawnej nazwie działa."""
-    w = baker.make(Wydzial, nazwa="Wydział Nauk Ścisłych", uczelnia=uczelnia)
-    root = baker.make(
-        Jednostka,
-        uczelnia=uczelnia,
-        parent=None,
-        nazwa="Katedra Fizyki",
-        poprzednie_nazwy="",
-        legacy_wydzial_id=w.pk,
+def test_dopisuje_nazwe_wydzialu_do_promowanego_roota():
+    # root promowany nosi nazwę realnej jednostki → nazwa wydziału dochodzi
+    assert (
+        _nowa("", "Wydział Nauk Ścisłych", "Katedra Fizyki")
+        == "Wydział Nauk Ścisłych"
     )
 
-    _mig.backfill_poprzednie_nazwy(global_apps, None)
 
-    root.refresh_from_db()
-    assert "Wydział Nauk Ścisłych" in root.poprzednie_nazwy
-
-
-@pytest.mark.django_db
-def test_backfill_idempotentny(uczelnia):
-    """Dwukrotne uruchomienie nie dubluje wpisu."""
-    w = baker.make(Wydzial, nazwa="Wydział Prawa", uczelnia=uczelnia)
-    root = baker.make(
-        Jednostka,
-        uczelnia=uczelnia,
-        parent=None,
-        nazwa="Instytut Prawa Cywilnego",
-        poprzednie_nazwy="",
-        legacy_wydzial_id=w.pk,
-    )
-
-    _mig.backfill_poprzednie_nazwy(global_apps, None)
-    _mig.backfill_poprzednie_nazwy(global_apps, None)
-
-    root.refresh_from_db()
-    assert root.poprzednie_nazwy.count("Wydział Prawa") == 1
+def test_dokłada_a_nie_nadpisuje_istniejacych():
+    wynik = _nowa("Dawna Nazwa Historyczna", "Wydział Farmaceutyczny", "Kolegium")
+    assert "Dawna Nazwa Historyczna" in wynik
+    assert "Wydział Farmaceutyczny" in wynik
+    assert wynik.splitlines() == ["Dawna Nazwa Historyczna", "Wydział Farmaceutyczny"]
 
 
-@pytest.mark.django_db
-def test_backfill_pomija_gdy_nazwa_roota_rowna_wydzialowi(uczelnia):
-    """Węzeł-lustro (nazwa roota == nazwa wydziału) matchuje po
-    ``nazwa__iexact`` — backfill nie musi nic dopisywać."""
-    w = baker.make(Wydzial, nazwa="Wydział Lekarski", uczelnia=uczelnia)
-    root = baker.make(
-        Jednostka,
-        uczelnia=uczelnia,
-        parent=None,
-        nazwa="Wydział Lekarski",
-        poprzednie_nazwy="",
-        legacy_wydzial_id=w.pk,
-    )
-
-    _mig.backfill_poprzednie_nazwy(global_apps, None)
-
-    root.refresh_from_db()
-    assert root.poprzednie_nazwy == ""
+def test_idempotentny_gdy_juz_wpisana():
+    assert _nowa("Wydział Prawa", "Wydział Prawa", "Instytut X") is None
 
 
-@pytest.mark.django_db
-def test_backfill_pomija_jednostki_bez_legacy_wydzial_id(uczelnia):
-    """Zwykła jednostka (bez ``legacy_wydzial_id``) pozostaje nietknięta."""
-    j = baker.make(
-        Jednostka,
-        uczelnia=uczelnia,
-        parent=None,
-        nazwa="Zwykła Jednostka",
-        poprzednie_nazwy="",
-        legacy_wydzial_id=None,
-    )
-
-    _mig.backfill_poprzednie_nazwy(global_apps, None)
-
-    j.refresh_from_db()
-    assert j.poprzednie_nazwy == ""
+def test_idempotentny_case_insensitive():
+    assert _nowa("wydział prawa", "Wydział Prawa", "Instytut X") is None
 
 
-@pytest.mark.django_db
-def test_backfill_zachowuje_istniejace_poprzednie_nazwy(uczelnia):
-    """Istniejące ``poprzednie_nazwy`` (np. skopiowane z wydziału) zostają —
-    nazwę wydziału DOKŁADAMY, a nie nadpisujemy."""
-    w = baker.make(Wydzial, nazwa="Wydział Farmaceutyczny", uczelnia=uczelnia)
-    root = baker.make(
-        Jednostka,
-        uczelnia=uczelnia,
-        parent=None,
-        nazwa="Kolegium Nauk o Leku",
-        poprzednie_nazwy="Dawna Nazwa Historyczna",
-        legacy_wydzial_id=w.pk,
-    )
+def test_pomija_gdy_nazwa_roota_rowna_wydzialowi():
+    # węzeł-lustro: nazwa roota == nazwa wydziału → match po nazwa__iexact
+    assert _nowa("", "Wydział Lekarski", "Wydział Lekarski") is None
 
-    _mig.backfill_poprzednie_nazwy(global_apps, None)
 
-    root.refresh_from_db()
-    assert "Dawna Nazwa Historyczna" in root.poprzednie_nazwy
-    assert "Wydział Farmaceutyczny" in root.poprzednie_nazwy
+def test_pomija_gdy_nazwa_roota_rowna_case_insensitive():
+    assert _nowa("", "Wydział Lekarski", "wydział lekarski") is None
+
+
+def test_pomija_pusta_nazwe_wydzialu():
+    assert _nowa("cokolwiek", "", "Root") is None
+    assert _nowa("cokolwiek", "   ", "Root") is None
+    assert _nowa("cokolwiek", None, "Root") is None
+
+
+def test_pomija_gdy_przepelnia_kolumne():
+    dlugie = "x" * 4090
+    # dołożenie "Wydział ..." przekroczyłoby 4096 → brak zmiany
+    assert _nowa(dlugie, "Wydział Bardzo Długiej Nazwy", "Root") is None

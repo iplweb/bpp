@@ -339,9 +339,8 @@ def test_email_obslugujacym_zgloszenia(
     # Faza B (#438) II-2: ``wydzial`` to FK->Jednostka (korzeń drzewa) —
     # ten sam węzeł-lustro, do którego (via ``aktualna_jednostka`` fixture)
     # podpięta jest jednostka autora; routing dopasowuje po ``get_root()``.
-    from bpp.models.struktura_konwersja import znajdz_lub_utworz_wezel_wydzialu
 
-    jednostka_root, _ = znajdz_lub_utworz_wezel_wydzialu(wydzial)
+    jednostka_root = wydzial
 
     inny_user = baker.make(BppUser, email=EMAIL)
     Obslugujacy_Zgloszenia_Wydzialow.objects.create(
