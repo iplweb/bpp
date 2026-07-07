@@ -88,6 +88,47 @@ def assert_dictionary_empty(dct, warn=False):
         raise AssertionError(msg)
 
 
+def skonsumuj_nieobsluzone_klucze(dct, ret, *, kontekst="obiekt PBN"):
+    """Miękki odpowiednik ``assert_dictionary_empty`` dla POZIOMU OBIEKTU PBN.
+
+    PBN dorzuca do payloadu klucze, których jeszcze nie mapujemy (Rollbar #420:
+    ``reviewers``; podobnie przyszłe warianty). Twarde ``assert_dictionary_empty``
+    wywalało cały import rekordu na takim DRYFIE SCHEMATU — jeden nowy klucz PBN
+    = wysyp AssertionError na wszystkich rekordach, które go mają.
+
+    Zamiast tego nieznane klucze:
+
+    - logujemy jako sygnał „nowy klucz PBN do obsłużenia" (WARNING),
+    - zrzucamy do ``adnotacje`` pod znacznikiem ``PBN: nieobsłużone klucze`` —
+      nic nie ginie, da się je znaleźć grepem i domapować później,
+    - a rekord importujemy MIMO dryfu.
+
+    Używane WYŁĄCZNIE na poziomie obiektu publikacji (artykuł/rozdział), gdzie
+    PBN realnie dorzuca nowe pola. Wąskie pod-słowniki (autorzy, openAccess,
+    journalIssue, naukowcy) zachowują twarde ``assert_dictionary_empty`` — tam
+    leftover to zwykle realny błąd mapowania, nie dryf schematu.
+
+    ``ret`` musi być już zapisany (potrzebny ``pk`` do ``save``).
+    """
+    if not dct:
+        return
+
+    klucze = sorted(dct.keys())
+    logger.warning(
+        "Nieobsłużone klucze PBN (%s) dla %r: %s — dryf schematu, zrzucam do "
+        "adnotacji i importuję rekord mimo to.",
+        kontekst,
+        ret,
+        klucze,
+    )
+    _dopisz_do_adnotacji(
+        ret, "PBN: nieobsłużone klucze", [f"{k}: {dct[k]}" for k in klucze]
+    )
+    if ret.pk:
+        ret.save(update_fields=["adnotacje"])
+    dct.clear()
+
+
 def pbn_keywords_to_slowa_kluczowe(keywords, lang="pol"):
     slowa_kluczowe = keywords.get(lang, [])
 

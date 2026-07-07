@@ -22,7 +22,6 @@ from .cache import (
     get_typ_kbn_inne,
 )
 from .helpers import (
-    assert_dictionary_empty,
     importuj_openaccess,
     importuj_streszczenia,
     pbn_keywords_to_slowa_kluczowe,
@@ -32,6 +31,7 @@ from .helpers import (
     przetworz_metadane_konferencji,
     przetworz_slowa_kluczowe,
     przetworz_tytuly,
+    skonsumuj_nieobsluzone_klucze,
     ustaw_jezyk_oryginalny,
 )
 
@@ -126,5 +126,5 @@ def importuj_artykul(
 
     przetworz_tytuly(pbn_json, ret, Wydawnictwo_Ciagle_Tytul)
 
-    assert_dictionary_empty(pbn_json)
+    skonsumuj_nieobsluzone_klucze(pbn_json, ret, kontekst="artykuł")
     return ret

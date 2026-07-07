@@ -23,12 +23,12 @@ from .cache import (
     get_typ_kbn_inne,
 )
 from .helpers import (
-    assert_dictionary_empty,
     importuj_streszczenia,
     pbn_keywords_to_slowa_kluczowe,
     pobierz_jezyk,
     przetworz_slowa_kluczowe,
     przetworz_tytuly,
+    skonsumuj_nieobsluzone_klucze,
 )
 from .publishers import sciagnij_i_zapisz_wydawce
 
@@ -155,10 +155,12 @@ def importuj_rozdzial(
     pbn_keywords_en = pbn_keywords_to_slowa_kluczowe(pbn_keywords, "eng")
     przetworz_slowa_kluczowe(pbn_keywords_pl, pbn_keywords_en, ret)
 
-    assert_dictionary_empty(pbn_chapter_json)
+    skonsumuj_nieobsluzone_klucze(
+        pbn_chapter_json, ret, kontekst="rozdział (sub-dict nadrzędnego)"
+    )
 
     utworz_autorow(ret, pbn_json, client, default_jednostka, inconsistency_callback)
-    pbn_json.pop("type")
-    assert_dictionary_empty(pbn_json)
+    pbn_json.pop("type", None)
+    skonsumuj_nieobsluzone_klucze(pbn_json, ret, kontekst="rozdział")
 
     return ret
