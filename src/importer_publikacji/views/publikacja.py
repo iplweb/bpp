@@ -5,6 +5,8 @@ Atomic: cały proces (publikacja + autorzy + streszczenia + linkowanie PBN)
 w jednej transakcji.
 """
 
+from decimal import Decimal
+
 from django.core.exceptions import ValidationError
 from django.db import transaction
 
@@ -274,7 +276,17 @@ def _create_publication(session):
             uzupelnij_punktacje_z_zrodla,
         )
 
+        # Pełny fill ze źródła (IF/kwartyle/SNIP + punkty_kbn); operator może
+        # nadpisać punkty_kbn niżej.
         uzupelnij_punktacje_z_zrodla(record, session.zrodlo, normalized_data["year"])
+
+    # Punktacja wybrana przez operatora w kroku „Punktacja" ma ostatnie słowo
+    # (dla zwartych to jedyne źródło punkty_kbn; dla ciągłych — nadpisanie po
+    # danych źródła, przy zachowaniu IF/kwartyli).
+    punkty_operator = session.matched_data.get("punkty_kbn")
+    if punkty_operator not in (None, ""):
+        record.punkty_kbn = Decimal(str(punkty_operator))
+        record.save(update_fields=["punkty_kbn"])
 
     _link_pbn_uid(session, record)
 
