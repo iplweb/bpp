@@ -1,5 +1,8 @@
 from braces.views import GroupRequiredMixin
+from django.db import transaction
 from django.db.models import Q
+from django.http import HttpResponseRedirect
+from django.views.generic import DetailView
 
 from import_polon.forms import NowyImportForm, WierszImportuPlikuPolonFilterForm
 from import_polon.models import ImportPlikuPolon
@@ -9,8 +12,38 @@ from long_running.views import (
     LongRunningOperationsView,
     LongRunningResultsView,
     LongRunningRouterView,
+    LongRunningTaskCallerMixin,
     RestartLongRunningOperationView,
+    RestrictToOwnerMixin,
 )
+
+
+class ZapiszDoBazyMixin(RestrictToOwnerMixin, LongRunningTaskCallerMixin, DetailView):
+    """Domknięcie dry-runa zapisem do bazy.
+
+    Gdy import uruchomiono bez zapisu (``zapisz_zmiany_do_bazy=False``), ta akcja
+    przestawia flagę na ``True`` i resetuje obiekt do ponownego uruchomienia —
+    „taki reset, ALE tym razem modyfikuj bazę". GET pokazuje stronę
+    potwierdzenia; dopiero POST modyfikuje bazę (prefetch/robot nie wywoła
+    zapisu). ``mark_reset`` czyści stan i kasuje wiersze-dzieci; ponowne
+    ``perform()`` — tym razem z zapisem — kolejkuje ``task_on_commit``.
+    """
+
+    template_name = "import_polon/potwierdz_zapis_do_bazy.html"
+
+    @transaction.atomic
+    def post(self, *args, **kwargs):
+        self.object = self.get_object()
+        # Guard: tylko zakończony dry-run można domknąć zapisem. Import już
+        # zapisany do bazy pomijamy — ochrona przed podwójnym zapisem.
+        if (
+            self.object.finished_on is not None
+            and not self.object.zapisz_zmiany_do_bazy
+        ):
+            self.object.zapisz_zmiany_do_bazy = True
+            self.object.mark_reset()
+            self.task_on_commit(pk=self.object.pk)
+        return HttpResponseRedirect("..")
 
 
 class BaseImportPlikuPolonMixin(GroupRequiredMixin):
@@ -46,6 +79,10 @@ class ImportPolonDetailsView(BaseImportPlikuPolonMixin, LongRunningDetailsView):
 
 
 class RestartImportView(BaseImportPlikuPolonMixin, RestartLongRunningOperationView):
+    pass
+
+
+class ZapiszDoBazyImportView(BaseImportPlikuPolonMixin, ZapiszDoBazyMixin):
     pass
 
 
