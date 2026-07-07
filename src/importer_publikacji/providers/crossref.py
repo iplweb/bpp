@@ -11,6 +11,10 @@ class CrossRefProvider(DataProvider):
         return "CrossRef"
 
     @property
+    def choice_label(self) -> str:
+        return "CrossRef — wyszukiwanie po numerze DOI"
+
+    @property
     def identifier_label(self) -> str:
         return "Identyfikator DOI"
 
