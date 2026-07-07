@@ -83,6 +83,31 @@ class AutorQuerySet(models.QuerySet):
             | Q(autor_jednostka__jednostka__uczelnia=uczelnia)
         ).distinct()
 
+    def kiedykolwiek_zatrudnieni(self, uczelnia):
+        """Autorzy zatrudnieni w uczelni obecnie LUB historycznie, w REALNEJ
+        jednostce (``skupia_pracownikow=True``).
+
+        Różnica względem ``kiedykolwiek_zwiazani``: liczą się TYLKO powiązania
+        przez jednostki skupiające pracowników — jednostki obce/techniczne
+        (``skupia_pracownikow=False``) są pomijane, także gdy ich uczelnia to
+        bieżąca uczelnia (lustrzana jednostka obca o nazwie naszej uczelni NIE
+        kwalifikuje autora). Realność sprawdzana per-strona OR: albo aktualna
+        jednostka jest realna, albo któraś jednostka historyczna jest realna —
+        powiązanie wyłącznie przez jednostkę obcą nie łapie autora.
+        """
+        if uczelnia is None:
+            return self.none()
+        return self.filter(
+            Q(
+                aktualna_jednostka__uczelnia=uczelnia,
+                aktualna_jednostka__skupia_pracownikow=True,
+            )
+            | Q(
+                autor_jednostka__jednostka__uczelnia=uczelnia,
+                autor_jednostka__jednostka__skupia_pracownikow=True,
+            )
+        ).distinct()
+
 
 class AutorManager(FulltextSearchMixin, models.Manager.from_queryset(AutorQuerySet)):
     # Nie włączaj websearch gdy podano minus (podwójne nazwiska z myślnikiem)

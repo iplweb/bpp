@@ -394,11 +394,65 @@ coverage-ai: ## Raport pokrycia dla AI (sortowane ascending, top N najgorszych)
 # you suspect schema corruption or need to validate migrations from zero.
 tests-fresh: destroy-test-databases tests ## Jak `tests`, ale od zera (destroy-test-databases + tests)
 
+# ---------------------------------------------------------------------------
+# baseline.sql: naprawa search_path po dumpie (triggery hstore-w-WHEN)
+# ---------------------------------------------------------------------------
+# pg_dump utwardza naglowek zrzutu linia:
+#     SELECT pg_catalog.set_config('search_path', '', false);
+# czyli ustawia PUSTY search_path na cala sesje restore. To ochrona dodana po
+# CVE-2018-1058 (zeby obiekt w cudzym schemacie nie przeslonil wbudowanego
+# podczas restore). pg_dump kwalifikuje wszystkie obiekty schematem, wiec pusty
+# search_path jest NORMALNIE nieszkodliwy.
+#
+# Przestaje byc nieszkodliwy w momencie, gdy CREATE TRIGGER ma klauzule WHEN
+# porownujaca kolumne typu `hstore` operatorem IS DISTINCT FROM. Nasze triggery
+# denorma robia dokladnie to (np. `WHEN (old.legacy_data IS DISTINCT FROM
+# new.legacy_data)` na kolumnach hstore). IS DISTINCT FROM rozwija sie do
+# operatora `hstore = hstore`, ktory zyje w schemacie `public` (rozszerzenie
+# instalowane przez CREATE EXTENSION hstore WITH SCHEMA public). Klauzula WHEN
+# jest parsowana i rozwiazywana na operatory JUZ przy CREATE TRIGGER (niezaleznie
+# od check_function_bodies), wiec z pustym search_path operator jest niewidoczny
+# i load pada:
+#     ERROR: operator does not exist: public.hstore = public.hstore
+# PostgreSQL 16 to (czasem) przepuszczal, 17/18 juz nie — a i klient psql potrafi
+# to odrzucic na 16. django-pg-baseline laduje baseline.sql przez
+# `psql -f ... -v ON_ERROR_STOP=1` w JEDNEJ transakcji, wiec JEDEN taki blad
+# przerywa caly load -> kazdy django_db_setup pada -> kontener testowej bazy
+# nigdy nie staje sie gotowy (ContainerStartError widoczny pod -n auto to
+# wlasnie to, objawiajace sie jako ubity kontener PG).
+#
+# Upstreamowe komendy baseline_update / baseline_rebuild NIE przepisuja
+# naglowka, wiec latamy to tutaj, zaraz po dumpie: przywracamy `public` do
+# search_path na czas restore. To dokladnie to samo, co bpp-deploy robi przy
+# ladowaniu (scripts/pg-collation-migrate-3-load.sh) — tyle ze tam filtrem
+# strumieniowym, a my zapisujemy poprawke do commitowanego pliku, bo testowy
+# loader (django-pg-baseline) nie ma takiego hooka. Bezpieczne: kazdy obiekt w
+# dumpie jest kwalifikowany schematem, wiec `public` w search_path wplywa tylko
+# na niekwalifikowane lookupy operatorow, jak `hstore =`. Edycja in-place jest
+# przenosna (bez `sed -i`, ktore rozni sie GNU vs BSD): przez plik tymczasowy.
+#
+# UWAGA: to sie NIE utrwala w django-pg-baseline — kazdy kolejny
+# baseline_update/rebuild znowu wyprodukuje pusty search_path, dlatego ten
+# post-krok MUSI zostac w obu targetach ponizej.
+define fix-baseline-search-path
+	@if grep -q "set_config('search_path', '', false)" baseline-sql/baseline.sql; then \
+		sed "s/set_config('search_path', '', false)/set_config('search_path', 'public', false)/" \
+			baseline-sql/baseline.sql > baseline-sql/baseline.sql.tmp \
+			&& mv baseline-sql/baseline.sql.tmp baseline-sql/baseline.sql; \
+		echo ">> search_path naprawiony: '' -> 'public' (triggery hstore-w-WHEN sie wczytaja)"; \
+	else \
+		echo ">> UWAGA: nie znalazlem set_config('search_path','',false) w naglowku dumpu."; \
+		echo ">>        Format pg_dump sie zmienil? Sprawdz baseline-sql/baseline.sql recznie"; \
+		echo ">>        (patrz dlugi komentarz nad rebuild-baseline)."; \
+	fi
+endef
+
 # Regenerate baseline-sql/baseline.sql by spinning up an isolated
 # postgres (via testcontainers), running migrate, dumping, and writing
 # baseline.meta.json. Commit the refreshed files to git.
 rebuild-baseline: ## Regeneruj baseline.sql OD ZERA (pełny reset; duży diff)
 	DJANGO_BPP_SKIP_DOTENV=1 uv run python src/manage.py baseline_rebuild
+	$(fix-baseline-search-path)
 	@echo ""
 	@echo "Baseline regenerated. Files:"
 	@ls -lh baseline-sql/baseline.sql baseline-sql/baseline.meta.json
@@ -415,6 +469,7 @@ rebuild-baseline: ## Regeneruj baseline.sql OD ZERA (pełny reset; duży diff)
 # migrations; reach for `rebuild-baseline` only for a full reset.
 baseline-update: ## Zaktualizuj baseline.sql IN-PLACE (load+migrate+dump; mały diff)
 	DJANGO_BPP_SKIP_DOTENV=1 uv run python src/manage.py baseline_update
+	$(fix-baseline-search-path)
 	@echo ""
 	@echo "Baseline updated in place. Files:"
 	@ls -lh baseline-sql/baseline.sql baseline-sql/baseline.meta.json

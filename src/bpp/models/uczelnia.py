@@ -288,6 +288,15 @@ class Uczelnia(ModelZAdnotacjami, ModelZPBN_ID, NazwaISkrot, NazwaWDopelniaczu):
     pokazuj_punktacja_snip = models.BooleanField(
         "Pokazuj punktację SNIP na stronie rekordu", default=True
     )
+    zwijaj_dlugie_listy_autorow = models.BooleanField(
+        "Zwijaj długie listy autorów na stronie rekordu",
+        default=True,
+        help_text="Gdy lista autorów publikacji przekracza 25 nazwisk, "
+        "domyślnie zwijaj ją na stronie rekordu (widoczni pierwsi autorzy "
+        "oraz autorzy z naszej uczelni; resztę użytkownik rozwija "
+        "przyciskiem). Ustawienie domyślne dla całej uczelni — zalogowany "
+        "użytkownik może je nadpisać we własnym profilu.",
+    )
     pokazuj_status_korekty = OpcjaWyswietlaniaField(
         "Pokazuj status korekty na stronie rekordu",
     )
