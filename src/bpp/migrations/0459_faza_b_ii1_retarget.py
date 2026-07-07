@@ -106,6 +106,14 @@ class Migration(migrations.Migration):
 
     dependencies = [
         ("bpp", "0458_faza_b_ii1_views"),
+        # ``init_denorm_triggers`` (denorm_init niżej) buduje triggery z
+        # AKTUALNYCH modeli, więc WSZYSTKIE kolumny śledzone przez denorm muszą
+        # już istnieć w bazie. Kolumny ``ukryty`` (typ_kbn/charakter_formalny/
+        # charakter_pbn) dochodzą w równoległej gałęzi #405; bez tej krawędzi
+        # sortowanie topologiczne po scaleniu na ``dev`` ustawiało je PO 0459 i
+        # ``CREATE TRIGGER ... WHEN (OLD."ukryty" ...)`` wywalał migrację
+        # (ProgrammingError: kolumna old.ukryty nie istnieje) na teście i prod.
+        ("bpp", "0444_charakter_formalny_ukryty_charakter_pbn_ukryty_and_more"),
     ]
 
     operations = [
