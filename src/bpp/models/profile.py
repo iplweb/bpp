@@ -20,11 +20,30 @@ class BppUserManager(UserManager):
     model = "bpp.BppUser"
 
 
+class ZwijanieAutorow(models.IntegerChoices):
+    """Preferencja użytkownika co do zwijania długich list autorów na stronie
+    rekordu. ``DOMYSLNE`` dziedziczy ustawienie oglądanej uczelni."""
+
+    DOMYSLNE = 0, "Jak ustawienie uczelni"
+    ZAWSZE = 1, "Zawsze zwijaj"
+    NIGDY = 2, "Nigdy nie zwijaj"
+
+
 class BppUser(AbstractUser, ModelZAdnotacjami):
     active_charmap_tab = models.IntegerField(default=0)
 
     per_page = models.IntegerField(
         "Ilość wyświetlanych rekordów na stronie", default=20
+    )
+
+    zwijaj_dlugie_listy_autorow = models.IntegerField(
+        "Zwijanie długich list autorów",
+        choices=ZwijanieAutorow.choices,
+        default=ZwijanieAutorow.DOMYSLNE,
+        help_text="Czy na stronie rekordu zwijać listy autorów dłuższe niż 25 "
+        "nazwisk (widoczni pierwsi autorzy oraz autorzy z Twojej uczelni; "
+        "resztę rozwijasz przyciskiem). „Jak ustawienie uczelni” stosuje "
+        "domyślne ustawienie Twojej uczelni.",
     )
 
     multiseek_format = models.CharField(  # noqa: DJ001
