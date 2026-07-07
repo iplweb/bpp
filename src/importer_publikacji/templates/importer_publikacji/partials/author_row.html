@@ -96,5 +96,18 @@
                 </button>
             </form>
         {% endif %}
+        {# Freshdesk #332: usunięcie błędnego/pustego wiersza autora #}
+        <form style="display:inline"
+              hx-post="{% url 'importer_publikacji:author-delete' session.pk author.pk %}"
+              hx-target="#importer-wizard"
+              hx-confirm="Usunąć autora „{{ author.display_name|default:'(pusty)' }}” z importu? Nie zostanie dodany do publikacji.">
+            {% csrf_token %}
+            <button type="submit"
+                    class="button tiny alert btn-delete-author"
+                    title="Usuń tego autora z importu">
+                <span class="fi-trash"></span>
+                Usuń
+            </button>
+        </form>
     </td>
 </tr>

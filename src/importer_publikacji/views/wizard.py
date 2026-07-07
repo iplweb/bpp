@@ -420,6 +420,35 @@ class AuthorMatchView(ImporterPermissionMixin, View):
         )
 
 
+class AuthorDeleteView(ImporterPermissionMixin, View):
+    """Usuń pojedynczy wiersz importowanego autora z sesji.
+
+    Freshdesk #332: gdy dostawca (CrossRef / DOI) zwrócił błędny lub
+    pusty wpis autora, operator musi móc go usunąć, żeby import mógł
+    przebiec bez niego. Usuwamy rekord ``ImportedAuthor`` — kolejne kroki
+    odpytują ``session.authors``, więc usunięcie jest trwałe i wiersz nie
+    trafi do tworzonego rekordu publikacji. Pozostała luka w polu
+    ``order`` nie szkodzi — służy ono tylko do sortowania.
+    """
+
+    def post(self, request, session_id, author_id):
+        session = get_object_or_404(
+            ImportSession,
+            pk=session_id,
+        )
+        imported_author = get_object_or_404(
+            ImportedAuthor,
+            pk=author_id,
+            session=session,
+        )
+        imported_author.delete()
+
+        # Przerysuj cały krok autorów — statystyki (liczniki dopasowań,
+        # niedopasowanych) i przyciski nawigacji muszą się odświeżyć po
+        # usunięciu wiersza, więc nie wystarczy zwrócić samego wiersza.
+        return _render_authors_step(request, session)
+
+
 class AuthorCreateNewView(ImporterPermissionMixin, View):
     """Utwórz NOWEGO autora dla pojedynczego wiersza ("Edytuj" → "Utwórz
     nowego autora").
