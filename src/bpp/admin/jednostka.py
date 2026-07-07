@@ -1,9 +1,11 @@
 import sys
 
 from django import forms
-from django.contrib import admin
+from django.contrib import admin, messages
+from django.contrib.admin.actions import delete_selected
 from django.urls import reverse
 from django.utils.html import format_html
+from django.utils.translation import gettext
 from import_export.admin import ImportMixin
 from mptt.admin import DraggableMPTTAdmin
 
@@ -192,6 +194,68 @@ class JednostkaAdmin(
     def changelist_view(self, request, *args, **kwargs):
         self.request = request
         return super().changelist_view(request, *args, **kwargs)
+
+    #
+    # Bezpieczne kasowanie: tylko puste jednostki (spec 2026-07-07).
+    #
+
+    def get_deleted_objects(self, objs, request):
+        """Bramkuj kasowanie niepustych jednostek przez listę ``protected``.
+
+        Dla każdej jednostki z odwrotnymi referencjami (patrz
+        ``Jednostka.przeszkody_w_kasowaniu``) dokładamy czytelny wpis do
+        ``protected`` — Django renderuje go na stronie potwierdzenia i CHOWA
+        przycisk potwierdzenia. Obsługuje pojedynczy delete ORAZ stronę
+        potwierdzenia akcji masowej (MPTT ``delete_selected_tree`` na pierwszym
+        przejściu deleguje do standardowego ``delete_selected``)."""
+        deletable, model_count, perms_needed, protected = super().get_deleted_objects(
+            objs, request
+        )
+        protected = list(protected)
+        for obj in objs:
+            przeszkody = obj.przeszkody_w_kasowaniu()
+            if not przeszkody:
+                continue
+            szczegoly = ", ".join(
+                f"{liczba}× {etykieta}" for etykieta, liczba in przeszkody
+            )
+            protected.append(
+                format_html(
+                    gettext(
+                        "Jednostka „{}” — nie można usunąć, bo są do niej "
+                        "przypięte inne obiekty (odepnij je najpierw): {}"
+                    ),
+                    obj.nazwa,
+                    szczegoly,
+                )
+            )
+        return deletable, model_count, perms_needed, protected
+
+    def delete_selected_tree(self, modeladmin, request, queryset):
+        """Akcja masowa: wszystko-albo-nic.
+
+        MPTT ``delete_selected_tree`` na potwierdzeniu (``post``) kasuje pętlą
+        ``obj.delete()`` z per-obiektowym ``has_delete_permission`` — omija
+        nasz ``get_deleted_objects``. Dlatego: jeśli w zaznaczeniu jest CHOĆ
+        JEDNA niepusta jednostka, routujemy CAŁĄ partię do standardowego
+        ``delete_selected`` (który przez nasz ``get_deleted_objects`` pokaże
+        listę blokad i nie skasuje niczego). Gdy wszystkie puste — normalne
+        kasowanie drzewa MPTT."""
+        if any(not obj.czy_mozna_skasowac() for obj in queryset):
+            return delete_selected(modeladmin, request, queryset)
+        return super().delete_selected_tree(modeladmin, request, queryset)
+
+    def delete_model(self, request, obj):
+        """Defense-in-depth dla pojedynczego kasowania: nie kasuj niepustej
+        jednostki nawet gdyby ścieżka ominęła ``get_deleted_objects``."""
+        if not obj.czy_mozna_skasowac():
+            self.message_user(
+                request,
+                gettext("Nie skasowano „%s” — jednostka nie jest pusta.") % obj,
+                level=messages.ERROR,
+            )
+            return
+        super().delete_model(request, obj)
 
     def indented_title(self, item):
         """

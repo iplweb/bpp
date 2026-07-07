@@ -284,6 +284,51 @@ class Jednostka(ModelZAdnotacjami, ModelZPBN_ID, ModelZPBN_UID, MPTTModel):
             return False
         return True
 
+    def przeszkody_w_kasowaniu(self):
+        """Lista ``(etykieta, liczba)`` niepustych odwrotnych relacji FK
+        wskazujących na tę jednostkę z REALNYCH, zarządzanych tabel.
+
+        Pusta lista ⇔ jednostkę można bezpiecznie skasować (nic się przez nią
+        nie kaskaduje). Zasada „ściśle zero": każda referencja z tabeli blokuje
+        (podjednostki ``children``, ``Autor_Jednostka``, własna historia
+        ``Jednostka_Rodzic`` itd.). Świadomie POMIJANE:
+
+        * odwrotne relacje M2M (``rel.many_to_many``) — model łączący (np.
+          ``Autor_Jednostka``) i tak pokrywa tę samą więź osobnym FK, więc bez
+          tego liczylibyśmy ją podwójnie;
+        * modele niezarządzane (``managed=False``) — to widoki SQL cache
+          (``AutorzyView``, ``Cache_Punktacja_Autora_*``, ``Nowe_Sumy_View``);
+          widok nie przechowuje danych (przelicza się z tabel bazowych), więc
+          fizycznie nie może „blokować" kasowania. Pomija to też odwrotny O2O
+          do widoku, którego liczenie przez akcesor rzucałoby ``DoesNotExist``.
+
+        Relacje generyczne (reversion/easyaudit/cacheops) nie mają tu
+        ``GenericRelation``, więc nie pojawiają się w ``related_objects`` i nie
+        blokują — log audytu nie powinien wstrzymywać kasowania pustej
+        jednostki.
+        """
+        przeszkody = []
+        for rel in self._meta.related_objects:
+            if rel.many_to_many:
+                continue
+            related_model = rel.related_model
+            if not related_model._meta.managed:
+                continue
+            # Liczymy przez POLE (nie akcesor) — jednolicie dla FK i O2O,
+            # bez ryzyka ``DoesNotExist`` na pustym odwrotnym O2O.
+            liczba = related_model._base_manager.filter(
+                **{rel.field.name: self}
+            ).count()
+            if liczba:
+                przeszkody.append(
+                    (str(related_model._meta.verbose_name_plural), liczba)
+                )
+        return przeszkody
+
+    def czy_mozna_skasowac(self):
+        """True ⇔ jednostka jest w pełni pusta (brak przeszkód w kasowaniu)."""
+        return not self.przeszkody_w_kasowaniu()
+
     def dodaj_autora(
         self, autor, funkcja=None, rozpoczal_prace=None, zakonczyl_prace=None
     ):

@@ -134,7 +134,20 @@ Override `get_deleted_objects(self, objs, request)`:
   i akcję masową (obie ścieżki wołają `get_deleted_objects`); dla akcji
   masowej daje to natywną blokadę całej partii (decyzja 2).
 
-Defense-in-depth — guard w `delete_model` (i ewentualnie `delete_queryset`):
+**Wrinkle MPTT (odkryty przy implementacji).** `JednostkaAdmin` dziedziczy po
+`DraggableMPTTAdmin`, który podmienia akcję masową na
+`MPTTModelAdmin.delete_selected_tree`. Ta akcja na PIERWSZYM przejściu (strona
+potwierdzenia) deleguje do standardowego `delete_selected` → nasz
+`get_deleted_objects` pokazuje blokady i chowa przycisk (OK). Ale na
+POTWIERDZENIU (`post`) kasuje pętlą `obj.delete()` z per-obiektowym
+`has_delete_permission` — **omija** `get_deleted_objects` i `delete_queryset`.
+Dlatego akcję masową gatujemy dodatkowo, nadpisując `delete_selected_tree`:
+jeśli w zaznaczeniu jest choć jedna niepusta jednostka, całą partię routujemy
+do `delete_selected` (blokada przez `protected`, nic nie kasujemy) —
+realizując decyzję 2 (wszystko-albo-nic) także dla spreparowanego POST-a
+z pominięciem strony potwierdzenia. Gdy wszystkie puste — delegacja do MPTT.
+
+Defense-in-depth — guard w `delete_model`:
 - Skoro `protected` blokuje dojście do kasowania w ścieżce admina, guard
   jest **wyłącznie** siatką bezpieczeństwa dla wywołań programistycznych
   (skrypt, przyszły kod). Jeśli mimo wszystko trafi tam niepusta jednostka,
