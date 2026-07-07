@@ -1180,16 +1180,12 @@
     font-weight: 500;
 }
 
-// "Nasz" autor (pracownik jednostki skupiającej pracowników) — wyróżniony,
-// żeby od razu rzucał się w oczy na długiej liście autorów obcych.
-// Kolor (i poświata) bierze się z $primary-color, więc nazwiska trzymają
-// się koloru akcentu aktualnego motywu (app-blue, app-orange, app-green…),
-// zamiast zahardkodowanej zieleni. Autorzy obcy są w tym samym akcencie
-// przez $anchor-color; "naszych" odróżnia pogrubienie + delikatny glow.
+// "Nasz" autor (pracownik jednostki skupiającej pracowników) — odróżniony
+// od autorów obcych SAMYM pogrubieniem, bez koloru akcentu ani poświaty.
+// (Wcześniej dochodził $primary-color + glow, ale efekt podświetlenia
+// usunięto na życzenie — zostaje wyłącznie font-weight.)
 .praca-mono__author-name--nasz {
     font-weight: 700;
-    color: $primary-color;
-    text-shadow: 0 0 6px rgba($primary-color, 0.45);
 }
 
 // Numer pozycji autora na liście, np. "(264.)" — mały, wyszarzony.

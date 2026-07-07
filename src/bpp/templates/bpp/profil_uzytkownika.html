@@ -88,6 +88,19 @@
             </div>
         {% endif %}
 
+        <h3>Ustawienia wyświetlania</h3>
+        <form method="post" class="callout">
+            {% csrf_token %}
+            <label for="{{ ustawienia_form.zwijaj_dlugie_listy_autorow.id_for_label }}">
+                {{ ustawienia_form.zwijaj_dlugie_listy_autorow.label }}
+            </label>
+            {{ ustawienia_form.zwijaj_dlugie_listy_autorow }}
+            <p class="help-text">{{ ustawienia_form.zwijaj_dlugie_listy_autorow.help_text }}</p>
+            <button type="submit" class="button">
+                <span class="fi-save"></span> Zapisz ustawienia
+            </button>
+        </form>
+
     </div>
 </div>
 {% endblock %}
