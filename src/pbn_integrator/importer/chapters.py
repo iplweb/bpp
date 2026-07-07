@@ -1,6 +1,7 @@
 """Book chapter import for PBN importer."""
 
 import copy
+import logging
 
 from django.db import transaction
 
@@ -31,6 +32,33 @@ from .helpers import (
     skonsumuj_nieobsluzone_klucze,
 )
 from .publishers import sciagnij_i_zapisz_wydawce
+
+logger = logging.getLogger(__name__)
+
+
+def _chapter_json_z_nadrzednego(wydawnictwo_nadrzedne, mongoId):
+    """Zwraca sub-słownik rozdziału z ``chapters`` wyd. nadrzędnego albo ``{}``.
+
+    Wyd. nadrzędne bywa dopasowane do istniejącego rekordu BPP bez powiązania z
+    PBN (fuzzy match → ``pbn_uid is None``) albo bez wersji bieżącej — wtedy nie
+    ma skąd wziąć metadanych rozdziału. To NIE błąd rozdziału (Rollbar #419:
+    ``'NoneType' object has no attribute 'current_version'``), więc zamiast
+    wywalać import zwracamy pusty słownik — rozdział wejdzie z metadanych
+    własnych.
+    """
+    parent_pbn = getattr(wydawnictwo_nadrzedne, "pbn_uid", None)
+    parent_cv = getattr(parent_pbn, "current_version", None)
+    if parent_cv is None:
+        return {}
+    try:
+        return parent_cv["object"].get("chapters", {})[mongoId]
+    except KeyError:
+        logger.info(
+            "Brak informacji o rozdziale %s dla wyd nadrzednego %r",
+            mongoId,
+            wydawnictwo_nadrzedne,
+        )
+        return {}
 
 
 @transaction.atomic
@@ -79,16 +107,7 @@ def importuj_rozdzial(
 
     rok = wydawnictwo_nadrzedne.rok
 
-    try:
-        pbn_chapter_json = wydawnictwo_nadrzedne.pbn_uid.current_version["object"].get(
-            "chapters", {}
-        )[mongoId]
-    except KeyError:
-        print(
-            f"Brak informacji o rozdziale dla wyd nadrzednego "
-            f"{wydawnictwo_nadrzedne=}, rozdzial {pbn_publication=}"
-        )
-        pbn_chapter_json = {}
+    pbn_chapter_json = _chapter_json_z_nadrzednego(wydawnictwo_nadrzedne, mongoId)
     pbn_chapter_json.pop("title", None)
     pbn_chapter_json.pop("titles", None)
     pbn_chapter_json.pop("type", None)
