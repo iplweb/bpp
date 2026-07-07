@@ -21,9 +21,10 @@ rekord się importuje — redagowane książki bez wydawcy WCHODZĄ.
 import pytest
 from model_bakery import baker
 
-from bpp.models import Rekord, Wydawnictwo_Ciagle, Wydawnictwo_Zwarte
+from bpp.models import Rekord, Rodzaj_Zrodla, Wydawnictwo_Ciagle, Wydawnictwo_Zwarte
 from pbn_api.models import Publication
 from pbn_integrator import importer
+from pbn_integrator.importer import chapters
 
 
 def _make_publication(mongo_id, obj, status="ACTIVE"):
@@ -153,3 +154,108 @@ def test_chapter_z_book_jest_dispatchowany(monkeypatch):
 
     assert ksiazki == ["parent_book"]
     assert rozdzialy == ["ok_chap"]
+
+
+# --- Znaleziska z review (Fable): rodzic-widmo, string rekord_w_bpp,
+#     przeżywalność wsadu, obserwowalność nieznanego typu ---
+
+
+@pytest.mark.django_db
+def test_pomija_chapter_z_widmowym_rodzicem():
+    """CHAPTER poprawny, ale jego książka nadrzędna jest rekordem-widmem (W1).
+
+    Dawniej ``importuj_ksiazke(book_id)`` dla widmowego rodzica wywalał
+    ``TypeError`` na ``current_version["object"]`` i (w pętli bez try/except)
+    zabijał cały wsad. Teraz rodzic-widmo jest pomijany, a cały import rozdziału
+    degraduje do ``None`` bez wyjątku.
+    """
+    _make_publication("pb_ghost", None)  # versions=[] → current_version None
+    _make_publication(
+        "c_ghost_parent",
+        {
+            "type": "CHAPTER",
+            "title": "Rozdział z rodzicem-widmem",
+            "book": {"id": "pb_ghost"},
+        },
+    )
+
+    ret = importer.importuj_publikacje_po_pbn_uid_id(
+        "c_ghost_parent", client=None, default_jednostka=None
+    )
+
+    assert ret is None
+    assert Wydawnictwo_Zwarte.objects.count() == 0
+    assert Rekord.objects.filter(pbn_uid_id="c_ghost_parent").count() == 0
+
+
+@pytest.mark.django_db
+def test_rozdzial_rodzic_string_pomijany(monkeypatch):
+    """Książka nadrzędna rozwiązana do STRINGA (zdublowane Rekord-y) → pominięcie.
+
+    ``rekord_w_bpp`` przy ``MultipleObjectsReturned`` zwraca join tytułów
+    (string). Dawniej ``wydawnictwo_nadrzedne.rok`` wywalał ``AttributeError``
+    (niedokończony fix #419). Teraz rozdział jest pomijany.
+    """
+    _make_publication(
+        "c_str",
+        {"type": "CHAPTER", "title": "Rozdział", "book": {"id": "pb_str"}},
+    )
+    # Brak Wydawnictwo_Zwarte dla pb_str → importuj_ksiazke wywołane; udajemy
+    # że rekord_w_bpp trafił na duplikaty i zwrócił string.
+    monkeypatch.setattr(
+        chapters, "importuj_ksiazke", lambda *a, **k: ";; Tytuł A ;; Tytuł B"
+    )
+
+    ret = chapters.importuj_rozdzial("c_str", default_jednostka=None, client=None)
+
+    assert ret is None
+
+
+@pytest.mark.django_db
+def test_instytucji_przezywa_zly_rekord(monkeypatch):
+    """Pojedynczy wywalający się rekord nie zabija pętli ``importuj_..._instytucji``.
+
+    To gwarancja „jeden zły wpis nie wywala wsadu" dla starej ścieżki batch
+    (dawniej pętla nie miała żadnego try/except — W1).
+    """
+    _make_publication("good1", {"type": "ARTICLE", "title": "OK", "year": 2020})
+    _make_publication("bad1", {"type": "ARTICLE", "title": "Zły", "year": 2020})
+    Rodzaj_Zrodla.objects.get_or_create(nazwa="periodyk")
+
+    przetworzone = []
+
+    def fake(mongoId, **kw):
+        przetworzone.append(mongoId)
+        if mongoId == "bad1":
+            raise RuntimeError("boom")
+        return None
+
+    monkeypatch.setattr(importer, "importuj_publikacje_po_pbn_uid_id", fake)
+
+    # nie może rzucić mimo zzłego rekordu — pętla łapie i leci dalej
+    importer.importuj_publikacje_instytucji(client=None, default_jednostka=None)
+
+    assert set(przetworzone) == {"good1", "bad1"}
+
+
+@pytest.mark.django_db
+def test_nieznany_type_eskaluje_inconsistency_callback():
+    """Nieobsługiwany, OBECNY typ → eskalacja przez inconsistency_callback (W3).
+
+    Widma pomijamy cicho (WARNING), ale realna zmiana schematu PBN (nowy typ)
+    nie może zniknąć bez śladu — leci do kanału nieścisłości.
+    """
+    _make_publication("dat2", {"type": "DATASET", "title": "Zbiór danych"})
+
+    zdarzenia = []
+
+    ret = importer.importuj_publikacje_po_pbn_uid_id(
+        "dat2",
+        client=None,
+        default_jednostka=None,
+        inconsistency_callback=lambda **kw: zdarzenia.append(kw),
+    )
+
+    assert ret is None
+    assert len(zdarzenia) == 1
+    assert zdarzenia[0]["inconsistency_type"] == "unsupported_publication_type"

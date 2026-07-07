@@ -105,6 +105,20 @@ def importuj_rozdzial(
             inconsistency_callback=inconsistency_callback,
         )
 
+    if wydawnictwo_nadrzedne is None or isinstance(wydawnictwo_nadrzedne, str):
+        # importuj_ksiazke zwraca None dla widma nadrzędnego (jego własny guard)
+        # albo STRING, gdy ``rekord_w_bpp`` trafił na zdublowane rekordy BPP
+        # (Rekord.MultipleObjectsReturned → join tytułów). W obu wypadkach książki
+        # nadrzędnej nie da się jednoznacznie powiązać — pomijamy rozdział zamiast
+        # wywalać się na ``.rok`` / dereferencji ``None`` (dokończenie #419).
+        logger.warning(
+            "Pomijam rozdział PBN %s: książka nadrzędna %s nierozstrzygalna (%s).",
+            mongoId,
+            pbn_book_id,
+            "brak/widmo" if wydawnictwo_nadrzedne is None else "wiele dopasowań w BPP",
+        )
+        return None
+
     rok = wydawnictwo_nadrzedne.rok
 
     pbn_chapter_json = _chapter_json_z_nadrzednego(wydawnictwo_nadrzedne, mongoId)

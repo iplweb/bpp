@@ -112,7 +112,7 @@ def importuj_publikacje_po_pbn_uid_id(
     # tworzyć rekordu.
     if cv is None or not cv.get("object"):
         return _pomin_niekompletny(
-            pbn_uid_id, "brak wersji bieżącej / obiektu w PBN", None
+            pbn_uid_id, "brak wersji bieżącej / obiektu w PBN", cv
         )
 
     obiekt = cv["object"]
@@ -168,7 +168,16 @@ def importuj_publikacje_po_pbn_uid_id(
             )
         case _:
             # Nieobsługiwany, ale OBECNY typ to dryf schematu PBN, nie awaria —
-            # pomijamy rekord zamiast wywalać batch NotImplementedError-em.
+            # pomijamy rekord zamiast wywalać batch NotImplementedError-em. W
+            # odróżnieniu od widm to sygnał REALNEJ zmiany schematu PBN, więc
+            # eskalujemy przez inconsistency_callback, żeby nie zniknął cicho w
+            # logu (obserwowalność masowych pominięć).
+            if inconsistency_callback:
+                inconsistency_callback(
+                    inconsistency_type="unsupported_publication_type",
+                    pbn_publication=pbn_publication,
+                    message=f"Nieobsługiwany type={typ!r} (pbn_uid={pbn_uid_id})",
+                )
             return _pomin_niekompletny(
                 pbn_uid_id, f"nieobsługiwany type={typ!r}", obiekt
             )
@@ -191,17 +200,36 @@ def importuj_publikacje_instytucji(
     rodzaj_periodyk = Rodzaj_Zrodla.objects.get(nazwa="periodyk")
     dyscypliny_cache = {d.nazwa: d for d in Dyscyplina_Naukowa.objects.all()}
 
+    pominietych = 0
     for pbn_publication in tqdm(chciane):
-        ret = importuj_publikacje_po_pbn_uid_id(
-            pbn_publication.mongoId,
-            client=client,
-            default_jednostka=default_jednostka,
-            rodzaj_periodyk=rodzaj_periodyk,
-            dyscypliny_cache=dyscypliny_cache,
-        )
+        try:
+            ret = importuj_publikacje_po_pbn_uid_id(
+                pbn_publication.mongoId,
+                client=client,
+                default_jednostka=default_jednostka,
+                rodzaj_periodyk=rodzaj_periodyk,
+                dyscypliny_cache=dyscypliny_cache,
+            )
+        except Exception:
+            # Jeden zły rekord NIE MOŻE zabić całego wsadu. Loguj z pełnym
+            # tracebackiem (nigdy po cichu — patrz CLAUDE.md) i leć dalej.
+            pominietych += 1
+            logger.exception(
+                "Nie udało się zaimportować publikacji %s — pomijam.",
+                pbn_publication.mongoId,
+            )
+            if pbn_uid_id:
+                return None
+            continue
 
         if pbn_uid_id:
             return ret
+
+    if pominietych:
+        logger.warning(
+            "Import instytucji zakończony: %d rekordów pominięto z powodu błędów.",
+            pominietych,
+        )
 
 
 # For backward compatibility with internal function names
