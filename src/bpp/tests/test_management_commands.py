@@ -229,9 +229,7 @@ class TestRebuildJednostkCommand:
         call_command("rebuild_jednostka")
 
         # Verify both exist (dawny „wydział" = jednostka top-level)
-        assert Jednostka.objects.filter(
-            pk=wydzial.pk, parent__isnull=True
-        ).exists()
+        assert Jednostka.objects.filter(pk=wydzial.pk, parent__isnull=True).exists()
         assert Jednostka.objects.filter(pk=jednostka.pk).exists()
 
 

@@ -53,6 +53,34 @@ def test_matchuj_wydzial_po_poprzedniej_nazwie(uczelnia):
     assert matchuj_wydzial("Wydział Nauk Ścisłych") == root
 
 
+@pytest.mark.django_db
+def test_matchuj_wydzial_pusty_string_zwraca_none(uczelnia):
+    """Regresja (#438 Faza C, self-review): pusty/whitespace/None string NIE
+    może matchować LOSOWEGO roota. Dawniej ``poprzednie_nazwy__icontains=""``
+    = ``LIKE '%%'`` łapało pierwszy lepszy root — osiągalne z pustej kolumny
+    XLS (``matchuj_jednostke(..., wydzial="")``)."""
+    baker.make(Jednostka, nazwa="Jakiś Wydział", parent=None, uczelnia=uczelnia)
+    assert matchuj_wydzial("") is None
+    assert matchuj_wydzial("   \t") is None
+    assert matchuj_wydzial(None) is None
+
+
+@pytest.mark.django_db
+def test_matchuj_wydzial_poprzednia_nazwa_po_calej_linii(uczelnia):
+    """Regresja (self-review): match po ``poprzednie_nazwy`` idzie po CAŁEJ
+    linii, nie substringu — ``"Lekarski"`` nie może złapać roota z linią
+    ``"Wydział Lekarski i Nauk o Zdrowiu"``."""
+    root = baker.make(
+        Jednostka,
+        nazwa="Kolegium Nauk Medycznych",
+        parent=None,
+        uczelnia=uczelnia,
+        poprzednie_nazwy="Wydział Lekarski i Nauk o Zdrowiu",
+    )
+    assert matchuj_wydzial("Lekarski") is None
+    assert matchuj_wydzial("Wydział Lekarski i Nauk o Zdrowiu") == root
+
+
 @pytest.mark.parametrize(
     "szukany_string",
     ["Jednostka Pierwsza", "  Jednostka Pierwsza  \t", "jednostka pierwsza"],

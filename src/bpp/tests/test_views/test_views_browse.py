@@ -210,9 +210,7 @@ def test_jednostka_styl_prac_dla_rodzaju_standard(setup_group, logged_in_client)
 def test_browse_jednostka(setup_group, logged_in_client):
     u = any_uczelnia(nazwa="uczelnia", skrot="uu")
     w = Jednostka.objects.create(nazwa="wydzial", skrot="WDZ", uczelnia=u, parent=None)
-    j = Jednostka.objects.create(
-        nazwa="jednostka", skrot="JEDN", parent=w, uczelnia=u
-    )
+    j = Jednostka.objects.create(nazwa="jednostka", skrot="JEDN", parent=w, uczelnia=u)
 
     res = logged_in_client.get(reverse("bpp:browse_jednostka", args=(j.slug,)))
     assert res.status_code == 200

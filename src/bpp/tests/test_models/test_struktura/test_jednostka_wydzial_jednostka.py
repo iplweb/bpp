@@ -282,9 +282,7 @@ def test_jednostka_wydzial_save_trigger_zakres_dat():
     with pytest.raises(ValidationError):
         jw2.clean()
 
-    jw2 = Jednostka_Rodzic(
-        jednostka=j1, parent=w2, od=date(2001, 1, 15), do=None
-    )
+    jw2 = Jednostka_Rodzic(jednostka=j1, parent=w2, od=date(2001, 1, 15), do=None)
 
     # ValidationError nie został podniesiony
     jw2.clean()
@@ -471,9 +469,7 @@ def test_wyczysc_przypisania_zakres_obejmuje_parenta(wydzial, jednostka):
         jednostka, date(2012, 1, 1), date(2012, 12, 31)
     )
     assert (
-        Jednostka_Rodzic.objects.filter(
-            jednostka=jednostka, parent=wydzial
-        ).count()
+        Jednostka_Rodzic.objects.filter(jednostka=jednostka, parent=wydzial).count()
         == 2
     )
     assert jednostka.wydzial_dnia(date(2011, 12, 31)) == wydzial

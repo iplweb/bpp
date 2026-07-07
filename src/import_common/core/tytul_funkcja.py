@@ -36,11 +36,32 @@ def matchuj_wydzial(nazwa: str | None):
         return
 
     nazwa = nazwa.strip()
-    return (
-        Jednostka.objects.filter(parent__isnull=True)
-        .filter(Q(nazwa__iexact=nazwa) | Q(poprzednie_nazwy__icontains=nazwa))
-        .first()
-    )
+    if not nazwa:
+        # Pusty string (np. pusta kolumna XLS → "") NIE może matchować —
+        # ``poprzednie_nazwy__icontains=""`` = ``LIKE '%%'`` złapałby losowy
+        # root. Zwracamy None, żeby wołający zawęził "po niczym" (DoesNotExist).
+        return
+
+    roots = Jednostka.objects.filter(parent__isnull=True)
+
+    # ``Jednostka.nazwa`` jest globalnie unikatowa → exact match jest
+    # jednoznaczny i ma priorytet nad dawną nazwą.
+    exact = roots.filter(nazwa__iexact=nazwa).first()
+    if exact is not None:
+        return exact
+
+    # Dawna nazwa wydziału (promowany 1-jednostkowy / lustro) siedzi w
+    # ``poprzednie_nazwy`` (linie rozdzielone ``\n``, backfill 0466).
+    # ``icontains`` to tani pre-filtr DB; dopasowanie po CAŁEJ linii
+    # weryfikujemy w Pythonie — inaczej substring innej nazwy dałby
+    # false-positive. ``order_by("pk")`` → determinizm przy wielu kandydatach.
+    for root in roots.filter(poprzednie_nazwy__icontains=nazwa).order_by("pk"):
+        if any(
+            linia.strip().lower() == nazwa.lower()
+            for linia in root.poprzednie_nazwy.splitlines()
+        ):
+            return root
+    return None
 
 
 def matchuj_tytul(tytul: str, create_if_not_exist=False) -> Tytul:

@@ -20,8 +20,7 @@ _nowa = _mig.nowa_poprzednie_nazwy
 def test_dopisuje_nazwe_wydzialu_do_promowanego_roota():
     # root promowany nosi nazwę realnej jednostki → nazwa wydziału dochodzi
     assert (
-        _nowa("", "Wydział Nauk Ścisłych", "Katedra Fizyki")
-        == "Wydział Nauk Ścisłych"
+        _nowa("", "Wydział Nauk Ścisłych", "Katedra Fizyki") == "Wydział Nauk Ścisłych"
     )
 
 
