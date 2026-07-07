@@ -1410,7 +1410,6 @@ DJANGO_EASY_AUDIT_REGISTERED_CLASSES = [
     "bpp.Autor_Dyscyplina",
     "bpp.Jednostka",
     "bpp.Uczelnia",
-    "bpp.Wydzial",
     "bpp.Zrodlo",
     "bpp.Jezyk",
     "bpp.Charakter_Formalny",
