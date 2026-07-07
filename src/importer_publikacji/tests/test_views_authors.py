@@ -141,6 +141,143 @@ def test_create_unmatched_orcid_matches_existing(
 
 
 @pytest.mark.django_db
+def test_author_create_new_single_row(
+    importer_client,
+    importer_user,
+    uczelnia_z_obca_jednostka,
+):
+    """Per-wierszowe "Utwórz nowego autora" z modala edycji (Freshdesk
+    #383) tworzy Autora dla jednego niedopasowanego wiersza i przypisuje
+    go do obcej jednostki, nie ruszając pozostałych wierszy."""
+    obca = uczelnia_z_obca_jednostka.obca_jednostka
+    session = _make_session_with_unmatched(importer_user, count=2)
+    first, second = list(session.authors.order_by("order"))
+
+    url = reverse(
+        "importer_publikacji:author-create-new",
+        kwargs={"session_id": session.pk, "author_id": first.pk},
+    )
+    response = importer_client.post(url)
+    assert response.status_code == 200
+
+    first.refresh_from_db()
+    assert first.match_status == ImportedAuthor.MatchStatus.MANUAL
+    assert first.matched_autor is not None
+    assert first.matched_autor.nazwisko == "Testowy0"
+    assert first.matched_autor.imiona == "Autor0"
+    assert first.matched_jednostka == obca
+    assert Autor_Jednostka.objects.filter(
+        autor=first.matched_autor,
+        jednostka=obca,
+    ).exists()
+
+    # Drugi wiersz nietknięty — to akcja per-wierszowa.
+    second.refresh_from_db()
+    assert second.match_status == ImportedAuthor.MatchStatus.UNMATCHED
+    assert second.matched_autor is None
+
+
+@pytest.mark.django_db
+def test_author_create_new_with_corrections(
+    importer_client,
+    importer_user,
+    uczelnia_z_obca_jednostka,
+):
+    """Korekta nazwiska/imion/zapisany_jako w POST przed utworzeniem."""
+    session = _make_session_with_unmatched(importer_user, count=1)
+    imported = session.authors.first()
+
+    url = reverse(
+        "importer_publikacji:author-create-new",
+        kwargs={"session_id": session.pk, "author_id": imported.pk},
+    )
+    response = importer_client.post(
+        url,
+        {
+            "nazwisko": "Poprawiony",
+            "imiona": "Jan",
+            "zapisany_jako": "Poprawiony J.",
+        },
+    )
+    assert response.status_code == 200
+
+    imported.refresh_from_db()
+    assert imported.matched_autor.nazwisko == "Poprawiony"
+    assert imported.matched_autor.imiona == "Jan"
+    assert imported.zapisany_jako == "Poprawiony J."
+
+
+@pytest.mark.django_db
+def test_author_create_new_orcid_matches_existing(
+    importer_client,
+    importer_user,
+    uczelnia_z_obca_jednostka,
+):
+    """Per-wierszowe tworzenie z ORCID istniejącego Autora dopasowuje
+    istniejącego zamiast tworzyć duplikat."""
+    obca = uczelnia_z_obca_jednostka.obca_jednostka
+    existing = baker.make(
+        Autor,
+        imiona="Jan",
+        nazwisko="Kowalski",
+        orcid="0000-0002-1111-2222",
+    )
+    session = ImportSession.objects.create(
+        created_by=importer_user,
+        provider_name="CrossRef",
+        identifier="10.1234/row-orcid",
+        raw_data={},
+        normalized_data={},
+    )
+    imported = ImportedAuthor.objects.create(
+        session=session,
+        order=0,
+        family_name="Kowalski",
+        given_name="Jan",
+        orcid="0000-0002-1111-2222",
+        match_status=ImportedAuthor.MatchStatus.UNMATCHED,
+    )
+
+    url = reverse(
+        "importer_publikacji:author-create-new",
+        kwargs={"session_id": session.pk, "author_id": imported.pk},
+    )
+    response = importer_client.post(url)
+    assert response.status_code == 200
+
+    imported.refresh_from_db()
+    assert imported.matched_autor == existing
+    assert imported.matched_jednostka == obca
+    assert imported.match_status == ImportedAuthor.MatchStatus.MANUAL
+    assert Autor.objects.filter(orcid="0000-0002-1111-2222").count() == 1
+
+
+@pytest.mark.django_db
+def test_author_create_new_no_obca_jednostka(
+    importer_client,
+    importer_user,
+    uczelnia,
+):
+    """Brak obcej jednostki -> komunikat błędu w wierszu, autor
+    pozostaje niedopasowany."""
+    assert uczelnia.obca_jednostka is None
+    session = _make_session_with_unmatched(importer_user, count=1)
+    imported = session.authors.first()
+
+    url = reverse(
+        "importer_publikacji:author-create-new",
+        kwargs={"session_id": session.pk, "author_id": imported.pk},
+    )
+    response = importer_client.post(url)
+    assert response.status_code == 200
+    assert "obcej jednostki" in response.content.decode()
+
+    imported.refresh_from_db()
+    assert imported.match_status == ImportedAuthor.MatchStatus.UNMATCHED
+    assert imported.matched_autor is None
+
+
+@pytest.mark.django_db
 def test_create_unmatched_noop_when_all_matched(
     importer_client,
     importer_user,
