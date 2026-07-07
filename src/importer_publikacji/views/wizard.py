@@ -18,7 +18,13 @@ from django.views import View
 from bpp.models import Uczelnia
 from bpp.views.api import ostatnia_dyscyplina, ostatnia_jednostka
 
-from ..forms import AuthorMatchForm, FetchForm, SourceForm, VerifyForm
+from ..forms import (
+    AuthorMatchForm,
+    FetchForm,
+    PunktacjaForm,
+    SourceForm,
+    VerifyForm,
+)
 from ..models import ImportedAuthor, ImportSession
 from ..permissions import ImporterPermissionMixin
 from ..providers import InputMode, get_provider
@@ -41,6 +47,7 @@ from .helpers import (
 from .steps import (
     _is_chapter,
     _render_authors_step,
+    _render_punktacja_step,
     _render_review_step,
     _render_source_step,
     _render_verify_full,
@@ -545,6 +552,32 @@ class AuthorsConfirmView(ImporterPermissionMixin, View):
             return _render_authors_step(request, session, error=error)
 
         session.status = ImportSession.Status.AUTHORS_MATCHED
+        session.modified_by = request.user
+        session.save()
+
+        return _render_punktacja_step(request, session)
+
+
+class PunktacjaView(ImporterPermissionMixin, View):
+    """Krok sugerowania punktacji ministerialnej."""
+
+    def get(self, request, session_id):
+        session = get_object_or_404(ImportSession, pk=session_id)
+        if request.headers.get("HX-Request"):
+            return _render_punktacja_step(request, session)
+        from .steps import _render_punktacja_full
+
+        return _render_punktacja_full(request, session)
+
+    def post(self, request, session_id):
+        session = get_object_or_404(ImportSession, pk=session_id)
+        form = PunktacjaForm(request.POST)
+        if not form.is_valid():
+            return _render_punktacja_step(request, session, form=form)
+
+        punkty = form.cleaned_data.get("punkty_kbn")
+        session.matched_data["punkty_kbn"] = "" if punkty is None else str(punkty)
+        session.status = ImportSession.Status.PUNKTACJA
         session.modified_by = request.user
         session.save()
 

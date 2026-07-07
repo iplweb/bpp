@@ -152,6 +152,16 @@ class SourceForm(forms.Form):
     )
 
 
+class PunktacjaForm(forms.Form):
+    """Formularz kroku punktacji — jedno pole, edytowalne."""
+
+    punkty_kbn = forms.DecimalField(
+        label="Punkty MNiSW",
+        required=False,
+        min_value=0,
+    )
+
+
 class AuthorMatchForm(forms.Form):
     """Formularz dopasowania pojedynczego autora."""
 

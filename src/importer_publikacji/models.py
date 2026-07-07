@@ -26,6 +26,7 @@ class ImportSession(models.Model):
             "authors_matched",
             "Dopasowano autorów",
         )
+        PUNKTACJA = "punktacja", "Punktacja"
         REVIEW = "review", "Do przeglądu"
         COMPLETED = "completed", "Zakończono"
         CANCELLED = "cancelled", "Anulowano"
@@ -204,7 +205,8 @@ class ImportSession(models.Model):
             self.Status.IMPORT_FAILED: "task-status",
             self.Status.VERIFIED: "source",
             self.Status.SOURCE_MATCHED: "authors",
-            self.Status.AUTHORS_MATCHED: "review",
+            self.Status.AUTHORS_MATCHED: "punktacja",
+            self.Status.PUNKTACJA: "review",
             self.Status.REVIEW: "review",
             self.Status.COMPLETED: "done",
         }
