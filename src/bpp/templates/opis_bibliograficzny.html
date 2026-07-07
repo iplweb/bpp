@@ -34,6 +34,8 @@
             W: {{ praca.wydawnictwo_nadrzedne.tytul_oryginalny }}.
         {% elif praca.wydawnictwo_nadrzedne_w_pbn.title %}
             W: {{ praca.wydawnictwo_nadrzedne_w_pbn.title }}.
+        {% elif praca.pbn_uid.book_title %}
+            W: {{ praca.pbn_uid.book_title }}.
         {% endif %}
     {% endif %}
 {% endif %}

@@ -88,7 +88,13 @@ def initialize_rollbar(**kwargs):
 
 @task_failure.connect
 def handle_task_failure(**kw):
-    rollbar.report_exc_info(extra_data=kw)
+    # Przekaz JAWNIE exc_info z sygnalu. Bez tego report_exc_info() siega po
+    # sys.exc_info(), ktore Celery potrafi juz wyczyscic w momencie emisji
+    # task_failure -> do Rollbara szedl pusty/smieciowy raport albo nic
+    # (Freshdesk #344: 500 importera nie pojawial sie w Rollbarze).
+    einfo = kw.get("einfo")
+    exc_info = getattr(einfo, "exc_info", None)
+    rollbar.report_exc_info(exc_info=exc_info, extra_data=kw)
 
 
 def celery_base_data_hook(request, data):
