@@ -1097,7 +1097,13 @@
                 {% should_show_filter_counts cl as show_counts %}
                 {% for spec in cl.filter_specs %}
                     {% get_selected_filter_value spec cl as selected_value %}
-                    {% get_selected_filter_count_url spec cl as selected_count_url %}
+                    {# Licznik liczymy TYLKO gdy admin wystawia endpoint #}
+                    {# `_filter_count` (show_counts). Inaczej reverse() dla #}
+                    {# nieistniejącego URL-a rzucałby NoReverseMatch przy #}
+                    {# każdym filtrowanym changeliście (np. BppUser). #}
+                    {% if show_counts %}
+                        {% get_selected_filter_count_url spec cl as selected_count_url %}
+                    {% endif %}
                     <div class="filter-group">
                         <h3 class="filter-title filter-collapsible collapsed{% if selected_value %} has-selection{% endif %}"
                             data-filter-id="filter-{{ forloop.counter }}">
