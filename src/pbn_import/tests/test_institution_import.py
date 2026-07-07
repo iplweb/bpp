@@ -3,7 +3,7 @@
 import pytest
 from model_bakery import baker
 
-from bpp.models import Jednostka, Jednostka_Rodzic, Uczelnia, Wydzial
+from bpp.models import Jednostka, Jednostka_Rodzic, Uczelnia
 from pbn_import.models import ImportLog, ImportSession
 from pbn_import.utils.institution_import import (
     InstitutionImporter,
@@ -13,13 +13,6 @@ from pbn_import.utils.institution_import import (
     znajdz_lub_utworz_wydzial_domyslny,
     zrob_skrot,
 )
-
-
-def _wezel(wydzial):
-    """LAZY węzeł-lustro Jednostka dla wydziału (#438) — tworzony przy linku."""
-    from bpp.models.struktura_konwersja import znajdz_lub_utworz_wezel_wydzialu
-
-    return znajdz_lub_utworz_wezel_wydzialu(wydzial)[0]
 
 
 @pytest.fixture
@@ -41,11 +34,12 @@ def test_zrob_skrot_keeps_uppercase_and_punctuation_only():
 
 
 def test_find_or_create_default_wydzial_reuses_uczelnia_scoped_match(uczelnia):
-    foreign = baker.make(Wydzial, nazwa="Wydział Domyślny Obcy")
+    foreign = baker.make(Jednostka, nazwa="Wydział Domyślny Obcy", parent=None)
     existing = baker.make(
-        Wydzial,
+        Jednostka,
         nazwa="Wydział Domyślny Naukowy",
         uczelnia=uczelnia,
+        parent=None,
     )
 
     wydzial, created = znajdz_lub_utworz_wydzial_domyslny(uczelnia)
@@ -300,11 +294,11 @@ def test_institution_importer_creates_defaults_links_and_session_config(
     assert uczelnia.obca_jednostka == obca_jednostka
     assert Jednostka_Rodzic.objects.filter(
         jednostka=jednostka,
-        parent=_wezel(wydzial),
+        parent=wydzial,
     ).exists()
     assert Jednostka_Rodzic.objects.filter(
         jednostka=obca_jednostka,
-        parent=_wezel(wydzial),
+        parent=wydzial,
     ).exists()
     assert session.config == {
         "default_jednostka_id": jednostka.id,
@@ -315,7 +309,9 @@ def test_institution_importer_creates_defaults_links_and_session_config(
 
 
 def test_institution_importer_reuses_existing_objects(session, uczelnia):
-    wydzial = baker.make(Wydzial, nazwa="Wydział Domyślny", uczelnia=uczelnia)
+    wydzial = baker.make(
+        Jednostka, nazwa="Wydział Domyślny", uczelnia=uczelnia, parent=None
+    )
     jednostka = baker.make(Jednostka, nazwa="Jednostka Domyślna", uczelnia=uczelnia)
     obca = baker.make(
         Jednostka,
@@ -325,8 +321,8 @@ def test_institution_importer_reuses_existing_objects(session, uczelnia):
     )
     uczelnia.obca_jednostka = obca
     uczelnia.save(update_fields=["obca_jednostka"])
-    Jednostka_Rodzic.objects.create(jednostka=jednostka, parent=_wezel(wydzial))
-    Jednostka_Rodzic.objects.create(jednostka=obca, parent=_wezel(wydzial))
+    Jednostka_Rodzic.objects.create(jednostka=jednostka, parent=wydzial)
+    Jednostka_Rodzic.objects.create(jednostka=obca, parent=wydzial)
 
     result = InstitutionImporter(session, uczelnia=uczelnia).run()
 
@@ -335,15 +331,10 @@ def test_institution_importer_reuses_existing_objects(session, uczelnia):
         "jednostka": jednostka,
         "obca_jednostka": obca,
     }
-    assert Wydzial.objects.filter(uczelnia=uczelnia).count() == 1
-    # Faza B (#438): węzeł-lustro wydziału (legacy_wydzial_id != NULL) też jest
-    # Jednostką tej uczelni — liczymy tylko „prawdziwe" jednostki.
-    assert (
-        Jednostka.objects.filter(
-            uczelnia=uczelnia, legacy_wydzial_id__isnull=True
-        ).count()
-        == 2
-    )
+    # Faza C (#438): reuse = brak duplikatów. Setup linkuje jednostkę i obcą do
+    # wydziału metryczką (Jednostka_Rodzic), bez MPTT-parent, więc wszystkie trzy
+    # są tu rootami; kluczowe jest, że run() nie utworzył czwartej jednostki.
+    assert Jednostka.objects.filter(uczelnia=uczelnia).count() == 3
     assert ImportLog.objects.filter(
         session=session,
         message__contains="Using existing department",

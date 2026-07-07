@@ -1,7 +1,6 @@
 """Institution import utilities"""
 
-from bpp.models import Jednostka, Jednostka_Rodzic, Wydzial
-from bpp.models.struktura_konwersja import znajdz_lub_utworz_wezel_wydzialu
+from bpp.models import Jednostka, Jednostka_Rodzic
 
 from .base import ImportStepBase
 
@@ -21,7 +20,10 @@ def zrob_skrot(s: str) -> str:
 
 
 def znajdz_lub_utworz_wydzial_domyslny(uczelnia, nazwa_domyslna="Wydział Domyślny"):
-    """Szukaj wydziału zaczynającego się od podanej nazwy (case insensitive).
+    """Szukaj jednostki TOP-LEVEL (rola wydziału) zaczynającej się od podanej
+    nazwy (case insensitive); utwórz jeśli brak.
+
+    Faza C (#438): „wydział" = jednostka z ``parent IS NULL``.
 
     Args:
         uczelnia: Obiekt Uczelnia
@@ -29,28 +31,28 @@ def znajdz_lub_utworz_wydzial_domyslny(uczelnia, nazwa_domyslna="Wydział Domyś
             znaleziono
 
     Returns:
-        tuple: (wydzial, created)
+        tuple: (jednostka_root, created)
     """
-    wydzial = Wydzial.objects.filter(
+    wydzial = Jednostka.objects.filter(
         nazwa__istartswith=nazwa_domyslna,
         uczelnia=uczelnia,
+        parent__isnull=True,
     ).first()
     if wydzial:
         return wydzial, False
 
-    # Multi-hosted: Wydzial.nazwa i .skrot są unique=True GLOBALNIE, a wszystkie
+    # Multi-hosted: Jednostka.nazwa i .skrot są unique=True GLOBALNIE, a wszystkie
     # uczelnie współdzielą jedną bazę. Nazwę/skrót tworzonego wydziału sufiksujemy
     # skrótem uczelni, żeby druga uczelnia nie wpadła w IntegrityError na "Wydział
     # Domyślny". Ścieżka FIND (istartswith) i tak matchuje legacy rekordy bez
     # sufiksu, więc istniejące instalacje nie widzą churnu.
     return (
-        Wydzial.objects.create(
+        Jednostka.objects.create(
             nazwa=f"{nazwa_domyslna} {uczelnia.skrot}",
-            # Wydzial.skrot to varchar(10) — przycinamy, bo uczelnia.skrot bywa
-            # dłuższy. Realne skróty uczelni są krótkie, więc forma czytelna
-            # przeżywa; przycięcie chroni tylko przed patologicznie długim skrótem.
-            skrot=f"{zrob_skrot(nazwa_domyslna)}-{uczelnia.skrot}"[:10],
+            # Jednostka.skrot to varchar(128) — przycinamy defensywnie.
+            skrot=f"{zrob_skrot(nazwa_domyslna)}-{uczelnia.skrot}"[:128],
             uczelnia=uczelnia,
+            parent=None,
         ),
         True,
     )
@@ -145,10 +147,9 @@ def znajdz_lub_utworz_obca_jednostke(uczelnia, wydzial=None):
     # `uczelnia`, więc trigger spójności uczelni przechodzi.
     if wydzial is None:
         wydzial, _ = znajdz_lub_utworz_wydzial_domyslny(uczelnia)
-    # Faza B (#438): metryczka wskazuje węzeł-rodzic; LAZY resolve wydział →
-    # węzeł-lustro (tworzony w tym miejscu linkowania, jeśli jeszcze go nie ma).
-    wezel, _ = znajdz_lub_utworz_wezel_wydzialu(wydzial)
-    Jednostka_Rodzic.objects.get_or_create(jednostka=obca, parent=wezel)
+    # Faza C (#438): „wydział domyślny" to już root-Jednostka — podpinamy obcą
+    # jednostkę wprost pod niego (MPTT ``parent``).
+    Jednostka_Rodzic.objects.get_or_create(jednostka=obca, parent=wydzial)
 
     if uczelnia.obca_jednostka_id != obca.pk:
         uczelnia.obca_jednostka = obca
@@ -305,11 +306,10 @@ class InstitutionImporter(ImportStepBase):
         if created:
             self.log("info", "Created default unit: Jednostka Domyślna")
 
-        # Link unit to department. Faza B (#438): LAZY resolve wydział →
-        # węzeł-rodzic (tworzony tu, jeśli jeszcze nie istnieje).
-        wezel, _ = znajdz_lub_utworz_wezel_wydzialu(wydzial)
+        # Link unit to department. Faza C (#438): „wydział" to już root-Jednostka
+        # — jednostka domyślna wisi wprost pod nim (MPTT ``parent``).
         jw, created = Jednostka_Rodzic.objects.get_or_create(
-            jednostka=jednostka, parent=wezel
+            jednostka=jednostka, parent=wydzial
         )
         if created:
             self.log(
