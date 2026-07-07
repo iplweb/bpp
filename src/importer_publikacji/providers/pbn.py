@@ -158,6 +158,20 @@ def _extract_isbn(obj: dict) -> str | None:
     return None
 
 
+def _extract_issn(value: str | None) -> str | None:
+    """Odfiltruj syntetyczny placeholder ISSN z PBN.
+
+    PBN dla czasopism bez ISSN podsyła wewnętrzny identyfikator ``xpbn-<uuid>``
+    (41 znaków) — nie jest to ISSN, a do tego przekracza ``max_length=32`` pól
+    ISSN w BPP (dosłowny zapis wywalał ``DataError: value too long``).
+    Traktujemy go jako *brak* ISSN.
+    """
+    value = (value or "").strip()
+    if not value or value.startswith("xpbn-"):
+        return None
+    return value
+
+
 def _get_current_version_object(data: dict) -> dict | None:
     """Wyciągnij obiekt z bieżącej wersji publikacji PBN."""
     versions = data.get("versions", [])
@@ -253,8 +267,8 @@ class PBNProvider(DataProvider):
             year=_extract_year(obj),
             authors=_extract_authors(obj),
             source_title=journal.get("title"),
-            issn=journal.get("issn"),
-            e_issn=journal.get("eissn"),
+            issn=_extract_issn(journal.get("issn")),
+            e_issn=_extract_issn(journal.get("eissn")),
             isbn=_extract_isbn(obj),
             publisher=journal.get("publisher"),
             publication_type=PBN_TYPE_MAP.get(obj.get("type", "")),
