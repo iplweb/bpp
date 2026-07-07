@@ -17,11 +17,10 @@ from bpp.models import Autor, BppUser, Jednostka
 @pytest.fixture
 def administracja_client(client, db):
     """Zalogowany klient superusera należącego do grupy ``administracja``
-    (obie przesłanki ``has_delete_permission`` spełnione)."""
+    (obie przesłanki ``has_delete_permission`` spełnione). Hasło nieistotne —
+    logujemy przez ``force_login``, więc nie ustawiamy go wcale."""
     grupa, _ = Group.objects.get_or_create(name="administracja")
-    user = BppUser.objects.create_superuser(
-        username="kasownik", password="haslo", email="k@example.org"
-    )
+    user = baker.make(BppUser, is_superuser=True, is_staff=True)
     user.groups.add(grupa)
     client.force_login(user)
     return client
@@ -84,9 +83,7 @@ def test_superuser_bez_grupy_nie_skasuje(client, jednostka: Jednostka):
     # GroupMixin) MUSI zostać nienaruszona — sam superuser (bez grupy) nie
     # kasuje pustej jednostki. Nowy warunek „pusta" jest DODATKOWY, nie
     # zastępuje grupowego.
-    user = BppUser.objects.create_superuser(
-        username="bezgrupy", password="haslo", email="b@example.org"
-    )
+    user = baker.make(BppUser, is_superuser=True, is_staff=True)
     client.force_login(user)
     pk = jednostka.pk
 
