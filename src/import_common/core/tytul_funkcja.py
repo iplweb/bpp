@@ -10,8 +10,8 @@ from django.db.models import Q
 from bpp.models import (
     Funkcja_Autora,
     Grupa_Pracownicza,
+    Jednostka,
     Tytul,
-    Wydzial,
     Wymiar_Etatu,
 )
 
@@ -24,13 +24,23 @@ from ..normalization import (
 
 
 def matchuj_wydzial(nazwa: str | None):
+    """Dobiera jednostkę TOP-LEVEL (rolę dawnego wydziału) po nazwie.
+
+    Faza C (#438): model ``Wydzial`` znika — „wydział" to jednostka z
+    ``parent IS NULL``. Match po ``nazwa`` LUB ``poprzednie_nazwy``: promowany
+    1-jednostkowy wydział (0457) ma nazwę realnej jednostki, a dawną nazwę
+    wydziału wnosi backfill (0466) do ``poprzednie_nazwy``. Zwraca
+    ``Jednostka | None``.
+    """
     if nazwa is None:
         return
 
-    try:
-        return Wydzial.objects.get(nazwa__iexact=nazwa.strip())
-    except Wydzial.DoesNotExist:
-        pass
+    nazwa = nazwa.strip()
+    return (
+        Jednostka.objects.filter(parent__isnull=True)
+        .filter(Q(nazwa__iexact=nazwa) | Q(poprzednie_nazwy__icontains=nazwa))
+        .first()
+    )
 
 
 def matchuj_tytul(tytul: str, create_if_not_exist=False) -> Tytul:

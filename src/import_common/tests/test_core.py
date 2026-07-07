@@ -8,10 +8,8 @@ from bpp.models import (
     Tytul,
     Wydawnictwo_Ciagle,
     Wydawnictwo_Zwarte,
-    Wydzial,
     Zrodlo,
 )
-from bpp.models.struktura_konwersja import znajdz_lub_utworz_wezel_wydzialu
 from import_common.core import (
     _isbn_matches,
     _part_numbers_compatible,
@@ -31,28 +29,43 @@ from import_dyscyplin.core import matchuj_autora, matchuj_jednostke, matchuj_wyd
         "   ii lekarski  ",
     ],
 )
-def test_matchuj_wydzial(szukany_string, db):
-    baker.make(Wydzial, nazwa="I Lekarski")
-    w2 = baker.make(Wydzial, nazwa="II Lekarski")
+def test_matchuj_wydzial(szukany_string, uczelnia, db):
+    # Faza C (#438): „wydział" = jednostka top-level (parent IS NULL).
+    baker.make(Jednostka, nazwa="I Lekarski", parent=None, uczelnia=uczelnia)
+    w2 = baker.make(Jednostka, nazwa="II Lekarski", parent=None, uczelnia=uczelnia)
 
     assert matchuj_wydzial(szukany_string) == w2
+
+
+@pytest.mark.django_db
+def test_matchuj_wydzial_po_poprzedniej_nazwie(uczelnia):
+    """Faza C (#438): promowany 1-jednostkowy wydział ma nazwę realnej
+    jednostki; dawną nazwę wydziału wnosi backfill (0466) do
+    ``poprzednie_nazwy`` — match musi ją łapać."""
+    root = baker.make(
+        Jednostka,
+        nazwa="Instytut Matematyki",
+        parent=None,
+        uczelnia=uczelnia,
+        poprzednie_nazwy="Wydział Nauk Ścisłych",
+    )
+
+    assert matchuj_wydzial("Wydział Nauk Ścisłych") == root
 
 
 @pytest.mark.parametrize(
     "szukany_string",
     ["Jednostka Pierwsza", "  Jednostka Pierwsza  \t", "jednostka pierwsza"],
 )
-def test_matchuj_jednostke(szukany_string, uczelnia, wydzial, db):
+def test_matchuj_jednostke(szukany_string, uczelnia, db):
+    root = baker.make(Jednostka, nazwa="Wydział X", parent=None, uczelnia=uczelnia)
     j1 = baker.make(
-        Jednostka,
-        nazwa="Jednostka Pierwsza",
-        parent=znajdz_lub_utworz_wezel_wydzialu(wydzial)[0],
-        uczelnia=uczelnia,
+        Jednostka, nazwa="Jednostka Pierwsza", parent=root, uczelnia=uczelnia
     )
     baker.make(
         Jednostka,
         nazwa="Jednostka Pierwsza i Jeszcze",
-        parent=znajdz_lub_utworz_wezel_wydzialu(wydzial)[0],
+        parent=root,
         uczelnia=uczelnia,
     )
 
@@ -60,27 +73,20 @@ def test_matchuj_jednostke(szukany_string, uczelnia, wydzial, db):
 
 
 @pytest.mark.django_db
-def test_matchuj_jednostke_disambiguacja_po_promowanym_wydziale(uczelnia):
-    """#438: dopasowanie po NAZWIE wydziału musi działać dla PROMOWANEGO
-    1-jednostkowego wydziału (0457), gdzie denorm-korzeń to REALNA jednostka
-    (jej własna nazwa ≠ nazwa wydziału). Match po ``wydzial__nazwa`` by tu
-    zawiódł; tożsamość wydziału niesie ``root.legacy_wydzial_id``."""
-    w = baker.make(Wydzial, nazwa="Wydział Nauk Ścisłych")
-    # Promowany root: realna jednostka o INNEJ nazwie, z legacy starego wydziału.
+def test_matchuj_jednostke_disambiguacja_po_wydziale(uczelnia):
+    """#438 Faza C: disambiguacja jednostki po NAZWIE wydziału działa dla
+    promowanego roota — dawna nazwa wydziału jest w ``poprzednie_nazwy``,
+    a jednostki-dzieci mają denorm ``wydzial`` == root."""
     promowany_root = baker.make(
         Jednostka,
         uczelnia=uczelnia,
         parent=None,
-        wydzial=None,
         nazwa="Instytut Matematyki",
-        legacy_wydzial_id=w.id,
-        jest_lustrem=False,
+        poprzednie_nazwy="Wydział Nauk Ścisłych",
     )
-    inny_root = znajdz_lub_utworz_wezel_wydzialu(baker.make(Wydzial, nazwa="Inny"))[0]
-
-    # Ambiguacja PREFIKSOWA (nazwa jest UNIQUE, więc nie da się dwóch identycznych):
-    # "Katedra" jest prefiksem obu → MultipleObjectsReturned → disambiguacja po
-    # wydziale. ``cel`` wisi pod promowanym wydziałem.
+    inny_root = baker.make(
+        Jednostka, uczelnia=uczelnia, parent=None, nazwa="Inny Wydział"
+    )
     cel = baker.make(
         Jednostka, nazwa="Katedra Alfa", parent=promowany_root, uczelnia=uczelnia
     )
@@ -91,31 +97,23 @@ def test_matchuj_jednostke_disambiguacja_po_promowanym_wydziale(uczelnia):
 
 
 @pytest.mark.django_db
-def test_matchuj_jednostke_dopasowanie_SAMEGO_promowanego_korzenia(uczelnia):
-    """#438: sam promowany KORZEŃ (realna jednostka będąca rootem) też musi być
-    znajdowalny przez swój wydział. Korzeń ma denorm ``wydzial=None``, więc
-    ``Q(wydzial__legacy_wydzial_id=...)`` sam go wyklucza — filtr musi dołączyć
-    ``Q(parent__isnull=True, legacy_wydzial_id=...)``."""
-    w = baker.make(Wydzial, nazwa="Wydział Nauk Ścisłych")
-    inny_w = baker.make(Wydzial, nazwa="Wydział Humanistyczny")
-    # Dwa promowane korzenie prefiksowo pasujące do "Instytut", w różnych wydziałach.
+def test_matchuj_jednostke_dopasowanie_SAMEGO_korzenia_po_wydziale(uczelnia):
+    """#438 Faza C: sam promowany KORZEŃ też musi być znajdowalny przez swój
+    wydział. Korzeń ma denorm ``wydzial=None``, więc filtr musi dołączyć
+    ``Q(pk=root.pk)`` (samego korzenia)."""
     cel = baker.make(
         Jednostka,
         uczelnia=uczelnia,
         parent=None,
-        wydzial=None,
         nazwa="Instytut Matematyki",
-        legacy_wydzial_id=w.id,
-        jest_lustrem=False,
+        poprzednie_nazwy="Wydział Nauk Ścisłych",
     )
     baker.make(
         Jednostka,
         uczelnia=uczelnia,
         parent=None,
-        wydzial=None,
         nazwa="Instytut Filozofii",
-        legacy_wydzial_id=inny_w.id,
-        jest_lustrem=False,
+        poprzednie_nazwy="Wydział Humanistyczny",
     )
 
     got = matchuj_jednostke("Instytut", wydzial="Wydział Nauk Ścisłych")

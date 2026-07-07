@@ -4,7 +4,6 @@ import openpyxl
 from openpyxl.utils.exceptions import InvalidFileException
 
 from bpp.models import Jednostka
-from bpp.models.struktura_konwersja import znajdz_lub_utworz_wezel_wydzialu
 from import_common.core import matchuj_autora, matchuj_jednostke, matchuj_wydzial
 from import_common.exceptions import (
     BadNoOfSheetsException,
@@ -17,18 +16,17 @@ from import_dyscyplin.models import Import_Dyscyplin_Row
 def _matchuj_wydzial_z_cache(wydzial_cache, nazwa_wydzialu):
     """Matchuje wydział z cache lub z bazy.
 
-    Faza B (#438) II-2: ``Import_Dyscyplin_Row.wydzial`` to FK->Jednostka
-    (korzeń drzewa) — zwracamy węzeł-lustro dopasowanego ``Wydzial``, nie
-    sam ``Wydzial``.
+    Faza C (#438): ``Import_Dyscyplin_Row.wydzial`` to FK->Jednostka (korzeń
+    drzewa), a ``matchuj_wydzial`` zwraca już tę jednostkę-korzeń — używamy
+    jej wprost, bez pośrednika węzła-lustra.
     """
     jednostka_wydzialu = wydzial_cache.get(nazwa_wydzialu)
     if not jednostka_wydzialu and nazwa_wydzialu:
         try:
-            wydzial = matchuj_wydzial(nazwa_wydzialu)
+            jednostka_wydzialu = matchuj_wydzial(nazwa_wydzialu)
         except KeyError:
-            wydzial = None
-        if wydzial is not None:
-            jednostka_wydzialu, _ = znajdz_lub_utworz_wezel_wydzialu(wydzial)
+            jednostka_wydzialu = None
+        if jednostka_wydzialu is not None:
             wydzial_cache[nazwa_wydzialu] = jednostka_wydzialu
     return jednostka_wydzialu
 
