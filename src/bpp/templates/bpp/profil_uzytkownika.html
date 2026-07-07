@@ -91,6 +91,12 @@
         <h3>Ustawienia wyświetlania</h3>
         <form method="post" class="callout">
             {% csrf_token %}
+            {{ ustawienia_form.non_field_errors }}
+            {% if ustawienia_form.zwijaj_dlugie_listy_autorow.errors %}
+                <div class="callout alert" role="alert">
+                    {{ ustawienia_form.zwijaj_dlugie_listy_autorow.errors }}
+                </div>
+            {% endif %}
             <label for="{{ ustawienia_form.zwijaj_dlugie_listy_autorow.id_for_label }}">
                 {{ ustawienia_form.zwijaj_dlugie_listy_autorow.label }}
             </label>
