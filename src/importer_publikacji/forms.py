@@ -92,12 +92,12 @@ class VerifyForm(forms.Form):
     """Formularz weryfikacji typu publikacji."""
 
     charakter_formalny = forms.ModelChoiceField(
-        queryset=Charakter_Formalny.objects.all(),
+        queryset=Charakter_Formalny.objects.filter(ukryty=False),
         label="Charakter formalny",
         required=True,
     )
     typ_kbn = forms.ModelChoiceField(
-        queryset=Typ_KBN.objects.all(),
+        queryset=Typ_KBN.objects.filter(ukryty=False),
         label="Typ MNiSW",
         required=True,
     )
