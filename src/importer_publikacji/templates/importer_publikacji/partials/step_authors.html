@@ -157,6 +157,7 @@
                 <th>Jednostka</th>
                 <th>Dyscyplina</th>
                 <th>Źródło dyscypliny</th>
+                <th>Typ</th>
                 <th>Akcje</th>
             </tr>
         </thead>
@@ -302,6 +303,18 @@
                        name="zapisany_jako"
                        id="modal-zapisany-jako"
                        style="width:100%">
+            </div>
+        </div>
+
+        <div class="field-group">
+            <label class="field-label" for="modal-typ-select">
+                Typ autora:
+            </label>
+            <div class="field-input">
+                <select id="modal-typ-select" name="typ" style="width:100%">
+                    <option value="0">autor</option>
+                    <option value="1">redaktor</option>
+                </select>
             </div>
         </div>
 
@@ -858,6 +871,9 @@ $(document).ready(function() {
             $row.data('zapisany-jako') || ''
         );
 
+        // Pre-fill typ autora (autor/redaktor)
+        $('#modal-typ-select').val(String($row.data('typ') || '0'));
+
         // Pre-fill dyscyplina (jeśli była) — full lista załaduje się
         // przez loadModalDyscypliny() niżej.
         var $d = $('#modal-dyscyplina-select');
@@ -961,7 +977,11 @@ $(document).ready(function() {
                     ).val() || '',
                     dyscyplina: $(
                         '#modal-dyscyplina-select'
-                    ).val() || ''
+                    ).val() || '',
+                    zapisany_jako: $(
+                        '#modal-zapisany-jako'
+                    ).val() || '',
+                    typ: $('#modal-typ-select').val() || '0'
                 }
             }
         );
