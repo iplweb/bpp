@@ -161,10 +161,11 @@ W aplikacji `bpp`, jako nowa migracja na aktualnym head (zależność od migracj
    - Przed skasowaniem: **zaloguj pełną treść** wiersza do outputu migracji
      (odzyskiwalność; `DBTEMPLATES_USE_REVERSION` dodatkowo trzyma historię).
    - `wyczysc_cache_dbtemplate(name)` (import z `bpp.dbtemplates_sync`) — wyczyść
-     cache Redis dbtemplates (P2: delete przez model historyczny nie odpala
-     sygnałów). Wołaj przez `transaction.on_commit(...)`, nie w środku
-     transakcji — inaczej okno wyścigu, gdzie żywy worker re-cache'uje starą
-     treść z jeszcze-widocznego wiersza (bounded TTL 300 s, ale on_commit czystsze).
+     cache dbtemplates (P2: delete przez model historyczny nie odpala sygnałów).
+     Wołane **synchronicznie**, jak w `drop_dbtemplate` (proste, testowalne bez
+     capture-on-commit). Okno wyścigu „żywy worker re-cache'uje starą treść z
+     jeszcze-widocznego wiersza" jest bounded TTL cache (≤300 s) — akceptowalne
+     (P2 DROBNY); nie komplikujemy `transaction.on_commit`.
    - `rebuild_instances_of_models(<5 modeli publikacji>)` — **oznacz dirty**
      (INSERT do `DirtyInstance`); **NIE** wołaj synchronicznego `denorms.flush()`
      (decyzja 1(a) — flush robi async kolejka `denorm`; migracja szybka,
