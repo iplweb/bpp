@@ -13,13 +13,13 @@ def test_autor_inline_wydawnictwo_dyscyplina(
     jednostka,
     rok,
     admin_page: Page,
-    live_server,
+    channels_live_server,
     standard_data,
     wyd,
     zrodlo,
 ):
     """Test that author discipline auto-fills when adding autor inline."""
-    url = live_server.url + reverse(f"admin:bpp_wydawnictwo_{wyd}_add")
+    url = channels_live_server.url + reverse(f"admin:bpp_wydawnictwo_{wyd}_add")
     admin_page.goto(url)
     admin_page.wait_for_load_state("domcontentloaded")
 
@@ -27,9 +27,7 @@ def test_autor_inline_wydawnictwo_dyscyplina(
     admin_page.fill("#id_tytul_oryginalny", "123")
 
     if wyd == "ciagle":
-        select_select2_autocomplete(
-            admin_page, "id_zrodlo", zrodlo.nazwa, timeout=4000
-        )
+        select_select2_autocomplete(admin_page, "id_zrodlo", zrodlo.nazwa, timeout=4000)
 
     admin_page.fill("#id_rok", str(rok))
 

@@ -5,6 +5,13 @@ from playwright.sync_api import Page
 
 from bpp.models import Wydawnictwo_Ciagle, Wydawnictwo_Zwarte
 
+# UWAGA: testy w tym pliku celowo uzywaja ``live_server`` (WSGI, watek
+# W PROCESIE testu), NIE ``channels_live_server`` (Daphne, subprocess).
+# Fikstury nizej zmieniaja ``settings.BPP_POKAZUJ_OSWIADCZENIE_KEN``
+# fikstura pytest-django ``settings`` — zmiana zyje tylko w procesie
+# testu; subprocess Daphne ma wlasna kopie ustawien i renderowalby
+# formularz z wartoscia domyslna.
+
 
 @pytest.fixture
 def nie_pokazuj_oswiadczen_ken(settings):

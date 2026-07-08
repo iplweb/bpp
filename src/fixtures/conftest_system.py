@@ -54,27 +54,29 @@ def typy_odpowiedzialnosci(db):
 
 @pytest.fixture(scope="function")
 def tytuly():
+    # Lookup po kluczu naturalnym (skrot jest unique), NIGDY po pk — inaczej
+    # wiersz o tym samym skrocie pod innym pk => INSERT => IntegrityError.
     for elem in fixture("tytul.json"):
-        Tytul.objects.get_or_create(pk=elem["pk"], **elem["fields"])
+        fields = dict(elem["fields"])
+        skrot = fields.pop("skrot")
+        Tytul.objects.get_or_create(skrot=skrot, defaults=fields)
 
 
 @pytest.fixture(scope="function")
 def jezyki():
-    pl, created = Jezyk.objects.get_or_create(pk=1, skrot="pol.", nazwa="polski")
+    pl, created = Jezyk.objects.get_or_create(
+        skrot="pol.", defaults=dict(nazwa="polski")
+    )
     pl.skrot_dla_pbn = "PL"
     pl.skrot_crossref = "pl"
     pl.save()
-    assert pl.pk == 1
 
     ang, created = Jezyk.objects.get_or_create(
-        pk=2,
-        skrot="ang.",
-        nazwa="angielski",
+        skrot="ang.", defaults=dict(nazwa="angielski")
     )
     ang.skrot_dla_pbn = "EN"
     ang.skrot_crossref = "en"
     ang.save()
-    assert ang.pk == 2
 
     for elem in fixture("jezyk.json"):
         Jezyk.objects.get_or_create(**elem["fields"])
@@ -85,8 +87,13 @@ def jezyki():
 @pytest.fixture(scope="function")
 def charaktery_formalne():
     Charakter_Formalny.objects.all().delete()
+    # Lookup po kluczu naturalnym (skrot jest unique), NIGDY po pk (w JSON-ie
+    # pk bywa null) — inaczej wiersz o tym samym skrocie/nazwie pod innym pk
+    # => INSERT => IntegrityError.
     for elem in fixture("charakter_formalny.json"):
-        Charakter_Formalny.objects.get_or_create(pk=elem["pk"], **elem["fields"])
+        fields = dict(elem["fields"])
+        skrot = fields.pop("skrot")
+        Charakter_Formalny.objects.get_or_create(skrot=skrot, defaults=fields)
 
     chf_ksp = Charakter_Formalny.objects.get(skrot="KSP")
     chf_ksp.rodzaj_pbn = const.RODZAJ_PBN_KSIAZKA

@@ -16,17 +16,18 @@ from .const import NORMAL_DJANGO_USER_LOGIN, NORMAL_DJANGO_USER_PASSWORD
 
 
 @pytest.fixture
-def normal_django_user(request, db, django_user_model):
+def normal_django_user(db, django_user_model):
     """A normal Django user"""
+    # Fikstura jest function-scoped na `db` — pytest-django rolluje back
+    # transakcję po teście, więc ręczny teardown (usuwanie usera) jest
+    # zbędny. Wcześniejszy lokalny `fin()` nigdy nie był rejestrowany
+    # przez `request.addfinalizer`, więc był martwym kodem — usunięty.
     try:
         obj = django_user_model.objects.get(username=NORMAL_DJANGO_USER_LOGIN)
     except django_user_model.DoesNotExist:
         obj = django_user_model.objects.create_user(
             username=NORMAL_DJANGO_USER_LOGIN, password=NORMAL_DJANGO_USER_PASSWORD
         )
-
-    def fin():
-        obj.delete()
 
     return obj
 
@@ -102,6 +103,4 @@ def csrf_exempt_django_admin_app(django_app_factory, admin_user):
 @pytest.fixture
 def csrf_exempt_wd_app(django_app_factory, wprowadzanie_danych_user):
     app = django_app_factory(csrf_checks=False)
-    return _webtest_login(
-        app, NORMAL_DJANGO_USER_LOGIN, NORMAL_DJANGO_USER_PASSWORD
-    )
+    return _webtest_login(app, NORMAL_DJANGO_USER_LOGIN, NORMAL_DJANGO_USER_PASSWORD)

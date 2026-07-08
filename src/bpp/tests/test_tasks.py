@@ -37,6 +37,7 @@ def test_zaktualizuj_liczbe_cytowan(uczelnia, wydawnictwo_ciagle, mocker):
 def test_usun_stare_logi_logowania_easyaudit():
     """Kasuje LoginEvent starsze niż 24 mies., zostawia nowsze, nie rusza
     CRUDEvent (historia edycji)."""
+    from django.contrib.contenttypes.models import ContentType
     from easyaudit.models import CRUDEvent, LoginEvent
 
     now = timezone.now()
@@ -46,7 +47,10 @@ def test_usun_stare_logi_logowania_easyaudit():
         event_type=CRUDEvent.CREATE,
         object_repr="x",
         object_id=1,
-        content_type_id=1,
+        # content_type_id na sztywno łamie się po pierwszym flushu na workerze
+        # (content types odtwarzają się na zjitterowanych sekwencjach) — bierzemy
+        # realny ContentType istniejącego modelu.
+        content_type=ContentType.objects.get_for_model(Wydawnictwo_Ciagle),
     )
     # auto_now_add ustawia datetime na teraz — przestawiamy ręcznie przez update()
     cutoff = now - relativedelta(months=EASYAUDIT_LOGINEVENT_RETENTION_MONTHS)

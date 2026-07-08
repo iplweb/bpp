@@ -85,6 +85,15 @@ def test_patent_view(patent):
 
 @pytest.mark.django_db
 def test_wydawnictwo_ciagle_z_dwoma_autorami(wydawnictwo_ciagle_z_dwoma_autorami):
-    assert Rekord.objects.all().count() == 1
-    assert Wydawnictwo_Ciagle_Autor.objects.all().count() == 2
-    assert Autorzy.objects.count() == 2
+    wc = wydawnictwo_ciagle_z_dwoma_autorami
+    # Count-y skope'owane do rekordu utworzonego przez fixture — globalny
+    # count na Rekord/Autorzy zaklada czysta baze, a osierocone wiersze po
+    # ubitych testach transakcyjnych to psuja (audyt sekcja 4). get_for_model
+    # (.get() pod spodem) sam waliduje istnienie i unikalnosc rekordu cache.
+    rekord = Rekord.objects.get_for_model(wc)
+    assert Wydawnictwo_Ciagle_Autor.objects.filter(rekord=wc).count() == 2
+    # filter_rekord przekazuje rekord.pk wprost do lookupu rekord_id;
+    # TupleField.from_db_value zwraca TUPLE, a lookup exact ArrayField
+    # wymaga LISTY (tuple konczy sie bledem "operator nie istnieje:
+    # integer[] = integer" po stronie PG) - stad jawne list().
+    assert Autorzy.objects.filter(rekord_id=list(rekord.pk)).count() == 2

@@ -222,3 +222,6 @@ src/bpp/static/rollbar/
 
 # SDD workflow scratch (briefs, reports, ledger, diffs)
 .superpowers/
+
+# pytest-playwright: katalog na trace/screenshot/video z --tracing itp.
+test-results/
