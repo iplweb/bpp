@@ -61,6 +61,10 @@ jobs:
       # GHCR push obrazu test-runner. GITHUB_TOKEN dziedziczy ten scope
       # tylko gdy job deklaruje go jawnie.
       packages: write
+      # Guard „pomijaj testy rc1 gdy dev zielony" czyta status runu workflow
+      # `Tests` na dev tip przez `gh api .../actions/.../runs` — to wymaga
+      # actions:read (bez tego gh zwróci 403 → fallback na testowanie).
+      actions: read
     env:
       # Ten sam obraz-cache co tests.yml — RC grzeje się z tego samego
       # rejestrowego cache'u i odwrotnie.
@@ -72,6 +76,8 @@ jobs:
       version_tag: ${{ steps.bump.outputs.version_tag }}
       release_ref: ${{ steps.bump.outputs.release_ref }}
       image: ${{ steps.tag.outputs.image }}
+      # 'true' = odpal suitę RC; 'false' = pomiń (rc1 z zielonego dev).
+      should_test: ${{ steps.bump.outputs.should_test }}
     steps:
       - name: Checkout (pełna historia + tagi)
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
@@ -98,6 +104,9 @@ jobs:
 
       - name: Bump RC (nowy cykl lub kolejne -rcN)
         id: bump
+        env:
+          # Dla guardu „pomijaj testy rc1 gdy dev zielony" (gh api niżej).
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
           # Wykryj otwartą gałąź wydania (origin/release/*).
@@ -155,6 +164,36 @@ jobs:
           echo "release_ref=${RELEASE_REF}" >> "$GITHUB_OUTPUT"
           echo "::notice::Kandydat ${PEP} na gałęzi ${RELEASE_REF}"
 
+          # --- Guard: pomiń suitę RC dla rc1 odbitego z ZIELONEGO dev ---
+          # rc1 (nowy cykl, OPEN puste) = origin/dev tip + WYŁĄCZNIE bump wersji
+          # przez bumpver (zero zmian w kodzie/deps/Dockerze — deps identyczne,
+          # bo Step 2 zdjął re-lock). To DOKŁADNIE ten kod, który przed chwilą
+          # przeszedł pełną suitę `Tests` na dev (tests.yml odpala się na każdym
+          # push→dev). Jeśli TEN SHA dev-a ma zielony run `Tests`, re-test RC
+          # jest zdublowany → pomijamy (should_test=false).
+          #
+          # W KAŻDEJ innej sytuacji testujemy (should_test=true):
+          #   - rc2+ (kontynuacja: `git merge origin/dev` wnosi nowy kod),
+          #   - dev tip pending/czerwony/bez runu (np. push docs-only, który
+          #     tests.yml pomija przez paths-ignore),
+          #   - gdy zapytanie do gh api zawiedzie (|| echo 0) — fallback jest
+          #     ZAWSZE w stronę bezpieczeństwa (testuj przy niepewności).
+          # `skip_tests` (input) nadal wymusza pominięcie niezależnie od tego.
+          SHOULD_TEST=true
+          if [ -z "$OPEN" ]; then
+            DEV_SHA=$(git rev-parse origin/dev)
+            GREEN=$(gh api \
+              "repos/${GITHUB_REPOSITORY}/actions/workflows/tests.yml/runs?branch=dev&head_sha=${DEV_SHA}&status=success&per_page=1" \
+              --jq '.total_count' 2>/dev/null || echo 0)
+            if [ "${GREEN:-0}" -ge 1 ]; then
+              SHOULD_TEST=false
+              echo "::notice::rc1 z zielonego dev (${DEV_SHA:0:7}) — pomijam re-test RC (już przetestowany na dev)."
+            else
+              echo "::notice::rc1, ale dev ${DEV_SHA:0:7} nie ma zielonego runu Tests (pending/red/brak) — testuję RC."
+            fi
+          fi
+          echo "should_test=${SHOULD_TEST}" >> "$GITHUB_OUTPUT"
+
           # NIE re-lockujemy uv.lock dla RC. Gałąź dev jest bramkowana jobem
           # `lockfile` (tests.yml → `uv lock --check`), więc uv.lock jest już
           # spójny z pyproject.toml i przetestowany DOKŁADNIE w tej postaci na
@@ -195,13 +234,13 @@ jobs:
       # matrixa mogło go pullnąć zamiast budować 12×. Mirror kroków z
       # tests.yml → prepare-image.
       - name: Set up Docker Buildx
-        if: ${{ !inputs.skip_tests }}
+        if: ${{ !inputs.skip_tests && steps.bump.outputs.should_test == 'true' }}
         uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c # v4.2.0
         with:
           driver: docker-container
 
       - name: Log in to GHCR
-        if: ${{ !inputs.skip_tests }}
+        if: ${{ !inputs.skip_tests && steps.bump.outputs.should_test == 'true' }}
         uses: docker/login-action@af1e73f918a031802d376d3c8bbc3fe56130a9b0 # v4.4.0
         with:
           registry: ghcr.io
@@ -210,14 +249,14 @@ jobs:
 
       - name: Compute image tag
         id: tag
-        if: ${{ !inputs.skip_tests }}
+        if: ${{ !inputs.skip_tests && steps.bump.outputs.should_test == 'true' }}
         env:
           RC_SHA: ${{ steps.bump.outputs.rc_sha }}
         run: |
           echo "image=${IMAGE_REPO}:sha-${RC_SHA}" >> "$GITHUB_OUTPUT"
 
       - name: Build & push obrazu test-runner
-        if: ${{ !inputs.skip_tests }}
+        if: ${{ !inputs.skip_tests && steps.bump.outputs.should_test == 'true' }}
         uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
         with:
           context: .
@@ -231,7 +270,8 @@ jobs:
             DEBIAN_VERSION=${{ env.DEBIAN_VERSION }}
             NODEJS_VERSION=${{ env.NODEJS_VERSION }}
             # RC_SHA (nie github.sha) — busta warstwy COPY src/ + grunt, żeby
-            # obraz zawierał zbumpowane źródła + świeży uv.lock tego RC.
+            # obraz zawierał zbumpowane źródła RC (uv.lock = dev-owy,
+            # niezmieniony — patrz krok bump: RC nie re-lockuje).
             GIT_SHA=${{ steps.bump.outputs.rc_sha }}
           # Rejestrowy cache współdzielony z tests.yml (ten sam IMAGE_REPO).
           cache-from: type=registry,ref=${{ env.IMAGE_REPO }}:cache
@@ -258,7 +298,11 @@ jobs:
     # pullnie zamiast budować.
     name: Testy (sharded)
     needs: prepare
-    if: ${{ !inputs.skip_tests }}
+    # Odpalamy suitę RC gdy NIE wymuszono skip_tests ORAZ prepare zdecydował,
+    # że warto testować (should_test). should_test=false tylko dla rc1 z
+    # zielonego dev — wtedy job jest 'skipped' i bramka `build` niżej i tak
+    # przepuszcza (tests.result == 'skipped'). Patrz guard w kroku `bump`.
+    if: ${{ !inputs.skip_tests && needs.prepare.outputs.should_test == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 35
     permissions:
@@ -343,8 +387,10 @@ jobs:
     name: Build obrazów RC → :staging
     needs: [prepare, tests]
     # BRAMKA: buduj :staging tylko gdy prepare OK oraz testy zielone LUB
-    # pominięte (skip_tests → job `tests` = 'skipped'). Nieudane testy
-    # ('failure') → build się NIE wykonuje, więc :staging nie dostaje złego RC.
+    # pominięte. `tests` = 'skipped' na dwa sposoby: input skip_tests
+    # (awaryjnie) albo guard should_test=false (rc1 z zielonego dev — już
+    # przetestowany na dev). Nieudane testy ('failure') → build się NIE
+    # wykonuje, więc :staging nie dostaje złego RC.
     if: |
       always()
       && needs.prepare.result == 'success'
