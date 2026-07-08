@@ -106,6 +106,7 @@ def _verify_context(request, session, form=None):
         initial = {
             "typ_kbn": session.typ_kbn_id,
             "jezyk": session.jezyk_id,
+            "rok": session.normalized_data.get("year"),
         }
         # Użyj wartości sesji gdy istnieją (user już submitował)
         if session.charakter_formalny_id:

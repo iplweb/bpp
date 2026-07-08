@@ -113,6 +113,16 @@ class VerifyForm(forms.Form):
         label="Wydawnictwo zwarte (książka/rozdział)",
         required=False,
     )
+    rok = forms.IntegerField(
+        label="Rok publikacji",
+        required=True,
+        min_value=1900,
+        max_value=2100,
+        help_text=(
+            "Uzupełniony automatycznie ze źródła — popraw, jeśli błędny "
+            "lub brakuje (np. rekordy CrossRef bez roku wydania)."
+        ),
+    )
 
 
 class SourceForm(forms.Form):
