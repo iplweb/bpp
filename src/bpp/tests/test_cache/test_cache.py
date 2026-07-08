@@ -158,6 +158,25 @@ def test_deletion_cache(doktorat):
 
 
 @pytest.mark.django_db
+def test_autorzy_filter_rekord_rekordem_pobranym_z_bazy(
+    wydawnictwo_ciagle_z_dwoma_autorami, denorms
+):
+    """``filter_rekord()`` z Rekordem POBRANYM z bazy (pk = tuple).
+
+    Regresja: ``TupleField.from_db_value`` zwraca TUPLE, a lookup
+    ``rekord_id=<tuple>`` na kolumnie FK przechodzi przez
+    ``RelatedExact.get_normalized_value``, które traktuje tuplę jako
+    wartość WIELOKOLUMNOWĄ (composite FK) i bierze ``pk[0]`` — do SQL
+    idzie pojedynczy integer i PostgreSQL odpowiada „operator nie
+    istnieje: integer[] = integer". Lista przechodzi normalną ścieżką
+    adaptacji ArrayField i działa.
+    """
+    denorms.flush()
+    rekord = Rekord.objects.get_for_model(wydawnictwo_ciagle_z_dwoma_autorami)
+    assert Autorzy.objects.filter_rekord(rekord).count() == 2
+
+
+@pytest.mark.django_db
 def test_wca_delete_cache(wydawnictwo_ciagle_z_dwoma_autorami, denorms):
     """Czy skasowanie obiektu Wydawnictwo_Ciagle_Autor zmieni opis
     wydawnictwa ciągłego w Rekordy materialized view?"""

@@ -8,7 +8,17 @@ from bpp.models.fields import TupleField
 
 class AutorzyManager(models.Manager):
     def filter_rekord(self, rekord):
-        return self.filter(rekord_id=rekord.pk)
+        pk = rekord.pk
+        if isinstance(pk, tuple):
+            # ``TupleField.from_db_value`` zwraca tuple, a lookup
+            # ``rekord_id=<tuple>`` na kolumnie FK przechodzi przez
+            # ``RelatedExact.get_normalized_value``, które traktuje tuplę
+            # jako wartość wielokolumnową (composite FK) i wysyła do SQL
+            # samo ``pk[0]`` → PG: „operator nie istnieje:
+            # integer[] = integer". Lista idzie normalną ścieżką
+            # adaptacji ArrayField.
+            pk = list(pk)
+        return self.filter(rekord_id=pk)
 
 
 class AutorzyBase(models.Model):
