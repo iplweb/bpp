@@ -44,6 +44,7 @@ KLUCZ_DYSCYPLINY_NAUKOWE = "dyscypliny_naukowe"
 KLUCZ_IDENTYFIKATORY = "identyfikatory"
 KLUCZ_METRYKI = "metryki"
 KLUCZ_STOPNIE = "stopnie"
+KLUCZ_RADON = "radon_osiagniecia"
 KLUCZ_POPRZEDNIE_NAZWISKA = "poprzednie_nazwiska"
 KLUCZ_OPIS = "opis"
 KLUCZ_CYTOWANIA = "cytowania"
@@ -116,6 +117,12 @@ KATALOG_SEKCJI = (
     TypSekcji(KLUCZ_IDENTYFIKATORY, "Identyfikatory", KOLUMNA_LEWA, template_only=True),
     TypSekcji(KLUCZ_METRYKI, "Metryki ewaluacyjne", KOLUMNA_LEWA, template_only=True),
     TypSekcji(KLUCZ_STOPNIE, "Stopnie naukowe", KOLUMNA_LEWA, template_only=True),
+    TypSekcji(
+        KLUCZ_RADON,
+        "Osiągnięcia (RAD-on)",
+        KOLUMNA_LEWA,
+        template_only=True,
+    ),
     TypSekcji(
         KLUCZ_POPRZEDNIE_NAZWISKA,
         "Poprzednie nazwiska",
