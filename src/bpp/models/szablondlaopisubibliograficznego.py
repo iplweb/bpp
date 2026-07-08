@@ -1,5 +1,7 @@
 from django.contrib.contenttypes.models import ContentType
+from django.core.exceptions import ValidationError
 from django.db import models
+from django.template import TemplateDoesNotExist
 from django.template.loader import get_template
 from django.utils.functional import cached_property
 
@@ -8,10 +10,10 @@ class SzablonDlaOpisuBibliograficznegoManager(models.Manager):
     def get_for_model(self, model):
         model = ContentType.objects.get_for_model(model)
         try:
-            return self.get(model=model).template.name
+            return self.get(model=model).nazwa_szablonu
         except SzablonDlaOpisuBibliograficznego.DoesNotExist:
             try:
-                return self.get(model=None).template.name
+                return self.get(model=None).nazwa_szablonu
             except SzablonDlaOpisuBibliograficznego.DoesNotExist:
                 return
 
@@ -31,11 +33,12 @@ class SzablonDlaOpisuBibliograficznegoManager(models.Manager):
             Patent,
         ]
 
-    def get_models_for_template(self, template):
-        """Zwraca listę wszystkich modeli wykorzystujących dany szablon."""
-
+    def get_models_for_szablon(self, nazwa_szablonu):
+        """Lista modeli mapowanych na dany szablon (po nazwie)."""
         res = list(
-            self.filter(template=template).values_list("model", flat=True).distinct()
+            self.filter(nazwa_szablonu=nazwa_szablonu)
+            .values_list("model", flat=True)
+            .distinct()
         )
         if None in res:
             return self.all_templated_models
@@ -62,19 +65,38 @@ class SzablonDlaOpisuBibliograficznego(models.Model):
         blank=True,
     )
 
-    template = models.ForeignKey("dbtemplates.Template", on_delete=models.PROTECT)
+    nazwa_szablonu = models.CharField(
+        max_length=255,
+        default="opis_bibliograficzny.html",
+        help_text=(
+            "Nazwa szablonu Django ładowanego z dysku, np. opis_bibliograficzny.html"
+        ),
+    )
 
     def __str__(self):
         if self.model_id is not None:
-            return f"Powiązanie szablonu {self.template} z modelem {self.model}"
-        return f"Powiązanie szablonu {self.template} z każdym modelem"
+            return f"Powiązanie szablonu {self.nazwa_szablonu} z modelem {self.model}"
+        return f"Powiązanie szablonu {self.nazwa_szablonu} z każdym modelem"
 
     class Meta:
         verbose_name = "powiązanie szablonu dla opisu bibliograficznego"
         verbose_name_plural = "powiązania szablonów dla opisu bibliograficznego"
 
+    def clean(self):
+        try:
+            get_template(self.nazwa_szablonu)
+        except TemplateDoesNotExist as e:
+            raise ValidationError(
+                {
+                    "nazwa_szablonu": (
+                        f"Szablon '{self.nazwa_szablonu}' nie istnieje "
+                        f"(ani na dysku, ani w dbtemplates)."
+                    )
+                }
+            ) from e
+
     def render(self, praca):
-        template = get_template(self.template.name)
+        template = get_template(self.nazwa_szablonu)
 
         return (
             template.render(
@@ -97,6 +119,6 @@ class SzablonDlaOpisuBibliograficznego(models.Model):
         )
 
     def get_models_for_this_szablon(self):
-        return SzablonDlaOpisuBibliograficznego.objects.get_models_for_template(
-            self.template
+        return SzablonDlaOpisuBibliograficznego.objects.get_models_for_szablon(
+            self.nazwa_szablonu
         )
