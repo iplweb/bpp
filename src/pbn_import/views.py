@@ -100,9 +100,10 @@ class ImportDashboardView(LoginRequiredMixin, ImportPermissionMixin, TemplateVie
         context["uczelnia"] = uczelnia
         context["uzywaj_wydzialow"] = uczelnia.uzywaj_wydzialow if uczelnia else False
 
-        # Gate-check multi-hosted: obca jednostka MUSI istnieć i być podpięta do
-        # wydziału tej uczelni, inaczej import padnie na triggerze spójności.
-        # Sygnalizujemy to już przy wejściu na stronę (baner w szablonie).
+        # Gate-check multi-hosted: obca jednostka MUSI istnieć, należeć do tej
+        # uczelni i mieć skupia_pracownikow=False (jej pozycja w strukturze /
+        # wydział nas nie obchodzi). Sygnalizujemy to już przy wejściu na
+        # stronę (baner w szablonie).
         context["obca_jednostka_problem"] = (
             sprawdz_obca_jednostka(uczelnia) if uczelnia else None
         )
@@ -199,8 +200,9 @@ class StartImportView(LoginRequiredMixin, ImportPermissionMixin, View):
         autorów/prace do encji obcej uczelni (cichy wyciek danych między
         tenantami). Egzekwujemy nawet przy zmanipulowanym formularzu (encje
         zawężamy też w GET, ale POST musi się bronić sam). Dodatkowo obca
-        jednostka uczelni musi być skonfigurowana, bo krok institution_setup
-        padłby na triggerze ``bpp_jednostka_wydzial_sprawdz_uczelnia_id``.
+        jednostka uczelni musi być poprawnie skonfigurowana (patrz
+        ``sprawdz_obca_jednostka``) — bez niej import nie ma gdzie umieścić
+        autorów spoza uczelni.
 
         Zwraca listę komunikatów błędów (pustą, gdy wszystko OK).
         """

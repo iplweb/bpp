@@ -129,6 +129,22 @@ def test_obca_jednostka_helper_creates_uczelnia_scoped(uczelnia):
     assert obca.skupia_pracownikow is False
     assert obca.uczelnia == uczelnia
     assert uczelnia.obca_jednostka == obca
+    # Bez jawnego `wydzial` helper NIE podpina obcej jednostki do wydziału —
+    # obca zostaje czystym węzłem-root (uczelnie bez wydziałów są OK).
+    assert not Jednostka_Rodzic.objects.filter(
+        jednostka=obca,
+        parent__uczelnia=uczelnia,
+    ).exists()
+
+
+def test_obca_jednostka_helper_links_when_wydzial_passed(uczelnia):
+    # Ścieżka importera: gdy podamy jawny `wydzial`, helper podpina obcą
+    # jednostkę do jego węzła-lustra (zachowana spójność drzewa struktury).
+    wydzial, _ = znajdz_lub_utworz_wydzial_domyslny(uczelnia)
+
+    obca, created = znajdz_lub_utworz_obca_jednostke(uczelnia, wydzial=wydzial)
+
+    assert created is True
     assert Jednostka_Rodzic.objects.filter(
         jednostka=obca,
         parent__uczelnia=uczelnia,
@@ -232,12 +248,14 @@ def test_sprawdz_obca_jednostka_skupia_pracownikow(uczelnia):
     assert sprawdz_obca_jednostka(uczelnia) is not None
 
 
-def test_sprawdz_obca_jednostka_bez_wydzialu(uczelnia):
+def test_sprawdz_obca_jednostka_bez_wydzialu_przechodzi(uczelnia):
+    # Uczelnia bez wydziałów: obca jednostka NIE musi być podpięta do wydziału.
+    # Wystarczy poprawny FK + sanity (należy do uczelni, skupia_pracownikow=False).
     obca = baker.make(Jednostka, uczelnia=uczelnia, skupia_pracownikow=False)
     uczelnia.obca_jednostka = obca
     uczelnia.save(update_fields=["obca_jednostka"])
 
-    assert sprawdz_obca_jednostka(uczelnia) is not None
+    assert sprawdz_obca_jednostka(uczelnia) is None
 
 
 def test_institution_importer_does_not_collide_with_other_uczelnia_obca(session, db):
