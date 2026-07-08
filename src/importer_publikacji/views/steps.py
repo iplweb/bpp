@@ -14,19 +14,27 @@ import json
 from django.shortcuts import render
 from django.urls import reverse
 
+from bpp import const
 from bpp.const import CHARAKTER_OGOLNY_ROZDZIAL
 from bpp.models import Wydawnictwo_Ciagle, Wydawnictwo_Zwarte
+from bpp.punktacja_sugestia import (
+    RodzajBraku,
+    SugestiaPunktacji,
+    zaproponuj_punkty_ciagle,
+    zaproponuj_punkty_zwarte,
+)
 from crossref_bpp.core import Komparator
 from crossref_bpp.duplikaty import ostrzez_o_zduplikowanych_zrodlach
 from import_common.normalization import normalize_doi
 
 from ..crossref_fields import categorize_crossref_fields
 from ..dspace_fields import categorize_dspace_fields
-from ..forms import SourceForm, VerifyForm
+from ..forms import PunktacjaForm, SourceForm, VerifyForm
 from ..models import ImportedAuthor
 from .authors import _orcid_settable_qs
 from .helpers import (
     STEP_AUTHORS,
+    STEP_PUNKTACJA,
     STEP_REVIEW,
     STEP_SOURCE,
     STEP_VERIFY,
@@ -377,3 +385,95 @@ def _render_review_full(request, session, error=None):
     if error:
         ctx["error"] = error
     return _render_full_page(request, STEP_REVIEW, ctx)
+
+
+def _oblicz_sugestie(session):
+    """Policz sugestię punktacji dla sesji (ciągłe/zwarte) + poziom wydawcy.
+
+    Zwraca ``(SugestiaPunktacji, poziom_wydawcy|None)``. Nie dotyka rekordu —
+    klasyfikacja z danych sesji (F2).
+    """
+    rok = session.normalized_data.get("year")
+
+    if not session.jest_wydawnictwem_zwartym:
+        return zaproponuj_punkty_ciagle(session.zrodlo, rok), None
+
+    wydawca = session.wydawca
+    if wydawca is None:
+        return (
+            SugestiaPunktacji(
+                None,
+                rodzaj_braku=RodzajBraku.BRAK_WYDAWCY,
+                powod_braku="Brak wydawcy — nie można zaproponować punktacji",
+            ),
+            None,
+        )
+    if not rok:
+        return (
+            SugestiaPunktacji(
+                None,
+                rodzaj_braku=RodzajBraku.BRAK_ROKU,
+                powod_braku="Brak roku publikacji",
+            ),
+            None,
+        )
+
+    poziom = wydawca.get_tier(rok)
+    cf = session.charakter_formalny
+    matched = session.authors.exclude(matched_autor=None)
+    sugestia = zaproponuj_punkty_zwarte(
+        poziom=poziom,
+        ksiazka=bool(cf and cf.charakter_sloty == const.CHARAKTER_SLOTY_KSIAZKA),
+        rozdzial=bool(cf and cf.charakter_sloty == const.CHARAKTER_SLOTY_ROZDZIAL),
+        autorstwo=matched.filter(typ_ogolny=const.TO_AUTOR).exists(),
+        redakcja=matched.filter(typ_ogolny=const.TO_REDAKTOR).exists(),
+    )
+    return sugestia, poziom
+
+
+def _punktacja_context(request, session, form=None):
+    from bpp.models import Punktacja_Zrodla
+
+    sugestia, poziom = _oblicz_sugestie(session)
+    rok = session.normalized_data.get("year")
+
+    punktacja_zrodla = None
+    if not session.jest_wydawnictwem_zwartym and session.zrodlo and rok:
+        punktacja_zrodla = Punktacja_Zrodla.objects.filter(
+            zrodlo=session.zrodlo, rok=rok
+        ).first()
+
+    ostrzezenie_hst = any(
+        a.matched_dyscyplina.dyscyplina_hst
+        for a in session.authors.exclude(matched_dyscyplina=None)
+    )
+
+    if form is None:
+        zapisane = session.matched_data.get("punkty_kbn")
+        initial = {
+            "punkty_kbn": zapisane if zapisane not in (None, "") else sugestia.punkty
+        }
+        form = PunktacjaForm(initial=initial)
+
+    return {
+        "session": session,
+        "form": form,
+        "sugestia": sugestia,
+        "punktacja_zrodla": punktacja_zrodla,
+        "poziom_wydawcy": poziom,
+        "rok": rok,
+        "ostrzezenie_hst": ostrzezenie_hst,
+    }
+
+
+def _render_punktacja_step(request, session, form=None):
+    ctx = _punktacja_context(request, session, form)
+    url = reverse("importer_publikacji:punktacja", kwargs={"session_id": session.pk})
+    response = render(request, STEP_PUNKTACJA, ctx)
+    response = _with_breadcrumbs_oob(response, request, session)
+    return _push_url(response, url)
+
+
+def _render_punktacja_full(request, session, form=None):
+    ctx = _punktacja_context(request, session, form)
+    return _render_full_page(request, STEP_PUNKTACJA, ctx)

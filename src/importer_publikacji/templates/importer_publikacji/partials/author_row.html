@@ -10,7 +10,8 @@
     data-jednostka-name="{{ author.matched_jednostka|default:'' }}"
     data-dyscyplina-pk="{{ author.matched_dyscyplina.pk|default:'' }}"
     data-dyscyplina-name="{{ author.matched_dyscyplina|default:'' }}"
-    data-zapisany-jako="{{ author.zapisany_jako|default:'' }}">
+    data-zapisany-jako="{{ author.zapisany_jako|default:'' }}"
+    data-typ="{{ author.typ_ogolny }}">
     <td>{{ author.order|add:1 }}</td>
     <td>{{ author.display_name }}</td>
     <td>
@@ -70,6 +71,7 @@
             </small>
         {% endif %}
     </td>
+    <td>{% if author.typ_ogolny == 1 %}redaktor{% else %}autor{% endif %}</td>
     <td>
         {% if row_error %}
             <div class="callout alert" style="padding:0.4rem;margin-bottom:0.4rem">

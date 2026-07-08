@@ -3,7 +3,7 @@ from django import forms
 from django.contrib.auth import get_user_model
 from django.db.models import Q
 
-from bpp.const import GR_WPROWADZANIE_DANYCH
+from bpp.const import GR_WPROWADZANIE_DANYCH, TO_AUTOR, TO_REDAKTOR
 from bpp.models import (
     Autor,
     Charakter_Formalny,
@@ -152,6 +152,16 @@ class SourceForm(forms.Form):
     )
 
 
+class PunktacjaForm(forms.Form):
+    """Formularz kroku punktacji — jedno pole, edytowalne."""
+
+    punkty_kbn = forms.DecimalField(
+        label="Punkty MNiSW",
+        required=False,
+        min_value=0,
+    )
+
+
 class AuthorMatchForm(forms.Form):
     """Formularz dopasowania pojedynczego autora."""
 
@@ -173,6 +183,16 @@ class AuthorMatchForm(forms.Form):
     zapisany_jako = forms.CharField(
         label="Zapisany jako",
         max_length=512,
+        required=False,
+    )
+    typ = forms.TypedChoiceField(
+        label="Typ autora",
+        choices=[
+            (TO_AUTOR, "autor"),
+            (TO_REDAKTOR, "redaktor"),
+        ],
+        coerce=int,
+        empty_value=None,
         required=False,
     )
 

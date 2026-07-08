@@ -83,6 +83,11 @@ urlpatterns = [
         name="authors-confirm",
     ),
     path(
+        "<int:session_id>/punktacja/",
+        views.PunktacjaView.as_view(),
+        name="punktacja",
+    ),
+    path(
         "<int:session_id>/review/",
         views.ReviewView.as_view(),
         name="review",
