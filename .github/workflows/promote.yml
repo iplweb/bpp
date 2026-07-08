@@ -114,9 +114,18 @@ jobs:
           set -euo pipefail
           # --set-version (NIE --tag final): --tag final dodatkowo bumpnąłby
           # BUILD (1394→1395), rozjeżdżając wersję finalną z testowanym RC.
-          uv run bumpver update --no-fetch --commit --no-push \
+          #
+          # UWAGA: `uvx` (izolowany tool env), a NIE `uv run`. `uv run` na
+          # gołym hoście runnera synchronizowałby CAŁY projekt bpp (300+
+          # pakietów) tylko po to, by odpalić utility do wersjonowania — a to
+          # buduje natywne rozszerzenia ze źródeł (pycairo przez
+          # xhtml2pdf→svglib→rlpycairo) i wywala się na runnerze bez nagłówków
+          # cairo. bumpver/towncrier czytają tylko ./pyproject.toml i edytują
+          # pliki — nie potrzebują env projektu. (Ten sam wzorzec i uzasadnienie
+          # co w release-candidate.yml.)
+          uvx bumpver update --no-fetch --commit --no-push \
             --set-version "v${BASE}"
-          uv run towncrier build --yes || echo "towncrier: brak newsfragmentów."
+          uvx towncrier build --yes || echo "towncrier: brak newsfragmentów."
           git add -A
           git commit -m "Changelog dla v${BASE}" || echo "Brak zmian changelogu."
 
