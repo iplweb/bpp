@@ -469,6 +469,29 @@ def remove_polish_diacritics(s: str) -> str:
     return s
 
 
+def poprzednie_nazwiska_token_regex(nazwisko: str) -> str:
+    r"""Wzorzec regex (Postgres ARE) dopasowujący ``nazwisko`` jako pełny
+    człon listy ``poprzednie_nazwiska`` (wartości oddzielone przecinkami).
+
+    Dopasowuje CAŁY człon (z opcjonalnymi spacjami wokół), a nie podłańcuch —
+    dzięki temu "Gawlik" NIE trafia w "Nowak-Gawlikowski". Przeznaczony do
+    użycia z lookupem Django ``__iregex`` (Postgres operator ``~*``), np.::
+
+        Q(poprzednie_nazwiska__iregex=poprzednie_nazwiska_token_regex(nazwisko))
+
+    Człon złożony ("Gawlik-Dziki") jest dopasowywany jako całość — myślnik
+    jest częścią członu, nie separatorem. Separatorem jest wyłącznie przecinek.
+
+    >>> import re
+    >>> rx = poprzednie_nazwiska_token_regex("Gawlik")
+    >>> bool(re.search(rx, "Kowalska, Gawlik-Dziki", re.IGNORECASE))
+    False
+    >>> bool(re.search(rx, "Kowalska, Gawlik", re.IGNORECASE))
+    True
+    """
+    return r"(^|,)\s*" + re.escape(nazwisko) + r"\s*(,|$)"
+
+
 def normalize_nazwisko_do_porownania(s: str) -> str:
     """Normalizuje nazwisko do porównania.
 
