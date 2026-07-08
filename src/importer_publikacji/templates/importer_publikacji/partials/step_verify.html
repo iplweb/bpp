@@ -94,12 +94,6 @@
                     <td>{{ session.normalized_data.doi }}</td>
                 </tr>
             {% endif %}
-            {% if session.normalized_data.year %}
-                <tr>
-                    <th>Rok</th>
-                    <td>{{ session.normalized_data.year }}</td>
-                </tr>
-            {% endif %}
             {% if session.normalized_data.source_title %}
                 <tr>
                     <th>Źródło</th>
@@ -373,6 +367,16 @@
                     {{ form.jest_wydawnictwem_zwartym }}
                     {{ form.jest_wydawnictwem_zwartym.label }}
                 </label>
+            </div>
+        </div>
+
+        <div class="grid-x grid-margin-x">
+            <div class="cell medium-6">
+                <label for="{{ form.rok.id_for_label }}">
+                    {{ form.rok.label }} *
+                </label>
+                {{ form.rok }}
+                <p class="help-text">{{ form.rok.help_text }}</p>
             </div>
         </div>
 

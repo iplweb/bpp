@@ -201,6 +201,11 @@ class VerifyView(ImporterPermissionMixin, View):
         session.jest_wydawnictwem_zwartym = form.cleaned_data[
             "jest_wydawnictwem_zwartym"
         ]
+        # Rok wpisany/poprawiony przez operatora → jedyne źródło prawdy o roku.
+        # Ustawiamy go tu (najwcześniejszy edytowalny krok), żeby działały
+        # kroki zależne od roku: dopasowanie dyscyplin autorów, punktacja
+        # źródła, sugestia punktów, tworzenie rekordu.
+        session.normalized_data["year"] = form.cleaned_data["rok"]
         session.status = ImportSession.Status.VERIFIED
         session.modified_by = request.user
         session.save()
