@@ -1,13 +1,12 @@
 from django.core.serializers.json import DjangoJSONEncoder
 from django.db import models
+from liveops.models import LiveOperation
 
 from bpp.fields import YearField
 from bpp.models import Zrodlo
-from long_running.models import Operation
-from long_running.notification_mixins import ASGINotificationMixin
 
 
-class ImportPunktacjiZrodel(ASGINotificationMixin, Operation):
+class ImportPunktacjiZrodel(LiveOperation):
     rok = YearField(null=True, blank=True)
     plik = models.FileField(upload_to="protected/import_punktacji_zrodel/")
     zapisz_zmiany_do_bazy = models.BooleanField(
@@ -25,13 +24,34 @@ class ImportPunktacjiZrodel(ASGINotificationMixin, Operation):
     class Meta:
         verbose_name = "import punktacji źródeł"
         verbose_name_plural = "importy punktacji źródeł"
+        ordering = ("-created_on",)
 
-    def perform(self):
+    def run(self, p):
+        # Punkt wejścia liveops (dawniej Operation.perform()). `p` to obiekt
+        # Progress — przekazujemy go do rdzenia, który raportuje postęp
+        # (p.track) i loguje błędy (p.log). Na końcu finalizujemy operację
+        # przez p.result(...) z podsumowaniem — trafia ono do result_context
+        # i jest renderowane w szablonie wyniku (import_punktacji_zrodel_result).
         from import_punktacji_zrodel.core import analyze_jcr_file
 
-        analyze_jcr_file(self.plik.path, self)
+        analyze_jcr_file(self.plik.path, self, p)
 
-    def on_reset(self):
+        wiersze = self.get_details_set()
+        p.result(
+            {
+                "total": wiersze.count(),
+                "do_aktualizacji": wiersze.filter(wymaga_zmian=True).count(),
+                "niedopasowane": wiersze.filter(zrodlo__isnull=True).count(),
+                "duplikaty": wiersze.filter(is_duplicate=True).count(),
+                "byl_dry_run": not self.zapisz_zmiany_do_bazy,
+                "rok": self.rok,
+            }
+        )
+
+    def on_restart(self):
+        # Hook liveops: wołany przez RestartView (oraz ZatwierdzImportView)
+        # przed resetem stanu i ponownym zakolejkowaniem — odpowiednik dawnego
+        # long_running on_reset(). Kasuje wiersze poprzedniego przebiegu.
         self.get_details_set().delete()
 
     def get_details_set(self):
