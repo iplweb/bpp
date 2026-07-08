@@ -12,6 +12,7 @@ from django.db.models.functions import Lower
 from bpp.models import Autor, Autor_Jednostka, Jednostka, Tytul
 from import_common.normalization import (
     polish_english_first_name_variants,
+    poprzednie_nazwiska_token_regex,
     remove_polish_diacritics,
 )
 
@@ -108,10 +109,25 @@ def _try_match_autor_by_direct_ids(
     )
 
 
+def _poprzednie_nazwiska_q(nazwisko: str, prefix: str = "") -> Q:
+    """Q dopasowujące ``nazwisko`` jako pełny człon ``poprzednie_nazwiska``.
+
+    Pole ``poprzednie_nazwiska`` to lista rozdzielona przecinkami; dopasowujemy
+    dokładny człon (nie podłańcuch — patrz ``poprzednie_nazwiska_token_regex``),
+    żeby częste nazwiska nie generowały fałszywych trafień (FD#407). ``prefix``
+    pozwala celować w powiązany model (np. ``"autor__"``). Puste ``nazwisko``
+    daje Q, które nigdy nie trafia.
+    """
+    if not nazwisko:
+        return Q(pk__in=[])
+    field = f"{prefix}poprzednie_nazwiska"
+    return Q(**{f"{field}__iregex": poprzednie_nazwiska_token_regex(nazwisko)})
+
+
 def _build_autor_name_query(nazwisko: str, imiona: str) -> Q:
     """Buduje podstawowe zapytanie Q dla nazwiska i imion."""
     return Q(
-        Q(nazwisko__iexact=nazwisko) | Q(poprzednie_nazwiska__icontains=nazwisko),
+        Q(nazwisko__iexact=nazwisko) | _poprzednie_nazwiska_q(nazwisko),
         imiona__iexact=imiona,
     )
 
@@ -161,7 +177,7 @@ def _try_match_autor_in_jednostka(
 
     base_query = Q(
         Q(autor__nazwisko__iexact=nazwisko)
-        | Q(autor__poprzednie_nazwiska__icontains=nazwisko),
+        | _poprzednie_nazwiska_q(nazwisko, prefix="autor__"),
         autor__imiona__iexact=imiona,
     )
     queries = [base_query]
@@ -208,12 +224,18 @@ def _try_match_autor_by_polish_english_variants(
     for v in variants_norm:
         imie_q |= Q(im_n=v) | Q(im_n__startswith=v + " ")
 
+    # Fold nazwiska po aktualnym ORAZ poprzednich nazwiskach (FD#407).
+    nazwisko_q = Q(naz_n=nazwisko_norm) | Q(
+        poprz_n__iregex=poprzednie_nazwiska_token_regex(nazwisko_norm)
+    )
+
     qs = (
         Autor.objects.annotate(
             naz_n=Lower(Unaccent("nazwisko")),
+            poprz_n=Lower(Unaccent("poprzednie_nazwiska")),
             im_n=Lower(Unaccent("imiona")),
         )
-        .filter(naz_n=nazwisko_norm)
+        .filter(nazwisko_q)
         .filter(imie_q)
     )
 
@@ -256,7 +278,7 @@ def _try_match_autor_with_orcid_or_tytul(imiona: str, nazwisko: str) -> Autor | 
 def _strategia_iexact_pelne(imiona: str, nazwisko: str) -> dict[int, tuple[float, str]]:
     """Pełne ``imiona`` + nazwisko/poprzednie_nazwiska (iexact)."""
     qs = Autor.objects.filter(
-        Q(nazwisko__iexact=nazwisko) | Q(poprzednie_nazwiska__icontains=nazwisko),
+        Q(nazwisko__iexact=nazwisko) | _poprzednie_nazwiska_q(nazwisko),
         imiona__iexact=imiona,
     )
     return {
@@ -277,11 +299,11 @@ def _strategia_iexact_pierwsze_imie(
     # w bazie więcej niż w danych (qs2). Dedup z _strategia_iexact_pelne
     # wybierze potem pewnosc=1.0 dla pełnego matchu.
     qs = Autor.objects.filter(
-        Q(nazwisko__iexact=nazwisko) | Q(poprzednie_nazwiska__icontains=nazwisko),
+        Q(nazwisko__iexact=nazwisko) | _poprzednie_nazwiska_q(nazwisko),
         imiona__iexact=pierwsze,
     )
     qs2 = Autor.objects.filter(
-        Q(nazwisko__iexact=nazwisko) | Q(poprzednie_nazwiska__icontains=nazwisko),
+        Q(nazwisko__iexact=nazwisko) | _poprzednie_nazwiska_q(nazwisko),
         imiona__istartswith=pierwsze + " ",
     )
     pks = set(qs.values_list("pk", flat=True)) | set(qs2.values_list("pk", flat=True))
@@ -307,12 +329,20 @@ def _strategia_polish_english(
     for v in variants_norm:
         imie_q |= Q(im_n=v) | Q(im_n__startswith=v + " ")
 
+    # Nazwisko dopasowujemy po foldzie (Unaccent) — zarówno po aktualnym
+    # nazwisku, jak i po poprzednich nazwiskach (FD#407); poprzednie jako
+    # dokładny człon listy CSV (iregex), nie podłańcuch.
+    nazwisko_q = Q(naz_n=nazwisko_norm) | Q(
+        poprz_n__iregex=poprzednie_nazwiska_token_regex(nazwisko_norm)
+    )
+
     qs = (
         Autor.objects.annotate(
             naz_n=Lower(Unaccent("nazwisko")),
+            poprz_n=Lower(Unaccent("poprzednie_nazwiska")),
             im_n=Lower(Unaccent("imiona")),
         )
-        .filter(naz_n=nazwisko_norm)
+        .filter(nazwisko_q)
         .filter(imie_q)
     )
     return {

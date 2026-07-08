@@ -48,6 +48,19 @@ def _split_compound(nazwisko: str | None) -> list[str]:
     return [p for p in normalized.split("-") if p]
 
 
+def _split_poprzednie(poprzednie: str | None) -> list[str]:
+    """Rozbija ``poprzednie_nazwiska`` (lista CSV) na znormalizowane człony.
+
+    Każdy człon normalizowany jak nazwisko główne (``_normalize``: myślniki
+    Unicode → ASCII, strip, lower). Puste człony pomijane. Człon złożony
+    ("gawlik-dziki") pozostaje w całości — hyphen-split robimy dopiero przy
+    budowie bucketów, spójnie z nazwiskiem głównym.
+    """
+    if not poprzednie:
+        return []
+    return [norm for raw in poprzednie.split(",") if (norm := _normalize(raw))]
+
+
 def _aggregate_publications(model, autorzy_meta: dict[int, dict]) -> None:
     """Doliczy do meta agregaty z jednej tabeli ``*_Autor``.
 
@@ -91,11 +104,12 @@ def build_autor_meta() -> dict[int, dict]:
     Łącznie 6 zapytań, niezależnie od liczby autorów.
     """
     autorzy_meta: dict[int, dict] = {}
-    # NOTE: include `poprzednie_nazwiska`, `pokazuj_poprzednie_nazwiska`
-    # and `pseudonim` because Autor.__str__ reads them — without them
-    # `str(autor)` (used by callers such as
-    # ``_run_general_phase``) triggers a deferred field load per author
-    # (2+ queries per author = O(N) hot-path SQL).
+    # NOTE: `poprzednie_nazwiska` jest używane do matchingu (FD#407 — patrz
+    # `_split_poprzednie` / `build_buckets`) ORAZ czytane przez Autor.__str__.
+    # `pokazuj_poprzednie_nazwiska` i `pseudonim` dołączamy, bo Autor.__str__
+    # je czyta — bez nich `str(autor)` (używane przez callerów takich jak
+    # ``_run_general_phase``) wywoła deferred field load per autor
+    # (2+ zapytania per autor = O(N) SQL na hot-path).
     autor_qs = Autor.objects.only(
         "pk",
         "nazwisko",
@@ -112,6 +126,7 @@ def build_autor_meta() -> dict[int, dict]:
             "obj": a,
             "nazwisko_norm": _normalize(a.nazwisko),
             "nazwisko_parts": _split_compound(a.nazwisko),
+            "poprzednie_nazwiska_norm": _split_poprzednie(a.poprzednie_nazwiska),
             "imiona_norm": [_normalize(i) for i in (a.imiona or "").split() if i],
             "ma_orcid": bool(a.orcid),
             "orcid_value": a.orcid or None,
@@ -152,25 +167,38 @@ def build_autor_meta() -> dict[int, dict]:
     return autorzy_meta
 
 
+def _dodaj_do_bucketow(
+    buckets: dict[str, list[int]], pk: int, nazwisko_norm: str, parts: list[str]
+) -> None:
+    """Dopisuje ``pk`` do bucketu pod pełnym nazwiskiem, pod każdym członem
+    złożonego (split na ``-``) oraz pod odwróconym nazwiskiem dwuczłonowym."""
+    if not nazwisko_norm:
+        return
+    buckets[nazwisko_norm].append(pk)
+    for part in parts:
+        if len(part) > 2 and part != nazwisko_norm:
+            buckets[part].append(pk)
+    if len(parts) == 2:
+        reversed_name = "-".join(reversed(parts))
+        if reversed_name != nazwisko_norm:
+            buckets[reversed_name].append(pk)
+
+
 def build_buckets(meta: dict[int, dict]) -> dict[str, list[int]]:
     """Buckety ``{nazwisko_norm -> [pk1, pk2, ...]}`` dla pair-generation.
 
     Autor trafia do bucketu pod swoim znormalizowanym nazwiskiem,
     pod każdym członem nazwiska złożonego (split na ``-``) oraz pod
     odwróconym nazwiskiem złożonym (np. ``Gal-Cisoń`` → ``cisoń-gal``).
+
+    FD#407: autor trafia RÓWNIEŻ do bucketów swoich poprzednich nazwisk (i ich
+    członów), żeby rekordy sprzed i po zmianie nazwiska — nawet bez wspólnego
+    członu (panieńskie → po mężu) — wpadły do wspólnego bucketu i zostały
+    porównane w ``analiza_pary_meta``.
     """
     buckets: dict[str, list[int]] = defaultdict(list)
     for pk, m in meta.items():
-        nazwisko_norm = m["nazwisko_norm"]
-        if not nazwisko_norm:
-            continue
-        buckets[nazwisko_norm].append(pk)
-        parts = m["nazwisko_parts"]
-        for part in parts:
-            if len(part) > 2 and part != nazwisko_norm:
-                buckets[part].append(pk)
-        if len(parts) == 2:
-            reversed_name = "-".join(reversed(parts))
-            if reversed_name != nazwisko_norm:
-                buckets[reversed_name].append(pk)
+        _dodaj_do_bucketow(buckets, pk, m["nazwisko_norm"], m["nazwisko_parts"])
+        for prev in m.get("poprzednie_nazwiska_norm") or []:
+            _dodaj_do_bucketow(buckets, pk, prev, [p for p in prev.split("-") if p])
     return dict(buckets)
