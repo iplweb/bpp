@@ -7,6 +7,8 @@ from decimal import Decimal
 
 import pytest
 from django.conf import settings
+from django.db import connection
+from django.test.utils import CaptureQueriesContext
 from django.urls import reverse
 from django.utils import translation
 from model_bakery import baker
@@ -15,7 +17,7 @@ from multiseek.views import MULTISEEK_SESSION_KEY, MULTISEEK_SESSION_KEY_REMOVED
 
 from bpp.models import Wydawnictwo_Ciagle
 from bpp.models.cache import Rekord
-from bpp.tests.util import any_ciagle
+from bpp.tests.util import any_ciagle, any_zwarte
 from bpp.views.multiseek_export import (
     MULTISEEK_EXPORT_OPIS_XLSX_HEADERS,
     _plain_opis_bibliograficzny,
@@ -435,6 +437,28 @@ def test_export_dane_csv_ma_zrodlo_i_typ_mnisw(
 
 
 @pytest.mark.django_db
+def test_export_dane_csv_ksiazka_bez_zrodla_ma_puste_pole(
+    logged_in_client, standard_data, denorms
+):
+    """Wydawnictwo_Zwarte (książka/monografia) nie ma pola ``zrodlo`` — w
+    cache Rekord to ``zrodlo=None``. Każda książka w produkcji trafia w tę
+    gałąź _iter_export_rows (``zrodlo.nazwa if zrodlo is not None else
+    ""``); żaden dotychczasowy test jej nie ćwiczył."""
+    any_zwarte(tytul_oryginalny=f"{EXPORT_TITLE_PREFIX} - książka")
+    denorms.flush()
+    _set_multiseek_title_filter(logged_in_client)
+
+    response = logged_in_client.get(
+        reverse("multiseek-export", kwargs={"export_format": "csv"})
+    )
+
+    assert response.status_code == 200
+    rows = list(csv.DictReader(io.StringIO(response.content.decode("utf-8"))))
+    assert len(rows) == 1
+    assert rows[0]["zrodlo"] == ""
+
+
+@pytest.mark.django_db
 def test_export_dane_xlsx_ma_zrodlo_i_typ_mnisw(
     logged_in_client, multiseek_export_rekord
 ):
@@ -460,28 +484,61 @@ def test_export_dane_xlsx_ma_zrodlo_i_typ_mnisw(
     assert rows[1][8] == multiseek_export_rekord.typ_kbn.nazwa
 
 
-@pytest.mark.django_db
-def test_export_dane_xlsx_nie_ma_n_plus_1(
-    logged_in_client, standard_data, denorms, django_assert_max_num_queries
-):
-    # Kilka rekordów o różnych źródłach i typach — gdyby był N+1,
-    # liczba zapytań rosłaby z liczbą wierszy. Zmierzone lokalnie: 15
-    # zapytań niezależnie od liczby rekordów (3 vs 8) — próg z marginesem.
-    for _ in range(3):
-        any_ciagle(tytul_oryginalny=f"{EXPORT_TITLE_PREFIX} - n plus 1")
-    denorms.flush()
-    _set_multiseek_title_filter(logged_in_client)
+def _make_n_plus_1_rows(prefix, count):
+    """``count`` rekordów, każdy z WŁASNYM zrodlo/typ_kbn/charakter_formalny.
 
-    with django_assert_max_num_queries(18):
-        response = logged_in_client.get(
-            reverse("multiseek-export", kwargs={"export_format": "xlsx"})
-        )
+    ``any_ciagle()`` bez jawnych kwargs tworzy te FK-i od zera przy każdym
+    wywołaniu (model_bakery nie współdzieli/nie cache'uje instancji FK
+    między wywołaniami) — dzięki temu ewentualny N+1 na dostępie do tych
+    pól faktycznie odpali osobne zapytanie na wiersz, zamiast schować się
+    za pamięcią podręczną kluczoną po (współdzielonej) wartości FK.
+    """
+    for i in range(count):
+        any_ciagle(tytul_oryginalny=f"{prefix} - {i}")
 
+
+def _query_count_for_export(client, url):
+    # Rozgrzewka: pierwsze zapytanie w sesji odpala dodatkowy, jednorazowy
+    # SELECT z niepowiązanego middleware'u password_policies (sprawdzenie
+    # historii haseł raz na sesję) — bez tego call'a porównanie N1 vs N2
+    # byłoby fałszywie różne o 1 zapytanie, mimo braku N+1 w eksporcie.
+    client.get(url)
+    with CaptureQueriesContext(connection) as ctx:
+        response = client.get(url)
     assert response.status_code == 200
+    return response, len(ctx.captured_queries)
 
+
+@pytest.mark.django_db
+def test_export_dane_xlsx_nie_ma_n_plus_1(logged_in_client, standard_data, denorms):
+    """Liczba zapytań SQL dla eksportu 'dane' jest STAŁA względem liczby
+    wierszy — to jest definicja braku N+1. Samo sprawdzenie górnego progu
+    (max_num_queries) przepuściłoby częściowy N+1 (np. +1 zapytanie na
+    wiersz przy dużym marginesie); porównanie N1 vs N2 tego nie przepuści.
+    """
     from openpyxl import load_workbook
 
+    prefix = f"{EXPORT_TITLE_PREFIX} - n plus 1"
+    url = reverse("multiseek-export", kwargs={"export_format": "xlsx"})
+
+    _make_n_plus_1_rows(prefix, 2)
+    denorms.flush()
+    _set_multiseek_title_filter(logged_in_client, title_prefix=prefix)
+
+    response, n1_queries = _query_count_for_export(logged_in_client, url)
     load_workbook(io.BytesIO(response.content))
+
+    _make_n_plus_1_rows(prefix, 4)  # razem 6 rekordów
+    denorms.flush()
+
+    response, n2_queries = _query_count_for_export(logged_in_client, url)
+    load_workbook(io.BytesIO(response.content))
+
+    assert n2_queries == n1_queries, (
+        "Liczba zapytań SQL rośnie wraz z liczbą wierszy "
+        f"({n1_queries} dla 2 wierszy → {n2_queries} dla 6 wierszy) — N+1."
+    )
+    assert n1_queries <= 18  # sensowny górny limit, z marginesem
 
 
 def test_plain_opis_bibliograficzny_czysci_html():
@@ -492,6 +549,23 @@ def test_plain_opis_bibliograficzny_czysci_html():
     assert "<" not in opis and ">" not in opis
     assert "Źródła" in opis
     assert "  " not in opis  # spacje skolapsowane, <br> nie sklejone
+    # <br> (tag blokowy) MUSI zostać zamieniony na spację, a nie po prostu
+    # zniknąć — inaczej "2026" i "s." skleją się w "2026s." (usunięcie kroku
+    # MULTISEEK_REPORT_TITLE_HTML_BREAK_RE.sub(" ", ...) nie zostałoby
+    # wykryte przez samo "  " not in opis, bo sklejenie nie tworzy podwójnej
+    # spacji).
+    assert "2026 s. 1-2" in opis
+
+
+def test_plain_opis_bibliograficzny_dekoduje_encje_html():
+    value = "Kowalski J. &amp; Nowak T. &oacute;wczesny"
+
+    opis = _plain_opis_bibliograficzny(value)
+
+    assert "&amp;" not in opis
+    assert "&" in opis
+    assert "&oacute;" not in opis
+    assert "ó" in opis
 
 
 def test_plain_opis_bibliograficzny_puste_wejscie_bez_fallbacku():
@@ -594,24 +668,32 @@ def test_multiseek_export_opis_print_removed_wspolistnieja(
 
 @pytest.mark.django_db
 def test_multiseek_export_opis_xlsx_nie_ma_n_plus_1(
-    logged_in_client, standard_data, denorms, django_assert_max_num_queries
+    logged_in_client, standard_data, denorms
 ):
-    # Analogicznie do test_export_dane_xlsx_nie_ma_n_plus_1 — próg stały
-    # względem liczby wierszy. Zmierzone lokalnie: 15 zapytań niezależnie
-    # od liczby rekordów (3 vs 8) — próg 18 z marginesem.
-    for _ in range(3):
-        any_ciagle(tytul_oryginalny=f"{EXPORT_TITLE_PREFIX} - opis n plus 1")
-    denorms.flush()
-    _set_multiseek_title_filter(logged_in_client)
-
-    with django_assert_max_num_queries(18):
-        response = logged_in_client.get(
-            reverse("multiseek-export", kwargs={"export_format": "xlsx"})
-            + "?wariant=opis"
-        )
-
-    assert response.status_code == 200
-
+    """Analogicznie do test_export_dane_xlsx_nie_ma_n_plus_1 — liczba zapytań
+    SQL musi być stała względem liczby wierszy (nie tylko poniżej progu)."""
     from openpyxl import load_workbook
 
+    prefix = f"{EXPORT_TITLE_PREFIX} - opis n plus 1"
+    url = (
+        reverse("multiseek-export", kwargs={"export_format": "xlsx"}) + "?wariant=opis"
+    )
+
+    _make_n_plus_1_rows(prefix, 2)
+    denorms.flush()
+    _set_multiseek_title_filter(logged_in_client, title_prefix=prefix)
+
+    response, n1_queries = _query_count_for_export(logged_in_client, url)
     load_workbook(io.BytesIO(response.content))
+
+    _make_n_plus_1_rows(prefix, 4)  # razem 6 rekordów
+    denorms.flush()
+
+    response, n2_queries = _query_count_for_export(logged_in_client, url)
+    load_workbook(io.BytesIO(response.content))
+
+    assert n2_queries == n1_queries, (
+        "Liczba zapytań SQL rośnie wraz z liczbą wierszy "
+        f"({n1_queries} dla 2 wierszy → {n2_queries} dla 6 wierszy) — N+1."
+    )
+    assert n1_queries <= 18  # sensowny górny limit, z marginesem

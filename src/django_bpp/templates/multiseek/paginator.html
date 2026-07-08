@@ -30,40 +30,47 @@
             {% endif %}
         {% endif %}
         {% if request.user.is_authenticated and paginator_count > 0 and paginator_count <= multiseek_export_max_rows %}
-            {% url "multiseek-export" "csv" as multiseek_export_csv_url %}
-            {% url "multiseek-export" "xlsx" as multiseek_export_xlsx_url %}
             {# paginator.html is included twice per page (top + bottom, see #}
             {# common-results.html) — 'magellan' is only set ("no") on the #}
             {# bottom include, so it doubles as a reliable top/bottom flag. #}
             {# Used here to keep the dropdown-pane id/data-toggle unique #}
             {# when both instances render on the same page. #}
             <li>
-                <a data-toggle="multiseek-export-menu{% if magellan %}-bottom{% endif %}">
-                    <i class="fi-download"></i> Eksport <span aria-hidden="true">▾</span>
-                </a>
+                <button type="button" class="button dropdown"
+                        data-toggle="multiseek-export-menu{% if magellan %}-bottom{% endif %}"
+                        aria-haspopup="menu">
+                    <i class="fi-download"></i> Eksport
+                </button>
             </li>
-            <div class="dropdown-pane" id="multiseek-export-menu{% if magellan %}-bottom{% endif %}"
-                 data-dropdown data-auto-focus="true">
-                <ul class="menu vertical" style="margin-bottom:0;">
-                    <li>
-                        <a href="{{ multiseek_export_csv_url }}{% if print_removed %}?print-removed=1{% endif %}">
-                            <i class="fi-download"></i> CSV
-                        </a>
-                    </li>
-                    <li>
-                        <a href="{{ multiseek_export_xlsx_url }}{% if print_removed %}?print-removed=1{% endif %}">
-                            <i class="fi-download"></i> XLS: dane
-                        </a>
-                    </li>
-                    <li>
-                        <a href="{{ multiseek_export_xlsx_url }}?wariant=opis{% if print_removed %}&print-removed=1{% endif %}">
-                            <i class="fi-download"></i> XLS: opis bibliograficzny
-                        </a>
-                    </li>
-                </ul>
-            </div>
         {% endif %}
     </ul>
+    {% if request.user.is_authenticated and paginator_count > 0 and paginator_count <= multiseek_export_max_rows %}
+        {% url "multiseek-export" "csv" as multiseek_export_csv_url %}
+        {% url "multiseek-export" "xlsx" as multiseek_export_xlsx_url %}
+        {# <ul class="menu"> może zawierać wyłącznie <li> — dropdown-pane #}
+        {# jest tu świadomie poza <ul> (siostra), zgodnie ze wzorcem z #}
+        {# multiseek/index.html (przycisk .dropdown wyzwala pane po id). #}
+        <div class="dropdown-pane" id="multiseek-export-menu{% if magellan %}-bottom{% endif %}"
+             data-dropdown data-auto-focus="true">
+            <ul class="menu vertical" style="margin-bottom:0;">
+                <li>
+                    <a href="{{ multiseek_export_csv_url }}{% if print_removed %}?print-removed=1{% endif %}">
+                        <i class="fi-download"></i> CSV
+                    </a>
+                </li>
+                <li>
+                    <a href="{{ multiseek_export_xlsx_url }}{% if print_removed %}?print-removed=1{% endif %}">
+                        <i class="fi-download"></i> XLS: dane
+                    </a>
+                </li>
+                <li>
+                    <a href="{{ multiseek_export_xlsx_url }}?wariant=opis{% if print_removed %}&print-removed=1{% endif %}">
+                        <i class="fi-download"></i> XLS: opis bibliograficzny
+                    </a>
+                </li>
+            </ul>
+        </div>
+    {% endif %}
     {% if paginator.num_pages > 1 %}
     <div class="multiseek-pagination-pager">
         {% paginate %}
