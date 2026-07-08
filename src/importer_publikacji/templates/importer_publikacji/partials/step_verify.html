@@ -37,37 +37,6 @@
         </div>
     {% endif %}
 
-    {% if pbn_result %}
-        {% if pbn_result.pbn_mongo_id %}
-            <div class="callout success">
-                <span class="fi-check"></span>
-                <strong>Znaleziono odpowiednik w PBN.</strong>
-                PBN UID:
-                <code>{{ pbn_result.pbn_mongo_id }}</code>
-                {% if pbn_result.pbn_url %}
-                    &mdash;
-                    <a href="{{ pbn_result.pbn_url }}"
-                       target="_blank"
-                       rel="noopener">
-                        Otwórz w PBN
-                    </a>
-                {% endif %}
-            </div>
-        {% elif pbn_result.pbn_needs_auth %}
-            <div class="callout secondary">
-                <span class="fi-info"></span>
-                Nie można sprawdzić odpowiednika
-                w PBN &mdash; wymagana autoryzacja.
-                Zaloguj się do PBN w menu głównym.
-            </div>
-        {% elif pbn_result.pbn_error %}
-            <div class="callout secondary">
-                <span class="fi-info"></span>
-                {{ pbn_result.pbn_error }}
-            </div>
-        {% endif %}
-    {% endif %}
-
     {% if suggest_crossref %}
         <div class="callout warning">
             <span class="fi-info"></span>

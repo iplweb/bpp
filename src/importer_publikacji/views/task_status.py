@@ -18,6 +18,8 @@ TERMINAL_STATUSES = {
     ImportSession.Status.VERIFIED,
     ImportSession.Status.SOURCE_MATCHED,
     ImportSession.Status.AUTHORS_MATCHED,
+    ImportSession.Status.PUNKTACJA,
+    ImportSession.Status.PBN_CHECK,
     ImportSession.Status.REVIEW,
     ImportSession.Status.COMPLETED,
     ImportSession.Status.CANCELLED,
