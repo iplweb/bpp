@@ -1,8 +1,7 @@
 import pytest
 from dbtemplates.models import Template
-from django.urls import reverse
-
 from django.contrib.contenttypes.models import ContentType
+from django.urls import reverse
 
 from bpp.models import Wydawnictwo_Ciagle
 from bpp.models.szablondlaopisubibliograficznego import SzablonDlaOpisuBibliograficznego

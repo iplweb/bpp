@@ -10,13 +10,11 @@ class SzablonDlaOpisuBibliograficznegoAdmin(admin.ModelAdmin):
     empty_value_display = "(każdy)"
 
     def save_model(self, request, obj: SzablonDlaOpisuBibliograficznego, form, change):
-        super(SzablonDlaOpisuBibliograficznegoAdmin, self).save_model(
-            request, obj, form, change
-        )
+        super().save_model(request, obj, form, change)
         rebuild_instances_of_models(obj.get_models_for_this_szablon())
 
     def delete_model(self, request, obj: SzablonDlaOpisuBibliograficznego):
-        super(SzablonDlaOpisuBibliograficznegoAdmin, self).delete_model(request, obj)
+        super().delete_model(request, obj)
         rebuild_instances_of_models(
             SzablonDlaOpisuBibliograficznego.objects.all_templated_models
         )

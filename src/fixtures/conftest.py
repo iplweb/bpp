@@ -74,4 +74,3 @@ def pytest_collection_modifyitems(items):
             # ponowień ma pierwszeństwo.
             if item.get_closest_marker("flaky") is None:
                 item.add_marker(pytest.mark.flaky(reruns=1))
-
