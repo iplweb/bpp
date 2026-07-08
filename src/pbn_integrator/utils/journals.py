@@ -120,8 +120,15 @@ def integruj_zrodla(disable_progress_bar=False):
     Args:
         disable_progress_bar: Whether to disable progress bar.
     """
+    # Strumieniowo (server-side cursor) zamiast materializować wszystkie
+    # źródła-bez-PBN naraz do RAM: przy pełnym imporcie takich źródeł bywają
+    # dziesiątki tysięcy. ``count`` liczymy osobnym zapytaniem, bo iterator
+    # nie ma ``len()``. Migawka kursora jest niezależna od zapisów ``pbn_uid``
+    # w pętli, więc wszystkie wiersze zostają wydane mimo mutacji.
+    qs = Zrodlo.objects.filter(pbn_uid_id=None)
     for zrodlo in pbar(
-        Zrodlo.objects.filter(pbn_uid_id=None),
+        qs.iterator(chunk_size=1000),
+        count=qs.count(),
         label="Integracja zrodel",
         disable_progress_bar=disable_progress_bar,
     ):
