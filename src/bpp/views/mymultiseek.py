@@ -22,6 +22,7 @@ from bpp.views.multiseek_export import (
     MULTISEEK_DEFAULT_REPORT_TITLE,
     MULTISEEK_EXPORT_DANE_FIELDS,
     MULTISEEK_EXPORT_HEADERS,  # noqa: F401 - re-eksport, uzywane w testach
+    MULTISEEK_EXPORT_OPIS_FIELDS,
     MULTISEEK_EXPORT_XLSX_HEADERS,  # noqa: F401 - re-eksport, uzywane w testach
     XLSX_WORKSHEET_TITLE_MAX_LENGTH,  # noqa: F401 - re-eksport, uzywane w testach
     csv_export_response,
@@ -197,6 +198,13 @@ class MyMultiseekExport(LoginRequiredMixin, MyMultiseekResults):
         if export_format not in {"csv", "xlsx"}:
             return HttpResponseBadRequest("Nieznany format eksportu.")
 
+        wariant = request.GET.get("wariant", "dane")
+        if wariant not in {"dane", "opis"}:
+            wariant = "dane"
+        # opis to format czytelny (raportowy) — CSV opisu nie robimy
+        if export_format == "csv":
+            wariant = "dane"
+
         queryset = self.get_queryset_for_current_mode()
         count = queryset.count()
         if count > MULTISEEK_EXPORT_MAX_ROWS:
@@ -206,6 +214,14 @@ class MyMultiseekExport(LoginRequiredMixin, MyMultiseekResults):
             )
 
         report_title = _multiseek_report_title(request)
+        if wariant == "opis":
+            queryset = (
+                queryset.select_related(None)
+                .select_related("charakter_formalny", "typ_kbn")
+                .only(*MULTISEEK_EXPORT_OPIS_FIELDS)
+            )
+            return xlsx_export_response(queryset, request, report_title, "opis")
+
         queryset = (
             queryset.select_related(None)
             .select_related("zrodlo", "typ_kbn")
@@ -213,7 +229,7 @@ class MyMultiseekExport(LoginRequiredMixin, MyMultiseekResults):
         )
         if export_format == "csv":
             return csv_export_response(queryset, request, report_title)
-        return xlsx_export_response(queryset, request, report_title)
+        return xlsx_export_response(queryset, request, report_title, "dane")
 
 
 def _normalize_session_removed(request):

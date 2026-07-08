@@ -16,6 +16,10 @@ from multiseek.views import MULTISEEK_SESSION_KEY, MULTISEEK_SESSION_KEY_REMOVED
 from bpp.models import Wydawnictwo_Ciagle
 from bpp.models.cache import Rekord
 from bpp.tests.util import any_ciagle
+from bpp.views.multiseek_export import (
+    MULTISEEK_EXPORT_OPIS_XLSX_HEADERS,
+    _plain_opis_bibliograficzny,
+)
 from bpp.views.mymultiseek import (
     MULTISEEK_DEFAULT_REPORT_TITLE,
     MULTISEEK_EXPORT_HEADERS,
@@ -471,6 +475,139 @@ def test_export_dane_xlsx_nie_ma_n_plus_1(
     with django_assert_max_num_queries(18):
         response = logged_in_client.get(
             reverse("multiseek-export", kwargs={"export_format": "xlsx"})
+        )
+
+    assert response.status_code == 200
+
+    from openpyxl import load_workbook
+
+    load_workbook(io.BytesIO(response.content))
+
+
+def test_plain_opis_bibliograficzny_czysci_html():
+    value = "Tytuł <i>Źródła</i> 2026<br>s. 1-2"
+
+    opis = _plain_opis_bibliograficzny(value)
+
+    assert "<" not in opis and ">" not in opis
+    assert "Źródła" in opis
+    assert "  " not in opis  # spacje skolapsowane, <br> nie sklejone
+
+
+def test_plain_opis_bibliograficzny_puste_wejscie_bez_fallbacku():
+    assert _plain_opis_bibliograficzny("") == ""
+    assert _plain_opis_bibliograficzny(None) == ""
+
+
+@pytest.mark.django_db
+def test_multiseek_export_opis_xlsx_uklad(logged_in_client, multiseek_export_rekord):
+    from openpyxl import load_workbook
+
+    _set_multiseek_title_filter(logged_in_client)
+
+    response = logged_in_client.get(
+        reverse("multiseek-export", kwargs={"export_format": "xlsx"}) + "?wariant=opis"
+    )
+
+    assert response.status_code == 200
+    wb = load_workbook(io.BytesIO(response.content))
+    ws = wb.active
+    headers = [c.value for c in ws[1]]
+    assert headers == list(MULTISEEK_EXPORT_OPIS_XLSX_HEADERS)
+    assert ws["A2"].value == 1  # numeracja Lp.
+    assert ws.freeze_panes == "A2"
+
+
+@pytest.mark.django_db
+def test_multiseek_export_opis_xlsx_wiersz(logged_in_client, multiseek_export_rekord):
+    from openpyxl import load_workbook
+
+    _set_multiseek_title_filter(logged_in_client)
+
+    response = logged_in_client.get(
+        reverse("multiseek-export", kwargs={"export_format": "xlsx"}) + "?wariant=opis"
+    )
+
+    assert response.status_code == 200
+    ws = load_workbook(io.BytesIO(response.content)).active
+    rows = list(ws.iter_rows(values_only=True))
+    assert rows[1] == (
+        1,
+        _plain_opis_bibliograficzny(multiseek_export_rekord.opis_bibliograficzny_cache),
+        1.23,
+        42,
+        multiseek_export_rekord.charakter_formalny.nazwa,
+        multiseek_export_rekord.typ_kbn.nazwa,
+    )
+
+
+@pytest.mark.django_db
+def test_multiseek_export_opis_csv_degraduje_do_dane(
+    logged_in_client, multiseek_export_rekord
+):
+    _set_multiseek_title_filter(logged_in_client)
+
+    response = logged_in_client.get(
+        reverse("multiseek-export", kwargs={"export_format": "csv"}) + "?wariant=opis"
+    )
+
+    assert response.status_code == 200
+    header = response.content.decode("utf-8").splitlines()[0]
+    assert header.split(",")[0] == "tytul_oryginalny"  # układ dane, nie opis
+
+
+@pytest.mark.django_db
+def test_multiseek_export_nieznany_wariant_to_dane(
+    logged_in_client, multiseek_export_rekord
+):
+    from openpyxl import load_workbook
+
+    _set_multiseek_title_filter(logged_in_client)
+
+    response = logged_in_client.get(
+        reverse("multiseek-export", kwargs={"export_format": "xlsx"})
+        + "?wariant=cokolwiek"
+    )
+
+    assert response.status_code == 200
+    ws = load_workbook(io.BytesIO(response.content)).active
+    assert ws[1][0].value == "Tytuł oryginalny"  # układ dane
+
+
+@pytest.mark.django_db
+def test_multiseek_export_opis_print_removed_wspolistnieja(
+    logged_in_client, multiseek_export_pair
+):
+    visible, removed = multiseek_export_pair
+    _set_multiseek_title_filter(logged_in_client)
+    session = logged_in_client.session
+    session[MULTISEEK_SESSION_KEY_REMOVED] = [removed.pk]
+    session.save()
+
+    response = logged_in_client.get(
+        reverse("multiseek-export", kwargs={"export_format": "xlsx"})
+        + "?wariant=opis&print-removed=1"
+    )
+
+    assert response.status_code == 200
+
+
+@pytest.mark.django_db
+def test_multiseek_export_opis_xlsx_nie_ma_n_plus_1(
+    logged_in_client, standard_data, denorms, django_assert_max_num_queries
+):
+    # Analogicznie do test_export_dane_xlsx_nie_ma_n_plus_1 — próg stały
+    # względem liczby wierszy. Zmierzone lokalnie: 15 zapytań niezależnie
+    # od liczby rekordów (3 vs 8) — próg 18 z marginesem.
+    for _ in range(3):
+        any_ciagle(tytul_oryginalny=f"{EXPORT_TITLE_PREFIX} - opis n plus 1")
+    denorms.flush()
+    _set_multiseek_title_filter(logged_in_client)
+
+    with django_assert_max_num_queries(18):
+        response = logged_in_client.get(
+            reverse("multiseek-export", kwargs={"export_format": "xlsx"})
+            + "?wariant=opis"
         )
 
     assert response.status_code == 200

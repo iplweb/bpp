@@ -66,6 +66,24 @@ MULTISEEK_EXPORT_DANE_FIELDS = (
     "pbn_uid_id",
 )
 
+MULTISEEK_EXPORT_OPIS_XLSX_HEADERS = (
+    "Lp.",
+    "Opis bibliograficzny",
+    "IF",
+    "PK",
+    "Charakter",
+    "Typ MNiSW/MEiN",
+)
+
+MULTISEEK_EXPORT_OPIS_FIELDS = (
+    "id",
+    "opis_bibliograficzny_cache",
+    "impact_factor",
+    "punkty_kbn",
+    "charakter_formalny__nazwa",
+    "typ_kbn__nazwa",
+)
+
 EXPORT_FILENAME_INVALID_CHARS_RE = re.compile(r'[<>:"/\\|?*\x00-\x1f]')
 MULTISEEK_REPORT_TITLE_HTML_BREAK_RE = re.compile(
     r"</?(?:br|hr|p|div|h[1-6])\b[^>]*>",
@@ -92,6 +110,20 @@ def plain_multiseek_report_title(value):
     value = MULTISEEK_REPORT_TITLE_HTML_BREAK_RE.sub(" ", value)
     value = html.unescape(strip_tags(value))
     return _single_line_text(value) or MULTISEEK_DEFAULT_REPORT_TITLE
+
+
+def _plain_opis_bibliograficzny(value):
+    """opis_bibliograficzny_cache (HTML) -> jednoliniowy czysty tekst.
+
+    Bez fallbacku na tytuł domyślny (w przeciwieństwie do
+    plain_multiseek_report_title): puste wejście -> "". Sanityzacja formuł
+    dzieje się później, w sanitize_xlsx_row — tu jej NIE wołamy.
+    """
+    if not value:
+        return ""
+    value = MULTISEEK_REPORT_TITLE_HTML_BREAK_RE.sub(" ", value)
+    value = html.unescape(strip_tags(value))
+    return _single_line_text(value)
 
 
 def _export_filename(export_format, report_title):
@@ -163,6 +195,20 @@ def _iter_export_rows(queryset, request):
         )
 
 
+def _iter_export_rows_opis(queryset, request):
+    for lp, rekord in enumerate(queryset.iterator(chunk_size=1000), start=1):
+        charakter = rekord.charakter_formalny
+        typ_kbn = rekord.typ_kbn
+        yield (
+            lp,
+            _plain_opis_bibliograficzny(rekord.opis_bibliograficzny_cache),
+            rekord.impact_factor,
+            rekord.punkty_kbn,
+            charakter.nazwa if charakter is not None else "",
+            typ_kbn.nazwa if typ_kbn is not None else "",
+        )
+
+
 def _xlsx_columns_where(headers, predicate):
     """1-based indeksy kolumn XLSX, których nagłówek spełnia predykat."""
     return [i for i, h in enumerate(headers, start=1) if predicate(h)]
@@ -198,7 +244,7 @@ def csv_export_response(queryset, request, report_title):
     return response
 
 
-def xlsx_export_response(queryset, request, report_title):
+def xlsx_export_response(queryset, request, report_title, wariant="dane"):
     from openpyxl import Workbook
     from openpyxl.styles import Alignment, Font, PatternFill
 
@@ -208,11 +254,20 @@ def xlsx_export_response(queryset, request, report_title):
         worksheet_create_table,
     )
 
+    if wariant == "opis":
+        headers = MULTISEEK_EXPORT_OPIS_XLSX_HEADERS
+        rows = _iter_export_rows_opis(queryset, request)
+        freeze = "A2"
+    else:
+        headers = MULTISEEK_EXPORT_XLSX_HEADERS
+        rows = _iter_export_rows(queryset, request)
+        freeze = "B1"
+
     workbook = Workbook()
     worksheet = workbook.active
     worksheet.title = _xlsx_worksheet_title(report_title)
-    worksheet.append(MULTISEEK_EXPORT_XLSX_HEADERS)
-    for row in _iter_export_rows(queryset, request):
+    worksheet.append(headers)
+    for row in rows:
         worksheet.append(sanitize_xlsx_row(row))
 
     header_fill = PatternFill("solid", fgColor="1F4E78")
@@ -222,9 +277,8 @@ def xlsx_export_response(queryset, request, report_title):
         cell.font = header_font
         cell.alignment = Alignment(horizontal="center", vertical="center")
 
-    headers = MULTISEEK_EXPORT_XLSX_HEADERS
     url_cols = _xlsx_columns_where(headers, lambda h: h.startswith("Link"))
-    if_cols = _xlsx_columns_where(headers, lambda h: h == "Impact Factor")
+    if_cols = _xlsx_columns_where(headers, lambda h: h in ("Impact Factor", "IF"))
     pk_cols = _xlsx_columns_where(headers, lambda h: h == "PK")
 
     for row in worksheet.iter_rows(min_row=2):
@@ -235,7 +289,7 @@ def xlsx_export_response(queryset, request, report_title):
     _apply_xlsx_number_format(worksheet, pk_cols, "0.00")
     _apply_xlsx_hyperlinks(worksheet, url_cols)
 
-    worksheet.freeze_panes = "B1"
+    worksheet.freeze_panes = freeze
     worksheet_columns_autosize(worksheet)
     if worksheet.max_row > 1:
         worksheet_create_table(worksheet, title="MultiseekExport")
