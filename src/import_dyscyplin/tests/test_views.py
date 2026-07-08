@@ -32,9 +32,9 @@ def wyslij_i_przeanalizuj(wd_app, plik):
     return i
 
 
-def test_CreateImport_DyscyplinView_bledny_plik(wd_app, conftest_py, transactional_db):
+def test_CreateImport_DyscyplinView_bledny_plik(wd_app, zly_plik, transactional_db):
     with transaction.atomic():
-        wyslij_i_przeanalizuj(wd_app, conftest_py)
+        wyslij_i_przeanalizuj(wd_app, zly_plik)
 
     assert Import_Dyscyplin.objects.all().count() == 1
     i = Import_Dyscyplin.objects.all().first()

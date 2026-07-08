@@ -10,8 +10,60 @@
 # (dev + testy). Po rozdzieleniu strażnik jest zbędny: ten plik ładuje się
 # tylko dla testów, więc nakładamy je bezwarunkowo.
 
+import os
+import tempfile
+
 from .local import *  # noqa
-from .local import INSTALLED_APPS, LIVEOPS, MIDDLEWARE  # noqa
+from .local import CACHES, INSTALLED_APPS, LIVEOPS, MIDDLEWARE  # noqa
+
+# MEDIA_ROOT per-proces (worker xdist). Domyślnie testy dziedziczyły
+# MEDIA_ROOT = <repo>/src/media z local.py — JEDEN wspólny katalog w drzewie
+# źródeł dla wszystkich workerów. Skutki (audyt
+# docs/deweloper/audyt-testy-rownoleglosc-2026-07.md, pkt 1): kolizje plików
+# między workerami (maskowane sufiksami dedupe FileSystemStorage — ~1800
+# wyciekłych plików) oraz, groźniejsze, pytest importował uploadowany do
+# MEDIA_ROOT conftest.py (obok powstawał __pycache__), co potrafiło wywalić
+# kolekcję całej suity ImportError-em. Każdy worker dostaje własny izolowany
+# tempdir (mkdtemp — dwie równoległe sesje pytest na jednym hoście się nie
+# zderzą), a ścieżka jest PINOWANA w zmiennej środowiskowej per worker.
+# Env var (a nie PID w nazwie katalogu): subprocess Daphne
+# (channels_live_server) na macOS startuje przez multiprocessing *spawn*
+# i RE-IMPORTUJE settings z nowym PID-em — klucz z PID-em dałby mu inny
+# MEDIA_ROOT niż workerowi pytest (a na Linuksie/CI fork dziedziczy moduł
+# → ten sam; rozjazd mac-vs-CI). Env var dziedziczą oba mechanizmy, więc
+# worker i jego dzieci widzą ten sam katalog. Nazwa zmiennej zawiera id
+# workera, bo kontroler xdist też importuje settings (jako "master")
+# i jego wartość nie może przeciec do workerów gwN przez dziedziczone
+# środowisko.
+_media_worker = os.environ.get("PYTEST_XDIST_WORKER", "master")
+_media_env = f"DJANGO_BPP_TEST_MEDIA_ROOT_{_media_worker}"
+MEDIA_ROOT = os.environ.get(_media_env)
+if not MEDIA_ROOT:
+    MEDIA_ROOT = tempfile.mkdtemp(prefix=f"bpp-test-media-{_media_worker}-")
+    os.environ[_media_env] = MEDIA_ROOT
+os.makedirs(MEDIA_ROOT, exist_ok=True)
+SENDFILE_ROOT = MEDIA_ROOT
+
+# Flagi eager Celery jawnie i jednoznacznie w testach. base.py ustawia je pod
+# TESTING, ale local.py:64 bezwarunkowo resetuje CELERY_ALWAYS_EAGER = False
+# (podwójna rola local.py: dev + testy). Fallback = .delay() cicho publikuje do
+# wspólnego brokera Redis DB 1 bez konsumenta → task nigdy się nie wykona
+# (silent no-op zależny od kolejności). Patrz audyt pkt 6.
+CELERY_ALWAYS_EAGER = True
+CELERY_TASK_ALWAYS_EAGER = True
+CELERY_EAGER_PROPAGATES_EXCEPTIONS = True
+
+# constance_cache (Redis DB 8) — per-worker KEY_PREFIX. Prefiks istniał
+# (commit 137fec4df) i zginął w refaktorze test/local 55e0b1aa6 — regresja z
+# audytu pkt 7. Bez niego pierwszy realny klucz constance wskrzesza
+# cross-worker leak (worker A cache'uje wartość, worker B ją czyta mimo innej
+# własnej bazy). Kopiujemy strukturę, by nie mutować obiektów współdzielonych
+# z local.py.
+CACHES = {**CACHES}
+CACHES["constance_cache"] = {
+    **CACHES["constance_cache"],
+    "KEY_PREFIX": os.environ.get("PYTEST_XDIST_WORKER", "master"),
+}
 
 # django-liveops: w testach uruchamiaj operacje SYNCHRONICZNIE w wątku
 # żądania (bez Redis/Celery workera). run() biegnie od razu, p.track/p.result

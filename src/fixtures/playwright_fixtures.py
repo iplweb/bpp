@@ -3,9 +3,34 @@
 import pytest
 from playwright.sync_api import Page
 
+# =============================================================================
+# INWARIANT KOLEJNOŚCI PARAMETRÓW — NIE PRZESTAWIAĆ `transactional_db`!
+#
+# `transactional_db` MUSI być PIERWSZYM parametrem każdej z poniższych
+# fikstur. Pytest tworzy fikstury o tym samym zasięgu (function) w kolejności
+# lewa→prawa z sygnatury i finalizuje je w ODWROTNEJ kolejności (LIFO):
+# fikstura utworzona jako ostatnia jest sprzątana jako pierwsza.
+#
+# `transactional_db` na końcu sygnatury → sprzątany PIERWSZY → jego
+# TRUNCATE/flush bazy leci, GDY przeglądarka (page/context) jeszcze żyje i
+# może mieć in-flight requesty do session-scoped Daphne. Serwer widzi
+# częściowo wyczyszczoną bazę → ForeignKeyViolation / deadlock (realny
+# IntegrityError z CI — audyt: docs/deweloper/audyt-testy-rownoleglosc-2026-07.md).
+#
+# `transactional_db` na POCZĄTKU sygnatury → tworzony PIERWSZY → sprzątany
+# OSTATNI. Wtedy pytest-playwright zdąży zamknąć browser context (finalizer
+# fikstury `new_context`, który woła `context.close()`) ZANIM baza zostanie
+# wyczyszczona. Sam context.close() nie jest tu potrzebny — wystarczy
+# kolejność parametrów, bo pytest-playwright zamyka context w swoim własnym
+# finalizerze, a ten biegnie przed finalizerem `transactional_db`.
+#
+# `channels_live_server` jest session-scoped, więc jego pozycja w sygnaturze
+# nie wpływa na sprzątanie między-testowe (żyje przez cały worker xdist).
+# =============================================================================
+
 
 @pytest.fixture
-def admin_page(page: Page, admin_user, channels_live_server, transactional_db):
+def admin_page(transactional_db, page: Page, admin_user, channels_live_server):
     """Provide a pre-authenticated admin page."""
     # Import here to avoid Django app loading issues
     from django.test import Client
@@ -36,7 +61,7 @@ def admin_page(page: Page, admin_user, channels_live_server, transactional_db):
 
 
 @pytest.fixture
-def preauth_page(page: Page, normal_django_user, live_server, transactional_db):
+def preauth_page(transactional_db, page: Page, normal_django_user, live_server):
     """Provide a pre-authenticated regular user page."""
     # Import here to avoid Django app loading issues
     from django.test import Client
@@ -67,7 +92,7 @@ def preauth_page(page: Page, normal_django_user, live_server, transactional_db):
 
 
 @pytest.fixture
-def preauth_asgi_page(preauth_page: Page, channels_live_server, transactional_db):
+def preauth_asgi_page(transactional_db, preauth_page: Page, channels_live_server):
     """Provide a pre-authenticated page with WebSocket connection."""
     # Import here to avoid Django app loading issues
     import time
@@ -110,7 +135,7 @@ def preauth_asgi_page(preauth_page: Page, channels_live_server, transactional_db
 
 @pytest.fixture
 def admin_page_per_test(
-    page: Page, admin_user, channels_live_server_per_test, transactional_db
+    transactional_db, page: Page, admin_user, channels_live_server_per_test
 ):
     """Function-scoped wariant `admin_page` — fresh Daphne per test."""
     from django.test import Client
@@ -136,7 +161,7 @@ def admin_page_per_test(
 
 @pytest.fixture
 def preauth_asgi_page_per_test(
-    preauth_page: Page, channels_live_server_per_test, transactional_db
+    transactional_db, preauth_page: Page, channels_live_server_per_test
 ):
     """Function-scoped wariant `preauth_asgi_page` — fresh Daphne per test."""
     import time
