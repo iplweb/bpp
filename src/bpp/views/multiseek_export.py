@@ -23,11 +23,13 @@ XLSX_WORKSHEET_TITLE_MAX_LENGTH = 31
 MULTISEEK_EXPORT_HEADERS = (
     "tytul_oryginalny",
     "autorzy",
+    "zrodlo",
     "rok",
     "impact_factor",
     "pk",
     "bpp_id",
     "typ_rekordu",
+    "typ_mnisw_mein",
     "id_rekordu",
     "pbn_uid_id",
     "link_do_bpp_url",
@@ -38,11 +40,13 @@ MULTISEEK_EXPORT_HEADERS = (
 MULTISEEK_EXPORT_XLSX_HEADERS = (
     "Tytuł oryginalny",
     "Autorzy",
+    "Źródło",
     "Rok",
     "Impact Factor",
     "PK",
     "BPP ID",
     "Typ rekordu",
+    "Typ MNiSW/MEiN",
     "ID rekordu",
     "PBN UID",
     "Link do BPP",
@@ -54,13 +58,14 @@ MULTISEEK_EXPORT_DANE_FIELDS = (
     "id",
     "tytul_oryginalny",
     "opis_bibliograficzny_zapisani_autorzy_cache",
+    "zrodlo__nazwa",
     "rok",
     "impact_factor",
     "punkty_kbn",
+    "typ_kbn__nazwa",
     "pbn_uid_id",
 )
 
-MULTISEEK_EXPORT_XLSX_URL_COLUMNS = (10, 11, 12)
 EXPORT_FILENAME_INVALID_CHARS_RE = re.compile(r'[<>:"/\\|?*\x00-\x1f]')
 MULTISEEK_REPORT_TITLE_HTML_BREAK_RE = re.compile(
     r"</?(?:br|hr|p|div|h[1-6])\b[^>]*>",
@@ -138,20 +143,43 @@ def _iter_export_rows(queryset, request):
     pbn_api_root = uczelnia.pbn_api_root if uczelnia is not None else ""
 
     for rekord in queryset.iterator(chunk_size=1000):
+        zrodlo = rekord.zrodlo
+        typ_kbn = rekord.typ_kbn
         yield (
             rekord.tytul_oryginalny,
             rekord.opis_bibliograficzny_zapisani_autorzy_cache,
+            zrodlo.nazwa if zrodlo is not None else "",
             rekord.rok,
             rekord.impact_factor,
             rekord.punkty_kbn,
             str(tuple(rekord.pk)),
             str(rekord.describe_content_type),
+            typ_kbn.nazwa if typ_kbn is not None else "",
             rekord.object_id,
             _export_value(rekord.pbn_uid_id),
             request.build_absolute_uri(rekord.get_absolute_url()),
             _admin_change_url(rekord, request),
             _pbn_publication_url(rekord.pbn_uid_id, pbn_api_root),
         )
+
+
+def _xlsx_columns_where(headers, predicate):
+    """1-based indeksy kolumn XLSX, których nagłówek spełnia predykat."""
+    return [i for i, h in enumerate(headers, start=1) if predicate(h)]
+
+
+def _apply_xlsx_number_format(worksheet, columns, number_format):
+    for col in columns:
+        for row in worksheet.iter_rows(min_row=2, min_col=col, max_col=col):
+            row[0].number_format = number_format
+
+
+def _apply_xlsx_hyperlinks(worksheet, url_cols):
+    for row_idx in range(2, worksheet.max_row + 1):
+        for col_idx in url_cols:
+            cell = worksheet.cell(row=row_idx, column=col_idx)
+            if cell.value:
+                cell.value = f'=HYPERLINK("{cell.value}", "[link]")'
 
 
 def csv_export_response(queryset, request, report_title):
@@ -194,19 +222,18 @@ def xlsx_export_response(queryset, request, report_title):
         cell.font = header_font
         cell.alignment = Alignment(horizontal="center", vertical="center")
 
+    headers = MULTISEEK_EXPORT_XLSX_HEADERS
+    url_cols = _xlsx_columns_where(headers, lambda h: h.startswith("Link"))
+    if_cols = _xlsx_columns_where(headers, lambda h: h == "Impact Factor")
+    pk_cols = _xlsx_columns_where(headers, lambda h: h == "PK")
+
     for row in worksheet.iter_rows(min_row=2):
         for cell in row:
             cell.alignment = Alignment(vertical="top", wrap_text=True)
 
-    for row in worksheet.iter_rows(min_row=2, min_col=4, max_col=5):
-        row[0].number_format = "0.000"
-        row[1].number_format = "0.00"
-
-    for row_idx in range(2, worksheet.max_row + 1):
-        for col_idx in MULTISEEK_EXPORT_XLSX_URL_COLUMNS:
-            cell = worksheet.cell(row=row_idx, column=col_idx)
-            if cell.value:
-                cell.value = f'=HYPERLINK("{cell.value}", "[link]")'
+    _apply_xlsx_number_format(worksheet, if_cols, "0.000")
+    _apply_xlsx_number_format(worksheet, pk_cols, "0.00")
+    _apply_xlsx_hyperlinks(worksheet, url_cols)
 
     worksheet.freeze_panes = "B1"
     worksheet_columns_autosize(worksheet)

@@ -162,11 +162,13 @@ def test_multiseek_export_csv(logged_in_client, multiseek_export_rekord):
     assert rows[1] == [
         multiseek_export_rekord.tytul_oryginalny,
         "Kowalski Jan",
+        multiseek_export_rekord.zrodlo.nazwa,
         "2024",
         "1.230",
         "42.00",
         str(tuple(multiseek_export_rekord.pk)),
         "wydawnictwo ciągłe",
+        multiseek_export_rekord.typ_kbn.nazwa,
         str(multiseek_export_rekord.object_id),
         "507f1f77bcf86cd799439011",
         f"http://testserver{multiseek_export_rekord.get_absolute_url()}",
@@ -254,11 +256,13 @@ def test_multiseek_export_xlsx(logged_in_client, multiseek_export_rekord):
     assert rows[1] == (
         multiseek_export_rekord.tytul_oryginalny,
         "Kowalski Jan",
+        multiseek_export_rekord.zrodlo.nazwa,
         2024,
         1.23,
         42,
         str(tuple(multiseek_export_rekord.pk)),
         "wydawnictwo ciągłe",
+        multiseek_export_rekord.typ_kbn.nazwa,
         multiseek_export_rekord.object_id,
         "507f1f77bcf86cd799439011",
         '=HYPERLINK("'
@@ -270,10 +274,13 @@ def test_multiseek_export_xlsx(logged_in_client, multiseek_export_rekord):
         '507f1f77bcf86cd799439011/current", "[link]")',
     )
     assert worksheet.freeze_panes == "B1"
-    assert worksheet["D2"].data_type == "n"
     assert worksheet["E2"].data_type == "n"
-    assert worksheet["D2"].number_format == "0.000"
-    assert worksheet["E2"].number_format == "0.00"
+    assert worksheet["F2"].data_type == "n"
+    assert worksheet["E2"].number_format == "0.000"  # Impact Factor (było D)
+    assert worksheet["F2"].number_format == "0.00"  # PK (było E)
+    # kolumny linków (L, M, N) zawierają =HYPERLINK
+    for col in ("L", "M", "N"):
+        assert worksheet[f"{col}2"].value.startswith("=HYPERLINK(")
 
 
 @pytest.mark.django_db
@@ -397,3 +404,77 @@ def test_multiseek_export_does_not_match_unfiltered_records(
 
     rows = list(csv.DictReader(io.StringIO(response.content.decode("utf-8"))))
     assert [row["bpp_id"] for row in rows] == [str(tuple(multiseek_export_rekord.pk))]
+
+
+@pytest.mark.django_db
+def test_export_dane_csv_ma_zrodlo_i_typ_mnisw(
+    logged_in_client, multiseek_export_rekord
+):
+    _set_multiseek_title_filter(logged_in_client)
+
+    response = logged_in_client.get(
+        reverse("multiseek-export", kwargs={"export_format": "csv"})
+    )
+
+    assert response.status_code == 200
+    text = response.content.decode("utf-8")
+    header = text.splitlines()[0]
+    cols = header.split(",")
+    assert cols[2] == "zrodlo"
+    assert cols[8] == "typ_mnisw_mein"
+    assert cols[6] == "bpp_id"  # BPP ID nadal przed typ_rekordu (kol. 8)
+    assert cols[7] == "typ_rekordu"
+
+    rows = list(csv.DictReader(io.StringIO(text)))
+    assert rows[0]["zrodlo"] == multiseek_export_rekord.zrodlo.nazwa
+    assert rows[0]["typ_mnisw_mein"] == multiseek_export_rekord.typ_kbn.nazwa
+
+
+@pytest.mark.django_db
+def test_export_dane_xlsx_ma_zrodlo_i_typ_mnisw(
+    logged_in_client, multiseek_export_rekord
+):
+    from openpyxl import load_workbook
+
+    _set_multiseek_title_filter(logged_in_client)
+
+    response = logged_in_client.get(
+        reverse("multiseek-export", kwargs={"export_format": "xlsx"})
+    )
+
+    assert response.status_code == 200
+    wb = load_workbook(io.BytesIO(response.content))
+    ws = wb.active
+    headers = [c.value for c in ws[1]]
+    assert headers[2] == "Źródło"
+    assert headers[8] == "Typ MNiSW/MEiN"
+    assert headers[6] == "BPP ID"
+    assert headers[7] == "Typ rekordu"
+
+    rows = list(ws.iter_rows(values_only=True))
+    assert rows[1][2] == multiseek_export_rekord.zrodlo.nazwa
+    assert rows[1][8] == multiseek_export_rekord.typ_kbn.nazwa
+
+
+@pytest.mark.django_db
+def test_export_dane_xlsx_nie_ma_n_plus_1(
+    logged_in_client, standard_data, denorms, django_assert_max_num_queries
+):
+    # Kilka rekordów o różnych źródłach i typach — gdyby był N+1,
+    # liczba zapytań rosłaby z liczbą wierszy. Zmierzone lokalnie: 15
+    # zapytań niezależnie od liczby rekordów (3 vs 8) — próg z marginesem.
+    for _ in range(3):
+        any_ciagle(tytul_oryginalny=f"{EXPORT_TITLE_PREFIX} - n plus 1")
+    denorms.flush()
+    _set_multiseek_title_filter(logged_in_client)
+
+    with django_assert_max_num_queries(18):
+        response = logged_in_client.get(
+            reverse("multiseek-export", kwargs={"export_format": "xlsx"})
+        )
+
+    assert response.status_code == 200
+
+    from openpyxl import load_workbook
+
+    load_workbook(io.BytesIO(response.content))

@@ -206,7 +206,11 @@ class MyMultiseekExport(LoginRequiredMixin, MyMultiseekResults):
             )
 
         report_title = _multiseek_report_title(request)
-        queryset = queryset.select_related(None).only(*MULTISEEK_EXPORT_DANE_FIELDS)
+        queryset = (
+            queryset.select_related(None)
+            .select_related("zrodlo", "typ_kbn")
+            .only(*MULTISEEK_EXPORT_DANE_FIELDS)
+        )
         if export_format == "csv":
             return csv_export_response(queryset, request, report_title)
         return xlsx_export_response(queryset, request, report_title)
