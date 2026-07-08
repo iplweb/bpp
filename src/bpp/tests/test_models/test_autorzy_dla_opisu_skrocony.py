@@ -186,6 +186,19 @@ def test_render_krotka_lista_bez_skracania(
 
 
 @pytest.mark.django_db
+def test_render_bez_autorow_brak_sekcji_autorow(client, wydawnictwo_ciagle, denorms):
+    # Rekord bez autorów: sekcja autorów ma szare tło + padding, więc pusta
+    # renderowała się jako goły szary pasek pod tytułem.
+    denorms.flush()
+
+    res = _browse_praca(client, wydawnictwo_ciagle)
+    assert res.status_code == 200
+    # NIE po "praca-mono__authors-section" — ta nazwa siedzi też w inline JS
+    # (querySelector), więc występuje w HTML-u niezależnie od renderu sekcji.
+    assert "praca-mono__authors-full" not in res.content.decode("utf-8")
+
+
+@pytest.mark.django_db
 def test_render_doktorat_nie_wybucha(client, doktorat, denorms):
     # Praca_Doktorska dziedziczy autorzy_dla_opisu_skrocony, ale jej
     # autorzy_set to FakeSet z 1 (fałszywym) autorem — strona rekordu musi
