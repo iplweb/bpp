@@ -288,11 +288,17 @@ jobs:
             echo "final_tag=${INPUT_VERSION_TAG}" >> "$GITHUB_OUTPUT"
             echo "channel_tag=${INPUT_CHANNEL}" >> "$GITHUB_OUTPUT"
             echo "branch_tag=" >> "$GITHUB_OUTPUT"
+            # RC jest staging-flavored → stopka pokazuje wersję rcN + git SHA.
+            # BPP_IMAGE_TAG (footer_image_tag) zostaje PUSTY: tag obrazu = ta
+            # sama wersja rcN, więc duplikowałby "wersję" w stopce. Prod (po
+            # promote) jest release-flavored i tak chowa image_tag.
+            echo "footer_image_tag=" >> "$GITHUB_OUTPUT"
             exit 0
           fi
 
           if [ "$EVENT_NAME" = "pull_request" ] && [ -n "$PR_NUMBER" ]; then
             echo "final_tag=${PR_NUMBER}-merge" >> "$GITHUB_OUTPUT"
+            echo "footer_image_tag=${PR_NUMBER}-merge" >> "$GITHUB_OUTPUT"
             BRANCH_TAG=$(echo "$HEAD_REF" \
               | sed 's/[^a-zA-Z0-9._-]/-/g' \
               | tr '[:upper:]' '[:lower:]')
@@ -303,6 +309,7 @@ jobs:
               | sed 's/[^a-zA-Z0-9._-]/-/g' \
               | tr '[:upper:]' '[:lower:]')
             echo "final_tag=${BRANCH_TAG}" >> "$GITHUB_OUTPUT"
+            echo "footer_image_tag=${BRANCH_TAG}" >> "$GITHUB_OUTPUT"
             echo "branch_tag=" >> "$GITHUB_OUTPUT"
             echo "channel_tag=" >> "$GITHUB_OUTPUT"
           fi
@@ -320,15 +327,22 @@ jobs:
           DOCKER_VERSION: ${{ steps.tag.outputs.staging_tag }}
           TAG_LATEST: "false"
           PUSH: "true"
-          # Wynikiem ekspresji jest literal "release" albo "dev" — nie ma
+          # Wynikiem ekspresji jest literal "staging"/"release"/"dev" — nie ma
           # tu untrusted input z github.event.*. Ref name jest weryfikowane
-          # przez równość z literałem, więc nie ma ryzyka injection. Reusable
-          # RC build też jest release-flavored, bo te same bajty idą na prod.
-          BPP_BUILD_FLAVOR: ${{ inputs.version_tag != '' && 'release' || (github.ref_name == 'master' && 'release' || 'dev') }}
-          # Kanoniczny tag finalny — wpisany do obrazu jako BPP_IMAGE_TAG
-          # ENV, żeby stopka dla dev buildów wyświetlała "119-merge" obok
-          # commit SHA. Wartość pochodzi ze stepa `tag` powyżej.
-          BPP_IMAGE_TAG: ${{ steps.tag.outputs.final_tag }}
+          # przez równość z literałem, więc nie ma ryzyka injection.
+          #
+          # RC build (version_tag != '') jest STAGING-flavored, NIE release:
+          # te obrazy trafiają na :staging, a deployment staging pokazuje w
+          # stopce wersję rcN + git SHA (release-flavor chowałby te "atrakcje").
+          # Produkcyjny obraz powstaje dopiero w promote.yml, który nakłada
+          # patch-layer: finalny version.py (bez rc) + BPP_BUILD_FLAVOR=release.
+          # Patrz docker/promote-patch/Dockerfile.
+          BPP_BUILD_FLAVOR: ${{ inputs.version_tag != '' && 'staging' || (github.ref_name == 'master' && 'release' || 'dev') }}
+          # Tag obrazu wpisany do stopki (dev buildy: "119-merge" obok commit
+          # SHA). Dla RC pusty (footer_image_tag w stepie `tag`) — tag obrazu =
+          # wersja rcN, więc byłby redundantny ze "wersją". Prod (release) i tak
+          # chowa image_tag.
+          BPP_IMAGE_TAG: ${{ steps.tag.outputs.footer_image_tag }}
           # Alias nazwy brancha (np. "feature-nowe-zglos-publikacje") —
           # ustawiany przez step `tag` tylko dla pull_request eventów,
           # pusty inaczej. Stopka pokaże ten alias obok PR#-merge.

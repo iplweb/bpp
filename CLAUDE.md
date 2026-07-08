@@ -196,7 +196,7 @@ skróty `make` (owijają `gh workflow run` + od razu `gh run watch`):
 ```bash
 make release-candidate    # Faza 1: zbuduj RC → :staging (nie rusza prod)
 # … staging pulluje :staging, testujesz …
-make release-promote      # Faza 2: RC → :latest (bez rebuildu, imagetools)
+make release-promote      # Faza 2: RC → :latest (patch version.py + flavor=release)
 ```
 
 Flagi: `make release-candidate SKIP_TESTS=1 SKIP_SCAN=1` (awaryjnie),
@@ -208,10 +208,11 @@ Pod spodem to zwykłe `workflow_dispatch`:
 
 ```bash
 gh workflow run release-candidate.yml --ref dev   # zbuduj RC → :staging
-gh workflow run promote.yml                        # RC → :latest (bez rebuildu)
+gh workflow run promote.yml                        # RC → :latest (patch-layer na RC)
 ```
 
-`push:master` NIE buduje już obrazów produkcyjnych — robi to promote (imagetools).
+`push:master` NIE buduje już obrazów produkcyjnych — robi to promote
+(patch-layer na przetestowanym RC, patrz sekcja niżej).
 
 ## Autologin dla agentów (WebFetch / curl bez logowania)
 
@@ -395,8 +396,22 @@ sa jawnie tymczasowe (nie release).
 `docker buildx imagetools create -t <canonical> <staging>` kopiuje
 manifest w rejestrze. Nie rebuilduje, nie re-pushuje warstw — tylko
 zapisuje metadane z referencja do istniejacych layers. ~sek per obraz.
-Przy `release-candidate.yml` dodatkowo przepina kanal `:staging`.
-Tag `:latest` rusza dopiero w `promote.yml`, z immutable RC tagu.
+Przy `release-candidate.yml` dodatkowo przepina kanal `:staging`. Tak
+powstaja tagi RC (`:<wersja>rcN`, `:staging`) — obrazy RC sa
+**staging-flavored** (`BPP_BUILD_FLAVOR=staging`), zeby deployment `:staging`
+pokazywal w stopce wersje rcN + git SHA.
+
+**Faza 4 — Promote RC → produkcja (patch-layer, `promote.yml`)**
+Kanoniczny `:latest`/`:<wersja>` NIE powstaje przez imagetools — bo kopia
+manifestu bit-w-bit odziedziczylaby zapieczona w RC wersje rcN (stopka,
+panel admina, Rollbar `code_version`). Zamiast tego `promote.yml` naklada
+cienki patch-layer na przetestowany obraz RC (`docker/promote-patch/
+Dockerfile`): podmienia `src/django_bpp/version.py` na finalny (bez sufiksu
+rc), kasuje zapieczony `version.pyc` i ustawia `BPP_BUILD_FLAVOR=release`
+(stopka chowa "atrakcje", pokazuje czysta wersje). Warstwy bazowe pozostaja
+tymi samymi przetestowanymi warstwami RC (dedup w rejestrze; push doklada
+tylko 2 malutkie warstwy). Aplikacja czyta wersje przez `PYTHONPATH=/app/src`
+(`uv sync --no-install-project`), wiec podmiana jednego pliku wystarcza.
 
 **Zastrzezenie o rejestrze:**
 Raz pushniety digest (nawet pod staging tagiem) zyje w Docker Hub do
