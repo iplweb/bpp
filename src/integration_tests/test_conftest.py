@@ -92,8 +92,7 @@ def test_wydawnictwo_ciagle_z_dwoma_autorami(wydawnictwo_ciagle_z_dwoma_autorami
     # (.get() pod spodem) sam waliduje istnienie i unikalnosc rekordu cache.
     rekord = Rekord.objects.get_for_model(wc)
     assert Wydawnictwo_Ciagle_Autor.objects.filter(rekord=wc).count() == 2
-    # filter_rekord przekazuje rekord.pk wprost do lookupu rekord_id;
-    # TupleField.from_db_value zwraca TUPLE, a lookup exact ArrayField
-    # wymaga LISTY (tuple konczy sie bledem "operator nie istnieje:
-    # integer[] = integer" po stronie PG) - stad jawne list().
-    assert Autorzy.objects.filter(rekord_id=list(rekord.pk)).count() == 2
+    # filter_rekord normalizuje tuple-pk z TupleField do listy (regresja:
+    # bpp/tests/test_cache/test_cache.py::
+    # test_autorzy_filter_rekord_rekordem_pobranym_z_bazy).
+    assert Autorzy.objects.filter_rekord(rekord).count() == 2
