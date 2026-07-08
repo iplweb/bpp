@@ -23,6 +23,11 @@ urlpatterns = [
         name="importplikupolon-restart",
     ),
     path(
+        "dane/<uuid:pk>/zapisz-do-bazy/",
+        views.ZapiszDoBazyImportView.as_view(),
+        name="importplikupolon-zapisz-do-bazy",
+    ),
+    path(
         "dane/<uuid:pk>/results/",
         views.ImportPolonResultsView.as_view(),
         name="importplikupolon-results",
@@ -47,6 +52,11 @@ urlpatterns = [
         "absencje/<uuid:pk>/regen/",
         views.RestartImportAbsencjiView.as_view(),
         name="importplikuabsencji-restart",
+    ),
+    path(
+        "absencje/<uuid:pk>/zapisz-do-bazy/",
+        views.ZapiszDoBazyImportAbsencjiView.as_view(),
+        name="importplikuabsencji-zapisz-do-bazy",
     ),
     path(
         "absencje/<uuid:pk>/results/",

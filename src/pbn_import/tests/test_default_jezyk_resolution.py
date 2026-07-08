@@ -21,6 +21,24 @@ def session(db, django_user_model):
     return baker.make(ImportSession, user=user, config={})
 
 
+@pytest.fixture(autouse=True)
+def _kanoniczne_jezyki(db, jezyki):
+    """Gwarantuj polski (``pol.``) i angielski (``ang.``) dla każdego testu.
+
+    ``db`` musi być PRZED ``jezyki`` w sygnaturze: fixture ``jezyki``
+    (``conftest_system``) nie deklaruje własnej zależności od bazy, więc bez
+    wcześniejszego ``db`` pytest blokuje dostęp do DB w jej setupie.
+
+    Te testy rozwiązują domyślny język, więc zakładały obecność języków
+    seedowanych w baseline (migracja ``bpp/0022``). To założenie jest kruche
+    pod równoległym pytest-xdist: sąsiedni test ``transaction=True`` robi w
+    teardownie ``TRUNCATE CASCADE`` całej bazy (patrz ``src/conftest.py``),
+    a inne testy jawnie kasują rekordy ``Jezyk`` — baseline bywa więc chwilowo
+    pusty na danym workerze. ``jezyki`` (get_or_create) czyni testy samowystar-
+    czalnymi: nie zależą już od ambientnych, współdzielonych danych.
+    """
+
+
 def test_prefers_config_default_jezyk_id(session):
     """``config["default_jezyk_id"]`` (wybór z formularza) ma pierwszeństwo."""
     angielski = Jezyk.objects.get(skrot="ang.")

@@ -1,6 +1,7 @@
 """Book chapter import for PBN importer."""
 
 import copy
+import logging
 
 from django.db import transaction
 
@@ -23,14 +24,41 @@ from .cache import (
     get_typ_kbn_inne,
 )
 from .helpers import (
-    assert_dictionary_empty,
     importuj_streszczenia,
     pbn_keywords_to_slowa_kluczowe,
     pobierz_jezyk,
     przetworz_slowa_kluczowe,
     przetworz_tytuly,
+    skonsumuj_nieobsluzone_klucze,
 )
 from .publishers import sciagnij_i_zapisz_wydawce
+
+logger = logging.getLogger(__name__)
+
+
+def _chapter_json_z_nadrzednego(wydawnictwo_nadrzedne, mongoId):
+    """Zwraca sub-słownik rozdziału z ``chapters`` wyd. nadrzędnego albo ``{}``.
+
+    Wyd. nadrzędne bywa dopasowane do istniejącego rekordu BPP bez powiązania z
+    PBN (fuzzy match → ``pbn_uid is None``) albo bez wersji bieżącej — wtedy nie
+    ma skąd wziąć metadanych rozdziału. To NIE błąd rozdziału (Rollbar #419:
+    ``'NoneType' object has no attribute 'current_version'``), więc zamiast
+    wywalać import zwracamy pusty słownik — rozdział wejdzie z metadanych
+    własnych.
+    """
+    parent_pbn = getattr(wydawnictwo_nadrzedne, "pbn_uid", None)
+    parent_cv = getattr(parent_pbn, "current_version", None)
+    if parent_cv is None:
+        return {}
+    try:
+        return parent_cv["object"].get("chapters", {})[mongoId]
+    except KeyError:
+        logger.info(
+            "Brak informacji o rozdziale %s dla wyd nadrzednego %r",
+            mongoId,
+            wydawnictwo_nadrzedne,
+        )
+        return {}
 
 
 @transaction.atomic
@@ -77,18 +105,23 @@ def importuj_rozdzial(
             inconsistency_callback=inconsistency_callback,
         )
 
+    if wydawnictwo_nadrzedne is None or isinstance(wydawnictwo_nadrzedne, str):
+        # importuj_ksiazke zwraca None dla widma nadrzędnego (jego własny guard)
+        # albo STRING, gdy ``rekord_w_bpp`` trafił na zdublowane rekordy BPP
+        # (Rekord.MultipleObjectsReturned → join tytułów). W obu wypadkach książki
+        # nadrzędnej nie da się jednoznacznie powiązać — pomijamy rozdział zamiast
+        # wywalać się na ``.rok`` / dereferencji ``None`` (dokończenie #419).
+        logger.warning(
+            "Pomijam rozdział PBN %s: książka nadrzędna %s nierozstrzygalna (%s).",
+            mongoId,
+            pbn_book_id,
+            "brak/widmo" if wydawnictwo_nadrzedne is None else "wiele dopasowań w BPP",
+        )
+        return None
+
     rok = wydawnictwo_nadrzedne.rok
 
-    try:
-        pbn_chapter_json = wydawnictwo_nadrzedne.pbn_uid.current_version["object"].get(
-            "chapters", {}
-        )[mongoId]
-    except KeyError:
-        print(
-            f"Brak informacji o rozdziale dla wyd nadrzednego "
-            f"{wydawnictwo_nadrzedne=}, rozdzial {pbn_publication=}"
-        )
-        pbn_chapter_json = {}
+    pbn_chapter_json = _chapter_json_z_nadrzednego(wydawnictwo_nadrzedne, mongoId)
     pbn_chapter_json.pop("title", None)
     pbn_chapter_json.pop("titles", None)
     pbn_chapter_json.pop("type", None)
@@ -155,10 +188,12 @@ def importuj_rozdzial(
     pbn_keywords_en = pbn_keywords_to_slowa_kluczowe(pbn_keywords, "eng")
     przetworz_slowa_kluczowe(pbn_keywords_pl, pbn_keywords_en, ret)
 
-    assert_dictionary_empty(pbn_chapter_json)
+    skonsumuj_nieobsluzone_klucze(
+        pbn_chapter_json, ret, kontekst="rozdział (sub-dict nadrzędnego)"
+    )
 
     utworz_autorow(ret, pbn_json, client, default_jednostka, inconsistency_callback)
-    pbn_json.pop("type")
-    assert_dictionary_empty(pbn_json)
+    pbn_json.pop("type", None)
+    skonsumuj_nieobsluzone_klucze(pbn_json, ret, kontekst="rozdział")
 
     return ret

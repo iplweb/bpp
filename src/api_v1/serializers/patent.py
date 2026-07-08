@@ -40,9 +40,11 @@ class PatentSerializer(
 ):
     slowa_kluczowe = TagListSerializerField()
 
-    rodzaj_prawa = serializers.RelatedField(read_only=True)
-    # "bpp.Rodzaj_Prawa_Patentowego", CASCADE, null=True, blank=True
-    # )
+    # FK -> bpp.Rodzaj_Prawa_Patentowego (ModelZNazwa; __str__ zwraca nazwa).
+    # Goły ``RelatedField`` jest abstrakcyjny (brak to_representation) i wywala
+    # serializację patentu z ustawionym rodzaj_prawa. StringRelatedField daje
+    # ``nazwa`` i jest spójny z resztą API (zasieg, licencja, status_korekty...).
+    rodzaj_prawa = serializers.StringRelatedField(read_only=True)
 
     # Faza B (#438) II-2: ``Patent.wydzial`` to teraz FK->Jednostka (korzeń
     # drzewa, mirror dawnego Wydzial) — link musi wskazywać jednostka-detail.

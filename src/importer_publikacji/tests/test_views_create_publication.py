@@ -8,6 +8,7 @@ błędu na poziomie widoku.
 
 import pytest
 from django.urls import reverse
+from model_bakery import baker
 
 from importer_publikacji.models import ImportSession
 from importer_publikacji.views import _create_publication
@@ -304,3 +305,41 @@ def test_create_view_without_year_task_marks_session_failed(
     # Traceback siedzi w osobnym polu, nie wycieka do user-safe message.
     assert "Traceback" not in session.last_error_message
     assert "TypeError" not in session.last_error_message
+
+
+@pytest.mark.django_db
+def test_create_ciagle_operator_nadpisuje_punkty_kbn_po_zrodle(
+    importer_user,
+    charaktery_formalne,
+    typy_kbn,
+    jezyki,
+    statusy_korekt,
+    typy_odpowiedzialnosci,
+):
+    from decimal import Decimal
+
+    from bpp.models import Punktacja_Zrodla, Zrodlo
+
+    session = _make_session_for_publication(
+        importer_user,
+        jezyki,
+        charaktery_formalne,
+        typy_kbn,
+        statusy_korekt,
+        typy_odpowiedzialnosci,
+    )
+    zrodlo = baker.make(Zrodlo)
+    baker.make(
+        Punktacja_Zrodla,
+        zrodlo=zrodlo,
+        rok=2024,
+        punkty_kbn=Decimal(140),
+        impact_factor=Decimal("3.5"),
+    )
+    session.zrodlo = zrodlo
+    session.matched_data = {"punkty_kbn": "100"}
+    session.save()
+
+    record = _create_publication(session)
+    assert record.punkty_kbn == Decimal(100)  # operator ma ostatnie slowo
+    assert record.impact_factor == Decimal("3.5")  # IF ze zrodla zachowany

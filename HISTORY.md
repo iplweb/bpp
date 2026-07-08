@@ -2,6 +2,55 @@
 
 <!-- towncrier release notes start -->
 
+## bpp 202607.1397 (2026-07-08)
+
+### Naprawione
+
+- Liczniki filtrów w adminie: naprawiono ``NoReverseMatch`` (połykany wyjątek,
+  szum w logach/Rollbarze) przy filtrowaniu changelistów adminów bez endpointu
+  ``_filter_count`` (np. użytkownicy). Licznik jest teraz liczony wyłącznie tam,
+  gdzie admin faktycznie wystawia ten endpoint. ([#admin-filter-count-bppuser](https://github.com/iplweb/bpp/issues/admin-filter-count-bppuser))
+- API ``/api/v1/patent/{id}/`` zwracało błąd 500 dla patentów z ustawionym
+  rodzajem prawa patentowego (goły ``RelatedField`` nie miał reprezentacji).
+  Pole ``rodzaj_prawa`` jest teraz serializowane jako jego nazwa. ([#api-patent-rodzaj-prawa](https://github.com/iplweb/bpp/issues/api-patent-rodzaj-prawa))
+- Naprawiono błąd 500 (NoReverseMatch) w API REST dla ``/api/v1/praca_doktorska/``
+  oraz ``/api/v1/praca_habilitacyjna/``, gdy rekord miał ustawionego wydawcę —
+  pole ``wydawca`` generowało hiperłącze bez przestrzeni nazw ``api_v1:``. ([#api-praca-doktorska-habilitacyjna-wydawca](https://github.com/iplweb/bpp/issues/api-praca-doktorska-habilitacyjna-wydawca))
+- Import PBN: obca jednostka uczelni nie musi już być podpięta do wydziału. Uczelnie nieużywające wydziałów nie dostają fałszywego alertu „Obca jednostka nie jest podpięta do żadnego wydziału tej uczelni" — wystarczy poprawnie ustawiony FK ``Uczelnia.obca_jednostka``. ([#obca-jednostka-bez-wydzialu](https://github.com/iplweb/bpp/issues/obca-jednostka-bez-wydzialu))
+- Import z PBN jest teraz odporny na niekompletne i zdryfowane rekordy — pojedynczy zły wpis nie wywala już całego wsadu, tylko jest pomijany, liczony i raportowany. Rekordy strukturalnie nieimportowalne (bez wersji bieżącej, bez typu obiektu, rozdział bez książki nadrzędnej) są jawnie pomijane; nieznane klucze z PBN (np. ``reviewers``) trafiają do adnotacji zamiast przerywać import; zdublowane lub brakujące rekordy słownika języków degradują do języka domyślnego zamiast wywalać rekord; a książki bez wydawcy poprawnie wchodzą (i nie wywracają post-importowej punktacji zwartych). ([#pbn-import-hardening](https://github.com/iplweb/bpp/issues/pbn-import-hardening))
+- Import z PBN: czasopisma bez ISSN (PBN podsyła wtedy syntetyczny placeholder ``xpbn-<uuid>``) nie wywalają już importu błędem ``value too long`` — placeholder jest traktowany jako brak ISSN. Dotyczy zarówno masowego importu źródeł MNiSW, jak i importu pojedynczej publikacji z PBN. ([#pbn-xpbn-issn](https://github.com/iplweb/bpp/issues/pbn-xpbn-issn))
+- Upload punktacji źródła: wartości dziesiętne wpisane z przecinkiem (np.
+  ``impact_factor`` = ``3,2``) nie wywalają już zapisu błędem 500 — przecinek
+  jest normalizowany do kropki. Dotyczy zarówno tworzenia, jak i nadpisywania
+  punktacji; wartość niepoprawna po normalizacji zwraca teraz czytelny błąd 400
+  zamiast 500. ([#punktacja-przecinek-dziesietny](https://github.com/iplweb/bpp/issues/punktacja-przecinek-dziesietny))
+- Na stronie głównej nagłówek sekcji ze strukturą organizacyjną pokazuje
+  teraz „Wybierz jednostkę" (zamiast zawsze „Wybierz wydział"), gdy uczelnia
+  nie używa wydziałów (opcja „Używaj wydziałów" ustawiona na NIE).
+
+### Usprawnienie
+
+- Import POLON i import absencji: gdy import uruchomiono bez zapisu do bazy
+  (tryb podglądu), na stronie wyników pojawia się przycisk „Zapisz ten import
+  do bazy danych", który po potwierdzeniu uruchamia ten sam import ponownie,
+  tym razem z zapisem zmian do bazy. ([#import-polon-zapis-do-bazy](https://github.com/iplweb/bpp/issues/import-polon-zapis-do-bazy))
+- W adminie wydawnictw ciągłych dodano filtr „Źródło: status w PBN"
+  (skasowany/aktywny/brak) — pozwala wyłapać prace, których źródło jest
+  skasowane w PBN. W adminie źródeł dodano filtr „PBN: status"
+  (skasowany/aktywny/brak) po statusie odpowiednika źródła w PBN. ([#pbn-status-zrodlo-ciagle](https://github.com/iplweb/bpp/issues/pbn-status-zrodlo-ciagle))
+- Zwijanie długich list autorów (powyżej 25 nazwisk) na stronie rekordu jest
+  teraz konfigurowalne. Uczelnia ustawia domyślne zachowanie (domyślnie
+  włączone), a zalogowany użytkownik może je nadpisać we własnym profilu
+  (zawsze zwijaj / nigdy nie zwijaj / jak uczelnia). Usunięto też efekt
+  podświetlenia (kolor i poświatę) z nazwisk „naszych" autorów — zostaje
+  samo pogrubienie. ([#zwijanie-listy-autorow](https://github.com/iplweb/bpp/issues/zwijanie-listy-autorow))
+- Importer publikacji: nowy krok „Punktacja" sugerujący punkty ministerialne (dla artykułów z punktacji źródła, dla monografii/rozdziałów z poziomu wydawcy) z jawnym pokazaniem podstawy albo powodu, gdy sugestia nie jest możliwa; sugestia jest tylko podpowiedzią i pozostaje edytowalna. W kroku dopasowania autorów można teraz ustawić typ autora (autor/redaktor).
+- Kasowanie jednostek w panelu administracyjnym jest teraz bezpieczne — usunąć można wyłącznie jednostkę w pełni pustą (bez podjednostek i bez żadnych obiektów przypiętych do niej przez klucze obce). Przy próbie skasowania niepustej jednostki system wyświetla listę tego, co ją blokuje, zamiast po cichu kasować powiązane dane w kaskadzie.
+- Na liście jednostek w panelu administracyjnym dodano kolumnę
+  „Uczelnia" (za kolumną „Jednostka nadrzędna"), pokazującą skrót
+  nazwy uczelni, do której należy dana jednostka.
+
+
 ## bpp 202607.1396 (2026-07-07)
 
 ### Naprawione

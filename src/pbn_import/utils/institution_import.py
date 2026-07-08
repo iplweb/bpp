@@ -106,15 +106,19 @@ def znajdz_lub_utworz_obca_jednostke(uczelnia, wydzial=None):
        ``Jednostka.nazwa``/``skrot`` są ``unique=True`` GLOBALNIE, a w multi-hosted
        wszystkie uczelnie współdzielą jedną bazę (stąd kolizja "Obca jednostka").
 
-    Następnie (zawsze, idempotentnie): podpięcie do wydziału tej uczelni i
-    ustawienie ``uczelnia.obca_jednostka``. ``wydzial`` można podać jawnie (krok
-    importu podpina obcą jednostkę pod TEN sam wydział co jednostkę domyślną);
-    przy ``None`` helper sam ustala/tworzy "Wydział Domyślny" uczelni. Obca
-    jednostka i wydział należą do tej samej uczelni, więc trigger
-    ``bpp_jednostka_wydzial_sprawdz_uczelnia_id`` przechodzi.
+    Następnie (zawsze, idempotentnie) ustawia ``uczelnia.obca_jednostka``.
+
+    Podpięcie do wydziału jest OPCJONALNE i wykonuje się TYLKO gdy podano
+    jawny ``wydzial``: krok importu (``InstitutionImporter.run``) buduje realne
+    drzewo wydział+jednostka i podpina obcą pod TEN sam wydział co jednostkę
+    domyślną. Przy ``wydzial=None`` (np. komenda ``create_obca_jednostka`` na
+    uczelni bez wydziałów) obca jednostka zostaje czystym węzłem-root — nie
+    tworzymy "Wydziału Domyślnego" ani metryczki ``Jednostka_Rodzic``, bo gate
+    ``sprawdz_obca_jednostka`` już tego nie wymaga (triggery spójności uczelni
+    zdjęto w Fazie B, #438).
 
     Zwraca ``(jednostka, created)`` — ``created`` mówi tylko o utworzeniu samej
-    Jednostki (krok 3), nie o ubocznym utworzeniu wydziału / linku / FK.
+    Jednostki (krok 3), nie o ubocznym utworzeniu linku / FK.
     """
     obca = None
     created = False
@@ -141,14 +145,14 @@ def znajdz_lub_utworz_obca_jednostke(uczelnia, wydzial=None):
         )
         created = True
 
-    # Podepnij do wydziału tej uczelni (idempotentnie). Oba obiekty należą do
-    # `uczelnia`, więc trigger spójności uczelni przechodzi.
-    if wydzial is None:
-        wydzial, _ = znajdz_lub_utworz_wydzial_domyslny(uczelnia)
-    # Faza B (#438): metryczka wskazuje węzeł-rodzic; LAZY resolve wydział →
-    # węzeł-lustro (tworzony w tym miejscu linkowania, jeśli jeszcze go nie ma).
-    wezel, _ = znajdz_lub_utworz_wezel_wydzialu(wydzial)
-    Jednostka_Rodzic.objects.get_or_create(jednostka=obca, parent=wezel)
+    # Podpięcie do wydziału TYLKO gdy caller poda jawny `wydzial` (ścieżka
+    # importera). Bez niego (komenda / uczelnia bez wydziałów) obca jednostka
+    # zostaje węzłem-root — gate `sprawdz_obca_jednostka` nie wymaga linku.
+    if wydzial is not None:
+        # Faza B (#438): metryczka wskazuje węzeł-rodzic; LAZY resolve wydział →
+        # węzeł-lustro (tworzony przy linkowaniu, jeśli jeszcze go nie ma).
+        wezel, _ = znajdz_lub_utworz_wezel_wydzialu(wydzial)
+        Jednostka_Rodzic.objects.get_or_create(jednostka=obca, parent=wezel)
 
     if uczelnia.obca_jednostka_id != obca.pk:
         uczelnia.obca_jednostka = obca
@@ -169,9 +173,12 @@ def sprawdz_obca_jednostka(uczelnia):
 
     - FK ustawiony,
     - target należy do tej uczelni,
-    - ``skupia_pracownikow is False`` (invariant z ``Uczelnia.clean()``),
-    - obca jednostka podpięta do wydziału tej samej uczelni (inaczej import
-      trafiłby na trigger przy linkowaniu).
+    - ``skupia_pracownikow is False`` (invariant z ``Uczelnia.clean()``).
+
+    Pozycja obcej jednostki w strukturze (wydział / rodzic) świadomie NIE jest
+    sprawdzana — uczelnie mogą nie używać wydziałów, a triggery spójności
+    uczelni, które dawniej wymuszały podpięcie, zdjęto w Fazie B (#438,
+    migracja 0455). Obca jednostka jako czysty węzeł-root jest w pełni OK.
     """
     napraw = " Uruchom: python src/manage.py create_obca_jednostka"
 
@@ -187,14 +194,6 @@ def sprawdz_obca_jednostka(uczelnia):
         return (
             "Obca jednostka ma skupia_pracownikow=True — musi być faktycznie "
             "obca." + napraw
-        )
-    podpieta = Jednostka_Rodzic.objects.filter(
-        jednostka=obca,
-        parent__uczelnia=uczelnia,
-    ).exists()
-    if not podpieta:
-        return (
-            "Obca jednostka nie jest podpięta do żadnego wydziału tej uczelni." + napraw
         )
     return None
 

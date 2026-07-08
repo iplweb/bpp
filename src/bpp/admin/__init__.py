@@ -256,6 +256,10 @@ class BppUserAdmin(UserAdmin):
             {"fields": ("autor",)},
         ),
         (
+            "Ustawienia wyświetlania",
+            {"fields": ("zwijaj_dlugie_listy_autorow",)},
+        ),
+        (
             "PBN API",
             {"fields": ("przedstawiaj_w_pbn_jako",)},
         ),

@@ -41,22 +41,41 @@ def _dopisz_do_adnotacji(ret, naglowek, wartosci):
     ret.adnotacje = f"{ret.adnotacje or ''}{naglowek}:\n{linie}\n"
 
 
-def _dopasuj_jezyk(kod_jezyka):
+def _znajdz_jezyk(kod_jezyka):
     """Zwraca obiekt ``Jezyk`` dla kodu języka z PBN (np. ``deu``) albo ``None``.
 
-    Kody w słowniku ``titles``/``abstracts`` PBN to klucze główne modelu
-    ``pbn_api.Language`` (``code``), czyli to samo, co ``Jezyk.pbn_uid_id``.
-    Dopasowanie jak w ``importuj_streszczenia``: najpierw po ``pbn_uid_id``,
-    potem po ``skrot``. Brak języka w słowniku nie jest błędem — surowy kod i tak
-    zachowujemy w ``kod_jezyka_pbn``.
+    Kody w słownikach ``titles``/``abstracts``/``mainLanguage`` PBN to klucze
+    główne modelu ``pbn_api.Language`` (``code``), czyli to samo, co
+    ``Jezyk.pbn_uid_id``. Dopasowanie: najpierw po ``pbn_uid_id``, potem po
+    ``skrot__startswith``.
+
+    Oba lookupy znoszą BRUDNE DANE słownika ``Jezyk`` bez wywalania importu:
+
+    - ``DoesNotExist`` (Rollbar #350) — kodu nie ma w słowniku; brak języka to
+      nie błąd (surowy kod i tak zachowujemy w ``kod_jezyka_pbn``),
+    - ``MultipleObjectsReturned`` (Rollbar #411) — w bazie są ZDUBLOWANE rekordy
+      ``Jezyk`` (np. dwa wskazujące ten sam ``Language``, albo o skrócie z tym
+      samym prefiksem). To realna wada danych do osobnego sprzątnięcia (dedup =
+      osobny ticket), ale NIE może wywalać importu — degradujemy do ``None``.
+
+    Pusty/``None`` kod od razu daje ``None`` (PBN nie podał języka).
     """
-    try:
-        return Jezyk.objects.get(pbn_uid_id=kod_jezyka)
-    except Jezyk.DoesNotExist:
+    if not kod_jezyka:
+        return None
+
+    for lookup in ({"pbn_uid_id": kod_jezyka}, {"skrot__startswith": kod_jezyka}):
         try:
-            return Jezyk.objects.get(skrot__startswith=kod_jezyka)
+            return Jezyk.objects.get(**lookup)
         except Jezyk.DoesNotExist:
+            continue
+        except Jezyk.MultipleObjectsReturned:
+            logger.warning(
+                "Zdublowane rekordy Jezyk dla %s — brudne dane słownika, "
+                "degraduję do braku dopasowania (dedup: osobny ticket).",
+                lookup,
+            )
             return None
+    return None
 
 
 def assert_dictionary_empty(dct, warn=False):
@@ -67,6 +86,47 @@ def assert_dictionary_empty(dct, warn=False):
             return
 
         raise AssertionError(msg)
+
+
+def skonsumuj_nieobsluzone_klucze(dct, ret, *, kontekst="obiekt PBN"):
+    """Miękki odpowiednik ``assert_dictionary_empty`` dla POZIOMU OBIEKTU PBN.
+
+    PBN dorzuca do payloadu klucze, których jeszcze nie mapujemy (Rollbar #420:
+    ``reviewers``; podobnie przyszłe warianty). Twarde ``assert_dictionary_empty``
+    wywalało cały import rekordu na takim DRYFIE SCHEMATU — jeden nowy klucz PBN
+    = wysyp AssertionError na wszystkich rekordach, które go mają.
+
+    Zamiast tego nieznane klucze:
+
+    - logujemy jako sygnał „nowy klucz PBN do obsłużenia" (WARNING),
+    - zrzucamy do ``adnotacje`` pod znacznikiem ``PBN: nieobsłużone klucze`` —
+      nic nie ginie, da się je znaleźć grepem i domapować później,
+    - a rekord importujemy MIMO dryfu.
+
+    Używane WYŁĄCZNIE na poziomie obiektu publikacji (artykuł/rozdział), gdzie
+    PBN realnie dorzuca nowe pola. Wąskie pod-słowniki (autorzy, openAccess,
+    journalIssue, naukowcy) zachowują twarde ``assert_dictionary_empty`` — tam
+    leftover to zwykle realny błąd mapowania, nie dryf schematu.
+
+    ``ret`` musi być już zapisany (potrzebny ``pk`` do ``save``).
+    """
+    if not dct:
+        return
+
+    klucze = sorted(dct.keys())
+    logger.warning(
+        "Nieobsłużone klucze PBN (%s) dla %r: %s — dryf schematu, zrzucam do "
+        "adnotacji i importuję rekord mimo to.",
+        kontekst,
+        ret,
+        klucze,
+    )
+    _dopisz_do_adnotacji(
+        ret, "PBN: nieobsłużone klucze", [f"{k}: {dct[k]}" for k in klucze]
+    )
+    if ret.pk:
+        ret.save(update_fields=["adnotacje"])
+    dct.clear()
 
 
 def pbn_keywords_to_slowa_kluczowe(keywords, lang="pol"):
@@ -200,7 +260,7 @@ def przetworz_tytuly(pbn_json, ret, klasa_tytulu):
     for kod_jezyka, tytul in titles.items():
         klasa_tytulu.objects.create(
             rekord=ret,
-            jezyk=_dopasuj_jezyk(kod_jezyka),
+            jezyk=_znajdz_jezyk(kod_jezyka),
             kod_jezyka_pbn=kod_jezyka,
             tytul=tytul,
         )
@@ -272,19 +332,15 @@ def get_jezyk_polski():
 def pobierz_jezyk(mainLanguage, pbn_json_title=None, domyslny_jezyk=None):
     """Zwraca ``Jezyk`` dla kodu PBN; przy braku dopasowania — język domyślny.
 
-    Kolejność prób: ``pbn_uid_id`` → ``skrot__startswith`` → ``domyslny_jezyk``.
-    ``mainLanguage`` bywa ``None`` (PBN nie podał pola) — wtedy od razu idziemy
-    na domyślny. ``domyslny_jezyk`` to ``Jezyk`` wskazany przez wołającego
-    (parametr importu); gdy ``None`` — używamy polskiego (``get_jezyk_polski``).
+    Dopasowanie po ``_znajdz_jezyk`` (``pbn_uid_id`` → ``skrot__startswith``,
+    odporne na brak i na zdublowane rekordy ``Jezyk``); przy braku dopasowania —
+    ``domyslny_jezyk``. ``mainLanguage`` bywa ``None`` (PBN nie podał pola) — wtedy
+    od razu idziemy na domyślny. ``domyslny_jezyk`` to ``Jezyk`` wskazany przez
+    wołającego (parametr importu); gdy ``None`` — polski (``get_jezyk_polski``).
     """
-    if mainLanguage:
-        try:
-            return Jezyk.objects.get(pbn_uid_id=mainLanguage)
-        except Jezyk.DoesNotExist:
-            try:
-                return Jezyk.objects.get(skrot__startswith=mainLanguage)
-            except Jezyk.DoesNotExist:
-                pass
+    jezyk = _znajdz_jezyk(mainLanguage)
+    if jezyk is not None:
+        return jezyk
 
     if domyslny_jezyk is None:
         domyslny_jezyk = get_jezyk_polski()
@@ -312,7 +368,7 @@ def ustaw_jezyk_oryginalny(ret, pbn_json):
     """
     kod_jezyka = pbn_json.pop("originalLanguage", None)
     if kod_jezyka:
-        ret.jezyk_orig = _dopasuj_jezyk(kod_jezyka)
+        ret.jezyk_orig = _znajdz_jezyk(kod_jezyka)
 
 
 def przetworz_journal_issue(pbn_json, ret, zrodlo):
@@ -369,17 +425,15 @@ def importuj_streszczenia(pbn_json, ret, klasa_bazowa):
     abstracts = pbn_json.pop("abstracts", {})
 
     for language, value in abstracts.items():
-        try:
-            jezyk = Jezyk.objects.get(pbn_uid_id=language)
-        except Jezyk.DoesNotExist:
-            try:
-                jezyk = Jezyk.objects.get(skrot__startswith=language)
-            except Jezyk.DoesNotExist:
-                logger.info(
-                    f"NIE ZAIMPORTUJE STRESZCZENIA ZA {ret=} poniewaz jego jezyk to "
-                    f"{language=} a nie mam go w tabeli Jezyki"
-                )
-                continue
+        jezyk = _znajdz_jezyk(language)
+        if jezyk is None:
+            logger.info(
+                "NIE ZAIMPORTUJE STRESZCZENIA ZA %r poniewaz jego jezyk to %r "
+                "a nie mam go (jednoznacznie) w tabeli Jezyki",
+                ret,
+                language,
+            )
+            continue
 
         klasa_bazowa.objects.create(
             rekord=ret,

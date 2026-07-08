@@ -6,12 +6,27 @@ from django.utils.timezone import localtime
 from model_bakery import baker
 
 from bpp.models import Patent
+from bpp.models.system import Rodzaj_Prawa_Patentowego
 
 
 @pytest.mark.django_db
 def test_rest_api_patent_detail(client, patent):
     res = client.get(reverse("api_v1:patent-detail", args=(patent.pk,)))
     assert res.status_code == 200
+
+
+@pytest.mark.django_db
+def test_rest_api_patent_detail_z_rodzajem_prawa(client, patent):
+    # Regresja: goły serializers.RelatedField wywalał 500 (NotImplementedError:
+    # to_representation must be implemented) na patencie z ustawionym
+    # rodzaj_prawa. Powinno zwrócić 200 i nazwę rodzaju prawa.
+    rodzaj = baker.make(Rodzaj_Prawa_Patentowego, nazwa="Patent na wynalazek")
+    patent.rodzaj_prawa = rodzaj
+    patent.save()
+
+    res = client.get(reverse("api_v1:patent-detail", args=(patent.pk,)))
+    assert res.status_code == 200
+    assert res.json()["rodzaj_prawa"] == "Patent na wynalazek"
 
 
 @pytest.mark.django_db

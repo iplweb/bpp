@@ -236,3 +236,21 @@ def test_get_continue_url_import_failed_points_to_task_status():
     url = session.get_continue_url()
     # Status view renderuje error partial sam — kierujemy tam.
     assert "task-status" in url
+
+
+@pytest.mark.django_db
+def test_imported_author_domyslnie_autor():
+    from bpp import const
+
+    session = baker.make(ImportSession)
+    autor = baker.make(ImportedAuthor, session=session, order=0)
+    assert autor.typ_ogolny == const.TO_AUTOR
+
+
+@pytest.mark.django_db
+def test_get_continue_url_punktacja_po_autorach():
+    s = baker.make(ImportSession, status=ImportSession.Status.AUTHORS_MATCHED)
+    assert s.get_continue_url().endswith(f"/{s.pk}/punktacja/")
+
+    s.status = ImportSession.Status.PUNKTACJA
+    assert s.get_continue_url().endswith(f"/{s.pk}/review/")
