@@ -111,6 +111,11 @@ def _get_crossref_mapper(publication_type):
         return None
     mapper, _created = Crossref_Mapper.objects.get_or_create(
         charakter_crossref=val,
+        defaults={
+            "jest_wydawnictwem_zwartym": (
+                Crossref_Mapper.default_jest_wydawnictwem_zwartym(val)
+            ),
+        },
     )
     return mapper
 
