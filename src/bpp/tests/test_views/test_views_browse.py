@@ -71,6 +71,22 @@ def test_browse_wydzial(setup_group, logged_in_client):
 
 
 @pytest.mark.django_db
+def test_browse_naglowek_jednostki_gdy_uczelnia_nie_uzywa_wydzialow(
+    setup_group, logged_in_client
+):
+    """Uczelnia bez wydziałów (struktura 1-progowa): nagłówek sekcji na
+    stronie głównej to „Wybierz jednostkę", a nie „Wybierz wydział" (#438)."""
+    u = any_uczelnia(nazwa="uczelnia", skrot="uu")
+    u.uzywaj_wydzialow = False
+    u.save()
+    res = logged_in_client.get(reverse("bpp:browse_uczelnia", args=("uu",)))
+    assert res.status_code == 200
+    content = res.content.decode()
+    assert "Wybierz jednostkę" in content
+    assert "Wybierz wydział" not in content
+
+
+@pytest.mark.django_db
 def test_browse_wydzial_redirects_to_browse_jednostka(setup_group, logged_in_client):
     """Faza C (#438): legacy URL /wydzial/<slug>/ przekierowuje 301 na
     /jednostka/<slug>/ — „wydział" to jednostka top-level o tym samym slugu

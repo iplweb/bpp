@@ -12,29 +12,53 @@ POLON dla uczelni X nie może „widzieć" ani dotykać autorów uczelni Y:
   uczelni (mutacja cudzych danych).
 """
 
+from datetime import timedelta
+
 import pandas as pd
 import pytest
+from django.utils import timezone
 from model_bakery import baker
 
 from bpp.models import Autor, Jednostka, Uczelnia
+from bpp.models.autor import Autor_Jednostka
 from import_polon.core import analyze_file_import_polon
 from import_polon.models import ImportPlikuPolon
 
 ROK = 2020
 
 
-def _autor_zatrudniony(uczelnia, nazwisko, imiona="Jan"):
-    """Autor aktualnie zatrudniony w ``uczelnia`` (realna jednostka)."""
+def _jednostka(uczelnia, skupia_pracownikow=True):
     wydzial = baker.make(Jednostka, uczelnia=uczelnia, parent=None)
-    jednostka = baker.make(
+    return baker.make(
         Jednostka,
         uczelnia=uczelnia,
         parent=wydzial,
-        skupia_pracownikow=True,
+        skupia_pracownikow=skupia_pracownikow,
     )
+
+
+def _autor_zatrudniony(uczelnia, nazwisko, imiona="Jan"):
+    """Autor aktualnie zatrudniony w ``uczelnia`` (realna jednostka)."""
     return baker.make(
-        Autor, nazwisko=nazwisko, imiona=imiona, aktualna_jednostka=jednostka
+        Autor,
+        nazwisko=nazwisko,
+        imiona=imiona,
+        aktualna_jednostka=_jednostka(uczelnia),
     )
+
+
+def _autor_historyczny(uczelnia, nazwisko, imiona="Jan", skupia_pracownikow=True):
+    """Autor związany z ``uczelnia`` TYLKO historycznie (zakończone
+    zatrudnienie → trigger 0046 zeruje ``aktualna_jednostka``)."""
+    autor = baker.make(Autor, nazwisko=nazwisko, imiona=imiona, aktualna_jednostka=None)
+    Autor_Jednostka.objects.create(
+        autor=autor,
+        jednostka=_jednostka(uczelnia, skupia_pracownikow=skupia_pracownikow),
+        rozpoczal_prace=timezone.now() - timedelta(days=60),
+        zakonczyl_prace=timezone.now() - timedelta(days=30),
+    )
+    autor.refresh_from_db()
+    return autor
 
 
 # --- Finding 1: raport niezmatchowanych zawężony do uczelni importu ---------
@@ -89,6 +113,50 @@ def test_autorzy_niezmatchowani_bez_uczelni_bez_zawezenia(rodzaj_autora_n, dyscy
 
     assert autor_x.pk in autor_ids
     assert autor_y.pk in autor_ids
+
+
+@pytest.mark.django_db
+def test_autorzy_niezmatchowani_lapie_historycznie_zwiazanego(
+    rodzaj_autora_n, dyscyplina1
+):
+    """Autor związany z uczelnią importu przez realną jednostkę TYLKO w
+    przeszłości (już nie zatrudniony) musi być na liście — samo
+    ``aktualnie_zatrudnieni`` by go pominęło."""
+    uczelnia_x = baker.make(Uczelnia, nazwa="Uczelnia X", skrot="UX")
+
+    autor_h = _autor_historyczny(uczelnia_x, "HistorycznyH")
+    autor_h.autor_dyscyplina_set.create(
+        rok=ROK, dyscyplina_naukowa=dyscyplina1, rodzaj_autora=rodzaj_autora_n
+    )
+
+    import_object = baker.make(ImportPlikuPolon, rok=ROK, uczelnia=uczelnia_x)
+
+    autor_ids = {ad.autor_id for ad in import_object.autorzy_niezmatchowani()}
+
+    assert autor_h.pk in autor_ids, (
+        "autor historycznie związany z uczelnią importu musi być na liście"
+    )
+
+
+@pytest.mark.django_db
+def test_autorzy_niezmatchowani_pomija_jednostke_obca(rodzaj_autora_n, dyscyplina1):
+    """Autor związany z uczelnią importu WYŁĄCZNIE przez jednostkę obcą
+    (``skupia_pracownikow=False``) nie może wyciekać do raportu — nawet gdy ta
+    jednostka formalnie należy do uczelni importu (lustrzana jednostka obca)."""
+    uczelnia_x = baker.make(Uczelnia, nazwa="Uczelnia X", skrot="UX")
+
+    autor_obcy = _autor_historyczny(uczelnia_x, "ObcyO", skupia_pracownikow=False)
+    autor_obcy.autor_dyscyplina_set.create(
+        rok=ROK, dyscyplina_naukowa=dyscyplina1, rodzaj_autora=rodzaj_autora_n
+    )
+
+    import_object = baker.make(ImportPlikuPolon, rok=ROK, uczelnia=uczelnia_x)
+
+    autor_ids = {ad.autor_id for ad in import_object.autorzy_niezmatchowani()}
+
+    assert autor_obcy.pk not in autor_ids, (
+        "autor związany tylko przez jednostkę obcą nie może być na liście"
+    )
 
 
 # --- Finding 2: walidacja ZATRUDNIENIE zawężona do nazwy uczelni importu -----

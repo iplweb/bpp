@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+
+{% block extratitle %}
+    Zapis importu do bazy danych - {{ object.plik.name }}
+{% endblock %}
+
+{% block content %}
+    <h1>Zapisać import do bazy danych?</h1>
+
+    <div class="panel callout warning">
+        <p>Zaraz zapiszesz do bazy danych wynik importu z pliku
+            <strong>{{ object.plik.name }}</strong>.</p>
+        <p>Import zostanie uruchomiony <strong>ponownie</strong>, tym razem
+            <strong>ze zmianami zapisywanymi do bazy danych</strong>.
+            Ta operacja modyfikuje bazę danych i w praktyce jest nieodwracalna.</p>
+    </div>
+
+    <form method="post" action=".">
+        {% csrf_token %}
+        <button type="submit" class="button alert" id="id_submit">
+            <span class="fi-save"></span> Tak, zapisz do bazy danych
+        </button>
+        <a href=".." class="button secondary">Anuluj</a>
+    </form>
+{% endblock %}

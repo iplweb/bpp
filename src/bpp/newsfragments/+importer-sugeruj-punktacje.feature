@@ -1,0 +1,1 @@
+Importer publikacji: nowy krok „Punktacja" sugerujący punkty ministerialne (dla artykułów z punktacji źródła, dla monografii/rozdziałów z poziomu wydawcy) z jawnym pokazaniem podstawy albo powodu, gdy sugestia nie jest możliwa; sugestia jest tylko podpowiedzią i pozostaje edytowalna. W kroku dopasowania autorów można teraz ustawić typ autora (autor/redaktor).

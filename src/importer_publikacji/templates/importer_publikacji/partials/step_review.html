@@ -236,7 +236,7 @@
           hx-indicator="#create-spinner">
         {% csrf_token %}
         <button type="button" class="button secondary"
-                hx-get="{% url 'importer_publikacji:authors' session.pk %}"
+                hx-get="{% url 'importer_publikacji:punktacja' session.pk %}"
                 hx-target="#importer-wizard">
             <span class="fi-arrow-left"></span>
             Wstecz

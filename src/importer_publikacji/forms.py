@@ -3,7 +3,7 @@ from django import forms
 from django.contrib.auth import get_user_model
 from django.db.models import Q
 
-from bpp.const import GR_WPROWADZANIE_DANYCH
+from bpp.const import GR_WPROWADZANIE_DANYCH, TO_AUTOR, TO_REDAKTOR
 from bpp.models import (
     Autor,
     Charakter_Formalny,
@@ -57,7 +57,10 @@ class FetchForm(forms.Form):
         super().__init__(*args, **kwargs)
         providers = get_available_providers()
         self.providers_metadata = get_providers_metadata()
-        self.fields["provider"].choices = [(p, p) for p in providers]
+        self.fields["provider"].choices = [
+            (p, self.providers_metadata.get(p, {}).get("choice_label", p))
+            for p in providers
+        ]
         if last_provider and last_provider in providers:
             self.fields["provider"].initial = last_provider
         elif providers:
@@ -149,6 +152,16 @@ class SourceForm(forms.Form):
     )
 
 
+class PunktacjaForm(forms.Form):
+    """Formularz kroku punktacji — jedno pole, edytowalne."""
+
+    punkty_kbn = forms.DecimalField(
+        label="Punkty MNiSW",
+        required=False,
+        min_value=0,
+    )
+
+
 class AuthorMatchForm(forms.Form):
     """Formularz dopasowania pojedynczego autora."""
 
@@ -170,6 +183,16 @@ class AuthorMatchForm(forms.Form):
     zapisany_jako = forms.CharField(
         label="Zapisany jako",
         max_length=512,
+        required=False,
+    )
+    typ = forms.TypedChoiceField(
+        label="Typ autora",
+        choices=[
+            (TO_AUTOR, "autor"),
+            (TO_REDAKTOR, "redaktor"),
+        ],
+        coerce=int,
+        empty_value=None,
         required=False,
     )
 

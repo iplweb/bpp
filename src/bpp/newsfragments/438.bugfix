@@ -1,9 +1,0 @@
-Importer publikacji nie pozwala już utworzyć pracy, w której autor
-afiliuje do jednostki nieprzyjmującej afiliacji (np. węzła rodzaju
-„Wydział"). Sprawdzenie odbywa się na etapie formularza przeglądu — przed
-zleceniem zadania w tle — więc osoba importująca dostaje czytelny
-komunikat wskazujący autora i jednostkę do poprawienia, zamiast błędu
-walidacji w trakcie tworzenia rekordu. Dodano pomocniczą metodę
-``Jednostka.przyjmuje_afiliacje()``, która rozstrzyga, czy do danej
-jednostki można afiliować (jednostka obca lub rodzaj z wyłączoną
-afiliacją zwracają „nie").

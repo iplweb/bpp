@@ -11,25 +11,11 @@ SET lock_timeout = 0;
 SET idle_in_transaction_session_timeout = 0;
 SET client_encoding = 'UTF8';
 SET standard_conforming_strings = on;
-SELECT pg_catalog.set_config('search_path', '', false);
+SELECT pg_catalog.set_config('search_path', 'public', false);
 SET check_function_bodies = false;
 SET xmloption = content;
 SET client_min_messages = warning;
 SET row_security = off;
-
---
--- Name: pl_PL; Type: COLLATION; Schema: public; Owner: -
---
--- USUNIETE RECZNIE: stockowy obraz postgres nie ma wygenerowanego locale libc
--- pl_PL.UTF-8, wiec CREATE COLLATION wywalalby sie przy ladowaniu baseline na
--- czystym obrazie. Kolacja byla uzywana wylacznie na stalych literalach ASCII
--- w widokach bpp_kronika_*_view (no-op dla sortowania) — klauzule COLLATE tez
--- usunieto ponizej. Istniejace bazy doprowadza do tego stanu migracja
--- 0443_drop_pl_PL_collation. UWAGA: baseline_rebuild od zera odtworzy te
--- kolacje (0001_collation.sql) i wymaga obrazu z locale libc + plpython — to
--- osobny temat.
---
-
 
 --
 -- Name: btree_gist; Type: EXTENSION; Schema: -; Owner: -
@@ -241,6 +227,33 @@ $$;
 
 
 --
+-- Name: bpp_autor_jednostka_jedno_podstawowe(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.bpp_autor_jednostka_jedno_podstawowe() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+    v_count integer;
+BEGIN
+    IF NEW.podstawowe_miejsce_pracy IS TRUE THEN
+        SELECT count(*) INTO v_count
+        FROM bpp_autor_jednostka
+        WHERE autor_id = NEW.autor_id
+          AND podstawowe_miejsce_pracy IS TRUE;
+        IF v_count > 1 THEN
+            -- ERRCODE unique_violation -> Django mapuje to na IntegrityError.
+            RAISE EXCEPTION
+                'Autor ma wiecej niz jedno podstawowe miejsce pracy (dozwolone jest tylko jedno)'
+                USING ERRCODE = 'unique_violation';
+        END IF;
+    END IF;
+    RETURN NEW;
+END;
+$$;
+
+
+--
 -- Name: bpp_autor_ustaw_jednostka_aktualna(); Type: FUNCTION; Schema: public; Owner: -
 --
 
@@ -265,16 +278,18 @@ BEGIN
         v_autor_id := NEW.autor_id;
     END IF;
 
-    SELECT jednostka_id, funkcja_id
+    SELECT aj.jednostka_id, aj.funkcja_id
     INTO v_jednostka_id, v_funkcja_id
-    FROM bpp_autor_jednostka
-    WHERE autor_id = v_autor_id
-      AND coalesce(zakonczyl_prace, '9999-12-31'::date) > NOW()::date
+    FROM bpp_autor_jednostka aj
+    JOIN bpp_jednostka j ON j.id = aj.jednostka_id
+    WHERE aj.autor_id = v_autor_id
+      AND coalesce(aj.zakonczyl_prace, '9999-12-31'::date) > NOW()::date
     ORDER BY
-        coalesce(podstawowe_miejsce_pracy, false) DESC,
-        coalesce(rozpoczal_prace, '0001-01-01'::date) DESC,
-        coalesce(zakonczyl_prace, '9999-12-31'::date) DESC,
-        id DESC
+        coalesce(aj.podstawowe_miejsce_pracy, false) DESC,
+        coalesce(j.skupia_pracownikow, true) DESC,
+        coalesce(aj.rozpoczal_prace, '0001-01-01'::date) DESC,
+        coalesce(aj.zakonczyl_prace, '9999-12-31'::date) DESC,
+        aj.id DESC
     LIMIT 1;
 
     IF FOUND THEN
@@ -424,110 +439,6 @@ BEGIN
       DELETE FROM bpp_rekord_mat WHERE id = ARRAY[ct, OLD.id]::integer[];
       RETURN NULL;
 END $$;
-
-
---
--- Name: bpp_jednostka_sprawdz_uczelnia_id(); Type: FUNCTION; Schema: public; Owner: -
---
-
-CREATE FUNCTION public.bpp_jednostka_sprawdz_uczelnia_id() RETURNS trigger
-    LANGUAGE plpgsql
-    AS $$
-DECLARE
-    v_wydzial_uczelnia integer;
-BEGIN
-    IF NEW.wydzial_id IS NOT NULL THEN
-        SELECT uczelnia_id INTO v_wydzial_uczelnia
-        FROM bpp_wydzial WHERE id = NEW.wydzial_id;
-
-        IF v_wydzial_uczelnia IS DISTINCT FROM NEW.uczelnia_id THEN
-            RAISE EXCEPTION 'Uczelnia jednostki i wydzialu musi byc identyczna';
-        END IF;
-    END IF;
-    RETURN NEW;
-END;
-$$;
-
-
---
--- Name: bpp_jednostka_ustaw_wydzial_aktualna(); Type: FUNCTION; Schema: public; Owner: -
---
-
-CREATE FUNCTION public.bpp_jednostka_ustaw_wydzial_aktualna() RETURNS trigger
-    LANGUAGE plpgsql
-    AS $$
-DECLARE
-    v_jednostka_id integer;
-    v_wydzial_id   integer;
-    v_aktualna     boolean;
-BEGIN
-    IF TG_OP = 'UPDATE' THEN
-        IF NEW.jednostka_id IS DISTINCT FROM OLD.jednostka_id THEN
-            RAISE EXCEPTION
-                'zmiana ID jednostki nie jest obsługiwana przez trigger';
-        END IF;
-    END IF;
-
-    IF TG_OP = 'DELETE' THEN
-        v_jednostka_id := OLD.jednostka_id;
-    ELSE
-        v_jednostka_id := NEW.jednostka_id;
-    END IF;
-
-    SELECT wydzial_id,
-           (coalesce("do", '9999-12-31'::date) > NOW()::date)
-    INTO v_wydzial_id, v_aktualna
-    FROM bpp_jednostka_wydzial
-    WHERE jednostka_id = v_jednostka_id
-    ORDER BY coalesce("od", '0001-01-01'::date) DESC
-    LIMIT 1;
-
-    IF FOUND THEN
-        UPDATE bpp_jednostka
-           SET wydzial_id = v_wydzial_id,
-               aktualna = v_aktualna
-         WHERE id = v_jednostka_id;
-    ELSE
-        -- Brak wpisów -> wydział NULL, aktualna = false.
-        UPDATE bpp_jednostka
-           SET wydzial_id = NULL,
-               aktualna = false
-         WHERE id = v_jednostka_id;
-    END IF;
-
-    IF TG_OP = 'DELETE' THEN
-        RETURN OLD;
-    END IF;
-    RETURN NEW;
-END;
-$$;
-
-
---
--- Name: bpp_jednostka_wydzial_sprawdz_uczelnia_id(); Type: FUNCTION; Schema: public; Owner: -
---
-
-CREATE FUNCTION public.bpp_jednostka_wydzial_sprawdz_uczelnia_id() RETURNS trigger
-    LANGUAGE plpgsql
-    AS $$
-DECLARE
-    v_uczelnia_wydzialu  integer;
-    v_uczelnia_jednostki integer;
-BEGIN
-    IF NEW.wydzial_id IS NOT NULL THEN
-        SELECT uczelnia_id INTO v_uczelnia_wydzialu
-        FROM bpp_wydzial WHERE id = NEW.wydzial_id;
-
-        SELECT uczelnia_id INTO v_uczelnia_jednostki
-        FROM bpp_jednostka WHERE id = NEW.jednostka_id;
-
-        IF v_uczelnia_wydzialu IS DISTINCT FROM v_uczelnia_jednostki THEN
-            RAISE EXCEPTION 'Uczelnia jednostki i wydzialu musi byc identyczna';
-        END IF;
-    END IF;
-    RETURN NEW;
-END;
-$$;
 
 
 --
@@ -762,20 +673,12 @@ CREATE FUNCTION public.f_d_aft_row_del_on_bpp_autor_praca_doktorska_baza_opis_b2
     LANGUAGE plpgsql
     AS $$
     BEGIN
-        -- This trigger was created because of @depend_on_related of Praca_Doktorska_Baza.opis_bibliograficzny_cache
+        -- Trigger generated by django-denorm-iplweb for Praca_Doktorska_Baza.opis_bibliograficzny_cache
         -- It happens AFTER DELETE on bpp_autor
         -- This function was autogenerated by code found in <class 'denorm.db.triggers.Trigger'>
 
-        BEGIN
-            INSERT INTO denorm_dirtyinstance (content_type_id, object_id, func_name) (SELECT DISTINCT 4, id, 'opis_bibliograficzny_cache' FROM bpp_praca_doktorska WHERE autor_id = OLD."id");
-        EXCEPTION WHEN unique_violation THEN
-            -- do nothing
-        END;
-        BEGIN
-            INSERT INTO denorm_dirtyinstance (content_type_id, object_id, func_name) (SELECT DISTINCT 5, id, 'opis_bibliograficzny_cache' FROM bpp_praca_habilitacyjna WHERE autor_id = OLD."id");
-        EXCEPTION WHEN unique_violation THEN
-            -- do nothing
-        END;
+        INSERT INTO "denorm_dirtyinstance" ("content_type_id", "object_id", "func_name") (SELECT DISTINCT (SELECT id FROM django_content_type WHERE app_label = 'bpp' AND model = 'praca_doktorska'), id, 'opis_bibliograficzny_cache' FROM "bpp_praca_doktorska" WHERE "autor_id" = OLD."id") ON CONFLICT DO NOTHING;
+        INSERT INTO "denorm_dirtyinstance" ("content_type_id", "object_id", "func_name") (SELECT DISTINCT (SELECT id FROM django_content_type WHERE app_label = 'bpp' AND model = 'praca_habilitacyjna'), id, 'opis_bibliograficzny_cache' FROM "bpp_praca_habilitacyjna" WHERE "autor_id" = OLD."id") ON CONFLICT DO NOTHING;
         RETURN NULL;
     END;
 $$;
@@ -789,20 +692,12 @@ CREATE FUNCTION public.f_d_aft_row_del_on_bpp_autor_praca_doktorska_baza_opis_b3
     LANGUAGE plpgsql
     AS $$
     BEGIN
-        -- This trigger was created because of @depend_on_related of Praca_Doktorska_Baza.opis_bibliograficzny_zapisani_autorzy_cache
+        -- Trigger generated by django-denorm-iplweb for Praca_Doktorska_Baza.opis_bibliograficzny_zapisani_autorzy_cache
         -- It happens AFTER DELETE on bpp_autor
         -- This function was autogenerated by code found in <class 'denorm.db.triggers.Trigger'>
 
-        BEGIN
-            INSERT INTO denorm_dirtyinstance (content_type_id, object_id, func_name) (SELECT DISTINCT 4, id, 'opis_bibliograficzny_zapisani_autorzy_cache' FROM bpp_praca_doktorska WHERE autor_id = OLD."id");
-        EXCEPTION WHEN unique_violation THEN
-            -- do nothing
-        END;
-        BEGIN
-            INSERT INTO denorm_dirtyinstance (content_type_id, object_id, func_name) (SELECT DISTINCT 5, id, 'opis_bibliograficzny_zapisani_autorzy_cache' FROM bpp_praca_habilitacyjna WHERE autor_id = OLD."id");
-        EXCEPTION WHEN unique_violation THEN
-            -- do nothing
-        END;
+        INSERT INTO "denorm_dirtyinstance" ("content_type_id", "object_id", "func_name") (SELECT DISTINCT (SELECT id FROM django_content_type WHERE app_label = 'bpp' AND model = 'praca_doktorska'), id, 'opis_bibliograficzny_zapisani_autorzy_cache' FROM "bpp_praca_doktorska" WHERE "autor_id" = OLD."id") ON CONFLICT DO NOTHING;
+        INSERT INTO "denorm_dirtyinstance" ("content_type_id", "object_id", "func_name") (SELECT DISTINCT (SELECT id FROM django_content_type WHERE app_label = 'bpp' AND model = 'praca_habilitacyjna'), id, 'opis_bibliograficzny_zapisani_autorzy_cache' FROM "bpp_praca_habilitacyjna" WHERE "autor_id" = OLD."id") ON CONFLICT DO NOTHING;
         RETURN NULL;
     END;
 $$;
@@ -816,20 +711,12 @@ CREATE FUNCTION public.f_d_aft_row_del_on_bpp_autor_praca_doktorska_baza_opis_ba
     LANGUAGE plpgsql
     AS $$
     BEGIN
-        -- This trigger was created because of @depend_on_related of Praca_Doktorska_Baza.opis_bibliograficzny_autorzy_cache
+        -- Trigger generated by django-denorm-iplweb for Praca_Doktorska_Baza.opis_bibliograficzny_autorzy_cache
         -- It happens AFTER DELETE on bpp_autor
         -- This function was autogenerated by code found in <class 'denorm.db.triggers.Trigger'>
 
-        BEGIN
-            INSERT INTO denorm_dirtyinstance (content_type_id, object_id, func_name) (SELECT DISTINCT 4, id, 'opis_bibliograficzny_autorzy_cache' FROM bpp_praca_doktorska WHERE autor_id = OLD."id");
-        EXCEPTION WHEN unique_violation THEN
-            -- do nothing
-        END;
-        BEGIN
-            INSERT INTO denorm_dirtyinstance (content_type_id, object_id, func_name) (SELECT DISTINCT 5, id, 'opis_bibliograficzny_autorzy_cache' FROM bpp_praca_habilitacyjna WHERE autor_id = OLD."id");
-        EXCEPTION WHEN unique_violation THEN
-            -- do nothing
-        END;
+        INSERT INTO "denorm_dirtyinstance" ("content_type_id", "object_id", "func_name") (SELECT DISTINCT (SELECT id FROM django_content_type WHERE app_label = 'bpp' AND model = 'praca_doktorska'), id, 'opis_bibliograficzny_autorzy_cache' FROM "bpp_praca_doktorska" WHERE "autor_id" = OLD."id") ON CONFLICT DO NOTHING;
+        INSERT INTO "denorm_dirtyinstance" ("content_type_id", "object_id", "func_name") (SELECT DISTINCT (SELECT id FROM django_content_type WHERE app_label = 'bpp' AND model = 'praca_habilitacyjna'), id, 'opis_bibliograficzny_autorzy_cache' FROM "bpp_praca_habilitacyjna" WHERE "autor_id" = OLD."id") ON CONFLICT DO NOTHING;
         RETURN NULL;
     END;
 $$;
@@ -843,20 +730,12 @@ CREATE FUNCTION public.f_d_aft_row_del_on_bpp_autor_praca_doktorska_baza_slug() 
     LANGUAGE plpgsql
     AS $$
     BEGIN
-        -- This trigger was created because of @depend_on_related of Praca_Doktorska_Baza.slug
+        -- Trigger generated by django-denorm-iplweb for Praca_Doktorska_Baza.slug
         -- It happens AFTER DELETE on bpp_autor
         -- This function was autogenerated by code found in <class 'denorm.db.triggers.Trigger'>
 
-        BEGIN
-            INSERT INTO denorm_dirtyinstance (content_type_id, object_id, func_name) (SELECT DISTINCT 4, id, 'slug' FROM bpp_praca_doktorska WHERE autor_id = OLD."id");
-        EXCEPTION WHEN unique_violation THEN
-            -- do nothing
-        END;
-        BEGIN
-            INSERT INTO denorm_dirtyinstance (content_type_id, object_id, func_name) (SELECT DISTINCT 5, id, 'slug' FROM bpp_praca_habilitacyjna WHERE autor_id = OLD."id");
-        EXCEPTION WHEN unique_violation THEN
-            -- do nothing
-        END;
+        INSERT INTO "denorm_dirtyinstance" ("content_type_id", "object_id", "func_name") (SELECT DISTINCT (SELECT id FROM django_content_type WHERE app_label = 'bpp' AND model = 'praca_doktorska'), id, 'slug' FROM "bpp_praca_doktorska" WHERE "autor_id" = OLD."id") ON CONFLICT DO NOTHING;
+        INSERT INTO "denorm_dirtyinstance" ("content_type_id", "object_id", "func_name") (SELECT DISTINCT (SELECT id FROM django_content_type WHERE app_label = 'bpp' AND model = 'praca_habilitacyjna'), id, 'slug' FROM "bpp_praca_habilitacyjna" WHERE "autor_id" = OLD."id") ON CONFLICT DO NOTHING;
         RETURN NULL;
     END;
 $$;
@@ -870,15 +749,11 @@ CREATE FUNCTION public.f_d_aft_row_del_on_bpp_charakter_formalny_wydawnictwo_ci1
     LANGUAGE plpgsql
     AS $$
     BEGIN
-        -- This trigger was created because of @depend_on_related of Wydawnictwo_Ciagle.opis_bibliograficzny_cache
+        -- Trigger generated by django-denorm-iplweb for Wydawnictwo_Ciagle.opis_bibliograficzny_cache
         -- It happens AFTER DELETE on bpp_charakter_formalny
         -- This function was autogenerated by code found in <class 'denorm.db.triggers.Trigger'>
 
-        BEGIN
-            INSERT INTO denorm_dirtyinstance (content_type_id, object_id, func_name) (SELECT DISTINCT 6, id, 'opis_bibliograficzny_cache' FROM bpp_wydawnictwo_ciagle WHERE charakter_formalny_id = OLD."id");
-        EXCEPTION WHEN unique_violation THEN
-            -- do nothing
-        END;
+        INSERT INTO "denorm_dirtyinstance" ("content_type_id", "object_id", "func_name") (SELECT DISTINCT (SELECT id FROM django_content_type WHERE app_label = 'bpp' AND model = 'wydawnictwo_ciagle'), id, 'opis_bibliograficzny_cache' FROM "bpp_wydawnictwo_ciagle" WHERE "charakter_formalny_id" = OLD."id") ON CONFLICT DO NOTHING;
         RETURN NULL;
     END;
 $$;
@@ -892,15 +767,29 @@ CREATE FUNCTION public.f_d_aft_row_del_on_bpp_charakter_formalny_wydawnictwo_zwa
     LANGUAGE plpgsql
     AS $$
     BEGIN
-        -- This trigger was created because of @depend_on_related of Wydawnictwo_Zwarte.opis_bibliograficzny_cache
+        -- Trigger generated by django-denorm-iplweb for Wydawnictwo_Zwarte.opis_bibliograficzny_cache
         -- It happens AFTER DELETE on bpp_charakter_formalny
         -- This function was autogenerated by code found in <class 'denorm.db.triggers.Trigger'>
 
-        BEGIN
-            INSERT INTO denorm_dirtyinstance (content_type_id, object_id, func_name) (SELECT DISTINCT 3, id, 'opis_bibliograficzny_cache' FROM bpp_wydawnictwo_zwarte WHERE charakter_formalny_id = OLD."id");
-        EXCEPTION WHEN unique_violation THEN
-            -- do nothing
-        END;
+        INSERT INTO "denorm_dirtyinstance" ("content_type_id", "object_id", "func_name") (SELECT DISTINCT (SELECT id FROM django_content_type WHERE app_label = 'bpp' AND model = 'wydawnictwo_zwarte'), id, 'opis_bibliograficzny_cache' FROM "bpp_wydawnictwo_zwarte" WHERE "charakter_formalny_id" = OLD."id") ON CONFLICT DO NOTHING;
+        RETURN NULL;
+    END;
+$$;
+
+
+--
+-- Name: f_d_aft_row_del_on_bpp_jednostka_jednostka_wydzial(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.f_d_aft_row_del_on_bpp_jednostka_jednostka_wydzial() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+    BEGIN
+        -- Trigger generated by django-denorm-iplweb for Jednostka.wydzial
+        -- It happens AFTER DELETE on bpp_jednostka
+        -- This function was autogenerated by code found in <class 'denorm.db.triggers.Trigger'>
+
+        INSERT INTO "denorm_dirtyinstance" ("content_type_id", "object_id", "func_name") (SELECT DISTINCT (SELECT id FROM django_content_type WHERE app_label = 'bpp' AND model = 'jednostka'), id, 'wydzial' FROM "bpp_jednostka" WHERE "parent_id" = OLD."id") ON CONFLICT DO NOTHING;
         RETURN NULL;
     END;
 $$;
@@ -914,20 +803,12 @@ CREATE FUNCTION public.f_d_aft_row_del_on_bpp_jednostka_praca_doktorska_baza_op8
     LANGUAGE plpgsql
     AS $$
     BEGIN
-        -- This trigger was created because of @depend_on_related of Praca_Doktorska_Baza.opis_bibliograficzny_cache
+        -- Trigger generated by django-denorm-iplweb for Praca_Doktorska_Baza.opis_bibliograficzny_cache
         -- It happens AFTER DELETE on bpp_jednostka
         -- This function was autogenerated by code found in <class 'denorm.db.triggers.Trigger'>
 
-        BEGIN
-            INSERT INTO denorm_dirtyinstance (content_type_id, object_id, func_name) (SELECT DISTINCT 4, id, 'opis_bibliograficzny_cache' FROM bpp_praca_doktorska WHERE jednostka_id = OLD."id");
-        EXCEPTION WHEN unique_violation THEN
-            -- do nothing
-        END;
-        BEGIN
-            INSERT INTO denorm_dirtyinstance (content_type_id, object_id, func_name) (SELECT DISTINCT 5, id, 'opis_bibliograficzny_cache' FROM bpp_praca_habilitacyjna WHERE jednostka_id = OLD."id");
-        EXCEPTION WHEN unique_violation THEN
-            -- do nothing
-        END;
+        INSERT INTO "denorm_dirtyinstance" ("content_type_id", "object_id", "func_name") (SELECT DISTINCT (SELECT id FROM django_content_type WHERE app_label = 'bpp' AND model = 'praca_doktorska'), id, 'opis_bibliograficzny_cache' FROM "bpp_praca_doktorska" WHERE "jednostka_id" = OLD."id") ON CONFLICT DO NOTHING;
+        INSERT INTO "denorm_dirtyinstance" ("content_type_id", "object_id", "func_name") (SELECT DISTINCT (SELECT id FROM django_content_type WHERE app_label = 'bpp' AND model = 'praca_habilitacyjna'), id, 'opis_bibliograficzny_cache' FROM "bpp_praca_habilitacyjna" WHERE "jednostka_id" = OLD."id") ON CONFLICT DO NOTHING;
         RETURN NULL;
     END;
 $$;
@@ -941,15 +822,11 @@ CREATE FUNCTION public.f_d_aft_row_del_on_bpp_patent_autor_patent_cached_punktyb
     LANGUAGE plpgsql
     AS $$
     BEGIN
-        -- This trigger was created because of @depend_on_related of Patent.cached_punkty_dyscyplin
+        -- Trigger generated by django-denorm-iplweb for Patent.cached_punkty_dyscyplin
         -- It happens AFTER DELETE on bpp_patent_autor
         -- This function was autogenerated by code found in <class 'denorm.db.triggers.Trigger'>
 
-        BEGIN
-            INSERT INTO denorm_dirtyinstance (content_type_id, object_id, func_name) VALUES (1, OLD.rekord_id, 'cached_punkty_dyscyplin');
-        EXCEPTION WHEN unique_violation THEN
-            -- do nothing
-        END;
+        INSERT INTO "denorm_dirtyinstance" ("content_type_id", "object_id", "func_name") VALUES ((SELECT id FROM django_content_type WHERE app_label = 'bpp' AND model = 'patent'), OLD.rekord_id, 'cached_punkty_dyscyplin') ON CONFLICT DO NOTHING;
         RETURN NULL;
     END;
 $$;
@@ -963,15 +840,11 @@ CREATE FUNCTION public.f_d_aft_row_del_on_bpp_patent_autor_patent_opis_bibliogr2
     LANGUAGE plpgsql
     AS $$
     BEGIN
-        -- This trigger was created because of @depend_on_related of Patent.opis_bibliograficzny_cache
+        -- Trigger generated by django-denorm-iplweb for Patent.opis_bibliograficzny_cache
         -- It happens AFTER DELETE on bpp_patent_autor
         -- This function was autogenerated by code found in <class 'denorm.db.triggers.Trigger'>
 
-        BEGIN
-            INSERT INTO denorm_dirtyinstance (content_type_id, object_id, func_name) VALUES (1, OLD.rekord_id, 'opis_bibliograficzny_cache');
-        EXCEPTION WHEN unique_violation THEN
-            -- do nothing
-        END;
+        INSERT INTO "denorm_dirtyinstance" ("content_type_id", "object_id", "func_name") VALUES ((SELECT id FROM django_content_type WHERE app_label = 'bpp' AND model = 'patent'), OLD.rekord_id, 'opis_bibliograficzny_cache') ON CONFLICT DO NOTHING;
         RETURN NULL;
     END;
 $$;
@@ -985,20 +858,12 @@ CREATE FUNCTION public.f_d_aft_row_del_on_bpp_patent_autor_patent_opis_bibliogr4
     LANGUAGE plpgsql
     AS $$
     BEGIN
-        -- This trigger was created because of @depend_on_related of Patent.opis_bibliograficzny_autorzy_cache
+        -- Trigger generated by django-denorm-iplweb for Patent.opis_bibliograficzny_autorzy_cache
         -- It happens AFTER DELETE on bpp_patent_autor
         -- This function was autogenerated by code found in <class 'denorm.db.triggers.Trigger'>
 
-        BEGIN
-            INSERT INTO denorm_dirtyinstance (content_type_id, object_id, func_name) VALUES (1, OLD.rekord_id, 'opis_bibliograficzny_autorzy_cache');
-        EXCEPTION WHEN unique_violation THEN
-            -- do nothing
-        END;
-        BEGIN
-            INSERT INTO denorm_dirtyinstance (content_type_id, object_id, func_name) VALUES (1, OLD."rekord_id", 'opis_bibliograficzny_autorzy_cache');
-        EXCEPTION WHEN unique_violation THEN
-            -- do nothing
-        END;
+        INSERT INTO "denorm_dirtyinstance" ("content_type_id", "object_id", "func_name") VALUES ((SELECT id FROM django_content_type WHERE app_label = 'bpp' AND model = 'patent'), OLD.rekord_id, 'opis_bibliograficzny_autorzy_cache') ON CONFLICT DO NOTHING;
+        INSERT INTO "denorm_dirtyinstance" ("content_type_id", "object_id", "func_name") VALUES ((SELECT id FROM django_content_type WHERE app_label = 'bpp' AND model = 'patent'), OLD."rekord_id", 'opis_bibliograficzny_autorzy_cache') ON CONFLICT DO NOTHING;
         RETURN NULL;
     END;
 $$;
@@ -1012,15 +877,11 @@ CREATE FUNCTION public.f_d_aft_row_del_on_bpp_patent_autor_patent_opis_bibliogrb
     LANGUAGE plpgsql
     AS $$
     BEGIN
-        -- This trigger was created because of @depend_on_related of Patent.opis_bibliograficzny_zapisani_autorzy_cache
+        -- Trigger generated by django-denorm-iplweb for Patent.opis_bibliograficzny_zapisani_autorzy_cache
         -- It happens AFTER DELETE on bpp_patent_autor
         -- This function was autogenerated by code found in <class 'denorm.db.triggers.Trigger'>
 
-        BEGIN
-            INSERT INTO denorm_dirtyinstance (content_type_id, object_id, func_name) VALUES (1, OLD.rekord_id, 'opis_bibliograficzny_zapisani_autorzy_cache');
-        EXCEPTION WHEN unique_violation THEN
-            -- do nothing
-        END;
+        INSERT INTO "denorm_dirtyinstance" ("content_type_id", "object_id", "func_name") VALUES ((SELECT id FROM django_content_type WHERE app_label = 'bpp' AND model = 'patent'), OLD.rekord_id, 'opis_bibliograficzny_zapisani_autorzy_cache') ON CONFLICT DO NOTHING;
         RETURN NULL;
     END;
 $$;
@@ -1034,20 +895,12 @@ CREATE FUNCTION public.f_d_aft_row_del_on_bpp_patent_autor_patent_slug() RETURNS
     LANGUAGE plpgsql
     AS $$
     BEGIN
-        -- This trigger was created because of @depend_on_related of Patent.slug
+        -- Trigger generated by django-denorm-iplweb for Patent.slug
         -- It happens AFTER DELETE on bpp_patent_autor
         -- This function was autogenerated by code found in <class 'denorm.db.triggers.Trigger'>
 
-        BEGIN
-            INSERT INTO denorm_dirtyinstance (content_type_id, object_id, func_name) VALUES (1, OLD."rekord_id", 'slug');
-        EXCEPTION WHEN unique_violation THEN
-            -- do nothing
-        END;
-        BEGIN
-            INSERT INTO denorm_dirtyinstance (content_type_id, object_id, func_name) VALUES (1, OLD.rekord_id, 'slug');
-        EXCEPTION WHEN unique_violation THEN
-            -- do nothing
-        END;
+        INSERT INTO "denorm_dirtyinstance" ("content_type_id", "object_id", "func_name") VALUES ((SELECT id FROM django_content_type WHERE app_label = 'bpp' AND model = 'patent'), OLD."rekord_id", 'slug') ON CONFLICT DO NOTHING;
+        INSERT INTO "denorm_dirtyinstance" ("content_type_id", "object_id", "func_name") VALUES ((SELECT id FROM django_content_type WHERE app_label = 'bpp' AND model = 'patent'), OLD.rekord_id, 'slug') ON CONFLICT DO NOTHING;
         RETURN NULL;
     END;
 $$;
@@ -1061,15 +914,11 @@ CREATE FUNCTION public.f_d_aft_row_del_on_bpp_poziom_wydawcy_wydawca_lista_pozio
     LANGUAGE plpgsql
     AS $$
     BEGIN
-        -- This trigger was created because of @depend_on_related of Wydawca.lista_poziomow
+        -- Trigger generated by django-denorm-iplweb for Wydawca.lista_poziomow
         -- It happens AFTER DELETE on bpp_poziom_wydawcy
         -- This function was autogenerated by code found in <class 'denorm.db.triggers.Trigger'>
 
-        BEGIN
-            INSERT INTO denorm_dirtyinstance (content_type_id, object_id, func_name) VALUES (2, OLD.wydawca_id, 'lista_poziomow');
-        EXCEPTION WHEN unique_violation THEN
-            -- do nothing
-        END;
+        INSERT INTO "denorm_dirtyinstance" ("content_type_id", "object_id", "func_name") VALUES ((SELECT id FROM django_content_type WHERE app_label = 'bpp' AND model = 'wydawca'), OLD.wydawca_id, 'lista_poziomow') ON CONFLICT DO NOTHING;
         RETURN NULL;
     END;
 $$;
@@ -1083,15 +932,11 @@ CREATE FUNCTION public.f_d_aft_row_del_on_bpp_status_korekty_patent_opis_biblio2
     LANGUAGE plpgsql
     AS $$
     BEGIN
-        -- This trigger was created because of @depend_on_related of Patent.opis_bibliograficzny_cache
+        -- Trigger generated by django-denorm-iplweb for Patent.opis_bibliograficzny_cache
         -- It happens AFTER DELETE on bpp_status_korekty
         -- This function was autogenerated by code found in <class 'denorm.db.triggers.Trigger'>
 
-        BEGIN
-            INSERT INTO denorm_dirtyinstance (content_type_id, object_id, func_name) (SELECT DISTINCT 1, id, 'opis_bibliograficzny_cache' FROM bpp_patent WHERE status_korekty_id = OLD."id");
-        EXCEPTION WHEN unique_violation THEN
-            -- do nothing
-        END;
+        INSERT INTO "denorm_dirtyinstance" ("content_type_id", "object_id", "func_name") (SELECT DISTINCT (SELECT id FROM django_content_type WHERE app_label = 'bpp' AND model = 'patent'), id, 'opis_bibliograficzny_cache' FROM "bpp_patent" WHERE "status_korekty_id" = OLD."id") ON CONFLICT DO NOTHING;
         RETURN NULL;
     END;
 $$;
@@ -1105,20 +950,12 @@ CREATE FUNCTION public.f_d_aft_row_del_on_bpp_status_korekty_praca_doktorska_ba5
     LANGUAGE plpgsql
     AS $$
     BEGIN
-        -- This trigger was created because of @depend_on_related of Praca_Doktorska_Baza.opis_bibliograficzny_cache
+        -- Trigger generated by django-denorm-iplweb for Praca_Doktorska_Baza.opis_bibliograficzny_cache
         -- It happens AFTER DELETE on bpp_status_korekty
         -- This function was autogenerated by code found in <class 'denorm.db.triggers.Trigger'>
 
-        BEGIN
-            INSERT INTO denorm_dirtyinstance (content_type_id, object_id, func_name) (SELECT DISTINCT 4, id, 'opis_bibliograficzny_cache' FROM bpp_praca_doktorska WHERE status_korekty_id = OLD."id");
-        EXCEPTION WHEN unique_violation THEN
-            -- do nothing
-        END;
-        BEGIN
-            INSERT INTO denorm_dirtyinstance (content_type_id, object_id, func_name) (SELECT DISTINCT 5, id, 'opis_bibliograficzny_cache' FROM bpp_praca_habilitacyjna WHERE status_korekty_id = OLD."id");
-        EXCEPTION WHEN unique_violation THEN
-            -- do nothing
-        END;
+        INSERT INTO "denorm_dirtyinstance" ("content_type_id", "object_id", "func_name") (SELECT DISTINCT (SELECT id FROM django_content_type WHERE app_label = 'bpp' AND model = 'praca_doktorska'), id, 'opis_bibliograficzny_cache' FROM "bpp_praca_doktorska" WHERE "status_korekty_id" = OLD."id") ON CONFLICT DO NOTHING;
+        INSERT INTO "denorm_dirtyinstance" ("content_type_id", "object_id", "func_name") (SELECT DISTINCT (SELECT id FROM django_content_type WHERE app_label = 'bpp' AND model = 'praca_habilitacyjna'), id, 'opis_bibliograficzny_cache' FROM "bpp_praca_habilitacyjna" WHERE "status_korekty_id" = OLD."id") ON CONFLICT DO NOTHING;
         RETURN NULL;
     END;
 $$;
@@ -1132,15 +969,11 @@ CREATE FUNCTION public.f_d_aft_row_del_on_bpp_status_korekty_wydawnictwo_ciagleb
     LANGUAGE plpgsql
     AS $$
     BEGIN
-        -- This trigger was created because of @depend_on_related of Wydawnictwo_Ciagle.opis_bibliograficzny_cache
+        -- Trigger generated by django-denorm-iplweb for Wydawnictwo_Ciagle.opis_bibliograficzny_cache
         -- It happens AFTER DELETE on bpp_status_korekty
         -- This function was autogenerated by code found in <class 'denorm.db.triggers.Trigger'>
 
-        BEGIN
-            INSERT INTO denorm_dirtyinstance (content_type_id, object_id, func_name) (SELECT DISTINCT 6, id, 'opis_bibliograficzny_cache' FROM bpp_wydawnictwo_ciagle WHERE status_korekty_id = OLD."id");
-        EXCEPTION WHEN unique_violation THEN
-            -- do nothing
-        END;
+        INSERT INTO "denorm_dirtyinstance" ("content_type_id", "object_id", "func_name") (SELECT DISTINCT (SELECT id FROM django_content_type WHERE app_label = 'bpp' AND model = 'wydawnictwo_ciagle'), id, 'opis_bibliograficzny_cache' FROM "bpp_wydawnictwo_ciagle" WHERE "status_korekty_id" = OLD."id") ON CONFLICT DO NOTHING;
         RETURN NULL;
     END;
 $$;
@@ -1154,15 +987,11 @@ CREATE FUNCTION public.f_d_aft_row_del_on_bpp_status_korekty_wydawnictwo_zwarted
     LANGUAGE plpgsql
     AS $$
     BEGIN
-        -- This trigger was created because of @depend_on_related of Wydawnictwo_Zwarte.opis_bibliograficzny_cache
+        -- Trigger generated by django-denorm-iplweb for Wydawnictwo_Zwarte.opis_bibliograficzny_cache
         -- It happens AFTER DELETE on bpp_status_korekty
         -- This function was autogenerated by code found in <class 'denorm.db.triggers.Trigger'>
 
-        BEGIN
-            INSERT INTO denorm_dirtyinstance (content_type_id, object_id, func_name) (SELECT DISTINCT 3, id, 'opis_bibliograficzny_cache' FROM bpp_wydawnictwo_zwarte WHERE status_korekty_id = OLD."id");
-        EXCEPTION WHEN unique_violation THEN
-            -- do nothing
-        END;
+        INSERT INTO "denorm_dirtyinstance" ("content_type_id", "object_id", "func_name") (SELECT DISTINCT (SELECT id FROM django_content_type WHERE app_label = 'bpp' AND model = 'wydawnictwo_zwarte'), id, 'opis_bibliograficzny_cache' FROM "bpp_wydawnictwo_zwarte" WHERE "status_korekty_id" = OLD."id") ON CONFLICT DO NOTHING;
         RETURN NULL;
     END;
 $$;
@@ -1176,15 +1005,11 @@ CREATE FUNCTION public.f_d_aft_row_del_on_bpp_typ_kbn_wydawnictwo_ciagle_opis_b1
     LANGUAGE plpgsql
     AS $$
     BEGIN
-        -- This trigger was created because of @depend_on_related of Wydawnictwo_Ciagle.opis_bibliograficzny_cache
+        -- Trigger generated by django-denorm-iplweb for Wydawnictwo_Ciagle.opis_bibliograficzny_cache
         -- It happens AFTER DELETE on bpp_typ_kbn
         -- This function was autogenerated by code found in <class 'denorm.db.triggers.Trigger'>
 
-        BEGIN
-            INSERT INTO denorm_dirtyinstance (content_type_id, object_id, func_name) (SELECT DISTINCT 6, id, 'opis_bibliograficzny_cache' FROM bpp_wydawnictwo_ciagle WHERE typ_kbn_id = OLD."id");
-        EXCEPTION WHEN unique_violation THEN
-            -- do nothing
-        END;
+        INSERT INTO "denorm_dirtyinstance" ("content_type_id", "object_id", "func_name") (SELECT DISTINCT (SELECT id FROM django_content_type WHERE app_label = 'bpp' AND model = 'wydawnictwo_ciagle'), id, 'opis_bibliograficzny_cache' FROM "bpp_wydawnictwo_ciagle" WHERE "typ_kbn_id" = OLD."id") ON CONFLICT DO NOTHING;
         RETURN NULL;
     END;
 $$;
@@ -1198,15 +1023,11 @@ CREATE FUNCTION public.f_d_aft_row_del_on_bpp_typ_kbn_wydawnictwo_zwarte_opis_b3
     LANGUAGE plpgsql
     AS $$
     BEGIN
-        -- This trigger was created because of @depend_on_related of Wydawnictwo_Zwarte.opis_bibliograficzny_cache
+        -- Trigger generated by django-denorm-iplweb for Wydawnictwo_Zwarte.opis_bibliograficzny_cache
         -- It happens AFTER DELETE on bpp_typ_kbn
         -- This function was autogenerated by code found in <class 'denorm.db.triggers.Trigger'>
 
-        BEGIN
-            INSERT INTO denorm_dirtyinstance (content_type_id, object_id, func_name) (SELECT DISTINCT 3, id, 'opis_bibliograficzny_cache' FROM bpp_wydawnictwo_zwarte WHERE typ_kbn_id = OLD."id");
-        EXCEPTION WHEN unique_violation THEN
-            -- do nothing
-        END;
+        INSERT INTO "denorm_dirtyinstance" ("content_type_id", "object_id", "func_name") (SELECT DISTINCT (SELECT id FROM django_content_type WHERE app_label = 'bpp' AND model = 'wydawnictwo_zwarte'), id, 'opis_bibliograficzny_cache' FROM "bpp_wydawnictwo_zwarte" WHERE "typ_kbn_id" = OLD."id") ON CONFLICT DO NOTHING;
         RETURN NULL;
     END;
 $$;
@@ -1220,7 +1041,7 @@ CREATE FUNCTION public.f_d_aft_row_del_on_bpp_wydawca() RETURNS trigger
     LANGUAGE plpgsql
     AS $$
     BEGIN
-        UPDATE bpp_wydawca SET ile_aliasow = "ile_aliasow" - 1 WHERE "id" = OLD."alias_dla_id";
+        UPDATE "bpp_wydawca" SET "ile_aliasow" = "ile_aliasow" - 1 WHERE "id" = OLD."alias_dla_id";
         RETURN NULL;
     END;
 $$;
@@ -1234,15 +1055,11 @@ CREATE FUNCTION public.f_d_aft_row_del_on_bpp_wydawca_wydawnictwo_zwarte_cached5
     LANGUAGE plpgsql
     AS $$
     BEGIN
-        -- This trigger was created because of @depend_on_related of Wydawnictwo_Zwarte.cached_punkty_dyscyplin
+        -- Trigger generated by django-denorm-iplweb for Wydawnictwo_Zwarte.cached_punkty_dyscyplin
         -- It happens AFTER DELETE on bpp_wydawca
         -- This function was autogenerated by code found in <class 'denorm.db.triggers.Trigger'>
 
-        BEGIN
-            INSERT INTO denorm_dirtyinstance (content_type_id, object_id, func_name) (SELECT DISTINCT 3, id, 'cached_punkty_dyscyplin' FROM bpp_wydawnictwo_zwarte WHERE wydawca_id = OLD."id");
-        EXCEPTION WHEN unique_violation THEN
-            -- do nothing
-        END;
+        INSERT INTO "denorm_dirtyinstance" ("content_type_id", "object_id", "func_name") (SELECT DISTINCT (SELECT id FROM django_content_type WHERE app_label = 'bpp' AND model = 'wydawnictwo_zwarte'), id, 'cached_punkty_dyscyplin' FROM "bpp_wydawnictwo_zwarte" WHERE "wydawca_id" = OLD."id") ON CONFLICT DO NOTHING;
         RETURN NULL;
     END;
 $$;
@@ -1256,15 +1073,11 @@ CREATE FUNCTION public.f_d_aft_row_del_on_bpp_wydawca_wydawnictwo_zwarte_opis_bb
     LANGUAGE plpgsql
     AS $$
     BEGIN
-        -- This trigger was created because of @depend_on_related of Wydawnictwo_Zwarte.opis_bibliograficzny_cache
+        -- Trigger generated by django-denorm-iplweb for Wydawnictwo_Zwarte.opis_bibliograficzny_cache
         -- It happens AFTER DELETE on bpp_wydawca
         -- This function was autogenerated by code found in <class 'denorm.db.triggers.Trigger'>
 
-        BEGIN
-            INSERT INTO denorm_dirtyinstance (content_type_id, object_id, func_name) (SELECT DISTINCT 3, id, 'opis_bibliograficzny_cache' FROM bpp_wydawnictwo_zwarte WHERE wydawca_id = OLD."id");
-        EXCEPTION WHEN unique_violation THEN
-            -- do nothing
-        END;
+        INSERT INTO "denorm_dirtyinstance" ("content_type_id", "object_id", "func_name") (SELECT DISTINCT (SELECT id FROM django_content_type WHERE app_label = 'bpp' AND model = 'wydawnictwo_zwarte'), id, 'opis_bibliograficzny_cache' FROM "bpp_wydawnictwo_zwarte" WHERE "wydawca_id" = OLD."id") ON CONFLICT DO NOTHING;
         RETURN NULL;
     END;
 $$;
@@ -1278,15 +1091,11 @@ CREATE FUNCTION public.f_d_aft_row_del_on_bpp_wydawnictwo_ciagle_autor_wydawnic0
     LANGUAGE plpgsql
     AS $$
     BEGIN
-        -- This trigger was created because of @depend_on_related of Wydawnictwo_Ciagle.cached_punkty_dyscyplin
+        -- Trigger generated by django-denorm-iplweb for Wydawnictwo_Ciagle.cached_punkty_dyscyplin
         -- It happens AFTER DELETE on bpp_wydawnictwo_ciagle_autor
         -- This function was autogenerated by code found in <class 'denorm.db.triggers.Trigger'>
 
-        BEGIN
-            INSERT INTO denorm_dirtyinstance (content_type_id, object_id, func_name) VALUES (6, OLD.rekord_id, 'cached_punkty_dyscyplin');
-        EXCEPTION WHEN unique_violation THEN
-            -- do nothing
-        END;
+        INSERT INTO "denorm_dirtyinstance" ("content_type_id", "object_id", "func_name") VALUES ((SELECT id FROM django_content_type WHERE app_label = 'bpp' AND model = 'wydawnictwo_ciagle'), OLD.rekord_id, 'cached_punkty_dyscyplin') ON CONFLICT DO NOTHING;
         RETURN NULL;
     END;
 $$;
@@ -1300,20 +1109,12 @@ CREATE FUNCTION public.f_d_aft_row_del_on_bpp_wydawnictwo_ciagle_autor_wydawnic2
     LANGUAGE plpgsql
     AS $$
     BEGIN
-        -- This trigger was created because of @depend_on_related of Wydawnictwo_Ciagle.opis_bibliograficzny_autorzy_cache
+        -- Trigger generated by django-denorm-iplweb for Wydawnictwo_Ciagle.opis_bibliograficzny_autorzy_cache
         -- It happens AFTER DELETE on bpp_wydawnictwo_ciagle_autor
         -- This function was autogenerated by code found in <class 'denorm.db.triggers.Trigger'>
 
-        BEGIN
-            INSERT INTO denorm_dirtyinstance (content_type_id, object_id, func_name) VALUES (6, OLD.rekord_id, 'opis_bibliograficzny_autorzy_cache');
-        EXCEPTION WHEN unique_violation THEN
-            -- do nothing
-        END;
-        BEGIN
-            INSERT INTO denorm_dirtyinstance (content_type_id, object_id, func_name) VALUES (6, OLD."rekord_id", 'opis_bibliograficzny_autorzy_cache');
-        EXCEPTION WHEN unique_violation THEN
-            -- do nothing
-        END;
+        INSERT INTO "denorm_dirtyinstance" ("content_type_id", "object_id", "func_name") VALUES ((SELECT id FROM django_content_type WHERE app_label = 'bpp' AND model = 'wydawnictwo_ciagle'), OLD.rekord_id, 'opis_bibliograficzny_autorzy_cache') ON CONFLICT DO NOTHING;
+        INSERT INTO "denorm_dirtyinstance" ("content_type_id", "object_id", "func_name") VALUES ((SELECT id FROM django_content_type WHERE app_label = 'bpp' AND model = 'wydawnictwo_ciagle'), OLD."rekord_id", 'opis_bibliograficzny_autorzy_cache') ON CONFLICT DO NOTHING;
         RETURN NULL;
     END;
 $$;
@@ -1327,20 +1128,12 @@ CREATE FUNCTION public.f_d_aft_row_del_on_bpp_wydawnictwo_ciagle_autor_wydawnic2
     LANGUAGE plpgsql
     AS $$
     BEGIN
-        -- This trigger was created because of @depend_on_related of Wydawnictwo_Ciagle.slug
+        -- Trigger generated by django-denorm-iplweb for Wydawnictwo_Ciagle.slug
         -- It happens AFTER DELETE on bpp_wydawnictwo_ciagle_autor
         -- This function was autogenerated by code found in <class 'denorm.db.triggers.Trigger'>
 
-        BEGIN
-            INSERT INTO denorm_dirtyinstance (content_type_id, object_id, func_name) VALUES (6, OLD."rekord_id", 'slug');
-        EXCEPTION WHEN unique_violation THEN
-            -- do nothing
-        END;
-        BEGIN
-            INSERT INTO denorm_dirtyinstance (content_type_id, object_id, func_name) VALUES (6, OLD.rekord_id, 'slug');
-        EXCEPTION WHEN unique_violation THEN
-            -- do nothing
-        END;
+        INSERT INTO "denorm_dirtyinstance" ("content_type_id", "object_id", "func_name") VALUES ((SELECT id FROM django_content_type WHERE app_label = 'bpp' AND model = 'wydawnictwo_ciagle'), OLD."rekord_id", 'slug') ON CONFLICT DO NOTHING;
+        INSERT INTO "denorm_dirtyinstance" ("content_type_id", "object_id", "func_name") VALUES ((SELECT id FROM django_content_type WHERE app_label = 'bpp' AND model = 'wydawnictwo_ciagle'), OLD.rekord_id, 'slug') ON CONFLICT DO NOTHING;
         RETURN NULL;
     END;
 $$;
@@ -1354,15 +1147,11 @@ CREATE FUNCTION public.f_d_aft_row_del_on_bpp_wydawnictwo_ciagle_autor_wydawnic6
     LANGUAGE plpgsql
     AS $$
     BEGIN
-        -- This trigger was created because of @depend_on_related of Wydawnictwo_Ciagle.opis_bibliograficzny_cache
+        -- Trigger generated by django-denorm-iplweb for Wydawnictwo_Ciagle.opis_bibliograficzny_cache
         -- It happens AFTER DELETE on bpp_wydawnictwo_ciagle_autor
         -- This function was autogenerated by code found in <class 'denorm.db.triggers.Trigger'>
 
-        BEGIN
-            INSERT INTO denorm_dirtyinstance (content_type_id, object_id, func_name) VALUES (6, OLD.rekord_id, 'opis_bibliograficzny_cache');
-        EXCEPTION WHEN unique_violation THEN
-            -- do nothing
-        END;
+        INSERT INTO "denorm_dirtyinstance" ("content_type_id", "object_id", "func_name") VALUES ((SELECT id FROM django_content_type WHERE app_label = 'bpp' AND model = 'wydawnictwo_ciagle'), OLD.rekord_id, 'opis_bibliograficzny_cache') ON CONFLICT DO NOTHING;
         RETURN NULL;
     END;
 $$;
@@ -1376,15 +1165,11 @@ CREATE FUNCTION public.f_d_aft_row_del_on_bpp_wydawnictwo_ciagle_autor_wydawnic8
     LANGUAGE plpgsql
     AS $$
     BEGIN
-        -- This trigger was created because of @depend_on_related of Wydawnictwo_Ciagle.opis_bibliograficzny_zapisani_autorzy_cache
+        -- Trigger generated by django-denorm-iplweb for Wydawnictwo_Ciagle.opis_bibliograficzny_zapisani_autorzy_cache
         -- It happens AFTER DELETE on bpp_wydawnictwo_ciagle_autor
         -- This function was autogenerated by code found in <class 'denorm.db.triggers.Trigger'>
 
-        BEGIN
-            INSERT INTO denorm_dirtyinstance (content_type_id, object_id, func_name) VALUES (6, OLD.rekord_id, 'opis_bibliograficzny_zapisani_autorzy_cache');
-        EXCEPTION WHEN unique_violation THEN
-            -- do nothing
-        END;
+        INSERT INTO "denorm_dirtyinstance" ("content_type_id", "object_id", "func_name") VALUES ((SELECT id FROM django_content_type WHERE app_label = 'bpp' AND model = 'wydawnictwo_ciagle'), OLD.rekord_id, 'opis_bibliograficzny_zapisani_autorzy_cache') ON CONFLICT DO NOTHING;
         RETURN NULL;
     END;
 $$;
@@ -1398,20 +1183,12 @@ CREATE FUNCTION public.f_d_aft_row_del_on_bpp_wydawnictwo_zwarte_autor_wydawnic2
     LANGUAGE plpgsql
     AS $$
     BEGIN
-        -- This trigger was created because of @depend_on_related of Wydawnictwo_Zwarte.slug
+        -- Trigger generated by django-denorm-iplweb for Wydawnictwo_Zwarte.slug
         -- It happens AFTER DELETE on bpp_wydawnictwo_zwarte_autor
         -- This function was autogenerated by code found in <class 'denorm.db.triggers.Trigger'>
 
-        BEGIN
-            INSERT INTO denorm_dirtyinstance (content_type_id, object_id, func_name) VALUES (3, OLD."rekord_id", 'slug');
-        EXCEPTION WHEN unique_violation THEN
-            -- do nothing
-        END;
-        BEGIN
-            INSERT INTO denorm_dirtyinstance (content_type_id, object_id, func_name) VALUES (3, OLD.rekord_id, 'slug');
-        EXCEPTION WHEN unique_violation THEN
-            -- do nothing
-        END;
+        INSERT INTO "denorm_dirtyinstance" ("content_type_id", "object_id", "func_name") VALUES ((SELECT id FROM django_content_type WHERE app_label = 'bpp' AND model = 'wydawnictwo_zwarte'), OLD."rekord_id", 'slug') ON CONFLICT DO NOTHING;
+        INSERT INTO "denorm_dirtyinstance" ("content_type_id", "object_id", "func_name") VALUES ((SELECT id FROM django_content_type WHERE app_label = 'bpp' AND model = 'wydawnictwo_zwarte'), OLD.rekord_id, 'slug') ON CONFLICT DO NOTHING;
         RETURN NULL;
     END;
 $$;
@@ -1425,15 +1202,11 @@ CREATE FUNCTION public.f_d_aft_row_del_on_bpp_wydawnictwo_zwarte_autor_wydawnic7
     LANGUAGE plpgsql
     AS $$
     BEGIN
-        -- This trigger was created because of @depend_on_related of Wydawnictwo_Zwarte.cached_punkty_dyscyplin
+        -- Trigger generated by django-denorm-iplweb for Wydawnictwo_Zwarte.cached_punkty_dyscyplin
         -- It happens AFTER DELETE on bpp_wydawnictwo_zwarte_autor
         -- This function was autogenerated by code found in <class 'denorm.db.triggers.Trigger'>
 
-        BEGIN
-            INSERT INTO denorm_dirtyinstance (content_type_id, object_id, func_name) VALUES (3, OLD.rekord_id, 'cached_punkty_dyscyplin');
-        EXCEPTION WHEN unique_violation THEN
-            -- do nothing
-        END;
+        INSERT INTO "denorm_dirtyinstance" ("content_type_id", "object_id", "func_name") VALUES ((SELECT id FROM django_content_type WHERE app_label = 'bpp' AND model = 'wydawnictwo_zwarte'), OLD.rekord_id, 'cached_punkty_dyscyplin') ON CONFLICT DO NOTHING;
         RETURN NULL;
     END;
 $$;
@@ -1447,20 +1220,12 @@ CREATE FUNCTION public.f_d_aft_row_del_on_bpp_wydawnictwo_zwarte_autor_wydawnic8
     LANGUAGE plpgsql
     AS $$
     BEGIN
-        -- This trigger was created because of @depend_on_related of Wydawnictwo_Zwarte.opis_bibliograficzny_autorzy_cache
+        -- Trigger generated by django-denorm-iplweb for Wydawnictwo_Zwarte.opis_bibliograficzny_autorzy_cache
         -- It happens AFTER DELETE on bpp_wydawnictwo_zwarte_autor
         -- This function was autogenerated by code found in <class 'denorm.db.triggers.Trigger'>
 
-        BEGIN
-            INSERT INTO denorm_dirtyinstance (content_type_id, object_id, func_name) VALUES (3, OLD.rekord_id, 'opis_bibliograficzny_autorzy_cache');
-        EXCEPTION WHEN unique_violation THEN
-            -- do nothing
-        END;
-        BEGIN
-            INSERT INTO denorm_dirtyinstance (content_type_id, object_id, func_name) VALUES (3, OLD."rekord_id", 'opis_bibliograficzny_autorzy_cache');
-        EXCEPTION WHEN unique_violation THEN
-            -- do nothing
-        END;
+        INSERT INTO "denorm_dirtyinstance" ("content_type_id", "object_id", "func_name") VALUES ((SELECT id FROM django_content_type WHERE app_label = 'bpp' AND model = 'wydawnictwo_zwarte'), OLD.rekord_id, 'opis_bibliograficzny_autorzy_cache') ON CONFLICT DO NOTHING;
+        INSERT INTO "denorm_dirtyinstance" ("content_type_id", "object_id", "func_name") VALUES ((SELECT id FROM django_content_type WHERE app_label = 'bpp' AND model = 'wydawnictwo_zwarte'), OLD."rekord_id", 'opis_bibliograficzny_autorzy_cache') ON CONFLICT DO NOTHING;
         RETURN NULL;
     END;
 $$;
@@ -1474,15 +1239,11 @@ CREATE FUNCTION public.f_d_aft_row_del_on_bpp_wydawnictwo_zwarte_autor_wydawnica
     LANGUAGE plpgsql
     AS $$
     BEGIN
-        -- This trigger was created because of @depend_on_related of Wydawnictwo_Zwarte.opis_bibliograficzny_zapisani_autorzy_cache
+        -- Trigger generated by django-denorm-iplweb for Wydawnictwo_Zwarte.opis_bibliograficzny_zapisani_autorzy_cache
         -- It happens AFTER DELETE on bpp_wydawnictwo_zwarte_autor
         -- This function was autogenerated by code found in <class 'denorm.db.triggers.Trigger'>
 
-        BEGIN
-            INSERT INTO denorm_dirtyinstance (content_type_id, object_id, func_name) VALUES (3, OLD.rekord_id, 'opis_bibliograficzny_zapisani_autorzy_cache');
-        EXCEPTION WHEN unique_violation THEN
-            -- do nothing
-        END;
+        INSERT INTO "denorm_dirtyinstance" ("content_type_id", "object_id", "func_name") VALUES ((SELECT id FROM django_content_type WHERE app_label = 'bpp' AND model = 'wydawnictwo_zwarte'), OLD.rekord_id, 'opis_bibliograficzny_zapisani_autorzy_cache') ON CONFLICT DO NOTHING;
         RETURN NULL;
     END;
 $$;
@@ -1496,15 +1257,11 @@ CREATE FUNCTION public.f_d_aft_row_del_on_bpp_wydawnictwo_zwarte_autor_wydawnicb
     LANGUAGE plpgsql
     AS $$
     BEGIN
-        -- This trigger was created because of @depend_on_related of Wydawnictwo_Zwarte.opis_bibliograficzny_cache
+        -- Trigger generated by django-denorm-iplweb for Wydawnictwo_Zwarte.opis_bibliograficzny_cache
         -- It happens AFTER DELETE on bpp_wydawnictwo_zwarte_autor
         -- This function was autogenerated by code found in <class 'denorm.db.triggers.Trigger'>
 
-        BEGIN
-            INSERT INTO denorm_dirtyinstance (content_type_id, object_id, func_name) VALUES (3, OLD.rekord_id, 'opis_bibliograficzny_cache');
-        EXCEPTION WHEN unique_violation THEN
-            -- do nothing
-        END;
+        INSERT INTO "denorm_dirtyinstance" ("content_type_id", "object_id", "func_name") VALUES ((SELECT id FROM django_content_type WHERE app_label = 'bpp' AND model = 'wydawnictwo_zwarte'), OLD.rekord_id, 'opis_bibliograficzny_cache') ON CONFLICT DO NOTHING;
         RETURN NULL;
     END;
 $$;
@@ -1518,15 +1275,11 @@ CREATE FUNCTION public.f_d_aft_row_del_on_bpp_wydawnictwo_zwarte_wydawnictwo_zw2
     LANGUAGE plpgsql
     AS $$
     BEGIN
-        -- This trigger was created because of @depend_on_related of Wydawnictwo_Zwarte.slug
+        -- Trigger generated by django-denorm-iplweb for Wydawnictwo_Zwarte.slug
         -- It happens AFTER DELETE on bpp_wydawnictwo_zwarte
         -- This function was autogenerated by code found in <class 'denorm.db.triggers.Trigger'>
 
-        BEGIN
-            INSERT INTO denorm_dirtyinstance (content_type_id, object_id, func_name) (SELECT DISTINCT 3, id, 'slug' FROM bpp_wydawnictwo_zwarte WHERE wydawnictwo_nadrzedne_id = OLD."id");
-        EXCEPTION WHEN unique_violation THEN
-            -- do nothing
-        END;
+        INSERT INTO "denorm_dirtyinstance" ("content_type_id", "object_id", "func_name") (SELECT DISTINCT (SELECT id FROM django_content_type WHERE app_label = 'bpp' AND model = 'wydawnictwo_zwarte'), id, 'slug' FROM "bpp_wydawnictwo_zwarte" WHERE "wydawnictwo_nadrzedne_id" = OLD."id") ON CONFLICT DO NOTHING;
         RETURN NULL;
     END;
 $$;
@@ -1540,15 +1293,11 @@ CREATE FUNCTION public.f_d_aft_row_del_on_bpp_wydawnictwo_zwarte_wydawnictwo_zw8
     LANGUAGE plpgsql
     AS $$
     BEGIN
-        -- This trigger was created because of @depend_on_related of Wydawnictwo_Zwarte.opis_bibliograficzny_cache
+        -- Trigger generated by django-denorm-iplweb for Wydawnictwo_Zwarte.opis_bibliograficzny_cache
         -- It happens AFTER DELETE on bpp_wydawnictwo_zwarte
         -- This function was autogenerated by code found in <class 'denorm.db.triggers.Trigger'>
 
-        BEGIN
-            INSERT INTO denorm_dirtyinstance (content_type_id, object_id, func_name) (SELECT DISTINCT 3, id, 'opis_bibliograficzny_cache' FROM bpp_wydawnictwo_zwarte WHERE wydawnictwo_nadrzedne_id = OLD."id");
-        EXCEPTION WHEN unique_violation THEN
-            -- do nothing
-        END;
+        INSERT INTO "denorm_dirtyinstance" ("content_type_id", "object_id", "func_name") (SELECT DISTINCT (SELECT id FROM django_content_type WHERE app_label = 'bpp' AND model = 'wydawnictwo_zwarte'), id, 'opis_bibliograficzny_cache' FROM "bpp_wydawnictwo_zwarte" WHERE "wydawnictwo_nadrzedne_id" = OLD."id") ON CONFLICT DO NOTHING;
         RETURN NULL;
     END;
 $$;
@@ -1562,15 +1311,11 @@ CREATE FUNCTION public.f_d_aft_row_del_on_bpp_zrodlo_wydawnictwo_ciagle_opis_bi7
     LANGUAGE plpgsql
     AS $$
     BEGIN
-        -- This trigger was created because of @depend_on_related of Wydawnictwo_Ciagle.opis_bibliograficzny_cache
+        -- Trigger generated by django-denorm-iplweb for Wydawnictwo_Ciagle.opis_bibliograficzny_cache
         -- It happens AFTER DELETE on bpp_zrodlo
         -- This function was autogenerated by code found in <class 'denorm.db.triggers.Trigger'>
 
-        BEGIN
-            INSERT INTO denorm_dirtyinstance (content_type_id, object_id, func_name) (SELECT DISTINCT 6, id, 'opis_bibliograficzny_cache' FROM bpp_wydawnictwo_ciagle WHERE zrodlo_id = OLD."id");
-        EXCEPTION WHEN unique_violation THEN
-            -- do nothing
-        END;
+        INSERT INTO "denorm_dirtyinstance" ("content_type_id", "object_id", "func_name") (SELECT DISTINCT (SELECT id FROM django_content_type WHERE app_label = 'bpp' AND model = 'wydawnictwo_ciagle'), id, 'opis_bibliograficzny_cache' FROM "bpp_wydawnictwo_ciagle" WHERE "zrodlo_id" = OLD."id") ON CONFLICT DO NOTHING;
         RETURN NULL;
     END;
 $$;
@@ -1584,15 +1329,11 @@ CREATE FUNCTION public.f_d_aft_row_del_on_bpp_zrodlo_wydawnictwo_ciagle_slug() R
     LANGUAGE plpgsql
     AS $$
     BEGIN
-        -- This trigger was created because of @depend_on_related of Wydawnictwo_Ciagle.slug
+        -- Trigger generated by django-denorm-iplweb for Wydawnictwo_Ciagle.slug
         -- It happens AFTER DELETE on bpp_zrodlo
         -- This function was autogenerated by code found in <class 'denorm.db.triggers.Trigger'>
 
-        BEGIN
-            INSERT INTO denorm_dirtyinstance (content_type_id, object_id, func_name) (SELECT DISTINCT 6, id, 'slug' FROM bpp_wydawnictwo_ciagle WHERE zrodlo_id = OLD."id");
-        EXCEPTION WHEN unique_violation THEN
-            -- do nothing
-        END;
+        INSERT INTO "denorm_dirtyinstance" ("content_type_id", "object_id", "func_name") (SELECT DISTINCT (SELECT id FROM django_content_type WHERE app_label = 'bpp' AND model = 'wydawnictwo_ciagle'), id, 'slug' FROM "bpp_wydawnictwo_ciagle" WHERE "zrodlo_id" = OLD."id") ON CONFLICT DO NOTHING;
         RETURN NULL;
     END;
 $$;
@@ -1606,20 +1347,12 @@ CREATE FUNCTION public.f_d_aft_row_ins_on_bpp_autor_praca_doktorska_baza_opis_b1
     LANGUAGE plpgsql
     AS $$
     BEGIN
-        -- This trigger was created because of @depend_on_related of Praca_Doktorska_Baza.opis_bibliograficzny_autorzy_cache
+        -- Trigger generated by django-denorm-iplweb for Praca_Doktorska_Baza.opis_bibliograficzny_autorzy_cache
         -- It happens AFTER INSERT on bpp_autor
         -- This function was autogenerated by code found in <class 'denorm.db.triggers.Trigger'>
 
-        BEGIN
-            INSERT INTO denorm_dirtyinstance (content_type_id, object_id, func_name) (SELECT DISTINCT 4, id, 'opis_bibliograficzny_autorzy_cache' FROM bpp_praca_doktorska WHERE autor_id = NEW."id");
-        EXCEPTION WHEN unique_violation THEN
-            -- do nothing
-        END;
-        BEGIN
-            INSERT INTO denorm_dirtyinstance (content_type_id, object_id, func_name) (SELECT DISTINCT 5, id, 'opis_bibliograficzny_autorzy_cache' FROM bpp_praca_habilitacyjna WHERE autor_id = NEW."id");
-        EXCEPTION WHEN unique_violation THEN
-            -- do nothing
-        END;
+        INSERT INTO "denorm_dirtyinstance" ("content_type_id", "object_id", "func_name") (SELECT DISTINCT (SELECT id FROM django_content_type WHERE app_label = 'bpp' AND model = 'praca_doktorska'), id, 'opis_bibliograficzny_autorzy_cache' FROM "bpp_praca_doktorska" WHERE "autor_id" = NEW."id") ON CONFLICT DO NOTHING;
+        INSERT INTO "denorm_dirtyinstance" ("content_type_id", "object_id", "func_name") (SELECT DISTINCT (SELECT id FROM django_content_type WHERE app_label = 'bpp' AND model = 'praca_habilitacyjna'), id, 'opis_bibliograficzny_autorzy_cache' FROM "bpp_praca_habilitacyjna" WHERE "autor_id" = NEW."id") ON CONFLICT DO NOTHING;
         RETURN NULL;
     END;
 $$;
@@ -1633,20 +1366,12 @@ CREATE FUNCTION public.f_d_aft_row_ins_on_bpp_autor_praca_doktorska_baza_opis_bb
     LANGUAGE plpgsql
     AS $$
     BEGIN
-        -- This trigger was created because of @depend_on_related of Praca_Doktorska_Baza.opis_bibliograficzny_zapisani_autorzy_cache
+        -- Trigger generated by django-denorm-iplweb for Praca_Doktorska_Baza.opis_bibliograficzny_zapisani_autorzy_cache
         -- It happens AFTER INSERT on bpp_autor
         -- This function was autogenerated by code found in <class 'denorm.db.triggers.Trigger'>
 
-        BEGIN
-            INSERT INTO denorm_dirtyinstance (content_type_id, object_id, func_name) (SELECT DISTINCT 4, id, 'opis_bibliograficzny_zapisani_autorzy_cache' FROM bpp_praca_doktorska WHERE autor_id = NEW."id");
-        EXCEPTION WHEN unique_violation THEN
-            -- do nothing
-        END;
-        BEGIN
-            INSERT INTO denorm_dirtyinstance (content_type_id, object_id, func_name) (SELECT DISTINCT 5, id, 'opis_bibliograficzny_zapisani_autorzy_cache' FROM bpp_praca_habilitacyjna WHERE autor_id = NEW."id");
-        EXCEPTION WHEN unique_violation THEN
-            -- do nothing
-        END;
+        INSERT INTO "denorm_dirtyinstance" ("content_type_id", "object_id", "func_name") (SELECT DISTINCT (SELECT id FROM django_content_type WHERE app_label = 'bpp' AND model = 'praca_doktorska'), id, 'opis_bibliograficzny_zapisani_autorzy_cache' FROM "bpp_praca_doktorska" WHERE "autor_id" = NEW."id") ON CONFLICT DO NOTHING;
+        INSERT INTO "denorm_dirtyinstance" ("content_type_id", "object_id", "func_name") (SELECT DISTINCT (SELECT id FROM django_content_type WHERE app_label = 'bpp' AND model = 'praca_habilitacyjna'), id, 'opis_bibliograficzny_zapisani_autorzy_cache' FROM "bpp_praca_habilitacyjna" WHERE "autor_id" = NEW."id") ON CONFLICT DO NOTHING;
         RETURN NULL;
     END;
 $$;
@@ -1660,20 +1385,12 @@ CREATE FUNCTION public.f_d_aft_row_ins_on_bpp_autor_praca_doktorska_baza_opis_bf
     LANGUAGE plpgsql
     AS $$
     BEGIN
-        -- This trigger was created because of @depend_on_related of Praca_Doktorska_Baza.opis_bibliograficzny_cache
+        -- Trigger generated by django-denorm-iplweb for Praca_Doktorska_Baza.opis_bibliograficzny_cache
         -- It happens AFTER INSERT on bpp_autor
         -- This function was autogenerated by code found in <class 'denorm.db.triggers.Trigger'>
 
-        BEGIN
-            INSERT INTO denorm_dirtyinstance (content_type_id, object_id, func_name) (SELECT DISTINCT 4, id, 'opis_bibliograficzny_cache' FROM bpp_praca_doktorska WHERE autor_id = NEW."id");
-        EXCEPTION WHEN unique_violation THEN
-            -- do nothing
-        END;
-        BEGIN
-            INSERT INTO denorm_dirtyinstance (content_type_id, object_id, func_name) (SELECT DISTINCT 5, id, 'opis_bibliograficzny_cache' FROM bpp_praca_habilitacyjna WHERE autor_id = NEW."id");
-        EXCEPTION WHEN unique_violation THEN
-            -- do nothing
-        END;
+        INSERT INTO "denorm_dirtyinstance" ("content_type_id", "object_id", "func_name") (SELECT DISTINCT (SELECT id FROM django_content_type WHERE app_label = 'bpp' AND model = 'praca_doktorska'), id, 'opis_bibliograficzny_cache' FROM "bpp_praca_doktorska" WHERE "autor_id" = NEW."id") ON CONFLICT DO NOTHING;
+        INSERT INTO "denorm_dirtyinstance" ("content_type_id", "object_id", "func_name") (SELECT DISTINCT (SELECT id FROM django_content_type WHERE app_label = 'bpp' AND model = 'praca_habilitacyjna'), id, 'opis_bibliograficzny_cache' FROM "bpp_praca_habilitacyjna" WHERE "autor_id" = NEW."id") ON CONFLICT DO NOTHING;
         RETURN NULL;
     END;
 $$;
@@ -1687,20 +1404,12 @@ CREATE FUNCTION public.f_d_aft_row_ins_on_bpp_autor_praca_doktorska_baza_slug() 
     LANGUAGE plpgsql
     AS $$
     BEGIN
-        -- This trigger was created because of @depend_on_related of Praca_Doktorska_Baza.slug
+        -- Trigger generated by django-denorm-iplweb for Praca_Doktorska_Baza.slug
         -- It happens AFTER INSERT on bpp_autor
         -- This function was autogenerated by code found in <class 'denorm.db.triggers.Trigger'>
 
-        BEGIN
-            INSERT INTO denorm_dirtyinstance (content_type_id, object_id, func_name) (SELECT DISTINCT 4, id, 'slug' FROM bpp_praca_doktorska WHERE autor_id = NEW."id");
-        EXCEPTION WHEN unique_violation THEN
-            -- do nothing
-        END;
-        BEGIN
-            INSERT INTO denorm_dirtyinstance (content_type_id, object_id, func_name) (SELECT DISTINCT 5, id, 'slug' FROM bpp_praca_habilitacyjna WHERE autor_id = NEW."id");
-        EXCEPTION WHEN unique_violation THEN
-            -- do nothing
-        END;
+        INSERT INTO "denorm_dirtyinstance" ("content_type_id", "object_id", "func_name") (SELECT DISTINCT (SELECT id FROM django_content_type WHERE app_label = 'bpp' AND model = 'praca_doktorska'), id, 'slug' FROM "bpp_praca_doktorska" WHERE "autor_id" = NEW."id") ON CONFLICT DO NOTHING;
+        INSERT INTO "denorm_dirtyinstance" ("content_type_id", "object_id", "func_name") (SELECT DISTINCT (SELECT id FROM django_content_type WHERE app_label = 'bpp' AND model = 'praca_habilitacyjna'), id, 'slug' FROM "bpp_praca_habilitacyjna" WHERE "autor_id" = NEW."id") ON CONFLICT DO NOTHING;
         RETURN NULL;
     END;
 $$;
@@ -1714,15 +1423,11 @@ CREATE FUNCTION public.f_d_aft_row_ins_on_bpp_charakter_formalny_wydawnictwo_cia
     LANGUAGE plpgsql
     AS $$
     BEGIN
-        -- This trigger was created because of @depend_on_related of Wydawnictwo_Ciagle.opis_bibliograficzny_cache
+        -- Trigger generated by django-denorm-iplweb for Wydawnictwo_Ciagle.opis_bibliograficzny_cache
         -- It happens AFTER INSERT on bpp_charakter_formalny
         -- This function was autogenerated by code found in <class 'denorm.db.triggers.Trigger'>
 
-        BEGIN
-            INSERT INTO denorm_dirtyinstance (content_type_id, object_id, func_name) (SELECT DISTINCT 6, id, 'opis_bibliograficzny_cache' FROM bpp_wydawnictwo_ciagle WHERE charakter_formalny_id = NEW."id");
-        EXCEPTION WHEN unique_violation THEN
-            -- do nothing
-        END;
+        INSERT INTO "denorm_dirtyinstance" ("content_type_id", "object_id", "func_name") (SELECT DISTINCT (SELECT id FROM django_content_type WHERE app_label = 'bpp' AND model = 'wydawnictwo_ciagle'), id, 'opis_bibliograficzny_cache' FROM "bpp_wydawnictwo_ciagle" WHERE "charakter_formalny_id" = NEW."id") ON CONFLICT DO NOTHING;
         RETURN NULL;
     END;
 $$;
@@ -1736,15 +1441,43 @@ CREATE FUNCTION public.f_d_aft_row_ins_on_bpp_charakter_formalny_wydawnictwo_zw7
     LANGUAGE plpgsql
     AS $$
     BEGIN
-        -- This trigger was created because of @depend_on_related of Wydawnictwo_Zwarte.opis_bibliograficzny_cache
+        -- Trigger generated by django-denorm-iplweb for Wydawnictwo_Zwarte.opis_bibliograficzny_cache
         -- It happens AFTER INSERT on bpp_charakter_formalny
         -- This function was autogenerated by code found in <class 'denorm.db.triggers.Trigger'>
 
-        BEGIN
-            INSERT INTO denorm_dirtyinstance (content_type_id, object_id, func_name) (SELECT DISTINCT 3, id, 'opis_bibliograficzny_cache' FROM bpp_wydawnictwo_zwarte WHERE charakter_formalny_id = NEW."id");
-        EXCEPTION WHEN unique_violation THEN
-            -- do nothing
-        END;
+        INSERT INTO "denorm_dirtyinstance" ("content_type_id", "object_id", "func_name") (SELECT DISTINCT (SELECT id FROM django_content_type WHERE app_label = 'bpp' AND model = 'wydawnictwo_zwarte'), id, 'opis_bibliograficzny_cache' FROM "bpp_wydawnictwo_zwarte" WHERE "charakter_formalny_id" = NEW."id") ON CONFLICT DO NOTHING;
+        RETURN NULL;
+    END;
+$$;
+
+
+--
+-- Name: f_d_aft_row_ins_on_bpp_jednostka(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.f_d_aft_row_ins_on_bpp_jednostka() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+    BEGIN
+        INSERT INTO "denorm_dirtyinstance" ("content_type_id", "object_id", "func_name") VALUES ((SELECT id FROM django_content_type WHERE app_label = 'bpp' AND model = 'jednostka'), NEW."id", 'wydzial') ON CONFLICT DO NOTHING;
+        RETURN NULL;
+    END;
+$$;
+
+
+--
+-- Name: f_d_aft_row_ins_on_bpp_jednostka_jednostka_wydzial(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.f_d_aft_row_ins_on_bpp_jednostka_jednostka_wydzial() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+    BEGIN
+        -- Trigger generated by django-denorm-iplweb for Jednostka.wydzial
+        -- It happens AFTER INSERT on bpp_jednostka
+        -- This function was autogenerated by code found in <class 'denorm.db.triggers.Trigger'>
+
+        INSERT INTO "denorm_dirtyinstance" ("content_type_id", "object_id", "func_name") (SELECT DISTINCT (SELECT id FROM django_content_type WHERE app_label = 'bpp' AND model = 'jednostka'), id, 'wydzial' FROM "bpp_jednostka" WHERE "parent_id" = NEW."id") ON CONFLICT DO NOTHING;
         RETURN NULL;
     END;
 $$;
@@ -1758,20 +1491,12 @@ CREATE FUNCTION public.f_d_aft_row_ins_on_bpp_jednostka_praca_doktorska_baza_op3
     LANGUAGE plpgsql
     AS $$
     BEGIN
-        -- This trigger was created because of @depend_on_related of Praca_Doktorska_Baza.opis_bibliograficzny_cache
+        -- Trigger generated by django-denorm-iplweb for Praca_Doktorska_Baza.opis_bibliograficzny_cache
         -- It happens AFTER INSERT on bpp_jednostka
         -- This function was autogenerated by code found in <class 'denorm.db.triggers.Trigger'>
 
-        BEGIN
-            INSERT INTO denorm_dirtyinstance (content_type_id, object_id, func_name) (SELECT DISTINCT 4, id, 'opis_bibliograficzny_cache' FROM bpp_praca_doktorska WHERE jednostka_id = NEW."id");
-        EXCEPTION WHEN unique_violation THEN
-            -- do nothing
-        END;
-        BEGIN
-            INSERT INTO denorm_dirtyinstance (content_type_id, object_id, func_name) (SELECT DISTINCT 5, id, 'opis_bibliograficzny_cache' FROM bpp_praca_habilitacyjna WHERE jednostka_id = NEW."id");
-        EXCEPTION WHEN unique_violation THEN
-            -- do nothing
-        END;
+        INSERT INTO "denorm_dirtyinstance" ("content_type_id", "object_id", "func_name") (SELECT DISTINCT (SELECT id FROM django_content_type WHERE app_label = 'bpp' AND model = 'praca_doktorska'), id, 'opis_bibliograficzny_cache' FROM "bpp_praca_doktorska" WHERE "jednostka_id" = NEW."id") ON CONFLICT DO NOTHING;
+        INSERT INTO "denorm_dirtyinstance" ("content_type_id", "object_id", "func_name") (SELECT DISTINCT (SELECT id FROM django_content_type WHERE app_label = 'bpp' AND model = 'praca_habilitacyjna'), id, 'opis_bibliograficzny_cache' FROM "bpp_praca_habilitacyjna" WHERE "jednostka_id" = NEW."id") ON CONFLICT DO NOTHING;
         RETURN NULL;
     END;
 $$;
@@ -1785,11 +1510,11 @@ CREATE FUNCTION public.f_d_aft_row_ins_on_bpp_patent() RETURNS trigger
     LANGUAGE plpgsql
     AS $$
     BEGIN
-        BEGIN
-            INSERT INTO denorm_dirtyinstance (content_type_id, object_id) VALUES (1, NEW."id");
-        EXCEPTION WHEN unique_violation THEN
-            -- do nothing
-        END;
+        INSERT INTO "denorm_dirtyinstance" ("content_type_id", "object_id", "func_name") VALUES ((SELECT id FROM django_content_type WHERE app_label = 'bpp' AND model = 'patent'), NEW."id", 'cached_punkty_dyscyplin') ON CONFLICT DO NOTHING;
+        INSERT INTO "denorm_dirtyinstance" ("content_type_id", "object_id", "func_name") VALUES ((SELECT id FROM django_content_type WHERE app_label = 'bpp' AND model = 'patent'), NEW."id", 'opis_bibliograficzny_cache') ON CONFLICT DO NOTHING;
+        INSERT INTO "denorm_dirtyinstance" ("content_type_id", "object_id", "func_name") VALUES ((SELECT id FROM django_content_type WHERE app_label = 'bpp' AND model = 'patent'), NEW."id", 'opis_bibliograficzny_autorzy_cache') ON CONFLICT DO NOTHING;
+        INSERT INTO "denorm_dirtyinstance" ("content_type_id", "object_id", "func_name") VALUES ((SELECT id FROM django_content_type WHERE app_label = 'bpp' AND model = 'patent'), NEW."id", 'opis_bibliograficzny_zapisani_autorzy_cache') ON CONFLICT DO NOTHING;
+        INSERT INTO "denorm_dirtyinstance" ("content_type_id", "object_id", "func_name") VALUES ((SELECT id FROM django_content_type WHERE app_label = 'bpp' AND model = 'patent'), NEW."id", 'slug') ON CONFLICT DO NOTHING;
         RETURN NULL;
     END;
 $$;
@@ -1803,15 +1528,11 @@ CREATE FUNCTION public.f_d_aft_row_ins_on_bpp_patent_autor_patent_cached_punkty9
     LANGUAGE plpgsql
     AS $$
     BEGIN
-        -- This trigger was created because of @depend_on_related of Patent.cached_punkty_dyscyplin
+        -- Trigger generated by django-denorm-iplweb for Patent.cached_punkty_dyscyplin
         -- It happens AFTER INSERT on bpp_patent_autor
         -- This function was autogenerated by code found in <class 'denorm.db.triggers.Trigger'>
 
-        BEGIN
-            INSERT INTO denorm_dirtyinstance (content_type_id, object_id, func_name) (SELECT DISTINCT 1, rekord_id, 'cached_punkty_dyscyplin' FROM bpp_patent_autor WHERE id = NEW."id");
-        EXCEPTION WHEN unique_violation THEN
-            -- do nothing
-        END;
+        INSERT INTO "denorm_dirtyinstance" ("content_type_id", "object_id", "func_name") (SELECT DISTINCT (SELECT id FROM django_content_type WHERE app_label = 'bpp' AND model = 'patent'), rekord_id, 'cached_punkty_dyscyplin' FROM "bpp_patent_autor" WHERE "id" = NEW."id") ON CONFLICT DO NOTHING;
         RETURN NULL;
     END;
 $$;
@@ -1825,15 +1546,11 @@ CREATE FUNCTION public.f_d_aft_row_ins_on_bpp_patent_autor_patent_opis_bibliogr3
     LANGUAGE plpgsql
     AS $$
     BEGIN
-        -- This trigger was created because of @depend_on_related of Patent.opis_bibliograficzny_cache
+        -- Trigger generated by django-denorm-iplweb for Patent.opis_bibliograficzny_cache
         -- It happens AFTER INSERT on bpp_patent_autor
         -- This function was autogenerated by code found in <class 'denorm.db.triggers.Trigger'>
 
-        BEGIN
-            INSERT INTO denorm_dirtyinstance (content_type_id, object_id, func_name) (SELECT DISTINCT 1, rekord_id, 'opis_bibliograficzny_cache' FROM bpp_patent_autor WHERE id = NEW."id");
-        EXCEPTION WHEN unique_violation THEN
-            -- do nothing
-        END;
+        INSERT INTO "denorm_dirtyinstance" ("content_type_id", "object_id", "func_name") (SELECT DISTINCT (SELECT id FROM django_content_type WHERE app_label = 'bpp' AND model = 'patent'), rekord_id, 'opis_bibliograficzny_cache' FROM "bpp_patent_autor" WHERE "id" = NEW."id") ON CONFLICT DO NOTHING;
         RETURN NULL;
     END;
 $$;
@@ -1847,15 +1564,11 @@ CREATE FUNCTION public.f_d_aft_row_ins_on_bpp_patent_autor_patent_opis_bibliogr4
     LANGUAGE plpgsql
     AS $$
     BEGIN
-        -- This trigger was created because of @depend_on_related of Patent.opis_bibliograficzny_zapisani_autorzy_cache
+        -- Trigger generated by django-denorm-iplweb for Patent.opis_bibliograficzny_zapisani_autorzy_cache
         -- It happens AFTER INSERT on bpp_patent_autor
         -- This function was autogenerated by code found in <class 'denorm.db.triggers.Trigger'>
 
-        BEGIN
-            INSERT INTO denorm_dirtyinstance (content_type_id, object_id, func_name) (SELECT DISTINCT 1, rekord_id, 'opis_bibliograficzny_zapisani_autorzy_cache' FROM bpp_patent_autor WHERE id = NEW."id");
-        EXCEPTION WHEN unique_violation THEN
-            -- do nothing
-        END;
+        INSERT INTO "denorm_dirtyinstance" ("content_type_id", "object_id", "func_name") (SELECT DISTINCT (SELECT id FROM django_content_type WHERE app_label = 'bpp' AND model = 'patent'), rekord_id, 'opis_bibliograficzny_zapisani_autorzy_cache' FROM "bpp_patent_autor" WHERE "id" = NEW."id") ON CONFLICT DO NOTHING;
         RETURN NULL;
     END;
 $$;
@@ -1869,20 +1582,12 @@ CREATE FUNCTION public.f_d_aft_row_ins_on_bpp_patent_autor_patent_opis_bibliogrf
     LANGUAGE plpgsql
     AS $$
     BEGIN
-        -- This trigger was created because of @depend_on_related of Patent.opis_bibliograficzny_autorzy_cache
+        -- Trigger generated by django-denorm-iplweb for Patent.opis_bibliograficzny_autorzy_cache
         -- It happens AFTER INSERT on bpp_patent_autor
         -- This function was autogenerated by code found in <class 'denorm.db.triggers.Trigger'>
 
-        BEGIN
-            INSERT INTO denorm_dirtyinstance (content_type_id, object_id, func_name) (SELECT DISTINCT 1, rekord_id, 'opis_bibliograficzny_autorzy_cache' FROM bpp_patent_autor WHERE id = NEW."id");
-        EXCEPTION WHEN unique_violation THEN
-            -- do nothing
-        END;
-        BEGIN
-            INSERT INTO denorm_dirtyinstance (content_type_id, object_id, func_name) VALUES (1, NEW."rekord_id", 'opis_bibliograficzny_autorzy_cache');
-        EXCEPTION WHEN unique_violation THEN
-            -- do nothing
-        END;
+        INSERT INTO "denorm_dirtyinstance" ("content_type_id", "object_id", "func_name") (SELECT DISTINCT (SELECT id FROM django_content_type WHERE app_label = 'bpp' AND model = 'patent'), rekord_id, 'opis_bibliograficzny_autorzy_cache' FROM "bpp_patent_autor" WHERE "id" = NEW."id") ON CONFLICT DO NOTHING;
+        INSERT INTO "denorm_dirtyinstance" ("content_type_id", "object_id", "func_name") VALUES ((SELECT id FROM django_content_type WHERE app_label = 'bpp' AND model = 'patent'), NEW."rekord_id", 'opis_bibliograficzny_autorzy_cache') ON CONFLICT DO NOTHING;
         RETURN NULL;
     END;
 $$;
@@ -1896,20 +1601,12 @@ CREATE FUNCTION public.f_d_aft_row_ins_on_bpp_patent_autor_patent_slug() RETURNS
     LANGUAGE plpgsql
     AS $$
     BEGIN
-        -- This trigger was created because of @depend_on_related of Patent.slug
+        -- Trigger generated by django-denorm-iplweb for Patent.slug
         -- It happens AFTER INSERT on bpp_patent_autor
         -- This function was autogenerated by code found in <class 'denorm.db.triggers.Trigger'>
 
-        BEGIN
-            INSERT INTO denorm_dirtyinstance (content_type_id, object_id, func_name) VALUES (1, NEW."rekord_id", 'slug');
-        EXCEPTION WHEN unique_violation THEN
-            -- do nothing
-        END;
-        BEGIN
-            INSERT INTO denorm_dirtyinstance (content_type_id, object_id, func_name) (SELECT DISTINCT 1, rekord_id, 'slug' FROM bpp_patent_autor WHERE id = NEW."id");
-        EXCEPTION WHEN unique_violation THEN
-            -- do nothing
-        END;
+        INSERT INTO "denorm_dirtyinstance" ("content_type_id", "object_id", "func_name") VALUES ((SELECT id FROM django_content_type WHERE app_label = 'bpp' AND model = 'patent'), NEW."rekord_id", 'slug') ON CONFLICT DO NOTHING;
+        INSERT INTO "denorm_dirtyinstance" ("content_type_id", "object_id", "func_name") (SELECT DISTINCT (SELECT id FROM django_content_type WHERE app_label = 'bpp' AND model = 'patent'), rekord_id, 'slug' FROM "bpp_patent_autor" WHERE "id" = NEW."id") ON CONFLICT DO NOTHING;
         RETURN NULL;
     END;
 $$;
@@ -1923,15 +1620,11 @@ CREATE FUNCTION public.f_d_aft_row_ins_on_bpp_poziom_wydawcy_wydawca_lista_pozio
     LANGUAGE plpgsql
     AS $$
     BEGIN
-        -- This trigger was created because of @depend_on_related of Wydawca.lista_poziomow
+        -- Trigger generated by django-denorm-iplweb for Wydawca.lista_poziomow
         -- It happens AFTER INSERT on bpp_poziom_wydawcy
         -- This function was autogenerated by code found in <class 'denorm.db.triggers.Trigger'>
 
-        BEGIN
-            INSERT INTO denorm_dirtyinstance (content_type_id, object_id, func_name) (SELECT DISTINCT 2, wydawca_id, 'lista_poziomow' FROM bpp_poziom_wydawcy WHERE id = NEW."id");
-        EXCEPTION WHEN unique_violation THEN
-            -- do nothing
-        END;
+        INSERT INTO "denorm_dirtyinstance" ("content_type_id", "object_id", "func_name") (SELECT DISTINCT (SELECT id FROM django_content_type WHERE app_label = 'bpp' AND model = 'wydawca'), wydawca_id, 'lista_poziomow' FROM "bpp_poziom_wydawcy" WHERE "id" = NEW."id") ON CONFLICT DO NOTHING;
         RETURN NULL;
     END;
 $$;
@@ -1945,11 +1638,10 @@ CREATE FUNCTION public.f_d_aft_row_ins_on_bpp_praca_doktorska() RETURNS trigger
     LANGUAGE plpgsql
     AS $$
     BEGIN
-        BEGIN
-            INSERT INTO denorm_dirtyinstance (content_type_id, object_id) VALUES (4, NEW."id");
-        EXCEPTION WHEN unique_violation THEN
-            -- do nothing
-        END;
+        INSERT INTO "denorm_dirtyinstance" ("content_type_id", "object_id", "func_name") VALUES ((SELECT id FROM django_content_type WHERE app_label = 'bpp' AND model = 'praca_doktorska'), NEW."id", 'opis_bibliograficzny_cache') ON CONFLICT DO NOTHING;
+        INSERT INTO "denorm_dirtyinstance" ("content_type_id", "object_id", "func_name") VALUES ((SELECT id FROM django_content_type WHERE app_label = 'bpp' AND model = 'praca_doktorska'), NEW."id", 'opis_bibliograficzny_autorzy_cache') ON CONFLICT DO NOTHING;
+        INSERT INTO "denorm_dirtyinstance" ("content_type_id", "object_id", "func_name") VALUES ((SELECT id FROM django_content_type WHERE app_label = 'bpp' AND model = 'praca_doktorska'), NEW."id", 'opis_bibliograficzny_zapisani_autorzy_cache') ON CONFLICT DO NOTHING;
+        INSERT INTO "denorm_dirtyinstance" ("content_type_id", "object_id", "func_name") VALUES ((SELECT id FROM django_content_type WHERE app_label = 'bpp' AND model = 'praca_doktorska'), NEW."id", 'slug') ON CONFLICT DO NOTHING;
         RETURN NULL;
     END;
 $$;
@@ -1963,11 +1655,10 @@ CREATE FUNCTION public.f_d_aft_row_ins_on_bpp_praca_habilitacyjna() RETURNS trig
     LANGUAGE plpgsql
     AS $$
     BEGIN
-        BEGIN
-            INSERT INTO denorm_dirtyinstance (content_type_id, object_id) VALUES (5, NEW."id");
-        EXCEPTION WHEN unique_violation THEN
-            -- do nothing
-        END;
+        INSERT INTO "denorm_dirtyinstance" ("content_type_id", "object_id", "func_name") VALUES ((SELECT id FROM django_content_type WHERE app_label = 'bpp' AND model = 'praca_habilitacyjna'), NEW."id", 'opis_bibliograficzny_cache') ON CONFLICT DO NOTHING;
+        INSERT INTO "denorm_dirtyinstance" ("content_type_id", "object_id", "func_name") VALUES ((SELECT id FROM django_content_type WHERE app_label = 'bpp' AND model = 'praca_habilitacyjna'), NEW."id", 'opis_bibliograficzny_autorzy_cache') ON CONFLICT DO NOTHING;
+        INSERT INTO "denorm_dirtyinstance" ("content_type_id", "object_id", "func_name") VALUES ((SELECT id FROM django_content_type WHERE app_label = 'bpp' AND model = 'praca_habilitacyjna'), NEW."id", 'opis_bibliograficzny_zapisani_autorzy_cache') ON CONFLICT DO NOTHING;
+        INSERT INTO "denorm_dirtyinstance" ("content_type_id", "object_id", "func_name") VALUES ((SELECT id FROM django_content_type WHERE app_label = 'bpp' AND model = 'praca_habilitacyjna'), NEW."id", 'slug') ON CONFLICT DO NOTHING;
         RETURN NULL;
     END;
 $$;
@@ -1981,15 +1672,11 @@ CREATE FUNCTION public.f_d_aft_row_ins_on_bpp_status_korekty_patent_opis_biblio2
     LANGUAGE plpgsql
     AS $$
     BEGIN
-        -- This trigger was created because of @depend_on_related of Patent.opis_bibliograficzny_cache
+        -- Trigger generated by django-denorm-iplweb for Patent.opis_bibliograficzny_cache
         -- It happens AFTER INSERT on bpp_status_korekty
         -- This function was autogenerated by code found in <class 'denorm.db.triggers.Trigger'>
 
-        BEGIN
-            INSERT INTO denorm_dirtyinstance (content_type_id, object_id, func_name) (SELECT DISTINCT 1, id, 'opis_bibliograficzny_cache' FROM bpp_patent WHERE status_korekty_id = NEW."id");
-        EXCEPTION WHEN unique_violation THEN
-            -- do nothing
-        END;
+        INSERT INTO "denorm_dirtyinstance" ("content_type_id", "object_id", "func_name") (SELECT DISTINCT (SELECT id FROM django_content_type WHERE app_label = 'bpp' AND model = 'patent'), id, 'opis_bibliograficzny_cache' FROM "bpp_patent" WHERE "status_korekty_id" = NEW."id") ON CONFLICT DO NOTHING;
         RETURN NULL;
     END;
 $$;
@@ -2003,20 +1690,12 @@ CREATE FUNCTION public.f_d_aft_row_ins_on_bpp_status_korekty_praca_doktorska_bad
     LANGUAGE plpgsql
     AS $$
     BEGIN
-        -- This trigger was created because of @depend_on_related of Praca_Doktorska_Baza.opis_bibliograficzny_cache
+        -- Trigger generated by django-denorm-iplweb for Praca_Doktorska_Baza.opis_bibliograficzny_cache
         -- It happens AFTER INSERT on bpp_status_korekty
         -- This function was autogenerated by code found in <class 'denorm.db.triggers.Trigger'>
 
-        BEGIN
-            INSERT INTO denorm_dirtyinstance (content_type_id, object_id, func_name) (SELECT DISTINCT 4, id, 'opis_bibliograficzny_cache' FROM bpp_praca_doktorska WHERE status_korekty_id = NEW."id");
-        EXCEPTION WHEN unique_violation THEN
-            -- do nothing
-        END;
-        BEGIN
-            INSERT INTO denorm_dirtyinstance (content_type_id, object_id, func_name) (SELECT DISTINCT 5, id, 'opis_bibliograficzny_cache' FROM bpp_praca_habilitacyjna WHERE status_korekty_id = NEW."id");
-        EXCEPTION WHEN unique_violation THEN
-            -- do nothing
-        END;
+        INSERT INTO "denorm_dirtyinstance" ("content_type_id", "object_id", "func_name") (SELECT DISTINCT (SELECT id FROM django_content_type WHERE app_label = 'bpp' AND model = 'praca_doktorska'), id, 'opis_bibliograficzny_cache' FROM "bpp_praca_doktorska" WHERE "status_korekty_id" = NEW."id") ON CONFLICT DO NOTHING;
+        INSERT INTO "denorm_dirtyinstance" ("content_type_id", "object_id", "func_name") (SELECT DISTINCT (SELECT id FROM django_content_type WHERE app_label = 'bpp' AND model = 'praca_habilitacyjna'), id, 'opis_bibliograficzny_cache' FROM "bpp_praca_habilitacyjna" WHERE "status_korekty_id" = NEW."id") ON CONFLICT DO NOTHING;
         RETURN NULL;
     END;
 $$;
@@ -2030,15 +1709,11 @@ CREATE FUNCTION public.f_d_aft_row_ins_on_bpp_status_korekty_wydawnictwo_ciagle4
     LANGUAGE plpgsql
     AS $$
     BEGIN
-        -- This trigger was created because of @depend_on_related of Wydawnictwo_Ciagle.opis_bibliograficzny_cache
+        -- Trigger generated by django-denorm-iplweb for Wydawnictwo_Ciagle.opis_bibliograficzny_cache
         -- It happens AFTER INSERT on bpp_status_korekty
         -- This function was autogenerated by code found in <class 'denorm.db.triggers.Trigger'>
 
-        BEGIN
-            INSERT INTO denorm_dirtyinstance (content_type_id, object_id, func_name) (SELECT DISTINCT 6, id, 'opis_bibliograficzny_cache' FROM bpp_wydawnictwo_ciagle WHERE status_korekty_id = NEW."id");
-        EXCEPTION WHEN unique_violation THEN
-            -- do nothing
-        END;
+        INSERT INTO "denorm_dirtyinstance" ("content_type_id", "object_id", "func_name") (SELECT DISTINCT (SELECT id FROM django_content_type WHERE app_label = 'bpp' AND model = 'wydawnictwo_ciagle'), id, 'opis_bibliograficzny_cache' FROM "bpp_wydawnictwo_ciagle" WHERE "status_korekty_id" = NEW."id") ON CONFLICT DO NOTHING;
         RETURN NULL;
     END;
 $$;
@@ -2052,15 +1727,11 @@ CREATE FUNCTION public.f_d_aft_row_ins_on_bpp_status_korekty_wydawnictwo_zwarte4
     LANGUAGE plpgsql
     AS $$
     BEGIN
-        -- This trigger was created because of @depend_on_related of Wydawnictwo_Zwarte.opis_bibliograficzny_cache
+        -- Trigger generated by django-denorm-iplweb for Wydawnictwo_Zwarte.opis_bibliograficzny_cache
         -- It happens AFTER INSERT on bpp_status_korekty
         -- This function was autogenerated by code found in <class 'denorm.db.triggers.Trigger'>
 
-        BEGIN
-            INSERT INTO denorm_dirtyinstance (content_type_id, object_id, func_name) (SELECT DISTINCT 3, id, 'opis_bibliograficzny_cache' FROM bpp_wydawnictwo_zwarte WHERE status_korekty_id = NEW."id");
-        EXCEPTION WHEN unique_violation THEN
-            -- do nothing
-        END;
+        INSERT INTO "denorm_dirtyinstance" ("content_type_id", "object_id", "func_name") (SELECT DISTINCT (SELECT id FROM django_content_type WHERE app_label = 'bpp' AND model = 'wydawnictwo_zwarte'), id, 'opis_bibliograficzny_cache' FROM "bpp_wydawnictwo_zwarte" WHERE "status_korekty_id" = NEW."id") ON CONFLICT DO NOTHING;
         RETURN NULL;
     END;
 $$;
@@ -2074,15 +1745,11 @@ CREATE FUNCTION public.f_d_aft_row_ins_on_bpp_typ_kbn_wydawnictwo_ciagle_opis_be
     LANGUAGE plpgsql
     AS $$
     BEGIN
-        -- This trigger was created because of @depend_on_related of Wydawnictwo_Ciagle.opis_bibliograficzny_cache
+        -- Trigger generated by django-denorm-iplweb for Wydawnictwo_Ciagle.opis_bibliograficzny_cache
         -- It happens AFTER INSERT on bpp_typ_kbn
         -- This function was autogenerated by code found in <class 'denorm.db.triggers.Trigger'>
 
-        BEGIN
-            INSERT INTO denorm_dirtyinstance (content_type_id, object_id, func_name) (SELECT DISTINCT 6, id, 'opis_bibliograficzny_cache' FROM bpp_wydawnictwo_ciagle WHERE typ_kbn_id = NEW."id");
-        EXCEPTION WHEN unique_violation THEN
-            -- do nothing
-        END;
+        INSERT INTO "denorm_dirtyinstance" ("content_type_id", "object_id", "func_name") (SELECT DISTINCT (SELECT id FROM django_content_type WHERE app_label = 'bpp' AND model = 'wydawnictwo_ciagle'), id, 'opis_bibliograficzny_cache' FROM "bpp_wydawnictwo_ciagle" WHERE "typ_kbn_id" = NEW."id") ON CONFLICT DO NOTHING;
         RETURN NULL;
     END;
 $$;
@@ -2096,15 +1763,11 @@ CREATE FUNCTION public.f_d_aft_row_ins_on_bpp_typ_kbn_wydawnictwo_zwarte_opis_bf
     LANGUAGE plpgsql
     AS $$
     BEGIN
-        -- This trigger was created because of @depend_on_related of Wydawnictwo_Zwarte.opis_bibliograficzny_cache
+        -- Trigger generated by django-denorm-iplweb for Wydawnictwo_Zwarte.opis_bibliograficzny_cache
         -- It happens AFTER INSERT on bpp_typ_kbn
         -- This function was autogenerated by code found in <class 'denorm.db.triggers.Trigger'>
 
-        BEGIN
-            INSERT INTO denorm_dirtyinstance (content_type_id, object_id, func_name) (SELECT DISTINCT 3, id, 'opis_bibliograficzny_cache' FROM bpp_wydawnictwo_zwarte WHERE typ_kbn_id = NEW."id");
-        EXCEPTION WHEN unique_violation THEN
-            -- do nothing
-        END;
+        INSERT INTO "denorm_dirtyinstance" ("content_type_id", "object_id", "func_name") (SELECT DISTINCT (SELECT id FROM django_content_type WHERE app_label = 'bpp' AND model = 'wydawnictwo_zwarte'), id, 'opis_bibliograficzny_cache' FROM "bpp_wydawnictwo_zwarte" WHERE "typ_kbn_id" = NEW."id") ON CONFLICT DO NOTHING;
         RETURN NULL;
     END;
 $$;
@@ -2118,12 +1781,8 @@ CREATE FUNCTION public.f_d_aft_row_ins_on_bpp_wydawca() RETURNS trigger
     LANGUAGE plpgsql
     AS $$
     BEGIN
-        BEGIN
-            INSERT INTO denorm_dirtyinstance (content_type_id, object_id) VALUES (2, NEW."id");
-        EXCEPTION WHEN unique_violation THEN
-            -- do nothing
-        END;
-        UPDATE bpp_wydawca SET ile_aliasow = "ile_aliasow" + 1 WHERE "id" = NEW."alias_dla_id";
+        INSERT INTO "denorm_dirtyinstance" ("content_type_id", "object_id", "func_name") VALUES ((SELECT id FROM django_content_type WHERE app_label = 'bpp' AND model = 'wydawca'), NEW."id", 'lista_poziomow') ON CONFLICT DO NOTHING;
+        UPDATE "bpp_wydawca" SET "ile_aliasow" = "ile_aliasow" + 1 WHERE "id" = NEW."alias_dla_id";
         RETURN NULL;
     END;
 $$;
@@ -2137,15 +1796,11 @@ CREATE FUNCTION public.f_d_aft_row_ins_on_bpp_wydawca_wydawnictwo_zwarte_cached3
     LANGUAGE plpgsql
     AS $$
     BEGIN
-        -- This trigger was created because of @depend_on_related of Wydawnictwo_Zwarte.cached_punkty_dyscyplin
+        -- Trigger generated by django-denorm-iplweb for Wydawnictwo_Zwarte.cached_punkty_dyscyplin
         -- It happens AFTER INSERT on bpp_wydawca
         -- This function was autogenerated by code found in <class 'denorm.db.triggers.Trigger'>
 
-        BEGIN
-            INSERT INTO denorm_dirtyinstance (content_type_id, object_id, func_name) (SELECT DISTINCT 3, id, 'cached_punkty_dyscyplin' FROM bpp_wydawnictwo_zwarte WHERE wydawca_id = NEW."id");
-        EXCEPTION WHEN unique_violation THEN
-            -- do nothing
-        END;
+        INSERT INTO "denorm_dirtyinstance" ("content_type_id", "object_id", "func_name") (SELECT DISTINCT (SELECT id FROM django_content_type WHERE app_label = 'bpp' AND model = 'wydawnictwo_zwarte'), id, 'cached_punkty_dyscyplin' FROM "bpp_wydawnictwo_zwarte" WHERE "wydawca_id" = NEW."id") ON CONFLICT DO NOTHING;
         RETURN NULL;
     END;
 $$;
@@ -2159,15 +1814,11 @@ CREATE FUNCTION public.f_d_aft_row_ins_on_bpp_wydawca_wydawnictwo_zwarte_opis_b7
     LANGUAGE plpgsql
     AS $$
     BEGIN
-        -- This trigger was created because of @depend_on_related of Wydawnictwo_Zwarte.opis_bibliograficzny_cache
+        -- Trigger generated by django-denorm-iplweb for Wydawnictwo_Zwarte.opis_bibliograficzny_cache
         -- It happens AFTER INSERT on bpp_wydawca
         -- This function was autogenerated by code found in <class 'denorm.db.triggers.Trigger'>
 
-        BEGIN
-            INSERT INTO denorm_dirtyinstance (content_type_id, object_id, func_name) (SELECT DISTINCT 3, id, 'opis_bibliograficzny_cache' FROM bpp_wydawnictwo_zwarte WHERE wydawca_id = NEW."id");
-        EXCEPTION WHEN unique_violation THEN
-            -- do nothing
-        END;
+        INSERT INTO "denorm_dirtyinstance" ("content_type_id", "object_id", "func_name") (SELECT DISTINCT (SELECT id FROM django_content_type WHERE app_label = 'bpp' AND model = 'wydawnictwo_zwarte'), id, 'opis_bibliograficzny_cache' FROM "bpp_wydawnictwo_zwarte" WHERE "wydawca_id" = NEW."id") ON CONFLICT DO NOTHING;
         RETURN NULL;
     END;
 $$;
@@ -2181,11 +1832,11 @@ CREATE FUNCTION public.f_d_aft_row_ins_on_bpp_wydawnictwo_ciagle() RETURNS trigg
     LANGUAGE plpgsql
     AS $$
     BEGIN
-        BEGIN
-            INSERT INTO denorm_dirtyinstance (content_type_id, object_id) VALUES (6, NEW."id");
-        EXCEPTION WHEN unique_violation THEN
-            -- do nothing
-        END;
+        INSERT INTO "denorm_dirtyinstance" ("content_type_id", "object_id", "func_name") VALUES ((SELECT id FROM django_content_type WHERE app_label = 'bpp' AND model = 'wydawnictwo_ciagle'), NEW."id", 'cached_punkty_dyscyplin') ON CONFLICT DO NOTHING;
+        INSERT INTO "denorm_dirtyinstance" ("content_type_id", "object_id", "func_name") VALUES ((SELECT id FROM django_content_type WHERE app_label = 'bpp' AND model = 'wydawnictwo_ciagle'), NEW."id", 'opis_bibliograficzny_cache') ON CONFLICT DO NOTHING;
+        INSERT INTO "denorm_dirtyinstance" ("content_type_id", "object_id", "func_name") VALUES ((SELECT id FROM django_content_type WHERE app_label = 'bpp' AND model = 'wydawnictwo_ciagle'), NEW."id", 'opis_bibliograficzny_autorzy_cache') ON CONFLICT DO NOTHING;
+        INSERT INTO "denorm_dirtyinstance" ("content_type_id", "object_id", "func_name") VALUES ((SELECT id FROM django_content_type WHERE app_label = 'bpp' AND model = 'wydawnictwo_ciagle'), NEW."id", 'opis_bibliograficzny_zapisani_autorzy_cache') ON CONFLICT DO NOTHING;
+        INSERT INTO "denorm_dirtyinstance" ("content_type_id", "object_id", "func_name") VALUES ((SELECT id FROM django_content_type WHERE app_label = 'bpp' AND model = 'wydawnictwo_ciagle'), NEW."id", 'slug') ON CONFLICT DO NOTHING;
         RETURN NULL;
     END;
 $$;
@@ -2199,20 +1850,12 @@ CREATE FUNCTION public.f_d_aft_row_ins_on_bpp_wydawnictwo_ciagle_autor_wydawnic4
     LANGUAGE plpgsql
     AS $$
     BEGIN
-        -- This trigger was created because of @depend_on_related of Wydawnictwo_Ciagle.opis_bibliograficzny_autorzy_cache
+        -- Trigger generated by django-denorm-iplweb for Wydawnictwo_Ciagle.opis_bibliograficzny_autorzy_cache
         -- It happens AFTER INSERT on bpp_wydawnictwo_ciagle_autor
         -- This function was autogenerated by code found in <class 'denorm.db.triggers.Trigger'>
 
-        BEGIN
-            INSERT INTO denorm_dirtyinstance (content_type_id, object_id, func_name) (SELECT DISTINCT 6, rekord_id, 'opis_bibliograficzny_autorzy_cache' FROM bpp_wydawnictwo_ciagle_autor WHERE id = NEW."id");
-        EXCEPTION WHEN unique_violation THEN
-            -- do nothing
-        END;
-        BEGIN
-            INSERT INTO denorm_dirtyinstance (content_type_id, object_id, func_name) VALUES (6, NEW."rekord_id", 'opis_bibliograficzny_autorzy_cache');
-        EXCEPTION WHEN unique_violation THEN
-            -- do nothing
-        END;
+        INSERT INTO "denorm_dirtyinstance" ("content_type_id", "object_id", "func_name") (SELECT DISTINCT (SELECT id FROM django_content_type WHERE app_label = 'bpp' AND model = 'wydawnictwo_ciagle'), rekord_id, 'opis_bibliograficzny_autorzy_cache' FROM "bpp_wydawnictwo_ciagle_autor" WHERE "id" = NEW."id") ON CONFLICT DO NOTHING;
+        INSERT INTO "denorm_dirtyinstance" ("content_type_id", "object_id", "func_name") VALUES ((SELECT id FROM django_content_type WHERE app_label = 'bpp' AND model = 'wydawnictwo_ciagle'), NEW."rekord_id", 'opis_bibliograficzny_autorzy_cache') ON CONFLICT DO NOTHING;
         RETURN NULL;
     END;
 $$;
@@ -2226,15 +1869,11 @@ CREATE FUNCTION public.f_d_aft_row_ins_on_bpp_wydawnictwo_ciagle_autor_wydawnic5
     LANGUAGE plpgsql
     AS $$
     BEGIN
-        -- This trigger was created because of @depend_on_related of Wydawnictwo_Ciagle.opis_bibliograficzny_zapisani_autorzy_cache
+        -- Trigger generated by django-denorm-iplweb for Wydawnictwo_Ciagle.opis_bibliograficzny_zapisani_autorzy_cache
         -- It happens AFTER INSERT on bpp_wydawnictwo_ciagle_autor
         -- This function was autogenerated by code found in <class 'denorm.db.triggers.Trigger'>
 
-        BEGIN
-            INSERT INTO denorm_dirtyinstance (content_type_id, object_id, func_name) (SELECT DISTINCT 6, rekord_id, 'opis_bibliograficzny_zapisani_autorzy_cache' FROM bpp_wydawnictwo_ciagle_autor WHERE id = NEW."id");
-        EXCEPTION WHEN unique_violation THEN
-            -- do nothing
-        END;
+        INSERT INTO "denorm_dirtyinstance" ("content_type_id", "object_id", "func_name") (SELECT DISTINCT (SELECT id FROM django_content_type WHERE app_label = 'bpp' AND model = 'wydawnictwo_ciagle'), rekord_id, 'opis_bibliograficzny_zapisani_autorzy_cache' FROM "bpp_wydawnictwo_ciagle_autor" WHERE "id" = NEW."id") ON CONFLICT DO NOTHING;
         RETURN NULL;
     END;
 $$;
@@ -2248,15 +1887,11 @@ CREATE FUNCTION public.f_d_aft_row_ins_on_bpp_wydawnictwo_ciagle_autor_wydawnic6
     LANGUAGE plpgsql
     AS $$
     BEGIN
-        -- This trigger was created because of @depend_on_related of Wydawnictwo_Ciagle.opis_bibliograficzny_cache
+        -- Trigger generated by django-denorm-iplweb for Wydawnictwo_Ciagle.opis_bibliograficzny_cache
         -- It happens AFTER INSERT on bpp_wydawnictwo_ciagle_autor
         -- This function was autogenerated by code found in <class 'denorm.db.triggers.Trigger'>
 
-        BEGIN
-            INSERT INTO denorm_dirtyinstance (content_type_id, object_id, func_name) (SELECT DISTINCT 6, rekord_id, 'opis_bibliograficzny_cache' FROM bpp_wydawnictwo_ciagle_autor WHERE id = NEW."id");
-        EXCEPTION WHEN unique_violation THEN
-            -- do nothing
-        END;
+        INSERT INTO "denorm_dirtyinstance" ("content_type_id", "object_id", "func_name") (SELECT DISTINCT (SELECT id FROM django_content_type WHERE app_label = 'bpp' AND model = 'wydawnictwo_ciagle'), rekord_id, 'opis_bibliograficzny_cache' FROM "bpp_wydawnictwo_ciagle_autor" WHERE "id" = NEW."id") ON CONFLICT DO NOTHING;
         RETURN NULL;
     END;
 $$;
@@ -2270,15 +1905,11 @@ CREATE FUNCTION public.f_d_aft_row_ins_on_bpp_wydawnictwo_ciagle_autor_wydawnic8
     LANGUAGE plpgsql
     AS $$
     BEGIN
-        -- This trigger was created because of @depend_on_related of Wydawnictwo_Ciagle.cached_punkty_dyscyplin
+        -- Trigger generated by django-denorm-iplweb for Wydawnictwo_Ciagle.cached_punkty_dyscyplin
         -- It happens AFTER INSERT on bpp_wydawnictwo_ciagle_autor
         -- This function was autogenerated by code found in <class 'denorm.db.triggers.Trigger'>
 
-        BEGIN
-            INSERT INTO denorm_dirtyinstance (content_type_id, object_id, func_name) (SELECT DISTINCT 6, rekord_id, 'cached_punkty_dyscyplin' FROM bpp_wydawnictwo_ciagle_autor WHERE id = NEW."id");
-        EXCEPTION WHEN unique_violation THEN
-            -- do nothing
-        END;
+        INSERT INTO "denorm_dirtyinstance" ("content_type_id", "object_id", "func_name") (SELECT DISTINCT (SELECT id FROM django_content_type WHERE app_label = 'bpp' AND model = 'wydawnictwo_ciagle'), rekord_id, 'cached_punkty_dyscyplin' FROM "bpp_wydawnictwo_ciagle_autor" WHERE "id" = NEW."id") ON CONFLICT DO NOTHING;
         RETURN NULL;
     END;
 $$;
@@ -2292,20 +1923,12 @@ CREATE FUNCTION public.f_d_aft_row_ins_on_bpp_wydawnictwo_ciagle_autor_wydawnicf
     LANGUAGE plpgsql
     AS $$
     BEGIN
-        -- This trigger was created because of @depend_on_related of Wydawnictwo_Ciagle.slug
+        -- Trigger generated by django-denorm-iplweb for Wydawnictwo_Ciagle.slug
         -- It happens AFTER INSERT on bpp_wydawnictwo_ciagle_autor
         -- This function was autogenerated by code found in <class 'denorm.db.triggers.Trigger'>
 
-        BEGIN
-            INSERT INTO denorm_dirtyinstance (content_type_id, object_id, func_name) VALUES (6, NEW."rekord_id", 'slug');
-        EXCEPTION WHEN unique_violation THEN
-            -- do nothing
-        END;
-        BEGIN
-            INSERT INTO denorm_dirtyinstance (content_type_id, object_id, func_name) (SELECT DISTINCT 6, rekord_id, 'slug' FROM bpp_wydawnictwo_ciagle_autor WHERE id = NEW."id");
-        EXCEPTION WHEN unique_violation THEN
-            -- do nothing
-        END;
+        INSERT INTO "denorm_dirtyinstance" ("content_type_id", "object_id", "func_name") VALUES ((SELECT id FROM django_content_type WHERE app_label = 'bpp' AND model = 'wydawnictwo_ciagle'), NEW."rekord_id", 'slug') ON CONFLICT DO NOTHING;
+        INSERT INTO "denorm_dirtyinstance" ("content_type_id", "object_id", "func_name") (SELECT DISTINCT (SELECT id FROM django_content_type WHERE app_label = 'bpp' AND model = 'wydawnictwo_ciagle'), rekord_id, 'slug' FROM "bpp_wydawnictwo_ciagle_autor" WHERE "id" = NEW."id") ON CONFLICT DO NOTHING;
         RETURN NULL;
     END;
 $$;
@@ -2319,11 +1942,11 @@ CREATE FUNCTION public.f_d_aft_row_ins_on_bpp_wydawnictwo_zwarte() RETURNS trigg
     LANGUAGE plpgsql
     AS $$
     BEGIN
-        BEGIN
-            INSERT INTO denorm_dirtyinstance (content_type_id, object_id) VALUES (3, NEW."id");
-        EXCEPTION WHEN unique_violation THEN
-            -- do nothing
-        END;
+        INSERT INTO "denorm_dirtyinstance" ("content_type_id", "object_id", "func_name") VALUES ((SELECT id FROM django_content_type WHERE app_label = 'bpp' AND model = 'wydawnictwo_zwarte'), NEW."id", 'cached_punkty_dyscyplin') ON CONFLICT DO NOTHING;
+        INSERT INTO "denorm_dirtyinstance" ("content_type_id", "object_id", "func_name") VALUES ((SELECT id FROM django_content_type WHERE app_label = 'bpp' AND model = 'wydawnictwo_zwarte'), NEW."id", 'opis_bibliograficzny_cache') ON CONFLICT DO NOTHING;
+        INSERT INTO "denorm_dirtyinstance" ("content_type_id", "object_id", "func_name") VALUES ((SELECT id FROM django_content_type WHERE app_label = 'bpp' AND model = 'wydawnictwo_zwarte'), NEW."id", 'opis_bibliograficzny_autorzy_cache') ON CONFLICT DO NOTHING;
+        INSERT INTO "denorm_dirtyinstance" ("content_type_id", "object_id", "func_name") VALUES ((SELECT id FROM django_content_type WHERE app_label = 'bpp' AND model = 'wydawnictwo_zwarte'), NEW."id", 'opis_bibliograficzny_zapisani_autorzy_cache') ON CONFLICT DO NOTHING;
+        INSERT INTO "denorm_dirtyinstance" ("content_type_id", "object_id", "func_name") VALUES ((SELECT id FROM django_content_type WHERE app_label = 'bpp' AND model = 'wydawnictwo_zwarte'), NEW."id", 'slug') ON CONFLICT DO NOTHING;
         RETURN NULL;
     END;
 $$;
@@ -2337,20 +1960,12 @@ CREATE FUNCTION public.f_d_aft_row_ins_on_bpp_wydawnictwo_zwarte_autor_wydawnic0
     LANGUAGE plpgsql
     AS $$
     BEGIN
-        -- This trigger was created because of @depend_on_related of Wydawnictwo_Zwarte.opis_bibliograficzny_autorzy_cache
+        -- Trigger generated by django-denorm-iplweb for Wydawnictwo_Zwarte.opis_bibliograficzny_autorzy_cache
         -- It happens AFTER INSERT on bpp_wydawnictwo_zwarte_autor
         -- This function was autogenerated by code found in <class 'denorm.db.triggers.Trigger'>
 
-        BEGIN
-            INSERT INTO denorm_dirtyinstance (content_type_id, object_id, func_name) (SELECT DISTINCT 3, rekord_id, 'opis_bibliograficzny_autorzy_cache' FROM bpp_wydawnictwo_zwarte_autor WHERE id = NEW."id");
-        EXCEPTION WHEN unique_violation THEN
-            -- do nothing
-        END;
-        BEGIN
-            INSERT INTO denorm_dirtyinstance (content_type_id, object_id, func_name) VALUES (3, NEW."rekord_id", 'opis_bibliograficzny_autorzy_cache');
-        EXCEPTION WHEN unique_violation THEN
-            -- do nothing
-        END;
+        INSERT INTO "denorm_dirtyinstance" ("content_type_id", "object_id", "func_name") (SELECT DISTINCT (SELECT id FROM django_content_type WHERE app_label = 'bpp' AND model = 'wydawnictwo_zwarte'), rekord_id, 'opis_bibliograficzny_autorzy_cache' FROM "bpp_wydawnictwo_zwarte_autor" WHERE "id" = NEW."id") ON CONFLICT DO NOTHING;
+        INSERT INTO "denorm_dirtyinstance" ("content_type_id", "object_id", "func_name") VALUES ((SELECT id FROM django_content_type WHERE app_label = 'bpp' AND model = 'wydawnictwo_zwarte'), NEW."rekord_id", 'opis_bibliograficzny_autorzy_cache') ON CONFLICT DO NOTHING;
         RETURN NULL;
     END;
 $$;
@@ -2364,15 +1979,11 @@ CREATE FUNCTION public.f_d_aft_row_ins_on_bpp_wydawnictwo_zwarte_autor_wydawnic1
     LANGUAGE plpgsql
     AS $$
     BEGIN
-        -- This trigger was created because of @depend_on_related of Wydawnictwo_Zwarte.opis_bibliograficzny_cache
+        -- Trigger generated by django-denorm-iplweb for Wydawnictwo_Zwarte.opis_bibliograficzny_cache
         -- It happens AFTER INSERT on bpp_wydawnictwo_zwarte_autor
         -- This function was autogenerated by code found in <class 'denorm.db.triggers.Trigger'>
 
-        BEGIN
-            INSERT INTO denorm_dirtyinstance (content_type_id, object_id, func_name) (SELECT DISTINCT 3, rekord_id, 'opis_bibliograficzny_cache' FROM bpp_wydawnictwo_zwarte_autor WHERE id = NEW."id");
-        EXCEPTION WHEN unique_violation THEN
-            -- do nothing
-        END;
+        INSERT INTO "denorm_dirtyinstance" ("content_type_id", "object_id", "func_name") (SELECT DISTINCT (SELECT id FROM django_content_type WHERE app_label = 'bpp' AND model = 'wydawnictwo_zwarte'), rekord_id, 'opis_bibliograficzny_cache' FROM "bpp_wydawnictwo_zwarte_autor" WHERE "id" = NEW."id") ON CONFLICT DO NOTHING;
         RETURN NULL;
     END;
 $$;
@@ -2386,15 +1997,11 @@ CREATE FUNCTION public.f_d_aft_row_ins_on_bpp_wydawnictwo_zwarte_autor_wydawnic3
     LANGUAGE plpgsql
     AS $$
     BEGIN
-        -- This trigger was created because of @depend_on_related of Wydawnictwo_Zwarte.opis_bibliograficzny_zapisani_autorzy_cache
+        -- Trigger generated by django-denorm-iplweb for Wydawnictwo_Zwarte.opis_bibliograficzny_zapisani_autorzy_cache
         -- It happens AFTER INSERT on bpp_wydawnictwo_zwarte_autor
         -- This function was autogenerated by code found in <class 'denorm.db.triggers.Trigger'>
 
-        BEGIN
-            INSERT INTO denorm_dirtyinstance (content_type_id, object_id, func_name) (SELECT DISTINCT 3, rekord_id, 'opis_bibliograficzny_zapisani_autorzy_cache' FROM bpp_wydawnictwo_zwarte_autor WHERE id = NEW."id");
-        EXCEPTION WHEN unique_violation THEN
-            -- do nothing
-        END;
+        INSERT INTO "denorm_dirtyinstance" ("content_type_id", "object_id", "func_name") (SELECT DISTINCT (SELECT id FROM django_content_type WHERE app_label = 'bpp' AND model = 'wydawnictwo_zwarte'), rekord_id, 'opis_bibliograficzny_zapisani_autorzy_cache' FROM "bpp_wydawnictwo_zwarte_autor" WHERE "id" = NEW."id") ON CONFLICT DO NOTHING;
         RETURN NULL;
     END;
 $$;
@@ -2408,15 +2015,11 @@ CREATE FUNCTION public.f_d_aft_row_ins_on_bpp_wydawnictwo_zwarte_autor_wydawnic9
     LANGUAGE plpgsql
     AS $$
     BEGIN
-        -- This trigger was created because of @depend_on_related of Wydawnictwo_Zwarte.cached_punkty_dyscyplin
+        -- Trigger generated by django-denorm-iplweb for Wydawnictwo_Zwarte.cached_punkty_dyscyplin
         -- It happens AFTER INSERT on bpp_wydawnictwo_zwarte_autor
         -- This function was autogenerated by code found in <class 'denorm.db.triggers.Trigger'>
 
-        BEGIN
-            INSERT INTO denorm_dirtyinstance (content_type_id, object_id, func_name) (SELECT DISTINCT 3, rekord_id, 'cached_punkty_dyscyplin' FROM bpp_wydawnictwo_zwarte_autor WHERE id = NEW."id");
-        EXCEPTION WHEN unique_violation THEN
-            -- do nothing
-        END;
+        INSERT INTO "denorm_dirtyinstance" ("content_type_id", "object_id", "func_name") (SELECT DISTINCT (SELECT id FROM django_content_type WHERE app_label = 'bpp' AND model = 'wydawnictwo_zwarte'), rekord_id, 'cached_punkty_dyscyplin' FROM "bpp_wydawnictwo_zwarte_autor" WHERE "id" = NEW."id") ON CONFLICT DO NOTHING;
         RETURN NULL;
     END;
 $$;
@@ -2430,20 +2033,12 @@ CREATE FUNCTION public.f_d_aft_row_ins_on_bpp_wydawnictwo_zwarte_autor_wydawnicb
     LANGUAGE plpgsql
     AS $$
     BEGIN
-        -- This trigger was created because of @depend_on_related of Wydawnictwo_Zwarte.slug
+        -- Trigger generated by django-denorm-iplweb for Wydawnictwo_Zwarte.slug
         -- It happens AFTER INSERT on bpp_wydawnictwo_zwarte_autor
         -- This function was autogenerated by code found in <class 'denorm.db.triggers.Trigger'>
 
-        BEGIN
-            INSERT INTO denorm_dirtyinstance (content_type_id, object_id, func_name) VALUES (3, NEW."rekord_id", 'slug');
-        EXCEPTION WHEN unique_violation THEN
-            -- do nothing
-        END;
-        BEGIN
-            INSERT INTO denorm_dirtyinstance (content_type_id, object_id, func_name) (SELECT DISTINCT 3, rekord_id, 'slug' FROM bpp_wydawnictwo_zwarte_autor WHERE id = NEW."id");
-        EXCEPTION WHEN unique_violation THEN
-            -- do nothing
-        END;
+        INSERT INTO "denorm_dirtyinstance" ("content_type_id", "object_id", "func_name") VALUES ((SELECT id FROM django_content_type WHERE app_label = 'bpp' AND model = 'wydawnictwo_zwarte'), NEW."rekord_id", 'slug') ON CONFLICT DO NOTHING;
+        INSERT INTO "denorm_dirtyinstance" ("content_type_id", "object_id", "func_name") (SELECT DISTINCT (SELECT id FROM django_content_type WHERE app_label = 'bpp' AND model = 'wydawnictwo_zwarte'), rekord_id, 'slug' FROM "bpp_wydawnictwo_zwarte_autor" WHERE "id" = NEW."id") ON CONFLICT DO NOTHING;
         RETURN NULL;
     END;
 $$;
@@ -2457,15 +2052,11 @@ CREATE FUNCTION public.f_d_aft_row_ins_on_bpp_wydawnictwo_zwarte_wydawnictwo_zw5
     LANGUAGE plpgsql
     AS $$
     BEGIN
-        -- This trigger was created because of @depend_on_related of Wydawnictwo_Zwarte.slug
+        -- Trigger generated by django-denorm-iplweb for Wydawnictwo_Zwarte.slug
         -- It happens AFTER INSERT on bpp_wydawnictwo_zwarte
         -- This function was autogenerated by code found in <class 'denorm.db.triggers.Trigger'>
 
-        BEGIN
-            INSERT INTO denorm_dirtyinstance (content_type_id, object_id, func_name) (SELECT DISTINCT 3, id, 'slug' FROM bpp_wydawnictwo_zwarte WHERE wydawnictwo_nadrzedne_id = NEW."id");
-        EXCEPTION WHEN unique_violation THEN
-            -- do nothing
-        END;
+        INSERT INTO "denorm_dirtyinstance" ("content_type_id", "object_id", "func_name") (SELECT DISTINCT (SELECT id FROM django_content_type WHERE app_label = 'bpp' AND model = 'wydawnictwo_zwarte'), id, 'slug' FROM "bpp_wydawnictwo_zwarte" WHERE "wydawnictwo_nadrzedne_id" = NEW."id") ON CONFLICT DO NOTHING;
         RETURN NULL;
     END;
 $$;
@@ -2479,15 +2070,11 @@ CREATE FUNCTION public.f_d_aft_row_ins_on_bpp_wydawnictwo_zwarte_wydawnictwo_zw8
     LANGUAGE plpgsql
     AS $$
     BEGIN
-        -- This trigger was created because of @depend_on_related of Wydawnictwo_Zwarte.opis_bibliograficzny_cache
+        -- Trigger generated by django-denorm-iplweb for Wydawnictwo_Zwarte.opis_bibliograficzny_cache
         -- It happens AFTER INSERT on bpp_wydawnictwo_zwarte
         -- This function was autogenerated by code found in <class 'denorm.db.triggers.Trigger'>
 
-        BEGIN
-            INSERT INTO denorm_dirtyinstance (content_type_id, object_id, func_name) (SELECT DISTINCT 3, id, 'opis_bibliograficzny_cache' FROM bpp_wydawnictwo_zwarte WHERE wydawnictwo_nadrzedne_id = NEW."id");
-        EXCEPTION WHEN unique_violation THEN
-            -- do nothing
-        END;
+        INSERT INTO "denorm_dirtyinstance" ("content_type_id", "object_id", "func_name") (SELECT DISTINCT (SELECT id FROM django_content_type WHERE app_label = 'bpp' AND model = 'wydawnictwo_zwarte'), id, 'opis_bibliograficzny_cache' FROM "bpp_wydawnictwo_zwarte" WHERE "wydawnictwo_nadrzedne_id" = NEW."id") ON CONFLICT DO NOTHING;
         RETURN NULL;
     END;
 $$;
@@ -2501,15 +2088,11 @@ CREATE FUNCTION public.f_d_aft_row_ins_on_bpp_zrodlo_wydawnictwo_ciagle_opis_bi1
     LANGUAGE plpgsql
     AS $$
     BEGIN
-        -- This trigger was created because of @depend_on_related of Wydawnictwo_Ciagle.opis_bibliograficzny_cache
+        -- Trigger generated by django-denorm-iplweb for Wydawnictwo_Ciagle.opis_bibliograficzny_cache
         -- It happens AFTER INSERT on bpp_zrodlo
         -- This function was autogenerated by code found in <class 'denorm.db.triggers.Trigger'>
 
-        BEGIN
-            INSERT INTO denorm_dirtyinstance (content_type_id, object_id, func_name) (SELECT DISTINCT 6, id, 'opis_bibliograficzny_cache' FROM bpp_wydawnictwo_ciagle WHERE zrodlo_id = NEW."id");
-        EXCEPTION WHEN unique_violation THEN
-            -- do nothing
-        END;
+        INSERT INTO "denorm_dirtyinstance" ("content_type_id", "object_id", "func_name") (SELECT DISTINCT (SELECT id FROM django_content_type WHERE app_label = 'bpp' AND model = 'wydawnictwo_ciagle'), id, 'opis_bibliograficzny_cache' FROM "bpp_wydawnictwo_ciagle" WHERE "zrodlo_id" = NEW."id") ON CONFLICT DO NOTHING;
         RETURN NULL;
     END;
 $$;
@@ -2523,15 +2106,11 @@ CREATE FUNCTION public.f_d_aft_row_ins_on_bpp_zrodlo_wydawnictwo_ciagle_slug() R
     LANGUAGE plpgsql
     AS $$
     BEGIN
-        -- This trigger was created because of @depend_on_related of Wydawnictwo_Ciagle.slug
+        -- Trigger generated by django-denorm-iplweb for Wydawnictwo_Ciagle.slug
         -- It happens AFTER INSERT on bpp_zrodlo
         -- This function was autogenerated by code found in <class 'denorm.db.triggers.Trigger'>
 
-        BEGIN
-            INSERT INTO denorm_dirtyinstance (content_type_id, object_id, func_name) (SELECT DISTINCT 6, id, 'slug' FROM bpp_wydawnictwo_ciagle WHERE zrodlo_id = NEW."id");
-        EXCEPTION WHEN unique_violation THEN
-            -- do nothing
-        END;
+        INSERT INTO "denorm_dirtyinstance" ("content_type_id", "object_id", "func_name") (SELECT DISTINCT (SELECT id FROM django_content_type WHERE app_label = 'bpp' AND model = 'wydawnictwo_ciagle'), id, 'slug' FROM "bpp_wydawnictwo_ciagle" WHERE "zrodlo_id" = NEW."id") ON CONFLICT DO NOTHING;
         RETURN NULL;
     END;
 $$;
@@ -2545,17 +2124,11 @@ CREATE FUNCTION public.f_d_aft_row_upd_on_bpp_autor_patent_opis_bibliograficznyc
     LANGUAGE plpgsql
     AS $$
     BEGIN
-        -- This trigger was created because of @depend_on_related of Patent.opis_bibliograficzny_autorzy_cache
+        -- Trigger generated by django-denorm-iplweb for Patent.opis_bibliograficzny_autorzy_cache
         -- It happens AFTER UPDATE on bpp_autor
         -- This function was autogenerated by code found in <class 'denorm.db.triggers.Trigger'>
 
-        IF ((OLD."imiona" IS DISTINCT FROM NEW."imiona") OR (OLD."nazwisko" IS DISTINCT FROM NEW."nazwisko")) THEN
-            BEGIN
-                INSERT INTO denorm_dirtyinstance (content_type_id, object_id, func_name) (SELECT DISTINCT 1, "rekord_id", 'opis_bibliograficzny_autorzy_cache' FROM bpp_patent_autor WHERE autor_id = NEW."id");
-            EXCEPTION WHEN unique_violation THEN
-                -- do nothing
-            END;
-        END IF;
+        INSERT INTO "denorm_dirtyinstance" ("content_type_id", "object_id", "func_name") (SELECT DISTINCT (SELECT id FROM django_content_type WHERE app_label = 'bpp' AND model = 'patent'), "rekord_id", 'opis_bibliograficzny_autorzy_cache' FROM "bpp_patent_autor" WHERE "autor_id" = NEW."id") ON CONFLICT DO NOTHING;
         RETURN NULL;
     END;
 $$;
@@ -2569,17 +2142,11 @@ CREATE FUNCTION public.f_d_aft_row_upd_on_bpp_autor_patent_slug() RETURNS trigge
     LANGUAGE plpgsql
     AS $$
     BEGIN
-        -- This trigger was created because of @depend_on_related of Patent.slug
+        -- Trigger generated by django-denorm-iplweb for Patent.slug
         -- It happens AFTER UPDATE on bpp_autor
         -- This function was autogenerated by code found in <class 'denorm.db.triggers.Trigger'>
 
-        IF ((OLD."imiona" IS DISTINCT FROM NEW."imiona") OR (OLD."nazwisko" IS DISTINCT FROM NEW."nazwisko")) THEN
-            BEGIN
-                INSERT INTO denorm_dirtyinstance (content_type_id, object_id, func_name) (SELECT DISTINCT 1, "rekord_id", 'slug' FROM bpp_patent_autor WHERE autor_id = NEW."id");
-            EXCEPTION WHEN unique_violation THEN
-                -- do nothing
-            END;
-        END IF;
+        INSERT INTO "denorm_dirtyinstance" ("content_type_id", "object_id", "func_name") (SELECT DISTINCT (SELECT id FROM django_content_type WHERE app_label = 'bpp' AND model = 'patent'), "rekord_id", 'slug' FROM "bpp_patent_autor" WHERE "autor_id" = NEW."id") ON CONFLICT DO NOTHING;
         RETURN NULL;
     END;
 $$;
@@ -2593,22 +2160,12 @@ CREATE FUNCTION public.f_d_aft_row_upd_on_bpp_autor_praca_doktorska_baza_opis_b3
     LANGUAGE plpgsql
     AS $$
     BEGIN
-        -- This trigger was created because of @depend_on_related of Praca_Doktorska_Baza.opis_bibliograficzny_cache
+        -- Trigger generated by django-denorm-iplweb for Praca_Doktorska_Baza.opis_bibliograficzny_cache
         -- It happens AFTER UPDATE on bpp_autor
         -- This function was autogenerated by code found in <class 'denorm.db.triggers.Trigger'>
 
-        IF ((OLD."imiona" IS DISTINCT FROM NEW."imiona") OR (OLD."nazwisko" IS DISTINCT FROM NEW."nazwisko") OR (OLD."tytul_id" IS DISTINCT FROM NEW."tytul_id")) THEN
-            BEGIN
-                INSERT INTO denorm_dirtyinstance (content_type_id, object_id, func_name) (SELECT DISTINCT 4, id, 'opis_bibliograficzny_cache' FROM bpp_praca_doktorska WHERE autor_id = NEW."id");
-            EXCEPTION WHEN unique_violation THEN
-                -- do nothing
-            END;
-            BEGIN
-                INSERT INTO denorm_dirtyinstance (content_type_id, object_id, func_name) (SELECT DISTINCT 5, id, 'opis_bibliograficzny_cache' FROM bpp_praca_habilitacyjna WHERE autor_id = NEW."id");
-            EXCEPTION WHEN unique_violation THEN
-                -- do nothing
-            END;
-        END IF;
+        INSERT INTO "denorm_dirtyinstance" ("content_type_id", "object_id", "func_name") (SELECT DISTINCT (SELECT id FROM django_content_type WHERE app_label = 'bpp' AND model = 'praca_doktorska'), id, 'opis_bibliograficzny_cache' FROM "bpp_praca_doktorska" WHERE "autor_id" = NEW."id") ON CONFLICT DO NOTHING;
+        INSERT INTO "denorm_dirtyinstance" ("content_type_id", "object_id", "func_name") (SELECT DISTINCT (SELECT id FROM django_content_type WHERE app_label = 'bpp' AND model = 'praca_habilitacyjna'), id, 'opis_bibliograficzny_cache' FROM "bpp_praca_habilitacyjna" WHERE "autor_id" = NEW."id") ON CONFLICT DO NOTHING;
         RETURN NULL;
     END;
 $$;
@@ -2622,22 +2179,12 @@ CREATE FUNCTION public.f_d_aft_row_upd_on_bpp_autor_praca_doktorska_baza_opis_b7
     LANGUAGE plpgsql
     AS $$
     BEGIN
-        -- This trigger was created because of @depend_on_related of Praca_Doktorska_Baza.opis_bibliograficzny_autorzy_cache
+        -- Trigger generated by django-denorm-iplweb for Praca_Doktorska_Baza.opis_bibliograficzny_autorzy_cache
         -- It happens AFTER UPDATE on bpp_autor
         -- This function was autogenerated by code found in <class 'denorm.db.triggers.Trigger'>
 
-        IF ((OLD."imiona" IS DISTINCT FROM NEW."imiona") OR (OLD."nazwisko" IS DISTINCT FROM NEW."nazwisko")) THEN
-            BEGIN
-                INSERT INTO denorm_dirtyinstance (content_type_id, object_id, func_name) (SELECT DISTINCT 4, id, 'opis_bibliograficzny_autorzy_cache' FROM bpp_praca_doktorska WHERE autor_id = NEW."id");
-            EXCEPTION WHEN unique_violation THEN
-                -- do nothing
-            END;
-            BEGIN
-                INSERT INTO denorm_dirtyinstance (content_type_id, object_id, func_name) (SELECT DISTINCT 5, id, 'opis_bibliograficzny_autorzy_cache' FROM bpp_praca_habilitacyjna WHERE autor_id = NEW."id");
-            EXCEPTION WHEN unique_violation THEN
-                -- do nothing
-            END;
-        END IF;
+        INSERT INTO "denorm_dirtyinstance" ("content_type_id", "object_id", "func_name") (SELECT DISTINCT (SELECT id FROM django_content_type WHERE app_label = 'bpp' AND model = 'praca_doktorska'), id, 'opis_bibliograficzny_autorzy_cache' FROM "bpp_praca_doktorska" WHERE "autor_id" = NEW."id") ON CONFLICT DO NOTHING;
+        INSERT INTO "denorm_dirtyinstance" ("content_type_id", "object_id", "func_name") (SELECT DISTINCT (SELECT id FROM django_content_type WHERE app_label = 'bpp' AND model = 'praca_habilitacyjna'), id, 'opis_bibliograficzny_autorzy_cache' FROM "bpp_praca_habilitacyjna" WHERE "autor_id" = NEW."id") ON CONFLICT DO NOTHING;
         RETURN NULL;
     END;
 $$;
@@ -2651,22 +2198,12 @@ CREATE FUNCTION public.f_d_aft_row_upd_on_bpp_autor_praca_doktorska_baza_opis_ba
     LANGUAGE plpgsql
     AS $$
     BEGIN
-        -- This trigger was created because of @depend_on_related of Praca_Doktorska_Baza.opis_bibliograficzny_zapisani_autorzy_cache
+        -- Trigger generated by django-denorm-iplweb for Praca_Doktorska_Baza.opis_bibliograficzny_zapisani_autorzy_cache
         -- It happens AFTER UPDATE on bpp_autor
         -- This function was autogenerated by code found in <class 'denorm.db.triggers.Trigger'>
 
-        IF ((OLD."imiona" IS DISTINCT FROM NEW."imiona") OR (OLD."nazwisko" IS DISTINCT FROM NEW."nazwisko")) THEN
-            BEGIN
-                INSERT INTO denorm_dirtyinstance (content_type_id, object_id, func_name) (SELECT DISTINCT 4, id, 'opis_bibliograficzny_zapisani_autorzy_cache' FROM bpp_praca_doktorska WHERE autor_id = NEW."id");
-            EXCEPTION WHEN unique_violation THEN
-                -- do nothing
-            END;
-            BEGIN
-                INSERT INTO denorm_dirtyinstance (content_type_id, object_id, func_name) (SELECT DISTINCT 5, id, 'opis_bibliograficzny_zapisani_autorzy_cache' FROM bpp_praca_habilitacyjna WHERE autor_id = NEW."id");
-            EXCEPTION WHEN unique_violation THEN
-                -- do nothing
-            END;
-        END IF;
+        INSERT INTO "denorm_dirtyinstance" ("content_type_id", "object_id", "func_name") (SELECT DISTINCT (SELECT id FROM django_content_type WHERE app_label = 'bpp' AND model = 'praca_doktorska'), id, 'opis_bibliograficzny_zapisani_autorzy_cache' FROM "bpp_praca_doktorska" WHERE "autor_id" = NEW."id") ON CONFLICT DO NOTHING;
+        INSERT INTO "denorm_dirtyinstance" ("content_type_id", "object_id", "func_name") (SELECT DISTINCT (SELECT id FROM django_content_type WHERE app_label = 'bpp' AND model = 'praca_habilitacyjna'), id, 'opis_bibliograficzny_zapisani_autorzy_cache' FROM "bpp_praca_habilitacyjna" WHERE "autor_id" = NEW."id") ON CONFLICT DO NOTHING;
         RETURN NULL;
     END;
 $$;
@@ -2680,22 +2217,12 @@ CREATE FUNCTION public.f_d_aft_row_upd_on_bpp_autor_praca_doktorska_baza_slug() 
     LANGUAGE plpgsql
     AS $$
     BEGIN
-        -- This trigger was created because of @depend_on_related of Praca_Doktorska_Baza.slug
+        -- Trigger generated by django-denorm-iplweb for Praca_Doktorska_Baza.slug
         -- It happens AFTER UPDATE on bpp_autor
         -- This function was autogenerated by code found in <class 'denorm.db.triggers.Trigger'>
 
-        IF ((OLD."imiona" IS DISTINCT FROM NEW."imiona") OR (OLD."nazwisko" IS DISTINCT FROM NEW."nazwisko")) THEN
-            BEGIN
-                INSERT INTO denorm_dirtyinstance (content_type_id, object_id, func_name) (SELECT DISTINCT 4, id, 'slug' FROM bpp_praca_doktorska WHERE autor_id = NEW."id");
-            EXCEPTION WHEN unique_violation THEN
-                -- do nothing
-            END;
-            BEGIN
-                INSERT INTO denorm_dirtyinstance (content_type_id, object_id, func_name) (SELECT DISTINCT 5, id, 'slug' FROM bpp_praca_habilitacyjna WHERE autor_id = NEW."id");
-            EXCEPTION WHEN unique_violation THEN
-                -- do nothing
-            END;
-        END IF;
+        INSERT INTO "denorm_dirtyinstance" ("content_type_id", "object_id", "func_name") (SELECT DISTINCT (SELECT id FROM django_content_type WHERE app_label = 'bpp' AND model = 'praca_doktorska'), id, 'slug' FROM "bpp_praca_doktorska" WHERE "autor_id" = NEW."id") ON CONFLICT DO NOTHING;
+        INSERT INTO "denorm_dirtyinstance" ("content_type_id", "object_id", "func_name") (SELECT DISTINCT (SELECT id FROM django_content_type WHERE app_label = 'bpp' AND model = 'praca_habilitacyjna'), id, 'slug' FROM "bpp_praca_habilitacyjna" WHERE "autor_id" = NEW."id") ON CONFLICT DO NOTHING;
         RETURN NULL;
     END;
 $$;
@@ -2709,17 +2236,11 @@ CREATE FUNCTION public.f_d_aft_row_upd_on_bpp_autor_wydawnictwo_ciagle_opis_bib6
     LANGUAGE plpgsql
     AS $$
     BEGIN
-        -- This trigger was created because of @depend_on_related of Wydawnictwo_Ciagle.opis_bibliograficzny_autorzy_cache
+        -- Trigger generated by django-denorm-iplweb for Wydawnictwo_Ciagle.opis_bibliograficzny_autorzy_cache
         -- It happens AFTER UPDATE on bpp_autor
         -- This function was autogenerated by code found in <class 'denorm.db.triggers.Trigger'>
 
-        IF ((OLD."imiona" IS DISTINCT FROM NEW."imiona") OR (OLD."nazwisko" IS DISTINCT FROM NEW."nazwisko")) THEN
-            BEGIN
-                INSERT INTO denorm_dirtyinstance (content_type_id, object_id, func_name) (SELECT DISTINCT 6, "rekord_id", 'opis_bibliograficzny_autorzy_cache' FROM bpp_wydawnictwo_ciagle_autor WHERE autor_id = NEW."id");
-            EXCEPTION WHEN unique_violation THEN
-                -- do nothing
-            END;
-        END IF;
+        INSERT INTO "denorm_dirtyinstance" ("content_type_id", "object_id", "func_name") (SELECT DISTINCT (SELECT id FROM django_content_type WHERE app_label = 'bpp' AND model = 'wydawnictwo_ciagle'), "rekord_id", 'opis_bibliograficzny_autorzy_cache' FROM "bpp_wydawnictwo_ciagle_autor" WHERE "autor_id" = NEW."id") ON CONFLICT DO NOTHING;
         RETURN NULL;
     END;
 $$;
@@ -2733,17 +2254,11 @@ CREATE FUNCTION public.f_d_aft_row_upd_on_bpp_autor_wydawnictwo_ciagle_slug() RE
     LANGUAGE plpgsql
     AS $$
     BEGIN
-        -- This trigger was created because of @depend_on_related of Wydawnictwo_Ciagle.slug
+        -- Trigger generated by django-denorm-iplweb for Wydawnictwo_Ciagle.slug
         -- It happens AFTER UPDATE on bpp_autor
         -- This function was autogenerated by code found in <class 'denorm.db.triggers.Trigger'>
 
-        IF ((OLD."imiona" IS DISTINCT FROM NEW."imiona") OR (OLD."nazwisko" IS DISTINCT FROM NEW."nazwisko")) THEN
-            BEGIN
-                INSERT INTO denorm_dirtyinstance (content_type_id, object_id, func_name) (SELECT DISTINCT 6, "rekord_id", 'slug' FROM bpp_wydawnictwo_ciagle_autor WHERE autor_id = NEW."id");
-            EXCEPTION WHEN unique_violation THEN
-                -- do nothing
-            END;
-        END IF;
+        INSERT INTO "denorm_dirtyinstance" ("content_type_id", "object_id", "func_name") (SELECT DISTINCT (SELECT id FROM django_content_type WHERE app_label = 'bpp' AND model = 'wydawnictwo_ciagle'), "rekord_id", 'slug' FROM "bpp_wydawnictwo_ciagle_autor" WHERE "autor_id" = NEW."id") ON CONFLICT DO NOTHING;
         RETURN NULL;
     END;
 $$;
@@ -2757,17 +2272,11 @@ CREATE FUNCTION public.f_d_aft_row_upd_on_bpp_autor_wydawnictwo_zwarte_opis_bib5
     LANGUAGE plpgsql
     AS $$
     BEGIN
-        -- This trigger was created because of @depend_on_related of Wydawnictwo_Zwarte.opis_bibliograficzny_autorzy_cache
+        -- Trigger generated by django-denorm-iplweb for Wydawnictwo_Zwarte.opis_bibliograficzny_autorzy_cache
         -- It happens AFTER UPDATE on bpp_autor
         -- This function was autogenerated by code found in <class 'denorm.db.triggers.Trigger'>
 
-        IF ((OLD."imiona" IS DISTINCT FROM NEW."imiona") OR (OLD."nazwisko" IS DISTINCT FROM NEW."nazwisko")) THEN
-            BEGIN
-                INSERT INTO denorm_dirtyinstance (content_type_id, object_id, func_name) (SELECT DISTINCT 3, "rekord_id", 'opis_bibliograficzny_autorzy_cache' FROM bpp_wydawnictwo_zwarte_autor WHERE autor_id = NEW."id");
-            EXCEPTION WHEN unique_violation THEN
-                -- do nothing
-            END;
-        END IF;
+        INSERT INTO "denorm_dirtyinstance" ("content_type_id", "object_id", "func_name") (SELECT DISTINCT (SELECT id FROM django_content_type WHERE app_label = 'bpp' AND model = 'wydawnictwo_zwarte'), "rekord_id", 'opis_bibliograficzny_autorzy_cache' FROM "bpp_wydawnictwo_zwarte_autor" WHERE "autor_id" = NEW."id") ON CONFLICT DO NOTHING;
         RETURN NULL;
     END;
 $$;
@@ -2781,17 +2290,11 @@ CREATE FUNCTION public.f_d_aft_row_upd_on_bpp_autor_wydawnictwo_zwarte_slug() RE
     LANGUAGE plpgsql
     AS $$
     BEGIN
-        -- This trigger was created because of @depend_on_related of Wydawnictwo_Zwarte.slug
+        -- Trigger generated by django-denorm-iplweb for Wydawnictwo_Zwarte.slug
         -- It happens AFTER UPDATE on bpp_autor
         -- This function was autogenerated by code found in <class 'denorm.db.triggers.Trigger'>
 
-        IF ((OLD."imiona" IS DISTINCT FROM NEW."imiona") OR (OLD."nazwisko" IS DISTINCT FROM NEW."nazwisko")) THEN
-            BEGIN
-                INSERT INTO denorm_dirtyinstance (content_type_id, object_id, func_name) (SELECT DISTINCT 3, "rekord_id", 'slug' FROM bpp_wydawnictwo_zwarte_autor WHERE autor_id = NEW."id");
-            EXCEPTION WHEN unique_violation THEN
-                -- do nothing
-            END;
-        END IF;
+        INSERT INTO "denorm_dirtyinstance" ("content_type_id", "object_id", "func_name") (SELECT DISTINCT (SELECT id FROM django_content_type WHERE app_label = 'bpp' AND model = 'wydawnictwo_zwarte'), "rekord_id", 'slug' FROM "bpp_wydawnictwo_zwarte_autor" WHERE "autor_id" = NEW."id") ON CONFLICT DO NOTHING;
         RETURN NULL;
     END;
 $$;
@@ -2805,17 +2308,11 @@ CREATE FUNCTION public.f_d_aft_row_upd_on_bpp_charakter_formalny_wydawnictwo_cie
     LANGUAGE plpgsql
     AS $$
     BEGIN
-        -- This trigger was created because of @depend_on_related of Wydawnictwo_Ciagle.opis_bibliograficzny_cache
+        -- Trigger generated by django-denorm-iplweb for Wydawnictwo_Ciagle.opis_bibliograficzny_cache
         -- It happens AFTER UPDATE on bpp_charakter_formalny
         -- This function was autogenerated by code found in <class 'denorm.db.triggers.Trigger'>
 
-        IF ((OLD."id" IS DISTINCT FROM NEW."id") OR (OLD."nazwa" IS DISTINCT FROM NEW."nazwa") OR (OLD."skrot" IS DISTINCT FROM NEW."skrot") OR (OLD."parent_id" IS DISTINCT FROM NEW."parent_id") OR (OLD."charakter_ogolny" IS DISTINCT FROM NEW."charakter_ogolny") OR (OLD."publikacja" IS DISTINCT FROM NEW."publikacja") OR (OLD."streszczenie" IS DISTINCT FROM NEW."streszczenie") OR (OLD."nazwa_w_primo" IS DISTINCT FROM NEW."nazwa_w_primo") OR (OLD."charakter_pbn_id" IS DISTINCT FROM NEW."charakter_pbn_id") OR (OLD."rodzaj_pbn" IS DISTINCT FROM NEW."rodzaj_pbn") OR (OLD."charakter_sloty" IS DISTINCT FROM NEW."charakter_sloty") OR (OLD."wliczaj_do_rankingu" IS DISTINCT FROM NEW."wliczaj_do_rankingu")) THEN
-            BEGIN
-                INSERT INTO denorm_dirtyinstance (content_type_id, object_id, func_name) (SELECT DISTINCT 6, id, 'opis_bibliograficzny_cache' FROM bpp_wydawnictwo_ciagle WHERE charakter_formalny_id = NEW."id");
-            EXCEPTION WHEN unique_violation THEN
-                -- do nothing
-            END;
-        END IF;
+        INSERT INTO "denorm_dirtyinstance" ("content_type_id", "object_id", "func_name") (SELECT DISTINCT (SELECT id FROM django_content_type WHERE app_label = 'bpp' AND model = 'wydawnictwo_ciagle'), id, 'opis_bibliograficzny_cache' FROM "bpp_wydawnictwo_ciagle" WHERE "charakter_formalny_id" = NEW."id") ON CONFLICT DO NOTHING;
         RETURN NULL;
     END;
 $$;
@@ -2829,17 +2326,30 @@ CREATE FUNCTION public.f_d_aft_row_upd_on_bpp_charakter_formalny_wydawnictwo_zw0
     LANGUAGE plpgsql
     AS $$
     BEGIN
-        -- This trigger was created because of @depend_on_related of Wydawnictwo_Zwarte.opis_bibliograficzny_cache
+        -- Trigger generated by django-denorm-iplweb for Wydawnictwo_Zwarte.opis_bibliograficzny_cache
         -- It happens AFTER UPDATE on bpp_charakter_formalny
         -- This function was autogenerated by code found in <class 'denorm.db.triggers.Trigger'>
 
-        IF ((OLD."id" IS DISTINCT FROM NEW."id") OR (OLD."nazwa" IS DISTINCT FROM NEW."nazwa") OR (OLD."skrot" IS DISTINCT FROM NEW."skrot") OR (OLD."parent_id" IS DISTINCT FROM NEW."parent_id") OR (OLD."charakter_ogolny" IS DISTINCT FROM NEW."charakter_ogolny") OR (OLD."publikacja" IS DISTINCT FROM NEW."publikacja") OR (OLD."streszczenie" IS DISTINCT FROM NEW."streszczenie") OR (OLD."nazwa_w_primo" IS DISTINCT FROM NEW."nazwa_w_primo") OR (OLD."charakter_pbn_id" IS DISTINCT FROM NEW."charakter_pbn_id") OR (OLD."rodzaj_pbn" IS DISTINCT FROM NEW."rodzaj_pbn") OR (OLD."charakter_sloty" IS DISTINCT FROM NEW."charakter_sloty") OR (OLD."wliczaj_do_rankingu" IS DISTINCT FROM NEW."wliczaj_do_rankingu")) THEN
-            BEGIN
-                INSERT INTO denorm_dirtyinstance (content_type_id, object_id, func_name) (SELECT DISTINCT 3, id, 'opis_bibliograficzny_cache' FROM bpp_wydawnictwo_zwarte WHERE charakter_formalny_id = NEW."id");
-            EXCEPTION WHEN unique_violation THEN
-                -- do nothing
-            END;
-        END IF;
+        INSERT INTO "denorm_dirtyinstance" ("content_type_id", "object_id", "func_name") (SELECT DISTINCT (SELECT id FROM django_content_type WHERE app_label = 'bpp' AND model = 'wydawnictwo_zwarte'), id, 'opis_bibliograficzny_cache' FROM "bpp_wydawnictwo_zwarte" WHERE "charakter_formalny_id" = NEW."id") ON CONFLICT DO NOTHING;
+        RETURN NULL;
+    END;
+$$;
+
+
+--
+-- Name: f_d_aft_row_upd_on_bpp_jednostka_jednostka_wydzial(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.f_d_aft_row_upd_on_bpp_jednostka_jednostka_wydzial() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+    BEGIN
+        -- Trigger generated by django-denorm-iplweb for Jednostka.wydzial
+        -- It happens AFTER UPDATE on bpp_jednostka
+        -- This function was autogenerated by code found in <class 'denorm.db.triggers.Trigger'>
+
+        INSERT INTO "denorm_dirtyinstance" ("content_type_id", "object_id", "func_name") (SELECT DISTINCT (SELECT id FROM django_content_type WHERE app_label = 'bpp' AND model = 'jednostka'), id, 'wydzial' FROM "bpp_jednostka" WHERE "parent_id" = NEW."id") ON CONFLICT DO NOTHING;
+        INSERT INTO "denorm_dirtyinstance" ("content_type_id", "object_id", "func_name") VALUES ((SELECT id FROM django_content_type WHERE app_label = 'bpp' AND model = 'jednostka'), NEW."id", 'wydzial') ON CONFLICT DO NOTHING;
         RETURN NULL;
     END;
 $$;
@@ -2853,22 +2363,12 @@ CREATE FUNCTION public.f_d_aft_row_upd_on_bpp_jednostka_praca_doktorska_baza_opa
     LANGUAGE plpgsql
     AS $$
     BEGIN
-        -- This trigger was created because of @depend_on_related of Praca_Doktorska_Baza.opis_bibliograficzny_cache
+        -- Trigger generated by django-denorm-iplweb for Praca_Doktorska_Baza.opis_bibliograficzny_cache
         -- It happens AFTER UPDATE on bpp_jednostka
         -- This function was autogenerated by code found in <class 'denorm.db.triggers.Trigger'>
 
-        IF ((OLD."wydzial_id" IS DISTINCT FROM NEW."wydzial_id") OR (OLD."nazwa" IS DISTINCT FROM NEW."nazwa") OR (OLD."skrot" IS DISTINCT FROM NEW."skrot")) THEN
-            BEGIN
-                INSERT INTO denorm_dirtyinstance (content_type_id, object_id, func_name) (SELECT DISTINCT 4, id, 'opis_bibliograficzny_cache' FROM bpp_praca_doktorska WHERE jednostka_id = NEW."id");
-            EXCEPTION WHEN unique_violation THEN
-                -- do nothing
-            END;
-            BEGIN
-                INSERT INTO denorm_dirtyinstance (content_type_id, object_id, func_name) (SELECT DISTINCT 5, id, 'opis_bibliograficzny_cache' FROM bpp_praca_habilitacyjna WHERE jednostka_id = NEW."id");
-            EXCEPTION WHEN unique_violation THEN
-                -- do nothing
-            END;
-        END IF;
+        INSERT INTO "denorm_dirtyinstance" ("content_type_id", "object_id", "func_name") (SELECT DISTINCT (SELECT id FROM django_content_type WHERE app_label = 'bpp' AND model = 'praca_doktorska'), id, 'opis_bibliograficzny_cache' FROM "bpp_praca_doktorska" WHERE "jednostka_id" = NEW."id") ON CONFLICT DO NOTHING;
+        INSERT INTO "denorm_dirtyinstance" ("content_type_id", "object_id", "func_name") (SELECT DISTINCT (SELECT id FROM django_content_type WHERE app_label = 'bpp' AND model = 'praca_habilitacyjna'), id, 'opis_bibliograficzny_cache' FROM "bpp_praca_habilitacyjna" WHERE "jednostka_id" = NEW."id") ON CONFLICT DO NOTHING;
         RETURN NULL;
     END;
 $$;
@@ -2902,22 +2402,12 @@ CREATE FUNCTION public.f_d_aft_row_upd_on_bpp_patent_autor_patent_cached_punktye
     LANGUAGE plpgsql
     AS $$
     BEGIN
-        -- This trigger was created because of @depend_on_related of Patent.cached_punkty_dyscyplin
+        -- Trigger generated by django-denorm-iplweb for Patent.cached_punkty_dyscyplin
         -- It happens AFTER UPDATE on bpp_patent_autor
         -- This function was autogenerated by code found in <class 'denorm.db.triggers.Trigger'>
 
-        IF ((OLD."autor_id" IS DISTINCT FROM NEW."autor_id") OR (OLD."jednostka_id" IS DISTINCT FROM NEW."jednostka_id") OR (OLD."typ_odpowiedzialnosci_id" IS DISTINCT FROM NEW."typ_odpowiedzialnosci_id") OR (OLD."afiliuje" IS DISTINCT FROM NEW."afiliuje") OR (OLD."dyscyplina_naukowa_id" IS DISTINCT FROM NEW."dyscyplina_naukowa_id") OR (OLD."przypieta" IS DISTINCT FROM NEW."przypieta") OR (OLD."upowaznienie_pbn" IS DISTINCT FROM NEW."upowaznienie_pbn")) THEN
-            BEGIN
-                INSERT INTO denorm_dirtyinstance (content_type_id, object_id, func_name) (SELECT DISTINCT 1, rekord_id, 'cached_punkty_dyscyplin' FROM bpp_patent_autor WHERE id = NEW."id");
-            EXCEPTION WHEN unique_violation THEN
-                -- do nothing
-            END;
-            BEGIN
-                INSERT INTO denorm_dirtyinstance (content_type_id, object_id, func_name) VALUES (1, OLD.rekord_id, 'cached_punkty_dyscyplin');
-            EXCEPTION WHEN unique_violation THEN
-                -- do nothing
-            END;
-        END IF;
+        INSERT INTO "denorm_dirtyinstance" ("content_type_id", "object_id", "func_name") (SELECT DISTINCT (SELECT id FROM django_content_type WHERE app_label = 'bpp' AND model = 'patent'), rekord_id, 'cached_punkty_dyscyplin' FROM "bpp_patent_autor" WHERE "id" = NEW."id") ON CONFLICT DO NOTHING;
+        INSERT INTO "denorm_dirtyinstance" ("content_type_id", "object_id", "func_name") VALUES ((SELECT id FROM django_content_type WHERE app_label = 'bpp' AND model = 'patent'), OLD.rekord_id, 'cached_punkty_dyscyplin') ON CONFLICT DO NOTHING;
         RETURN NULL;
     END;
 $$;
@@ -2931,32 +2421,14 @@ CREATE FUNCTION public.f_d_aft_row_upd_on_bpp_patent_autor_patent_opis_bibliogr2
     LANGUAGE plpgsql
     AS $$
     BEGIN
-        -- This trigger was created because of @depend_on_related of Patent.opis_bibliograficzny_autorzy_cache
+        -- Trigger generated by django-denorm-iplweb for Patent.opis_bibliograficzny_autorzy_cache
         -- It happens AFTER UPDATE on bpp_patent_autor
         -- This function was autogenerated by code found in <class 'denorm.db.triggers.Trigger'>
 
-        IF ((OLD."kolejnosc" IS DISTINCT FROM NEW."kolejnosc")) THEN
-            BEGIN
-                INSERT INTO denorm_dirtyinstance (content_type_id, object_id, func_name) (SELECT DISTINCT 1, rekord_id, 'opis_bibliograficzny_autorzy_cache' FROM bpp_patent_autor WHERE id = NEW."id");
-            EXCEPTION WHEN unique_violation THEN
-                -- do nothing
-            END;
-            BEGIN
-                INSERT INTO denorm_dirtyinstance (content_type_id, object_id, func_name) VALUES (1, OLD.rekord_id, 'opis_bibliograficzny_autorzy_cache');
-            EXCEPTION WHEN unique_violation THEN
-                -- do nothing
-            END;
-            BEGIN
-                INSERT INTO denorm_dirtyinstance (content_type_id, object_id, func_name) VALUES (1, NEW."rekord_id", 'opis_bibliograficzny_autorzy_cache');
-            EXCEPTION WHEN unique_violation THEN
-                -- do nothing
-            END;
-            BEGIN
-                INSERT INTO denorm_dirtyinstance (content_type_id, object_id, func_name) VALUES (1, OLD."rekord_id", 'opis_bibliograficzny_autorzy_cache');
-            EXCEPTION WHEN unique_violation THEN
-                -- do nothing
-            END;
-        END IF;
+        INSERT INTO "denorm_dirtyinstance" ("content_type_id", "object_id", "func_name") (SELECT DISTINCT (SELECT id FROM django_content_type WHERE app_label = 'bpp' AND model = 'patent'), rekord_id, 'opis_bibliograficzny_autorzy_cache' FROM "bpp_patent_autor" WHERE "id" = NEW."id") ON CONFLICT DO NOTHING;
+        INSERT INTO "denorm_dirtyinstance" ("content_type_id", "object_id", "func_name") VALUES ((SELECT id FROM django_content_type WHERE app_label = 'bpp' AND model = 'patent'), OLD.rekord_id, 'opis_bibliograficzny_autorzy_cache') ON CONFLICT DO NOTHING;
+        INSERT INTO "denorm_dirtyinstance" ("content_type_id", "object_id", "func_name") VALUES ((SELECT id FROM django_content_type WHERE app_label = 'bpp' AND model = 'patent'), NEW."rekord_id", 'opis_bibliograficzny_autorzy_cache') ON CONFLICT DO NOTHING;
+        INSERT INTO "denorm_dirtyinstance" ("content_type_id", "object_id", "func_name") VALUES ((SELECT id FROM django_content_type WHERE app_label = 'bpp' AND model = 'patent'), OLD."rekord_id", 'opis_bibliograficzny_autorzy_cache') ON CONFLICT DO NOTHING;
         RETURN NULL;
     END;
 $$;
@@ -2970,22 +2442,12 @@ CREATE FUNCTION public.f_d_aft_row_upd_on_bpp_patent_autor_patent_opis_bibliogra
     LANGUAGE plpgsql
     AS $$
     BEGIN
-        -- This trigger was created because of @depend_on_related of Patent.opis_bibliograficzny_zapisani_autorzy_cache
+        -- Trigger generated by django-denorm-iplweb for Patent.opis_bibliograficzny_zapisani_autorzy_cache
         -- It happens AFTER UPDATE on bpp_patent_autor
         -- This function was autogenerated by code found in <class 'denorm.db.triggers.Trigger'>
 
-        IF ((OLD."kolejnosc" IS DISTINCT FROM NEW."kolejnosc") OR (OLD."zapisany_jako" IS DISTINCT FROM NEW."zapisany_jako")) THEN
-            BEGIN
-                INSERT INTO denorm_dirtyinstance (content_type_id, object_id, func_name) (SELECT DISTINCT 1, rekord_id, 'opis_bibliograficzny_zapisani_autorzy_cache' FROM bpp_patent_autor WHERE id = NEW."id");
-            EXCEPTION WHEN unique_violation THEN
-                -- do nothing
-            END;
-            BEGIN
-                INSERT INTO denorm_dirtyinstance (content_type_id, object_id, func_name) VALUES (1, OLD.rekord_id, 'opis_bibliograficzny_zapisani_autorzy_cache');
-            EXCEPTION WHEN unique_violation THEN
-                -- do nothing
-            END;
-        END IF;
+        INSERT INTO "denorm_dirtyinstance" ("content_type_id", "object_id", "func_name") (SELECT DISTINCT (SELECT id FROM django_content_type WHERE app_label = 'bpp' AND model = 'patent'), rekord_id, 'opis_bibliograficzny_zapisani_autorzy_cache' FROM "bpp_patent_autor" WHERE "id" = NEW."id") ON CONFLICT DO NOTHING;
+        INSERT INTO "denorm_dirtyinstance" ("content_type_id", "object_id", "func_name") VALUES ((SELECT id FROM django_content_type WHERE app_label = 'bpp' AND model = 'patent'), OLD.rekord_id, 'opis_bibliograficzny_zapisani_autorzy_cache') ON CONFLICT DO NOTHING;
         RETURN NULL;
     END;
 $$;
@@ -2999,22 +2461,12 @@ CREATE FUNCTION public.f_d_aft_row_upd_on_bpp_patent_autor_patent_opis_bibliogrb
     LANGUAGE plpgsql
     AS $$
     BEGIN
-        -- This trigger was created because of @depend_on_related of Patent.opis_bibliograficzny_cache
+        -- Trigger generated by django-denorm-iplweb for Patent.opis_bibliograficzny_cache
         -- It happens AFTER UPDATE on bpp_patent_autor
         -- This function was autogenerated by code found in <class 'denorm.db.triggers.Trigger'>
 
-        IF ((OLD."kolejnosc" IS DISTINCT FROM NEW."kolejnosc") OR (OLD."typ_odpowiedzialnosci_id" IS DISTINCT FROM NEW."typ_odpowiedzialnosci_id") OR (OLD."zapisany_jako" IS DISTINCT FROM NEW."zapisany_jako")) THEN
-            BEGIN
-                INSERT INTO denorm_dirtyinstance (content_type_id, object_id, func_name) (SELECT DISTINCT 1, rekord_id, 'opis_bibliograficzny_cache' FROM bpp_patent_autor WHERE id = NEW."id");
-            EXCEPTION WHEN unique_violation THEN
-                -- do nothing
-            END;
-            BEGIN
-                INSERT INTO denorm_dirtyinstance (content_type_id, object_id, func_name) VALUES (1, OLD.rekord_id, 'opis_bibliograficzny_cache');
-            EXCEPTION WHEN unique_violation THEN
-                -- do nothing
-            END;
-        END IF;
+        INSERT INTO "denorm_dirtyinstance" ("content_type_id", "object_id", "func_name") (SELECT DISTINCT (SELECT id FROM django_content_type WHERE app_label = 'bpp' AND model = 'patent'), rekord_id, 'opis_bibliograficzny_cache' FROM "bpp_patent_autor" WHERE "id" = NEW."id") ON CONFLICT DO NOTHING;
+        INSERT INTO "denorm_dirtyinstance" ("content_type_id", "object_id", "func_name") VALUES ((SELECT id FROM django_content_type WHERE app_label = 'bpp' AND model = 'patent'), OLD.rekord_id, 'opis_bibliograficzny_cache') ON CONFLICT DO NOTHING;
         RETURN NULL;
     END;
 $$;
@@ -3028,32 +2480,104 @@ CREATE FUNCTION public.f_d_aft_row_upd_on_bpp_patent_autor_patent_slug() RETURNS
     LANGUAGE plpgsql
     AS $$
     BEGIN
-        -- This trigger was created because of @depend_on_related of Patent.slug
+        -- Trigger generated by django-denorm-iplweb for Patent.slug
         -- It happens AFTER UPDATE on bpp_patent_autor
         -- This function was autogenerated by code found in <class 'denorm.db.triggers.Trigger'>
 
-        IF ((OLD."rekord_id" IS DISTINCT FROM NEW."rekord_id") OR (OLD."autor_id" IS DISTINCT FROM NEW."autor_id")) THEN
-            BEGIN
-                INSERT INTO denorm_dirtyinstance (content_type_id, object_id, func_name) VALUES (1, NEW."rekord_id", 'slug');
-            EXCEPTION WHEN unique_violation THEN
-                -- do nothing
-            END;
-            BEGIN
-                INSERT INTO denorm_dirtyinstance (content_type_id, object_id, func_name) VALUES (1, OLD."rekord_id", 'slug');
-            EXCEPTION WHEN unique_violation THEN
-                -- do nothing
-            END;
-            BEGIN
-                INSERT INTO denorm_dirtyinstance (content_type_id, object_id, func_name) (SELECT DISTINCT 1, rekord_id, 'slug' FROM bpp_patent_autor WHERE id = NEW."id");
-            EXCEPTION WHEN unique_violation THEN
-                -- do nothing
-            END;
-            BEGIN
-                INSERT INTO denorm_dirtyinstance (content_type_id, object_id, func_name) VALUES (1, OLD.rekord_id, 'slug');
-            EXCEPTION WHEN unique_violation THEN
-                -- do nothing
-            END;
-        END IF;
+        INSERT INTO "denorm_dirtyinstance" ("content_type_id", "object_id", "func_name") VALUES ((SELECT id FROM django_content_type WHERE app_label = 'bpp' AND model = 'patent'), NEW."rekord_id", 'slug') ON CONFLICT DO NOTHING;
+        INSERT INTO "denorm_dirtyinstance" ("content_type_id", "object_id", "func_name") VALUES ((SELECT id FROM django_content_type WHERE app_label = 'bpp' AND model = 'patent'), OLD."rekord_id", 'slug') ON CONFLICT DO NOTHING;
+        INSERT INTO "denorm_dirtyinstance" ("content_type_id", "object_id", "func_name") (SELECT DISTINCT (SELECT id FROM django_content_type WHERE app_label = 'bpp' AND model = 'patent'), rekord_id, 'slug' FROM "bpp_patent_autor" WHERE "id" = NEW."id") ON CONFLICT DO NOTHING;
+        INSERT INTO "denorm_dirtyinstance" ("content_type_id", "object_id", "func_name") VALUES ((SELECT id FROM django_content_type WHERE app_label = 'bpp' AND model = 'patent'), OLD.rekord_id, 'slug') ON CONFLICT DO NOTHING;
+        RETURN NULL;
+    END;
+$$;
+
+
+--
+-- Name: f_d_aft_row_upd_on_bpp_patent_patent_cached_punkty_dyscyd3c7(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.f_d_aft_row_upd_on_bpp_patent_patent_cached_punkty_dyscyd3c7() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+    BEGIN
+        -- Trigger generated by django-denorm-iplweb for Patent.cached_punkty_dyscyplin_self
+        -- It happens AFTER UPDATE on bpp_patent
+        -- This function was autogenerated by code found in <class 'denorm.db.triggers.Trigger'>
+
+        INSERT INTO "denorm_dirtyinstance" ("content_type_id", "object_id", "func_name") VALUES ((SELECT id FROM django_content_type WHERE app_label = 'bpp' AND model = 'patent'), NEW."id", 'cached_punkty_dyscyplin') ON CONFLICT DO NOTHING;
+        RETURN NULL;
+    END;
+$$;
+
+
+--
+-- Name: f_d_aft_row_upd_on_bpp_patent_patent_opis_bibliograficzn2783(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.f_d_aft_row_upd_on_bpp_patent_patent_opis_bibliograficzn2783() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+    BEGIN
+        -- Trigger generated by django-denorm-iplweb for Patent.opis_bibliograficzny_autorzy_cache_self
+        -- It happens AFTER UPDATE on bpp_patent
+        -- This function was autogenerated by code found in <class 'denorm.db.triggers.Trigger'>
+
+        INSERT INTO "denorm_dirtyinstance" ("content_type_id", "object_id", "func_name") VALUES ((SELECT id FROM django_content_type WHERE app_label = 'bpp' AND model = 'patent'), NEW."id", 'opis_bibliograficzny_autorzy_cache') ON CONFLICT DO NOTHING;
+        RETURN NULL;
+    END;
+$$;
+
+
+--
+-- Name: f_d_aft_row_upd_on_bpp_patent_patent_opis_bibliograficzn797c(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.f_d_aft_row_upd_on_bpp_patent_patent_opis_bibliograficzn797c() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+    BEGIN
+        -- Trigger generated by django-denorm-iplweb for Patent.opis_bibliograficzny_cache_self
+        -- It happens AFTER UPDATE on bpp_patent
+        -- This function was autogenerated by code found in <class 'denorm.db.triggers.Trigger'>
+
+        INSERT INTO "denorm_dirtyinstance" ("content_type_id", "object_id", "func_name") VALUES ((SELECT id FROM django_content_type WHERE app_label = 'bpp' AND model = 'patent'), NEW."id", 'opis_bibliograficzny_cache') ON CONFLICT DO NOTHING;
+        RETURN NULL;
+    END;
+$$;
+
+
+--
+-- Name: f_d_aft_row_upd_on_bpp_patent_patent_opis_bibliograficzncf12(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.f_d_aft_row_upd_on_bpp_patent_patent_opis_bibliograficzncf12() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+    BEGIN
+        -- Trigger generated by django-denorm-iplweb for Patent.opis_bibliograficzny_zapisani_autorzy_cache_self
+        -- It happens AFTER UPDATE on bpp_patent
+        -- This function was autogenerated by code found in <class 'denorm.db.triggers.Trigger'>
+
+        INSERT INTO "denorm_dirtyinstance" ("content_type_id", "object_id", "func_name") VALUES ((SELECT id FROM django_content_type WHERE app_label = 'bpp' AND model = 'patent'), NEW."id", 'opis_bibliograficzny_zapisani_autorzy_cache') ON CONFLICT DO NOTHING;
+        RETURN NULL;
+    END;
+$$;
+
+
+--
+-- Name: f_d_aft_row_upd_on_bpp_patent_patent_slug(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.f_d_aft_row_upd_on_bpp_patent_patent_slug() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+    BEGIN
+        -- Trigger generated by django-denorm-iplweb for Patent.slug
+        -- It happens AFTER UPDATE on bpp_patent
+        -- This function was autogenerated by code found in <class 'denorm.db.triggers.Trigger'>
+
+        INSERT INTO "denorm_dirtyinstance" ("content_type_id", "object_id", "func_name") VALUES ((SELECT id FROM django_content_type WHERE app_label = 'bpp' AND model = 'patent'), NEW."id", 'slug') ON CONFLICT DO NOTHING;
         RETURN NULL;
     END;
 $$;
@@ -3067,22 +2591,12 @@ CREATE FUNCTION public.f_d_aft_row_upd_on_bpp_poziom_wydawcy_wydawca_lista_pozio
     LANGUAGE plpgsql
     AS $$
     BEGIN
-        -- This trigger was created because of @depend_on_related of Wydawca.lista_poziomow
+        -- Trigger generated by django-denorm-iplweb for Wydawca.lista_poziomow
         -- It happens AFTER UPDATE on bpp_poziom_wydawcy
         -- This function was autogenerated by code found in <class 'denorm.db.triggers.Trigger'>
 
-        IF ((OLD."id" IS DISTINCT FROM NEW."id") OR (OLD."rok" IS DISTINCT FROM NEW."rok") OR (OLD."wydawca_id" IS DISTINCT FROM NEW."wydawca_id") OR (OLD."poziom" IS DISTINCT FROM NEW."poziom")) THEN
-            BEGIN
-                INSERT INTO denorm_dirtyinstance (content_type_id, object_id, func_name) (SELECT DISTINCT 2, wydawca_id, 'lista_poziomow' FROM bpp_poziom_wydawcy WHERE id = NEW."id");
-            EXCEPTION WHEN unique_violation THEN
-                -- do nothing
-            END;
-            BEGIN
-                INSERT INTO denorm_dirtyinstance (content_type_id, object_id, func_name) VALUES (2, OLD.wydawca_id, 'lista_poziomow');
-            EXCEPTION WHEN unique_violation THEN
-                -- do nothing
-            END;
-        END IF;
+        INSERT INTO "denorm_dirtyinstance" ("content_type_id", "object_id", "func_name") (SELECT DISTINCT (SELECT id FROM django_content_type WHERE app_label = 'bpp' AND model = 'wydawca'), wydawca_id, 'lista_poziomow' FROM "bpp_poziom_wydawcy" WHERE "id" = NEW."id") ON CONFLICT DO NOTHING;
+        INSERT INTO "denorm_dirtyinstance" ("content_type_id", "object_id", "func_name") VALUES ((SELECT id FROM django_content_type WHERE app_label = 'bpp' AND model = 'wydawca'), OLD.wydawca_id, 'lista_poziomow') ON CONFLICT DO NOTHING;
         RETURN NULL;
     END;
 $$;
@@ -3109,6 +2623,78 @@ $$;
 
 
 --
+-- Name: f_d_aft_row_upd_on_bpp_praca_doktorska_praca_doktorska_b58a3(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.f_d_aft_row_upd_on_bpp_praca_doktorska_praca_doktorska_b58a3() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+    BEGIN
+        -- Trigger generated by django-denorm-iplweb for Praca_Doktorska_Baza.opis_bibliograficzny_cache_self
+        -- It happens AFTER UPDATE on bpp_praca_doktorska
+        -- This function was autogenerated by code found in <class 'denorm.db.triggers.Trigger'>
+
+        INSERT INTO "denorm_dirtyinstance" ("content_type_id", "object_id", "func_name") VALUES ((SELECT id FROM django_content_type WHERE app_label = 'bpp' AND model = 'praca_doktorska'), NEW."id", 'opis_bibliograficzny_cache') ON CONFLICT DO NOTHING;
+        RETURN NULL;
+    END;
+$$;
+
+
+--
+-- Name: f_d_aft_row_upd_on_bpp_praca_doktorska_praca_doktorska_b7ec9(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.f_d_aft_row_upd_on_bpp_praca_doktorska_praca_doktorska_b7ec9() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+    BEGIN
+        -- Trigger generated by django-denorm-iplweb for Praca_Doktorska_Baza.opis_bibliograficzny_autorzy_cache
+        -- It happens AFTER UPDATE on bpp_praca_doktorska
+        -- This function was autogenerated by code found in <class 'denorm.db.triggers.Trigger'>
+
+        INSERT INTO "denorm_dirtyinstance" ("content_type_id", "object_id", "func_name") VALUES ((SELECT id FROM django_content_type WHERE app_label = 'bpp' AND model = 'praca_doktorska'), NEW."id", 'opis_bibliograficzny_autorzy_cache') ON CONFLICT DO NOTHING;
+        RETURN NULL;
+    END;
+$$;
+
+
+--
+-- Name: f_d_aft_row_upd_on_bpp_praca_doktorska_praca_doktorska_bdac8(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.f_d_aft_row_upd_on_bpp_praca_doktorska_praca_doktorska_bdac8() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+    BEGIN
+        -- Trigger generated by django-denorm-iplweb for Praca_Doktorska_Baza.slug
+        -- It happens AFTER UPDATE on bpp_praca_doktorska
+        -- This function was autogenerated by code found in <class 'denorm.db.triggers.Trigger'>
+
+        INSERT INTO "denorm_dirtyinstance" ("content_type_id", "object_id", "func_name") VALUES ((SELECT id FROM django_content_type WHERE app_label = 'bpp' AND model = 'praca_doktorska'), NEW."id", 'slug') ON CONFLICT DO NOTHING;
+        RETURN NULL;
+    END;
+$$;
+
+
+--
+-- Name: f_d_aft_row_upd_on_bpp_praca_doktorska_praca_doktorska_be56a(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.f_d_aft_row_upd_on_bpp_praca_doktorska_praca_doktorska_be56a() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+    BEGIN
+        -- Trigger generated by django-denorm-iplweb for Praca_Doktorska_Baza.opis_bibliograficzny_zapisani_autorzy_cache
+        -- It happens AFTER UPDATE on bpp_praca_doktorska
+        -- This function was autogenerated by code found in <class 'denorm.db.triggers.Trigger'>
+
+        INSERT INTO "denorm_dirtyinstance" ("content_type_id", "object_id", "func_name") VALUES ((SELECT id FROM django_content_type WHERE app_label = 'bpp' AND model = 'praca_doktorska'), NEW."id", 'opis_bibliograficzny_zapisani_autorzy_cache') ON CONFLICT DO NOTHING;
+        RETURN NULL;
+    END;
+$$;
+
+
+--
 -- Name: f_d_aft_row_upd_on_bpp_praca_habilitacyjna(); Type: FUNCTION; Schema: public; Owner: -
 --
 
@@ -3129,6 +2715,78 @@ $$;
 
 
 --
+-- Name: f_d_aft_row_upd_on_bpp_praca_habilitacyjna_praca_doktors5e61(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.f_d_aft_row_upd_on_bpp_praca_habilitacyjna_praca_doktors5e61() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+    BEGIN
+        -- Trigger generated by django-denorm-iplweb for Praca_Doktorska_Baza.opis_bibliograficzny_autorzy_cache
+        -- It happens AFTER UPDATE on bpp_praca_habilitacyjna
+        -- This function was autogenerated by code found in <class 'denorm.db.triggers.Trigger'>
+
+        INSERT INTO "denorm_dirtyinstance" ("content_type_id", "object_id", "func_name") VALUES ((SELECT id FROM django_content_type WHERE app_label = 'bpp' AND model = 'praca_habilitacyjna'), NEW."id", 'opis_bibliograficzny_autorzy_cache') ON CONFLICT DO NOTHING;
+        RETURN NULL;
+    END;
+$$;
+
+
+--
+-- Name: f_d_aft_row_upd_on_bpp_praca_habilitacyjna_praca_doktors8a80(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.f_d_aft_row_upd_on_bpp_praca_habilitacyjna_praca_doktors8a80() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+    BEGIN
+        -- Trigger generated by django-denorm-iplweb for Praca_Doktorska_Baza.opis_bibliograficzny_zapisani_autorzy_cache
+        -- It happens AFTER UPDATE on bpp_praca_habilitacyjna
+        -- This function was autogenerated by code found in <class 'denorm.db.triggers.Trigger'>
+
+        INSERT INTO "denorm_dirtyinstance" ("content_type_id", "object_id", "func_name") VALUES ((SELECT id FROM django_content_type WHERE app_label = 'bpp' AND model = 'praca_habilitacyjna'), NEW."id", 'opis_bibliograficzny_zapisani_autorzy_cache') ON CONFLICT DO NOTHING;
+        RETURN NULL;
+    END;
+$$;
+
+
+--
+-- Name: f_d_aft_row_upd_on_bpp_praca_habilitacyjna_praca_doktorsb87e(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.f_d_aft_row_upd_on_bpp_praca_habilitacyjna_praca_doktorsb87e() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+    BEGIN
+        -- Trigger generated by django-denorm-iplweb for Praca_Doktorska_Baza.opis_bibliograficzny_cache_self
+        -- It happens AFTER UPDATE on bpp_praca_habilitacyjna
+        -- This function was autogenerated by code found in <class 'denorm.db.triggers.Trigger'>
+
+        INSERT INTO "denorm_dirtyinstance" ("content_type_id", "object_id", "func_name") VALUES ((SELECT id FROM django_content_type WHERE app_label = 'bpp' AND model = 'praca_habilitacyjna'), NEW."id", 'opis_bibliograficzny_cache') ON CONFLICT DO NOTHING;
+        RETURN NULL;
+    END;
+$$;
+
+
+--
+-- Name: f_d_aft_row_upd_on_bpp_praca_habilitacyjna_praca_doktorsd6e8(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.f_d_aft_row_upd_on_bpp_praca_habilitacyjna_praca_doktorsd6e8() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+    BEGIN
+        -- Trigger generated by django-denorm-iplweb for Praca_Doktorska_Baza.slug
+        -- It happens AFTER UPDATE on bpp_praca_habilitacyjna
+        -- This function was autogenerated by code found in <class 'denorm.db.triggers.Trigger'>
+
+        INSERT INTO "denorm_dirtyinstance" ("content_type_id", "object_id", "func_name") VALUES ((SELECT id FROM django_content_type WHERE app_label = 'bpp' AND model = 'praca_habilitacyjna'), NEW."id", 'slug') ON CONFLICT DO NOTHING;
+        RETURN NULL;
+    END;
+$$;
+
+
+--
 -- Name: f_d_aft_row_upd_on_bpp_status_korekty_patent_opis_bibliob439(); Type: FUNCTION; Schema: public; Owner: -
 --
 
@@ -3136,17 +2794,11 @@ CREATE FUNCTION public.f_d_aft_row_upd_on_bpp_status_korekty_patent_opis_bibliob
     LANGUAGE plpgsql
     AS $$
     BEGIN
-        -- This trigger was created because of @depend_on_related of Patent.opis_bibliograficzny_cache
+        -- Trigger generated by django-denorm-iplweb for Patent.opis_bibliograficzny_cache
         -- It happens AFTER UPDATE on bpp_status_korekty
         -- This function was autogenerated by code found in <class 'denorm.db.triggers.Trigger'>
 
-        IF ((OLD."id" IS DISTINCT FROM NEW."id") OR (OLD."nazwa" IS DISTINCT FROM NEW."nazwa")) THEN
-            BEGIN
-                INSERT INTO denorm_dirtyinstance (content_type_id, object_id, func_name) (SELECT DISTINCT 1, id, 'opis_bibliograficzny_cache' FROM bpp_patent WHERE status_korekty_id = NEW."id");
-            EXCEPTION WHEN unique_violation THEN
-                -- do nothing
-            END;
-        END IF;
+        INSERT INTO "denorm_dirtyinstance" ("content_type_id", "object_id", "func_name") (SELECT DISTINCT (SELECT id FROM django_content_type WHERE app_label = 'bpp' AND model = 'patent'), id, 'opis_bibliograficzny_cache' FROM "bpp_patent" WHERE "status_korekty_id" = NEW."id") ON CONFLICT DO NOTHING;
         RETURN NULL;
     END;
 $$;
@@ -3160,22 +2812,12 @@ CREATE FUNCTION public.f_d_aft_row_upd_on_bpp_status_korekty_praca_doktorska_ba6
     LANGUAGE plpgsql
     AS $$
     BEGIN
-        -- This trigger was created because of @depend_on_related of Praca_Doktorska_Baza.opis_bibliograficzny_cache
+        -- Trigger generated by django-denorm-iplweb for Praca_Doktorska_Baza.opis_bibliograficzny_cache
         -- It happens AFTER UPDATE on bpp_status_korekty
         -- This function was autogenerated by code found in <class 'denorm.db.triggers.Trigger'>
 
-        IF ((OLD."id" IS DISTINCT FROM NEW."id") OR (OLD."nazwa" IS DISTINCT FROM NEW."nazwa")) THEN
-            BEGIN
-                INSERT INTO denorm_dirtyinstance (content_type_id, object_id, func_name) (SELECT DISTINCT 4, id, 'opis_bibliograficzny_cache' FROM bpp_praca_doktorska WHERE status_korekty_id = NEW."id");
-            EXCEPTION WHEN unique_violation THEN
-                -- do nothing
-            END;
-            BEGIN
-                INSERT INTO denorm_dirtyinstance (content_type_id, object_id, func_name) (SELECT DISTINCT 5, id, 'opis_bibliograficzny_cache' FROM bpp_praca_habilitacyjna WHERE status_korekty_id = NEW."id");
-            EXCEPTION WHEN unique_violation THEN
-                -- do nothing
-            END;
-        END IF;
+        INSERT INTO "denorm_dirtyinstance" ("content_type_id", "object_id", "func_name") (SELECT DISTINCT (SELECT id FROM django_content_type WHERE app_label = 'bpp' AND model = 'praca_doktorska'), id, 'opis_bibliograficzny_cache' FROM "bpp_praca_doktorska" WHERE "status_korekty_id" = NEW."id") ON CONFLICT DO NOTHING;
+        INSERT INTO "denorm_dirtyinstance" ("content_type_id", "object_id", "func_name") (SELECT DISTINCT (SELECT id FROM django_content_type WHERE app_label = 'bpp' AND model = 'praca_habilitacyjna'), id, 'opis_bibliograficzny_cache' FROM "bpp_praca_habilitacyjna" WHERE "status_korekty_id" = NEW."id") ON CONFLICT DO NOTHING;
         RETURN NULL;
     END;
 $$;
@@ -3189,17 +2831,11 @@ CREATE FUNCTION public.f_d_aft_row_upd_on_bpp_status_korekty_wydawnictwo_ciaglea
     LANGUAGE plpgsql
     AS $$
     BEGIN
-        -- This trigger was created because of @depend_on_related of Wydawnictwo_Ciagle.opis_bibliograficzny_cache
+        -- Trigger generated by django-denorm-iplweb for Wydawnictwo_Ciagle.opis_bibliograficzny_cache
         -- It happens AFTER UPDATE on bpp_status_korekty
         -- This function was autogenerated by code found in <class 'denorm.db.triggers.Trigger'>
 
-        IF ((OLD."id" IS DISTINCT FROM NEW."id") OR (OLD."nazwa" IS DISTINCT FROM NEW."nazwa")) THEN
-            BEGIN
-                INSERT INTO denorm_dirtyinstance (content_type_id, object_id, func_name) (SELECT DISTINCT 6, id, 'opis_bibliograficzny_cache' FROM bpp_wydawnictwo_ciagle WHERE status_korekty_id = NEW."id");
-            EXCEPTION WHEN unique_violation THEN
-                -- do nothing
-            END;
-        END IF;
+        INSERT INTO "denorm_dirtyinstance" ("content_type_id", "object_id", "func_name") (SELECT DISTINCT (SELECT id FROM django_content_type WHERE app_label = 'bpp' AND model = 'wydawnictwo_ciagle'), id, 'opis_bibliograficzny_cache' FROM "bpp_wydawnictwo_ciagle" WHERE "status_korekty_id" = NEW."id") ON CONFLICT DO NOTHING;
         RETURN NULL;
     END;
 $$;
@@ -3213,17 +2849,11 @@ CREATE FUNCTION public.f_d_aft_row_upd_on_bpp_status_korekty_wydawnictwo_zwarteb
     LANGUAGE plpgsql
     AS $$
     BEGIN
-        -- This trigger was created because of @depend_on_related of Wydawnictwo_Zwarte.opis_bibliograficzny_cache
+        -- Trigger generated by django-denorm-iplweb for Wydawnictwo_Zwarte.opis_bibliograficzny_cache
         -- It happens AFTER UPDATE on bpp_status_korekty
         -- This function was autogenerated by code found in <class 'denorm.db.triggers.Trigger'>
 
-        IF ((OLD."id" IS DISTINCT FROM NEW."id") OR (OLD."nazwa" IS DISTINCT FROM NEW."nazwa")) THEN
-            BEGIN
-                INSERT INTO denorm_dirtyinstance (content_type_id, object_id, func_name) (SELECT DISTINCT 3, id, 'opis_bibliograficzny_cache' FROM bpp_wydawnictwo_zwarte WHERE status_korekty_id = NEW."id");
-            EXCEPTION WHEN unique_violation THEN
-                -- do nothing
-            END;
-        END IF;
+        INSERT INTO "denorm_dirtyinstance" ("content_type_id", "object_id", "func_name") (SELECT DISTINCT (SELECT id FROM django_content_type WHERE app_label = 'bpp' AND model = 'wydawnictwo_zwarte'), id, 'opis_bibliograficzny_cache' FROM "bpp_wydawnictwo_zwarte" WHERE "status_korekty_id" = NEW."id") ON CONFLICT DO NOTHING;
         RETURN NULL;
     END;
 $$;
@@ -3237,17 +2867,11 @@ CREATE FUNCTION public.f_d_aft_row_upd_on_bpp_typ_kbn_wydawnictwo_ciagle_opis_b1
     LANGUAGE plpgsql
     AS $$
     BEGIN
-        -- This trigger was created because of @depend_on_related of Wydawnictwo_Ciagle.opis_bibliograficzny_cache
+        -- Trigger generated by django-denorm-iplweb for Wydawnictwo_Ciagle.opis_bibliograficzny_cache
         -- It happens AFTER UPDATE on bpp_typ_kbn
         -- This function was autogenerated by code found in <class 'denorm.db.triggers.Trigger'>
 
-        IF ((OLD."id" IS DISTINCT FROM NEW."id") OR (OLD."nazwa" IS DISTINCT FROM NEW."nazwa") OR (OLD."skrot" IS DISTINCT FROM NEW."skrot") OR (OLD."artykul_pbn" IS DISTINCT FROM NEW."artykul_pbn") OR (OLD."charakter_pbn_id" IS DISTINCT FROM NEW."charakter_pbn_id") OR (OLD."wliczaj_do_rankingu" IS DISTINCT FROM NEW."wliczaj_do_rankingu")) THEN
-            BEGIN
-                INSERT INTO denorm_dirtyinstance (content_type_id, object_id, func_name) (SELECT DISTINCT 6, id, 'opis_bibliograficzny_cache' FROM bpp_wydawnictwo_ciagle WHERE typ_kbn_id = NEW."id");
-            EXCEPTION WHEN unique_violation THEN
-                -- do nothing
-            END;
-        END IF;
+        INSERT INTO "denorm_dirtyinstance" ("content_type_id", "object_id", "func_name") (SELECT DISTINCT (SELECT id FROM django_content_type WHERE app_label = 'bpp' AND model = 'wydawnictwo_ciagle'), id, 'opis_bibliograficzny_cache' FROM "bpp_wydawnictwo_ciagle" WHERE "typ_kbn_id" = NEW."id") ON CONFLICT DO NOTHING;
         RETURN NULL;
     END;
 $$;
@@ -3261,17 +2885,11 @@ CREATE FUNCTION public.f_d_aft_row_upd_on_bpp_typ_kbn_wydawnictwo_zwarte_opis_b6
     LANGUAGE plpgsql
     AS $$
     BEGIN
-        -- This trigger was created because of @depend_on_related of Wydawnictwo_Zwarte.opis_bibliograficzny_cache
+        -- Trigger generated by django-denorm-iplweb for Wydawnictwo_Zwarte.opis_bibliograficzny_cache
         -- It happens AFTER UPDATE on bpp_typ_kbn
         -- This function was autogenerated by code found in <class 'denorm.db.triggers.Trigger'>
 
-        IF ((OLD."id" IS DISTINCT FROM NEW."id") OR (OLD."nazwa" IS DISTINCT FROM NEW."nazwa") OR (OLD."skrot" IS DISTINCT FROM NEW."skrot") OR (OLD."artykul_pbn" IS DISTINCT FROM NEW."artykul_pbn") OR (OLD."charakter_pbn_id" IS DISTINCT FROM NEW."charakter_pbn_id") OR (OLD."wliczaj_do_rankingu" IS DISTINCT FROM NEW."wliczaj_do_rankingu")) THEN
-            BEGIN
-                INSERT INTO denorm_dirtyinstance (content_type_id, object_id, func_name) (SELECT DISTINCT 3, id, 'opis_bibliograficzny_cache' FROM bpp_wydawnictwo_zwarte WHERE typ_kbn_id = NEW."id");
-            EXCEPTION WHEN unique_violation THEN
-                -- do nothing
-            END;
-        END IF;
+        INSERT INTO "denorm_dirtyinstance" ("content_type_id", "object_id", "func_name") (SELECT DISTINCT (SELECT id FROM django_content_type WHERE app_label = 'bpp' AND model = 'wydawnictwo_zwarte'), id, 'opis_bibliograficzny_cache' FROM "bpp_wydawnictwo_zwarte" WHERE "typ_kbn_id" = NEW."id") ON CONFLICT DO NOTHING;
         RETURN NULL;
     END;
 $$;
@@ -3285,15 +2903,26 @@ CREATE FUNCTION public.f_d_aft_row_upd_on_bpp_wydawca() RETURNS trigger
     LANGUAGE plpgsql
     AS $$
     BEGIN
-        IF ((OLD."id" IS DISTINCT FROM NEW."id") OR (OLD."nazwa" IS DISTINCT FROM NEW."nazwa") OR (OLD."alias_dla_id" IS DISTINCT FROM NEW."alias_dla_id") OR (OLD."pbn_uid_id" IS DISTINCT FROM NEW."pbn_uid_id") OR (OLD."lista_poziomow" IS DISTINCT FROM NEW."lista_poziomow") OR (OLD."ile_aliasow" IS DISTINCT FROM NEW."ile_aliasow")) THEN
-            BEGIN
-                INSERT INTO denorm_dirtyinstance (content_type_id, object_id) VALUES (2, NEW."id");
-            EXCEPTION WHEN unique_violation THEN
-                -- do nothing
-            END;
-            UPDATE bpp_wydawca SET ile_aliasow = "ile_aliasow" + 1 WHERE "id" = NEW."alias_dla_id";
-            UPDATE bpp_wydawca SET ile_aliasow = "ile_aliasow" - 1 WHERE "id" = OLD."alias_dla_id";
-        END IF;
+        UPDATE "bpp_wydawca" SET "ile_aliasow" = "ile_aliasow" + 1 WHERE "id" = NEW."alias_dla_id";
+        UPDATE "bpp_wydawca" SET "ile_aliasow" = "ile_aliasow" - 1 WHERE "id" = OLD."alias_dla_id";
+        RETURN NULL;
+    END;
+$$;
+
+
+--
+-- Name: f_d_aft_row_upd_on_bpp_wydawca_wydawca_lista_poziomow_self(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.f_d_aft_row_upd_on_bpp_wydawca_wydawca_lista_poziomow_self() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+    BEGIN
+        -- Trigger generated by django-denorm-iplweb for Wydawca.lista_poziomow_self
+        -- It happens AFTER UPDATE on bpp_wydawca
+        -- This function was autogenerated by code found in <class 'denorm.db.triggers.Trigger'>
+
+        INSERT INTO "denorm_dirtyinstance" ("content_type_id", "object_id", "func_name") VALUES ((SELECT id FROM django_content_type WHERE app_label = 'bpp' AND model = 'wydawca'), NEW."id", 'lista_poziomow') ON CONFLICT DO NOTHING;
         RETURN NULL;
     END;
 $$;
@@ -3307,17 +2936,11 @@ CREATE FUNCTION public.f_d_aft_row_upd_on_bpp_wydawca_wydawnictwo_zwarte_cachedb
     LANGUAGE plpgsql
     AS $$
     BEGIN
-        -- This trigger was created because of @depend_on_related of Wydawnictwo_Zwarte.cached_punkty_dyscyplin
+        -- Trigger generated by django-denorm-iplweb for Wydawnictwo_Zwarte.cached_punkty_dyscyplin
         -- It happens AFTER UPDATE on bpp_wydawca
         -- This function was autogenerated by code found in <class 'denorm.db.triggers.Trigger'>
 
-        IF ((OLD."alias_dla_id" IS DISTINCT FROM NEW."alias_dla_id") OR (OLD."lista_poziomow" IS DISTINCT FROM NEW."lista_poziomow")) THEN
-            BEGIN
-                INSERT INTO denorm_dirtyinstance (content_type_id, object_id, func_name) (SELECT DISTINCT 3, id, 'cached_punkty_dyscyplin' FROM bpp_wydawnictwo_zwarte WHERE wydawca_id = NEW."id");
-            EXCEPTION WHEN unique_violation THEN
-                -- do nothing
-            END;
-        END IF;
+        INSERT INTO "denorm_dirtyinstance" ("content_type_id", "object_id", "func_name") (SELECT DISTINCT (SELECT id FROM django_content_type WHERE app_label = 'bpp' AND model = 'wydawnictwo_zwarte'), id, 'cached_punkty_dyscyplin' FROM "bpp_wydawnictwo_zwarte" WHERE "wydawca_id" = NEW."id") ON CONFLICT DO NOTHING;
         RETURN NULL;
     END;
 $$;
@@ -3331,17 +2954,11 @@ CREATE FUNCTION public.f_d_aft_row_upd_on_bpp_wydawca_wydawnictwo_zwarte_opis_b1
     LANGUAGE plpgsql
     AS $$
     BEGIN
-        -- This trigger was created because of @depend_on_related of Wydawnictwo_Zwarte.opis_bibliograficzny_cache
+        -- Trigger generated by django-denorm-iplweb for Wydawnictwo_Zwarte.opis_bibliograficzny_cache
         -- It happens AFTER UPDATE on bpp_wydawca
         -- This function was autogenerated by code found in <class 'denorm.db.triggers.Trigger'>
 
-        IF ((OLD."nazwa" IS DISTINCT FROM NEW."nazwa") OR (OLD."alias_dla_id" IS DISTINCT FROM NEW."alias_dla_id")) THEN
-            BEGIN
-                INSERT INTO denorm_dirtyinstance (content_type_id, object_id, func_name) (SELECT DISTINCT 3, id, 'opis_bibliograficzny_cache' FROM bpp_wydawnictwo_zwarte WHERE wydawca_id = NEW."id");
-            EXCEPTION WHEN unique_violation THEN
-                -- do nothing
-            END;
-        END IF;
+        INSERT INTO "denorm_dirtyinstance" ("content_type_id", "object_id", "func_name") (SELECT DISTINCT (SELECT id FROM django_content_type WHERE app_label = 'bpp' AND model = 'wydawnictwo_zwarte'), id, 'opis_bibliograficzny_cache' FROM "bpp_wydawnictwo_zwarte" WHERE "wydawca_id" = NEW."id") ON CONFLICT DO NOTHING;
         RETURN NULL;
     END;
 $$;
@@ -3375,32 +2992,14 @@ CREATE FUNCTION public.f_d_aft_row_upd_on_bpp_wydawnictwo_ciagle_autor_wydawnic0
     LANGUAGE plpgsql
     AS $$
     BEGIN
-        -- This trigger was created because of @depend_on_related of Wydawnictwo_Ciagle.slug
+        -- Trigger generated by django-denorm-iplweb for Wydawnictwo_Ciagle.slug
         -- It happens AFTER UPDATE on bpp_wydawnictwo_ciagle_autor
         -- This function was autogenerated by code found in <class 'denorm.db.triggers.Trigger'>
 
-        IF ((OLD."rekord_id" IS DISTINCT FROM NEW."rekord_id") OR (OLD."autor_id" IS DISTINCT FROM NEW."autor_id")) THEN
-            BEGIN
-                INSERT INTO denorm_dirtyinstance (content_type_id, object_id, func_name) VALUES (6, NEW."rekord_id", 'slug');
-            EXCEPTION WHEN unique_violation THEN
-                -- do nothing
-            END;
-            BEGIN
-                INSERT INTO denorm_dirtyinstance (content_type_id, object_id, func_name) VALUES (6, OLD."rekord_id", 'slug');
-            EXCEPTION WHEN unique_violation THEN
-                -- do nothing
-            END;
-            BEGIN
-                INSERT INTO denorm_dirtyinstance (content_type_id, object_id, func_name) (SELECT DISTINCT 6, rekord_id, 'slug' FROM bpp_wydawnictwo_ciagle_autor WHERE id = NEW."id");
-            EXCEPTION WHEN unique_violation THEN
-                -- do nothing
-            END;
-            BEGIN
-                INSERT INTO denorm_dirtyinstance (content_type_id, object_id, func_name) VALUES (6, OLD.rekord_id, 'slug');
-            EXCEPTION WHEN unique_violation THEN
-                -- do nothing
-            END;
-        END IF;
+        INSERT INTO "denorm_dirtyinstance" ("content_type_id", "object_id", "func_name") VALUES ((SELECT id FROM django_content_type WHERE app_label = 'bpp' AND model = 'wydawnictwo_ciagle'), NEW."rekord_id", 'slug') ON CONFLICT DO NOTHING;
+        INSERT INTO "denorm_dirtyinstance" ("content_type_id", "object_id", "func_name") VALUES ((SELECT id FROM django_content_type WHERE app_label = 'bpp' AND model = 'wydawnictwo_ciagle'), OLD."rekord_id", 'slug') ON CONFLICT DO NOTHING;
+        INSERT INTO "denorm_dirtyinstance" ("content_type_id", "object_id", "func_name") (SELECT DISTINCT (SELECT id FROM django_content_type WHERE app_label = 'bpp' AND model = 'wydawnictwo_ciagle'), rekord_id, 'slug' FROM "bpp_wydawnictwo_ciagle_autor" WHERE "id" = NEW."id") ON CONFLICT DO NOTHING;
+        INSERT INTO "denorm_dirtyinstance" ("content_type_id", "object_id", "func_name") VALUES ((SELECT id FROM django_content_type WHERE app_label = 'bpp' AND model = 'wydawnictwo_ciagle'), OLD.rekord_id, 'slug') ON CONFLICT DO NOTHING;
         RETURN NULL;
     END;
 $$;
@@ -3414,22 +3013,12 @@ CREATE FUNCTION public.f_d_aft_row_upd_on_bpp_wydawnictwo_ciagle_autor_wydawnic1
     LANGUAGE plpgsql
     AS $$
     BEGIN
-        -- This trigger was created because of @depend_on_related of Wydawnictwo_Ciagle.opis_bibliograficzny_zapisani_autorzy_cache
+        -- Trigger generated by django-denorm-iplweb for Wydawnictwo_Ciagle.opis_bibliograficzny_zapisani_autorzy_cache
         -- It happens AFTER UPDATE on bpp_wydawnictwo_ciagle_autor
         -- This function was autogenerated by code found in <class 'denorm.db.triggers.Trigger'>
 
-        IF ((OLD."kolejnosc" IS DISTINCT FROM NEW."kolejnosc") OR (OLD."zapisany_jako" IS DISTINCT FROM NEW."zapisany_jako")) THEN
-            BEGIN
-                INSERT INTO denorm_dirtyinstance (content_type_id, object_id, func_name) (SELECT DISTINCT 6, rekord_id, 'opis_bibliograficzny_zapisani_autorzy_cache' FROM bpp_wydawnictwo_ciagle_autor WHERE id = NEW."id");
-            EXCEPTION WHEN unique_violation THEN
-                -- do nothing
-            END;
-            BEGIN
-                INSERT INTO denorm_dirtyinstance (content_type_id, object_id, func_name) VALUES (6, OLD.rekord_id, 'opis_bibliograficzny_zapisani_autorzy_cache');
-            EXCEPTION WHEN unique_violation THEN
-                -- do nothing
-            END;
-        END IF;
+        INSERT INTO "denorm_dirtyinstance" ("content_type_id", "object_id", "func_name") (SELECT DISTINCT (SELECT id FROM django_content_type WHERE app_label = 'bpp' AND model = 'wydawnictwo_ciagle'), rekord_id, 'opis_bibliograficzny_zapisani_autorzy_cache' FROM "bpp_wydawnictwo_ciagle_autor" WHERE "id" = NEW."id") ON CONFLICT DO NOTHING;
+        INSERT INTO "denorm_dirtyinstance" ("content_type_id", "object_id", "func_name") VALUES ((SELECT id FROM django_content_type WHERE app_label = 'bpp' AND model = 'wydawnictwo_ciagle'), OLD.rekord_id, 'opis_bibliograficzny_zapisani_autorzy_cache') ON CONFLICT DO NOTHING;
         RETURN NULL;
     END;
 $$;
@@ -3443,22 +3032,12 @@ CREATE FUNCTION public.f_d_aft_row_upd_on_bpp_wydawnictwo_ciagle_autor_wydawnic2
     LANGUAGE plpgsql
     AS $$
     BEGIN
-        -- This trigger was created because of @depend_on_related of Wydawnictwo_Ciagle.opis_bibliograficzny_cache
+        -- Trigger generated by django-denorm-iplweb for Wydawnictwo_Ciagle.opis_bibliograficzny_cache
         -- It happens AFTER UPDATE on bpp_wydawnictwo_ciagle_autor
         -- This function was autogenerated by code found in <class 'denorm.db.triggers.Trigger'>
 
-        IF ((OLD."kolejnosc" IS DISTINCT FROM NEW."kolejnosc") OR (OLD."typ_odpowiedzialnosci_id" IS DISTINCT FROM NEW."typ_odpowiedzialnosci_id") OR (OLD."zapisany_jako" IS DISTINCT FROM NEW."zapisany_jako")) THEN
-            BEGIN
-                INSERT INTO denorm_dirtyinstance (content_type_id, object_id, func_name) (SELECT DISTINCT 6, rekord_id, 'opis_bibliograficzny_cache' FROM bpp_wydawnictwo_ciagle_autor WHERE id = NEW."id");
-            EXCEPTION WHEN unique_violation THEN
-                -- do nothing
-            END;
-            BEGIN
-                INSERT INTO denorm_dirtyinstance (content_type_id, object_id, func_name) VALUES (6, OLD.rekord_id, 'opis_bibliograficzny_cache');
-            EXCEPTION WHEN unique_violation THEN
-                -- do nothing
-            END;
-        END IF;
+        INSERT INTO "denorm_dirtyinstance" ("content_type_id", "object_id", "func_name") (SELECT DISTINCT (SELECT id FROM django_content_type WHERE app_label = 'bpp' AND model = 'wydawnictwo_ciagle'), rekord_id, 'opis_bibliograficzny_cache' FROM "bpp_wydawnictwo_ciagle_autor" WHERE "id" = NEW."id") ON CONFLICT DO NOTHING;
+        INSERT INTO "denorm_dirtyinstance" ("content_type_id", "object_id", "func_name") VALUES ((SELECT id FROM django_content_type WHERE app_label = 'bpp' AND model = 'wydawnictwo_ciagle'), OLD.rekord_id, 'opis_bibliograficzny_cache') ON CONFLICT DO NOTHING;
         RETURN NULL;
     END;
 $$;
@@ -3472,22 +3051,12 @@ CREATE FUNCTION public.f_d_aft_row_upd_on_bpp_wydawnictwo_ciagle_autor_wydawnic5
     LANGUAGE plpgsql
     AS $$
     BEGIN
-        -- This trigger was created because of @depend_on_related of Wydawnictwo_Ciagle.cached_punkty_dyscyplin
+        -- Trigger generated by django-denorm-iplweb for Wydawnictwo_Ciagle.cached_punkty_dyscyplin
         -- It happens AFTER UPDATE on bpp_wydawnictwo_ciagle_autor
         -- This function was autogenerated by code found in <class 'denorm.db.triggers.Trigger'>
 
-        IF ((OLD."autor_id" IS DISTINCT FROM NEW."autor_id") OR (OLD."jednostka_id" IS DISTINCT FROM NEW."jednostka_id") OR (OLD."typ_odpowiedzialnosci_id" IS DISTINCT FROM NEW."typ_odpowiedzialnosci_id") OR (OLD."afiliuje" IS DISTINCT FROM NEW."afiliuje") OR (OLD."dyscyplina_naukowa_id" IS DISTINCT FROM NEW."dyscyplina_naukowa_id") OR (OLD."przypieta" IS DISTINCT FROM NEW."przypieta") OR (OLD."upowaznienie_pbn" IS DISTINCT FROM NEW."upowaznienie_pbn")) THEN
-            BEGIN
-                INSERT INTO denorm_dirtyinstance (content_type_id, object_id, func_name) (SELECT DISTINCT 6, rekord_id, 'cached_punkty_dyscyplin' FROM bpp_wydawnictwo_ciagle_autor WHERE id = NEW."id");
-            EXCEPTION WHEN unique_violation THEN
-                -- do nothing
-            END;
-            BEGIN
-                INSERT INTO denorm_dirtyinstance (content_type_id, object_id, func_name) VALUES (6, OLD.rekord_id, 'cached_punkty_dyscyplin');
-            EXCEPTION WHEN unique_violation THEN
-                -- do nothing
-            END;
-        END IF;
+        INSERT INTO "denorm_dirtyinstance" ("content_type_id", "object_id", "func_name") (SELECT DISTINCT (SELECT id FROM django_content_type WHERE app_label = 'bpp' AND model = 'wydawnictwo_ciagle'), rekord_id, 'cached_punkty_dyscyplin' FROM "bpp_wydawnictwo_ciagle_autor" WHERE "id" = NEW."id") ON CONFLICT DO NOTHING;
+        INSERT INTO "denorm_dirtyinstance" ("content_type_id", "object_id", "func_name") VALUES ((SELECT id FROM django_content_type WHERE app_label = 'bpp' AND model = 'wydawnictwo_ciagle'), OLD.rekord_id, 'cached_punkty_dyscyplin') ON CONFLICT DO NOTHING;
         RETURN NULL;
     END;
 $$;
@@ -3501,32 +3070,104 @@ CREATE FUNCTION public.f_d_aft_row_upd_on_bpp_wydawnictwo_ciagle_autor_wydawnicc
     LANGUAGE plpgsql
     AS $$
     BEGIN
-        -- This trigger was created because of @depend_on_related of Wydawnictwo_Ciagle.opis_bibliograficzny_autorzy_cache
+        -- Trigger generated by django-denorm-iplweb for Wydawnictwo_Ciagle.opis_bibliograficzny_autorzy_cache
         -- It happens AFTER UPDATE on bpp_wydawnictwo_ciagle_autor
         -- This function was autogenerated by code found in <class 'denorm.db.triggers.Trigger'>
 
-        IF ((OLD."kolejnosc" IS DISTINCT FROM NEW."kolejnosc")) THEN
-            BEGIN
-                INSERT INTO denorm_dirtyinstance (content_type_id, object_id, func_name) (SELECT DISTINCT 6, rekord_id, 'opis_bibliograficzny_autorzy_cache' FROM bpp_wydawnictwo_ciagle_autor WHERE id = NEW."id");
-            EXCEPTION WHEN unique_violation THEN
-                -- do nothing
-            END;
-            BEGIN
-                INSERT INTO denorm_dirtyinstance (content_type_id, object_id, func_name) VALUES (6, OLD.rekord_id, 'opis_bibliograficzny_autorzy_cache');
-            EXCEPTION WHEN unique_violation THEN
-                -- do nothing
-            END;
-            BEGIN
-                INSERT INTO denorm_dirtyinstance (content_type_id, object_id, func_name) VALUES (6, NEW."rekord_id", 'opis_bibliograficzny_autorzy_cache');
-            EXCEPTION WHEN unique_violation THEN
-                -- do nothing
-            END;
-            BEGIN
-                INSERT INTO denorm_dirtyinstance (content_type_id, object_id, func_name) VALUES (6, OLD."rekord_id", 'opis_bibliograficzny_autorzy_cache');
-            EXCEPTION WHEN unique_violation THEN
-                -- do nothing
-            END;
-        END IF;
+        INSERT INTO "denorm_dirtyinstance" ("content_type_id", "object_id", "func_name") (SELECT DISTINCT (SELECT id FROM django_content_type WHERE app_label = 'bpp' AND model = 'wydawnictwo_ciagle'), rekord_id, 'opis_bibliograficzny_autorzy_cache' FROM "bpp_wydawnictwo_ciagle_autor" WHERE "id" = NEW."id") ON CONFLICT DO NOTHING;
+        INSERT INTO "denorm_dirtyinstance" ("content_type_id", "object_id", "func_name") VALUES ((SELECT id FROM django_content_type WHERE app_label = 'bpp' AND model = 'wydawnictwo_ciagle'), OLD.rekord_id, 'opis_bibliograficzny_autorzy_cache') ON CONFLICT DO NOTHING;
+        INSERT INTO "denorm_dirtyinstance" ("content_type_id", "object_id", "func_name") VALUES ((SELECT id FROM django_content_type WHERE app_label = 'bpp' AND model = 'wydawnictwo_ciagle'), NEW."rekord_id", 'opis_bibliograficzny_autorzy_cache') ON CONFLICT DO NOTHING;
+        INSERT INTO "denorm_dirtyinstance" ("content_type_id", "object_id", "func_name") VALUES ((SELECT id FROM django_content_type WHERE app_label = 'bpp' AND model = 'wydawnictwo_ciagle'), OLD."rekord_id", 'opis_bibliograficzny_autorzy_cache') ON CONFLICT DO NOTHING;
+        RETURN NULL;
+    END;
+$$;
+
+
+--
+-- Name: f_d_aft_row_upd_on_bpp_wydawnictwo_ciagle_wydawnictwo_ci3ce4(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.f_d_aft_row_upd_on_bpp_wydawnictwo_ciagle_wydawnictwo_ci3ce4() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+    BEGIN
+        -- Trigger generated by django-denorm-iplweb for Wydawnictwo_Ciagle.opis_bibliograficzny_autorzy_cache_self
+        -- It happens AFTER UPDATE on bpp_wydawnictwo_ciagle
+        -- This function was autogenerated by code found in <class 'denorm.db.triggers.Trigger'>
+
+        INSERT INTO "denorm_dirtyinstance" ("content_type_id", "object_id", "func_name") VALUES ((SELECT id FROM django_content_type WHERE app_label = 'bpp' AND model = 'wydawnictwo_ciagle'), NEW."id", 'opis_bibliograficzny_autorzy_cache') ON CONFLICT DO NOTHING;
+        RETURN NULL;
+    END;
+$$;
+
+
+--
+-- Name: f_d_aft_row_upd_on_bpp_wydawnictwo_ciagle_wydawnictwo_cic966(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.f_d_aft_row_upd_on_bpp_wydawnictwo_ciagle_wydawnictwo_cic966() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+    BEGIN
+        -- Trigger generated by django-denorm-iplweb for Wydawnictwo_Ciagle.cached_punkty_dyscyplin_self
+        -- It happens AFTER UPDATE on bpp_wydawnictwo_ciagle
+        -- This function was autogenerated by code found in <class 'denorm.db.triggers.Trigger'>
+
+        INSERT INTO "denorm_dirtyinstance" ("content_type_id", "object_id", "func_name") VALUES ((SELECT id FROM django_content_type WHERE app_label = 'bpp' AND model = 'wydawnictwo_ciagle'), NEW."id", 'cached_punkty_dyscyplin') ON CONFLICT DO NOTHING;
+        RETURN NULL;
+    END;
+$$;
+
+
+--
+-- Name: f_d_aft_row_upd_on_bpp_wydawnictwo_ciagle_wydawnictwo_cid18d(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.f_d_aft_row_upd_on_bpp_wydawnictwo_ciagle_wydawnictwo_cid18d() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+    BEGIN
+        -- Trigger generated by django-denorm-iplweb for Wydawnictwo_Ciagle.opis_bibliograficzny_cache_self
+        -- It happens AFTER UPDATE on bpp_wydawnictwo_ciagle
+        -- This function was autogenerated by code found in <class 'denorm.db.triggers.Trigger'>
+
+        INSERT INTO "denorm_dirtyinstance" ("content_type_id", "object_id", "func_name") VALUES ((SELECT id FROM django_content_type WHERE app_label = 'bpp' AND model = 'wydawnictwo_ciagle'), NEW."id", 'opis_bibliograficzny_cache') ON CONFLICT DO NOTHING;
+        RETURN NULL;
+    END;
+$$;
+
+
+--
+-- Name: f_d_aft_row_upd_on_bpp_wydawnictwo_ciagle_wydawnictwo_cif4e7(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.f_d_aft_row_upd_on_bpp_wydawnictwo_ciagle_wydawnictwo_cif4e7() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+    BEGIN
+        -- Trigger generated by django-denorm-iplweb for Wydawnictwo_Ciagle.opis_bibliograficzny_zapisani_autorzy_cache_self
+        -- It happens AFTER UPDATE on bpp_wydawnictwo_ciagle
+        -- This function was autogenerated by code found in <class 'denorm.db.triggers.Trigger'>
+
+        INSERT INTO "denorm_dirtyinstance" ("content_type_id", "object_id", "func_name") VALUES ((SELECT id FROM django_content_type WHERE app_label = 'bpp' AND model = 'wydawnictwo_ciagle'), NEW."id", 'opis_bibliograficzny_zapisani_autorzy_cache') ON CONFLICT DO NOTHING;
+        RETURN NULL;
+    END;
+$$;
+
+
+--
+-- Name: f_d_aft_row_upd_on_bpp_wydawnictwo_ciagle_wydawnictwo_cifada(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.f_d_aft_row_upd_on_bpp_wydawnictwo_ciagle_wydawnictwo_cifada() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+    BEGIN
+        -- Trigger generated by django-denorm-iplweb for Wydawnictwo_Ciagle.slug
+        -- It happens AFTER UPDATE on bpp_wydawnictwo_ciagle
+        -- This function was autogenerated by code found in <class 'denorm.db.triggers.Trigger'>
+
+        INSERT INTO "denorm_dirtyinstance" ("content_type_id", "object_id", "func_name") VALUES ((SELECT id FROM django_content_type WHERE app_label = 'bpp' AND model = 'wydawnictwo_ciagle'), NEW."id", 'slug') ON CONFLICT DO NOTHING;
         RETURN NULL;
     END;
 $$;
@@ -3560,32 +3201,14 @@ CREATE FUNCTION public.f_d_aft_row_upd_on_bpp_wydawnictwo_zwarte_autor_wydawnic2
     LANGUAGE plpgsql
     AS $$
     BEGIN
-        -- This trigger was created because of @depend_on_related of Wydawnictwo_Zwarte.slug
+        -- Trigger generated by django-denorm-iplweb for Wydawnictwo_Zwarte.slug
         -- It happens AFTER UPDATE on bpp_wydawnictwo_zwarte_autor
         -- This function was autogenerated by code found in <class 'denorm.db.triggers.Trigger'>
 
-        IF ((OLD."rekord_id" IS DISTINCT FROM NEW."rekord_id") OR (OLD."autor_id" IS DISTINCT FROM NEW."autor_id")) THEN
-            BEGIN
-                INSERT INTO denorm_dirtyinstance (content_type_id, object_id, func_name) VALUES (3, NEW."rekord_id", 'slug');
-            EXCEPTION WHEN unique_violation THEN
-                -- do nothing
-            END;
-            BEGIN
-                INSERT INTO denorm_dirtyinstance (content_type_id, object_id, func_name) VALUES (3, OLD."rekord_id", 'slug');
-            EXCEPTION WHEN unique_violation THEN
-                -- do nothing
-            END;
-            BEGIN
-                INSERT INTO denorm_dirtyinstance (content_type_id, object_id, func_name) (SELECT DISTINCT 3, rekord_id, 'slug' FROM bpp_wydawnictwo_zwarte_autor WHERE id = NEW."id");
-            EXCEPTION WHEN unique_violation THEN
-                -- do nothing
-            END;
-            BEGIN
-                INSERT INTO denorm_dirtyinstance (content_type_id, object_id, func_name) VALUES (3, OLD.rekord_id, 'slug');
-            EXCEPTION WHEN unique_violation THEN
-                -- do nothing
-            END;
-        END IF;
+        INSERT INTO "denorm_dirtyinstance" ("content_type_id", "object_id", "func_name") VALUES ((SELECT id FROM django_content_type WHERE app_label = 'bpp' AND model = 'wydawnictwo_zwarte'), NEW."rekord_id", 'slug') ON CONFLICT DO NOTHING;
+        INSERT INTO "denorm_dirtyinstance" ("content_type_id", "object_id", "func_name") VALUES ((SELECT id FROM django_content_type WHERE app_label = 'bpp' AND model = 'wydawnictwo_zwarte'), OLD."rekord_id", 'slug') ON CONFLICT DO NOTHING;
+        INSERT INTO "denorm_dirtyinstance" ("content_type_id", "object_id", "func_name") (SELECT DISTINCT (SELECT id FROM django_content_type WHERE app_label = 'bpp' AND model = 'wydawnictwo_zwarte'), rekord_id, 'slug' FROM "bpp_wydawnictwo_zwarte_autor" WHERE "id" = NEW."id") ON CONFLICT DO NOTHING;
+        INSERT INTO "denorm_dirtyinstance" ("content_type_id", "object_id", "func_name") VALUES ((SELECT id FROM django_content_type WHERE app_label = 'bpp' AND model = 'wydawnictwo_zwarte'), OLD.rekord_id, 'slug') ON CONFLICT DO NOTHING;
         RETURN NULL;
     END;
 $$;
@@ -3599,22 +3222,12 @@ CREATE FUNCTION public.f_d_aft_row_upd_on_bpp_wydawnictwo_zwarte_autor_wydawnic8
     LANGUAGE plpgsql
     AS $$
     BEGIN
-        -- This trigger was created because of @depend_on_related of Wydawnictwo_Zwarte.opis_bibliograficzny_cache
+        -- Trigger generated by django-denorm-iplweb for Wydawnictwo_Zwarte.opis_bibliograficzny_cache
         -- It happens AFTER UPDATE on bpp_wydawnictwo_zwarte_autor
         -- This function was autogenerated by code found in <class 'denorm.db.triggers.Trigger'>
 
-        IF ((OLD."kolejnosc" IS DISTINCT FROM NEW."kolejnosc") OR (OLD."typ_odpowiedzialnosci_id" IS DISTINCT FROM NEW."typ_odpowiedzialnosci_id") OR (OLD."zapisany_jako" IS DISTINCT FROM NEW."zapisany_jako")) THEN
-            BEGIN
-                INSERT INTO denorm_dirtyinstance (content_type_id, object_id, func_name) (SELECT DISTINCT 3, rekord_id, 'opis_bibliograficzny_cache' FROM bpp_wydawnictwo_zwarte_autor WHERE id = NEW."id");
-            EXCEPTION WHEN unique_violation THEN
-                -- do nothing
-            END;
-            BEGIN
-                INSERT INTO denorm_dirtyinstance (content_type_id, object_id, func_name) VALUES (3, OLD.rekord_id, 'opis_bibliograficzny_cache');
-            EXCEPTION WHEN unique_violation THEN
-                -- do nothing
-            END;
-        END IF;
+        INSERT INTO "denorm_dirtyinstance" ("content_type_id", "object_id", "func_name") (SELECT DISTINCT (SELECT id FROM django_content_type WHERE app_label = 'bpp' AND model = 'wydawnictwo_zwarte'), rekord_id, 'opis_bibliograficzny_cache' FROM "bpp_wydawnictwo_zwarte_autor" WHERE "id" = NEW."id") ON CONFLICT DO NOTHING;
+        INSERT INTO "denorm_dirtyinstance" ("content_type_id", "object_id", "func_name") VALUES ((SELECT id FROM django_content_type WHERE app_label = 'bpp' AND model = 'wydawnictwo_zwarte'), OLD.rekord_id, 'opis_bibliograficzny_cache') ON CONFLICT DO NOTHING;
         RETURN NULL;
     END;
 $$;
@@ -3628,22 +3241,12 @@ CREATE FUNCTION public.f_d_aft_row_upd_on_bpp_wydawnictwo_zwarte_autor_wydawnicc
     LANGUAGE plpgsql
     AS $$
     BEGIN
-        -- This trigger was created because of @depend_on_related of Wydawnictwo_Zwarte.cached_punkty_dyscyplin
+        -- Trigger generated by django-denorm-iplweb for Wydawnictwo_Zwarte.cached_punkty_dyscyplin
         -- It happens AFTER UPDATE on bpp_wydawnictwo_zwarte_autor
         -- This function was autogenerated by code found in <class 'denorm.db.triggers.Trigger'>
 
-        IF ((OLD."autor_id" IS DISTINCT FROM NEW."autor_id") OR (OLD."jednostka_id" IS DISTINCT FROM NEW."jednostka_id") OR (OLD."typ_odpowiedzialnosci_id" IS DISTINCT FROM NEW."typ_odpowiedzialnosci_id") OR (OLD."afiliuje" IS DISTINCT FROM NEW."afiliuje") OR (OLD."dyscyplina_naukowa_id" IS DISTINCT FROM NEW."dyscyplina_naukowa_id") OR (OLD."przypieta" IS DISTINCT FROM NEW."przypieta") OR (OLD."upowaznienie_pbn" IS DISTINCT FROM NEW."upowaznienie_pbn")) THEN
-            BEGIN
-                INSERT INTO denorm_dirtyinstance (content_type_id, object_id, func_name) (SELECT DISTINCT 3, rekord_id, 'cached_punkty_dyscyplin' FROM bpp_wydawnictwo_zwarte_autor WHERE id = NEW."id");
-            EXCEPTION WHEN unique_violation THEN
-                -- do nothing
-            END;
-            BEGIN
-                INSERT INTO denorm_dirtyinstance (content_type_id, object_id, func_name) VALUES (3, OLD.rekord_id, 'cached_punkty_dyscyplin');
-            EXCEPTION WHEN unique_violation THEN
-                -- do nothing
-            END;
-        END IF;
+        INSERT INTO "denorm_dirtyinstance" ("content_type_id", "object_id", "func_name") (SELECT DISTINCT (SELECT id FROM django_content_type WHERE app_label = 'bpp' AND model = 'wydawnictwo_zwarte'), rekord_id, 'cached_punkty_dyscyplin' FROM "bpp_wydawnictwo_zwarte_autor" WHERE "id" = NEW."id") ON CONFLICT DO NOTHING;
+        INSERT INTO "denorm_dirtyinstance" ("content_type_id", "object_id", "func_name") VALUES ((SELECT id FROM django_content_type WHERE app_label = 'bpp' AND model = 'wydawnictwo_zwarte'), OLD.rekord_id, 'cached_punkty_dyscyplin') ON CONFLICT DO NOTHING;
         RETURN NULL;
     END;
 $$;
@@ -3657,32 +3260,14 @@ CREATE FUNCTION public.f_d_aft_row_upd_on_bpp_wydawnictwo_zwarte_autor_wydawnice
     LANGUAGE plpgsql
     AS $$
     BEGIN
-        -- This trigger was created because of @depend_on_related of Wydawnictwo_Zwarte.opis_bibliograficzny_autorzy_cache
+        -- Trigger generated by django-denorm-iplweb for Wydawnictwo_Zwarte.opis_bibliograficzny_autorzy_cache
         -- It happens AFTER UPDATE on bpp_wydawnictwo_zwarte_autor
         -- This function was autogenerated by code found in <class 'denorm.db.triggers.Trigger'>
 
-        IF ((OLD."kolejnosc" IS DISTINCT FROM NEW."kolejnosc")) THEN
-            BEGIN
-                INSERT INTO denorm_dirtyinstance (content_type_id, object_id, func_name) (SELECT DISTINCT 3, rekord_id, 'opis_bibliograficzny_autorzy_cache' FROM bpp_wydawnictwo_zwarte_autor WHERE id = NEW."id");
-            EXCEPTION WHEN unique_violation THEN
-                -- do nothing
-            END;
-            BEGIN
-                INSERT INTO denorm_dirtyinstance (content_type_id, object_id, func_name) VALUES (3, OLD.rekord_id, 'opis_bibliograficzny_autorzy_cache');
-            EXCEPTION WHEN unique_violation THEN
-                -- do nothing
-            END;
-            BEGIN
-                INSERT INTO denorm_dirtyinstance (content_type_id, object_id, func_name) VALUES (3, NEW."rekord_id", 'opis_bibliograficzny_autorzy_cache');
-            EXCEPTION WHEN unique_violation THEN
-                -- do nothing
-            END;
-            BEGIN
-                INSERT INTO denorm_dirtyinstance (content_type_id, object_id, func_name) VALUES (3, OLD."rekord_id", 'opis_bibliograficzny_autorzy_cache');
-            EXCEPTION WHEN unique_violation THEN
-                -- do nothing
-            END;
-        END IF;
+        INSERT INTO "denorm_dirtyinstance" ("content_type_id", "object_id", "func_name") (SELECT DISTINCT (SELECT id FROM django_content_type WHERE app_label = 'bpp' AND model = 'wydawnictwo_zwarte'), rekord_id, 'opis_bibliograficzny_autorzy_cache' FROM "bpp_wydawnictwo_zwarte_autor" WHERE "id" = NEW."id") ON CONFLICT DO NOTHING;
+        INSERT INTO "denorm_dirtyinstance" ("content_type_id", "object_id", "func_name") VALUES ((SELECT id FROM django_content_type WHERE app_label = 'bpp' AND model = 'wydawnictwo_zwarte'), OLD.rekord_id, 'opis_bibliograficzny_autorzy_cache') ON CONFLICT DO NOTHING;
+        INSERT INTO "denorm_dirtyinstance" ("content_type_id", "object_id", "func_name") VALUES ((SELECT id FROM django_content_type WHERE app_label = 'bpp' AND model = 'wydawnictwo_zwarte'), NEW."rekord_id", 'opis_bibliograficzny_autorzy_cache') ON CONFLICT DO NOTHING;
+        INSERT INTO "denorm_dirtyinstance" ("content_type_id", "object_id", "func_name") VALUES ((SELECT id FROM django_content_type WHERE app_label = 'bpp' AND model = 'wydawnictwo_zwarte'), OLD."rekord_id", 'opis_bibliograficzny_autorzy_cache') ON CONFLICT DO NOTHING;
         RETURN NULL;
     END;
 $$;
@@ -3696,22 +3281,48 @@ CREATE FUNCTION public.f_d_aft_row_upd_on_bpp_wydawnictwo_zwarte_autor_wydawnice
     LANGUAGE plpgsql
     AS $$
     BEGIN
-        -- This trigger was created because of @depend_on_related of Wydawnictwo_Zwarte.opis_bibliograficzny_zapisani_autorzy_cache
+        -- Trigger generated by django-denorm-iplweb for Wydawnictwo_Zwarte.opis_bibliograficzny_zapisani_autorzy_cache
         -- It happens AFTER UPDATE on bpp_wydawnictwo_zwarte_autor
         -- This function was autogenerated by code found in <class 'denorm.db.triggers.Trigger'>
 
-        IF ((OLD."kolejnosc" IS DISTINCT FROM NEW."kolejnosc") OR (OLD."zapisany_jako" IS DISTINCT FROM NEW."zapisany_jako")) THEN
-            BEGIN
-                INSERT INTO denorm_dirtyinstance (content_type_id, object_id, func_name) (SELECT DISTINCT 3, rekord_id, 'opis_bibliograficzny_zapisani_autorzy_cache' FROM bpp_wydawnictwo_zwarte_autor WHERE id = NEW."id");
-            EXCEPTION WHEN unique_violation THEN
-                -- do nothing
-            END;
-            BEGIN
-                INSERT INTO denorm_dirtyinstance (content_type_id, object_id, func_name) VALUES (3, OLD.rekord_id, 'opis_bibliograficzny_zapisani_autorzy_cache');
-            EXCEPTION WHEN unique_violation THEN
-                -- do nothing
-            END;
-        END IF;
+        INSERT INTO "denorm_dirtyinstance" ("content_type_id", "object_id", "func_name") (SELECT DISTINCT (SELECT id FROM django_content_type WHERE app_label = 'bpp' AND model = 'wydawnictwo_zwarte'), rekord_id, 'opis_bibliograficzny_zapisani_autorzy_cache' FROM "bpp_wydawnictwo_zwarte_autor" WHERE "id" = NEW."id") ON CONFLICT DO NOTHING;
+        INSERT INTO "denorm_dirtyinstance" ("content_type_id", "object_id", "func_name") VALUES ((SELECT id FROM django_content_type WHERE app_label = 'bpp' AND model = 'wydawnictwo_zwarte'), OLD.rekord_id, 'opis_bibliograficzny_zapisani_autorzy_cache') ON CONFLICT DO NOTHING;
+        RETURN NULL;
+    END;
+$$;
+
+
+--
+-- Name: f_d_aft_row_upd_on_bpp_wydawnictwo_zwarte_wydawnictwo_zw138b(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.f_d_aft_row_upd_on_bpp_wydawnictwo_zwarte_wydawnictwo_zw138b() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+    BEGIN
+        -- Trigger generated by django-denorm-iplweb for Wydawnictwo_Zwarte.opis_bibliograficzny_zapisani_autorzy_cache_self
+        -- It happens AFTER UPDATE on bpp_wydawnictwo_zwarte
+        -- This function was autogenerated by code found in <class 'denorm.db.triggers.Trigger'>
+
+        INSERT INTO "denorm_dirtyinstance" ("content_type_id", "object_id", "func_name") VALUES ((SELECT id FROM django_content_type WHERE app_label = 'bpp' AND model = 'wydawnictwo_zwarte'), NEW."id", 'opis_bibliograficzny_zapisani_autorzy_cache') ON CONFLICT DO NOTHING;
+        RETURN NULL;
+    END;
+$$;
+
+
+--
+-- Name: f_d_aft_row_upd_on_bpp_wydawnictwo_zwarte_wydawnictwo_zw1c88(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.f_d_aft_row_upd_on_bpp_wydawnictwo_zwarte_wydawnictwo_zw1c88() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+    BEGIN
+        -- Trigger generated by django-denorm-iplweb for Wydawnictwo_Zwarte.opis_bibliograficzny_autorzy_cache_self
+        -- It happens AFTER UPDATE on bpp_wydawnictwo_zwarte
+        -- This function was autogenerated by code found in <class 'denorm.db.triggers.Trigger'>
+
+        INSERT INTO "denorm_dirtyinstance" ("content_type_id", "object_id", "func_name") VALUES ((SELECT id FROM django_content_type WHERE app_label = 'bpp' AND model = 'wydawnictwo_zwarte'), NEW."id", 'opis_bibliograficzny_autorzy_cache') ON CONFLICT DO NOTHING;
         RETURN NULL;
     END;
 $$;
@@ -3725,17 +3336,29 @@ CREATE FUNCTION public.f_d_aft_row_upd_on_bpp_wydawnictwo_zwarte_wydawnictwo_zw6
     LANGUAGE plpgsql
     AS $$
     BEGIN
-        -- This trigger was created because of @depend_on_related of Wydawnictwo_Zwarte.opis_bibliograficzny_cache
+        -- Trigger generated by django-denorm-iplweb for Wydawnictwo_Zwarte.opis_bibliograficzny_cache
         -- It happens AFTER UPDATE on bpp_wydawnictwo_zwarte
         -- This function was autogenerated by code found in <class 'denorm.db.triggers.Trigger'>
 
-        IF ((OLD."id" IS DISTINCT FROM NEW."id") OR (OLD."nie_eksportuj_przez_api" IS DISTINCT FROM NEW."nie_eksportuj_przez_api") OR (OLD."tekst_przed_pierwszym_autorem" IS DISTINCT FROM NEW."tekst_przed_pierwszym_autorem") OR (OLD."tekst_po_ostatnim_autorze" IS DISTINCT FROM NEW."tekst_po_ostatnim_autorze") OR (OLD."opl_pub_cost_free" IS DISTINCT FROM NEW."opl_pub_cost_free") OR (OLD."opl_pub_research_potential" IS DISTINCT FROM NEW."opl_pub_research_potential") OR (OLD."opl_pub_research_or_development_projects" IS DISTINCT FROM NEW."opl_pub_research_or_development_projects") OR (OLD."opl_pub_other" IS DISTINCT FROM NEW."opl_pub_other") OR (OLD."opl_pub_amount" IS DISTINCT FROM NEW."opl_pub_amount") OR (OLD."pbn_id" IS DISTINCT FROM NEW."pbn_id") OR (OLD."issn" IS DISTINCT FROM NEW."issn") OR (OLD."e_issn" IS DISTINCT FROM NEW."e_issn") OR (OLD."isbn" IS DISTINCT FROM NEW."isbn") OR (OLD."e_isbn" IS DISTINCT FROM NEW."e_isbn") OR (OLD."doi" IS DISTINCT FROM NEW."doi") OR (OLD."pubmed_id" IS DISTINCT FROM NEW."pubmed_id") OR (OLD."pmc_id" IS DISTINCT FROM NEW."pmc_id") OR (OLD."slowa_kluczowe_eng" IS DISTINCT FROM NEW."slowa_kluczowe_eng") OR (OLD."adnotacje" IS DISTINCT FROM NEW."adnotacje") OR (OLD."informacja_z_id" IS DISTINCT FROM NEW."informacja_z_id") OR (OLD."status_korekty_id" IS DISTINCT FROM NEW."status_korekty_id") OR (OLD."charakter_formalny_id" IS DISTINCT FROM NEW."charakter_formalny_id") OR (OLD."informacje" IS DISTINCT FROM NEW."informacje") OR (OLD."szczegoly" IS DISTINCT FROM NEW."szczegoly") OR (OLD."uwagi" IS DISTINCT FROM NEW."uwagi") OR (OLD."utworzono" IS DISTINCT FROM NEW."utworzono") OR (OLD."strony" IS DISTINCT FROM NEW."strony") OR (OLD."tom" IS DISTINCT FROM NEW."tom") OR (OLD."tytul_oryginalny" IS DISTINCT FROM NEW."tytul_oryginalny") OR (OLD."tytul" IS DISTINCT FROM NEW."tytul") OR (OLD."openaccess_wersja_tekstu_id" IS DISTINCT FROM NEW."openaccess_wersja_tekstu_id") OR (OLD."openaccess_licencja_id" IS DISTINCT FROM NEW."openaccess_licencja_id") OR (OLD."openaccess_czas_publikacji_id" IS DISTINCT FROM NEW."openaccess_czas_publikacji_id") OR (OLD."openaccess_ilosc_miesiecy" IS DISTINCT FROM NEW."openaccess_ilosc_miesiecy") OR (OLD."openaccess_data_opublikowania" IS DISTINCT FROM NEW."openaccess_data_opublikowania") OR (OLD."liczba_cytowan" IS DISTINCT FROM NEW."liczba_cytowan") OR (OLD."pbn_uid_id" IS DISTINCT FROM NEW."pbn_uid_id") OR (OLD."pbn_czy_projekt_fnp" IS DISTINCT FROM NEW."pbn_czy_projekt_fnp") OR (OLD."pbn_czy_projekt_ncn" IS DISTINCT FROM NEW."pbn_czy_projekt_ncn") OR (OLD."pbn_czy_projekt_nprh" IS DISTINCT FROM NEW."pbn_czy_projekt_nprh") OR (OLD."pbn_czy_projekt_ue" IS DISTINCT FROM NEW."pbn_czy_projekt_ue") OR (OLD."pbn_czy_czasopismo_indeksowane" IS DISTINCT FROM NEW."pbn_czy_czasopismo_indeksowane") OR (OLD."pbn_czy_artykul_recenzyjny" IS DISTINCT FROM NEW."pbn_czy_artykul_recenzyjny") OR (OLD."pbn_czy_edycja_naukowa" IS DISTINCT FROM NEW."pbn_czy_edycja_naukowa") OR (OLD."liczba_znakow_wydawniczych" IS DISTINCT FROM NEW."liczba_znakow_wydawniczych") OR (OLD."recenzowana" IS DISTINCT FROM NEW."recenzowana") OR (OLD."typ_kbn_id" IS DISTINCT FROM NEW."typ_kbn_id") OR (OLD."jezyk_id" IS DISTINCT FROM NEW."jezyk_id") OR (OLD."jezyk_alt_id" IS DISTINCT FROM NEW."jezyk_alt_id") OR (OLD."jezyk_orig_id" IS DISTINCT FROM NEW."jezyk_orig_id") OR (OLD."rok" IS DISTINCT FROM NEW."rok") OR (OLD."seria_wydawnicza_id" IS DISTINCT FROM NEW."seria_wydawnicza_id") OR (OLD."numer_w_serii" IS DISTINCT FROM NEW."numer_w_serii") OR (OLD."konferencja_id" IS DISTINCT FROM NEW."konferencja_id") OR (OLD."search_index" IS DISTINCT FROM NEW."search_index") OR (OLD."tytul_oryginalny_sort" IS DISTINCT FROM NEW."tytul_oryginalny_sort") OR (OLD."legacy_data" IS DISTINCT FROM NEW."legacy_data") OR (OLD."praca_wybitna" IS DISTINCT FROM NEW."praca_wybitna") OR (OLD."uzasadnienie_wybitnosci" IS DISTINCT FROM NEW."uzasadnienie_wybitnosci") OR (OLD."impact_factor" IS DISTINCT FROM NEW."impact_factor") OR (OLD."punkty_kbn" IS DISTINCT FROM NEW."punkty_kbn") OR (OLD."index_copernicus" IS DISTINCT FROM NEW."index_copernicus") OR (OLD."punktacja_wewnetrzna" IS DISTINCT FROM NEW."punktacja_wewnetrzna") OR (OLD."punktacja_snip" IS DISTINCT FROM NEW."punktacja_snip") OR (OLD."weryfikacja_punktacji" IS DISTINCT FROM NEW."weryfikacja_punktacji") OR (OLD."numer_odbitki" IS DISTINCT FROM NEW."numer_odbitki") OR (OLD."www" IS DISTINCT FROM NEW."www") OR (OLD."dostep_dnia" IS DISTINCT FROM NEW."dostep_dnia") OR (OLD."public_www" IS DISTINCT FROM NEW."public_www") OR (OLD."public_dostep_dnia" IS DISTINCT FROM NEW."public_dostep_dnia") OR (OLD."miejsce_i_rok" IS DISTINCT FROM NEW."miejsce_i_rok") OR (OLD."wydawca_id" IS DISTINCT FROM NEW."wydawca_id") OR (OLD."wydawca_opis" IS DISTINCT FROM NEW."wydawca_opis") OR (OLD."oznaczenie_wydania" IS DISTINCT FROM NEW."oznaczenie_wydania") OR (OLD."redakcja" IS DISTINCT FROM NEW."redakcja") OR (OLD."openaccess_tryb_dostepu_id" IS DISTINCT FROM NEW."openaccess_tryb_dostepu_id") OR (OLD."wydawnictwo_nadrzedne_id" IS DISTINCT FROM NEW."wydawnictwo_nadrzedne_id") OR (OLD."wydawnictwo_nadrzedne_w_pbn_id" IS DISTINCT FROM NEW."wydawnictwo_nadrzedne_w_pbn_id") OR (OLD."calkowita_liczba_autorow" IS DISTINCT FROM NEW."calkowita_liczba_autorow") OR (OLD."calkowita_liczba_redaktorow" IS DISTINCT FROM NEW."calkowita_liczba_redaktorow") OR (OLD."cached_punkty_dyscyplin" IS DISTINCT FROM NEW."cached_punkty_dyscyplin") OR (OLD."opis_bibliograficzny_cache" IS DISTINCT FROM NEW."opis_bibliograficzny_cache") OR (OLD."opis_bibliograficzny_autorzy_cache" IS DISTINCT FROM NEW."opis_bibliograficzny_autorzy_cache") OR (OLD."opis_bibliograficzny_zapisani_autorzy_cache" IS DISTINCT FROM NEW."opis_bibliograficzny_zapisani_autorzy_cache") OR (OLD."slug" IS DISTINCT FROM NEW."slug")) THEN
-            BEGIN
-                INSERT INTO denorm_dirtyinstance (content_type_id, object_id, func_name) (SELECT DISTINCT 3, id, 'opis_bibliograficzny_cache' FROM bpp_wydawnictwo_zwarte WHERE wydawnictwo_nadrzedne_id = NEW."id");
-            EXCEPTION WHEN unique_violation THEN
-                -- do nothing
-            END;
-        END IF;
+        INSERT INTO "denorm_dirtyinstance" ("content_type_id", "object_id", "func_name") (SELECT DISTINCT (SELECT id FROM django_content_type WHERE app_label = 'bpp' AND model = 'wydawnictwo_zwarte'), id, 'opis_bibliograficzny_cache' FROM "bpp_wydawnictwo_zwarte" WHERE "wydawnictwo_nadrzedne_id" = NEW."id") ON CONFLICT DO NOTHING;
+        RETURN NULL;
+    END;
+$$;
+
+
+--
+-- Name: f_d_aft_row_upd_on_bpp_wydawnictwo_zwarte_wydawnictwo_zwb3c2(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.f_d_aft_row_upd_on_bpp_wydawnictwo_zwarte_wydawnictwo_zwb3c2() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+    BEGIN
+        -- Trigger generated by django-denorm-iplweb for Wydawnictwo_Zwarte.opis_bibliograficzny_cache_self
+        -- It happens AFTER UPDATE on bpp_wydawnictwo_zwarte
+        -- This function was autogenerated by code found in <class 'denorm.db.triggers.Trigger'>
+
+        INSERT INTO "denorm_dirtyinstance" ("content_type_id", "object_id", "func_name") VALUES ((SELECT id FROM django_content_type WHERE app_label = 'bpp' AND model = 'wydawnictwo_zwarte'), NEW."id", 'opis_bibliograficzny_cache') ON CONFLICT DO NOTHING;
         RETURN NULL;
     END;
 $$;
@@ -3749,17 +3372,30 @@ CREATE FUNCTION public.f_d_aft_row_upd_on_bpp_wydawnictwo_zwarte_wydawnictwo_zwc
     LANGUAGE plpgsql
     AS $$
     BEGIN
-        -- This trigger was created because of @depend_on_related of Wydawnictwo_Zwarte.slug
+        -- Trigger generated by django-denorm-iplweb for Wydawnictwo_Zwarte.slug
         -- It happens AFTER UPDATE on bpp_wydawnictwo_zwarte
         -- This function was autogenerated by code found in <class 'denorm.db.triggers.Trigger'>
 
-        IF ((OLD."id" IS DISTINCT FROM NEW."id") OR (OLD."nie_eksportuj_przez_api" IS DISTINCT FROM NEW."nie_eksportuj_przez_api") OR (OLD."tekst_przed_pierwszym_autorem" IS DISTINCT FROM NEW."tekst_przed_pierwszym_autorem") OR (OLD."tekst_po_ostatnim_autorze" IS DISTINCT FROM NEW."tekst_po_ostatnim_autorze") OR (OLD."opl_pub_cost_free" IS DISTINCT FROM NEW."opl_pub_cost_free") OR (OLD."opl_pub_research_potential" IS DISTINCT FROM NEW."opl_pub_research_potential") OR (OLD."opl_pub_research_or_development_projects" IS DISTINCT FROM NEW."opl_pub_research_or_development_projects") OR (OLD."opl_pub_other" IS DISTINCT FROM NEW."opl_pub_other") OR (OLD."opl_pub_amount" IS DISTINCT FROM NEW."opl_pub_amount") OR (OLD."pbn_id" IS DISTINCT FROM NEW."pbn_id") OR (OLD."issn" IS DISTINCT FROM NEW."issn") OR (OLD."e_issn" IS DISTINCT FROM NEW."e_issn") OR (OLD."isbn" IS DISTINCT FROM NEW."isbn") OR (OLD."e_isbn" IS DISTINCT FROM NEW."e_isbn") OR (OLD."doi" IS DISTINCT FROM NEW."doi") OR (OLD."pubmed_id" IS DISTINCT FROM NEW."pubmed_id") OR (OLD."pmc_id" IS DISTINCT FROM NEW."pmc_id") OR (OLD."slowa_kluczowe_eng" IS DISTINCT FROM NEW."slowa_kluczowe_eng") OR (OLD."adnotacje" IS DISTINCT FROM NEW."adnotacje") OR (OLD."informacja_z_id" IS DISTINCT FROM NEW."informacja_z_id") OR (OLD."status_korekty_id" IS DISTINCT FROM NEW."status_korekty_id") OR (OLD."charakter_formalny_id" IS DISTINCT FROM NEW."charakter_formalny_id") OR (OLD."informacje" IS DISTINCT FROM NEW."informacje") OR (OLD."szczegoly" IS DISTINCT FROM NEW."szczegoly") OR (OLD."uwagi" IS DISTINCT FROM NEW."uwagi") OR (OLD."utworzono" IS DISTINCT FROM NEW."utworzono") OR (OLD."strony" IS DISTINCT FROM NEW."strony") OR (OLD."tom" IS DISTINCT FROM NEW."tom") OR (OLD."tytul_oryginalny" IS DISTINCT FROM NEW."tytul_oryginalny") OR (OLD."tytul" IS DISTINCT FROM NEW."tytul") OR (OLD."openaccess_wersja_tekstu_id" IS DISTINCT FROM NEW."openaccess_wersja_tekstu_id") OR (OLD."openaccess_licencja_id" IS DISTINCT FROM NEW."openaccess_licencja_id") OR (OLD."openaccess_czas_publikacji_id" IS DISTINCT FROM NEW."openaccess_czas_publikacji_id") OR (OLD."openaccess_ilosc_miesiecy" IS DISTINCT FROM NEW."openaccess_ilosc_miesiecy") OR (OLD."openaccess_data_opublikowania" IS DISTINCT FROM NEW."openaccess_data_opublikowania") OR (OLD."liczba_cytowan" IS DISTINCT FROM NEW."liczba_cytowan") OR (OLD."pbn_uid_id" IS DISTINCT FROM NEW."pbn_uid_id") OR (OLD."pbn_czy_projekt_fnp" IS DISTINCT FROM NEW."pbn_czy_projekt_fnp") OR (OLD."pbn_czy_projekt_ncn" IS DISTINCT FROM NEW."pbn_czy_projekt_ncn") OR (OLD."pbn_czy_projekt_nprh" IS DISTINCT FROM NEW."pbn_czy_projekt_nprh") OR (OLD."pbn_czy_projekt_ue" IS DISTINCT FROM NEW."pbn_czy_projekt_ue") OR (OLD."pbn_czy_czasopismo_indeksowane" IS DISTINCT FROM NEW."pbn_czy_czasopismo_indeksowane") OR (OLD."pbn_czy_artykul_recenzyjny" IS DISTINCT FROM NEW."pbn_czy_artykul_recenzyjny") OR (OLD."pbn_czy_edycja_naukowa" IS DISTINCT FROM NEW."pbn_czy_edycja_naukowa") OR (OLD."liczba_znakow_wydawniczych" IS DISTINCT FROM NEW."liczba_znakow_wydawniczych") OR (OLD."recenzowana" IS DISTINCT FROM NEW."recenzowana") OR (OLD."typ_kbn_id" IS DISTINCT FROM NEW."typ_kbn_id") OR (OLD."jezyk_id" IS DISTINCT FROM NEW."jezyk_id") OR (OLD."jezyk_alt_id" IS DISTINCT FROM NEW."jezyk_alt_id") OR (OLD."jezyk_orig_id" IS DISTINCT FROM NEW."jezyk_orig_id") OR (OLD."rok" IS DISTINCT FROM NEW."rok") OR (OLD."seria_wydawnicza_id" IS DISTINCT FROM NEW."seria_wydawnicza_id") OR (OLD."numer_w_serii" IS DISTINCT FROM NEW."numer_w_serii") OR (OLD."konferencja_id" IS DISTINCT FROM NEW."konferencja_id") OR (OLD."search_index" IS DISTINCT FROM NEW."search_index") OR (OLD."tytul_oryginalny_sort" IS DISTINCT FROM NEW."tytul_oryginalny_sort") OR (OLD."legacy_data" IS DISTINCT FROM NEW."legacy_data") OR (OLD."praca_wybitna" IS DISTINCT FROM NEW."praca_wybitna") OR (OLD."uzasadnienie_wybitnosci" IS DISTINCT FROM NEW."uzasadnienie_wybitnosci") OR (OLD."impact_factor" IS DISTINCT FROM NEW."impact_factor") OR (OLD."punkty_kbn" IS DISTINCT FROM NEW."punkty_kbn") OR (OLD."index_copernicus" IS DISTINCT FROM NEW."index_copernicus") OR (OLD."punktacja_wewnetrzna" IS DISTINCT FROM NEW."punktacja_wewnetrzna") OR (OLD."punktacja_snip" IS DISTINCT FROM NEW."punktacja_snip") OR (OLD."weryfikacja_punktacji" IS DISTINCT FROM NEW."weryfikacja_punktacji") OR (OLD."numer_odbitki" IS DISTINCT FROM NEW."numer_odbitki") OR (OLD."www" IS DISTINCT FROM NEW."www") OR (OLD."dostep_dnia" IS DISTINCT FROM NEW."dostep_dnia") OR (OLD."public_www" IS DISTINCT FROM NEW."public_www") OR (OLD."public_dostep_dnia" IS DISTINCT FROM NEW."public_dostep_dnia") OR (OLD."miejsce_i_rok" IS DISTINCT FROM NEW."miejsce_i_rok") OR (OLD."wydawca_id" IS DISTINCT FROM NEW."wydawca_id") OR (OLD."wydawca_opis" IS DISTINCT FROM NEW."wydawca_opis") OR (OLD."oznaczenie_wydania" IS DISTINCT FROM NEW."oznaczenie_wydania") OR (OLD."redakcja" IS DISTINCT FROM NEW."redakcja") OR (OLD."openaccess_tryb_dostepu_id" IS DISTINCT FROM NEW."openaccess_tryb_dostepu_id") OR (OLD."wydawnictwo_nadrzedne_id" IS DISTINCT FROM NEW."wydawnictwo_nadrzedne_id") OR (OLD."wydawnictwo_nadrzedne_w_pbn_id" IS DISTINCT FROM NEW."wydawnictwo_nadrzedne_w_pbn_id") OR (OLD."calkowita_liczba_autorow" IS DISTINCT FROM NEW."calkowita_liczba_autorow") OR (OLD."calkowita_liczba_redaktorow" IS DISTINCT FROM NEW."calkowita_liczba_redaktorow") OR (OLD."cached_punkty_dyscyplin" IS DISTINCT FROM NEW."cached_punkty_dyscyplin") OR (OLD."opis_bibliograficzny_cache" IS DISTINCT FROM NEW."opis_bibliograficzny_cache") OR (OLD."opis_bibliograficzny_autorzy_cache" IS DISTINCT FROM NEW."opis_bibliograficzny_autorzy_cache") OR (OLD."opis_bibliograficzny_zapisani_autorzy_cache" IS DISTINCT FROM NEW."opis_bibliograficzny_zapisani_autorzy_cache") OR (OLD."slug" IS DISTINCT FROM NEW."slug")) THEN
-            BEGIN
-                INSERT INTO denorm_dirtyinstance (content_type_id, object_id, func_name) (SELECT DISTINCT 3, id, 'slug' FROM bpp_wydawnictwo_zwarte WHERE wydawnictwo_nadrzedne_id = NEW."id");
-            EXCEPTION WHEN unique_violation THEN
-                -- do nothing
-            END;
-        END IF;
+        INSERT INTO "denorm_dirtyinstance" ("content_type_id", "object_id", "func_name") VALUES ((SELECT id FROM django_content_type WHERE app_label = 'bpp' AND model = 'wydawnictwo_zwarte'), NEW."id", 'slug') ON CONFLICT DO NOTHING;
+        INSERT INTO "denorm_dirtyinstance" ("content_type_id", "object_id", "func_name") (SELECT DISTINCT (SELECT id FROM django_content_type WHERE app_label = 'bpp' AND model = 'wydawnictwo_zwarte'), id, 'slug' FROM "bpp_wydawnictwo_zwarte" WHERE "wydawnictwo_nadrzedne_id" = NEW."id") ON CONFLICT DO NOTHING;
+        RETURN NULL;
+    END;
+$$;
+
+
+--
+-- Name: f_d_aft_row_upd_on_bpp_wydawnictwo_zwarte_wydawnictwo_zwdbd1(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.f_d_aft_row_upd_on_bpp_wydawnictwo_zwarte_wydawnictwo_zwdbd1() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+    BEGIN
+        -- Trigger generated by django-denorm-iplweb for Wydawnictwo_Zwarte.cached_punkty_dyscyplin_self
+        -- It happens AFTER UPDATE on bpp_wydawnictwo_zwarte
+        -- This function was autogenerated by code found in <class 'denorm.db.triggers.Trigger'>
+
+        INSERT INTO "denorm_dirtyinstance" ("content_type_id", "object_id", "func_name") VALUES ((SELECT id FROM django_content_type WHERE app_label = 'bpp' AND model = 'wydawnictwo_zwarte'), NEW."id", 'cached_punkty_dyscyplin') ON CONFLICT DO NOTHING;
         RETURN NULL;
     END;
 $$;
@@ -3773,17 +3409,11 @@ CREATE FUNCTION public.f_d_aft_row_upd_on_bpp_zrodlo_wydawnictwo_ciagle_opis_bic
     LANGUAGE plpgsql
     AS $$
     BEGIN
-        -- This trigger was created because of @depend_on_related of Wydawnictwo_Ciagle.opis_bibliograficzny_cache
+        -- Trigger generated by django-denorm-iplweb for Wydawnictwo_Ciagle.opis_bibliograficzny_cache
         -- It happens AFTER UPDATE on bpp_zrodlo
         -- This function was autogenerated by code found in <class 'denorm.db.triggers.Trigger'>
 
-        IF ((OLD."nazwa" IS DISTINCT FROM NEW."nazwa") OR (OLD."skrot" IS DISTINCT FROM NEW."skrot")) THEN
-            BEGIN
-                INSERT INTO denorm_dirtyinstance (content_type_id, object_id, func_name) (SELECT DISTINCT 6, id, 'opis_bibliograficzny_cache' FROM bpp_wydawnictwo_ciagle WHERE zrodlo_id = NEW."id");
-            EXCEPTION WHEN unique_violation THEN
-                -- do nothing
-            END;
-        END IF;
+        INSERT INTO "denorm_dirtyinstance" ("content_type_id", "object_id", "func_name") (SELECT DISTINCT (SELECT id FROM django_content_type WHERE app_label = 'bpp' AND model = 'wydawnictwo_ciagle'), id, 'opis_bibliograficzny_cache' FROM "bpp_wydawnictwo_ciagle" WHERE "zrodlo_id" = NEW."id") ON CONFLICT DO NOTHING;
         RETURN NULL;
     END;
 $$;
@@ -3797,17 +3427,11 @@ CREATE FUNCTION public.f_d_aft_row_upd_on_bpp_zrodlo_wydawnictwo_ciagle_slug() R
     LANGUAGE plpgsql
     AS $$
     BEGIN
-        -- This trigger was created because of @depend_on_related of Wydawnictwo_Ciagle.slug
+        -- Trigger generated by django-denorm-iplweb for Wydawnictwo_Ciagle.slug
         -- It happens AFTER UPDATE on bpp_zrodlo
         -- This function was autogenerated by code found in <class 'denorm.db.triggers.Trigger'>
 
-        IF ((OLD."nazwa" IS DISTINCT FROM NEW."nazwa") OR (OLD."skrot" IS DISTINCT FROM NEW."skrot")) THEN
-            BEGIN
-                INSERT INTO denorm_dirtyinstance (content_type_id, object_id, func_name) (SELECT DISTINCT 6, id, 'slug' FROM bpp_wydawnictwo_ciagle WHERE zrodlo_id = NEW."id");
-            EXCEPTION WHEN unique_violation THEN
-                -- do nothing
-            END;
-        END IF;
+        INSERT INTO "denorm_dirtyinstance" ("content_type_id", "object_id", "func_name") (SELECT DISTINCT (SELECT id FROM django_content_type WHERE app_label = 'bpp' AND model = 'wydawnictwo_ciagle'), id, 'slug' FROM "bpp_wydawnictwo_ciagle" WHERE "zrodlo_id" = NEW."id") ON CONFLICT DO NOTHING;
         RETURN NULL;
     END;
 $$;
@@ -3822,7 +3446,9 @@ CREATE FUNCTION public.notify_django_denorm_queue() RETURNS trigger
     AS $$
     DECLARE
     BEGIN
-      PERFORM pg_notify('django_denorm_process', '');
+      IF current_setting('denorm.flushing', true) IS DISTINCT FROM 'on' THEN
+        PERFORM pg_notify('django_denorm_process', '');
+      END IF;
       RETURN NEW;
     END;
     $$;
@@ -5145,7 +4771,33 @@ CREATE TABLE public.bpp_bppuser (
     pbn_token character varying(128) NOT NULL,
     pbn_token_updated timestamp with time zone,
     przedstawiaj_w_pbn_jako_id integer,
-    autor_id integer
+    autor_id integer,
+    zwijaj_dlugie_listy_autorow integer NOT NULL
+);
+
+
+--
+-- Name: bpp_bppuser_accessible_uczelnie; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.bpp_bppuser_accessible_uczelnie (
+    id integer NOT NULL,
+    bppuser_id integer NOT NULL,
+    uczelnia_id integer NOT NULL
+);
+
+
+--
+-- Name: bpp_bppuser_accessible_uczelnie_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+ALTER TABLE public.bpp_bppuser_accessible_uczelnie ALTER COLUMN id ADD GENERATED BY DEFAULT AS IDENTITY (
+    SEQUENCE NAME public.bpp_bppuser_accessible_uczelnie_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1
 );
 
 
@@ -5277,7 +4929,52 @@ CREATE TABLE public.bpp_cache_punktacja_dyscypliny (
     slot numeric(20,4) NOT NULL,
     dyscyplina_id integer NOT NULL,
     zapisani_autorzy_z_dyscypliny text[],
-    autorzy_z_dyscypliny integer[]
+    autorzy_z_dyscypliny integer[],
+    uczelnia_id integer NOT NULL
+);
+
+
+--
+-- Name: bpp_jednostka; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.bpp_jednostka (
+    id integer NOT NULL,
+    ostatnio_zmieniony timestamp with time zone,
+    adnotacje text NOT NULL,
+    nazwa character varying(512) NOT NULL,
+    skrot character varying(128) NOT NULL,
+    opis text,
+    slug character varying(512) NOT NULL,
+    widoczna boolean NOT NULL,
+    wchodzi_do_rankingu_autorow boolean NOT NULL,
+    email character varying(128) NOT NULL,
+    www character varying(1024) NOT NULL,
+    search tsvector,
+    wydzial_id integer,
+    pbn_id integer,
+    skupia_pracownikow boolean NOT NULL,
+    zarzadzaj_automatycznie boolean NOT NULL,
+    uczelnia_id integer NOT NULL,
+    aktualna boolean NOT NULL,
+    kolejnosc integer NOT NULL,
+    pbn_uid_id character varying(32),
+    level integer NOT NULL,
+    lft integer NOT NULL,
+    rght integer NOT NULL,
+    tree_id integer NOT NULL,
+    parent_id integer,
+    pokazuj_opis boolean NOT NULL,
+    rodzaj_id integer,
+    poprzednie_nazwy character varying(4096) NOT NULL,
+    skrot_nazwy character varying(250),
+    zezwalaj_na_ranking_autorow boolean NOT NULL,
+    aktualna_override boolean,
+    CONSTRAINT bpp_jednostka_kolejnosc_check CHECK ((kolejnosc >= 0)),
+    CONSTRAINT bpp_jednostka_level_check CHECK ((level >= 0)),
+    CONSTRAINT bpp_jednostka_lft_check CHECK ((lft >= 0)),
+    CONSTRAINT bpp_jednostka_rght_check CHECK ((rght >= 0)),
+    CONSTRAINT bpp_jednostka_tree_id_check CHECK ((tree_id >= 0))
 );
 
 
@@ -5286,18 +4983,19 @@ CREATE TABLE public.bpp_cache_punktacja_dyscypliny (
 --
 
 CREATE VIEW public.bpp_cache_punktacja_autora_view AS
- SELECT bpp_cache_punktacja_autora.id,
-    bpp_cache_punktacja_autora.rekord_id,
-    bpp_cache_punktacja_autora.pkdaut,
-    bpp_cache_punktacja_autora.slot,
-    bpp_cache_punktacja_autora.autor_id,
-    bpp_cache_punktacja_autora.dyscyplina_id,
-    bpp_cache_punktacja_autora.jednostka_id,
-    bpp_cache_punktacja_dyscypliny.autorzy_z_dyscypliny,
-    bpp_cache_punktacja_dyscypliny.zapisani_autorzy_z_dyscypliny
-   FROM public.bpp_cache_punktacja_autora,
-    public.bpp_cache_punktacja_dyscypliny
-  WHERE ((bpp_cache_punktacja_autora.rekord_id = bpp_cache_punktacja_dyscypliny.rekord_id) AND (bpp_cache_punktacja_autora.dyscyplina_id = bpp_cache_punktacja_dyscypliny.dyscyplina_id));
+ SELECT a.id,
+    a.rekord_id,
+    a.pkdaut,
+    a.slot,
+    a.autor_id,
+    a.dyscyplina_id,
+    a.jednostka_id,
+    j.uczelnia_id,
+    d.autorzy_z_dyscypliny,
+    d.zapisani_autorzy_z_dyscypliny
+   FROM ((public.bpp_cache_punktacja_autora a
+     JOIN public.bpp_jednostka j ON ((j.id = a.jednostka_id)))
+     JOIN public.bpp_cache_punktacja_dyscypliny d ON (((a.rekord_id = d.rekord_id) AND (a.dyscyplina_id = d.dyscyplina_id) AND (d.uczelnia_id = j.uczelnia_id))));
 
 
 --
@@ -5335,6 +5033,7 @@ CREATE TABLE public.bpp_charakter_formalny (
     rodzaj_pbn smallint,
     charakter_ogolny character varying(3) NOT NULL,
     wliczaj_do_rankingu boolean NOT NULL,
+    ukryty boolean NOT NULL,
     CONSTRAINT bpp_charakter_formalny_charakter_sloty_check CHECK ((charakter_sloty >= 0)),
     CONSTRAINT bpp_charakter_formalny_level_check CHECK ((level >= 0)),
     CONSTRAINT bpp_charakter_formalny_lft_check CHECK ((lft >= 0)),
@@ -5367,7 +5066,8 @@ CREATE TABLE public.bpp_charakter_pbn (
     wlasciwy_dla character varying(20) NOT NULL,
     identyfikator character varying(100) NOT NULL,
     opis character varying(500) NOT NULL,
-    help_text text NOT NULL
+    help_text text NOT NULL,
+    ukryty boolean NOT NULL
 );
 
 
@@ -5703,46 +5403,6 @@ ALTER TABLE public.bpp_grupa_pracownicza ALTER COLUMN id ADD GENERATED BY DEFAUL
 
 
 --
--- Name: bpp_jednostka; Type: TABLE; Schema: public; Owner: -
---
-
-CREATE TABLE public.bpp_jednostka (
-    id integer NOT NULL,
-    ostatnio_zmieniony timestamp with time zone,
-    adnotacje text NOT NULL,
-    nazwa character varying(512) NOT NULL,
-    skrot character varying(128) NOT NULL,
-    opis text,
-    slug character varying(50) NOT NULL,
-    widoczna boolean NOT NULL,
-    wchodzi_do_raportow boolean NOT NULL,
-    email character varying(128) NOT NULL,
-    www character varying(1024) NOT NULL,
-    search tsvector,
-    wydzial_id integer,
-    pbn_id integer,
-    skupia_pracownikow boolean NOT NULL,
-    zarzadzaj_automatycznie boolean NOT NULL,
-    uczelnia_id integer NOT NULL,
-    aktualna boolean NOT NULL,
-    kolejnosc integer NOT NULL,
-    pbn_uid_id character varying(32),
-    level integer NOT NULL,
-    lft integer NOT NULL,
-    rght integer NOT NULL,
-    tree_id integer NOT NULL,
-    parent_id integer,
-    pokazuj_opis boolean NOT NULL,
-    rodzaj_jednostki character varying(20) NOT NULL,
-    CONSTRAINT bpp_jednostka_kolejnosc_check CHECK ((kolejnosc >= 0)),
-    CONSTRAINT bpp_jednostka_level_check CHECK ((level >= 0)),
-    CONSTRAINT bpp_jednostka_lft_check CHECK ((lft >= 0)),
-    CONSTRAINT bpp_jednostka_rght_check CHECK ((rght >= 0)),
-    CONSTRAINT bpp_jednostka_tree_id_check CHECK ((tree_id >= 0))
-);
-
-
---
 -- Name: bpp_jednostka_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
@@ -5757,15 +5417,15 @@ ALTER TABLE public.bpp_jednostka ALTER COLUMN id ADD GENERATED BY DEFAULT AS IDE
 
 
 --
--- Name: bpp_jednostka_wydzial; Type: TABLE; Schema: public; Owner: -
+-- Name: bpp_jednostka_rodzic; Type: TABLE; Schema: public; Owner: -
 --
 
-CREATE TABLE public.bpp_jednostka_wydzial (
+CREATE TABLE public.bpp_jednostka_rodzic (
     id integer NOT NULL,
     od date,
     "do" date,
     jednostka_id integer NOT NULL,
-    wydzial_id integer NOT NULL,
+    parent_id integer,
     CONSTRAINT bez_dat_do_w_przyszlosci CHECK (("do" < (now())::date))
 );
 
@@ -5774,7 +5434,7 @@ CREATE TABLE public.bpp_jednostka_wydzial (
 -- Name: bpp_jednostka_wydzial_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
-ALTER TABLE public.bpp_jednostka_wydzial ALTER COLUMN id ADD GENERATED BY DEFAULT AS IDENTITY (
+ALTER TABLE public.bpp_jednostka_rodzic ALTER COLUMN id ADD GENERATED BY DEFAULT AS IDENTITY (
     SEQUENCE NAME public.bpp_jednostka_wydzial_id_seq
     START WITH 1
     INCREMENT BY 1
@@ -5941,7 +5601,7 @@ CREATE VIEW public.bpp_kronika_patent_view AS
     bpp_patent.tytul_oryginalny_sort,
     bpp_patent.rok,
     bpp_patent_autor.kolejnosc,
-    ('bpp_patent'::text) AS object,
+    'bpp_patent'::text AS object,
     bpp_patent.id AS object_pk,
     bpp_patent.id,
     NULL::integer AS zrodlo_id
@@ -5949,7 +5609,7 @@ CREATE VIEW public.bpp_kronika_patent_view AS
     public.bpp_autor,
     public.bpp_patent_autor,
     public.bpp_jednostka
-  WHERE ((bpp_patent_autor.autor_id = bpp_autor.id) AND (bpp_patent_autor.rekord_id = bpp_patent.id) AND (bpp_patent_autor.jednostka_id = bpp_jednostka.id) AND (bpp_jednostka.wchodzi_do_raportow = true));
+  WHERE ((bpp_patent_autor.autor_id = bpp_autor.id) AND (bpp_patent_autor.rekord_id = bpp_patent.id) AND (bpp_patent_autor.jednostka_id = bpp_jednostka.id) AND (bpp_jednostka.wchodzi_do_rankingu_autorow = true));
 
 
 --
@@ -5965,14 +5625,14 @@ CREATE VIEW public.bpp_kronika_praca_doktorska_view AS
     bpp_praca_doktorska.tytul_oryginalny_sort,
     bpp_praca_doktorska.rok,
     1 AS kolejnosc,
-    ('bpp_praca_doktorska'::text) AS object,
+    'bpp_praca_doktorska'::text AS object,
     bpp_praca_doktorska.id AS object_pk,
     bpp_praca_doktorska.id,
     NULL::integer AS zrodlo_id
    FROM public.bpp_praca_doktorska,
     public.bpp_jednostka,
     public.bpp_autor
-  WHERE ((bpp_praca_doktorska.autor_id = bpp_autor.id) AND (bpp_praca_doktorska.jednostka_id = bpp_jednostka.id) AND (bpp_jednostka.wchodzi_do_raportow = true));
+  WHERE ((bpp_praca_doktorska.autor_id = bpp_autor.id) AND (bpp_praca_doktorska.jednostka_id = bpp_jednostka.id) AND (bpp_jednostka.wchodzi_do_rankingu_autorow = true));
 
 
 --
@@ -5988,14 +5648,14 @@ CREATE VIEW public.bpp_kronika_praca_habilitacyjna_view AS
     bpp_praca_habilitacyjna.tytul_oryginalny_sort,
     bpp_praca_habilitacyjna.rok,
     1 AS kolejnosc,
-    ('bpp_praca_habilitacyjna'::text) AS object,
+    'bpp_praca_habilitacyjna'::text AS object,
     bpp_praca_habilitacyjna.id AS object_pk,
     bpp_praca_habilitacyjna.id,
     NULL::integer AS zrodlo_id
    FROM public.bpp_praca_habilitacyjna,
     public.bpp_jednostka,
     public.bpp_autor
-  WHERE ((bpp_praca_habilitacyjna.autor_id = bpp_autor.id) AND (bpp_praca_habilitacyjna.jednostka_id = bpp_jednostka.id) AND (bpp_jednostka.wchodzi_do_raportow = true));
+  WHERE ((bpp_praca_habilitacyjna.autor_id = bpp_autor.id) AND (bpp_praca_habilitacyjna.jednostka_id = bpp_jednostka.id) AND (bpp_jednostka.wchodzi_do_rankingu_autorow = true));
 
 
 --
@@ -6128,7 +5788,7 @@ CREATE VIEW public.bpp_kronika_wydawnictwo_ciagle_view AS
     bpp_wydawnictwo_ciagle.tytul_oryginalny_sort,
     bpp_wydawnictwo_ciagle.rok,
     bpp_wydawnictwo_ciagle_autor.kolejnosc,
-    ('bpp_wydawnictwo_ciagle'::text) AS object,
+    'bpp_wydawnictwo_ciagle'::text AS object,
     bpp_wydawnictwo_ciagle.id AS object_pk,
     bpp_wydawnictwo_ciagle.id,
     bpp_wydawnictwo_ciagle.zrodlo_id
@@ -6137,7 +5797,7 @@ CREATE VIEW public.bpp_kronika_wydawnictwo_ciagle_view AS
     public.bpp_jednostka,
     public.bpp_zrodlo,
     public.bpp_autor
-  WHERE ((bpp_wydawnictwo_ciagle_autor.autor_id = bpp_autor.id) AND (bpp_wydawnictwo_ciagle_autor.rekord_id = bpp_wydawnictwo_ciagle.id) AND (bpp_wydawnictwo_ciagle_autor.jednostka_id = bpp_jednostka.id) AND (bpp_zrodlo.id = bpp_wydawnictwo_ciagle.zrodlo_id) AND (bpp_jednostka.wchodzi_do_raportow = true));
+  WHERE ((bpp_wydawnictwo_ciagle_autor.autor_id = bpp_autor.id) AND (bpp_wydawnictwo_ciagle_autor.rekord_id = bpp_wydawnictwo_ciagle.id) AND (bpp_wydawnictwo_ciagle_autor.jednostka_id = bpp_jednostka.id) AND (bpp_zrodlo.id = bpp_wydawnictwo_ciagle.zrodlo_id) AND (bpp_jednostka.wchodzi_do_rankingu_autorow = true));
 
 
 --
@@ -6251,7 +5911,7 @@ CREATE VIEW public.bpp_kronika_wydawnictwo_zwarte_view AS
     bpp_wydawnictwo_zwarte.tytul_oryginalny_sort,
     bpp_wydawnictwo_zwarte.rok,
     bpp_wydawnictwo_zwarte_autor.kolejnosc,
-    ('bpp_wydawnictwo_zwarte'::text) AS object,
+    'bpp_wydawnictwo_zwarte'::text AS object,
     bpp_wydawnictwo_zwarte.id AS object_pk,
     bpp_wydawnictwo_zwarte.id,
     NULL::integer AS zrodlo_id
@@ -6259,7 +5919,7 @@ CREATE VIEW public.bpp_kronika_wydawnictwo_zwarte_view AS
     public.bpp_wydawnictwo_zwarte_autor,
     public.bpp_jednostka,
     public.bpp_autor
-  WHERE ((bpp_wydawnictwo_zwarte_autor.autor_id = bpp_autor.id) AND (bpp_wydawnictwo_zwarte_autor.rekord_id = bpp_wydawnictwo_zwarte.id) AND (bpp_wydawnictwo_zwarte_autor.jednostka_id = bpp_jednostka.id) AND (bpp_jednostka.wchodzi_do_raportow = true));
+  WHERE ((bpp_wydawnictwo_zwarte_autor.autor_id = bpp_autor.id) AND (bpp_wydawnictwo_zwarte_autor.rekord_id = bpp_wydawnictwo_zwarte.id) AND (bpp_wydawnictwo_zwarte_autor.jednostka_id = bpp_jednostka.id) AND (bpp_jednostka.wchodzi_do_rankingu_autorow = true));
 
 
 --
@@ -6417,32 +6077,6 @@ ALTER TABLE public.bpp_nagroda ALTER COLUMN id ADD GENERATED BY DEFAULT AS IDENT
 
 
 --
--- Name: bpp_wydzial; Type: TABLE; Schema: public; Owner: -
---
-
-CREATE TABLE public.bpp_wydzial (
-    id integer NOT NULL,
-    ostatnio_zmieniony timestamp with time zone,
-    adnotacje text NOT NULL,
-    nazwa character varying(512) NOT NULL,
-    skrot character varying(10) NOT NULL,
-    opis text,
-    slug character varying(512) NOT NULL,
-    kolejnosc integer NOT NULL,
-    widoczny boolean NOT NULL,
-    uczelnia_id integer NOT NULL,
-    poprzednie_nazwy character varying(4096) NOT NULL,
-    zezwalaj_na_ranking_autorow boolean NOT NULL,
-    pbn_id integer,
-    otwarcie date,
-    zamkniecie date,
-    zarzadzaj_automatycznie boolean NOT NULL,
-    skrot_nazwy character varying(250),
-    pokazuj_opis boolean NOT NULL
-);
-
-
---
 -- Name: bpp_nowe_sumy_patent_view; Type: VIEW; Schema: public; Owner: -
 --
 
@@ -6450,7 +6084,7 @@ CREATE VIEW public.bpp_nowe_sumy_patent_view AS
  SELECT ARRAY[bpp_autor.id, bpp_jednostka.id] AS id,
     bpp_autor.id AS autor_id,
     bpp_jednostka.id AS jednostka_id,
-    bpp_wydzial.id AS wydzial_id,
+    bpp_jednostka.wydzial_id,
     bpp_patent.rok,
     bpp_patent.punktacja_wewnetrzna,
     bpp_patent.punktacja_snip,
@@ -6466,9 +6100,8 @@ CREATE VIEW public.bpp_nowe_sumy_patent_view AS
    FROM public.bpp_autor,
     public.bpp_patent,
     public.bpp_jednostka,
-    public.bpp_wydzial,
     public.bpp_patent_autor
-  WHERE ((bpp_autor.id = bpp_patent_autor.autor_id) AND (bpp_patent.id = bpp_patent_autor.rekord_id) AND (bpp_jednostka.id = bpp_patent_autor.jednostka_id) AND (bpp_jednostka.wydzial_id = bpp_wydzial.id) AND (bpp_jednostka.wchodzi_do_raportow = true));
+  WHERE ((bpp_autor.id = bpp_patent_autor.autor_id) AND (bpp_patent.id = bpp_patent_autor.rekord_id) AND (bpp_jednostka.id = bpp_patent_autor.jednostka_id) AND (bpp_jednostka.wchodzi_do_rankingu_autorow = true));
 
 
 --
@@ -6481,7 +6114,8 @@ CREATE TABLE public.bpp_typ_kbn (
     skrot character varying(128) NOT NULL,
     artykul_pbn boolean NOT NULL,
     charakter_pbn_id integer,
-    wliczaj_do_rankingu boolean NOT NULL
+    wliczaj_do_rankingu boolean NOT NULL,
+    ukryty boolean NOT NULL
 );
 
 
@@ -6493,7 +6127,7 @@ CREATE VIEW public.bpp_nowe_sumy_praca_doktorska_view AS
  SELECT ARRAY[bpp_autor.id, bpp_jednostka.id] AS id,
     bpp_autor.id AS autor_id,
     bpp_jednostka.id AS jednostka_id,
-    bpp_wydzial.id AS wydzial_id,
+    bpp_jednostka.wydzial_id,
     bpp_praca_doktorska.rok,
     bpp_praca_doktorska.punktacja_wewnetrzna,
     bpp_praca_doktorska.punktacja_snip,
@@ -6509,9 +6143,8 @@ CREATE VIEW public.bpp_nowe_sumy_praca_doktorska_view AS
    FROM public.bpp_autor,
     public.bpp_praca_doktorska,
     public.bpp_jednostka,
-    public.bpp_wydzial,
     public.bpp_typ_kbn
-  WHERE ((bpp_autor.id = bpp_praca_doktorska.autor_id) AND (bpp_jednostka.id = bpp_praca_doktorska.jednostka_id) AND (bpp_jednostka.wydzial_id = bpp_wydzial.id) AND (bpp_jednostka.wchodzi_do_raportow = true) AND (bpp_typ_kbn.id = bpp_praca_doktorska.typ_kbn_id) AND ((bpp_typ_kbn.skrot)::text <> 'PW'::text));
+  WHERE ((bpp_autor.id = bpp_praca_doktorska.autor_id) AND (bpp_jednostka.id = bpp_praca_doktorska.jednostka_id) AND (bpp_jednostka.wchodzi_do_rankingu_autorow = true) AND (bpp_typ_kbn.id = bpp_praca_doktorska.typ_kbn_id) AND ((bpp_typ_kbn.skrot)::text <> 'PW'::text));
 
 
 --
@@ -6522,7 +6155,7 @@ CREATE VIEW public.bpp_nowe_sumy_praca_habilitacyjna_view AS
  SELECT ARRAY[bpp_autor.id, bpp_jednostka.id] AS id,
     bpp_autor.id AS autor_id,
     bpp_jednostka.id AS jednostka_id,
-    bpp_wydzial.id AS wydzial_id,
+    bpp_jednostka.wydzial_id,
     bpp_praca_habilitacyjna.rok,
     bpp_praca_habilitacyjna.punktacja_wewnetrzna,
     bpp_praca_habilitacyjna.punktacja_snip,
@@ -6535,12 +6168,11 @@ CREATE VIEW public.bpp_nowe_sumy_praca_habilitacyjna_view AS
     bpp_praca_habilitacyjna.status_korekty_id,
     NULL::integer AS charakter_formalny_id,
     bpp_typ_kbn.id AS typ_kbn_id
-   FROM ((((public.bpp_autor
+   FROM (((public.bpp_autor
      JOIN public.bpp_praca_habilitacyjna ON ((bpp_autor.id = bpp_praca_habilitacyjna.autor_id)))
      JOIN public.bpp_jednostka ON ((bpp_jednostka.id = bpp_praca_habilitacyjna.jednostka_id)))
-     JOIN public.bpp_wydzial ON ((bpp_jednostka.wydzial_id = bpp_wydzial.id)))
      JOIN public.bpp_typ_kbn ON ((bpp_typ_kbn.id = bpp_praca_habilitacyjna.typ_kbn_id)))
-  WHERE ((bpp_jednostka.wchodzi_do_raportow = true) AND ((bpp_typ_kbn.skrot)::text <> 'PW'::text));
+  WHERE ((bpp_jednostka.wchodzi_do_rankingu_autorow = true) AND ((bpp_typ_kbn.skrot)::text <> 'PW'::text));
 
 
 --
@@ -6551,7 +6183,7 @@ CREATE VIEW public.bpp_nowe_sumy_wydawnictwo_ciagle_view AS
  SELECT ARRAY[bpp_autor.id, bpp_jednostka.id] AS id,
     bpp_autor.id AS autor_id,
     bpp_jednostka.id AS jednostka_id,
-    bpp_wydzial.id AS wydzial_id,
+    bpp_jednostka.wydzial_id,
     bpp_wydawnictwo_ciagle.rok,
     bpp_wydawnictwo_ciagle.punktacja_wewnetrzna,
     bpp_wydawnictwo_ciagle.punktacja_snip,
@@ -6568,10 +6200,9 @@ CREATE VIEW public.bpp_nowe_sumy_wydawnictwo_ciagle_view AS
     public.bpp_wydawnictwo_ciagle,
     public.bpp_wydawnictwo_ciagle_autor,
     public.bpp_jednostka,
-    public.bpp_wydzial,
     public.bpp_typ_kbn,
     public.bpp_charakter_formalny
-  WHERE ((bpp_autor.id = bpp_wydawnictwo_ciagle_autor.autor_id) AND (bpp_wydawnictwo_ciagle.id = bpp_wydawnictwo_ciagle_autor.rekord_id) AND (bpp_jednostka.id = bpp_wydawnictwo_ciagle_autor.jednostka_id) AND (bpp_jednostka.wydzial_id = bpp_wydzial.id) AND (bpp_jednostka.wchodzi_do_raportow = true) AND (bpp_typ_kbn.id = bpp_wydawnictwo_ciagle.typ_kbn_id) AND (bpp_charakter_formalny.id = bpp_wydawnictwo_ciagle.charakter_formalny_id) AND (bpp_typ_kbn.wliczaj_do_rankingu = true) AND (bpp_charakter_formalny.wliczaj_do_rankingu = true));
+  WHERE ((bpp_autor.id = bpp_wydawnictwo_ciagle_autor.autor_id) AND (bpp_wydawnictwo_ciagle.id = bpp_wydawnictwo_ciagle_autor.rekord_id) AND (bpp_jednostka.id = bpp_wydawnictwo_ciagle_autor.jednostka_id) AND (bpp_jednostka.wchodzi_do_rankingu_autorow = true) AND (bpp_typ_kbn.id = bpp_wydawnictwo_ciagle.typ_kbn_id) AND (bpp_charakter_formalny.id = bpp_wydawnictwo_ciagle.charakter_formalny_id) AND (bpp_typ_kbn.wliczaj_do_rankingu = true) AND (bpp_charakter_formalny.wliczaj_do_rankingu = true));
 
 
 --
@@ -6582,7 +6213,7 @@ CREATE VIEW public.bpp_nowe_sumy_wydawnictwo_zwarte_view AS
  SELECT ARRAY[bpp_autor.id, bpp_jednostka.id] AS id,
     bpp_autor.id AS autor_id,
     bpp_jednostka.id AS jednostka_id,
-    bpp_wydzial.id AS wydzial_id,
+    bpp_jednostka.wydzial_id,
     bpp_wydawnictwo_zwarte.rok,
     bpp_wydawnictwo_zwarte.punktacja_wewnetrzna,
     bpp_wydawnictwo_zwarte.punktacja_snip,
@@ -6599,10 +6230,9 @@ CREATE VIEW public.bpp_nowe_sumy_wydawnictwo_zwarte_view AS
     public.bpp_wydawnictwo_zwarte,
     public.bpp_wydawnictwo_zwarte_autor,
     public.bpp_jednostka,
-    public.bpp_wydzial,
     public.bpp_typ_kbn,
     public.bpp_charakter_formalny
-  WHERE ((bpp_autor.id = bpp_wydawnictwo_zwarte_autor.autor_id) AND (bpp_wydawnictwo_zwarte.id = bpp_wydawnictwo_zwarte_autor.rekord_id) AND (bpp_jednostka.id = bpp_wydawnictwo_zwarte_autor.jednostka_id) AND (bpp_jednostka.wydzial_id = bpp_wydzial.id) AND (bpp_jednostka.wchodzi_do_raportow = true) AND (bpp_typ_kbn.id = bpp_wydawnictwo_zwarte.typ_kbn_id) AND (bpp_charakter_formalny.id = bpp_wydawnictwo_zwarte.charakter_formalny_id) AND (bpp_typ_kbn.wliczaj_do_rankingu = true) AND (bpp_charakter_formalny.wliczaj_do_rankingu = true));
+  WHERE ((bpp_autor.id = bpp_wydawnictwo_zwarte_autor.autor_id) AND (bpp_wydawnictwo_zwarte.id = bpp_wydawnictwo_zwarte_autor.rekord_id) AND (bpp_jednostka.id = bpp_wydawnictwo_zwarte_autor.jednostka_id) AND (bpp_jednostka.wchodzi_do_rankingu_autorow = true) AND (bpp_typ_kbn.id = bpp_wydawnictwo_zwarte.typ_kbn_id) AND (bpp_charakter_formalny.id = bpp_wydawnictwo_zwarte.charakter_formalny_id) AND (bpp_typ_kbn.wliczaj_do_rankingu = true) AND (bpp_charakter_formalny.wliczaj_do_rankingu = true));
 
 
 --
@@ -7643,18 +7273,43 @@ ALTER TABLE public.bpp_rodzaj_zrodla ALTER COLUMN id ADD GENERATED BY DEFAULT AS
 
 
 --
+-- Name: bpp_rodzajjednostki; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.bpp_rodzajjednostki (
+    id integer NOT NULL,
+    nazwa character varying(200) NOT NULL,
+    skrot character varying(50) NOT NULL,
+    kolejnosc integer NOT NULL,
+    wyklucz_z_rankingu_autorow boolean NOT NULL,
+    pokazuj_jako_odrebna_sekcje boolean NOT NULL,
+    pokazuj_strukture_podjednostek boolean NOT NULL,
+    autor_moze_afiliowac boolean NOT NULL,
+    CONSTRAINT bpp_rodzajjednostki_kolejnosc_check CHECK ((kolejnosc >= 0))
+);
+
+
+--
+-- Name: bpp_rodzajjednostki_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+ALTER TABLE public.bpp_rodzajjednostki ALTER COLUMN id ADD GENERATED BY DEFAULT AS IDENTITY (
+    SEQUENCE NAME public.bpp_rodzajjednostki_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1
+);
+
+
+--
 -- Name: bpp_rzeczownik; Type: TABLE; Schema: public; Owner: -
 --
 
 CREATE TABLE public.bpp_rzeczownik (
     uid character varying(20) NOT NULL,
-    m character varying(200) NOT NULL,
-    d character varying(200) NOT NULL,
-    c character varying(200) NOT NULL,
-    b character varying(200) NOT NULL,
-    n character varying(200) NOT NULL,
-    ms character varying(200) NOT NULL,
-    w character varying(200) NOT NULL
+    m character varying(200) NOT NULL
 );
 
 
@@ -7945,6 +7600,17 @@ CREATE TABLE public.bpp_uczelnia (
     dspace_api_password text NOT NULL,
     dspace_api_username character varying(255) NOT NULL,
     dspace_domyslny_jezyk_dc character varying(8) NOT NULL,
+    site_id integer NOT NULL,
+    theme_name character varying(50) NOT NULL,
+    google_analytics_property_id character varying(100) NOT NULL,
+    google_verification_code character varying(100) NOT NULL,
+    pokazuj_oswiadczenie_ken boolean NOT NULL,
+    skrot_wydzialu_w_nazwie_jednostki boolean NOT NULL,
+    wydruk_margines_dol character varying(10) NOT NULL,
+    wydruk_margines_gora character varying(10) NOT NULL,
+    wydruk_margines_lewo character varying(10) NOT NULL,
+    wydruk_margines_prawo character varying(10) NOT NULL,
+    zwijaj_dlugie_listy_autorow boolean NOT NULL,
     CONSTRAINT bpp_uczelnia_ilosc_jednostek_na_strone_check CHECK ((ilosc_jednostek_na_strone >= 0)),
     CONSTRAINT bpp_uczelnia_pokazuj_deklaracje_dostepnosci_check CHECK ((pokazuj_deklaracje_dostepnosci >= 0))
 );
@@ -8123,6 +7789,33 @@ ALTER TABLE public.bpp_wydawnictwo_ciagle_streszczenie ALTER COLUMN id ADD GENER
 
 
 --
+-- Name: bpp_wydawnictwo_ciagle_tytul; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.bpp_wydawnictwo_ciagle_tytul (
+    id integer NOT NULL,
+    kod_jezyka_pbn character varying(5) NOT NULL,
+    tytul text NOT NULL,
+    jezyk_id integer,
+    rekord_id integer NOT NULL
+);
+
+
+--
+-- Name: bpp_wydawnictwo_ciagle_tytul_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+ALTER TABLE public.bpp_wydawnictwo_ciagle_tytul ALTER COLUMN id ADD GENERATED BY DEFAULT AS IDENTITY (
+    SEQUENCE NAME public.bpp_wydawnictwo_ciagle_tytul_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1
+);
+
+
+--
 -- Name: bpp_wydawnictwo_ciagle_zewnetrzna_baza_danych; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -8203,6 +7896,33 @@ ALTER TABLE public.bpp_wydawnictwo_zwarte_streszczenie ALTER COLUMN id ADD GENER
 
 
 --
+-- Name: bpp_wydawnictwo_zwarte_tytul; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.bpp_wydawnictwo_zwarte_tytul (
+    id integer NOT NULL,
+    kod_jezyka_pbn character varying(5) NOT NULL,
+    tytul text NOT NULL,
+    jezyk_id integer,
+    rekord_id integer NOT NULL
+);
+
+
+--
+-- Name: bpp_wydawnictwo_zwarte_tytul_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+ALTER TABLE public.bpp_wydawnictwo_zwarte_tytul ALTER COLUMN id ADD GENERATED BY DEFAULT AS IDENTITY (
+    SEQUENCE NAME public.bpp_wydawnictwo_zwarte_tytul_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1
+);
+
+
+--
 -- Name: bpp_wydawnictwo_zwarte_zewnetrzna_baza_danych; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -8220,20 +7940,6 @@ CREATE TABLE public.bpp_wydawnictwo_zwarte_zewnetrzna_baza_danych (
 
 ALTER TABLE public.bpp_wydawnictwo_zwarte_zewnetrzna_baza_danych ALTER COLUMN id ADD GENERATED BY DEFAULT AS IDENTITY (
     SEQUENCE NAME public.bpp_wydawnictwo_zwarte_zewnetrzna_baza_danych_id_seq
-    START WITH 1
-    INCREMENT BY 1
-    NO MINVALUE
-    NO MAXVALUE
-    CACHE 1
-);
-
-
---
--- Name: bpp_wydzial_id_seq; Type: SEQUENCE; Schema: public; Owner: -
---
-
-ALTER TABLE public.bpp_wydzial ALTER COLUMN id ADD GENERATED BY DEFAULT AS IDENTITY (
-    SEQUENCE NAME public.bpp_wydzial_id_seq
     START WITH 1
     INCREMENT BY 1
     NO MINVALUE
@@ -8789,6 +8495,76 @@ CREATE TABLE public.deduplikator_zrodel_notaduplicate (
 
 ALTER TABLE public.deduplikator_zrodel_notaduplicate ALTER COLUMN id ADD GENERATED BY DEFAULT AS IDENTITY (
     SEQUENCE NAME public.deduplikator_zrodel_notaduplicate_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1
+);
+
+
+--
+-- Name: deduplikator_zrodel_scanzrodelforduplicates; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.deduplikator_zrodel_scanzrodelforduplicates (
+    id uuid NOT NULL,
+    created_on timestamp with time zone NOT NULL,
+    started_on timestamp with time zone,
+    finished_on timestamp with time zone,
+    finished_successfully boolean NOT NULL,
+    cancel_requested boolean NOT NULL,
+    cancelled boolean NOT NULL,
+    traceback text,
+    result_context jsonb,
+    language character varying(20) NOT NULL,
+    status_text character varying(255) NOT NULL,
+    percent smallint NOT NULL,
+    log jsonb NOT NULL,
+    log_seq integer NOT NULL,
+    current_stage integer NOT NULL,
+    stage_states jsonb NOT NULL,
+    total_sources integer NOT NULL,
+    sources_scanned integer NOT NULL,
+    duplicates_found integer NOT NULL,
+    owner_id integer NOT NULL,
+    CONSTRAINT deduplikator_zrodel_scanzrodelforduplica_duplicates_found_check CHECK ((duplicates_found >= 0)),
+    CONSTRAINT deduplikator_zrodel_scanzrodelforduplicat_sources_scanned_check CHECK ((sources_scanned >= 0)),
+    CONSTRAINT deduplikator_zrodel_scanzrodelforduplicates_log_seq_check CHECK ((log_seq >= 0)),
+    CONSTRAINT deduplikator_zrodel_scanzrodelforduplicates_percent_check CHECK ((percent >= 0)),
+    CONSTRAINT deduplikator_zrodel_scanzrodelforduplicates_total_sources_check CHECK ((total_sources >= 0))
+);
+
+
+--
+-- Name: deduplikator_zrodel_sourceduplicatecandidate; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.deduplikator_zrodel_sourceduplicatecandidate (
+    id bigint NOT NULL,
+    confidence_score integer NOT NULL,
+    main_nazwa character varying(1024) NOT NULL,
+    duplicate_nazwa character varying(1024) NOT NULL,
+    main_pub_count integer NOT NULL,
+    duplicate_pub_count integer NOT NULL,
+    status character varying(20) NOT NULL,
+    reviewed_at timestamp with time zone,
+    created_at timestamp with time zone NOT NULL,
+    duplicate_zrodlo_id integer NOT NULL,
+    main_zrodlo_id integer NOT NULL,
+    reviewed_by_id integer,
+    scan_id uuid NOT NULL,
+    CONSTRAINT deduplikator_zrodel_sourceduplicateca_duplicate_pub_count_check CHECK ((duplicate_pub_count >= 0)),
+    CONSTRAINT deduplikator_zrodel_sourceduplicatecandida_main_pub_count_check CHECK ((main_pub_count >= 0))
+);
+
+
+--
+-- Name: deduplikator_zrodel_sourceduplicatecandidate_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+ALTER TABLE public.deduplikator_zrodel_sourceduplicatecandidate ALTER COLUMN id ADD GENERATED BY DEFAULT AS IDENTITY (
+    SEQUENCE NAME public.deduplikator_zrodel_sourceduplicatecandidate_id_seq
     START WITH 1
     INCREMENT BY 1
     NO MINVALUE
@@ -9379,7 +9155,8 @@ CREATE TABLE public.ewaluacja_liczba_n_iloscudzialowdlaautorazacalosc (
     ilosc_udzialow numeric(9,2) NOT NULL,
     autor_id integer NOT NULL,
     dyscyplina_naukowa_id integer NOT NULL,
-    rodzaj_autora_id bigint
+    rodzaj_autora_id bigint,
+    uczelnia_id integer
 );
 
 
@@ -9408,7 +9185,8 @@ CREATE TABLE public.ewaluacja_liczba_n_iloscudzialowdlaautorazarok (
     rok integer NOT NULL,
     autor_id integer NOT NULL,
     dyscyplina_naukowa_id integer NOT NULL,
-    autor_dyscyplina_id integer
+    autor_dyscyplina_id integer,
+    uczelnia_id integer
 );
 
 
@@ -9476,7 +9254,8 @@ CREATE TABLE public.ewaluacja_metryki_metrykaautora (
     autor_id integer NOT NULL,
     dyscyplina_naukowa_id integer NOT NULL,
     jednostka_id integer,
-    rodzaj_autora character varying(1) NOT NULL
+    rodzaj_autora character varying(1) NOT NULL,
+    uczelnia_id integer NOT NULL
 );
 
 
@@ -9507,7 +9286,8 @@ CREATE TABLE public.ewaluacja_metryki_statusgenerowania (
     liczba_bledow integer NOT NULL,
     ostatni_komunikat text NOT NULL,
     task_id character varying(255) NOT NULL,
-    liczba_do_przetworzenia integer NOT NULL
+    liczba_do_przetworzenia integer NOT NULL,
+    uczelnia_id integer
 );
 
 
@@ -10482,7 +10262,8 @@ CREATE TABLE public.import_polon_importplikupolon (
     rok integer NOT NULL,
     zapisz_zmiany_do_bazy boolean NOT NULL,
     ukryj_niezmatchowanych_autorow boolean NOT NULL,
-    ignoruj_miejsce_pracy boolean NOT NULL
+    ignoruj_miejsce_pracy boolean NOT NULL,
+    uczelnia_id integer
 );
 
 
@@ -10632,6 +10413,63 @@ ALTER TABLE public.import_pracownikow_importpracownikowrow ALTER COLUMN id ADD G
 
 
 --
+-- Name: import_punktacji_zrodel_importpunktacjizrodel; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.import_punktacji_zrodel_importpunktacjizrodel (
+    id uuid NOT NULL,
+    created_on timestamp with time zone NOT NULL,
+    last_updated_on timestamp with time zone NOT NULL,
+    started_on timestamp with time zone,
+    finished_on timestamp with time zone,
+    finished_successfully boolean NOT NULL,
+    traceback text,
+    rok integer,
+    plik character varying(100) NOT NULL,
+    zapisz_zmiany_do_bazy boolean NOT NULL,
+    importuj_impact_factor boolean NOT NULL,
+    importuj_kwartyl_wos boolean NOT NULL,
+    ignoruj_zrodla_bez_odpowiednika boolean NOT NULL,
+    nie_porownuj_po_tytulach boolean NOT NULL,
+    owner_id integer NOT NULL
+);
+
+
+--
+-- Name: import_punktacji_zrodel_wierszimportupunktacjizrodel; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.import_punktacji_zrodel_wierszimportupunktacjizrodel (
+    id bigint NOT NULL,
+    dane_z_xls jsonb,
+    nr_wiersza integer NOT NULL,
+    rezultat text NOT NULL,
+    wymaga_zmian boolean NOT NULL,
+    is_duplicate boolean NOT NULL,
+    duplicate_of_row integer,
+    duplicate_reason character varying(100) NOT NULL,
+    parent_id uuid NOT NULL,
+    zrodlo_id integer,
+    CONSTRAINT import_punktacji_zrodel_wierszimportupun_duplicate_of_row_check CHECK ((duplicate_of_row >= 0)),
+    CONSTRAINT import_punktacji_zrodel_wierszimportupunktacji_nr_wiersza_check CHECK ((nr_wiersza >= 0))
+);
+
+
+--
+-- Name: import_punktacji_zrodel_wierszimportupunktacjizrodel_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+ALTER TABLE public.import_punktacji_zrodel_wierszimportupunktacjizrodel ALTER COLUMN id ADD GENERATED BY DEFAULT AS IDENTITY (
+    SEQUENCE NAME public.import_punktacji_zrodel_wierszimportupunktacjizrodel_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1
+);
+
+
+--
 -- Name: importer_autorow_pbn_cachedscientistmatch; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -10708,6 +10546,7 @@ CREATE TABLE public.importer_publikacji_importedauthor (
     session_id integer NOT NULL,
     dyscyplina_source character varying(20) NOT NULL,
     zapisany_jako character varying(512) NOT NULL,
+    typ_ogolny smallint NOT NULL,
     CONSTRAINT importer_publikacji_importedauthor_order_check CHECK (("order" >= 0))
 );
 
@@ -10784,7 +10623,8 @@ CREATE TABLE public.importer_publikacji_importsession (
     celery_task_id character varying(64) NOT NULL,
     last_error_message character varying(255) NOT NULL,
     last_error_traceback text NOT NULL,
-    last_failed_stage character varying(16) NOT NULL
+    last_failed_stage character varying(16) NOT NULL,
+    uczelnia_id integer
 );
 
 
@@ -11344,7 +11184,8 @@ CREATE TABLE public.pbn_api_osobazinstytucji (
     _to date,
     last_updated timestamp with time zone NOT NULL,
     "institutionId_id" character varying(32) NOT NULL,
-    "personId_id" character varying(32) NOT NULL
+    "personId_id" character varying(32) NOT NULL,
+    uczelnia_id integer
 );
 
 
@@ -11378,6 +11219,7 @@ CREATE TABLE public.pbn_api_oswiadczenieinstytucji (
     "statedTimestamp" date,
     disciplines jsonb,
     id uuid,
+    uczelnia_id integer,
     CONSTRAINT pbn_api_oswiadczenieinstytucji_area_check CHECK ((area >= 0))
 );
 
@@ -11414,6 +11256,7 @@ CREATE TABLE public.pbn_export_queue_pbn_export_queue (
     retry_after_user_authorised boolean,
     rodzaj_bledu character varying(5),
     wykluczone boolean NOT NULL,
+    uczelnia_id integer,
     CONSTRAINT pbn_api_pbn_export_queue_ilosc_prob_check CHECK ((ilosc_prob >= 0)),
     CONSTRAINT pbn_api_pbn_export_queue_object_id_check CHECK ((object_id >= 0))
 );
@@ -11500,6 +11343,7 @@ CREATE TABLE public.pbn_api_publikacjainstytucji (
     "institutionId_id" character varying(32) NOT NULL,
     "publicationId_id" character varying(32) NOT NULL,
     "userType" character varying(50),
+    uczelnia_id integer,
     CONSTRAINT "pbn_api_publikacjainstytucji_publicationYear_check" CHECK (("publicationYear" >= 0))
 );
 
@@ -11527,7 +11371,8 @@ CREATE TABLE public.pbn_api_publikacjainstytucji_v2 (
     json_data jsonb NOT NULL,
     "objectId_id" character varying(32) NOT NULL,
     created_on timestamp with time zone NOT NULL,
-    last_updated timestamp with time zone NOT NULL
+    last_updated timestamp with time zone NOT NULL,
+    uczelnia_id integer
 );
 
 
@@ -11588,6 +11433,7 @@ CREATE TABLE public.pbn_api_sentdata (
     submitted_at timestamp with time zone,
     api_response_status text NOT NULL,
     api_url character varying(512) NOT NULL,
+    uczelnia_id integer,
     CONSTRAINT pbn_api_sentdata_object_id_check CHECK ((object_id >= 0))
 );
 
@@ -12180,7 +12026,8 @@ CREATE TABLE public.raport_slotow_raportslotowuczelnia (
     dziel_na_jednostki_i_wydzialy boolean NOT NULL,
     owner_id integer NOT NULL,
     pokazuj_zerowych boolean NOT NULL,
-    akcja character varying(10) NOT NULL
+    akcja character varying(10) NOT NULL,
+    uczelnia_id integer
 );
 
 
@@ -12355,24 +12202,23 @@ CREATE VIEW public.rozbieznosci_dyscyplin_rozbieznoscizrodelview AS
 
 
 --
--- Name: rozbieznosci_if_ignorujrozbieznoscif; Type: TABLE; Schema: public; Owner: -
+-- Name: rozbieznosci_ignorowanarozbieznosc; Type: TABLE; Schema: public; Owner: -
 --
 
-CREATE TABLE public.rozbieznosci_if_ignorujrozbieznoscif (
-    id integer NOT NULL,
-    object_id integer NOT NULL,
-    content_type_id integer NOT NULL,
+CREATE TABLE public.rozbieznosci_ignorowanarozbieznosc (
+    id bigint NOT NULL,
+    metryka character varying(16) NOT NULL,
     created_on timestamp with time zone NOT NULL,
-    CONSTRAINT rozbieznosci_if_ignorujrozbieznoscif_object_id_check CHECK ((object_id >= 0))
+    rekord_id integer NOT NULL
 );
 
 
 --
--- Name: rozbieznosci_if_ignorujrozbieznoscif_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+-- Name: rozbieznosci_ignorowanarozbieznosc_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
-ALTER TABLE public.rozbieznosci_if_ignorujrozbieznoscif ALTER COLUMN id ADD GENERATED BY DEFAULT AS IDENTITY (
-    SEQUENCE NAME public.rozbieznosci_if_ignorujrozbieznoscif_id_seq
+ALTER TABLE public.rozbieznosci_ignorowanarozbieznosc ALTER COLUMN id ADD GENERATED BY DEFAULT AS IDENTITY (
+    SEQUENCE NAME public.rozbieznosci_ignorowanarozbieznosc_id_seq
     START WITH 1
     INCREMENT BY 1
     NO MINVALUE
@@ -12382,13 +12228,14 @@ ALTER TABLE public.rozbieznosci_if_ignorujrozbieznoscif ALTER COLUMN id ADD GENE
 
 
 --
--- Name: rozbieznosci_if_rozbieznosciiflog; Type: TABLE; Schema: public; Owner: -
+-- Name: rozbieznosci_rozbieznosclog; Type: TABLE; Schema: public; Owner: -
 --
 
-CREATE TABLE public.rozbieznosci_if_rozbieznosciiflog (
-    id integer NOT NULL,
-    if_before numeric(6,3),
-    if_after numeric(6,3),
+CREATE TABLE public.rozbieznosci_rozbieznosclog (
+    id bigint NOT NULL,
+    metryka character varying(16) NOT NULL,
+    wartosc_przed numeric(10,3),
+    wartosc_po numeric(10,3),
     created_on timestamp with time zone NOT NULL,
     rekord_id integer NOT NULL,
     user_id integer,
@@ -12397,67 +12244,11 @@ CREATE TABLE public.rozbieznosci_if_rozbieznosciiflog (
 
 
 --
--- Name: rozbieznosci_if_rozbieznosciiflog_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+-- Name: rozbieznosci_rozbieznosclog_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
-ALTER TABLE public.rozbieznosci_if_rozbieznosciiflog ALTER COLUMN id ADD GENERATED BY DEFAULT AS IDENTITY (
-    SEQUENCE NAME public.rozbieznosci_if_rozbieznosciiflog_id_seq
-    START WITH 1
-    INCREMENT BY 1
-    NO MINVALUE
-    NO MAXVALUE
-    CACHE 1
-);
-
-
---
--- Name: rozbieznosci_pk_ignorujrozbieznoscpk; Type: TABLE; Schema: public; Owner: -
---
-
-CREATE TABLE public.rozbieznosci_pk_ignorujrozbieznoscpk (
-    id bigint NOT NULL,
-    object_id integer NOT NULL,
-    created_on timestamp with time zone NOT NULL,
-    content_type_id integer NOT NULL,
-    CONSTRAINT rozbieznosci_pk_ignorujrozbieznoscpk_object_id_check CHECK ((object_id >= 0))
-);
-
-
---
--- Name: rozbieznosci_pk_ignorujrozbieznoscpk_id_seq; Type: SEQUENCE; Schema: public; Owner: -
---
-
-ALTER TABLE public.rozbieznosci_pk_ignorujrozbieznoscpk ALTER COLUMN id ADD GENERATED BY DEFAULT AS IDENTITY (
-    SEQUENCE NAME public.rozbieznosci_pk_ignorujrozbieznoscpk_id_seq
-    START WITH 1
-    INCREMENT BY 1
-    NO MINVALUE
-    NO MAXVALUE
-    CACHE 1
-);
-
-
---
--- Name: rozbieznosci_pk_rozbieznoscipklog; Type: TABLE; Schema: public; Owner: -
---
-
-CREATE TABLE public.rozbieznosci_pk_rozbieznoscipklog (
-    id bigint NOT NULL,
-    pk_before numeric(6,2),
-    pk_after numeric(6,2),
-    created_on timestamp with time zone NOT NULL,
-    rekord_id integer NOT NULL,
-    user_id integer,
-    zrodlo_id integer
-);
-
-
---
--- Name: rozbieznosci_pk_rozbieznoscipklog_id_seq; Type: SEQUENCE; Schema: public; Owner: -
---
-
-ALTER TABLE public.rozbieznosci_pk_rozbieznoscipklog ALTER COLUMN id ADD GENERATED BY DEFAULT AS IDENTITY (
-    SEQUENCE NAME public.rozbieznosci_pk_rozbieznoscipklog_id_seq
+ALTER TABLE public.rozbieznosci_rozbieznosclog ALTER COLUMN id ADD GENERATED BY DEFAULT AS IDENTITY (
+    SEQUENCE NAME public.rozbieznosci_rozbieznosclog_id_seq
     START WITH 1
     INCREMENT BY 1
     NO MINVALUE
@@ -12995,10 +12786,6 @@ COPY public.auth_group_permissions (id, group_id, permission_id) FROM stdin;
 122	2	348
 123	2	349
 124	2	350
-125	2	295
-126	2	296
-127	2	297
-128	2	298
 129	3	279
 130	3	280
 131	3	281
@@ -13171,6 +12958,110 @@ COPY public.auth_group_permissions (id, group_id, permission_id) FROM stdin;
 298	8	144
 299	8	145
 300	8	146
+301	1	527
+302	1	528
+303	1	529
+304	1	530
+305	1	531
+306	1	532
+307	1	533
+308	1	534
+309	1	535
+310	1	536
+311	1	537
+312	1	538
+313	1	539
+314	1	540
+315	1	541
+316	1	542
+317	1	543
+318	1	544
+319	1	545
+320	1	546
+321	1	547
+322	1	548
+323	1	549
+324	1	550
+325	1	551
+326	1	552
+327	1	553
+328	1	554
+329	1	555
+330	1	556
+331	1	557
+332	1	558
+333	1	563
+334	1	564
+335	1	565
+336	1	566
+337	1	567
+338	1	568
+339	1	823
+340	1	569
+341	1	824
+342	1	825
+343	1	826
+344	1	570
+345	1	711
+346	1	712
+347	1	713
+348	1	714
+349	1	983
+350	1	984
+351	1	985
+352	1	986
+353	2	723
+354	2	724
+355	2	725
+356	2	726
+357	2	987
+358	2	988
+359	2	989
+360	2	990
+361	3	843
+362	3	844
+363	3	845
+364	3	846
+365	3	847
+366	3	848
+367	3	849
+368	3	850
+369	3	715
+370	3	716
+371	3	717
+372	3	718
+373	3	663
+374	3	664
+375	3	665
+376	3	666
+377	3	667
+378	3	668
+379	3	669
+380	3	670
+381	3	859
+382	3	860
+383	3	861
+384	3	862
+385	5	632
+386	5	633
+387	5	634
+388	5	631
+389	6	799
+390	6	800
+391	6	801
+392	6	802
+393	6	687
+394	6	688
+395	6	689
+396	6	690
+397	6	691
+398	6	692
+399	6	693
+400	6	694
+401	6	695
+402	6	696
+403	6	697
+404	6	698
 \.
 
 
@@ -13474,10 +13365,6 @@ COPY public.auth_permission (id, name, content_type_id, codename) FROM stdin;
 292	Can change powiązanie autora z wyd. zwartym	74	change_wydawnictwo_zwarte_autor
 293	Can delete powiązanie autora z wyd. zwartym	74	delete_wydawnictwo_zwarte_autor
 294	Can view powiązanie autora z wyd. zwartym	74	view_wydawnictwo_zwarte_autor
-295	Can add wydział	75	add_wydzial
-296	Can change wydział	75	change_wydzial
-297	Can delete wydział	75	delete_wydzial
-298	Can view wydział	75	view_wydzial
 299	Can add zasięg źródła	76	add_zasieg_zrodla
 300	Can change zasięg źródła	76	change_zasieg_zrodla
 301	Can delete zasięg źródła	76	delete_zasieg_zrodla
@@ -13849,22 +13736,6 @@ COPY public.auth_permission (id, name, content_type_id, codename) FROM stdin;
 668	Can change rozbieżność dyscyplin źródeł	144	change_rozbieznoscizrodelview
 669	Can delete rozbieżność dyscyplin źródeł	144	delete_rozbieznoscizrodelview
 670	Can view rozbieżność dyscyplin źródeł	144	view_rozbieznoscizrodelview
-671	Can add ignorowanie rozbieżności impact factor	179	add_ignorujrozbieznoscif
-672	Can change ignorowanie rozbieżności impact factor	179	change_ignorujrozbieznoscif
-673	Can delete ignorowanie rozbieżności impact factor	179	delete_ignorujrozbieznoscif
-674	Can view ignorowanie rozbieżności impact factor	179	view_ignorujrozbieznoscif
-675	Can add log zmiany IF	180	add_rozbieznosciiflog
-676	Can change log zmiany IF	180	change_rozbieznosciiflog
-677	Can delete log zmiany IF	180	delete_rozbieznosciiflog
-678	Can view log zmiany IF	180	view_rozbieznosciiflog
-679	Can add log zmiany punktów MNiSW	181	add_rozbieznoscipklog
-680	Can change log zmiany punktów MNiSW	181	change_rozbieznoscipklog
-681	Can delete log zmiany punktów MNiSW	181	delete_rozbieznoscipklog
-682	Can view log zmiany punktów MNiSW	181	view_rozbieznoscipklog
-683	Can add ignorowanie rozbieżności punktów MNiSW	182	add_ignorujrozbieznoscpk
-684	Can change ignorowanie rozbieżności punktów MNiSW	182	change_ignorujrozbieznoscpk
-685	Can delete ignorowanie rozbieżności punktów MNiSW	182	delete_ignorujrozbieznoscpk
-686	Can view ignorowanie rozbieżności punktów MNiSW	182	view_ignorujrozbieznoscpk
 687	Can add Favicon	149	add_favicon
 688	Can change Favicon	149	change_favicon
 689	Can delete Favicon	149	delete_favicon
@@ -14153,6 +14024,46 @@ COPY public.auth_permission (id, name, content_type_id, codename) FROM stdin;
 972	Can change request event	243	change_requestevent
 973	Can delete request event	243	delete_requestevent
 974	Can view request event	243	view_requestevent
+975	Can add dodatkowy tytuł wydawnictwa ciągłego	244	add_wydawnictwo_ciagle_tytul
+976	Can change dodatkowy tytuł wydawnictwa ciągłego	244	change_wydawnictwo_ciagle_tytul
+977	Can delete dodatkowy tytuł wydawnictwa ciągłego	244	delete_wydawnictwo_ciagle_tytul
+978	Can view dodatkowy tytuł wydawnictwa ciągłego	244	view_wydawnictwo_ciagle_tytul
+979	Can add dodatkowy tytuł wydawnictwa zwartego	245	add_wydawnictwo_zwarte_tytul
+980	Can change dodatkowy tytuł wydawnictwa zwartego	245	change_wydawnictwo_zwarte_tytul
+981	Can delete dodatkowy tytuł wydawnictwa zwartego	245	delete_wydawnictwo_zwarte_tytul
+982	Can view dodatkowy tytuł wydawnictwa zwartego	245	view_wydawnictwo_zwarte_tytul
+983	Can add rodzaj jednostki	246	add_rodzajjednostki
+984	Can change rodzaj jednostki	246	change_rodzajjednostki
+985	Can delete rodzaj jednostki	246	delete_rodzajjednostki
+986	Can view rodzaj jednostki	246	view_rodzajjednostki
+987	Can add powiązanie jednostka-rodzic	88	add_jednostka_rodzic
+988	Can change powiązanie jednostka-rodzic	88	change_jednostka_rodzic
+989	Can delete powiązanie jednostka-rodzic	88	delete_jednostka_rodzic
+990	Can view powiązanie jednostka-rodzic	88	view_jednostka_rodzic
+991	Can add log zmiany punktacji	247	add_rozbieznosclog
+992	Can change log zmiany punktacji	247	change_rozbieznosclog
+993	Can delete log zmiany punktacji	247	delete_rozbieznosclog
+994	Can view log zmiany punktacji	247	view_rozbieznosclog
+995	Can add ignorowana rozbieżność	248	add_ignorowanarozbieznosc
+996	Can change ignorowana rozbieżność	248	change_ignorowanarozbieznosc
+997	Can delete ignorowana rozbieżność	248	delete_ignorowanarozbieznosc
+998	Can view ignorowana rozbieżność	248	view_ignorowanarozbieznosc
+999	Can add import punktacji źródeł	249	add_importpunktacjizrodel
+1000	Can change import punktacji źródeł	249	change_importpunktacjizrodel
+1001	Can delete import punktacji źródeł	249	delete_importpunktacjizrodel
+1002	Can view import punktacji źródeł	249	view_importpunktacjizrodel
+1003	Can add wiersz importu punktacji zrodel	250	add_wierszimportupunktacjizrodel
+1004	Can change wiersz importu punktacji zrodel	250	change_wierszimportupunktacjizrodel
+1005	Can delete wiersz importu punktacji zrodel	250	delete_wierszimportupunktacjizrodel
+1006	Can view wiersz importu punktacji zrodel	250	view_wierszimportupunktacjizrodel
+1007	Can add Skanowanie duplikatów źródeł	251	add_scanzrodelforduplicates
+1008	Can change Skanowanie duplikatów źródeł	251	change_scanzrodelforduplicates
+1009	Can delete Skanowanie duplikatów źródeł	251	delete_scanzrodelforduplicates
+1010	Can view Skanowanie duplikatów źródeł	251	view_scanzrodelforduplicates
+1011	Can add Kandydat na duplikat źródła	252	add_sourceduplicatecandidate
+1012	Can change Kandydat na duplikat źródła	252	change_sourceduplicatecandidate
+1013	Can delete Kandydat na duplikat źródła	252	delete_sourceduplicatecandidate
+1014	Can view Kandydat na duplikat źródła	252	view_sourceduplicatecandidate
 \.
 
 
@@ -14240,7 +14151,15 @@ COPY public.bpp_bppmultiseekvisibility (id, field_name, label, public, authentic
 -- Data for Name: bpp_bppuser; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY public.bpp_bppuser (id, password, last_login, is_superuser, username, first_name, last_name, email, is_staff, is_active, date_joined, ostatnio_zmieniony, adnotacje, active_charmap_tab, per_page, multiseek_format, multiseek_order_1, pbn_token, pbn_token_updated, przedstawiaj_w_pbn_jako_id, autor_id) FROM stdin;
+COPY public.bpp_bppuser (id, password, last_login, is_superuser, username, first_name, last_name, email, is_staff, is_active, date_joined, ostatnio_zmieniony, adnotacje, active_charmap_tab, per_page, multiseek_format, multiseek_order_1, pbn_token, pbn_token_updated, przedstawiaj_w_pbn_jako_id, autor_id, zwijaj_dlugie_listy_autorow) FROM stdin;
+\.
+
+
+--
+-- Data for Name: bpp_bppuser_accessible_uczelnie; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+COPY public.bpp_bppuser_accessible_uczelnie (id, bppuser_id, uczelnia_id) FROM stdin;
 \.
 
 
@@ -14281,7 +14200,7 @@ COPY public.bpp_cache_punktacja_autora (id, rekord_id, pkdaut, slot, autor_id, d
 -- Data for Name: bpp_cache_punktacja_dyscypliny; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY public.bpp_cache_punktacja_dyscypliny (id, rekord_id, pkd, slot, dyscyplina_id, zapisani_autorzy_z_dyscypliny, autorzy_z_dyscypliny) FROM stdin;
+COPY public.bpp_cache_punktacja_dyscypliny (id, rekord_id, pkd, slot, dyscyplina_id, zapisani_autorzy_z_dyscypliny, autorzy_z_dyscypliny, uczelnia_id) FROM stdin;
 \.
 
 
@@ -14289,34 +14208,34 @@ COPY public.bpp_cache_punktacja_dyscypliny (id, rekord_id, pkd, slot, dyscyplina
 -- Data for Name: bpp_charakter_formalny; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY public.bpp_charakter_formalny (id, nazwa, skrot, publikacja, streszczenie, nazwa_w_primo, charakter_pbn_id, level, lft, parent_id, rght, tree_id, charakter_sloty, rodzaj_pbn, charakter_ogolny, wliczaj_do_rankingu) FROM stdin;
-3	Komentarz	KOM	t	f		\N	0	1	\N	2	7	\N	\N	xxx	t
-4	List do redakcji	L	t	f		\N	0	1	\N	2	11	\N	\N	xxx	t
-5	Publikacja w suplemencie	Supl	t	f	Artykuł	\N	0	1	\N	2	20	\N	\N	xxx	t
-6	Czasopismo	CZ	f	f	Czasopismo	\N	0	1	\N	2	3	\N	\N	xxx	t
-10	inne	IN	f	f		\N	0	1	\N	2	6	\N	\N	xxx	t
-11	Tłumaczenie	TŁ	f	f		\N	0	1	\N	2	27	\N	\N	xxx	t
-14	Polskie streszczenie zjazdowe	PSZ	f	t	Materiał konferencyjny	\N	0	1	\N	2	15	\N	\N	xxx	t
-15	Poradnik zawodowy	PZ	f	f		\N	0	1	\N	2	16	\N	\N	xxx	t
-16	Recenzja	R	f	f		\N	0	1	\N	2	21	\N	\N	xxx	t
-20	Streszczenie zjazdowe konferencji międzynarodowej	ZSZ	f	t		\N	0	1	\N	2	26	\N	\N	xxx	t
-21	Broszura	BR	f	f		\N	0	1	\N	2	2	\N	\N	xxx	t
-22	Projekt wynalazczy	WYN	f	f		\N	0	1	\N	2	19	\N	\N	xxx	t
-23	Patent	PAT	f	f		\N	0	1	\N	2	12	\N	\N	xxx	t
-24	Praca doktorska	D	t	f		\N	0	1	\N	2	17	\N	\N	xxx	t
-25	Praca habilitacyjna	H	t	f		\N	0	1	\N	2	18	\N	\N	xxx	t
-27	Dokument elektroniczny	DE	f	f		\N	0	1	\N	2	4	\N	\N	xxx	t
-9	Fragment	frg	t	f		\N	0	1	\N	2	5	2	2	xxx	t
-26	Podręcznik akademicki	PA	f	f		\N	0	1	\N	2	13	1	3	xxx	t
-12	Skrypt	SKR	f	f		\N	0	1	\N	2	25	1	3	xxx	t
-1	Artykuł w czasopismie	AC	t	f	Artykuł	\N	0	1	\N	2	1	\N	\N	art	t
-2	Książka	KS	t	f	Książka	\N	0	1	\N	2	8	1	3	ksi	t
-8	Książka w języku obcym	KSZ	t	f	Książka	\N	0	1	\N	2	9	1	3	ksi	t
-7	Książka w języku polskim	KSP	t	f	Książka	\N	0	1	\N	2	10	1	3	ksi	t
-17	Rozdział książki	ROZ	t	f	Rozdział	\N	0	1	\N	2	23	2	2	ksi	t
-18	Rozdział skryptu	ROZS	f	f	Rozdział	\N	0	1	\N	2	24	2	2	roz	t
-13	Polski Referat Zjazdowy	PRZ	t	f	Materiał konferencyjny	\N	0	1	\N	2	14	3	\N	xxx	t
-19	Referat zjazdowy konferencji miedzynarodowej	ZRZ	t	f	Materiał konferencyjny	\N	0	1	\N	2	22	3	\N	xxx	t
+COPY public.bpp_charakter_formalny (id, nazwa, skrot, publikacja, streszczenie, nazwa_w_primo, charakter_pbn_id, level, lft, parent_id, rght, tree_id, charakter_sloty, rodzaj_pbn, charakter_ogolny, wliczaj_do_rankingu, ukryty) FROM stdin;
+3	Komentarz	KOM	t	f		\N	0	1	\N	2	7	\N	\N	xxx	t	f
+4	List do redakcji	L	t	f		\N	0	1	\N	2	11	\N	\N	xxx	t	f
+5	Publikacja w suplemencie	Supl	t	f	Artykuł	\N	0	1	\N	2	20	\N	\N	xxx	t	f
+6	Czasopismo	CZ	f	f	Czasopismo	\N	0	1	\N	2	3	\N	\N	xxx	t	f
+10	inne	IN	f	f		\N	0	1	\N	2	6	\N	\N	xxx	t	f
+11	Tłumaczenie	TŁ	f	f		\N	0	1	\N	2	27	\N	\N	xxx	t	f
+14	Polskie streszczenie zjazdowe	PSZ	f	t	Materiał konferencyjny	\N	0	1	\N	2	15	\N	\N	xxx	t	f
+15	Poradnik zawodowy	PZ	f	f		\N	0	1	\N	2	16	\N	\N	xxx	t	f
+16	Recenzja	R	f	f		\N	0	1	\N	2	21	\N	\N	xxx	t	f
+20	Streszczenie zjazdowe konferencji międzynarodowej	ZSZ	f	t		\N	0	1	\N	2	26	\N	\N	xxx	t	f
+21	Broszura	BR	f	f		\N	0	1	\N	2	2	\N	\N	xxx	t	f
+22	Projekt wynalazczy	WYN	f	f		\N	0	1	\N	2	19	\N	\N	xxx	t	f
+23	Patent	PAT	f	f		\N	0	1	\N	2	12	\N	\N	xxx	t	f
+24	Praca doktorska	D	t	f		\N	0	1	\N	2	17	\N	\N	xxx	t	f
+25	Praca habilitacyjna	H	t	f		\N	0	1	\N	2	18	\N	\N	xxx	t	f
+27	Dokument elektroniczny	DE	f	f		\N	0	1	\N	2	4	\N	\N	xxx	t	f
+9	Fragment	frg	t	f		\N	0	1	\N	2	5	2	2	xxx	t	f
+26	Podręcznik akademicki	PA	f	f		\N	0	1	\N	2	13	1	3	xxx	t	f
+12	Skrypt	SKR	f	f		\N	0	1	\N	2	25	1	3	xxx	t	f
+1	Artykuł w czasopismie	AC	t	f	Artykuł	\N	0	1	\N	2	1	\N	\N	art	t	f
+2	Książka	KS	t	f	Książka	\N	0	1	\N	2	8	1	3	ksi	t	f
+8	Książka w języku obcym	KSZ	t	f	Książka	\N	0	1	\N	2	9	1	3	ksi	t	f
+7	Książka w języku polskim	KSP	t	f	Książka	\N	0	1	\N	2	10	1	3	ksi	t	f
+17	Rozdział książki	ROZ	t	f	Rozdział	\N	0	1	\N	2	23	2	2	ksi	t	f
+18	Rozdział skryptu	ROZS	f	f	Rozdział	\N	0	1	\N	2	24	2	2	roz	t	f
+13	Polski Referat Zjazdowy	PRZ	t	f	Materiał konferencyjny	\N	0	1	\N	2	14	3	\N	xxx	t	f
+19	Referat zjazdowy konferencji miedzynarodowej	ZRZ	t	f	Materiał konferencyjny	\N	0	1	\N	2	22	3	\N	xxx	t	f
 \.
 
 
@@ -14324,41 +14243,41 @@ COPY public.bpp_charakter_formalny (id, nazwa, skrot, publikacja, streszczenie, 
 -- Data for Name: bpp_charakter_pbn; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY public.bpp_charakter_pbn (id, wlasciwy_dla, identyfikator, opis, help_text) FROM stdin;
-1	chapter	abstract	Abstrakt	 
-2	chapter	account	Sprawozdanie	 
-3	chapter	afterword	Posłowie	 
-4	book	anthology	Antologia	 
-5	book	atlas-maps	Atlas/Mapy	 
-6	chapter	bibliography	Bibliografia	 
-7	book	book-of-abstracts	Książka abstraktów	 
-8	article	case-study	Studium przypadku	 
-9	book	catalogue	Katalog	Np. katalog zabytków
-10	chapter	chapter-in-a-book	Rozdział w książce	 
-11	chapter	commentary-on-the-law	Komentarz do ustawy	 
-12	chapter	communique	Komunikat	 
-13	chapter	critical-edition-of-literary-texts	Opracowanie krytyczne tekstów literackich	 
-14	chapter	edition-of-source-texts	Edycja tekstów źródłowych	 
-15	article	editorial	Artykuł wstępny/Edytorial	 
-16	chapter	encyclopaedia-entry	Hasło rzeczowe	Hasło encykolpedyczne/słownikowe/leksykonowe
-17	book	encyclopedia-dictionary	Encyklopedia/Słownik/Leksykon	 
-18	book	expertise-report	Ekspertyza/Raport badawczy	 
-19	article	guidelines	Wytyczne/zalecenia	 
-20	chapter	introduction-preface	Wstęp/Przedmowa	Wstęp/Wprowadzenie/Przedmowa
-21	chapter	map	Mapa	 
-22	article	original-article	Oryginalny artykuł naukowy	Oryginalny artykuł naukowy przedstawia rezultaty oryginalnych badań naukowych lub eksperymentu.
-23	article	others-citable	Inne o charakterze cytowalnym	 
-24	article	others-noncitable	Inne o charakterze niecytowalnym	 
-25	chapter	peer-reviewed	Publikacja recenzowana	Publikacja podlegała recenzji naukowej
-26	article	popular-science-article	Artykuł popularnonaukowy	 
-27	book	popular-science-book	Książka popularnonaukowa	 
-28	chapter	popular-science-text	Tekst popularnonaukowy	 
-29	article	review-article	Artykuł przeglądowy	Artykuł przeglądowy stanowi podsumowanie aktualnego stanu badań w danym obszarze tematycznym.
-30	book	scholarly-monograph	Monografia naukowa	Monografia naukowa to spójne tematycznie, wyczerpujące opracowanie naukowe. W PBN za monografie naukowe uważane są również zbiorowe książki pokonferencyjne (tzw. conference proceedings). Jeśli dodajesz zbiorową książkę pokonferencyjną, pamiętaj o tym, by zaznaczyć również pola "Publikacja zbiorowa" oraz "Publikacja konferencyjna"
-31	book	scholarly-textbook	Podręcznik akademicki/skrypt	 
-32	article	scientific-review	Artykuł recenzyjny (recenzja naukowa)	 
-33	article	short-communication	Komunikat o wynikach badań	 
-34	chapter	text-in-anthology	Tekst w antologii	
+COPY public.bpp_charakter_pbn (id, wlasciwy_dla, identyfikator, opis, help_text, ukryty) FROM stdin;
+1	chapter	abstract	Abstrakt	 	f
+2	chapter	account	Sprawozdanie	 	f
+3	chapter	afterword	Posłowie	 	f
+4	book	anthology	Antologia	 	f
+5	book	atlas-maps	Atlas/Mapy	 	f
+6	chapter	bibliography	Bibliografia	 	f
+7	book	book-of-abstracts	Książka abstraktów	 	f
+8	article	case-study	Studium przypadku	 	f
+9	book	catalogue	Katalog	Np. katalog zabytków	f
+10	chapter	chapter-in-a-book	Rozdział w książce	 	f
+11	chapter	commentary-on-the-law	Komentarz do ustawy	 	f
+12	chapter	communique	Komunikat	 	f
+13	chapter	critical-edition-of-literary-texts	Opracowanie krytyczne tekstów literackich	 	f
+14	chapter	edition-of-source-texts	Edycja tekstów źródłowych	 	f
+15	article	editorial	Artykuł wstępny/Edytorial	 	f
+16	chapter	encyclopaedia-entry	Hasło rzeczowe	Hasło encykolpedyczne/słownikowe/leksykonowe	f
+17	book	encyclopedia-dictionary	Encyklopedia/Słownik/Leksykon	 	f
+18	book	expertise-report	Ekspertyza/Raport badawczy	 	f
+19	article	guidelines	Wytyczne/zalecenia	 	f
+20	chapter	introduction-preface	Wstęp/Przedmowa	Wstęp/Wprowadzenie/Przedmowa	f
+21	chapter	map	Mapa	 	f
+22	article	original-article	Oryginalny artykuł naukowy	Oryginalny artykuł naukowy przedstawia rezultaty oryginalnych badań naukowych lub eksperymentu.	f
+23	article	others-citable	Inne o charakterze cytowalnym	 	f
+24	article	others-noncitable	Inne o charakterze niecytowalnym	 	f
+25	chapter	peer-reviewed	Publikacja recenzowana	Publikacja podlegała recenzji naukowej	f
+26	article	popular-science-article	Artykuł popularnonaukowy	 	f
+27	book	popular-science-book	Książka popularnonaukowa	 	f
+28	chapter	popular-science-text	Tekst popularnonaukowy	 	f
+29	article	review-article	Artykuł przeglądowy	Artykuł przeglądowy stanowi podsumowanie aktualnego stanu badań w danym obszarze tematycznym.	f
+30	book	scholarly-monograph	Monografia naukowa	Monografia naukowa to spójne tematycznie, wyczerpujące opracowanie naukowe. W PBN za monografie naukowe uważane są również zbiorowe książki pokonferencyjne (tzw. conference proceedings). Jeśli dodajesz zbiorową książkę pokonferencyjną, pamiętaj o tym, by zaznaczyć również pola "Publikacja zbiorowa" oraz "Publikacja konferencyjna"	f
+31	book	scholarly-textbook	Podręcznik akademicki/skrypt	 	f
+32	article	scientific-review	Artykuł recenzyjny (recenzja naukowa)	 	f
+33	article	short-communication	Komunikat o wynikach badań	 	f
+34	chapter	text-in-anthology	Tekst w antologii		f
 \.
 
 
@@ -14446,15 +14365,15 @@ COPY public.bpp_grupa_pracownicza (id, nazwa) FROM stdin;
 -- Data for Name: bpp_jednostka; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY public.bpp_jednostka (id, ostatnio_zmieniony, adnotacje, nazwa, skrot, opis, slug, widoczna, wchodzi_do_raportow, email, www, search, wydzial_id, pbn_id, skupia_pracownikow, zarzadzaj_automatycznie, uczelnia_id, aktualna, kolejnosc, pbn_uid_id, level, lft, rght, tree_id, parent_id, pokazuj_opis, rodzaj_jednostki) FROM stdin;
+COPY public.bpp_jednostka (id, ostatnio_zmieniony, adnotacje, nazwa, skrot, opis, slug, widoczna, wchodzi_do_rankingu_autorow, email, www, search, wydzial_id, pbn_id, skupia_pracownikow, zarzadzaj_automatycznie, uczelnia_id, aktualna, kolejnosc, pbn_uid_id, level, lft, rght, tree_id, parent_id, pokazuj_opis, rodzaj_id, poprzednie_nazwy, skrot_nazwy, zezwalaj_na_ranking_autorow, aktualna_override) FROM stdin;
 \.
 
 
 --
--- Data for Name: bpp_jednostka_wydzial; Type: TABLE DATA; Schema: public; Owner: -
+-- Data for Name: bpp_jednostka_rodzic; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY public.bpp_jednostka_wydzial (id, od, "do", jednostka_id, wydzial_id) FROM stdin;
+COPY public.bpp_jednostka_rodzic (id, od, "do", jednostka_id, parent_id) FROM stdin;
 \.
 
 
@@ -14661,16 +14580,24 @@ COPY public.bpp_rodzaj_zrodla (id, nazwa) FROM stdin;
 
 
 --
+-- Data for Name: bpp_rodzajjednostki; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+COPY public.bpp_rodzajjednostki (id, nazwa, skrot, kolejnosc, wyklucz_z_rankingu_autorow, pokazuj_jako_odrebna_sekcje, pokazuj_strukture_podjednostek, autor_moze_afiliowac) FROM stdin;
+1	Standard		0	f	f	f	t
+2	Koło naukowe		1	t	t	f	t
+3	Wydział		2	f	f	t	f
+\.
+
+
+--
 -- Data for Name: bpp_rzeczownik; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY public.bpp_rzeczownik (uid, m, d, c, b, n, ms, w) FROM stdin;
-UCZELNIA	uczelnia	uczelni	uczelni	uczelnię	uczelnią	uczelni	uczelnio
-WYDZIAL	wydział	wydziału	wydziałowi	wydział	wydziałem	wydziale	wydział
-WYDZIAL_PL	wydziały	wydziałów	wydziałom	wydziały	wydziałami	wydziałach	wydziały
-JEDNOSTKA	jednostka	jednostki	jednostce	jednostkę	jednostką	jednostce	jednostko
-JEDNOSTKA_PL	jednostki	jednostek	jednostkom	jednostki	jednostkami	jednostkach	jednostki
-UCZELNIA_PL	uczelnie	uczelni	uczelniom	uczelnie	uczelniami	uczelniach	uczelnie
+COPY public.bpp_rzeczownik (uid, m) FROM stdin;
+UCZELNIA	uczelnia
+WYDZIAL	wydział
+JEDNOSTKA	jednostka
 \.
 
 
@@ -14728,16 +14655,16 @@ COPY public.bpp_tryb_openaccess_wydawnictwo_zwarte (id, nazwa, skrot) FROM stdin
 -- Data for Name: bpp_typ_kbn; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY public.bpp_typ_kbn (id, nazwa, skrot, artykul_pbn, charakter_pbn_id, wliczaj_do_rankingu) FROM stdin;
-6	Opis Przypadku	CR	t	\N	t
-7	Podręcznik akademicki	PAK	t	\N	t
-5	praca monograficzna	mon	t	\N	t
-8	Redakcja czasopisma	RC	t	\N	t
-1	Praca Oryginalna	PO	t	22	t
-2	Praca Przeglądowa	PP	t	29	t
-4	Publikacja popularnonaukowa	PNP	t	26	t
-3	inne	000	f	23	t
-9	Praca wieloośrodkowa	PW	f	22	f
+COPY public.bpp_typ_kbn (id, nazwa, skrot, artykul_pbn, charakter_pbn_id, wliczaj_do_rankingu, ukryty) FROM stdin;
+6	Opis Przypadku	CR	t	\N	t	f
+7	Podręcznik akademicki	PAK	t	\N	t	f
+5	praca monograficzna	mon	t	\N	t	f
+8	Redakcja czasopisma	RC	t	\N	t	f
+1	Praca Oryginalna	PO	t	22	t	f
+2	Praca Przeglądowa	PP	t	29	t	f
+4	Publikacja popularnonaukowa	PNP	t	26	t	f
+3	inne	000	f	23	t	f
+9	Praca wieloośrodkowa	PW	f	22	f	f
 \.
 
 
@@ -14801,7 +14728,7 @@ COPY public.bpp_tytul (id, nazwa, skrot) FROM stdin;
 -- Data for Name: bpp_uczelnia; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY public.bpp_uczelnia (id, ostatnio_zmieniony, adnotacje, nazwa, skrot, nazwa_dopelniacz_field, slug, logo_www, logo_svg, favicon_ico, pbn_id, obca_jednostka_id, pokazuj_index_copernicus, pokazuj_punktacje_wewnetrzna, pokazuj_status_korekty, pokazuj_ranking_autorow, pokazuj_praca_recenzowana, clarivate_password, clarivate_username, domyslnie_afiliuje, pokazuj_liczbe_cytowan_w_rankingu, pokazuj_liczbe_cytowan_na_stronie_autora, wydruk_logo, wydruk_parametry_zapytania, wydruk_logo_szerokosc, wyszukiwanie_rekordy_na_strone_anonim, wyszukiwanie_rekordy_na_strone_zalogowany, pokazuj_punktacja_snip, podpowiadaj_dyscypliny, pokazuj_tabele_slotow_na_stronie_rekordu, pokazuj_raport_slotow_autor, pokazuj_raport_slotow_uczelnia, ranking_autorow_rozbij_domyslnie, pokazuj_raport_slotow_zerowy, sortuj_jednostki_alfabetycznie, metoda_do_roku_formularze, pbn_uid_id, pbn_api_root, pbn_app_name, pbn_app_token, pbn_aktualizuj_na_biezaco, pbn_integracja, pbn_api_user_id, pbn_api_nie_wysylaj_prac_bez_pk, ilosc_jednostek_na_strone, pokazuj_tylko_jednostki_nadrzedne, wymagaj_informacji_o_oplatach, pokazuj_formularz_zglaszania_publikacji, pbn_api_afiliacja_zawsze_na_uczelnie, pbn_wysylaj_bez_oswiadczen, deklaracja_dostepnosci_tekst, deklaracja_dostepnosci_url, pokazuj_deklaracje_dostepnosci, ranking_autorow_bez_kol_naukowych, pokazuj_autorow_obcych_w_przegladaniu_danych, pokazuj_autorow_bez_prac_w_przegladaniu_danych, drukuj_alternatywne_oswiadczenia, drukuj_oswiadczenia, pokazuj_zrodla_bez_prac_w_przegladaniu_danych, pokazuj_jednostki_na_pierwszej_stronie, pokazuj_wydzialy_na_pierwszej_stronie, przydzielaj_1_slot_gdy_udzial_mniejszy, pytaj_o_zgode_na_publikacje_pelnego_tekstu, uzywaj_wydzialow, tytul_strony_glownej, wymagaj_logowania_zglos_publikacje, nowy_autor_z_formularza_pokazuj, orcid_client_id, orcid_client_secret, orcid_sandbox, orcid_tylko_dla_pracownikow, wymagaj_oplatach_artykul, wymagaj_oplatach_inne, wymagaj_oplatach_monografia, wymagaj_oplatach_rozdzial, pbn_kasuj_dyscypliny_selektywnie, pokazuj_siec_powiazan, dspace_aktywny, dspace_api_endpoint, dspace_api_password, dspace_api_username, dspace_domyslny_jezyk_dc) FROM stdin;
+COPY public.bpp_uczelnia (id, ostatnio_zmieniony, adnotacje, nazwa, skrot, nazwa_dopelniacz_field, slug, logo_www, logo_svg, favicon_ico, pbn_id, obca_jednostka_id, pokazuj_index_copernicus, pokazuj_punktacje_wewnetrzna, pokazuj_status_korekty, pokazuj_ranking_autorow, pokazuj_praca_recenzowana, clarivate_password, clarivate_username, domyslnie_afiliuje, pokazuj_liczbe_cytowan_w_rankingu, pokazuj_liczbe_cytowan_na_stronie_autora, wydruk_logo, wydruk_parametry_zapytania, wydruk_logo_szerokosc, wyszukiwanie_rekordy_na_strone_anonim, wyszukiwanie_rekordy_na_strone_zalogowany, pokazuj_punktacja_snip, podpowiadaj_dyscypliny, pokazuj_tabele_slotow_na_stronie_rekordu, pokazuj_raport_slotow_autor, pokazuj_raport_slotow_uczelnia, ranking_autorow_rozbij_domyslnie, pokazuj_raport_slotow_zerowy, sortuj_jednostki_alfabetycznie, metoda_do_roku_formularze, pbn_uid_id, pbn_api_root, pbn_app_name, pbn_app_token, pbn_aktualizuj_na_biezaco, pbn_integracja, pbn_api_user_id, pbn_api_nie_wysylaj_prac_bez_pk, ilosc_jednostek_na_strone, pokazuj_tylko_jednostki_nadrzedne, wymagaj_informacji_o_oplatach, pokazuj_formularz_zglaszania_publikacji, pbn_api_afiliacja_zawsze_na_uczelnie, pbn_wysylaj_bez_oswiadczen, deklaracja_dostepnosci_tekst, deklaracja_dostepnosci_url, pokazuj_deklaracje_dostepnosci, ranking_autorow_bez_kol_naukowych, pokazuj_autorow_obcych_w_przegladaniu_danych, pokazuj_autorow_bez_prac_w_przegladaniu_danych, drukuj_alternatywne_oswiadczenia, drukuj_oswiadczenia, pokazuj_zrodla_bez_prac_w_przegladaniu_danych, pokazuj_jednostki_na_pierwszej_stronie, pokazuj_wydzialy_na_pierwszej_stronie, przydzielaj_1_slot_gdy_udzial_mniejszy, pytaj_o_zgode_na_publikacje_pelnego_tekstu, uzywaj_wydzialow, tytul_strony_glownej, wymagaj_logowania_zglos_publikacje, nowy_autor_z_formularza_pokazuj, orcid_client_id, orcid_client_secret, orcid_sandbox, orcid_tylko_dla_pracownikow, wymagaj_oplatach_artykul, wymagaj_oplatach_inne, wymagaj_oplatach_monografia, wymagaj_oplatach_rozdzial, pbn_kasuj_dyscypliny_selektywnie, pokazuj_siec_powiazan, dspace_aktywny, dspace_api_endpoint, dspace_api_password, dspace_api_username, dspace_domyslny_jezyk_dc, site_id, theme_name, google_analytics_property_id, google_verification_code, pokazuj_oswiadczenie_ken, skrot_wydzialu_w_nazwie_jednostki, wydruk_margines_dol, wydruk_margines_gora, wydruk_margines_lewo, wydruk_margines_prawo, zwijaj_dlugie_listy_autorow) FROM stdin;
 \.
 
 
@@ -14857,6 +14784,14 @@ COPY public.bpp_wydawnictwo_ciagle_streszczenie (id, streszczenie, jezyk_streszc
 
 
 --
+-- Data for Name: bpp_wydawnictwo_ciagle_tytul; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+COPY public.bpp_wydawnictwo_ciagle_tytul (id, kod_jezyka_pbn, tytul, jezyk_id, rekord_id) FROM stdin;
+\.
+
+
+--
 -- Data for Name: bpp_wydawnictwo_ciagle_zewnetrzna_baza_danych; Type: TABLE DATA; Schema: public; Owner: -
 --
 
@@ -14889,18 +14824,18 @@ COPY public.bpp_wydawnictwo_zwarte_streszczenie (id, streszczenie, jezyk_streszc
 
 
 --
--- Data for Name: bpp_wydawnictwo_zwarte_zewnetrzna_baza_danych; Type: TABLE DATA; Schema: public; Owner: -
+-- Data for Name: bpp_wydawnictwo_zwarte_tytul; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY public.bpp_wydawnictwo_zwarte_zewnetrzna_baza_danych (id, info, baza_id, rekord_id) FROM stdin;
+COPY public.bpp_wydawnictwo_zwarte_tytul (id, kod_jezyka_pbn, tytul, jezyk_id, rekord_id) FROM stdin;
 \.
 
 
 --
--- Data for Name: bpp_wydzial; Type: TABLE DATA; Schema: public; Owner: -
+-- Data for Name: bpp_wydawnictwo_zwarte_zewnetrzna_baza_danych; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY public.bpp_wydzial (id, ostatnio_zmieniony, adnotacje, nazwa, skrot, opis, slug, kolejnosc, widoczny, uczelnia_id, poprzednie_nazwy, zezwalaj_na_ranking_autorow, pbn_id, otwarcie, zamkniecie, zarzadzaj_automatycznie, skrot_nazwy, pokazuj_opis) FROM stdin;
+COPY public.bpp_wydawnictwo_zwarte_zewnetrzna_baza_danych (id, info, baza_id, rekord_id) FROM stdin;
 \.
 
 
@@ -15056,6 +14991,22 @@ COPY public.deduplikator_zrodel_notaduplicate (id, created_on, created_by_id, du
 
 
 --
+-- Data for Name: deduplikator_zrodel_scanzrodelforduplicates; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+COPY public.deduplikator_zrodel_scanzrodelforduplicates (id, created_on, started_on, finished_on, finished_successfully, cancel_requested, cancelled, traceback, result_context, language, status_text, percent, log, log_seq, current_stage, stage_states, total_sources, sources_scanned, duplicates_found, owner_id) FROM stdin;
+\.
+
+
+--
+-- Data for Name: deduplikator_zrodel_sourceduplicatecandidate; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+COPY public.deduplikator_zrodel_sourceduplicatecandidate (id, confidence_score, main_nazwa, duplicate_nazwa, main_pub_count, duplicate_pub_count, status, reviewed_at, created_at, duplicate_zrodlo_id, main_zrodlo_id, reviewed_by_id, scan_id) FROM stdin;
+\.
+
+
+--
 -- Data for Name: denorm_dirtyinstance; Type: TABLE DATA; Schema: public; Owner: -
 --
 
@@ -15174,7 +15125,6 @@ COPY public.django_content_type (id, app_label, model) FROM stdin;
 72	bpp	uczelnia
 73	bpp	wydawnictwo_ciagle_autor
 74	bpp	wydawnictwo_zwarte_autor
-75	bpp	wydzial
 76	bpp	zasieg_zrodla
 77	bpp	zrodlo
 78	bpp	zrodlo_informacji
@@ -15187,7 +15137,6 @@ COPY public.django_content_type (id, app_label, model) FROM stdin;
 85	bpp	tryb_openaccess_wydawnictwo_ciagle
 86	bpp	tryb_openaccess_wydawnictwo_zwarte
 87	bpp	wersja_tekstu_openaccess
-88	bpp	jednostka_wydzial
 89	bpp	konferencja
 90	bpp	seria_wydawnicza
 91	bpp	nagroda
@@ -15278,10 +15227,6 @@ COPY public.django_content_type (id, app_label, model) FROM stdin;
 176	nowe_raporty	definicjaraportu
 177	rozbieznosci_dyscyplin	brakprzypisaniaview
 178	rozbieznosci_dyscyplin	rozbiezneprzypisaniaview
-179	rozbieznosci_if	ignorujrozbieznoscif
-180	rozbieznosci_if	rozbieznosciiflog
-181	rozbieznosci_pk	rozbieznoscipklog
-182	rozbieznosci_pk	ignorujrozbieznoscpk
 183	import_dyscyplin	import_dyscyplin
 184	import_dyscyplin	import_dyscyplin_row
 185	import_dyscyplin	kolumna
@@ -15343,6 +15288,16 @@ COPY public.django_content_type (id, app_label, model) FROM stdin;
 241	easyaudit	crudevent
 242	easyaudit	loginevent
 243	easyaudit	requestevent
+88	bpp	jednostka_rodzic
+244	bpp	wydawnictwo_ciagle_tytul
+245	bpp	wydawnictwo_zwarte_tytul
+246	bpp	rodzajjednostki
+247	rozbieznosci	rozbieznosclog
+248	rozbieznosci	ignorowanarozbieznosc
+249	import_punktacji_zrodel	importpunktacjizrodel
+250	import_punktacji_zrodel	wierszimportupunktacjizrodel
+251	deduplikator_zrodel	scanzrodelforduplicates
+252	deduplikator_zrodel	sourceduplicatecandidate
 \.
 
 
@@ -15359,6 +15314,13 @@ COPY public.django_countdown_sitecountdown (id, countdown_time, message, long_de
 --
 
 COPY public.django_migrations (id, app, name, applied) FROM stdin;
+329	bpp	0236_merge_20210202_0850	2000-01-01 00:00:00+00
+442	pbn_api	0045_pbn_export_queue	2000-01-01 00:00:00+00
+447	taggit	0005_auto_20220424_2025	2000-01-01 00:00:00+00
+903	rozbieznosci_dyscyplin	0002_rok_2017_i_wyzej	2000-01-01 00:00:00+00
+904	rozbieznosci_dyscyplin	0003_brakprzypisaniaview_rozbiezneprzypisaniaview_rozbieznosciview	2000-01-01 00:00:00+00
+905	rozbieznosci_dyscyplin	0004_recreate	2000-01-01 00:00:00+00
+906	rozbieznosci_dyscyplin	0005_recreate	2000-01-01 00:00:00+00
 35	pbn_api	0001_initial	2000-01-01 00:00:00+00
 36	pbn_api	0002_institution	2000-01-01 00:00:00+00
 1	contenttypes	0001_initial	2000-01-01 00:00:00+00
@@ -15687,7 +15649,6 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 326	bpp	0234_rekord_mat_nadrzedne	2000-01-01 00:00:00+00
 327	bpp	0235_auto_20210201_1305	2000-01-01 00:00:00+00
 328	bpp	0235_auto_20210125_0042	2000-01-01 00:00:00+00
-329	bpp	0236_merge_20210202_0850	2000-01-01 00:00:00+00
 330	bpp	0237_auto_20210223_2228	2000-01-01 00:00:00+00
 331	bpp	0238_drop_pesel_md5	2000-01-01 00:00:00+00
 332	bpp	0239_egeria_import_new_autor_flds	2000-01-01 00:00:00+00
@@ -15800,12 +15761,10 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 439	pbn_api	0042_delete_tlumaczdyscyplinmanager_and_more	2000-01-01 00:00:00+00
 440	pbn_api	0043_remove_oswiadczenieinstytucji_id_and_more	2000-01-01 00:00:00+00
 441	pbn_api	0044_oswiadczenieinstytucji_id_and_more	2000-01-01 00:00:00+00
-442	pbn_api	0045_pbn_export_queue	2000-01-01 00:00:00+00
 443	pbn_api	0046_alter_pbn_export_queue_options_and_more	2000-01-01 00:00:00+00
 444	pbn_api	0047_alter_pbn_export_queue_options_and_more	2000-01-01 00:00:00+00
 445	pbn_api	0048_remove_pbn_export_queue_retry_politics_and_more	2000-01-01 00:00:00+00
 446	taggit	0004_alter_taggeditem_content_type_alter_taggeditem_tag	2000-01-01 00:00:00+00
-447	taggit	0005_auto_20220424_2025	2000-01-01 00:00:00+00
 448	multiseek	0001_initial	2000-01-01 00:00:00+00
 449	bpp	0342_remove_dyscyplina_naukowa_pbn_uid	2000-01-01 00:00:00+00
 450	bpp	0343_alter_typ_kbn_options_alter_patent_kc_punkty_kbn_and_more	2000-01-01 00:00:00+00
@@ -16262,10 +16221,6 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 900	reversion	0001_squashed_0004_auto_20160611_1202	2000-01-01 00:00:00+00
 901	reversion	0002_add_index_on_version_for_content_type_and_db	2000-01-01 00:00:00+00
 902	rozbieznosci_dyscyplin	0001_widok_rozbieznosci	2000-01-01 00:00:00+00
-903	rozbieznosci_dyscyplin	0002_rok_2017_i_wyzej	2000-01-01 00:00:00+00
-904	rozbieznosci_dyscyplin	0003_brakprzypisaniaview_rozbiezneprzypisaniaview_rozbieznosciview	2000-01-01 00:00:00+00
-905	rozbieznosci_dyscyplin	0004_recreate	2000-01-01 00:00:00+00
-906	rozbieznosci_dyscyplin	0005_recreate	2000-01-01 00:00:00+00
 907	rozbieznosci_dyscyplin	0006_recreate	2000-01-01 00:00:00+00
 908	rozbieznosci_dyscyplin	0007_recreate	2000-01-01 00:00:00+00
 909	rozbieznosci_dyscyplin	0008_recreate	2000-01-01 00:00:00+00
@@ -16282,11 +16237,6 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 920	rozbieznosci_dyscyplin	0019_recreate	2000-01-01 00:00:00+00
 921	rozbieznosci_dyscyplin	0020_recreate	2000-01-01 00:00:00+00
 922	rozbieznosci_dyscyplin	0021_alter_rozbieznosciview_options	2000-01-01 00:00:00+00
-923	rozbieznosci_if	0001_initial	2000-01-01 00:00:00+00
-924	rozbieznosci_if	0002_auto_20210323_0106	2000-01-01 00:00:00+00
-925	rozbieznosci_if	0003_auto_20210323_0109	2000-01-01 00:00:00+00
-926	rozbieznosci_if	0004_rozbieznosciiflog	2000-01-01 00:00:00+00
-927	rozbieznosci_pk	0001_initial	2000-01-01 00:00:00+00
 928	sessions	0001_initial	2000-01-01 00:00:00+00
 929	snapshot_odpiec	0001_initial	2000-01-01 00:00:00+00
 930	snapshot_odpiec	0002_alter_snapshotodpiec_owner	2000-01-01 00:00:00+00
@@ -16321,6 +16271,92 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 960	denorm	0001_squashed_0012_alter_dirtyinstance_object_id	2000-01-01 00:00:00+00
 961	bpp	0165_cache_punktacja_autora_cache_punktacja_dyscypliny_squashed_0167_auto_20190707_2029	2000-01-01 00:00:00+00
 962	easyaudit	0004_auto_20170620_1354_squashed_0019_alter_crudevent_changed_fields_and_more	2000-01-01 00:00:00+00
+963	bpp	0443_drop_pl_PL_collation	2000-01-01 00:00:00+00
+964	bpp	0411_uczelnia_site_theme_user_sites	2000-01-01 00:00:00+00
+965	bpp	0412_link_uczelnia_to_site	2000-01-01 00:00:00+00
+966	bpp	0413_uczelnia_constance_fields	2000-01-01 00:00:00+00
+967	bpp	0414_copy_constance_to_uczelnia	2000-01-01 00:00:00+00
+968	bpp	0415_rename_accessible_sites_to_uczelnie	2000-01-01 00:00:00+00
+969	bpp	0416_merge_20260428_1806	2000-01-01 00:00:00+00
+970	bpp	0417_ensure_uczelnia_site_not_null	2000-01-01 00:00:00+00
+971	bpp	0418_merge_20260521_1015	2000-01-01 00:00:00+00
+972	bpp	0419_merge_20260601_0952	2000-01-01 00:00:00+00
+973	bpp	0420_merge_20260601_1246	2000-01-01 00:00:00+00
+974	bpp	0421_alter_uczelnia_theme_name	2000-01-01 00:00:00+00
+975	bpp	0422_alter_uczelnia_theme_name	2000-01-01 00:00:00+00
+976	bpp	0423_merge_20260602_1430	2000-01-01 00:00:00+00
+977	bpp	0424_cache_punktacja_dyscypliny_uczelnia_and_more	2000-01-01 00:00:00+00
+978	bpp	0425_per_uczelnia_cache_view	2000-01-01 00:00:00+00
+979	bpp	0426_cache_punktacja_autora_view_uczelnia	2000-01-01 00:00:00+00
+980	bpp	0427_cpd_index_rekord_uczelnia_dyscyplina	2000-01-01 00:00:00+00
+981	bpp	0428_cpd_uczelnia_not_null	2000-01-01 00:00:00+00
+982	bpp	0429_merge_20260604_1952	2000-01-01 00:00:00+00
+983	bpp	0430_wydawnictwo_ciagle_tytul_wydawnictwo_zwarte_tytul	2000-01-01 00:00:00+00
+984	bpp	0431_merge_20260612_1504	2000-01-01 00:00:00+00
+985	bpp	0432_merge_0431_merge_20260612_1504_0431_search_index_gin	2000-01-01 00:00:00+00
+986	bpp	0444_merge_20260616_1920	2000-01-01 00:00:00+00
+987	bpp	0444_alter_uczelnia_wyszukiwanie_rekordy_na_strone_anonim_and_more	2000-01-01 00:00:00+00
+988	bpp	0445_merge_20260622_1134	2000-01-01 00:00:00+00
+989	bpp	0446_rzeczownik_tylko_mianownik	2000-01-01 00:00:00+00
+990	bpp	0447_fd390_aktualna_jednostka_demote_obca	2000-01-01 00:00:00+00
+991	bpp	0448_rodzajjednostki	2000-01-01 00:00:00+00
+992	bpp	0449_seed_rodzajjednostki	2000-01-01 00:00:00+00
+993	bpp	0450_jednostka_rodzaj	2000-01-01 00:00:00+00
+994	bpp	0451_backfill_jednostka_rodzaj	2000-01-01 00:00:00+00
+995	bpp	0452_jednostka_pola_faza_a	2000-01-01 00:00:00+00
+996	bpp	0453_zrodlo_trigram_indexes	2000-01-01 00:00:00+00
+997	bpp	0454_faza_b_i1	2000-01-01 00:00:00+00
+998	bpp	0455_faza_b_i2	2000-01-01 00:00:00+00
+999	bpp	0456_faza_b_i3	2000-01-01 00:00:00+00
+1000	bpp	0457_faza_b_i4	2000-01-01 00:00:00+00
+1001	bpp	0458_faza_b_ii1_views	2000-01-01 00:00:00+00
+1002	bpp	0444_charakter_formalny_ukryty_charakter_pbn_ukryty_and_more	2000-01-01 00:00:00+00
+1003	bpp	0459_faza_b_ii1_retarget	2000-01-01 00:00:00+00
+1004	bpp	0460_faza_b_ii2_repoint	2000-01-01 00:00:00+00
+1005	bpp	0461_faza_b_iii1_usun_rodzaj_jednostki	2000-01-01 00:00:00+00
+1006	bpp	0462_faza_b_iv1_przelicz_aktualna	2000-01-01 00:00:00+00
+1007	bpp	0463_faza_b_iv2_multiseek_values	2000-01-01 00:00:00+00
+1008	bpp	0464_rodzajjednostki_autor_moze_afiliowac	2000-01-01 00:00:00+00
+1009	bpp	0454_merge_20260706_0727	2000-01-01 00:00:00+00
+1010	bpp	0444_deferred_podstawowe_miejsce_pracy	2000-01-01 00:00:00+00
+1011	bpp	0445_merge_20260621_0640	2000-01-01 00:00:00+00
+1012	bpp	0465_merge_20260707_0736	2000-01-01 00:00:00+00
+1013	deduplikator_zrodel	0002_scanzrodelforduplicates_sourceduplicatecandidate	2000-01-01 00:00:00+00
+1014	denorm	0018_alter_dirtyinstance_content_type_and_more	2000-01-01 00:00:00+00
+1015	denorm	0019_conditional_notify_during_flush	2000-01-01 00:00:00+00
+1016	ewaluacja_liczba_n	0009_iloscudzialow_uczelnia	2000-01-01 00:00:00+00
+1017	ewaluacja_liczba_n	0010_merge_20260604_1952	2000-01-01 00:00:00+00
+1018	ewaluacja_metryki	0006_metrykaautora_uczelnia	2000-01-01 00:00:00+00
+1019	ewaluacja_metryki	0007_statusgenerowania_uczelnia	2000-01-01 00:00:00+00
+1020	ewaluacja_metryki	0008_metrykaautora_uczelnia_notnull	2000-01-01 00:00:00+00
+1021	ewaluacja_metryki	0009_merge_20260604_1952	2000-01-01 00:00:00+00
+1022	import_dyscyplin	0024_faza_b_ii2_repoint_wydzial	2000-01-01 00:00:00+00
+1023	import_polon	0016_importplikupolon_uczelnia	2000-01-01 00:00:00+00
+1024	import_punktacji_zrodel	0001_initial	2000-01-01 00:00:00+00
+1025	importer_publikacji	0012_importsession_uczelnia	2000-01-01 00:00:00+00
+1026	importer_publikacji	0013_merge_20260604_1952	2000-01-01 00:00:00+00
+1027	pbn_api	0069_add_uczelnia_fk	2000-01-01 00:00:00+00
+1028	pbn_api	0070_link_pbn_to_uczelnia	2000-01-01 00:00:00+00
+1029	pbn_api	0071_merge_0069_sentdata_api_url_0070_link_pbn_to_uczelnia	2000-01-01 00:00:00+00
+1030	pbn_api	0072_backfill_sentdata_uczelnia	2000-01-01 00:00:00+00
+1031	pbn_api	0073_backfill_publikacjainstytucji_v2_uczelnia	2000-01-01 00:00:00+00
+1032	pbn_api	0074_merge_20260604_1952	2000-01-01 00:00:00+00
+1033	pbn_export_queue	0008_add_uczelnia_fk	2000-01-01 00:00:00+00
+1034	pbn_export_queue	0009_link_queue_to_uczelnia	2000-01-01 00:00:00+00
+1035	pbn_import	0012_alter_importinconsistency_inconsistency_type	2000-01-01 00:00:00+00
+1036	raport_slotow	0020_raportslotowuczelnia_uczelnia	2000-01-01 00:00:00+00
+1037	raport_slotow	0021_merge_20260604_1952	2000-01-01 00:00:00+00
+1038	rozbieznosci	0001_initial	2000-01-01 00:00:00+00
+1039	rozbieznosci	0002_usun_stare_rozbieznosci	2000-01-01 00:00:00+00
+1040	zglos_publikacje	0026_faza_b_ii2_repoint_wydzial	2000-01-01 00:00:00+00
+1041	bpp	0466_faza_c_backfill_poprzednie_nazwy	2000-01-01 00:00:00+00
+1042	bpp	0467_faza_c_drop_wydzial	2000-01-01 00:00:00+00
+1043	bpp	0468_faza_c_drop_legacy_markery	2000-01-01 00:00:00+00
+1044	bpp	0469_faza_c_czysc_contenttype_wydzial	2000-01-01 00:00:00+00
+1045	bpp	0466_bppuser_zwijaj_dlugie_listy_autorow_and_more	2000-01-01 00:00:00+00
+1046	bpp	0470_merge_20260708_1616	2000-01-01 00:00:00+00
+1047	importer_publikacji	0014_importedauthor_typ_ogolny	2000-01-01 00:00:00+00
+1048	importer_publikacji	0015_alter_importsession_status	2000-01-01 00:00:00+00
 \.
 
 
@@ -16432,7 +16468,7 @@ COPY public.ewaluacja_liczba_n_dyscyplinanieraportowana (id, dyscyplina_naukowa_
 -- Data for Name: ewaluacja_liczba_n_iloscudzialowdlaautorazacalosc; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY public.ewaluacja_liczba_n_iloscudzialowdlaautorazacalosc (id, ilosc_udzialow_monografie, komentarz, ilosc_udzialow, autor_id, dyscyplina_naukowa_id, rodzaj_autora_id) FROM stdin;
+COPY public.ewaluacja_liczba_n_iloscudzialowdlaautorazacalosc (id, ilosc_udzialow_monografie, komentarz, ilosc_udzialow, autor_id, dyscyplina_naukowa_id, rodzaj_autora_id, uczelnia_id) FROM stdin;
 \.
 
 
@@ -16440,7 +16476,7 @@ COPY public.ewaluacja_liczba_n_iloscudzialowdlaautorazacalosc (id, ilosc_udzialo
 -- Data for Name: ewaluacja_liczba_n_iloscudzialowdlaautorazarok; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY public.ewaluacja_liczba_n_iloscudzialowdlaautorazarok (id, ilosc_udzialow, ilosc_udzialow_monografie, rok, autor_id, dyscyplina_naukowa_id, autor_dyscyplina_id) FROM stdin;
+COPY public.ewaluacja_liczba_n_iloscudzialowdlaautorazarok (id, ilosc_udzialow, ilosc_udzialow_monografie, rok, autor_id, dyscyplina_naukowa_id, autor_dyscyplina_id, uczelnia_id) FROM stdin;
 \.
 
 
@@ -16456,7 +16492,7 @@ COPY public.ewaluacja_liczba_n_liczbandlauczelni (id, liczba_n, dyscyplina_nauko
 -- Data for Name: ewaluacja_metryki_metrykaautora; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY public.ewaluacja_metryki_metrykaautora (id, slot_maksymalny, slot_nazbierany, punkty_nazbierane, prace_nazbierane, srednia_za_slot_nazbierana, slot_wszystkie, punkty_wszystkie, prace_wszystkie, liczba_prac_wszystkie, srednia_za_slot_wszystkie, procent_wykorzystania_slotow, data_obliczenia, rok_min, rok_max, autor_id, dyscyplina_naukowa_id, jednostka_id, rodzaj_autora) FROM stdin;
+COPY public.ewaluacja_metryki_metrykaautora (id, slot_maksymalny, slot_nazbierany, punkty_nazbierane, prace_nazbierane, srednia_za_slot_nazbierana, slot_wszystkie, punkty_wszystkie, prace_wszystkie, liczba_prac_wszystkie, srednia_za_slot_wszystkie, procent_wykorzystania_slotow, data_obliczenia, rok_min, rok_max, autor_id, dyscyplina_naukowa_id, jednostka_id, rodzaj_autora, uczelnia_id) FROM stdin;
 \.
 
 
@@ -16464,7 +16500,7 @@ COPY public.ewaluacja_metryki_metrykaautora (id, slot_maksymalny, slot_nazbieran
 -- Data for Name: ewaluacja_metryki_statusgenerowania; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY public.ewaluacja_metryki_statusgenerowania (id, data_rozpoczecia, data_zakonczenia, w_trakcie, liczba_przetworzonych, liczba_bledow, ostatni_komunikat, task_id, liczba_do_przetworzenia) FROM stdin;
+COPY public.ewaluacja_metryki_statusgenerowania (id, data_rozpoczecia, data_zakonczenia, w_trakcie, liczba_przetworzonych, liczba_bledow, ostatni_komunikat, task_id, liczba_do_przetworzenia, uczelnia_id) FROM stdin;
 \.
 
 
@@ -16636,25 +16672,16 @@ COPY public.formdefaults_formfielddefaultvalue (id, value, field_id, parent_id, 
 
 COPY public.formdefaults_formfieldrepresentation (id, name, label, klass, "order", parent_id) FROM stdin;
 1	obiekt	Autor	django.forms.models.ModelChoiceField	0	raport_slotow.forms.autor.AutorRaportSlotowForm
-2	od_roku	Od roku	django.forms.fields.IntegerField	1	raport_slotow.forms.autor.AutorRaportSlotowForm
-3	do_roku	Do roku	django.forms.fields.IntegerField	2	raport_slotow.forms.autor.AutorRaportSlotowForm
 4	minimalny_pk	Minimalna wartość PK pracy	django.forms.fields.IntegerField	3	raport_slotow.forms.autor.AutorRaportSlotowForm
 5	dzialanie	Wygeneruj	django.forms.fields.ChoiceField	4	raport_slotow.forms.autor.AutorRaportSlotowForm
 6	slot	Zadana wielkość slotu	django.forms.fields.DecimalField	5	raport_slotow.forms.autor.AutorRaportSlotowForm
 7	_export	Format wyjściowy	django.forms.fields.ChoiceField	6	raport_slotow.forms.autor.AutorRaportSlotowForm
-8	od_roku	Od roku	django.forms.fields.IntegerField	0	raport_slotow.forms.ewaluacja.ParametryRaportSlotowEwaluacjaForm
-9	do_roku	Do roku	django.forms.fields.IntegerField	1	raport_slotow.forms.ewaluacja.ParametryRaportSlotowEwaluacjaForm
 10	_export	Format wyjściowy	django.forms.fields.ChoiceField	2	raport_slotow.forms.ewaluacja.ParametryRaportSlotowEwaluacjaForm
 11	upowaznienie_pbn	Upowaznienie pbn	django.forms.fields.NullBooleanField	3	raport_slotow.forms.ewaluacja.ParametryRaportSlotowEwaluacjaForm
-12	od_roku	Od roku	django.forms.fields.IntegerField	0	raport_slotow.forms.uczelnia.UtworzRaportSlotowUczelniaForm
-13	do_roku	Do roku	django.forms.fields.IntegerField	1	raport_slotow.forms.uczelnia.UtworzRaportSlotowUczelniaForm
 14	akcja	Akcja	django.forms.fields.TypedChoiceField	2	raport_slotow.forms.uczelnia.UtworzRaportSlotowUczelniaForm
-15	slot	Slot	django.forms.fields.DecimalField	3	raport_slotow.forms.uczelnia.UtworzRaportSlotowUczelniaForm
 16	minimalny_pk	Minimalny pk	django.forms.fields.DecimalField	4	raport_slotow.forms.uczelnia.UtworzRaportSlotowUczelniaForm
 17	dziel_na_jednostki_i_wydzialy	Dziel na jednostki i wydziały	django.forms.fields.BooleanField	5	raport_slotow.forms.uczelnia.UtworzRaportSlotowUczelniaForm
 18	pokazuj_zerowych	Dołączaj autorów z zerowymi slotami	django.forms.fields.BooleanField	6	raport_slotow.forms.uczelnia.UtworzRaportSlotowUczelniaForm
-19	od_roku	Od roku	django.forms.fields.IntegerField	0	nowe_raporty.forms_dynamiczne.RaportForm_raport_uczelni
-20	do_roku	Do roku	django.forms.fields.IntegerField	1	nowe_raporty.forms_dynamiczne.RaportForm_raport_uczelni
 21	_export	Format wyjściowy	django.forms.fields.ChoiceField	2	nowe_raporty.forms_dynamiczne.RaportForm_raport_uczelni
 22	tylko_z_jednostek_uczelni	Tylko prace afiliowane	django.forms.fields.BooleanField	3	nowe_raporty.forms_dynamiczne.RaportForm_raport_uczelni
 23	punkty_mnisw_od	od	django.forms.fields.FloatField	4	nowe_raporty.forms_dynamiczne.RaportForm_raport_uczelni
@@ -16662,8 +16689,6 @@ COPY public.formdefaults_formfieldrepresentation (id, name, label, klass, "order
 25	if_od	od	django.forms.fields.FloatField	6	nowe_raporty.forms_dynamiczne.RaportForm_raport_uczelni
 26	if_do	do	django.forms.fields.FloatField	7	nowe_raporty.forms_dynamiczne.RaportForm_raport_uczelni
 27	tylko_punktowane	Tylko prace punktowane (pkt MNiSW > 0)	django.forms.fields.BooleanField	8	nowe_raporty.forms_dynamiczne.RaportForm_raport_uczelni
-28	od_roku	Od roku	django.forms.fields.IntegerField	0	nowe_raporty.forms_dynamiczne.RaportForm_raport_wydzialow
-29	do_roku	Do roku	django.forms.fields.IntegerField	1	nowe_raporty.forms_dynamiczne.RaportForm_raport_wydzialow
 30	_export	Format wyjściowy	django.forms.fields.ChoiceField	2	nowe_raporty.forms_dynamiczne.RaportForm_raport_wydzialow
 31	tylko_z_jednostek_uczelni	Tylko prace afiliowane	django.forms.fields.BooleanField	3	nowe_raporty.forms_dynamiczne.RaportForm_raport_wydzialow
 32	punkty_mnisw_od	od	django.forms.fields.FloatField	4	nowe_raporty.forms_dynamiczne.RaportForm_raport_wydzialow
@@ -16672,8 +16697,6 @@ COPY public.formdefaults_formfieldrepresentation (id, name, label, klass, "order
 35	if_do	do	django.forms.fields.FloatField	7	nowe_raporty.forms_dynamiczne.RaportForm_raport_wydzialow
 36	tylko_punktowane	Tylko prace punktowane (pkt MNiSW > 0)	django.forms.fields.BooleanField	8	nowe_raporty.forms_dynamiczne.RaportForm_raport_wydzialow
 37	obiekt	Wydział	django.forms.models.ModelChoiceField	9	nowe_raporty.forms_dynamiczne.RaportForm_raport_wydzialow
-38	od_roku	Od roku	django.forms.fields.IntegerField	0	nowe_raporty.forms_dynamiczne.RaportForm_raport_jednostek
-39	do_roku	Do roku	django.forms.fields.IntegerField	1	nowe_raporty.forms_dynamiczne.RaportForm_raport_jednostek
 40	_export	Format wyjściowy	django.forms.fields.ChoiceField	2	nowe_raporty.forms_dynamiczne.RaportForm_raport_jednostek
 41	tylko_z_jednostek_uczelni	Tylko prace afiliowane	django.forms.fields.BooleanField	3	nowe_raporty.forms_dynamiczne.RaportForm_raport_jednostek
 42	punkty_mnisw_od	od	django.forms.fields.FloatField	4	nowe_raporty.forms_dynamiczne.RaportForm_raport_jednostek
@@ -16682,8 +16705,6 @@ COPY public.formdefaults_formfieldrepresentation (id, name, label, klass, "order
 45	if_do	do	django.forms.fields.FloatField	7	nowe_raporty.forms_dynamiczne.RaportForm_raport_jednostek
 46	tylko_punktowane	Tylko prace punktowane (pkt MNiSW > 0)	django.forms.fields.BooleanField	8	nowe_raporty.forms_dynamiczne.RaportForm_raport_jednostek
 47	obiekt	Jednostka	django.forms.models.ModelChoiceField	9	nowe_raporty.forms_dynamiczne.RaportForm_raport_jednostek
-48	od_roku	Od roku	django.forms.fields.IntegerField	0	nowe_raporty.forms_dynamiczne.RaportForm_raport_autorow
-49	do_roku	Do roku	django.forms.fields.IntegerField	1	nowe_raporty.forms_dynamiczne.RaportForm_raport_autorow
 50	_export	Format wyjściowy	django.forms.fields.ChoiceField	2	nowe_raporty.forms_dynamiczne.RaportForm_raport_autorow
 51	tylko_z_jednostek_uczelni	Tylko prace afiliowane	django.forms.fields.BooleanField	3	nowe_raporty.forms_dynamiczne.RaportForm_raport_autorow
 52	punkty_mnisw_od	od	django.forms.fields.FloatField	4	nowe_raporty.forms_dynamiczne.RaportForm_raport_autorow
@@ -16692,6 +16713,21 @@ COPY public.formdefaults_formfieldrepresentation (id, name, label, klass, "order
 55	if_do	do	django.forms.fields.FloatField	7	nowe_raporty.forms_dynamiczne.RaportForm_raport_autorow
 56	tylko_punktowane	Tylko prace punktowane (pkt MNiSW > 0)	django.forms.fields.BooleanField	8	nowe_raporty.forms_dynamiczne.RaportForm_raport_autorow
 57	obiekt	Autor	django.forms.models.ModelChoiceField	9	nowe_raporty.forms_dynamiczne.RaportForm_raport_autorow
+58	od_roku	Od roku	django.forms.fields.IntegerField	1	raport_slotow.forms.autor.AutorRaportSlotowForm
+59	do_roku	Do roku	django.forms.fields.IntegerField	2	raport_slotow.forms.autor.AutorRaportSlotowForm
+60	od_roku	Od roku	django.forms.fields.IntegerField	0	raport_slotow.forms.ewaluacja.ParametryRaportSlotowEwaluacjaForm
+61	do_roku	Do roku	django.forms.fields.IntegerField	1	raport_slotow.forms.ewaluacja.ParametryRaportSlotowEwaluacjaForm
+62	od_roku	Od roku	django.forms.fields.IntegerField	0	raport_slotow.forms.uczelnia.UtworzRaportSlotowUczelniaForm
+63	do_roku	Do roku	django.forms.fields.IntegerField	1	raport_slotow.forms.uczelnia.UtworzRaportSlotowUczelniaForm
+64	slot	Slot	django.forms.fields.DecimalField	3	raport_slotow.forms.uczelnia.UtworzRaportSlotowUczelniaForm
+65	od_roku	Od roku	django.forms.fields.IntegerField	0	nowe_raporty.forms_dynamiczne.RaportForm_raport_uczelni
+66	do_roku	Do roku	django.forms.fields.IntegerField	1	nowe_raporty.forms_dynamiczne.RaportForm_raport_uczelni
+67	od_roku	Od roku	django.forms.fields.IntegerField	0	nowe_raporty.forms_dynamiczne.RaportForm_raport_wydzialow
+68	do_roku	Do roku	django.forms.fields.IntegerField	1	nowe_raporty.forms_dynamiczne.RaportForm_raport_wydzialow
+69	od_roku	Od roku	django.forms.fields.IntegerField	0	nowe_raporty.forms_dynamiczne.RaportForm_raport_jednostek
+70	do_roku	Do roku	django.forms.fields.IntegerField	1	nowe_raporty.forms_dynamiczne.RaportForm_raport_jednostek
+71	od_roku	Od roku	django.forms.fields.IntegerField	0	nowe_raporty.forms_dynamiczne.RaportForm_raport_autorow
+72	do_roku	Do roku	django.forms.fields.IntegerField	1	nowe_raporty.forms_dynamiczne.RaportForm_raport_autorow
 \.
 
 
@@ -16786,7 +16822,7 @@ COPY public.import_polon_importplikuabsencji (id, created_on, last_updated_on, s
 -- Data for Name: import_polon_importplikupolon; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY public.import_polon_importplikupolon (id, created_on, last_updated_on, started_on, finished_on, finished_successfully, traceback, plik, owner_id, rok, zapisz_zmiany_do_bazy, ukryj_niezmatchowanych_autorow, ignoruj_miejsce_pracy) FROM stdin;
+COPY public.import_polon_importplikupolon (id, created_on, last_updated_on, started_on, finished_on, finished_successfully, traceback, plik, owner_id, rok, zapisz_zmiany_do_bazy, ukryj_niezmatchowanych_autorow, ignoruj_miejsce_pracy, uczelnia_id) FROM stdin;
 \.
 
 
@@ -16831,6 +16867,22 @@ COPY public.import_pracownikow_importpracownikowrow (id, dane_z_xls, autor_id, a
 
 
 --
+-- Data for Name: import_punktacji_zrodel_importpunktacjizrodel; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+COPY public.import_punktacji_zrodel_importpunktacjizrodel (id, created_on, last_updated_on, started_on, finished_on, finished_successfully, traceback, rok, plik, zapisz_zmiany_do_bazy, importuj_impact_factor, importuj_kwartyl_wos, ignoruj_zrodla_bez_odpowiednika, nie_porownuj_po_tytulach, owner_id) FROM stdin;
+\.
+
+
+--
+-- Data for Name: import_punktacji_zrodel_wierszimportupunktacjizrodel; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+COPY public.import_punktacji_zrodel_wierszimportupunktacjizrodel (id, dane_z_xls, nr_wiersza, rezultat, wymaga_zmian, is_duplicate, duplicate_of_row, duplicate_reason, parent_id, zrodlo_id) FROM stdin;
+\.
+
+
+--
 -- Data for Name: importer_autorow_pbn_cachedscientistmatch; Type: TABLE DATA; Schema: public; Owner: -
 --
 
@@ -16858,7 +16910,7 @@ COPY public.importer_autorow_pbn_matchcacherebuildoperation (id, created_on, las
 -- Data for Name: importer_publikacji_importedauthor; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY public.importer_publikacji_importedauthor (id, "order", family_name, given_name, orcid, match_status, matched_autor_id, matched_dyscyplina_id, matched_jednostka_id, session_id, dyscyplina_source, zapisany_jako) FROM stdin;
+COPY public.importer_publikacji_importedauthor (id, "order", family_name, given_name, orcid, match_status, matched_autor_id, matched_dyscyplina_id, matched_jednostka_id, session_id, dyscyplina_source, zapisany_jako, typ_ogolny) FROM stdin;
 \.
 
 
@@ -16874,7 +16926,7 @@ COPY public.importer_publikacji_importedauthor_candidate (id, pewnosc, powod, pu
 -- Data for Name: importer_publikacji_importsession; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY public.importer_publikacji_importsession (id, provider_name, identifier, status, raw_data, normalized_data, matched_data, jest_wydawnictwem_zwartym, created_record_id, created, modified, charakter_formalny_id, created_record_content_type_id, jezyk_id, typ_kbn_id, created_by_id, wydawca_id, zrodlo_id, modified_by_id, wydawnictwo_nadrzedne_id, wydawnictwo_nadrzedne_w_pbn_id, celery_task_id, last_error_message, last_error_traceback, last_failed_stage) FROM stdin;
+COPY public.importer_publikacji_importsession (id, provider_name, identifier, status, raw_data, normalized_data, matched_data, jest_wydawnictwem_zwartym, created_record_id, created, modified, charakter_formalny_id, created_record_content_type_id, jezyk_id, typ_kbn_id, created_by_id, wydawca_id, zrodlo_id, modified_by_id, wydawnictwo_nadrzedne_id, wydawnictwo_nadrzedne_w_pbn_id, celery_task_id, last_error_message, last_error_traceback, last_failed_stage, uczelnia_id) FROM stdin;
 \.
 
 
@@ -17018,7 +17070,7 @@ COPY public.pbn_api_language (created_on, last_updated_on, code, language) FROM 
 -- Data for Name: pbn_api_osobazinstytucji; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY public.pbn_api_osobazinstytucji (id, "firstName", "lastName", "institutionName", title, "polonUuid", "phdStudent", _from, _to, last_updated, "institutionId_id", "personId_id") FROM stdin;
+COPY public.pbn_api_osobazinstytucji (id, "firstName", "lastName", "institutionName", title, "polonUuid", "phdStudent", _from, _to, last_updated, "institutionId_id", "personId_id", uczelnia_id) FROM stdin;
 \.
 
 
@@ -17026,7 +17078,7 @@ COPY public.pbn_api_osobazinstytucji (id, "firstName", "lastName", "institutionN
 -- Data for Name: pbn_api_oswiadczenieinstytucji; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY public.pbn_api_oswiadczenieinstytucji (primary_key, "addedTimestamp", area, "inOrcid", type, "institutionId_id", "personId_id", "publicationId_id", "statedTimestamp", disciplines, id) FROM stdin;
+COPY public.pbn_api_oswiadczenieinstytucji (primary_key, "addedTimestamp", area, "inOrcid", type, "institutionId_id", "personId_id", "publicationId_id", "statedTimestamp", disciplines, id, uczelnia_id) FROM stdin;
 \.
 
 
@@ -17050,7 +17102,7 @@ COPY public.pbn_api_publication (created_on, last_updated_on, "mongoId", status,
 -- Data for Name: pbn_api_publikacjainstytucji; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY public.pbn_api_publikacjainstytucji (id, "publicationType", "publicationVersion", "publicationYear", snapshot, "insPersonId_id", "institutionId_id", "publicationId_id", "userType") FROM stdin;
+COPY public.pbn_api_publikacjainstytucji (id, "publicationType", "publicationVersion", "publicationYear", snapshot, "insPersonId_id", "institutionId_id", "publicationId_id", "userType", uczelnia_id) FROM stdin;
 \.
 
 
@@ -17058,7 +17110,7 @@ COPY public.pbn_api_publikacjainstytucji (id, "publicationType", "publicationVer
 -- Data for Name: pbn_api_publikacjainstytucji_v2; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY public.pbn_api_publikacjainstytucji_v2 (uuid, json_data, "objectId_id", created_on, last_updated) FROM stdin;
+COPY public.pbn_api_publikacjainstytucji_v2 (uuid, json_data, "objectId_id", created_on, last_updated, uczelnia_id) FROM stdin;
 \.
 
 
@@ -17082,7 +17134,7 @@ COPY public.pbn_api_scientist (created_on, last_updated_on, "mongoId", status, "
 -- Data for Name: pbn_api_sentdata; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY public.pbn_api_sentdata (id, object_id, data_sent, last_updated_on, content_type_id, exception, uploaded_okay, pbn_uid_id, typ_rekordu, submitted_successfully, submitted_at, api_response_status, api_url) FROM stdin;
+COPY public.pbn_api_sentdata (id, object_id, data_sent, last_updated_on, content_type_id, exception, uploaded_okay, pbn_uid_id, typ_rekordu, submitted_successfully, submitted_at, api_response_status, api_url, uczelnia_id) FROM stdin;
 \.
 
 
@@ -17122,7 +17174,7 @@ COPY public.pbn_downloader_app_pbnjournalsdownloadtask (id, status, started_at, 
 -- Data for Name: pbn_export_queue_pbn_export_queue; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY public.pbn_export_queue_pbn_export_queue (id, object_id, zamowiono, wysylke_podjeto, wysylke_zakonczono, ilosc_prob, komunikat, content_type_id, zamowil_id, zakonczono_pomyslnie, retry_after_user_authorised, rodzaj_bledu, wykluczone) FROM stdin;
+COPY public.pbn_export_queue_pbn_export_queue (id, object_id, zamowiono, wysylke_podjeto, wysylke_zakonczono, ilosc_prob, komunikat, content_type_id, zamowil_id, zakonczono_pomyslnie, retry_after_user_authorised, rodzaj_bledu, wykluczone, uczelnia_id) FROM stdin;
 \.
 
 
@@ -17234,7 +17286,7 @@ COPY public.przemapuj_zrodlo_przemapowazrodla (id, liczba_publikacji, publikacje
 -- Data for Name: raport_slotow_raportslotowuczelnia; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY public.raport_slotow_raportslotowuczelnia (id, created_on, last_updated_on, started_on, finished_on, finished_successfully, traceback, od_roku, do_roku, slot, minimalny_pk, dziel_na_jednostki_i_wydzialy, owner_id, pokazuj_zerowych, akcja) FROM stdin;
+COPY public.raport_slotow_raportslotowuczelnia (id, created_on, last_updated_on, started_on, finished_on, finished_successfully, traceback, od_roku, do_roku, slot, minimalny_pk, dziel_na_jednostki_i_wydzialy, owner_id, pokazuj_zerowych, akcja, uczelnia_id) FROM stdin;
 \.
 
 
@@ -17263,34 +17315,18 @@ COPY public.reversion_version (id, object_id, format, serialized_data, object_re
 
 
 --
--- Data for Name: rozbieznosci_if_ignorujrozbieznoscif; Type: TABLE DATA; Schema: public; Owner: -
+-- Data for Name: rozbieznosci_ignorowanarozbieznosc; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY public.rozbieznosci_if_ignorujrozbieznoscif (id, object_id, content_type_id, created_on) FROM stdin;
+COPY public.rozbieznosci_ignorowanarozbieznosc (id, metryka, created_on, rekord_id) FROM stdin;
 \.
 
 
 --
--- Data for Name: rozbieznosci_if_rozbieznosciiflog; Type: TABLE DATA; Schema: public; Owner: -
+-- Data for Name: rozbieznosci_rozbieznosclog; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY public.rozbieznosci_if_rozbieznosciiflog (id, if_before, if_after, created_on, rekord_id, user_id, zrodlo_id) FROM stdin;
-\.
-
-
---
--- Data for Name: rozbieznosci_pk_ignorujrozbieznoscpk; Type: TABLE DATA; Schema: public; Owner: -
---
-
-COPY public.rozbieznosci_pk_ignorujrozbieznoscpk (id, object_id, created_on, content_type_id) FROM stdin;
-\.
-
-
---
--- Data for Name: rozbieznosci_pk_rozbieznoscipklog; Type: TABLE DATA; Schema: public; Owner: -
---
-
-COPY public.rozbieznosci_pk_rozbieznoscipklog (id, pk_before, pk_after, created_on, rekord_id, user_id, zrodlo_id) FROM stdin;
+COPY public.rozbieznosci_rozbieznosclog (id, metryka, wartosc_przed, wartosc_po, created_on, rekord_id, user_id, zrodlo_id) FROM stdin;
 \.
 
 
@@ -17430,14 +17466,14 @@ SELECT pg_catalog.setval('public.auth_group_id_seq', 9, true);
 -- Name: auth_group_permissions_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
-SELECT pg_catalog.setval('public.auth_group_permissions_id_seq', 300, true);
+SELECT pg_catalog.setval('public.auth_group_permissions_id_seq', 404, true);
 
 
 --
 -- Name: auth_permission_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
-SELECT pg_catalog.setval('public.auth_permission_id_seq', 974, true);
+SELECT pg_catalog.setval('public.auth_permission_id_seq', 1014, true);
 
 
 --
@@ -17494,6 +17530,13 @@ SELECT pg_catalog.setval('public.bpp_autor_jednostka_id_seq', 1, false);
 --
 
 SELECT pg_catalog.setval('public.bpp_bppmultiseekvisibility_id_seq', 1, false);
+
+
+--
+-- Name: bpp_bppuser_accessible_uczelnie_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
+--
+
+SELECT pg_catalog.setval('public.bpp_bppuser_accessible_uczelnie_id_seq', 1, false);
 
 
 --
@@ -17770,6 +17813,13 @@ SELECT pg_catalog.setval('public.bpp_rodzaj_zrodla_id_seq', 2, true);
 
 
 --
+-- Name: bpp_rodzajjednostki_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
+--
+
+SELECT pg_catalog.setval('public.bpp_rodzajjednostki_id_seq', 3, true);
+
+
+--
 -- Name: bpp_seria_wydawnicza_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
@@ -17875,6 +17925,13 @@ SELECT pg_catalog.setval('public.bpp_wydawnictwo_ciagle_streszczenie_id_seq', 1,
 
 
 --
+-- Name: bpp_wydawnictwo_ciagle_tytul_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
+--
+
+SELECT pg_catalog.setval('public.bpp_wydawnictwo_ciagle_tytul_id_seq', 1, false);
+
+
+--
 -- Name: bpp_wydawnictwo_ciagle_zewnetrzna_baza_danych_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
@@ -17903,17 +17960,17 @@ SELECT pg_catalog.setval('public.bpp_wydawnictwo_zwarte_streszczenie_id_seq', 1,
 
 
 --
+-- Name: bpp_wydawnictwo_zwarte_tytul_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
+--
+
+SELECT pg_catalog.setval('public.bpp_wydawnictwo_zwarte_tytul_id_seq', 1, false);
+
+
+--
 -- Name: bpp_wydawnictwo_zwarte_zewnetrzna_baza_danych_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
 SELECT pg_catalog.setval('public.bpp_wydawnictwo_zwarte_zewnetrzna_baza_danych_id_seq', 1, false);
-
-
---
--- Name: bpp_wydzial_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
---
-
-SELECT pg_catalog.setval('public.bpp_wydzial_id_seq', 1, false);
 
 
 --
@@ -18043,6 +18100,13 @@ SELECT pg_catalog.setval('public.deduplikator_zrodel_notaduplicate_id_seq', 1, f
 
 
 --
+-- Name: deduplikator_zrodel_sourceduplicatecandidate_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
+--
+
+SELECT pg_catalog.setval('public.deduplikator_zrodel_sourceduplicatecandidate_id_seq', 1, false);
+
+
+--
 -- Name: denorm_dirtyinstance_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
@@ -18081,7 +18145,7 @@ SELECT pg_catalog.setval('public.django_celery_results_taskresult_id_seq', 1, fa
 -- Name: django_content_type_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
-SELECT pg_catalog.setval('public.django_content_type_id_seq', 243, true);
+SELECT pg_catalog.setval('public.django_content_type_id_seq', 252, true);
 
 
 --
@@ -18095,7 +18159,7 @@ SELECT pg_catalog.setval('public.django_countdown_sitecountdown_id_seq', 1, fals
 -- Name: django_migrations_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
-SELECT pg_catalog.setval('public.django_migrations_id_seq', 962, true);
+SELECT pg_catalog.setval('public.django_migrations_id_seq', 1048, true);
 
 
 --
@@ -18326,7 +18390,7 @@ SELECT pg_catalog.setval('public.formdefaults_formfielddefaultvalue_id_seq', 42,
 -- Name: formdefaults_formfieldrepresentation_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
-SELECT pg_catalog.setval('public.formdefaults_formfieldrepresentation_id_seq', 57, true);
+SELECT pg_catalog.setval('public.formdefaults_formfieldrepresentation_id_seq', 72, true);
 
 
 --
@@ -18397,6 +18461,13 @@ SELECT pg_catalog.setval('public.import_polon_wierszimportuplikupolon_id_seq', 1
 --
 
 SELECT pg_catalog.setval('public.import_pracownikow_importpracownikowrow_id_seq', 1, false);
+
+
+--
+-- Name: import_punktacji_zrodel_wierszimportupunktacjizrodel_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
+--
+
+SELECT pg_catalog.setval('public.import_punktacji_zrodel_wierszimportupunktacjizrodel_id_seq', 1, false);
 
 
 --
@@ -18694,31 +18765,17 @@ SELECT pg_catalog.setval('public.reversion_version_id_seq', 1, false);
 
 
 --
--- Name: rozbieznosci_if_ignorujrozbieznoscif_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
+-- Name: rozbieznosci_ignorowanarozbieznosc_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
-SELECT pg_catalog.setval('public.rozbieznosci_if_ignorujrozbieznoscif_id_seq', 1, false);
-
-
---
--- Name: rozbieznosci_if_rozbieznosciiflog_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
---
-
-SELECT pg_catalog.setval('public.rozbieznosci_if_rozbieznosciiflog_id_seq', 1, false);
+SELECT pg_catalog.setval('public.rozbieznosci_ignorowanarozbieznosc_id_seq', 1, false);
 
 
 --
--- Name: rozbieznosci_pk_ignorujrozbieznoscpk_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
+-- Name: rozbieznosci_rozbieznosclog_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
-SELECT pg_catalog.setval('public.rozbieznosci_pk_ignorujrozbieznoscpk_id_seq', 1, false);
-
-
---
--- Name: rozbieznosci_pk_rozbieznoscipklog_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
---
-
-SELECT pg_catalog.setval('public.rozbieznosci_pk_rozbieznoscipklog_id_seq', 1, false);
+SELECT pg_catalog.setval('public.rozbieznosci_rozbieznosclog_id_seq', 1, false);
 
 
 --
@@ -19028,6 +19085,22 @@ ALTER TABLE ONLY public.bpp_bppmultiseekvisibility
 
 ALTER TABLE ONLY public.bpp_bppmultiseekvisibility
     ADD CONSTRAINT bpp_bppmultiseekvisibility_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: bpp_bppuser_accessible_uczelnie bpp_bppuser_accessible_u_bppuser_id_uczelnia_id_e72c4f8d_uniq; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.bpp_bppuser_accessible_uczelnie
+    ADD CONSTRAINT bpp_bppuser_accessible_u_bppuser_id_uczelnia_id_e72c4f8d_uniq UNIQUE (bppuser_id, uczelnia_id);
+
+
+--
+-- Name: bpp_bppuser_accessible_uczelnie bpp_bppuser_accessible_uczelnie_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.bpp_bppuser_accessible_uczelnie
+    ADD CONSTRAINT bpp_bppuser_accessible_uczelnie_pkey PRIMARY KEY (id);
 
 
 --
@@ -19343,10 +19416,10 @@ ALTER TABLE ONLY public.bpp_jednostka
 
 
 --
--- Name: bpp_jednostka_wydzial bpp_jednostka_wydzial_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: bpp_jednostka_rodzic bpp_jednostka_wydzial_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
-ALTER TABLE ONLY public.bpp_jednostka_wydzial
+ALTER TABLE ONLY public.bpp_jednostka_rodzic
     ADD CONSTRAINT bpp_jednostka_wydzial_pkey PRIMARY KEY (id);
 
 
@@ -19759,6 +19832,22 @@ ALTER TABLE ONLY public.bpp_rodzaj_zrodla
 
 
 --
+-- Name: bpp_rodzajjednostki bpp_rodzajjednostki_nazwa_key; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.bpp_rodzajjednostki
+    ADD CONSTRAINT bpp_rodzajjednostki_nazwa_key UNIQUE (nazwa);
+
+
+--
+-- Name: bpp_rodzajjednostki bpp_rodzajjednostki_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.bpp_rodzajjednostki
+    ADD CONSTRAINT bpp_rodzajjednostki_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: bpp_rzeczownik bpp_rzeczownik_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -19959,6 +20048,14 @@ ALTER TABLE ONLY public.bpp_uczelnia
 
 
 --
+-- Name: bpp_uczelnia bpp_uczelnia_site_id_key; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.bpp_uczelnia
+    ADD CONSTRAINT bpp_uczelnia_site_id_key UNIQUE (site_id);
+
+
+--
 -- Name: bpp_uczelnia bpp_uczelnia_skrot_key; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -20103,6 +20200,22 @@ ALTER TABLE ONLY public.bpp_wydawnictwo_ciagle_streszczenie
 
 
 --
+-- Name: bpp_wydawnictwo_ciagle_tytul bpp_wydawnictwo_ciagle_t_rekord_id_kod_jezyka_pbn_3d4c0790_uniq; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.bpp_wydawnictwo_ciagle_tytul
+    ADD CONSTRAINT bpp_wydawnictwo_ciagle_t_rekord_id_kod_jezyka_pbn_3d4c0790_uniq UNIQUE (rekord_id, kod_jezyka_pbn);
+
+
+--
+-- Name: bpp_wydawnictwo_ciagle_tytul bpp_wydawnictwo_ciagle_tytul_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.bpp_wydawnictwo_ciagle_tytul
+    ADD CONSTRAINT bpp_wydawnictwo_ciagle_tytul_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: bpp_wydawnictwo_ciagle_zewnetrzna_baza_danych bpp_wydawnictwo_ciagle_zewnetrzna_baza_danych_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -20183,59 +20296,27 @@ ALTER TABLE ONLY public.bpp_wydawnictwo_zwarte_streszczenie
 
 
 --
+-- Name: bpp_wydawnictwo_zwarte_tytul bpp_wydawnictwo_zwarte_t_rekord_id_kod_jezyka_pbn_f46985b2_uniq; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.bpp_wydawnictwo_zwarte_tytul
+    ADD CONSTRAINT bpp_wydawnictwo_zwarte_t_rekord_id_kod_jezyka_pbn_f46985b2_uniq UNIQUE (rekord_id, kod_jezyka_pbn);
+
+
+--
+-- Name: bpp_wydawnictwo_zwarte_tytul bpp_wydawnictwo_zwarte_tytul_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.bpp_wydawnictwo_zwarte_tytul
+    ADD CONSTRAINT bpp_wydawnictwo_zwarte_tytul_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: bpp_wydawnictwo_zwarte_zewnetrzna_baza_danych bpp_wydawnictwo_zwarte_zewnetrzna_baza_danych_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.bpp_wydawnictwo_zwarte_zewnetrzna_baza_danych
     ADD CONSTRAINT bpp_wydawnictwo_zwarte_zewnetrzna_baza_danych_pkey PRIMARY KEY (id);
-
-
---
--- Name: bpp_wydzial bpp_wydzial_nazwa_key; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.bpp_wydzial
-    ADD CONSTRAINT bpp_wydzial_nazwa_key UNIQUE (nazwa);
-
-
---
--- Name: bpp_wydzial bpp_wydzial_pbn_id_4309fe3e_uniq; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.bpp_wydzial
-    ADD CONSTRAINT bpp_wydzial_pbn_id_4309fe3e_uniq UNIQUE (pbn_id);
-
-
---
--- Name: bpp_wydzial bpp_wydzial_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.bpp_wydzial
-    ADD CONSTRAINT bpp_wydzial_pkey PRIMARY KEY (id);
-
-
---
--- Name: bpp_wydzial bpp_wydzial_skrot_key; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.bpp_wydzial
-    ADD CONSTRAINT bpp_wydzial_skrot_key UNIQUE (skrot);
-
-
---
--- Name: bpp_wydzial bpp_wydzial_skrot_nazwy_key; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.bpp_wydzial
-    ADD CONSTRAINT bpp_wydzial_skrot_nazwy_key UNIQUE (skrot_nazwy);
-
-
---
--- Name: bpp_wydzial bpp_wydzial_slug_key; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.bpp_wydzial
-    ADD CONSTRAINT bpp_wydzial_slug_key UNIQUE (slug);
 
 
 --
@@ -20484,6 +20565,22 @@ ALTER TABLE ONLY public.deduplikator_zrodel_notaduplicate
 
 ALTER TABLE ONLY public.deduplikator_zrodel_notaduplicate
     ADD CONSTRAINT deduplikator_zrodel_notaduplicate_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: deduplikator_zrodel_scanzrodelforduplicates deduplikator_zrodel_scanzrodelforduplicates_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.deduplikator_zrodel_scanzrodelforduplicates
+    ADD CONSTRAINT deduplikator_zrodel_scanzrodelforduplicates_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: deduplikator_zrodel_sourceduplicatecandidate deduplikator_zrodel_sourceduplicatecandidate_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.deduplikator_zrodel_sourceduplicatecandidate
+    ADD CONSTRAINT deduplikator_zrodel_sourceduplicatecandidate_pkey PRIMARY KEY (id);
 
 
 --
@@ -20751,19 +20848,19 @@ ALTER TABLE ONLY public.ewaluacja_liczba_n_dyscyplinanieraportowana
 
 
 --
--- Name: ewaluacja_liczba_n_iloscudzialowdlaautorazarok ewaluacja_liczba_n_ilosc_autor_id_dyscyplina_nauk_0bff6b3b_uniq; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: ewaluacja_liczba_n_iloscudzialowdlaautorazarok ewaluacja_liczba_n_ilosc_autor_id_dyscyplina_nauk_708f3d00_uniq; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.ewaluacja_liczba_n_iloscudzialowdlaautorazarok
-    ADD CONSTRAINT ewaluacja_liczba_n_ilosc_autor_id_dyscyplina_nauk_0bff6b3b_uniq UNIQUE (autor_id, dyscyplina_naukowa_id, rok);
+    ADD CONSTRAINT ewaluacja_liczba_n_ilosc_autor_id_dyscyplina_nauk_708f3d00_uniq UNIQUE (autor_id, dyscyplina_naukowa_id, rok, uczelnia_id);
 
 
 --
--- Name: ewaluacja_liczba_n_iloscudzialowdlaautorazacalosc ewaluacja_liczba_n_ilosc_autor_id_dyscyplina_nauk_29c1cd4c_uniq; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: ewaluacja_liczba_n_iloscudzialowdlaautorazacalosc ewaluacja_liczba_n_ilosc_autor_id_dyscyplina_nauk_e8335630_uniq; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.ewaluacja_liczba_n_iloscudzialowdlaautorazacalosc
-    ADD CONSTRAINT ewaluacja_liczba_n_ilosc_autor_id_dyscyplina_nauk_29c1cd4c_uniq UNIQUE (autor_id, dyscyplina_naukowa_id, rodzaj_autora_id);
+    ADD CONSTRAINT ewaluacja_liczba_n_ilosc_autor_id_dyscyplina_nauk_e8335630_uniq UNIQUE (autor_id, dyscyplina_naukowa_id, rodzaj_autora_id, uczelnia_id);
 
 
 --
@@ -20799,11 +20896,11 @@ ALTER TABLE ONLY public.ewaluacja_liczba_n_liczbandlauczelni
 
 
 --
--- Name: ewaluacja_metryki_metrykaautora ewaluacja_metryki_metryk_autor_id_dyscyplina_nauk_34bddddc_uniq; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: ewaluacja_metryki_metrykaautora ewaluacja_metryki_metryk_autor_id_dyscyplina_nauk_6b652e42_uniq; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.ewaluacja_metryki_metrykaautora
-    ADD CONSTRAINT ewaluacja_metryki_metryk_autor_id_dyscyplina_nauk_34bddddc_uniq UNIQUE (autor_id, dyscyplina_naukowa_id);
+    ADD CONSTRAINT ewaluacja_metryki_metryk_autor_id_dyscyplina_nauk_6b652e42_uniq UNIQUE (autor_id, dyscyplina_naukowa_id, uczelnia_id);
 
 
 --
@@ -20820,6 +20917,14 @@ ALTER TABLE ONLY public.ewaluacja_metryki_metrykaautora
 
 ALTER TABLE ONLY public.ewaluacja_metryki_statusgenerowania
     ADD CONSTRAINT ewaluacja_metryki_statusgenerowania_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: ewaluacja_metryki_statusgenerowania ewaluacja_metryki_statusgenerowania_uczelnia_id_key; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.ewaluacja_metryki_statusgenerowania
+    ADD CONSTRAINT ewaluacja_metryki_statusgenerowania_uczelnia_id_key UNIQUE (uczelnia_id);
 
 
 --
@@ -21196,6 +21301,22 @@ ALTER TABLE ONLY public.import_pracownikow_importpracownikow
 
 ALTER TABLE ONLY public.import_pracownikow_importpracownikowrow
     ADD CONSTRAINT import_pracownikow_importpracownikowrow_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: import_punktacji_zrodel_importpunktacjizrodel import_punktacji_zrodel_importpunktacjizrodel_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.import_punktacji_zrodel_importpunktacjizrodel
+    ADD CONSTRAINT import_punktacji_zrodel_importpunktacjizrodel_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: import_punktacji_zrodel_wierszimportupunktacjizrodel import_punktacji_zrodel_wierszimportupunktacjizrodel_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.import_punktacji_zrodel_wierszimportupunktacjizrodel
+    ADD CONSTRAINT import_punktacji_zrodel_wierszimportupunktacjizrodel_pkey PRIMARY KEY (id);
 
 
 --
@@ -21823,35 +21944,27 @@ ALTER TABLE ONLY public.reversion_version
 
 
 --
--- Name: rozbieznosci_if_ignorujrozbieznoscif rozbieznosci_if_ignorujrozbieznoscif_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: rozbieznosci_ignorowanarozbieznosc rozbieznosci_ignorowanar_metryka_rekord_id_70ecc3ef_uniq; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
-ALTER TABLE ONLY public.rozbieznosci_if_ignorujrozbieznoscif
-    ADD CONSTRAINT rozbieznosci_if_ignorujrozbieznoscif_pkey PRIMARY KEY (id);
-
-
---
--- Name: rozbieznosci_if_rozbieznosciiflog rozbieznosci_if_rozbieznosciiflog_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.rozbieznosci_if_rozbieznosciiflog
-    ADD CONSTRAINT rozbieznosci_if_rozbieznosciiflog_pkey PRIMARY KEY (id);
+ALTER TABLE ONLY public.rozbieznosci_ignorowanarozbieznosc
+    ADD CONSTRAINT rozbieznosci_ignorowanar_metryka_rekord_id_70ecc3ef_uniq UNIQUE (metryka, rekord_id);
 
 
 --
--- Name: rozbieznosci_pk_ignorujrozbieznoscpk rozbieznosci_pk_ignorujrozbieznoscpk_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: rozbieznosci_ignorowanarozbieznosc rozbieznosci_ignorowanarozbieznosc_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
-ALTER TABLE ONLY public.rozbieznosci_pk_ignorujrozbieznoscpk
-    ADD CONSTRAINT rozbieznosci_pk_ignorujrozbieznoscpk_pkey PRIMARY KEY (id);
+ALTER TABLE ONLY public.rozbieznosci_ignorowanarozbieznosc
+    ADD CONSTRAINT rozbieznosci_ignorowanarozbieznosc_pkey PRIMARY KEY (id);
 
 
 --
--- Name: rozbieznosci_pk_rozbieznoscipklog rozbieznosci_pk_rozbieznoscipklog_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: rozbieznosci_rozbieznosclog rozbieznosci_rozbieznosclog_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
-ALTER TABLE ONLY public.rozbieznosci_pk_rozbieznoscipklog
-    ADD CONSTRAINT rozbieznosci_pk_rozbieznoscipklog_pkey PRIMARY KEY (id);
+ALTER TABLE ONLY public.rozbieznosci_rozbieznosclog
+    ADD CONSTRAINT rozbieznosci_rozbieznosclog_pkey PRIMARY KEY (id);
 
 
 --
@@ -21967,10 +22080,10 @@ ALTER TABLE ONLY public.test_bpp_testreport
 
 
 --
--- Name: bpp_jednostka_wydzial unikalny_zakres_dat_dla_jednostki; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: bpp_jednostka_rodzic unikalny_zakres_dat_dla_jednostki; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
-ALTER TABLE ONLY public.bpp_jednostka_wydzial
+ALTER TABLE ONLY public.bpp_jednostka_rodzic
     ADD CONSTRAINT unikalny_zakres_dat_dla_jednostki EXCLUDE USING gist (jednostka_id WITH =, daterange(COALESCE(od, '0001-01-01'::date), COALESCE("do", '9999-12-31'::date), '[]'::text) WITH &&);
 
 
@@ -22508,6 +22621,20 @@ CREATE INDEX bpp_bppmultiseekvisibility_name_0e7384b4_like ON public.bpp_bppmult
 
 
 --
+-- Name: bpp_bppuser_accessible_uczelnie_bppuser_id_a1801a12; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX bpp_bppuser_accessible_uczelnie_bppuser_id_a1801a12 ON public.bpp_bppuser_accessible_uczelnie USING btree (bppuser_id);
+
+
+--
+-- Name: bpp_bppuser_accessible_uczelnie_uczelnia_id_01a82aca; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX bpp_bppuser_accessible_uczelnie_uczelnia_id_01a82aca ON public.bpp_bppuser_accessible_uczelnie USING btree (uczelnia_id);
+
+
+--
 -- Name: bpp_bppuser_adnotacje_91e1bcaf; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -22571,6 +22698,20 @@ CREATE INDEX bpp_bppuser_username_b4ec0907_like ON public.bpp_bppuser USING btre
 
 
 --
+-- Name: bpp_cache_p_rekord__479a7e_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX bpp_cache_p_rekord__479a7e_idx ON public.bpp_cache_punktacja_dyscypliny USING btree (rekord_id, uczelnia_id, dyscyplina_id);
+
+
+--
+-- Name: bpp_cache_p_uczelni_65b805_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX bpp_cache_p_uczelni_65b805_idx ON public.bpp_cache_punktacja_dyscypliny USING btree (uczelnia_id, dyscyplina_id);
+
+
+--
 -- Name: bpp_cache_punktacja_autora_autor_id_47353964; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -22610,6 +22751,13 @@ CREATE INDEX bpp_cache_punktacja_dyscypliny_dyscyplina_id_0b49cc09 ON public.bpp
 --
 
 CREATE INDEX bpp_cache_punktacja_dyscypliny_rekord_id_b3b225a1 ON public.bpp_cache_punktacja_dyscypliny USING btree (rekord_id);
+
+
+--
+-- Name: bpp_cache_punktacja_dyscypliny_uczelnia_id_08b9e1c6; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX bpp_cache_punktacja_dyscypliny_uczelnia_id_08b9e1c6 ON public.bpp_cache_punktacja_dyscypliny USING btree (uczelnia_id);
 
 
 --
@@ -22795,17 +22943,17 @@ CREATE INDEX bpp_jednostka_pbn_uid_id_9522c4e1_like ON public.bpp_jednostka USIN
 
 
 --
--- Name: bpp_jednostka_rodzaj_jednostki_06af5235; Type: INDEX; Schema: public; Owner: -
+-- Name: bpp_jednostka_rodzaj_id_289bf80d; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX bpp_jednostka_rodzaj_jednostki_06af5235 ON public.bpp_jednostka USING btree (rodzaj_jednostki);
+CREATE INDEX bpp_jednostka_rodzaj_id_289bf80d ON public.bpp_jednostka USING btree (rodzaj_id);
 
 
 --
--- Name: bpp_jednostka_rodzaj_jednostki_06af5235_like; Type: INDEX; Schema: public; Owner: -
+-- Name: bpp_jednostka_rodzic_parent_id_86359c7a; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX bpp_jednostka_rodzaj_jednostki_06af5235_like ON public.bpp_jednostka USING btree (rodzaj_jednostki varchar_pattern_ops);
+CREATE INDEX bpp_jednostka_rodzic_parent_id_86359c7a ON public.bpp_jednostka_rodzic USING btree (parent_id);
 
 
 --
@@ -22854,7 +23002,7 @@ CREATE INDEX bpp_jednostka_uczelnia_id_3fb75ebc ON public.bpp_jednostka USING bt
 -- Name: bpp_jednostka_wchodzi_do_raportow_981b9615; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX bpp_jednostka_wchodzi_do_raportow_981b9615 ON public.bpp_jednostka USING btree (wchodzi_do_raportow);
+CREATE INDEX bpp_jednostka_wchodzi_do_raportow_981b9615 ON public.bpp_jednostka USING btree (wchodzi_do_rankingu_autorow);
 
 
 --
@@ -22875,14 +23023,7 @@ CREATE INDEX bpp_jednostka_wydzial_id_cc45658c ON public.bpp_jednostka USING btr
 -- Name: bpp_jednostka_wydzial_jednostka_id_7a8739e6; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX bpp_jednostka_wydzial_jednostka_id_7a8739e6 ON public.bpp_jednostka_wydzial USING btree (jednostka_id);
-
-
---
--- Name: bpp_jednostka_wydzial_wydzial_id_1ffaafb1; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX bpp_jednostka_wydzial_wydzial_id_1ffaafb1 ON public.bpp_jednostka_wydzial USING btree (wydzial_id);
+CREATE INDEX bpp_jednostka_wydzial_jednostka_id_7a8739e6 ON public.bpp_jednostka_rodzic USING btree (jednostka_id);
 
 
 --
@@ -24132,6 +24273,13 @@ CREATE INDEX bpp_rodzaj_zrodla_nazwa_262e84fe_like ON public.bpp_rodzaj_zrodla U
 
 
 --
+-- Name: bpp_rodzajjednostki_nazwa_2cfef096_like; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX bpp_rodzajjednostki_nazwa_2cfef096_like ON public.bpp_rodzajjednostki USING btree (nazwa varchar_pattern_ops);
+
+
+--
 -- Name: bpp_rzeczownik_uid_7f53a4d8_like; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -24664,6 +24812,13 @@ CREATE INDEX bpp_wydawnictwo_ciagle_tytul_f613e096_like ON public.bpp_wydawnictw
 
 
 --
+-- Name: bpp_wydawnictwo_ciagle_tytul_jezyk_id_190d9149; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX bpp_wydawnictwo_ciagle_tytul_jezyk_id_190d9149 ON public.bpp_wydawnictwo_ciagle_tytul USING btree (jezyk_id);
+
+
+--
 -- Name: bpp_wydawnictwo_ciagle_tytul_oryginalny_af2db9b3; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -24689,6 +24844,13 @@ CREATE INDEX bpp_wydawnictwo_ciagle_tytul_oryginalny_sort_c488a6c5 ON public.bpp
 --
 
 CREATE INDEX bpp_wydawnictwo_ciagle_tytul_oryginalny_sort_c488a6c5_like ON public.bpp_wydawnictwo_ciagle USING btree (tytul_oryginalny_sort text_pattern_ops);
+
+
+--
+-- Name: bpp_wydawnictwo_ciagle_tytul_rekord_id_fcceabd4; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX bpp_wydawnictwo_ciagle_tytul_rekord_id_fcceabd4 ON public.bpp_wydawnictwo_ciagle_tytul USING btree (rekord_id);
 
 
 --
@@ -25056,6 +25218,13 @@ CREATE INDEX bpp_wydawnictwo_zwarte_tytul_19e05495_like ON public.bpp_wydawnictw
 
 
 --
+-- Name: bpp_wydawnictwo_zwarte_tytul_jezyk_id_2518c2ce; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX bpp_wydawnictwo_zwarte_tytul_jezyk_id_2518c2ce ON public.bpp_wydawnictwo_zwarte_tytul USING btree (jezyk_id);
+
+
+--
 -- Name: bpp_wydawnictwo_zwarte_tytul_oryginalny_d69f4bfd; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -25081,6 +25250,13 @@ CREATE INDEX bpp_wydawnictwo_zwarte_tytul_oryginalny_sort_352c39f1 ON public.bpp
 --
 
 CREATE INDEX bpp_wydawnictwo_zwarte_tytul_oryginalny_sort_352c39f1_like ON public.bpp_wydawnictwo_zwarte USING btree (tytul_oryginalny_sort text_pattern_ops);
+
+
+--
+-- Name: bpp_wydawnictwo_zwarte_tytul_rekord_id_18214bf2; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX bpp_wydawnictwo_zwarte_tytul_rekord_id_18214bf2 ON public.bpp_wydawnictwo_zwarte_tytul USING btree (rekord_id);
 
 
 --
@@ -25137,62 +25313,6 @@ CREATE INDEX bpp_wydawnictwo_zwarte_zew_rekord_id_6faf7e67 ON public.bpp_wydawni
 --
 
 CREATE INDEX bpp_wydawnictwo_zwarte_zewnetrzna_baza_danych_baza_id_9f21affa ON public.bpp_wydawnictwo_zwarte_zewnetrzna_baza_danych USING btree (baza_id);
-
-
---
--- Name: bpp_wydzial_adnotacje_1633ee2b; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX bpp_wydzial_adnotacje_1633ee2b ON public.bpp_wydzial USING btree (adnotacje);
-
-
---
--- Name: bpp_wydzial_adnotacje_1633ee2b_like; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX bpp_wydzial_adnotacje_1633ee2b_like ON public.bpp_wydzial USING btree (adnotacje text_pattern_ops);
-
-
---
--- Name: bpp_wydzial_nazwa_f7fff18a_like; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX bpp_wydzial_nazwa_f7fff18a_like ON public.bpp_wydzial USING btree (nazwa varchar_pattern_ops);
-
-
---
--- Name: bpp_wydzial_ostatnio_zmieniony_37c3c6e0; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX bpp_wydzial_ostatnio_zmieniony_37c3c6e0 ON public.bpp_wydzial USING btree (ostatnio_zmieniony);
-
-
---
--- Name: bpp_wydzial_skrot_23c9b4c2_like; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX bpp_wydzial_skrot_23c9b4c2_like ON public.bpp_wydzial USING btree (skrot varchar_pattern_ops);
-
-
---
--- Name: bpp_wydzial_skrot_nazwy_88c53af9_like; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX bpp_wydzial_skrot_nazwy_88c53af9_like ON public.bpp_wydzial USING btree (skrot_nazwy varchar_pattern_ops);
-
-
---
--- Name: bpp_wydzial_slug_1dea4904_like; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX bpp_wydzial_slug_1dea4904_like ON public.bpp_wydzial USING btree (slug varchar_pattern_ops);
-
-
---
--- Name: bpp_wydzial_uczelnia_id_88a85869; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX bpp_wydzial_uczelnia_id_88a85869 ON public.bpp_wydzial USING btree (uczelnia_id);
 
 
 --
@@ -25294,6 +25414,13 @@ CREATE INDEX bpp_zrodlo_nazwa_fbd57d8f_like ON public.bpp_zrodlo USING btree (na
 
 
 --
+-- Name: bpp_zrodlo_nazwa_trgm; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX bpp_zrodlo_nazwa_trgm ON public.bpp_zrodlo USING gin (nazwa public.gin_trgm_ops);
+
+
+--
 -- Name: bpp_zrodlo_openaccess_licencja_id_72b1144c; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -25389,6 +25516,13 @@ CREATE INDEX bpp_zrodlo_skrot_nazwy_alternatywnej_c304d4ce ON public.bpp_zrodlo 
 --
 
 CREATE INDEX bpp_zrodlo_skrot_nazwy_alternatywnej_c304d4ce_like ON public.bpp_zrodlo USING btree (skrot_nazwy_alternatywnej varchar_pattern_ops);
+
+
+--
+-- Name: bpp_zrodlo_skrot_trgm; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX bpp_zrodlo_skrot_trgm ON public.bpp_zrodlo USING gin (skrot public.gin_trgm_ops);
 
 
 --
@@ -25508,6 +25642,13 @@ CREATE INDEX deduplikato_origina_a6cdcb_idx ON public.deduplikator_publikacji_pu
 --
 
 CREATE INDEX deduplikato_priorit_39f293_idx ON public.deduplikator_autorow_duplicatecandidate USING btree (priority, confidence_score);
+
+
+--
+-- Name: deduplikato_scan_id_7d8032_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX deduplikato_scan_id_7d8032_idx ON public.deduplikator_zrodel_sourceduplicatecandidate USING btree (scan_id, status);
 
 
 --
@@ -25777,31 +25918,59 @@ CREATE INDEX deduplikator_zrodel_notaduplicate_zrodlo_id_e5649784 ON public.dedu
 
 
 --
--- Name: denorm_dirtyinstance_content_type_id_4f33d78d; Type: INDEX; Schema: public; Owner: -
+-- Name: deduplikator_zrodel_scanzrodelforduplicates_owner_id_c23e1c07; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX denorm_dirtyinstance_content_type_id_4f33d78d ON public.denorm_dirtyinstance USING btree (content_type_id);
-
-
---
--- Name: denorm_dirtyinstance_created_on_2760eaff; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX denorm_dirtyinstance_created_on_2760eaff ON public.denorm_dirtyinstance USING btree (created_on);
+CREATE INDEX deduplikator_zrodel_scanzrodelforduplicates_owner_id_c23e1c07 ON public.deduplikator_zrodel_scanzrodelforduplicates USING btree (owner_id);
 
 
 --
--- Name: denorm_dirtyinstance_func_name_7326ac95; Type: INDEX; Schema: public; Owner: -
+-- Name: deduplikator_zrodel_sour_status_7e2698d9_like; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX denorm_dirtyinstance_func_name_7326ac95 ON public.denorm_dirtyinstance USING btree (func_name);
+CREATE INDEX deduplikator_zrodel_sour_status_7e2698d9_like ON public.deduplikator_zrodel_sourceduplicatecandidate USING btree (status varchar_pattern_ops);
 
 
 --
--- Name: denorm_dirtyinstance_func_name_7326ac95_like; Type: INDEX; Schema: public; Owner: -
+-- Name: deduplikator_zrodel_source_confidence_score_e0448e29; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX denorm_dirtyinstance_func_name_7326ac95_like ON public.denorm_dirtyinstance USING btree (func_name text_pattern_ops);
+CREATE INDEX deduplikator_zrodel_source_confidence_score_e0448e29 ON public.deduplikator_zrodel_sourceduplicatecandidate USING btree (confidence_score);
+
+
+--
+-- Name: deduplikator_zrodel_source_duplicate_zrodlo_id_62c63e3b; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX deduplikator_zrodel_source_duplicate_zrodlo_id_62c63e3b ON public.deduplikator_zrodel_sourceduplicatecandidate USING btree (duplicate_zrodlo_id);
+
+
+--
+-- Name: deduplikator_zrodel_source_main_zrodlo_id_34357463; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX deduplikator_zrodel_source_main_zrodlo_id_34357463 ON public.deduplikator_zrodel_sourceduplicatecandidate USING btree (main_zrodlo_id);
+
+
+--
+-- Name: deduplikator_zrodel_source_reviewed_by_id_62e01970; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX deduplikator_zrodel_source_reviewed_by_id_62e01970 ON public.deduplikator_zrodel_sourceduplicatecandidate USING btree (reviewed_by_id);
+
+
+--
+-- Name: deduplikator_zrodel_sourceduplicatecandidate_scan_id_ad47bac8; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX deduplikator_zrodel_sourceduplicatecandidate_scan_id_ad47bac8 ON public.deduplikator_zrodel_sourceduplicatecandidate USING btree (scan_id);
+
+
+--
+-- Name: deduplikator_zrodel_sourceduplicatecandidate_status_7e2698d9; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX deduplikator_zrodel_sourceduplicatecandidate_status_7e2698d9 ON public.deduplikator_zrodel_sourceduplicatecandidate USING btree (status);
 
 
 --
@@ -26155,6 +26324,20 @@ CREATE INDEX ewaluacja_liczba_n_iloscud_rodzaj_autora_id_af124ed8 ON public.ewal
 
 
 --
+-- Name: ewaluacja_liczba_n_iloscud_uczelnia_id_47fd7470; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ewaluacja_liczba_n_iloscud_uczelnia_id_47fd7470 ON public.ewaluacja_liczba_n_iloscudzialowdlaautorazarok USING btree (uczelnia_id);
+
+
+--
+-- Name: ewaluacja_liczba_n_iloscud_uczelnia_id_d99d6f1a; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ewaluacja_liczba_n_iloscud_uczelnia_id_d99d6f1a ON public.ewaluacja_liczba_n_iloscudzialowdlaautorazacalosc USING btree (uczelnia_id);
+
+
+--
 -- Name: ewaluacja_liczba_n_liczban_dyscyplina_naukowa_id_2e8e6e9e; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -26180,6 +26363,20 @@ CREATE INDEX ewaluacja_m_jednost_7cbd08_idx ON public.ewaluacja_metryki_metrykaa
 --
 
 CREATE INDEX ewaluacja_m_srednia_f39e21_idx ON public.ewaluacja_metryki_metrykaautora USING btree (srednia_za_slot_nazbierana DESC);
+
+
+--
+-- Name: ewaluacja_m_uczelni_1e8d4d_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ewaluacja_m_uczelni_1e8d4d_idx ON public.ewaluacja_metryki_metrykaautora USING btree (uczelnia_id, srednia_za_slot_nazbierana DESC);
+
+
+--
+-- Name: ewaluacja_metryki_metrykaautora_uczelnia_id_f2a91bd0; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ewaluacja_metryki_metrykaautora_uczelnia_id_f2a91bd0 ON public.ewaluacja_metryki_metrykaautora USING btree (uczelnia_id);
 
 
 --
@@ -26736,10 +26933,10 @@ CREATE INDEX import_dyscyplin_import_dyscyplin_row_subdyscyplina_c0088e7e ON pub
 
 
 --
--- Name: import_dyscyplin_import_dyscyplin_row_wydzial_id_id_1255b496; Type: INDEX; Schema: public; Owner: -
+-- Name: import_dyscyplin_import_dyscyplin_row_wydzial_id_3c6fce7a; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX import_dyscyplin_import_dyscyplin_row_wydzial_id_id_1255b496 ON public.import_dyscyplin_import_dyscyplin_row USING btree (wydzial_id);
+CREATE INDEX import_dyscyplin_import_dyscyplin_row_wydzial_id_3c6fce7a ON public.import_dyscyplin_import_dyscyplin_row USING btree (wydzial_id);
 
 
 --
@@ -26803,6 +27000,13 @@ CREATE INDEX import_polon_importplikuabsencji_owner_id_5d348906 ON public.import
 --
 
 CREATE INDEX import_polon_importplikupolon_owner_id_2aa3b629 ON public.import_polon_importplikupolon USING btree (owner_id);
+
+
+--
+-- Name: import_polon_importplikupolon_uczelnia_id_5801976f; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX import_polon_importplikupolon_uczelnia_id_5801976f ON public.import_polon_importplikupolon USING btree (uczelnia_id);
 
 
 --
@@ -26915,6 +27119,27 @@ CREATE INDEX import_pracownikow_importpracownikowrow_parent_id_98db1a70 ON publi
 --
 
 CREATE INDEX import_pracownikow_importpracownikowrow_tytul_id_6feb1c49 ON public.import_pracownikow_importpracownikowrow USING btree (tytul_id);
+
+
+--
+-- Name: import_punktacji_zrodel_importpunktacjizrodel_owner_id_2ab3d513; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX import_punktacji_zrodel_importpunktacjizrodel_owner_id_2ab3d513 ON public.import_punktacji_zrodel_importpunktacjizrodel USING btree (owner_id);
+
+
+--
+-- Name: import_punktacji_zrodel_wi_parent_id_f8040163; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX import_punktacji_zrodel_wi_parent_id_f8040163 ON public.import_punktacji_zrodel_wierszimportupunktacjizrodel USING btree (parent_id);
+
+
+--
+-- Name: import_punktacji_zrodel_wi_zrodlo_id_9e2de144; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX import_punktacji_zrodel_wi_zrodlo_id_9e2de144 ON public.import_punktacji_zrodel_wierszimportupunktacjizrodel USING btree (zrodlo_id);
 
 
 --
@@ -27048,6 +27273,13 @@ CREATE INDEX importer_publikacji_importsession_modified_by_id_de3231d7 ON public
 --
 
 CREATE INDEX importer_publikacji_importsession_typ_kbn_id_bb86557c ON public.importer_publikacji_importsession USING btree (typ_kbn_id);
+
+
+--
+-- Name: importer_publikacji_importsession_uczelnia_id_7026de60; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX importer_publikacji_importsession_uczelnia_id_7026de60 ON public.importer_publikacji_importsession USING btree (uczelnia_id);
 
 
 --
@@ -27576,6 +27808,13 @@ CREATE INDEX "pbn_api_osobazinstytucji_personId_id_ce13bff8_like" ON public.pbn_
 
 
 --
+-- Name: pbn_api_osobazinstytucji_uczelnia_id_7d40e8e4; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX pbn_api_osobazinstytucji_uczelnia_id_7d40e8e4 ON public.pbn_api_osobazinstytucji USING btree (uczelnia_id);
+
+
+--
 -- Name: pbn_api_oswiadczenieinstytucji_institutionId_id_9253ed01; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -27615,6 +27854,13 @@ CREATE INDEX "pbn_api_oswiadczenieinstytucji_publicationId_id_e4bb095e" ON publi
 --
 
 CREATE INDEX "pbn_api_oswiadczenieinstytucji_publicationId_id_e4bb095e_like" ON public.pbn_api_oswiadczenieinstytucji USING btree ("publicationId_id" varchar_pattern_ops);
+
+
+--
+-- Name: pbn_api_oswiadczenieinstytucji_uczelnia_id_8171fd87; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX pbn_api_oswiadczenieinstytucji_uczelnia_id_8171fd87 ON public.pbn_api_oswiadczenieinstytucji USING btree (uczelnia_id);
 
 
 --
@@ -27877,6 +28123,13 @@ CREATE INDEX "pbn_api_publikacjainstytucji_publicationId_id_b0df4281_like" ON pu
 
 
 --
+-- Name: pbn_api_publikacjainstytucji_uczelnia_id_ea6a8d95; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX pbn_api_publikacjainstytucji_uczelnia_id_ea6a8d95 ON public.pbn_api_publikacjainstytucji USING btree (uczelnia_id);
+
+
+--
 -- Name: pbn_api_publikacjainstytucji_v2_objectId_id_ec621fa8; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -27888,6 +28141,13 @@ CREATE INDEX "pbn_api_publikacjainstytucji_v2_objectId_id_ec621fa8" ON public.pb
 --
 
 CREATE INDEX "pbn_api_publikacjainstytucji_v2_objectId_id_ec621fa8_like" ON public.pbn_api_publikacjainstytucji_v2 USING btree ("objectId_id" varchar_pattern_ops);
+
+
+--
+-- Name: pbn_api_publikacjainstytucji_v2_uczelnia_id_6deb3bd5; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX pbn_api_publikacjainstytucji_v2_uczelnia_id_6deb3bd5 ON public.pbn_api_publikacjainstytucji_v2 USING btree (uczelnia_id);
 
 
 --
@@ -28101,6 +28361,13 @@ CREATE INDEX pbn_api_sentdata_submitted_successfully_45243b95 ON public.pbn_api_
 
 
 --
+-- Name: pbn_api_sentdata_uczelnia_id_76eac6ed; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX pbn_api_sentdata_uczelnia_id_76eac6ed ON public.pbn_api_sentdata USING btree (uczelnia_id);
+
+
+--
 -- Name: pbn_api_sentdata_uploaded_okay_162bfae2; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -28161,6 +28428,13 @@ CREATE INDEX pbn_export_queue_pbn_export_queue_rodzaj_bledu_da9534bf ON public.p
 --
 
 CREATE INDEX pbn_export_queue_pbn_export_queue_rodzaj_bledu_da9534bf_like ON public.pbn_export_queue_pbn_export_queue USING btree (rodzaj_bledu varchar_pattern_ops);
+
+
+--
+-- Name: pbn_export_queue_pbn_export_queue_uczelnia_id_7632078a; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX pbn_export_queue_pbn_export_queue_uczelnia_id_7632078a ON public.pbn_export_queue_pbn_export_queue USING btree (uczelnia_id);
 
 
 --
@@ -28451,6 +28725,13 @@ CREATE INDEX raport_slotow_raportslotowuczelnia_owner_id_aa457764 ON public.rapo
 
 
 --
+-- Name: raport_slotow_raportslotowuczelnia_uczelnia_id_8a4e4291; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX raport_slotow_raportslotowuczelnia_uczelnia_id_8a4e4291 ON public.raport_slotow_raportslotowuczelnia USING btree (uczelnia_id);
+
+
+--
 -- Name: raport_slotow_raportslotowuczelniawiersz_autor_id_627d306c; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -28514,73 +28795,31 @@ CREATE INDEX reversion_version_revision_id_af9f6a9d ON public.reversion_version 
 
 
 --
--- Name: rozbieznosci_if_ignorujrozbieznoscif_content_type_id_74f8446c; Type: INDEX; Schema: public; Owner: -
+-- Name: rozbieznosci_ignorowanarozbieznosc_rekord_id_b4e503fe; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX rozbieznosci_if_ignorujrozbieznoscif_content_type_id_74f8446c ON public.rozbieznosci_if_ignorujrozbieznoscif USING btree (content_type_id);
-
-
---
--- Name: rozbieznosci_if_ignorujrozbieznoscif_object_id_3fd1f944; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX rozbieznosci_if_ignorujrozbieznoscif_object_id_3fd1f944 ON public.rozbieznosci_if_ignorujrozbieznoscif USING btree (object_id);
+CREATE INDEX rozbieznosci_ignorowanarozbieznosc_rekord_id_b4e503fe ON public.rozbieznosci_ignorowanarozbieznosc USING btree (rekord_id);
 
 
 --
--- Name: rozbieznosci_if_rozbieznosciiflog_rekord_id_57aad806; Type: INDEX; Schema: public; Owner: -
+-- Name: rozbieznosci_rozbieznosclog_rekord_id_812207d3; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX rozbieznosci_if_rozbieznosciiflog_rekord_id_57aad806 ON public.rozbieznosci_if_rozbieznosciiflog USING btree (rekord_id);
-
-
---
--- Name: rozbieznosci_if_rozbieznosciiflog_user_id_78e70cdc; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX rozbieznosci_if_rozbieznosciiflog_user_id_78e70cdc ON public.rozbieznosci_if_rozbieznosciiflog USING btree (user_id);
+CREATE INDEX rozbieznosci_rozbieznosclog_rekord_id_812207d3 ON public.rozbieznosci_rozbieznosclog USING btree (rekord_id);
 
 
 --
--- Name: rozbieznosci_if_rozbieznosciiflog_zrodlo_id_f7c28215; Type: INDEX; Schema: public; Owner: -
+-- Name: rozbieznosci_rozbieznosclog_user_id_7787df9a; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX rozbieznosci_if_rozbieznosciiflog_zrodlo_id_f7c28215 ON public.rozbieznosci_if_rozbieznosciiflog USING btree (zrodlo_id);
-
-
---
--- Name: rozbieznosci_pk_ignorujrozbieznoscpk_content_type_id_4fcc65cb; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX rozbieznosci_pk_ignorujrozbieznoscpk_content_type_id_4fcc65cb ON public.rozbieznosci_pk_ignorujrozbieznoscpk USING btree (content_type_id);
+CREATE INDEX rozbieznosci_rozbieznosclog_user_id_7787df9a ON public.rozbieznosci_rozbieznosclog USING btree (user_id);
 
 
 --
--- Name: rozbieznosci_pk_ignorujrozbieznoscpk_object_id_50312a2c; Type: INDEX; Schema: public; Owner: -
+-- Name: rozbieznosci_rozbieznosclog_zrodlo_id_44cc89e8; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX rozbieznosci_pk_ignorujrozbieznoscpk_object_id_50312a2c ON public.rozbieznosci_pk_ignorujrozbieznoscpk USING btree (object_id);
-
-
---
--- Name: rozbieznosci_pk_rozbieznoscipklog_rekord_id_d86ceac8; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX rozbieznosci_pk_rozbieznoscipklog_rekord_id_d86ceac8 ON public.rozbieznosci_pk_rozbieznoscipklog USING btree (rekord_id);
-
-
---
--- Name: rozbieznosci_pk_rozbieznoscipklog_user_id_ce2e3b4a; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX rozbieznosci_pk_rozbieznoscipklog_user_id_ce2e3b4a ON public.rozbieznosci_pk_rozbieznoscipklog USING btree (user_id);
-
-
---
--- Name: rozbieznosci_pk_rozbieznoscipklog_zrodlo_id_6d1a08e8; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX rozbieznosci_pk_rozbieznoscipklog_zrodlo_id_6d1a08e8 ON public.rozbieznosci_pk_rozbieznoscipklog USING btree (zrodlo_id);
+CREATE INDEX rozbieznosci_rozbieznosclog_zrodlo_id_44cc89e8 ON public.rozbieznosci_rozbieznosclog USING btree (zrodlo_id);
 
 
 --
@@ -28679,6 +28918,13 @@ CREATE INDEX test_bpp_testoperation_owner_id_05177fc0 ON public.test_bpp_testope
 --
 
 CREATE INDEX test_bpp_testreport_owner_id_6aa2101a ON public.test_bpp_testreport USING btree (owner_id);
+
+
+--
+-- Name: uniq_scan_unordered_pair; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX uniq_scan_unordered_pair ON public.deduplikator_zrodel_sourceduplicatecandidate USING btree (LEAST(main_zrodlo_id, duplicate_zrodlo_id), GREATEST(main_zrodlo_id, duplicate_zrodlo_id), scan_id);
 
 
 --
@@ -29122,31 +29368,17 @@ CREATE TRIGGER bpp_autor_dyscyplina_zaznacz_cache_liczba_n_trigger AFTER INSERT 
 
 
 --
+-- Name: bpp_autor_jednostka bpp_autor_jednostka_jedno_podstawowe_trig; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE CONSTRAINT TRIGGER bpp_autor_jednostka_jedno_podstawowe_trig AFTER INSERT OR UPDATE ON public.bpp_autor_jednostka DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION public.bpp_autor_jednostka_jedno_podstawowe();
+
+
+--
 -- Name: bpp_autor_jednostka bpp_autor_ustaw_jednostka_aktualna_trigger; Type: TRIGGER; Schema: public; Owner: -
 --
 
 CREATE TRIGGER bpp_autor_ustaw_jednostka_aktualna_trigger AFTER INSERT OR DELETE OR UPDATE ON public.bpp_autor_jednostka FOR EACH ROW EXECUTE FUNCTION public.bpp_autor_ustaw_jednostka_aktualna();
-
-
---
--- Name: bpp_jednostka bpp_jednostka_sprawdz_uczelnia_id_trigger; Type: TRIGGER; Schema: public; Owner: -
---
-
-CREATE TRIGGER bpp_jednostka_sprawdz_uczelnia_id_trigger BEFORE INSERT OR UPDATE ON public.bpp_jednostka FOR EACH ROW EXECUTE FUNCTION public.bpp_jednostka_sprawdz_uczelnia_id();
-
-
---
--- Name: bpp_jednostka_wydzial bpp_jednostka_ustaw_wydzial_aktualna_trigger; Type: TRIGGER; Schema: public; Owner: -
---
-
-CREATE TRIGGER bpp_jednostka_ustaw_wydzial_aktualna_trigger AFTER INSERT OR DELETE OR UPDATE ON public.bpp_jednostka_wydzial FOR EACH ROW EXECUTE FUNCTION public.bpp_jednostka_ustaw_wydzial_aktualna();
-
-
---
--- Name: bpp_jednostka_wydzial bpp_jednostka_wydzial_sprawdz_uczelnia_id_trigger; Type: TRIGGER; Schema: public; Owner: -
---
-
-CREATE TRIGGER bpp_jednostka_wydzial_sprawdz_uczelnia_id_trigger BEFORE INSERT OR UPDATE ON public.bpp_jednostka_wydzial FOR EACH ROW EXECUTE FUNCTION public.bpp_jednostka_wydzial_sprawdz_uczelnia_id();
 
 
 --
@@ -29357,6 +29589,13 @@ CREATE TRIGGER d_aft_row_del_on_bpp_charakter_formalny_wydawnictwo_ci1253 AFTER 
 --
 
 CREATE TRIGGER d_aft_row_del_on_bpp_charakter_formalny_wydawnictwo_zwa632 AFTER DELETE ON public.bpp_charakter_formalny FOR EACH ROW EXECUTE FUNCTION public.f_d_aft_row_del_on_bpp_charakter_formalny_wydawnictwo_zwa632();
+
+
+--
+-- Name: bpp_jednostka d_aft_row_del_on_bpp_jednostka_jednostka_wydzial; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER d_aft_row_del_on_bpp_jednostka_jednostka_wydzial AFTER DELETE ON public.bpp_jednostka FOR EACH ROW EXECUTE FUNCTION public.f_d_aft_row_del_on_bpp_jednostka_jednostka_wydzial();
 
 
 --
@@ -29612,6 +29851,20 @@ CREATE TRIGGER d_aft_row_ins_on_bpp_charakter_formalny_wydawnictwo_zw762c AFTER 
 
 
 --
+-- Name: bpp_jednostka d_aft_row_ins_on_bpp_jednostka; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER d_aft_row_ins_on_bpp_jednostka AFTER INSERT ON public.bpp_jednostka FOR EACH ROW EXECUTE FUNCTION public.f_d_aft_row_ins_on_bpp_jednostka();
+
+
+--
+-- Name: bpp_jednostka d_aft_row_ins_on_bpp_jednostka_jednostka_wydzial; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER d_aft_row_ins_on_bpp_jednostka_jednostka_wydzial AFTER INSERT ON public.bpp_jednostka FOR EACH ROW EXECUTE FUNCTION public.f_d_aft_row_ins_on_bpp_jednostka_jednostka_wydzial();
+
+
+--
 -- Name: bpp_jednostka d_aft_row_ins_on_bpp_jednostka_praca_doktorska_baza_op3010; Type: TRIGGER; Schema: public; Owner: -
 --
 
@@ -29860,329 +30113,462 @@ CREATE TRIGGER d_aft_row_ins_on_bpp_zrodlo_wydawnictwo_ciagle_slug AFTER INSERT 
 -- Name: bpp_autor d_aft_row_upd_on_bpp_autor_patent_opis_bibliograficznyc248; Type: TRIGGER; Schema: public; Owner: -
 --
 
-CREATE TRIGGER d_aft_row_upd_on_bpp_autor_patent_opis_bibliograficznyc248 AFTER UPDATE ON public.bpp_autor FOR EACH ROW EXECUTE FUNCTION public.f_d_aft_row_upd_on_bpp_autor_patent_opis_bibliograficznyc248();
+CREATE TRIGGER d_aft_row_upd_on_bpp_autor_patent_opis_bibliograficznyc248 AFTER UPDATE ON public.bpp_autor FOR EACH ROW WHEN ((((old.imiona)::text IS DISTINCT FROM (new.imiona)::text) OR ((old.nazwisko)::text IS DISTINCT FROM (new.nazwisko)::text))) EXECUTE FUNCTION public.f_d_aft_row_upd_on_bpp_autor_patent_opis_bibliograficznyc248();
 
 
 --
 -- Name: bpp_autor d_aft_row_upd_on_bpp_autor_patent_slug; Type: TRIGGER; Schema: public; Owner: -
 --
 
-CREATE TRIGGER d_aft_row_upd_on_bpp_autor_patent_slug AFTER UPDATE ON public.bpp_autor FOR EACH ROW EXECUTE FUNCTION public.f_d_aft_row_upd_on_bpp_autor_patent_slug();
+CREATE TRIGGER d_aft_row_upd_on_bpp_autor_patent_slug AFTER UPDATE ON public.bpp_autor FOR EACH ROW WHEN ((((old.imiona)::text IS DISTINCT FROM (new.imiona)::text) OR ((old.nazwisko)::text IS DISTINCT FROM (new.nazwisko)::text))) EXECUTE FUNCTION public.f_d_aft_row_upd_on_bpp_autor_patent_slug();
 
 
 --
 -- Name: bpp_autor d_aft_row_upd_on_bpp_autor_praca_doktorska_baza_opis_b31d3; Type: TRIGGER; Schema: public; Owner: -
 --
 
-CREATE TRIGGER d_aft_row_upd_on_bpp_autor_praca_doktorska_baza_opis_b31d3 AFTER UPDATE ON public.bpp_autor FOR EACH ROW EXECUTE FUNCTION public.f_d_aft_row_upd_on_bpp_autor_praca_doktorska_baza_opis_b31d3();
+CREATE TRIGGER d_aft_row_upd_on_bpp_autor_praca_doktorska_baza_opis_b31d3 AFTER UPDATE ON public.bpp_autor FOR EACH ROW WHEN ((((old.imiona)::text IS DISTINCT FROM (new.imiona)::text) OR ((old.nazwisko)::text IS DISTINCT FROM (new.nazwisko)::text) OR (old.tytul_id IS DISTINCT FROM new.tytul_id))) EXECUTE FUNCTION public.f_d_aft_row_upd_on_bpp_autor_praca_doktorska_baza_opis_b31d3();
 
 
 --
 -- Name: bpp_autor d_aft_row_upd_on_bpp_autor_praca_doktorska_baza_opis_b7d89; Type: TRIGGER; Schema: public; Owner: -
 --
 
-CREATE TRIGGER d_aft_row_upd_on_bpp_autor_praca_doktorska_baza_opis_b7d89 AFTER UPDATE ON public.bpp_autor FOR EACH ROW EXECUTE FUNCTION public.f_d_aft_row_upd_on_bpp_autor_praca_doktorska_baza_opis_b7d89();
+CREATE TRIGGER d_aft_row_upd_on_bpp_autor_praca_doktorska_baza_opis_b7d89 AFTER UPDATE ON public.bpp_autor FOR EACH ROW WHEN ((((old.imiona)::text IS DISTINCT FROM (new.imiona)::text) OR ((old.nazwisko)::text IS DISTINCT FROM (new.nazwisko)::text))) EXECUTE FUNCTION public.f_d_aft_row_upd_on_bpp_autor_praca_doktorska_baza_opis_b7d89();
 
 
 --
 -- Name: bpp_autor d_aft_row_upd_on_bpp_autor_praca_doktorska_baza_opis_badaa; Type: TRIGGER; Schema: public; Owner: -
 --
 
-CREATE TRIGGER d_aft_row_upd_on_bpp_autor_praca_doktorska_baza_opis_badaa AFTER UPDATE ON public.bpp_autor FOR EACH ROW EXECUTE FUNCTION public.f_d_aft_row_upd_on_bpp_autor_praca_doktorska_baza_opis_badaa();
+CREATE TRIGGER d_aft_row_upd_on_bpp_autor_praca_doktorska_baza_opis_badaa AFTER UPDATE ON public.bpp_autor FOR EACH ROW WHEN ((((old.imiona)::text IS DISTINCT FROM (new.imiona)::text) OR ((old.nazwisko)::text IS DISTINCT FROM (new.nazwisko)::text))) EXECUTE FUNCTION public.f_d_aft_row_upd_on_bpp_autor_praca_doktorska_baza_opis_badaa();
 
 
 --
 -- Name: bpp_autor d_aft_row_upd_on_bpp_autor_praca_doktorska_baza_slug; Type: TRIGGER; Schema: public; Owner: -
 --
 
-CREATE TRIGGER d_aft_row_upd_on_bpp_autor_praca_doktorska_baza_slug AFTER UPDATE ON public.bpp_autor FOR EACH ROW EXECUTE FUNCTION public.f_d_aft_row_upd_on_bpp_autor_praca_doktorska_baza_slug();
+CREATE TRIGGER d_aft_row_upd_on_bpp_autor_praca_doktorska_baza_slug AFTER UPDATE ON public.bpp_autor FOR EACH ROW WHEN ((((old.imiona)::text IS DISTINCT FROM (new.imiona)::text) OR ((old.nazwisko)::text IS DISTINCT FROM (new.nazwisko)::text))) EXECUTE FUNCTION public.f_d_aft_row_upd_on_bpp_autor_praca_doktorska_baza_slug();
 
 
 --
 -- Name: bpp_autor d_aft_row_upd_on_bpp_autor_wydawnictwo_ciagle_opis_bib6408; Type: TRIGGER; Schema: public; Owner: -
 --
 
-CREATE TRIGGER d_aft_row_upd_on_bpp_autor_wydawnictwo_ciagle_opis_bib6408 AFTER UPDATE ON public.bpp_autor FOR EACH ROW EXECUTE FUNCTION public.f_d_aft_row_upd_on_bpp_autor_wydawnictwo_ciagle_opis_bib6408();
+CREATE TRIGGER d_aft_row_upd_on_bpp_autor_wydawnictwo_ciagle_opis_bib6408 AFTER UPDATE ON public.bpp_autor FOR EACH ROW WHEN ((((old.imiona)::text IS DISTINCT FROM (new.imiona)::text) OR ((old.nazwisko)::text IS DISTINCT FROM (new.nazwisko)::text))) EXECUTE FUNCTION public.f_d_aft_row_upd_on_bpp_autor_wydawnictwo_ciagle_opis_bib6408();
 
 
 --
 -- Name: bpp_autor d_aft_row_upd_on_bpp_autor_wydawnictwo_ciagle_slug; Type: TRIGGER; Schema: public; Owner: -
 --
 
-CREATE TRIGGER d_aft_row_upd_on_bpp_autor_wydawnictwo_ciagle_slug AFTER UPDATE ON public.bpp_autor FOR EACH ROW EXECUTE FUNCTION public.f_d_aft_row_upd_on_bpp_autor_wydawnictwo_ciagle_slug();
+CREATE TRIGGER d_aft_row_upd_on_bpp_autor_wydawnictwo_ciagle_slug AFTER UPDATE ON public.bpp_autor FOR EACH ROW WHEN ((((old.imiona)::text IS DISTINCT FROM (new.imiona)::text) OR ((old.nazwisko)::text IS DISTINCT FROM (new.nazwisko)::text))) EXECUTE FUNCTION public.f_d_aft_row_upd_on_bpp_autor_wydawnictwo_ciagle_slug();
 
 
 --
 -- Name: bpp_autor d_aft_row_upd_on_bpp_autor_wydawnictwo_zwarte_opis_bib5f7a; Type: TRIGGER; Schema: public; Owner: -
 --
 
-CREATE TRIGGER d_aft_row_upd_on_bpp_autor_wydawnictwo_zwarte_opis_bib5f7a AFTER UPDATE ON public.bpp_autor FOR EACH ROW EXECUTE FUNCTION public.f_d_aft_row_upd_on_bpp_autor_wydawnictwo_zwarte_opis_bib5f7a();
+CREATE TRIGGER d_aft_row_upd_on_bpp_autor_wydawnictwo_zwarte_opis_bib5f7a AFTER UPDATE ON public.bpp_autor FOR EACH ROW WHEN ((((old.imiona)::text IS DISTINCT FROM (new.imiona)::text) OR ((old.nazwisko)::text IS DISTINCT FROM (new.nazwisko)::text))) EXECUTE FUNCTION public.f_d_aft_row_upd_on_bpp_autor_wydawnictwo_zwarte_opis_bib5f7a();
 
 
 --
 -- Name: bpp_autor d_aft_row_upd_on_bpp_autor_wydawnictwo_zwarte_slug; Type: TRIGGER; Schema: public; Owner: -
 --
 
-CREATE TRIGGER d_aft_row_upd_on_bpp_autor_wydawnictwo_zwarte_slug AFTER UPDATE ON public.bpp_autor FOR EACH ROW EXECUTE FUNCTION public.f_d_aft_row_upd_on_bpp_autor_wydawnictwo_zwarte_slug();
+CREATE TRIGGER d_aft_row_upd_on_bpp_autor_wydawnictwo_zwarte_slug AFTER UPDATE ON public.bpp_autor FOR EACH ROW WHEN ((((old.imiona)::text IS DISTINCT FROM (new.imiona)::text) OR ((old.nazwisko)::text IS DISTINCT FROM (new.nazwisko)::text))) EXECUTE FUNCTION public.f_d_aft_row_upd_on_bpp_autor_wydawnictwo_zwarte_slug();
 
 
 --
 -- Name: bpp_charakter_formalny d_aft_row_upd_on_bpp_charakter_formalny_wydawnictwo_cie1b7; Type: TRIGGER; Schema: public; Owner: -
 --
 
-CREATE TRIGGER d_aft_row_upd_on_bpp_charakter_formalny_wydawnictwo_cie1b7 AFTER UPDATE ON public.bpp_charakter_formalny FOR EACH ROW EXECUTE FUNCTION public.f_d_aft_row_upd_on_bpp_charakter_formalny_wydawnictwo_cie1b7();
+CREATE TRIGGER d_aft_row_upd_on_bpp_charakter_formalny_wydawnictwo_cie1b7 AFTER UPDATE ON public.bpp_charakter_formalny FOR EACH ROW WHEN (((old.id IS DISTINCT FROM new.id) OR ((old.nazwa)::text IS DISTINCT FROM (new.nazwa)::text) OR ((old.skrot)::text IS DISTINCT FROM (new.skrot)::text) OR (old.parent_id IS DISTINCT FROM new.parent_id) OR ((old.charakter_ogolny)::text IS DISTINCT FROM (new.charakter_ogolny)::text) OR (old.publikacja IS DISTINCT FROM new.publikacja) OR (old.streszczenie IS DISTINCT FROM new.streszczenie) OR ((old.nazwa_w_primo)::text IS DISTINCT FROM (new.nazwa_w_primo)::text) OR (old.charakter_pbn_id IS DISTINCT FROM new.charakter_pbn_id) OR (old.rodzaj_pbn IS DISTINCT FROM new.rodzaj_pbn) OR (old.charakter_sloty IS DISTINCT FROM new.charakter_sloty) OR (old.wliczaj_do_rankingu IS DISTINCT FROM new.wliczaj_do_rankingu) OR (old.ukryty IS DISTINCT FROM new.ukryty))) EXECUTE FUNCTION public.f_d_aft_row_upd_on_bpp_charakter_formalny_wydawnictwo_cie1b7();
 
 
 --
 -- Name: bpp_charakter_formalny d_aft_row_upd_on_bpp_charakter_formalny_wydawnictwo_zw04e5; Type: TRIGGER; Schema: public; Owner: -
 --
 
-CREATE TRIGGER d_aft_row_upd_on_bpp_charakter_formalny_wydawnictwo_zw04e5 AFTER UPDATE ON public.bpp_charakter_formalny FOR EACH ROW EXECUTE FUNCTION public.f_d_aft_row_upd_on_bpp_charakter_formalny_wydawnictwo_zw04e5();
+CREATE TRIGGER d_aft_row_upd_on_bpp_charakter_formalny_wydawnictwo_zw04e5 AFTER UPDATE ON public.bpp_charakter_formalny FOR EACH ROW WHEN (((old.id IS DISTINCT FROM new.id) OR ((old.nazwa)::text IS DISTINCT FROM (new.nazwa)::text) OR ((old.skrot)::text IS DISTINCT FROM (new.skrot)::text) OR (old.parent_id IS DISTINCT FROM new.parent_id) OR ((old.charakter_ogolny)::text IS DISTINCT FROM (new.charakter_ogolny)::text) OR (old.publikacja IS DISTINCT FROM new.publikacja) OR (old.streszczenie IS DISTINCT FROM new.streszczenie) OR ((old.nazwa_w_primo)::text IS DISTINCT FROM (new.nazwa_w_primo)::text) OR (old.charakter_pbn_id IS DISTINCT FROM new.charakter_pbn_id) OR (old.rodzaj_pbn IS DISTINCT FROM new.rodzaj_pbn) OR (old.charakter_sloty IS DISTINCT FROM new.charakter_sloty) OR (old.wliczaj_do_rankingu IS DISTINCT FROM new.wliczaj_do_rankingu) OR (old.ukryty IS DISTINCT FROM new.ukryty))) EXECUTE FUNCTION public.f_d_aft_row_upd_on_bpp_charakter_formalny_wydawnictwo_zw04e5();
+
+
+--
+-- Name: bpp_jednostka d_aft_row_upd_on_bpp_jednostka_jednostka_wydzial; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER d_aft_row_upd_on_bpp_jednostka_jednostka_wydzial AFTER UPDATE ON public.bpp_jednostka FOR EACH ROW WHEN (((old.wydzial_id IS DISTINCT FROM new.wydzial_id) OR (old.parent_id IS DISTINCT FROM new.parent_id))) EXECUTE FUNCTION public.f_d_aft_row_upd_on_bpp_jednostka_jednostka_wydzial();
 
 
 --
 -- Name: bpp_jednostka d_aft_row_upd_on_bpp_jednostka_praca_doktorska_baza_opada6; Type: TRIGGER; Schema: public; Owner: -
 --
 
-CREATE TRIGGER d_aft_row_upd_on_bpp_jednostka_praca_doktorska_baza_opada6 AFTER UPDATE ON public.bpp_jednostka FOR EACH ROW EXECUTE FUNCTION public.f_d_aft_row_upd_on_bpp_jednostka_praca_doktorska_baza_opada6();
-
-
---
--- Name: bpp_patent d_aft_row_upd_on_bpp_patent; Type: TRIGGER; Schema: public; Owner: -
---
-
-CREATE TRIGGER d_aft_row_upd_on_bpp_patent AFTER UPDATE ON public.bpp_patent FOR EACH ROW EXECUTE FUNCTION public.f_d_aft_row_upd_on_bpp_patent();
+CREATE TRIGGER d_aft_row_upd_on_bpp_jednostka_praca_doktorska_baza_opada6 AFTER UPDATE ON public.bpp_jednostka FOR EACH ROW WHEN (((old.wydzial_id IS DISTINCT FROM new.wydzial_id) OR ((old.nazwa)::text IS DISTINCT FROM (new.nazwa)::text) OR ((old.skrot)::text IS DISTINCT FROM (new.skrot)::text))) EXECUTE FUNCTION public.f_d_aft_row_upd_on_bpp_jednostka_praca_doktorska_baza_opada6();
 
 
 --
 -- Name: bpp_patent_autor d_aft_row_upd_on_bpp_patent_autor_patent_cached_punktye44e; Type: TRIGGER; Schema: public; Owner: -
 --
 
-CREATE TRIGGER d_aft_row_upd_on_bpp_patent_autor_patent_cached_punktye44e AFTER UPDATE ON public.bpp_patent_autor FOR EACH ROW EXECUTE FUNCTION public.f_d_aft_row_upd_on_bpp_patent_autor_patent_cached_punktye44e();
+CREATE TRIGGER d_aft_row_upd_on_bpp_patent_autor_patent_cached_punktye44e AFTER UPDATE ON public.bpp_patent_autor FOR EACH ROW WHEN (((old.autor_id IS DISTINCT FROM new.autor_id) OR (old.jednostka_id IS DISTINCT FROM new.jednostka_id) OR (old.typ_odpowiedzialnosci_id IS DISTINCT FROM new.typ_odpowiedzialnosci_id) OR (old.afiliuje IS DISTINCT FROM new.afiliuje) OR (old.dyscyplina_naukowa_id IS DISTINCT FROM new.dyscyplina_naukowa_id) OR (old.przypieta IS DISTINCT FROM new.przypieta) OR (old.upowaznienie_pbn IS DISTINCT FROM new.upowaznienie_pbn))) EXECUTE FUNCTION public.f_d_aft_row_upd_on_bpp_patent_autor_patent_cached_punktye44e();
 
 
 --
 -- Name: bpp_patent_autor d_aft_row_upd_on_bpp_patent_autor_patent_opis_bibliogr2690; Type: TRIGGER; Schema: public; Owner: -
 --
 
-CREATE TRIGGER d_aft_row_upd_on_bpp_patent_autor_patent_opis_bibliogr2690 AFTER UPDATE ON public.bpp_patent_autor FOR EACH ROW EXECUTE FUNCTION public.f_d_aft_row_upd_on_bpp_patent_autor_patent_opis_bibliogr2690();
+CREATE TRIGGER d_aft_row_upd_on_bpp_patent_autor_patent_opis_bibliogr2690 AFTER UPDATE ON public.bpp_patent_autor FOR EACH ROW WHEN (((old.kolejnosc IS DISTINCT FROM new.kolejnosc) OR (old.rekord_id IS DISTINCT FROM new.rekord_id) OR (old.autor_id IS DISTINCT FROM new.autor_id))) EXECUTE FUNCTION public.f_d_aft_row_upd_on_bpp_patent_autor_patent_opis_bibliogr2690();
 
 
 --
 -- Name: bpp_patent_autor d_aft_row_upd_on_bpp_patent_autor_patent_opis_bibliograf69; Type: TRIGGER; Schema: public; Owner: -
 --
 
-CREATE TRIGGER d_aft_row_upd_on_bpp_patent_autor_patent_opis_bibliograf69 AFTER UPDATE ON public.bpp_patent_autor FOR EACH ROW EXECUTE FUNCTION public.f_d_aft_row_upd_on_bpp_patent_autor_patent_opis_bibliograf69();
+CREATE TRIGGER d_aft_row_upd_on_bpp_patent_autor_patent_opis_bibliograf69 AFTER UPDATE ON public.bpp_patent_autor FOR EACH ROW WHEN (((old.kolejnosc IS DISTINCT FROM new.kolejnosc) OR ((old.zapisany_jako)::text IS DISTINCT FROM (new.zapisany_jako)::text))) EXECUTE FUNCTION public.f_d_aft_row_upd_on_bpp_patent_autor_patent_opis_bibliograf69();
 
 
 --
 -- Name: bpp_patent_autor d_aft_row_upd_on_bpp_patent_autor_patent_opis_bibliogrb45d; Type: TRIGGER; Schema: public; Owner: -
 --
 
-CREATE TRIGGER d_aft_row_upd_on_bpp_patent_autor_patent_opis_bibliogrb45d AFTER UPDATE ON public.bpp_patent_autor FOR EACH ROW EXECUTE FUNCTION public.f_d_aft_row_upd_on_bpp_patent_autor_patent_opis_bibliogrb45d();
+CREATE TRIGGER d_aft_row_upd_on_bpp_patent_autor_patent_opis_bibliogrb45d AFTER UPDATE ON public.bpp_patent_autor FOR EACH ROW WHEN (((old.kolejnosc IS DISTINCT FROM new.kolejnosc) OR (old.typ_odpowiedzialnosci_id IS DISTINCT FROM new.typ_odpowiedzialnosci_id) OR ((old.zapisany_jako)::text IS DISTINCT FROM (new.zapisany_jako)::text))) EXECUTE FUNCTION public.f_d_aft_row_upd_on_bpp_patent_autor_patent_opis_bibliogrb45d();
 
 
 --
 -- Name: bpp_patent_autor d_aft_row_upd_on_bpp_patent_autor_patent_slug; Type: TRIGGER; Schema: public; Owner: -
 --
 
-CREATE TRIGGER d_aft_row_upd_on_bpp_patent_autor_patent_slug AFTER UPDATE ON public.bpp_patent_autor FOR EACH ROW EXECUTE FUNCTION public.f_d_aft_row_upd_on_bpp_patent_autor_patent_slug();
+CREATE TRIGGER d_aft_row_upd_on_bpp_patent_autor_patent_slug AFTER UPDATE ON public.bpp_patent_autor FOR EACH ROW WHEN (((old.rekord_id IS DISTINCT FROM new.rekord_id) OR (old.autor_id IS DISTINCT FROM new.autor_id) OR (old.kolejnosc IS DISTINCT FROM new.kolejnosc) OR ((old.zapisany_jako)::text IS DISTINCT FROM (new.zapisany_jako)::text))) EXECUTE FUNCTION public.f_d_aft_row_upd_on_bpp_patent_autor_patent_slug();
+
+
+--
+-- Name: bpp_patent d_aft_row_upd_on_bpp_patent_patent_cached_punkty_dyscyd3c7; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER d_aft_row_upd_on_bpp_patent_patent_cached_punkty_dyscyd3c7 AFTER UPDATE ON public.bpp_patent FOR EACH ROW WHEN (((old.id IS DISTINCT FROM new.id) OR (old.nie_eksportuj_przez_api IS DISTINCT FROM new.nie_eksportuj_przez_api) OR (old.tekst_przed_pierwszym_autorem IS DISTINCT FROM new.tekst_przed_pierwszym_autorem) OR (old.tekst_po_ostatnim_autorze IS DISTINCT FROM new.tekst_po_ostatnim_autorze) OR (old.pbn_id IS DISTINCT FROM new.pbn_id) OR (old.slowa_kluczowe_eng IS DISTINCT FROM new.slowa_kluczowe_eng) OR (old.adnotacje IS DISTINCT FROM new.adnotacje) OR (old.informacja_z_id IS DISTINCT FROM new.informacja_z_id) OR (old.status_korekty_id IS DISTINCT FROM new.status_korekty_id) OR (old.informacje IS DISTINCT FROM new.informacje) OR ((old.szczegoly)::text IS DISTINCT FROM (new.szczegoly)::text) OR (old.uwagi IS DISTINCT FROM new.uwagi) OR (old.utworzono IS DISTINCT FROM new.utworzono) OR ((old.strony)::text IS DISTINCT FROM (new.strony)::text) OR ((old.tom)::text IS DISTINCT FROM (new.tom)::text) OR (old.recenzowana IS DISTINCT FROM new.recenzowana) OR (old.rok IS DISTINCT FROM new.rok) OR (old.search_index IS DISTINCT FROM new.search_index) OR (old.tytul_oryginalny_sort IS DISTINCT FROM new.tytul_oryginalny_sort) OR (old.legacy_data IS DISTINCT FROM new.legacy_data) OR (old.impact_factor IS DISTINCT FROM new.impact_factor) OR (old.punkty_kbn IS DISTINCT FROM new.punkty_kbn) OR (old.index_copernicus IS DISTINCT FROM new.index_copernicus) OR (old.punktacja_wewnetrzna IS DISTINCT FROM new.punktacja_wewnetrzna) OR (old.punktacja_snip IS DISTINCT FROM new.punktacja_snip) OR (old.weryfikacja_punktacji IS DISTINCT FROM new.weryfikacja_punktacji) OR ((old.www)::text IS DISTINCT FROM (new.www)::text) OR (old.dostep_dnia IS DISTINCT FROM new.dostep_dnia) OR ((old.public_www)::text IS DISTINCT FROM (new.public_www)::text) OR (old.public_dostep_dnia IS DISTINCT FROM new.public_dostep_dnia) OR (old.tytul_oryginalny IS DISTINCT FROM new.tytul_oryginalny) OR (old.data_zgloszenia IS DISTINCT FROM new.data_zgloszenia) OR ((old.numer_zgloszenia)::text IS DISTINCT FROM (new.numer_zgloszenia)::text) OR (old.data_decyzji IS DISTINCT FROM new.data_decyzji) OR ((old.numer_prawa_wylacznego)::text IS DISTINCT FROM (new.numer_prawa_wylacznego)::text) OR (old.rodzaj_prawa_id IS DISTINCT FROM new.rodzaj_prawa_id) OR (old.wdrozenie IS DISTINCT FROM new.wdrozenie) OR (old.wydzial_id IS DISTINCT FROM new.wydzial_id) OR (old.opis_bibliograficzny_cache IS DISTINCT FROM new.opis_bibliograficzny_cache) OR (old.opis_bibliograficzny_autorzy_cache IS DISTINCT FROM new.opis_bibliograficzny_autorzy_cache) OR (old.opis_bibliograficzny_zapisani_autorzy_cache IS DISTINCT FROM new.opis_bibliograficzny_zapisani_autorzy_cache) OR ((old.slug)::text IS DISTINCT FROM (new.slug)::text))) EXECUTE FUNCTION public.f_d_aft_row_upd_on_bpp_patent_patent_cached_punkty_dyscyd3c7();
+
+
+--
+-- Name: bpp_patent d_aft_row_upd_on_bpp_patent_patent_opis_bibliograficzn2783; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER d_aft_row_upd_on_bpp_patent_patent_opis_bibliograficzn2783 AFTER UPDATE ON public.bpp_patent FOR EACH ROW WHEN (((old.id IS DISTINCT FROM new.id) OR (old.nie_eksportuj_przez_api IS DISTINCT FROM new.nie_eksportuj_przez_api) OR (old.tekst_przed_pierwszym_autorem IS DISTINCT FROM new.tekst_przed_pierwszym_autorem) OR (old.tekst_po_ostatnim_autorze IS DISTINCT FROM new.tekst_po_ostatnim_autorze) OR (old.pbn_id IS DISTINCT FROM new.pbn_id) OR (old.slowa_kluczowe_eng IS DISTINCT FROM new.slowa_kluczowe_eng) OR (old.adnotacje IS DISTINCT FROM new.adnotacje) OR (old.informacja_z_id IS DISTINCT FROM new.informacja_z_id) OR (old.status_korekty_id IS DISTINCT FROM new.status_korekty_id) OR (old.informacje IS DISTINCT FROM new.informacje) OR ((old.szczegoly)::text IS DISTINCT FROM (new.szczegoly)::text) OR (old.uwagi IS DISTINCT FROM new.uwagi) OR (old.utworzono IS DISTINCT FROM new.utworzono) OR ((old.strony)::text IS DISTINCT FROM (new.strony)::text) OR ((old.tom)::text IS DISTINCT FROM (new.tom)::text) OR (old.recenzowana IS DISTINCT FROM new.recenzowana) OR (old.rok IS DISTINCT FROM new.rok) OR (old.search_index IS DISTINCT FROM new.search_index) OR (old.tytul_oryginalny_sort IS DISTINCT FROM new.tytul_oryginalny_sort) OR (old.legacy_data IS DISTINCT FROM new.legacy_data) OR (old.impact_factor IS DISTINCT FROM new.impact_factor) OR (old.punkty_kbn IS DISTINCT FROM new.punkty_kbn) OR (old.index_copernicus IS DISTINCT FROM new.index_copernicus) OR (old.punktacja_wewnetrzna IS DISTINCT FROM new.punktacja_wewnetrzna) OR (old.punktacja_snip IS DISTINCT FROM new.punktacja_snip) OR (old.weryfikacja_punktacji IS DISTINCT FROM new.weryfikacja_punktacji) OR ((old.www)::text IS DISTINCT FROM (new.www)::text) OR (old.dostep_dnia IS DISTINCT FROM new.dostep_dnia) OR ((old.public_www)::text IS DISTINCT FROM (new.public_www)::text) OR (old.public_dostep_dnia IS DISTINCT FROM new.public_dostep_dnia) OR (old.tytul_oryginalny IS DISTINCT FROM new.tytul_oryginalny) OR (old.data_zgloszenia IS DISTINCT FROM new.data_zgloszenia) OR ((old.numer_zgloszenia)::text IS DISTINCT FROM (new.numer_zgloszenia)::text) OR (old.data_decyzji IS DISTINCT FROM new.data_decyzji) OR ((old.numer_prawa_wylacznego)::text IS DISTINCT FROM (new.numer_prawa_wylacznego)::text) OR (old.rodzaj_prawa_id IS DISTINCT FROM new.rodzaj_prawa_id) OR (old.wdrozenie IS DISTINCT FROM new.wdrozenie) OR (old.wydzial_id IS DISTINCT FROM new.wydzial_id) OR (old.cached_punkty_dyscyplin IS DISTINCT FROM new.cached_punkty_dyscyplin) OR (old.opis_bibliograficzny_cache IS DISTINCT FROM new.opis_bibliograficzny_cache) OR (old.opis_bibliograficzny_zapisani_autorzy_cache IS DISTINCT FROM new.opis_bibliograficzny_zapisani_autorzy_cache) OR ((old.slug)::text IS DISTINCT FROM (new.slug)::text))) EXECUTE FUNCTION public.f_d_aft_row_upd_on_bpp_patent_patent_opis_bibliograficzn2783();
+
+
+--
+-- Name: bpp_patent d_aft_row_upd_on_bpp_patent_patent_opis_bibliograficzn797c; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER d_aft_row_upd_on_bpp_patent_patent_opis_bibliograficzn797c AFTER UPDATE ON public.bpp_patent FOR EACH ROW WHEN (((old.id IS DISTINCT FROM new.id) OR (old.nie_eksportuj_przez_api IS DISTINCT FROM new.nie_eksportuj_przez_api) OR (old.tekst_przed_pierwszym_autorem IS DISTINCT FROM new.tekst_przed_pierwszym_autorem) OR (old.tekst_po_ostatnim_autorze IS DISTINCT FROM new.tekst_po_ostatnim_autorze) OR (old.pbn_id IS DISTINCT FROM new.pbn_id) OR (old.slowa_kluczowe_eng IS DISTINCT FROM new.slowa_kluczowe_eng) OR (old.adnotacje IS DISTINCT FROM new.adnotacje) OR (old.informacja_z_id IS DISTINCT FROM new.informacja_z_id) OR (old.status_korekty_id IS DISTINCT FROM new.status_korekty_id) OR (old.informacje IS DISTINCT FROM new.informacje) OR ((old.szczegoly)::text IS DISTINCT FROM (new.szczegoly)::text) OR (old.uwagi IS DISTINCT FROM new.uwagi) OR (old.utworzono IS DISTINCT FROM new.utworzono) OR ((old.strony)::text IS DISTINCT FROM (new.strony)::text) OR ((old.tom)::text IS DISTINCT FROM (new.tom)::text) OR (old.recenzowana IS DISTINCT FROM new.recenzowana) OR (old.rok IS DISTINCT FROM new.rok) OR (old.search_index IS DISTINCT FROM new.search_index) OR (old.tytul_oryginalny_sort IS DISTINCT FROM new.tytul_oryginalny_sort) OR (old.legacy_data IS DISTINCT FROM new.legacy_data) OR (old.impact_factor IS DISTINCT FROM new.impact_factor) OR (old.punkty_kbn IS DISTINCT FROM new.punkty_kbn) OR (old.index_copernicus IS DISTINCT FROM new.index_copernicus) OR (old.punktacja_wewnetrzna IS DISTINCT FROM new.punktacja_wewnetrzna) OR (old.punktacja_snip IS DISTINCT FROM new.punktacja_snip) OR (old.weryfikacja_punktacji IS DISTINCT FROM new.weryfikacja_punktacji) OR ((old.www)::text IS DISTINCT FROM (new.www)::text) OR (old.dostep_dnia IS DISTINCT FROM new.dostep_dnia) OR ((old.public_www)::text IS DISTINCT FROM (new.public_www)::text) OR (old.public_dostep_dnia IS DISTINCT FROM new.public_dostep_dnia) OR (old.tytul_oryginalny IS DISTINCT FROM new.tytul_oryginalny) OR (old.data_zgloszenia IS DISTINCT FROM new.data_zgloszenia) OR ((old.numer_zgloszenia)::text IS DISTINCT FROM (new.numer_zgloszenia)::text) OR (old.data_decyzji IS DISTINCT FROM new.data_decyzji) OR ((old.numer_prawa_wylacznego)::text IS DISTINCT FROM (new.numer_prawa_wylacznego)::text) OR (old.rodzaj_prawa_id IS DISTINCT FROM new.rodzaj_prawa_id) OR (old.wdrozenie IS DISTINCT FROM new.wdrozenie) OR (old.wydzial_id IS DISTINCT FROM new.wydzial_id) OR (old.cached_punkty_dyscyplin IS DISTINCT FROM new.cached_punkty_dyscyplin) OR (old.opis_bibliograficzny_autorzy_cache IS DISTINCT FROM new.opis_bibliograficzny_autorzy_cache) OR (old.opis_bibliograficzny_zapisani_autorzy_cache IS DISTINCT FROM new.opis_bibliograficzny_zapisani_autorzy_cache) OR ((old.slug)::text IS DISTINCT FROM (new.slug)::text))) EXECUTE FUNCTION public.f_d_aft_row_upd_on_bpp_patent_patent_opis_bibliograficzn797c();
+
+
+--
+-- Name: bpp_patent d_aft_row_upd_on_bpp_patent_patent_opis_bibliograficzncf12; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER d_aft_row_upd_on_bpp_patent_patent_opis_bibliograficzncf12 AFTER UPDATE ON public.bpp_patent FOR EACH ROW WHEN (((old.id IS DISTINCT FROM new.id) OR (old.nie_eksportuj_przez_api IS DISTINCT FROM new.nie_eksportuj_przez_api) OR (old.tekst_przed_pierwszym_autorem IS DISTINCT FROM new.tekst_przed_pierwszym_autorem) OR (old.tekst_po_ostatnim_autorze IS DISTINCT FROM new.tekst_po_ostatnim_autorze) OR (old.pbn_id IS DISTINCT FROM new.pbn_id) OR (old.slowa_kluczowe_eng IS DISTINCT FROM new.slowa_kluczowe_eng) OR (old.adnotacje IS DISTINCT FROM new.adnotacje) OR (old.informacja_z_id IS DISTINCT FROM new.informacja_z_id) OR (old.status_korekty_id IS DISTINCT FROM new.status_korekty_id) OR (old.informacje IS DISTINCT FROM new.informacje) OR ((old.szczegoly)::text IS DISTINCT FROM (new.szczegoly)::text) OR (old.uwagi IS DISTINCT FROM new.uwagi) OR (old.utworzono IS DISTINCT FROM new.utworzono) OR ((old.strony)::text IS DISTINCT FROM (new.strony)::text) OR ((old.tom)::text IS DISTINCT FROM (new.tom)::text) OR (old.recenzowana IS DISTINCT FROM new.recenzowana) OR (old.rok IS DISTINCT FROM new.rok) OR (old.search_index IS DISTINCT FROM new.search_index) OR (old.tytul_oryginalny_sort IS DISTINCT FROM new.tytul_oryginalny_sort) OR (old.legacy_data IS DISTINCT FROM new.legacy_data) OR (old.impact_factor IS DISTINCT FROM new.impact_factor) OR (old.punkty_kbn IS DISTINCT FROM new.punkty_kbn) OR (old.index_copernicus IS DISTINCT FROM new.index_copernicus) OR (old.punktacja_wewnetrzna IS DISTINCT FROM new.punktacja_wewnetrzna) OR (old.punktacja_snip IS DISTINCT FROM new.punktacja_snip) OR (old.weryfikacja_punktacji IS DISTINCT FROM new.weryfikacja_punktacji) OR ((old.www)::text IS DISTINCT FROM (new.www)::text) OR (old.dostep_dnia IS DISTINCT FROM new.dostep_dnia) OR ((old.public_www)::text IS DISTINCT FROM (new.public_www)::text) OR (old.public_dostep_dnia IS DISTINCT FROM new.public_dostep_dnia) OR (old.tytul_oryginalny IS DISTINCT FROM new.tytul_oryginalny) OR (old.data_zgloszenia IS DISTINCT FROM new.data_zgloszenia) OR ((old.numer_zgloszenia)::text IS DISTINCT FROM (new.numer_zgloszenia)::text) OR (old.data_decyzji IS DISTINCT FROM new.data_decyzji) OR ((old.numer_prawa_wylacznego)::text IS DISTINCT FROM (new.numer_prawa_wylacznego)::text) OR (old.rodzaj_prawa_id IS DISTINCT FROM new.rodzaj_prawa_id) OR (old.wdrozenie IS DISTINCT FROM new.wdrozenie) OR (old.wydzial_id IS DISTINCT FROM new.wydzial_id) OR (old.cached_punkty_dyscyplin IS DISTINCT FROM new.cached_punkty_dyscyplin) OR (old.opis_bibliograficzny_cache IS DISTINCT FROM new.opis_bibliograficzny_cache) OR (old.opis_bibliograficzny_autorzy_cache IS DISTINCT FROM new.opis_bibliograficzny_autorzy_cache) OR ((old.slug)::text IS DISTINCT FROM (new.slug)::text))) EXECUTE FUNCTION public.f_d_aft_row_upd_on_bpp_patent_patent_opis_bibliograficzncf12();
+
+
+--
+-- Name: bpp_patent d_aft_row_upd_on_bpp_patent_patent_slug; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER d_aft_row_upd_on_bpp_patent_patent_slug AFTER UPDATE ON public.bpp_patent FOR EACH ROW WHEN ((old.tytul_oryginalny IS DISTINCT FROM new.tytul_oryginalny)) EXECUTE FUNCTION public.f_d_aft_row_upd_on_bpp_patent_patent_slug();
 
 
 --
 -- Name: bpp_poziom_wydawcy d_aft_row_upd_on_bpp_poziom_wydawcy_wydawca_lista_poziomow; Type: TRIGGER; Schema: public; Owner: -
 --
 
-CREATE TRIGGER d_aft_row_upd_on_bpp_poziom_wydawcy_wydawca_lista_poziomow AFTER UPDATE ON public.bpp_poziom_wydawcy FOR EACH ROW EXECUTE FUNCTION public.f_d_aft_row_upd_on_bpp_poziom_wydawcy_wydawca_lista_poziomow();
+CREATE TRIGGER d_aft_row_upd_on_bpp_poziom_wydawcy_wydawca_lista_poziomow AFTER UPDATE ON public.bpp_poziom_wydawcy FOR EACH ROW WHEN (((old.id IS DISTINCT FROM new.id) OR (old.rok IS DISTINCT FROM new.rok) OR (old.wydawca_id IS DISTINCT FROM new.wydawca_id) OR (old.poziom IS DISTINCT FROM new.poziom))) EXECUTE FUNCTION public.f_d_aft_row_upd_on_bpp_poziom_wydawcy_wydawca_lista_poziomow();
 
 
 --
--- Name: bpp_praca_doktorska d_aft_row_upd_on_bpp_praca_doktorska; Type: TRIGGER; Schema: public; Owner: -
+-- Name: bpp_praca_doktorska d_aft_row_upd_on_bpp_praca_doktorska_praca_doktorska_b58a3; Type: TRIGGER; Schema: public; Owner: -
 --
 
-CREATE TRIGGER d_aft_row_upd_on_bpp_praca_doktorska AFTER UPDATE ON public.bpp_praca_doktorska FOR EACH ROW EXECUTE FUNCTION public.f_d_aft_row_upd_on_bpp_praca_doktorska();
+CREATE TRIGGER d_aft_row_upd_on_bpp_praca_doktorska_praca_doktorska_b58a3 AFTER UPDATE ON public.bpp_praca_doktorska FOR EACH ROW WHEN (((old.id IS DISTINCT FROM new.id) OR (old.nie_eksportuj_przez_api IS DISTINCT FROM new.nie_eksportuj_przez_api) OR (old.tekst_przed_pierwszym_autorem IS DISTINCT FROM new.tekst_przed_pierwszym_autorem) OR (old.tekst_po_ostatnim_autorze IS DISTINCT FROM new.tekst_po_ostatnim_autorze) OR (old.opl_pub_cost_free IS DISTINCT FROM new.opl_pub_cost_free) OR (old.opl_pub_research_potential IS DISTINCT FROM new.opl_pub_research_potential) OR (old.opl_pub_research_or_development_projects IS DISTINCT FROM new.opl_pub_research_or_development_projects) OR (old.opl_pub_other IS DISTINCT FROM new.opl_pub_other) OR (old.opl_pub_amount IS DISTINCT FROM new.opl_pub_amount) OR (old.pbn_id IS DISTINCT FROM new.pbn_id) OR ((old.isbn)::text IS DISTINCT FROM (new.isbn)::text) OR ((old.e_isbn)::text IS DISTINCT FROM (new.e_isbn)::text) OR ((old.doi)::text IS DISTINCT FROM (new.doi)::text) OR (old.pubmed_id IS DISTINCT FROM new.pubmed_id) OR ((old.pmc_id)::text IS DISTINCT FROM (new.pmc_id)::text) OR (old.slowa_kluczowe_eng IS DISTINCT FROM new.slowa_kluczowe_eng) OR (old.adnotacje IS DISTINCT FROM new.adnotacje) OR (old.informacja_z_id IS DISTINCT FROM new.informacja_z_id) OR (old.status_korekty_id IS DISTINCT FROM new.status_korekty_id) OR (old.informacje IS DISTINCT FROM new.informacje) OR ((old.szczegoly)::text IS DISTINCT FROM (new.szczegoly)::text) OR (old.uwagi IS DISTINCT FROM new.uwagi) OR (old.utworzono IS DISTINCT FROM new.utworzono) OR ((old.strony)::text IS DISTINCT FROM (new.strony)::text) OR ((old.tom)::text IS DISTINCT FROM (new.tom)::text) OR (old.tytul_oryginalny IS DISTINCT FROM new.tytul_oryginalny) OR (old.tytul IS DISTINCT FROM new.tytul) OR (old.liczba_cytowan IS DISTINCT FROM new.liczba_cytowan) OR ((old.pbn_uid_id)::text IS DISTINCT FROM (new.pbn_uid_id)::text) OR (old.recenzowana IS DISTINCT FROM new.recenzowana) OR (old.typ_kbn_id IS DISTINCT FROM new.typ_kbn_id) OR (old.jezyk_id IS DISTINCT FROM new.jezyk_id) OR (old.jezyk_alt_id IS DISTINCT FROM new.jezyk_alt_id) OR (old.jezyk_orig_id IS DISTINCT FROM new.jezyk_orig_id) OR (old.rok IS DISTINCT FROM new.rok) OR (old.search_index IS DISTINCT FROM new.search_index) OR (old.tytul_oryginalny_sort IS DISTINCT FROM new.tytul_oryginalny_sort) OR (old.legacy_data IS DISTINCT FROM new.legacy_data) OR (old.impact_factor IS DISTINCT FROM new.impact_factor) OR (old.punkty_kbn IS DISTINCT FROM new.punkty_kbn) OR (old.index_copernicus IS DISTINCT FROM new.index_copernicus) OR (old.punktacja_wewnetrzna IS DISTINCT FROM new.punktacja_wewnetrzna) OR (old.punktacja_snip IS DISTINCT FROM new.punktacja_snip) OR (old.weryfikacja_punktacji IS DISTINCT FROM new.weryfikacja_punktacji) OR ((old.numer_odbitki)::text IS DISTINCT FROM (new.numer_odbitki)::text) OR ((old.www)::text IS DISTINCT FROM (new.www)::text) OR (old.dostep_dnia IS DISTINCT FROM new.dostep_dnia) OR ((old.public_www)::text IS DISTINCT FROM (new.public_www)::text) OR (old.public_dostep_dnia IS DISTINCT FROM new.public_dostep_dnia) OR ((old.miejsce_i_rok)::text IS DISTINCT FROM (new.miejsce_i_rok)::text) OR (old.wydawca_id IS DISTINCT FROM new.wydawca_id) OR ((old.wydawca_opis)::text IS DISTINCT FROM (new.wydawca_opis)::text) OR ((old.oznaczenie_wydania)::text IS DISTINCT FROM (new.oznaczenie_wydania)::text) OR (old.redakcja IS DISTINCT FROM new.redakcja) OR (old.jednostka_id IS DISTINCT FROM new.jednostka_id) OR (old.opis_bibliograficzny_autorzy_cache IS DISTINCT FROM new.opis_bibliograficzny_autorzy_cache) OR (old.opis_bibliograficzny_zapisani_autorzy_cache IS DISTINCT FROM new.opis_bibliograficzny_zapisani_autorzy_cache) OR ((old.slug)::text IS DISTINCT FROM (new.slug)::text) OR (old.autor_id IS DISTINCT FROM new.autor_id) OR (old.promotor_id IS DISTINCT FROM new.promotor_id))) EXECUTE FUNCTION public.f_d_aft_row_upd_on_bpp_praca_doktorska_praca_doktorska_b58a3();
 
 
 --
--- Name: bpp_praca_habilitacyjna d_aft_row_upd_on_bpp_praca_habilitacyjna; Type: TRIGGER; Schema: public; Owner: -
+-- Name: bpp_praca_doktorska d_aft_row_upd_on_bpp_praca_doktorska_praca_doktorska_b7ec9; Type: TRIGGER; Schema: public; Owner: -
 --
 
-CREATE TRIGGER d_aft_row_upd_on_bpp_praca_habilitacyjna AFTER UPDATE ON public.bpp_praca_habilitacyjna FOR EACH ROW EXECUTE FUNCTION public.f_d_aft_row_upd_on_bpp_praca_habilitacyjna();
+CREATE TRIGGER d_aft_row_upd_on_bpp_praca_doktorska_praca_doktorska_b7ec9 AFTER UPDATE ON public.bpp_praca_doktorska FOR EACH ROW WHEN ((old.autor_id IS DISTINCT FROM new.autor_id)) EXECUTE FUNCTION public.f_d_aft_row_upd_on_bpp_praca_doktorska_praca_doktorska_b7ec9();
+
+
+--
+-- Name: bpp_praca_doktorska d_aft_row_upd_on_bpp_praca_doktorska_praca_doktorska_bdac8; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER d_aft_row_upd_on_bpp_praca_doktorska_praca_doktorska_bdac8 AFTER UPDATE ON public.bpp_praca_doktorska FOR EACH ROW WHEN ((old.tytul_oryginalny IS DISTINCT FROM new.tytul_oryginalny)) EXECUTE FUNCTION public.f_d_aft_row_upd_on_bpp_praca_doktorska_praca_doktorska_bdac8();
+
+
+--
+-- Name: bpp_praca_doktorska d_aft_row_upd_on_bpp_praca_doktorska_praca_doktorska_be56a; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER d_aft_row_upd_on_bpp_praca_doktorska_praca_doktorska_be56a AFTER UPDATE ON public.bpp_praca_doktorska FOR EACH ROW WHEN ((old.autor_id IS DISTINCT FROM new.autor_id)) EXECUTE FUNCTION public.f_d_aft_row_upd_on_bpp_praca_doktorska_praca_doktorska_be56a();
+
+
+--
+-- Name: bpp_praca_habilitacyjna d_aft_row_upd_on_bpp_praca_habilitacyjna_praca_doktors5e61; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER d_aft_row_upd_on_bpp_praca_habilitacyjna_praca_doktors5e61 AFTER UPDATE ON public.bpp_praca_habilitacyjna FOR EACH ROW WHEN ((old.autor_id IS DISTINCT FROM new.autor_id)) EXECUTE FUNCTION public.f_d_aft_row_upd_on_bpp_praca_habilitacyjna_praca_doktors5e61();
+
+
+--
+-- Name: bpp_praca_habilitacyjna d_aft_row_upd_on_bpp_praca_habilitacyjna_praca_doktors8a80; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER d_aft_row_upd_on_bpp_praca_habilitacyjna_praca_doktors8a80 AFTER UPDATE ON public.bpp_praca_habilitacyjna FOR EACH ROW WHEN ((old.autor_id IS DISTINCT FROM new.autor_id)) EXECUTE FUNCTION public.f_d_aft_row_upd_on_bpp_praca_habilitacyjna_praca_doktors8a80();
+
+
+--
+-- Name: bpp_praca_habilitacyjna d_aft_row_upd_on_bpp_praca_habilitacyjna_praca_doktorsb87e; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER d_aft_row_upd_on_bpp_praca_habilitacyjna_praca_doktorsb87e AFTER UPDATE ON public.bpp_praca_habilitacyjna FOR EACH ROW WHEN (((old.id IS DISTINCT FROM new.id) OR (old.nie_eksportuj_przez_api IS DISTINCT FROM new.nie_eksportuj_przez_api) OR (old.tekst_przed_pierwszym_autorem IS DISTINCT FROM new.tekst_przed_pierwszym_autorem) OR (old.tekst_po_ostatnim_autorze IS DISTINCT FROM new.tekst_po_ostatnim_autorze) OR (old.opl_pub_cost_free IS DISTINCT FROM new.opl_pub_cost_free) OR (old.opl_pub_research_potential IS DISTINCT FROM new.opl_pub_research_potential) OR (old.opl_pub_research_or_development_projects IS DISTINCT FROM new.opl_pub_research_or_development_projects) OR (old.opl_pub_other IS DISTINCT FROM new.opl_pub_other) OR (old.opl_pub_amount IS DISTINCT FROM new.opl_pub_amount) OR (old.pbn_id IS DISTINCT FROM new.pbn_id) OR ((old.isbn)::text IS DISTINCT FROM (new.isbn)::text) OR ((old.e_isbn)::text IS DISTINCT FROM (new.e_isbn)::text) OR ((old.doi)::text IS DISTINCT FROM (new.doi)::text) OR (old.pubmed_id IS DISTINCT FROM new.pubmed_id) OR ((old.pmc_id)::text IS DISTINCT FROM (new.pmc_id)::text) OR (old.slowa_kluczowe_eng IS DISTINCT FROM new.slowa_kluczowe_eng) OR (old.adnotacje IS DISTINCT FROM new.adnotacje) OR (old.informacja_z_id IS DISTINCT FROM new.informacja_z_id) OR (old.status_korekty_id IS DISTINCT FROM new.status_korekty_id) OR (old.informacje IS DISTINCT FROM new.informacje) OR ((old.szczegoly)::text IS DISTINCT FROM (new.szczegoly)::text) OR (old.uwagi IS DISTINCT FROM new.uwagi) OR (old.utworzono IS DISTINCT FROM new.utworzono) OR ((old.strony)::text IS DISTINCT FROM (new.strony)::text) OR ((old.tom)::text IS DISTINCT FROM (new.tom)::text) OR (old.tytul_oryginalny IS DISTINCT FROM new.tytul_oryginalny) OR (old.tytul IS DISTINCT FROM new.tytul) OR (old.liczba_cytowan IS DISTINCT FROM new.liczba_cytowan) OR ((old.pbn_uid_id)::text IS DISTINCT FROM (new.pbn_uid_id)::text) OR (old.recenzowana IS DISTINCT FROM new.recenzowana) OR (old.typ_kbn_id IS DISTINCT FROM new.typ_kbn_id) OR (old.jezyk_id IS DISTINCT FROM new.jezyk_id) OR (old.jezyk_alt_id IS DISTINCT FROM new.jezyk_alt_id) OR (old.jezyk_orig_id IS DISTINCT FROM new.jezyk_orig_id) OR (old.rok IS DISTINCT FROM new.rok) OR (old.search_index IS DISTINCT FROM new.search_index) OR (old.tytul_oryginalny_sort IS DISTINCT FROM new.tytul_oryginalny_sort) OR (old.legacy_data IS DISTINCT FROM new.legacy_data) OR (old.impact_factor IS DISTINCT FROM new.impact_factor) OR (old.punkty_kbn IS DISTINCT FROM new.punkty_kbn) OR (old.index_copernicus IS DISTINCT FROM new.index_copernicus) OR (old.punktacja_wewnetrzna IS DISTINCT FROM new.punktacja_wewnetrzna) OR (old.punktacja_snip IS DISTINCT FROM new.punktacja_snip) OR (old.weryfikacja_punktacji IS DISTINCT FROM new.weryfikacja_punktacji) OR ((old.numer_odbitki)::text IS DISTINCT FROM (new.numer_odbitki)::text) OR ((old.www)::text IS DISTINCT FROM (new.www)::text) OR (old.dostep_dnia IS DISTINCT FROM new.dostep_dnia) OR ((old.public_www)::text IS DISTINCT FROM (new.public_www)::text) OR (old.public_dostep_dnia IS DISTINCT FROM new.public_dostep_dnia) OR ((old.miejsce_i_rok)::text IS DISTINCT FROM (new.miejsce_i_rok)::text) OR (old.wydawca_id IS DISTINCT FROM new.wydawca_id) OR ((old.wydawca_opis)::text IS DISTINCT FROM (new.wydawca_opis)::text) OR ((old.oznaczenie_wydania)::text IS DISTINCT FROM (new.oznaczenie_wydania)::text) OR (old.redakcja IS DISTINCT FROM new.redakcja) OR (old.jednostka_id IS DISTINCT FROM new.jednostka_id) OR (old.opis_bibliograficzny_autorzy_cache IS DISTINCT FROM new.opis_bibliograficzny_autorzy_cache) OR (old.opis_bibliograficzny_zapisani_autorzy_cache IS DISTINCT FROM new.opis_bibliograficzny_zapisani_autorzy_cache) OR ((old.slug)::text IS DISTINCT FROM (new.slug)::text) OR (old.autor_id IS DISTINCT FROM new.autor_id))) EXECUTE FUNCTION public.f_d_aft_row_upd_on_bpp_praca_habilitacyjna_praca_doktorsb87e();
+
+
+--
+-- Name: bpp_praca_habilitacyjna d_aft_row_upd_on_bpp_praca_habilitacyjna_praca_doktorsd6e8; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER d_aft_row_upd_on_bpp_praca_habilitacyjna_praca_doktorsd6e8 AFTER UPDATE ON public.bpp_praca_habilitacyjna FOR EACH ROW WHEN ((old.tytul_oryginalny IS DISTINCT FROM new.tytul_oryginalny)) EXECUTE FUNCTION public.f_d_aft_row_upd_on_bpp_praca_habilitacyjna_praca_doktorsd6e8();
 
 
 --
 -- Name: bpp_status_korekty d_aft_row_upd_on_bpp_status_korekty_patent_opis_bibliob439; Type: TRIGGER; Schema: public; Owner: -
 --
 
-CREATE TRIGGER d_aft_row_upd_on_bpp_status_korekty_patent_opis_bibliob439 AFTER UPDATE ON public.bpp_status_korekty FOR EACH ROW EXECUTE FUNCTION public.f_d_aft_row_upd_on_bpp_status_korekty_patent_opis_bibliob439();
+CREATE TRIGGER d_aft_row_upd_on_bpp_status_korekty_patent_opis_bibliob439 AFTER UPDATE ON public.bpp_status_korekty FOR EACH ROW WHEN (((old.id IS DISTINCT FROM new.id) OR ((old.nazwa)::text IS DISTINCT FROM (new.nazwa)::text))) EXECUTE FUNCTION public.f_d_aft_row_upd_on_bpp_status_korekty_patent_opis_bibliob439();
 
 
 --
 -- Name: bpp_status_korekty d_aft_row_upd_on_bpp_status_korekty_praca_doktorska_ba649b; Type: TRIGGER; Schema: public; Owner: -
 --
 
-CREATE TRIGGER d_aft_row_upd_on_bpp_status_korekty_praca_doktorska_ba649b AFTER UPDATE ON public.bpp_status_korekty FOR EACH ROW EXECUTE FUNCTION public.f_d_aft_row_upd_on_bpp_status_korekty_praca_doktorska_ba649b();
+CREATE TRIGGER d_aft_row_upd_on_bpp_status_korekty_praca_doktorska_ba649b AFTER UPDATE ON public.bpp_status_korekty FOR EACH ROW WHEN (((old.id IS DISTINCT FROM new.id) OR ((old.nazwa)::text IS DISTINCT FROM (new.nazwa)::text))) EXECUTE FUNCTION public.f_d_aft_row_upd_on_bpp_status_korekty_praca_doktorska_ba649b();
 
 
 --
 -- Name: bpp_status_korekty d_aft_row_upd_on_bpp_status_korekty_wydawnictwo_ciaglea3af; Type: TRIGGER; Schema: public; Owner: -
 --
 
-CREATE TRIGGER d_aft_row_upd_on_bpp_status_korekty_wydawnictwo_ciaglea3af AFTER UPDATE ON public.bpp_status_korekty FOR EACH ROW EXECUTE FUNCTION public.f_d_aft_row_upd_on_bpp_status_korekty_wydawnictwo_ciaglea3af();
+CREATE TRIGGER d_aft_row_upd_on_bpp_status_korekty_wydawnictwo_ciaglea3af AFTER UPDATE ON public.bpp_status_korekty FOR EACH ROW WHEN (((old.id IS DISTINCT FROM new.id) OR ((old.nazwa)::text IS DISTINCT FROM (new.nazwa)::text))) EXECUTE FUNCTION public.f_d_aft_row_upd_on_bpp_status_korekty_wydawnictwo_ciaglea3af();
 
 
 --
 -- Name: bpp_status_korekty d_aft_row_upd_on_bpp_status_korekty_wydawnictwo_zwarteb6d6; Type: TRIGGER; Schema: public; Owner: -
 --
 
-CREATE TRIGGER d_aft_row_upd_on_bpp_status_korekty_wydawnictwo_zwarteb6d6 AFTER UPDATE ON public.bpp_status_korekty FOR EACH ROW EXECUTE FUNCTION public.f_d_aft_row_upd_on_bpp_status_korekty_wydawnictwo_zwarteb6d6();
+CREATE TRIGGER d_aft_row_upd_on_bpp_status_korekty_wydawnictwo_zwarteb6d6 AFTER UPDATE ON public.bpp_status_korekty FOR EACH ROW WHEN (((old.id IS DISTINCT FROM new.id) OR ((old.nazwa)::text IS DISTINCT FROM (new.nazwa)::text))) EXECUTE FUNCTION public.f_d_aft_row_upd_on_bpp_status_korekty_wydawnictwo_zwarteb6d6();
 
 
 --
 -- Name: bpp_typ_kbn d_aft_row_upd_on_bpp_typ_kbn_wydawnictwo_ciagle_opis_b1c58; Type: TRIGGER; Schema: public; Owner: -
 --
 
-CREATE TRIGGER d_aft_row_upd_on_bpp_typ_kbn_wydawnictwo_ciagle_opis_b1c58 AFTER UPDATE ON public.bpp_typ_kbn FOR EACH ROW EXECUTE FUNCTION public.f_d_aft_row_upd_on_bpp_typ_kbn_wydawnictwo_ciagle_opis_b1c58();
+CREATE TRIGGER d_aft_row_upd_on_bpp_typ_kbn_wydawnictwo_ciagle_opis_b1c58 AFTER UPDATE ON public.bpp_typ_kbn FOR EACH ROW WHEN (((old.id IS DISTINCT FROM new.id) OR ((old.nazwa)::text IS DISTINCT FROM (new.nazwa)::text) OR ((old.skrot)::text IS DISTINCT FROM (new.skrot)::text) OR (old.artykul_pbn IS DISTINCT FROM new.artykul_pbn) OR (old.charakter_pbn_id IS DISTINCT FROM new.charakter_pbn_id) OR (old.wliczaj_do_rankingu IS DISTINCT FROM new.wliczaj_do_rankingu) OR (old.ukryty IS DISTINCT FROM new.ukryty))) EXECUTE FUNCTION public.f_d_aft_row_upd_on_bpp_typ_kbn_wydawnictwo_ciagle_opis_b1c58();
 
 
 --
 -- Name: bpp_typ_kbn d_aft_row_upd_on_bpp_typ_kbn_wydawnictwo_zwarte_opis_b6bb3; Type: TRIGGER; Schema: public; Owner: -
 --
 
-CREATE TRIGGER d_aft_row_upd_on_bpp_typ_kbn_wydawnictwo_zwarte_opis_b6bb3 AFTER UPDATE ON public.bpp_typ_kbn FOR EACH ROW EXECUTE FUNCTION public.f_d_aft_row_upd_on_bpp_typ_kbn_wydawnictwo_zwarte_opis_b6bb3();
+CREATE TRIGGER d_aft_row_upd_on_bpp_typ_kbn_wydawnictwo_zwarte_opis_b6bb3 AFTER UPDATE ON public.bpp_typ_kbn FOR EACH ROW WHEN (((old.id IS DISTINCT FROM new.id) OR ((old.nazwa)::text IS DISTINCT FROM (new.nazwa)::text) OR ((old.skrot)::text IS DISTINCT FROM (new.skrot)::text) OR (old.artykul_pbn IS DISTINCT FROM new.artykul_pbn) OR (old.charakter_pbn_id IS DISTINCT FROM new.charakter_pbn_id) OR (old.wliczaj_do_rankingu IS DISTINCT FROM new.wliczaj_do_rankingu) OR (old.ukryty IS DISTINCT FROM new.ukryty))) EXECUTE FUNCTION public.f_d_aft_row_upd_on_bpp_typ_kbn_wydawnictwo_zwarte_opis_b6bb3();
 
 
 --
 -- Name: bpp_wydawca d_aft_row_upd_on_bpp_wydawca; Type: TRIGGER; Schema: public; Owner: -
 --
 
-CREATE TRIGGER d_aft_row_upd_on_bpp_wydawca AFTER UPDATE ON public.bpp_wydawca FOR EACH ROW EXECUTE FUNCTION public.f_d_aft_row_upd_on_bpp_wydawca();
+CREATE TRIGGER d_aft_row_upd_on_bpp_wydawca AFTER UPDATE ON public.bpp_wydawca FOR EACH ROW WHEN (((old.id IS DISTINCT FROM new.id) OR ((old.nazwa)::text IS DISTINCT FROM (new.nazwa)::text) OR (old.alias_dla_id IS DISTINCT FROM new.alias_dla_id) OR ((old.pbn_uid_id)::text IS DISTINCT FROM (new.pbn_uid_id)::text) OR (old.lista_poziomow IS DISTINCT FROM new.lista_poziomow) OR (old.ile_aliasow IS DISTINCT FROM new.ile_aliasow))) EXECUTE FUNCTION public.f_d_aft_row_upd_on_bpp_wydawca();
+
+
+--
+-- Name: bpp_wydawca d_aft_row_upd_on_bpp_wydawca_wydawca_lista_poziomow_self; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER d_aft_row_upd_on_bpp_wydawca_wydawca_lista_poziomow_self AFTER UPDATE ON public.bpp_wydawca FOR EACH ROW WHEN (((old.id IS DISTINCT FROM new.id) OR ((old.nazwa)::text IS DISTINCT FROM (new.nazwa)::text) OR (old.alias_dla_id IS DISTINCT FROM new.alias_dla_id) OR ((old.pbn_uid_id)::text IS DISTINCT FROM (new.pbn_uid_id)::text) OR (old.ile_aliasow IS DISTINCT FROM new.ile_aliasow))) EXECUTE FUNCTION public.f_d_aft_row_upd_on_bpp_wydawca_wydawca_lista_poziomow_self();
 
 
 --
 -- Name: bpp_wydawca d_aft_row_upd_on_bpp_wydawca_wydawnictwo_zwarte_cachedb98b; Type: TRIGGER; Schema: public; Owner: -
 --
 
-CREATE TRIGGER d_aft_row_upd_on_bpp_wydawca_wydawnictwo_zwarte_cachedb98b AFTER UPDATE ON public.bpp_wydawca FOR EACH ROW EXECUTE FUNCTION public.f_d_aft_row_upd_on_bpp_wydawca_wydawnictwo_zwarte_cachedb98b();
+CREATE TRIGGER d_aft_row_upd_on_bpp_wydawca_wydawnictwo_zwarte_cachedb98b AFTER UPDATE ON public.bpp_wydawca FOR EACH ROW WHEN (((old.alias_dla_id IS DISTINCT FROM new.alias_dla_id) OR (old.lista_poziomow IS DISTINCT FROM new.lista_poziomow))) EXECUTE FUNCTION public.f_d_aft_row_upd_on_bpp_wydawca_wydawnictwo_zwarte_cachedb98b();
 
 
 --
 -- Name: bpp_wydawca d_aft_row_upd_on_bpp_wydawca_wydawnictwo_zwarte_opis_b1885; Type: TRIGGER; Schema: public; Owner: -
 --
 
-CREATE TRIGGER d_aft_row_upd_on_bpp_wydawca_wydawnictwo_zwarte_opis_b1885 AFTER UPDATE ON public.bpp_wydawca FOR EACH ROW EXECUTE FUNCTION public.f_d_aft_row_upd_on_bpp_wydawca_wydawnictwo_zwarte_opis_b1885();
-
-
---
--- Name: bpp_wydawnictwo_ciagle d_aft_row_upd_on_bpp_wydawnictwo_ciagle; Type: TRIGGER; Schema: public; Owner: -
---
-
-CREATE TRIGGER d_aft_row_upd_on_bpp_wydawnictwo_ciagle AFTER UPDATE ON public.bpp_wydawnictwo_ciagle FOR EACH ROW EXECUTE FUNCTION public.f_d_aft_row_upd_on_bpp_wydawnictwo_ciagle();
+CREATE TRIGGER d_aft_row_upd_on_bpp_wydawca_wydawnictwo_zwarte_opis_b1885 AFTER UPDATE ON public.bpp_wydawca FOR EACH ROW WHEN ((((old.nazwa)::text IS DISTINCT FROM (new.nazwa)::text) OR (old.alias_dla_id IS DISTINCT FROM new.alias_dla_id))) EXECUTE FUNCTION public.f_d_aft_row_upd_on_bpp_wydawca_wydawnictwo_zwarte_opis_b1885();
 
 
 --
 -- Name: bpp_wydawnictwo_ciagle_autor d_aft_row_upd_on_bpp_wydawnictwo_ciagle_autor_wydawnic00d9; Type: TRIGGER; Schema: public; Owner: -
 --
 
-CREATE TRIGGER d_aft_row_upd_on_bpp_wydawnictwo_ciagle_autor_wydawnic00d9 AFTER UPDATE ON public.bpp_wydawnictwo_ciagle_autor FOR EACH ROW EXECUTE FUNCTION public.f_d_aft_row_upd_on_bpp_wydawnictwo_ciagle_autor_wydawnic00d9();
+CREATE TRIGGER d_aft_row_upd_on_bpp_wydawnictwo_ciagle_autor_wydawnic00d9 AFTER UPDATE ON public.bpp_wydawnictwo_ciagle_autor FOR EACH ROW WHEN (((old.rekord_id IS DISTINCT FROM new.rekord_id) OR (old.autor_id IS DISTINCT FROM new.autor_id) OR (old.kolejnosc IS DISTINCT FROM new.kolejnosc) OR ((old.zapisany_jako)::text IS DISTINCT FROM (new.zapisany_jako)::text))) EXECUTE FUNCTION public.f_d_aft_row_upd_on_bpp_wydawnictwo_ciagle_autor_wydawnic00d9();
 
 
 --
 -- Name: bpp_wydawnictwo_ciagle_autor d_aft_row_upd_on_bpp_wydawnictwo_ciagle_autor_wydawnic1b88; Type: TRIGGER; Schema: public; Owner: -
 --
 
-CREATE TRIGGER d_aft_row_upd_on_bpp_wydawnictwo_ciagle_autor_wydawnic1b88 AFTER UPDATE ON public.bpp_wydawnictwo_ciagle_autor FOR EACH ROW EXECUTE FUNCTION public.f_d_aft_row_upd_on_bpp_wydawnictwo_ciagle_autor_wydawnic1b88();
+CREATE TRIGGER d_aft_row_upd_on_bpp_wydawnictwo_ciagle_autor_wydawnic1b88 AFTER UPDATE ON public.bpp_wydawnictwo_ciagle_autor FOR EACH ROW WHEN (((old.kolejnosc IS DISTINCT FROM new.kolejnosc) OR ((old.zapisany_jako)::text IS DISTINCT FROM (new.zapisany_jako)::text))) EXECUTE FUNCTION public.f_d_aft_row_upd_on_bpp_wydawnictwo_ciagle_autor_wydawnic1b88();
 
 
 --
 -- Name: bpp_wydawnictwo_ciagle_autor d_aft_row_upd_on_bpp_wydawnictwo_ciagle_autor_wydawnic21a0; Type: TRIGGER; Schema: public; Owner: -
 --
 
-CREATE TRIGGER d_aft_row_upd_on_bpp_wydawnictwo_ciagle_autor_wydawnic21a0 AFTER UPDATE ON public.bpp_wydawnictwo_ciagle_autor FOR EACH ROW EXECUTE FUNCTION public.f_d_aft_row_upd_on_bpp_wydawnictwo_ciagle_autor_wydawnic21a0();
+CREATE TRIGGER d_aft_row_upd_on_bpp_wydawnictwo_ciagle_autor_wydawnic21a0 AFTER UPDATE ON public.bpp_wydawnictwo_ciagle_autor FOR EACH ROW WHEN (((old.kolejnosc IS DISTINCT FROM new.kolejnosc) OR (old.typ_odpowiedzialnosci_id IS DISTINCT FROM new.typ_odpowiedzialnosci_id) OR ((old.zapisany_jako)::text IS DISTINCT FROM (new.zapisany_jako)::text))) EXECUTE FUNCTION public.f_d_aft_row_upd_on_bpp_wydawnictwo_ciagle_autor_wydawnic21a0();
 
 
 --
 -- Name: bpp_wydawnictwo_ciagle_autor d_aft_row_upd_on_bpp_wydawnictwo_ciagle_autor_wydawnic5f99; Type: TRIGGER; Schema: public; Owner: -
 --
 
-CREATE TRIGGER d_aft_row_upd_on_bpp_wydawnictwo_ciagle_autor_wydawnic5f99 AFTER UPDATE ON public.bpp_wydawnictwo_ciagle_autor FOR EACH ROW EXECUTE FUNCTION public.f_d_aft_row_upd_on_bpp_wydawnictwo_ciagle_autor_wydawnic5f99();
+CREATE TRIGGER d_aft_row_upd_on_bpp_wydawnictwo_ciagle_autor_wydawnic5f99 AFTER UPDATE ON public.bpp_wydawnictwo_ciagle_autor FOR EACH ROW WHEN (((old.autor_id IS DISTINCT FROM new.autor_id) OR (old.jednostka_id IS DISTINCT FROM new.jednostka_id) OR (old.typ_odpowiedzialnosci_id IS DISTINCT FROM new.typ_odpowiedzialnosci_id) OR (old.afiliuje IS DISTINCT FROM new.afiliuje) OR (old.dyscyplina_naukowa_id IS DISTINCT FROM new.dyscyplina_naukowa_id) OR (old.przypieta IS DISTINCT FROM new.przypieta) OR (old.upowaznienie_pbn IS DISTINCT FROM new.upowaznienie_pbn))) EXECUTE FUNCTION public.f_d_aft_row_upd_on_bpp_wydawnictwo_ciagle_autor_wydawnic5f99();
 
 
 --
 -- Name: bpp_wydawnictwo_ciagle_autor d_aft_row_upd_on_bpp_wydawnictwo_ciagle_autor_wydawnicc005; Type: TRIGGER; Schema: public; Owner: -
 --
 
-CREATE TRIGGER d_aft_row_upd_on_bpp_wydawnictwo_ciagle_autor_wydawnicc005 AFTER UPDATE ON public.bpp_wydawnictwo_ciagle_autor FOR EACH ROW EXECUTE FUNCTION public.f_d_aft_row_upd_on_bpp_wydawnictwo_ciagle_autor_wydawnicc005();
+CREATE TRIGGER d_aft_row_upd_on_bpp_wydawnictwo_ciagle_autor_wydawnicc005 AFTER UPDATE ON public.bpp_wydawnictwo_ciagle_autor FOR EACH ROW WHEN (((old.kolejnosc IS DISTINCT FROM new.kolejnosc) OR (old.rekord_id IS DISTINCT FROM new.rekord_id) OR (old.autor_id IS DISTINCT FROM new.autor_id))) EXECUTE FUNCTION public.f_d_aft_row_upd_on_bpp_wydawnictwo_ciagle_autor_wydawnicc005();
 
 
 --
--- Name: bpp_wydawnictwo_zwarte d_aft_row_upd_on_bpp_wydawnictwo_zwarte; Type: TRIGGER; Schema: public; Owner: -
+-- Name: bpp_wydawnictwo_ciagle d_aft_row_upd_on_bpp_wydawnictwo_ciagle_wydawnictwo_ci3ce4; Type: TRIGGER; Schema: public; Owner: -
 --
 
-CREATE TRIGGER d_aft_row_upd_on_bpp_wydawnictwo_zwarte AFTER UPDATE ON public.bpp_wydawnictwo_zwarte FOR EACH ROW EXECUTE FUNCTION public.f_d_aft_row_upd_on_bpp_wydawnictwo_zwarte();
+CREATE TRIGGER d_aft_row_upd_on_bpp_wydawnictwo_ciagle_wydawnictwo_ci3ce4 AFTER UPDATE ON public.bpp_wydawnictwo_ciagle FOR EACH ROW WHEN (((old.id IS DISTINCT FROM new.id) OR (old.nie_eksportuj_przez_api IS DISTINCT FROM new.nie_eksportuj_przez_api) OR (old.tekst_przed_pierwszym_autorem IS DISTINCT FROM new.tekst_przed_pierwszym_autorem) OR (old.tekst_po_ostatnim_autorze IS DISTINCT FROM new.tekst_po_ostatnim_autorze) OR (old.opl_pub_cost_free IS DISTINCT FROM new.opl_pub_cost_free) OR (old.opl_pub_research_potential IS DISTINCT FROM new.opl_pub_research_potential) OR (old.opl_pub_research_or_development_projects IS DISTINCT FROM new.opl_pub_research_or_development_projects) OR (old.opl_pub_other IS DISTINCT FROM new.opl_pub_other) OR (old.opl_pub_amount IS DISTINCT FROM new.opl_pub_amount) OR (old.pbn_id IS DISTINCT FROM new.pbn_id) OR ((old.issn)::text IS DISTINCT FROM (new.issn)::text) OR ((old.e_issn)::text IS DISTINCT FROM (new.e_issn)::text) OR ((old.doi)::text IS DISTINCT FROM (new.doi)::text) OR (old.pubmed_id IS DISTINCT FROM new.pubmed_id) OR ((old.pmc_id)::text IS DISTINCT FROM (new.pmc_id)::text) OR (old.slowa_kluczowe_eng IS DISTINCT FROM new.slowa_kluczowe_eng) OR (old.adnotacje IS DISTINCT FROM new.adnotacje) OR (old.informacja_z_id IS DISTINCT FROM new.informacja_z_id) OR (old.status_korekty_id IS DISTINCT FROM new.status_korekty_id) OR (old.charakter_formalny_id IS DISTINCT FROM new.charakter_formalny_id) OR (old.informacje IS DISTINCT FROM new.informacje) OR ((old.szczegoly)::text IS DISTINCT FROM (new.szczegoly)::text) OR (old.uwagi IS DISTINCT FROM new.uwagi) OR (old.utworzono IS DISTINCT FROM new.utworzono) OR ((old.strony)::text IS DISTINCT FROM (new.strony)::text) OR ((old.tom)::text IS DISTINCT FROM (new.tom)::text) OR ((old.nr_zeszytu)::text IS DISTINCT FROM (new.nr_zeszytu)::text) OR (old.tytul_oryginalny IS DISTINCT FROM new.tytul_oryginalny) OR (old.tytul IS DISTINCT FROM new.tytul) OR (old.openaccess_wersja_tekstu_id IS DISTINCT FROM new.openaccess_wersja_tekstu_id) OR (old.openaccess_licencja_id IS DISTINCT FROM new.openaccess_licencja_id) OR (old.openaccess_czas_publikacji_id IS DISTINCT FROM new.openaccess_czas_publikacji_id) OR (old.openaccess_ilosc_miesiecy IS DISTINCT FROM new.openaccess_ilosc_miesiecy) OR (old.openaccess_data_opublikowania IS DISTINCT FROM new.openaccess_data_opublikowania) OR (old.liczba_cytowan IS DISTINCT FROM new.liczba_cytowan) OR ((old.pbn_uid_id)::text IS DISTINCT FROM (new.pbn_uid_id)::text) OR (old.pbn_czy_projekt_fnp IS DISTINCT FROM new.pbn_czy_projekt_fnp) OR (old.pbn_czy_projekt_ncn IS DISTINCT FROM new.pbn_czy_projekt_ncn) OR (old.pbn_czy_projekt_nprh IS DISTINCT FROM new.pbn_czy_projekt_nprh) OR (old.pbn_czy_projekt_ue IS DISTINCT FROM new.pbn_czy_projekt_ue) OR (old.pbn_czy_czasopismo_indeksowane IS DISTINCT FROM new.pbn_czy_czasopismo_indeksowane) OR (old.pbn_czy_artykul_recenzyjny IS DISTINCT FROM new.pbn_czy_artykul_recenzyjny) OR (old.pbn_czy_edycja_naukowa IS DISTINCT FROM new.pbn_czy_edycja_naukowa) OR (old.liczba_znakow_wydawniczych IS DISTINCT FROM new.liczba_znakow_wydawniczych) OR (old.recenzowana IS DISTINCT FROM new.recenzowana) OR (old.typ_kbn_id IS DISTINCT FROM new.typ_kbn_id) OR (old.jezyk_id IS DISTINCT FROM new.jezyk_id) OR (old.jezyk_alt_id IS DISTINCT FROM new.jezyk_alt_id) OR (old.jezyk_orig_id IS DISTINCT FROM new.jezyk_orig_id) OR (old.rok IS DISTINCT FROM new.rok) OR (old.konferencja_id IS DISTINCT FROM new.konferencja_id) OR (old.search_index IS DISTINCT FROM new.search_index) OR (old.tytul_oryginalny_sort IS DISTINCT FROM new.tytul_oryginalny_sort) OR (old.legacy_data IS DISTINCT FROM new.legacy_data) OR (old.praca_wybitna IS DISTINCT FROM new.praca_wybitna) OR (old.uzasadnienie_wybitnosci IS DISTINCT FROM new.uzasadnienie_wybitnosci) OR (old.impact_factor IS DISTINCT FROM new.impact_factor) OR (old.punkty_kbn IS DISTINCT FROM new.punkty_kbn) OR (old.index_copernicus IS DISTINCT FROM new.index_copernicus) OR (old.punktacja_wewnetrzna IS DISTINCT FROM new.punktacja_wewnetrzna) OR (old.punktacja_snip IS DISTINCT FROM new.punktacja_snip) OR (old.kwartyl_w_scopus IS DISTINCT FROM new.kwartyl_w_scopus) OR (old.kwartyl_w_wos IS DISTINCT FROM new.kwartyl_w_wos) OR (old.weryfikacja_punktacji IS DISTINCT FROM new.weryfikacja_punktacji) OR ((old.numer_odbitki)::text IS DISTINCT FROM (new.numer_odbitki)::text) OR ((old.www)::text IS DISTINCT FROM (new.www)::text) OR (old.dostep_dnia IS DISTINCT FROM new.dostep_dnia) OR ((old.public_www)::text IS DISTINCT FROM (new.public_www)::text) OR (old.public_dostep_dnia IS DISTINCT FROM new.public_dostep_dnia) OR (old.openaccess_tryb_dostepu_id IS DISTINCT FROM new.openaccess_tryb_dostepu_id) OR (old.zrodlo_id IS DISTINCT FROM new.zrodlo_id) OR (old.uzupelnij_punktacje IS DISTINCT FROM new.uzupelnij_punktacje) OR (old.cached_punkty_dyscyplin IS DISTINCT FROM new.cached_punkty_dyscyplin) OR (old.opis_bibliograficzny_cache IS DISTINCT FROM new.opis_bibliograficzny_cache) OR (old.opis_bibliograficzny_zapisani_autorzy_cache IS DISTINCT FROM new.opis_bibliograficzny_zapisani_autorzy_cache) OR ((old.slug)::text IS DISTINCT FROM (new.slug)::text))) EXECUTE FUNCTION public.f_d_aft_row_upd_on_bpp_wydawnictwo_ciagle_wydawnictwo_ci3ce4();
+
+
+--
+-- Name: bpp_wydawnictwo_ciagle d_aft_row_upd_on_bpp_wydawnictwo_ciagle_wydawnictwo_cic966; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER d_aft_row_upd_on_bpp_wydawnictwo_ciagle_wydawnictwo_cic966 AFTER UPDATE ON public.bpp_wydawnictwo_ciagle FOR EACH ROW WHEN (((old.id IS DISTINCT FROM new.id) OR (old.nie_eksportuj_przez_api IS DISTINCT FROM new.nie_eksportuj_przez_api) OR (old.tekst_przed_pierwszym_autorem IS DISTINCT FROM new.tekst_przed_pierwszym_autorem) OR (old.tekst_po_ostatnim_autorze IS DISTINCT FROM new.tekst_po_ostatnim_autorze) OR (old.opl_pub_cost_free IS DISTINCT FROM new.opl_pub_cost_free) OR (old.opl_pub_research_potential IS DISTINCT FROM new.opl_pub_research_potential) OR (old.opl_pub_research_or_development_projects IS DISTINCT FROM new.opl_pub_research_or_development_projects) OR (old.opl_pub_other IS DISTINCT FROM new.opl_pub_other) OR (old.opl_pub_amount IS DISTINCT FROM new.opl_pub_amount) OR (old.pbn_id IS DISTINCT FROM new.pbn_id) OR ((old.issn)::text IS DISTINCT FROM (new.issn)::text) OR ((old.e_issn)::text IS DISTINCT FROM (new.e_issn)::text) OR ((old.doi)::text IS DISTINCT FROM (new.doi)::text) OR (old.pubmed_id IS DISTINCT FROM new.pubmed_id) OR ((old.pmc_id)::text IS DISTINCT FROM (new.pmc_id)::text) OR (old.slowa_kluczowe_eng IS DISTINCT FROM new.slowa_kluczowe_eng) OR (old.adnotacje IS DISTINCT FROM new.adnotacje) OR (old.informacja_z_id IS DISTINCT FROM new.informacja_z_id) OR (old.status_korekty_id IS DISTINCT FROM new.status_korekty_id) OR (old.charakter_formalny_id IS DISTINCT FROM new.charakter_formalny_id) OR (old.informacje IS DISTINCT FROM new.informacje) OR ((old.szczegoly)::text IS DISTINCT FROM (new.szczegoly)::text) OR (old.uwagi IS DISTINCT FROM new.uwagi) OR (old.utworzono IS DISTINCT FROM new.utworzono) OR ((old.strony)::text IS DISTINCT FROM (new.strony)::text) OR ((old.tom)::text IS DISTINCT FROM (new.tom)::text) OR ((old.nr_zeszytu)::text IS DISTINCT FROM (new.nr_zeszytu)::text) OR (old.tytul_oryginalny IS DISTINCT FROM new.tytul_oryginalny) OR (old.tytul IS DISTINCT FROM new.tytul) OR (old.openaccess_wersja_tekstu_id IS DISTINCT FROM new.openaccess_wersja_tekstu_id) OR (old.openaccess_licencja_id IS DISTINCT FROM new.openaccess_licencja_id) OR (old.openaccess_czas_publikacji_id IS DISTINCT FROM new.openaccess_czas_publikacji_id) OR (old.openaccess_ilosc_miesiecy IS DISTINCT FROM new.openaccess_ilosc_miesiecy) OR (old.openaccess_data_opublikowania IS DISTINCT FROM new.openaccess_data_opublikowania) OR (old.liczba_cytowan IS DISTINCT FROM new.liczba_cytowan) OR ((old.pbn_uid_id)::text IS DISTINCT FROM (new.pbn_uid_id)::text) OR (old.pbn_czy_projekt_fnp IS DISTINCT FROM new.pbn_czy_projekt_fnp) OR (old.pbn_czy_projekt_ncn IS DISTINCT FROM new.pbn_czy_projekt_ncn) OR (old.pbn_czy_projekt_nprh IS DISTINCT FROM new.pbn_czy_projekt_nprh) OR (old.pbn_czy_projekt_ue IS DISTINCT FROM new.pbn_czy_projekt_ue) OR (old.pbn_czy_czasopismo_indeksowane IS DISTINCT FROM new.pbn_czy_czasopismo_indeksowane) OR (old.pbn_czy_artykul_recenzyjny IS DISTINCT FROM new.pbn_czy_artykul_recenzyjny) OR (old.pbn_czy_edycja_naukowa IS DISTINCT FROM new.pbn_czy_edycja_naukowa) OR (old.liczba_znakow_wydawniczych IS DISTINCT FROM new.liczba_znakow_wydawniczych) OR (old.recenzowana IS DISTINCT FROM new.recenzowana) OR (old.typ_kbn_id IS DISTINCT FROM new.typ_kbn_id) OR (old.jezyk_id IS DISTINCT FROM new.jezyk_id) OR (old.jezyk_alt_id IS DISTINCT FROM new.jezyk_alt_id) OR (old.jezyk_orig_id IS DISTINCT FROM new.jezyk_orig_id) OR (old.rok IS DISTINCT FROM new.rok) OR (old.konferencja_id IS DISTINCT FROM new.konferencja_id) OR (old.search_index IS DISTINCT FROM new.search_index) OR (old.tytul_oryginalny_sort IS DISTINCT FROM new.tytul_oryginalny_sort) OR (old.legacy_data IS DISTINCT FROM new.legacy_data) OR (old.praca_wybitna IS DISTINCT FROM new.praca_wybitna) OR (old.uzasadnienie_wybitnosci IS DISTINCT FROM new.uzasadnienie_wybitnosci) OR (old.impact_factor IS DISTINCT FROM new.impact_factor) OR (old.punkty_kbn IS DISTINCT FROM new.punkty_kbn) OR (old.index_copernicus IS DISTINCT FROM new.index_copernicus) OR (old.punktacja_wewnetrzna IS DISTINCT FROM new.punktacja_wewnetrzna) OR (old.punktacja_snip IS DISTINCT FROM new.punktacja_snip) OR (old.kwartyl_w_scopus IS DISTINCT FROM new.kwartyl_w_scopus) OR (old.kwartyl_w_wos IS DISTINCT FROM new.kwartyl_w_wos) OR (old.weryfikacja_punktacji IS DISTINCT FROM new.weryfikacja_punktacji) OR ((old.numer_odbitki)::text IS DISTINCT FROM (new.numer_odbitki)::text) OR ((old.www)::text IS DISTINCT FROM (new.www)::text) OR (old.dostep_dnia IS DISTINCT FROM new.dostep_dnia) OR ((old.public_www)::text IS DISTINCT FROM (new.public_www)::text) OR (old.public_dostep_dnia IS DISTINCT FROM new.public_dostep_dnia) OR (old.openaccess_tryb_dostepu_id IS DISTINCT FROM new.openaccess_tryb_dostepu_id) OR (old.zrodlo_id IS DISTINCT FROM new.zrodlo_id) OR (old.uzupelnij_punktacje IS DISTINCT FROM new.uzupelnij_punktacje) OR (old.opis_bibliograficzny_cache IS DISTINCT FROM new.opis_bibliograficzny_cache) OR (old.opis_bibliograficzny_autorzy_cache IS DISTINCT FROM new.opis_bibliograficzny_autorzy_cache) OR (old.opis_bibliograficzny_zapisani_autorzy_cache IS DISTINCT FROM new.opis_bibliograficzny_zapisani_autorzy_cache) OR ((old.slug)::text IS DISTINCT FROM (new.slug)::text))) EXECUTE FUNCTION public.f_d_aft_row_upd_on_bpp_wydawnictwo_ciagle_wydawnictwo_cic966();
+
+
+--
+-- Name: bpp_wydawnictwo_ciagle d_aft_row_upd_on_bpp_wydawnictwo_ciagle_wydawnictwo_cid18d; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER d_aft_row_upd_on_bpp_wydawnictwo_ciagle_wydawnictwo_cid18d AFTER UPDATE ON public.bpp_wydawnictwo_ciagle FOR EACH ROW WHEN (((old.id IS DISTINCT FROM new.id) OR (old.nie_eksportuj_przez_api IS DISTINCT FROM new.nie_eksportuj_przez_api) OR (old.tekst_przed_pierwszym_autorem IS DISTINCT FROM new.tekst_przed_pierwszym_autorem) OR (old.tekst_po_ostatnim_autorze IS DISTINCT FROM new.tekst_po_ostatnim_autorze) OR (old.opl_pub_cost_free IS DISTINCT FROM new.opl_pub_cost_free) OR (old.opl_pub_research_potential IS DISTINCT FROM new.opl_pub_research_potential) OR (old.opl_pub_research_or_development_projects IS DISTINCT FROM new.opl_pub_research_or_development_projects) OR (old.opl_pub_other IS DISTINCT FROM new.opl_pub_other) OR (old.opl_pub_amount IS DISTINCT FROM new.opl_pub_amount) OR (old.pbn_id IS DISTINCT FROM new.pbn_id) OR ((old.issn)::text IS DISTINCT FROM (new.issn)::text) OR ((old.e_issn)::text IS DISTINCT FROM (new.e_issn)::text) OR ((old.doi)::text IS DISTINCT FROM (new.doi)::text) OR (old.pubmed_id IS DISTINCT FROM new.pubmed_id) OR ((old.pmc_id)::text IS DISTINCT FROM (new.pmc_id)::text) OR (old.slowa_kluczowe_eng IS DISTINCT FROM new.slowa_kluczowe_eng) OR (old.adnotacje IS DISTINCT FROM new.adnotacje) OR (old.informacja_z_id IS DISTINCT FROM new.informacja_z_id) OR (old.status_korekty_id IS DISTINCT FROM new.status_korekty_id) OR (old.charakter_formalny_id IS DISTINCT FROM new.charakter_formalny_id) OR (old.informacje IS DISTINCT FROM new.informacje) OR ((old.szczegoly)::text IS DISTINCT FROM (new.szczegoly)::text) OR (old.uwagi IS DISTINCT FROM new.uwagi) OR (old.utworzono IS DISTINCT FROM new.utworzono) OR ((old.strony)::text IS DISTINCT FROM (new.strony)::text) OR ((old.tom)::text IS DISTINCT FROM (new.tom)::text) OR ((old.nr_zeszytu)::text IS DISTINCT FROM (new.nr_zeszytu)::text) OR (old.tytul_oryginalny IS DISTINCT FROM new.tytul_oryginalny) OR (old.tytul IS DISTINCT FROM new.tytul) OR (old.openaccess_wersja_tekstu_id IS DISTINCT FROM new.openaccess_wersja_tekstu_id) OR (old.openaccess_licencja_id IS DISTINCT FROM new.openaccess_licencja_id) OR (old.openaccess_czas_publikacji_id IS DISTINCT FROM new.openaccess_czas_publikacji_id) OR (old.openaccess_ilosc_miesiecy IS DISTINCT FROM new.openaccess_ilosc_miesiecy) OR (old.openaccess_data_opublikowania IS DISTINCT FROM new.openaccess_data_opublikowania) OR (old.liczba_cytowan IS DISTINCT FROM new.liczba_cytowan) OR ((old.pbn_uid_id)::text IS DISTINCT FROM (new.pbn_uid_id)::text) OR (old.pbn_czy_projekt_fnp IS DISTINCT FROM new.pbn_czy_projekt_fnp) OR (old.pbn_czy_projekt_ncn IS DISTINCT FROM new.pbn_czy_projekt_ncn) OR (old.pbn_czy_projekt_nprh IS DISTINCT FROM new.pbn_czy_projekt_nprh) OR (old.pbn_czy_projekt_ue IS DISTINCT FROM new.pbn_czy_projekt_ue) OR (old.pbn_czy_czasopismo_indeksowane IS DISTINCT FROM new.pbn_czy_czasopismo_indeksowane) OR (old.pbn_czy_artykul_recenzyjny IS DISTINCT FROM new.pbn_czy_artykul_recenzyjny) OR (old.pbn_czy_edycja_naukowa IS DISTINCT FROM new.pbn_czy_edycja_naukowa) OR (old.liczba_znakow_wydawniczych IS DISTINCT FROM new.liczba_znakow_wydawniczych) OR (old.recenzowana IS DISTINCT FROM new.recenzowana) OR (old.typ_kbn_id IS DISTINCT FROM new.typ_kbn_id) OR (old.jezyk_id IS DISTINCT FROM new.jezyk_id) OR (old.jezyk_alt_id IS DISTINCT FROM new.jezyk_alt_id) OR (old.jezyk_orig_id IS DISTINCT FROM new.jezyk_orig_id) OR (old.rok IS DISTINCT FROM new.rok) OR (old.konferencja_id IS DISTINCT FROM new.konferencja_id) OR (old.search_index IS DISTINCT FROM new.search_index) OR (old.tytul_oryginalny_sort IS DISTINCT FROM new.tytul_oryginalny_sort) OR (old.legacy_data IS DISTINCT FROM new.legacy_data) OR (old.praca_wybitna IS DISTINCT FROM new.praca_wybitna) OR (old.uzasadnienie_wybitnosci IS DISTINCT FROM new.uzasadnienie_wybitnosci) OR (old.impact_factor IS DISTINCT FROM new.impact_factor) OR (old.punkty_kbn IS DISTINCT FROM new.punkty_kbn) OR (old.index_copernicus IS DISTINCT FROM new.index_copernicus) OR (old.punktacja_wewnetrzna IS DISTINCT FROM new.punktacja_wewnetrzna) OR (old.punktacja_snip IS DISTINCT FROM new.punktacja_snip) OR (old.kwartyl_w_scopus IS DISTINCT FROM new.kwartyl_w_scopus) OR (old.kwartyl_w_wos IS DISTINCT FROM new.kwartyl_w_wos) OR (old.weryfikacja_punktacji IS DISTINCT FROM new.weryfikacja_punktacji) OR ((old.numer_odbitki)::text IS DISTINCT FROM (new.numer_odbitki)::text) OR ((old.www)::text IS DISTINCT FROM (new.www)::text) OR (old.dostep_dnia IS DISTINCT FROM new.dostep_dnia) OR ((old.public_www)::text IS DISTINCT FROM (new.public_www)::text) OR (old.public_dostep_dnia IS DISTINCT FROM new.public_dostep_dnia) OR (old.openaccess_tryb_dostepu_id IS DISTINCT FROM new.openaccess_tryb_dostepu_id) OR (old.zrodlo_id IS DISTINCT FROM new.zrodlo_id) OR (old.uzupelnij_punktacje IS DISTINCT FROM new.uzupelnij_punktacje) OR (old.cached_punkty_dyscyplin IS DISTINCT FROM new.cached_punkty_dyscyplin) OR (old.opis_bibliograficzny_autorzy_cache IS DISTINCT FROM new.opis_bibliograficzny_autorzy_cache) OR (old.opis_bibliograficzny_zapisani_autorzy_cache IS DISTINCT FROM new.opis_bibliograficzny_zapisani_autorzy_cache) OR ((old.slug)::text IS DISTINCT FROM (new.slug)::text))) EXECUTE FUNCTION public.f_d_aft_row_upd_on_bpp_wydawnictwo_ciagle_wydawnictwo_cid18d();
+
+
+--
+-- Name: bpp_wydawnictwo_ciagle d_aft_row_upd_on_bpp_wydawnictwo_ciagle_wydawnictwo_cif4e7; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER d_aft_row_upd_on_bpp_wydawnictwo_ciagle_wydawnictwo_cif4e7 AFTER UPDATE ON public.bpp_wydawnictwo_ciagle FOR EACH ROW WHEN (((old.id IS DISTINCT FROM new.id) OR (old.nie_eksportuj_przez_api IS DISTINCT FROM new.nie_eksportuj_przez_api) OR (old.tekst_przed_pierwszym_autorem IS DISTINCT FROM new.tekst_przed_pierwszym_autorem) OR (old.tekst_po_ostatnim_autorze IS DISTINCT FROM new.tekst_po_ostatnim_autorze) OR (old.opl_pub_cost_free IS DISTINCT FROM new.opl_pub_cost_free) OR (old.opl_pub_research_potential IS DISTINCT FROM new.opl_pub_research_potential) OR (old.opl_pub_research_or_development_projects IS DISTINCT FROM new.opl_pub_research_or_development_projects) OR (old.opl_pub_other IS DISTINCT FROM new.opl_pub_other) OR (old.opl_pub_amount IS DISTINCT FROM new.opl_pub_amount) OR (old.pbn_id IS DISTINCT FROM new.pbn_id) OR ((old.issn)::text IS DISTINCT FROM (new.issn)::text) OR ((old.e_issn)::text IS DISTINCT FROM (new.e_issn)::text) OR ((old.doi)::text IS DISTINCT FROM (new.doi)::text) OR (old.pubmed_id IS DISTINCT FROM new.pubmed_id) OR ((old.pmc_id)::text IS DISTINCT FROM (new.pmc_id)::text) OR (old.slowa_kluczowe_eng IS DISTINCT FROM new.slowa_kluczowe_eng) OR (old.adnotacje IS DISTINCT FROM new.adnotacje) OR (old.informacja_z_id IS DISTINCT FROM new.informacja_z_id) OR (old.status_korekty_id IS DISTINCT FROM new.status_korekty_id) OR (old.charakter_formalny_id IS DISTINCT FROM new.charakter_formalny_id) OR (old.informacje IS DISTINCT FROM new.informacje) OR ((old.szczegoly)::text IS DISTINCT FROM (new.szczegoly)::text) OR (old.uwagi IS DISTINCT FROM new.uwagi) OR (old.utworzono IS DISTINCT FROM new.utworzono) OR ((old.strony)::text IS DISTINCT FROM (new.strony)::text) OR ((old.tom)::text IS DISTINCT FROM (new.tom)::text) OR ((old.nr_zeszytu)::text IS DISTINCT FROM (new.nr_zeszytu)::text) OR (old.tytul_oryginalny IS DISTINCT FROM new.tytul_oryginalny) OR (old.tytul IS DISTINCT FROM new.tytul) OR (old.openaccess_wersja_tekstu_id IS DISTINCT FROM new.openaccess_wersja_tekstu_id) OR (old.openaccess_licencja_id IS DISTINCT FROM new.openaccess_licencja_id) OR (old.openaccess_czas_publikacji_id IS DISTINCT FROM new.openaccess_czas_publikacji_id) OR (old.openaccess_ilosc_miesiecy IS DISTINCT FROM new.openaccess_ilosc_miesiecy) OR (old.openaccess_data_opublikowania IS DISTINCT FROM new.openaccess_data_opublikowania) OR (old.liczba_cytowan IS DISTINCT FROM new.liczba_cytowan) OR ((old.pbn_uid_id)::text IS DISTINCT FROM (new.pbn_uid_id)::text) OR (old.pbn_czy_projekt_fnp IS DISTINCT FROM new.pbn_czy_projekt_fnp) OR (old.pbn_czy_projekt_ncn IS DISTINCT FROM new.pbn_czy_projekt_ncn) OR (old.pbn_czy_projekt_nprh IS DISTINCT FROM new.pbn_czy_projekt_nprh) OR (old.pbn_czy_projekt_ue IS DISTINCT FROM new.pbn_czy_projekt_ue) OR (old.pbn_czy_czasopismo_indeksowane IS DISTINCT FROM new.pbn_czy_czasopismo_indeksowane) OR (old.pbn_czy_artykul_recenzyjny IS DISTINCT FROM new.pbn_czy_artykul_recenzyjny) OR (old.pbn_czy_edycja_naukowa IS DISTINCT FROM new.pbn_czy_edycja_naukowa) OR (old.liczba_znakow_wydawniczych IS DISTINCT FROM new.liczba_znakow_wydawniczych) OR (old.recenzowana IS DISTINCT FROM new.recenzowana) OR (old.typ_kbn_id IS DISTINCT FROM new.typ_kbn_id) OR (old.jezyk_id IS DISTINCT FROM new.jezyk_id) OR (old.jezyk_alt_id IS DISTINCT FROM new.jezyk_alt_id) OR (old.jezyk_orig_id IS DISTINCT FROM new.jezyk_orig_id) OR (old.rok IS DISTINCT FROM new.rok) OR (old.konferencja_id IS DISTINCT FROM new.konferencja_id) OR (old.search_index IS DISTINCT FROM new.search_index) OR (old.tytul_oryginalny_sort IS DISTINCT FROM new.tytul_oryginalny_sort) OR (old.legacy_data IS DISTINCT FROM new.legacy_data) OR (old.praca_wybitna IS DISTINCT FROM new.praca_wybitna) OR (old.uzasadnienie_wybitnosci IS DISTINCT FROM new.uzasadnienie_wybitnosci) OR (old.impact_factor IS DISTINCT FROM new.impact_factor) OR (old.punkty_kbn IS DISTINCT FROM new.punkty_kbn) OR (old.index_copernicus IS DISTINCT FROM new.index_copernicus) OR (old.punktacja_wewnetrzna IS DISTINCT FROM new.punktacja_wewnetrzna) OR (old.punktacja_snip IS DISTINCT FROM new.punktacja_snip) OR (old.kwartyl_w_scopus IS DISTINCT FROM new.kwartyl_w_scopus) OR (old.kwartyl_w_wos IS DISTINCT FROM new.kwartyl_w_wos) OR (old.weryfikacja_punktacji IS DISTINCT FROM new.weryfikacja_punktacji) OR ((old.numer_odbitki)::text IS DISTINCT FROM (new.numer_odbitki)::text) OR ((old.www)::text IS DISTINCT FROM (new.www)::text) OR (old.dostep_dnia IS DISTINCT FROM new.dostep_dnia) OR ((old.public_www)::text IS DISTINCT FROM (new.public_www)::text) OR (old.public_dostep_dnia IS DISTINCT FROM new.public_dostep_dnia) OR (old.openaccess_tryb_dostepu_id IS DISTINCT FROM new.openaccess_tryb_dostepu_id) OR (old.zrodlo_id IS DISTINCT FROM new.zrodlo_id) OR (old.uzupelnij_punktacje IS DISTINCT FROM new.uzupelnij_punktacje) OR (old.cached_punkty_dyscyplin IS DISTINCT FROM new.cached_punkty_dyscyplin) OR (old.opis_bibliograficzny_cache IS DISTINCT FROM new.opis_bibliograficzny_cache) OR (old.opis_bibliograficzny_autorzy_cache IS DISTINCT FROM new.opis_bibliograficzny_autorzy_cache) OR ((old.slug)::text IS DISTINCT FROM (new.slug)::text))) EXECUTE FUNCTION public.f_d_aft_row_upd_on_bpp_wydawnictwo_ciagle_wydawnictwo_cif4e7();
+
+
+--
+-- Name: bpp_wydawnictwo_ciagle d_aft_row_upd_on_bpp_wydawnictwo_ciagle_wydawnictwo_cifada; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER d_aft_row_upd_on_bpp_wydawnictwo_ciagle_wydawnictwo_cifada AFTER UPDATE ON public.bpp_wydawnictwo_ciagle FOR EACH ROW WHEN (((old.tytul_oryginalny IS DISTINCT FROM new.tytul_oryginalny) OR (old.zrodlo_id IS DISTINCT FROM new.zrodlo_id))) EXECUTE FUNCTION public.f_d_aft_row_upd_on_bpp_wydawnictwo_ciagle_wydawnictwo_cifada();
 
 
 --
 -- Name: bpp_wydawnictwo_zwarte_autor d_aft_row_upd_on_bpp_wydawnictwo_zwarte_autor_wydawnic257a; Type: TRIGGER; Schema: public; Owner: -
 --
 
-CREATE TRIGGER d_aft_row_upd_on_bpp_wydawnictwo_zwarte_autor_wydawnic257a AFTER UPDATE ON public.bpp_wydawnictwo_zwarte_autor FOR EACH ROW EXECUTE FUNCTION public.f_d_aft_row_upd_on_bpp_wydawnictwo_zwarte_autor_wydawnic257a();
+CREATE TRIGGER d_aft_row_upd_on_bpp_wydawnictwo_zwarte_autor_wydawnic257a AFTER UPDATE ON public.bpp_wydawnictwo_zwarte_autor FOR EACH ROW WHEN (((old.rekord_id IS DISTINCT FROM new.rekord_id) OR (old.autor_id IS DISTINCT FROM new.autor_id) OR (old.kolejnosc IS DISTINCT FROM new.kolejnosc) OR ((old.zapisany_jako)::text IS DISTINCT FROM (new.zapisany_jako)::text))) EXECUTE FUNCTION public.f_d_aft_row_upd_on_bpp_wydawnictwo_zwarte_autor_wydawnic257a();
 
 
 --
 -- Name: bpp_wydawnictwo_zwarte_autor d_aft_row_upd_on_bpp_wydawnictwo_zwarte_autor_wydawnic8bbe; Type: TRIGGER; Schema: public; Owner: -
 --
 
-CREATE TRIGGER d_aft_row_upd_on_bpp_wydawnictwo_zwarte_autor_wydawnic8bbe AFTER UPDATE ON public.bpp_wydawnictwo_zwarte_autor FOR EACH ROW EXECUTE FUNCTION public.f_d_aft_row_upd_on_bpp_wydawnictwo_zwarte_autor_wydawnic8bbe();
+CREATE TRIGGER d_aft_row_upd_on_bpp_wydawnictwo_zwarte_autor_wydawnic8bbe AFTER UPDATE ON public.bpp_wydawnictwo_zwarte_autor FOR EACH ROW WHEN (((old.kolejnosc IS DISTINCT FROM new.kolejnosc) OR (old.typ_odpowiedzialnosci_id IS DISTINCT FROM new.typ_odpowiedzialnosci_id) OR ((old.zapisany_jako)::text IS DISTINCT FROM (new.zapisany_jako)::text))) EXECUTE FUNCTION public.f_d_aft_row_upd_on_bpp_wydawnictwo_zwarte_autor_wydawnic8bbe();
 
 
 --
 -- Name: bpp_wydawnictwo_zwarte_autor d_aft_row_upd_on_bpp_wydawnictwo_zwarte_autor_wydawnicce7e; Type: TRIGGER; Schema: public; Owner: -
 --
 
-CREATE TRIGGER d_aft_row_upd_on_bpp_wydawnictwo_zwarte_autor_wydawnicce7e AFTER UPDATE ON public.bpp_wydawnictwo_zwarte_autor FOR EACH ROW EXECUTE FUNCTION public.f_d_aft_row_upd_on_bpp_wydawnictwo_zwarte_autor_wydawnicce7e();
+CREATE TRIGGER d_aft_row_upd_on_bpp_wydawnictwo_zwarte_autor_wydawnicce7e AFTER UPDATE ON public.bpp_wydawnictwo_zwarte_autor FOR EACH ROW WHEN (((old.autor_id IS DISTINCT FROM new.autor_id) OR (old.jednostka_id IS DISTINCT FROM new.jednostka_id) OR (old.typ_odpowiedzialnosci_id IS DISTINCT FROM new.typ_odpowiedzialnosci_id) OR (old.afiliuje IS DISTINCT FROM new.afiliuje) OR (old.dyscyplina_naukowa_id IS DISTINCT FROM new.dyscyplina_naukowa_id) OR (old.przypieta IS DISTINCT FROM new.przypieta) OR (old.upowaznienie_pbn IS DISTINCT FROM new.upowaznienie_pbn))) EXECUTE FUNCTION public.f_d_aft_row_upd_on_bpp_wydawnictwo_zwarte_autor_wydawnicce7e();
 
 
 --
 -- Name: bpp_wydawnictwo_zwarte_autor d_aft_row_upd_on_bpp_wydawnictwo_zwarte_autor_wydawnice731; Type: TRIGGER; Schema: public; Owner: -
 --
 
-CREATE TRIGGER d_aft_row_upd_on_bpp_wydawnictwo_zwarte_autor_wydawnice731 AFTER UPDATE ON public.bpp_wydawnictwo_zwarte_autor FOR EACH ROW EXECUTE FUNCTION public.f_d_aft_row_upd_on_bpp_wydawnictwo_zwarte_autor_wydawnice731();
+CREATE TRIGGER d_aft_row_upd_on_bpp_wydawnictwo_zwarte_autor_wydawnice731 AFTER UPDATE ON public.bpp_wydawnictwo_zwarte_autor FOR EACH ROW WHEN (((old.kolejnosc IS DISTINCT FROM new.kolejnosc) OR (old.rekord_id IS DISTINCT FROM new.rekord_id) OR (old.autor_id IS DISTINCT FROM new.autor_id))) EXECUTE FUNCTION public.f_d_aft_row_upd_on_bpp_wydawnictwo_zwarte_autor_wydawnice731();
 
 
 --
 -- Name: bpp_wydawnictwo_zwarte_autor d_aft_row_upd_on_bpp_wydawnictwo_zwarte_autor_wydawnice9b6; Type: TRIGGER; Schema: public; Owner: -
 --
 
-CREATE TRIGGER d_aft_row_upd_on_bpp_wydawnictwo_zwarte_autor_wydawnice9b6 AFTER UPDATE ON public.bpp_wydawnictwo_zwarte_autor FOR EACH ROW EXECUTE FUNCTION public.f_d_aft_row_upd_on_bpp_wydawnictwo_zwarte_autor_wydawnice9b6();
+CREATE TRIGGER d_aft_row_upd_on_bpp_wydawnictwo_zwarte_autor_wydawnice9b6 AFTER UPDATE ON public.bpp_wydawnictwo_zwarte_autor FOR EACH ROW WHEN (((old.kolejnosc IS DISTINCT FROM new.kolejnosc) OR ((old.zapisany_jako)::text IS DISTINCT FROM (new.zapisany_jako)::text))) EXECUTE FUNCTION public.f_d_aft_row_upd_on_bpp_wydawnictwo_zwarte_autor_wydawnice9b6();
+
+
+--
+-- Name: bpp_wydawnictwo_zwarte d_aft_row_upd_on_bpp_wydawnictwo_zwarte_wydawnictwo_zw138b; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER d_aft_row_upd_on_bpp_wydawnictwo_zwarte_wydawnictwo_zw138b AFTER UPDATE ON public.bpp_wydawnictwo_zwarte FOR EACH ROW WHEN (((old.id IS DISTINCT FROM new.id) OR (old.nie_eksportuj_przez_api IS DISTINCT FROM new.nie_eksportuj_przez_api) OR (old.tekst_przed_pierwszym_autorem IS DISTINCT FROM new.tekst_przed_pierwszym_autorem) OR (old.tekst_po_ostatnim_autorze IS DISTINCT FROM new.tekst_po_ostatnim_autorze) OR (old.opl_pub_cost_free IS DISTINCT FROM new.opl_pub_cost_free) OR (old.opl_pub_research_potential IS DISTINCT FROM new.opl_pub_research_potential) OR (old.opl_pub_research_or_development_projects IS DISTINCT FROM new.opl_pub_research_or_development_projects) OR (old.opl_pub_other IS DISTINCT FROM new.opl_pub_other) OR (old.opl_pub_amount IS DISTINCT FROM new.opl_pub_amount) OR (old.pbn_id IS DISTINCT FROM new.pbn_id) OR ((old.issn)::text IS DISTINCT FROM (new.issn)::text) OR ((old.e_issn)::text IS DISTINCT FROM (new.e_issn)::text) OR ((old.isbn)::text IS DISTINCT FROM (new.isbn)::text) OR ((old.e_isbn)::text IS DISTINCT FROM (new.e_isbn)::text) OR ((old.doi)::text IS DISTINCT FROM (new.doi)::text) OR (old.pubmed_id IS DISTINCT FROM new.pubmed_id) OR ((old.pmc_id)::text IS DISTINCT FROM (new.pmc_id)::text) OR (old.slowa_kluczowe_eng IS DISTINCT FROM new.slowa_kluczowe_eng) OR (old.adnotacje IS DISTINCT FROM new.adnotacje) OR (old.informacja_z_id IS DISTINCT FROM new.informacja_z_id) OR (old.status_korekty_id IS DISTINCT FROM new.status_korekty_id) OR (old.charakter_formalny_id IS DISTINCT FROM new.charakter_formalny_id) OR (old.informacje IS DISTINCT FROM new.informacje) OR ((old.szczegoly)::text IS DISTINCT FROM (new.szczegoly)::text) OR (old.uwagi IS DISTINCT FROM new.uwagi) OR (old.utworzono IS DISTINCT FROM new.utworzono) OR ((old.strony)::text IS DISTINCT FROM (new.strony)::text) OR ((old.tom)::text IS DISTINCT FROM (new.tom)::text) OR (old.tytul_oryginalny IS DISTINCT FROM new.tytul_oryginalny) OR (old.tytul IS DISTINCT FROM new.tytul) OR (old.openaccess_wersja_tekstu_id IS DISTINCT FROM new.openaccess_wersja_tekstu_id) OR (old.openaccess_licencja_id IS DISTINCT FROM new.openaccess_licencja_id) OR (old.openaccess_czas_publikacji_id IS DISTINCT FROM new.openaccess_czas_publikacji_id) OR (old.openaccess_ilosc_miesiecy IS DISTINCT FROM new.openaccess_ilosc_miesiecy) OR (old.openaccess_data_opublikowania IS DISTINCT FROM new.openaccess_data_opublikowania) OR (old.liczba_cytowan IS DISTINCT FROM new.liczba_cytowan) OR ((old.pbn_uid_id)::text IS DISTINCT FROM (new.pbn_uid_id)::text) OR (old.pbn_czy_projekt_fnp IS DISTINCT FROM new.pbn_czy_projekt_fnp) OR (old.pbn_czy_projekt_ncn IS DISTINCT FROM new.pbn_czy_projekt_ncn) OR (old.pbn_czy_projekt_nprh IS DISTINCT FROM new.pbn_czy_projekt_nprh) OR (old.pbn_czy_projekt_ue IS DISTINCT FROM new.pbn_czy_projekt_ue) OR (old.pbn_czy_czasopismo_indeksowane IS DISTINCT FROM new.pbn_czy_czasopismo_indeksowane) OR (old.pbn_czy_artykul_recenzyjny IS DISTINCT FROM new.pbn_czy_artykul_recenzyjny) OR (old.pbn_czy_edycja_naukowa IS DISTINCT FROM new.pbn_czy_edycja_naukowa) OR (old.liczba_znakow_wydawniczych IS DISTINCT FROM new.liczba_znakow_wydawniczych) OR (old.recenzowana IS DISTINCT FROM new.recenzowana) OR (old.typ_kbn_id IS DISTINCT FROM new.typ_kbn_id) OR (old.jezyk_id IS DISTINCT FROM new.jezyk_id) OR (old.jezyk_alt_id IS DISTINCT FROM new.jezyk_alt_id) OR (old.jezyk_orig_id IS DISTINCT FROM new.jezyk_orig_id) OR (old.rok IS DISTINCT FROM new.rok) OR (old.seria_wydawnicza_id IS DISTINCT FROM new.seria_wydawnicza_id) OR ((old.numer_w_serii)::text IS DISTINCT FROM (new.numer_w_serii)::text) OR (old.konferencja_id IS DISTINCT FROM new.konferencja_id) OR (old.search_index IS DISTINCT FROM new.search_index) OR (old.tytul_oryginalny_sort IS DISTINCT FROM new.tytul_oryginalny_sort) OR (old.legacy_data IS DISTINCT FROM new.legacy_data) OR (old.praca_wybitna IS DISTINCT FROM new.praca_wybitna) OR (old.uzasadnienie_wybitnosci IS DISTINCT FROM new.uzasadnienie_wybitnosci) OR (old.impact_factor IS DISTINCT FROM new.impact_factor) OR (old.punkty_kbn IS DISTINCT FROM new.punkty_kbn) OR (old.index_copernicus IS DISTINCT FROM new.index_copernicus) OR (old.punktacja_wewnetrzna IS DISTINCT FROM new.punktacja_wewnetrzna) OR (old.punktacja_snip IS DISTINCT FROM new.punktacja_snip) OR (old.weryfikacja_punktacji IS DISTINCT FROM new.weryfikacja_punktacji) OR ((old.numer_odbitki)::text IS DISTINCT FROM (new.numer_odbitki)::text) OR ((old.www)::text IS DISTINCT FROM (new.www)::text) OR (old.dostep_dnia IS DISTINCT FROM new.dostep_dnia) OR ((old.public_www)::text IS DISTINCT FROM (new.public_www)::text) OR (old.public_dostep_dnia IS DISTINCT FROM new.public_dostep_dnia) OR ((old.miejsce_i_rok)::text IS DISTINCT FROM (new.miejsce_i_rok)::text) OR (old.wydawca_id IS DISTINCT FROM new.wydawca_id) OR ((old.wydawca_opis)::text IS DISTINCT FROM (new.wydawca_opis)::text) OR ((old.oznaczenie_wydania)::text IS DISTINCT FROM (new.oznaczenie_wydania)::text) OR (old.redakcja IS DISTINCT FROM new.redakcja) OR (old.openaccess_tryb_dostepu_id IS DISTINCT FROM new.openaccess_tryb_dostepu_id) OR (old.wydawnictwo_nadrzedne_id IS DISTINCT FROM new.wydawnictwo_nadrzedne_id) OR ((old.wydawnictwo_nadrzedne_w_pbn_id)::text IS DISTINCT FROM (new.wydawnictwo_nadrzedne_w_pbn_id)::text) OR (old.calkowita_liczba_autorow IS DISTINCT FROM new.calkowita_liczba_autorow) OR (old.calkowita_liczba_redaktorow IS DISTINCT FROM new.calkowita_liczba_redaktorow) OR (old.cached_punkty_dyscyplin IS DISTINCT FROM new.cached_punkty_dyscyplin) OR (old.opis_bibliograficzny_cache IS DISTINCT FROM new.opis_bibliograficzny_cache) OR (old.opis_bibliograficzny_autorzy_cache IS DISTINCT FROM new.opis_bibliograficzny_autorzy_cache) OR ((old.slug)::text IS DISTINCT FROM (new.slug)::text))) EXECUTE FUNCTION public.f_d_aft_row_upd_on_bpp_wydawnictwo_zwarte_wydawnictwo_zw138b();
+
+
+--
+-- Name: bpp_wydawnictwo_zwarte d_aft_row_upd_on_bpp_wydawnictwo_zwarte_wydawnictwo_zw1c88; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER d_aft_row_upd_on_bpp_wydawnictwo_zwarte_wydawnictwo_zw1c88 AFTER UPDATE ON public.bpp_wydawnictwo_zwarte FOR EACH ROW WHEN (((old.id IS DISTINCT FROM new.id) OR (old.nie_eksportuj_przez_api IS DISTINCT FROM new.nie_eksportuj_przez_api) OR (old.tekst_przed_pierwszym_autorem IS DISTINCT FROM new.tekst_przed_pierwszym_autorem) OR (old.tekst_po_ostatnim_autorze IS DISTINCT FROM new.tekst_po_ostatnim_autorze) OR (old.opl_pub_cost_free IS DISTINCT FROM new.opl_pub_cost_free) OR (old.opl_pub_research_potential IS DISTINCT FROM new.opl_pub_research_potential) OR (old.opl_pub_research_or_development_projects IS DISTINCT FROM new.opl_pub_research_or_development_projects) OR (old.opl_pub_other IS DISTINCT FROM new.opl_pub_other) OR (old.opl_pub_amount IS DISTINCT FROM new.opl_pub_amount) OR (old.pbn_id IS DISTINCT FROM new.pbn_id) OR ((old.issn)::text IS DISTINCT FROM (new.issn)::text) OR ((old.e_issn)::text IS DISTINCT FROM (new.e_issn)::text) OR ((old.isbn)::text IS DISTINCT FROM (new.isbn)::text) OR ((old.e_isbn)::text IS DISTINCT FROM (new.e_isbn)::text) OR ((old.doi)::text IS DISTINCT FROM (new.doi)::text) OR (old.pubmed_id IS DISTINCT FROM new.pubmed_id) OR ((old.pmc_id)::text IS DISTINCT FROM (new.pmc_id)::text) OR (old.slowa_kluczowe_eng IS DISTINCT FROM new.slowa_kluczowe_eng) OR (old.adnotacje IS DISTINCT FROM new.adnotacje) OR (old.informacja_z_id IS DISTINCT FROM new.informacja_z_id) OR (old.status_korekty_id IS DISTINCT FROM new.status_korekty_id) OR (old.charakter_formalny_id IS DISTINCT FROM new.charakter_formalny_id) OR (old.informacje IS DISTINCT FROM new.informacje) OR ((old.szczegoly)::text IS DISTINCT FROM (new.szczegoly)::text) OR (old.uwagi IS DISTINCT FROM new.uwagi) OR (old.utworzono IS DISTINCT FROM new.utworzono) OR ((old.strony)::text IS DISTINCT FROM (new.strony)::text) OR ((old.tom)::text IS DISTINCT FROM (new.tom)::text) OR (old.tytul_oryginalny IS DISTINCT FROM new.tytul_oryginalny) OR (old.tytul IS DISTINCT FROM new.tytul) OR (old.openaccess_wersja_tekstu_id IS DISTINCT FROM new.openaccess_wersja_tekstu_id) OR (old.openaccess_licencja_id IS DISTINCT FROM new.openaccess_licencja_id) OR (old.openaccess_czas_publikacji_id IS DISTINCT FROM new.openaccess_czas_publikacji_id) OR (old.openaccess_ilosc_miesiecy IS DISTINCT FROM new.openaccess_ilosc_miesiecy) OR (old.openaccess_data_opublikowania IS DISTINCT FROM new.openaccess_data_opublikowania) OR (old.liczba_cytowan IS DISTINCT FROM new.liczba_cytowan) OR ((old.pbn_uid_id)::text IS DISTINCT FROM (new.pbn_uid_id)::text) OR (old.pbn_czy_projekt_fnp IS DISTINCT FROM new.pbn_czy_projekt_fnp) OR (old.pbn_czy_projekt_ncn IS DISTINCT FROM new.pbn_czy_projekt_ncn) OR (old.pbn_czy_projekt_nprh IS DISTINCT FROM new.pbn_czy_projekt_nprh) OR (old.pbn_czy_projekt_ue IS DISTINCT FROM new.pbn_czy_projekt_ue) OR (old.pbn_czy_czasopismo_indeksowane IS DISTINCT FROM new.pbn_czy_czasopismo_indeksowane) OR (old.pbn_czy_artykul_recenzyjny IS DISTINCT FROM new.pbn_czy_artykul_recenzyjny) OR (old.pbn_czy_edycja_naukowa IS DISTINCT FROM new.pbn_czy_edycja_naukowa) OR (old.liczba_znakow_wydawniczych IS DISTINCT FROM new.liczba_znakow_wydawniczych) OR (old.recenzowana IS DISTINCT FROM new.recenzowana) OR (old.typ_kbn_id IS DISTINCT FROM new.typ_kbn_id) OR (old.jezyk_id IS DISTINCT FROM new.jezyk_id) OR (old.jezyk_alt_id IS DISTINCT FROM new.jezyk_alt_id) OR (old.jezyk_orig_id IS DISTINCT FROM new.jezyk_orig_id) OR (old.rok IS DISTINCT FROM new.rok) OR (old.seria_wydawnicza_id IS DISTINCT FROM new.seria_wydawnicza_id) OR ((old.numer_w_serii)::text IS DISTINCT FROM (new.numer_w_serii)::text) OR (old.konferencja_id IS DISTINCT FROM new.konferencja_id) OR (old.search_index IS DISTINCT FROM new.search_index) OR (old.tytul_oryginalny_sort IS DISTINCT FROM new.tytul_oryginalny_sort) OR (old.legacy_data IS DISTINCT FROM new.legacy_data) OR (old.praca_wybitna IS DISTINCT FROM new.praca_wybitna) OR (old.uzasadnienie_wybitnosci IS DISTINCT FROM new.uzasadnienie_wybitnosci) OR (old.impact_factor IS DISTINCT FROM new.impact_factor) OR (old.punkty_kbn IS DISTINCT FROM new.punkty_kbn) OR (old.index_copernicus IS DISTINCT FROM new.index_copernicus) OR (old.punktacja_wewnetrzna IS DISTINCT FROM new.punktacja_wewnetrzna) OR (old.punktacja_snip IS DISTINCT FROM new.punktacja_snip) OR (old.weryfikacja_punktacji IS DISTINCT FROM new.weryfikacja_punktacji) OR ((old.numer_odbitki)::text IS DISTINCT FROM (new.numer_odbitki)::text) OR ((old.www)::text IS DISTINCT FROM (new.www)::text) OR (old.dostep_dnia IS DISTINCT FROM new.dostep_dnia) OR ((old.public_www)::text IS DISTINCT FROM (new.public_www)::text) OR (old.public_dostep_dnia IS DISTINCT FROM new.public_dostep_dnia) OR ((old.miejsce_i_rok)::text IS DISTINCT FROM (new.miejsce_i_rok)::text) OR (old.wydawca_id IS DISTINCT FROM new.wydawca_id) OR ((old.wydawca_opis)::text IS DISTINCT FROM (new.wydawca_opis)::text) OR ((old.oznaczenie_wydania)::text IS DISTINCT FROM (new.oznaczenie_wydania)::text) OR (old.redakcja IS DISTINCT FROM new.redakcja) OR (old.openaccess_tryb_dostepu_id IS DISTINCT FROM new.openaccess_tryb_dostepu_id) OR (old.wydawnictwo_nadrzedne_id IS DISTINCT FROM new.wydawnictwo_nadrzedne_id) OR ((old.wydawnictwo_nadrzedne_w_pbn_id)::text IS DISTINCT FROM (new.wydawnictwo_nadrzedne_w_pbn_id)::text) OR (old.calkowita_liczba_autorow IS DISTINCT FROM new.calkowita_liczba_autorow) OR (old.calkowita_liczba_redaktorow IS DISTINCT FROM new.calkowita_liczba_redaktorow) OR (old.cached_punkty_dyscyplin IS DISTINCT FROM new.cached_punkty_dyscyplin) OR (old.opis_bibliograficzny_cache IS DISTINCT FROM new.opis_bibliograficzny_cache) OR (old.opis_bibliograficzny_zapisani_autorzy_cache IS DISTINCT FROM new.opis_bibliograficzny_zapisani_autorzy_cache) OR ((old.slug)::text IS DISTINCT FROM (new.slug)::text))) EXECUTE FUNCTION public.f_d_aft_row_upd_on_bpp_wydawnictwo_zwarte_wydawnictwo_zw1c88();
 
 
 --
 -- Name: bpp_wydawnictwo_zwarte d_aft_row_upd_on_bpp_wydawnictwo_zwarte_wydawnictwo_zw670c; Type: TRIGGER; Schema: public; Owner: -
 --
 
-CREATE TRIGGER d_aft_row_upd_on_bpp_wydawnictwo_zwarte_wydawnictwo_zw670c AFTER UPDATE ON public.bpp_wydawnictwo_zwarte FOR EACH ROW EXECUTE FUNCTION public.f_d_aft_row_upd_on_bpp_wydawnictwo_zwarte_wydawnictwo_zw670c();
+CREATE TRIGGER d_aft_row_upd_on_bpp_wydawnictwo_zwarte_wydawnictwo_zw670c AFTER UPDATE ON public.bpp_wydawnictwo_zwarte FOR EACH ROW WHEN (((old.id IS DISTINCT FROM new.id) OR (old.nie_eksportuj_przez_api IS DISTINCT FROM new.nie_eksportuj_przez_api) OR (old.tekst_przed_pierwszym_autorem IS DISTINCT FROM new.tekst_przed_pierwszym_autorem) OR (old.tekst_po_ostatnim_autorze IS DISTINCT FROM new.tekst_po_ostatnim_autorze) OR (old.opl_pub_cost_free IS DISTINCT FROM new.opl_pub_cost_free) OR (old.opl_pub_research_potential IS DISTINCT FROM new.opl_pub_research_potential) OR (old.opl_pub_research_or_development_projects IS DISTINCT FROM new.opl_pub_research_or_development_projects) OR (old.opl_pub_other IS DISTINCT FROM new.opl_pub_other) OR (old.opl_pub_amount IS DISTINCT FROM new.opl_pub_amount) OR (old.pbn_id IS DISTINCT FROM new.pbn_id) OR ((old.issn)::text IS DISTINCT FROM (new.issn)::text) OR ((old.e_issn)::text IS DISTINCT FROM (new.e_issn)::text) OR ((old.isbn)::text IS DISTINCT FROM (new.isbn)::text) OR ((old.e_isbn)::text IS DISTINCT FROM (new.e_isbn)::text) OR ((old.doi)::text IS DISTINCT FROM (new.doi)::text) OR (old.pubmed_id IS DISTINCT FROM new.pubmed_id) OR ((old.pmc_id)::text IS DISTINCT FROM (new.pmc_id)::text) OR (old.slowa_kluczowe_eng IS DISTINCT FROM new.slowa_kluczowe_eng) OR (old.adnotacje IS DISTINCT FROM new.adnotacje) OR (old.informacja_z_id IS DISTINCT FROM new.informacja_z_id) OR (old.status_korekty_id IS DISTINCT FROM new.status_korekty_id) OR (old.charakter_formalny_id IS DISTINCT FROM new.charakter_formalny_id) OR (old.informacje IS DISTINCT FROM new.informacje) OR ((old.szczegoly)::text IS DISTINCT FROM (new.szczegoly)::text) OR (old.uwagi IS DISTINCT FROM new.uwagi) OR (old.utworzono IS DISTINCT FROM new.utworzono) OR ((old.strony)::text IS DISTINCT FROM (new.strony)::text) OR ((old.tom)::text IS DISTINCT FROM (new.tom)::text) OR (old.tytul_oryginalny IS DISTINCT FROM new.tytul_oryginalny) OR (old.tytul IS DISTINCT FROM new.tytul) OR (old.openaccess_wersja_tekstu_id IS DISTINCT FROM new.openaccess_wersja_tekstu_id) OR (old.openaccess_licencja_id IS DISTINCT FROM new.openaccess_licencja_id) OR (old.openaccess_czas_publikacji_id IS DISTINCT FROM new.openaccess_czas_publikacji_id) OR (old.openaccess_ilosc_miesiecy IS DISTINCT FROM new.openaccess_ilosc_miesiecy) OR (old.openaccess_data_opublikowania IS DISTINCT FROM new.openaccess_data_opublikowania) OR (old.liczba_cytowan IS DISTINCT FROM new.liczba_cytowan) OR ((old.pbn_uid_id)::text IS DISTINCT FROM (new.pbn_uid_id)::text) OR (old.pbn_czy_projekt_fnp IS DISTINCT FROM new.pbn_czy_projekt_fnp) OR (old.pbn_czy_projekt_ncn IS DISTINCT FROM new.pbn_czy_projekt_ncn) OR (old.pbn_czy_projekt_nprh IS DISTINCT FROM new.pbn_czy_projekt_nprh) OR (old.pbn_czy_projekt_ue IS DISTINCT FROM new.pbn_czy_projekt_ue) OR (old.pbn_czy_czasopismo_indeksowane IS DISTINCT FROM new.pbn_czy_czasopismo_indeksowane) OR (old.pbn_czy_artykul_recenzyjny IS DISTINCT FROM new.pbn_czy_artykul_recenzyjny) OR (old.pbn_czy_edycja_naukowa IS DISTINCT FROM new.pbn_czy_edycja_naukowa) OR (old.liczba_znakow_wydawniczych IS DISTINCT FROM new.liczba_znakow_wydawniczych) OR (old.recenzowana IS DISTINCT FROM new.recenzowana) OR (old.typ_kbn_id IS DISTINCT FROM new.typ_kbn_id) OR (old.jezyk_id IS DISTINCT FROM new.jezyk_id) OR (old.jezyk_alt_id IS DISTINCT FROM new.jezyk_alt_id) OR (old.jezyk_orig_id IS DISTINCT FROM new.jezyk_orig_id) OR (old.rok IS DISTINCT FROM new.rok) OR (old.seria_wydawnicza_id IS DISTINCT FROM new.seria_wydawnicza_id) OR ((old.numer_w_serii)::text IS DISTINCT FROM (new.numer_w_serii)::text) OR (old.konferencja_id IS DISTINCT FROM new.konferencja_id) OR (old.search_index IS DISTINCT FROM new.search_index) OR (old.tytul_oryginalny_sort IS DISTINCT FROM new.tytul_oryginalny_sort) OR (old.legacy_data IS DISTINCT FROM new.legacy_data) OR (old.praca_wybitna IS DISTINCT FROM new.praca_wybitna) OR (old.uzasadnienie_wybitnosci IS DISTINCT FROM new.uzasadnienie_wybitnosci) OR (old.impact_factor IS DISTINCT FROM new.impact_factor) OR (old.punkty_kbn IS DISTINCT FROM new.punkty_kbn) OR (old.index_copernicus IS DISTINCT FROM new.index_copernicus) OR (old.punktacja_wewnetrzna IS DISTINCT FROM new.punktacja_wewnetrzna) OR (old.punktacja_snip IS DISTINCT FROM new.punktacja_snip) OR (old.weryfikacja_punktacji IS DISTINCT FROM new.weryfikacja_punktacji) OR ((old.numer_odbitki)::text IS DISTINCT FROM (new.numer_odbitki)::text) OR ((old.www)::text IS DISTINCT FROM (new.www)::text) OR (old.dostep_dnia IS DISTINCT FROM new.dostep_dnia) OR ((old.public_www)::text IS DISTINCT FROM (new.public_www)::text) OR (old.public_dostep_dnia IS DISTINCT FROM new.public_dostep_dnia) OR ((old.miejsce_i_rok)::text IS DISTINCT FROM (new.miejsce_i_rok)::text) OR (old.wydawca_id IS DISTINCT FROM new.wydawca_id) OR ((old.wydawca_opis)::text IS DISTINCT FROM (new.wydawca_opis)::text) OR ((old.oznaczenie_wydania)::text IS DISTINCT FROM (new.oznaczenie_wydania)::text) OR (old.redakcja IS DISTINCT FROM new.redakcja) OR (old.openaccess_tryb_dostepu_id IS DISTINCT FROM new.openaccess_tryb_dostepu_id) OR (old.wydawnictwo_nadrzedne_id IS DISTINCT FROM new.wydawnictwo_nadrzedne_id) OR ((old.wydawnictwo_nadrzedne_w_pbn_id)::text IS DISTINCT FROM (new.wydawnictwo_nadrzedne_w_pbn_id)::text) OR (old.calkowita_liczba_autorow IS DISTINCT FROM new.calkowita_liczba_autorow) OR (old.calkowita_liczba_redaktorow IS DISTINCT FROM new.calkowita_liczba_redaktorow) OR (old.cached_punkty_dyscyplin IS DISTINCT FROM new.cached_punkty_dyscyplin) OR (old.opis_bibliograficzny_cache IS DISTINCT FROM new.opis_bibliograficzny_cache) OR (old.opis_bibliograficzny_autorzy_cache IS DISTINCT FROM new.opis_bibliograficzny_autorzy_cache) OR (old.opis_bibliograficzny_zapisani_autorzy_cache IS DISTINCT FROM new.opis_bibliograficzny_zapisani_autorzy_cache) OR ((old.slug)::text IS DISTINCT FROM (new.slug)::text))) EXECUTE FUNCTION public.f_d_aft_row_upd_on_bpp_wydawnictwo_zwarte_wydawnictwo_zw670c();
+
+
+--
+-- Name: bpp_wydawnictwo_zwarte d_aft_row_upd_on_bpp_wydawnictwo_zwarte_wydawnictwo_zwb3c2; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER d_aft_row_upd_on_bpp_wydawnictwo_zwarte_wydawnictwo_zwb3c2 AFTER UPDATE ON public.bpp_wydawnictwo_zwarte FOR EACH ROW WHEN (((old.id IS DISTINCT FROM new.id) OR (old.nie_eksportuj_przez_api IS DISTINCT FROM new.nie_eksportuj_przez_api) OR (old.tekst_przed_pierwszym_autorem IS DISTINCT FROM new.tekst_przed_pierwszym_autorem) OR (old.tekst_po_ostatnim_autorze IS DISTINCT FROM new.tekst_po_ostatnim_autorze) OR (old.opl_pub_cost_free IS DISTINCT FROM new.opl_pub_cost_free) OR (old.opl_pub_research_potential IS DISTINCT FROM new.opl_pub_research_potential) OR (old.opl_pub_research_or_development_projects IS DISTINCT FROM new.opl_pub_research_or_development_projects) OR (old.opl_pub_other IS DISTINCT FROM new.opl_pub_other) OR (old.opl_pub_amount IS DISTINCT FROM new.opl_pub_amount) OR (old.pbn_id IS DISTINCT FROM new.pbn_id) OR ((old.issn)::text IS DISTINCT FROM (new.issn)::text) OR ((old.e_issn)::text IS DISTINCT FROM (new.e_issn)::text) OR ((old.isbn)::text IS DISTINCT FROM (new.isbn)::text) OR ((old.e_isbn)::text IS DISTINCT FROM (new.e_isbn)::text) OR ((old.doi)::text IS DISTINCT FROM (new.doi)::text) OR (old.pubmed_id IS DISTINCT FROM new.pubmed_id) OR ((old.pmc_id)::text IS DISTINCT FROM (new.pmc_id)::text) OR (old.slowa_kluczowe_eng IS DISTINCT FROM new.slowa_kluczowe_eng) OR (old.adnotacje IS DISTINCT FROM new.adnotacje) OR (old.informacja_z_id IS DISTINCT FROM new.informacja_z_id) OR (old.status_korekty_id IS DISTINCT FROM new.status_korekty_id) OR (old.charakter_formalny_id IS DISTINCT FROM new.charakter_formalny_id) OR (old.informacje IS DISTINCT FROM new.informacje) OR ((old.szczegoly)::text IS DISTINCT FROM (new.szczegoly)::text) OR (old.uwagi IS DISTINCT FROM new.uwagi) OR (old.utworzono IS DISTINCT FROM new.utworzono) OR ((old.strony)::text IS DISTINCT FROM (new.strony)::text) OR ((old.tom)::text IS DISTINCT FROM (new.tom)::text) OR (old.tytul_oryginalny IS DISTINCT FROM new.tytul_oryginalny) OR (old.tytul IS DISTINCT FROM new.tytul) OR (old.openaccess_wersja_tekstu_id IS DISTINCT FROM new.openaccess_wersja_tekstu_id) OR (old.openaccess_licencja_id IS DISTINCT FROM new.openaccess_licencja_id) OR (old.openaccess_czas_publikacji_id IS DISTINCT FROM new.openaccess_czas_publikacji_id) OR (old.openaccess_ilosc_miesiecy IS DISTINCT FROM new.openaccess_ilosc_miesiecy) OR (old.openaccess_data_opublikowania IS DISTINCT FROM new.openaccess_data_opublikowania) OR (old.liczba_cytowan IS DISTINCT FROM new.liczba_cytowan) OR ((old.pbn_uid_id)::text IS DISTINCT FROM (new.pbn_uid_id)::text) OR (old.pbn_czy_projekt_fnp IS DISTINCT FROM new.pbn_czy_projekt_fnp) OR (old.pbn_czy_projekt_ncn IS DISTINCT FROM new.pbn_czy_projekt_ncn) OR (old.pbn_czy_projekt_nprh IS DISTINCT FROM new.pbn_czy_projekt_nprh) OR (old.pbn_czy_projekt_ue IS DISTINCT FROM new.pbn_czy_projekt_ue) OR (old.pbn_czy_czasopismo_indeksowane IS DISTINCT FROM new.pbn_czy_czasopismo_indeksowane) OR (old.pbn_czy_artykul_recenzyjny IS DISTINCT FROM new.pbn_czy_artykul_recenzyjny) OR (old.pbn_czy_edycja_naukowa IS DISTINCT FROM new.pbn_czy_edycja_naukowa) OR (old.liczba_znakow_wydawniczych IS DISTINCT FROM new.liczba_znakow_wydawniczych) OR (old.recenzowana IS DISTINCT FROM new.recenzowana) OR (old.typ_kbn_id IS DISTINCT FROM new.typ_kbn_id) OR (old.jezyk_id IS DISTINCT FROM new.jezyk_id) OR (old.jezyk_alt_id IS DISTINCT FROM new.jezyk_alt_id) OR (old.jezyk_orig_id IS DISTINCT FROM new.jezyk_orig_id) OR (old.rok IS DISTINCT FROM new.rok) OR (old.seria_wydawnicza_id IS DISTINCT FROM new.seria_wydawnicza_id) OR ((old.numer_w_serii)::text IS DISTINCT FROM (new.numer_w_serii)::text) OR (old.konferencja_id IS DISTINCT FROM new.konferencja_id) OR (old.search_index IS DISTINCT FROM new.search_index) OR (old.tytul_oryginalny_sort IS DISTINCT FROM new.tytul_oryginalny_sort) OR (old.legacy_data IS DISTINCT FROM new.legacy_data) OR (old.praca_wybitna IS DISTINCT FROM new.praca_wybitna) OR (old.uzasadnienie_wybitnosci IS DISTINCT FROM new.uzasadnienie_wybitnosci) OR (old.impact_factor IS DISTINCT FROM new.impact_factor) OR (old.punkty_kbn IS DISTINCT FROM new.punkty_kbn) OR (old.index_copernicus IS DISTINCT FROM new.index_copernicus) OR (old.punktacja_wewnetrzna IS DISTINCT FROM new.punktacja_wewnetrzna) OR (old.punktacja_snip IS DISTINCT FROM new.punktacja_snip) OR (old.weryfikacja_punktacji IS DISTINCT FROM new.weryfikacja_punktacji) OR ((old.numer_odbitki)::text IS DISTINCT FROM (new.numer_odbitki)::text) OR ((old.www)::text IS DISTINCT FROM (new.www)::text) OR (old.dostep_dnia IS DISTINCT FROM new.dostep_dnia) OR ((old.public_www)::text IS DISTINCT FROM (new.public_www)::text) OR (old.public_dostep_dnia IS DISTINCT FROM new.public_dostep_dnia) OR ((old.miejsce_i_rok)::text IS DISTINCT FROM (new.miejsce_i_rok)::text) OR (old.wydawca_id IS DISTINCT FROM new.wydawca_id) OR ((old.wydawca_opis)::text IS DISTINCT FROM (new.wydawca_opis)::text) OR ((old.oznaczenie_wydania)::text IS DISTINCT FROM (new.oznaczenie_wydania)::text) OR (old.redakcja IS DISTINCT FROM new.redakcja) OR (old.openaccess_tryb_dostepu_id IS DISTINCT FROM new.openaccess_tryb_dostepu_id) OR (old.wydawnictwo_nadrzedne_id IS DISTINCT FROM new.wydawnictwo_nadrzedne_id) OR ((old.wydawnictwo_nadrzedne_w_pbn_id)::text IS DISTINCT FROM (new.wydawnictwo_nadrzedne_w_pbn_id)::text) OR (old.calkowita_liczba_autorow IS DISTINCT FROM new.calkowita_liczba_autorow) OR (old.calkowita_liczba_redaktorow IS DISTINCT FROM new.calkowita_liczba_redaktorow) OR (old.cached_punkty_dyscyplin IS DISTINCT FROM new.cached_punkty_dyscyplin) OR (old.opis_bibliograficzny_autorzy_cache IS DISTINCT FROM new.opis_bibliograficzny_autorzy_cache) OR (old.opis_bibliograficzny_zapisani_autorzy_cache IS DISTINCT FROM new.opis_bibliograficzny_zapisani_autorzy_cache) OR ((old.slug)::text IS DISTINCT FROM (new.slug)::text))) EXECUTE FUNCTION public.f_d_aft_row_upd_on_bpp_wydawnictwo_zwarte_wydawnictwo_zwb3c2();
 
 
 --
 -- Name: bpp_wydawnictwo_zwarte d_aft_row_upd_on_bpp_wydawnictwo_zwarte_wydawnictwo_zwc0ee; Type: TRIGGER; Schema: public; Owner: -
 --
 
-CREATE TRIGGER d_aft_row_upd_on_bpp_wydawnictwo_zwarte_wydawnictwo_zwc0ee AFTER UPDATE ON public.bpp_wydawnictwo_zwarte FOR EACH ROW EXECUTE FUNCTION public.f_d_aft_row_upd_on_bpp_wydawnictwo_zwarte_wydawnictwo_zwc0ee();
+CREATE TRIGGER d_aft_row_upd_on_bpp_wydawnictwo_zwarte_wydawnictwo_zwc0ee AFTER UPDATE ON public.bpp_wydawnictwo_zwarte FOR EACH ROW WHEN (((old.tytul_oryginalny IS DISTINCT FROM new.tytul_oryginalny) OR (old.wydawnictwo_nadrzedne_id IS DISTINCT FROM new.wydawnictwo_nadrzedne_id) OR (old.id IS DISTINCT FROM new.id) OR (old.nie_eksportuj_przez_api IS DISTINCT FROM new.nie_eksportuj_przez_api) OR (old.tekst_przed_pierwszym_autorem IS DISTINCT FROM new.tekst_przed_pierwszym_autorem) OR (old.tekst_po_ostatnim_autorze IS DISTINCT FROM new.tekst_po_ostatnim_autorze) OR (old.opl_pub_cost_free IS DISTINCT FROM new.opl_pub_cost_free) OR (old.opl_pub_research_potential IS DISTINCT FROM new.opl_pub_research_potential) OR (old.opl_pub_research_or_development_projects IS DISTINCT FROM new.opl_pub_research_or_development_projects) OR (old.opl_pub_other IS DISTINCT FROM new.opl_pub_other) OR (old.opl_pub_amount IS DISTINCT FROM new.opl_pub_amount) OR (old.pbn_id IS DISTINCT FROM new.pbn_id) OR ((old.issn)::text IS DISTINCT FROM (new.issn)::text) OR ((old.e_issn)::text IS DISTINCT FROM (new.e_issn)::text) OR ((old.isbn)::text IS DISTINCT FROM (new.isbn)::text) OR ((old.e_isbn)::text IS DISTINCT FROM (new.e_isbn)::text) OR ((old.doi)::text IS DISTINCT FROM (new.doi)::text) OR (old.pubmed_id IS DISTINCT FROM new.pubmed_id) OR ((old.pmc_id)::text IS DISTINCT FROM (new.pmc_id)::text) OR (old.slowa_kluczowe_eng IS DISTINCT FROM new.slowa_kluczowe_eng) OR (old.adnotacje IS DISTINCT FROM new.adnotacje) OR (old.informacja_z_id IS DISTINCT FROM new.informacja_z_id) OR (old.status_korekty_id IS DISTINCT FROM new.status_korekty_id) OR (old.charakter_formalny_id IS DISTINCT FROM new.charakter_formalny_id) OR (old.informacje IS DISTINCT FROM new.informacje) OR ((old.szczegoly)::text IS DISTINCT FROM (new.szczegoly)::text) OR (old.uwagi IS DISTINCT FROM new.uwagi) OR (old.utworzono IS DISTINCT FROM new.utworzono) OR ((old.strony)::text IS DISTINCT FROM (new.strony)::text) OR ((old.tom)::text IS DISTINCT FROM (new.tom)::text) OR (old.tytul IS DISTINCT FROM new.tytul) OR (old.openaccess_wersja_tekstu_id IS DISTINCT FROM new.openaccess_wersja_tekstu_id) OR (old.openaccess_licencja_id IS DISTINCT FROM new.openaccess_licencja_id) OR (old.openaccess_czas_publikacji_id IS DISTINCT FROM new.openaccess_czas_publikacji_id) OR (old.openaccess_ilosc_miesiecy IS DISTINCT FROM new.openaccess_ilosc_miesiecy) OR (old.openaccess_data_opublikowania IS DISTINCT FROM new.openaccess_data_opublikowania) OR (old.liczba_cytowan IS DISTINCT FROM new.liczba_cytowan) OR ((old.pbn_uid_id)::text IS DISTINCT FROM (new.pbn_uid_id)::text) OR (old.pbn_czy_projekt_fnp IS DISTINCT FROM new.pbn_czy_projekt_fnp) OR (old.pbn_czy_projekt_ncn IS DISTINCT FROM new.pbn_czy_projekt_ncn) OR (old.pbn_czy_projekt_nprh IS DISTINCT FROM new.pbn_czy_projekt_nprh) OR (old.pbn_czy_projekt_ue IS DISTINCT FROM new.pbn_czy_projekt_ue) OR (old.pbn_czy_czasopismo_indeksowane IS DISTINCT FROM new.pbn_czy_czasopismo_indeksowane) OR (old.pbn_czy_artykul_recenzyjny IS DISTINCT FROM new.pbn_czy_artykul_recenzyjny) OR (old.pbn_czy_edycja_naukowa IS DISTINCT FROM new.pbn_czy_edycja_naukowa) OR (old.liczba_znakow_wydawniczych IS DISTINCT FROM new.liczba_znakow_wydawniczych) OR (old.recenzowana IS DISTINCT FROM new.recenzowana) OR (old.typ_kbn_id IS DISTINCT FROM new.typ_kbn_id) OR (old.jezyk_id IS DISTINCT FROM new.jezyk_id) OR (old.jezyk_alt_id IS DISTINCT FROM new.jezyk_alt_id) OR (old.jezyk_orig_id IS DISTINCT FROM new.jezyk_orig_id) OR (old.rok IS DISTINCT FROM new.rok) OR (old.seria_wydawnicza_id IS DISTINCT FROM new.seria_wydawnicza_id) OR ((old.numer_w_serii)::text IS DISTINCT FROM (new.numer_w_serii)::text) OR (old.konferencja_id IS DISTINCT FROM new.konferencja_id) OR (old.search_index IS DISTINCT FROM new.search_index) OR (old.tytul_oryginalny_sort IS DISTINCT FROM new.tytul_oryginalny_sort) OR (old.legacy_data IS DISTINCT FROM new.legacy_data) OR (old.praca_wybitna IS DISTINCT FROM new.praca_wybitna) OR (old.uzasadnienie_wybitnosci IS DISTINCT FROM new.uzasadnienie_wybitnosci) OR (old.impact_factor IS DISTINCT FROM new.impact_factor) OR (old.punkty_kbn IS DISTINCT FROM new.punkty_kbn) OR (old.index_copernicus IS DISTINCT FROM new.index_copernicus) OR (old.punktacja_wewnetrzna IS DISTINCT FROM new.punktacja_wewnetrzna) OR (old.punktacja_snip IS DISTINCT FROM new.punktacja_snip) OR (old.weryfikacja_punktacji IS DISTINCT FROM new.weryfikacja_punktacji) OR ((old.numer_odbitki)::text IS DISTINCT FROM (new.numer_odbitki)::text) OR ((old.www)::text IS DISTINCT FROM (new.www)::text) OR (old.dostep_dnia IS DISTINCT FROM new.dostep_dnia) OR ((old.public_www)::text IS DISTINCT FROM (new.public_www)::text) OR (old.public_dostep_dnia IS DISTINCT FROM new.public_dostep_dnia) OR ((old.miejsce_i_rok)::text IS DISTINCT FROM (new.miejsce_i_rok)::text) OR (old.wydawca_id IS DISTINCT FROM new.wydawca_id) OR ((old.wydawca_opis)::text IS DISTINCT FROM (new.wydawca_opis)::text) OR ((old.oznaczenie_wydania)::text IS DISTINCT FROM (new.oznaczenie_wydania)::text) OR (old.redakcja IS DISTINCT FROM new.redakcja) OR (old.openaccess_tryb_dostepu_id IS DISTINCT FROM new.openaccess_tryb_dostepu_id) OR ((old.wydawnictwo_nadrzedne_w_pbn_id)::text IS DISTINCT FROM (new.wydawnictwo_nadrzedne_w_pbn_id)::text) OR (old.calkowita_liczba_autorow IS DISTINCT FROM new.calkowita_liczba_autorow) OR (old.calkowita_liczba_redaktorow IS DISTINCT FROM new.calkowita_liczba_redaktorow) OR (old.cached_punkty_dyscyplin IS DISTINCT FROM new.cached_punkty_dyscyplin) OR (old.opis_bibliograficzny_cache IS DISTINCT FROM new.opis_bibliograficzny_cache) OR (old.opis_bibliograficzny_autorzy_cache IS DISTINCT FROM new.opis_bibliograficzny_autorzy_cache) OR (old.opis_bibliograficzny_zapisani_autorzy_cache IS DISTINCT FROM new.opis_bibliograficzny_zapisani_autorzy_cache) OR ((old.slug)::text IS DISTINCT FROM (new.slug)::text))) EXECUTE FUNCTION public.f_d_aft_row_upd_on_bpp_wydawnictwo_zwarte_wydawnictwo_zwc0ee();
+
+
+--
+-- Name: bpp_wydawnictwo_zwarte d_aft_row_upd_on_bpp_wydawnictwo_zwarte_wydawnictwo_zwdbd1; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER d_aft_row_upd_on_bpp_wydawnictwo_zwarte_wydawnictwo_zwdbd1 AFTER UPDATE ON public.bpp_wydawnictwo_zwarte FOR EACH ROW WHEN (((old.id IS DISTINCT FROM new.id) OR (old.nie_eksportuj_przez_api IS DISTINCT FROM new.nie_eksportuj_przez_api) OR (old.tekst_przed_pierwszym_autorem IS DISTINCT FROM new.tekst_przed_pierwszym_autorem) OR (old.tekst_po_ostatnim_autorze IS DISTINCT FROM new.tekst_po_ostatnim_autorze) OR (old.opl_pub_cost_free IS DISTINCT FROM new.opl_pub_cost_free) OR (old.opl_pub_research_potential IS DISTINCT FROM new.opl_pub_research_potential) OR (old.opl_pub_research_or_development_projects IS DISTINCT FROM new.opl_pub_research_or_development_projects) OR (old.opl_pub_other IS DISTINCT FROM new.opl_pub_other) OR (old.opl_pub_amount IS DISTINCT FROM new.opl_pub_amount) OR (old.pbn_id IS DISTINCT FROM new.pbn_id) OR ((old.issn)::text IS DISTINCT FROM (new.issn)::text) OR ((old.e_issn)::text IS DISTINCT FROM (new.e_issn)::text) OR ((old.isbn)::text IS DISTINCT FROM (new.isbn)::text) OR ((old.e_isbn)::text IS DISTINCT FROM (new.e_isbn)::text) OR ((old.doi)::text IS DISTINCT FROM (new.doi)::text) OR (old.pubmed_id IS DISTINCT FROM new.pubmed_id) OR ((old.pmc_id)::text IS DISTINCT FROM (new.pmc_id)::text) OR (old.slowa_kluczowe_eng IS DISTINCT FROM new.slowa_kluczowe_eng) OR (old.adnotacje IS DISTINCT FROM new.adnotacje) OR (old.informacja_z_id IS DISTINCT FROM new.informacja_z_id) OR (old.status_korekty_id IS DISTINCT FROM new.status_korekty_id) OR (old.charakter_formalny_id IS DISTINCT FROM new.charakter_formalny_id) OR (old.informacje IS DISTINCT FROM new.informacje) OR ((old.szczegoly)::text IS DISTINCT FROM (new.szczegoly)::text) OR (old.uwagi IS DISTINCT FROM new.uwagi) OR (old.utworzono IS DISTINCT FROM new.utworzono) OR ((old.strony)::text IS DISTINCT FROM (new.strony)::text) OR ((old.tom)::text IS DISTINCT FROM (new.tom)::text) OR (old.tytul_oryginalny IS DISTINCT FROM new.tytul_oryginalny) OR (old.tytul IS DISTINCT FROM new.tytul) OR (old.openaccess_wersja_tekstu_id IS DISTINCT FROM new.openaccess_wersja_tekstu_id) OR (old.openaccess_licencja_id IS DISTINCT FROM new.openaccess_licencja_id) OR (old.openaccess_czas_publikacji_id IS DISTINCT FROM new.openaccess_czas_publikacji_id) OR (old.openaccess_ilosc_miesiecy IS DISTINCT FROM new.openaccess_ilosc_miesiecy) OR (old.openaccess_data_opublikowania IS DISTINCT FROM new.openaccess_data_opublikowania) OR (old.liczba_cytowan IS DISTINCT FROM new.liczba_cytowan) OR ((old.pbn_uid_id)::text IS DISTINCT FROM (new.pbn_uid_id)::text) OR (old.pbn_czy_projekt_fnp IS DISTINCT FROM new.pbn_czy_projekt_fnp) OR (old.pbn_czy_projekt_ncn IS DISTINCT FROM new.pbn_czy_projekt_ncn) OR (old.pbn_czy_projekt_nprh IS DISTINCT FROM new.pbn_czy_projekt_nprh) OR (old.pbn_czy_projekt_ue IS DISTINCT FROM new.pbn_czy_projekt_ue) OR (old.pbn_czy_czasopismo_indeksowane IS DISTINCT FROM new.pbn_czy_czasopismo_indeksowane) OR (old.pbn_czy_artykul_recenzyjny IS DISTINCT FROM new.pbn_czy_artykul_recenzyjny) OR (old.pbn_czy_edycja_naukowa IS DISTINCT FROM new.pbn_czy_edycja_naukowa) OR (old.liczba_znakow_wydawniczych IS DISTINCT FROM new.liczba_znakow_wydawniczych) OR (old.recenzowana IS DISTINCT FROM new.recenzowana) OR (old.typ_kbn_id IS DISTINCT FROM new.typ_kbn_id) OR (old.jezyk_id IS DISTINCT FROM new.jezyk_id) OR (old.jezyk_alt_id IS DISTINCT FROM new.jezyk_alt_id) OR (old.jezyk_orig_id IS DISTINCT FROM new.jezyk_orig_id) OR (old.rok IS DISTINCT FROM new.rok) OR (old.seria_wydawnicza_id IS DISTINCT FROM new.seria_wydawnicza_id) OR ((old.numer_w_serii)::text IS DISTINCT FROM (new.numer_w_serii)::text) OR (old.konferencja_id IS DISTINCT FROM new.konferencja_id) OR (old.search_index IS DISTINCT FROM new.search_index) OR (old.tytul_oryginalny_sort IS DISTINCT FROM new.tytul_oryginalny_sort) OR (old.legacy_data IS DISTINCT FROM new.legacy_data) OR (old.praca_wybitna IS DISTINCT FROM new.praca_wybitna) OR (old.uzasadnienie_wybitnosci IS DISTINCT FROM new.uzasadnienie_wybitnosci) OR (old.impact_factor IS DISTINCT FROM new.impact_factor) OR (old.punkty_kbn IS DISTINCT FROM new.punkty_kbn) OR (old.index_copernicus IS DISTINCT FROM new.index_copernicus) OR (old.punktacja_wewnetrzna IS DISTINCT FROM new.punktacja_wewnetrzna) OR (old.punktacja_snip IS DISTINCT FROM new.punktacja_snip) OR (old.weryfikacja_punktacji IS DISTINCT FROM new.weryfikacja_punktacji) OR ((old.numer_odbitki)::text IS DISTINCT FROM (new.numer_odbitki)::text) OR ((old.www)::text IS DISTINCT FROM (new.www)::text) OR (old.dostep_dnia IS DISTINCT FROM new.dostep_dnia) OR ((old.public_www)::text IS DISTINCT FROM (new.public_www)::text) OR (old.public_dostep_dnia IS DISTINCT FROM new.public_dostep_dnia) OR ((old.miejsce_i_rok)::text IS DISTINCT FROM (new.miejsce_i_rok)::text) OR (old.wydawca_id IS DISTINCT FROM new.wydawca_id) OR ((old.wydawca_opis)::text IS DISTINCT FROM (new.wydawca_opis)::text) OR ((old.oznaczenie_wydania)::text IS DISTINCT FROM (new.oznaczenie_wydania)::text) OR (old.redakcja IS DISTINCT FROM new.redakcja) OR (old.openaccess_tryb_dostepu_id IS DISTINCT FROM new.openaccess_tryb_dostepu_id) OR (old.wydawnictwo_nadrzedne_id IS DISTINCT FROM new.wydawnictwo_nadrzedne_id) OR ((old.wydawnictwo_nadrzedne_w_pbn_id)::text IS DISTINCT FROM (new.wydawnictwo_nadrzedne_w_pbn_id)::text) OR (old.calkowita_liczba_autorow IS DISTINCT FROM new.calkowita_liczba_autorow) OR (old.calkowita_liczba_redaktorow IS DISTINCT FROM new.calkowita_liczba_redaktorow) OR (old.opis_bibliograficzny_cache IS DISTINCT FROM new.opis_bibliograficzny_cache) OR (old.opis_bibliograficzny_autorzy_cache IS DISTINCT FROM new.opis_bibliograficzny_autorzy_cache) OR (old.opis_bibliograficzny_zapisani_autorzy_cache IS DISTINCT FROM new.opis_bibliograficzny_zapisani_autorzy_cache) OR ((old.slug)::text IS DISTINCT FROM (new.slug)::text))) EXECUTE FUNCTION public.f_d_aft_row_upd_on_bpp_wydawnictwo_zwarte_wydawnictwo_zwdbd1();
 
 
 --
 -- Name: bpp_zrodlo d_aft_row_upd_on_bpp_zrodlo_wydawnictwo_ciagle_opis_bic5b4; Type: TRIGGER; Schema: public; Owner: -
 --
 
-CREATE TRIGGER d_aft_row_upd_on_bpp_zrodlo_wydawnictwo_ciagle_opis_bic5b4 AFTER UPDATE ON public.bpp_zrodlo FOR EACH ROW EXECUTE FUNCTION public.f_d_aft_row_upd_on_bpp_zrodlo_wydawnictwo_ciagle_opis_bic5b4();
+CREATE TRIGGER d_aft_row_upd_on_bpp_zrodlo_wydawnictwo_ciagle_opis_bic5b4 AFTER UPDATE ON public.bpp_zrodlo FOR EACH ROW WHEN ((((old.nazwa)::text IS DISTINCT FROM (new.nazwa)::text) OR ((old.skrot)::text IS DISTINCT FROM (new.skrot)::text))) EXECUTE FUNCTION public.f_d_aft_row_upd_on_bpp_zrodlo_wydawnictwo_ciagle_opis_bic5b4();
 
 
 --
 -- Name: bpp_zrodlo d_aft_row_upd_on_bpp_zrodlo_wydawnictwo_ciagle_slug; Type: TRIGGER; Schema: public; Owner: -
 --
 
-CREATE TRIGGER d_aft_row_upd_on_bpp_zrodlo_wydawnictwo_ciagle_slug AFTER UPDATE ON public.bpp_zrodlo FOR EACH ROW EXECUTE FUNCTION public.f_d_aft_row_upd_on_bpp_zrodlo_wydawnictwo_ciagle_slug();
+CREATE TRIGGER d_aft_row_upd_on_bpp_zrodlo_wydawnictwo_ciagle_slug AFTER UPDATE ON public.bpp_zrodlo FOR EACH ROW WHEN ((((old.nazwa)::text IS DISTINCT FROM (new.nazwa)::text) OR ((old.skrot)::text IS DISTINCT FROM (new.skrot)::text))) EXECUTE FUNCTION public.f_d_aft_row_upd_on_bpp_zrodlo_wydawnictwo_ciagle_slug();
 
 
 --
@@ -30433,6 +30819,22 @@ ALTER TABLE ONLY public.bpp_autor
 
 
 --
+-- Name: bpp_bppuser_accessible_uczelnie bpp_bppuser_accessib_bppuser_id_a1801a12_fk_bpp_bppus; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.bpp_bppuser_accessible_uczelnie
+    ADD CONSTRAINT bpp_bppuser_accessib_bppuser_id_a1801a12_fk_bpp_bppus FOREIGN KEY (bppuser_id) REFERENCES public.bpp_bppuser(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: bpp_bppuser_accessible_uczelnie bpp_bppuser_accessib_uczelnia_id_01a82aca_fk_bpp_uczel; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.bpp_bppuser_accessible_uczelnie
+    ADD CONSTRAINT bpp_bppuser_accessib_uczelnia_id_01a82aca_fk_bpp_uczel FOREIGN KEY (uczelnia_id) REFERENCES public.bpp_uczelnia(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
 -- Name: bpp_bppuser bpp_bppuser_autor_id_12601f68_fk_bpp_autor_id; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -30502,6 +30904,14 @@ ALTER TABLE ONLY public.bpp_cache_punktacja_autora
 
 ALTER TABLE ONLY public.bpp_cache_punktacja_autora
     ADD CONSTRAINT bpp_cache_punktacja__jednostka_id_07c4cf21_fk_bpp_jedno FOREIGN KEY (jednostka_id) REFERENCES public.bpp_jednostka(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: bpp_cache_punktacja_dyscypliny bpp_cache_punktacja__uczelnia_id_08b9e1c6_fk_bpp_uczel; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.bpp_cache_punktacja_dyscypliny
+    ADD CONSTRAINT bpp_cache_punktacja__uczelnia_id_08b9e1c6_fk_bpp_uczel FOREIGN KEY (uczelnia_id) REFERENCES public.bpp_uczelnia(id) DEFERRABLE INITIALLY DEFERRED;
 
 
 --
@@ -30593,6 +31003,22 @@ ALTER TABLE ONLY public.bpp_jednostka
 
 
 --
+-- Name: bpp_jednostka bpp_jednostka_rodzaj_id_289bf80d_fk_bpp_rodzajjednostki_id; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.bpp_jednostka
+    ADD CONSTRAINT bpp_jednostka_rodzaj_id_289bf80d_fk_bpp_rodzajjednostki_id FOREIGN KEY (rodzaj_id) REFERENCES public.bpp_rodzajjednostki(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: bpp_jednostka_rodzic bpp_jednostka_rodzic_parent_id_86359c7a_fk_bpp_jednostka_id; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.bpp_jednostka_rodzic
+    ADD CONSTRAINT bpp_jednostka_rodzic_parent_id_86359c7a_fk_bpp_jednostka_id FOREIGN KEY (parent_id) REFERENCES public.bpp_jednostka(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
 -- Name: bpp_jednostka bpp_jednostka_uczelnia_id_3fb75ebc_fk_bpp_uczelnia_id; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -30601,27 +31027,19 @@ ALTER TABLE ONLY public.bpp_jednostka
 
 
 --
--- Name: bpp_jednostka bpp_jednostka_wydzial_id_cc45658c_fk_bpp_wydzial_id; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: bpp_jednostka bpp_jednostka_wydzial_id_cc45658c_fk_bpp_jednostka_id; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.bpp_jednostka
-    ADD CONSTRAINT bpp_jednostka_wydzial_id_cc45658c_fk_bpp_wydzial_id FOREIGN KEY (wydzial_id) REFERENCES public.bpp_wydzial(id) DEFERRABLE INITIALLY DEFERRED;
+    ADD CONSTRAINT bpp_jednostka_wydzial_id_cc45658c_fk_bpp_jednostka_id FOREIGN KEY (wydzial_id) REFERENCES public.bpp_jednostka(id) DEFERRABLE INITIALLY DEFERRED;
 
 
 --
--- Name: bpp_jednostka_wydzial bpp_jednostka_wydzial_jednostka_id_7a8739e6_fk_bpp_jednostka_id; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: bpp_jednostka_rodzic bpp_jednostka_wydzial_jednostka_id_7a8739e6_fk_bpp_jednostka_id; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
-ALTER TABLE ONLY public.bpp_jednostka_wydzial
+ALTER TABLE ONLY public.bpp_jednostka_rodzic
     ADD CONSTRAINT bpp_jednostka_wydzial_jednostka_id_7a8739e6_fk_bpp_jednostka_id FOREIGN KEY (jednostka_id) REFERENCES public.bpp_jednostka(id) DEFERRABLE INITIALLY DEFERRED;
-
-
---
--- Name: bpp_jednostka_wydzial bpp_jednostka_wydzial_wydzial_id_1ffaafb1_fk_bpp_wydzial_id; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.bpp_jednostka_wydzial
-    ADD CONSTRAINT bpp_jednostka_wydzial_wydzial_id_1ffaafb1_fk_bpp_wydzial_id FOREIGN KEY (wydzial_id) REFERENCES public.bpp_wydzial(id) DEFERRABLE INITIALLY DEFERRED;
 
 
 --
@@ -30633,11 +31051,11 @@ ALTER TABLE ONLY public.bpp_jezyk
 
 
 --
--- Name: bpp_kierunek_studiow bpp_kierunek_studiow_wydzial_id_83cd7dce_fk_bpp_wydzial_id; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: bpp_kierunek_studiow bpp_kierunek_studiow_wydzial_id_83cd7dce_fk_bpp_jednostka_id; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.bpp_kierunek_studiow
-    ADD CONSTRAINT bpp_kierunek_studiow_wydzial_id_83cd7dce_fk_bpp_wydzial_id FOREIGN KEY (wydzial_id) REFERENCES public.bpp_wydzial(id) DEFERRABLE INITIALLY DEFERRED;
+    ADD CONSTRAINT bpp_kierunek_studiow_wydzial_id_83cd7dce_fk_bpp_jednostka_id FOREIGN KEY (wydzial_id) REFERENCES public.bpp_jednostka(id) DEFERRABLE INITIALLY DEFERRED;
 
 
 --
@@ -30673,11 +31091,11 @@ ALTER TABLE ONLY public.bpp_opi_2012_afiliacja_do_wydzialu
 
 
 --
--- Name: bpp_opi_2012_afiliacja_do_wydzialu bpp_opi_2012_afiliac_wydzial_id_833e6937_fk_bpp_wydzi; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: bpp_opi_2012_afiliacja_do_wydzialu bpp_opi_2012_afiliac_wydzial_id_833e6937_fk_bpp_jedno; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.bpp_opi_2012_afiliacja_do_wydzialu
-    ADD CONSTRAINT bpp_opi_2012_afiliac_wydzial_id_833e6937_fk_bpp_wydzi FOREIGN KEY (wydzial_id) REFERENCES public.bpp_wydzial(id) DEFERRABLE INITIALLY DEFERRED;
+    ADD CONSTRAINT bpp_opi_2012_afiliac_wydzial_id_833e6937_fk_bpp_jedno FOREIGN KEY (wydzial_id) REFERENCES public.bpp_jednostka(id) DEFERRABLE INITIALLY DEFERRED;
 
 
 --
@@ -30769,11 +31187,11 @@ ALTER TABLE ONLY public.bpp_patent
 
 
 --
--- Name: bpp_patent bpp_patent_wydzial_id_3a52848a_fk_bpp_wydzial_id; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: bpp_patent bpp_patent_wydzial_id_3a52848a_fk_bpp_jednostka_id; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.bpp_patent
-    ADD CONSTRAINT bpp_patent_wydzial_id_3a52848a_fk_bpp_wydzial_id FOREIGN KEY (wydzial_id) REFERENCES public.bpp_wydzial(id) DEFERRABLE INITIALLY DEFERRED;
+    ADD CONSTRAINT bpp_patent_wydzial_id_3a52848a_fk_bpp_jednostka_id FOREIGN KEY (wydzial_id) REFERENCES public.bpp_jednostka(id) DEFERRABLE INITIALLY DEFERRED;
 
 
 --
@@ -31041,6 +31459,14 @@ ALTER TABLE ONLY public.bpp_uczelnia
 
 
 --
+-- Name: bpp_uczelnia bpp_uczelnia_site_id_bdbd3935_fk_django_site_id; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.bpp_uczelnia
+    ADD CONSTRAINT bpp_uczelnia_site_id_bdbd3935_fk_django_site_id FOREIGN KEY (site_id) REFERENCES public.django_site(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
 -- Name: bpp_ukryj_status_korekty bpp_ukryj_status_kor_status_korekty_id_2a6abab3_fk_bpp_statu; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -31201,6 +31627,14 @@ ALTER TABLE ONLY public.bpp_wydawnictwo_ciagle_zewnetrzna_baza_danych
 
 
 --
+-- Name: bpp_wydawnictwo_ciagle_tytul bpp_wydawnictwo_ciag_rekord_id_fcceabd4_fk_bpp_wydaw; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.bpp_wydawnictwo_ciagle_tytul
+    ADD CONSTRAINT bpp_wydawnictwo_ciag_rekord_id_fcceabd4_fk_bpp_wydaw FOREIGN KEY (rekord_id) REFERENCES public.bpp_wydawnictwo_ciagle(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
 -- Name: bpp_wydawnictwo_ciagle bpp_wydawnictwo_ciag_status_korekty_id_5746d003_fk_bpp_statu; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -31254,6 +31688,14 @@ ALTER TABLE ONLY public.bpp_wydawnictwo_ciagle
 
 ALTER TABLE ONLY public.bpp_wydawnictwo_ciagle
     ADD CONSTRAINT bpp_wydawnictwo_ciagle_typ_kbn_id_452ef6d2_fk_bpp_typ_kbn_id FOREIGN KEY (typ_kbn_id) REFERENCES public.bpp_typ_kbn(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: bpp_wydawnictwo_ciagle_tytul bpp_wydawnictwo_ciagle_tytul_jezyk_id_190d9149_fk_bpp_jezyk_id; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.bpp_wydawnictwo_ciagle_tytul
+    ADD CONSTRAINT bpp_wydawnictwo_ciagle_tytul_jezyk_id_190d9149_fk_bpp_jezyk_id FOREIGN KEY (jezyk_id) REFERENCES public.bpp_jezyk(id) DEFERRABLE INITIALLY DEFERRED;
 
 
 --
@@ -31369,6 +31811,14 @@ ALTER TABLE ONLY public.bpp_wydawnictwo_zwarte
 
 
 --
+-- Name: bpp_wydawnictwo_zwarte_tytul bpp_wydawnictwo_zwar_rekord_id_18214bf2_fk_bpp_wydaw; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.bpp_wydawnictwo_zwarte_tytul
+    ADD CONSTRAINT bpp_wydawnictwo_zwar_rekord_id_18214bf2_fk_bpp_wydaw FOREIGN KEY (rekord_id) REFERENCES public.bpp_wydawnictwo_zwarte(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
 -- Name: bpp_wydawnictwo_zwarte_autor bpp_wydawnictwo_zwar_rekord_id_4b6234b9_fk_bpp_wydaw; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -31473,19 +31923,19 @@ ALTER TABLE ONLY public.bpp_wydawnictwo_zwarte
 
 
 --
+-- Name: bpp_wydawnictwo_zwarte_tytul bpp_wydawnictwo_zwarte_tytul_jezyk_id_2518c2ce_fk_bpp_jezyk_id; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.bpp_wydawnictwo_zwarte_tytul
+    ADD CONSTRAINT bpp_wydawnictwo_zwarte_tytul_jezyk_id_2518c2ce_fk_bpp_jezyk_id FOREIGN KEY (jezyk_id) REFERENCES public.bpp_jezyk(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
 -- Name: bpp_wydawnictwo_zwarte bpp_wydawnictwo_zwarte_wydawca_id_9e1b953b_fk_bpp_wydawca_id; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.bpp_wydawnictwo_zwarte
     ADD CONSTRAINT bpp_wydawnictwo_zwarte_wydawca_id_9e1b953b_fk_bpp_wydawca_id FOREIGN KEY (wydawca_id) REFERENCES public.bpp_wydawca(id) DEFERRABLE INITIALLY DEFERRED;
-
-
---
--- Name: bpp_wydzial bpp_wydzial_uczelnia_id_88a85869_fk_bpp_uczelnia_id; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.bpp_wydzial
-    ADD CONSTRAINT bpp_wydzial_uczelnia_id_88a85869_fk_bpp_uczelnia_id FOREIGN KEY (uczelnia_id) REFERENCES public.bpp_uczelnia(id) DEFERRABLE INITIALLY DEFERRED;
 
 
 --
@@ -31753,11 +32203,51 @@ ALTER TABLE ONLY public.deduplikator_zrodel_ignoredsource
 
 
 --
+-- Name: deduplikator_zrodel_sourceduplicatecandidate deduplikator_zrodel__duplicate_zrodlo_id_62c63e3b_fk_bpp_zrodl; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.deduplikator_zrodel_sourceduplicatecandidate
+    ADD CONSTRAINT deduplikator_zrodel__duplicate_zrodlo_id_62c63e3b_fk_bpp_zrodl FOREIGN KEY (duplicate_zrodlo_id) REFERENCES public.bpp_zrodlo(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
 -- Name: deduplikator_zrodel_notaduplicate deduplikator_zrodel__duplikat_id_45ff8b6e_fk_bpp_zrodl; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.deduplikator_zrodel_notaduplicate
     ADD CONSTRAINT deduplikator_zrodel__duplikat_id_45ff8b6e_fk_bpp_zrodl FOREIGN KEY (duplikat_id) REFERENCES public.bpp_zrodlo(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: deduplikator_zrodel_sourceduplicatecandidate deduplikator_zrodel__main_zrodlo_id_34357463_fk_bpp_zrodl; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.deduplikator_zrodel_sourceduplicatecandidate
+    ADD CONSTRAINT deduplikator_zrodel__main_zrodlo_id_34357463_fk_bpp_zrodl FOREIGN KEY (main_zrodlo_id) REFERENCES public.bpp_zrodlo(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: deduplikator_zrodel_scanzrodelforduplicates deduplikator_zrodel__owner_id_c23e1c07_fk_bpp_bppus; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.deduplikator_zrodel_scanzrodelforduplicates
+    ADD CONSTRAINT deduplikator_zrodel__owner_id_c23e1c07_fk_bpp_bppus FOREIGN KEY (owner_id) REFERENCES public.bpp_bppuser(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: deduplikator_zrodel_sourceduplicatecandidate deduplikator_zrodel__reviewed_by_id_62e01970_fk_bpp_bppus; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.deduplikator_zrodel_sourceduplicatecandidate
+    ADD CONSTRAINT deduplikator_zrodel__reviewed_by_id_62e01970_fk_bpp_bppus FOREIGN KEY (reviewed_by_id) REFERENCES public.bpp_bppuser(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: deduplikator_zrodel_sourceduplicatecandidate deduplikator_zrodel__scan_id_ad47bac8_fk_deduplika; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.deduplikator_zrodel_sourceduplicatecandidate
+    ADD CONSTRAINT deduplikator_zrodel__scan_id_ad47bac8_fk_deduplika FOREIGN KEY (scan_id) REFERENCES public.deduplikator_zrodel_scanzrodelforduplicates(id) DEFERRABLE INITIALLY DEFERRED;
 
 
 --
@@ -31953,6 +32443,22 @@ ALTER TABLE ONLY public.ewaluacja_liczba_n_iloscudzialowdlaautorazacalosc
 
 
 --
+-- Name: ewaluacja_liczba_n_iloscudzialowdlaautorazarok ewaluacja_liczba_n_i_uczelnia_id_47fd7470_fk_bpp_uczel; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.ewaluacja_liczba_n_iloscudzialowdlaautorazarok
+    ADD CONSTRAINT ewaluacja_liczba_n_i_uczelnia_id_47fd7470_fk_bpp_uczel FOREIGN KEY (uczelnia_id) REFERENCES public.bpp_uczelnia(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: ewaluacja_liczba_n_iloscudzialowdlaautorazacalosc ewaluacja_liczba_n_i_uczelnia_id_d99d6f1a_fk_bpp_uczel; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.ewaluacja_liczba_n_iloscudzialowdlaautorazacalosc
+    ADD CONSTRAINT ewaluacja_liczba_n_i_uczelnia_id_d99d6f1a_fk_bpp_uczel FOREIGN KEY (uczelnia_id) REFERENCES public.bpp_uczelnia(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
 -- Name: ewaluacja_liczba_n_liczbandlauczelni ewaluacja_liczba_n_l_dyscyplina_naukowa_i_2e8e6e9e_fk_bpp_dyscy; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -31990,6 +32496,22 @@ ALTER TABLE ONLY public.ewaluacja_metryki_metrykaautora
 
 ALTER TABLE ONLY public.ewaluacja_metryki_metrykaautora
     ADD CONSTRAINT ewaluacja_metryki_me_jednostka_id_3f0b7c52_fk_bpp_jedno FOREIGN KEY (jednostka_id) REFERENCES public.bpp_jednostka(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: ewaluacja_metryki_metrykaautora ewaluacja_metryki_me_uczelnia_id_f2a91bd0_fk_bpp_uczel; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.ewaluacja_metryki_metrykaautora
+    ADD CONSTRAINT ewaluacja_metryki_me_uczelnia_id_f2a91bd0_fk_bpp_uczel FOREIGN KEY (uczelnia_id) REFERENCES public.bpp_uczelnia(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: ewaluacja_metryki_statusgenerowania ewaluacja_metryki_st_uczelnia_id_36912598_fk_bpp_uczel; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.ewaluacja_metryki_statusgenerowania
+    ADD CONSTRAINT ewaluacja_metryki_st_uczelnia_id_36912598_fk_bpp_uczel FOREIGN KEY (uczelnia_id) REFERENCES public.bpp_uczelnia(id) DEFERRABLE INITIALLY DEFERRED;
 
 
 --
@@ -32361,11 +32883,11 @@ ALTER TABLE ONLY public.import_dyscyplin_import_dyscyplin_row
 
 
 --
--- Name: import_dyscyplin_import_dyscyplin_row import_dyscyplin_imp_wydzial_id_3c6fce7a_fk_bpp_wydzi; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: import_dyscyplin_import_dyscyplin_row import_dyscyplin_imp_wydzial_id_3c6fce7a_fk_bpp_jedno; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.import_dyscyplin_import_dyscyplin_row
-    ADD CONSTRAINT import_dyscyplin_imp_wydzial_id_3c6fce7a_fk_bpp_wydzi FOREIGN KEY (wydzial_id) REFERENCES public.bpp_wydzial(id) DEFERRABLE INITIALLY DEFERRED;
+    ADD CONSTRAINT import_dyscyplin_imp_wydzial_id_3c6fce7a_fk_bpp_jedno FOREIGN KEY (wydzial_id) REFERENCES public.bpp_jednostka(id) DEFERRABLE INITIALLY DEFERRED;
 
 
 --
@@ -32438,6 +32960,14 @@ ALTER TABLE ONLY public.import_polon_importplikupolon
 
 ALTER TABLE ONLY public.import_polon_importplikuabsencji
     ADD CONSTRAINT import_polon_importp_owner_id_5d348906_fk_bpp_bppus FOREIGN KEY (owner_id) REFERENCES public.bpp_bppuser(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: import_polon_importplikupolon import_polon_importp_uczelnia_id_5801976f_fk_bpp_uczel; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.import_polon_importplikupolon
+    ADD CONSTRAINT import_polon_importp_uczelnia_id_5801976f_fk_bpp_uczel FOREIGN KEY (uczelnia_id) REFERENCES public.bpp_uczelnia(id) DEFERRABLE INITIALLY DEFERRED;
 
 
 --
@@ -32558,6 +33088,30 @@ ALTER TABLE ONLY public.import_pracownikow_importpracownikowrow
 
 ALTER TABLE ONLY public.import_pracownikow_importpracownikowrow
     ADD CONSTRAINT import_pracownikow_i_wymiar_etatu_id_fa71327b_fk_bpp_wymia FOREIGN KEY (wymiar_etatu_id) REFERENCES public.bpp_wymiar_etatu(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: import_punktacji_zrodel_importpunktacjizrodel import_punktacji_zro_owner_id_2ab3d513_fk_bpp_bppus; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.import_punktacji_zrodel_importpunktacjizrodel
+    ADD CONSTRAINT import_punktacji_zro_owner_id_2ab3d513_fk_bpp_bppus FOREIGN KEY (owner_id) REFERENCES public.bpp_bppuser(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: import_punktacji_zrodel_wierszimportupunktacjizrodel import_punktacji_zro_parent_id_f8040163_fk_import_pu; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.import_punktacji_zrodel_wierszimportupunktacjizrodel
+    ADD CONSTRAINT import_punktacji_zro_parent_id_f8040163_fk_import_pu FOREIGN KEY (parent_id) REFERENCES public.import_punktacji_zrodel_importpunktacjizrodel(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: import_punktacji_zrodel_wierszimportupunktacjizrodel import_punktacji_zro_zrodlo_id_9e2de144_fk_bpp_zrodl; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.import_punktacji_zrodel_wierszimportupunktacjizrodel
+    ADD CONSTRAINT import_punktacji_zro_zrodlo_id_9e2de144_fk_bpp_zrodl FOREIGN KEY (zrodlo_id) REFERENCES public.bpp_zrodlo(id) DEFERRABLE INITIALLY DEFERRED;
 
 
 --
@@ -32694,6 +33248,14 @@ ALTER TABLE ONLY public.importer_publikacji_importedauthor
 
 ALTER TABLE ONLY public.importer_publikacji_importsession
     ADD CONSTRAINT importer_publikacji__typ_kbn_id_bb86557c_fk_bpp_typ_k FOREIGN KEY (typ_kbn_id) REFERENCES public.bpp_typ_kbn(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: importer_publikacji_importsession importer_publikacji__uczelnia_id_7026de60_fk_bpp_uczel; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.importer_publikacji_importsession
+    ADD CONSTRAINT importer_publikacji__uczelnia_id_7026de60_fk_bpp_uczel FOREIGN KEY (uczelnia_id) REFERENCES public.bpp_uczelnia(id) DEFERRABLE INITIALLY DEFERRED;
 
 
 --
@@ -33001,6 +33563,14 @@ ALTER TABLE ONLY public.pbn_api_osobazinstytucji
 
 
 --
+-- Name: pbn_api_osobazinstytucji pbn_api_osobazinstyt_uczelnia_id_7d40e8e4_fk_bpp_uczel; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.pbn_api_osobazinstytucji
+    ADD CONSTRAINT pbn_api_osobazinstyt_uczelnia_id_7d40e8e4_fk_bpp_uczel FOREIGN KEY (uczelnia_id) REFERENCES public.bpp_uczelnia(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
 -- Name: pbn_api_oswiadczenieinstytucji pbn_api_oswiadczenie_institutionId_id_9253ed01_fk_pbn_api_i; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -33022,6 +33592,14 @@ ALTER TABLE ONLY public.pbn_api_oswiadczenieinstytucji
 
 ALTER TABLE ONLY public.pbn_api_oswiadczenieinstytucji
     ADD CONSTRAINT "pbn_api_oswiadczenie_publicationId_id_e4bb095e_fk_pbn_api_p" FOREIGN KEY ("publicationId_id") REFERENCES public.pbn_api_publication("mongoId") DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: pbn_api_oswiadczenieinstytucji pbn_api_oswiadczenie_uczelnia_id_8171fd87_fk_bpp_uczel; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.pbn_api_oswiadczenieinstytucji
+    ADD CONSTRAINT pbn_api_oswiadczenie_uczelnia_id_8171fd87_fk_bpp_uczel FOREIGN KEY (uczelnia_id) REFERENCES public.bpp_uczelnia(id) DEFERRABLE INITIALLY DEFERRED;
 
 
 --
@@ -33089,6 +33667,22 @@ ALTER TABLE ONLY public.pbn_api_publikacjainstytucji
 
 
 --
+-- Name: pbn_api_publikacjainstytucji_v2 pbn_api_publikacjain_uczelnia_id_6deb3bd5_fk_bpp_uczel; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.pbn_api_publikacjainstytucji_v2
+    ADD CONSTRAINT pbn_api_publikacjain_uczelnia_id_6deb3bd5_fk_bpp_uczel FOREIGN KEY (uczelnia_id) REFERENCES public.bpp_uczelnia(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: pbn_api_publikacjainstytucji pbn_api_publikacjain_uczelnia_id_ea6a8d95_fk_bpp_uczel; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.pbn_api_publikacjainstytucji
+    ADD CONSTRAINT pbn_api_publikacjain_uczelnia_id_ea6a8d95_fk_bpp_uczel FOREIGN KEY (uczelnia_id) REFERENCES public.bpp_uczelnia(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
 -- Name: pbn_api_sentdata pbn_api_sentdata_content_type_id_69385e64_fk_django_co; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -33102,6 +33696,14 @@ ALTER TABLE ONLY public.pbn_api_sentdata
 
 ALTER TABLE ONLY public.pbn_api_sentdata
     ADD CONSTRAINT pbn_api_sentdata_pbn_uid_id_3e42821b_fk_pbn_api_p FOREIGN KEY (pbn_uid_id) REFERENCES public.pbn_api_publication("mongoId") DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: pbn_api_sentdata pbn_api_sentdata_uczelnia_id_76eac6ed_fk_bpp_uczelnia_id; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.pbn_api_sentdata
+    ADD CONSTRAINT pbn_api_sentdata_uczelnia_id_76eac6ed_fk_bpp_uczelnia_id FOREIGN KEY (uczelnia_id) REFERENCES public.bpp_uczelnia(id) DEFERRABLE INITIALLY DEFERRED;
 
 
 --
@@ -33158,6 +33760,14 @@ ALTER TABLE ONLY public.pbn_downloader_app_pbnjournalsdownloadtask
 
 ALTER TABLE ONLY public.pbn_downloader_app_pbndownloadtask
     ADD CONSTRAINT pbn_downloader_app_p_user_id_7be1c324_fk_bpp_bppus FOREIGN KEY (user_id) REFERENCES public.bpp_bppuser(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: pbn_export_queue_pbn_export_queue pbn_export_queue_pbn_uczelnia_id_7632078a_fk_bpp_uczel; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.pbn_export_queue_pbn_export_queue
+    ADD CONSTRAINT pbn_export_queue_pbn_uczelnia_id_7632078a_fk_bpp_uczel FOREIGN KEY (uczelnia_id) REFERENCES public.bpp_uczelnia(id) DEFERRABLE INITIALLY DEFERRED;
 
 
 --
@@ -33393,6 +34003,14 @@ ALTER TABLE ONLY public.raport_slotow_raportslotowuczelniawiersz
 
 
 --
+-- Name: raport_slotow_raportslotowuczelnia raport_slotow_raport_uczelnia_id_8a4e4291_fk_bpp_uczel; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.raport_slotow_raportslotowuczelnia
+    ADD CONSTRAINT raport_slotow_raport_uczelnia_id_8a4e4291_fk_bpp_uczel FOREIGN KEY (uczelnia_id) REFERENCES public.bpp_uczelnia(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
 -- Name: reversion_revision reversion_revision_user_id_17095f45_fk_bpp_bppuser_id; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -33417,67 +34035,35 @@ ALTER TABLE ONLY public.reversion_version
 
 
 --
--- Name: rozbieznosci_if_ignorujrozbieznoscif rozbieznosci_if_igno_content_type_id_74f8446c_fk_django_co; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: rozbieznosci_ignorowanarozbieznosc rozbieznosci_ignorow_rekord_id_b4e503fe_fk_bpp_wydaw; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
-ALTER TABLE ONLY public.rozbieznosci_if_ignorujrozbieznoscif
-    ADD CONSTRAINT rozbieznosci_if_igno_content_type_id_74f8446c_fk_django_co FOREIGN KEY (content_type_id) REFERENCES public.django_content_type(id) DEFERRABLE INITIALLY DEFERRED;
-
-
---
--- Name: rozbieznosci_if_rozbieznosciiflog rozbieznosci_if_rozb_rekord_id_57aad806_fk_bpp_wydaw; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.rozbieznosci_if_rozbieznosciiflog
-    ADD CONSTRAINT rozbieznosci_if_rozb_rekord_id_57aad806_fk_bpp_wydaw FOREIGN KEY (rekord_id) REFERENCES public.bpp_wydawnictwo_ciagle(id) DEFERRABLE INITIALLY DEFERRED;
+ALTER TABLE ONLY public.rozbieznosci_ignorowanarozbieznosc
+    ADD CONSTRAINT rozbieznosci_ignorow_rekord_id_b4e503fe_fk_bpp_wydaw FOREIGN KEY (rekord_id) REFERENCES public.bpp_wydawnictwo_ciagle(id) DEFERRABLE INITIALLY DEFERRED;
 
 
 --
--- Name: rozbieznosci_if_rozbieznosciiflog rozbieznosci_if_rozb_user_id_78e70cdc_fk_bpp_bppus; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: rozbieznosci_rozbieznosclog rozbieznosci_rozbiez_rekord_id_812207d3_fk_bpp_wydaw; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
-ALTER TABLE ONLY public.rozbieznosci_if_rozbieznosciiflog
-    ADD CONSTRAINT rozbieznosci_if_rozb_user_id_78e70cdc_fk_bpp_bppus FOREIGN KEY (user_id) REFERENCES public.bpp_bppuser(id) DEFERRABLE INITIALLY DEFERRED;
-
-
---
--- Name: rozbieznosci_if_rozbieznosciiflog rozbieznosci_if_rozb_zrodlo_id_f7c28215_fk_bpp_zrodl; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.rozbieznosci_if_rozbieznosciiflog
-    ADD CONSTRAINT rozbieznosci_if_rozb_zrodlo_id_f7c28215_fk_bpp_zrodl FOREIGN KEY (zrodlo_id) REFERENCES public.bpp_zrodlo(id) DEFERRABLE INITIALLY DEFERRED;
+ALTER TABLE ONLY public.rozbieznosci_rozbieznosclog
+    ADD CONSTRAINT rozbieznosci_rozbiez_rekord_id_812207d3_fk_bpp_wydaw FOREIGN KEY (rekord_id) REFERENCES public.bpp_wydawnictwo_ciagle(id) DEFERRABLE INITIALLY DEFERRED;
 
 
 --
--- Name: rozbieznosci_pk_ignorujrozbieznoscpk rozbieznosci_pk_igno_content_type_id_4fcc65cb_fk_django_co; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: rozbieznosci_rozbieznosclog rozbieznosci_rozbieznosclog_user_id_7787df9a_fk_bpp_bppuser_id; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
-ALTER TABLE ONLY public.rozbieznosci_pk_ignorujrozbieznoscpk
-    ADD CONSTRAINT rozbieznosci_pk_igno_content_type_id_4fcc65cb_fk_django_co FOREIGN KEY (content_type_id) REFERENCES public.django_content_type(id) DEFERRABLE INITIALLY DEFERRED;
-
-
---
--- Name: rozbieznosci_pk_rozbieznoscipklog rozbieznosci_pk_rozb_rekord_id_d86ceac8_fk_bpp_wydaw; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.rozbieznosci_pk_rozbieznoscipklog
-    ADD CONSTRAINT rozbieznosci_pk_rozb_rekord_id_d86ceac8_fk_bpp_wydaw FOREIGN KEY (rekord_id) REFERENCES public.bpp_wydawnictwo_ciagle(id) DEFERRABLE INITIALLY DEFERRED;
+ALTER TABLE ONLY public.rozbieznosci_rozbieznosclog
+    ADD CONSTRAINT rozbieznosci_rozbieznosclog_user_id_7787df9a_fk_bpp_bppuser_id FOREIGN KEY (user_id) REFERENCES public.bpp_bppuser(id) DEFERRABLE INITIALLY DEFERRED;
 
 
 --
--- Name: rozbieznosci_pk_rozbieznoscipklog rozbieznosci_pk_rozb_user_id_ce2e3b4a_fk_bpp_bppus; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: rozbieznosci_rozbieznosclog rozbieznosci_rozbieznosclog_zrodlo_id_44cc89e8_fk_bpp_zrodlo_id; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
-ALTER TABLE ONLY public.rozbieznosci_pk_rozbieznoscipklog
-    ADD CONSTRAINT rozbieznosci_pk_rozb_user_id_ce2e3b4a_fk_bpp_bppus FOREIGN KEY (user_id) REFERENCES public.bpp_bppuser(id) DEFERRABLE INITIALLY DEFERRED;
-
-
---
--- Name: rozbieznosci_pk_rozbieznoscipklog rozbieznosci_pk_rozb_zrodlo_id_6d1a08e8_fk_bpp_zrodl; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.rozbieznosci_pk_rozbieznoscipklog
-    ADD CONSTRAINT rozbieznosci_pk_rozb_zrodlo_id_6d1a08e8_fk_bpp_zrodl FOREIGN KEY (zrodlo_id) REFERENCES public.bpp_zrodlo(id) DEFERRABLE INITIALLY DEFERRED;
+ALTER TABLE ONLY public.rozbieznosci_rozbieznosclog
+    ADD CONSTRAINT rozbieznosci_rozbieznosclog_zrodlo_id_44cc89e8_fk_bpp_zrodlo_id FOREIGN KEY (zrodlo_id) REFERENCES public.bpp_zrodlo(id) DEFERRABLE INITIALLY DEFERRED;
 
 
 --
@@ -33577,11 +34163,11 @@ ALTER TABLE ONLY public.zglos_publikacje_obslugujacy_zgloszenia_wydzialow
 
 
 --
--- Name: zglos_publikacje_obslugujacy_zgloszenia_wydzialow zglos_publikacje_obs_wydzial_id_1490ea89_fk_bpp_wydzi; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: zglos_publikacje_obslugujacy_zgloszenia_wydzialow zglos_publikacje_obs_wydzial_id_1490ea89_fk_bpp_jedno; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.zglos_publikacje_obslugujacy_zgloszenia_wydzialow
-    ADD CONSTRAINT zglos_publikacje_obs_wydzial_id_1490ea89_fk_bpp_wydzi FOREIGN KEY (wydzial_id) REFERENCES public.bpp_wydzial(id) DEFERRABLE INITIALLY DEFERRED;
+    ADD CONSTRAINT zglos_publikacje_obs_wydzial_id_1490ea89_fk_bpp_jedno FOREIGN KEY (wydzial_id) REFERENCES public.bpp_jednostka(id) DEFERRABLE INITIALLY DEFERRED;
 
 
 --

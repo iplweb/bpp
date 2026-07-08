@@ -1,0 +1,1 @@
+Import z PBN: czasopisma bez ISSN (PBN podsyła wtedy syntetyczny placeholder ``xpbn-<uuid>``) nie wywalają już importu błędem ``value too long`` — placeholder jest traktowany jako brak ISSN. Dotyczy zarówno masowego importu źródeł MNiSW, jak i importu pojedynczej publikacji z PBN.

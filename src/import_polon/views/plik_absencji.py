@@ -1,6 +1,6 @@
 from import_polon.forms import NowyImportAbsencjiForm
 from import_polon.models import ImportPlikuAbsencji
-from import_polon.views.plik_polon import BaseImportPlikuPolonMixin
+from import_polon.views.plik_polon import BaseImportPlikuPolonMixin, ZapiszDoBazyMixin
 from long_running.views import (
     CreateLongRunningOperationView,
     LongRunningDetailsView,
@@ -36,6 +36,10 @@ class ImportAbsencjiDetailsView(BaseImportPlikuAbsencjiMixin, LongRunningDetails
 class RestartImportAbsencjiView(
     BaseImportPlikuAbsencjiMixin, RestartLongRunningOperationView
 ):
+    pass
+
+
+class ZapiszDoBazyImportAbsencjiView(BaseImportPlikuAbsencjiMixin, ZapiszDoBazyMixin):
     pass
 
 

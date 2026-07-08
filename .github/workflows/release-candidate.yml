@@ -6,6 +6,31 @@ name: Release candidate (kandydat → staging)
 #   gh workflow run release-candidate.yml --ref dev
 # Powtórne wywołanie (gdy gałąź release/* otwarta) → kolejne -rcN.
 # Promote dopiero przez: gh workflow run promote.yml
+#
+# Testy biegną SHARDOWANE (12-way matrix), tak jak w tests.yml — wcześniej
+# cała suita szła jednym `pytest -n auto` na JEDNYM runnerze (~4 rdzenie),
+# przez co RC ciągnął się kilkadziesiąt minut. Teraz `prepare` buduje obraz
+# test-runner RAZ i pushuje go do GHCR, a `tests` rozkłada suitę na 12
+# runnerów (pytest-split, balans po czasie z .test_durations) — ~150 s na
+# najwolniejszy shard zamiast całości seryjnie.
+#
+# Kolejność (patrz `needs`/`if` niżej):
+#   prepare → bump RC (commit lokalny) + skan CVE + build&push obrazu +
+#             PUSH gałęzi release/* (od razu, żeby `build` mógł ją checkoutować)
+#   tests   → matrix shard 0..11, pull obrazu, pytest-split (needs: prepare)
+#   build   → obrazy :staging (needs: [prepare, tests], BRAMKA: tylko gdy testy
+#             zielone LUB pominięte)
+#
+# UWAGA SEMANTYKA: gałąź release/* jest pushowana w `prepare`, ZANIM testy
+# przejdą — więc nieudany run zostawia ją wypchniętą. To świadomy trade-off za
+# prostotę (RC commit żyje tylko w drzewie `prepare`; sharding na osobnych
+# runnerach wymaga przeniesienia go przez barierę testów). Skutki:
+#   - kolejny `release-candidate.yml` wykryje otwartą gałąź i kontynuuje jako
+#     rc(N+1) — normalna iteracja RC, nic się nie psuje;
+#   - obrazy :staging NIE powstają na nieudanych testach (job `build` jest
+#     bramkowany na `tests`), więc deployment nigdy nie pullnie złego RC;
+#   - żeby PORZUCIĆ nieudany cykl zamiast iterować: `git push origin --delete
+#     release/vXXXX`.
 
 on:
   workflow_dispatch:
@@ -28,16 +53,31 @@ permissions:
 
 jobs:
   prepare:
-    name: Zbuduj kandydata (bump RC + scan + testy)
+    name: Zbuduj kandydata (bump RC + scan + push obrazu)
     runs-on: ubuntu-latest
-    timeout-minutes: 90
+    timeout-minutes: 40
     permissions:
       contents: write
+      # GHCR push obrazu test-runner. GITHUB_TOKEN dziedziczy ten scope
+      # tylko gdy job deklaruje go jawnie.
+      packages: write
+      # Guard „pomijaj testy rc1 gdy dev zielony" czyta status runu workflow
+      # `Tests` na dev tip przez `gh api .../actions/.../runs` — to wymaga
+      # actions:read (bez tego gh zwróci 403 → fallback na testowanie).
+      actions: read
     env:
-      COMPOSE_FILES: -f docker-compose.test.yml -f docker-compose.test.ci.yml
+      # Ten sam obraz-cache co tests.yml — RC grzeje się z tego samego
+      # rejestrowego cache'u i odwrotnie.
+      IMAGE_REPO: ghcr.io/iplweb/bpp-test-runner
+      PYTHON_VERSION: "3.12"
+      DEBIAN_VERSION: trixie
+      NODEJS_VERSION: "20"
     outputs:
       version_tag: ${{ steps.bump.outputs.version_tag }}
       release_ref: ${{ steps.bump.outputs.release_ref }}
+      image: ${{ steps.tag.outputs.image }}
+      # 'true' = odpal suitę RC; 'false' = pomiń (rc1 z zielonego dev).
+      should_test: ${{ steps.bump.outputs.should_test }}
     steps:
       - name: Checkout (pełna historia + tagi)
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
@@ -55,10 +95,18 @@ jobs:
       - name: Install uv
         uses: astral-sh/setup-uv@d31148d669074a8d0a63714ba94f3201e7020bc3 # v8.3.0
         with:
-          enable-cache: true
+          # Bez cache: w tym jobie uv służy wyłącznie do `uvx bumpver`
+          # (drobne narzędzie w izolowanym env) — cache uv-a dawał tu
+          # znikomy zysk, a w JEDNYM jobie z docker/build-push-action
+          # (push obrazu) tworzył wektor cache-poisoning (zizmor). Brak
+          # cache'u = brak wektora, kosztem paru sekund re-downloadu bumpver.
+          enable-cache: false
 
       - name: Bump RC (nowy cykl lub kolejne -rcN)
         id: bump
+        env:
+          # Dla guardu „pomijaj testy rc1 gdy dev zielony" (gh api niżej).
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
           # Wykryj otwartą gałąź wydania (origin/release/*).
@@ -116,10 +164,54 @@ jobs:
           echo "release_ref=${RELEASE_REF}" >> "$GITHUB_OUTPUT"
           echo "::notice::Kandydat ${PEP} na gałęzi ${RELEASE_REF}"
 
-          # Zamroź lockfile dla tego RC.
-          uv lock
-          git add uv.lock
-          git commit -m "Aktualizacja uv.lock dla ${PEP}" || echo "uv.lock bez zmian."
+          # --- Guard: pomiń suitę RC dla rc1 odbitego z ZIELONEGO dev ---
+          # rc1 (nowy cykl, OPEN puste) = origin/dev tip + WYŁĄCZNIE bump wersji
+          # przez bumpver (zero zmian w kodzie/deps/Dockerze — deps identyczne,
+          # bo Step 2 zdjął re-lock). To DOKŁADNIE ten kod, który przed chwilą
+          # przeszedł pełną suitę `Tests` na dev (tests.yml odpala się na każdym
+          # push→dev). Jeśli TEN SHA dev-a ma zielony run `Tests`, re-test RC
+          # jest zdublowany → pomijamy (should_test=false).
+          #
+          # W KAŻDEJ innej sytuacji testujemy (should_test=true):
+          #   - rc2+ (kontynuacja: `git merge origin/dev` wnosi nowy kod),
+          #   - dev tip pending/czerwony/bez runu (np. push docs-only, który
+          #     tests.yml pomija przez paths-ignore),
+          #   - gdy zapytanie do gh api zawiedzie (|| echo 0) — fallback jest
+          #     ZAWSZE w stronę bezpieczeństwa (testuj przy niepewności).
+          # `skip_tests` (input) nadal wymusza pominięcie niezależnie od tego.
+          SHOULD_TEST=true
+          if [ -z "$OPEN" ]; then
+            DEV_SHA=$(git rev-parse origin/dev)
+            GREEN=$(gh api \
+              "repos/${GITHUB_REPOSITORY}/actions/workflows/tests.yml/runs?branch=dev&head_sha=${DEV_SHA}&status=success&per_page=1" \
+              --jq '.total_count' 2>/dev/null || echo 0)
+            if [ "${GREEN:-0}" -ge 1 ]; then
+              SHOULD_TEST=false
+              echo "::notice::rc1 z zielonego dev (${DEV_SHA:0:7}) — pomijam re-test RC (już przetestowany na dev)."
+            else
+              echo "::notice::rc1, ale dev ${DEV_SHA:0:7} nie ma zielonego runu Tests (pending/red/brak) — testuję RC."
+            fi
+          fi
+          echo "should_test=${SHOULD_TEST}" >> "$GITHUB_OUTPUT"
+
+          # NIE re-lockujemy uv.lock dla RC. Gałąź dev jest bramkowana jobem
+          # `lockfile` (tests.yml → `uv lock --check`), więc uv.lock jest już
+          # spójny z pyproject.toml i przetestowany DOKŁADNIE w tej postaci na
+          # dev. Wcześniej stało tu `uv lock` (+ commit), które RE-RESOLVOWAŁO
+          # zależności przy każdym RC — mogło wciągnąć deps, których dev nigdy
+          # nie testował (to był powód, dla którego RC nie mógł pominąć re-testu).
+          # Po wprowadzeniu gate'u `lockfile` jest to zbędne: jedyną zmianą, jaką
+          # `uv lock` by tu jeszcze wniósł, jest bump wersji root-pakietu w locku
+          # (bumpver podniósł [project].version). To pole ignoruje `uv sync
+          # --frozen` (Dockerfile), a zainstalowana wersja pakietu i tak jest
+          # budowana z pyproject.toml (=zbumpowana), więc pominięcie jest
+          # bezpieczne. Efekt: obraz test-runner RC bazuje na tym samym zamku
+          # zależności co zielony dev — co odblokowuje pomijanie re-testu rc1.
+
+          # SHA commita RC (po bumpie) — obraz test-runner buduje się z TEGO
+          # drzewa, więc tag obrazu i GIT_SHA (busta warstwę COPY src/) muszą
+          # wskazywać ten commit, nie github.sha (= dev tip, przed bumpem).
+          echo "rc_sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
 
       - name: Zainstaluj skanery CVE
         if: ${{ !inputs.skip_scan }}
@@ -136,41 +228,60 @@ jobs:
         if: ${{ !inputs.skip_scan }}
         run: ./bin/scan-deps.sh
 
-      - name: Przygotuj ci-output
-        if: ${{ !inputs.skip_tests }}
-        run: mkdir -p ci-output
+      # --- Build & push obrazu test-runner do GHCR (dla sharded `tests`) ---
+      # Wcześniej `prepare` budował obraz lokalnie (`docker compose build`) i
+      # sam odpalał całą suitę. Teraz obraz idzie do rejestru, żeby 12 runnerów
+      # matrixa mogło go pullnąć zamiast budować 12×. Mirror kroków z
+      # tests.yml → prepare-image.
+      - name: Set up Docker Buildx
+        if: ${{ !inputs.skip_tests && steps.bump.outputs.should_test == 'true' }}
+        uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c # v4.2.0
+        with:
+          driver: docker-container
 
-      - name: Zbuduj obraz test-runner
-        if: ${{ !inputs.skip_tests }}
-        run: docker compose $COMPOSE_FILES build test-runner
+      - name: Log in to GHCR
+        if: ${{ !inputs.skip_tests && steps.bump.outputs.should_test == 'true' }}
+        uses: docker/login-action@af1e73f918a031802d376d3c8bbc3fe56130a9b0 # v4.4.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Wystartuj usługi
-        if: ${{ !inputs.skip_tests }}
-        run: docker compose $COMPOSE_FILES up -d db redis
-
-      - name: Czekaj na usługi
-        if: ${{ !inputs.skip_tests }}
-        timeout-minutes: 2
+      - name: Compute image tag
+        id: tag
+        if: ${{ !inputs.skip_tests && steps.bump.outputs.should_test == 'true' }}
+        env:
+          RC_SHA: ${{ steps.bump.outputs.rc_sha }}
         run: |
-          until docker compose $COMPOSE_FILES exec db pg_isready -U bpp; do
-            echo "Czekam na PostgreSQL..."; sleep 2
-          done
-          until docker compose $COMPOSE_FILES exec redis redis-cli ping; do
-            echo "Czekam na Redis..."; sleep 2
-          done
+          echo "image=${IMAGE_REPO}:sha-${RC_SHA}" >> "$GITHUB_OUTPUT"
 
-      - name: TESTY (pełna suita)
-        if: ${{ !inputs.skip_tests }}
-        timeout-minutes: 45
-        run: |
-          docker compose $COMPOSE_FILES run --rm \
-            test-runner uv run pytest -n auto --timeout 300
-
-      - name: Sprzątanie usług
-        if: ${{ always() && !inputs.skip_tests }}
-        run: docker compose $COMPOSE_FILES down -v
+      - name: Build & push obrazu test-runner
+        if: ${{ !inputs.skip_tests && steps.bump.outputs.should_test == 'true' }}
+        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
+        with:
+          context: .
+          file: docker/bpp_base/Dockerfile
+          target: test-runner
+          push: true
+          tags: |
+            ${{ steps.tag.outputs.image }}
+          build-args: |
+            PYTHON_VERSION=${{ env.PYTHON_VERSION }}
+            DEBIAN_VERSION=${{ env.DEBIAN_VERSION }}
+            NODEJS_VERSION=${{ env.NODEJS_VERSION }}
+            # RC_SHA (nie github.sha) — busta warstwy COPY src/ + grunt, żeby
+            # obraz zawierał zbumpowane źródła RC (uv.lock = dev-owy,
+            # niezmieniony — patrz krok bump: RC nie re-lockuje).
+            GIT_SHA=${{ steps.bump.outputs.rc_sha }}
+          # Rejestrowy cache współdzielony z tests.yml (ten sam IMAGE_REPO).
+          cache-from: type=registry,ref=${{ env.IMAGE_REPO }}:cache
+          cache-to: type=registry,ref=${{ env.IMAGE_REPO }}:cache,mode=max
 
       - name: Push gałęzi wydania
+        # Bez `if:` → biegnie gdy poprzednie kroki OK (bump + scan + build).
+        # Pushujemy TU (przed testami), bo job `build` checkoutuje release_ref;
+        # bramka „tylko na zielonych testach" jest na `build` (needs: tests),
+        # nie na samym istnieniu gałęzi. Patrz nota SEMANTYKA na górze pliku.
         env:
           RELEASE_REF: ${{ steps.bump.outputs.release_ref }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -179,9 +290,111 @@ jobs:
             "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" \
             "HEAD:refs/heads/${RELEASE_REF}"
 
+  tests:
+    # Sharded suita (playwright + non-playwright + serial) pod `pytest -n auto`,
+    # rozbita duration-balanced przez pytest-split (.test_durations). Mirror
+    # joba `tests` z tests.yml — pełny opis mechaniki splitu/DB tam. Tu obraz
+    # jest już zbudowany przez `prepare` i wypchnięty do GHCR; każdy shard go
+    # pullnie zamiast budować.
+    name: Testy (sharded)
+    needs: prepare
+    # Odpalamy suitę RC gdy NIE wymuszono skip_tests ORAZ prepare zdecydował,
+    # że warto testować (should_test). should_test=false tylko dla rc1 z
+    # zielonego dev — wtedy job jest 'skipped' i bramka `build` niżej i tak
+    # przepuszcza (tests.result == 'skipped'). Patrz guard w kroku `bump`.
+    if: ${{ !inputs.skip_tests && needs.prepare.outputs.should_test == 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    permissions:
+      contents: read
+      packages: read
+
+    strategy:
+      fail-fast: false
+      max-parallel: 12
+      matrix:
+        # 0-indexed; MUSI byc spojne z NUM_SHARDS nizej.
+        shard: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]
+
+    env:
+      TEST_RUNNER_IMAGE: ${{ needs.prepare.outputs.image }}
+      COMPOSE_FILES: -f docker-compose.test.yml -f docker-compose.test.ci.yml
+      NUM_SHARDS: "12"
+
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          # Testujemy RC commit (bump), nie dev tip. Bez tego .test_durations
+          # (mount) i ewentualne compose-refy byłyby ze złego drzewa. Obraz i
+          # tak bakuje źródła, ale checkout musi być spójny.
+          ref: ${{ needs.prepare.outputs.release_ref }}
+          # Ten job nie robi żadnych operacji git po checkoucie (mount
+          # .test_durations + pull obrazu przez osobny docker/login), więc
+          # nie utrwalamy tokena w .git/config (zizmor: artipacked).
+          persist-credentials: false
+
+      - name: Log in to GHCR
+        uses: docker/login-action@af1e73f918a031802d376d3c8bbc3fe56130a9b0 # v4.4.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Prepare ci-output dir
+        run: mkdir -p ci-output
+
+      - name: Pull test-runner image
+        run: docker compose $COMPOSE_FILES pull test-runner
+
+      - name: Start services
+        run: docker compose $COMPOSE_FILES up -d db redis
+
+      - name: Wait for services
+        timeout-minutes: 2
+        run: |
+          until docker compose $COMPOSE_FILES exec db \
+              pg_isready -U bpp; do
+            echo "Waiting for PostgreSQL..."
+            sleep 2
+          done
+          until docker compose $COMPOSE_FILES exec redis \
+              redis-cli ping; do
+            echo "Waiting for Redis..."
+            sleep 2
+          done
+
+      - name: Tests (shard ${{ matrix.shard }}/${{ env.NUM_SHARDS }})
+        timeout-minutes: 25
+        env:
+          SHARD_ID: ${{ matrix.shard }}
+        run: |
+          # pytest-split groups są 1-indexed; matrix shard jest 0-indexed.
+          # Map group = shard + 1.
+          GROUP=$((SHARD_ID + 1))
+          docker compose $COMPOSE_FILES run --rm \
+            test-runner uv run pytest \
+              -n auto \
+              --splits "$NUM_SHARDS" --group "$GROUP" \
+              --splitting-algorithm least_duration \
+              --durations-path .test_durations \
+              --timeout 300
+
+      - name: Cleanup
+        if: always()
+        run: docker compose $COMPOSE_FILES down -v
+
   build:
     name: Build obrazów RC → :staging
-    needs: prepare
+    needs: [prepare, tests]
+    # BRAMKA: buduj :staging tylko gdy prepare OK oraz testy zielone LUB
+    # pominięte. `tests` = 'skipped' na dwa sposoby: input skip_tests
+    # (awaryjnie) albo guard should_test=false (rc1 z zielonego dev — już
+    # przetestowany na dev). Nieudane testy ('failure') → build się NIE
+    # wykonuje, więc :staging nie dostaje złego RC.
+    if: |
+      always()
+      && needs.prepare.result == 'success'
+      && (needs.tests.result == 'success' || needs.tests.result == 'skipped')
     uses: ./.github/workflows/build-docker-images.yml
     permissions:
       contents: read

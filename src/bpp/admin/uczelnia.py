@@ -159,6 +159,7 @@ class UczelniaAdmin(
                     "pokazuj_punktacje_wewnetrzna",
                     "pokazuj_index_copernicus",
                     "pokazuj_punktacja_snip",
+                    "zwijaj_dlugie_listy_autorow",
                     "pokazuj_status_korekty",
                     "pokazuj_ranking_autorow",
                     "ranking_autorow_bez_kol_naukowych",

@@ -177,15 +177,22 @@ class PBN_UID_IDObecnyFilter(SimpleNotNullFilter):
 
 
 class PBNStatusFilter(SimpleListFilter):
-    """Filtruje po statusie powiązanej pracy PBN (``pbn_uid.status``).
+    """Filtruje po statusie powiązanego lustra PBN (``pbn_uid.status``).
 
-    Wyłapuje rekordy powiązane z pracą skasowaną w PBN (``DELETED``), aktywną
-    (``ACTIVE``) albo bez powiązania (``pbn_uid`` puste). Statusy DELETED/ACTIVE
-    żyją na lustrze ``pbn_api.Publication`` — traversujemy przez ``pbn_uid``.
+    Wyłapuje rekordy powiązane z obiektem skasowanym w PBN (``DELETED``),
+    aktywnym (``ACTIVE``) albo bez powiązania (``pbn_uid`` puste). Statusy
+    DELETED/ACTIVE żyją na lustrze PBN (``pbn_api.Publication`` dla wydawnictw,
+    ``pbn_api.Journal`` dla źródeł) — traversujemy przez ``pbn_uid``.
+
+    Podklasy mogą traversować dalej (np. przez źródło pracy), ustawiając
+    ``pbn_relation`` na inną ścieżkę FK do lustra PBN.
     """
 
     title = "PBN: status"
     parameter_name = "pbn_status"
+    # Ścieżka ORM do FK wskazującego na lustro PBN. Domyślnie ``pbn_uid`` na
+    # samym rekordzie; podklasa może wskazać relację przez inny model.
+    pbn_relation = "pbn_uid"
 
     def lookups(self, request, model_admin):
         return [
@@ -197,12 +204,26 @@ class PBNStatusFilter(SimpleListFilter):
     def queryset(self, request, queryset):
         v = self.value()
         if v == "deleted":
-            return queryset.filter(pbn_uid__status=DELETED)
+            return queryset.filter(**{f"{self.pbn_relation}__status": DELETED})
         elif v == "active":
-            return queryset.filter(pbn_uid__status=ACTIVE)
+            return queryset.filter(**{f"{self.pbn_relation}__status": ACTIVE})
         elif v == "brak":
-            return queryset.filter(pbn_uid_id__isnull=True)
+            return queryset.filter(**{f"{self.pbn_relation}_id__isnull": True})
         return queryset
+
+
+class ZrodloUsunieteWPBNFilter(PBNStatusFilter):
+    """Status ŹRÓDŁA pracy w PBN (``zrodlo.pbn_uid.status``).
+
+    W adminie ``Wydawnictwo_Ciagle`` wyłapuje prace, których źródło (czasopismo)
+    jest skasowane w PBN — niezależnie od statusu samego rekordu (ten drugi
+    pilnuje ``PBNStatusFilter``). ``brak`` = praca bez źródła albo ze źródłem
+    bez powiązania PBN.
+    """
+
+    title = "Źródło: status w PBN"
+    parameter_name = "zrodlo_pbn_status"
+    pbn_relation = "zrodlo__pbn_uid"
 
 
 class MniswIdObecnyFilter(SimpleNotNullFilter):
