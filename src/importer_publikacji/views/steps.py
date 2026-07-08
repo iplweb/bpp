@@ -34,6 +34,7 @@ from ..models import ImportedAuthor
 from .authors import _orcid_settable_qs
 from .helpers import (
     STEP_AUTHORS,
+    STEP_PBN,
     STEP_PUNKTACJA,
     STEP_REVIEW,
     STEP_SOURCE,
@@ -43,7 +44,6 @@ from .helpers import (
     _render_full_page,
     _with_breadcrumbs_oob,
 )
-from .pbn_check import _check_pbn_by_doi
 
 
 def _find_duplicates(session):
@@ -117,7 +117,6 @@ def _verify_context(request, session, form=None):
         form = VerifyForm(initial=initial)
 
     existing = _find_duplicates(session)
-    pbn_result = _check_pbn_by_doi(session)
 
     doi = session.normalized_data.get("doi")
     suggest_crossref = bool(doi and session.provider_name != "CrossRef")
@@ -150,7 +149,6 @@ def _verify_context(request, session, form=None):
         "auto_zwarte": (mapper.jest_wydawnictwem_zwartym if mapper else None),
         "suggest_crossref": suggest_crossref,
         "crossref_doi": doi if suggest_crossref else None,
-        "pbn_result": pbn_result,
         "field_categories": field_categories,
         "raw_json_pretty": raw_json_pretty,
     }
@@ -348,10 +346,19 @@ def _review_context(request, session):
         "matched_dyscyplina",
     ).exclude(matched_autor=None)
 
+    # Krok wstecz z przeglądu: dla źródeł NIE-PBN prowadzi do kroku „Sprawdź
+    # w PBN", dla źródła PBN — bezpośrednio do punktacji (krok PBN pominięty).
+    back_step = "punktacja" if session.provider_name == "PBN" else "pbn"
+    back_step_url = reverse(
+        f"importer_publikacji:{back_step}",
+        kwargs={"session_id": session.pk},
+    )
+
     ctx = {
         "session": session,
         "authors": authors,
         "data": session.normalized_data,
+        "back_step_url": back_step_url,
     }
 
     uczelnia = Uczelnia.objects.get_for_request(request)
@@ -477,3 +484,67 @@ def _render_punktacja_step(request, session, form=None):
 def _render_punktacja_full(request, session, form=None):
     ctx = _punktacja_context(request, session, form)
     return _render_full_page(request, STEP_PUNKTACJA, ctx)
+
+
+# --- PBN check step -----------------------------------------------------------
+
+
+def _pbn_context(request, session, *, do_search=True):
+    """Zbuduj kontekst kroku „Sprawdź w PBN".
+
+    Dla źródeł NIE-PBN sprawdza czy operator jest zalogowany do PBN i — jeśli
+    tak — wyszukuje odpowiednik po DOI / tytule / stronie WWW. Zawsze pokazuje
+    aktualnie wybrany odpowiednik (jeśli jest), niezależnie od wyszukiwania.
+    """
+    from urllib.parse import quote
+
+    from .pbn_search import (
+        _operator_pbn_logged_in,
+        _pbn_url,
+        _search_pbn_equivalents,
+        _selected_pbn_publication,
+    )
+
+    logged_in = _operator_pbn_logged_in(request.user)
+    selected = _selected_pbn_publication(session)
+    selected_pbn_url = _pbn_url(session.uczelnia, selected.pk) if selected else None
+
+    search = None
+    if do_search and logged_in:
+        search = _search_pbn_equivalents(session, request.user)
+        # needs_auth w trakcie wyszukiwania = token nieważny po stronie PBN
+        if search.get("needs_auth"):
+            logged_in = False
+
+    step_url = reverse("importer_publikacji:pbn", kwargs={"session_id": session.pk})
+    authorize_url = f"{reverse('pbn_api:authorize')}?next={quote(step_url)}"
+
+    return {
+        "session": session,
+        "logged_in": logged_in,
+        "search": search,
+        "selected": selected,
+        "selected_pbn_url": selected_pbn_url,
+        "authorize_url": authorize_url,
+        "punktacja_url": reverse(
+            "importer_publikacji:punktacja", kwargs={"session_id": session.pk}
+        ),
+        "review_url": reverse(
+            "importer_publikacji:review", kwargs={"session_id": session.pk}
+        ),
+    }
+
+
+def _render_pbn_step(request, session, *, do_search=True):
+    """Renderuj partial kroku PBN z HX-Push-Url."""
+    ctx = _pbn_context(request, session, do_search=do_search)
+    url = reverse("importer_publikacji:pbn", kwargs={"session_id": session.pk})
+    response = render(request, STEP_PBN, ctx)
+    response = _with_breadcrumbs_oob(response, request, session)
+    return _push_url(response, url)
+
+
+def _render_pbn_full(request, session, *, do_search=True):
+    """Renderuj pełną stronę z krokiem PBN."""
+    ctx = _pbn_context(request, session, do_search=do_search)
+    return _render_full_page(request, STEP_PBN, ctx)

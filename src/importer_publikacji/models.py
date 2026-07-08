@@ -27,6 +27,7 @@ class ImportSession(models.Model):
             "Dopasowano autorów",
         )
         PUNKTACJA = "punktacja", "Punktacja"
+        PBN_CHECK = "pbn_check", "Sprawdzenie w PBN"
         REVIEW = "review", "Do przeglądu"
         COMPLETED = "completed", "Zakończono"
         CANCELLED = "cancelled", "Anulowano"
@@ -206,7 +207,10 @@ class ImportSession(models.Model):
             self.Status.VERIFIED: "source",
             self.Status.SOURCE_MATCHED: "authors",
             self.Status.AUTHORS_MATCHED: "punktacja",
-            self.Status.PUNKTACJA: "review",
+            # Po punktacji: dla źródeł NIE-PBN wchodzimy w krok "Sprawdź w PBN",
+            # dla źródła PBN pomijamy go i idziemy prosto do przeglądu.
+            self.Status.PUNKTACJA: ("review" if self.provider_name == "PBN" else "pbn"),
+            self.Status.PBN_CHECK: "review",
             self.Status.REVIEW: "review",
             self.Status.COMPLETED: "done",
         }

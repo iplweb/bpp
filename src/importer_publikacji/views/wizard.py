@@ -47,6 +47,7 @@ from .helpers import (
 from .steps import (
     _is_chapter,
     _render_authors_step,
+    _render_pbn_step,
     _render_punktacja_step,
     _render_review_step,
     _render_source_step,
@@ -581,7 +582,69 @@ class PunktacjaView(ImporterPermissionMixin, View):
         session.modified_by = request.user
         session.save()
 
+        # Dla źródeł NIE-PBN wchodzimy w krok „Sprawdź w PBN"; dla źródła PBN
+        # pomijamy go (odpowiednik i tak jest znany) i idziemy do przeglądu.
+        if session.provider_name == "PBN":
+            return _render_review_step(request, session)
+        return _render_pbn_step(request, session)
+
+
+class PbnCheckView(ImporterPermissionMixin, View):
+    """Krok „Sprawdź w PBN" — wyszukanie i wybór odpowiednika PBN.
+
+    Tylko dla źródeł NIE-PBN. Dla źródła PBN przekierowuje do przeglądu
+    (krok nie dotyczy). Jeśli operator nie jest zalogowany do PBN — pokazuje
+    panel z propozycją logowania lub pominięcia (weryfikacja opcjonalna).
+    """
+
+    def get(self, request, session_id):
+        session = get_object_or_404(ImportSession, pk=session_id)
+        if session.provider_name == "PBN":
+            return HttpResponseRedirect(
+                reverse(
+                    "importer_publikacji:review",
+                    kwargs={"session_id": session.pk},
+                )
+            )
+        if request.headers.get("HX-Request"):
+            return _render_pbn_step(request, session)
+        from .steps import _render_pbn_full
+
+        return _render_pbn_full(request, session)
+
+    def post(self, request, session_id):
+        session = get_object_or_404(ImportSession, pk=session_id)
+        session.status = ImportSession.Status.PBN_CHECK
+        session.modified_by = request.user
+        session.save()
         return _render_review_step(request, session)
+
+
+class PbnSelectView(ImporterPermissionMixin, View):
+    """Wybierz rekord PBN jako odpowiednik importowanej pracy."""
+
+    def post(self, request, session_id):
+        session = get_object_or_404(ImportSession, pk=session_id)
+        mongo_id = (request.POST.get("mongo_id") or "").strip()
+
+        from .pbn_search import _select_pbn_equivalent
+        from .steps import _render_pbn_step as _render
+
+        _select_pbn_equivalent(session, request.user, mongo_id)
+        # Nie ponawiamy wyszukiwania — pokazujemy wynik wyboru.
+        return _render(request, session, do_search=False)
+
+
+class PbnClearView(ImporterPermissionMixin, View):
+    """Usuń wybrany odpowiednik PBN."""
+
+    def post(self, request, session_id):
+        session = get_object_or_404(ImportSession, pk=session_id)
+
+        from .pbn_search import _clear_pbn_equivalent
+
+        _clear_pbn_equivalent(session)
+        return _render_pbn_step(request, session)
 
 
 class CreateUnmatchedAuthorsView(ImporterPermissionMixin, View):

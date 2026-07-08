@@ -88,6 +88,21 @@ urlpatterns = [
         name="punktacja",
     ),
     path(
+        "<int:session_id>/pbn/",
+        views.PbnCheckView.as_view(),
+        name="pbn",
+    ),
+    path(
+        "<int:session_id>/pbn/select/",
+        views.PbnSelectView.as_view(),
+        name="pbn-select",
+    ),
+    path(
+        "<int:session_id>/pbn/clear/",
+        views.PbnClearView.as_view(),
+        name="pbn-clear",
+    ),
+    path(
         "<int:session_id>/review/",
         views.ReviewView.as_view(),
         name="review",
