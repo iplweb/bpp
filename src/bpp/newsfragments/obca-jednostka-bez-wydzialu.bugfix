@@ -1,1 +1,0 @@
-Import PBN: obca jednostka uczelni nie musi już być podpięta do wydziału. Uczelnie nieużywające wydziałów nie dostają fałszywego alertu „Obca jednostka nie jest podpięta do żadnego wydziału tej uczelni" — wystarczy poprawnie ustawiony FK ``Uczelnia.obca_jednostka``.
