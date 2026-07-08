@@ -6,7 +6,7 @@ from bpp.util import rebuild_instances_of_models
 
 @admin.register(SzablonDlaOpisuBibliograficznego)
 class SzablonDlaOpisuBibliograficznegoAdmin(admin.ModelAdmin):
-    list_display = ["model", "template"]
+    list_display = ["model", "nazwa_szablonu"]
     empty_value_display = "(każdy)"
 
     def save_model(self, request, obj: SzablonDlaOpisuBibliograficznego, form, change):

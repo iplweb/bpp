@@ -21,7 +21,7 @@ def test_BppTemplateAdmin_templatka_zmienia_rekordy(
     )
     SzablonDlaOpisuBibliograficznego.objects.create(
         model=ContentType.objects.get_for_model(Wydawnictwo_Ciagle),
-        template=t,
+        nazwa_szablonu=t.name,
     )
     denorms.rebuild_instances_of(Wydawnictwo_Ciagle)
     denorms.flush()
@@ -34,8 +34,10 @@ def test_BppTemplateAdmin_templatka_zmienia_rekordy(
 
     url = reverse("admin:dbtemplates_template_change", args=(t.pk,))
     res = admin_app.get(url)
+    # Rename wiersza dbtemplate nie jest już testowany: po #329 mapowanie idzie
+    # po nazwie (nazwa_szablonu), nie po tożsamości FK — rename gubiłby powiązanie
+    # z definicji. Testujemy realny kontrakt: edycja TREŚCI -> przebudowa rekordów.
     res.forms["template_form"]["content"] = WERSJA_2
-    res.forms["template_form"]["name"] = "nazwa.html"
     res = res.forms["template_form"].submit().maybe_follow()
 
     denorms.flush()
@@ -61,7 +63,7 @@ def test_BppTemplateAdmin_zmiana_szablonu_zmienia_rekordy(
 
     szablon = SzablonDlaOpisuBibliograficznego.objects.create(
         model=ContentType.objects.get_for_model(Wydawnictwo_Ciagle),
-        template=t1,
+        nazwa_szablonu=t1.name,
     )
     denorms.rebuildall()
 
@@ -78,7 +80,7 @@ def test_BppTemplateAdmin_zmiana_szablonu_zmienia_rekordy(
     res = admin_app.get(url)
 
     form = res.forms["szablondlaopisubibliograficznego_form"]
-    form["template"].value = t2.pk
+    form["nazwa_szablonu"].value = t2.name
     res = form.submit().maybe_follow()
 
     denorms.flush()
@@ -95,7 +97,7 @@ def typowy_szablon_opisu():
     )
     SzablonDlaOpisuBibliograficznego.objects.update_or_create(
         model=None,
-        template=t,
+        nazwa_szablonu=t.name,
     )
     return t
 
@@ -119,3 +121,16 @@ def test_dbtemplates_TemplateAdmin_preview_bad(typowy_szablon_opisu, admin_clien
         "/admin/dbtemplates/template/preview/", {"template": "{% if foobar %}"}
     )
     assert "Wystąpił błąd" in res.rendered_content
+
+
+@pytest.mark.django_db
+def test_szablon_admin_changelist_dziala(admin_client):
+    from bpp.models.szablondlaopisubibliograficznego import (
+        SzablonDlaOpisuBibliograficznego,
+    )
+
+    SzablonDlaOpisuBibliograficznego.objects.get_or_create(
+        model=None, defaults={"nazwa_szablonu": "opis_bibliograficzny.html"}
+    )
+    resp = admin_client.get("/admin/bpp/szablondlaopisubibliograficznego/")
+    assert resp.status_code == 200
