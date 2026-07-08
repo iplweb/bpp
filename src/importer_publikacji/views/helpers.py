@@ -97,6 +97,26 @@ def _push_url(response, url):
     return response
 
 
+def _is_htmx_partial(request):
+    """Czy zwrócić partial (fragment) czy pełną stronę dla GET-a kroku.
+
+    ``True`` tylko dla ŻYWEGO żądania HTMX (swap fragmentu do
+    ``#importer-wizard``). ``False`` dla zwykłego GET-a ORAZ dla
+    przywracania historii przez przeglądarkę (Back/Forward).
+
+    HTMX przy przywracaniu historii (cache-miss) wysyła ZARÓWNO
+    ``HX-Request`` jak i ``HX-History-Restore-Request`` — wtedy oczekuje
+    PEŁNEJ strony do podmiany ``<body>``. Zwrócenie partiala rozwalało
+    wtedy layout wizarda i podwajało widżety select2 („drugi select").
+    Dlatego history-restore traktujemy jak zwykłe wejście GET-em (pełna
+    strona). Dodatkowo ``index.html`` ma ``hx-history="false"``, żeby
+    HTMX nie przywracał nieświeżych snapshotów, tylko zawsze pytał serwer.
+    """
+    if request.headers.get("HX-History-Restore-Request"):
+        return False
+    return bool(request.headers.get("HX-Request"))
+
+
 def _get_crossref_mapper(publication_type):
     """Znajdź Crossref_Mapper dla danego typu publikacji.
 
