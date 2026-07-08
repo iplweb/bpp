@@ -145,36 +145,67 @@ W aplikacji `bpp`, jako nowa migracja na aktualnym head (zależność od migracj
 3. Schema: usuń FK `template`; ustaw `nazwa_szablonu` NOT NULL. (`RemoveField`
    nie wymaga wcześniejszego zrywania powiązań — `PROTECT` działa tylko przy
    delete `Template`, a delete jest w kroku 4, już po usunięciu FK.)
-4. Data (`RunPython`) — **decyzja 2(A) + 1(a)**, kasowanie bezwarunkowe +
-   przebudowa denorma:
-   - Dla `name = "opis_bibliograficzny.html"` (i każdej nazwy, którą przed
-     krokiem 3 mapował `SzablonDlaOpisu`): **zaloguj pełną treść** wiersza
-     dbtemplates do outputu migracji (odzyskiwalność; `DBTEMPLATES_USE_REVERSION`
-     dodatkowo trzyma historię), potem **skasuj wiersz bezwarunkowo**.
+4. Data (`RunPython`) — **decyzja 2(A) + 1(a)**, kasowanie z guardem
+   dysk-existence + przebudowa denorma:
+   - Dla każdej nazwy, którą przed krokiem 3 mapował `SzablonDlaOpisu`:
+     **GUARD (naprawa regresji, BLOCKER)** — kasuj wiersz dbtemplates **tylko
+     gdy `disk_template_source(name) is not None`** (nazwa ma odpowiednik na
+     dysku). Dla `opis_bibliograficzny.html` to zawsze prawda → kasowane
+     „bezwarunkowo" w sensie decyzji 2(A) (niezależnie od treści). Dla
+     hipotetycznego **DB-only custom bez pliku na dysku** — **NIE kasuj**:
+     inaczej `nazwa_szablonu` zostaje dyndająca i `get_template()` →
+     `TemplateDoesNotExist` → opis wybucha przy każdym flushu denorma i
+     live-renderze (wieczne nieskonwergowane rundy denorma). Zostawienie takiego
+     wiersza jest w pełni spójne z `clean()` 2(A) (toleruje nazwy rozwiązywalne
+     przez dbtemplates).
+   - Przed skasowaniem: **zaloguj pełną treść** wiersza do outputu migracji
+     (odzyskiwalność; `DBTEMPLATES_USE_REVERSION` dodatkowo trzyma historię).
    - `wyczysc_cache_dbtemplate(name)` (import z `bpp.dbtemplates_sync`) — wyczyść
      cache Redis dbtemplates (P2: delete przez model historyczny nie odpala
-     sygnałów).
-   - `rebuild_instances_of_models([5 modeli publikacji])` — **oznacz dirty**
+     sygnałów). Wołaj przez `transaction.on_commit(...)`, nie w środku
+     transakcji — inaczej okno wyścigu, gdzie żywy worker re-cache'uje starą
+     treść z jeszcze-widocznego wiersza (bounded TTL 300 s, ale on_commit czystsze).
+   - `rebuild_instances_of_models(<5 modeli publikacji>)` — **oznacz dirty**
      (INSERT do `DirtyInstance`); **NIE** wołaj synchronicznego `denorms.flush()`
      (decyzja 1(a) — flush robi async kolejka `denorm`; migracja szybka,
-     nieblokująca). Operuj na **konkretnych** klasach modeli (denorm potrzebuje
-     realnych klas/triggerów) — dopuszczalny import w tym punkcie migracji.
+     nieblokująca). `rebuild_instances_of` robi tylko `ContentType` +
+     `values_list("pk")` + `bulk_create(DirtyInstance, ignore_conflicts=True)`
+     — działa identycznie na modelach z `apps.get_model` (kanoniczniejszych dla
+     migracji) jak i na konkretnych klasach; wybierz `apps.get_model`.
    - `browse/praca_tabela.html` i wszystko niezmapowane — **nietknięte**.
-   - Migracja komponuje **te same istniejące utilsy** co `drop_dbtemplate`
-     (`wyczysc_cache_dbtemplate`, `rebuild_instances_of_models`) — bez nowej
-     abstrakcji „shared purge".
-- Reverse: best-effort dla dev (odtwórz FK + wiersz z treści dysku).
+- **`atomic = False`** na migracji (rozważane): oznaczenie dirty setek tysięcy
+  rekordów (5 modeli × cała baza) w jednej transakcji wydłuża `migrate` i trzyma
+  locki na `denorm_dirtyinstance`. `bulk_create` batchuje, ale transakcja jedna —
+  `atomic=False` + jawne bat`on_commit` bezpieczniejsze na dużych bazach.
+- **Reverse: migracja nieodwracalna** (`RunPython.noop` / brak reverse na
+  `AddField`). „Best-effort odtwórz FK" jest niewykonalne wprost: odwrócenie
+  `RemoveField` = `AddField` kolumny NOT NULL bez defaulta na niepustej tabeli →
+  błąd DB, zanim data-reverse zdąży wypełnić FK. Deklarujemy nieodwracalność
+  (dev odtwarza z baseline/migrate od zera).
 - Po merge (raz, przy scalaniu): `make baseline-update`; migracja waliduje się
   wtedy na czystym kontenerze.
+- **Testowalność (brak `django-test-migrations` w repo)**: logikę kroku 4
+  (guard + log + `wyczysc_cache_dbtemplate` + rebuild) **wyekstrahuj do funkcji**
+  w `bpp.dbtemplates_sync` (parametr: `name` + lista modeli do rebuildu), którą
+  woła zarówno migracja, jak i `drop_dbtemplate` (§5). Test jedzie na funkcji,
+  nie na krokach migracji. Bonus: DRY z `drop_dbtemplate`.
 
 ### 5. `drop_dbtemplate` — wymuszone odsprzęgnięcie (rebuild zostaje)
 
 `drop_dbtemplate.py:61-69` i manager `.filter(template=…)` odwołują się do
 usuwanego FK → po `RemoveField` to `FieldError`. Odsprzęgnij komendę od
 `SzablonDlaOpisu` (przestaje kasować powiązania — FK już nie ma). **Zachowaj**
-`wyczysc_cache_dbtemplate` + `rebuild_instances_of_models` + `denorms.flush()`
-— to połowa wartości komendy (odświeżenie denorma dla dowolnego dbtemplate,
-np. `praca_tabela`). Zaktualizuj docstring (nieaktualne „PROTECT FKs").
+`wyczysc_cache_dbtemplate` + rebuild denorma + `denorms.flush()` — to połowa
+wartości komendy.
+- **Targeting rebuildu po odsprzęgnięciu**: komenda dalej wie, które modele
+  przebudować, przez **nowe `get_models_for_szablon(name)`** (mapowanie po
+  nazwie przeżywa!) — a nie usunięte `get_models_for_template(Template)`. Dla
+  nazw niezmapowanych `get_models_for_szablon` zwraca pustą listę (brak zbędnego
+  rebuildu); dla wpisu z model=NULL → wszystkie 5 modeli.
+- Współdziel funkcję z migracją (§4, „Testowalność"): `drop_dbtemplate`
+  różni się od migracji tylko tym, że robi **synchroniczny** `denorms.flush()`
+  (komenda deployowa chce natychmiast), a migracja zostawia flush kolejce.
+- Zaktualizuj docstring (nieaktualne „PROTECT FKs").
 
 ### 6. Pominięci konsumenci FK / metody (P3, P6) — do zakresu
 
@@ -190,7 +221,9 @@ nie wymieniała. Wszystkie do poprawy:
   tekst + `help_text`; walidacja przez `clean()`.
 - Testy/fixtures używające `template=` FK — **migracja istniejących, nie tylko
   nowe testy**:
-  - `src/fixtures/conftest.py` (fixture `szablony` → `create(template=…)`),
+  - `src/fixtures/conftest.py` (fixture `szablony` → `create(template=…)`) —
+    sweep grep pokazał **zero konsumentów** tej fixture w testach → **usuń ją**,
+    nie migruj.
   - `src/bpp/tests/test_opis_bibliograficzny.py` (`create(template=…)` ×5 oraz
     helper `_sync_opis_template_z_dysku` — **usuń** go; po zmianie render idzie
     z dysku, helper traci rację bytu, P9),
@@ -210,14 +243,17 @@ forsujemy tam disk-only. Disk-only żyje tylko w compare (§3).
 ## Testy
 
 - **Repro compare** (red-first): wiersz DB ≠ dysk → komenda pokazuje diff.
-- **Migracja**: backfill `nazwa_szablonu`; **bezwarunkowe** skasowanie wiersza
-  `opis_bibliograficzny.html`; log treści; `wyczysc_cache_dbtemplate` wywołane;
-  rekordy 5 modeli oznaczone dirty (`DirtyInstance`), **bez** synchronicznego
-  flush.
+- **Funkcja z §4 (wyekstrahowana do `dbtemplates_sync`)**: testuj JĄ, nie kroki
+  migracji (brak `django-test-migrations`). Przypadki: nazwa z plikiem na dysku
+  → wiersz skasowany, treść zalogowana, `wyczysc_cache_dbtemplate` wywołane,
+  rekordy oznaczone dirty; **nazwa BEZ pliku na dysku (guard) → wiersz NIE
+  skasowany** (kluczowy test regresji BLOCKER-a).
 - **Denorm end-to-end** (kluczowe dla P1): rekord ze starym
-  `opis_bibliograficzny_cache` → po migracji + flushu denorma opis pokazuje
-  rodzica z PBN `object.book` (dziś nie pokazywał). To test, który dowodzi, że
-  „naprawia się samo" jest prawdą, a nie tylko skasowaniem wiersza.
+  `opis_bibliograficzny_cache` → po skasowaniu wiersza + rebuild +
+  `denorms.flush()` opis pokazuje rodzica z PBN `object.book` (dziś nie
+  pokazywał). Wzorzec istnieje: `test_management_commands_drop_dbtemplate.py:79-89`
+  (rebuild + `denorms.flush()` + `refresh_from_db`). Dowodzi, że „naprawia się
+  samo" jest prawdą, a nie tylko skasowaniem wiersza.
 - **`clean()`**: zła nazwa (nierozwiązywalna) odrzucona; poprawna przechodzi.
 - **`get_for_model`**: zwraca `nazwa_szablonu`.
 - **Migracja istniejących testów/fixtures** (§6) — muszą dalej przechodzić;
@@ -238,19 +274,32 @@ forsujemy tam disk-only. Disk-only żyje tylko w compare (§3).
 ## Ryzyka i pułapki
 
 - **Denorm (P1)**: samo skasowanie wiersza nie odświeża `opis_bibliograficzny_cache`
-  — migracja MUSI oznaczyć rekordy dirty (§4 krok 4). Flush async; jeśli u
-  klienta nie chodzi worker kolejki `denorm`, opisy pozostaną stare do czasu
-  flushu (normalny kontrakt denorma w BPP). Admin może wymusić `denorm_flush`.
+  — migracja MUSI oznaczyć rekordy dirty (§4 krok 4). Flush async: INSERT do
+  `denorm_dirtyinstance` odpala trigger `notify_django_denorm_queue` → daemon
+  `denorm_queue` (osobny kontener) dispatchuje flush; na (re)starcie daemon
+  dodatkowo kicka backlog — więc dirty z migracji przy zgaszonym daemonie też
+  się sflushują po starcie. Dirty nie zostaną na wieki. (Task `denorm.tasks.
+  flush_single` z `base.py:739` to LEGACY; realny mechanizm to NOTIFY→
+  `flush_via_queue`/`flush_batch` na domyślnej kolejce `celery`.) Admin może
+  wymusić `denorm_flush`.
+- **BLOCKER-guard (regresja rewizji)**: kasowanie tylko gdy nazwa ma plik na
+  dysku — patrz §4 krok 4. Bez tego DB-only custom bez pliku → dyndająca nazwa →
+  `TemplateDoesNotExist` → twarda awaria opisu (gorsze niż drift).
+- **Multi-hosted**: klucz cache dbtemplates jest per-`Site`, BPP obsługuje wiele
+  Site'ów; `wyczysc_cache_dbtemplate` w migracji wyczyści tylko klucz `SITE_ID` —
+  kopie pozostałych Site'ów przeżyją do wygaśnięcia TTL (≤300 s). Akceptowalne.
 - **Cache dbtemplates (P2)**: delete przez model historyczny nie odpala sygnałów
   → jawne `wyczysc_cache_dbtemplate(name)` w migracji. `DBTEMPLATES_SKIP_UNKNOWN_NAMES=True`
   chroni przed pytaniem DB o nieznane nazwy po restarcie.
 - **Auto-populate**: zweryfikowane — loader NIE odtwarza wierszy; kasowanie
   trwałe. Założenie pada tylko, gdyby ktoś włączył odtwarzanie w loaderze.
-- **Kustomizacja treści (P4, decyzja 2(A))**: kasujemy bezwarunkowo. Porównanie
-  treści DB↔dysk NIE odróżnia „stary standard" od „przerobiony" (po #409 treść
-  DB u KAŻDEGO klienta różni się od dysku samą poprawką #409). Siatka
-  bezpieczeństwa: pełny log treści w migracji + historia `DBTEMPLATES_USE_REVERSION`.
-  Kierunek A zakłada brak kustomizacji opisu.
+- **Kustomizacja treści (P4, decyzja 2(A))**: dla nazw z plikiem na dysku
+  (m.in. `opis_bibliograficzny.html`) kasujemy **bez względu na treść**.
+  Porównanie treści DB↔dysk NIE odróżnia „stary standard" od „przerobiony" (po
+  #409 treść DB u KAŻDEGO klienta różni się od dysku samą poprawką #409), więc
+  nie próbujemy go używać. Siatka bezpieczeństwa: pełny log treści w migracji +
+  historia `DBTEMPLATES_USE_REVERSION`. Kierunek A zakłada brak kustomizacji
+  opisu. (Nazwy BEZ pliku na dysku są chronione guardem — nie kasowane.)
 - **Engine (P7)**: `Engine(dirs=…, app_dirs=True)` — NIE `loaders=… + app_dirs=True`
   (ImproperlyConfigured w Dj5.2).
 - **Nie modyfikować istniejących migracji** — nowy plik (reguła CLAUDE).
