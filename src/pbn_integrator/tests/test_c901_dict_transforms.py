@@ -469,6 +469,32 @@ def test_zrodla_no_match_leaves_pbn_uid_none():
 
 
 @pytest.mark.django_db
+def test_zrodla_integruje_wiele_zrodel_w_jednym_przebiegu():
+    """Wszystkie pasujące źródła dostają ``pbn_uid`` w jednym przebiegu.
+
+    Guard strumieniowej iteracji: ``integruj_zrodla`` iteruje po
+    ``Zrodlo.objects.filter(pbn_uid_id=None)`` i JEDNOCZEŚNIE w pętli zapisuje
+    ``pbn_uid`` (co usuwa wiersz ze zbioru pasującego do filtra). Migawka
+    kursora musi wydać wszystkie wiersze niezależnie od tych zapisów —
+    inaczej część źródeł zostałaby pominięta.
+    """
+    from pbn_integrator.utils import integruj_zrodla
+
+    pary = []
+    for i in range(5):
+        issn = f"55{i}0-000{i}"
+        j = _journal(issn=issn, eissn="", title=f"Tytul {i}", mniswId=100 + i)
+        z = baker.make(Zrodlo, nazwa=f"Zrodlo {i}", issn=issn, e_issn="", pbn_uid=None)
+        pary.append((z, j))
+
+    integruj_zrodla(disable_progress_bar=True)
+
+    for z, j in pary:
+        z.refresh_from_db()
+        assert z.pbn_uid_id == j.pk
+
+
+@pytest.mark.django_db
 def test_zrodla_multiple_matches_prefers_one_with_mniswid():
     """Multiple PBN journals match -> the one with a mniswId wins."""
     from pbn_integrator.utils import integruj_zrodla
