@@ -216,6 +216,9 @@ from dbtemplates.models import Template
 
 from bpp.dbtemplates_sync import usun_dbtemplate_i_przebuduj
 from bpp.models import Wydawnictwo_Zwarte
+from bpp.models.szablondlaopisubibliograficznego import (
+    SzablonDlaOpisuBibliograficznego,
+)
 from pbn_api.models import Publication
 
 
@@ -245,6 +248,13 @@ def test_usun_kasuje_gdy_plik_na_dysku_i_odswieza_opis(wydawnictwo_zwarte):
     wydawnictwo_zwarte.informacje = ""
     wydawnictwo_zwarte.zrodlo = None
     wydawnictwo_zwarte.save()
+
+    # Funkcja robi template.delete(); w produkcji leci PO usunięciu FK
+    # (migracja RemoveField przed purge; drop_dbtemplate — post-migracja), więc
+    # nic go nie PROTECT-uje. Odwzoruj ten warunek: usuń zasiane powiązania
+    # SzablonDlaOpisu (seed z 0295/baseline chroni wiersz -> ProtectedError,
+    # artefakt świata sprzed migracji).
+    SzablonDlaOpisuBibliograficznego.objects.all().delete()
 
     Template.objects.update_or_create(
         name="opis_bibliograficzny.html",
