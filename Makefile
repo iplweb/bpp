@@ -640,7 +640,19 @@ release: check-clean-tree full-tests new-release ## Pełny release (tree clean +
 
 .PHONY: release-candidate release-promote
 release-candidate: ## Faza 1: utnij kandydata (RC → :staging) i obserwuj run [SKIP_TESTS=1 SKIP_SCAN=1 WEB=1]
-	@FLAGS=""; \
+	@BRANCH=$$(git rev-parse --abbrev-ref HEAD 2>/dev/null); \
+	if [ "$$BRANCH" != "dev" ]; then \
+		echo "BŁĄD: RC tnie kandydata z 'dev' (--ref dev), a lokalnie jesteś na '$$BRANCH'."; \
+		echo "      Przełącz się:  git switch dev && git pull  — potem ponów."; \
+		exit 1; \
+	fi; \
+	if [ -z "$$SKIP_SCAN" ]; then \
+		echo "==> Lokalny gate CVE (./bin/scan-deps.sh) — HIGH/CRITICAL zatrzyma RC przed CI..."; \
+		./bin/scan-deps.sh || { echo "BŁĄD: lokalny skan CVE znalazł HIGH/CRITICAL — przerywam przed RC (SKIP_SCAN=1 by pominąć awaryjnie)."; exit 1; }; \
+	else \
+		echo "==> SKIP_SCAN=1 — pomijam lokalny skan CVE (awaryjnie)."; \
+	fi; \
+	FLAGS=""; \
 	if [ -n "$$SKIP_TESTS" ]; then FLAGS="$$FLAGS -f skip_tests=true"; fi; \
 	if [ -n "$$SKIP_SCAN" ]; then FLAGS="$$FLAGS -f skip_scan=true"; fi; \
 	echo "Odpalam release-candidate.yml (--ref dev)$$FLAGS ..."; \
