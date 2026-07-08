@@ -1,6 +1,7 @@
 from decimal import Decimal
 
 import pytest
+from liveops.testing import MockProgress
 from model_bakery import baker
 
 from import_punktacji_zrodel.core import analyze_jcr_file
@@ -25,7 +26,7 @@ def test_repro_fd388_pelny_przebieg(admin_user, jcr_xlsx_path):
         ignoruj_zrodla_bez_odpowiednika=False,
         nie_porownuj_po_tytulach=False,
     )
-    analyze_jcr_file(jcr_xlsx_path, imp)
+    analyze_jcr_file(jcr_xlsx_path, imp, MockProgress(imp))
 
     # raport pokrywa cały plik (136 czasopism)
     assert imp.get_details_set().count() == 136
