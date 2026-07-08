@@ -151,6 +151,52 @@ def test_verify_no_suggest_crossref_for_crossref(
 
 
 @pytest.mark.django_db
+def test_verify_potential_duplicate_is_clickable(
+    importer_client,
+    importer_user,
+):
+    """Potencjalne duplikaty w BPP muszą być klikalne (link do pracy).
+
+    Repro: dotąd lista renderowała sam ``{{ pub }}`` (tekst), więc nie
+    dało się przejść do istniejącej pracy, żeby zweryfikować duplikat.
+    """
+    from model_bakery import baker
+
+    from bpp.models import Wydawnictwo_Ciagle
+
+    existing = baker.make(
+        Wydawnictwo_Ciagle,
+        tytul_oryginalny="Istniejąca praca będąca duplikatem",
+        doi="10.1234/dup-test",
+    )
+
+    session = ImportSession.objects.create(
+        created_by=importer_user,
+        provider_name="CrossRef",
+        identifier="10.1234/dup-test",
+        raw_data={},
+        normalized_data={
+            "title": "Istniejąca praca będąca duplikatem",
+            "doi": "10.1234/dup-test",
+        },
+    )
+    url = reverse(
+        "importer_publikacji:verify",
+        kwargs={"session_id": session.pk},
+    )
+    response = importer_client.get(url)
+    assert response.status_code == 200
+    content = response.content.decode()
+
+    # Sekcja duplikatów w ogóle się pojawia
+    assert "Potencjalne duplikaty w BPP" in content
+    # Link do publicznej strony pracy
+    assert f'href="{existing.get_absolute_url()}"' in content
+    # Link do modułu redagowania (admin change)
+    assert f"/admin/bpp/wydawnictwo_ciagle/{existing.pk}/change/" in content
+
+
+@pytest.mark.django_db
 def test_verify_no_suggest_crossref_without_doi(
     importer_client,
     importer_user,
