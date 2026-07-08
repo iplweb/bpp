@@ -89,7 +89,12 @@ jobs:
       - name: Install uv
         uses: astral-sh/setup-uv@d31148d669074a8d0a63714ba94f3201e7020bc3 # v8.3.0
         with:
-          enable-cache: true
+          # Bez cache: w tym jobie uv służy wyłącznie do `uvx bumpver`
+          # (drobne narzędzie w izolowanym env) — cache uv-a dawał tu
+          # znikomy zysk, a w JEDNYM jobie z docker/build-push-action
+          # (push obrazu) tworzył wektor cache-poisoning (zizmor). Brak
+          # cache'u = brak wektora, kosztem paru sekund re-downloadu bumpver.
+          enable-cache: false
 
       - name: Bump RC (nowy cykl lub kolejne -rcN)
         id: bump
@@ -150,14 +155,23 @@ jobs:
           echo "release_ref=${RELEASE_REF}" >> "$GITHUB_OUTPUT"
           echo "::notice::Kandydat ${PEP} na gałęzi ${RELEASE_REF}"
 
-          # Zamroź lockfile dla tego RC.
-          uv lock
-          git add uv.lock
-          git commit -m "Aktualizacja uv.lock dla ${PEP}" || echo "uv.lock bez zmian."
+          # NIE re-lockujemy uv.lock dla RC. Gałąź dev jest bramkowana jobem
+          # `lockfile` (tests.yml → `uv lock --check`), więc uv.lock jest już
+          # spójny z pyproject.toml i przetestowany DOKŁADNIE w tej postaci na
+          # dev. Wcześniej stało tu `uv lock` (+ commit), które RE-RESOLVOWAŁO
+          # zależności przy każdym RC — mogło wciągnąć deps, których dev nigdy
+          # nie testował (to był powód, dla którego RC nie mógł pominąć re-testu).
+          # Po wprowadzeniu gate'u `lockfile` jest to zbędne: jedyną zmianą, jaką
+          # `uv lock` by tu jeszcze wniósł, jest bump wersji root-pakietu w locku
+          # (bumpver podniósł [project].version). To pole ignoruje `uv sync
+          # --frozen` (Dockerfile), a zainstalowana wersja pakietu i tak jest
+          # budowana z pyproject.toml (=zbumpowana), więc pominięcie jest
+          # bezpieczne. Efekt: obraz test-runner RC bazuje na tym samym zamku
+          # zależności co zielony dev — co odblokowuje pomijanie re-testu rc1.
 
-          # SHA commita RC (po bumpie + uv.lock) — obraz test-runner buduje się
-          # z TEGO drzewa, więc tag obrazu i GIT_SHA (busta warstwę COPY src/)
-          # muszą wskazywać ten commit, nie github.sha (= dev tip, przed bumpem).
+          # SHA commita RC (po bumpie) — obraz test-runner buduje się z TEGO
+          # drzewa, więc tag obrazu i GIT_SHA (busta warstwę COPY src/) muszą
+          # wskazywać ten commit, nie github.sha (= dev tip, przed bumpem).
           echo "rc_sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
 
       - name: Zainstaluj skanery CVE
@@ -266,10 +280,14 @@ jobs:
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
-          # Testujemy RC commit (bump + uv.lock), nie dev tip. Bez tego
-          # .test_durations (mount) i ewentualne compose-refy byłyby ze złego
-          # drzewa. Obraz i tak bakuje źródła, ale checkout musi być spójny.
+          # Testujemy RC commit (bump), nie dev tip. Bez tego .test_durations
+          # (mount) i ewentualne compose-refy byłyby ze złego drzewa. Obraz i
+          # tak bakuje źródła, ale checkout musi być spójny.
           ref: ${{ needs.prepare.outputs.release_ref }}
+          # Ten job nie robi żadnych operacji git po checkoucie (mount
+          # .test_durations + pull obrazu przez osobny docker/login), więc
+          # nie utrwalamy tokena w .git/config (zizmor: artipacked).
+          persist-credentials: false
 
       - name: Log in to GHCR
         uses: docker/login-action@af1e73f918a031802d376d3c8bbc3fe56130a9b0 # v4.4.0
