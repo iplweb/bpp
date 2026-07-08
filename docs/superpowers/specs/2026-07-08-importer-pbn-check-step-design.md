@@ -52,27 +52,51 @@ Zachowujemy:
 - Funkcje pomocnicze z `pbn_check.py` przydatne do obsługi błędów PBN
   (`_empty_pbn_result` itp.) — mogą być reużyte lub wzorowane.
 
-### „Zalogowany do PBN"
+### „Zalogowany do PBN" — gating UX, nie techniczny
 
 Operator jest „zalogowany do PBN", gdy jego konto ma osobisty token OAuth:
 `request.user.pbn_token` (niepusty) oraz `request.user.pbn_token_possibly_valid()`
-(model `bpp.models.profile`). Klient PBN z tym tokenem buduje się przez
-`uczelnia.pbn_client(request.user.pbn_token)`. Bez tokenu wywołanie API rzuca
-`WillNotExportError` / `NeedsPBNAuthorisationException`.
+(model `bpp.models.profile`, heurystyka czasowa z grace-time).
+
+**Ważne (ustalone w recenzji):** `search_publications` działa na app-credentialach
+uczelni **bez** tokenu operatora — dowód: autocomplete
+`wydawnictwo_nadrzedne_w_pbn.py` woła `uczelnia.pbn_client()` bez tokenu usera i
+produkcyjnie wyszukuje. Gating na „zalogowany" jest więc **decyzją UX** (spec
+wymaga logowania operatora), a nie koniecznością techniczną. Mimo to klienta
+budujemy z tokenem operatora (`uczelnia.pbn_client(request.user.pbn_token)`) —
+niektóre endpointy szczegółów mogą go wymagać, a token identyfikuje operatora.
+
+Klienta budujemy dla **`session.uczelnia`** (multi-hosted; pole nullable —
+`on_delete=SET_NULL`). Gdy `session.uczelnia is None` lub brak konfiguracji PBN →
+defensywny komunikat w kroku (nie 500), traktowany jak „nie można sprawdzić".
 
 Autoryzacja PBN: URL `pbn_api:authorize`, przyjmuje parametr `?next=<url>`
-(po OAuth wraca na wskazaną stronę).
+(`TokenRedirectPage` pakuje `next` do `state`, po OAuth `TokenLandingPage` wraca).
 
 ### Wyszukiwanie w PBN
 
 - **Serwer PBN**: `client.search_publications(doi=…)`, `search_publications(title=…)`
-  — wzorzec w `bpp/views/autocomplete/wydawnictwo_nadrzedne_w_pbn.py`. Zwraca
-  listę dictów z co najmniej `mongoId`, `title`. Rekord ściągamy lokalnie przez
+  — wzorzec w `bpp/views/autocomplete/wydawnictwo_nadrzedne_w_pbn.py`.
+  **Uwaga (recenzja):** metoda zwraca `PageableResource` — leniwy iterator, który
+  **przy iteracji dociąga kolejne strony z sieci** (tytuł może mieć tysiące
+  wyników). NIE stosować `[:10]`. Ograniczamy przez
+  `itertools.islice(resource, 10)` (jedna strona `page_size=10` wystarcza). Każdy
+  element to dict z co najmniej `mongoId`, `title`. **NIE** dodajemy parametru
+  `type=` (autocomplete używa `type="BOOK"`, ale my szukamy dowolnego typu).
+  Wybrany rekord ściągamy lokalnie przez
   `zapisz_mongodb(client.get_publication_by_id(mongoId), Publication)`.
 - **Po WWW**: PBN API nie udostępnia wyszukiwania po adresie URL publikacji.
+  Klucz to `session.normalized_data.get("url")` (`FetchedPublication.url`).
   Dopasowujemy w **lokalnym cache**: `pbn_api.Publication.objects.filter(
-  publicUri__icontains=url)`. Pole `pbn_api.Publication.publicUri` przechowuje
-  adres publikacji.
+  publicUri__icontains=<znormalizowany url>)[:10]`. Pole
+  `pbn_api.Publication.publicUri` (TextField, bez indeksu) przechowuje adres
+  publikacji — normalizujemy URL (obcięcie protokołu / trailing slash), by
+  ograniczyć fałszywe rozjazdy; koszt `ILIKE '%…%'` bez indeksu akceptowany
+  (limit `[:10]`).
+- **Normalizacja wyników**: osie serwerowe dają dicty, oś WWW — instancje
+  `Publication`. Sprowadzamy WSZYSTKIE do wspólnej struktury wyniku
+  (`mongo_id`, `title`, `doi`, `year`, `authors`, `pbn_url`, `axis`). Dedup po
+  `mongo_id` między osiami (rekord z kilku osi → raz, z listą osi).
 
 ## Przepływ docelowy
 
@@ -87,6 +111,9 @@ Dla źródła **PBN** krok jest pomijany (Punktacja → Przegląd, jak dziś).
 ### Zachowanie kroku „Sprawdź w PBN"
 
 GET:
+0. Jeśli sesja ma już ustawiony `matched_data["pbn_mongo_id"]` (np. z sesji
+   sprzed deployu, gdy działał cichy auto-set) → pokaż od razu panel „Wybrany
+   odpowiednik" z opcją „Wyczyść", niezależnie od wyszukiwania.
 1. Jeśli źródło to PBN → redirect do Przeglądu (defensywnie, krok nie dotyczy).
 2. Jeśli operator **niezalogowany** do PBN → panel informacyjny:
    - link „Zaloguj się do PBN" → `pbn_api:authorize?next=<url tego kroku>`,
@@ -99,9 +126,11 @@ Wyszukiwanie (`_search_pbn_equivalents`):
 - `by_www` — lokalny cache po `publicUri` (jeśli sesja ma URL), ≤10 pozycji.
 - Deduplikacja po `mongoId` — jeśli ten sam rekord trafia z kilku osi,
   pokazujemy go raz, oznaczając skąd trafił.
-- Obsługa błędów PBN wzorowana na `pbn_check.py`: `NeedsPBNAuthorisationException`
-  → potraktuj jak „niezalogowany"; `PraceSerwisoweException` → komunikat „PBN w
-  trakcie prac serwisowych"; inne → komunikat błędu, bez wywalania kroku.
+- Obsługa błędów PBN wzorowana na `pbn_check.py`:
+  `NeedsPBNAuthorisationException` / `AccessDeniedException` / `WillNotExportError`
+  → potraktuj jak „niezalogowany / brak autoryzacji" (pokaż panel logowania);
+  `PraceSerwisoweException` → komunikat „PBN w trakcie prac serwisowych"; inne →
+  komunikat błędu, bez wywalania kroku.
 
 Wyświetlanie wyników: dla każdej osi lista ≤10 pozycji, każda z: tytuł, DOI,
 rok, autorzy, link „otwórz w PBN" oraz przycisk „Wybierz jako odpowiednik".
@@ -124,9 +153,10 @@ Nawigacja: „Wstecz" → Punktacja; „Dalej" → Przegląd.
    `get_continue_url()`:
    - `PUNKTACJA → "pbn"` gdy `provider_name != "PBN"`, w przeciwnym razie `"review"`,
    - `PBN_CHECK → "review"`.
-   Jeśli `makemigrations --check` zażąda migracji `AlterField` dla `status`
-   (rozszerzenie `choices`) — dołączyć wygenerowaną migrację (NIE edytować
-   istniejących).
+   Django serializuje `choices` w `deconstruct()`, więc nowy członek
+   `TextChoices` **na pewno** wygeneruje migrację `AlterField` (no-op na poziomie
+   SQL; `max_length=20` mieści `"pbn_check"`). Dołączyć wygenerowaną migrację
+   (`makemigrations`), NIE edytować istniejących.
 
 2. **`views/pbn_search.py`** (nowy moduł, logika testowalna/mockowalna):
    - `_operator_pbn_logged_in(user) -> bool`.
@@ -156,10 +186,18 @@ Nawigacja: „Wstecz" → Punktacja; „Dalej" → Przegląd.
    (np. `back_step_url`) — dodać w `_review_context`.
 
 9. **`views/steps.py` (`_verify_context`)** — usunąć wywołanie
-   `_check_pbn_by_doi` do auto-ustawiania `pbn_mongo_id`. (Sam `pbn_check.py`
-   może zostać w repo — używany przez `_link_pbn_uid` i ewentualnie reużywany;
-   usuwamy tylko cichy auto-set z kroku Verify oraz zależną prezentację
-   `pbn_result` w szablonie Verify, jeśli istnieje.)
+   `_check_pbn_by_doi` do auto-ustawiania `pbn_mongo_id` oraz klucz `pbn_result`
+   z kontekstu (`steps.py:120,153`) i import (`steps.py:46`). Sam `pbn_check.py`
+   zostaje w repo (używany przez `_link_pbn_uid`; `test_pbn_check.py` dalej go
+   testuje). W `step_verify.html` usunąć blok prezentacji `pbn_result`
+   (`step_verify.html:40-69`, trzy gałęzie `pbn_mongo_id` / `pbn_needs_auth` /
+   `pbn_error`).
+
+10. **`views/task_status.py` — `TERMINAL_STATUSES`** (KRYTYCZNE, luka z recenzji):
+    dodać `PBN_CHECK` **oraz** `PUNKTACJA` do zbioru statusów terminalnych. Bez
+    tego sesja z tym statusem wchodząca na `/task-status/` renderuje wieczny
+    spinner (status nie in-flight → `is_stalled()` False, nie IMPORT_FAILED). Dla
+    `PUNKTACJA` to pre-istniejący bug — naprawiamy przy okazji.
 
 ## Testy (TDD, pytest + model_bakery)
 
@@ -178,7 +216,11 @@ Nawigacja: „Wstecz" → Punktacja; „Dalej" → Przegląd.
 - Przejścia:
   - `Punktacja.post` → krok PBN (NIE-PBN) vs → Review (PBN-source);
   - `PbnCheck.post` → Review;
-  - `get_continue_url` dla `PUNKTACJA` (obie ścieżki) i `PBN_CHECK`.
+  - `get_continue_url` dla `PUNKTACJA` (obie ścieżki) i `PBN_CHECK`;
+  - `PBN_CHECK` i `PUNKTACJA` są w `TERMINAL_STATUSES` (task-status nie renderuje
+    wiecznego spinnera dla sesji na tych statusach).
+- GET kroku z już ustawionym `matched_data["pbn_mongo_id"]` → panel „Wybrany
+  odpowiednik" (obsługa sesji sprzed deployu).
 - Regresja: usunięcie auto-checku z Verify nie psuje `_link_pbn_uid`
   (gdy `matched_data["pbn_mongo_id"]` ustawiony ręcznie → `record.pbn_uid`
   linkowany przy tworzeniu).
@@ -203,5 +245,12 @@ Nawigacja: „Wstecz" → Punktacja; „Dalej" → Przegląd.
   kompromis — PBN API nie wspiera wyszukiwania po URL. DOI/tytuł idą na żywo do
   serwera i pokrywają większość przypadków.
 - **Nowy status w `choices`**: rozszerzenie `TextChoices` na `CharField` nie
-  zmienia schematu bazy; ewentualną migrację `AlterField` (kosmetyczną)
-  dołączamy zgodnie z `makemigrations --check`.
+  zmienia schematu bazy, ale `makemigrations` wygeneruje kosmetyczny `AlterField`
+  — dołączamy go. Baseline (`baseline_check --max-delta 50` w CI) toleruje jedną
+  nową migrację; odświeżenie baseline robimy dopiero przy scalaniu (zgodnie z
+  CLAUDE.md), nie w tej gałęzi.
+- **Regresja behawioralna usunięcia auto-checku**: dziś Verify wykrywa
+  odpowiednik PBN automatycznie. Po zmianie operator, który w nowym kroku kliknie
+  „Pomiń", utworzy rekord bez `pbn_uid` — a przy „Utwórz i wyślij do PBN" może
+  powstać duplikat po stronie PBN. To świadoma konsekwencja decyzji (jawny wybór
+  zamiast cichej magii) — odnotowana.
