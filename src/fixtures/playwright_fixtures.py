@@ -61,8 +61,17 @@ def admin_page(transactional_db, page: Page, admin_user, channels_live_server):
 
 
 @pytest.fixture
-def preauth_page(transactional_db, page: Page, normal_django_user, live_server):
-    """Provide a pre-authenticated regular user page."""
+def preauth_page(transactional_db, page: Page, normal_django_user):
+    """Provide a pre-authenticated regular user page.
+
+    Uwaga: fikstura sama NIE startuje żadnego serwera — tylko wstrzykuje
+    cookie sesji. Test, który nawiguje, musi sam zażądać `live_server`
+    ALBO `channels_live_server`. Wcześniej `live_server` był tu zaszyty
+    jako zależność, przez co `preauth_asgi_page` (budujący na tej
+    fiksturze + `channels_live_server`) stawiał DWA serwery na test —
+    dokładnie ta presja zasobowa, którą docstring `channels_live_server`
+    wskazuje jako źródło kaskadowych timeoutów `page.goto`.
+    """
     # Import here to avoid Django app loading issues
     from django.test import Client
 
@@ -113,7 +122,10 @@ def preauth_asgi_page(transactional_db, preauth_page: Page, channels_live_server
     wait_for_channel_subscription(
         get_channel_name_for_user(page.authorized_user), since=pre_goto
     )
-    page.evaluate("Cookielaw.accept();")
+    # Guard na wypadek, gdyby skrypt Cookielaw nie zdążył się załadować —
+    # bez guarda gołe `Cookielaw.accept()` rzuca ReferenceError i cały test
+    # pada na setupie fikstury.
+    page.evaluate("if (window.Cookielaw) Cookielaw.accept();")
     # Cookielaw.accept() removes #CookielawBanner synchronously; wait for
     # the DOM to reflect that instead of sleeping a fixed second.
     page.wait_for_selector("#CookielawBanner", state="detached", timeout=2000)
@@ -182,6 +194,7 @@ def preauth_asgi_page_per_test(
     wait_for_channel_subscription(
         get_channel_name_for_user(page.authorized_user), since=pre_goto
     )
-    page.evaluate("Cookielaw.accept();")
+    # Guard na wypadek, gdyby skrypt Cookielaw nie zdążył się załadować.
+    page.evaluate("if (window.Cookielaw) Cookielaw.accept();")
     page.wait_for_selector("#CookielawBanner", state="detached", timeout=2000)
     return page

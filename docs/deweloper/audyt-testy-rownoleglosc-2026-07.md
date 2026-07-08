@@ -223,6 +223,25 @@ inne module-level cache (dbtemplates, cache Uczelni).
 
 **Fix:** nawigować na `channels_live_server.url` (już wstrzyknięty).
 
+**UZUPEŁNIENIE (po wdrożeniu):** przełączenie NIE jest bezwarunkowe.
+Kryterium wyboru serwera:
+
+- `channels_live_server` (Daphne, **subprocess**) — domyślnie; wymagany
+  dla WebSocket/notyfikacji.
+- `live_server` (WSGI, **wątek w procesie testu**) — WYMAGANY, gdy test
+  opiera się na stanie żyjącym tylko w procesie testu: `mocker.patch` /
+  `monkeypatch` na kodzie serwerowym (np. `test_clarivate.py` patchuje
+  `Uczelnia.wosclient`), fixture `settings` pytest-django (np.
+  `test_oswiadczenie_ken.py` zmienia `BPP_POKAZUJ_OSWIADCZENIE_KEN`),
+  kasety VCR dla server-side HTTP (np.
+  `test_crossref_api_sync_playwright.py` — widok „pobierz z crossref"
+  woła api.crossref.org). Subprocess Daphne ma własną kopię settings
+  i nie widzi monkeypatchy — test z Daphne wykonuje PRAWDZIWY kod
+  (albo idzie w prawdziwą sieć) zamiast mocka.
+
+Pliki wymagające `live_server` mają komentarz „UWAGA: celowo
+live_server" przy fiksturach.
+
 ### 10. Wyścigi we wzorcach fixture'owych `get_or_create`
 
 - `pbn_dyscyplina2` (`src/conftest.py:390-399`): `uuid=uuid4()` w LOOKUPIE

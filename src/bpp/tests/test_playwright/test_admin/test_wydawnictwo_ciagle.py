@@ -12,7 +12,7 @@ def test_Wydawnictwo_Ciagle_Autor_Admin_forwarding_works(
     autor_jan_kowalski,
     dyscyplina1,
     jednostka,
-    live_server,
+    channels_live_server,
 ):
     """Test editing Wydawnictwo_Ciagle_Autor inline with discipline selection."""
     rok = 2022
@@ -36,7 +36,7 @@ def test_Wydawnictwo_Ciagle_Autor_Admin_forwarding_works(
         f"?_changelist_filters=rekord__id__exact%3D{wydawnictwo_ciagle.pk}"
     )
 
-    admin_page.goto(live_server.url + url)
+    admin_page.goto(channels_live_server.url + url)
     admin_page.wait_for_load_state("domcontentloaded")
 
     # Wait for the page to be fully loaded (rok field is hidden type=hidden)

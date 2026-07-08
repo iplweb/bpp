@@ -1,6 +1,6 @@
 import random
 import time
-from datetime import timedelta
+from datetime import date
 from uuid import uuid4
 
 import pytest
@@ -12,7 +12,6 @@ from django.db import connections
 from django.db.utils import OperationalError
 from django.test import TransactionTestCase
 from django.test.client import Client, RequestFactory
-from django.utils import timezone
 from model_bakery import baker
 
 from bpp.tests.helpers import (  # noqa: F401 - re-export helpers
@@ -392,10 +391,10 @@ def pbn_dyscyplina2(db, pbn_discipline_group):
 
     return Discipline.objects.get_or_create(
         parent_group=pbn_discipline_group,
-        uuid=uuid4(),
         code="202",
         name="druga dyscyplina",
         scientificFieldName="Dziedzina drugich dyscyplin",
+        defaults=dict(uuid=uuid4()),
     )[0]
 
 
@@ -403,18 +402,27 @@ def pbn_dyscyplina2(db, pbn_discipline_group):
 def pbn_discipline_group(db):
     from pbn_api.models import DisciplineGroup
 
-    n = timezone.now().date()
+    # Stały klucz naturalny (nie data bieżąca): leftover z sesji rozpoczętej
+    # wczoraj (reuse-db + crash teardown) nadal matchuje, więc nie powstaje
+    # drugi słownik. Data w przeszłości + validityDateTo=None => słownik jest
+    # ciągle „aktualny" wg DisciplineGroupManager.get_current (validityDateFrom
+    # <= dziś oraz validityDateTo IS NULL).
+    stala_data_od = date(2020, 1, 1)
     try:
         return DisciplineGroup.objects.get_or_create(
             validityDateTo=None,
-            validityDateFrom=n - timedelta(days=7),
+            validityDateFrom=stala_data_od,
             defaults=dict(uuid=uuid4()),
         )[0]
     except DisciplineGroup.MultipleObjectsReturned:
-        return DisciplineGroup.objects.filter(
-            validityDateTo=None,
-            validityDateFrom=n - timedelta(days=7),
-        ).first()
+        return (
+            DisciplineGroup.objects.filter(
+                validityDateTo=None,
+                validityDateFrom=stala_data_od,
+            )
+            .order_by("pk")
+            .first()
+        )
 
 
 @pytest.fixture

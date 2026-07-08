@@ -25,15 +25,14 @@ def _make_session_for_publication(
     abstract=None,
 ):
     """Helper: sesja gotowa do _create_publication."""
-    from bpp.models import (
-        Charakter_Formalny,
-        Jezyk,
-        Typ_KBN,
-    )
+    from bpp.models import Typ_KBN
 
-    cf = Charakter_Formalny.objects.first()
-    tk = Typ_KBN.objects.first()
-    jez = Jezyk.objects.filter(widoczny=True).first()
+    # Deterministyczne odczyty z fixture'ow (dane referencyjne bywaja
+    # TRUNCATE-owane przez wczesniejsze testy transakcyjne na tym samym
+    # workerze — gole .first() zwracalo wtedy None; patrz audyt sekcja 4).
+    cf = charaktery_formalne["AC"]
+    tk = Typ_KBN.objects.get(skrot="PO")
+    jez = jezyki["pol."]
 
     nd = {
         "title": "Test Publication",
