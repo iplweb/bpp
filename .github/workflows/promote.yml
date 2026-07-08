@@ -1,7 +1,11 @@
 name: Promote (RC → produkcja)
 
-# Druga komenda wydania. Finalizuje otwarte wydanie i przepina :latest na
-# zatwierdzony obraz RC — BEZ rebuildu (imagetools). Wywołanie:
+# Druga komenda wydania. Finalizuje otwarte wydanie i publikuje produkcyjny
+# obraz przez cienki patch-layer na zatwierdzonym RC: podmienia version.py na
+# finalny (bez rc) i ustawia BPP_BUILD_FLAVOR=release (patrz
+# docker/promote-patch/Dockerfile). NIE imagetools — bo kopia manifestu
+# odziedziczyłaby zapieczoną w RC wersję rcN (stopka/Rollbar). Warstwy bazowe
+# = te same przetestowane warstwy RC (dedup w rejestrze). Wywołanie:
 #   gh workflow run promote.yml
 # Gdy otwartych jest >1 gałęzi release/* — podaj którą:
 #   gh workflow run promote.yml -f version=v202606.1392
@@ -156,10 +160,18 @@ jobs:
             "refs/tags/v${BASE}" \
             ":refs/heads/${RELEASE_REF}"
 
-      - name: Promote obrazów :rc → :wersja + :latest (imagetools)
+      - name: Promote obrazów :rc → :wersja + :latest (patch version.py + flavor)
         env:
           BASE: ${{ steps.detect.outputs.base }}
           RC_TAG: ${{ steps.detect.outputs.rc_tag }}
+        # NIE imagetools: obraz RC ma zapieczoną wersję rcN + BPP_BUILD_FLAVOR=
+        # staging (żeby stopka na :staging pokazywała rcN + git SHA). Promote
+        # nakłada cienki patch-layer na przetestowany RC — podmienia
+        # src/django_bpp/version.py na finalny (sfinalizowany krokiem "Finalizuj
+        # wersję", więc jest już w drzewie roboczym _dev) i ustawia
+        # BPP_BUILD_FLAVOR=release. Warstwy bazowe = te same przetestowane
+        # warstwy RC (dedup w rejestrze; push dokłada tylko 2 malutkie).
+        # Patrz docker/promote-patch/Dockerfile.
         run: |
           set -euo pipefail
           images=(
@@ -171,17 +183,26 @@ jobs:
             iplweb/bpp_denorm_queue
           )
           for img in "${images[@]}"; do
-            echo "::group::Promote ${img}: ${RC_TAG} → ${BASE} + latest"
-            docker buildx imagetools create \
-              -t "${img}:${BASE}" \
-              -t "${img}:latest" \
-              "${img}:${RC_TAG}"
+            echo "::group::Patch+promote ${img}: ${RC_TAG} → ${BASE} + latest"
+            # --provenance=false: bez tego buildx (driver docker-container)
+            # dokleja atestację provenance i single-platform build staje się
+            # image-indexem z wpisem "unknown/unknown" — niepotrzebna zmiana
+            # względem płaskiego manifestu, który dawał imagetools.
+            docker buildx build \
+              --platform linux/amd64 \
+              --provenance=false \
+              --build-arg "RC_IMAGE=${img}:${RC_TAG}" \
+              --file docker/promote-patch/Dockerfile \
+              --tag "${img}:${BASE}" \
+              --tag "${img}:latest" \
+              --push \
+              .
             echo "::endgroup::"
           done
           {
             echo "## ✅ Promoted v${BASE}"
             echo ""
-            echo "Źródło RC: \`:${RC_TAG}\` → \`:${BASE}\` + \`:latest\` (bez rebuildu)"
+            echo "Źródło RC: \`:${RC_TAG}\` → patch (finalny version.py + flavor=release) → \`:${BASE}\` + \`:latest\`"
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Push master/dev/tag i usuń release branch
