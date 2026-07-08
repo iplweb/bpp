@@ -25,6 +25,7 @@
 
         <!-- Authors Section -->
         {% autorzy_skrocony praca uczelnia as box %}
+        {% if box.liczba %}
         <div class="praca-mono__authors-section{% if box.skrocony %} praca-mono__authors-section--collapsible{% endif %}">
 
             {% if box.skrocony %}
@@ -56,6 +57,7 @@
                 {% endif %}
             </div>
         </div>
+        {% endif %}
     </div>
 
     <!-- Main content in two columns -->
