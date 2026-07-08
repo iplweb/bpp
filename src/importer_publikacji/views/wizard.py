@@ -39,6 +39,7 @@ from .helpers import (
     STEP_DONE,
     STEP_FETCH,
     _fetch_context,
+    _is_htmx_partial,
     _push_url,
     _render_full_page,
     _sessions_list_context,
@@ -60,7 +61,7 @@ class SessionListView(ImporterPermissionMixin, View):
 
     def get(self, request):
         ctx = _sessions_list_context(request)
-        if request.headers.get("HX-Request"):
+        if _is_htmx_partial(request):
             return render(request, SESSIONS_PARTIAL, ctx)
         # Fallback: pełna strona z formularzem fetch
         fetch_ctx = _fetch_context(request=request)
@@ -84,7 +85,7 @@ class IndexView(ImporterPermissionMixin, View):
             form = None
 
         ctx = _fetch_context(form, request=request)
-        if request.headers.get("HX-Request"):
+        if _is_htmx_partial(request):
             ctx.update(_sessions_list_context(request))
             response = render(request, STEP_FETCH, ctx)
             return _with_breadcrumbs_oob(response, request)
@@ -181,7 +182,7 @@ class VerifyView(ImporterPermissionMixin, View):
             ImportSession,
             pk=session_id,
         )
-        if request.headers.get("HX-Request"):
+        if _is_htmx_partial(request):
             return _render_verify_step(request, session)
         return _render_verify_full(request, session)
 
@@ -221,7 +222,7 @@ class SourceView(ImporterPermissionMixin, View):
             ImportSession,
             pk=session_id,
         )
-        if request.headers.get("HX-Request"):
+        if _is_htmx_partial(request):
             return _render_source_step(request, session)
         from .steps import _render_source_full
 
@@ -295,7 +296,7 @@ class AuthorsView(ImporterPermissionMixin, View):
             ImportSession,
             pk=session_id,
         )
-        if request.headers.get("HX-Request"):
+        if _is_htmx_partial(request):
             return _render_authors_step(request, session)
         from .steps import _render_authors_full
 
@@ -568,7 +569,7 @@ class PunktacjaView(ImporterPermissionMixin, View):
 
     def get(self, request, session_id):
         session = get_object_or_404(ImportSession, pk=session_id)
-        if request.headers.get("HX-Request"):
+        if _is_htmx_partial(request):
             return _render_punktacja_step(request, session)
         from .steps import _render_punktacja_full
 
@@ -671,7 +672,7 @@ class ReviewView(ImporterPermissionMixin, View):
             ImportSession,
             pk=session_id,
         )
-        if request.headers.get("HX-Request"):
+        if _is_htmx_partial(request):
             return _render_review_step(request, session)
         from .steps import _render_review_full
 

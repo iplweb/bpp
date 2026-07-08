@@ -102,7 +102,11 @@
 
 {% block content %}
 
-    <div id="importer-wizard">
+    {# hx-history="false": nie cache'uj snapshotów DOM wizarda. Przy Back/ #}
+    {# Forward HTMX pyta serwer o pełną stronę (patrz _is_htmx_partial), #}
+    {# zamiast przywracać nieświeży snapshot z zainicjowanym select2 #}
+    {# (co dawało zduplikowany „drugi select"). #}
+    <div id="importer-wizard" hx-history="false">
         {% include step_template %}
     </div>
 
