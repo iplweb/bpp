@@ -82,12 +82,18 @@ def _get_disk_engine():
         # Jawne loadery dyskowe (bez cached, bez dbtemplates) — świeży odczyt
         # z dysku przy każdym wywołaniu. NIE 'loaders=[...] + app_dirs=True'
         # (ImproperlyConfigured w Dj5.2).
+        # libraries/builtins skopiowane z domyślnego Engine — inaczej surowy
+        # Engine nie zna custom tag-libów ({% load prace %} w opisie), bo tylko
+        # backend DjangoTemplates auto-odkrywa je z INSTALLED_APPS.
+        default = Engine.get_default()
         _disk_engine = Engine(
             dirs=dirs,
             loaders=[
                 "django.template.loaders.filesystem.Loader",
                 "django.template.loaders.app_directories.Loader",
             ],
+            libraries=default.libraries,
+            builtins=default.builtins,
         )
     return _disk_engine
 
