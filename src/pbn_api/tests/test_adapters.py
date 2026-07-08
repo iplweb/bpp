@@ -15,7 +15,10 @@ from bpp.models import (
     Wydawnictwo_Zwarte_Autor,
 )
 from fixtures.pbn_api import _zrob_wydawnictwo_pbn
-from pbn_api.adapters.wydawnictwo import WydawnictwoPBNAdapter
+from pbn_api.adapters.wydawnictwo import (
+    OplataZaWydawnictwoPBNAdapter,
+    WydawnictwoPBNAdapter,
+)
 from pbn_api.adapters.wydawnictwo_autor import WydawnictwoAutorToStatementPBNAdapter
 from pbn_api.exceptions import PKZeroExportDisabled, WillNotExportError
 
@@ -381,11 +384,34 @@ def test_WydawnictwoPBNAdapter_oplata_za_publikacje_darmowa(
 
 
 @pytest.mark.django_db
+def test_OplataZaWydawnictwoPBNAdapter_bezkosztowa_ma_pierwszenstwo(
+    pbn_wydawnictwo_ciagle_z_autorem_z_dyscyplina,
+):
+    """Sprzeczny stan danych (bezkosztowa=True, ale kwota>0) nie może wygenerować
+    payloadu odwracającego intencję operatora.
+
+    ``clean()`` modelu blokuje taki stan przez formularz, ale bezpośredni zapis
+    ORM / import / migracja danych może go wprowadzić. Adapter musi być na to
+    odporny: flaga „bezkosztowa" ma pierwszeństwo nad zaległą kwotą.
+    """
+    pub = pbn_wydawnictwo_ciagle_z_autorem_z_dyscyplina
+    pub.opl_pub_cost_free = True
+    pub.opl_pub_amount = Decimal("1500.00")  # zaległa, niewyczyszczona kwota
+
+    fee = OplataZaWydawnictwoPBNAdapter(pub).pbn_get_json()
+
+    assert fee["costFreePublication"] is True
+    assert fee["amount"] == 0
+
+
+@pytest.mark.django_db
 def test_WydawnictwoAutorToStatementPBNAdapter_nie_zwraca_orcid(
     pbn_wydawnictwo_ciagle_z_autorem_z_dyscyplina,
 ):
     """Test that the statement adapter does NOT return 'orcid' key."""
-    wydawnictwo_autor = pbn_wydawnictwo_ciagle_z_autorem_z_dyscyplina.autorzy_set.first()
+    wydawnictwo_autor = (
+        pbn_wydawnictwo_ciagle_z_autorem_z_dyscyplina.autorzy_set.first()
+    )
 
     # Even with profil_orcid=True, the orcid key should NOT be in the result
     wydawnictwo_autor.profil_orcid = True
