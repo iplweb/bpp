@@ -22,7 +22,10 @@ dopisywany ręcznie do ``log_zmian``, żeby audyt i licznik ``zintegrowano``
 widziały, że wiersz wykonał realną pracę.
 """
 
+from datetime import timedelta
+
 from django.db import transaction
+from django.utils import timezone
 
 from bpp.models import (
     Autor_Jednostka,
@@ -138,10 +141,57 @@ def _integruj_wiersz(row):
         row.save(update_fields=["pominiety_bo_nieaktualny"])
 
 
+def _wykonaj_odpiecia(parent):
+    """Kończy zatrudnienie dla zaznaczonych, jeszcze niewykonanych odpięć (§9).
+
+    Świeży re-check ma DWA warunki pomijające (oba: NIE wykonuj, NIE licz,
+    ``wykonane`` zostaje False):
+
+    1. **Para stała się parą Z PLIKU (G1).** Odpięcia materializują się w
+       analizie, gdy wiersze ``wielu``/``brak`` mają ``autor=None`` — więc AJ
+       PRAWDZIWEGO autora z pliku trafia na listę „spoza pliku". Gdy user potem
+       rozstrzygnie wiersz (``WybierzKandydataView``/``EdytujWierszView`` ustawia
+       ``row.autor``), zmaterializowane odpięcie ZOSTAJE. Gdyby je wykonać,
+       zakończylibyśmy zatrudnienie pracownika, który JEST w pliku (korupcja).
+       Dlatego przed wykonaniem sprawdzamy, czy para ``(autor_id, jednostka_id)``
+       AJ jest teraz obecna w wierszach importu — jeśli tak, POMIJAMY (spójne z
+       definicją „spoza pliku" §9 i duchem świeżego re-checku).
+    2. **AJ zakończone ręcznie od czasu podglądu (drift bazy).** ``zakonczyl_prace
+       is not None and <= today`` → pomijamy (NIE nadpisujemy daty).
+
+    Wykonane: ``zakonczyl_prace = wczoraj``, ``podstawowe_miejsce_pracy =
+    False``, ``wykonane = True``. Zwraca liczbę faktycznie odpiętych."""
+    today = timezone.now().date()
+    yesterday = today - timedelta(days=1)
+    odpieto = 0
+    for odp in parent.odpiecia.filter(zaznaczone=True, wykonane=False):
+        with transaction.atomic():
+            aj = odp.autor_jednostka
+            aj.refresh_from_db()
+            # G1: para AJ trafiła do pliku po rozstrzygnięciu wiersza — to już
+            # pracownik Z PLIKU, NIE odpinamy (wykonane zostaje False).
+            if parent.importpracownikowrow_set.filter(
+                autor_id=aj.autor_id, jednostka_id=aj.jednostka_id
+            ).exists():
+                continue
+            if aj.zakonczyl_prace is not None and aj.zakonczyl_prace <= today:
+                # zakończone ręcznie — pomijamy, nie nadpisujemy daty.
+                continue
+            aj.zakonczyl_prace = yesterday
+            aj.podstawowe_miejsce_pracy = False
+            aj.save()
+            odp.wykonane = True
+            odp.save(update_fields=["wykonane"])
+            odpieto += 1
+    return odpieto
+
+
 def integruj(parent, p):
     qs = parent.zmiany_potrzebne_set.all()
     for row in p.track(list(qs), total=qs.count(), label="Integracja"):
         _integruj_wiersz(row)
+
+    odpieto = _wykonaj_odpiecia(parent)
 
     parent.stan = ImportPracownikow.STAN_ZINTEGROWANY
     parent.save(update_fields=["stan"])
@@ -170,6 +220,7 @@ def integruj(parent, p):
             "pominieto_nieaktualne": pominieto_nieaktualne,
             "pominieto_niedopasowane": pominieto_niedopasowane,
             "wymaga_uwagi": pominieto_niedopasowane > 0,
+            "odpieto": odpieto,
             "stan": parent.stan,
         }
     )
