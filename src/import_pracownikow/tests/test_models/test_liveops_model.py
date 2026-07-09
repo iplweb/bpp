@@ -26,7 +26,7 @@ def test_run_dispatch_po_stanie(monkeypatch):
         "import_pracownikow.pipeline.integrate.integruj",
         lambda parent, p: wywolane.append("integracja"),
     )
-    imp = baker.make(ImportPracownikow, stan=ImportPracownikow.STAN_UTWORZONY)
+    imp = baker.make(ImportPracownikow, stan=ImportPracownikow.STAN_ZMAPOWANY)
     imp.run(p=object())
     imp.stan = ImportPracownikow.STAN_ZATWIERDZONY
     imp.run(p=object())

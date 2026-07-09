@@ -1,5 +1,6 @@
 import pytest
 from django.core.files.uploadedfile import SimpleUploadedFile
+from liveops.testing import MockProgress
 from model_bakery import baker
 
 from import_pracownikow.models import (
@@ -67,6 +68,25 @@ def test_naglowki_i_probka(admin_user):
     assert "nazwisko" in naglowki and "nazwa_jednostki" in naglowki
     assert "__xls_loc_row__" not in naglowki  # klucze lokalizacyjne odfiltrowane
     assert len(probka) == 2
+
+
+@pytest.mark.django_db
+def test_run_utworzony_nie_odpala_analizy(admin_user):
+    # po Fazie 2: utworzony = czeka na mapowanie, run() jest no-op
+    imp = baker.make(ImportPracownikow, stan=ImportPracownikow.STAN_UTWORZONY)
+    imp.plik_xls.name = "protected/import_pracownikow/x.csv"
+    imp.run(MockProgress(imp))  # nie może rzucić ani nic policzyć
+    imp.refresh_from_db()
+    assert imp.stan == ImportPracownikow.STAN_UTWORZONY
+    assert imp.importpracownikowrow_set.count() == 0
+
+
+@pytest.mark.django_db
+def test_on_restart_kasuje_wiersze_przy_zmapowany(admin_user):
+    imp = baker.make(ImportPracownikow, stan=ImportPracownikow.STAN_ZMAPOWANY)
+    baker.make("import_pracownikow.ImportPracownikowRow", parent=imp)
+    imp.on_restart()
+    assert imp.importpracownikowrow_set.count() == 0
 
 
 @pytest.mark.django_db

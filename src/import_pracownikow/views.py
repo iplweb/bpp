@@ -134,14 +134,14 @@ class ZatwierdzImportView(_PkOwnerRestartMixin):
 
 
 class RestartAnalizaView(_PkOwnerRestartMixin):
-    """Cofa import do stanu ``utworzony`` i uruchamia analizę od nowa.
+    """Cofa import do stanu ``zmapowany`` i uruchamia analizę od nowa.
 
-    Ustawiamy stan na ``utworzony`` PRZED wywołaniem bazowego POST-a, żeby
+    Ustawiamy stan na ``zmapowany`` PRZED wywołaniem bazowego POST-a, żeby
     ``on_restart()`` skasował istniejące wiersze podglądu (dry-run od zera).
     """
 
     def post(self, request, *args, **kwargs):
         obj = self.get_object()
-        obj.stan = ImportPracownikow.STAN_UTWORZONY
+        obj.stan = ImportPracownikow.STAN_ZMAPOWANY
         obj.save(update_fields=["stan"])
         return super().post(request, *args, **kwargs)

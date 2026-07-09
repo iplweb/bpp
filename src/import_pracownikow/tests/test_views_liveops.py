@@ -68,7 +68,7 @@ def test_restart_analiza_cofa_stan_i_kasuje_wiersze(admin_client, admin_user):
     with patch.object(ImportPracownikow, "run", lambda self, p: None):
         admin_client.post(url)
     imp.refresh_from_db()
-    assert imp.stan == ImportPracownikow.STAN_UTWORZONY
+    assert imp.stan == ImportPracownikow.STAN_ZMAPOWANY
     assert imp.importpracownikowrow_set.count() == 0  # on_restart skasował
 
 

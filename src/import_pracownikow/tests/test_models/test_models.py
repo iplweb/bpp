@@ -12,7 +12,7 @@ from import_pracownikow.tests.conftest import (
 def _pelny_przebieg(imp):
     """Analiza (dry-run) + integracja (commit) — odpowiednik starego
     ``.perform()``, który robił obie fazy jedną metodą (Faza 0 T7)."""
-    imp.stan = ImportPracownikow.STAN_UTWORZONY
+    imp.stan = ImportPracownikow.STAN_ZMAPOWANY
     imp.run(MockProgress(imp))
     imp.stan = ImportPracownikow.STAN_ZATWIERDZONY
     imp.run(MockProgress(imp))

@@ -70,7 +70,7 @@ class ImportPracownikow(LiveOperation):
     stages = ["Wczytywanie", "Integracja"]
 
     def run(self, p):
-        if self.stan == self.STAN_UTWORZONY:
+        if self.stan == self.STAN_ZMAPOWANY:
             from import_pracownikow.pipeline.analyze import analizuj
 
             analizuj(self, p)
@@ -82,8 +82,9 @@ class ImportPracownikow(LiveOperation):
             p.log(f"run() w nieoczekiwanym stanie: {self.stan!r} — pomijam")
 
     def on_restart(self):
-        # kasujemy wiersze TYLKO przy ponownej analizie (stan cofnięty do utworzony)
-        if self.stan == self.STAN_UTWORZONY:
+        # kasujemy wiersze przy (ponownej) analizie: świeży upload czeka w
+        # utworzony (bez wierszy), ponowna analiza cofa do zmapowany.
+        if self.stan in (self.STAN_UTWORZONY, self.STAN_ZMAPOWANY):
             self.importpracownikowrow_set.all().delete()
 
     def naglowki_i_probka(self, limit=10):

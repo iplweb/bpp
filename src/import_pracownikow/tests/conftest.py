@@ -77,7 +77,7 @@ def import_pracownikow_performed(import_pracownikow) -> ImportPracownikow:
     """Pełny przebieg dry-run (analiza) + commit (integracja), odpowiednik
     starego ``.perform()`` (który robił obie fazy naraz) w nowym modelu
     dyspozytora ``run(self, p)`` + polu ``stan`` (Faza 0 T1/T7)."""
-    import_pracownikow.stan = import_pracownikow.STAN_UTWORZONY
+    import_pracownikow.stan = import_pracownikow.STAN_ZMAPOWANY
     import_pracownikow.run(MockProgress(import_pracownikow))
     import_pracownikow.stan = import_pracownikow.STAN_ZATWIERDZONY
     import_pracownikow.run(MockProgress(import_pracownikow))
