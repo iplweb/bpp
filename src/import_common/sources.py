@@ -9,10 +9,20 @@ magic-bytes i zwraca właściwą implementację.
 
 from __future__ import annotations
 
+import csv
+import io
 from collections.abc import Iterator
 from typing import Protocol
 
-from .util import XLSImportFile
+from django.utils.functional import cached_property
+
+from .exceptions import HeaderNotFoundException
+from .util import (
+    DEFAULT_BANNED_NAMES,
+    XLSImportFile,
+    find_similar_row_in_rows,
+    rename_duplicate_columns,
+)
 
 
 class TabularSource(Protocol):
@@ -59,3 +69,112 @@ def wykryj_format(path) -> str:
     if sygnatura == b"PK\x03\x04":
         return "xlsx"
     return "csv"
+
+
+def _zdekoduj(raw: bytes) -> str:
+    """Dekoduje bajty CSV, próbując kolejno: ``utf-8-sig`` (BOM), ``cp1250``
+    (Excel na Windows), ``iso-8859-2``. ``utf-8-sig`` jest realnym
+    dyskryminatorem: rzuca ``UnicodeDecodeError`` na bajtach spoza UTF-8 (np.
+    polskie znaki w cp1250), więc pliki UTF-8 łapią się pierwsze, a cp1250
+    dopiero gdy UTF-8 zawiedzie. **Uwaga:** cp1250 dekoduje niemal każdy bajt
+    (tylko 5 jest niezdefiniowanych), więc gałąź ``iso-8859-2`` jest w praktyce
+    martwa — plik faktycznie w iso-8859-2 zwykle „poprawnie" (bez wyjątku)
+    zdekoduje się jako cp1250 z przekłamanymi kilkoma znakami. Rozróżnienie
+    cp1250/iso wymagałoby heurystyki częstości znaków — poza zakresem Fazy 1."""
+    for enc in ("utf-8-sig", "cp1250", "iso-8859-2"):
+        try:
+            return raw.decode(enc)
+        except UnicodeDecodeError:
+            continue
+    # Ostateczność — nie powinno się zdarzyć (cp1250 dekoduje ~wszystko):
+    return raw.decode("utf-8", errors="replace")
+
+
+def _wykryj_delimiter(tekst: str) -> str:
+    """Wykrywa delimiter CSV. ``csv.Sniffer`` na pierwszych ~5 liniach, z
+    fallbackiem „policz ``;`` vs ``,`` vs tab" (Sniffer bywa kruchy na
+    jednokolumnowych plikach). Domyślnie ``;`` — polski Excel."""
+    probka = "\n".join(tekst.splitlines()[:5])
+    try:
+        return csv.Sniffer().sniff(probka, delimiters=";,\t").delimiter
+    except csv.Error:
+        # Sniffer nie rozpoznał — policz ręcznie:
+        liczby = {d: probka.count(d) for d in (";", ",", "\t")}
+        najlepszy = max(liczby, key=liczby.get)
+        return najlepszy if liczby[najlepszy] > 0 else ";"
+
+
+class CSVSource:
+    """Źródło CSV: detekcja encodingu + delimitera, nagłówek przez wspólny
+    ``find_similar_row_in_rows``, klucze lokalizacyjne, filtr ``banned_names``.
+    CSV = zawsze JEDEN „arkusz" (``__xls_loc_sheet__ = 0``)."""
+
+    def __init__(
+        self, path, *, try_names=None, min_points=None, banned_names=None
+    ):
+        self.path = path
+        self.try_names = try_names
+        self.min_points = min_points
+        self.banned_names = (
+            DEFAULT_BANNED_NAMES if banned_names is None else banned_names
+        )
+
+    @cached_property
+    def _wiersze(self) -> list[list[str]]:
+        with open(self.path, "rb") as f:
+            tekst = _zdekoduj(f.read())
+        delimiter = _wykryj_delimiter(tekst)
+        reader = csv.reader(io.StringIO(tekst), delimiter=delimiter)
+        return [list(r) for r in reader]
+
+    @cached_property
+    def _naglowek(self):
+        res = find_similar_row_in_rows(
+            self._wiersze, try_names=self.try_names, min_points=self.min_points
+        )
+        if res is None:
+            raise HeaderNotFoundException(
+                "Nie znaleziono wiersza nagłówka w pliku CSV"
+            )
+        return res
+
+    @staticmethod
+    def _pusty(row) -> bool:
+        return not any((c or "").strip() for c in row)
+
+    def count(self) -> int:
+        _colnames, no = self._naglowek
+        total = 0
+        for n_row, row in enumerate(self._wiersze):
+            if n_row < no:
+                continue
+            if self._pusty(row):
+                continue
+            total += 1
+        return total
+
+    def data(self) -> Iterator[dict]:
+        colnames, no = self._naglowek
+        colnames = rename_duplicate_columns(colnames)
+        colnames.append("__xls_loc_sheet__")
+        colnames.append("__xls_loc_row__")
+
+        for n_row, row in enumerate(self._wiersze):
+            if n_row < no:
+                continue
+            if self._pusty(row):
+                continue
+            data = list(row[: len(colnames) - 2])
+            # CSV bywa „poszarpany": wiersz danych krótszy niż nagłówek.
+            # openpyxl padduje do max_column, csv.reader NIE — bez dopadowania
+            # zip() przesunąłby klucze lokalizacyjne na nazwy kolumn danych, a
+            # __xls_loc_* nie powstałyby (→ TypeError w XLSParseError.__str__ i
+            # NULL w sortowaniu get_details_set). Dopaduj do liczby kolumn danych:
+            data += [""] * (len(colnames) - 2 - len(data))
+            data.append(0)  # __xls_loc_sheet__ (CSV = jeden arkusz)
+            data.append(n_row)  # __xls_loc_row__ (0-based, jak XLSImportFile)
+
+            yld = dict(zip(colnames, data, strict=False))
+            for banned_name in self.banned_names:
+                yld.pop(banned_name, None)
+            yield yld
