@@ -102,3 +102,25 @@ def dwa_autory_z_jednostka():
     )
     baker.make(Autor_Jednostka, autor=autor, jednostka=jednostka)
     return autor, jednostka
+
+
+@pytest.fixture
+def autor_bez_autor_jednostka():
+    """(Autor, Jednostka) matchowalne przez ``matchuj_autora`` po imieniu i
+    nazwisku, ale BEZ powiązania ``Autor_Jednostka`` do tej jednostki.
+
+    W przeciwieństwie do ``dwa_autory_z_jednostka`` (gdzie AJ istnieje z
+    góry), tu celowo NIE tworzymy ani ``Autor_Jednostka``, ani nie
+    ustawiamy ``aktualna_jednostka`` — ``matchuj_autora`` i tak znajdzie
+    autora po dokładnym dopasowaniu imienia+nazwiska (jednostka jest tylko
+    tie-breakerem przy niejednoznaczności, nie wymogiem). Fixture pozwala
+    zweryfikować gałąź ``aj is None`` w ``analyze._przetworz_wiersz``:
+    autor się matchuje, ale AJ nie istnieje i dry-run go nie tworzy.
+    """
+    jednostka = baker.make(
+        Jednostka,
+        nazwa="Katedra Bez Powiazania",
+        skrot="Kat. Bez Pow.",
+    )
+    autor = baker.make(Autor, nazwisko="Nowicki", imiona="Piotr")
+    return autor, jednostka

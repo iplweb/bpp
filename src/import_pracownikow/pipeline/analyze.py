@@ -124,6 +124,7 @@ def _przetworz_wiersz(parent, elem):
         try:
             tytul = Tytul.objects.get(Q(nazwa=tytul_str) | Q(skrot=tytul_str))
         except Tytul.DoesNotExist:
+            # tytuł opcjonalny — brak w słowniku nie blokuje analizy
             pass
 
     row = ImportPracownikowRow(
