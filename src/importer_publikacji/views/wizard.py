@@ -240,7 +240,11 @@ class MultipleWorksImportDetailView(ImporterPermissionMixin, View):
 class BatchEntryImportView(ImporterPermissionMixin, View):
     """Wystartuj import pojedynczego wpisu paczki (leniwy drip)."""
 
-    _INFLIGHT = (
+    # Statusy TERMINALNE (odwrotność in-flight): sesja w którymkolwiek z nich
+    # jest skończona/martwa, więc wolno wystartować import wpisu od nowa.
+    # NB: NIE mylić z ``ImportSession._INFLIGHT_STATUSES`` (FETCHING/CREATING),
+    # które trzyma statusy przeciwne — stąd celowo inna, jednoznaczna nazwa.
+    _TERMINAL_STATUSES = (
         ImportSession.Status.COMPLETED,
         ImportSession.Status.IMPORT_FAILED,
         ImportSession.Status.CANCELLED,
@@ -253,7 +257,7 @@ class BatchEntryImportView(ImporterPermissionMixin, View):
         session = entry.session
         if (
             session is not None
-            and session.status not in self._INFLIGHT
+            and session.status not in self._TERMINAL_STATUSES
             and not session.is_stalled()
         ):
             # Juz sie importuje — nie startuj drugiej sesji (defense double-click).

@@ -109,6 +109,38 @@ def test_batch_entry_import_guards_inflight(client, operator):
 
 
 @pytest.mark.django_db
+def test_batch_entry_import_stalled_session_creates_new(client, operator, settings):
+    client.force_login(operator)
+    # Sesja utknela: status FETCHING (in-flight), ale przekroczyla prog
+    # watchdoga -> is_stalled() == True. Guard NIE powinien redirectowac na
+    # kontynuacje martwej sesji, tylko wystartowac import od nowa.
+    settings.IMPORTER_STALL_TIMEOUT = 0
+    batch = baker.make(MultipleWorksImport, provider_name="BibTeX")
+    stalled = baker.make(ImportSession, status=ImportSession.Status.FETCHING)
+    entry = baker.make(
+        MultipleWorksImportEntry,
+        parent=batch,
+        order=0,
+        raw_bibtex=ONE_ENTRY,
+        session=stalled,
+    )
+    assert stalled.is_stalled() is True
+    resp = client.post(
+        reverse("importer_publikacji:batch-entry-import", kwargs={"entry_id": entry.pk})
+    )
+    entry.refresh_from_db()
+    # Powstala DRUGA sesja, a entry wskazuje na nowa (nie na utknieta).
+    assert ImportSession.objects.count() == 2
+    assert entry.session is not None
+    assert entry.session != stalled
+    assert entry.session.identifier == ONE_ENTRY
+    assert resp.status_code == 302
+    assert resp["Location"] == reverse(
+        "importer_publikacji:task-status", kwargs={"session_id": entry.session.pk}
+    )
+
+
+@pytest.mark.django_db
 def test_batch_entry_import_rejects_malformed(client, operator):
     client.force_login(operator)
     batch = baker.make(MultipleWorksImport)
