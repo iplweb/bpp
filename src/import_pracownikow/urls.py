@@ -1,43 +1,30 @@
 from django.urls import path
 
-from import_pracownikow.views import (
-    ImportPracownikowDetailsView,
-    ImportPracownikowResetujPodstawoweMiejscePracyView,
-    ImportPracownikowResultsView,
-    ImportPracownikowRouterView,
-    ListaImportowView,
-    NowyImportView,
-    RestartImportView,
-)
+from import_pracownikow import views
 
 app_name = "import_pracownikow"
 
 urlpatterns = [
-    path("", ListaImportowView.as_view(), name="index"),
-    path("new/", NowyImportView.as_view(), name="new"),
+    path("", views.ListaImportowView.as_view(), name="index"),
+    path("new/", views.NowyImportView.as_view(), name="new"),
     path(
-        "<uuid:pk>/",
-        ImportPracownikowRouterView.as_view(),
-        name="importpracownikow-router",
-    ),
-    path(
-        "<uuid:pk>/details/",
-        ImportPracownikowDetailsView.as_view(),
-        name="importpracownikow-details",
-    ),
-    path(
-        "<uuid:pk>/results/",
-        ImportPracownikowResultsView.as_view(),
+        "<uuid:pk>/rezultaty/",
+        views.ImportPracownikowResultsView.as_view(),
         name="importpracownikow-results",
     ),
     path(
         "<uuid:pk>/resetuj-podstawowe-miejsce-pracy/",
-        ImportPracownikowResetujPodstawoweMiejscePracyView.as_view(),
+        views.ImportPracownikowResetujPodstawoweMiejscePracyView.as_view(),
         name="importpracownikow-resetuj-podstawowe-miejsce-pracy",
     ),
     path(
-        "<uuid:pk>/regen/",
-        RestartImportView.as_view(),
-        name="importpracownikow-restart",
+        "<uuid:pk>/zatwierdz/",
+        views.ZatwierdzImportView.as_view(),
+        name="zatwierdz",
+    ),
+    path(
+        "<uuid:pk>/restart-analiza/",
+        views.RestartAnalizaView.as_view(),
+        name="restart-analiza",
     ),
 ]
