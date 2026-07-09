@@ -4,7 +4,7 @@ import pytest
 from django.core.files.uploadedfile import SimpleUploadedFile
 from model_bakery import baker
 
-from bpp.models import Autor, Jednostka
+from bpp.models import Autor, Autor_Jednostka, Jednostka
 from import_pracownikow.models import ImportPracownikow
 
 
@@ -80,3 +80,25 @@ def import_pracownikow_performed(import_pracownikow) -> ImportPracownikow:
 @pytest.fixture
 def import_pracownikow_brak_naglowka(admin_user, testdata_brak_naglowka_xlsx_path):
     return import_pracownikow_factory(admin_user, testdata_brak_naglowka_xlsx_path)
+
+
+@pytest.fixture
+def dwa_autory_z_jednostka():
+    """(Autor, Jednostka) matchowalne przez ``matchuj_autora``/``matchuj_jednostke``.
+
+    Nazwa fixture nawiązuje do docelowego scenariusza analizy dwóch wierszy
+    pliku (jeden autor już powiązany z jednostką) — na Task 3 wystarczy
+    pojedyncza para, na której testy dry-run weryfikują brak zapisu do
+    domeny. ``Autor_Jednostka`` i ``aktualna_jednostka`` są ustawione z
+    góry, tak jak w prawdziwych danych kadrowych (autor już zatrudniony).
+    """
+    jednostka = baker.make(
+        Jednostka,
+        nazwa="Katedra Testowa",
+        skrot="Kat. Test.",
+    )
+    autor = baker.make(
+        Autor, nazwisko="Kowalski", imiona="Jan", aktualna_jednostka=jednostka
+    )
+    baker.make(Autor_Jednostka, autor=autor, jednostka=jednostka)
+    return autor, jednostka
