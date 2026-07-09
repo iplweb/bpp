@@ -2,6 +2,7 @@ import os
 
 import pytest
 from django.core.files.uploadedfile import SimpleUploadedFile
+from liveops.testing import MockProgress
 from model_bakery import baker
 
 from bpp.models import Autor, Autor_Jednostka, Jednostka
@@ -73,7 +74,14 @@ def import_pracownikow(admin_user, baza_importu_pracownikow, testdata_xlsx_path)
 
 @pytest.fixture
 def import_pracownikow_performed(import_pracownikow) -> ImportPracownikow:
-    import_pracownikow.perform()
+    """Pełny przebieg dry-run (analiza) + commit (integracja), odpowiednik
+    starego ``.perform()`` (który robił obie fazy naraz) w nowym modelu
+    dyspozytora ``run(self, p)`` + polu ``stan`` (Faza 0 T1/T7)."""
+    import_pracownikow.stan = import_pracownikow.STAN_UTWORZONY
+    import_pracownikow.run(MockProgress(import_pracownikow))
+    import_pracownikow.stan = import_pracownikow.STAN_ZATWIERDZONY
+    import_pracownikow.run(MockProgress(import_pracownikow))
+    import_pracownikow.refresh_from_db()
     return import_pracownikow
 
 

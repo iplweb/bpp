@@ -82,8 +82,11 @@ def test_importpracownikow_results_renderuje_liste_modyfikacji(
     ``parent_object``, nie ``object``. Django cicho zwraca falsy dla
     niezdefiniowanej zmiennej, więc ``{% if object.finished_successfully %}``
     było zawsze False i cała tabela "Lista modyfikacji" nigdy się nie
-    renderowała. NIE używamy fixture ``import_pracownikow_performed`` — woła
-    usunięte ``.perform()`` (dług Task 7)."""
+    renderowała. NIE używamy fixture ``import_pracownikow_performed`` — po
+    Task 7 działa (analiza+integracja przez ``run()``), ale wymaga
+    prawdziwego pliku XLS; tu wystarcza ręcznie zbudowany, minimalny stan
+    (``STAN_ZINTEGROWANY`` + jeden wiersz), więc test zostaje szybszy i
+    niezależny od danych testowych."""
     imp = baker.make(
         ImportPracownikow,
         owner=admin_user,
