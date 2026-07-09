@@ -4,12 +4,17 @@ from braces.views import GroupRequiredMixin
 from django.contrib import messages
 from django.http import Http404, HttpResponseRedirect
 from django.shortcuts import get_object_or_404
-from django.views.generic import ListView
+from django.urls import reverse
+from django.utils import timezone
+from django.utils.functional import cached_property
+from django.views.generic import FormView, ListView
 from liveops.views import CreateLiveOperationView, RestartView
 
 from bpp.models import Uczelnia
-from import_pracownikow.forms import NowyImportForm
-from import_pracownikow.models import ImportPracownikow
+from import_common.exceptions import HeaderNotFoundException
+from import_pracownikow.forms import MapowanieForm, NowyImportForm
+from import_pracownikow.mapping import dopasuj_profil
+from import_pracownikow.models import ImportPracownikow, ProfilMapowania
 
 GROUP_REQUIRED = "wprowadzanie danych"
 
@@ -55,6 +60,137 @@ class NowyImportView(GroupRequiredMixin, CreateLiveOperationView):
                 "unieważnić jego wynik.",
             )
         return super().get(request, *args, **kwargs)
+
+    def form_valid(self, form):
+        # NIE enqueue — najpierw ekran mapowania (analiza dopiero po zmapowaniu).
+        self.object = form.save(commit=False)
+        self.object.owner = self.request.user
+        self.object.stan = ImportPracownikow.STAN_UTWORZONY
+        self.object.save()
+        return HttpResponseRedirect(
+            reverse("import_pracownikow:mapowanie", kwargs={"pk": self.object.pk})
+        )
+
+
+# Stany, w których mapowanie jest dozwolone (przed commitem). NIE zmapowany na
+# zintegrowanym — kasowanie wierszy zniszczyłoby audyt log_zmian (spec §4).
+_STANY_MAPOWALNE = (
+    ImportPracownikow.STAN_UTWORZONY,
+    ImportPracownikow.STAN_ZMAPOWANY,
+    ImportPracownikow.STAN_PRZEANALIZOWANY,
+)
+
+_POLA_RESET_LIVEOPS = [
+    "finished_on",
+    "started_on",
+    "finished_successfully",
+    "cancelled",
+    "cancel_requested",
+    "traceback",
+    "result_context",
+    "current_stage",
+    "stage_states",
+    "log",
+    "percent",
+    "log_seq",
+]
+
+
+class MapowanieView(GroupRequiredMixin, FormView):
+    """Ekran mapowania kolumn. GET: auto-propozycja (lub profil) + próbka.
+    POST: zapis mapowania + ewentualny profil → stan zmapowany → (re)enqueue."""
+
+    group_required = GROUP_REQUIRED
+    form_class = MapowanieForm
+    template_name = "import_pracownikow/mapowanie.html"
+
+    @cached_property
+    def object(self):
+        return get_object_or_404(
+            ImportPracownikow, pk=self.kwargs["pk"], owner=self.request.user
+        )
+
+    def _przygotuj(self, request):
+        """Wywoływane z get()/post() (PO kontroli dostępu GroupRequiredMixin,
+        żeby nie robić I/O pliku dla anonimowego/bez-grupy usera). Zwraca
+        ``HttpResponseRedirect`` (błąd) albo ``None`` (OK)."""
+        if self.object.stan not in _STANY_MAPOWALNE:
+            messages.error(
+                request, "Tego importu nie można już mapować (zatwierdzony)."
+            )
+            return HttpResponseRedirect(reverse("import_pracownikow:index"))
+        try:
+            self._naglowki, self._probka = self.object.naglowki_i_probka()
+        except HeaderNotFoundException:
+            messages.error(
+                request,
+                "Nie rozpoznano wiersza nagłówka w pliku — sprawdź, czy plik "
+                "zawiera kolumny takie jak nazwisko / imię / jednostka.",
+            )
+            return HttpResponseRedirect(reverse("import_pracownikow:index"))
+        if not self._naglowki:
+            messages.error(request, "Plik nie zawiera kolumn do zmapowania.")
+            return HttpResponseRedirect(reverse("import_pracownikow:index"))
+        return None
+
+    def get(self, request, *args, **kwargs):
+        return self._przygotuj(request) or super().get(request, *args, **kwargs)
+
+    def post(self, request, *args, **kwargs):
+        return self._przygotuj(request) or super().post(request, *args, **kwargs)
+
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        kwargs["naglowki"] = self._naglowki
+        profil = dopasuj_profil(self._naglowki)
+        if profil is not None:
+            kwargs["initial_mapowanie"] = profil.mapowanie
+        return kwargs
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        ctx["object"] = self.object
+        ctx["probka_rows"] = [
+            [w.get(h, "") for h in self._naglowki] for w in self._probka
+        ]
+        return ctx
+
+    def form_valid(self, form):
+        obj = self.object
+        obj.mapowanie_kolumn = form.mapowanie()
+        obj.stan = ImportPracownikow.STAN_ZMAPOWANY
+        # on_restart() kasuje wiersze podglądu (stan==zmapowany) — inaczej
+        # ponowna analiza by je zduplikowała.
+        obj.on_restart()
+        # Reset pól operacji liveops (jak RestartView.post) — inaczej po
+        # anulowanym/zakończonym przebiegu enqueue rusza z brudnym stanem
+        # (cancel_requested=True → natychmiastowe „cancelled").
+        obj.finished_on = None
+        obj.started_on = None
+        obj.finished_successfully = False
+        obj.cancelled = False
+        obj.cancel_requested = False
+        obj.traceback = None
+        obj.result_context = None
+        obj.current_stage = -1
+        obj.stage_states = {}
+        obj.log = []
+        obj.percent = 0
+        obj.log_seq = 0
+        obj.save(update_fields=["mapowanie_kolumn", "stan"] + _POLA_RESET_LIVEOPS)
+
+        if form.cleaned_data.get("zapisz_profil"):
+            ProfilMapowania.objects.update_or_create(
+                nazwa=form.cleaned_data["nazwa_profilu"],
+                defaults={
+                    "mapowanie": obj.mapowanie_kolumn,
+                    "utworzony_przez": self.request.user,
+                    "ostatnio_uzyty": timezone.now(),
+                },
+            )
+
+        obj.enqueue()
+        return HttpResponseRedirect(obj.get_absolute_url())
 
 
 class ImportPracownikowResultsView(GroupRequiredMixin, ListView):

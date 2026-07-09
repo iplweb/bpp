@@ -8,6 +8,11 @@ urlpatterns = [
     path("", views.ListaImportowView.as_view(), name="index"),
     path("new/", views.NowyImportView.as_view(), name="new"),
     path(
+        "<uuid:pk>/mapowanie/",
+        views.MapowanieView.as_view(),
+        name="mapowanie",
+    ),
+    path(
         "<uuid:pk>/rezultaty/",
         views.ImportPracownikowResultsView.as_view(),
         name="importpracownikow-results",
