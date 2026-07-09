@@ -220,3 +220,38 @@ def test_batch_detail_marks_stalled_session_as_failed(client, operator, settings
     entry.session.refresh_from_db()
     assert entry.session.status == ImportSession.Status.IMPORT_FAILED
     assert entry.status == EntryStatus.FAILED
+
+
+@pytest.mark.django_db
+def test_done_shows_back_to_batch_link(client, operator):
+    client.force_login(operator)
+    batch = baker.make(MultipleWorksImport)
+    session = baker.make(ImportSession, status=ImportSession.Status.COMPLETED)
+    baker.make(MultipleWorksImportEntry, parent=batch, order=0, session=session)
+    baker.make(MultipleWorksImportEntry, parent=batch, order=1)
+    resp = client.get(
+        reverse("importer_publikacji:done", kwargs={"session_id": session.pk})
+    )
+    content = resp.content.decode()
+    batch_url = reverse(
+        "importer_publikacji:batch-detail", kwargs={"batch_id": batch.pk}
+    )
+    assert batch_url in content
+    assert "Wróć do paczki" in content
+
+
+@pytest.mark.django_db
+def test_cancel_returns_to_batch(client, operator):
+    client.force_login(operator)
+    batch = baker.make(MultipleWorksImport)
+    session = baker.make(ImportSession, status=ImportSession.Status.VERIFIED)
+    baker.make(MultipleWorksImportEntry, parent=batch, order=0, session=session)
+    resp = client.post(
+        reverse("importer_publikacji:cancel", kwargs={"session_id": session.pk})
+    )
+    batch_url = reverse(
+        "importer_publikacji:batch-detail", kwargs={"batch_id": batch.pk}
+    )
+    # Redirect albo push-url na batch-detail:
+    location = resp.get("Location") or resp.get("HX-Push-Url") or ""
+    assert batch_url in location or batch_url in resp.content.decode()

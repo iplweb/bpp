@@ -932,11 +932,12 @@ class DoneView(ImporterPermissionMixin, View):
             pk=session_id,
         )
         record = session.created_record
-        return _render_full_page(
-            request,
-            STEP_DONE,
-            {"session": session, "record": record},
-        )
+        ctx = {"session": session, "record": record}
+        batch_entry = getattr(session, "batch_entry", None)
+        if batch_entry is not None:
+            ctx["batch"] = batch_entry.parent
+            ctx["batch_progress"] = batch_entry.parent.progress
+        return _render_full_page(request, STEP_DONE, ctx)
 
 
 class CancelView(ImporterPermissionMixin, View):
@@ -950,6 +951,19 @@ class CancelView(ImporterPermissionMixin, View):
         session.status = ImportSession.Status.CANCELLED
         session.modified_by = request.user
         session.save()
+
+        batch_entry = getattr(session, "batch_entry", None)
+        if batch_entry is not None:
+            url = reverse(
+                "importer_publikacji:batch-detail",
+                kwargs={"batch_id": batch_entry.parent_id},
+            )
+            if request.headers.get("HX-Request"):
+                response = HttpResponse(status=200)
+                response["HX-Redirect"] = url
+                return response
+            return HttpResponseRedirect(url)
+
         url = reverse("importer_publikacji:index")
         ctx = _fetch_context(request=request)
         ctx["cancelled"] = True
