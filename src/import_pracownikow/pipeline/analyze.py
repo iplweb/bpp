@@ -14,7 +14,7 @@ from copy import copy
 from django.core.exceptions import ObjectDoesNotExist
 from django.db.models import Q
 
-from bpp.models import Autor_Jednostka, Tytul
+from bpp.models import Autor_Jednostka, Jednostka, Tytul
 from import_common.core import (
     matchuj_autora,
     matchuj_funkcja_autora,
@@ -54,15 +54,30 @@ def _matchuj_slownik_lub_odroc(matcher, wartosc, normalizer, diff, klucz):
         return None
 
 
+def _matchuj_jednostke_lub_wyjatek(elem, jednostka_form):
+    """Matchuje jednostkę, tłumacząc brak/wielość dopasowań na ``XLSMatchError``
+    czytelny dla użytkownika (zamiast surowego tracebacku ORM-a)."""
+    try:
+        return matchuj_jednostke(
+            jednostka_form.cleaned_data.get("nazwa_jednostki"),
+            wydzial=jednostka_form.cleaned_data.get("wydział"),
+        )
+    except Jednostka.MultipleObjectsReturned:
+        raise XLSMatchError(
+            elem, "jednostka", "wiele dopasowań w systemie - po nazwie"
+        ) from None
+    except Jednostka.DoesNotExist:
+        raise XLSMatchError(
+            elem, "jednostka", "brak dopasowania w systemie - po nazwie"
+        ) from None
+
+
 def _przetworz_wiersz(parent, elem):
     jednostka_form = JednostkaForm(data=elem)
     jednostka_form.full_clean()
     if not jednostka_form.is_valid():
         raise XLSParseError(elem, jednostka_form, "weryfikacja nazwy jednostki")
-    jednostka = matchuj_jednostke(
-        jednostka_form.cleaned_data.get("nazwa_jednostki"),
-        wydzial=jednostka_form.cleaned_data.get("wydział"),
-    )
+    jednostka = _matchuj_jednostke_lub_wyjatek(elem, jednostka_form)
 
     autor_form = AutorForm(data=elem)
     autor_form.full_clean()
