@@ -265,6 +265,7 @@ class ImportPracownikowRow(ImportRowMixin, models.Model):
         on_delete=models.SET_NULL,
         related_name="+",
     )
+    utworz_nowego = models.BooleanField(default=False)
 
     log_zmian = JSONField(encoder=DjangoJSONEncoder, null=True, blank=True)
 
@@ -520,3 +521,38 @@ class ImportPracownikowRowKandydat(models.Model):
                 for k in kandydaci
             ]
         )
+
+
+class ImportPracownikowOdpiecie(models.Model):
+    """Materializowana decyzja o odpięciu jednego powiązania Autor+Jednostka
+    spoza pliku (§9 D3).
+
+    Powstaje w fazie analizy dla każdego powiązania z
+    ``autorzy_spoza_pliku_set`` (domyślnie ODZNACZONE); user zaznacza w
+    podglądzie; faza commit kończy zatrudnienie dla ``zaznaczone=True`` i
+    ustawia ``wykonane=True``. ``autor_jednostka`` wskazuje ISTNIEJĄCE
+    powiązanie (realne, z pk) — do zakończenia. Decyzja jest persystowana (nie
+    liczona dynamicznie), żeby przeżyła drift bazy między podglądem a commitem.
+    """
+
+    parent = models.ForeignKey(
+        ImportPracownikow,
+        on_delete=models.CASCADE,
+        related_name="odpiecia",
+        verbose_name="import pracowników",
+    )
+    autor_jednostka = models.ForeignKey(
+        "bpp.Autor_Jednostka",
+        on_delete=models.CASCADE,
+        verbose_name="powiązanie autor-jednostka",
+    )
+    zaznaczone = models.BooleanField(default=False)
+    wykonane = models.BooleanField(default=False)
+
+    class Meta:
+        verbose_name = "odpięcie autora spoza pliku (import pracowników)"
+        verbose_name_plural = "odpięcia autorów spoza pliku (import pracowników)"
+        ordering = ["autor_jednostka__autor__nazwisko"]
+
+    def __str__(self):
+        return f"odpięcie {self.autor_jednostka} (zaznaczone={self.zaznaczone})"
