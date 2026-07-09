@@ -330,17 +330,30 @@ class ImportPracownikowRow(ImportRowMixin, models.Model):
     dane_z_xls = JSONField(null=True, blank=True, encoder=DjangoJSONEncoder)
     dane_znormalizowane = JSONField(null=True, blank=True, encoder=DjangoJSONEncoder)
 
-    autor = models.ForeignKey(Autor, on_delete=models.CASCADE)
-    jednostka = models.ForeignKey(Jednostka, on_delete=models.CASCADE)
-    autor_jednostka = models.ForeignKey(Autor_Jednostka, on_delete=models.CASCADE)
+    autor = models.ForeignKey(Autor, on_delete=models.CASCADE, null=True, blank=True)
+    jednostka = models.ForeignKey(
+        Jednostka, on_delete=models.CASCADE, null=True, blank=True
+    )
+    autor_jednostka = models.ForeignKey(
+        Autor_Jednostka, on_delete=models.CASCADE, null=True, blank=True
+    )
 
     podstawowe_miejsce_pracy = models.BooleanField(null=True, blank=True, default=None)
-    funkcja_autora = models.ForeignKey(Funkcja_Autora, on_delete=models.CASCADE)
-    grupa_pracownicza = models.ForeignKey(Grupa_Pracownicza, on_delete=models.CASCADE)
-    wymiar_etatu = models.ForeignKey(Wymiar_Etatu, on_delete=models.CASCADE)
+    funkcja_autora = models.ForeignKey(
+        Funkcja_Autora, on_delete=models.CASCADE, null=True, blank=True
+    )
+    grupa_pracownicza = models.ForeignKey(
+        Grupa_Pracownicza, on_delete=models.CASCADE, null=True, blank=True
+    )
+    wymiar_etatu = models.ForeignKey(
+        Wymiar_Etatu, on_delete=models.CASCADE, null=True, blank=True
+    )
     tytul = models.ForeignKey(Tytul, on_delete=models.SET_NULL, null=True)
 
     zmiany_potrzebne = models.BooleanField()
+
+    diff_do_utworzenia = models.JSONField(default=dict, blank=True)
+    pominiety_bo_nieaktualny = models.BooleanField(default=False)
 
     log_zmian = JSONField(encoder=DjangoJSONEncoder, null=True, blank=True)
 
