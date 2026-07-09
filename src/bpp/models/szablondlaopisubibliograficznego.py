@@ -46,8 +46,6 @@ class SzablonDlaOpisuBibliograficznegoManager(models.Manager):
 
 
 class SzablonDlaOpisuBibliograficznego(models.Model):
-    objects = SzablonDlaOpisuBibliograficznegoManager()
-
     model = models.OneToOneField(
         "contenttypes.ContentType",
         on_delete=models.CASCADE,
@@ -73,14 +71,16 @@ class SzablonDlaOpisuBibliograficznego(models.Model):
         ),
     )
 
-    def __str__(self):
-        if self.model_id is not None:
-            return f"Powiązanie szablonu {self.nazwa_szablonu} z modelem {self.model}"
-        return f"Powiązanie szablonu {self.nazwa_szablonu} z każdym modelem"
+    objects = SzablonDlaOpisuBibliograficznegoManager()
 
     class Meta:
         verbose_name = "powiązanie szablonu dla opisu bibliograficznego"
         verbose_name_plural = "powiązania szablonów dla opisu bibliograficznego"
+
+    def __str__(self):
+        if self.model_id is not None:
+            return f"Powiązanie szablonu {self.nazwa_szablonu} z modelem {self.model}"
+        return f"Powiązanie szablonu {self.nazwa_szablonu} z każdym modelem"
 
     def clean(self):
         try:
