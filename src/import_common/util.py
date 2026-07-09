@@ -17,13 +17,12 @@ from .exceptions import (
 # importowany eager przez import_common.models (XLSImportFile) już przy
 # django.setup(), a openpyxl przez compat/numbers.py ciągnie całe numpy
 # (~tens MB RSS) do KAŻDEGO procesu — także web/ASGI, który nigdy nie czyta
-# xlsx. Dzięki PEP 563 (future annotations) adnotacje typu ``Worksheet`` /
-# ``openpyxl.*`` w sygnaturach poniżej są tylko łańcuchami i nie wymagają
-# openpyxl w runtime; pod TYPE_CHECKING dajemy je type-checkerom/ruff. Plik
-# xlsx otwierają tylko funkcje z lokalnym importem.
+# xlsx. Dzięki PEP 563 (future annotations) adnotacje typu ``openpyxl.*``
+# w sygnaturach poniżej są tylko łańcuchami i nie wymagają openpyxl w
+# runtime; pod TYPE_CHECKING dajemy je type-checkerom/ruff. Plik xlsx
+# otwierają tylko funkcje z lokalnym importem.
 if TYPE_CHECKING:
     import openpyxl
-    from openpyxl.worksheet.worksheet import Worksheet
 
 DEFAULT_COL_NAMES = [
     "imię",
@@ -43,8 +42,11 @@ DEFAULT_COL_NAMES = [
 DEFAULT_MIN_POINTS = 3
 
 
-def normalize_cell_header(elem: openpyxl.cell.cell.Cell):
-    s = str(elem.value).lower().split("\n")[0]
+def normalize_cell_header(value):
+    """Normalizuje SUROWĄ wartość komórki nagłówka (str/None/liczba/datetime),
+    NIE openpyxl ``Cell`` — dzięki temu ten sam kod obsługuje XLSX (openpyxl)
+    i CSV (stringi)."""
+    s = str(value).lower().split("\n")[0]
 
     s = s.replace(".", " ")
     while s.find("  ") >= 0:
@@ -54,23 +56,36 @@ def normalize_cell_header(elem: openpyxl.cell.cell.Cell):
     return s.replace(" ", "_").replace("/", "_").replace("\\", "_").replace("-", "_")
 
 
-def find_similar_row(
-    sheet: Worksheet, try_names=None, min_points=None, max_row_length=128
-):
+def find_similar_row_in_rows(rows, try_names=None, min_points=None, max_row_length=128):
+    """Rdzeń fuzzy-detekcji nagłówka nad gołymi listami wartości.
+
+    :param rows: iterowalne wierszy; każdy wiersz to lista wartości (str/None/…)
+    :return: ``(znormalizowane_nazwy, n_1based)`` pierwszego wiersza z
+        ``>= min_points`` trafień, albo ``None``.
+    """
     if try_names is None:
         try_names = DEFAULT_COL_NAMES
 
     if min_points is None:
         min_points = DEFAULT_MIN_POINTS
 
-    for n, row in enumerate(sheet.rows, start=1):
-        r = [normalize_cell_header(elem) for elem in row[:max_row_length]]
+    for n, row in enumerate(rows, start=1):
+        r = [normalize_cell_header(v) for v in row[:max_row_length]]
         points = 0
         for elem in try_names:
             if elem in r:
                 points += 1
         if points >= min_points:
             return r, n
+
+
+def find_similar_row(sheet, try_names=None, min_points=None, max_row_length=128):
+    """Wrapper zachowujący dotychczasową sygnaturę (arkusz openpyxl):
+    wyciąga ``cell.value`` z każdej komórki i deleguje do
+    ``find_similar_row_in_rows``. Istniejący callerzy (``znajdz_naglowek``,
+    ``XLSImportFile``) nie wymagają zmian."""
+    rows = ([cell.value for cell in row] for row in sheet.rows)
+    return find_similar_row_in_rows(rows, try_names, min_points, max_row_length)
 
 
 def znajdz_naglowek(
