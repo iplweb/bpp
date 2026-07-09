@@ -40,9 +40,7 @@ class TabularSource(Protocol):
 class XLSXSource:
     """Adapter na istniejący ``XLSImportFile`` (openpyxl)."""
 
-    def __init__(
-        self, path, *, try_names=None, min_points=None, banned_names=None
-    ):
+    def __init__(self, path, *, try_names=None, min_points=None, banned_names=None):
         self._xif = XLSImportFile(
             path,
             try_names=try_names,
@@ -109,9 +107,7 @@ class CSVSource:
     ``find_similar_row_in_rows``, klucze lokalizacyjne, filtr ``banned_names``.
     CSV = zawsze JEDEN „arkusz" (``__xls_loc_sheet__ = 0``)."""
 
-    def __init__(
-        self, path, *, try_names=None, min_points=None, banned_names=None
-    ):
+    def __init__(self, path, *, try_names=None, min_points=None, banned_names=None):
         self.path = path
         self.try_names = try_names
         self.min_points = min_points
@@ -133,9 +129,7 @@ class CSVSource:
             self._wiersze, try_names=self.try_names, min_points=self.min_points
         )
         if res is None:
-            raise HeaderNotFoundException(
-                "Nie znaleziono wiersza nagłówka w pliku CSV"
-            )
+            raise HeaderNotFoundException("Nie znaleziono wiersza nagłówka w pliku CSV")
         return res
 
     @staticmethod
