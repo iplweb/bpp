@@ -35,6 +35,20 @@ class FetchedPublication:
     extra: dict = field(default_factory=dict)
 
 
+@dataclass
+class SplitRecord:
+    """Pojedynczy rekord wyodrębniony z surowego wejścia providera.
+
+    ``ok is False`` oznacza fragment, który się nie sparsował (np. uszkodzony
+    blok BibTeX) — niesiemy go dalej, żeby nic nie znikało po cichu.
+    """
+
+    raw: str
+    ok: bool = True
+    title: str = ""
+    error: str = ""
+
+
 class DataProvider(ABC):
     """Bazowa klasa abstrakcyjna dla dostawców danych."""
 
@@ -75,6 +89,14 @@ class DataProvider(ABC):
     @property
     def input_help_text(self) -> str:
         return ""
+
+    def split_input(self, text: str) -> list["SplitRecord"]:
+        """Rozbij surowe wejście na pojedyncze rekordy.
+
+        Domyślnie provider jest jedno-rekordowy i zwraca wejście bez zmian.
+        Providery wielo-rekordowe (BibTeX) nadpisują tę metodę.
+        """
+        return [SplitRecord(raw=text)]
 
     @abstractmethod
     def fetch(self, identifier: str) -> FetchedPublication | None:
