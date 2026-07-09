@@ -22,6 +22,7 @@ from import_common.core import (
     matchuj_jednostke,
     matchuj_wymiar_etatu,
 )
+from import_common.core.autor import znajdz_kandydatow_autora
 from import_common.exceptions import XLSMatchError, XLSParseError
 from import_common.normalization import (
     normalize_funkcja_autora,
@@ -35,11 +36,18 @@ from import_pracownikow.models import (
     AutorForm,
     ImportPracownikow,
     ImportPracownikowRow,
+    ImportPracownikowRowKandydat,
     JednostkaForm,
 )
 from import_pracownikow.parsers.leksykony import zbuduj_parser_kontekst
 from import_pracownikow.parsers.osoba import rozbij_osobe
 from import_pracownikow.parsers.wartosci import normalizuj_wartosci_wiersza
+from import_pracownikow.pewnosc import (
+    STATUS_TWARDY,
+    STATUS_WIELU,
+    oblicz_status_pewnosci,
+    wybierz_autora_z_kandydatow,
+)
 
 
 def _matchuj_slownik_lub_odroc(matcher, wartosc, normalizer, diff, klucz):
@@ -109,6 +117,52 @@ def _rozbij_osoba_sklejona(dane_form, parser_ctx):
     return rozbicie
 
 
+def _dopasuj_tytul(tytul_str):
+    """Zwraca ``Tytul`` po nazwie/skrócie albo ``None``. Tytuł jest opcjonalny —
+    brak w słowniku nie blokuje analizy (dry-run)."""
+    if not tytul_str:
+        return None
+    try:
+        return Tytul.objects.get(Q(nazwa=tytul_str) | Q(skrot=tytul_str))
+    except Tytul.DoesNotExist:
+        return None
+
+
+def _dopasuj_autora_i_status(data, jednostka, tytul_str):
+    """Zwraca (autor, status, kandydaci). ID-path (priorytet) dopasowuje
+    WYŁĄCZNIE po identyfikatorach: ``imiona/nazwisko/jednostka/tytul_str`` są
+    PRZEKAZANE JAKO None, żeby ``matchuj_autora`` nie odpalił swoich fallbacków
+    nazwiskowych/jednostkowych (autor.py:577-600). Inaczej remis top-tier byłby
+    rozstrzygnięty jednostką/tytułem i błędnie oznaczony jako ``twardy`` —
+    łamiąc §8 (jednostka/tytuł to tylko tie-breakery preselekcji, nie status).
+    Gdy ID nie rozstrzyga (None) — SPADAMY do ścieżki kandydatów. Poza ID —
+    status WPROST z ``znajdz_kandydatow_autora``; ``autor`` tylko dla
+    twardy/zgadywanie (przez wspólny ``wybierz_autora_z_kandydatow``)."""
+    ma_id = any(
+        data.get(k) not in (None, "")
+        for k in ("bpp_id", "orcid", "pbn_uuid", "numer", "pbn_id")
+    )
+    if ma_id:
+        autor_po_id = matchuj_autora(
+            imiona=None,
+            nazwisko=None,
+            jednostka=None,
+            bpp_id=data.get("bpp_id"),
+            pbn_uid_id=data.get("pbn_uuid"),
+            system_kadrowy_id=data.get("numer"),
+            pbn_id=data.get("pbn_id"),
+            orcid=data.get("orcid"),
+            tytul_str=None,
+        )
+        if autor_po_id is not None:
+            return autor_po_id, STATUS_TWARDY, []
+
+    kandydaci = znajdz_kandydatow_autora(data.get("imię"), data.get("nazwisko"))
+    status = oblicz_status_pewnosci(kandydaci, match_po_id=False)
+    autor = wybierz_autora_z_kandydatow(kandydaci, status)
+    return autor, status, kandydaci
+
+
 def _przetworz_wiersz(parent, elem, parser_ctx=None):
     dane_form = normalizuj_wartosci_wiersza(elem)
     rozbicie = _rozbij_osoba_sklejona(dane_form, parser_ctx)
@@ -149,38 +203,27 @@ def _przetworz_wiersz(parent, elem, parser_ctx=None):
         "wymiar_etatu",
     )
 
-    autor = matchuj_autora(
-        imiona=data.get("imię"),
-        nazwisko=data.get("nazwisko"),
-        jednostka=jednostka,
-        bpp_id=data.get("bpp_id"),
-        pbn_uid_id=data.get("pbn_uuid"),
-        system_kadrowy_id=data.get("numer"),
-        pbn_id=data.get("pbn_id"),
-        orcid=data.get("orcid"),
-        tytul_str=tytul_str,
-    )
-    if autor is None:
-        raise XLSMatchError(elem, "autor", "brak dopasowania - różne kombinacje")
-    if data.get("bpp_id") is not None and data.get("bpp_id") != autor.pk:
+    autor, status, kandydaci = _dopasuj_autora_i_status(data, jednostka, tytul_str)
+    if (
+        data.get("bpp_id") is not None
+        and autor is not None
+        and data.get("bpp_id") != autor.pk
+    ):
         raise XLSMatchError(
             elem,
             "autor",
             "BPP ID zmatchowanego autora i BPP ID w pliku XLS nie zgadzają się",
         )
 
-    # Autor_Jednostka: dopasowanie bez tworzenia (dry-run).
-    aj = Autor_Jednostka.objects.filter(autor=autor, jednostka=jednostka).first()
-    if aj is None:
-        diff["autor_jednostka"] = {"autor": autor.pk, "jednostka": jednostka.pk}
+    # Autor_Jednostka: dopasowanie bez tworzenia (dry-run). Dla brak/wielu
+    # (autor None) nie ma jak policzyć AJ — pomijamy.
+    aj = None
+    if autor is not None:
+        aj = Autor_Jednostka.objects.filter(autor=autor, jednostka=jednostka).first()
+        if aj is None:
+            diff["autor_jednostka"] = {"autor": autor.pk, "jednostka": jednostka.pk}
 
-    tytul = None
-    if tytul_str:
-        try:
-            tytul = Tytul.objects.get(Q(nazwa=tytul_str) | Q(skrot=tytul_str))
-        except Tytul.DoesNotExist:
-            # tytuł opcjonalny — brak w słowniku nie blokuje analizy
-            pass
+    tytul = _dopasuj_tytul(tytul_str)
 
     row = ImportPracownikowRow(
         parent=parent,
@@ -189,6 +232,7 @@ def _przetworz_wiersz(parent, elem, parser_ctx=None):
             autor_form.cleaned_data, rozbicie
         ),
         autor=autor,
+        confidence=status,
         jednostka=jednostka,
         autor_jednostka=aj,
         tytul=tytul,
@@ -201,17 +245,19 @@ def _przetworz_wiersz(parent, elem, parser_ctx=None):
         diff_do_utworzenia=diff,
         zmiany_potrzebne=False,
     )
-    # Gdy AJ jeszcze nie istnieje, integracja i tak je utworzy — traktujemy
-    # wiersz jako wymagający zmian. Gdy istnieje, liczymy normalnie.
-    if aj is not None:
-        # bool(diff): wiersz z odroczonym create'em słownika (stanowisko/
-        # grupa/wymiar nieistniejące w bazie) MUSI trafić do integracji,
-        # nawet gdy guard is-not-None wyzerował check (funkcja_autora=None
-        # w analizie).
+    if autor is None:
+        # brak/wielu: nie ma co integrować dopóki user nie rozstrzygnie
+        row.zmiany_potrzebne = False
+    elif aj is not None:
+        # bool(diff): wiersz z odroczonym create'em słownika MUSI trafić do
+        # integracji, nawet gdy guard is-not-None wyzerował check.
         row.zmiany_potrzebne = bool(diff) or row.check_if_integration_needed()
     else:
         row.zmiany_potrzebne = True
     row.save()
+
+    if status == STATUS_WIELU:
+        ImportPracownikowRowKandydat.zapisz_dla(row, kandydaci)
 
 
 def analizuj(parent, p):
