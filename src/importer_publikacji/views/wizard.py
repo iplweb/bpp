@@ -41,6 +41,7 @@ from .authors import (
     _orcid_settable_qs,
 )
 from .helpers import (
+    BATCH_DETAIL,
     SESSIONS_PARTIAL,
     STEP_DONE,
     STEP_FETCH,
@@ -226,16 +227,21 @@ class FetchView(ImporterPermissionMixin, View):
 
 
 class MultipleWorksImportDetailView(ImporterPermissionMixin, View):
-    """Szczegóły paczki wielo-wpisowego importu.
-
-    Tymczasowy, minimalny widok — Task 5 zastąpi go pełnym renderem
-    (lista wpisów, postęp, akcje per wpis). Tu wystarczy, żeby route
-    było rozwiązywalne dla ``FetchView.post`` fan-out.
-    """
+    """Lista wpisów paczki z per-wpis statusem i akcjami (drip import)."""
 
     def get(self, request, batch_id):
         batch = get_object_or_404(MultipleWorksImport, pk=batch_id)
-        return HttpResponse(f"batch {batch.pk}")  # Task 5 zastąpi renderem
+        entries = list(batch.entries.select_related("session"))
+        # Sweep zombie: martwy worker zostawia sesje w FETCHING/CREATING —
+        # bez tego wpis wisialby "w toku" i paczka nigdy nie bylaby gotowa.
+        for entry in entries:
+            if entry.session is not None and entry.session.is_stalled():
+                entry.session.mark_stalled()
+        return _render_full_page(
+            request,
+            BATCH_DETAIL,
+            {"batch": batch, "entries": entries, "progress": batch.progress},
+        )
 
 
 class BatchEntryImportView(ImporterPermissionMixin, View):

@@ -3,6 +3,7 @@ from django.urls import reverse
 from model_bakery import baker
 
 from importer_publikacji.models import (
+    EntryStatus,
     ImportSession,
     MultipleWorksImport,
     MultipleWorksImportEntry,
@@ -184,3 +185,38 @@ def test_batch_entry_skip_refuses_imported(client, operator):
     entry.refresh_from_db()
     assert entry.skipped is False  # niezmienione
     assert resp.status_code in (302, 400)
+
+
+@pytest.mark.django_db
+def test_batch_detail_lists_entries_and_progress(client, operator):
+    client.force_login(operator)
+    batch = baker.make(MultipleWorksImport, provider_name="BibTeX")
+    done = baker.make(ImportSession, status=ImportSession.Status.COMPLETED)
+    baker.make(
+        MultipleWorksImportEntry, parent=batch, order=0, title="Alfa", session=done
+    )
+    baker.make(MultipleWorksImportEntry, parent=batch, order=1, title="Beta")
+    resp = client.get(
+        reverse("importer_publikacji:batch-detail", kwargs={"batch_id": batch.pk})
+    )
+    assert resp.status_code == 200
+    content = resp.content.decode()
+    assert "Alfa" in content
+    assert "Beta" in content
+    assert "1 z 2" in content
+
+
+@pytest.mark.django_db
+def test_batch_detail_marks_stalled_session_as_failed(client, operator, settings):
+    settings.IMPORTER_STALL_TIMEOUT = 0  # kazda sesja in-flight = stalled
+    client.force_login(operator)
+    batch = baker.make(MultipleWorksImport, provider_name="BibTeX")
+    stuck = baker.make(ImportSession, status=ImportSession.Status.FETCHING)
+    entry = baker.make(MultipleWorksImportEntry, parent=batch, order=0, session=stuck)
+    client.get(
+        reverse("importer_publikacji:batch-detail", kwargs={"batch_id": batch.pk})
+    )
+    entry.refresh_from_db()
+    entry.session.refresh_from_db()
+    assert entry.session.status == ImportSession.Status.IMPORT_FAILED
+    assert entry.status == EntryStatus.FAILED
