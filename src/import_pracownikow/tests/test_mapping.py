@@ -13,9 +13,9 @@ from import_pracownikow.models import ProfilMapowania
 
 def test_pola_docelowe_zawieraja_kluczowe_pola():
     klucze = {k for k, _ in POLA_DOCELOWE}
-    assert {"nazwa_jednostki", "wydział", "nazwisko", "imię"} <= klucze
-    # osoba_sklejona to Faza 3 — NIE ma jej tu:
-    assert "osoba_sklejona" not in klucze
+    assert {"nazwisko", "imię", "nazwa_jednostki"} <= klucze
+    # Faza 3 dodaje kompozyt „osoba sklejona":
+    assert "osoba_sklejona" in klucze
 
 
 def test_zaproponuj_mapowanie_synonimy():
@@ -101,3 +101,22 @@ def test_dopasuj_profil_brak_gdy_niskie_pokrycie():
         mapowanie={"a": "nazwisko", "b": "imię", "c": "nazwa_jednostki"},
     )
     assert dopasuj_profil(["zupełnie", "inne", "naglowki", "xyz"]) is None
+
+
+def test_synonimy_osoba_sklejona():
+    prop = zaproponuj_mapowanie(
+        ["nazwisko_i_imię", "imię_i_nazwisko", "osoba", "pracownik"]
+    )
+    assert prop["nazwisko_i_imię"] == "osoba_sklejona"
+    assert prop["imię_i_nazwisko"] == "osoba_sklejona"
+    assert prop["osoba"] == "osoba_sklejona"
+
+
+def test_waliduj_mapowanie_akceptuje_osoba_sklejona_zamiast_nazwisko_imie():
+    # osoba_sklejona + jednostka = komplet identyfikacji (bez osobnych nazwisko/imię)
+    assert waliduj_mapowanie({"a": "osoba_sklejona", "b": "nazwa_jednostki"}) == []
+
+
+def test_waliduj_mapowanie_odrzuca_gdy_brak_identyfikacji_i_osoby():
+    bledy = waliduj_mapowanie({"b": "nazwa_jednostki"})
+    assert any("identyfikac" in e.lower() or "osob" in e.lower() for e in bledy)

@@ -7,11 +7,12 @@ remapowanie wiersza. Profile (``dopasuj_profil``) w części 2 (Task 3).
 
 POLE_POMIN = "__pomin__"
 
-# Pola docelowe = klucze oczekiwane przez JednostkaForm/AutorForm. Kompozyty
-# (osoba_sklejona) NALEŻĄ do Fazy 3 — tu ich nie ma.
+# Pola docelowe = klucze oczekiwane przez JednostkaForm/AutorForm + kompozyt
+# osoba_sklejona (Faza 3 — parser §7 rozbija ją na imię/nazwisko/tytuł).
 POLA_DOCELOWE = [
     ("nazwisko", "Nazwisko"),
     ("imię", "Imię"),
+    ("osoba_sklejona", "Osoba (tytuł+imię+nazwisko w jednej komórce)"),
     ("nazwa_jednostki", "Nazwa jednostki"),
     ("wydział", "Wydział"),
     ("tytuł_stopień", "Tytuł / stopień"),
@@ -39,6 +40,15 @@ _SYNONIMY = {
     "imię": "imię",
     "imie": "imię",
     "imiona": "imię",
+    "osoba": "osoba_sklejona",
+    "osoba_sklejona": "osoba_sklejona",
+    "pracownik": "osoba_sklejona",
+    "nazwisko_i_imię": "osoba_sklejona",
+    "nazwisko_i_imie": "osoba_sklejona",
+    "imię_i_nazwisko": "osoba_sklejona",
+    "imie_i_nazwisko": "osoba_sklejona",
+    "imię_nazwisko": "osoba_sklejona",
+    "imie_nazwisko": "osoba_sklejona",
     "nazwa_jednostki": "nazwa_jednostki",
     "jednostka": "nazwa_jednostki",
     "jedn_org": "nazwa_jednostki",
@@ -98,15 +108,18 @@ def zaproponuj_mapowanie(naglowki):
 
 def waliduj_mapowanie(mapowanie):
     """Zwraca listę błędów (pusta = OK). Reguły:
-    - musi być zmapowane ``nazwisko``, ``imię`` oraz ``nazwa_jednostki``;
+    - identyfikacja osoby: musi być zmapowane (``nazwisko`` ORAZ ``imię``)
+      ALBO ``osoba_sklejona`` — oraz zawsze ``nazwa_jednostki``;
     - żadne pole docelowe (poza ``POLE_POMIN``) nie może być użyte dwukrotnie."""
     bledy = []
     uzyte = [v for v in mapowanie.values() if v != POLE_POMIN]
 
-    brakujace = _POLA_IDENTYFIKACJI - set(uzyte)
-    if brakujace:
+    ma_nazwisko_imie = _POLA_IDENTYFIKACJI <= set(uzyte)
+    ma_osobe = "osoba_sklejona" in uzyte
+    if not (ma_nazwisko_imie or ma_osobe):
         bledy.append(
-            "Brak wymaganych pól identyfikacji: " + ", ".join(sorted(brakujace))
+            "Brak identyfikacji osoby: zmapuj 'nazwisko' + 'imię' albo "
+            "'osoba (sklejona)'."
         )
     if _POLE_JEDNOSTKA not in uzyte:
         bledy.append("Brak wymaganego pola: nazwa jednostki")
