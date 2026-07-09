@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% load static liveops %}
+
+{% block extratitle %}
+    Import pracowników - {{ object.plik_xls.name }}
+{% endblock %}
+
+{% block breadcrumbs %}
+    {{ block.super }}
+    <li><a href="{% url "import_pracownikow:index" %}">import pracowników</a></li>
+    <li class="current">import {{ object.plik_xls.name }}</li>
+{% endblock %}
+
+{% block content %}
+    <h1>Import pracowników — przetwarzanie</h1>
+
+    {# Region live-operacji: kontener z data-liveop-channel/token + strefy #}
+    {# op-status/op-progress/op-log/op-result (OOB-swap z workera). Panel #}
+    {# wyniku (z przyciskiem zapisu/linkiem do szczegółów) pojawia się w #}
+    {# #op-result dopiero po zakończeniu importu — patrz _result.html. #}
+    {% live_operation object %}
+
+    {# Kolejność ładowania jest istotna: htmx → klient channels_broadcast → #}
+    {# liveops.js (patchuje channelsBroadcast.addMessage i inicjuje socket). #}
+    <script src="{% static 'liveops/vendor/htmx.min.js' %}"></script>
+    <script src="{% static 'channels_broadcast/js/notifications.js' %}"></script>
+    <script src="{% static 'liveops/liveops.js' %}"></script>
+{% endblock %}

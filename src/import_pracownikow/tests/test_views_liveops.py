@@ -17,6 +17,28 @@ def test_strona_live_uzywa_get_absolute_url(admin_client, admin_user):
 
 
 @pytest.mark.django_db
+def test_strona_live_uzywa_wlasnego_host_template(admin_client, admin_user):
+    """Host-page (T6) musi być faktycznie użyty, nie tylko fallback
+    liveops/operation.html (LiveOperationView.get_template_names próbuje
+    naszego szablonu jako pierwszego)."""
+    imp = baker.make(ImportPracownikow, owner=admin_user)
+    resp = admin_client.get(imp.get_absolute_url())
+    template_names = [t.name for t in resp.templates if t.name]
+    assert "import_pracownikow/import_pracownikow.html" in template_names
+
+
+@pytest.mark.django_db
+def test_index_renderuje_bez_noreversematch(admin_client, admin_user):
+    """Landmine: importpracownikow_list.html linkował do usuniętego URL-a
+    ``import_pracownikow:importpracownikow-router`` — NoReverseMatch przy
+    renderze strony index, gdy na liście jest choć jeden import."""
+    baker.make(ImportPracownikow, owner=admin_user)
+    url = reverse("import_pracownikow:index")
+    resp = admin_client.get(url)
+    assert resp.status_code == 200
+
+
+@pytest.mark.django_db
 def test_zatwierdz_ustawia_stan_zatwierdzony_i_reenqueue(admin_client, admin_user):
     imp = baker.make(
         ImportPracownikow,

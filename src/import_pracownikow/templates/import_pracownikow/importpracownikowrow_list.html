@@ -14,8 +14,6 @@
 {% block content %}
     <h1>Import danych {{ object.plik_xls.name }}</h1>
 
-    {% include "long_running/operation_details.html" %}
-
     {% if object.finished_successfully %}
         Lista modyfikacji do bazy danych, przeprowadzonych na podstawie pliku XLS poniżej:
         <table>
