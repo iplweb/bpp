@@ -30,6 +30,7 @@ from import_common.normalization import (
     normalize_wymiar_etatu,
 )
 from import_common.sources import otworz_zrodlo
+from import_pracownikow.mapping import MIN_POINTS, TRY_NAMES, remapuj_wiersz
 from import_pracownikow.models import (
     AutorForm,
     ImportPracownikow,
@@ -175,12 +176,17 @@ def _przetworz_wiersz(parent, elem):
 
 
 def analizuj(parent, p):
-    zrodlo = otworz_zrodlo(parent.plik_xls.path)
+    zrodlo = otworz_zrodlo(
+        parent.plik_xls.path, try_names=TRY_NAMES, min_points=MIN_POINTS
+    )
     total = zrodlo.count()
     if total == 0:
         raise ValueError("Plik nie zawiera danych do importu (0 wierszy).")
 
+    mapowanie = parent.mapowanie_kolumn or {}
     for elem in p.track(list(zrodlo.data()), total=total, label="Wczytywanie"):
+        if mapowanie:
+            elem = remapuj_wiersz(elem, mapowanie)
         _przetworz_wiersz(parent, elem)
 
     parent.stan = ImportPracownikow.STAN_PRZEANALIZOWANY
