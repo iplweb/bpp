@@ -14,7 +14,7 @@ from copy import copy
 from django.core.exceptions import ObjectDoesNotExist
 from django.db.models import Q
 
-from bpp.models import Autor_Jednostka, Jednostka, Tytul
+from bpp.models import Autor_Jednostka, Jednostka, Tytul, Uczelnia
 from import_common.core import (
     matchuj_autora,
     matchuj_funkcja_autora,
@@ -35,6 +35,7 @@ from import_pracownikow.mapping import MIN_POINTS, TRY_NAMES, remapuj_wiersz
 from import_pracownikow.models import (
     AutorForm,
     ImportPracownikow,
+    ImportPracownikowOdpiecie,
     ImportPracownikowRow,
     ImportPracownikowRowKandydat,
     JednostkaForm,
@@ -260,6 +261,23 @@ def _przetworz_wiersz(parent, elem, parser_ctx=None):
         ImportPracownikowRowKandydat.zapisz_dla(row, kandydaci)
 
 
+def _materializuj_odpiecia(parent):
+    """Tworzy wiersze ``ImportPracownikowOdpiecie`` (zaznaczone=False) dla
+    powiązań spoza pliku (§9). Delete-first → idempotentne względem re-analizy
+    (``on_restart`` też je kasuje). Uczelnię ustala
+    ``get_single_uczelnia_or_none`` (brak requestu w tle) — ``None`` pomija
+    wykluczenie obcej jednostki. Zwraca liczbę utworzonych odpięć."""
+    uczelnia = Uczelnia.objects.get_single_uczelnia_or_none()
+    parent.odpiecia.all().delete()
+    ImportPracownikowOdpiecie.objects.bulk_create(
+        [
+            ImportPracownikowOdpiecie(parent=parent, autor_jednostka=aj)
+            for aj in parent.autorzy_spoza_pliku_set(uczelnia=uczelnia)
+        ]
+    )
+    return parent.odpiecia.count()
+
+
 def analizuj(parent, p):
     zrodlo = otworz_zrodlo(
         parent.plik_xls.path, try_names=TRY_NAMES, min_points=MIN_POINTS
@@ -275,6 +293,8 @@ def analizuj(parent, p):
             elem = remapuj_wiersz(elem, mapowanie)
         _przetworz_wiersz(parent, elem, parser_ctx)
 
+    liczba_odpiec = _materializuj_odpiecia(parent)
+
     parent.stan = ImportPracownikow.STAN_PRZEANALIZOWANY
     parent.save(update_fields=["stan"])
 
@@ -283,6 +303,7 @@ def analizuj(parent, p):
         {
             "total": wiersze.count(),
             "zmiany_potrzebne": parent.zmiany_potrzebne_set.count(),
+            "odpiecia": liczba_odpiec,
             "byl_dry_run": True,
             "stan": parent.stan,
         }

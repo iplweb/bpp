@@ -87,6 +87,10 @@ class ImportPracownikow(LiveOperation):
         # utworzony (bez wierszy), ponowna analiza cofa do zmapowany.
         if self.stan in (self.STAN_UTWORZONY, self.STAN_ZMAPOWANY):
             self.importpracownikowrow_set.all().delete()
+            # Odpięcia (§9) materializuje faza analizy — przy cofnięciu do
+            # zmapowany kasujemy je razem z wierszami, żeby ponowna analiza
+            # nie zduplikowała zbioru.
+            self.odpiecia.all().delete()
 
     # Pola operacji liveops zerowane przed (po)ponownym enqueue. Zwierciadło
     # ``RestartView.post`` (liveops inline'uje ten reset, nie wystawia go jako
