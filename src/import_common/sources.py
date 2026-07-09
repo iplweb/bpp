@@ -172,3 +172,18 @@ class CSVSource:
             for banned_name in self.banned_names:
                 yld.pop(banned_name, None)
             yield yld
+
+
+def otworz_zrodlo(
+    path, *, try_names=None, min_points=None, banned_names=None
+) -> TabularSource:
+    """Wykrywa format pliku (magic-bytes) i zwraca właściwe źródło —
+    ``XLSXSource`` albo ``CSVSource`` — z tym samym kontraktem
+    (``count()`` + ``data()``)."""
+    klasa = XLSXSource if wykryj_format(path) == "xlsx" else CSVSource
+    return klasa(
+        path,
+        try_names=try_names,
+        min_points=min_points,
+        banned_names=banned_names,
+    )

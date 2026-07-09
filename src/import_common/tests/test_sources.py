@@ -1,7 +1,7 @@
 import pytest
 
 from import_common.exceptions import HeaderNotFoundException
-from import_common.sources import CSVSource, XLSXSource, wykryj_format
+from import_common.sources import CSVSource, XLSXSource, otworz_zrodlo, wykryj_format
 
 
 def test_wykryj_format_xlsx_po_magic_bytes(test1_xlsx):
@@ -130,3 +130,13 @@ def test_csvsource_srednik_wygrywa_z_przecinkiem_dziesietnym(tmp_path):
     wiersz = list(src.data())[0]
     assert wiersz["wymiar_etatu"] == "0,5"
     assert wiersz["nazwisko"] == "Kowalski"
+
+
+def test_otworz_zrodlo_xlsx(default_xlsx):
+    assert isinstance(otworz_zrodlo(default_xlsx), XLSXSource)
+
+
+def test_otworz_zrodlo_csv(tmp_path):
+    p = tmp_path / "dane.csv"
+    p.write_text("Nazwisko;Imię\nKowalski;Jan\n", encoding="utf-8")
+    assert isinstance(otworz_zrodlo(str(p)), CSVSource)
