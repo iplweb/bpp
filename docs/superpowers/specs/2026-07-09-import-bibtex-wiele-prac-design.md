@@ -346,3 +346,45 @@ Konwencje: pytest (funkcje, bez klas), `@pytest.mark.django_db`,
 - **Bloki `@string`/`@preamble`** z wklejonego BibTeX-a są tracone przy
   rozbiciu per-wpis. W praktyce nieistotne: v2 `fetch()` i tak ich nie
   interpoluje, a w pastowanych eksportach występują rzadko.
+
+## 11. Erata — zgodność z implementacją (po final review + self-review Fable 5)
+
+Ten rozdział prostuje rozjazdy między wcześniejszymi sekcjami a kodem, który
+faktycznie trafił do PR #511. Kod jest źródłem prawdy; sekcje 1–10 to zapis
+projektowy.
+
+- **§6.3 — guard na wpis już zaimportowany (dodany w final review).** Kod
+  `BatchEntryImportView` na starcie odrzuca re-import: `if entry.status ==
+  EntryStatus.IMPORTED: return redirect(session.get_continue_url())`. Zapobiega
+  **duplikacji publikacji** przy nieświeżym formularzu (druga karta) lub
+  powtórzonym POST. Sekcja §6.3 pierwotnie wpuszczała status COMPLETED w
+  ścieżkę „utwórz sesję" — to było błędne; obowiązuje guard.
+- **§6.2/§6.3.5 — przekierowania batcha.** Formularze na stronie paczki
+  (Importuj/Pomiń/Przywróć) to zwykły `method="post"`, a widoki zwracają
+  zwykłe `HttpResponseRedirect` (302), NIE `HX-Redirect`. HX-Redirect dotyczy
+  tylko fan-outu w `FetchView` i batch-aware `CancelView` (odpowiedzi na
+  żądania HTMX z formularza fetch).
+- **§6.2 — wiersz „uszkodzony".** Szablon pokazuje `parse_error` (komunikat);
+  surowy tekst bloku jest przechowywany w `raw_bibtex`, ale nie renderowany.
+  `error` w `SplitRecord` to statyczny komunikat — szczegółowy błąd parsera
+  bibtexparsera nie jest przenoszony (świadome uproszczenie).
+- **§6.2 — [Pomiń] dla wpisów „oczekuje".** Dodane po review Fable 5: wpis
+  oczekujący ma obok [Importuj] także [Pomiń] — inaczej `progress.done`
+  („każdy wpis ✓ lub pominięty", §3.3) był nieosiągalny dla paczek, z których
+  część prac użytkownik świadomie odrzuca.
+- **§1/§2 — `input_help_text` zaktualizowany.** Stary tekst („zostanie użyty
+  pierwszy") był teraz nieprawdą; kod zwraca opis trybu paczki.
+- **§6.1 — znany edge case (nie naprawiony w tym PR).** `FetchView` woła
+  `validate_identifier()` PRZED `split_input`; walidator BibTeX odrzuca wsad
+  bez ani jednego poprawnego wpisu. Skutek: paste złożony **wyłącznie** z
+  uszkodzonych bloków (0 poprawnych) nie tworzy paczki — user dostaje ogólny
+  błąd formularza. Rzadki przypadek; potencjalny follow-up (przenieść bramkę
+  walidacji za split lub uwzględnić `failed_blocks` w progu).
+- **§8 — luki testowe (follow-up).** Brak testu delegacji [Ponów] do
+  `ImportTaskRetryView` na tej samej sesji (dziś tylko wiring w szablonie);
+  fan-outowy test używa wpisów poprawnych (brak przypadku MALFORMED na poziomie
+  `FetchView`). Ścieżki te są pokryte pośrednio (`split_input` z uszkodzonym
+  blokiem, `task-retry` istnieje), ale nie end-to-end w kontekście paczki.
+- **Drobne follow-upy (nieblokujące):** docstring `peek_title` („+ LaTeX"
+  bez `_clean_latex`), N+1 na `created_record` (GenericFK) przy wielu
+  ukończonych wpisach, reużycie `_hx_or_redirect` w batch-branchu `CancelView`.
