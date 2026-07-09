@@ -1,0 +1,19 @@
+{# Partial pojedynczego wiersza podglądu — zwracany po akcjach HTMX. #}
+<tr id="wiersz-{{ row.pk }}">
+    <td>{{ row.dane_znormalizowane.imię }}</td>
+    <td>{{ row.dane_znormalizowane.nazwisko }}</td>
+    <td>
+        {% with badge=row.confidence_badge %}
+            <span class="label {{ badge.0 }}">
+                <i class="{{ badge.1 }}"></i> {{ badge.2 }}
+            </span>
+        {% endwith %}
+    </td>
+    <td>
+        {% if row.autor %}
+            <a href="{% url "bpp:browse_autor" row.autor.pk %}">{{ row.autor }}</a>
+        {% else %}
+            —
+        {% endif %}
+    </td>
+</tr>

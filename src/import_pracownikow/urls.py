@@ -32,4 +32,9 @@ urlpatterns = [
         views.RestartAnalizaView.as_view(),
         name="restart-analiza",
     ),
+    path(
+        "<uuid:pk>/wiersz/<int:row_pk>/wybierz-kandydata/",
+        views.WybierzKandydataView.as_view(),
+        name="wybierz-kandydata",
+    ),
 ]

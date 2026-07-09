@@ -2,11 +2,12 @@
 
 from braces.views import GroupRequiredMixin
 from django.contrib import messages
-from django.http import Http404, HttpResponseRedirect
-from django.shortcuts import get_object_or_404
+from django.http import Http404, HttpResponseBadRequest, HttpResponseRedirect
+from django.shortcuts import get_object_or_404, render
 from django.urls import reverse
 from django.utils import timezone
 from django.utils.functional import cached_property
+from django.views import View
 from django.views.generic import FormView, ListView
 from liveops.views import CreateLiveOperationView, RestartView
 
@@ -14,7 +15,12 @@ from bpp.models import Uczelnia
 from import_common.exceptions import HeaderNotFoundException
 from import_pracownikow.forms import MapowanieForm, NowyImportForm
 from import_pracownikow.mapping import dopasuj_profil
-from import_pracownikow.models import ImportPracownikow, ProfilMapowania
+from import_pracownikow.models import (
+    ImportPracownikow,
+    ImportPracownikowRow,
+    ProfilMapowania,
+)
+from import_pracownikow.pewnosc import STATUS_TWARDY, odtworz_autor_jednostka
 
 GROUP_REQUIRED = "wprowadzanie danych"
 
@@ -165,6 +171,94 @@ class MapowanieView(GroupRequiredMixin, FormView):
 
         obj.enqueue()
         return HttpResponseRedirect(obj.get_absolute_url())
+
+
+class _WierszImportuMixin(GroupRequiredMixin, View):
+    """Wspólny fetch wiersza importu: owner/superuser-scoped parent + wiersz.
+    Render partiala do odpowiedzi HTMX."""
+
+    group_required = GROUP_REQUIRED
+    partial_template = "import_pracownikow/partials/_wiersz_preview.html"
+
+    @cached_property
+    def parent_object(self):
+        obj = get_object_or_404(ImportPracownikow, pk=self.kwargs["pk"])
+        if obj.owner_id != self.request.user.pk and not self.request.user.is_superuser:
+            raise Http404
+        return obj
+
+    @cached_property
+    def row(self):
+        return get_object_or_404(
+            ImportPracownikowRow, pk=self.kwargs["row_pk"], parent=self.parent_object
+        )
+
+    def _blad_jesli_nie_podglad(self):
+        """G3: wybór/edycja dozwolone WYŁĄCZNIE dla importu w podglądzie
+        (``przeanalizowany``). Bez tej bramki bezpośredni POST (retry HTMX,
+        back-button, wyścig z Zatwierdź) na wierszu importu już `zintegrowanego`
+        nadpisałby audyt ``log_zmian`` po commicie i pozwolił zintegrować drugi
+        raz. Analog `_STANY_MAPOWALNE`/`_STANY` — zintegrowany wykluczony. Zwraca
+        ``HttpResponseBadRequest`` (blokada) albo ``None`` (OK)."""
+        if self.parent_object.stan != ImportPracownikow.STAN_PRZEANALIZOWANY:
+            return HttpResponseBadRequest(
+                "Wiersz można edytować tylko dla importu w podglądzie."
+            )
+        return None
+
+    def _render_wiersz(self):
+        # Re-pobierz wiersz przez get_details_set(), żeby partial miał adnotacje
+        # nr_arkusza/nr_wiersza (RawSQL) — inaczej te komórki byłyby puste po
+        # swapie HTMX. Odzwierciedla zapisane właśnie zmiany.
+        row = self.parent_object.get_details_set().get(pk=self.row.pk)
+        return render(
+            self.request,
+            self.partial_template,
+            {"row": row, "parent_object": self.parent_object},
+        )
+
+
+class WybierzKandydataView(_WierszImportuMixin):
+    """POST: ustaw wybranego kandydata dla wiersza ``wielu`` → materializuj
+    ``row.autor`` i przelicz ``zmiany_potrzebne``. Zwraca partial wiersza."""
+
+    def post(self, request, *args, **kwargs):
+        blad = self._blad_jesli_nie_podglad()
+        if blad is not None:
+            return blad
+        row = self.row
+        try:
+            wybrany_id = int(request.POST.get("wybrany_kandydat", ""))
+        except (TypeError, ValueError):
+            return HttpResponseBadRequest("Brak lub błędny wybrany_kandydat.")
+        kandydat = row.kandydaci.filter(autor_id=wybrany_id).first()
+        if kandydat is None:
+            # Wybór musi być jednym z zapisanych kandydatów tego wiersza.
+            return HttpResponseBadRequest("Autor nie jest kandydatem tego wiersza.")
+
+        autor = kandydat.autor
+        row.wybrany_kandydat = autor
+        row.autor = autor
+        row.confidence = STATUS_TWARDY
+
+        # Materializacja autora MUSI odtworzyć powiązanie Autor_Jednostka tak
+        # jak faza analizy (analyze._przetworz_wiersz) I zdjąć ewentualny
+        # nieaktualny wpis diff od poprzedniego autora — inaczej integrate() →
+        # _integrate_autor_jednostka() zrobi aj.save() na None (AttributeError)
+        # albo utworzy AJ dla złego autora. `row.autor` jest ustawiony wyżej,
+        # więc helper może bezpiecznie wołać check_if_integration_needed().
+        odtworz_autor_jednostka(row, autor)
+        row.save(
+            update_fields=[
+                "wybrany_kandydat",
+                "autor",
+                "confidence",
+                "autor_jednostka",
+                "diff_do_utworzenia",
+                "zmiany_potrzebne",
+            ]
+        )
+        return self._render_wiersz()
 
 
 class ImportPracownikowResultsView(GroupRequiredMixin, ListView):
