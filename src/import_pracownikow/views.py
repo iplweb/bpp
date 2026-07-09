@@ -2,6 +2,7 @@
 
 from braces.views import GroupRequiredMixin
 from django.contrib import messages
+from django.db.models import Q
 from django.http import Http404, HttpResponseBadRequest, HttpResponseRedirect
 from django.shortcuts import get_object_or_404, render
 from django.urls import reverse
@@ -11,16 +12,24 @@ from django.views import View
 from django.views.generic import FormView, ListView
 from liveops.views import CreateLiveOperationView, RestartView
 
-from bpp.models import Uczelnia
+from bpp.models import Tytul, Uczelnia
+from import_common.core.autor import znajdz_kandydatow_autora
 from import_common.exceptions import HeaderNotFoundException
 from import_pracownikow.forms import MapowanieForm, NowyImportForm
 from import_pracownikow.mapping import dopasuj_profil
 from import_pracownikow.models import (
     ImportPracownikow,
     ImportPracownikowRow,
+    ImportPracownikowRowKandydat,
     ProfilMapowania,
 )
-from import_pracownikow.pewnosc import STATUS_TWARDY, odtworz_autor_jednostka
+from import_pracownikow.pewnosc import (
+    STATUS_TWARDY,
+    STATUS_WIELU,
+    oblicz_status_pewnosci,
+    odtworz_autor_jednostka,
+    wybierz_autora_z_kandydatow,
+)
 
 GROUP_REQUIRED = "wprowadzanie danych"
 
@@ -258,6 +267,84 @@ class WybierzKandydataView(_WierszImportuMixin):
                 "zmiany_potrzebne",
             ]
         )
+        return self._render_wiersz()
+
+
+def _rematch_wiersz(row, imiona, nazwisko, tytul):
+    """Ponawia dopasowanie autora dla skorygowanego wiersza (synchronicznie).
+    Nadpisuje confidence/autor/kandydatów, tytuł (FK) i dane_znormalizowane;
+    odtwarza Autor_Jednostka dla NOWEGO autora i przelicza zmiany_potrzebne.
+    Ścieżka bez ID (korekta dotyczy rozbicia nazwiska)."""
+    kandydaci = znajdz_kandydatow_autora(imiona, nazwisko)
+    status = oblicz_status_pewnosci(kandydaci, match_po_id=False)
+    autor = wybierz_autora_z_kandydatow(kandydaci, status)
+
+    dane = dict(row.dane_znormalizowane or {})
+    dane["imię"] = imiona
+    dane["nazwisko"] = nazwisko
+    if tytul:
+        dane["tytuł_stopień"] = tytul
+    else:
+        dane.pop("tytuł_stopień", None)
+    row.dane_znormalizowane = dane
+
+    # Korekta tytułu MUSI trafić do FK row.tytul — integracja czyta row.tytul_id
+    # (z analizy), nie JSON; bez tego do bazy poszedłby stary tytuł.
+    # G4: filter().first() (nie .get()) — wejście od usera; ten sam string bywa
+    # `nazwa` jednego tytułu i `skrot` innego (unique tylko osobno), więc .get()
+    # rzuciłby MultipleObjectsReturned (500). None gdy brak dopasowania.
+    if tytul:
+        row.tytul = Tytul.objects.filter(Q(nazwa=tytul) | Q(skrot=tytul)).first()
+    else:
+        row.tytul = None
+
+    row.korekta_uzytkownika = {
+        "imiona": imiona,
+        "nazwisko": nazwisko,
+        "tytul": tytul,
+    }
+    row.confidence = status
+    row.autor = autor
+    row.wybrany_kandydat = None
+
+    # Materializacja NOWEGO autora → PRZELICZ Autor_Jednostka od zera (nie ufaj
+    # staremu row.autor_jednostka od poprzedniego autora) przez wspólny helper,
+    # który ZAWSZE zdejmuje uśpiony wpis diff od poprzedniego autora. Bez AJ
+    # integrate() → _integrate_autor_jednostka() zrobiłby aj.save() na None
+    # (AttributeError). `row.autor` jest ustawiony wyżej.
+    if autor is None:
+        # brak/wielu po korekcie: też zdejmij uśpiony wpis AJ od poprzedniego
+        # autora (inaczej integracja utworzy AJ dla już-nie-autora wiersza),
+        # wyzeruj powiązanie, nic do integracji dopóki user nie rozstrzygnie.
+        row.diff_do_utworzenia.pop("autor_jednostka", None)
+        row.autor_jednostka = None
+        row.zmiany_potrzebne = False
+    else:
+        odtworz_autor_jednostka(row, autor)
+
+    row.save()
+    # zapisz_dla kasuje starych kandydatów i wstawia nowych; dla nie-wielu
+    # przekazujemy [] (tylko czyszczenie — wiersz zszedł z „wielu").
+    ImportPracownikowRowKandydat.zapisz_dla(
+        row, kandydaci if status == STATUS_WIELU else []
+    )
+
+
+class EdytujWierszView(_WierszImportuMixin):
+    """POST (HTMX): korekta rozbicia imiona/nazwisko/tytuł → zapis
+    ``korekta_uzytkownika`` + synchroniczny re-match → partial wiersza."""
+
+    def post(self, request, *args, **kwargs):
+        blad = self._blad_jesli_nie_podglad()
+        if blad is not None:
+            return blad
+        row = self.row
+        imiona = (request.POST.get("imiona") or "").strip()
+        nazwisko = (request.POST.get("nazwisko") or "").strip()
+        tytul = (request.POST.get("tytul") or "").strip()
+        if not nazwisko:
+            return HttpResponseBadRequest("Nazwisko jest wymagane.")
+        _rematch_wiersz(row, imiona, nazwisko, tytul)
         return self._render_wiersz()
 
 

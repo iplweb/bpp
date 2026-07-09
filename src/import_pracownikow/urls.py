@@ -37,4 +37,9 @@ urlpatterns = [
         views.WybierzKandydataView.as_view(),
         name="wybierz-kandydata",
     ),
+    path(
+        "<uuid:pk>/wiersz/<int:row_pk>/edytuj/",
+        views.EdytujWierszView.as_view(),
+        name="edytuj-wiersz",
+    ),
 ]
