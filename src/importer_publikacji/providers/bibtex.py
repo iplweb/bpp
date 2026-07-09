@@ -2,6 +2,7 @@ import logging
 import re
 
 import bibtexparser
+from bibtexparser.model import Entry, ParsingFailedBlock
 
 from bpp.util import zaloguj_polkniety_wyjatek
 
@@ -9,6 +10,7 @@ from . import (
     DataProvider,
     FetchedPublication,
     InputMode,
+    SplitRecord,
     register_provider,
 )
 
@@ -79,6 +81,36 @@ class BibTeXProvider(DataProvider):
         if not library.entries:
             return None
         return identifier.strip()
+
+    def peek_title(self, entry) -> str:
+        """Wyciągnij tytuł z wpisu do wyświetlenia (unwrap Field + LaTeX)."""
+        return _get_field(entry.fields_dict, "title", "")
+
+    def split_input(self, text: str) -> list[SplitRecord]:
+        """Rozbij wklejony BibTeX na pojedyncze rekordy.
+
+        Każdy poprawny wpis → jeden ``SplitRecord(ok=True)`` z ``entry.raw``
+        (verbatim). Każdy uszkodzony blok (``failed_blocks``) → jeden
+        ``SplitRecord(ok=False)`` niosący surowy tekst + komunikat — inaczej
+        znikałby po cichu (dokładnie bug, który naprawiamy). Kolejność
+        źródłowa zachowana przez iterację po ``library.blocks``.
+        """
+        library = bibtexparser.parse_string(text)
+        records: list[SplitRecord] = []
+        for block in library.blocks:
+            if isinstance(block, Entry):
+                records.append(
+                    SplitRecord(raw=block.raw, ok=True, title=self.peek_title(block))
+                )
+            elif isinstance(block, ParsingFailedBlock):
+                records.append(
+                    SplitRecord(
+                        raw=block.raw,
+                        ok=False,
+                        error="Nie udało się sparsować wpisu BibTeX.",
+                    )
+                )
+        return records
 
     def fetch(self, identifier: str) -> FetchedPublication | None:
         # NIE lykamy po cichu: nieoczekiwany blad parsera to bug, ktory ma
