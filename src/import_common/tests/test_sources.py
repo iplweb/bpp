@@ -140,3 +140,15 @@ def test_otworz_zrodlo_csv(tmp_path):
     p = tmp_path / "dane.csv"
     p.write_text("Nazwisko;Imię\nKowalski;Jan\n", encoding="utf-8")
     assert isinstance(otworz_zrodlo(str(p)), CSVSource)
+
+
+def test_csvsource_crlf_realny_excel(tmp_path):
+    # realny Excel zapisuje końce linii jako CRLF (\r\n) — csv.reader ścina
+    # \r, więc ostatnia kolumna NIE może wyciec z doklejonym \r
+    tresc = f"{_CSV_NAGLOWEK}\r\n" "1;Kowalski;Jan;;Asystent;Katedra Chorób\r\n"
+    path = _zapisz(tmp_path, tresc, encoding="utf-8")
+    src = CSVSource(path)
+    assert src.count() == 1
+    wiersz = list(src.data())[0]
+    assert wiersz["nazwa_jednostki"] == "Katedra Chorób"
+    assert wiersz["__xls_loc_row__"] == 1
