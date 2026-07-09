@@ -121,7 +121,7 @@ class ZatwierdzImportView(_PkOwnerRestartMixin):
     zapisanym pliku (bez ponownego uploadu).
 
     Ustawiamy stan na ``zatwierdzony`` (żeby ``on_restart()`` NIE skasował
-    wierszy podglądu — kasuje tylko gdy stan==utworzony) i delegujemy
+    wierszy podglądu — kasuje tylko gdy stan==utworzony lub zmapowany) i delegujemy
     resztę do bazowego POST-a liveops ``RestartView`` (reset stanu
     operacji, re-enqueue, przekierowanie na stronę live).
     """
