@@ -5,7 +5,7 @@ from django import forms
 from django.conf import settings
 from django.core.serializers.json import DjangoJSONEncoder
 from django.db import DataError, models, transaction
-from django.db.models import JSONField
+from django.db.models import JSONField, Q
 from django.db.models.expressions import RawSQL
 from django.utils import timezone
 from liveops.models import LiveOperation
@@ -179,29 +179,42 @@ class ImportPracownikow(LiveOperation):
         )
 
     def autorzy_spoza_pliku_set(self, uczelnia=None, today=None):
-        """
-        Zwraca wszystkie połączenia Autor + Jednostka, gdzie:
-        1) połączenie autor + jednostka nie występuje w imporcie danych (self)
-        2) jednostka nie jest obca,
-        3) jednostka ma pole "zarzadzaj_automatycznie" zaznaczone jako True
-        """
+        """Powiązania Autor+Jednostka do odpięcia: pary ``(autor, jednostka)``
+        OBECNE w bazie, ale NIEOBECNE w tym imporcie.
 
+        Porównanie po parach ``(autor_id, jednostka_id)`` z wierszy (znane
+        nawet gdy ``autor_jednostka`` jest NULL — odroczone AJ / statusy
+        brak/wielu), z jawnym odfiltrowaniem NULL-i. NIE po pk
+        ``Autor_Jednostka``: subquery z NULL-em daje SQL ``NOT IN (…, NULL)``
+        → pusty zbiór (regresja §9). Kryteria wykluczeń: jednostka zarządzana
+        automatycznie, nie-obca, powiązanie aktywne, autor ma aktualną
+        jednostkę.
+        """
         if today is None:
             today = timezone.now().date()
 
-        autorzy_jednostki_z_pliku = self.importpracownikowrow_set.values_list(
-            "autor_jednostka"
-        ).distinct()
+        pary_z_pliku = set(
+            self.importpracownikowrow_set.filter(
+                autor__isnull=False, jednostka__isnull=False
+            )
+            .values_list("autor_id", "jednostka_id")
+            .distinct()
+        )
 
         qry = (
-            Autor_Jednostka.objects.exclude(pk__in=autorzy_jednostki_z_pliku)
-            .exclude(autor__aktualna_jednostka=None)
+            Autor_Jednostka.objects.exclude(autor__aktualna_jednostka=None)
             .exclude(jednostka__zarzadzaj_automatycznie=False)
             .exclude(zakonczyl_prace__lte=today)
         )
 
         if uczelnia is not None and uczelnia.obca_jednostka_id is not None:
             qry = qry.exclude(autor__aktualna_jednostka_id=uczelnia.obca_jednostka_id)
+
+        if pary_z_pliku:
+            wyklucz = Q()
+            for autor_id, jednostka_id in pary_z_pliku:
+                wyklucz |= Q(autor_id=autor_id, jednostka_id=jednostka_id)
+            qry = qry.exclude(wyklucz)
 
         return qry
 
