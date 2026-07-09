@@ -124,3 +124,23 @@ def autor_bez_autor_jednostka():
     )
     autor = baker.make(Autor, nazwisko="Nowicki", imiona="Piotr")
     return autor, jednostka
+
+
+@pytest.fixture
+def autor_jednostka_fixture():
+    """(Autor, Jednostka) do testów fazy integracji (Task 4).
+
+    Bez powiązania ``Autor_Jednostka`` z góry — to właśnie materializacja
+    ``diff_do_utworzenia["autor_jednostka"]`` w ``integrate.py`` ma je
+    utworzyć. Nazwa i kształt fixture odpowiadają temu, czego oczekuje
+    brief Task 4 (``test_integrate.py``); logicznie to ten sam wzorzec co
+    ``autor_bez_autor_jednostka``, ale z dedykowaną nazwą dla czytelności
+    testów fazy integracji.
+    """
+    jednostka = baker.make(
+        Jednostka,
+        nazwa="Katedra Integracji Testowej",
+        skrot="Kat. Integr. Test.",
+    )
+    autor = baker.make(Autor, nazwisko="Wisniewski", imiona="Adam")
+    return autor, jednostka
