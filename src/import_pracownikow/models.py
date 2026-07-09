@@ -2,6 +2,7 @@
 from datetime import date, timedelta
 
 from django import forms
+from django.conf import settings
 from django.core.serializers.json import DjangoJSONEncoder
 from django.db import DataError, models, transaction
 from django.db.models import JSONField
@@ -48,12 +49,14 @@ class AutorForm(forms.Form):
 
 class ImportPracownikow(LiveOperation):
     STAN_UTWORZONY = "utworzony"
+    STAN_ZMAPOWANY = "zmapowany"
     STAN_PRZEANALIZOWANY = "przeanalizowany"
     STAN_ZATWIERDZONY = "zatwierdzony"
     STAN_ZINTEGROWANY = "zintegrowany"
     STAN_PORZUCONY = "porzucony"
     STAN_CHOICES = [
         (STAN_UTWORZONY, "utworzony"),
+        (STAN_ZMAPOWANY, "zmapowany (kolumny określone)"),
         (STAN_PRZEANALIZOWANY, "przeanalizowany (dry-run gotowy)"),
         (STAN_ZATWIERDZONY, "zatwierdzony do zapisu"),
         (STAN_ZINTEGROWANY, "zintegrowany"),
@@ -62,6 +65,7 @@ class ImportPracownikow(LiveOperation):
 
     plik_xls = models.FileField(upload_to="protected/import_pracownikow/")
     stan = models.CharField(max_length=20, choices=STAN_CHOICES, default=STAN_UTWORZONY)
+    mapowanie_kolumn = models.JSONField(default=dict, blank=True)
 
     stages = ["Wczytywanie", "Integracja"]
 
@@ -341,3 +345,27 @@ class ImportPracownikowRow(ImportRowMixin, models.Model):
 
         if not self.log_zmian:
             return "bez zmian!"
+
+
+class ProfilMapowania(models.Model):
+    """Zapisywalne mapowanie nagłówków pliku → pola systemowe, do reużycia
+    przy powtarzalnych plikach (ta sama uczelnia co kwartał). BPP jest
+    single-tenant per instalacja, więc profile są globalne dla instancji."""
+
+    nazwa = models.CharField(max_length=200, unique=True)
+    mapowanie = models.JSONField(default=dict)
+    ostatnio_uzyty = models.DateTimeField(null=True, blank=True)
+    utworzony_przez = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+    )
+
+    class Meta:
+        verbose_name = "profil mapowania importu pracowników"
+        verbose_name_plural = "profile mapowania importu pracowników"
+        ordering = ["nazwa"]
+
+    def __str__(self):
+        return self.nazwa
