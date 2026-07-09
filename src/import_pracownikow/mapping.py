@@ -28,7 +28,8 @@ POLA_DOCELOWE = [
     ("bpp_id", "BPP ID"),
 ]
 
-# Pola identyfikacyjne — mapowanie MUSI zawierać nazwisko+imię ORAZ jednostkę.
+# Pola identyfikacyjne — mapowanie MUSI zawierać (nazwisko+imię LUB
+# osoba_sklejona) ORAZ jednostkę (patrz waliduj_mapowanie).
 _POLA_IDENTYFIKACJI = {"nazwisko", "imię"}
 _POLE_JEDNOSTKA = "nazwa_jednostki"
 
