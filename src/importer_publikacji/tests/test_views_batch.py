@@ -153,3 +153,34 @@ def test_batch_entry_import_rejects_malformed(client, operator):
     assert resp.status_code == 400
     entry.refresh_from_db()
     assert entry.session is None
+
+
+@pytest.mark.django_db
+def test_batch_entry_skip_toggles(client, operator):
+    client.force_login(operator)
+    batch = baker.make(MultipleWorksImport, provider_name="BibTeX")
+    entry = baker.make(MultipleWorksImportEntry, parent=batch, order=0, skipped=False)
+    url = reverse("importer_publikacji:batch-entry-skip", kwargs={"entry_id": entry.pk})
+    resp = client.post(url)
+    entry.refresh_from_db()
+    assert entry.skipped is True
+    assert resp["Location"] == reverse(
+        "importer_publikacji:batch-detail", kwargs={"batch_id": batch.pk}
+    )
+    client.post(url)  # przywroc
+    entry.refresh_from_db()
+    assert entry.skipped is False
+
+
+@pytest.mark.django_db
+def test_batch_entry_skip_refuses_imported(client, operator):
+    client.force_login(operator)
+    batch = baker.make(MultipleWorksImport, provider_name="BibTeX")
+    done = baker.make(ImportSession, status=ImportSession.Status.COMPLETED)
+    entry = baker.make(MultipleWorksImportEntry, parent=batch, order=0, session=done)
+    resp = client.post(
+        reverse("importer_publikacji:batch-entry-skip", kwargs={"entry_id": entry.pk})
+    )
+    entry.refresh_from_db()
+    assert entry.skipped is False  # niezmienione
+    assert resp.status_code in (302, 400)

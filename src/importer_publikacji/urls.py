@@ -133,6 +133,11 @@ urlpatterns = [
         name="batch-entry-import",
     ),
     path(
+        "batch/entry/<int:entry_id>/skip/",
+        views.BatchEntrySkipView.as_view(),
+        name="batch-entry-skip",
+    ),
+    path(
         "task-status/<int:session_id>/",
         ImportTaskStatusView.as_view(),
         name="task-status",

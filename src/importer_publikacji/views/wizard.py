@@ -26,6 +26,7 @@ from ..forms import (
     VerifyForm,
 )
 from ..models import (
+    EntryStatus,
     ImportedAuthor,
     ImportSession,
     MultipleWorksImport,
@@ -270,6 +271,22 @@ class BatchEntryImportView(ImporterPermissionMixin, View):
         url = reverse(
             "importer_publikacji:task-status",
             kwargs={"session_id": session.pk},
+        )
+        return HttpResponseRedirect(url)
+
+
+class BatchEntrySkipView(ImporterPermissionMixin, View):
+    """Pomiń lub przywróć wpis paczki (toggle)."""
+
+    def post(self, request, entry_id):
+        entry = get_object_or_404(MultipleWorksImportEntry, pk=entry_id)
+        if entry.status == EntryStatus.IMPORTED:
+            return HttpResponseBadRequest("Nie można pominąć zaimportowanego wpisu.")
+        entry.skipped = not entry.skipped
+        entry.save(update_fields=["skipped"])
+        url = reverse(
+            "importer_publikacji:batch-detail",
+            kwargs={"batch_id": entry.parent_id},
         )
         return HttpResponseRedirect(url)
 
