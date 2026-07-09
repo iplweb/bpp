@@ -184,7 +184,24 @@ def test_batch_entry_skip_refuses_imported(client, operator):
     )
     entry.refresh_from_db()
     assert entry.skipped is False  # niezmienione
-    assert resp.status_code in (302, 400)
+    assert resp.status_code == 400
+
+
+@pytest.mark.django_db
+def test_batch_entry_import_refuses_completed(client, operator):
+    client.force_login(operator)
+    batch = baker.make(MultipleWorksImport, provider_name="BibTeX")
+    done = baker.make(ImportSession, status=ImportSession.Status.COMPLETED)
+    entry = baker.make(MultipleWorksImportEntry, parent=batch, order=0, session=done)
+    resp = client.post(
+        reverse("importer_publikacji:batch-entry-import", kwargs={"entry_id": entry.pk})
+    )
+    entry.refresh_from_db()
+    # Nie powstala nowa sesja, entry.session bez zmian, redirect na done.
+    assert ImportSession.objects.count() == 1
+    assert entry.session == done
+    assert resp.status_code == 302
+    assert resp["Location"] == done.get_continue_url()
 
 
 @pytest.mark.django_db

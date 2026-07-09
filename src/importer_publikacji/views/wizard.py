@@ -259,6 +259,11 @@ class BatchEntryImportView(ImporterPermissionMixin, View):
 
     def post(self, request, entry_id):
         entry = get_object_or_404(MultipleWorksImportEntry, pk=entry_id)
+        if entry.status == EntryStatus.IMPORTED:
+            # Wpis juz zaimportowany — nie startuj kolejnej sesji (defense
+            # przed stalym formularzem "Importuj" w drugiej karcie albo
+            # powtorzonym POST-em), tylko odesle do gotowej strony wpisu.
+            return HttpResponseRedirect(entry.session.get_continue_url())
         if entry.parse_error:
             return HttpResponseBadRequest("Wpis uszkodzony — nie można zaimportować.")
         session = entry.session
