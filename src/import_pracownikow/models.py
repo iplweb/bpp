@@ -8,6 +8,7 @@ from django.db import DataError, IntegrityError, models, transaction
 from django.db.models import JSONField, Q
 from django.db.models.expressions import RawSQL
 from django.utils import timezone
+from liveops.models import LiveOperation
 
 from bpp.models import (
     Autor,
@@ -39,9 +40,6 @@ from import_common.normalization import (
     normalize_nullboleanfield,
     normalize_wymiar_etatu,
 )
-from import_common.util import XLSImportFile
-from long_running.models import Operation
-from long_running.notification_mixins import ASGINotificationMixin
 
 
 class JednostkaForm(forms.Form):
@@ -67,17 +65,41 @@ class AutorForm(forms.Form):
     wymiar_etatu = forms.CharField(max_length=200)
 
 
-class ImportPracownikow(ASGINotificationMixin, Operation):
+class ImportPracownikow(LiveOperation):
+    STAN_UTWORZONY = "utworzony"
+    STAN_PRZEANALIZOWANY = "przeanalizowany"
+    STAN_ZATWIERDZONY = "zatwierdzony"
+    STAN_ZINTEGROWANY = "zintegrowany"
+    STAN_PORZUCONY = "porzucony"
+    STAN_CHOICES = [
+        (STAN_UTWORZONY, "utworzony"),
+        (STAN_PRZEANALIZOWANY, "przeanalizowany (dry-run gotowy)"),
+        (STAN_ZATWIERDZONY, "zatwierdzony do zapisu"),
+        (STAN_ZINTEGROWANY, "zintegrowany"),
+        (STAN_PORZUCONY, "porzucony"),
+    ]
+
     plik_xls = models.FileField(upload_to="protected/import_pracownikow/")
+    stan = models.CharField(max_length=20, choices=STAN_CHOICES, default=STAN_UTWORZONY)
 
-    performed = models.BooleanField(default=False)
-    integrated = models.BooleanField(default=False)
+    stages = ["Wczytywanie", "Integracja"]
 
-    @transaction.atomic
-    def on_reset(self):
-        self.performed = self.integrated = False
-        self.importpracownikowrow_set.all().delete()
-        self.save()
+    def run(self, p):
+        if self.stan == self.STAN_UTWORZONY:
+            from import_pracownikow.pipeline.analyze import analizuj
+
+            analizuj(self, p)
+        elif self.stan == self.STAN_ZATWIERDZONY:
+            from import_pracownikow.pipeline.integrate import integruj
+
+            integruj(self, p)
+        else:
+            p.log(f"run() w nieoczekiwanym stanie: {self.stan!r} — pomijam")
+
+    def on_restart(self):
+        # kasujemy wiersze TYLKO przy ponownej analizie (stan cofnięty do utworzony)
+        if self.stan == self.STAN_UTWORZONY:
+            self.importpracownikowrow_set.all().delete()
 
     def _matchuj_jednostke(self, elem):
         """Waliduje i matchuje jednostkę z danych XLS."""
@@ -234,22 +256,6 @@ class ImportPracownikow(ASGINotificationMixin, Operation):
         res.zmiany_potrzebne = res.check_if_integration_needed()
         res.save()
 
-    def perform(self):
-        xif = XLSImportFile(self.plik_xls.path)
-        total = xif.count()
-
-        for no, elem in enumerate(xif.data()):
-            self._przetworz_wiersz(elem)
-            if no % 10 == 0:
-                self.send_progress(no / total / 2.0)
-
-        self.performed = True
-        self.save()
-
-        self.integrate()
-        self.integrated = True
-        self.save()
-
     @property
     def zmiany_potrzebne_set(self):
         return self.importpracownikowrow_set.filter(zmiany_potrzebne=True)
@@ -314,19 +320,6 @@ class ImportPracownikow(ASGINotificationMixin, Operation):
             elem.save()
 
             elem.refresh_from_db()
-
-    def on_finished(self):
-        self.send_processing_finished()
-
-    def integrate(self):
-        total = self.zmiany_potrzebne_set.all().count()
-        for no, elem in enumerate(
-            self.zmiany_potrzebne_set.all().select_related(
-                "autor", "jednostka", "jednostka__wydzial", "autor__tytul"
-            )
-        ):
-            elem.integrate()
-            self.send_progress(0.5 + (no / total / 2.0))
 
 
 class ImportPracownikowRow(ImportRowMixin, models.Model):
