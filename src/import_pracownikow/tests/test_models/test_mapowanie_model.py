@@ -59,7 +59,7 @@ def test_jednostkaform_wydzial_opcjonalny():
 def test_naglowki_i_probka(admin_user):
     csv = (
         "Nazwisko;Imię;Nazwa jednostki\nKowalski;Jan;Katedra\nNowak;Ewa;Zakład\n"
-    ).encode("utf-8")
+    ).encode()
     imp = ImportPracownikow(owner=admin_user)
     imp.plik_xls = SimpleUploadedFile("p.csv", csv)
     imp.save()
