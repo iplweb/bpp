@@ -123,6 +123,11 @@ urlpatterns = [
         name="cancel",
     ),
     path(
+        "batch/<int:batch_id>/",
+        views.MultipleWorksImportDetailView.as_view(),
+        name="batch-detail",
+    ),
+    path(
         "task-status/<int:session_id>/",
         ImportTaskStatusView.as_view(),
         name="task-status",

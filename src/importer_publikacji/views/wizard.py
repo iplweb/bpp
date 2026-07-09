@@ -25,7 +25,12 @@ from ..forms import (
     SourceForm,
     VerifyForm,
 )
-from ..models import ImportedAuthor, ImportSession
+from ..models import (
+    ImportedAuthor,
+    ImportSession,
+    MultipleWorksImport,
+    MultipleWorksImportEntry,
+)
 from ..permissions import ImporterPermissionMixin
 from ..providers import InputMode, get_provider
 from ..tasks import create_publication_task, fetch_session_task
@@ -95,6 +100,59 @@ class IndexView(ImporterPermissionMixin, View):
         return _render_full_page(request, STEP_FETCH, ctx)
 
 
+def _hx_or_redirect(request, url):
+    """Zwróć ``HX-Redirect`` dla żądań HTMX, w przeciwnym razie zwykły 302."""
+    if request.headers.get("HX-Request"):
+        response = HttpResponse(status=200)
+        response["HX-Redirect"] = url
+        return response
+    return HttpResponseRedirect(url)
+
+
+def _create_batch(request, provider_name, normalized, records):
+    """Utwórz ``MultipleWorksImport`` + wszystkie jego wpisy naraz."""
+    batch = MultipleWorksImport.objects.create(
+        created_by=request.user,
+        provider_name=provider_name,
+        raw_input=normalized,
+    )
+    MultipleWorksImportEntry.objects.bulk_create(
+        [
+            MultipleWorksImportEntry(
+                parent=batch,
+                order=i,
+                raw_bibtex=rec.raw,
+                title=rec.title,
+                parse_error="" if rec.ok else rec.error,
+            )
+            for i, rec in enumerate(records)
+        ]
+    )
+    return batch
+
+
+def _start_import_session(request, provider_name, identifier):
+    """Utwórz sesję importu (FETCHING) + wystartuj task fetch.
+
+    BEZ guardu double-click po ``identifier`` — używane też przez import
+    pojedynczego wpisu paczki, gdzie duplikaty wpisów są dozwolone, a przed
+    podwójnym startem chroni ``entry.session`` po stronie wołającego.
+    """
+    session = ImportSession.objects.create(
+        created_by=request.user,
+        uczelnia=Uczelnia.objects.get_for_request(request),
+        provider_name=provider_name,
+        identifier=identifier,
+        status=ImportSession.Status.FETCHING,
+        raw_data={},
+        normalized_data={},
+    )
+    task = fetch_session_task.delay(session.pk, request.user.pk)
+    session.celery_task_id = task.id
+    session.save(update_fields=["celery_task_id"])
+    return session
+
+
 class FetchView(ImporterPermissionMixin, View):
     """Walidacja identyfikatora + utworzenie sesji + enqueue Celery task-a."""
 
@@ -126,6 +184,18 @@ class FetchView(ImporterPermissionMixin, View):
             form.add_error(error_field, msg)
             return render(request, STEP_FETCH, _fetch_context(form))
 
+        # Wielo-rekordowe wejście (BibTeX z ≥2 wpisami) → paczka, nie
+        # pojedyncza sesja. Pojedyncze sesje powstają leniwie przy
+        # imporcie wpisu.
+        records = provider.split_input(normalized)
+        if len(records) >= 2:
+            batch = _create_batch(request, provider_name, normalized, records)
+            url = reverse(
+                "importer_publikacji:batch-detail",
+                kwargs={"batch_id": batch.pk},
+            )
+            return _hx_or_redirect(request, url)
+
         # Idempotency (C2): jesli juz jest sesja in-flight tego samego usera
         # dla tego samego (provider, identifier), nie startuj kolejnej —
         # zredirectuj do istniejacej. Defense przed double-click i refresh.
@@ -143,36 +213,28 @@ class FetchView(ImporterPermissionMixin, View):
             .first()
         )
         if recent_in_flight is not None:
-            url = recent_in_flight.get_continue_url()
-            if request.headers.get("HX-Request"):
-                response = HttpResponse(status=200)
-                response["HX-Redirect"] = url
-                return response
-            return HttpResponseRedirect(url)
+            return _hx_or_redirect(request, recent_in_flight.get_continue_url())
 
-        session = ImportSession.objects.create(
-            created_by=request.user,
-            uczelnia=Uczelnia.objects.get_for_request(request),
-            provider_name=provider_name,
-            identifier=normalized,
-            status=ImportSession.Status.FETCHING,
-            raw_data={},
-            normalized_data={},
-        )
-
-        task = fetch_session_task.delay(session.pk, request.user.pk)
-        session.celery_task_id = task.id
-        session.save(update_fields=["celery_task_id"])
+        session = _start_import_session(request, provider_name, normalized)
 
         url = reverse(
             "importer_publikacji:task-status",
             kwargs={"session_id": session.pk},
         )
-        if request.headers.get("HX-Request"):
-            response = HttpResponse(status=200)
-            response["HX-Redirect"] = url
-            return response
-        return HttpResponseRedirect(url)
+        return _hx_or_redirect(request, url)
+
+
+class MultipleWorksImportDetailView(ImporterPermissionMixin, View):
+    """Szczegóły paczki wielo-wpisowego importu.
+
+    Tymczasowy, minimalny widok — Task 5 zastąpi go pełnym renderem
+    (lista wpisów, postęp, akcje per wpis). Tu wystarczy, żeby route
+    było rozwiązywalne dla ``FetchView.post`` fan-out.
+    """
+
+    def get(self, request, batch_id):
+        batch = get_object_or_404(MultipleWorksImport, pk=batch_id)
+        return HttpResponse(f"batch {batch.pk}")  # Task 5 zastąpi renderem
 
 
 class VerifyView(ImporterPermissionMixin, View):
