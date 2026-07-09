@@ -88,10 +88,11 @@ wszystkiego od nowa — decyzje usera muszą przeżyć. To wywraca `on_restart()
   `_try_match_autor_with_orcid_or_tytul`), które potrafią zwrócić autora także
   poniżej progu / przy ambiguity. Dlatego **status pewności (§8) liczymy WPROST z
   `znajdz_kandydatow_autora`**, nie z wyniku `matchuj_autora` (poza ścieżką po ID).
-  `znajdz_kandydatow_autora(imiona, nazwisko)` przyjmuje **tylko** te dwa argumenty
-  (oba niepuste wymagane) i zwraca listę `KandydatAutora` **posortowaną malejąco po
-  `pewnosc`**; jednostka/tytuł NIE wpływają na `pewnosc` (są tie-breakerami dopiero
-  w `matchuj_autora`). Dodatkowo `importer_publikacji` ma **model**
+  `znajdz_kandydatow_autora(imiona, nazwisko, *, max_wyniki=10)` — przy pustym
+  `imiona`/`nazwisko` zwraca **`[]` (bez wyjątku)**, inaczej listę `KandydatAutora`
+  (dataclass z polem `.pewnosc`) **posortowaną malejąco po `pewnosc`**;
+  jednostka/tytuł NIE wpływają na `pewnosc` (są tie-breakerami dopiero w
+  `matchuj_autora`). Dodatkowo `importer_publikacji` ma **model**
   `ImportedAuthor_Candidate` (migr. `0009`, nie „pole `candidate`") jako wzorzec UI
   wyboru kandydata. **Wskaźnik pewności §8 mapuje się na te istniejące progi**, nie
   buduje równoległej skali.
@@ -283,8 +284,8 @@ Po uploadzie widok **synchronicznie** czyta nagłówek + ~10 wierszy próbki
   `wymiar_etatu` (`tytuł_stopień` jest już dziś `required=False`). To zmiana
   względem obecnej sztywnej walidacji — §13 obiecuje łykanie plików z brakami.
   Skutki braku:
-  - brak `tytuł` → słabsza dezambiguacja przy statusie `wielu` (tytuł jest
-    tie-breakerem, nie składnikiem `pewnosc` — §8); nie blokuje;
+  - brak `tytuł` → słabsza preselekcja/sortowanie kandydatów w dropdownie statusu
+    `wielu` (tytuł jest tie-breakerem, nie składnikiem `pewnosc` — §8); nie blokuje;
   - brak pola `Autor_Jednostka` (stanowisko/grupa/wymiar/daty) → w fazie integracji
     **nie nadpisujemy** tego pola (ustawiamy tylko to, co w pliku jest) — spójne z
     obecnym `_integrate_autor_jednostka`, które i tak sprawdza `is not None`.
@@ -347,9 +348,10 @@ tańsza, testowalna i wystarczająca przy plikach rzędu setek wierszy.
 ## 8. Matchowanie autora + wskaźnik pewności (D4, D5)
 
 Identyfikacja osoby idzie przez `znajdz_kandydatow_autora(imiona, nazwisko)`
-(imię+nazwisko, oba wymagane niepuste); **jednostka i tytuł to dezambiguatory**
-statusu `wielu` (zawężają listę kandydatów), NIE składniki `pewnosc`. Jeśli plik ma
-ID (numer kadrowy / ORCID / PBN / bpp_id) — osobna, priorytetowa ścieżka po ID. ID
+(imię+nazwisko; puste → `[]`, bez wyjątku); **jednostka i tytuł służą wyłącznie do
+preselekcji/sortowania kandydatów w dropdownie** statusu `wielu` — NIE zmieniają ani
+statusu, ani `pewnosc`, ani nie redukują remisu do `twardy`. Jeśli plik ma ID
+(numer kadrowy / ORCID / PBN / bpp_id) — osobna, priorytetowa ścieżka po ID. ID
 **nieobowiązkowe**.
 
 Każdy wiersz dostaje **status pewności** zapisany na `ImportPracownikowRow`,
@@ -360,7 +362,7 @@ liczony WPROST z listy kandydatów (posortowanej malejąco po `pewnosc`, §2). N
 |--------|------------------------------------------------------|-----|
 | 🟢 `twardy` | match po ID jednoznaczny, LUB `top_tier` ma **dokładnie 1** kandydata z `pewnosc == PEWNOSC_IEXACT` (1.0) | zielony |
 | 🟡 `zgadywanie` | `top_tier` ma **dokładnie 1** kandydata z `PEWNOSC_MIN_AUTOMATYCZNA (0.85) <= pewnosc < 1.0` | żółty, podświetlony |
-| 🔵 `wielu` | `top_tier` ma **≥2** kandydatów (po dezambiguacji jednostką/tytułem), LUB najlepszy `pewnosc < PEWNOSC_MIN_AUTOMATYCZNA` (np. `INICJAL` 0.5) | dropdown wyboru |
+| 🔵 `wielu` | `top_tier` ma **≥2** kandydatów, LUB najlepszy `pewnosc < PEWNOSC_MIN_AUTOMATYCZNA` (np. `INICJAL` 0.5) | dropdown (kandydaci preselekcjonowani/sortowani jednostką+tytułem) |
 | ⚪ `brak` | `znajdz_kandydatow_autora` zwraca pustą listę (lub brak imienia/nazwiska po rozbiciu) | checkbox „utwórz nowego autora" (D2) |
 
 Reguła „czystego zwycięzcy": status `twardy`/`zgadywanie` wymaga **jednego**
@@ -427,7 +429,9 @@ Wykonanie (zakończenie zatrudnienia = wczoraj, `podstawowe_miejsce_pracy=False`
 - **Ekstrakcja logiki** z `przemapuj_prace_autora/views.py`
   (`_wykonaj_przemapowanie`, ok. linii 124) → `przemapuj_prace_autora/service.py`:
   `przemapuj(autor, jednostka_z, jednostka_do, user) -> PrzemapoaniePracAutora`
-  (bez `request`, bez `messages`). Widok i import wołają to samo.
+  (bez `request`, bez `messages`). Widok i import wołają to samo. (Nazwa
+  `PrzemapoaniePracAutora` — sic, literówka z istniejącego kodu; NIE „poprawiać",
+  bo rozjedzie się z modelem/migracjami.)
 - **Zakres** (D7): tylko prace afiliowane do **starej** jednostki
   (`filter(autor=..., jednostka=jednostka_z).update(jednostka=jednostka_do)`) —
   wszystkie, niezależnie od roku. „Wszystkie prace autora" byłoby pułapką (drugi
@@ -508,6 +512,8 @@ src/import_pracownikow/
   pipeline/
     analyze.py         # faza 1: źródło → normalize → match → Row  (dostaje p)
     integrate.py       # faza 2: Row.integrate + odpięcia + przepięcia (dostaje p)
+  management/commands/
+    usun_stare_pliki_importu_pracownikow.py  # DD1: housekeeping (cron), Faza 0
   tests/               # per moduł: test_parsers_osoba (tabelaryczne!),
                        #   test_mapping, test_sources_csv, test_pipeline_analyze,
                        #   test_pipeline_integrate, test_views, test_migracja_liveops
@@ -628,6 +634,11 @@ Duży zakres → plan w fazach, każda dowozalna i testowalna osobno:
   (słowniki funkcja/grupa/wymiar + `Autor_Jednostka`) do fazy commit — to warunek
   prawdziwego dry-run (§8) — oraz robimy migrację `null=True` na sześciu FK
   `ImportPracownikowRow` (§8) + pola `diff_do_utworzenia`, `pominiety_bo_nieaktualny`.
+  **`on_restart` w Fazie 0**: analogiem `zmapowany` jest `utworzony` — ponowna
+  analiza = widok cofa `stan="utworzony"` przed `super().post()`, a `on_restart()`
+  kasuje wiersze dla stanu `utworzony`; przy `zatwierdzony` nie kasuje (jak §4).
+  Widok Create realizuje też ostrzeżenie DD2 (niezatwierdzony import w
+  `przeanalizowany`), a Faza 0 dostarcza management command housekeepingu (DD1).
   To domyka „dry-run + zapis później" niezależnie od reszty faz.
 - **Faza 1** — warstwa źródeł CSV + XLSX (`TabularSource`) + refaktor fuzzy-header
   (§5).
