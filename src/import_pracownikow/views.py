@@ -2,7 +2,7 @@
 
 from braces.views import GroupRequiredMixin
 from django.contrib import messages
-from django.db.models import Q
+from django.db.models import Case, IntegerField, Prefetch, Q, Value, When
 from django.http import Http404, HttpResponseBadRequest, HttpResponseRedirect
 from django.shortcuts import get_object_or_404, render
 from django.urls import reverse
@@ -368,7 +368,29 @@ class ImportPracownikowResultsView(GroupRequiredMixin, ListView):
         return obj
 
     def get_queryset(self):
-        return self.parent_object.get_details_set()
+        # non-twardy (do rozstrzygnięcia) na górę, potem kolejność z pliku.
+        # G5: prefetch kandydatów Z AUTOREM — partial dla wierszy `wielu` iteruje
+        # row.kandydaci.all i czyta k.autor per opcja dropdownu; bez tego N+1
+        # (setki zapytań przy dużych plikach).
+        return (
+            self.parent_object.get_details_set()
+            .annotate(
+                _prio=Case(
+                    When(confidence=STATUS_TWARDY, then=Value(1)),
+                    default=Value(0),
+                    output_field=IntegerField(),
+                )
+            )
+            .prefetch_related(
+                Prefetch(
+                    "kandydaci",
+                    queryset=ImportPracownikowRowKandydat.objects.select_related(
+                        "autor"
+                    ),
+                )
+            )
+            .order_by("_prio", "nr_arkusza", "nr_wiersza")
+        )
 
     def autorzy_spoza_pliku(self):
         uczelnia = Uczelnia.objects.get_for_request(self.request)
