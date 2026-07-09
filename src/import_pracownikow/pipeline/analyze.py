@@ -37,6 +37,8 @@ from import_pracownikow.models import (
     ImportPracownikowRow,
     JednostkaForm,
 )
+from import_pracownikow.parsers.leksykony import zbuduj_parser_kontekst
+from import_pracownikow.parsers.osoba import rozbij_osobe
 from import_pracownikow.parsers.wartosci import normalizuj_wartosci_wiersza
 
 
@@ -74,8 +76,43 @@ def _matchuj_jednostke_lub_wyjatek(elem, jednostka_form):
         ) from None
 
 
-def _przetworz_wiersz(parent, elem):
+def _dane_znormalizowane_z_parserem(cleaned_data, rozbicie):
+    """Kopia cleaned_data wzbogacona o pewność rozbicia parsera (§7): confidence
+    rozbicia (high/medium/low) i alternatywy trzymamy WEWNĄTRZ JSON, nie w
+    kolumnie ``confidence`` (ta jest statusem dopasowania AUTORA — §8)."""
+    dane = copy(cleaned_data)
+    if rozbicie is not None:
+        dane["parser_confidence"] = rozbicie.confidence
+        dane["parser_alternatywy"] = rozbicie.alternatywy
+    return dane
+
+
+def _rozbij_osoba_sklejona(dane_form, parser_ctx):
+    """Gdy jest ``parser_ctx`` i wiersz ma ``osoba_sklejona``, rozbija ją
+    parserem (§7) i zasila brakujące imię/nazwisko/tytuł w ``dane_form``
+    in-place. Zwraca wynik rozbicia (do zapisania confidence/alternatywy w
+    ``dane_znormalizowane``) albo ``None``, gdy rozbicie nie zaszło."""
+    if parser_ctx is None or not dane_form.get("osoba_sklejona"):
+        return None
+    rozbicie = rozbij_osobe(
+        str(dane_form["osoba_sklejona"]),
+        tytuly=parser_ctx.tytuly,
+        imiona_znane=parser_ctx.imiona_znane,
+        probuj_match=parser_ctx.probuj_match,
+    )
+    if not dane_form.get("nazwisko"):
+        dane_form["nazwisko"] = rozbicie.nazwisko
+    if not dane_form.get("imię"):
+        dane_form["imię"] = rozbicie.imiona
+    if rozbicie.tytul and not dane_form.get("tytuł_stopień"):
+        dane_form["tytuł_stopień"] = rozbicie.tytul
+    return rozbicie
+
+
+def _przetworz_wiersz(parent, elem, parser_ctx=None):
     dane_form = normalizuj_wartosci_wiersza(elem)
+    rozbicie = _rozbij_osoba_sklejona(dane_form, parser_ctx)
+
     jednostka_form = JednostkaForm(data=dane_form)
     jednostka_form.full_clean()
     if not jednostka_form.is_valid():
@@ -148,7 +185,9 @@ def _przetworz_wiersz(parent, elem):
     row = ImportPracownikowRow(
         parent=parent,
         dane_z_xls=elem,
-        dane_znormalizowane=copy(autor_form.cleaned_data),
+        dane_znormalizowane=_dane_znormalizowane_z_parserem(
+            autor_form.cleaned_data, rozbicie
+        ),
         autor=autor,
         jednostka=jednostka,
         autor_jednostka=aj,
@@ -184,10 +223,11 @@ def analizuj(parent, p):
         raise ValueError("Plik nie zawiera danych do importu (0 wierszy).")
 
     mapowanie = parent.mapowanie_kolumn or {}
+    parser_ctx = zbuduj_parser_kontekst()
     for elem in p.track(list(zrodlo.data()), total=total, label="Wczytywanie"):
         if mapowanie:
             elem = remapuj_wiersz(elem, mapowanie)
-        _przetworz_wiersz(parent, elem)
+        _przetworz_wiersz(parent, elem, parser_ctx)
 
     parent.stan = ImportPracownikow.STAN_PRZEANALIZOWANY
     parent.save(update_fields=["stan"])
