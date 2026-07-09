@@ -237,6 +237,39 @@ class MultipleWorksImportDetailView(ImporterPermissionMixin, View):
         return HttpResponse(f"batch {batch.pk}")  # Task 5 zastąpi renderem
 
 
+class BatchEntryImportView(ImporterPermissionMixin, View):
+    """Wystartuj import pojedynczego wpisu paczki (leniwy drip)."""
+
+    _INFLIGHT = (
+        ImportSession.Status.COMPLETED,
+        ImportSession.Status.IMPORT_FAILED,
+        ImportSession.Status.CANCELLED,
+    )
+
+    def post(self, request, entry_id):
+        entry = get_object_or_404(MultipleWorksImportEntry, pk=entry_id)
+        if entry.parse_error:
+            return HttpResponseBadRequest("Wpis uszkodzony — nie można zaimportować.")
+        session = entry.session
+        if (
+            session is not None
+            and session.status not in self._INFLIGHT
+            and not session.is_stalled()
+        ):
+            # Juz sie importuje — nie startuj drugiej sesji (defense double-click).
+            return HttpResponseRedirect(session.get_continue_url())
+        session = _start_import_session(
+            request, entry.parent.provider_name, entry.raw_bibtex
+        )
+        entry.session = session
+        entry.save(update_fields=["session"])
+        url = reverse(
+            "importer_publikacji:task-status",
+            kwargs={"session_id": session.pk},
+        )
+        return HttpResponseRedirect(url)
+
+
 class VerifyView(ImporterPermissionMixin, View):
     """Weryfikacja typu publikacji i duplikatów."""
 

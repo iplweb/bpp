@@ -128,6 +128,11 @@ urlpatterns = [
         name="batch-detail",
     ),
     path(
+        "batch/entry/<int:entry_id>/import/",
+        views.BatchEntryImportView.as_view(),
+        name="batch-entry-import",
+    ),
+    path(
         "task-status/<int:session_id>/",
         ImportTaskStatusView.as_view(),
         name="task-status",
