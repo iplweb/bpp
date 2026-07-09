@@ -164,7 +164,11 @@ def _przetworz_wiersz(parent, elem):
     # Gdy AJ jeszcze nie istnieje, integracja i tak je utworzy — traktujemy
     # wiersz jako wymagający zmian. Gdy istnieje, liczymy normalnie.
     if aj is not None:
-        row.zmiany_potrzebne = row.check_if_integration_needed()
+        # bool(diff): wiersz z odroczonym create'em słownika (stanowisko/
+        # grupa/wymiar nieistniejące w bazie) MUSI trafić do integracji,
+        # nawet gdy guard is-not-None wyzerował check (funkcja_autora=None
+        # w analizie).
+        row.zmiany_potrzebne = bool(diff) or row.check_if_integration_needed()
     else:
         row.zmiany_potrzebne = True
     row.save()

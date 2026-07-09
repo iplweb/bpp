@@ -26,7 +26,7 @@ from import_common.models import ImportRowMixin
 
 class JednostkaForm(forms.Form):
     nazwa_jednostki = forms.CharField(max_length=10240)
-    wydział = forms.CharField(max_length=500)
+    wydział = forms.CharField(max_length=500, required=False)
 
 
 class AutorForm(forms.Form):
@@ -39,12 +39,12 @@ class AutorForm(forms.Form):
     pbn_uuid = forms.CharField(required=False, max_length=24, min_length=24)
     bpp_id = forms.IntegerField(required=False)
 
-    stanowisko = forms.CharField(max_length=200)
-    grupa_pracownicza = forms.CharField(max_length=200)
-    data_zatrudnienia = ExcelDateField()
+    stanowisko = forms.CharField(max_length=200, required=False)
+    grupa_pracownicza = forms.CharField(max_length=200, required=False)
+    data_zatrudnienia = ExcelDateField(required=False)
     data_końca_zatrudnienia = ExcelDateField(required=False)
     podstawowe_miejsce_pracy = forms.BooleanField(required=False)
-    wymiar_etatu = forms.CharField(max_length=200)
+    wymiar_etatu = forms.CharField(max_length=200, required=False)
 
 
 class ImportPracownikow(LiveOperation):
@@ -85,6 +85,33 @@ class ImportPracownikow(LiveOperation):
         # kasujemy wiersze TYLKO przy ponownej analizie (stan cofnięty do utworzony)
         if self.stan == self.STAN_UTWORZONY:
             self.importpracownikowrow_set.all().delete()
+
+    def naglowki_i_probka(self, limit=10):
+        """Synchronicznie (bez liveops) czyta znormalizowane nagłówki i do
+        ``limit`` wierszy próbki — na ekran mapowania. Nagłówki = klucze
+        wiersza bez kluczy lokalizacyjnych. Używa ``TRY_NAMES``/``MIN_POINTS``
+        z ``mapping`` (rozpoznaje przemianowane kolumny — patrz T2). Może
+        rzucić ``HeaderNotFoundException`` (plik bez rozpoznawalnego
+        nagłówka) — widok (T8) łapie to i pokazuje komunikat, nie 500."""
+        from import_common.sources import otworz_zrodlo
+        from import_pracownikow.mapping import MIN_POINTS, TRY_NAMES
+
+        zrodlo = otworz_zrodlo(
+            self.plik_xls.path, try_names=TRY_NAMES, min_points=MIN_POINTS
+        )
+        probka = []
+        naglowki = []
+        for i, wiersz in enumerate(zrodlo.data()):
+            if i == 0:
+                naglowki = [
+                    k
+                    for k in wiersz.keys()
+                    if k not in ("__xls_loc_sheet__", "__xls_loc_row__")
+                ]
+            if i >= limit:
+                break
+            probka.append(wiersz)
+        return naglowki, probka
 
     @property
     def zmiany_potrzebne_set(self):
@@ -223,10 +250,12 @@ class ImportPracownikowRow(ImportRowMixin, models.Model):
             and aj.rozpoczal_prace != dane["data_zatrudnienia"],
             dane.get("data_końca_zatrudnienia") is not None
             and aj.zakonczyl_prace != dane["data_końca_zatrudnienia"],
-            aj.funkcja != self.funkcja_autora,
-            aj.grupa_pracownicza != self.grupa_pracownicza,
-            aj.wymiar_etatu != self.wymiar_etatu,
-            self.podstawowe_miejsce_pracy != aj.podstawowe_miejsce_pracy,
+            self.funkcja_autora is not None and aj.funkcja != self.funkcja_autora,
+            self.grupa_pracownicza is not None
+            and aj.grupa_pracownicza != self.grupa_pracownicza,
+            self.wymiar_etatu is not None and aj.wymiar_etatu != self.wymiar_etatu,
+            self.podstawowe_miejsce_pracy is not None
+            and self.podstawowe_miejsce_pracy != aj.podstawowe_miejsce_pracy,
         ]
         return any(checks)
 
@@ -289,25 +318,31 @@ class ImportPracownikowRow(ImportRowMixin, models.Model):
                 f"data końca zatrudnienia na {dane['data_końca_zatrudnienia']}"
             )
 
-        if aj.funkcja != self.funkcja_autora:
+        if self.funkcja_autora is not None and aj.funkcja != self.funkcja_autora:
             aj.funkcja = self.funkcja_autora
             self.log_zmian["autor_jednostka"].append(
                 f"funkcja na {self.funkcja_autora}"
             )
 
-        if aj.grupa_pracownicza != self.grupa_pracownicza:
+        if (
+            self.grupa_pracownicza is not None
+            and aj.grupa_pracownicza != self.grupa_pracownicza
+        ):
             aj.grupa_pracownicza = self.grupa_pracownicza
             self.log_zmian["autor_jednostka"].append(
                 f"grupa_pracownicza na {self.grupa_pracownicza}"
             )
 
-        if aj.wymiar_etatu != self.wymiar_etatu:
+        if self.wymiar_etatu is not None and aj.wymiar_etatu != self.wymiar_etatu:
             aj.wymiar_etatu = self.wymiar_etatu
             self.log_zmian["autor_jednostka"].append(
                 f"wymiar_etatu na {self.wymiar_etatu}"
             )
 
-        if self.podstawowe_miejsce_pracy != aj.podstawowe_miejsce_pracy:
+        if (
+            self.podstawowe_miejsce_pracy is not None
+            and self.podstawowe_miejsce_pracy != aj.podstawowe_miejsce_pracy
+        ):
             if not self.podstawowe_miejsce_pracy:
                 aj.podstawowe_miejsce_pracy = False
                 self.log_zmian["autor_jednostka"].append(
