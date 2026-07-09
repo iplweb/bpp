@@ -42,4 +42,9 @@ urlpatterns = [
         views.EdytujWierszView.as_view(),
         name="edytuj-wiersz",
     ),
+    path(
+        "<uuid:pk>/odpiecie/<int:odp_pk>/przelacz/",
+        views.PrzelaczOdpiecieView.as_view(),
+        name="przelacz-odpiecie",
+    ),
 ]

@@ -19,6 +19,7 @@ from import_pracownikow.forms import MapowanieForm, NowyImportForm
 from import_pracownikow.mapping import dopasuj_profil
 from import_pracownikow.models import (
     ImportPracownikow,
+    ImportPracownikowOdpiecie,
     ImportPracownikowRow,
     ImportPracownikowRowKandydat,
     ProfilMapowania,
@@ -182,12 +183,14 @@ class MapowanieView(GroupRequiredMixin, FormView):
         return HttpResponseRedirect(obj.get_absolute_url())
 
 
-class _WierszImportuMixin(GroupRequiredMixin, View):
-    """Wspólny fetch wiersza importu: owner/superuser-scoped parent + wiersz.
-    Render partiala do odpowiedzi HTMX."""
+class _ImportPodgladMixin(GroupRequiredMixin, View):
+    """Wspólna bramka podglądu importu (owner/superuser scoping + stan
+    ``przeanalizowany``) dla widoków HTMX modyfikujących decyzje wiersza/odpięcia
+    (Faza 3/4). Wydzielona, żeby scoping i bramka żyły w JEDNYM miejscu —
+    dziedziczą po niej ``_WierszImportuMixin`` (dokłada ``row``/``_render_wiersz``)
+    i ``PrzelaczOdpiecieView`` (dokłada ``odpiecie``)."""
 
     group_required = GROUP_REQUIRED
-    partial_template = "import_pracownikow/partials/_wiersz_preview.html"
 
     @cached_property
     def parent_object(self):
@@ -196,24 +199,32 @@ class _WierszImportuMixin(GroupRequiredMixin, View):
             raise Http404
         return obj
 
-    @cached_property
-    def row(self):
-        return get_object_or_404(
-            ImportPracownikowRow, pk=self.kwargs["row_pk"], parent=self.parent_object
-        )
-
     def _blad_jesli_nie_podglad(self):
-        """G3: wybór/edycja dozwolone WYŁĄCZNIE dla importu w podglądzie
-        (``przeanalizowany``). Bez tej bramki bezpośredni POST (retry HTMX,
-        back-button, wyścig z Zatwierdź) na wierszu importu już `zintegrowanego`
-        nadpisałby audyt ``log_zmian`` po commicie i pozwolił zintegrować drugi
-        raz. Analog `_STANY_MAPOWALNE`/`_STANY` — zintegrowany wykluczony. Zwraca
+        """G3: modyfikacje decyzji (wybór/edycja/odpięcie/utwórz-nowego)
+        dozwolone WYŁĄCZNIE dla importu w podglądzie (``przeanalizowany``). Bez
+        tej bramki bezpośredni POST (retry HTMX, back-button, wyścig z Zatwierdź)
+        na imporcie już `zintegrowanym` nadpisałby audyt ``log_zmian`` po
+        commicie / zmienił decyzję odpięcia po jej wykonaniu. Analog
+        `_STANY_MAPOWALNE` — zintegrowany wykluczony. Zwraca
         ``HttpResponseBadRequest`` (blokada) albo ``None`` (OK)."""
         if self.parent_object.stan != ImportPracownikow.STAN_PRZEANALIZOWANY:
             return HttpResponseBadRequest(
                 "Wiersz można edytować tylko dla importu w podglądzie."
             )
         return None
+
+
+class _WierszImportuMixin(_ImportPodgladMixin):
+    """Wspólny fetch wiersza importu (dokłada ``row`` do bazowej bramki
+    ``_ImportPodgladMixin``). Render partiala do odpowiedzi HTMX."""
+
+    partial_template = "import_pracownikow/partials/_wiersz_preview.html"
+
+    @cached_property
+    def row(self):
+        return get_object_or_404(
+            ImportPracownikowRow, pk=self.kwargs["row_pk"], parent=self.parent_object
+        )
 
     def _render_wiersz(self):
         # Re-pobierz wiersz przez get_details_set(), żeby partial miał adnotacje
@@ -346,6 +357,36 @@ class EdytujWierszView(_WierszImportuMixin):
             return HttpResponseBadRequest("Nazwisko jest wymagane.")
         _rematch_wiersz(row, imiona, nazwisko, tytul)
         return self._render_wiersz()
+
+
+class PrzelaczOdpiecieView(_ImportPodgladMixin):
+    """POST (HTMX): ustaw ``zaznaczone`` odpięcia (§9) z obecności pola
+    ``zaznaczone`` w POST. Owner/superuser-scoped + bramka stanu
+    ``przeanalizowany`` — via ``_ImportPodgladMixin``. Zwraca partial
+    ``_odpiecie_row.html``."""
+
+    partial_template = "import_pracownikow/partials/_odpiecie_row.html"
+
+    @cached_property
+    def odpiecie(self):
+        return get_object_or_404(
+            ImportPracownikowOdpiecie,
+            pk=self.kwargs["odp_pk"],
+            parent=self.parent_object,
+        )
+
+    def post(self, request, *args, **kwargs):
+        blad = self._blad_jesli_nie_podglad()
+        if blad is not None:
+            return blad
+        odp = self.odpiecie
+        odp.zaznaczone = request.POST.get("zaznaczone") is not None
+        odp.save(update_fields=["zaznaczone"])
+        return render(
+            request,
+            self.partial_template,
+            {"odp": odp, "parent_object": self.parent_object},
+        )
 
 
 class ImportPracownikowResultsView(GroupRequiredMixin, ListView):
