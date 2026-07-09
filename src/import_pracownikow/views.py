@@ -80,21 +80,6 @@ _STANY_MAPOWALNE = (
     ImportPracownikow.STAN_PRZEANALIZOWANY,
 )
 
-_POLA_RESET_LIVEOPS = [
-    "finished_on",
-    "started_on",
-    "finished_successfully",
-    "cancelled",
-    "cancel_requested",
-    "traceback",
-    "result_context",
-    "current_stage",
-    "stage_states",
-    "log",
-    "percent",
-    "log_seq",
-]
-
 
 class MapowanieView(GroupRequiredMixin, FormView):
     """Ekran mapowania kolumn. GET: auto-propozycja (lub profil) + próbka.
@@ -165,19 +150,8 @@ class MapowanieView(GroupRequiredMixin, FormView):
         # Reset pól operacji liveops (jak RestartView.post) — inaczej po
         # anulowanym/zakończonym przebiegu enqueue rusza z brudnym stanem
         # (cancel_requested=True → natychmiastowe „cancelled").
-        obj.finished_on = None
-        obj.started_on = None
-        obj.finished_successfully = False
-        obj.cancelled = False
-        obj.cancel_requested = False
-        obj.traceback = None
-        obj.result_context = None
-        obj.current_stage = -1
-        obj.stage_states = {}
-        obj.log = []
-        obj.percent = 0
-        obj.log_seq = 0
-        obj.save(update_fields=["mapowanie_kolumn", "stan"] + _POLA_RESET_LIVEOPS)
+        pola_liveops = obj.reset_liveops_state()
+        obj.save(update_fields=["mapowanie_kolumn", "stan"] + pola_liveops)
 
         if form.cleaned_data.get("zapisz_profil"):
             ProfilMapowania.objects.update_or_create(

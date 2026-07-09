@@ -87,6 +87,46 @@ class ImportPracownikow(LiveOperation):
         if self.stan in (self.STAN_UTWORZONY, self.STAN_ZMAPOWANY):
             self.importpracownikowrow_set.all().delete()
 
+    # Pola operacji liveops zerowane przed (po)ponownym enqueue. Zwierciadło
+    # ``RestartView.post`` (liveops inline'uje ten reset, nie wystawia go jako
+    # metody) — jedyne miejsce w naszym kodzie, gdzie ta lista żyje, więc
+    # ``MapowanieView`` (FormView, nie może dziedziczyć po RestartView) nie
+    # trzyma własnej kopii i nie zdryfuje.
+    _POLA_LIVEOPS_RESET = (
+        "finished_on",
+        "started_on",
+        "finished_successfully",
+        "cancelled",
+        "cancel_requested",
+        "traceback",
+        "result_context",
+        "current_stage",
+        "stage_states",
+        "log",
+        "percent",
+        "log_seq",
+    )
+
+    def reset_liveops_state(self):
+        """Zeruje pola stanu operacji liveops (jak ``RestartView.post``), tak
+        by kolejny ``enqueue()`` wystartował z czystym przebiegiem — inaczej
+        ``cancel_requested=True`` po anulowanym runie natychmiast ubiłby nowy.
+        NIE zapisuje (caller składa ``update_fields``) i NIE woła ``enqueue``.
+        Zwraca listę ustawionych pól — do doklejenia w ``save(update_fields=)``."""
+        self.finished_on = None
+        self.started_on = None
+        self.finished_successfully = False
+        self.cancelled = False
+        self.cancel_requested = False
+        self.traceback = None
+        self.result_context = None
+        self.current_stage = -1
+        self.stage_states = {}
+        self.log = []
+        self.percent = 0
+        self.log_seq = 0
+        return list(self._POLA_LIVEOPS_RESET)
+
     def naglowki_i_probka(self, limit=10):
         """Synchronicznie (bez liveops) czyta znormalizowane nagłówki i do
         ``limit`` wierszy próbki — na ekran mapowania. Nagłówki = klucze
