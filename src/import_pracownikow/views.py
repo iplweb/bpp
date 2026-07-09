@@ -45,6 +45,17 @@ class NowyImportView(GroupRequiredMixin, CreateLiveOperationView):
     model = ImportPracownikow
     form_class = NowyImportForm
 
+    def get(self, request, *args, **kwargs):
+        if ImportPracownikow.objects.filter(
+            owner=request.user, stan=ImportPracownikow.STAN_PRZEANALIZOWANY
+        ).exists():
+            messages.warning(
+                request,
+                "Masz niezatwierdzony import w podglądzie — nowa analiza może "
+                "unieważnić jego wynik.",
+            )
+        return super().get(request, *args, **kwargs)
+
 
 class ImportPracownikowResultsView(GroupRequiredMixin, ListView):
     """Filtrowalna tabela wyników importu (dopasowani/niedopasowani autorzy).
