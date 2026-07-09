@@ -116,3 +116,45 @@ def waliduj_mapowanie(mapowanie):
             bledy.append(f"Pole '{pole}' przypisane dwukrotnie (duplikat)")
 
     return bledy
+
+
+# Klucze lokalizacyjne przechodzą przez remap bez zmian (kontrakt sortowania).
+_KLUCZE_LOKALIZACJI = ("__xls_loc_sheet__", "__xls_loc_row__")
+
+
+def remapuj_wiersz(elem, mapowanie):
+    """Przepisuje klucze wiersza pliku na kanoniczne pola wg ``mapowanie``.
+    Kolumny zmapowane na ``POLE_POMIN`` (lub bez wpisu) są pomijane. Klucze
+    lokalizacyjne (``__xls_loc_*``) przechodzą bez zmian."""
+    out = {}
+    for klucz, wartosc in elem.items():
+        if klucz in _KLUCZE_LOKALIZACJI:
+            out[klucz] = wartosc
+            continue
+        cel = mapowanie.get(klucz, POLE_POMIN)
+        if cel != POLE_POMIN:
+            out[cel] = wartosc
+    return out
+
+
+def dopasuj_profil(naglowki):
+    """Zwraca ``ProfilMapowania``, którego zbiór kluczy mapowania pokrywa
+    ≥90% znormalizowanych nagłówków pliku (najlepsze pokrycie), albo ``None``.
+    Import lokalny — moduł ``mapping`` bywa ładowany bez potrzeby ORM."""
+    from import_pracownikow.models import ProfilMapowania
+
+    zbior_naglowkow = set(naglowki)
+    if not zbior_naglowkow:
+        return None
+
+    najlepszy = None
+    najlepsze_pokrycie = 0.0
+    for profil in ProfilMapowania.objects.all():
+        klucze = set(profil.mapowanie.keys())
+        if not klucze:
+            continue
+        pokrycie = len(zbior_naglowkow & klucze) / len(zbior_naglowkow)
+        if pokrycie >= 0.9 and pokrycie > najlepsze_pokrycie:
+            najlepszy = profil
+            najlepsze_pokrycie = pokrycie
+    return najlepszy
