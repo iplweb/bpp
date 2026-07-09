@@ -81,11 +81,20 @@ wszystkiego od nowa — decyzje usera muszą przeżyć. To wywraca `on_restart()
   `znajdz_kandydatow_autora(...) -> list[KandydatAutora]` (`autor.py:439`) z progami
   `PEWNOSC_IEXACT=1.0`, `PEWNOSC_IEXACT_PIERWSZE_IMIE=0.95`,
   `PEWNOSC_POLISH_ENGLISH=0.85`, `PEWNOSC_INICJAL=0.5` oraz
-  `PEWNOSC_MIN_AUTOMATYCZNA=0.85`. `matchuj_autora` (`autor.py:553`) zwraca
-  kandydata tylko gdy `kandydaci[0].pewnosc >= PEWNOSC_MIN_AUTOMATYCZNA`. Dodatkowo
-  `importer_publikacji` ma **model** `ImportedAuthor_Candidate` (migr. `0009`, nie
-  „pole `candidate`") jako wzorzec UI wyboru kandydata. **Wskaźnik pewności §8 MUSI
-  mapować się na te istniejące progi**, nie budować równoległej skali.
+  `PEWNOSC_MIN_AUTOMATYCZNA=0.85`. **Uwaga:** `matchuj_autora` (`autor.py:553`) to
+  NIE czysty próg — poza „czystym zwycięzcą" (`kandydaci[0].pewnosc >
+  kandydaci[1].pewnosc`) ma dalsze fallbacki (`_disambiguate_kandydatow` po
+  jednostce/tytule, `_try_match_autor_in_jednostka`,
+  `_try_match_autor_with_orcid_or_tytul`), które potrafią zwrócić autora także
+  poniżej progu / przy ambiguity. Dlatego **status pewności (§8) liczymy WPROST z
+  `znajdz_kandydatow_autora`**, nie z wyniku `matchuj_autora` (poza ścieżką po ID).
+  `znajdz_kandydatow_autora(imiona, nazwisko)` przyjmuje **tylko** te dwa argumenty
+  (oba niepuste wymagane) i zwraca listę `KandydatAutora` **posortowaną malejąco po
+  `pewnosc`**; jednostka/tytuł NIE wpływają na `pewnosc` (są tie-breakerami dopiero
+  w `matchuj_autora`). Dodatkowo `importer_publikacji` ma **model**
+  `ImportedAuthor_Candidate` (migr. `0009`, nie „pole `candidate`") jako wzorzec UI
+  wyboru kandydata. **Wskaźnik pewności §8 mapuje się na te istniejące progi**, nie
+  buduje równoległej skali.
 
 ---
 
@@ -156,7 +165,9 @@ Reguły krytyczne:
   (task #1); `zatwierdzony` → faza integracji (task #2). Dla **każdego innego
   stanu** (`utworzony`, `przeanalizowany`, `zintegrowany`, `porzucony`) `run()`
   jest **no-op z logiem ostrzegawczym** (`p.log("run() w nieoczekiwanym stanie …")`)
-  — chroni przed gołym restartem z centralnej strony liveops.
+  — chroni przed gołym restartem z centralnej strony liveops. (To maszyna
+  **finalna**, od Fazy 2; w Fazie 0 — §14 — dyspozytor mapuje `utworzony`→analiza,
+  bo nie ma jeszcze ekranu mapowania.)
 - **`on_restart()` warunkowy po `stan`** — uwaga, liveops `RestartView.post()` woła
   `on_restart()` **bezwarunkowo jako pierwszy krok**, potem re-enqueue:
   - przejście do commitu: widok „Zatwierdź" ustawia i **zapisuje**
@@ -167,7 +178,12 @@ Reguły krytyczne:
     `super().post()`; `on_restart()` widzi `zmapowany` → **kasuje wiersze** i liczy
     od nowa.
   - goły restart z centralnej strony (`przeanalizowany`/`zintegrowany`):
-    `on_restart()` nie kasuje, a `run()` trafia w gałąź no-op (wyżej) — bezpieczne.
+    `on_restart()` nie kasuje wierszy, a `run()` trafia w gałąź no-op (wyżej) —
+    dane bezpieczne. Ale `RestartView` wyzeruje `result_context`, a no-op `run()`
+    auto-finalizuje się jako „sukces" z pustym wynikiem → strona live pokaże pusty,
+    „udany" przebieg. Akceptujemy: audyt (`log_zmian` per wiersz + wiersze) zostaje;
+    ewentualnie no-op może wpisać do `p.result` notkę „ponowne uruchomienie bez
+    zmian — patrz wyniki importu".
 - **`RestartView` twardo zeruje `result_context`, `log`, `stage_states`,
   `percent`** — po zatwierdzeniu podsumowanie fazy analizy znika ze strony live.
   Akceptujemy to; faza integracji **odtwarza** komplet podsumowania w swoim
@@ -175,8 +191,10 @@ Reguły krytyczne:
 - **Faza integracji robi per-wiersz świeży re-check** (`check_if_integration_needed`)
   w osobnej `transaction.atomic` — baza mogła się zmienić od preview. Wiersz
   nieaktualny → oznacz `pominiety_bo_nieaktualny`, **nie** wywalaj całości.
-- Sync (< 100 ms, bez liveops): upload, sniff nagłówka/próbki, edycje per-wiersz,
-  re-match pojedynczego wiersza po korekcie.
+- Sync (bez liveops): upload, sniff nagłówka/próbki, edycje per-wiersz, re-match
+  pojedynczego wiersza po korekcie. Sniff XLSX używa `openpyxl.load_workbook(...,
+  read_only=True)` i czyta tylko pierwsze ~10 wierszy każdego arkusza (na wielo-MB
+  pliku pełny `load_workbook` to sekundy — `read_only` to obcina).
 - Liveops task #1 „analiza": pełny parse + match wszystkich wierszy → pisze
   **wyłącznie** `ImportPracownikowRow` (+ `dane_znormalizowane`, FK do dopasowanych
   obiektów gdy są, `zmiany_potrzebne`, `confidence`, oraz **diff-do-utworzenia**
@@ -234,8 +252,10 @@ class TabularSource(Protocol):
     Polski Excel domyślnie zapisuje `;`.
 - **Fuzzy-header format-agnostyczny**: wynieść rdzeń `find_similar_row` do
   `find_similar_row_in_rows(rows: list[list], try_names, min_points)` przyjmującej
-  gołe listy; obie implementacje źródła podają swoje pierwsze N wierszy.
-  `normalize_cell_header` bez zmian.
+  gołe listy **wartości** (str/None). **Uwaga:** obecny `normalize_cell_header`
+  czyta `elem.value` (openpyxl `Cell`) — na gołym stringu rzuci `AttributeError`.
+  Refaktor: `normalize_cell_header` przyjmuje **surową wartość** (str/None), a
+  `XLSXSource` woła je na `cell.value`. `CSVSource` podaje stringi wprost.
 - **Normalizacja wartości** (`parsers/wartosci.py`) siedzi **nad** źródłem: CSV
   daje stringi tam, gdzie XLSX daje typy. Parsowanie dat (`YYYY-MM-DD`,
   `DD.MM.YYYY`), wymiaru etatu (`1`, `1,0`, `0.5`, `pełny etat`), booleanów
@@ -259,11 +279,12 @@ Po uploadzie widok **synchronicznie** czyta nagłówek + ~10 wierszy próbki
 - **Walidacja mapowania** przed przejściem dalej: **jedyne pola obowiązkowe** to
   identyfikacja osoby (`nazwisko`+`imię` LUB `osoba_sklejona`) oraz `jednostka`.
   **Wszystkie pozostałe pola stają się opcjonalne** — w tym te dziś-`required` w
-  `AutorForm`: `tytuł_stopień`, `stanowisko`, `grupa_pracownicza`,
-  `data_zatrudnienia`, `wymiar_etatu` (to zmiana względem obecnej sztywnej
-  walidacji — §13 obiecuje łykanie plików z brakami; §8 przewiduje „brak tytułu"
-  jako miękki match). Skutki braku:
-  - brak `tytuł` → tylko obniża `confidence` matcha (nie blokuje);
+  `AutorForm`: `stanowisko`, `grupa_pracownicza`, `data_zatrudnienia`,
+  `wymiar_etatu` (`tytuł_stopień` jest już dziś `required=False`). To zmiana
+  względem obecnej sztywnej walidacji — §13 obiecuje łykanie plików z brakami.
+  Skutki braku:
+  - brak `tytuł` → słabsza dezambiguacja przy statusie `wielu` (tytuł jest
+    tie-breakerem, nie składnikiem `pewnosc` — §8); nie blokuje;
   - brak pola `Autor_Jednostka` (stanowisko/grupa/wymiar/daty) → w fazie integracji
     **nie nadpisujemy** tego pola (ustawiamy tylko to, co w pliku jest) — spójne z
     obecnym `_integrate_autor_jednostka`, które i tak sprawdza `is not None`.
@@ -325,25 +346,37 @@ tańsza, testowalna i wystarczająca przy plikach rzędu setek wierszy.
 
 ## 8. Matchowanie autora + wskaźnik pewności (D4, D5)
 
-Match po **nazwisko + jednostka + tytuł**; jeśli plik ma ID (numer kadrowy /
-ORCID / PBN / bpp_id) — dodatkowo po ID. ID **nieobowiązkowe**.
+Identyfikacja osoby idzie przez `znajdz_kandydatow_autora(imiona, nazwisko)`
+(imię+nazwisko, oba wymagane niepuste); **jednostka i tytuł to dezambiguatory**
+statusu `wielu` (zawężają listę kandydatów), NIE składniki `pewnosc`. Jeśli plik ma
+ID (numer kadrowy / ORCID / PBN / bpp_id) — osobna, priorytetowa ścieżka po ID. ID
+**nieobowiązkowe**.
 
 Każdy wiersz dostaje **status pewności** zapisany na `ImportPracownikowRow`,
-**wyprowadzony z istniejących progów** `znajdz_kandydatow_autora()` (§2), nie z
-nowej, równoległej skali:
+liczony WPROST z listy kandydatów (posortowanej malejąco po `pewnosc`, §2). Niech
+`top_tier` = kandydaci o najwyższej wartości `pewnosc` na liście:
 
-| Status | Źródło (istniejące API) | UI |
-|--------|-------------------------|-----|
-| 🟢 `twardy` | jednoznaczny match po ID, LUB dokładnie 1 kandydat z `pewnosc >= PEWNOSC_IEXACT` (1.0) | zielony |
-| 🟡 `zgadywanie` | dokładnie 1 kandydat z `PEWNOSC_MIN_AUTOMATYCZNA (0.85) <= pewnosc < 1.0` (np. `PIERWSZE_IMIE` 0.95, `POLISH_ENGLISH` 0.85) | żółty, podświetlony |
-| 🔵 `wielu` | ≥2 kandydatów powyżej progu, LUB kandydaci `< PEWNOSC_MIN_AUTOMATYCZNA` (np. `INICJAL` 0.5) | dropdown wyboru |
-| ⚪ `brak` | `znajdz_kandydatow_autora` zwraca pustą listę | checkbox „utwórz nowego autora" (D2) |
+| Status | Reguła (na `znajdz_kandydatow_autora` + ścieżka ID) | UI |
+|--------|------------------------------------------------------|-----|
+| 🟢 `twardy` | match po ID jednoznaczny, LUB `top_tier` ma **dokładnie 1** kandydata z `pewnosc == PEWNOSC_IEXACT` (1.0) | zielony |
+| 🟡 `zgadywanie` | `top_tier` ma **dokładnie 1** kandydata z `PEWNOSC_MIN_AUTOMATYCZNA (0.85) <= pewnosc < 1.0` | żółty, podświetlony |
+| 🔵 `wielu` | `top_tier` ma **≥2** kandydatów (po dezambiguacji jednostką/tytułem), LUB najlepszy `pewnosc < PEWNOSC_MIN_AUTOMATYCZNA` (np. `INICJAL` 0.5) | dropdown wyboru |
+| ⚪ `brak` | `znajdz_kandydatow_autora` zwraca pustą listę (lub brak imienia/nazwiska po rozbiciu) | checkbox „utwórz nowego autora" (D2) |
+
+Reguła „czystego zwycięzcy": status `twardy`/`zgadywanie` wymaga **jednego**
+kandydata na najwyższym tierze; remis na tierze → `wielu` (nawet gdy `matchuj_autora`
+sam by go rozstrzygnął — w imporcie wolimy jawną decyzję usera).
 
 - Konflikt `bpp_id` z pliku ≠ pk zmatchowanego autora → twardy błąd wiersza
   (jak dziś w `_matchuj_autora_z_walidacja`).
 - **Model kandydatów per-wiersz**: dla statusu `wielu` zapisujemy listę kandydatów
   (mały model `ImportPracownikowRowKandydat(row FK, autor FK, pewnosc, powod)` —
-  wzorzec `ImportedAuthor_Candidate`) + pole wyboru usera. UI = dropdown.
+  wzorzec `ImportedAuthor_Candidate`). UI = dropdown.
+- **Pola decyzji usera na `ImportPracownikowRow`** (muszą przeżyć do commitu):
+  `wybrany_kandydat` (nullable FK `Autor` — wybór przy statusie `wielu`;
+  materializuje `row.autor`), `utworz_nowego` (BooleanField, dla statusu `brak` +
+  D2). Commit tworzy autora tylko gdy `utworz_nowego=True`; przy `wielu` bez wyboru
+  → wiersz pomijany z ostrzeżeniem. Pola z fazy 3–4 (§14).
 - **Migracja NULLABLE FK (krytyczne!)**: dziś na `ImportPracownikowRow` pola
   `autor`, `jednostka`, `autor_jednostka`, `funkcja_autora`, `grupa_pracownicza`,
   `wymiar_etatu` są **NOT NULL** (`models.py:340-350`). Statusy `brak`/`wielu` oraz
@@ -367,8 +400,17 @@ nowej, równoległej skali:
 `autorzy_spoza_pliku_set()` liczone w **fazie analizy** i pokazywane w preview
 jako osobna zakładka z checkboxami **per-autor, domyślnie ODZNACZONYMI**.
 Wykonanie (zakończenie zatrudnienia = wczoraj, `podstawowe_miejsce_pracy=False`)
-**tylko w fazie commit**, dla zaznaczonych. Zachować istniejącą logikę
-wykluczeń (jednostki `zarzadzaj_automatycznie=True`, nie-obce, aktywne).
+**tylko w fazie commit**, dla zaznaczonych. Zachować kryteria wykluczeń
+(jednostki `zarzadzaj_automatycznie=True`, nie-obce, aktywne).
+
+- **Przepisać zapytanie (nie „zachować"!)**: dzisiejsze
+  `autorzy_spoza_pliku_set()` robi `exclude(pk__in=values_list("autor_jednostka"))`
+  (`models.py:287-292`). Po migracji `null=True` na `autor_jednostka` (§8) i
+  odroczeniu create'ów AJ ten subquery zawiera NULL-e → SQL `NOT IN (…, NULL)`
+  zwraca **pusty zbiór** (żadnych odpięć). Ponadto wiersze z odroczonym AJ nie mają
+  pk powiązania. Dlatego porównujemy po **parach `(autor_id, jednostka_id)`** z
+  wierszy importu (te są znane nawet bez AJ), z jawnym odfiltrowaniem NULL-i, nie po
+  pk `Autor_Jednostka`.
 
 - **Persystencja decyzji (istotne!)**: `autorzy_spoza_pliku_set()` liczy się
   dynamicznie z bazy, a autorzy spoza pliku NIE są w `ImportPracownikowRow`.
@@ -481,12 +523,25 @@ przetwarzania w `pipeline/` jako funkcje `(import_obj, p)`; matchowanie zostaje
 w `import_common.core` **bez zmian sygnatur** (`matchuj_*` to czyste `.get()`,
 §2/§8 — dry-run po prostu nie woła fallbacków `create()` w pipeline).
 
-Nowe migracje `import_pracownikow` (bez ruszania istniejących): (a) pola liveops
-+ `stan` + usunięcie `performed/integrated` (Faza 0); (b) `null=True` na sześciu
-FK `ImportPracownikowRow` (Faza 0); (c) modele `ImportPracownikowOdpiecie`,
-`ImportPracownikowRowKandydat`, `ProfilMapowania` + pola `mapowanie_kolumn`,
-`diff_do_utworzenia`, `confidence`, `przepnij_prace`, `korekta_uzytkownika` (fazy
-2–5, dokładany schemat). Po każdej zmianie schematu: `make baseline-update`.
+Nowe migracje (bez ruszania istniejących):
+- **Faza 0** (`import_pracownikow`): pola liveops + `stan` + usunięcie
+  `performed/integrated`; `null=True` na sześciu FK `ImportPracownikowRow`
+  (`autor`, `jednostka`, `autor_jednostka`, `funkcja_autora`, `grupa_pracownicza`,
+  `wymiar_etatu`); pola `diff_do_utworzenia` (JSON, odroczone create'y —
+  warunek dry-run) i `pominiety_bo_nieaktualny` (Boolean, re-check integracji).
+  Data-migration: stare rekordy `performed AND integrated` → `stan="zintegrowany"`,
+  reszta → `porzucony`.
+- **Faza 1**: — (bez schematu; warstwa źródeł).
+- **Faza 2** (`import_pracownikow`): model `ProfilMapowania` + pole
+  `mapowanie_kolumn` (JSON).
+- **Faza 3** (`import_pracownikow`): pola `confidence`, `korekta_uzytkownika`
+  (JSON), `wybrany_kandydat` (FK) + model `ImportPracownikowRowKandydat`.
+- **Faza 4** (`import_pracownikow`): pole `utworz_nowego` (Boolean) + model
+  `ImportPracownikowOdpiecie`.
+- **Faza 5** (`import_pracownikow`): pole `przepnij_prace` (Boolean);
+  (`przemapuj_prace_autora`): nullable FK `import` na `PrzemapoaniePracAutora`.
+
+Po każdej zmianie schematu: `make baseline-update`.
 
 ---
 
@@ -535,6 +590,25 @@ Warianty do pokrycia (z opisu właściciela + domeny):
   „zakład" jako różne poziomy → `matchuj_jednostke` + `wytnij_skrot`.
 - **CSV** z polskim Excela: separator `;`, encoding cp1250.
 
+### Przypadki brzegowe (obowiązkowe testy)
+
+- **Plik pusty / sam nagłówek bez danych**: `count()==0`, `p.track` z `total=0`
+  (dziś dzielenie `no/total` w `perform()` → `ZeroDivisionError` — pilnować).
+- **Brak wykrywalnego nagłówka**: obecny `XLSImportFile.data()` **po cichu pomija**
+  arkusz bez nagłówka → jednoarkuszowy plik da 0 wierszy bez błędu. Wymagać
+  **jawnego błędu walidacji** („nie znaleziono nagłówka") zamiast cichego 0.
+- **Duplikat tej samej osoby w pliku** (2 wiersze, ta sama jednostka): grozi
+  podwójnym odroczonym create AJ w commicie / sprzecznymi decyzjami. Wykrywać
+  (wzorzec `is_duplicate` z `import_punktacji_zrodel`), oznaczać wiersz.
+- **Ta sama osoba w DWÓCH różnych jednostkach w jednym pliku**: legalny multi-etat
+  vs duplikat — traktujemy jako dwa osobne powiązania (multi-etat dozwolony), NIE
+  scalamy; ale flagujemy w preview do weryfikacji.
+- **CSV separator `,` + etat `0,5`** (przecinek dziesiętny koliduje z delimiterem):
+  fallback „policz `;` vs `,`" może źle zgadnąć → test z takim plikiem; preferować
+  `;`, a przy `,` traktować `0,5`/`0.5` przez normalizator wartości.
+- **Zduplikowane nazwy kolumn** w nagłówku: `rename_duplicate_columns` daje
+  `nazwisko_2` — ekran mapowania (§6) musi je pokazać i pozwolić zmapować/zignorować.
+
 ---
 
 ## 14. Fazowanie implementacji
@@ -546,11 +620,15 @@ Duży zakres → plan w fazach, każda dowozalna i testowalna osobno:
   `zmapowany`, który wymaga ekranu mapowania z Fazy 2):
   `utworzony → przeanalizowany → zatwierdzony → zintegrowany`. Analiza używa
   dotychczasowego sztywnego `AutorForm`/`JednostkaForm` (jeszcze bez mapowania).
-  **W tej fazie odraczamy create'y** (słowniki funkcja/grupa/wymiar +
-  `Autor_Jednostka`) do fazy commit — to warunek prawdziwego dry-run (§8) — oraz
-  robimy migrację `null=True` na sześciu FK `ImportPracownikowRow` (§8). Custom
-  `form_valid` bez natychmiastowego `enqueue` (§4). To domyka „dry-run + zapis
-  później" niezależnie od reszty faz.
+  **Faza 0 używa DOMYŚLNEGO `form_valid`** (enqueue po uploadzie), a dyspozytor
+  `run()` dla stanu `utworzony` odpala analizę → `przeanalizowany`. Custom
+  `form_valid` bez `enqueue` + stan `zmapowany` + ekran mapowania wchodzą **dopiero
+  w Fazie 2** (razem z przełączeniem dyspozytora, tak by `utworzony` przestał
+  odpalać analizę, a robił to `zmapowany`). **W tej fazie odraczamy create'y**
+  (słowniki funkcja/grupa/wymiar + `Autor_Jednostka`) do fazy commit — to warunek
+  prawdziwego dry-run (§8) — oraz robimy migrację `null=True` na sześciu FK
+  `ImportPracownikowRow` (§8) + pola `diff_do_utworzenia`, `pominiety_bo_nieaktualny`.
+  To domyka „dry-run + zapis później" niezależnie od reszty faz.
 - **Faza 1** — warstwa źródeł CSV + XLSX (`TabularSource`) + refaktor fuzzy-header
   (§5).
 - **Faza 2** — hybrydowe mapowanie kolumn + profile (§6).
