@@ -4,6 +4,11 @@
 **Branch:** `feat-bibtex-import-wiele-prac` (worktree, off `dev`)
 **Moduł:** `src/importer_publikacji/`
 
+> Wersja 2 — po self-review Fable 5. Sekcje 4–10 uwzględniają: obsługę
+> `failed_blocks` (blocker), group-scoping widoków, wzorzec HX-Redirect,
+> reużycie istniejącego retry, `is_stalled()` w wyliczaniu statusu,
+> batch-aware `CancelView`, `OneToOneField`, oraz `raw_bibtex = entry.raw`.
+
 ## 1. Problem
 
 Provider BibTeX w importerze publikacji przyjmuje wklejony tekst, ale gdy
@@ -28,10 +33,13 @@ Potwierdzone w kodzie:
   BibTeX to jedyny format, którego *surowy input* jest pojemnikiem na N
   rekordów.
 - Wejście = **tylko wklejenie do textarea** (`forms.py:36-91`,
-  `templates/.../partials/step_fetch.html`); brak uploadu pliku.
+  `templates/.../partials/step_fetch.html`); brak uploadu pliku. Formularz
+  jest **HTMX** (`hx-post`, `hx-target="#importer-wizard"`), a `FetchView`
+  zwraca nawigację przez nagłówek **`HX-Redirect`** (`wizard.py:147-151`,
+  `171-175`) — nie zwykły `redirect()`.
 - Po imporcie user ląduje na stronie jednej pracy (`DoneView`,
-  `partials/step_done.html`) z linkiem „Importuj kolejną publikację" — czyli
-  obecny workaround to „wróć i wklej następną ręcznie".
+  `partials/step_done.html`) z linkiem „Importuj kolejną publikację"; wersja
+  anulowana (`CancelView`, `wizard.py:820-837`) wraca na indeks importera.
 
 Efekt: przy wklejeniu 10 prac 9 z nich znika bez śladu.
 
@@ -40,7 +48,8 @@ Efekt: przy wklejeniu 10 prac 9 z nich znika bez śladu.
 Gdy user wklei ≥2 wpisy BibTeX, system tworzy **nadrzędny rekord-stager**
 (`MultipleWorksImport`) trzymający wszystkie wpisy jako listę, pokazuje je,
 i pozwala importować **po jednym** (leniwie — „drip"), odhaczając które są
-zrobione, z możliwością pominięcia i ponowienia.
+zrobione, z możliwością pominięcia i ponowienia. **Uszkodzone wpisy też są
+pokazane** (nic nie znika po cichu).
 
 Zakres: **tylko provider BibTeX**, **tylko wklejanie** (bez uploadu pliku —
 to osobny temat). Pozostałe providery i kontrakt `fetch()` — bez zmian.
@@ -50,85 +59,126 @@ to osobny temat). Pozostałe providery i kontrakt `fetch()` — bez zmian.
 1. **Leniwy drip** — rodzic trzyma sparsowane wpisy; `ImportSession` powstaje
    *dopiero* gdy user kliknie „Importuj" na wierszu. Globalna lista sesji nie
    zapełnia się porzuconymi „oczekującymi" wizardami.
-2. **Próg paczki: ≥2 wpisy.** 1 wpis → dziś-znana ścieżka pojedynczego
-   wizardu, zero zmian. ≥2 → `MultipleWorksImport`.
-3. **Stany wpisu: oczekuje / ✓ zaimportowany / błąd / pominięty**, z paskiem
-   postępu „X z N zaimportowanych (+Y pominiętych)". Paczka „gotowa", gdy
-   każdy wpis jest ✓ lub pominięty.
+2. **Próg paczki: ≥2 rekordy** (wpisy + uszkodzone bloki łącznie). 1 poprawny
+   wpis → dziś-znana ścieżka pojedynczego wizardu, zero zmian. ≥2 →
+   `MultipleWorksImport`.
+3. **Stany wpisu: oczekuje / ✓ zaimportowany / błąd / pominięty / uszkodzony**,
+   z paskiem postępu „X z N zaimportowanych (+Y pominiętych)". Paczka „gotowa",
+   gdy każdy wpis jest ✓ lub pominięty.
 4. **Model dzieci zamiast JSON-bloba** — wpisy jako osobne wiersze
    (odpytywalne, mogą trzymać FK do sesji).
 5. **Status wpisu WYLICZANY, nie przechowywany** — jedno źródło prawdy
-   (`ImportSession.status` + flaga `skipped`), zero synchronizacji.
+   (`ImportSession.status` + `skipped` + `parse_error`), zero synchronizacji.
 6. **Fan-out w warstwie wejścia, nie w `fetch()`** — kontrakt providera
    jedno-rekordowy zostaje nietknięty; wielo-rekordowość zamknięta w jednej
    nadpisywalnej metodzie `split_input()`.
 
 ## 4. Model danych
 
-Nowe modele w `src/importer_publikacji/models.py`.
+Nowe modele w `src/importer_publikacji/models.py`. Rejestracja w
+`admin.py` (oba modele; `Entry` jako `TabularInline` na rodzicu — podgląd/debug).
 
 ### `MultipleWorksImport` (rodzic / stager)
 
 | Pole | Typ | Uwagi |
 |------|-----|-------|
-| `owner` | FK `settings.AUTH_USER_MODEL`, `on_delete=CASCADE` | kto wkleił |
-| `provider_name` | `CharField` | na teraz zawsze `"BibTeX"` |
+| `created_by` | FK `settings.AUTH_USER_MODEL`, `on_delete=CASCADE` | kto wkleił (nazwa spójna z resztą modułu) |
+| `provider_name` | `CharField(max_length=50)` | na teraz zawsze `"BibTeX"` |
 | `raw_input` | `TextField` | cały wklejony tekst (audyt / debug) |
 | `created` | `DateTimeField(auto_now_add=True)` | |
 | `modified` | `DateTimeField(auto_now=True)` | |
 
-Postęp (X z N, Y pominiętych) liczony z dzieci — property, nie kolumna.
+**Postęp** — property `progress` liczone jednym zapytaniem:
+`self.entries.select_related("session")` → policz statusy w Pythonie (N małe),
+zwróć `{"imported": X, "skipped": Y, "total": N, "done": bool}`.
+`done == all(status in {IMPORTED, SKIPPED})`.
 
-### `MultipleWorksImportEntry` (jeden wpis = jeden wiersz listy)
+### `MultipleWorksImportEntry` (jeden rekord = jeden wiersz listy)
 
 | Pole | Typ | Uwagi |
 |------|-----|-------|
 | `parent` | FK `MultipleWorksImport`, `related_name="entries"`, CASCADE | |
-| `order` | `PositiveIntegerField` | kolejność z pliku |
-| `raw_bibtex` | `TextField` | **pojedynczy** wpis, zserializowany z powrotem |
-| `title` | `CharField(blank=True)` | cache do wyświetlenia na liście |
+| `order` | `PositiveIntegerField` | kolejność z wejścia |
+| `raw_bibtex` | `TextField` | **pojedynczy** wpis, `entry.raw` (verbatim) lub raw uszkodzonego bloku |
+| `title` | `TextField(blank=True)` | cache do wyświetlenia (BibTeX titles bywają >255 zn.) |
+| `parse_error` | `TextField(blank=True)` | niepuste = blok się nie sparsował (`failed_block`) |
 | `skipped` | `BooleanField(default=False)` | user świadomie odrzucił |
-| `session` | FK `ImportSession`, `null=True`, `blank=True`, `on_delete=SET_NULL`, `related_name="batch_entry"` | podpięta po kliknięciu „Importuj" |
+| `session` | `OneToOneField` `ImportSession`, `null=True`, `blank=True`, `on_delete=SET_NULL`, `related_name="batch_entry"` | podpięta po „Importuj"; `OneToOne` → reverse `session.batch_entry` jest pojedyncze |
 
 `Meta.ordering = ["order"]`.
 
-### Wyliczany status wpisu
+### Wyliczany status wpisu — property `status` (enum `EntryStatus`)
 
-Property `MultipleWorksImportEntry.status` (enum `EntryStatus`):
+Precedencja (pierwszy pasujący wygrywa):
 
 ```
-skipped == True                                   -> SKIPPED   (pominięty)
-session is None                                    -> PENDING   (oczekuje)
-session.status == ImportSession.Status.COMPLETED   -> IMPORTED  (✓)
-session.status in {IMPORT_FAILED, CANCELLED}       -> FAILED    (błąd)
-w pozostałych przypadkach                          -> IN_PROGRESS (w toku)
+1. session and session.status == COMPLETED          -> IMPORTED   (✓)
+2. skipped                                           -> SKIPPED    (pominięty)
+3. parse_error                                       -> MALFORMED  (uszkodzony)
+4. session is None                                   -> PENDING    (oczekuje)
+5. session.status == IMPORT_FAILED or session.is_stalled()  -> FAILED  (błąd)
+6. session.status == CANCELLED                       -> PENDING    (re-importowalny)
+7. wpp.                                               -> IN_PROGRESS (w toku)
 ```
 
-`ImportSession` **nie jest modyfikowany**. Powiązanie trzyma wpis; Done-page
-trafia do paczki przez odwrotność FK (`session.batch_entry`).
+Uwagi:
+- **COMPLETED sprawdzane jako pierwsze** — chroni odhaczoną pracę przed
+  przypadkowym „odskipowaniem" (belt-and-suspenders razem z guardem skipu, §6.4).
+- **`is_stalled()`** (`models.py:230-270`, martwy worker w FETCHING/CREATING
+  > `IMPORTER_STALL_TIMEOUT`) mapuje na **błąd** — inaczej wpis wisiałby „w toku"
+  wiecznie i paczka nigdy nie byłaby „gotowa".
+- **CANCELLED → PENDING** — anulowanie wizardu to świadoma rezygnacja, nie błąd;
+  wpis wraca do „oczekuje" i można go zaimportować od nowa (nowa sesja
+  nadpisze `entry.session`; anulowana sesja zostaje osierocona, nieszkodliwie).
+
+`ImportSession` **nie jest modyfikowany**. Powiązanie trzyma wpis; strony
+wizardu (Done/Cancel) trafiają do paczki przez `session.batch_entry`.
 
 ## 5. Warstwa providera — `split_input`
 
-Do bazowej klasy `DataProvider` (`providers/__init__.py`) dochodzi metoda:
+Do bazowej klasy `DataProvider` (`providers/__init__.py`) dochodzi metoda
+zwracająca **strukturę** (nie gołe stringi — musimy odróżnić poprawny wpis od
+uszkodzonego bloku oraz nieść tytuł):
 
 ```python
-def split_input(self, text: str) -> list[str]:
+@dataclass
+class SplitRecord:
+    raw: str                 # surowy tekst tego rekordu (verbatim)
+    ok: bool = True          # False => nie sparsował się
+    title: str = ""          # do wyświetlenia na liście
+    error: str = ""          # komunikat, gdy ok is False
+
+def split_input(self, text: str) -> list[SplitRecord]:
     """Rozbij surowe wejście na pojedyncze rekordy.
 
     Domyślnie provider jest jedno-rekordowy i zwraca wejście bez zmian.
     Providery wielo-rekordowe (BibTeX) nadpisują tę metodę.
     """
-    return [text]
+    return [SplitRecord(raw=text)]
 ```
 
-`BibTeXProvider.split_input` (`providers/bibtex.py`): parsuje
-`bibtexparser.parse_string`, serializuje **każdy** `entry` z powrotem do
-osobnego stringa BibTeX (`bibtexparser.write_string` na jedno-wpisowej
-`Library`), zwraca listę N stringów. Kolejność zachowana.
+`BibTeXProvider.split_input` (`providers/bibtex.py`):
 
-`fetch()` i `validate_identifier()` — **bez zmian** (`entries[0]` jest teraz
-zawsze poprawne, bo każdy kawałek to dokładnie jeden wpis). Istniejący
-`test_fetch_multiple_entries_takes_first` zostaje zielony.
+1. `library = bibtexparser.parse_string(text)`.
+2. Dla **każdego** `entry in library.entries`: `SplitRecord(raw=entry.raw,
+   ok=True, title=<peek_title(entry)>)`. `entry.raw` (verbatim) preferowane
+   nad re-serializacją — zachowuje dokładny input i omija kwirki
+   `write_string`. Każdy `entry.raw` re-parsuje się do dokładnie 1 wpisu,
+   więc istniejące `fetch()` (`entries[0]`) działa bez zmian.
+3. Dla **każdego** `block in library.failed_blocks` (**blocker z review** —
+   inaczej uszkodzone wpisy znikają jak dziś): `SplitRecord(raw=block.raw,
+   ok=False, error=<opis błędu bloku>)`.
+4. Zwróć rekordy w kolejności wejścia (posortuj po pozycji `start_line`
+   z `entry`/`block`, żeby wpisy i błędy się przeplatały poprawnie).
+
+`peek_title(entry)` — helper providera: `entry.fields_dict["title"].value`
+(v2 zwraca obiekt `Field`, trzeba `.value`, por. `_get_field`
+`bibtex.py:150-155`), przepuszczone przez istniejące `_clean_latex`; brak
+tytułu → `""`.
+
+`fetch()` i `validate_identifier()` — **bez zmian**. Istniejący
+`test_fetch_multiple_entries_takes_first` zostaje zielony (dowód, że warstwa
+`fetch()` się nie zmieniła).
 
 ## 6. Przepływ
 
@@ -137,106 +187,140 @@ zawsze poprawne, bo każdy kawałek to dokładnie jeden wpis). Istniejący
 Po walidacji formularza i wyborze `raw_input` (tryb `TEXT`):
 
 ```
-pieces = provider.split_input(raw_input)
-if len(pieces) >= 2:
-    batch = MultipleWorksImport.objects.create(owner=..., provider_name=..., raw_input=...)
-    for i, piece in enumerate(pieces):
+records = provider.split_input(raw_input)
+if len(records) >= 2:
+    batch = MultipleWorksImport.objects.create(
+        created_by=request.user, provider_name=provider.name, raw_input=raw_input)
+    for i, rec in enumerate(records):
         MultipleWorksImportEntry.objects.create(
-            parent=batch, order=i, raw_bibtex=piece,
-            title=<wyciągnięty tytuł lub "">,
-        )
-    return redirect("importer_publikacji:batch-detail", pk=batch.pk)
+            parent=batch, order=i, raw_bibtex=rec.raw,
+            title=rec.title, parse_error=("" if rec.ok else rec.error))
+    return hx_redirect("importer_publikacji:batch-detail", batch_id=batch.pk)
 # len == 1 (lub provider jedno-rekordowy): ścieżka jak dziś, bez zmian
 ```
 
-Idempotencja: istniejący guard działa per `(provider, identifier)`; dla paczki
-`identifier` się nie tworzy, więc guard pojedynczej sesji zostaje nietknięty.
-(Ochrona przed podwójnym wklejeniem tej samej paczki — poza zakresem MVP.)
+`hx_redirect` = ten sam wzorzec `HX-Redirect` co istniejący `FetchView`
+(`wizard.py:147-151`) — bo form jest HTMX i zwykły `redirect()` wpadłby do
+diva wizardu zamiast nawigować.
 
-Tytuł do cache: z `entry.fields_dict["title"]` jeśli jest; inaczej `""`.
-Ekstrakcję tytułu z pojedynczego `raw_bibtex` robi helper providera
-(np. `BibTeXProvider.peek_title(piece)`), żeby widok nie znał BibTeX-a.
+Idempotencja: istniejący double-click guard `(created_by, provider_name,
+identifier)` (`wizard.py:129-151`) dotyczy pojedynczej sesji i zostaje
+nietknięty. Ochrona przed dwukrotnym wklejeniem tej samej **paczki** — poza
+zakresem MVP.
 
 ### 6.2. Strona paczki — `MultipleWorksImportDetailView`
 
-`DetailView` po `pk`, scoped do `owner=request.user` (jak istniejące widoki
-sesji). Szablon `partials/batch_detail.html` w stylu istniejącego
-`session_list.html` (Foundation). Kolumny: `#`, tytuł, status (badge),
-akcja.
+`DetailView` po `batch_id`, **group-scoped** przez istniejący
+`ImporterPermissionMixin` (`permissions.py:6-12`, `GR_WPROWADZANIE_DANYCH`) —
+**tak jak reszta widoków importera** (nie owner-scoped; sesje wizardu są
+group-scoped, więc owner-scoping paczki byłby asymetryczny).
 
-Akcje per wiersz zależne od statusu:
+Przed renderem: **sweep `mark_stalled()`** po wpisach z sesją in-flight
+(FETCHING/CREATING), żeby zombie od martwego workera pokazały „błąd", nie
+„w toku". Query: `batch.entries.select_related("session")` (bez N+1).
+
+Szablon `partials/batch_detail.html` w stylu istniejącego
+`session_list.html` (Foundation). Kolumny: `#`, tytuł, status (badge), akcja:
 
 | Status | Badge | Akcja |
 |--------|-------|-------|
-| oczekuje | „oczekuje" | **[Importuj]** |
+| oczekuje | „oczekuje" | **[Importuj]** (POST) |
 | w toku | „w toku" | **[Kontynuuj]** (→ `session.get_continue_url()`) |
 | ✓ zaimportowany | „zaimportowano" | **[Zobacz pracę]** (link do utworzonego rekordu) |
-| błąd | „błąd" | **[Ponów]** |
-| pominięty | „pominięty" | **[Przywróć]** |
+| błąd | „błąd" | **[Ponów]** (POST) + **[Pomiń]** |
+| uszkodzony | „uszkodzony" | **[Pomiń]** (brak importu — pokazany `parse_error` + raw) |
+| pominięty | „pominięty" | **[Przywróć]** (POST) |
 
-Nagłówek: pasek postępu „X z N zaimportowanych (+Y pominiętych)".
+Nagłówek: pasek postępu „X z N zaimportowanych (+Y pominiętych)" z `progress`.
 
-### 6.3. Import wpisu — `BatchEntryImportView` (POST)
+### 6.3. Import wpisu — `BatchEntryImportView` (POST, `entry_id`)
 
-1. Scoped: wpis należy do paczki należącej do `request.user`.
-2. Tworzy **jedną** `ImportSession` z `identifier = entry.raw_bibtex`
-   (przez wspólny helper wydzielony z `FetchView.post`, żeby nie duplikować
-   logiki tworzenia sesji + enqueue `fetch_session_task`).
-3. `entry.session = session; entry.save()`.
-4. Redirect w istniejący wizard (`task-status`) — dalej wszystko jak dziś.
-5. „Ponów" (dla statusu błąd): to samo, nadpisuje `entry.session` nową sesją.
+1. Group-scoped (jak §6.2). Odrzuć, jeśli `entry.parse_error` (uszkodzony —
+   nie ma czego importować).
+2. **Guard in-flight**: jeśli `entry.session` istnieje i nie jest
+   `COMPLETED`/`IMPORT_FAILED`/`CANCELLED`/stalled → redirect na
+   `entry.session.get_continue_url()` (nie twórz drugiej sesji — chroni przed
+   double-click, tak jak C2 w `FetchView`).
+3. Inaczej: utwórz **jedną** `ImportSession` z `identifier = entry.raw_bibtex`
+   przez **wspólny helper** wydzielony z `FetchView.post` (tworzenie sesji +
+   `fetch_session_task.delay`). **Helper NIE zawiera** guardu double-click
+   po `identifier` — dwa identyczne wpisy w jednej paczce (duplikaty w
+   eksportach .bib są częste, a `raw_bibtex` bywa bajt-w-bajt identyczny) nie
+   mogą się skrzyżować w jedną sesję; izolację daje guard z pkt 2 po
+   `entry.session`.
+4. `entry.session = session; entry.save()` (`OneToOne` — nadpisanie przy
+   re-imporcie porzuca starą sesję, co jest OK).
+5. `hx_redirect` w istniejący wizard (`task-status`).
+6. **[Ponów]** (status błąd): **deleguje do istniejącego `ImportTaskRetryView`**
+   (`urls.py:130-134`), który wznawia **tę samą** `entry.session` od
+   `last_failed_stage` — nie tworzymy nowej sesji, nie osieracamy starej.
 
-### 6.4. Pomiń / Przywróć — `BatchEntrySkipView` (POST, toggle)
+### 6.4. Pomiń / Przywróć — `BatchEntrySkipView` (POST toggle, `entry_id`)
 
-Toggle `entry.skipped`; redirect z powrotem na stronę paczki.
+Toggle `entry.skipped`. **Guard**: nie pozwól skipować wpisu w statusie
+IMPORTED (ochrona arytmetyki postępu). Redirect z powrotem na stronę paczki.
 
-### 6.5. Powrót z wizardu — modyfikacja `DoneView` (`views/wizard.py:804-817`)
+### 6.5. Powrót z wizardu — `DoneView` + `CancelView`
 
-Jeśli `session.batch_entry.exists()` (sesja należy do wpisu paczki):
-szablon `step_done.html` pokazuje przycisk **„Wróć do paczki (X z N)"**
-(link do `batch-detail`) zamiast/obok generycznego „Importuj kolejną
-publikację". Wpis automatycznie pokaże się jako ✓ (status wyliczany).
+**`DoneView`** (`wizard.py:804-817`): jeśli `hasattr(session, "batch_entry")`
+→ wstrzyknij do kontekstu `batch` i `batch.progress`; szablon `step_done.html`
+pokazuje **„Wróć do paczki (X z N)"** (link do `batch-detail`) obok/zamiast
+„Importuj kolejną publikację". Kontekst liczony **w widoku** (nie trawersacją
+managera w szablonie).
+
+**`CancelView`** (`wizard.py:820-837`): analogicznie — jeśli sesja należy do
+paczki, wróć na `batch-detail` zamiast na indeks importera. Wpis wróci do
+„oczekuje" (status wyliczany, CANCELLED → PENDING).
 
 ### 6.6. URL-e (`urls.py`)
 
 ```
-batch/<int:pk>/                 -> batch-detail
-batch/entry/<int:pk>/import/    -> batch-entry-import   (POST)
-batch/entry/<int:pk>/skip/      -> batch-entry-skip     (POST)
+batch/<int:batch_id>/                 -> batch-detail
+batch/entry/<int:entry_id>/import/    -> batch-entry-import   (POST)
+batch/entry/<int:entry_id>/skip/      -> batch-entry-skip     (POST)
 ```
 
-(Opcjonalnie, poza MVP: lista paczek usera na stronie indeksu importera.)
+([Ponów] używa istniejącego route retry, nie nowego.) Opcjonalnie, poza MVP:
+lista paczek usera na indeksie importera.
 
 ## 7. Architektura — granice odpowiedzialności
 
 - **Provider** (`bibtex.py`): jedyne miejsce znające format BibTeX
   (`split_input`, `peek_title`, istniejące `fetch`/`validate_identifier`).
-- **Model** (`MultipleWorksImport*`): staging + wyliczanie statusu; nie zna
-  Celery ani widoków.
+  `SplitRecord` — kontrakt wyjścia, agnostyczny wobec formatu.
+- **Model** (`MultipleWorksImport*`): staging + wyliczanie statusu + postęp;
+  nie zna Celery ani widoków.
 - **Widoki** (`wizard.py`/nowe): orkiestracja — split → utwórz paczkę →
-  drip pojedynczych sesji przez wspólny helper.
+  drip pojedynczych sesji przez wspólny helper; reużycie retry.
 - **`ImportSession`**: nietknięty; wciąż 1 sesja = 1 praca.
 
 ## 8. Testy (TDD — test przed implementacją)
 
 `tests/`:
 
-1. `split_input`: BibTeX z N wpisów → lista N stringów, każdy parsuje się do
-   1 wpisu, kolejność zachowana; provider jedno-rekordowy → `[text]`.
-2. `peek_title`: wyciąga tytuł z pojedynczego wpisu; brak tytułu → `""`.
-3. `FetchView`: paste ≥2 → tworzy `MultipleWorksImport` + N `Entry`,
-   redirect na `batch-detail`; paste 1 → dokładnie jak dziś (jedna sesja,
-   brak paczki).
-4. `MultipleWorksImportEntry.status`: każdy z 5 przypadków (skipped / brak
-   session / COMPLETED / IMPORT_FAILED / CANCELLED / stan pośredni).
-5. `BatchEntryImportView`: tworzy sesję z poprawnym pojedynczym `raw_bibtex`,
-   podpina `entry.session`, redirect w wizard; „Ponów" nadpisuje sesję.
-6. `BatchEntrySkipView`: toggluje `skipped`.
-7. `DoneView`: gdy sesja należy do paczki → kontekst zawiera link powrotny
-   i licznik X z N.
-8. Charakteryzacyjny (regresja): `test_fetch_multiple_entries_takes_first`
-   **zostaje zielony** — dowód, że warstwa providera `fetch()` się nie
-   zmieniła.
+1. `split_input` (BibTeX): N poprawnych wpisów → N `SplitRecord(ok=True)`,
+   każdy `raw` re-parsuje się do 1 wpisu, kolejność zachowana; provider
+   jedno-rekordowy → 1 `SplitRecord`.
+2. `split_input` z **uszkodzonym środkowym wpisem** (3 wpisy, 2 poprawne,
+   1 zły) → 3 rekordy, środkowy `ok=False` z `error` (regresja blockera:
+   nic nie znika).
+3. `peek_title`: wyciąga tytuł (unwrap `.value` + `_clean_latex`); brak → `""`.
+4. `FetchView`: paste ≥2 → `MultipleWorksImport` + N `Entry` (w tym MALFORMED
+   dla złych), zwraca **`HX-Redirect`** na `batch-detail`; paste 1 poprawny →
+   dokładnie jak dziś (jedna sesja, brak paczki).
+5. `MultipleWorksImportEntry.status`: **6 przypadków** — IMPORTED (COMPLETED),
+   SKIPPED, MALFORMED (parse_error), PENDING (brak sesji), FAILED
+   (IMPORT_FAILED **oraz** `is_stalled()`), PENDING (CANCELLED), IN_PROGRESS.
+6. `BatchEntryImportView`: tworzy sesję z poprawnym pojedynczym `raw_bibtex`,
+   podpina `entry.session`, `HX-Redirect` w wizard; **guard in-flight**
+   (drugi POST → redirect na continue, brak drugiej sesji); MALFORMED →
+   odrzucone.
+7. `[Ponów]`: używa `ImportTaskRetryView` na **tej samej** sesji (brak nowej).
+8. `BatchEntrySkipView`: toggluje `skipped`; guard — nie skipuje IMPORTED.
+9. `DoneView`/`CancelView`: gdy sesja należy do paczki → kontekst z linkiem
+   powrotnym i „X z N"; Cancel wraca na `batch-detail`.
+10. Charakteryzacyjny (regresja): `test_fetch_multiple_entries_takes_first`
+    **zostaje zielony**.
 
 Konwencje: pytest (funkcje, bez klas), `@pytest.mark.django_db`,
 `model_bakery.baker.make`, fixtures w `conftest.py`.
@@ -244,7 +328,7 @@ Konwencje: pytest (funkcje, bez klas), `@pytest.mark.django_db`,
 ## 9. Migracje
 
 - Jedna migracja `makemigrations importer_publikacji` (dwa nowe modele +
-  FK `Entry.session → ImportSession`).
+  `OneToOneField Entry.session → ImportSession`).
 - **Baseline `baseline-sql/baseline.sql` NIE odświeżany na tym branchu**
   (per CLAUDE.md: konflikty na wielkim pliku w równoległych branchach;
   refresh dopiero przy scalaniu do `dev`).
@@ -254,8 +338,11 @@ Konwencje: pytest (funkcje, bez klas), `@pytest.mark.django_db`,
 
 - Upload pliku `.bib` (osobny temat — dziś tylko wklejanie).
 - Wielo-rekordowość dla innych providerów (RIS itd.) — `split_input`
-  domyślnie `[text]` zostawia to otwarte na przyszłość bez pracy teraz.
-- Deduplikacja/wykrywanie duplikatów wpisów względem BPP na etapie listy
-  (matching dzieje się w istniejącym wizardzie per wpis).
+  domyślnie 1 `SplitRecord` zostawia to otwarte bez pracy teraz.
+- Deduplikacja duplikatów wpisów względem BPP na etapie listy (matching
+  dzieje się w istniejącym wizardzie per wpis).
 - Ochrona przed dwukrotnym wklejeniem tej samej paczki.
 - Lista wszystkich paczek usera (opcjonalny link, nie MVP).
+- **Bloki `@string`/`@preamble`** z wklejonego BibTeX-a są tracone przy
+  rozbiciu per-wpis. W praktyce nieistotne: v2 `fetch()` i tak ich nie
+  interpoluje, a w pastowanych eksportach występują rzadko.
