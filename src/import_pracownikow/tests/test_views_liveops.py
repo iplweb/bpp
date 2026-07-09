@@ -4,7 +4,8 @@ import pytest
 from django.urls import reverse
 from model_bakery import baker
 
-from import_pracownikow.models import ImportPracownikow
+from bpp.models import Autor, Jednostka
+from import_pracownikow.models import ImportPracownikow, ImportPracownikowRow
 
 
 @pytest.mark.django_db
@@ -69,3 +70,40 @@ def test_restart_analiza_cofa_stan_i_kasuje_wiersze(admin_client, admin_user):
     imp.refresh_from_db()
     assert imp.stan == ImportPracownikow.STAN_UTWORZONY
     assert imp.importpracownikowrow_set.count() == 0  # on_restart skasował
+
+
+@pytest.mark.django_db
+def test_importpracownikow_results_renderuje_liste_modyfikacji(
+    admin_client, admin_user
+):
+    """Regresja Task 6 review: szablon importpracownikowrow_list.html
+    odwoływał się do zmiennej ``object``, ale ``ImportPracownikowResultsView``
+    (ListView, ``context_object_name="object_list"``) przekazuje w kontekście
+    ``parent_object``, nie ``object``. Django cicho zwraca falsy dla
+    niezdefiniowanej zmiennej, więc ``{% if object.finished_successfully %}``
+    było zawsze False i cała tabela "Lista modyfikacji" nigdy się nie
+    renderowała. NIE używamy fixture ``import_pracownikow_performed`` — woła
+    usunięte ``.perform()`` (dług Task 7)."""
+    imp = baker.make(
+        ImportPracownikow,
+        owner=admin_user,
+        finished_successfully=True,
+        stan=ImportPracownikow.STAN_ZINTEGROWANY,
+    )
+    autor = baker.make(Autor, nazwisko="Testowy", imiona="Jan")
+    jednostka = baker.make(Jednostka, nazwa="Testowa Jednostka", skrot="Test. Jedn.")
+    baker.make(
+        ImportPracownikowRow,
+        parent=imp,
+        autor=autor,
+        jednostka=jednostka,
+        zmiany_potrzebne=True,
+    )
+
+    url = reverse("import_pracownikow:importpracownikow-results", kwargs={"pk": imp.pk})
+    resp = admin_client.get(url)
+
+    assert resp.status_code == 200
+    content = resp.content.decode()
+    assert "Lista modyfikacji" in content
+    assert imp.plik_xls.name in content
