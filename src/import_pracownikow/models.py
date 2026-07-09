@@ -22,6 +22,7 @@ from bpp.models import (
 from import_common.exceptions import BPPDatabaseError
 from import_common.forms import ExcelDateField
 from import_common.models import ImportRowMixin
+from import_pracownikow.pewnosc import STATUS_CHOICES, STATUS_DISPLAY
 
 
 class JednostkaForm(forms.Form):
@@ -253,6 +254,18 @@ class ImportPracownikowRow(ImportRowMixin, models.Model):
     diff_do_utworzenia = models.JSONField(default=dict, blank=True)
     pominiety_bo_nieaktualny = models.BooleanField(default=False)
 
+    confidence = models.CharField(  # noqa: DJ001
+        max_length=20, choices=STATUS_CHOICES, null=True, blank=True
+    )
+    korekta_uzytkownika = models.JSONField(default=dict, blank=True)
+    wybrany_kandydat = models.ForeignKey(
+        "bpp.Autor",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="+",
+    )
+
     log_zmian = JSONField(encoder=DjangoJSONEncoder, null=True, blank=True)
 
     MAPPING_DANE_NA_AUTOR = [
@@ -273,6 +286,15 @@ class ImportPracownikowRow(ImportRowMixin, models.Model):
                 self.dane_znormalizowane[fld] = date.fromisoformat(v)
 
         return self.dane_znormalizowane
+
+    @property
+    def confidence_badge(self):
+        """(klasa Foundation label, ikona Foundation-Icons, etykieta) dla
+        ``confidence`` — do szablonu podglądu. ``None`` (stare wiersze) →
+        bezpieczny neutralny badge."""
+        return STATUS_DISPLAY.get(
+            self.confidence, ("secondary", "fi-minus", self.confidence or "—")
+        )
 
     def _check_autor_needs_update(self, dane):
         """Sprawdza czy autor wymaga aktualizacji."""
@@ -445,3 +467,56 @@ class ProfilMapowania(models.Model):
 
     def __str__(self):
         return self.nazwa
+
+
+class ImportPracownikowRowKandydat(models.Model):
+    """Kandydat na dopasowanie autora dla wiersza o statusie ``wielu``.
+
+    Materializuje listę z ``znajdz_kandydatow_autora`` (pewność, powód strategii,
+    liczba publikacji), żeby dropdown w podglądzie mógł pokazać userowi pełny
+    kontekst. Wzorzec: ``importer_publikacji.ImportedAuthor_Candidate``.
+    """
+
+    row = models.ForeignKey(
+        ImportPracownikowRow,
+        on_delete=models.CASCADE,
+        related_name="kandydaci",
+        verbose_name="wiersz importu",
+    )
+    autor = models.ForeignKey(
+        "bpp.Autor",
+        on_delete=models.CASCADE,
+        verbose_name="autor BPP",
+    )
+    pewnosc = models.FloatField("pewność")
+    powod = models.CharField("powód dopasowania", max_length=32)
+    publikacji_count = models.PositiveIntegerField("liczba publikacji", default=0)
+
+    class Meta:
+        verbose_name = "kandydat na autora (import pracowników)"
+        verbose_name_plural = "kandydaci na autora (import pracowników)"
+        ordering = ["-pewnosc"]
+
+    def __str__(self):
+        return f"{self.autor} ({self.pewnosc})"
+
+    @classmethod
+    def zapisz_dla(cls, row, kandydaci):
+        """Nadpisuje kandydatów wiersza listą ``KandydatAutora`` (z
+        ``znajdz_kandydatow_autora``): kasuje poprzednich i tworzy nowych
+        (``bulk_create``). Jedno źródło mapowania ``k.* → pola modelu`` dla
+        analizy (T7) oraz re-matchu inline (T10). Przekaż ``[]``, by tylko
+        wyczyścić kandydatów (np. wiersz po korekcie zszedł z ``wielu``)."""
+        row.kandydaci.all().delete()
+        cls.objects.bulk_create(
+            [
+                cls(
+                    row=row,
+                    autor=k.autor,
+                    pewnosc=k.pewnosc,
+                    powod=k.powod,
+                    publikacji_count=k.publikacji,
+                )
+                for k in kandydaci
+            ]
+        )
