@@ -62,18 +62,30 @@ wszystkiego od nowa — decyzje usera muszą przeżyć. To wywraca `on_restart()
 - **Parsowanie:** `import_common.util.XLSImportFile` — TYLKO openpyxl (XLSX). Ma
   już fuzzy-detekcję nagłówka: `find_similar_row(sheet, try_names, min_points)`
   skanuje wiersze i bierze pierwszy, w którym ≥`min_points` nazw z `try_names`
-  pasuje po `normalize_cell_header`. `DEFAULT_BANNED_NAMES=['pesel',...]` wywalane.
+  pasuje po `normalize_cell_header`.
+  `DEFAULT_BANNED_NAMES=['pesel', 'pesel_md5', 'peselmd5']` wywalane.
   **Brak obsługi CSV.**
 - **Matchowanie:** `import_common.core.matchuj_autora(...)`,
   `matchuj_jednostke(nazwa, wydzial)` (obsługuje już „Nazwa (SKRÓT)" przez
   `wytnij_skrot`, dopasowanie nazwa/skrot iexact, prefix istartswith, zawężenie
   wydziałem). `matchuj_funkcja_autora` / `matchuj_grupa_pracownicza` /
-  `matchuj_wymiar_etatu` — **tworzą** obiekt słownikowy gdy brak (istotne dla
-  dry-run, patrz §7).
+  `matchuj_wymiar_etatu` (`core/tytul_funkcja.py:47-61`) — to **czyste `.get()`**
+  rzucające `DoesNotExist`; **tworzenie** obiektu słownikowego siedzi w callerze
+  (`ImportPracownikow._matchuj_funkcje_autora`, `_matchuj_grupe_i_wymiar` —
+  `models.py:112-151`). Analogicznie `_znajdz_autor_jednostka` (`models.py:195-198`)
+  robi `Autor_Jednostka.objects.create(...)` przy braku powiązania. **To są
+  miejsca, które dry-run musi ominąć** (patrz §8) — a NIE sygnatury `matchuj_*`.
 - Istnieje osobna aplikacja `src/przemapuj_prace_autora/` (przepinanie prac
   autora na inną jednostkę) — do reużycia w feature §8.
-- **Confidence-matchowanie** ma już wzorzec w `importer_publikacji`
-  (pole `candidate`, migracja `0009_importedauthor_candidate`) — reużyć pattern.
+- **Confidence-matchowanie** ma już infrastrukturę w `import_common.core.autor`:
+  `znajdz_kandydatow_autora(...) -> list[KandydatAutora]` (`autor.py:439`) z progami
+  `PEWNOSC_IEXACT=1.0`, `PEWNOSC_IEXACT_PIERWSZE_IMIE=0.95`,
+  `PEWNOSC_POLISH_ENGLISH=0.85`, `PEWNOSC_INICJAL=0.5` oraz
+  `PEWNOSC_MIN_AUTOMATYCZNA=0.85`. `matchuj_autora` (`autor.py:553`) zwraca
+  kandydata tylko gdy `kandydaci[0].pewnosc >= PEWNOSC_MIN_AUTOMATYCZNA`. Dodatkowo
+  `importer_publikacji` ma **model** `ImportedAuthor_Candidate` (migr. `0009`, nie
+  „pole `candidate`") jako wzorzec UI wyboru kandydata. **Wskaźnik pewności §8 MUSI
+  mapować się na te istniejące progi**, nie budować równoległej skali.
 
 ---
 
@@ -96,7 +108,7 @@ Domyślne (moja propozycja, do potwierdzenia w razie sprzeciwu):
 
 | # | Kwestia | Domyślne |
 |---|---------|----------|
-| DD1 | RODO / retencja | Blob `plik_xls` kasowany po 90 dniach (housekeeping); metadane wierszy zostają jako audyt. Konfigurowalne |
+| DD1 | RODO / retencja | Blob `plik_xls` kasowany po `IMPORT_PRACOWNIKOW_RETENCJA_DNI` (default 90) przez **management command** `usun_stare_pliki_importu_pracownikow` odpalany z crona (nie celery-beat — spójne z resztą housekeepingu BPP); metadane wierszy zostają jako audyt |
 | DD2 | Współbieżność | Nie blokujemy twardo (single-tenant), ale **ostrzegamy** gdy istnieje niezatwierdzony import w stanie `przeanalizowany` |
 | DD3 | 2 kolumny → 1 pole (np. osobno „stopień" i „tytuł") | **v2** — rzadkie; v1 = 1 kolumna → 1 pole + kompozyty z §6 |
 
@@ -106,7 +118,9 @@ Domyślne (moja propozycja, do potwierdzenia w razie sprzeciwu):
 
 Pole `stan` (CharField z choices) na modelu, **obok** stanu operacyjnego liveops
 (liveops mówi tylko „task biegnie / padł / skończył"; `stan` mówi „gdzie w
-procesie importu jesteśmy").
+procesie importu jesteśmy"). Zbiór stanów:
+`utworzony`, `zmapowany`, `przeanalizowany`, `zatwierdzony`, `zintegrowany`,
+`porzucony` (dla starych rekordów z migracji, §11).
 
 ```
 utworzony
@@ -132,11 +146,32 @@ zintegrowany
 
 Reguły krytyczne:
 
-- **`run(self, p)` jest dyspozytorem po `stan`**: `zmapowany` → faza analizy;
-  `zatwierdzony` → faza integracji.
-- **`on_restart()` kasuje wiersze TYLKO przy cofnięciu do analizy** (`stan`
-  wraca do `zmapowany`, np. user zmienił mapowanie i re-analizuje). Przy przejściu
-  `przeanalizowany → zatwierdzony` wiersze (z decyzjami usera) **przeżywają**.
+- **NIE enqueue'ujemy po uploadzie.** `CreateLiveOperationView.form_valid`
+  (`liveops/views.py:101-105`) domyślnie robi `form.save(); self.object.enqueue();
+  redirect(get_absolute_url())` — to odpaliłoby `run()` natychmiast, w stanie
+  `utworzony`, przed ekranem mapowania. Dlatego **własny `form_valid`**: zapis
+  obiektu (`stan="utworzony"`) **bez `enqueue`**, redirect na ekran mapowania.
+  `enqueue()` wołamy dopiero po zatwierdzeniu mapowania (przejście → `zmapowany`).
+- **`run(self, p)` jest dyspozytorem po `stan`**: `zmapowany` → faza analizy
+  (task #1); `zatwierdzony` → faza integracji (task #2). Dla **każdego innego
+  stanu** (`utworzony`, `przeanalizowany`, `zintegrowany`, `porzucony`) `run()`
+  jest **no-op z logiem ostrzegawczym** (`p.log("run() w nieoczekiwanym stanie …")`)
+  — chroni przed gołym restartem z centralnej strony liveops.
+- **`on_restart()` warunkowy po `stan`** — uwaga, liveops `RestartView.post()` woła
+  `on_restart()` **bezwarunkowo jako pierwszy krok**, potem re-enqueue:
+  - przejście do commitu: widok „Zatwierdź" ustawia i **zapisuje**
+    `stan="zatwierdzony"` PRZED `super().post()` (wzorzec `ZatwierdzImportView`,
+    `import_punktacji_zrodel/views.py:107-111`); `on_restart()` widzi `zatwierdzony`
+    → **NIE kasuje wierszy** (decyzje usera przeżywają), tylko czyści flagi błędu.
+  - restart analizy: user zmienił mapowanie → widok cofa `stan="zmapowany"` przed
+    `super().post()`; `on_restart()` widzi `zmapowany` → **kasuje wiersze** i liczy
+    od nowa.
+  - goły restart z centralnej strony (`przeanalizowany`/`zintegrowany`):
+    `on_restart()` nie kasuje, a `run()` trafia w gałąź no-op (wyżej) — bezpieczne.
+- **`RestartView` twardo zeruje `result_context`, `log`, `stage_states`,
+  `percent`** — po zatwierdzeniu podsumowanie fazy analizy znika ze strony live.
+  Akceptujemy to; faza integracji **odtwarza** komplet podsumowania w swoim
+  `p.result(...)` (liczby: zmienieni autorzy, odpięci, przepięte prace).
 - **Faza integracji robi per-wiersz świeży re-check** (`check_if_integration_needed`)
   w osobnej `transaction.atomic` — baza mogła się zmienić od preview. Wiersz
   nieaktualny → oznacz `pominiety_bo_nieaktualny`, **nie** wywalaj całości.
@@ -144,12 +179,19 @@ Reguły krytyczne:
   re-match pojedynczego wiersza po korekcie.
 - Liveops task #1 „analiza": pełny parse + match wszystkich wierszy → pisze
   **wyłącznie** `ImportPracownikowRow` (+ `dane_znormalizowane`, FK do dopasowanych
-  obiektów, `zmiany_potrzebne`, proponowany diff w JSON, `confidence`). Postęp
-  `p.track(rows)`, logi `p.log`, podsumowanie `p.result({...})`.
-- Liveops task #2 „commit": iteruje istniejące wiersze → `row.integrate()` +
-  odpięcia zaznaczonych (§9) + przepięcia zaznaczonych (§8).
-- `stages = ["Parsowanie", "Matchowanie", "Integracja"]` → pasek postępu z liveops
-  za darmo.
+  obiektów gdy są, `zmiany_potrzebne`, `confidence`, oraz **diff-do-utworzenia**
+  w JSON: funkcja/grupa/wymiar/`Autor_Jednostka` których jeszcze NIE ma —
+  patrz §8, bo to są create'y odraczane z dry-run). Postęp `p.track(rows)`, logi
+  `p.log`, podsumowanie `p.result({...})`.
+- Liveops task #2 „commit": iteruje istniejące wiersze → materializuje odroczone
+  create'y (słowniki + `Autor_Jednostka`) → `row.integrate()` + odpięcia
+  zaznaczonych (§9) + przepięcia zaznaczonych (§10).
+- `stages = ["Parsowanie", "Matchowanie", "Integracja"]` (statyczna lista klasowa).
+  **Caveat:** task #1 wypełnia etapy 1–2, task #2 etap 3; po `RestartView`
+  `stage_states={}`, więc w fazie commit etapy 1–2 pokażą się jako „niewykonane".
+  Akceptujemy (etap „Integracja" jest jedynym istotnym w tej fazie); alternatywa
+  (per-fazowe listy stages albo prefill `stage_states`) — odłożona, jeśli
+  wizualnie przeszkadza.
 
 Wariant odrzucony (commit = pełny re-run z flagą, jak w `import_punktacji_zrodel`):
 prostszy i odporny na drift bazy, ale **kasuje edycje usera per-wiersz** —
@@ -163,13 +205,24 @@ Protokół `TabularSource` w `import_common/sources.py` (duck-typing / `typing.P
 
 ```python
 class TabularSource(Protocol):
-    def headers_candidates(self) -> list[list[str]]: ...   # pierwsze N surowych wierszy (detekcja nagłówka)
+    # nagłówki-kandydaci PER ARKUSZ (XLSX ma N arkuszy; CSV = 1 „arkusz")
+    def sheet_headers(self) -> list[list[list[str]]]: ...   # [arkusz][wiersz][komórka]
     def rows(self, mapping) -> Iterator[dict]: ...          # wiersze danych po zmapowaniu
     def count(self) -> int: ...
 ```
 
+- **Wielo-arkuszowość (istotne!):** `XLSImportFile` wykrywa nagłówek **per arkusz**
+  (`sheet_row_cache`), a mapowanie kolumn (§6) jest **jedno na cały import**.
+  Kontrakt: nagłówki wszystkich arkuszy muszą się **zgadzać** (ten sam
+  znormalizowany zbiór kolumn) — mapowanie stosujemy do wszystkich. Jeśli arkusze
+  różnią się nagłówkami → **błąd walidacji przed analizą** z listą rozbieżności
+  (v1 nie wspiera per-arkusz różnych mapowań). CSV = zawsze jeden „arkusz".
+- **Kontrakt kluczy lokalizacyjnych:** `get_details_set()` sortuje po
+  `__xls_loc_sheet__` / `__xls_loc_row__` (RawSQL na `dane_z_xls`). **Każde**
+  źródło (także `CSVSource`) MUSI emitować te dwa klucze w każdym wierszu
+  (`CSVSource`: `sheet=0`, `row=n`), inaczej sortowanie preview się wywali.
 - **`XLSXSource`** — opakowuje obecny `XLSImportFile` (openpyxl, bez zmian logiki
-  parsowania). Wielo-arkuszowość zostaje.
+  parsowania).
 - **`CSVSource`** — nowy:
   - **Detekcja formatu** po magic-bytes (XLSX = ZIP, zaczyna się `PK`), NIE po
     rozszerzeniu (ludzie nazywają `.xls` plik CSV i odwrotnie).
@@ -203,9 +256,18 @@ Po uploadzie widok **synchronicznie** czyta nagłówek + ~10 wierszy próbki
 - **Pola docelowe** obejmują nie tylko obecne twarde klucze, ale też **kompozyty**:
   - `osoba_sklejona` — 1 komórka „tytuł+imię+nazwisko" → uruchamia parser z §7;
   - `jednostka_nazwa_i_skrot` — „Nazwa (SKRÓT)" → już obsłużone przez `wytnij_skrot`.
-- **Walidacja mapowania** przed przejściem dalej: pola obowiązkowe (identyfikacja
-  osoby: `nazwisko`+`imię` LUB `osoba_sklejona`; oraz `jednostka`; oraz `tytuł`)
-  muszą być zmapowane. `DEFAULT_BANNED_NAMES` (`pesel`) twardo odrzucane —
+- **Walidacja mapowania** przed przejściem dalej: **jedyne pola obowiązkowe** to
+  identyfikacja osoby (`nazwisko`+`imię` LUB `osoba_sklejona`) oraz `jednostka`.
+  **Wszystkie pozostałe pola stają się opcjonalne** — w tym te dziś-`required` w
+  `AutorForm`: `tytuł_stopień`, `stanowisko`, `grupa_pracownicza`,
+  `data_zatrudnienia`, `wymiar_etatu` (to zmiana względem obecnej sztywnej
+  walidacji — §13 obiecuje łykanie plików z brakami; §8 przewiduje „brak tytułu"
+  jako miękki match). Skutki braku:
+  - brak `tytuł` → tylko obniża `confidence` matcha (nie blokuje);
+  - brak pola `Autor_Jednostka` (stanowisko/grupa/wymiar/daty) → w fazie integracji
+    **nie nadpisujemy** tego pola (ustawiamy tylko to, co w pliku jest) — spójne z
+    obecnym `_integrate_autor_jednostka`, które i tak sprawdza `is not None`.
+  `DEFAULT_BANNED_NAMES` (`pesel`, `pesel_md5`, `peselmd5`) twardo odrzucane —
   kolumna nieoferowana.
 - **Przechowywanie**:
   - **Per-import (snapshot)**: `mapowanie_kolumn` JSONField na modelu importu —
@@ -221,9 +283,15 @@ Po uploadzie widok **synchronicznie** czyta nagłówek + ~10 wierszy próbki
 
 ## 7. Parser sklejonej komórki „tytuł/imię/nazwisko" (D4)
 
-Czysta funkcja `parsers/osoba.py` (testy tabelaryczne, bez ORM poza leksykonem).
+Dwuwarstwowo, żeby rdzeń był czysty i testowalny tabelarycznie:
+- **rdzeń** `parsers/osoba.py` — czysta tokenizacja + reguły składania, **bez
+  ORM**; sygnał bazodanowy (krok 2, tiret „match do bazy") przyjmuje jako
+  **wstrzykiwaną zależność** (callable `probuj_match(imiona, nazwisko) -> bool`),
+  a słowniki tytułów/imion jako argumenty. Testy tabelaryczne odpalają rdzeń z
+  atrapami callable/słowników.
+- **adapter** w pipeline wstrzykuje realny `matchuj_autora` i leksykony z bazy.
 
-Algorytm:
+Algorytm rdzenia:
 
 1. **Zdejmij tytuły**: tokenizuj, longest-match do słownika tytułów. Źródło
    słownika: model `bpp.Tytul` (skróty + nazwy, już używany przez
@@ -260,23 +328,37 @@ tańsza, testowalna i wystarczająca przy plikach rzędu setek wierszy.
 Match po **nazwisko + jednostka + tytuł**; jeśli plik ma ID (numer kadrowy /
 ORCID / PBN / bpp_id) — dodatkowo po ID. ID **nieobowiązkowe**.
 
-Każdy wiersz dostaje **status pewności** (reużycie patternu `candidate` z
-`importer_publikacji`), zapisany na `ImportPracownikowRow`:
+Każdy wiersz dostaje **status pewności** zapisany na `ImportPracownikowRow`,
+**wyprowadzony z istniejących progów** `znajdz_kandydatow_autora()` (§2), nie z
+nowej, równoległej skali:
 
-| Status | Znaczenie | UI |
-|--------|-----------|-----|
-| 🟢 `twardy` | ID jednoznaczne LUB jednoznaczne nazwisko+jednostka+tytuł | zielony |
-| 🟡 `zgadywanie` | dopasowanie miękkie (np. sam prefix nazwiska, brak tytułu) | żółty, podświetlony |
-| 🔵 `wielu` | kilku kandydatów | dropdown wyboru |
-| ⚪ `brak` | brak w bazie | checkbox „utwórz nowego autora" (D2) |
+| Status | Źródło (istniejące API) | UI |
+|--------|-------------------------|-----|
+| 🟢 `twardy` | jednoznaczny match po ID, LUB dokładnie 1 kandydat z `pewnosc >= PEWNOSC_IEXACT` (1.0) | zielony |
+| 🟡 `zgadywanie` | dokładnie 1 kandydat z `PEWNOSC_MIN_AUTOMATYCZNA (0.85) <= pewnosc < 1.0` (np. `PIERWSZE_IMIE` 0.95, `POLISH_ENGLISH` 0.85) | żółty, podświetlony |
+| 🔵 `wielu` | ≥2 kandydatów powyżej progu, LUB kandydaci `< PEWNOSC_MIN_AUTOMATYCZNA` (np. `INICJAL` 0.5) | dropdown wyboru |
+| ⚪ `brak` | `znajdz_kandydatow_autora` zwraca pustą listę | checkbox „utwórz nowego autora" (D2) |
 
 - Konflikt `bpp_id` z pliku ≠ pk zmatchowanego autora → twardy błąd wiersza
   (jak dziś w `_matchuj_autora_z_walidacja`).
-- **Dry-run musi naprawdę nic nie pisać**: `matchuj_funkcja_autora` /
-  `matchuj_grupa_pracownicza` / `matchuj_wymiar_etatu` dziś **tworzą** obiekty
-  słownikowe gdy brak. W fazie analizy dostają `create=False` i zapisują „do
-  utworzenia przy commicie" w diffie wiersza (JSON). Tworzenie realne dopiero w
-  fazie integracji.
+- **Model kandydatów per-wiersz**: dla statusu `wielu` zapisujemy listę kandydatów
+  (mały model `ImportPracownikowRowKandydat(row FK, autor FK, pewnosc, powod)` —
+  wzorzec `ImportedAuthor_Candidate`) + pole wyboru usera. UI = dropdown.
+- **Migracja NULLABLE FK (krytyczne!)**: dziś na `ImportPracownikowRow` pola
+  `autor`, `jednostka`, `autor_jednostka`, `funkcja_autora`, `grupa_pracownicza`,
+  `wymiar_etatu` są **NOT NULL** (`models.py:340-350`). Statusy `brak`/`wielu` oraz
+  odroczone create'y (niżej) wymagają zapisu wiersza **bez** części tych FK →
+  potrzebna migracja `null=True` na wszystkich sześciu (nowa migracja, bez ruszania
+  istniejących). Przypisane do Fazy 0 (§14).
+- **Dry-run musi naprawdę nic nie pisać** — sprostowanie względem błędnego założenia:
+  `matchuj_funkcja_autora`/`matchuj_grupa_pracownicza`/`matchuj_wymiar_etatu` to
+  czyste `.get()` (§2), **nie** tworzą — więc NIE zmieniamy ich sygnatur. Tworzenie
+  siedzi w callerach (`_matchuj_funkcje_autora`, `_matchuj_grupe_i_wymiar`) oraz w
+  `_znajdz_autor_jednostka` (`Autor_Jednostka.objects.create`). Faza analizy **nie
+  woła tych fallbacków create** — zamiast tego zapisuje „do utworzenia przy
+  commicie" w diffie JSON wiersza (`diff_do_utworzenia`: brakująca funkcja/grupa/
+  wymiar/`Autor_Jednostka`). Realne `create()` dopiero w fazie integracji (§4,
+  task #2), przed `row.integrate()`.
 
 ---
 
@@ -287,6 +369,14 @@ jako osobna zakładka z checkboxami **per-autor, domyślnie ODZNACZONYMI**.
 Wykonanie (zakończenie zatrudnienia = wczoraj, `podstawowe_miejsce_pracy=False`)
 **tylko w fazie commit**, dla zaznaczonych. Zachować istniejącą logikę
 wykluczeń (jednostki `zarzadzaj_automatycznie=True`, nie-obce, aktywne).
+
+- **Persystencja decyzji (istotne!)**: `autorzy_spoza_pliku_set()` liczy się
+  dynamicznie z bazy, a autorzy spoza pliku NIE są w `ImportPracownikowRow`.
+  Zaznaczenia usera muszą przeżyć do fazy commit i drift bazy → materializujemy je
+  w fazie analizy jako wiersze `ImportPracownikowOdpiecie(parent FK,
+  autor_jednostka FK, zaznaczone BooleanField=False, wykonane BooleanField=False)`.
+  Preview edytuje `zaznaczone`; commit iteruje `zaznaczone=True`, robi świeży
+  re-check (powiązanie mogło już zostać zakończone ręcznie) i ustawia `wykonane`.
 
 ---
 
@@ -308,9 +398,21 @@ wykluczeń (jednostki `zarzadzaj_automatycznie=True`, nie-obce, aktywne).
   wierszy agregat OK).
 - **Wykonanie** w fazie commit, po `row.integrate()`, w transakcji wiersza; wynik
   (pk przemapowania, liczby) do `log_zmian`.
-- **Cofanie** (D6): model `PrzemapoaniePracAutora` (już ma JSON-ową listę
-  przemapowanych prac) + nowe nullable FK `import_row` (powiązanie z importem) +
-  **przycisk „cofnij"** przywracający starą jednostkę z logu.
+- **Cofanie** (D6) — z jawnymi ograniczeniami. Realny model
+  `PrzemapoaniePracAutora` ma `jednostka_z`, `jednostka_do` (top-level) oraz DWA
+  pola JSON: `prace_ciagle_historia`, `prace_zwarte_historia` — **listy ID+tytuł
+  publikacji, BEZ pk wierszy `Wydawnictwo_*_Autor`**. Undo po samym ID publikacji
+  jest niejednoznaczne (autor może występować w pracy wielokrotnie; praca mogła
+  później zmienić afiliację). Dlatego:
+  - **Rozszerzamy wpisy historii** (dla przemapowań robionych przez import) o
+    `{rekord_id, autor_rekord_pk, jednostka_z_pk, tytul, rok}` (dodatek do JSON,
+    bez migracji schematu) + nowe nullable FK `import` (powiązanie z importem).
+  - **Algorytm undo**: dla każdego wpisu przywróć `autor_rekord_pk` →
+    `jednostka_z_pk` **tylko gdy** jego bieżąca `jednostka == jednostka_do`
+    (guard przed nadpisaniem późniejszych zmian); niepasujące → **pomiń i
+    zaraportuj** (nie cofaj na ślepo). Undo w `transaction.atomic`.
+  - **Przycisk „cofnij"** w UI wykonuje powyższe i pokazuje raport
+    (cofnięto N, pominięto M z powodu późniejszych zmian).
 - Autor z wieloma starymi jednostkami: v1 przepina tylko z jednostki, którą import
   faktycznie zmienia w tym wierszu; reszta = link do ręcznego widoku
   `przemapuj_prace_autora`.
@@ -351,6 +453,7 @@ wykluczeń (jednostki `zarzadzaj_automatycznie=True`, nie-obce, aktywne).
 ```
 src/import_pracownikow/
   models.py            # ImportPracownikow(LiveOperation), ImportPracownikowRow,
+                       #   ImportPracownikowRowKandydat, ImportPracownikowOdpiecie,
                        #   ProfilMapowania — TYLKO pola, stan, cienkie metody
   forms.py             # upload, formularz mapowania (dynamiczny), zatwierdzenie
   views.py             # Create / Mapowanie / Preview(ListView) / edycja wiersza
@@ -375,7 +478,15 @@ src/przemapuj_prace_autora/
 
 Zasada cięcia: `models.py` przestaje być 500-liniowym silnikiem — logika
 przetwarzania w `pipeline/` jako funkcje `(import_obj, p)`; matchowanie zostaje
-w `import_common.core` (bez zmian sygnatur poza `create=False` dla słowników).
+w `import_common.core` **bez zmian sygnatur** (`matchuj_*` to czyste `.get()`,
+§2/§8 — dry-run po prostu nie woła fallbacków `create()` w pipeline).
+
+Nowe migracje `import_pracownikow` (bez ruszania istniejących): (a) pola liveops
++ `stan` + usunięcie `performed/integrated` (Faza 0); (b) `null=True` na sześciu
+FK `ImportPracownikowRow` (Faza 0); (c) modele `ImportPracownikowOdpiecie`,
+`ImportPracownikowRowKandydat`, `ProfilMapowania` + pola `mapowanie_kolumn`,
+`diff_do_utworzenia`, `confidence`, `przepnij_prace`, `korekta_uzytkownika` (fazy
+2–5, dokładany schemat). Po każdej zmianie schematu: `make baseline-update`.
 
 ---
 
@@ -385,12 +496,19 @@ W chwili pisania **mail zgłoszeniowy od `michal.dtz@gmail.com` NIE dotarł** do
 Freshdeska (brak kontaktu, brak ticketu). Tickety wskazanych osób (Anna Wołodko
 [IHIT] #417/#420, Jan Bihalowicz #428/#422) dotyczą innych tematów (IF, CrossRef)
 i **nie zawierają** Exceli personalnych. Firm „VIZJA"/„UAFM" nie ma w Freshdesku
-pod tymi nazwami.
+pod tymi nazwami. Właściciel wskazał dodatkowo pliki na Freshdesku: Kowalczewski
+„Wydziały i ludzie z nich" oraz „przyporządkowanie do wydziałów - uniwersytet
+vizja" — ale **Freshdesk MCP nie ma full-text search po temacie/treści ani
+listowania załączników**, a te tematy nie występują wśród ~70 zwracanych ticketów
+(367–434); prawdopodobnie zamknięte/zarchiwizowane. **Do pobrania ręcznego przy
+implementacji** (numery ticketów albo przesłanie plików).
 
 **Skutek dla planu:** realne pliki wzbogacają **słownik synonimów** (§6) i
 **fixtures testowe** (§7, §5) — NIE zmieniają architektury. Implementacja startuje
 na podstawie znanych wariantów (niżej); po dostarczeniu plików: dopisać synonimy
-+ fixtures i ponowić testy tabelaryczne parsera.
++ fixtures i ponowić testy tabelaryczne parsera. **Znane źródła danych do zebrania:**
+Wołodko (kliniki), Bihałowicz (pracownicy), Kowalczewski (wydziały+ludzie),
+uniwersytet Vizja (przyporządkowanie do wydziałów), UAFM, wzorzec BPP (mamy).
 
 ### Katalog znanych wariantów „chaosu" (do rozszerzenia z realnych plików)
 
@@ -423,8 +541,16 @@ Warianty do pokrycia (z opisu właściciela + domeny):
 
 Duży zakres → plan w fazach, każda dowozalna i testowalna osobno:
 
-- **Faza 0** — migracja `long_running → django-liveops` przy zachowaniu obecnego
-  zachowania + rozdzielenie dry-run / commit (maszyna stanów §4). *Fundament.*
+- **Faza 0** — migracja `long_running → django-liveops` + rozdzielenie dry-run /
+  commit. *Fundament.* Faza 0 używa **zredukowanej maszyny stanów** (BEZ
+  `zmapowany`, który wymaga ekranu mapowania z Fazy 2):
+  `utworzony → przeanalizowany → zatwierdzony → zintegrowany`. Analiza używa
+  dotychczasowego sztywnego `AutorForm`/`JednostkaForm` (jeszcze bez mapowania).
+  **W tej fazie odraczamy create'y** (słowniki funkcja/grupa/wymiar +
+  `Autor_Jednostka`) do fazy commit — to warunek prawdziwego dry-run (§8) — oraz
+  robimy migrację `null=True` na sześciu FK `ImportPracownikowRow` (§8). Custom
+  `form_valid` bez natychmiastowego `enqueue` (§4). To domyka „dry-run + zapis
+  później" niezależnie od reszty faz.
 - **Faza 1** — warstwa źródeł CSV + XLSX (`TabularSource`) + refaktor fuzzy-header
   (§5).
 - **Faza 2** — hybrydowe mapowanie kolumn + profile (§6).
