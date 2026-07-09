@@ -25,11 +25,21 @@
                 <td>
                     {% if entry.status == "pending" %}
                         <form method="post"
-                              action="{% url 'importer_publikacji:batch-entry-import' entry_id=entry.pk %}">
+                              action="{% url 'importer_publikacji:batch-entry-import' entry_id=entry.pk %}"
+                              style="display:inline">
                             {% csrf_token %}
                             <button type="submit" class="button tiny">
                                 <span class="fi-play"></span>
                                 Importuj
+                            </button>
+                        </form>
+                        <form method="post"
+                              action="{% url 'importer_publikacji:batch-entry-skip' entry_id=entry.pk %}"
+                              style="display:inline">
+                            {% csrf_token %}
+                            <button type="submit" class="button tiny hollow">
+                                <span class="fi-x"></span>
+                                Pomiń
                             </button>
                         </form>
                     {% elif entry.status == "in_progress" %}

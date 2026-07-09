@@ -62,9 +62,8 @@ class BibTeXProvider(DataProvider):
     @property
     def input_help_text(self) -> str:
         return (
-            "Wklej kod BibTeX publikacji. "
-            "Jeśli podasz wiele wpisów, "
-            "zostanie użyty pierwszy."
+            "Wklej kod BibTeX. Możesz wkleić wiele wpisów naraz — "
+            "każdy trafi do osobnej pozycji na liście do zaimportowania."
         )
 
     def validate_identifier(self, identifier: str) -> str | None:

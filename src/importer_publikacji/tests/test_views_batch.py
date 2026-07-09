@@ -8,6 +8,7 @@ from importer_publikacji.models import (
     MultipleWorksImport,
     MultipleWorksImportEntry,
 )
+from importer_publikacji.providers import get_provider
 
 TWO_ENTRIES = """@article{a,
   title = {Pierwsza},
@@ -272,3 +273,35 @@ def test_cancel_returns_to_batch(client, operator):
     # Redirect albo push-url na batch-detail:
     location = resp.get("Location") or resp.get("HX-Push-Url") or ""
     assert batch_url in location or batch_url in resp.content.decode()
+
+
+@pytest.mark.django_db
+def test_batch_detail_pending_entry_has_skip_action(client, operator):
+    client.force_login(operator)
+    batch = baker.make(MultipleWorksImport, provider_name="BibTeX")
+    entry = baker.make(
+        MultipleWorksImportEntry,
+        parent=batch,
+        order=0,
+        session=None,
+        skipped=False,
+        parse_error="",
+    )
+    resp = client.get(
+        reverse("importer_publikacji:batch-detail", kwargs={"batch_id": batch.pk})
+    )
+    assert resp.status_code == 200
+    content = resp.content.decode()
+    skip_url = reverse(
+        "importer_publikacji:batch-entry-skip", kwargs={"entry_id": entry.pk}
+    )
+    import_url = reverse(
+        "importer_publikacji:batch-entry-import", kwargs={"entry_id": entry.pk}
+    )
+    assert skip_url in content
+    assert import_url in content
+
+
+def test_bibtex_help_text_no_longer_says_first():
+    provider = get_provider("BibTeX")
+    assert "pierwszy" not in provider.input_help_text
