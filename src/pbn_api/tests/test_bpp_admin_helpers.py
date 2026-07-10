@@ -153,7 +153,7 @@ def test_sprobuj_wyslac_do_pbn_validation_error_czytelny_komunikat_bez_rollbar(
 
     msg = get_messages(req)
     text = list(msg)[0].message
-    assert "odrzucona przez PBN" in text
+    assert "odrzucony przez PBN" in text
     assert "Data udostępnienia w otwartym dostępie jest wymagana!" in text
     report.assert_not_called()  # walidacja to NIE błąd kodu — bez Rollbara
 

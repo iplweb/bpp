@@ -236,7 +236,7 @@ def sprobuj_wyslac_do_pbn(  # noqa: C901
     except PBNValidationError as e:
         komunikaty = "".join(f"<li>{escape(m)}</li>" for m in e.user_messages())
         notificator.warning(
-            f'Publikacja "{link_do_obiektu(obj)}" została odrzucona przez PBN '
+            f'Rekord "{link_do_obiektu(obj)}" został odrzucony przez PBN '
             f"z powodu błędów walidacji danych: <ul>{komunikaty}</ul>"
             f"Popraw dane rekordu i spróbuj ponownie. "
             f"{open_in_pbn_link}{open_in_pi_link}"

@@ -974,3 +974,24 @@ def test_delete_statements_batch_reraises_validation_immediately(pbn_client, moc
 
     assert delete.call_count == 1
     report.assert_not_called()
+
+
+@pytest.mark.django_db
+def test_delete_statements_selective_reraises_validation_immediately(
+    pbn_client, mocker
+):
+    exc = PBNValidationError(
+        400, "/api/v2/institution-profile/statements", '{"details":{"x":"y"}}'
+    )
+    delete = mocker.patch.object(
+        pbn_client, "delete_publication_statement", side_effect=exc
+    )
+    report = mocker.patch.object(pbn_client, "_report_statements_failure_and_raise")
+
+    with pytest.raises(PBNValidationError):
+        pbn_client._delete_statements_selective(
+            "123", [{"personId": "p1", "type": "AUTHOR"}], publication_pk=1
+        )
+
+    assert delete.call_count == 1  # brak ponawiania
+    report.assert_not_called()
