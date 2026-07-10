@@ -32,6 +32,7 @@ from bpp.models import (
     Autor_Jednostka,
     Funkcja_Autora,
     Grupa_Pracownicza,
+    Jednostka,
     Wymiar_Etatu,
 )
 from import_common.normalization import (
@@ -39,12 +40,16 @@ from import_common.normalization import (
     normalize_grupa_pracownicza,
     normalize_wymiar_etatu,
 )
-from import_pracownikow.models import ImportPracownikow
+from import_pracownikow.models import (
+    ImportPracownikow,
+    wiersz_kwalifikuje_do_przepiecia,
+)
 from import_pracownikow.pewnosc import (
     STATUS_BRAK,
     STATUS_WIELU,
     odtworz_autor_jednostka,
 )
+from przemapuj_prace_autora import service as przemapuj_service
 
 
 def _materializuj_diff(row):
@@ -193,6 +198,98 @@ def _wykonaj_odpiecia(parent):
     return odpieto
 
 
+def _wykonaj_przepiecia(parent, stare_jednostki, user, p):
+    """Przepina prace dla wierszy ``przepnij_prace=True`` (§10 D6/D7).
+
+    ``stare_jednostki`` = ``{row.pk: aktualna_jednostka_id sprzed importu}``
+    zebrane PRZED pętlą integracji (trigger DB przestawia ``aktualna_jednostka``
+    na jednostkę z pliku). Kwalifikacja wiersza przez wspólny
+    ``wiersz_kwalifikuje_do_przepiecia`` (F1/F2/F3 — identyczny warunek co w
+    UI): autor+jednostki ustawione i różne, a stara jednostka NIE jest
+    potwierdzona jako etat w innym wierszu pliku (guard „para z pliku”, F1).
+
+    F4: filtr wyklucza wiersze ``pominiety_bo_nieaktualny=True`` (drift bazy —
+    integracja się NIE wykonała, więc nie przepinamy na podstawie nieaktualnego
+    podglądu) oraz ``jednostka__isnull=False`` (F2). F5: gdy stara == docelowa
+    (możliwy restart po częściowej integracji) zostawiamy ślad przez ``p.log``.
+    F3: dla duplikatu autora z tą samą starą jednostką (dwa wiersze, różne nowe
+    jednostki) przepięcie wykonujemy RAZ (pierwszy po ``pk`` — iterujemy z
+    ``order_by("pk")``), kolejnym wpisujemy ślad ``przepiecie_pominiete`` bez
+    pustego rekordu. Zwraca ``(przepieto_wierszy, przepieto_prac)``.
+    """
+    przepieto_wierszy = 0
+    przepieto_prac = 0
+    pary_z_pliku = parent.pary_z_pliku()
+    juz_przepiete = set()
+    for row in (
+        parent.importpracownikowrow_set.filter(
+            przepnij_prace=True,
+            autor__isnull=False,
+            jednostka__isnull=False,
+            pominiety_bo_nieaktualny=False,
+        )
+        .select_related("autor")
+        .order_by("pk")
+    ):
+        stara_id = stare_jednostki.get(row.pk)
+        # F5: snapshot czyta bieżący stan — po restarcie stara może już być
+        # docelową; zostawiamy ślad, nie przepinamy.
+        if stara_id is not None and stara_id == row.jednostka_id:
+            p.log(
+                f"Wiersz {row.pk}: pominięto przepięcie — jednostka źródłowa "
+                "== docelowa (brak zmiany do przepięcia)"
+            )
+            continue
+        if not wiersz_kwalifikuje_do_przepiecia(
+            row.autor_id, stara_id, row.jednostka_id, pary_z_pliku
+        ):
+            continue
+        # F3: duplikat autora z tą samą starą jednostką — przepinamy raz.
+        if (row.autor_id, stara_id) in juz_przepiete:
+            if row.log_zmian is None:
+                row.log_zmian = {"autor": [], "autor_jednostka": []}
+            row.log_zmian["przepiecie_pominiete"] = (
+                "pominięto — prace tego autora ze starej jednostki już "
+                "przepięte w innym wierszu tego importu"
+            )
+            row.save(update_fields=["log_zmian"])
+            continue
+        # G3: jednostka źródłowa (ze snapshotu) lub docelowa mogła zostać
+        # usunięta między snapshotem a przepięciem — pomiń wiersz przez
+        # `filter().first()` zamiast `get()`, żeby nieobsłużony `DoesNotExist`
+        # nie wywrócił CAŁEGO taska integracji (okno = cała pętla, minuty).
+        jednostka_z = Jednostka.objects.filter(pk=stara_id).first()
+        jednostka_do = Jednostka.objects.filter(pk=row.jednostka_id).first()
+        if jednostka_z is None or jednostka_do is None:
+            p.log(
+                f"Wiersz {row.pk}: pominięto przepięcie — jednostka źródłowa "
+                "lub docelowa usunięta"
+            )
+            continue
+        with transaction.atomic():
+            prz = przemapuj_service.przemapuj(
+                row.autor,
+                jednostka_z,
+                jednostka_do,
+                user,
+                zrodlowy_import=parent,
+            )
+            if row.log_zmian is None:
+                row.log_zmian = {"autor": [], "autor_jednostka": []}
+            row.log_zmian["przepiecie"] = {
+                "pk": prz.pk,
+                "prace_ciagle": prz.liczba_prac_ciaglych,
+                "prace_zwarte": prz.liczba_prac_zwartych,
+                "z": jednostka_z.skrot,
+                "do": jednostka_do.skrot,
+            }
+            row.save(update_fields=["log_zmian"])
+            juz_przepiete.add((row.autor_id, stara_id))
+            przepieto_wierszy += 1
+            przepieto_prac += prz.liczba_prac_ciaglych + prz.liczba_prac_zwartych
+    return przepieto_wierszy, przepieto_prac
+
+
 def _przygotuj_nowego_autora(row, cache):
     """D2: dla wiersza ``brak`` z ``utworz_nowego=True`` tworzy (albo REUŻYWA —
     G4) ``bpp.Autor`` (nazwisko/imiona z ``dane_znormalizowane``, tytuł z FK
@@ -262,6 +359,19 @@ def _przygotuj_nowego_autora(row, cache):
 
 
 def integruj(parent, p):
+    # Snapshot starych jednostek PRZED integracją: trigger DB
+    # `bpp_autor_ustaw_jednostka_aktualna` przestawi `aktualna_jednostka` na
+    # jednostkę z pliku, więc to jedyny moment, gdy widać stan sprzed importu.
+    # Snapshot jest SZERSZY niż finalny filtr w `_wykonaj_przepiecia` (F4): na
+    # tym etapie nie wiemy jeszcze, które wiersze zostaną `pominiety_bo_
+    # nieaktualny`; kwalifikację (w tym `pominiety_bo_nieaktualny=False`)
+    # rozstrzyga dopiero pętla w `_wykonaj_przepiecia`.
+    stare_jednostki = {}
+    for row in parent.importpracownikowrow_set.filter(
+        przepnij_prace=True, autor__isnull=False, jednostka__isnull=False
+    ).select_related("autor"):
+        stare_jednostki[row.pk] = row.autor.aktualna_jednostka_id
+
     utworzono_nowych = 0
     # G4: cache dedupujący nowych autorów po (nazwisko, imiona, tytul_id) w
     # obrębie tego commitu — multi-etat (ta sama osoba, wiele jednostek) daje
@@ -280,6 +390,9 @@ def integruj(parent, p):
         _integruj_wiersz(row)
 
     odpieto = _wykonaj_odpiecia(parent)
+    przepieto_wierszy, przepieto_prac = _wykonaj_przepiecia(
+        parent, stare_jednostki, parent.owner, p
+    )
 
     parent.stan = ImportPracownikow.STAN_ZINTEGROWANY
     parent.save(update_fields=["stan"])
@@ -309,6 +422,8 @@ def integruj(parent, p):
             "pominieto_niedopasowane": pominieto_niedopasowane,
             "wymaga_uwagi": pominieto_niedopasowane > 0,
             "odpieto": odpieto,
+            "przepieto_wierszy": przepieto_wierszy,
+            "przepieto_prac": przepieto_prac,
             "utworzono_nowych_autorow": utworzono_nowych,
             "stan": parent.stan,
         }

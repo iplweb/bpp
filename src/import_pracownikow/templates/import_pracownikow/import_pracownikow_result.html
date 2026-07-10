@@ -2,7 +2,8 @@
 {# jako OOB-swap #op-result oraz przy wejściu na zakończoną operację. #}
 {# Kontekst: operation + klucze z result_context — faza analizy (dry-run): #}
 {# total, zmiany_potrzebne, byl_dry_run, stan; faza integracji: #}
-{# zintegrowano, pominieto_nieaktualne, stan. #}
+{# zintegrowano, pominieto_nieaktualne, odpieto, utworzono_nowych_autorow, #}
+{# przepieto_wierszy, przepieto_prac, stan. #}
 <div class="panel callout {% if byl_dry_run %}warning{% else %}success{% endif %}">
     <h3>
         <span class="fi-check"></span>
@@ -29,6 +30,19 @@
                 pominięto (nieaktualne): <strong>{{ pominieto_nieaktualne }}</strong>
             {% endif %}.
         </p>
+        {% if odpieto %}
+            <p>Zakończono zatrudnień (odpięcia):
+                <strong>{{ odpieto }}</strong>.</p>
+        {% endif %}
+        {% if utworzono_nowych_autorow %}
+            <p>Utworzono nowych autorów:
+                <strong>{{ utworzono_nowych_autorow }}</strong>.</p>
+        {% endif %}
+        {% if przepieto_wierszy %}
+            <p>Przepięto prace:
+                <strong>{{ przepieto_wierszy }}</strong> wierszy /
+                <strong>{{ przepieto_prac }}</strong> prac.</p>
+        {% endif %}
     {% endif %}
     <a href="{% url 'import_pracownikow:importpracownikow-results' operation.pk %}"
        class="button secondary">

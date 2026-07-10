@@ -3,12 +3,13 @@ import sys
 import rollbar
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
-from django.db import transaction
 from django.db.models import Count, Q
+from django.http import HttpResponseNotAllowed
 from django.shortcuts import get_object_or_404, redirect, render
 
 from bpp.models import Autor, Wydawnictwo_Ciagle_Autor, Wydawnictwo_Zwarte_Autor
 
+from . import service
 from .forms import PrzemapoaniePracAutoraForm
 from .models import PrzemapoaniePracAutora
 
@@ -82,45 +83,6 @@ def _build_jednostki_stats(autor):
     return jednostki_stats
 
 
-def _historia_prac_ciaglych(prace_ciagle):
-    """Zbuduj historię prac ciągłych przed przemapowaniem."""
-    historia = []
-    for praca_autor in prace_ciagle:
-        rekord = praca_autor.rekord
-        historia.append(
-            {
-                "id": rekord.id,
-                "tytul": rekord.tytul_oryginalny,
-                "rok": rekord.rok,
-                "zrodlo": (
-                    str(rekord.zrodlo)
-                    if hasattr(rekord, "zrodlo") and rekord.zrodlo
-                    else None
-                ),
-            }
-        )
-    return historia
-
-
-def _historia_prac_zwartych(prace_zwarte):
-    """Zbuduj historię prac zwartych przed przemapowaniem."""
-    historia = []
-    for praca_autor in prace_zwarte:
-        rekord = praca_autor.rekord
-        historia.append(
-            {
-                "id": rekord.id,
-                "tytul": rekord.tytul_oryginalny,
-                "rok": rekord.rok,
-                "isbn": (rekord.isbn if hasattr(rekord, "isbn") else None),
-                "wydawnictwo": (
-                    rekord.wydawnictwo if hasattr(rekord, "wydawnictwo") else None
-                ),
-            }
-        )
-    return historia
-
-
 def _wykonaj_przemapowanie(request, autor, form):
     """Wykonaj potwierdzone przemapowanie. Zwraca redirect lub ``None``.
 
@@ -131,45 +93,21 @@ def _wykonaj_przemapowanie(request, autor, form):
     jednostka_do = form.cleaned_data["jednostka_do"]
 
     try:
-        with transaction.atomic():
-            prace_ciagle = Wydawnictwo_Ciagle_Autor.objects.filter(
-                autor=autor, jednostka=jednostka_z
-            ).select_related("rekord")
-            prace_ciagle_historia = _historia_prac_ciaglych(prace_ciagle)
-            liczba_prac_ciaglych = len(prace_ciagle_historia)
-            prace_ciagle.update(jednostka=jednostka_do)
-
-            prace_zwarte = Wydawnictwo_Zwarte_Autor.objects.filter(
-                autor=autor, jednostka=jednostka_z
-            ).select_related("rekord")
-            prace_zwarte_historia = _historia_prac_zwartych(prace_zwarte)
-            liczba_prac_zwartych = len(prace_zwarte_historia)
-            prace_zwarte.update(jednostka=jednostka_do)
-
-            PrzemapoaniePracAutora.objects.create(
-                autor=autor,
-                jednostka_z=jednostka_z,
-                jednostka_do=jednostka_do,
-                liczba_prac_ciaglych=liczba_prac_ciaglych,
-                liczba_prac_zwartych=liczba_prac_zwartych,
-                utworzono_przez=request.user,
-                prace_ciagle_historia=prace_ciagle_historia,
-                prace_zwarte_historia=prace_zwarte_historia,
-            )
-
-            messages.success(
-                request,
-                f"Pomyślnie przemapowano {liczba_prac_ciaglych} prac ciągłych "
-                f"i {liczba_prac_zwartych} prac zwartych "
-                f'z jednostki "{jednostka_z}" do jednostki "{jednostka_do}".',
-            )
-
-            return redirect("przemapuj_prace_autora:przemapuj_prace", autor_id=autor.pk)
-
+        przemapowanie = service.przemapuj(
+            autor, jednostka_z, jednostka_do, request.user
+        )
     except Exception as e:
         rollbar.report_exc_info(sys.exc_info())
-        messages.error(request, f"Wystąpił błąd podczas przemapowania prac: {str(e)}")
-    return None
+        messages.error(request, f"Wystąpił błąd podczas przemapowania prac: {e}")
+        return None
+
+    messages.success(
+        request,
+        f"Pomyślnie przemapowano {przemapowanie.liczba_prac_ciaglych} prac "
+        f"ciągłych i {przemapowanie.liczba_prac_zwartych} prac zwartych "
+        f'z jednostki "{jednostka_z}" do jednostki "{jednostka_do}".',
+    )
+    return redirect("przemapuj_prace_autora:przemapuj_prace", autor_id=autor.pk)
 
 
 def _render_preview(request, autor, form, jednostki_stats):
@@ -240,3 +178,27 @@ def przemapuj_prace(request, autor_id):
         "preview": False,
     }
     return render(request, "przemapuj_prace_autora/przemapuj_prace.html", context)
+
+
+@login_required
+def cofnij_przemapowanie(request, pk):
+    """POST: cofnij przemapowanie (``service.cofnij``) i pokaż raport
+    (cofnięto N, pominięto M z powodu późniejszych zmian). Redirect na widok
+    przemapowania autora."""
+    przemapowanie = get_object_or_404(PrzemapoaniePracAutora, pk=pk)
+    if request.method != "POST":
+        return HttpResponseNotAllowed(["POST"])
+
+    cofnieto, pominieto = service.cofnij(przemapowanie)
+    if pominieto:
+        messages.warning(
+            request,
+            f"Cofnięto {cofnieto} przypisań prac; pominięto {pominieto} "
+            "z powodu późniejszych zmian afiliacji.",
+        )
+    else:
+        messages.success(request, f"Cofnięto {cofnieto} przypisań prac.")
+    return redirect(
+        "przemapuj_prace_autora:przemapuj_prace",
+        autor_id=przemapowanie.autor_id,
+    )

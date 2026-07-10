@@ -2,7 +2,15 @@
 
 from braces.views import GroupRequiredMixin
 from django.contrib import messages
-from django.db.models import Case, IntegerField, Prefetch, Q, Value, When
+from django.db.models import (
+    Case,
+    Count,
+    IntegerField,
+    Prefetch,
+    Q,
+    Value,
+    When,
+)
 from django.http import Http404, HttpResponseBadRequest, HttpResponseRedirect
 from django.shortcuts import get_object_or_404, render
 from django.urls import reverse
@@ -12,7 +20,12 @@ from django.views import View
 from django.views.generic import FormView, ListView
 from liveops.views import CreateLiveOperationView, RestartView
 
-from bpp.models import Tytul
+from bpp.models import (
+    Jednostka,
+    Tytul,
+    Wydawnictwo_Ciagle_Autor,
+    Wydawnictwo_Zwarte_Autor,
+)
 from import_common.core.autor import znajdz_kandydatow_autora
 from import_common.exceptions import HeaderNotFoundException
 from import_pracownikow.forms import MapowanieForm, NowyImportForm
@@ -23,6 +36,7 @@ from import_pracownikow.models import (
     ImportPracownikowRow,
     ImportPracownikowRowKandydat,
     ProfilMapowania,
+    wiersz_kwalifikuje_do_przepiecia,
 )
 from import_pracownikow.pewnosc import (
     STATUS_BRAK,
@@ -34,6 +48,55 @@ from import_pracownikow.pewnosc import (
 )
 
 GROUP_REQUIRED = "wprowadzanie danych"
+
+
+def oznacz_przepiecie_prac(rows, parent):
+    """Dokłada do każdego wiersza atrybuty sterujące kolumną „Przepnij prace”.
+
+    ``przepnij_dostepne`` (bool), ``przepnij_stara_jednostka`` (Jednostka|None),
+    ``przepnij_liczba_prac`` (int). N liczone AGREGATEM (dwa GROUP BY na
+    Wydawnictwo_*_Autor) dla wszystkich kwalifikujących się wierszy naraz —
+    bez N+1. Kwalifikacja przez wspólny ``wiersz_kwalifikuje_do_przepiecia``
+    (F1/F2 — IDENTYCZNY warunek co faza commit i akcja zbiorcza): autor
+    ustawiony, stara i nowa jednostka ustawione i różne, a stara jednostka NIE
+    jest „parą z pliku” (potwierdzonym etatem w innym wierszu — pułapka drugiego
+    etatu). ``parent.pary_z_pliku()`` liczone RAZ na całym imporcie (dla
+    pojedynczego wiersza w swapie HTMX też patrzymy na cały plik).
+    """
+    pary_z_pliku = parent.pary_z_pliku()
+    stare = {}
+    pary = set()
+    for row in rows:
+        stara_id = row.autor.aktualna_jednostka_id if row.autor_id else None
+        stare[row.pk] = stara_id
+        if wiersz_kwalifikuje_do_przepiecia(
+            row.autor_id, stara_id, row.jednostka_id, pary_z_pliku
+        ):
+            pary.add((row.autor_id, stara_id))
+    liczby = {}
+    jednostki_map = {}
+    if pary:
+        autor_ids = {a for a, _ in pary}
+        jednostka_ids = {j for _, j in pary}
+        for model in (Wydawnictwo_Ciagle_Autor, Wydawnictwo_Zwarte_Autor):
+            agg = (
+                model.objects.filter(
+                    autor_id__in=autor_ids, jednostka_id__in=jednostka_ids
+                )
+                .values("autor_id", "jednostka_id")
+                .annotate(n=Count("id"))
+            )
+            for w in agg:
+                klucz = (w["autor_id"], w["jednostka_id"])
+                liczby[klucz] = liczby.get(klucz, 0) + w["n"]
+        jednostki_map = Jednostka.objects.in_bulk(jednostka_ids)
+    for row in rows:
+        stara_id = stare[row.pk]
+        dostepne = (row.autor_id, stara_id) in pary
+        row.przepnij_dostepne = dostepne
+        row.przepnij_stara_jednostka = jednostki_map.get(stara_id) if dostepne else None
+        row.przepnij_liczba_prac = liczby.get((row.autor_id, stara_id), 0)
+    return rows
 
 
 class ListaImportowView(GroupRequiredMixin, ListView):
@@ -232,6 +295,7 @@ class _WierszImportuMixin(_ImportPodgladMixin):
         # nr_arkusza/nr_wiersza (RawSQL) — inaczej te komórki byłyby puste po
         # swapie HTMX. Odzwierciedla zapisane właśnie zmiany.
         row = self.parent_object.get_details_set().get(pk=self.row.pk)
+        oznacz_przepiecie_prac([row], self.parent_object)
         return render(
             self.request,
             self.partial_template,
@@ -261,6 +325,8 @@ class WybierzKandydataView(_WierszImportuMixin):
         row.wybrany_kandydat = autor
         row.autor = autor
         row.confidence = STATUS_TWARDY
+        # G2: zmiana autora unieważnia opt-in przepięcia poprzedniego autora.
+        row.przepnij_prace = False
 
         # Materializacja autora MUSI odtworzyć powiązanie Autor_Jednostka tak
         # jak faza analizy (analyze._przetworz_wiersz) I zdjąć ewentualny
@@ -277,6 +343,7 @@ class WybierzKandydataView(_WierszImportuMixin):
                 "autor_jednostka",
                 "diff_do_utworzenia",
                 "zmiany_potrzebne",
+                "przepnij_prace",
             ]
         )
         return self._render_wiersz()
@@ -317,6 +384,8 @@ def _rematch_wiersz(row, imiona, nazwisko, tytul):
     }
     row.confidence = status
     row.autor = autor
+    # G2: zmiana autora unieważnia opt-in przepięcia poprzedniego autora.
+    row.przepnij_prace = False
     row.wybrany_kandydat = None
 
     # Materializacja NOWEGO autora → PRZELICZ Autor_Jednostka od zera (nie ufaj
@@ -380,6 +449,81 @@ class PrzelaczUtworzNowegoView(_WierszImportuMixin):
         return self._render_wiersz()
 
 
+class PrzepnijPraceView(_WierszImportuMixin):
+    """POST (HTMX): przełącz flagę ``przepnij_prace`` wiersza (§10 D6/D7).
+
+    Samo przepięcie prac wykona się dopiero w fazie commit (integracja).
+    Owner/superuser-scoped + bramka stanu ``przeanalizowany`` — via
+    ``_WierszImportuMixin``. F2/G2: odrzuca 400 TYLKO przy WŁĄCZANIU, gdy wiersz
+    nie kwalifikuje się do przepięcia (autor/jednostka nieustawione,
+    aktualna==jednostka, albo stara jednostka jest „parą z pliku”) — inaczej
+    commit crashowałby na ``Jednostka.objects.get(pk=None)`` / przepinałby wbrew
+    guardowi F1. ODZNACZANIE jest zawsze dozwolone: wiersz mógł przestać się
+    kwalifikować po fakcie (inny wiersz rozstrzygnięto na starą jednostkę,
+    rematch zmienił autora) i renderuje „—”, ale flagę-zombie w DB trzeba dać
+    zdjąć. Warunek IDENTYCZNY z commit i bulk
+    (``wiersz_kwalifikuje_do_przepiecia``). Zwraca partial wiersza."""
+
+    def post(self, request, *args, **kwargs):
+        blad = self._blad_jesli_nie_podglad()
+        if blad is not None:
+            return blad
+        row = self.row
+        nowa_wartosc = request.POST.get("przepnij_prace") is not None
+        # G2: waliduj kwalifikację TYLKO przy włączaniu — odznaczanie musi
+        # przejść nawet dla wiersza-zombie, który przestał się kwalifikować.
+        if nowa_wartosc:
+            pary_z_pliku = self.parent_object.pary_z_pliku()
+            stara_id = row.autor.aktualna_jednostka_id if row.autor_id else None
+            if not wiersz_kwalifikuje_do_przepiecia(
+                row.autor_id, stara_id, row.jednostka_id, pary_z_pliku
+            ):
+                return HttpResponseBadRequest(
+                    "Wiersz nie kwalifikuje się do przepięcia prac."
+                )
+        row.przepnij_prace = nowa_wartosc
+        row.save(update_fields=["przepnij_prace"])
+        return self._render_wiersz()
+
+
+class ZaznaczWszystkiePrzepieciaView(_ImportPodgladMixin):
+    """POST: zaznacz ``przepnij_prace`` dla WSZYSTKICH wierszy KWALIFIKUJĄCYCH
+    się do przepięcia. Owner/superuser-scoped + bramka podglądu. Redirect na
+    tabelę.
+
+    F1: warunek kwalifikacji IDENTYCZNY z podglądem i commit
+    (``wiersz_kwalifikuje_do_przepiecia`` z guardem „para z pliku”). Guardu
+    „stara jednostka jest w pliku” nie da się wprost wyrazić jednym
+    ``.exclude(F())``, więc zbieramy pary z pliku w Pythonie i aktualizujemy po
+    ``pk__in`` liście kwalifikujących wierszy."""
+
+    def post(self, request, *args, **kwargs):
+        blad = self._blad_jesli_nie_podglad()
+        if blad is not None:
+            return blad
+        parent = self.parent_object
+        pary_z_pliku = parent.pary_z_pliku()
+        kwalifikujace = []
+        for row in parent.importpracownikowrow_set.filter(
+            autor__isnull=False, jednostka__isnull=False
+        ).select_related("autor"):
+            stara_id = row.autor.aktualna_jednostka_id
+            if wiersz_kwalifikuje_do_przepiecia(
+                row.autor_id, stara_id, row.jednostka_id, pary_z_pliku
+            ):
+                kwalifikujace.append(row.pk)
+        n = parent.importpracownikowrow_set.filter(pk__in=kwalifikujace).update(
+            przepnij_prace=True
+        )
+        messages.success(request, f"Zaznaczono przepięcie prac dla {n} wierszy.")
+        return HttpResponseRedirect(
+            reverse(
+                "import_pracownikow:importpracownikow-results",
+                kwargs={"pk": parent.pk},
+            )
+        )
+
+
 class PrzelaczOdpiecieView(_ImportPodgladMixin):
     """POST (HTMX): ustaw ``zaznaczone`` odpięcia (§9) z obecności pola
     ``zaznaczone`` w POST. Owner/superuser-scoped + bramka stanu
@@ -422,7 +566,7 @@ class ImportPracownikowResultsView(GroupRequiredMixin, ListView):
     template_name = "import_pracownikow/importpracownikowrow_list.html"
     context_object_name = "object_list"
 
-    @property
+    @cached_property
     def parent_object(self):
         obj = get_object_or_404(ImportPracownikow, pk=self.kwargs["pk"])
         if obj.owner_id != self.request.user.pk and not self.request.user.is_superuser:
@@ -455,16 +599,20 @@ class ImportPracownikowResultsView(GroupRequiredMixin, ListView):
         )
 
     def get_context_data(self, **kwargs):
-        odpiecia = self.parent_object.odpiecia.select_related(
+        parent = self.parent_object
+        odpiecia = parent.odpiecia.select_related(
             "autor_jednostka__autor",
             "autor_jednostka__autor__tytul",
             "autor_jednostka__jednostka",
         )
-        return super().get_context_data(
-            parent_object=self.parent_object,
+        ctx = super().get_context_data(
+            parent_object=parent,
             odpiecia=odpiecia,
             **kwargs,
         )
+        if parent.stan == ImportPracownikow.STAN_PRZEANALIZOWANY:
+            oznacz_przepiecie_prac(list(ctx["object_list"]), parent)
+        return ctx
 
 
 class _PkOwnerRestartMixin(RestartView):

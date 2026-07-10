@@ -18,6 +18,18 @@
     {# wzorzec importer_publikacji/index.html. #}
     <script src="https://unpkg.com/htmx.org@2.0.4" crossorigin="anonymous"></script>
 
+    {% if parent_object.stan == "przeanalizowany" %}
+        {# akcja zbiorcza: zaznacz przepięcie prac dla wierszy z różnicą jednostki #}
+        <form method="post"
+              action="{% url "import_pracownikow:zaznacz-przepiecia" pk=parent_object.pk %}">
+            {% csrf_token %}
+            <button type="submit" class="button small secondary">
+                <span class="fi-shuffle"></span>
+                Zaznacz przepięcie prac dla wszystkich z różnicą jednostki
+            </button>
+        </form>
+    {% endif %}
+
     {% if parent_object.finished_successfully %}
         {# Nagłówek audytu — asertowany przez test_views_liveops.py; NIE usuwać. #}
         <p>Lista modyfikacji do bazy danych, przeprowadzonych na podstawie
@@ -34,6 +46,7 @@
                         <th>Pewność</th>
                         <th>Autor</th>
                         <th>Akcje / zmiany</th>
+                        <th>Przepnij prace</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -42,7 +55,7 @@
                         {% include "import_pracownikow/partials/_wiersz_preview.html" %}
                         {% empty %}
                         <tr>
-                            <td colspan="8" class="text-center"><strong>
+                            <td colspan="9" class="text-center"><strong>
                                 Żadnych wierszy do pokazania.
                             </strong></td>
                         </tr>
