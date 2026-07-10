@@ -92,7 +92,13 @@ Parametry include'a (`{% include ... with %}`):
 
 - `export_mode` (bool, default `False`) — gdy `True`: chowa przyciski
   „❌ usuń" i opuszcza `<a>`-link wokół opisu (czysty tekst; relatywne
-  `{% url %}` psuje pobrany plik).
+  `{% url %}` psuje pobrany plik). **Gate przycisku usuwania musi brzmieć
+  `{% if not export_mode and not print_removed %}`** — nie sam
+  `not print_removed`. Powód (review #2): w kontekście eksportu `print_removed`
+  jest nieustawione (falsy), więc branch by się wyrenderował; `nh3.clean`
+  usunie `<a data-remove-result>`, ale **zostawi tekst „❌"** jako węzeł
+  tekstowy. Gate na `export_mode` jest więc wymagany dla poprawności, nie
+  kosmetyki.
 - `start_index` (int, **0-based offset**, default `0`) — **jednolita semantyka
   w obu partialach**:
   - lista: `counter-reset: list-counter {{ start_index }}`,
@@ -100,14 +106,20 @@ Parametry include'a (`{% include ... with %}`):
   Ekran przekazuje `page_obj.start_index|add:-1` do **obu**; eksport przekazuje
   `0` do obu. (Naprawia off-by-one z review — bez tego eksport tabeli
   numerowałby od „0".)
-- `show_footer` (bool) — tabela: ekran przekazuje
-  `page_obj.number == page_obj.paginator.num_pages`; eksport `True`.
+- Stopka `Suma:` (tabela) — **NIE** przez parametr `show_footer` z `{% include
+  with %}`: Django `token_kwargs` przyjmuje tylko wyrażenia filtrowe, **nie
+  operator `==`**, więc `show_footer=page_obj.number == …` to TemplateSyntaxError
+  (blocker z review #2). Zamiast tego warunek **wewnątrz partiala**, z gate na
+  `export_mode` jako pierwszym członie (żeby nie dotknąć `page_obj` w eksporcie,
+  gdzie jest nieustawiony):
+  `{% if export_mode or page_obj.number == page_obj.paginator.num_pages %}`
+  wokół `<tfoot>`. Eksport (`export_mode=True`) zawsze pokazuje sumę; ekran —
+  jak dotąd, tylko na ostatniej stronie.
 
 `common-results.html` po refaktorze zawiera partiale z `export_mode=False`
-i dotychczasowymi wartościami `start_index`/`show_footer`, zachowując render
-on-screen **bez zmian** (regression gate: `test_mymultiseek.py`,
-`test_mymultiseek_query_count.py`). Refaktor mechaniczny: przeniesienie markupu
-1:1 + parametryzacja numeracji/chrome.
+i dotychczasowym `start_index`, zachowując render on-screen **bez zmian**
+(regression gate: `test_mymultiseek.py`, `test_mymultiseek_query_count.py`).
+Refaktor mechaniczny: przeniesienie markupu 1:1 + parametryzacja numeracji/chrome.
 
 ### 4.2 Szablon dokumentu eksportu (shell + wstrzyknięty body)
 
@@ -116,12 +128,18 @@ skorupa**:
 
 - pełny `<!doctype html>` + `<meta charset="utf-8">`,
 - `<title>` i `<h1>` = tytuł raportu z sesji (`_multiseek_report_title`),
-- minimalny inline CSS (obramowania tabeli, odstępy listy),
+- minimalny inline CSS — **selektory elementowe** (`table, td, th { border… }`),
+  NIE klasy: `nh3.clean` usuwa atrybuty `class`/`style` z wstrzykniętego body,
+  więc stylowanie po klasach nie zadziała (review #2). Natywne `<ol>` w eksporcie
+  (bez paginacji) i tak numeruje 1..N poprawnie bez `counter-reset`.
+- `{{ report_title }}` w `<title>`/`<h1>` **bez `|safe`** — autoescaping. Powód
+  (review #2): `plain_multiseek_report_title` robi `html.unescape` **po**
+  `strip_tags`, więc tytuł może zawierać literalny `<`; `|safe` byłoby XSS.
 - `{{ body_html|safe }}` — **już zsanityzowany** fragment (patrz §4.3).
 
 Skorupa jest w pełni pod naszą kontrolą (nie zawiera DB-content poza
-`report_title`, który sanityzujemy jak dotąd przez `plain_multiseek_report_title`),
-więc `|safe` na `body_html` jest bezpieczne **dopiero po** `nh3.clean`.
+`report_title`, renderowanym z autoescapingiem), więc `|safe` na `body_html`
+jest bezpieczne **dopiero po** `nh3.clean`.
 
 ### 4.3 Buildery i render (`bpp/views/multiseek_export.py`)
 
@@ -130,10 +148,12 @@ Krok renderu (w widoku — potrzebny `request`):
    ctx, request=request)` (ctx: `object_list`, `report_type`, `sumy`,
    `export_mode=True`, `start_index=0`, `show_footer=True`),
 2. `clean_body = sanitize_export_html(body_html)` — `nh3.clean` z allowlistą
-   pokrywającą strukturę dokumentu i inline-formatowanie opisu
-   (`table, thead, tbody, tfoot, tr, td, th, ol, ul, li, p, div, span, h1, h2,
-   h3, br, hr, b, strong, i, em, u, sub, sup, pre, code`; atrybuty:
-   `td/th → colspan`). Rozszerza `DEFAULT_ALLOWED_TAGS` z `docx_export.py`.
+   będącą **unią** (nie podzbiorem — review #2) `set(DEFAULT_ALLOWED_TAGS)`
+   z `docx_export.py` (zawiera m.in. `h4, strike, font`, ważne bo markup opisu
+   pochodzi z per-instalacyjnych, DB-konfigurowalnych szablonów) i tagów
+   strukturalnych: `{table, thead, tbody, tfoot, tr, td, th, ol, ul, li, p,
+   div, span, h1, h2, h3, br, hr, pre, code}`. Atrybuty: `td/th → colspan`
+   (`class`/`style` celowo odrzucone).
 3. `document_html = render_to_string("multiseek/export-document.html",
    {"body_html": clean_body, "report_title": report_title}, request)`.
 
@@ -279,6 +299,10 @@ Pliki: rozszerzenie `src/bpp/tests/test_views/test_mymultiseek.py`,
   + kolumny wg wariantu tabeli), parametryzacja po `list`, `numer_list`,
   `table`, `pkt_wewn`, `pkt_wewn_cytowania`, `table_cytowania`;
 - **numeracja tabeli**: pierwszy wiersz eksportu = „1." (regression off-by-one);
+- **stopka tabeli**: eksport zawiera `<tfoot>` z `Suma:` (bo `export_mode`),
+  niezależnie od paginacji; ekran — bez zmian (tylko ostatnia strona);
+- **tytuł z `<`**: title sesji `<b>x` → w eksporcie zescape'owany (`&lt;b&gt;`),
+  nie surowy tag;
 - **numer_list**: render zawiera `uwagi`;
 - widok bibtex: endpoint `bib` → `.bib`; `html`/`docx` degradują do `.bib`
   (nazwa `*.bib`);
