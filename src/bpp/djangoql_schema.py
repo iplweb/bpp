@@ -237,3 +237,200 @@ class BppQLSchema(RelPickerSchemaMixin, ExtrasSchema):
     schemat obsługuje dowolny model (Rekord, Autor, Wydawnictwo_*, Patent,
     Praca_Doktorska/Habilitacyjna, …).
     """
+
+
+# ---------------------------------------------------------------------------
+# Ograniczony schemat (allow-lista) — rdzeń bibliograficzny.
+#
+# Wspólny dla: widoku „Szukaj zapytaniem", walidacji eksportu
+# multiseek→DjangoQL oraz eksportu schematu dla LLM. Adminy zostają na pełnym
+# ``BppQLSchema``. Szczegóły i uzasadnienie doboru modeli:
+# docs/superpowers/specs/2026-07-10-djangoql-schema-dla-llm-design.md
+# ---------------------------------------------------------------------------
+
+#: Allow-lista modeli DjangoQL osiągalnych z ``Rekord``: rdzeń bibliograficzny
+#: + świadome „ratunki" (identyfikatory PBN, źródło informacji, zatrudnienie).
+#: Trzymana jako etykiety ``app_label.Model`` (nie klasy) i rozwiązywana leniwie
+#: przez ``apps.get_model`` — dzięki temu nie robimy top-level importów modeli
+#: ``pbn_api``/``ewaluacja_common`` (uniknięcie cykli importów).
+_SEARCH_ALLOWLIST_LABELS = (
+    # rekord + typy publikacji
+    "bpp.Rekord",
+    "bpp.Wydawnictwo_Ciagle",
+    "bpp.Wydawnictwo_Zwarte",
+    "bpp.Patent",
+    "bpp.Praca_Doktorska",
+    "bpp.Praca_Habilitacyjna",
+    # autorstwo
+    "bpp.Autorzy",
+    "bpp.Wydawnictwo_Ciagle_Autor",
+    "bpp.Wydawnictwo_Zwarte_Autor",
+    "bpp.Patent_Autor",
+    "bpp.Autor",
+    "bpp.Autor_Dyscyplina",
+    "bpp.Autor_Jednostka",
+    "bpp.Typ_Odpowiedzialnosci",
+    "bpp.Funkcja_Autora",
+    "bpp.Tytul",
+    "bpp.Plec",
+    # struktura organizacyjna
+    "bpp.Jednostka",
+    "bpp.Wydzial",
+    "bpp.Uczelnia",
+    "bpp.RodzajJednostki",
+    # źródło / miejsce wydania / wydawca
+    "bpp.Zrodlo",
+    "bpp.Konferencja",
+    "bpp.Seria_Wydawnicza",
+    "bpp.Wydawca",
+    "bpp.Poziom_Wydawcy",
+    "bpp.Rodzaj_Zrodla",
+    "bpp.Zasieg_Zrodla",
+    # słowniki klasyfikacyjne
+    "bpp.Charakter_Formalny",
+    "bpp.Typ_KBN",
+    "bpp.Jezyk",
+    "bpp.Dyscyplina_Naukowa",
+    "bpp.Status_Korekty",
+    # open access
+    "bpp.Tryb_OpenAccess_Wydawnictwo_Ciagle",
+    "bpp.Tryb_OpenAccess_Wydawnictwo_Zwarte",
+    "bpp.Licencja_OpenAccess",
+    "bpp.Wersja_Tekstu_OpenAccess",
+    "bpp.Czas_Udostepnienia_OpenAccess",
+    # patenty
+    "bpp.Rodzaj_Prawa_Patentowego",
+    # streszczenia i tytuły obcojęzyczne
+    "bpp.Wydawnictwo_Ciagle_Streszczenie",
+    "bpp.Wydawnictwo_Ciagle_Tytul",
+    "bpp.Wydawnictwo_Zwarte_Streszczenie",
+    "bpp.Wydawnictwo_Zwarte_Tytul",
+    # zewnętrzne bazy danych (widok ZewnetrzneBazyDanychView to rekordowa
+    # ścieżka zapytań multiseek „Zewnętrzna baza danych": zewnetrzne_bazy.baza)
+    "bpp.Zewnetrzna_Baza_Danych",
+    "bpp.ZewnetrzneBazyDanychView",
+    "bpp.Wydawnictwo_Ciagle_Zewnetrzna_Baza_Danych",
+    "bpp.Wydawnictwo_Zwarte_Zewnetrzna_Baza_Danych",
+    # słowa kluczowe
+    "taggit.Tag",
+    # nagrody
+    "bpp.Nagroda",
+    "bpp.OrganPrzyznajacyNagrody",
+    # identyfikatory PBN (ratunek A) + dane dyscyplin
+    "pbn_api.Publication",
+    "pbn_api.Scientist",
+    "pbn_api.Institution",
+    "pbn_api.Language",
+    "pbn_api.Conference",
+    "pbn_api.Publisher",
+    "pbn_api.Journal",
+    "bpp.Cache_Punktacja_Autora",
+    # źródło informacji (ratunek B)
+    "bpp.Zrodlo_Informacji",
+    # zatrudnienie (ratunek C)
+    "bpp.Grupa_Pracownicza",
+    "bpp.Wymiar_Etatu",
+    "bpp.Kierunek_Studiow",
+    # nisze (ratunek D)
+    "bpp.Charakter_PBN",
+    "ewaluacja_common.Rodzaj_Autora",
+)
+
+
+def _resolve_search_allowlist():
+    """Rozwiąż etykiety allow-listy na klasy modeli (leniwie, przez rejestr)."""
+    from django.apps import apps
+
+    return tuple(apps.get_model(label) for label in _SEARCH_ALLOWLIST_LABELS)
+
+
+#: Wspólne źródło prawdy dla obu ograniczonych schematów. Rozwiązywane przy
+#: imporcie modułu (a ten importowany jest dopiero po zapełnieniu rejestru
+#: aplikacji — z adminów/widoków, nigdy z ``models.py``).
+SEARCH_ALLOWLIST = _resolve_search_allowlist()
+
+
+class BppQLSchemaOgraniczony(BppQLSchema):
+    """``BppQLSchema`` (pickery ``<fk>__rel`` + agregaty) zawężony allow-listą do
+    rdzenia bibliograficznego.
+
+    Używany przez widok „Szukaj zapytaniem" oraz walidację eksportu
+    multiseek→DjangoQL. Autocomplete i podpowiedzi obejmują tylko modele
+    bibliograficzne — bez szumu z pipeline'ów PBN/importu/dedupu/ewaluacji.
+    """
+
+    include = SEARCH_ALLOWLIST
+
+
+#: Modele-słowniki, których wartości WOLNO osadzić w commitowanym artefakcie:
+#: standardowe tablice referencyjne BPP — identyczne między instalacjami,
+#: niewrażliwe, o wysokiej wartości dydaktycznej dla LLM (uczą dopuszczalnych
+#: wartości zapytań). Wszystko poza tą listą (tytuły publikacji, abstrakty,
+#: nazwiska, nazwy jednostek, encje PBN) NIE osadza wartości — inaczej do repo
+#: open-source trafiłyby dane konkretnej instytucji.
+_SAFE_VALUE_TARGET_LABELS = (
+    "bpp.Charakter_Formalny",
+    "bpp.Typ_KBN",
+    "bpp.Jezyk",
+    "bpp.Dyscyplina_Naukowa",
+    "bpp.Status_Korekty",
+    "bpp.Typ_Odpowiedzialnosci",
+    "bpp.Funkcja_Autora",
+    "bpp.Tytul",
+    "bpp.Plec",
+    "bpp.RodzajJednostki",
+    "bpp.Rodzaj_Zrodla",
+    "bpp.Zasieg_Zrodla",
+    "bpp.Poziom_Wydawcy",
+    "bpp.Rodzaj_Prawa_Patentowego",
+    "bpp.Tryb_OpenAccess_Wydawnictwo_Ciagle",
+    "bpp.Tryb_OpenAccess_Wydawnictwo_Zwarte",
+    "bpp.Licencja_OpenAccess",
+    "bpp.Wersja_Tekstu_OpenAccess",
+    "bpp.Czas_Udostepnienia_OpenAccess",
+    "bpp.Zewnetrzna_Baza_Danych",
+    "bpp.Zrodlo_Informacji",
+    "bpp.Grupa_Pracownicza",
+    "bpp.Wymiar_Etatu",
+    "bpp.Kierunek_Studiow",
+    "bpp.Charakter_PBN",
+    "ewaluacja_common.Rodzaj_Autora",
+)
+
+
+def _build_llm_fk_options():
+    """``fk_options`` dla eksportu LLM: dla każdego FK/​O2O w allow-liście, którego
+    cel to bezpieczny słownik (:data:`_SAFE_VALUE_TARGET_LABELS`), wymuś
+    osadzenie wartości (``True``). Reszta relacji przy ``--max-fk-options 0``
+    nie osadza nic → artefakt jest deterministyczny i wolny od danych instytucji.
+    """
+    from django.apps import apps
+
+    safe = {apps.get_model(label) for label in _SAFE_VALUE_TARGET_LABELS}
+    options = {}
+    for owner in SEARCH_ALLOWLIST:
+        for field in owner._meta.get_fields():
+            is_fk = getattr(field, "many_to_one", False) or getattr(
+                field, "one_to_one", False
+            )
+            if is_fk and not field.auto_created and field.related_model in safe:
+                options.setdefault(owner, {})[field.name] = True
+    return options
+
+
+class RekordLLMSchema(ExtrasSchema):
+    """Schemat dla eksportu opisu DjangoQL do promptu LLM.
+
+    Baza ``ExtrasSchema`` (agregaty + części dat), **bez** pickerów
+    ``<fk>__rel`` z ``BppQLSchema`` — te generują szum (``FieldError`` w logu,
+    puste object_reference) i dla LLM są zbędne (uczymy notacji z kropką).
+    Ta sama ``SEARCH_ALLOWLIST`` co widok, więc zapytania napisane wg tego
+    schematu są poprawne wobec pełniejszego schematu widoku.
+
+    ``fk_options`` wymusza osadzanie wartości tylko dla bezpiecznych słowników;
+    w połączeniu z ``--max-fk-options 0`` (domyślnie w komendzie) daje
+    deterministyczny, wolny od danych instytucji artefakt.
+    """
+
+    include = SEARCH_ALLOWLIST
+    fk_options = _build_llm_fk_options()
