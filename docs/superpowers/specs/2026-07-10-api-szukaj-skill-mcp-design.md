@@ -2,7 +2,142 @@
 
 **Data:** 2026-07-10
 **Autor:** Michał Pasternak (+ Claude)
-**Status:** design zaakceptowany, przed pisaniem planów implementacji
+**Status:** design zaakceptowany po review Fable — w realizacji
+
+## Rewizja po adversarialnym review Fable (2026-07-10) — WIĄŻĄCE
+
+Trzy równoległe review Fable (po jednym na fazę) zweryfikowały spec z kodem i
+wykryły defekty. Poniższe decyzje **nadpisują** szczegóły w sekcjach faz niżej.
+
+### Faza 0 — korekty
+
+- **[K1] `nie_eksportuj_przez_api` NIE istnieje na `Rekord`** (tylko na modelach
+  źródłowych, `abstract/api_export.py`). `Rekord.objects.exclude(nie_eksportuj_
+  przez_api=True)` → `FieldError`. Wykluczamy **per-content-type subquery** na
+  `TupleField` (`id__0`=ct.pk, `id__1__in`=pk oflagowanych): dla każdego z 5
+  typów `qs = qs.exclude(id__0=ct_pk, id__1__in=Model.objects.filter(
+  nie_eksportuj_przez_api=True).values("pk"))`. Subquery tylko po oflagowanych →
+  tanio. **Bez migracji, bez zmiany schematu.**
+- **[W1] Multi-uczelnia:** `/szukaj/` scope'ujemy jak frontowa wyszukiwarka „/",
+  przez `scope_rekord_do_uczelni(qs, uczelnia)` (`src/bpp/util/uczelnia_scope.py`,
+  użycie w `src/bpp/views/autocomplete/navigation.py`) **oraz** exclude ukrytych
+  statusów (`Uczelnia.ukryte_statusy("api")`, jak `recent_publications_common`).
+  Gdy brak mapowania Site→Uczelnia — zachowujemy się jak reszta API (bez
+  scope), co udokumentujemy.
+- **[W2] Stabilna paginacja:** order_by `("-search_index__rank",
+  "tytul_oryginalny_sort", "id")` — deterministyczny tiebreaker (rank bywa
+  remisowy → offset gubiłby/dublował rekordy). Test paginacji przy równych rankach.
+- **[W3] Mapa contenttype→endpoint w RUNTIME**, nie po numerycznych ID
+  (ID ContentType są per-baza). Klucz: model/`(app_label, model)`, rozwiązanie
+  `ContentType.objects.get_for_id`; viewname z namespace `api_v1:...-detail`.
+  W `Rekord` występuje dokładnie **5** typów (ciagle, zwarte, patent,
+  praca_doktorska, praca_habilitacyjna) i **każdy ma endpoint** — brak „typu
+  spoza mapy"; test pokrywa wszystkie 5.
+- **[W4] `.only("id","slug","rok","opis_bibliograficzny_cache",
+  "ostatnio_zmieniony","tytul_oryginalny","tytul_oryginalny_sort", ...)`** — nie
+  ciągnąć `search_index` (tsvector) ani ~40 kolumn mat-view (wzorzec z
+  `recent_publications_common.py:83`).
+- **[D7] Implementacja:** `GenericViewSet + ListModelMixin` z `get_queryset`
+  (permission `DjangoModelPermissionsOrAnonReadOnly` wymaga queryset; czysty
+  `APIView` rzuci AssertionError). Rejestracja w routerze z `basename="szukaj"`.
+- **[D2/D4] Pole `opis_bibliograficzny`:** fallback na `tytul_oryginalny`, gdy
+  cache pusty (`""`). `absolute_url`: slug-first + `build_absolute_uri` (wzorzec
+  z embedu), nie względny `get_absolute_url`.
+- **DWA PRAWDZIWE BUGI serializerów do naprawienia w Fazie 0** (blokują
+  poprawność skilla/MCP; obie mają test):
+  - `PatentSerializer.autorzy_set` (`serializers/patent.py:57-59`) ma
+    `view_name="api_v1:wydawnictwo_zwarte_autor-detail"` → poprawić na
+    `api_v1:patent_autor-detail`.
+  - `Praca_HabilitacyjnaSerializer.publikacja_habilitacyjna`
+    (`serializers/praca_habilitacyjna.py:31`) to goły `serializers.RelatedField`
+    → 500. Zamienić na `StringRelatedField` (lub `AbsoluteUrlField`), analogicznie
+    do fixa `rodzaj_prawa` w `patent.py`.
+- **DODATEK do Fazy 0 (odblokowuje harvest per autor):** dodać filtr `autor`
+  (po pk) do `Wydawnictwo_Ciagle_AutorViewSet` i `Wydawnictwo_Zwarte_AutorViewSet`
+  (dziś bez filtersetu) — pozwala pobrać WSZYSTKIE prace autora z pominięciem
+  sufitu 100 w `recent_*`. Mały, tani, wysokowartościowy.
+- **[D5] `autor?nazwisko=`** — `CharFilter(lookup_expr="icontains")`. Świadomie
+  v1: NIE obejmuje `poprzednie_nazwiska` (udokumentować w skillu); nie zmieniamy
+  ekspozycji `pokazuj=False` w `AutorViewSet` (istniejące zachowanie; osobny
+  ticket prywatnościowy poza zakresem).
+
+### Faza 1 — korekty
+
+- **Tabela endpointów generowana z `urls.py` (34 trasy), nie ze spisu w specu.**
+  Spec wymienia ~26 nazw dla czytelności; źródłem prawdy jest router. Ująć też
+  join-table endpointy (`*_autor`, `*_streszczenie`,
+  `wydawnictwo_ciagle_zewnetrzna_baza_danych`, `raport_slotow_uczelnia_wiersz`).
+- **„Relacje to URL-e" — per-pole, nie globalnie.** Wiele relacji jest inline
+  (`StringRelatedField`/`ChoicesSerializerField`): `status_korekty`,
+  `openaccess_*`, `typ_odpowiedzialnosci`, `zasieg`, `rodzaj_prawa`,
+  `organ_przyznajacy`, `baza`, `slowa_kluczowe` (lista tagów), `zapisany_jako`.
+  `endpoints.md` rozróżnia per-pole „URL vs string inline".
+- **Paginacja NIE jest wszędzie LimitOffset:** `wydawnictwo_ciagle_streszczenie`
+  i `wydawnictwo_zwarte_streszczenie` używają `StreszczeniaPagination`
+  (`PageNumberPagination`, `page_size=1`, `max_page_size=5`,
+  `page_size_query_param="page_size"`). Kolumna „paginacja" w tabeli z wyjątkami.
+- **Sekcja „czego API nie umie" — uczciwie dodać:** (a) `raport_slotow_uczelnia`
+  to `ModelViewSet` — **przyjmuje POST** (wyjątek od read-only); (b) ukrywanie
+  rekordów działa tylko na głównych endpointach publikacji — pochodne
+  (`*_autor`, `*_streszczenie`, `nagroda`) używają `objects.all()`, więc dane
+  ukrytego rekordu bywają enumerowalne; (c) `AutorViewSet` zwraca też autorów
+  `pokazuj=False`; (d) **wykrywanie możliwości**: django-filter **po cichu
+  ignoruje nieznane parametry** — `autor/?nazwisko=` na starej instancji zwróci
+  WSZYSTKICH autorów bez błędu; skill musi uczyć sprawdzania obecności `szukaj`
+  w API root i podawać minimalną wersję BPP.
+- **Trigger/description skilla:** 3. osoba, „co robi + kiedy użyć", frazy PL+EN
+  („pobierz publikacje autora z BPP", „harvest bibliografii BPP", „BPP REST
+  API"), NIE kotwiczony na jednym hoście.
+- **Embed `recent_*` jest w tym samym routerze** (nie „poza"), `AllowAny`, tylko
+  `retrieve`; `limit` domyślnie 25, twardy sufit **100**.
+
+### Faza 2 — korekty
+
+- **[K1] `pobierz_rekord` — polityka głębokości.** Nazwisko autora dostępne w
+  JEDNYM hopie: `Wydawnictwo_Ciagle_AutorSerializer.zapisany_jako` (płaski
+  string). **Domyślnie NIE follow-ujemy `autor-detail`** — zwracamy
+  `zapisany_jako` + `autor_url`. Opcjonalny `pelne_dane_autorow=False` włącza
+  drugi hop. Koszt domyślny ≈ 1 + N(przez-autorów) + zrodlo + streszczenia,
+  nie 2N. Dodać: **semafor współbieżności N≈8**, procesowy **cache URL→JSON**
+  (jednostki/słowniki się powtarzają).
+- **[K2] Relacje do rozwinięcia są PER-TYP** — jawna mapa `typ → {endpoint,
+  relacje}` dla 5 typów. `wydawnictwo_zwarte` nie ma `zrodlo` ani
+  `zewnetrzna_baza_danych` (ma `wydawca`, `seria_wydawnicza`,
+  `wydawnictwo_nadrzedne`). **`wydawnictwo_nadrzedne` NIE rozwijamy** (tylko
+  url/id — ryzyko rekurencji). `/szukaj/` zwraca też `patent`/`praca_*` — mapa
+  musi je obsłużyć.
+- **[W3] Normalizacja ID rekordu** — trzy formaty w obiegu: `/szukaj/`
+  → `"<ct>-<pk>"` + `rekord_url`; `recent_*` → `str(tuple)` = `"(6, 123)"` bez
+  API-URL; `pobierz_rekord(typ, id)` → typ+pk. MCP parsuje tuple-string z
+  `recent_*` i buduje mapę ct→typ **dynamicznie** z `rekord_url` (`/szukaj/`),
+  NIE hardkoduje (ct ID per-instancja).
+- **[W2] Sufit 100 w `recent_*`, brak offsetu** → „wszystkie prace autora"
+  niewykonalne tą drogą; MCP zwraca flagę `obcieto: true`. Pełny harvest per
+  autor idzie przez nowy filtr `?autor=` na through-tables (dodany w Fazie 0)
+  albo chunkowanie po `rok_od/rok_do`.
+- **[W4] Inżynieria FastMCP (wiążące):** `httpx.AsyncClient` z lifespanem
+  serwera; `timeout=Timeout(10.0, connect=5.0)`; retry×2 z backoff na błędy
+  sieciowe GET (idempotentne); mapowanie `HTTPStatusError` 404 →
+  czytelny komunikat („autor niewidoczny lub nie istnieje"), nie traceback;
+  **żadnego bare `except`** (reguła repo). Nagłówek `Accept: application/json`
+  zamiast `?format=json`.
+- **[W5] `slownik(rodzaj)` — biała lista MAŁYCH tabel referencyjnych**
+  (`charakter_formalny`, `typ_kbn`, `jezyk`, `dyscyplina_naukowa`,
+  `rodzaj_zrodla`, `poziom_wydawcy`, `funkcja_autora`, `tytul`,
+  `czas_udostepnienia_openaccess`), jednym żądaniem `?limit=500`.
+  `konferencja`/`wydawca`/`nagroda` to dane wolumenowe — **poza `slownik`**.
+- **[W1/D5] Wydawalność:** 5 z 7 narzędzi działa na dzisiejszym umlub;
+  `szukaj_*` degraduje miękko (404 → „ta instancja BPP nie ma /szukaj/;
+  wymaga wersji ≥ X"). Smoke `szukaj_*` odroczony do **wdrożenia** (nie tylko
+  merge'a) Fazy 0 na umlub. Testy respx muszą pokrywać: auto-follow paginacji
+  wielostronicowej, `next=null`, 404-degradację.
+- **[D1] Trailing slash** — zawsze `/` na końcu (DefaultRouter; brak → 301 =
+  podwojone żądania).
+
+Kryteria akceptacji poszczególnych faz rozszerzone o powyższe (w tym testy:
+websearch cudzysłów/minus, stabilność paginacji przy remisach, brak mapowania
+Site→Uczelnia, 5 typów w mapie detail-URL, dwie uczelnie w bazie, brak wycieku
+`search_index`).
 
 ## Cel
 
@@ -102,7 +237,9 @@ stronicowane (`LimitOffsetPagination`).
 - Backend: `Rekord.objects.fulltext_filter(q)`; zawężenie po `rok__gte/lte`;
   wykluczenie ukrytych statusów korekty (kontekst `"api"`, jak w
   `recent_publications_common._ukryte_statusy`) i rekordów
-  `nie_eksportuj_przez_api`.
+  `nie_eksportuj_przez_api`. **UWAGA (patrz Rewizja/Faza 0 K1):**
+  `nie_eksportuj_przez_api` nie istnieje na `Rekord` — wykluczamy
+  per-content-type subquery na `id__0`/`id__1`, nie prostym `.exclude(...)`.
 - Sortowanie: rank malejąco (dostarcza `fulltext_filter`).
 - Pozycja wyniku (płaska, bez chodzenia po linkach):
   - `id` — string `"<contenttype_id>-<pk>"` (klucz `Rekord`),
