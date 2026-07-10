@@ -168,8 +168,9 @@ def split_input(self, text: str) -> list[SplitRecord]:
 3. Dla **każdego** `block in library.failed_blocks` (**blocker z review** —
    inaczej uszkodzone wpisy znikają jak dziś): `SplitRecord(raw=block.raw,
    ok=False, error=<opis błędu bloku>)`.
-4. Zwróć rekordy w kolejności wejścia (posortuj po pozycji `start_line`
-   z `entry`/`block`, żeby wpisy i błędy się przeplatały poprawnie).
+4. Zwróć rekordy w kolejności wejścia — iterując po `library.blocks`
+   (zawiera i `Entry`, i `ParsingFailedBlock` w kolejności źródłowej), więc
+   wpisy i błędy przeplatają się poprawnie bez ręcznego sortowania.
 
 `peek_title(entry)` — helper providera: `entry.fields_dict["title"].value`
 (v2 zwraca obiekt `Field`, trzeba `.value`, por. `_get_field`
@@ -220,7 +221,8 @@ Przed renderem: **sweep `mark_stalled()`** po wpisach z sesją in-flight
 „w toku". Query: `batch.entries.select_related("session")` (bez N+1).
 
 Szablon `partials/batch_detail.html` w stylu istniejącego
-`session_list.html` (Foundation). Kolumny: `#`, tytuł, status (badge), akcja:
+`session_list.html` (Foundation). Kolumny: `#`, tytuł, status (etykieta
+tekstowa `status_label`), akcja:
 
 | Status | Badge | Akcja |
 |--------|-------|-------|
@@ -231,7 +233,8 @@ Szablon `partials/batch_detail.html` w stylu istniejącego
 | uszkodzony | „uszkodzony" | **[Pomiń]** (brak importu — pokazany `parse_error` + raw) |
 | pominięty | „pominięty" | **[Przywróć]** (POST) |
 
-Nagłówek: pasek postępu „X z N zaimportowanych (+Y pominiętych)" z `progress`.
+Nagłówek: callout z licznikiem „X z N zaimportowanych (+Y pominiętych)" z
+`progress` (tekst, nie graficzny pasek).
 
 ### 6.3. Import wpisu — `BatchEntryImportView` (POST, `entry_id`)
 
@@ -359,11 +362,12 @@ projektowy.
   **duplikacji publikacji** przy nieświeżym formularzu (druga karta) lub
   powtórzonym POST. Sekcja §6.3 pierwotnie wpuszczała status COMPLETED w
   ścieżkę „utwórz sesję" — to było błędne; obowiązuje guard.
-- **§6.2/§6.3.5 — przekierowania batcha.** Formularze na stronie paczki
+- **§6.2 / §6.3 pkt 5 — przekierowania batcha.** Formularze na stronie paczki
   (Importuj/Pomiń/Przywróć) to zwykły `method="post"`, a widoki zwracają
-  zwykłe `HttpResponseRedirect` (302), NIE `HX-Redirect`. HX-Redirect dotyczy
-  tylko fan-outu w `FetchView` i batch-aware `CancelView` (odpowiedzi na
-  żądania HTMX z formularza fetch).
+  zwykłe `HttpResponseRedirect` (302), NIE `HX-Redirect`. `HX-Redirect`
+  pojawia się **warunkowo** (tylko gdy jest nagłówek `HX-Request`) w fan-oucie
+  `FetchView` i w batch-aware `CancelView` — bo to odpowiedzi na żądania HTMX
+  z wizardu; bez `HX-Request` oba i tak zwracają zwykłe 302.
 - **§6.2 — wiersz „uszkodzony".** Szablon pokazuje `parse_error` (komunikat);
   surowy tekst bloku jest przechowywany w `raw_bibtex`, ale nie renderowany.
   `error` w `SplitRecord` to statyczny komunikat — szczegółowy błąd parsera
@@ -385,6 +389,10 @@ projektowy.
   fan-outowy test używa wpisów poprawnych (brak przypadku MALFORMED na poziomie
   `FetchView`). Ścieżki te są pokryte pośrednio (`split_input` z uszkodzonym
   blokiem, `task-retry` istnieje), ale nie end-to-end w kontekście paczki.
-- **Drobne follow-upy (nieblokujące):** docstring `peek_title` („+ LaTeX"
-  bez `_clean_latex`), N+1 na `created_record` (GenericFK) przy wielu
-  ukończonych wpisach, reużycie `_hx_or_redirect` w batch-branchu `CancelView`.
+- **§5 / §8 — `peek_title` czyści LaTeX (naprawione).** Po 2. self-review
+  Fable 5: `peek_title` przepuszcza tytuł przez `_clean_latex`, więc podgląd na
+  liście nie pokazuje klamer/komend LaTeX; §5 i test w §8 są teraz zgodne z
+  kodem (`test_bibtex_peek_title_strips_latex_braces`).
+- **Drobne follow-upy (nieblokujące):** N+1 na `created_record` (GenericFK)
+  przy wielu ukończonych wpisach; reużycie `_hx_or_redirect` w batch-branchu
+  `CancelView`.
