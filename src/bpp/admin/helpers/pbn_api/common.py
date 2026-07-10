@@ -2,6 +2,7 @@ import sys
 
 import rollbar
 from django.urls import reverse
+from django.utils.html import escape
 
 from bpp.admin.helpers import link_do_obiektu
 from import_common.normalization import normalize_isbn
@@ -10,6 +11,7 @@ from pbn_api.exceptions import (
     BrakZdefiniowanegoObiektuUczelniaWSystemieError,
     CharakterFormalnyNieobslugiwanyError,
     NeedsPBNAuthorisationException,
+    PBNValidationError,
     PKZeroExportDisabled,
     PraceSerwisoweException,
     ResourceLockedException,
@@ -226,6 +228,19 @@ def sprobuj_wyslac_do_pbn(  # noqa: C901
             f"{open_in_pbn_link}{open_in_pi_link}",
         )
 
+        if raise_exceptions:
+            raise e
+
+        return
+
+    except PBNValidationError as e:
+        komunikaty = "".join(f"<li>{escape(m)}</li>" for m in e.user_messages())
+        notificator.warning(
+            f'Publikacja "{link_do_obiektu(obj)}" została odrzucona przez PBN '
+            f"z powodu błędów walidacji danych: <ul>{komunikaty}</ul>"
+            f"Popraw dane rekordu i spróbuj ponownie. "
+            f"{open_in_pbn_link}{open_in_pi_link}"
+        )
         if raise_exceptions:
             raise e
 

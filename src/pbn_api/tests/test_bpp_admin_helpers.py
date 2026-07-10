@@ -21,7 +21,7 @@ from pbn_api.const import (
     PBN_POST_PUBLICATION_NO_STATEMENTS_URL,
     PBN_POST_PUBLICATIONS_URL,
 )
-from pbn_api.exceptions import AccessDeniedException
+from pbn_api.exceptions import AccessDeniedException, PBNValidationError
 from pbn_api.models import Publication, SentData
 from pbn_api.tests.utils import middleware
 
@@ -128,6 +128,59 @@ def test_sprobuj_wyslac_do_pbn_access_denied(
 
     msg = get_messages(req)
     assert "Brak dostępu --" in list(msg)[0].message
+
+
+@pytest.mark.django_db
+def test_sprobuj_wyslac_do_pbn_validation_error_czytelny_komunikat_bez_rollbar(
+    pbn_wydawnictwo_zwarte_z_charakterem, pbn_client, rf, pbn_uczelnia, mocker
+):
+    req = rf.get("/")
+
+    report = mocker.patch("bpp.admin.helpers.pbn_api.common.rollbar.report_exc_info")
+    pbn_client.transport.return_values[PBN_POST_PUBLICATION_NO_STATEMENTS_URL] = (
+        PBNValidationError(
+            400,
+            "/api/v1/publications",
+            '{"details":{"openAccess.releaseDate":'
+            '"Data udostępnienia w otwartym dostępie jest wymagana!"}}',
+        )
+    )
+
+    with middleware(req):
+        sprobuj_wyslac_do_pbn_gui(
+            req, pbn_wydawnictwo_zwarte_z_charakterem, pbn_client=pbn_client
+        )
+
+    msg = get_messages(req)
+    text = list(msg)[0].message
+    assert "odrzucona przez PBN" in text
+    assert "Data udostępnienia w otwartym dostępie jest wymagana!" in text
+    report.assert_not_called()  # walidacja to NIE błąd kodu — bez Rollbara
+
+
+@pytest.mark.django_db
+def test_sprobuj_wyslac_do_pbn_validation_error_escapuje_html(
+    pbn_wydawnictwo_zwarte_z_charakterem, pbn_client, rf, pbn_uczelnia, mocker
+):
+    req = rf.get("/")
+
+    mocker.patch("bpp.admin.helpers.pbn_api.common.rollbar.report_exc_info")
+    pbn_client.transport.return_values[PBN_POST_PUBLICATION_NO_STATEMENTS_URL] = (
+        PBNValidationError(
+            400,
+            "/api/v1/publications",
+            '{"details":{"x":"<script>alert(1)</script>"}}',
+        )
+    )
+
+    with middleware(req):
+        sprobuj_wyslac_do_pbn_gui(
+            req, pbn_wydawnictwo_zwarte_z_charakterem, pbn_client=pbn_client
+        )
+
+    text = list(get_messages(req))[0].message
+    assert "<script>" not in text
+    assert "&lt;script&gt;" in text
 
 
 @pytest.mark.django_db
