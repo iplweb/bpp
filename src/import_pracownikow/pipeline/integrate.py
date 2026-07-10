@@ -1,0 +1,166 @@
+"""Faza integracji (commit) importu pracowników.
+
+``integruj`` materializuje odroczone create'y zapisane w
+``ImportPracownikowRow.diff_do_utworzenia`` przez fazę analizy
+(``import_pracownikow.pipeline.analyze``) — tworzy brakujące
+Funkcja_Autora/Grupa_Pracownicza/Wymiar_Etatu oraz ``Autor_Jednostka``
+przez ``get_or_create`` (idempotentne przy duplikacie osoby w pliku),
+ustawia FK na wierszu, po czym robi świeży ``check_if_integration_needed()``
+— baza mogła się zmienić od czasu analizy (dry-run), więc wiersz uznany
+za "potrzebujący zmian" w analizie może już być nieaktualny.
+
+Uwaga: ``get_or_create`` w ``_materializuj_diff`` OD RAZU ustawia docelowe
+wartości (np. ``Autor_Jednostka.funkcja``), więc świeży
+``check_if_integration_needed()`` po materializacji zwykle wraca ``False``
+— to NIE znaczy, że wiersz jest nieaktualny, tylko że materializacja już
+wykonała pracę. ``pominiety_bo_nieaktualny`` jest więc ustawiane tylko gdy
+wiersz nie miał odroczonych create'ów (prawdziwy drift bazy między analizą
+a commitem); w przeciwnym razie wołane jest istniejące
+``ImportPracownikowRow.integrate()`` albo — gdy recheck faktycznie nie
+wykrył driftu, a materializacja coś utworzyła — ślad utworzenia jest
+dopisywany ręcznie do ``log_zmian``, żeby audyt i licznik ``zintegrowano``
+widziały, że wiersz wykonał realną pracę.
+"""
+
+from django.db import transaction
+
+from bpp.models import (
+    Autor_Jednostka,
+    Funkcja_Autora,
+    Grupa_Pracownicza,
+    Wymiar_Etatu,
+)
+from import_common.normalization import (
+    normalize_funkcja_autora,
+    normalize_grupa_pracownicza,
+    normalize_wymiar_etatu,
+)
+from import_pracownikow.models import ImportPracownikow
+
+
+def _materializuj_diff(row):
+    """Tworzy (get_or_create) obiekty odłożone przez analizę i podpina FK.
+
+    Wartości w ``diff`` są już znormalizowane przez fazę analizy
+    (``import_pracownikow.pipeline.analyze``) — ponowne wołanie
+    ``normalize_*`` tutaj jest więc no-opem (normalizery są idempotentne),
+    zostawione dla czytelności/obrony w głąb.
+    """
+    diff = row.diff_do_utworzenia or {}
+    if "funkcja_autora" in diff:
+        nazwa = normalize_funkcja_autora(diff["funkcja_autora"])
+        row.funkcja_autora, _ = Funkcja_Autora.objects.get_or_create(
+            nazwa=nazwa, defaults={"skrot": nazwa}
+        )
+    if "grupa_pracownicza" in diff:
+        nazwa = normalize_grupa_pracownicza(diff["grupa_pracownicza"])
+        row.grupa_pracownicza, _ = Grupa_Pracownicza.objects.get_or_create(nazwa=nazwa)
+    if "wymiar_etatu" in diff:
+        nazwa = normalize_wymiar_etatu(diff["wymiar_etatu"])
+        row.wymiar_etatu, _ = Wymiar_Etatu.objects.get_or_create(nazwa=nazwa)
+    if "autor_jednostka" in diff:
+        # Dług Fazy 0: `get_or_create` tutaj pomija `rozpoczal_prace`, mimo
+        # że `unique_together` na Autor_Jednostka to
+        # (autor, jednostka, rozpoczal_prace). Dla autora z wieloma AJ w tej
+        # samej jednostce (multi-etat / historia zatrudnienia) ten lookup
+        # (autor, jednostka) może trafić na >1 wiersz — Django łapie tylko
+        # `DoesNotExist`, więc `get_or_create` rzuci nieobsłużony
+        # `MultipleObjectsReturned`. Akceptowany dług, do naprawy gdy
+        # multi-etat trafi do zakresu importu.
+        row.autor_jednostka, _ = Autor_Jednostka.objects.get_or_create(
+            autor_id=diff["autor_jednostka"]["autor"],
+            jednostka_id=diff["autor_jednostka"]["jednostka"],
+            defaults={"funkcja": row.funkcja_autora},
+        )
+
+
+def _opisz_utworzone(diff):
+    """Krótkie opisy obiektów utworzonych z ``diff_do_utworzenia`` — do
+    ``log_zmian["utworzono"]``, żeby audyt widział realną pracę wykonaną
+    przez materializację nawet gdy świeży recheck nie wykrył driftu."""
+    opisy = []
+    if "funkcja_autora" in diff:
+        opisy.append(f"funkcja: {diff['funkcja_autora']}")
+    if "grupa_pracownicza" in diff:
+        opisy.append(f"grupa pracownicza: {diff['grupa_pracownicza']}")
+    if "wymiar_etatu" in diff:
+        opisy.append(f"wymiar etatu: {diff['wymiar_etatu']}")
+    if "autor_jednostka" in diff:
+        opisy.append("powiązanie autor-jednostka")
+    return opisy
+
+
+def _integruj_wiersz(row):
+    with transaction.atomic():
+        # Sprawdzone PRZED materializacją — po niej `diff_do_utworzenia`
+        # nadal jest niepuste (nic go nie czyści), więc to jest jedyny
+        # moment, w którym rozróżnienie "miał odroczone create'y" ma sens
+        # jako flaga, nie tylko jako odczyt pola.
+        materializowano = bool(row.diff_do_utworzenia)
+        _materializuj_diff(row)
+        row.save(
+            update_fields=[
+                "funkcja_autora",
+                "grupa_pracownicza",
+                "wymiar_etatu",
+                "autor_jednostka",
+            ]
+        )
+        # Świeży re-check — baza mogła się zmienić od preview (dry-run).
+        if row.check_if_integration_needed():
+            row.integrate()
+            if materializowano:
+                # `integrate()` nadpisuje `log_zmian` na starcie — ślad
+                # utworzenia dopisujemy DOPIERO PO nim, do klucza
+                # "utworzono", zamiast go nadpisać.
+                row.log_zmian["utworzono"] = _opisz_utworzone(row.diff_do_utworzenia)
+                row.save(update_fields=["log_zmian"])
+            return
+        if materializowano:
+            # Recheck nie widzi driftu (get_or_create już ustawił docelowe
+            # wartości), ale wiersz FAKTYCZNIE wykonał pracę: utworzył nowe
+            # obiekty (Funkcja_Autora/Grupa_Pracownicza/Wymiar_Etatu/
+            # Autor_Jednostka). To NIE jest "nieaktualny" wiersz — nie
+            # oznaczamy go `pominiety_bo_nieaktualny`, tylko zapisujemy
+            # ślad w `log_zmian`, żeby audyt i licznik `zintegrowano` go
+            # widziały.
+            row.log_zmian = {
+                "autor": [],
+                "autor_jednostka": [],
+                "utworzono": _opisz_utworzone(row.diff_do_utworzenia),
+            }
+            row.save(update_fields=["log_zmian"])
+            return
+        # Prawdziwy drift: diff był pusty (nic nie materializowano) i
+        # recheck nie widzi potrzeby zmian — baza zmieniła się od analizy.
+        row.pominiety_bo_nieaktualny = True
+        row.save(update_fields=["pominiety_bo_nieaktualny"])
+
+
+def integruj(parent, p):
+    qs = parent.zmiany_potrzebne_set.all()
+    for row in p.track(list(qs), total=qs.count(), label="Integracja"):
+        _integruj_wiersz(row)
+
+    parent.stan = ImportPracownikow.STAN_ZINTEGROWANY
+    parent.save(update_fields=["stan"])
+
+    pominieto_nieaktualne = parent.importpracownikowrow_set.filter(
+        pominiety_bo_nieaktualny=True
+    ).count()
+    # `zintegrowano` to wiersze faktycznie przetworzone (integrate() albo
+    # materializacja create-only) — czyli wszystkie ze `zmiany_potrzebne_set`
+    # poza tymi prawdziwie pominiętymi jako nieaktualne. Liczenie przez
+    # `log_zmian__isnull=False` było błędne: create-only wiersz, dla
+    # którego `_materializuj_diff` ustawia od razu docelowe wartości, nie
+    # wchodzi w `row.integrate()` (recheck nie widzi driftu), a mimo to
+    # wykonał realną pracę.
+    zintegrowano = parent.zmiany_potrzebne_set.count() - pominieto_nieaktualne
+
+    p.result(
+        {
+            "zintegrowano": zintegrowano,
+            "pominieto_nieaktualne": pominieto_nieaktualne,
+            "stan": parent.stan,
+        }
+    )

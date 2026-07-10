@@ -735,6 +735,15 @@ IMPORTER_STALL_TIMEOUT = env("IMPORTER_STALL_TIMEOUT", default=180, cast=int)
 # żeby był widoczny i konfigurowalny. Patrz crossref_bpp.models.
 CROSSREF_API_TIMEOUT = env("CROSSREF_API_TIMEOUT", default=30, cast=int)
 
+# Retencja (w dniach) plików XLS importu pracowników. Komenda zarządzająca
+# `usun_stare_pliki_importu_pracownikow` kasuje blob `plik_xls` importów
+# starszych niż tyle dni, zostawiając sam rekord i wiersze (historia
+# dopasowań pozostaje dostępna, plik źródłowy nie).
+# Patrz import_pracownikow.management.commands.usun_stare_pliki_importu_pracownikow.
+IMPORT_PRACOWNIKOW_RETENCJA_DNI = env(
+    "IMPORT_PRACOWNIKOW_RETENCJA_DNI", default=90, cast=int
+)
+
 CELERY_ROUTES = [
     {"denorm.tasks.flush_single": {"queue": "denorm"}},
 ]

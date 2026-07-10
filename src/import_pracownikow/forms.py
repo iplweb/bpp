@@ -35,4 +35,4 @@ class NowyImportForm(forms.ModelForm):
             ),
         )
 
-        super(NowyImportForm, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)

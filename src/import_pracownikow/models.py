@@ -1,13 +1,13 @@
 # Create your models here.
-from copy import copy
 from datetime import date, timedelta
 
 from django import forms
 from django.core.serializers.json import DjangoJSONEncoder
-from django.db import DataError, IntegrityError, models, transaction
-from django.db.models import JSONField, Q
+from django.db import DataError, models, transaction
+from django.db.models import JSONField
 from django.db.models.expressions import RawSQL
 from django.utils import timezone
+from liveops.models import LiveOperation
 
 from bpp.models import (
     Autor,
@@ -18,30 +18,9 @@ from bpp.models import (
     Tytul,
     Wymiar_Etatu,
 )
-from import_common.core import (
-    matchuj_autora,
-    matchuj_funkcja_autora,
-    matchuj_grupa_pracownicza,
-    matchuj_jednostke,
-    matchuj_wymiar_etatu,
-)
-from import_common.exceptions import (
-    BPPDatabaseError,
-    BPPDatabaseMismatch,
-    XLSMatchError,
-    XLSParseError,
-)
+from import_common.exceptions import BPPDatabaseError
 from import_common.forms import ExcelDateField
 from import_common.models import ImportRowMixin
-from import_common.normalization import (
-    normalize_funkcja_autora,
-    normalize_grupa_pracownicza,
-    normalize_nullboleanfield,
-    normalize_wymiar_etatu,
-)
-from import_common.util import XLSImportFile
-from long_running.models import Operation
-from long_running.notification_mixins import ASGINotificationMixin
 
 
 class JednostkaForm(forms.Form):
@@ -67,188 +46,41 @@ class AutorForm(forms.Form):
     wymiar_etatu = forms.CharField(max_length=200)
 
 
-class ImportPracownikow(ASGINotificationMixin, Operation):
+class ImportPracownikow(LiveOperation):
+    STAN_UTWORZONY = "utworzony"
+    STAN_PRZEANALIZOWANY = "przeanalizowany"
+    STAN_ZATWIERDZONY = "zatwierdzony"
+    STAN_ZINTEGROWANY = "zintegrowany"
+    STAN_PORZUCONY = "porzucony"
+    STAN_CHOICES = [
+        (STAN_UTWORZONY, "utworzony"),
+        (STAN_PRZEANALIZOWANY, "przeanalizowany (dry-run gotowy)"),
+        (STAN_ZATWIERDZONY, "zatwierdzony do zapisu"),
+        (STAN_ZINTEGROWANY, "zintegrowany"),
+        (STAN_PORZUCONY, "porzucony"),
+    ]
+
     plik_xls = models.FileField(upload_to="protected/import_pracownikow/")
+    stan = models.CharField(max_length=20, choices=STAN_CHOICES, default=STAN_UTWORZONY)
 
-    performed = models.BooleanField(default=False)
-    integrated = models.BooleanField(default=False)
+    stages = ["Wczytywanie", "Integracja"]
 
-    @transaction.atomic
-    def on_reset(self):
-        self.performed = self.integrated = False
-        self.importpracownikowrow_set.all().delete()
-        self.save()
+    def run(self, p):
+        if self.stan == self.STAN_UTWORZONY:
+            from import_pracownikow.pipeline.analyze import analizuj
 
-    def _matchuj_jednostke(self, elem):
-        """Waliduje i matchuje jednostkę z danych XLS."""
-        jednostka_form = JednostkaForm(data=elem)
-        jednostka_form.full_clean()
-        if not jednostka_form.is_valid():
-            raise XLSParseError(elem, jednostka_form, "weryfikacja nazwy jednostki")
+            analizuj(self, p)
+        elif self.stan == self.STAN_ZATWIERDZONY:
+            from import_pracownikow.pipeline.integrate import integruj
 
-        try:
-            return matchuj_jednostke(
-                jednostka_form.cleaned_data.get("nazwa_jednostki"),
-                wydzial=jednostka_form.cleaned_data.get("wydział"),
-            )
-        except Jednostka.MultipleObjectsReturned:
-            raise XLSMatchError(
-                elem, "jednostka", "wiele dopasowań w systemie - po nazwie"
-            ) from None
-        except Jednostka.DoesNotExist:
-            raise XLSMatchError(
-                elem, "jednostka", "brak dopasowania w systemie - po nazwie"
-            ) from None
+            integruj(self, p)
+        else:
+            p.log(f"run() w nieoczekiwanym stanie: {self.stan!r} — pomijam")
 
-    def _waliduj_autora(self, elem):
-        """Waliduje dane autora i zwraca formularz z danymi."""
-        autor_form = AutorForm(data=elem)
-        autor_form.full_clean()
-        if not autor_form.is_valid():
-            raise XLSParseError(elem, autor_form, "weryfikacja danych autora")
-        assert isinstance(autor_form.cleaned_data.get("data_zatrudnienia"), date)
-        return autor_form
-
-    def _matchuj_funkcje_autora(self, data, elem, autor_form):
-        """Matchuje lub tworzy funkcję autora (stanowisko)."""
-        try:
-            return matchuj_funkcja_autora(data.get("stanowisko"))
-        except Funkcja_Autora.DoesNotExist:
-            try:
-                return Funkcja_Autora.objects.create(
-                    nazwa=normalize_funkcja_autora(data.get("stanowisko")),
-                    skrot=normalize_funkcja_autora(data.get("stanowisko")),
-                )
-            except IntegrityError:
-                raise XLSParseError(
-                    elem,
-                    autor_form,
-                    "nie można utworzyć nowego stanowiska na bazie takich danych",
-                ) from None
-        except Funkcja_Autora.MultipleObjectsReturned:
-            raise XLSMatchError(
-                elem,
-                "stanowisko",
-                "liczne dopasowania dla takiej funkcji autora (stanowiska) w systemie",
-            ) from None
-
-    def _matchuj_grupe_i_wymiar(self, data):
-        """Matchuje lub tworzy grupę pracowniczą i wymiar etatu."""
-        try:
-            grupa_pracownicza = matchuj_grupa_pracownicza(data.get("grupa_pracownicza"))
-        except Grupa_Pracownicza.DoesNotExist:
-            grupa_pracownicza = Grupa_Pracownicza.objects.create(
-                nazwa=normalize_grupa_pracownicza(data.get("grupa_pracownicza"))
-            )
-
-        try:
-            wymiar_etatu = matchuj_wymiar_etatu(data.get("wymiar_etatu"))
-        except Wymiar_Etatu.DoesNotExist:
-            wymiar_etatu = Wymiar_Etatu.objects.create(
-                nazwa=normalize_wymiar_etatu(data.get("wymiar_etatu"))
-            )
-
-        return grupa_pracownicza, wymiar_etatu
-
-    def _matchuj_autora_z_walidacja(self, data, elem, jednostka, tytul_str):
-        """Matchuje autora i waliduje zgodność BPP ID."""
-        autor = matchuj_autora(
-            imiona=data.get("imię"),
-            nazwisko=data.get("nazwisko"),
-            jednostka=jednostka,
-            bpp_id=data.get("bpp_id"),
-            pbn_uid_id=data.get("pbn_uuid"),
-            system_kadrowy_id=data.get("numer"),
-            pbn_id=data.get("pbn_id"),
-            orcid=data.get("orcid"),
-            tytul_str=tytul_str,
-        )
-        if autor is None:
-            raise XLSMatchError(elem, "autor", "brak dopasowania - różne kombinacje")
-
-        if data.get("bpp_id") is not None and data.get("bpp_id") != autor.pk:
-            raise XLSMatchError(
-                elem,
-                "autor",
-                "BPP ID zmatchowanego autora i BPP ID w pliku XLS nie zgadzają się",
-            )
-        return autor
-
-    def _znajdz_autor_jednostka(self, autor, jednostka, data, funkcja_autora, elem):
-        """Znajduje lub tworzy powiązanie autor-jednostka."""
-        try:
-            return Autor_Jednostka.objects.get(autor=autor, jednostka=jednostka)
-        except Autor_Jednostka.MultipleObjectsReturned:
-            if "data_zatrudnienia" in data:
-                try:
-                    return Autor_Jednostka.objects.get(
-                        autor=autor,
-                        jednostka=jednostka,
-                        rozpoczal_prace=data.get("data_zatrudnienia"),
-                    )
-                except Autor_Jednostka.DoesNotExist:
-                    raise BPPDatabaseMismatch(
-                        elem,
-                        "autor + jednostka",
-                        "brak jednoznacznego powiązania autor+jednostka po stronie BPP",
-                    ) from None
-        except Autor_Jednostka.DoesNotExist:
-            return Autor_Jednostka.objects.create(
-                autor=autor, jednostka=jednostka, funkcja=funkcja_autora
-            )
-
-    def _przetworz_wiersz(self, elem):
-        """Przetwarza pojedynczy wiersz z pliku XLS."""
-        jednostka = self._matchuj_jednostke(elem)
-        autor_form = self._waliduj_autora(elem)
-        data = autor_form.cleaned_data
-        tytul_str = data.get("tytuł_stopień")
-
-        funkcja_autora = self._matchuj_funkcje_autora(data, elem, autor_form)
-        grupa_pracownicza, wymiar_etatu = self._matchuj_grupe_i_wymiar(data)
-        autor = self._matchuj_autora_z_walidacja(data, elem, jednostka, tytul_str)
-        aj = self._znajdz_autor_jednostka(autor, jednostka, data, funkcja_autora, elem)
-
-        tytul = None
-        if tytul_str:
-            try:
-                tytul = Tytul.objects.get(Q(nazwa=tytul_str) | Q(skrot=tytul_str))
-            except Tytul.DoesNotExist:
-                pass
-
-        res = ImportPracownikowRow(
-            parent=self,
-            dane_z_xls=elem,
-            dane_znormalizowane=copy(autor_form.cleaned_data),
-            autor=autor,
-            jednostka=jednostka,
-            autor_jednostka=aj,
-            tytul=tytul,
-            funkcja_autora=funkcja_autora,
-            grupa_pracownicza=grupa_pracownicza,
-            wymiar_etatu=wymiar_etatu,
-            podstawowe_miejsce_pracy=normalize_nullboleanfield(
-                elem.get("podstawowe_miejsce_pracy")
-            ),
-        )
-        res.zmiany_potrzebne = res.check_if_integration_needed()
-        res.save()
-
-    def perform(self):
-        xif = XLSImportFile(self.plik_xls.path)
-        total = xif.count()
-
-        for no, elem in enumerate(xif.data()):
-            self._przetworz_wiersz(elem)
-            if no % 10 == 0:
-                self.send_progress(no / total / 2.0)
-
-        self.performed = True
-        self.save()
-
-        self.integrate()
-        self.integrated = True
-        self.save()
+    def on_restart(self):
+        # kasujemy wiersze TYLKO przy ponownej analizie (stan cofnięty do utworzony)
+        if self.stan == self.STAN_UTWORZONY:
+            self.importpracownikowrow_set.all().delete()
 
     @property
     def zmiany_potrzebne_set(self):
@@ -315,19 +147,6 @@ class ImportPracownikow(ASGINotificationMixin, Operation):
 
             elem.refresh_from_db()
 
-    def on_finished(self):
-        self.send_processing_finished()
-
-    def integrate(self):
-        total = self.zmiany_potrzebne_set.all().count()
-        for no, elem in enumerate(
-            self.zmiany_potrzebne_set.all().select_related(
-                "autor", "jednostka", "jednostka__wydzial", "autor__tytul"
-            )
-        ):
-            elem.integrate()
-            self.send_progress(0.5 + (no / total / 2.0))
-
 
 class ImportPracownikowRow(ImportRowMixin, models.Model):
     parent = models.ForeignKey(
@@ -337,17 +156,30 @@ class ImportPracownikowRow(ImportRowMixin, models.Model):
     dane_z_xls = JSONField(null=True, blank=True, encoder=DjangoJSONEncoder)
     dane_znormalizowane = JSONField(null=True, blank=True, encoder=DjangoJSONEncoder)
 
-    autor = models.ForeignKey(Autor, on_delete=models.CASCADE)
-    jednostka = models.ForeignKey(Jednostka, on_delete=models.CASCADE)
-    autor_jednostka = models.ForeignKey(Autor_Jednostka, on_delete=models.CASCADE)
+    autor = models.ForeignKey(Autor, on_delete=models.CASCADE, null=True, blank=True)
+    jednostka = models.ForeignKey(
+        Jednostka, on_delete=models.CASCADE, null=True, blank=True
+    )
+    autor_jednostka = models.ForeignKey(
+        Autor_Jednostka, on_delete=models.CASCADE, null=True, blank=True
+    )
 
     podstawowe_miejsce_pracy = models.BooleanField(null=True, blank=True, default=None)
-    funkcja_autora = models.ForeignKey(Funkcja_Autora, on_delete=models.CASCADE)
-    grupa_pracownicza = models.ForeignKey(Grupa_Pracownicza, on_delete=models.CASCADE)
-    wymiar_etatu = models.ForeignKey(Wymiar_Etatu, on_delete=models.CASCADE)
+    funkcja_autora = models.ForeignKey(
+        Funkcja_Autora, on_delete=models.CASCADE, null=True, blank=True
+    )
+    grupa_pracownicza = models.ForeignKey(
+        Grupa_Pracownicza, on_delete=models.CASCADE, null=True, blank=True
+    )
+    wymiar_etatu = models.ForeignKey(
+        Wymiar_Etatu, on_delete=models.CASCADE, null=True, blank=True
+    )
     tytul = models.ForeignKey(Tytul, on_delete=models.SET_NULL, null=True)
 
     zmiany_potrzebne = models.BooleanField()
+
+    diff_do_utworzenia = models.JSONField(default=dict, blank=True)
+    pominiety_bo_nieaktualny = models.BooleanField(default=False)
 
     log_zmian = JSONField(encoder=DjangoJSONEncoder, null=True, blank=True)
 
