@@ -164,6 +164,24 @@ def _dopasuj_autora_i_status(data, jednostka, tytul_str):
     return autor, status, kandydaci
 
 
+def _wybierz_autor_jednostka(autor, jednostka):
+    """Wybiera ``Autor_Jednostka`` (autor, jednostka) do aktualizacji w commicie.
+
+    Multi-etat / historia zatrudnienia: autor może mieć >1 AJ w TEJ SAMEJ
+    jednostce (``unique_together`` to ``(autor, jednostka, rozpoczal_prace)``).
+    Ten AJ jest w commicie aktualizowany (daty/funkcja/etat/podstawowe), więc
+    ``.first()`` bez porządku (losowy wybór) mógł trafić w HISTORYCZNY rekord i
+    nadpisać zamknięte zatrudnienie — korupcja (#508 F6). Deterministycznie
+    preferujemy AKTYWNY etat (bez ``zakonczyl_prace``), najnowszy startem; w
+    ostateczności najnowszy AJ. Zwraca ``None``, gdy autor nie ma AJ w jednostce.
+    """
+    aj_qs = Autor_Jednostka.objects.filter(autor=autor, jednostka=jednostka)
+    return (
+        aj_qs.filter(zakonczyl_prace__isnull=True).order_by("-rozpoczal_prace").first()
+        or aj_qs.order_by("-rozpoczal_prace").first()
+    )
+
+
 def _przetworz_wiersz(parent, elem, parser_ctx=None):
     dane_form = normalizuj_wartosci_wiersza(elem)
     rozbicie = _rozbij_osoba_sklejona(dane_form, parser_ctx)
@@ -220,7 +238,7 @@ def _przetworz_wiersz(parent, elem, parser_ctx=None):
     # (autor None) nie ma jak policzyć AJ — pomijamy.
     aj = None
     if autor is not None:
-        aj = Autor_Jednostka.objects.filter(autor=autor, jednostka=jednostka).first()
+        aj = _wybierz_autor_jednostka(autor, jednostka)
         if aj is None:
             diff["autor_jednostka"] = {"autor": autor.pk, "jednostka": jednostka.pk}
 
