@@ -52,17 +52,23 @@ def _zdejmij_tytuly(tokeny: list[str], tytuly: set[str]):
     start = 0
     koniec = len(tokeny)
     fragmenty: list[str] = []
+    # Guard #512 F1: nie zdejmuj dopasowania tytułu, jeśli zostałoby < 2 tokenów
+    # nazwy. Jednowyrazowe nazwy tytułów z bazy (`doktor`, `lekarz`, `magister`,
+    # `profesor`) KOLIDUJĄ z realnymi polskimi nazwiskami — bez tego guardu
+    # „Anna Doktor"/„Jan Lekarz" (poprawna para imię+nazwisko) traci część jako
+    # „tytuł", zostaje 1 token → puste imię → `XLSParseError` wywala CAŁY plik.
+    # Preferujemy interpretację „to nazwisko/imię" (rozstrzygną sygnały 1-5).
     while start < koniec:
         lower = [t.lower() for t in tokeny[start:koniec]]
         d = _dopasuj_od_przodu(lower, tytuly)
-        if d == 0:
+        if d == 0 or (koniec - (start + d)) < 2:
             break
         fragmenty.append(" ".join(tokeny[start : start + d]))
         start += d
     while koniec > start:
         lower = [t.lower() for t in tokeny[start:koniec]]
         d = _dopasuj_od_tylu(lower, tytuly)
-        if d == 0:
+        if d == 0 or ((koniec - d) - start) < 2:
             break
         fragmenty.append(" ".join(tokeny[koniec - d : koniec]))
         koniec -= d

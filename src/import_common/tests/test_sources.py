@@ -152,3 +152,30 @@ def test_csvsource_crlf_realny_excel(tmp_path):
     wiersz = list(src.data())[0]
     assert wiersz["nazwa_jednostki"] == "Katedra Chorób"
     assert wiersz["__xls_loc_row__"] == 1
+
+
+def test_csvsource_cr_only_konce_linii(tmp_path):
+    # Końce linii CR-only (\r, stare Maki / niektóre eksporty kadrowe) — bez
+    # `newline=""` w StringIO `csv.reader` rzuca `_csv.Error: new-line character
+    # seen in unquoted field` i wywala CAŁĄ analizę surowym tracebackiem. Musi
+    # sparsować się poprawnie (a nie-CSV śmieć degradować do domenowego wyjątku).
+    tresc = f"{_CSV_NAGLOWEK}\r" "1;Kowalski;Jan;;Asystent;Katedra Chorób\r"
+    path = _zapisz(tmp_path, tresc, encoding="utf-8")
+    src = CSVSource(path)
+    assert src.count() == 1
+    wiersz = list(src.data())[0]
+    assert wiersz["nazwisko"] == "Kowalski"
+    assert wiersz["nazwa_jednostki"] == "Katedra Chorób"
+
+
+def test_csvsource_stray_cr_w_polu(tmp_path):
+    # Zabłąkany \r w niecytowanym polu (mieszane końce linii po ręcznej edycji)
+    # — z `newline=""` csv.reader traktuje \r jako koniec rekordu (rozbija wiersz)
+    # ZAMIAST rzucać `_csv.Error`. Kluczowe: analiza NIE wywala się surowym
+    # tracebackiem; degradacja (rozbity rekord) jest akceptowalna wobec crasha.
+    tresc = f"{_CSV_NAGLOWEK}\n" "1;Kowal\rski;Jan;;Asystent;Katedra\n"
+    path = _zapisz(tmp_path, tresc, encoding="utf-8")
+    src = CSVSource(path)
+    # nie rzuca `_csv.Error` (przed fixem: crash całej analizy)
+    wiersze = list(src.data())
+    assert wiersze  # coś się sparsowało bez wyjątku

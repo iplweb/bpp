@@ -442,21 +442,35 @@ class ImportPracownikowRow(ImportRowMixin, models.Model):
         self.save()
 
     def sformatowany_log_zmian(self):
+        # Renderuje WSZYSTKIE klucze audytu (#513 F1 / #508 M4). Faza integracji
+        # zapisuje obok `autor`/`autor_jednostka` także `utworzono` (m.in. „nowy
+        # autor: …"), `przepiecie` (raport przepięcia prac) i
+        # `przepiecie_pominiete` — bez ich renderu utworzenie autora i
+        # przepięcie dorobku były niewidoczne w jedynym widoku log_zmian po
+        # integracji. `.get()` bo starsze rekordy mogą nie mieć niektórych kluczy.
         if self.log_zmian is None:
             return
+        log = self.log_zmian
 
-        if self.log_zmian["autor"]:
-            yield "Zmiany obiektu Autor: " + ", ".join(
-                [elem for elem in self.log_zmian["autor"]]
+        if log.get("autor"):
+            yield "Zmiany obiektu Autor: " + ", ".join(log["autor"])
+
+        if log.get("autor_jednostka"):
+            yield "Zmiany obiektu Autor_Jednostka: " + ", ".join(log["autor_jednostka"])
+
+        if log.get("utworzono"):
+            yield "Utworzono: " + ", ".join(log["utworzono"])
+
+        przepiecie = log.get("przepiecie")
+        if przepiecie:
+            yield (
+                f"Przepięto prace: {przepiecie.get('prace_ciagle', 0)} ciągłych, "
+                f"{przepiecie.get('prace_zwarte', 0)} zwartych "
+                f"z „{przepiecie.get('z', '?')}” do „{przepiecie.get('do', '?')}”."
             )
 
-        if self.log_zmian["autor_jednostka"]:
-            yield "Zmiany obiektu Autor_Jednostka: " + ", ".join(
-                [elem for elem in self.log_zmian["autor_jednostka"]]
-            )
-
-        if not self.log_zmian:
-            return "bez zmian!"
+        if log.get("przepiecie_pominiete"):
+            yield "Przepięcie pominięte: " + log["przepiecie_pominiete"]
 
 
 class ProfilMapowania(models.Model):

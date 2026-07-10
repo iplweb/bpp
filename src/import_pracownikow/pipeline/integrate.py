@@ -107,6 +107,16 @@ def _opisz_utworzone(diff):
 
 
 def _integruj_wiersz(row):
+    # Idempotencja (#508 F2): faza integracji może ruszyć drugi raz na tym
+    # samym parencie (restart liveops / podwójne „Zatwierdź" — stan
+    # zatwierdzony/zintegrowany NIE kasuje wierszy podglądu), a `integruj`
+    # nie zeruje `zmiany_potrzebne`, więc wiersz wraca do worklisty. `log_zmian`
+    # ustawia WYŁĄCZNIE integracja (analiza zostawia None) — więc jest pewnym
+    # markerem „już zintegrowany". Bez tego guardu drugi przebieg albo nadpisuje
+    # audyt `log_zmian` (gałąź materializacji), albo fałszywie oznacza wiersz
+    # `pominiety_bo_nieaktualny` (świeży recheck nie widzi już driftu).
+    if row.log_zmian is not None:
+        return
     with transaction.atomic():
         # Sprawdzone PRZED materializacją — po niej `diff_do_utworzenia`
         # nadal jest niepuste (nic go nie czyści), więc to jest jedyny
