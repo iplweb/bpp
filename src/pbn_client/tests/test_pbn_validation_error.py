@@ -1,3 +1,6 @@
+import pytest
+
+from pbn_api.tests.utils import MockTransport
 from pbn_client.exceptions import (
     HttpException,
     PBNValidationError,
@@ -75,3 +78,69 @@ def test_pbnvalidationerror_str_is_tuple_not_overridden():
     assert "/api/v1/publications" in s
     assert '"details"' in s  # surowy JSON body zachowany w tracebacku
     assert isinstance(e, HttpException)  # podklasa — wsteczna zgodność
+
+
+class _FakeResponse:
+    def __init__(self, status_code, content, headers=None):
+        self.status_code = status_code
+        self.content = content.encode() if isinstance(content, str) else content
+        self.headers = headers or {}
+
+
+def test_transport_validation_400_raises_pbnvalidationerror_no_rollbar(mocker):
+    report = mocker.patch("pbn_client.transport.rollbar.report_message")
+    t = MockTransport()
+    ret = _FakeResponse(
+        400,
+        '{"code":400,"message":"Bad Request","description":"Validation failed.",'
+        '"details":{"openAccess.releaseDate":"Data ... wymagana!"}}',
+    )
+    with pytest.raises(PBNValidationError) as ei:
+        t._check_error_response(ret, "/api/v1/publications")
+    assert ei.value.user_messages() == ["Data ... wymagana!"]
+    report.assert_not_called()
+
+
+def test_transport_validation_409_format2_no_rollbar(mocker):
+    report = mocker.patch("pbn_client.transport.rollbar.report_message")
+    t = MockTransport()
+    ret = _FakeResponse(
+        409,
+        '[{"requestPosition":0,"code":"NOT_UNIQUE_PUBLICATION_ISBN_ISMN",'
+        '"description":"Publikacja o identycznym ISBN już istnieje."}]',
+    )
+    with pytest.raises(PBNValidationError) as ei:
+        t._check_error_response(ret, "/api/v1/publications")
+    assert ei.value.user_messages() == ["Publikacja o identycznym ISBN już istnieje."]
+    report.assert_not_called()
+
+
+def test_transport_400_without_details_is_plain_httpexception(mocker):
+    report = mocker.patch("pbn_client.transport.rollbar.report_message")
+    t = MockTransport()
+    ret = _FakeResponse(400, '{"message":"Bad Request"}')
+    with pytest.raises(HttpException) as ei:
+        t._check_error_response(ret, "/api/v1/publications")
+    assert not isinstance(ei.value, PBNValidationError)
+    report.assert_called_once()
+
+
+def test_transport_500_with_details_shape_still_reports_rollbar(mocker):
+    report = mocker.patch("pbn_client.transport.rollbar.report_message")
+    t = MockTransport()
+    ret = _FakeResponse(500, '{"details":{"x":"y"}}')
+    with pytest.raises(HttpException) as ei:
+        t._check_error_response(ret, "/api/v1/publications")
+    assert not isinstance(ei.value, PBNValidationError)
+    report.assert_called_once()
+
+
+@pytest.mark.parametrize("status", [401, 403, 423])
+def test_transport_auth_and_locked_not_validation(mocker, status):
+    report = mocker.patch("pbn_client.transport.rollbar.report_message")
+    t = MockTransport()
+    ret = _FakeResponse(status, '{"details":{"x":"y"}}')
+    with pytest.raises(HttpException) as ei:
+        t._check_error_response(ret, "/api/v1/publications")
+    assert not isinstance(ei.value, PBNValidationError)
+    report.assert_called_once()
