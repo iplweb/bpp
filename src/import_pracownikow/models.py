@@ -197,13 +197,7 @@ class ImportPracownikow(LiveOperation):
         if today is None:
             today = timezone.now().date()
 
-        pary_z_pliku = set(
-            self.importpracownikowrow_set.filter(
-                autor__isnull=False, jednostka__isnull=False
-            )
-            .values_list("autor_id", "jednostka_id")
-            .distinct()
-        )
+        pary_z_pliku = self.pary_z_pliku()
 
         qry = (
             Autor_Jednostka.objects.exclude(autor__aktualna_jednostka=None)
@@ -221,6 +215,22 @@ class ImportPracownikow(LiveOperation):
             qry = qry.exclude(wyklucz)
 
         return qry
+
+    def pary_z_pliku(self):
+        """Zbiór par ``(autor_id, jednostka_id)`` OBECNYCH w wierszach importu
+        (autor i jednostka ustawione) — „para z pliku”, tj. potwierdzony etat.
+
+        Wspólne źródło dla guardu „para z pliku” w przepięciach (F1) i dla
+        definicji „spoza pliku” w odpięciach (§9). Semantyka identyczna z
+        per-wierszowym ``.filter(autor_id=, jednostka_id=).exists()`` guardu G1.
+        """
+        return set(
+            self.importpracownikowrow_set.filter(
+                autor__isnull=False, jednostka__isnull=False
+            )
+            .values_list("autor_id", "jednostka_id")
+            .distinct()
+        )
 
 
 class ImportPracownikowRow(ImportRowMixin, models.Model):
@@ -559,3 +569,25 @@ class ImportPracownikowOdpiecie(models.Model):
 
     def __str__(self):
         return f"odpięcie {self.autor_jednostka} (zaznaczone={self.zaznaczone})"
+
+
+def wiersz_kwalifikuje_do_przepiecia(autor_id, stara_id, jednostka_id, pary_z_pliku):
+    """Czy wiersz kwalifikuje się do przepięcia prac (§10 D6/D7, F1/F2/F3).
+
+    Wspólny warunek dla podglądu (kolumna/toggle/bulk) i fazy commit — MUSI
+    dać identyczny zbiór kwalifikujących wierszy wszędzie. ``stara_id`` =
+    ``aktualna_jednostka`` autora sprzed importu (w podglądzie odczyt live, w
+    commit ze snapshotu — trigger DB zdążył ją przestawić).
+
+    True gdy: autor ustawiony, stara i nowa jednostka ustawione (F2) i różne
+    (jest co przepiąć), a para ``(autor_id, stara_id)`` NIE jest parą Z PLIKU
+    (stara jednostka nie jest potwierdzona jako aktywny etat w innym wierszu —
+    inaczej „pułapka drugiego etatu”, F1).
+    """
+    if autor_id is None or stara_id is None or jednostka_id is None:
+        return False
+    if stara_id == jednostka_id:
+        return False
+    if (autor_id, stara_id) in pary_z_pliku:
+        return False
+    return True
