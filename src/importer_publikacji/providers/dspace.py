@@ -290,6 +290,14 @@ class DSpaceProvider(DataProvider):
         return "Adres strony WWW w repozytorium DSpace"
 
     @property
+    def icon(self) -> str:
+        return "fi-database"
+
+    @property
+    def landing_caption(self) -> str:
+        return "Pobierz dane z repozytorium DSpace po adresie strony."
+
+    @property
     def input_mode(self) -> str:
         return InputMode.IDENTIFIER
 

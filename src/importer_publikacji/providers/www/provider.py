@@ -33,6 +33,17 @@ class WWWProvider(DataProvider):
         return "Adres URL strony z publikacją"
 
     @property
+    def icon(self) -> str:
+        return "fi-link-external"
+
+    @property
+    def landing_caption(self) -> str:
+        return (
+            "Wyciągnij dane ze strony publikacji (meta tagi, Dublin "
+            "Core, Schema.org, Omega-PSIR)."
+        )
+
+    @property
     def input_mode(self) -> str:
         return InputMode.IDENTIFIER
 
