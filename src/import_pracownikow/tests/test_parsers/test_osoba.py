@@ -146,6 +146,32 @@ PRZYPADKI = [
         "Kowalski",
         CONF_LOW,
     ),
+    (
+        # #512 F1: jednowyrazowa nazwa tytułu z bazy (doktor/lekarz/magister)
+        # KOLIDUJE z realnym nazwiskiem. „Anna Doktor" to poprawna para
+        # imię+nazwisko — NIE wolno zdjąć „Doktor" jako tytułu (zostałby
+        # 1 token → puste imię → XLSParseError wywala CAŁY plik). Guard <2
+        # zostawia obie części; leksykon imion daje imiona="Anna".
+        "Anna Doktor",
+        {"doktor"},
+        {"anna"},
+        _bez,
+        None,
+        "Anna",
+        "Doktor",
+        CONF_MEDIUM,
+    ),
+    (
+        # #512 F1: analogicznie „Jan Lekarz".
+        "Jan Lekarz",
+        {"lekarz"},
+        {"jan"},
+        _bez,
+        None,
+        "Jan",
+        "Lekarz",
+        CONF_MEDIUM,
+    ),
 ]
 
 
