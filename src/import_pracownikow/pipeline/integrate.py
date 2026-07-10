@@ -36,6 +36,7 @@ from import_common.normalization import (
     normalize_wymiar_etatu,
 )
 from import_pracownikow.models import ImportPracownikow
+from import_pracownikow.pewnosc import STATUS_BRAK, STATUS_WIELU
 
 
 def _materializuj_diff(row):
@@ -157,10 +158,18 @@ def integruj(parent, p):
     # wykonał realną pracę.
     zintegrowano = parent.zmiany_potrzebne_set.count() - pominieto_nieaktualne
 
+    # Wiersze brak/wielu bez rozstrzygnięcia usera (autor None) — świadomie
+    # pominięte w tej fazie (Faza 4 doda „utwórz nowego"). Raportujemy licznik
+    # + flagę „wymaga uwagi", żeby podsumowanie nie udawało pełnego sukcesu.
+    pominieto_niedopasowane = parent.importpracownikowrow_set.filter(
+        confidence__in=[STATUS_BRAK, STATUS_WIELU], autor__isnull=True
+    ).count()
     p.result(
         {
             "zintegrowano": zintegrowano,
             "pominieto_nieaktualne": pominieto_nieaktualne,
+            "pominieto_niedopasowane": pominieto_niedopasowane,
+            "wymaga_uwagi": pominieto_niedopasowane > 0,
             "stan": parent.stan,
         }
     )
