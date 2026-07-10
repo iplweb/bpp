@@ -34,7 +34,7 @@ class WWWProvider(DataProvider):
 
     @property
     def icon(self) -> str:
-        return "fi-link-external"
+        return "fi-monitor"
 
     @property
     def landing_caption(self) -> str:
