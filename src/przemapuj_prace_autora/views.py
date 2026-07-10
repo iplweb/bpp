@@ -1,12 +1,15 @@
 import sys
+from functools import wraps
 
 import rollbar
 from django.contrib import messages
-from django.contrib.auth.decorators import login_required
+from django.contrib.auth.views import redirect_to_login
+from django.core.exceptions import PermissionDenied
 from django.db.models import Count, Q
 from django.http import HttpResponseNotAllowed
 from django.shortcuts import get_object_or_404, redirect, render
 
+from bpp.const import GR_WPROWADZANIE_DANYCH
 from bpp.models import Autor, Wydawnictwo_Ciagle_Autor, Wydawnictwo_Zwarte_Autor
 
 from . import service
@@ -14,7 +17,32 @@ from .forms import PrzemapoaniePracAutoraForm
 from .models import PrzemapoaniePracAutora
 
 
-@login_required
+def wymaga_grupy_wprowadzanie(view):
+    """Bramka grupy „wprowadzanie danych" dla widoków funkcyjnych (#514 F-1).
+
+    Semantyka jak braces ``GroupRequiredMixin`` (konwencja projektu): anonim →
+    redirect na login; zalogowany bez grupy → 403 (``PermissionDenied``);
+    superuser lub członek grupy → przechodzi. Przemapowanie/cofanie przenosi
+    cały dorobek autora między jednostkami, więc sam ``login_required`` to za
+    słaba bramka dla tych akcji.
+    """
+
+    @wraps(view)
+    def _opakowany(request, *args, **kwargs):
+        user = request.user
+        if not user.is_authenticated:
+            return redirect_to_login(request.get_full_path())
+        if not (
+            user.is_superuser
+            or user.groups.filter(name=GR_WPROWADZANIE_DANYCH).exists()
+        ):
+            raise PermissionDenied
+        return view(request, *args, **kwargs)
+
+    return _opakowany
+
+
+@wymaga_grupy_wprowadzanie
 def wybierz_autora(request):
     """Widok do wyszukiwania i wyboru autora do przemapowania prac"""
     autorzy = None
@@ -147,7 +175,7 @@ def _render_preview(request, autor, form, jednostki_stats):
     return render(request, "przemapuj_prace_autora/przemapuj_prace.html", context)
 
 
-@login_required
+@wymaga_grupy_wprowadzanie
 def przemapuj_prace(request, autor_id):
     """Główny widok do przemapowania prac autora między jednostkami"""
     autor = get_object_or_404(Autor, pk=autor_id)
@@ -180,7 +208,7 @@ def przemapuj_prace(request, autor_id):
     return render(request, "przemapuj_prace_autora/przemapuj_prace.html", context)
 
 
-@login_required
+@wymaga_grupy_wprowadzanie
 def cofnij_przemapowanie(request, pk):
     """POST: cofnij przemapowanie (``service.cofnij``) i pokaż raport
     (cofnięto N, pominięto M z powodu późniejszych zmian). Redirect na widok

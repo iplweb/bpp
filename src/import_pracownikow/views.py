@@ -615,12 +615,20 @@ class ImportPracownikowResultsView(GroupRequiredMixin, ListView):
         return ctx
 
 
-class _PkOwnerRestartMixin(RestartView):
+class _PkOwnerRestartMixin(GroupRequiredMixin, RestartView):
     """Wspólny ``get_object`` dla widoków restartu — URL ma tylko ``pk``
     (bez ``op_type``), więc nadpisujemy ``OpTypeObjectMixin.get_object``
-    i rozwiązujemy konkretny model wprost, owner-scoped."""
+    i rozwiązujemy konkretny model wprost, owner-scoped.
+
+    Bramka grupy (#508 F4): liveops ``BaseLiveOperationMixin`` gejtuje tylko
+    gdy ``LIVEOPS["REQUIRED_GROUP"]`` jest ustawione — w BPP NIE jest, więc
+    tamta bramka to no-op. Dokładamy braces ``GroupRequiredMixin`` (konwencja
+    projektu, jak reszta widoków importu), inaczej dowolny zalogowany user
+    odpaliłby integrację / restart analizy (akcje destrukcyjne, skala importu).
+    """
 
     model = ImportPracownikow
+    group_required = GROUP_REQUIRED
 
     def get_object(self, queryset=None):
         return get_object_or_404(
