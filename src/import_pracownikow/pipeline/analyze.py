@@ -29,13 +29,14 @@ from import_common.normalization import (
     normalize_nullboleanfield,
     normalize_wymiar_etatu,
 )
-from import_common.util import XLSImportFile
+from import_common.sources import otworz_zrodlo
 from import_pracownikow.models import (
     AutorForm,
     ImportPracownikow,
     ImportPracownikowRow,
     JednostkaForm,
 )
+from import_pracownikow.parsers.wartosci import normalizuj_wartosci_wiersza
 
 
 def _matchuj_slownik_lub_odroc(matcher, wartosc, normalizer, diff, klucz):
@@ -73,13 +74,14 @@ def _matchuj_jednostke_lub_wyjatek(elem, jednostka_form):
 
 
 def _przetworz_wiersz(parent, elem):
-    jednostka_form = JednostkaForm(data=elem)
+    dane_form = normalizuj_wartosci_wiersza(elem)
+    jednostka_form = JednostkaForm(data=dane_form)
     jednostka_form.full_clean()
     if not jednostka_form.is_valid():
         raise XLSParseError(elem, jednostka_form, "weryfikacja nazwy jednostki")
     jednostka = _matchuj_jednostke_lub_wyjatek(elem, jednostka_form)
 
-    autor_form = AutorForm(data=elem)
+    autor_form = AutorForm(data=dane_form)
     autor_form.full_clean()
     if not autor_form.is_valid():
         raise XLSParseError(elem, autor_form, "weryfikacja danych autora")
@@ -169,12 +171,12 @@ def _przetworz_wiersz(parent, elem):
 
 
 def analizuj(parent, p):
-    xif = XLSImportFile(parent.plik_xls.path)
-    total = xif.count()
+    zrodlo = otworz_zrodlo(parent.plik_xls.path)
+    total = zrodlo.count()
     if total == 0:
         raise ValueError("Plik nie zawiera danych do importu (0 wierszy).")
 
-    for elem in p.track(list(xif.data()), total=total, label="Wczytywanie"):
+    for elem in p.track(list(zrodlo.data()), total=total, label="Wczytywanie"):
         _przetworz_wiersz(parent, elem)
 
     parent.stan = ImportPracownikow.STAN_PRZEANALIZOWANY

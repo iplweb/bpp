@@ -34,8 +34,8 @@ def test_analiza_nie_tworzy_slownikow_ani_autor_jednostka(dwa_autory_z_jednostka
     imp = baker.make(ImportPracownikow, stan=ImportPracownikow.STAN_UTWORZONY)
     imp.plik_xls.name = "protected/import_pracownikow/x.xlsx"
 
-    with patch("import_pracownikow.pipeline.analyze.XLSImportFile") as MockXIF:
-        inst = MockXIF.return_value
+    with patch("import_pracownikow.pipeline.analyze.otworz_zrodlo") as MockZrodlo:
+        inst = MockZrodlo.return_value
         inst.count.return_value = 1
         inst.data.return_value = iter(
             [
@@ -72,8 +72,8 @@ def test_analiza_nie_tworzy_autor_jednostka_gdy_brak_powiazania(
     imp = baker.make(ImportPracownikow, stan=ImportPracownikow.STAN_UTWORZONY)
     imp.plik_xls.name = "protected/import_pracownikow/x.xlsx"
 
-    with patch("import_pracownikow.pipeline.analyze.XLSImportFile") as MockXIF:
-        inst = MockXIF.return_value
+    with patch("import_pracownikow.pipeline.analyze.otworz_zrodlo") as MockZrodlo:
+        inst = MockZrodlo.return_value
         inst.count.return_value = 1
         inst.data.return_value = iter(
             [
@@ -107,8 +107,8 @@ def test_analiza_nie_tworzy_autor_jednostka_gdy_brak_powiazania(
 def test_pusty_plik_rzuca_jawny_blad():
     imp = baker.make(ImportPracownikow)
     imp.plik_xls.name = "protected/import_pracownikow/x.xlsx"
-    with patch("import_pracownikow.pipeline.analyze.XLSImportFile") as MockXIF:
-        MockXIF.return_value.count.return_value = 0
-        MockXIF.return_value.data.return_value = iter([])
+    with patch("import_pracownikow.pipeline.analyze.otworz_zrodlo") as MockZrodlo:
+        MockZrodlo.return_value.count.return_value = 0
+        MockZrodlo.return_value.data.return_value = iter([])
         with pytest.raises(ValueError, match="0 wierszy"):
             analizuj(imp, MockProgress(imp))
