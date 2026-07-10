@@ -42,4 +42,9 @@ urlpatterns = [
         views.PrzelaczOdpiecieView.as_view(),
         name="przelacz-odpiecie",
     ),
+    path(
+        "<uuid:pk>/wiersz/<int:row_pk>/utworz-nowego/",
+        views.PrzelaczUtworzNowegoView.as_view(),
+        name="utworz-nowego",
+    ),
 ]

@@ -25,6 +25,7 @@ from import_pracownikow.models import (
     ProfilMapowania,
 )
 from import_pracownikow.pewnosc import (
+    STATUS_BRAK,
     STATUS_TWARDY,
     STATUS_WIELU,
     oblicz_status_pewnosci,
@@ -356,6 +357,26 @@ class EdytujWierszView(_WierszImportuMixin):
         if not nazwisko:
             return HttpResponseBadRequest("Nazwisko jest wymagane.")
         _rematch_wiersz(row, imiona, nazwisko, tytul)
+        return self._render_wiersz()
+
+
+class PrzelaczUtworzNowegoView(_WierszImportuMixin):
+    """POST (HTMX): przełącz flagę ``utworz_nowego`` dla wiersza ``brak``
+    (D2). Tworzenie nowego autora nastąpi dopiero w fazie commit (integracja) —
+    dry-run nic nie tworzy. Wzorzec jak ``WybierzKandydataView``: owner-scoped,
+    bramka stanu ``przeanalizowany``. Zwraca partial wiersza."""
+
+    def post(self, request, *args, **kwargs):
+        blad = self._blad_jesli_nie_podglad()
+        if blad is not None:
+            return blad
+        row = self.row
+        if row.confidence != STATUS_BRAK:
+            return HttpResponseBadRequest(
+                "„Utwórz nowego” dotyczy tylko wierszy bez dopasowania."
+            )
+        row.utworz_nowego = request.POST.get("utworz_nowego") is not None
+        row.save(update_fields=["utworz_nowego"])
         return self._render_wiersz()
 
 
