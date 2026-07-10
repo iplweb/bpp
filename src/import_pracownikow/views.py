@@ -12,18 +12,20 @@ from django.views import View
 from django.views.generic import FormView, ListView
 from liveops.views import CreateLiveOperationView, RestartView
 
-from bpp.models import Tytul, Uczelnia
+from bpp.models import Tytul
 from import_common.core.autor import znajdz_kandydatow_autora
 from import_common.exceptions import HeaderNotFoundException
 from import_pracownikow.forms import MapowanieForm, NowyImportForm
 from import_pracownikow.mapping import dopasuj_profil
 from import_pracownikow.models import (
     ImportPracownikow,
+    ImportPracownikowOdpiecie,
     ImportPracownikowRow,
     ImportPracownikowRowKandydat,
     ProfilMapowania,
 )
 from import_pracownikow.pewnosc import (
+    STATUS_BRAK,
     STATUS_TWARDY,
     STATUS_WIELU,
     oblicz_status_pewnosci,
@@ -182,12 +184,14 @@ class MapowanieView(GroupRequiredMixin, FormView):
         return HttpResponseRedirect(obj.get_absolute_url())
 
 
-class _WierszImportuMixin(GroupRequiredMixin, View):
-    """Wspólny fetch wiersza importu: owner/superuser-scoped parent + wiersz.
-    Render partiala do odpowiedzi HTMX."""
+class _ImportPodgladMixin(GroupRequiredMixin, View):
+    """Wspólna bramka podglądu importu (owner/superuser scoping + stan
+    ``przeanalizowany``) dla widoków HTMX modyfikujących decyzje wiersza/odpięcia
+    (Faza 3/4). Wydzielona, żeby scoping i bramka żyły w JEDNYM miejscu —
+    dziedziczą po niej ``_WierszImportuMixin`` (dokłada ``row``/``_render_wiersz``)
+    i ``PrzelaczOdpiecieView`` (dokłada ``odpiecie``)."""
 
     group_required = GROUP_REQUIRED
-    partial_template = "import_pracownikow/partials/_wiersz_preview.html"
 
     @cached_property
     def parent_object(self):
@@ -196,24 +200,32 @@ class _WierszImportuMixin(GroupRequiredMixin, View):
             raise Http404
         return obj
 
-    @cached_property
-    def row(self):
-        return get_object_or_404(
-            ImportPracownikowRow, pk=self.kwargs["row_pk"], parent=self.parent_object
-        )
-
     def _blad_jesli_nie_podglad(self):
-        """G3: wybór/edycja dozwolone WYŁĄCZNIE dla importu w podglądzie
-        (``przeanalizowany``). Bez tej bramki bezpośredni POST (retry HTMX,
-        back-button, wyścig z Zatwierdź) na wierszu importu już `zintegrowanego`
-        nadpisałby audyt ``log_zmian`` po commicie i pozwolił zintegrować drugi
-        raz. Analog `_STANY_MAPOWALNE`/`_STANY` — zintegrowany wykluczony. Zwraca
+        """G3: modyfikacje decyzji (wybór/edycja/odpięcie/utwórz-nowego)
+        dozwolone WYŁĄCZNIE dla importu w podglądzie (``przeanalizowany``). Bez
+        tej bramki bezpośredni POST (retry HTMX, back-button, wyścig z Zatwierdź)
+        na imporcie już `zintegrowanym` nadpisałby audyt ``log_zmian`` po
+        commicie / zmienił decyzję odpięcia po jej wykonaniu. Analog
+        `_STANY_MAPOWALNE` — zintegrowany wykluczony. Zwraca
         ``HttpResponseBadRequest`` (blokada) albo ``None`` (OK)."""
         if self.parent_object.stan != ImportPracownikow.STAN_PRZEANALIZOWANY:
             return HttpResponseBadRequest(
                 "Wiersz można edytować tylko dla importu w podglądzie."
             )
         return None
+
+
+class _WierszImportuMixin(_ImportPodgladMixin):
+    """Wspólny fetch wiersza importu (dokłada ``row`` do bazowej bramki
+    ``_ImportPodgladMixin``). Render partiala do odpowiedzi HTMX."""
+
+    partial_template = "import_pracownikow/partials/_wiersz_preview.html"
+
+    @cached_property
+    def row(self):
+        return get_object_or_404(
+            ImportPracownikowRow, pk=self.kwargs["row_pk"], parent=self.parent_object
+        )
 
     def _render_wiersz(self):
         # Re-pobierz wiersz przez get_details_set(), żeby partial miał adnotacje
@@ -348,6 +360,56 @@ class EdytujWierszView(_WierszImportuMixin):
         return self._render_wiersz()
 
 
+class PrzelaczUtworzNowegoView(_WierszImportuMixin):
+    """POST (HTMX): przełącz flagę ``utworz_nowego`` dla wiersza ``brak``
+    (D2). Tworzenie nowego autora nastąpi dopiero w fazie commit (integracja) —
+    dry-run nic nie tworzy. Wzorzec jak ``WybierzKandydataView``: owner-scoped,
+    bramka stanu ``przeanalizowany``. Zwraca partial wiersza."""
+
+    def post(self, request, *args, **kwargs):
+        blad = self._blad_jesli_nie_podglad()
+        if blad is not None:
+            return blad
+        row = self.row
+        if row.confidence != STATUS_BRAK:
+            return HttpResponseBadRequest(
+                "„Utwórz nowego” dotyczy tylko wierszy bez dopasowania."
+            )
+        row.utworz_nowego = request.POST.get("utworz_nowego") is not None
+        row.save(update_fields=["utworz_nowego"])
+        return self._render_wiersz()
+
+
+class PrzelaczOdpiecieView(_ImportPodgladMixin):
+    """POST (HTMX): ustaw ``zaznaczone`` odpięcia (§9) z obecności pola
+    ``zaznaczone`` w POST. Owner/superuser-scoped + bramka stanu
+    ``przeanalizowany`` — via ``_ImportPodgladMixin``. Zwraca partial
+    ``_odpiecie_row.html``."""
+
+    partial_template = "import_pracownikow/partials/_odpiecie_row.html"
+
+    @cached_property
+    def odpiecie(self):
+        return get_object_or_404(
+            ImportPracownikowOdpiecie,
+            pk=self.kwargs["odp_pk"],
+            parent=self.parent_object,
+        )
+
+    def post(self, request, *args, **kwargs):
+        blad = self._blad_jesli_nie_podglad()
+        if blad is not None:
+            return blad
+        odp = self.odpiecie
+        odp.zaznaczone = request.POST.get("zaznaczone") is not None
+        odp.save(update_fields=["zaznaczone"])
+        return render(
+            request,
+            self.partial_template,
+            {"odp": odp, "parent_object": self.parent_object},
+        )
+
+
 class ImportPracownikowResultsView(GroupRequiredMixin, ListView):
     """Filtrowalna tabela wyników importu (dopasowani/niedopasowani autorzy).
 
@@ -392,28 +454,17 @@ class ImportPracownikowResultsView(GroupRequiredMixin, ListView):
             .order_by("_prio", "nr_arkusza", "nr_wiersza")
         )
 
-    def autorzy_spoza_pliku(self):
-        uczelnia = Uczelnia.objects.get_for_request(self.request)
-        return self.parent_object.autorzy_spoza_pliku_set(
-            uczelnia=uczelnia
-        ).select_related("autor", "autor__tytul", "jednostka", "jednostka__wydzial")
-
     def get_context_data(self, **kwargs):
+        odpiecia = self.parent_object.odpiecia.select_related(
+            "autor_jednostka__autor",
+            "autor_jednostka__autor__tytul",
+            "autor_jednostka__jednostka",
+        )
         return super().get_context_data(
             parent_object=self.parent_object,
-            autorzy_spoza_pliku=self.autorzy_spoza_pliku(),
+            odpiecia=odpiecia,
             **kwargs,
         )
-
-
-class ImportPracownikowResetujPodstawoweMiejscePracyView(ImportPracownikowResultsView):
-    def get(self, request, *args, **kwargs):
-        uczelnia = Uczelnia.objects.get_for_request(self.request)
-        self.parent_object.odepnij_autorow_spoza_pliku(uczelnia=uczelnia)
-        messages.info(
-            request, "Podstawowe miejsca pracy autorów zostały zaktualizowane."
-        )
-        return HttpResponseRedirect("..")
 
 
 class _PkOwnerRestartMixin(RestartView):

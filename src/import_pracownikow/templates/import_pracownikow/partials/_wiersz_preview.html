@@ -60,6 +60,21 @@
                     <i class="fi-refresh"></i> popraw
                 </button>
             </form>
+            {% if row.confidence == "brak" %}
+                {# D2: checkbox „utwórz nowego autora" — zmiana → POST toggle #}
+                <form method="post"
+                      hx-post="{% url "import_pracownikow:utworz-nowego" pk=parent_object.pk row_pk=row.pk %}"
+                      hx-target="#wiersz-{{ row.pk }}"
+                      hx-swap="outerHTML"
+                      hx-trigger="change">
+                    {% csrf_token %}
+                    <label>
+                        <input type="checkbox" name="utworz_nowego"
+                               {% if row.utworz_nowego %}checked{% endif %}>
+                        <i class="fi-plus"></i> utwórz nowego autora
+                    </label>
+                </form>
+            {% endif %}
         {% else %}
             {# Poza stanem „przeanalizowany" (np. „zintegrowany") pokazujemy #}
             {# audyt zmian — to JEDYNY widok log_zmian dla stanu po integracji. #}

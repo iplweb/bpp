@@ -52,26 +52,24 @@
         </div>
     {% endif %}
 
-
-    {% if autorzy_spoza_pliku.exists %}
-        <h4>Na podstawie tego pliku importu należałoby odpiąć
-            {{ autorzy_spoza_pliku.count }} powiązań autor+jednostka, oto one ponizej: </h4>
-        <a data-confirm="Czy na pewno?" href="../resetuj-podstawowe-miejsce-pracy/">Kliknij tutaj, żeby przypisać. Uwaga, to zmieni bazę dancyh. </a>
+    {% if odpiecia %}
+        <h4>Powiązania autor+jednostka spoza tego pliku (odpięcia)</h4>
+        {# Domyślnie ODZNACZONE (§9 D3); zaznacz, by odpiąć przy zapisie. #}
+        {# Wykonanie następuje dopiero w fazie zapisu do bazy. #}
         <table>
-            <tr>
-                <th>Autor</th>
-                <th>Jednostka</th>
-            </tr>
-            {% for elem in autorzy_spoza_pliku %}
+            <thead>
                 <tr>
-                    <td>{{ elem.autor }}</td>
-                    <td>{{ elem.jednostka }}</td>
+                    <th>Autor</th>
+                    <th>Jednostka</th>
+                    <th>Odepnij?</th>
                 </tr>
-            {% endfor %}
+            </thead>
+            <tbody>
+                {% for odp in odpiecia %}
+                    {% include "import_pracownikow/partials/_odpiecie_row.html" %}
+                {% endfor %}
+            </tbody>
         </table>
-    {% else %}
-        <h4>Zawartość tego pliku nie powoduje konieczności "likwidowania" podstawowych miejsc
-            pracy dla autorów w bazie. </h4>
     {% endif %}
 
 {% endblock %}

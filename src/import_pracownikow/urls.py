@@ -18,11 +18,6 @@ urlpatterns = [
         name="importpracownikow-results",
     ),
     path(
-        "<uuid:pk>/resetuj-podstawowe-miejsce-pracy/",
-        views.ImportPracownikowResetujPodstawoweMiejscePracyView.as_view(),
-        name="importpracownikow-resetuj-podstawowe-miejsce-pracy",
-    ),
-    path(
         "<uuid:pk>/zatwierdz/",
         views.ZatwierdzImportView.as_view(),
         name="zatwierdz",
@@ -41,5 +36,15 @@ urlpatterns = [
         "<uuid:pk>/wiersz/<int:row_pk>/edytuj/",
         views.EdytujWierszView.as_view(),
         name="edytuj-wiersz",
+    ),
+    path(
+        "<uuid:pk>/odpiecie/<int:odp_pk>/przelacz/",
+        views.PrzelaczOdpiecieView.as_view(),
+        name="przelacz-odpiecie",
+    ),
+    path(
+        "<uuid:pk>/wiersz/<int:row_pk>/utworz-nowego/",
+        views.PrzelaczUtworzNowegoView.as_view(),
+        name="utworz-nowego",
     ),
 ]
