@@ -2,7 +2,9 @@
 
 Data: 2026-07-10
 Autor: Michał Pasternak (+ Claude)
-Status: zatwierdzony design (wariant A)
+Status: zatwierdzony design (wariant A), zrewidowany po adwersaryjnym review
+(Fable) — naniesione K1/K2 (bez `__str__`), W1 (bramka statusu), W2
+(`description` w Format 2), W3/D1–D5 (uwagi i zakres)
 
 ## Problem
 
@@ -110,7 +112,7 @@ def parse_pbn_validation_details(parsed_json):
 
     Rozpoznaje dwa formaty odpowiedzi PBN:
     - Format 1: {"details": {pole: komunikat, ...}} — dict z niepustym details
-    - Format 2: [{"code": ..., "message": ...}, ...] — lista z kodami błędów
+    - Format 2: [{"code": ..., "description": ...}, ...] — lista z kodami
 
     Kolejność komunikatów zachowana wg wejścia; deduplikacja zachowuje
     pierwszą kolejność wystąpienia.
@@ -119,13 +121,19 @@ def parse_pbn_validation_details(parsed_json):
 
 - Format 1 → wartości słownika `details` (komunikaty), zdeduplikowane z
   zachowaniem kolejności.
-- Format 2 → `message` (fallback: `code`) każdego elementu listy,
-  zdeduplikowane.
+- Format 2 → dla każdego elementu listy łańcuch fallbacków
+  **`message` → `description` → `code`** i tylko gdy nic z tego nie ma →
+  element pominięty. **Uwaga (zweryfikowane w migracji `0006`):** realny
+  Format 2 to `[{"requestPosition":0,"code":"NOT_UNIQUE_PUBLICATION_ISBN_ISMN",
+  "description":"Publikacja o identycznym ISBN..."}]` — element **NIE ma**
+  klucza `message`, czytelny polski tekst siedzi w `description`. Fallback
+  wyłącznie do `code` pokazałby surowy kod → dlatego `description` jest
+  przed `code`.
 - `None`/pusty/nierozpoznany → `None` (to NIE walidacja).
 
 ```python
 class PBNValidationError(HttpException):
-    """PBN odrzucił dane (400 Validation failed). Błąd merytoryczny —
+    """PBN odrzucił dane (Validation failed). Błąd merytoryczny —
     dane do poprawienia przez użytkownika, NIE bug w kodzie."""
 
     def __init__(self, status_code, url, content):
@@ -135,12 +143,25 @@ class PBNValidationError(HttpException):
     def user_messages(self):
         """Zdeduplikowana lista czytelnych komunikatów dla użytkownika."""
         return self.messages
-
-    def __str__(self):
-        if self.messages:
-            return "; ".join(self.messages)
-        return super().__str__()
 ```
+
+**KRYTYCZNE — NIE nadpisujemy `__str__`** (poprawka po review Fable, K1/K2).
+`str(PBNValidationError)` musi dalej dawać odziedziczoną **tuplę**
+`(status, url, content)`. Powód (zweryfikowany uruchomieniowo):
+
+- `SentData.mark_as_failed` zapisuje `str(e)` do `SentData.exception`
+  (`pbn_api/client/publication_sync.py:217-224`);
+- widoki szczegółów kolejki parsują ten tekst przez
+  `parse_pbn_api_error` (`pbn_export_queue/views/utils.py:151-154`), które
+  rozpoznaje błąd PBN m.in. gdy `looks_like_tuple`
+  (`text.strip().startswith("(") and "," in text`);
+- kolejka zapisuje też `traceback.format_exc()` do `komunikat`
+  (`pbn_export_queue/models.py:325`), którego ostatnia linia to `str(e)`.
+
+Nadpisanie `__str__` na `"; ".join(messages)` **zerwałoby** parsowanie tupli
+w UI kolejki i **usunęłoby surowy JSON + nazwy pól** z rekordu kolejki —
+dokładnie dla kategorii błędów, której ten spec dotyczy. Czytelność na
+ścieżce admina zapewnia wyłącznie `user_messages()` (metoda, nie `str`).
 
 Uwaga: `parse_pbn_validation_details` staje się **jednym źródłem prawdy**
 detekcji. `pbn_export_queue._is_pbn_validation_error` może z niego korzystać
@@ -164,25 +185,34 @@ def _check_error_response(self, ret, url):
         # Błąd walidacji PBN (details / lista z code) to błąd danych
         # użytkownika, NIE problem techniczny — nie raportujemy do Rollbara,
         # podnosimy dedykowany, samo-opisujący typ. Detekcja PO FORMACIE body,
-        # nie po dokładnym kodzie: Format 1 zwykle 400, Format 2
-        # (NOT_UNIQUE_PUBLICATION) bywa 409 — spójnie z queue, które też
-        # nie bramkuje po statusie.
-        exc = PBNValidationError(ret.status_code, url, content)
-        if exc.user_messages():
-            logger.info("PBN validation rejected %s: %s", url, exc)
-            raise exc
+        # ale BRAMKOWANA statusem: tylko 4xx z wyłączeniem 401/403.
+        #   - 5xx: NIE tłumimy Rollbara — awaria po stronie PBN warta uwagi,
+        #     nawet gdyby body przypadkiem miało kształt walidacji (W1).
+        #   - 401/403: to problemy autoryzacji, nie walidacji danych;
+        #     403 z body bez access-denied spada tu z post() (D3).
+        #   - Format 1 zwykle 400, Format 2 (NOT_UNIQUE) bywa 409 — oba w 4xx.
+        if 400 <= ret.status_code < 500 and ret.status_code not in (401, 403):
+            exc = PBNValidationError(ret.status_code, url, content)
+            if exc.user_messages():
+                logger.info("PBN validation rejected %s: %s", url, exc)
+                raise exc
 
         logger.error("PBN %s on %s: ...", ...)      # bez zmian
         rollbar.report_message(...)                  # bez zmian
         raise HttpException(ret.status_code, url, content)
 ```
 
-- Walidacja rozpoznana (po formacie body, dowolny ≥400) → `PBNValidationError`,
-  **bez** `rollbar.report_message` i bez `logger.error` (zamiast tego
-  `logger.info` do lokalnych logów). Spójne z detekcją na ścieżce kolejkowej.
-- 4xx/5xx bez rozpoznanego formatu walidacji → ścieżka bez zmian (dalej
-  `HttpException` + Rollbar).
+- Walidacja rozpoznana (format body + status 4xx bez 401/403) →
+  `PBNValidationError`, **bez** `rollbar.report_message` i bez `logger.error`
+  (zamiast tego `logger.info` do lokalnych logów).
+- 5xx, 401/403, oraz 4xx bez rozpoznanego formatu walidacji → ścieżka bez
+  zmian (dalej `HttpException` + Rollbar).
 - `423 Locked` obsłużone wcześniej (przed detekcją walidacji) — bez zmian.
+
+> Uwaga (D2): `_check_error_response` to chokepoint **POST/DELETE**. `get()`
+> (`transport.py:112-113`) rzuca goły `HttpException` z pominięciem tej
+> metody — celowo, bo GET nie waliduje danych użytkownika. „Wąskie gardło"
+> dotyczy więc ścieżki zapisu, nie odczytu.
 
 #### 3. `bpp/admin/helpers/pbn_api/common.py` — `sprobuj_wyslac_do_pbn`
 
@@ -208,6 +238,10 @@ except PBNValidationError as e:
 - `escape()` na komunikatach z PBN (obcy input trafia do HTML notyfikatora)
   — z `django.utils.html`.
 - Respektuje `raise_exceptions` (spójnie z pozostałymi handlerami).
+- Uwaga (D4, pre-existing): `link_do_obiektu` używa `mark_safe(obj)` na tytule
+  rekordu (`bpp/admin/helpers/__init__.py`), więc sam tytuł nie jest
+  escapowany — to zastane zachowanie, nie ruszamy go; escapujemy tylko
+  świeżo dodawany obcy input z PBN (`user_messages()`).
 
 #### 4. `pbn_export_queue/models.py` — bez zmian funkcjonalnych
 
@@ -217,32 +251,59 @@ zawierającym `details`, więc:
 - `_handle_pbn_exception` → gałąź `isinstance(exc, HttpException)` →
   `_is_pbn_validation_error(exc)` = `True` → `RodzajBledu.MERYTORYCZNY`.
 
-Czyli klasyfikacja działa bez zmian. **Opcjonalnie** (nice-to-have, nie
-wymagane): przepięcie `_is_pbn_validation_error` na wspólny
-`parse_pbn_validation_details`, by usunąć duplikację logiki detekcji. Jeśli
-robione — musi zachować dotychczasowe zachowanie (Format 1 + Format 2).
+Czyli **klasyfikacja** (MERYT/TECH) działa bez zmian — `_is_pbn_validation_error`
+patrzy na `exc.json`, nie na nazwę klasy.
+
+**Prezentacja w UI kolejki** (poprawka po review Fable, W3): działa dzięki
+zachowaniu tuplowego `str()` (patrz KRYTYCZNE w p.1). Widoki szczegółów
+kolejki (`views/utils.py:parse_pbn_api_error`) rozpoznają błąd PBN przez
+`looks_like_tuple` — a tupla zostaje. **Znane ograniczenie pre-existing (NIE
+regresja tej zmiany):** matchery po nazwie klasy szukają dosłownie
+`"pbn_api.exceptions"` (`pbn_queue_extras.py:_extract_exception_line`,
+`views/utils.py:has_pbn_prefix`), a po splicie modułów klasy żyją w
+`pbn_client.exceptions`, więc ta gałąź matchowania jest martwa już teraz dla
+wszystkich `HttpException`. Nasza zmiana **nie pogarsza** tego (opieramy się
+na `looks_like_tuple`, nie na nazwie klasy).
+
+**Opcjonalne hardening (poza rdzeniem, tanie — do decyzji na etapie planu):**
+1. Przepięcie `_is_pbn_validation_error` na wspólny
+   `parse_pbn_validation_details` (usunięcie duplikacji detekcji; musi
+   zachować Format 1 + Format 2).
+2. Rozszerzenie matcherów prezentacji o `"pbn_client.exceptions"` i
+   `PBNValidationError`, co odblokuje ładne formatowanie per-pole dla nowych
+   rekordów (przy okazji naprawia pre-existing W3). Jeśli robione — z testem.
 
 ## Testy (TDD)
 
-Nowy plik `pbn_client/tests/test_pbn_validation_error.py` (lub dopięcie do
-istniejących testów transportu):
+**Uwaga (D1):** katalog `src/pbn_client/tests/` **nie istnieje** — trzeba go
+założyć wraz z `__init__.py`. Nowy plik
+`src/pbn_client/tests/test_pbn_validation_error.py`:
 
 1. **transport — walidacja Format 1**: `mock` odpowiedzi 400 z `details` →
    `_check_error_response` podnosi `PBNValidationError`; `rollbar.report_message`
    **nie** został wywołany.
-2. **transport — walidacja Format 2**: 400 z listą `[{"code": ...}]` →
-   `PBNValidationError`; brak `report_message`.
+2. **transport — walidacja Format 2 (409, `description`)**: 409 z listą
+   `[{"code":"NOT_UNIQUE_PUBLICATION_ISBN_ISMN","description":"..."}]` →
+   `PBNValidationError`; `user_messages()` zawiera **`description`**, nie kod
+   (W2); brak `report_message`.
 3. **transport — 400 bez details**: `PBNValidationError.user_messages()` puste
    → podnosi zwykły `HttpException` + `report_message` wywołany (bez zmian).
-4. **transport — 500**: `HttpException` + `report_message` level `error`
-   (regresja: nie ruszamy nie-walidacyjnych błędów).
-5. **`parse_pbn_validation_details`**: deduplikacja trzech kluczy o tym samym
-   komunikacie → jeden element; kolejność zachowana; `None` dla nie-walidacji.
-6. **common — `PBNValidationError`**: fixture `notificator` (spy) →
+4. **transport — 500 z kształtem walidacji**: nawet gdy body 500 ma `details`,
+   podnosi `HttpException` + `report_message` level `error`; **NIE**
+   `PBNValidationError` (W1 — nie tłumimy 5xx).
+5. **transport — 401/403**: nie są traktowane jako walidacja (D3) — ścieżka
+   bez zmian.
+6. **`parse_pbn_validation_details`**: deduplikacja trzech kluczy o tym samym
+   komunikacie → jeden element; kolejność zachowana; Format 2 fallback
+   `message`→`description`→`code`; `None` dla nie-walidacji.
+7. **`str(PBNValidationError)` = tupla** (K1 guard): `str(exc)` zaczyna się od
+   `(` i zawiera surowy JSON body → `parse_pbn_api_error(str(exc))` w kolejce
+   dalej rozpoznaje błąd PBN (`looks_like_tuple`). Regresja UI kolejki.
+8. **common — `PBNValidationError`**: fixture `notificator` (spy) →
    `sprobuj_wyslac_do_pbn` woła `notificator.warning` z czytelną listą,
    `rollbar.report_exc_info` **nie** wywołany; przy `raise_exceptions=True`
    wyjątek re-raise’owany.
-7. **queue — regresja**: `PBNValidationError` → `_handle_pbn_exception`
+9. **queue — regresja**: `PBNValidationError` → `_handle_pbn_exception`
    klasyfikuje jako `MERYTORYCZNY` (potwierdzenie braku regresji).
 
 Testy DB: `@pytest.mark.django_db` + `model_bakery.baker.make` gdzie trzeba
@@ -273,6 +334,14 @@ Poza zakresem (YAGNI):
 - **400 nie-walidacyjne**: gdyby PBN zwrócił 400 bez `details` i bez listy z
   `code`, `user_messages()` jest puste → spadamy do zwykłego `HttpException`
   + Rollbar (świadome zachowanie — nieznane 400 warte uwagi).
+- **Zachowanie `str()` (K1/K2)**: opieramy się na tym, że `str(exc)` dalej daje
+  tuplę (`self.args`). Gdyby ktoś w przyszłości dodał `__str__` lub zmienił
+  `HttpException.__init__`, zerwie parsowanie kolejki — dlatego test 7 to
+  utrwala jako kontrakt.
+- **Pre-existing, poza zakresem (D5)**: `raise BrakIDPracyPoStroniePBN(e)`
+  (`pbn_integrator/utils/publications.py:361`) podaje jeden argument do
+  `HttpException.__init__(status_code, url, content)` — zastany, kruchy
+  kontrakt konstruktora podklas. Nie dotyczy tej zmiany, tylko odnotowane.
 - **`smart_content` / obcięcie body**: `HttpException.json` parsuje tylko
   `content[:4096]`. Dla bardzo długich odpowiedzi walidacyjnych część
   komunikatów mogłaby zniknąć — akceptowalne (dotychczasowe zachowanie,
