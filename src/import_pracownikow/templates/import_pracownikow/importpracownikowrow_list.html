@@ -52,5 +52,24 @@
         </div>
     {% endif %}
 
+    {% if odpiecia %}
+        <h4>Powiązania autor+jednostka spoza tego pliku (odpięcia)</h4>
+        {# Domyślnie ODZNACZONE (§9 D3); zaznacz, by odpiąć przy zapisie. #}
+        {# Wykonanie następuje dopiero w fazie zapisu do bazy. #}
+        <table>
+            <thead>
+                <tr>
+                    <th>Autor</th>
+                    <th>Jednostka</th>
+                    <th>Odepnij?</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for odp in odpiecia %}
+                    {% include "import_pracownikow/partials/_odpiecie_row.html" %}
+                {% endfor %}
+            </tbody>
+        </table>
+    {% endif %}
 
 {% endblock %}

@@ -455,8 +455,14 @@ class ImportPracownikowResultsView(GroupRequiredMixin, ListView):
         )
 
     def get_context_data(self, **kwargs):
+        odpiecia = self.parent_object.odpiecia.select_related(
+            "autor_jednostka__autor",
+            "autor_jednostka__autor__tytul",
+            "autor_jednostka__jednostka",
+        )
         return super().get_context_data(
             parent_object=self.parent_object,
+            odpiecia=odpiecia,
             **kwargs,
         )
 
