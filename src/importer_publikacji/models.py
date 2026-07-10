@@ -15,6 +15,22 @@ DEFAULT_STALL_TIMEOUT = 180
 class ImportSession(models.Model):
     """Stan sesji importu publikacji."""
 
+    class RodzajRekordu(models.TextChoices):
+        """Docelowy model rekordu tworzonego przez ``_create_publication``.
+
+        Trzecia wartość (``PATENT``) rozszerza dawny binarny wybór
+        (``jest_wydawnictwem_zwartym``) o ``bpp.Patent`` — model, który NIE
+        jest ani ``Wydawnictwo_Ciagle`` ani ``Wydawnictwo_Zwarte`` (brak
+        ``typ_kbn``, ``charakter_formalny``/``jezyk`` zahardkodowane).
+        Domyślnie ``CIAGLE`` — back-compat: dla sesji, które nigdy nie
+        ustawiły tego pola, dispatch nadal idzie po
+        ``jest_wydawnictwem_zwartym`` (patrz ``_create_publication``).
+        """
+
+        CIAGLE = "ciagle", "Wydawnictwo ciągłe"
+        ZWARTE = "zwarte", "Wydawnictwo zwarte"
+        PATENT = "patent", "Patent"
+
     class Status(models.TextChoices):
         FETCHED = "fetched", "Pobrano dane"
         FETCHING = "fetching", "Trwa pobieranie"
@@ -138,6 +154,17 @@ class ImportSession(models.Model):
     jest_wydawnictwem_zwartym = models.BooleanField(
         "jest wydawnictwem zwartym",
         default=False,
+    )
+    rodzaj_rekordu = models.CharField(
+        "rodzaj rekordu",
+        max_length=10,
+        choices=RodzajRekordu.choices,
+        default=RodzajRekordu.CIAGLE,
+        help_text=(
+            "Docelowy model rekordu. Dla wartości innej niż „Patent” "
+            "dispatch nadal kieruje się polem „jest wydawnictwem zwartym” "
+            "(zgodność wsteczna)."
+        ),
     )
 
     created_record_content_type = models.ForeignKey(

@@ -5,6 +5,7 @@ Atomic: cały proces (publikacja + autorzy + streszczenia + linkowanie PBN)
 w jednej transakcji.
 """
 
+from datetime import date
 from decimal import Decimal
 
 from django.core.exceptions import ValidationError
@@ -12,12 +13,14 @@ from django.db import transaction
 
 from bpp import const
 from bpp.models import (
+    Patent,
+    Rodzaj_Prawa_Patentowego,
     Status_Korekty,
     Wydawnictwo_Ciagle,
     Wydawnictwo_Zwarte,
 )
 
-from ..models import ImportedAuthor
+from ..models import ImportedAuthor, ImportSession
 from .helpers import _detect_language
 from .pbn_check import _link_pbn_uid
 
@@ -106,6 +109,75 @@ def _create_wydawnictwo_zwarte(session, common_fields, normalized_data):
         common_fields["miejsce_i_rok"] = f"{publisher_loc} {year}"
 
     return Wydawnictwo_Zwarte.objects.create(**common_fields)
+
+
+def _parse_iso_date(value):
+    """Sparsuj datę ISO (YYYY-MM-DD) z ``normalized_data`` na ``date``.
+
+    Wartości patentowe (``filing_date``/``grant_date``) trzymane są jako
+    zwykłe stringi w JSON-owym ``normalized_data`` — pola modelu
+    (``data_zgloszenia``/``data_decyzji``) to prawdziwe ``DateField``.
+    """
+    if not value:
+        return None
+    try:
+        return date.fromisoformat(value)
+    except ValueError:
+        return None
+
+
+def _resolve_rodzaj_prawa(patent_type):
+    """Dopasuj ``Rodzaj_Prawa_Patentowego`` po nazwie z pola BibTeX ``type``.
+
+    Best-effort (dopasowanie dokładne, bez rozróżniania wielkości liter) —
+    źródło BibTeX nie ma ustandaryzowanego słownika wartości. Brak
+    dopasowania → ``None``, operator uzupełnia ręcznie w wizardzie
+    (decyzja produktowa z handoffu Track B).
+    """
+    if not patent_type:
+        return None
+    return Rodzaj_Prawa_Patentowego.objects.filter(nazwa__iexact=patent_type).first()
+
+
+def _create_patent(session, common_fields, normalized_data):
+    """Utwórz ``bpp.Patent``.
+
+    ``Patent`` odstaje od ``Wydawnictwo_Ciagle``/``Wydawnictwo_Zwarte``:
+    nie ma ``typ_kbn`` (brak ``ModelTypowany``) i jego
+    ``charakter_formalny``/``jezyk`` to zahardkodowane ``@cached_property``
+    (nie pola modelu) — przekazanie ich (albo ``doi``/``issn``/``e_issn``,
+    których Patent też nie ma) do ``Patent.objects.create(**common_fields)``
+    rzuciłoby ``TypeError`` ("unexpected keyword argument"). Odfiltrowujemy
+    je z ``common_fields`` zbudowanych przez ``_create_publication`` dla
+    ścieżki Wydawnictwo_*, zamiast duplikować całą resztę pól wspólnych.
+    """
+    patent_fields = dict(common_fields)
+    for key in ("typ_kbn", "charakter_formalny", "jezyk", "doi", "issn", "e_issn"):
+        patent_fields.pop(key, None)
+
+    patent_fields["numer_zgloszenia"] = normalized_data.get("patent_number") or ""
+    patent_fields["data_zgloszenia"] = _parse_iso_date(
+        normalized_data.get("filing_date")
+    )
+    patent_fields["numer_prawa_wylacznego"] = (
+        normalized_data.get("patent_grant_number") or ""
+    )
+    patent_fields["data_decyzji"] = _parse_iso_date(normalized_data.get("grant_date"))
+    patent_fields["rodzaj_prawa"] = _resolve_rodzaj_prawa(
+        normalized_data.get("patent_type")
+    )
+
+    # Brak pola "uprawniony"/"holder" na modelu Patent — zapisujemy jako
+    # tekst informacyjny, żeby dane ze źródła nie zniknęły po cichu
+    # (analogiczny kompromis do własnego eksportu, patrz
+    # bpp/export/bibtex.py:_patent_note).
+    holder = normalized_data.get("patent_holder")
+    if holder:
+        existing = patent_fields.get("informacje", "")
+        prefix = f"{existing}\n" if existing else ""
+        patent_fields["informacje"] = f"{prefix}Uprawniony: {holder}"
+
+    return Patent.objects.create(**patent_fields)
 
 
 def _add_authors_to_record(session, record, uczelnia=None):
@@ -263,7 +335,14 @@ def _create_publication(session):
     if article_number:
         common_fields["szczegoly"] = article_number
 
-    if session.jest_wydawnictwem_zwartym:
+    # Dispatch trójstronny: PATENT ma pierwszeństwo (rekord jawnie oznaczony
+    # jako patent w wizardzie), w przeciwnym razie zachowanie sprzed tej
+    # zmiany — binarny wybór po jest_wydawnictwem_zwartym (back-compat: nowe
+    # pole rodzaj_rekordu domyślnie CIAGLE, sesje które go nigdy nie ustawiły
+    # dispatchują dokładnie jak dawniej).
+    if session.rodzaj_rekordu == ImportSession.RodzajRekordu.PATENT:
+        record = _create_patent(session, common_fields, normalized_data)
+    elif session.jest_wydawnictwem_zwartym:
         record = _create_wydawnictwo_zwarte(session, common_fields, normalized_data)
     else:
         record = _create_wydawnictwo_ciagle(session, common_fields, normalized_data)

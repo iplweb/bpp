@@ -94,8 +94,18 @@ class FetchForm(forms.Form):
 class VerifyForm(forms.Form):
     """Formularz weryfikacji typu publikacji."""
 
+    # Wyklucz D/H/PAT (praca doktorska/habilitacyjna/patent): mają własne
+    # modele (Praca_Doktorska/Praca_Habilitacyjna/Patent) niedziedziczące po
+    # Wydawnictwo_Ciagle/Zwarte, a fixture ma je ``ukryty=False`` — bez tego
+    # wykluczenia operator mógł wybrać "Patent" tutaj i dostać zmieszany,
+    # utknięty rekord (importer tworzy przez .objects.create(), więc
+    # ZapobiegajNiewlasciwymCharakterom.clean_fields() — wołane tylko z
+    # full_clean() — nigdy się nie odpala). Patenty mają teraz własną
+    # ścieżkę (ImportSession.rodzaj_rekordu == PATENT → _create_patent).
     charakter_formalny = forms.ModelChoiceField(
-        queryset=Charakter_Formalny.objects.filter(ukryty=False),
+        queryset=Charakter_Formalny.objects.filter(ukryty=False).exclude(
+            skrot__in=["D", "H", "PAT"]
+        ),
         label="Charakter formalny",
         required=True,
     )

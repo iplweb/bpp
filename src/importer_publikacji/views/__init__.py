@@ -75,11 +75,13 @@ from .pbn_search import (
 from .publikacja import (
     _add_authors_to_record,
     _build_abstracts_list,
+    _create_patent,
     _create_publication,
     _create_streszczenia,
     _create_wydawnictwo_ciagle,
     _create_wydawnictwo_zwarte,
     _resolve_jezyk,
+    _resolve_rodzaj_prawa,
 )
 from .steps import (
     _authors_context,
@@ -185,6 +187,7 @@ __all__ = [
     "_build_abstracts_list",
     "_check_pbn_by_doi",
     "_clear_pbn_equivalent",
+    "_create_patent",
     "_create_publication",
     "_create_streszczenia",
     "_create_unmatched_authors",
@@ -220,6 +223,7 @@ __all__ = [
     "_render_verify_full",
     "_render_verify_step",
     "_resolve_jezyk",
+    "_resolve_rodzaj_prawa",
     "_review_context",
     "_search_pbn_equivalents",
     "_select_pbn_equivalent",

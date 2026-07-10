@@ -133,6 +133,16 @@ def _store_normalized_data(session, result):
         "article_number": result.extra.get("article_number"),
         "original_title": result.extra.get("original_title"),
         "abstracts": _build_abstracts_list(result),
+        # Pola patentowe (best-effort, biblatex @patent) — patrz
+        # FetchedPublication oraz views.publikacja._create_patent, który
+        # je czyta stąd przy tworzeniu bpp.Patent.
+        "patent_number": result.patent_number,
+        "patent_grant_number": result.patent_grant_number,
+        "filing_date": result.filing_date,
+        "grant_date": result.grant_date,
+        "patent_type": result.patent_type,
+        "patent_holder": result.patent_holder,
+        "jurisdiction": result.jurisdiction,
     }
 
 
