@@ -837,7 +837,6 @@ def test_report_body_table_numeruje_od_start_index_zero():
             "report_type": "table",
             "export_mode": True,
             "start_index": 0,
-            "show_footer": False,
             "sumy": {},
         },
     )
@@ -988,3 +987,60 @@ def test_dropdown_pokazuje_bib_dla_bibtex(logged_in_client, multiseek_export_rek
     assert reverse("multiseek-export", kwargs={"export_format": "bib"}) in content
     assert reverse("multiseek-export", kwargs={"export_format": "html"}) not in content
     assert reverse("multiseek-export", kwargs={"export_format": "docx"}) not in content
+
+
+@pytest.mark.django_db
+def test_multiseek_export_html_numer_list_uwagi_wyroznione(
+    logged_in_client, standard_data, denorms, autor_jan_kowalski, jednostka
+):
+    """numer_list: uwagi muszą być wizualnie wyróżnione także w eksporcie.
+    Na ekranie to <span style="color:red"> — nh3 zdejmuje style, więc w
+    eksporcie owijamy w tag emfazy (przetrwa sanityzację)."""
+    wyd = any_ciagle(
+        tytul_oryginalny=f"{EXPORT_TITLE_PREFIX} - uwagi",
+        uwagi="MOJA_UWAGA_XYZ",
+    )
+    denorms.flush()
+    Rekord.objects.get_original(wyd)
+    _set_multiseek_title_filter(logged_in_client, report_type=NUMER_LIST_REPORT_TYPE)
+
+    content = logged_in_client.get(
+        reverse("multiseek-export", kwargs={"export_format": "html"})
+    ).content.decode("utf-8")
+
+    assert "MOJA_UWAGA_XYZ" in content
+    assert re.search(r"<(b|em|strong)>\s*MOJA_UWAGA_XYZ\s*</(b|em|strong)>", content), (
+        "uwagi w eksporcie nie są wyróżnione tagiem emfazy"
+    )
+
+
+@pytest.mark.django_db
+def test_multiseek_export_html_tabela_numeracja_przez_endpoint(
+    logged_in_client, multiseek_export_pair
+):
+    """Realny endpoint (nie fake-obiekty): tabela numeruje 1., 2. od start_index=0."""
+    _set_multiseek_title_filter(logged_in_client, report_type=TABLE_REPORT_TYPE)
+
+    content = logged_in_client.get(
+        reverse("multiseek-export", kwargs={"export_format": "html"})
+    ).content.decode("utf-8")
+
+    lp = re.findall(r"(\d+)\.\s*</td>", content)
+    assert lp[:2] == ["1", "2"], f"Numeracja przez endpoint: {lp}"
+
+
+@pytest.mark.django_db
+def test_multiseek_export_html_print_removed_nie_crashuje(
+    logged_in_client, multiseek_export_rekord
+):
+    """Eksport dokumentu w trybie print-removed zwraca 200 (dzieli
+    get_queryset_for_current_mode z CSV/XLSX)."""
+    _set_multiseek_title_filter(logged_in_client, report_type=LIST_REPORT_TYPE)
+
+    response = logged_in_client.get(
+        reverse("multiseek-export", kwargs={"export_format": "html"})
+        + "?print-removed=1"
+    )
+
+    assert response.status_code == 200
+    assert response["Content-Type"] == "text/html; charset=utf-8"

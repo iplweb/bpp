@@ -20,9 +20,15 @@
                 {% endif %}
 
                 {% if report_type == "numer_list" %}
+                    {% if export_mode %}
+                        {# nh3 zdejmuje style — emfaza (b) przetrwa sanityzację, #}
+                        {# żeby uwagi były wyróżnione też w HTML/DOCX. #}
+                        <b>{{ element.uwagi }}</b>
+                    {% else %}
                     <span style="color: red;">
             {{ element.uwagi }}
             </span>
+                    {% endif %}
                 {% endif %}
 
             </span>
