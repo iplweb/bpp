@@ -12,7 +12,7 @@ from django.views import View
 from django.views.generic import FormView, ListView
 from liveops.views import CreateLiveOperationView, RestartView
 
-from bpp.models import Tytul, Uczelnia
+from bpp.models import Tytul
 from import_common.core.autor import znajdz_kandydatow_autora
 from import_common.exceptions import HeaderNotFoundException
 from import_pracownikow.forms import MapowanieForm, NowyImportForm
@@ -433,28 +433,11 @@ class ImportPracownikowResultsView(GroupRequiredMixin, ListView):
             .order_by("_prio", "nr_arkusza", "nr_wiersza")
         )
 
-    def autorzy_spoza_pliku(self):
-        uczelnia = Uczelnia.objects.get_for_request(self.request)
-        return self.parent_object.autorzy_spoza_pliku_set(
-            uczelnia=uczelnia
-        ).select_related("autor", "autor__tytul", "jednostka", "jednostka__wydzial")
-
     def get_context_data(self, **kwargs):
         return super().get_context_data(
             parent_object=self.parent_object,
-            autorzy_spoza_pliku=self.autorzy_spoza_pliku(),
             **kwargs,
         )
-
-
-class ImportPracownikowResetujPodstawoweMiejscePracyView(ImportPracownikowResultsView):
-    def get(self, request, *args, **kwargs):
-        uczelnia = Uczelnia.objects.get_for_request(self.request)
-        self.parent_object.odepnij_autorow_spoza_pliku(uczelnia=uczelnia)
-        messages.info(
-            request, "Podstawowe miejsca pracy autorów zostały zaktualizowane."
-        )
-        return HttpResponseRedirect("..")
 
 
 class _PkOwnerRestartMixin(RestartView):

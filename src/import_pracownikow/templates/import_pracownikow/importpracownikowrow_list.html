@@ -53,25 +53,4 @@
     {% endif %}
 
 
-    {% if autorzy_spoza_pliku.exists %}
-        <h4>Na podstawie tego pliku importu należałoby odpiąć
-            {{ autorzy_spoza_pliku.count }} powiązań autor+jednostka, oto one ponizej: </h4>
-        <a data-confirm="Czy na pewno?" href="../resetuj-podstawowe-miejsce-pracy/">Kliknij tutaj, żeby przypisać. Uwaga, to zmieni bazę dancyh. </a>
-        <table>
-            <tr>
-                <th>Autor</th>
-                <th>Jednostka</th>
-            </tr>
-            {% for elem in autorzy_spoza_pliku %}
-                <tr>
-                    <td>{{ elem.autor }}</td>
-                    <td>{{ elem.jednostka }}</td>
-                </tr>
-            {% endfor %}
-        </table>
-    {% else %}
-        <h4>Zawartość tego pliku nie powoduje konieczności "likwidowania" podstawowych miejsc
-            pracy dla autorów w bazie. </h4>
-    {% endif %}
-
 {% endblock %}

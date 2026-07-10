@@ -18,11 +18,6 @@ urlpatterns = [
         name="importpracownikow-results",
     ),
     path(
-        "<uuid:pk>/resetuj-podstawowe-miejsce-pracy/",
-        views.ImportPracownikowResetujPodstawoweMiejscePracyView.as_view(),
-        name="importpracownikow-resetuj-podstawowe-miejsce-pracy",
-    ),
-    path(
         "<uuid:pk>/zatwierdz/",
         views.ZatwierdzImportView.as_view(),
         name="zatwierdz",

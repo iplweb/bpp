@@ -1,5 +1,5 @@
 # Create your models here.
-from datetime import date, timedelta
+from datetime import date
 
 from django import forms
 from django.conf import settings
@@ -221,21 +221,6 @@ class ImportPracownikow(LiveOperation):
             qry = qry.exclude(wyklucz)
 
         return qry
-
-    @transaction.atomic
-    def odepnij_autorow_spoza_pliku(self, uczelnia=None, today=None, yesterday=None):
-        if today is None:
-            today = timezone.now().date()
-
-        if yesterday is None:
-            yesterday = today - timedelta(days=1)
-
-        for elem in self.autorzy_spoza_pliku_set(uczelnia=uczelnia, today=today):
-            elem.zakonczyl_prace = yesterday
-            elem.podstawowe_miejsce_pracy = False
-            elem.save()
-
-            elem.refresh_from_db()
 
 
 class ImportPracownikowRow(ImportRowMixin, models.Model):
