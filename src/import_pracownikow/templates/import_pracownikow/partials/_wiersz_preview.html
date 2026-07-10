@@ -1,0 +1,114 @@
+{# Partial pojedynczego wiersza podglądu — include w liście oraz zwracany #}
+{# po akcjach HTMX (wybór kandydata / edycja inline). #}
+<tr id="wiersz-{{ row.pk }}">
+    <td>{{ row.nr_arkusza }}</td>
+    <td>{{ row.nr_wiersza }}</td>
+    <td>{{ row.dane_znormalizowane.imię }}</td>
+    <td>{{ row.dane_znormalizowane.nazwisko }}</td>
+    <td>{{ row.dane_znormalizowane.tytuł_stopień }}</td>
+    <td>
+        {% with badge=row.confidence_badge %}
+            <span class="label {{ badge.0 }}">
+                <i class="{{ badge.1 }}"></i> {{ badge.2 }}
+            </span>
+        {% endwith %}
+    </td>
+    <td>
+        {% if row.autor %}
+            <a href="{% url "bpp:browse_autor" row.autor.pk %}">{{ row.autor }}</a>
+        {% else %}
+            —
+        {% endif %}
+    </td>
+    <td>
+        {% if parent_object.stan == "przeanalizowany" %}
+            {% if row.confidence == "wielu" %}
+                {# dropdown kandydatów — POST ustawia wybrany_kandydat #}
+                <form method="post"
+                      hx-post="{% url "import_pracownikow:wybierz-kandydata" pk=parent_object.pk row_pk=row.pk %}"
+                      hx-target="#wiersz-{{ row.pk }}"
+                      hx-swap="outerHTML">
+                    {% csrf_token %}
+                    <select name="wybrany_kandydat">
+                        {% for k in row.kandydaci.all %}
+                            <option value="{{ k.autor.pk }}">
+                                {{ k.autor }} ({{ k.pewnosc }})
+                            </option>
+                        {% endfor %}
+                    </select>
+                    <button type="submit" class="button tiny">
+                        <i class="fi-check"></i> wybierz
+                    </button>
+                </form>
+            {% endif %}
+            {# korekta rozbicia — POST ponawia match wiersza #}
+            <form method="post"
+                  hx-post="{% url "import_pracownikow:edytuj-wiersz" pk=parent_object.pk row_pk=row.pk %}"
+                  hx-target="#wiersz-{{ row.pk }}"
+                  hx-swap="outerHTML">
+                {% csrf_token %}
+                <input type="text" name="imiona"
+                       value="{{ row.dane_znormalizowane.imię }}"
+                       placeholder="imiona">
+                <input type="text" name="nazwisko"
+                       value="{{ row.dane_znormalizowane.nazwisko }}"
+                       placeholder="nazwisko">
+                <input type="text" name="tytul"
+                       value="{{ row.dane_znormalizowane.tytuł_stopień }}"
+                       placeholder="tytuł">
+                <button type="submit" class="button tiny secondary">
+                    <i class="fi-refresh"></i> popraw
+                </button>
+            </form>
+            {% if row.confidence == "brak" %}
+                {# D2: checkbox „utwórz nowego autora" — zmiana → POST toggle #}
+                <form method="post"
+                      hx-post="{% url "import_pracownikow:utworz-nowego" pk=parent_object.pk row_pk=row.pk %}"
+                      hx-target="#wiersz-{{ row.pk }}"
+                      hx-swap="outerHTML"
+                      hx-trigger="change">
+                    {% csrf_token %}
+                    <label>
+                        <input type="checkbox" name="utworz_nowego"
+                               {% if row.utworz_nowego %}checked{% endif %}>
+                        <i class="fi-plus"></i> utwórz nowego autora
+                    </label>
+                </form>
+            {% endif %}
+        {% else %}
+            {# Poza stanem „przeanalizowany" (np. „zintegrowany") pokazujemy #}
+            {# audyt zmian — to JEDYNY widok log_zmian dla stanu po integracji. #}
+            {% for elem in row.sformatowany_log_zmian %}
+                <p>{{ elem }}</p>
+            {% endfor %}
+        {% endif %}
+    </td>
+    <td>
+        {% if parent_object.stan == "przeanalizowany" and row.przepnij_dostepne %}
+            {# opt-in przepięcia prac — POST toggluje przepnij_prace #}
+            <form method="post"
+                  hx-post="{% url "import_pracownikow:przepnij-prace" pk=parent_object.pk row_pk=row.pk %}"
+                  hx-target="#wiersz-{{ row.pk }}"
+                  hx-swap="outerHTML"
+                  hx-trigger="change">
+                {% csrf_token %}
+                <label>
+                    <input type="checkbox" name="przepnij_prace"
+                           {% if row.przepnij_prace %}checked{% endif %}>
+                    <span class="fi-shuffle"></span>
+                    z {{ row.przepnij_stara_jednostka.skrot }}
+                    do {{ row.jednostka.skrot }}
+                    ({{ row.przepnij_liczba_prac }} prac)
+                </label>
+            </form>
+        {% elif row.log_zmian.przepiecie %}
+            {# po integracji: audyt wykonanego przepięcia #}
+            <span class="label success">
+                <span class="fi-check"></span>
+                przepięto {{ row.log_zmian.przepiecie.prace_ciagle }}+{{ row.log_zmian.przepiecie.prace_zwarte }}
+            </span>
+        {% else %}
+            —
+        {% endif %}
+    </td>
+</tr>

@@ -17,11 +17,13 @@ class PrzemapoaniePracAutoraAdmin(DynamicAdminFilterMixin, admin.ModelAdmin):
         "liczba_prac",
         "utworzono",
         "utworzono_przez",
+        "zrodlowy_import",
     )
     list_filter = (
         "utworzono",
         "jednostka_z",
         "jednostka_do",
+        "zrodlowy_import",
     )
     search_fields = (
         "autor__nazwisko",
@@ -40,6 +42,7 @@ class PrzemapoaniePracAutoraAdmin(DynamicAdminFilterMixin, admin.ModelAdmin):
         "liczba_prac",
         "utworzono",
         "utworzono_przez",
+        "zrodlowy_import",
         "display_prace_ciagle_historia",
         "display_prace_zwarte_historia",
     )
@@ -55,6 +58,7 @@ class PrzemapoaniePracAutoraAdmin(DynamicAdminFilterMixin, admin.ModelAdmin):
                     "jednostka_do",
                     "utworzono",
                     "utworzono_przez",
+                    "zrodlowy_import",
                 )
             },
         ),

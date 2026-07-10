@@ -1,13 +1,14 @@
 # Create your models here.
-from copy import copy
-from datetime import date, timedelta
+from datetime import date
 
 from django import forms
+from django.conf import settings
 from django.core.serializers.json import DjangoJSONEncoder
-from django.db import DataError, IntegrityError, models, transaction
+from django.db import DataError, models, transaction
 from django.db.models import JSONField, Q
 from django.db.models.expressions import RawSQL
 from django.utils import timezone
+from liveops.models import LiveOperation
 
 from bpp.models import (
     Autor,
@@ -18,35 +19,15 @@ from bpp.models import (
     Tytul,
     Wymiar_Etatu,
 )
-from import_common.core import (
-    matchuj_autora,
-    matchuj_funkcja_autora,
-    matchuj_grupa_pracownicza,
-    matchuj_jednostke,
-    matchuj_wymiar_etatu,
-)
-from import_common.exceptions import (
-    BPPDatabaseError,
-    BPPDatabaseMismatch,
-    XLSMatchError,
-    XLSParseError,
-)
+from import_common.exceptions import BPPDatabaseError
 from import_common.forms import ExcelDateField
 from import_common.models import ImportRowMixin
-from import_common.normalization import (
-    normalize_funkcja_autora,
-    normalize_grupa_pracownicza,
-    normalize_nullboleanfield,
-    normalize_wymiar_etatu,
-)
-from import_common.util import XLSImportFile
-from long_running.models import Operation
-from long_running.notification_mixins import ASGINotificationMixin
+from import_pracownikow.pewnosc import STATUS_CHOICES, STATUS_DISPLAY
 
 
 class JednostkaForm(forms.Form):
     nazwa_jednostki = forms.CharField(max_length=10240)
-    wydział = forms.CharField(max_length=500)
+    wydział = forms.CharField(max_length=500, required=False)
 
 
 class AutorForm(forms.Form):
@@ -59,196 +40,124 @@ class AutorForm(forms.Form):
     pbn_uuid = forms.CharField(required=False, max_length=24, min_length=24)
     bpp_id = forms.IntegerField(required=False)
 
-    stanowisko = forms.CharField(max_length=200)
-    grupa_pracownicza = forms.CharField(max_length=200)
-    data_zatrudnienia = ExcelDateField()
+    stanowisko = forms.CharField(max_length=200, required=False)
+    grupa_pracownicza = forms.CharField(max_length=200, required=False)
+    data_zatrudnienia = ExcelDateField(required=False)
     data_końca_zatrudnienia = ExcelDateField(required=False)
     podstawowe_miejsce_pracy = forms.BooleanField(required=False)
-    wymiar_etatu = forms.CharField(max_length=200)
+    wymiar_etatu = forms.CharField(max_length=200, required=False)
 
 
-class ImportPracownikow(ASGINotificationMixin, Operation):
+class ImportPracownikow(LiveOperation):
+    STAN_UTWORZONY = "utworzony"
+    STAN_ZMAPOWANY = "zmapowany"
+    STAN_PRZEANALIZOWANY = "przeanalizowany"
+    STAN_ZATWIERDZONY = "zatwierdzony"
+    STAN_ZINTEGROWANY = "zintegrowany"
+    STAN_PORZUCONY = "porzucony"
+    STAN_CHOICES = [
+        (STAN_UTWORZONY, "utworzony"),
+        (STAN_ZMAPOWANY, "zmapowany (kolumny określone)"),
+        (STAN_PRZEANALIZOWANY, "przeanalizowany (dry-run gotowy)"),
+        (STAN_ZATWIERDZONY, "zatwierdzony do zapisu"),
+        (STAN_ZINTEGROWANY, "zintegrowany"),
+        (STAN_PORZUCONY, "porzucony"),
+    ]
+
     plik_xls = models.FileField(upload_to="protected/import_pracownikow/")
+    stan = models.CharField(max_length=20, choices=STAN_CHOICES, default=STAN_UTWORZONY)
+    mapowanie_kolumn = models.JSONField(default=dict, blank=True)
 
-    performed = models.BooleanField(default=False)
-    integrated = models.BooleanField(default=False)
+    stages = ["Wczytywanie", "Integracja"]
 
-    @transaction.atomic
-    def on_reset(self):
-        self.performed = self.integrated = False
-        self.importpracownikowrow_set.all().delete()
-        self.save()
+    def run(self, p):
+        if self.stan == self.STAN_ZMAPOWANY:
+            from import_pracownikow.pipeline.analyze import analizuj
 
-    def _matchuj_jednostke(self, elem):
-        """Waliduje i matchuje jednostkę z danych XLS."""
-        jednostka_form = JednostkaForm(data=elem)
-        jednostka_form.full_clean()
-        if not jednostka_form.is_valid():
-            raise XLSParseError(elem, jednostka_form, "weryfikacja nazwy jednostki")
+            analizuj(self, p)
+        elif self.stan == self.STAN_ZATWIERDZONY:
+            from import_pracownikow.pipeline.integrate import integruj
 
-        try:
-            return matchuj_jednostke(
-                jednostka_form.cleaned_data.get("nazwa_jednostki"),
-                wydzial=jednostka_form.cleaned_data.get("wydział"),
-            )
-        except Jednostka.MultipleObjectsReturned:
-            raise XLSMatchError(
-                elem, "jednostka", "wiele dopasowań w systemie - po nazwie"
-            ) from None
-        except Jednostka.DoesNotExist:
-            raise XLSMatchError(
-                elem, "jednostka", "brak dopasowania w systemie - po nazwie"
-            ) from None
+            integruj(self, p)
+        else:
+            p.log(f"run() w nieoczekiwanym stanie: {self.stan!r} — pomijam")
 
-    def _waliduj_autora(self, elem):
-        """Waliduje dane autora i zwraca formularz z danymi."""
-        autor_form = AutorForm(data=elem)
-        autor_form.full_clean()
-        if not autor_form.is_valid():
-            raise XLSParseError(elem, autor_form, "weryfikacja danych autora")
-        assert isinstance(autor_form.cleaned_data.get("data_zatrudnienia"), date)
-        return autor_form
+    def on_restart(self):
+        # kasujemy wiersze przy (ponownej) analizie: świeży upload czeka w
+        # utworzony (bez wierszy), ponowna analiza cofa do zmapowany.
+        if self.stan in (self.STAN_UTWORZONY, self.STAN_ZMAPOWANY):
+            self.importpracownikowrow_set.all().delete()
+            # Odpięcia (§9) materializuje faza analizy — przy cofnięciu do
+            # zmapowany kasujemy je razem z wierszami, żeby ponowna analiza
+            # nie zduplikowała zbioru.
+            self.odpiecia.all().delete()
 
-    def _matchuj_funkcje_autora(self, data, elem, autor_form):
-        """Matchuje lub tworzy funkcję autora (stanowisko)."""
-        try:
-            return matchuj_funkcja_autora(data.get("stanowisko"))
-        except Funkcja_Autora.DoesNotExist:
-            try:
-                return Funkcja_Autora.objects.create(
-                    nazwa=normalize_funkcja_autora(data.get("stanowisko")),
-                    skrot=normalize_funkcja_autora(data.get("stanowisko")),
-                )
-            except IntegrityError:
-                raise XLSParseError(
-                    elem,
-                    autor_form,
-                    "nie można utworzyć nowego stanowiska na bazie takich danych",
-                ) from None
-        except Funkcja_Autora.MultipleObjectsReturned:
-            raise XLSMatchError(
-                elem,
-                "stanowisko",
-                "liczne dopasowania dla takiej funkcji autora (stanowiska) w systemie",
-            ) from None
+    # Pola operacji liveops zerowane przed (po)ponownym enqueue. Zwierciadło
+    # ``RestartView.post`` (liveops inline'uje ten reset, nie wystawia go jako
+    # metody) — jedyne miejsce w naszym kodzie, gdzie ta lista żyje, więc
+    # ``MapowanieView`` (FormView, nie może dziedziczyć po RestartView) nie
+    # trzyma własnej kopii i nie zdryfuje.
+    _POLA_LIVEOPS_RESET = (
+        "finished_on",
+        "started_on",
+        "finished_successfully",
+        "cancelled",
+        "cancel_requested",
+        "traceback",
+        "result_context",
+        "current_stage",
+        "stage_states",
+        "log",
+        "percent",
+        "log_seq",
+    )
 
-    def _matchuj_grupe_i_wymiar(self, data):
-        """Matchuje lub tworzy grupę pracowniczą i wymiar etatu."""
-        try:
-            grupa_pracownicza = matchuj_grupa_pracownicza(data.get("grupa_pracownicza"))
-        except Grupa_Pracownicza.DoesNotExist:
-            grupa_pracownicza = Grupa_Pracownicza.objects.create(
-                nazwa=normalize_grupa_pracownicza(data.get("grupa_pracownicza"))
-            )
+    def reset_liveops_state(self):
+        """Zeruje pola stanu operacji liveops (jak ``RestartView.post``), tak
+        by kolejny ``enqueue()`` wystartował z czystym przebiegiem — inaczej
+        ``cancel_requested=True`` po anulowanym runie natychmiast ubiłby nowy.
+        NIE zapisuje (caller składa ``update_fields``) i NIE woła ``enqueue``.
+        Zwraca listę ustawionych pól — do doklejenia w ``save(update_fields=)``."""
+        self.finished_on = None
+        self.started_on = None
+        self.finished_successfully = False
+        self.cancelled = False
+        self.cancel_requested = False
+        self.traceback = None
+        self.result_context = None
+        self.current_stage = -1
+        self.stage_states = {}
+        self.log = []
+        self.percent = 0
+        self.log_seq = 0
+        return list(self._POLA_LIVEOPS_RESET)
 
-        try:
-            wymiar_etatu = matchuj_wymiar_etatu(data.get("wymiar_etatu"))
-        except Wymiar_Etatu.DoesNotExist:
-            wymiar_etatu = Wymiar_Etatu.objects.create(
-                nazwa=normalize_wymiar_etatu(data.get("wymiar_etatu"))
-            )
+    def naglowki_i_probka(self, limit=10):
+        """Synchronicznie (bez liveops) czyta znormalizowane nagłówki i do
+        ``limit`` wierszy próbki — na ekran mapowania. Nagłówki = klucze
+        wiersza bez kluczy lokalizacyjnych. Używa ``TRY_NAMES``/``MIN_POINTS``
+        z ``mapping`` (rozpoznaje przemianowane kolumny — patrz T2). Może
+        rzucić ``HeaderNotFoundException`` (plik bez rozpoznawalnego
+        nagłówka) — widok (T8) łapie to i pokazuje komunikat, nie 500."""
+        from import_common.sources import otworz_zrodlo
+        from import_pracownikow.mapping import MIN_POINTS, TRY_NAMES
 
-        return grupa_pracownicza, wymiar_etatu
-
-    def _matchuj_autora_z_walidacja(self, data, elem, jednostka, tytul_str):
-        """Matchuje autora i waliduje zgodność BPP ID."""
-        autor = matchuj_autora(
-            imiona=data.get("imię"),
-            nazwisko=data.get("nazwisko"),
-            jednostka=jednostka,
-            bpp_id=data.get("bpp_id"),
-            pbn_uid_id=data.get("pbn_uuid"),
-            system_kadrowy_id=data.get("numer"),
-            pbn_id=data.get("pbn_id"),
-            orcid=data.get("orcid"),
-            tytul_str=tytul_str,
+        zrodlo = otworz_zrodlo(
+            self.plik_xls.path, try_names=TRY_NAMES, min_points=MIN_POINTS
         )
-        if autor is None:
-            raise XLSMatchError(elem, "autor", "brak dopasowania - różne kombinacje")
-
-        if data.get("bpp_id") is not None and data.get("bpp_id") != autor.pk:
-            raise XLSMatchError(
-                elem,
-                "autor",
-                "BPP ID zmatchowanego autora i BPP ID w pliku XLS nie zgadzają się",
-            )
-        return autor
-
-    def _znajdz_autor_jednostka(self, autor, jednostka, data, funkcja_autora, elem):
-        """Znajduje lub tworzy powiązanie autor-jednostka."""
-        try:
-            return Autor_Jednostka.objects.get(autor=autor, jednostka=jednostka)
-        except Autor_Jednostka.MultipleObjectsReturned:
-            if "data_zatrudnienia" in data:
-                try:
-                    return Autor_Jednostka.objects.get(
-                        autor=autor,
-                        jednostka=jednostka,
-                        rozpoczal_prace=data.get("data_zatrudnienia"),
-                    )
-                except Autor_Jednostka.DoesNotExist:
-                    raise BPPDatabaseMismatch(
-                        elem,
-                        "autor + jednostka",
-                        "brak jednoznacznego powiązania autor+jednostka po stronie BPP",
-                    ) from None
-        except Autor_Jednostka.DoesNotExist:
-            return Autor_Jednostka.objects.create(
-                autor=autor, jednostka=jednostka, funkcja=funkcja_autora
-            )
-
-    def _przetworz_wiersz(self, elem):
-        """Przetwarza pojedynczy wiersz z pliku XLS."""
-        jednostka = self._matchuj_jednostke(elem)
-        autor_form = self._waliduj_autora(elem)
-        data = autor_form.cleaned_data
-        tytul_str = data.get("tytuł_stopień")
-
-        funkcja_autora = self._matchuj_funkcje_autora(data, elem, autor_form)
-        grupa_pracownicza, wymiar_etatu = self._matchuj_grupe_i_wymiar(data)
-        autor = self._matchuj_autora_z_walidacja(data, elem, jednostka, tytul_str)
-        aj = self._znajdz_autor_jednostka(autor, jednostka, data, funkcja_autora, elem)
-
-        tytul = None
-        if tytul_str:
-            try:
-                tytul = Tytul.objects.get(Q(nazwa=tytul_str) | Q(skrot=tytul_str))
-            except Tytul.DoesNotExist:
-                pass
-
-        res = ImportPracownikowRow(
-            parent=self,
-            dane_z_xls=elem,
-            dane_znormalizowane=copy(autor_form.cleaned_data),
-            autor=autor,
-            jednostka=jednostka,
-            autor_jednostka=aj,
-            tytul=tytul,
-            funkcja_autora=funkcja_autora,
-            grupa_pracownicza=grupa_pracownicza,
-            wymiar_etatu=wymiar_etatu,
-            podstawowe_miejsce_pracy=normalize_nullboleanfield(
-                elem.get("podstawowe_miejsce_pracy")
-            ),
-        )
-        res.zmiany_potrzebne = res.check_if_integration_needed()
-        res.save()
-
-    def perform(self):
-        xif = XLSImportFile(self.plik_xls.path)
-        total = xif.count()
-
-        for no, elem in enumerate(xif.data()):
-            self._przetworz_wiersz(elem)
-            if no % 10 == 0:
-                self.send_progress(no / total / 2.0)
-
-        self.performed = True
-        self.save()
-
-        self.integrate()
-        self.integrated = True
-        self.save()
+        probka = []
+        naglowki = []
+        for i, wiersz in enumerate(zrodlo.data()):
+            if i == 0:
+                naglowki = [
+                    k
+                    for k in wiersz.keys()
+                    if k not in ("__xls_loc_sheet__", "__xls_loc_row__")
+                ]
+            if i >= limit:
+                break
+            probka.append(wiersz)
+        return naglowki, probka
 
     @property
     def zmiany_potrzebne_set(self):
@@ -274,23 +183,24 @@ class ImportPracownikow(ASGINotificationMixin, Operation):
         )
 
     def autorzy_spoza_pliku_set(self, uczelnia=None, today=None):
-        """
-        Zwraca wszystkie połączenia Autor + Jednostka, gdzie:
-        1) połączenie autor + jednostka nie występuje w imporcie danych (self)
-        2) jednostka nie jest obca,
-        3) jednostka ma pole "zarzadzaj_automatycznie" zaznaczone jako True
-        """
+        """Powiązania Autor+Jednostka do odpięcia: pary ``(autor, jednostka)``
+        OBECNE w bazie, ale NIEOBECNE w tym imporcie.
 
+        Porównanie po parach ``(autor_id, jednostka_id)`` z wierszy (znane
+        nawet gdy ``autor_jednostka`` jest NULL — odroczone AJ / statusy
+        brak/wielu), z jawnym odfiltrowaniem NULL-i. NIE po pk
+        ``Autor_Jednostka``: subquery z NULL-em daje SQL ``NOT IN (…, NULL)``
+        → pusty zbiór (regresja §9). Kryteria wykluczeń: jednostka zarządzana
+        automatycznie, nie-obca, powiązanie aktywne, autor ma aktualną
+        jednostkę.
+        """
         if today is None:
             today = timezone.now().date()
 
-        autorzy_jednostki_z_pliku = self.importpracownikowrow_set.values_list(
-            "autor_jednostka"
-        ).distinct()
+        pary_z_pliku = self.pary_z_pliku()
 
         qry = (
-            Autor_Jednostka.objects.exclude(pk__in=autorzy_jednostki_z_pliku)
-            .exclude(autor__aktualna_jednostka=None)
+            Autor_Jednostka.objects.exclude(autor__aktualna_jednostka=None)
             .exclude(jednostka__zarzadzaj_automatycznie=False)
             .exclude(zakonczyl_prace__lte=today)
         )
@@ -298,35 +208,29 @@ class ImportPracownikow(ASGINotificationMixin, Operation):
         if uczelnia is not None and uczelnia.obca_jednostka_id is not None:
             qry = qry.exclude(autor__aktualna_jednostka_id=uczelnia.obca_jednostka_id)
 
+        if pary_z_pliku:
+            wyklucz = Q()
+            for autor_id, jednostka_id in pary_z_pliku:
+                wyklucz |= Q(autor_id=autor_id, jednostka_id=jednostka_id)
+            qry = qry.exclude(wyklucz)
+
         return qry
 
-    @transaction.atomic
-    def odepnij_autorow_spoza_pliku(self, uczelnia=None, today=None, yesterday=None):
-        if today is None:
-            today = timezone.now().date()
+    def pary_z_pliku(self):
+        """Zbiór par ``(autor_id, jednostka_id)`` OBECNYCH w wierszach importu
+        (autor i jednostka ustawione) — „para z pliku”, tj. potwierdzony etat.
 
-        if yesterday is None:
-            yesterday = today - timedelta(days=1)
-
-        for elem in self.autorzy_spoza_pliku_set(uczelnia=uczelnia, today=today):
-            elem.zakonczyl_prace = yesterday
-            elem.podstawowe_miejsce_pracy = False
-            elem.save()
-
-            elem.refresh_from_db()
-
-    def on_finished(self):
-        self.send_processing_finished()
-
-    def integrate(self):
-        total = self.zmiany_potrzebne_set.all().count()
-        for no, elem in enumerate(
-            self.zmiany_potrzebne_set.all().select_related(
-                "autor", "jednostka", "jednostka__wydzial", "autor__tytul"
+        Wspólne źródło dla guardu „para z pliku” w przepięciach (F1) i dla
+        definicji „spoza pliku” w odpięciach (§9). Semantyka identyczna z
+        per-wierszowym ``.filter(autor_id=, jednostka_id=).exists()`` guardu G1.
+        """
+        return set(
+            self.importpracownikowrow_set.filter(
+                autor__isnull=False, jednostka__isnull=False
             )
-        ):
-            elem.integrate()
-            self.send_progress(0.5 + (no / total / 2.0))
+            .values_list("autor_id", "jednostka_id")
+            .distinct()
+        )
 
 
 class ImportPracownikowRow(ImportRowMixin, models.Model):
@@ -337,17 +241,44 @@ class ImportPracownikowRow(ImportRowMixin, models.Model):
     dane_z_xls = JSONField(null=True, blank=True, encoder=DjangoJSONEncoder)
     dane_znormalizowane = JSONField(null=True, blank=True, encoder=DjangoJSONEncoder)
 
-    autor = models.ForeignKey(Autor, on_delete=models.CASCADE)
-    jednostka = models.ForeignKey(Jednostka, on_delete=models.CASCADE)
-    autor_jednostka = models.ForeignKey(Autor_Jednostka, on_delete=models.CASCADE)
+    autor = models.ForeignKey(Autor, on_delete=models.CASCADE, null=True, blank=True)
+    jednostka = models.ForeignKey(
+        Jednostka, on_delete=models.CASCADE, null=True, blank=True
+    )
+    autor_jednostka = models.ForeignKey(
+        Autor_Jednostka, on_delete=models.CASCADE, null=True, blank=True
+    )
 
     podstawowe_miejsce_pracy = models.BooleanField(null=True, blank=True, default=None)
-    funkcja_autora = models.ForeignKey(Funkcja_Autora, on_delete=models.CASCADE)
-    grupa_pracownicza = models.ForeignKey(Grupa_Pracownicza, on_delete=models.CASCADE)
-    wymiar_etatu = models.ForeignKey(Wymiar_Etatu, on_delete=models.CASCADE)
+    funkcja_autora = models.ForeignKey(
+        Funkcja_Autora, on_delete=models.CASCADE, null=True, blank=True
+    )
+    grupa_pracownicza = models.ForeignKey(
+        Grupa_Pracownicza, on_delete=models.CASCADE, null=True, blank=True
+    )
+    wymiar_etatu = models.ForeignKey(
+        Wymiar_Etatu, on_delete=models.CASCADE, null=True, blank=True
+    )
     tytul = models.ForeignKey(Tytul, on_delete=models.SET_NULL, null=True)
 
     zmiany_potrzebne = models.BooleanField()
+
+    diff_do_utworzenia = models.JSONField(default=dict, blank=True)
+    pominiety_bo_nieaktualny = models.BooleanField(default=False)
+
+    confidence = models.CharField(  # noqa: DJ001
+        max_length=20, choices=STATUS_CHOICES, null=True, blank=True
+    )
+    korekta_uzytkownika = models.JSONField(default=dict, blank=True)
+    wybrany_kandydat = models.ForeignKey(
+        "bpp.Autor",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="+",
+    )
+    utworz_nowego = models.BooleanField(default=False)
+    przepnij_prace = models.BooleanField(default=False)
 
     log_zmian = JSONField(encoder=DjangoJSONEncoder, null=True, blank=True)
 
@@ -370,6 +301,15 @@ class ImportPracownikowRow(ImportRowMixin, models.Model):
 
         return self.dane_znormalizowane
 
+    @property
+    def confidence_badge(self):
+        """(klasa Foundation label, ikona Foundation-Icons, etykieta) dla
+        ``confidence`` — do szablonu podglądu. ``None`` (stare wiersze) →
+        bezpieczny neutralny badge."""
+        return STATUS_DISPLAY.get(
+            self.confidence, ("secondary", "fi-minus", self.confidence or "—")
+        )
+
     def _check_autor_needs_update(self, dane):
         """Sprawdza czy autor wymaga aktualizacji."""
         a = self.autor
@@ -387,10 +327,12 @@ class ImportPracownikowRow(ImportRowMixin, models.Model):
             and aj.rozpoczal_prace != dane["data_zatrudnienia"],
             dane.get("data_końca_zatrudnienia") is not None
             and aj.zakonczyl_prace != dane["data_końca_zatrudnienia"],
-            aj.funkcja != self.funkcja_autora,
-            aj.grupa_pracownicza != self.grupa_pracownicza,
-            aj.wymiar_etatu != self.wymiar_etatu,
-            self.podstawowe_miejsce_pracy != aj.podstawowe_miejsce_pracy,
+            self.funkcja_autora is not None and aj.funkcja != self.funkcja_autora,
+            self.grupa_pracownicza is not None
+            and aj.grupa_pracownicza != self.grupa_pracownicza,
+            self.wymiar_etatu is not None and aj.wymiar_etatu != self.wymiar_etatu,
+            self.podstawowe_miejsce_pracy is not None
+            and self.podstawowe_miejsce_pracy != aj.podstawowe_miejsce_pracy,
         ]
         return any(checks)
 
@@ -453,25 +395,31 @@ class ImportPracownikowRow(ImportRowMixin, models.Model):
                 f"data końca zatrudnienia na {dane['data_końca_zatrudnienia']}"
             )
 
-        if aj.funkcja != self.funkcja_autora:
+        if self.funkcja_autora is not None and aj.funkcja != self.funkcja_autora:
             aj.funkcja = self.funkcja_autora
             self.log_zmian["autor_jednostka"].append(
                 f"funkcja na {self.funkcja_autora}"
             )
 
-        if aj.grupa_pracownicza != self.grupa_pracownicza:
+        if (
+            self.grupa_pracownicza is not None
+            and aj.grupa_pracownicza != self.grupa_pracownicza
+        ):
             aj.grupa_pracownicza = self.grupa_pracownicza
             self.log_zmian["autor_jednostka"].append(
                 f"grupa_pracownicza na {self.grupa_pracownicza}"
             )
 
-        if aj.wymiar_etatu != self.wymiar_etatu:
+        if self.wymiar_etatu is not None and aj.wymiar_etatu != self.wymiar_etatu:
             aj.wymiar_etatu = self.wymiar_etatu
             self.log_zmian["autor_jednostka"].append(
                 f"wymiar_etatu na {self.wymiar_etatu}"
             )
 
-        if self.podstawowe_miejsce_pracy != aj.podstawowe_miejsce_pracy:
+        if (
+            self.podstawowe_miejsce_pracy is not None
+            and self.podstawowe_miejsce_pracy != aj.podstawowe_miejsce_pracy
+        ):
             if not self.podstawowe_miejsce_pracy:
                 aj.podstawowe_miejsce_pracy = False
                 self.log_zmian["autor_jednostka"].append(
@@ -494,18 +442,166 @@ class ImportPracownikowRow(ImportRowMixin, models.Model):
         self.save()
 
     def sformatowany_log_zmian(self):
+        # Renderuje WSZYSTKIE klucze audytu (#513 F1 / #508 M4). Faza integracji
+        # zapisuje obok `autor`/`autor_jednostka` także `utworzono` (m.in. „nowy
+        # autor: …"), `przepiecie` (raport przepięcia prac) i
+        # `przepiecie_pominiete` — bez ich renderu utworzenie autora i
+        # przepięcie dorobku były niewidoczne w jedynym widoku log_zmian po
+        # integracji. `.get()` bo starsze rekordy mogą nie mieć niektórych kluczy.
         if self.log_zmian is None:
             return
+        log = self.log_zmian
 
-        if self.log_zmian["autor"]:
-            yield "Zmiany obiektu Autor: " + ", ".join(
-                [elem for elem in self.log_zmian["autor"]]
+        if log.get("autor"):
+            yield "Zmiany obiektu Autor: " + ", ".join(log["autor"])
+
+        if log.get("autor_jednostka"):
+            yield "Zmiany obiektu Autor_Jednostka: " + ", ".join(log["autor_jednostka"])
+
+        if log.get("utworzono"):
+            yield "Utworzono: " + ", ".join(log["utworzono"])
+
+        przepiecie = log.get("przepiecie")
+        if przepiecie:
+            yield (
+                f"Przepięto prace: {przepiecie.get('prace_ciagle', 0)} ciągłych, "
+                f"{przepiecie.get('prace_zwarte', 0)} zwartych "
+                f"z „{przepiecie.get('z', '?')}” do „{przepiecie.get('do', '?')}”."
             )
 
-        if self.log_zmian["autor_jednostka"]:
-            yield "Zmiany obiektu Autor_Jednostka: " + ", ".join(
-                [elem for elem in self.log_zmian["autor_jednostka"]]
-            )
+        if log.get("przepiecie_pominiete"):
+            yield "Przepięcie pominięte: " + log["przepiecie_pominiete"]
 
-        if not self.log_zmian:
-            return "bez zmian!"
+
+class ProfilMapowania(models.Model):
+    """Zapisywalne mapowanie nagłówków pliku → pola systemowe, do reużycia
+    przy powtarzalnych plikach (ta sama uczelnia co kwartał). BPP jest
+    single-tenant per instalacja, więc profile są globalne dla instancji."""
+
+    nazwa = models.CharField(max_length=200, unique=True)
+    mapowanie = models.JSONField(default=dict)
+    ostatnio_uzyty = models.DateTimeField(null=True, blank=True)
+    utworzony_przez = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+    )
+
+    class Meta:
+        verbose_name = "profil mapowania importu pracowników"
+        verbose_name_plural = "profile mapowania importu pracowników"
+        ordering = ["nazwa"]
+
+    def __str__(self):
+        return self.nazwa
+
+
+class ImportPracownikowRowKandydat(models.Model):
+    """Kandydat na dopasowanie autora dla wiersza o statusie ``wielu``.
+
+    Materializuje listę z ``znajdz_kandydatow_autora`` (pewność, powód strategii,
+    liczba publikacji), żeby dropdown w podglądzie mógł pokazać userowi pełny
+    kontekst. Wzorzec: ``importer_publikacji.ImportedAuthor_Candidate``.
+    """
+
+    row = models.ForeignKey(
+        ImportPracownikowRow,
+        on_delete=models.CASCADE,
+        related_name="kandydaci",
+        verbose_name="wiersz importu",
+    )
+    autor = models.ForeignKey(
+        "bpp.Autor",
+        on_delete=models.CASCADE,
+        verbose_name="autor BPP",
+    )
+    pewnosc = models.FloatField("pewność")
+    powod = models.CharField("powód dopasowania", max_length=32)
+    publikacji_count = models.PositiveIntegerField("liczba publikacji", default=0)
+
+    class Meta:
+        verbose_name = "kandydat na autora (import pracowników)"
+        verbose_name_plural = "kandydaci na autora (import pracowników)"
+        ordering = ["-pewnosc"]
+
+    def __str__(self):
+        return f"{self.autor} ({self.pewnosc})"
+
+    @classmethod
+    def zapisz_dla(cls, row, kandydaci):
+        """Nadpisuje kandydatów wiersza listą ``KandydatAutora`` (z
+        ``znajdz_kandydatow_autora``): kasuje poprzednich i tworzy nowych
+        (``bulk_create``). Jedno źródło mapowania ``k.* → pola modelu`` dla
+        analizy (T7) oraz re-matchu inline (T10). Przekaż ``[]``, by tylko
+        wyczyścić kandydatów (np. wiersz po korekcie zszedł z ``wielu``)."""
+        row.kandydaci.all().delete()
+        cls.objects.bulk_create(
+            [
+                cls(
+                    row=row,
+                    autor=k.autor,
+                    pewnosc=k.pewnosc,
+                    powod=k.powod,
+                    publikacji_count=k.publikacji,
+                )
+                for k in kandydaci
+            ]
+        )
+
+
+class ImportPracownikowOdpiecie(models.Model):
+    """Materializowana decyzja o odpięciu jednego powiązania Autor+Jednostka
+    spoza pliku (§9 D3).
+
+    Powstaje w fazie analizy dla każdego powiązania z
+    ``autorzy_spoza_pliku_set`` (domyślnie ODZNACZONE); user zaznacza w
+    podglądzie; faza commit kończy zatrudnienie dla ``zaznaczone=True`` i
+    ustawia ``wykonane=True``. ``autor_jednostka`` wskazuje ISTNIEJĄCE
+    powiązanie (realne, z pk) — do zakończenia. Decyzja jest persystowana (nie
+    liczona dynamicznie), żeby przeżyła drift bazy między podglądem a commitem.
+    """
+
+    parent = models.ForeignKey(
+        ImportPracownikow,
+        on_delete=models.CASCADE,
+        related_name="odpiecia",
+        verbose_name="import pracowników",
+    )
+    autor_jednostka = models.ForeignKey(
+        "bpp.Autor_Jednostka",
+        on_delete=models.CASCADE,
+        verbose_name="powiązanie autor-jednostka",
+    )
+    zaznaczone = models.BooleanField(default=False)
+    wykonane = models.BooleanField(default=False)
+
+    class Meta:
+        verbose_name = "odpięcie autora spoza pliku (import pracowników)"
+        verbose_name_plural = "odpięcia autorów spoza pliku (import pracowników)"
+        ordering = ["autor_jednostka__autor__nazwisko"]
+
+    def __str__(self):
+        return f"odpięcie {self.autor_jednostka} (zaznaczone={self.zaznaczone})"
+
+
+def wiersz_kwalifikuje_do_przepiecia(autor_id, stara_id, jednostka_id, pary_z_pliku):
+    """Czy wiersz kwalifikuje się do przepięcia prac (§10 D6/D7, F1/F2/F3).
+
+    Wspólny warunek dla podglądu (kolumna/toggle/bulk) i fazy commit — MUSI
+    dać identyczny zbiór kwalifikujących wierszy wszędzie. ``stara_id`` =
+    ``aktualna_jednostka`` autora sprzed importu (w podglądzie odczyt live, w
+    commit ze snapshotu — trigger DB zdążył ją przestawić).
+
+    True gdy: autor ustawiony, stara i nowa jednostka ustawione (F2) i różne
+    (jest co przepiąć), a para ``(autor_id, stara_id)`` NIE jest parą Z PLIKU
+    (stara jednostka nie jest potwierdzona jako aktywny etat w innym wierszu —
+    inaczej „pułapka drugiego etatu”, F1).
+    """
+    if autor_id is None or stara_id is None or jednostka_id is None:
+        return False
+    if stara_id == jednostka_id:
+        return False
+    if (autor_id, stara_id) in pary_z_pliku:
+        return False
+    return True

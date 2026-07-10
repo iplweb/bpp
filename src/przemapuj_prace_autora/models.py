@@ -1,6 +1,5 @@
 from django.conf import settings
 from django.db import models
-
 from django.utils import timezone
 
 
@@ -46,6 +45,14 @@ class PrzemapoaniePracAutora(models.Model):
         blank=True,
         verbose_name="Historia prac zwartych",
         help_text="Lista ID i tytułów przemapowanych prac zwartych",
+    )
+    zrodlowy_import = models.ForeignKey(
+        "import_pracownikow.ImportPracownikow",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="przemapowania",
+        verbose_name="Import pracowników",
     )
 
     class Meta:

@@ -2,9 +2,10 @@ import os
 
 import pytest
 from django.core.files.uploadedfile import SimpleUploadedFile
+from liveops.testing import MockProgress
 from model_bakery import baker
 
-from bpp.models import Autor, Jednostka
+from bpp.models import Autor, Autor_Jednostka, Jednostka
 from import_pracownikow.models import ImportPracownikow
 
 
@@ -73,10 +74,81 @@ def import_pracownikow(admin_user, baza_importu_pracownikow, testdata_xlsx_path)
 
 @pytest.fixture
 def import_pracownikow_performed(import_pracownikow) -> ImportPracownikow:
-    import_pracownikow.perform()
+    """Pełny przebieg dry-run (analiza) + commit (integracja), odpowiednik
+    starego ``.perform()`` (który robił obie fazy naraz) w nowym modelu
+    dyspozytora ``run(self, p)`` + polu ``stan`` (Faza 0 T1/T7)."""
+    import_pracownikow.stan = import_pracownikow.STAN_ZMAPOWANY
+    import_pracownikow.run(MockProgress(import_pracownikow))
+    import_pracownikow.stan = import_pracownikow.STAN_ZATWIERDZONY
+    import_pracownikow.run(MockProgress(import_pracownikow))
+    import_pracownikow.refresh_from_db()
     return import_pracownikow
 
 
 @pytest.fixture
 def import_pracownikow_brak_naglowka(admin_user, testdata_brak_naglowka_xlsx_path):
     return import_pracownikow_factory(admin_user, testdata_brak_naglowka_xlsx_path)
+
+
+@pytest.fixture
+def dwa_autory_z_jednostka():
+    """(Autor, Jednostka) matchowalne przez ``matchuj_autora``/``matchuj_jednostke``.
+
+    Nazwa fixture nawiązuje do docelowego scenariusza analizy dwóch wierszy
+    pliku (jeden autor już powiązany z jednostką) — na Task 3 wystarczy
+    pojedyncza para, na której testy dry-run weryfikują brak zapisu do
+    domeny. ``Autor_Jednostka`` i ``aktualna_jednostka`` są ustawione z
+    góry, tak jak w prawdziwych danych kadrowych (autor już zatrudniony).
+    """
+    jednostka = baker.make(
+        Jednostka,
+        nazwa="Katedra Testowa",
+        skrot="Kat. Test.",
+    )
+    autor = baker.make(
+        Autor, nazwisko="Kowalski", imiona="Jan", aktualna_jednostka=jednostka
+    )
+    baker.make(Autor_Jednostka, autor=autor, jednostka=jednostka)
+    return autor, jednostka
+
+
+@pytest.fixture
+def autor_bez_autor_jednostka():
+    """(Autor, Jednostka) matchowalne przez ``matchuj_autora`` po imieniu i
+    nazwisku, ale BEZ powiązania ``Autor_Jednostka`` do tej jednostki.
+
+    W przeciwieństwie do ``dwa_autory_z_jednostka`` (gdzie AJ istnieje z
+    góry), tu celowo NIE tworzymy ani ``Autor_Jednostka``, ani nie
+    ustawiamy ``aktualna_jednostka`` — ``matchuj_autora`` i tak znajdzie
+    autora po dokładnym dopasowaniu imienia+nazwiska (jednostka jest tylko
+    tie-breakerem przy niejednoznaczności, nie wymogiem). Fixture pozwala
+    zweryfikować gałąź ``aj is None`` w ``analyze._przetworz_wiersz``:
+    autor się matchuje, ale AJ nie istnieje i dry-run go nie tworzy.
+    """
+    jednostka = baker.make(
+        Jednostka,
+        nazwa="Katedra Bez Powiazania",
+        skrot="Kat. Bez Pow.",
+    )
+    autor = baker.make(Autor, nazwisko="Nowicki", imiona="Piotr")
+    return autor, jednostka
+
+
+@pytest.fixture
+def autor_jednostka_fixture():
+    """(Autor, Jednostka) do testów fazy integracji (Task 4).
+
+    Bez powiązania ``Autor_Jednostka`` z góry — to właśnie materializacja
+    ``diff_do_utworzenia["autor_jednostka"]`` w ``integrate.py`` ma je
+    utworzyć. Nazwa i kształt fixture odpowiadają temu, czego oczekuje
+    brief Task 4 (``test_integrate.py``); logicznie to ten sam wzorzec co
+    ``autor_bez_autor_jednostka``, ale z dedykowaną nazwą dla czytelności
+    testów fazy integracji.
+    """
+    jednostka = baker.make(
+        Jednostka,
+        nazwa="Katedra Integracji Testowej",
+        skrot="Kat. Integr. Test.",
+    )
+    autor = baker.make(Autor, nazwisko="Wisniewski", imiona="Adam")
+    return autor, jednostka

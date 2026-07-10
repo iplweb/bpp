@@ -1,43 +1,60 @@
 from django.urls import path
 
-from import_pracownikow.views import (
-    ImportPracownikowDetailsView,
-    ImportPracownikowResetujPodstawoweMiejscePracyView,
-    ImportPracownikowResultsView,
-    ImportPracownikowRouterView,
-    ListaImportowView,
-    NowyImportView,
-    RestartImportView,
-)
+from import_pracownikow import views
 
 app_name = "import_pracownikow"
 
 urlpatterns = [
-    path("", ListaImportowView.as_view(), name="index"),
-    path("new/", NowyImportView.as_view(), name="new"),
+    path("", views.ListaImportowView.as_view(), name="index"),
+    path("new/", views.NowyImportView.as_view(), name="new"),
     path(
-        "<uuid:pk>/",
-        ImportPracownikowRouterView.as_view(),
-        name="importpracownikow-router",
+        "<uuid:pk>/mapowanie/",
+        views.MapowanieView.as_view(),
+        name="mapowanie",
     ),
     path(
-        "<uuid:pk>/details/",
-        ImportPracownikowDetailsView.as_view(),
-        name="importpracownikow-details",
-    ),
-    path(
-        "<uuid:pk>/results/",
-        ImportPracownikowResultsView.as_view(),
+        "<uuid:pk>/rezultaty/",
+        views.ImportPracownikowResultsView.as_view(),
         name="importpracownikow-results",
     ),
     path(
-        "<uuid:pk>/resetuj-podstawowe-miejsce-pracy/",
-        ImportPracownikowResetujPodstawoweMiejscePracyView.as_view(),
-        name="importpracownikow-resetuj-podstawowe-miejsce-pracy",
+        "<uuid:pk>/zatwierdz/",
+        views.ZatwierdzImportView.as_view(),
+        name="zatwierdz",
     ),
     path(
-        "<uuid:pk>/regen/",
-        RestartImportView.as_view(),
-        name="importpracownikow-restart",
+        "<uuid:pk>/restart-analiza/",
+        views.RestartAnalizaView.as_view(),
+        name="restart-analiza",
+    ),
+    path(
+        "<uuid:pk>/wiersz/<int:row_pk>/wybierz-kandydata/",
+        views.WybierzKandydataView.as_view(),
+        name="wybierz-kandydata",
+    ),
+    path(
+        "<uuid:pk>/wiersz/<int:row_pk>/edytuj/",
+        views.EdytujWierszView.as_view(),
+        name="edytuj-wiersz",
+    ),
+    path(
+        "<uuid:pk>/odpiecie/<int:odp_pk>/przelacz/",
+        views.PrzelaczOdpiecieView.as_view(),
+        name="przelacz-odpiecie",
+    ),
+    path(
+        "<uuid:pk>/wiersz/<int:row_pk>/utworz-nowego/",
+        views.PrzelaczUtworzNowegoView.as_view(),
+        name="utworz-nowego",
+    ),
+    path(
+        "<uuid:pk>/wiersz/<int:row_pk>/przepnij-prace/",
+        views.PrzepnijPraceView.as_view(),
+        name="przepnij-prace",
+    ),
+    path(
+        "<uuid:pk>/przepnij-prace/zaznacz-wszystkie/",
+        views.ZaznaczWszystkiePrzepieciaView.as_view(),
+        name="zaznacz-przepiecia",
     ),
 ]

@@ -1,0 +1,25 @@
+{# Partial pojedynczego odpięcia autora spoza pliku (materializowane §9). #}
+{# Zwracany po przełączeniu checkboxa (HTMX) oraz include w liście podglądu. #}
+<tr id="odpiecie-{{ odp.pk }}">
+    <td>{{ odp.autor_jednostka.autor }}</td>
+    <td>{{ odp.autor_jednostka.jednostka }}</td>
+    <td>
+        {% if parent_object.stan == "przeanalizowany" %}
+            {# checkbox domyślnie ODZNACZONY; zmiana → POST toggluje zaznaczone #}
+            <form method="post"
+                  hx-post="{% url "import_pracownikow:przelacz-odpiecie" pk=parent_object.pk odp_pk=odp.pk %}"
+                  hx-target="#odpiecie-{{ odp.pk }}"
+                  hx-swap="outerHTML"
+                  hx-trigger="change">
+                {% csrf_token %}
+                <label>
+                    <input type="checkbox" name="zaznaczone"
+                           {% if odp.zaznaczone %}checked{% endif %}>
+                    <i class="fi-x"></i> odepnij
+                </label>
+            </form>
+        {% elif odp.wykonane %}
+            <span class="label success"><i class="fi-check"></i> odpięto</span>
+        {% endif %}
+    </td>
+</tr>

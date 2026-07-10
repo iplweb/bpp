@@ -1,0 +1,51 @@
+{# Fragment wyniku (liveops result_template_name). Renderowany po p.result() #}
+{# jako OOB-swap #op-result oraz przy wejściu na zakończoną operację. #}
+{# Kontekst: operation + klucze z result_context — faza analizy (dry-run): #}
+{# total, zmiany_potrzebne, byl_dry_run, stan; faza integracji: #}
+{# zintegrowano, pominieto_nieaktualne, odpieto, utworzono_nowych_autorow, #}
+{# przepieto_wierszy, przepieto_prac, stan. #}
+<div class="panel callout {% if byl_dry_run %}warning{% else %}success{% endif %}">
+    <h3>
+        <span class="fi-check"></span>
+        {% if byl_dry_run %}Analiza zakończona{% else %}Import zakończony{% endif %}
+    </h3>
+    {% if byl_dry_run %}
+        <p>
+            Przetworzono wierszy: <strong>{{ total }}</strong>,
+            do zmiany: <strong>{{ zmiany_potrzebne }}</strong>.
+        </p>
+        <p>To był <strong>podgląd</strong> (dry-run) — nic nie zapisano do
+            bazy. Zatwierdź poniżej, żeby zapisać zmiany do bazy danych.</p>
+        <form method="post"
+              action="{% url 'import_pracownikow:zatwierdz' operation.pk %}">
+            {% csrf_token %}
+            <button class="button" type="submit">
+                <span class="fi-save"></span> Zapisz zmiany do bazy
+            </button>
+        </form>
+    {% else %}
+        <p>
+            Zintegrowano wierszy: <strong>{{ zintegrowano }}</strong>
+            {% if pominieto_nieaktualne %},
+                pominięto (nieaktualne): <strong>{{ pominieto_nieaktualne }}</strong>
+            {% endif %}.
+        </p>
+        {% if odpieto %}
+            <p>Zakończono zatrudnień (odpięcia):
+                <strong>{{ odpieto }}</strong>.</p>
+        {% endif %}
+        {% if utworzono_nowych_autorow %}
+            <p>Utworzono nowych autorów:
+                <strong>{{ utworzono_nowych_autorow }}</strong>.</p>
+        {% endif %}
+        {% if przepieto_wierszy %}
+            <p>Przepięto prace:
+                <strong>{{ przepieto_wierszy }}</strong> wierszy /
+                <strong>{{ przepieto_prac }}</strong> prac.</p>
+        {% endif %}
+    {% endif %}
+    <a href="{% url 'import_pracownikow:importpracownikow-results' operation.pk %}"
+       class="button secondary">
+        <span class="fi-list"></span> Zobacz szczegóły wierszy
+    </a>
+</div>
