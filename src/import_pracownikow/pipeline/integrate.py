@@ -28,6 +28,7 @@ from django.db import transaction
 from django.utils import timezone
 
 from bpp.models import (
+    Autor,
     Autor_Jednostka,
     Funkcja_Autora,
     Grupa_Pracownicza,
@@ -39,7 +40,11 @@ from import_common.normalization import (
     normalize_wymiar_etatu,
 )
 from import_pracownikow.models import ImportPracownikow
-from import_pracownikow.pewnosc import STATUS_BRAK, STATUS_WIELU
+from import_pracownikow.pewnosc import (
+    STATUS_BRAK,
+    STATUS_WIELU,
+    odtworz_autor_jednostka,
+)
 
 
 def _materializuj_diff(row):
@@ -83,6 +88,8 @@ def _opisz_utworzone(diff):
     ``log_zmian["utworzono"]``, żeby audyt widział realną pracę wykonaną
     przez materializację nawet gdy świeży recheck nie wykrył driftu."""
     opisy = []
+    if "nowy_autor" in diff:
+        opisy.append(f"nowy autor: {diff['nowy_autor']}")
     if "funkcja_autora" in diff:
         opisy.append(f"funkcja: {diff['funkcja_autora']}")
     if "grupa_pracownicza" in diff:
@@ -186,7 +193,88 @@ def _wykonaj_odpiecia(parent):
     return odpieto
 
 
+def _przygotuj_nowego_autora(row, cache):
+    """D2: dla wiersza ``brak`` z ``utworz_nowego=True`` tworzy (albo REUŻYWA —
+    G4) ``bpp.Autor`` (nazwisko/imiona z ``dane_znormalizowane``, tytuł z FK
+    ``row.tytul`` z analizy), podpina go do wiersza i odtwarza powiązanie
+    ``Autor_Jednostka`` (wspólny ``odtworz_autor_jednostka`` — odkłada AJ do
+    ``diff_do_utworzenia`` i ustawia ``zmiany_potrzebne=True``). NIE integruje:
+    właściwą integrację (materializacja AJ + ``integrate()``) robi główna pętla
+    ``zmiany_potrzebne_set`` w ``integruj`` (bez podwójnego przetwarzania). Ślad
+    utworzenia autora idzie w ``diff_do_utworzenia['nowy_autor']`` → trafia do
+    ``log_zmian['utworzono']`` przez ``_opisz_utworzone``. ``imię`` to klucz
+    ``AutorForm`` mapowany na ``Autor.imiona``.
+
+    G4 (dedup multi-etat): ``cache`` to słownik ``{(nazwisko, imiona, tytul_id):
+    Autor}`` współdzielony w obrębie JEDNEGO ``integruj``. Dwa wiersze tej samej
+    osoby (identyczna trójka) w RÓŻNYCH jednostkach — oba ``utworz_nowego=True``
+    — dają JEDEN ``Autor`` i DWA ``Autor_Jednostka`` (multi-etat), zamiast dwóch
+    autorów-duplikatów. Pierwszy wiersz trójki tworzy autora (wpis do cache),
+    kolejne REUŻYWAJĄ go i wołają ``odtworz_autor_jednostka`` dla swojej
+    jednostki (osobne AJ). Marker ``nowy_autor`` (i inkrement licznika w
+    ``integruj``) tylko przy realnym create.
+
+    F5: ``EdytujWierszView`` waliduje TYLKO ``nazwisko`` (nie ``imię``), więc
+    korekta na samo nazwisko może zejść do ``brak`` z pustym ``imię``. Autora
+    bez imienia NIE tworzymy (``AutorForm`` wymaga obu) — wiersz zostaje
+    ``autor=None`` i wpada w istniejący licznik ``pominieto_niedopasowane``.
+
+    F4: create autora + ``odtworz_autor_jednostka`` + ``row.save`` w JEDNEJ
+    ``transaction.atomic`` (per-wiersz). Bez tego, gdy ``row.save`` padnie, autor
+    już istnieje a ``row.autor`` zostaje NULL → restart integracji (stan
+    zatwierdzony + RestartView) znów trafi w ``autor__isnull=True`` i utworzy
+    DRUGIEGO autora. Atomic cofa też ``Autor.create`` przy rollbacku.
+
+    Zwraca ``True`` TYLKO gdy autor faktycznie POWSTAŁ (→ inkrement licznika).
+    ``False`` gdy: (a) puste ``imię`` — pominięto, ``autor=None``; albo (b) autor
+    zREUŻYTY z cache — wiersz dostaje ``autor`` i zintegruje się (nowe AJ), ale
+    NIE liczy się jako nowy autor.
+    """
+    dane = row.dane_znormalizowane or {}
+    nazwisko = (dane.get("nazwisko") or "").strip()
+    imiona = (dane.get("imię") or "").strip()
+    if not imiona:
+        return False
+    klucz = (nazwisko, imiona, row.tytul_id)
+    with transaction.atomic():
+        autor = cache.get(klucz)
+        utworzono = autor is None
+        if utworzono:
+            autor = Autor.objects.create(
+                nazwisko=nazwisko,
+                imiona=imiona,
+                tytul=row.tytul,
+            )
+            cache[klucz] = autor
+        row.autor = autor
+        odtworz_autor_jednostka(row, autor)
+        if utworzono:
+            row.diff_do_utworzenia["nowy_autor"] = str(autor)
+        row.save(
+            update_fields=[
+                "autor",
+                "autor_jednostka",
+                "diff_do_utworzenia",
+                "zmiany_potrzebne",
+            ]
+        )
+    return utworzono
+
+
 def integruj(parent, p):
+    utworzono_nowych = 0
+    # G4: cache dedupujący nowych autorów po (nazwisko, imiona, tytul_id) w
+    # obrębie tego commitu — multi-etat (ta sama osoba, wiele jednostek) daje
+    # jednego Autora + wiele Autor_Jednostka.
+    nowi_autorzy_cache = {}
+    for row in list(
+        parent.importpracownikowrow_set.filter(
+            confidence=STATUS_BRAK, utworz_nowego=True, autor__isnull=True
+        )
+    ):
+        if _przygotuj_nowego_autora(row, nowi_autorzy_cache):
+            utworzono_nowych += 1
+
     qs = parent.zmiany_potrzebne_set.all()
     for row in p.track(list(qs), total=qs.count(), label="Integracja"):
         _integruj_wiersz(row)
@@ -221,6 +309,7 @@ def integruj(parent, p):
             "pominieto_niedopasowane": pominieto_niedopasowane,
             "wymaga_uwagi": pominieto_niedopasowane > 0,
             "odpieto": odpieto,
+            "utworzono_nowych_autorow": utworzono_nowych,
             "stan": parent.stan,
         }
     )
