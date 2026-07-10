@@ -173,8 +173,8 @@ def split_input(self, text: str) -> list[SplitRecord]:
    wpisy i błędy przeplatają się poprawnie bez ręcznego sortowania.
 
 `peek_title(entry)` — helper providera: `entry.fields_dict["title"].value`
-(v2 zwraca obiekt `Field`, trzeba `.value`, por. `_get_field`
-`bibtex.py:150-155`), przepuszczone przez istniejące `_clean_latex`; brak
+(v2 zwraca obiekt `Field`, trzeba `.value`, por. `_get_field` w
+`bibtex.py`), przepuszczone przez istniejące `_clean_latex`; brak
 tytułu → `""`.
 
 `fetch()` i `validate_identifier()` — **bez zmian**. Istniejący
@@ -224,7 +224,7 @@ Szablon `partials/batch_detail.html` w stylu istniejącego
 `session_list.html` (Foundation). Kolumny: `#`, tytuł, status (etykieta
 tekstowa `status_label`), akcja:
 
-| Status | Badge | Akcja |
+| Status | Etykieta | Akcja |
 |--------|-------|-------|
 | oczekuje | „oczekuje" | **[Importuj]** (POST) |
 | w toku | „w toku" | **[Kontynuuj]** (→ `session.get_continue_url()`) |
