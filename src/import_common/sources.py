@@ -120,7 +120,12 @@ class CSVSource:
         with open(self.path, "rb") as f:
             tekst = _zdekoduj(f.read())
         delimiter = _wykryj_delimiter(tekst)
-        reader = csv.reader(io.StringIO(tekst), delimiter=delimiter)
+        # `newline=""` — kontrakt modułu `csv`: bez tego goły `\r` (końce linii
+        # CR-only ze starych Maków / eksportów kadrowych albo zabłąkany `\r` po
+        # ręcznej edycji) rzuca `_csv.Error: new-line character seen in unquoted
+        # field` i wywala CAŁĄ analizę surowym tracebackiem. Z nim csv.reader
+        # sam obsługuje wszystkie warianty końców linii wg dialektu.
+        reader = csv.reader(io.StringIO(tekst, newline=""), delimiter=delimiter)
         return [list(r) for r in reader]
 
     @cached_property
