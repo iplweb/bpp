@@ -98,7 +98,7 @@ def _wykonaj_przemapowanie(request, autor, form):
         )
     except Exception as e:
         rollbar.report_exc_info(sys.exc_info())
-        messages.error(request, f"Wystąpił błąd podczas przemapowania prac: {str(e)}")
+        messages.error(request, f"Wystąpił błąd podczas przemapowania prac: {e}")
         return None
 
     messages.success(
