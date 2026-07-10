@@ -7,7 +7,6 @@ from api_v1.serializers.wydawnictwo_zwarte import (
     Wydawnictwo_ZwarteSerializer,
 )
 from api_v1.viewsets.common import StreszczeniaPagination, UkryjStatusyKorektyMixin
-
 from bpp.models import (
     Wydawnictwo_Zwarte,
     Wydawnictwo_Zwarte_Autor,
@@ -15,9 +14,16 @@ from bpp.models import (
 )
 
 
+class Wydawnictwo_Zwarte_AutorFilterSet(django_filters.rest_framework.FilterSet):
+    class Meta:
+        fields = ["autor"]
+        model = Wydawnictwo_Zwarte_Autor
+
+
 class Wydawnictwo_Zwarte_AutorViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = Wydawnictwo_Zwarte_Autor.objects.all().select_related()
     serializer_class = Wydawnictwo_Zwarte_AutorSerializer
+    filterset_class = Wydawnictwo_Zwarte_AutorFilterSet
 
 
 class Wydawnictwo_ZwarteFilterSet(django_filters.rest_framework.FilterSet):

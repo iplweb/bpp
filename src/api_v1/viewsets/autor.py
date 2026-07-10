@@ -7,15 +7,15 @@ from api_v1.serializers.autor import (
     Funkcja_AutoraSerializer,
     TytulSerializer,
 )
-
 from bpp.models import Autor, Autor_Jednostka, Funkcja_Autora, Tytul
 
 
 class AutorFilterSet(django_filters.rest_framework.FilterSet):
     ostatnio_zmieniony = django_filters.DateTimeFromToRangeFilter("ostatnio_zmieniony")
+    nazwisko = django_filters.CharFilter(lookup_expr="icontains")
 
     class Meta:
-        fields = ["ostatnio_zmieniony"]
+        fields = ["ostatnio_zmieniony", "nazwisko"]
         model = Autor
 
 

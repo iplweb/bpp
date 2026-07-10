@@ -142,3 +142,21 @@ def test_rest_api_wydawnictwo_zwarte_streszczenia_eksport(
     for elem in res.json()["streszczenia"]:
         ts = client.get(elem)
         assert (TEXT_OF_SUMMARY in ts.content) or (TEKST_STRESZCZENIA in ts.content)
+
+
+@pytest.mark.django_db
+def test_rest_api_wydawnictwo_zwarte_autor_filter_autor(
+    api_client, wydawnictwo_zwarte, autor_jan_kowalski, autor_jan_nowak, jednostka
+):
+    wydawnictwo_zwarte.dodaj_autora(autor_jan_kowalski, jednostka)
+
+    res = api_client.get(
+        reverse("api_v1:wydawnictwo_zwarte_autor-list")
+        + f"?autor={autor_jan_kowalski.pk}"
+    )
+    assert res.json()["count"] == 1
+
+    res = api_client.get(
+        reverse("api_v1:wydawnictwo_zwarte_autor-list") + f"?autor={autor_jan_nowak.pk}"
+    )
+    assert res.json()["count"] == 0

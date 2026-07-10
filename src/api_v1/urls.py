@@ -29,6 +29,7 @@ from api_v1.viewsets.system import (
     Seria_WydawniczaViewSet,
     Typ_KBNViewSet,
 )
+from api_v1.viewsets.szukaj import SzukajViewSet
 from api_v1.viewsets.wydawca import Poziom_WydawcyViewSet, WydawcaViewSet
 from api_v1.viewsets.wydawnictwo_ciagle import (
     Wydawnictwo_Ciagle_AutorViewSet,
@@ -99,6 +100,8 @@ router.register(r"zrodlo", ZrodloViewSet)
 router.register(r"jednostka", JednostkaViewSet)
 router.register(r"wydzial", WydzialViewSet)
 router.register(r"uczelnia", UczelniaViewSet)
+
+router.register(r"szukaj", SzukajViewSet, basename="szukaj")
 
 router.register(r"autor", AutorViewSet)
 router.register(r"funkcja_autora", Funkcja_AutoraViewSet)

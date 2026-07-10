@@ -8,7 +8,6 @@ from api_v1.serializers.wydawnictwo_ciagle import (
     Wydawnictwo_CiagleSerializer,
 )
 from api_v1.viewsets.common import StreszczeniaPagination, UkryjStatusyKorektyMixin
-
 from bpp.models import (
     Wydawnictwo_Ciagle,
     Wydawnictwo_Ciagle_Autor,
@@ -17,9 +16,16 @@ from bpp.models import (
 )
 
 
+class Wydawnictwo_Ciagle_AutorFilterSet(django_filters.rest_framework.FilterSet):
+    class Meta:
+        fields = ["autor"]
+        model = Wydawnictwo_Ciagle_Autor
+
+
 class Wydawnictwo_Ciagle_AutorViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = Wydawnictwo_Ciagle_Autor.objects.all()
     serializer_class = Wydawnictwo_Ciagle_AutorSerializer
+    filterset_class = Wydawnictwo_Ciagle_AutorFilterSet
 
 
 class Wydawnictwo_CiagleFilterSet(django_filters.rest_framework.FilterSet):
