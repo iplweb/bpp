@@ -47,4 +47,14 @@ urlpatterns = [
         views.PrzelaczUtworzNowegoView.as_view(),
         name="utworz-nowego",
     ),
+    path(
+        "<uuid:pk>/wiersz/<int:row_pk>/przepnij-prace/",
+        views.PrzepnijPraceView.as_view(),
+        name="przepnij-prace",
+    ),
+    path(
+        "<uuid:pk>/przepnij-prace/zaznacz-wszystkie/",
+        views.ZaznaczWszystkiePrzepieciaView.as_view(),
+        name="zaznacz-przepiecia",
+    ),
 ]

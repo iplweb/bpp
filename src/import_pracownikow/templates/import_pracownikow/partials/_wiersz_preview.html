@@ -83,4 +83,32 @@
             {% endfor %}
         {% endif %}
     </td>
+    <td>
+        {% if parent_object.stan == "przeanalizowany" and row.przepnij_dostepne %}
+            {# opt-in przepięcia prac — POST toggluje przepnij_prace #}
+            <form method="post"
+                  hx-post="{% url "import_pracownikow:przepnij-prace" pk=parent_object.pk row_pk=row.pk %}"
+                  hx-target="#wiersz-{{ row.pk }}"
+                  hx-swap="outerHTML"
+                  hx-trigger="change">
+                {% csrf_token %}
+                <label>
+                    <input type="checkbox" name="przepnij_prace"
+                           {% if row.przepnij_prace %}checked{% endif %}>
+                    <span class="fi-shuffle"></span>
+                    z {{ row.przepnij_stara_jednostka.skrot }}
+                    do {{ row.jednostka.skrot }}
+                    ({{ row.przepnij_liczba_prac }} prac)
+                </label>
+            </form>
+        {% elif row.log_zmian.przepiecie %}
+            {# po integracji: audyt wykonanego przepięcia #}
+            <span class="label success">
+                <span class="fi-check"></span>
+                przepięto {{ row.log_zmian.przepiecie.prace_ciagle }}+{{ row.log_zmian.przepiecie.prace_zwarte }}
+            </span>
+        {% else %}
+            —
+        {% endif %}
+    </td>
 </tr>
