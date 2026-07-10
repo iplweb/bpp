@@ -6,6 +6,7 @@ from django.contrib.auth.mixins import LoginRequiredMixin
 from django.core.cache import cache
 from django.db.models import Count, Sum
 from django.http import HttpResponseBadRequest, JsonResponse
+from django.template.loader import render_to_string
 from django.views.decorators.cache import never_cache
 from django.views.generic import View
 from multiseek.logic import get_registry
@@ -25,8 +26,12 @@ from bpp.views.multiseek_export import (
     MULTISEEK_EXPORT_OPIS_FIELDS,
     MULTISEEK_EXPORT_XLSX_HEADERS,  # noqa: F401 - re-eksport, uzywane w testach
     XLSX_WORKSHEET_TITLE_MAX_LENGTH,  # noqa: F401 - re-eksport, uzywane w testach
+    bibtex_export_response,
     csv_export_response,
+    docx_export_response,
+    html_export_response,
     plain_multiseek_report_title,
+    sanitize_export_html,
     xlsx_export_response,
 )
 from bpp.views.zapytanie import WprowadzanieDanychOrSuperuserMixin
@@ -50,6 +55,25 @@ EXTRA_TYPES = [
     PKT_WEWN_BEZ + "_cytowania",
     TABLE + "_cytowania",
 ]
+
+# report_type renderowane jako tabela (reszta: lista/numer_list/None).
+TABLE_REPORT_TYPES = frozenset(EXTRA_TYPES)
+
+# Projekcje eksportu DOKUMENTU dostrojone do partiali renderu (nie do CSV/XLSX).
+# Bazowe get_queryset() gubi liczba_cytowan/uwagi → N+1 na całym querysecie.
+MULTISEEK_RENDER_LIST_FIELDS = ("id", "opis_bibliograficzny_cache", "uwagi")
+MULTISEEK_RENDER_TABLE_FIELDS = (
+    "id",
+    "opis_bibliograficzny_cache",
+    "impact_factor",
+    "punkty_kbn",
+    "liczba_cytowan",
+    "punktacja_wewnetrzna",
+    "charakter_formalny",
+    "typ_kbn",
+    "charakter_formalny__nazwa",
+    "typ_kbn__nazwa",
+)
 
 
 class MyMultiseekResults(MultiseekResults):
@@ -194,16 +218,14 @@ def _multiseek_report_title(request):
 class MyMultiseekExport(LoginRequiredMixin, MyMultiseekResults):
     http_method_names = ["get"]
 
-    def get(self, request, export_format, *args, **kwargs):
-        if export_format not in {"csv", "xlsx"}:
-            return HttpResponseBadRequest("Nieznany format eksportu.")
+    # Eksport DANYCH: stałe kolumny, niezależne od report_type.
+    DATA_FORMATS = {"csv", "xlsx"}
+    # Eksport DOKUMENTU: odwzorowuje aktualny report_type (lista/tabela/bibtex).
+    DOCUMENT_FORMATS = {"html", "docx", "bib"}
 
-        wariant = request.GET.get("wariant", "dane")
-        if wariant not in {"dane", "opis"}:
-            wariant = "dane"
-        # opis to format czytelny (raportowy) — CSV opisu nie robimy
-        if export_format == "csv":
-            wariant = "dane"
+    def get(self, request, export_format, *args, **kwargs):
+        if export_format not in self.DATA_FORMATS | self.DOCUMENT_FORMATS:
+            return HttpResponseBadRequest("Nieznany format eksportu.")
 
         queryset = self.get_queryset_for_current_mode()
         count = queryset.count()
@@ -214,6 +236,18 @@ class MyMultiseekExport(LoginRequiredMixin, MyMultiseekResults):
             )
 
         report_title = _multiseek_report_title(request)
+        if export_format in self.DATA_FORMATS:
+            return self._export_data(request, export_format, queryset, report_title)
+        return self._export_document(request, export_format, queryset, report_title)
+
+    def _export_data(self, request, export_format, queryset, report_title):
+        wariant = request.GET.get("wariant", "dane")
+        if wariant not in {"dane", "opis"}:
+            wariant = "dane"
+        # opis to format czytelny (raportowy) — CSV opisu nie robimy
+        if export_format == "csv":
+            wariant = "dane"
+
         if wariant == "opis":
             queryset = (
                 queryset.select_related(None)
@@ -230,6 +264,58 @@ class MyMultiseekExport(LoginRequiredMixin, MyMultiseekResults):
         if export_format == "csv":
             return csv_export_response(queryset, request, report_title)
         return xlsx_export_response(queryset, request, report_title, "dane")
+
+    def _export_document(self, request, export_format, queryset, report_title):
+        registry = get_registry(self.registry)
+        report_type = registry.get_report_type(
+            self.get_multiseek_data(), request=request
+        )
+
+        if report_type == "bibtex":
+            # W widoku BibTeX html/docx degradują do .bib (D3).
+            return bibtex_export_response(queryset, report_title)
+        if export_format == "bib":
+            return HttpResponseBadRequest("BibTeX dostępny tylko w widoku BibTeX.")
+
+        if report_type in TABLE_REPORT_TYPES:
+            queryset = queryset.select_related("charakter_formalny", "typ_kbn").only(
+                *MULTISEEK_RENDER_TABLE_FIELDS
+            )
+            sumy = queryset.aggregate(
+                Sum("impact_factor"),
+                Sum("liczba_cytowan"),
+                Sum("punkty_kbn"),
+                Sum("punktacja_wewnetrzna"),
+            )
+            partial = "multiseek/report-body-table.html"
+        else:
+            queryset = queryset.only(*MULTISEEK_RENDER_LIST_FIELDS)
+            sumy = None
+            partial = "multiseek/report-body-list.html"
+
+        body_html = render_to_string(
+            partial,
+            {
+                "object_list": queryset,
+                "report_type": report_type,
+                "sumy": sumy,
+                "export_mode": True,
+                "start_index": 0,
+            },
+            request=request,
+        )
+        document_html = render_to_string(
+            "multiseek/export-document.html",
+            {
+                "body_html": sanitize_export_html(body_html),
+                "report_title": report_title,
+            },
+            request=request,
+        )
+
+        if export_format == "docx":
+            return docx_export_response(document_html, report_title)
+        return html_export_response(document_html, report_title)
 
 
 def _normalize_session_removed(request):
