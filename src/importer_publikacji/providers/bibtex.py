@@ -83,7 +83,10 @@ class BibTeXProvider(DataProvider):
 
     def peek_title(self, entry) -> str:
         """Wyciągnij tytuł z wpisu do wyświetlenia (unwrap Field + LaTeX)."""
-        return _get_field(entry.fields_dict, "title", "")
+        title = _get_field(entry.fields_dict, "title", "")
+        if not title:
+            return ""
+        return _clean_latex(title)
 
     def split_input(self, text: str) -> list[SplitRecord]:
         """Rozbij wklejony BibTeX na pojedyncze rekordy.

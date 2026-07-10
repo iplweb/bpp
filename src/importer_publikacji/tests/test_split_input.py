@@ -66,3 +66,12 @@ def test_bibtex_peek_title_missing_returns_empty():
     records = provider.split_input("@misc{x, author = {Ktos, Ktos}}")
     assert len(records) == 1
     assert records[0].title == ""
+
+
+def test_bibtex_peek_title_strips_latex_braces():
+    provider = get_provider("BibTeX")
+    records = provider.split_input(
+        "@article{k, title = {A {Nested} Title}, author = {X, Y}, year = {2020}}"
+    )
+    assert len(records) == 1
+    assert records[0].title == "A Nested Title"
