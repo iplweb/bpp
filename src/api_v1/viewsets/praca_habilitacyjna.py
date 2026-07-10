@@ -23,7 +23,7 @@ class Praca_HabilitacyjnaViewSet(
         Praca_Habilitacyjna.objects.exclude(nie_eksportuj_przez_api=True)
         .order_by("pk")
         .select_related("status_korekty")
-        .prefetch_related("slowa_kluczowe")
+        .prefetch_related("slowa_kluczowe", "publikacja_habilitacyjna_set")
     )
     serializer_class = Praca_HabilitacyjnaSerializer
     filterset_class = Praca_HabilitacyjnaFilterSet

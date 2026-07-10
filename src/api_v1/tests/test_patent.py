@@ -105,3 +105,19 @@ def test_rest_api_patent_no_queries(
 ):
     with django_assert_max_num_queries(11):
         api_client.get(reverse("api_v1:patent-list"))
+
+
+@pytest.mark.django_db
+def test_rest_api_patent_autorzy_set_wskazuje_patent_autor(
+    client, patent, autor_jan_kowalski, jednostka, typy_odpowiedzialnosci
+):
+    # Regresja: autorzy_set miał view_name wydawnictwo_zwarte_autor-detail
+    # zamiast patent_autor-detail — link prowadził do złego endpointu.
+    patent.dodaj_autora(autor_jan_kowalski, jednostka)
+
+    res = client.get(reverse("api_v1:patent-detail", args=(patent.pk,)))
+    assert res.status_code == 200
+    autorzy = res.json()["autorzy_set"]
+    assert len(autorzy) == 1
+    assert "/patent_autor/" in autorzy[0]
+    assert "wydawnictwo_zwarte_autor" not in autorzy[0]
