@@ -152,6 +152,51 @@ SAMPLE_HTML_MIXED = """
 """
 
 
+# Eksport XML "articles-xml.seam?year=YYYY" instancji Omega-PSIR (np. PPM
+# UMLUB) — SEO sitemapa z listą URL-i stron szczegółowych artykułów,
+# wpisana w robots.txt (`Sitemap: .../years-xml.seam` -> index per rok).
+# Skrócona wersja realnej odpowiedzi (potwierdzone na żywo 2026-07-10,
+# ~1467 wpisów dla roku 2026 na ppm.umlub.pl).
+SAMPLE_OMEGA_ARTICLES_SITEMAP_XML = """<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+    <url>
+        <loc>https://ppm.umlub.pl/info/article/UML001085ec4f064177b924ac8a993e7701/</loc>
+    </url>
+    <url>
+        <loc>https://ppm.umlub.pl/info/article/UML0057c12f802b4ae7a8ef45ba8aaad38a/</loc>
+    </url>
+    <url>
+        <loc>https://ppm.umlub.pl/info/article/UML00cc39550a89431597f0949c8c467ef4/</loc>
+    </url>
+</urlset>
+"""
+
+# Fragment strony `globalResultList.seam` (siatka wyników wyszukiwania
+# Omega-PSIR/JSF-Seam) — trzy hidden-input ViewState (statefulny AJAX,
+# jeden ViewState per <form> na stronie) i ZERO linków do pojedynczych
+# prac w server-rendered HTML. Zweryfikowane na żywo 2026-07-10 na
+# https://ppm.umlub.pl/globalResultList.seam?r=projectmain&tab=PROJECT —
+# realna odpowiedź miała 69183 znaki, 5 ViewState, 0 dopasowań
+# /info/article/ ani żadnego innego per-wpis linku. Ten fixture to
+# minimalna reprezentatywna próbka tego kształtu (nie cała strona).
+SAMPLE_HTML_PPM_GLOBAL_RESULT_LIST = """
+<html><head><title>Wyniki wyszukiwania</title></head>
+<body>
+<form id="tabsForm">
+<input type="hidden" name="javax.faces.ViewState"
+  id="j_id__v_0:javax.faces.ViewState:1" value="opaque-viewstate-token" />
+<div class="tabs">
+  <a href="/globalResultList.seam?r=publication&amp;tab=PUBLICATION">
+    Publikacje (1467)</a>
+  <a href="/globalResultList.seam?r=projectmain&amp;tab=PROJECT">
+    Projekty (42)</a>
+</div>
+<div id="resultGrid" data-widget="primefaces-datatable-ajax"></div>
+</form>
+</body></html>
+"""
+
+
 def _make_soup(html: str) -> BeautifulSoup:
     return BeautifulSoup(html, "html.parser")
 
@@ -159,6 +204,7 @@ def _make_soup(html: str) -> BeautifulSoup:
 def _mock_response(text="", status_code=200, json_data=None):
     resp = MagicMock()
     resp.text = text
+    resp.content = text.encode("utf-8") if text else b""
     resp.status_code = status_code
     resp.raise_for_status = MagicMock()
     if json_data is not None:

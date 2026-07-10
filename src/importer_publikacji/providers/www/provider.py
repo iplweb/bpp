@@ -6,6 +6,7 @@ from .. import (
     DataProvider,
     FetchedPublication,
     InputMode,
+    SplitRecord,
     register_provider,
 )
 from .body_abstracts import _extract_body_abstracts
@@ -17,6 +18,10 @@ from .omega_psir import (
     _detect_omega_psir,
     _fetch_omega_psir_jsonld,
     _parse_omega_jsonld,
+)
+from .omega_psir_sitemap import (
+    _detect_omega_articles_sitemap,
+    _fetch_omega_articles_sitemap,
 )
 from .opengraph import _extract_opengraph
 from .schema_jsonld import _extract_schema_jsonld
@@ -52,6 +57,29 @@ class WWWProvider(DataProvider):
 
     def validate_identifier(self, identifier: str) -> str | None:
         return _validate_url(identifier)
+
+    def split_input(self, text: str) -> list[SplitRecord]:
+        """Rozbij wejście na rekordy — obsługuje listę Omega-PSIR (PPM).
+
+        Jedyna dziś rozpoznawana lista to eksport XML
+        ``articles-xml.seam?year=YYYY`` instancji Omega-PSIR (np. PPM
+        UMLUB) — statyczny, bez JS/ViewState (patrz
+        ``omega_psir_sitemap.py``). Strona wyników wyszukiwania
+        (``globalResultList.seam``) renderuje siatkę AJAX-em i **nie
+        jest** tu rozpoznawana — celowo, żeby nie fingować listy, której
+        nie umiemy odtworzyć statelessowym ``requests.get`` (patrz
+        findings w ``docs/superpowers/handoffs/``). Dla niej (i dla
+        każdego innego URL-a) zachowanie jest identyczne jak domyślne:
+        1 rekord, dalej idzie zwykły pojedynczy fetch.
+        """
+        url = _validate_url(text)
+        if url:
+            sitemap_url = _detect_omega_articles_sitemap(url)
+            if sitemap_url:
+                article_urls = _fetch_omega_articles_sitemap(sitemap_url)
+                if article_urls:
+                    return [SplitRecord(raw=u) for u in article_urls]
+        return [SplitRecord(raw=text)]
 
     def fetch(self, identifier: str) -> FetchedPublication | None:
         url = _validate_url(identifier)

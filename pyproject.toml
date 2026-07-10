@@ -140,6 +140,7 @@ dependencies = [
     "bibtexparser>=2.0.0b7", # BibTeX import
     "langdetect>=1.0.9", # Language detection for imports
     "beautifulsoup4>=4.15.0", # importer_publikacji.providers.www imports at app-ready time
+    "defusedxml>=0.7.1", # bezpieczny parser XML (PPM sitemap, XXE-safe)
     "gunicorn>=26.0.0", # authserver WSGI runner (moved from docker/authserver build-time uv pip install)
     "watchdog>=5.0.3", # --reload mode dla uvicorn/celery w dev compose (moved from entrypoint `uv pip install`)
     "sqlparse>=0.5.4", # Dependabot: transitive via Django, bumped to fix DoS in format_list_of_tuples
