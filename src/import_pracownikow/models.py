@@ -268,6 +268,7 @@ class ImportPracownikowRow(ImportRowMixin, models.Model):
         related_name="+",
     )
     utworz_nowego = models.BooleanField(default=False)
+    przepnij_prace = models.BooleanField(default=False)
 
     log_zmian = JSONField(encoder=DjangoJSONEncoder, null=True, blank=True)
 
