@@ -104,6 +104,32 @@ def test_analiza_nie_tworzy_autor_jednostka_gdy_brak_powiazania(
 
 
 @pytest.mark.django_db
+def test_odroczony_create_przy_istniejacym_aj_wymaga_zmian(dwa_autory_z_jednostka):
+    # plik MA stanowisko nieistniejące w bazie (odroczony create) + AJ istnieje
+    # → wiersz MUSI mieć zmiany_potrzebne=True (bool(diff)), inaczej integracja
+    # go pominie i funkcja nigdy nie powstanie (guard is-not-None wyzerował check)
+    autor, jednostka = dwa_autory_z_jednostka
+    imp = baker.make(ImportPracownikow, stan=ImportPracownikow.STAN_ZMAPOWANY)
+    imp.plik_xls.name = "protected/import_pracownikow/x.csv"
+    with patch("import_pracownikow.pipeline.analyze.otworz_zrodlo") as MZ:
+        MZ.return_value.count.return_value = 1
+        MZ.return_value.data.return_value = iter(
+            [
+                _wiersz(
+                    nazwisko=autor.nazwisko,
+                    imię=autor.imiona,
+                    nazwa_jednostki=jednostka.nazwa,
+                    stanowisko="NIEISTNIEJACE_STANOWISKO_XYZ",
+                )
+            ]
+        )
+        analizuj(imp, MockProgress(imp))
+    row = imp.importpracownikowrow_set.get()
+    assert "funkcja_autora" in row.diff_do_utworzenia
+    assert row.zmiany_potrzebne is True
+
+
+@pytest.mark.django_db
 def test_pusty_plik_rzuca_jawny_blad():
     imp = baker.make(ImportPracownikow)
     imp.plik_xls.name = "protected/import_pracownikow/x.xlsx"

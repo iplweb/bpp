@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% load crispy_forms_tags %}
+
+{% block extratitle %}Import pracowników — mapowanie kolumn{% endblock %}
+
+{% block breadcrumbs %}
+    {{ block.super }}
+    <li><a href="{% url "import_pracownikow:index" %}">import pracowników</a></li>
+    <li class="current">mapowanie kolumn</li>
+{% endblock %}
+
+{% block content %}
+    <h1>Zweryfikuj kolumny</h1>
+    {# lewa strona = nazwy kolumn z pliku, prawa = docelowe pole systemowe #}
+    <p>
+        Dla każdej kolumny pliku wskaż pole systemowe, na które ma zostać
+        odwzorowana (albo „pomiń"). Wymagane: nazwisko, imię, nazwa jednostki.
+    </p>
+
+    {% if probka_rows %}
+        <h2>Próbka danych</h2>
+        <div style="overflow-x: auto;">
+            <table>
+                <thead>
+                    <tr>
+                        {% for h in form.naglowki %}<th>{{ h }}</th>{% endfor %}
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for kolumny in probka_rows %}
+                        <tr>
+                            {% for kom in kolumny %}<td>{{ kom }}</td>{% endfor %}
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% endif %}
+
+    {% crispy form %}
+{% endblock %}

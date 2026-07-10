@@ -30,6 +30,7 @@ from import_common.normalization import (
     normalize_wymiar_etatu,
 )
 from import_common.sources import otworz_zrodlo
+from import_pracownikow.mapping import MIN_POINTS, TRY_NAMES, remapuj_wiersz
 from import_pracownikow.models import (
     AutorForm,
     ImportPracownikow,
@@ -164,19 +165,28 @@ def _przetworz_wiersz(parent, elem):
     # Gdy AJ jeszcze nie istnieje, integracja i tak je utworzy — traktujemy
     # wiersz jako wymagający zmian. Gdy istnieje, liczymy normalnie.
     if aj is not None:
-        row.zmiany_potrzebne = row.check_if_integration_needed()
+        # bool(diff): wiersz z odroczonym create'em słownika (stanowisko/
+        # grupa/wymiar nieistniejące w bazie) MUSI trafić do integracji,
+        # nawet gdy guard is-not-None wyzerował check (funkcja_autora=None
+        # w analizie).
+        row.zmiany_potrzebne = bool(diff) or row.check_if_integration_needed()
     else:
         row.zmiany_potrzebne = True
     row.save()
 
 
 def analizuj(parent, p):
-    zrodlo = otworz_zrodlo(parent.plik_xls.path)
+    zrodlo = otworz_zrodlo(
+        parent.plik_xls.path, try_names=TRY_NAMES, min_points=MIN_POINTS
+    )
     total = zrodlo.count()
     if total == 0:
         raise ValueError("Plik nie zawiera danych do importu (0 wierszy).")
 
+    mapowanie = parent.mapowanie_kolumn or {}
     for elem in p.track(list(zrodlo.data()), total=total, label="Wczytywanie"):
+        if mapowanie:
+            elem = remapuj_wiersz(elem, mapowanie)
         _przetworz_wiersz(parent, elem)
 
     parent.stan = ImportPracownikow.STAN_PRZEANALIZOWANY

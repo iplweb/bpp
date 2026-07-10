@@ -27,6 +27,11 @@
                 import utworzono {{ object.created_on }}{% if object.finished_on %}, ukończono {{ object.finished_on }}
                 {% if object.finished_successfully %}, zakończono pomyślnie{% else %}, zakończono z błędem{% endif %}
             {% endif %}
+                {% if object.stan == "utworzony" %}
+                    — <a href="{% url "import_pracownikow:mapowanie" pk=object.pk %}">
+                        <i class="fi-arrow-right"></i> dokończ mapowanie kolumn
+                    </a>
+                {% endif %}
             </li>
         {% endfor %}
     </ul>
