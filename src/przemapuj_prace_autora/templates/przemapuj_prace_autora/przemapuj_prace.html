@@ -94,6 +94,7 @@
                             <th>Prace zwarte</th>
                             <th>Wykonał</th>
                             <th>Szczegóły</th>
+                            <th>Cofnij</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -116,6 +117,17 @@
                                 {% else %}
                                     -
                                 {% endif %}
+                            </td>
+                            <td>
+                                <form method="post"
+                                      action="{% url 'przemapuj_prace_autora:cofnij_przemapowanie' log.pk %}"
+                                      onsubmit="return confirm('Cofnąć to przemapowanie prac?');">
+                                    {% csrf_token %}
+                                    <button type="submit" class="button tiny alert"
+                                            title="Cofnij to przemapowanie">
+                                        <span class="fi-loop"></span> Cofnij
+                                    </button>
+                                </form>
                             </td>
                         </tr>
                         {% endfor %}

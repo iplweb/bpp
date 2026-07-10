@@ -4,6 +4,7 @@ import rollbar
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.db.models import Count, Q
+from django.http import HttpResponseNotAllowed
 from django.shortcuts import get_object_or_404, redirect, render
 
 from bpp.models import Autor, Wydawnictwo_Ciagle_Autor, Wydawnictwo_Zwarte_Autor
@@ -177,3 +178,27 @@ def przemapuj_prace(request, autor_id):
         "preview": False,
     }
     return render(request, "przemapuj_prace_autora/przemapuj_prace.html", context)
+
+
+@login_required
+def cofnij_przemapowanie(request, pk):
+    """POST: cofnij przemapowanie (``service.cofnij``) i pokaż raport
+    (cofnięto N, pominięto M z powodu późniejszych zmian). Redirect na widok
+    przemapowania autora."""
+    przemapowanie = get_object_or_404(PrzemapoaniePracAutora, pk=pk)
+    if request.method != "POST":
+        return HttpResponseNotAllowed(["POST"])
+
+    cofnieto, pominieto = service.cofnij(przemapowanie)
+    if pominieto:
+        messages.warning(
+            request,
+            f"Cofnięto {cofnieto} przypisań prac; pominięto {pominieto} "
+            "z powodu późniejszych zmian afiliacji.",
+        )
+    else:
+        messages.success(request, f"Cofnięto {cofnieto} przypisań prac.")
+    return redirect(
+        "przemapuj_prace_autora:przemapuj_prace",
+        autor_id=przemapowanie.autor_id,
+    )
