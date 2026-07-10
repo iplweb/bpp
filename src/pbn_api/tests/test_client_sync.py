@@ -313,7 +313,9 @@ def test_sync_publication_z_statements_idzie_do_v1_publications(
     pbn_client.sync_publication(pbn_wydawnictwo_zwarte_z_autorem_z_dyscyplina)
 
     assert PBN_POST_PUBLICATIONS_URL in pbn_client.transport.input_values
-    assert PBN_POST_PUBLICATION_NO_STATEMENTS_URL not in pbn_client.transport.input_values
+    assert (
+        PBN_POST_PUBLICATION_NO_STATEMENTS_URL not in pbn_client.transport.input_values
+    )
     # Body to surowy dict z adaptera (NIE lista) — z kluczem statements.
     body = pbn_client.transport.input_values[PBN_POST_PUBLICATIONS_URL]["body"]
     assert isinstance(body, dict)
