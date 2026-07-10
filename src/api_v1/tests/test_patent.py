@@ -121,3 +121,25 @@ def test_rest_api_patent_autorzy_set_wskazuje_patent_autor(
     assert len(autorzy) == 1
     assert "/patent_autor/" in autorzy[0]
     assert "wydawnictwo_zwarte_autor" not in autorzy[0]
+
+
+@pytest.mark.django_db
+def test_rest_api_patent_autor_filter_autor(
+    api_client,
+    patent,
+    autor_jan_kowalski,
+    autor_jan_nowak,
+    jednostka,
+    typy_odpowiedzialnosci,
+):
+    patent.dodaj_autora(autor_jan_kowalski, jednostka)
+
+    res = api_client.get(
+        reverse("api_v1:patent_autor-list") + f"?autor={autor_jan_kowalski.pk}"
+    )
+    assert res.json()["count"] == 1
+
+    res = api_client.get(
+        reverse("api_v1:patent_autor-list") + f"?autor={autor_jan_nowak.pk}"
+    )
+    assert res.json()["count"] == 0

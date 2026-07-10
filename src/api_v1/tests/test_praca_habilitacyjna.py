@@ -147,26 +147,13 @@ def test_rest_api_praca_habilitacyjna_no_queries(
 
 
 @pytest.mark.django_db
-def test_rest_api_praca_habilitacyjna_z_publikacja_habilitacyjna_nie_rzuca(
-    client, praca_habilitacyjna, wydawnictwo_zwarte
+def test_rest_api_praca_habilitacyjna_bez_pola_publikacja_habilitacyjna(
+    client, praca_habilitacyjna
 ):
-    # Regresja: goły serializers.RelatedField dla publikacja_habilitacyjna
-    # nie ma to_representation → 500 gdy relacja ma element. StringRelatedField
-    # (many=True, source=publikacja_habilitacyjna_set) zwraca listę bez błędu.
-    from django.contrib.contenttypes.models import ContentType
-
-    from bpp.models.praca_habilitacyjna import Publikacja_Habilitacyjna
-
-    Publikacja_Habilitacyjna.objects.create(
-        praca_habilitacyjna=praca_habilitacyjna,
-        content_type=ContentType.objects.get_for_model(wydawnictwo_zwarte),
-        object_id=wydawnictwo_zwarte.pk,
-    )
-
+    # ``publikacja_habilitacyjna`` (link do prac składowych „habilitacji-składaka")
+    # nie jest wystawiane przez API — pole nie powinno pojawić się w odpowiedzi.
     res = client.get(
         reverse("api_v1:praca_habilitacyjna-detail", args=(praca_habilitacyjna.pk,))
     )
     assert res.status_code == 200
-    data = res.json()
-    assert isinstance(data["publikacja_habilitacyjna"], list)
-    assert len(data["publikacja_habilitacyjna"]) == 1
+    assert "publikacja_habilitacyjna" not in res.json()

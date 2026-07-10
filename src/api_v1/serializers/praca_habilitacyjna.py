@@ -27,15 +27,6 @@ class Praca_HabilitacyjnaSerializer(
         view_name="api_v1:wydawca-detail", read_only=True
     )
 
-    # ``publikacja_habilitacyjna`` to relacja odwrotna (jeden-do-wielu) z
-    # ``Publikacja_Habilitacyjna`` — akcesor to ``publikacja_habilitacyjna_set``.
-    # Goły ``serializers.RelatedField`` jest abstrakcyjny (brak to_representation)
-    # i wywala 500 (NotImplementedError), gdy relacja ma element. StringRelatedField
-    # daje ``__str__`` powiązań i jest spójny z resztą API.
-    publikacja_habilitacyjna = serializers.StringRelatedField(
-        many=True, read_only=True, source="publikacja_habilitacyjna_set"
-    )
-
     class Meta:
         model = Praca_Habilitacyjna
         fields = [
@@ -91,6 +82,4 @@ class Praca_HabilitacyjnaSerializer(
             "miejsce_i_rok",
             "wydawca",
             "wydawca_opis",
-            #
-            "publikacja_habilitacyjna",
         ]

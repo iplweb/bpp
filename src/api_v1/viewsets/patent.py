@@ -6,9 +6,16 @@ from api_v1.viewsets.common import UkryjStatusyKorektyMixin
 from bpp.models import Patent, Patent_Autor
 
 
+class Patent_AutorFilterSet(django_filters.rest_framework.FilterSet):
+    class Meta:
+        fields = ["autor"]
+        model = Patent_Autor
+
+
 class Patent_AutorViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = Patent_Autor.objects.all()
     serializer_class = Patent_AutorSerializer
+    filterset_class = Patent_AutorFilterSet
 
 
 class PatentFilterSet(django_filters.rest_framework.FilterSet):

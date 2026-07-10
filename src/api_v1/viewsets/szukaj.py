@@ -45,7 +45,10 @@ class SzukajViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
     serializer_class = SzukajSerializer
 
     def _int_param(self, nazwa):
-        """Nieujemny parametr całkowity; błędne/puste wejście → ``None``."""
+        """Parametr całkowity; brak/puste/niepoprawne wejście → ``None``.
+
+        Parsuje wartość jako ``int`` (ujemne przechodzą — brak walidacji znaku).
+        """
         surowy = self.request.query_params.get(nazwa)
         if surowy is None or surowy == "":
             return None
