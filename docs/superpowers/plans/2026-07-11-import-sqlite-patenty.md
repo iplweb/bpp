@@ -223,14 +223,14 @@ def test_iter_records_yields_parsed(tmp_path):
     db = _make_db(
         tmp_path,
         [
-            ("patent", "UML1", "http://x/1", json.dumps({"title": "A"})),
-            ("patent", "UML2", "http://x/2", json.dumps({"title": "B"})),
+            ("patent", "TEST1", "http://x/1", json.dumps({"title": "A"})),
+            ("patent", "TEST2", "http://x/2", json.dumps({"title": "B"})),
         ],
     )
     out = list(iter_records(db, "patent"))
     assert out == [
-        RawRecord("UML1", "http://x/1", {"title": "A"}),
-        RawRecord("UML2", "http://x/2", {"title": "B"}),
+        RawRecord("TEST1", "http://x/1", {"title": "A"}),
+        RawRecord("TEST2", "http://x/2", {"title": "B"}),
     ]
 
 
@@ -238,25 +238,25 @@ def test_iter_records_filters_by_type(tmp_path):
     db = _make_db(
         tmp_path,
         [
-            ("patent", "UML1", "http://x/1", json.dumps({"title": "A"})),
-            ("project", "UML2", "http://x/2", json.dumps({"title": "B"})),
+            ("patent", "TEST1", "http://x/1", json.dumps({"title": "A"})),
+            ("project", "TEST2", "http://x/2", json.dumps({"title": "B"})),
         ],
     )
     out = list(iter_records(db, "patent"))
-    assert [r.source_id for r in out] == ["UML1"]
+    assert [r.source_id for r in out] == ["TEST1"]
 
 
 def test_iter_records_skips_bad_json(tmp_path):
     db = _make_db(
         tmp_path,
         [
-            ("patent", "UML1", "http://x/1", "{not json"),
-            ("patent", "UML2", "http://x/2", json.dumps({"title": "B"})),
+            ("patent", "TEST1", "http://x/1", "{not json"),
+            ("patent", "TEST2", "http://x/2", json.dumps({"title": "B"})),
         ],
     )
     with pytest.warns(UserWarning):
         out = list(iter_records(db, "patent"))
-    assert [r.source_id for r in out] == ["UML2"]
+    assert [r.source_id for r in out] == ["TEST2"]
 ```
 
 - [ ] **Step 2: Uruchom — ma FAIL**
@@ -353,7 +353,7 @@ from import_sqlite.reader import RawRecord
 
 
 def _rec(**parsed):
-    return RawRecord("UML1", "http://x/1", parsed)
+    return RawRecord("TEST1", "http://x/1", parsed)
 
 
 def test_parse_ddmmyyyy_ok():
@@ -770,7 +770,7 @@ def test_patents_csv_written(tmp_path):
         str(p),
         [
             {
-                "source_id": "UML1",
+                "source_id": "TEST1",
                 "numer_prawa": "Pat.1",
                 "numer_zgloszenia": "P.1",
                 "tytul": "T",
@@ -780,7 +780,7 @@ def test_patents_csv_written(tmp_path):
         ],
     )
     content = p.read_text(encoding="utf-8")
-    assert "UML1" in content and "UTWORZONY" in content
+    assert "TEST1" in content and "UTWORZONY" in content
 ```
 
 - [ ] **Step 2: Uruchom — ma FAIL**
@@ -894,7 +894,7 @@ from import_sqlite.handlers.patent import PatentData, apply_patent, build_contex
 def ctx(db, status_korekty):
     from bpp.models import Jednostka, Uczelnia
 
-    uczelnia = baker.make("bpp.Uczelnia", nazwa="UML", skrot="UML")
+    uczelnia = baker.make("bpp.Uczelnia", nazwa="TEST", skrot="TEST")
     obca = baker.make(
         "bpp.Jednostka", nazwa="Obca jednostka", uczelnia=uczelnia,
         skupia_pracownikow=False,
@@ -906,7 +906,7 @@ def ctx(db, status_korekty):
 
 def _pd(**kw):
     base = dict(
-        source_id="UML1", source_url="http://x/1", tytul="T", rok=2023,
+        source_id="TEST1", source_url="http://x/1", tytul="T", rok=2023,
         numer_zgloszenia="P.1", data_zgloszenia=None, numer_prawa="Pat.1",
         data_decyzji=None, szczegoly="", adnotacje="", inventors=["Anna Wawruszak"],
     )
@@ -1160,7 +1160,7 @@ def _db(tmp_path, patents):
     for i, pj in enumerate(patents):
         con.execute(
             "INSERT INTO records (type, source_id, source_url, parsed_json) VALUES (?,?,?,?)",
-            ("patent", f"UML{i}", f"http://x/{i}", json.dumps(pj)),
+            ("patent", f"TEST{i}", f"http://x/{i}", json.dumps(pj)),
         )
     con.commit()
     con.close()
@@ -1283,7 +1283,7 @@ def _db(tmp_path, patents):
     for i, pj in enumerate(patents):
         con.execute(
             "INSERT INTO records (type, source_id, source_url, parsed_json) VALUES (?,?,?,?)",
-            ("patent", f"UML{i}", f"http://x/{i}", json.dumps(pj)),
+            ("patent", f"TEST{i}", f"http://x/{i}", json.dumps(pj)),
         )
     con.commit(); con.close()
     return str(p)
@@ -1291,7 +1291,7 @@ def _db(tmp_path, patents):
 
 @pytest.fixture
 def uczelnia_setup(db, status_korekty):
-    u = baker.make("bpp.Uczelnia", nazwa="UML", skrot="UML")
+    u = baker.make("bpp.Uczelnia", nazwa="TEST", skrot="TEST")
     obca = baker.make("bpp.Jednostka", nazwa="Obca", uczelnia=u, skupia_pracownikow=False)
     u.obca_jednostka = obca; u.save()
     return u

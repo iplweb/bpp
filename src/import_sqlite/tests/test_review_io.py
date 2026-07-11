@@ -40,7 +40,7 @@ def test_patents_csv_written(tmp_path):
         str(p),
         [
             {
-                "source_id": "UML1",
+                "source_id": "TEST1",
                 "numer_prawa": "Pat.1",
                 "numer_zgloszenia": "P.1",
                 "tytul": "T",
@@ -50,4 +50,4 @@ def test_patents_csv_written(tmp_path):
         ],
     )
     content = p.read_text(encoding="utf-8")
-    assert "UML1" in content and "UTWORZONY" in content
+    assert "TEST1" in content and "UTWORZONY" in content

@@ -29,14 +29,14 @@ def test_iter_records_yields_parsed(tmp_path):
     db = _make_db(
         tmp_path,
         [
-            ("patent", "UML1", "http://x/1", json.dumps({"title": "A"})),
-            ("patent", "UML2", "http://x/2", json.dumps({"title": "B"})),
+            ("patent", "TEST1", "http://x/1", json.dumps({"title": "A"})),
+            ("patent", "TEST2", "http://x/2", json.dumps({"title": "B"})),
         ],
     )
     out = list(iter_records(db, "patent"))
     assert out == [
-        RawRecord("UML1", "http://x/1", {"title": "A"}),
-        RawRecord("UML2", "http://x/2", {"title": "B"}),
+        RawRecord("TEST1", "http://x/1", {"title": "A"}),
+        RawRecord("TEST2", "http://x/2", {"title": "B"}),
     ]
 
 
@@ -44,22 +44,22 @@ def test_iter_records_filters_by_type(tmp_path):
     db = _make_db(
         tmp_path,
         [
-            ("patent", "UML1", "http://x/1", json.dumps({"title": "A"})),
-            ("project", "UML2", "http://x/2", json.dumps({"title": "B"})),
+            ("patent", "TEST1", "http://x/1", json.dumps({"title": "A"})),
+            ("project", "TEST2", "http://x/2", json.dumps({"title": "B"})),
         ],
     )
     out = list(iter_records(db, "patent"))
-    assert [r.source_id for r in out] == ["UML1"]
+    assert [r.source_id for r in out] == ["TEST1"]
 
 
 def test_iter_records_skips_bad_json(tmp_path):
     db = _make_db(
         tmp_path,
         [
-            ("patent", "UML1", "http://x/1", "{not json"),
-            ("patent", "UML2", "http://x/2", json.dumps({"title": "B"})),
+            ("patent", "TEST1", "http://x/1", "{not json"),
+            ("patent", "TEST2", "http://x/2", json.dumps({"title": "B"})),
         ],
     )
     with pytest.warns(UserWarning):
         out = list(iter_records(db, "patent"))
-    assert [r.source_id for r in out] == ["UML2"]
+    assert [r.source_id for r in out] == ["TEST2"]

@@ -22,7 +22,7 @@ def _db(tmp_path, patents):
         con.execute(
             "INSERT INTO records (type, source_id, source_url, parsed_json) "
             "VALUES (?,?,?,?)",
-            ("patent", f"UML{i}", f"http://x/{i}", json.dumps(pj)),
+            ("patent", f"TEST{i}", f"http://x/{i}", json.dumps(pj)),
         )
     con.commit()
     con.close()
@@ -46,7 +46,7 @@ def _one_patent_db(tmp_path):
 
 @pytest.fixture
 def uczelnia_setup(db, status_korekty):
-    u = baker.make("bpp.Uczelnia", nazwa="UML", skrot="UML")
+    u = baker.make("bpp.Uczelnia", nazwa="TEST", skrot="TEST")
     obca = baker.make(
         "bpp.Jednostka", nazwa="Obca", uczelnia=u, skupia_pracownikow=False
     )

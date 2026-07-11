@@ -5,7 +5,7 @@ from import_sqlite.reader import RawRecord
 
 
 def _rec(**parsed):
-    return RawRecord("UML1", "http://x/1", parsed)
+    return RawRecord("TEST1", "http://x/1", parsed)
 
 
 def test_parse_ddmmyyyy_ok():

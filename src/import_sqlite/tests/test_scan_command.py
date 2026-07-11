@@ -17,7 +17,7 @@ def _db(tmp_path, patents):
         con.execute(
             "INSERT INTO records (type, source_id, source_url, parsed_json) "
             "VALUES (?,?,?,?)",
-            ("patent", f"UML{i}", f"http://x/{i}", json.dumps(pj)),
+            ("patent", f"TEST{i}", f"http://x/{i}", json.dumps(pj)),
         )
     con.commit()
     con.close()

@@ -6,7 +6,7 @@ from import_sqlite.handlers.patent import PatentData, apply_patent, build_contex
 
 @pytest.fixture
 def ctx(db, status_korekty):
-    uczelnia = baker.make("bpp.Uczelnia", nazwa="UML", skrot="UML")
+    uczelnia = baker.make("bpp.Uczelnia", nazwa="TEST", skrot="TEST")
     obca = baker.make(
         "bpp.Jednostka",
         nazwa="Obca jednostka",
@@ -20,7 +20,7 @@ def ctx(db, status_korekty):
 
 def _pd(**kw):
     base = dict(
-        source_id="UML1",
+        source_id="TEST1",
         source_url="http://x/1",
         tytul="T",
         rok=2023,
