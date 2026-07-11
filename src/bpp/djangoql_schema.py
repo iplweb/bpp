@@ -408,12 +408,35 @@ class DeprecatedAndRestrictedFieldsMixin:
     zachowując oryginalną pozycję.
     """
 
+    #: Blocklist pól per model — ``{etykieta_modelu: {nazwy_pól}}``. Ukrywane
+    #: PONAD deprecated/restricted. Domyślnie puste; ustawiane WYŁĄCZNIE na
+    #: schematach agent-facing (``RekordLLMSchema``), NIE na web-edytorze — bo
+    #: kontrakt web-edytora dla redaktorów świadomie wystawia np. ``email``.
+    hidden_fields_labels = {}
+
+    def _hidden_fields(self, model):
+        """Nazwy pól do ukrycia dla ``model`` (z ``hidden_fields_labels``)."""
+        from django.apps import apps
+
+        return {
+            name
+            for label, names in self.hidden_fields_labels.items()
+            if apps.get_model(label) is model
+            for name in names
+        }
+
     def get_fields(self, model):
         fields = list(super().get_fields(model))
         allowed = _restricted_fields().get(model)
         if allowed is not None:
             return [f for f in fields if _field_name(f) in allowed]
-        return [f for f in fields if not _is_deprecated_field(model, _field_name(f))]
+        hidden = self._hidden_fields(model)
+        return [
+            f
+            for f in fields
+            if _field_name(f) not in hidden
+            and not _is_deprecated_field(model, _field_name(f))
+        ]
 
 
 class BppQLSchemaOgraniczony(DeprecatedAndRestrictedFieldsMixin, BppQLSchema):
@@ -497,6 +520,27 @@ def _build_llm_fk_options():
     return options
 
 
+#: Pola ukrywane w schemacie AGENT-FACING (API ``/api/v1/zapytanie/`` + eksport
+#: LLM), świadomie NIE w web-edytorze ``/zapytanie/`` (BppQLSchemaOgraniczony):
+#: redaktor w przeglądarce ma pełny kontrakt (np. filtr po ``email``). Cel:
+#: ograniczyć powierzchnię FILTROWANIA (atak-wyrocznia) dla zautomatyzowanego
+#: dostępu przez API/MCP — pola nie są zwracane w odpowiedzi, ale dałyby się
+#: oracle-ować przez ``~``/``=``/``startswith``. Wolnotekstowe notatki
+#: (``adnotacje``/``opis``) i kontaktowe PII (``email``) — poza zasięgiem
+#: agenta. Świadomie zachowane (decyzja): ``system_kadrowy_id``, ``pbn_uid``
+#: (trawersacja do PBN), ``poprzednie_nazwiska``.
+_LLM_HIDDEN_FIELDS_LABELS = {
+    "bpp.Autor": {"email", "adnotacje", "opis"},
+    "bpp.Jednostka": {"email"},
+    "bpp.Rekord": {"adnotacje"},
+    "bpp.Wydawnictwo_Ciagle": {"adnotacje"},
+    "bpp.Wydawnictwo_Zwarte": {"adnotacje"},
+    "bpp.Patent": {"adnotacje"},
+    "bpp.Praca_Doktorska": {"adnotacje"},
+    "bpp.Praca_Habilitacyjna": {"adnotacje"},
+}
+
+
 class RekordLLMSchema(DeprecatedAndRestrictedFieldsMixin, ExtrasSchema):
     """Schemat dla eksportu opisu DjangoQL do promptu LLM.
 
@@ -512,6 +556,7 @@ class RekordLLMSchema(DeprecatedAndRestrictedFieldsMixin, ExtrasSchema):
     """
 
     include = SEARCH_ALLOWLIST
+    hidden_fields_labels = _LLM_HIDDEN_FIELDS_LABELS
     fk_options = _build_llm_fk_options()
     #: Twarda lista celów, których nazwy NIGDY nie trafiają do artefaktu —
     #: niezależnie od fk_options i --max-fk-options (wymaga djangoql-iplweb
