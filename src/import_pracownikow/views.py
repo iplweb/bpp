@@ -990,23 +990,29 @@ class ZatwierdzImportView(_PkOwnerRestartMixin):
     }
 
     def post(self, request, *args, **kwargs):
-        obj = self.get_object()
+        obj = self.get_object()  # 404 dla nie-ownera
         zakres = request.POST.get("zakres", ImportPracownikow.ZAKRES_PELNY)
         if zakres not in self._ZAKRESY_PRAWIDLOWE:
             zakres = ImportPracownikow.ZAKRES_PELNY
         if zakres in self._ZAKRESY_STRUKTURALNE:
-            if obj.stan != ImportPracownikow.STAN_PRZEANALIZOWANY:
-                return HttpResponseBadRequest(
-                    "Strukturę można zapisać tylko z podglądu (Krok 1)."
-                )
-        elif obj.stan != ImportPracownikow.STAN_STRUKTURA_ZINTEGROWANA:
+            stan_wymagany = ImportPracownikow.STAN_PRZEANALIZOWANY
+            blad = "Strukturę można zapisać tylko z podglądu (Krok 1)."
+        else:
             # PELNY = import osób: dozwolony dopiero po zapisaniu struktury.
-            return HttpResponseBadRequest(
-                "Najpierw zapisz strukturę (jednostki) — dopiero potem osoby."
-            )
-        obj.stan = ImportPracownikow.STAN_ZATWIERDZONY
-        obj.zakres_integracji = zakres
-        obj.save(update_fields=["stan", "zakres_integracji"])
+            stan_wymagany = ImportPracownikow.STAN_STRUKTURA_ZINTEGROWANA
+            blad = "Najpierw zapisz strukturę (jednostki) — dopiero potem osoby."
+        # Atomowy compare-and-set (uwaga reviewera #1): warunkowy UPDATE
+        # ``WHERE stan=stan_wymagany`` przestawia stan na ``zatwierdzony`` tylko
+        # gdy import NADAL jest w stanie wyjściowym. Dwa równoległe zatwierdzenia
+        # (celery z >1 workerem) serializuje baza — dokładnie jedno trafia 1
+        # wiersz i kolejkuje integrację; drugie dostaje 0 → 400. Bez tego oba
+        # przeszłyby bramkę na ``obj.stan`` odczytanym na starcie i wyzwoliłyby
+        # integrację dwa razy (duplikaty autorów/jednostek/przepięć).
+        zmieniono = ImportPracownikow.objects.filter(
+            pk=obj.pk, stan=stan_wymagany
+        ).update(stan=ImportPracownikow.STAN_ZATWIERDZONY, zakres_integracji=zakres)
+        if not zmieniono:
+            return HttpResponseBadRequest(blad)
         return super().post(request, *args, **kwargs)
 
 
