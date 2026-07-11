@@ -17,6 +17,7 @@ from bpp.models import Crossref_Mapper
 
 from ..forms import FetchForm, SessionFilterForm
 from ..models import ImportSession, MultipleWorksImport
+from ..permissions import scope_import_do_uczelni
 from ..providers import get_providers_metadata
 
 _POLISH_DIACRITICS = set("ąćęłńóśźżĄĆĘŁŃÓŚŹŻ")
@@ -161,6 +162,8 @@ def _sessions_queryset(request):
     qs = ImportSession.objects.select_related("created_by", "modified_by").exclude(
         status=ImportSession.Status.CANCELLED
     )
+    # Izolacja multi-host: redaktor widzi tylko sesje swojej uczelni (uwaga #3).
+    qs = scope_import_do_uczelni(qs, request)
 
     form = SessionFilterForm(request.GET)
     if form.is_valid():
@@ -219,19 +222,21 @@ _SESSION_DONE_STATUSES = (
 )
 
 
-def _in_progress_sessions_count() -> int:
-    """Liczba pojedynczych sesji importu, które nie są zakończone."""
-    return ImportSession.objects.exclude(status__in=_SESSION_DONE_STATUSES).count()
+def _in_progress_sessions_count(request) -> int:
+    """Liczba pojedynczych sesji importu, które nie są zakończone (w uczelni
+    oglądającego — multi-host)."""
+    qs = ImportSession.objects.exclude(status__in=_SESSION_DONE_STATUSES)
+    return scope_import_do_uczelni(qs, request).count()
 
 
-def _in_progress_batches_count() -> int:
+def _in_progress_batches_count(request) -> int:
     """Liczba paczek (``MultipleWorksImport``), które nie są w całości
-    przetworzone (nie wszystkie wpisy zaimportowane lub pominięte)."""
-    return sum(
-        1
-        for batch in MultipleWorksImport.objects.prefetch_related("entries")
-        if not batch.progress["done"]
+    przetworzone (nie wszystkie wpisy zaimportowane lub pominięte) — w uczelni
+    oglądającego (multi-host)."""
+    qs = scope_import_do_uczelni(
+        MultipleWorksImport.objects.prefetch_related("entries"), request
     )
+    return sum(1 for batch in qs if not batch.progress["done"])
 
 
 def _polish_plural(n: int, one: str, few: str, many: str) -> str:
@@ -248,7 +253,7 @@ def _landing_context(request):
     """Kontekst kafelkowej strony głównej importera: lista dostawców danych
     (z ikoną i krótkim podpisem „co i skąd") oraz licznik importów w toku
     (pojedynczych sesji + paczek) do slim-baru pod kafelkami."""
-    count = _in_progress_sessions_count() + _in_progress_batches_count()
+    count = _in_progress_sessions_count(request) + _in_progress_batches_count(request)
     return {
         "providers": list(get_providers_metadata().values()),
         "in_progress_count": count,
