@@ -16,8 +16,17 @@
         </p>
         <p>To był <strong>podgląd</strong> (dry-run) — nic nie zapisano do
             bazy. Zatwierdź poniżej, żeby zapisać zmiany do bazy danych.</p>
+        {# Progressive enhancement: hx-post wysyła żądanie htmx, które dziedziczy #}
+        {# nagłówek X-CSRFToken z wrappera hx-headers host-page. To istotne, gdy #}
+        {# panel wyniku został wypchnięty przez workera po WebSockecie (render bez #}
+        {# requestu → token w body formularza jest pusty → natywny POST dałby 403). #}
+        {# Widok liveops zwraca 204 dla htmx (UI aktualizuje WebSocket); dla no-JS #}
+        {# natywny POST formularza działa jak dotąd (redirect na stronę live). #}
         <form method="post"
-              action="{% url 'import_pracownikow:zatwierdz' operation.pk %}">
+              action="{% url 'import_pracownikow:zatwierdz' operation.pk %}"
+              hx-post="{% url 'import_pracownikow:zatwierdz' operation.pk %}"
+              hx-swap="none"
+              hx-disabled-elt="find button">
             {% csrf_token %}
             <button class="button" type="submit">
                 <span class="fi-save"></span> Zapisz zmiany do bazy

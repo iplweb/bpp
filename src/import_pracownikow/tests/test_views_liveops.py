@@ -45,6 +45,25 @@ def test_strona_live_wstrzykuje_csrf_header_dla_htmx(admin_client, admin_user):
 
 
 @pytest.mark.django_db
+def test_panel_wyniku_zatwierdz_jedzie_przez_htmx(admin_user):
+    """Panel wyniku bywa renderowany przez workera (OOB-swap po WebSockecie) BEZ
+    kontekstu requestu, więc {% csrf_token %} w body jest pusty. Przycisk „Zapisz"
+    musi więc jechać przez htmx (hx-post), żeby dziedziczyć nagłówek X-CSRFToken
+    z wrappera host-page — inaczej POST /zatwierdz/ dostaje 403 w wersji push."""
+    from django.template.loader import render_to_string
+
+    imp = baker.make(ImportPracownikow, owner=admin_user)
+    # render BEZ requestu — dokładnie tak jak robi to worker przy OOB-swapie
+    html = render_to_string(
+        "import_pracownikow/import_pracownikow_result.html",
+        {"operation": imp, "byl_dry_run": True, "total": 5, "zmiany_potrzebne": 3},
+    )
+    assert "hx-post=" in html
+    assert 'hx-swap="none"' in html
+    assert f"/{imp.pk}/zatwierdz/" in html
+
+
+@pytest.mark.django_db
 def test_index_renderuje_bez_noreversematch(admin_client, admin_user):
     """Landmine: importpracownikow_list.html linkował do usuniętego URL-a
     ``import_pracownikow:importpracownikow-router`` — NoReverseMatch przy
