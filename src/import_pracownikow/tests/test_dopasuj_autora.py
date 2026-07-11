@@ -8,7 +8,12 @@ from import_pracownikow.models import (
     ImportPracownikowRow,
     ImportPracownikowRowKandydat,
 )
-from import_pracownikow.pewnosc import STATUS_BRAK, STATUS_TWARDY, STATUS_WIELU
+from import_pracownikow.pewnosc import (
+    STATUS_BRAK,
+    STATUS_RECZNY,
+    STATUS_TWARDY,
+    STATUS_WIELU,
+)
 
 
 def _import(owner, stan=ImportPracownikow.STAN_PRZEANALIZOWANY):
@@ -59,7 +64,8 @@ def test_dopasuj_autora_wiaze_i_odklada_aj(admin_client, admin_user):
     assert resp.status_code == 200
     row.refresh_from_db()
     assert row.autor_id == autor.pk
-    assert row.confidence == STATUS_TWARDY
+    # Ręczny override (autocomplete) → status „ręczny", nie „twardy" (item 7).
+    assert row.confidence == STATUS_RECZNY
     assert row.autor_jednostka is None
     assert row.diff_do_utworzenia["autor_jednostka"]["autor"] == autor.pk
     assert row.zmiany_potrzebne is True
@@ -94,7 +100,7 @@ def test_dopasuj_autora_guard_jednostka_none(admin_client, admin_user):
     assert resp.status_code == 200
     row.refresh_from_db()
     assert row.autor_id == autor.pk
-    assert row.confidence == STATUS_TWARDY
+    assert row.confidence == STATUS_RECZNY
     assert row.autor_jednostka is None
     assert "autor_jednostka" not in row.diff_do_utworzenia
     assert "jednostka" not in row.diff_do_utworzenia

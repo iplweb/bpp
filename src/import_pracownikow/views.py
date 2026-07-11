@@ -42,6 +42,7 @@ from import_pracownikow.models import (
 )
 from import_pracownikow.pewnosc import (
     STATUS_BRAK,
+    STATUS_RECZNY,
     STATUS_TWARDY,
     odtworz_autor_jednostka,
 )
@@ -334,9 +335,10 @@ def _zwiaz_autora_z_wierszem(row, autor):
       ``get_or_create(jednostka_id=None)`` → ``IntegrityError`` ubijający cały
       task liveops. Mirror ``analyze._przetworz_wiersz`` (jednostka odroczona →
       ``autor_jednostka=None``, zdejmij wpis AJ, ``zmiany_potrzebne=False``);
-    - ręczny wybór jest jednoznaczny → ``confidence = STATUS_TWARDY``,
-      ``utworz_nowego=False``, ``przepnij_prace=False`` (G2: zmiana autora
-      unieważnia opt-in przepięcia poprzedniego autora);
+    - ręczny wybór jest jednoznaczny → ``confidence = STATUS_RECZNY``
+      (świadomy wybór operatora — NIE „twardy match" z auto-analizy, badge nie
+      kłamie), ``utworz_nowego=False``, ``przepnij_prace=False`` (G2: zmiana
+      autora unieważnia opt-in przepięcia poprzedniego autora);
     - zeruje ``wybrany_kandydat`` (``WybierzKandydataView`` przywraca je PO
       helperze jako provenance wyboru spośród kandydatów).
 
@@ -351,7 +353,7 @@ def _zwiaz_autora_z_wierszem(row, autor):
         row.zmiany_potrzebne = False
     else:
         odtworz_autor_jednostka(row, autor)
-    row.confidence = STATUS_TWARDY
+    row.confidence = STATUS_RECZNY
     row.utworz_nowego = False
     row.przepnij_prace = False
     row.wybrany_kandydat = None
@@ -402,7 +404,7 @@ class DopasujAutoraView(_WierszImportuMixin):
     ``import-autor-autocomplete`` — override dla ``twardy``/``zgadywanie``,
     wybór dla ``brak``, „inny autor" dla ``wielu``. Wiąże ``row.autor`` i
     przelicza jak ``WybierzKandydataView`` przez wspólny
-    ``_zwiaz_autora_z_wierszem`` (ustawia ``STATUS_TWARDY``).
+    ``_zwiaz_autora_z_wierszem`` (ustawia ``STATUS_RECZNY``).
 
     ``autor`` (pk) walidowany ``get_object_or_404`` — przy ręcznym ajaxie
     zamiast pk może przyjść tekst. Owner/superuser-scoped + bramka stanu
@@ -566,15 +568,19 @@ class ImportPracownikowResultsView(GroupRequiredMixin, ListView):
         return obj
 
     def get_queryset(self):
-        # non-twardy (do rozstrzygnięcia) na górę, potem kolejność z pliku.
-        # G5: prefetch kandydatów Z AUTOREM — partial dla wierszy `wielu` iteruje
-        # row.kandydaci.all i czyta k.autor per opcja dropdownu; bez tego N+1
-        # (setki zapytań przy dużych plikach).
+        # Rozstrzygnięte (twardy match + ręczny wybór operatora) na dół, wiersze
+        # do rozstrzygnięcia (brak/wielu/zgadywanie) na górę, potem kolejność z
+        # pliku. G5: prefetch kandydatów Z AUTOREM — partial dla wierszy `wielu`
+        # iteruje row.kandydaci.all i czyta k.autor per opcja dropdownu; bez
+        # tego N+1 (setki zapytań przy dużych plikach).
         return (
             self.parent_object.get_details_set()
             .annotate(
                 _prio=Case(
-                    When(confidence=STATUS_TWARDY, then=Value(1)),
+                    When(
+                        confidence__in=[STATUS_TWARDY, STATUS_RECZNY],
+                        then=Value(1),
+                    ),
                     default=Value(0),
                     output_field=IntegerField(),
                 )

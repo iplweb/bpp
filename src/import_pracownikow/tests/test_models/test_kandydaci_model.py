@@ -6,7 +6,7 @@ from import_pracownikow.models import (
     ImportPracownikowRow,
     ImportPracownikowRowKandydat,
 )
-from import_pracownikow.pewnosc import STATUS_TWARDY, STATUS_WIELU
+from import_pracownikow.pewnosc import STATUS_RECZNY, STATUS_TWARDY, STATUS_WIELU
 
 
 @pytest.mark.django_db
@@ -30,6 +30,20 @@ def test_confidence_badge_mapuje_status_na_klase_i_ikone():
     assert klasa == "success"
     assert ikona == "fi-check"
     assert "twardy" in etykieta
+
+
+@pytest.mark.django_db
+def test_confidence_badge_reczny_odrozniony_od_twardego():
+    """Item 7: ręczny wybór operatora ma WŁASNY badge („wybór użytkownika",
+    fi-pencil) — NIE udaje „twardego matcha" (fi-check)."""
+    imp = baker.make(ImportPracownikow)
+    row = ImportPracownikowRow(
+        parent=imp, zmiany_potrzebne=False, confidence=STATUS_RECZNY
+    )
+    klasa, ikona, etykieta = row.confidence_badge
+    assert ikona == "fi-pencil"
+    assert "użytkownika" in etykieta
+    assert "twardy" not in etykieta
 
 
 @pytest.mark.django_db

@@ -24,9 +24,11 @@ from import_common.exceptions import BPPDatabaseError
 from import_common.forms import ExcelDateField
 from import_common.models import ImportRowMixin
 from import_pracownikow.pewnosc import (
+    CONFIDENCE_CHOICES,
     STATUS_BRAK,
     STATUS_CHOICES,
     STATUS_DISPLAY,
+    STATUS_RECZNY,
     STATUS_TWARDY,
     STATUS_WIELU,
     STATUS_ZGADYWANIE,
@@ -365,6 +367,7 @@ class ImportPracownikow(LiveOperation):
         ``Count`` — bez N+1."""
         liczniki = {
             STATUS_TWARDY: 0,
+            STATUS_RECZNY: 0,
             STATUS_ZGADYWANIE: 0,
             STATUS_WIELU: 0,
             STATUS_BRAK: 0,
@@ -469,7 +472,7 @@ class ImportPracownikowRow(ImportRowMixin, models.Model):
     pominiety_bo_nieaktualny = models.BooleanField(default=False)
 
     confidence = models.CharField(  # noqa: DJ001
-        max_length=20, choices=STATUS_CHOICES, null=True, blank=True
+        max_length=20, choices=CONFIDENCE_CHOICES, null=True, blank=True
     )
     korekta_uzytkownika = models.JSONField(default=dict, blank=True)
     wybrany_kandydat = models.ForeignKey(

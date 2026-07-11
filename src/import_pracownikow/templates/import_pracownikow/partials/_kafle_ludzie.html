@@ -7,6 +7,7 @@
         <h3><span class="fi-torso"></span> Ludzie z XLS</h3>
         <p>
             {{ liczniki_ludzi.twardy }} pewnych ·
+            {% if liczniki_ludzi.reczny %}{{ liczniki_ludzi.reczny }} ręcznych · {% endif %}
             {{ liczniki_ludzi.zgadywanie }} luźnych ·
             {{ ludzie_do_akceptacji }} do akceptacji
         </p>
