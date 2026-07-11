@@ -17,13 +17,16 @@ from djangoql.serializers import SuggestionsAPISerializer
 from djangoql.views import SuggestionsAPIView
 
 from bpp.const import GR_WPROWADZANIE_DANYCH
-from bpp.djangoql_schema import BppQLSchema
+from bpp.djangoql_schema import BppQLSchemaOgraniczony
 from bpp.models import Autor
 from bpp.models.cache import Rekord
 
 # Alias zgodności: schemat przeniesiony do bpp.djangoql_schema (wspólny trzon
 # dla widoku i adminów). Widok i testy odwołują się do BppZapytanieSchema.
-BppZapytanieSchema = BppQLSchema
+# Widok „Szukaj zapytaniem" używa ograniczonego (allow-lista) schematu —
+# autocomplete/zapytania tylko po modelach bibliograficznych. Adminy zostają
+# na pełnym BppQLSchema.
+BppZapytanieSchema = BppQLSchemaOgraniczony
 
 MODEL_REKORD = "rekord"
 MODEL_AUTOR = "autor"
