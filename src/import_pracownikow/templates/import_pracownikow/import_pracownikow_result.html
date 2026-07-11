@@ -9,21 +9,18 @@
 {# częściowy import nie udawał pełnego sukcesu (uwaga reviewera #3). #}
 <div class="panel callout {% if byl_dry_run %}secondary{% elif wymaga_uwagi %}warning{% else %}success{% endif %}">
     {% if byl_dry_run %}
-        {# Analiza (dry-run) gotowa. NIE pokazujemy komunikatu-podglądu — od razu #}
-        {# przechodzimy na hub szczegółów, który prowadzi przez Krok 1 (struktura) #}
-        {# → Krok 2 (osoby). Skrypt przenosi automatycznie; link to fallback dla #}
-        {# no-JS oraz gdyby OOB-swap nie wykonał skryptu. #}
+        {# Analiza (dry-run) gotowa. Auto-przejście na hub szczegółów (Krok 1 → #}
+        {# Krok 2) robi teraz liveops przez ImportPracownikow.get_success_url() #}
+        {# — inline <script> tu NIE działał (liveops wstrzykuje wynik przez #}
+        {# DOMParser+replaceWith, taki <script> jest „already started"). Panel #}
+        {# + link zostają jako fallback dla no-JS / gdyby push „finished" nie #}
+        {# dotarł. #}
         <h3><span class="fi-check"></span> Analiza zakończona</h3>
         <p>Przechodzę do szczegółów importu…</p>
         <a href="{% url 'import_pracownikow:przeglad' operation.pk %}"
-           class="button">
+           class="button primary">
             <span class="fi-list"></span> Zobacz szczegóły
         </a>
-        <script>
-            window.location.assign(
-                "{% url 'import_pracownikow:przeglad' operation.pk %}"
-            );
-        </script>
     {% elif zakres == "jednostki" or zakres == "struktura" %}
         {# Krok 1 gotowy: struktura zapisana, osoby czekają na Krok 2 (na hubie). #}
         <h3><span class="fi-check"></span> Struktura zapisana</h3>
