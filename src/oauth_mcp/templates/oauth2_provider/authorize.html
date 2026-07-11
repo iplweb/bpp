@@ -16,7 +16,7 @@
     </ul>
     <form method="post" action="{% url 'oauth2_provider:authorize' %}">
       {% csrf_token %}
-      {% for field in form %}{{ field }}{% endfor %}
+      {% for field in form %}{% if field.is_hidden %}{{ field }}{% endif %}{% endfor %}
       <button type="submit" class="button alert" name="allow" value="">
         {% trans "Odmów" %}
       </button>
