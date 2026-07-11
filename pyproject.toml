@@ -158,6 +158,7 @@ dependencies = [
     "mozilla-django-oidc>=5.0.2,<6",
     "babel>=2.17",
     "django-liveops[celery]>=0.3,<0.4",
+    "django-oauth-toolkit==3.3.0",
 ]
 
 [project.optional-dependencies]

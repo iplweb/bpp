@@ -416,6 +416,7 @@ dependencies = [
     { name = "django-model-utils", marker = "platform_python_implementation != 'PyPy'" },
     { name = "django-mptt", marker = "platform_python_implementation != 'PyPy'" },
     { name = "django-multiseek", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "django-oauth-toolkit", marker = "platform_python_implementation != 'PyPy'" },
     { name = "django-password-policies-iplweb", marker = "platform_python_implementation != 'PyPy'" },
     { name = "django-pg-baseline", marker = "platform_python_implementation != 'PyPy'" },
     { name = "django-polish-inflection", marker = "platform_python_implementation != 'PyPy'" },
@@ -599,6 +600,7 @@ requires-dist = [
     { name = "django-model-utils", specifier = "==5.0.0" },
     { name = "django-mptt", specifier = ">=0.16,<1" },
     { name = "django-multiseek", specifier = "==0.10.2" },
+    { name = "django-oauth-toolkit", specifier = "==3.3.0" },
     { name = "django-password-policies-iplweb", specifier = "==0.9.0" },
     { name = "django-pg-baseline", specifier = ">=0.3.0" },
     { name = "django-polish-inflection", specifier = ">=0.1,<0.2" },
@@ -2046,6 +2048,21 @@ wheels = [
 ]
 
 [[package]]
+name = "django-oauth-toolkit"
+version = "3.3.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "django", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "jwcrypto", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "oauthlib", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "requests", marker = "platform_python_implementation != 'PyPy'" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/62/2b/011f3e964f474b7814828586de0277ad373197096b28274d0ae8bf45d5f9/django_oauth_toolkit-3.3.0.tar.gz", hash = "sha256:2b375d14b1c0ff86e5df5e5de5d1a6d9868873304f54aca37c50158552d5b922", size = 118319, upload-time = "2026-05-29T18:13:57.065Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/26/e4/d05b3d50d0250f2d2f3a5dc9cd21f85e313ee1493ff60b729dccb8e08c46/django_oauth_toolkit-3.3.0-py3-none-any.whl", hash = "sha256:7af1365cd80735211454b0dca810bc9e860c631e61fd17768ad0fa331737954f", size = 88415, upload-time = "2026-05-29T18:13:55.827Z" },
+]
+
+[[package]]
 name = "django-password-policies-iplweb"
 version = "0.9.0"
 source = { registry = "https://pypi.org/simple" }
@@ -3100,6 +3117,19 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/9c/4b/6f8906aaf67d501e259b0adab4d312945bb7211e8b8d4dcc77c92320edaa/json5-0.14.0.tar.gz", hash = "sha256:b3f492fad9f6cdbced8b7d40b28b9b1c9701c5f561bef0d33b81c2ff433fefcb", size = 52656, upload-time = "2026-03-27T22:50:48.108Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/b8/42/cf027b4ac873b076189d935b135397675dac80cb29acb13e1ab86ad6c631/json5-0.14.0-py3-none-any.whl", hash = "sha256:56cf861bab076b1178eb8c92e1311d273a9b9acea2ccc82c276abf839ebaef3a", size = 36271, upload-time = "2026-03-27T22:50:47.073Z" },
+]
+
+[[package]]
+name = "jwcrypto"
+version = "1.5.8"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "cryptography", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "typing-extensions", marker = "platform_python_implementation != 'PyPy'" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/de/7e/53c14813521693e931e420d9db00efe317419ff194495903bce03402275e/jwcrypto-1.5.8.tar.gz", hash = "sha256:c3d7114b6f6e65b52f6b7da817eb8cb8423e1da31e1ef13508447c81ecbdcc34", size = 90772, upload-time = "2026-06-24T19:36:50.782Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/6e/7c/f87c5db042c4f7b4476346fc0d22f1025a777fee08eebde3720d3b9c4eb5/jwcrypto-1.5.8-py3-none-any.whl", hash = "sha256:85aeb475f808d56bbc2f2ed1f6f73e6a317c4011a4321505f02f0aed695a3742", size = 96133, upload-time = "2026-06-24T19:36:49.519Z" },
 ]
 
 [[package]]

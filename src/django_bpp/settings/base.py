@@ -455,6 +455,8 @@ INSTALLED_APPS = [
     "import_dyscyplin",
     "mptt",
     "rest_framework",
+    "oauth_mcp",
+    "oauth2_provider",
     "django_filters",
     "api_v1",
     "adminsortable2",
