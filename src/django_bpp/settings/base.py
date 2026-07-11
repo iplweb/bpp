@@ -507,6 +507,7 @@ INSTALLED_APPS = [
     "komparator_publikacji_pbn",
     "admin_dashboard",
     "importer_publikacji",
+    "import_sqlite",
     "django_pg_baseline",
 ]
 
