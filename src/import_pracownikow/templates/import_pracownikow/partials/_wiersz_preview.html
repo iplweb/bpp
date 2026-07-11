@@ -26,7 +26,7 @@
             {% if row.confidence == "wielu" %}
                 {# dropdown policzonych kandydatów — POST ustawia wybrany_kandydat #}
                 <form method="post"
-                      hx-post="{% url "import_pracownikow:wybierz-kandydata" pk=parent_object.pk row_pk=row.pk %}"
+                      hx-post="{% url "import_pracownikow:wybierz-kandydata" parent_object.pk row.pk %}"
                       hx-target="#wiersz-{{ row.pk }}"
                       hx-swap="outerHTML">
                     {% csrf_token %}
@@ -48,7 +48,7 @@
                     </a>
                     <div class="js-autor-picker" hidden>
                         <form method="post"
-                              hx-post="{% url "import_pracownikow:dopasuj-autora" pk=parent_object.pk row_pk=row.pk %}"
+                              hx-post="{% url "import_pracownikow:dopasuj-autora" parent_object.pk row.pk %}"
                               hx-target="#wiersz-{{ row.pk }}"
                               hx-swap="outerHTML"
                               hx-trigger="change">
@@ -68,7 +68,7 @@
                     </a>
                     <div class="js-autor-picker" hidden>
                         <form method="post"
-                              hx-post="{% url "import_pracownikow:dopasuj-autora" pk=parent_object.pk row_pk=row.pk %}"
+                              hx-post="{% url "import_pracownikow:dopasuj-autora" parent_object.pk row.pk %}"
                               hx-target="#wiersz-{{ row.pk }}"
                               hx-swap="outerHTML"
                               hx-trigger="change">
@@ -80,7 +80,7 @@
                 </div>
                 {# D2: checkbox „utwórz nowego autora" — zmiana → POST toggle #}
                 <form method="post"
-                      hx-post="{% url "import_pracownikow:utworz-nowego" pk=parent_object.pk row_pk=row.pk %}"
+                      hx-post="{% url "import_pracownikow:utworz-nowego" parent_object.pk row.pk %}"
                       hx-target="#wiersz-{{ row.pk }}"
                       hx-swap="outerHTML"
                       hx-trigger="change">
@@ -100,7 +100,7 @@
                     </a>
                     <div class="js-autor-picker" hidden>
                         <form method="post"
-                              hx-post="{% url "import_pracownikow:dopasuj-autora" pk=parent_object.pk row_pk=row.pk %}"
+                              hx-post="{% url "import_pracownikow:dopasuj-autora" parent_object.pk row.pk %}"
                               hx-target="#wiersz-{{ row.pk }}"
                               hx-swap="outerHTML"
                               hx-trigger="change">
@@ -173,7 +173,7 @@
         {% if parent_object.stan == "przeanalizowany" and row.przepnij_dostepne %}
             {# opt-in przepięcia prac — POST toggluje przepnij_prace #}
             <form method="post"
-                  hx-post="{% url "import_pracownikow:przepnij-prace" pk=parent_object.pk row_pk=row.pk %}"
+                  hx-post="{% url "import_pracownikow:przepnij-prace" parent_object.pk row.pk %}"
                   hx-target="#wiersz-{{ row.pk }}"
                   hx-swap="outerHTML"
                   hx-trigger="change">
