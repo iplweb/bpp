@@ -32,7 +32,7 @@
                     {{ liczniki_jednostek.do_utworzenia }} do utworzenia ·
                     {{ liczniki_jednostek.do_sprawdzenia }} do sprawdzenia.
                     <a href="{% url "import_pracownikow:jednostki" parent_object.pk %}"
-                       class="button primary">Zweryfikuj jednostki</a>
+                       class="button success">Zweryfikuj jednostki</a>
                 </p>
             {% endif %}
             {# Dwa warianty struktury OBOK siebie (jeden formularz, name=zakres). #}
@@ -101,7 +101,7 @@
                         {{ liczniki_jednostek.do_sprawdzenia }} do sprawdzenia
                     </p>
                     <a href="{% url "import_pracownikow:jednostki" parent_object.pk %}"
-                       class="button primary">Zweryfikuj jednostki</a>
+                       class="button success">Zweryfikuj jednostki</a>
                 </div>
             </div>
         {% endif %}
@@ -115,7 +115,7 @@
                         {{ liczniki_tytulow.do_sprawdzenia }} do sprawdzenia
                     </p>
                     <a href="{% url "import_pracownikow:tytuly" parent_object.pk %}"
-                       class="button primary">Zweryfikuj tytuły</a>
+                       class="button success">Zweryfikuj tytuły</a>
                 </div>
             </div>
         {% endif %}
