@@ -52,6 +52,14 @@ class BibTeXProvider(DataProvider):
         return "Kod BibTeX"
 
     @property
+    def icon(self) -> str:
+        return "fi-page-multiple"
+
+    @property
+    def landing_caption(self) -> str:
+        return "Wklej kod BibTeX — jedną pracę lub wiele naraz."
+
+    @property
     def input_mode(self) -> str:
         return InputMode.TEXT
 

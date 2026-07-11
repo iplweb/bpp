@@ -200,6 +200,14 @@ class PBNProvider(DataProvider):
         return "PBN UID lub adres URL w repozytorium PBN"
 
     @property
+    def icon(self) -> str:
+        return "fi-shield"
+
+    @property
+    def landing_caption(self) -> str:
+        return "Pobierz dane z Polskiej Bibliografii Naukowej (PBN UID lub URL)."
+
+    @property
     def input_placeholder(self) -> str:
         return (
             "np. 5e709189878c28a04737dc6f"

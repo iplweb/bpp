@@ -2,6 +2,22 @@
 
 <div id="session-list-container">
 
+    {% if standalone %}
+        {# Widoczne tylko gdy ta lista jest SAMODZIELNĄ stroną (SessionListView) #}
+        {# — przy embedowaniu w kroku fetch (step_fetch.html) tego dublowania #}
+        {# linku "powrót do importera" nie chcemy, bo tam i tak już nim jesteśmy. #}
+        <p>
+            <a class="button tiny secondary"
+               href="{% url 'importer_publikacji:index' %}"
+               hx-get="{% url 'importer_publikacji:index' %}"
+               hx-target="#importer-wizard"
+               hx-push-url="true">
+                <span class="fi-arrow-left"></span>
+                Powrót do importera
+            </a>
+        </p>
+    {% endif %}
+
     <h5>Sesje importu</h5>
 
     <form id="session-filter-form"

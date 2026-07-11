@@ -101,6 +101,24 @@ class DataProvider(ABC):
     def input_help_text(self) -> str:
         return ""
 
+    @property
+    def icon(self) -> str:
+        """Klasa ikony Foundation Icons (bez kropki), np. ``fi-link``.
+
+        Używana na kaflu wyboru źródła na stronie głównej importera.
+        Domyślna ikona generycznej „strony" — providery nadpisują ją
+        czymś bardziej trafnym dla swojego źródła danych."""
+        return "fi-page"
+
+    @property
+    def landing_caption(self) -> str:
+        """Krótki podpis „co i skąd" pod kaflem wyboru źródła.
+
+        Domyślnie to samo co ``input_help_text``, ale ten bywa długi/
+        techniczny (patrz BibTeX, WWW) — providery mogą nadpisać
+        zwięźlejszą, bardziej przystępną wersją."""
+        return self.input_help_text
+
     def split_input(self, text: str) -> list["SplitRecord"]:
         """Rozbij surowe wejście na pojedyncze rekordy.
 
@@ -154,5 +172,7 @@ def get_providers_metadata() -> dict[str, dict]:
             "input_mode": instance.input_mode,
             "input_placeholder": instance.input_placeholder,
             "input_help_text": instance.input_help_text,
+            "icon": instance.icon,
+            "landing_caption": instance.landing_caption,
         }
     return result

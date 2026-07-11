@@ -45,8 +45,10 @@ from .helpers import (
     SESSIONS_PARTIAL,
     STEP_DONE,
     STEP_FETCH,
+    STEP_LANDING,
     _fetch_context,
     _is_htmx_partial,
+    _landing_context,
     _push_url,
     _render_full_page,
     _sessions_list_context,
@@ -65,41 +67,59 @@ from .steps import (
 
 
 class SessionListView(ImporterPermissionMixin, View):
-    """Lista sesji z filtrami, sortowaniem i paginacją."""
+    """Lista sesji z filtrami, sortowaniem i paginacją.
+
+    Dostępna jako samodzielna strona (link z paska „importy w toku" na
+    kaflowej stronie głównej — patrz ``IndexView``) — stąd
+    ``standalone=True`` w kontekście, żeby partial doklejał link powrotny
+    (przy embedowaniu w kroku fetch tego klucza nie ma, więc link nie
+    dubluje się tam, gdzie i tak już jesteśmy na stronie importera).
+    """
 
     def get(self, request):
         ctx = _sessions_list_context(request)
+        ctx["standalone"] = True
         if _is_htmx_partial(request):
             return render(request, SESSIONS_PARTIAL, ctx)
-        # Fallback: pełna strona z formularzem fetch
-        fetch_ctx = _fetch_context(request=request)
-        fetch_ctx.update(ctx)
-        return _render_full_page(request, STEP_FETCH, fetch_ctx)
+        return _render_full_page(request, SESSIONS_PARTIAL, ctx)
 
 
 class IndexView(ImporterPermissionMixin, View):
-    """Strona główna importera."""
+    """Strona główna importera: kafelki dostawców danych albo (z parametrem
+    ``?provider=``) formularz pobrania danych od konkretnego dostawcy.
+
+    ``?provider=`` (opcjonalnie z ``?identifier=``) jest zachowane wstecznie
+    kompatybilnie — używają go istniejące linki z adminowych list zmian
+    (Wydawnictwo_Ciagle/Zwarte „Dodaj z CrossRef API") oraz przycisk
+    „Użyj importera" w adminie Zgłoszeń Publikacji. Kafle na stronie
+    głównej celują w ten sam parametr, więc kliknięcie kafla renderuje
+    dokładnie tę samą stronę co bezpośredni deep-link/refresh/Back.
+    """
 
     def get(self, request):
-        initial = {}
         if request.GET.get("provider"):
-            initial["provider"] = request.GET["provider"]
+            return self._get_fetch_form(request)
+        return self._get_landing(request)
+
+    def _get_fetch_form(self, request):
+        initial = {"provider": request.GET["provider"]}
         if request.GET.get("identifier"):
             initial["identifier"] = request.GET["identifier"]
-
-        if initial:
-            form = FetchForm(initial=initial)
-        else:
-            form = None
+        form = FetchForm(initial=initial)
 
         ctx = _fetch_context(form, request=request)
+        ctx.update(_sessions_list_context(request))
         if _is_htmx_partial(request):
-            ctx.update(_sessions_list_context(request))
             response = render(request, STEP_FETCH, ctx)
             return _with_breadcrumbs_oob(response, request)
-        sessions_ctx = _sessions_list_context(request)
-        ctx.update(sessions_ctx)
         return _render_full_page(request, STEP_FETCH, ctx)
+
+    def _get_landing(self, request):
+        ctx = _landing_context(request)
+        if _is_htmx_partial(request):
+            response = render(request, STEP_LANDING, ctx)
+            return _with_breadcrumbs_oob(response, request)
+        return _render_full_page(request, STEP_LANDING, ctx)
 
 
 def _hx_or_redirect(request, url):
@@ -1070,10 +1090,13 @@ class CancelView(ImporterPermissionMixin, View):
                 return response
             return HttpResponseRedirect(url)
 
+        # Wraca na kaflową stronę główną (bez ``?provider=``) — musi być
+        # ta sama treść, co przy zwykłym GET/refreshu tego samego URL-a
+        # (patrz IndexView._get_landing), inaczej Back/refresh po anulowaniu
+        # pokazywałby co innego niż to, co właśnie wypchnięto do historii.
         url = reverse("importer_publikacji:index")
-        ctx = _fetch_context(request=request)
+        ctx = _landing_context(request)
         ctx["cancelled"] = True
-        ctx.update(_sessions_list_context(request))
-        response = render(request, STEP_FETCH, ctx)
+        response = render(request, STEP_LANDING, ctx)
         response = _with_breadcrumbs_oob(response, request)
         return _push_url(response, url)
