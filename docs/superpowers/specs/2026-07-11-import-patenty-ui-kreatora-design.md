@@ -101,9 +101,10 @@ Odrzucone podejście B (osobny `PatentVerifyForm` + round-trip HTMX na przełąc
   - `wdrozenie` — `NullBooleanField(widget=NullBooleanSelect)` (model ma
     `BooleanField(null=True, default=None)` — „brak danych" ≠ „nie wdrożono";
     checkbox zgubiłby stan None, więc trój-stanowy select)
-  - `wydzial` — `ModelChoiceField(Jednostka.objects.all(),
-    widget=autocomplete.ModelSelect2(url="bpp:jednostka-autocomplete"))`
-    (autocomplete jak w istniejących formularzach)
+  - `wydzial` — `ModelChoiceField(Jednostka.objects.all(), required=False)`;
+    **widget renderowany ręcznie w szablonie** jako goły `<select data-url=
+    "bpp:jednostka-autocomplete">` + ręczna inicjalizacja select2 (NIE DAL-owy
+    `ModelSelect2` — patrz uwaga o hidden-div w sekcji szablonu)
 - **`rok`** — bez zmian (`required=True`, dotyczy wszystkich typów).
 
 ### `clean()` — walidacja warunkowa
@@ -120,9 +121,22 @@ Odrzucone podejście B (osobny `PatentVerifyForm` + round-trip HTMX na przełąc
 - Dwie grupy pól: **standardowa** (`charakter_formalny`, `typ_kbn`, `jezyk` +
   ewentualnie dotychczasowe podpowiedzi auto) i **patentowa** (8 pól). `rok`
   poza grupami (zawsze widoczny).
-- Pokazywanie/chowanie grup **JS-em** po zmianie radia (bez round-tripu). Pola
-  ukrytej grupy mają `required=False`, więc nie generują fałszywych błędów
-  walidacji.
+- Pokazywanie/chowanie grup **JS-em**. Toggle musi odpalić się **także na
+  load** (nie tylko `onchange`) — po błędzie walidacji bound form z radiem
+  PATENT musi od razu pokazać grupę patentową (WAŻNE r2). Pola ukrytej grupy
+  mają `required=False`, więc nie generują fałszywych błędów walidacji.
+- **`wydzial` (autocomplete) — uwaga na select2/HTMX/hidden-div (WAŻNE r2):**
+  `step_verify.html` dziś **nie ma** `{{ form.media }}` (w odróżnieniu od
+  `step_source.html`), a select2 inicjalizowany w `display:none` renderuje się
+  z szerokością 0 i grozi podwojeniem widżetu przy swapach HTMX (znany problem
+  projektu — patrz `helpers._is_htmx_partial`). Dlatego `wydzial` **nie**
+  używa DAL-owego `ModelSelect2` w tym kroku, tylko in-projektowego wzorca
+  ręcznej inicjalizacji gołego `<select data-url=...>` (jak `step_source.html`,
+  sekcja ~171–203): render zwykłego `<select>` z `data-url` na
+  `bpp:jednostka-autocomplete`, inicjalizacja select2 z `width:'100%'`
+  **po pokazaniu grupy patentowej** (init-on-show), z guardem przeciw podwójnej
+  inicjalizacji. (`ModelChoiceField` w Pythonie zostaje — chodzi tylko o widget
+  po stronie szablonu.)
 
 ## Przepływ — rozgałęzienia patent-aware
 
@@ -156,13 +170,18 @@ zestaw punktów patent-aware:
    `url 'importer_publikacji:source'`. Dla patentu Source jest pominięty —
    zrobić warunkowo: patent → `verify`, inaczej → `source`. Kontekst kroku
    Authors dostaje flagę `is_patent` (`_authors_context`).
-6. **Guardy widoków `SourceView` i `PbnCheckView`** (defense-in-depth):
-   `get`/`post` — gdy `session.rodzaj_rekordu == PATENT`, **przekieruj**
-   (HX-Redirect / redirect) na właściwy krok (Source→Verify albo Authors;
-   PBN→Punktacja albo Review) zamiast przetwarzać. Chroni przed bezpośrednim
-   GET-em URL-a, wznowieniem ze starego linku i replayem POST ze stale karty.
-   Bez tego `SourceView.post` zapisałby `zrodlo`+`status=SOURCE_MATCHED` na
-   sesji patentowej (korupcja).
+6. **Guardy widoków Source/PBN** (defense-in-depth): gdy `session.rodzaj
+   _rekordu == PATENT`, `get`/`post` **przekierowują** zamiast przetwarzać —
+   jednoznacznie `return _hx_or_redirect(request, session.get_continue_url())`
+   (helper już istnieje, `wizard.py:105`; `get_continue_url` po gałęzi
+   patentowej zwraca właściwy krok — Authors/Review). Objąć **wszystkie**
+   widoki tych kroków: `SourceView`, `PbnCheckView`, `PbnSelectView`,
+   `PbnClearView` (stale karta mogłaby POST-nąć `PbnSelectView` i wpisać
+   `pbn_mongo_id` po wyczyszczeniu — guard `_link_pbn_uid` i tak chroni create,
+   ale domykamy deklarowane „guardy widoków PBN"). Bez guardu `SourceView.post`
+   zapisałby `zrodlo`+`status=SOURCE_MATCHED` na sesji patentowej (korupcja).
+   Guard jest warunkowany `rodzaj_rekordu` — **nie** blokuje cofnięcia dla
+   nie-patentu.
 
 ## Toggle typu rekordu — czyszczenie stale stanu (KRYTYCZNE)
 
@@ -183,8 +202,10 @@ przełączenie na PATENT. Bez czyszczenia stale wartości powodują:
 
 - **W `VerifyView.post` gałąź PATENT:** wyczyść `session.zrodlo=None`,
   `wydawca=None`, `wydawnictwo_nadrzedne=None`,
-  `wydawnictwo_nadrzedne_w_pbn=None`, `matched_data.pop("pbn_mongo_id", None)`
-  (+ pokrewne klucze PBN: `pbn_url`, `pbn_mongo_id`).
+  `wydawnictwo_nadrzedne_w_pbn=None`, oraz z `matched_data` popnij
+  `pbn_mongo_id` i `wydawca_opis` (jedyne klucze zapisywane przez Source/PBN;
+  `pbn_url` NIE jest zapisywany do `matched_data` — do wyczyszczenia zostaje
+  tylko `pbn_mongo_id`).
 - **W `_create_publication` (twardy guard, niezależny od toggle):** wołaj
   `_link_pbn_uid(session, record)` **tylko gdy `rodzaj_rekordu != PATENT`**.
   To robust fix na wypadek dowolnej ścieżki, nie tylko toggle. Analogicznie
@@ -229,18 +250,26 @@ parsuje je przez istniejące `_parse_iso_date`.
 
 ## Zmiany w `_create_patent`
 
-Rozszerzyć o odczyt **jawnych** wartości operatora (mają pierwszeństwo nad
-best-effort z fundamentu):
+`_create_patent` czyta **wyłącznie jawne** wartości z `normalized_data`
+(ustawiane przez `VerifyView.post` — Verify jest zawsze wykonywany przed
+create na ścieżce patentu). Best-effort dopasowanie po nazwie (`patent_type`)
+przenosi się **do prefillu Verify**, NIE do create — inaczej operator, który
+świadomie wyczyścił dropdown, dostałby wskrzeszoną wartość (WAŻNE r2):
 
-- `rodzaj_prawa`: gdy `normalized_data.get("rodzaj_prawa_id")` ustawione →
-  `Rodzaj_Prawa_Patentowego.objects.filter(pk=...).first()`; inaczej fallback
-  do dotychczasowego `_resolve_rodzaj_prawa(patent_type)` (po nazwie).
-- `wdrozenie`: `normalized_data.get("wdrozenie")` (bool | None).
-- `wydzial`: gdy `normalized_data.get("wydzial_id")` → `Jednostka.objects
+- `rodzaj_prawa`: `normalized_data.get("rodzaj_prawa_id")` → `Rodzaj_Prawa
+  _Patentowego.objects.filter(pk=...).first()` (None gdy klucz None/brak).
+  **Bez** fallbacku do `patent_type` w create.
+- `wdrozenie`: `normalized_data.get("wdrozenie")` (bool | None — `None` = nie
+  ustawiaj; `NullBooleanField` zachowuje rozróżnienie None/False w JSON).
+- `wydzial`: `normalized_data.get("wydzial_id")` → `Jednostka.objects
   .filter(pk=...).first()`.
 
-Uprawniony (`informacje`) — logika bez zmian (fundament już wrzuca „Uprawniony:
-X"); wartość pochodzi teraz z edytowalnego pola, nie tylko z BibTeX.
+Uprawniony (`informacje`) — fundament wrzuca „Uprawniony: X"; wartość pochodzi
+teraz z edytowalnego pola. **Jurysdykcja** (`normalized_data["jurisdiction"]`,
+z biblatex `location`) — fundament ją wyciąga, ale nikt nie zapisywał (cichy
+data-drop, WAŻNE r2): dopisać do `informacje` analogicznie („Kraj: X") gdy
+obecna, żeby dane ze źródła nie ginęły. `jurisdiction` nie dostaje osobnego
+pola formularza (model nie ma takiego pola) — traktujemy jak uprawnionego.
 
 Dodatkowo do listy odfiltrowywanych kluczy `common_fields` dopisać **`tytul`**:
 `_create_publication` dokłada `common_fields["tytul"]` gdy istnieje
@@ -251,11 +280,24 @@ przekazanie rzuciłoby `TypeError`. Dziś martwe dla BibTeX (brak
 ## Prefill kroku Verify (patent)
 
 `steps.py::_verify_context`: gdy `form is None` i `rodzaj_rekordu == PATENT`,
-initial buduj z `normalized_data`: `numer_zgloszenia=patent_number`,
-`data_zgloszenia=filing_date`, `numer_prawa_wylacznego=patent_grant_number`,
-`data_decyzji=grant_date`, `uprawniony=patent_holder`, `rodzaj_prawa` =
-best-effort `_resolve_rodzaj_prawa(patent_type)` (po nazwie), `rok=year`,
-`rodzaj_rekordu=PATENT`. `wdrozenie`/`wydzial` bez prefillu (BibTeX ich nie ma).
+initial buduj z `normalized_data`. Prefill musi czytać **najpierw jawne klucze
+zapisane przez poprzedni submit**, z fallbackiem na wartości BibTeX — inaczej
+powrót do Verify po pierwszym zapisie nadpisze wybory operatora pustymi (WAŻNE
+r2):
+
+- `numer_zgloszenia=patent_number`, `data_zgloszenia=filing_date`,
+  `numer_prawa_wylacznego=patent_grant_number`, `data_decyzji=grant_date`,
+  `uprawniony=patent_holder`, `rok=year`, `rodzaj_rekordu=PATENT` — te używają
+  tych samych kluczy przy POST i prefillu, więc round-trip zachowuje wartość.
+- `rodzaj_prawa`: `normalized_data.get("rodzaj_prawa_id")` gdy obecny (nawet
+  `None` = operator wyczyścił → puste); **tylko gdy klucz nieobecny** (pierwsze
+  wejście) fallback do best-effort `_resolve_rodzaj_prawa(patent_type)`.
+- `wdrozenie`: `normalized_data.get("wdrozenie")` gdy klucz obecny; inaczej
+  puste (BibTeX go nie ma).
+- `wydzial`: `normalized_data.get("wydzial_id")` gdy obecny; inaczej puste.
+
+Kluczowe rozróżnienie: „klucz nieobecny" (pierwszy raz — dozwolony best-effort)
+vs „klucz obecny z `None`" (operator świadomie wyczyścił — uszanuj puste).
 
 Dla nie-patentu initial jak dziś, plus `rodzaj_rekordu` = `ZWARTE` gdy
 `jest_wydawnictwem_zwartym` (z sesji lub z mappera CrossRef), inaczej `CIAGLE`.
@@ -269,21 +311,30 @@ ImportSession.RodzajRekordu.PATENT`. Jedyny auto-set; wszystko inne pozostaje
 jest typem CrossRef), więc `charakter_formalny`/`jest_wydawnictwem_zwartym` nie
 są auto-ustawiane — operator zobaczy patentowy Verify.
 
-## Create — PBN (guardy, review r1)
+## Create — guardy modelowe (review r1 + r2)
 
-Patenty **nie** trafiają do PBN. Trzy miejsca wymagają guardu:
+`_create_publication` woła kilka helperów zakładających model `Wydawnictwo_*`.
+Patent (`bpp.Patent`) odstaje — cztery miejsca wymagają guardu:
 
-1. **`_create_publication` → `_link_pbn_uid`**: wołać **tylko gdy
-   `rodzaj_rekordu != PATENT`**. `Patent` nie ma pola `pbn_uid` — bez guardu
-   stale `pbn_mongo_id` (scenariusz toggle) wywala create task. To nadrzędny,
-   robust fix (nie polega na czyszczeniu stanu przy toggle).
-2. **`CreateView.post` → `also_pbn`**: `also_pbn = "_create_and_pbn" in
+1. **`_link_pbn_uid`** (PBN): wołać **tylko gdy `rodzaj_rekordu != PATENT`**.
+   `Patent` nie ma pola `pbn_uid` — bez guardu stale `pbn_mongo_id` (toggle)
+   wywala create task. Nadrzędny, robust fix.
+2. **`_create_streszczenia`** (BLOKER r2): wołać **tylko gdy `rodzaj_rekordu
+   != PATENT`**. Funkcja robi `record.streszczenia.create(...)`, a related
+   name `streszczenia` istnieje **wyłącznie** na `Wydawnictwo_Ciagle/Zwarte` —
+   `Patent` go nie ma. BibTeX czyta `abstract` też dla `@patent` (typowy
+   eksport Zotero), `_store_normalized_data` buduje `abstracts` → bez guardu
+   `@patent` z abstraktem = `AttributeError` w create. (Streszczenia patentu są
+   poza zakresem — model ich nie wspiera.)
+3. **`CreateView.post` → `also_pbn`**: `also_pbn = "_create_and_pbn" in
    request.POST and session.rodzaj_rekordu != PATENT`. Chroni przed replayem
-   POST ze starej karty / ręcznym POST — bez tego patent poszedłby do
-   `_enqueue_pbn_export`, którego dla patentu nie ma.
-3. **`step_review.html`**: przycisk „Zapisz i wyślij do PBN"
+   POST ze starej karty / ręcznym POST.
+4. **`step_review.html`**: przycisk „Zapisz i wyślij do PBN"
    (`name="_create_and_pbn"`) renderowany tylko gdy `show_save_and_pbn` —
    `_review_context` nie ustawia go dla patentu, więc przycisk znika.
+
+`uzupelnij_punktacje_z_zrodla` jest już strzeżone `if session.zrodlo` — z
+wyczyszczonym `zrodlo` (toggle) nie odpali; guard pozostaje.
 
 ## Review — render dla patentu (`step_review.html`)
 
@@ -299,6 +350,12 @@ Zmiany:
   rozwiązane FK. Bloki źródła/wydawcy/PBN nie renderują się dla patentu (brak
   `zrodlo`/`wydawca`/`show_save_and_pbn`).
 - `step_review.html` **wchodzi do plików do zmiany.**
+
+Kosmetyka (DROBNE r2): partiale mają zahardkodowane numery kroków w nagłówkach
+(„Krok 2/3/4/5"). Ścieżka patentu pomija „Krok 3" (Source), więc numeracja się
+rozjedzie (2 → 4). W dotykanych szablonach (`step_verify`, `step_authors`,
+`step_review`) zneutralizować nagłówki do form bez numerów (jak krok Punktacja/
+PBN, które już są bez-numerowe) zamiast łatać numerację warunkowo.
 
 ## Duplikaty — świadomość modelu `Patent`
 
@@ -346,6 +403,20 @@ ostrzegał o istniejącym rekordzie. Drobne, ale tanie i poprawne.
     `False` (nie gubi None jak checkbox).
 17. **Duplikat patentu:** ponowny `@patent` o istniejącym `tytul_oryginalny`
     → `_find_duplicates` zwraca istniejący `Patent`.
+18. **Patent z abstraktem (BLOKER r2):** `@patent` z polem `abstract` →
+    create **nie** wywala się na `record.streszczenia` (guard); `Patent`
+    powstaje, streszczenie pominięte.
+19. **Round-trip prefill:** operator ustawia `rodzaj_prawa`/`wdrozenie`/
+    `wydzial`, zapisuje (→ Authors), wraca do Verify → formularz pokazuje
+    zapisane wartości (nie best-effort/puste); ponowny submit ich nie gubi.
+20. **Wyczyszczenie `rodzaj_prawa`:** operator kasuje dropdown (był best-effort)
+    → po zapisie `rodzaj_prawa_id=None`; create tworzy `Patent` z
+    `rodzaj_prawa=None` (fallback po nazwie NIE wskrzesza wartości).
+21. **Grupa patentowa po błędzie walidacji:** bound form z `rodzaj_rekordu=
+    PATENT` i błędem → kontekst/HTML ma grupę patentową widoczną (toggle on
+    load).
+22. **Jurysdykcja:** `@patent` z `location` → `Patent.informacje` zawiera
+    „Kraj: …" (dane nie giną).
 
 ## Maszyna statusów (patent)
 
@@ -363,15 +434,18 @@ sesji w `SOURCE_MATCHED`/`PBN_CHECK`).
   warunkowa walidacja).
 - `src/importer_publikacji/views/wizard.py` — `VerifyView.post` (rozgałęzienie
   + czyszczenie stale stanu), `PunktacjaView.post` (patent→review),
-  `SourceView`/`PbnCheckView` (guardy przekierowania dla patentu),
+  `SourceView`/`PbnCheckView`/`PbnSelectView`/`PbnClearView` (guardy
+  przekierowania `_hx_or_redirect(get_continue_url())` dla patentu),
   `CreateView.post` (guard `also_pbn`).
 - `src/importer_publikacji/models.py` — `get_continue_url` (gałąź patentowa).
-- `src/importer_publikacji/views/steps.py` — `_verify_context` (prefill),
-  `_authors_context` (flaga `is_patent`), `_review_context` (PBN suppression +
-  back_step), `_oblicz_sugestie` (gałąź patent), `_find_duplicates` (Patent).
+- `src/importer_publikacji/views/steps.py` — `_verify_context` (prefill
+  round-trip-safe), `_authors_context` (flaga `is_patent`), `_review_context`
+  (PBN suppression + back_step), `_oblicz_sugestie` (gałąź patent),
+  `_find_duplicates` (Patent).
 - `src/importer_publikacji/views/publikacja.py` — `_create_patent`
-  (rodzaj_prawa_id/wdrozenie/wydzial_id + filtr `tytul`), `_create_publication`
-  (guard `_link_pbn_uid` dla patentu).
+  (rodzaj_prawa_id/wdrozenie/wydzial_id + jurysdykcja→informacje + filtr
+  `tytul`), `_create_publication` (guardy `_link_pbn_uid` i
+  `_create_streszczenia` dla patentu).
 - `src/importer_publikacji/tasks.py` — auto-set `rodzaj_rekordu=PATENT`.
 - `src/importer_publikacji/templates/.../partials/step_verify.html` — radio +
   grupy pól + JS show/hide.
