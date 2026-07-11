@@ -177,7 +177,16 @@ def test_commit_pomija_wiersz_gdy_recheck_nieaktualny(autor_jednostka_fixture):
     # "asystent" jest w danych referencyjnych (baseline) — używamy istniejącego
     # wpisu zamiast tworzyć nowy (uniqueness na "nazwa").
     funkcja = Funkcja_Autora.objects.get(nazwa="asystent")
-    aj = baker.make(Autor_Jednostka, autor=autor, jednostka=jednostka, funkcja=funkcja)
+    # podstawowe_miejsce_pracy=True: bez tego #4 (domyślnie import ustawia
+    # jednostkę jako podstawowe miejsce pracy) trzymałby wiersz jako „wymaga
+    # integracji" i recheck NIE pominąłby go jako nieaktualnego.
+    aj = baker.make(
+        Autor_Jednostka,
+        autor=autor,
+        jednostka=jednostka,
+        funkcja=funkcja,
+        podstawowe_miejsce_pracy=True,
+    )
     imp = baker.make(ImportPracownikow, stan=ImportPracownikow.STAN_ZATWIERDZONY)
     row = ImportPracownikowRow.objects.create(
         parent=imp,

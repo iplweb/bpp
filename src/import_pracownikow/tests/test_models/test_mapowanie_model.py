@@ -98,7 +98,16 @@ def test_brak_stanowiska_nie_kasuje_funkcji_przy_integracji():
     funkcja = baker.make(Funkcja_Autora)
     jednostka = baker.make(Jednostka)
     autor = baker.make(Autor)
-    aj = baker.make(Autor_Jednostka, autor=autor, jednostka=jednostka, funkcja=funkcja)
+    # podstawowe_miejsce_pracy=True izoluje test od #4 (domyślnie import ustawia
+    # jednostkę autora jako podstawowe miejsce pracy); tu sprawdzamy tylko, że
+    # brak stanowiska w pliku nie kasuje istniejącej funkcji.
+    aj = baker.make(
+        Autor_Jednostka,
+        autor=autor,
+        jednostka=jednostka,
+        funkcja=funkcja,
+        podstawowe_miejsce_pracy=True,
+    )
     row = baker.make(
         ImportPracownikowRow,
         autor=autor,

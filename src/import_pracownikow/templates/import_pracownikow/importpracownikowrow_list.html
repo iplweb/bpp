@@ -17,6 +17,11 @@
     </p>
     <h1>Import danych {{ parent_object.plik_xls.name }}</h1>
 
+    {# Ostrzeżenie #4 na stronie autorów+jednostek — tylko przed zapisem osób. #}
+    {% if parent_object.edytowalny_podglad %}
+        {% include "import_pracownikow/partials/_ostrzezenie_podstawowe_miejsce.html" %}
+    {% endif %}
+
     {% if parent_object.stan == "przeanalizowany" and parent_object.jednostki_do_decyzji.exists %}
         <div class="callout primary">
             {# link do ekranu weryfikacji jednostek do utworzenia / auto-dopasowanych #}

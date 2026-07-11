@@ -520,9 +520,16 @@ class ImportPracownikowRow(ImportRowMixin, models.Model):
     def _check_autor_jednostka_needs_update(self, dane):
         """Sprawdza czy powiązanie autor-jednostka wymaga aktualizacji."""
         aj = self.autor_jednostka
+        if aj is None:
+            # Wiersz z odroczoną jednostką (jednostka=None) nie ma AJ do
+            # zaktualizowania — nie ma też czego ustawić jako podstawowe miejsce
+            # pracy. Guard przed dostępem do atrybutów None (checki niżej łapią
+            # None dopiero przez short-circuit dane.get(...), a #4 primary nie).
+            return False
         checks = [
-            dane.get("data_zatrudnienia") is not None
-            and aj.rozpoczal_prace != dane["data_zatrudnienia"],
+            # #4: rozpoczęcie stemplujemy TYLKO gdy puste (data z pliku / importu)
+            # — integracja potrzebna, gdy plik niesie datę, a AJ jej nie ma.
+            dane.get("data_zatrudnienia") is not None and aj.rozpoczal_prace is None,
             dane.get("data_końca_zatrudnienia") is not None
             and aj.zakonczyl_prace != dane["data_końca_zatrudnienia"],
             self.funkcja_autora is not None and aj.funkcja != self.funkcja_autora,
@@ -531,6 +538,11 @@ class ImportPracownikowRow(ImportRowMixin, models.Model):
             self.wymiar_etatu is not None and aj.wymiar_etatu != self.wymiar_etatu,
             self.podstawowe_miejsce_pracy is not None
             and self.podstawowe_miejsce_pracy != aj.podstawowe_miejsce_pracy,
+            # #4: domyślnie import ustawia jednostkę autora jako podstawowe miejsce
+            # pracy — integracja potrzebna, gdy AJ jeszcze nim nie jest, a plik nie
+            # mówi jawnie „Podstawowe miejsce pracy"=NIE.
+            self.podstawowe_miejsce_pracy is not False
+            and not aj.podstawowe_miejsce_pracy,
         ]
         return any(checks)
 
@@ -575,13 +587,15 @@ class ImportPracownikowRow(ImportRowMixin, models.Model):
         aj = self.autor_jednostka
         dane = self.dane_bardziej_znormalizowane
 
-        if (
-            dane.get("data_zatrudnienia") is not None
-            and aj.rozpoczal_prace != dane["data_zatrudnienia"]
-        ):
-            aj.rozpoczal_prace = dane["data_zatrudnienia"]
+        # #4: rozpoczęcie pracy stemplujemy TYLKO gdy puste (nie nadpisujemy
+        # istniejącej daty). Priorytet: data zatrudnienia z pliku; w razie braku
+        # — data importu (dziś). Dawniej data z pliku nadpisywała istniejącą
+        # wartość — teraz jej nie ruszamy (decyzja usera, #4).
+        if aj.rozpoczal_prace is None:
+            nowa_data = dane.get("data_zatrudnienia") or timezone.localdate()
+            aj.rozpoczal_prace = nowa_data
             self.log_zmian["autor_jednostka"].append(
-                f"data zatrudnienia na {dane['data_zatrudnienia']}"
+                f"data rozpoczęcia pracy na {nowa_data}"
             )
 
         if (
@@ -614,20 +628,20 @@ class ImportPracownikowRow(ImportRowMixin, models.Model):
                 f"wymiar_etatu na {self.wymiar_etatu}"
             )
 
-        if (
-            self.podstawowe_miejsce_pracy is not None
-            and self.podstawowe_miejsce_pracy != aj.podstawowe_miejsce_pracy
-        ):
-            if not self.podstawowe_miejsce_pracy:
+        # #4: domyślnie KAŻDY zaimportowany wiersz ustawia swoją jednostkę jako
+        # podstawowe miejsce pracy autora — ustaw_podstawowe_miejsce_pracy()
+        # (+ trigger) zdejmuje flagę z pozostałych AJ tego autora. Kolumna
+        # „Podstawowe miejsce pracy"=NIE w pliku (self.podstawowe_miejsce_pracy is
+        # False) wyłącza to dla danego wiersza; brak kolumny (None) = domyślnie TAK.
+        if self.podstawowe_miejsce_pracy is False:
+            if aj.podstawowe_miejsce_pracy is not False:
                 aj.podstawowe_miejsce_pracy = False
                 self.log_zmian["autor_jednostka"].append(
                     "podstawowe_miejsce_pracy -> nie"
                 )
-            else:
-                aj.ustaw_podstawowe_miejsce_pracy()
-                self.log_zmian["autor_jednostka"].append(
-                    "podstawowe_miejsce_pracy -> tak"
-                )
+        elif not aj.podstawowe_miejsce_pracy:
+            aj.ustaw_podstawowe_miejsce_pracy()
+            self.log_zmian["autor_jednostka"].append("podstawowe_miejsce_pracy -> tak")
 
         # Autor_Jednostka.clean() waliduje rozpoczal < zakonczyl, ale Model.save()
         # NIE woła clean() (uwaga reviewera #4). Bronimy niezmiennika tutaj — na
