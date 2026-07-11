@@ -14,8 +14,9 @@
             Przetworzono wierszy: <strong>{{ total }}</strong>,
             do zmiany: <strong>{{ zmiany_potrzebne }}</strong>.
         </p>
-        <p>To był <strong>podgląd</strong> (dry-run) — nic nie zapisano do
-            bazy. Zatwierdź poniżej, żeby zapisać zmiany do bazy danych.</p>
+        <p>To był <strong>podgląd</strong> (przebieg „na sucho") — nic nie
+            zapisano do bazy. Zatwierdź poniżej, żeby zapisać zmiany do bazy
+            danych.</p>
         {# Progressive enhancement: hx-post wysyła żądanie htmx, które dziedziczy #}
         {# nagłówek X-CSRFToken z wrappera hx-headers host-page. To istotne, gdy #}
         {# panel wyniku został wypchnięty przez workera po WebSockecie (render bez #}

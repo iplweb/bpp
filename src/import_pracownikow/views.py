@@ -742,7 +742,27 @@ class WeryfikacjaJednostekView(GroupRequiredMixin, View):
             ImportPracownikowJednostka.DECYZJA_MAPUJ,
             ImportPracownikowJednostka.DECYZJA_POMIN,
         }
-        for dec in parent.jednostki_do_decyzji.all():
+        decyzje = list(parent.jednostki_do_decyzji.all())
+        # Walidacja: „mapuj na istniejącą" bez wskazanej jednostki docelowej to
+        # cicha pułapka — integracja zostawiłaby te wiersze niedopasowane.
+        # Alarmuj i NIE zapisuj, dopóki user nie wskaże celu.
+        bez_celu = [
+            dec.nazwa_zrodlowa
+            for dec in decyzje
+            if request.POST.get(f"dec_{dec.pk}_decyzja")
+            == ImportPracownikowJednostka.DECYZJA_MAPUJ
+            and not (request.POST.get(f"dec_{dec.pk}_wybrana") or "")
+        ]
+        if bez_celu:
+            messages.error(
+                request,
+                'Wybierz jednostkę docelową w kolumnie „Mapuj na" dla: '
+                + ", ".join(bez_celu),
+            )
+            return HttpResponseRedirect(
+                reverse("import_pracownikow:jednostki", kwargs={"pk": parent.pk})
+            )
+        for dec in decyzje:
             pref = f"dec_{dec.pk}_"
             decyzja = request.POST.get(pref + "decyzja")
             if decyzja in prawidlowe:
@@ -822,7 +842,26 @@ class WeryfikacjaTytulowView(GroupRequiredMixin, View):
             ImportPracownikowTytul.DECYZJA_MAPUJ,
             ImportPracownikowTytul.DECYZJA_POMIN,
         }
-        for dec in parent.tytuly_do_decyzji.all():
+        decyzje = list(parent.tytuly_do_decyzji.all())
+        # Walidacja jak przy jednostkach: „mapuj" bez wskazanego tytułu to cicha
+        # pułapka — alarmuj i nie zapisuj, dopóki user nie wskaże celu.
+        bez_celu = [
+            dec.nazwa_zrodlowa
+            for dec in decyzje
+            if request.POST.get(f"dec_{dec.pk}_decyzja")
+            == ImportPracownikowTytul.DECYZJA_MAPUJ
+            and not (request.POST.get(f"dec_{dec.pk}_wybrana") or "")
+        ]
+        if bez_celu:
+            messages.error(
+                request,
+                'Wybierz tytuł docelowy w kolumnie „Mapuj na" dla: '
+                + ", ".join(bez_celu),
+            )
+            return HttpResponseRedirect(
+                reverse("import_pracownikow:tytuly", kwargs={"pk": parent.pk})
+            )
+        for dec in decyzje:
             pref = f"dec_{dec.pk}_"
             decyzja = request.POST.get(pref + "decyzja")
             if decyzja in prawidlowe:

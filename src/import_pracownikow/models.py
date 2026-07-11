@@ -95,11 +95,17 @@ class ImportPracownikow(LiveOperation):
         if self.stan == self.STAN_ZMAPOWANY:
             from import_pracownikow.pipeline.analyze import analizuj
 
-            analizuj(self, p)
+            # Etap „Wczytywanie" (analiza/dry-run). `p.stage()` ustawia
+            # stage_states[name]=active→done, dzięki czemu klocki etapów w
+            # liveops podświetlają się na żywo (bez tego zostają „pending").
+            with p.stage("Wczytywanie"):
+                analizuj(self, p)
         elif self.stan == self.STAN_ZATWIERDZONY:
             from import_pracownikow.pipeline.integrate import integruj
 
-            integruj(self, p)
+            # Etap „Integracja" (zapis do bazy).
+            with p.stage("Integracja"):
+                integruj(self, p)
         else:
             p.log(f"run() w nieoczekiwanym stanie: {self.stan!r} — pomijam")
 

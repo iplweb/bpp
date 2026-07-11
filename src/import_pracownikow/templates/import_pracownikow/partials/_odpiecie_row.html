@@ -7,7 +7,7 @@
         {% if parent_object.stan == "przeanalizowany" %}
             {# checkbox domyślnie ODZNACZONY; zmiana → POST toggluje zaznaczone #}
             <form method="post"
-                  hx-post="{% url "import_pracownikow:przelacz-odpiecie" pk=parent_object.pk odp_pk=odp.pk %}"
+                  hx-post="{% url 'import_pracownikow:przelacz-odpiecie' parent_object.pk odp.pk %}"
                   hx-target="#odpiecie-{{ odp.pk }}"
                   hx-swap="outerHTML"
                   hx-trigger="change">
@@ -15,7 +15,7 @@
                 <label>
                     <input type="checkbox" name="zaznaczone"
                            {% if odp.zaznaczone %}checked{% endif %}>
-                    <i class="fi-x"></i> odepnij
+                    odepnij
                 </label>
             </form>
         {% elif odp.wykonane %}

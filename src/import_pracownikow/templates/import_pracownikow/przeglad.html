@@ -20,8 +20,9 @@
     {% if moze_zatwierdzic %}
         {# CTA review-then-commit — ten sam endpoint co panel wyniku live. #}
         <div class="callout primary">
-            <p>Import jest przeanalizowany (dry-run). Sprawdź kafelki poniżej,
-                a gdy wszystko się zgadza — zapisz zmiany do bazy.</p>
+            <p>Import jest przeanalizowany (przebieg „na sucho" — nic jeszcze
+                nie zapisano). Sprawdź kafelki poniżej, a gdy wszystko się
+                zgadza — zapisz zmiany do bazy.</p>
             <form method="post"
                   action="{% url "import_pracownikow:zatwierdz" pk=parent_object.pk %}">
                 {% csrf_token %}
