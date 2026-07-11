@@ -5,7 +5,7 @@ from django import forms
 from django.conf import settings
 from django.core.serializers.json import DjangoJSONEncoder
 from django.db import DataError, models, transaction
-from django.db.models import JSONField, Q
+from django.db.models import Count, JSONField, Q
 from django.db.models.expressions import RawSQL
 from django.utils import timezone
 from liveops.models import LiveOperation
@@ -22,7 +22,14 @@ from bpp.models import (
 from import_common.exceptions import BPPDatabaseError
 from import_common.forms import ExcelDateField
 from import_common.models import ImportRowMixin
-from import_pracownikow.pewnosc import STATUS_CHOICES, STATUS_DISPLAY
+from import_pracownikow.pewnosc import (
+    STATUS_BRAK,
+    STATUS_CHOICES,
+    STATUS_DISPLAY,
+    STATUS_TWARDY,
+    STATUS_WIELU,
+    STATUS_ZGADYWANIE,
+)
 
 
 class JednostkaForm(forms.Form):
@@ -73,6 +80,13 @@ class ImportPracownikow(LiveOperation):
         help_text="Gdy zaznaczone, jednostki nieobecne w bazie (i bez bliskiego "
         "dopasowania) trafiają na ekran weryfikacji do utworzenia. Gdy "
         "odznaczone — wiersze bez dopasowanej jednostki są pomijane.",
+    )
+    tworz_brakujace_tytuly = models.BooleanField(
+        "Twórz brakujące tytuły",
+        default=True,
+        help_text="Gdy zaznaczone, tytuły nieobecne w bazie (i bez bliskiego "
+        "dopasowania) trafiają na ekran weryfikacji do utworzenia. Gdy "
+        "odznaczone — wiersze z niedopasowanym tytułem zostają bez tytułu.",
     )
 
     stages = ["Wczytywanie", "Integracja"]
@@ -245,6 +259,60 @@ class ImportPracownikow(LiveOperation):
             .distinct()
         )
 
+    def liczniki_ludzi_z_xls(self):
+        """Rozkład wierszy importu po statusie dopasowania autora
+        (``confidence``) — dane kafelka „Ludzie z XLS" na hubie.
+
+        Zwraca ``{"twardy","zgadywanie","wielu","brak"}``. **Koalescencja
+        ``confidence=None`` → ``"brak"``**: pole jest ``null=True`` i stare
+        wiersze (sprzed migracji 0013) mają ``None``; bez tego suma kafelka nie
+        równałaby się liczbie wierszy. Jeden ``values('confidence')`` +
+        ``Count`` — bez N+1."""
+        liczniki = {
+            STATUS_TWARDY: 0,
+            STATUS_ZGADYWANIE: 0,
+            STATUS_WIELU: 0,
+            STATUS_BRAK: 0,
+        }
+        for wiersz in self.importpracownikowrow_set.values("confidence").annotate(
+            n=Count("id")
+        ):
+            klucz = wiersz["confidence"] or STATUS_BRAK
+            liczniki[klucz] = liczniki.get(klucz, 0) + wiersz["n"]
+        return liczniki
+
+    @staticmethod
+    def _liczniki_decyzji(queryset, tryb_brak, tryb_zgadywanie):
+        """Rozkład NIEROZSTRZYGNIĘTYCH decyzji (jednostek/tytułów) po ``tryb``:
+        ``brak`` → ``do_utworzenia``, ``zgadywanie`` → ``do_sprawdzenia``.
+        Wspólny rdzeń ``liczniki_jednostek``/``liczniki_tytulow`` (identyczny
+        kształt, różnią się tylko modelem i stałymi trybu)."""
+        liczniki = {"do_utworzenia": 0, "do_sprawdzenia": 0}
+        for wiersz in queryset.values("tryb").annotate(n=Count("id")):
+            if wiersz["tryb"] == tryb_brak:
+                liczniki["do_utworzenia"] += wiersz["n"]
+            elif wiersz["tryb"] == tryb_zgadywanie:
+                liczniki["do_sprawdzenia"] += wiersz["n"]
+        return liczniki
+
+    def liczniki_jednostek(self):
+        """``{"do_utworzenia","do_sprawdzenia"}`` z nierozstrzygniętych decyzji
+        o jednostkach (``utworzona__isnull=True``) — dane kafelka „Jednostki"."""
+        return self._liczniki_decyzji(
+            self.jednostki_do_decyzji.filter(utworzona__isnull=True),
+            ImportPracownikowJednostka.TRYB_BRAK,
+            ImportPracownikowJednostka.TRYB_ZGADYWANIE,
+        )
+
+    def liczniki_tytulow(self):
+        """``{"do_utworzenia","do_sprawdzenia"}`` z nierozstrzygniętych decyzji
+        o tytułach (``utworzony__isnull=True``) — dane kafelka „Tytuły"."""
+        return self._liczniki_decyzji(
+            self.tytuly_do_decyzji.filter(utworzony__isnull=True),
+            ImportPracownikowTytul.TRYB_BRAK,
+            ImportPracownikowTytul.TRYB_ZGADYWANIE,
+        )
+
 
 class ImportPracownikowRow(ImportRowMixin, models.Model):
     parent = models.ForeignKey(
@@ -286,6 +354,19 @@ class ImportPracownikowRow(ImportRowMixin, models.Model):
         Wymiar_Etatu, on_delete=models.CASCADE, null=True, blank=True
     )
     tytul = models.ForeignKey(Tytul, on_delete=models.SET_NULL, null=True)
+    tytul_status = models.CharField(  # noqa: DJ001
+        max_length=20, choices=STATUS_CHOICES, null=True, blank=True
+    )
+    zrodlo_tytulu = models.ForeignKey(
+        "ImportPracownikowTytul",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="wiersze_tytul",
+        help_text="Decyzja o źródłowym tytule (współdzielona przez wiersze o "
+        "tej samej nazwie). Wypełniona, gdy tytuł wymaga rozstrzygnięcia "
+        "(utworzenie / mapowanie / auto-dopasowanie).",
+    )
 
     zmiany_potrzebne = models.BooleanField()
 
@@ -343,7 +424,13 @@ class ImportPracownikowRow(ImportRowMixin, models.Model):
             v = dane.get(klucz_danych)
             if v is not None and str(v) != "" and getattr(a, atrybut_autora) != v:
                 return True
-        return self.tytul_id != a.tytul_id
+        # Import USTAWIA tytuł, nigdy go nie kasuje (spójne z ``_integrate_autor``,
+        # który ustawia ``a.tytul_id`` tylko przy ``self.tytul_id is not None``).
+        # Bez tego guardu utytułowany autor z pustym/niedopasowanym tytułem dawał
+        # ``zmiany_potrzebne=True`` + puste ``integrate()``.
+        if self.tytul_id is not None and self.tytul_id != a.tytul_id:
+            return True
+        return False
 
     def _check_autor_jednostka_needs_update(self, dane):
         """Sprawdza czy powiązanie autor-jednostka wymaga aktualizacji."""
@@ -692,6 +779,90 @@ class ImportPracownikowJednostka(models.Model):
     class Meta:
         verbose_name = "decyzja o jednostce (import pracowników)"
         verbose_name_plural = "decyzje o jednostkach (import pracowników)"
+        unique_together = (("parent", "nazwa_zrodlowa"),)
+        ordering = ["nazwa_zrodlowa"]
+
+    def __str__(self):
+        return f"{self.nazwa_zrodlowa} ({self.tryb} → {self.decyzja})"
+
+
+class ImportPracownikowTytul(models.Model):
+    """Decyzja o jednym UNIKALNYM (znormalizowanym) stringu tytułu z pliku,
+    którego nie da się dopasować dokładnie.
+
+    Mirror ``ImportPracownikowJednostka``, uproszczony — tytuł nie ma drzewa
+    ani wydziału. Deduplikowany po nazwie źródłowej (tytuły są współdzielone
+    przez wielu pracowników, więc jedna decyzja obsługuje wszystkie wiersze o
+    tej samej nazwie). Analiza wypełnia pola liczone
+    (``tryb``/``auto_tytul``/``auto_similarity``), użytkownik ustawia wybór
+    (``decyzja``/``wybrany_tytul``/``nazwa_do_utworzenia``/``skrot_do_utworzenia``)
+    na ekranie weryfikacji, integracja materializuje wynik do ``utworzony``.
+    """
+
+    TRYB_ZGADYWANIE = "zgadywanie"
+    TRYB_BRAK = "brak"
+    TRYB_CHOICES = [
+        (TRYB_ZGADYWANIE, "auto-dopasowanie (podobna nazwa)"),
+        (TRYB_BRAK, "brak dopasowania (do utworzenia)"),
+    ]
+
+    DECYZJA_AKCEPTUJ = "akceptuj"
+    DECYZJA_MAPUJ = "mapuj"
+    DECYZJA_POMIN = "pomin"
+    DECYZJA_CHOICES = [
+        (DECYZJA_AKCEPTUJ, "akceptuj (utwórz nowy / użyj auto-dopasowania)"),
+        (DECYZJA_MAPUJ, "mapuj na istniejący"),
+        (DECYZJA_POMIN, "pomiń (nie ustawiaj tytułu tym wierszom)"),
+    ]
+
+    parent = models.ForeignKey(
+        ImportPracownikow,
+        on_delete=models.CASCADE,
+        related_name="tytuly_do_decyzji",
+        verbose_name="import pracowników",
+    )
+    nazwa_zrodlowa = models.CharField("nazwa źródłowa", max_length=512)
+    tryb = models.CharField(max_length=20, choices=TRYB_CHOICES)
+    auto_tytul = models.ForeignKey(
+        "bpp.Tytul",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="+",
+        verbose_name="auto-dopasowany tytuł",
+    )
+    auto_similarity = models.FloatField("podobieństwo auto", null=True, blank=True)
+    nazwa_do_utworzenia = models.CharField(
+        "nazwa do utworzenia", max_length=512, blank=True, default=""
+    )
+    skrot_do_utworzenia = models.CharField(
+        "skrót do utworzenia", max_length=128, blank=True, default=""
+    )
+    decyzja = models.CharField(
+        max_length=20, choices=DECYZJA_CHOICES, default=DECYZJA_AKCEPTUJ
+    )
+    wybrany_tytul = models.ForeignKey(
+        "bpp.Tytul",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="+",
+        verbose_name="wybrany istniejący tytuł (mapuj)",
+    )
+    utworzony = models.ForeignKey(
+        "bpp.Tytul",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="+",
+        verbose_name="tytuł utworzony/rozstrzygnięty",
+        help_text="Ustawiane przez integrację. Guard idempotencji (restart / "
+        "podwójny commit nie duplikuje tytułów).",
+    )
+
+    class Meta:
+        verbose_name = "decyzja o tytule (import pracowników)"
+        verbose_name_plural = "decyzje o tytułach (import pracowników)"
         unique_together = (("parent", "nazwa_zrodlowa"),)
         ordering = ["nazwa_zrodlowa"]
 

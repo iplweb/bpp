@@ -33,10 +33,12 @@ from bpp.models import (
     Funkcja_Autora,
     Grupa_Pracownicza,
     Jednostka,
+    Tytul,
     Uczelnia,
     Wymiar_Etatu,
 )
 from import_common.core.jednostka import unikalny_skrot, zaproponuj_skrot
+from import_common.core.tytul import zaproponuj_skrot_tytulu
 from import_common.normalization import (
     normalize_funkcja_autora,
     normalize_grupa_pracownicza,
@@ -45,6 +47,7 @@ from import_common.normalization import (
 from import_pracownikow.models import (
     ImportPracownikow,
     ImportPracownikowJednostka,
+    ImportPracownikowTytul,
     wiersz_kwalifikuje_do_przepiecia,
 )
 from import_pracownikow.pewnosc import (
@@ -175,8 +178,8 @@ def _wykonaj_odpiecia(parent):
     1. **Para stała się parą Z PLIKU (G1).** Odpięcia materializują się w
        analizie, gdy wiersze ``wielu``/``brak`` mają ``autor=None`` — więc AJ
        PRAWDZIWEGO autora z pliku trafia na listę „spoza pliku". Gdy user potem
-       rozstrzygnie wiersz (``WybierzKandydataView``/``EdytujWierszView`` ustawia
-       ``row.autor``), zmaterializowane odpięcie ZOSTAJE. Gdyby je wykonać,
+       rozstrzygnie wiersz (``WybierzKandydataView``/``DopasujAutoraView``
+       ustawia ``row.autor``), zmaterializowane odpięcie ZOSTAJE. Gdyby je wykonać,
        zakończylibyśmy zatrudnienie pracownika, który JEST w pliku (korupcja).
        Dlatego przed wykonaniem sprawdzamy, czy para ``(autor_id, jednostka_id)``
        AJ jest teraz obecna w wierszach importu — jeśli tak, POMIJAMY (spójne z
@@ -324,10 +327,13 @@ def _przygotuj_nowego_autora(row, cache):
     jednostki (osobne AJ). Marker ``nowy_autor`` (i inkrement licznika w
     ``integruj``) tylko przy realnym create.
 
-    F5: ``EdytujWierszView`` waliduje TYLKO ``nazwisko`` (nie ``imię``), więc
-    korekta na samo nazwisko może zejść do ``brak`` z pustym ``imię``. Autora
-    bez imienia NIE tworzymy (``AutorForm`` wymaga obu) — wiersz zostaje
+    F5: wiersz ``brak`` z ``utworz_nowego=True`` może mieć puste ``imię`` —
+    dane z XLS przychodzą bez rozbicia imienia (inline-edycja rozbicia w UI już
+    NIE istnieje: ekran dopasowania autora zastąpił free-text). Autora bez
+    imienia NIE tworzymy (``AutorForm`` wymaga obu) — wiersz zostaje
     ``autor=None`` i wpada w istniejący licznik ``pominieto_niedopasowane``.
+    Guard ZOSTAJE jako defensywa, bo ``dane_znormalizowane['imię']`` bywa puste
+    u źródła.
 
     F4: create autora + ``odtworz_autor_jednostka`` + ``row.save`` w JEDNEJ
     ``transaction.atomic`` (per-wiersz). Bez tego, gdy ``row.save`` padnie, autor
@@ -499,10 +505,140 @@ def _rozstrzygnij_jednostki(parent, p):
     return utworzono
 
 
+def unikalny_skrot_tytulu(base, zajete=None):
+    """Zwraca skrót unikalny w tabeli ``Tytul`` ORAZ względem ``zajete`` (skróty
+    utworzone wcześniej w TYM SAMYM runie integracji — obrona przed kolizją
+    in-batch, gdy dwie różne nazwy dają tę samą bazę skrótu). Mirror
+    ``unikalny_skrot`` (jednostka.py:174) na ``Tytul.skrot`` (``unique=True``).
+    Kolizja → sufiks numeryczny (``dr``, ``dr2``, ``dr3``…), całość przycięta do
+    128 znaków (``Tytul.skrot.max_length``)."""
+    zajete = set(zajete or ())
+    base = (base or "").strip()[:128] or "TYT"
+
+    def wolny(s):
+        return s not in zajete and not Tytul.objects.filter(skrot=s).exists()
+
+    if wolny(base):
+        return base
+    i = 2
+    while True:
+        suf = str(i)
+        kand = base[: 128 - len(suf)] + suf
+        if wolny(kand):
+            return kand
+        i += 1
+
+
+def _rozstrzygnij_jeden_tytul(dec, zajete_nazwy, zajete_skroty, p):
+    """Zwraca ``(tytul|None, czy_utworzono_nowy)`` dla jednej decyzji o tytule.
+
+    Guard idempotencji: gdy ``utworzony`` już ustawione (restart / podwójny
+    commit) — używamy go. ``pomin`` → None. ``mapuj`` → wybrany (może być None →
+    wiersze bez tytułu). ``akceptuj``: ``zgadywanie`` → auto; ``brak`` → utwórz
+    (albo dołącz do istniejącego).
+
+    Tworzenie broni OBU pól ``unique=True`` na ``Tytul`` (``nazwa`` 512 ORAZ
+    ``skrot`` 128): ``nazwa_do_utworzenia`` jest edytowalna na ekranie decyzji,
+    więc case-insensitive re-match po nazwie tuż przed create chroni przed
+    duplikatem nazwy (wariant wielkości liter / drift bazy / druga decyzja z tą
+    samą edytowaną nazwą — pierwsza commituje w swojej transakcji, druga trafia
+    tu w istniejący). Pusta nazwa → fallback do ``nazwa_zrodlowa``. Skrót przez
+    ``unikalny_skrot_tytulu`` (sufiks przy kolizji). ``zajete_nazwy``/
+    ``zajete_skroty`` to zbiory in-batch (obrona przed kolizją w obrębie runu)."""
+    if dec.utworzony_id is not None:
+        return dec.utworzony, False
+
+    if dec.decyzja == ImportPracownikowTytul.DECYZJA_POMIN:
+        return None, False
+    if dec.decyzja == ImportPracownikowTytul.DECYZJA_MAPUJ:
+        return dec.wybrany_tytul, False
+    # DECYZJA_AKCEPTUJ
+    if dec.tryb == ImportPracownikowTytul.TRYB_ZGADYWANIE:
+        return dec.auto_tytul, False
+
+    # tryb BRAK → utwórz. Nazwa edytowalna → fallback na źródłową, gdy pusta.
+    nazwa = (dec.nazwa_do_utworzenia or "").strip() or (
+        dec.nazwa_zrodlowa or ""
+    ).strip()
+    nazwa = nazwa[:512]
+    # Re-match po nazwie (guard `Tytul.nazwa` unique) — łapie też istniejący
+    # wpis utworzony przez wcześniejszą decyzję tego samego runu (każda decyzja
+    # commituje we własnej transakcji przed kolejną).
+    istniejacy = Tytul.objects.filter(nazwa__iexact=nazwa).first()
+    if istniejacy is not None:
+        return istniejacy, False
+
+    baza_skrotu = dec.skrot_do_utworzenia or zaproponuj_skrot_tytulu(dec.nazwa_zrodlowa)
+    skrot = unikalny_skrot_tytulu(baza_skrotu, zajete_skroty)
+    nowy = Tytul.objects.create(nazwa=nazwa, skrot=skrot)
+    zajete_nazwy.add(nazwa)
+    zajete_skroty.add(skrot)
+    return nowy, True
+
+
+def _podlacz_wiersze_do_tytulow(parent):
+    """Ustawia ``row.tytul`` na rozstrzygnięty tytuł decyzji (ZAWSZE — faza
+    nowych autorów w ``integruj`` czyta ``row.tytul``) i — tylko dla wierszy z
+    już dopasowanym autorem i powiązaniem — przelicza ``zmiany_potrzebne``.
+
+    BLOCKER-guard (finding review): ``check_if_integration_needed()`` woła
+    ``getattr(self.autor, …)`` / ``self.autor_jednostka.…``, więc dla wierszy
+    ``wielu``/``brak`` (``autor``/``autor_jednostka`` None — codzienny przypadek,
+    gdy tytuł ma decyzję, a osoba jeszcze nie jest rozstrzygnięta) rzuciłby
+    ``AttributeError`` ubijający cały task liveops. Dlatego recheck robimy TYLKO
+    gdy oba FK są ustawione. Przeliczenie jest MONOTONICZNE (nie cofa
+    ``True→False``): ``bool(diff) or check() or dotychczasowe``."""
+    for row in parent.importpracownikowrow_set.filter(
+        zrodlo_tytulu__isnull=False
+    ).select_related("zrodlo_tytulu", "autor", "autor_jednostka"):
+        row.tytul = row.zrodlo_tytulu.utworzony
+        if row.autor_id is not None and row.autor_jednostka_id is not None:
+            row.zmiany_potrzebne = (
+                bool(row.diff_do_utworzenia)
+                or row.check_if_integration_needed()
+                or row.zmiany_potrzebne
+            )
+            row.save(update_fields=["tytul", "zmiany_potrzebne"])
+        else:
+            row.save(update_fields=["tytul"])
+
+
+def _rozstrzygnij_tytuly(parent, p):
+    """FAZA 0.5 integracji: rozstrzyga decyzje o tytułach (utwórz/auto/mapuj/
+    pomiń), tworzy brakujące i podłącza wiersze. Zwraca liczbę FAKTYCZNIE
+    utworzonych tytułów. Idempotentne (guard ``utworzony`` per decyzja).
+
+    Wołane zaraz PO ``_rozstrzygnij_jednostki`` i PRZED snapshotem
+    ``stare_jednostki`` oraz fazą nowych autorów — ``_przygotuj_nowego_autora`` /
+    ``_integrate_autor`` czytają ``row.tytul``/``tytul_id`` przy tworzeniu i
+    aktualizacji autora."""
+    zajete_nazwy = set()
+    zajete_skroty = set()
+    utworzono = 0
+
+    for dec in parent.tytuly_do_decyzji.all():
+        with transaction.atomic():
+            tytul, utworzono_nowy = _rozstrzygnij_jeden_tytul(
+                dec, zajete_nazwy, zajete_skroty, p
+            )
+            if tytul is not None and dec.utworzony_id != tytul.pk:
+                dec.utworzony = tytul
+                dec.save(update_fields=["utworzony"])
+        if utworzono_nowy:
+            utworzono += 1
+
+    _podlacz_wiersze_do_tytulow(parent)
+    return utworzono
+
+
 def integruj(parent, p):
     # FAZA 0: rozstrzygnij i utwórz brakujące jednostki, podłącz wiersze —
     # ZANIM policzymy snapshot i fazę nowych autorów (patrz docstring wyżej).
     utworzono_jednostek = _rozstrzygnij_jednostki(parent, p)
+
+    # FAZA 0.5: rozstrzygnij i utwórz brakujące tytuły, podłącz wiersze — zaraz
+    # po jednostkach i PRZED snapshotem/fazą autorów (autorzy czytają row.tytul).
+    utworzono_tytulow = _rozstrzygnij_tytuly(parent, p)
 
     # Snapshot starych jednostek PRZED integracją: trigger DB
     # `bpp_autor_ustaw_jednostka_aktualna` przestawi `aktualna_jednostka` na
@@ -576,6 +712,7 @@ def integruj(parent, p):
             "przepieto_prac": przepieto_prac,
             "utworzono_nowych_autorow": utworzono_nowych,
             "utworzono_jednostek": utworzono_jednostek,
+            "utworzono_tytulow": utworzono_tytulow,
             "stan": parent.stan,
         }
     )

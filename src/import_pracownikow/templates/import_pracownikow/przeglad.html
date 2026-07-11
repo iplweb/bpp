@@ -1,0 +1,102 @@
+{% extends "base.html" %}
+
+{% block extratitle %}
+    Import pracowników — przegląd {{ parent_object.plik_xls.name }}
+{% endblock %}
+
+{% block breadcrumbs %}
+    {{ block.super }}
+    <li><a href="{% url "import_pracownikow:index" %}">import pracowników</a></li>
+    <li class="current">przegląd importu</li>
+{% endblock %}
+
+{% block content %}
+    <h1>Przegląd importu</h1>
+    <p>
+        Plik: <strong>{{ parent_object.plik_xls.name }}</strong><br>
+        Stan: <span class="label secondary">{{ parent_object.get_stan_display }}</span>
+    </p>
+
+    {% if moze_zatwierdzic %}
+        {# CTA review-then-commit — ten sam endpoint co panel wyniku live. #}
+        <div class="callout primary">
+            <p>Import jest przeanalizowany (dry-run). Sprawdź kafelki poniżej,
+                a gdy wszystko się zgadza — zapisz zmiany do bazy.</p>
+            <form method="post"
+                  action="{% url "import_pracownikow:zatwierdz" pk=parent_object.pk %}">
+                {% csrf_token %}
+                <button type="submit" class="button">
+                    <span class="fi-save"></span> Zapisz do bazy
+                </button>
+            </form>
+        </div>
+    {% endif %}
+
+    <div class="row">
+        {% if pokaz_jednostki %}
+            <div class="medium-6 columns">
+                <div class="callout">
+                    <h3><span class="fi-marker"></span> Jednostki</h3>
+                    <p>
+                        {{ liczniki_jednostek.do_utworzenia }} do utworzenia ·
+                        {{ liczniki_jednostek.do_sprawdzenia }} do sprawdzenia
+                    </p>
+                    <a href="{% url "import_pracownikow:jednostki" pk=parent_object.pk %}"
+                       class="button small">Zweryfikuj jednostki</a>
+                </div>
+            </div>
+        {% endif %}
+
+        <div class="medium-6 columns">
+            <div class="callout">
+                <h3><span class="fi-torso"></span> Ludzie z XLS</h3>
+                <p>
+                    {{ liczniki_ludzi.twardy }} pewnych ·
+                    {{ liczniki_ludzi.zgadywanie }} luźnych ·
+                    {{ ludzie_do_akceptacji }} do akceptacji
+                </p>
+                {% if ludzie_do_akceptacji == 0 %}
+                    <p><span class="label success">
+                        <span class="fi-check"></span> gotowe
+                    </span></p>
+                {% endif %}
+                <a href="{% url "import_pracownikow:importpracownikow-results" pk=parent_object.pk %}"
+                   class="button small">Zobacz wiersze</a>
+            </div>
+        </div>
+
+        <div class="medium-6 columns">
+            <div class="callout">
+                <h3><span class="fi-link"></span> Ludzie spoza XLS</h3>
+                <p>
+                    {{ odpiecia_count }} powiązań spoza pliku
+                    (jednostki uczelni oprócz Obcej)
+                </p>
+                {% if ostrzezenie_odpiecia %}
+                    <div class="callout warning">
+                        {# wszystkie jednostki odroczone → lista może być zawyżona #}
+                        Uwaga: wszystkie jednostki z pliku są odroczone, więc
+                        lista powiązań spoza pliku może być zawyżona (wszystkie
+                        aktywne etaty uczelni zostały oznaczone).
+                    </div>
+                {% endif %}
+                <a href="{% url "import_pracownikow:odpiecia" pk=parent_object.pk %}"
+                   class="button small">Zobacz powiązania</a>
+            </div>
+        </div>
+
+        {% if pokaz_tytuly %}
+            <div class="medium-6 columns">
+                <div class="callout">
+                    <h3><span class="fi-crown"></span> Tytuły</h3>
+                    <p>
+                        {{ liczniki_tytulow.do_utworzenia }} do utworzenia ·
+                        {{ liczniki_tytulow.do_sprawdzenia }} do sprawdzenia
+                    </p>
+                    <a href="{% url "import_pracownikow:tytuly" pk=parent_object.pk %}"
+                       class="button small">Zweryfikuj tytuły</a>
+                </div>
+            </div>
+        {% endif %}
+    </div>
+{% endblock %}

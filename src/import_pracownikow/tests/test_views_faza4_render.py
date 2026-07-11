@@ -40,6 +40,8 @@ def test_render_checkbox_utworz_nowego_dla_brak(admin_client, admin_user):
 
 @pytest.mark.django_db
 def test_render_sekcja_odpiec_z_checkboxem(admin_client, admin_user):
+    # Sekcja odpięć przeniesiona z results do OdpieciaView (T2.3) — renderuje
+    # się teraz na podstronie `odpiecia`, nie na tabeli wierszy.
     imp = baker.make(
         ImportPracownikow,
         owner=admin_user,
@@ -48,7 +50,8 @@ def test_render_sekcja_odpiec_z_checkboxem(admin_client, admin_user):
     )
     aj = baker.make(Autor_Jednostka, autor__nazwisko="Odpinalski")
     ImportPracownikowOdpiecie.objects.create(parent=imp, autor_jednostka=aj)
-    resp = admin_client.get(_results_url(imp))
+    url = reverse("import_pracownikow:odpiecia", kwargs={"pk": imp.pk})
+    resp = admin_client.get(url)
     tresc = resp.content.decode("utf-8")
     assert "Odpinalski" in tresc
     assert 'name="zaznaczone"' in tresc

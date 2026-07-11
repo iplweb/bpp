@@ -1,5 +1,6 @@
 {# Partial pojedynczego wiersza podglądu — include w liście oraz zwracany #}
-{# po akcjach HTMX (wybór kandydata / edycja inline). #}
+{# po akcjach HTMX (wybór kandydata / dopasowanie autora). Kolumny Imiona / #}
+{# Nazwisko / Tytuł są READ-ONLY — pokazują dane z XLS-a bez edycji. #}
 <tr id="wiersz-{{ row.pk }}">
     <td>{{ row.nr_arkusza }}</td>
     <td>{{ row.nr_wiersza }}</td>
@@ -23,7 +24,7 @@
     <td>
         {% if parent_object.stan == "przeanalizowany" %}
             {% if row.confidence == "wielu" %}
-                {# dropdown kandydatów — POST ustawia wybrany_kandydat #}
+                {# dropdown policzonych kandydatów — POST ustawia wybrany_kandydat #}
                 <form method="post"
                       hx-post="{% url "import_pracownikow:wybierz-kandydata" pk=parent_object.pk row_pk=row.pk %}"
                       hx-target="#wiersz-{{ row.pk }}"
@@ -40,27 +41,43 @@
                         <i class="fi-check"></i> wybierz
                     </button>
                 </form>
-            {% endif %}
-            {# korekta rozbicia — POST ponawia match wiersza #}
-            <form method="post"
-                  hx-post="{% url "import_pracownikow:edytuj-wiersz" pk=parent_object.pk row_pk=row.pk %}"
-                  hx-target="#wiersz-{{ row.pk }}"
-                  hx-swap="outerHTML">
-                {% csrf_token %}
-                <input type="text" name="imiona"
-                       value="{{ row.dane_znormalizowane.imię }}"
-                       placeholder="imiona">
-                <input type="text" name="nazwisko"
-                       value="{{ row.dane_znormalizowane.nazwisko }}"
-                       placeholder="nazwisko">
-                <input type="text" name="tytul"
-                       value="{{ row.dane_znormalizowane.tytuł_stopień }}"
-                       placeholder="tytuł">
-                <button type="submit" class="button tiny secondary">
-                    <i class="fi-refresh"></i> popraw
-                </button>
-            </form>
-            {% if row.confidence == "brak" %}
+                {# poza policzonymi kandydatami: dopasuj do dowolnego autora #}
+                <div class="import-autor-zmien">
+                    <a href="#" class="js-zmien-autora">
+                        <i class="fi-torso"></i> inny autor…
+                    </a>
+                    <div class="js-autor-picker" hidden>
+                        <form method="post"
+                              hx-post="{% url "import_pracownikow:dopasuj-autora" pk=parent_object.pk row_pk=row.pk %}"
+                              hx-target="#wiersz-{{ row.pk }}"
+                              hx-swap="outerHTML"
+                              hx-trigger="change">
+                            {% csrf_token %}
+                            <select name="autor"
+                                    data-autocomplete-url="{% url "bpp:import-autor-autocomplete" %}"></select>
+                        </form>
+                    </div>
+                </div>
+            {% elif row.confidence == "brak" %}
+                {# brak dopasowania: dopasuj do istniejącego autora (leniwy #}
+                {# Select2) albo utwórz nowego (checkbox niżej). #}
+                <div class="import-autor-zmien">
+                    <a href="#" class="js-zmien-autora">
+                        <i class="fi-magnifying-glass"></i>
+                        Dopasuj do istniejącego autora
+                    </a>
+                    <div class="js-autor-picker" hidden>
+                        <form method="post"
+                              hx-post="{% url "import_pracownikow:dopasuj-autora" pk=parent_object.pk row_pk=row.pk %}"
+                              hx-target="#wiersz-{{ row.pk }}"
+                              hx-swap="outerHTML"
+                              hx-trigger="change">
+                            {% csrf_token %}
+                            <select name="autor"
+                                    data-autocomplete-url="{% url "bpp:import-autor-autocomplete" %}"></select>
+                        </form>
+                    </div>
+                </div>
                 {# D2: checkbox „utwórz nowego autora" — zmiana → POST toggle #}
                 <form method="post"
                       hx-post="{% url "import_pracownikow:utworz-nowego" pk=parent_object.pk row_pk=row.pk %}"
@@ -74,7 +91,76 @@
                         <i class="fi-plus"></i> utwórz nowego autora
                     </label>
                 </form>
+            {% else %}
+                {# twardy / zgadywanie: auto-autor jest już w kol. Autor — #}
+                {# dyskretny „zmień autora" rozwijający leniwy Select2 (override). #}
+                <div class="import-autor-zmien">
+                    <a href="#" class="js-zmien-autora">
+                        <i class="fi-pencil"></i> zmień autora
+                    </a>
+                    <div class="js-autor-picker" hidden>
+                        <form method="post"
+                              hx-post="{% url "import_pracownikow:dopasuj-autora" pk=parent_object.pk row_pk=row.pk %}"
+                              hx-target="#wiersz-{{ row.pk }}"
+                              hx-swap="outerHTML"
+                              hx-trigger="change">
+                            {% csrf_token %}
+                            <select name="autor"
+                                    data-autocomplete-url="{% url "bpp:import-autor-autocomplete" %}"></select>
+                        </form>
+                    </div>
+                </div>
             {% endif %}
+            {# Leniwy Select2 na autocomplete importu. Event-delegation #}
+            {# zarejestrowana RAZ (guard window.__bppImportAutorPicker), bo #}
+            {# partial jest powielany per wiersz i wstrzykiwany OOB przez #}
+            {# HTMX. Klik w „.js-zmien-autora" pokazuje kontener i inicjalizuje #}
+            {# Select2 dopiero na żądanie (tabela bez paginacji, setki wierszy #}
+            {# → nie chcemy setek widgetów na starcie). #}
+            <script>
+            (function () {
+                if (window.__bppImportAutorPicker) return;
+                window.__bppImportAutorPicker = true;
+
+                function initPicker(wrap) {
+                    var sel = wrap.querySelector("select[data-autocomplete-url]");
+                    if (!sel || sel.dataset.select2Init || !window.jQuery) return;
+                    sel.dataset.select2Init = "1";
+                    window.jQuery(sel).select2({
+                        width: "220px",
+                        ajax: {
+                            url: sel.dataset.autocompleteUrl,
+                            dataType: "json",
+                            delay: 250,
+                            data: function (params) { return {q: params.term}; },
+                            processResults: function (data) { return data; }
+                        },
+                        minimumInputLength: 2,
+                        placeholder: "Szukaj autora…",
+                        allowClear: true,
+                        language: "pl"
+                    });
+                }
+
+                document.addEventListener("click", function (e) {
+                    var toggle = e.target.closest(".js-zmien-autora");
+                    if (!toggle) return;
+                    e.preventDefault();
+                    var wrap = toggle.parentElement.querySelector(".js-autor-picker");
+                    if (!wrap) return;
+                    wrap.hidden = false;
+                    toggle.style.display = "none";
+                    initPicker(wrap);
+                });
+
+                document.body.addEventListener("htmx:afterSettle", function (e) {
+                    var scope = (e.detail && e.detail.target) || document;
+                    scope
+                        .querySelectorAll(".js-autor-picker:not([hidden])")
+                        .forEach(initPicker);
+                });
+            })();
+            </script>
         {% else %}
             {# Poza stanem „przeanalizowany" (np. „zintegrowany") pokazujemy #}
             {# audyt zmian — to JEDYNY widok log_zmian dla stanu po integracji. #}

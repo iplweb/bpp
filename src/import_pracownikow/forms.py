@@ -63,6 +63,14 @@ class MapowanieForm(forms.Form):
         "weryfikacji do utworzenia. Odznacz, aby pomijać wiersze bez dopasowanej "
         "jednostki.",
     )
+    tworz_brakujace_tytuly = forms.BooleanField(
+        required=False,
+        initial=True,
+        label="Twórz brakujące tytuły",
+        help_text="Gdy zaznaczone, tytuły nieobecne w bazie trafią na ekran "
+        "weryfikacji do utworzenia. Odznacz, aby pomijać niedopasowane tytuły "
+        "(nowi autorzy powstaną bez tytułu).",
+    )
 
     def __init__(self, *args, naglowki=None, initial_mapowanie=None, **kwargs):
         super().__init__(*args, **kwargs)

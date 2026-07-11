@@ -31,6 +31,12 @@
                     — <a href="{% url "import_pracownikow:mapowanie" pk=object.pk %}">
                         <i class="fi-arrow-right"></i> dokończ mapowanie kolumn
                     </a>
+                {% else %}
+                    {# link do huba „szczegóły importu" (NIE ruszamy #}
+                    {# get_absolute_url — to strona live liveops). #}
+                    — <a href="{% url "import_pracownikow:przeglad" pk=object.pk %}">
+                        <i class="fi-list"></i> przegląd
+                    </a>
                 {% endif %}
             </li>
         {% endfor %}

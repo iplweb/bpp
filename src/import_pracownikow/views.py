@@ -7,7 +7,6 @@ from django.db.models import (
     Count,
     IntegerField,
     Prefetch,
-    Q,
     Value,
     When,
 )
@@ -17,17 +16,17 @@ from django.urls import reverse
 from django.utils import timezone
 from django.utils.functional import cached_property
 from django.views import View
-from django.views.generic import FormView, ListView
+from django.views.generic import DetailView, FormView, ListView
 from liveops.views import CreateLiveOperationView, RestartView
 
 from bpp.models import (
+    Autor,
     Jednostka,
     Tytul,
     Uczelnia,
     Wydawnictwo_Ciagle_Autor,
     Wydawnictwo_Zwarte_Autor,
 )
-from import_common.core.autor import znajdz_kandydatow_autora
 from import_common.exceptions import HeaderNotFoundException
 from import_pracownikow.forms import MapowanieForm, NowyImportForm
 from import_pracownikow.mapping import dopasuj_profil
@@ -37,16 +36,14 @@ from import_pracownikow.models import (
     ImportPracownikowOdpiecie,
     ImportPracownikowRow,
     ImportPracownikowRowKandydat,
+    ImportPracownikowTytul,
     ProfilMapowania,
     wiersz_kwalifikuje_do_przepiecia,
 )
 from import_pracownikow.pewnosc import (
     STATUS_BRAK,
     STATUS_TWARDY,
-    STATUS_WIELU,
-    oblicz_status_pewnosci,
     odtworz_autor_jednostka,
-    wybierz_autora_z_kandydatow,
 )
 
 GROUP_REQUIRED = "wprowadzanie danych"
@@ -229,6 +226,9 @@ class MapowanieView(GroupRequiredMixin, FormView):
         obj.tworz_brakujace_jednostki = form.cleaned_data.get(
             "tworz_brakujace_jednostki", True
         )
+        obj.tworz_brakujace_tytuly = form.cleaned_data.get(
+            "tworz_brakujace_tytuly", True
+        )
         # on_restart() kasuje wiersze podglądu (stan==zmapowany) — inaczej
         # ponowna analiza by je zduplikowała.
         obj.on_restart()
@@ -237,7 +237,12 @@ class MapowanieView(GroupRequiredMixin, FormView):
         # (cancel_requested=True → natychmiastowe „cancelled").
         pola_liveops = obj.reset_liveops_state()
         obj.save(
-            update_fields=["mapowanie_kolumn", "stan", "tworz_brakujace_jednostki"]
+            update_fields=[
+                "mapowanie_kolumn",
+                "stan",
+                "tworz_brakujace_jednostki",
+                "tworz_brakujace_tytuly",
+            ]
             + pola_liveops
         )
 
@@ -311,6 +316,55 @@ class _WierszImportuMixin(_ImportPodgladMixin):
         )
 
 
+def _zwiaz_autora_z_wierszem(row, autor):
+    """Wiąże wiersz importu z WSKAZANYM autorem (ręczny wybór / override) i
+    przelicza powiązanie ``Autor_Jednostka`` + ``zmiany_potrzebne``. Wspólny
+    rdzeń ``WybierzKandydataView`` (wybór spośród policzonych kandydatów) i
+    ``DopasujAutoraView`` (dowolny autor z autocomplete).
+
+    - ustawia ``row.autor = autor`` PRZED liczeniem (``odtworz_autor_jednostka``
+      / ``check_if_integration_needed`` czytają ``self.autor``);
+    - **guard ``jednostka=None``**: wiersz z odroczoną jednostką NIE może wołać
+      ``odtworz_autor_jednostka`` — ta odłożyłaby AJ z ``jednostka=None`` do
+      ``diff_do_utworzenia`` → integracja (``_materializuj_diff``)
+      ``get_or_create(jednostka_id=None)`` → ``IntegrityError`` ubijający cały
+      task liveops. Mirror ``analyze._przetworz_wiersz`` (jednostka odroczona →
+      ``autor_jednostka=None``, zdejmij wpis AJ, ``zmiany_potrzebne=False``);
+    - ręczny wybór jest jednoznaczny → ``confidence = STATUS_TWARDY``,
+      ``utworz_nowego=False``, ``przepnij_prace=False`` (G2: zmiana autora
+      unieważnia opt-in przepięcia poprzedniego autora);
+    - zeruje ``wybrany_kandydat`` (``WybierzKandydataView`` przywraca je PO
+      helperze jako provenance wyboru spośród kandydatów).
+
+    Zapisuje wiersz KOMPLETNYM ``update_fields`` — bez zerowanych flag
+    (``utworz_nowego``/``przepnij_prace``/``wybrany_kandydat``) reset nie
+    trafiłby do bazy.
+    """
+    row.autor = autor
+    if row.jednostka_id is None:
+        row.diff_do_utworzenia.pop("autor_jednostka", None)
+        row.autor_jednostka = None
+        row.zmiany_potrzebne = False
+    else:
+        odtworz_autor_jednostka(row, autor)
+    row.confidence = STATUS_TWARDY
+    row.utworz_nowego = False
+    row.przepnij_prace = False
+    row.wybrany_kandydat = None
+    row.save(
+        update_fields=[
+            "autor",
+            "confidence",
+            "autor_jednostka",
+            "diff_do_utworzenia",
+            "zmiany_potrzebne",
+            "utworz_nowego",
+            "przepnij_prace",
+            "wybrany_kandydat",
+        ]
+    )
+
+
 class WybierzKandydataView(_WierszImportuMixin):
     """POST: ustaw wybranego kandydata dla wiersza ``wielu`` → materializuj
     ``row.autor`` i przelicz ``zmiany_potrzebne``. Zwraca partial wiersza."""
@@ -330,110 +384,34 @@ class WybierzKandydataView(_WierszImportuMixin):
             return HttpResponseBadRequest("Autor nie jest kandydatem tego wiersza.")
 
         autor = kandydat.autor
+        _zwiaz_autora_z_wierszem(row, autor)
+        # Provenance kandydata: helper wyzerował ``wybrany_kandydat`` na None,
+        # tu nadpisujemy go wybranym autorem (ślad, że wybór padł spośród
+        # policzonych kandydatów — nie override z autocomplete).
         row.wybrany_kandydat = autor
-        row.autor = autor
-        row.confidence = STATUS_TWARDY
-        # G2: zmiana autora unieważnia opt-in przepięcia poprzedniego autora.
-        row.przepnij_prace = False
-
-        # Materializacja autora MUSI odtworzyć powiązanie Autor_Jednostka tak
-        # jak faza analizy (analyze._przetworz_wiersz) I zdjąć ewentualny
-        # nieaktualny wpis diff od poprzedniego autora — inaczej integrate() →
-        # _integrate_autor_jednostka() zrobi aj.save() na None (AttributeError)
-        # albo utworzy AJ dla złego autora. `row.autor` jest ustawiony wyżej,
-        # więc helper może bezpiecznie wołać check_if_integration_needed().
-        odtworz_autor_jednostka(row, autor)
-        row.save(
-            update_fields=[
-                "wybrany_kandydat",
-                "autor",
-                "confidence",
-                "autor_jednostka",
-                "diff_do_utworzenia",
-                "zmiany_potrzebne",
-                "przepnij_prace",
-            ]
-        )
+        row.save(update_fields=["wybrany_kandydat"])
         return self._render_wiersz()
 
 
-def _rematch_wiersz(row, imiona, nazwisko, tytul):
-    """Ponawia dopasowanie autora dla skorygowanego wiersza (synchronicznie).
-    Nadpisuje confidence/autor/kandydatów, tytuł (FK) i dane_znormalizowane;
-    odtwarza Autor_Jednostka dla NOWEGO autora i przelicza zmiany_potrzebne.
-    Ścieżka bez ID (korekta dotyczy rozbicia nazwiska)."""
-    kandydaci = znajdz_kandydatow_autora(imiona, nazwisko)
-    status = oblicz_status_pewnosci(kandydaci, match_po_id=False)
-    autor = wybierz_autora_z_kandydatow(kandydaci, status)
+class DopasujAutoraView(_WierszImportuMixin):
+    """POST (HTMX): dopasuj wiersz do WSKAZANEGO autora BPP z autocomplete
+    ``import-autor-autocomplete`` — override dla ``twardy``/``zgadywanie``,
+    wybór dla ``brak``, „inny autor" dla ``wielu``. Wiąże ``row.autor`` i
+    przelicza jak ``WybierzKandydataView`` przez wspólny
+    ``_zwiaz_autora_z_wierszem`` (ustawia ``STATUS_TWARDY``).
 
-    dane = dict(row.dane_znormalizowane or {})
-    dane["imię"] = imiona
-    dane["nazwisko"] = nazwisko
-    if tytul:
-        dane["tytuł_stopień"] = tytul
-    else:
-        dane.pop("tytuł_stopień", None)
-    row.dane_znormalizowane = dane
-
-    # Korekta tytułu MUSI trafić do FK row.tytul — integracja czyta row.tytul_id
-    # (z analizy), nie JSON; bez tego do bazy poszedłby stary tytuł.
-    # G4: filter().first() (nie .get()) — wejście od usera; ten sam string bywa
-    # `nazwa` jednego tytułu i `skrot` innego (unique tylko osobno), więc .get()
-    # rzuciłby MultipleObjectsReturned (500). None gdy brak dopasowania.
-    if tytul:
-        row.tytul = Tytul.objects.filter(Q(nazwa=tytul) | Q(skrot=tytul)).first()
-    else:
-        row.tytul = None
-
-    row.korekta_uzytkownika = {
-        "imiona": imiona,
-        "nazwisko": nazwisko,
-        "tytul": tytul,
-    }
-    row.confidence = status
-    row.autor = autor
-    # G2: zmiana autora unieważnia opt-in przepięcia poprzedniego autora.
-    row.przepnij_prace = False
-    row.wybrany_kandydat = None
-
-    # Materializacja NOWEGO autora → PRZELICZ Autor_Jednostka od zera (nie ufaj
-    # staremu row.autor_jednostka od poprzedniego autora) przez wspólny helper,
-    # który ZAWSZE zdejmuje uśpiony wpis diff od poprzedniego autora. Bez AJ
-    # integrate() → _integrate_autor_jednostka() zrobiłby aj.save() na None
-    # (AttributeError). `row.autor` jest ustawiony wyżej.
-    if autor is None:
-        # brak/wielu po korekcie: też zdejmij uśpiony wpis AJ od poprzedniego
-        # autora (inaczej integracja utworzy AJ dla już-nie-autora wiersza),
-        # wyzeruj powiązanie, nic do integracji dopóki user nie rozstrzygnie.
-        row.diff_do_utworzenia.pop("autor_jednostka", None)
-        row.autor_jednostka = None
-        row.zmiany_potrzebne = False
-    else:
-        odtworz_autor_jednostka(row, autor)
-
-    row.save()
-    # zapisz_dla kasuje starych kandydatów i wstawia nowych; dla nie-wielu
-    # przekazujemy [] (tylko czyszczenie — wiersz zszedł z „wielu").
-    ImportPracownikowRowKandydat.zapisz_dla(
-        row, kandydaci if status == STATUS_WIELU else []
-    )
-
-
-class EdytujWierszView(_WierszImportuMixin):
-    """POST (HTMX): korekta rozbicia imiona/nazwisko/tytuł → zapis
-    ``korekta_uzytkownika`` + synchroniczny re-match → partial wiersza."""
+    ``autor`` (pk) walidowany ``get_object_or_404`` — przy ręcznym ajaxie
+    zamiast pk może przyjść tekst. Owner/superuser-scoped + bramka stanu
+    ``przeanalizowany`` (via ``_WierszImportuMixin``). Zwraca partial wiersza.
+    """
 
     def post(self, request, *args, **kwargs):
         blad = self._blad_jesli_nie_podglad()
         if blad is not None:
             return blad
         row = self.row
-        imiona = (request.POST.get("imiona") or "").strip()
-        nazwisko = (request.POST.get("nazwisko") or "").strip()
-        tytul = (request.POST.get("tytul") or "").strip()
-        if not nazwisko:
-            return HttpResponseBadRequest("Nazwisko jest wymagane.")
-        _rematch_wiersz(row, imiona, nazwisko, tytul)
+        autor = get_object_or_404(Autor, pk=request.POST.get("autor"))
+        _zwiaz_autora_z_wierszem(row, autor)
         return self._render_wiersz()
 
 
@@ -607,20 +585,94 @@ class ImportPracownikowResultsView(GroupRequiredMixin, ListView):
         )
 
     def get_context_data(self, **kwargs):
+        # Sekcja odpięć („Ludzie spoza XLS") żyje teraz w OSOBNYM widoku
+        # OdpieciaView (hub-podstrona) — tu jej NIE renderujemy.
         parent = self.parent_object
-        odpiecia = parent.odpiecia.select_related(
-            "autor_jednostka__autor",
-            "autor_jednostka__autor__tytul",
-            "autor_jednostka__jednostka",
-        )
         ctx = super().get_context_data(
             parent_object=parent,
-            odpiecia=odpiecia,
             **kwargs,
         )
         if parent.stan == ImportPracownikow.STAN_PRZEANALIZOWANY:
             oznacz_przepiecie_prac(list(ctx["object_list"]), parent)
         return ctx
+
+
+class PodgladImportuView(GroupRequiredMixin, DetailView):
+    """Hub „szczegóły importu" — landing z 2–4 kafelkami (Jednostki / Ludzie z
+    XLS / Ludzie spoza XLS / Tytuły) i skupionymi podstronami.
+
+    Nowy główny punkt wejścia „szczegóły importu" (z listy importów i panelu
+    wyniku live). Owner/superuser-scoped (jak ``ImportPracownikowResultsView``).
+    Kafelki Jednostki/Tytuły są WARUNKOWE (tylko gdy są decyzje do
+    rozstrzygnięcia); Ludzie z XLS / spoza XLS — zawsze."""
+
+    group_required = GROUP_REQUIRED
+    model = ImportPracownikow
+    template_name = "import_pracownikow/przeglad.html"
+    context_object_name = "parent_object"
+
+    def get_object(self, queryset=None):
+        obj = get_object_or_404(ImportPracownikow, pk=self.kwargs["pk"])
+        if obj.owner_id != self.request.user.pk and not self.request.user.is_superuser:
+            raise Http404
+        return obj
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        parent = self.object
+        ludzie = parent.liczniki_ludzi_z_xls()
+        odpiecia_count = parent.odpiecia.count()
+        pary_z_pliku_puste = len(parent.pary_z_pliku()) == 0
+        ctx.update(
+            {
+                "liczniki_ludzi": ludzie,
+                "ludzie_do_akceptacji": ludzie["wielu"] + ludzie["brak"],
+                "liczniki_jednostek": parent.liczniki_jednostek(),
+                "liczniki_tytulow": parent.liczniki_tytulow(),
+                "pokaz_jednostki": parent.jednostki_do_decyzji.exists(),
+                "pokaz_tytuly": parent.tytuly_do_decyzji.exists(),
+                "odpiecia_count": odpiecia_count,
+                "pary_z_pliku_puste": pary_z_pliku_puste,
+                # Ostrzeżenie: wszystkie jednostki odroczone → wszystkie aktywne
+                # AJ uczelni flagowane jako „spoza pliku" (znane ograniczenie).
+                "ostrzezenie_odpiecia": pary_z_pliku_puste and odpiecia_count > 0,
+                "stan": parent.stan,
+                "moze_zatwierdzic": (
+                    parent.stan == ImportPracownikow.STAN_PRZEANALIZOWANY
+                ),
+            }
+        )
+        return ctx
+
+
+class OdpieciaView(GroupRequiredMixin, ListView):
+    """Podstrona huba „Ludzie spoza XLS" — powiązania Autor+Jednostka OBECNE w
+    bazie, ale NIEOBECNE w tym imporcie (§9 odpięcia).
+
+    Wydzielona z dołu ``importpracownikowrow_list.html``. Owner/superuser-scoped.
+    Queryset przeniesiony z ``ImportPracownikowResultsView.get_context_data``.
+    ``przelacz-odpiecie`` (toggle checkboxa) bez zmian."""
+
+    group_required = GROUP_REQUIRED
+    template_name = "import_pracownikow/odpiecia.html"
+    context_object_name = "odpiecia"
+
+    @cached_property
+    def parent_object(self):
+        obj = get_object_or_404(ImportPracownikow, pk=self.kwargs["pk"])
+        if obj.owner_id != self.request.user.pk and not self.request.user.is_superuser:
+            raise Http404
+        return obj
+
+    def get_queryset(self):
+        return self.parent_object.odpiecia.select_related(
+            "autor_jednostka__autor",
+            "autor_jednostka__autor__tytul",
+            "autor_jednostka__jednostka",
+        )
+
+    def get_context_data(self, **kwargs):
+        return super().get_context_data(parent_object=self.parent_object, **kwargs)
 
 
 class WeryfikacjaJednostekView(GroupRequiredMixin, View):
@@ -707,6 +759,94 @@ class WeryfikacjaJednostekView(GroupRequiredMixin, View):
         messages.success(request, "Zapisano decyzje o jednostkach.")
         return HttpResponseRedirect(
             reverse("import_pracownikow:jednostki", kwargs={"pk": parent.pk})
+        )
+
+
+class WeryfikacjaTytulowView(GroupRequiredMixin, View):
+    """Ekran weryfikacji decyzji o tytułach (do utworzenia / auto-dopasowane).
+
+    Mirror ``WeryfikacjaJednostekView`` — tytuł nie ma drzewa ani wydziału,
+    więc prostszy. GET renderuje decyzje z kontrolkami (utwórz/mapuj/pomiń +
+    edytowalne nazwa/skrót dla trybu ``brak`` + cel mapowania), POST zapisuje
+    wszystkie decyzje naraz. Krok OPCJONALNY — import może iść z domyślnymi
+    decyzjami (``akceptuj``), więc NIE bramkuje zatwierdzenia; służy do korekty
+    przed commitem. Edycja tylko w stanie ``przeanalizowany`` (jak reszta
+    decyzji podglądu)."""
+
+    group_required = GROUP_REQUIRED
+    template_name = "import_pracownikow/weryfikacja_tytulow.html"
+
+    @cached_property
+    def parent_object(self):
+        obj = get_object_or_404(ImportPracownikow, pk=self.kwargs["pk"])
+        if obj.owner_id != self.request.user.pk and not self.request.user.is_superuser:
+            raise Http404
+        return obj
+
+    def _decyzje(self):
+        return (
+            self.parent_object.tytuly_do_decyzji.select_related(
+                "auto_tytul", "wybrany_tytul"
+            )
+            .annotate(liczba_osob=Count("wiersze_tytul", distinct=True))
+            .order_by("nazwa_zrodlowa")
+        )
+
+    def get(self, request, *args, **kwargs):
+        parent = self.parent_object
+        decyzje = list(self._decyzje())
+        ctx = {
+            "parent_object": parent,
+            "decyzje_brak": [
+                d for d in decyzje if d.tryb == ImportPracownikowTytul.TRYB_BRAK
+            ],
+            "decyzje_zgadywanie": [
+                d for d in decyzje if d.tryb == ImportPracownikowTytul.TRYB_ZGADYWANIE
+            ],
+            "mapuj_opcje": Tytul.objects.all().order_by("skrot"),
+            "moze_edytowac": parent.stan == ImportPracownikow.STAN_PRZEANALIZOWANY,
+            "DECYZJA_AKCEPTUJ": ImportPracownikowTytul.DECYZJA_AKCEPTUJ,
+            "DECYZJA_MAPUJ": ImportPracownikowTytul.DECYZJA_MAPUJ,
+            "DECYZJA_POMIN": ImportPracownikowTytul.DECYZJA_POMIN,
+        }
+        return render(request, self.template_name, ctx)
+
+    def post(self, request, *args, **kwargs):
+        parent = self.parent_object
+        if parent.stan != ImportPracownikow.STAN_PRZEANALIZOWANY:
+            return HttpResponseBadRequest(
+                "Decyzje o tytułach można zmieniać tylko w podglądzie."
+            )
+        prawidlowe = {
+            ImportPracownikowTytul.DECYZJA_AKCEPTUJ,
+            ImportPracownikowTytul.DECYZJA_MAPUJ,
+            ImportPracownikowTytul.DECYZJA_POMIN,
+        }
+        for dec in parent.tytuly_do_decyzji.all():
+            pref = f"dec_{dec.pk}_"
+            decyzja = request.POST.get(pref + "decyzja")
+            if decyzja in prawidlowe:
+                dec.decyzja = decyzja
+            mapuj_id = request.POST.get(pref + "wybrana") or ""
+            dec.wybrany_tytul = (
+                Tytul.objects.filter(pk=mapuj_id).first() if mapuj_id else None
+            )
+            update_fields = ["decyzja", "wybrany_tytul"]
+            # Nazwa/skrót edytowalne TYLKO dla „do utworzenia” (tryb brak) —
+            # dla zgadywania rozstrzyga auto_tytul/wybrany_tytul, nie tworzymy.
+            if dec.tryb == ImportPracownikowTytul.TRYB_BRAK:
+                nazwa = request.POST.get(pref + "nazwa")
+                if nazwa is not None:
+                    dec.nazwa_do_utworzenia = nazwa.strip()[:512]
+                    update_fields.append("nazwa_do_utworzenia")
+                skrot = request.POST.get(pref + "skrot")
+                if skrot is not None:
+                    dec.skrot_do_utworzenia = skrot.strip()[:128]
+                    update_fields.append("skrot_do_utworzenia")
+            dec.save(update_fields=update_fields)
+        messages.success(request, "Zapisano decyzje o tytułach.")
+        return HttpResponseRedirect(
+            reverse("import_pracownikow:tytuly", kwargs={"pk": parent.pk})
         )
 
 

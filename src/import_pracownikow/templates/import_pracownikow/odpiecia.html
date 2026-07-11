@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+
+{% block extratitle %}Import pracowników — ludzie spoza XLS{% endblock %}
+
+{% block breadcrumbs %}
+    {{ block.super }}
+    <li><a href="{% url "import_pracownikow:index" %}">import pracowników</a></li>
+    <li><a href="{% url "import_pracownikow:przeglad" pk=parent_object.pk %}">przegląd importu</a></li>
+    <li class="current">ludzie spoza XLS</li>
+{% endblock %}
+
+{% block content %}
+    <p>
+        <a href="{% url "import_pracownikow:przeglad" pk=parent_object.pk %}">&larr; wróć do przeglądu</a>
+    </p>
+
+    <h1>Powiązania autor+jednostka spoza tego pliku (odpięcia)</h1>
+    <p>
+        Powiązania obecne w bazie, ale nieobecne w tym imporcie (jednostki
+        uczelni oprócz Obcej). Domyślnie odznaczone — zaznacz, by odpiąć przy
+        zapisie do bazy. Wykonanie nastąpi dopiero w fazie zapisu.
+    </p>
+
+    {# HTMX dla toggla checkboxa odpięcia (partial _odpiecie_row.html). #}
+    <script src="https://unpkg.com/htmx.org@2.0.4" crossorigin="anonymous"></script>
+
+    {% if odpiecia %}
+        <div style="overflow-x: auto;">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Autor</th>
+                        <th>Jednostka</th>
+                        <th>Odepnij?</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for odp in odpiecia %}
+                        {% include "import_pracownikow/partials/_odpiecie_row.html" %}
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% else %}
+        <div class="callout success">
+            {# brak powiązań spoza pliku #}
+            Brak powiązań spoza tego pliku — nic do odpięcia.
+        </div>
+    {% endif %}
+{% endblock %}

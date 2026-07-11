@@ -56,9 +56,9 @@ def test_commit_pomija_brak_bez_utworz_nowego(autor_jednostka_fixture):
 
 @pytest.mark.django_db
 def test_commit_nie_tworzy_autora_z_pustym_imieniem(autor_jednostka_fixture):
-    """F5: wiersz ``brak`` z ``utworz_nowego=True`` ale pustym ``imię`` (korekta
-    na samo nazwisko przez EdytujWierszView, który NIE waliduje imienia) → autor
-    NIE powstaje, wiersz zostaje autor=None i liczy się jako niedopasowany."""
+    """F5: wiersz ``brak`` z ``utworz_nowego=True`` ale pustym ``imię`` (dane
+    z XLS bez rozbicia imienia) → autor NIE powstaje, wiersz zostaje autor=None
+    i liczy się jako niedopasowany."""
     _, jednostka = autor_jednostka_fixture
     imp, row = _wiersz_brak(jednostka, utworz_nowego=True)
     row.dane_znormalizowane = {"nazwisko": "Bezimienny", "imię": ""}

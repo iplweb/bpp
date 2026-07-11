@@ -13,14 +13,29 @@ urlpatterns = [
         name="mapowanie",
     ),
     path(
+        "<uuid:pk>/przeglad/",
+        views.PodgladImportuView.as_view(),
+        name="przeglad",
+    ),
+    path(
         "<uuid:pk>/rezultaty/",
         views.ImportPracownikowResultsView.as_view(),
         name="importpracownikow-results",
     ),
     path(
+        "<uuid:pk>/odpiecia/",
+        views.OdpieciaView.as_view(),
+        name="odpiecia",
+    ),
+    path(
         "<uuid:pk>/jednostki/",
         views.WeryfikacjaJednostekView.as_view(),
         name="jednostki",
+    ),
+    path(
+        "<uuid:pk>/tytuly/",
+        views.WeryfikacjaTytulowView.as_view(),
+        name="tytuly",
     ),
     path(
         "<uuid:pk>/zatwierdz/",
@@ -38,9 +53,9 @@ urlpatterns = [
         name="wybierz-kandydata",
     ),
     path(
-        "<uuid:pk>/wiersz/<int:row_pk>/edytuj/",
-        views.EdytujWierszView.as_view(),
-        name="edytuj-wiersz",
+        "<uuid:pk>/wiersz/<int:row_pk>/dopasuj-autora/",
+        views.DopasujAutoraView.as_view(),
+        name="dopasuj-autora",
     ),
     path(
         "<uuid:pk>/odpiecie/<int:odp_pk>/przelacz/",

@@ -44,12 +44,41 @@ def test_ImportPracownikow_perform_aktualizacja_tytulu_nastapila(
 
 
 @pytest.mark.django_db
-def test_ImportPracownikow_perform_aktualizacja_tytulu_brakujacy_tytul(
+def test_ImportPracownikow_perform_brakujacy_tytul_tworzy_domyslnie(
     baza_importu_pracownikow, admin_user
 ):
+    """Redesign tytułów: tytuł z pliku spoza słownika NIE jest już po cichu
+    gubiony (dawniej ``autor.tytul is None``). Przy domyślnym
+    ``tworz_brakujace_tytuly=True`` reconciler odracza go jako decyzję, a
+    integracja tworzy ``Tytul`` i przypina autorowi — analogicznie do jednostek."""
+    from bpp.models import Tytul
+
     ip = import_pracownikow_factory(admin_user, xls_path_factory("_nieistn_tytul"))
 
     _pelny_przebieg(ip)
+
+    assert ip.tytuly_do_decyzji.filter(nazwa_zrodlowa="nie-ma-go").exists()
+    assert Tytul.objects.filter(nazwa="nie-ma-go").exists()
+    assert Autor.objects.get(pk=50).tytul.nazwa == "nie-ma-go"
+
+
+@pytest.mark.django_db
+def test_ImportPracownikow_perform_brakujacy_tytul_toggle_off_nie_tworzy(
+    baza_importu_pracownikow, admin_user
+):
+    """Ścieżka wyłączona: ``tworz_brakujace_tytuly=False`` → tytuł spoza słownika
+    nie jest tworzony ani przypinany (autor zostaje bez tytułu). Zachowuje dawne
+    zachowanie „brakujący tytuł → None" jako świadomy opt-out."""
+    from bpp.models import Tytul
+
+    ip = import_pracownikow_factory(admin_user, xls_path_factory("_nieistn_tytul"))
+    ip.tworz_brakujace_tytuly = False
+    ip.save(update_fields=["tworz_brakujace_tytuly"])
+
+    _pelny_przebieg(ip)
+
+    assert not ip.tytuly_do_decyzji.exists()
+    assert not Tytul.objects.filter(nazwa="nie-ma-go").exists()
     assert Autor.objects.get(pk=50).tytul is None
 
 

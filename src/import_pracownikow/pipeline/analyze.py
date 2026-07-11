@@ -12,9 +12,8 @@ Brakujące dopasowania trafiają do ``row.diff_do_utworzenia`` (FK zostają
 from copy import copy
 
 from django.core.exceptions import ObjectDoesNotExist
-from django.db.models import Q
 
-from bpp.models import Autor_Jednostka, Tytul, Uczelnia
+from bpp.models import Autor_Jednostka, Uczelnia
 from import_common.core import (
     matchuj_autora,
     matchuj_funkcja_autora,
@@ -26,6 +25,13 @@ from import_common.core.jednostka import (
     STATUS_JEDNOSTKA_TWARDY,
     sklasyfikuj_jednostke,
     zaproponuj_skrot,
+)
+from import_common.core.tytul import (
+    STATUS_TYTUL_BRAK,
+    STATUS_TYTUL_TWARDY,
+    STATUS_TYTUL_ZGADYWANIE,
+    sklasyfikuj_tytul,
+    zaproponuj_skrot_tytulu,
 )
 from import_common.exceptions import XLSMatchError, XLSParseError
 from import_common.normalization import (
@@ -43,6 +49,7 @@ from import_pracownikow.models import (
     ImportPracownikowOdpiecie,
     ImportPracownikowRow,
     ImportPracownikowRowKandydat,
+    ImportPracownikowTytul,
 )
 from import_pracownikow.parsers.leksykony import zbuduj_parser_kontekst
 from import_pracownikow.parsers.osoba import rozbij_osobe
@@ -124,6 +131,93 @@ class _ReconcilerJednostek:
         self.parent.jednostki_do_decyzji.exclude(pk__in=self.dotkniete).delete()
 
 
+# Status klasyfikacji tytułu (``import_common.core.tytul``) → tryb decyzji
+# (``ImportPracownikowTytul``). Wartości są dziś identyczne, ale mapujemy jawnie,
+# żeby ewentualny rozjazd słownictwa nie przeciekł do bazy po cichu.
+_STATUS_NA_TRYB_TYTUL = {
+    STATUS_TYTUL_ZGADYWANIE: ImportPracownikowTytul.TRYB_ZGADYWANIE,
+    STATUS_TYTUL_BRAK: ImportPracownikowTytul.TRYB_BRAK,
+}
+
+
+class _ReconcilerTytulow:
+    """Utrzymuje decyzje ``ImportPracownikowTytul`` przez (re)analizę.
+
+    Mirror ``_ReconcilerJednostek`` (uproszczony — tytuł nie ma drzewa ani
+    wydziału). ``reconciluj`` robi get_or_create po nazwie **case-insensitive**
+    (dedup wariantów wielkości liter / kropek na poziomie SQL ``iexact``), przy
+    każdym runie ODŚWIEŻA pola liczone przez analizę (``tryb``/``auto_tytul``/
+    ``auto_similarity``), a ZACHOWUJE wybory użytkownika (``decyzja``/
+    ``wybrany_tytul``/``nazwa_do_utworzenia``/``skrot_do_utworzenia``).
+    ``usun_stale`` kasuje decyzje tego importu, których nie dotknięto w bieżącym
+    runie (string tytułu zniknął z pliku) — inaczej wisiałyby w podsumowaniu na
+    zawsze."""
+
+    def __init__(self, parent):
+        self.parent = parent
+        self.dotkniete = set()
+
+    def reconciluj(self, nazwa_zrodlowa, tryb, auto_tytul, sim):
+        nazwa_zrodlowa = nazwa_zrodlowa[:512]
+        tryb_model = _STATUS_NA_TRYB_TYTUL[tryb]
+        dec = self.parent.tytuly_do_decyzji.filter(
+            nazwa_zrodlowa__iexact=nazwa_zrodlowa
+        ).first()
+        if dec is None:
+            dec = ImportPracownikowTytul.objects.create(
+                parent=self.parent,
+                nazwa_zrodlowa=nazwa_zrodlowa,
+                tryb=tryb_model,
+                auto_tytul=auto_tytul,
+                auto_similarity=sim,
+                nazwa_do_utworzenia=nazwa_zrodlowa[:512],
+                skrot_do_utworzenia=zaproponuj_skrot_tytulu(nazwa_zrodlowa),
+            )
+        else:
+            # Tylko pola LICZONE — wybory usera (``decyzja``/``wybrany_tytul``/
+            # ``nazwa_do_utworzenia``/``skrot_do_utworzenia``) zostają nietknięte.
+            dec.tryb = tryb_model
+            dec.auto_tytul = auto_tytul
+            dec.auto_similarity = sim
+            dec.save(update_fields=["tryb", "auto_tytul", "auto_similarity"])
+        self.dotkniete.add(dec.pk)
+        return dec
+
+    def usun_stale(self):
+        self.parent.tytuly_do_decyzji.exclude(pk__in=self.dotkniete).delete()
+
+
+def _klasyfikuj_tytul_wiersza(parent, tytul_str, reconciler_tytulow):
+    """Klasyfikuje tytuł wiersza — mirror ``sklasyfikuj_jednostke``-flow.
+
+    Zwraca ``(tytul|None, status|None, decyzja|None)``:
+
+    - pusty ``tytul_str`` → ``(None, None, None)`` (bez decyzji, bez statusu —
+      nie liczony na kafelku);
+    - ``twardy`` → ``(tytul, "twardy", None)`` (na wiersz wprost, bez decyzji);
+    - ``zgadywanie`` lub (``brak`` + ``tworz_brakujace_tytuly``) → decyzja
+      ``ImportPracownikowTytul`` (dedup po nazwie), tytuł odroczony (None) do
+      integracji — ``(None, status, decyzja)``;
+    - ``brak`` przy wyłączonym tworzeniu → ``(None, "brak", None)``.
+    """
+    if not tytul_str:
+        return None, None, None
+    tytul_obj, tyt_status, tyt_sim = sklasyfikuj_tytul(tytul_str)
+    if tyt_status == STATUS_TYTUL_TWARDY:
+        return tytul_obj, tyt_status, None
+    tworzy_decyzje = tyt_status == STATUS_TYTUL_ZGADYWANIE or (
+        tyt_status == STATUS_TYTUL_BRAK and parent.tworz_brakujace_tytuly
+    )
+    if tworzy_decyzje:
+        decyzja = None
+        if reconciler_tytulow is not None:
+            decyzja = reconciler_tytulow.reconciluj(
+                tytul_str, tyt_status, tytul_obj, tyt_sim
+            )
+        return None, tyt_status, decyzja
+    return None, STATUS_TYTUL_BRAK, None
+
+
 def _dane_znormalizowane_z_parserem(cleaned_data, rozbicie):
     """Kopia cleaned_data wzbogacona o pewność rozbicia parsera (§7): confidence
     rozbicia (high/medium/low) i alternatywy trzymamy WEWNĄTRZ JSON, nie w
@@ -155,17 +249,6 @@ def _rozbij_osoba_sklejona(dane_form, parser_ctx):
     if rozbicie.tytul and not dane_form.get("tytuł_stopień"):
         dane_form["tytuł_stopień"] = rozbicie.tytul
     return rozbicie
-
-
-def _dopasuj_tytul(tytul_str):
-    """Zwraca ``Tytul`` po nazwie/skrócie albo ``None``. Tytuł jest opcjonalny —
-    brak w słowniku nie blokuje analizy (dry-run)."""
-    if not tytul_str:
-        return None
-    try:
-        return Tytul.objects.get(Q(nazwa=tytul_str) | Q(skrot=tytul_str))
-    except Tytul.DoesNotExist:
-        return None
 
 
 def _dopasuj_autora_i_status(data, jednostka, tytul_str):
@@ -222,7 +305,13 @@ def _wybierz_autor_jednostka(autor, jednostka):
 
 
 def _przetworz_wiersz(
-    parent, elem, parser_ctx=None, *, reconciler=None, tworz_brakujace=True
+    parent,
+    elem,
+    parser_ctx=None,
+    *,
+    reconciler=None,
+    reconciler_tytulow=None,
+    tworz_brakujace=True,
 ):
     dane_form = normalizuj_wartosci_wiersza(elem)
     rozbicie = _rozbij_osoba_sklejona(dane_form, parser_ctx)
@@ -309,7 +398,9 @@ def _przetworz_wiersz(
                 "jednostka": jednostka_na_wierszu.pk,
             }
 
-    tytul = _dopasuj_tytul(tytul_str)
+    row_tytul, row_tytul_status, row_zrodlo_tytulu = _klasyfikuj_tytul_wiersza(
+        parent, tytul_str, reconciler_tytulow
+    )
 
     row = ImportPracownikowRow(
         parent=parent,
@@ -323,7 +414,9 @@ def _przetworz_wiersz(
         jednostka_status=jed_status,
         zrodlo_jednostki=decyzja_jednostki,
         autor_jednostka=aj,
-        tytul=tytul,
+        tytul=row_tytul,
+        tytul_status=row_tytul_status,
+        zrodlo_tytulu=row_zrodlo_tytulu,
         funkcja_autora=funkcja,
         grupa_pracownicza=grupa,
         wymiar_etatu=wymiar,
@@ -377,6 +470,7 @@ def analizuj(parent, p):
     mapowanie = parent.mapowanie_kolumn or {}
     parser_ctx = zbuduj_parser_kontekst()
     reconciler = _ReconcilerJednostek(parent)
+    reconciler_tytulow = _ReconcilerTytulow(parent)
     for elem in p.track(list(zrodlo.data()), total=total, label="Wczytywanie"):
         if mapowanie:
             elem = remapuj_wiersz(elem, mapowanie)
@@ -385,11 +479,13 @@ def analizuj(parent, p):
             elem,
             parser_ctx,
             reconciler=reconciler,
+            reconciler_tytulow=reconciler_tytulow,
             tworz_brakujace=parent.tworz_brakujace_jednostki,
         )
-    # Decyzje o jednostkach nieobecne w bieżącym pliku → sprzątamy (przeżywają
-    # wybory usera dla nazw, które zostały — patrz _ReconcilerJednostek).
+    # Decyzje o jednostkach/tytułach nieobecne w bieżącym pliku → sprzątamy
+    # (przeżywają wybory usera dla nazw, które zostały — patrz reconcilery).
     reconciler.usun_stale()
+    reconciler_tytulow.usun_stale()
 
     liczba_odpiec = _materializuj_odpiecia(parent)
 
