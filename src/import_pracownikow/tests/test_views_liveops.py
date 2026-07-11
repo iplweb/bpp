@@ -189,3 +189,43 @@ def test_importpracownikow_results_renderuje_liste_modyfikacji(
     content = resp.content.decode()
     assert "Lista modyfikacji" in content
     assert imp.plik_xls.name in content
+
+
+@pytest.mark.django_db
+def test_importpracownikow_results_datatables_init(admin_client, admin_user):
+    """Tabela autorów ma id + inicjalizację DataTables (client-side filtr/sort)."""
+    imp = baker.make(
+        ImportPracownikow,
+        owner=admin_user,
+        finished_successfully=True,
+        stan=ImportPracownikow.STAN_ZINTEGROWANY,
+    )
+    autor = baker.make(Autor, nazwisko="Testowy", imiona="Jan")
+    jednostka = baker.make(Jednostka, nazwa="Testowa Jednostka", skrot="Test. Jedn.")
+    baker.make(
+        ImportPracownikowRow,
+        parent=imp,
+        autor=autor,
+        jednostka=jednostka,
+        zmiany_potrzebne=True,
+    )
+    url = reverse("import_pracownikow:importpracownikow-results", kwargs={"pk": imp.pk})
+    content = admin_client.get(url).content.decode()
+    assert 'id="tabela-autorow"' in content
+    assert ".DataTable(" in content
+
+
+def test_importpracownikow_results_bez_pagination_include():
+    """Martwy ``{% include "pagination.html" %}`` (widok bez ``paginate_by``)
+    usunięty z ``<tbody>`` — nie-``<tr>`` w tbody psuje parsowanie DataTables."""
+    from pathlib import Path
+
+    import import_pracownikow
+
+    tpl = (
+        Path(import_pracownikow.__file__).parent
+        / "templates"
+        / "import_pracownikow"
+        / "importpracownikowrow_list.html"
+    )
+    assert "pagination.html" not in tpl.read_text(encoding="utf-8")

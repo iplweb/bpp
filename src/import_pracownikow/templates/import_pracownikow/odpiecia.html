@@ -26,7 +26,7 @@
 
     {% if odpiecia %}
         <div style="overflow-x: auto;">
-            <table>
+            <table id="tabela-odpiec">
                 <thead>
                     <tr>
                         <th>Autor</th>
@@ -41,6 +41,28 @@
                 </tbody>
             </table>
         </div>
+
+        {# DataTables: biblioteki + polski język ładuje globalnie bare.html. #}
+        <script>
+        $(function () {
+            var dt = $('#tabela-odpiec').DataTable({
+                paging: false,  // wszystkie wiersze w DOM → htmx-targety (#odpiecie-X) żyją
+                info: false,
+                order: [],  // zachowaj kolejność serwera
+                columnDefs: [{orderable: false, searchable: false, targets: [2]}]
+            });
+            // Resync po htmx-swapie wiersza: htmx podmienia <tr> na nowy node,
+            // DataTables trzyma stary w cache → po redraw (search) zgubiłby
+            // podmianę. invalidate('dom') każe przeczytać wiersz ze świeżego DOM-u.
+            document.body.addEventListener('htmx:afterSettle', function (e) {
+                var tr = e.detail && e.detail.elt ? e.detail.elt.closest('tr') : null;
+                if (tr && $.fn.dataTable.isDataTable('#tabela-odpiec')
+                       && $('#tabela-odpiec')[0].contains(tr)) {
+                    try { dt.row(tr).invalidate('dom'); } catch (err) { /* spoza tabeli */ }
+                }
+            });
+        });
+        </script>
     {% else %}
         <div class="callout success">
             {# brak powiązań spoza pliku #}

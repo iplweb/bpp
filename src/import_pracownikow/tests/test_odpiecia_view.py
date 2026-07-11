@@ -42,6 +42,16 @@ def test_odpiecia_renderuje_tabele(admin_client, admin_user):
 
 
 @pytest.mark.django_db
+def test_odpiecia_datatables_init(admin_client, admin_user):
+    """Tabela odpięć ma id + inicjalizację DataTables (client-side filtr/sort)."""
+    imp = _imp(admin_user)
+    _odpiecie(imp)
+    tresc = admin_client.get(_url(imp)).content.decode("utf-8")
+    assert 'id="tabela-odpiec"' in tresc
+    assert ".DataTable(" in tresc
+
+
+@pytest.mark.django_db
 def test_odpiecia_puste_callout(admin_client, admin_user):
     imp = _imp(admin_user)
     resp = admin_client.get(_url(imp))

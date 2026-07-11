@@ -49,7 +49,7 @@
         <p>Lista modyfikacji do bazy danych, przeprowadzonych na podstawie
             pliku XLS poniżej:</p>
         <div style="overflow-x: auto;">
-            <table>
+            <table id="tabela-autorow">
                 <thead>
                     <tr>
                         <th>Arkusz</th>
@@ -64,7 +64,6 @@
                     </tr>
                 </thead>
                 <tbody>
-                    {% include "pagination.html" %}
                     {% for row in object_list %}
                         {% include "import_pracownikow/partials/_wiersz_preview.html" %}
                         {% empty %}
@@ -77,6 +76,29 @@
                 </tbody>
             </table>
         </div>
+
+        {# DataTables: biblioteki + polski język ładuje globalnie bare.html. #}
+        <script>
+        $(function () {
+            var dt = $('#tabela-autorow').DataTable({
+                paging: false,  // wszystkie wiersze w DOM → htmx-targety (#wiersz-X) żyją
+                info: false,
+                order: [],  // zachowaj kolejność serwera (nie-twardzi na górze)
+                columnDefs: [{orderable: false, searchable: false, targets: [7, 8]}]
+            });
+            // Resync po htmx-swapie wiersza: htmx podmienia <tr> na nowy node,
+            // DataTables trzyma stary w cache → po redraw (search) zgubiłby
+            // podmianę. invalidate('dom') każe przeczytać wiersz ze świeżego DOM-u.
+            // Leniwy Select2 z _wiersz_preview.html działa dalej niezależnie.
+            document.body.addEventListener('htmx:afterSettle', function (e) {
+                var tr = e.detail && e.detail.elt ? e.detail.elt.closest('tr') : null;
+                if (tr && $.fn.dataTable.isDataTable('#tabela-autorow')
+                       && $('#tabela-autorow')[0].contains(tr)) {
+                    try { dt.row(tr).invalidate('dom'); } catch (err) { /* spoza tabeli */ }
+                }
+            });
+        });
+        </script>
     {% endif %}
 
 {% endblock %}
