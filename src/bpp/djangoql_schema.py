@@ -464,11 +464,24 @@ _SAFE_VALUE_TARGET_LABELS = (
 )
 
 
+#: Per-relacyjny limit osadzanych wartości dla bezpiecznych słowników. Liczba
+#: (a nie ``True``!) omija w djangoql-iplweb >= 0.31.1 zarówno twardy cap
+#: ``MAX_SUGGESTED_VALUES`` (20 — tyle dałoby ``True``), jak i globalny próg
+#: ``--max-fk-options`` (0 w komendzie). Dzięki temu do artefaktu trafiają PEŁNE
+#: słowniki (np. wszystkie ~487 języków, komplet dyscyplin), a nie tylko pierwsze
+#: 20 alfabetycznie. Wartość jest górnym ograniczeniem bezpieczeństwa: żaden
+#: standardowy słownik referencyjny BPP nie zbliża się do tej liczności, więc
+#: nic realnie nie jest ucinane; gdyby jednak tabela urosła ponad limit, djangoql
+#: zwyczajnie pominie ją (zamiast wysypać ogromną listę w prompt).
+_EMBED_ALL_VALUES = 10_000
+
+
 def _build_llm_fk_options():
     """``fk_options`` dla eksportu LLM: dla każdego FK/​O2O w allow-liście, którego
     cel to bezpieczny słownik (:data:`_SAFE_VALUE_TARGET_LABELS`), wymuś
-    osadzenie wartości (``True``). Reszta relacji przy ``--max-fk-options 0``
-    nie osadza nic → artefakt jest deterministyczny i wolny od danych instytucji.
+    osadzenie KOMPLETU wartości (``_EMBED_ALL_VALUES``). Reszta relacji przy
+    ``--max-fk-options 0`` nie osadza nic → artefakt jest deterministyczny
+    i wolny od danych instytucji.
     """
     from django.apps import apps
 
@@ -480,7 +493,7 @@ def _build_llm_fk_options():
                 field, "one_to_one", False
             )
             if is_fk and not field.auto_created and field.related_model in safe:
-                options.setdefault(owner, {})[field.name] = True
+                options.setdefault(owner, {})[field.name] = _EMBED_ALL_VALUES
     return options
 
 

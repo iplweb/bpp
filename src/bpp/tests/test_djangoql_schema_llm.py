@@ -146,6 +146,7 @@ def test_llm_fk_options_targets_only_safe_dictionaries():
     słowników (standardowe tablice referencyjne BPP), nigdy dla modeli danych
     (publikacje, autorzy, jednostki, encje PBN). Test niezależny od bazy."""
     from bpp.djangoql_schema import (  # noqa: PLC2701
+        _EMBED_ALL_VALUES,
         _SAFE_VALUE_TARGET_LABELS,
         RekordLLMSchema,
     )
@@ -155,8 +156,10 @@ def test_llm_fk_options_targets_only_safe_dictionaries():
     }
     opts = RekordLLMSchema.fk_options
 
-    # bezpieczny słownik osadza się (charakter_formalny to standardowa tablica)
-    assert opts.get(Rekord, {}).get("charakter_formalny") is True
+    # bezpieczny słownik osadza KOMPLET wartości (charakter_formalny to
+    # standardowa tablica); marker to per-relacyjny limit int (djangoql
+    # >= 0.31.1), nie True — True obcinałoby do 20.
+    assert opts.get(Rekord, {}).get("charakter_formalny") == _EMBED_ALL_VALUES
     # KAŻDY wpis fk_options celuje w bezpieczny słownik
     for owner, fields in opts.items():
         for field_name in fields:
