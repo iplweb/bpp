@@ -33,6 +33,14 @@
                 <span class="fi-save"></span> Zapisz zmiany do bazy
             </button>
         </form>
+    {% elif zakres == "jednostki" or zakres == "struktura" %}
+        {# Import strukturalny (jednostki / jednostki+tytuły) — osoby pominięte. #}
+        <p>
+            Utworzono strukturę:
+            <strong>{{ utworzono_jednostek }}</strong> jednostek{% if zakres == "struktura" %},
+                <strong>{{ utworzono_tytulow }}</strong> tytułów{% endif %}.
+            Import osób pominięty.
+        </p>
     {% else %}
         <p>
             Zintegrowano wierszy: <strong>{{ zintegrowano }}</strong>

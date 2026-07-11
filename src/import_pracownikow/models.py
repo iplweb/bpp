@@ -71,6 +71,19 @@ class ImportPracownikow(LiveOperation):
         (STAN_PORZUCONY, "porzucony"),
     ]
 
+    # Zakres integracji (co „Zapisz do bazy" faktycznie tworzy):
+    # - PELNY: struktura + osoby (domyślne, pełny import),
+    # - JEDNOSTKI: same jednostki (bez tytułów i bez osób),
+    # - STRUKTURA: jednostki + tytuły (bez osób).
+    ZAKRES_PELNY = "pelny"
+    ZAKRES_JEDNOSTKI = "jednostki"
+    ZAKRES_STRUKTURA = "struktura"
+    ZAKRES_CHOICES = [
+        (ZAKRES_PELNY, "pełny import (struktura + osoby)"),
+        (ZAKRES_JEDNOSTKI, "tylko jednostki"),
+        (ZAKRES_STRUKTURA, "jednostki + tytuły (bez osób)"),
+    ]
+
     plik_xls = models.FileField(upload_to="protected/import_pracownikow/")
     stan = models.CharField(max_length=20, choices=STAN_CHOICES, default=STAN_UTWORZONY)
     mapowanie_kolumn = models.JSONField(default=dict, blank=True)
@@ -87,6 +100,15 @@ class ImportPracownikow(LiveOperation):
         help_text="Gdy zaznaczone, tytuły nieobecne w bazie (i bez bliskiego "
         "dopasowania) trafiają na ekran weryfikacji do utworzenia. Gdy "
         "odznaczone — wiersze z niedopasowanym tytułem zostają bez tytułu.",
+    )
+    zakres_integracji = models.CharField(
+        "Zakres integracji",
+        max_length=20,
+        choices=ZAKRES_CHOICES,
+        default=ZAKRES_PELNY,
+        help_text="Co „Zapisz do bazy” faktycznie tworzy: pełny import "
+        "(struktura + osoby), same jednostki, albo jednostki + tytuły "
+        "(bez osób). Ustawiane przez przycisk zatwierdzenia na hubie.",
     )
 
     stages = ["Wczytywanie", "Integracja"]
@@ -118,6 +140,14 @@ class ImportPracownikow(LiveOperation):
             # zmapowany kasujemy je razem z wierszami, żeby ponowna analiza
             # nie zduplikowała zbioru.
             self.odpiecia.all().delete()
+            # Po strukturalnym imporcie (zakres jednostki / struktura) ponowna
+            # analiza wraca do pełnego zakresu — inaczej kolejne „Zapisz do
+            # bazy" po re-analizie po cichu pominęłoby osoby. Zapisujemy
+            # od razu (własny update_fields), bo wołający — RestartView oraz
+            # MapowanieView — składają save z listą pól nieobejmującą tego pola.
+            if self.zakres_integracji != self.ZAKRES_PELNY:
+                self.zakres_integracji = self.ZAKRES_PELNY
+                self.save(update_fields=["zakres_integracji"])
 
     # Pola operacji liveops zerowane przed (po)ponownym enqueue. Zwierciadło
     # ``RestartView.post`` (liveops inline'uje ten reset, nie wystawia go jako

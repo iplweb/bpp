@@ -1,11 +1,11 @@
 {% extends "base.html" %}
 {% load crispy_forms_tags %}
 
-{% block extratitle %}Import pracowników — mapowanie kolumn{% endblock %}
+{% block extratitle %}Import pracowników i struktury — mapowanie kolumn{% endblock %}
 
 {% block breadcrumbs %}
     {{ block.super }}
-    <li><a href="{% url "import_pracownikow:index" %}">import pracowników</a></li>
+    <li><a href="{% url "import_pracownikow:index" %}">import pracowników i struktury</a></li>
     <li class="current">mapowanie kolumn</li>
 {% endblock %}
 

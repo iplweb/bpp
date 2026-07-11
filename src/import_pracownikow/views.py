@@ -918,12 +918,23 @@ class ZatwierdzImportView(_PkOwnerRestartMixin):
     wierszy podglądu — kasuje tylko gdy stan==utworzony lub zmapowany) i delegujemy
     resztę do bazowego POST-a liveops ``RestartView`` (reset stanu
     operacji, re-enqueue, przekierowanie na stronę live).
+
+    ``zakres`` (POST) wybiera co integracja utworzy: pełny import (domyślne),
+    same jednostki, albo jednostki + tytuły (bez osób). Trzy przyciski na hubie
+    posyłają odpowiednią wartość. Nieznana/brakująca wartość → PELNY (bezpieczny
+    domyślny — zachowanie sprzed tej funkcji).
     """
+
+    _ZAKRESY_PRAWIDLOWE = {z for z, _ in ImportPracownikow.ZAKRES_CHOICES}
 
     def post(self, request, *args, **kwargs):
         obj = self.get_object()
+        zakres = request.POST.get("zakres", ImportPracownikow.ZAKRES_PELNY)
+        if zakres not in self._ZAKRESY_PRAWIDLOWE:
+            zakres = ImportPracownikow.ZAKRES_PELNY
         obj.stan = ImportPracownikow.STAN_ZATWIERDZONY
-        obj.save(update_fields=["stan"])
+        obj.zakres_integracji = zakres
+        obj.save(update_fields=["stan", "zakres_integracji"])
         return super().post(request, *args, **kwargs)
 
 

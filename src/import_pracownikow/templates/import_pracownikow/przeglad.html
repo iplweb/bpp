@@ -1,12 +1,12 @@
 {% extends "base.html" %}
 
 {% block extratitle %}
-    Import pracowników — przegląd {{ parent_object.plik_xls.name }}
+    Import pracowników i struktury — przegląd {{ parent_object.plik_xls.name }}
 {% endblock %}
 
 {% block breadcrumbs %}
     {{ block.super }}
-    <li><a href="{% url "import_pracownikow:index" %}">import pracowników</a></li>
+    <li><a href="{% url "import_pracownikow:index" %}">import pracowników i struktury</a></li>
     <li class="current">przegląd importu</li>
 {% endblock %}
 
@@ -19,15 +19,40 @@
 
     {% if moze_zatwierdzic %}
         {# CTA review-then-commit — ten sam endpoint co panel wyniku live. #}
+        {# Trzy warianty zapisu: pełny (struktura + osoby) oraz dwa strukturalne #}
+        {# (tworzą TYLKO strukturę, bez importu osób). Pozycyjny arg url (nie pk=) #}
+        {# — inaczej djLint H037. #}
         <div class="callout primary">
             <p>Import jest przeanalizowany (przebieg „na sucho" — nic jeszcze
                 nie zapisano). Sprawdź kafelki poniżej, a gdy wszystko się
                 zgadza — zapisz zmiany do bazy.</p>
             <form method="post"
-                  action="{% url "import_pracownikow:zatwierdz" pk=parent_object.pk %}">
+                  action="{% url "import_pracownikow:zatwierdz" parent_object.pk %}">
                 {% csrf_token %}
+                <input type="hidden" name="zakres" value="pelny">
                 <button type="submit" class="button">
                     <span class="fi-save"></span> Zapisz do bazy
+                </button>
+            </form>
+            <p class="help-text">
+                Poniższe akcje tworzą <strong>tylko strukturę</strong>
+                (jednostki, ewentualnie tytuły) — <strong>bez importu
+                osób</strong> i ich zatrudnień.
+            </p>
+            <form method="post"
+                  action="{% url "import_pracownikow:zatwierdz" parent_object.pk %}">
+                {% csrf_token %}
+                <input type="hidden" name="zakres" value="jednostki">
+                <button type="submit" class="button secondary">
+                    <span class="fi-marker"></span> Utwórz tylko jednostki
+                </button>
+            </form>
+            <form method="post"
+                  action="{% url "import_pracownikow:zatwierdz" parent_object.pk %}">
+                {% csrf_token %}
+                <input type="hidden" name="zakres" value="struktura">
+                <button type="submit" class="button secondary">
+                    <span class="fi-crown"></span> Utwórz jednostki + tytuły
                 </button>
             </form>
         </div>

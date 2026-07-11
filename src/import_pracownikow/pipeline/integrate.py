@@ -632,13 +632,41 @@ def _rozstrzygnij_tytuly(parent, p):
 
 
 def integruj(parent, p):
+    zakres = parent.zakres_integracji
+
     # FAZA 0: rozstrzygnij i utwórz brakujące jednostki, podłącz wiersze —
     # ZANIM policzymy snapshot i fazę nowych autorów (patrz docstring wyżej).
+    # Wykonywana ZAWSZE (każdy zakres tworzy jednostki).
     utworzono_jednostek = _rozstrzygnij_jednostki(parent, p)
 
     # FAZA 0.5: rozstrzygnij i utwórz brakujące tytuły, podłącz wiersze — zaraz
     # po jednostkach i PRZED snapshotem/fazą autorów (autorzy czytają row.tytul).
-    utworzono_tytulow = _rozstrzygnij_tytuly(parent, p)
+    # Pomijana dla zakresu „tylko jednostki" (STRUKTURA i PELNY dostają tytuły).
+    utworzono_tytulow = 0
+    if zakres != ImportPracownikow.ZAKRES_JEDNOSTKI:
+        utworzono_tytulow = _rozstrzygnij_tytuly(parent, p)
+
+    # Zakres strukturalny (JEDNOSTKI / STRUKTURA): tworzymy TYLKO strukturę —
+    # bez snapshotu, fazy nowych autorów, przepięć i odpięć. Osoby są
+    # NIETKNIĘTE (żadnych zapisów Autor / Autor_Jednostka — reconcilery jednostek
+    # /tytułów operują wyłącznie na wierszach importu i strukturze). Kończymy
+    # tutaj z licznikami struktury i flagą zakresu (panel wyniku pokaże właściwy
+    # komunikat).
+    if zakres in (
+        ImportPracownikow.ZAKRES_JEDNOSTKI,
+        ImportPracownikow.ZAKRES_STRUKTURA,
+    ):
+        parent.stan = ImportPracownikow.STAN_ZINTEGROWANY
+        parent.save(update_fields=["stan"])
+        p.result(
+            {
+                "zakres": zakres,
+                "utworzono_jednostek": utworzono_jednostek,
+                "utworzono_tytulow": utworzono_tytulow,
+                "stan": parent.stan,
+            }
+        )
+        return
 
     # Snapshot starych jednostek PRZED integracją: trigger DB
     # `bpp_autor_ustaw_jednostka_aktualna` przestawi `aktualna_jednostka` na

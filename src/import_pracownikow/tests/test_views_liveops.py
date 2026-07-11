@@ -90,6 +90,50 @@ def test_zatwierdz_ustawia_stan_zatwierdzony_i_reenqueue(admin_client, admin_use
 
 
 @pytest.mark.django_db
+def test_zatwierdz_zakres_jednostki_ustawia_pole(admin_client, admin_user):
+    imp = baker.make(
+        ImportPracownikow,
+        owner=admin_user,
+        stan=ImportPracownikow.STAN_PRZEANALIZOWANY,
+    )
+    url = reverse("import_pracownikow:zatwierdz", kwargs={"pk": imp.pk})
+    with patch.object(ImportPracownikow, "run", lambda self, p: None):
+        admin_client.post(url, {"zakres": "jednostki"})
+    imp.refresh_from_db()
+    assert imp.stan == ImportPracownikow.STAN_ZATWIERDZONY
+    assert imp.zakres_integracji == ImportPracownikow.ZAKRES_JEDNOSTKI
+
+
+@pytest.mark.django_db
+def test_zatwierdz_zakres_nieprawidlowy_degraduje_do_pelny(admin_client, admin_user):
+    imp = baker.make(
+        ImportPracownikow,
+        owner=admin_user,
+        stan=ImportPracownikow.STAN_PRZEANALIZOWANY,
+        zakres_integracji=ImportPracownikow.ZAKRES_STRUKTURA,
+    )
+    url = reverse("import_pracownikow:zatwierdz", kwargs={"pk": imp.pk})
+    with patch.object(ImportPracownikow, "run", lambda self, p: None):
+        admin_client.post(url, {"zakres": "cokolwiek-niepoprawnego"})
+    imp.refresh_from_db()
+    assert imp.zakres_integracji == ImportPracownikow.ZAKRES_PELNY
+
+
+@pytest.mark.django_db
+def test_zatwierdz_bez_zakresu_domyslnie_pelny(admin_client, admin_user):
+    imp = baker.make(
+        ImportPracownikow,
+        owner=admin_user,
+        stan=ImportPracownikow.STAN_PRZEANALIZOWANY,
+    )
+    url = reverse("import_pracownikow:zatwierdz", kwargs={"pk": imp.pk})
+    with patch.object(ImportPracownikow, "run", lambda self, p: None):
+        admin_client.post(url)
+    imp.refresh_from_db()
+    assert imp.zakres_integracji == ImportPracownikow.ZAKRES_PELNY
+
+
+@pytest.mark.django_db
 def test_restart_analiza_cofa_stan_i_kasuje_wiersze(admin_client, admin_user):
     imp = baker.make(
         ImportPracownikow,

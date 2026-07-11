@@ -177,6 +177,19 @@ def test_cta_zapisz_brak_poza_przeanalizowany(admin_client, admin_user):
 
 
 @pytest.mark.django_db
+def test_cta_trzy_przyciski_zapisu_gdy_przeanalizowany(admin_client, admin_user):
+    imp = _imp(admin_user, stan=ImportPracownikow.STAN_PRZEANALIZOWANY)
+    resp = admin_client.get(_url(imp))
+    tresc = resp.content.decode("utf-8")
+    # trzy warianty zakresu: pełny + dwa strukturalne
+    assert 'value="pelny"' in tresc
+    assert 'value="jednostki"' in tresc
+    assert 'value="struktura"' in tresc
+    assert "Utwórz tylko jednostki" in tresc
+    assert "Utwórz jednostki + tytuły" in tresc
+
+
+@pytest.mark.django_db
 def test_ostrzezenie_gdy_pary_z_pliku_puste_a_odpiecia_sa(admin_client, admin_user):
     imp = _imp(admin_user)
     # brak wierszy z autorem+jednostką → pary_z_pliku puste
