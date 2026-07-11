@@ -18,6 +18,11 @@ urlpatterns = [
         name="importpracownikow-results",
     ),
     path(
+        "<uuid:pk>/jednostki/",
+        views.WeryfikacjaJednostekView.as_view(),
+        name="jednostki",
+    ),
+    path(
         "<uuid:pk>/zatwierdz/",
         views.ZatwierdzImportView.as_view(),
         name="zatwierdz",

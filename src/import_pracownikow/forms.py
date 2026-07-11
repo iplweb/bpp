@@ -55,6 +55,14 @@ class MapowanieForm(forms.Form):
     nazwa_profilu = forms.CharField(
         required=False, max_length=200, label="Nazwa profilu"
     )
+    tworz_brakujace_jednostki = forms.BooleanField(
+        required=False,
+        initial=True,
+        label="Twórz brakujące jednostki",
+        help_text="Gdy zaznaczone, jednostki nieobecne w bazie trafią na ekran "
+        "weryfikacji do utworzenia. Odznacz, aby pomijać wiersze bez dopasowanej "
+        "jednostki.",
+    )
 
     def __init__(self, *args, naglowki=None, initial_mapowanie=None, **kwargs):
         super().__init__(*args, **kwargs)

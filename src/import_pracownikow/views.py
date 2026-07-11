@@ -23,6 +23,7 @@ from liveops.views import CreateLiveOperationView, RestartView
 from bpp.models import (
     Jednostka,
     Tytul,
+    Uczelnia,
     Wydawnictwo_Ciagle_Autor,
     Wydawnictwo_Zwarte_Autor,
 )
@@ -32,6 +33,7 @@ from import_pracownikow.forms import MapowanieForm, NowyImportForm
 from import_pracownikow.mapping import dopasuj_profil
 from import_pracownikow.models import (
     ImportPracownikow,
+    ImportPracownikowJednostka,
     ImportPracownikowOdpiecie,
     ImportPracownikowRow,
     ImportPracownikowRowKandydat,
@@ -224,6 +226,9 @@ class MapowanieView(GroupRequiredMixin, FormView):
         obj = self.object
         obj.mapowanie_kolumn = form.mapowanie()
         obj.stan = ImportPracownikow.STAN_ZMAPOWANY
+        obj.tworz_brakujace_jednostki = form.cleaned_data.get(
+            "tworz_brakujace_jednostki", True
+        )
         # on_restart() kasuje wiersze podglądu (stan==zmapowany) — inaczej
         # ponowna analiza by je zduplikowała.
         obj.on_restart()
@@ -231,7 +236,10 @@ class MapowanieView(GroupRequiredMixin, FormView):
         # anulowanym/zakończonym przebiegu enqueue rusza z brudnym stanem
         # (cancel_requested=True → natychmiastowe „cancelled").
         pola_liveops = obj.reset_liveops_state()
-        obj.save(update_fields=["mapowanie_kolumn", "stan"] + pola_liveops)
+        obj.save(
+            update_fields=["mapowanie_kolumn", "stan", "tworz_brakujace_jednostki"]
+            + pola_liveops
+        )
 
         if form.cleaned_data.get("zapisz_profil"):
             ProfilMapowania.objects.update_or_create(
@@ -613,6 +621,93 @@ class ImportPracownikowResultsView(GroupRequiredMixin, ListView):
         if parent.stan == ImportPracownikow.STAN_PRZEANALIZOWANY:
             oznacz_przepiecie_prac(list(ctx["object_list"]), parent)
         return ctx
+
+
+class WeryfikacjaJednostekView(GroupRequiredMixin, View):
+    """Ekran weryfikacji decyzji o jednostkach (do utworzenia / auto-dopasowane).
+
+    GET renderuje listę decyzji z kontrolkami (utwórz/mapuj/pomiń + parent +
+    cel mapowania), POST zapisuje wszystkie decyzje naraz. Krok OPCJONALNY —
+    import może iść z domyślnymi decyzjami (akceptuj), więc NIE bramkuje
+    zatwierdzenia; służy do korekty umiejscowienia przed commitem. Edycja tylko
+    w stanie ``przeanalizowany`` (jak reszta decyzji podglądu)."""
+
+    group_required = GROUP_REQUIRED
+    template_name = "import_pracownikow/weryfikacja_jednostek.html"
+
+    @cached_property
+    def parent_object(self):
+        obj = get_object_or_404(ImportPracownikow, pk=self.kwargs["pk"])
+        if obj.owner_id != self.request.user.pk and not self.request.user.is_superuser:
+            raise Http404
+        return obj
+
+    def _decyzje(self):
+        return (
+            self.parent_object.jednostki_do_decyzji.select_related(
+                "auto_jednostka", "wybrany_parent", "wybrana_jednostka"
+            )
+            .annotate(liczba_osob=Count("wiersze", distinct=True))
+            .order_by("nazwa_zrodlowa")
+        )
+
+    def get(self, request, *args, **kwargs):
+        parent = self.parent_object
+        uczelnia = Uczelnia.objects.get_single_uczelnia_or_none()
+        decyzje = list(self._decyzje())
+        ctx = {
+            "parent_object": parent,
+            "decyzje_brak": [
+                d for d in decyzje if d.tryb == ImportPracownikowJednostka.TRYB_BRAK
+            ],
+            "decyzje_zgadywanie": [
+                d
+                for d in decyzje
+                if d.tryb == ImportPracownikowJednostka.TRYB_ZGADYWANIE
+            ],
+            "uzywaj_wydzialow": bool(uczelnia and uczelnia.uzywaj_wydzialow),
+            "parent_opcje": Jednostka.objects.filter(parent__isnull=True).order_by(
+                "nazwa"
+            ),
+            "mapuj_opcje": Jednostka.objects.filter(
+                skupia_pracownikow=True, widoczna=True
+            ).order_by("nazwa"),
+            "moze_edytowac": parent.stan == ImportPracownikow.STAN_PRZEANALIZOWANY,
+            "DECYZJA_AKCEPTUJ": ImportPracownikowJednostka.DECYZJA_AKCEPTUJ,
+            "DECYZJA_MAPUJ": ImportPracownikowJednostka.DECYZJA_MAPUJ,
+            "DECYZJA_POMIN": ImportPracownikowJednostka.DECYZJA_POMIN,
+        }
+        return render(request, self.template_name, ctx)
+
+    def post(self, request, *args, **kwargs):
+        parent = self.parent_object
+        if parent.stan != ImportPracownikow.STAN_PRZEANALIZOWANY:
+            return HttpResponseBadRequest(
+                "Decyzje o jednostkach można zmieniać tylko w podglądzie."
+            )
+        prawidlowe = {
+            ImportPracownikowJednostka.DECYZJA_AKCEPTUJ,
+            ImportPracownikowJednostka.DECYZJA_MAPUJ,
+            ImportPracownikowJednostka.DECYZJA_POMIN,
+        }
+        for dec in parent.jednostki_do_decyzji.all():
+            pref = f"dec_{dec.pk}_"
+            decyzja = request.POST.get(pref + "decyzja")
+            if decyzja in prawidlowe:
+                dec.decyzja = decyzja
+            parent_id = request.POST.get(pref + "parent") or ""
+            dec.wybrany_parent = (
+                Jednostka.objects.filter(pk=parent_id).first() if parent_id else None
+            )
+            mapuj_id = request.POST.get(pref + "wybrana") or ""
+            dec.wybrana_jednostka = (
+                Jednostka.objects.filter(pk=mapuj_id).first() if mapuj_id else None
+            )
+            dec.save(update_fields=["decyzja", "wybrany_parent", "wybrana_jednostka"])
+        messages.success(request, "Zapisano decyzje o jednostkach.")
+        return HttpResponseRedirect(
+            reverse("import_pracownikow:jednostki", kwargs={"pk": parent.pk})
+        )
 
 
 class _PkOwnerRestartMixin(GroupRequiredMixin, RestartView):

@@ -14,6 +14,17 @@
 {% block content %}
     <h1>Import danych {{ parent_object.plik_xls.name }}</h1>
 
+    {% if parent_object.stan == "przeanalizowany" and parent_object.jednostki_do_decyzji.exists %}
+        <div class="callout primary">
+            {# link do ekranu weryfikacji jednostek do utworzenia / auto-dopasowanych #}
+            <span class="fi-info"></span>
+            {{ parent_object.jednostki_do_decyzji.count }} jednostek z pliku wymaga
+            weryfikacji (do utworzenia lub auto-dopasowane).
+            <a href="{% url "import_pracownikow:jednostki" pk=parent_object.pk %}"
+               class="button small">Zweryfikuj jednostki</a>
+        </div>
+    {% endif %}
+
     {# HTMX dla akcji per-wiersz (wybór kandydata / edycja inline) — patrz #}
     {# wzorzec importer_publikacji/index.html. #}
     <script src="https://unpkg.com/htmx.org@2.0.4" crossorigin="anonymous"></script>
