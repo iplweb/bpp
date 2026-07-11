@@ -74,6 +74,9 @@
             <h2>Krok 2 — osoby</h2>
             <p>Sprawdź dopasowania autorów i powiązania w kafelkach poniżej, a gdy
                 wszystko się zgadza — zaimportuj osoby do bazy.</p>
+            {# Ostrzeżenie #4: „Zapisz osoby do bazy" zmienia bazę (m.in. podstawowe #}
+            {# miejsce pracy) — pokazujemy je tuż przed przyciskiem. #}
+            {% include "import_pracownikow/partials/_ostrzezenie_podstawowe_miejsce.html" %}
             <form method="post"
                   action="{% url "import_pracownikow:zatwierdz" parent_object.pk %}">
                 {% csrf_token %}
