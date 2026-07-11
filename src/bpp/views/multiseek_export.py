@@ -228,6 +228,101 @@ def _apply_xlsx_hyperlinks(worksheet, url_cols):
                 cell.value = f'=HYPERLINK("{cell.value}", "[link]")'
 
 
+# Allowlist dla nh3.clean treści dokumentu eksportu (D8). Unia (nie podzbiór)
+# DEFAULT_ALLOWED_TAGS z nowe_raporty.docx_export (m.in. h4/strike/font —
+# markup opisu bibliograficznego pochodzi z per-instalacyjnych, DB-konfig.
+# szablonów) i tagów strukturalnych listy/tabeli. Atrybuty: td/th → colspan.
+EXPORT_HTML_STRUCTURAL_TAGS = frozenset(
+    {
+        "table",
+        "thead",
+        "tbody",
+        "tfoot",
+        "tr",
+        "td",
+        "th",
+        "ol",
+        "ul",
+        "li",
+        "p",
+        "div",
+        "span",
+        "h1",
+        "h2",
+        "h3",
+        "br",
+        "hr",
+        "pre",
+        "code",
+    }
+)
+EXPORT_HTML_ATTRIBUTES = {"td": {"colspan"}, "th": {"colspan"}}
+
+
+def sanitize_export_html(body_html):
+    """Sanityzacja treści dokumentu eksportu przez nh3.clean.
+
+    Plik opuszcza serwis (brak CSP, file://), a body zawiera DB-sourced
+    opis_bibliograficzny_cache — czyścimy jak siostrzany nowe_raporty.as_docx.
+    """
+    import nh3
+
+    from nowe_raporty.docx_export import DEFAULT_ALLOWED_TAGS
+
+    tags = set(DEFAULT_ALLOWED_TAGS) | set(EXPORT_HTML_STRUCTURAL_TAGS)
+    return nh3.clean(body_html, tags=tags, attributes=EXPORT_HTML_ATTRIBUTES)
+
+
+def html_export_response(document_html, report_title):
+    response = HttpResponse(document_html, content_type="text/html; charset=utf-8")
+    response["Content-Disposition"] = content_disposition_header(
+        as_attachment=True,
+        filename=_export_filename("html", report_title),
+    )
+    return response
+
+
+def docx_export_response(document_html, report_title):
+    """Eksport DOCX — konwersja przez nowe_raporty.docx_export.html_to_docx.
+
+    Ścieżka pierwsza (i produkcyjna) to pandoc; przy twardej awarii fallback
+    na dockerowy html2docx. DocxConversionError propaguje (500) — nie tłumimy.
+    """
+    from nowe_raporty.docx_export import html_to_docx
+
+    content = html_to_docx(document_html)
+    response = HttpResponse(
+        content,
+        content_type=(
+            "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+        ),
+    )
+    response["Content-Disposition"] = content_disposition_header(
+        as_attachment=True,
+        filename=_export_filename("docx", report_title),
+    )
+    return response
+
+
+def bibtex_export_response(queryset, report_title):
+    """Eksport BibTeX (.bib) — surowy tekst, gdy report_type == 'bibtex'.
+
+    Reuse bpp.export.bibtex.export_to_bibtex (dispatch po model_name);
+    rekord.original zwraca konkretną instancję publikacji.
+    """
+    from bpp.export.bibtex import export_to_bibtex
+
+    content = export_to_bibtex(
+        rekord.original for rekord in queryset.iterator(chunk_size=1000)
+    )
+    response = HttpResponse(content, content_type="application/x-bibtex; charset=utf-8")
+    response["Content-Disposition"] = content_disposition_header(
+        as_attachment=True,
+        filename=_export_filename("bib", report_title),
+    )
+    return response
+
+
 def csv_export_response(queryset, request, report_title):
     output = io.StringIO()
     writer = csv.writer(output)

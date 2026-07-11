@@ -416,6 +416,7 @@ dependencies = [
     { name = "django-model-utils", marker = "platform_python_implementation != 'PyPy'" },
     { name = "django-mptt", marker = "platform_python_implementation != 'PyPy'" },
     { name = "django-multiseek", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "django-oauth-toolkit", marker = "platform_python_implementation != 'PyPy'" },
     { name = "django-password-policies-iplweb", marker = "platform_python_implementation != 'PyPy'" },
     { name = "django-pg-baseline", marker = "platform_python_implementation != 'PyPy'" },
     { name = "django-polish-inflection", marker = "platform_python_implementation != 'PyPy'" },
@@ -599,6 +600,7 @@ requires-dist = [
     { name = "django-model-utils", specifier = "==5.0.0" },
     { name = "django-mptt", specifier = ">=0.16,<1" },
     { name = "django-multiseek", specifier = "==0.10.2" },
+    { name = "django-oauth-toolkit", specifier = "==3.3.0" },
     { name = "django-password-policies-iplweb", specifier = "==0.9.0" },
     { name = "django-pg-baseline", specifier = ">=0.3.0" },
     { name = "django-polish-inflection", specifier = ">=0.1,<0.2" },
@@ -619,7 +621,7 @@ requires-dist = [
     { name = "django-tinymce", specifier = ">=5.0.0" },
     { name = "django-weasyprint", specifier = ">=2.5.0" },
     { name = "django-webmaster-verification", specifier = "==0.4.3" },
-    { name = "djangoql-iplweb", specifier = ">=0.30.2" },
+    { name = "djangoql-iplweb", specifier = ">=0.31.1" },
     { name = "djangorestframework", specifier = "==3.17.1" },
     { name = "dspace-rest-client", specifier = ">=0.1.12" },
     { name = "gunicorn", specifier = ">=26.0.0" },
@@ -2046,6 +2048,21 @@ wheels = [
 ]
 
 [[package]]
+name = "django-oauth-toolkit"
+version = "3.3.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "django", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "jwcrypto", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "oauthlib", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "requests", marker = "platform_python_implementation != 'PyPy'" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/62/2b/011f3e964f474b7814828586de0277ad373197096b28274d0ae8bf45d5f9/django_oauth_toolkit-3.3.0.tar.gz", hash = "sha256:2b375d14b1c0ff86e5df5e5de5d1a6d9868873304f54aca37c50158552d5b922", size = 118319, upload-time = "2026-05-29T18:13:57.065Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/26/e4/d05b3d50d0250f2d2f3a5dc9cd21f85e313ee1493ff60b729dccb8e08c46/django_oauth_toolkit-3.3.0-py3-none-any.whl", hash = "sha256:7af1365cd80735211454b0dca810bc9e860c631e61fd17768ad0fa331737954f", size = 88415, upload-time = "2026-05-29T18:13:55.827Z" },
+]
+
+[[package]]
 name = "django-password-policies-iplweb"
 version = "0.9.0"
 source = { registry = "https://pypi.org/simple" }
@@ -2339,14 +2356,14 @@ wheels = [
 
 [[package]]
 name = "djangoql-iplweb"
-version = "0.30.2"
+version = "0.31.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "ply", marker = "platform_python_implementation != 'PyPy'" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/cf/c3/4de86c02d5fcdf0514a49494a007855b0ba24a7a763b2c607f1804db4241/djangoql_iplweb-0.30.2.tar.gz", hash = "sha256:f56243d33e8f104ba7d91eab5da19e0653c7859bc59caeb6bae1485c86559798", size = 316453, upload-time = "2026-07-05T16:31:59.776Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/6f/67/1143e2369e8cd09fab96356fc6ab998fc3c3b7561916b0642355bbf0cc7d/djangoql_iplweb-0.31.1.tar.gz", hash = "sha256:722b922ce2a1b209e4253c29bd4c618179b4d7fe76bb4c444c7e230384845421", size = 318089, upload-time = "2026-07-11T07:58:17.355Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/3e/cf/64dfebbe862b0d7711d63cfc3b1c462a009b446a61d6c8f31249e64a0720/djangoql_iplweb-0.30.2-py3-none-any.whl", hash = "sha256:c70c0de383a34106fe583e00e0d54fd2c1ab29ac4bf0a030b69d40afeb3740fe", size = 375366, upload-time = "2026-07-05T16:32:01.454Z" },
+    { url = "https://files.pythonhosted.org/packages/7f/07/89288aae90bed7b801fe5b47f5d9b79645db62e2b1012e095a7d6b6c046b/djangoql_iplweb-0.31.1-py3-none-any.whl", hash = "sha256:030ec5b299629e95d0ffe275c92f06e8bfb7bc36758ed6745c5135ec119d0e9c", size = 377285, upload-time = "2026-07-11T07:58:18.928Z" },
 ]
 
 [[package]]
@@ -3100,6 +3117,19 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/9c/4b/6f8906aaf67d501e259b0adab4d312945bb7211e8b8d4dcc77c92320edaa/json5-0.14.0.tar.gz", hash = "sha256:b3f492fad9f6cdbced8b7d40b28b9b1c9701c5f561bef0d33b81c2ff433fefcb", size = 52656, upload-time = "2026-03-27T22:50:48.108Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/b8/42/cf027b4ac873b076189d935b135397675dac80cb29acb13e1ab86ad6c631/json5-0.14.0-py3-none-any.whl", hash = "sha256:56cf861bab076b1178eb8c92e1311d273a9b9acea2ccc82c276abf839ebaef3a", size = 36271, upload-time = "2026-03-27T22:50:47.073Z" },
+]
+
+[[package]]
+name = "jwcrypto"
+version = "1.5.8"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "cryptography", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "typing-extensions", marker = "platform_python_implementation != 'PyPy'" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/de/7e/53c14813521693e931e420d9db00efe317419ff194495903bce03402275e/jwcrypto-1.5.8.tar.gz", hash = "sha256:c3d7114b6f6e65b52f6b7da817eb8cb8423e1da31e1ef13508447c81ecbdcc34", size = 90772, upload-time = "2026-06-24T19:36:50.782Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/6e/7c/f87c5db042c4f7b4476346fc0d22f1025a777fee08eebde3720d3b9c4eb5/jwcrypto-1.5.8-py3-none-any.whl", hash = "sha256:85aeb475f808d56bbc2f2ed1f6f73e6a317c4011a4321505f02f0aed695a3742", size = 96133, upload-time = "2026-06-24T19:36:49.519Z" },
 ]
 
 [[package]]
@@ -5587,11 +5617,11 @@ wheels = [
 
 [[package]]
 name = "soupsieve"
-version = "2.8"
+version = "2.8.4"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/6d/e6/21ccce3262dd4889aa3332e5a119a3491a95e8f60939870a3a035aabac0d/soupsieve-2.8.tar.gz", hash = "sha256:e2dd4a40a628cb5f28f6d4b0db8800b8f581b65bb380b97de22ba5ca8d72572f", size = 103472, upload-time = "2025-08-27T15:39:51.78Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/47/2c/0a5f6f8ee0d5589e48c7640213ed5175d52cf540a06725b628cc1a45d6ce/soupsieve-2.8.4.tar.gz", hash = "sha256:e121fd02e975c695e4e9e8774a5ee35d74714b59307868dcc5319ad2d9e3328e", size = 121110, upload-time = "2026-05-24T13:55:57.154Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/14/a0/bb38d3b76b8cae341dad93a2dd83ab7462e6dbcdd84d43f54ee60a8dc167/soupsieve-2.8-py3-none-any.whl", hash = "sha256:0cc76456a30e20f5d7f2e14a98a4ae2ee4e5abdc7c5ea0aafe795f344bc7984c", size = 36679, upload-time = "2025-08-27T15:39:50.179Z" },
+    { url = "https://files.pythonhosted.org/packages/5e/f5/0c41cb68dcae6b7de4fac4188a3a9589e21fb31df21ea3a2e888db95e6c9/soupsieve-2.8.4-py3-none-any.whl", hash = "sha256:e7e6b0769c8f51ed59acab6e994b00621096cfb1c640a7509295987388fbaf65", size = 37304, upload-time = "2026-05-24T13:55:55.406Z" },
 ]
 
 [[package]]

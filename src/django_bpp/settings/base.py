@@ -328,6 +328,7 @@ MIDDLEWARE = [
     "bpp.middleware.NotificationsMiddleware",
     # 'rollbar.contrib.django.middleware.RollbarNotifierMiddleware',
     "bpp.middleware.CustomRollbarNotifierMiddleware",
+    "oauth_mcp.middleware.ApiReadOnlyForBearerMiddleware",
     # AxesMiddleware MUSI być ostatnie — przechwytuje AxesBackendPermissionDenied
     # z backendu logowania i renderuje odpowiedź "konto zablokowane".
     "axes.middleware.AxesMiddleware",
@@ -455,6 +456,8 @@ INSTALLED_APPS = [
     "import_dyscyplin",
     "mptt",
     "rest_framework",
+    "oauth_mcp",
+    "oauth2_provider",
     "django_filters",
     "api_v1",
     "adminsortable2",
@@ -972,6 +975,11 @@ REST_FRAMEWORK = {
     "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.LimitOffsetPagination",
     "PAGE_SIZE": 10,
     "DEFAULT_FILTER_BACKENDS": ["django_filters.rest_framework.DjangoFilterBackend"],
+    "DEFAULT_AUTHENTICATION_CLASSES": [
+        "oauth_mcp.authentication.StrictOAuth2Authentication",
+        "rest_framework.authentication.SessionAuthentication",
+        "rest_framework.authentication.BasicAuthentication",
+    ],
     # Nie limituj ilości zapytań (mpasternak, 6.06.2020) - jednakże, gdyby
     # trzeba było, to wystarczy odkomentować poniższe dwie linie:
     # "DEFAULT_THROTTLE_CLASSES": ("rest_framework.throttling.AnonRateThrottle",),
@@ -1744,3 +1752,18 @@ CONSTANCE_DATABASE_CACHE_BACKEND = "constance_cache"
 # Puste CONSTANCE_CONFIG zachowane dla backward compat z django-constance.
 CONSTANCE_CONFIG = {}
 CONSTANCE_CONFIG_FIELDSETS = {}
+
+#
+# django-oauth-toolkit (DOT) — Authorization Server dla serwera MCP (`/o/`).
+# NIE dodawaj `ALLOWED_GRANT_TYPES` — taki klucz nie istnieje w DOT i
+# zostałby po cichu zignorowany. Granty kontroluje DCR (Task 6/7) i atrybut
+# `Application.authorization_grant_type`.
+#
+OAUTH2_PROVIDER = {
+    "PKCE_REQUIRED": True,
+    "DEFAULT_SCOPES": ["read"],
+    "SCOPES": {"read": "Odczyt danych BPP w Twoim imieniu"},
+    "ROTATE_REFRESH_TOKEN": True,
+    "ACCESS_TOKEN_EXPIRE_SECONDS": 60 * 30,  # 30 min
+    "REFRESH_TOKEN_EXPIRE_SECONDS": 60 * 60 * 24 * 7,  # 7 dni (NIE None!)
+}

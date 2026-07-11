@@ -16,7 +16,7 @@ from django.template.loader import render_to_string
 from bpp.models import Crossref_Mapper
 
 from ..forms import FetchForm, SessionFilterForm
-from ..models import ImportSession
+from ..models import ImportSession, MultipleWorksImport
 from ..providers import get_providers_metadata
 
 _POLISH_DIACRITICS = set("ąćęłńóśźżĄĆĘŁŃÓŚŹŻ")
@@ -30,8 +30,10 @@ STEP_PUNKTACJA = "importer_publikacji/partials/step_punktacja.html"
 STEP_PBN = "importer_publikacji/partials/step_pbn.html"
 STEP_REVIEW = "importer_publikacji/partials/step_review.html"
 STEP_DONE = "importer_publikacji/partials/step_done.html"
+STEP_LANDING = "importer_publikacji/partials/step_landing.html"
 INDEX = "importer_publikacji/index.html"
 SESSIONS_PARTIAL = "importer_publikacji/partials/session_list.html"
+BATCH_DETAIL = "importer_publikacji/partials/batch_detail.html"
 BREADCRUMBS_OOB = "importer_publikacji/partials/_breadcrumbs_oob.html"
 
 SESSIONS_ALLOWED_SORTS = {
@@ -204,4 +206,51 @@ def _sessions_list_context(request):
     return {
         "sessions": qs,
         "filter_form": form,
+    }
+
+
+# Statusy sesji uznawane za "zakończone" (nie liczą się do licznika importów
+# w toku na kaflowej stronie głównej): sukces, anulowanie przez operatora
+# i trwały błąd (który i tak wymaga ręcznego retry, nie "wisi" biernie).
+_SESSION_DONE_STATUSES = (
+    ImportSession.Status.COMPLETED,
+    ImportSession.Status.CANCELLED,
+    ImportSession.Status.IMPORT_FAILED,
+)
+
+
+def _in_progress_sessions_count() -> int:
+    """Liczba pojedynczych sesji importu, które nie są zakończone."""
+    return ImportSession.objects.exclude(status__in=_SESSION_DONE_STATUSES).count()
+
+
+def _in_progress_batches_count() -> int:
+    """Liczba paczek (``MultipleWorksImport``), które nie są w całości
+    przetworzone (nie wszystkie wpisy zaimportowane lub pominięte)."""
+    return sum(
+        1
+        for batch in MultipleWorksImport.objects.prefetch_related("entries")
+        if not batch.progress["done"]
+    )
+
+
+def _polish_plural(n: int, one: str, few: str, many: str) -> str:
+    """Polska odmiana rzeczownika po liczebniku (1 / 2-4 / 5+, z wyjątkiem
+    "nastek" 12-14, które biorą formę "many" mimo końcówki 2-4)."""
+    if n == 1:
+        return one
+    if n % 10 in (2, 3, 4) and n % 100 not in (12, 13, 14):
+        return few
+    return many
+
+
+def _landing_context(request):
+    """Kontekst kafelkowej strony głównej importera: lista dostawców danych
+    (z ikoną i krótkim podpisem „co i skąd") oraz licznik importów w toku
+    (pojedynczych sesji + paczek) do slim-baru pod kafelkami."""
+    count = _in_progress_sessions_count() + _in_progress_batches_count()
+    return {
+        "providers": list(get_providers_metadata().values()),
+        "in_progress_count": count,
+        "in_progress_label": _polish_plural(count, "import", "importy", "importów"),
     }

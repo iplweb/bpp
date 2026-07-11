@@ -1,0 +1,59 @@
+{% if cancelled %}
+    <div class="callout warning" data-closable>
+        Sesja importu została anulowana.
+        <button class="close-button" data-close
+                type="button" aria-label="Zamknij">
+            <span aria-hidden="true">&times;</span>
+        </button>
+    </div>
+{% endif %}
+
+<div class="callout">
+    <h4>
+        <span class="fi-magnifying-glass"></span>
+        Importer publikacji
+    </h4>
+    <p>
+        Wybierz źródło danych, z którego chcesz zaimportować publikację.
+    </p>
+
+    <div class="tile-grid tile-grid--providers" id="provider-tile-grid">
+        {% for p in providers %}
+            <a class="tile-card"
+               data-provider="{{ p.name }}"
+               href="{% url 'importer_publikacji:index' %}?provider={{ p.name|urlencode }}"
+               hx-get="{% url 'importer_publikacji:index' %}?provider={{ p.name|urlencode }}"
+               hx-target="#importer-wizard"
+               hx-push-url="true">
+                <span class="tile-icon {{ p.icon }}"></span>
+                <span class="tile-title">{{ p.choice_label }}</span>
+                <span class="tile-desc">{{ p.landing_caption }}</span>
+            </a>
+        {% endfor %}
+    </div>
+</div>
+
+<div class="callout secondary" id="import-progress-bar">
+    <div class="grid-x grid-margin-x align-middle align-justify">
+        <div class="cell auto">
+            <span class="fi-clock"></span>
+            {% if in_progress_count %}
+                Masz <strong>{{ in_progress_count }}</strong>
+                {{ in_progress_label }} w toku.
+            {% else %}
+                Brak importów w toku.
+            {% endif %}
+        </div>
+        <div class="cell shrink">
+            <a class="button tiny secondary"
+               id="import-sessions-link"
+               href="{% url 'importer_publikacji:sessions' %}"
+               hx-get="{% url 'importer_publikacji:sessions' %}"
+               hx-target="#importer-wizard"
+               hx-push-url="true">
+                Importy w toku / ostatnie
+                <span class="fi-arrow-right"></span>
+            </a>
+        </div>
+    </div>
+</div>

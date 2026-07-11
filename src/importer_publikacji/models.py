@@ -15,6 +15,22 @@ DEFAULT_STALL_TIMEOUT = 180
 class ImportSession(models.Model):
     """Stan sesji importu publikacji."""
 
+    class RodzajRekordu(models.TextChoices):
+        """Docelowy model rekordu tworzonego przez ``_create_publication``.
+
+        Trzecia wartość (``PATENT``) rozszerza dawny binarny wybór
+        (``jest_wydawnictwem_zwartym``) o ``bpp.Patent`` — model, który NIE
+        jest ani ``Wydawnictwo_Ciagle`` ani ``Wydawnictwo_Zwarte`` (brak
+        ``typ_kbn``, ``charakter_formalny``/``jezyk`` zahardkodowane).
+        Domyślnie ``CIAGLE`` — back-compat: dla sesji, które nigdy nie
+        ustawiły tego pola, dispatch nadal idzie po
+        ``jest_wydawnictwem_zwartym`` (patrz ``_create_publication``).
+        """
+
+        CIAGLE = "ciagle", "Wydawnictwo ciągłe"
+        ZWARTE = "zwarte", "Wydawnictwo zwarte"
+        PATENT = "patent", "Patent"
+
     class Status(models.TextChoices):
         FETCHED = "fetched", "Pobrano dane"
         FETCHING = "fetching", "Trwa pobieranie"
@@ -139,6 +155,17 @@ class ImportSession(models.Model):
         "jest wydawnictwem zwartym",
         default=False,
     )
+    rodzaj_rekordu = models.CharField(
+        "rodzaj rekordu",
+        max_length=10,
+        choices=RodzajRekordu.choices,
+        default=RodzajRekordu.CIAGLE,
+        help_text=(
+            "Docelowy model rekordu. Dla wartości innej niż „Patent” "
+            "dispatch nadal kieruje się polem „jest wydawnictwem zwartym” "
+            "(zgodność wsteczna)."
+        ),
+    )
 
     created_record_content_type = models.ForeignKey(
         ContentType,
@@ -214,6 +241,11 @@ class ImportSession(models.Model):
             self.Status.REVIEW: "review",
             self.Status.COMPLETED: "done",
         }
+        # Patent pomija kroki Source i PBN — wznowienie z listy/paczki nie może
+        # kierować w te kroki (SourceView.post skorumpowałby sesję patentową).
+        if self.rodzaj_rekordu == self.RodzajRekordu.PATENT:
+            status_url_map[self.Status.VERIFIED] = "authors"
+            status_url_map[self.Status.PUNKTACJA] = "review"
         name = status_url_map.get(self.status)
         if name is None:
             return None
@@ -422,3 +454,110 @@ class ImportedAuthor_Candidate(models.Model):
     @property
     def powod_display(self) -> str:
         return POWOD_DISPLAY.get(self.powod, self.powod)
+
+
+class EntryStatus(models.TextChoices):
+    PENDING = "pending", "Oczekuje"
+    IN_PROGRESS = "in_progress", "W toku"
+    IMPORTED = "imported", "Zaimportowano"
+    FAILED = "failed", "Błąd"
+    SKIPPED = "skipped", "Pominięty"
+    MALFORMED = "malformed", "Uszkodzony"
+
+
+class MultipleWorksImport(models.Model):
+    """Paczka wielu prac wklejonych naraz (stager) — np. wielo-wpisowy BibTeX.
+
+    Trzyma surowy wsad i N dzieci (``entries``); pojedyncza ``ImportSession``
+    powstaje leniwie dopiero na żądanie importu konkretnego wpisu.
+    """
+
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="importer_publikacji_batches",
+        verbose_name="utworzył",
+    )
+    provider_name = models.CharField("dostawca danych", max_length=50)
+    raw_input = models.TextField("surowy wsad")
+    created = models.DateTimeField("utworzono", auto_now_add=True)
+    modified = models.DateTimeField("zmodyfikowano", auto_now=True)
+
+    class Meta:
+        verbose_name = "import wielu prac"
+        verbose_name_plural = "importy wielu prac"
+        ordering = ["-created"]
+
+    def __str__(self):
+        return f"{self.provider_name}: paczka #{self.pk}"
+
+    @property
+    def progress(self) -> dict:
+        entries = list(self.entries.select_related("session"))
+        imported = sum(1 for e in entries if e.status == EntryStatus.IMPORTED)
+        skipped = sum(1 for e in entries if e.status == EntryStatus.SKIPPED)
+        total = len(entries)
+        done = all(
+            e.status in (EntryStatus.IMPORTED, EntryStatus.SKIPPED) for e in entries
+        )
+        return {
+            "imported": imported,
+            "skipped": skipped,
+            "total": total,
+            "done": done if total else False,
+        }
+
+
+class MultipleWorksImportEntry(models.Model):
+    """Pojedynczy wpis paczki. Status jest WYLICZANY z ``session`` +
+    ``skipped`` + ``parse_error`` — nie przechowujemy go, żeby nie rozjeżdżał
+    się z ``ImportSession.status``."""
+
+    parent = models.ForeignKey(
+        MultipleWorksImport,
+        on_delete=models.CASCADE,
+        related_name="entries",
+        verbose_name="paczka",
+    )
+    order = models.PositiveIntegerField("kolejność", default=0)
+    raw_bibtex = models.TextField("pojedynczy wpis BibTeX")
+    title = models.TextField("tytuł (podgląd)", blank=True, default="")
+    parse_error = models.TextField("błąd parsowania", blank=True, default="")
+    skipped = models.BooleanField("pominięty", default=False)
+    session = models.OneToOneField(
+        ImportSession,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="batch_entry",
+        verbose_name="sesja importu",
+    )
+
+    class Meta:
+        verbose_name = "wpis paczki"
+        verbose_name_plural = "wpisy paczki"
+        ordering = ["order"]
+
+    def __str__(self):
+        return f"#{self.order}: {self.title or '(bez tytułu)'}"
+
+    @property
+    def status(self) -> str:
+        session = self.session
+        if session is not None and session.status == ImportSession.Status.COMPLETED:
+            return EntryStatus.IMPORTED
+        if self.skipped:
+            return EntryStatus.SKIPPED
+        if self.parse_error:
+            return EntryStatus.MALFORMED
+        if session is None:
+            return EntryStatus.PENDING
+        if session.status == ImportSession.Status.IMPORT_FAILED or session.is_stalled():
+            return EntryStatus.FAILED
+        if session.status == ImportSession.Status.CANCELLED:
+            return EntryStatus.PENDING
+        return EntryStatus.IN_PROGRESS
+
+    @property
+    def status_label(self) -> str:
+        return EntryStatus(self.status).label

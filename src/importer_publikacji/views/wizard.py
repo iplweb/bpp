@@ -25,7 +25,13 @@ from ..forms import (
     SourceForm,
     VerifyForm,
 )
-from ..models import ImportedAuthor, ImportSession
+from ..models import (
+    EntryStatus,
+    ImportedAuthor,
+    ImportSession,
+    MultipleWorksImport,
+    MultipleWorksImportEntry,
+)
 from ..permissions import ImporterPermissionMixin
 from ..providers import InputMode, get_provider
 from ..tasks import create_publication_task, fetch_session_task
@@ -35,11 +41,14 @@ from .authors import (
     _orcid_settable_qs,
 )
 from .helpers import (
+    BATCH_DETAIL,
     SESSIONS_PARTIAL,
     STEP_DONE,
     STEP_FETCH,
+    STEP_LANDING,
     _fetch_context,
     _is_htmx_partial,
+    _landing_context,
     _push_url,
     _render_full_page,
     _sessions_list_context,
@@ -58,41 +67,134 @@ from .steps import (
 
 
 class SessionListView(ImporterPermissionMixin, View):
-    """Lista sesji z filtrami, sortowaniem i paginacją."""
+    """Lista sesji z filtrami, sortowaniem i paginacją.
+
+    Dostępna jako samodzielna strona (link z paska „importy w toku" na
+    kaflowej stronie głównej — patrz ``IndexView``) — stąd
+    ``standalone=True`` w kontekście, żeby partial doklejał link powrotny
+    (przy embedowaniu w kroku fetch tego klucza nie ma, więc link nie
+    dubluje się tam, gdzie i tak już jesteśmy na stronie importera).
+    """
 
     def get(self, request):
         ctx = _sessions_list_context(request)
+        ctx["standalone"] = True
         if _is_htmx_partial(request):
             return render(request, SESSIONS_PARTIAL, ctx)
-        # Fallback: pełna strona z formularzem fetch
-        fetch_ctx = _fetch_context(request=request)
-        fetch_ctx.update(ctx)
-        return _render_full_page(request, STEP_FETCH, fetch_ctx)
+        return _render_full_page(request, SESSIONS_PARTIAL, ctx)
 
 
 class IndexView(ImporterPermissionMixin, View):
-    """Strona główna importera."""
+    """Strona główna importera: kafelki dostawców danych albo (z parametrem
+    ``?provider=``) formularz pobrania danych od konkretnego dostawcy.
+
+    ``?provider=`` (opcjonalnie z ``?identifier=``) jest zachowane wstecznie
+    kompatybilnie — używają go istniejące linki z adminowych list zmian
+    (Wydawnictwo_Ciagle/Zwarte „Dodaj z CrossRef API") oraz przycisk
+    „Użyj importera" w adminie Zgłoszeń Publikacji. Kafle na stronie
+    głównej celują w ten sam parametr, więc kliknięcie kafla renderuje
+    dokładnie tę samą stronę co bezpośredni deep-link/refresh/Back.
+    """
 
     def get(self, request):
-        initial = {}
         if request.GET.get("provider"):
-            initial["provider"] = request.GET["provider"]
+            return self._get_fetch_form(request)
+        return self._get_landing(request)
+
+    def _get_fetch_form(self, request):
+        initial = {"provider": request.GET["provider"]}
         if request.GET.get("identifier"):
             initial["identifier"] = request.GET["identifier"]
-
-        if initial:
-            form = FetchForm(initial=initial)
-        else:
-            form = None
+        form = FetchForm(initial=initial)
 
         ctx = _fetch_context(form, request=request)
+        ctx.update(_sessions_list_context(request))
         if _is_htmx_partial(request):
-            ctx.update(_sessions_list_context(request))
             response = render(request, STEP_FETCH, ctx)
             return _with_breadcrumbs_oob(response, request)
-        sessions_ctx = _sessions_list_context(request)
-        ctx.update(sessions_ctx)
         return _render_full_page(request, STEP_FETCH, ctx)
+
+    def _get_landing(self, request):
+        ctx = _landing_context(request)
+        if _is_htmx_partial(request):
+            response = render(request, STEP_LANDING, ctx)
+            return _with_breadcrumbs_oob(response, request)
+        return _render_full_page(request, STEP_LANDING, ctx)
+
+
+def _hx_or_redirect(request, url):
+    """Zwróć ``HX-Redirect`` dla żądań HTMX, w przeciwnym razie zwykły 302."""
+    if request.headers.get("HX-Request"):
+        response = HttpResponse(status=200)
+        response["HX-Redirect"] = url
+        return response
+    return HttpResponseRedirect(url)
+
+
+def _date_to_iso(value):
+    """``datetime.date`` → string ISO ``YYYY-MM-DD`` (JSON-owalny) lub None."""
+    return value.isoformat() if value else None
+
+
+def _patent_guard(request, session):
+    """Guard kroków Source/PBN: patenty je pomijają.
+
+    Gdy sesja jest patentem, zwróć przekierowanie na właściwy krok
+    (``get_continue_url`` po gałęzi patentowej → Authors/Review) zamiast
+    pozwolić widokowi Source/PBN przetworzyć request (co skorumpowałoby sesję
+    patentową — zapis ``zrodlo``/``pbn_mongo_id``). Zwraca ``None`` dla
+    nie-patentów (widok działa normalnie).
+    """
+    if session.rodzaj_rekordu == ImportSession.RodzajRekordu.PATENT:
+        # get_continue_url zwraca None dla statusów spoza mapy (np. CANCELLED)
+        # — nie przekierowuj wtedy na literalne "None", tylko na listę sesji.
+        url = session.get_continue_url() or reverse("importer_publikacji:index")
+        return _hx_or_redirect(request, url)
+    return None
+
+
+def _create_batch(request, provider_name, normalized, records):
+    """Utwórz ``MultipleWorksImport`` + wszystkie jego wpisy naraz."""
+    batch = MultipleWorksImport.objects.create(
+        created_by=request.user,
+        provider_name=provider_name,
+        raw_input=normalized,
+    )
+    MultipleWorksImportEntry.objects.bulk_create(
+        [
+            MultipleWorksImportEntry(
+                parent=batch,
+                order=i,
+                raw_bibtex=rec.raw,
+                title=rec.title,
+                parse_error="" if rec.ok else rec.error,
+            )
+            for i, rec in enumerate(records)
+        ]
+    )
+    return batch
+
+
+def _start_import_session(request, provider_name, identifier):
+    """Utwórz sesję importu (FETCHING) + wystartuj task fetch.
+
+    BEZ guardu double-click po ``identifier`` — używane też przez import
+    pojedynczego wpisu paczki, gdzie duplikaty wpisów są dozwolone, a przed
+    podwójnym startem chroni ``entry.session`` po stronie wołającego.
+    """
+    session = ImportSession.objects.create(
+        created_by=request.user,
+        uczelnia=Uczelnia.objects.get_for_request(request),
+        provider_name=provider_name,
+        identifier=identifier,
+        status=ImportSession.Status.FETCHING,
+        raw_data={},
+        normalized_data={},
+    )
+    task = fetch_session_task.delay(session.pk, request.user.pk)
+    session.celery_task_id = task.id
+    session.save(update_fields=["celery_task_id"])
+    return session
 
 
 class FetchView(ImporterPermissionMixin, View):
@@ -126,6 +228,18 @@ class FetchView(ImporterPermissionMixin, View):
             form.add_error(error_field, msg)
             return render(request, STEP_FETCH, _fetch_context(form))
 
+        # Wielo-rekordowe wejście (BibTeX z ≥2 wpisami) → paczka, nie
+        # pojedyncza sesja. Pojedyncze sesje powstają leniwie przy
+        # imporcie wpisu.
+        records = provider.split_input(normalized)
+        if len(records) >= 2:
+            batch = _create_batch(request, provider_name, normalized, records)
+            url = reverse(
+                "importer_publikacji:batch-detail",
+                kwargs={"batch_id": batch.pk},
+            )
+            return _hx_or_redirect(request, url)
+
         # Idempotency (C2): jesli juz jest sesja in-flight tego samego usera
         # dla tego samego (provider, identifier), nie startuj kolejnej —
         # zredirectuj do istniejacej. Defense przed double-click i refresh.
@@ -143,35 +257,90 @@ class FetchView(ImporterPermissionMixin, View):
             .first()
         )
         if recent_in_flight is not None:
-            url = recent_in_flight.get_continue_url()
-            if request.headers.get("HX-Request"):
-                response = HttpResponse(status=200)
-                response["HX-Redirect"] = url
-                return response
-            return HttpResponseRedirect(url)
+            return _hx_or_redirect(request, recent_in_flight.get_continue_url())
 
-        session = ImportSession.objects.create(
-            created_by=request.user,
-            uczelnia=Uczelnia.objects.get_for_request(request),
-            provider_name=provider_name,
-            identifier=normalized,
-            status=ImportSession.Status.FETCHING,
-            raw_data={},
-            normalized_data={},
-        )
-
-        task = fetch_session_task.delay(session.pk, request.user.pk)
-        session.celery_task_id = task.id
-        session.save(update_fields=["celery_task_id"])
+        session = _start_import_session(request, provider_name, normalized)
 
         url = reverse(
             "importer_publikacji:task-status",
             kwargs={"session_id": session.pk},
         )
-        if request.headers.get("HX-Request"):
-            response = HttpResponse(status=200)
-            response["HX-Redirect"] = url
-            return response
+        return _hx_or_redirect(request, url)
+
+
+class MultipleWorksImportDetailView(ImporterPermissionMixin, View):
+    """Lista wpisów paczki z per-wpis statusem i akcjami (drip import)."""
+
+    def get(self, request, batch_id):
+        batch = get_object_or_404(MultipleWorksImport, pk=batch_id)
+        entries = list(batch.entries.select_related("session"))
+        # Sweep zombie: martwy worker zostawia sesje w FETCHING/CREATING —
+        # bez tego wpis wisialby "w toku" i paczka nigdy nie bylaby gotowa.
+        for entry in entries:
+            if entry.session is not None and entry.session.is_stalled():
+                entry.session.mark_stalled()
+        return _render_full_page(
+            request,
+            BATCH_DETAIL,
+            {"batch": batch, "entries": entries, "progress": batch.progress},
+        )
+
+
+class BatchEntryImportView(ImporterPermissionMixin, View):
+    """Wystartuj import pojedynczego wpisu paczki (leniwy drip)."""
+
+    # Statusy TERMINALNE (odwrotność in-flight): sesja w którymkolwiek z nich
+    # jest skończona/martwa, więc wolno wystartować import wpisu od nowa.
+    # NB: NIE mylić z ``ImportSession._INFLIGHT_STATUSES`` (FETCHING/CREATING),
+    # które trzyma statusy przeciwne — stąd celowo inna, jednoznaczna nazwa.
+    _TERMINAL_STATUSES = (
+        ImportSession.Status.COMPLETED,
+        ImportSession.Status.IMPORT_FAILED,
+        ImportSession.Status.CANCELLED,
+    )
+
+    def post(self, request, entry_id):
+        entry = get_object_or_404(MultipleWorksImportEntry, pk=entry_id)
+        if entry.status == EntryStatus.IMPORTED:
+            # Wpis juz zaimportowany — nie startuj kolejnej sesji (defense
+            # przed stalym formularzem "Importuj" w drugiej karcie albo
+            # powtorzonym POST-em), tylko odesle do gotowej strony wpisu.
+            return HttpResponseRedirect(entry.session.get_continue_url())
+        if entry.parse_error:
+            return HttpResponseBadRequest("Wpis uszkodzony — nie można zaimportować.")
+        session = entry.session
+        if (
+            session is not None
+            and session.status not in self._TERMINAL_STATUSES
+            and not session.is_stalled()
+        ):
+            # Juz sie importuje — nie startuj drugiej sesji (defense double-click).
+            return HttpResponseRedirect(session.get_continue_url())
+        session = _start_import_session(
+            request, entry.parent.provider_name, entry.raw_bibtex
+        )
+        entry.session = session
+        entry.save(update_fields=["session"])
+        url = reverse(
+            "importer_publikacji:task-status",
+            kwargs={"session_id": session.pk},
+        )
+        return HttpResponseRedirect(url)
+
+
+class BatchEntrySkipView(ImporterPermissionMixin, View):
+    """Pomiń lub przywróć wpis paczki (toggle)."""
+
+    def post(self, request, entry_id):
+        entry = get_object_or_404(MultipleWorksImportEntry, pk=entry_id)
+        if entry.status == EntryStatus.IMPORTED:
+            return HttpResponseBadRequest("Nie można pominąć zaimportowanego wpisu.")
+        entry.skipped = not entry.skipped
+        entry.save(update_fields=["skipped"])
+        url = reverse(
+            "importer_publikacji:batch-detail",
+            kwargs={"batch_id": entry.parent_id},
+        )
         return HttpResponseRedirect(url)
 
 
@@ -197,12 +366,11 @@ class VerifyView(ImporterPermissionMixin, View):
         if not form.is_valid():
             return _render_verify_step(request, session, form=form)
 
-        session.charakter_formalny = form.cleaned_data["charakter_formalny"]
-        session.typ_kbn = form.cleaned_data["typ_kbn"]
-        session.jezyk = form.cleaned_data["jezyk"]
-        session.jest_wydawnictwem_zwartym = form.cleaned_data[
-            "jest_wydawnictwem_zwartym"
-        ]
+        rodzaj = form.cleaned_data["rodzaj_rekordu"]
+        session.rodzaj_rekordu = rodzaj
+        # back-compat: downstream (dispatch tworzenia, punktacja, krok źródła)
+        # nadal czyta boolean; wyliczamy go z radia.
+        session.jest_wydawnictwem_zwartym = rodzaj == ImportSession.RodzajRekordu.ZWARTE
         # Rok wpisany/poprawiony przez operatora → jedyne źródło prawdy o roku.
         # Ustawiamy go tu (najwcześniejszy edytowalny krok), żeby działały
         # kroki zależne od roku: dopasowanie dyscyplin autorów, punktacja
@@ -210,9 +378,62 @@ class VerifyView(ImporterPermissionMixin, View):
         session.normalized_data["year"] = form.cleaned_data["rok"]
         session.status = ImportSession.Status.VERIFIED
         session.modified_by = request.user
+
+        if rodzaj == ImportSession.RodzajRekordu.PATENT:
+            self._apply_patent_fields(session, form)
+            session.save()
+            # Patent pomija krok Source (brak źródła/wydawcy) → prosto Autorzy.
+            return _render_authors_step(request, session)
+
+        session.charakter_formalny = form.cleaned_data["charakter_formalny"]
+        session.typ_kbn = form.cleaned_data["typ_kbn"]
+        session.jezyk = form.cleaned_data["jezyk"]
         session.save()
 
         return _render_source_step(request, session)
+
+    @staticmethod
+    def _apply_patent_fields(session, form):
+        """Zapisz pola patentowe do ``normalized_data`` i wyczyść stale stan
+        nie-patentowy (scenariusz toggle CIAGLE/ZWARTE → PATENT).
+
+        Wszystkie klucze patentowe są zapisywane bezwarunkowo (nawet jako
+        ``None``), żeby prefill kroku Verify odróżnił „operator wyczyścił pole"
+        (klucz obecny = None) od „pierwsze wejście" (klucz nieobecny → dozwolony
+        best-effort z BibTeX).
+        """
+        cd = form.cleaned_data
+        # Patent hardkoduje charakter_formalny/jezyk i nie ma typ_kbn — wyzeruj
+        # ewentualne wartości sesyjne (żeby _create_publication nie zbudował
+        # z nich common_fields trujących Patent.objects.create()).
+        session.charakter_formalny = None
+        session.typ_kbn = None
+        session.jezyk = None
+        # Wyczyść pola źródła/PBN — stale wartości (toggle po kroku Source/PBN)
+        # inaczej: uzupelnij_punktacje_z_zrodla wlałaby punktację czasopisma do
+        # patentu, a stale pbn_mongo_id → _link_pbn_uid ustawiłby pole pbn_uid,
+        # którego Patent NIE MA (create task by się wywalił).
+        session.zrodlo = None
+        session.wydawca = None
+        session.wydawnictwo_nadrzedne = None
+        session.wydawnictwo_nadrzedne_w_pbn = None
+        session.matched_data.pop("pbn_mongo_id", None)
+        session.matched_data.pop("wydawca_opis", None)
+        # Punkty policzone na ścieżce czasopisma nie dotyczą patentu (brak
+        # źródła) — wyczyść, żeby krok Punktacja patentu nie prefillował ich.
+        session.matched_data.pop("punkty_kbn", None)
+
+        nd = session.normalized_data
+        nd["patent_number"] = cd.get("numer_zgloszenia") or None
+        nd["filing_date"] = _date_to_iso(cd.get("data_zgloszenia"))
+        nd["patent_grant_number"] = cd.get("numer_prawa_wylacznego") or None
+        nd["grant_date"] = _date_to_iso(cd.get("data_decyzji"))
+        nd["patent_holder"] = cd.get("uprawniony") or None
+        rodzaj_prawa = cd.get("rodzaj_prawa")
+        nd["rodzaj_prawa_id"] = rodzaj_prawa.pk if rodzaj_prawa else None
+        nd["wdrozenie"] = cd.get("wdrozenie")
+        wydzial = cd.get("wydzial")
+        nd["wydzial_id"] = wydzial.pk if wydzial else None
 
 
 class SourceView(ImporterPermissionMixin, View):
@@ -223,6 +444,9 @@ class SourceView(ImporterPermissionMixin, View):
             ImportSession,
             pk=session_id,
         )
+        guard = _patent_guard(request, session)
+        if guard is not None:
+            return guard
         if _is_htmx_partial(request):
             return _render_source_step(request, session)
         from .steps import _render_source_full
@@ -234,6 +458,9 @@ class SourceView(ImporterPermissionMixin, View):
             ImportSession,
             pk=session_id,
         )
+        guard = _patent_guard(request, session)
+        if guard is not None:
+            return guard
         form = SourceForm(request.POST)
 
         if not form.is_valid():
@@ -588,6 +815,10 @@ class PunktacjaView(ImporterPermissionMixin, View):
         session.modified_by = request.user
         session.save()
 
+        # Patent nie idzie do PBN — pomijamy krok „Sprawdź w PBN" i idziemy
+        # prosto do przeglądu.
+        if session.rodzaj_rekordu == ImportSession.RodzajRekordu.PATENT:
+            return _render_review_step(request, session)
         # Dla źródeł NIE-PBN wchodzimy w krok „Sprawdź w PBN"; dla źródła PBN
         # pomijamy go (odpowiednik i tak jest znany) i idziemy do przeglądu.
         if session.provider_name == "PBN":
@@ -605,6 +836,9 @@ class PbnCheckView(ImporterPermissionMixin, View):
 
     def get(self, request, session_id):
         session = get_object_or_404(ImportSession, pk=session_id)
+        guard = _patent_guard(request, session)
+        if guard is not None:
+            return guard
         if session.provider_name == "PBN":
             return HttpResponseRedirect(
                 reverse(
@@ -620,6 +854,9 @@ class PbnCheckView(ImporterPermissionMixin, View):
 
     def post(self, request, session_id):
         session = get_object_or_404(ImportSession, pk=session_id)
+        guard = _patent_guard(request, session)
+        if guard is not None:
+            return guard
         session.status = ImportSession.Status.PBN_CHECK
         session.modified_by = request.user
         session.save()
@@ -631,6 +868,9 @@ class PbnSelectView(ImporterPermissionMixin, View):
 
     def post(self, request, session_id):
         session = get_object_or_404(ImportSession, pk=session_id)
+        guard = _patent_guard(request, session)
+        if guard is not None:
+            return guard
         mongo_id = (request.POST.get("mongo_id") or "").strip()
 
         from .pbn_search import _select_pbn_equivalent
@@ -646,6 +886,9 @@ class PbnClearView(ImporterPermissionMixin, View):
 
     def post(self, request, session_id):
         session = get_object_or_404(ImportSession, pk=session_id)
+        guard = _patent_guard(request, session)
+        if guard is not None:
+            return guard
 
         from .pbn_search import _clear_pbn_equivalent
 
@@ -779,7 +1022,12 @@ class CreateView(ImporterPermissionMixin, View):
                 return _render_review_step(request, session, error=error)
             return _render_review_full(request, session, error=error)
 
-        also_pbn = "_create_and_pbn" in request.POST
+        # Patent nie ma ścieżki eksportu do PBN — ignoruj also_pbn nawet gdy
+        # przyszło w POST (replay ze starej karty / ręczny POST).
+        also_pbn = (
+            "_create_and_pbn" in request.POST
+            and session.rodzaj_rekordu != ImportSession.RodzajRekordu.PATENT
+        )
 
         # Persist for retry path (Task 10 reads this)
         session.matched_data["pbn_export_pending"] = also_pbn
@@ -810,11 +1058,12 @@ class DoneView(ImporterPermissionMixin, View):
             pk=session_id,
         )
         record = session.created_record
-        return _render_full_page(
-            request,
-            STEP_DONE,
-            {"session": session, "record": record},
-        )
+        ctx = {"session": session, "record": record}
+        batch_entry = getattr(session, "batch_entry", None)
+        if batch_entry is not None:
+            ctx["batch"] = batch_entry.parent
+            ctx["batch_progress"] = batch_entry.parent.progress
+        return _render_full_page(request, STEP_DONE, ctx)
 
 
 class CancelView(ImporterPermissionMixin, View):
@@ -828,10 +1077,26 @@ class CancelView(ImporterPermissionMixin, View):
         session.status = ImportSession.Status.CANCELLED
         session.modified_by = request.user
         session.save()
+
+        batch_entry = getattr(session, "batch_entry", None)
+        if batch_entry is not None:
+            url = reverse(
+                "importer_publikacji:batch-detail",
+                kwargs={"batch_id": batch_entry.parent_id},
+            )
+            if request.headers.get("HX-Request"):
+                response = HttpResponse(status=200)
+                response["HX-Redirect"] = url
+                return response
+            return HttpResponseRedirect(url)
+
+        # Wraca na kaflową stronę główną (bez ``?provider=``) — musi być
+        # ta sama treść, co przy zwykłym GET/refreshu tego samego URL-a
+        # (patrz IndexView._get_landing), inaczej Back/refresh po anulowaniu
+        # pokazywałby co innego niż to, co właśnie wypchnięto do historii.
         url = reverse("importer_publikacji:index")
-        ctx = _fetch_context(request=request)
+        ctx = _landing_context(request)
         ctx["cancelled"] = True
-        ctx.update(_sessions_list_context(request))
-        response = render(request, STEP_FETCH, ctx)
+        response = render(request, STEP_LANDING, ctx)
         response = _with_breadcrumbs_oob(response, request)
         return _push_url(response, url)

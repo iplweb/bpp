@@ -36,7 +36,7 @@ from multiseek.logic import (
     STARTS_WITH,
 )
 
-from bpp.djangoql_schema import BppQLSchema
+from bpp.djangoql_schema import BppQLSchemaOgraniczony
 from bpp.models import Rekord
 
 logger = logging.getLogger(__name__)
@@ -44,7 +44,10 @@ logger = logging.getLogger(__name__)
 # Schema introspekcja jest kosztowna (rekursywny obchod grafu modeli) i bezstanowa
 # po zbudowaniu -> jeden wspoldzielony singleton. Parser tworzymy per-call
 # (wspoldzielony lexer nie jest thread-safe pod wielowatkowym WSGI).
-_REKORD_SCHEMA = BppQLSchema(Rekord)
+# Ograniczony (allow-lista) schemat — spojnosc z widokiem "Szukaj zapytaniem":
+# fragment wygenerowany z multiseek waliduje sie wobec tego samego schematu,
+# ktorym widok go potem uruchomi.
+_REKORD_SCHEMA = BppQLSchemaOgraniczony(Rekord)
 
 
 def _build_scalar_op_map():

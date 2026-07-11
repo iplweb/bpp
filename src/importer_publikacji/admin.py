@@ -11,7 +11,12 @@ from django.utils.safestring import mark_safe
 from bpp.admin.core import DynamicAdminFilterMixin
 from bpp.util import zaloguj_polkniety_wyjatek
 
-from .models import ImportedAuthor, ImportSession
+from .models import (
+    ImportedAuthor,
+    ImportSession,
+    MultipleWorksImport,
+    MultipleWorksImportEntry,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -359,3 +364,19 @@ class ImportedAuthorAdmin(DynamicAdminFilterMixin, admin.ModelAdmin):
     def has_change_permission(self, request, obj=None):
         # Pozwól przeglądać, ale nie zmieniać
         return False
+
+
+class MultipleWorksImportEntryInline(admin.TabularInline):
+    model = MultipleWorksImportEntry
+    extra = 0
+    fields = ["order", "title", "skipped", "parse_error", "session"]
+    readonly_fields = ["order", "title", "parse_error", "session"]
+
+
+@admin.register(MultipleWorksImport)
+class MultipleWorksImportAdmin(admin.ModelAdmin):
+    list_display = ["id", "created", "provider_name", "created_by"]
+    list_filter = ["provider_name", "created", "created_by"]
+    list_select_related = ["created_by"]
+    date_hierarchy = "created"
+    inlines = [MultipleWorksImportEntryInline]

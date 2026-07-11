@@ -2,7 +2,7 @@
 <div class="callout">
     <h4>
         <span class="fi-check"></span>
-        Krok 2: Weryfikacja danych publikacji
+        Weryfikacja danych publikacji
     </h4>
 
     {% if existing %}
@@ -318,41 +318,16 @@
 
     {% load bpp_formdefaults %}
     <div class="formdefaults-wrap">{% bpp_formdefaults_button form %}</div>
+    {{ form.media }}
     <form hx-post="{% url 'importer_publikacji:verify' session.pk %}"
           hx-target="#importer-wizard"
           hx-indicator="#verify-spinner">
         {% csrf_token %}
 
-        <div class="grid-x grid-margin-x">
-            <div class="cell medium-6">
-                <label for="{{ form.charakter_formalny.id_for_label }}">
-                    {{ form.charakter_formalny.label }} *
-                </label>
-                {{ form.charakter_formalny }}
-            </div>
-            <div class="cell medium-6">
-                <label for="{{ form.typ_kbn.id_for_label }}">
-                    {{ form.typ_kbn.label }} *
-                </label>
-                {{ form.typ_kbn }}
-            </div>
-        </div>
-
-        <div class="grid-x grid-margin-x">
-            <div class="cell medium-6">
-                <label for="{{ form.jezyk.id_for_label }}">
-                    {{ form.jezyk.label }} *
-                </label>
-                {{ form.jezyk }}
-            </div>
-            <div class="cell medium-6">
-                <label>&nbsp;</label>
-                <label>
-                    {{ form.jest_wydawnictwem_zwartym }}
-                    {{ form.jest_wydawnictwem_zwartym.label }}
-                </label>
-            </div>
-        </div>
+        <fieldset class="fieldset">
+            <legend>{{ form.rodzaj_rekordu.label }} *</legend>
+            {{ form.rodzaj_rekordu }}
+        </fieldset>
 
         <div class="grid-x grid-margin-x">
             <div class="cell medium-6">
@@ -364,7 +339,96 @@
             </div>
         </div>
 
-        <p class="help-text">* pola wymagane</p>
+        {# Grupa dla wydawnictwa ciągłego/zwartego (ukrywana JS-em dla patentu) #}
+        <div id="verify-standard-fields">
+            <div class="grid-x grid-margin-x">
+                <div class="cell medium-6">
+                    <label for="{{ form.charakter_formalny.id_for_label }}">
+                        {{ form.charakter_formalny.label }} *
+                    </label>
+                    {{ form.charakter_formalny }}
+                </div>
+                <div class="cell medium-6">
+                    <label for="{{ form.typ_kbn.id_for_label }}">
+                        {{ form.typ_kbn.label }} *
+                    </label>
+                    {{ form.typ_kbn }}
+                </div>
+            </div>
+            <div class="grid-x grid-margin-x">
+                <div class="cell medium-6">
+                    <label for="{{ form.jezyk.id_for_label }}">
+                        {{ form.jezyk.label }} *
+                    </label>
+                    {{ form.jezyk }}
+                </div>
+            </div>
+        </div>
+
+        {# Grupa pól patentowych (ukrywana JS-em dla nie-patentu) #}
+        <div id="verify-patent-fields">
+            <div class="grid-x grid-margin-x">
+                <div class="cell medium-6">
+                    <label for="{{ form.numer_zgloszenia.id_for_label }}">
+                        {{ form.numer_zgloszenia.label }}
+                    </label>
+                    {{ form.numer_zgloszenia }}
+                </div>
+                <div class="cell medium-6">
+                    <label for="{{ form.data_zgloszenia.id_for_label }}">
+                        {{ form.data_zgloszenia.label }}
+                    </label>
+                    {{ form.data_zgloszenia }}
+                </div>
+            </div>
+            <div class="grid-x grid-margin-x">
+                <div class="cell medium-6">
+                    <label for="{{ form.numer_prawa_wylacznego.id_for_label }}">
+                        {{ form.numer_prawa_wylacznego.label }}
+                    </label>
+                    {{ form.numer_prawa_wylacznego }}
+                </div>
+                <div class="cell medium-6">
+                    <label for="{{ form.data_decyzji.id_for_label }}">
+                        {{ form.data_decyzji.label }}
+                    </label>
+                    {{ form.data_decyzji }}
+                </div>
+            </div>
+            <div class="grid-x grid-margin-x">
+                <div class="cell medium-6">
+                    <label for="{{ form.rodzaj_prawa.id_for_label }}">
+                        {{ form.rodzaj_prawa.label }}
+                    </label>
+                    {{ form.rodzaj_prawa }}
+                </div>
+                <div class="cell medium-6">
+                    <label for="{{ form.wydzial.id_for_label }}">
+                        {{ form.wydzial.label }}
+                    </label>
+                    {{ form.wydzial }}
+                </div>
+            </div>
+            <div class="grid-x grid-margin-x">
+                <div class="cell medium-6">
+                    <label for="{{ form.uprawniony.id_for_label }}">
+                        {{ form.uprawniony.label }}
+                    </label>
+                    {{ form.uprawniony }}
+                    <p class="help-text">{{ form.uprawniony.help_text }}</p>
+                </div>
+                <div class="cell medium-6">
+                    <label for="{{ form.wdrozenie.id_for_label }}">
+                        {{ form.wdrozenie.label }}
+                    </label>
+                    {{ form.wdrozenie }}
+                </div>
+            </div>
+        </div>
+
+        <p class="help-text">
+            * pola wymagane (dla wydawnictwa ciągłego/zwartego)
+        </p>
 
         {% if existing %}
             <label>
@@ -422,3 +486,27 @@
         <span class="fi-loop"></span> Przetwarzanie...
     </div>
 </div>
+
+<script>
+(function () {
+    // Pokazuj grupę pól zależnie od wybranego rodzaju rekordu. Odpala się
+    // NA ZMIANIE radia ORAZ NA LOAD (po błędzie walidacji bound form z radiem
+    // PATENT musi od razu pokazać grupę patentową). Skrypt wykonuje się też
+    // po swapie HTMX (htmx wykonuje inline <script> w podmienianym fragmencie).
+    function stosujRodzaj() {
+        var zazn = document.querySelector(
+            'input[name="rodzaj_rekordu"]:checked'
+        );
+        var patent = zazn && zazn.value === 'patent';
+        var std = document.getElementById('verify-standard-fields');
+        var pat = document.getElementById('verify-patent-fields');
+        if (std) { std.style.display = patent ? 'none' : ''; }
+        if (pat) { pat.style.display = patent ? '' : 'none'; }
+    }
+    var radia = document.querySelectorAll('input[name="rodzaj_rekordu"]');
+    for (var i = 0; i < radia.length; i++) {
+        radia[i].addEventListener('change', stosujRodzaj);
+    }
+    stosujRodzaj();
+})();
+</script>
