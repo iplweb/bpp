@@ -1,0 +1,121 @@
+from unittest import mock
+
+import pytest
+from django.contrib.auth.models import AnonymousUser
+from model_bakery import baker
+from rest_framework.test import APIClient
+
+from api_v1.permissions import MoznaUzywacZapytania
+from bpp.const import GR_WPROWADZANIE_DANYCH
+
+
+class _FakeRequest:
+    def __init__(self, user):
+        self.user = user
+
+
+@pytest.mark.django_db
+def test_gate_anon_odrzucony():
+    assert (
+        MoznaUzywacZapytania().has_permission(_FakeRequest(AnonymousUser()), None)
+        is False
+    )
+
+
+@pytest.mark.django_db
+def test_gate_superuser_przechodzi():
+    u = baker.make("bpp.BppUser", is_superuser=True, is_staff=True)
+    assert MoznaUzywacZapytania().has_permission(_FakeRequest(u), None) is True
+
+
+@pytest.mark.django_db
+def test_gate_staff_w_grupie_przechodzi():
+    from django.contrib.auth.models import Group
+
+    u = baker.make("bpp.BppUser", is_staff=True, is_superuser=False)
+    grupa, _ = Group.objects.get_or_create(name=GR_WPROWADZANIE_DANYCH)
+    u.groups.add(grupa)
+    assert MoznaUzywacZapytania().has_permission(_FakeRequest(u), None) is True
+
+
+@pytest.mark.django_db
+def test_gate_zwykly_zalogowany_odrzucony():
+    u = baker.make("bpp.BppUser", is_staff=False, is_superuser=False)
+    assert MoznaUzywacZapytania().has_permission(_FakeRequest(u), None) is False
+
+
+def _staff_client():
+    u = baker.make("bpp.BppUser", is_staff=True, is_superuser=True)
+    c = APIClient()
+    c.force_authenticate(user=u)
+    return c
+
+
+@pytest.mark.django_db
+def test_zapytanie_rekord_anon_403():
+    resp = APIClient().get("/api/v1/zapytanie/rekord/", {"q": "rok = 2024"})
+    assert resp.status_code in (401, 403)
+
+
+@pytest.mark.django_db
+def test_zapytanie_rekord_puste_q_zwraca_pusto():
+    resp = _staff_client().get("/api/v1/zapytanie/rekord/", {"q": ""})
+    assert resp.status_code == 200
+    assert resp.data["results"] == []
+
+
+@pytest.mark.django_db
+def test_zapytanie_rekord_bledne_q_400():
+    resp = _staff_client().get(
+        "/api/v1/zapytanie/rekord/", {"q": "nieistniejace_pole = 1"}
+    )
+    assert resp.status_code == 400
+    assert "error" in resp.data
+
+
+@pytest.mark.django_db
+def test_zapytanie_autor_happy():
+    baker.make("bpp.Autor", nazwisko="Kowalski")
+    resp = _staff_client().get("/api/v1/zapytanie/autor/", {"q": 'nazwisko ~ "Kowal"'})
+    assert resp.status_code == 200
+    assert any(r["nazwisko"] == "Kowalski" for r in resp.data["results"])
+
+
+@pytest.mark.django_db
+def test_zapytanie_autorzy_happy(
+    wydawnictwo_ciagle, autor_jan_kowalski, jednostka, typy_odpowiedzialnosci
+):
+    wydawnictwo_ciagle.rok = 2023
+    wydawnictwo_ciagle.tytul_oryginalny = "Praca X"
+    wydawnictwo_ciagle.save()
+    wydawnictwo_ciagle.dodaj_autora(autor_jan_kowalski, jednostka)
+    from bpp.models import Rekord
+
+    Rekord.objects.full_refresh()
+
+    resp = _staff_client().get("/api/v1/zapytanie/autorzy/", {"q": "rekord.rok = 2023"})
+    assert resp.status_code == 200
+    assert len(resp.data["results"]) >= 1
+    wpis = resp.data["results"][0]
+    assert "zapisany_jako" in wpis and "rekord" in wpis
+    assert wpis["rekord"]["rekord_url"] is not None
+
+
+def test_zapytanie_limit_ma_twardy_cap():
+    from api_v1.viewsets.zapytanie import ZapytanieRekordViewSet
+
+    v = ZapytanieRekordViewSet()
+    assert v.paginator.max_limit == 100
+
+
+@pytest.mark.django_db
+def test_zapytanie_timeout_daje_503():
+    from django.db.utils import OperationalError
+
+    with mock.patch(
+        "api_v1.viewsets.zapytanie.ZapytanieAPIBaseViewSet.get_queryset",
+        side_effect=OperationalError("canceling statement due to statement timeout"),
+    ):
+        resp = _staff_client().get("/api/v1/zapytanie/rekord/", {"q": "rok = 2024"})
+    assert resp.status_code == 503
+    assert "error" in resp.data
