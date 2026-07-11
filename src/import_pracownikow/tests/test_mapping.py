@@ -120,3 +120,57 @@ def test_waliduj_mapowanie_akceptuje_osoba_sklejona_zamiast_nazwisko_imie():
 def test_waliduj_mapowanie_odrzuca_gdy_brak_identyfikacji_i_osoby():
     bledy = waliduj_mapowanie({"b": "nazwa_jednostki"})
     assert any("identyfikac" in e.lower() or "osob" in e.lower() for e in bledy)
+
+
+def test_pola_docelowe_zawiera_drugie_imie():
+    etykiety = dict(POLA_DOCELOWE)
+    assert etykiety.get("drugie_imię") == "Drugie imię"
+
+
+def test_zaproponuj_mapowanie_drugie_imie_synonimy():
+    naglowki = [
+        "drugie_imię",
+        "drugie_imie",
+        "drugie_imiona",
+        "imię_drugie",
+        "imie_drugie",
+    ]
+    prop = zaproponuj_mapowanie(naglowki)
+    for h in naglowki:
+        assert prop[h] == "drugie_imię", h
+
+
+def test_waliduj_mapowanie_drugie_imie_opcjonalne_i_nie_przeszkadza():
+    # komplet identyfikacji + drugie_imię → OK (drugie_imię nie jest wymagane)
+    assert (
+        waliduj_mapowanie(
+            {
+                "a": "nazwisko",
+                "b": "imię",
+                "c": "drugie_imię",
+                "d": "nazwa_jednostki",
+            }
+        )
+        == []
+    )
+
+
+def test_waliduj_mapowanie_samo_drugie_imie_nie_identyfikuje():
+    # drugie_imię BEZ imię nie spełnia identyfikacji osoby
+    bledy = waliduj_mapowanie(
+        {"a": "nazwisko", "c": "drugie_imię", "d": "nazwa_jednostki"}
+    )
+    assert any("identyfikac" in e.lower() or "imię" in e.lower() for e in bledy)
+
+
+def test_waliduj_mapowanie_drugie_imie_duplikat():
+    bledy = waliduj_mapowanie(
+        {
+            "a": "nazwisko",
+            "b": "imię",
+            "c": "drugie_imię",
+            "e": "drugie_imię",
+            "d": "nazwa_jednostki",
+        }
+    )
+    assert any("dwukrotnie" in e.lower() or "duplikat" in e.lower() for e in bledy)

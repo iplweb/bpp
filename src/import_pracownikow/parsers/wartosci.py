@@ -43,3 +43,24 @@ def normalizuj_wartosci_wiersza(elem: dict) -> dict:
         if out.get(klucz) is not None:
             out[klucz] = normalize_date_pl(out[klucz])
     return out
+
+
+def sklej_drugie_imie(dane: dict) -> dict:
+    """Scala kolumnę ``drugie_imię`` z ``imię`` w jedno pole (``Autor`` ma
+    jedno ``imiona`` na wszystkie imiona, np. „Jan" + „Paweł" → „Jan Paweł").
+    Mutuje i zwraca ``dane``. Po scaleniu USUWA klucz ``drugie_imię`` —
+    ``AutorForm`` go nie zna, a cały downstream czyta wyłącznie ``imię``.
+
+    ``str(...)`` bo XLSX (openpyxl) potrafi dać komórkę liczbową — ``.strip()``
+    na ``int`` rzuciłby ``AttributeError`` ubijający całą analizę (faza analizy
+    jest fail-fast, bez per-wierszowego handlera).
+
+    Wywoływać PO ``_rozbij_osoba_sklejona`` (parser uzupełnia ``imię`` tylko
+    gdy puste) — inaczej wiersz z ``osoba_sklejona`` + ``drugie_imię`` bez
+    kolumny ``imię`` zgubiłby pierwsze imię z rozbicia."""
+    drugie = str(dane.get("drugie_imię") or "").strip()
+    if drugie:
+        pierwsze = str(dane.get("imię") or "").strip()
+        dane["imię"] = f"{pierwsze} {drugie}".strip()
+    dane.pop("drugie_imię", None)
+    return dane
