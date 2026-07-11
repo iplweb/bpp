@@ -101,7 +101,6 @@ def test_zapytanie_autorzy_happy(
     assert wpis["rekord"]["rekord_url"] is not None
 
 
-@pytest.mark.django_db
 def test_zapytanie_limit_ma_twardy_cap():
     from api_v1.viewsets.zapytanie import ZapytanieRekordViewSet
 

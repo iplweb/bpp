@@ -112,4 +112,11 @@ class ZapytanieAutorzyViewSet(ZapytanieAPIBaseViewSet):
             .get_queryset()
             .select_related("rekord", "autor", "jednostka", "typ_odpowiedzialnosci")
             .prefetch_related("dyscyplina_naukowa")
+            # Autorzy to managed=False mat-view bez Meta.ordering — bez
+            # jawnego porządku LimitOffsetPagination na Postgresie może
+            # gubić/dublować wiersze między stronami (kolejność bez
+            # ORDER BY nie jest gwarantowana). ``rekord_id`` jest kolumną
+            # array (TupleField), ale Postgres porównuje tablice
+            # leksykograficznie, więc sortowanie po niej działa.
+            .order_by("rekord_id", "kolejnosc", "autor_id")
         )
