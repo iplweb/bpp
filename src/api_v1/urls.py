@@ -42,6 +42,7 @@ from api_v1.viewsets.wydawnictwo_zwarte import (
     Wydawnictwo_Zwarte_StreszczenieViewSet,
     Wydawnictwo_ZwarteViewSet,
 )
+from api_v1.viewsets.zapytanie import ZapytanieRekordViewSet
 from api_v1.viewsets.zrodlo import Rodzaj_ZrodlaViewSet, ZrodloViewSet
 from oauth_mcp.views_whoami import WhoAmIView
 
@@ -103,6 +104,10 @@ router.register(r"wydzial", WydzialViewSet)
 router.register(r"uczelnia", UczelniaViewSet)
 
 router.register(r"szukaj", SzukajViewSet, basename="szukaj")
+
+router.register(
+    r"zapytanie/rekord", ZapytanieRekordViewSet, basename="zapytanie_rekord"
+)
 
 router.register(r"autor", AutorViewSet)
 router.register(r"funkcja_autora", Funkcja_AutoraViewSet)
