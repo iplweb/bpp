@@ -53,14 +53,9 @@ def _row(imp, confidence, **kw):
 def test_hub_renderuje_sie_w_kazdym_stanie(admin_client, admin_user, stan):
     imp = _imp(admin_user, stan=stan)
     resp = admin_client.get(_url(imp))
+    # Hub nie może się wywalać (NoReverseMatch itp.) w żadnym stanie.
     assert resp.status_code == 200
-    # Kafelki „zawsze": Ludzie z XLS + Ludzie spoza XLS.
-    tresc = resp.content.decode("utf-8")
-    assert (
-        reverse("import_pracownikow:importpracownikow-results", kwargs={"pk": imp.pk})
-        in tresc
-    )
-    assert reverse("import_pracownikow:odpiecia", kwargs={"pk": imp.pk}) in tresc
+    assert imp.get_stan_display().encode() in resp.content
 
 
 @pytest.mark.django_db
@@ -134,7 +129,8 @@ def test_kafelek_tytuly_widoczny_z_licznikami(admin_client, admin_user):
 
 @pytest.mark.django_db
 def test_liczniki_ludzi_zgodne_z_danymi(admin_client, admin_user):
-    imp = _imp(admin_user)
+    # Kafelek osób odsłania się w fazie osób (po zapisaniu struktury).
+    imp = _imp(admin_user, stan=ImportPracownikow.STAN_STRUKTURA_ZINTEGROWANA)
     _row(imp, STATUS_TWARDY)
     _row(imp, STATUS_TWARDY)
     _row(imp, STATUS_ZGADYWANIE)
@@ -150,7 +146,7 @@ def test_liczniki_ludzi_zgodne_z_danymi(admin_client, admin_user):
 
 @pytest.mark.django_db
 def test_ludzie_gotowe_gdy_zero_do_akceptacji(admin_client, admin_user):
-    imp = _imp(admin_user)
+    imp = _imp(admin_user, stan=ImportPracownikow.STAN_STRUKTURA_ZINTEGROWANA)
     _row(imp, STATUS_TWARDY)
     _row(imp, STATUS_ZGADYWANIE)
     resp = admin_client.get(_url(imp))
@@ -160,38 +156,71 @@ def test_ludzie_gotowe_gdy_zero_do_akceptacji(admin_client, admin_user):
 
 
 @pytest.mark.django_db
-def test_cta_zapisz_tylko_w_przeanalizowany(admin_client, admin_user):
+def test_krok1_struktura_w_przeanalizowany(admin_client, admin_user):
+    """W podglądzie (Krok 1) hub oferuje TYLKO zapis struktury — dwa przyciski
+    strukturalne, BEZ importu osób (pelny). Import osób jest zablokowany."""
     imp = _imp(admin_user, stan=ImportPracownikow.STAN_PRZEANALIZOWANY)
     resp = admin_client.get(_url(imp))
     tresc = resp.content.decode("utf-8")
-    assert "Zapisz do bazy" in tresc
     assert reverse("import_pracownikow:zatwierdz", kwargs={"pk": imp.pk}) in tresc
+    assert 'value="jednostki"' in tresc
+    assert 'value="struktura"' in tresc
+    assert "Zapisz tylko jednostki" in tresc
+    assert "Zapisz jednostki + tytuły" in tresc
+    # import osób (pelny) NIE jest tu dostępny — dopiero po zapisie struktury
+    assert 'value="pelny"' not in tresc
+    assert "Zapisz osoby do bazy" not in tresc
+    # Krok 2 zapowiedziany jako zablokowany
+    assert "Krok 2 — osoby" in tresc
 
 
 @pytest.mark.django_db
-def test_cta_zapisz_brak_poza_przeanalizowany(admin_client, admin_user):
+def test_krok2_import_osob_w_strukturze_zintegrowanej(admin_client, admin_user):
+    """Po zapisaniu struktury (struktura_zintegrowana) odblokowany jest import
+    osób (Krok 2) — przycisk „Zapisz osoby do bazy" z zakresem pelny."""
+    imp = _imp(admin_user, stan=ImportPracownikow.STAN_STRUKTURA_ZINTEGROWANA)
+    resp = admin_client.get(_url(imp))
+    tresc = resp.content.decode("utf-8")
+    assert 'value="pelny"' in tresc
+    assert "Zapisz osoby do bazy" in tresc
+    # kafelki osób odsłonięte
+    assert (
+        reverse("import_pracownikow:importpracownikow-results", kwargs={"pk": imp.pk})
+        in tresc
+    )
+    # struktura NIE jest tu do zapisania po raz drugi
+    assert 'value="jednostki"' not in tresc
+
+
+@pytest.mark.django_db
+def test_hub_ukrywa_osoby_w_przeanalizowany(admin_client, admin_user):
+    """Regresja: w podglądzie (Krok 1) szczegóły osób są UKRYTE — brak linków do
+    listy wierszy i odpięć, dopóki struktura nie zostanie zapisana."""
+    imp = _imp(admin_user, stan=ImportPracownikow.STAN_PRZEANALIZOWANY)
+    resp = admin_client.get(_url(imp))
+    tresc = resp.content.decode("utf-8")
+    assert (
+        reverse("import_pracownikow:importpracownikow-results", kwargs={"pk": imp.pk})
+        not in tresc
+    )
+    assert reverse("import_pracownikow:odpiecia", kwargs={"pk": imp.pk}) not in tresc
+
+
+@pytest.mark.django_db
+def test_cta_zapisz_brak_poza_faza_akcji(admin_client, admin_user):
+    """Po pełnej integracji (zintegrowany) nie ma już żadnych przycisków akcji."""
     imp = _imp(admin_user, stan=ImportPracownikow.STAN_ZINTEGROWANY)
     resp = admin_client.get(_url(imp))
     tresc = resp.content.decode("utf-8")
-    assert "Zapisz do bazy" not in tresc
-
-
-@pytest.mark.django_db
-def test_cta_trzy_przyciski_zapisu_gdy_przeanalizowany(admin_client, admin_user):
-    imp = _imp(admin_user, stan=ImportPracownikow.STAN_PRZEANALIZOWANY)
-    resp = admin_client.get(_url(imp))
-    tresc = resp.content.decode("utf-8")
-    # trzy warianty zakresu: pełny + dwa strukturalne
-    assert 'value="pelny"' in tresc
-    assert 'value="jednostki"' in tresc
-    assert 'value="struktura"' in tresc
-    assert "Utwórz tylko jednostki" in tresc
-    assert "Utwórz jednostki + tytuły" in tresc
+    assert "Zapisz osoby do bazy" not in tresc
+    assert 'value="jednostki"' not in tresc
+    assert 'value="pelny"' not in tresc
 
 
 @pytest.mark.django_db
 def test_ostrzezenie_gdy_pary_z_pliku_puste_a_odpiecia_sa(admin_client, admin_user):
-    imp = _imp(admin_user)
+    # kafelek „Ludzie spoza XLS" (z ostrzeżeniem) jest w fazie osób.
+    imp = _imp(admin_user, stan=ImportPracownikow.STAN_STRUKTURA_ZINTEGROWANA)
     # brak wierszy z autorem+jednostką → pary_z_pliku puste
     aj = baker.make(Autor_Jednostka, autor__nazwisko="Spozaplikowy")
     ImportPracownikowOdpiecie.objects.create(parent=imp, autor_jednostka=aj)
@@ -202,7 +231,7 @@ def test_ostrzezenie_gdy_pary_z_pliku_puste_a_odpiecia_sa(admin_client, admin_us
 
 @pytest.mark.django_db
 def test_brak_ostrzezenia_gdy_sa_pary_z_pliku(admin_client, admin_user):
-    imp = _imp(admin_user)
+    imp = _imp(admin_user, stan=ImportPracownikow.STAN_STRUKTURA_ZINTEGROWANA)
     jednostka = baker.make(Jednostka, nazwa="Kat.", skrot="K.")
     autor = baker.make(Autor, nazwisko="Kowalski", imiona="Jan")
     _row(imp, STATUS_TWARDY, autor=autor, jednostka=jednostka)  # para z pliku

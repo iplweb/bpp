@@ -57,7 +57,8 @@ def test_zatwierdz_z_grupa_przechodzi(client, django_user_model):
         ImportPracownikow, owner=u, stan=ImportPracownikow.STAN_PRZEANALIZOWANY
     )
     url = reverse("import_pracownikow:zatwierdz", kwargs={"pk": imp.pk})
-    client.post(url)
+    # Z podglądu wolno zapisać strukturę (Krok 1) — to ruszy stan.
+    client.post(url, {"zakres": "jednostki"})
     imp.refresh_from_db()
     # Członek grupy przechodzi bramkę — POST wykonał się (stan ruszył dalej).
     assert imp.stan != ImportPracownikow.STAN_PRZEANALIZOWANY

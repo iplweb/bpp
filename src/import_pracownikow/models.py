@@ -60,6 +60,11 @@ class ImportPracownikow(LiveOperation):
     STAN_ZMAPOWANY = "zmapowany"
     STAN_PRZEANALIZOWANY = "przeanalizowany"
     STAN_ZATWIERDZONY = "zatwierdzony"
+    # Struktura (jednostki [+ tytuły]) zapisana, osoby JESZCZE nie — faza osób
+    # (Krok 2). Wymuszamy „najpierw struktura, potem osoby": w podglądzie
+    # (przeanalizowany) import osób jest zablokowany i szczegóły autorów ukryte,
+    # dopóki jednostki nie zostaną rozstrzygnięte i zapisane (Krok 1).
+    STAN_STRUKTURA_ZINTEGROWANA = "struktura_zintegrowana"
     STAN_ZINTEGROWANY = "zintegrowany"
     STAN_PORZUCONY = "porzucony"
     STAN_CHOICES = [
@@ -67,6 +72,7 @@ class ImportPracownikow(LiveOperation):
         (STAN_ZMAPOWANY, "zmapowany (kolumny określone)"),
         (STAN_PRZEANALIZOWANY, "przeanalizowany (dry-run gotowy)"),
         (STAN_ZATWIERDZONY, "zatwierdzony do zapisu"),
+        (STAN_STRUKTURA_ZINTEGROWANA, "struktura zapisana (osoby czekają)"),
         (STAN_ZINTEGROWANY, "zintegrowany"),
         (STAN_PORZUCONY, "porzucony"),
     ]
@@ -85,7 +91,7 @@ class ImportPracownikow(LiveOperation):
     ]
 
     plik_xls = models.FileField(upload_to="protected/import_pracownikow/")
-    stan = models.CharField(max_length=20, choices=STAN_CHOICES, default=STAN_UTWORZONY)
+    stan = models.CharField(max_length=32, choices=STAN_CHOICES, default=STAN_UTWORZONY)
     mapowanie_kolumn = models.JSONField(default=dict, blank=True)
     tworz_brakujace_jednostki = models.BooleanField(
         "Twórz brakujące jednostki",
@@ -112,6 +118,30 @@ class ImportPracownikow(LiveOperation):
     )
 
     stages = ["Wczytywanie", "Integracja"]
+
+    @property
+    def faza_struktury(self):
+        """Krok 1: podgląd po analizie — rozstrzygamy jednostki (i tytuły) oraz
+        zapisujemy strukturę. Import osób i szczegóły autorów są tu ZABLOKOWANE."""
+        return self.stan == self.STAN_PRZEANALIZOWANY
+
+    @property
+    def faza_osob(self):
+        """Krok 2: struktura zapisana — dopiero teraz odsłaniamy i pozwalamy
+        edytować dopasowania autorów, przepięcia i odpięcia oraz zaimportować
+        osoby (pełny commit)."""
+        return self.stan == self.STAN_STRUKTURA_ZINTEGROWANA
+
+    @property
+    def edytowalny_podglad(self):
+        """Stany, w których wolno EDYTOWAĆ decyzje o osobach (dopasowanie autora,
+        przepięcie, odpięcie) — podgląd (Krok 1) oraz faza osób (Krok 2). W
+        podglądzie edycja jest technicznie dozwolona, ale hub jej nie odsłania
+        (najpierw struktura); pełną kontrolę operator dostaje w fazie osób."""
+        return self.stan in (
+            self.STAN_PRZEANALIZOWANY,
+            self.STAN_STRUKTURA_ZINTEGROWANA,
+        )
 
     def run(self, p):
         if self.stan == self.STAN_ZMAPOWANY:
@@ -230,6 +260,7 @@ class ImportPracownikow(LiveOperation):
             .order_by("nr_arkusza", "nr_wiersza")
             .select_related(
                 "autor",
+                "autor__aktualna_jednostka",
                 "jednostka",
                 "jednostka__wydzial",
                 "autor__tytul",

@@ -89,3 +89,63 @@ def test_podglad_sortuje_nie_twardy_na_gore(admin_client, admin_user):
     # non-twardy (wielu) mimo wyższego nr wiersza jest PRZED twardym
     assert lista[0].pk == wielu.pk
     assert lista[1].pk == twardy.pk
+
+
+@pytest.mark.django_db
+def test_podglad_pokazuje_jednostke_obecna_i_docelowa(admin_client, admin_user):
+    """Kolumna „Jednostka": gdy autor jest już w innej jednostce niż z pliku,
+    widok pokazuje OBECNĄ → DOCELOWĄ (regresja: wcześniej jednostek nie było
+    widać wcale, więc operator nie wiedział skąd/dokąd przypina autora)."""
+    imp = baker.make(
+        ImportPracownikow,
+        owner=admin_user,
+        stan=ImportPracownikow.STAN_PRZEANALIZOWANY,
+        finished_successfully=True,
+    )
+    stara = baker.make(Jednostka, nazwa="Zaklad Obecny", skrot="ZO")
+    nowa = baker.make(Jednostka, nazwa="Katedra Docelowa", skrot="KD")
+    autor = baker.make(Autor, nazwisko="Nowak", imiona="Jan")
+    autor.dodaj_jednostke(stara)
+    autor.refresh_from_db()
+    ImportPracownikowRow.objects.create(
+        parent=imp,
+        autor=autor,
+        jednostka=nowa,
+        confidence=STATUS_TWARDY,
+        zmiany_potrzebne=True,
+        dane_znormalizowane={},
+        dane_z_xls={"__xls_loc_sheet__": 0, "__xls_loc_row__": 0},
+    )
+    url = reverse("import_pracownikow:importpracownikow-results", kwargs={"pk": imp.pk})
+    tresc = admin_client.get(url).content.decode("utf-8")
+    assert "Jednostka (obecna → z pliku)" in tresc  # nagłówek nowej kolumny
+    assert "Zaklad Obecny" in tresc  # obecna jednostka autora
+    assert "Katedra Docelowa" in tresc  # docelowa z pliku
+    assert "→ <strong>" in tresc  # forma „obecna → docelowa"
+
+
+@pytest.mark.django_db
+def test_podglad_ma_mostek_select2_change(admin_client, admin_user):
+    """Regresja: zmiana autora przez Select2 nie zapisywała się, bo htmx słucha
+    natywnego „change", a Select2 emituje go przez jQuery. Partial musi wystawiać
+    mostek na select2:select/unselect → natywny dispatchEvent("change")."""
+    imp = baker.make(
+        ImportPracownikow,
+        owner=admin_user,
+        stan=ImportPracownikow.STAN_PRZEANALIZOWANY,
+        finished_successfully=True,
+    )
+    jednostka = baker.make(Jednostka, nazwa="Kat.", skrot="K.")
+    ImportPracownikowRow.objects.create(
+        parent=imp,
+        jednostka=jednostka,
+        autor=None,
+        confidence=STATUS_WIELU,
+        zmiany_potrzebne=False,
+        dane_znormalizowane={"imię": "Jan", "nazwisko": "Kowalski"},
+        dane_z_xls={"__xls_loc_sheet__": 0, "__xls_loc_row__": 1},
+    )
+    url = reverse("import_pracownikow:importpracownikow-results", kwargs={"pk": imp.pk})
+    tresc = admin_client.get(url).content.decode("utf-8")
+    assert "select2:select" in tresc
+    assert "dispatchEvent(" in tresc

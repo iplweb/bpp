@@ -135,6 +135,20 @@ def test_dopasuj_autora_bramka_stanu(admin_client, admin_user):
 
 
 @pytest.mark.django_db
+def test_dopasuj_autora_dziala_w_fazie_osob(admin_client, admin_user):
+    """Faza osób (struktura_zintegrowana): dopasowanie autora jest DOZWOLONE —
+    przegląd i edycję autorów robimy dopiero po zapisaniu struktury (Krok 2)."""
+    imp = _import(admin_user, stan=ImportPracownikow.STAN_STRUKTURA_ZINTEGROWANA)
+    jednostka = baker.make(Jednostka, nazwa="Kat.", skrot="K.")
+    autor = baker.make(Autor, nazwisko="Nowak", imiona="Anna")
+    row = _row(imp, jednostka)
+    resp = admin_client.post(_url(imp, row), {"autor": autor.pk})
+    assert resp.status_code == 200
+    row.refresh_from_db()
+    assert row.autor_id == autor.pk
+
+
+@pytest.mark.django_db
 def test_dopasuj_autora_zly_pk_404(admin_client, admin_user):
     imp = _import(admin_user)
     jednostka = baker.make(Jednostka, nazwa="Kat.", skrot="K.")

@@ -69,9 +69,12 @@ def test_e2e_osoba_sklejona_status_i_wybor(admin_client, admin_user):
     assert wiersze["Kowalski"].autor_id == dup1.pk
     assert wiersze["Kowalski"].zmiany_potrzebne is True
 
-    # zatwierdź → integracja (eager); brak/wielu bez wyboru pominięte (tu 0)
+    # Dwustopniowy commit: Krok 1 struktura → Krok 2 osoby (eager).
     url_zatw = reverse("import_pracownikow:zatwierdz", kwargs={"pk": imp.pk})
-    resp = admin_client.post(url_zatw)
+    admin_client.post(url_zatw, {"zakres": "jednostki"})
+    imp.refresh_from_db()
+    assert imp.stan == ImportPracownikow.STAN_STRUKTURA_ZINTEGROWANA
+    resp = admin_client.post(url_zatw, {"zakres": "pelny"})
     imp.refresh_from_db()
     assert imp.stan == ImportPracownikow.STAN_ZINTEGROWANY
 

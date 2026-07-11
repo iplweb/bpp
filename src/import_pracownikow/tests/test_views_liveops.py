@@ -45,22 +45,24 @@ def test_strona_live_wstrzykuje_csrf_header_dla_htmx(admin_client, admin_user):
 
 
 @pytest.mark.django_db
-def test_panel_wyniku_zatwierdz_jedzie_przez_htmx(admin_user):
-    """Panel wyniku bywa renderowany przez workera (OOB-swap po WebSockecie) BEZ
-    kontekstu requestu, więc {% csrf_token %} w body jest pusty. Przycisk „Zapisz"
-    musi więc jechać przez htmx (hx-post), żeby dziedziczyć nagłówek X-CSRFToken
-    z wrappera host-page — inaczej POST /zatwierdz/ dostaje 403 w wersji push."""
+def test_panel_wyniku_analiza_przekierowuje_na_przeglad(admin_user):
+    """Po analizie (dry-run) panel wyniku NIE pokazuje już komunikatu-podglądu
+    ani przycisku zatwierdzenia — od razu kieruje na hub szczegółów (link +
+    skrypt ``window.location``). Renderowany BEZ requestu (jak worker przy
+    OOB-swapie)."""
     from django.template.loader import render_to_string
 
     imp = baker.make(ImportPracownikow, owner=admin_user)
-    # render BEZ requestu — dokładnie tak jak robi to worker przy OOB-swapie
     html = render_to_string(
         "import_pracownikow/import_pracownikow_result.html",
         {"operation": imp, "byl_dry_run": True, "total": 5, "zmiany_potrzebne": 3},
     )
-    assert "hx-post=" in html
-    assert 'hx-swap="none"' in html
-    assert f"/{imp.pk}/zatwierdz/" in html
+    przeglad = reverse("import_pracownikow:przeglad", kwargs={"pk": imp.pk})
+    assert przeglad in html
+    assert "window.location" in html
+    # stary komunikat-podgląd i in-panel „Zapisz" zniknęły
+    assert "To był" not in html
+    assert "Zapisz zmiany do bazy" not in html
 
 
 @pytest.mark.django_db
@@ -76,6 +78,7 @@ def test_index_renderuje_bez_noreversematch(admin_client, admin_user):
 
 @pytest.mark.django_db
 def test_zatwierdz_ustawia_stan_zatwierdzony_i_reenqueue(admin_client, admin_user):
+    # Z podglądu (Krok 1) wolno zapisać strukturę → stan „zatwierdzony".
     imp = baker.make(
         ImportPracownikow,
         owner=admin_user,
@@ -83,9 +86,60 @@ def test_zatwierdz_ustawia_stan_zatwierdzony_i_reenqueue(admin_client, admin_use
     )
     url = reverse("import_pracownikow:zatwierdz", kwargs={"pk": imp.pk})
     with patch.object(ImportPracownikow, "run", lambda self, p: None):
-        resp = admin_client.post(url)
+        resp = admin_client.post(url, {"zakres": "jednostki"})
     imp.refresh_from_db()
     assert imp.stan == ImportPracownikow.STAN_ZATWIERDZONY
+    assert resp.status_code in (204, 302)
+
+
+@pytest.mark.django_db
+def test_zatwierdz_osoby_blokowane_w_przeanalizowany(admin_client, admin_user):
+    """Bramka: import osób (pelny) z podglądu jest ZABLOKOWANY — najpierw
+    struktura. Stan nie rusza."""
+    imp = baker.make(
+        ImportPracownikow,
+        owner=admin_user,
+        stan=ImportPracownikow.STAN_PRZEANALIZOWANY,
+    )
+    url = reverse("import_pracownikow:zatwierdz", kwargs={"pk": imp.pk})
+    with patch.object(ImportPracownikow, "run", lambda self, p: None):
+        resp = admin_client.post(url, {"zakres": "pelny"})
+    assert resp.status_code == 400
+    imp.refresh_from_db()
+    assert imp.stan == ImportPracownikow.STAN_PRZEANALIZOWANY
+
+
+@pytest.mark.django_db
+def test_zatwierdz_struktura_blokowana_po_strukturze(admin_client, admin_user):
+    """Bramka: strukturę wolno zapisać tylko z podglądu — po jej zapisaniu
+    (struktura_zintegrowana) ponowny zapis struktury jest odrzucany."""
+    imp = baker.make(
+        ImportPracownikow,
+        owner=admin_user,
+        stan=ImportPracownikow.STAN_STRUKTURA_ZINTEGROWANA,
+    )
+    url = reverse("import_pracownikow:zatwierdz", kwargs={"pk": imp.pk})
+    with patch.object(ImportPracownikow, "run", lambda self, p: None):
+        resp = admin_client.post(url, {"zakres": "jednostki"})
+    assert resp.status_code == 400
+    imp.refresh_from_db()
+    assert imp.stan == ImportPracownikow.STAN_STRUKTURA_ZINTEGROWANA
+
+
+@pytest.mark.django_db
+def test_zatwierdz_osoby_po_strukturze_przechodzi(admin_client, admin_user):
+    """Import osób (pelny) po zapisaniu struktury (Krok 2) → stan „zatwierdzony"."""
+    imp = baker.make(
+        ImportPracownikow,
+        owner=admin_user,
+        stan=ImportPracownikow.STAN_STRUKTURA_ZINTEGROWANA,
+    )
+    url = reverse("import_pracownikow:zatwierdz", kwargs={"pk": imp.pk})
+    with patch.object(ImportPracownikow, "run", lambda self, p: None):
+        resp = admin_client.post(url, {"zakres": "pelny"})
+    imp.refresh_from_db()
+    assert imp.stan == ImportPracownikow.STAN_ZATWIERDZONY
+    assert imp.zakres_integracji == ImportPracownikow.ZAKRES_PELNY
     assert resp.status_code in (204, 302)
 
 
@@ -106,10 +160,11 @@ def test_zatwierdz_zakres_jednostki_ustawia_pole(admin_client, admin_user):
 
 @pytest.mark.django_db
 def test_zatwierdz_zakres_nieprawidlowy_degraduje_do_pelny(admin_client, admin_user):
+    # Degradacja do PELNY testowalna w fazie osób (gdzie pelny jest dozwolony).
     imp = baker.make(
         ImportPracownikow,
         owner=admin_user,
-        stan=ImportPracownikow.STAN_PRZEANALIZOWANY,
+        stan=ImportPracownikow.STAN_STRUKTURA_ZINTEGROWANA,
         zakres_integracji=ImportPracownikow.ZAKRES_STRUKTURA,
     )
     url = reverse("import_pracownikow:zatwierdz", kwargs={"pk": imp.pk})
@@ -121,10 +176,11 @@ def test_zatwierdz_zakres_nieprawidlowy_degraduje_do_pelny(admin_client, admin_u
 
 @pytest.mark.django_db
 def test_zatwierdz_bez_zakresu_domyslnie_pelny(admin_client, admin_user):
+    # Domyślny zakres = PELNY (osoby) — dozwolony po zapisaniu struktury.
     imp = baker.make(
         ImportPracownikow,
         owner=admin_user,
-        stan=ImportPracownikow.STAN_PRZEANALIZOWANY,
+        stan=ImportPracownikow.STAN_STRUKTURA_ZINTEGROWANA,
     )
     url = reverse("import_pracownikow:zatwierdz", kwargs={"pk": imp.pk})
     with patch.object(ImportPracownikow, "run", lambda self, p: None):

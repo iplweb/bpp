@@ -277,16 +277,16 @@ class _ImportPodgladMixin(GroupRequiredMixin, View):
         return obj
 
     def _blad_jesli_nie_podglad(self):
-        """G3: modyfikacje decyzji (wybór/edycja/odpięcie/utwórz-nowego)
-        dozwolone WYŁĄCZNIE dla importu w podglądzie (``przeanalizowany``). Bez
-        tej bramki bezpośredni POST (retry HTMX, back-button, wyścig z Zatwierdź)
-        na imporcie już `zintegrowanym` nadpisałby audyt ``log_zmian`` po
-        commicie / zmienił decyzję odpięcia po jej wykonaniu. Analog
-        `_STANY_MAPOWALNE` — zintegrowany wykluczony. Zwraca
-        ``HttpResponseBadRequest`` (blokada) albo ``None`` (OK)."""
-        if self.parent_object.stan != ImportPracownikow.STAN_PRZEANALIZOWANY:
+        """G3: modyfikacje decyzji o osobach (wybór/edycja autora, odpięcie,
+        utwórz-nowego, przepięcie) dozwolone dla importu w fazie edytowalnej —
+        podgląd (``przeanalizowany``) LUB faza osób po zapisie struktury
+        (``struktura_zintegrowana``). Bez tej bramki bezpośredni POST (retry
+        HTMX, back-button, wyścig z Zatwierdź) na imporcie już `zintegrowanym`
+        nadpisałby audyt ``log_zmian`` po commicie / zmienił decyzję odpięcia po
+        jej wykonaniu. Zwraca ``HttpResponseBadRequest`` (blokada) albo ``None``."""
+        if not self.parent_object.edytowalny_podglad:
             return HttpResponseBadRequest(
-                "Wiersz można edytować tylko dla importu w podglądzie."
+                "Decyzje o osobach można edytować tylko przed zapisem osób."
             )
         return None
 
@@ -592,7 +592,7 @@ class ImportPracownikowResultsView(GroupRequiredMixin, ListView):
             parent_object=parent,
             **kwargs,
         )
-        if parent.stan == ImportPracownikow.STAN_PRZEANALIZOWANY:
+        if parent.edytowalny_podglad:
             oznacz_przepiecie_prac(list(ctx["object_list"]), parent)
         return ctx
 
@@ -637,8 +637,16 @@ class PodgladImportuView(GroupRequiredMixin, DetailView):
                 # AJ uczelni flagowane jako „spoza pliku" (znane ograniczenie).
                 "ostrzezenie_odpiecia": pary_z_pliku_puste and odpiecia_count > 0,
                 "stan": parent.stan,
-                "moze_zatwierdzic": (
-                    parent.stan == ImportPracownikow.STAN_PRZEANALIZOWANY
+                # Dwustopniowy hub: Krok 1 = struktura (w podglądzie), Krok 2 =
+                # osoby (dopiero po zapisaniu struktury). Wymusza „najpierw
+                # jednostki, potem autorzy" i chowa szczegóły osób do Kroku 2.
+                "faza_struktury": parent.faza_struktury,
+                "faza_osob": parent.faza_osob,
+                "moze_zapisac_strukture": parent.faza_struktury,
+                "moze_importowac_osoby": parent.faza_osob,
+                "pokaz_ludzi": (
+                    parent.faza_osob
+                    or parent.stan == ImportPracownikow.STAN_ZINTEGROWANY
                 ),
             }
         )
@@ -703,11 +711,13 @@ class WeryfikacjaJednostekView(GroupRequiredMixin, View):
             .order_by("nazwa_zrodlowa")
         )
 
-    def get(self, request, *args, **kwargs):
-        parent = self.parent_object
+    def _build_context(self, parent, decyzje, bledne_pks=frozenset()):
+        """Kontekst szablonu zbudowany z listy decyzji — WSPÓLNY dla GET i dla
+        re-renderu po błędzie walidacji. Przy re-renderze ``decyzje`` mają
+        NAŁOŻONE (niezapisane) wartości z POST, więc formularz nie gubi tego, co
+        user ustawił; ``bledne_pks`` podświetla wiersze „mapuj bez celu”."""
         uczelnia = Uczelnia.objects.get_single_uczelnia_or_none()
-        decyzje = list(self._decyzje())
-        ctx = {
+        return {
             "parent_object": parent,
             "decyzje_brak": [
                 d for d in decyzje if d.tryb == ImportPracownikowJednostka.TRYB_BRAK
@@ -725,11 +735,36 @@ class WeryfikacjaJednostekView(GroupRequiredMixin, View):
                 skupia_pracownikow=True, widoczna=True
             ).order_by("nazwa"),
             "moze_edytowac": parent.stan == ImportPracownikow.STAN_PRZEANALIZOWANY,
+            "bledne_pks": bledne_pks,
             "DECYZJA_AKCEPTUJ": ImportPracownikowJednostka.DECYZJA_AKCEPTUJ,
             "DECYZJA_MAPUJ": ImportPracownikowJednostka.DECYZJA_MAPUJ,
             "DECYZJA_POMIN": ImportPracownikowJednostka.DECYZJA_POMIN,
         }
-        return render(request, self.template_name, ctx)
+
+    def _naloz_post(self, dec, prawidlowe):
+        """Nakłada wybory z POST na obiekt decyzji (BEZ zapisu do bazy). Wspólne
+        dla walidacji, re-renderu po błędzie i finalnego zapisu — jedno źródło
+        prawdy o tym, jak POST mapuje się na pola decyzji."""
+        pref = f"dec_{dec.pk}_"
+        decyzja = self.request.POST.get(pref + "decyzja")
+        if decyzja in prawidlowe:
+            dec.decyzja = decyzja
+        parent_id = self.request.POST.get(pref + "parent") or ""
+        dec.wybrany_parent = (
+            Jednostka.objects.filter(pk=parent_id).first() if parent_id else None
+        )
+        mapuj_id = self.request.POST.get(pref + "wybrana") or ""
+        dec.wybrana_jednostka = (
+            Jednostka.objects.filter(pk=mapuj_id).first() if mapuj_id else None
+        )
+
+    def get(self, request, *args, **kwargs):
+        parent = self.parent_object
+        return render(
+            request,
+            self.template_name,
+            self._build_context(parent, list(self._decyzje())),
+        )
 
     def post(self, request, *args, **kwargs):
         parent = self.parent_object
@@ -742,39 +777,32 @@ class WeryfikacjaJednostekView(GroupRequiredMixin, View):
             ImportPracownikowJednostka.DECYZJA_MAPUJ,
             ImportPracownikowJednostka.DECYZJA_POMIN,
         }
-        decyzje = list(parent.jednostki_do_decyzji.all())
+        decyzje = list(self._decyzje())
+        for dec in decyzje:
+            self._naloz_post(dec, prawidlowe)
         # Walidacja: „mapuj na istniejącą" bez wskazanej jednostki docelowej to
         # cicha pułapka — integracja zostawiłaby te wiersze niedopasowane.
-        # Alarmuj i NIE zapisuj, dopóki user nie wskaże celu.
-        bez_celu = [
-            dec.nazwa_zrodlowa
+        # Alarmuj i NIE zapisuj, ale RE-RENDERUJ z nałożonymi wartościami (BEZ
+        # redirectu) — inaczej user traci wszystko, co ustawił w innych wierszach.
+        bledne_pks = {
+            dec.pk
             for dec in decyzje
-            if request.POST.get(f"dec_{dec.pk}_decyzja")
-            == ImportPracownikowJednostka.DECYZJA_MAPUJ
-            and not (request.POST.get(f"dec_{dec.pk}_wybrana") or "")
-        ]
-        if bez_celu:
+            if dec.decyzja == ImportPracownikowJednostka.DECYZJA_MAPUJ
+            and dec.wybrana_jednostka_id is None
+        }
+        if bledne_pks:
+            nazwy = [dec.nazwa_zrodlowa for dec in decyzje if dec.pk in bledne_pks]
             messages.error(
                 request,
                 'Wybierz jednostkę docelową w kolumnie „Mapuj na" dla: '
-                + ", ".join(bez_celu),
+                + ", ".join(nazwy),
             )
-            return HttpResponseRedirect(
-                reverse("import_pracownikow:jednostki", kwargs={"pk": parent.pk})
+            return render(
+                request,
+                self.template_name,
+                self._build_context(parent, decyzje, bledne_pks),
             )
         for dec in decyzje:
-            pref = f"dec_{dec.pk}_"
-            decyzja = request.POST.get(pref + "decyzja")
-            if decyzja in prawidlowe:
-                dec.decyzja = decyzja
-            parent_id = request.POST.get(pref + "parent") or ""
-            dec.wybrany_parent = (
-                Jednostka.objects.filter(pk=parent_id).first() if parent_id else None
-            )
-            mapuj_id = request.POST.get(pref + "wybrana") or ""
-            dec.wybrana_jednostka = (
-                Jednostka.objects.filter(pk=mapuj_id).first() if mapuj_id else None
-            )
             dec.save(update_fields=["decyzja", "wybrany_parent", "wybrana_jednostka"])
         messages.success(request, "Zapisano decyzje o jednostkach.")
         return HttpResponseRedirect(
@@ -919,19 +947,39 @@ class ZatwierdzImportView(_PkOwnerRestartMixin):
     resztę do bazowego POST-a liveops ``RestartView`` (reset stanu
     operacji, re-enqueue, przekierowanie na stronę live).
 
-    ``zakres`` (POST) wybiera co integracja utworzy: pełny import (domyślne),
-    same jednostki, albo jednostki + tytuły (bez osób). Trzy przyciski na hubie
-    posyłają odpowiednią wartość. Nieznana/brakująca wartość → PELNY (bezpieczny
-    domyślny — zachowanie sprzed tej funkcji).
+    ``zakres`` (POST) wybiera co integracja utworzy: pełny import (osoby +
+    struktura), same jednostki, albo jednostki + tytuły (bez osób).
+
+    Bramka „najpierw struktura, potem osoby":
+    - zakres STRUKTURALNY (jednostki / jednostki+tytuły) wolno odpalić TYLKO z
+      podglądu (``przeanalizowany``) — to Krok 1;
+    - PEŁNY import (osoby) TYLKO po zapisaniu struktury
+      (``struktura_zintegrowana``) — to Krok 2. Importowanie osób bez
+      rozstrzygniętych i zapisanych jednostek nie ma sensu (§ decyzja usera).
+    Nieznana/brakująca wartość ``zakres`` → PELNY.
     """
 
     _ZAKRESY_PRAWIDLOWE = {z for z, _ in ImportPracownikow.ZAKRES_CHOICES}
+    _ZAKRESY_STRUKTURALNE = {
+        ImportPracownikow.ZAKRES_JEDNOSTKI,
+        ImportPracownikow.ZAKRES_STRUKTURA,
+    }
 
     def post(self, request, *args, **kwargs):
         obj = self.get_object()
         zakres = request.POST.get("zakres", ImportPracownikow.ZAKRES_PELNY)
         if zakres not in self._ZAKRESY_PRAWIDLOWE:
             zakres = ImportPracownikow.ZAKRES_PELNY
+        if zakres in self._ZAKRESY_STRUKTURALNE:
+            if obj.stan != ImportPracownikow.STAN_PRZEANALIZOWANY:
+                return HttpResponseBadRequest(
+                    "Strukturę można zapisać tylko z podglądu (Krok 1)."
+                )
+        elif obj.stan != ImportPracownikow.STAN_STRUKTURA_ZINTEGROWANA:
+            # PELNY = import osób: dozwolony dopiero po zapisaniu struktury.
+            return HttpResponseBadRequest(
+                "Najpierw zapisz strukturę (jednostki) — dopiero potem osoby."
+            )
         obj.stan = ImportPracownikow.STAN_ZATWIERDZONY
         obj.zakres_integracji = zakres
         obj.save(update_fields=["stan", "zakres_integracji"])

@@ -86,7 +86,8 @@ def test_zakres_jednostki_tworzy_jednostki_bez_tytulow_bez_osob(uczelnia):
     integruj(imp, p)
 
     imp.refresh_from_db()
-    assert imp.stan == ImportPracownikow.STAN_ZINTEGROWANY
+    # Krok 1: struktura zapisana, osoby czekają (NIE „zintegrowany").
+    assert imp.stan == ImportPracownikow.STAN_STRUKTURA_ZINTEGROWANA
     # jednostki utworzone
     dec_j.refresh_from_db()
     assert dec_j.utworzona is not None
@@ -119,7 +120,8 @@ def test_zakres_struktura_tworzy_jednostki_i_tytuly_bez_osob(uczelnia):
     integruj(imp, p)
 
     imp.refresh_from_db()
-    assert imp.stan == ImportPracownikow.STAN_ZINTEGROWANY
+    # Krok 1: struktura zapisana, osoby czekają (NIE „zintegrowany").
+    assert imp.stan == ImportPracownikow.STAN_STRUKTURA_ZINTEGROWANA
     # jednostki + tytuły utworzone
     assert Jednostka.objects.filter(nazwa="Zakład Struktury Testowej").exists()
     dec_t.refresh_from_db()

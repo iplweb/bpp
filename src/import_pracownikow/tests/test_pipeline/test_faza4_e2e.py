@@ -68,9 +68,12 @@ def test_e2e_nowy_autor_i_odpiecie(admin_client, admin_user, yesterday):
     )
     assert admin_client.post(url_odp, {"zaznaczone": "on"}).status_code == 200
 
-    # zatwierdź → integracja (eager)
+    # Dwustopniowy commit: Krok 1 struktura → Krok 2 osoby (eager).
     url_zatw = reverse("import_pracownikow:zatwierdz", kwargs={"pk": imp.pk})
-    resp = admin_client.post(url_zatw)
+    admin_client.post(url_zatw, {"zakres": "jednostki"})
+    imp.refresh_from_db()
+    assert imp.stan == ImportPracownikow.STAN_STRUKTURA_ZINTEGROWANA
+    resp = admin_client.post(url_zatw, {"zakres": "pelny"})
     imp.refresh_from_db()
     assert imp.stan == ImportPracownikow.STAN_ZINTEGROWANY
 

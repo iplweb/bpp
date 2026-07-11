@@ -141,7 +141,8 @@ def test_kolumna_widoczna_tylko_przy_roznicy_jednostki(admin_client, admin_user)
     resp = admin_client.get(url)
     content = resp.content.decode("utf-8")
     assert "przepnij_prace" in content
-    assert "(1 prac)" in content
+    # label przepięcia: „przenieś N prac z „stara” do „nowa”” (pełne nazwy jedn.)
+    assert "przenieś 1 prac" in content
 
 
 @pytest.mark.django_db

@@ -52,6 +52,55 @@ def test_odpiecia_datatables_init(admin_client, admin_user):
 
 
 @pytest.mark.django_db
+def test_odpiecia_po_integracji_bez_kolumny_odepnij(admin_client, admin_user):
+    """Regresja: po zapisie/integracji kolumna „Odepnij?" znika CAŁKOWICIE
+    (nie tylko checkbox) — decyzje są wykonane, nie ma czego togglować."""
+    imp = _imp(admin_user, stan=ImportPracownikow.STAN_ZINTEGROWANY)
+    odp = _odpiecie(imp)
+    resp = admin_client.get(_url(imp))
+    assert resp.status_code == 200
+    tresc = resp.content.decode("utf-8")
+    # wiersz (autor+jednostka) nadal widoczny jako lista „ludzi spoza XLS"
+    assert "Odpietowski" in tresc
+    # ale kolumny akcji i togglera już nie ma
+    assert "Odepnij?" not in tresc
+    assert (
+        reverse(
+            "import_pracownikow:przelacz-odpiecie",
+            kwargs={"pk": imp.pk, "odp_pk": odp.pk},
+        )
+        not in tresc
+    )
+
+
+@pytest.mark.django_db
+def test_odpiecia_w_podgladzie_ma_kolumne_odepnij(admin_client, admin_user):
+    """Kontrola: w podglądzie (przeanalizowany) kolumna „Odepnij?" JEST."""
+    imp = _imp(admin_user)  # domyślnie przeanalizowany
+    _odpiecie(imp)
+    tresc = admin_client.get(_url(imp)).content.decode("utf-8")
+    assert "Odepnij?" in tresc
+
+
+@pytest.mark.django_db
+def test_odpiecia_kolumna_i_toggle_w_fazie_osob(admin_client, admin_user):
+    """Faza osób (struktura_zintegrowana): kolumna „Odepnij?" jest, a toggle
+    checkboxa działa — odpięcia rozstrzygamy w Kroku 2, przy imporcie osób."""
+    imp = _imp(admin_user, stan=ImportPracownikow.STAN_STRUKTURA_ZINTEGROWANA)
+    odp = _odpiecie(imp)
+    tresc = admin_client.get(_url(imp)).content.decode("utf-8")
+    assert "Odepnij?" in tresc
+    url = reverse(
+        "import_pracownikow:przelacz-odpiecie",
+        kwargs={"pk": imp.pk, "odp_pk": odp.pk},
+    )
+    resp = admin_client.post(url, {"zaznaczone": "on"})
+    assert resp.status_code == 200
+    odp.refresh_from_db()
+    assert odp.zaznaczone is True
+
+
+@pytest.mark.django_db
 def test_odpiecia_puste_callout(admin_client, admin_user):
     imp = _imp(admin_user)
     resp = admin_client.get(_url(imp))

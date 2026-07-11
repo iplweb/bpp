@@ -1,10 +1,10 @@
 {% extends "base.html" %}
 
-{% block extratitle %}Import pracowników i struktury — weryfikacja jednostek{% endblock %}
+{% block extratitle %}Import pracowników i jednostek — weryfikacja jednostek{% endblock %}
 
 {% block breadcrumbs %}
     {{ block.super }}
-    <li><a href="{% url "import_pracownikow:index" %}">import pracowników i struktury</a></li>
+    <li><a href="{% url "import_pracownikow:index" %}">import pracowników i jednostek</a></li>
     <li class="current">weryfikacja jednostek</li>
 {% endblock %}
 
@@ -89,6 +89,10 @@
                                         </option>
                                     {% endfor %}
                                 </select>
+                                {% if dec.pk in bledne_pks %}
+                                    <br>
+                                    <span class="label alert">wskaż jednostkę docelową</span>
+                                {% endif %}
                             </td>
                         </tr>
                     {% endfor %}
@@ -161,6 +165,10 @@
                                         </option>
                                     {% endfor %}
                                 </select>
+                                {% if dec.pk in bledne_pks %}
+                                    <br>
+                                    <span class="label alert">wskaż jednostkę docelową</span>
+                                {% endif %}
                             </td>
                         </tr>
                     {% endfor %}

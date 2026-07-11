@@ -656,7 +656,10 @@ def integruj(parent, p):
         ImportPracownikow.ZAKRES_JEDNOSTKI,
         ImportPracownikow.ZAKRES_STRUKTURA,
     ):
-        parent.stan = ImportPracownikow.STAN_ZINTEGROWANY
+        # Krok 1 zakończony: struktura zapisana, osoby NIE. NIE „zintegrowany"
+        # (to sugerowałoby komplet) — nowy stan „struktura zintegrowana"
+        # odblokowuje Krok 2 (import osób) i odsłania szczegóły autorów.
+        parent.stan = ImportPracownikow.STAN_STRUKTURA_ZINTEGROWANA
         parent.save(update_fields=["stan"])
         p.result(
             {

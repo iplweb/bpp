@@ -1,10 +1,10 @@
 {% extends "base.html" %}
 
-{% block extratitle %}Import pracowników i struktury — ludzie spoza XLS{% endblock %}
+{% block extratitle %}Import pracowników i jednostek — ludzie spoza XLS{% endblock %}
 
 {% block breadcrumbs %}
     {{ block.super }}
-    <li><a href="{% url "import_pracownikow:index" %}">import pracowników i struktury</a></li>
+    <li><a href="{% url "import_pracownikow:index" %}">import pracowników i jednostek</a></li>
     <li><a href="{% url "import_pracownikow:przeglad" pk=parent_object.pk %}">przegląd importu</a></li>
     <li class="current">ludzie spoza XLS</li>
 {% endblock %}
@@ -31,7 +31,11 @@
                     <tr>
                         <th>Autor</th>
                         <th>Jednostka</th>
-                        <th>Odepnij?</th>
+                        {# Kolumna akcji tylko w fazie edytowalnej (podgląd / #}
+                        {# faza osób) — po pełnej integracji znika. #}
+                        {% if parent_object.edytowalny_podglad %}
+                            <th>Odepnij?</th>
+                        {% endif %}
                     </tr>
                 </thead>
                 <tbody>
@@ -49,7 +53,11 @@
                 paging: false,  // wszystkie wiersze w DOM → htmx-targety (#odpiecie-X) żyją
                 info: false,
                 order: [],  // zachowaj kolejność serwera
+                {% if parent_object.edytowalny_podglad %}
+                // kolumna „Odepnij?” (index 2) — bez sortowania/filtrowania;
+                // po pełnej integracji tej kolumny nie ma, więc bez targetu
                 columnDefs: [{orderable: false, searchable: false, targets: [2]}]
+                {% endif %}
             });
             // Resync po htmx-swapie wiersza: htmx podmienia <tr> na nowy node,
             // DataTables trzyma stary w cache → po redraw (search) zgubiłby

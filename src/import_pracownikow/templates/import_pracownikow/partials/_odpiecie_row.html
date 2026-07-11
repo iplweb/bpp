@@ -3,8 +3,11 @@
 <tr id="odpiecie-{{ odp.pk }}">
     <td>{{ odp.autor_jednostka.autor }}</td>
     <td>{{ odp.autor_jednostka.jednostka }}</td>
-    <td>
-        {% if parent_object.stan == "przeanalizowany" %}
+    {# Kolumna „Odepnij?” istnieje w fazie edytowalnej (podgląd / faza osób). #}
+    {# Po pełnej integracji znika w całości — decyzje wykonane, nie ma czego #}
+    {# togglować. Liczba <td> musi zgadzać się z liczbą <th> w odpiecia.html. #}
+    {% if parent_object.edytowalny_podglad %}
+        <td>
             {# checkbox domyślnie ODZNACZONY; zmiana → POST toggluje zaznaczone #}
             <form method="post"
                   hx-post="{% url 'import_pracownikow:przelacz-odpiecie' parent_object.pk odp.pk %}"
@@ -18,8 +21,6 @@
                     odepnij
                 </label>
             </form>
-        {% elif odp.wykonane %}
-            <span class="label success"><i class="fi-check"></i> odpięto</span>
-        {% endif %}
-    </td>
+        </td>
+    {% endif %}
 </tr>

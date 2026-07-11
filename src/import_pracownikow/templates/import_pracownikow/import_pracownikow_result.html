@@ -4,44 +4,38 @@
 {# total, zmiany_potrzebne, byl_dry_run, stan; faza integracji: #}
 {# zintegrowano, pominieto_nieaktualne, odpieto, utworzono_nowych_autorow, #}
 {# przepieto_wierszy, przepieto_prac, stan. #}
-<div class="panel callout {% if byl_dry_run %}warning{% else %}success{% endif %}">
-    <h3>
-        <span class="fi-check"></span>
-        {% if byl_dry_run %}Analiza zakończona{% else %}Import zakończony{% endif %}
-    </h3>
+<div class="panel callout {% if byl_dry_run %}secondary{% else %}success{% endif %}">
     {% if byl_dry_run %}
-        <p>
-            Przetworzono wierszy: <strong>{{ total }}</strong>,
-            do zmiany: <strong>{{ zmiany_potrzebne }}</strong>.
-        </p>
-        <p>To był <strong>podgląd</strong> (przebieg „na sucho") — nic nie
-            zapisano do bazy. Zatwierdź poniżej, żeby zapisać zmiany do bazy
-            danych.</p>
-        {# Progressive enhancement: hx-post wysyła żądanie htmx, które dziedziczy #}
-        {# nagłówek X-CSRFToken z wrappera hx-headers host-page. To istotne, gdy #}
-        {# panel wyniku został wypchnięty przez workera po WebSockecie (render bez #}
-        {# requestu → token w body formularza jest pusty → natywny POST dałby 403). #}
-        {# Widok liveops zwraca 204 dla htmx (UI aktualizuje WebSocket); dla no-JS #}
-        {# natywny POST formularza działa jak dotąd (redirect na stronę live). #}
-        <form method="post"
-              action="{% url 'import_pracownikow:zatwierdz' operation.pk %}"
-              hx-post="{% url 'import_pracownikow:zatwierdz' operation.pk %}"
-              hx-swap="none"
-              hx-disabled-elt="find button">
-            {% csrf_token %}
-            <button class="button" type="submit">
-                <span class="fi-save"></span> Zapisz zmiany do bazy
-            </button>
-        </form>
+        {# Analiza (dry-run) gotowa. NIE pokazujemy komunikatu-podglądu — od razu #}
+        {# przechodzimy na hub szczegółów, który prowadzi przez Krok 1 (struktura) #}
+        {# → Krok 2 (osoby). Skrypt przenosi automatycznie; link to fallback dla #}
+        {# no-JS oraz gdyby OOB-swap nie wykonał skryptu. #}
+        <h3><span class="fi-check"></span> Analiza zakończona</h3>
+        <p>Przechodzę do szczegółów importu…</p>
+        <a href="{% url 'import_pracownikow:przeglad' operation.pk %}"
+           class="button">
+            <span class="fi-list"></span> Zobacz szczegóły
+        </a>
+        <script>
+            window.location.assign(
+                "{% url 'import_pracownikow:przeglad' operation.pk %}"
+            );
+        </script>
     {% elif zakres == "jednostki" or zakres == "struktura" %}
-        {# Import strukturalny (jednostki / jednostki+tytuły) — osoby pominięte. #}
+        {# Krok 1 gotowy: struktura zapisana, osoby czekają na Krok 2 (na hubie). #}
+        <h3><span class="fi-check"></span> Struktura zapisana</h3>
         <p>
             Utworzono strukturę:
             <strong>{{ utworzono_jednostek }}</strong> jednostek{% if zakres == "struktura" %},
                 <strong>{{ utworzono_tytulow }}</strong> tytułów{% endif %}.
-            Import osób pominięty.
+            Osoby <strong>NIE</strong> zostały jeszcze zaimportowane.
         </p>
+        <a href="{% url 'import_pracownikow:przeglad' operation.pk %}"
+           class="button">
+            <span class="fi-torso"></span> Przejdź do importu osób
+        </a>
     {% else %}
+        <h3><span class="fi-check"></span> Import zakończony</h3>
         <p>
             Zintegrowano wierszy: <strong>{{ zintegrowano }}</strong>
             {% if pominieto_nieaktualne %},
@@ -61,9 +55,9 @@
                 <strong>{{ przepieto_wierszy }}</strong> wierszy /
                 <strong>{{ przepieto_prac }}</strong> prac.</p>
         {% endif %}
+        <a href="{% url 'import_pracownikow:przeglad' operation.pk %}"
+           class="button secondary">
+            <span class="fi-list"></span> Zobacz szczegóły
+        </a>
     {% endif %}
-    <a href="{% url 'import_pracownikow:przeglad' operation.pk %}"
-       class="button secondary">
-        <span class="fi-list"></span> Zobacz szczegóły
-    </a>
 </div>

@@ -1,12 +1,12 @@
 {% extends "base.html" %}
 
 {% block extratitle %}
-    Import pracowników i struktury — przegląd {{ parent_object.plik_xls.name }}
+    Import pracowników i jednostek — przegląd {{ parent_object.plik_xls.name }}
 {% endblock %}
 
 {% block breadcrumbs %}
     {{ block.super }}
-    <li><a href="{% url "import_pracownikow:index" %}">import pracowników i struktury</a></li>
+    <li><a href="{% url "import_pracownikow:index" %}">import pracowników i jednostek</a></li>
     <li class="current">przegląd importu</li>
 {% endblock %}
 
@@ -17,48 +17,68 @@
         Stan: <span class="label secondary">{{ parent_object.get_stan_display }}</span>
     </p>
 
-    {% if moze_zatwierdzic %}
-        {# CTA review-then-commit — ten sam endpoint co panel wyniku live. #}
-        {# Trzy warianty zapisu: pełny (struktura + osoby) oraz dwa strukturalne #}
-        {# (tworzą TYLKO strukturę, bez importu osób). Pozycyjny arg url (nie pk=) #}
-        {# — inaczej djLint H037. #}
+    {% if faza_struktury %}
+        {# KROK 1 — struktura. Import osób jest zablokowany, dopóki jednostki #}
+        {# nie zostaną rozstrzygnięte i zapisane (pozycyjny arg url — djLint H037). #}
         <div class="callout primary">
-            <p>Import jest przeanalizowany (przebieg „na sucho" — nic jeszcze
-                nie zapisano). Sprawdź kafelki poniżej, a gdy wszystko się
-                zgadza — zapisz zmiany do bazy.</p>
+            <h2>Krok 1 — struktura (jednostki{% if pokaz_tytuly %} i tytuły{% endif %})</h2>
+            <p>Import jest przeanalizowany („na sucho" — nic nie zapisano).
+                Najpierw rozstrzygnij i zapisz strukturę. <strong>Import osób jest
+                zablokowany</strong>, dopóki jednostki nie trafią do bazy —
+                przypisanie autorów bez kompletnej listy jednostek nie ma sensu.</p>
+            {% if pokaz_jednostki %}
+                <p>
+                    <span class="fi-info"></span>
+                    {{ liczniki_jednostek.do_utworzenia }} do utworzenia ·
+                    {{ liczniki_jednostek.do_sprawdzenia }} do sprawdzenia.
+                    <a href="{% url "import_pracownikow:jednostki" parent_object.pk %}"
+                       class="button">Zweryfikuj jednostki</a>
+                </p>
+            {% endif %}
+            {# Dwa warianty struktury OBOK siebie (jeden formularz, name=zakres). #}
+            <form method="post"
+                  action="{% url "import_pracownikow:zatwierdz" parent_object.pk %}">
+                {% csrf_token %}
+                <button type="submit" name="zakres" value="jednostki"
+                        class="button">
+                    <span class="fi-marker"></span> Zapisz tylko jednostki
+                </button>
+                <button type="submit" name="zakres" value="struktura"
+                        class="button">
+                    <span class="fi-crown"></span> Zapisz jednostki + tytuły
+                </button>
+            </form>
+        </div>
+
+        <div class="callout secondary">
+            <h2>Krok 2 — osoby <span class="fi-lock"></span></h2>
+            <p>Import osób i szczegóły autorów odblokują się po zapisaniu
+                struktury (Krok 1).</p>
+        </div>
+    {% elif moze_importowac_osoby %}
+        {# KROK 2 — struktura zapisana, odblokowany import osób. #}
+        <div class="callout success">
+            <h2><span class="fi-check"></span> Krok 1 — struktura zapisana</h2>
+            <p>Jednostki (i ewentualnie tytuły) są w bazie. Osoby
+                <strong>NIE</strong> zostały jeszcze zaimportowane.</p>
+        </div>
+        <div class="callout primary">
+            <h2>Krok 2 — osoby</h2>
+            <p>Sprawdź dopasowania autorów i powiązania w kafelkach poniżej, a gdy
+                wszystko się zgadza — zaimportuj osoby do bazy.</p>
             <form method="post"
                   action="{% url "import_pracownikow:zatwierdz" parent_object.pk %}">
                 {% csrf_token %}
                 <input type="hidden" name="zakres" value="pelny">
                 <button type="submit" class="button">
-                    <span class="fi-save"></span> Zapisz do bazy
-                </button>
-            </form>
-            <p class="help-text">
-                Poniższe akcje tworzą <strong>tylko strukturę</strong>
-                (jednostki, ewentualnie tytuły) — <strong>bez importu
-                osób</strong> i ich zatrudnień.
-            </p>
-            <form method="post"
-                  action="{% url "import_pracownikow:zatwierdz" parent_object.pk %}">
-                {% csrf_token %}
-                <input type="hidden" name="zakres" value="jednostki">
-                <button type="submit" class="button secondary">
-                    <span class="fi-marker"></span> Utwórz tylko jednostki
-                </button>
-            </form>
-            <form method="post"
-                  action="{% url "import_pracownikow:zatwierdz" parent_object.pk %}">
-                {% csrf_token %}
-                <input type="hidden" name="zakres" value="struktura">
-                <button type="submit" class="button secondary">
-                    <span class="fi-crown"></span> Utwórz jednostki + tytuły
+                    <span class="fi-torso"></span> Zapisz osoby do bazy
                 </button>
             </form>
         </div>
     {% endif %}
 
     <div class="row">
+        {# Struktura (Krok 1): jednostki + tytuły. #}
         {% if pokaz_jednostki %}
             <div class="medium-6 columns">
                 <div class="callout">
@@ -67,49 +87,11 @@
                         {{ liczniki_jednostek.do_utworzenia }} do utworzenia ·
                         {{ liczniki_jednostek.do_sprawdzenia }} do sprawdzenia
                     </p>
-                    <a href="{% url "import_pracownikow:jednostki" pk=parent_object.pk %}"
-                       class="button small">Zweryfikuj jednostki</a>
+                    <a href="{% url "import_pracownikow:jednostki" parent_object.pk %}"
+                       class="button">Zweryfikuj jednostki</a>
                 </div>
             </div>
         {% endif %}
-
-        <div class="medium-6 columns">
-            <div class="callout">
-                <h3><span class="fi-torso"></span> Ludzie z XLS</h3>
-                <p>
-                    {{ liczniki_ludzi.twardy }} pewnych ·
-                    {{ liczniki_ludzi.zgadywanie }} luźnych ·
-                    {{ ludzie_do_akceptacji }} do akceptacji
-                </p>
-                {% if ludzie_do_akceptacji == 0 %}
-                    <p><span class="label success">
-                        <span class="fi-check"></span> gotowe
-                    </span></p>
-                {% endif %}
-                <a href="{% url "import_pracownikow:importpracownikow-results" pk=parent_object.pk %}"
-                   class="button small">Zobacz wiersze</a>
-            </div>
-        </div>
-
-        <div class="medium-6 columns">
-            <div class="callout">
-                <h3><span class="fi-link"></span> Ludzie spoza XLS</h3>
-                <p>
-                    {{ odpiecia_count }} powiązań spoza pliku
-                    (jednostki uczelni oprócz Obcej)
-                </p>
-                {% if ostrzezenie_odpiecia %}
-                    <div class="callout warning">
-                        {# wszystkie jednostki odroczone → lista może być zawyżona #}
-                        Uwaga: wszystkie jednostki z pliku są odroczone, więc
-                        lista powiązań spoza pliku może być zawyżona (wszystkie
-                        aktywne etaty uczelni zostały oznaczone).
-                    </div>
-                {% endif %}
-                <a href="{% url "import_pracownikow:odpiecia" pk=parent_object.pk %}"
-                   class="button small">Zobacz powiązania</a>
-            </div>
-        </div>
 
         {% if pokaz_tytuly %}
             <div class="medium-6 columns">
@@ -119,8 +101,49 @@
                         {{ liczniki_tytulow.do_utworzenia }} do utworzenia ·
                         {{ liczniki_tytulow.do_sprawdzenia }} do sprawdzenia
                     </p>
-                    <a href="{% url "import_pracownikow:tytuly" pk=parent_object.pk %}"
-                       class="button small">Zweryfikuj tytuły</a>
+                    <a href="{% url "import_pracownikow:tytuly" parent_object.pk %}"
+                       class="button">Zweryfikuj tytuły</a>
+                </div>
+            </div>
+        {% endif %}
+
+        {# Osoby (Krok 2 / audyt) — odsłaniane dopiero po zapisaniu struktury. #}
+        {% if pokaz_ludzi %}
+            <div class="medium-6 columns">
+                <div class="callout">
+                    <h3><span class="fi-torso"></span> Ludzie z XLS</h3>
+                    <p>
+                        {{ liczniki_ludzi.twardy }} pewnych ·
+                        {{ liczniki_ludzi.zgadywanie }} luźnych ·
+                        {{ ludzie_do_akceptacji }} do akceptacji
+                    </p>
+                    {% if ludzie_do_akceptacji == 0 %}
+                        <p><span class="label success">
+                            <span class="fi-check"></span> gotowe
+                        </span></p>
+                    {% endif %}
+                    <a href="{% url "import_pracownikow:importpracownikow-results" parent_object.pk %}"
+                       class="button">Zobacz wiersze</a>
+                </div>
+            </div>
+
+            <div class="medium-6 columns">
+                <div class="callout">
+                    <h3><span class="fi-link"></span> Ludzie spoza XLS</h3>
+                    <p>
+                        {{ odpiecia_count }} powiązań spoza pliku
+                        (jednostki uczelni oprócz Obcej)
+                    </p>
+                    {% if ostrzezenie_odpiecia %}
+                        <div class="callout warning">
+                            {# wszystkie jednostki odroczone → lista może być zawyżona #}
+                            Uwaga: wszystkie jednostki z pliku są odroczone, więc
+                            lista powiązań spoza pliku może być zawyżona (wszystkie
+                            aktywne etaty uczelni zostały oznaczone).
+                        </div>
+                    {% endif %}
+                    <a href="{% url "import_pracownikow:odpiecia" parent_object.pk %}"
+                       class="button">Zobacz powiązania</a>
                 </div>
             </div>
         {% endif %}

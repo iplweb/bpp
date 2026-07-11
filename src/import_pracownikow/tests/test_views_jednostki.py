@@ -52,6 +52,58 @@ def test_post_zapisuje_decyzje_mapuj(admin_client, admin_user):
 
 
 @pytest.mark.django_db
+def test_post_blad_zachowuje_ustawione_wartosci(admin_client, admin_user):
+    """Regresja: „Zapisz" z niekompletnym „mapuj" NIE robi już redirectu (który
+    gubił WSZYSTKIE ustawienia) — re-renderuje formularz z zachowanymi wyborami
+    i podświetla błędny wiersz. Nic się nie zapisuje (guard „mapuj bez celu")."""
+    import re
+
+    imp = _imp(admin_user)
+    j = baker.make(
+        Jednostka,
+        nazwa="Docelowa",
+        skrot="DOC",
+        skupia_pracownikow=True,
+        widoczna=True,
+    )
+    dec_ok = _dec(imp, "Zrodlowa OK")
+    dec_zla = _dec(imp, "Zrodlowa BEZ CELU")
+    url = reverse("import_pracownikow:jednostki", kwargs={"pk": imp.pk})
+    resp = admin_client.post(
+        url,
+        {
+            # poprawny „mapuj" z celem
+            f"dec_{dec_ok.pk}_decyzja": MAPUJ,
+            f"dec_{dec_ok.pk}_wybrana": str(j.pk),
+            # „mapuj" BEZ celu → błąd walidacji
+            f"dec_{dec_zla.pk}_decyzja": MAPUJ,
+            f"dec_{dec_zla.pk}_wybrana": "",
+        },
+    )
+    # re-render (200), NIE redirect (302)
+    assert resp.status_code == 200
+    tresc = resp.content.decode("utf-8")
+    assert "Wybierz jednostkę docelową" in tresc
+    assert "Zrodlowa BEZ CELU" in tresc
+    assert "wskaż jednostkę docelową" in tresc  # podświetlenie błędnego wiersza
+    # nic nie zapisane (guard) — dec_ok zostaje na domyślnym AKCEPTUJ
+    dec_ok.refresh_from_db()
+    assert dec_ok.decyzja == AKCEPTUJ
+    assert dec_ok.wybrana_jednostka_id is None
+    # ale FORMULARZ zachował wybór usera dla dec_ok: „mapuj" + jednostka docelowa
+    assert re.search(
+        rf'name="dec_{dec_ok.pk}_decyzja".*?value="{MAPUJ}"[^>]*selected',
+        tresc,
+        re.S,
+    )
+    assert re.search(
+        rf'name="dec_{dec_ok.pk}_wybrana".*?value="{j.pk}"[^>]*selected',
+        tresc,
+        re.S,
+    )
+
+
+@pytest.mark.django_db
 def test_post_poza_podgladem_400_nie_zmienia(admin_client, admin_user):
     imp = _imp(admin_user, stan=ImportPracownikow.STAN_ZINTEGROWANY)
     dec = _dec(imp, "X", decyzja=AKCEPTUJ)

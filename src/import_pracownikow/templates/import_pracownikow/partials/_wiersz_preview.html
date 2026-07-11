@@ -22,7 +22,19 @@
         {% endif %}
     </td>
     <td>
-        {% if parent_object.stan == "przeanalizowany" %}
+        {# Jednostka: docelowa z pliku, a gdy autor jest już w innej — obecna → docelowa. #}
+        {% if row.jednostka %}
+            {% if row.autor and row.autor.aktualna_jednostka_id and row.autor.aktualna_jednostka_id != row.jednostka_id %}
+                {{ row.autor.aktualna_jednostka }} → <strong>{{ row.jednostka }}</strong>
+            {% else %}
+                {{ row.jednostka }}
+            {% endif %}
+        {% else %}
+            <span class="secondary">— (jednostka odroczona / brak)</span>
+        {% endif %}
+    </td>
+    <td>
+        {% if parent_object.edytowalny_podglad %}
             {% if row.confidence == "wielu" %}
                 {# dropdown policzonych kandydatów — POST ustawia wybrany_kandydat #}
                 <form method="post"
@@ -140,6 +152,20 @@
                         allowClear: true,
                         language: "pl"
                     });
+                    // htmx słucha natywnego "change" (addEventListener); Select2
+                    // emituje "change" przez system zdarzeń jQuery, którego natywny
+                    // listener NIE łapie → POST dopasuj-autora nigdy nie leciał, a
+                    // wybór autora „nie zapisywał się". Mostek: na select2:select /
+                    // select2:unselect wystrzel natywny "change", który htmx podłapie
+                    // i wykona hx-post (bubbles, bo formularz jest rodzicem selecta).
+                    window.jQuery(sel).on(
+                        "select2:select select2:unselect",
+                        function () {
+                            sel.dispatchEvent(
+                                new Event("change", { bubbles: true })
+                            );
+                        }
+                    );
                 }
 
                 document.addEventListener("click", function (e) {
@@ -170,7 +196,7 @@
         {% endif %}
     </td>
     <td>
-        {% if parent_object.stan == "przeanalizowany" and row.przepnij_dostepne %}
+        {% if parent_object.edytowalny_podglad and row.przepnij_dostepne %}
             {# opt-in przepięcia prac — POST toggluje przepnij_prace #}
             <form method="post"
                   hx-post="{% url "import_pracownikow:przepnij-prace" parent_object.pk row.pk %}"
@@ -182,9 +208,9 @@
                     <input type="checkbox" name="przepnij_prace"
                            {% if row.przepnij_prace %}checked{% endif %}>
                     <span class="fi-shuffle"></span>
-                    z {{ row.przepnij_stara_jednostka.skrot }}
-                    do {{ row.jednostka.skrot }}
-                    ({{ row.przepnij_liczba_prac }} prac)
+                    przenieś {{ row.przepnij_liczba_prac }} prac
+                    z „{{ row.przepnij_stara_jednostka }}”
+                    do „{{ row.jednostka }}”
                 </label>
             </form>
         {% elif row.log_zmian.przepiecie %}

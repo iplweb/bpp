@@ -1,12 +1,12 @@
 {% extends "base.html" %}{% load render_table from django_tables2 %}
 
 {% block extratitle %}
-    Import pracowników i struktury - szczegóły {{ parent_object.plik_xls.name }}
+    Import pracowników i jednostek - szczegóły {{ parent_object.plik_xls.name }}
 {% endblock %}
 
 {% block breadcrumbs %}
     {{ block.super }}
-    <li><a href="{% url "import_pracownikow:index" %}">import pracowników i struktury</a></li>
+    <li><a href="{% url "import_pracownikow:index" %}">import pracowników i jednostek</a></li>
     <li class="current">import {{ parent_object.plik_xls.name }}</li>
 {% endblock %}
 
@@ -24,7 +24,7 @@
             {{ parent_object.jednostki_do_decyzji.count }} jednostek z pliku wymaga
             weryfikacji (do utworzenia lub auto-dopasowane).
             <a href="{% url "import_pracownikow:jednostki" pk=parent_object.pk %}"
-               class="button small">Zweryfikuj jednostki</a>
+               class="button">Zweryfikuj jednostki</a>
         </div>
     {% endif %}
 
@@ -32,12 +32,12 @@
     {# wzorzec importer_publikacji/index.html. #}
     <script src="https://unpkg.com/htmx.org@2.0.4" crossorigin="anonymous"></script>
 
-    {% if parent_object.stan == "przeanalizowany" %}
+    {% if parent_object.edytowalny_podglad %}
         {# akcja zbiorcza: zaznacz przepięcie prac dla wierszy z różnicą jednostki #}
         <form method="post"
               action="{% url "import_pracownikow:zaznacz-przepiecia" pk=parent_object.pk %}">
             {% csrf_token %}
-            <button type="submit" class="button small secondary">
+            <button type="submit" class="button secondary">
                 <span class="fi-shuffle"></span>
                 Zaznacz przepięcie prac dla wszystkich z różnicą jednostki
             </button>
@@ -59,6 +59,7 @@
                         <th>Tytuł</th>
                         <th>Pewność</th>
                         <th>Autor</th>
+                        <th>Jednostka (obecna → z pliku)</th>
                         <th>Akcje / zmiany</th>
                         <th>Przepnij prace</th>
                     </tr>
@@ -68,7 +69,7 @@
                         {% include "import_pracownikow/partials/_wiersz_preview.html" %}
                         {% empty %}
                         <tr>
-                            <td colspan="9" class="text-center"><strong>
+                            <td colspan="10" class="text-center"><strong>
                                 Żadnych wierszy do pokazania.
                             </strong></td>
                         </tr>
@@ -84,7 +85,7 @@
                 paging: false,  // wszystkie wiersze w DOM → htmx-targety (#wiersz-X) żyją
                 info: false,
                 order: [],  // zachowaj kolejność serwera (nie-twardzi na górze)
-                columnDefs: [{orderable: false, searchable: false, targets: [7, 8]}]
+                columnDefs: [{orderable: false, searchable: false, targets: [8, 9]}]
             });
             // Resync po htmx-swapie wiersza: htmx podmienia <tr> na nowy node,
             // DataTables trzyma stary w cache → po redraw (search) zgubiłby
