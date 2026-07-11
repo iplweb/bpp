@@ -14,12 +14,25 @@ STATUS_TWARDY = "twardy"
 STATUS_ZGADYWANIE = "zgadywanie"
 STATUS_WIELU = "wielu"
 STATUS_BRAK = "brak"
+# Ręczny wybór autora przez operatora (wybór kandydata / override z
+# autocomplete). NIE powstaje w analizie (``oblicz_status_pewnosci`` zwraca tylko
+# statusy automatyczne) — ustawia go dopiero akcja usera w podglądzie. Odróżnia
+# świadomy wybór operatora od automatycznego „twardego matcha" (badge nie kłamie).
+STATUS_RECZNY = "reczny"
 
 STATUS_CHOICES = [
     (STATUS_TWARDY, "twardy match"),
     (STATUS_ZGADYWANIE, "zgadywanie"),
     (STATUS_WIELU, "wielu kandydatów"),
     (STATUS_BRAK, "brak dopasowania"),
+]
+
+# Confidence autora ma DODATKOWO status „ręczny" (świadomy wybór operatora).
+# Osobna lista, bo ``jednostka_status``/``tytul_status`` (też ``STATUS_CHOICES``)
+# NIE mają ręcznego override — trzymamy ich pulę na oryginalnych 4 wartościach
+# (poprawna semantyka + węższy, czystszy zakres migracji confidence).
+CONFIDENCE_CHOICES = STATUS_CHOICES + [
+    (STATUS_RECZNY, "ręczny (wybór użytkownika)"),
 ]
 
 # status → (klasa Foundation label, ikona Foundation-Icons, etykieta). Foundation
@@ -29,6 +42,9 @@ STATUS_DISPLAY = {
     STATUS_ZGADYWANIE: ("warning", "fi-flag", "zgadywanie"),
     STATUS_WIELU: ("primary", "fi-page-multiple", "wielu kandydatów"),
     STATUS_BRAK: ("secondary", "fi-minus-circle", "brak dopasowania"),
+    # Zielony (rozstrzygnięte/zaufane), ale ikona-ołówek sygnalizuje „ręcznie
+    # przez operatora" — wizualnie odróżnialne od twardego matcha (fi-check).
+    STATUS_RECZNY: ("success", "fi-pencil", "wybór użytkownika"),
 }
 
 

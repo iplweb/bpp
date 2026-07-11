@@ -41,7 +41,13 @@ def test_liczniki_ludzi_koalescencja_none_do_brak(admin_user):
     _row(imp, None)  # stary wiersz z NULL — koalescencja → brak
 
     liczniki = imp.liczniki_ludzi_z_xls()
-    assert liczniki == {"twardy": 2, "zgadywanie": 1, "wielu": 1, "brak": 2}
+    assert liczniki == {
+        "twardy": 2,
+        "reczny": 0,
+        "zgadywanie": 1,
+        "wielu": 1,
+        "brak": 2,
+    }
     # suma == liczba wierszy (dowód, że NULL nie „gubi się")
     assert sum(liczniki.values()) == imp.importpracownikowrow_set.count()
 
@@ -51,6 +57,7 @@ def test_liczniki_ludzi_puste(admin_user):
     imp = _imp(admin_user)
     assert imp.liczniki_ludzi_z_xls() == {
         "twardy": 0,
+        "reczny": 0,
         "zgadywanie": 0,
         "wielu": 0,
         "brak": 0,

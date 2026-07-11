@@ -28,6 +28,11 @@ urlpatterns = [
         name="odpiecia",
     ),
     path(
+        "<uuid:pk>/audyt/",
+        views.LogZmianView.as_view(),
+        name="audyt",
+    ),
+    path(
         "<uuid:pk>/jednostki/",
         views.WeryfikacjaJednostekView.as_view(),
         name="jednostki",

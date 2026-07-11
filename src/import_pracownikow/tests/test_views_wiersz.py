@@ -8,7 +8,7 @@ from import_pracownikow.models import (
     ImportPracownikowRow,
     ImportPracownikowRowKandydat,
 )
-from import_pracownikow.pewnosc import STATUS_TWARDY, STATUS_WIELU
+from import_pracownikow.pewnosc import STATUS_RECZNY, STATUS_WIELU
 
 
 def _wielu_row(owner):
@@ -48,7 +48,8 @@ def test_wybor_kandydata_materializuje_autora(admin_client, admin_user):
     row.refresh_from_db()
     assert row.wybrany_kandydat_id == a1.pk
     assert row.autor_id == a1.pk
-    assert row.confidence == STATUS_TWARDY
+    # Wybór kandydata = świadomy wybór operatora → status „ręczny" (item 7).
+    assert row.confidence == STATUS_RECZNY
     assert row.zmiany_potrzebne is True
 
 
