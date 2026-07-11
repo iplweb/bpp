@@ -199,7 +199,11 @@ class ImportPracownikow(LiveOperation):
         ``Autor_Jednostka``: subquery z NULL-em daje SQL ``NOT IN (…, NULL)``
         → pusty zbiór (regresja §9). Kryteria wykluczeń: jednostka zarządzana
         automatycznie, nie-obca, powiązanie aktywne, autor ma aktualną
-        jednostkę.
+        jednostkę. „Nie-obca” działa dwuwarstwowo: wykluczamy autorów, których
+        aktualna (podstawowa) jednostka to obca, ORAZ pojedyncze powiązania
+        wskazujące NA obcą jednostkę (np. zagraniczna współafiliacja publikacji
+        u autora zatrudnionego w realnej jednostce) — takich afiliacji nie
+        proponujemy do odpięcia, nawet gdy autora nie ma w pliku.
         """
         if today is None:
             today = timezone.now().date()
@@ -213,7 +217,9 @@ class ImportPracownikow(LiveOperation):
         )
 
         if uczelnia is not None and uczelnia.obca_jednostka_id is not None:
-            qry = qry.exclude(autor__aktualna_jednostka_id=uczelnia.obca_jednostka_id)
+            qry = qry.exclude(
+                autor__aktualna_jednostka_id=uczelnia.obca_jednostka_id
+            ).exclude(jednostka_id=uczelnia.obca_jednostka_id)
 
         if pary_z_pliku:
             wyklucz = Q()

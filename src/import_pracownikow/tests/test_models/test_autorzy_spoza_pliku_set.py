@@ -96,3 +96,31 @@ def test_wyklucza_obca_jednostke_uczelni(today):
         obca_jednostka_id = obca.pk
 
     assert list(imp.autorzy_spoza_pliku_set(uczelnia=_Uczelnia(), today=today)) == []
+
+
+@pytest.mark.django_db
+def test_wyklucza_afiliacje_wskazujaca_na_obca_jednostke(today):
+    """User: nie proponuj odpięcia powiązania, które wskazuje NA obcą jednostkę,
+    nawet gdy aktualna (podstawowa) jednostka autora to zwykła, realna jednostka
+    i autora nie ma w pliku importu. Kryterium „obca” jest per-AFILIACJA
+    (``jednostka == obca``), nie tylko per-autor (``aktualna_jednostka == obca``)
+    — realny przypadek: autor pracuje w realnej jednostce, a osobne AJ do obcej
+    pochodzi z zagranicznej współafiliacji publikacji."""
+    obca = baker.make(Jednostka, zarzadzaj_automatycznie=True)
+    realna = baker.make(Jednostka, zarzadzaj_automatycznie=True)
+    a = baker.make(Autor)
+    aj_realna = baker.make(Autor_Jednostka, autor=a, jednostka=realna)
+    aj_obca = baker.make(Autor_Jednostka, autor=a, jednostka=obca)
+    # Trigger AJ przelicza aktualną jednostkę po wszystkich AJ; wymuszamy stan
+    # „aktualna = realna" (nie obca, nie NULL), by o wyniku decydowało WYŁĄCZNIE
+    # kryterium per-afiliacja, a nie istniejące wykluczenie per-autor.
+    Autor.objects.filter(pk=a.pk).update(aktualna_jednostka=realna)
+
+    imp = baker.make(ImportPracownikow)
+
+    class _Uczelnia:
+        obca_jednostka_id = obca.pk
+
+    zbior = set(imp.autorzy_spoza_pliku_set(uczelnia=_Uczelnia(), today=today))
+    assert aj_obca not in zbior  # afiliacja DO obcej jednostki — nie odpinamy
+    assert aj_realna in zbior  # afiliacja do realnej, autor spoza pliku — odpinamy
