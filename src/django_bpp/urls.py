@@ -471,7 +471,10 @@ elif apps.is_installed("microsoft_auth"):
         # Default login redirects to Microsoft
         url(
             r"^accounts/login/$",
-            RedirectView.as_view(pattern_name="microsoft_auth:to-auth-redirect"),
+            RedirectView.as_view(
+                pattern_name="microsoft_auth:to-auth-redirect",
+                query_string=True,
+            ),
             name="login_form",
         ),
         url(
