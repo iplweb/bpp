@@ -8,6 +8,7 @@ Bez nowej logiki wyszukiwania i bez zmian schematu — patrz spec Faza 0.
 from django.contrib.contenttypes.models import ContentType
 from rest_framework import mixins, viewsets
 
+from api_v1.scoping import scope_rekord_api
 from api_v1.serializers.szukaj import SzukajSerializer
 from bpp.models import (
     Patent,
@@ -18,7 +19,6 @@ from bpp.models import (
     Wydawnictwo_Zwarte,
 )
 from bpp.models.cache import Rekord
-from bpp.util.uczelnia_scope import scope_rekord_do_uczelni
 
 # Pięć typów źródłowych spinanych przez mat-view ``Rekord`` → viewname
 # typowanego detalu w API. Każdy z 5 typów ma endpoint (brak „typu spoza mapy").
@@ -81,22 +81,12 @@ class SzukajViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
         if rok_do is not None:
             qs = qs.filter(rok__lte=rok_do)
 
-        # Multi-uczelnia: zawężamy jak frontowa wyszukiwarka „/". Gdy brak
-        # mapowania Site→Uczelnia (uczelnia is None) — scope_rekord_do_uczelni
-        # jest no-op, więc zachowujemy się jak reszta API (bez zawężenia).
+        # Polityka widoczności API (multi-uczelnia + ukryte statusy +
+        # nie_eksportuj_przez_api) — wspólne źródło z /zapytanie/rekord/,
+        # patrz api_v1.scoping.scope_rekord_api. Gdy brak mapowania
+        # Site→Uczelnia (uczelnia is None) — scoping uczelni jest no-op.
         uczelnia = Uczelnia.objects.get_for_request(self.request)
-        qs = scope_rekord_do_uczelni(qs, uczelnia)
-        if uczelnia is not None:
-            qs = qs.exclude(status_korekty_id__in=uczelnia.ukryte_statusy("api"))
-
-        # ``nie_eksportuj_przez_api`` NIE istnieje na Rekord (tylko na modelach
-        # źródłowych). Wykluczamy per-content-type subquery na TupleField:
-        # (id[0]==ct.pk AND id[1] IN <oflagowane pk>). Subquery tylko po
-        # oflagowanych → tanio.
-        for model in MODELE_DETAIL_VIEWNAME:
-            ct_pk = ContentType.objects.get_for_model(model).pk
-            oflagowane = model.objects.filter(nie_eksportuj_przez_api=True).values("pk")
-            qs = qs.exclude(id__0=ct_pk, id__1__in=oflagowane)
+        qs = scope_rekord_api(qs, uczelnia, MODELE_DETAIL_VIEWNAME)
 
         # Nie ciągnij tsvectora ``search_index`` ani ~40 kolumn mat-view.
         qs = qs.only(
