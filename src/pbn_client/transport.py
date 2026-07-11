@@ -18,6 +18,7 @@ from pbn_client.exceptions import (
     AccessDeniedException,
     HttpException,
     NeedsPBNAuthorisationException,
+    PBNValidationError,
     PraceSerwisoweException,
     ResourceLockedException,
 )
@@ -171,6 +172,24 @@ class RequestsTransport(OAuthMixin, PBNClientTransport):
                 raise ResourceLockedException(
                     ret.status_code, url, smart_content(ret.content)
                 )
+
+            # Błąd walidacji PBN (details / lista z code) to błąd danych
+            # użytkownika, NIE problem techniczny — nie raportujemy do Rollbara,
+            # podnosimy dedykowany, samo-opisujący typ. Bramka: 4xx bez
+            # 401/403/423 (5xx = awaria PBN warta Rollbara; 401/403 = autoryzacja;
+            # 423 = blokada zasobu).
+            if 400 <= ret.status_code < 500 and ret.status_code not in (
+                401,
+                403,
+                423,
+            ):
+                validation_exc = PBNValidationError(
+                    ret.status_code, url, smart_content(ret.content)
+                )
+                if validation_exc.user_messages():
+                    logger.info("PBN validation rejected %s: %s", url, validation_exc)
+                    raise validation_exc
+
             # Diagnostyka: logger.error dla widoczności w konsoli/plikach
             # logów, rollbar.report_message dla zdalnego trackingu (oba przy
             # każdym 4xx/5xx — szczegóły body i headers przydają się przy

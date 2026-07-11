@@ -27,6 +27,7 @@ from pbn_api.exceptions import (
     NoPBNUIDException,
     PBNUIDChangedException,
     PBNUIDSetToExistentException,
+    PBNValidationError,
     PublicationDoesNotExistInInstitutionProfile,
     PublikacjaInstytucjiV2NieZnalezionaException,
     SameDataUploadedRecently,
@@ -369,6 +370,11 @@ class PublicationSyncMixin(StatementsMixin):
             try:
                 self.post_discipline_statements(body)
                 return
+            except PBNValidationError:
+                # Walidacja się nie naprawi przez retry — przerwij natychmiast,
+                # propaguj (kolejka sklasyfikuje MERYTORYCZNY, admin pokaże
+                # czytelny komunikat).
+                raise
             except Exception as e:
                 last_error = e
                 logger.warning(

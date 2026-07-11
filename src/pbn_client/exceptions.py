@@ -187,3 +187,58 @@ class StatementsResendFailedException(Exception):
             f"(PBN UID={pbn_uid}) nie powiodła się po wyczerpaniu prób: "
             f"{last_error}"
         )
+
+
+def parse_pbn_validation_details(parsed_json):
+    """Zwraca zdeduplikowaną listę komunikatów walidacyjnych PBN, albo None
+    gdy ``parsed_json`` nie jest odpowiedzią walidacyjną.
+
+    Rozpoznaje dwa formaty odpowiedzi PBN:
+    - Format 1: {"details": {pole: komunikat, ...}} — dict z niepustym details.
+    - Format 2: [{"code": ..., "description": ...}, ...] — lista dict-ów;
+      dla każdego elementu fallback message -> description -> code.
+
+    Hostile-input-safe: wartości są koercowane do str (listy spłaszczane),
+    elementy nie-dict w Format 2 pomijane. Żadne wejście nie wyrzuca wyjątku.
+    Deduplikacja zachowuje pierwszą kolejność wystąpienia.
+    """
+
+    def _coerce(val):
+        if isinstance(val, (list, tuple)):
+            return ", ".join(str(v) for v in val)
+        return str(val)
+
+    messages = []
+    if isinstance(parsed_json, dict):
+        details = parsed_json.get("details")
+        if isinstance(details, dict) and details:
+            messages = [_coerce(v) for v in details.values()]
+    elif isinstance(parsed_json, list) and parsed_json:
+        for el in parsed_json:
+            if not isinstance(el, dict):
+                continue
+            text = el.get("message") or el.get("description") or el.get("code")
+            if text:
+                messages.append(_coerce(text))
+
+    if not messages:
+        return None
+    return list(dict.fromkeys(messages))
+
+
+class PBNValidationError(HttpException):
+    """PBN odrzucił dane (Validation failed). Błąd merytoryczny — dane do
+    poprawienia przez użytkownika, NIE bug w kodzie.
+
+    NIE nadpisujemy __str__: str(exc) musi dawać odziedziczoną tuplę
+    (status, url, content), bo kolejka parsuje SentData.exception przez
+    looks_like_tuple, a traceback ma zachować surowy JSON body.
+    """
+
+    def __init__(self, status_code, url, content):
+        super().__init__(status_code, url, content)
+        self.messages = parse_pbn_validation_details(self.json) or []
+
+    def user_messages(self):
+        """Zdeduplikowana lista czytelnych komunikatów dla użytkownika."""
+        return self.messages
