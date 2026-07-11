@@ -287,8 +287,10 @@ zastępuje AS BPP.
 - Ważny `Bearer` → `request.user` ustawiony; dane per-user.
 - **`whoami`:** ważny token → 200; brak/nieważny/zrewokowany → **401** (nie 200
   anonimowe — B-1).
-- **Read-only:** POST/PUT/PATCH/DELETE z bearerem na `/api/v1/*` → **403**
-  (w tym na write-owym `raport_slotow` po dołożeniu tam OAuth2 — B-2).
+- **Read-only:** POST/PUT/PATCH/DELETE z bearerem na `/api/v1/*` → **403** z
+  middleware (także na write-owym `raport_slotow` — middleware wykrywa bearer
+  sam, niezależnie od per-view `authentication_classes`, więc blokuje mutację
+  nawet gdy viewset nie akceptuje OAuth2 — B-2).
 - Anonimowy request → dalej `AnonReadOnly` (regres na **dowolnym anonimowym
   endpoincie `api_v1`**; `/szukaj/` nie na tej gałęzi → do checklisty scalenia).
 - `code`→token z PKCE; **brak PKCE → odrzucone**.

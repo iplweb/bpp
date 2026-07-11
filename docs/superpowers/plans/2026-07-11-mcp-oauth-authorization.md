@@ -66,7 +66,9 @@ model_bakery, testcontainers (PG+Redis).
 
 **Files:**
 - Modify: `pyproject.toml`
-- Create: `src/oauth_mcp/__init__.py`, `src/oauth_mcp/apps.py`
+- Create: `src/oauth_mcp/__init__.py`, `src/oauth_mcp/apps.py`,
+  `src/oauth_mcp/signals.py` (stub — wypełnia Task 9),
+  `src/oauth_mcp/tests/__init__.py`
 - Modify: `src/django_bpp/settings/base.py` (INSTALLED_APPS)
 - Test: `src/oauth_mcp/tests/test_install.py`
 
@@ -99,10 +101,22 @@ class OauthMcpConfig(AppConfig):
         from oauth_mcp import signals  # noqa: F401  (rejestruje receivery)
 ```
 
-- [ ] **Step 3: INSTALLED_APPS**
+**Utwórz też STUB `src/oauth_mcp/signals.py`** (inaczej `ready()` wywali
+ImportError już przy Step 5 — B1):
 
-W `src/django_bpp/settings/base.py` dodaj (po `rest_framework`):
-`"oauth2_provider",` oraz `"oauth_mcp",`.
+```python
+"""Receivery rewokacji tokenów — implementacja w Task 9."""
+```
+
+`src/oauth_mcp/tests/__init__.py`: pusty (unikamy kolizji nazw modułów pytest).
+
+- [ ] **Step 3: INSTALLED_APPS (kolejność ma znaczenie)**
+
+W `src/django_bpp/settings/base.py` dodaj (po `rest_framework`) **w tej
+kolejności — `oauth_mcp` PRZED `oauth2_provider`**, bo app_directories loader
+bierze szablon z pierwszej apki i tak `oauth_mcp` nadpisze `authorize.html`
+(Task 8, W5):
+`"oauth_mcp",` a następnie `"oauth2_provider",`.
 
 - [ ] **Step 4: Test — apki załadowane, modele DOT migrowalne**
 
@@ -184,9 +198,12 @@ OAUTH2_PROVIDER = {
     "ROTATE_REFRESH_TOKEN": True,
     "ACCESS_TOKEN_EXPIRE_SECONDS": 60 * 30,          # 30 min
     "REFRESH_TOKEN_EXPIRE_SECONDS": 60 * 60 * 24 * 7,  # 7 dni (NIE None!)
-    "ALLOWED_GRANT_TYPES": ["authorization-code", "refresh-token"],
 }
 ```
+
+> NIE dodawaj `ALLOWED_GRANT_TYPES` — taki klucz nie istnieje w DOT
+> (`OAUTH2_PROVIDER`) i zostałby po cichu zignorowany (W4). Granty kontroluje
+> DCR (tworzy tylko public+authorization-code) i atrybut `Application`.
 
 - [ ] **Step 2: urls.py apki — montaż base_urlpatterns**
 
@@ -196,7 +213,10 @@ OAUTH2_PROVIDER = {
 from django.urls import include, path
 from oauth2_provider import urls as oauth2_urls
 
-app_name = "oauth_mcp"
+# BEZ `app_name` na tym module! Deklaracja `app_name="oauth_mcp"` zagnieżdżałaby
+# namespace DOT (`oauth_mcp:oauth2_provider:authorize`) i psuła
+# `{% url 'oauth2_provider:authorize' %}` w szablonie zgody → NoReverseMatch
+# (B2). Zostawiamy `oauth2_provider:*` na top-levelu, jak w dokumentacji DOT.
 
 # UWAGA: montujemy TYLKO base_urlpatterns (authorize/token/introspect/revoke),
 # NIE management-views (/o/applications/ CRUD dostępne każdemu zalogowanemu).
@@ -249,7 +269,10 @@ def test_pkce_wymagane(client, django_user_model):
             "redirect_uri": "https://claude.ai/callback",
         },
     )
-    assert resp.status_code == 400
+    # DOT przy PKCE_REQUIRED i braku code_challenge zwraca redirectowalny błąd:
+    # 302 z ?error=... na redirect_uri (nie 400) — D3.
+    assert resp.status_code == 302
+    assert "error=" in resp["Location"]
 ```
 
 - [ ] **Step 5: Uruchom**
@@ -258,9 +281,7 @@ def test_pkce_wymagane(client, django_user_model):
 uv run pytest src/oauth_mcp/tests/test_authorize.py -v
 ```
 
-Expected: PASS. Jeśli PKCE-brak daje redirect z błędem zamiast 400 — dostosuj
-asercję do rzeczywistego zachowania wersji (sprawdź `resp.status_code` /
-`Location`), zachowując intencję „bez PKCE nie przejdzie".
+Expected: PASS („bez PKCE nie przejdzie" = redirect z `error=`).
 
 - [ ] **Step 6: Commit**
 
@@ -486,8 +507,10 @@ class ApiReadOnlyForBearerMiddleware:
 
 - [ ] **Step 2: Dodaj do MIDDLEWARE**
 
-W `src/django_bpp/settings/base.py` dopisz na końcu listy `MIDDLEWARE`:
-`"oauth_mcp.middleware.ApiReadOnlyForBearerMiddleware",`
+W `src/django_bpp/settings/base.py` wstaw
+`"oauth_mcp.middleware.ApiReadOnlyForBearerMiddleware",` **przed**
+`"axes.middleware.AxesMiddleware"` (base.py ~331–333 dokumentuje invariant, że
+AxesMiddleware musi zostać OSTATNIE — nie łam go, D1).
 
 - [ ] **Step 3: Testy**
 
@@ -522,18 +545,13 @@ def test_get_z_bearerem_przechodzi_przez_middleware(access_token, client):
 
 @pytest.mark.django_db
 def test_post_bez_bearera_nietkniety(client):
-    # bez tokenu middleware nie ingeruje (obsłuży to normalny auth/perm)
+    # bez tokenu middleware nie ingeruje; endpoint (per-view [Basic] +
+    # IsAuthenticated) sam odrzuca anonima → 401 z DRF, NIE 403 z middleware.
     resp = client.post(
         "/api/v1/raport_slotow_uczelnia/", data={}, content_type="application/json"
     )
-    assert resp.status_code != 403 or resp.status_code == 403
-    # intencja: middleware NIE jest źródłem 403 tutaj (brak bearera)
+    assert resp.status_code == 401
 ```
-
-> Uwaga do `test_post_bez_bearera_nietkniety`: doprecyzuj asercję po zobaczeniu
-> realnego kodu odpowiedzi (endpoint i tak wymaga `IsAuthenticated`+grupa →
-> najpewniej 401/403 z DRF, nie z naszego middleware). Kluczowe: nasz middleware
-> NIE zwraca 403 gdy brak bearera.
 
 - [ ] **Step 4: Uruchom**
 
@@ -599,19 +617,20 @@ class WhoAmIView(APIView):
 
 - [ ] **Step 2: Rejestracja ścieżki**
 
-W `src/api_v1/urls.py` dodaj (obok innych `path`, przed routerem lub po):
+`src/api_v1/urls.py` importuje dziś tylko `re_path as url` — **dopisz import
+`path`**. Realny kształt pliku to `urlpatterns = [url(r"^", include(router.urls))]`,
+więc dołóż `path` PRZED wpięciem routera (kolejność ma znaczenie — `whoami/`
+musi złapać przed catch-all routera):
 
 ```python
+from django.urls import path                     # DOPISZ (jest tylko re_path)
 from oauth_mcp.views_whoami import WhoAmIView
 # ...
 urlpatterns = [
     path("whoami/", WhoAmIView.as_view(), name="whoami"),
-    # ... reszta / router
+    url(r"^", include(router.urls)),             # istniejący wpis routera
 ]
 ```
-
-> Sprawdź w `src/api_v1/urls.py`, jak łączone są `urlpatterns` z `router.urls`
-> — dołóż `path` do listy łączonej z `router.urls` (nie nadpisz routera).
 
 - [ ] **Step 3: Testy**
 
@@ -744,10 +763,12 @@ def test_metadata_ksztalt(client):
 
 @pytest.mark.django_db
 def test_metadata_issuer_z_hosta(client):
+    # Host MUSI być w ALLOWED_HOSTS (testy dziedziczą zamkniętą listę) — inaczej
+    # DisallowedHost, nie 200 (B3). `test.unexistenttld` jest w ALLOWED_HOSTS.
     resp = client.get(
-        "/.well-known/oauth-authorization-server", HTTP_HOST="inna.uczelnia.pl"
+        "/.well-known/oauth-authorization-server", HTTP_HOST="test.unexistenttld"
     )
-    assert "inna.uczelnia.pl" in resp.json()["issuer"]
+    assert "test.unexistenttld" in resp.json()["issuer"]
 ```
 
 - [ ] **Step 4: Uruchom**
@@ -862,6 +883,11 @@ Dodaj na początku `post()` (przed parsowaniem):
         cache.set(key, licznik + 1, timeout=3600)  # okno 1h
 ```
 
+> D5: za nginx-em `REMOTE_ADDR` to IP proxy → limit staje się globalny per
+> instancja (20/h dla wszystkich). Zaakceptować (i tak bariera na zalew), albo
+> czytać `X-Forwarded-For` zza zaufanego proxy. Świadoma decyzja — dla MVP
+> globalny limit jest OK.
+
 - [ ] **Step 3: URL**
 
 W `src/oauth_mcp/urls.py` dodaj:
@@ -916,9 +942,13 @@ def test_dcr_nie_https_400(client):
 
 
 @pytest.mark.django_db
-def test_dcr_bez_csrf_dziala(client):
-    # brak tokenu CSRF nie blokuje (csrf_exempt)
-    resp = client.post(
+def test_dcr_bez_csrf_dziala():
+    # Domyślny test client ma enforce_csrf_checks=False → nie dowiódłby niczego.
+    # Wymuszamy CSRF, by realnie przetestować csrf_exempt (W3).
+    from django.test import Client
+
+    csrf_client = Client(enforce_csrf_checks=True)
+    resp = csrf_client.post(
         "/o/register/",
         data=json.dumps({"redirect_uris": ["http://localhost:8765/cb"]}),
         content_type="application/json",
@@ -968,7 +998,10 @@ jeśli nie — patrz Step 3). Styl Foundation + `fi-icon`, literały `{% trans %
       {% blocktrans with name=application.name %}Aplikacja <strong>{{ name }}</strong>
       prosi o <strong>ODCZYT</strong> danych BPP w Twoim imieniu.{% endblocktrans %}
     </p>
-    <p>{% trans "Zakres:" %} <code>{{ scope }}</code></p>
+    <p>{% trans "Zakres:" %}</p>
+    <ul>
+      {% for opis in scopes_descriptions %}<li>{{ opis }}</li>{% endfor %}
+    </ul>
     <form method="post" action="{% url 'oauth2_provider:authorize' %}">
       {% csrf_token %}
       {% for field in form %}{{ field }}{% endfor %}
@@ -999,6 +1032,8 @@ from oauth2_provider.models import get_application_model
 
 @pytest.mark.django_db
 def test_ekran_zgody_pokazuje_readonly(client, django_user_model):
+    # base.html + context-processory BPP wolą mieć Uczelnia (D7).
+    baker.make("bpp.Uczelnia")
     Application = get_application_model()
     user = baker.make(django_user_model)
     app = Application.objects.create(
@@ -1066,9 +1101,15 @@ from django.dispatch import receiver
 
 
 @receiver(pre_save, sender=get_user_model())
-def revoke_tokens_on_password_change(sender, instance, **kwargs):
+def revoke_tokens_on_password_change(sender, instance, update_fields=None, **kwargs):
     """Zmiana hasła / dezaktywacja → skasuj tokeny OAuth usera (spec §5.7/W-D)."""
     if not instance.pk:
+        return
+    # Tani short-circuit (D6): np. `update last_login` przy każdym logowaniu
+    # przekazuje update_fields={"last_login"} → nie ruszamy DB.
+    if update_fields is not None and not (
+        {"password", "is_active"} & set(update_fields)
+    ):
         return
     try:
         stary = sender.objects.get(pk=instance.pk)
@@ -1273,6 +1314,44 @@ def test_pelny_taniec_pkce_i_token(client, django_user_model):
     )
     assert who.status_code == 200
     assert who.json()["id"] == user.pk
+
+    # rotacja refresh (spec §10/§13/W2)
+    refresh = body["refresh_token"]
+    r1 = client.post(
+        "/o/token/",
+        {
+            "grant_type": "refresh_token",
+            "refresh_token": refresh,
+            "client_id": app.client_id,
+        },
+    )
+    assert r1.status_code == 200
+    assert r1.json()["refresh_token"] != refresh  # ROTATE_REFRESH_TOKEN
+    # stary refresh już nieważny
+    r2 = client.post(
+        "/o/token/",
+        {
+            "grant_type": "refresh_token",
+            "refresh_token": refresh,
+            "client_id": app.client_id,
+        },
+    )
+    assert r2.status_code == 400
+
+
+@pytest.mark.django_db
+def test_revoke_uniewaznia_token(access_token, client):
+    """Revoke → kolejny request/whoami → 401 (spec §10/§13/W2)."""
+    user, tok = access_token()
+    resp = client.post(
+        "/o/revoke_token/",
+        {"token": tok.token, "client_id": tok.application.client_id},
+    )
+    assert resp.status_code == 200
+    who = client.get(
+        "/api/v1/whoami/", HTTP_AUTHORIZATION=f"Bearer {tok.token}"
+    )
+    assert who.status_code == 401
 ```
 
 - [ ] **Step 2: Uruchom**
@@ -1325,7 +1404,12 @@ API przyjmuje token Bearer z uprawnieniami użytkownika (read-only).
   - [ ] Konfiguracja nginx `auth_request` (jeśli w deploymencie): wyłączyć
         `/o/*`, `/.well-known/*`, `/api/v1/*` spod bramki sesyjnej (spec §5.7/D6).
   - [ ] Weryfikacja manualna `next` dla ORCID (spec §4).
-  - [ ] Rozważyć cron `cleartokens` (higiena DOT, spec §8/D3).
+  - [ ] Rozważyć cron `cleartokens` (higiena DOT, spec §8/D3) ORAZ sprzątanie
+        klientów DCR bez tokenów (spec §5.6).
+  - [ ] Smoke na ŚWIEŻEJ bazie: `FirstRunWizardMiddleware` przekierowuje
+        `/o/*` i `/.well-known/*` do kreatora, dopóki brak `Uczelnia` — testy
+        tego nie łapią (`settings/test.py` usuwa ten middleware). Zweryfikuj na
+        bazie z `Uczelnia`.
 
 - [ ] **Step 3: Commit**
 
@@ -1338,8 +1422,16 @@ git commit -m "docs(oauth_mcp): newsfragment + checklist scalenia"
 
 ## Poza tym planem (świadomie)
 
+- **Dostęp bearer (odczyt) do `raport_slotow_*`** — te viewsety mają per-view
+  `authentication_classes=[Basic]`, więc token MCP jest tam dziś ignorowany
+  (odczyt niedostępny). Dołożenie `StrictOAuth2Authentication` do ich per-view
+  list to osobny task, gdy pojawi się realna potrzeba (write i tak blokuje
+  middleware z Task 4). Główny motywator (DjangoQL) tego nie wymaga — dlatego
+  odraczamy (W1). NIE twierdzimy w tym planie, że raporty slotów działają przez
+  token.
 - Introspekcja z confidential clientem (§5.4c) — wariant alternatywny do
-  `whoami`; dokładamy tylko gdy potrzebne.
+  `whoami`; dokładamy tylko gdy potrzebne. `/o/introspect/` jest zamontowany
+  (base_urlpatterns), ale bez scope `introspection` pozostaje martwy — OK.
 - `authorized_tokens` (cherry-pick management view, §5.2) — nice-to-have,
   osobny task gdy pojawi się potrzeba UI „moje autoryzacje".
 - Cała strona `bpp-mcp` (§6) — osobny pakiet, osobna sesja, na gotowym BPP.
