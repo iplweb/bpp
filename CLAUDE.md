@@ -108,7 +108,7 @@ Co `run-site run` robi w jednej komendzie:
 - startuje PostgreSQL i Redis przez testcontainers (losowe porty,
   bez kolizji z dev-owymi kontenerami `docker compose up db redis`),
 - migruje bazę i tworzy superusera `admin`/`admin` (idempotent),
-- odpala `runserver` na losowym wolnym porcie (lub `--port`),
+- odpala Uvicorna z auto-reloadem na losowym wolnym porcie (lub `--port`),
 - otwiera przeglądarkę z auto-loginem przez `django-dev-helpers`
   (przeskakuje formularz logowania),
 - `django-dev-helpers` zapisuje token + porty do gitignored

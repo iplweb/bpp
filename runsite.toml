@@ -53,7 +53,7 @@ fail_fast = true
 fix_search_path = true
 
 [env]
-# Mapowanie zmiennych srodowiskowych dla podprocesow (runserver, celery,
+# Mapowanie zmiennych srodowiskowych dla podprocesow (serwer ASGI, celery,
 # migrate). Django settings (`base.py`) czyta DJANGO_BPP_DB_*/REDIS_*.
 database_url = "DATABASE_URL"
 db_host = "DJANGO_BPP_DB_HOST"
@@ -82,6 +82,28 @@ runserver_display_host = "localhost"
 # bind+listen).
 browser_probe_path = "/admin/login/"
 migrate = true
+# Daphne uruchamiane przez `manage.py runserver` dziala w daemonowym watku
+# autoreloadera Django. Przy reloadzie interpreter moze zaczac shutdown, gdy
+# Daphne nadal przyjmuje requesty, co konczy sie komunikatem "cannot schedule
+# new futures after interpreter shutdown". Uvicorn trzyma reloader w osobnym
+# procesie nadrzednym i najpierw wygasza worker, a potem uruchamia nowy.
+# `asgi_dev` zachowuje serwowanie statykow przez findery Django.
+web_command = [
+    "{python}",
+    "-m",
+    "uvicorn",
+    "django_bpp.asgi_dev:application",
+    "--host",
+    "{bind}",
+    "--port",
+    "{port}",
+    "--reload",
+    "--reload-dir",
+    "{project_root}/src",
+    # Nie czekaj bez konca na dev-owe WebSockety podczas wymiany workera.
+    "--timeout-graceful-shutdown",
+    "1",
+]
 
 [superuser]
 enabled = true
