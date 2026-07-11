@@ -611,6 +611,23 @@ class ImportPracownikowRow(ImportRowMixin, models.Model):
                     "podstawowe_miejsce_pracy -> tak"
                 )
 
+        # Autor_Jednostka.clean() waliduje rozpoczal < zakonczyl, ale Model.save()
+        # NIE woła clean() (uwaga reviewera #4). Bronimy niezmiennika tutaj — na
+        # jedynej ścieżce zapisu integracji — żeby odwrócony zakres dat z XLS nie
+        # trafił do bazy. Regułę „koniec < dziś" celowo pomijamy: import może nieść
+        # przyszłe daty końca zatrudnienia (to reguła admina, nie importu).
+        if (
+            aj.rozpoczal_prace is not None
+            and aj.zakonczyl_prace is not None
+            and aj.rozpoczal_prace >= aj.zakonczyl_prace
+        ):
+            raise BPPDatabaseError(
+                self.dane_z_xls,
+                self,
+                f"data rozpoczęcia pracy ({aj.rozpoczal_prace}) jest późniejsza "
+                f"lub równa dacie zakończenia ({aj.zakonczyl_prace})",
+            )
+
         aj.save()
 
     @transaction.atomic

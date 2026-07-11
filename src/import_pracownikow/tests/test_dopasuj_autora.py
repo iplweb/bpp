@@ -159,6 +159,25 @@ def test_dopasuj_autora_zly_pk_404(admin_client, admin_user):
     assert row.autor is None
 
 
+@pytest.mark.django_db
+def test_dopasuj_autora_odpowiedz_zachowuje_wiersz_innerhtml(admin_client, admin_user):
+    """Uwaga reviewera #6: swap HTMX musi ZACHOWAĆ węzeł ``<tr>`` (innerHTML),
+    żeby DataTables po swapie odczytał go przez ``dt.row(tr).invalidate('dom')``
+    (outerHTML podmieniał węzeł na nieznany DataTables → resync był bezczynny).
+    Odpowiedź partiala to SAME komórki (bez ``<tr>``), a przyciski celują
+    ``hx-swap="innerHTML"``."""
+    imp = _import(admin_user)
+    jednostka = baker.make(Jednostka, nazwa="Kat.", skrot="K.")
+    autor = baker.make(Autor, nazwisko="Nowak", imiona="Anna")
+    row = _row(imp, jednostka)
+    resp = admin_client.post(_url(imp, row), {"autor": autor.pk})
+    assert resp.status_code == 200
+    tresc = resp.content.decode("utf-8")
+    assert "<tr" not in tresc  # partial to komórki, NIE cały wiersz
+    assert 'hx-swap="innerHTML"' in tresc
+    assert 'hx-swap="outerHTML"' not in tresc
+
+
 # --- T1.3: usunięcie edycji XLS ---------------------------------------------
 
 

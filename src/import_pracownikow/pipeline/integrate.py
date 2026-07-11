@@ -732,12 +732,21 @@ def integruj(parent, p):
     pominieto_niedopasowane = parent.importpracownikowrow_set.filter(
         confidence__in=[STATUS_BRAK, STATUS_WIELU], autor__isnull=True
     ).count()
+    # Wiersze ze ZNANYM autorem, ale bez jednostki (odroczona / pominięta) —
+    # integracja ich nie tyka (brak Autor_Jednostka, zmiany_potrzebne=False), a
+    # licznik „niedopasowane" ich nie łapie (autor jest ustawiony). Bez osobnego
+    # licznika znikały z podsumowania, robiąc z częściowego importu pozorny
+    # pełny sukces (uwaga reviewera #3).
+    pominieto_bez_jednostki = parent.importpracownikowrow_set.filter(
+        autor__isnull=False, jednostka__isnull=True
+    ).count()
     p.result(
         {
             "zintegrowano": zintegrowano,
             "pominieto_nieaktualne": pominieto_nieaktualne,
             "pominieto_niedopasowane": pominieto_niedopasowane,
-            "wymaga_uwagi": pominieto_niedopasowane > 0,
+            "pominieto_bez_jednostki": pominieto_bez_jednostki,
+            "wymaga_uwagi": (pominieto_niedopasowane + pominieto_bez_jednostki) > 0,
             "odpieto": odpieto,
             "przepieto_wierszy": przepieto_wierszy,
             "przepieto_prac": przepieto_prac,

@@ -38,7 +38,14 @@ def test_get_renderuje_liste_decyzji(admin_client, admin_user):
 @pytest.mark.django_db
 def test_post_zapisuje_decyzje_mapuj(admin_client, admin_user):
     imp = _imp(admin_user)
-    j = baker.make(Jednostka, nazwa="Docelowa", skrot="DOC")
+    # cel „mapuj" musi być w puli UI (widoczna jednostka skupiająca pracowników)
+    j = baker.make(
+        Jednostka,
+        nazwa="Docelowa",
+        skrot="DOC",
+        skupia_pracownikow=True,
+        widoczna=True,
+    )
     dec = _dec(imp, "Zrodlowa")
     url = reverse("import_pracownikow:jednostki", kwargs={"pk": imp.pk})
     resp = admin_client.post(
@@ -134,6 +141,67 @@ def test_scoping_obcy_import_404(admin_client):
     url = reverse("import_pracownikow:jednostki", kwargs={"pk": imp.pk})
     resp = admin_client.get(url)
     assert resp.status_code == 200
+
+
+@pytest.mark.django_db
+def test_post_nienumeryczny_parent_nie_wywala_500(admin_client, admin_user):
+    """Spreparowany POST z nienumerycznym ``parent`` NIE może wywrócić widoku
+    (Jednostka.objects.filter(pk="abc") → ValueError → 500). Nienumeryczne id
+    jest ignorowane, decyzja zapisana z parent=None."""
+    imp = _imp(admin_user)
+    dec = _dec(imp, "Zrodlowa")
+    url = reverse("import_pracownikow:jednostki", kwargs={"pk": imp.pk})
+    resp = admin_client.post(
+        url,
+        {f"dec_{dec.pk}_decyzja": AKCEPTUJ, f"dec_{dec.pk}_parent": "abc"},
+    )
+    assert resp.status_code == 302
+    dec.refresh_from_db()
+    assert dec.wybrany_parent_id is None
+
+
+@pytest.mark.django_db
+def test_post_mapuj_na_ukryta_jednostke_odrzucone(admin_client, admin_user):
+    """„Mapuj" na jednostkę spoza puli UI (nie skupia pracowników / niewidoczna)
+    musi być odrzucone tak samo jak brak celu — POST nie może przypisać
+    pracowników do ukrytej jednostki tylko dlatego, że zna jej pk."""
+    imp = _imp(admin_user)
+    ukryta = baker.make(
+        Jednostka,
+        nazwa="Ukryta",
+        skrot="UKR",
+        skupia_pracownikow=False,
+        widoczna=False,
+    )
+    dec = _dec(imp, "Zrodlowa")
+    url = reverse("import_pracownikow:jednostki", kwargs={"pk": imp.pk})
+    resp = admin_client.post(
+        url,
+        {f"dec_{dec.pk}_decyzja": MAPUJ, f"dec_{dec.pk}_wybrana": str(ukryta.pk)},
+    )
+    # spoza puli UI → traktowane jak brak celu → re-render 200, nic nie zapisane
+    assert resp.status_code == 200
+    dec.refresh_from_db()
+    assert dec.wybrana_jednostka_id is None
+
+
+@pytest.mark.django_db
+def test_post_parent_niebedacy_rootem_zignorowany(admin_client, admin_user):
+    """Parent nowej jednostki wolno wskazać tylko na korzeń (pula UI =
+    parent__isnull=True). Spreparowany POST z nie-rootem jako parentem jest
+    ignorowany (parent=None), nie używa dowolnego węzła drzewa jako parenta."""
+    imp = _imp(admin_user)
+    root = baker.make(Jednostka, nazwa="Root", skrot="ROOT", parent=None)
+    dziecko = baker.make(Jednostka, nazwa="Dziecko", skrot="DZIE", parent=root)
+    dec = _dec(imp, "Zrodlowa")
+    url = reverse("import_pracownikow:jednostki", kwargs={"pk": imp.pk})
+    resp = admin_client.post(
+        url,
+        {f"dec_{dec.pk}_decyzja": AKCEPTUJ, f"dec_{dec.pk}_parent": str(dziecko.pk)},
+    )
+    assert resp.status_code == 302
+    dec.refresh_from_db()
+    assert dec.wybrany_parent_id is None
 
 
 @pytest.mark.django_db

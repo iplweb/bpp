@@ -15896,6 +15896,7 @@ COPY public.django_countdown_sitecountdown (id, countdown_time, message, long_de
 --
 
 COPY public.django_migrations (id, app, name, applied) FROM stdin;
+535	bpp	0421_cache_trigger_pk_filter	2000-01-01 00:00:00+00
 469	bpp	0362_rzeczownik	2000-01-01 00:00:00+00
 533	bpp	0419_merge_20260601_1319	2000-01-01 00:00:00+00
 329	bpp	0236_merge_20210202_0850	2000-01-01 00:00:00+00
@@ -16434,7 +16435,6 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 531	bpp	0418_merge_20260601_0954	2000-01-01 00:00:00+00
 532	bpp	0418_autor_dyscyplina_trigger_on_conflict	2000-01-01 00:00:00+00
 534	bpp	0420_autor_pokazuj_siec_powiazan_and_more	2000-01-01 00:00:00+00
-535	bpp	0421_cache_trigger_pk_filter	2000-01-01 00:00:00+00
 536	bpp	0422_drop_unused_cache_indexes	2000-01-01 00:00:00+00
 537	bpp	0423_drop_redundant_fk_indexes_autor	2000-01-01 00:00:00+00
 538	bpp	0424_alter_autor_dyscyplina_autor_and_more	2000-01-01 00:00:00+00
@@ -16722,6 +16722,7 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 820	pbn_api	0072_pbn_search_gin_indexes	2000-01-01 00:00:00+00
 821	komparator_pbn_udzialy	0001_initial	2000-01-01 00:00:00+00
 822	komparator_pbn_udzialy	0002_add_brakautora_model	2000-01-01 00:00:00+00
+1017	ewaluacja_liczba_n	0010_merge_20260604_1952	2000-01-01 00:00:00+00
 823	komparator_pbn_udzialy	0003_remove_brakautorawpublikacji_komparator__autor_i_e007d7_idx_and_more	2000-01-01 00:00:00+00
 824	menu	0001_initial	2000-01-01 00:00:00+00
 825	messages_extends	0001_initial	2000-01-01 00:00:00+00
@@ -16907,7 +16908,6 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 1014	denorm	0018_alter_dirtyinstance_content_type_and_more	2000-01-01 00:00:00+00
 1015	denorm	0019_conditional_notify_during_flush	2000-01-01 00:00:00+00
 1016	ewaluacja_liczba_n	0009_iloscudzialow_uczelnia	2000-01-01 00:00:00+00
-1017	ewaluacja_liczba_n	0010_merge_20260604_1952	2000-01-01 00:00:00+00
 1018	ewaluacja_metryki	0006_metrykaautora_uczelnia	2000-01-01 00:00:00+00
 1019	ewaluacja_metryki	0007_statusgenerowania_uczelnia	2000-01-01 00:00:00+00
 1020	ewaluacja_metryki	0008_metrykaautora_uczelnia_notnull	2000-01-01 00:00:00+00
@@ -17321,6 +17321,21 @@ COPY public.formdefaults_formfieldrepresentation (id, name, label, klass, "order
 55	if_do	do	django.forms.fields.FloatField	7	nowe_raporty.forms_dynamiczne.RaportForm_raport_autorow
 56	tylko_punktowane	Tylko prace punktowane (pkt MNiSW > 0)	django.forms.fields.BooleanField	8	nowe_raporty.forms_dynamiczne.RaportForm_raport_autorow
 57	obiekt	Autor	django.forms.models.ModelChoiceField	9	nowe_raporty.forms_dynamiczne.RaportForm_raport_autorow
+73	od_roku	Od roku	django.forms.fields.IntegerField	1	raport_slotow.forms.autor.AutorRaportSlotowForm
+74	do_roku	Do roku	django.forms.fields.IntegerField	2	raport_slotow.forms.autor.AutorRaportSlotowForm
+75	od_roku	Od roku	django.forms.fields.IntegerField	0	raport_slotow.forms.ewaluacja.ParametryRaportSlotowEwaluacjaForm
+76	do_roku	Do roku	django.forms.fields.IntegerField	1	raport_slotow.forms.ewaluacja.ParametryRaportSlotowEwaluacjaForm
+77	od_roku	Od roku	django.forms.fields.IntegerField	0	raport_slotow.forms.uczelnia.UtworzRaportSlotowUczelniaForm
+78	do_roku	Do roku	django.forms.fields.IntegerField	1	raport_slotow.forms.uczelnia.UtworzRaportSlotowUczelniaForm
+79	slot	Slot	django.forms.fields.DecimalField	3	raport_slotow.forms.uczelnia.UtworzRaportSlotowUczelniaForm
+80	od_roku	Od roku	django.forms.fields.IntegerField	0	nowe_raporty.forms_dynamiczne.RaportForm_raport_uczelni
+81	do_roku	Do roku	django.forms.fields.IntegerField	1	nowe_raporty.forms_dynamiczne.RaportForm_raport_uczelni
+82	od_roku	Od roku	django.forms.fields.IntegerField	0	nowe_raporty.forms_dynamiczne.RaportForm_raport_wydzialow
+83	do_roku	Do roku	django.forms.fields.IntegerField	1	nowe_raporty.forms_dynamiczne.RaportForm_raport_wydzialow
+84	od_roku	Od roku	django.forms.fields.IntegerField	0	nowe_raporty.forms_dynamiczne.RaportForm_raport_jednostek
+85	do_roku	Do roku	django.forms.fields.IntegerField	1	nowe_raporty.forms_dynamiczne.RaportForm_raport_jednostek
+86	od_roku	Od roku	django.forms.fields.IntegerField	0	nowe_raporty.forms_dynamiczne.RaportForm_raport_autorow
+87	do_roku	Do roku	django.forms.fields.IntegerField	1	nowe_raporty.forms_dynamiczne.RaportForm_raport_autorow
 \.
 
 
@@ -19094,7 +19109,7 @@ SELECT pg_catalog.setval('public.formdefaults_formfielddefaultvalue_id_seq', 42,
 -- Name: formdefaults_formfieldrepresentation_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
-SELECT pg_catalog.setval('public.formdefaults_formfieldrepresentation_id_seq', 72, true);
+SELECT pg_catalog.setval('public.formdefaults_formfieldrepresentation_id_seq', 87, true);
 
 
 --

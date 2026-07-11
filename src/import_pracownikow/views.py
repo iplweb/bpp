@@ -293,9 +293,13 @@ class _ImportPodgladMixin(GroupRequiredMixin, View):
 
 class _WierszImportuMixin(_ImportPodgladMixin):
     """Wspólny fetch wiersza importu (dokłada ``row`` do bazowej bramki
-    ``_ImportPodgladMixin``). Render partiala do odpowiedzi HTMX."""
+    ``_ImportPodgladMixin``). Render partiala do odpowiedzi HTMX.
 
-    partial_template = "import_pracownikow/partials/_wiersz_preview.html"
+    Odpowiedź HTMX to SAM partial komórek (``_wiersz_preview_kom.html``) — bez
+    wrappera ``<tr>``. Akcje wiersza swapują ``innerHTML`` istniejącego ``<tr>``,
+    więc węzeł zostaje stały i DataTables odczytuje go po swapie (uwaga #6)."""
+
+    partial_template = "import_pracownikow/partials/_wiersz_preview_kom.html"
 
     @cached_property
     def row(self):
@@ -516,7 +520,9 @@ class PrzelaczOdpiecieView(_ImportPodgladMixin):
     ``przeanalizowany`` — via ``_ImportPodgladMixin``. Zwraca partial
     ``_odpiecie_row.html``."""
 
-    partial_template = "import_pracownikow/partials/_odpiecie_row.html"
+    # Odpowiedź HTMX to SAM partial komórek (bez wrappera <tr>) — toggle swapuje
+    # innerHTML istniejącego <tr>, węzeł zostaje stały (DataTables, uwaga #6).
+    partial_template = "import_pracownikow/partials/_odpiecie_row_kom.html"
 
     @cached_property
     def odpiecie(self):
@@ -741,6 +747,22 @@ class WeryfikacjaJednostekView(GroupRequiredMixin, View):
             "DECYZJA_POMIN": ImportPracownikowJednostka.DECYZJA_POMIN,
         }
 
+    @staticmethod
+    def _z_puli(raw, queryset):
+        """Zwraca obiekt z ``queryset`` po pk z POST, albo ``None``.
+
+        Broni POST-a decyzji jednostek przed dwoma nadużyciami (uwaga reviewera
+        #5): (a) nienumeryczne id (``filter(pk="abc")`` → ``ValueError`` → 500) —
+        zwracamy ``None`` zamiast wywracać widok; (b) pk spoza puli UI — filtr po
+        TYM SAMYM querysecie co formularz (roots dla parenta, widoczne jednostki
+        skupiające pracowników dla „mapuj"), więc spreparowany POST nie przypisze
+        pracowników do ukrytej/niewłaściwej jednostki ani nie użyje dowolnego
+        węzła jako parenta."""
+        raw = (raw or "").strip()
+        if not raw.isdigit():
+            return None
+        return queryset.filter(pk=int(raw)).first()
+
     def _naloz_post(self, dec, prawidlowe):
         """Nakłada wybory z POST na obiekt decyzji (BEZ zapisu do bazy). Wspólne
         dla walidacji, re-renderu po błędzie i finalnego zapisu — jedno źródło
@@ -749,13 +771,15 @@ class WeryfikacjaJednostekView(GroupRequiredMixin, View):
         decyzja = self.request.POST.get(pref + "decyzja")
         if decyzja in prawidlowe:
             dec.decyzja = decyzja
-        parent_id = self.request.POST.get(pref + "parent") or ""
-        dec.wybrany_parent = (
-            Jednostka.objects.filter(pk=parent_id).first() if parent_id else None
+        # Te same querysety co pula UI w ``_build_context`` (parent_opcje /
+        # mapuj_opcje) — patrz ``_z_puli``.
+        dec.wybrany_parent = self._z_puli(
+            self.request.POST.get(pref + "parent"),
+            Jednostka.objects.filter(parent__isnull=True),
         )
-        mapuj_id = self.request.POST.get(pref + "wybrana") or ""
-        dec.wybrana_jednostka = (
-            Jednostka.objects.filter(pk=mapuj_id).first() if mapuj_id else None
+        dec.wybrana_jednostka = self._z_puli(
+            self.request.POST.get(pref + "wybrana"),
+            Jednostka.objects.filter(skupia_pracownikow=True, widoczna=True),
         )
 
     def get(self, request, *args, **kwargs):
@@ -894,9 +918,15 @@ class WeryfikacjaTytulowView(GroupRequiredMixin, View):
             decyzja = request.POST.get(pref + "decyzja")
             if decyzja in prawidlowe:
                 dec.decyzja = decyzja
-            mapuj_id = request.POST.get(pref + "wybrana") or ""
+            # isdigit guard: nienumeryczny pk z POST-a nie może wywrócić widoku
+            # (Tytul.objects.filter(pk="abc") → ValueError → 500). Pula UI dla
+            # tytułów to wszystkie Tytul, więc nie zawężamy querysetu — tylko
+            # bronimy przed nie-liczbą.
+            mapuj_id = (request.POST.get(pref + "wybrana") or "").strip()
             dec.wybrany_tytul = (
-                Tytul.objects.filter(pk=mapuj_id).first() if mapuj_id else None
+                Tytul.objects.filter(pk=int(mapuj_id)).first()
+                if mapuj_id.isdigit()
+                else None
             )
             update_fields = ["decyzja", "wybrany_tytul"]
             # Nazwa/skrót edytowalne TYLKO dla „do utworzenia” (tryb brak) —
@@ -966,23 +996,29 @@ class ZatwierdzImportView(_PkOwnerRestartMixin):
     }
 
     def post(self, request, *args, **kwargs):
-        obj = self.get_object()
+        obj = self.get_object()  # 404 dla nie-ownera
         zakres = request.POST.get("zakres", ImportPracownikow.ZAKRES_PELNY)
         if zakres not in self._ZAKRESY_PRAWIDLOWE:
             zakres = ImportPracownikow.ZAKRES_PELNY
         if zakres in self._ZAKRESY_STRUKTURALNE:
-            if obj.stan != ImportPracownikow.STAN_PRZEANALIZOWANY:
-                return HttpResponseBadRequest(
-                    "Strukturę można zapisać tylko z podglądu (Krok 1)."
-                )
-        elif obj.stan != ImportPracownikow.STAN_STRUKTURA_ZINTEGROWANA:
+            stan_wymagany = ImportPracownikow.STAN_PRZEANALIZOWANY
+            blad = "Strukturę można zapisać tylko z podglądu (Krok 1)."
+        else:
             # PELNY = import osób: dozwolony dopiero po zapisaniu struktury.
-            return HttpResponseBadRequest(
-                "Najpierw zapisz strukturę (jednostki) — dopiero potem osoby."
-            )
-        obj.stan = ImportPracownikow.STAN_ZATWIERDZONY
-        obj.zakres_integracji = zakres
-        obj.save(update_fields=["stan", "zakres_integracji"])
+            stan_wymagany = ImportPracownikow.STAN_STRUKTURA_ZINTEGROWANA
+            blad = "Najpierw zapisz strukturę (jednostki) — dopiero potem osoby."
+        # Atomowy compare-and-set (uwaga reviewera #1): warunkowy UPDATE
+        # ``WHERE stan=stan_wymagany`` przestawia stan na ``zatwierdzony`` tylko
+        # gdy import NADAL jest w stanie wyjściowym. Dwa równoległe zatwierdzenia
+        # (celery z >1 workerem) serializuje baza — dokładnie jedno trafia 1
+        # wiersz i kolejkuje integrację; drugie dostaje 0 → 400. Bez tego oba
+        # przeszłyby bramkę na ``obj.stan`` odczytanym na starcie i wyzwoliłyby
+        # integrację dwa razy (duplikaty autorów/jednostek/przepięć).
+        zmieniono = ImportPracownikow.objects.filter(
+            pk=obj.pk, stan=stan_wymagany
+        ).update(stan=ImportPracownikow.STAN_ZATWIERDZONY, zakres_integracji=zakres)
+        if not zmieniono:
+            return HttpResponseBadRequest(blad)
         return super().post(request, *args, **kwargs)
 
 

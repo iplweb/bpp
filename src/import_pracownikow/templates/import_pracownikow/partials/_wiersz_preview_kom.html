@@ -1,0 +1,227 @@
+{# Komórki (zawartość <tr>) pojedynczego wiersza podglądu. Wydzielone z #}
+{# _wiersz_preview.html, żeby akcje HTMX swapowały innerHTML zachowując węzeł #}
+{# <tr> — dzięki temu DataTables po swapie odczytuje wiersz przez #}
+{# dt.row(tr).invalidate('dom') (uwaga reviewera #6). Zwracane też wprost przez #}
+{# widoki HTMX (dopasuj-autora / wybierz-kandydata / …). Kolumny Imiona / #}
+{# Nazwisko / Tytuł są READ-ONLY — pokazują dane z XLS-a bez edycji. #}
+<td>{{ row.nr_arkusza }}</td>
+<td>{{ row.nr_wiersza }}</td>
+<td>{{ row.dane_znormalizowane.imię }}</td>
+<td>{{ row.dane_znormalizowane.nazwisko }}</td>
+<td>{{ row.dane_znormalizowane.tytuł_stopień }}</td>
+<td>
+    {% with badge=row.confidence_badge %}
+        <span class="label {{ badge.0 }}">
+            <i class="{{ badge.1 }}"></i> {{ badge.2 }}
+        </span>
+    {% endwith %}
+</td>
+<td>
+    {% if row.autor %}
+        <a href="{% url "bpp:browse_autor" row.autor.pk %}">{{ row.autor }}</a>
+    {% else %}
+        —
+    {% endif %}
+</td>
+<td>
+    {# Jednostka: docelowa z pliku, a gdy autor jest już w innej — obecna → docelowa. #}
+    {% if row.jednostka %}
+        {% if row.autor and row.autor.aktualna_jednostka_id and row.autor.aktualna_jednostka_id != row.jednostka_id %}
+            {{ row.autor.aktualna_jednostka }} → <strong>{{ row.jednostka }}</strong>
+        {% else %}
+            {{ row.jednostka }}
+        {% endif %}
+    {% else %}
+        <span class="secondary">— (jednostka odroczona / brak)</span>
+    {% endif %}
+</td>
+<td>
+    {% if parent_object.edytowalny_podglad %}
+        {% if row.confidence == "wielu" %}
+            {# dropdown policzonych kandydatów — POST ustawia wybrany_kandydat #}
+            <form method="post"
+                  hx-post="{% url "import_pracownikow:wybierz-kandydata" parent_object.pk row.pk %}"
+                  hx-target="#wiersz-{{ row.pk }}"
+                  hx-swap="innerHTML">
+                {% csrf_token %}
+                <select name="wybrany_kandydat">
+                    {% for k in row.kandydaci.all %}
+                        <option value="{{ k.autor.pk }}">
+                            {{ k.autor }} ({{ k.pewnosc }})
+                        </option>
+                    {% endfor %}
+                </select>
+                <button type="submit" class="button tiny">
+                    <i class="fi-check"></i> wybierz
+                </button>
+            </form>
+            {# poza policzonymi kandydatami: dopasuj do dowolnego autora #}
+            <div class="import-autor-zmien">
+                <a href="#" class="js-zmien-autora">
+                    <i class="fi-torso"></i> inny autor…
+                </a>
+                <div class="js-autor-picker" hidden>
+                    <form method="post"
+                          hx-post="{% url "import_pracownikow:dopasuj-autora" parent_object.pk row.pk %}"
+                          hx-target="#wiersz-{{ row.pk }}"
+                          hx-swap="innerHTML"
+                          hx-trigger="change">
+                        {% csrf_token %}
+                        <select name="autor"
+                                data-autocomplete-url="{% url "bpp:import-autor-autocomplete" %}"></select>
+                    </form>
+                </div>
+            </div>
+        {% elif row.confidence == "brak" %}
+            {# brak dopasowania: dopasuj do istniejącego autora (leniwy #}
+            {# Select2) albo utwórz nowego (checkbox niżej). #}
+            <div class="import-autor-zmien">
+                <a href="#" class="js-zmien-autora">
+                    <i class="fi-magnifying-glass"></i>
+                    Dopasuj do istniejącego autora
+                </a>
+                <div class="js-autor-picker" hidden>
+                    <form method="post"
+                          hx-post="{% url "import_pracownikow:dopasuj-autora" parent_object.pk row.pk %}"
+                          hx-target="#wiersz-{{ row.pk }}"
+                          hx-swap="innerHTML"
+                          hx-trigger="change">
+                        {% csrf_token %}
+                        <select name="autor"
+                                data-autocomplete-url="{% url "bpp:import-autor-autocomplete" %}"></select>
+                    </form>
+                </div>
+            </div>
+            {# D2: checkbox „utwórz nowego autora" — zmiana → POST toggle #}
+            <form method="post"
+                  hx-post="{% url "import_pracownikow:utworz-nowego" parent_object.pk row.pk %}"
+                  hx-target="#wiersz-{{ row.pk }}"
+                  hx-swap="innerHTML"
+                  hx-trigger="change">
+                {% csrf_token %}
+                <label>
+                    <input type="checkbox" name="utworz_nowego"
+                           {% if row.utworz_nowego %}checked{% endif %}>
+                    <i class="fi-plus"></i> utwórz nowego autora
+                </label>
+            </form>
+        {% else %}
+            {# twardy / zgadywanie: auto-autor jest już w kol. Autor — #}
+            {# dyskretny „zmień autora" rozwijający leniwy Select2 (override). #}
+            <div class="import-autor-zmien">
+                <a href="#" class="js-zmien-autora">
+                    <i class="fi-pencil"></i> zmień autora
+                </a>
+                <div class="js-autor-picker" hidden>
+                    <form method="post"
+                          hx-post="{% url "import_pracownikow:dopasuj-autora" parent_object.pk row.pk %}"
+                          hx-target="#wiersz-{{ row.pk }}"
+                          hx-swap="innerHTML"
+                          hx-trigger="change">
+                        {% csrf_token %}
+                        <select name="autor"
+                                data-autocomplete-url="{% url "bpp:import-autor-autocomplete" %}"></select>
+                    </form>
+                </div>
+            </div>
+        {% endif %}
+        {# Leniwy Select2 na autocomplete importu. Event-delegation #}
+        {# zarejestrowana RAZ (guard window.__bppImportAutorPicker), bo #}
+        {# partial jest powielany per wiersz i wstrzykiwany OOB przez #}
+        {# HTMX. Klik w „.js-zmien-autora" pokazuje kontener i inicjalizuje #}
+        {# Select2 dopiero na żądanie (tabela bez paginacji, setki wierszy #}
+        {# → nie chcemy setek widgetów na starcie). #}
+        <script>
+        (function () {
+            if (window.__bppImportAutorPicker) return;
+            window.__bppImportAutorPicker = true;
+
+            function initPicker(wrap) {
+                var sel = wrap.querySelector("select[data-autocomplete-url]");
+                if (!sel || sel.dataset.select2Init || !window.jQuery) return;
+                sel.dataset.select2Init = "1";
+                window.jQuery(sel).select2({
+                    width: "220px",
+                    ajax: {
+                        url: sel.dataset.autocompleteUrl,
+                        dataType: "json",
+                        delay: 250,
+                        data: function (params) { return {q: params.term}; },
+                        processResults: function (data) { return data; }
+                    },
+                    minimumInputLength: 2,
+                    placeholder: "Szukaj autora…",
+                    allowClear: true,
+                    language: "pl"
+                });
+                // htmx słucha natywnego "change" (addEventListener); Select2
+                // emituje "change" przez system zdarzeń jQuery, którego natywny
+                // listener NIE łapie → POST dopasuj-autora nigdy nie leciał, a
+                // wybór autora „nie zapisywał się". Mostek: na select2:select /
+                // select2:unselect wystrzel natywny "change", który htmx podłapie
+                // i wykona hx-post (bubbles, bo formularz jest rodzicem selecta).
+                window.jQuery(sel).on(
+                    "select2:select select2:unselect",
+                    function () {
+                        sel.dispatchEvent(
+                            new Event("change", { bubbles: true })
+                        );
+                    }
+                );
+            }
+
+            document.addEventListener("click", function (e) {
+                var toggle = e.target.closest(".js-zmien-autora");
+                if (!toggle) return;
+                e.preventDefault();
+                var wrap = toggle.parentElement.querySelector(".js-autor-picker");
+                if (!wrap) return;
+                wrap.hidden = false;
+                toggle.style.display = "none";
+                initPicker(wrap);
+            });
+
+            document.body.addEventListener("htmx:afterSettle", function (e) {
+                var scope = (e.detail && e.detail.target) || document;
+                scope
+                    .querySelectorAll(".js-autor-picker:not([hidden])")
+                    .forEach(initPicker);
+            });
+        })();
+        </script>
+    {% else %}
+        {# Poza stanem „przeanalizowany" (np. „zintegrowany") pokazujemy #}
+        {# audyt zmian — to JEDYNY widok log_zmian dla stanu po integracji. #}
+        {% for elem in row.sformatowany_log_zmian %}
+            <p>{{ elem }}</p>
+        {% endfor %}
+    {% endif %}
+</td>
+<td>
+    {% if parent_object.edytowalny_podglad and row.przepnij_dostepne %}
+        {# opt-in przepięcia prac — POST toggluje przepnij_prace #}
+        <form method="post"
+              hx-post="{% url "import_pracownikow:przepnij-prace" parent_object.pk row.pk %}"
+              hx-target="#wiersz-{{ row.pk }}"
+              hx-swap="innerHTML"
+              hx-trigger="change">
+            {% csrf_token %}
+            <label>
+                <input type="checkbox" name="przepnij_prace"
+                       {% if row.przepnij_prace %}checked{% endif %}>
+                <span class="fi-shuffle"></span>
+                przenieś {{ row.przepnij_liczba_prac }} prac
+                z „{{ row.przepnij_stara_jednostka }}”
+                do „{{ row.jednostka }}”
+            </label>
+        </form>
+    {% elif row.log_zmian.przepiecie %}
+        {# po integracji: audyt wykonanego przepięcia #}
+        <span class="label success">
+            <span class="fi-check"></span>
+            przepięto {{ row.log_zmian.przepiecie.prace_ciagle }}+{{ row.log_zmian.przepiecie.prace_zwarte }}
+        </span>
+    {% else %}
+        —
+    {% endif %}
+</td>
