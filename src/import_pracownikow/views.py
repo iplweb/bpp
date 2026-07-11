@@ -623,6 +623,19 @@ class PodgladImportuView(GroupRequiredMixin, DetailView):
             raise Http404
         return obj
 
+    def get(self, request, *args, **kwargs):
+        # Item 4: flash po auto-redircie z zapisu struktury (Krok 1 → Krok 2).
+        # ``get_success_url`` dokleja ``?zapisano=struktura`` (messages nie
+        # działa z celery ``on_commit``, więc komunikat ustawiamy tu, na
+        # fresh-GET po redircie liveops).
+        if request.GET.get("zapisano") == "struktura":
+            messages.success(
+                request,
+                "Struktura zapisana. Teraz sprawdź dopasowania osób poniżej "
+                "i zaimportuj je do bazy (Krok 2).",
+            )
+        return super().get(request, *args, **kwargs)
+
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
         parent = self.object

@@ -150,15 +150,25 @@ class ImportPracownikow(LiveOperation):
         ``self.stan`` jest już finalny (analyze/integrate ustawiają go na tej
         samej instancji ``self``).
 
-        Auto-przejście TYLKO po analizie (dry-run) → hub „szczegóły importu"
-        (Krok 1). Po integracji zwracamy ``None`` — zostajemy na panelu wyniku
-        liveops z podsumowaniem (zintegrowano/utworzono/pominięto). Zastępuje
+        Auto-przejście: po analizie (dry-run) → hub „szczegóły importu"
+        (Krok 1); po zapisaniu struktury (``struktura_zintegrowana``) → hub
+        (Krok 2, import osób) z query-paramem ``?zapisano=struktura``, który
+        na fresh-GET wyzwala jednorazowy flash (``messages`` nie działa z
+        celery ``on_commit``, więc komunikat ustawia dopiero widok huba).
+        Po PEŁNEJ integracji osób (``zintegrowany``) zwracamy ``None`` —
+        zostajemy na panelu wyniku liveops z podsumowaniem
+        (zintegrowano/utworzono/pominięto) i linkiem do logu zmian. Zastępuje
         martwy inline-``<script>`` z ``import_pracownikow_result.html``, który
         nigdy się nie wykonywał: liveops wstrzykuje wynik przez
         ``DOMParser``+``replaceWith``, a tak wstawiony ``<script>`` przeglądarka
         oznacza „already started"."""
         if self.stan == self.STAN_PRZEANALIZOWANY:
             return reverse("import_pracownikow:przeglad", kwargs={"pk": self.pk})
+        if self.stan == self.STAN_STRUKTURA_ZINTEGROWANA:
+            return (
+                reverse("import_pracownikow:przeglad", kwargs={"pk": self.pk})
+                + "?zapisano=struktura"
+            )
         return None
 
     def run(self, p):

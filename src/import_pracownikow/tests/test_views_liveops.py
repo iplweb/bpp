@@ -73,21 +73,44 @@ def test_panel_wyniku_analiza_przekierowuje_na_przeglad(admin_user):
 
 
 @pytest.mark.django_db
-def test_get_success_url_tylko_po_analizie(admin_user):
-    """``get_success_url()`` kieruje na hub TYLKO po analizie (dry-run). Po
-    integracji (struktura/pełna) zwraca ``None`` — zostajemy na panelu wyniku
-    liveops z podsumowaniem, zamiast auto-przeskoczyć."""
+def test_get_success_url_po_analizie_i_po_strukturze(admin_user):
+    """``get_success_url()`` auto-przenosi na hub po analizie (dry-run) ORAZ po
+    zapisaniu struktury (Krok 1 → Krok 2). Po strukturze dokleja
+    ``?zapisano=struktura`` (item 4 — wyzwala flash na hubie). Po PEŁNEJ
+    integracji osób i w stanie wyjściowym zwraca ``None`` (zostajemy na panelu
+    wyniku liveops z podsumowaniem)."""
     imp = baker.make(ImportPracownikow, owner=admin_user)
     przeglad = reverse("import_pracownikow:przeglad", kwargs={"pk": imp.pk})
     imp.stan = ImportPracownikow.STAN_PRZEANALIZOWANY
     assert imp.get_success_url() == przeglad
+    # Item 4: po zapisaniu struktury auto-przejście na Krok 2 z flag-paramem.
+    imp.stan = ImportPracownikow.STAN_STRUKTURA_ZINTEGROWANA
+    assert imp.get_success_url() == przeglad + "?zapisano=struktura"
     for stan in (
-        ImportPracownikow.STAN_STRUKTURA_ZINTEGROWANA,
         ImportPracownikow.STAN_ZINTEGROWANY,
         ImportPracownikow.STAN_UTWORZONY,
     ):
         imp.stan = stan
         assert imp.get_success_url() is None
+
+
+@pytest.mark.django_db
+def test_hub_flash_po_zapisie_struktury(admin_client, admin_user):
+    """Item 4: fresh-GET na hub z ``?zapisano=struktura`` (dokłada je
+    ``get_success_url`` po redircie liveops) pokazuje jednorazowy flash
+    „Struktura zapisana…". Bez paramu — brak flasha."""
+    imp = baker.make(
+        ImportPracownikow,
+        owner=admin_user,
+        stan=ImportPracownikow.STAN_STRUKTURA_ZINTEGROWANA,
+    )
+    url = reverse("import_pracownikow:przeglad", kwargs={"pk": imp.pk})
+    resp = admin_client.get(url + "?zapisano=struktura")
+    komunikaty = [m.message for m in list(resp.context["messages"])]
+    assert any("Struktura zapisana" in k for k in komunikaty)
+    # Bez paramu flash się nie pojawia.
+    resp2 = admin_client.get(url)
+    assert list(resp2.context["messages"]) == []
 
 
 @pytest.mark.django_db
