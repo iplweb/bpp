@@ -110,6 +110,26 @@ class ImportPracownikow(LiveOperation):
         "dopasowania) trafiają na ekran weryfikacji do utworzenia. Gdy "
         "odznaczone — wiersze z niedopasowanym tytułem zostają bez tytułu.",
     )
+    data_zmian_personalnych = models.DateField(
+        "Data zmian personalnych",
+        null=True,
+        blank=True,
+        help_text="Data, na którą obowiązuje ten wykaz zmian personalnych. "
+        "Zostanie użyta jako data początku pracy przy DOPISYWANIU autora do "
+        "jednostki (nowe powiązanie), gdy wiersz w pliku nie podaje własnej "
+        "daty zatrudnienia. Nie nadpisuje dat z pliku ani dat istniejących "
+        "powiązań.",
+    )
+    przepnij_wszystkie_prace = models.BooleanField(
+        "Zaznacz wszystkie prace do przepięcia na nowe jednostki",
+        default=False,
+        help_text="Gdy zaznaczone, wszystkie prace autorów zostaną domyślnie "
+        "oznaczone do przepięcia na jednostki z pliku. ZAZNACZ przy imporcie "
+        "struktury autorów do ŚWIEŻEJ bazy (np. tuż po imporcie do PBN). "
+        "Na „dojrzałej” bazie produkcyjnej NA PEWNO zostaw odznaczone — "
+        "przepięłoby to historyczne afiliacje. Można korygować per wiersz "
+        "przed zapisem osób.",
+    )
     zakres_integracji = models.CharField(
         "Zakres integracji",
         max_length=20,
@@ -625,29 +645,39 @@ class ImportPracownikowRow(ImportRowMixin, models.Model):
         except DataError as e:
             raise BPPDatabaseError(self.dane_z_xls, self, f"DataError {e}") from e
 
-    def _integrate_autor_jednostka(self):
-        aj = self.autor_jednostka
-        dane = self.dane_bardziej_znormalizowane
+    def _integruj_daty_aj(self, aj, dane):
+        """Ustawia daty zatrudnienia na powiązaniu z danych wiersza.
 
-        # #4: rozpoczęcie pracy stemplujemy TYLKO gdy puste (nie nadpisujemy
-        # istniejącej daty). Priorytet: data zatrudnienia z pliku; w razie braku
-        # — data importu (dziś). Dawniej data z pliku nadpisywała istniejącą
-        # wartość — teraz jej nie ruszamy (decyzja usera, #4).
+        Polityka „no-overwrite" (#4): ``rozpoczal_prace`` stemplujemy TYLKO gdy
+        puste — nie nadpisujemy istniejącej daty (decyzja usera #4; dawniej data
+        z pliku nadpisywała istniejącą wartość). Priorytet przy stemplowaniu
+        pustej daty: data zatrudnienia z pliku → globalna „data zmian
+        personalnych" z importu (item 8) → dzień importu (dziś). Item 8 dotyczy
+        właśnie dopisywania autora do jednostki (nowe AJ, pusta data), więc jest
+        spójny z no-overwrite."""
         if aj.rozpoczal_prace is None:
-            nowa_data = dane.get("data_zatrudnienia") or timezone.localdate()
+            nowa_data = (
+                dane.get("data_zatrudnienia")
+                or self.parent.data_zmian_personalnych
+                or timezone.localdate()
+            )
             aj.rozpoczal_prace = nowa_data
             self.log_zmian["autor_jednostka"].append(
                 f"data rozpoczęcia pracy na {nowa_data}"
             )
 
-        if (
-            dane.get("data_końca_zatrudnienia") is not None
-            and aj.zakonczyl_prace != dane["data_końca_zatrudnienia"]
-        ):
-            aj.zakonczyl_prace = dane["data_końca_zatrudnienia"]
+        data_konca = dane.get("data_końca_zatrudnienia")
+        if data_konca is not None and aj.zakonczyl_prace != data_konca:
+            aj.zakonczyl_prace = data_konca
             self.log_zmian["autor_jednostka"].append(
-                f"data końca zatrudnienia na {dane['data_końca_zatrudnienia']}"
+                f"data końca zatrudnienia na {data_konca}"
             )
+
+    def _integrate_autor_jednostka(self):
+        aj = self.autor_jednostka
+        dane = self.dane_bardziej_znormalizowane
+
+        self._integruj_daty_aj(aj, dane)
 
         if self.funkcja_autora is not None and aj.funkcja != self.funkcja_autora:
             aj.funkcja = self.funkcja_autora
