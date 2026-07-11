@@ -1,0 +1,107 @@
+<div class="callout primary">
+    <h4>Import wielu prac ({{ batch.provider_name }})</h4>
+    <p>
+        Zaimportowano
+        <strong>{{ progress.imported }} z {{ progress.total }}</strong>
+        {% if progress.skipped %}(+{{ progress.skipped }} pominiętych){% endif %}
+    </p>
+</div>
+
+<table class="stack hover">
+    <thead>
+        <tr>
+            <th>#</th>
+            <th>Tytuł</th>
+            <th>Status</th>
+            <th>Akcja</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for entry in entries %}
+            <tr>
+                <td>{{ forloop.counter }}</td>
+                <td>{{ entry.title|default:"(bez tytułu)" }}</td>
+                <td>{{ entry.status_label }}</td>
+                <td>
+                    {% if entry.status == "pending" %}
+                        <form method="post"
+                              action="{% url 'importer_publikacji:batch-entry-import' entry_id=entry.pk %}"
+                              style="display:inline">
+                            {% csrf_token %}
+                            <button type="submit" class="button tiny">
+                                <span class="fi-play"></span>
+                                Importuj
+                            </button>
+                        </form>
+                        <form method="post"
+                              action="{% url 'importer_publikacji:batch-entry-skip' entry_id=entry.pk %}"
+                              style="display:inline">
+                            {% csrf_token %}
+                            <button type="submit" class="button tiny hollow">
+                                <span class="fi-x"></span>
+                                Pomiń
+                            </button>
+                        </form>
+                    {% elif entry.status == "in_progress" %}
+                        <a class="button tiny secondary"
+                           href="{{ entry.session.get_continue_url }}">
+                            <span class="fi-fast-forward"></span>
+                            Kontynuuj
+                        </a>
+                    {% elif entry.status == "imported" %}
+                        <a class="button tiny success"
+                           href="{{ entry.session.created_record.get_absolute_url }}">
+                            <span class="fi-check"></span>
+                            Zobacz pracę
+                        </a>
+                    {% elif entry.status == "failed" %}
+                        <form method="post"
+                              action="{% url 'importer_publikacji:task-retry' session_id=entry.session.pk %}"
+                              style="display:inline">
+                            {% csrf_token %}
+                            <button type="submit" class="button tiny alert">
+                                <span class="fi-refresh"></span>
+                                Ponów
+                            </button>
+                        </form>
+                        <form method="post"
+                              action="{% url 'importer_publikacji:batch-entry-skip' entry_id=entry.pk %}"
+                              style="display:inline">
+                            {% csrf_token %}
+                            <button type="submit" class="button tiny hollow">
+                                <span class="fi-x"></span>
+                                Pomiń
+                            </button>
+                        </form>
+                    {% elif entry.status == "malformed" %}
+                        <form method="post"
+                              action="{% url 'importer_publikacji:batch-entry-skip' entry_id=entry.pk %}">
+                            {% csrf_token %}
+                            <button type="submit" class="button tiny hollow">
+                                <span class="fi-x"></span>
+                                Pomiń
+                            </button>
+                        </form>
+                    {% elif entry.status == "skipped" %}
+                        <form method="post"
+                              action="{% url 'importer_publikacji:batch-entry-skip' entry_id=entry.pk %}">
+                            {% csrf_token %}
+                            <button type="submit" class="button tiny hollow">
+                                <span class="fi-refresh"></span>
+                                Przywróć
+                            </button>
+                        </form>
+                    {% endif %}
+                </td>
+            </tr>
+            {% if entry.parse_error %}
+                <tr>
+                    <td></td>
+                    <td colspan="3">
+                        <small class="alert-color">{{ entry.parse_error }}</small>
+                    </td>
+                </tr>
+            {% endif %}
+        {% endfor %}
+    </tbody>
+</table>

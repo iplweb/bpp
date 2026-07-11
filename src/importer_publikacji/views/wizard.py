@@ -25,7 +25,13 @@ from ..forms import (
     SourceForm,
     VerifyForm,
 )
-from ..models import ImportedAuthor, ImportSession
+from ..models import (
+    EntryStatus,
+    ImportedAuthor,
+    ImportSession,
+    MultipleWorksImport,
+    MultipleWorksImportEntry,
+)
 from ..permissions import ImporterPermissionMixin
 from ..providers import InputMode, get_provider
 from ..tasks import create_publication_task, fetch_session_task
@@ -35,6 +41,7 @@ from .authors import (
     _orcid_settable_qs,
 )
 from .helpers import (
+    BATCH_DETAIL,
     SESSIONS_PARTIAL,
     STEP_DONE,
     STEP_FETCH,
@@ -95,6 +102,59 @@ class IndexView(ImporterPermissionMixin, View):
         return _render_full_page(request, STEP_FETCH, ctx)
 
 
+def _hx_or_redirect(request, url):
+    """Zwróć ``HX-Redirect`` dla żądań HTMX, w przeciwnym razie zwykły 302."""
+    if request.headers.get("HX-Request"):
+        response = HttpResponse(status=200)
+        response["HX-Redirect"] = url
+        return response
+    return HttpResponseRedirect(url)
+
+
+def _create_batch(request, provider_name, normalized, records):
+    """Utwórz ``MultipleWorksImport`` + wszystkie jego wpisy naraz."""
+    batch = MultipleWorksImport.objects.create(
+        created_by=request.user,
+        provider_name=provider_name,
+        raw_input=normalized,
+    )
+    MultipleWorksImportEntry.objects.bulk_create(
+        [
+            MultipleWorksImportEntry(
+                parent=batch,
+                order=i,
+                raw_bibtex=rec.raw,
+                title=rec.title,
+                parse_error="" if rec.ok else rec.error,
+            )
+            for i, rec in enumerate(records)
+        ]
+    )
+    return batch
+
+
+def _start_import_session(request, provider_name, identifier):
+    """Utwórz sesję importu (FETCHING) + wystartuj task fetch.
+
+    BEZ guardu double-click po ``identifier`` — używane też przez import
+    pojedynczego wpisu paczki, gdzie duplikaty wpisów są dozwolone, a przed
+    podwójnym startem chroni ``entry.session`` po stronie wołającego.
+    """
+    session = ImportSession.objects.create(
+        created_by=request.user,
+        uczelnia=Uczelnia.objects.get_for_request(request),
+        provider_name=provider_name,
+        identifier=identifier,
+        status=ImportSession.Status.FETCHING,
+        raw_data={},
+        normalized_data={},
+    )
+    task = fetch_session_task.delay(session.pk, request.user.pk)
+    session.celery_task_id = task.id
+    session.save(update_fields=["celery_task_id"])
+    return session
+
+
 class FetchView(ImporterPermissionMixin, View):
     """Walidacja identyfikatora + utworzenie sesji + enqueue Celery task-a."""
 
@@ -126,6 +186,18 @@ class FetchView(ImporterPermissionMixin, View):
             form.add_error(error_field, msg)
             return render(request, STEP_FETCH, _fetch_context(form))
 
+        # Wielo-rekordowe wejście (BibTeX z ≥2 wpisami) → paczka, nie
+        # pojedyncza sesja. Pojedyncze sesje powstają leniwie przy
+        # imporcie wpisu.
+        records = provider.split_input(normalized)
+        if len(records) >= 2:
+            batch = _create_batch(request, provider_name, normalized, records)
+            url = reverse(
+                "importer_publikacji:batch-detail",
+                kwargs={"batch_id": batch.pk},
+            )
+            return _hx_or_redirect(request, url)
+
         # Idempotency (C2): jesli juz jest sesja in-flight tego samego usera
         # dla tego samego (provider, identifier), nie startuj kolejnej —
         # zredirectuj do istniejacej. Defense przed double-click i refresh.
@@ -143,35 +215,90 @@ class FetchView(ImporterPermissionMixin, View):
             .first()
         )
         if recent_in_flight is not None:
-            url = recent_in_flight.get_continue_url()
-            if request.headers.get("HX-Request"):
-                response = HttpResponse(status=200)
-                response["HX-Redirect"] = url
-                return response
-            return HttpResponseRedirect(url)
+            return _hx_or_redirect(request, recent_in_flight.get_continue_url())
 
-        session = ImportSession.objects.create(
-            created_by=request.user,
-            uczelnia=Uczelnia.objects.get_for_request(request),
-            provider_name=provider_name,
-            identifier=normalized,
-            status=ImportSession.Status.FETCHING,
-            raw_data={},
-            normalized_data={},
-        )
-
-        task = fetch_session_task.delay(session.pk, request.user.pk)
-        session.celery_task_id = task.id
-        session.save(update_fields=["celery_task_id"])
+        session = _start_import_session(request, provider_name, normalized)
 
         url = reverse(
             "importer_publikacji:task-status",
             kwargs={"session_id": session.pk},
         )
-        if request.headers.get("HX-Request"):
-            response = HttpResponse(status=200)
-            response["HX-Redirect"] = url
-            return response
+        return _hx_or_redirect(request, url)
+
+
+class MultipleWorksImportDetailView(ImporterPermissionMixin, View):
+    """Lista wpisów paczki z per-wpis statusem i akcjami (drip import)."""
+
+    def get(self, request, batch_id):
+        batch = get_object_or_404(MultipleWorksImport, pk=batch_id)
+        entries = list(batch.entries.select_related("session"))
+        # Sweep zombie: martwy worker zostawia sesje w FETCHING/CREATING —
+        # bez tego wpis wisialby "w toku" i paczka nigdy nie bylaby gotowa.
+        for entry in entries:
+            if entry.session is not None and entry.session.is_stalled():
+                entry.session.mark_stalled()
+        return _render_full_page(
+            request,
+            BATCH_DETAIL,
+            {"batch": batch, "entries": entries, "progress": batch.progress},
+        )
+
+
+class BatchEntryImportView(ImporterPermissionMixin, View):
+    """Wystartuj import pojedynczego wpisu paczki (leniwy drip)."""
+
+    # Statusy TERMINALNE (odwrotność in-flight): sesja w którymkolwiek z nich
+    # jest skończona/martwa, więc wolno wystartować import wpisu od nowa.
+    # NB: NIE mylić z ``ImportSession._INFLIGHT_STATUSES`` (FETCHING/CREATING),
+    # które trzyma statusy przeciwne — stąd celowo inna, jednoznaczna nazwa.
+    _TERMINAL_STATUSES = (
+        ImportSession.Status.COMPLETED,
+        ImportSession.Status.IMPORT_FAILED,
+        ImportSession.Status.CANCELLED,
+    )
+
+    def post(self, request, entry_id):
+        entry = get_object_or_404(MultipleWorksImportEntry, pk=entry_id)
+        if entry.status == EntryStatus.IMPORTED:
+            # Wpis juz zaimportowany — nie startuj kolejnej sesji (defense
+            # przed stalym formularzem "Importuj" w drugiej karcie albo
+            # powtorzonym POST-em), tylko odesle do gotowej strony wpisu.
+            return HttpResponseRedirect(entry.session.get_continue_url())
+        if entry.parse_error:
+            return HttpResponseBadRequest("Wpis uszkodzony — nie można zaimportować.")
+        session = entry.session
+        if (
+            session is not None
+            and session.status not in self._TERMINAL_STATUSES
+            and not session.is_stalled()
+        ):
+            # Juz sie importuje — nie startuj drugiej sesji (defense double-click).
+            return HttpResponseRedirect(session.get_continue_url())
+        session = _start_import_session(
+            request, entry.parent.provider_name, entry.raw_bibtex
+        )
+        entry.session = session
+        entry.save(update_fields=["session"])
+        url = reverse(
+            "importer_publikacji:task-status",
+            kwargs={"session_id": session.pk},
+        )
+        return HttpResponseRedirect(url)
+
+
+class BatchEntrySkipView(ImporterPermissionMixin, View):
+    """Pomiń lub przywróć wpis paczki (toggle)."""
+
+    def post(self, request, entry_id):
+        entry = get_object_or_404(MultipleWorksImportEntry, pk=entry_id)
+        if entry.status == EntryStatus.IMPORTED:
+            return HttpResponseBadRequest("Nie można pominąć zaimportowanego wpisu.")
+        entry.skipped = not entry.skipped
+        entry.save(update_fields=["skipped"])
+        url = reverse(
+            "importer_publikacji:batch-detail",
+            kwargs={"batch_id": entry.parent_id},
+        )
         return HttpResponseRedirect(url)
 
 
@@ -810,11 +937,12 @@ class DoneView(ImporterPermissionMixin, View):
             pk=session_id,
         )
         record = session.created_record
-        return _render_full_page(
-            request,
-            STEP_DONE,
-            {"session": session, "record": record},
-        )
+        ctx = {"session": session, "record": record}
+        batch_entry = getattr(session, "batch_entry", None)
+        if batch_entry is not None:
+            ctx["batch"] = batch_entry.parent
+            ctx["batch_progress"] = batch_entry.parent.progress
+        return _render_full_page(request, STEP_DONE, ctx)
 
 
 class CancelView(ImporterPermissionMixin, View):
@@ -828,6 +956,19 @@ class CancelView(ImporterPermissionMixin, View):
         session.status = ImportSession.Status.CANCELLED
         session.modified_by = request.user
         session.save()
+
+        batch_entry = getattr(session, "batch_entry", None)
+        if batch_entry is not None:
+            url = reverse(
+                "importer_publikacji:batch-detail",
+                kwargs={"batch_id": batch_entry.parent_id},
+            )
+            if request.headers.get("HX-Request"):
+                response = HttpResponse(status=200)
+                response["HX-Redirect"] = url
+                return response
+            return HttpResponseRedirect(url)
+
         url = reverse("importer_publikacji:index")
         ctx = _fetch_context(request=request)
         ctx["cancelled"] = True

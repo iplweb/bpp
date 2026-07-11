@@ -422,3 +422,110 @@ class ImportedAuthor_Candidate(models.Model):
     @property
     def powod_display(self) -> str:
         return POWOD_DISPLAY.get(self.powod, self.powod)
+
+
+class EntryStatus(models.TextChoices):
+    PENDING = "pending", "Oczekuje"
+    IN_PROGRESS = "in_progress", "W toku"
+    IMPORTED = "imported", "Zaimportowano"
+    FAILED = "failed", "Błąd"
+    SKIPPED = "skipped", "Pominięty"
+    MALFORMED = "malformed", "Uszkodzony"
+
+
+class MultipleWorksImport(models.Model):
+    """Paczka wielu prac wklejonych naraz (stager) — np. wielo-wpisowy BibTeX.
+
+    Trzyma surowy wsad i N dzieci (``entries``); pojedyncza ``ImportSession``
+    powstaje leniwie dopiero na żądanie importu konkretnego wpisu.
+    """
+
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="importer_publikacji_batches",
+        verbose_name="utworzył",
+    )
+    provider_name = models.CharField("dostawca danych", max_length=50)
+    raw_input = models.TextField("surowy wsad")
+    created = models.DateTimeField("utworzono", auto_now_add=True)
+    modified = models.DateTimeField("zmodyfikowano", auto_now=True)
+
+    class Meta:
+        verbose_name = "import wielu prac"
+        verbose_name_plural = "importy wielu prac"
+        ordering = ["-created"]
+
+    def __str__(self):
+        return f"{self.provider_name}: paczka #{self.pk}"
+
+    @property
+    def progress(self) -> dict:
+        entries = list(self.entries.select_related("session"))
+        imported = sum(1 for e in entries if e.status == EntryStatus.IMPORTED)
+        skipped = sum(1 for e in entries if e.status == EntryStatus.SKIPPED)
+        total = len(entries)
+        done = all(
+            e.status in (EntryStatus.IMPORTED, EntryStatus.SKIPPED) for e in entries
+        )
+        return {
+            "imported": imported,
+            "skipped": skipped,
+            "total": total,
+            "done": done if total else False,
+        }
+
+
+class MultipleWorksImportEntry(models.Model):
+    """Pojedynczy wpis paczki. Status jest WYLICZANY z ``session`` +
+    ``skipped`` + ``parse_error`` — nie przechowujemy go, żeby nie rozjeżdżał
+    się z ``ImportSession.status``."""
+
+    parent = models.ForeignKey(
+        MultipleWorksImport,
+        on_delete=models.CASCADE,
+        related_name="entries",
+        verbose_name="paczka",
+    )
+    order = models.PositiveIntegerField("kolejność", default=0)
+    raw_bibtex = models.TextField("pojedynczy wpis BibTeX")
+    title = models.TextField("tytuł (podgląd)", blank=True, default="")
+    parse_error = models.TextField("błąd parsowania", blank=True, default="")
+    skipped = models.BooleanField("pominięty", default=False)
+    session = models.OneToOneField(
+        ImportSession,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="batch_entry",
+        verbose_name="sesja importu",
+    )
+
+    class Meta:
+        verbose_name = "wpis paczki"
+        verbose_name_plural = "wpisy paczki"
+        ordering = ["order"]
+
+    def __str__(self):
+        return f"#{self.order}: {self.title or '(bez tytułu)'}"
+
+    @property
+    def status(self) -> str:
+        session = self.session
+        if session is not None and session.status == ImportSession.Status.COMPLETED:
+            return EntryStatus.IMPORTED
+        if self.skipped:
+            return EntryStatus.SKIPPED
+        if self.parse_error:
+            return EntryStatus.MALFORMED
+        if session is None:
+            return EntryStatus.PENDING
+        if session.status == ImportSession.Status.IMPORT_FAILED or session.is_stalled():
+            return EntryStatus.FAILED
+        if session.status == ImportSession.Status.CANCELLED:
+            return EntryStatus.PENDING
+        return EntryStatus.IN_PROGRESS
+
+    @property
+    def status_label(self) -> str:
+        return EntryStatus(self.status).label

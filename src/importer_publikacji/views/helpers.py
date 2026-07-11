@@ -32,6 +32,7 @@ STEP_REVIEW = "importer_publikacji/partials/step_review.html"
 STEP_DONE = "importer_publikacji/partials/step_done.html"
 INDEX = "importer_publikacji/index.html"
 SESSIONS_PARTIAL = "importer_publikacji/partials/session_list.html"
+BATCH_DETAIL = "importer_publikacji/partials/batch_detail.html"
 BREADCRUMBS_OOB = "importer_publikacji/partials/_breadcrumbs_oob.html"
 
 SESSIONS_ALLOWED_SORTS = {

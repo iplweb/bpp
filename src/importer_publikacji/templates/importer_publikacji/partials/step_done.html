@@ -73,9 +73,17 @@
         </div>
     {% endif %}
 
-    <a href="{% url 'importer_publikacji:index' %}"
-       class="button hollow secondary">
-        <span class="fi-arrow-left"></span>
-        Importuj kolejną publikację
-    </a>
+    {% if batch %}
+        <a href="{% url 'importer_publikacji:batch-detail' batch_id=batch.pk %}"
+           class="button">
+            <span class="fi-arrow-left"></span>
+            Wróć do paczki ({{ batch_progress.imported }} z {{ batch_progress.total }})
+        </a>
+    {% else %}
+        <a href="{% url 'importer_publikacji:index' %}"
+           class="button hollow secondary">
+            <span class="fi-arrow-left"></span>
+            Importuj kolejną publikację
+        </a>
+    {% endif %}
 {% endif %}
