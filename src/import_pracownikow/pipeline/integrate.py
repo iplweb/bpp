@@ -33,8 +33,10 @@ from bpp.models import (
     Funkcja_Autora,
     Grupa_Pracownicza,
     Jednostka,
+    Uczelnia,
     Wymiar_Etatu,
 )
+from import_common.core.jednostka import unikalny_skrot, zaproponuj_skrot
 from import_common.normalization import (
     normalize_funkcja_autora,
     normalize_grupa_pracownicza,
@@ -42,6 +44,7 @@ from import_common.normalization import (
 )
 from import_pracownikow.models import (
     ImportPracownikow,
+    ImportPracownikowJednostka,
     wiersz_kwalifikuje_do_przepiecia,
 )
 from import_pracownikow.pewnosc import (
@@ -368,7 +371,139 @@ def _przygotuj_nowego_autora(row, cache):
     return utworzono
 
 
+def _resolve_parent_dla_decyzji(dec, uczelnia, pobierz_parent_domyslny):
+    """Efektywny parent nowej jednostki. Jawny ``wybrany_parent`` wygrywa; dla
+    ``None`` semantyka zależy od ``uzywaj_wydzialow``: root (False) albo domyślny
+    węzeł-wydział (True, tworzony leniwie przez ``pobierz_parent_domyslny``)."""
+    if dec.wybrany_parent_id is not None:
+        return dec.wybrany_parent
+    if uczelnia is not None and uczelnia.uzywaj_wydzialow:
+        return pobierz_parent_domyslny()
+    return None
+
+
+def _rozstrzygnij_jedna_decyzje(
+    dec, uczelnia, pobierz_parent_domyslny, zajete_skroty, p
+):
+    """Zwraca ``(jednostka|None, czy_utworzono_nowa)`` dla jednej decyzji.
+
+    Guard idempotencji: gdy ``utworzona`` już ustawione (restart / podwójny
+    commit) — używamy jej. ``pomin`` → None. ``mapuj`` → wybrana (może być None →
+    wiersze niedopasowane). ``akceptuj``: ``zgadywanie`` → auto; ``brak`` → utwórz
+    (albo dołącz do istniejącej po iexact — wariant wielkości liter / drift bazy).
+    Tworzenie wymaga jednoznacznej uczelni; przy jej braku — log i None."""
+    if dec.utworzona_id is not None:
+        return dec.utworzona, False
+
+    if dec.decyzja == ImportPracownikowJednostka.DECYZJA_POMIN:
+        return None, False
+    if dec.decyzja == ImportPracownikowJednostka.DECYZJA_MAPUJ:
+        return dec.wybrana_jednostka, False
+    # DECYZJA_AKCEPTUJ
+    if dec.tryb == ImportPracownikowJednostka.TRYB_ZGADYWANIE:
+        return dec.auto_jednostka, False
+
+    # tryb BRAK → utwórz. Case-insensitive re-match tuż przed create chroni przed
+    # duplikatem (wariant wielkości liter / drift bazy między analizą a commitem).
+    istniejaca = Jednostka.objects.filter(nazwa__iexact=dec.nazwa_zrodlowa).first()
+    if istniejaca is not None:
+        return istniejaca, False
+    if uczelnia is None:
+        p.log(
+            f"Nie utworzono jednostki «{dec.nazwa_zrodlowa}» — brak jednoznacznej "
+            "uczelni (0 lub >1 w systemie)."
+        )
+        return None, False
+
+    parent_jed = _resolve_parent_dla_decyzji(dec, uczelnia, pobierz_parent_domyslny)
+    baza_skrotu = dec.skrot_sugerowany or zaproponuj_skrot(dec.nazwa_zrodlowa)
+    skrot = unikalny_skrot(baza_skrotu, zajete_skroty)
+    zajete_skroty.add(skrot)
+    nowa = Jednostka.objects.create(
+        nazwa=dec.nazwa_zrodlowa[:512],
+        skrot=skrot,
+        uczelnia=uczelnia,
+        parent=parent_jed,
+    )
+    return nowa, True
+
+
+def _podlacz_wiersze_do_jednostek(parent):
+    """Ustawia ``row.jednostka`` na rozstrzygniętą jednostkę decyzji i przelicza
+    ``Autor_Jednostka``/``zmiany_potrzebne`` (dla wierszy z autorem). Wiersze
+    decyzji ``pomin`` / nierozstrzygniętych (``utworzona`` None) zostają
+    niedopasowane (``jednostka`` None)."""
+    for row in parent.importpracownikowrow_set.filter(
+        zrodlo_jednostki__isnull=False
+    ).select_related("zrodlo_jednostki", "autor"):
+        jed = row.zrodlo_jednostki.utworzona
+        if jed is None:
+            continue
+        row.jednostka = jed
+        if row.autor is not None:
+            # odtworz_autor_jednostka czyta row.autor + row.jednostka (już
+            # ustawione) i wylicza AJ/diff/zmiany_potrzebne.
+            odtworz_autor_jednostka(row, row.autor)
+            row.save(
+                update_fields=[
+                    "jednostka",
+                    "autor_jednostka",
+                    "diff_do_utworzenia",
+                    "zmiany_potrzebne",
+                ]
+            )
+        else:
+            row.save(update_fields=["jednostka"])
+
+
+def _rozstrzygnij_jednostki(parent, p):
+    """FAZA 0 integracji: rozstrzyga decyzje o jednostkach (utwórz/auto/mapuj/
+    pomiń), tworzy brakujące i podłącza wiersze. Zwraca liczbę FAKTYCZNIE
+    utworzonych jednostek. Idempotentne (guard ``utworzona`` per decyzja).
+
+    MUSI być pierwszym krokiem ``integruj`` — przed snapshotem ``stare_jednostki``
+    (inaczej świeżo podłączone wiersze nie trafią do snapshotu → przepięcia
+    milczą) i przed fazą nowych autorów (inaczej wiersz z odroczoną jednostką
+    poszedłby w ``get_or_create(jednostka_id=None)`` → IntegrityError)."""
+    uczelnia = Uczelnia.objects.get_single_uczelnia_or_none()
+    zajete_skroty = set()
+    utworzono = 0
+    _cache = {}
+
+    def pobierz_parent_domyslny():
+        if "wezel" not in _cache:
+            from bpp.models.struktura_konwersja import (
+                znajdz_lub_utworz_wezel_wydzialu,
+            )
+            from pbn_import.utils.institution_import import (
+                znajdz_lub_utworz_wydzial_domyslny,
+            )
+
+            wydzial, _ = znajdz_lub_utworz_wydzial_domyslny(uczelnia)
+            wezel, _ = znajdz_lub_utworz_wezel_wydzialu(wydzial)
+            _cache["wezel"] = wezel
+        return _cache["wezel"]
+
+    for dec in parent.jednostki_do_decyzji.all():
+        with transaction.atomic():
+            jed, utworzono_nowa = _rozstrzygnij_jedna_decyzje(
+                dec, uczelnia, pobierz_parent_domyslny, zajete_skroty, p
+            )
+            if jed is not None and dec.utworzona_id != jed.pk:
+                dec.utworzona = jed
+                dec.save(update_fields=["utworzona"])
+        if utworzono_nowa:
+            utworzono += 1
+
+    _podlacz_wiersze_do_jednostek(parent)
+    return utworzono
+
+
 def integruj(parent, p):
+    # FAZA 0: rozstrzygnij i utwórz brakujące jednostki, podłącz wiersze —
+    # ZANIM policzymy snapshot i fazę nowych autorów (patrz docstring wyżej).
+    utworzono_jednostek = _rozstrzygnij_jednostki(parent, p)
+
     # Snapshot starych jednostek PRZED integracją: trigger DB
     # `bpp_autor_ustaw_jednostka_aktualna` przestawi `aktualna_jednostka` na
     # jednostkę z pliku, więc to jedyny moment, gdy widać stan sprzed importu.
@@ -389,7 +524,12 @@ def integruj(parent, p):
     nowi_autorzy_cache = {}
     for row in list(
         parent.importpracownikowrow_set.filter(
-            confidence=STATUS_BRAK, utworz_nowego=True, autor__isnull=True
+            confidence=STATUS_BRAK,
+            utworz_nowego=True,
+            autor__isnull=True,
+            # Jednostka MUSI być rozstrzygnięta (§6.6): wiersz z odroczoną/pominiętą
+            # jednostką (jednostka None) nie może tworzyć AJ z jednostka_id=None.
+            jednostka__isnull=False,
         )
     ):
         if _przygotuj_nowego_autora(row, nowi_autorzy_cache):
@@ -435,6 +575,7 @@ def integruj(parent, p):
             "przepieto_wierszy": przepieto_wierszy,
             "przepieto_prac": przepieto_prac,
             "utworzono_nowych_autorow": utworzono_nowych,
+            "utworzono_jednostek": utworzono_jednostek,
             "stan": parent.stan,
         }
     )
