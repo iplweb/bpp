@@ -1,10 +1,25 @@
 """Matchowanie jednostek (komórki organizacyjne uczelni)."""
 
+from django.contrib.postgres.search import TrigramSimilarity
 from django.db.models import Q
+from django.db.models.functions import Greatest
 
 from bpp.models import Jednostka
 
 from ..normalization import normalize_nazwa_jednostki
+
+# Próg podobieństwa trigramowego, powyżej którego niedopasowaną dokładnie nazwę
+# jednostki uznajemy za „bardzo zbliżoną" i wybieramy automatycznie (status
+# ``zgadywanie``, widoczny dla użytkownika). Strojony w jednym miejscu.
+PROG_ZGADYWANIA_JEDNOSTKI = 0.7
+
+# Statusy klasyfikacji jednostki. Wartości są CELOWO identyczne z
+# ``import_pracownikow.pewnosc.STATUS_*`` (wspólne słownictwo), ale definiujemy je
+# lokalnie: ``import_common`` to warstwa NIŻSZA i nie może importować w górę do
+# ``import_pracownikow`` (cykl importów).
+STATUS_JEDNOSTKA_TWARDY = "twardy"
+STATUS_JEDNOSTKA_ZGADYWANIE = "zgadywanie"
+STATUS_JEDNOSTKA_BRAK = "brak"
 
 
 def wytnij_skrot(jednostka):
@@ -82,3 +97,97 @@ def matchuj_jednostke(nazwa, wydzial=None):
             Q(nazwa__iexact=nazwa) | Q(skrot__iexact=nazwa),
             _wydzial_filtr(wydzial),
         )
+
+
+def _pula_afiliacyjna():
+    """Queryset jednostek dopuszczalnych jako AUTO-dopasowanie (``zgadywanie``):
+    tylko przyjmujące afiliacje i widoczne. Odzwierciedla warunki
+    ``Jednostka.przyjmuje_afiliacje()`` — wyklucza jednostki obce
+    (``skupia_pracownikow=False``), węzły-lustra „Wydział" (``jest_lustrem`` /
+    ``rodzaj.autor_moze_afiliowac=False``) i jednostki ukryte. Dopasowanie
+    DOKŁADNE (``matchuj_jednostke``) tej puli NIE używa — jeśli plik wprost
+    nazywa jednostkę obcą, honorujemy to."""
+    return (
+        Jednostka.objects.filter(widoczna=True, skupia_pracownikow=True)
+        .filter(Q(rodzaj__isnull=True) | Q(rodzaj__autor_moze_afiliowac=True))
+        .exclude(jest_lustrem=True)
+    )
+
+
+def sklasyfikuj_jednostke(nazwa, wydzial=None, *, prog=PROG_ZGADYWANIA_JEDNOSTKI):
+    """Klasyfikuje nazwę jednostki z pliku BEZ rzucania wyjątków.
+
+    Zwraca ``(jednostka|None, status, similarity|None)``:
+    - dokładne dopasowanie (``matchuj_jednostke``) → ``(j, "twardy", None)``;
+    - brak/remis, ale najbliższa trigramowo ≥ ``prog`` (z puli afiliacyjnej) →
+      ``(best, "zgadywanie", sim)`` — auto-wybór do weryfikacji;
+    - w przeciwnym razie (w tym pusta nazwa, remis prefiksowy, brak podobnej) →
+      ``(None, "brak", None)``.
+
+    ``matchuj_jednostke`` rzuca ``DoesNotExist``/``MultipleObjectsReturned`` —
+    oba łapiemy i spadamy do trigramu, więc funkcja nigdy nie wywali analizy.
+    """
+    if not nazwa:
+        return None, STATUS_JEDNOSTKA_BRAK, None
+    nazwa_norm = normalize_nazwa_jednostki(nazwa)
+    if not nazwa_norm:
+        return None, STATUS_JEDNOSTKA_BRAK, None
+
+    try:
+        j = matchuj_jednostke(nazwa, wydzial=wydzial)
+        if j is not None:
+            return j, STATUS_JEDNOSTKA_TWARDY, None
+    except (Jednostka.DoesNotExist, Jednostka.MultipleObjectsReturned):
+        pass
+
+    best = (
+        _pula_afiliacyjna()
+        .annotate(
+            sim=Greatest(
+                TrigramSimilarity("nazwa", nazwa_norm),
+                TrigramSimilarity("skrot", nazwa_norm),
+            )
+        )
+        .order_by("-sim")
+        .first()
+    )
+    if best is not None and best.sim is not None and best.sim >= prog:
+        return best, STATUS_JEDNOSTKA_ZGADYWANIE, float(best.sim)
+    return None, STATUS_JEDNOSTKA_BRAK, None
+
+
+def zaproponuj_skrot(nazwa):
+    """Czysta propozycja skrótu jednostki (BEZ sprawdzania unikalności — to robi
+    ``unikalny_skrot`` w integracji). Akronim z pierwszych liter słów pisanych
+    wielką literą (``Zakład Transfuzjologii`` → ``ZT``; spójniki małą literą
+    pomijane). Gdy akronim < 2 znaki (jeden znaczący wyraz) — fallback: przycięta
+    nazwa (≤128). Pusta nazwa → ``""``."""
+    nazwa = (nazwa or "").strip()
+    if not nazwa:
+        return ""
+    akronim = "".join(w[0].upper() for w in nazwa.split() if w[:1].isupper())
+    if len(akronim) >= 2:
+        return akronim[:128]
+    return nazwa[:128]
+
+
+def unikalny_skrot(base, zajete=None):
+    """Zwraca skrót unikalny w bazie ORAZ względem ``zajete`` (skróty utworzone
+    wcześniej w TYM SAMYM runie integracji — obrona przed kolizją in-batch, gdy
+    dwie różne nazwy dają ten sam akronim). Kolizja → sufiks numeryczny
+    (``ZT``, ``ZT2``, ``ZT3``…), całość przycięta do 128 znaków."""
+    zajete = set(zajete or ())
+    base = (base or "").strip()[:128] or "JED"
+
+    def wolny(s):
+        return s not in zajete and not Jednostka.objects.filter(skrot=s).exists()
+
+    if wolny(base):
+        return base
+    i = 2
+    while True:
+        suf = str(i)
+        kand = base[: 128 - len(suf)] + suf
+        if wolny(kand):
+            return kand
+        i += 1
