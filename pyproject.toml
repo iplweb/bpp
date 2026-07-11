@@ -107,7 +107,7 @@ dependencies = [
     "requests-oauthlib==2.0.0",
     "django-cacheops>=7.2,<8",
     "django-constance>=4.3.5",
-    "djangoql-iplweb>=0.30.3",
+    "djangoql-iplweb>=0.31.0",
     "django-weasyprint>=2.5.0",
     "django-templated-email>=3.0.0",
     "django-formtools>=2.6.1,<3",

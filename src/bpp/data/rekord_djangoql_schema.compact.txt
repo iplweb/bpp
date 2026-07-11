@@ -24,7 +24,7 @@ start model: bpp.rekord
 bpp.rekord:
   adnotacje                                    str
   autorzy                                      -> bpp.autorzy?
-  charakter_formalny                           -> bpp.charakter_formalny  match nazwa in ("Artykuł w czasopismie", "Broszura", "Czasopismo", "Dokument elektroniczny", "Editorial", "Fragment", "inne", "Komentarz", "Książka", "Książka w języku obcym", "Książka w języku polskim", "List do redakcji", "Patent", "Podręcznik akademicki", "Polski Referat Zjazdowy", "Polskie streszczenie zjazdowe", "Poradnik zawodowy", "Poster - streszczenie", "Praca doktorska", "Praca habilitacyjna")
+  charakter_formalny                           -> bpp.charakter_formalny  match nazwa
   doi                                          str?
   dostep_dnia                                  date?  "Dostęp dnia (płatny dostęp)" — Data dostępu do strony WWW.
   e_isbn                                       str  "E-ISBN"
@@ -33,18 +33,18 @@ bpp.rekord:
   index_copernicus                             float
   informacje                                   str
   isbn                                         str
-  jezyk                                        -> bpp.jezyk  match nazwa in ("abchaski", "Achinese", "Acoli", "Adangme", "Adyghe", "afar", "Afrihili", "Afro-Asiatic languages", "afrykanerski", "Ainu", "ajmara", "akadyjski", "akan", "albański", "Aleut", "Algonquian languages", "Altaic languages", "amharski", "angielski", "Angika")  "Język"
+  jezyk                                        -> bpp.jezyk  match nazwa  "Język"
   konferencja                                  -> bpp.konferencja?
   kwartyl_w_scopus                             int?  choices: brak | Q1 | Q2 | Q3 | Q4
   kwartyl_w_wos                                int?  choices: brak | Q1 | Q2 | Q3 | Q4
   liczba_autorow                               int
   liczba_cytowan                               int
   liczba_znakow_wydawniczych                   int?  "Liczba znaków wydawniczych"
-  openaccess_czas_publikacji                   -> bpp.czas_udostepnienia_openaccess?  match nazwa in ("po opublikowaniu", "przed opublikowaniem", "w momencie opublikowania")  "OpenAccess: czas udostępnienia"
+  openaccess_czas_publikacji                   -> bpp.czas_udostepnienia_openaccess?  match nazwa  "OpenAccess: czas udostępnienia"
   openaccess_data_opublikowania                date?  "OpenAccess: data publikacji"
   openaccess_ilosc_miesiecy                    int?  "OpenAccess: ilość miesięcy" — Ilość miesięcy jakie upłynęły od momentu opublikowania do momentu udostępnienia
-  openaccess_licencja                          -> bpp.licencja_openaccess?  match nazwa in ("Creative Commons - Universal - Przekazanie do Domeny Publicznej (CC0 1.0)", "Creative Commons - Uznanie Autorstwa - Bez utworów zależnych (CC-BY-ND)", "Creative Commons - Uznanie Autorstwa - Na Tych Samych Warunkach (CC-BY-SA)", "Creative Commons - Uznanie Autorstwa - Użycie niekomercyjne - Bez utworów zależnych (CC-BY-NC-ND)", "Creative Commons - Uznanie Autorstwa - Użycie niekomercyjne - Na tych samych warunkach (CC-BY-NC-SA)", "Creative Commons - Uznanie Autorstwa - Użycie niekomercyjne (CC-BY-NC);", "Creative Commons - Uznanie Autorstwa (CC-BY)", "inna otwarta licencja")  "OpenAccess: licencja"
-  openaccess_wersja_tekstu                     -> bpp.wersja_tekstu_openaccess?  match nazwa in ("Inna", "Oryginalna wersja autorska", "Ostateczna wersja autorska", "Ostateczna wersja opublikowana")  "OpenAccess: wersja tekstu"
+  openaccess_licencja                          -> bpp.licencja_openaccess?  match nazwa  "OpenAccess: licencja"
+  openaccess_wersja_tekstu                     -> bpp.wersja_tekstu_openaccess?  match nazwa  "OpenAccess: wersja tekstu"
   opis_bibliograficzny_autorzy_cache           unknown
   opis_bibliograficzny_cache                   str
   opis_bibliograficzny_zapisani_autorzy_cache  str
@@ -61,9 +61,9 @@ bpp.rekord:
   slowa_kluczowe                               -> taggit.tag?  "Słowa kluczowe" — A comma-separated list of tags.
   slowa_kluczowe_eng                           unknown?  "Słowa kluczowe -- język angielski" — Lista słów kluczowych -- język angielski
   slug                                         str
-  status_korekty                               -> bpp.status_korekty  match nazwa in ("po korekcie", "przed korektą", "w trakcie korekty")
+  status_korekty                               -> bpp.status_korekty  match nazwa
   szczegoly                                    str  "Szczegóły" — Np. str. 23-45
-  typ_kbn                                      -> bpp.typ_kbn  match nazwa in ("inne", "Opis Przypadku", "Podręcznik akademicki", "praca monograficzna", "Praca Oryginalna", "Praca Przeglądowa", "Praca wieloośrodkowa", "Publikacja popularnonaukowa", "Redakcja czasopisma")  "typ MNiSW/MEiN"
+  typ_kbn                                      -> bpp.typ_kbn  match nazwa  "typ MNiSW/MEiN"
   tytul                                        str
   tytul_oryginalny                             str
   tytul_oryginalny_sort                        str
@@ -80,7 +80,7 @@ bpp.autorzy:
   afiliuje               bool
   autor                  -> bpp.autor
   data_oswiadczenia      date
-  dyscyplina_naukowa     -> bpp.dyscyplina_naukowa  match nazwa in ("archeologia", "architektura i urbanistyka", "astronomia", "automatyka, elektronika, elektrotechnika i technologie kosmiczne", "biologia medyczna", "biotechnologia", "ekonomia i finanse", "etnologia i antropologia kulturowa", "filozofia", "geografia społeczno-ekonomiczna i gospodarka przestrzenna", "historia", "informatyka", "informatyka techniczna i telekomunikacja", "inżynieria bezpieczeństwa", "inżynieria biomedyczna", "inżynieria chemiczna", "inżynieria lądowa, geodezja i transport", "inżynieria materiałowa", "inżynieria mechaniczna", "inżynieria środowiska, górnictwo i energetyka")
+  dyscyplina_naukowa     -> bpp.dyscyplina_naukowa  match nazwa
   id                     unknown
   jednostka              -> bpp.jednostka
   kierunek_studiow       -> bpp.kierunek_studiow
@@ -89,14 +89,14 @@ bpp.autorzy:
   profil_orcid           bool
   przypieta              bool
   rekord                 -> bpp.rekord
-  typ_odpowiedzialnosci  -> bpp.typ_odpowiedzialnosci  match nazwa in ("autor", "autor korespondencyjny", "komentator", "opracował", "recenzent", "redaktor", "redaktor naukowy wydania polskiego", "tłumacz", "tłumacz z języka angielskiego")
+  typ_odpowiedzialnosci  -> bpp.typ_odpowiedzialnosci  match nazwa
   upowaznienie_pbn       bool
   zapisany_jako          str
   zatrudniony            bool
 
 bpp.charakter_formalny:
   charakter_ogolny     str  choices: Artykuł | Książka | Rozdział | Inne
-  charakter_pbn        -> bpp.charakter_pbn?  match help_text in ("", " ", "Artykuł przeglądowy stanowi podsumowanie aktualnego stanu badań w danym obszarze tematycznym.", "Hasło encykolpedyczne/słownikowe/leksykonowe", "Monografia naukowa to spójne tematycznie, wyczerpujące opracowanie naukowe. W PBN za monografie naukowe uważane są również zbiorowe książki pokonferencyjne (tzw. conference proceedings). Jeśli dodajesz zbiorową książkę pokonferencyjną, pamiętaj o tym, by zaznaczyć również pola "Publikacja zbiorowa" oraz "Publikacja konferencyjna"", "Np. katalog zabytków", "Oryginalny artykuł naukowy przedstawia rezultaty oryginalnych badań naukowych lub eksperymentu.", "Publikacja podlegała recenzji naukowej", "Wstęp/Wprowadzenie/Przedmowa")
+  charakter_pbn        -> bpp.charakter_pbn?  match help_text
   charakter_sloty      int?  "Charakter dla slotów" — Jak potraktować ten charakter przy kalkulacji slotów dla wydawnictwa zwartego?  choices: Książka | Rozdział | Referat
   children             -> bpp.charakter_formalny?
   id                   int
@@ -104,7 +104,7 @@ bpp.charakter_formalny:
   lft                  int
   nazwa                str
   nazwa_w_primo        str  choices:  | Artykuł | Książka | Zasób tekstowy | Rozprawa naukowa | Recenzja | Artykuł prasowy | Rozdział | Czasopismo | Dane badawcze | Materiał konferencyjny | Obraz | Baza | Zestaw danych statystycznych | Multimedia | Inny
-  parent               -> bpp.charakter_formalny?  match nazwa in ("Artykuł w czasopismie", "Broszura", "Czasopismo", "Dokument elektroniczny", "Editorial", "Fragment", "inne", "Komentarz", "Książka", "Książka w języku obcym", "Książka w języku polskim", "List do redakcji", "Patent", "Podręcznik akademicki", "Polski Referat Zjazdowy", "Polskie streszczenie zjazdowe", "Poradnik zawodowy", "Poster - streszczenie", "Praca doktorska", "Praca habilitacyjna")  "Charakter nadrzędny"
+  parent               -> bpp.charakter_formalny?  match nazwa  "Charakter nadrzędny"
   publikacja           bool
   rekord               -> bpp.rekord?
   rght                 int
@@ -225,7 +225,7 @@ bpp.status_korekty:
 bpp.typ_kbn:
   artykul_pbn          bool  "Artykuł w PBN" — Wydawnictwa ciągłe posiadające
     ten typ MNiSW/MEiN zostaną włączone do eksportu PBN jako artykuły
-  charakter_pbn        -> bpp.charakter_pbn?  match help_text in ("", " ", "Artykuł przeglądowy stanowi podsumowanie aktualnego stanu badań w danym obszarze tematycznym.", "Hasło encykolpedyczne/słownikowe/leksykonowe", "Monografia naukowa to spójne tematycznie, wyczerpujące opracowanie naukowe. W PBN za monografie naukowe uważane są również zbiorowe książki pokonferencyjne (tzw. conference proceedings). Jeśli dodajesz zbiorową książkę pokonferencyjną, pamiętaj o tym, by zaznaczyć również pola "Publikacja zbiorowa" oraz "Publikacja konferencyjna"", "Np. katalog zabytków", "Oryginalny artykuł naukowy przedstawia rezultaty oryginalnych badań naukowych lub eksperymentu.", "Publikacja podlegała recenzji naukowej", "Wstęp/Wprowadzenie/Przedmowa")
+  charakter_pbn        -> bpp.charakter_pbn?  match help_text
   id                   int
   nazwa                str
   praca_doktorska      -> bpp.praca_doktorska?
@@ -260,7 +260,7 @@ bpp.wydawnictwo_zwarte:
   cached_punkty_dyscyplin                      unknown?
   calkowita_liczba_autorow                     int?
   calkowita_liczba_redaktorow                  int?
-  charakter_formalny                           -> bpp.charakter_formalny  match nazwa in ("Artykuł w czasopismie", "Broszura", "Czasopismo", "Dokument elektroniczny", "Editorial", "Fragment", "inne", "Komentarz", "Książka", "Książka w języku obcym", "Książka w języku polskim", "List do redakcji", "Patent", "Podręcznik akademicki", "Polski Referat Zjazdowy", "Polskie streszczenie zjazdowe", "Poradnik zawodowy", "Poster - streszczenie", "Praca doktorska", "Praca habilitacyjna")
+  charakter_formalny                           -> bpp.charakter_formalny  match nazwa
   dodatkowe_tytuly                             -> bpp.wydawnictwo_zwarte_tytul?
   doi                                          str?
   dostep_dnia                                  date?  "Dostęp dnia (płatny dostęp)" — Data dostępu do strony WWW.
@@ -269,13 +269,13 @@ bpp.wydawnictwo_zwarte:
   id                                           int
   impact_factor                                float
   index_copernicus                             float
-  informacja_z                                 -> bpp.zrodlo_informacji?  match nazwa in ("od autora", "od redakcji", "wartość szacunkowa")
+  informacja_z                                 -> bpp.zrodlo_informacji?  match nazwa
   informacje                                   str
   isbn                                         str
   issn                                         str
-  jezyk                                        -> bpp.jezyk  match nazwa in ("abchaski", "Achinese", "Acoli", "Adangme", "Adyghe", "afar", "Afrihili", "Afro-Asiatic languages", "afrykanerski", "Ainu", "ajmara", "akadyjski", "akan", "albański", "Aleut", "Algonquian languages", "Altaic languages", "amharski", "angielski", "Angika")  "Język"
-  jezyk_alt                                    -> bpp.jezyk?  match nazwa in ("abchaski", "Achinese", "Acoli", "Adangme", "Adyghe", "afar", "Afrihili", "Afro-Asiatic languages", "afrykanerski", "Ainu", "ajmara", "akadyjski", "akan", "albański", "Aleut", "Algonquian languages", "Altaic languages", "amharski", "angielski", "Angika")  "Język alternatywny"
-  jezyk_orig                                   -> bpp.jezyk?  match nazwa in ("abchaski", "Achinese", "Acoli", "Adangme", "Adyghe", "afar", "Afrihili", "Afro-Asiatic languages", "afrykanerski", "Ainu", "ajmara", "akadyjski", "akan", "albański", "Aleut", "Algonquian languages", "Altaic languages", "amharski", "angielski", "Angika")  "Język oryginalny" — Dla tłumaczeń. Wartość eksportowana do PBN.
+  jezyk                                        -> bpp.jezyk  match nazwa  "Język"
+  jezyk_alt                                    -> bpp.jezyk?  match nazwa  "Język alternatywny"
+  jezyk_orig                                   -> bpp.jezyk?  match nazwa  "Język oryginalny" — Dla tłumaczeń. Wartość eksportowana do PBN.
   konferencja                                  -> bpp.konferencja?
   liczba_cytowan                               int?  "Liczba cytowań" — Wartość aktualizowana jest automatycznie raz na kilka dni w przypadku
         skonfigurowania dostępu do API WOS AMR (przez obiekt 'Uczelnia'). Możesz również
@@ -286,12 +286,12 @@ bpp.wydawnictwo_zwarte:
   nie_eksportuj_przez_api                      bool
   numer_odbitki                                str
   numer_w_serii                                str
-  openaccess_czas_publikacji                   -> bpp.czas_udostepnienia_openaccess?  match nazwa in ("po opublikowaniu", "przed opublikowaniem", "w momencie opublikowania")  "OpenAccess: czas udostępnienia"
+  openaccess_czas_publikacji                   -> bpp.czas_udostepnienia_openaccess?  match nazwa  "OpenAccess: czas udostępnienia"
   openaccess_data_opublikowania                date?  "OpenAccess: data publikacji"
   openaccess_ilosc_miesiecy                    int?  "OpenAccess: ilość miesięcy" — Ilość miesięcy jakie upłynęły od momentu opublikowania do momentu udostępnienia
-  openaccess_licencja                          -> bpp.licencja_openaccess?  match nazwa in ("Creative Commons - Universal - Przekazanie do Domeny Publicznej (CC0 1.0)", "Creative Commons - Uznanie Autorstwa - Bez utworów zależnych (CC-BY-ND)", "Creative Commons - Uznanie Autorstwa - Na Tych Samych Warunkach (CC-BY-SA)", "Creative Commons - Uznanie Autorstwa - Użycie niekomercyjne - Bez utworów zależnych (CC-BY-NC-ND)", "Creative Commons - Uznanie Autorstwa - Użycie niekomercyjne - Na tych samych warunkach (CC-BY-NC-SA)", "Creative Commons - Uznanie Autorstwa - Użycie niekomercyjne (CC-BY-NC);", "Creative Commons - Uznanie Autorstwa (CC-BY)", "inna otwarta licencja")  "OpenAccess: licencja"
-  openaccess_tryb_dostepu                      -> bpp.tryb_openaccess_wydawnictwo_zwarte?  match nazwa in ("Inne", "Otwarte repositorium", "Witryna wydawcy")
-  openaccess_wersja_tekstu                     -> bpp.wersja_tekstu_openaccess?  match nazwa in ("Inna", "Oryginalna wersja autorska", "Ostateczna wersja autorska", "Ostateczna wersja opublikowana")  "OpenAccess: wersja tekstu"
+  openaccess_licencja                          -> bpp.licencja_openaccess?  match nazwa  "OpenAccess: licencja"
+  openaccess_tryb_dostepu                      -> bpp.tryb_openaccess_wydawnictwo_zwarte?  match nazwa
+  openaccess_wersja_tekstu                     -> bpp.wersja_tekstu_openaccess?  match nazwa  "OpenAccess: wersja tekstu"
   opis_bibliograficzny_autorzy_cache           unknown?
   opis_bibliograficzny_cache                   str
   opis_bibliograficzny_zapisani_autorzy_cache  str?
@@ -327,14 +327,14 @@ bpp.wydawnictwo_zwarte:
   slowa_kluczowe                               -> taggit.tag?  "Słowa kluczowe -- język polski" — Lista słów kluczowych -- język polski.
   slowa_kluczowe_eng                           unknown?  "Słowa kluczowe -- język angielski" — Lista słów kluczowych -- język angielski
   slug                                         str?
-  status_korekty                               -> bpp.status_korekty  match nazwa in ("po korekcie", "przed korektą", "w trakcie korekty")
+  status_korekty                               -> bpp.status_korekty  match nazwa
   streszczenia                                 -> bpp.wydawnictwo_zwarte_streszczenie?
   strony                                       str
   szczegoly                                    str  "Szczegóły" — Np. str. 23-45
   tekst_po_ostatnim_autorze                    str?
   tekst_przed_pierwszym_autorem                str?
   tom                                          str
-  typ_kbn                                      -> bpp.typ_kbn  match nazwa in ("inne", "Opis Przypadku", "Podręcznik akademicki", "praca monograficzna", "Praca Oryginalna", "Praca Przeglądowa", "Praca wieloośrodkowa", "Publikacja popularnonaukowa", "Redakcja czasopisma")  "typ MNiSW/MEiN"
+  typ_kbn                                      -> bpp.typ_kbn  match nazwa  "typ MNiSW/MEiN"
   tytul                                        str  "Tytuł"
   tytul_oryginalny                             str  "Tytuł oryginalny"
   tytul_oryginalny_sort                        str
@@ -355,7 +355,7 @@ bpp.wydawnictwo_zwarte:
   zewnetrzna_baza_danych                       -> bpp.wydawnictwo_zwarte_zewnetrzna_baza_danych?
 
 bpp.zewnetrznebazydanychview:
-  baza    -> bpp.zewnetrzna_baza_danych  match nazwa in ("Scopus", "Web of Science")
+  baza    -> bpp.zewnetrzna_baza_danych  match nazwa
   id      int
   info    str
   rekord  -> bpp.rekord
@@ -366,16 +366,16 @@ bpp.zrodlo:
   e_issn                     str  "e-ISSN"
   id                         int
   issn                       str
-  jezyk                      -> bpp.jezyk?  match nazwa in ("abchaski", "Achinese", "Acoli", "Adangme", "Adyghe", "afar", "Afrihili", "Afro-Asiatic languages", "afrykanerski", "Ainu", "ajmara", "akadyjski", "akan", "albański", "Aleut", "Algonquian languages", "Altaic languages", "amharski", "angielski", "Angika")
+  jezyk                      -> bpp.jezyk?  match nazwa
   nazwa                      str
   nazwa_alternatywna         str?
-  openaccess_licencja        -> bpp.licencja_openaccess?  match nazwa in ("Creative Commons - Universal - Przekazanie do Domeny Publicznej (CC0 1.0)", "Creative Commons - Uznanie Autorstwa - Bez utworów zależnych (CC-BY-ND)", "Creative Commons - Uznanie Autorstwa - Na Tych Samych Warunkach (CC-BY-SA)", "Creative Commons - Uznanie Autorstwa - Użycie niekomercyjne - Bez utworów zależnych (CC-BY-NC-ND)", "Creative Commons - Uznanie Autorstwa - Użycie niekomercyjne - Na tych samych warunkach (CC-BY-NC-SA)", "Creative Commons - Uznanie Autorstwa - Użycie niekomercyjne (CC-BY-NC);", "Creative Commons - Uznanie Autorstwa (CC-BY)", "inna otwarta licencja")  "OpenAccess: licencja"
+  openaccess_licencja        -> bpp.licencja_openaccess?  match nazwa  "OpenAccess: licencja"
   openaccess_tryb_dostepu    str  "OpenAccess: tryb dostępu"  choices: pełny | częściowy
   ostatnio_zmieniony         datetime?
   pbn_uid                    -> pbn_api.journal?  "Odpowiednik w PBN"
   poprzednia_nazwa           str?  "Poprzedni tytuł"
   rekord                     -> bpp.rekord?
-  rodzaj                     -> bpp.rodzaj_zrodla  match nazwa in ("periodyk", "wydawnictwo", "źródło nieindeksowane")
+  rodzaj                     -> bpp.rodzaj_zrodla  match nazwa
   search                     unknown
   skrot                      str  "Skrót"
   skrot_nazwy_alternatywnej  str?
@@ -383,11 +383,11 @@ bpp.zrodlo:
   www                        str?
   wydawca                    str
   wydawnictwo_ciagle         -> bpp.wydawnictwo_ciagle?
-  zasieg                     -> bpp.zasieg_zrodla?  match nazwa in ("krajowy", "międzynarodowy")
+  zasieg                     -> bpp.zasieg_zrodla?  match nazwa
 
 bpp.autor:
   adnotacje                    str
-  aktualna_funkcja             -> bpp.funkcja_autora?  match nazwa in ("adiunkt", "asystent", "kierownik", "młodszy asystent", "starszy asystent")
+  aktualna_funkcja             -> bpp.funkcja_autora?  match nazwa
   aktualna_jednostka           -> bpp.jednostka?
   autor_dyscyplina             -> bpp.autor_dyscyplina?
   autor_jednostka              -> bpp.autor_jednostka?
@@ -410,7 +410,7 @@ bpp.autor:
   patent                       -> bpp.patent?
   patent_autor                 -> bpp.patent_autor?
   pbn_uid                      -> pbn_api.scientist?
-  plec                         -> bpp.plec?  match nazwa in ("kobieta", "mężczyzna")
+  plec                         -> bpp.plec?  match nazwa
   pokazuj                      bool
   pokazuj_opis                 bool
   pokazuj_poprzednie_nazwiska  bool
@@ -424,7 +424,7 @@ bpp.autor:
   slug                         str
   sort                         str
   system_kadrowy_id            int?  "Identyfikator w systemie kadrowym" — Identyfikator cyfrowy, używany do matchowania autora z danymi z systemu kadrowego Uczelni
-  tytul                        -> bpp.tytul?  match nazwa in ("doktor", "doktor habilitowany", "doktor habilitowany medycyny", "doktor habilitowany nauk farmaceutycznych", "doktor habilitowany nauk humanistycznych", "doktor habilitowany nauk przyrodniczych", "doktor nauk chemicznych", "doktor nauk farmaceutycznych", "doktor nauk fizycznych", "doktor nauk humanistycznych", "doktor nauk medycznych", "doktor nauk o kulturze fizycznej", "doktor nauk prawnych", "doktor nauk przyrodniczych", "doktor nauk rolniczych", "doktor nauk weterynaryjnych", "dr hab. inż.", "dr inż.", "lekarz", "lekarz dentysta")
+  tytul                        -> bpp.tytul?  match nazwa
   urodzony                     date?
   www                          str
   wydawnictwo_ciagle           -> bpp.wydawnictwo_ciagle?
@@ -476,7 +476,7 @@ bpp.jednostka:
   praca_doktorska              -> bpp.praca_doktorska?
   praca_habilitacyjna          -> bpp.praca_habilitacyjna?
   rght                         int
-  rodzaj                       -> bpp.rodzajjednostki?  match nazwa in ("Koło naukowe", "Standard", "Wydział")
+  rodzaj                       -> bpp.rodzajjednostki?  match nazwa
   search                       unknown?
   skrot                        str  "Skrót"
   skrot_nazwy                  str?
@@ -536,7 +536,7 @@ bpp.wydawnictwo_ciagle:
   autorzy                                      -> bpp.autor
   autorzy_set                                  -> bpp.wydawnictwo_ciagle_autor?
   cached_punkty_dyscyplin                      unknown?
-  charakter_formalny                           -> bpp.charakter_formalny  match nazwa in ("Artykuł w czasopismie", "Broszura", "Czasopismo", "Dokument elektroniczny", "Editorial", "Fragment", "inne", "Komentarz", "Książka", "Książka w języku obcym", "Książka w języku polskim", "List do redakcji", "Patent", "Podręcznik akademicki", "Polski Referat Zjazdowy", "Polskie streszczenie zjazdowe", "Poradnik zawodowy", "Poster - streszczenie", "Praca doktorska", "Praca habilitacyjna")
+  charakter_formalny                           -> bpp.charakter_formalny  match nazwa
   dodatkowe_tytuly                             -> bpp.wydawnictwo_ciagle_tytul?
   doi                                          str?
   dostep_dnia                                  date?  "Dostęp dnia (płatny dostęp)" — Data dostępu do strony WWW.
@@ -544,12 +544,12 @@ bpp.wydawnictwo_ciagle:
   id                                           int
   impact_factor                                float
   index_copernicus                             float
-  informacja_z                                 -> bpp.zrodlo_informacji?  match nazwa in ("od autora", "od redakcji", "wartość szacunkowa")
+  informacja_z                                 -> bpp.zrodlo_informacji?  match nazwa
   informacje                                   str
   issn                                         str
-  jezyk                                        -> bpp.jezyk  match nazwa in ("abchaski", "Achinese", "Acoli", "Adangme", "Adyghe", "afar", "Afrihili", "Afro-Asiatic languages", "afrykanerski", "Ainu", "ajmara", "akadyjski", "akan", "albański", "Aleut", "Algonquian languages", "Altaic languages", "amharski", "angielski", "Angika")  "Język"
-  jezyk_alt                                    -> bpp.jezyk?  match nazwa in ("abchaski", "Achinese", "Acoli", "Adangme", "Adyghe", "afar", "Afrihili", "Afro-Asiatic languages", "afrykanerski", "Ainu", "ajmara", "akadyjski", "akan", "albański", "Aleut", "Algonquian languages", "Altaic languages", "amharski", "angielski", "Angika")  "Język alternatywny"
-  jezyk_orig                                   -> bpp.jezyk?  match nazwa in ("abchaski", "Achinese", "Acoli", "Adangme", "Adyghe", "afar", "Afrihili", "Afro-Asiatic languages", "afrykanerski", "Ainu", "ajmara", "akadyjski", "akan", "albański", "Aleut", "Algonquian languages", "Altaic languages", "amharski", "angielski", "Angika")  "Język oryginalny" — Dla tłumaczeń. Wartość eksportowana do PBN.
+  jezyk                                        -> bpp.jezyk  match nazwa  "Język"
+  jezyk_alt                                    -> bpp.jezyk?  match nazwa  "Język alternatywny"
+  jezyk_orig                                   -> bpp.jezyk?  match nazwa  "Język oryginalny" — Dla tłumaczeń. Wartość eksportowana do PBN.
   konferencja                                  -> bpp.konferencja?
   kwartyl_w_scopus                             int?  choices: brak | Q1 | Q2 | Q3 | Q4
   kwartyl_w_wos                                int?  choices: brak | Q1 | Q2 | Q3 | Q4
@@ -560,12 +560,12 @@ bpp.wydawnictwo_ciagle:
   nie_eksportuj_przez_api                      bool
   nr_zeszytu                                   str
   numer_odbitki                                str
-  openaccess_czas_publikacji                   -> bpp.czas_udostepnienia_openaccess?  match nazwa in ("po opublikowaniu", "przed opublikowaniem", "w momencie opublikowania")  "OpenAccess: czas udostępnienia"
+  openaccess_czas_publikacji                   -> bpp.czas_udostepnienia_openaccess?  match nazwa  "OpenAccess: czas udostępnienia"
   openaccess_data_opublikowania                date?  "OpenAccess: data publikacji"
   openaccess_ilosc_miesiecy                    int?  "OpenAccess: ilość miesięcy" — Ilość miesięcy jakie upłynęły od momentu opublikowania do momentu udostępnienia
-  openaccess_licencja                          -> bpp.licencja_openaccess?  match nazwa in ("Creative Commons - Universal - Przekazanie do Domeny Publicznej (CC0 1.0)", "Creative Commons - Uznanie Autorstwa - Bez utworów zależnych (CC-BY-ND)", "Creative Commons - Uznanie Autorstwa - Na Tych Samych Warunkach (CC-BY-SA)", "Creative Commons - Uznanie Autorstwa - Użycie niekomercyjne - Bez utworów zależnych (CC-BY-NC-ND)", "Creative Commons - Uznanie Autorstwa - Użycie niekomercyjne - Na tych samych warunkach (CC-BY-NC-SA)", "Creative Commons - Uznanie Autorstwa - Użycie niekomercyjne (CC-BY-NC);", "Creative Commons - Uznanie Autorstwa (CC-BY)", "inna otwarta licencja")  "OpenAccess: licencja"
-  openaccess_tryb_dostepu                      -> bpp.tryb_openaccess_wydawnictwo_ciagle?  match nazwa in ("Inne", "Otwarte czasopismo", "Otwarte repositorium")  "OpenAccess: tryb dostępu"
-  openaccess_wersja_tekstu                     -> bpp.wersja_tekstu_openaccess?  match nazwa in ("Inna", "Oryginalna wersja autorska", "Ostateczna wersja autorska", "Ostateczna wersja opublikowana")  "OpenAccess: wersja tekstu"
+  openaccess_licencja                          -> bpp.licencja_openaccess?  match nazwa  "OpenAccess: licencja"
+  openaccess_tryb_dostepu                      -> bpp.tryb_openaccess_wydawnictwo_ciagle?  match nazwa  "OpenAccess: tryb dostępu"
+  openaccess_wersja_tekstu                     -> bpp.wersja_tekstu_openaccess?  match nazwa  "OpenAccess: wersja tekstu"
   opis_bibliograficzny_autorzy_cache           unknown?
   opis_bibliograficzny_cache                   str
   opis_bibliograficzny_zapisani_autorzy_cache  str?
@@ -597,14 +597,14 @@ bpp.wydawnictwo_ciagle:
   slowa_kluczowe                               -> taggit.tag?  "Słowa kluczowe -- język polski" — Lista słów kluczowych -- język polski.
   slowa_kluczowe_eng                           unknown?  "Słowa kluczowe -- język angielski" — Lista słów kluczowych -- język angielski
   slug                                         str?
-  status_korekty                               -> bpp.status_korekty  match nazwa in ("po korekcie", "przed korektą", "w trakcie korekty")
+  status_korekty                               -> bpp.status_korekty  match nazwa
   streszczenia                                 -> bpp.wydawnictwo_ciagle_streszczenie?
   strony                                       str
   szczegoly                                    str  "Szczegóły" — Np. str. 23-45
   tekst_po_ostatnim_autorze                    str?
   tekst_przed_pierwszym_autorem                str?
   tom                                          str
-  typ_kbn                                      -> bpp.typ_kbn  match nazwa in ("inne", "Opis Przypadku", "Podręcznik akademicki", "praca monograficzna", "Praca Oryginalna", "Praca Przeglądowa", "Praca wieloośrodkowa", "Publikacja popularnonaukowa", "Redakcja czasopisma")  "typ MNiSW/MEiN"
+  typ_kbn                                      -> bpp.typ_kbn  match nazwa  "typ MNiSW/MEiN"
   tytul                                        str  "Tytuł"
   tytul_oryginalny                             str  "Tytuł oryginalny"
   tytul_oryginalny_sort                        str
@@ -633,13 +633,13 @@ bpp.praca_doktorska:
   id                                           int
   impact_factor                                float
   index_copernicus                             float
-  informacja_z                                 -> bpp.zrodlo_informacji?  match nazwa in ("od autora", "od redakcji", "wartość szacunkowa")
+  informacja_z                                 -> bpp.zrodlo_informacji?  match nazwa
   informacje                                   str
   isbn                                         str
   jednostka                                    -> bpp.jednostka
-  jezyk                                        -> bpp.jezyk  match nazwa in ("abchaski", "Achinese", "Acoli", "Adangme", "Adyghe", "afar", "Afrihili", "Afro-Asiatic languages", "afrykanerski", "Ainu", "ajmara", "akadyjski", "akan", "albański", "Aleut", "Algonquian languages", "Altaic languages", "amharski", "angielski", "Angika")  "Język"
-  jezyk_alt                                    -> bpp.jezyk?  match nazwa in ("abchaski", "Achinese", "Acoli", "Adangme", "Adyghe", "afar", "Afrihili", "Afro-Asiatic languages", "afrykanerski", "Ainu", "ajmara", "akadyjski", "akan", "albański", "Aleut", "Algonquian languages", "Altaic languages", "amharski", "angielski", "Angika")  "Język alternatywny"
-  jezyk_orig                                   -> bpp.jezyk?  match nazwa in ("abchaski", "Achinese", "Acoli", "Adangme", "Adyghe", "afar", "Afrihili", "Afro-Asiatic languages", "afrykanerski", "Ainu", "ajmara", "akadyjski", "akan", "albański", "Aleut", "Algonquian languages", "Altaic languages", "amharski", "angielski", "Angika")  "Język oryginalny" — Dla tłumaczeń. Wartość eksportowana do PBN.
+  jezyk                                        -> bpp.jezyk  match nazwa  "Język"
+  jezyk_alt                                    -> bpp.jezyk?  match nazwa  "Język alternatywny"
+  jezyk_orig                                   -> bpp.jezyk?  match nazwa  "Język oryginalny" — Dla tłumaczeń. Wartość eksportowana do PBN.
   liczba_cytowan                               int?  "Liczba cytowań" — Wartość aktualizowana jest automatycznie raz na kilka dni w przypadku
         skonfigurowania dostępu do API WOS AMR (przez obiekt 'Uczelnia'). Możesz również
         czaktualizować tą wartość ręcznie, naciskając przycisk.
@@ -672,13 +672,13 @@ bpp.praca_doktorska:
   slowa_kluczowe                               -> taggit.tag?  "Słowa kluczowe -- język polski" — Lista słów kluczowych -- język polski.
   slowa_kluczowe_eng                           unknown?  "Słowa kluczowe -- język angielski" — Lista słów kluczowych -- język angielski
   slug                                         str?
-  status_korekty                               -> bpp.status_korekty  match nazwa in ("po korekcie", "przed korektą", "w trakcie korekty")
+  status_korekty                               -> bpp.status_korekty  match nazwa
   strony                                       str
   szczegoly                                    str  "Szczegóły" — Np. str. 23-45
   tekst_po_ostatnim_autorze                    str?
   tekst_przed_pierwszym_autorem                str?
   tom                                          str
-  typ_kbn                                      -> bpp.typ_kbn  match nazwa in ("inne", "Opis Przypadku", "Podręcznik akademicki", "praca monograficzna", "Praca Oryginalna", "Praca Przeglądowa", "Praca wieloośrodkowa", "Publikacja popularnonaukowa", "Redakcja czasopisma")  "typ MNiSW/MEiN"
+  typ_kbn                                      -> bpp.typ_kbn  match nazwa  "typ MNiSW/MEiN"
   tytul                                        str  "Tytuł"
   tytul_oryginalny                             str  "Tytuł oryginalny"
   tytul_oryginalny_sort                        str
@@ -698,13 +698,13 @@ bpp.praca_habilitacyjna:
   id                                           int
   impact_factor                                float
   index_copernicus                             float
-  informacja_z                                 -> bpp.zrodlo_informacji?  match nazwa in ("od autora", "od redakcji", "wartość szacunkowa")
+  informacja_z                                 -> bpp.zrodlo_informacji?  match nazwa
   informacje                                   str
   isbn                                         str
   jednostka                                    -> bpp.jednostka
-  jezyk                                        -> bpp.jezyk  match nazwa in ("abchaski", "Achinese", "Acoli", "Adangme", "Adyghe", "afar", "Afrihili", "Afro-Asiatic languages", "afrykanerski", "Ainu", "ajmara", "akadyjski", "akan", "albański", "Aleut", "Algonquian languages", "Altaic languages", "amharski", "angielski", "Angika")  "Język"
-  jezyk_alt                                    -> bpp.jezyk?  match nazwa in ("abchaski", "Achinese", "Acoli", "Adangme", "Adyghe", "afar", "Afrihili", "Afro-Asiatic languages", "afrykanerski", "Ainu", "ajmara", "akadyjski", "akan", "albański", "Aleut", "Algonquian languages", "Altaic languages", "amharski", "angielski", "Angika")  "Język alternatywny"
-  jezyk_orig                                   -> bpp.jezyk?  match nazwa in ("abchaski", "Achinese", "Acoli", "Adangme", "Adyghe", "afar", "Afrihili", "Afro-Asiatic languages", "afrykanerski", "Ainu", "ajmara", "akadyjski", "akan", "albański", "Aleut", "Algonquian languages", "Altaic languages", "amharski", "angielski", "Angika")  "Język oryginalny" — Dla tłumaczeń. Wartość eksportowana do PBN.
+  jezyk                                        -> bpp.jezyk  match nazwa  "Język"
+  jezyk_alt                                    -> bpp.jezyk?  match nazwa  "Język alternatywny"
+  jezyk_orig                                   -> bpp.jezyk?  match nazwa  "Język oryginalny" — Dla tłumaczeń. Wartość eksportowana do PBN.
   liczba_cytowan                               int?  "Liczba cytowań" — Wartość aktualizowana jest automatycznie raz na kilka dni w przypadku
         skonfigurowania dostępu do API WOS AMR (przez obiekt 'Uczelnia'). Możesz również
         czaktualizować tą wartość ręcznie, naciskając przycisk.
@@ -736,13 +736,13 @@ bpp.praca_habilitacyjna:
   slowa_kluczowe                               -> taggit.tag?  "Słowa kluczowe -- język polski" — Lista słów kluczowych -- język polski.
   slowa_kluczowe_eng                           unknown?  "Słowa kluczowe -- język angielski" — Lista słów kluczowych -- język angielski
   slug                                         str?
-  status_korekty                               -> bpp.status_korekty  match nazwa in ("po korekcie", "przed korektą", "w trakcie korekty")
+  status_korekty                               -> bpp.status_korekty  match nazwa
   strony                                       str
   szczegoly                                    str  "Szczegóły" — Np. str. 23-45
   tekst_po_ostatnim_autorze                    str?
   tekst_przed_pierwszym_autorem                str?
   tom                                          str
-  typ_kbn                                      -> bpp.typ_kbn  match nazwa in ("inne", "Opis Przypadku", "Podręcznik akademicki", "praca monograficzna", "Praca Oryginalna", "Praca Przeglądowa", "Praca wieloośrodkowa", "Publikacja popularnonaukowa", "Redakcja czasopisma")  "typ MNiSW/MEiN"
+  typ_kbn                                      -> bpp.typ_kbn  match nazwa  "typ MNiSW/MEiN"
   tytul                                        str  "Tytuł"
   tytul_oryginalny                             str  "Tytuł oryginalny"
   tytul_oryginalny_sort                        str
@@ -755,26 +755,26 @@ bpp.praca_habilitacyjna:
 
 bpp.wydawnictwo_ciagle_streszczenie:
   id                  int
-  jezyk_streszczenia  -> bpp.jezyk?  match nazwa in ("abchaski", "Achinese", "Acoli", "Adangme", "Adyghe", "afar", "Afrihili", "Afro-Asiatic languages", "afrykanerski", "Ainu", "ajmara", "akadyjski", "akan", "albański", "Aleut", "Algonquian languages", "Altaic languages", "amharski", "angielski", "Angika")
+  jezyk_streszczenia  -> bpp.jezyk?  match nazwa
   rekord              -> bpp.wydawnictwo_ciagle
   streszczenie        str
 
 bpp.wydawnictwo_ciagle_tytul:
   id              int
-  jezyk           -> bpp.jezyk?  match nazwa in ("abchaski", "Achinese", "Acoli", "Adangme", "Adyghe", "afar", "Afrihili", "Afro-Asiatic languages", "afrykanerski", "Ainu", "ajmara", "akadyjski", "akan", "albański", "Aleut", "Algonquian languages", "Altaic languages", "amharski", "angielski", "Angika")
+  jezyk           -> bpp.jezyk?  match nazwa
   kod_jezyka_pbn  str  "Kod języka wg PBN"
   rekord          -> bpp.wydawnictwo_ciagle
   tytul           str  "Tytuł"
 
 bpp.wydawnictwo_zwarte_streszczenie:
   id                  int
-  jezyk_streszczenia  -> bpp.jezyk?  match nazwa in ("abchaski", "Achinese", "Acoli", "Adangme", "Adyghe", "afar", "Afrihili", "Afro-Asiatic languages", "afrykanerski", "Ainu", "ajmara", "akadyjski", "akan", "albański", "Aleut", "Algonquian languages", "Altaic languages", "amharski", "angielski", "Angika")
+  jezyk_streszczenia  -> bpp.jezyk?  match nazwa
   rekord              -> bpp.wydawnictwo_zwarte
   streszczenie        str
 
 bpp.wydawnictwo_zwarte_tytul:
   id              int
-  jezyk           -> bpp.jezyk?  match nazwa in ("abchaski", "Achinese", "Acoli", "Adangme", "Adyghe", "afar", "Afrihili", "Afro-Asiatic languages", "afrykanerski", "Ainu", "ajmara", "akadyjski", "akan", "albański", "Aleut", "Algonquian languages", "Altaic languages", "amharski", "angielski", "Angika")
+  jezyk           -> bpp.jezyk?  match nazwa
   kod_jezyka_pbn  str  "Kod języka wg PBN"
   rekord          -> bpp.wydawnictwo_zwarte
   tytul           str  "Tytuł"
@@ -800,7 +800,7 @@ bpp.patent:
   id                                           int
   impact_factor                                float
   index_copernicus                             float
-  informacja_z                                 -> bpp.zrodlo_informacji?  match nazwa in ("od autora", "od redakcji", "wartość szacunkowa")
+  informacja_z                                 -> bpp.zrodlo_informacji?  match nazwa
   informacje                                   str
   nie_eksportuj_przez_api                      bool
   numer_prawa_wylacznego                       str?  "Numer prawa wyłącznego"
@@ -815,13 +815,13 @@ bpp.patent:
   punktacja_wewnetrzna                         float  "Punktacja wewnętrzna"
   punkty_kbn                                   float  "punkty MNiSW/MEiN"
   recenzowana                                  bool
-  rodzaj_prawa                                 -> bpp.rodzaj_prawa_patentowego?  match nazwa in ("odmiana rośliny", "wynalazek", "wzór przemysłowy", "wzór użytkowy", "znak towarowy")
+  rodzaj_prawa                                 -> bpp.rodzaj_prawa_patentowego?  match nazwa
   rok                                          int
   search_index                                 unknown
   slowa_kluczowe                               -> taggit.tag?  "Słowa kluczowe -- język polski" — Lista słów kluczowych -- język polski.
   slowa_kluczowe_eng                           unknown?  "Słowa kluczowe -- język angielski" — Lista słów kluczowych -- język angielski
   slug                                         str?
-  status_korekty                               -> bpp.status_korekty  match nazwa in ("po korekcie", "przed korektą", "w trakcie korekty")
+  status_korekty                               -> bpp.status_korekty  match nazwa
   strony                                       str
   szczegoly                                    str  "Szczegóły" — Np. str. 23-45
   tekst_po_ostatnim_autorze                    str?
@@ -858,7 +858,7 @@ bpp.wydawnictwo_zwarte_autor:
   afiliuje               bool
   autor                  -> bpp.autor
   data_oswiadczenia      date?  "Data oświadczenia" — Informacja eksportowana do PBN, gdy uzupełniono
-  dyscyplina_naukowa     -> bpp.dyscyplina_naukowa?  match nazwa in ("archeologia", "architektura i urbanistyka", "astronomia", "automatyka, elektronika, elektrotechnika i technologie kosmiczne", "biologia medyczna", "biotechnologia", "ekonomia i finanse", "etnologia i antropologia kulturowa", "filozofia", "geografia społeczno-ekonomiczna i gospodarka przestrzenna", "historia", "informatyka", "informatyka techniczna i telekomunikacja", "inżynieria bezpieczeństwa", "inżynieria biomedyczna", "inżynieria chemiczna", "inżynieria lądowa, geodezja i transport", "inżynieria materiałowa", "inżynieria mechaniczna", "inżynieria środowiska, górnictwo i energetyka")
+  dyscyplina_naukowa     -> bpp.dyscyplina_naukowa?  match nazwa
   id                     int
   jednostka              -> bpp.jednostka
   kierunek_studiow       -> bpp.kierunek_studiow?
@@ -869,7 +869,7 @@ bpp.wydawnictwo_zwarte_autor:
   profil_orcid           bool  "Praca w profilu ORCID autora" — Zaznacz, jeżeli praca znajdje się na profilu ORCID autora
   przypieta              bool
   rekord                 -> bpp.wydawnictwo_zwarte
-  typ_odpowiedzialnosci  -> bpp.typ_odpowiedzialnosci  match nazwa in ("autor", "autor korespondencyjny", "komentator", "opracował", "recenzent", "redaktor", "redaktor naukowy wydania polskiego", "tłumacz", "tłumacz z języka angielskiego")  "Typ odpowiedzialności"
+  typ_odpowiedzialnosci  -> bpp.typ_odpowiedzialnosci  match nazwa  "Typ odpowiedzialności"
   upowaznienie_pbn       bool  "Upoważnienie PBN" — Tik w polu "upoważnienie PBN" oznacza, że dany autor upoważnił Uczelnię do sprawozdania tej publikacji w ocenie parametrycznej Uczelni
   zapisany_jako          str
   zatrudniony            bool
@@ -904,7 +904,7 @@ bpp.seria_wydawnicza:
   wydawnictwo_zwarte  -> bpp.wydawnictwo_zwarte?
 
 bpp.wydawnictwo_zwarte_zewnetrzna_baza_danych:
-  baza    -> bpp.zewnetrzna_baza_danych  match nazwa in ("Scopus", "Web of Science")
+  baza    -> bpp.zewnetrzna_baza_danych  match nazwa
   id      int
   info    str  "Informacje dodatkowe"
   rekord  -> bpp.wydawnictwo_zwarte
@@ -952,20 +952,20 @@ bpp.funkcja_autora:
 
 bpp.autor_dyscyplina:
   autor                  -> bpp.autor
-  dyscyplina_naukowa     -> bpp.dyscyplina_naukowa  match nazwa in ("archeologia", "architektura i urbanistyka", "astronomia", "automatyka, elektronika, elektrotechnika i technologie kosmiczne", "biologia medyczna", "biotechnologia", "ekonomia i finanse", "etnologia i antropologia kulturowa", "filozofia", "geografia społeczno-ekonomiczna i gospodarka przestrzenna", "historia", "informatyka", "informatyka techniczna i telekomunikacja", "inżynieria bezpieczeństwa", "inżynieria biomedyczna", "inżynieria chemiczna", "inżynieria lądowa, geodezja i transport", "inżynieria materiałowa", "inżynieria mechaniczna", "inżynieria środowiska, górnictwo i energetyka")
+  dyscyplina_naukowa     -> bpp.dyscyplina_naukowa  match nazwa
   id                     int
   procent_dyscypliny     float?
   procent_subdyscypliny  float?
-  rodzaj_autora          -> ewaluacja_common.rodzaj_autora?  match nazwa in ("doktorant", "inny zatrudniony, nie naukowy", "pracownik badawczy spoza N", "pracownik naukowy w liczbie N")
+  rodzaj_autora          -> ewaluacja_common.rodzaj_autora?  match nazwa
   rok                    int
-  subdyscyplina_naukowa  -> bpp.dyscyplina_naukowa?  match nazwa in ("archeologia", "architektura i urbanistyka", "astronomia", "automatyka, elektronika, elektrotechnika i technologie kosmiczne", "biologia medyczna", "biotechnologia", "ekonomia i finanse", "etnologia i antropologia kulturowa", "filozofia", "geografia społeczno-ekonomiczna i gospodarka przestrzenna", "historia", "informatyka", "informatyka techniczna i telekomunikacja", "inżynieria bezpieczeństwa", "inżynieria biomedyczna", "inżynieria chemiczna", "inżynieria lądowa, geodezja i transport", "inżynieria materiałowa", "inżynieria mechaniczna", "inżynieria środowiska, górnictwo i energetyka")
+  subdyscyplina_naukowa  -> bpp.dyscyplina_naukowa?  match nazwa
   wymiar_etatu           float?
   zatrudnienie_do        datetime?
   zatrudnienie_od        datetime?
 
 bpp.autor_jednostka:
   autor                     -> bpp.autor
-  funkcja                   -> bpp.funkcja_autora?  match nazwa in ("adiunkt", "asystent", "kierownik", "młodszy asystent", "starszy asystent")
+  funkcja                   -> bpp.funkcja_autora?  match nazwa
   grupa_pracownicza         -> bpp.grupa_pracownicza?
   id                        int
   jednostka                 -> bpp.jednostka
@@ -976,7 +976,7 @@ bpp.autor_jednostka:
 
 bpp.cache_punktacja_autora:
   autor       -> bpp.autor
-  dyscyplina  -> bpp.dyscyplina_naukowa  match nazwa in ("archeologia", "architektura i urbanistyka", "astronomia", "automatyka, elektronika, elektrotechnika i technologie kosmiczne", "biologia medyczna", "biotechnologia", "ekonomia i finanse", "etnologia i antropologia kulturowa", "filozofia", "geografia społeczno-ekonomiczna i gospodarka przestrzenna", "historia", "informatyka", "informatyka techniczna i telekomunikacja", "inżynieria bezpieczeństwa", "inżynieria biomedyczna", "inżynieria chemiczna", "inżynieria lądowa, geodezja i transport", "inżynieria materiałowa", "inżynieria mechaniczna", "inżynieria środowiska, górnictwo i energetyka")
+  dyscyplina  -> bpp.dyscyplina_naukowa  match nazwa
   id          int
   jednostka   -> bpp.jednostka
   pkdaut      float
@@ -987,7 +987,7 @@ bpp.patent_autor:
   afiliuje               bool
   autor                  -> bpp.autor
   data_oswiadczenia      date?  "Data oświadczenia" — Informacja eksportowana do PBN, gdy uzupełniono
-  dyscyplina_naukowa     -> bpp.dyscyplina_naukowa?  match nazwa in ("archeologia", "architektura i urbanistyka", "astronomia", "automatyka, elektronika, elektrotechnika i technologie kosmiczne", "biologia medyczna", "biotechnologia", "ekonomia i finanse", "etnologia i antropologia kulturowa", "filozofia", "geografia społeczno-ekonomiczna i gospodarka przestrzenna", "historia", "informatyka", "informatyka techniczna i telekomunikacja", "inżynieria bezpieczeństwa", "inżynieria biomedyczna", "inżynieria chemiczna", "inżynieria lądowa, geodezja i transport", "inżynieria materiałowa", "inżynieria mechaniczna", "inżynieria środowiska, górnictwo i energetyka")
+  dyscyplina_naukowa     -> bpp.dyscyplina_naukowa?  match nazwa
   id                     int
   jednostka              -> bpp.jednostka
   kierunek_studiow       -> bpp.kierunek_studiow?
@@ -998,7 +998,7 @@ bpp.patent_autor:
   profil_orcid           bool  "Praca w profilu ORCID autora" — Zaznacz, jeżeli praca znajdje się na profilu ORCID autora
   przypieta              bool
   rekord                 -> bpp.patent
-  typ_odpowiedzialnosci  -> bpp.typ_odpowiedzialnosci  match nazwa in ("autor", "autor korespondencyjny", "komentator", "opracował", "recenzent", "redaktor", "redaktor naukowy wydania polskiego", "tłumacz", "tłumacz z języka angielskiego")  "Typ odpowiedzialności"
+  typ_odpowiedzialnosci  -> bpp.typ_odpowiedzialnosci  match nazwa  "Typ odpowiedzialności"
   upowaznienie_pbn       bool  "Upoważnienie PBN" — Tik w polu "upoważnienie PBN" oznacza, że dany autor upoważnił Uczelnię do sprawozdania tej publikacji w ocenie parametrycznej Uczelni
   zapisany_jako          str
   zatrudniony            bool
@@ -1036,7 +1036,7 @@ bpp.wydawnictwo_ciagle_autor:
   afiliuje               bool
   autor                  -> bpp.autor
   data_oswiadczenia      date?  "Data oświadczenia" — Informacja eksportowana do PBN, gdy uzupełniono
-  dyscyplina_naukowa     -> bpp.dyscyplina_naukowa?  match nazwa in ("archeologia", "architektura i urbanistyka", "astronomia", "automatyka, elektronika, elektrotechnika i technologie kosmiczne", "biologia medyczna", "biotechnologia", "ekonomia i finanse", "etnologia i antropologia kulturowa", "filozofia", "geografia społeczno-ekonomiczna i gospodarka przestrzenna", "historia", "informatyka", "informatyka techniczna i telekomunikacja", "inżynieria bezpieczeństwa", "inżynieria biomedyczna", "inżynieria chemiczna", "inżynieria lądowa, geodezja i transport", "inżynieria materiałowa", "inżynieria mechaniczna", "inżynieria środowiska, górnictwo i energetyka")
+  dyscyplina_naukowa     -> bpp.dyscyplina_naukowa?  match nazwa
   id                     int
   jednostka              -> bpp.jednostka
   kierunek_studiow       -> bpp.kierunek_studiow?
@@ -1047,7 +1047,7 @@ bpp.wydawnictwo_ciagle_autor:
   profil_orcid           bool  "Praca w profilu ORCID autora" — Zaznacz, jeżeli praca znajdje się na profilu ORCID autora
   przypieta              bool
   rekord                 -> bpp.wydawnictwo_ciagle
-  typ_odpowiedzialnosci  -> bpp.typ_odpowiedzialnosci  match nazwa in ("autor", "autor korespondencyjny", "komentator", "opracował", "recenzent", "redaktor", "redaktor naukowy wydania polskiego", "tłumacz", "tłumacz z języka angielskiego")  "Typ odpowiedzialności"
+  typ_odpowiedzialnosci  -> bpp.typ_odpowiedzialnosci  match nazwa  "Typ odpowiedzialności"
   upowaznienie_pbn       bool  "Upoważnienie PBN" — Tik w polu "upoważnienie PBN" oznacza, że dany autor upoważnił Uczelnię do sprawozdania tej publikacji w ocenie parametrycznej Uczelni
   zapisany_jako          str
   zatrudniony            bool
@@ -1091,7 +1091,7 @@ bpp.tryb_openaccess_wydawnictwo_ciagle:
   wydawnictwo_ciagle  -> bpp.wydawnictwo_ciagle?
 
 bpp.wydawnictwo_ciagle_zewnetrzna_baza_danych:
-  baza    -> bpp.zewnetrzna_baza_danych  match nazwa in ("Scopus", "Web of Science")
+  baza    -> bpp.zewnetrzna_baza_danych  match nazwa
   id      int
   info    str  "Informacje dodatkowe"
   rekord  -> bpp.wydawnictwo_ciagle
@@ -1125,3 +1125,49 @@ bpp.wymiar_etatu:
   autor_jednostka  -> bpp.autor_jednostka?
   id               int
   nazwa            str
+
+dictionaries (shared relation values, referenced above):
+  bpp.charakter_formalny
+    nazwa: "Artykuł w czasopismie", "Broszura", "Czasopismo", "Dokument elektroniczny", "Editorial", "Fragment", "inne", "Komentarz", "Książka", "Książka w języku obcym", "Książka w języku polskim", "List do redakcji", "Patent", "Podręcznik akademicki", "Polski Referat Zjazdowy", "Polskie streszczenie zjazdowe", "Poradnik zawodowy", "Poster - streszczenie", "Praca doktorska", "Praca habilitacyjna"
+  bpp.jezyk
+    nazwa: "abchaski", "Achinese", "Acoli", "Adangme", "Adyghe", "afar", "Afrihili", "Afro-Asiatic languages", "afrykanerski", "Ainu", "ajmara", "akadyjski", "akan", "albański", "Aleut", "Algonquian languages", "Altaic languages", "amharski", "angielski", "Angika"
+  bpp.czas_udostepnienia_openaccess
+    nazwa: "po opublikowaniu", "przed opublikowaniem", "w momencie opublikowania"
+  bpp.licencja_openaccess
+    nazwa: "Creative Commons - Universal - Przekazanie do Domeny Publicznej (CC0 1.0)", "Creative Commons - Uznanie Autorstwa - Bez utworów zależnych (CC-BY-ND)", "Creative Commons - Uznanie Autorstwa - Na Tych Samych Warunkach (CC-BY-SA)", "Creative Commons - Uznanie Autorstwa - Użycie niekomercyjne - Bez utworów zależnych (CC-BY-NC-ND)", "Creative Commons - Uznanie Autorstwa - Użycie niekomercyjne - Na tych samych warunkach (CC-BY-NC-SA)", "Creative Commons - Uznanie Autorstwa - Użycie niekomercyjne (CC-BY-NC);", "Creative Commons - Uznanie Autorstwa (CC-BY)", "inna otwarta licencja"
+  bpp.wersja_tekstu_openaccess
+    nazwa: "Inna", "Oryginalna wersja autorska", "Ostateczna wersja autorska", "Ostateczna wersja opublikowana"
+  bpp.status_korekty
+    nazwa: "po korekcie", "przed korektą", "w trakcie korekty"
+  bpp.typ_kbn
+    nazwa: "inne", "Opis Przypadku", "Podręcznik akademicki", "praca monograficzna", "Praca Oryginalna", "Praca Przeglądowa", "Praca wieloośrodkowa", "Publikacja popularnonaukowa", "Redakcja czasopisma"
+  bpp.dyscyplina_naukowa
+    nazwa: "archeologia", "architektura i urbanistyka", "astronomia", "automatyka, elektronika, elektrotechnika i technologie kosmiczne", "biologia medyczna", "biotechnologia", "ekonomia i finanse", "etnologia i antropologia kulturowa", "filozofia", "geografia społeczno-ekonomiczna i gospodarka przestrzenna", "historia", "informatyka", "informatyka techniczna i telekomunikacja", "inżynieria bezpieczeństwa", "inżynieria biomedyczna", "inżynieria chemiczna", "inżynieria lądowa, geodezja i transport", "inżynieria materiałowa", "inżynieria mechaniczna", "inżynieria środowiska, górnictwo i energetyka"
+  bpp.typ_odpowiedzialnosci
+    nazwa: "autor", "autor korespondencyjny", "komentator", "opracował", "recenzent", "redaktor", "redaktor naukowy wydania polskiego", "tłumacz", "tłumacz z języka angielskiego"
+  bpp.charakter_pbn
+    help_text: "", " ", "Artykuł przeglądowy stanowi podsumowanie aktualnego stanu badań w danym obszarze tematycznym.", "Hasło encykolpedyczne/słownikowe/leksykonowe", "Monografia naukowa to spójne tematycznie, wyczerpujące opracowanie naukowe. W PBN za monografie naukowe uważane są również zbiorowe książki pokonferencyjne (tzw. conference proceedings). Jeśli dodajesz zbiorową książkę pokonferencyjną, pamiętaj o tym, by zaznaczyć również pola "Publikacja zbiorowa" oraz "Publikacja konferencyjna"", "Np. katalog zabytków", "Oryginalny artykuł naukowy przedstawia rezultaty oryginalnych badań naukowych lub eksperymentu.", "Publikacja podlegała recenzji naukowej", "Wstęp/Wprowadzenie/Przedmowa"
+  bpp.zrodlo_informacji
+    nazwa: "od autora", "od redakcji", "wartość szacunkowa"
+  bpp.tryb_openaccess_wydawnictwo_zwarte
+    nazwa: "Inne", "Otwarte repositorium", "Witryna wydawcy"
+  bpp.zewnetrzna_baza_danych
+    nazwa: "Scopus", "Web of Science"
+  bpp.rodzaj_zrodla
+    nazwa: "periodyk", "wydawnictwo", "źródło nieindeksowane"
+  bpp.zasieg_zrodla
+    nazwa: "krajowy", "międzynarodowy"
+  bpp.funkcja_autora
+    nazwa: "adiunkt", "asystent", "kierownik", "młodszy asystent", "starszy asystent"
+  bpp.plec
+    nazwa: "kobieta", "mężczyzna"
+  bpp.tytul
+    nazwa: "doktor", "doktor habilitowany", "doktor habilitowany medycyny", "doktor habilitowany nauk farmaceutycznych", "doktor habilitowany nauk humanistycznych", "doktor habilitowany nauk przyrodniczych", "doktor nauk chemicznych", "doktor nauk farmaceutycznych", "doktor nauk fizycznych", "doktor nauk humanistycznych", "doktor nauk medycznych", "doktor nauk o kulturze fizycznej", "doktor nauk prawnych", "doktor nauk przyrodniczych", "doktor nauk rolniczych", "doktor nauk weterynaryjnych", "dr hab. inż.", "dr inż.", "lekarz", "lekarz dentysta"
+  bpp.rodzajjednostki
+    nazwa: "Koło naukowe", "Standard", "Wydział"
+  bpp.tryb_openaccess_wydawnictwo_ciagle
+    nazwa: "Inne", "Otwarte czasopismo", "Otwarte repositorium"
+  bpp.rodzaj_prawa_patentowego
+    nazwa: "odmiana rośliny", "wynalazek", "wzór przemysłowy", "wzór użytkowy", "znak towarowy"
+  ewaluacja_common.rodzaj_autora
+    nazwa: "doktorant", "inny zatrudniony, nie naukowy", "pracownik badawczy spoza N", "pracownik naukowy w liczbie N"
