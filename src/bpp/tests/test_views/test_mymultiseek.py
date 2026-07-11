@@ -810,9 +810,15 @@ def test_multiseek_export_html_tytul_z_html_jest_escapowany(
     assert "<b>ZNACZNIK" not in content
 
 
+@pytest.mark.django_db
 def test_report_body_table_numeruje_od_start_index_zero():
     """Regression off-by-one: eksport tabeli (start_index=0) numeruje od 1,
-    nie od 0. Partial renderowany bezpośrednio z fake-elementami (bez DB)."""
+    nie od 0. Partial renderowany bezpośrednio z fake-elementami.
+
+    Wymaga ``django_db``, mimo że rekordy są sztuczne: loader dbtemplates
+    z ``DBTEMPLATES_SKIP_UNKNOWN_NAMES`` odpytuje raz ``Template`` (znane
+    nazwy) przy renderze — bez markera trafia to na blokadę bazy pytest-django
+    zależnie od kolejności testów w workerze xdist (flaky)."""
     from types import SimpleNamespace
 
     from django.template.loader import render_to_string
