@@ -1,6 +1,7 @@
 from django.urls import include, path
 from oauth2_provider import urls as oauth2_urls
 
+from oauth_mcp.views_dcr import DynamicClientRegistrationView
 from oauth_mcp.views_metadata import oauth_authorization_server_metadata
 
 # BEZ `app_name` na tym module! Deklaracja `app_name="oauth_mcp"` zagnieżdżałaby
@@ -12,6 +13,7 @@ from oauth_mcp.views_metadata import oauth_authorization_server_metadata
 # NIE management-views (/o/applications/ CRUD dostępne każdemu zalogowanemu).
 urlpatterns = [
     path("o/", include((oauth2_urls.base_urlpatterns, "oauth2_provider"))),
+    path("o/register/", DynamicClientRegistrationView.as_view(), name="dcr"),
     path(
         ".well-known/oauth-authorization-server",
         oauth_authorization_server_metadata,
