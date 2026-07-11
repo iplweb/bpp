@@ -14,10 +14,15 @@ from rest_framework.response import Response
 
 from api_v1.permissions import MoznaUzywacZapytania
 from api_v1.serializers.szukaj import SzukajSerializer
+from api_v1.serializers.zapytanie import (
+    AutorKompaktSerializer,
+    AutorzyKompaktSerializer,
+)
 from api_v1.viewsets.szukaj import MODELE_DETAIL_VIEWNAME
 from bpp.djangoql_errors import error_payload
 from bpp.djangoql_schema import RekordLLMSchema
-from bpp.models.cache import Rekord
+from bpp.models import Autor
+from bpp.models.cache import Autorzy, Rekord
 
 #: Twardy cap paginacji — jedno żądanie nie ciągnie całej bazy.
 MAKS_LIMIT = 100
@@ -60,3 +65,29 @@ class ZapytanieAPIBaseViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
 class ZapytanieRekordViewSet(ZapytanieAPIBaseViewSet):
     model = Rekord
     serializer_class = SzukajSerializer
+
+
+class ZapytanieAutorViewSet(ZapytanieAPIBaseViewSet):
+    model = Autor
+    serializer_class = AutorKompaktSerializer
+
+
+class ZapytanieAutorzyViewSet(ZapytanieAPIBaseViewSet):
+    model = Autorzy
+    serializer_class = AutorzyKompaktSerializer
+
+    def get_queryset(self):
+        # select_related ucina N+1 z kompaktowego serializera dla FK-i,
+        # które są zawsze wypełnione (rekord/autor/jednostka/
+        # typ_odpowiedzialnosci). ``dyscyplina_naukowa`` bywa NULL (autor
+        # bez przypisanej dyscypliny na dany rok), a pole modelu nie ma
+        # ``null=True`` — Django wygenerowałoby dla niego INNER JOIN i po
+        # cichu zgubiłoby takie wiersze wyniku (zweryfikowane: 0 wierszy
+        # zamiast 1 przy select_related, poprawnie przy prefetch_related).
+        # Dlatego dyscyplina_naukowa idzie osobnym, zbiorczym prefetchem.
+        return (
+            super()
+            .get_queryset()
+            .select_related("rekord", "autor", "jednostka", "typ_odpowiedzialnosci")
+            .prefetch_related("dyscyplina_naukowa")
+        )

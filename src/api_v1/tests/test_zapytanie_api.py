@@ -69,3 +69,31 @@ def test_zapytanie_rekord_bledne_q_400():
     )
     assert resp.status_code == 400
     assert "error" in resp.data
+
+
+@pytest.mark.django_db
+def test_zapytanie_autor_happy():
+    baker.make("bpp.Autor", nazwisko="Kowalski")
+    resp = _staff_client().get("/api/v1/zapytanie/autor/", {"q": 'nazwisko ~ "Kowal"'})
+    assert resp.status_code == 200
+    assert any(r["nazwisko"] == "Kowalski" for r in resp.data["results"])
+
+
+@pytest.mark.django_db
+def test_zapytanie_autorzy_happy(
+    wydawnictwo_ciagle, autor_jan_kowalski, jednostka, typy_odpowiedzialnosci
+):
+    wydawnictwo_ciagle.rok = 2023
+    wydawnictwo_ciagle.tytul_oryginalny = "Praca X"
+    wydawnictwo_ciagle.save()
+    wydawnictwo_ciagle.dodaj_autora(autor_jan_kowalski, jednostka)
+    from bpp.models import Rekord
+
+    Rekord.objects.full_refresh()
+
+    resp = _staff_client().get("/api/v1/zapytanie/autorzy/", {"q": "rekord.rok = 2023"})
+    assert resp.status_code == 200
+    assert len(resp.data["results"]) >= 1
+    wpis = resp.data["results"][0]
+    assert "zapisany_jako" in wpis and "rekord" in wpis
+    assert wpis["rekord"]["rekord_url"] is not None
