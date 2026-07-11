@@ -93,7 +93,7 @@ def test_kafelek_jednostki_widoczny_z_licznikami(admin_client, admin_user):
     resp = admin_client.get(_url(imp))
     tresc = resp.content.decode("utf-8")
     assert reverse("import_pracownikow:jednostki", kwargs={"pk": imp.pk}) in tresc
-    assert "2 do utworzenia" in tresc
+    assert "2 jednostek do utworzenia" in tresc
     assert "1 do sprawdzenia" in tresc
 
 
@@ -209,6 +209,86 @@ def test_krok2_przycisk_zapisu_za_wymaganym_potwierdzeniem(admin_client, admin_u
     # kafle ludzi (z XLS + spoza XLS) obecne raz — nie zdublowane
     assert tresc.count('fi-torso"></span> Ludzie z XLS') == 1
     assert tresc.count("Ludzie spoza XLS") == 1
+
+
+@pytest.mark.django_db
+def test_krok1_zobacz_tytuly_gdy_wszystkie_dopasowane(admin_client, admin_user):
+    """Item 2: w Kroku 1 „Zobacz tytuły" jest nawet gdy wszystkie tytuły
+    dopasowane (brak decyzji) — wiersz z ustawionym tytułem wystarcza; komunikat
+    mówi, że nic nowego nie powstanie."""
+    from bpp.models import Tytul
+
+    imp = _imp(admin_user)  # PRZEANALIZOWANY (Krok 1)
+    tytul = baker.make(Tytul, nazwa="Tytuł testowy QA", skrot="qa-tst")
+    _row(imp, STATUS_TWARDY, tytul=tytul)
+    resp = admin_client.get(_url(imp))
+    tresc = resp.content.decode("utf-8")
+    assert "Zobacz tytuły" in tresc
+    assert reverse("import_pracownikow:tytuly", kwargs={"pk": imp.pk}) in tresc
+    # komunikat „wszystko dopasowane" (fraza w jednej linii szablonu)
+    assert "Wszystkie tytuły z pliku są już w bazie" in tresc
+
+
+@pytest.mark.django_db
+def test_krok2_bramka_tytulow_blokuje_zapis_osob(admin_client, admin_user):
+    """Item 3: w Kroku 2 z nierozstrzygniętymi tytułami (do utworzenia) zamiast
+    zapisu osób jest blok „Najpierw tytuły" + „Utwórz brakujące tytuły";
+    „Zapisz osoby do bazy" jest ukryte."""
+    imp = _imp(admin_user, stan=ImportPracownikow.STAN_STRUKTURA_ZINTEGROWANA)
+    baker.make(
+        ImportPracownikowTytul,
+        parent=imp,
+        nazwa_zrodlowa="prof. x",
+        tryb=ImportPracownikowTytul.TRYB_BRAK,
+        utworzony=None,
+        decyzja=ImportPracownikowTytul.DECYZJA_AKCEPTUJ,
+    )
+    resp = admin_client.get(_url(imp))
+    tresc = resp.content.decode("utf-8")
+    assert "Najpierw tytuły" in tresc
+    assert "Utwórz brakujące tytuły" in tresc
+    assert "Zapisz osoby do bazy" not in tresc
+
+
+@pytest.mark.django_db
+def test_krok2_zapis_osob_gdy_tytuly_rozstrzygniete(admin_client, admin_user):
+    """Item 3: gdy tytuły rozstrzygnięte (``utworzony`` ustawiony) — Krok 2
+    pokazuje zapis osób, bez bloku bramki tytułów."""
+    from bpp.models import Tytul
+
+    imp = _imp(admin_user, stan=ImportPracownikow.STAN_STRUKTURA_ZINTEGROWANA)
+    t = baker.make(Tytul, nazwa="Tytuł testowy QA", skrot="qa-tst")
+    baker.make(
+        ImportPracownikowTytul,
+        parent=imp,
+        nazwa_zrodlowa="dr",
+        tryb=ImportPracownikowTytul.TRYB_BRAK,
+        utworzony=t,
+        decyzja=ImportPracownikowTytul.DECYZJA_AKCEPTUJ,
+    )
+    resp = admin_client.get(_url(imp))
+    tresc = resp.content.decode("utf-8")
+    assert "Zapisz osoby do bazy" in tresc
+    assert "Najpierw tytuły" not in tresc
+
+
+@pytest.mark.django_db
+def test_krok2_pomin_tytul_nie_blokuje(admin_client, admin_user):
+    """Item 3: tytuł z decyzją POMIN (świadome pominięcie) NIE blokuje importu
+    osób — to rozstrzygnięcie, choć ``utworzony`` zostaje None."""
+    imp = _imp(admin_user, stan=ImportPracownikow.STAN_STRUKTURA_ZINTEGROWANA)
+    baker.make(
+        ImportPracownikowTytul,
+        parent=imp,
+        nazwa_zrodlowa="x",
+        tryb=ImportPracownikowTytul.TRYB_BRAK,
+        utworzony=None,
+        decyzja=ImportPracownikowTytul.DECYZJA_POMIN,
+    )
+    resp = admin_client.get(_url(imp))
+    tresc = resp.content.decode("utf-8")
+    assert "Zapisz osoby do bazy" in tresc
+    assert "Najpierw tytuły" not in tresc
 
 
 @pytest.mark.django_db

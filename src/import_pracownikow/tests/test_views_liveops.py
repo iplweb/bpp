@@ -5,7 +5,11 @@ from django.urls import reverse
 from model_bakery import baker
 
 from bpp.models import Autor, Jednostka
-from import_pracownikow.models import ImportPracownikow, ImportPracownikowRow
+from import_pracownikow.models import (
+    ImportPracownikow,
+    ImportPracownikowRow,
+    ImportPracownikowTytul,
+)
 
 
 @pytest.mark.django_db
@@ -158,9 +162,10 @@ def test_zatwierdz_osoby_blokowane_w_przeanalizowany(admin_client, admin_user):
 
 
 @pytest.mark.django_db
-def test_zatwierdz_struktura_blokowana_po_strukturze(admin_client, admin_user):
-    """Bramka: strukturę wolno zapisać tylko z podglądu — po jej zapisaniu
-    (struktura_zintegrowana) ponowny zapis struktury jest odrzucany."""
+def test_zatwierdz_jednostki_blokowane_po_strukturze(admin_client, admin_user):
+    """Bramka: zakres „same jednostki" wolno odpalić tylko z podglądu — po
+    zapisaniu struktury (struktura_zintegrowana) jest odrzucany (bez sensu
+    tworzyć jednostki drugi raz)."""
     imp = baker.make(
         ImportPracownikow,
         owner=admin_user,
@@ -172,6 +177,53 @@ def test_zatwierdz_struktura_blokowana_po_strukturze(admin_client, admin_user):
     assert resp.status_code == 400
     imp.refresh_from_db()
     assert imp.stan == ImportPracownikow.STAN_STRUKTURA_ZINTEGROWANA
+
+
+@pytest.mark.django_db
+def test_zatwierdz_osoby_blokowane_gdy_nierozstrzygniete_tytuly(
+    admin_client, admin_user
+):
+    """Item 3: import osób (pelny) z fazy osób jest ZABLOKOWANY, dopóki są
+    tytuły z pliku do utworzenia (nierozstrzygnięte) — import osób nie tworzy
+    ich po cichu. Stan nie rusza."""
+    imp = baker.make(
+        ImportPracownikow,
+        owner=admin_user,
+        stan=ImportPracownikow.STAN_STRUKTURA_ZINTEGROWANA,
+    )
+    baker.make(
+        ImportPracownikowTytul,
+        parent=imp,
+        nazwa_zrodlowa="prof. x",
+        tryb=ImportPracownikowTytul.TRYB_BRAK,
+        utworzony=None,
+        decyzja=ImportPracownikowTytul.DECYZJA_AKCEPTUJ,
+    )
+    url = reverse("import_pracownikow:zatwierdz", kwargs={"pk": imp.pk})
+    with patch.object(ImportPracownikow, "run", lambda self, p: None):
+        resp = admin_client.post(url, {"zakres": "pelny"})
+    assert resp.status_code == 400
+    imp.refresh_from_db()
+    assert imp.stan == ImportPracownikow.STAN_STRUKTURA_ZINTEGROWANA
+
+
+@pytest.mark.django_db
+def test_zatwierdz_struktura_dotworzenie_tytulow_z_fazy_osob(admin_client, admin_user):
+    """Item 3: zakres „struktura" (jednostki + tytuły) JEST dopuszczony z fazy
+    osób — to ścieżka „Utwórz brakujące tytuły" (dotworzenie odłożonych tytułów
+    przed importem osób)."""
+    imp = baker.make(
+        ImportPracownikow,
+        owner=admin_user,
+        stan=ImportPracownikow.STAN_STRUKTURA_ZINTEGROWANA,
+    )
+    url = reverse("import_pracownikow:zatwierdz", kwargs={"pk": imp.pk})
+    with patch.object(ImportPracownikow, "run", lambda self, p: None):
+        resp = admin_client.post(url, {"zakres": "struktura"})
+    imp.refresh_from_db()
+    assert imp.stan == ImportPracownikow.STAN_ZATWIERDZONY
+    assert imp.zakres_integracji == ImportPracownikow.ZAKRES_STRUKTURA
+    assert resp.status_code in (204, 302)
 
 
 @pytest.mark.django_db

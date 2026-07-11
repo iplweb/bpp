@@ -29,10 +29,26 @@
             {% if pokaz_jednostki %}
                 <p>
                     <span class="fi-info"></span>
-                    {{ liczniki_jednostek.do_utworzenia }} do utworzenia ·
+                    {{ liczniki_jednostek.do_utworzenia }} jednostek do utworzenia ·
                     {{ liczniki_jednostek.do_sprawdzenia }} do sprawdzenia.
                     <a href="{% url "import_pracownikow:jednostki" parent_object.pk %}"
                        class="button success">Zweryfikuj jednostki</a>
+                </p>
+            {% endif %}
+            {# Item 2: podgląd tytułów — także gdy wszystkie dopasowane (wtedy #}
+            {# „nic nie powstanie"), żeby user zawsze widział, co się stanie. #}
+            {% if ma_tytuly %}
+                <p>
+                    <span class="fi-crown"></span>
+                    {% if pokaz_tytuly %}
+                        {{ liczniki_tytulow.do_utworzenia }} tytułów do utworzenia ·
+                        {{ liczniki_tytulow.do_sprawdzenia }} do sprawdzenia.
+                    {% else %}
+                        Wszystkie tytuły z pliku są już w bazie — nic nowego nie
+                        powstanie.
+                    {% endif %}
+                    <a href="{% url "import_pracownikow:tytuly" parent_object.pk %}"
+                       class="button success">Zobacz tytuły</a>
                 </p>
             {% endif %}
             {# Dwa warianty struktury OBOK siebie (jeden formularz, name=zakres). #}
@@ -48,13 +64,15 @@
                     <span class="fi-crown"></span> Zapisz jednostki + tytuły
                 </button>
             </form>
-            {# Doprecyzowanie (uwaga reviewera #2): „tylko jednostki" ODRACZA #}
-            {# tytuły — zostaną utworzone przy imporcie osób (Krok 2). #}
+            {# Item 3: „tylko jednostki" ODRACZA tytuły, ale import osób ich NIE #}
+            {# utworzy po cichu — Krok 2 poprosi o utworzenie brakujących tytułów #}
+            {# przed zapisem osób. „jednostki + tytuły" robi to od razu. #}
             <p class="help-text">
                 <span class="fi-info"></span>
-                „Zapisz tylko jednostki" odkłada tytuły — zostaną utworzone
-                automatycznie przy imporcie osób (Krok 2). Wybierz „jednostki +
-                tytuły", jeśli chcesz utworzyć tytuły już na tym etapie.
+                „Zapisz tylko jednostki" odkłada tytuły — zanim zaimportujesz
+                osoby, Krok 2 poprosi o ich utworzenie (import osób nie tworzy
+                tytułów po cichu). Wybierz „jednostki + tytuły", żeby utworzyć je
+                już teraz.
             </p>
         </div>
 
@@ -80,32 +98,56 @@
                 {% include "import_pracownikow/partials/_kafle_ludzie.html" %}
             </div>
 
-            {# Zapis osób ZMIENIA bazę — przycisk na samym dole, za wymaganym #}
-            {# potwierdzeniem. `required` na checkboxie blokuje submit natywnie #}
-            {# (bez JS), dopóki user nie potwierdzi świadomie. #}
-            <div class="callout warning">
-                <p>
-                    <span class="fi-alert"></span> <strong>Uwaga:</strong>
-                    zapisanie osób zmodyfikuje bazę danych — utworzy lub zmieni
-                    autorów, powiązania z jednostkami i przepięcia prac.
-                    Cofnięcie wymaga ręcznej korekty.
-                </p>
-                {# Ostrzeżenie #4 (PR #531): zapis zmienia podstawowe miejsce #}
-                {# pracy — szczegółowy warning tuż przed przyciskiem. #}
-                {% include "import_pracownikow/partials/_ostrzezenie_podstawowe_miejsce.html" %}
-                <form method="post"
-                      action="{% url "import_pracownikow:zatwierdz" parent_object.pk %}">
-                    {% csrf_token %}
-                    <input type="hidden" name="zakres" value="pelny">
-                    <label>
-                        <input type="checkbox" name="potwierdzenie_zapisu" required>
-                        Rozumiem, że to zapisze zmiany do bazy danych.
-                    </label>
-                    <button type="submit" class="button alert">
-                        <span class="fi-torso"></span> Zapisz osoby do bazy
-                    </button>
-                </form>
-            </div>
+            {% if tytuly_wymagaja_rozstrzygniecia %}
+                {# Item 3: bramka — import osób NIE utworzy tytułów po cichu. #}
+                {# Najpierw trzeba je obejrzeć i utworzyć (zakres=struktura #}
+                {# dopuszczony z fazy osób, idempotentny). #}
+                <div class="callout alert">
+                    <h3><span class="fi-alert"></span> Najpierw tytuły</h3>
+                    <p>W pliku są tytuły, których nie ma jeszcze w bazie
+                        ({{ liczniki_tytulow.do_utworzenia }} do utworzenia ·
+                        {{ liczniki_tytulow.do_sprawdzenia }} do sprawdzenia).
+                        Import osób <strong>nie</strong> utworzy ich po cichu —
+                        najpierw je obejrzyj i utwórz.</p>
+                    <a href="{% url "import_pracownikow:tytuly" parent_object.pk %}"
+                       class="button success">Zobacz tytuły</a>
+                    <form method="post"
+                          action="{% url "import_pracownikow:zatwierdz" parent_object.pk %}">
+                        {% csrf_token %}
+                        <input type="hidden" name="zakres" value="struktura">
+                        <button type="submit" class="button">
+                            <span class="fi-crown"></span> Utwórz brakujące tytuły
+                        </button>
+                    </form>
+                </div>
+            {% else %}
+                {# Zapis osób ZMIENIA bazę — przycisk na samym dole, za wymaganym #}
+                {# potwierdzeniem. `required` na checkboxie blokuje submit #}
+                {# natywnie (bez JS), dopóki user nie potwierdzi świadomie. #}
+                <div class="callout warning">
+                    <p>
+                        <span class="fi-alert"></span> <strong>Uwaga:</strong>
+                        zapisanie osób zmodyfikuje bazę danych — utworzy lub
+                        zmieni autorów, powiązania z jednostkami i przepięcia
+                        prac. Cofnięcie wymaga ręcznej korekty.
+                    </p>
+                    {# Ostrzeżenie #4 (PR #531): zapis zmienia podstawowe #}
+                    {# miejsce pracy — szczegółowy warning tuż przed przyciskiem. #}
+                    {% include "import_pracownikow/partials/_ostrzezenie_podstawowe_miejsce.html" %}
+                    <form method="post"
+                          action="{% url "import_pracownikow:zatwierdz" parent_object.pk %}">
+                        {% csrf_token %}
+                        <input type="hidden" name="zakres" value="pelny">
+                        <label>
+                            <input type="checkbox" name="potwierdzenie_zapisu" required>
+                            Rozumiem, że to zapisze zmiany do bazy danych.
+                        </label>
+                        <button type="submit" class="button alert">
+                            <span class="fi-torso"></span> Zapisz osoby do bazy
+                        </button>
+                    </form>
+                </div>
+            {% endif %}
         </div>
     {% endif %}
 
@@ -127,7 +169,9 @@
             </div>
         {% endif %}
 
-        {% if pokaz_tytuly %}
+        {# Kafelek „Tytuły" tylko POZA flow Krok 1/Krok 2 (audyt) — w Kroku 1 #}
+        {# jest linia „Zobacz tytuły" w callout, a w Kroku 2 blok bramki. #}
+        {% if pokaz_tytuly and not faza_struktury and not moze_importowac_osoby %}
             <div class="medium-6 columns">
                 <div class="callout">
                     <h3><span class="fi-crown"></span> Tytuły</h3>

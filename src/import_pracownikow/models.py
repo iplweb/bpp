@@ -411,6 +411,35 @@ class ImportPracownikow(LiveOperation):
             ImportPracownikowTytul.TRYB_ZGADYWANIE,
         )
 
+    @property
+    def ma_tytuly(self):
+        """Czy import w ogóle dotyka tytułów (kolumna tytułu w pliku) — decyduje
+        o pokazaniu afordancji „Zobacz tytuły" na hubie (item 2). Prawda, gdy są
+        decyzje o tytułach ALBO któryś wiersz ma dopasowany tytuł."""
+        return (
+            self.tytuly_do_decyzji.exists()
+            or self.importpracownikowrow_set.filter(tytul__isnull=False).exists()
+        )
+
+    @property
+    def tytuly_wymagaja_rozstrzygniecia(self):
+        """Czy są tytuły z pliku, które import osób UTWORZYŁBY/USTAWIŁ, a które
+        NIE zostały jeszcze zmaterializowane (``utworzony=None``) i nie są
+        świadomie pominięte (``decyzja != pomin``).
+
+        Bramka item 3: import osób (zakres pełny) nie może po cichu tworzyć
+        tytułów — najpierw trzeba je rozstrzygnąć/utworzyć. „Zapisz tylko
+        jednostki" odkłada tytuły → po tej ścieżce ta właściwość jest prawdą i
+        import osób pozostaje zablokowany, dopóki tytuły nie trafią do bazy
+        (przycisk „Utwórz brakujące tytuły" w Kroku 2 albo „Zapisz jednostki +
+        tytuły" w Kroku 1). ``pomin`` liczymy jako rozstrzygnięte (świadoma
+        decyzja: nie ustawiaj tytułu)."""
+        return (
+            self.tytuly_do_decyzji.filter(utworzony__isnull=True)
+            .exclude(decyzja=ImportPracownikowTytul.DECYZJA_POMIN)
+            .exists()
+        )
+
 
 class ImportPracownikowRow(ImportRowMixin, models.Model):
     parent = models.ForeignKey(

@@ -656,6 +656,13 @@ class PodgladImportuView(GroupRequiredMixin, DetailView):
                 "liczniki_tytulow": parent.liczniki_tytulow(),
                 "pokaz_jednostki": parent.jednostki_do_decyzji.exists(),
                 "pokaz_tytuly": parent.tytuly_do_decyzji.exists(),
+                # Item 2: „Zobacz tytuły" w Kroku 1 nawet gdy wszystko dopasowane.
+                "ma_tytuly": parent.ma_tytuly,
+                # Item 3: bramka — import osób zablokowany, dopóki są tytuły z
+                # pliku nierozstrzygnięte (do utworzenia, nie zmaterializowane).
+                "tytuly_wymagaja_rozstrzygniecia": (
+                    parent.tytuly_wymagaja_rozstrzygniecia
+                ),
                 "odpiecia_count": odpiecia_count,
                 "pary_z_pliku_puste": pary_z_pliku_puste,
                 # Ostrzeżenie: wszystkie jednostki odroczone → wszystkie aktywne
@@ -1000,41 +1007,62 @@ class ZatwierdzImportView(_PkOwnerRestartMixin):
     struktura), same jednostki, albo jednostki + tytuły (bez osób).
 
     Bramka „najpierw struktura, potem osoby":
-    - zakres STRUKTURALNY (jednostki / jednostki+tytuły) wolno odpalić TYLKO z
-      podglądu (``przeanalizowany``) — to Krok 1;
+    - zakres STRUKTURALNY (jednostki / jednostki+tytuły) wolno odpalić z podglądu
+      (``przeanalizowany``, Krok 1) LUB z fazy osób (``struktura_zintegrowana``,
+      Krok 2) — to drugie służy DOTWORZENIU odłożonych tytułów przed importem
+      osób (item 3; idempotentne — reconcilery mają guard
+      ``utworzona``/``utworzony``);
     - PEŁNY import (osoby) TYLKO po zapisaniu struktury
-      (``struktura_zintegrowana``) — to Krok 2. Importowanie osób bez
-      rozstrzygniętych i zapisanych jednostek nie ma sensu (§ decyzja usera).
+      (``struktura_zintegrowana``, Krok 2) i TYLKO gdy nie ma nierozstrzygniętych
+      tytułów z pliku (item 3 — import osób nie tworzy tytułów po cichu).
+      Importowanie osób bez rozstrzygniętych jednostek nie ma sensu.
     Nieznana/brakująca wartość ``zakres`` → PELNY.
     """
 
     _ZAKRESY_PRAWIDLOWE = {z for z, _ in ImportPracownikow.ZAKRES_CHOICES}
-    _ZAKRESY_STRUKTURALNE = {
-        ImportPracownikow.ZAKRES_JEDNOSTKI,
-        ImportPracownikow.ZAKRES_STRUKTURA,
-    }
 
     def post(self, request, *args, **kwargs):
         obj = self.get_object()  # 404 dla nie-ownera
         zakres = request.POST.get("zakres", ImportPracownikow.ZAKRES_PELNY)
         if zakres not in self._ZAKRESY_PRAWIDLOWE:
             zakres = ImportPracownikow.ZAKRES_PELNY
-        if zakres in self._ZAKRESY_STRUKTURALNE:
-            stan_wymagany = ImportPracownikow.STAN_PRZEANALIZOWANY
-            blad = "Strukturę można zapisać tylko z podglądu (Krok 1)."
+        if zakres == ImportPracownikow.ZAKRES_JEDNOSTKI:
+            # Same jednostki — tylko z podglądu (Krok 1). Po zapisaniu struktury
+            # nie ma sensu ich zapisywać ponownie.
+            stany_wymagane = {ImportPracownikow.STAN_PRZEANALIZOWANY}
+            blad = "Zapis samych jednostek jest możliwy tylko z podglądu (Krok 1)."
+        elif zakres == ImportPracownikow.ZAKRES_STRUKTURA:
+            # Jednostki + tytuły: z podglądu (Krok 1) ALBO dotworzenie odłożonych
+            # tytułów w fazie osób (Krok 2, item 3; idempotentne — reconcilery
+            # jednostek/tytułów mają guard ``utworzona``/``utworzony``).
+            stany_wymagane = {
+                ImportPracownikow.STAN_PRZEANALIZOWANY,
+                ImportPracownikow.STAN_STRUKTURA_ZINTEGROWANA,
+            }
+            blad = (
+                "Strukturę można zapisać z podglądu (Krok 1) albo dotworzyć "
+                "brakujące tytuły w fazie osób (Krok 2)."
+            )
         else:
-            # PELNY = import osób: dozwolony dopiero po zapisaniu struktury.
-            stan_wymagany = ImportPracownikow.STAN_STRUKTURA_ZINTEGROWANA
+            # PELNY = import osób: dopiero po zapisaniu struktury i po
+            # rozstrzygnięciu tytułów (item 3 — brak cichego tworzenia tytułów).
+            if obj.tytuly_wymagaja_rozstrzygniecia:
+                return HttpResponseBadRequest(
+                    "Najpierw utwórz brakujące tytuły z pliku "
+                    "(Krok 2: „Utwórz brakujące tytuły”) — import osób nie "
+                    "tworzy ich po cichu."
+                )
+            stany_wymagane = {ImportPracownikow.STAN_STRUKTURA_ZINTEGROWANA}
             blad = "Najpierw zapisz strukturę (jednostki) — dopiero potem osoby."
         # Atomowy compare-and-set (uwaga reviewera #1): warunkowy UPDATE
-        # ``WHERE stan=stan_wymagany`` przestawia stan na ``zatwierdzony`` tylko
-        # gdy import NADAL jest w stanie wyjściowym. Dwa równoległe zatwierdzenia
-        # (celery z >1 workerem) serializuje baza — dokładnie jedno trafia 1
-        # wiersz i kolejkuje integrację; drugie dostaje 0 → 400. Bez tego oba
-        # przeszłyby bramkę na ``obj.stan`` odczytanym na starcie i wyzwoliłyby
-        # integrację dwa razy (duplikaty autorów/jednostek/przepięć).
+        # ``WHERE stan IN stany_wymagane`` przestawia stan na ``zatwierdzony``
+        # tylko gdy import NADAL jest w stanie wyjściowym. Dwa równoległe
+        # zatwierdzenia (celery z >1 workerem) serializuje baza — dokładnie jedno
+        # trafia 1 wiersz i kolejkuje integrację; drugie dostaje 0 → 400. Bez
+        # tego oba przeszłyby bramkę na ``obj.stan`` odczytanym na starcie i
+        # wyzwoliłyby integrację dwa razy (duplikaty autorów/jednostek/przepięć).
         zmieniono = ImportPracownikow.objects.filter(
-            pk=obj.pk, stan=stan_wymagany
+            pk=obj.pk, stan__in=stany_wymagane
         ).update(stan=ImportPracownikow.STAN_ZATWIERDZONY, zakres_integracji=zakres)
         if not zmieniono:
             return HttpResponseBadRequest(blad)
