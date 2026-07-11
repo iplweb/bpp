@@ -44,3 +44,17 @@ def test_autor_kompakt_bez_tytulu_i_jednostki():
     data = AutorKompaktSerializer(autor, context={"request": req}).data
     assert data["tytul"] == ""
     assert data["aktualna_jednostka"] is None
+
+
+def test_autorzy_kompakt_deklaruje_pola():
+    keys = set(AutorzyKompaktSerializer().fields.keys())
+    assert keys == {
+        "id",
+        "zapisany_jako",
+        "kolejnosc",
+        "autor_url",
+        "rekord",
+        "typ_odpowiedzialnosci",
+        "jednostka",
+        "dyscyplina",
+    }
