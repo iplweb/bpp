@@ -1,5 +1,4 @@
 import json
-import re
 
 from django import forms
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
@@ -17,6 +16,15 @@ from djangoql.serializers import SuggestionsAPISerializer
 from djangoql.views import SuggestionsAPIView
 
 from bpp.const import GR_WPROWADZANIE_DANYCH
+from bpp.djangoql_errors import (
+    error_location as _error_location,
+)
+from bpp.djangoql_errors import (
+    error_payload as _error_payload,
+)
+from bpp.djangoql_errors import (
+    format_error_text as _format_error_text,
+)
 from bpp.djangoql_schema import BppQLSchemaOgraniczony
 from bpp.models import Autor
 from bpp.models.cache import Rekord
@@ -331,58 +339,6 @@ class ZapytanieForm(forms.Form):
             '<code>nazwisko ~ "Kowal" or imiona ~ "Jan"</code>.'
         ),
     )
-
-
-def _format_error_text(exc):
-    """Czytelny komunikat błędu zapytania (łączy komunikaty ValidationError)."""
-    if isinstance(exc, ValidationError):
-        return "; ".join(exc.messages)
-    return str(exc)
-
-
-def _locate_token(query, needle):
-    """1-based ``(line, column)`` wystąpienia ``needle`` w ``query`` albo None.
-
-    Najpierw szuka jako całego słowa (granice nie-słowne, bez kropki z lewej —
-    żeby ``foo`` nie złapało się w ``bar.foo``), z fallbackiem do zwykłego
-    podciągu. Pozwala podświetlić nieznane pole/wartość, którą djangoql wskazuje
-    tylko przez ``exc.value`` (bez pozycji)."""
-    match = re.search(r"(?<![\w.])" + re.escape(needle) + r"(?![\w])", query)
-    pos = match.start() if match else query.find(needle)
-    if pos < 0:
-        return None
-    line = query.count("\n", 0, pos) + 1
-    column = pos - query.rfind("\n", 0, pos)
-    return line, column
-
-
-def _error_location(exc, query):
-    """``(line, column, mark)`` wskazujące miejsce błędu, albo ``(None,)*3``.
-
-    ``mark='to_end'`` — błąd składni/leksera (djangoql niesie ``line``+``column``):
-    podświetlamy ogon zapytania od tej kolumny. ``mark='token'`` — nieznane
-    pole/wartość (djangoql niesie tylko ``value``): lokalizujemy ten jeden token.
-    Most między wyjątkami Pythona a czerwoną falką nakładki ``highlight.js``
-    (idiom z ``djangoql/example_project``)."""
-    line = getattr(exc, "line", None)
-    column = getattr(exc, "column", None)
-    if line and column:
-        return line, column, "to_end"
-    value = getattr(exc, "value", None)
-    if value:
-        loc = _locate_token(query, str(value))
-        if loc:
-            return loc[0], loc[1], "token"
-    return None, None, None
-
-
-def _error_payload(exc, query):
-    """Słownik odpowiedzi JSON błędu: ``{error[, line, column, mark]}``."""
-    payload = {"error": _format_error_text(exc)}
-    line, column, mark = _error_location(exc, query)
-    if line and column:
-        payload.update(line=line, column=column, mark=mark)
-    return payload
 
 
 class ZapytanieView(WprowadzanieDanychOrSuperuserMixin, FormView):
