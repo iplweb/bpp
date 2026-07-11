@@ -166,6 +166,40 @@ def test_llm_fk_options_targets_only_safe_dictionaries():
     assert "wydawca" not in opts.get(Rekord, {})
 
 
+def test_llm_schema_declares_org_names_as_no_value_targets():
+    """RekordLLMSchema deklaruje twardą listę celów (jednostka/wydział/uczelnia),
+    których nazwy nie mają prawa trafić do artefaktu niezależnie od max-fk.
+    Test niezależny od bazy i od wersji djangoql-iplweb."""
+    from bpp.djangoql_schema import RekordLLMSchema
+
+    assert set(RekordLLMSchema.no_value_targets) >= {
+        "bpp.Jednostka",
+        "bpp.Wydzial",
+        "bpp.Uczelnia",
+    }
+
+
+@pytest.mark.django_db
+def test_org_unit_names_never_emitted_even_at_max_fk():
+    """Twarda gwarancja (no_value_targets): nawet przy --max-fk-options 50 i
+    małej liczbie wierszy, nazwy jednostek/uczelni NIE trafiają do opisu.
+    Wymaga djangoql-iplweb >= 0.30.3."""
+    from djangoql.llm import describe_schema_for_llm
+    from model_bakery import baker
+
+    from bpp.djangoql_schema import RekordLLMSchema
+    from bpp.models import Jednostka, Uczelnia
+
+    ucz = baker.make(Uczelnia, nazwa="TAJNA-UCZELNIA-XYZ")
+    baker.make(Jednostka, nazwa="TAJNA-JEDNOSTKA-XYZ", uczelnia=ucz)
+
+    out = describe_schema_for_llm(
+        RekordLLMSchema(Rekord), format="compact", max_fk_options=50
+    )
+    assert "TAJNA-JEDNOSTKA-XYZ" not in out
+    assert "TAJNA-UCZELNIA-XYZ" not in out
+
+
 @pytest.mark.django_db
 def test_committed_artifact_has_no_institution_data_leak(tmp_path):
     """Domyślna generacja (max-fk-options=0) NIE osadza wartości wierszy tabel

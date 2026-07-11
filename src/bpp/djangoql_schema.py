@@ -434,3 +434,9 @@ class RekordLLMSchema(ExtrasSchema):
 
     include = SEARCH_ALLOWLIST
     fk_options = _build_llm_fk_options()
+    #: Twarda lista celów, których nazwy NIGDY nie trafiają do artefaktu —
+    #: niezależnie od fk_options i --max-fk-options (wymaga djangoql-iplweb
+    #: >= 0.30.3). Nazwy jednostek, wydziałów i uczelni to dane instytucji,
+    #: nie standardowe słowniki — nie mają prawa wyciec nawet przy regeneracji
+    #: z --max-fk-options > 0.
+    no_value_targets = ("bpp.Jednostka", "bpp.Wydzial", "bpp.Uczelnia")
