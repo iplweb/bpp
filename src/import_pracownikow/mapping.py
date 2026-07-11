@@ -56,8 +56,11 @@ _SYNONIMY = {
     "imie_i_nazwisko": "osoba_sklejona",
     "imię_nazwisko": "osoba_sklejona",
     "imie_nazwisko": "osoba_sklejona",
+    "drugie": "drugie_imię",
     "nazwa_jednostki": "nazwa_jednostki",
     "jednostka": "nazwa_jednostki",
+    "afiliacja": "nazwa_jednostki",
+    "afiliacje": "nazwa_jednostki",
     "jedn_org": "nazwa_jednostki",
     "jednostka_organizacyjna": "nazwa_jednostki",
     "komorka_organizacyjna": "nazwa_jednostki",
@@ -107,10 +110,37 @@ TRY_NAMES = sorted(set(_SYNONIMY.keys()))
 MIN_POINTS = 2
 
 
+# Fallback podłańcuchowy: gdy DOKŁADNY synonim nie trafił, sprawdzamy czy
+# nagłówek ZAWIERA któryś fragment (kolejność = priorytet). Dla długich,
+# opisowych nagłówków typu „stopien_tytul_aktualny_na_dzien_..." (IHIT).
+# Ostrożnie: zbyt ogólny fragment daje fałszywe trafienia — auto-propozycja
+# i tak jest korygowalna na ekranie mapowania.
+_SYNONIMY_ZAWIERA = [
+    ("afiliac", "nazwa_jednostki"),
+    ("tytuł", "tytuł_stopień"),
+    ("tytul", "tytuł_stopień"),
+    ("stopień", "tytuł_stopień"),
+    ("stopien", "tytuł_stopień"),
+]
+
+
+def _dopasuj_naglowek(h):
+    """Pole docelowe dla znormalizowanego nagłówka: najpierw DOKŁADNY synonim,
+    potem fallback podłańcuchowy, w ostateczności ``POLE_POMIN``."""
+    cel = _SYNONIMY.get(h)
+    if cel is not None:
+        return cel
+    for fragment, pole in _SYNONIMY_ZAWIERA:
+        if fragment in h:
+            return pole
+    return POLE_POMIN
+
+
 def zaproponuj_mapowanie(naglowki):
     """Dla listy znormalizowanych nagłówków pliku zwraca słownik
-    ``{naglowek: pole_docelowe_lub_POLE_POMIN}`` na podstawie synonimów."""
-    return {h: _SYNONIMY.get(h, POLE_POMIN) for h in naglowki}
+    ``{naglowek: pole_docelowe_lub_POLE_POMIN}`` na podstawie synonimów
+    (dokładnych oraz podłańcuchowych — patrz ``_dopasuj_naglowek``)."""
+    return {h: _dopasuj_naglowek(h) for h in naglowki}
 
 
 def waliduj_mapowanie(mapowanie):
