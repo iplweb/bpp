@@ -70,6 +70,10 @@
            class="button secondary">
             <span class="fi-list"></span> Zobacz szczegóły
         </a>
+        <a href="{% url 'import_pracownikow:audyt' operation.pk %}"
+           class="button">
+            <span class="fi-list"></span> Log zmian
+        </a>
     {% else %}
         <h3><span class="fi-check"></span> Import zakończony</h3>
         <p>
@@ -94,6 +98,10 @@
         <a href="{% url 'import_pracownikow:przeglad' operation.pk %}"
            class="button secondary">
             <span class="fi-list"></span> Zobacz szczegóły
+        </a>
+        <a href="{% url 'import_pracownikow:audyt' operation.pk %}"
+           class="button">
+            <span class="fi-list"></span> Log zmian
         </a>
     {% endif %}
 </div>

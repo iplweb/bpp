@@ -1,0 +1,86 @@
+{% extends "base.html" %}
+
+{% block extratitle %}Import pracowników i jednostek — log zmian{% endblock %}
+
+{% block breadcrumbs %}
+    {{ block.super }}
+    <li><a href="{% url "import_pracownikow:index" %}">import pracowników i jednostek</a></li>
+    <li><a href="{% url "import_pracownikow:przeglad" parent_object.pk %}">przegląd importu</a></li>
+    <li class="current">log zmian</li>
+{% endblock %}
+
+{% block content %}
+    <p>
+        <a href="{% url "import_pracownikow:przeglad" parent_object.pk %}">&larr; wróć do przeglądu</a>
+    </p>
+    <h1>Log zmian (audyt)</h1>
+    <p>
+        Co import faktycznie zmienił w bazie: utworzenia (autorzy, jednostki,
+        tytuły), zmiany danych autorów i powiązań, przepięcia dorobku oraz
+        odpięcia. Wiersze bez zmian nie są pokazywane.
+    </p>
+
+    {# Wykonane odpięcia (Ludzie spoza XLS zakończeni w tej integracji). #}
+    {% if odpiecia_wykonane %}
+        <h2><span class="fi-link"></span> Zakończone zatrudnienia (odpięcia)</h2>
+        <div style="overflow-x: auto;">
+        <table>
+            <thead>
+                <tr>
+                    <th>Autor</th>
+                    <th>Jednostka</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for odp in odpiecia_wykonane %}
+                    <tr>
+                        <td>{{ odp.autor_jednostka.autor }}</td>
+                        <td>{{ odp.autor_jednostka.jednostka }}</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        </div>
+    {% endif %}
+
+    <h2><span class="fi-list"></span> Zmiany per wiersz</h2>
+    {% for row in wiersze %}
+        {% if row.log_zmian_lista %}
+            <div class="callout">
+                <h4>
+                    <span class="fi-torso"></span>
+                    {{ row.autor|default:"— (bez autora)" }}
+                    {% if row.jednostka %}
+                        <span class="label secondary">{{ row.jednostka.skrot }}</span>
+                    {% endif %}
+                </h4>
+                <ul>
+                    {% for elem in row.log_zmian_lista %}
+                        <li>{{ elem }}</li>
+                    {% endfor %}
+                </ul>
+            </div>
+        {% endif %}
+    {% empty %}
+        <div class="callout secondary">
+            Brak zapisanego logu zmian — import nie został jeszcze zintegrowany
+            albo nie zmienił żadnego wiersza.
+        </div>
+    {% endfor %}
+
+    {% if is_paginated %}
+        <nav aria-label="Paginacja">
+            <ul class="pagination">
+                {% if page_obj.has_previous %}
+                    <li><a href="?page={{ page_obj.previous_page_number }}">&laquo; poprzednia</a></li>
+                {% endif %}
+                <li class="current">
+                    strona {{ page_obj.number }} z {{ page_obj.paginator.num_pages }}
+                </li>
+                {% if page_obj.has_next %}
+                    <li><a href="?page={{ page_obj.next_page_number }}">następna &raquo;</a></li>
+                {% endif %}
+            </ul>
+        </nav>
+    {% endif %}
+{% endblock %}

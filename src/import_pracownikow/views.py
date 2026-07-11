@@ -680,6 +680,9 @@ class PodgladImportuView(GroupRequiredMixin, DetailView):
                     parent.faza_osob
                     or parent.stan == ImportPracownikow.STAN_ZINTEGROWANY
                 ),
+                # Item 6: ekran audytu (log zmian) ma sens po pełnej integracji
+                # osób — wtedy wiersze mają zapisany log_zmian.
+                "pokaz_audyt": parent.stan == ImportPracownikow.STAN_ZINTEGROWANY,
             }
         )
         return ctx
@@ -713,6 +716,43 @@ class OdpieciaView(GroupRequiredMixin, ListView):
 
     def get_context_data(self, **kwargs):
         return super().get_context_data(parent_object=self.parent_object, **kwargs)
+
+
+class LogZmianView(GroupRequiredMixin, ListView):
+    """Ekran audytu (item 6) — per-wiersz log zmian po integracji: utworzenia
+    (autor/jednostka/tytuł), zmiany Autora i Autor_Jednostka, przepięcia prac
+    (z→do, liczba) oraz wykonane odpięcia. Owner/superuser-scoped.
+
+    Czyta ``log_zmian`` (materializowany przez integrację) — wiersze bez zmian
+    (``log_zmian`` puste) NIE są pokazywane (filtr ``log_zmian__isnull=False``
+    plus per-wiersz ``log_zmian_lista`` w szablonie odsiewa puste rekordy)."""
+
+    group_required = GROUP_REQUIRED
+    template_name = "import_pracownikow/audyt.html"
+    context_object_name = "wiersze"
+    paginate_by = 100
+
+    @cached_property
+    def parent_object(self):
+        obj = get_object_or_404(ImportPracownikow, pk=self.kwargs["pk"])
+        if obj.owner_id != self.request.user.pk and not self.request.user.is_superuser:
+            raise Http404
+        return obj
+
+    def get_queryset(self):
+        # ``get_details_set`` adnotuje nr_arkusza/nr_wiersza (kolejność z pliku)
+        # i robi select_related — filtrujemy do wierszy z zapisanym log_zmian.
+        return self.parent_object.get_details_set().filter(log_zmian__isnull=False)
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(parent_object=self.parent_object, **kwargs)
+        ctx["odpiecia_wykonane"] = self.parent_object.odpiecia.filter(
+            wykonane=True
+        ).select_related(
+            "autor_jednostka__autor",
+            "autor_jednostka__jednostka",
+        )
+        return ctx
 
 
 class WeryfikacjaJednostekView(GroupRequiredMixin, View):

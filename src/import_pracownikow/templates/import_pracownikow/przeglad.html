@@ -190,5 +190,20 @@
         {% if pokaz_ludzi and not moze_importowac_osoby %}
             {% include "import_pracownikow/partials/_kafle_ludzie.html" %}
         {% endif %}
+
+        {# Item 6: log zmian (audyt) — po pełnej integracji osób. #}
+        {% if pokaz_audyt %}
+            <div class="medium-6 columns">
+                <div class="callout">
+                    <h3><span class="fi-list"></span> Log zmian</h3>
+                    <p>
+                        Co import faktycznie zmienił: utworzenia, zmiany
+                        autorów/powiązań, przepięcia i odpięcia.
+                    </p>
+                    <a href="{% url "import_pracownikow:audyt" parent_object.pk %}"
+                       class="button">Zobacz log zmian</a>
+                </div>
+            </div>
+        {% endif %}
     </div>
 {% endblock %}

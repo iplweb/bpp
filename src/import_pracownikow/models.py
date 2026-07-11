@@ -773,6 +773,13 @@ class ImportPracownikowRow(ImportRowMixin, models.Model):
         if log.get("przepiecie_pominiete"):
             yield "Przepięcie pominięte: " + log["przepiecie_pominiete"]
 
+    @property
+    def log_zmian_lista(self):
+        """Zmaterializowana lista opisów zmian (``sformatowany_log_zmian``) — do
+        ekranu audytu (item 6). Pusta lista = wiersz nic nie zmienił (nie
+        pokazujemy go w audycie)."""
+        return list(self.sformatowany_log_zmian())
+
 
 class ProfilMapowania(models.Model):
     """Zapisywalne mapowanie nagłówków pliku → pola systemowe, do reużycia
