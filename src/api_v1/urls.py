@@ -1,4 +1,4 @@
-from django.urls import include
+from django.urls import include, path
 from django.urls import re_path as url
 from rest_framework import routers
 
@@ -42,6 +42,7 @@ from api_v1.viewsets.wydawnictwo_zwarte import (
     Wydawnictwo_ZwarteViewSet,
 )
 from api_v1.viewsets.zrodlo import Rodzaj_ZrodlaViewSet, ZrodloViewSet
+from oauth_mcp.views_whoami import WhoAmIView
 
 
 class CustomRouter(routers.DefaultRouter):
@@ -135,5 +136,6 @@ router.register(
 #
 
 urlpatterns = [
+    path("whoami/", WhoAmIView.as_view(), name="whoami"),
     url(r"^", include(router.urls)),
 ]
