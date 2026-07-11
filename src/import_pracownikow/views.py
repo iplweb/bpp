@@ -741,6 +741,22 @@ class WeryfikacjaJednostekView(GroupRequiredMixin, View):
             "DECYZJA_POMIN": ImportPracownikowJednostka.DECYZJA_POMIN,
         }
 
+    @staticmethod
+    def _z_puli(raw, queryset):
+        """Zwraca obiekt z ``queryset`` po pk z POST, albo ``None``.
+
+        Broni POST-a decyzji jednostek przed dwoma nadużyciami (uwaga reviewera
+        #5): (a) nienumeryczne id (``filter(pk="abc")`` → ``ValueError`` → 500) —
+        zwracamy ``None`` zamiast wywracać widok; (b) pk spoza puli UI — filtr po
+        TYM SAMYM querysecie co formularz (roots dla parenta, widoczne jednostki
+        skupiające pracowników dla „mapuj"), więc spreparowany POST nie przypisze
+        pracowników do ukrytej/niewłaściwej jednostki ani nie użyje dowolnego
+        węzła jako parenta."""
+        raw = (raw or "").strip()
+        if not raw.isdigit():
+            return None
+        return queryset.filter(pk=int(raw)).first()
+
     def _naloz_post(self, dec, prawidlowe):
         """Nakłada wybory z POST na obiekt decyzji (BEZ zapisu do bazy). Wspólne
         dla walidacji, re-renderu po błędzie i finalnego zapisu — jedno źródło
@@ -749,13 +765,15 @@ class WeryfikacjaJednostekView(GroupRequiredMixin, View):
         decyzja = self.request.POST.get(pref + "decyzja")
         if decyzja in prawidlowe:
             dec.decyzja = decyzja
-        parent_id = self.request.POST.get(pref + "parent") or ""
-        dec.wybrany_parent = (
-            Jednostka.objects.filter(pk=parent_id).first() if parent_id else None
+        # Te same querysety co pula UI w ``_build_context`` (parent_opcje /
+        # mapuj_opcje) — patrz ``_z_puli``.
+        dec.wybrany_parent = self._z_puli(
+            self.request.POST.get(pref + "parent"),
+            Jednostka.objects.filter(parent__isnull=True),
         )
-        mapuj_id = self.request.POST.get(pref + "wybrana") or ""
-        dec.wybrana_jednostka = (
-            Jednostka.objects.filter(pk=mapuj_id).first() if mapuj_id else None
+        dec.wybrana_jednostka = self._z_puli(
+            self.request.POST.get(pref + "wybrana"),
+            Jednostka.objects.filter(skupia_pracownikow=True, widoczna=True),
         )
 
     def get(self, request, *args, **kwargs):
@@ -894,9 +912,15 @@ class WeryfikacjaTytulowView(GroupRequiredMixin, View):
             decyzja = request.POST.get(pref + "decyzja")
             if decyzja in prawidlowe:
                 dec.decyzja = decyzja
-            mapuj_id = request.POST.get(pref + "wybrana") or ""
+            # isdigit guard: nienumeryczny pk z POST-a nie może wywrócić widoku
+            # (Tytul.objects.filter(pk="abc") → ValueError → 500). Pula UI dla
+            # tytułów to wszystkie Tytul, więc nie zawężamy querysetu — tylko
+            # bronimy przed nie-liczbą.
+            mapuj_id = (request.POST.get(pref + "wybrana") or "").strip()
             dec.wybrany_tytul = (
-                Tytul.objects.filter(pk=mapuj_id).first() if mapuj_id else None
+                Tytul.objects.filter(pk=int(mapuj_id)).first()
+                if mapuj_id.isdigit()
+                else None
             )
             update_fields = ["decyzja", "wybrany_tytul"]
             # Nazwa/skrót edytowalne TYLKO dla „do utworzenia” (tryb brak) —

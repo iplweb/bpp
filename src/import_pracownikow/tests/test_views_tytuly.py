@@ -25,6 +25,22 @@ def _dec(imp, nazwa, **kw):
 
 
 @pytest.mark.django_db
+def test_post_nienumeryczny_wybrana_nie_wywala_500(admin_client, admin_user):
+    """Mirror uwagi reviewera #5 dla tytułów: nienumeryczny ``wybrana`` NIE może
+    wywrócić widoku (Tytul.objects.filter(pk="abc") → ValueError → 500)."""
+    imp = _imp(admin_user)
+    dec = _dec(imp, "jakis tytul")
+    url = reverse("import_pracownikow:tytuly", kwargs={"pk": imp.pk})
+    resp = admin_client.post(
+        url,
+        {f"dec_{dec.pk}_decyzja": AKCEPTUJ, f"dec_{dec.pk}_wybrana": "abc"},
+    )
+    assert resp.status_code == 302
+    dec.refresh_from_db()
+    assert dec.wybrany_tytul_id is None
+
+
+@pytest.mark.django_db
 def test_get_renderuje_sekcje_brak(admin_client, admin_user):
     imp = _imp(admin_user)
     dec = _dec(
