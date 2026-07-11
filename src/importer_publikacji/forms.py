@@ -10,6 +10,7 @@ from bpp.models import (
     Dyscyplina_Naukowa,
     Jednostka,
     Jezyk,
+    Rodzaj_Prawa_Patentowego,
     Typ_KBN,
     Wydawca,
     Wydawnictwo_Zwarte,
@@ -17,6 +18,7 @@ from bpp.models import (
 )
 from pbn_api.models import Publication as PBNPublication
 
+from .models import ImportSession
 from .providers import (
     get_available_providers,
     get_providers_metadata,
@@ -92,7 +94,31 @@ class FetchForm(forms.Form):
 
 
 class VerifyForm(forms.Form):
-    """Formularz weryfikacji typu publikacji."""
+    """Formularz weryfikacji typu publikacji.
+
+    Trój-drożny wybór ``rodzaj_rekordu`` (ciągłe/zwarte/patent) zastępuje dawny
+    boolean ``jest_wydawnictwem_zwartym`` w UI — widok wylicza boolean z radia
+    (back-compat downstream). Dla patentu (``bpp.Patent``) pola
+    ``charakter_formalny``/``typ_kbn``/``jezyk`` są bezsensowne (model je
+    hardkoduje / nie ma ``typ_kbn``), więc są warunkowo wymagane tylko dla
+    ciągłego/zwartego (``clean()``); zamiast nich pokazujemy pola patentowe.
+    """
+
+    RODZAJ_CHOICES = [
+        (ImportSession.RodzajRekordu.CIAGLE, "Wydawnictwo ciągłe (artykuł)"),
+        (
+            ImportSession.RodzajRekordu.ZWARTE,
+            "Wydawnictwo zwarte (książka/rozdział)",
+        ),
+        (ImportSession.RodzajRekordu.PATENT, "Patent"),
+    ]
+
+    rodzaj_rekordu = forms.ChoiceField(
+        label="Rodzaj rekordu",
+        choices=RODZAJ_CHOICES,
+        widget=forms.RadioSelect,
+        required=True,
+    )
 
     # Wyklucz D/H/PAT (praca doktorska/habilitacyjna/patent): mają własne
     # modele (Praca_Doktorska/Praca_Habilitacyjna/Patent) niedziedziczące po
@@ -102,25 +128,24 @@ class VerifyForm(forms.Form):
     # ZapobiegajNiewlasciwymCharakterom.clean_fields() — wołane tylko z
     # full_clean() — nigdy się nie odpala). Patenty mają teraz własną
     # ścieżkę (ImportSession.rodzaj_rekordu == PATENT → _create_patent).
+    #
+    # ``required=False`` na charakter/typ/jezyk — wymagalność egzekwuje
+    # ``clean()`` warunkowo (wymagane tylko gdy rodzaj != PATENT).
     charakter_formalny = forms.ModelChoiceField(
         queryset=Charakter_Formalny.objects.filter(ukryty=False).exclude(
             skrot__in=["D", "H", "PAT"]
         ),
         label="Charakter formalny",
-        required=True,
+        required=False,
     )
     typ_kbn = forms.ModelChoiceField(
         queryset=Typ_KBN.objects.filter(ukryty=False),
         label="Typ MNiSW",
-        required=True,
+        required=False,
     )
     jezyk = forms.ModelChoiceField(
         queryset=Jezyk.objects.filter(widoczny=True),
         label="Język",
-        required=True,
-    )
-    jest_wydawnictwem_zwartym = forms.BooleanField(
-        label="Wydawnictwo zwarte (książka/rozdział)",
         required=False,
     )
     rok = forms.IntegerField(
@@ -133,6 +158,63 @@ class VerifyForm(forms.Form):
             "lub brakuje (np. rekordy CrossRef bez roku wydania)."
         ),
     )
+
+    # --- Pola patentowe (widoczne/istotne tylko gdy rodzaj_rekordu == PATENT).
+    # Wszystkie required=False — model Patent dopuszcza null poza tytułem/rokiem.
+    # Zwykłe widżety (bez select2): cały krok Verify używa gołych <select>,
+    # a Jednostka/Rodzaj_Prawa_Patentowego to listy ograniczone.
+    numer_zgloszenia = forms.CharField(
+        label="Numer zgłoszenia",
+        max_length=255,
+        required=False,
+    )
+    data_zgloszenia = forms.DateField(
+        label="Data zgłoszenia",
+        required=False,
+        widget=forms.DateInput(attrs={"type": "date"}, format="%Y-%m-%d"),
+    )
+    numer_prawa_wylacznego = forms.CharField(
+        label="Numer prawa wyłącznego",
+        max_length=255,
+        required=False,
+    )
+    data_decyzji = forms.DateField(
+        label="Data decyzji",
+        required=False,
+        widget=forms.DateInput(attrs={"type": "date"}, format="%Y-%m-%d"),
+    )
+    rodzaj_prawa = forms.ModelChoiceField(
+        queryset=Rodzaj_Prawa_Patentowego.objects.all(),
+        label="Rodzaj prawa",
+        required=False,
+    )
+    uprawniony = forms.CharField(
+        label="Uprawniony",
+        max_length=512,
+        required=False,
+        help_text="Podmiot uprawniony z patentu (zapisywany w informacjach).",
+    )
+    wdrozenie = forms.NullBooleanField(
+        label="Wdrożenie",
+        required=False,
+        widget=forms.NullBooleanSelect,
+    )
+    wydzial = forms.ModelChoiceField(
+        queryset=Jednostka.objects.all(),
+        label="Wydział / jednostka",
+        required=False,
+    )
+
+    def clean(self):
+        cleaned = super().clean()
+        rodzaj = cleaned.get("rodzaj_rekordu")
+        # Dla ciągłego/zwartego charakter/typ/jezyk są wymagane (jak dawniej);
+        # dla patentu nie — Patent je hardkoduje / nie ma typ_kbn.
+        if rodzaj and rodzaj != ImportSession.RodzajRekordu.PATENT:
+            for pole in ("charakter_formalny", "typ_kbn", "jezyk"):
+                if not cleaned.get(pole):
+                    self.add_error(pole, "To pole jest wymagane.")
+        return cleaned
 
 
 class SourceForm(forms.Form):

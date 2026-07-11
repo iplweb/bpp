@@ -59,12 +59,59 @@ def test_verify_form_invalid_with_pat_charakter(charaktery_formalne, jezyki, typ
 
     form = VerifyForm(
         data={
+            "rodzaj_rekordu": "ciagle",
             "charakter_formalny": pat.pk,
             "typ_kbn": tk.pk if tk else "",
             "jezyk": jez.pk if jez else "",
-            "jest_wydawnictwem_zwartym": "",
             "rok": "2024",
         }
     )
     assert not form.is_valid()
     assert "charakter_formalny" in form.errors
+
+
+@pytest.mark.django_db
+def test_verify_form_patent_valid_without_charakter_typ_jezyk(
+    charaktery_formalne, jezyki, typy_kbn
+):
+    """Tryb PATENT nie wymaga charakter_formalny/typ_kbn/jezyk (Patent je
+    hardkoduje / nie ma typ_kbn) — formularz waliduje z samym rokiem."""
+    form = VerifyForm(
+        data={
+            "rodzaj_rekordu": "patent",
+            "rok": "2024",
+            "numer_zgloszenia": "PL123456",
+        }
+    )
+    assert form.is_valid(), form.errors
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("rodzaj", ["ciagle", "zwarte"])
+def test_verify_form_nonpatent_requires_charakter_typ_jezyk(
+    rodzaj, charaktery_formalne, jezyki, typy_kbn
+):
+    """Ciągłe/zwarte nadal wymagają charakter_formalny/typ_kbn/jezyk."""
+    form = VerifyForm(data={"rodzaj_rekordu": rodzaj, "rok": "2024"})
+    assert not form.is_valid()
+    assert "charakter_formalny" in form.errors
+    assert "typ_kbn" in form.errors
+    assert "jezyk" in form.errors
+
+
+@pytest.mark.django_db
+def test_verify_form_wdrozenie_trojstan(charaktery_formalne, jezyki, typy_kbn):
+    """NullBooleanField wdrozenie: puste→None, '2'→True, '3'→False (widget
+    NullBooleanSelect koduje wartości jako 'unknown'/'true'/'false')."""
+    base = {"rodzaj_rekordu": "patent", "rok": "2024"}
+    f_empty = VerifyForm(data={**base, "wdrozenie": "unknown"})
+    assert f_empty.is_valid(), f_empty.errors
+    assert f_empty.cleaned_data["wdrozenie"] is None
+
+    f_true = VerifyForm(data={**base, "wdrozenie": "true"})
+    assert f_true.is_valid(), f_true.errors
+    assert f_true.cleaned_data["wdrozenie"] is True
+
+    f_false = VerifyForm(data={**base, "wdrozenie": "false"})
+    assert f_false.is_valid(), f_false.errors
+    assert f_false.cleaned_data["wdrozenie"] is False

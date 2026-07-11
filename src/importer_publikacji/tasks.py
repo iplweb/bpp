@@ -155,6 +155,13 @@ def _auto_match_type_and_language(session, result):
     from .views.helpers import _detect_language, _get_crossref_mapper
     from .views.publikacja import _resolve_jezyk
 
+    # Patent: BibTeX @patent → publication_type "patent" (jedyne źródło dziś).
+    # Auto-oznacz sesję jako patent; operator może przełączyć typ w kroku
+    # Verify. _get_crossref_mapper("patent") i tak zwraca None (patent nie jest
+    # typem CrossRef), więc charakter/zwarte poniżej nie zostaną auto-ustawione.
+    if result.publication_type == "patent":
+        session.rodzaj_rekordu = ImportSession.RodzajRekordu.PATENT
+
     mapper = _get_crossref_mapper(result.publication_type)
     if mapper and mapper.charakter_formalny_bpp_id:
         session.charakter_formalny = mapper.charakter_formalny_bpp

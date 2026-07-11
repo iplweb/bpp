@@ -155,6 +155,68 @@ def test_create_patent_holder_recorded_in_informacje(importer_user, statusy_kore
 
 
 @pytest.mark.django_db
+def test_create_patent_jurisdiction_recorded_in_informacje(
+    importer_user, statusy_korekt
+):
+    """Jurysdykcja (biblatex location) trafia do informacji — koniec cichego
+    data-dropu."""
+    session = _make_patent_session(importer_user, jurisdiction="Poland")
+    record = _create_patent(session, _common_fields(), session.normalized_data)
+    assert "Poland" in record.informacje
+
+
+@pytest.mark.django_db
+def test_create_patent_rodzaj_prawa_id_ma_pierwszenstwo(importer_user, statusy_korekt):
+    """Jawny rodzaj_prawa_id (wybór operatora) bije best-effort po nazwie."""
+    # Unikalne nazwy TEST- (Rodzaj_Prawa_Patentowego.nazwa ma unikat, a
+    # baseline zawiera realne słownikowe wartości).
+    wybrany = baker.make(Rodzaj_Prawa_Patentowego, nazwa="TEST-wybrany-rodzaj")
+    baker.make(Rodzaj_Prawa_Patentowego, nazwa="TEST-po-nazwie")  # pasuje po nazwie
+    session = _make_patent_session(
+        importer_user, patent_type="TEST-po-nazwie", rodzaj_prawa_id=wybrany.pk
+    )
+    record = _create_patent(session, _common_fields(), session.normalized_data)
+    assert record.rodzaj_prawa == wybrany
+
+
+@pytest.mark.django_db
+def test_create_patent_rodzaj_prawa_id_none_nie_wskrzesza_z_nazwy(
+    importer_user, statusy_korekt
+):
+    """Operator wyczyścił dropdown (rodzaj_prawa_id=None obecny) → NIE fallback
+    po nazwie; pole zostaje puste."""
+    baker.make(Rodzaj_Prawa_Patentowego, nazwa="TEST-patent-typ")
+    session = _make_patent_session(
+        importer_user, patent_type="TEST-patent-typ", rodzaj_prawa_id=None
+    )
+    record = _create_patent(session, _common_fields(), session.normalized_data)
+    assert record.rodzaj_prawa is None
+
+
+@pytest.mark.django_db
+def test_create_patent_wdrozenie_i_wydzial(importer_user, statusy_korekt):
+    from bpp.models import Jednostka
+
+    jednostka = baker.make(Jednostka)
+    session = _make_patent_session(
+        importer_user, wdrozenie=True, wydzial_id=jednostka.pk
+    )
+    record = _create_patent(session, _common_fields(), session.normalized_data)
+    assert record.wdrozenie is True
+    assert record.wydzial == jednostka
+
+
+@pytest.mark.django_db
+def test_create_patent_filtruje_tytul(importer_user, statusy_korekt):
+    """common_fields['tytul'] (drugi tytuł, z original_title) trułby
+    Patent.objects.create — Patent jest jedno-tytułowy."""
+    session = _make_patent_session(importer_user)
+    common_fields = _common_fields(tytul="Drugi tytuł którego Patent nie ma")
+    record = _create_patent(session, common_fields, session.normalized_data)
+    assert isinstance(record, Patent)
+
+
+@pytest.mark.django_db
 def test_create_publication_dispatches_patent(
     importer_user,
     jezyki,

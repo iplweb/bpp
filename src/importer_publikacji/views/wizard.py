@@ -111,6 +111,25 @@ def _hx_or_redirect(request, url):
     return HttpResponseRedirect(url)
 
 
+def _date_to_iso(value):
+    """``datetime.date`` → string ISO ``YYYY-MM-DD`` (JSON-owalny) lub None."""
+    return value.isoformat() if value else None
+
+
+def _patent_guard(request, session):
+    """Guard kroków Source/PBN: patenty je pomijają.
+
+    Gdy sesja jest patentem, zwróć przekierowanie na właściwy krok
+    (``get_continue_url`` po gałęzi patentowej → Authors/Review) zamiast
+    pozwolić widokowi Source/PBN przetworzyć request (co skorumpowałoby sesję
+    patentową — zapis ``zrodlo``/``pbn_mongo_id``). Zwraca ``None`` dla
+    nie-patentów (widok działa normalnie).
+    """
+    if session.rodzaj_rekordu == ImportSession.RodzajRekordu.PATENT:
+        return _hx_or_redirect(request, session.get_continue_url())
+    return None
+
+
 def _create_batch(request, provider_name, normalized, records):
     """Utwórz ``MultipleWorksImport`` + wszystkie jego wpisy naraz."""
     batch = MultipleWorksImport.objects.create(
@@ -324,12 +343,11 @@ class VerifyView(ImporterPermissionMixin, View):
         if not form.is_valid():
             return _render_verify_step(request, session, form=form)
 
-        session.charakter_formalny = form.cleaned_data["charakter_formalny"]
-        session.typ_kbn = form.cleaned_data["typ_kbn"]
-        session.jezyk = form.cleaned_data["jezyk"]
-        session.jest_wydawnictwem_zwartym = form.cleaned_data[
-            "jest_wydawnictwem_zwartym"
-        ]
+        rodzaj = form.cleaned_data["rodzaj_rekordu"]
+        session.rodzaj_rekordu = rodzaj
+        # back-compat: downstream (dispatch tworzenia, punktacja, krok źródła)
+        # nadal czyta boolean; wyliczamy go z radia.
+        session.jest_wydawnictwem_zwartym = rodzaj == ImportSession.RodzajRekordu.ZWARTE
         # Rok wpisany/poprawiony przez operatora → jedyne źródło prawdy o roku.
         # Ustawiamy go tu (najwcześniejszy edytowalny krok), żeby działały
         # kroki zależne od roku: dopasowanie dyscyplin autorów, punktacja
@@ -337,9 +355,59 @@ class VerifyView(ImporterPermissionMixin, View):
         session.normalized_data["year"] = form.cleaned_data["rok"]
         session.status = ImportSession.Status.VERIFIED
         session.modified_by = request.user
+
+        if rodzaj == ImportSession.RodzajRekordu.PATENT:
+            self._apply_patent_fields(session, form)
+            session.save()
+            # Patent pomija krok Source (brak źródła/wydawcy) → prosto Autorzy.
+            return _render_authors_step(request, session)
+
+        session.charakter_formalny = form.cleaned_data["charakter_formalny"]
+        session.typ_kbn = form.cleaned_data["typ_kbn"]
+        session.jezyk = form.cleaned_data["jezyk"]
         session.save()
 
         return _render_source_step(request, session)
+
+    @staticmethod
+    def _apply_patent_fields(session, form):
+        """Zapisz pola patentowe do ``normalized_data`` i wyczyść stale stan
+        nie-patentowy (scenariusz toggle CIAGLE/ZWARTE → PATENT).
+
+        Wszystkie klucze patentowe są zapisywane bezwarunkowo (nawet jako
+        ``None``), żeby prefill kroku Verify odróżnił „operator wyczyścił pole"
+        (klucz obecny = None) od „pierwsze wejście" (klucz nieobecny → dozwolony
+        best-effort z BibTeX).
+        """
+        cd = form.cleaned_data
+        # Patent hardkoduje charakter_formalny/jezyk i nie ma typ_kbn — wyzeruj
+        # ewentualne wartości sesyjne (żeby _create_publication nie zbudował
+        # z nich common_fields trujących Patent.objects.create()).
+        session.charakter_formalny = None
+        session.typ_kbn = None
+        session.jezyk = None
+        # Wyczyść pola źródła/PBN — stale wartości (toggle po kroku Source/PBN)
+        # inaczej: uzupelnij_punktacje_z_zrodla wlałaby punktację czasopisma do
+        # patentu, a stale pbn_mongo_id → _link_pbn_uid ustawiłby pole pbn_uid,
+        # którego Patent NIE MA (create task by się wywalił).
+        session.zrodlo = None
+        session.wydawca = None
+        session.wydawnictwo_nadrzedne = None
+        session.wydawnictwo_nadrzedne_w_pbn = None
+        session.matched_data.pop("pbn_mongo_id", None)
+        session.matched_data.pop("wydawca_opis", None)
+
+        nd = session.normalized_data
+        nd["patent_number"] = cd.get("numer_zgloszenia") or None
+        nd["filing_date"] = _date_to_iso(cd.get("data_zgloszenia"))
+        nd["patent_grant_number"] = cd.get("numer_prawa_wylacznego") or None
+        nd["grant_date"] = _date_to_iso(cd.get("data_decyzji"))
+        nd["patent_holder"] = cd.get("uprawniony") or None
+        rodzaj_prawa = cd.get("rodzaj_prawa")
+        nd["rodzaj_prawa_id"] = rodzaj_prawa.pk if rodzaj_prawa else None
+        nd["wdrozenie"] = cd.get("wdrozenie")
+        wydzial = cd.get("wydzial")
+        nd["wydzial_id"] = wydzial.pk if wydzial else None
 
 
 class SourceView(ImporterPermissionMixin, View):
@@ -350,6 +418,9 @@ class SourceView(ImporterPermissionMixin, View):
             ImportSession,
             pk=session_id,
         )
+        guard = _patent_guard(request, session)
+        if guard is not None:
+            return guard
         if _is_htmx_partial(request):
             return _render_source_step(request, session)
         from .steps import _render_source_full
@@ -361,6 +432,9 @@ class SourceView(ImporterPermissionMixin, View):
             ImportSession,
             pk=session_id,
         )
+        guard = _patent_guard(request, session)
+        if guard is not None:
+            return guard
         form = SourceForm(request.POST)
 
         if not form.is_valid():
@@ -715,6 +789,10 @@ class PunktacjaView(ImporterPermissionMixin, View):
         session.modified_by = request.user
         session.save()
 
+        # Patent nie idzie do PBN — pomijamy krok „Sprawdź w PBN" i idziemy
+        # prosto do przeglądu.
+        if session.rodzaj_rekordu == ImportSession.RodzajRekordu.PATENT:
+            return _render_review_step(request, session)
         # Dla źródeł NIE-PBN wchodzimy w krok „Sprawdź w PBN"; dla źródła PBN
         # pomijamy go (odpowiednik i tak jest znany) i idziemy do przeglądu.
         if session.provider_name == "PBN":
@@ -732,6 +810,9 @@ class PbnCheckView(ImporterPermissionMixin, View):
 
     def get(self, request, session_id):
         session = get_object_or_404(ImportSession, pk=session_id)
+        guard = _patent_guard(request, session)
+        if guard is not None:
+            return guard
         if session.provider_name == "PBN":
             return HttpResponseRedirect(
                 reverse(
@@ -747,6 +828,9 @@ class PbnCheckView(ImporterPermissionMixin, View):
 
     def post(self, request, session_id):
         session = get_object_or_404(ImportSession, pk=session_id)
+        guard = _patent_guard(request, session)
+        if guard is not None:
+            return guard
         session.status = ImportSession.Status.PBN_CHECK
         session.modified_by = request.user
         session.save()
@@ -758,6 +842,9 @@ class PbnSelectView(ImporterPermissionMixin, View):
 
     def post(self, request, session_id):
         session = get_object_or_404(ImportSession, pk=session_id)
+        guard = _patent_guard(request, session)
+        if guard is not None:
+            return guard
         mongo_id = (request.POST.get("mongo_id") or "").strip()
 
         from .pbn_search import _select_pbn_equivalent
@@ -773,6 +860,9 @@ class PbnClearView(ImporterPermissionMixin, View):
 
     def post(self, request, session_id):
         session = get_object_or_404(ImportSession, pk=session_id)
+        guard = _patent_guard(request, session)
+        if guard is not None:
+            return guard
 
         from .pbn_search import _clear_pbn_equivalent
 
@@ -906,7 +996,12 @@ class CreateView(ImporterPermissionMixin, View):
                 return _render_review_step(request, session, error=error)
             return _render_review_full(request, session, error=error)
 
-        also_pbn = "_create_and_pbn" in request.POST
+        # Patent nie ma ścieżki eksportu do PBN — ignoruj also_pbn nawet gdy
+        # przyszło w POST (replay ze starej karty / ręczny POST).
+        also_pbn = (
+            "_create_and_pbn" in request.POST
+            and session.rodzaj_rekordu != ImportSession.RodzajRekordu.PATENT
+        )
 
         # Persist for retry path (Task 10 reads this)
         session.matched_data["pbn_export_pending"] = also_pbn

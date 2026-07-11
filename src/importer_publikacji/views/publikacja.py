@@ -13,6 +13,7 @@ from django.db import transaction
 
 from bpp import const
 from bpp.models import (
+    Jednostka,
     Patent,
     Rodzaj_Prawa_Patentowego,
     Status_Korekty,
@@ -152,7 +153,18 @@ def _create_patent(session, common_fields, normalized_data):
     ścieżki Wydawnictwo_*, zamiast duplikować całą resztę pól wspólnych.
     """
     patent_fields = dict(common_fields)
-    for key in ("typ_kbn", "charakter_formalny", "jezyk", "doi", "issn", "e_issn"):
+    # ``tytul`` (drugi tytuł, z original_title) — Patent jest jedno-tytułowy,
+    # nie ma tego pola; przekazanie rzuciłoby TypeError. Reszta: Patent nie ma
+    # typ_kbn/charakter_formalny/jezyk/doi/issn/e_issn (patrz docstring).
+    for key in (
+        "typ_kbn",
+        "charakter_formalny",
+        "jezyk",
+        "doi",
+        "issn",
+        "e_issn",
+        "tytul",
+    ):
         patent_fields.pop(key, None)
 
     patent_fields["numer_zgloszenia"] = normalized_data.get("patent_number") or ""
@@ -163,21 +175,43 @@ def _create_patent(session, common_fields, normalized_data):
         normalized_data.get("patent_grant_number") or ""
     )
     patent_fields["data_decyzji"] = _parse_iso_date(normalized_data.get("grant_date"))
-    patent_fields["rodzaj_prawa"] = _resolve_rodzaj_prawa(
-        normalized_data.get("patent_type")
-    )
+    patent_fields["rodzaj_prawa"] = _resolve_rodzaj_prawa_dla_patentu(normalized_data)
+    patent_fields["wdrozenie"] = normalized_data.get("wdrozenie")
+    wydzial_id = normalized_data.get("wydzial_id")
+    if wydzial_id:
+        patent_fields["wydzial"] = Jednostka.objects.filter(pk=wydzial_id).first()
 
-    # Brak pola "uprawniony"/"holder" na modelu Patent — zapisujemy jako
-    # tekst informacyjny, żeby dane ze źródła nie zniknęły po cichu
-    # (analogiczny kompromis do własnego eksportu, patrz
-    # bpp/export/bibtex.py:_patent_note).
-    holder = normalized_data.get("patent_holder")
-    if holder:
-        existing = patent_fields.get("informacje", "")
-        prefix = f"{existing}\n" if existing else ""
-        patent_fields["informacje"] = f"{prefix}Uprawniony: {holder}"
+    # Model Patent nie ma pól „uprawniony"/„kraj" — zapisujemy jako tekst
+    # informacyjny (``informacje``), żeby dane ze źródła nie zniknęły po cichu
+    # (analogiczny kompromis do własnego eksportu, bpp/export/bibtex.py).
+    for etykieta, wartosc in (
+        ("Uprawniony", normalized_data.get("patent_holder")),
+        ("Kraj", normalized_data.get("jurisdiction")),
+    ):
+        if wartosc:
+            existing = patent_fields.get("informacje", "")
+            prefix = f"{existing}\n" if existing else ""
+            patent_fields["informacje"] = f"{prefix}{etykieta}: {wartosc}"
 
     return Patent.objects.create(**patent_fields)
+
+
+def _resolve_rodzaj_prawa_dla_patentu(normalized_data):
+    """Rozwiąż ``rodzaj_prawa`` dla tworzonego patentu.
+
+    Jawny wybór operatora (``rodzaj_prawa_id``, ustawiany przez Verify) ma
+    pierwszeństwo — nawet ``None`` (operator świadomie wyczyścił) jest
+    respektowane. Best-effort po nazwie (``patent_type``) stosuje się TYLKO
+    gdy klucz ``rodzaj_prawa_id`` jest nieobecny (ścieżka programistyczna /
+    back-compat sprzed UI patentów) — inaczej wyczyszczone pole zostałoby
+    wskrzeszone z danych BibTeX.
+    """
+    if "rodzaj_prawa_id" in normalized_data:
+        rp_id = normalized_data.get("rodzaj_prawa_id")
+        if not rp_id:
+            return None
+        return Rodzaj_Prawa_Patentowego.objects.filter(pk=rp_id).first()
+    return _resolve_rodzaj_prawa(normalized_data.get("patent_type"))
 
 
 def _add_authors_to_record(session, record, uczelnia=None):
@@ -347,8 +381,14 @@ def _create_publication(session):
     else:
         record = _create_wydawnictwo_ciagle(session, common_fields, normalized_data)
 
+    is_patent = session.rodzaj_rekordu == ImportSession.RodzajRekordu.PATENT
+
     _add_authors_to_record(session, record)
-    _create_streszczenia(session, record)
+    # Patent nie ma relacji ``streszczenia`` (tylko Wydawnictwo_Ciagle/Zwarte
+    # ją mają) — @patent z polem abstract (typowy eksport Zotero) wywaliłby
+    # tu AttributeError. Streszczenia patentu są poza zakresem modelu.
+    if not is_patent:
+        _create_streszczenia(session, record)
 
     if session.zrodlo and normalized_data.get("year"):
         from bpp.models.zrodlo import (
@@ -367,6 +407,9 @@ def _create_publication(session):
         record.punkty_kbn = Decimal(str(punkty_operator))
         record.save(update_fields=["punkty_kbn"])
 
-    _link_pbn_uid(session, record)
+    # Patent nie idzie do PBN i NIE MA pola pbn_uid (tylko Wydawnictwo_* je
+    # mają) — bez tego guardu stale pbn_mongo_id wywaliłby save(pbn_uid_id).
+    if not is_patent:
+        _link_pbn_uid(session, record)
 
     return record

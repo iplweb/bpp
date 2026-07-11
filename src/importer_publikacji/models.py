@@ -241,6 +241,11 @@ class ImportSession(models.Model):
             self.Status.REVIEW: "review",
             self.Status.COMPLETED: "done",
         }
+        # Patent pomija kroki Source i PBN — wznowienie z listy/paczki nie może
+        # kierować w te kroki (SourceView.post skorumpowałby sesję patentową).
+        if self.rodzaj_rekordu == self.RodzajRekordu.PATENT:
+            status_url_map[self.Status.VERIFIED] = "authors"
+            status_url_map[self.Status.PUNKTACJA] = "review"
         name = status_url_map.get(self.status)
         if name is None:
             return None

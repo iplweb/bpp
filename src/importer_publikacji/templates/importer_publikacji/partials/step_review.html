@@ -2,7 +2,7 @@
 <div class="callout">
     <h4>
         <span class="fi-page-filled"></span>
-        Krok 5: Przegląd końcowy
+        Przegląd końcowy
     </h4>
 
     {% if error %}
@@ -34,13 +34,71 @@
             <tr>
                 <th>Typ rekordu</th>
                 <td>
-                    {% if session.jest_wydawnictwem_zwartym %}
+                    {% if is_patent %}
+                        Patent
+                    {% elif session.jest_wydawnictwem_zwartym %}
                         Wydawnictwo zwarte
                     {% else %}
                         Wydawnictwo ciągłe
                     {% endif %}
                 </td>
             </tr>
+            {% if is_patent %}
+                {% if data.patent_number %}
+                    <tr>
+                        <th>Numer zgłoszenia</th>
+                        <td>{{ data.patent_number }}</td>
+                    </tr>
+                {% endif %}
+                {% if data.filing_date %}
+                    <tr>
+                        <th>Data zgłoszenia</th>
+                        <td>{{ data.filing_date }}</td>
+                    </tr>
+                {% endif %}
+                {% if data.patent_grant_number %}
+                    <tr>
+                        <th>Numer prawa wyłącznego</th>
+                        <td>{{ data.patent_grant_number }}</td>
+                    </tr>
+                {% endif %}
+                {% if data.grant_date %}
+                    <tr>
+                        <th>Data decyzji</th>
+                        <td>{{ data.grant_date }}</td>
+                    </tr>
+                {% endif %}
+                {% if patent_rodzaj_prawa %}
+                    <tr>
+                        <th>Rodzaj prawa</th>
+                        <td>{{ patent_rodzaj_prawa }}</td>
+                    </tr>
+                {% endif %}
+                {% if data.patent_holder %}
+                    <tr>
+                        <th>Uprawniony</th>
+                        <td>{{ data.patent_holder }}</td>
+                    </tr>
+                {% endif %}
+                {% if data.jurisdiction %}
+                    <tr>
+                        <th>Kraj</th>
+                        <td>{{ data.jurisdiction }}</td>
+                    </tr>
+                {% endif %}
+                {% if data.wdrozenie is not None %}
+                    <tr>
+                        <th>Wdrożenie</th>
+                        <td>{{ data.wdrozenie|yesno:"tak,nie,—" }}</td>
+                    </tr>
+                {% endif %}
+                {% if patent_wydzial %}
+                    <tr>
+                        <th>Wydział / jednostka</th>
+                        <td>{{ patent_wydzial }}</td>
+                    </tr>
+                {% endif %}
+            {% endif %}
             {% if session.charakter_formalny %}
                 <tr>
                     <th>Charakter formalny</th>
