@@ -225,3 +225,4 @@ src/bpp/static/rollbar/
 
 # pytest-playwright: katalog na trace/screenshot/video z --tracing itp.
 test-results/
+.rtk/
