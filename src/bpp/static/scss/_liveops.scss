@@ -1,22 +1,112 @@
 // =============================================================================
 // LIVEOPS
-// Wygląd ekranu długo-działającej operacji (django-liveops): przyciski
-// sterujące Anuluj/Ponów oraz strefy statusu/postępu/etapów. Pakiet liveops
-// NIE dostarcza własnego CSS, więc gołe <button class="op-controls-*">
-// renderują się jak surowe przyciski przeglądarki ("Anuluj nie wygląda jak
-// przycisk"). Nadajemy im wygląd spójny z Foundation, a etapom i strefom
-// czytelną strukturę. Używamy tylko zmiennych pewnych we wszystkich motywach
-// ($primary-color, $white, $global-radius); dla akcji drugorzędnej neutralne
-// szarości zamiast $alert-color (niezdefiniowany w części motywów).
+// Wygląd ekranu długo-działającej operacji (django-liveops): pasek postępu,
+// etapy, status, log oraz przyciski sterujące. Pakiet liveops emituje wyłącznie
+// semantyczne klasy (.progress-bar/.progress-fill, .op-stage--active itd.) i
+// zostawia stylowanie hostowi (patrz example/demo w repo liveops). Dopasowujemy
+// je do Foundation BPP. Używamy tylko zmiennych pewnych we wszystkich motywach
+// ($primary-color, $white, $global-radius); kolory statusów etapów są
+// semantyczne (nie motywowane), by „gotowe/błąd" czytały się jednoznacznie.
 // =============================================================================
 
+// Puste strefy (OOB-swap wypełnia je dopiero gdy operacja coś wypisze) —
+// chowamy, żeby nie robiły pustych odstępów przed startem.
+#op-status:empty,
+#op-progress:empty,
+#op-log:empty,
+#op-stages:empty {
+  display: none;
+}
+
+#op-status,
+#op-progress,
+#op-log {
+  margin: 0.5rem 0;
+}
+
+// --- status ---
+#op-status {
+  padding: 0.4rem 0.6rem;
+  background: rgba($primary-color, 0.08);
+  border-radius: $global-radius;
+}
+
+// --- pasek postępu: liveops renderuje .progress-bar > .progress-fill[style=width] ---
+.progress-bar {
+  width: 100%;
+  height: 1.1rem;
+  background: #e6e6e6;
+  border-radius: $global-radius;
+  overflow: hidden; // przytnij zaokrąglenie wypełnienia
+}
+
+.progress-fill {
+  height: 100%;
+  background: $primary-color;
+  border-radius: $global-radius;
+  transition: width 0.2s ease-in-out;
+}
+
+#op-progress small {
+  display: inline-block;
+  margin-top: 0.15rem;
+  font-size: 0.8rem;
+  color: #666;
+}
+
+// --- log ---
+#op-log {
+  max-height: 12rem;
+  padding: 0.5rem;
+  overflow-y: auto;
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+  font-size: 0.82rem;
+  background: #f5f5f5;
+  border-radius: $global-radius;
+}
+
+// --- etapy (pigułki): liveops <li class="op-stage op-stage--{state}"> ---
+.op-stages {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin: 0.75rem 0;
+  padding: 0;
+  list-style: none;
+}
+
+.op-stage {
+  padding: 0.25rem 0.7rem;
+  font-size: 0.85rem;
+  background: #dcdcdc;
+  color: #555; // pending
+  border-radius: $global-radius;
+
+  &--active {
+    background: $primary-color;
+    color: $white;
+    font-weight: 600;
+  }
+
+  &--done {
+    background: #3a9d3a;
+    color: $white;
+  }
+
+  &--failed,
+  &--cancelled {
+    background: #cc4b37;
+    color: $white;
+  }
+}
+
+// --- przyciski sterujące Anuluj/Ponów ---
 #op-controls {
   display: flex;
   gap: 0.5rem;
   margin-top: 1rem;
 }
 
-// Wspólna baza obu przycisków sterujących.
 .op-controls-cancel,
 .op-controls-restart {
   display: inline-block;
@@ -29,15 +119,14 @@
   cursor: pointer;
   transition: all 0.15s ease-in-out;
 
-  // liveops.js pokazuje/chowa przyciski atrybutem `hidden` zależnie od stanu
-  // operacji; jawny display:inline-block nadpisałby domyślne [hidden]{none},
-  // więc przywracamy ukrywanie z wyższą specyficznością.
+  // liveops.js pokazuje/chowa przyciski atrybutem `hidden` zależnie od stanu;
+  // jawny display:inline-block nadpisałby [hidden]{none}, więc przywracamy.
   &[hidden] {
     display: none;
   }
 }
 
-// Anuluj — akcja drugorzędna (neutralny hollow, nie konkuruje z akcją główną).
+// Anuluj — akcja drugorzędna (neutralny hollow).
 .op-controls-cancel {
   background: $white;
   color: #555;
@@ -50,7 +139,7 @@
   }
 }
 
-// Ponów — akcja główna pokazywana po błędzie (kolor motywu).
+// Ponów — akcja główna po błędzie (kolor motywu).
 .op-controls-restart {
   background: $primary-color;
   color: $white;
@@ -59,37 +148,4 @@
     color: $white;
     filter: brightness(0.92);
   }
-}
-
-// Lista etapów operacji (op.stages → _stages.html).
-.op-stages {
-  margin: 1rem 0;
-  padding: 0;
-  list-style: none;
-}
-
-.op-stage {
-  padding: 0.25rem 0;
-  color: #8a8a8a; // pending — wyszarzony
-
-  &--active {
-    color: $primary-color;
-    font-weight: 600;
-  }
-
-  &--done {
-    color: #3a7d34;
-  }
-
-  &--failed,
-  &--cancelled {
-    color: #cc4b37;
-  }
-}
-
-// Odstępy stref aktualizowanych OOB-swapem, żeby treść się nie sklejała.
-#op-status,
-#op-progress,
-#op-log {
-  margin: 0.5rem 0;
 }
