@@ -42,7 +42,10 @@ from import_pracownikow.models import (
 )
 from import_pracownikow.parsers.leksykony import zbuduj_parser_kontekst
 from import_pracownikow.parsers.osoba import rozbij_osobe
-from import_pracownikow.parsers.wartosci import normalizuj_wartosci_wiersza
+from import_pracownikow.parsers.wartosci import (
+    normalizuj_wartosci_wiersza,
+    sklej_drugie_imie,
+)
 from import_pracownikow.pewnosc import (
     STATUS_TWARDY,
     STATUS_WIELU,
@@ -185,6 +188,9 @@ def _wybierz_autor_jednostka(autor, jednostka):
 def _przetworz_wiersz(parent, elem, parser_ctx=None):
     dane_form = normalizuj_wartosci_wiersza(elem)
     rozbicie = _rozbij_osoba_sklejona(dane_form, parser_ctx)
+    # Kolumna „Drugie imię" scalana z „Imię" w jedno Autor.imiona — PO rozbiciu
+    # osoby sklejonej (parser uzupełnia puste „imię" z rozbicia), przed AutorForm.
+    sklej_drugie_imie(dane_form)
 
     jednostka_form = JednostkaForm(data=dane_form)
     jednostka_form.full_clean()
