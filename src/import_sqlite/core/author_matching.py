@@ -7,7 +7,6 @@ from collections import Counter
 from dataclasses import dataclass, field
 
 from crossref_bpp.core import Komparator, StatusPorownania
-
 from import_sqlite.core.author_names import sort_key, split_name
 
 MAX_KANDYDATOW = 3

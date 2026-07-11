@@ -1,8 +1,8 @@
 import pytest
 from model_bakery import baker
 
-from import_sqlite.core.author_names import sort_key
 from import_sqlite.core.author_matching import aggregate_distinct, match_name
+from import_sqlite.core.author_names import sort_key
 
 
 @pytest.mark.django_db

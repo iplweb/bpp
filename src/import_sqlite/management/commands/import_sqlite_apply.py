@@ -21,16 +21,12 @@ class Command(BaseCommand):
     def _validate_pks(self, decisions):
         """Waliduj decyzje PRZED transakcją: pk musi istnieć, wartość musi być
         pusta / ``NOWY`` / liczba."""
-        zle = [
-            v for v in decisions.values() if v and v != "NOWY" and not v.isdigit()
-        ]
+        zle = [v for v in decisions.values() if v and v != "NOWY" and not v.isdigit()]
         if zle:
             raise CommandError(f"nieprawidłowe wartości 'decyzja': {zle}")
 
         pks = {int(v) for v in decisions.values() if v.isdigit()}
-        istniejace = set(
-            Autor.objects.filter(pk__in=pks).values_list("pk", flat=True)
-        )
+        istniejace = set(Autor.objects.filter(pk__in=pks).values_list("pk", flat=True))
         brakujace = pks - istniejace
         if brakujace:
             raise CommandError(

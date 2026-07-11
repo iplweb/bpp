@@ -1,6 +1,6 @@
 from datetime import date
 
-from import_sqlite.handlers.patent import PatentData, parse_ddmmyyyy, parse_patent
+from import_sqlite.handlers.patent import parse_ddmmyyyy, parse_patent
 from import_sqlite.reader import RawRecord
 
 

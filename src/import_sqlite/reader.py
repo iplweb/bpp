@@ -37,9 +37,7 @@ def iter_records(sqlite_path: str, typ: str) -> Iterator[RawRecord]:
             try:
                 parsed = json.loads(parsed_json)
             except json.JSONDecodeError:
-                warnings.warn(
-                    f"Niepoprawny parsed_json dla {source_id}", stacklevel=2
-                )
+                warnings.warn(f"Niepoprawny parsed_json dla {source_id}", stacklevel=2)
                 continue
             yield RawRecord(source_id or "", source_url or "", parsed)
     finally:

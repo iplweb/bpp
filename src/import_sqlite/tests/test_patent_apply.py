@@ -42,9 +42,7 @@ def test_apply_creates_patent_with_matched_author(
 ):
     from bpp.models import Patent
 
-    jedn = baker.make(
-        "bpp.Jednostka", uczelnia=ctx.uczelnia, skupia_pracownikow=True
-    )
+    jedn = baker.make("bpp.Jednostka", uczelnia=ctx.uczelnia, skupia_pracownikow=True)
     a = baker.make(
         "bpp.Autor", nazwisko="Wawruszak", imiona="Anna", aktualna_jednostka=jedn
     )
