@@ -291,6 +291,100 @@ def test_llm_schema_ukrywa_pola_pii_dla_api():
 
 
 @pytest.mark.django_db
+def test_command_autor_root_compact_start_model():
+    """Korzeń bpp.Autor generuje poprawny compact (start model = bpp.autor)."""
+    out = StringIO()
+    call_command(
+        "opisz_schemat_djangoql_dla_llm", "--model", "bpp.Autor", "--drukuj", stdout=out
+    )
+    text = out.getvalue()
+    assert text.startswith(f"# BPP {VERSION}")
+    assert "# Model: bpp.Autor" in text
+    assert "start model: bpp.autor" in text
+
+
+@pytest.mark.django_db
+def test_command_autorzy_root_compact_start_model():
+    """Korzeń bpp.Autorzy (cache autorstwa) generuje poprawny compact."""
+    out = StringIO()
+    call_command(
+        "opisz_schemat_djangoql_dla_llm",
+        "--model",
+        "bpp.Autorzy",
+        "--drukuj",
+        stdout=out,
+    )
+    assert "start model: bpp.autorzy" in out.getvalue()
+
+
+@pytest.mark.django_db
+def test_command_all_roots_writes_three_named_files(tmp_path):
+    """--wszystkie-korzenie zapisuje trzy kanoniczne pliki (rekord/autor/autorzy)
+    do wskazanego katalogu, każdy z właściwym start-model."""
+    call_command(
+        "opisz_schemat_djangoql_dla_llm",
+        "--wszystkie-korzenie",
+        "--katalog",
+        str(tmp_path),
+    )
+    for fname, start in (
+        ("rekord_djangoql_schema.compact.txt", "bpp.rekord"),
+        ("autor_djangoql_schema.compact.txt", "bpp.autor"),
+        ("autorzy_djangoql_schema.compact.txt", "bpp.autorzy"),
+    ):
+        p = tmp_path / fname
+        assert p.exists(), f"brak {fname}"
+        content = p.read_text()
+        assert content.startswith(f"# BPP {VERSION}")
+        assert f"start model: {start}" in content
+
+
+@pytest.mark.django_db
+def test_command_output_default_derived_from_model(tmp_path, monkeypatch):
+    """Bez --output ścieżka wyjścia pochodzi z --model (korzeń Autor → plik
+    autor_…), a nie zawsze z pliku Rekord."""
+    import bpp.management.commands.opisz_schemat_djangoql_dla_llm as cmd
+
+    monkeypatch.setattr(cmd, "DATA_DIR", tmp_path)
+    call_command("opisz_schemat_djangoql_dla_llm", "--model", "bpp.Autor")
+    assert (tmp_path / "autor_djangoql_schema.compact.txt").exists()
+    assert not (tmp_path / "rekord_djangoql_schema.compact.txt").exists()
+
+
+@pytest.mark.django_db
+def test_autor_root_nie_wycieka_pii_ani_nazw_instytucji():
+    """Korzeń Autor: nazwiska/imiona autorów oraz nazwy jednostek/uczelni NIE
+    trafiają do artefaktu (no_value_targets + brak osadzania wartości dla
+    modeli danych), a blocklist PII (email/adnotacje/opis) trzyma niezależnie
+    od korzenia."""
+    from model_bakery import baker
+
+    from bpp.djangoql_schema import RekordLLMSchema
+    from bpp.models import Autor, Jednostka, Uczelnia
+
+    ucz = baker.make(Uczelnia, nazwa="TAJNA-UCZELNIA-XYZ")
+    baker.make(Jednostka, nazwa="TAJNA-JEDNOSTKA-XYZ", uczelnia=ucz)
+    baker.make(Autor, nazwisko="TAJNENAZWISKO", imiona="TAJNEIMIE")
+
+    out = StringIO()
+    call_command(
+        "opisz_schemat_djangoql_dla_llm", "--model", "bpp.Autor", "--drukuj", stdout=out
+    )
+    text = out.getvalue()
+    for secret in (
+        "TAJNA-UCZELNIA-XYZ",
+        "TAJNA-JEDNOSTKA-XYZ",
+        "TAJNENAZWISKO",
+        "TAJNEIMIE",
+    ):
+        assert secret not in text, f"wyciek: {secret}"
+    # blocklist PII autora działa też, gdy Autor jest korzeniem:
+    assert "email" not in set(
+        RekordLLMSchema(apps.get_model("bpp.Autor")).models["bpp.autor"]
+    )
+
+
+@pytest.mark.django_db
 def test_web_editor_schema_pii_nienaruszony():
     """Kontrakt web-edytora /zapytanie/ (BppQLSchemaOgraniczony) celowo NIE jest
     okrojony — redaktor w przeglądarce dalej filtruje po email/adnotacje
