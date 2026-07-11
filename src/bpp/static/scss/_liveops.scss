@@ -1,0 +1,95 @@
+// =============================================================================
+// LIVEOPS
+// Wygląd ekranu długo-działającej operacji (django-liveops): przyciski
+// sterujące Anuluj/Ponów oraz strefy statusu/postępu/etapów. Pakiet liveops
+// NIE dostarcza własnego CSS, więc gołe <button class="op-controls-*">
+// renderują się jak surowe przyciski przeglądarki ("Anuluj nie wygląda jak
+// przycisk"). Nadajemy im wygląd spójny z Foundation, a etapom i strefom
+// czytelną strukturę. Używamy tylko zmiennych pewnych we wszystkich motywach
+// ($primary-color, $white, $global-radius); dla akcji drugorzędnej neutralne
+// szarości zamiast $alert-color (niezdefiniowany w części motywów).
+// =============================================================================
+
+#op-controls {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 1rem;
+}
+
+// Wspólna baza obu przycisków sterujących.
+.op-controls-cancel,
+.op-controls-restart {
+  display: inline-block;
+  margin: 0;
+  padding: 0.6em 1.2em;
+  font-size: 0.9rem;
+  line-height: 1;
+  border: 1px solid transparent;
+  border-radius: $global-radius;
+  cursor: pointer;
+  transition: all 0.15s ease-in-out;
+
+  // liveops.js pokazuje/chowa przyciski atrybutem `hidden` zależnie od stanu
+  // operacji; jawny display:inline-block nadpisałby domyślne [hidden]{none},
+  // więc przywracamy ukrywanie z wyższą specyficznością.
+  &[hidden] {
+    display: none;
+  }
+}
+
+// Anuluj — akcja drugorzędna (neutralny hollow, nie konkuruje z akcją główną).
+.op-controls-cancel {
+  background: $white;
+  color: #555;
+  border-color: #b7b7b7;
+
+  &:hover {
+    background: #f2f2f2;
+    color: #222;
+    border-color: #8a8a8a;
+  }
+}
+
+// Ponów — akcja główna pokazywana po błędzie (kolor motywu).
+.op-controls-restart {
+  background: $primary-color;
+  color: $white;
+
+  &:hover {
+    color: $white;
+    filter: brightness(0.92);
+  }
+}
+
+// Lista etapów operacji (op.stages → _stages.html).
+.op-stages {
+  margin: 1rem 0;
+  padding: 0;
+  list-style: none;
+}
+
+.op-stage {
+  padding: 0.25rem 0;
+  color: #8a8a8a; // pending — wyszarzony
+
+  &--active {
+    color: $primary-color;
+    font-weight: 600;
+  }
+
+  &--done {
+    color: #3a7d34;
+  }
+
+  &--failed,
+  &--cancelled {
+    color: #cc4b37;
+  }
+}
+
+// Odstępy stref aktualizowanych OOB-swapem, żeby treść się nie sklejała.
+#op-status,
+#op-progress,
+#op-log {
+  margin: 0.5rem 0;
+}

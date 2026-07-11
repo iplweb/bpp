@@ -29,6 +29,22 @@ def test_strona_live_uzywa_wlasnego_host_template(admin_client, admin_user):
 
 
 @pytest.mark.django_db
+def test_strona_live_wstrzykuje_csrf_header_dla_htmx(admin_client, admin_user):
+    """Anuluj/Ponów liveops to gołe przyciski htmx POZA formularzem. Przy
+    CSRF_COOKIE_HTTPONLY=True liveops.js nie odczyta tokenu z ciasteczka
+    (document.cookie go nie widzi), więc POST /cancel/ i /restart/ dostawał 403
+    CSRF token missing. Host-page wstrzykuje token nagłówkiem X-CSRFToken przez
+    dziedziczone hx-headers — regresja na obecność wrappera i NIEPUSTY token."""
+    imp = baker.make(ImportPracownikow, owner=admin_user)
+    resp = admin_client.get(imp.get_absolute_url())
+    assert resp.status_code == 200
+    content = resp.content.decode()
+    assert "hx-headers" in content
+    assert "X-CSRFToken" in content
+    assert '"X-CSRFToken": ""' not in content  # token musi być realny, nie pusty
+
+
+@pytest.mark.django_db
 def test_index_renderuje_bez_noreversematch(admin_client, admin_user):
     """Landmine: importpracownikow_list.html linkował do usuniętego URL-a
     ``import_pracownikow:importpracownikow-router`` — NoReverseMatch przy
