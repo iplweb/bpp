@@ -5,16 +5,23 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('bpp', '0467_seed_crossref_mapper_rows'),
-        ('importer_publikacji', '0018_importsession_rodzaj_rekordu'),
+        ("bpp", "0467_seed_crossref_mapper_rows"),
+        ("importer_publikacji", "0018_importsession_rodzaj_rekordu"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='multipleworksimport',
-            name='uczelnia',
-            field=models.ForeignKey(blank=True, help_text='Uczelnia hosta, z którego utworzono paczkę (multi-hosted). Steruje izolacją widoczności paczki i jej wpisów.', null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='importer_publikacji_batches', to='bpp.uczelnia', verbose_name='uczelnia'),
+            model_name="multipleworksimport",
+            name="uczelnia",
+            field=models.ForeignKey(
+                blank=True,
+                help_text="Uczelnia hosta, z którego utworzono paczkę (multi-hosted). Steruje izolacją widoczności paczki i jej wpisów.",
+                null=True,
+                on_delete=django.db.models.deletion.SET_NULL,
+                related_name="importer_publikacji_batches",
+                to="bpp.uczelnia",
+                verbose_name="uczelnia",
+            ),
         ),
     ]
