@@ -1,0 +1,18 @@
+{# Render BibTeX na ekranie (<pre> + przycisk kopiowania). Eksport BibTeX #}
+{# NIE używa tego partiala — idzie surowym plikiem .bib przez #}
+{# bibtex_export_response (bpp.export.bibtex.export_to_bibtex). #}
+<div class="multiseek-bibtex-container">
+    {% if object_list %}
+        <div class="bibtex-actions bibtex-actions-top">
+            <button data-action="copy-bibtex" type="button">
+                📋 Skopiuj wszystko do schowka
+            </button>
+            <span id="bibtex-copy-feedback" class="copy-feedback" style="display: none;">
+                ✓ Skopiowane!
+            </span>
+        </div>
+    {% endif %}
+    <pre>{% for element in object_list %}{{ element.original.to_bibtex }}{% if not forloop.last %}
+
+{% endif %}{% endfor %}</pre>
+</div>

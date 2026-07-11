@@ -47,6 +47,9 @@
     {% if request.user.is_authenticated and paginator_count > 0 and paginator_count <= multiseek_export_max_rows %}
         {% url "multiseek-export" "csv" as multiseek_export_csv_url %}
         {% url "multiseek-export" "xlsx" as multiseek_export_xlsx_url %}
+        {% url "multiseek-export" "html" as multiseek_export_html_url %}
+        {% url "multiseek-export" "docx" as multiseek_export_docx_url %}
+        {% url "multiseek-export" "bib" as multiseek_export_bib_url %}
         {# <ul class="menu"> może zawierać wyłącznie <li> — dropdown-pane #}
         {# jest tu świadomie poza <ul> (siostra), zgodnie ze wzorcem z #}
         {# multiseek/index.html (przycisk .dropdown wyzwala pane po id). #}
@@ -68,6 +71,26 @@
                         <i class="fi-download"></i> XLS: opis bibliograficzny
                     </a>
                 </li>
+                {# Eksport DOKUMENTU (odwzorowuje aktualny report_type). #}
+                {# BibTeX-view: .bib zamiast HTML/DOCX (D3). #}
+                {% if report_type == "bibtex" %}
+                <li>
+                    <a href="{{ multiseek_export_bib_url }}{% if print_removed %}?print-removed=1{% endif %}">
+                        <i class="fi-download"></i> BibTeX (.bib)
+                    </a>
+                </li>
+                {% else %}
+                <li>
+                    <a href="{{ multiseek_export_html_url }}{% if print_removed %}?print-removed=1{% endif %}">
+                        <i class="fi-download"></i> HTML
+                    </a>
+                </li>
+                <li>
+                    <a href="{{ multiseek_export_docx_url }}{% if print_removed %}?print-removed=1{% endif %}">
+                        <i class="fi-download"></i> DOCX (Word)
+                    </a>
+                </li>
+                {% endif %}
             </ul>
         </div>
     {% endif %}
