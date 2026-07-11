@@ -144,3 +144,16 @@ def test_rest_api_praca_habilitacyjna_no_queries(
 ):
     with django_assert_max_num_queries(11):
         api_client.get(reverse("api_v1:praca_habilitacyjna-list"))
+
+
+@pytest.mark.django_db
+def test_rest_api_praca_habilitacyjna_bez_pola_publikacja_habilitacyjna(
+    client, praca_habilitacyjna
+):
+    # ``publikacja_habilitacyjna`` (link do prac składowych „habilitacji-składaka")
+    # nie jest wystawiane przez API — pole nie powinno pojawić się w odpowiedzi.
+    res = client.get(
+        reverse("api_v1:praca_habilitacyjna-detail", args=(praca_habilitacyjna.pk,))
+    )
+    assert res.status_code == 200
+    assert "publikacja_habilitacyjna" not in res.json()

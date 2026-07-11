@@ -27,8 +27,6 @@ class Praca_HabilitacyjnaSerializer(
         view_name="api_v1:wydawca-detail", read_only=True
     )
 
-    publikacja_habilitacyjna = serializers.RelatedField(read_only=True)
-
     class Meta:
         model = Praca_Habilitacyjna
         fields = [
@@ -84,6 +82,4 @@ class Praca_HabilitacyjnaSerializer(
             "miejsce_i_rok",
             "wydawca",
             "wydawca_opis",
-            #
-            "publikacja_habilitacyjna",
         ]
