@@ -71,6 +71,11 @@ class ZapytanieAutorViewSet(ZapytanieAPIBaseViewSet):
     model = Autor
     serializer_class = AutorKompaktSerializer
 
+    def get_queryset(self):
+        # tnie N+1: AutorKompaktSerializer czyta tytul/aktualna_jednostka
+        # (oba nullable → LEFT JOIN, bez ryzyka wycięcia wierszy)
+        return super().get_queryset().select_related("tytul", "aktualna_jednostka")
+
 
 class ZapytanieAutorzyViewSet(ZapytanieAPIBaseViewSet):
     model = Autorzy
