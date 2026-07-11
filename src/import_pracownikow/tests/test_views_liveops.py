@@ -363,3 +363,56 @@ def test_zatwierdz_wyscig_nie_dubluje_integracji(admin_user):
     assert len(enqueue_calls) == 1, enqueue_calls
     imp.refresh_from_db()
     assert imp.stan == ImportPracownikow.STAN_ZATWIERDZONY
+
+
+@pytest.mark.django_db
+def test_panel_wyniku_czesciowy_import_nie_udaje_sukcesu(admin_user):
+    """Gdy integracja pominęła wiersze (``wymaga_uwagi``), panel wyniku NIE jest
+    zielony i pokazuje liczniki pominiętych — inaczej operator dostaje „Import
+    zakończony" mimo że część osób nie weszła (uwaga reviewera #3)."""
+    from django.template.loader import render_to_string
+
+    imp = baker.make(
+        ImportPracownikow, owner=admin_user, stan=ImportPracownikow.STAN_ZINTEGROWANY
+    )
+    html = render_to_string(
+        "import_pracownikow/import_pracownikow_result.html",
+        {
+            "operation": imp,
+            "byl_dry_run": False,
+            "zakres": "pelny",
+            "zintegrowano": 3,
+            "pominieto_niedopasowane": 2,
+            "pominieto_bez_jednostki": 1,
+            "wymaga_uwagi": True,
+        },
+    )
+    assert "panel callout warning" in html
+    assert "panel callout success" not in html
+    assert "częściowo" in html
+    assert "<strong>2</strong>" in html  # pominięci niedopasowani
+    assert "<strong>1</strong>" in html  # pominięci bez jednostki
+
+
+@pytest.mark.django_db
+def test_panel_wyniku_pelny_sukces_jest_zielony(admin_user):
+    """Pełny import bez pominięć (``wymaga_uwagi=False``) → zielony panel."""
+    from django.template.loader import render_to_string
+
+    imp = baker.make(
+        ImportPracownikow, owner=admin_user, stan=ImportPracownikow.STAN_ZINTEGROWANY
+    )
+    html = render_to_string(
+        "import_pracownikow/import_pracownikow_result.html",
+        {
+            "operation": imp,
+            "byl_dry_run": False,
+            "zakres": "pelny",
+            "zintegrowano": 5,
+            "pominieto_niedopasowane": 0,
+            "pominieto_bez_jednostki": 0,
+            "wymaga_uwagi": False,
+        },
+    )
+    assert "panel callout success" in html
+    assert "częściowo" not in html

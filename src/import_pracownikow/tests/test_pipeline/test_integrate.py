@@ -203,3 +203,27 @@ def test_commit_pomija_wiersz_gdy_recheck_nieaktualny(autor_jednostka_fixture):
     assert p.result_context["pominieto_nieaktualne"] == 1
     imp.refresh_from_db()
     assert imp.stan == ImportPracownikow.STAN_ZINTEGROWANY
+
+
+@pytest.mark.django_db
+def test_commit_liczy_pominiete_bez_jednostki(autor_jednostka_fixture):
+    """Wiersz ze znanym autorem, ale bez jednostki (odroczona / pominięta) NIE
+    jest integrowany (brak Autor_Jednostka) ani liczony jako „niedopasowany"
+    (autor jest ustawiony). Bez osobnego licznika znikał z obu — podsumowanie
+    udawało pełny sukces. Musi trafić do ``pominieto_bez_jednostki`` i podnieść
+    ``wymaga_uwagi`` (uwaga reviewera #3)."""
+    autor, _ = autor_jednostka_fixture
+    imp = baker.make(ImportPracownikow, stan=ImportPracownikow.STAN_ZATWIERDZONY)
+    ImportPracownikowRow.objects.create(
+        parent=imp,
+        autor=autor,
+        jednostka=None,
+        autor_jednostka=None,
+        diff_do_utworzenia={},
+        zmiany_potrzebne=False,
+    )
+    p = MockProgress(imp)
+    integruj(imp, p)
+
+    assert p.result_context["pominieto_bez_jednostki"] == 1
+    assert p.result_context["wymaga_uwagi"] is True
