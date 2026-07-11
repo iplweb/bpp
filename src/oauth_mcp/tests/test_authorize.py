@@ -35,3 +35,12 @@ def test_pkce_wymagane(client, django_user_model):
     # 302 z ?error=... na redirect_uri (nie 400).
     assert resp.status_code == 302
     assert "error=" in resp["Location"]
+
+
+@pytest.mark.django_db
+def test_device_flow_niedostepny(client):
+    # RFC 8628 Device Authorization Grant świadomie NIE jest zamontowany —
+    # niechciany w MVP (nieuwierzytelniony, csrf-exempt, nielimitowany zapis
+    # DeviceGrant). Montujemy tylko authorize/token/revoke, patrz urls.py.
+    resp = client.post("/o/device-authorization/")
+    assert resp.status_code == 404
