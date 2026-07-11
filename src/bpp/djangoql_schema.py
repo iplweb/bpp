@@ -350,7 +350,73 @@ def _resolve_search_allowlist():
 SEARCH_ALLOWLIST = _resolve_search_allowlist()
 
 
-class BppQLSchemaOgraniczony(BppQLSchema):
+#: Modele, dla których w schemacie wyszukiwania udostępniamy TYLKO wskazane pola.
+#: Uczelnia trzyma hasła (dspace/pbn/clarivate/orcid) i dziesiątki pól-ustawień —
+#: w języku zapytań sens ma jedynie identyfikujące nazwa/skrot.
+_RESTRICTED_FIELDS_LABELS = {
+    "bpp.Uczelnia": ("nazwa", "skrot"),
+}
+
+
+def _restricted_fields():
+    """Mapa {klasa modelu: {dozwolone pola}} rozwiązana z etykiet (leniwie)."""
+    from django.apps import apps
+
+    return {
+        apps.get_model(label): set(names)
+        for label, names in _RESTRICTED_FIELDS_LABELS.items()
+    }
+
+
+def _field_name(field):
+    """Nazwa pola z pozycji ``get_fields`` — to bywa albo string (nazwa pola),
+    albo instancja DjangoQLField (np. ``CountField`` z agregatów)."""
+    return field if isinstance(field, str) else getattr(field, "name", "")
+
+
+def _is_deprecated_field(model, name):
+    """Pole do pominięcia w schemacie: ``legacy`` w nazwie albo marker
+    „o znaczeniu historycznym" / „[Przestarzałe]" w help_text/verbose_name.
+
+    Nazwy pickerów/agregatów/części dat (``<fk>__rel``, ``<pole>__year``) nie
+    mają odpowiednika w ``_meta`` → nie są tykane.
+    """
+    if not name:
+        return False
+    if "legacy" in name.lower():
+        return True
+    try:
+        field = model._meta.get_field(name)
+    except FieldDoesNotExist:
+        return False
+    help_text = str(getattr(field, "help_text", "") or "").lower()
+    verbose = str(getattr(field, "verbose_name", "") or "").lower()
+    return "znaczeniu historyczn" in help_text or "przestarzał" in verbose
+
+
+class DeprecatedAndRestrictedFieldsMixin:
+    """Docina wynik ``get_fields`` KAŻDEGO modelu:
+
+    1. modele z ``_RESTRICTED_FIELDS_LABELS`` (Uczelnia) pokazują tylko wskazane
+       pola — bez haseł i ustawień;
+    2. pola przestarzałe / ``legacy`` / „o znaczeniu historycznym" znikają
+       zewsząd.
+
+    Musi być PIERWSZĄ bazą schematu, żeby filtrować finalną listę pól (już po
+    pickerach/agregatach dokładanych przez klasy niżej w MRO). ``get_fields``
+    zwraca pozycje mieszane (stringi i instancje pól) — filtrujemy po nazwie,
+    zachowując oryginalną pozycję.
+    """
+
+    def get_fields(self, model):
+        fields = list(super().get_fields(model))
+        allowed = _restricted_fields().get(model)
+        if allowed is not None:
+            return [f for f in fields if _field_name(f) in allowed]
+        return [f for f in fields if not _is_deprecated_field(model, _field_name(f))]
+
+
+class BppQLSchemaOgraniczony(DeprecatedAndRestrictedFieldsMixin, BppQLSchema):
     """``BppQLSchema`` (pickery ``<fk>__rel`` + agregaty) zawężony allow-listą do
     rdzenia bibliograficznego.
 
@@ -418,7 +484,7 @@ def _build_llm_fk_options():
     return options
 
 
-class RekordLLMSchema(ExtrasSchema):
+class RekordLLMSchema(DeprecatedAndRestrictedFieldsMixin, ExtrasSchema):
     """Schemat dla eksportu opisu DjangoQL do promptu LLM.
 
     Baza ``ExtrasSchema`` (agregaty + części dat), **bez** pickerów

@@ -277,7 +277,6 @@ bpp.wydawnictwo_zwarte:
   jezyk_alt                                    -> bpp.jezyk?  match nazwa in ("abchaski", "Achinese", "Acoli", "Adangme", "Adyghe", "afar", "Afrihili", "Afro-Asiatic languages", "afrykanerski", "Ainu", "ajmara", "akadyjski", "akan", "albański", "Aleut", "Algonquian languages", "Altaic languages", "amharski", "angielski", "Angika")  "Język alternatywny"
   jezyk_orig                                   -> bpp.jezyk?  match nazwa in ("abchaski", "Achinese", "Acoli", "Adangme", "Adyghe", "afar", "Afrihili", "Afro-Asiatic languages", "afrykanerski", "Ainu", "ajmara", "akadyjski", "akan", "albański", "Aleut", "Algonquian languages", "Altaic languages", "amharski", "angielski", "Angika")  "Język oryginalny" — Dla tłumaczeń. Wartość eksportowana do PBN.
   konferencja                                  -> bpp.konferencja?
-  legacy_data                                  unknown?
   liczba_cytowan                               int?  "Liczba cytowań" — Wartość aktualizowana jest automatycznie raz na kilka dni w przypadku
         skonfigurowania dostępu do API WOS AMR (przez obiekt 'Uczelnia'). Możesz również
         czaktualizować tą wartość ręcznie, naciskając przycisk.
@@ -310,7 +309,6 @@ bpp.wydawnictwo_zwarte:
   pbn_czy_projekt_ncn                          bool?  "PBN: Projekt NCN" — evaluationBookProjectNCN - czy publikacja powstała w ramach projektu Narodowego Centrum Nauki
   pbn_czy_projekt_nprh                         bool?  "PBN: Projekt NPRH" — evaluationBookProjectNPHR - czy publikacja powstała w ramach projektu Narodowego Programu Rozwoju Humanistyki
   pbn_czy_projekt_ue                           bool?  "PBN: Projekt UE" — evaluationBookProjectUE - czy publikacja powstała w ramach projektu finansowanego przez Unię Europejską
-  pbn_id                                       int?  "[Przestarzałe] Identyfikator PBN" — [Pole o znaczeniu historycznym] Identyfikator w systemie Polskiej Bibliografii Naukowej (PBN)
   pbn_uid                                      -> pbn_api.publication?  "Odpowiednik w PBN"
   pmc_id                                       str  "PubMed Central ID"
   praca_wybitna                                bool
@@ -411,7 +409,6 @@ bpp.autor:
   ostatnio_zmieniony           datetime?
   patent                       -> bpp.patent?
   patent_autor                 -> bpp.patent_autor?
-  pbn_id                       int?  "[Przestarzałe] Identyfikator PBN" — [Pole o znaczeniu historycznym] Identyfikator w systemie Polskiej Bibliografii Naukowej (PBN)
   pbn_uid                      -> pbn_api.scientist?
   plec                         -> bpp.plec?  match nazwa in ("kobieta", "mężczyzna")
   pokazuj                      bool
@@ -464,7 +461,6 @@ bpp.jednostka:
   jest_lustrem                 bool  "Syntetyczny węzeł-lustro wydziału"
   kierunek_studiow             -> bpp.kierunek_studiow?
   kolejnosc                    int
-  legacy_wydzial_id            int?
   level                        int
   lft                          int
   nazwa                        str
@@ -474,7 +470,6 @@ bpp.jednostka:
   parent                       -> bpp.jednostka?  "Jednostka nadrzędna"
   patent                       -> bpp.patent?
   patent_autor                 -> bpp.patent_autor?
-  pbn_id                       int?  "[Przestarzałe] Identyfikator PBN" — [Pole o znaczeniu historycznym] Identyfikator w systemie Polskiej Bibliografii Naukowej (PBN)
   pbn_uid                      -> pbn_api.institution?  "Odpowiednik w PBN"
   pokazuj_opis                 bool
   poprzednie_nazwy             str
@@ -558,7 +553,6 @@ bpp.wydawnictwo_ciagle:
   konferencja                                  -> bpp.konferencja?
   kwartyl_w_scopus                             int?  choices: brak | Q1 | Q2 | Q3 | Q4
   kwartyl_w_wos                                int?  choices: brak | Q1 | Q2 | Q3 | Q4
-  legacy_data                                  unknown?
   liczba_cytowan                               int?  "Liczba cytowań" — Wartość aktualizowana jest automatycznie raz na kilka dni w przypadku
         skonfigurowania dostępu do API WOS AMR (przez obiekt 'Uczelnia'). Możesz również
         czaktualizować tą wartość ręcznie, naciskając przycisk.
@@ -588,7 +582,6 @@ bpp.wydawnictwo_ciagle:
   pbn_czy_projekt_ncn                          bool?  "PBN: Projekt NCN" — evaluationBookProjectNCN - czy publikacja powstała w ramach projektu Narodowego Centrum Nauki
   pbn_czy_projekt_nprh                         bool?  "PBN: Projekt NPRH" — evaluationBookProjectNPHR - czy publikacja powstała w ramach projektu Narodowego Programu Rozwoju Humanistyki
   pbn_czy_projekt_ue                           bool?  "PBN: Projekt UE" — evaluationBookProjectUE - czy publikacja powstała w ramach projektu finansowanego przez Unię Europejską
-  pbn_id                                       int?  "[Przestarzałe] Identyfikator PBN" — [Pole o znaczeniu historycznym] Identyfikator w systemie Polskiej Bibliografii Naukowej (PBN)
   pbn_uid                                      -> pbn_api.publication?  "Odpowiednik w PBN"
   pmc_id                                       str  "PubMed Central ID"
   praca_wybitna                                bool
@@ -647,7 +640,6 @@ bpp.praca_doktorska:
   jezyk                                        -> bpp.jezyk  match nazwa in ("abchaski", "Achinese", "Acoli", "Adangme", "Adyghe", "afar", "Afrihili", "Afro-Asiatic languages", "afrykanerski", "Ainu", "ajmara", "akadyjski", "akan", "albański", "Aleut", "Algonquian languages", "Altaic languages", "amharski", "angielski", "Angika")  "Język"
   jezyk_alt                                    -> bpp.jezyk?  match nazwa in ("abchaski", "Achinese", "Acoli", "Adangme", "Adyghe", "afar", "Afrihili", "Afro-Asiatic languages", "afrykanerski", "Ainu", "ajmara", "akadyjski", "akan", "albański", "Aleut", "Algonquian languages", "Altaic languages", "amharski", "angielski", "Angika")  "Język alternatywny"
   jezyk_orig                                   -> bpp.jezyk?  match nazwa in ("abchaski", "Achinese", "Acoli", "Adangme", "Adyghe", "afar", "Afrihili", "Afro-Asiatic languages", "afrykanerski", "Ainu", "ajmara", "akadyjski", "akan", "albański", "Aleut", "Algonquian languages", "Altaic languages", "amharski", "angielski", "Angika")  "Język oryginalny" — Dla tłumaczeń. Wartość eksportowana do PBN.
-  legacy_data                                  unknown?
   liczba_cytowan                               int?  "Liczba cytowań" — Wartość aktualizowana jest automatycznie raz na kilka dni w przypadku
         skonfigurowania dostępu do API WOS AMR (przez obiekt 'Uczelnia'). Możesz również
         czaktualizować tą wartość ręcznie, naciskając przycisk.
@@ -664,7 +656,6 @@ bpp.praca_doktorska:
   opl_pub_research_potential                   bool?  "Środki finansowe art. 365 pkt 2 ustawy" — Środki finansowe, o których mowa w art. 365 pkt 2 ustawy
   ostatnio_zmieniony                           datetime?
   oznaczenie_wydania                           str
-  pbn_id                                       int?  "[Przestarzałe] Identyfikator PBN" — [Pole o znaczeniu historycznym] Identyfikator w systemie Polskiej Bibliografii Naukowej (PBN)
   pbn_uid                                      -> pbn_api.publication?  "Odpowiednik w PBN"
   pmc_id                                       str  "PubMed Central ID"
   promotor                                     -> bpp.autor?
@@ -714,7 +705,6 @@ bpp.praca_habilitacyjna:
   jezyk                                        -> bpp.jezyk  match nazwa in ("abchaski", "Achinese", "Acoli", "Adangme", "Adyghe", "afar", "Afrihili", "Afro-Asiatic languages", "afrykanerski", "Ainu", "ajmara", "akadyjski", "akan", "albański", "Aleut", "Algonquian languages", "Altaic languages", "amharski", "angielski", "Angika")  "Język"
   jezyk_alt                                    -> bpp.jezyk?  match nazwa in ("abchaski", "Achinese", "Acoli", "Adangme", "Adyghe", "afar", "Afrihili", "Afro-Asiatic languages", "afrykanerski", "Ainu", "ajmara", "akadyjski", "akan", "albański", "Aleut", "Algonquian languages", "Altaic languages", "amharski", "angielski", "Angika")  "Język alternatywny"
   jezyk_orig                                   -> bpp.jezyk?  match nazwa in ("abchaski", "Achinese", "Acoli", "Adangme", "Adyghe", "afar", "Afrihili", "Afro-Asiatic languages", "afrykanerski", "Ainu", "ajmara", "akadyjski", "akan", "albański", "Aleut", "Algonquian languages", "Altaic languages", "amharski", "angielski", "Angika")  "Język oryginalny" — Dla tłumaczeń. Wartość eksportowana do PBN.
-  legacy_data                                  unknown?
   liczba_cytowan                               int?  "Liczba cytowań" — Wartość aktualizowana jest automatycznie raz na kilka dni w przypadku
         skonfigurowania dostępu do API WOS AMR (przez obiekt 'Uczelnia'). Możesz również
         czaktualizować tą wartość ręcznie, naciskając przycisk.
@@ -731,7 +721,6 @@ bpp.praca_habilitacyjna:
   opl_pub_research_potential                   bool?  "Środki finansowe art. 365 pkt 2 ustawy" — Środki finansowe, o których mowa w art. 365 pkt 2 ustawy
   ostatnio_zmieniony                           datetime?
   oznaczenie_wydania                           str
-  pbn_id                                       int?  "[Przestarzałe] Identyfikator PBN" — [Pole o znaczeniu historycznym] Identyfikator w systemie Polskiej Bibliografii Naukowej (PBN)
   pbn_uid                                      -> pbn_api.publication?  "Odpowiednik w PBN"
   pmc_id                                       str  "PubMed Central ID"
   public_dostep_dnia                           date?  "Dostęp dnia (wolny dostęp)" — Data wolnego dostępu do strony WWW.
@@ -813,7 +802,6 @@ bpp.patent:
   index_copernicus                             float
   informacja_z                                 -> bpp.zrodlo_informacji?  match nazwa in ("od autora", "od redakcji", "wartość szacunkowa")
   informacje                                   str
-  legacy_data                                  unknown?
   nie_eksportuj_przez_api                      bool
   numer_prawa_wylacznego                       str?  "Numer prawa wyłącznego"
   numer_zgloszenia                             str?  "Numer zgłoszenia"
@@ -821,7 +809,6 @@ bpp.patent:
   opis_bibliograficzny_cache                   str
   opis_bibliograficzny_zapisani_autorzy_cache  str?
   ostatnio_zmieniony                           datetime?
-  pbn_id                                       int?  "[Przestarzałe] Identyfikator PBN" — [Pole o znaczeniu historycznym] Identyfikator w systemie Polskiej Bibliografii Naukowej (PBN)
   public_dostep_dnia                           date?  "Dostęp dnia (wolny dostęp)" — Data wolnego dostępu do strony WWW.
   public_www                                   str  "Adres WWW (wolny dostęp)"
   punktacja_snip                               float
@@ -1066,111 +1053,8 @@ bpp.wydawnictwo_ciagle_autor:
   zatrudniony            bool
 
 bpp.uczelnia:
-  adnotacje                                       str
-  clarivate_password                              str  "Hasło"
-  clarivate_username                              str  "Nazwa użytkownika"
-  deklaracja_dostepnosci_tekst                    str?  "Tekst na stronę BPP dla deklaracji dostępności"
-  deklaracja_dostepnosci_url                      str
-  domyslnie_afiliuje                              bool  "Domyślnie zaznaczaj, że autor afiliuje" — Przy powiązaniach autor + wydawnictwo, zaznaczaj domyślnie,
-        że autor afiliuje do jednostki, która jest wpisywana.
-  drukuj_alternatywne_oswiadczenia                bool  "Drukuj alternatywne oświadczenia dla autorów" — Jeżeli autor ma dwie dyscypliny, drukuj zawsze dwa oświadczenia.
-  drukuj_oswiadczenia                             bool  "Drukuj oświadczenia dla autorów" — Włącza wydruk oświadczeń z podstrony rekordu - wyłącznie dla osób z grupy 'wprowadzanie danych'.
-  dspace_aktywny                                  bool  "Włącz eksport do DSpace" — Gdy włączone, rekordy afiliowane do tej uczelni można wysyłać do jej instalacji DSpace.
-  dspace_api_endpoint                             str  "Adres API DSpace" — np. https://repozytorium.uczelnia.pl/server/api
-  dspace_api_password                             str  "Hasło API DSpace"
-  dspace_api_username                             str  "Użytkownik API DSpace"
-  dspace_domyslny_jezyk_dc                        str  "Domyślny język dc.language.iso"
-  favicon_ico                                     unknown?  "Ikona ulubionych (favicon)"
-  google_analytics_property_id                    str
-  google_verification_code                        str  "Kod weryfikacyjny Google Search Console"
-  id                                              int
-  ilosc_jednostek_na_strone                       int
-  jednostka                                       -> bpp.jednostka?
-  logo_svg                                        unknown?  "Logo wektorowe (SVG)"
-  logo_www                                        unknown?  "Logo na stronę WWW" — Plik w formacie bitmapowym, np. JPEG lub PNG,
-        w rozdzielczości maks. 100x100
-  metoda_do_roku_formularze                       str  "Data w polu 'do roku' w formularzach" — Decyduje o sposobie wyświetlania maksymalnej daty 'Do roku' w formularzach.  choices: do stycznia poprzedni, potem obecny | najwiekszy rok rekordu w bazie
-  nazwa                                           str
-  nazwa_dopelniacz_field                          str  "Nazwa w dopełniaczu"
-  nowy_autor_z_formularza_pokazuj                 bool  "Nowy autor tworzony przez autocomplete jest widoczny" — Gdy zaznaczone, autorzy tworzeni automatycznie przez formularze z rozwijaną listą wyboru
-        (autocomplete) będą mieli ustawione pole 'pokazuj' na PRAWDA, co oznacza że będą widoczni na stronach
-        jednostek oraz w rankingach. Gdy odznaczone (domyślnie), nowi autorzy będą ukryci.
-  obca_jednostka                                  -> bpp.jednostka?
-  orcid_client_id                                 str
-  orcid_client_secret                             str
-  orcid_sandbox                                   bool  "Używaj ORCID Sandbox" — Sandbox do testów (sandbox.orcid.org). Odznacz dla produkcji (orcid.org).
-  orcid_tylko_dla_pracownikow                     bool  "ORCID tylko dla pracowników" — Gdy zaznaczone, logowanie przez ORCID będzie dostępne wyłącznie dla użytkowników z uprawnieniem 'w zespole' (is_staff) lub superużytkowników.
-  ostatnio_zmieniony                              datetime?
-  pbn_aktualizuj_na_biezaco                       bool  "Włącz opcjonalną aktualizację przy edycji" — Aktualizuj rekordy w PBN przy zapisie rekordu, gdy redaktor kliknie odpowiedni przycisk.
-        Wybranie tej opcji spowoduje, ze na podstronach modułu redagowania dla wydawnictw pojawią się
-        przyciski 'Zapisz i wyślij do PBN'.
-  pbn_api_afiliacja_zawsze_na_uczelnie            bool  "Wysyłaj zawsze PBN UID uczelni jako afiliację" — Jeżeli praca jest w jednostce z wypełnionym PBN UID bądź w jednostce innej-niż-obca, zatrudniającej-pracowników, to zaznaczenie tej opcji spowoduje, ze  zamiast PBN UID tej jednostki zostanie użyty PBN UID uczelni, co efektywnie spowoduje, że afiliacje w PBN będą na uczelnię, nie zaś na konkretną jednostkę.
-  pbn_api_nie_wysylaj_prac_bez_pk                 bool  "Nie wysyłaj do PBN prac z PK=0"
-  pbn_api_root                                    str  "Adres API w PBN"
-  pbn_app_name                                    str  "Nazwa aplikacji w PBN"
-  pbn_app_token                                   str  "Token aplikacji w PBN"
-  pbn_id                                          int?  "[Przestarzałe] Identyfikator PBN" — [Pole o znaczeniu historycznym] Identyfikator w systemie Polskiej Bibliografii Naukowej (PBN)
-  pbn_integracja                                  bool  "Czy używać integracji z PBN?" — Wymaga prawidłowo wypełnionych pól 'Adres API w PBN', 'Nazwa aplikacji w PBN', 'Token aplikacji w PBN' oraz łączności między serwerem BPP a serwerem PBN.
-  pbn_kasuj_dyscypliny_selektywnie                bool  "Kasuj oświadczenia selektywnie (per osoba)" — Gdy zaznaczone: ``sync_publication`` usuwa oświadczenia selektywnie per-osoba (DELETE ``/publications/{id}`` z ``{personId, role}``) i wysyła tylko brakujące. Gdy odznaczone: usuwa wszystkie oświadczenia publikacji jednym DELETE (``{all: True}``), a następnie wysyła wszystkie lokalne jako batch. Wariant selektywny zachowuje metadata PBN (``addedTimestamp`` itd.) dla identycznych rekordów.
-  pbn_uid                                         -> pbn_api.institution?  "Odpowiednik w PBN"
-  pbn_wysylaj_bez_oswiadczen                      bool  "Wysyłaj prace bez oświadczeń" — Umożliwiaj wysyłanie prac bez oświadczeń do PBN. Domyślnie wyłączone.
-  podpowiadaj_dyscypliny                          bool
-  pokazuj_autorow_bez_prac_w_przegladaniu_danych  bool  "Pokazuj autorów nie posiadających rekordów publikacji w przeglądaniu danych"
-  pokazuj_autorow_obcych_w_przegladaniu_danych    bool  "Pokazuj autorów obcych w przeglądaniu danych" — Autor obcy to taki, który ma afiliację wyłącznie na
-        obcą jednostkę i obca jednostka jest jego jednostką aktualną
-  pokazuj_deklaracje_dostepnosci                  int  choices: nie pokazuj | zewnętrzny adres URL | tekst na podstronie serwisu BPP
-  pokazuj_formularz_zglaszania_publikacji         str  "Pokazuj opcję 'Zgłoś nową publikację'" — Czy pokazywać formularz zgłaszania publikacji?  choices: zawsze | tylko dla zalogowanych | tylko dla zespołu | nigdy
-  pokazuj_index_copernicus                        bool  "Pokazuj Index Copernicus na stronie rekordu"
-  pokazuj_jednostki_na_pierwszej_stronie          bool
-  pokazuj_liczbe_cytowan_na_stronie_autora        str  "Pokazuj liczbę cytowań na podstronie autora" — Liczba cytowań będzie wyświetlana, gdy większa od 0  choices: zawsze | tylko dla zalogowanych | tylko dla zespołu | nigdy
-  pokazuj_liczbe_cytowan_w_rankingu               str  "Pokazuj liczbę cytowań w rankingu"  choices: zawsze | tylko dla zalogowanych | tylko dla zespołu | nigdy
-  pokazuj_oswiadczenie_ken                        bool  "Pokazuj opcję oświadczenia KEN"
-  pokazuj_praca_recenzowana                       str  "Pokazuj opcję "Praca recenzowana""  choices: zawsze | tylko dla zalogowanych | tylko dla zespołu | nigdy
-  pokazuj_punktacja_snip                          bool  "Pokazuj punktację SNIP na stronie rekordu"
-  pokazuj_punktacje_wewnetrzna                    bool  "Pokazuj punktację wewnętrzną na stronie rekordu"
-  pokazuj_ranking_autorow                         str  "Pokazuj ranking autorów"  choices: zawsze | tylko dla zalogowanych | tylko dla zespołu | nigdy
-  pokazuj_raport_slotow_autor                     str  "Pokazuj raport slotów - autor"  choices: zawsze | tylko dla zalogowanych | tylko dla zespołu | nigdy
-  pokazuj_raport_slotow_uczelnia                  str  "Pokazuj raport slotów - uczelnia"  choices: zawsze | tylko dla zalogowanych | tylko dla zespołu | nigdy
-  pokazuj_raport_slotow_zerowy                    str  "Pokazuj raport slotów zerowy"  choices: zawsze | tylko dla zalogowanych | tylko dla zespołu | nigdy
-  pokazuj_siec_powiazan                           bool  "Pokazuj sieć powiązań autorów" — Czy na stronie autora udostępniać interaktywną sieć współautorstwa. Ustawienie domyślne dla całej uczelni — pojedynczy autor może je nadpisać własnym polem 'Pokazuj sieć powiązań'.
-  pokazuj_status_korekty                          str  "Pokazuj status korekty na stronie rekordu"  choices: zawsze | tylko dla zalogowanych | tylko dla zespołu | nigdy
-  pokazuj_tabele_slotow_na_stronie_rekordu        str  "Pokazuj tabelę slotów na stronie rekordu"  choices: zawsze | tylko dla zalogowanych | tylko dla zespołu | nigdy
-  pokazuj_tylko_jednostki_nadrzedne               bool
-  pokazuj_wydzialy_na_pierwszej_stronie           bool
-  pokazuj_zrodla_bez_prac_w_przegladaniu_danych   bool  "Pokazuj źródła bez powiązanych rekordów w przeglądaniu danych"
-  przydzielaj_1_slot_gdy_udzial_mniejszy          bool  "Przydzielaj 1 slot gdy udziały za 4 lata mniejsze" — Jeżeli zaznaczone, system będzie przydzielać 1 slot dla autorów, którzy za 4 lata ewaluacji"
-                  mieliby mieć mniej, niż 1 slot. Obowiązuje zarówno dla artykułów jak i dla monografii. Zatem,
-                  jeżeli ktoś za 4 lata ewaluacji będzie miał zdać 0.8 slota, to gdy ta flaga jest zaznaczona to
-                  system zwiększy to do 1 slota za artykuły oraz do 1 slota za monografie. Jeżeli ta flaga jest
-                  nie zaznaczona, to system policzy takiej osobie 0.8 slota za artykuły i 0.4 slota za monografie.
-  pytaj_o_zgode_na_publikacje_pelnego_tekstu      bool  "Pytaj o zgodę na publikację pełnego tekstu w formularzu zgłoszeniowym prac"
-  ranking_autorow_bez_kol_naukowych               bool  "Ranking autorów bez kół naukowych"
-  ranking_autorow_rozbij_domyslnie                bool  "Zaznacz domyślnie "Rozbij punktację na jednostki i wydziały" dla rankingu autorów"
-  skrot                                           str
-  skrot_wydzialu_w_nazwie_jednostki               bool  "Wyświetlaj skrót wydziału w nazwie jednostki"
-  slug                                            str
-  sortuj_jednostki_alfabetycznie                  bool
-  theme_name                                      str  "Motyw kolorystyczny"
-  tytul_strony_glownej                            str  "Tytuł strony głównej" — HTML z tytułem strony głównej. Możesz użyć tagów HTML do formatowania.
-  uzywaj_wydzialow                                bool  "Używaj wydziałów" — Jeżeli struktura instytucji jest 2-progowa: uczelnia -> wydział -> jednostka, zaznacz na TAK.
-        Jeżeli struktura instytucji jest 1-progowa: instytut -> dział, zaznacz na NIE.
-  wydruk_logo                                     bool  "Pokazuj logo na wydrukach"
-  wydruk_logo_szerokosc                           int  "Szerokość logo na wydrukach" — Podaj wartość w pikselach. Wysokość zostanie przeskalowana proporcjonalnie.
-  wydruk_margines_dol                             str  "Margines dolny wydruku"
-  wydruk_margines_gora                            str  "Margines górny wydruku"
-  wydruk_margines_lewo                            str  "Margines lewy wydruku"
-  wydruk_margines_prawo                           str  "Margines prawy wydruku"
-  wydruk_parametry_zapytania                      bool  "Pokazuj parametry zapytania na wydrukach"
-  wydzial                                         -> bpp.wydzial?
-  wymagaj_informacji_o_oplatach                   bool  "Wymagaj informacji o opłatach (legacy)" — LEGACY: używaj pól wymagaj_oplatach_* poniżej. To pole zachowane dla kompatybilności.
-  wymagaj_logowania_zglos_publikacje              bool  "Wymagaj zalogowania użytkownika dla formularza zgłaszania publikacji" — Jeśli zaznaczone, użytkownik musi się zalogować przed zgłoszeniem publikacji, niezależnie od ustawienia widoczności przycisku 'Zgłoś nową publikację'. Niezalogowani użytkownicy zostaną przekierowani na stronę logowania.
-  wymagaj_oplatach_artykul                        bool  "Wymagaj informacji o opłatach: artykuł" — Gdy zaznaczone, formularz zgłaszania publikacji będzie pytać o opłaty za artykuły naukowe.
-  wymagaj_oplatach_inne                           bool  "Wymagaj informacji o opłatach: inne" — Gdy zaznaczone, formularz zgłaszania publikacji będzie pytać o opłaty za pozostałe publikacje.
-  wymagaj_oplatach_monografia                     bool  "Wymagaj informacji o opłatach: monografia" — Gdy zaznaczone, formularz zgłaszania publikacji będzie pytać o opłaty za monografie.
-  wymagaj_oplatach_rozdzial                       bool  "Wymagaj informacji o opłatach: rozdział" — Gdy zaznaczone, formularz zgłaszania publikacji będzie pytać o opłaty za rozdziały.
-  wyszukiwanie_rekordy_na_strone_anonim           int  "Ilość rekordów na stronę - anonim" — Ilość rekordów w wyszukiwaniu powyżej której znika opcja"Pokaż wszystkie" i "Drukuj" dla użytkownika anonimowego. Nie jest zalecane ustawianie powyżej 2000.
-  wyszukiwanie_rekordy_na_strone_zalogowany       int  "Ilość rekordów na stronę - zalogowany" — Ilość rekordów w wyszukiwaniu powyżej której znika opcja"Pokaż wszystkie" i "Drukuj" dla użytkownika zalogowanego. Nie jest zalecane ustawianie powyżej 10000.
-  zwijaj_dlugie_listy_autorow                     bool  "Zwijaj długie listy autorów na stronie rekordu" — Gdy lista autorów publikacji przekracza 25 nazwisk, domyślnie zwijaj ją na stronie rekordu (widoczni pierwsi autorzy oraz autorzy z naszej uczelni; resztę użytkownik rozwija przyciskiem). Ustawienie domyślne dla całej uczelni — zalogowany użytkownik może je nadpisać we własnym profilu.
+  nazwa  str
+  skrot  str
 
 pbn_api.institution:
   addressCity          str
@@ -1241,24 +1125,3 @@ bpp.wymiar_etatu:
   autor_jednostka  -> bpp.autor_jednostka?
   id               int
   nazwa            str
-
-bpp.wydzial:
-  adnotacje                    str
-  id                           int
-  kolejnosc                    int  "Kolejność"
-  nazwa                        str
-  opis                         str?
-  ostatnio_zmieniony           datetime?
-  otwarcie                     date?  "Data otwarcia wydziału"
-  pbn_id                       int?  "[Przestarzałe] Identyfikator PBN" — [Pole o znaczeniu historycznym] Identyfikator w systemie Polskiej Bibliografii Naukowej (PBN)
-  pokazuj_opis                 bool
-  poprzednie_nazwy             str
-  skrot                        str  "Skrót" — Skrót nazwy wydziału, wersja minimalna, np. "WL"
-  skrot_nazwy                  str?
-  slug                         str
-  uczelnia                     -> bpp.uczelnia
-  widoczny                     bool
-  zamkniecie                   date?  "Data zamknięcia wydziału"
-  zarzadzaj_automatycznie      bool  "Zarządzaj automatycznie" — Wydział ten będzie dowolnie modyfikowany przez procedury importujace dane z zewnętrznych
-        systemów informatycznych. W przypadku, gdy pole ma ustawioną wartość na 'fałsz', wydział ten może być
-  zezwalaj_na_ranking_autorow  bool  "Zezwalaj na generowanie rankingu autorów dla tego wydziału"

@@ -166,6 +166,49 @@ def test_llm_fk_options_targets_only_safe_dictionaries():
     assert "wydawca" not in opts.get(Rekord, {})
 
 
+def test_uczelnia_exposes_only_nazwa_and_skrot():
+    """Uczelnia trzyma hasła (dspace/pbn/clarivate/orcid) i dziesiątki ustawień —
+    w schemacie wyszukiwania udostępniamy tylko identyfikujące nazwa/skrot."""
+    from bpp.djangoql_schema import BppQLSchemaOgraniczony, RekordLLMSchema
+
+    for schema_cls in (RekordLLMSchema, BppQLSchemaOgraniczony):
+        fields = set(schema_cls(Rekord).models["bpp.uczelnia"])
+        assert fields == {"nazwa", "skrot"}, f"{schema_cls.__name__}: {fields}"
+
+
+def test_uczelnia_secrets_never_in_any_schema():
+    from bpp.djangoql_schema import BppQLSchemaOgraniczony, RekordLLMSchema
+
+    for schema_cls in (RekordLLMSchema, BppQLSchemaOgraniczony):
+        fields = set(schema_cls(Rekord).models["bpp.uczelnia"])
+        for secret in (
+            "dspace_api_password",
+            "pbn_app_token",
+            "orcid_client_secret",
+            "clarivate_password",
+        ):
+            assert secret not in fields
+
+
+def test_legacy_named_fields_dropped():
+    """Pola z 'legacy' w nazwie (legacy_data itp.) nie trafiają do schematu."""
+    from bpp.djangoql_schema import RekordLLMSchema
+
+    fields = set(RekordLLMSchema(Rekord).models["bpp.wydawnictwo_ciagle"])
+    assert "legacy_data" not in fields
+
+
+def test_historical_marked_fields_dropped_but_current_kept():
+    """Pola oznaczone '[Pole o znaczeniu historycznym]' (pbn_id) wypadają;
+    aktualny odpowiednik (pbn_uid) zostaje."""
+    from bpp.djangoql_schema import BppQLSchemaOgraniczony, RekordLLMSchema
+
+    for schema_cls in (RekordLLMSchema, BppQLSchemaOgraniczony):
+        fields = set(schema_cls(Rekord).models["bpp.wydawnictwo_ciagle"])
+        assert "pbn_id" not in fields
+        assert "pbn_uid" in fields
+
+
 def test_llm_schema_declares_org_names_as_no_value_targets():
     """RekordLLMSchema deklaruje twardą listę celów (jednostka/wydział/uczelnia),
     których nazwy nie mają prawa trafić do artefaktu niezależnie od max-fk.
