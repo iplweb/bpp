@@ -101,8 +101,8 @@ def test_verify_form_nonpatent_requires_charakter_typ_jezyk(
 
 @pytest.mark.django_db
 def test_verify_form_wdrozenie_trojstan(charaktery_formalne, jezyki, typy_kbn):
-    """NullBooleanField wdrozenie: puste→None, '2'→True, '3'→False (widget
-    NullBooleanSelect koduje wartości jako 'unknown'/'true'/'false')."""
+    """NullBooleanField wdrozenie: 'unknown'→None, 'true'→True, 'false'→False
+    (widget NullBooleanSelect koduje trój-stan tymi wartościami)."""
     base = {"rodzaj_rekordu": "patent", "rok": "2024"}
     f_empty = VerifyForm(data={**base, "wdrozenie": "unknown"})
     assert f_empty.is_valid(), f_empty.errors

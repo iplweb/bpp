@@ -148,6 +148,10 @@ def test_verify_post_patent_pomija_source_i_zapisuje_pola(
         },
     )
     assert response.status_code == 200
+    # Wyrenderowano krok Autorzy (Source pominięty) — nie panel źródła.
+    content = response.content.decode()
+    assert "Dopasowanie autorów" in content
+    assert "Dopasowanie źródła" not in content
     session.refresh_from_db()
     assert session.rodzaj_rekordu == RR.PATENT
     assert session.jest_wydawnictwem_zwartym is False
@@ -248,6 +252,19 @@ def test_guard_source_pbn_dla_patentu_przekierowuje(
     session.refresh_from_db()
     assert session.zrodlo_id is None
     assert session.status != ST.SOURCE_MATCHED
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("krok", ["pbn-select", "pbn-clear"])
+def test_guard_pbn_select_clear_dla_patentu(krok, importer_client, importer_user):
+    """PbnSelect/PbnClear (POST-only) też mają guard — stale karta nie może
+    wpisać pbn_mongo_id na sesji patentowej po wyczyszczeniu."""
+    session = _patent_session(importer_user, status=ST.VERIFIED)
+    url = reverse(f"importer_publikacji:{krok}", kwargs={"session_id": session.pk})
+    resp = importer_client.post(url, {"mongo_id": "deadbeef"})
+    assert resp.status_code == 302
+    session.refresh_from_db()
+    assert "pbn_mongo_id" not in session.matched_data
 
 
 # --- Punktacja → Review (pomija PBN) ----------------------------------------

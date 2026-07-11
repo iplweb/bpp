@@ -161,8 +161,9 @@ class VerifyForm(forms.Form):
 
     # --- Pola patentowe (widoczne/istotne tylko gdy rodzaj_rekordu == PATENT).
     # Wszystkie required=False — model Patent dopuszcza null poza tytułem/rokiem.
-    # Zwykłe widżety (bez select2): cały krok Verify używa gołych <select>,
-    # a Jednostka/Rodzaj_Prawa_Patentowego to listy ograniczone.
+    # rodzaj_prawa jako zwykły <select> (słownik jest mały); wydzial przez
+    # ajax select2 (Jednostka to lista setek/tysięcy — goły <select> zalewałby
+    # HTML każdego kroku Verify i pokazywałby jednostki ukryte).
     numer_zgloszenia = forms.CharField(
         label="Numer zgłoszenia",
         max_length=255,
@@ -203,6 +204,10 @@ class VerifyForm(forms.Form):
         queryset=Jednostka.objects.all(),
         label="Wydział / jednostka",
         required=False,
+        widget=autocomplete.ModelSelect2(
+            url="bpp:jednostka-autocomplete",
+            attrs={"data-placeholder": "Szukaj jednostki…"},
+        ),
     )
 
     def clean(self):

@@ -126,7 +126,10 @@ def _patent_guard(request, session):
     nie-patentów (widok działa normalnie).
     """
     if session.rodzaj_rekordu == ImportSession.RodzajRekordu.PATENT:
-        return _hx_or_redirect(request, session.get_continue_url())
+        # get_continue_url zwraca None dla statusów spoza mapy (np. CANCELLED)
+        # — nie przekierowuj wtedy na literalne "None", tylko na listę sesji.
+        url = session.get_continue_url() or reverse("importer_publikacji:index")
+        return _hx_or_redirect(request, url)
     return None
 
 
@@ -396,6 +399,9 @@ class VerifyView(ImporterPermissionMixin, View):
         session.wydawnictwo_nadrzedne_w_pbn = None
         session.matched_data.pop("pbn_mongo_id", None)
         session.matched_data.pop("wydawca_opis", None)
+        # Punkty policzone na ścieżce czasopisma nie dotyczą patentu (brak
+        # źródła) — wyczyść, żeby krok Punktacja patentu nie prefillował ich.
+        session.matched_data.pop("punkty_kbn", None)
 
         nd = session.normalized_data
         nd["patent_number"] = cd.get("numer_zgloszenia") or None

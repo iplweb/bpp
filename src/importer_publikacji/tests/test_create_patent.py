@@ -207,6 +207,18 @@ def test_create_patent_wdrozenie_i_wydzial(importer_user, statusy_korekt):
 
 
 @pytest.mark.django_db
+@pytest.mark.parametrize("wartosc,oczekiwane", [(False, False), (None, None)])
+def test_create_patent_wdrozenie_false_vs_none(
+    wartosc, oczekiwane, importer_user, statusy_korekt
+):
+    """Sedno NullBoolean: False (nie wdrożono) ≠ None (brak danych) — create
+    zachowuje rozróżnienie, nie zamienia None na False."""
+    session = _make_patent_session(importer_user, wdrozenie=wartosc)
+    record = _create_patent(session, _common_fields(), session.normalized_data)
+    assert record.wdrozenie is oczekiwane
+
+
+@pytest.mark.django_db
 def test_create_patent_filtruje_tytul(importer_user, statusy_korekt):
     """common_fields['tytul'] (drugi tytuł, z original_title) trułby
     Patent.objects.create — Patent jest jedno-tytułowy."""
