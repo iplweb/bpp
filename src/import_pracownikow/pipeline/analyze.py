@@ -14,15 +14,19 @@ from copy import copy
 from django.core.exceptions import ObjectDoesNotExist
 from django.db.models import Q
 
-from bpp.models import Autor_Jednostka, Jednostka, Tytul, Uczelnia
+from bpp.models import Autor_Jednostka, Tytul, Uczelnia
 from import_common.core import (
     matchuj_autora,
     matchuj_funkcja_autora,
     matchuj_grupa_pracownicza,
-    matchuj_jednostke,
     matchuj_wymiar_etatu,
 )
 from import_common.core.autor import znajdz_kandydatow_autora
+from import_common.core.jednostka import (
+    STATUS_JEDNOSTKA_TWARDY,
+    sklasyfikuj_jednostke,
+    zaproponuj_skrot,
+)
 from import_common.exceptions import XLSMatchError, XLSParseError
 from import_common.normalization import (
     normalize_funkcja_autora,
@@ -35,10 +39,10 @@ from import_pracownikow.mapping import MIN_POINTS, TRY_NAMES, remapuj_wiersz
 from import_pracownikow.models import (
     AutorForm,
     ImportPracownikow,
+    ImportPracownikowJednostka,
     ImportPracownikowOdpiecie,
     ImportPracownikowRow,
     ImportPracownikowRowKandydat,
-    JednostkaForm,
 )
 from import_pracownikow.parsers.leksykony import zbuduj_parser_kontekst
 from import_pracownikow.parsers.osoba import rozbij_osobe
@@ -70,22 +74,54 @@ def _matchuj_slownik_lub_odroc(matcher, wartosc, normalizer, diff, klucz):
         return None
 
 
-def _matchuj_jednostke_lub_wyjatek(elem, jednostka_form):
-    """Matchuje jednostkę, tłumacząc brak/wielość dopasowań na ``XLSMatchError``
-    czytelny dla użytkownika (zamiast surowego tracebacku ORM-a)."""
-    try:
-        return matchuj_jednostke(
-            jednostka_form.cleaned_data.get("nazwa_jednostki"),
-            wydzial=jednostka_form.cleaned_data.get("wydział"),
-        )
-    except Jednostka.MultipleObjectsReturned:
-        raise XLSMatchError(
-            elem, "jednostka", "wiele dopasowań w systemie - po nazwie"
-        ) from None
-    except Jednostka.DoesNotExist:
-        raise XLSMatchError(
-            elem, "jednostka", "brak dopasowania w systemie - po nazwie"
-        ) from None
+class _ReconcilerJednostek:
+    """Utrzymuje decyzje ``ImportPracownikowJednostka`` przez (re)analizę.
+
+    ``reconciluj`` robi get_or_create po nazwie **case-insensitive** (dedup
+    wariantów wielkości liter), przy każdym runie ODŚWIEŻA pola liczone przez
+    analizę (``tryb``/``auto_jednostka``/``auto_similarity``/``skrot_sugerowany``),
+    a ZACHOWUJE wybory użytkownika (``decyzja``/``wybrany_parent``/
+    ``wybrana_jednostka``). ``usun_stale`` kasuje decyzje tego importu, których
+    nie dotknięto w bieżącym runie (nazwa zniknęła z pliku) — inaczej wisiałyby
+    w podsumowaniu na zawsze."""
+
+    def __init__(self, parent):
+        self.parent = parent
+        self.dotkniete = set()
+
+    def reconciluj(self, nazwa_zrodlowa, tryb, auto_jednostka, auto_similarity):
+        nazwa_zrodlowa = nazwa_zrodlowa[:512]
+        dec = self.parent.jednostki_do_decyzji.filter(
+            nazwa_zrodlowa__iexact=nazwa_zrodlowa
+        ).first()
+        if dec is None:
+            dec = ImportPracownikowJednostka.objects.create(
+                parent=self.parent,
+                nazwa_zrodlowa=nazwa_zrodlowa,
+                tryb=tryb,
+                auto_jednostka=auto_jednostka,
+                auto_similarity=auto_similarity,
+                skrot_sugerowany=zaproponuj_skrot(nazwa_zrodlowa),
+            )
+        else:
+            dec.tryb = tryb
+            dec.auto_jednostka = auto_jednostka
+            dec.auto_similarity = auto_similarity
+            if not dec.skrot_sugerowany:
+                dec.skrot_sugerowany = zaproponuj_skrot(nazwa_zrodlowa)
+            dec.save(
+                update_fields=[
+                    "tryb",
+                    "auto_jednostka",
+                    "auto_similarity",
+                    "skrot_sugerowany",
+                ]
+            )
+        self.dotkniete.add(dec.pk)
+        return dec
+
+    def usun_stale(self):
+        self.parent.jednostki_do_decyzji.exclude(pk__in=self.dotkniete).delete()
 
 
 def _dane_znormalizowane_z_parserem(cleaned_data, rozbicie):
@@ -185,18 +221,24 @@ def _wybierz_autor_jednostka(autor, jednostka):
     )
 
 
-def _przetworz_wiersz(parent, elem, parser_ctx=None):
+def _przetworz_wiersz(
+    parent, elem, parser_ctx=None, *, reconciler=None, tworz_brakujace=True
+):
     dane_form = normalizuj_wartosci_wiersza(elem)
     rozbicie = _rozbij_osoba_sklejona(dane_form, parser_ctx)
     # Kolumna „Drugie imię" scalana z „Imię" w jedno Autor.imiona — PO rozbiciu
     # osoby sklejonej (parser uzupełnia puste „imię" z rozbicia), przed AutorForm.
     sklej_drugie_imie(dane_form)
 
-    jednostka_form = JednostkaForm(data=dane_form)
-    jednostka_form.full_clean()
-    if not jednostka_form.is_valid():
-        raise XLSParseError(elem, jednostka_form, "weryfikacja nazwy jednostki")
-    jednostka = _matchuj_jednostke_lub_wyjatek(elem, jednostka_form)
+    # Jednostka: klasyfikacja BEZ rzucania (brak/remis/pusta/za długa nazwa NIE
+    # wywalają analizy). twardy → dopasowana wprost; zgadywanie/brak → odroczona
+    # do decyzji (ekran weryfikacji + faza integracji). Pusta/za długa nazwa
+    # (>512) → traktowana jak brak nazwy: wiersz pominięty, bez decyzji.
+    nazwa_jed = str(dane_form.get("nazwa_jednostki") or "").strip()
+    wydzial = str(dane_form.get("wydział") or "").strip() or None
+    nazwa_do_klas = nazwa_jed if 0 < len(nazwa_jed) <= 512 else ""
+    jednostka, jed_status, jed_sim = sklasyfikuj_jednostke(nazwa_do_klas, wydzial)
+    jednostka_odroczona = jed_status != STATUS_JEDNOSTKA_TWARDY
 
     autor_form = AutorForm(data=dane_form)
     autor_form.full_clean()
@@ -240,13 +282,32 @@ def _przetworz_wiersz(parent, elem, parser_ctx=None):
             "BPP ID zmatchowanego autora i BPP ID w pliku XLS nie zgadzają się",
         )
 
-    # Autor_Jednostka: dopasowanie bez tworzenia (dry-run). Dla brak/wielu
-    # (autor None) nie ma jak policzyć AJ — pomijamy.
+    # Decyzja o jednostce (dedup po nazwie) — tylko dla ODROCZONYCH z nazwą.
+    # zgadywanie zawsze (auto-match do istniejącej), brak tylko gdy włączono
+    # tworzenie brakujących. Bez decyzji (pusta/za długa nazwa albo toggle off) →
+    # wiersz pominięty z jednostką None.
+    decyzja_jednostki = None
+    if jednostka_odroczona and nazwa_do_klas and reconciler is not None:
+        if jed_status == ImportPracownikowJednostka.TRYB_ZGADYWANIE or (
+            jed_status == ImportPracownikowJednostka.TRYB_BRAK and tworz_brakujace
+        ):
+            decyzja_jednostki = reconciler.reconciluj(
+                nazwa_do_klas, jed_status, jednostka, jed_sim
+            )
+
+    # AJ liczymy TYLKO dla jednostki twardo dopasowanej. Odroczona → jednostka
+    # None na wierszu; AJ oraz diff["autor_jednostka"] policzy integracja PO
+    # rozstrzygnięciu — inaczej get_or_create(jednostka_id=None) w
+    # _materializuj_diff wywala cały task (IntegrityError).
+    jednostka_na_wierszu = None if jednostka_odroczona else jednostka
     aj = None
-    if autor is not None:
-        aj = _wybierz_autor_jednostka(autor, jednostka)
+    if autor is not None and jednostka_na_wierszu is not None:
+        aj = _wybierz_autor_jednostka(autor, jednostka_na_wierszu)
         if aj is None:
-            diff["autor_jednostka"] = {"autor": autor.pk, "jednostka": jednostka.pk}
+            diff["autor_jednostka"] = {
+                "autor": autor.pk,
+                "jednostka": jednostka_na_wierszu.pk,
+            }
 
     tytul = _dopasuj_tytul(tytul_str)
 
@@ -258,7 +319,9 @@ def _przetworz_wiersz(parent, elem, parser_ctx=None):
         ),
         autor=autor,
         confidence=status,
-        jednostka=jednostka,
+        jednostka=jednostka_na_wierszu,
+        jednostka_status=jed_status,
+        zrodlo_jednostki=decyzja_jednostki,
         autor_jednostka=aj,
         tytul=tytul,
         funkcja_autora=funkcja,
@@ -270,8 +333,9 @@ def _przetworz_wiersz(parent, elem, parser_ctx=None):
         diff_do_utworzenia=diff,
         zmiany_potrzebne=False,
     )
-    if autor is None:
-        # brak/wielu: nie ma co integrować dopóki user nie rozstrzygnie
+    if jednostka_odroczona or autor is None:
+        # jednostka nierozstrzygnięta albo brak/wielu autora → nic do integracji
+        # dopóki nie rozstrzygnie tego integracja/użytkownik.
         row.zmiany_potrzebne = False
     elif aj is not None:
         # bool(diff): wiersz z odroczonym create'em słownika MUSI trafić do
@@ -312,10 +376,20 @@ def analizuj(parent, p):
 
     mapowanie = parent.mapowanie_kolumn or {}
     parser_ctx = zbuduj_parser_kontekst()
+    reconciler = _ReconcilerJednostek(parent)
     for elem in p.track(list(zrodlo.data()), total=total, label="Wczytywanie"):
         if mapowanie:
             elem = remapuj_wiersz(elem, mapowanie)
-        _przetworz_wiersz(parent, elem, parser_ctx)
+        _przetworz_wiersz(
+            parent,
+            elem,
+            parser_ctx,
+            reconciler=reconciler,
+            tworz_brakujace=parent.tworz_brakujace_jednostki,
+        )
+    # Decyzje o jednostkach nieobecne w bieżącym pliku → sprzątamy (przeżywają
+    # wybory usera dla nazw, które zostały — patrz _ReconcilerJednostek).
+    reconciler.usun_stale()
 
     liczba_odpiec = _materializuj_odpiecia(parent)
 
@@ -328,6 +402,15 @@ def analizuj(parent, p):
             "total": wiersze.count(),
             "zmiany_potrzebne": parent.zmiany_potrzebne_set.count(),
             "odpiecia": liczba_odpiec,
+            "jednostki_do_utworzenia": parent.jednostki_do_decyzji.filter(
+                tryb=ImportPracownikowJednostka.TRYB_BRAK
+            ).count(),
+            "jednostki_auto": parent.jednostki_do_decyzji.filter(
+                tryb=ImportPracownikowJednostka.TRYB_ZGADYWANIE
+            ).count(),
+            "pominieto_brak_jednostki": parent.importpracownikowrow_set.filter(
+                jednostka__isnull=True, zrodlo_jednostki__isnull=True
+            ).count(),
             "byl_dry_run": True,
             "stan": parent.stan,
         }
