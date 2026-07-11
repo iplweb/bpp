@@ -23,3 +23,21 @@ def test_niewazny_bearer_daje_401_nie_anon(access_token, client):
 def test_brak_bearera_dalej_anonimowo(client):
     resp = client.get("/api/v1/wydawnictwo_ciagle/")
     assert resp.status_code == 200  # AnonReadOnly bez zmian
+
+
+@pytest.mark.django_db
+def test_token_bez_read_scope_odrzucony(access_token, client):
+    # Uwaga reviewera #6: token bez zakresu 'read' NIE może przejść jako
+    # ważny bearer — inaczej deklarowany scope 'read' to pozorna izolacja,
+    # a każdy przyszły scope (np. 'write') byłby nieegzekwowany.
+    user, tok = access_token(scope="")  # token bez żadnego scope
+    resp = client.get("/api/v1/whoami/", HTTP_AUTHORIZATION=f"Bearer {tok.token}")
+    assert resp.status_code == 401
+
+
+@pytest.mark.django_db
+def test_token_z_read_scope_akceptowany(access_token, client):
+    # Regres: prawidłowy token z 'read' dalej działa (200), nie regresujemy.
+    user, tok = access_token(scope="read")
+    resp = client.get("/api/v1/whoami/", HTTP_AUTHORIZATION=f"Bearer {tok.token}")
+    assert resp.status_code == 200

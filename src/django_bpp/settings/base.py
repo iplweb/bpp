@@ -1596,11 +1596,53 @@ DJANGO_BPP_ENABLE_TEST_CONFIGURATION = env("DJANGO_BPP_ENABLE_TEST_CONFIGURATION
 # ROLLBAR settings
 #
 
+# pyrollbar dopasowuje pola do scrubu po DOKŁADNEJ nazwie klucza (case-insensitive,
+# NIE po sufiksie) i PODMIENIA swoją domyślną listę, gdy podamy własną. Dlatego
+# odtwarzamy tu domyślny zestaw pyrollbara i DOKŁADAMY sekrety OAuth/MCP i PBN
+# (uwaga reviewera #3/#5): DOT oznacza jako wrażliwe tylko password/client_secret,
+# a Rollbar bez tej listy wysłałby aktywny refresh_token / code / code_verifier /
+# token przy nieoczekiwanym 500 na /o/token/ czy /o/revoke_token/.
+ROLLBAR_SCRUB_FIELDS = [
+    # domyślne pyrollbara (zachowujemy — nasza lista je nadpisuje):
+    "pw",
+    "passwd",
+    "password",
+    "secret",
+    "confirm_password",
+    "confirmPassword",
+    "password_confirmation",
+    "passwordConfirmation",
+    "access_token",
+    "accessToken",
+    "auth",
+    "authentication",
+    "authorization",
+    # sekrety OAuth/MCP (dokładne nazwy pól — exact match):
+    "token",
+    "refresh_token",
+    "refreshToken",
+    "code",
+    "code_verifier",
+    "codeVerifier",
+    "client_secret",
+    "clientSecret",
+    "secret_key",
+    "api_key",
+    # sekrety PBN / nagłówki uwierzytelniające (defense-in-depth, #4/#5):
+    "user_token",
+    "app_token",
+    "x-user-token",
+    "x-app-token",
+    "cookie",
+    "set-cookie",
+]
+
 ROLLBAR = {
     "access_token": env("ROLLBAR_ACCESS_TOKEN"),
     "environment": "development",
     "code_version": VERSION,
     "root": BASE_DIR,
+    "scrub_fields": ROLLBAR_SCRUB_FIELDS,
     "ignorable_404_urls": (
         re.compile(r"/favicon\.ico"),
         re.compile(r".*\{\{\s*clickURL\s*\}\}$"),
