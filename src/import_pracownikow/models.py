@@ -7,6 +7,7 @@ from django.core.serializers.json import DjangoJSONEncoder
 from django.db import DataError, models, transaction
 from django.db.models import Count, JSONField, Q
 from django.db.models.expressions import RawSQL
+from django.urls import reverse
 from django.utils import timezone
 from liveops.models import LiveOperation
 
@@ -142,6 +143,23 @@ class ImportPracownikow(LiveOperation):
             self.STAN_PRZEANALIZOWANY,
             self.STAN_STRUKTURA_ZINTEGROWANA,
         )
+
+    def get_success_url(self):
+        """URL, na który ``liveops.js`` przenosi po zakończonym runie
+        (FINISHED_OK). ``progress.py`` woła to w ``transaction.on_commit``, więc
+        ``self.stan`` jest już finalny (analyze/integrate ustawiają go na tej
+        samej instancji ``self``).
+
+        Auto-przejście TYLKO po analizie (dry-run) → hub „szczegóły importu"
+        (Krok 1). Po integracji zwracamy ``None`` — zostajemy na panelu wyniku
+        liveops z podsumowaniem (zintegrowano/utworzono/pominięto). Zastępuje
+        martwy inline-``<script>`` z ``import_pracownikow_result.html``, który
+        nigdy się nie wykonywał: liveops wstrzykuje wynik przez
+        ``DOMParser``+``replaceWith``, a tak wstawiony ``<script>`` przeglądarka
+        oznacza „already started"."""
+        if self.stan == self.STAN_PRZEANALIZOWANY:
+            return reverse("import_pracownikow:przeglad", kwargs={"pk": self.pk})
+        return None
 
     def run(self, p):
         if self.stan == self.STAN_ZMAPOWANY:

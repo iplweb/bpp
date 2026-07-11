@@ -46,23 +46,48 @@ def test_strona_live_wstrzykuje_csrf_header_dla_htmx(admin_client, admin_user):
 
 @pytest.mark.django_db
 def test_panel_wyniku_analiza_przekierowuje_na_przeglad(admin_user):
-    """Po analizie (dry-run) panel wyniku NIE pokazuje już komunikatu-podglądu
-    ani przycisku zatwierdzenia — od razu kieruje na hub szczegółów (link +
-    skrypt ``window.location``). Renderowany BEZ requestu (jak worker przy
-    OOB-swapie)."""
+    """Po analizie (dry-run) panel wyniku NIE pokazuje komunikatu-podglądu ani
+    przycisku zatwierdzenia — kieruje na hub szczegółów. Auto-przejście robi
+    liveops przez ``get_success_url()`` (inline ``<script>`` nie działał przy
+    OOB-swapie — DOMParser+replaceWith nie odpala „already started" skryptu);
+    w panelu zostaje link-fallback. Render BEZ requestu (jak worker)."""
     from django.template.loader import render_to_string
 
-    imp = baker.make(ImportPracownikow, owner=admin_user)
+    imp = baker.make(
+        ImportPracownikow,
+        owner=admin_user,
+        stan=ImportPracownikow.STAN_PRZEANALIZOWANY,
+    )
+    przeglad = reverse("import_pracownikow:przeglad", kwargs={"pk": imp.pk})
+    # Auto-przejście: liveops czyta get_success_url() po zakończonym dry-runie.
+    assert imp.get_success_url() == przeglad
     html = render_to_string(
         "import_pracownikow/import_pracownikow_result.html",
         {"operation": imp, "byl_dry_run": True, "total": 5, "zmiany_potrzebne": 3},
     )
-    przeglad = reverse("import_pracownikow:przeglad", kwargs={"pk": imp.pk})
+    # Link-fallback (no-JS / gdyby push „finished" nie dotarł) nadal jest.
     assert przeglad in html
-    assert "window.location" in html
     # stary komunikat-podgląd i in-panel „Zapisz" zniknęły
     assert "To był" not in html
     assert "Zapisz zmiany do bazy" not in html
+
+
+@pytest.mark.django_db
+def test_get_success_url_tylko_po_analizie(admin_user):
+    """``get_success_url()`` kieruje na hub TYLKO po analizie (dry-run). Po
+    integracji (struktura/pełna) zwraca ``None`` — zostajemy na panelu wyniku
+    liveops z podsumowaniem, zamiast auto-przeskoczyć."""
+    imp = baker.make(ImportPracownikow, owner=admin_user)
+    przeglad = reverse("import_pracownikow:przeglad", kwargs={"pk": imp.pk})
+    imp.stan = ImportPracownikow.STAN_PRZEANALIZOWANY
+    assert imp.get_success_url() == przeglad
+    for stan in (
+        ImportPracownikow.STAN_STRUKTURA_ZINTEGROWANA,
+        ImportPracownikow.STAN_ZINTEGROWANY,
+        ImportPracownikow.STAN_UTWORZONY,
+    ):
+        imp.stan = stan
+        assert imp.get_success_url() is None
 
 
 @pytest.mark.django_db

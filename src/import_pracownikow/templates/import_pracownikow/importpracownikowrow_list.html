@@ -24,7 +24,7 @@
             {{ parent_object.jednostki_do_decyzji.count }} jednostek z pliku wymaga
             weryfikacji (do utworzenia lub auto-dopasowane).
             <a href="{% url "import_pracownikow:jednostki" pk=parent_object.pk %}"
-               class="button">Zweryfikuj jednostki</a>
+               class="button primary">Zweryfikuj jednostki</a>
         </div>
     {% endif %}
 

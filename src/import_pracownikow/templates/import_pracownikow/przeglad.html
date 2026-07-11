@@ -32,7 +32,7 @@
                     {{ liczniki_jednostek.do_utworzenia }} do utworzenia ·
                     {{ liczniki_jednostek.do_sprawdzenia }} do sprawdzenia.
                     <a href="{% url "import_pracownikow:jednostki" parent_object.pk %}"
-                       class="button">Zweryfikuj jednostki</a>
+                       class="button primary">Zweryfikuj jednostki</a>
                 </p>
             {% endif %}
             {# Dwa warianty struktury OBOK siebie (jeden formularz, name=zakres). #}
@@ -86,8 +86,10 @@
     {% endif %}
 
     <div class="row">
-        {# Struktura (Krok 1): jednostki + tytuły. #}
-        {% if pokaz_jednostki %}
+        {# Struktura: kafelek „Jednostki" tylko POZA flow Krok 1/Krok 2 (audyt #}
+        {# zintegrowanego). W Kroku 1 przycisk „Zweryfikuj jednostki" jest już w #}
+        {# górnym callout, więc nie dublujemy go osobnym kafelkiem. #}
+        {% if pokaz_jednostki and not faza_struktury and not moze_importowac_osoby %}
             <div class="medium-6 columns">
                 <div class="callout">
                     <h3><span class="fi-marker"></span> Jednostki</h3>
@@ -96,7 +98,7 @@
                         {{ liczniki_jednostek.do_sprawdzenia }} do sprawdzenia
                     </p>
                     <a href="{% url "import_pracownikow:jednostki" parent_object.pk %}"
-                       class="button">Zweryfikuj jednostki</a>
+                       class="button primary">Zweryfikuj jednostki</a>
                 </div>
             </div>
         {% endif %}
@@ -110,7 +112,7 @@
                         {{ liczniki_tytulow.do_sprawdzenia }} do sprawdzenia
                     </p>
                     <a href="{% url "import_pracownikow:tytuly" parent_object.pk %}"
-                       class="button">Zweryfikuj tytuły</a>
+                       class="button primary">Zweryfikuj tytuły</a>
                 </div>
             </div>
         {% endif %}
