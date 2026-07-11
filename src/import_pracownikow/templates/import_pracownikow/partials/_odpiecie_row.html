@@ -1,26 +1,7 @@
-{# Partial pojedynczego odpięcia autora spoza pliku (materializowane §9). #}
-{# Zwracany po przełączeniu checkboxa (HTMX) oraz include w liście podglądu. #}
+{# Wrapper odpięcia — <tr> włączany w liście (odpiecia.html). Węzeł <tr> #}
+{# zostaje stały: toggle HTMX swapuje tylko jego zawartość (innerHTML → #}
+{# _odpiecie_row_kom.html), dzięki czemu DataTables odczytuje wiersz po swapie #}
+{# (uwaga reviewera #6). PrzelaczOdpiecieView zwraca SAM partial komórek. #}
 <tr id="odpiecie-{{ odp.pk }}">
-    <td>{{ odp.autor_jednostka.autor }}</td>
-    <td>{{ odp.autor_jednostka.jednostka }}</td>
-    {# Kolumna „Odepnij?” istnieje w fazie edytowalnej (podgląd / faza osób). #}
-    {# Po pełnej integracji znika w całości — decyzje wykonane, nie ma czego #}
-    {# togglować. Liczba <td> musi zgadzać się z liczbą <th> w odpiecia.html. #}
-    {% if parent_object.edytowalny_podglad %}
-        <td>
-            {# checkbox domyślnie ODZNACZONY; zmiana → POST toggluje zaznaczone #}
-            <form method="post"
-                  hx-post="{% url 'import_pracownikow:przelacz-odpiecie' parent_object.pk odp.pk %}"
-                  hx-target="#odpiecie-{{ odp.pk }}"
-                  hx-swap="outerHTML"
-                  hx-trigger="change">
-                {% csrf_token %}
-                <label>
-                    <input type="checkbox" name="zaznaczone"
-                           {% if odp.zaznaczone %}checked{% endif %}>
-                    odepnij
-                </label>
-            </form>
-        </td>
-    {% endif %}
+    {% include "import_pracownikow/partials/_odpiecie_row_kom.html" %}
 </tr>

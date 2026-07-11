@@ -59,9 +59,11 @@
                 columnDefs: [{orderable: false, searchable: false, targets: [2]}]
                 {% endif %}
             });
-            // Resync po htmx-swapie wiersza: htmx podmienia <tr> na nowy node,
-            // DataTables trzyma stary w cache → po redraw (search) zgubiłby
-            // podmianę. invalidate('dom') każe przeczytać wiersz ze świeżego DOM-u.
+            // Resync po htmx-swapie wiersza: swap jest innerHTML (patrz
+            // _odpiecie_row.html), więc węzeł <tr> ZOSTAJE — ten sam, który zna
+            // DataTables, dlatego dt.row(tr).invalidate('dom') przeczytuje jego
+            // świeże komórki. (Przy outerHTML nowy <tr> był nieznany → resync
+            // bezczynny, search/redraw przywracał starą treść — uwaga #6.)
             document.body.addEventListener('htmx:afterSettle', function (e) {
                 var tr = e.detail && e.detail.elt ? e.detail.elt.closest('tr') : null;
                 if (tr && $.fn.dataTable.isDataTable('#tabela-odpiec')

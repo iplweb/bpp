@@ -293,9 +293,13 @@ class _ImportPodgladMixin(GroupRequiredMixin, View):
 
 class _WierszImportuMixin(_ImportPodgladMixin):
     """Wspólny fetch wiersza importu (dokłada ``row`` do bazowej bramki
-    ``_ImportPodgladMixin``). Render partiala do odpowiedzi HTMX."""
+    ``_ImportPodgladMixin``). Render partiala do odpowiedzi HTMX.
 
-    partial_template = "import_pracownikow/partials/_wiersz_preview.html"
+    Odpowiedź HTMX to SAM partial komórek (``_wiersz_preview_kom.html``) — bez
+    wrappera ``<tr>``. Akcje wiersza swapują ``innerHTML`` istniejącego ``<tr>``,
+    więc węzeł zostaje stały i DataTables odczytuje go po swapie (uwaga #6)."""
+
+    partial_template = "import_pracownikow/partials/_wiersz_preview_kom.html"
 
     @cached_property
     def row(self):
@@ -516,7 +520,9 @@ class PrzelaczOdpiecieView(_ImportPodgladMixin):
     ``przeanalizowany`` — via ``_ImportPodgladMixin``. Zwraca partial
     ``_odpiecie_row.html``."""
 
-    partial_template = "import_pracownikow/partials/_odpiecie_row.html"
+    # Odpowiedź HTMX to SAM partial komórek (bez wrappera <tr>) — toggle swapuje
+    # innerHTML istniejącego <tr>, węzeł zostaje stały (DataTables, uwaga #6).
+    partial_template = "import_pracownikow/partials/_odpiecie_row_kom.html"
 
     @cached_property
     def odpiecie(self):

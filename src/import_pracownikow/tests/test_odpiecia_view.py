@@ -123,6 +123,27 @@ def test_odpiecia_przelacz_dziala(admin_client, admin_user):
 
 
 @pytest.mark.django_db
+def test_odpiecie_przelacz_odpowiedz_zachowuje_wiersz_innerhtml(
+    admin_client, admin_user
+):
+    """Uwaga reviewera #6 (mirror odpięć): toggle zwraca SAME komórki (bez
+    ``<tr>``), a swap ``innerHTML`` zachowuje węzeł ``<tr>`` — DataTables
+    odczytuje wiersz po swapie."""
+    imp = _imp(admin_user)
+    odp = _odpiecie(imp)
+    url = reverse(
+        "import_pracownikow:przelacz-odpiecie",
+        kwargs={"pk": imp.pk, "odp_pk": odp.pk},
+    )
+    resp = admin_client.post(url, {"zaznaczone": "on"})
+    assert resp.status_code == 200
+    tresc = resp.content.decode("utf-8")
+    assert "<tr" not in tresc
+    assert 'hx-swap="innerHTML"' in tresc
+    assert 'hx-swap="outerHTML"' not in tresc
+
+
+@pytest.mark.django_db
 def test_odpiecia_ma_link_wroc_do_przegladu(admin_client, admin_user):
     imp = _imp(admin_user)
     resp = admin_client.get(_url(imp))

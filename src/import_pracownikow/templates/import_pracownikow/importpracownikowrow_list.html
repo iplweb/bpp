@@ -87,10 +87,13 @@
                 order: [],  // zachowaj kolejność serwera (nie-twardzi na górze)
                 columnDefs: [{orderable: false, searchable: false, targets: [8, 9]}]
             });
-            // Resync po htmx-swapie wiersza: htmx podmienia <tr> na nowy node,
-            // DataTables trzyma stary w cache → po redraw (search) zgubiłby
-            // podmianę. invalidate('dom') każe przeczytać wiersz ze świeżego DOM-u.
-            // Leniwy Select2 z _wiersz_preview.html działa dalej niezależnie.
+            // Resync po htmx-swapie wiersza: swap jest innerHTML (patrz
+            // _wiersz_preview.html), więc węzeł <tr> ZOSTAJE — ten sam, który zna
+            // DataTables. Dlatego dt.row(tr) go znajduje, a invalidate('dom')
+            // przeczytuje jego świeże komórki. (Przy outerHTML nowy <tr> był
+            // DataTables nieznany → resync był bezczynny i search/redraw
+            // przywracał starą treść z cache — uwaga reviewera #6.) Leniwy
+            // Select2 z partiala komórek działa dalej niezależnie.
             document.body.addEventListener('htmx:afterSettle', function (e) {
                 var tr = e.detail && e.detail.elt ? e.detail.elt.closest('tr') : null;
                 if (tr && $.fn.dataTable.isDataTable('#tabela-autorow')
