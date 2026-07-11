@@ -34,6 +34,17 @@ class FetchedPublication:
     keywords: list[str] = field(default_factory=list)
     extra: dict = field(default_factory=dict)
 
+    # Pola specyficzne dla patentów (biblatex ``@patent``) — wypełniane
+    # best-effort, źródło jest z natury stratne (patrz handoff Track B).
+    # Operator edytuje/uzupełnia je w wizardzie przed utworzeniem rekordu.
+    patent_number: str | None = None
+    patent_grant_number: str | None = None
+    filing_date: str | None = None
+    grant_date: str | None = None
+    patent_type: str | None = None
+    patent_holder: str | None = None
+    jurisdiction: str | None = None
+
 
 @dataclass
 class SplitRecord:

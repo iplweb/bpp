@@ -45,10 +45,10 @@ def test_verify_updates_session(
     response = importer_client.post(
         url,
         {
+            "rodzaj_rekordu": "ciagle",
             "charakter_formalny": (cf.pk if cf else ""),
             "typ_kbn": tk.pk if tk else "",
             "jezyk": jez.pk if jez else "",
-            "jest_wydawnictwem_zwartym": "",
             "rok": "2023",
         },
     )
@@ -223,12 +223,16 @@ def test_verify_no_suggest_crossref_without_doi(
 
 
 def _verify_form_data(cf, tk, jez, **extra):
-    """Zbuduj payload POST dla formularza weryfikacji."""
+    """Zbuduj payload POST dla formularza weryfikacji.
+
+    Domyślnie ``rodzaj_rekordu='ciagle'`` (radio zastąpiło dawny boolean
+    ``jest_wydawnictwem_zwartym``) — nadpisywalne przez ``extra``.
+    """
     data = {
+        "rodzaj_rekordu": "ciagle",
         "charakter_formalny": cf.pk if cf else "",
         "typ_kbn": tk.pk if tk else "",
         "jezyk": jez.pk if jez else "",
-        "jest_wydawnictwem_zwartym": "",
     }
     data.update(extra)
     return data

@@ -31,6 +31,13 @@ BIBTEX_TYPE_MAP = {
     "manual": "monograph",
     "misc": "other",
     "unpublished": "other",
+    # "patent" nie jest typem CrossRef — nie ma odpowiednika w
+    # Crossref_Mapper.CHARAKTER_CROSSREF (brak wpisu = _get_crossref_mapper
+    # bezpiecznie zwraca None, bez auto-podpowiedzi charakteru formalnego,
+    # co jest poprawne: patenty tworzą osobny model bpp.Patent, nie
+    # Wydawnictwo_Ciagle/Zwarte). Wartość jest markerem rozpoznawanym w
+    # dalszym potoku importera (normalized_data["publication_type"]).
+    "patent": "patent",
 }
 
 
@@ -155,6 +162,15 @@ class BibTeXProvider(DataProvider):
             "bibtex_key": entry.key,
         }
 
+        patent_number = patent_holder = jurisdiction = patent_type = None
+        filing_date = None
+        if bibtex_type == "patent":
+            patent_number = _get_field(fields, "number", "") or None
+            patent_holder = _clean_latex(_get_field(fields, "holder", "")) or None
+            jurisdiction = _get_field(fields, "location", "") or None
+            patent_type = _get_field(fields, "type", "") or None
+            filing_date = _parse_bibtex_date(_get_field(fields, "date", ""))
+
         return FetchedPublication(
             raw_data=raw_data,
             title=title,
@@ -178,6 +194,11 @@ class BibTeXProvider(DataProvider):
             url=_get_field(fields, "url", "") or None,
             keywords=keywords,
             extra={"bibtex_key": entry.key},
+            patent_number=patent_number,
+            patent_holder=patent_holder,
+            jurisdiction=jurisdiction,
+            patent_type=patent_type,
+            filing_date=filing_date,
         )
 
 
@@ -262,6 +283,22 @@ def _clean_doi(doi_str: str) -> str:
         if doi_str.lower().startswith(prefix.lower()):
             return doi_str[len(prefix) :]
     return doi_str
+
+
+def _parse_bibtex_date(date_str: str) -> str | None:
+    """Wyciągnij pełną datę ISO (YYYY-MM-DD) z biblatex pola ``date``.
+
+    Biblatex dopuszcza samo ``date = {2024}`` (sam rok) — wtedy nie ma z
+    czego zbudować pełnej daty (``Patent.data_zgloszenia`` to ``DateField``),
+    więc świadomie zwracamy ``None`` zamiast zgadywać miesiąc/dzień;
+    operator uzupełnia datę ręcznie w wizardzie.
+    """
+    if not date_str:
+        return None
+    match = re.match(r"^(\d{4})-(\d{2})-(\d{2})", date_str.strip())
+    if match:
+        return match.group(0)
+    return None
 
 
 def _clean_pages(pages_str: str) -> str:

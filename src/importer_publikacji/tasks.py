@@ -133,6 +133,16 @@ def _store_normalized_data(session, result):
         "article_number": result.extra.get("article_number"),
         "original_title": result.extra.get("original_title"),
         "abstracts": _build_abstracts_list(result),
+        # Pola patentowe (best-effort, biblatex @patent) — patrz
+        # FetchedPublication oraz views.publikacja._create_patent, który
+        # je czyta stąd przy tworzeniu bpp.Patent.
+        "patent_number": result.patent_number,
+        "patent_grant_number": result.patent_grant_number,
+        "filing_date": result.filing_date,
+        "grant_date": result.grant_date,
+        "patent_type": result.patent_type,
+        "patent_holder": result.patent_holder,
+        "jurisdiction": result.jurisdiction,
     }
 
 
@@ -144,6 +154,13 @@ def _auto_match_type_and_language(session, result):
 
     from .views.helpers import _detect_language, _get_crossref_mapper
     from .views.publikacja import _resolve_jezyk
+
+    # Patent: BibTeX @patent → publication_type "patent" (jedyne źródło dziś).
+    # Auto-oznacz sesję jako patent; operator może przełączyć typ w kroku
+    # Verify. _get_crossref_mapper("patent") i tak zwraca None (patent nie jest
+    # typem CrossRef), więc charakter/zwarte poniżej nie zostaną auto-ustawione.
+    if result.publication_type == "patent":
+        session.rodzaj_rekordu = ImportSession.RodzajRekordu.PATENT
 
     mapper = _get_crossref_mapper(result.publication_type)
     if mapper and mapper.charakter_formalny_bpp_id:
