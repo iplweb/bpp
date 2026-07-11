@@ -50,3 +50,41 @@ def test_dcr_bez_csrf_dziala():
         content_type="application/json",
     )
     assert resp.status_code == 201
+
+
+@pytest.mark.django_db
+def test_dcr_payload_nie_obiekt_400(client):
+    # Poprawny JSON, ale nie obiekt — payload.get() rzuciłby AttributeError.
+    resp = client.post(
+        "/o/register/",
+        data=json.dumps([]),
+        content_type="application/json",
+    )
+    assert resp.status_code == 400
+    assert resp.json()["error"] == "invalid_client_metadata"
+
+
+@pytest.mark.django_db
+def test_dcr_redirect_uri_nie_string_400(client):
+    # Element redirect_uris nie-stringiem — re.match rzuciłby TypeError.
+    resp = client.post(
+        "/o/register/",
+        data=json.dumps({"redirect_uris": [1234]}),
+        content_type="application/json",
+    )
+    assert resp.status_code == 400
+    assert resp.json()["error"] == "invalid_redirect_uri"
+
+
+@pytest.mark.django_db
+def test_dcr_client_name_nie_string_akceptowany(client):
+    # client_name nie-string — [:255] rzuciłby TypeError; oczekujemy
+    # fallbacku na nazwę domyślną zamiast 500.
+    resp = client.post(
+        "/o/register/",
+        data=json.dumps(
+            {"client_name": 123, "redirect_uris": ["https://claude.ai/cb"]}
+        ),
+        content_type="application/json",
+    )
+    assert resp.status_code == 201
