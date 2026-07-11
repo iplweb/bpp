@@ -1,3 +1,5 @@
+from unittest import mock
+
 import pytest
 from django.contrib.auth.models import AnonymousUser
 from model_bakery import baker
@@ -97,3 +99,24 @@ def test_zapytanie_autorzy_happy(
     wpis = resp.data["results"][0]
     assert "zapisany_jako" in wpis and "rekord" in wpis
     assert wpis["rekord"]["rekord_url"] is not None
+
+
+@pytest.mark.django_db
+def test_zapytanie_limit_ma_twardy_cap():
+    from api_v1.viewsets.zapytanie import ZapytanieRekordViewSet
+
+    v = ZapytanieRekordViewSet()
+    assert v.paginator.max_limit == 100
+
+
+@pytest.mark.django_db
+def test_zapytanie_timeout_daje_503():
+    from django.db.utils import OperationalError
+
+    with mock.patch(
+        "api_v1.viewsets.zapytanie.ZapytanieAPIBaseViewSet.get_queryset",
+        side_effect=OperationalError("canceling statement due to statement timeout"),
+    ):
+        resp = _staff_client().get("/api/v1/zapytanie/rekord/", {"q": "rok = 2024"})
+    assert resp.status_code == 503
+    assert "error" in resp.data

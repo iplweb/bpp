@@ -7,9 +7,11 @@ kompaktowa płaska projekcja per model.
 
 from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import FieldError, ValidationError
+from django.db.utils import OperationalError
 from djangoql.exceptions import DjangoQLError
 from djangoql.queryset import apply_search
 from rest_framework import mixins, viewsets
+from rest_framework.pagination import LimitOffsetPagination
 from rest_framework.response import Response
 
 from api_v1.permissions import MoznaUzywacZapytania
@@ -23,9 +25,17 @@ from bpp.djangoql_errors import error_payload
 from bpp.djangoql_schema import RekordLLMSchema
 from bpp.models import Autor
 from bpp.models.cache import Autorzy, Rekord
+from bpp.util.statement_timeout import statement_timeout
 
 #: Twardy cap paginacji — jedno żądanie nie ciągnie całej bazy.
 MAKS_LIMIT = 100
+
+#: Twardy statement_timeout dla DjangoQL po API (ms).
+ZAPYTANIE_TIMEOUT_MS = 8000
+
+
+class _ZapytaniePagination(LimitOffsetPagination):
+    max_limit = MAKS_LIMIT
 
 
 class ZapytanieAPIBaseViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
@@ -33,6 +43,7 @@ class ZapytanieAPIBaseViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
     ``model`` i ``serializer_class``."""
 
     permission_classes = [MoznaUzywacZapytania]
+    pagination_class = _ZapytaniePagination
     model = None
 
     def _q(self):
@@ -57,9 +68,15 @@ class ZapytanieAPIBaseViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
 
     def list(self, request, *args, **kwargs):
         try:
-            return super().list(request, *args, **kwargs)
+            with statement_timeout(ZAPYTANIE_TIMEOUT_MS):
+                return super().list(request, *args, **kwargs)
         except (DjangoQLError, FieldError, ValidationError, ValueError) as exc:
             return Response(error_payload(exc, self._q()), status=400)
+        except OperationalError:
+            return Response(
+                {"error": "Zapytanie trwało za długo — zawęź warunki."},
+                status=503,
+            )
 
 
 class ZapytanieRekordViewSet(ZapytanieAPIBaseViewSet):
