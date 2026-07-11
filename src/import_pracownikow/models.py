@@ -67,6 +67,13 @@ class ImportPracownikow(LiveOperation):
     plik_xls = models.FileField(upload_to="protected/import_pracownikow/")
     stan = models.CharField(max_length=20, choices=STAN_CHOICES, default=STAN_UTWORZONY)
     mapowanie_kolumn = models.JSONField(default=dict, blank=True)
+    tworz_brakujace_jednostki = models.BooleanField(
+        "Twórz brakujące jednostki",
+        default=True,
+        help_text="Gdy zaznaczone, jednostki nieobecne w bazie (i bez bliskiego "
+        "dopasowania) trafiają na ekran weryfikacji do utworzenia. Gdy "
+        "odznaczone — wiersze bez dopasowanej jednostki są pomijane.",
+    )
 
     stages = ["Wczytywanie", "Integracja"]
 
@@ -244,6 +251,19 @@ class ImportPracownikowRow(ImportRowMixin, models.Model):
     autor = models.ForeignKey(Autor, on_delete=models.CASCADE, null=True, blank=True)
     jednostka = models.ForeignKey(
         Jednostka, on_delete=models.CASCADE, null=True, blank=True
+    )
+    jednostka_status = models.CharField(  # noqa: DJ001
+        max_length=20, choices=STATUS_CHOICES, null=True, blank=True
+    )
+    zrodlo_jednostki = models.ForeignKey(
+        "ImportPracownikowJednostka",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="wiersze",
+        help_text="Decyzja o źródłowej nazwie jednostki (współdzielona przez "
+        "wiersze o tej samej nazwie). Wypełniona, gdy jednostka wymaga "
+        "rozstrzygnięcia (utworzenie / mapowanie / auto-dopasowanie).",
     )
     autor_jednostka = models.ForeignKey(
         Autor_Jednostka, on_delete=models.CASCADE, null=True, blank=True
@@ -583,6 +603,94 @@ class ImportPracownikowOdpiecie(models.Model):
 
     def __str__(self):
         return f"odpięcie {self.autor_jednostka} (zaznaczone={self.zaznaczone})"
+
+
+class ImportPracownikowJednostka(models.Model):
+    """Decyzja o jednej UNIKALNEJ (znormalizowanej) nazwie jednostki z pliku,
+    której nie da się dopasować dokładnie.
+
+    Deduplikowana po nazwie (jednostki są współdzielone przez wielu pracowników,
+    więc jedna decyzja obsługuje wszystkie wiersze o tej samej nazwie — wzorzec
+    ``ImportPracownikowOdpiecie``). Analiza wypełnia pola liczone
+    (``tryb``/``auto_jednostka``/``auto_similarity``/``skrot_sugerowany``),
+    użytkownik ustawia wybór (``decyzja``/``wybrany_parent``/``wybrana_jednostka``)
+    na ekranie weryfikacji, integracja materializuje wynik do ``utworzona``.
+    """
+
+    TRYB_ZGADYWANIE = "zgadywanie"
+    TRYB_BRAK = "brak"
+    TRYB_CHOICES = [
+        (TRYB_ZGADYWANIE, "auto-dopasowanie (podobna nazwa)"),
+        (TRYB_BRAK, "brak dopasowania (do utworzenia)"),
+    ]
+
+    DECYZJA_AKCEPTUJ = "akceptuj"
+    DECYZJA_MAPUJ = "mapuj"
+    DECYZJA_POMIN = "pomin"
+    DECYZJA_CHOICES = [
+        (DECYZJA_AKCEPTUJ, "akceptuj (utwórz nową / użyj auto-dopasowania)"),
+        (DECYZJA_MAPUJ, "mapuj na istniejącą"),
+        (DECYZJA_POMIN, "pomiń (nie importuj tych wierszy)"),
+    ]
+
+    parent = models.ForeignKey(
+        ImportPracownikow,
+        on_delete=models.CASCADE,
+        related_name="jednostki_do_decyzji",
+        verbose_name="import pracowników",
+    )
+    nazwa_zrodlowa = models.CharField("nazwa źródłowa", max_length=512)
+    skrot_sugerowany = models.CharField("sugerowany skrót", max_length=128, blank=True)
+    tryb = models.CharField(max_length=20, choices=TRYB_CHOICES)
+    auto_jednostka = models.ForeignKey(
+        "bpp.Jednostka",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="+",
+        verbose_name="auto-dopasowana jednostka",
+    )
+    auto_similarity = models.FloatField("podobieństwo auto", null=True, blank=True)
+    wybrany_parent = models.ForeignKey(
+        "bpp.Jednostka",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="+",
+        verbose_name="wybrany parent (wydział)",
+        help_text="Miejsce w drzewie dla nowej jednostki. Puste = root (gdy "
+        "uczelnia nie używa wydziałów) albo Wydział Domyślny (gdy używa).",
+    )
+    decyzja = models.CharField(
+        max_length=20, choices=DECYZJA_CHOICES, default=DECYZJA_AKCEPTUJ
+    )
+    wybrana_jednostka = models.ForeignKey(
+        "bpp.Jednostka",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="+",
+        verbose_name="wybrana istniejąca jednostka (mapuj)",
+    )
+    utworzona = models.ForeignKey(
+        "bpp.Jednostka",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="+",
+        verbose_name="jednostka utworzona/rozstrzygnięta",
+        help_text="Ustawiane przez integrację. Guard idempotencji (restart / "
+        "podwójny commit nie duplikuje jednostek).",
+    )
+
+    class Meta:
+        verbose_name = "decyzja o jednostce (import pracowników)"
+        verbose_name_plural = "decyzje o jednostkach (import pracowników)"
+        unique_together = (("parent", "nazwa_zrodlowa"),)
+        ordering = ["nazwa_zrodlowa"]
+
+    def __str__(self):
+        return f"{self.nazwa_zrodlowa} ({self.tryb} → {self.decyzja})"
 
 
 def wiersz_kwalifikuje_do_przepiecia(autor_id, stara_id, jednostka_id, pary_z_pliku):
