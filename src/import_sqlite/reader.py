@@ -1,4 +1,4 @@
-"""Generyczny czytnik tabeli ``records`` z bazy ppm_harvester.
+"""Generyczny czytnik tabeli ``records`` z bazy harvestera.
 
 Niezależny od typu rekordu — filtruje po kolumnie ``type``. Konkretne
 mapowanie ``parsed`` → model BPP robią handlery (``handlers/``).

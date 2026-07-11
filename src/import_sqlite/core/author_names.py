@@ -16,7 +16,7 @@ _TRANSLIT = str.maketrans(
 def split_name(s: str) -> tuple[str, str]:
     """Rozbij ``"Imię Nazwisko"`` na ``(given, family)``.
 
-    Konwencja źródła PPM: imię-najpierw. Pierwszy token to imię, cała
+    Konwencja źródła (ASB): imię-najpierw. Pierwszy token to imię, cała
     reszta to nazwisko (obsługuje nazwiska wieloczłonowe i łącznikowe).
     Jeden token → traktujemy jako samo nazwisko. Puste → ``("", "")``.
     """

@@ -7,7 +7,7 @@ from import_sqlite.review_io import write_authors_csv, write_patents_csv
 
 
 class Command(BaseCommand):
-    help = "Skanuje plik sqlite (ppm_harvester) i wypisuje CSV-e do przeglądu."
+    help = "Skanuje plik sqlite (harvester) i wypisuje CSV-e do przeglądu."
 
     def add_arguments(self, parser):
         parser.add_argument("sqlite_path")

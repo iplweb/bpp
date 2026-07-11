@@ -1,4 +1,4 @@
-# Import patentów z SQLite (ppm_harvester) — projekt techniczny
+# Import patentów z SQLite (harvester) — projekt techniczny
 
 Data: 2026-07-11
 Gałąź: `feat-import-sqlite`
@@ -6,14 +6,14 @@ Worktree: `~/Programowanie/bpp-import-sqlite`
 
 ## 1. Cel i kontekst
 
-`ppm_harvester` (osobne repo, `~/Programowanie/ppm_harvester`) zbiera rekordy
-z portalu PPM UMLub (Omega-PSIR) do pliku `ppm.sqlite3`. Interesujące dane
+Zewnętrzny **harvester** (osobne narzędzie) zbiera rekordy z
+**alternatywnego systemu bibliograficznego (ASB)** do pliku SQLite. Interesujące dane
 siedzą w tabeli `records`:
 
 | kolumna       | typ  | uwaga                                              |
 |---------------|------|----------------------------------------------------|
 | `type`        | TEXT | rodzaj rekordu (obecnie w bazie **tylko** `patent`)|
-| `source_id`   | TEXT | stabilny identyfikator PPM (np. `UML0092643b...`)  |
+| `source_id`   | TEXT | stabilny identyfikator rekordu w ASB (np. `ASB0092643b...`)  |
 | `source_url`  | TEXT | URL strony szczegółów                              |
 | `parsed_json` | TEXT | wyekstrahowane pola jako JSON                       |
 | `raw_html`, `content_hash`, `fetched_at`, `parsed_at` | | nieużywane przez import |
@@ -41,10 +41,10 @@ Istotne klucze w `all_fields` (częstość / 330):
 - `Nazwa wynalazku / wzoru / utworu w języku angielskim` (262)
 - `Opis w języku polskim` (255), `Opis w języku angielskim` (5)
 - `Klasyfikacja MKP` (258)
-- `Jednostka zgłaszająca (właściciela) patentu z UML` (312)
+- `Jednostka zgłaszająca (właściciela) patentu z uczelni` (312)
 - rok-znaczone punktacje: `Punktacja patentu (2025)` itd.
 
-> Fakty pomierzone na `ppm.sqlite3` (330 rekordów, weryfikacja recenzji):
+> Fakty pomierzone na pliku źródłowym (330 rekordów, weryfikacja recenzji):
 > - `Numer patentu/prawa` (`all_fields`): **330/330 obecne i unikalne** →
 >   klucz idempotencji (patrz §7).
 > - `source_url`: **330/330 obecne i unikalne**.
@@ -70,7 +70,7 @@ Istotne klucze w `all_fields` (częstość / 330):
    `Numer patentu/prawa`, np. `Pat.247645`). **Zmiana wobec pierwotnego
    wyboru użytkownika (`numer_zgloszenia`)** wymuszona weryfikacją: numer
    zgłoszenia brakuje w 68/330 rekordach, a `informacja_z` to FK do słownika
-   (nie da się tam trzymać `PPM:<source_id>`). `Numer patentu/prawa` jest
+   (nie da się tam trzymać `ASB:<source_id>`). `Numer patentu/prawa` jest
    330/330 obecny i unikalny — twardo lepszy. `source_url` (`www`, 330/330
    unikalny) trzymamy jako drugorzędny nośnik proweniencji.
 5. **Rok patentu (`Patent.rok`):** rok z `application_date`; gdy brak (65
@@ -137,7 +137,7 @@ Reużywane z BPP (import wprost — apka jest w tym samym projekcie Django):
 ```bash
 # Faza 1 — SCAN: czyta sqlite, auto-matchuje, wypisuje CSV-y do przeglądu
 uv run python src/manage.py import_sqlite_scan \
-    ~/Programowanie/ppm_harvester/ppm.sqlite3 \
+    /sciezka/do/harvester.sqlite3 \
     --typ patent \
     --out-autorzy autorzy_do_uzgodnienia.csv \
     --out-patenty patenty_do_przegladu.csv
@@ -146,7 +146,7 @@ uv run python src/manage.py import_sqlite_scan \
 
 # Faza 2 — APPLY: wczytuje decyzje, tworzy/aktualizuje Patenty
 uv run python src/manage.py import_sqlite_apply \
-    ~/Programowanie/ppm_harvester/ppm.sqlite3 \
+    /sciezka/do/harvester.sqlite3 \
     --typ patent \
     --autorzy autorzy_do_uzgodnienia.csv \
     [--dry-run]
@@ -263,7 +263,7 @@ niego (nie całości), reszta tworzy się normalnie.
 | `status_korekty`        | **wymagane FK (bez defaultu!)** → `Status_Korekty` „przed korektą" (fallback `.first()`) |
 | `wydzial`               | patrz §5.4                                                     |
 | `www`                   | `source_url` (nośnik proweniencji, 330/330 unikalny)          |
-| `informacja_z`          | FK → `get_or_create` jednego wpisu `Zrodlo_Informacji` „PPM (ppm.umlub.pl)" (audyt; **nie** klucz) |
+| `informacja_z`          | FK → `get_or_create` jednego wpisu `Zrodlo_Informacji` „Import z pliku SQLite (harvester ASB)" (audyt; **nie** klucz) |
 | `charakter_formalny`    | auto (`PAT`) — `cached_property` modelu                       |
 | `jezyk`                 | auto (polski) — `cached_property` modelu                      |
 | `szczegoly`             | **CharField(512)!** tytuł ang. + MKP/IPC + patent_score, przycięte do 512; nadmiar → `adnotacje` |
@@ -279,7 +279,7 @@ Klucz = `numer_prawa_wylacznego` (330/330 obecny i unikalny w źródle):
 `Patent.objects.filter(numer_prawa_wylacznego=...)`.
 
 - **0** → **create**.
-- **1** → **update**: aktualizuj pola skalarne (nadpisujemy danymi z PPM —
+- **1** → **update**: aktualizuj pola skalarne (nadpisujemy danymi z ASB —
   import jest źródłem prawdy dla tych patentów); twórców synchronizuj przez
   `delete()` dotychczasowych `Patent_Autor` + odtworzenie z decyzji
   (deterministyczne). Uwaga: `numer_prawa_wylacznego` nie jest `unique` w DB,

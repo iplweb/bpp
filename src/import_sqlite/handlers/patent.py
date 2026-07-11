@@ -118,7 +118,9 @@ def build_context() -> "ImportContext":
         Status_Korekty.objects.filter(nazwa="przed korektą").first()
         or Status_Korekty.objects.first()
     )
-    zrodlo, _ = Zrodlo_Informacji.objects.get_or_create(nazwa="PPM (ppm.umlub.pl)")
+    zrodlo, _ = Zrodlo_Informacji.objects.get_or_create(
+        nazwa="Import z pliku SQLite (harvester ASB)"
+    )
     return ImportContext(uczelnia, uczelnia.obca_jednostka, status, zrodlo)
 
 

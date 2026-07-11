@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Aplikacja Django `src/import_sqlite/` importująca patenty z pliku `ppm.sqlite3` (format ppm_harvester) do modeli `Patent`/`Patent_Autor`, z dopasowaniem autorów przez `Komparator` i ręcznym uzgadnianiem przez CSV.
+**Goal:** Aplikacja Django `src/import_sqlite/` importująca patenty z pliku SQLite (format harvestera) do modeli `Patent`/`Patent_Autor`, z dopasowaniem autorów przez `Komparator` i ręcznym uzgadnianiem przez CSV.
 
 **Architecture:** Dwie fazy sterowane management-commandami. `scan` czyta sqlite, auto-matchuje distinct-nazwiska (reużywając `crossref_bpp.Komparator`) i wypluwa dwa CSV-e do przeglądu. Człowiek wypełnia kolumnę `decyzja`. `apply` wczytuje decyzje i tworzy/aktualizuje `Patent`-y (idempotentnie po `numer_prawa_wylacznego`) w jednej transakcji z per-patentowymi savepointami. Logika czysta (parsowanie, split nazwisk, IO CSV) odseparowana od ORM.
 
@@ -46,7 +46,7 @@ from django.apps import AppConfig
 
 class ImportSqliteConfig(AppConfig):
     name = "import_sqlite"
-    verbose_name = "Import z plików SQLite (ppm_harvester)"
+    verbose_name = "Import z plików SQLite (harvestery)"
     default_auto_field = "django.db.models.BigAutoField"
 ```
 
@@ -140,7 +140,7 @@ import unicodedata
 def split_name(s: str) -> tuple[str, str]:
     """Rozbij ``"Imię Nazwisko"`` na ``(given, family)``.
 
-    Konwencja źródła PPM: imię-najpierw. Pierwszy token to imię, cała
+    Konwencja źródła (ASB): imię-najpierw. Pierwszy token to imię, cała
     reszta to nazwisko (obsługuje nazwiska wieloczłonowe i łącznikowe).
     Jeden token → traktujemy jako samo nazwisko. Puste → ``("", "")``.
     """
@@ -267,7 +267,7 @@ Expected: FAIL (ModuleNotFoundError).
 - [ ] **Step 3: Implementacja**
 
 ```python
-"""Generyczny czytnik tabeli ``records`` z bazy ppm_harvester.
+"""Generyczny czytnik tabeli ``records`` z bazy harvestera.
 
 Niezależny od typu rekordu — filtruje po kolumnie ``type``. Konkretne
 mapowanie ``parsed`` → model BPP robią handlery (``handlers/``).
@@ -877,7 +877,7 @@ git commit -m "feat(import_sqlite): IO plikow CSV przegladu (autorzy, patenty)"
 - Consumes: `PatentData` (Task 4), fixtures słownikowe (Task 5 conftest).
 - Produces:
   - `@dataclass ImportContext`: `uczelnia`, `obca_jednostka`, `status_korekty`, `zrodlo_informacji`.
-  - `build_context() -> ImportContext` — `Uczelnia.objects.get_single_uczelnia_or_fail()`, walidacja `obca_jednostka is not None` (inaczej `CommandError`-friendly `ValueError`), `Status_Korekty` „przed korektą" (fallback `.first()`), `get_or_create` `Zrodlo_Informacji("PPM (ppm.umlub.pl)")`.
+  - `build_context() -> ImportContext` — `Uczelnia.objects.get_single_uczelnia_or_fail()`, walidacja `obca_jednostka is not None` (inaczej `CommandError`-friendly `ValueError`), `Status_Korekty` „przed korektą" (fallback `.first()`), `get_or_create` `Zrodlo_Informacji("Import z pliku SQLite (harvester ASB)")`.
   - `resolve_inventor(nazwisko_zrodlowe, decyzja, ctx) -> tuple[Autor, Jednostka, bool]` — zwraca `(autor, jednostka, afiliuje)`. `decyzja="NOWY"` → utwórz `Autor`. pk → pobierz. `jednostka` = `autor.aktualna_jednostka or ctx.obca_jednostka`; `afiliuje = bool(jednostka.skupia_pracownikow)`.
   - `apply_patent(pd: PatentData, decisions: dict[str, str], ctx: ImportContext) -> tuple[str, str]` — zwraca `(status, powod)` gdzie status ∈ `{UTWORZONY, ZAKTUALIZOWANY, WSTRZYMANY}`. Idempotencja po `numer_prawa_wylacznego`. Dedupe twórców per patent po rozwiązanym pk. Owinięte w `transaction.atomic()` (savepoint) — na `ValidationError`/hold rollback tylko tego patentu.
 
@@ -1025,7 +1025,7 @@ def build_context() -> "ImportContext":
         Status_Korekty.objects.filter(nazwa="przed korektą").first()
         or Status_Korekty.objects.first()
     )
-    zrodlo, _ = Zrodlo_Informacji.objects.get_or_create(nazwa="PPM (ppm.umlub.pl)")
+    zrodlo, _ = Zrodlo_Informacji.objects.get_or_create(nazwa="Import z pliku SQLite (harvester ASB)")
     return ImportContext(uczelnia, uczelnia.obca_jednostka, status, zrodlo)
 
 
@@ -1202,7 +1202,7 @@ from import_sqlite.review_io import write_authors_csv, write_patents_csv
 
 
 class Command(BaseCommand):
-    help = "Skanuje plik sqlite (ppm_harvester) i wypisuje CSV-e do przeglądu."
+    help = "Skanuje plik sqlite (harvester) i wypisuje CSV-e do przeglądu."
 
     def add_arguments(self, parser):
         parser.add_argument("sqlite_path")
@@ -1468,7 +1468,7 @@ git commit -m "feat(import_sqlite): komenda apply + walidacja decyzji + denorm f
 Utwórz `newsfragments/+import-sqlite-patenty.feature`:
 
 ```
-Nowa aplikacja ``import_sqlite``: import patentów z bazy SQLite ppm_harvester
+Nowa aplikacja ``import_sqlite``: import patentów z plików SQLite z harvesterów
 (polecenia ``import_sqlite_scan`` / ``import_sqlite_apply``) z dopasowaniem
 twórców do rekordów Autor i ręcznym uzgadnianiem przez CSV.
 ```
@@ -1487,7 +1487,7 @@ Expected: brak błędów (popraw ręcznie, jeśli są).
 
 ```bash
 git add newsfragments/+import-sqlite-patenty.feature
-git commit -m "docs(newsfragment): aplikacja import_sqlite (import patentow z ppm_harvester)"
+git commit -m "docs(newsfragment): aplikacja import_sqlite (import patentow z harvestera)"
 ```
 
 ---
