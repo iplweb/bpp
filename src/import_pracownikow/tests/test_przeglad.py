@@ -255,3 +255,15 @@ def test_scoping_obcy_import_404(client, django_user_model, admin_user):
     client.force_login(obcy)
     resp = client.get(_url(imp))
     assert resp.status_code == 404
+
+
+@pytest.mark.django_db
+def test_krok1_wyjasnia_ze_tylko_jednostki_odracza_tytuly(admin_client, admin_user):
+    """Uwaga reviewera #2 (decyzja: odroczenie): hub Kroku 1 wprost tłumaczy, że
+    „tylko jednostki" odkłada tytuły (utworzą się przy imporcie osób), żeby wybór
+    nie zaskakiwał operatora."""
+    imp = _imp(admin_user, stan=ImportPracownikow.STAN_PRZEANALIZOWANY)
+    resp = admin_client.get(_url(imp))
+    assert resp.status_code == 200
+    tresc = resp.content.decode("utf-8")
+    assert "odkłada tytuły" in tresc

@@ -163,6 +163,38 @@ def test_zakres_pelny_tworzy_osoby(uczelnia):
 
 
 @pytest.mark.django_db
+def test_sekwencja_jednostki_potem_pelny_tworzy_odlozony_tytul(uczelnia):
+    """Uwaga reviewera #2 (decyzja: ODROCZENIE): tytuł świadomie pominięty w
+    Kroku 1 („tylko jednostki") zostaje UTWORZONY w Kroku 2 (import osób =
+    pełny). Import osób i tak wymaga tytułów, więc to zachowanie jest zamierzone
+    — dokumentujemy sekwencję ``jednostki → pelny`` z nierozstrzygniętym tytułem,
+    której brakowało w testach."""
+    imp = _imp(ImportPracownikow.ZAKRES_JEDNOSTKI)
+    dec_j = _decyzja_jednostki(imp)
+    dec_t = _decyzja_tytulu(imp)
+    _wiersz_nowy_autor(imp, dec_j, dec_t)
+
+    # Krok 1 — tylko jednostki: tytuł ODROCZONY (nie utworzony).
+    integruj(imp, MockProgress(imp))
+    imp.refresh_from_db()
+    assert imp.stan == ImportPracownikow.STAN_STRUKTURA_ZINTEGROWANA
+    dec_t.refresh_from_db()
+    assert dec_t.utworzony is None
+    assert not Tytul.objects.filter(nazwa="Tytuł Struktury Testowej").exists()
+
+    # Krok 2 — import osób (pełny): odłożony tytuł zostaje utworzony.
+    imp.stan = ImportPracownikow.STAN_ZATWIERDZONY
+    imp.zakres_integracji = ImportPracownikow.ZAKRES_PELNY
+    imp.save(update_fields=["stan", "zakres_integracji"])
+    integruj(imp, MockProgress(imp))
+    imp.refresh_from_db()
+    assert imp.stan == ImportPracownikow.STAN_ZINTEGROWANY
+    dec_t.refresh_from_db()
+    assert dec_t.utworzony is not None
+    assert Tytul.objects.filter(nazwa="Tytuł Struktury Testowej").exists()
+
+
+@pytest.mark.django_db
 def test_on_restart_resetuje_zakres_do_pelny():
     """Po strukturalnym imporcie ponowna analiza (cofnięcie do zmapowany)
     wraca do pełnego zakresu — inaczej kolejne „Zapisz do bazy" pominęłoby
