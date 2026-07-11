@@ -193,6 +193,25 @@ def test_krok2_import_osob_w_strukturze_zintegrowanej(admin_client, admin_user):
 
 
 @pytest.mark.django_db
+def test_krok2_przycisk_zapisu_za_wymaganym_potwierdzeniem(admin_client, admin_user):
+    """Item 5: w Kroku 2 przycisk „Zapisz osoby do bazy" jest w callout warning
+    z wymaganym checkboxem potwierdzenia (`required`), a kafle ludzi renderują
+    się WEWNĄTRZ calloutu Kroku 2 (nie ma osobnego dolnego wiersza dublującego
+    je w tej fazie)."""
+    imp = _imp(admin_user, stan=ImportPracownikow.STAN_STRUKTURA_ZINTEGROWANA)
+    resp = admin_client.get(_url(imp))
+    tresc = resp.content.decode("utf-8")
+    # checkbox potwierdzenia jest wymagany (native gate bez JS)
+    assert 'name="potwierdzenie_zapisu"' in tresc
+    assert "required" in tresc
+    # komunikat o zmianie bazy
+    assert "zmodyfikuje bazę danych" in tresc
+    # kafle ludzi (z XLS + spoza XLS) obecne raz — nie zdublowane
+    assert tresc.count('fi-torso"></span> Ludzie z XLS') == 1
+    assert tresc.count("Ludzie spoza XLS") == 1
+
+
+@pytest.mark.django_db
 def test_hub_ukrywa_osoby_w_przeanalizowany(admin_client, admin_user):
     """Regresja: w podglądzie (Krok 1) szczegóły osób są UKRYTE — brak linków do
     listy wierszy i odpięć, dopóki struktura nie zostanie zapisana."""
