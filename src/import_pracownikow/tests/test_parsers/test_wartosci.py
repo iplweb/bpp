@@ -5,6 +5,7 @@ import pytest
 from import_pracownikow.parsers.wartosci import (
     normalize_date_pl,
     normalizuj_wartosci_wiersza,
+    sklej_drugie_imie,
 )
 
 
@@ -38,3 +39,46 @@ def test_normalizuj_wartosci_wiersza_tylko_daty():
     assert out["wymiar_etatu"] == "1,0"  # nie-data nietknięta
     # nie mutuje wejścia
     assert elem["data_zatrudnienia"] == "01.10.2016"
+
+
+@pytest.mark.parametrize(
+    "imie,drugie,oczekiwane",
+    [
+        ("Jan", "Paweł", "Jan Paweł"),  # oba → scalone spacją
+        ("Jan", "", "Jan"),  # puste drugie → imię bez zmian
+        ("Jan", None, "Jan"),  # brak drugie → imię bez zmian
+        ("", "Paweł", "Paweł"),  # puste imię → samo drugie (wiodąca spacja obcięta)
+        (None, "Paweł", "Paweł"),  # brak imię → samo drugie
+        ("Jan Anna", "Maria", "Jan Anna Maria"),  # wieloimienne imię + drugie
+    ],
+)
+def test_sklej_drugie_imie(imie, drugie, oczekiwane):
+    dane = {"nazwisko": "Kowalski"}
+    if imie is not None:
+        dane["imię"] = imie
+    if drugie is not None:
+        dane["drugie_imię"] = drugie
+
+    out = sklej_drugie_imie(dane)
+
+    assert out["imię"] == oczekiwane
+    assert "drugie_imię" not in out  # klucz zawsze usunięty (AutorForm go nie zna)
+    assert out is dane  # mutuje i zwraca ten sam obiekt
+    assert out["nazwisko"] == "Kowalski"  # reszta nietknięta
+
+
+def test_sklej_drugie_imie_bez_zadnego_klucza_imienia():
+    # brak imię i drugie_imię: nic nie dodaje, nie rzuca
+    dane = {"nazwisko": "Kowalski"}
+    out = sklej_drugie_imie(dane)
+    assert "imię" not in out
+    assert "drugie_imię" not in out
+
+
+def test_sklej_drugie_imie_komorka_liczbowa_nie_wybucha():
+    # XLSX (openpyxl) potrafi dać liczbę zamiast stringu — .strip() na int
+    # rzuciłby AttributeError ubijający analizę; koercja str() to chroni.
+    dane = {"imię": "Jan", "drugie_imię": 2}
+    out = sklej_drugie_imie(dane)
+    assert out["imię"] == "Jan 2"
+    assert "drugie_imię" not in out
