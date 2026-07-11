@@ -264,3 +264,42 @@ def test_committed_artifact_has_no_institution_data_leak(tmp_path):
         "wartości tabeli danych (tytuły) wyciekły do artefaktu"
     )
     assert "match streszczenie in" not in content, "abstrakt wyciekł do artefaktu"
+
+
+@pytest.mark.django_db
+def test_llm_schema_ukrywa_pola_pii_dla_api():
+    """RekordLLMSchema (API /zapytanie/ + eksport LLM) NIE wystawia pól
+    wolnotekstowych/PII, które dałyby się oracle-ować przez filtr, mimo że nie
+    są zwracane w odpowiedzi: email/adnotacje/opis autora, email jednostki,
+    adnotacje rekordu i podtypów publikacji. Świadomie zachowane (decyzja):
+    poprzednie_nazwiska, system_kadrowy_id, pbn_uid (trawersacja do PBN)."""
+    from bpp.djangoql_schema import RekordLLMSchema
+
+    schema = RekordLLMSchema(Rekord)
+    autor = set(schema.models["bpp.autor"])
+    assert "email" not in autor
+    assert "adnotacje" not in autor
+    assert "opis" not in autor
+    # zachowane wg decyzji użytkownika
+    assert "poprzednie_nazwiska" in autor
+    assert "system_kadrowy_id" in autor
+    assert "pbn_uid" in autor
+
+    assert "email" not in set(schema.models["bpp.jednostka"])
+    assert "adnotacje" not in set(schema.models["bpp.rekord"])
+    assert "adnotacje" not in set(schema.models["bpp.wydawnictwo_ciagle"])
+
+
+@pytest.mark.django_db
+def test_web_editor_schema_pii_nienaruszony():
+    """Kontrakt web-edytora /zapytanie/ (BppQLSchemaOgraniczony) celowo NIE jest
+    okrojony — redaktor w przeglądarce dalej filtruje po email/adnotacje
+    (EXAMPLES zawiera 'email = ...'). Blocklist dotyczy tylko schematu
+    agent-facing."""
+    from bpp.djangoql_schema import BppQLSchemaOgraniczony
+
+    schema = BppQLSchemaOgraniczony(Rekord)
+    autor = set(schema.models["bpp.autor"])
+    assert "email" in autor
+    assert "adnotacje" in autor
+    assert "adnotacje" in set(schema.models["bpp.rekord"])
