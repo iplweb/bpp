@@ -1746,3 +1746,18 @@ CONSTANCE_DATABASE_CACHE_BACKEND = "constance_cache"
 # Puste CONSTANCE_CONFIG zachowane dla backward compat z django-constance.
 CONSTANCE_CONFIG = {}
 CONSTANCE_CONFIG_FIELDSETS = {}
+
+#
+# django-oauth-toolkit (DOT) — Authorization Server dla serwera MCP (`/o/`).
+# NIE dodawaj `ALLOWED_GRANT_TYPES` — taki klucz nie istnieje w DOT i
+# zostałby po cichu zignorowany. Granty kontroluje DCR (Task 6/7) i atrybut
+# `Application.authorization_grant_type`.
+#
+OAUTH2_PROVIDER = {
+    "PKCE_REQUIRED": True,
+    "DEFAULT_SCOPES": ["read"],
+    "SCOPES": {"read": "Odczyt danych BPP w Twoim imieniu"},
+    "ROTATE_REFRESH_TOKEN": True,
+    "ACCESS_TOKEN_EXPIRE_SECONDS": 60 * 30,  # 30 min
+    "REFRESH_TOKEN_EXPIRE_SECONDS": 60 * 60 * 24 * 7,  # 7 dni (NIE None!)
+}

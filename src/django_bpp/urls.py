@@ -58,6 +58,7 @@ urlpatterns = (
             include("first_run_wizard.urls", namespace="first_run_wizard"),
         ),
         path("formdefaults/", include("formdefaults.urls")),
+        path("", include("oauth_mcp.urls")),
         url(r"^favicon\.ico$", cache_page(60 * 60)(favicon)),
         path("test_403/", login_required(test_403_view)),
         path("test_500/", login_required(test_500_view)),
