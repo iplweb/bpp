@@ -64,3 +64,26 @@ def sklej_drugie_imie(dane: dict) -> dict:
         dane["imię"] = f"{pierwsze} {drugie}".strip()
     dane.pop("drugie_imię", None)
     return dane
+
+
+def rozbij_nazwisko_imie(dane: dict) -> dict:
+    """Deterministyczny split „Nazwisko Imię" (nazwisko-first): pierwszy token
+    → ``nazwisko``, reszta → ``imię``. Uzupełnia tylko PUSTE pola. Mutuje i
+    zwraca ``dane``; usuwa klucz ``nazwisko_imię`` (``AutorForm`` go nie zna).
+
+    Ograniczenie: dwuczłonowe nazwiska bez łącznika nie są rozbijane (pierwszy
+    token = całe nazwisko). ``Ciuka-Witrylak`` (łącznik = 1 token) działa.
+
+    Edge: 1 token (np. ``{"nazwisko_imię": "Kowalski"}``) → ``imię=""`` — wiersz
+    i tak trafi do ``AutorForm`` (puste ``imię`` obsłuży walidacja formularza).
+    """
+    combined = str(dane.get("nazwisko_imię") or "").strip()
+    if combined:
+        tokeny = combined.split()
+        if tokeny:
+            if not dane.get("nazwisko"):
+                dane["nazwisko"] = tokeny[0]
+            if not dane.get("imię"):
+                dane["imię"] = " ".join(tokeny[1:])
+    dane.pop("nazwisko_imię", None)
+    return dane
