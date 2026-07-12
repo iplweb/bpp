@@ -7,6 +7,7 @@ from django.utils.safestring import mark_safe
 
 from bpp.admin.core import DynamicAdminFilterMixin
 from bpp.admin.helpers.site_filtered import SiteFilteredAdminMixin
+from pbn_api.exceptions import AlreadyEnqueuedError
 
 from .models import PBN_Export_Queue
 
@@ -93,9 +94,16 @@ class PBN_Export_QueueAdmin(
     formfield_overrides = {models.TextField: {"widget": RenderHTMLWidget}}
 
     def _resend_single_item(self, obj: PBN_Export_Queue, user, message_suffix=""):
-        """Common logic for resending a single PBN export queue item"""
-        obj.prepare_for_resend(user=user, message_suffix=message_suffix)
+        """Common logic for resending a single PBN export queue item.
+
+        :return: True gdy zlecono ponowną wysyłkę, False gdy pominięto
+            (dla rekordu istnieje już aktywny wpis w kolejce)."""
+        try:
+            obj.prepare_for_resend(user=user, message_suffix=message_suffix)
+        except AlreadyEnqueuedError:
+            return False
         obj.sprobuj_wyslac_do_pbn()
+        return True
 
     def resend_to_pbn_action(self, request, queryset):
         from django.core.cache import cache
@@ -111,8 +119,10 @@ class PBN_Export_QueueAdmin(
             # Sprawdź czy nie ma już locka dla tego elementu
             lock_key = f"{LOCK_PREFIX}{obj.pk}"
             if not cache.get(lock_key):
-                self._resend_single_item(obj, request.user, " (akcja masowa)")
-                count += 1
+                if self._resend_single_item(obj, request.user, " (akcja masowa)"):
+                    count += 1
+                else:
+                    skipped += 1
             else:
                 skipped += 1
 
@@ -135,8 +145,14 @@ class PBN_Export_QueueAdmin(
 
     def response_change(self, request, obj):
         if "_resend_to_pbn" in request.POST:
-            self._resend_single_item(obj, request.user)
-            self.message_user(request, f"Ponowiono wysyłkę do PBN: {obj}")
+            if self._resend_single_item(obj, request.user):
+                self.message_user(request, f"Ponowiono wysyłkę do PBN: {obj}")
+            else:
+                self.message_user(
+                    request,
+                    f"Rekord jest już w kolejce do wysyłki — nie ponawiam: {obj}",
+                    level=messages.INFO,
+                )
             return HttpResponseRedirect(
                 reverse(
                     f"admin:{obj._meta.app_label}_{obj._meta.model_name}_change",

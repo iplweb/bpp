@@ -6,6 +6,7 @@ from django import forms
 from django.urls import reverse
 from model_bakery import baker
 
+from bpp.models import Wydawnictwo_Ciagle
 from pbn_api.tests.utils import middleware
 from pbn_export_queue.admin import PBN_Export_QueueAdmin
 from pbn_export_queue.models import PBN_Export_Queue
@@ -78,9 +79,12 @@ def test_pbn_export_queue_admin_resend_action(wydawnictwo_ciagle, admin_user, rf
         zakonczono_pomyslnie=True,
     )
 
+    # Osobny rekord: bulk-resend dwóch zakończonych wpisów TEGO SAMEGO rekordu
+    # jest teraz blokowany przez częściowy unikat (tylko jeden aktywny wpis na
+    # rekord) — realistyczny przypadek to różne publikacje, więc dajemy drugą.
     queue_item2 = baker.make(
         PBN_Export_Queue,
-        rekord_do_wysylki=wydawnictwo_ciagle,
+        rekord_do_wysylki=baker.make(Wydawnictwo_Ciagle),
         zamowil=admin_user,
         wysylke_zakonczono=WYSYLKA_ZAKONCZONA_AT,
         zakonczono_pomyslnie=False,
