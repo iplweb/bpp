@@ -90,7 +90,7 @@ class ImportPracownikow(LiveOperation):
     ZAKRES_CHOICES = [
         (ZAKRES_PELNY, "pełny import (struktura + osoby)"),
         (ZAKRES_JEDNOSTKI, "tylko jednostki"),
-        (ZAKRES_STRUKTURA, "jednostki + tytuły (bez osób)"),
+        (ZAKRES_STRUKTURA, "jednostki + tytuły + stopnie + stanowiska (bez osób)"),
     ]
 
     plik_xls = models.FileField(upload_to="protected/import_pracownikow/")
@@ -109,6 +109,21 @@ class ImportPracownikow(LiveOperation):
         help_text="Gdy zaznaczone, tytuły nieobecne w bazie (i bez bliskiego "
         "dopasowania) trafiają na ekran weryfikacji do utworzenia. Gdy "
         "odznaczone — wiersze z niedopasowanym tytułem zostają bez tytułu.",
+    )
+    tworz_brakujace_stopnie = models.BooleanField(
+        "Twórz brakujące stopnie służbowe",
+        default=True,
+        help_text="Gdy zaznaczone, stopnie służbowe nieobecne w bazie (i bez "
+        "bliskiego dopasowania) trafiają na ekran weryfikacji do utworzenia. "
+        "Gdy odznaczone — wiersze z niedopasowanym stopniem zostają bez stopnia.",
+    )
+    tworz_brakujace_stanowiska = models.BooleanField(
+        "Twórz brakujące stanowiska dydaktyczne",
+        default=True,
+        help_text="Gdy zaznaczone, stanowiska dydaktyczne nieobecne w bazie (i "
+        "bez bliskiego dopasowania) trafiają na ekran weryfikacji do utworzenia. "
+        "Gdy odznaczone — wiersze z niedopasowanym stanowiskiem zostają bez "
+        "stanowiska.",
     )
     data_zmian_personalnych = models.DateField(
         "Data zmian personalnych",
@@ -141,8 +156,9 @@ class ImportPracownikow(LiveOperation):
         choices=ZAKRES_CHOICES,
         default=ZAKRES_PELNY,
         help_text="Co „Zapisz do bazy” faktycznie tworzy: pełny import "
-        "(struktura + osoby), same jednostki, albo jednostki + tytuły "
-        "(bez osób). Ustawiane przez przycisk zatwierdzenia na hubie.",
+        "(struktura + osoby), same jednostki, albo jednostki + tytuły + stopnie "
+        "+ stanowiska (bez osób). Ustawiane przez przycisk zatwierdzenia na "
+        "hubie.",
     )
 
     stages = ["Wczytywanie", "Integracja"]
@@ -562,6 +578,41 @@ class ImportPracownikowRow(ImportRowMixin, models.Model):
         help_text="Decyzja o źródłowym tytule (współdzielona przez wiersze o "
         "tej samej nazwie). Wypełniona, gdy tytuł wymaga rozstrzygnięcia "
         "(utworzenie / mapowanie / auto-dopasowanie).",
+    )
+    stopien = models.ForeignKey(
+        "bpp.StopienSluzbowy", on_delete=models.SET_NULL, null=True, blank=True
+    )
+    stopien_status = models.CharField(  # noqa: DJ001
+        max_length=20, choices=STATUS_CHOICES, null=True, blank=True
+    )
+    zrodlo_stopnia = models.ForeignKey(
+        "ImportPracownikowStopien",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="wiersze_stopien",
+        help_text="Decyzja o źródłowym stopniu służbowym (współdzielona przez "
+        "wiersze o tej samej nazwie). Wypełniona, gdy stopień wymaga "
+        "rozstrzygnięcia (utworzenie / mapowanie / auto-dopasowanie).",
+    )
+    stanowisko_dydaktyczne = models.ForeignKey(
+        "bpp.StanowiskoDydaktyczne",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+    )
+    stanowisko_dydaktyczne_status = models.CharField(  # noqa: DJ001
+        max_length=20, choices=STATUS_CHOICES, null=True, blank=True
+    )
+    zrodlo_stanowiska_dydaktycznego = models.ForeignKey(
+        "ImportPracownikowStanowisko",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="wiersze_stanowisko",
+        help_text="Decyzja o źródłowym stanowisku dydaktycznym (współdzielona "
+        "przez wiersze o tej samej nazwie). Wypełniona, gdy stanowisko wymaga "
+        "rozstrzygnięcia (utworzenie / mapowanie / auto-dopasowanie).",
     )
 
     zmiany_potrzebne = models.BooleanField()
@@ -1107,6 +1158,166 @@ class ImportPracownikowTytul(models.Model):
     class Meta:
         verbose_name = "decyzja o tytule (import pracowników)"
         verbose_name_plural = "decyzje o tytułach (import pracowników)"
+        unique_together = (("parent", "nazwa_zrodlowa"),)
+        ordering = ["nazwa_zrodlowa"]
+
+    def __str__(self):
+        return f"{self.nazwa_zrodlowa} ({self.tryb} → {self.decyzja})"
+
+
+class ImportPracownikowStopien(models.Model):
+    """Decyzja o jednym UNIKALNYM (znormalizowanym) stringu stopnia służbowego
+    z pliku, którego nie da się dopasować dokładnie.
+
+    Mirror ``ImportPracownikowTytul`` (Tytul→StopienSluzbowy, tytul→stopien).
+    Deduplikowany po nazwie źródłowej; analiza wypełnia pola liczone
+    (``tryb``/``auto_stopien``/``auto_similarity``), użytkownik ustawia wybór
+    (``decyzja``/``wybrany_stopien``/``nazwa_do_utworzenia``/
+    ``skrot_do_utworzenia``), integracja materializuje wynik do ``utworzony``.
+    """
+
+    TRYB_ZGADYWANIE = "zgadywanie"
+    TRYB_BRAK = "brak"
+    TRYB_CHOICES = [
+        (TRYB_ZGADYWANIE, "auto-dopasowanie (podobna nazwa)"),
+        (TRYB_BRAK, "brak dopasowania (do utworzenia)"),
+    ]
+
+    DECYZJA_AKCEPTUJ = "akceptuj"
+    DECYZJA_MAPUJ = "mapuj"
+    DECYZJA_POMIN = "pomin"
+    DECYZJA_CHOICES = [
+        (DECYZJA_AKCEPTUJ, "akceptuj (utwórz nowy / użyj auto-dopasowania)"),
+        (DECYZJA_MAPUJ, "mapuj na istniejący"),
+        (DECYZJA_POMIN, "pomiń (nie ustawiaj stopnia tym wierszom)"),
+    ]
+
+    parent = models.ForeignKey(
+        ImportPracownikow,
+        on_delete=models.CASCADE,
+        related_name="stopnie_do_decyzji",
+        verbose_name="import pracowników",
+    )
+    nazwa_zrodlowa = models.CharField("nazwa źródłowa", max_length=512)
+    tryb = models.CharField(max_length=20, choices=TRYB_CHOICES)
+    auto_stopien = models.ForeignKey(
+        "bpp.StopienSluzbowy",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="+",
+        verbose_name="auto-dopasowany stopień",
+    )
+    auto_similarity = models.FloatField("podobieństwo auto", null=True, blank=True)
+    nazwa_do_utworzenia = models.CharField(
+        "nazwa do utworzenia", max_length=512, blank=True, default=""
+    )
+    skrot_do_utworzenia = models.CharField(
+        "skrót do utworzenia", max_length=128, blank=True, default=""
+    )
+    decyzja = models.CharField(
+        max_length=20, choices=DECYZJA_CHOICES, default=DECYZJA_AKCEPTUJ
+    )
+    wybrany_stopien = models.ForeignKey(
+        "bpp.StopienSluzbowy",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="+",
+        verbose_name="wybrany istniejący stopień (mapuj)",
+    )
+    utworzony = models.ForeignKey(
+        "bpp.StopienSluzbowy",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="+",
+        verbose_name="stopień utworzony/rozstrzygnięty",
+        help_text="Ustawiane przez integrację. Guard idempotencji (restart / "
+        "podwójny commit nie duplikuje stopni).",
+    )
+
+    class Meta:
+        verbose_name = "decyzja o stopniu służbowym (import pracowników)"
+        verbose_name_plural = "decyzje o stopniach służbowych (import pracowników)"
+        unique_together = (("parent", "nazwa_zrodlowa"),)
+        ordering = ["nazwa_zrodlowa"]
+
+    def __str__(self):
+        return f"{self.nazwa_zrodlowa} ({self.tryb} → {self.decyzja})"
+
+
+class ImportPracownikowStanowisko(models.Model):
+    """Decyzja o jednym UNIKALNYM (znormalizowanym) stringu stanowiska
+    dydaktycznego z pliku. Mirror ``ImportPracownikowStopien``
+    (StopienSluzbowy→StanowiskoDydaktyczne)."""
+
+    TRYB_ZGADYWANIE = "zgadywanie"
+    TRYB_BRAK = "brak"
+    TRYB_CHOICES = [
+        (TRYB_ZGADYWANIE, "auto-dopasowanie (podobna nazwa)"),
+        (TRYB_BRAK, "brak dopasowania (do utworzenia)"),
+    ]
+
+    DECYZJA_AKCEPTUJ = "akceptuj"
+    DECYZJA_MAPUJ = "mapuj"
+    DECYZJA_POMIN = "pomin"
+    DECYZJA_CHOICES = [
+        (DECYZJA_AKCEPTUJ, "akceptuj (utwórz nowe / użyj auto-dopasowania)"),
+        (DECYZJA_MAPUJ, "mapuj na istniejące"),
+        (DECYZJA_POMIN, "pomiń (nie ustawiaj stanowiska tym wierszom)"),
+    ]
+
+    parent = models.ForeignKey(
+        ImportPracownikow,
+        on_delete=models.CASCADE,
+        related_name="stanowiska_do_decyzji",
+        verbose_name="import pracowników",
+    )
+    nazwa_zrodlowa = models.CharField("nazwa źródłowa", max_length=512)
+    tryb = models.CharField(max_length=20, choices=TRYB_CHOICES)
+    auto_stanowisko = models.ForeignKey(
+        "bpp.StanowiskoDydaktyczne",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="+",
+        verbose_name="auto-dopasowane stanowisko",
+    )
+    auto_similarity = models.FloatField("podobieństwo auto", null=True, blank=True)
+    nazwa_do_utworzenia = models.CharField(
+        "nazwa do utworzenia", max_length=512, blank=True, default=""
+    )
+    skrot_do_utworzenia = models.CharField(
+        "skrót do utworzenia", max_length=128, blank=True, default=""
+    )
+    decyzja = models.CharField(
+        max_length=20, choices=DECYZJA_CHOICES, default=DECYZJA_AKCEPTUJ
+    )
+    wybrane_stanowisko = models.ForeignKey(
+        "bpp.StanowiskoDydaktyczne",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="+",
+        verbose_name="wybrane istniejące stanowisko (mapuj)",
+    )
+    utworzone = models.ForeignKey(
+        "bpp.StanowiskoDydaktyczne",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="+",
+        verbose_name="stanowisko utworzone/rozstrzygnięte",
+        help_text="Ustawiane przez integrację. Guard idempotencji (restart / "
+        "podwójny commit nie duplikuje stanowisk).",
+    )
+
+    class Meta:
+        verbose_name = "decyzja o stanowisku dydaktycznym (import pracowników)"
+        verbose_name_plural = (
+            "decyzje o stanowiskach dydaktycznych (import pracowników)"
+        )
         unique_together = (("parent", "nazwa_zrodlowa"),)
         ordering = ["nazwa_zrodlowa"]
 
