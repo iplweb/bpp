@@ -78,6 +78,8 @@ wąskie API, tylko sieć wewnętrzna, nie-root.
   - Limit ciała żądania Kestrela `MaxRequestBodySize = 100 MB` (104857600 B) —
     raporty bywają duże.
 - `GET /health` → `200` (healthcheck compose/autoheal).
+- **Port:** domyślnie **3030** (8080 bywa zajęty na stacku), nadpisywalny env
+  `HTML2DOCX_PORT`. Serwer binduje `http://0.0.0.0:${HTML2DOCX_PORT:-3030}`.
 
 Odwzorowuje 1:1 dzisiejszy filtr stdin→stdout — minimum kodu po obu stronach,
 brak parsowania multipart, brak narzutu base64.
@@ -88,17 +90,20 @@ brak parsowania multipart, brak narzutu base64.
    `Microsoft.NET.Sdk.Web`. Runtime ASP.NET jest już w obrazie bazowym.
 2. **`src/Program.cs`** — rozgałęzienie na starcie:
    - **brak argów → tryb serwera** (nowy default): `WebApplication`
-     nasłuchujący na `0.0.0.0:8080`, endpointy `POST /convert` i `GET /health`.
-     Endpoint reużywa istniejący rdzeń konwersji (HtmlConverter/ParseBody/Save)
-     — wydzielony do wspólnej funkcji `ConvertHtmlToDocxBytes(string html)`.
+     nasłuchujący na `0.0.0.0:${HTML2DOCX_PORT:-3030}`, endpointy `POST /convert`
+     i `GET /health`. Endpoint reużywa istniejący rdzeń konwersji
+     (HtmlConverter/ParseBody/Save) — wydzielony do wspólnej funkcji
+     `ConvertHtmlToDocxBytes(string html)`.
    - **arg `-`/nazwa pliku → tryb CLI** (bez zmian): stary filtr stdin→stdout
      zachowany dla kompatybilności i standalone-żności. Ta sama funkcja rdzenia.
    - Obsługa błędów: w trybie serwera wyjątek konwersji → odpowiedź 4xx/5xx
      z komunikatem; w trybie CLI → dotychczasowe `Console.Error` + `Exit(1)`.
    - Limit ciała żądania Kestrela (`MaxRequestBodySize`) podniesiony.
 3. **`Dockerfile`**: entrypoint zostaje `dotnet HtmlToDocx.dll` (teraz domyślnie
-   serwuje), `EXPOSE 8080`, user nie-root (uid 1654) bez zmian. Bez socketa.
-   Rozważyć `HEALTHCHECK` w obrazie (lub zdać się na healthcheck compose).
+   serwuje), `ENV HTML2DOCX_PORT=3030` + `EXPOSE 3030`, user nie-root (uid 1654)
+   bez zmian. Bez socketa. Rozważyć `HEALTHCHECK` w obrazie (lub zdać się na
+   healthcheck compose). Odziedziczone `ASPNETCORE_HTTP_PORTS=8080` nie ma
+   znaczenia — bind steruje jawny `UseUrls` z `HTML2DOCX_PORT`.
 
 ## Zmiany po stronie BPP — `iplweb/bpp`
 
@@ -150,7 +155,8 @@ w bpp:
 
 - serwis `html2docx` (`image: iplweb/html2docx:<tag>`, sieć wewnętrzna, **bez
   published portu**, restart + healthcheck wg uznania), pin **po tagu**;
-- na appserverze env `DJANGO_BPP_HTML2DOCX_URL=http://<host>:<port>/convert`;
+  domyślny port **3030** (env `HTML2DOCX_PORT` jeśli trzeba inny);
+- na appserverze env `DJANGO_BPP_HTML2DOCX_URL=http://html2docx:3030/convert`;
 - zdjęcie mountu `docker.sock` z appservera.
 
 `depends_on`, healthcheck, restart policy, sieć — decyzje deploymentu, nie
