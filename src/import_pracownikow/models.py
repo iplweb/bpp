@@ -56,6 +56,12 @@ class AutorForm(forms.Form):
     data_końca_zatrudnienia = ExcelDateField(required=False)
     podstawowe_miejsce_pracy = forms.BooleanField(required=False)
     wymiar_etatu = forms.CharField(max_length=200, required=False)
+    # email tolerancyjny: CharField (nie EmailField), max_length=128 =
+    # Autor.email.max_length — dłuższy adres wywaliłby Autor.objects.create
+    # przez nieprzechwycony DataError. Miękkie czyszczenie/porównywarka = Plan 4.
+    email = forms.CharField(max_length=128, required=False)
+    stopień_służbowy = forms.CharField(max_length=200, required=False)
+    stanowisko_dydaktyczne = forms.CharField(max_length=200, required=False)
 
 
 class ImportPracownikow(LiveOperation):
@@ -525,6 +531,45 @@ class ImportPracownikow(LiveOperation):
             .exists()
         )
 
+    @property
+    def stopnie_wymagaja_rozstrzygniecia(self):
+        """Mirror ``tytuly_wymagaja_rozstrzygniecia`` — bramka: import osób
+        (zakres pełny) nie może po cichu tworzyć stopni służbowych. ``pomin``
+        liczymy jako rozstrzygnięte."""
+        return (
+            self.stopnie_do_decyzji.filter(utworzony__isnull=True)
+            .exclude(decyzja=ImportPracownikowStopien.DECYZJA_POMIN)
+            .exists()
+        )
+
+    @property
+    def stanowiska_wymagaja_rozstrzygniecia(self):
+        """Mirror ``tytuly_wymagaja_rozstrzygniecia`` dla stanowisk
+        dydaktycznych (pole rozstrzygnięcia: ``utworzone``)."""
+        return (
+            self.stanowiska_do_decyzji.filter(utworzone__isnull=True)
+            .exclude(decyzja=ImportPracownikowStanowisko.DECYZJA_POMIN)
+            .exists()
+        )
+
+    def liczniki_stopni(self):
+        """``{"do_utworzenia","do_sprawdzenia"}`` z nierozstrzygniętych decyzji
+        o stopniach służbowych (``utworzony__isnull=True``)."""
+        return self._liczniki_decyzji(
+            self.stopnie_do_decyzji.filter(utworzony__isnull=True),
+            ImportPracownikowStopien.TRYB_BRAK,
+            ImportPracownikowStopien.TRYB_ZGADYWANIE,
+        )
+
+    def liczniki_stanowisk(self):
+        """``{"do_utworzenia","do_sprawdzenia"}`` z nierozstrzygniętych decyzji
+        o stanowiskach dydaktycznych (``utworzone__isnull=True``)."""
+        return self._liczniki_decyzji(
+            self.stanowiska_do_decyzji.filter(utworzone__isnull=True),
+            ImportPracownikowStanowisko.TRYB_BRAK,
+            ImportPracownikowStanowisko.TRYB_ZGADYWANIE,
+        )
+
 
 class ImportPracownikowRow(ImportRowMixin, models.Model):
     parent = models.ForeignKey(
@@ -677,6 +722,9 @@ class ImportPracownikowRow(ImportRowMixin, models.Model):
         # ``zmiany_potrzebne=True`` + puste ``integrate()``.
         if self.tytul_id is not None and self.tytul_id != a.tytul_id:
             return True
+        # Stopień służbowy — overwrite-if-different (mirror tytuł, spec §11.2).
+        if self.stopien_id is not None and self.stopien_id != a.stopien_sluzbowy_id:
+            return True
         return False
 
     def _check_autor_jednostka_needs_update(self, dane):
@@ -705,6 +753,9 @@ class ImportPracownikowRow(ImportRowMixin, models.Model):
             # mówi jawnie „Podstawowe miejsce pracy"=NIE.
             self.podstawowe_miejsce_pracy is not False
             and not aj.podstawowe_miejsce_pracy,
+            # Stanowisko dydaktyczne — overwrite-if-different (mirror funkcja).
+            self.stanowisko_dydaktyczne_id is not None
+            and aj.stanowisko_id != self.stanowisko_dydaktyczne_id,
         ]
         return any(checks)
 
@@ -733,17 +784,29 @@ class ImportPracownikowRow(ImportRowMixin, models.Model):
                 )
                 setattr(a, atrybut_autora, dane.get(klucz_danych))
 
-        if self.tytul_id is not None:
-            if a.tytul_id != self.tytul_id:
-                a.tytul_id = self.tytul_id
-                self.log_zmian["autor"].append(
-                    f"tytuł naukowy -> {self.tytul.skrot if self.tytul_id else 'brak'}"
-                )
+        self._ustaw_tytul_i_stopien_autora(a)
 
         try:
             a.save()
         except DataError as e:
             raise BPPDatabaseError(self.dane_z_xls, self, f"DataError {e}") from e
+
+    def _ustaw_tytul_i_stopien_autora(self, a):
+        """Ustawia tytuł naukowy i stopień służbowy na autorze
+        (overwrite-if-different, spec §11.2) i loguje zmiany. Import USTAWIA,
+        nigdy nie kasuje (guard is-not-None — spójne z ``_check_autor_needs_update``,
+        które te same pola liczy do ``zmiany_potrzebne``)."""
+        if self.tytul_id is not None and a.tytul_id != self.tytul_id:
+            a.tytul_id = self.tytul_id
+            self.log_zmian["autor"].append(
+                f"tytuł naukowy -> {self.tytul.skrot if self.tytul_id else 'brak'}"
+            )
+        if self.stopien_id is not None and a.stopien_sluzbowy_id != self.stopien_id:
+            a.stopien_sluzbowy_id = self.stopien_id
+            self.log_zmian["autor"].append(
+                "stopień służbowy -> "
+                f"{self.stopien.skrot if self.stopien_id else 'brak'}"
+            )
 
     def _integruj_daty_aj(self, aj, dane):
         """Ustawia daty zatrudnienia na powiązaniu z danych wiersza.
@@ -783,6 +846,15 @@ class ImportPracownikowRow(ImportRowMixin, models.Model):
             aj.funkcja = self.funkcja_autora
             self.log_zmian["autor_jednostka"].append(
                 f"funkcja na {self.funkcja_autora}"
+            )
+
+        if (
+            self.stanowisko_dydaktyczne_id is not None
+            and aj.stanowisko_id != self.stanowisko_dydaktyczne_id
+        ):
+            aj.stanowisko_id = self.stanowisko_dydaktyczne_id
+            self.log_zmian["autor_jednostka"].append(
+                f"stanowisko dydaktyczne na {self.stanowisko_dydaktyczne}"
             )
 
         if (
