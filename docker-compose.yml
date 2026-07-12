@@ -76,6 +76,8 @@ services:
     environment:
       - ENABLE_AUTORELOAD_ON_CODE_CHANGE=${ENABLE_AUTORELOAD_ON_CODE_CHANGE:-1}
       - DJANGO_BPP_CSRF_EXTRA_ORIGINS=https://bpp.localnet:10443,https://localhost:10443
+      # Fallback konwersji DOCX (html2docx) przez usługę HTTP zamiast docker.sock.
+      - DJANGO_BPP_HTML2DOCX_URL=http://html2docx:3030/convert
     entrypoint: ["/entrypoint-appserver.sh"]
     depends_on:
       redis:
@@ -94,6 +96,17 @@ services:
       - media:/mediaroot
     ports:
       - ${DJANGO_BPP_PORT_APP:-8000}:8000
+
+  # Usługa konwersji HTML->DOCX (fallback gdy pandoc zawiedzie). Sidecar HTTP
+  # zamiast docker.sock — appserver POST-uje HTML, dostaje docx. Obraz budowany
+  # w osobnym repo: https://github.com/mpasternak/html2docx
+  html2docx:
+    image: iplweb/html2docx:latest
+    restart: always
+    # Port 3030 (default obrazu); nadpisywalny env HTML2DOCX_PORT.
+    # W dev odsłaniamy port dla debugowania; w produkcji NIE publikować.
+    ports:
+      - ${DJANGO_BPP_HTML2DOCX_PORT:-3030}:3030
 
 
   # ── Workers ────────────────────────────────────────────────────────────
