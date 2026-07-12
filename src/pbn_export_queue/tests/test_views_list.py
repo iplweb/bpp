@@ -8,6 +8,7 @@ from django.urls import reverse
 from model_bakery import baker
 
 from bpp.const import GR_WPROWADZANIE_DANYCH
+from bpp.models import Wydawnictwo_Ciagle
 from pbn_export_queue.models import PBN_Export_Queue
 from pbn_export_queue.views import PBNExportQueuePermissionMixin
 
@@ -121,7 +122,7 @@ def test_pbnexportqueuelistview_filter_by_success_true(
     )
     baker.make(
         PBN_Export_Queue,
-        rekord_do_wysylki=wydawnictwo_ciagle,
+        rekord_do_wysylki=baker.make(Wydawnictwo_Ciagle),
         zamowil=admin_user,
         zakonczono_pomyslnie=False,
     )
@@ -147,7 +148,7 @@ def test_pbnexportqueuelistview_filter_by_success_false(
     )
     baker.make(
         PBN_Export_Queue,
-        rekord_do_wysylki=wydawnictwo_ciagle,
+        rekord_do_wysylki=baker.make(Wydawnictwo_Ciagle),
         zamowil=admin_user,
         zakonczono_pomyslnie=True,
     )
@@ -173,7 +174,7 @@ def test_pbnexportqueuelistview_filter_by_success_none(
     )
     baker.make(
         PBN_Export_Queue,
-        rekord_do_wysylki=wydawnictwo_ciagle,
+        rekord_do_wysylki=baker.make(Wydawnictwo_Ciagle),
         zamowil=admin_user,
         zakonczono_pomyslnie=True,
     )
@@ -214,7 +215,9 @@ def test_pbnexportqueuelistview_sort_by_pk(client, admin_user, wydawnictwo_ciagl
         PBN_Export_Queue, rekord_do_wysylki=wydawnictwo_ciagle, zamowil=admin_user
     )
     baker.make(
-        PBN_Export_Queue, rekord_do_wysylki=wydawnictwo_ciagle, zamowil=admin_user
+        PBN_Export_Queue,
+        rekord_do_wysylki=baker.make(Wydawnictwo_Ciagle),
+        zamowil=admin_user,
     )
 
     client.force_login(admin_user)
@@ -235,7 +238,9 @@ def test_pbnexportqueuelistview_sort_by_reverse_pk(
         PBN_Export_Queue, rekord_do_wysylki=wydawnictwo_ciagle, zamowil=admin_user
     )
     baker.make(
-        PBN_Export_Queue, rekord_do_wysylki=wydawnictwo_ciagle, zamowil=admin_user
+        PBN_Export_Queue,
+        rekord_do_wysylki=baker.make(Wydawnictwo_Ciagle),
+        zamowil=admin_user,
     )
 
     client.force_login(admin_user)
@@ -277,13 +282,13 @@ def test_pbnexportqueuelistview_context_has_counts(
     )
     baker.make(
         PBN_Export_Queue,
-        rekord_do_wysylki=wydawnictwo_ciagle,
+        rekord_do_wysylki=baker.make(Wydawnictwo_Ciagle),
         zamowil=admin_user,
         zakonczono_pomyslnie=False,
     )
     baker.make(
         PBN_Export_Queue,
-        rekord_do_wysylki=wydawnictwo_ciagle,
+        rekord_do_wysylki=baker.make(Wydawnictwo_Ciagle),
         zamowil=admin_user,
         zakonczono_pomyslnie=None,
     )

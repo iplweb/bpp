@@ -108,10 +108,16 @@ def run_pbn_import(self, session_id, uczelnia_id=None):
                 message=f"Krytyczny błąd importu: {str(e)}",
                 details={"traceback": tb_string},
             )
-        except BaseException:
+        except Exception:
             # Nie udało się nawet ZAPISAĆ błędu (np. baza padła). To NIE może
             # zniknąć po cichu — inaczej krytyczny błąd importu nie zostawia
             # żadnego śladu. Zaloguj z tracebackiem i zgłoś do Rollbar.
+            #
+            # Świadomie łapiemy tylko Exception, NIE BaseException: przerwania
+            # workera (KeyboardInterrupt, SystemExit — np. warm shutdown Celery)
+            # muszą się propagować, a nie zostać połknięte przy zapisie błędu.
+            # Wcześniejsza wersja miała tu `except BaseException`, przez co
+            # następujący po niej `except Exception` był martwy (nieosiągalny).
             logger.exception(
                 "Nie udało się zapisać krytycznego błędu importu dla sesji %s",
                 session_id,
@@ -123,11 +129,4 @@ def run_pbn_import(self, session_id, uczelnia_id=None):
                     "task": "run_pbn_import",
                     "phase": "error_persistence_failed",
                 },
-            )
-        except Exception:
-            zaloguj_polkniety_wyjatek(
-                "Nie udało się zapisać statusu błędu sesji importu PBN "
-                f"#{session_id} po krytycznym błędzie importu",
-                logger=logger,
-                do_rollbar=True,
             )

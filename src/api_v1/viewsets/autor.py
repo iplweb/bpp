@@ -7,6 +7,7 @@ from api_v1.serializers.autor import (
     Funkcja_AutoraSerializer,
     TytulSerializer,
 )
+from api_v1.throttling import SearchAnonThrottle, SearchUserThrottle
 from bpp.models import Autor, Autor_Jednostka, Funkcja_Autora, Tytul
 
 
@@ -23,6 +24,9 @@ class AutorViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = Autor.objects.all()
     serializer_class = AutorSerializer
     filterset_class = AutorFilterSet
+    # Filtr nazwisko__icontains skanuje bez indeksu prefiksu — opt-in
+    # throttling kosztownego endpointu wyszukiwania (globalny wyłączony).
+    throttle_classes = [SearchAnonThrottle, SearchUserThrottle]
 
 
 class Funkcja_AutoraViewSet(viewsets.ReadOnlyModelViewSet):

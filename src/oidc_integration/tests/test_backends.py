@@ -48,6 +48,40 @@ def test_verify_claims_loguje_klucze_na_debug(caplog):
     assert "email" in joined and "person_id" in joined and "sub" in joined
 
 
+def test_verify_claims_redaguje_wartosci_claimow_domyslnie(caplog):
+    """Domyślnie DEBUG loguje nazwy claimów, ale NIE surowe wartości (PII)."""
+    with caplog.at_level(logging.DEBUG, logger="oidc_integration.backends"):
+        _backend().verify_claims(
+            {
+                "email": "jan@uafm.edu.pl",
+                "sub": "123",
+                "realm_access": {"roles": ["pracownik", "student"]},
+            }
+        )
+    joined = " ".join(
+        r.getMessage() for r in caplog.records if r.levelno == logging.DEBUG
+    )
+    # Nazwy claimów widoczne...
+    assert "email" in joined and "realm_access" in joined
+    # ...ale NIE identyfikujące wartości:
+    assert "jan@uafm.edu.pl" not in joined
+    assert "pracownik" not in joined
+    # Zamiast tego zredagowany kształt:
+    assert "<str len=" in joined
+    assert "keys=['roles']" in joined
+
+
+def test_verify_claims_surowe_wartosci_tylko_na_optin(caplog, monkeypatch):
+    """DJANGO_BPP_OIDC_DEBUG_CLAIM_VALUES=1 odblokowuje surowe wartości."""
+    monkeypatch.setenv("DJANGO_BPP_OIDC_DEBUG_CLAIM_VALUES", "1")
+    with caplog.at_level(logging.DEBUG, logger="oidc_integration.backends"):
+        _backend().verify_claims({"email": "jan@uafm.edu.pl", "sub": "123"})
+    joined = " ".join(
+        r.getMessage() for r in caplog.records if r.levelno == logging.DEBUG
+    )
+    assert "jan@uafm.edu.pl" in joined
+
+
 def test_verify_claims_nie_pisze_bannera_na_stderr(capsys):
     _backend().verify_claims({"email": "jan@uafm.edu.pl", "sub": "123"})
     assert "[OIDC]" not in capsys.readouterr().err

@@ -11,6 +11,7 @@ from django.contrib.auth import get_user_model
 from django.utils import timezone
 from model_bakery import baker
 
+from bpp.models import Wydawnictwo_Ciagle
 from pbn_export_queue.models import PBN_Export_Queue, SendStatus
 
 
@@ -156,7 +157,7 @@ class TestExclude:
         )
         queue_item2 = baker.make(
             PBN_Export_Queue,
-            rekord_do_wysylki=wydawnictwo_ciagle,
+            rekord_do_wysylki=baker.make(Wydawnictwo_Ciagle),
             zamowil=admin_user,
         )
 

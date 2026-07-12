@@ -174,15 +174,70 @@ def test_get_discipline_pin_stats_filters_by_autor_dyscyplina():
     assert stats["pinned"] == 1
 
 
-@pytest.mark.django_db(transaction=True)
-def test_reset_discipline_pins_creates_snapshot_and_resets(client, admin_user):
-    """Test że reset tworzy snapshot i resetuje przypięcia."""
+@pytest.mark.django_db
+def test_reset_discipline_pins_dispatches_task_and_redirects(
+    client, admin_user, uczelnia
+):
+    """Widok NIE wykonuje resetu synchronicznie — zleca zadanie i przekierowuje
+    na stronę statusu (wcześniej request blokował się do 10 minut)."""
     from unittest.mock import MagicMock, patch
 
     dyscyplina = baker.make(Dyscyplina_Naukowa, nazwa="Testowa", kod="1.1")
     autor = baker.make("bpp.Autor")
+    for rok in range(2022, 2026):
+        baker.make(
+            Autor_Dyscyplina,
+            autor=autor,
+            rok=rok,
+            dyscyplina_naukowa=dyscyplina,
+            subdyscyplina_naukowa=None,
+        )
+    # Odpięta publikacja, żeby stats["unpinned"] > 0 (inaczej wczesny warning).
+    pub = baker.make(Wydawnictwo_Ciagle, rok=2023)
+    baker.make(
+        Wydawnictwo_Ciagle_Autor,
+        rekord=pub,
+        autor=autor,
+        dyscyplina_naukowa=dyscyplina,
+        przypieta=False,
+    )
 
-    # Utwórz Autor_Dyscyplina
+    client.force_login(admin_user)
+    url = reverse(
+        "ewaluacja_optymalizacja:reset-discipline-pins",
+        kwargs={"pk": dyscyplina.pk},
+    )
+
+    with (
+        patch("ewaluacja_optymalizacja.tasks.reset_discipline_pins_task") as mock_task,
+        patch(
+            "ewaluacja_optymalizacja.views.pins.Uczelnia.objects.get_for_request",
+            return_value=uczelnia,
+        ),
+    ):
+        mock_task.delay.return_value = MagicMock(id="test-task-id")
+        response = client.get(url)
+
+    mock_task.delay.assert_called_once_with(uczelnia.pk, dyscyplina.pk, admin_user.pk)
+    assert response.status_code == 302
+    assert response.url == reverse(
+        "ewaluacja_optymalizacja:reset-all-pins-status",
+        kwargs={"task_id": "test-task-id"},
+    )
+
+
+@pytest.mark.django_db
+def test_reset_discipline_pins_task_creates_snapshot_and_resets(uczelnia, admin_user):
+    """Zadanie tła tworzy snapshot i resetuje przypięcia dyscypliny (2022-2025).
+
+    Bez LiczbaNDlaUczelni optymalizacja jest pomijana — testujemy sam reset.
+    """
+    from unittest.mock import patch
+
+    from ewaluacja_optymalizacja.tasks import reset_discipline_pins_task
+
+    dyscyplina = baker.make(Dyscyplina_Naukowa, nazwa="Testowa", kod="1.1")
+    autor = baker.make("bpp.Autor")
     for rok in range(2022, 2026):
         baker.make(
             Autor_Dyscyplina,
@@ -192,7 +247,6 @@ def test_reset_discipline_pins_creates_snapshot_and_resets(client, admin_user):
             subdyscyplina_naukowa=None,
         )
 
-    # Utwórz odpięte publikacje
     odpięte_rekordy = []
     for rok in range(2022, 2025):
         pub = baker.make(Wydawnictwo_Ciagle, rok=rok)
@@ -205,44 +259,23 @@ def test_reset_discipline_pins_creates_snapshot_and_resets(client, admin_user):
         )
         odpięte_rekordy.append(rekord)
 
-    # Sprawdź stan przed resetem
-    assert all(not r.przypieta for r in odpięte_rekordy)
     snapshot_count_before = SnapshotOdpiec.objects.count()
 
-    # Mock Celery tasks and DirtyInstance to avoid actual async processing
-    with patch("denorm.models.DirtyInstance.objects.count") as mock_count:
-        # Return 0 to skip the waiting loop entirely
-        mock_count.return_value = 0
+    with patch("ewaluacja_optymalizacja.tasks.reset_pins._wait_for_denorm"):
+        result = reset_discipline_pins_task.apply(
+            args=(uczelnia.pk, dyscyplina.pk, admin_user.pk)
+        ).result
 
-        with patch("ewaluacja_optymalizacja.views.pins.sleep"):
-            with patch("denorm.tasks.flush_via_queue.delay") as mock_flush:
-                mock_flush.return_value = MagicMock()
-                with patch(
-                    "ewaluacja_optymalizacja.tasks.solve_single_discipline_task"
-                ) as mock_solve:
-                    mock_solve.delay.return_value = MagicMock(id="test-task-id")
-
-                    # Wykonaj reset
-                    client.force_login(admin_user)
-                    url = reverse(
-                        "ewaluacja_optymalizacja:reset-discipline-pins",
-                        kwargs={"pk": dyscyplina.pk},
-                    )
-                    response = client.get(url)
-
-    # Sprawdź czy utworzono snapshot
     assert SnapshotOdpiec.objects.count() == snapshot_count_before + 1
     snapshot = SnapshotOdpiec.objects.latest("created_on")
     assert f"przed resetem przypięć - {dyscyplina.nazwa}" in snapshot.comment
 
-    # Sprawdź czy rekordy zostały zresetowane
     for rekord in odpięte_rekordy:
         rekord.refresh_from_db()
         assert rekord.przypieta is True
 
-    # Sprawdź redirect
-    assert response.status_code == 302
-    assert response.url == reverse("ewaluacja_optymalizacja:index")
+    assert result["total_reset"] >= len(odpięte_rekordy)
+    assert result["optymalizacja_uruchomiona"] is False
 
 
 @pytest.mark.django_db(transaction=True)

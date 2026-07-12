@@ -981,10 +981,16 @@ REST_FRAMEWORK = {
         "rest_framework.authentication.SessionAuthentication",
         "rest_framework.authentication.BasicAuthentication",
     ],
-    # Nie limituj ilości zapytań (mpasternak, 6.06.2020) - jednakże, gdyby
-    # trzeba było, to wystarczy odkomentować poniższe dwie linie:
-    # "DEFAULT_THROTTLE_CLASSES": ("rest_framework.throttling.AnonRateThrottle",),
-    # "DEFAULT_THROTTLE_RATES": {"anon": "50/second",},
+    # Globalny throttling pozostaje WYŁĄCZONY (mpasternak, 6.06.2020) — brak
+    # DEFAULT_THROTTLE_CLASSES, więc większość endpointów nie jest limitowana.
+    # Limitujemy WYŁĄCZNIE kosztowne endpointy wyszukiwania (opt-in per-viewset
+    # przez api_v1.throttling: /szukaj/ pełnotekstowe oraz /autor/ z filtrem
+    # nazwisko__icontains). Rate'y (klucze == scope) dają rozdzielne progi
+    # anon/user; pod DummyCache (dev/test) throttling jest no-op.
+    "DEFAULT_THROTTLE_RATES": {
+        "search_anon": "60/minute",
+        "search_user": "240/minute",
+    },
 }
 
 BPP_WALIDUJ_AFILIACJE_AUTOROW = (

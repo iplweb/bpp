@@ -15,6 +15,7 @@ from django.views.decorators.http import require_POST
 
 from bpp.const import GR_WPROWADZANIE_DANYCH
 from bpp.util import zaloguj_polkniety_wyjatek
+from pbn_api.exceptions import AlreadyEnqueuedError
 from pbn_export_queue.models import PBN_Export_Queue, RodzajBledu
 
 from .mixins import PBNExportQueuePermissionMixin
@@ -53,9 +54,18 @@ def resend_to_pbn(request, pk):
 
     queue_item = get_object_or_404(PBN_Export_Queue, pk=pk)
     # First prepare for resend
-    queue_item.prepare_for_resend(
-        user=request.user, message_suffix=f" przez {request.user}"
-    )
+    try:
+        queue_item.prepare_for_resend(
+            user=request.user, message_suffix=f" przez {request.user}"
+        )
+    except AlreadyEnqueuedError:
+        messages.info(
+            request,
+            "Rekord jest już w kolejce do wysyłki — nie zlecam ponownie.",
+        )
+        return HttpResponseRedirect(
+            reverse_lazy("pbn_export_queue:export-queue-detail", args=[pk])
+        )
     # Then trigger the send
     queue_item.sprobuj_wyslac_do_pbn()
     messages.success(request, "Przygotowano i zlecono ponowną wysyłkę do PBN.")

@@ -1,13 +1,10 @@
 """Widoki resetowania przypięć."""
 
 import logging
-from time import sleep
 
 from celery.result import AsyncResult
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
-from django.db import transaction
-from django.db.models import Q
 from django.shortcuts import get_object_or_404, redirect, render
 
 from bpp.models import Uczelnia
@@ -19,131 +16,59 @@ logger = logging.getLogger(__name__)
 
 @login_required
 def reset_discipline_pins(request, pk):
-    """
-    Resetuje przypięcia dla danej dyscypliny (ustawia przypieta=True).
-    Tworzy snapshot przed resetowaniem.
-    """
-    from denorm.models import DirtyInstance
-    from denorm.tasks import flush_via_queue
+    """Zleca reset przypięć dyscypliny (2022-2025) + optymalizację w tle.
 
-    from bpp.models import (
-        Autor_Dyscyplina,
-        Dyscyplina_Naukowa,
-        Patent_Autor,
-        Wydawnictwo_Ciagle_Autor,
-        Wydawnictwo_Zwarte_Autor,
-    )
-    from ewaluacja_liczba_n.models import LiczbaNDlaUczelni
-    from snapshot_odpiec.models import SnapshotOdpiec
+    Widok jest lekki: waliduje wejście, sprawdza czy jest co resetować, po
+    czym uruchamia zadanie Celery i przekierowuje na stronę statusu. Cała
+    ciężka część (snapshot, reset, oczekiwanie na denormalizację i
+    optymalizacja) biegnie w workerze — wcześniej request blokował się tu
+    do 10 minut, śpiąc w pętli i czekając także na cudzą denormalizację.
+    """
+    from celery_singleton import DuplicateTaskError
 
-    from ..tasks import solve_single_discipline_task
+    from bpp.models import Dyscyplina_Naukowa
+
+    from ..tasks import reset_discipline_pins_task
 
     dyscyplina = get_object_or_404(Dyscyplina_Naukowa, pk=pk)
 
-    # Sprawdź czy są odpięte rekordy
+    # Sprawdź czy jest w ogóle co resetować (szybki warunek, w requeście).
     stats = _get_discipline_pin_stats(dyscyplina)
     if stats["unpinned"] == 0:
         messages.warning(
             request,
-            f"Dyscyplina '{dyscyplina.nazwa}' nie ma odpiętych rekordów w latach 2022-2025.",
+            f"Dyscyplina '{dyscyplina.nazwa}' nie ma odpiętych rekordów "
+            "w latach 2022-2025.",
         )
         return redirect("ewaluacja_optymalizacja:index")
 
-    # Pobierz autorów którzy mają Autor_Dyscyplina w latach 2022-2025 dla tej dyscypliny
-    autorzy_ids = set(
-        Autor_Dyscyplina.objects.filter(
-            rok__gte=2022,
-            rok__lte=2025,
-            dyscyplina_naukowa=dyscyplina,
-        )
-        .values_list("autor_id", flat=True)
-        .distinct()
-    )
-
-    with transaction.atomic():
-        # Utwórz snapshot przed resetowaniem
-        snapshot = SnapshotOdpiec.objects.create(
-            owner=request.user, comment=f"przed resetem przypięć - {dyscyplina.nazwa}"
-        )
-
-        logger.info(
-            f"Created snapshot {snapshot.pk} before resetting pins for discipline "
-            f"'{dyscyplina.nazwa}' (user: {request.user})"
-        )
-
-        # Resetuj przypięcia dla wszystkich modeli
-        base_filter = Q(
-            rekord__rok__gte=2022,
-            rekord__rok__lte=2025,
-            dyscyplina_naukowa=dyscyplina,
-            autor_id__in=autorzy_ids,
-        )
-
-        updated_count = 0
-        for model in [Wydawnictwo_Ciagle_Autor, Wydawnictwo_Zwarte_Autor, Patent_Autor]:
-            count = model.objects.filter(base_filter).update(przypieta=True)
-            updated_count += count
-            logger.info(
-                f"Reset {count} pins in {model.__name__} for discipline '{dyscyplina.nazwa}'"
-            )
-
-    # Poczekaj na zakończenie denormalizacji
-    logger.info(
-        f"Waiting for denormalization to complete after resetting pins for '{dyscyplina.nazwa}'"
-    )
-
-    # Trigger denorm processing via Celery queue
-    flush_via_queue.delay()
-    logger.info("Triggered denorm flush via queue")
-
-    max_wait = 600  # Max 10 minut
-    waited = 0
-    check_interval = 5
-
-    while DirtyInstance.objects.count() > 0 and waited < max_wait:
-        sleep(check_interval)
-        waited += check_interval
-        dirty_count = DirtyInstance.objects.count()
-        logger.info(
-            f"Waiting for denormalization after reset... {dirty_count} objects remaining"
-        )
-
-    # Uruchom zadanie optymalizacji dla tej dyscypliny
-    logger.info(f"Starting optimization for discipline '{dyscyplina.nazwa}'")
-
     uczelnia = Uczelnia.objects.get_for_request(request)
+    if not uczelnia:
+        messages.error(request, "Nie znaleziono uczelni w systemie.")
+        return redirect("ewaluacja_optymalizacja:index")
 
     try:
-        liczba_n_obj = LiczbaNDlaUczelni.objects.get(
-            uczelnia=uczelnia, dyscyplina_naukowa=dyscyplina
+        task = reset_discipline_pins_task.delay(
+            uczelnia.pk, dyscyplina.pk, request.user.pk
         )
-
-        task = solve_single_discipline_task.delay(
-            uczelnia.pk, dyscyplina.pk, float(liczba_n_obj.liczba_n)
-        )
-
-        logger.info(
-            f"Started optimization task {task.id} for discipline '{dyscyplina.nazwa}'"
-        )
-
-        messages.success(
+    except DuplicateTaskError:
+        messages.error(
             request,
-            f"Zresetowano {updated_count} przypięć dla dyscypliny '{dyscyplina.nazwa}' "
-            f"(lata 2022-2025). Utworzono snapshot #{snapshot.pk}. "
-            f"Trwa przeliczanie optymalizacji...",
+            "Zadanie resetowania przypięć dla tej dyscypliny jest już "
+            "uruchomione. Poczekaj na jego zakończenie.",
         )
-    except LiczbaNDlaUczelni.DoesNotExist:
-        logger.warning(
-            f"No LiczbaNDlaUczelni found for discipline '{dyscyplina.nazwa}', "
-            "skipping optimization"
-        )
-        messages.success(
-            request,
-            f"Zresetowano {updated_count} przypięć dla dyscypliny '{dyscyplina.nazwa}' "
-            f"(lata 2022-2025). Utworzono snapshot #{snapshot.pk}.",
-        )
+        return redirect("ewaluacja_optymalizacja:index")
 
-    return redirect("ewaluacja_optymalizacja:index")
+    logger.info(
+        f"Zlecono reset przypięć dyscypliny '{dyscyplina.nazwa}' "
+        f"(task {task.id}, user: {request.user})"
+    )
+    messages.success(
+        request,
+        f"Zlecono reset przypięć i optymalizację dla dyscypliny "
+        f"'{dyscyplina.nazwa}'. Trwa przetwarzanie…",
+    )
+    return redirect("ewaluacja_optymalizacja:reset-all-pins-status", task_id=task.id)
 
 
 @login_required
