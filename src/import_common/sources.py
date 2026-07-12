@@ -36,6 +36,11 @@ class TabularSource(Protocol):
 
     def data(self) -> Iterator[dict]: ...
 
+    def liczba_arkuszy_z_danymi(self) -> int:
+        """Liczba arkuszy z danymi (CSV = zawsze 1). Importy „jeden arkusz =
+        jeden import" odrzucają plik, gdy > 1."""
+        ...
+
 
 class XLSXSource:
     """Adapter na istniejący ``XLSImportFile`` (openpyxl)."""
@@ -53,6 +58,9 @@ class XLSXSource:
 
     def data(self) -> Iterator[dict]:
         return self._xif.data()
+
+    def liczba_arkuszy_z_danymi(self) -> int:
+        return self._xif.liczba_arkuszy_z_danymi()
 
 
 def wykryj_format(path) -> str:
@@ -140,6 +148,11 @@ class CSVSource:
     @staticmethod
     def _pusty(row) -> bool:
         return not any((c or "").strip() for c in row)
+
+    def liczba_arkuszy_z_danymi(self) -> int:
+        # CSV to zawsze jeden „arkusz" — nigdy nie wyzwala reguły „jeden
+        # arkusz = jeden import".
+        return 1
 
     def count(self) -> int:
         _colnames, no = self._naglowek

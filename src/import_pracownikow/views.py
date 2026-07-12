@@ -27,7 +27,7 @@ from bpp.models import (
     Wydawnictwo_Ciagle_Autor,
     Wydawnictwo_Zwarte_Autor,
 )
-from import_common.exceptions import HeaderNotFoundException
+from import_common.exceptions import BadNoOfSheetsException, HeaderNotFoundException
 from import_pracownikow.forms import MapowanieForm, NowyImportForm
 from import_pracownikow.mapping import dopasuj_profil
 from import_pracownikow.models import (
@@ -192,6 +192,11 @@ class MapowanieView(GroupRequiredMixin, FormView):
                 "Nie rozpoznano wiersza nagłówka w pliku — sprawdź, czy plik "
                 "zawiera kolumny takie jak nazwisko / imię / jednostka.",
             )
+            return HttpResponseRedirect(reverse("import_pracownikow:index"))
+        except BadNoOfSheetsException as exc:
+            # „Jeden arkusz = jeden import" — plik wieloarkuszowy (np. dwie
+            # uczelnie w jednym skoroszycie) odrzucamy z czytelnym komunikatem.
+            messages.error(request, str(exc))
             return HttpResponseRedirect(reverse("import_pracownikow:index"))
         if not self._naglowki:
             messages.error(request, "Plik nie zawiera kolumn do zmapowania.")
@@ -1118,6 +1123,15 @@ class RestartAnalizaView(_PkOwnerRestartMixin):
 
     def post(self, request, *args, **kwargs):
         obj = self.get_object()
+        # „Jeden arkusz = jeden import" — restart ISTNIEJĄCEGO importu wchodzi w
+        # analizę z pominięciem ekranu mapowania, więc plik wieloarkuszowy
+        # (np. import sprzed tej reguły) łapiemy tutaj, zamiast pozwolić mu
+        # wywalić analizę w tle.
+        try:
+            obj.waliduj_liczbe_arkuszy()
+        except BadNoOfSheetsException as exc:
+            messages.error(request, str(exc))
+            return HttpResponseRedirect(reverse("import_pracownikow:index"))
         obj.stan = ImportPracownikow.STAN_ZMAPOWANY
         obj.save(update_fields=["stan"])
         return super().post(request, *args, **kwargs)

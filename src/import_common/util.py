@@ -175,19 +175,44 @@ class XLSImportFile:
             _cache[sheet] = res
         return _cache
 
+    @staticmethod
+    def _pusty(values) -> bool:
+        """Wiersz pusty = wszystkie komórki danych ``None`` albo białe znaki.
+        openpyxl ``sheet.max_row`` obejmuje puste wiersze końcowe (Excel śledzi
+        „użyty zakres" — stąd rozjazd `max_row` z realną liczbą danych), więc
+        bez tego filtra puste wiersze trafiają do pipeline'u i wywalają
+        walidację wymaganych pól (nazwisko/imię) — cały import pada na jednym
+        pustym wierszu na końcu arkusza. Zwierciadło ``CSVSource._pusty``."""
+        return not any((str(v).strip() if v is not None else "") for v in values)
+
     def count(self) -> int:
         """
-        Zwraca całkowitą liczbę wierszy do analizy
+        Zwraca całkowitą liczbę NIEPUSTYCH wierszy do analizy — spójne z
+        ``data()`` (puste wiersze pomijamy po obu stronach, inaczej pasek
+        postępu nigdy nie dobija do 100%).
         """
         total = 0
-        for _n_sheet, sheet in enumerate(self.xl_workbook.worksheets):
+        for sheet in self.xl_workbook.worksheets:
             res = self.sheet_row_cache.get(sheet)
             if res is None:
                 continue
             labels, no = res
-            total += sheet.max_row - no
+            for n_row, row in enumerate(sheet.rows):
+                if n_row < no:
+                    continue
+                if self._pusty(cell.value for cell in row[: len(labels)]):
+                    continue
+                total += 1
 
         return total
+
+    def liczba_arkuszy_z_danymi(self) -> int:
+        """Liczba arkuszy z rozpoznanym nagłówkiem (= arkuszy z danymi).
+        Importy wymuszające „jeden arkusz = jeden import" (np. import
+        pracowników) używają tego do odrzucenia plików wieloarkuszowych: dwa
+        arkusze w jednym skoroszycie to zwykle dwa rozłączne zbiory (np. dwie
+        uczelnie), których nie wolno po cichu skleić w jeden import."""
+        return len(self.sheet_row_cache)
 
     def data(self) -> Generator[dict, None, None]:
         """
@@ -214,6 +239,8 @@ class XLSImportFile:
                 if n_row < res[1]:
                     continue
                 data = [x.value for x in row[: len(colnames) - 2]]
+                if self._pusty(data):
+                    continue
                 data.append(n_sheet)
                 data.append(n_row)
 
