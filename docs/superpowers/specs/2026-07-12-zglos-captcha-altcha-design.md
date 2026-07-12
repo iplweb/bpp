@@ -58,8 +58,12 @@ Biblioteki:
     build-time-only-not-used` **inline w RUN-ie** — dokładnie jak istniejący
     `DJANGO_BPP_SECRET_KEY=build-time-only-not-used`. Inline env RUN-a NIE
     persystuje w obrazie → nic forgeable nie ląduje w publicznym obrazie.
-  - **`local.py` (dev/run-site):** **efemeryczny** `secrets.token_hex(32)` przy
-    load-zie settings (widget faktycznie działa, nic forgeable w repo).
+  - **`local.py` (dev/run-site):** efemeryczny klucz **tylko gdy env nieustawiony**
+    — `os.environ.setdefault("ALTCHA_HMAC_KEY", secrets.token_hex(32))` PRZED
+    importem `base` (dokładnie wzorzec `DJANGO_BPP_SECRET_KEY` w `local.py`).
+    Dzięki temu precedencja jest jednoznaczna (fix codex): `run-site` bez env →
+    losowy klucz (widget działa, nic forgeable w repo); dev `docker compose up`
+    ładuje `.env.docker` → `setdefault` NIE nadpisuje placeholdera.
   - **`test.py`:** stały test-key (captcha domyślnie wyłączona — niżej; klucz
     użyty przez testy captchy, które włączają ją przez `@override_settings`).
   - **Produkcja:** realny klucz **auto-generowany w bpp-deploy** (sekcja E).
@@ -74,11 +78,14 @@ Biblioteki:
 - **System-check WARNING (nie-fatal):** `django.core.checks` rejestrowany w
   `AppConfig.ready()` app `zglos_publikacje`: gdy `ZGLOS_CAPTCHA_ENABLED` a
   `ALTCHA_HMAC_KEY` == sentinel/placeholder → `checks.Warning` (nie `Error`).
-  Level Warning **nie wywala** `collectstatic`/`manage.py` (w odróżnieniu od
-  `raise`), więc build i dev są bezpieczne; operator dostaje sygnał
-  „captcha ON, a klucz to placeholder" na `manage.py check`/starcie komend.
-  (Świadomie best-effort: checki nie biegną pod czystym gunicorn/daphne —
-  realną gwarancję klucza w prod daje auto-gen bpp-deploy, nie ten check.)
+  Widoczność (doprecyzowanie po codex): `collectstatic` uruchamia **tylko**
+  checki z tagiem `staticfiles`, więc nasz zwykły check **nie odpali się na
+  buildzie** — to dobrze, build pozostaje wykonywalny niezależnie od poziomu
+  (Warning i tak nie wywala). Ostrzeżenie pojawia się przy `manage.py check`
+  i `migrate` (entrypoint robi `migrate`), NIE „na dowolnym starcie komend"
+  ani pod czystym gunicorn/daphne. **Realną gwarancję klucza w prod daje
+  auto-gen bpp-deploy, nie ten check** — check to best-effort sygnał dla
+  operatora, nie mechanizm bezpieczeństwa.
 - `ZGLOS_CAPTCHA_ENABLED` (bool): `base.py` default `True`; **`test.py`
   = `False`** (cała dotychczasowa suita `zglos_publikacje` + Playwright,
   wspólne `--ds=django_bpp.settings.test`, przechodzą bez zmian — pole ALTCHA
@@ -103,29 +110,37 @@ ale to **NIE** daje 500: formtools robi `render_revalidation_failure` →
 (inaczej user po wypełnieniu 5 kroków wraca na krok 0 i re-solve), nie 500.
 Wzorzec jak `pliki_juz_zapisane`:
 
+- **Marker trzymamy w `self.storage.extra_data`, NIE w `request.session`**
+  (KRYTYCZNE po review codex). Sesja ma zasięg wielu przebiegów wizardu:
+  GET na URL wizardu resetuje TYLKO storage wizardu (`views.py` `get()`),
+  nie sesję — więc flaga sesyjna po jednym PoW odblokowałaby wiele zgłoszeń
+  pętlą „rozwiąż PoW → GET-restart → nowe zgłoszenie bez PoW". `extra_data`
+  resetuje się RAZEM z wizardem (jak `pliki_list`), więc restart wymusza nowy
+  PoW. Klucz: `PLIKI…`-analogiczny `ZGLOS_CAPTCHA_OK_KEY = "captcha_ok"`.
 - `Zgloszenie_PublikacjiWizard.get_form_kwargs("0")` przekazuje
   `captcha_wymagany: bool` = `settings.ZGLOS_CAPTCHA_ENABLED` (czytane
   **call-time**) AND `not request.user.is_authenticated` AND
-  NOT `request.session.get("zglos_captcha_ok")`.
+  NOT `self.storage.extra_data.get(ZGLOS_CAPTCHA_OK_KEY)`.
 - `RodzajPublikacjiForm.__init__(captcha_wymagany=False)`: dodaje `AltchaField`
   **tylko** gdy `captcha_wymagany`. Inaczej pole nieobecne. (Forma dostaje sam
   bool — nie potrzebuje całego `request`.)
 - Po ważnym POST kroku 0 z zweryfikowanym ALTCHA (`AltchaField.validate`) →
-  wizard ustawia `request.session["zglos_captcha_ok"] = True` w
+  wizard ustawia `extra_data[ZGLOS_CAPTCHA_OK_KEY] = True` w
   **`process_step` dla kroku "0"** (istniejący override obsługuje dziś tylko
   "2" — dodać branch "0"). `process_step` wykonuje się PRZED `set_step_data`
-  i przed czyszczeniem cache warunków, więc flaga jest na miejscu, zanim
+  i przed czyszczeniem cache warunków, więc marker jest na miejscu, zanim
   cokolwiek rewaliduje krok 0.
-- Rewalidacja w `render_done`: flaga ustawiona → `captcha_wymagany=False` →
+- Rewalidacja w `render_done`: marker ustawiony → `captcha_wymagany=False` →
   pole nieobecne → brak ponownej weryfikacji, `done()` dochodzi do skutku.
-- **Flagę czyścić na POCZĄTKU `done()`** (nie na końcu) — konsekwentnie wobec
-  wczesnych `raise` w `done()`; koszt = 1 PoW na 1 utworzone zgłoszenie.
+- Nie trzeba osobno czyścić markera w `done()` — `render_done` po udanym
+  `done()` i tak robi `storage.reset()` (zeruje `extra_data`). GET-restart
+  również. Czyli: 1 PoW = 1 przebieg wizardu (a przebieg → co najwyżej 1
+  zgłoszenie w `done()`).
 
-**Znane, zaakceptowane ograniczenie flagi:** jedno rozwiązanie PoW odblokowuje
-w tej samej sesji wielokrotny upload tmp (pętla krok 0→2→2…), bo tworzenie
-rekordu jest dopiero w `done()`. PoW i tak tego nie broni (bot bierze świeżą
-sesję + tani PoW/sesję) — upload-DoS pozostaje tematem **rate-limitu**, nie
-CAPTCHY (sprzątanie tmp pokrywa naprawa #2 + cron co 6h).
+**Znane, zaakceptowane ograniczenie:** w RAMACH jednego przebiegu PoW nie broni
+wielokrotnego uploadu tmp (pętla krok 0→2→2…) — ale to i tak nie tworzy
+rekordów (dopiero `done()`), a upload-DoS to temat **rate-limitu**, nie CAPTCHY
+(sprzątanie tmp pokrywa naprawa #2 + cron co 6h).
 
 ### C. Frontend (self-host widgetu — django-altcha robi to sam)
 
@@ -143,10 +158,14 @@ formatu payloadu pythonowej libki). Wystarczy:
   URL przez **`reverse_lazy`** (pole definiowane przy imporcie modułu `forms`).
   Dzięki `challengeurl` działa `refetchonexpire` — challenge nie wygasa przy
   dłuższym wypełnianiu kroku 0.
-- Ustawić `auto="onsubmit"` (lub `"onload"`) na widgecie, żeby po spaleniu
-  challenge (np. user rozwiązał PoW, ale forma padła na innym polu kroku 0 —
-  `mark_challenge_used` odpala się w `validate` niezależnie od reszty)
-  re-solve był bezobsługowy.
+- **`auto="onload"`** (NIE `onsubmit` — ustalenie po review codex): kafelki
+  kroku 0 wołają `form.submit()` **bezpośrednio** (`step_rodzaj.html`), co
+  **omija zdarzenie `submit`**, na którym widget przechwyciłby formularz przy
+  `onsubmit` → PoW nigdy by się nie policzył. `onload` liczy PoW przy
+  załadowaniu strony (gotowy zanim user kliknie kafelek). To też pokrywa
+  re-solve po spaleniu challenge (`mark_challenge_used` odpala się w `validate`
+  niezależnie od reszty pól). Alternatywa `form.requestSubmit()` w JS +
+  `onsubmit` — odrzucona (więcej zmian + wymaga browser-testu).
 - Szablon kroku 0 (`step_rodzaj.html`): pole renderuje `<altcha-widget>` tylko
   gdy jest obecne (anon). Ikony public-frontend = Foundation (nie dotyczy
   widgetu).
@@ -169,15 +188,23 @@ django-altcha. **Replay-testy MUSZĄ dodatkowo override'ować cache na locmem**
 2. Zalogowany na kroku 0 → forma NIE ma pola (bramka anon-only).
 3. Anonim, brak/nieprawidłowe rozwiązanie → krok 0 nieważny, brak awansu.
 4. Anonim, poprawne rozwiązanie (mock verify OK) → awans na krok 1 +
-   `session["zglos_captcha_ok"] == True`.
-5. **Rewalidacja/late (przeformułowane):** po przejściu kroku 0 (flaga w sesji),
-   pełne dojście do `render_done` → **`done()` dochodzi do skutku (zgłoszenie
-   powstaje), a wizard NIE cofa na krok 0**. (Uwaga: bez flagi objaw to nie
-   500, lecz `render_revalidation_failure` → 200 + powrót na krok 0; asercja
-   „brak 500" byłaby zbyt słaba i przeszłaby nawet bez flagi — dlatego test na
-   „done() się wykonał / brak cofnięcia".)
-6. Replay: to samo rozwiązanie użyte dwa razy (z locmem cache) → drugie
-   odrzucone jako „already used".
+   `storage.extra_data[ZGLOS_CAPTCHA_OK_KEY] == True`.
+4b. **GET-restart (regresja HIGH 1):** rozwiąż krok 0 (marker w extra_data) →
+   GET na URL wizardu (storage.reset) → krok 0 znów MA `AltchaField` (marker
+   wyzerowany razem z wizardem). Dowodzi, że jeden PoW NIE odblokowuje kolejnego
+   przebiegu w tej samej sesji.
+5. **Rewalidacja/late — NIE-tautologicznie (fix codex):** mock `verify_solution`
+   podpięty tak, by **liczyć wywołania**. Pełny przebieg do `done()` →
+   **weryfikator wołany DOKŁADNIE RAZ** (tylko POST kroku 0; przy rewalidacji
+   w `render_done` pole nieobecne dzięki markerowi → brak drugiego wywołania),
+   `done()` dochodzi do skutku. (Sama asercja „done() się wykonał" byłaby
+   tautologiczna — z DummyCache i mockiem-zawsze-OK przeszłaby też bez markera;
+   dlatego liczymy wywołania weryfikatora.)
+6. Replay — na **poziomie pola/cache**, nie wizardu (fix codex): w tej samej
+   sesji po pierwszym PoW pole znika (marker), więc replay trzeba testować
+   **dwiema niezależnymi instancjami `AltchaField`/klientami** dzielącymi
+   **LocMemCache** (`@override_settings(CACHES=locmem)` — inaczej DummyCache =
+   no-op): to samo rozwiązanie → drugie odrzucone jako „already used".
 7. `ZGLOS_CAPTCHA_ENABLED=False` → forma bez pola nawet dla anonima
    (dowód, że dotychczasowa suita nie jest ruszona).
 8. System-check WARNING: `@override_settings(ZGLOS_CAPTCHA_ENABLED=True,
@@ -201,8 +228,18 @@ django-altcha. **Replay-testy MUSZĄ dodatkowo override'ować cache na locmem**
 - **Wpięcie env** `ALTCHA_HMAC_KEY` do **appservera, workerserver i
   beatserver** w compose (guard/warning i sama weryfikacja odpalają się w
   każdym imporcie/procesie Django; wszystkie trzy jadą na production settings).
-- Ten PR bpp-deploy jest niezależny od PR-a bpp (captcha działa dopiero z oboma;
-  do czasu — `ZGLOS_CAPTCHA_ENABLED` można trzymać OFF).
+- **Twarda kolejność (fix codex — NIE „niezależne PR-y"):** przy default ON
+  kod BPP nie może trafić na prod PRZED auto-genem, bo publiczny formularz
+  ruszyłby na sentinelu → captcha forgeable (tylko warning). W normalnym flow
+  bpp-deploy jest to zapewnione: `make up` uruchamia `ensure-config-files`
+  (generuje klucz do `.env`) **PRZED** `docker compose up` z nowym obrazem —
+  więc klucz istnieje, zanim kontener z default-ON wstanie. Warunek: zmiana
+  bpp-deploy (auto-gen + wpięcie env) musi być **wdrożona razem z / przed**
+  obrazem BPP (standardowo: `git pull` bpp-deploy → `make up`). Nie deployować
+  nowego obrazu BPP pod starym bpp-deploy.
+- **Alternatywa zerowego ryzyka (do decyzji właściciela):** default **OFF** w
+  BPP, a `ZGLOS_CAPTCHA_ENABLED=1` włączane osobno po potwierdzeniu dystrybucji
+  klucza. Eliminuje zależność kolejności kosztem ręcznego włączenia.
 
 ## Świadome ograniczenia
 
