@@ -218,6 +218,13 @@ django-altcha. **Replay-testy MUSZĄ dodatkowo override'ować cache na locmem**
    Odwrotnie: realny klucz + ON → brak warninga; OFF + placeholder → brak
    warninga. (Bez importu `production.py` w procesie testu — check operuje na
    aktywnych `settings`, więc żadnej mutacji współdzielonych dictów base.)
+9. **F1 hint:** anonim + captcha ON → krok 0 zawiera link „zaloguj się"
+   (marker w HTML); zalogowany → brak widgetu I brak hintu.
+10. **F2 email read-only:** zalogowany z e-mailem → pole `email` kroku 2 ma
+   `disabled == True` i `initial` == e-mail konta; **POST z podmienionym
+   e-mailem → zapisany e-mail konta, nie z POST** (dowód serwerowego wymuszenia).
+   Anonim oraz zalogowany bez e-maila (`PUSTY_ADRES_EMAIL`) → pole edytowalne
+   (`disabled` falsy), POST-owany e-mail respektowany.
 
 ### E. Wdrożenie (osobny PR w bpp-deploy)
 
@@ -240,6 +247,34 @@ django-altcha. **Replay-testy MUSZĄ dodatkowo override'ować cache na locmem**
   (`ZGLOS_CAPTCHA_ENABLED=1` w env), bez ryzyka forgeable-okna. Zalecenie:
   włączać dopiero po potwierdzeniu (`make up` na bpp-deploy z tą zmianą +
   obecność `ALTCHA_HMAC_KEY` w `.env`).
+
+### F. Dodatkowe wymagania (zalogowany użytkownik)
+
+**F1. Hint „zaloguj się, aby pominąć weryfikację".** Gdy na kroku 0 renderuje
+się widget ALTCHA (a więc TYLKO dla anonima — bramka z sekcji B), obok niego
+komunikat z linkiem do logowania: „Jesteś niezalogowany — **zaloguj się**, aby
+pominąć tę weryfikację." Link na stronę logowania z `?next=` wracającym na URL
+kreatora. W `step_rodzaj.html` warunkowo: widoczny wyłącznie gdy pole
+`AltchaField` jest obecne w formularzu (ten sam warunek co widget). Dla
+zalogowanego — brak zarówno widgetu, jak i hintu.
+
+**F2. Pole e-mail read-only dla zalogowanego z e-mailem.** Gdy użytkownik jest
+zalogowany **i** ma realny e-mail (`request.user.email != PUSTY_ADRES_EMAIL`,
+jak w istniejącym `get_form_initial` kroku 2, `views.py:326-328`), pole `email`
+na kroku 2 (`Zgloszenie_Publikacji_DaneForm`) ma być **niezmienialne**:
+
+- Implementacja przez **`self.fields["email"].disabled = True`** (NIE tylko
+  `widget.attrs["readonly"]`). `disabled=True` sprawia, że Django **ignoruje
+  wartość z POST i bierze `initial`** (e-mail konta) → „nie pozwól zmienić"
+  wymuszone **serwerowo**, nie tylko wizualnie (sam `readonly` jest obchodzony
+  POST-em). `initial` = e-mail konta (już ustawiany w `get_form_initial`).
+- Wizard `get_form_kwargs("2")` przekazuje `email_zablokowany: bool` (lub sam
+  e-mail konta), liczony call-time z `request.user`. Forma w `__init__`
+  ustawia `disabled` + `initial` gdy `email_zablokowany`.
+- Anonim / zalogowany bez e-maila → pole **edytowalne** (bez zmian).
+- Uwaga na rewalidację w `render_done`: `get_form_kwargs("2")` czyta
+  `request.user` (stabilne w przebiegu), więc `disabled` jest spójne przy
+  rekonstrukcji kroku 2; disabled → wartość z `initial`, nie z magazynu POST.
 
 ## Świadome ograniczenia
 
