@@ -142,11 +142,13 @@
                         <span class="fi-info"></span>
                         Twoje konto nie jest jeszcze powiązane z logowaniem SSO.
                     </p>
-                    <a href="{% url 'oidc_integration:polacz' %}" class="button">
-                        <span class="fi-link"></span> Połącz konto z SSO
-                    </a>
                 </div>
             {% endif %}
+            {# Przycisk „Połącz" ZAWSZE dostępny — także gdy user ma już #}
+            {# tożsamość: pod wiele realmów można dołożyć kolejne powiązanie. #}
+            <a href="{% url 'oidc_integration:polacz' %}" class="button">
+                <span class="fi-link"></span> Połącz konto z SSO
+            </a>
         {% endif %}
 
     </div>
