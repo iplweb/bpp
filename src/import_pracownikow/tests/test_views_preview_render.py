@@ -150,3 +150,47 @@ def test_podglad_ma_mostek_select2_change(admin_client, admin_user):
     tresc = admin_client.get(url).content.decode("utf-8")
     assert "select2:select" in tresc
     assert "dispatchEvent(" in tresc
+
+
+@pytest.mark.django_db
+def test_podglad_wiersz_ma_atrybuty_data_diff(admin_client, admin_user):
+    """Pierwszy <tr> rekordu niesie stan pól jako data-diff-* (zasila filtr)."""
+    imp = baker.make(
+        ImportPracownikow,
+        owner=admin_user,
+        stan=ImportPracownikow.STAN_PRZEANALIZOWANY,
+        finished_successfully=True,
+    )
+    jednostka = baker.make(Jednostka, nazwa="Kat.", skrot="K.")
+    ImportPracownikowRow.objects.create(
+        parent=imp,
+        jednostka=jednostka,
+        autor=None,
+        confidence=STATUS_WIELU,
+        zmiany_potrzebne=False,
+        dane_znormalizowane={"imię": "Jan", "nazwisko": "Kowalski"},
+        dane_z_xls={"__xls_loc_sheet__": 0, "__xls_loc_row__": 1},
+    )
+    url = reverse("import_pracownikow:importpracownikow-results", kwargs={"pk": imp.pk})
+    tresc = admin_client.get(url).content.decode("utf-8")
+    for klucz in ("jednostka", "email", "tytul", "stopien", "funkcja", "stanowisko"):
+        assert f"data-diff-{klucz}=" in tresc
+
+
+@pytest.mark.django_db
+def test_podglad_ma_pasek_filtrow_radia(admin_client, admin_user):
+    """Pasek filtrów renderuje radia (wszystkie/zmienione/zgodne/brak) dla
+    każdego z 6 pól POLA_ROZNIC."""
+    imp = baker.make(
+        ImportPracownikow,
+        owner=admin_user,
+        stan=ImportPracownikow.STAN_PRZEANALIZOWANY,
+        finished_successfully=True,
+    )
+    url = reverse("import_pracownikow:importpracownikow-results", kwargs={"pk": imp.pk})
+    tresc = admin_client.get(url).content.decode("utf-8")
+    assert 'id="filtr-roznic"' in tresc
+    for klucz in ("jednostka", "email", "tytul", "stopien", "funkcja", "stanowisko"):
+        assert f'name="filtr-{klucz}"' in tresc
+    assert 'value="zmienione"' in tresc
+    assert 'value="brak"' in tresc

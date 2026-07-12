@@ -391,6 +391,7 @@ class ImportPracownikow(LiveOperation):
                 # Porównywarka „plik vs baza" (§12) czyta FK bazy — bez N+1.
                 "autor__stopien_sluzbowy",
                 "autor_jednostka__stanowisko",
+                "autor_jednostka__funkcja",
             )
         )
 
@@ -684,6 +685,10 @@ class ImportPracownikowRow(ImportRowMixin, models.Model):
 
     log_zmian = JSONField(encoder=DjangoJSONEncoder, null=True, blank=True)
 
+    # Snapshot stanów pól (POLA_ROZNIC) zamrożony przy integracji — po niej baza
+    # = plik, więc live porównanie dałoby „zgodne"; filtr czyta stabilną wartość.
+    stany_pol_snapshot = JSONField(null=True, blank=True)
+
     MAPPING_DANE_NA_AUTOR = [
         ("numer", "system_kadrowy_id"),
         ("orcid", "orcid"),
@@ -743,14 +748,15 @@ class ImportPracownikowRow(ImportRowMixin, models.Model):
         }
 
     def porownaj_z_baza(self):
-        """Porównanie „plik vs baza" dla e-maila, stopnia służbowego i
-        stanowiska dydaktycznego (§12). CZYSTY odczyt — NIC nie zapisuje ani nie
-        nadpisuje. E-mail: no-overwrite (porównanie stringów). Stopień/stanowisko:
+        """Porównanie „plik vs baza" dla e-maila, stopnia służbowego,
+        stanowiska dydaktycznego, tytułu naukowego i funkcji w jednostce
+        (§12). CZYSTY odczyt — NIC nie zapisuje ani nie nadpisuje. E-mail:
+        no-overwrite (porównanie stringów). Stopień/stanowisko/tytuł/funkcja:
         overwrite-if-different, porównywane SEMANTYCZNIE po FK (skrót w pliku vs
         nazwa w bazie dałyby fałszywe „różne"); FK z pliku rozwiązuje Plan 3 na
         ``self.stopien`` / ``self.stanowisko_dydaktyczne``. Strona bazy: FK autora
-        / powiązania; stanowisko z ``autor_jednostka`` (aktualizowanego przez ten
-        wiersz). Dla wiersza bez autora/AJ strona bazy jest pusta."""
+        / powiązania; stanowisko i funkcja z ``autor_jednostka`` (aktualizowanego
+        przez ten wiersz). Dla wiersza bez autora/AJ strona bazy jest pusta."""
         dane = self.dane_znormalizowane or {}
         autor = self.autor
         aj = self.autor_jednostka
@@ -758,6 +764,8 @@ class ImportPracownikowRow(ImportRowMixin, models.Model):
             autor.stopien_sluzbowy if autor and autor.stopien_sluzbowy_id else None
         )
         stanowisko_baza = aj.stanowisko if aj and aj.stanowisko_id else None
+        tytul_baza = autor.tytul if autor and autor.tytul_id else None
+        funkcja_baza = aj.funkcja if aj and aj.funkcja_id else None
         return {
             "email": self._porownaj_email(
                 dane.get("email"), autor.email if autor else ""
@@ -770,7 +778,37 @@ class ImportPracownikowRow(ImportRowMixin, models.Model):
                 stanowisko_baza,
                 self.stanowisko_dydaktyczne_id,
             ),
+            # tytuł / funkcja: gdy brak autora/AJ → plik_id=None → rozne=False
+            # (niuans: bez dopasowania nie podświetlamy różnicy).
+            "tytul": self._porownaj_fk(
+                dane.get("tytuł_stopień"),
+                tytul_baza,
+                self.tytul_id if autor else None,
+            ),
+            # UWAGA: klucz DANYCH „stanowisko" = „Funkcja w jednostce"
+            # (mapping.py: kolumna funkcja → wewn. „stanowisko" → funkcja_autora),
+            # a klucz WYNIKU „funkcja" ≠ „stanowisko" (to StanowiskoDydaktyczne).
+            "funkcja": self._porownaj_fk(
+                dane.get("stanowisko"),
+                funkcja_baza,
+                self.funkcja_autora_id if aj else None,
+            ),
         }
+
+    def stany_pol(self):
+        """Stan każdego pola różnic: ``{klucz: "zmienione"|"zgodne"|"brak"}``.
+        Zwraca zamrożony ``stany_pol_snapshot`` gdy istnieje (po integracji baza
+        = plik, więc live dałoby „zgodne"), inaczej live wyliczenie z
+        ``POLA_ROZNIC`` (jednostka / email / tytuł / stopień / funkcja /
+        stanowisko). Zasila filtr stanu pól i atrybuty ``data-diff-*``."""
+        # Uwaga: gdyby POLA_ROZNIC kiedyś zyskało nowy klucz, stare snapshoty go
+        # nie zawierają — wtedy rekord nie ma data-diff-<nowy> i filtr po tym polu
+        # (≠ „wszystkie") go ukryje. Przy dodaniu pola rozważ dopełnienie snapshotu.
+        if self.stany_pol_snapshot is not None:
+            return self.stany_pol_snapshot
+        from import_pracownikow.roznice import POLA_ROZNIC
+
+        return {klucz: ekstraktor(self) for klucz, _et, ekstraktor in POLA_ROZNIC}
 
     @property
     def ostrzezenie_email(self):
@@ -982,6 +1020,11 @@ class ImportPracownikowRow(ImportRowMixin, models.Model):
     @transaction.atomic
     def integrate(self):
         assert self.zmiany_potrzebne
+        # Zamroź stan pól ZANIM zmienimy bazę (potem live = „zgodne"). Tylko gdy
+        # jeszcze nie zamrożony — pipeline `_integruj_wiersz` robi to PRZED
+        # materializacją diffu (odroczone create'y), więc tu byłoby za późno.
+        if self.stany_pol_snapshot is None:
+            self.stany_pol_snapshot = self.stany_pol()
         self.log_zmian = {"autor": [], "autor_jednostka": []}
         self._integrate_autor()
         self._integrate_autor_jednostka()

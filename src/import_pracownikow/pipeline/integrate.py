@@ -138,6 +138,12 @@ def _integruj_wiersz(row):
         # moment, w którym rozróżnienie "miał odroczone create'y" ma sens
         # jako flaga, nie tylko jako odczyt pola.
         materializowano = bool(row.diff_do_utworzenia)
+        # Zamroź stan pól PRZED materializacją diffu — potem baza = plik i live
+        # dałoby „zgodne". Snapshot musi odzwierciedlać stan z podglądu (m.in.
+        # odroczone AJ = None → funkcja „brak"). `integrate()` niżej go nie
+        # nadpisze (guard `is None`), a gałąź create-only utrwala go tym save.
+        if row.stany_pol_snapshot is None:
+            row.stany_pol_snapshot = row.stany_pol()
         _materializuj_diff(row)
         row.save(
             update_fields=[
@@ -145,6 +151,7 @@ def _integruj_wiersz(row):
                 "grupa_pracownicza",
                 "wymiar_etatu",
                 "autor_jednostka",
+                "stany_pol_snapshot",
             ]
         )
         # Świeży re-check — baza mogła się zmienić od preview (dry-run).

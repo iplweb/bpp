@@ -680,6 +680,11 @@ class ImportPracownikowResultsView(GroupRequiredMixin, ListView):
         )
         if parent.edytowalny_podglad:
             oznacz_przepiecie_prac(list(ctx["object_list"]), parent)
+        # Pasek filtrów stanu pól — etykiety z rejestru POLA_ROZNIC (jedno źródło
+        # prawdy z modelem/szablonem).
+        from import_pracownikow.roznice import POLA_ROZNIC
+
+        ctx["pola_roznic"] = [(k, etykieta) for k, etykieta, _ in POLA_ROZNIC]
         return ctx
 
 
