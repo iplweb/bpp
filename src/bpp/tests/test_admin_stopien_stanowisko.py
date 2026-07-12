@@ -1,7 +1,7 @@
 from django.contrib import admin as djadmin
 from django.contrib.admin.utils import flatten_fieldsets
 
-from bpp.admin.autor import AutorAdmin, AutorForm, Autor_JednostkaInlineForm
+from bpp.admin.autor import Autor_JednostkaInlineForm, AutorAdmin, AutorForm
 from bpp.models import StanowiskoDydaktyczne, StopienSluzbowy
 
 
