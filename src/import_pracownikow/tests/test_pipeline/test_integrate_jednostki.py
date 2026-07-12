@@ -21,6 +21,23 @@ BRAK = ImportPracownikowJednostka.TRYB_BRAK
 ZGADYWANIE = ImportPracownikowJednostka.TRYB_ZGADYWANIE
 
 
+@pytest.fixture
+def uczelnia(uczelnia):
+    """Utwardza precondycję „dokładnie jedna uczelnia" (ambient-data/xdist).
+
+    ``_rozstrzygnij_jednostki`` woła ``get_single_uczelnia_or_none()``, które
+    zwraca ``None`` gdy w bazie jest 0 LUB >1 uczelnia — wtedy tryb BRAK NIE
+    tworzy jednostki (``dec.utworzona`` zostaje ``None``). Baseline ma 0 uczelni,
+    więc solo fixture daje dokładnie 1 i testy przechodzą. Pod xdist/pytest-split
+    sąsiedni test może jednak zostawić zacommitowaną DRUGĄ uczelnię (ambient-data)
+    → ``get_single_uczelnia_or_none()`` degraduje do ``None`` i te testy flakują
+    (zielone w izolacji, czerwone w niektórych układach shardów). Kasujemy
+    ambient-nadmiar, aby fixture'owa uczelnia była jedyna (rollback testu i tak
+    przywraca stan)."""
+    Uczelnia.objects.exclude(pk=uczelnia.pk).delete()
+    return uczelnia
+
+
 def _imp():
     return baker.make(ImportPracownikow, stan=ImportPracownikow.STAN_ZATWIERDZONY)
 
