@@ -1,5 +1,4 @@
 import logging
-import os
 import sys
 
 import rollbar
@@ -10,7 +9,7 @@ from django.core.files.storage import FileSystemStorage
 from django.db import transaction
 from django.http import Http404
 from django.shortcuts import render
-from django.utils.datastructures import MultiValueDict
+from django.utils.functional import cached_property
 from django.views.generic import TemplateView
 from formtools.wizard.views import SessionWizardView
 from messages_extends import messages
@@ -44,6 +43,8 @@ from zglos_publikacje.models import (
     Zgloszenie_Publikacji_Zalacznik,
     skroc_nazwe_pliku,
 )
+from zglos_publikacje.storage import zglos_tmp_dir
+from zglos_publikacje.validators import MAX_LICZBA_PLIKOW, MAX_ROZMIAR_PLIKU
 
 logger = logging.getLogger(__name__)
 
@@ -212,9 +213,19 @@ MODEL_FORMA_DOSTEPU_TO_FORM = {
 class Zgloszenie_PublikacjiWizard(UczelniaSettingRequiredMixin, SessionWizardView):
     uczelnia_attr = "pokazuj_formularz_zglaszania_publikacji"
 
-    file_storage = FileSystemStorage(
-        location=os.path.join(settings.MEDIA_ROOT, "protected", "zglos_publikacje")
-    )
+    @cached_property
+    def file_storage(self):
+        # Katalog tmp liczony w RUNTIME (nie zamrożony na import modułu),
+        # żeby @override_settings(MEDIA_ROOT=...) w testach działał.
+        # MUSI być cached_property na klasie, NIE ustawienie w __init__:
+        # formtools `get_initkwargs` sprawdza `hasattr(cls, "file_storage")`
+        # na KLASIE — cached_property jest widoczny jako deskryptor klasy
+        # (hasattr=True), a getattr(self, ...) w dispatch odpala go per-
+        # instancja i czyta MEDIA_ROOT w runtime. Osobny katalog tmp od
+        # trwałego (protected/zglos_publikacje/) daje komendzie cleanup
+        # gwarancję z konstrukcji, że nie tknie pliku realnego zgłoszenia.
+        return FileSystemStorage(location=zglos_tmp_dir())
+
     form_list = [
         RodzajPublikacjiForm,  # "0"
         FormaDostepuForm,  # "1"
@@ -341,27 +352,41 @@ class Zgloszenie_PublikacjiWizard(UczelniaSettingRequiredMixin, SessionWizardVie
     PLIKI_EXTRA_KEY = "pliki_list"
 
     def process_step_files(self, form):
-        """Zapisz wieloplikowe uploady poza standardowym storage formtools.
+        """Utrwal WYŁĄCZNIE zwalidowane pliki kroku 2; nie oddaj nic formtoolsowi.
 
-        `formtools.wizard.storage.base.set_step_files` iteruje
-        `files.items()` po MultiValueDict, co dla pól typu
-        `<input multiple>` gubi wszystkie pliki poza ostatnim
-        (`.items()` zwraca jeden element per klucz). W rezultacie
-        do `done()` docierał tylko ostatni z wgranych plików.
+        formtools utrwala każdy plik zwrócony stąd do `file_storage`
+        (`storage/base.py`). Oddanie mu surowego `request.FILES` (jak
+        robił poprzedni override dla kroków 0/1/3/4) pozwalało botowi
+        doczepić pliki pod dowolnymi kluczami do WAŻNEGO kroku 0 i
+        ominąć limity. Dlatego:
 
-        Ratujemy się sami: każdy upload z `2-pliki` zapisujemy
-        bezpośrednio do `file_storage` i przechowujemy listę
-        metadanych w `storage.extra_data["pliki_list"]`. Standardowy
-        storage formtools nadal dostaje `form.files` (bo z niego korzysta
-        revalidacja w `render_done`), ale całość plików tworzymy
-        w `done()` z `extra_data`.
+        - krok ≠ „2" → return {} (żaden inny krok nie ma pól plikowych),
+        - krok „2" ale pole `pliki` usunięte (forma OTWARTY) → czyścimy
+          ew. tmp z wcześniejszego przejścia jako OGRANICZONY i return {},
+        - inaczej → zapisujemy przefiltrowane (`_pliki_w_limicie`) pliki
+          `2-pliki` do `file_storage`, metadane do extra_data, return {}.
+
+        KRYTYCZNE: NIGDY nie rzucamy tu ValidationError — formtools woła
+        `process_step_files` PO `form.is_valid()` i nic nie łapie → wyjątek
+        = HTTP 500. Limity egzekwuje walidacja formularza (A2, ładny błąd);
+        tu jest tylko obrona w głębi (`_pliki_w_limicie` filtruje, nie rzuca).
         """
+        if self.steps.current != "2":
+            return {}
+
+        # OTWARTY: pole `pliki` usunięte z formularza → plików nie oczekujemy.
+        # Wyczyść ew. tmp z wcześniejszego przejścia jako OGRANICZONY
+        # (scenariusz OGRANICZONY→krok 1→OTWARTY→koniec), inaczej
+        # `_process_files` doczepiłoby stare pliki do zgłoszenia otwartego.
+        if "pliki" not in form.fields:
+            self._wyczysc_tmp_pliki()
+            return {}
+
         files = form.files or {}
-        if self.steps.current == "2" and hasattr(files, "getlist"):
-            pliki_key = "2-pliki"
-            pliki = files.getlist(pliki_key)
+        if hasattr(files, "getlist"):
+            pliki = self._pliki_w_limicie(files.getlist("2-pliki"))
             if pliki:
-                # Wyczyść poprzednie tmp pliki (powrót do kroku 2)
+                # Wyczyść poprzednie tmp pliki (powrót do kroku 2).
                 self._wyczysc_tmp_pliki()
                 saved = []
                 for f in pliki:
@@ -379,19 +404,34 @@ class Zgloszenie_PublikacjiWizard(UczelniaSettingRequiredMixin, SessionWizardVie
                 extra = self.storage.extra_data
                 extra[self.PLIKI_EXTRA_KEY] = saved
                 self.storage.extra_data = extra
-            # NIE oddawaj `2-pliki` do formtools. Te pliki zapisaliśmy już
-            # sami do `file_storage` (metadane w extra_data), a
-            # `formtools.storage.set_step_files` zapisałby je PONOWNIE tym
-            # samym storage. Dla plików > FILE_UPLOAD_MAX_MEMORY_SIZE Django
-            # trzyma je jako TemporaryUploadedFile w /tmp i nasz pierwszy
-            # zapis PRZENOSI plik z /tmp; drugi zapis otwierałby już
-            # nieistniejącą ścieżkę → FileNotFoundError → HTTP 500.
-            # Wymóg „min. 1 plik" przy rewalidacji w render_done pokrywa
-            # flaga `pliki_juz_zapisane` (patrz get_form_kwargs).
-            return MultiValueDict(
-                {k: files.getlist(k) for k in files if k != "2-pliki"}
+        # Wszystkie pliki obsłużyliśmy ręcznie — formtools nie utrwala już
+        # żadnego surowego klucza z request.FILES.
+        return {}
+
+    def _pliki_w_limicie(self, pliki):
+        """Defensywny filtr: podlista mieszcząca się w limitach. NIE rzuca.
+
+        Odrzuca pliki > MAX_ROZMIAR_PLIKU, przycina do MAX_LICZBA_PLIKOW.
+        Jeśli cokolwiek odrzuci/przytnie → alarmuje przez rollbar: to „nie
+        powinno się zdarzyć", bo walidacja formularza (A2) już przepuściła
+        dokładnie tę listę — rozjazd = błąd w warstwie walidacji.
+        """
+        pliki = list(pliki or [])
+        w_limicie = [f for f in pliki if f.size <= MAX_ROZMIAR_PLIKU]
+        odrzucone_rozmiar = len(pliki) - len(w_limicie)
+
+        przyciete = w_limicie[:MAX_LICZBA_PLIKOW]
+        odrzucone_liczba = len(w_limicie) - len(przyciete)
+
+        if odrzucone_rozmiar or odrzucone_liczba:
+            rollbar.report_message(
+                "process_step_files: _pliki_w_limicie odrzuciło pliki mimo"
+                " że walidacja formularza (A2) je przepuściła —"
+                f" odrzucone_rozmiar={odrzucone_rozmiar},"
+                f" odrzucone_liczba={odrzucone_liczba}",
+                level="warning",
             )
-        return super().process_step_files(form)
+        return przyciete
 
     def _wyczysc_tmp_pliki(self):
         """Usuń tymczasowe pliki z poprzedniego submita kroku 2."""
@@ -406,6 +446,38 @@ class Zgloszenie_PublikacjiWizard(UczelniaSettingRequiredMixin, SessionWizardVie
                 pass  # Już usunięty — nie problem
         extra[self.PLIKI_EXTRA_KEY] = []
         self.storage.extra_data = extra
+
+    def get(self, request, *args, **kwargs):
+        # B3: GET na URL wizardu restartuje kreator — `super().get()` robi
+        # `storage.reset()` (zeruje extra_data). Czyścimy tmp PRZED super(),
+        # bo po resecie nie ma już listy `pliki_list` do skasowania → sieroty
+        # w żywej sesji. `self.storage` istnieje (ustawione w dispatch);
+        # pierwsze wejście (brak extra_data) → no-op, bezpieczne.
+        self._wyczysc_tmp_pliki()
+        return super().get(request, *args, **kwargs)
+
+    def render_done(self, form, **kwargs):
+        # B2: odporność na late-completion. Cleanup kasuje tmp po 24 h, a
+        # sesja żyje 14 dni — user kończący wizard po > 24 h trafiłby na
+        # FileNotFoundError w `_process_files` → HTTP 500. Sprawdzamy istnienie
+        # PRZED wejściem w `done()`. NIE rzucamy ValidationError (`render_done`
+        # woła `done()` wprost i i tak zrobi storage.reset() → 500 / reset).
+        brakujace = [
+            info
+            for info in self.storage.extra_data.get(self.PLIKI_EXTRA_KEY, []) or []
+            if not self.file_storage.exists(info["tmp_name"])
+        ]
+        if brakujace:
+            # Kasujemy CAŁĄ listę (1 wygasły → wszystkie do ponownego wgrania)
+            # — świadoma prostota.
+            self._wyczysc_tmp_pliki()
+            self.storage.current_step = "2"
+            messages.warning(
+                self.request,
+                "Wgrane pliki wygasły — wgraj ponownie.",
+            )
+            return self.render(self.get_form("2", data=self.storage.get_step_data("2")))
+        return super().render_done(form, **kwargs)
 
     RODZAJ_ETYKIETY = {
         "ARTYKUL": "artykuł",

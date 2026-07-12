@@ -14,7 +14,7 @@ def validate_file_extension_pdf(value):
     valid_extensions = [
         ".pdf",
     ]
-    if not ext.lower() in valid_extensions:
+    if ext.lower() not in valid_extensions:
         raise ValidationError(
             "Nieobsługiwany format pliku. Prosimy o pliki w formacie PDF."
         )
@@ -24,6 +24,6 @@ def validate_file_size(value):
     """Odrzuć pojedynczy plik przekraczający MAX_ROZMIAR_PLIKU."""
     if value.size > MAX_ROZMIAR_PLIKU:
         raise ValidationError(
-            "Plik jest za duży (maksymalny rozmiar to %(max)d MB)."
-            % {"max": MAX_ROZMIAR_PLIKU // (1024 * 1024)}
+            f"Plik jest za duży (maksymalny rozmiar to "
+            f"{MAX_ROZMIAR_PLIKU // (1024 * 1024)} MB)."
         )
