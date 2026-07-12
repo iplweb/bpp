@@ -133,14 +133,19 @@ class BppOIDCBackend(OIDCAuthenticationBackend):
     """
 
     @staticmethod
-    def _resolve_email(claims):
-        """Ustal adres e-mail z claimów wg konfigurowalnej kolejności.
+    def _resolve_email_with_source(claims):
+        """Ustal adres e-mail z claimów oraz czy padł na fallback username.
 
         Kolejność z ``_email_claim_keys()`` (default mail-first:
         ``mail`` → ``email`` → ``e-mail`` → ``e_mail``; pierwszy niepusty
         wygrywa). Gdy żaden nie niesie wartości, spada na
         ``preferred_username`` — ale tylko jeśli ten wygląda jak adres
         (zawiera domenę, np. UPN ``99999@student-afm.edu.pl``).
+
+        Zwraca krotkę ``(email, from_fallback)``, gdzie ``from_fallback`` jest
+        ``True``, gdy adres pochodzi z ``preferred_username`` (a nie z
+        właściwego claimu e-mail) — taki adres NIGDY nie jest „zaufany"
+        (``email_verified`` nie dotyczy loginu), więc anotacja trust go odsiewa.
 
         Gdy nie da się ustalić adresu (brak claimów e-mail, a
         ``preferred_username`` bez domeny), podnosi ``SuspiciousOperation``.
@@ -152,11 +157,11 @@ class BppOIDCBackend(OIDCAuthenticationBackend):
         keys = _email_claim_keys()
         value = _first_claim(claims, keys)
         if value:
-            return value
+            return value, False
 
         username = claims.get("preferred_username") or ""
         if _EMAIL_SHAPE_RE.match(username):
-            return username
+            return username, True
 
         raise SuspiciousOperation(
             "OIDC: nie znaleziono adresu e-mail w claimach "
@@ -165,26 +170,66 @@ class BppOIDCBackend(OIDCAuthenticationBackend):
         )
 
     @classmethod
+    def _resolve_email(cls, claims):
+        """Cienki wrapper (wsteczna zgodność) — sam adres, bez źródła."""
+        return cls._resolve_email_with_source(claims)[0]
+
+    @classmethod
     def _normalized(cls, claims):
-        """Zwróć claimy z kanonicznym kluczem ``email`` (patrz ``_resolve_email``).
+        """Zwróć claimy z kanonicznym ``email`` + anotacją zaufania i ``iss``.
 
         ``mozilla-django-oidc`` (``verify_claims``/``filter_users_by_claims``/
         ``create_user``) czyta wyłącznie ``email``; realm bywa wystawia adres
         pod ``mail``/``e-mail``/``e_mail`` albo wcale (wtedy fallback na
-        ``preferred_username`` z domeną). Gdy ``email`` już niesie docelowy
-        adres — zwraca wejście bez kopii; inaczej **kopię** z ustawionym
-        ``email`` (oryginalne klucze źródłowe zostają zachowane).
+        ``preferred_username`` z domeną). Zwraca **kopię** claimów z:
+
+        * ``email`` — kanoniczny adres (patrz ``_resolve_email_with_source``),
+        * ``email_verified`` — znormalizowany bool z payloadu/userinfo,
+        * ``_bpp_email_trusted`` — czy adresowi wolno ufać przy fail-closed:
+          ``email_verified is True`` ORAZ adres pochodzi z właściwego claimu
+          (nie z fallbacku ``preferred_username``) ORAZ równa się poświadczonemu
+          claimowi ``email`` (``email_verified`` dotyczy tego właśnie claimu),
+        * ``iss`` — issuer bez końcowego ``/`` (do dopasowania po ``(iss, sub)``).
         """
-        email = cls._resolve_email(claims)
-        if claims.get("email") == email:
-            return claims
-        return {**claims, "email": email}
+        email, from_fallback = cls._resolve_email_with_source(claims)
+        verified = bool(claims.get("email_verified") is True)
+        payload_email = (claims.get("email") or "").lower()
+        trusted = verified and not from_fallback and email.lower() == payload_email
+        iss = (claims.get("iss") or "").rstrip("/")
+        out = dict(claims)
+        out["email"] = email
+        out["email_verified"] = verified
+        out["_bpp_email_trusted"] = trusted
+        out["iss"] = iss
+        return out
+
+    def verify_token(self, token, **kwargs):
+        """Waliduj podpis (bazowo) i dodatkowo issuer (``iss``) tokenu.
+
+        Bazowy ``verify_token`` sprawdza podpis/nonce. Dokładamy twardą
+        kontrolę ``iss`` względem ``OIDC_OP_ISSUER`` — token z innego realmu
+        (nawet poprawnie podpisany przez ten sam serwer wielorealmowy) nie może
+        zalogować do tej instancji. Bez skonfigurowanego issuera (instalacja
+        bez OIDC) kontrola jest no-op.
+        """
+        payload = super().verify_token(token, **kwargs)
+        expected = (getattr(settings, "OIDC_OP_ISSUER", "") or "").rstrip("/")
+        got = (payload.get("iss") or "").rstrip("/")
+        if expected and got != expected:
+            raise SuspiciousOperation(f"OIDC: iss={got!r} != oczekiwany {expected!r}")
+        return payload
 
     def get_userinfo(self, access_token, id_token, payload):
         # Jedyny chokepoint: znormalizuj claimy z userinfo, zanim trafią do
-        # verify_claims / filter_users_by_claims / create_user.
+        # verify_claims / filter_users_by_claims / create_user. Domieszaj z
+        # id_token (payload) klucze zaufania, których userinfo może nie mieć
+        # (iss, email, email_verified pochodzą zwykle z id_token).
         claims = super().get_userinfo(access_token, id_token, payload)
-        return self._normalized(claims)
+        merged = dict(claims)
+        for key in ("iss", "email", "email_verified"):
+            if key not in merged and payload.get(key) is not None:
+                merged[key] = payload.get(key)
+        return self._normalized(merged)
 
     def verify_claims(self, claims):
         _log_claims_debug(claims)

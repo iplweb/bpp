@@ -11,6 +11,7 @@ import logging
 
 import pytest
 from django.contrib.auth import get_user_model
+from django.core.exceptions import SuspiciousOperation
 from django.test import override_settings
 from model_bakery import baker
 
@@ -18,7 +19,11 @@ from oidc_integration.backends import BppOIDCBackend
 
 
 def _backend():
-    return object.__new__(BppOIDCBackend)
+    # Instancja bez __init__ (bazowy konstruktor wymaga kompletu OIDC_OP_*/
+    # OIDC_RP_*). UserModel ustawiamy tu, bo metody create_user/link go używają.
+    backend = object.__new__(BppOIDCBackend)
+    backend.UserModel = get_user_model()
+    return backend
 
 
 def test_verify_claims_przepuszcza_gdy_jest_email():
@@ -159,15 +164,11 @@ def test_normalized_fallback_na_preferred_username_z_domena():
 
 def test_normalized_odrzuca_gdy_username_bez_domeny():
     # brak claimów e-mail, a preferred_username bez domeny → odrzuć logowanie
-    from django.core.exceptions import SuspiciousOperation
-
     with pytest.raises(SuspiciousOperation):
         _backend()._normalized({"preferred_username": "jkowalski", "sub": "1"})
 
 
 def test_normalized_odrzuca_gdy_brak_email_i_username():
-    from django.core.exceptions import SuspiciousOperation
-
     with pytest.raises(SuspiciousOperation):
         _backend()._normalized({"sub": "123"})
 
@@ -379,7 +380,7 @@ def test_update_user_dopasowuje_autora():
 
 
 @pytest.mark.django_db
-@override_settings(OIDC_LOGIN_SKROT="")
+@override_settings(OIDC_LOGIN_SKROT="", OIDC_REQUIRE_EMAIL_VERIFIED=False)
 def test_create_user_bez_skrotu_nie_przypisuje():
     baker.make("bpp.Uczelnia", skrot="UAFM")
     backend = _backend()
@@ -388,3 +389,56 @@ def test_create_user_bez_skrotu_nie_przypisuje():
     user = backend.create_user({"preferred_username": "jkowalski"})
 
     assert user.accessible_uczelnie.count() == 0
+
+
+# --- Task 4: anotacja claims (iss, email_verified, _bpp_email_trusted) ---
+
+
+def test_email_trusted_requires_verified_and_matching_email():
+    b = _backend()
+    claims = b._normalized(
+        {
+            "mail": "jan@x.pl",
+            "sub": "1",
+            "iss": "https://kc/",
+            "email": "jan@x.pl",
+            "email_verified": True,
+        }
+    )
+    assert claims["_bpp_email_trusted"] is True
+    assert claims["iss"] == "https://kc"  # rstrip('/')
+
+
+def test_email_trusted_false_on_mail_first_mismatch():
+    b = _backend()
+    # mail (rozwiązany) != email (poświadczony przez email_verified)
+    claims = b._normalized(
+        {
+            "mail": "inst@x.pl",
+            "email": "prywatny@x.pl",
+            "email_verified": True,
+            "sub": "1",
+            "iss": "iss",
+        }
+    )
+    assert claims["_bpp_email_trusted"] is False
+
+
+def test_email_trusted_false_when_not_verified():
+    b = _backend()
+    claims = b._normalized(
+        {"email": "jan@x.pl", "email_verified": False, "sub": "1", "iss": "iss"}
+    )
+    assert claims["_bpp_email_trusted"] is False
+    assert claims["email_verified"] is False
+
+
+def test_email_trusted_false_on_username_fallback():
+    # e-mail wzięty z preferred_username (fallback) nie jest zaufany, nawet
+    # gdy email_verified byłby ustawiony gdzie indziej.
+    b = _backend()
+    claims = b._normalized(
+        {"preferred_username": "user@x.pl", "email_verified": True, "sub": "1"}
+    )
+    assert claims["email"] == "user@x.pl"
+    assert claims["_bpp_email_trusted"] is False
