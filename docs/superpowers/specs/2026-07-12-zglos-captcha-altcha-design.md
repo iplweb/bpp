@@ -57,7 +57,9 @@ Biblioteki:
     (sentinel), `ALTCHA_HMAC_KEY = env("ALTCHA_HMAC_KEY", default=...UNSET)`.
     **Bez** import-time `raise` — to on psuł build (patrz niżej).
   - **`.env.docker` (dev compose):** placeholder (jak
-    `DJANGO_BPP_SECRET_KEY="ZMIEN..."`). Captcha w dev compose jest dev-only.
+    `DJANGO_BPP_SECRET_KEY="ZMIEN..."`). Przy default OFF captcha w dev compose
+    i tak jest **wyłączona** — placeholder to tylko wartość dla spójności
+    (`env(...)` musi coś zwrócić), nie działający klucz.
   - **Build (`testserver` collectstatic):** `ALTCHA_HMAC_KEY=
     build-time-only-not-used` **inline w RUN-ie** — dokładnie jak istniejący
     `DJANGO_BPP_SECRET_KEY=build-time-only-not-used`. Inline env RUN-a NIE
@@ -91,13 +93,15 @@ Biblioteki:
   auto-gen bpp-deploy, nie ten check** — check to best-effort sygnał dla
   operatora, nie mechanizm bezpieczeństwa.
 - `ZGLOS_CAPTCHA_ENABLED` (bool): `base.py` **default `False`**
-  (`env.bool("ZGLOS_CAPTCHA_ENABLED", default=False)`) — opt-in. `test.py`
-  dziedziczy `False` (cała dotychczasowa suita `zglos_publikacje` + Playwright,
-  wspólne `--ds=django_bpp.settings.test`, przechodzą bez zmian — pole ALTCHA
-  w ogóle nie powstaje). W dev (`local.py`) **włączona** (`= True`) — świadomie,
-  do oglądania widgetu w `run-site`. **`get_form_kwargs` czyta ten flag w
-  call-time** (nie stała modułowa), inaczej `@override_settings` w nowych
-  testach nie zadziała.
+  (`env.bool("ZGLOS_CAPTCHA_ENABLED", default=False)`) — opt-in. W dev
+  (`local.py`) **włączona** (`= True`) — do oglądania widgetu w `run-site`.
+  **KRYTYCZNE:** `test.py` robi `from .local import *`, więc dziedziczyłby
+  `True` z `local.py` → cała suita dostałaby captchę ON. Dlatego `test.py`
+  **jawnie** `ZGLOS_CAPTCHA_ENABLED = False` (dokładnie jak `AXES_ENABLED =
+  False`, `test.py`) — tak, żeby dotychczasowa suita `zglos_publikacje` +
+  Playwright (`--ds=django_bpp.settings.test`) przechodziły bez zmian (pole
+  ALTCHA nie powstaje). **`get_form_kwargs` czyta ten flag call-time** (nie
+  stała modułowa), inaczej `@override_settings` w nowych testach nie zadziała.
 - **Replay-protection (cache):** `ALTCHA_CACHE_ALIAS` domyślnie `"default"`.
   `production.py` → Redis (działa). **Uwaga: dev/test `default` = DummyCache →
   `is_challenge_used()` zawsze `False` (replay-check to no-op).** Nowe testy
@@ -162,7 +166,10 @@ formatu payloadu pythonowej libki). Wystarczy:
   `AltchaChallengeView` django-altcha, zamontowany w `zglos_publikacje/urls.py`.
   URL przez **`reverse_lazy`** (pole definiowane przy imporcie modułu `forms`).
   Dzięki `challengeurl` działa `refetchonexpire` — challenge nie wygasa przy
-  dłuższym wypełnianiu kroku 0.
+  dłuższym wypełnianiu kroku 0. Endpoint montujemy **bezwarunkowo** — przy
+  captcha OFF pole nigdy nie powstaje, więc nikt go nie woła; sam podpisany
+  challenge jest bezstanowy i nieszkodliwy. (Świadomie akceptujemy żywy endpoint
+  przy OFF, zamiast warunkować mount.)
 - **`auto="onload"`** (NIE `onsubmit` — ustalenie po review codex): kafelki
   kroku 0 wołają `form.submit()` **bezpośrednio** (`step_rodzaj.html`), co
   **omija zdarzenie `submit`**, na którym widget przechwyciłby formularz przy
@@ -171,6 +178,10 @@ formatu payloadu pythonowej libki). Wystarczy:
   re-solve po spaleniu challenge (`mark_challenge_used` odpala się w `validate`
   niezależnie od reszty pól). Alternatywa `form.requestSubmit()` w JS +
   `onsubmit` — odrzucona (więcej zmian + wymaga browser-testu).
+  **Rezydualny race (świadomy, łagodna degradacja):** klik w kafelek ZANIM PoW
+  się doliczy (wolne urządzenie, pierwsza ~1 s) → pusty payload → błąd „token
+  missing" → re-render kroku 0 z nowym challenge, drugi klik działa. Nie 500,
+  ale nie jest bezwarunkowo „gotowe zanim user kliknie".
 - Szablon kroku 0 (`step_rodzaj.html`): pole renderuje `<altcha-widget>` tylko
   gdy jest obecne (anon). Ikony public-frontend = Foundation (nie dotyczy
   widgetu).
@@ -181,8 +192,17 @@ formatu payloadu pythonowej libki). Wystarczy:
 ### D. Testy
 
 Istniejące testy wizardu (POST kroku 0 bez ALTCHA) **nie mogą się wywalić** →
-w środowisku testowym `ZGLOS_CAPTCHA_ENABLED=False` domyślnie (żeby cała
-dotychczasowa suita `zglos_publikacje` przechodziła bez zmian).
+`test.py` ma **jawnie** `ZGLOS_CAPTCHA_ENABLED = False` (patrz A — bo dziedziczy
+`True` z `local.py`), więc cała dotychczasowa suita `zglos_publikacje` przechodzi
+bez zmian.
+
+**Gotcha mockowania (testy 3–5):** po zamockowanym `verify_solution` django-altcha
+**bezwarunkowo** odpala `replay_attack_protection`, które robi `base64decode +
+json` na payloadzie i wymaga klucza `"challenge"`. Śmieciowy payload wywali
+`ValidationError` MIMO mock-OK. Fake payload w testach musi być
+`base64(json({"challenge": ...}))` **albo** trzeba zamockować też
+`replay_attack_protection` (ew. użyć własnego `ALTCHA_VERIFICATION_ENABLED`
+django-altcha — jego wewnętrzny kill-switch, NIE mylić z `ZGLOS_CAPTCHA_ENABLED`).
 
 Nowe testy (`test_zglos_captcha.py`), z `@override_settings(
 ZGLOS_CAPTCHA_ENABLED=True, ALTCHA_HMAC_KEY=<test>)` + mock weryfikacji
