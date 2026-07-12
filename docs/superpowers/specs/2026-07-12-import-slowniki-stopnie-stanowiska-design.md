@@ -606,6 +606,14 @@ do autora w fazie osób.
   służbowy" — wartości dowolne ze słownika).
 - Rozbijanie dwuczłonowych nazwisk bez łącznika w `nazwisko_imię`.
 - Modelowanie `grupa_pracownicza`/`wymiar_etatu` z tego pliku (kolumn brak).
+- Przycisk „Zastosuj ostatni schemat" dla profilu PONIŻEJ progu pokrycia (§13):
+  gdy `wybierz_profil_fallback` zwróci `None`, a jakiś ostemplowany profil mimo
+  to istnieje — świadomie poza zakresem (wymaga osobnego POST/JS + świadomej
+  decyzji operatora; auto-prefill działa tylko powyżej progu).
+- Osobne API `matchuj_stopien`/`matchuj_stanowisko` (§5): NIE implementujemy —
+  matching jest inline w `sklasyfikuj_stopien`/`sklasyfikuj_stanowisko`
+  (porównanie po `normalize_*` + trigram), bez wydzielonej funkcji `matchuj_*`
+  jak w `tytul_funkcja.py`.
 
 ## 17. Ryzyka / uwagi
 

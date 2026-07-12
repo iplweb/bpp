@@ -403,7 +403,9 @@ def sklasyfikuj_jednostke_niepelna(
     twardego BRAK — oddajemy wynik ``sklasyfikuj_jednostke`` (trigramowe
     ``zgadywanie`` albo ``brak``), co realizuje spec §6.1 „0 trafień → trigram
     fallback". Ograniczenie: ``icontains`` nie łapie fleksji („Medyczny" ≠
-    „Medycznego").
+    „Medycznego"). Gałąź ``icontains`` filtruje wyłącznie ``widoczna=True`` i
+    IGNORUJE parametr ``wydzial`` (świadome uproszczenie — ujednoznacznienie po
+    wydziale robi tylko gałąź exact/trigram ``sklasyfikuj_jednostke``).
     """
     if not fragment:
         return None, STATUS_JEDNOSTKA_BRAK, None
@@ -456,12 +458,12 @@ git commit -m "feat(import_common): sklasyfikuj_jednostke_niepelna (icontains, p
 
 - [ ] **Step 1: Write the failing test**
 
-Create `src/import_pracownikow/tests/test_parsers/test_jednostka_zlozona.py` (docelowo test powinien pokryć WSZYSTKIE 31 wartości komórek z próbki — spec §7/§14; poniżej podzbiór reprezentatywny + 3 realne wartości):
+Create `src/import_pracownikow/tests/test_parsers/test_jednostka_zlozona.py`. Test pokrywa WSZYSTKIE 31 wartości komórek z próbki (spec §7/§14): 10 przypadków z DOKŁADNYMI oczekiwaniami (skrot, nazwa, oddzial) + wszystkie 31 sprawdzane invariantami. Blok `WSZYSTKIE_KOMORKI` jest self-contained — nie wymaga dostępu do `~/Downloads/struktura.xlsx`:
 
 ```python
 import pytest
 
-from import_pracownikow.parsers.jednostka_zlozona import parsuj_komorke
+from import_pracownikow.parsers.jednostka_zlozona import _SKROT_RE, parsuj_komorke
 
 
 @pytest.mark.parametrize(
@@ -542,6 +544,68 @@ def test_parsuj_komorke(komorka, skrot, nazwa, oddzial):
     assert wynik["skrot"] == skrot
     assert wynik["nazwa"] == nazwa
     assert wynik["oddzial"] == oddzial
+
+
+# Wszystkie 31 unikalnych wartości komórek z próbki APOŻ (spec §7/§14) —
+# self-contained, bez dostępu do ~/Downloads/struktura.xlsx.
+WSZYSTKIE_KOMORKI = [
+    "RN-1 Instytut Inżynierii Bezpieczeństwa instytut ib",
+    "RN-2 Instytut Bezpieczeństwa Wewnętrznego instytut bw",
+    "RW-1 Katedra Działań Ratowniczych WIBiOL rat",
+    (
+        "RW-1/1 Zakład Kierowania Działaniami Ratowniczymi, Działań "
+        "Gaśniczych i Łączności WIBiOL taktyka"
+    ),
+    "RW-1/2 Zakład Ratownictwa Chemicznego i Ekologicznego WIBiOL taktyka",
+    (
+        "RW-1/3 Zakład Bezpieczeństwa Działań i Ratownictwa "
+        "Technicznego WIBiOL ratchem chemiczne"
+    ),
+    "RW-2 Katedra Techniki Pożarniczej WIBiOL technika",
+    "RW-2/1 Zakład Mechaniki Stosowanej WIBiOL mechanika",
+    (
+        "RW-2/2 Zakład Hydromechaniki i Ppoż. Zaopatrzenia w Wodę "
+        "WIBiOL hydra hydromechanika"
+    ),
+    "RW-2/3 Zakład Sprzętu Ratowniczego WIBiOL sprzęt",
+    "RW-2/4 Zakład Elektroenergetyki WIBiOL elektroenergetyka",
+    "RW-3 Katedra Przeciwdziałania Zagrożeniom WIBiOL bezpieczeństwo",
+    (
+        "RW-3/1 Zakład Bezpieczeństwa Pożarowego Budynków i Budowli "
+        "Ochronnych WIBiOL bezpieczeństwo budynków"
+    ),
+    "RW-3/2 Zakład Podstaw Budownictwa i Materiałów Budowlanych WIBiOL budownictwo",
+    "RW-3/3 Zakład Technicznych Systemów Zabezpieczeń WIBiOL tsz",
+    "RW-4 Katedra Nauk Ścisłych WIBiOL ścisłe",
+    "RW-4/1 Zakład Matematyki i Informatyki WIBiOL matematyka informatyka",
+    "RW-4/2 Zakład Fizyki i Chemii WIBiOL fizyka chemia",
+    "RW-5 Katedra Procesów Spalania WIBiOL spalanie wybuchy gaszenie",
+    "RW-5/1 Zakład Teorii Procesów Spalania i Wybuchu WIBiOL spalanie",
+    "RW-5/2 Zakład Środków Gaśniczych i Neutralizujących WIBiOL środki",
+    "RW-5/3 Zakład Badania Przyczyn Pożarów i Rozpoznawania Zagrożeń WIBiOL pożary",
+    "RW-6 Katedra Ochrony Ludności i Obrony Cywilnej WIBiOL bezp",
+    "RW-6/1 Zakład Zintegrowanych Systemów Bezpieczeństwa WIBiOL bezp",
+    "RW-6/2 Zakład Bezpieczeństwa Wewnętrznego WIBiOL bezp",
+    "RW-6/3 Zakład Nauk Społecznych WIBiOL",
+    "RW-7 Katedra Ratownictwa Medycznego WIBiOL społ",
+    "RW-7/1 Zakład Medycznych Działań Ratowniczych WIBiOL medyczne RM",
+    "RW-7/2 Zakład Medycyny Ratunkowej WIBiOL medyczne RM",
+    "RW-8 Studium Języków Obcych WIBiOL języki",
+    "RW-9 Studium Wychowania Fizycznego WIBiOL wf",
+]
+
+
+@pytest.mark.parametrize("komorka", WSZYSTKIE_KOMORKI)
+def test_parsuj_komorke_invarianty(komorka):
+    """Invarianty na wszystkich 31 wartościach (bez dokładnych oczekiwań):
+    skrót pasuje do wzorca albo None; oddział ∈ {WIBiOL, None}; nazwa niepusta
+    i nie zaczyna się od tokenu skrótu."""
+    wynik = parsuj_komorke(komorka)
+    assert wynik["skrot"] is None or _SKROT_RE.match(wynik["skrot"])
+    assert wynik["oddzial"] in {"WIBiOL", None}
+    assert wynik["nazwa"] != ""
+    if wynik["skrot"] is not None:
+        assert not wynik["nazwa"].startswith(wynik["skrot"])
 ```
 
 - [ ] **Step 2: Run test to verify it fails**
@@ -615,7 +679,7 @@ def parsuj_komorke(komorka):
 - [ ] **Step 4: Run test to verify it passes**
 
 Run: `uv run pytest src/import_pracownikow/tests/test_parsers/test_jednostka_zlozona.py -v`
-Expected: PASS (10 przypadków parametryzacji).
+Expected: PASS (10 przypadków dokładnych + 31 przypadków invariantów).
 
 - [ ] **Step 5: Commit**
 
@@ -1066,6 +1130,8 @@ W istniejącym `MapowanieView.get_context_data` wystaw nazwę do kontekstu:
         return ctx
 ```
 
+Uwaga: jeśli `MapowanieView` MA już `get_context_data`, dopisz tylko dwie nowe linie (`profil = ...` + `ctx["profil_zastosowany_nazwa"] = ...`) do ISTNIEJĄCEJ metody — ZACHOWAJ dotychczasowe klucze (`ctx["object"]`, `ctx["probka_rows"]` itd.), NIE zastępuj metody tym snippetem.
+
 W `src/import_pracownikow/templates/import_pracownikow/mapowanie.html` wyświetl informacyjnie nazwę zastosowanego/dostępnego schematu (nad formularzem mapowania):
 
 ```django
@@ -1109,6 +1175,7 @@ uv run pytest src/import_common/tests/test_core_stopien.py \
   src/import_pracownikow/tests/test_mapping_nowe_cele.py \
   src/import_pracownikow/tests/test_mapping_regula_stopien.py \
   src/import_pracownikow/tests/test_mapping.py \
+  src/import_pracownikow/tests/test_mapping_ihit.py \
   src/import_pracownikow/tests/test_profil_ostatnio_uzyty.py \
   -v 2>&1 | tee /tmp/plan2_tests.log
 ```

@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Wpiąć słowniki `StopienSluzbowy` (na `Autor`) i `StanowiskoDydaktyczne` (na `Autor_Jednostka`) w cały przepływ importu pracowników — model decyzji + migracja `import_pracownikow 0022`, `AutorForm`, reconcilery i klasyfikacja w `analyze`, rozstrzyganie i dopięcie FK w `integrate`, ekrany weryfikacji + bramki. Przy okazji wpiąć parsery (komórka złożona, „nazwisko imię", niepełna nazwa jednostki) oraz kolumnę `email` do analizy.
+**Goal:** Wpiąć słowniki `StopienSluzbowy` (na `Autor`) i `StanowiskoDydaktyczne` (na `Autor_Jednostka`) w cały przepływ importu pracowników — model decyzji + migracja `import_pracownikow 0023`, `AutorForm`, reconcilery i klasyfikacja w `analyze`, rozstrzyganie i dopięcie FK w `integrate`, ekrany weryfikacji + bramki. Przy okazji wpiąć parsery (komórka złożona, „nazwisko imię", niepełna nazwa jednostki) oraz kolumnę `email` do analizy.
 
 **Architecture:** Pełny mirror podsystemu TYTUŁÓW ×2 (Approach C ze specu). `ImportPracownikowStopien`/`ImportPracownikowStanowisko` = kopie `ImportPracownikowTytul`; `_ReconcilerStopni`/`_ReconcilerStanowisk` = kopie `_ReconcilerTytulow`; `_rozstrzygnij_stopnie`/`_rozstrzygnij_stanowiska` = kopie `_rozstrzygnij_tytuly`; `WeryfikacjaStopniView`/`WeryfikacjaStanowiskView` = kopie `WeryfikacjaTytulowView`. Rozstrzyganie słowników leży w FAZIE STRUKTURY `integruj` (gated `zakres != ZAKRES_JEDNOSTKI`, przed early-exitem), a dopięcie FK do osób w FAZIE OSÓB (`ZAKRES_PELNY`). Polityki nadpisywania: stopień + stanowisko = **overwrite-if-different** (jak tytuł/funkcja), e-mail = **no-overwrite** (nowy autor → zapis, istniejący → nietknięty; poza predykatami zmian). Parser komórki zasila reconciler jednostek nowym parametrem `skrot_hint` (skrót z pliku → `skrot_sugerowany`, nadpisywany ZAWSZE przy re-analizie).
 
@@ -17,7 +17,7 @@
 - **ZAWSZE `uv run`** przed każdą komendą Python (`uv run python …`, `uv run pytest …`). NIGDY gołe `python`/`pytest`.
 - **Max długość linii: 88 znaków** (ruff).
 - **Nazewnictwo (kolizja — KRYTYCZNE):** pole domenowe to `Autor_Jednostka.stanowisko` (Plan 1), ale w WARSTWIE IMPORTU klucz `stanowisko` jest zajęty przez legacy string FUNKCJI (`AutorForm.stanowisko` → `Funkcja_Autora`). Dlatego wszystkie NOWE identyfikatory stanowiska dydaktycznego w imporcie noszą nazwę `stanowisko_dydaktyczne`: cel mapowania (Plan 2), pole `AutorForm`, FK i `zrodlo_` na `ImportPracownikowRow`, param/atrybut w pipeline. **NIE nazywaj pola `ImportPracownikowRow` samym `stanowisko`.**
-- **Migracja `import_pracownikow` = następny numer po `0021` → `0022`** (na branchu feature najnowsza to `0021_pola_data_zmian_i_przepnij_wszystkie`). Generuj przez `makemigrations`; NIE modyfikuj wydanych migracji.
+- **Migracja `import_pracownikow` = następny numer po `0022` → `0023`** (na branchu feature najnowsza to `0022_alter_importpracownikowrow_confidence`). Generuj przez `makemigrations`; NIE modyfikuj wydanych migracji.
 - **NIE odświeżać baseline** (`baseline-sql/`) w tym branchu — refresh dopiero przy scalaniu do `dev`.
 - **E-mail tolerancyjny:** `AutorForm.email` = `CharField` (nie `EmailField`), `required=False`. `analyze._przetworz_wiersz` przy niepoprawnym `AutorForm.full_clean()` rzuca `XLSParseError` bez per-wiersz recovery — jeden zepsuty adres w pliku kadrowym wywaliłby CAŁY run (spec §10/§17). `CharField` przyjmuje dowolny string bez walidacji formatu. Ścisłe (ale miękkie) czyszczenie + porównywarka e-mail = Plan 4.
 - **Testy:** wyłącznie konwencje pytest (funkcje, brak `unittest.TestCase`), `baker.make`. DB dostarcza pytest-testcontainers (Docker; OrbStack: `export DOCKER_HOST=unix:///Users/mpasternak/.orbstack/run/docker.sock`).
@@ -27,15 +27,15 @@
 
 1. **Plan 1 — Fundament domenowy**: modele `StopienSluzbowy`/`StanowiskoDydaktyczne`, FK, migracja `bpp 0468`, admin, menu. ✅ założenie.
 2. **Plan 2 — import_common + parsery + mapowanie**: klasyfikatory `stopien`/`stanowisko`/`jednostka_niepelna`, parsery komórki i „nazwisko imię", cele/synonimy mapowania + reguła kontekstowa `stopień` + walidacja, profil „ostatnio użyty". ✅ założenie.
-3. **Plan 3 — Pipeline + ekrany weryfikacji** (ten plik): modele decyzji + migracja `import_pracownikow 0022`, `AutorForm`, reconcilery, analyze/integrate, widoki/szablony weryfikacji, bramki, wpięcie parserów + e-mail. → E2E weryfikacja słowników i dopięcie do osób.
-4. **Plan 4 — Email porównywarka + niepełna nazwa refine + E2E**: kolumny porównywarki (plik-vs-baza) e-mail/stopień/stanowisko, ewentualne miękkie czyszczenie e-mail, pełny test E2E na `struktura.xlsx`.
+3. **Plan 3 — Pipeline + ekrany weryfikacji** (ten plik): modele decyzji + migracja `import_pracownikow 0023`, `AutorForm`, reconcilery, analyze/integrate, widoki/szablony weryfikacji, bramki, wpięcie parserów + e-mail. → E2E weryfikacja słowników i dopięcie do osób.
+4. **Plan 4 — Email (łagodna walidacja) + porównywarka + E2E + newsfragment**: kolumny porównywarki (plik-vs-baza) e-mail/stopień/stanowisko, ewentualne miękkie czyszczenie e-mail, pełny test E2E na `struktura.xlsx`, newsfragment. (Wpięcie parserów — komórka, nazwisko-imię, niepełna nazwa — należy do TEGO planu, Planu 3.)
 
 ---
 
 ## File Structure (Plan 3)
 
 - Modify: `src/import_pracownikow/models.py` — `AutorForm` (+`email`/`stopień_służbowy`/`stanowisko_dydaktyczne`); `ImportPracownikow` (+toggle `tworz_brakujace_stopnie`/`tworz_brakujace_stanowiska`, właściwości `stopnie_wymagaja_rozstrzygniecia`/`stanowiska_wymagaja_rozstrzygniecia`, `liczniki_stopni`/`liczniki_stanowisk`, tekst `ZAKRES_STRUKTURA`); `ImportPracownikowRow` (+FK/status/zrodlo dla stopnia i stanowiska, predykaty, dopięcia w `_integrate_*`); nowe modele `ImportPracownikowStopien`/`ImportPracownikowStanowisko`.
-- Create (via `makemigrations`): `src/import_pracownikow/migrations/0022_slowniki_stopnie_stanowiska.py`.
+- Create (via `makemigrations`): `src/import_pracownikow/migrations/0023_slowniki_stopnie_stanowiska.py`.
 - Modify: `src/import_pracownikow/pipeline/analyze.py` — reconcilery/klasyfikatory słowników, preprocessing (komórka `skrot_hint` + oddział→wydział, `rozbij_nazwisko_imie`, `sklasyfikuj_jednostke_niepelna`, `email`), `struktura_bez_decyzji`.
 - Modify: `src/import_pracownikow/pipeline/integrate.py` — `_rozstrzygnij_stopnie`/`_rozstrzygnij_stanowiska` + `_podlacz_*` + `unikalny_skrot_*`, dopięcie FK + e-mail przy nowym autorze, liczniki.
 - Modify: `src/import_pracownikow/views.py` — `WeryfikacjaStopniView`/`WeryfikacjaStanowiskView`, bramka `ZatwierdzImportView`, kontekst `PodgladImportuView`.
@@ -43,16 +43,17 @@
 - Modify: `src/import_pracownikow/forms.py` — checkboxy `tworz_brakujace_stopnie`/`tworz_brakujace_stanowiska`.
 - Create: `src/import_pracownikow/templates/import_pracownikow/weryfikacja_stopni.html`, `weryfikacja_stanowisk.html`.
 - Modify: `src/import_pracownikow/templates/import_pracownikow/przeglad.html` — konteksty + bramki OR.
+- Modify: `src/import_pracownikow/tests/test_przeglad.py` — aktualizacja istniejących asercji tekstów huba (POZYTYWNYCH i NEGATYWNYCH `not in`; zmiana etykiet w `przeglad.html`: „Zapisz jednostki + tytuły"→„Zapisz jednostki + słowniki", „Najpierw tytuły"→„Najpierw słowniki", „Utwórz brakujące tytuły"→„Utwórz brakujące słowniki").
 - Testy: `src/import_pracownikow/tests/test_models_slowniki_decyzji.py`, `test_autorform_slowniki.py`, `test_analyze_slowniki.py`, `test_integrate_slowniki.py`, `test_views_slowniki.py`.
 
 ---
 
-## Task 1: Modele decyzji + pola `ImportPracownikowRow` + toggle + migracja `0022`
+## Task 1: Modele decyzji + pola `ImportPracownikowRow` + toggle + migracja `0023`
 
 **Files:**
 - Test: `src/import_pracownikow/tests/test_models_slowniki_decyzji.py` (create)
 - Modify: `src/import_pracownikow/models.py`
-- Create (via makemigrations): `src/import_pracownikow/migrations/0022_slowniki_stopnie_stanowiska.py`
+- Create (via makemigrations): `src/import_pracownikow/migrations/0023_slowniki_stopnie_stanowiska.py`
 
 **Interfaces:**
 - Consumes: `bpp.StopienSluzbowy`/`StanowiskoDydaktyczne` (Plan 1); `ImportPracownikowTytul` (wzorzec).
@@ -389,7 +390,7 @@ W `ImportPracownikowRow`, bezpośrednio pod blokiem `tytul`/`tytul_status`/`zrod
 - [ ] **Step 6: Wygeneruj migrację**
 
 Run: `DJANGO_BPP_SKIP_DOTENV=1 uv run python src/manage.py makemigrations import_pracownikow --name slowniki_stopnie_stanowiska`
-Expected: utworzony `src/import_pracownikow/migrations/0022_slowniki_stopnie_stanowiska.py` z: `CreateModel` `ImportPracownikowStopien` + `ImportPracownikowStanowisko`; `AddField` `tworz_brakujace_stopnie`/`tworz_brakujace_stanowiska`; `AlterField` `zakres_integracji` (zmiana choices/help_text); `AddField` 6 pól na `ImportPracownikowRow`. Zależność: `0021_pola_data_zmian_i_przepnij_wszystkie`.
+Expected: utworzony `src/import_pracownikow/migrations/0023_slowniki_stopnie_stanowiska.py` z: `CreateModel` `ImportPracownikowStopien` + `ImportPracownikowStanowisko`; `AddField` `tworz_brakujace_stopnie`/`tworz_brakujace_stanowiska`; `AlterField` `zakres_integracji` (zmiana choices/help_text); `AddField` 6 pól na `ImportPracownikowRow`. Zależność: `0022_alter_importpracownikowrow_confidence`.
 
 Zweryfikuj brak dryfu: `DJANGO_BPP_SKIP_DOTENV=1 uv run python src/manage.py makemigrations import_pracownikow --check --dry-run` → „No changes detected".
 
@@ -402,7 +403,7 @@ Expected: PASS (4 testy).
 
 ```bash
 git add src/import_pracownikow/models.py \
-  src/import_pracownikow/migrations/0022_slowniki_stopnie_stanowiska.py \
+  src/import_pracownikow/migrations/0023_slowniki_stopnie_stanowiska.py \
   src/import_pracownikow/tests/test_models_slowniki_decyzji.py
 git commit -m "feat(import_pracownikow): modele decyzji + pola Row dla stopni i stanowisk"
 ```
@@ -508,7 +509,13 @@ def test_predykat_stopnia_overwrite_if_different():
 def test_predykat_stanowiska_overwrite_if_different():
     imp = baker.make(ImportPracownikow)
     sd = baker.make("bpp.StanowiskoDydaktyczne", nazwa="profesor", skrot="prof.")
-    aj = baker.make("bpp.Autor_Jednostka", stanowisko=None)
+    inne = baker.make("bpp.StanowiskoDydaktyczne", nazwa="adiunkt", skrot="ad.")
+    # pmp=True neutralizuje predykat „podstawowe miejsce pracy" (#4) — bez tego
+    # check_if_integration_needed() dawał True nawet BEZ implementacji stanowiska
+    # (fałszywie-pozytywny test).
+    aj = baker.make(
+        "bpp.Autor_Jednostka", stanowisko=inne, podstawowe_miejsce_pracy=True
+    )
     row = baker.make(
         ImportPracownikowRow,
         parent=imp,
@@ -516,11 +523,14 @@ def test_predykat_stanowiska_overwrite_if_different():
         autor=aj.autor,
         autor_jednostka=aj,
         stanowisko_dydaktyczne=sd,
+        dane_znormalizowane={},
     )
-    assert (
-        row._check_autor_jednostka_needs_update(row.dane_znormalizowane or {})
-        is True
-    )
+    # inne stanowisko na wierszu niż na AJ → integracja potrzebna
+    assert row.check_if_integration_needed() is True
+    # to samo stanowisko (pmp=True, brak innych zmian) → predykat False
+    aj.stanowisko = sd
+    aj.save(update_fields=["stanowisko"])
+    assert row.check_if_integration_needed() is False
 ```
 
 - [ ] **Step 2: Run test to verify it fails**
@@ -533,10 +543,12 @@ Expected: FAIL — brak pól `AutorForm`/property.
 W `AutorForm` (mniej-więcej po `stanowisko`/`wymiar_etatu`) dodaj — `email` jako `CharField` (tolerancyjny; NIE `EmailField`, patrz Global Constraints):
 
 ```python
-    email = forms.CharField(max_length=254, required=False)
+    email = forms.CharField(max_length=128, required=False)
     stopień_służbowy = forms.CharField(max_length=200, required=False)
     stanowisko_dydaktyczne = forms.CharField(max_length=200, required=False)
 ```
+
+`max_length=128` (NIE 254) celowo — `Autor.email` to `EmailField(max_length=128)`, więc adres 129–254 znaków wywaliłby `Autor.objects.create` w `_przygotuj_nowego_autora` przez nieprzechwycony `DataError`. Pełne czyszczenie/ograniczenie e-maila robi Plan 4 (`oczysc_email`); do tego czasu string z pliku (przycięty do 128) ląduje wprost do `Autor.email`.
 
 - [ ] **Step 4: Dodaj właściwości bramek (mirror `tytuly_wymagaja_rozstrzygniecia`)**
 
@@ -1183,6 +1195,7 @@ Create `src/import_pracownikow/tests/test_integrate_slowniki.py`:
 
 ```python
 import pytest
+from liveops.testing import MockProgress
 from model_bakery import baker
 
 from bpp.models import StanowiskoDydaktyczne, StopienSluzbowy
@@ -1205,7 +1218,7 @@ def test_unikalny_skrot_stopnia_sufiks():
 
 
 @pytest.mark.django_db
-def test_rozstrzygnij_stopnie_tworzy_i_podlacza(dummy_progress):
+def test_rozstrzygnij_stopnie_tworzy_i_podlacza():
     imp = baker.make(ImportPracownikow)
     dec = baker.make(
         ImportPracownikowStopien,
@@ -1221,7 +1234,7 @@ def test_rozstrzygnij_stopnie_tworzy_i_podlacza(dummy_progress):
         ImportPracownikowRow, parent=imp, zmiany_potrzebne=False,
         zrodlo_stopnia=dec,
     )
-    utworzono = _rozstrzygnij_stopnie(imp, dummy_progress)
+    utworzono = _rozstrzygnij_stopnie(imp, MockProgress(imp))
     assert utworzono == 1
     dec.refresh_from_db()
     row.refresh_from_db()
@@ -1281,32 +1294,12 @@ def test_istniejacy_autor_email_no_overwrite():
     assert aj.stanowisko == sd  # stanowisko overwrite-if-different
 ```
 
-Dodaj fixture `dummy_progress` (jeśli nie istnieje w `conftest.py`) — obiekt z metodami `log`/`track`/`result`/`stage`. Sprawdź `src/import_pracownikow/tests/conftest.py`; jeśli brak, dopisz minimalny:
-
-```python
-import contextlib
-
-import pytest
-
-
-@pytest.fixture
-def dummy_progress():
-    class _P:
-        def log(self, *a, **k):
-            pass
-
-        def result(self, *a, **k):
-            pass
-
-        def track(self, it, **k):
-            return it
-
-        @contextlib.contextmanager
-        def stage(self, *a, **k):
-            yield
-
-    return _P()
-```
+Uwaga (progress do testów): używamy istniejącego `MockProgress` z
+`liveops.testing` (`from liveops.testing import MockProgress`,
+`MockProgress(imp)`) — TEGO SAMEGO, którego używa reszta suity importu (np.
+Plan 4 `test_analyze_email.py`/`test_e2e_slowniki.py`, wzorzec
+`test_e2e_jednostki.py`). NIE wprowadzaj własnego fixture'u `dummy_progress`
+ani drugiego mocka progressu — jeden mechanizm dla całej suity.
 
 - [ ] **Step 2: Run test to verify it fails**
 
@@ -1675,6 +1668,56 @@ def test_ekran_stanowisk_get_200(client, owner):
 
 
 @pytest.mark.django_db
+def test_post_zapisuje_decyzje_stopnia_akceptuj(client, owner):
+    # Mirror test_views_tytuly.test_post_zapisuje_decyzje_* — POST decyzji
+    # (akceptuj) redirectuje i zapisuje `decyzja`.
+    client.force_login(owner)
+    imp = baker.make(
+        ImportPracownikow, owner=owner,
+        stan=ImportPracownikow.STAN_PRZEANALIZOWANY,
+    )
+    dec = baker.make(
+        ImportPracownikowStopien, parent=imp, nazwa_zrodlowa="mł. bryg.",
+        tryb=ImportPracownikowStopien.TRYB_BRAK,
+        decyzja=ImportPracownikowStopien.DECYZJA_MAPUJ,
+    )
+    resp = client.post(
+        reverse("import_pracownikow:stopnie", kwargs={"pk": imp.pk}),
+        {f"dec_{dec.pk}_decyzja": ImportPracownikowStopien.DECYZJA_AKCEPTUJ},
+    )
+    assert resp.status_code == 302
+    dec.refresh_from_db()
+    assert dec.decyzja == ImportPracownikowStopien.DECYZJA_AKCEPTUJ
+
+
+@pytest.mark.django_db
+def test_post_mapuj_bez_celu_daje_blad_i_nie_zapisuje(client, owner):
+    # Mirror walidacji „mapuj bez wybranego celu" — POST z decyzją MAPUJ i pustym
+    # celem redirectuje z komunikatem błędu i NIE zapisuje decyzji.
+    client.force_login(owner)
+    imp = baker.make(
+        ImportPracownikow, owner=owner,
+        stan=ImportPracownikow.STAN_PRZEANALIZOWANY,
+    )
+    dec = baker.make(
+        ImportPracownikowStopien, parent=imp, nazwa_zrodlowa="kpt.",
+        tryb=ImportPracownikowStopien.TRYB_ZGADYWANIE,
+        decyzja=ImportPracownikowStopien.DECYZJA_AKCEPTUJ,
+    )
+    resp = client.post(
+        reverse("import_pracownikow:stopnie", kwargs={"pk": imp.pk}),
+        {
+            f"dec_{dec.pk}_decyzja": ImportPracownikowStopien.DECYZJA_MAPUJ,
+            f"dec_{dec.pk}_wybrana": "",
+        },
+    )
+    assert resp.status_code == 302  # redirect z komunikatem błędu
+    dec.refresh_from_db()
+    # walidacja odrzuciła zapis — decyzja NIE zmieniona na MAPUJ
+    assert dec.decyzja == ImportPracownikowStopien.DECYZJA_AKCEPTUJ
+
+
+@pytest.mark.django_db
 def test_zatwierdz_pelny_blokuje_gdy_stopnie_nierozstrzygniete(client, owner):
     client.force_login(owner)
     imp = baker.make(
@@ -1886,7 +1929,7 @@ oraz do listy `update_fields=[...]` (w `obj.save(...)`) dodaj `"tworz_brakujace_
 - [ ] **Step 7: Run test to verify it passes**
 
 Run: `uv run pytest src/import_pracownikow/tests/test_views_slowniki.py -v`
-Expected: PASS (4 testy). (Ekrany renderują szablony z Task 6 — jeśli szablony jeszcze nie istnieją, GET-y w tym tasku FAILUJĄ z `TemplateDoesNotExist`; wtedy wykonaj Task 6 najpierw i wróć, albo utwórz puste szablony-stuby i uzupełnij w Task 6. Rekomendacja: uruchom Step 7 PO Task 6.)
+Expected: PASS (6 testów: 2× GET ekranów, 2× POST decyzji stopnia, bramka PELNY 400, toggle w formularzu). (Ekrany renderują szablony z Task 6 — jeśli szablony jeszcze nie istnieją, GET-y w tym tasku FAILUJĄ z `TemplateDoesNotExist`; wtedy wykonaj Task 6 najpierw i wróć, albo utwórz puste szablony-stuby i uzupełnij w Task 6. POST-testy nie renderują szablonu — przechodzą niezależnie od Task 6. Rekomendacja: uruchom Step 7 PO Task 6.)
 
 - [ ] **Step 8: Commit**
 
@@ -2034,11 +2077,51 @@ W bloku `{% elif moze_importowac_osoby %}`, zamień warunek `{% if tytuly_wymaga
 
 (reszta `{% else %}` — callout „Uwaga: zapis osób…" + przycisk „Zapisz osoby do bazy" — bez zmian.)
 
+Uwaga (liczniki): uogólniony alert powyżej nie renderuje już liczb
+`do_utworzenia`/`do_sprawdzenia`. Jeśli chcesz zachować je jak w wariancie
+tytułów, pokaż liczniki słowników analogicznie do tytułów — obok „Zobacz
+stopnie"/„Zobacz stanowiska" wstaw `{{ liczniki_stopni.do_utworzenia }}` /
+`{{ liczniki_stopni.do_sprawdzenia }}` oraz `{{ liczniki_stanowisk.* }}` (jak w
+callout Kroku 1, Step 4).
+
 - [ ] **Step 6: Kafelki audytu (poza flow) — opcjonalne stopnie/stanowiska**
 
 W dolnym `<div class="row">` (audyt zintegrowanego), po kafelku „Tytuły", dodaj analogiczne kafelki warunkowe dla stopni/stanowisk (mirror kafelka „Tytuły", `pokaz_stopnie`/`pokaz_stanowiska`, `liczniki_stopni`/`liczniki_stanowisk`, `url ...:stopnie`/`:stanowiska`). Zachowaj `and not faza_struktury and not moze_importowac_osoby`. (Przykład — mirror istniejącego bloku „Tytuły".)
 
-- [ ] **Step 7: Uruchom testy widoków (Task 5) + smoke szablonów**
+- [ ] **Step 7: Zaktualizuj asercje `test_przeglad.py` (teksty huba)**
+
+Zmiana etykiet w `przeglad.html` (Steps 4–5) łamie istniejące asercje w
+`src/import_pracownikow/tests/test_przeglad.py`. Zaktualizuj **WSZYSTKIE**
+wystąpienia starych brzmień — zarówno POZYTYWNE (`... in tresc`), jak i
+NEGATYWNE (`... not in tresc`) — na nowe:
+- „Zapisz jednostki + tytuły" → „Zapisz jednostki + słowniki"
+- „Najpierw tytuły" → „Najpierw słowniki"
+- „Utwórz brakujące tytuły" → „Utwórz brakujące słowniki"
+
+Konkretnie:
+- Pozytywne (relabel widoczny na hubie): linia ~179
+  `assert "Zapisz jednostki + tytuły" in tresc`, ~274
+  `assert "Najpierw tytuły" in tresc`, ~275
+  `assert "Utwórz brakujące tytuły" in tresc`.
+- **Negatywne (KRYTYCZNE — nie pomijaj):** linia ~252
+  `assert "Zapisz jednostki + tytuły" not in tresc`, ~298 i ~317
+  `assert "Najpierw tytuły" not in tresc` — te też przepisz na nowe
+  brzmienie (`"Zapisz jednostki + słowniki" not in tresc`,
+  `"Najpierw słowniki" not in tresc`).
+
+**Pułapka (dopisz w kroku):** gdyby zaktualizować tylko asercje pozytywne, a
+negatywne zostawić na starym stringu, po relabelingu przeszłyby „wakatowo" —
+stary string zniknął z szablonu, więc `not in` jest trywialnie prawdziwe i
+NIE pilnuje już semantyki (że w kontekście gdzie słowniki są rozstrzygnięte
+blok „Najpierw słowniki" NIE ma się pojawić). Przepisanie negatywnych na
+nowe brzmienie sprawia, że `not in` pilnuje teraz WŁAŚCIWEGO (nowego)
+wariantu.
+
+Run: `uv run pytest src/import_pracownikow/tests/test_przeglad.py -q`
+Expected: PASS (asercje huba — pozytywne i negatywne — zgodne z nowymi
+etykietami).
+
+- [ ] **Step 8: Uruchom testy widoków (Task 5) + smoke szablonów**
 
 Run: `uv run pytest src/import_pracownikow/tests/test_views_slowniki.py -v`
 Expected: PASS (GET-y ekranów renderują szablony 200; bramka 400).
@@ -2047,13 +2130,14 @@ Sanity djLint (komentarze Django jedno-liniowe — reguła projektu):
 Run: `uv run djlint src/import_pracownikow/templates/import_pracownikow/weryfikacja_stopni.html src/import_pracownikow/templates/import_pracownikow/weryfikacja_stanowisk.html src/import_pracownikow/templates/import_pracownikow/przeglad.html --check`
 Expected: brak nowych błędów (istniejące H037/H025 na `przeglad.html` mogą być pre-existing — patrz pamięć „Pre-commit: pre-istniejące błędy").
 
-- [ ] **Step 8: Commit**
+- [ ] **Step 9: Commit**
 
 ```bash
 git add src/import_pracownikow/views.py \
   src/import_pracownikow/templates/import_pracownikow/weryfikacja_stopni.html \
   src/import_pracownikow/templates/import_pracownikow/weryfikacja_stanowisk.html \
-  src/import_pracownikow/templates/import_pracownikow/przeglad.html
+  src/import_pracownikow/templates/import_pracownikow/przeglad.html \
+  src/import_pracownikow/tests/test_przeglad.py
 git commit -m "feat(import_pracownikow): szablony weryfikacji słowników + hub bramki OR"
 ```
 
@@ -2078,12 +2162,13 @@ Expected: wszystkie PASS.
 - [ ] **Step 2: Regresja całego modułu importu**
 
 Run: `uv run pytest src/import_pracownikow/ -q 2>&1 | tee /tmp/plan3_regresja.log`
-Expected: bez regresji (istniejące testy jednostek/tytułów/analyze/integrate/widoków zielone).
+(pełen katalog obejmuje `test_przeglad.py` — testy huba zmienione etykietami.)
+Expected: bez regresji (istniejące testy jednostek/tytułów/analyze/integrate/widoków + `test_przeglad.py` zielone). Uwaga: `test_przeglad.py` przejdzie TYLKO po aktualizacji asercji tekstów huba z Task 6 Step 7 (zmiana etykiet w `przeglad.html`) — bez niej NIE deklaruj „bez regresji".
 
 - [ ] **Step 3: Sanity migracji**
 
 Run: `DJANGO_BPP_SKIP_DOTENV=1 uv run python src/manage.py makemigrations import_pracownikow --check --dry-run`
-Expected: „No changes detected" (model i migracja `0022` spójne).
+Expected: „No changes detected" (model i migracja `0023` spójne).
 
 - [ ] **Step 4: ruff**
 

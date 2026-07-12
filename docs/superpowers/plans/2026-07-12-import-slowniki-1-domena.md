@@ -15,7 +15,7 @@
 - **ZAWSZE `uv run`** przed każdą komendą Python (`uv run python …`, `uv run pytest …`). NIGDY gołe `python`/`pytest`.
 - **Max długość linii: 88 znaków** (ruff).
 - **Nazwy modeli w CamelCase:** `StopienSluzbowy`, `StanowiskoDydaktyczne` (decyzja użytkownika; URL-e admina lowercase: `/admin/bpp/stopiensluzbowy/`, `/admin/bpp/stanowiskodydaktyczne/`).
-- **FK słowników:** referencja stringowa (`"bpp.StopienSluzbowy"`, `"bpp.StanowiskoDydaktyczne"`), `on_delete=models.SET_NULL, null=True, blank=True`.
+- **FK słowników:** referencja stringowa (`"bpp.StopienSluzbowy"`, `"bpp.StanowiskoDydaktyczne"`), `on_delete=SET_NULL, null=True, blank=True`.
 - **NIE modyfikować wydanych migracji.** Nowa migracja `bpp` = następny numer po `0467` → `0468`.
 - **NIE odświeżać baseline** (`baseline-sql/`) w tym branchu — refresh dopiero przy scalaniu do `dev`.
 - **Testy:** wyłącznie konwencje pytest (funkcje, brak `unittest.TestCase`), `baker.make` do obiektów DB. DB dostarcza pytest-testcontainers (wymaga działającego Dockera; przy OrbStack: `export DOCKER_HOST=unix:///Users/mpasternak/.orbstack/run/docker.sock`).
@@ -25,15 +25,14 @@
 
 1. **Plan 1 — Fundament domenowy** (ten plik): modele `StopienSluzbowy`/`StanowiskoDydaktyczne`, FK, migracja `bpp 0468`, admin, menu. → działające słowniki w adminie.
 2. **Plan 2 — import_common + parsery + mapowanie**: klasyfikatory `stopien`/`stanowisko`/`jednostka_niepelna`, parsery komórki i „nazwisko imię", cele/synonimy mapowania + reguła kontekstowa `stopień` + walidacja, profil „ostatnio użyty". → czyste funkcje testowalne jednostkowo.
-3. **Plan 3 — Pipeline + ekrany weryfikacji**: modele decyzji + migracja `import_pracownikow 0022`, `AutorForm`, reconcilery, analyze/integrate, widoki/szablony weryfikacji, bramki. → E2E weryfikacja słowników i dopięcie do osób.
-4. **Plan 4 — Email + porównywarka + niepełna nazwa + E2E**: łagodny e-mail + kolumny porównywarki, wpięcie „niepełnej nazwy jednostki" w analizę, pełny test E2E na `struktura.xlsx`.
+3. **Plan 3 — Pipeline + ekrany weryfikacji**: modele decyzji + migracja `import_pracownikow 0023`, `AutorForm`, reconcilery, analyze/integrate, widoki/szablony weryfikacji, bramki, wpięcie parserów (komórka, nazwisko-imię, niepełna nazwa). → E2E weryfikacja słowników i dopięcie do osób.
+4. **Plan 4 — Email (łagodna walidacja) + porównywarka + E2E + newsfragment**: łagodny e-mail + kolumny porównywarki plik-vs-baza (e-mail/stopień/stanowisko), pełny test E2E na `struktura.xlsx`, newsfragment podsumowujący feature.
 
 ---
 
 ## File Structure (Plan 1)
 
 - Modify: `src/bpp/models/autor.py` — dodaj klasy `StopienSluzbowy`, `StanowiskoDydaktyczne`; FK `Autor.stopien_sluzbowy`, `Autor_Jednostka.stanowisko`.
-- Modify: `src/bpp/models/__init__.py` — eksport obu modeli.
 - Create: `src/bpp/migrations/0468_stopien_sluzbowy_stanowisko_dydaktyczne.py` — auto-generowana przez `makemigrations`.
 - Modify: `src/bpp/admin/__init__.py` — import + rejestracja obu słowników przez `NazwaISkrotAdmin`.
 - Modify: `src/bpp/admin/autor.py` — `stopien_sluzbowy` w `AutorForm.Meta.fields`; `stanowisko` w `Autor_JednostkaInlineForm.Meta.fields`.
@@ -49,7 +48,6 @@
 **Files:**
 - Test: `src/bpp/tests/test_models_stopien_stanowisko.py` (create)
 - Modify: `src/bpp/models/autor.py`
-- Modify: `src/bpp/models/__init__.py`
 - Create (via makemigrations): `src/bpp/migrations/0468_stopien_sluzbowy_stanowisko_dydaktyczne.py`
 
 **Interfaces:**
@@ -150,7 +148,7 @@ W `src/bpp/models/autor.py` w klasie `Autor`, bezpośrednio pod linią `tytul = 
 ```python
     stopien_sluzbowy = models.ForeignKey(
         "bpp.StopienSluzbowy",
-        models.SET_NULL,
+        SET_NULL,
         blank=True,
         null=True,
         verbose_name="stopień służbowy",
@@ -164,32 +162,19 @@ W `src/bpp/models/autor.py` w klasie `Autor_Jednostka`, bezpośrednio pod linią
 ```python
     stanowisko = models.ForeignKey(
         "bpp.StanowiskoDydaktyczne",
-        models.SET_NULL,
+        SET_NULL,
         null=True,
         blank=True,
         verbose_name="stanowisko dydaktyczne",
     )
 ```
 
-- [ ] **Step 6: Wyeksportuj modele w `src/bpp/models/__init__.py`**
+- [ ] **Step 6: Zweryfikuj eksport modeli**
 
-Znajdź import z `.autor` (linia importująca `Autor, Autor_Jednostka, Funkcja_Autora, …, Tytul`) i dodaj `StopienSluzbowy` oraz `StanowiskoDydaktyczne` do listy importów ORAZ do `__all__`, jeśli plik go używa. Przykład (dostosuj do istniejącej listy):
+`src/bpp/models/__init__.py` to `from .autor import *`, a `autor.py` NIE ma `__all__` — nowe modele eksportują się automatycznie, bez ręcznej zmiany `__init__.py`. Zweryfikuj:
 
-```python
-from .autor import (  # noqa
-    Autor,
-    Autor_Jednostka,
-    Funkcja_Autora,
-    Grupa_Pracownicza,
-    StanowiskoDydaktyczne,
-    StopienSluzbowy,
-    Tytul,
-    Wymiar_Etatu,
-    # … pozostałe bez zmian …
-)
-```
-
-Jeśli w pliku jest lista `__all__`, dopisz do niej `"StopienSluzbowy"` i `"StanowiskoDydaktyczne"`.
+Run: `DJANGO_BPP_SKIP_DOTENV=1 uv run python -c "from bpp.models import StopienSluzbowy, StanowiskoDydaktyczne; print('ok')"`
+Expected: `ok`.
 
 - [ ] **Step 7: Wygeneruj migrację**
 
@@ -207,7 +192,7 @@ Expected: PASS (5 testów).
 - [ ] **Step 9: Commit**
 
 ```bash
-git add src/bpp/models/autor.py src/bpp/models/__init__.py \
+git add src/bpp/models/autor.py \
   src/bpp/migrations/0468_stopien_sluzbowy_stanowisko_dydaktyczne.py \
   src/bpp/tests/test_models_stopien_stanowisko.py
 git commit -m "feat(bpp): słowniki StopienSluzbowy i StanowiskoDydaktyczne + FK"
@@ -232,8 +217,9 @@ Create `src/bpp/tests/test_admin_stopien_stanowisko.py`:
 
 ```python
 from django.contrib import admin as djadmin
+from django.contrib.admin.utils import flatten_fieldsets
 
-from bpp.admin.autor import AutorForm, Autor_JednostkaInlineForm
+from bpp.admin.autor import AutorAdmin, AutorForm, Autor_JednostkaInlineForm
 from bpp.models import StanowiskoDydaktyczne, StopienSluzbowy
 
 
@@ -244,6 +230,7 @@ def test_slowniki_zarejestrowane_w_adminie():
 
 def test_autorform_ma_pole_stopien_sluzbowy():
     assert "stopien_sluzbowy" in AutorForm.base_fields
+    assert "stopien_sluzbowy" in flatten_fieldsets(AutorAdmin.fieldsets)
 
 
 def test_inline_autor_jednostka_ma_pole_stanowisko():
@@ -253,7 +240,7 @@ def test_inline_autor_jednostka_ma_pole_stanowisko():
 - [ ] **Step 2: Run test to verify it fails**
 
 Run: `uv run pytest src/bpp/tests/test_admin_stopien_stanowisko.py -v`
-Expected: FAIL — `test_slowniki_zarejestrowane_w_adminie` (modele nieзарejestrowane) oraz brak pól w formularzach.
+Expected: FAIL — `test_slowniki_zarejestrowane_w_adminie` (modele niezarejestrowane) oraz brak pól w formularzach.
 
 - [ ] **Step 3: Zaimportuj i zarejestruj słowniki w adminie**
 
@@ -281,7 +268,30 @@ W `src/bpp/admin/autor.py`, w `AutorForm.Meta.fields`, dodaj `"stopien_sluzbowy"
         ]
 ```
 
-- [ ] **Step 5: Dodaj `stanowisko` do `Autor_JednostkaInlineForm`**
+- [ ] **Step 5: Dodaj `stopien_sluzbowy` do `AutorAdmin.fieldsets`**
+
+`AutorAdmin` używa `fieldsets` (nie `fields`), a Django buduje formularz przez `flatten_fieldsets(fieldsets)` — samo dodanie pola do `AutorForm.Meta.fields` NIE pokaże go w adminie. W `src/bpp/admin/autor.py` znajdź `class AutorAdmin` i jego atrybut `fieldsets`; w PIERWSZYM fieldsecie (`None`, ten z polem `"tytul"`) dodaj `"stopien_sluzbowy"` bezpośrednio po `"tytul"`:
+
+```python
+    fieldsets = (
+        (
+            None,
+            {
+                "fields": (
+                    "imiona",
+                    "nazwisko",
+                    "tytul",
+                    "stopien_sluzbowy",
+                    "pseudonim",
+                    # … reszta bez zmian …
+                )
+            },
+        ),
+        # … pozostałe fieldsety bez zmian …
+    )
+```
+
+- [ ] **Step 6: Dodaj `stanowisko` do `Autor_JednostkaInlineForm`**
 
 W `src/bpp/admin/autor.py`, w `Autor_JednostkaInlineForm.Meta.fields`, dodaj `"stanowisko"` bezpośrednio po `"funkcja"`:
 
@@ -299,12 +309,12 @@ W `src/bpp/admin/autor.py`, w `Autor_JednostkaInlineForm.Meta.fields`, dodaj `"s
         ]
 ```
 
-- [ ] **Step 6: Run test to verify it passes**
+- [ ] **Step 7: Run test to verify it passes**
 
 Run: `uv run pytest src/bpp/tests/test_admin_stopien_stanowisko.py -v`
 Expected: PASS (3 testy).
 
-- [ ] **Step 7: Commit**
+- [ ] **Step 8: Commit**
 
 ```bash
 git add src/bpp/admin/__init__.py src/bpp/admin/autor.py \
@@ -347,10 +357,11 @@ Expected: FAIL — `assert "Stopnie służbowe" in labels`.
 
 - [ ] **Step 3: Dodaj pozycje do `SYSTEM_MENU_2`**
 
-W `src/django_bpp/menu.py`, w liście `SYSTEM_MENU_2`, wstaw dwie pozycje bezpośrednio PRZED `("Statusy korekt", "/admin/bpp/status_korekty/")`:
+W `src/django_bpp/menu.py`, w liście `SYSTEM_MENU_2`, zachowaj porządek alfabetyczny (Stanowiska < Statusy < Stopnie): wstaw `("Stanowiska dydaktyczne", "/admin/bpp/stanowiskodydaktyczne/")` bezpośrednio PRZED `("Statusy korekt", "/admin/bpp/status_korekty/")`, a `("Stopnie służbowe", "/admin/bpp/stopiensluzbowy/")` bezpośrednio PO niej:
 
 ```python
     ("Stanowiska dydaktyczne", "/admin/bpp/stanowiskodydaktyczne/"),
+    ("Statusy korekt", "/admin/bpp/status_korekty/"),
     ("Stopnie służbowe", "/admin/bpp/stopiensluzbowy/"),
 ```
 
@@ -382,7 +393,7 @@ Expected: wszystkie PASS.
 
 - [ ] **Step 2: Sanity migracji**
 
-Run: `DJANGO_BPP_SKIP_DOTENV=1 uv run python src/manage.py makemigrations --check --dry-run`
+Run: `DJANGO_BPP_SKIP_DOTENV=1 uv run python src/manage.py makemigrations bpp --check --dry-run`
 Expected: „No changes detected" (brak niezapisanych zmian modeli).
 
 - [ ] **Step 3: ruff**
