@@ -1305,9 +1305,17 @@ _OIDC_CONFIG = discover_oidc_config()
 OIDC_LOGIN_ENABLED = _OIDC_CONFIG is not None
 OIDC_LOGIN_SKROT = (_OIDC_CONFIG or {}).get("skrot") or ""
 
+# App zawsze zainstalowany — model/tabela OIDCIdentity muszą istnieć
+# niezależnie od env (routing i backend zostają warunkowe po _OIDC_CONFIG).
+if "oidc_integration" not in INSTALLED_APPS:
+    INSTALLED_APPS = list(INSTALLED_APPS) + ["oidc_integration"]
+
+# Defaulty bezpieczne również dla instalacji bez OIDC.
+OIDC_REQUIRE_EMAIL_VERIFIED = (_OIDC_CONFIG or {}).get("require_email_verified", True)
+OIDC_GRACE_BIND_ENABLED = (_OIDC_CONFIG or {}).get("grace_bind", False)
+
 if _OIDC_CONFIG:
-    if "oidc_integration" not in INSTALLED_APPS:
-        INSTALLED_APPS = list(INSTALLED_APPS) + ["oidc_integration"]
+    OIDC_OP_ISSUER = _OIDC_CONFIG["issuer"]
 
     OIDC_RP_CLIENT_ID = _OIDC_CONFIG["client_id"]
     OIDC_RP_CLIENT_SECRET = _OIDC_CONFIG["client_secret"]
