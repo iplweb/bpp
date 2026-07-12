@@ -812,3 +812,142 @@ def test_failclosed_without_request_still_raises(db):
     }
     with pytest.raises(SuspiciousOperation):
         b.create_user(claims)
+
+
+# --- P2 FIX 1: kotwica na PODPISANYM id_token (nie na userinfo) ---
+
+
+def test_get_userinfo_rejects_sub_mismatch(mocker):
+    # OIDC Core §5.3.2: userinfo sub MUSI zgadzać się z id_token sub. Rozjazd
+    # (userinfo sub="EVIL", payload sub="GOOD") → SuspiciousOperation.
+    b = _backend()
+    mocker.patch.object(
+        BppOIDCBackend.__bases__[0],
+        "get_userinfo",
+        return_value={"sub": "EVIL", "email": "jan@x.pl"},
+    )
+    with pytest.raises(SuspiciousOperation):
+        b.get_userinfo("acc", "id", {"sub": "GOOD", "iss": "https://kc"})
+
+
+def test_get_userinfo_anchors_sub_on_payload(mocker):
+    # sub z payloadu (podpisany id_token) jest autorytatywny; gdy userinfo go
+    # nie niesie, i tak wygrywa payload.
+    b = _backend()
+    mocker.patch.object(
+        BppOIDCBackend.__bases__[0],
+        "get_userinfo",
+        return_value={"email": "jan@x.pl"},
+    )
+    out = b.get_userinfo("acc", "id", {"sub": "GOOD", "iss": "https://kc"})
+    assert out["sub"] == "GOOD"
+
+
+def test_get_userinfo_email_verified_from_payload_wins(mocker):
+    # email_verified z payloadu (podpisany) wygrywa nad userinfo. userinfo mówi
+    # verified, payload mówi NIE → wynik: niezweryfikowany (i nie zaufany).
+    b = _backend()
+    mocker.patch.object(
+        BppOIDCBackend.__bases__[0],
+        "get_userinfo",
+        return_value={
+            "sub": "GOOD",
+            "email": "jan@x.pl",
+            "email_verified": True,
+        },
+    )
+    out = b.get_userinfo(
+        "acc",
+        "id",
+        {"sub": "GOOD", "iss": "https://kc", "email_verified": False},
+    )
+    assert out["sub"] == "GOOD"
+    assert out["email_verified"] is False
+    assert out["_bpp_email_trusted"] is False
+
+
+def test_get_userinfo_iss_from_payload_authoritative(mocker):
+    # iss brany z payloadu (podpisany), nie z userinfo.
+    b = _backend()
+    mocker.patch.object(
+        BppOIDCBackend.__bases__[0],
+        "get_userinfo",
+        return_value={
+            "sub": "GOOD",
+            "email": "jan@x.pl",
+            "iss": "https://evil/",
+        },
+    )
+    out = b.get_userinfo(
+        "acc", "id", {"sub": "GOOD", "iss": "https://kc/", "email_verified": True}
+    )
+    assert out["iss"] == "https://kc"
+
+
+# --- P2 FIX 2: walidacja aud w verify_token ---
+
+
+def test_verify_token_rejects_wrong_aud(mocker, settings):
+    settings.OIDC_RP_CLIENT_ID = "bpp-client"
+    b = _backend()
+    mocker.patch.object(
+        BppOIDCBackend.__bases__[0],
+        "verify_token",
+        return_value={"aud": "other-client", "iss": "https://kc"},
+    )
+    with pytest.raises(SuspiciousOperation):
+        b.verify_token("tok")
+
+
+def test_verify_token_accepts_aud_string(mocker, settings):
+    settings.OIDC_RP_CLIENT_ID = "bpp-client"
+    b = _backend()
+    payload = {"aud": "bpp-client", "iss": "https://kc"}
+    mocker.patch.object(
+        BppOIDCBackend.__bases__[0], "verify_token", return_value=payload
+    )
+    assert b.verify_token("tok") == payload
+
+
+def test_verify_token_accepts_aud_list(mocker, settings):
+    settings.OIDC_RP_CLIENT_ID = "bpp-client"
+    b = _backend()
+    payload = {"aud": ["someone", "bpp-client"], "iss": "https://kc"}
+    mocker.patch.object(
+        BppOIDCBackend.__bases__[0], "verify_token", return_value=payload
+    )
+    assert b.verify_token("tok") == payload
+
+
+def test_verify_token_accepts_azp_fallback(mocker, settings):
+    settings.OIDC_RP_CLIENT_ID = "bpp-client"
+    b = _backend()
+    # aud wskazuje inny resource, ale azp == nasz client_id → OK.
+    payload = {"aud": "resource-server", "azp": "bpp-client", "iss": "https://kc"}
+    mocker.patch.object(
+        BppOIDCBackend.__bases__[0], "verify_token", return_value=payload
+    )
+    assert b.verify_token("tok") == payload
+
+
+def test_verify_token_skips_aud_when_client_id_unset(mocker):
+    # Instalacja bez OIDC (brak OIDC_RP_CLIENT_ID) → kontrola aud no-op.
+    b = _backend()
+    payload = {"aud": "cokolwiek", "iss": "https://kc"}
+    mocker.patch.object(
+        BppOIDCBackend.__bases__[0], "verify_token", return_value=payload
+    )
+    assert b.verify_token("tok") == payload
+
+
+# --- P2 FIX 4: is_active w filter_users_by_claims ---
+
+
+def test_filter_excludes_inactive_account(db):
+    from oidc_integration.models import OIDCIdentity
+
+    u = baker.make("bpp.BppUser", email="jan@x.pl", is_active=False)
+    OIDCIdentity.objects.create(user=u, issuer="https://kc", sub="S1")
+    b = _backend()
+    claims = {"sub": "S1", "iss": "https://kc", "email": "jan@x.pl"}
+    assert list(b.filter_users_by_claims(claims)) == []

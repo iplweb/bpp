@@ -219,18 +219,57 @@ class BppOIDCBackend(OIDCAuthenticationBackend):
         got = (payload.get("iss") or "").rstrip("/")
         if expected and got != expected:
             raise SuspiciousOperation(f"OIDC: iss={got!r} != oczekiwany {expected!r}")
+
+        # Walidacja audience: token wystawiony dla innego klienta (nawet z tego
+        # samego IdP) nie może zalogować do naszej instancji. ``aud`` bywa
+        # stringiem albo listą — akceptujemy oba; dopuszczamy też przypadek,
+        # gdy ``aud`` wskazuje inny resource, ale ``azp`` (authorized party) to
+        # nasz client_id. Bez skonfigurowanego client_id (instalacja bez OIDC)
+        # kontrola jest no-op — analogicznie do ``iss``.
+        client_id = getattr(settings, "OIDC_RP_CLIENT_ID", "") or ""
+        if client_id:
+            aud = payload.get("aud")
+            auds = [aud] if isinstance(aud, str) else list(aud or [])
+            azp = payload.get("azp")
+            if client_id not in auds and azp != client_id:
+                raise SuspiciousOperation(
+                    f"OIDC: aud={aud!r}/azp={azp!r} nie zawiera client_id {client_id!r}"
+                )
         return payload
 
     def get_userinfo(self, access_token, id_token, payload):
         # Jedyny chokepoint: znormalizuj claimy z userinfo, zanim trafią do
-        # verify_claims / filter_users_by_claims / create_user. Domieszaj z
-        # id_token (payload) klucze zaufania, których userinfo może nie mieć
-        # (iss, email, email_verified pochodzą zwykle z id_token).
-        claims = super().get_userinfo(access_token, id_token, payload)
-        merged = dict(claims)
-        for key in ("iss", "email", "email_verified"):
-            if key not in merged and payload.get(key) is not None:
+        # verify_claims / filter_users_by_claims / create_user.
+        #
+        # Kotwica na PODPISANYM id_token: userinfo endpoint zwraca odpowiedź,
+        # która NIE jest podpisana (zwykły JSON po Bearerze), więc dla claimów
+        # niosących tożsamość i decyzję o zaufaniu (``sub``, ``iss``,
+        # ``email_verified``) autorytatywny jest ``payload`` (zdekodowany,
+        # zweryfikowany id_token). userinfo służy tu tylko jako fallback, gdy
+        # payload danego klucza nie niesie. ``email`` (i inne dane opisowe)
+        # bierzemy z userinfo, z payloadem jako fallback.
+        userinfo = super().get_userinfo(access_token, id_token, payload)
+        merged = dict(userinfo)
+
+        # OIDC Core §5.3.2: sub z userinfo MUSI zgadzać się z sub z id_token —
+        # rozjazd to sygnał podstawionej odpowiedzi userinfo (token substitution).
+        payload_sub = payload.get("sub")
+        userinfo_sub = userinfo.get("sub")
+        if payload_sub and userinfo_sub and userinfo_sub != payload_sub:
+            raise SuspiciousOperation(
+                f"OIDC: userinfo sub={userinfo_sub!r} != id_token "
+                f"sub={payload_sub!r} (OIDC Core §5.3.2)"
+            )
+
+        # Autorytatywne z podpisanego payloadu (userinfo tylko fallback).
+        for key in ("sub", "iss", "email_verified"):
+            if payload.get(key) is not None:
                 merged[key] = payload.get(key)
+
+        # E-mail: userinfo preferowane, payload jako fallback.
+        if merged.get("email") is None and payload.get("email") is not None:
+            merged["email"] = payload.get("email")
+
         return self._normalized(merged)
 
     @staticmethod
@@ -252,35 +291,47 @@ class BppOIDCBackend(OIDCAuthenticationBackend):
         """
         session = getattr(getattr(self, "request", None), "session", None)
         if session is not None and session.get("oidc_link_mode"):
-            user_info = self.get_userinfo(access_token, id_token, payload)
-            target_pk = session.get("oidc_link_target")
-            request_user = getattr(self.request, "user", None)
-            if not target_pk or request_user is None or request_user.pk != target_pk:
-                self._clear_link_session(session)
-                self._fail("OIDC: cel linkowania niezgodny")
-            issuer = user_info.get("iss") or ""
-            sub = user_info.get("sub") or ""
-            if not issuer or not sub:
-                self._clear_link_session(session)
-                self._fail("OIDC: brak (issuer, sub) do związania")
+            # ``try/finally`` gwarantuje wyczyszczenie flag trybu link we
+            # WSZYSTKICH gałęziach wyjścia — sukces, ``SuspiciousOperation``
+            # (przez ``_fail``) czy nieoczekiwany wyjątek — żeby przerwany link
+            # nie „przeciekł" na następne, zwykłe logowanie OIDC. ``_fail`` sam
+            # zapisuje ``oidc_error_message`` przed rzuceniem, a ``finally``
+            # jedynie usuwa flagi link (nie rusza komunikatu).
             try:
-                with transaction.atomic():
-                    identity, created = OIDCIdentity.objects.get_or_create(
-                        issuer=issuer,
-                        sub=sub,
-                        defaults={"user": request_user},
+                user_info = self.get_userinfo(access_token, id_token, payload)
+                target_pk = session.get("oidc_link_target")
+                request_user = getattr(self.request, "user", None)
+                if (
+                    not target_pk
+                    or request_user is None
+                    or request_user.pk != target_pk
+                ):
+                    self._fail("OIDC: cel linkowania niezgodny")
+                issuer = user_info.get("iss") or ""
+                sub = user_info.get("sub") or ""
+                if not issuer or not sub:
+                    self._fail("OIDC: brak (issuer, sub) do związania")
+                try:
+                    with transaction.atomic():
+                        identity, created = OIDCIdentity.objects.get_or_create(
+                            issuer=issuer,
+                            sub=sub,
+                            defaults={"user": request_user},
+                        )
+                except IntegrityError:
+                    # (user, issuer) już zajęte innym sub — konto ma już
+                    # tożsamość z tego realmu (jeden realm = jedno konto).
+                    self._fail(
+                        "OIDC: to konto ma już powiązaną tożsamość z tego realmu"
                     )
-            except IntegrityError:
-                # (user, issuer) już zajęte innym sub — konto ma już tożsamość
-                # z tego realmu (jeden realm = jedno konto).
+                if not created and identity.user_id != request_user.pk:
+                    # Ta (issuer, sub) należy do innego konta — NIE przejmujemy.
+                    self._fail(
+                        "OIDC: ta tożsamość SSO jest już powiązana z innym kontem"
+                    )
+                return request_user
+            finally:
                 self._clear_link_session(session)
-                self._fail("OIDC: to konto ma już powiązaną tożsamość z tego realmu")
-            if not created and identity.user_id != request_user.pk:
-                # Ta (issuer, sub) należy do innego konta — NIE przejmujemy jej.
-                self._clear_link_session(session)
-                self._fail("OIDC: ta tożsamość SSO jest już powiązana z innym kontem")
-            self._clear_link_session(session)
-            return request_user
         return super().get_or_create_user(access_token, id_token, payload)
 
     def verify_claims(self, claims):
@@ -300,7 +351,12 @@ class BppOIDCBackend(OIDCAuthenticationBackend):
         issuer = claims.get("iss")
         if not sub or not issuer:
             return self.UserModel.objects.none()
+        # Defensywne ``is_active=True``: konto zdezaktywowane z powiązaną
+        # tożsamością nie może się zalogować, niezależnie od gate'u callbacku
+        # biblioteki (mozilla-django-oidc filtruje aktywnych osobno, ale nie
+        # polegamy na tym — dopasowanie od razu je pomija).
         return self.UserModel.objects.filter(
+            is_active=True,
             oidc_identities__issuer=issuer,
             oidc_identities__sub=sub,
         )
