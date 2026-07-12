@@ -85,6 +85,10 @@ def test_remove_file_nie_kasuje_samego_katalogu(report_media):
 
 @pytest.mark.django_db
 def test_zaktualizuj_liczbe_cytowan(uczelnia, wydawnictwo_ciagle, mocker):
+    # Rekord musi mieć DOI+PMID, żeby wszedł do korpusu odpytywanego w WoS.
+    wydawnictwo_ciagle.doi = "10.1234/test"
+    wydawnictwo_ciagle.pubmed_id = "12345"
+    wydawnictwo_ciagle.save()
 
     m = Mock()
     m.query_multiple = Mock(
@@ -101,6 +105,36 @@ def test_zaktualizuj_liczbe_cytowan(uczelnia, wydawnictwo_ciagle, mocker):
 
     wydawnictwo_ciagle.refresh_from_db()
     assert wydawnictwo_ciagle.liczba_cytowan == 31337
+
+
+@pytest.mark.django_db
+def test_zaktualizuj_liczbe_cytowan_bulk_wiele_rekordow(uczelnia, mocker):
+    """Wiele rekordów aktualizowanych jednym przebiegiem (bulk_update),
+    korpus odpytany raz — bez get()/save() per rekord."""
+    from model_bakery import baker
+
+    rekordy = [
+        baker.make(
+            Wydawnictwo_Ciagle,
+            doi=f"10.1/{i}",
+            pubmed_id=str(1000 + i),
+            liczba_cytowan=0,
+        )
+        for i in range(3)
+    ]
+
+    odpowiedz = {r.pk: {"timesCited": str(10 + idx)} for idx, r in enumerate(rekordy)}
+    m = Mock()
+    m.query_multiple = Mock(return_value=[odpowiedz])
+    mocker.patch("bpp.models.struktura.Uczelnia.wosclient", return_value=m)
+
+    _zaktualizuj_liczbe_cytowan([Wydawnictwo_Ciagle])
+
+    # Korpus odpytany dokładnie raz (jeden klient WoS), nie per-rekord.
+    assert m.query_multiple.call_count == 1
+    for idx, r in enumerate(rekordy):
+        r.refresh_from_db()
+        assert r.liczba_cytowan == 10 + idx
 
 
 @pytest.mark.django_db

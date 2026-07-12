@@ -111,7 +111,62 @@ def _zaktualizuj_pola_z_wos(obj, item):
     return changed
 
 
+# Pola aktualizowane z WoS — te same, które mapuje `_POLA_CYTOWAN`.
+_POLA_DO_BULK_UPDATE = [atrybut for _, atrybut in _POLA_CYTOWAN]
+
+
+def _pobierz_wyniki_wos(klass, clients):
+    """Odpytaj WoS o korpus danego typu (rekordy z DOI+PMID); zwróć {id: pola}.
+
+    Korpus pobieramy RAZ na typ i puszczamy przez wszystkie skonfigurowane
+    klienty WoS, scalając wyniki (liczba cytowań to metryka globalna, nie
+    per-uczelnia). Pusty korpus → pusty słownik (bez odpytywania WoS).
+    """
+    filtered = list(
+        klass.objects.exclude(doi=None)
+        .exclude(pubmed_id=None)
+        .values("id", "doi", "pubmed_id")
+    )
+    if not filtered:
+        return {}
+
+    wos_items = {}
+    for client in clients:
+        for grp in client.query_multiple(filtered):
+            wos_items.update(grp)
+    return wos_items
+
+
+def _zaktualizuj_klase_z_wos(klass, clients):
+    """Zaktualizuj (hurtowo) pola WoS dla jednego typu publikacji.
+
+    Rekordy doczytujemy jednym ``in_bulk`` zamiast ``get()`` per wynik, a
+    zapis idzie jednym ``bulk_update`` zamiast ``save()`` per rekord.
+    """
+    wos_items = _pobierz_wyniki_wos(klass, clients)
+    if not wos_items:
+        return
+
+    rekordy = klass.objects.in_bulk(list(wos_items.keys()))
+    do_zapisu = []
+    for pk, item in wos_items.items():
+        obj = rekordy.get(pk)
+        if obj is not None and _zaktualizuj_pola_z_wos(obj, item):
+            do_zapisu.append(obj)
+
+    if do_zapisu:
+        klass.objects.bulk_update(do_zapisu, _POLA_DO_BULK_UPDATE, batch_size=500)
+
+
 def _zaktualizuj_liczbe_cytowan(klasy=None):
+    """Zaktualizuj liczbę cytowań (i pola WoS) hurtowo, jednym przebiegiem korpusu.
+
+    Wcześniej: N uczelni × cały korpus × ``get()``+``save()`` na każdy wynik.
+    Teraz: korpus raz na typ, wyniki wszystkich klientów WoS scalone,
+    ``in_bulk`` + ``bulk_update``. ``bulk_update`` omija sygnały ``save()``
+    (jak inne masowe update'y w tym kodzie) — dla pól cytowań to akceptowalne;
+    odświeżenie mat-view/cache i tak następuje osobnym przebiegiem.
+    """
     if klasy is None:
         klasy = (
             Wydawnictwo_Ciagle,
@@ -120,28 +175,18 @@ def _zaktualizuj_liczbe_cytowan(klasy=None):
             Praca_Habilitacyjna,
         )
 
+    clients = []
     for uczelnia in Uczelnia.objects.all():
         try:
-            client = uczelnia.wosclient()
+            clients.append(uczelnia.wosclient())
         except ImproperlyConfigured:
             continue
 
-        # FIXME: jeżeli jest >1 uczelnia w systemie, to odpytanie
-        # obiektów nastąpi w sposób wielokrotny...
+    if not clients:
+        return
 
-        for klass in klasy:
-            filtered = (
-                klass.objects.all()
-                .exclude(doi=None)
-                .exclude(pubmed_id=None)
-                .values("id", "doi", "pubmed_id")
-            )
-
-            for grp in client.query_multiple(filtered):
-                for k, item in grp.items():
-                    obj = klass.objects.get(pk=k)
-                    if _zaktualizuj_pola_z_wos(obj, item):
-                        obj.save()
+    for klass in klasy:
+        _zaktualizuj_klase_z_wos(klass, clients)
 
 
 @app.task(
