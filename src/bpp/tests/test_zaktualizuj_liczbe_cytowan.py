@@ -17,8 +17,9 @@ idzie hurtowo przez ``bulk_update`` (NIE ``save()`` per rekord).
 from unittest.mock import Mock
 
 import pytest
+from model_bakery import baker
 
-from bpp.models import Wydawnictwo_Ciagle, Wydawnictwo_Zwarte
+from bpp.models import Uczelnia, Wydawnictwo_Ciagle, Wydawnictwo_Zwarte
 from bpp.tasks import _zaktualizuj_liczbe_cytowan
 
 
@@ -153,13 +154,29 @@ def test_obsluguje_wiele_typow_modeli(
     wydawnictwo_zwarte.pubmed_id = 2
     wydawnictwo_zwarte.save()
 
+    # Druga uczelnia = dwa klienty WoS → `query_multiple` woła się RAZ NA KLIENTA
+    # na typ (patrz `_pobierz_wyniki_wos`). Odwzorowuje realny scenariusz z CI:
+    # test Playwright (transaction=True) w tym samym shardzie zostawia
+    # zacommitowany rekord Uczelnia, więc `Uczelnia.objects.all()` zwraca >1 →
+    # więcej wywołań klienta. Sztywna `side_effect`-lista pękłaby (StopIteration);
+    # mock MUSI być odporny na liczbę wywołań.
+    baker.make(Uczelnia)
+
     client = Mock()
-    client.query_multiple = Mock(
-        side_effect=[
-            [{wydawnictwo_ciagle.pk: {"timesCited": 11}}],
-            [{wydawnictwo_zwarte.pk: {"timesCited": 22}}],
-        ]
-    )
+
+    def _cytowania_wos(rekordy, *args, **kwargs):
+        # `rekordy` = korpus JEDNEGO typu (lista {"id","doi","pubmed_id"}),
+        # więc zwracamy cytowania tylko dla pk-ów obecnych w tym zapytaniu
+        # (bez kolizji między typami) i ignorujemy ewentualne obce rekordy.
+        cytowania = {
+            wydawnictwo_ciagle.pk: {"timesCited": 11},
+            wydawnictwo_zwarte.pk: {"timesCited": 22},
+        }
+        ids = {r["id"] for r in rekordy}
+        grp = {pk: dane for pk, dane in cytowania.items() if pk in ids}
+        return [grp] if grp else []
+
+    client.query_multiple = Mock(side_effect=_cytowania_wos)
     mocker.patch("bpp.models.struktura.Uczelnia.wosclient", return_value=client)
 
     _zaktualizuj_liczbe_cytowan([Wydawnictwo_Ciagle, Wydawnictwo_Zwarte])
