@@ -64,8 +64,6 @@ def test_osoba_sklejona_jednym_tokenem_rzuca_parse_error():
     imp.plik_xls.name = "protected/import_pracownikow/x.csv"
     with patch("import_pracownikow.pipeline.analyze.otworz_zrodlo") as MZ:
         MZ.return_value.count.return_value = 1
-        MZ.return_value.data.return_value = iter(
-            [_wiersz_osoba("Kowalski", nazwa_jed)]
-        )
+        MZ.return_value.data.return_value = iter([_wiersz_osoba("Kowalski", nazwa_jed)])
         with pytest.raises(XLSParseError):
             analizuj(imp, MockProgress(imp))
