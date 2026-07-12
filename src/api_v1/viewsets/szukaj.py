@@ -10,6 +10,7 @@ from rest_framework import mixins, viewsets
 
 from api_v1.scoping import scope_rekord_api
 from api_v1.serializers.szukaj import SzukajSerializer
+from api_v1.throttling import SearchAnonThrottle, SearchUserThrottle
 from bpp.models import (
     Patent,
     Praca_Doktorska,
@@ -43,6 +44,8 @@ class SzukajViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
     """
 
     serializer_class = SzukajSerializer
+    # Kosztowny endpoint wyszukiwania — opt-in throttling (globalny wyłączony).
+    throttle_classes = [SearchAnonThrottle, SearchUserThrottle]
 
     def _int_param(self, nazwa):
         """Parametr całkowity; brak/puste/niepoprawne wejście → ``None``.
