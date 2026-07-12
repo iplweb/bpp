@@ -12,7 +12,7 @@ import logging
 import pytest
 from django.contrib.auth import get_user_model
 from django.core.exceptions import SuspiciousOperation
-from django.test import override_settings
+from django.test import RequestFactory, override_settings
 from model_bakery import baker
 
 from oidc_integration.backends import BppOIDCBackend
@@ -681,3 +681,76 @@ def test_grace_skips_cross_realm_linked(db, settings):
     OIDCIdentity.objects.create(user=u, issuer="https://other", sub="Z")
     b = _backend()
     assert b._try_grace_bind(_grace_claims()) is None
+
+
+# --- Task 8: tryb link w get_or_create_user ---
+
+
+def _link_backend(user, target_pk=None):
+    from django.contrib.sessions.backends.db import SessionStore
+
+    b = _backend()
+    req = RequestFactory().get("/oidc/callback/")
+    req.session = SessionStore()
+    req.user = user
+    req.session["oidc_link_mode"] = True
+    req.session["oidc_link_target"] = target_pk if target_pk is not None else user.pk
+    b.request = req
+    return b, req
+
+
+def test_link_mode_binds_without_email_failclosed(db):
+    u = baker.make("bpp.BppUser", email="me@x.pl")
+    b, req = _link_backend(u)
+    # własne konto koliduje z samym sobą po e-mailu — w trybie link to NIE
+    # może być SuspiciousOperation (omijamy fail-closed create_user).
+    b.get_userinfo = lambda *a, **k: {
+        "sub": "L1",
+        "iss": "https://kc",
+        "email": "me@x.pl",
+        "_bpp_email_trusted": True,
+    }
+    out = b.get_or_create_user("at", "it", {"iss": "https://kc"})
+    assert out == u
+    assert u.oidc_identities.filter(sub="L1").exists()
+    assert "oidc_link_mode" not in req.session
+
+
+def test_link_mode_rejects_target_mismatch(db):
+    u = baker.make("bpp.BppUser", email="me@x.pl")
+    other = baker.make("bpp.BppUser", email="other@x.pl")
+    b, req = _link_backend(u, target_pk=other.pk)
+    b.get_userinfo = lambda *a, **k: {"sub": "L2", "iss": "https://kc"}
+    with pytest.raises(SuspiciousOperation):
+        b.get_or_create_user("at", "it", {"iss": "https://kc"})
+    assert not u.oidc_identities.exists()
+    assert "oidc_link_mode" not in req.session
+
+
+def test_link_mode_rejects_sub_taken_by_other(db):
+    from oidc_integration.models import OIDCIdentity
+
+    victim = baker.make("bpp.BppUser", email="victim@x.pl")
+    OIDCIdentity.objects.create(user=victim, issuer="https://kc", sub="L3")
+    u = baker.make("bpp.BppUser", email="me@x.pl")
+    b, req = _link_backend(u)
+    b.get_userinfo = lambda *a, **k: {"sub": "L3", "iss": "https://kc"}
+    with pytest.raises(SuspiciousOperation):
+        b.get_or_create_user("at", "it", {"iss": "https://kc"})
+    # tożsamość nadal należy do ofiary, nie do nas
+    assert OIDCIdentity.objects.get(issuer="https://kc", sub="L3").user == victim
+    assert not u.oidc_identities.exists()
+    assert "oidc_link_mode" not in req.session
+
+
+def test_link_mode_idempotent_same_identity(db):
+    from oidc_integration.models import OIDCIdentity
+
+    u = baker.make("bpp.BppUser", email="me@x.pl")
+    OIDCIdentity.objects.create(user=u, issuer="https://kc", sub="L4")
+    b, req = _link_backend(u)
+    b.get_userinfo = lambda *a, **k: {"sub": "L4", "iss": "https://kc"}
+    out = b.get_or_create_user("at", "it", {"iss": "https://kc"})
+    assert out == u
+    assert u.oidc_identities.filter(sub="L4").count() == 1
+    assert "oidc_link_mode" not in req.session

@@ -233,6 +233,60 @@ class BppOIDCBackend(OIDCAuthenticationBackend):
                 merged[key] = payload.get(key)
         return self._normalized(merged)
 
+    @staticmethod
+    def _clear_link_session(session):
+        session.pop("oidc_link_mode", None)
+        session.pop("oidc_link_target", None)
+        session.save()
+
+    def get_or_create_user(self, access_token, id_token, payload):
+        """W trybie link (sesja) zwiąż ``sub`` z zalogowanym kontem i zwróć je.
+
+        Standardowy callback ``/oidc/callback/`` jest reużyty do linkowania:
+        widok ``SSOLinkInitView`` po re-auth hasłem ustawia w sesji
+        ``oidc_link_mode``/``oidc_link_target`` i kieruje na init OIDC. Po
+        powrocie z IdP jesteśmy tutaj z aktywną sesją zalogowanego usera —
+        wiążemy jego konto z ``(issuer, sub)`` z tokenu i **pomijamy** zwykły
+        tor filter/create (a więc i fail-closed po e-mailu: własny adres
+        kolidowałby z samym sobą). Poza trybem link — bez zmian (``super``).
+        """
+        session = getattr(getattr(self, "request", None), "session", None)
+        if session is not None and session.get("oidc_link_mode"):
+            user_info = self.get_userinfo(access_token, id_token, payload)
+            target_pk = session.get("oidc_link_target")
+            request_user = getattr(self.request, "user", None)
+            if not target_pk or request_user is None or request_user.pk != target_pk:
+                self._clear_link_session(session)
+                raise SuspiciousOperation("OIDC: cel linkowania niezgodny")
+            issuer = user_info.get("iss") or ""
+            sub = user_info.get("sub") or ""
+            if not issuer or not sub:
+                self._clear_link_session(session)
+                raise SuspiciousOperation("OIDC: brak (issuer, sub) do związania")
+            try:
+                with transaction.atomic():
+                    identity, created = OIDCIdentity.objects.get_or_create(
+                        issuer=issuer,
+                        sub=sub,
+                        defaults={"user": request_user},
+                    )
+            except IntegrityError:
+                # (user, issuer) już zajęte innym sub — konto ma już tożsamość
+                # z tego realmu (jeden realm = jedno konto).
+                self._clear_link_session(session)
+                raise SuspiciousOperation(
+                    "OIDC: to konto ma już powiązaną tożsamość z tego realmu"
+                ) from None
+            if not created and identity.user_id != request_user.pk:
+                # Ta (issuer, sub) należy do innego konta — NIE przejmujemy jej.
+                self._clear_link_session(session)
+                raise SuspiciousOperation(
+                    "OIDC: ta tożsamość SSO jest już powiązana z innym kontem"
+                )
+            self._clear_link_session(session)
+            return request_user
+        return super().get_or_create_user(access_token, id_token, payload)
+
     def verify_claims(self, claims):
         _log_claims_debug(claims)
         return super().verify_claims(claims)
