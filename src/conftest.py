@@ -219,9 +219,7 @@ def _neutralizuj_wyciekle_dane(request):
         import psycopg2
         from django.db import connection
 
-        probe = " OR ".join(
-            f"EXISTS(SELECT 1 FROM {t})" for t in _LEAK_GUARD_TABLES
-        )
+        probe = " OR ".join(f"EXISTS(SELECT 1 FROM {t})" for t in _LEAK_GUARD_TABLES)
         try:
             conn = _leak_guard_conn(connection.settings_dict)
             with conn.cursor() as cur:
