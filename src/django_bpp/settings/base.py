@@ -1564,6 +1564,15 @@ X_FRAME_OPTIONS = "SAMEORIGIN"
 
 DATA_UPLOAD_MAX_NUMBER_FIELDS = 5000
 
+# Twardy, parse-time limit liczby plików na jedno żądanie (Django default to
+# 100). Jedyny formularz w BPP przyjmujący wiele plików naraz to kreator
+# zgłaszania publikacji (MultipleFileField, max 5 plików); reszta wgrywa
+# pojedyncze pliki. Ustawiamy 10 (margines nad 5) — Django odrzuca nadmiar
+# już przy parsowaniu multiparta, zanim pliki wylądują w /tmp, ograniczając
+# anonimowy DoS przez masowe uploady. Twardy cap na bajty daje nginx
+# (client_max_body_size).
+DATA_UPLOAD_MAX_NUMBER_FILES = 10
+
 # django-formdefaults: pozwól wszystkim staff-userom edytować systemowe
 # wartości domyślne formularzy (domyślnie pakiet wpuszcza tylko superuserów).
 FORMDEFAULTS_CAN_EDIT_SYSTEM_WIDE = "bpp.formdefaults_perms.can_edit_system_wide"

@@ -14,7 +14,11 @@ from zglos_publikacje.models import (
     Zgloszenie_Publikacji,
     Zgloszenie_Publikacji_Autor,
 )
-from zglos_publikacje.validators import validate_file_extension_pdf
+from zglos_publikacje.validators import (
+    MAX_LICZBA_PLIKOW,
+    validate_file_extension_pdf,
+    validate_file_size,
+)
 
 
 class MultipleFileInput(forms.FileInput):
@@ -63,6 +67,16 @@ class MultipleFileField(forms.FileField):
         super().__init__(*args, **kwargs)
 
     def clean(self, data, initial=None):
+        # Limit liczby liczony na znormalizowanej liście; kształt zwrotki
+        # NIE zmienia się (nie-lista → pojedyncza wartość) — _process_files
+        # fallback w views.py na tym polega. Normalizacja tylko dla licznika.
+        znormalizowane = (
+            data if isinstance(data, (list, tuple)) else [data] if data else []
+        )
+        if len(znormalizowane) > MAX_LICZBA_PLIKOW:
+            raise ValidationError(
+                f"Można załączyć maksymalnie {MAX_LICZBA_PLIKOW} plików."
+            )
         single_file_clean = super().clean
         if isinstance(data, (list, tuple)):
             return [single_file_clean(d, initial) for d in data]
@@ -214,7 +228,7 @@ class Zgloszenie_Publikacji_DaneForm(forms.ModelForm):
             "Pliki PDF z pełnym tekstem pracy. Wymagany"
             " min. 1 plik. Możliwość dodania wielu plików."
         ),
-        validators=[validate_file_extension_pdf],
+        validators=[validate_file_extension_pdf, validate_file_size],
     )
 
     wydawnictwo_nadrzedne = forms.CharField(
@@ -405,7 +419,7 @@ class Zgloszenie_Publikacji_Plik(forms.ModelForm):
             " do wglądu Biblioteki; nie będzie dalej"
             " udostępniany."
         ),
-        validators=[validate_file_extension_pdf],
+        validators=[validate_file_extension_pdf, validate_file_size],
     )
 
     class Meta:
