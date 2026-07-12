@@ -4,9 +4,11 @@ import re
 
 from django.conf import settings
 from django.core.exceptions import SuspiciousOperation
+from django.db import IntegrityError, transaction
 from mozilla_django_oidc.auth import OIDCAuthenticationBackend
 
 from oidc_integration.conf import DEFAULT_EMAIL_CLAIMS, DEFAULT_USERNAME_CLAIMS
+from oidc_integration.models import OIDCIdentity
 
 logger = logging.getLogger(__name__)
 
@@ -285,8 +287,12 @@ class BppOIDCBackend(OIDCAuthenticationBackend):
         # logowaniu (idempotentnie) — np. założonym przed wprowadzeniem tej logiki.
         self._assign_uczelnia(user)
         # Spróbuj powiązać autora (no-op jeśli już powiązany) — self-healing
-        # dla kont założonych zanim doszło dopasowanie.
-        user.sprobuj_dopasowac_autora()
+        # dla kont założonych zanim doszło dopasowanie. Dopasowanie po e-mailu/
+        # nazwiskach TYLKO gdy claim jest zaufany (``email_verified`` + zgodny
+        # adres), inaczej ktoś mógłby przez niezweryfikowany claim „podpiąć się"
+        # pod cudzego Autora.
+        trusted = bool(claims.get("_bpp_email_trusted"))
+        user.sprobuj_dopasowac_autora(match_email=trusted, match_names=trusted)
         return user
 
     def _unique_username(self, base):
@@ -304,36 +310,84 @@ class BppOIDCBackend(OIDCAuthenticationBackend):
             i += 1
         return f"{base}-{i}"
 
-    def create_user(self, claims):
-        """Załóż zwykłe konto (bez is_staff) na podstawie claimów.
+    def _try_grace_bind(self, claims):
+        """Opt-in wiązanie starego konta czysto-OIDC po e-mailu (Task 7).
 
-        ``username`` z ``_username_claim_keys()`` (default
-        ``preferred_username`` → ``email`` → ``sub``; pierwszy niepusty).
-        Hasło ustawiane na nieużywalne — logowanie wyłącznie przez OIDC.
-        Wywoływane tylko, gdy ``filter_users_by_claims`` (domyślnie po
-        e-mailu) nie znajdzie istniejącego konta.
+        Domyślnie no-op — pełna, zawężona logika w Task 7. Zwraca ``user``
+        (związany) albo ``None`` (brak grace → normalna ścieżka create_user).
         """
-        base_username = _first_claim(claims, _username_claim_keys())
-        username = self._unique_username(base_username)
-        email = claims.get("email") or ""
+        return None
 
-        user = self.UserModel.objects.create_user(username=username, email=email)
-        user.first_name = claims.get("given_name") or ""
-        user.last_name = claims.get("family_name") or ""
-        user.is_staff = False
-        user.is_superuser = False
-        user.is_active = True
-        user.set_unusable_password()
-        user.save()
+    def create_user(self, claims):
+        """Załóż zwykłe konto (bez is_staff) i zwiąż je z ``(issuer, sub)``.
+
+        Fail-closed: gdy istnieje już konto z tym adresem e-mail, NIE zakładamy
+        drugiego (i nie „przejmujemy" istniejącego) — trzeba je świadomie
+        połączyć z SSO przez profil (re-auth hasłem). Gdy
+        ``OIDC_REQUIRE_EMAIL_VERIFIED``, wymagamy zaufanego adresu
+        (``_bpp_email_trusted``). Tworzenie konta i wpisu ``OIDCIdentity`` jest
+        atomowe; kolizja ``(issuer, sub)`` (wyścig równoległych logowań) zwraca
+        wcześniej związane konto zamiast błędu.
+        """
+        email = claims.get("email") or ""
+        issuer = claims.get("iss") or ""
+        sub = claims.get("sub") or ""
+
+        graced = self._try_grace_bind(claims)
+        if graced is not None:
+            return graced
+
+        if email and self.UserModel.objects.filter(email__iexact=email).exists():
+            raise SuspiciousOperation(
+                "OIDC: konto z tym adresem już istnieje — połącz je z SSO "
+                "przez profil (re-auth hasłem), nie tworzę konta."
+            )
+
+        require = getattr(settings, "OIDC_REQUIRE_EMAIL_VERIFIED", True)
+        if require and not claims.get("_bpp_email_trusted"):
+            raise SuspiciousOperation(
+                "OIDC: e-mail niezweryfikowany (email_verified) — "
+                "odrzucam założenie konta."
+            )
+
+        base_username = _first_claim(claims, _username_claim_keys())
+        trusted = bool(claims.get("_bpp_email_trusted"))
+
+        for _ in range(5):  # retry na wyścig o username
+            username = self._unique_username(base_username)
+            try:
+                with transaction.atomic():
+                    user = self.UserModel.objects.create_user(
+                        username=username, email=email
+                    )
+                    user.first_name = claims.get("given_name") or ""
+                    user.last_name = claims.get("family_name") or ""
+                    user.is_staff = False
+                    user.is_superuser = False
+                    user.is_active = True
+                    user.set_unusable_password()
+                    user.save()
+                    with transaction.atomic():  # savepoint na wpis tożsamości
+                        OIDCIdentity.objects.create(user=user, issuer=issuer, sub=sub)
+                break
+            except IntegrityError:
+                # albo username zajęty (retry), albo (issuer, sub) zajęte przez
+                # równoległe logowanie tego samego usera → zwróć jego konto.
+                existing = OIDCIdentity.objects.filter(issuer=issuer, sub=sub).first()
+                if existing is not None:
+                    return existing.user
+                continue
+        else:
+            raise SuspiciousOperation("OIDC: nie udało się utworzyć konta")
 
         self._assign_uczelnia(user)
         # Powiąż autora po przypisaniu uczelni — dopasowanie jest scope'owane
-        # do accessible_uczelnie, więc kolejność ma znaczenie.
-        user.sprobuj_dopasowac_autora()
+        # do accessible_uczelnie. Po e-mailu/nazwiskach tylko dla zaufanego
+        # claimu (inaczej niezweryfikowany adres mógłby podpiąć cudzego Autora).
+        user.sprobuj_dopasowac_autora(match_email=trusted, match_names=trusted)
 
         logger.info(
-            "OIDC: utworzono konto username=%s email=%s (zwykłe, bez is_staff)",
+            "OIDC: utworzono konto username=%s (bez is_staff), sub związany",
             username,
-            email,
         )
         return user

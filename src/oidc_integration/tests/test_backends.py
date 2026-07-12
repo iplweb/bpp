@@ -182,6 +182,8 @@ def test_create_user_zaklada_zwykle_konto_bez_is_staff():
         {
             "preferred_username": "jkowalski",
             "email": "jan@uafm.edu.pl",
+            "email_verified": True,
+            "_bpp_email_trusted": True,
             "given_name": "Jan",
             "family_name": "Kowalski",
             "sub": "abc-123",
@@ -212,6 +214,8 @@ def test_create_user_email_z_mail_po_normalizacji():
             {
                 "preferred_username": "99999@student-afm.edu.pl",
                 "mail": "99999@student-afm.edu.pl",
+                "email": "99999@student-afm.edu.pl",
+                "email_verified": True,
                 "given_name": "Test",
                 "family_name": "Testowy",
                 "sub": "66662961",
@@ -246,18 +250,24 @@ def test_create_user_unika_kolizji_username():
     backend.UserModel = UserModel
     # ten sam preferred_username, inny e-mail → username nie może kolidować
     user = backend.create_user(
-        {"preferred_username": "jkowalski", "email": "jan@uafm.edu.pl"}
+        {
+            "preferred_username": "jkowalski",
+            "email": "jan@uafm.edu.pl",
+            "email_verified": True,
+            "_bpp_email_trusted": True,
+        }
     )
 
     assert user.username == "jkowalski-2"
 
 
 @pytest.mark.django_db
+@override_settings(OIDC_REQUIRE_EMAIL_VERIFIED=False)
 def test_create_user_username_fallback_do_sub():
     backend = _backend()
     backend.UserModel = get_user_model()
 
-    # brak preferred_username i email → username z sub
+    # brak preferred_username i email → username z sub (gate email off)
     user = backend.create_user({"sub": "tylko-sub-789"})
 
     assert user.username == "tylko-sub-789"
@@ -277,6 +287,8 @@ def test_create_user_username_z_settingu():
         {
             "preferred_username": "jkowalski",
             "email": "jan@uafm.edu.pl",
+            "email_verified": True,
+            "_bpp_email_trusted": True,
             "sub": "abc-123",
         }
     )
@@ -292,14 +304,19 @@ def test_create_user_przypisuje_uczelnie_wg_skrotu():
     backend.UserModel = get_user_model()
 
     user = backend.create_user(
-        {"preferred_username": "jkowalski", "email": "jan@uafm.edu.pl"}
+        {
+            "preferred_username": "jkowalski",
+            "email": "jan@uafm.edu.pl",
+            "email_verified": True,
+            "_bpp_email_trusted": True,
+        }
     )
 
     assert list(user.accessible_uczelnie.all()) == [uczelnia]
 
 
 @pytest.mark.django_db
-@override_settings(OIDC_LOGIN_SKROT="UAFM")
+@override_settings(OIDC_LOGIN_SKROT="UAFM", OIDC_REQUIRE_EMAIL_VERIFIED=False)
 def test_create_user_bez_pasujacej_uczelni_nie_przypisuje():
     # Uczelnia o innym skrócie — brak dopasowania, konto bez przypisania.
     baker.make("bpp.Uczelnia", skrot="INNA")
@@ -327,7 +344,12 @@ def test_create_user_dopasowuje_autora_w_uczelni():
 
     user = backend.create_user(
         backend._normalized(
-            {"preferred_username": "jkowalski", "mail": "jan@uafm.edu.pl"}
+            {
+                "preferred_username": "jkowalski",
+                "mail": "jan@uafm.edu.pl",
+                "email": "jan@uafm.edu.pl",
+                "email_verified": True,
+            }
         )
     )
 
@@ -349,7 +371,12 @@ def test_create_user_nie_dopasowuje_autora_z_obcej_uczelni():
 
     user = backend.create_user(
         backend._normalized(
-            {"preferred_username": "jkowalski", "mail": "jan@uafm.edu.pl"}
+            {
+                "preferred_username": "jkowalski",
+                "mail": "jan@uafm.edu.pl",
+                "email": "jan@uafm.edu.pl",
+                "email_verified": True,
+            }
         )
     )
 
@@ -373,7 +400,7 @@ def test_update_user_dopasowuje_autora():
 
     backend = _backend()
     backend.UserModel = UserModel
-    backend.update_user(user, {"email": "jan@uafm.edu.pl"})
+    backend.update_user(user, {"email": "jan@uafm.edu.pl", "_bpp_email_trusted": True})
 
     user.refresh_from_db()
     assert user.autor_id == autor.pk
@@ -481,3 +508,74 @@ def test_filter_cross_realm_same_sub_not_matched(db):
     b = _backend()
     claims = {"sub": "S1", "iss": "https://kc", "email": "jan@x.pl"}
     assert list(b.filter_users_by_claims(claims)) == []
+
+
+# --- Task 6: create_user atomowo + fail-closed na kolizję e-maila + bind sub ---
+
+
+def test_create_user_refuses_on_email_collision(db, settings):
+    # REPRO TAKEOVERU: istnieje admin z tym adresem; napastnik loguje się z
+    # nowego (issuer, sub) i tym samym e-mailem → NIE wolno założyć konta.
+    settings.OIDC_GRACE_BIND_ENABLED = False
+    baker.make("bpp.BppUser", email="admin@x.pl", is_superuser=True)
+    b = _backend()
+    claims = {
+        "sub": "S9",
+        "iss": "https://kc",
+        "email": "admin@x.pl",
+        "email_verified": True,
+        "_bpp_email_trusted": True,
+        "preferred_username": "attacker",
+    }
+    with pytest.raises(SuspiciousOperation):
+        b.create_user(claims)
+
+
+def test_create_user_new_person_binds_sub(db, settings):
+    settings.OIDC_REQUIRE_EMAIL_VERIFIED = True
+    b = _backend()
+    claims = {
+        "sub": "S10",
+        "iss": "https://kc",
+        "email": "nowy@x.pl",
+        "email_verified": True,
+        "_bpp_email_trusted": True,
+        "preferred_username": "nowy",
+        "given_name": "N",
+        "family_name": "X",
+    }
+    user = b.create_user(claims)
+    assert user.oidc_identities.filter(issuer="https://kc", sub="S10").exists()
+    assert user.is_staff is False
+
+
+def test_create_user_rejects_untrusted_email_when_required(db, settings):
+    settings.OIDC_REQUIRE_EMAIL_VERIFIED = True
+    b = _backend()
+    claims = {
+        "sub": "S11",
+        "iss": "https://kc",
+        "email": "x@x.pl",
+        "email_verified": False,
+        "_bpp_email_trusted": False,
+        "preferred_username": "x",
+    }
+    with pytest.raises(SuspiciousOperation):
+        b.create_user(claims)
+
+
+def test_create_user_allows_untrusted_when_gate_off(db, settings):
+    # Gdy gate email_verified wyłączony, niezaufany e-mail zakłada konto,
+    # ale dopasowanie autora po e-mailu/nazwiskach jest pominięte (nie ufamy).
+    settings.OIDC_REQUIRE_EMAIL_VERIFIED = False
+    b = _backend()
+    claims = {
+        "sub": "S12",
+        "iss": "https://kc",
+        "email": "x@x.pl",
+        "email_verified": False,
+        "_bpp_email_trusted": False,
+        "preferred_username": "x",
+    }
+    user = b.create_user(claims)
+    assert user.oidc_identities.filter(sub="S12").exists()
