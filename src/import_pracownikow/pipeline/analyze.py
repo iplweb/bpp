@@ -498,7 +498,22 @@ def analizuj(parent, p):
 
     liczba_odpiec = _materializuj_odpiecia(parent)
 
-    parent.stan = ImportPracownikow.STAN_PRZEANALIZOWANY
+    # Skrót Krok 1 → Krok 2: jeśli WSZYSTKIE jednostki i tytuły z pliku są już
+    # w bazie (twarde dopasowania → zero decyzji do rozstrzygnięcia), zapis
+    # struktury nic by nie utworzył. Pomijamy Krok 1 i lądujemy od razu w fazie
+    # osób (struktura_zintegrowana). Wiersze mają już ustawione jednostkę/tytuł
+    # (twarde matche z analizy), a bramka tytułów jest pusta — import osób może
+    # ruszyć bez cichego tworzenia czegokolwiek. Gdy jest cokolwiek do
+    # rozstrzygnięcia — normalny Krok 1 (przeanalizowany).
+    struktura_bez_decyzji = (
+        not parent.jednostki_do_decyzji.exists()
+        and not parent.tytuly_do_decyzji.exists()
+    )
+    parent.stan = (
+        ImportPracownikow.STAN_STRUKTURA_ZINTEGROWANA
+        if struktura_bez_decyzji
+        else ImportPracownikow.STAN_PRZEANALIZOWANY
+    )
     parent.save(update_fields=["stan"])
 
     wiersze = parent.get_details_set()

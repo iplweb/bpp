@@ -123,12 +123,17 @@ class ImportPracownikow(LiveOperation):
     przepnij_wszystkie_prace = models.BooleanField(
         "Zaznacz wszystkie prace do przepięcia na nowe jednostki",
         default=False,
-        help_text="Gdy zaznaczone, wszystkie prace autorów zostaną domyślnie "
-        "oznaczone do przepięcia na jednostki z pliku. ZAZNACZ przy imporcie "
-        "struktury autorów do ŚWIEŻEJ bazy (np. tuż po imporcie do PBN). "
-        "Na „dojrzałej” bazie produkcyjnej NA PEWNO zostaw odznaczone — "
-        "przepięłoby to historyczne afiliacje. Można korygować per wiersz "
-        "przed zapisem osób.",
+        # HTML (crispy renderuje help_text przez |safe) — świadomie łamiemy tekst
+        # na linie <br> i podbijamy CAPS-ami <strong>, bo to opcja groźna na
+        # dojrzałej bazie. Ten sam string dosłownie w migracji 0021 (inaczej
+        # makemigrations wygeneruje AlterField).
+        help_text="Gdy zaznaczone, <strong>WSZYSTKIE prace autorów</strong> "
+        "zostaną domyślnie oznaczone do przepięcia na jednostki z pliku.<br>"
+        "<strong>ZAZNACZ</strong> przy imporcie struktury autorów do "
+        "<strong>ŚWIEŻEJ</strong> bazy (np. tuż po imporcie do PBN).<br>"
+        "Na <strong>DOJRZAŁEJ</strong> bazie produkcyjnej <strong>NA PEWNO "
+        "zostaw ODZNACZONE</strong> — przepięłoby to historyczne afiliacje.<br>"
+        "Można korygować per wiersz przed zapisem osób.",
     )
     zakres_integracji = models.CharField(
         "Zakres integracji",

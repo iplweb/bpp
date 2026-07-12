@@ -49,7 +49,9 @@ def test_przepnij_wszystkie_pre_zaznacza_flage(admin_client, admin_user):
     )
     assert resp.status_code == 302
     imp.refresh_from_db()
-    assert imp.stan == ImportPracownikow.STAN_PRZEANALIZOWANY
+    # Jednostka i tytuł z pliku są już w bazie (twarde dopasowania) → analiza
+    # przeskakuje Krok 1 i ląduje od razu w fazie osób (struktura_zintegrowana).
+    assert imp.stan == ImportPracownikow.STAN_STRUKTURA_ZINTEGROWANA
     row = imp.importpracownikowrow_set.get()
     assert row.autor_id == autor.pk
     assert row.przepnij_prace is True

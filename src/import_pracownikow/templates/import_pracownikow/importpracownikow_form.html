@@ -21,4 +21,28 @@
     {% load crispy_forms_tags bpp_formdefaults %}
     <div class="formdefaults-wrap">{% bpp_formdefaults_button form %}</div>
     {% crispy form %}
+
+    {# „Przepnij wszystkie prace" to opcja groźna na dojrzałej bazie — przy #}
+    {# ZAZNACZANIU wymuszamy świadome potwierdzenie (confirm). Anulowanie #}
+    {# cofa zaznaczenie. Vanilla JS na DOMContentLoaded (nie zależy od #}
+    {# kolejności $(document).ready). #}
+    <script>
+    document.addEventListener('DOMContentLoaded', function () {
+        var cb = document.getElementById('id_przepnij_wszystkie_prace');
+        if (!cb) { return; }
+        cb.addEventListener('change', function () {
+            if (!cb.checked) { return; }
+            var ok = confirm(
+                "UWAGA — PRZEPIĘCIE WSZYSTKICH PRAC\n\n" +
+                "Zaznaczasz opcję, która DOMYŚLNIE oznaczy WSZYSTKIE prace " +
+                "autorów do przepięcia na jednostki z pliku.\n\n" +
+                "Na DOJRZAŁEJ bazie produkcyjnej przepnie to HISTORYCZNE " +
+                "afiliacje — to zwykle NIE jest to, czego chcesz. Zaznaczaj " +
+                "tylko przy imporcie do ŚWIEŻEJ bazy.\n\n" +
+                "Czy na pewno wiesz, co robisz?"
+            );
+            if (!ok) { cb.checked = false; }
+        });
+    });
+    </script>
 {% endblock %}

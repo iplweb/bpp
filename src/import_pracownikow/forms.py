@@ -1,5 +1,5 @@
 from crispy_forms.helper import FormHelper
-from crispy_forms.layout import ButtonHolder, Submit
+from crispy_forms.layout import HTML, ButtonHolder, Submit
 from crispy_forms_foundation.layout import Column, Fieldset, Layout, Row
 from django import forms
 
@@ -42,9 +42,19 @@ class NowyImportForm(forms.ModelForm):
                 Row(
                     Column("data_zmian_personalnych", css_class="large-6 small-12"),
                 ),
+                # „Przepnij wszystkie prace" to opcja groźna i rzadko potrzebna —
+                # chowamy ją w domyślnie ZWINIĘTYM <details> (natywny collapsible,
+                # bez JS). Input zwiniętego <details> normalnie się wysyła, a
+                # confirm (po #id_przepnij_wszystkie_prace) dalej działa.
+                HTML(
+                    '<details class="callout secondary">'
+                    '<summary><span class="fi-widget"></span> '
+                    "Opcje zaawansowane — masowe przepięcie prac</summary>"
+                ),
                 Row(
                     Column("przepnij_wszystkie_prace", css_class="large-12 small-12"),
                 ),
+                HTML("</details>"),
                 formdefaults_html_after(self),
             ),
             ButtonHolder(

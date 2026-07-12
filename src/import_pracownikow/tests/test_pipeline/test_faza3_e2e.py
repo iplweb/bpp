@@ -47,7 +47,10 @@ def test_e2e_osoba_sklejona_status_i_wybor(admin_client, admin_user):
     )
     assert resp.status_code == 302
     imp.refresh_from_db()
-    assert imp.stan == ImportPracownikow.STAN_PRZEANALIZOWANY
+    # Jednostka i tytuł z pliku są już w bazie → zero decyzji strukturalnych →
+    # analiza przeskakuje Krok 1 i ląduje w fazie osób. Decyzje osobowe (wybór
+    # kandydata dla wiersza „wielu") rozstrzygamy niżej, już w Kroku 2.
+    assert imp.stan == ImportPracownikow.STAN_STRUKTURA_ZINTEGROWANA
 
     wiersze = {
         r.dane_znormalizowane["nazwisko"]: r for r in imp.importpracownikowrow_set.all()
@@ -69,11 +72,9 @@ def test_e2e_osoba_sklejona_status_i_wybor(admin_client, admin_user):
     assert wiersze["Kowalski"].autor_id == dup1.pk
     assert wiersze["Kowalski"].zmiany_potrzebne is True
 
-    # Dwustopniowy commit: Krok 1 struktura → Krok 2 osoby (eager).
+    # Struktura była już w bazie → analiza auto-przeszła do fazy osób (asercja
+    # wyżej), więc zostaje sam import osób (Krok 2, zakres pelny).
     url_zatw = reverse("import_pracownikow:zatwierdz", kwargs={"pk": imp.pk})
-    admin_client.post(url_zatw, {"zakres": "jednostki"})
-    imp.refresh_from_db()
-    assert imp.stan == ImportPracownikow.STAN_STRUKTURA_ZINTEGROWANA
     resp = admin_client.post(url_zatw, {"zakres": "pelny"})
     imp.refresh_from_db()
     assert imp.stan == ImportPracownikow.STAN_ZINTEGROWANY

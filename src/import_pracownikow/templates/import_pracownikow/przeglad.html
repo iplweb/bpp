@@ -37,21 +37,26 @@
             {% endif %}
             {# Item 2: podgląd tytułów — także gdy wszystkie dopasowane (wtedy #}
             {# „nic nie powstanie"), żeby user zawsze widział, co się stanie. #}
+            {# Przycisk „Zobacz tytuły" TYLKO gdy jest co oglądać/utworzyć #}
+            {# (pokaz_tytuly); przy wszystkich w bazie zostaje sam komunikat. #}
             {% if ma_tytuly %}
                 <p>
                     <span class="fi-crown"></span>
                     {% if pokaz_tytuly %}
                         {{ liczniki_tytulow.do_utworzenia }} tytułów do utworzenia ·
                         {{ liczniki_tytulow.do_sprawdzenia }} do sprawdzenia.
+                        <a href="{% url "import_pracownikow:tytuly" parent_object.pk %}"
+                           class="button success">Zobacz tytuły</a>
                     {% else %}
                         Wszystkie tytuły z pliku są już w bazie — nic nowego nie
                         powstanie.
                     {% endif %}
-                    <a href="{% url "import_pracownikow:tytuly" parent_object.pk %}"
-                       class="button success">Zobacz tytuły</a>
                 </p>
             {% endif %}
             {# Dwa warianty struktury OBOK siebie (jeden formularz, name=zakres). #}
+            {# „jednostki + tytuły" pokazujemy TYLKO gdy są tytuły do utworzenia #}
+            {# (pokaz_tytuly) — inaczej dubluje „tylko jednostki" (nic nie #}
+            {# doda). Gdy wszystkie tytuły w bazie zostaje sam zapis jednostek. #}
             <form method="post"
                   action="{% url "import_pracownikow:zatwierdz" parent_object.pk %}">
                 {% csrf_token %}
@@ -59,21 +64,26 @@
                         class="button">
                     <span class="fi-marker"></span> Zapisz tylko jednostki
                 </button>
-                <button type="submit" name="zakres" value="struktura"
-                        class="button">
-                    <span class="fi-crown"></span> Zapisz jednostki + tytuły
-                </button>
+                {% if pokaz_tytuly %}
+                    <button type="submit" name="zakres" value="struktura"
+                            class="button">
+                        <span class="fi-crown"></span> Zapisz jednostki + tytuły
+                    </button>
+                {% endif %}
             </form>
             {# Item 3: „tylko jednostki" ODRACZA tytuły, ale import osób ich NIE #}
             {# utworzy po cichu — Krok 2 poprosi o utworzenie brakujących tytułów #}
-            {# przed zapisem osób. „jednostki + tytuły" robi to od razu. #}
-            <p class="help-text">
-                <span class="fi-info"></span>
-                „Zapisz tylko jednostki" odkłada tytuły — zanim zaimportujesz
-                osoby, Krok 2 poprosi o ich utworzenie (import osób nie tworzy
-                tytułów po cichu). Wybierz „jednostki + tytuły", żeby utworzyć je
-                już teraz.
-            </p>
+            {# przed zapisem osób. „jednostki + tytuły" robi to od razu. Objaśnienie #}
+            {# ma sens tylko, gdy oba przyciski są widoczne (są tytuły do utworzenia). #}
+            {% if pokaz_tytuly %}
+                <p class="help-text">
+                    <span class="fi-info"></span>
+                    „Zapisz tylko jednostki" odkłada tytuły — zanim zaimportujesz
+                    osoby, Krok 2 poprosi o ich utworzenie (import osób nie tworzy
+                    tytułów po cichu). Wybierz „jednostki + tytuły", żeby utworzyć je
+                    już teraz.
+                </p>
+            {% endif %}
         </div>
 
         <div class="callout secondary">

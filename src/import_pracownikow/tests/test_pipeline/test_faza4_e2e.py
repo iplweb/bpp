@@ -45,7 +45,10 @@ def test_e2e_nowy_autor_i_odpiecie(admin_client, admin_user, yesterday):
     )
     assert resp.status_code == 302
     imp.refresh_from_db()
-    assert imp.stan == ImportPracownikow.STAN_PRZEANALIZOWANY
+    # Jednostka z pliku jest już w bazie, brak decyzji o tytułach → analiza
+    # przeskakuje Krok 1 i ląduje w fazie osób. Decyzje osobowe (utwórz nowego,
+    # odpięcie) rozstrzygamy niżej, już w Kroku 2.
+    assert imp.stan == ImportPracownikow.STAN_STRUKTURA_ZINTEGROWANA
 
     row = imp.importpracownikowrow_set.get()
     assert row.confidence == STATUS_BRAK
@@ -68,11 +71,9 @@ def test_e2e_nowy_autor_i_odpiecie(admin_client, admin_user, yesterday):
     )
     assert admin_client.post(url_odp, {"zaznaczone": "on"}).status_code == 200
 
-    # Dwustopniowy commit: Krok 1 struktura → Krok 2 osoby (eager).
+    # Struktura była już w bazie → analiza auto-przeszła do fazy osób (asercja
+    # wyżej), więc zostaje sam import osób (Krok 2, zakres pelny).
     url_zatw = reverse("import_pracownikow:zatwierdz", kwargs={"pk": imp.pk})
-    admin_client.post(url_zatw, {"zakres": "jednostki"})
-    imp.refresh_from_db()
-    assert imp.stan == ImportPracownikow.STAN_STRUKTURA_ZINTEGROWANA
     resp = admin_client.post(url_zatw, {"zakres": "pelny"})
     imp.refresh_from_db()
     assert imp.stan == ImportPracownikow.STAN_ZINTEGROWANY

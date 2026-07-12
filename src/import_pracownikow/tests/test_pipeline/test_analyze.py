@@ -56,7 +56,10 @@ def test_analiza_nie_tworzy_slownikow_ani_autor_jednostka(dwa_autory_z_jednostka
     assert row.funkcja_autora is None
     assert "funkcja_autora" in row.diff_do_utworzenia
     imp.refresh_from_db()
-    assert imp.stan == ImportPracownikow.STAN_PRZEANALIZOWANY
+    # Jednostka zmatchowana, brak decyzji o tytułach → analiza przeskakuje Krok 1
+    # (struktura już w bazie) i ustawia od razu fazę osób. Dry-run nadal niczego
+    # nie utworzył (asercje wyżej) — po prostu nie było co zapisywać.
+    assert imp.stan == ImportPracownikow.STAN_STRUKTURA_ZINTEGROWANA
 
 
 @pytest.mark.django_db

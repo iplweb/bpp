@@ -30,7 +30,9 @@ def test_analiza_z_mapowaniem_inaczej_nazwanych_kolumn(
     analizuj(imp, MockProgress(imp))
 
     imp.refresh_from_db()
-    assert imp.stan == ImportPracownikow.STAN_PRZEANALIZOWANY
+    # Jednostka zmatchowana, brak tytułów → zero decyzji strukturalnych →
+    # analiza przeskakuje Krok 1 (od razu faza osób).
+    assert imp.stan == ImportPracownikow.STAN_STRUKTURA_ZINTEGROWANA
     row = imp.importpracownikowrow_set.get()
     assert row.autor_id == autor.pk
     assert row.jednostka_id == jednostka.pk

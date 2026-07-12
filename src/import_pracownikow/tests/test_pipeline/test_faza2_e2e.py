@@ -37,8 +37,10 @@ def test_e2e_upload_mapowanie_analiza(admin_client, admin_user, dwa_autory_z_jed
     )
     assert resp.status_code == 302
     imp.refresh_from_db()
-    # analiza wykonana eager w ramach POST-a:
-    assert imp.stan == ImportPracownikow.STAN_PRZEANALIZOWANY
+    # analiza wykonana eager w ramach POST-a. Jednostka z pliku jest już w bazie
+    # (twarde dopasowanie), brak tytułów → zero decyzji strukturalnych → analiza
+    # przeskakuje Krok 1 i ląduje od razu w fazie osób (struktura_zintegrowana).
+    assert imp.stan == ImportPracownikow.STAN_STRUKTURA_ZINTEGROWANA
     row = imp.importpracownikowrow_set.get()
     assert row.autor_id == autor.pk
     assert row.jednostka_id == jednostka.pk

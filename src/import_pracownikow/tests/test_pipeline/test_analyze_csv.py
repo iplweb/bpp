@@ -38,7 +38,9 @@ def test_analiza_csv_end_to_end(admin_user, dwa_autory_z_jednostka):
     analizuj(imp, MockProgress(imp))
 
     imp.refresh_from_db()
-    assert imp.stan == ImportPracownikow.STAN_PRZEANALIZOWANY
+    # Jednostka i tytuł („dr") z pliku są już w bazie → zero decyzji
+    # strukturalnych → analiza przeskakuje Krok 1 (od razu faza osób).
+    assert imp.stan == ImportPracownikow.STAN_STRUKTURA_ZINTEGROWANA
     row = imp.importpracownikowrow_set.get()
     # źródło CSV rozpoznane, autor i jednostka zmatchowani:
     assert row.autor_id == autor.pk

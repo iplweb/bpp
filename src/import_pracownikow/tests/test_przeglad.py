@@ -158,8 +158,18 @@ def test_ludzie_gotowe_gdy_zero_do_akceptacji(admin_client, admin_user):
 @pytest.mark.django_db
 def test_krok1_struktura_w_przeanalizowany(admin_client, admin_user):
     """W podglądzie (Krok 1) hub oferuje TYLKO zapis struktury — dwa przyciski
-    strukturalne, BEZ importu osób (pelny). Import osób jest zablokowany."""
+    strukturalne, BEZ importu osób (pelny). Import osób jest zablokowany.
+
+    „Zapisz jednostki + tytuły" pokazuje się TYLKO gdy są tytuły do utworzenia
+    (pokaz_tytuly) — tu jawnie dodajemy decyzję o tytule."""
     imp = _imp(admin_user, stan=ImportPracownikow.STAN_PRZEANALIZOWANY)
+    baker.make(
+        ImportPracownikowTytul,
+        parent=imp,
+        nazwa_zrodlowa="prof.",
+        tryb=ImportPracownikowTytul.TRYB_BRAK,
+        utworzony=None,
+    )
     resp = admin_client.get(_url(imp))
     tresc = resp.content.decode("utf-8")
     assert reverse("import_pracownikow:zatwierdz", kwargs={"pk": imp.pk}) in tresc
@@ -212,21 +222,37 @@ def test_krok2_przycisk_zapisu_za_wymaganym_potwierdzeniem(admin_client, admin_u
 
 
 @pytest.mark.django_db
-def test_krok1_zobacz_tytuly_gdy_wszystkie_dopasowane(admin_client, admin_user):
-    """Item 2: w Kroku 1 „Zobacz tytuły" jest nawet gdy wszystkie tytuły
-    dopasowane (brak decyzji) — wiersz z ustawionym tytułem wystarcza; komunikat
-    mówi, że nic nowego nie powstanie."""
+def test_krok1_tytuly_wszystkie_w_bazie_bez_przyciskow(admin_client, admin_user):
+    """Gdy wszystkie tytuły z pliku są już w bazie (twarde dopasowania, zero
+    decyzji), Krok 1 pokazuje sam komunikat „nic nowego nie powstanie" — BEZ
+    przycisku „Zobacz tytuły" i BEZ „Zapisz jednostki + tytuły" (nie ma czego
+    tworzyć). Zostaje sam zapis jednostek.
+
+    Uwaga: żeby w ogóle był Krok 1 (a nie auto-skip do Kroku 2), potrzebna jest
+    jakaś decyzja o JEDNOSTCE — inaczej analiza przeskoczyłaby od razu do osób."""
     from bpp.models import Tytul
 
     imp = _imp(admin_user)  # PRZEANALIZOWANY (Krok 1)
+    baker.make(
+        ImportPracownikowJednostka,
+        parent=imp,
+        nazwa_zrodlowa="Katedra X",
+        tryb=ImportPracownikowJednostka.TRYB_BRAK,
+        utworzona=None,
+    )
     tytul = baker.make(Tytul, nazwa="Tytuł testowy QA", skrot="qa-tst")
-    _row(imp, STATUS_TWARDY, tytul=tytul)
+    _row(imp, STATUS_TWARDY, tytul=tytul)  # tytuł twardy → zero decyzji o tytule
     resp = admin_client.get(_url(imp))
     tresc = resp.content.decode("utf-8")
-    assert "Zobacz tytuły" in tresc
-    assert reverse("import_pracownikow:tytuly", kwargs={"pk": imp.pk}) in tresc
     # komunikat „wszystko dopasowane" (fraza w jednej linii szablonu)
     assert "Wszystkie tytuły z pliku są już w bazie" in tresc
+    # ...ale BEZ przycisku „Zobacz tytuły" i BEZ „Zapisz jednostki + tytuły"
+    assert "Zobacz tytuły" not in tresc
+    assert reverse("import_pracownikow:tytuly", kwargs={"pk": imp.pk}) not in tresc
+    assert "Zapisz jednostki + tytuły" not in tresc
+    assert 'value="struktura"' not in tresc
+    # zapis samych jednostek zostaje
+    assert "Zapisz tylko jednostki" in tresc
 
 
 @pytest.mark.django_db
@@ -360,8 +386,16 @@ def test_scoping_obcy_import_404(client, django_user_model, admin_user):
 def test_krok1_wyjasnia_ze_tylko_jednostki_odracza_tytuly(admin_client, admin_user):
     """Uwaga reviewera #2 (decyzja: odroczenie): hub Kroku 1 wprost tłumaczy, że
     „tylko jednostki" odkłada tytuły (utworzą się przy imporcie osób), żeby wybór
-    nie zaskakiwał operatora."""
+    nie zaskakiwał operatora. Objaśnienie pokazuje się tylko, gdy są tytuły do
+    utworzenia (są oba przyciski) — dlatego dodajemy decyzję o tytule."""
     imp = _imp(admin_user, stan=ImportPracownikow.STAN_PRZEANALIZOWANY)
+    baker.make(
+        ImportPracownikowTytul,
+        parent=imp,
+        nazwa_zrodlowa="prof.",
+        tryb=ImportPracownikowTytul.TRYB_BRAK,
+        utworzony=None,
+    )
     resp = admin_client.get(_url(imp))
     assert resp.status_code == 200
     tresc = resp.content.decode("utf-8")

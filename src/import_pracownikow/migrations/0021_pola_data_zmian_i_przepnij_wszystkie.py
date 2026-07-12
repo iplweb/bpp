@@ -25,7 +25,7 @@ class Migration(migrations.Migration):
             name="przepnij_wszystkie_prace",
             field=models.BooleanField(
                 default=False,
-                help_text="Gdy zaznaczone, wszystkie prace autorów zostaną domyślnie oznaczone do przepięcia na jednostki z pliku. ZAZNACZ przy imporcie struktury autorów do ŚWIEŻEJ bazy (np. tuż po imporcie do PBN). Na „dojrzałej” bazie produkcyjnej NA PEWNO zostaw odznaczone — przepięłoby to historyczne afiliacje. Można korygować per wiersz przed zapisem osób.",
+                help_text="Gdy zaznaczone, <strong>WSZYSTKIE prace autorów</strong> zostaną domyślnie oznaczone do przepięcia na jednostki z pliku.<br><strong>ZAZNACZ</strong> przy imporcie struktury autorów do <strong>ŚWIEŻEJ</strong> bazy (np. tuż po imporcie do PBN).<br>Na <strong>DOJRZAŁEJ</strong> bazie produkcyjnej <strong>NA PEWNO zostaw ODZNACZONE</strong> — przepięłoby to historyczne afiliacje.<br>Można korygować per wiersz przed zapisem osób.",
                 verbose_name="Zaznacz wszystkie prace do przepięcia na nowe jednostki",
             ),
         ),
