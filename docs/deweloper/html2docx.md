@@ -54,4 +54,6 @@ DJANGO_BPP_HTML2DOCX_URL=http://html2docx:3030/convert
 
 Wiring produkcyjnego compose (serwis + env + brak published portu) robi
 `bpp-deploy`. W dev `docker-compose.yml` serwis `html2docx` jest dodany, a
-appserver dostaje `DJANGO_BPP_HTML2DOCX_URL` wskazujący na niego.
+`DJANGO_BPP_HTML2DOCX_URL` siedzi w `.env.docker` (współdzielone przez
+appserver i workery — celery task oświadczeń również generuje DOCX, więc
+worker też musi widzieć usługę).

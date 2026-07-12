@@ -76,8 +76,7 @@ services:
     environment:
       - ENABLE_AUTORELOAD_ON_CODE_CHANGE=${ENABLE_AUTORELOAD_ON_CODE_CHANGE:-1}
       - DJANGO_BPP_CSRF_EXTRA_ORIGINS=https://bpp.localnet:10443,https://localhost:10443
-      # Fallback konwersji DOCX (html2docx) przez usługę HTTP zamiast docker.sock.
-      - DJANGO_BPP_HTML2DOCX_URL=http://html2docx:3030/convert
+      # DJANGO_BPP_HTML2DOCX_URL jest w .env.docker (współdzielone z workerami).
     entrypoint: ["/entrypoint-appserver.sh"]
     depends_on:
       redis:
