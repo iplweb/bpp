@@ -24,6 +24,7 @@ SCRIPT_PATH = os.path.abspath(os.path.dirname(__file__))
 SITE_ROOT = os.path.abspath(os.path.join(SCRIPT_PATH, "..", ".."))
 
 SECRET_KEY_UNSET = "Please set the DJANGO_BPP_SECRET_KEY variable."
+ALTCHA_HMAC_KEY_UNSET = "Please set the ALTCHA_HMAC_KEY variable."
 
 
 # Ponieważ konieczna jest konfiguracja django-ldap-auth i potrzebne będą kolejne zmienne
@@ -105,6 +106,8 @@ env = environ.Env(
     DJANGO_BPP_DB_DISABLE_SSL=(bool, False),
     DJANGO_BPP_TEST_TEMPLATE=(str, ""),
     DJANGO_BPP_SECRET_KEY=(str, SECRET_KEY_UNSET),
+    ALTCHA_HMAC_KEY=(str, ALTCHA_HMAC_KEY_UNSET),
+    ZGLOS_CAPTCHA_ENABLED=(bool, False),
     DJANGO_BPP_MEDIA_ROOT=(str, os.path.join(os.getenv("HOME", "C:/"), "bpp-media")),
     #
     # Konfiguracja wymuszania zmiany haseł
@@ -857,6 +860,14 @@ if _test_template:
     DATABASES["default"]["TEST"] = test_settings
 
 SECRET_KEY = env("DJANGO_BPP_SECRET_KEY")
+
+# ALTCHA — proof-of-work CAPTCHA na anonimowym formularzu zgłoszeń publikacji.
+# Model klucza jak SECRET_KEY: sentinel default, realny klucz z env (auto-gen
+# w bpp-deploy). Captcha domyślnie WYŁĄCZONA (opt-in). Brak hard-raise — miękki
+# system-check WARNING (zglos_publikacje/checks.py) sygnalizuje placeholder.
+ALTCHA_HMAC_KEY = env("ALTCHA_HMAC_KEY")
+ZGLOS_CAPTCHA_ENABLED = env("ZGLOS_CAPTCHA_ENABLED")
+INSTALLED_APPS += ["django_altcha"]
 
 # Klucz Fernet do szyfrowania sekretów integracji (DSpace itd.).
 # Wygeneruj: python -c "from cryptography.fernet import Fernet;

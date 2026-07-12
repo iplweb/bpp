@@ -36,6 +36,15 @@ wheels = [
 ]
 
 [[package]]
+name = "altcha"
+version = "1.0.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/fb/0e/ec05af090d38d74e9a6ea55ce606549a4b13c3d62e340387f772ffc634e4/altcha-1.0.0.tar.gz", hash = "sha256:33056826a60efdc3d9651d5a13d72d7c8ee1c7f4456b9c9db65838f47fac9082", size = 11244, upload-time = "2025-12-14T05:30:31.127Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/88/19/978dac535829b3e9175427d4d91a34b0ec6e120375a38fabd9840acf32ca/altcha-1.0.0-py3-none-any.whl", hash = "sha256:78cc0fd3ba907d069252e4ea47e0dd981d4d9bd41f360333cc76ca2ce2d2a46c", size = 9161, upload-time = "2025-12-14T05:30:29.815Z" },
+]
+
+[[package]]
 name = "amqp"
 version = "5.3.1"
 source = { registry = "https://pypi.org/simple" }
@@ -376,6 +385,7 @@ dependencies = [
     { name = "django", marker = "platform_python_implementation != 'PyPy'" },
     { name = "django-admin-sortable2", marker = "platform_python_implementation != 'PyPy'" },
     { name = "django-admin-tools", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "django-altcha", marker = "platform_python_implementation != 'PyPy'" },
     { name = "django-autocomplete-light", marker = "platform_python_implementation != 'PyPy'" },
     { name = "django-autoslug", marker = "platform_python_implementation != 'PyPy'" },
     { name = "django-axes", marker = "platform_python_implementation != 'PyPy'" },
@@ -558,6 +568,7 @@ requires-dist = [
     { name = "django", specifier = ">=5.2.16,<5.3" },
     { name = "django-admin-sortable2", specifier = ">=2.3.1,<3" },
     { name = "django-admin-tools", specifier = "==0.9.3" },
+    { name = "django-altcha", specifier = ">=1.0.0" },
     { name = "django-auth-ldap", marker = "extra == 'ldap'", specifier = ">=5.3.0" },
     { name = "django-autocomplete-light", specifier = "==5.0.0" },
     { name = "django-autoslug", specifier = "==1.9.9" },
@@ -1466,6 +1477,19 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/1c/97/3c429698dca7e90d4ca141494d6dda59156a600fb7712426cdebe66bef88/django-admin-tools-0.9.3.tar.gz", hash = "sha256:5aee0735907f0807c88b793f6b14eccff586e652d41e77f02c691f624f965672", size = 468063, upload-time = "2023-08-10T12:40:33.419Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/2a/ac/53ba422cf4da78ecd1444ba98a751e2649d76d66d6301bd574e59537b697/django_admin_tools-0.9.3-py2.py3-none-any.whl", hash = "sha256:f4bef88a5c5f4b97a760c09b822fc6f0e9f12c91a755860b1c011d01345282d3", size = 294775, upload-time = "2023-08-10T12:40:36.273Z" },
+]
+
+[[package]]
+name = "django-altcha"
+version = "1.0.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "altcha", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "django", marker = "platform_python_implementation != 'PyPy'" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/a9/7d/c77f7a0b6aac8d08d27c0e7de98217c37413bdc641c496c228076875a645/django_altcha-1.0.0.tar.gz", hash = "sha256:06a4f437b086a0c296b53e02dbd7f783ce07972150b8238dbae6da8cfb284efa", size = 61790, upload-time = "2026-04-21T10:40:57.301Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/da/42/4205a5e66e198a18ad5c8fc07e83084f8285eca7f7f0fd50052de8a84f63/django_altcha-1.0.0-py3-none-any.whl", hash = "sha256:023a90675df2a5fab8203a79edc322207dd0b7a9e6edac731b9063bd8bad4b83", size = 51285, upload-time = "2026-04-21T10:40:55.472Z" },
 ]
 
 [[package]]

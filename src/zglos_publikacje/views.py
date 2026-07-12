@@ -210,6 +210,13 @@ MODEL_FORMA_DOSTEPU_TO_FORM = {
 }
 
 
+# Marker w storage.extra_data: krok 0 z poprawnym ALTCHA już przeszedł, więc
+# przy rewalidacji w render_done pole captcha nie powstaje (unik re-solve /
+# replay-block). Trzymany w extra_data (NIE w sesji) — render_done po done()
+# i GET-restart robią storage.reset() → 1 PoW = 1 przebieg wizardu (sekcja B).
+ZGLOS_CAPTCHA_OK_KEY = "captcha_ok"
+
+
 class Zgloszenie_PublikacjiWizard(UczelniaSettingRequiredMixin, SessionWizardView):
     uczelnia_attr = "pokazuj_formularz_zglaszania_publikacji"
 
@@ -263,11 +270,27 @@ class Zgloszenie_PublikacjiWizard(UczelniaSettingRequiredMixin, SessionWizardVie
 
     def get_form_kwargs(self, step=None):
         kwargs = super().get_form_kwargs(step)
+        if step == "0":
+            # Bramka anon-only (sekcja B). Flag czytany CALL-TIME
+            # (settings.ZGLOS_CAPTCHA_ENABLED), by @override_settings w testach
+            # działał. Marker w extra_data → po zaliczonym PoW pole znika, więc
+            # rewalidacja w render_done nie wymusza re-solve.
+            kwargs["captcha_wymagany"] = (
+                settings.ZGLOS_CAPTCHA_ENABLED
+                and not self.request.user.is_authenticated
+                and not self.storage.extra_data.get(ZGLOS_CAPTCHA_OK_KEY)
+            )
         if step == "2":
             step0 = self.get_cleaned_data_for_step("0") or {}
             step1 = self.get_cleaned_data_for_step("1") or {}
             kwargs["rodzaj"] = step0.get("rodzaj")
             kwargs["forma_dostepu"] = step1.get("forma_dostepu")
+            # F2: pole `email` niezmienialne dla zalogowanego z realnym e-mailem
+            # (liczone call-time z request.user — stabilne w przebiegu wizardu).
+            kwargs["email_zablokowany"] = (
+                self.request.user.is_authenticated
+                and self.request.user.email != PUSTY_ADRES_EMAIL
+            )
             # Multi-hosted: forma musi dostać uczelnię z requestu, inaczej
             # spada do Uczelnia.objects.get() (crash przy >1 uczelni).
             kwargs["uczelnia"] = Uczelnia.objects.get_for_request(self.request)
@@ -345,6 +368,13 @@ class Zgloszenie_PublikacjiWizard(UczelniaSettingRequiredMixin, SessionWizardVie
         return super().get_form_initial(step)
 
     def process_step(self, form):
+        if self.steps.current == "0":
+            # Krok 0 przeszedł walidację (process_step woła się PO is_valid),
+            # więc ALTCHA — jeśli pole było obecne — jest zweryfikowane. Marker
+            # w extra_data zdejmuje pole przy rewalidacji w render_done.
+            extra = self.storage.extra_data
+            extra[ZGLOS_CAPTCHA_OK_KEY] = True
+            self.storage.extra_data = extra
         if self.steps.current == "2":
             self.request.session[const.SESSION_KEY] = form.cleaned_data.get("rok")
         return super().process_step(form)

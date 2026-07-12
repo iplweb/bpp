@@ -8,6 +8,8 @@ from django import forms
 from django.core.exceptions import ValidationError
 from django.forms import inlineformset_factory
 from django.forms.widgets import HiddenInput
+from django.urls import reverse_lazy
+from django_altcha import AltchaField
 
 from bpp.models import Autor, Dyscyplina_Naukowa, Jednostka, Uczelnia
 from zglos_publikacje.models import (
@@ -149,6 +151,23 @@ class RodzajPublikacjiForm(forms.Form):
         ],
         widget=forms.RadioSelect,
     )
+
+    def __init__(self, *args, captcha_wymagany=False, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Bramka anon-only (sekcja B): pole ALTCHA powstaje TYLKO gdy wizard
+        # tak zażąda (captcha ON + anonim + brak markera). Dla zalogowanych
+        # i przy captcha OFF pola nie ma → dotychczasowa suita bez zmian.
+        if captcha_wymagany:
+            # `auto="onload"` (nie onsubmit): kafelki kroku 0 wołają
+            # form.submit() bezpośrednio, omijając zdarzenie `submit`, na
+            # którym widget przechwyciłby formularz → PoW liczony przy
+            # załadowaniu strony. `challengeurl` (nie challengejson) daje
+            # refetchonexpire dla dłuższego wypełniania.
+            self.fields["captcha"] = AltchaField(
+                label="Weryfikacja",
+                challengeurl=reverse_lazy("zglos_publikacje:altcha-challenge"),
+                auto="onload",
+            )
 
 
 class FormaDostepuForm(forms.Form):
@@ -315,7 +334,13 @@ class Zgloszenie_Publikacji_DaneForm(forms.ModelForm):
         )
 
     def __init__(
-        self, *args, rodzaj=None, forma_dostepu=None, pliki_juz_zapisane=False, **kw
+        self,
+        *args,
+        rodzaj=None,
+        forma_dostepu=None,
+        pliki_juz_zapisane=False,
+        email_zablokowany=False,
+        **kw,
     ):
         self.rodzaj = rodzaj
         self.forma_dostepu = forma_dostepu
@@ -352,6 +377,14 @@ class Zgloszenie_Publikacji_DaneForm(forms.ModelForm):
         self._usun_pola_wg_formy_dostepu(forma_dostepu)
         self._usun_pola_wg_rodzaju(rodzaj)
         self._dostosuj_strona_www(rodzaj, forma_dostepu)
+
+        # F2: zalogowany z realnym e-mailem → pole `email` niezmienialne.
+        # `disabled=True` (NIE tylko readonly w widgecie) sprawia, że Django
+        # ignoruje wartość z POST i bierze `initial` (e-mail konta, ustawiany
+        # w get_form_initial kroku 2) → wymuszenie serwerowe, nie tylko wizualne.
+        if email_zablokowany and "email" in self.fields:
+            self.fields["email"].disabled = True
+
         self._zbuduj_layout()
 
     def clean(self):
