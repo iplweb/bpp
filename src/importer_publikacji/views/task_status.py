@@ -7,7 +7,7 @@ Redis już SUCCESS, ale session.save() jeszcze nie zafiałduje w DB.
 
 from celery.result import AsyncResult
 from django.http import HttpResponse, HttpResponseRedirect
-from django.shortcuts import get_object_or_404, render
+from django.shortcuts import render
 from django.views import View
 
 from ..models import ImportSession
@@ -30,7 +30,7 @@ class ImportTaskStatusView(ImporterPermissionMixin, View):
     """GET — renderuje partial postępu (HTMX) lub pełną stronę."""
 
     def get(self, request, session_id):
-        session = get_object_or_404(ImportSession, pk=session_id)
+        session = self.get_scoped_or_404(ImportSession, pk=session_id)
         is_htmx = request.headers.get("HX-Request") == "true"
 
         if session.status == ImportSession.Status.IMPORT_FAILED:

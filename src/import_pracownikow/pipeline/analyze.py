@@ -423,6 +423,15 @@ def _przetworz_wiersz(
         podstawowe_miejsce_pracy=normalize_nullboleanfield(
             elem.get("podstawowe_miejsce_pracy")
         ),
+        # Item 9: globalny opt-in „przepnij wszystkie prace" pre-zaznacza flagę
+        # tylko dla wierszy z autorem i rozstrzygniętą jednostką (dla reszty
+        # nie ma czego przepinać). Faza integracji i tak filtruje kwalifikację
+        # (F1/F2/F3), a user może korygować per wiersz przed zapisem osób.
+        przepnij_prace=(
+            parent.przepnij_wszystkie_prace
+            and autor is not None
+            and jednostka_na_wierszu is not None
+        ),
         diff_do_utworzenia=diff,
         zmiany_potrzebne=False,
     )

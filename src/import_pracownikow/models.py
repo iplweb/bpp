@@ -24,9 +24,11 @@ from import_common.exceptions import BPPDatabaseError
 from import_common.forms import ExcelDateField
 from import_common.models import ImportRowMixin
 from import_pracownikow.pewnosc import (
+    CONFIDENCE_CHOICES,
     STATUS_BRAK,
     STATUS_CHOICES,
     STATUS_DISPLAY,
+    STATUS_RECZNY,
     STATUS_TWARDY,
     STATUS_WIELU,
     STATUS_ZGADYWANIE,
@@ -108,6 +110,26 @@ class ImportPracownikow(LiveOperation):
         "dopasowania) trafiają na ekran weryfikacji do utworzenia. Gdy "
         "odznaczone — wiersze z niedopasowanym tytułem zostają bez tytułu.",
     )
+    data_zmian_personalnych = models.DateField(
+        "Data zmian personalnych",
+        null=True,
+        blank=True,
+        help_text="Data, na którą obowiązuje ten wykaz zmian personalnych. "
+        "Zostanie użyta jako data początku pracy przy DOPISYWANIU autora do "
+        "jednostki (nowe powiązanie), gdy wiersz w pliku nie podaje własnej "
+        "daty zatrudnienia. Nie nadpisuje dat z pliku ani dat istniejących "
+        "powiązań.",
+    )
+    przepnij_wszystkie_prace = models.BooleanField(
+        "Zaznacz wszystkie prace do przepięcia na nowe jednostki",
+        default=False,
+        help_text="Gdy zaznaczone, wszystkie prace autorów zostaną domyślnie "
+        "oznaczone do przepięcia na jednostki z pliku. ZAZNACZ przy imporcie "
+        "struktury autorów do ŚWIEŻEJ bazy (np. tuż po imporcie do PBN). "
+        "Na „dojrzałej” bazie produkcyjnej NA PEWNO zostaw odznaczone — "
+        "przepięłoby to historyczne afiliacje. Można korygować per wiersz "
+        "przed zapisem osób.",
+    )
     zakres_integracji = models.CharField(
         "Zakres integracji",
         max_length=20,
@@ -150,15 +172,25 @@ class ImportPracownikow(LiveOperation):
         ``self.stan`` jest już finalny (analyze/integrate ustawiają go na tej
         samej instancji ``self``).
 
-        Auto-przejście TYLKO po analizie (dry-run) → hub „szczegóły importu"
-        (Krok 1). Po integracji zwracamy ``None`` — zostajemy na panelu wyniku
-        liveops z podsumowaniem (zintegrowano/utworzono/pominięto). Zastępuje
+        Auto-przejście: po analizie (dry-run) → hub „szczegóły importu"
+        (Krok 1); po zapisaniu struktury (``struktura_zintegrowana``) → hub
+        (Krok 2, import osób) z query-paramem ``?zapisano=struktura``, który
+        na fresh-GET wyzwala jednorazowy flash (``messages`` nie działa z
+        celery ``on_commit``, więc komunikat ustawia dopiero widok huba).
+        Po PEŁNEJ integracji osób (``zintegrowany``) zwracamy ``None`` —
+        zostajemy na panelu wyniku liveops z podsumowaniem
+        (zintegrowano/utworzono/pominięto) i linkiem do logu zmian. Zastępuje
         martwy inline-``<script>`` z ``import_pracownikow_result.html``, który
         nigdy się nie wykonywał: liveops wstrzykuje wynik przez
         ``DOMParser``+``replaceWith``, a tak wstawiony ``<script>`` przeglądarka
         oznacza „already started"."""
         if self.stan == self.STAN_PRZEANALIZOWANY:
             return reverse("import_pracownikow:przeglad", kwargs={"pk": self.pk})
+        if self.stan == self.STAN_STRUKTURA_ZINTEGROWANA:
+            return (
+                reverse("import_pracownikow:przeglad", kwargs={"pk": self.pk})
+                + "?zapisano=struktura"
+            )
         return None
 
     def run(self, p):
@@ -355,6 +387,7 @@ class ImportPracownikow(LiveOperation):
         ``Count`` — bez N+1."""
         liczniki = {
             STATUS_TWARDY: 0,
+            STATUS_RECZNY: 0,
             STATUS_ZGADYWANIE: 0,
             STATUS_WIELU: 0,
             STATUS_BRAK: 0,
@@ -396,6 +429,35 @@ class ImportPracownikow(LiveOperation):
             self.tytuly_do_decyzji.filter(utworzony__isnull=True),
             ImportPracownikowTytul.TRYB_BRAK,
             ImportPracownikowTytul.TRYB_ZGADYWANIE,
+        )
+
+    @property
+    def ma_tytuly(self):
+        """Czy import w ogóle dotyka tytułów (kolumna tytułu w pliku) — decyduje
+        o pokazaniu afordancji „Zobacz tytuły" na hubie (item 2). Prawda, gdy są
+        decyzje o tytułach ALBO któryś wiersz ma dopasowany tytuł."""
+        return (
+            self.tytuly_do_decyzji.exists()
+            or self.importpracownikowrow_set.filter(tytul__isnull=False).exists()
+        )
+
+    @property
+    def tytuly_wymagaja_rozstrzygniecia(self):
+        """Czy są tytuły z pliku, które import osób UTWORZYŁBY/USTAWIŁ, a które
+        NIE zostały jeszcze zmaterializowane (``utworzony=None``) i nie są
+        świadomie pominięte (``decyzja != pomin``).
+
+        Bramka item 3: import osób (zakres pełny) nie może po cichu tworzyć
+        tytułów — najpierw trzeba je rozstrzygnąć/utworzyć. „Zapisz tylko
+        jednostki" odkłada tytuły → po tej ścieżce ta właściwość jest prawdą i
+        import osób pozostaje zablokowany, dopóki tytuły nie trafią do bazy
+        (przycisk „Utwórz brakujące tytuły" w Kroku 2 albo „Zapisz jednostki +
+        tytuły" w Kroku 1). ``pomin`` liczymy jako rozstrzygnięte (świadoma
+        decyzja: nie ustawiaj tytułu)."""
+        return (
+            self.tytuly_do_decyzji.filter(utworzony__isnull=True)
+            .exclude(decyzja=ImportPracownikowTytul.DECYZJA_POMIN)
+            .exists()
         )
 
 
@@ -459,7 +521,7 @@ class ImportPracownikowRow(ImportRowMixin, models.Model):
     pominiety_bo_nieaktualny = models.BooleanField(default=False)
 
     confidence = models.CharField(  # noqa: DJ001
-        max_length=20, choices=STATUS_CHOICES, null=True, blank=True
+        max_length=20, choices=CONFIDENCE_CHOICES, null=True, blank=True
     )
     korekta_uzytkownika = models.JSONField(default=dict, blank=True)
     wybrany_kandydat = models.ForeignKey(
@@ -583,29 +645,39 @@ class ImportPracownikowRow(ImportRowMixin, models.Model):
         except DataError as e:
             raise BPPDatabaseError(self.dane_z_xls, self, f"DataError {e}") from e
 
-    def _integrate_autor_jednostka(self):
-        aj = self.autor_jednostka
-        dane = self.dane_bardziej_znormalizowane
+    def _integruj_daty_aj(self, aj, dane):
+        """Ustawia daty zatrudnienia na powiązaniu z danych wiersza.
 
-        # #4: rozpoczęcie pracy stemplujemy TYLKO gdy puste (nie nadpisujemy
-        # istniejącej daty). Priorytet: data zatrudnienia z pliku; w razie braku
-        # — data importu (dziś). Dawniej data z pliku nadpisywała istniejącą
-        # wartość — teraz jej nie ruszamy (decyzja usera, #4).
+        Polityka „no-overwrite" (#4): ``rozpoczal_prace`` stemplujemy TYLKO gdy
+        puste — nie nadpisujemy istniejącej daty (decyzja usera #4; dawniej data
+        z pliku nadpisywała istniejącą wartość). Priorytet przy stemplowaniu
+        pustej daty: data zatrudnienia z pliku → globalna „data zmian
+        personalnych" z importu (item 8) → dzień importu (dziś). Item 8 dotyczy
+        właśnie dopisywania autora do jednostki (nowe AJ, pusta data), więc jest
+        spójny z no-overwrite."""
         if aj.rozpoczal_prace is None:
-            nowa_data = dane.get("data_zatrudnienia") or timezone.localdate()
+            nowa_data = (
+                dane.get("data_zatrudnienia")
+                or self.parent.data_zmian_personalnych
+                or timezone.localdate()
+            )
             aj.rozpoczal_prace = nowa_data
             self.log_zmian["autor_jednostka"].append(
                 f"data rozpoczęcia pracy na {nowa_data}"
             )
 
-        if (
-            dane.get("data_końca_zatrudnienia") is not None
-            and aj.zakonczyl_prace != dane["data_końca_zatrudnienia"]
-        ):
-            aj.zakonczyl_prace = dane["data_końca_zatrudnienia"]
+        data_konca = dane.get("data_końca_zatrudnienia")
+        if data_konca is not None and aj.zakonczyl_prace != data_konca:
+            aj.zakonczyl_prace = data_konca
             self.log_zmian["autor_jednostka"].append(
-                f"data końca zatrudnienia na {dane['data_końca_zatrudnienia']}"
+                f"data końca zatrudnienia na {data_konca}"
             )
+
+    def _integrate_autor_jednostka(self):
+        aj = self.autor_jednostka
+        dane = self.dane_bardziej_znormalizowane
+
+        self._integruj_daty_aj(aj, dane)
 
         if self.funkcja_autora is not None and aj.funkcja != self.funkcja_autora:
             aj.funkcja = self.funkcja_autora
@@ -700,6 +772,13 @@ class ImportPracownikowRow(ImportRowMixin, models.Model):
 
         if log.get("przepiecie_pominiete"):
             yield "Przepięcie pominięte: " + log["przepiecie_pominiete"]
+
+    @property
+    def log_zmian_lista(self):
+        """Zmaterializowana lista opisów zmian (``sformatowany_log_zmian``) — do
+        ekranu audytu (item 6). Pusta lista = wiersz nic nie zmienił (nie
+        pokazujemy go w audycie)."""
+        return list(self.sformatowany_log_zmian())
 
 
 class ProfilMapowania(models.Model):

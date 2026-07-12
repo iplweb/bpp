@@ -280,6 +280,8 @@ def test_llm_schema_ukrywa_pola_pii_dla_api():
     assert "email" not in autor
     assert "adnotacje" not in autor
     assert "opis" not in autor
+    # data urodzenia = PII-wyrocznia (autor.urodzony = "..."); ukryta (uwaga #4)
+    assert "urodzony" not in autor
     # zachowane wg decyzji użytkownika
     assert "poprzednie_nazwiska" in autor
     assert "system_kadrowy_id" in autor

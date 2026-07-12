@@ -5,7 +5,11 @@ from django.urls import reverse
 from model_bakery import baker
 
 from bpp.models import Autor, Jednostka
-from import_pracownikow.models import ImportPracownikow, ImportPracownikowRow
+from import_pracownikow.models import (
+    ImportPracownikow,
+    ImportPracownikowRow,
+    ImportPracownikowTytul,
+)
 
 
 @pytest.mark.django_db
@@ -73,21 +77,44 @@ def test_panel_wyniku_analiza_przekierowuje_na_przeglad(admin_user):
 
 
 @pytest.mark.django_db
-def test_get_success_url_tylko_po_analizie(admin_user):
-    """``get_success_url()`` kieruje na hub TYLKO po analizie (dry-run). Po
-    integracji (struktura/pełna) zwraca ``None`` — zostajemy na panelu wyniku
-    liveops z podsumowaniem, zamiast auto-przeskoczyć."""
+def test_get_success_url_po_analizie_i_po_strukturze(admin_user):
+    """``get_success_url()`` auto-przenosi na hub po analizie (dry-run) ORAZ po
+    zapisaniu struktury (Krok 1 → Krok 2). Po strukturze dokleja
+    ``?zapisano=struktura`` (item 4 — wyzwala flash na hubie). Po PEŁNEJ
+    integracji osób i w stanie wyjściowym zwraca ``None`` (zostajemy na panelu
+    wyniku liveops z podsumowaniem)."""
     imp = baker.make(ImportPracownikow, owner=admin_user)
     przeglad = reverse("import_pracownikow:przeglad", kwargs={"pk": imp.pk})
     imp.stan = ImportPracownikow.STAN_PRZEANALIZOWANY
     assert imp.get_success_url() == przeglad
+    # Item 4: po zapisaniu struktury auto-przejście na Krok 2 z flag-paramem.
+    imp.stan = ImportPracownikow.STAN_STRUKTURA_ZINTEGROWANA
+    assert imp.get_success_url() == przeglad + "?zapisano=struktura"
     for stan in (
-        ImportPracownikow.STAN_STRUKTURA_ZINTEGROWANA,
         ImportPracownikow.STAN_ZINTEGROWANY,
         ImportPracownikow.STAN_UTWORZONY,
     ):
         imp.stan = stan
         assert imp.get_success_url() is None
+
+
+@pytest.mark.django_db
+def test_hub_flash_po_zapisie_struktury(admin_client, admin_user):
+    """Item 4: fresh-GET na hub z ``?zapisano=struktura`` (dokłada je
+    ``get_success_url`` po redircie liveops) pokazuje jednorazowy flash
+    „Struktura zapisana…". Bez paramu — brak flasha."""
+    imp = baker.make(
+        ImportPracownikow,
+        owner=admin_user,
+        stan=ImportPracownikow.STAN_STRUKTURA_ZINTEGROWANA,
+    )
+    url = reverse("import_pracownikow:przeglad", kwargs={"pk": imp.pk})
+    resp = admin_client.get(url + "?zapisano=struktura")
+    komunikaty = [m.message for m in list(resp.context["messages"])]
+    assert any("Struktura zapisana" in k for k in komunikaty)
+    # Bez paramu flash się nie pojawia.
+    resp2 = admin_client.get(url)
+    assert list(resp2.context["messages"]) == []
 
 
 @pytest.mark.django_db
@@ -135,9 +162,10 @@ def test_zatwierdz_osoby_blokowane_w_przeanalizowany(admin_client, admin_user):
 
 
 @pytest.mark.django_db
-def test_zatwierdz_struktura_blokowana_po_strukturze(admin_client, admin_user):
-    """Bramka: strukturę wolno zapisać tylko z podglądu — po jej zapisaniu
-    (struktura_zintegrowana) ponowny zapis struktury jest odrzucany."""
+def test_zatwierdz_jednostki_blokowane_po_strukturze(admin_client, admin_user):
+    """Bramka: zakres „same jednostki" wolno odpalić tylko z podglądu — po
+    zapisaniu struktury (struktura_zintegrowana) jest odrzucany (bez sensu
+    tworzyć jednostki drugi raz)."""
     imp = baker.make(
         ImportPracownikow,
         owner=admin_user,
@@ -149,6 +177,53 @@ def test_zatwierdz_struktura_blokowana_po_strukturze(admin_client, admin_user):
     assert resp.status_code == 400
     imp.refresh_from_db()
     assert imp.stan == ImportPracownikow.STAN_STRUKTURA_ZINTEGROWANA
+
+
+@pytest.mark.django_db
+def test_zatwierdz_osoby_blokowane_gdy_nierozstrzygniete_tytuly(
+    admin_client, admin_user
+):
+    """Item 3: import osób (pelny) z fazy osób jest ZABLOKOWANY, dopóki są
+    tytuły z pliku do utworzenia (nierozstrzygnięte) — import osób nie tworzy
+    ich po cichu. Stan nie rusza."""
+    imp = baker.make(
+        ImportPracownikow,
+        owner=admin_user,
+        stan=ImportPracownikow.STAN_STRUKTURA_ZINTEGROWANA,
+    )
+    baker.make(
+        ImportPracownikowTytul,
+        parent=imp,
+        nazwa_zrodlowa="prof. x",
+        tryb=ImportPracownikowTytul.TRYB_BRAK,
+        utworzony=None,
+        decyzja=ImportPracownikowTytul.DECYZJA_AKCEPTUJ,
+    )
+    url = reverse("import_pracownikow:zatwierdz", kwargs={"pk": imp.pk})
+    with patch.object(ImportPracownikow, "run", lambda self, p: None):
+        resp = admin_client.post(url, {"zakres": "pelny"})
+    assert resp.status_code == 400
+    imp.refresh_from_db()
+    assert imp.stan == ImportPracownikow.STAN_STRUKTURA_ZINTEGROWANA
+
+
+@pytest.mark.django_db
+def test_zatwierdz_struktura_dotworzenie_tytulow_z_fazy_osob(admin_client, admin_user):
+    """Item 3: zakres „struktura" (jednostki + tytuły) JEST dopuszczony z fazy
+    osób — to ścieżka „Utwórz brakujące tytuły" (dotworzenie odłożonych tytułów
+    przed importem osób)."""
+    imp = baker.make(
+        ImportPracownikow,
+        owner=admin_user,
+        stan=ImportPracownikow.STAN_STRUKTURA_ZINTEGROWANA,
+    )
+    url = reverse("import_pracownikow:zatwierdz", kwargs={"pk": imp.pk})
+    with patch.object(ImportPracownikow, "run", lambda self, p: None):
+        resp = admin_client.post(url, {"zakres": "struktura"})
+    imp.refresh_from_db()
+    assert imp.stan == ImportPracownikow.STAN_ZATWIERDZONY
+    assert imp.zakres_integracji == ImportPracownikow.ZAKRES_STRUKTURA
+    assert resp.status_code in (204, 302)
 
 
 @pytest.mark.django_db

@@ -478,6 +478,18 @@ class MultipleWorksImport(models.Model):
         related_name="importer_publikacji_batches",
         verbose_name="utworzył",
     )
+    uczelnia = models.ForeignKey(
+        "bpp.Uczelnia",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="importer_publikacji_batches",
+        verbose_name="uczelnia",
+        help_text=(
+            "Uczelnia hosta, z którego utworzono paczkę (multi-hosted). "
+            "Steruje izolacją widoczności paczki i jej wpisów."
+        ),
+    )
     provider_name = models.CharField("dostawca danych", max_length=50)
     raw_input = models.TextField("surowy wsad")
     created = models.DateTimeField("utworzono", auto_now_add=True)

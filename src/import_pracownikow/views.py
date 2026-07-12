@@ -42,6 +42,7 @@ from import_pracownikow.models import (
 )
 from import_pracownikow.pewnosc import (
     STATUS_BRAK,
+    STATUS_RECZNY,
     STATUS_TWARDY,
     odtworz_autor_jednostka,
 )
@@ -334,9 +335,10 @@ def _zwiaz_autora_z_wierszem(row, autor):
       ``get_or_create(jednostka_id=None)`` → ``IntegrityError`` ubijający cały
       task liveops. Mirror ``analyze._przetworz_wiersz`` (jednostka odroczona →
       ``autor_jednostka=None``, zdejmij wpis AJ, ``zmiany_potrzebne=False``);
-    - ręczny wybór jest jednoznaczny → ``confidence = STATUS_TWARDY``,
-      ``utworz_nowego=False``, ``przepnij_prace=False`` (G2: zmiana autora
-      unieważnia opt-in przepięcia poprzedniego autora);
+    - ręczny wybór jest jednoznaczny → ``confidence = STATUS_RECZNY``
+      (świadomy wybór operatora — NIE „twardy match" z auto-analizy, badge nie
+      kłamie), ``utworz_nowego=False``, ``przepnij_prace=False`` (G2: zmiana
+      autora unieważnia opt-in przepięcia poprzedniego autora);
     - zeruje ``wybrany_kandydat`` (``WybierzKandydataView`` przywraca je PO
       helperze jako provenance wyboru spośród kandydatów).
 
@@ -351,7 +353,7 @@ def _zwiaz_autora_z_wierszem(row, autor):
         row.zmiany_potrzebne = False
     else:
         odtworz_autor_jednostka(row, autor)
-    row.confidence = STATUS_TWARDY
+    row.confidence = STATUS_RECZNY
     row.utworz_nowego = False
     row.przepnij_prace = False
     row.wybrany_kandydat = None
@@ -402,7 +404,7 @@ class DopasujAutoraView(_WierszImportuMixin):
     ``import-autor-autocomplete`` — override dla ``twardy``/``zgadywanie``,
     wybór dla ``brak``, „inny autor" dla ``wielu``. Wiąże ``row.autor`` i
     przelicza jak ``WybierzKandydataView`` przez wspólny
-    ``_zwiaz_autora_z_wierszem`` (ustawia ``STATUS_TWARDY``).
+    ``_zwiaz_autora_z_wierszem`` (ustawia ``STATUS_RECZNY``).
 
     ``autor`` (pk) walidowany ``get_object_or_404`` — przy ręcznym ajaxie
     zamiast pk może przyjść tekst. Owner/superuser-scoped + bramka stanu
@@ -566,15 +568,19 @@ class ImportPracownikowResultsView(GroupRequiredMixin, ListView):
         return obj
 
     def get_queryset(self):
-        # non-twardy (do rozstrzygnięcia) na górę, potem kolejność z pliku.
-        # G5: prefetch kandydatów Z AUTOREM — partial dla wierszy `wielu` iteruje
-        # row.kandydaci.all i czyta k.autor per opcja dropdownu; bez tego N+1
-        # (setki zapytań przy dużych plikach).
+        # Rozstrzygnięte (twardy match + ręczny wybór operatora) na dół, wiersze
+        # do rozstrzygnięcia (brak/wielu/zgadywanie) na górę, potem kolejność z
+        # pliku. G5: prefetch kandydatów Z AUTOREM — partial dla wierszy `wielu`
+        # iteruje row.kandydaci.all i czyta k.autor per opcja dropdownu; bez
+        # tego N+1 (setki zapytań przy dużych plikach).
         return (
             self.parent_object.get_details_set()
             .annotate(
                 _prio=Case(
-                    When(confidence=STATUS_TWARDY, then=Value(1)),
+                    When(
+                        confidence__in=[STATUS_TWARDY, STATUS_RECZNY],
+                        then=Value(1),
+                    ),
                     default=Value(0),
                     output_field=IntegerField(),
                 )
@@ -623,6 +629,19 @@ class PodgladImportuView(GroupRequiredMixin, DetailView):
             raise Http404
         return obj
 
+    def get(self, request, *args, **kwargs):
+        # Item 4: flash po auto-redircie z zapisu struktury (Krok 1 → Krok 2).
+        # ``get_success_url`` dokleja ``?zapisano=struktura`` (messages nie
+        # działa z celery ``on_commit``, więc komunikat ustawiamy tu, na
+        # fresh-GET po redircie liveops).
+        if request.GET.get("zapisano") == "struktura":
+            messages.success(
+                request,
+                "Struktura zapisana. Teraz sprawdź dopasowania osób poniżej "
+                "i zaimportuj je do bazy (Krok 2).",
+            )
+        return super().get(request, *args, **kwargs)
+
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
         parent = self.object
@@ -637,6 +656,13 @@ class PodgladImportuView(GroupRequiredMixin, DetailView):
                 "liczniki_tytulow": parent.liczniki_tytulow(),
                 "pokaz_jednostki": parent.jednostki_do_decyzji.exists(),
                 "pokaz_tytuly": parent.tytuly_do_decyzji.exists(),
+                # Item 2: „Zobacz tytuły" w Kroku 1 nawet gdy wszystko dopasowane.
+                "ma_tytuly": parent.ma_tytuly,
+                # Item 3: bramka — import osób zablokowany, dopóki są tytuły z
+                # pliku nierozstrzygnięte (do utworzenia, nie zmaterializowane).
+                "tytuly_wymagaja_rozstrzygniecia": (
+                    parent.tytuly_wymagaja_rozstrzygniecia
+                ),
                 "odpiecia_count": odpiecia_count,
                 "pary_z_pliku_puste": pary_z_pliku_puste,
                 # Ostrzeżenie: wszystkie jednostki odroczone → wszystkie aktywne
@@ -654,6 +680,9 @@ class PodgladImportuView(GroupRequiredMixin, DetailView):
                     parent.faza_osob
                     or parent.stan == ImportPracownikow.STAN_ZINTEGROWANY
                 ),
+                # Item 6: ekran audytu (log zmian) ma sens po pełnej integracji
+                # osób — wtedy wiersze mają zapisany log_zmian.
+                "pokaz_audyt": parent.stan == ImportPracownikow.STAN_ZINTEGROWANY,
             }
         )
         return ctx
@@ -687,6 +716,43 @@ class OdpieciaView(GroupRequiredMixin, ListView):
 
     def get_context_data(self, **kwargs):
         return super().get_context_data(parent_object=self.parent_object, **kwargs)
+
+
+class LogZmianView(GroupRequiredMixin, ListView):
+    """Ekran audytu (item 6) — per-wiersz log zmian po integracji: utworzenia
+    (autor/jednostka/tytuł), zmiany Autora i Autor_Jednostka, przepięcia prac
+    (z→do, liczba) oraz wykonane odpięcia. Owner/superuser-scoped.
+
+    Czyta ``log_zmian`` (materializowany przez integrację) — wiersze bez zmian
+    (``log_zmian`` puste) NIE są pokazywane (filtr ``log_zmian__isnull=False``
+    plus per-wiersz ``log_zmian_lista`` w szablonie odsiewa puste rekordy)."""
+
+    group_required = GROUP_REQUIRED
+    template_name = "import_pracownikow/audyt.html"
+    context_object_name = "wiersze"
+    paginate_by = 100
+
+    @cached_property
+    def parent_object(self):
+        obj = get_object_or_404(ImportPracownikow, pk=self.kwargs["pk"])
+        if obj.owner_id != self.request.user.pk and not self.request.user.is_superuser:
+            raise Http404
+        return obj
+
+    def get_queryset(self):
+        # ``get_details_set`` adnotuje nr_arkusza/nr_wiersza (kolejność z pliku)
+        # i robi select_related — filtrujemy do wierszy z zapisanym log_zmian.
+        return self.parent_object.get_details_set().filter(log_zmian__isnull=False)
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(parent_object=self.parent_object, **kwargs)
+        ctx["odpiecia_wykonane"] = self.parent_object.odpiecia.filter(
+            wykonane=True
+        ).select_related(
+            "autor_jednostka__autor",
+            "autor_jednostka__jednostka",
+        )
+        return ctx
 
 
 class WeryfikacjaJednostekView(GroupRequiredMixin, View):
@@ -981,41 +1047,62 @@ class ZatwierdzImportView(_PkOwnerRestartMixin):
     struktura), same jednostki, albo jednostki + tytuły (bez osób).
 
     Bramka „najpierw struktura, potem osoby":
-    - zakres STRUKTURALNY (jednostki / jednostki+tytuły) wolno odpalić TYLKO z
-      podglądu (``przeanalizowany``) — to Krok 1;
+    - zakres STRUKTURALNY (jednostki / jednostki+tytuły) wolno odpalić z podglądu
+      (``przeanalizowany``, Krok 1) LUB z fazy osób (``struktura_zintegrowana``,
+      Krok 2) — to drugie służy DOTWORZENIU odłożonych tytułów przed importem
+      osób (item 3; idempotentne — reconcilery mają guard
+      ``utworzona``/``utworzony``);
     - PEŁNY import (osoby) TYLKO po zapisaniu struktury
-      (``struktura_zintegrowana``) — to Krok 2. Importowanie osób bez
-      rozstrzygniętych i zapisanych jednostek nie ma sensu (§ decyzja usera).
+      (``struktura_zintegrowana``, Krok 2) i TYLKO gdy nie ma nierozstrzygniętych
+      tytułów z pliku (item 3 — import osób nie tworzy tytułów po cichu).
+      Importowanie osób bez rozstrzygniętych jednostek nie ma sensu.
     Nieznana/brakująca wartość ``zakres`` → PELNY.
     """
 
     _ZAKRESY_PRAWIDLOWE = {z for z, _ in ImportPracownikow.ZAKRES_CHOICES}
-    _ZAKRESY_STRUKTURALNE = {
-        ImportPracownikow.ZAKRES_JEDNOSTKI,
-        ImportPracownikow.ZAKRES_STRUKTURA,
-    }
 
     def post(self, request, *args, **kwargs):
         obj = self.get_object()  # 404 dla nie-ownera
         zakres = request.POST.get("zakres", ImportPracownikow.ZAKRES_PELNY)
         if zakres not in self._ZAKRESY_PRAWIDLOWE:
             zakres = ImportPracownikow.ZAKRES_PELNY
-        if zakres in self._ZAKRESY_STRUKTURALNE:
-            stan_wymagany = ImportPracownikow.STAN_PRZEANALIZOWANY
-            blad = "Strukturę można zapisać tylko z podglądu (Krok 1)."
+        if zakres == ImportPracownikow.ZAKRES_JEDNOSTKI:
+            # Same jednostki — tylko z podglądu (Krok 1). Po zapisaniu struktury
+            # nie ma sensu ich zapisywać ponownie.
+            stany_wymagane = {ImportPracownikow.STAN_PRZEANALIZOWANY}
+            blad = "Zapis samych jednostek jest możliwy tylko z podglądu (Krok 1)."
+        elif zakres == ImportPracownikow.ZAKRES_STRUKTURA:
+            # Jednostki + tytuły: z podglądu (Krok 1) ALBO dotworzenie odłożonych
+            # tytułów w fazie osób (Krok 2, item 3; idempotentne — reconcilery
+            # jednostek/tytułów mają guard ``utworzona``/``utworzony``).
+            stany_wymagane = {
+                ImportPracownikow.STAN_PRZEANALIZOWANY,
+                ImportPracownikow.STAN_STRUKTURA_ZINTEGROWANA,
+            }
+            blad = (
+                "Strukturę można zapisać z podglądu (Krok 1) albo dotworzyć "
+                "brakujące tytuły w fazie osób (Krok 2)."
+            )
         else:
-            # PELNY = import osób: dozwolony dopiero po zapisaniu struktury.
-            stan_wymagany = ImportPracownikow.STAN_STRUKTURA_ZINTEGROWANA
+            # PELNY = import osób: dopiero po zapisaniu struktury i po
+            # rozstrzygnięciu tytułów (item 3 — brak cichego tworzenia tytułów).
+            if obj.tytuly_wymagaja_rozstrzygniecia:
+                return HttpResponseBadRequest(
+                    "Najpierw utwórz brakujące tytuły z pliku "
+                    "(Krok 2: „Utwórz brakujące tytuły”) — import osób nie "
+                    "tworzy ich po cichu."
+                )
+            stany_wymagane = {ImportPracownikow.STAN_STRUKTURA_ZINTEGROWANA}
             blad = "Najpierw zapisz strukturę (jednostki) — dopiero potem osoby."
         # Atomowy compare-and-set (uwaga reviewera #1): warunkowy UPDATE
-        # ``WHERE stan=stan_wymagany`` przestawia stan na ``zatwierdzony`` tylko
-        # gdy import NADAL jest w stanie wyjściowym. Dwa równoległe zatwierdzenia
-        # (celery z >1 workerem) serializuje baza — dokładnie jedno trafia 1
-        # wiersz i kolejkuje integrację; drugie dostaje 0 → 400. Bez tego oba
-        # przeszłyby bramkę na ``obj.stan`` odczytanym na starcie i wyzwoliłyby
-        # integrację dwa razy (duplikaty autorów/jednostek/przepięć).
+        # ``WHERE stan IN stany_wymagane`` przestawia stan na ``zatwierdzony``
+        # tylko gdy import NADAL jest w stanie wyjściowym. Dwa równoległe
+        # zatwierdzenia (celery z >1 workerem) serializuje baza — dokładnie jedno
+        # trafia 1 wiersz i kolejkuje integrację; drugie dostaje 0 → 400. Bez
+        # tego oba przeszłyby bramkę na ``obj.stan`` odczytanym na starcie i
+        # wyzwoliłyby integrację dwa razy (duplikaty autorów/jednostek/przepięć).
         zmieniono = ImportPracownikow.objects.filter(
-            pk=obj.pk, stan=stan_wymagany
+            pk=obj.pk, stan__in=stany_wymagane
         ).update(stan=ImportPracownikow.STAN_ZATWIERDZONY, zakres_integracji=zakres)
         if not zmieniono:
             return HttpResponseBadRequest(blad)

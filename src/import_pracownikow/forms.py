@@ -16,7 +16,17 @@ from import_pracownikow.models import ImportPracownikow
 class NowyImportForm(forms.ModelForm):
     class Meta:
         model = ImportPracownikow
-        fields = ["plik_xls"]
+        fields = [
+            "plik_xls",
+            "data_zmian_personalnych",
+            "przepnij_wszystkie_prace",
+        ]
+        widgets = {
+            # natywny date-picker przeglądarki (bez JS-owej zależności)
+            "data_zmian_personalnych": forms.DateInput(
+                attrs={"type": "date"}, format="%Y-%m-%d"
+            ),
+        }
 
     def __init__(self, *args, **kwargs):
         self.helper = FormHelper()
@@ -28,6 +38,12 @@ class NowyImportForm(forms.ModelForm):
                 formdefaults_html_before(self),
                 Row(
                     Column("plik_xls", css_class="large-12 small-12"),
+                ),
+                Row(
+                    Column("data_zmian_personalnych", css_class="large-6 small-12"),
+                ),
+                Row(
+                    Column("przepnij_wszystkie_prace", css_class="large-12 small-12"),
                 ),
                 formdefaults_html_after(self),
             ),

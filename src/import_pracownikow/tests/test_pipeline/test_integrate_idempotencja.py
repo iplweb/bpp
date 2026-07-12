@@ -33,6 +33,16 @@ def _ponow_commit(imp):
     imp.save(update_fields=["stan"])
 
 
+def _funkcja_asystent():
+    """Funkcja_Autora „asystent" — z baseline, a gdy sąsiedni test w xdist
+    wyczyścił dane referencyjne (TRUNCATE CASCADE w teardownie), tworzy własną.
+    Bez tego samo ``.get(nazwa="asystent")`` jest flaky pod równoległym runnerem
+    (ambient-data): przechodzi w izolacji, pada w niektórych układach shardów."""
+    return Funkcja_Autora.objects.filter(nazwa="asystent").first() or baker.make(
+        Funkcja_Autora, nazwa="asystent"
+    )
+
+
 @pytest.mark.django_db
 def test_dwukrotny_commit_nie_falszuje_pominiety_bo_nieaktualny(
     autor_jednostka_fixture,
@@ -40,7 +50,7 @@ def test_dwukrotny_commit_nie_falszuje_pominiety_bo_nieaktualny(
     # Wiersz czysto aktualizujący: AJ istnieje z funkcja=None, wiersz ustawia
     # funkcja_autora=asystent (istniejący FK → diff pusty, materializowano=False).
     autor, jednostka = autor_jednostka_fixture
-    funkcja = Funkcja_Autora.objects.get(nazwa="asystent")
+    funkcja = _funkcja_asystent()
     aj = baker.make(Autor_Jednostka, autor=autor, jednostka=jednostka, funkcja=None)
     imp = baker.make(ImportPracownikow, stan=ImportPracownikow.STAN_ZATWIERDZONY)
     row = ImportPracownikowRow.objects.create(
@@ -83,7 +93,7 @@ def test_dwukrotny_commit_nie_nadpisuje_log_zmian_audytu(autor_jednostka_fixture
     # Wiersz z prawdziwym driftem AJ (funkcja=None → asystent), materializowany
     # z istniejącego FK: 1. przebieg zapisuje realny ślad w log_zmian.
     autor, jednostka = autor_jednostka_fixture
-    funkcja = Funkcja_Autora.objects.get(nazwa="asystent")
+    funkcja = _funkcja_asystent()
     aj = baker.make(Autor_Jednostka, autor=autor, jednostka=jednostka, funkcja=None)
     imp = baker.make(ImportPracownikow, stan=ImportPracownikow.STAN_ZATWIERDZONY)
     row = ImportPracownikowRow.objects.create(
