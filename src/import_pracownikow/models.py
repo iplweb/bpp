@@ -684,6 +684,10 @@ class ImportPracownikowRow(ImportRowMixin, models.Model):
 
     log_zmian = JSONField(encoder=DjangoJSONEncoder, null=True, blank=True)
 
+    # Snapshot stanów pól (POLA_ROZNIC) zamrożony przy integracji — po niej baza
+    # = plik, więc live porównanie dałoby „zgodne"; filtr czyta stabilną wartość.
+    stany_pol_snapshot = JSONField(null=True, blank=True)
+
     MAPPING_DANE_NA_AUTOR = [
         ("numer", "system_kadrowy_id"),
         ("orcid", "orcid"),
@@ -789,9 +793,12 @@ class ImportPracownikowRow(ImportRowMixin, models.Model):
 
     def stany_pol(self):
         """Stan każdego pola różnic: ``{klucz: "zmienione"|"zgodne"|"brak"}``.
-        Live wyliczenie z ``POLA_ROZNIC`` (jednostka / email / tytuł / stopień /
-        funkcja / stanowisko). Zasila filtr stanu pól i atrybuty ``data-diff-*``
-        w szablonie."""
+        Zwraca zamrożony ``stany_pol_snapshot`` gdy istnieje (po integracji baza
+        = plik, więc live dałoby „zgodne"), inaczej live wyliczenie z
+        ``POLA_ROZNIC`` (jednostka / email / tytuł / stopień / funkcja /
+        stanowisko). Zasila filtr stanu pól i atrybuty ``data-diff-*``."""
+        if self.stany_pol_snapshot is not None:
+            return self.stany_pol_snapshot
         from import_pracownikow.roznice import POLA_ROZNIC
 
         return {klucz: ekstraktor(self) for klucz, _et, ekstraktor in POLA_ROZNIC}
@@ -1006,6 +1013,8 @@ class ImportPracownikowRow(ImportRowMixin, models.Model):
     @transaction.atomic
     def integrate(self):
         assert self.zmiany_potrzebne
+        # Zamroź stan pól ZANIM zmienimy bazę (potem live = „zgodne").
+        self.stany_pol_snapshot = self.stany_pol()
         self.log_zmian = {"autor": [], "autor_jednostka": []}
         self._integrate_autor()
         self._integrate_autor_jednostka()

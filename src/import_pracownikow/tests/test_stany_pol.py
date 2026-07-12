@@ -65,3 +65,28 @@ def test_stany_pol_ma_wszystkie_klucze():
         "funkcja",
         "stanowisko",
     }
+
+
+@pytest.mark.django_db
+def test_stany_pol_snapshot_stabilny_po_integracji():
+    """Po integracji baza = plik, ale snapshot pamięta że tytuł był zmieniony."""
+    # literal nie-kolidujący z baseline.sql (unique skrot na Tytul)
+    dr = baker.make("bpp.Tytul", nazwa="doktor testowy 2", skrot="dr-t2")
+    jedn = baker.make("bpp.Jednostka")
+    autor = baker.make("bpp.Autor", tytul=None)
+    aj = baker.make("bpp.Autor_Jednostka", autor=autor, jednostka=jedn)
+    row = baker.make(
+        ImportPracownikowRow,
+        autor=autor,
+        autor_jednostka=aj,
+        jednostka=jedn,
+        tytul=dr,
+        dane_znormalizowane={"tytuł_stopień": "dr"},
+    )
+    assert row.stany_pol()["tytul"] == "zmienione"  # live, pre-integracja
+    row.zmiany_potrzebne = True
+    row.integrate()
+    row.refresh_from_db()
+    # baza już zaktualizowana → live dałoby "zgodne", ale snapshot trzyma stan:
+    assert row.stany_pol_snapshot is not None
+    assert row.stany_pol()["tytul"] == "zmienione"
