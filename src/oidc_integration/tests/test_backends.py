@@ -11,14 +11,19 @@ import logging
 
 import pytest
 from django.contrib.auth import get_user_model
-from django.test import override_settings
+from django.core.exceptions import SuspiciousOperation
+from django.test import RequestFactory, override_settings
 from model_bakery import baker
 
 from oidc_integration.backends import BppOIDCBackend
 
 
 def _backend():
-    return object.__new__(BppOIDCBackend)
+    # Instancja bez __init__ (bazowy konstruktor wymaga kompletu OIDC_OP_*/
+    # OIDC_RP_*). UserModel ustawiamy tu, bo metody create_user/link go używają.
+    backend = object.__new__(BppOIDCBackend)
+    backend.UserModel = get_user_model()
+    return backend
 
 
 def test_verify_claims_przepuszcza_gdy_jest_email():
@@ -159,15 +164,11 @@ def test_normalized_fallback_na_preferred_username_z_domena():
 
 def test_normalized_odrzuca_gdy_username_bez_domeny():
     # brak claimów e-mail, a preferred_username bez domeny → odrzuć logowanie
-    from django.core.exceptions import SuspiciousOperation
-
     with pytest.raises(SuspiciousOperation):
         _backend()._normalized({"preferred_username": "jkowalski", "sub": "1"})
 
 
 def test_normalized_odrzuca_gdy_brak_email_i_username():
-    from django.core.exceptions import SuspiciousOperation
-
     with pytest.raises(SuspiciousOperation):
         _backend()._normalized({"sub": "123"})
 
@@ -181,6 +182,8 @@ def test_create_user_zaklada_zwykle_konto_bez_is_staff():
         {
             "preferred_username": "jkowalski",
             "email": "jan@uafm.edu.pl",
+            "email_verified": True,
+            "_bpp_email_trusted": True,
             "given_name": "Jan",
             "family_name": "Kowalski",
             "sub": "abc-123",
@@ -211,6 +214,8 @@ def test_create_user_email_z_mail_po_normalizacji():
             {
                 "preferred_username": "99999@student-afm.edu.pl",
                 "mail": "99999@student-afm.edu.pl",
+                "email": "99999@student-afm.edu.pl",
+                "email_verified": True,
                 "given_name": "Test",
                 "family_name": "Testowy",
                 "sub": "66662961",
@@ -245,18 +250,24 @@ def test_create_user_unika_kolizji_username():
     backend.UserModel = UserModel
     # ten sam preferred_username, inny e-mail → username nie może kolidować
     user = backend.create_user(
-        {"preferred_username": "jkowalski", "email": "jan@uafm.edu.pl"}
+        {
+            "preferred_username": "jkowalski",
+            "email": "jan@uafm.edu.pl",
+            "email_verified": True,
+            "_bpp_email_trusted": True,
+        }
     )
 
     assert user.username == "jkowalski-2"
 
 
 @pytest.mark.django_db
+@override_settings(OIDC_REQUIRE_EMAIL_VERIFIED=False)
 def test_create_user_username_fallback_do_sub():
     backend = _backend()
     backend.UserModel = get_user_model()
 
-    # brak preferred_username i email → username z sub
+    # brak preferred_username i email → username z sub (gate email off)
     user = backend.create_user({"sub": "tylko-sub-789"})
 
     assert user.username == "tylko-sub-789"
@@ -276,6 +287,8 @@ def test_create_user_username_z_settingu():
         {
             "preferred_username": "jkowalski",
             "email": "jan@uafm.edu.pl",
+            "email_verified": True,
+            "_bpp_email_trusted": True,
             "sub": "abc-123",
         }
     )
@@ -291,14 +304,19 @@ def test_create_user_przypisuje_uczelnie_wg_skrotu():
     backend.UserModel = get_user_model()
 
     user = backend.create_user(
-        {"preferred_username": "jkowalski", "email": "jan@uafm.edu.pl"}
+        {
+            "preferred_username": "jkowalski",
+            "email": "jan@uafm.edu.pl",
+            "email_verified": True,
+            "_bpp_email_trusted": True,
+        }
     )
 
     assert list(user.accessible_uczelnie.all()) == [uczelnia]
 
 
 @pytest.mark.django_db
-@override_settings(OIDC_LOGIN_SKROT="UAFM")
+@override_settings(OIDC_LOGIN_SKROT="UAFM", OIDC_REQUIRE_EMAIL_VERIFIED=False)
 def test_create_user_bez_pasujacej_uczelni_nie_przypisuje():
     # Uczelnia o innym skrócie — brak dopasowania, konto bez przypisania.
     baker.make("bpp.Uczelnia", skrot="INNA")
@@ -326,7 +344,12 @@ def test_create_user_dopasowuje_autora_w_uczelni():
 
     user = backend.create_user(
         backend._normalized(
-            {"preferred_username": "jkowalski", "mail": "jan@uafm.edu.pl"}
+            {
+                "preferred_username": "jkowalski",
+                "mail": "jan@uafm.edu.pl",
+                "email": "jan@uafm.edu.pl",
+                "email_verified": True,
+            }
         )
     )
 
@@ -348,7 +371,12 @@ def test_create_user_nie_dopasowuje_autora_z_obcej_uczelni():
 
     user = backend.create_user(
         backend._normalized(
-            {"preferred_username": "jkowalski", "mail": "jan@uafm.edu.pl"}
+            {
+                "preferred_username": "jkowalski",
+                "mail": "jan@uafm.edu.pl",
+                "email": "jan@uafm.edu.pl",
+                "email_verified": True,
+            }
         )
     )
 
@@ -372,14 +400,14 @@ def test_update_user_dopasowuje_autora():
 
     backend = _backend()
     backend.UserModel = UserModel
-    backend.update_user(user, {"email": "jan@uafm.edu.pl"})
+    backend.update_user(user, {"email": "jan@uafm.edu.pl", "_bpp_email_trusted": True})
 
     user.refresh_from_db()
     assert user.autor_id == autor.pk
 
 
 @pytest.mark.django_db
-@override_settings(OIDC_LOGIN_SKROT="")
+@override_settings(OIDC_LOGIN_SKROT="", OIDC_REQUIRE_EMAIL_VERIFIED=False)
 def test_create_user_bez_skrotu_nie_przypisuje():
     baker.make("bpp.Uczelnia", skrot="UAFM")
     backend = _backend()
@@ -388,3 +416,538 @@ def test_create_user_bez_skrotu_nie_przypisuje():
     user = backend.create_user({"preferred_username": "jkowalski"})
 
     assert user.accessible_uczelnie.count() == 0
+
+
+# --- Task 4: anotacja claims (iss, email_verified, _bpp_email_trusted) ---
+
+
+def test_email_trusted_requires_verified_and_matching_email():
+    b = _backend()
+    claims = b._normalized(
+        {
+            "mail": "jan@x.pl",
+            "sub": "1",
+            "iss": "https://kc/",
+            "email": "jan@x.pl",
+            "email_verified": True,
+        }
+    )
+    assert claims["_bpp_email_trusted"] is True
+    assert claims["iss"] == "https://kc"  # rstrip('/')
+
+
+def test_email_trusted_false_on_mail_first_mismatch():
+    b = _backend()
+    # mail (rozwiązany) != email (poświadczony przez email_verified)
+    claims = b._normalized(
+        {
+            "mail": "inst@x.pl",
+            "email": "prywatny@x.pl",
+            "email_verified": True,
+            "sub": "1",
+            "iss": "iss",
+        }
+    )
+    assert claims["_bpp_email_trusted"] is False
+
+
+def test_email_trusted_false_when_not_verified():
+    b = _backend()
+    claims = b._normalized(
+        {"email": "jan@x.pl", "email_verified": False, "sub": "1", "iss": "iss"}
+    )
+    assert claims["_bpp_email_trusted"] is False
+    assert claims["email_verified"] is False
+
+
+def test_email_trusted_false_on_username_fallback():
+    # e-mail wzięty z preferred_username (fallback) nie jest zaufany, nawet
+    # gdy email_verified byłby ustawiony gdzie indziej.
+    b = _backend()
+    claims = b._normalized(
+        {"preferred_username": "user@x.pl", "email_verified": True, "sub": "1"}
+    )
+    assert claims["email"] == "user@x.pl"
+    assert claims["_bpp_email_trusted"] is False
+
+
+# --- Task 5: filter_users_by_claims po (issuer, sub) ---
+
+
+def test_filter_matches_only_by_linked_sub(db):
+    from oidc_integration.models import OIDCIdentity
+
+    u = baker.make("bpp.BppUser", email="jan@x.pl")
+    OIDCIdentity.objects.create(user=u, issuer="https://kc", sub="S1")
+    b = _backend()
+    claims = {"sub": "S1", "iss": "https://kc", "email": "jan@x.pl"}
+    assert list(b.filter_users_by_claims(claims)) == [u]
+
+
+def test_filter_ignores_email_when_no_sub_link(db):
+    # Konto z tym samym e-mailem, ale BEZ powiązanego (issuer, sub) — nie
+    # wolno go dopasować (to jest właśnie zamknięte przejęcie po e-mailu).
+    baker.make("bpp.BppUser", email="jan@x.pl")
+    b = _backend()
+    claims = {"sub": "S1", "iss": "https://kc", "email": "jan@x.pl"}
+    assert list(b.filter_users_by_claims(claims)) == []
+
+
+def test_filter_empty_when_no_sub_or_iss(db):
+    b = _backend()
+    assert list(b.filter_users_by_claims({"iss": "https://kc"})) == []
+    assert list(b.filter_users_by_claims({"sub": "S1"})) == []
+
+
+def test_filter_cross_realm_same_sub_not_matched(db):
+    # Ten sam sub w innym realmie (issuer) NIE może dopasować konta.
+    from oidc_integration.models import OIDCIdentity
+
+    u = baker.make("bpp.BppUser", email="jan@x.pl")
+    OIDCIdentity.objects.create(user=u, issuer="https://other", sub="S1")
+    b = _backend()
+    claims = {"sub": "S1", "iss": "https://kc", "email": "jan@x.pl"}
+    assert list(b.filter_users_by_claims(claims)) == []
+
+
+# --- Task 6: create_user atomowo + fail-closed na kolizję e-maila + bind sub ---
+
+
+def test_create_user_refuses_on_email_collision(db, settings):
+    # REPRO TAKEOVERU: istnieje admin z tym adresem; napastnik loguje się z
+    # nowego (issuer, sub) i tym samym e-mailem → NIE wolno założyć konta.
+    settings.OIDC_GRACE_BIND_ENABLED = False
+    baker.make("bpp.BppUser", email="admin@x.pl", is_superuser=True)
+    b = _backend()
+    claims = {
+        "sub": "S9",
+        "iss": "https://kc",
+        "email": "admin@x.pl",
+        "email_verified": True,
+        "_bpp_email_trusted": True,
+        "preferred_username": "attacker",
+    }
+    with pytest.raises(SuspiciousOperation):
+        b.create_user(claims)
+
+
+def test_create_user_new_person_binds_sub(db, settings):
+    settings.OIDC_REQUIRE_EMAIL_VERIFIED = True
+    b = _backend()
+    claims = {
+        "sub": "S10",
+        "iss": "https://kc",
+        "email": "nowy@x.pl",
+        "email_verified": True,
+        "_bpp_email_trusted": True,
+        "preferred_username": "nowy",
+        "given_name": "N",
+        "family_name": "X",
+    }
+    user = b.create_user(claims)
+    assert user.oidc_identities.filter(issuer="https://kc", sub="S10").exists()
+    assert user.is_staff is False
+
+
+def test_create_user_rejects_untrusted_email_when_required(db, settings):
+    settings.OIDC_REQUIRE_EMAIL_VERIFIED = True
+    b = _backend()
+    claims = {
+        "sub": "S11",
+        "iss": "https://kc",
+        "email": "x@x.pl",
+        "email_verified": False,
+        "_bpp_email_trusted": False,
+        "preferred_username": "x",
+    }
+    with pytest.raises(SuspiciousOperation):
+        b.create_user(claims)
+
+
+def test_create_user_allows_untrusted_when_gate_off(db, settings):
+    # Gdy gate email_verified wyłączony, niezaufany e-mail zakłada konto,
+    # ale dopasowanie autora po e-mailu/nazwiskach jest pominięte (nie ufamy).
+    settings.OIDC_REQUIRE_EMAIL_VERIFIED = False
+    b = _backend()
+    claims = {
+        "sub": "S12",
+        "iss": "https://kc",
+        "email": "x@x.pl",
+        "email_verified": False,
+        "_bpp_email_trusted": False,
+        "preferred_username": "x",
+    }
+    user = b.create_user(claims)
+    assert user.oidc_identities.filter(sub="S12").exists()
+
+
+# --- Task 7: Grace Bind (opt-in, zawężony) ---
+
+
+def _grace_claims():
+    return {
+        "sub": "G1",
+        "iss": "https://kc",
+        "email": "old@x.pl",
+        "email_verified": True,
+        "_bpp_email_trusted": True,
+        "preferred_username": "old",
+    }
+
+
+def test_grace_binds_pure_oidc_account(db, settings):
+    settings.OIDC_GRACE_BIND_ENABLED = True
+    u = baker.make(
+        "bpp.BppUser",
+        email="old@x.pl",
+        is_staff=False,
+        is_superuser=False,
+        is_active=True,
+        pbn_token="",
+    )
+    u.set_unusable_password()
+    u.save()
+    b = _backend()
+    out = b._try_grace_bind(_grace_claims())
+    assert out == u
+    assert u.oidc_identities.filter(sub="G1").exists()
+
+
+def test_grace_binds_via_create_user_path(db, settings):
+    # Pełna ścieżka: create_user deleguje do grace przed fail-closed, więc
+    # kolizja e-maila NIE blokuje związania starego konta.
+    settings.OIDC_GRACE_BIND_ENABLED = True
+    u = baker.make("bpp.BppUser", email="old@x.pl", is_staff=False, pbn_token="")
+    u.set_unusable_password()
+    u.save()
+    b = _backend()
+    out = b.create_user(_grace_claims())
+    assert out == u
+    assert u.oidc_identities.filter(sub="G1").exists()
+
+
+def test_grace_skips_account_with_group(db, settings):
+    settings.OIDC_GRACE_BIND_ENABLED = True
+    u = baker.make("bpp.BppUser", email="old@x.pl", is_staff=False, pbn_token="")
+    u.set_unusable_password()
+    u.save()
+    u.groups.add(baker.make("auth.Group"))
+    b = _backend()
+    assert b._try_grace_bind(_grace_claims()) is None
+
+
+def test_grace_skips_staff_account(db, settings):
+    settings.OIDC_GRACE_BIND_ENABLED = True
+    u = baker.make("bpp.BppUser", email="old@x.pl", is_staff=True, pbn_token="")
+    u.set_unusable_password()
+    u.save()
+    b = _backend()
+    assert b._try_grace_bind(_grace_claims()) is None
+
+
+def test_grace_skips_account_with_usable_password(db, settings):
+    settings.OIDC_GRACE_BIND_ENABLED = True
+    u = baker.make("bpp.BppUser", email="old@x.pl", is_staff=False, pbn_token="")
+    u.set_password("secret")
+    u.save()
+    b = _backend()
+    assert b._try_grace_bind(_grace_claims()) is None
+
+
+def test_grace_skips_when_disabled(db, settings):
+    settings.OIDC_GRACE_BIND_ENABLED = False
+    baker.make("bpp.BppUser", email="old@x.pl")
+    b = _backend()
+    assert b._try_grace_bind(_grace_claims()) is None
+
+
+def test_grace_skips_untrusted_email(db, settings):
+    settings.OIDC_GRACE_BIND_ENABLED = True
+    u = baker.make("bpp.BppUser", email="old@x.pl", is_staff=False, pbn_token="")
+    u.set_unusable_password()
+    u.save()
+    b = _backend()
+    claims = dict(_grace_claims(), _bpp_email_trusted=False)
+    assert b._try_grace_bind(claims) is None
+
+
+def test_grace_skips_cross_realm_linked(db, settings):
+    from oidc_integration.models import OIDCIdentity
+
+    settings.OIDC_GRACE_BIND_ENABLED = True
+    u = baker.make("bpp.BppUser", email="old@x.pl", is_staff=False, pbn_token="")
+    u.set_unusable_password()
+    u.save()
+    OIDCIdentity.objects.create(user=u, issuer="https://other", sub="Z")
+    b = _backend()
+    assert b._try_grace_bind(_grace_claims()) is None
+
+
+# --- Task 8: tryb link w get_or_create_user ---
+
+
+def _link_backend(user, target_pk=None):
+    from django.contrib.sessions.backends.db import SessionStore
+
+    b = _backend()
+    req = RequestFactory().get("/oidc/callback/")
+    req.session = SessionStore()
+    req.user = user
+    req.session["oidc_link_mode"] = True
+    req.session["oidc_link_target"] = target_pk if target_pk is not None else user.pk
+    b.request = req
+    return b, req
+
+
+def test_link_mode_binds_without_email_failclosed(db):
+    u = baker.make("bpp.BppUser", email="me@x.pl")
+    b, req = _link_backend(u)
+    # własne konto koliduje z samym sobą po e-mailu — w trybie link to NIE
+    # może być SuspiciousOperation (omijamy fail-closed create_user).
+    b.get_userinfo = lambda *a, **k: {
+        "sub": "L1",
+        "iss": "https://kc",
+        "email": "me@x.pl",
+        "_bpp_email_trusted": True,
+    }
+    out = b.get_or_create_user("at", "it", {"iss": "https://kc"})
+    assert out == u
+    assert u.oidc_identities.filter(sub="L1").exists()
+    assert "oidc_link_mode" not in req.session
+
+
+def test_link_mode_rejects_target_mismatch(db):
+    u = baker.make("bpp.BppUser", email="me@x.pl")
+    other = baker.make("bpp.BppUser", email="other@x.pl")
+    b, req = _link_backend(u, target_pk=other.pk)
+    b.get_userinfo = lambda *a, **k: {"sub": "L2", "iss": "https://kc"}
+    with pytest.raises(SuspiciousOperation):
+        b.get_or_create_user("at", "it", {"iss": "https://kc"})
+    assert not u.oidc_identities.exists()
+    assert "oidc_link_mode" not in req.session
+
+
+def test_link_mode_rejects_sub_taken_by_other(db):
+    from oidc_integration.models import OIDCIdentity
+
+    victim = baker.make("bpp.BppUser", email="victim@x.pl")
+    OIDCIdentity.objects.create(user=victim, issuer="https://kc", sub="L3")
+    u = baker.make("bpp.BppUser", email="me@x.pl")
+    b, req = _link_backend(u)
+    b.get_userinfo = lambda *a, **k: {"sub": "L3", "iss": "https://kc"}
+    with pytest.raises(SuspiciousOperation):
+        b.get_or_create_user("at", "it", {"iss": "https://kc"})
+    # tożsamość nadal należy do ofiary, nie do nas
+    assert OIDCIdentity.objects.get(issuer="https://kc", sub="L3").user == victim
+    assert not u.oidc_identities.exists()
+    assert "oidc_link_mode" not in req.session
+
+
+def test_link_mode_idempotent_same_identity(db):
+    from oidc_integration.models import OIDCIdentity
+
+    u = baker.make("bpp.BppUser", email="me@x.pl")
+    OIDCIdentity.objects.create(user=u, issuer="https://kc", sub="L4")
+    b, req = _link_backend(u)
+    b.get_userinfo = lambda *a, **k: {"sub": "L4", "iss": "https://kc"}
+    out = b.get_or_create_user("at", "it", {"iss": "https://kc"})
+    assert out == u
+    assert u.oidc_identities.filter(sub="L4").count() == 1
+    assert "oidc_link_mode" not in req.session
+
+
+# --- Task 10: UX odmowy (komunikat fail-closed w sesji) ---
+
+
+def test_failclosed_sets_session_message(db):
+    from django.contrib.sessions.backends.db import SessionStore
+
+    baker.make("bpp.BppUser", email="a@x.pl")
+    b = _backend()
+    req = RequestFactory().get("/oidc/callback/")
+    req.session = SessionStore()
+    b.request = req
+    claims = {
+        "sub": "S",
+        "iss": "https://kc",
+        "email": "a@x.pl",
+        "_bpp_email_trusted": True,
+        "preferred_username": "p",
+    }
+    with pytest.raises(SuspiciousOperation):
+        b.create_user(claims)
+    assert "oidc_error_message" in req.session
+
+
+def test_failclosed_untrusted_sets_session_message(db, settings):
+    from django.contrib.sessions.backends.db import SessionStore
+
+    settings.OIDC_REQUIRE_EMAIL_VERIFIED = True
+    b = _backend()
+    req = RequestFactory().get("/oidc/callback/")
+    req.session = SessionStore()
+    b.request = req
+    claims = {
+        "sub": "S",
+        "iss": "https://kc",
+        "email": "new@x.pl",
+        "_bpp_email_trusted": False,
+        "preferred_username": "p",
+    }
+    with pytest.raises(SuspiciousOperation):
+        b.create_user(claims)
+    assert "oidc_error_message" in req.session
+
+
+def test_failclosed_without_request_still_raises(db):
+    # Bez request/sesji (np. test jednostkowy) _fail nadal podnosi wyjątek.
+    baker.make("bpp.BppUser", email="a@x.pl")
+    b = _backend()
+    claims = {
+        "sub": "S",
+        "iss": "https://kc",
+        "email": "a@x.pl",
+        "_bpp_email_trusted": True,
+        "preferred_username": "p",
+    }
+    with pytest.raises(SuspiciousOperation):
+        b.create_user(claims)
+
+
+# --- P2 FIX 1: kotwica na PODPISANYM id_token (nie na userinfo) ---
+
+
+def test_get_userinfo_rejects_sub_mismatch(mocker):
+    # OIDC Core §5.3.2: userinfo sub MUSI zgadzać się z id_token sub. Rozjazd
+    # (userinfo sub="EVIL", payload sub="GOOD") → SuspiciousOperation.
+    b = _backend()
+    mocker.patch.object(
+        BppOIDCBackend.__bases__[0],
+        "get_userinfo",
+        return_value={"sub": "EVIL", "email": "jan@x.pl"},
+    )
+    with pytest.raises(SuspiciousOperation):
+        b.get_userinfo("acc", "id", {"sub": "GOOD", "iss": "https://kc"})
+
+
+def test_get_userinfo_anchors_sub_on_payload(mocker):
+    # sub z payloadu (podpisany id_token) jest autorytatywny; gdy userinfo go
+    # nie niesie, i tak wygrywa payload.
+    b = _backend()
+    mocker.patch.object(
+        BppOIDCBackend.__bases__[0],
+        "get_userinfo",
+        return_value={"email": "jan@x.pl"},
+    )
+    out = b.get_userinfo("acc", "id", {"sub": "GOOD", "iss": "https://kc"})
+    assert out["sub"] == "GOOD"
+
+
+def test_get_userinfo_email_verified_from_payload_wins(mocker):
+    # email_verified z payloadu (podpisany) wygrywa nad userinfo. userinfo mówi
+    # verified, payload mówi NIE → wynik: niezweryfikowany (i nie zaufany).
+    b = _backend()
+    mocker.patch.object(
+        BppOIDCBackend.__bases__[0],
+        "get_userinfo",
+        return_value={
+            "sub": "GOOD",
+            "email": "jan@x.pl",
+            "email_verified": True,
+        },
+    )
+    out = b.get_userinfo(
+        "acc",
+        "id",
+        {"sub": "GOOD", "iss": "https://kc", "email_verified": False},
+    )
+    assert out["sub"] == "GOOD"
+    assert out["email_verified"] is False
+    assert out["_bpp_email_trusted"] is False
+
+
+def test_get_userinfo_iss_from_payload_authoritative(mocker):
+    # iss brany z payloadu (podpisany), nie z userinfo.
+    b = _backend()
+    mocker.patch.object(
+        BppOIDCBackend.__bases__[0],
+        "get_userinfo",
+        return_value={
+            "sub": "GOOD",
+            "email": "jan@x.pl",
+            "iss": "https://evil/",
+        },
+    )
+    out = b.get_userinfo(
+        "acc", "id", {"sub": "GOOD", "iss": "https://kc/", "email_verified": True}
+    )
+    assert out["iss"] == "https://kc"
+
+
+# --- P2 FIX 2: walidacja aud w verify_token ---
+
+
+def test_verify_token_rejects_wrong_aud(mocker, settings):
+    settings.OIDC_RP_CLIENT_ID = "bpp-client"
+    b = _backend()
+    mocker.patch.object(
+        BppOIDCBackend.__bases__[0],
+        "verify_token",
+        return_value={"aud": "other-client", "iss": "https://kc"},
+    )
+    with pytest.raises(SuspiciousOperation):
+        b.verify_token("tok")
+
+
+def test_verify_token_accepts_aud_string(mocker, settings):
+    settings.OIDC_RP_CLIENT_ID = "bpp-client"
+    b = _backend()
+    payload = {"aud": "bpp-client", "iss": "https://kc"}
+    mocker.patch.object(
+        BppOIDCBackend.__bases__[0], "verify_token", return_value=payload
+    )
+    assert b.verify_token("tok") == payload
+
+
+def test_verify_token_accepts_aud_list(mocker, settings):
+    settings.OIDC_RP_CLIENT_ID = "bpp-client"
+    b = _backend()
+    payload = {"aud": ["someone", "bpp-client"], "iss": "https://kc"}
+    mocker.patch.object(
+        BppOIDCBackend.__bases__[0], "verify_token", return_value=payload
+    )
+    assert b.verify_token("tok") == payload
+
+
+def test_verify_token_accepts_azp_fallback(mocker, settings):
+    settings.OIDC_RP_CLIENT_ID = "bpp-client"
+    b = _backend()
+    # aud wskazuje inny resource, ale azp == nasz client_id → OK.
+    payload = {"aud": "resource-server", "azp": "bpp-client", "iss": "https://kc"}
+    mocker.patch.object(
+        BppOIDCBackend.__bases__[0], "verify_token", return_value=payload
+    )
+    assert b.verify_token("tok") == payload
+
+
+def test_verify_token_skips_aud_when_client_id_unset(mocker):
+    # Instalacja bez OIDC (brak OIDC_RP_CLIENT_ID) → kontrola aud no-op.
+    b = _backend()
+    payload = {"aud": "cokolwiek", "iss": "https://kc"}
+    mocker.patch.object(
+        BppOIDCBackend.__bases__[0], "verify_token", return_value=payload
+    )
+    assert b.verify_token("tok") == payload
+
+
+# --- P2 FIX 4: is_active w filter_users_by_claims ---
+
+
+def test_filter_excludes_inactive_account(db):
+    from oidc_integration.models import OIDCIdentity
+
+    u = baker.make("bpp.BppUser", email="jan@x.pl", is_active=False)
+    OIDCIdentity.objects.create(user=u, issuer="https://kc", sub="S1")
+    b = _backend()
+    claims = {"sub": "S1", "iss": "https://kc", "email": "jan@x.pl"}
+    assert list(b.filter_users_by_claims(claims)) == []
