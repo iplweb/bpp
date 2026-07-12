@@ -74,6 +74,7 @@ from import_pracownikow.parsers.leksykony import zbuduj_parser_kontekst
 from import_pracownikow.parsers.osoba import rozbij_osobe
 from import_pracownikow.parsers.wartosci import (
     normalizuj_wartosci_wiersza,
+    oczysc_email,
     rozbij_nazwisko_imie,
     sklej_drugie_imie,
 )
@@ -370,14 +371,30 @@ def _klasyfikuj_stanowisko_wiersza(parent, stanowisko_str, reconciler_stanowisk)
     return None, STATUS_STANOWISKO_BRAK, None
 
 
-def _dane_znormalizowane_z_parserem(cleaned_data, rozbicie):
+def _lagodna_walidacja_wiersza(dane_form):
+    """Łagodna walidacja pól wiersza PRZED ``AutorForm.full_clean`` (§11) — dziś
+    e-mail. Mutuje ``dane_form`` in-place (czyści niepoprawne wartości) i zwraca
+    listę ostrzeżeń do zapisania w ``dane_znormalizowane["ostrzeżenia"]``.
+    Wyodrębnione z ``_przetworz_wiersz`` (utrzymuje jego złożoność w ryzach)."""
+    ostrzezenia = []
+    ostrz_email = oczysc_email(dane_form)
+    if ostrz_email:
+        ostrzezenia.append(ostrz_email)
+    return ostrzezenia
+
+
+def _dane_znormalizowane_z_parserem(cleaned_data, rozbicie, ostrzezenia=None):
     """Kopia cleaned_data wzbogacona o pewność rozbicia parsera (§7): confidence
     rozbicia (high/medium/low) i alternatywy trzymamy WEWNĄTRZ JSON, nie w
-    kolumnie ``confidence`` (ta jest statusem dopasowania AUTORA — §8)."""
+    kolumnie ``confidence`` (ta jest statusem dopasowania AUTORA — §8).
+    ``ostrzeżenia`` (np. o odrzuconym e-mailu) dokładamy pod własnym kluczem —
+    tam czyta je audyt i porównywarka."""
     dane = copy(cleaned_data)
     if rozbicie is not None:
         dane["parser_confidence"] = rozbicie.confidence
         dane["parser_alternatywy"] = rozbicie.alternatywy
+    if ostrzezenia:
+        dane["ostrzeżenia"] = ostrzezenia
     return dane
 
 
@@ -528,6 +545,10 @@ def _przetworz_wiersz(
     tworz_brakujace=True,
 ):
     dane_form = normalizuj_wartosci_wiersza(elem)
+    # E-mail: łagodna walidacja PRZED AutorForm.full_clean (§11) — zły adres nie
+    # może unieważnić formularza (analiza fail-fast: jeden XLSParseError ubija
+    # cały run). Ostrzeżenie trafia do dane_znormalizowane["ostrzeżenia"].
+    ostrzezenia = _lagodna_walidacja_wiersza(dane_form)
     rozbicie = _rozbij_osoba_sklejona(dane_form, parser_ctx)
     # „Nazwisko Imię" (nazwisko-first) → nazwisko/imię (no-op gdy brak klucza).
     rozbij_nazwisko_imie(dane_form)
@@ -642,8 +663,10 @@ def _przetworz_wiersz(
         # dane_znormalizowane zawiera też `email` (nowe pole AutorForm) —
         # zapisywany do porównywarki (Plan 4) i do zapisu przy tworzeniu autora
         # (integrate; e-mail = no-overwrite dla istniejących, spec §11.2).
+        # Ostrzeżenia (np. o odrzuconym e-mailu) dokładamy obok danych autora —
+        # tam czyta je audyt i porównywarka (Row.ostrzezenie_email).
         dane_znormalizowane=_dane_znormalizowane_z_parserem(
-            autor_form.cleaned_data, rozbicie
+            autor_form.cleaned_data, rozbicie, ostrzezenia
         ),
         autor=autor,
         confidence=status,
