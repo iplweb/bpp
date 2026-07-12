@@ -105,7 +105,9 @@ def test_jednostka_recent_publications_ukryty_status_pominiety(
     jednostki."""
     client = APIClient()
 
-    jednostka = baker.make(Jednostka, nazwa="Katedra Statusowa")
+    # Jednostka należąca do uczelni oglądającego — rekordy przetrwają izolację
+    # multi-host (scope_rekord_api); testujemy warstwę ukrytych statusów.
+    jednostka = baker.make(Jednostka, nazwa="Katedra Statusowa", uczelnia=uczelnia)
     autor = baker.make(Autor, nazwisko="Statusowy", imiona="Stefan")
     widoczna = baker.make(Wydawnictwo_Ciagle, tytul_oryginalny="Widoczna")
     widoczna.dodaj_autora(autor, jednostka, typ_odpowiedzialnosci_skrot="aut.")

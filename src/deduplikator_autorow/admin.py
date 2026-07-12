@@ -3,7 +3,6 @@ import logging
 from django.contrib import admin
 from django.urls import reverse
 from django.utils.html import format_html
-from django.utils.safestring import mark_safe
 
 from bpp.admin.core import DynamicAdminFilterMixin
 from bpp.util import zaloguj_polkniety_wyjatek
@@ -134,7 +133,7 @@ class IgnoredScientistAdmin(DynamicAdminFilterMixin, admin.ModelAdmin):
         """Display autor with admin link"""
         if obj.autor:
             url = reverse("admin:bpp_autor_change", args=[obj.autor.pk])
-            return mark_safe(f'<a href="{url}">{obj.autor}</a>')
+            return format_html('<a href="{}">{}</a>', url, obj.autor)
         return "-"
 
     get_autor_display.short_description = "Autor (BPP)"
@@ -173,7 +172,7 @@ class IgnoredAuthorAdmin(DynamicAdminFilterMixin, admin.ModelAdmin):
     def get_autor_display(self, obj):
         if obj.autor:
             url = reverse("admin:bpp_autor_change", args=[obj.autor.pk])
-            return mark_safe(f'<a href="{url}">{obj.autor}</a>')
+            return format_html('<a href="{}">{}</a>', url, obj.autor)
         return "-"
 
     get_autor_display.short_description = "Autor (BPP)"
@@ -296,7 +295,7 @@ class LogScalaniaAdmin(DynamicAdminFilterMixin, admin.ModelAdmin):
         """Create link to main author"""
         if obj.main_autor:
             url = reverse("admin:bpp_autor_change", args=[obj.main_autor.pk])
-            return mark_safe(f'<a href="{url}">{obj.main_autor}</a>')
+            return format_html('<a href="{}">{}</a>', url, obj.main_autor)
         return "-"
 
     get_main_autor_link.short_description = "Autor główny"
@@ -312,8 +311,11 @@ class LogScalaniaAdmin(DynamicAdminFilterMixin, admin.ModelAdmin):
                 url = reverse(
                     f"admin:{app_label}_{model_name}_change", args=[obj.object_id]
                 )
-                return mark_safe(
-                    f'<a href="{url}">{obj.content_type.name} #{obj.object_id}</a>'
+                return format_html(
+                    '<a href="{}">{} #{}</a>',
+                    url,
+                    obj.content_type.name,
+                    obj.object_id,
                 )
             except Exception:
                 zaloguj_polkniety_wyjatek(
@@ -350,7 +352,7 @@ class LogScalaniaAdmin(DynamicAdminFilterMixin, admin.ModelAdmin):
                     )
                     obj_str = f"{obj.content_type.name} #{obj.object_id}"
 
-                return mark_safe(f'<a href="{url}" target="_blank">{obj_str}</a>')
+                return format_html('<a href="{}" target="_blank">{}</a>', url, obj_str)
             except Exception:
                 zaloguj_polkniety_wyjatek(
                     "Budowanie linku do zmodyfikowanego rekordu w widoku "
@@ -582,7 +584,7 @@ class DuplicateCandidateAdmin(DynamicAdminFilterMixin, admin.ModelAdmin):
         """Create link to main author"""
         if obj.main_autor:
             url = reverse("admin:bpp_autor_change", args=[obj.main_autor.pk])
-            return mark_safe(f'<a href="{url}">{obj.main_autor_name}</a>')
+            return format_html('<a href="{}">{}</a>', url, obj.main_autor_name)
         return obj.main_autor_name
 
     get_main_autor_link.short_description = "Autor główny"
@@ -592,7 +594,7 @@ class DuplicateCandidateAdmin(DynamicAdminFilterMixin, admin.ModelAdmin):
         """Create link to duplicate author"""
         if obj.duplicate_autor:
             url = reverse("admin:bpp_autor_change", args=[obj.duplicate_autor.pk])
-            return mark_safe(f'<a href="{url}">{obj.duplicate_autor_name}</a>')
+            return format_html('<a href="{}">{}</a>', url, obj.duplicate_autor_name)
         return obj.duplicate_autor_name
 
     get_duplicate_autor_link.short_description = "Potencjalny duplikat"
