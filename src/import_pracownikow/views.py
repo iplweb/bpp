@@ -29,7 +29,7 @@ from bpp.models import (
 )
 from import_common.exceptions import BadNoOfSheetsException, HeaderNotFoundException
 from import_pracownikow.forms import MapowanieForm, NowyImportForm
-from import_pracownikow.mapping import dopasuj_profil
+from import_pracownikow.mapping import dopasuj_profil, wybierz_profil_fallback
 from import_pracownikow.models import (
     ImportPracownikow,
     ImportPracownikowJednostka,
@@ -214,9 +214,16 @@ class MapowanieView(GroupRequiredMixin, FormView):
     def get_form_kwargs(self):
         kwargs = super().get_form_kwargs()
         kwargs["naglowki"] = self._naglowki
-        profil = dopasuj_profil(self._naglowki)
+        profil = dopasuj_profil(self._naglowki) or wybierz_profil_fallback(
+            self._naglowki
+        )
+        # Zapamiętaj na instancji dla get_context_data (info w szablonie §13).
+        self._profil_zastosowany = profil
         if profil is not None:
             kwargs["initial_mapowanie"] = profil.mapowanie
+            initial = kwargs.get("initial") or {}
+            initial["profil_zastosowany"] = profil.pk
+            kwargs["initial"] = initial
         return kwargs
 
     def get_context_data(self, **kwargs):
@@ -225,6 +232,8 @@ class MapowanieView(GroupRequiredMixin, FormView):
         ctx["probka_rows"] = [
             [w.get(h, "") for h in self._naglowki] for w in self._probka
         ]
+        profil = getattr(self, "_profil_zastosowany", None)
+        ctx["profil_zastosowany_nazwa"] = profil.nazwa if profil else None
         return ctx
 
     def form_valid(self, form):
@@ -262,6 +271,14 @@ class MapowanieView(GroupRequiredMixin, FormView):
                     "utworzony_przez": self.request.user,
                     "ostatnio_uzyty": timezone.now(),
                 },
+            )
+
+        # Stempel „ostatnio użyty" na zastosowanym profilu (fallback/dopasowany) —
+        # dzięki temu wybierz_profil_fallback następnym razem podniesie właśnie ten.
+        profil_pk = form.cleaned_data.get("profil_zastosowany")
+        if profil_pk:
+            ProfilMapowania.objects.filter(pk=profil_pk).update(
+                ostatnio_uzyty=timezone.now()
             )
 
         obj.enqueue()

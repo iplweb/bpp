@@ -37,5 +37,11 @@
         </div>
     {% endif %}
 
+    {% if profil_zastosowany_nazwa %}
+        <div class="callout secondary" data-profil-info>
+            Zastosowano ostatni schemat mapowania: «{{ profil_zastosowany_nazwa }}».
+        </div>
+    {% endif %}
+
     {% crispy form %}
 {% endblock %}

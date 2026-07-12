@@ -78,6 +78,7 @@ class MapowanieForm(forms.Form):
     zapisz_profil = forms.BooleanField(
         required=False, label="Zapisz to mapowanie jako profil"
     )
+    profil_zastosowany = forms.IntegerField(required=False, widget=forms.HiddenInput())
     nazwa_profilu = forms.CharField(
         required=False, max_length=200, label="Nazwa profilu"
     )

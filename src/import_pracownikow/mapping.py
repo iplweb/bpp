@@ -281,3 +281,29 @@ def dopasuj_profil(naglowki):
             najlepszy = profil
             najlepsze_pokrycie = pokrycie
     return najlepszy
+
+
+def wybierz_profil_fallback(naglowki, prog=0.5):
+    """NAJNOWSZY ostemplowany profil jako fallback — zwracany TYLKO gdy pokrywa
+    ≥ ``prog`` swoich kluczy w nagłówkach pliku. Bierzemy WYŁĄCZNIE najnowszy
+    (``order_by("-ostatnio_uzyty").first()``) i NIE schodzimy do starszych:
+    chroni przed nałożeniem cudzego (np. z innej uczelni) profilu, którego
+    reguła kontekstowa `stopień` §9 zostałaby zignorowana. Import lokalny (ORM
+    lazy). Zwraca ``ProfilMapowania`` albo ``None``."""
+    from import_pracownikow.models import ProfilMapowania
+
+    zbior = set(naglowki)
+    if not zbior:
+        return None
+    profil = (
+        ProfilMapowania.objects.filter(ostatnio_uzyty__isnull=False)
+        .order_by("-ostatnio_uzyty")
+        .first()
+    )
+    if profil is None:
+        return None
+    klucze = set(profil.mapowanie.keys())
+    if not klucze:
+        return None
+    pokrycie = len(zbior & klucze) / len(klucze)
+    return profil if pokrycie >= prog else None
