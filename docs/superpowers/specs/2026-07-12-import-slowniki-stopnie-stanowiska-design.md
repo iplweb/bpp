@@ -311,24 +311,35 @@ Nowe cele w `POLA_DOCELOWE` + synonimy w `_SYNONIMY`:
 | Cel | Etykieta | Synonimy (znormalizowane) |
 |---|---|---|
 | `email` | E-mail | email, e_mail, mail, poczta, adres_email |
-| `stopień_służbowy` | Stopień służbowy | stopień_służbowy, stopien_sluzbowy, stopień_pożarniczy, stopien_pozarniczy (**NIE** gołe „stopień" — patrz niżej) |
+| `stopień_służbowy` | Stopień służbowy | stopień_służbowy, stopien_sluzbowy, stopień_pożarniczy, stopien_pozarniczy; gołe „stopień"/„stopien" **warunkowo** (reguła kontekstowa niżej) |
 | `stanowisko_dydaktyczne` | Stanowisko dydaktyczne | stanowisko_dydakt, stanowisko_dydaktyczne, stanowisko_dyd |
 | `stanowisko` (KEY bez zmian — tylko relabel + synonim) | Funkcja w jednostce | funkcja, funkcja_w_jednostce, stanowisko |
 | `nazwisko_imię` | Nazwisko i imię (jedna komórka, nazwisko-first) | nazwisko_imię, nazwisko_imie |
 | `komórka_złożona` | Komórka (skrót + nazwa + oddział + znacznik) | komórka, komorka, komorka_zlozona |
 | `niepełna_nazwa_jednostki` | Niepełna nazwa jednostki | (bez auto-synonimu domyślnie; wybierany ręcznie) |
 
-**Decyzja (finding review #9): NIE przejmujemy gołego synonimu `stopień`.**
-Dziś `stopień`/`stopien` → `tytuł_stopień`, bo na typowej uczelni „stopień" =
-stopień NAUKOWY (dr, dr hab.). Zmiana exact-synonimu zepsułaby auto-propozycję
-KAŻDEGO istniejącego pliku (stopnie naukowe wpadłyby do słownika stopni
-służbowych). Dlatego `stopień` ZOSTAJE → `tytuł_stopień`; stopień służbowy ma
-własne, jednoznaczne synonimy (bez gołego „stopień"). `funkcja` relabel zmienia
-tylko ETYKIETĘ + dokłada synonim `funkcja` — **KEY celu zostaje `stanowisko`**
-(inaczej trzeba by zmigrować `ProfilMapowania.mapowanie` i `AutorForm.stanowisko`
-→ ryzyko cichej utraty funkcji). Dla APOŻ operator mapuje „stopień" ręcznie na
-„Stopień służbowy" RAZ i zapisuje profil — kolejne importy proponują ostatni
-profil (§13). Spójne z „wszystko opt-in" (§1).
+**Reguła KONTEKSTOWA dla gołego `stopień`/`stopien` (decyzja użytkownika):**
+auto-propozycja zależy od tego, czy w pliku jest TAKŻE kolumna „tytuł":
+
+- plik ma `tytuł` **ORAZ** `stopień` → `stopień` = **stopień służbowy**
+  (`stopień_służbowy`); `tytuł` → `tytuł_stopień` (naukowy). [przypadek APOŻ]
+- plik ma **WYŁĄCZNIE** `stopień` (bez `tytuł`) → `stopień` = **tytuł naukowy**
+  (`tytuł_stopień`), bo na typowej uczelni „stopień" = stopień naukowy.
+
+**Implementacja:** `zaproponuj_mapowanie(naglowki)` staje się ŚWIADOME ZBIORU
+nagłówków (dziś rozstrzyga per-nagłówek w izolacji przez `_dopasuj_naglowek`). Po
+bazowym przebiegu — post-pass: wykryj, czy istnieje nagłówek mapujący na
+`tytuł_stopień` (kolumna „tytuł"); jeśli TAK — przekieruj gołe `stopień`/`stopien`
+na `stopień_służbowy`, w przeciwnym razie zostaw `tytuł_stopień`. Jawne synonimy
+(`stopień_służbowy`, `stopień_naukowy`) NIE podlegają regule — dotyczy tylko
+GOŁEGO „stopień"/„stopien". Fallback `_SYNONIMY_ZAWIERA` też bez zmian. Operator
+może nadpisać na ekranie; reguła dotyczy wyłącznie auto-propozycji. Spójne z
+„wszystko opt-in" (§1). (To ODWRÓCENIE wcześniejszej decyzji „NIE przejmuj
+stopnia" — teraz przejmujemy WARUNKOWO, tylko gdy obecny jest też „tytuł".)
+
+`funkcja` relabel zmienia tylko ETYKIETĘ + dokłada synonim `funkcja` — **KEY celu
+zostaje `stanowisko`** (inaczej trzeba by zmigrować `ProfilMapowania.mapowanie` i
+`AutorForm.stanowisko` → ryzyko cichej utraty funkcji).
 
 **`waliduj_mapowanie` — DWA rozszerzenia (finding review #3, KRYTYCZNE):**
 
@@ -517,8 +528,10 @@ do autora w fazie osób.
 - **Klasyfikatory:** `sklasyfikuj_stopien`/`sklasyfikuj_stanowisko`
   (twardy/zgadywanie/brak); `sklasyfikuj_jednostke_niepelna` („Medyczny" →
   „Wydział Medyczny" / jednostka; 0/1/wiele trafień).
-- **Mapowanie:** synonimy nowych celów; przejęcie `stopień`; walidacja
-  jednostki przez `niepełna_nazwa_jednostki`/`komórka_złożona`.
+- **Mapowanie:** synonimy nowych celów; **reguła kontekstowa `stopień`**
+  (plik z „tytuł"+„stopień" → stopień służbowy; sam „stopień" → tytuł naukowy);
+  identyfikacja osoby przez `nazwisko_imię`; walidacja jednostki przez
+  `niepełna_nazwa_jednostki`/`komórka_złożona`.
 - **Analyze/Integrate:** rozstrzyganie + tworzenie stopni i stanowisk (mirror
   testów tytułów); polityka e-mail (nowy vs istniejący); dopięcie
   `Autor.stopien_sluzbowy` i `Autor_Jednostka.stanowisko`.
@@ -563,5 +576,6 @@ do autora w fazie osób.
   bpp na dev to 0467 → nowa 0468+.
 - **Parser komórki** dostrojony do konwencji APOŻ; dla innych uczelni oddział/
   ogon mogą wyglądać inaczej — dlatego opt-in i dopasowanie głównie po skrócie.
-- **`stopień` NIE przejęty** (§9) — APOŻ mapuje ręcznie + zapisuje profil.
+- **`stopień` — reguła KONTEKSTOWA** (§9): plik z „tytuł"+„stopień" → służbowy;
+  sam „stopień" (bez „tytuł") → naukowy. Nie psuje innych plików.
 ```
