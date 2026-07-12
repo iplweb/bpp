@@ -15,10 +15,14 @@ limity plików nie ruszały.
   Zalogowany pracownik uczelni nie jest wektorem spamu → bez tarcia.
 - **Umiejscowienie:** **pierwszy krok** kreatora (`RodzajPublikacjiForm`,
   step "0") — odrzuca bota, zanim dojdzie do uploadu plików (krok 2).
+- **Captcha domyślnie WYŁĄCZONA** (`ZGLOS_CAPTCHA_ENABLED=False`, decyzja
+  właściciela) — opt-in per instalacja. Nie psuje żadnego upgrade'u i eliminuje
+  zależność kolejności wdrożenia. Włączenie: `ZGLOS_CAPTCHA_ENABLED=1` po
+  potwierdzeniu, że klucz jest (auto-gen bpp-deploy go dostarcza).
 - **Docker:** żadnej nowej usługi. `ALTCHA_HMAC_KEY` to sekret env
   **auto-generowany w bpp-deploy** (`_ensure_secret`, jak inne sekrety) i
-  wpięty do wszystkich serwisów Django — dzięki temu default ON nie psuje
-  upgrade'ów (każda instalacja dostaje klucz automatycznie).
+  wpięty do wszystkich serwisów Django — więc gdy operator włączy captchę,
+  klucz już czeka.
 - **Model klucza = jak `SECRET_KEY`** (świadoma decyzja właściciela): sentinel
   default w `base.py`, placeholder w `.env.docker`, dummy inline na buildzie,
   **bez** hard import-time `raise` (który psuł build). Zamiast fail-fast —
@@ -86,13 +90,14 @@ Biblioteki:
   ani pod czystym gunicorn/daphne. **Realną gwarancję klucza w prod daje
   auto-gen bpp-deploy, nie ten check** — check to best-effort sygnał dla
   operatora, nie mechanizm bezpieczeństwa.
-- `ZGLOS_CAPTCHA_ENABLED` (bool): `base.py` default `True`; **`test.py`
-  = `False`** (cała dotychczasowa suita `zglos_publikacje` + Playwright,
+- `ZGLOS_CAPTCHA_ENABLED` (bool): `base.py` **default `False`**
+  (`env.bool("ZGLOS_CAPTCHA_ENABLED", default=False)`) — opt-in. `test.py`
+  dziedziczy `False` (cała dotychczasowa suita `zglos_publikacje` + Playwright,
   wspólne `--ds=django_bpp.settings.test`, przechodzą bez zmian — pole ALTCHA
-  w ogóle nie powstaje). W dev (`local.py`) **włączona** — świadomie, do
-  oglądania w `run-site`. **`get_form_kwargs` czyta ten flag w call-time**
-  (nie stała modułowa), inaczej `@override_settings` w nowych testach nie
-  zadziała.
+  w ogóle nie powstaje). W dev (`local.py`) **włączona** (`= True`) — świadomie,
+  do oglądania widgetu w `run-site`. **`get_form_kwargs` czyta ten flag w
+  call-time** (nie stała modułowa), inaczej `@override_settings` w nowych
+  testach nie zadziała.
 - **Replay-protection (cache):** `ALTCHA_CACHE_ALIAS` domyślnie `"default"`.
   `production.py` → Redis (działa). **Uwaga: dev/test `default` = DummyCache →
   `is_challenge_used()` zawsze `False` (replay-check to no-op).** Nowe testy
@@ -223,23 +228,18 @@ django-altcha. **Replay-testy MUSZĄ dodatkowo override'ować cache na locmem**
   ```
   `_ensure_secret` jest **idempotentny** (dodaje do `.env` tylko gdy brak, nie
   nadpisuje) i odpala się na **każdym `make up`** → wszystkie instalacje
-  (świeże i po upgrade) dostają stabilny klucz bez ręcznego kroku. To eliminuje
-  breaking-upgrade przy default ON.
+  (świeże i po upgrade) dostają stabilny klucz bez ręcznego kroku — więc gdy
+  operator włączy captchę (`ZGLOS_CAPTCHA_ENABLED=1`), klucz już czeka.
 - **Wpięcie env** `ALTCHA_HMAC_KEY` do **appservera, workerserver i
   beatserver** w compose (guard/warning i sama weryfikacja odpalają się w
   każdym imporcie/procesie Django; wszystkie trzy jadą na production settings).
-- **Twarda kolejność (fix codex — NIE „niezależne PR-y"):** przy default ON
-  kod BPP nie może trafić na prod PRZED auto-genem, bo publiczny formularz
-  ruszyłby na sentinelu → captcha forgeable (tylko warning). W normalnym flow
-  bpp-deploy jest to zapewnione: `make up` uruchamia `ensure-config-files`
-  (generuje klucz do `.env`) **PRZED** `docker compose up` z nowym obrazem —
-  więc klucz istnieje, zanim kontener z default-ON wstanie. Warunek: zmiana
-  bpp-deploy (auto-gen + wpięcie env) musi być **wdrożona razem z / przed**
-  obrazem BPP (standardowo: `git pull` bpp-deploy → `make up`). Nie deployować
-  nowego obrazu BPP pod starym bpp-deploy.
-- **Alternatywa zerowego ryzyka (do decyzji właściciela):** default **OFF** w
-  BPP, a `ZGLOS_CAPTCHA_ENABLED=1` włączane osobno po potwierdzeniu dystrybucji
-  klucza. Eliminuje zależność kolejności kosztem ręcznego włączenia.
+- **Kolejność wdrożenia nie jest problemem — captcha jest default OFF.** Kod
+  BPP może trafić na prod niezależnie: przy `ZGLOS_CAPTCHA_ENABLED=False` pole
+  ALTCHA nie powstaje, sentinel-klucz nikogo nie dotyczy. Auto-gen bpp-deploy
+  przygotowuje klucz z wyprzedzeniem, więc **włączenie to jeden krok operatora**
+  (`ZGLOS_CAPTCHA_ENABLED=1` w env), bez ryzyka forgeable-okna. Zalecenie:
+  włączać dopiero po potwierdzeniu (`make up` na bpp-deploy z tą zmianą +
+  obecność `ALTCHA_HMAC_KEY` w `.env`).
 
 ## Świadome ograniczenia
 
