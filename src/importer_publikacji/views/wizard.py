@@ -157,6 +157,7 @@ def _create_batch(request, provider_name, normalized, records):
     """Utwórz ``MultipleWorksImport`` + wszystkie jego wpisy naraz."""
     batch = MultipleWorksImport.objects.create(
         created_by=request.user,
+        uczelnia=Uczelnia.objects.get_for_request(request),
         provider_name=provider_name,
         raw_input=normalized,
     )
@@ -272,7 +273,7 @@ class MultipleWorksImportDetailView(ImporterPermissionMixin, View):
     """Lista wpisów paczki z per-wpis statusem i akcjami (drip import)."""
 
     def get(self, request, batch_id):
-        batch = get_object_or_404(MultipleWorksImport, pk=batch_id)
+        batch = self.get_scoped_or_404(MultipleWorksImport, pk=batch_id)
         entries = list(batch.entries.select_related("session"))
         # Sweep zombie: martwy worker zostawia sesje w FETCHING/CREATING —
         # bez tego wpis wisialby "w toku" i paczka nigdy nie bylaby gotowa.
@@ -300,7 +301,9 @@ class BatchEntryImportView(ImporterPermissionMixin, View):
     )
 
     def post(self, request, entry_id):
-        entry = get_object_or_404(MultipleWorksImportEntry, pk=entry_id)
+        entry = self.get_scoped_or_404(
+            MultipleWorksImportEntry, uczelnia_path="parent__uczelnia", pk=entry_id
+        )
         if entry.status == EntryStatus.IMPORTED:
             # Wpis juz zaimportowany — nie startuj kolejnej sesji (defense
             # przed stalym formularzem "Importuj" w drugiej karcie albo
@@ -332,7 +335,9 @@ class BatchEntrySkipView(ImporterPermissionMixin, View):
     """Pomiń lub przywróć wpis paczki (toggle)."""
 
     def post(self, request, entry_id):
-        entry = get_object_or_404(MultipleWorksImportEntry, pk=entry_id)
+        entry = self.get_scoped_or_404(
+            MultipleWorksImportEntry, uczelnia_path="parent__uczelnia", pk=entry_id
+        )
         if entry.status == EntryStatus.IMPORTED:
             return HttpResponseBadRequest("Nie można pominąć zaimportowanego wpisu.")
         entry.skipped = not entry.skipped
@@ -348,7 +353,7 @@ class VerifyView(ImporterPermissionMixin, View):
     """Weryfikacja typu publikacji i duplikatów."""
 
     def get(self, request, session_id):
-        session = get_object_or_404(
+        session = self.get_scoped_or_404(
             ImportSession,
             pk=session_id,
         )
@@ -357,7 +362,7 @@ class VerifyView(ImporterPermissionMixin, View):
         return _render_verify_full(request, session)
 
     def post(self, request, session_id):
-        session = get_object_or_404(
+        session = self.get_scoped_or_404(
             ImportSession,
             pk=session_id,
         )
@@ -440,7 +445,7 @@ class SourceView(ImporterPermissionMixin, View):
     """Dopasowanie źródła (czasopisma/wydawcy)."""
 
     def get(self, request, session_id):
-        session = get_object_or_404(
+        session = self.get_scoped_or_404(
             ImportSession,
             pk=session_id,
         )
@@ -454,7 +459,7 @@ class SourceView(ImporterPermissionMixin, View):
         return _render_source_full(request, session)
 
     def post(self, request, session_id):
-        session = get_object_or_404(
+        session = self.get_scoped_or_404(
             ImportSession,
             pk=session_id,
         )
@@ -520,7 +525,7 @@ class AuthorsView(ImporterPermissionMixin, View):
     """Lista autorów z paginacją."""
 
     def get(self, request, session_id):
-        session = get_object_or_404(
+        session = self.get_scoped_or_404(
             ImportSession,
             pk=session_id,
         )
@@ -540,7 +545,7 @@ class AuthorCandidatesModalView(ImporterPermissionMixin, View):
     """
 
     def get(self, request, session_id, author_id):
-        session = get_object_or_404(ImportSession, pk=session_id)
+        session = self.get_scoped_or_404(ImportSession, pk=session_id)
         imported_author = get_object_or_404(
             ImportedAuthor, pk=author_id, session=session
         )
@@ -567,7 +572,7 @@ class AuthorInfoView(ImporterPermissionMixin, View):
     """
 
     def get(self, request, session_id, author_id):
-        get_object_or_404(ImportSession, pk=session_id)
+        self.get_scoped_or_404(ImportSession, pk=session_id)
         from bpp.models import Autor
 
         autor = get_object_or_404(Autor, pk=author_id)
@@ -586,7 +591,7 @@ class AuthorMatchView(ImporterPermissionMixin, View):
     """Aktualizacja dopasowania pojedynczego autora."""
 
     def post(self, request, session_id, author_id):
-        session = get_object_or_404(
+        session = self.get_scoped_or_404(
             ImportSession,
             pk=session_id,
         )
@@ -678,7 +683,7 @@ class AuthorDeleteView(ImporterPermissionMixin, View):
     """
 
     def post(self, request, session_id, author_id):
-        session = get_object_or_404(
+        session = self.get_scoped_or_404(
             ImportSession,
             pk=session_id,
         )
@@ -711,7 +716,7 @@ class AuthorCreateNewView(ImporterPermissionMixin, View):
     """
 
     def post(self, request, session_id, author_id):
-        session = get_object_or_404(ImportSession, pk=session_id)
+        session = self.get_scoped_or_404(ImportSession, pk=session_id)
         imported_author = get_object_or_404(
             ImportedAuthor,
             pk=author_id,
@@ -762,7 +767,7 @@ class AuthorsConfirmView(ImporterPermissionMixin, View):
     """Potwierdź wszystkie dopasowania autorów."""
 
     def post(self, request, session_id):
-        session = get_object_or_404(
+        session = self.get_scoped_or_404(
             ImportSession,
             pk=session_id,
         )
@@ -796,7 +801,7 @@ class PunktacjaView(ImporterPermissionMixin, View):
     """Krok sugerowania punktacji ministerialnej."""
 
     def get(self, request, session_id):
-        session = get_object_or_404(ImportSession, pk=session_id)
+        session = self.get_scoped_or_404(ImportSession, pk=session_id)
         if _is_htmx_partial(request):
             return _render_punktacja_step(request, session)
         from .steps import _render_punktacja_full
@@ -804,7 +809,7 @@ class PunktacjaView(ImporterPermissionMixin, View):
         return _render_punktacja_full(request, session)
 
     def post(self, request, session_id):
-        session = get_object_or_404(ImportSession, pk=session_id)
+        session = self.get_scoped_or_404(ImportSession, pk=session_id)
         form = PunktacjaForm(request.POST)
         if not form.is_valid():
             return _render_punktacja_step(request, session, form=form)
@@ -835,7 +840,7 @@ class PbnCheckView(ImporterPermissionMixin, View):
     """
 
     def get(self, request, session_id):
-        session = get_object_or_404(ImportSession, pk=session_id)
+        session = self.get_scoped_or_404(ImportSession, pk=session_id)
         guard = _patent_guard(request, session)
         if guard is not None:
             return guard
@@ -853,7 +858,7 @@ class PbnCheckView(ImporterPermissionMixin, View):
         return _render_pbn_full(request, session)
 
     def post(self, request, session_id):
-        session = get_object_or_404(ImportSession, pk=session_id)
+        session = self.get_scoped_or_404(ImportSession, pk=session_id)
         guard = _patent_guard(request, session)
         if guard is not None:
             return guard
@@ -867,7 +872,7 @@ class PbnSelectView(ImporterPermissionMixin, View):
     """Wybierz rekord PBN jako odpowiednik importowanej pracy."""
 
     def post(self, request, session_id):
-        session = get_object_or_404(ImportSession, pk=session_id)
+        session = self.get_scoped_or_404(ImportSession, pk=session_id)
         guard = _patent_guard(request, session)
         if guard is not None:
             return guard
@@ -885,7 +890,7 @@ class PbnClearView(ImporterPermissionMixin, View):
     """Usuń wybrany odpowiednik PBN."""
 
     def post(self, request, session_id):
-        session = get_object_or_404(ImportSession, pk=session_id)
+        session = self.get_scoped_or_404(ImportSession, pk=session_id)
         guard = _patent_guard(request, session)
         if guard is not None:
             return guard
@@ -900,7 +905,7 @@ class CreateUnmatchedAuthorsView(ImporterPermissionMixin, View):
     """Utwórz rekordy Autor dla niedopasowanych."""
 
     def post(self, request, session_id):
-        session = get_object_or_404(
+        session = self.get_scoped_or_404(
             ImportSession,
             pk=session_id,
         )
@@ -927,7 +932,7 @@ class AuthorSetOrcidView(ImporterPermissionMixin, View):
     """Ustaw ORCID pojedynczemu autorowi w BPP."""
 
     def post(self, request, session_id, author_id):
-        session = get_object_or_404(
+        session = self.get_scoped_or_404(
             ImportSession,
             pk=session_id,
         )
@@ -958,7 +963,7 @@ class AuthorsSetOrcidsView(ImporterPermissionMixin, View):
     """Ustaw ORCIDy grupowo autorom w BPP."""
 
     def post(self, request, session_id):
-        session = get_object_or_404(
+        session = self.get_scoped_or_404(
             ImportSession,
             pk=session_id,
         )
@@ -974,7 +979,7 @@ class ReviewView(ImporterPermissionMixin, View):
     """Przegląd końcowy przed utworzeniem rekordu."""
 
     def get(self, request, session_id):
-        session = get_object_or_404(
+        session = self.get_scoped_or_404(
             ImportSession,
             pk=session_id,
         )
@@ -989,7 +994,7 @@ class CreateView(ImporterPermissionMixin, View):
     """Enqueueuje create_publication_task; redirect na task-status."""
 
     def post(self, request, session_id):
-        session = get_object_or_404(ImportSession, pk=session_id)
+        session = self.get_scoped_or_404(ImportSession, pk=session_id)
 
         # Idempotency (C2): jesli sesja juz jest w trakcie tworzenia lub
         # zakonczona — nie enqueueuj kolejnego taska. Redirect do
@@ -1053,7 +1058,7 @@ class DoneView(ImporterPermissionMixin, View):
     """Strona potwierdzenia utworzenia rekordu (GET)."""
 
     def get(self, request, session_id):
-        session = get_object_or_404(
+        session = self.get_scoped_or_404(
             ImportSession,
             pk=session_id,
         )
@@ -1070,7 +1075,7 @@ class CancelView(ImporterPermissionMixin, View):
     """Anuluj sesję importu."""
 
     def post(self, request, session_id):
-        session = get_object_or_404(
+        session = self.get_scoped_or_404(
             ImportSession,
             pk=session_id,
         )

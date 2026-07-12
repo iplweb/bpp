@@ -526,11 +526,12 @@ def _build_llm_fk_options():
 #: ograniczyć powierzchnię FILTROWANIA (atak-wyrocznia) dla zautomatyzowanego
 #: dostępu przez API/MCP — pola nie są zwracane w odpowiedzi, ale dałyby się
 #: oracle-ować przez ``~``/``=``/``startswith``. Wolnotekstowe notatki
-#: (``adnotacje``/``opis``) i kontaktowe PII (``email``) — poza zasięgiem
-#: agenta. Świadomie zachowane (decyzja): ``system_kadrowy_id``, ``pbn_uid``
-#: (trawersacja do PBN), ``poprzednie_nazwiska``.
+#: (``adnotacje``/``opis``), kontaktowe PII (``email``) oraz data urodzenia
+#: (``urodzony`` — filtr ``=``/zakres jako wyrocznia po dacie urodzenia) —
+#: poza zasięgiem agenta. Świadomie zachowane (decyzja): ``system_kadrowy_id``,
+#: ``pbn_uid`` (trawersacja do PBN), ``poprzednie_nazwiska``.
 _LLM_HIDDEN_FIELDS_LABELS = {
-    "bpp.Autor": {"email", "adnotacje", "opis"},
+    "bpp.Autor": {"email", "adnotacje", "opis", "urodzony"},
     "bpp.Jednostka": {"email"},
     "bpp.Rekord": {"adnotacje"},
     "bpp.Wydawnictwo_Ciagle": {"adnotacje"},

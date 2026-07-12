@@ -3,6 +3,21 @@ import pytest
 from bpp.const import GR_WPROWADZANIE_DANYCH
 
 
+@pytest.fixture(autouse=True)
+def _www_resolve_public(monkeypatch):
+    """Guard SSRF w providerze WWW rozwiązuje host przez DNS. W testach
+    domyślnie zwracamy adres publiczny (fetch-testy mockują HTTP, nie DNS),
+    żeby suite był hermetyczny i nie zależał od sieci. Testy SSRF nadpisują
+    ten sam seam adresami prywatnymi. Patchujemy wąsko ``_resolve_ips`` —
+    NIE globalny ``socket.getaddrinfo`` (ten psułby rozwiązywanie hosta
+    bazy/redisa w testcontainers).
+    """
+    monkeypatch.setattr(
+        "importer_publikacji.providers.www.network._resolve_ips",
+        lambda hostname: ["93.184.216.34"],
+    )
+
+
 @pytest.fixture
 def importer_user(db):
     """Użytkownik z uprawnieniami do importu."""

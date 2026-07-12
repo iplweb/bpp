@@ -15,6 +15,7 @@ from rest_framework.pagination import LimitOffsetPagination
 from rest_framework.response import Response
 
 from api_v1.permissions import MoznaUzywacZapytania
+from api_v1.scoping import scope_rekord_api
 from api_v1.serializers.szukaj import SzukajSerializer
 from api_v1.serializers.zapytanie import (
     AutorKompaktSerializer,
@@ -23,9 +24,13 @@ from api_v1.serializers.zapytanie import (
 from api_v1.viewsets.szukaj import MODELE_DETAIL_VIEWNAME
 from bpp.djangoql_errors import error_payload
 from bpp.djangoql_schema import RekordLLMSchema
-from bpp.models import Autor
+from bpp.models import Autor, Uczelnia
 from bpp.models.cache import Autorzy, Rekord
 from bpp.util.statement_timeout import statement_timeout
+from bpp.util.uczelnia_scope import (
+    scope_autor_do_uczelni,
+    scope_autorzy_do_uczelni,
+)
 
 #: Twardy cap paginacji — jedno żądanie nie ciągnie całej bazy.
 MAKS_LIMIT = 100
@@ -57,11 +62,23 @@ class ZapytanieAPIBaseViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
         }
         return context
 
+    def _uczelnia(self):
+        """Uczelnia oglądającego (z mapowania Site→Uczelnia requestu)."""
+        return Uczelnia.objects.get_for_request(self.request)
+
+    def _scope_queryset(self, qs):
+        """Zawężenie do polityki widoczności API. Domyślnie no-op; podklasa
+        nadpisuje per model. NIE pomijaj — to izolacja multi-uczelnia."""
+        return qs
+
     def get_queryset(self):
         q = self._q()
         qs = self.model.objects.all()
         if not q:
             return qs.none()
+        # Izolacja/widoczność MUSI zadziałać przed apply_search — inaczej
+        # DjangoQL widzi rekordy spoza uczelni oglądającego (uwaga #1).
+        qs = self._scope_queryset(qs)
         # apply_search jest leniwe — DjangoQLError poleci dopiero na parsie
         # (tu), FieldError/ValidationError przy ewaluacji (w list()).
         return apply_search(qs, q, schema=RekordLLMSchema).distinct()
@@ -83,10 +100,17 @@ class ZapytanieRekordViewSet(ZapytanieAPIBaseViewSet):
     model = Rekord
     serializer_class = SzukajSerializer
 
+    def _scope_queryset(self, qs):
+        # Ta sama polityka co /api/v1/szukaj/ (wspólny helper).
+        return scope_rekord_api(qs, self._uczelnia(), MODELE_DETAIL_VIEWNAME)
+
 
 class ZapytanieAutorViewSet(ZapytanieAPIBaseViewSet):
     model = Autor
     serializer_class = AutorKompaktSerializer
+
+    def _scope_queryset(self, qs):
+        return scope_autor_do_uczelni(qs, self._uczelnia())
 
     def get_queryset(self):
         # tnie N+1: AutorKompaktSerializer czyta tytul/aktualna_jednostka
@@ -97,6 +121,9 @@ class ZapytanieAutorViewSet(ZapytanieAPIBaseViewSet):
 class ZapytanieAutorzyViewSet(ZapytanieAPIBaseViewSet):
     model = Autorzy
     serializer_class = AutorzyKompaktSerializer
+
+    def _scope_queryset(self, qs):
+        return scope_autorzy_do_uczelni(qs, self._uczelnia())
 
     def get_queryset(self):
         # select_related ucina N+1 z kompaktowego serializera dla FK-i,
