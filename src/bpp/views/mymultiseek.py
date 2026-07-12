@@ -59,6 +59,16 @@ EXTRA_TYPES = [
 # report_type renderowane jako tabela (reszta: lista/numer_list/None).
 TABLE_REPORT_TYPES = frozenset(EXTRA_TYPES)
 
+# Tabele/widoki złączane przez filtry multiseeka na relacjach "do wielu"
+# (autorzy, bazy zewnętrzne). Ich JOIN może zwielokrotnić wiersze Rekordu
+# (jeden rekord × N autorów / N baz) → wtedy potrzebny distinct(). Wykrywamy
+# je po REALNYCH nazwach tabel w zapytaniu (query.alias_map), a NIE po
+# substringu w tekście SQL — poprzednie podejście było kruche: zależne od
+# aliasów i formatowania generowanego SQL-a.
+MULTISEEK_MNOZACE_ZLACZENIA = frozenset(
+    {"bpp_autorzy_mat", "bpp_zewnetrzne_bazy_view"}
+)
+
 # Projekcje eksportu DOKUMENTU dostrojone do partiali renderu (nie do CSV/XLSX).
 # Bazowe get_queryset() gubi liczba_cytowan/uwagi → N+1 na całym querysecie.
 MULTISEEK_RENDER_LIST_FIELDS = ("id", "opis_bibliograficzny_cache", "uwagi")
@@ -121,14 +131,28 @@ class MyMultiseekResults(MultiseekResults):
 
         ret = qset.only(*flds)
 
-        # Add DISTINCT when joining with views that can produce duplicates.
-        # This string-based SQL check is not ideal but avoids complex query
-        # introspection. The affected tables come from fulltext search joins.
-        sql = str(ret.query)
-        if "bpp_autorzy_mat" in sql or "bpp_zewnetrzne_bazy_view" in sql:
+        # DISTINCT tylko gdy zapytanie łączy relację "do wielu", która może
+        # zdublować Rekord (jeden rekord × N autorów / N baz zewnętrznych).
+        if self._zapytanie_mnozy_wiersze(ret):
             ret = ret.distinct()
 
         return ret
+
+    @staticmethod
+    def _zapytanie_mnozy_wiersze(qs):
+        """Czy zapytanie łączy relację do-wielu, która może zdublować Rekord?
+
+        Sprawdzamy REALNE nazwy tabel w złączeniach (``query.alias_map``), nie
+        tekst SQL — dzięki temu decyzja o ``distinct()`` nie zależy od aliasów
+        ani formatowania generowanego zapytania (poprzednio: substring w
+        ``str(query)``). ``alias_map`` mapuje alias → obiekt złączenia; bierzemy
+        z niego ``table_name``, więc self-joiny z aliasami T2/T3 też są ujęte.
+        """
+        tabele = {
+            getattr(join, "table_name", None)
+            for join in qs.query.alias_map.values()
+        }
+        return bool(tabele & MULTISEEK_MNOZACE_ZLACZENIA)
 
     def get_queryset_for_current_mode(self):
         if not self.request.GET.get("print-removed", False):
