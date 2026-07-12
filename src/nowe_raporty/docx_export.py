@@ -1,11 +1,11 @@
 import logging
-import subprocess
 from collections.abc import Iterable, Mapping
 from pathlib import Path
 from tempfile import NamedTemporaryFile
 
 import nh3
 import pypandoc
+import requests
 from django.conf import settings
 from flexible_reports.adapters import django_tables2 as flexible_tables
 
@@ -33,11 +33,6 @@ DEFAULT_ALLOWED_TAGS: Iterable[str] = (
 )
 
 DEFAULT_ALLOWED_ATTRIBUTES: Mapping[str, Iterable[str]] = {"td": ("colspan",)}
-
-_DOCKER_IMAGE = getattr(settings, "HTML2DOCX_DOCKER_IMAGE", "iplweb/html2docx:latest")
-_DOCKER_COMMAND: Iterable[str] = getattr(
-    settings, "HTML2DOCX_DOCKER_COMMAND", ("docker",)
-)
 
 PAGEBREAK_MARKER = "---PAGEBREAK---"
 
@@ -79,64 +74,45 @@ def as_docx(  # noqa: PLR0913
             "Pandoc conversion failed, retrying with html2docx", exc_info=exc
         )
         try:
-            _convert_using_docker_image(cleaned_html, output_file.name)
-        except Exception as docker_exc:  # noqa: BLE001
+            _convert_using_html2docx_service(cleaned_html, output_file.name)
+        except Exception as service_exc:  # noqa: BLE001
             output_file.close()
             raise DocxConversionError(
                 "DOCX conversion failed using both pandoc and html2docx"
-            ) from docker_exc
+            ) from service_exc
 
         output_file.seek(0)
         return output_file
 
 
-def _convert_using_docker_image(html: str, output_path: str) -> None:
-    # Use docker to run html2docx container with stdin/stdout piping
-    cmd = list(_DOCKER_COMMAND) + [
-        "run",
-        "--rm",
-        "-i",
-        _DOCKER_IMAGE,
-        "-",  # Read from stdin
-    ]
+def _convert_using_html2docx_service(html: str, output_path: str) -> None:
+    """Konwertuj HTML do DOCX przez usługę HTTP html2docx (sidecar).
 
-    try:
-        process = subprocess.run(  # noqa: S603
-            cmd,
-            input=html.encode("utf-8"),
-            check=True,
-            capture_output=True,
-            text=False,  # Binary mode for DOCX output
-        )
+    Adres usługi bierze się z ``settings.HTML2DOCX_URL``. Gdy nieustawiony,
+    fallback jest niedostępny — logujemy ostrzeżenie i podnosimy wyjątek,
+    który wyżej zamienia się w ``DocxConversionError`` (degradacja miękka,
+    dokładnie jak dawniej przy braku Dockera).
+    """
+    url = getattr(settings, "HTML2DOCX_URL", None)
+    if not url:
+        LOGGER.warning("html2docx fallback niedostępny: HTML2DOCX_URL nieustawiony")
+        raise RuntimeError("HTML2DOCX_URL not configured")
 
-        # Write the captured stdout to the output file
-        with open(output_path, "wb") as output_file:
-            output_file.write(process.stdout)
+    response = requests.post(
+        url,
+        data=html.encode("utf-8"),
+        headers={"Content-Type": "text/html; charset=utf-8"},
+        timeout=(5, 30),
+    )
+    response.raise_for_status()
 
-        if process.stderr:
-            LOGGER.debug(
-                "html2docx docker stderr: %s",
-                process.stderr.decode("utf-8", errors="replace"),
-            )
-
-    except subprocess.CalledProcessError as exc:
-        LOGGER.error(
-            "html2docx docker conversion failed: %s",
-            (
-                exc.stderr.decode("utf-8", errors="replace")
-                if exc.stderr
-                else "No error output"
-            ),
-        )
-        raise
-    except FileNotFoundError:
-        LOGGER.error("docker executable not found")
-        raise
+    with open(output_path, "wb") as output_file:
+        output_file.write(response.content)
 
     # Validate output
     output_file_path = Path(output_path)
     if not output_file_path.exists() or output_file_path.stat().st_size == 0:
-        raise RuntimeError("html2docx docker produced no output")
+        raise RuntimeError("html2docx service produced no output")
 
 
 def _replace_pagebreak_in_paragraph(paragraph, marker: str) -> bool:
@@ -203,7 +179,8 @@ def _replace_pagebreak_markers(docx_path: str, marker: str = PAGEBREAK_MARKER) -
 def html_to_docx(html: str, process_pagebreaks: bool = True) -> bytes:
     """Convert HTML string to DOCX bytes.
 
-    Uses pypandoc as primary converter with Docker html2docx as fallback.
+    Uses pypandoc as primary converter with the html2docx HTTP service
+    as fallback.
     Optionally processes page break markers (---PAGEBREAK---) and replaces
     them with actual Word page breaks.
 
@@ -215,7 +192,7 @@ def html_to_docx(html: str, process_pagebreaks: bool = True) -> bytes:
         DOCX file content as bytes
 
     Raises:
-        DocxConversionError: If both pypandoc and docker conversion fail
+        DocxConversionError: If both pypandoc and the html2docx service fail
     """
     output_file = NamedTemporaryFile(delete=False, suffix=".docx")
     output_path = output_file.name
@@ -228,12 +205,12 @@ def html_to_docx(html: str, process_pagebreaks: bool = True) -> bytes:
             "Pandoc conversion failed, retrying with html2docx", exc_info=exc
         )
         try:
-            _convert_using_docker_image(html, output_path)
-        except Exception as docker_exc:  # noqa: BLE001
+            _convert_using_html2docx_service(html, output_path)
+        except Exception as service_exc:  # noqa: BLE001
             Path(output_path).unlink(missing_ok=True)
             raise DocxConversionError(
                 "DOCX conversion failed using both pandoc and html2docx"
-            ) from docker_exc
+            ) from service_exc
 
     # Post-process to replace pagebreak markers with real page breaks
     if process_pagebreaks and PAGEBREAK_MARKER in html:

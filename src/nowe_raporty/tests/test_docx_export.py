@@ -1,12 +1,14 @@
-import subprocess
 from pathlib import Path
-from unittest.mock import MagicMock
 
 import pytest
+import requests
+from django.test import override_settings
 
 from nowe_raporty import docx_export
 
 HTML_CONTENT = "<h1>Test</h1>"
+
+SERVICE_URL = "http://html2docx:3030/convert"
 
 
 @pytest.fixture(autouse=True)
@@ -31,23 +33,25 @@ def test_as_docx_uses_pandoc(monkeypatch):
         Path(temp_file.name).unlink(missing_ok=True)
 
 
-def test_as_docx_falls_back_to_docker(monkeypatch):
+def test_as_docx_falls_back_to_service(monkeypatch):
     monkeypatch.setattr(
         docx_export.pypandoc,
         "convert_text",
         lambda *args, **kwargs: (_ for _ in ()).throw(OSError("pandoc missing")),
     )
 
-    def docker_fallback(html, output_path):
+    def service_fallback(html, output_path):
         assert html == HTML_CONTENT
-        Path(output_path).write_bytes(b"docker-doc")
+        Path(output_path).write_bytes(b"service-doc")
 
-    monkeypatch.setattr(docx_export, "_convert_using_docker_image", docker_fallback)
+    monkeypatch.setattr(
+        docx_export, "_convert_using_html2docx_service", service_fallback
+    )
 
     temp_file = docx_export.as_docx(object(), {})
 
     try:
-        assert Path(temp_file.name).read_bytes() == b"docker-doc"
+        assert Path(temp_file.name).read_bytes() == b"service-doc"
     finally:
         temp_file.close()
         Path(temp_file.name).unlink(missing_ok=True)
@@ -60,258 +64,87 @@ def test_as_docx_raises_when_both_converters_fail(monkeypatch):
         lambda *args, **kwargs: (_ for _ in ()).throw(OSError("pandoc missing")),
     )
 
-    def docker_fallback(html, output_path):  # noqa: ARG001
-        raise RuntimeError("docker failed")
+    def service_fallback(html, output_path):  # noqa: ARG001
+        raise RuntimeError("service failed")
 
-    monkeypatch.setattr(docx_export, "_convert_using_docker_image", docker_fallback)
+    monkeypatch.setattr(
+        docx_export, "_convert_using_html2docx_service", service_fallback
+    )
 
     with pytest.raises(docx_export.DocxConversionError):
         docx_export.as_docx(object(), {})
 
 
-def test_convert_using_docker_image_success(monkeypatch, tmp_path):
-    """Test successful HTML to DOCX conversion using Docker."""
-    html_input = "<h1>Test Document</h1>"
-    output_path = tmp_path / "output.docx"
-    expected_docx_content = b"fake-docx-content"
+def test_html2docx_service_success(monkeypatch, tmp_path):
+    """Fallback POST-uje HTML i zapisuje zwrócone bajty docx."""
+    output_path = tmp_path / "out.docx"
 
-    # Mock subprocess.run to simulate successful docker execution
-    mock_result = MagicMock()
-    mock_result.stdout = expected_docx_content
-    mock_result.stderr = b""
+    class FakeResp:
+        content = b"docx-bytes"
 
-    def mock_subprocess_run(cmd, input, check, capture_output, text):  # noqa: ARG001
-        assert cmd[0] == "docker"
-        assert cmd[1:] == [
-            "run",
-            "--rm",
-            "-i",
-            "iplweb/html2docx:latest",
-            "-",
-        ]
-        assert input == html_input.encode("utf-8")
-        assert check is True
-        assert capture_output is True
-        assert text is False
-        return mock_result
+        def raise_for_status(self):
+            pass
 
-    monkeypatch.setattr(subprocess, "run", mock_subprocess_run)
+    captured = {}
 
-    docx_export._convert_using_docker_image(html_input, str(output_path))
+    def fake_post(url, data, headers, timeout):
+        captured["url"] = url
+        captured["data"] = data
+        captured["headers"] = headers
+        captured["timeout"] = timeout
+        return FakeResp()
 
-    assert output_path.exists()
-    assert output_path.read_bytes() == expected_docx_content
+    monkeypatch.setattr(requests, "post", fake_post)
+    with override_settings(HTML2DOCX_URL=SERVICE_URL):
+        docx_export._convert_using_html2docx_service("<b>x</b>", str(output_path))
 
+    assert output_path.read_bytes() == b"docx-bytes"
+    assert captured["url"] == SERVICE_URL
+    assert captured["data"] == b"<b>x</b>"
+    assert captured["timeout"] == (5, 30)
 
-def test_convert_using_docker_image_with_stderr(monkeypatch, tmp_path, caplog):
-    """Test Docker conversion with stderr output (warnings/debug info)."""
-    import logging
 
-    # Set log level to DEBUG to capture debug messages
-    caplog.set_level(logging.DEBUG)
+def test_html2docx_service_soft_fail_when_url_none(monkeypatch, tmp_path, caplog):
+    """Brak HTML2DOCX_URL => warning + wyjątek, bez próby HTTP (miękki fail)."""
+    output_path = tmp_path / "out.docx"
 
-    html_input = "<h1>Test</h1>"
-    output_path = tmp_path / "output.docx"
-    expected_docx_content = b"docx-data"
+    def fail_post(*args, **kwargs):  # noqa: ARG001
+        raise AssertionError("nie powinno wołać requests.post gdy URL=None")
 
-    mock_result = MagicMock()
-    mock_result.stdout = expected_docx_content
-    mock_result.stderr = b"some warning message"
+    monkeypatch.setattr(requests, "post", fail_post)
 
-    monkeypatch.setattr(
-        subprocess,
-        "run",
-        lambda *args, **kwargs: mock_result,  # noqa: ARG005
-    )
+    with override_settings(HTML2DOCX_URL=None):
+        with pytest.raises(RuntimeError):
+            docx_export._convert_using_html2docx_service("<b>x</b>", str(output_path))
 
-    docx_export._convert_using_docker_image(html_input, str(output_path))
+    assert "html2docx" in caplog.text.lower()
 
-    assert output_path.exists()
-    assert output_path.read_bytes() == expected_docx_content
-    assert "html2docx docker stderr: some warning message" in caplog.text
 
+def test_html2docx_service_raises_on_error_status(monkeypatch, tmp_path):
+    """Non-2xx z usługi => wyjątek propaguje (wyżej -> DocxConversionError)."""
+    output_path = tmp_path / "out.docx"
 
-def test_convert_using_docker_image_called_process_error(monkeypatch, tmp_path, caplog):
-    """Test handling of Docker command failure (non-zero exit code)."""
-    html_input = "<h1>Test</h1>"
-    output_path = tmp_path / "output.docx"
+    class FakeResp:
+        def raise_for_status(self):
+            raise requests.HTTPError("500")
 
-    error = subprocess.CalledProcessError(
-        returncode=1, cmd=["docker"], stderr=b"docker error message"
-    )
+    monkeypatch.setattr(requests, "post", lambda *a, **k: FakeResp())
+    with override_settings(HTML2DOCX_URL=SERVICE_URL):
+        with pytest.raises(requests.HTTPError):
+            docx_export._convert_using_html2docx_service("<b>x</b>", str(output_path))
 
-    def mock_subprocess_run(*args, **kwargs):  # noqa: ARG001
-        raise error
 
-    monkeypatch.setattr(subprocess, "run", mock_subprocess_run)
+def test_html2docx_service_empty_output_raises(monkeypatch, tmp_path):
+    """Pusty docx z usługi => RuntimeError (walidacja rozmiaru)."""
+    output_path = tmp_path / "out.docx"
 
-    with pytest.raises(subprocess.CalledProcessError):
-        docx_export._convert_using_docker_image(html_input, str(output_path))
+    class FakeResp:
+        content = b""
 
-    assert "html2docx docker conversion failed: docker error message" in caplog.text
+        def raise_for_status(self):
+            pass
 
-
-def test_convert_using_docker_image_called_process_error_no_stderr(
-    monkeypatch, tmp_path, caplog
-):
-    """Test handling of Docker failure without stderr output."""
-    html_input = "<h1>Test</h1>"
-    output_path = tmp_path / "output.docx"
-
-    error = subprocess.CalledProcessError(returncode=1, cmd=["docker"], stderr=None)
-
-    def mock_subprocess_run(*args, **kwargs):  # noqa: ARG001
-        raise error
-
-    monkeypatch.setattr(subprocess, "run", mock_subprocess_run)
-
-    with pytest.raises(subprocess.CalledProcessError):
-        docx_export._convert_using_docker_image(html_input, str(output_path))
-
-    assert "No error output" in caplog.text
-
-
-def test_convert_using_docker_image_file_not_found_error(monkeypatch, tmp_path, caplog):
-    """Test handling of Docker executable not found."""
-    html_input = "<h1>Test</h1>"
-    output_path = tmp_path / "output.docx"
-
-    def mock_subprocess_run(*args, **kwargs):  # noqa: ARG001
-        raise FileNotFoundError("docker not found")
-
-    monkeypatch.setattr(subprocess, "run", mock_subprocess_run)
-
-    with pytest.raises(FileNotFoundError):
-        docx_export._convert_using_docker_image(html_input, str(output_path))
-
-    assert "docker executable not found" in caplog.text
-
-
-def test_convert_using_docker_image_empty_output(monkeypatch, tmp_path):
-    """Test validation when Docker produces empty output."""
-    html_input = "<h1>Test</h1>"
-    output_path = tmp_path / "output.docx"
-
-    mock_result = MagicMock()
-    mock_result.stdout = b""
-    mock_result.stderr = b""
-
-    monkeypatch.setattr(
-        subprocess,
-        "run",
-        lambda *args, **kwargs: mock_result,  # noqa: ARG005
-    )
-
-    with pytest.raises(RuntimeError, match="html2docx docker produced no output"):
-        docx_export._convert_using_docker_image(html_input, str(output_path))
-
-
-def test_convert_using_docker_image_custom_docker_command(monkeypatch, tmp_path):
-    """Test using custom Docker command from settings."""
-    html_input = "<h1>Test</h1>"
-    output_path = tmp_path / "output.docx"
-    expected_docx_content = b"docx-output"
-
-    # Mock custom docker command
-    monkeypatch.setattr(docx_export, "_DOCKER_COMMAND", ("podman",))
-
-    mock_result = MagicMock()
-    mock_result.stdout = expected_docx_content
-    mock_result.stderr = b""
-
-    def mock_subprocess_run(cmd, *args, **kwargs):  # noqa: ARG001
-        assert cmd[0] == "podman"
-        assert "run" in cmd
-        return mock_result
-
-    monkeypatch.setattr(subprocess, "run", mock_subprocess_run)
-
-    docx_export._convert_using_docker_image(html_input, str(output_path))
-
-    assert output_path.exists()
-    assert output_path.read_bytes() == expected_docx_content
-
-
-def test_convert_using_docker_image_custom_docker_image(monkeypatch, tmp_path):
-    """Test using custom Docker image from settings."""
-    html_input = "<h1>Test</h1>"
-    output_path = tmp_path / "output.docx"
-    expected_docx_content = b"docx-data"
-
-    # Mock custom docker image
-    custom_image = "custom/html2docx:v2"
-    monkeypatch.setattr(docx_export, "_DOCKER_IMAGE", custom_image)
-
-    mock_result = MagicMock()
-    mock_result.stdout = expected_docx_content
-    mock_result.stderr = b""
-
-    def mock_subprocess_run(cmd, *args, **kwargs):  # noqa: ARG001
-        assert custom_image in cmd
-        return mock_result
-
-    monkeypatch.setattr(subprocess, "run", mock_subprocess_run)
-
-    docx_export._convert_using_docker_image(html_input, str(output_path))
-
-    assert output_path.exists()
-
-
-def _docker_available():
-    """Sprawdza dostępność Docker daemona LENIWIE (przy uruchomieniu testu).
-
-    Nie wołaj tego w `@pytest.mark.skipif(...)` — argumenty dekoratora liczą
-    się w momencie *importu* modułu (czyli przy każdej kolekcji pytest, także
-    `pytest -k cos_innego`), więc `docker info` startowałby na każdym przebiegu
-    i niepotrzebnie wiązał całą sesję z demonem Dockera. Wywołane wewnątrz
-    ciała testu odpala się tylko wtedy, gdy ten test naprawdę jest zbierany
-    do uruchomienia.
-    """
-    try:
-        return (
-            subprocess.run(
-                ["docker", "info"], capture_output=True, check=False
-            ).returncode
-            == 0
-        )
-    except FileNotFoundError:
-        return False
-
-
-@pytest.mark.slow
-def test_convert_using_docker_image_integration(tmp_path):
-    """Integration test: actual Docker conversion with real html2docx container.
-
-    This test requires:
-    - Docker to be installed and running
-    - Network access to pull the html2docx image (if not already present)
-
-    NOTE: This test currently expects the function to fail because the
-    iplweb/html2docx:latest image doesn't properly handle the "- -"
-    arguments (stdin + stdout). The image works with just "-" for stdin,
-    outputting to stdout by default. This appears to be a bug in the
-    current implementation.
-    """
-    html_input = """
-    <!DOCTYPE html>
-    <html>
-    <head><title>Integration Test</title></head>
-    <body>
-        <h1>Test Document</h1>
-        <p>This is a <b>bold</b> and <i>italic</i> text.</p>
-        <table>
-            <tr><th>Header 1</th><th>Header 2</th></tr>
-            <tr><td>Cell 1</td><td>Cell 2</td></tr>
-        </table>
-    </body>
-    </html>
-    """
-
-    if not _docker_available():
-        pytest.skip("Docker is not available")
-
-    output_path = tmp_path / "integration_test.docx"
-
-    # The current implementation uses "- -" which doesn't work with the image
-    # This test documents the actual behavior
-    docx_export._convert_using_docker_image(html_input, str(output_path))
+    monkeypatch.setattr(requests, "post", lambda *a, **k: FakeResp())
+    with override_settings(HTML2DOCX_URL=SERVICE_URL):
+        with pytest.raises(RuntimeError, match="no output"):
+            docx_export._convert_using_html2docx_service("<b>x</b>", str(output_path))
