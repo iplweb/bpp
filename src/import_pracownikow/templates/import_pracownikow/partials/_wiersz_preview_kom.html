@@ -17,11 +17,7 @@
     {% endwith %}
 </td>
 <td>
-    {% if row.autor %}
-        <a href="{% url "bpp:browse_autor" row.autor.pk %}">{{ row.autor }}</a>
-    {% else %}
-        —
-    {% endif %}
+    {% include "import_pracownikow/partials/_autor_dane.html" with autor=row.autor pbn_inst=row.autor_z_pbn_inst %}
 </td>
 <td>
     {# Jednostka: docelowa z pliku, a gdy autor jest już w innej — obecna → docelowa. #}

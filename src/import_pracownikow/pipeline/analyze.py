@@ -41,6 +41,7 @@ from import_common.normalization import (
     normalize_wymiar_etatu,
 )
 from import_common.sources import otworz_zrodlo
+from import_pracownikow.dedup import kanoniczny_autor
 from import_pracownikow.mapping import MIN_POINTS, TRY_NAMES, remapuj_wiersz
 from import_pracownikow.models import (
     AutorForm,
@@ -58,6 +59,7 @@ from import_pracownikow.parsers.wartosci import (
     sklej_drugie_imie,
 )
 from import_pracownikow.pewnosc import (
+    STATUS_DEDUP,
     STATUS_TWARDY,
     STATUS_WIELU,
     oblicz_status_pewnosci,
@@ -283,6 +285,16 @@ def _dopasuj_autora_i_status(data, jednostka, tytul_str):
     kandydaci = znajdz_kandydatow_autora(data.get("imię"), data.get("nazwisko"))
     status = oblicz_status_pewnosci(kandydaci, match_po_id=False)
     autor = wybierz_autora_z_kandydatow(kandydaci, status)
+    # Poz. 7: gdy auto-dopasowano do rekordu-DUPLIKATU, przekieruj zatrudnienie
+    # na rekord ORYGINALNY (z API instytucjonalnego PBN) — bez scalania. Tylko
+    # dla ścieżki nazwiskowej z auto-wybranym autorem (twardy/zgadywanie);
+    # ID-path (wyżej) to świadomy wskaźnik operatora, nie ruszamy. STATUS_WIELU/
+    # BRAK mają autor=None → decyzję podejmuje operator, też nie przekierowujemy.
+    if autor is not None:
+        oryginal = kanoniczny_autor(autor)
+        if oryginal.pk != autor.pk:
+            autor = oryginal
+            status = STATUS_DEDUP
     return autor, status, kandydaci
 
 

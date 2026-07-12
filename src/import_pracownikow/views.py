@@ -40,8 +40,10 @@ from import_pracownikow.models import (
     ProfilMapowania,
     wiersz_kwalifikuje_do_przepiecia,
 )
+from import_pracownikow.pbn import adnotuj_pbn_instytucjonalny
 from import_pracownikow.pewnosc import (
     STATUS_BRAK,
+    STATUS_DEDUP,
     STATUS_RECZNY,
     STATUS_TWARDY,
     odtworz_autor_jednostka,
@@ -315,9 +317,12 @@ class _WierszImportuMixin(_ImportPodgladMixin):
 
     def _render_wiersz(self):
         # Re-pobierz wiersz przez get_details_set(), żeby partial miał adnotacje
-        # nr_arkusza/nr_wiersza (RawSQL) — inaczej te komórki byłyby puste po
-        # swapie HTMX. Odzwierciedla zapisane właśnie zmiany.
-        row = self.parent_object.get_details_set().get(pk=self.row.pk)
+        # nr_arkusza/nr_wiersza (RawSQL) oraz autor_z_pbn_inst (Exists) — inaczej
+        # te komórki/badge byłyby puste po swapie HTMX. Odzwierciedla zapisane
+        # właśnie zmiany.
+        row = adnotuj_pbn_instytucjonalny(self.parent_object.get_details_set()).get(
+            pk=self.row.pk
+        )
         oznacz_przepiecie_prac([row], self.parent_object)
         return render(
             self.request,
@@ -546,10 +551,45 @@ class PrzelaczOdpiecieView(_ImportPodgladMixin):
         odp = self.odpiecie
         odp.zaznaczone = request.POST.get("zaznaczone") is not None
         odp.save(update_fields=["zaznaczone"])
+        # Re-pobierz z adnotacją autor_z_pbn_inst (Exists) — inaczej badge „PBN"
+        # zniknąłby po swapie HTMX (partial czyta odp.autor_z_pbn_inst).
+        odp = adnotuj_pbn_instytucjonalny(
+            self.parent_object.odpiecia.select_related(
+                "autor_jednostka__autor", "autor_jednostka__autor__tytul"
+            ),
+            autor_path="autor_jednostka__autor",
+        ).get(pk=odp.pk)
         return render(
             request,
             self.partial_template,
             {"odp": odp, "parent_object": self.parent_object},
+        )
+
+
+class ZaznaczOdpieciaView(_ImportPodgladMixin):
+    """POST: ustaw ``zaznaczone`` dla listy odpięć podanej w ``odp_pk`` — wiersze
+    z bieżącego filtra tabeli DataTables, zebrane po stronie klienta. Flaga
+    ``zaznacz`` (``1``/``0``) decyduje zaznacz/odznacz. Owner/superuser-scope +
+    bramka podglądu (``_ImportPodgladMixin``). Redirect na tabelę odpięć.
+
+    Analogicznie do ``ZaznaczWszystkiePrzepieciaView`` (form POST → redirect),
+    ale zakres bierze z jawnej listy ``odp_pk`` (nie „wszystkie") — dzięki temu
+    działa na podzbiorze przefiltrowanym w tabeli."""
+
+    def post(self, request, *args, **kwargs):
+        blad = self._blad_jesli_nie_podglad()
+        if blad is not None:
+            return blad
+        parent = self.parent_object
+        zaznacz = request.POST.get("zaznacz") == "1"
+        # Tylko numeryczne pk — odporność na śmieci w POST (pk__in z nie-intem
+        # rzuciłby ValueError). Filtr po parent = scoping (cudze odpięcia poza).
+        pks = [p for p in request.POST.getlist("odp_pk") if p.isdigit()]
+        n = parent.odpiecia.filter(pk__in=pks).update(zaznaczone=zaznacz)
+        akcja = "zaznaczono do odpięcia" if zaznacz else "odznaczono"
+        messages.success(request, f"Zbiorczo {akcja}: {n} powiązań.")
+        return HttpResponseRedirect(
+            reverse("import_pracownikow:odpiecia", kwargs={"pk": parent.pk})
         )
 
 
@@ -579,11 +619,11 @@ class ImportPracownikowResultsView(GroupRequiredMixin, ListView):
         # iteruje row.kandydaci.all i czyta k.autor per opcja dropdownu; bez
         # tego N+1 (setki zapytań przy dużych plikach).
         return (
-            self.parent_object.get_details_set()
+            adnotuj_pbn_instytucjonalny(self.parent_object.get_details_set())
             .annotate(
                 _prio=Case(
                     When(
-                        confidence__in=[STATUS_TWARDY, STATUS_RECZNY],
+                        confidence__in=[STATUS_TWARDY, STATUS_RECZNY, STATUS_DEDUP],
                         then=Value(1),
                     ),
                     default=Value(0),
@@ -713,10 +753,13 @@ class OdpieciaView(GroupRequiredMixin, ListView):
         return obj
 
     def get_queryset(self):
-        return self.parent_object.odpiecia.select_related(
-            "autor_jednostka__autor",
-            "autor_jednostka__autor__tytul",
-            "autor_jednostka__jednostka",
+        return adnotuj_pbn_instytucjonalny(
+            self.parent_object.odpiecia.select_related(
+                "autor_jednostka__autor",
+                "autor_jednostka__autor__tytul",
+                "autor_jednostka__jednostka",
+            ),
+            autor_path="autor_jednostka__autor",
         )
 
     def get_context_data(self, **kwargs):
@@ -735,7 +778,9 @@ class LogZmianView(GroupRequiredMixin, ListView):
     group_required = GROUP_REQUIRED
     template_name = "import_pracownikow/audyt.html"
     context_object_name = "wiersze"
-    paginate_by = 100
+    # Bez serwerowego stronicowania — audyt jest read-only po integracji, a
+    # wyszukiwanie/stronicowanie przejmuje DataTables po stronie klienta
+    # (poz. 10). Ładujemy wszystkie wiersze ze zmianami do DOM.
 
     @cached_property
     def parent_object(self):
@@ -747,15 +792,20 @@ class LogZmianView(GroupRequiredMixin, ListView):
     def get_queryset(self):
         # ``get_details_set`` adnotuje nr_arkusza/nr_wiersza (kolejność z pliku)
         # i robi select_related — filtrujemy do wierszy z zapisanym log_zmian.
-        return self.parent_object.get_details_set().filter(log_zmian__isnull=False)
+        # ORCID/tytuł jadą z select_related autora; PBN-inst przez Exists.
+        return adnotuj_pbn_instytucjonalny(
+            self.parent_object.get_details_set().filter(log_zmian__isnull=False)
+        )
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(parent_object=self.parent_object, **kwargs)
-        ctx["odpiecia_wykonane"] = self.parent_object.odpiecia.filter(
-            wykonane=True
-        ).select_related(
-            "autor_jednostka__autor",
-            "autor_jednostka__jednostka",
+        ctx["odpiecia_wykonane"] = adnotuj_pbn_instytucjonalny(
+            self.parent_object.odpiecia.filter(wykonane=True).select_related(
+                "autor_jednostka__autor",
+                "autor_jednostka__autor__tytul",
+                "autor_jednostka__jednostka",
+            ),
+            autor_path="autor_jednostka__autor",
         )
         return ctx
 

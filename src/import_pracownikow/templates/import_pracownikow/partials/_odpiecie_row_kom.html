@@ -2,7 +2,9 @@
 {# _odpiecie_row.html, żeby toggle HTMX swapował innerHTML zachowując węzeł #}
 {# <tr> — DataTables odczytuje go po swapie (uwaga reviewera #6). Zwracane #}
 {# wprost przez PrzelaczOdpiecieView. #}
-<td>{{ odp.autor_jednostka.autor }}</td>
+<td>
+    {% include "import_pracownikow/partials/_autor_dane.html" with autor=odp.autor_jednostka.autor pbn_inst=odp.autor_z_pbn_inst %}
+</td>
 <td>{{ odp.autor_jednostka.jednostka }}</td>
 {# Kolumna „Odepnij?” istnieje w fazie edytowalnej (podgląd / faza osób). #}
 {# Po pełnej integracji znika w całości — decyzje wykonane, nie ma czego #}

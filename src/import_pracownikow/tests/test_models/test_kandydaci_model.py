@@ -35,15 +35,29 @@ def test_confidence_badge_mapuje_status_na_klase_i_ikone():
 @pytest.mark.django_db
 def test_confidence_badge_reczny_odrozniony_od_twardego():
     """Item 7: ręczny wybór operatora ma WŁASNY badge („wybór użytkownika",
-    fi-pencil) — NIE udaje „twardego matcha" (fi-check)."""
+    fi-pencil) — NIE udaje „twardego matcha" (fi-check). Odrębny KOLOR
+    (`import-reczny`, common.scss), różny od zielonego twardego."""
     imp = baker.make(ImportPracownikow)
     row = ImportPracownikowRow(
         parent=imp, zmiany_potrzebne=False, confidence=STATUS_RECZNY
     )
     klasa, ikona, etykieta = row.confidence_badge
+    assert klasa == "import-reczny"
+    assert klasa != "success"  # nie kolor twardego matcha
     assert ikona == "fi-pencil"
     assert "użytkownika" in etykieta
     assert "twardy" not in etykieta
+
+
+@pytest.mark.django_db
+def test_confidence_badge_wielu_ma_kolor_alert():
+    """„Wielu kandydatów" wymaga uwagi operatora → czerwony (alert)."""
+    imp = baker.make(ImportPracownikow)
+    row = ImportPracownikowRow(
+        parent=imp, zmiany_potrzebne=False, confidence=STATUS_WIELU
+    )
+    klasa, _ikona, _etykieta = row.confidence_badge
+    assert klasa == "alert"
 
 
 @pytest.mark.django_db

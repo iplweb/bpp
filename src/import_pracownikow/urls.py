@@ -68,6 +68,11 @@ urlpatterns = [
         name="przelacz-odpiecie",
     ),
     path(
+        "<uuid:pk>/odpiecia/zaznacz/",
+        views.ZaznaczOdpieciaView.as_view(),
+        name="zaznacz-odpiecia",
+    ),
+    path(
         "<uuid:pk>/wiersz/<int:row_pk>/utworz-nowego/",
         views.PrzelaczUtworzNowegoView.as_view(),
         name="utworz-nowego",

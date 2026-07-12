@@ -37,9 +37,10 @@ def test_podglad_pokazuje_badge_i_dropdown_kandydatow(admin_client, admin_user):
     resp = admin_client.get(url)
     tresc = resp.content.decode("utf-8")
     assert resp.status_code == 200
-    # KONKRETNY badge statusu „wielu" (Foundation label primary + ikona +
+    # KONKRETNY badge statusu „wielu" (Foundation label alert + ikona +
     # etykieta) — nie samo „label"/„fi-", które przeciekają z base.html.
-    assert "label primary" in tresc
+    # „wielu" jest czerwony (alert): wymaga uwagi operatora (poz. 6).
+    assert "label alert" in tresc
     assert "fi-page-multiple" in tresc
     assert "wielu kandydatów" in tresc
     # dropdown kandydatów dla wielu (HTMX POST na wybierz-kandydata)
