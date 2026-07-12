@@ -311,12 +311,58 @@ class BppOIDCBackend(OIDCAuthenticationBackend):
         return f"{base}-{i}"
 
     def _try_grace_bind(self, claims):
-        """Opt-in wiązanie starego konta czysto-OIDC po e-mailu (Task 7).
+        """Opt-in związanie starego konta czysto-OIDC po zaufanym e-mailu.
 
-        Domyślnie no-op — pełna, zawężona logika w Task 7. Zwraca ``user``
-        (związany) albo ``None`` (brak grace → normalna ścieżka create_user).
+        Migracja istniejących kont sprzed wiązania po ``(issuer, sub)``: jeśli
+        instalacja włączy ``OIDC_GRACE_BIND_ENABLED``, konto dopasowane po
+        adresie może zostać JEDNORAZOWO związane z ``sub`` — ale tylko gdy jest
+        „czysto-OIDC" i niskiego ryzyka:
+
+        * ``_bpp_email_trusted`` (email_verified + zgodny adres),
+        * dokładnie jedno konto z tym adresem,
+        * bez ``is_staff``/``is_superuser``, aktywne,
+        * bez używalnego hasła lokalnego (logowanie tylko przez OIDC),
+        * bez grup, uprawnień indywidualnych, tokenu PBN,
+        * bez żadnej istniejącej tożsamości OIDC (także z innego realmu).
+
+        Każdy z tych warunków chroni przed przejęciem konta o realnych
+        uprawnieniach. Zwraca związane konto albo ``None`` (→ normalny tor
+        create_user / fail-closed). Domyślnie wyłączone.
         """
-        return None
+        if not getattr(settings, "OIDC_GRACE_BIND_ENABLED", False):
+            return None
+        if not claims.get("_bpp_email_trusted"):
+            return None
+        email = claims.get("email") or ""
+        issuer = claims.get("iss") or ""
+        sub = claims.get("sub") or ""
+        if not email:
+            return None
+        qs = self.UserModel.objects.filter(email__iexact=email)
+        if qs.count() != 1:
+            return None
+        user = qs.first()
+        eligible = (
+            not user.is_staff
+            and not user.is_superuser
+            and user.is_active
+            and not user.has_usable_password()
+            and not user.groups.exists()
+            and not user.user_permissions.exists()
+            and not (user.pbn_token or "")
+            and not user.oidc_identities.exists()
+        )
+        if not eligible:
+            return None
+        try:
+            with transaction.atomic():
+                OIDCIdentity.objects.create(user=user, issuer=issuer, sub=sub)
+        except IntegrityError:
+            # Równoległe logowanie zdążyło związać ten (issuer, sub).
+            existing = OIDCIdentity.objects.filter(issuer=issuer, sub=sub).first()
+            return existing.user if existing else None
+        logger.info("OIDC: grace-bind sub dla konta %s", user.username)
+        return user
 
     def create_user(self, claims):
         """Załóż zwykłe konto (bez is_staff) i zwiąż je z ``(issuer, sub)``.

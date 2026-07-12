@@ -579,3 +579,105 @@ def test_create_user_allows_untrusted_when_gate_off(db, settings):
     }
     user = b.create_user(claims)
     assert user.oidc_identities.filter(sub="S12").exists()
+
+
+# --- Task 7: Grace Bind (opt-in, zawężony) ---
+
+
+def _grace_claims():
+    return {
+        "sub": "G1",
+        "iss": "https://kc",
+        "email": "old@x.pl",
+        "email_verified": True,
+        "_bpp_email_trusted": True,
+        "preferred_username": "old",
+    }
+
+
+def test_grace_binds_pure_oidc_account(db, settings):
+    settings.OIDC_GRACE_BIND_ENABLED = True
+    u = baker.make(
+        "bpp.BppUser",
+        email="old@x.pl",
+        is_staff=False,
+        is_superuser=False,
+        is_active=True,
+        pbn_token="",
+    )
+    u.set_unusable_password()
+    u.save()
+    b = _backend()
+    out = b._try_grace_bind(_grace_claims())
+    assert out == u
+    assert u.oidc_identities.filter(sub="G1").exists()
+
+
+def test_grace_binds_via_create_user_path(db, settings):
+    # Pełna ścieżka: create_user deleguje do grace przed fail-closed, więc
+    # kolizja e-maila NIE blokuje związania starego konta.
+    settings.OIDC_GRACE_BIND_ENABLED = True
+    u = baker.make("bpp.BppUser", email="old@x.pl", is_staff=False, pbn_token="")
+    u.set_unusable_password()
+    u.save()
+    b = _backend()
+    out = b.create_user(_grace_claims())
+    assert out == u
+    assert u.oidc_identities.filter(sub="G1").exists()
+
+
+def test_grace_skips_account_with_group(db, settings):
+    settings.OIDC_GRACE_BIND_ENABLED = True
+    u = baker.make("bpp.BppUser", email="old@x.pl", is_staff=False, pbn_token="")
+    u.set_unusable_password()
+    u.save()
+    u.groups.add(baker.make("auth.Group"))
+    b = _backend()
+    assert b._try_grace_bind(_grace_claims()) is None
+
+
+def test_grace_skips_staff_account(db, settings):
+    settings.OIDC_GRACE_BIND_ENABLED = True
+    u = baker.make("bpp.BppUser", email="old@x.pl", is_staff=True, pbn_token="")
+    u.set_unusable_password()
+    u.save()
+    b = _backend()
+    assert b._try_grace_bind(_grace_claims()) is None
+
+
+def test_grace_skips_account_with_usable_password(db, settings):
+    settings.OIDC_GRACE_BIND_ENABLED = True
+    u = baker.make("bpp.BppUser", email="old@x.pl", is_staff=False, pbn_token="")
+    u.set_password("secret")
+    u.save()
+    b = _backend()
+    assert b._try_grace_bind(_grace_claims()) is None
+
+
+def test_grace_skips_when_disabled(db, settings):
+    settings.OIDC_GRACE_BIND_ENABLED = False
+    baker.make("bpp.BppUser", email="old@x.pl")
+    b = _backend()
+    assert b._try_grace_bind(_grace_claims()) is None
+
+
+def test_grace_skips_untrusted_email(db, settings):
+    settings.OIDC_GRACE_BIND_ENABLED = True
+    u = baker.make("bpp.BppUser", email="old@x.pl", is_staff=False, pbn_token="")
+    u.set_unusable_password()
+    u.save()
+    b = _backend()
+    claims = dict(_grace_claims(), _bpp_email_trusted=False)
+    assert b._try_grace_bind(claims) is None
+
+
+def test_grace_skips_cross_realm_linked(db, settings):
+    from oidc_integration.models import OIDCIdentity
+
+    settings.OIDC_GRACE_BIND_ENABLED = True
+    u = baker.make("bpp.BppUser", email="old@x.pl", is_staff=False, pbn_token="")
+    u.set_unusable_password()
+    u.save()
+    OIDCIdentity.objects.create(user=u, issuer="https://other", sub="Z")
+    b = _backend()
+    assert b._try_grace_bind(_grace_claims()) is None
