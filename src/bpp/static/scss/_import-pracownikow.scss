@@ -24,3 +24,85 @@
   font-size: 0.8em;
   margin-left: 0.35rem;
 }
+
+// Tabela autorów jako dwuwierszowa „karta": rekord = <tbody> z dwoma <tr>
+// (tożsamość + wiersz szczegółów colspan=5). Wspólne tło obu wierszy, zebra
+// po rekordach, drugi wiersz sklejony z pierwszym (bez górnej ramki).
+#tabela-autorow {
+  > tbody {
+    border-top: 2px solid #cacaca; // rozdzielenie kart
+
+    &:nth-of-type(odd) > tr {
+      background-color: #f6f6f6;
+    }
+
+    > tr.import-wiersz-szczegoly > td {
+      border-top: none;
+      padding-top: 0;
+    }
+  }
+
+  .import-poz {
+    white-space: nowrap;
+    color: #767676;
+    font-size: 0.85em;
+  }
+}
+
+// Bloki wiersza szczegółów — poziomo, zawijają się; picker autora dostaje
+// więcej miejsca (dawniej ściśnięty w wąskiej kolumnie).
+.import-szczegoly-bloki {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  align-items: flex-start;
+
+  .import-blok {
+    min-width: 12rem;
+    flex: 1 1 14rem;
+  }
+
+  .import-blok-akcje {
+    flex: 2 1 22rem;
+  }
+}
+
+.import-porownanie-item {
+  margin-bottom: 0.25rem;
+}
+
+.import-porownanie-etykieta {
+  font-weight: bold;
+  margin-right: 0.25rem;
+}
+
+// Pasek filtrów „zmienione / zgodne / brak" nad tabelą.
+.import-filtr-roznic {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+
+  .import-filtr-pole {
+    border: 1px solid #cacaca;
+    border-radius: 3px;
+    padding: 0.35rem 0.6rem;
+    margin: 0;
+
+    legend {
+      font-size: 0.8em;
+      font-weight: bold;
+      padding: 0 0.3rem;
+    }
+
+    label {
+      display: block;
+      font-size: 0.85em;
+      margin: 0;
+    }
+  }
+
+  .import-filtr-tekst {
+    align-self: center;
+  }
+}
