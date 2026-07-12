@@ -21,7 +21,7 @@
         {# KROK 1 — struktura. Import osób jest zablokowany, dopóki jednostki #}
         {# nie zostaną rozstrzygnięte i zapisane (pozycyjny arg url — djLint H037). #}
         <div class="callout primary">
-            <h2>Krok 1 — struktura (jednostki{% if pokaz_tytuly %} i tytuły{% endif %})</h2>
+            <h2>Krok 1 — struktura (jednostki{% if pokaz_tytuly or pokaz_stopnie or pokaz_stanowiska %} i słowniki{% endif %})</h2>
             <p>Import jest przeanalizowany („na sucho" — nic nie zapisano).
                 Najpierw rozstrzygnij i zapisz strukturę. <strong>Import osób jest
                 zablokowany</strong>, dopóki jednostki nie trafią do bazy —
@@ -53,6 +53,26 @@
                     {% endif %}
                 </p>
             {% endif %}
+            {# Stopnie/stanowiska służbowe — analogicznie do tytułów, ale linia #}
+            {# pokazuje się TYLKO gdy są jakieś decyzje słownikowe do obejrzenia. #}
+            {% if pokaz_stopnie %}
+                <p>
+                    <span class="fi-shield"></span>
+                    {{ liczniki_stopni.do_utworzenia }} stopni służbowych do utworzenia ·
+                    {{ liczniki_stopni.do_sprawdzenia }} do sprawdzenia.
+                    <a href="{% url "import_pracownikow:stopnie" parent_object.pk %}"
+                       class="button success">Zobacz stopnie</a>
+                </p>
+            {% endif %}
+            {% if pokaz_stanowiska %}
+                <p>
+                    <span class="fi-torso-business"></span>
+                    {{ liczniki_stanowisk.do_utworzenia }} stanowisk dydaktycznych do utworzenia ·
+                    {{ liczniki_stanowisk.do_sprawdzenia }} do sprawdzenia.
+                    <a href="{% url "import_pracownikow:stanowiska" parent_object.pk %}"
+                       class="button success">Zobacz stanowiska</a>
+                </p>
+            {% endif %}
             {# Dwa warianty struktury OBOK siebie (jeden formularz, name=zakres). #}
             {# „jednostki + tytuły" pokazujemy TYLKO gdy są tytuły do utworzenia #}
             {# (pokaz_tytuly) — inaczej dubluje „tylko jednostki" (nic nie #}
@@ -64,10 +84,10 @@
                         class="button">
                     <span class="fi-marker"></span> Zapisz tylko jednostki
                 </button>
-                {% if pokaz_tytuly %}
+                {% if pokaz_struktura_slowniki %}
                     <button type="submit" name="zakres" value="struktura"
                             class="button">
-                        <span class="fi-crown"></span> Zapisz jednostki + tytuły
+                        <span class="fi-crown"></span> Zapisz jednostki + słowniki
                     </button>
                 {% endif %}
             </form>
@@ -75,13 +95,13 @@
             {# utworzy po cichu — Krok 2 poprosi o utworzenie brakujących tytułów #}
             {# przed zapisem osób. „jednostki + tytuły" robi to od razu. Objaśnienie #}
             {# ma sens tylko, gdy oba przyciski są widoczne (są tytuły do utworzenia). #}
-            {% if pokaz_tytuly %}
+            {% if pokaz_struktura_slowniki %}
                 <p class="help-text">
                     <span class="fi-info"></span>
-                    „Zapisz tylko jednostki" odkłada tytuły — zanim zaimportujesz
-                    osoby, Krok 2 poprosi o ich utworzenie (import osób nie tworzy
-                    tytułów po cichu). Wybierz „jednostki + tytuły", żeby utworzyć je
-                    już teraz.
+                    „Zapisz tylko jednostki" odkłada słowniki (tytuły / stopnie /
+                    stanowiska) — zanim zaimportujesz osoby, Krok 2 poprosi o ich
+                    utworzenie (import osób nie tworzy ich po cichu). Wybierz
+                    „jednostki + słowniki", żeby utworzyć je już teraz.
                 </p>
             {% endif %}
         </div>
@@ -108,25 +128,49 @@
                 {% include "import_pracownikow/partials/_kafle_ludzie.html" %}
             </div>
 
-            {% if tytuly_wymagaja_rozstrzygniecia %}
-                {# Item 3: bramka — import osób NIE utworzy tytułów po cichu. #}
-                {# Najpierw trzeba je obejrzeć i utworzyć (zakres=struktura #}
-                {# dopuszczony z fazy osób, idempotentny). #}
+            {% if slowniki_wymagaja_rozstrzygniecia %}
+                {# Bramka Kroku 2 (finding #2): import osób NIE utworzy słowników #}
+                {# (tytuły / stopnie / stanowiska) po cichu. Najpierw trzeba je #}
+                {# obejrzeć i utworzyć (zakres=struktura dopuszczony z fazy osób, #}
+                {# idempotentny). #}
                 <div class="callout alert">
-                    <h3><span class="fi-alert"></span> Najpierw tytuły</h3>
-                    <p>W pliku są tytuły, których nie ma jeszcze w bazie
-                        ({{ liczniki_tytulow.do_utworzenia }} do utworzenia ·
-                        {{ liczniki_tytulow.do_sprawdzenia }} do sprawdzenia).
-                        Import osób <strong>nie</strong> utworzy ich po cichu —
-                        najpierw je obejrzyj i utwórz.</p>
-                    <a href="{% url "import_pracownikow:tytuly" parent_object.pk %}"
-                       class="button success">Zobacz tytuły</a>
+                    <h3><span class="fi-alert"></span> Najpierw słowniki</h3>
+                    <p>W pliku są tytuły/stopnie/stanowiska, których nie ma
+                        jeszcze w bazie. Import osób <strong>nie</strong> utworzy
+                        ich po cichu — najpierw je obejrzyj i utwórz.</p>
+                    {% if pokaz_tytuly %}
+                        <p>
+                            <span class="fi-crown"></span>
+                            {{ liczniki_tytulow.do_utworzenia }} tytułów do utworzenia ·
+                            {{ liczniki_tytulow.do_sprawdzenia }} do sprawdzenia.
+                            <a href="{% url "import_pracownikow:tytuly" parent_object.pk %}"
+                               class="button success">Zobacz tytuły</a>
+                        </p>
+                    {% endif %}
+                    {% if pokaz_stopnie %}
+                        <p>
+                            <span class="fi-shield"></span>
+                            {{ liczniki_stopni.do_utworzenia }} stopni służbowych do utworzenia ·
+                            {{ liczniki_stopni.do_sprawdzenia }} do sprawdzenia.
+                            <a href="{% url "import_pracownikow:stopnie" parent_object.pk %}"
+                               class="button success">Zobacz stopnie</a>
+                        </p>
+                    {% endif %}
+                    {% if pokaz_stanowiska %}
+                        <p>
+                            <span class="fi-torso-business"></span>
+                            {{ liczniki_stanowisk.do_utworzenia }} stanowisk dydaktycznych do utworzenia ·
+                            {{ liczniki_stanowisk.do_sprawdzenia }} do sprawdzenia.
+                            <a href="{% url "import_pracownikow:stanowiska" parent_object.pk %}"
+                               class="button success">Zobacz stanowiska</a>
+                        </p>
+                    {% endif %}
                     <form method="post"
                           action="{% url "import_pracownikow:zatwierdz" parent_object.pk %}">
                         {% csrf_token %}
                         <input type="hidden" name="zakres" value="struktura">
                         <button type="submit" class="button">
-                            <span class="fi-crown"></span> Utwórz brakujące tytuły
+                            <span class="fi-crown"></span> Utwórz brakujące słowniki
                         </button>
                     </form>
                 </div>
@@ -191,6 +235,36 @@
                     </p>
                     <a href="{% url "import_pracownikow:tytuly" parent_object.pk %}"
                        class="button success">Zweryfikuj tytuły</a>
+                </div>
+            </div>
+        {% endif %}
+
+        {# Kafelki „Stopnie służbowe"/„Stanowiska dydaktyczne" — analogicznie do #}
+        {# tytułów, tylko POZA flow Krok 1/Krok 2 (audyt zintegrowanego). #}
+        {% if pokaz_stopnie and not faza_struktury and not moze_importowac_osoby %}
+            <div class="medium-6 columns">
+                <div class="callout">
+                    <h3><span class="fi-shield"></span> Stopnie służbowe</h3>
+                    <p>
+                        {{ liczniki_stopni.do_utworzenia }} do utworzenia ·
+                        {{ liczniki_stopni.do_sprawdzenia }} do sprawdzenia
+                    </p>
+                    <a href="{% url "import_pracownikow:stopnie" parent_object.pk %}"
+                       class="button success">Zweryfikuj stopnie</a>
+                </div>
+            </div>
+        {% endif %}
+
+        {% if pokaz_stanowiska and not faza_struktury and not moze_importowac_osoby %}
+            <div class="medium-6 columns">
+                <div class="callout">
+                    <h3><span class="fi-torso-business"></span> Stanowiska dydaktyczne</h3>
+                    <p>
+                        {{ liczniki_stanowisk.do_utworzenia }} do utworzenia ·
+                        {{ liczniki_stanowisk.do_sprawdzenia }} do sprawdzenia
+                    </p>
+                    <a href="{% url "import_pracownikow:stanowiska" parent_object.pk %}"
+                       class="button success">Zweryfikuj stanowiska</a>
                 </div>
             </div>
         {% endif %}

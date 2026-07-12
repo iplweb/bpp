@@ -737,6 +737,24 @@ class PodgladImportuView(GroupRequiredMixin, DetailView):
                 "tytuly_wymagaja_rozstrzygniecia": (
                     parent.tytuly_wymagaja_rozstrzygniecia
                 ),
+                "liczniki_stopni": parent.liczniki_stopni(),
+                "liczniki_stanowisk": parent.liczniki_stanowisk(),
+                "pokaz_stopnie": parent.stopnie_do_decyzji.exists(),
+                "pokaz_stanowiska": parent.stanowiska_do_decyzji.exists(),
+                # Bramka Kroku 2 (finding #2): import osób nie tworzy słowników
+                # po cichu — dowolny nierozstrzygnięty słownik blokuje.
+                "slowniki_wymagaja_rozstrzygniecia": (
+                    parent.tytuly_wymagaja_rozstrzygniecia
+                    or parent.stopnie_wymagaja_rozstrzygniecia
+                    or parent.stanowiska_wymagaja_rozstrzygniecia
+                ),
+                # „Zapisz jednostki + słowniki" (zakres=struktura) ma sens, gdy
+                # jest COKOLWIEK słownikowego do utworzenia poza jednostkami.
+                "pokaz_struktura_slowniki": (
+                    parent.tytuly_do_decyzji.exists()
+                    or parent.stopnie_do_decyzji.exists()
+                    or parent.stanowiska_do_decyzji.exists()
+                ),
                 "odpiecia_count": odpiecia_count,
                 "pary_z_pliku_puste": pary_z_pliku_puste,
                 # Ostrzeżenie: wszystkie jednostki odroczone → wszystkie aktywne
