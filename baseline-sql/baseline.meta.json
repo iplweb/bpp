@@ -1,5 +1,5 @@
 {
-  "git_sha": "a7d0127b7cb9e97afbe0214ef32380cdda8cf244",
+  "git_sha": "63c90e569cbcfc62daf40cac33f4f04218ec0ec9",
   "last_migration": {
     "admin": "0003_logentry_add_action_flag_choices",
     "admin_dashboard": "0001_initial",
@@ -34,10 +34,10 @@
     "import_list_if": "0004_alter_importlistif_plik_xls",
     "import_list_ministerialnych": "0008_remove_null_from_string_fields",
     "import_polon": "0016_importplikupolon_uczelnia",
-    "import_pracownikow": "0019_alter_importpracownikow_stan",
+    "import_pracownikow": "0021_pola_data_zmian_i_przepnij_wszystkie",
     "import_punktacji_zrodel": "0002_alter_importpunktacjizrodel_options_and_more",
     "importer_autorow_pbn": "0002_add_cache_models",
-    "importer_publikacji": "0018_importsession_rodzaj_rekordu",
+    "importer_publikacji": "0019_multipleworksimport_uczelnia",
     "integrator2": "0006_move_files_to_protected",
     "komparator_pbn": "0003_delete_pbndownloadtask",
     "komparator_pbn_udzialy": "0003_remove_brakautorawpublikacji_komparator__autor_i_e007d7_idx_and_more",
