@@ -68,14 +68,23 @@ def _host_is_safe(hostname: str | None) -> bool:
     return True
 
 
-def _fetch_page(
+def safe_get(
     url: str,
-) -> tuple[str, BeautifulSoup] | None:
-    """Pobierz stronę i zwróć (html, soup).
+    *,
+    timeout: int = FETCH_TIMEOUT,
+    headers: dict | None = None,
+) -> requests.Response | None:
+    """GET z ochroną SSRF — zwraca finalną odpowiedź 2xx albo ``None``.
 
-    Śledzi przekierowania RĘCZNIE (``allow_redirects=False``), walidując host
-    przed każdym requestem i po każdym redirectcie — inaczej redirect
-    ``https://public → http://127.0.0.1`` omijałby guard SSRF.
+    Waliduje host przed każdym requestem i po każdym przekierowaniu (śledzenie
+    RĘCZNE, ``allow_redirects=False``), więc redirect ``https://public →
+    http://127.0.0.1`` nie omija guardu. ``None`` gdy: host nie-publiczny,
+    schemat inny niż http/https, błąd sieci, odpowiedź 4xx/5xx albo
+    przekroczony limit przekierowań.
+
+    Wspólny bezpieczny klient dla wszystkich providerów pobierających URL od
+    użytkownika (WWW, DSpace, Omega-PSIR) — ochrona nie rozjeżdża się
+    per-provider.
     """
     current = url
     try:
@@ -88,11 +97,9 @@ def _fetch_page(
 
             resp = requests.get(
                 current,
-                timeout=FETCH_TIMEOUT,
+                timeout=timeout,
                 allow_redirects=False,
-                headers={
-                    "User-Agent": ("Mozilla/5.0 (compatible; BPP-Importer/1.0)"),
-                },
+                headers=headers,
             )
 
             if 300 <= resp.status_code < 400:
@@ -103,13 +110,26 @@ def _fetch_page(
                 continue
 
             resp.raise_for_status()
-            html = resp.text
-            soup = BeautifulSoup(html, "html.parser")
-            return html, soup
+            return resp
     except requests.RequestException:
         return None
     # Wyczerpaliśmy limit przekierowań bez finalnej odpowiedzi.
     return None
+
+
+def _fetch_page(
+    url: str,
+) -> tuple[str, BeautifulSoup] | None:
+    """Pobierz stronę i zwróć (html, soup). SSRF-guard w ``safe_get``."""
+    resp = safe_get(
+        url,
+        headers={"User-Agent": "Mozilla/5.0 (compatible; BPP-Importer/1.0)"},
+    )
+    if resp is None:
+        return None
+    html = resp.text
+    soup = BeautifulSoup(html, "html.parser")
+    return html, soup
 
 
 def _validate_url(url: str) -> str | None:

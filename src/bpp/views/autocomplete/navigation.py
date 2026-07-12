@@ -7,6 +7,7 @@ from django.contrib.auth.mixins import UserPassesTestMixin
 from django.db.models import IntegerField
 from django.db.models.expressions import RawSQL
 from django.db.models.query_utils import Q
+from django.utils.html import escape, format_html
 from django.utils.text import capfirst
 from queryset_sequence import QuerySetSequence
 
@@ -94,12 +95,20 @@ class GlobalNavigationAutocomplete(
     paginate_by = 40
 
     def get_result_label(self, result):
+        # Etykieta renderuje się jako HTML (widget DAL z data-html: True robi
+        # $result.html(text)). Nazwiska autorów oraz nazwy jednostek/źródeł to
+        # zwykłe pola tekstowe bez sanityzacji — MUSZĄ być zescapowane, inaczej
+        # <script> w nazwisku wykonuje się u każdego, kto wpisze frazę.
         if isinstance(result, Autor):
             if result.aktualna_funkcja_id is not None:
-                return str(result) + ", " + str(result.aktualna_funkcja.nazwa)
+                return format_html("{}, {}", str(result), result.aktualna_funkcja.nazwa)
+            return escape(str(result))
         elif isinstance(result, Rekord):
+            # opis_bibliograficzny_cache jest budowany z pól sanityzowanych
+            # (tytuły + informacje/szczegoly/uwagi czyszczone w clean()), więc
+            # renderujemy jako HTML — zawiera zamierzone <i>/<sub> itp.
             return result.opis_bibliograficzny_cache
-        return str(result)
+        return escape(str(result))
 
     def get_results(self, context):
         """Return a list of results usable by Select2.

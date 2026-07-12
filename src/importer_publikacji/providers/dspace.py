@@ -8,8 +8,6 @@ URL format determines which API is used:
 import re
 from urllib.parse import urlparse
 
-import requests
-
 from . import (
     DataProvider,
     FetchedPublication,
@@ -154,12 +152,15 @@ def _parse_dspace_url(
 
 def _fetch_dspace7(base_url: str, uuid: str) -> FetchedPublication | None:
     """Fetch publication from DSpace 7+ REST API."""
+    # SSRF-guard: base_url pochodzi wprost z URL-a użytkownika. safe_get
+    # odrzuca hosty loopback/prywatne/link-local (metadata cloud) i śledzi
+    # redirecty z rewalidacją każdego hopu (wspólny guard z providerem WWW).
+    from .www.network import safe_get
+
     api_url = f"{base_url}/server/api/core/items/{uuid}"
 
-    try:
-        resp = requests.get(api_url, timeout=FETCH_TIMEOUT)
-        resp.raise_for_status()
-    except requests.RequestException:
+    resp = safe_get(api_url, timeout=FETCH_TIMEOUT)
+    if resp is None:
         return None
 
     data = resp.json()
@@ -204,12 +205,13 @@ def _fetch_dspace7(base_url: str, uuid: str) -> FetchedPublication | None:
 
 def _fetch_dspace6(base_url: str, handle: str) -> FetchedPublication | None:
     """Fetch publication from DSpace 6 REST API."""
+    # SSRF-guard — patrz _fetch_dspace7.
+    from .www.network import safe_get
+
     api_url = f"{base_url}/rest/handle/{handle}?expand=metadata"
 
-    try:
-        resp = requests.get(api_url, timeout=FETCH_TIMEOUT)
-        resp.raise_for_status()
-    except requests.RequestException:
+    resp = safe_get(api_url, timeout=FETCH_TIMEOUT)
+    if resp is None:
         return None
 
     data = resp.json()

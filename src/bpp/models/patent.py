@@ -135,6 +135,7 @@ class Patent(
     def clean(self):
         # DwaTytuly.clean() w wydaniu jedno-tytułowym...
         self.tytul_oryginalny = safe_html(self.tytul_oryginalny)
+        ModelZeSzczegolami.clean(self)
 
     #
     # Cache framework by django-denorm-iplweb

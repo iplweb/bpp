@@ -9,6 +9,8 @@ module docstring for the full split layout.
 
 from unittest.mock import patch
 
+import pytest
+
 from importer_publikacji.providers.dspace import DSpaceProvider
 
 from ._dspace_provider_samples import (
@@ -22,10 +24,26 @@ from ._dspace_provider_samples import (
     _mock_response,
 )
 
+# DSpace fetch idzie teraz przez wspólny safe_get (guard SSRF w
+# providers.www.network). safe_get woła requests.get z network.requests
+# (ten sam globalny moduł), więc patchujemy get właśnie tam.
+_REQUESTS_GET = "importer_publikacji.providers.www.network.requests.get"
+
+
+@pytest.fixture(autouse=True)
+def _bypass_ssrf_host_check(monkeypatch):
+    """Te testy weryfikują PARSOWANIE metadanych DSpace, nie guard SSRF (ten
+    jest pokryty w test_dspace_provider_ssrf.py). safe_get waliduje host przez
+    DNS — pozwalamy mu przejść, aby fake-hosty próbek nie były blokowane."""
+    from importer_publikacji.providers.www import network
+
+    monkeypatch.setattr(network, "_host_is_safe", lambda hostname: True)
+
+
 # --- Full fetch DSpace 7 (mocked HTTP) ---
 
 
-@patch("importer_publikacji.providers.dspace.requests.get")
+@patch(_REQUESTS_GET)
 def test_fetch_dspace7_success(mock_get):
     mock_get.return_value = _mock_response(SAMPLE_DSPACE_RESPONSE)
 
@@ -60,10 +78,12 @@ def test_fetch_dspace7_success(mock_get):
     mock_get.assert_called_once_with(
         f"{BASE_URL}/server/api/core/items/{SAMPLE_UUID}",
         timeout=15,
+        allow_redirects=False,
+        headers=None,
     )
 
 
-@patch("importer_publikacji.providers.dspace.requests.get")
+@patch(_REQUESTS_GET)
 def test_fetch_list_metadata_format(mock_get):
     mock_get.return_value = _mock_response(SAMPLE_DSPACE_LIST_METADATA)
 
@@ -79,7 +99,7 @@ def test_fetch_list_metadata_format(mock_get):
 
 
 @patch("importer_publikacji.providers.dspace._fallback_to_www", return_value=None)
-@patch("importer_publikacji.providers.dspace.requests.get")
+@patch(_REQUESTS_GET)
 def test_fetch_http_error(mock_get, mock_fallback):
     mock_get.return_value = _mock_response({}, status_code=404)
 
@@ -91,7 +111,7 @@ def test_fetch_http_error(mock_get, mock_fallback):
 
 
 @patch("importer_publikacji.providers.dspace._fallback_to_www", return_value=None)
-@patch("importer_publikacji.providers.dspace.requests.get")
+@patch(_REQUESTS_GET)
 def test_fetch_connection_error(mock_get, mock_fallback):
     mock_get.side_effect = __import__("requests").exceptions.ConnectionError()
 
@@ -102,7 +122,7 @@ def test_fetch_connection_error(mock_get, mock_fallback):
 
 
 @patch("importer_publikacji.providers.dspace._fallback_to_www", return_value=None)
-@patch("importer_publikacji.providers.dspace.requests.get")
+@patch(_REQUESTS_GET)
 def test_fetch_no_title(mock_get, mock_fallback):
     data = {
         "uuid": SAMPLE_UUID,
@@ -119,7 +139,7 @@ def test_fetch_no_title(mock_get, mock_fallback):
 
 
 @patch("importer_publikacji.providers.dspace._fallback_to_www")
-@patch("importer_publikacji.providers.dspace.requests.get")
+@patch(_REQUESTS_GET)
 def test_fetch_falls_back_to_www_when_api_fails(mock_get, mock_fallback):
     """DSpace API failure → WWW provider próbuje sparsować HTML."""
     from importer_publikacji.providers import FetchedPublication
@@ -142,7 +162,7 @@ def test_fetch_falls_back_to_www_when_api_fails(mock_get, mock_fallback):
 
 
 @patch("importer_publikacji.providers.dspace._fallback_to_www")
-@patch("importer_publikacji.providers.dspace.requests.get")
+@patch(_REQUESTS_GET)
 def test_fetch_does_not_fall_back_when_api_succeeds(mock_get, mock_fallback):
     """Gdy DSpace API zwraca dane, WWW fallback NIE jest wywoływany."""
     mock_get.return_value = _mock_response(SAMPLE_DSPACE_RESPONSE)
@@ -158,7 +178,7 @@ def test_fetch_invalid_url():
     assert pub is None
 
 
-@patch("importer_publikacji.providers.dspace.requests.get")
+@patch(_REQUESTS_GET)
 def test_fetch_doi_cleanup(mock_get):
     """DOI z prefiksem URL powinien być oczyszczony."""
     data = {
@@ -176,7 +196,7 @@ def test_fetch_doi_cleanup(mock_get):
     assert pub.doi == "10.5555/test"
 
 
-@patch("importer_publikacji.providers.dspace.requests.get")
+@patch(_REQUESTS_GET)
 def test_fetch_minimal_metadata(mock_get):
     """Minimalne metadane — tylko tytuł."""
     data = {
@@ -198,7 +218,7 @@ def test_fetch_minimal_metadata(mock_get):
     assert pub.keywords == []
 
 
-@patch("importer_publikacji.providers.dspace.requests.get")
+@patch(_REQUESTS_GET)
 def test_fetch_unknown_type(mock_get):
     """Nieznany typ → publication_type = None."""
     data = {
@@ -219,7 +239,7 @@ def test_fetch_unknown_type(mock_get):
 # --- Full fetch DSpace 6 (mocked HTTP) ---
 
 
-@patch("importer_publikacji.providers.dspace.requests.get")
+@patch(_REQUESTS_GET)
 def test_fetch_dspace6_success(mock_get):
     mock_get.return_value = _mock_response(SAMPLE_DSPACE6_RESPONSE)
 
@@ -247,10 +267,12 @@ def test_fetch_dspace6_success(mock_get):
     mock_get.assert_called_once_with(
         "https://dspace.piwet.pulawy.pl/rest/handle/123456789/922?expand=metadata",
         timeout=15,
+        allow_redirects=False,
+        headers=None,
     )
 
 
-@patch("importer_publikacji.providers.dspace.requests.get")
+@patch(_REQUESTS_GET)
 def test_fetch_dspace6_doi_text_prefix(mock_get):
     """DOI z prefiksem 'DOI ' powinien być oczyszczony."""
     data = {
@@ -270,7 +292,7 @@ def test_fetch_dspace6_doi_text_prefix(mock_get):
     assert pub.doi == "10.2478/test"
 
 
-@patch("importer_publikacji.providers.dspace.requests.get")
+@patch(_REQUESTS_GET)
 def test_fetch_dspace6_dcterms_source_title(mock_get):
     """dcterms.title → source_title w DSpace 6."""
     data = {
@@ -290,7 +312,7 @@ def test_fetch_dspace6_dcterms_source_title(mock_get):
     assert pub.source_title == "Nazwa Czasopisma"
 
 
-@patch("importer_publikacji.providers.dspace.requests.get")
+@patch(_REQUESTS_GET)
 def test_fetch_dspace6_relation_over_dcterms(mock_get):
     """dc.relation.ispartof ma priorytet nad dcterms.title."""
     data = {
@@ -314,7 +336,7 @@ def test_fetch_dspace6_relation_over_dcterms(mock_get):
     assert pub.source_title == "Primary Journal"
 
 
-@patch("importer_publikacji.providers.dspace.requests.get")
+@patch(_REQUESTS_GET)
 def test_fetch_dspace6_http_error(mock_get):
     mock_get.return_value = _mock_response({}, status_code=404)
 
@@ -323,7 +345,7 @@ def test_fetch_dspace6_http_error(mock_get):
     assert pub is None
 
 
-@patch("importer_publikacji.providers.dspace.requests.get")
+@patch(_REQUESTS_GET)
 def test_fetch_dspace6_connection_error(mock_get):
     mock_get.side_effect = __import__("requests").exceptions.ConnectionError()
 
@@ -333,7 +355,7 @@ def test_fetch_dspace6_connection_error(mock_get):
 
 
 @patch("importer_publikacji.providers.dspace._fallback_to_www", return_value=None)
-@patch("importer_publikacji.providers.dspace.requests.get")
+@patch(_REQUESTS_GET)
 def test_fetch_dspace6_no_title(mock_get, mock_fallback):
     data = {
         "metadata": [
@@ -351,7 +373,7 @@ def test_fetch_dspace6_no_title(mock_get, mock_fallback):
     mock_fallback.assert_called_once_with(SAMPLE_HANDLE_URL)
 
 
-@patch("importer_publikacji.providers.dspace.requests.get")
+@patch(_REQUESTS_GET)
 def test_fetch_dspace6_citation_parsing(mock_get):
     """dcterms.bibliographicCitation parsing."""
     data = {
@@ -375,7 +397,7 @@ def test_fetch_dspace6_citation_parsing(mock_get):
 # --- DSpace 7 fetch with DOI in dc.identifier.uri ---
 
 
-@patch("importer_publikacji.providers.dspace.requests.get")
+@patch(_REQUESTS_GET)
 def test_fetch_dspace7_url_fallback_doi_in_uri(mock_get):
     """DSpace 7: dc.identifier.uri = DOI
     → url z dc.identifier."""
