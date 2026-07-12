@@ -183,6 +183,15 @@ def reset_discipline_pins_task(
             f"Reset pins in {model.__name__} for discipline '{dyscyplina.nazwa}'"
         )
 
+    # Wyzwól denormalizację jak stary widok — .delay() (async, bez blokady),
+    # żeby DirtyInstance opadło, zanim ruszy optymalizacja. _wait_for_denorm
+    # sam flusha NIE triggeruje (świadomie, przez ryzyko deadlocka przy
+    # synchronicznym flushu), więc trigger musi być tutaj.
+    from denorm.tasks import flush_via_queue
+
+    flush_via_queue.delay()
+    logger.info("Triggered denorm flush via queue (reset dyscypliny)")
+
     _wait_for_denorm(
         self,
         progress_start=40,
