@@ -55,6 +55,23 @@ def test_stary_plik_kasowany_swiezy_zostaje(tmp_path):
         assert "skasowano: 1" in out
 
 
+def test_ujemne_older_than_hours_odmawia(tmp_path):
+    """Ujemny próg (prog w przyszłości) skasowałby pliki in-flight → CommandError,
+    żaden plik nietknięty."""
+    with override_settings(MEDIA_ROOT=str(tmp_path)):
+        tmp = zglos_tmp_dir()
+        os.makedirs(tmp)
+        plik = os.path.join(tmp, "swiezy.pdf")
+        with open(plik, "wb") as f:
+            f.write(b"x" * 10)
+        _ustaw_mtime(plik, 1)  # świeży, in-flight
+
+        with pytest.raises(CommandError):
+            _uruchom("--older-than-hours", "-1")
+
+        assert os.path.exists(plik)
+
+
 def test_dry_run_nic_nie_kasuje(tmp_path):
     """Test 8 (dry-run): oba pliki zostają, raport pokazuje 1 do skasowania."""
     with override_settings(MEDIA_ROOT=str(tmp_path)):

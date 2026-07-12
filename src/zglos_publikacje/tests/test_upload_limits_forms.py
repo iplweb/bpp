@@ -87,3 +87,15 @@ def test_multiplefield_clean_odrzuca_oversized_plik_na_liscie():
     pliki = [_plik(name="ok.pdf"), _plik(name="big.pdf", size=21 * 1024 * 1024)]
     with pytest.raises(ValidationError):
         field.clean(pliki)
+
+
+def test_produkcyjna_forma_ma_podpiete_walidatory():
+    """Gwarancja wiring-u: pole `pliki` w produkcyjnej formie MA walidatory
+    rozmiaru i rozszerzenia. Bez tego usunięcie ich z definicji pola nie
+    zostałoby złapane (testy wizardu używają małych PDF-ów, nie oversize)."""
+    from zglos_publikacje.forms import Zgloszenie_Publikacji_DaneForm
+    from zglos_publikacje.validators import validate_file_extension_pdf
+
+    validators = Zgloszenie_Publikacji_DaneForm.base_fields["pliki"].validators
+    assert validate_file_size in validators
+    assert validate_file_extension_pdf in validators

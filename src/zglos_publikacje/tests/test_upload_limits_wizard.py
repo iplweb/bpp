@@ -154,8 +154,9 @@ def test_krok2_szesc_plikow_krok_niewazny_nic_nie_utrwalone(
     # Krok nieważny (MultipleFileField.clean odrzuca > 5) → re-render kroku 2.
     assert resp.status_code == 200
     assert b"2-tytul_oryginalny" in resp.content
-    # process_step_files nie odpalił (form invalid) → nic w tmp.
+    # process_step_files nie odpalił (form invalid) → nic w tmp ani w trwałym.
     assert _list_files(_tmp_dir(str(tmp_path))) == []
+    assert _list_files(_perm_dir(str(tmp_path))) == []
 
 
 # --------------------------------------------------------------------------
@@ -234,7 +235,20 @@ def test_wazny_krok_z_doczepionymi_plikami_nic_nie_utrwala(
         "4": {"4-opl_pub_cost_free": "true"},
     }[step]
     resp = _post_krok_z_bogus_plikiem(webtest_app, page, overrides)
-    assert resp.status_code in (200, 302)
+    # Krok MUSI być ważny — inaczej formtools nie wywoła process_step_files
+    # (bronionej ścieżki `return {}`) i test przechodziłby PUSTO (L1).
+    # Dowodzimy awansu na kolejny krok / ukończenia wizardu.
+    if step == "4":
+        assert Zgloszenie_Publikacji.objects.count() == 1  # wizard ukończony
+    else:
+        marker = {
+            "0": b"1-forma_dostepu",
+            "1": b"2-tytul_oryginalny",
+            "3": b"4-opl_pub_cost_free",
+        }[step]
+        assert resp.status_code == 200
+        assert marker in resp.content
+    # Doczepiony plik nie został utrwalony nigdzie.
     assert _list_files(_tmp_dir(str(tmp_path))) == []
     assert _list_files(_perm_dir(str(tmp_path))) == []
 

@@ -45,6 +45,11 @@ class Command(BaseCommand):
         older_than_hours = options["older_than_hours"]
         dry_run = options["dry_run"]
 
+        if older_than_hours < 0:
+            # Ujemny próg → prog w przyszłości → skasowałby WSZYSTKO, łącznie
+            # z plikami in-flight żywych sesji. Odmawiamy (błąd operatora).
+            raise CommandError("--older-than-hours musi być >= 0.")
+
         # realpath — neutralizuje symlink i trailing slash zanim porównamy
         # basename ze strażnikiem.
         tmp = pathlib.Path(zglos_tmp_dir()).resolve()
@@ -76,13 +81,18 @@ class Command(BaseCommand):
             if not e.is_file() or e.is_symlink():
                 pominiete += 1
                 continue
-            st = e.lstat()
-            if st.st_mtime < prog:
-                skasowane += 1
-                skasowane_bajty += st.st_size
-                if not dry_run:
-                    e.unlink()
-            else:
+            try:
+                st = e.lstat()
+                if st.st_mtime < prog:
+                    if not dry_run:
+                        e.unlink()
+                    skasowane += 1
+                    skasowane_bajty += st.st_size
+                else:
+                    pominiete += 1
+            except FileNotFoundError:
+                # Żywa sesja kreatora skasowała swój plik równolegle (między
+                # iterdir a lstat/unlink) — nie nasz problem, nie wywalaj crona.
                 pominiete += 1
 
         etykieta = "do skasowania" if dry_run else "skasowano"
