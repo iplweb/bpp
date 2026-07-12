@@ -787,6 +787,15 @@ class ImportPracownikowRow(ImportRowMixin, models.Model):
             ),
         }
 
+    def stany_pol(self):
+        """Stan każdego pola różnic: ``{klucz: "zmienione"|"zgodne"|"brak"}``.
+        Live wyliczenie z ``POLA_ROZNIC`` (jednostka / email / tytuł / stopień /
+        funkcja / stanowisko). Zasila filtr stanu pól i atrybuty ``data-diff-*``
+        w szablonie."""
+        from import_pracownikow.roznice import POLA_ROZNIC
+
+        return {klucz: ekstraktor(self) for klucz, _et, ekstraktor in POLA_ROZNIC}
+
     @property
     def ostrzezenie_email(self):
         """Komunikat o odrzuconym adresie e-mail (z
