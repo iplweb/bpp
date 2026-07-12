@@ -21,6 +21,7 @@ from import_pracownikow.models import (
 )
 from import_pracownikow.pewnosc import STATUS_BRAK
 from import_pracownikow.pipeline.integrate import integruj
+from import_pracownikow.tests._helpers import unikalna_nazwa
 
 
 def _imp(zakres):
@@ -32,10 +33,14 @@ def _imp(zakres):
 
 
 def _decyzja_jednostki(imp):
+    # Nazwa unikalna: integracja materializuje ją jako Jednostkę (unikalne
+    # nazwa/skrot/slug), a testy w tym pliku dzielą ten helper — pod ambient
+    # pollution xdista dosłowna "Zakład Struktury Testowej" kolidowałaby między
+    # sąsiadami. Asercje odwołują się do ``dec_j.nazwa_zrodlowa``.
     return baker.make(
         ImportPracownikowJednostka,
         parent=imp,
-        nazwa_zrodlowa="Zakład Struktury Testowej",
+        nazwa_zrodlowa=unikalna_nazwa("Zakład Struktury Testowej"),
         skrot_sugerowany="ZST",
         tryb=ImportPracownikowJednostka.TRYB_BRAK,
         decyzja=ImportPracownikowJednostka.DECYZJA_AKCEPTUJ,
@@ -43,11 +48,12 @@ def _decyzja_jednostki(imp):
 
 
 def _decyzja_tytulu(imp):
+    nazwa = unikalna_nazwa("Tytuł Struktury Testowej")
     return baker.make(
         ImportPracownikowTytul,
         parent=imp,
-        nazwa_zrodlowa="Tytuł Struktury Testowej",
-        nazwa_do_utworzenia="Tytuł Struktury Testowej",
+        nazwa_zrodlowa=nazwa,
+        nazwa_do_utworzenia=nazwa,
         skrot_do_utworzenia="TytStrTest",
         tryb=ImportPracownikowTytul.TRYB_BRAK,
         decyzja=ImportPracownikowTytul.DECYZJA_AKCEPTUJ,
@@ -91,11 +97,11 @@ def test_zakres_jednostki_tworzy_jednostki_bez_tytulow_bez_osob(uczelnia):
     # jednostki utworzone
     dec_j.refresh_from_db()
     assert dec_j.utworzona is not None
-    assert Jednostka.objects.filter(nazwa="Zakład Struktury Testowej").exists()
+    assert Jednostka.objects.filter(nazwa=dec_j.nazwa_zrodlowa).exists()
     # tytuły POMINIĘTE (zakres tylko jednostki)
     dec_t.refresh_from_db()
     assert dec_t.utworzony is None
-    assert not Tytul.objects.filter(nazwa="Tytuł Struktury Testowej").exists()
+    assert not Tytul.objects.filter(nazwa=dec_t.nazwa_do_utworzenia).exists()
     # osoby NIETKNIĘTE — brak zapisów Autor / Autor_Jednostka
     assert Autor.objects.count() == autorow_przed
     assert Autor_Jednostka.objects.count() == aj_przed
@@ -123,10 +129,10 @@ def test_zakres_struktura_tworzy_jednostki_i_tytuly_bez_osob(uczelnia):
     # Krok 1: struktura zapisana, osoby czekają (NIE „zintegrowany").
     assert imp.stan == ImportPracownikow.STAN_STRUKTURA_ZINTEGROWANA
     # jednostki + tytuły utworzone
-    assert Jednostka.objects.filter(nazwa="Zakład Struktury Testowej").exists()
+    assert Jednostka.objects.filter(nazwa=dec_j.nazwa_zrodlowa).exists()
     dec_t.refresh_from_db()
     assert dec_t.utworzony is not None
-    assert Tytul.objects.filter(nazwa="Tytuł Struktury Testowej").exists()
+    assert Tytul.objects.filter(nazwa=dec_t.nazwa_do_utworzenia).exists()
     # osoby NIETKNIĘTE
     assert Autor.objects.count() == autorow_przed
     assert Autor_Jednostka.objects.count() == aj_przed
@@ -180,7 +186,7 @@ def test_sekwencja_jednostki_potem_pelny_tworzy_odlozony_tytul(uczelnia):
     assert imp.stan == ImportPracownikow.STAN_STRUKTURA_ZINTEGROWANA
     dec_t.refresh_from_db()
     assert dec_t.utworzony is None
-    assert not Tytul.objects.filter(nazwa="Tytuł Struktury Testowej").exists()
+    assert not Tytul.objects.filter(nazwa=dec_t.nazwa_do_utworzenia).exists()
 
     # Krok 2 — import osób (pełny): odłożony tytuł zostaje utworzony.
     imp.stan = ImportPracownikow.STAN_ZATWIERDZONY
@@ -191,7 +197,7 @@ def test_sekwencja_jednostki_potem_pelny_tworzy_odlozony_tytul(uczelnia):
     assert imp.stan == ImportPracownikow.STAN_ZINTEGROWANY
     dec_t.refresh_from_db()
     assert dec_t.utworzony is not None
-    assert Tytul.objects.filter(nazwa="Tytuł Struktury Testowej").exists()
+    assert Tytul.objects.filter(nazwa=dec_t.nazwa_do_utworzenia).exists()
 
 
 @pytest.mark.django_db

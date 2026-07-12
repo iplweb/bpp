@@ -15,6 +15,7 @@ from bpp.models import Autor, Autor_Jednostka, Jednostka, Tytul
 from import_pracownikow.models import ImportPracownikow
 from import_pracownikow.pewnosc import STATUS_ZGADYWANIE
 from import_pracownikow.pipeline.analyze import analizuj
+from import_pracownikow.tests._helpers import unikalna_nazwa
 
 
 def _imp():
@@ -32,7 +33,11 @@ def _analizuj_jeden_wiersz(imp, wiersz):
 
 @pytest.mark.django_db
 def test_drugie_imie_scalane_do_imion():
-    jednostka = baker.make(Jednostka, nazwa="Katedra Testowa", skrot="Kat. Test.")
+    jednostka = baker.make(
+        Jednostka,
+        nazwa=unikalna_nazwa("Katedra Testowa"),
+        skrot=unikalna_nazwa("Kat. Test."),
+    )
     wiersz = {
         "imię": "Jan",
         "drugie_imię": "Paweł",
@@ -53,7 +58,11 @@ def test_drugie_imie_scalane_do_imion():
 def test_drugie_imie_matching_po_scaleniu_zachowany():
     # Autor w bazie ma tylko pierwsze imię → strategia „pierwsze imię" (0.95)
     # wiąże go z wierszem mimo scalenia na „Jan Paweł". Dedup zachowany.
-    jednostka = baker.make(Jednostka, nazwa="Katedra Testowa", skrot="Kat. Test.")
+    jednostka = baker.make(
+        Jednostka,
+        nazwa=unikalna_nazwa("Katedra Testowa"),
+        skrot=unikalna_nazwa("Kat. Test."),
+    )
     autor = baker.make(
         Autor, nazwisko="Kowalski", imiona="Jan", aktualna_jednostka=jednostka
     )
@@ -81,7 +90,11 @@ def test_drugie_imie_scalane_po_rozbiciu_osoby_sklejonej():
     # Regresja kolejności: osoba_sklejona + drugie_imię BEZ kolumny imię.
     # Scalanie MUSI iść PO rozbiciu osoby sklejonej — inaczej „imię" zostałoby
     # ustawione na „Paweł" i parser nie wstawiłby „Jan" z rozbicia.
-    jednostka = baker.make(Jednostka, nazwa="Katedra Testowa", skrot="Kat. Test.")
+    jednostka = baker.make(
+        Jednostka,
+        nazwa=unikalna_nazwa("Katedra Testowa"),
+        skrot=unikalna_nazwa("Kat. Test."),
+    )
     Tytul.objects.get_or_create(skrot="dr", defaults={"nazwa": "doktor"})
     wiersz = {
         "osoba_sklejona": "dr Jan Kowalski",

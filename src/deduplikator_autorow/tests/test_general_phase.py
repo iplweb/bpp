@@ -16,12 +16,27 @@ from deduplikator_autorow.utils.cluster import find_clusters
 @pytest.mark.django_db
 def test_general_finds_simple_pair():
     """Dwóch autorów o tym samym nazwisku/imieniu, żaden bez OsobaZInstytucji."""
-    baker.make("bpp.Autor", nazwisko="Kowalski", imiona="Jan")
-    baker.make("bpp.Autor", nazwisko="Kowalski", imiona="Jan")
+    a = baker.make("bpp.Autor", nazwisko="Kowalski", imiona="Jan")
+    b = baker.make("bpp.Autor", nazwisko="Kowalski", imiona="Jan")
     scan = DuplicateScanRun.objects.create()
     _run_general_phase(scan, min_confidence=50)
+
+    # UWAGA (flake pod xdist/shardingiem): faza general skanuje CAŁĄ tabelę
+    # autorów, więc ambient autorzy „Kowalski Jan" scommitowani przez sąsiednie
+    # testy (na współdzielonym workerze) wpadają do wspólnego bucketu
+    # „kowalski", doczepiają się do klastra i — mając niższy pk — przejmują
+    # rolę `main`. Wtedy zamiast dokładnie jednej pary {a, b} emitowane są np.
+    # (ambient, a) + (ambient, b) i asercja na globalnym `count() == 1` pękała
+    # (obserwowane w CI: 4 zamiast 1). Testujemy więc WŁASNĄ inwariantę: a i b
+    # lądują w jednym klastrze duplikatów — odporne na ambient szum (identyczny
+    # wzorzec co ``test_general_finds_pair_with_unicode_hyphen_variant``).
     cands = DuplicateCandidate.objects.filter(scan_run=scan, scan_mode="general")
-    assert cands.count() == 1
+    edges = [(c.main_autor_id, c.duplicate_autor_id) for c in cands]
+    clusters = find_clusters(edges)
+    assert any({a.pk, b.pk} <= cluster for cluster in clusters), (
+        f"Dwóch autorów o identycznym nazwisku/imieniu powinno trafić do "
+        f"jednego klastra duplikatów; klastry={clusters}"
+    )
 
 
 @pytest.mark.django_db

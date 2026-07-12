@@ -9,12 +9,17 @@ from model_bakery import baker
 
 from bpp.models import Autor, Autor_Jednostka, Jednostka, Tytul
 from import_pracownikow.models import ImportPracownikow
+from import_pracownikow.tests._helpers import unikalna_nazwa
 
 
 def _import_z_jednym_dopasowanym(admin_user, *, przepnij):
     """Import z 1 wierszem twardo dopasowanym (autor + istniejąca jednostka),
     analiza odpalona przez POST mapowania. Zwraca odświeżony import."""
-    jednostka = baker.make(Jednostka, nazwa="Katedra Testowa", skrot="Kat. T.")
+    jednostka = baker.make(
+        Jednostka,
+        nazwa=unikalna_nazwa("Katedra Testowa"),
+        skrot=unikalna_nazwa("Kat. T."),
+    )
     Tytul.objects.get_or_create(skrot="dr", defaults={"nazwa": "doktor"})
     autor = baker.make(
         Autor, nazwisko="Zielinski", imiona="Adam", aktualna_jednostka=jednostka

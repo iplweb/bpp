@@ -14,6 +14,7 @@ from model_bakery import baker
 
 from bpp.models import Autor, Autor_Jednostka, Jednostka, Tytul
 from import_pracownikow.models import ImportPracownikow
+from import_pracownikow.tests._helpers import unikalna_nazwa
 
 
 def _upload_i_zmapuj(admin_client, admin_user, csv_bytes, *, tworz_jednostki):
@@ -41,7 +42,11 @@ def _upload_i_zmapuj(admin_client, admin_user, csv_bytes, *, tworz_jednostki):
 def test_wszystko_zmatchowane_przeskakuje_do_kroku2(admin_client, admin_user):
     """Jednostka i tytuł z pliku są już w bazie → analiza ustawia od razu
     ``struktura_zintegrowana`` (Krok 2), bez decyzji o jednostkach/tytułach."""
-    jednostka = baker.make(Jednostka, nazwa="Katedra Testowa", skrot="Kat. T.")
+    jednostka = baker.make(
+        Jednostka,
+        nazwa=unikalna_nazwa("Katedra Testowa"),
+        skrot=unikalna_nazwa("Kat. T."),
+    )
     Tytul.objects.get_or_create(skrot="dr", defaults={"nazwa": "doktor"})
     autor = baker.make(
         Autor, nazwisko="Zielinski", imiona="Adam", aktualna_jednostka=jednostka

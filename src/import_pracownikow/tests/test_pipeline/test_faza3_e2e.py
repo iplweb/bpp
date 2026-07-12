@@ -10,11 +10,16 @@ from model_bakery import baker
 from bpp.models import Autor, Autor_Jednostka, Jednostka, Tytul
 from import_pracownikow.models import ImportPracownikow
 from import_pracownikow.pewnosc import STATUS_TWARDY, STATUS_WIELU
+from import_pracownikow.tests._helpers import unikalna_nazwa
 
 
 @pytest.mark.django_db
 def test_e2e_osoba_sklejona_status_i_wybor(admin_client, admin_user):
-    jednostka = baker.make(Jednostka, nazwa="Katedra Testowa", skrot="Kat. T.")
+    jednostka = baker.make(
+        Jednostka,
+        nazwa=unikalna_nazwa("Katedra Testowa"),
+        skrot=unikalna_nazwa("Kat. T."),
+    )
     # Tytul.skrot/nazwa unique + baseline preloaduje „dr/doktor" → get_or_create.
     Tytul.objects.get_or_create(skrot="dr", defaults={"nazwa": "doktor"})
     # jeden jednoznaczny (twardy) + dwóch o identycznym imieniu (wielu)

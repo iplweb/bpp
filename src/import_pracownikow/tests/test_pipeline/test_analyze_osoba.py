@@ -7,6 +7,7 @@ from model_bakery import baker
 from bpp.models import Autor, Autor_Jednostka, Jednostka, Tytul
 from import_pracownikow.models import ImportPracownikow
 from import_pracownikow.pipeline.analyze import analizuj
+from import_pracownikow.tests._helpers import unikalna_nazwa
 
 
 def _wiersz_osoba(osoba, jednostka_nazwa):
@@ -21,7 +22,11 @@ def _wiersz_osoba(osoba, jednostka_nazwa):
 
 @pytest.mark.django_db
 def test_analiza_rozbija_osobe_sklejona_i_matchuje_autora():
-    jednostka = baker.make(Jednostka, nazwa="Katedra Testowa", skrot="Kat. Test.")
+    jednostka = baker.make(
+        Jednostka,
+        nazwa=unikalna_nazwa("Katedra Testowa"),
+        skrot=unikalna_nazwa("Kat. Test."),
+    )
     autor = baker.make(
         Autor, nazwisko="Kowalski", imiona="Jan", aktualna_jednostka=jednostka
     )
@@ -53,13 +58,14 @@ def test_osoba_sklejona_jednym_tokenem_rzuca_parse_error():
     # AutorForm invalid → XLSParseError. To NIE jest status „brak" (założenie A3).
     from import_common.exceptions import XLSParseError
 
-    baker.make(Jednostka, nazwa="Katedra Testowa", skrot="Kat. Test.")
+    nazwa_jed = unikalna_nazwa("Katedra Testowa")
+    baker.make(Jednostka, nazwa=nazwa_jed, skrot=unikalna_nazwa("Kat. Test."))
     imp = baker.make(ImportPracownikow, stan=ImportPracownikow.STAN_ZMAPOWANY)
     imp.plik_xls.name = "protected/import_pracownikow/x.csv"
     with patch("import_pracownikow.pipeline.analyze.otworz_zrodlo") as MZ:
         MZ.return_value.count.return_value = 1
         MZ.return_value.data.return_value = iter(
-            [_wiersz_osoba("Kowalski", "Katedra Testowa")]
+            [_wiersz_osoba("Kowalski", nazwa_jed)]
         )
         with pytest.raises(XLSParseError):
             analizuj(imp, MockProgress(imp))

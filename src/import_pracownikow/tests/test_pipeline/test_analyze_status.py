@@ -13,6 +13,7 @@ from import_pracownikow.pewnosc import (
     STATUS_WIELU,
 )
 from import_pracownikow.pipeline.analyze import analizuj
+from import_pracownikow.tests._helpers import unikalna_nazwa
 
 
 def _wiersz(**over):
@@ -38,7 +39,11 @@ def _analizuj_jeden(imp, wiersz):
 
 @pytest.mark.django_db
 def test_status_twardy_pojedynczy_exact():
-    jednostka = baker.make(Jednostka, nazwa="Katedra Testowa", skrot="Kat. T.")
+    jednostka = baker.make(
+        Jednostka,
+        nazwa=unikalna_nazwa("Katedra Testowa"),
+        skrot=unikalna_nazwa("Kat. T."),
+    )
     autor = baker.make(
         Autor, nazwisko="Kowalski", imiona="Jan", aktualna_jednostka=jednostka
     )
@@ -53,11 +58,15 @@ def test_status_twardy_pojedynczy_exact():
 
 @pytest.mark.django_db
 def test_status_brak_nie_rzuca_i_nie_ustawia_autora():
-    baker.make(Jednostka, nazwa="Katedra Testowa", skrot="Kat. T.")
+    nazwa_jed = unikalna_nazwa("Katedra Testowa")
+    baker.make(Jednostka, nazwa=nazwa_jed, skrot=unikalna_nazwa("Kat. T."))
     imp = baker.make(ImportPracownikow, stan=ImportPracownikow.STAN_ZMAPOWANY)
     imp.plik_xls.name = "protected/import_pracownikow/x.csv"
     # nazwisko nie istnieje w bazie → znajdz_kandydatow_autora zwraca []
-    row = _analizuj_jeden(imp, _wiersz(nazwisko="Niematycki", imię="Zdzisław"))
+    row = _analizuj_jeden(
+        imp,
+        _wiersz(nazwisko="Niematycki", imię="Zdzisław", nazwa_jednostki=nazwa_jed),
+    )
     assert row.confidence == STATUS_BRAK
     assert row.autor is None
     assert row.zmiany_potrzebne is False
@@ -65,7 +74,11 @@ def test_status_brak_nie_rzuca_i_nie_ustawia_autora():
 
 @pytest.mark.django_db
 def test_status_wielu_zapisuje_kandydatow_bez_autora():
-    jednostka = baker.make(Jednostka, nazwa="Katedra Testowa", skrot="Kat. T.")
+    jednostka = baker.make(
+        Jednostka,
+        nazwa=unikalna_nazwa("Katedra Testowa"),
+        skrot=unikalna_nazwa("Kat. T."),
+    )
     # DWÓCH autorów o identycznym imieniu+nazwisku → remis na najwyższym tierze
     baker.make(Autor, nazwisko="Kowalski", imiona="Jan")
     baker.make(Autor, nazwisko="Kowalski", imiona="Jan")
@@ -82,7 +95,11 @@ def test_status_wielu_zapisuje_kandydatow_bez_autora():
 
 @pytest.mark.django_db
 def test_status_twardy_po_bpp_id():
-    jednostka = baker.make(Jednostka, nazwa="Katedra Testowa", skrot="Kat. T.")
+    jednostka = baker.make(
+        Jednostka,
+        nazwa=unikalna_nazwa("Katedra Testowa"),
+        skrot=unikalna_nazwa("Kat. T."),
+    )
     autor = baker.make(Autor, nazwisko="Zielinski", imiona="Adam")
     imp = baker.make(ImportPracownikow, stan=ImportPracownikow.STAN_ZMAPOWANY)
     imp.plik_xls.name = "protected/import_pracownikow/x.csv"
@@ -105,8 +122,14 @@ def test_orcid_nieobecny_nie_wymusza_twardy_przy_remisie():
     # kandydatów po 1.0 w RÓŻNYCH jednostkach → remis top-tier → status WIELU.
     # Regresja F4: gdyby gałąź ID fallbackowała na jednostkę/nazwisko,
     # matchuj_autora rozstrzygnąłby remis jednostką z pliku → błędnie twardy.
-    j1 = baker.make(Jednostka, nazwa="Jedn. A", skrot="J.A")
-    j2 = baker.make(Jednostka, nazwa="Katedra Testowa", skrot="Kat. T.")
+    j1 = baker.make(
+        Jednostka, nazwa=unikalna_nazwa("Jedn. A"), skrot=unikalna_nazwa("J.A")
+    )
+    j2 = baker.make(
+        Jednostka,
+        nazwa=unikalna_nazwa("Katedra Testowa"),
+        skrot=unikalna_nazwa("Kat. T."),
+    )
     a1 = baker.make(Autor, nazwisko="Kowalski", imiona="Jan")
     a2 = baker.make(Autor, nazwisko="Kowalski", imiona="Jan")
     baker.make(Autor_Jednostka, autor=a1, jednostka=j1)
@@ -132,7 +155,11 @@ def test_konflikt_bpp_id_nadal_rzuca():
     # bpp_id w pliku wskazuje NIEISTNIEJĄCEGO autora, ale nazwisko+imię matchuje
     # kogoś innego → matchuj_autora (ID → None → fallback po nazwisku) zwraca
     # tego autora, a jego pk != bpp_id z pliku → twardy błąd (jak dziś).
-    jednostka = baker.make(Jednostka, nazwa="Katedra Testowa", skrot="Kat. T.")
+    jednostka = baker.make(
+        Jednostka,
+        nazwa=unikalna_nazwa("Katedra Testowa"),
+        skrot=unikalna_nazwa("Kat. T."),
+    )
     autor = baker.make(Autor, nazwisko="Kowalski", imiona="Jan")
     nieistniejacy_bpp_id = autor.pk + 999999
     imp = baker.make(ImportPracownikow, stan=ImportPracownikow.STAN_ZMAPOWANY)
