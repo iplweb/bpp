@@ -380,7 +380,7 @@ def test_importpracownikow_results_ma_pasek_filtrow(admin_client, admin_user):
 
 def test_importpracownikow_results_bez_pagination_include():
     """Martwy ``{% include "pagination.html" %}`` (widok bez ``paginate_by``)
-    usunięty z ``<tbody>`` — nie-``<tr>`` w tbody psuje parsowanie DataTables."""
+    usunięty — nie-``<tr>`` w ``<tbody>`` psułby strukturę tabeli/karty."""
     from pathlib import Path
 
     import import_pracownikow

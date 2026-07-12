@@ -147,3 +147,36 @@ def test_integruj_wiersz_zamraza_snapshot_przed_materializacja():
     row.refresh_from_db()
     assert row.stany_pol_snapshot is not None
     assert row.stany_pol()["tytul"] == "zmienione"  # snapshot trzyma stan
+
+
+@pytest.mark.django_db
+def test_integruj_wiersz_snapshot_odroczone_aj_funkcja_brak():
+    """Fix reviewera #1 (dyskryminujący): wiersz z ODROCZONYM AJ. Pre-integracja
+    funkcja = „brak" (AJ=None). `_materializuj_diff` tworzy AJ z tą funkcją → live
+    po integracji byłoby „zgodne", ale snapshot zamrożony PRZED materializacją
+    trzyma „brak". To realnie testuje fix: kod sprzed fixu w gałęzi create-only
+    zostawiał snapshot None, a w gałęzi integrate() łapał stan PO mutacji."""
+    from import_pracownikow.pipeline.integrate import _integruj_wiersz
+
+    jednostka = baker.make("bpp.Jednostka")
+    autor = baker.make("bpp.Autor", tytul=None)
+    funkcja = baker.make("bpp.Funkcja_Autora")
+    imp = baker.make(ImportPracownikow)
+    row = ImportPracownikowRow.objects.create(
+        parent=imp,
+        autor=autor,
+        jednostka=jednostka,
+        autor_jednostka=None,  # odroczone — materializacja je utworzy
+        funkcja_autora=funkcja,
+        dane_znormalizowane={},
+        diff_do_utworzenia={
+            "autor_jednostka": {"autor": autor.pk, "jednostka": jednostka.pk}
+        },
+        zmiany_potrzebne=True,
+    )
+    assert row.stany_pol()["funkcja"] == "brak"  # pre: AJ=None
+    _integruj_wiersz(row)
+    row.refresh_from_db()
+    assert row.autor_jednostka_id is not None  # AJ zmaterializowane
+    assert row.stany_pol_snapshot is not None  # utrwalony we wszystkich gałęziach
+    assert row.stany_pol()["funkcja"] == "brak"  # snapshot trzyma stan sprzed
