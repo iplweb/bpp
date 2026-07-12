@@ -132,6 +132,7 @@ def test_porownaj_z_baza_tytul_rozny(db):
     p = row.porownaj_z_baza()["tytul"]
     assert p["rozne"] is True
     assert p["plik"] == "dr"
+    assert p["baza"] == str(prof)
 
 
 def test_porownaj_z_baza_tytul_bez_autora_nie_rozny(db):
@@ -168,4 +169,25 @@ def test_porownaj_z_baza_funkcja_rozna(db):
         funkcja_autora=nowa,
         dane_znormalizowane={"stanowisko": "adiunkt"},
     )
-    assert row.porownaj_z_baza()["funkcja"]["rozne"] is True
+    p = row.porownaj_z_baza()["funkcja"]
+    assert p["rozne"] is True
+    assert p["baza"] == str(stara)
+
+
+def test_porownaj_z_baza_funkcja_bez_aj_nie_rozna(db):
+    from model_bakery import baker
+
+    from import_pracownikow.models import ImportPracownikowRow
+
+    # bez Autor_Jednostka funkcja nie ma bazy → rozne=False (niuans: brak
+    # dopasowania AJ nie podświetla różnicy).
+    nowa = baker.make("bpp.Funkcja_Autora", nazwa="adiunkt testowy 2")
+    autor = baker.make("bpp.Autor")
+    row = baker.make(
+        ImportPracownikowRow,
+        autor=autor,
+        autor_jednostka=None,
+        funkcja_autora=nowa,
+        dane_znormalizowane={"stanowisko": "adiunkt"},
+    )
+    assert row.porownaj_z_baza()["funkcja"]["rozne"] is False

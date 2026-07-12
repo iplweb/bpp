@@ -137,8 +137,11 @@
                         var w = wybor(klucz);
                         return w === 'wszystkie' || stanPola(tbody, klucz) === w;
                     });
-                    var okTekst = !q ||
-                        tbody.textContent.toLowerCase().indexOf(q) !== -1;
+                    // Szukaj tylko w 1. <tr> (tożsamość) — 2. <tr> zawiera skrypt
+                    // Select2, którego tekst zaśmiecałby dopasowania.
+                    var pierwszy = tbody.querySelector(':scope > tr');
+                    var okTekst = !q || (pierwszy &&
+                        pierwszy.textContent.toLowerCase().indexOf(q) !== -1);
                     tbody.hidden = !(okStany && okTekst);
                 });
             }

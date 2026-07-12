@@ -391,6 +391,7 @@ class ImportPracownikow(LiveOperation):
                 # Porównywarka „plik vs baza" (§12) czyta FK bazy — bez N+1.
                 "autor__stopien_sluzbowy",
                 "autor_jednostka__stanowisko",
+                "autor_jednostka__funkcja",
             )
         )
 
@@ -784,6 +785,9 @@ class ImportPracownikowRow(ImportRowMixin, models.Model):
                 tytul_baza,
                 self.tytul_id if autor else None,
             ),
+            # UWAGA: klucz DANYCH „stanowisko" = „Funkcja w jednostce"
+            # (mapping.py: kolumna funkcja → wewn. „stanowisko" → funkcja_autora),
+            # a klucz WYNIKU „funkcja" ≠ „stanowisko" (to StanowiskoDydaktyczne).
             "funkcja": self._porownaj_fk(
                 dane.get("stanowisko"),
                 funkcja_baza,
@@ -797,6 +801,9 @@ class ImportPracownikowRow(ImportRowMixin, models.Model):
         = plik, więc live dałoby „zgodne"), inaczej live wyliczenie z
         ``POLA_ROZNIC`` (jednostka / email / tytuł / stopień / funkcja /
         stanowisko). Zasila filtr stanu pól i atrybuty ``data-diff-*``."""
+        # Uwaga: gdyby POLA_ROZNIC kiedyś zyskało nowy klucz, stare snapshoty go
+        # nie zawierają — wtedy rekord nie ma data-diff-<nowy> i filtr po tym polu
+        # (≠ „wszystkie") go ukryje. Przy dodaniu pola rozważ dopełnienie snapshotu.
         if self.stany_pol_snapshot is not None:
             return self.stany_pol_snapshot
         from import_pracownikow.roznice import POLA_ROZNIC
@@ -1013,8 +1020,11 @@ class ImportPracownikowRow(ImportRowMixin, models.Model):
     @transaction.atomic
     def integrate(self):
         assert self.zmiany_potrzebne
-        # Zamroź stan pól ZANIM zmienimy bazę (potem live = „zgodne").
-        self.stany_pol_snapshot = self.stany_pol()
+        # Zamroź stan pól ZANIM zmienimy bazę (potem live = „zgodne"). Tylko gdy
+        # jeszcze nie zamrożony — pipeline `_integruj_wiersz` robi to PRZED
+        # materializacją diffu (odroczone create'y), więc tu byłoby za późno.
+        if self.stany_pol_snapshot is None:
+            self.stany_pol_snapshot = self.stany_pol()
         self.log_zmian = {"autor": [], "autor_jednostka": []}
         self._integrate_autor()
         self._integrate_autor_jednostka()

@@ -1,7 +1,7 @@
 import pytest
 from model_bakery import baker
 
-from import_pracownikow.models import ImportPracownikowRow
+from import_pracownikow.models import ImportPracownikow, ImportPracownikowRow
 
 
 @pytest.mark.django_db
@@ -90,3 +90,60 @@ def test_stany_pol_snapshot_stabilny_po_integracji():
     # baza już zaktualizowana → live dałoby "zgodne", ale snapshot trzyma stan:
     assert row.stany_pol_snapshot is not None
     assert row.stany_pol()["tytul"] == "zmienione"
+
+
+@pytest.mark.django_db
+def test_stany_pol_jednostka_zmienione_gdy_autor_bez_aktualnej():
+    """Spec: matched autor BEZ obecnej jednostki + jednostka docelowa =
+    „zmienione" (integracja utworzy mu nowe AJ)."""
+    jedn = baker.make("bpp.Jednostka")
+    autor = baker.make("bpp.Autor", aktualna_jednostka=None)
+    row = baker.make(
+        ImportPracownikowRow, autor=autor, jednostka=jedn, dane_znormalizowane={}
+    )
+    assert row.stany_pol()["jednostka"] == "zmienione"
+
+
+@pytest.mark.django_db
+def test_stany_pol_funkcja_brak_bez_autor_jednostka():
+    """Bez Autor_Jednostka funkcja = „brak" (nuans: nie ma z czym porównać)."""
+    funkcja = baker.make("bpp.Funkcja_Autora")
+    autor = baker.make("bpp.Autor")
+    row = baker.make(
+        ImportPracownikowRow,
+        autor=autor,
+        autor_jednostka=None,
+        funkcja_autora=funkcja,
+        dane_znormalizowane={"stanowisko": "adiunkt"},
+    )
+    assert row.stany_pol()["funkcja"] == "brak"
+
+
+@pytest.mark.django_db
+def test_integruj_wiersz_zamraza_snapshot_przed_materializacja():
+    """Fix reviewera #1: snapshot zamrożony PRZED materializacją/integracją w
+    pipeline — po integracji baza=plik (live dałoby „zgodne"), ale audytowy filtr
+    pokazuje przedintegracyjny stan (tytuł „zmienione")."""
+    from bpp.models import Autor_Jednostka
+    from import_pracownikow.pipeline.integrate import _integruj_wiersz
+
+    dr = baker.make("bpp.Tytul", nazwa="doktor testowy 9", skrot="dr-t9")
+    jednostka = baker.make("bpp.Jednostka")
+    autor = baker.make("bpp.Autor", nazwisko="Testowy", imiona="Pipeline", tytul=None)
+    aj = baker.make(Autor_Jednostka, autor=autor, jednostka=jednostka)
+    imp = baker.make(ImportPracownikow)
+    row = ImportPracownikowRow.objects.create(
+        parent=imp,
+        autor=autor,
+        jednostka=jednostka,
+        autor_jednostka=aj,
+        tytul=dr,
+        dane_znormalizowane={"tytuł_stopień": "dr"},
+        diff_do_utworzenia={},
+        zmiany_potrzebne=True,
+    )
+    assert row.stany_pol()["tytul"] == "zmienione"  # pre-integracja
+    _integruj_wiersz(row)
+    row.refresh_from_db()
+    assert row.stany_pol_snapshot is not None
+    assert row.stany_pol()["tytul"] == "zmienione"  # snapshot trzyma stan

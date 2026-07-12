@@ -17,10 +17,11 @@ def _dane(row):
 def _stan_jednostka(row):
     if row.jednostka_id is None:
         return "brak"
+    # Matched autor + jednostka docelowa różna od obecnej. Obecna=None (autor bez
+    # aktualnego zatrudnienia) też liczy się jako „zmienione" — integracja utworzy
+    # mu nowe AJ (spec: aktualna_jednostka_id != jednostka_id).
     zmienione = bool(
-        row.autor_id
-        and row.autor.aktualna_jednostka_id
-        and row.autor.aktualna_jednostka_id != row.jednostka_id
+        row.autor_id and row.autor.aktualna_jednostka_id != row.jednostka_id
     )
     return "zmienione" if zmienione else "zgodne"
 
