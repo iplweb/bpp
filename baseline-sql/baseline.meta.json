@@ -1,5 +1,5 @@
 {
-  "git_sha": "63c90e569cbcfc62daf40cac33f4f04218ec0ec9",
+  "git_sha": "f512cf59e6d43e6910dd924509e16417fb5108a5",
   "last_migration": {
     "admin": "0003_logentry_add_action_flag_choices",
     "admin_dashboard": "0001_initial",
@@ -51,7 +51,7 @@
     "password_policies": "0003_update_passwordprofile",
     "pbn_api": "0075_sentdata_fee_sent_sentdata_fee_uploaded_okay",
     "pbn_downloader_app": "0004_alter_error_message_fields",
-    "pbn_export_queue": "0009_link_queue_to_uczelnia",
+    "pbn_export_queue": "0010_atomowa_kolejka_pbn",
     "pbn_import": "0012_alter_importinconsistency_inconsistency_type",
     "pbn_komparator_zrodel": "0003_remove_rozbieznosczrodlapbn_pbn_kompara_zrodlo__8665da_idx_and_more",
     "pbn_wysylka_oswiadczen": "0004_alter_pbnwysylkalog_content_type_and_more",
