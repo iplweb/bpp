@@ -9,8 +9,78 @@ from bpp.models import Wydawnictwo_Ciagle
 from bpp.tasks import (
     EASYAUDIT_LOGINEVENT_RETENTION_MONTHS,
     _zaktualizuj_liczbe_cytowan,
+    remove_file,
     usun_stare_logi_logowania_easyaudit,
 )
+
+
+@pytest.fixture
+def report_media(settings, tmp_path):
+    """MEDIA_ROOT wskazujący na tmp_path z gotowym katalogiem ``report``."""
+    settings.MEDIA_ROOT = str(tmp_path)
+    report_dir = tmp_path / "report"
+    report_dir.mkdir()
+    return tmp_path, report_dir
+
+
+def test_remove_file_usuwa_plik_z_katalogu_raportow(report_media):
+    _, report_dir = report_media
+    plik = report_dir / "raport.pdf"
+    plik.write_text("dane")
+
+    remove_file(str(plik))
+
+    assert not plik.exists()
+
+
+def test_remove_file_odrzuca_rodzenstwo_o_wspolnym_prefiksie(report_media):
+    """`…/report-evil/x` NIE może zostać usunięte przez startswith('report')."""
+    root, _ = report_media
+    evil_dir = root / "report-evil"
+    evil_dir.mkdir()
+    plik = evil_dir / "x.pdf"
+    plik.write_text("nie ruszaj")
+
+    remove_file(str(plik))
+
+    assert plik.exists()
+
+
+def test_remove_file_odrzuca_traversal(report_media):
+    """`…/report/../secret` wychodzi poza katalog raportów — odrzucone."""
+    root, report_dir = report_media
+    secret = root / "secret.txt"
+    secret.write_text("tajne")
+
+    remove_file(str(report_dir / ".." / "secret.txt"))
+
+    assert secret.exists()
+
+
+def test_remove_file_odrzuca_symlink_poza_katalog(report_media):
+    """Symlink w katalogu raportów wskazujący na plik na zewnątrz — odrzucony
+    (``resolve()`` rozwiązuje dowiązanie zanim sprawdzimy przynależność)."""
+    root, report_dir = report_media
+    secret = root / "secret.txt"
+    secret.write_text("tajne")
+    link = report_dir / "link.pdf"
+    link.symlink_to(secret)
+
+    remove_file(str(link))
+
+    assert secret.exists()
+
+
+def test_remove_file_brak_pliku_nie_jest_bledem(report_media):
+    """Idempotencja: nieistniejący plik w katalogu raportów nie rzuca."""
+    _, report_dir = report_media
+    remove_file(str(report_dir / "nie-ma-mnie.pdf"))  # nie powinno rzucić
+
+
+def test_remove_file_nie_kasuje_samego_katalogu(report_media):
+    _, report_dir = report_media
+    remove_file(str(report_dir))
+    assert report_dir.exists()
 
 
 @pytest.mark.django_db

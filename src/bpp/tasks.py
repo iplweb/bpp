@@ -1,4 +1,4 @@
-import os
+from pathlib import Path
 
 from celery.utils.log import get_task_logger
 from celery_singleton import Singleton
@@ -19,9 +19,39 @@ logger = get_task_logger(__name__)
 
 @app.task(ignore_result=True)
 def remove_file(path):
-    if path.startswith(os.path.join(settings.MEDIA_ROOT, "report")):
-        logger.warning("Removing %r", path)
-        os.unlink(path)
+    """Usuń plik raportu — wyłącznie z dedykowanego katalogu ``MEDIA_ROOT/report``.
+
+    Hardening: ścieżkę rozwiązujemy przez ``Path.resolve()`` (łamie ``..`` oraz
+    dowiązania symboliczne) i wymagamy, by leżała WEWNĄTRZ katalogu raportów.
+    Poprzednie ``path.startswith(MEDIA_ROOT/report)`` przepuszczało zarówno
+    rodzeństwo o wspólnym prefiksie (``…/report-evil/x``), jak i traversal
+    (``…/report/../../etc/passwd``). Brak pliku nie jest błędem — task bywa
+    ponawiany, a plik mógł już zostać usunięty (idempotencja).
+    """
+    report_dir = Path(settings.MEDIA_ROOT, "report").resolve()
+    try:
+        target = Path(path).resolve()
+    except (OSError, ValueError, RuntimeError):
+        # np. pętla symlinków (ELOOP) albo NUL w ścieżce
+        logger.warning("remove_file: nie można rozwiązać ścieżki %r — pomijam", path)
+        return
+
+    if target == report_dir or not target.is_relative_to(report_dir):
+        logger.warning(
+            "remove_file: ścieżka %r poza katalogiem raportów %s — pomijam",
+            path,
+            report_dir,
+        )
+        return
+
+    logger.warning("Removing %r", str(target))
+    try:
+        target.unlink()
+    except FileNotFoundError:
+        pass  # Plik już usunięty — idempotencja, nie błąd
+    except IsADirectoryError:
+        # Nie kasujemy katalogów — remove_file jest kontraktem na pojedyncze pliki
+        logger.warning("remove_file: %r to katalog, nie plik — pomijam", str(target))
 
 
 # Domyślna retencja logów LOGOWANIA (django-easy-audit LoginEvent) w
