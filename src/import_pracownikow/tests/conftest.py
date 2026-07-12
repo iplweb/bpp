@@ -1,3 +1,4 @@
+import asyncio
 import os
 
 import pytest
@@ -7,6 +8,36 @@ from model_bakery import baker
 
 from bpp.models import Autor, Autor_Jednostka, Jednostka
 from import_pracownikow.models import ImportPracownikow
+
+
+@pytest.fixture(autouse=True)
+def _bez_wycieklej_petli_zdarzen():
+    """Izoluje test od wyciekłej „bieżącej pętli zdarzeń" w wątku workera.
+
+    Testy Playwright (sync-API na greenletach) potrafią zostawić w wątku
+    ustawiony ``asyncio`` running-loop marker, który już się nie czyści. Gdy
+    taki test wypadnie na tym samym workerze xdist PRZED testem
+    ``import_pracownikow``, każde wywołanie ``asgiref.sync.async_to_sync``
+    w analizie (eager-runner liveops → ``WebProgress._push`` →
+    ``channel_layer.group_send``) wywala się na „You cannot use AsyncToSync in
+    the same thread as an async event loop"; wyjątek jest połknięty przez
+    runner, a stan importu utyka na ``zmapowany`` zamiast przejść dalej. Efekt:
+    flake zależny od kolejności shardowania (zielono w izolacji, czerwono po
+    teście Playwright na tym samym workerze).
+
+    Zerujemy marker NA CZAS testu (nasze testy są synchroniczne — nie potrzebują
+    działającej pętli), a po teście PRZYWRACAMY go w niezmienionej postaci, żeby
+    ewentualny kolejny test Playwright na tym workerze zastał swój współdzielony
+    stan pętli nietknięty. Prywatne ``asyncio.events._{get,set}_running_loop``
+    to jedyny sposób na ten marker — dopuszczalne w kodzie wyłącznie testowym.
+    """
+    zapisany = asyncio.events._get_running_loop()
+    if zapisany is not None:
+        asyncio.events._set_running_loop(None)
+    try:
+        yield
+    finally:
+        asyncio.events._set_running_loop(zapisany)
 
 
 def xls_path_factory(suffix=""):
