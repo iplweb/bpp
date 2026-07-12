@@ -98,6 +98,21 @@ class MapowanieForm(forms.Form):
         "weryfikacji do utworzenia. Odznacz, aby pomijać niedopasowane tytuły "
         "(nowi autorzy powstaną bez tytułu).",
     )
+    tworz_brakujace_stopnie = forms.BooleanField(
+        required=False,
+        initial=True,
+        label="Twórz brakujące stopnie służbowe",
+        help_text="Gdy zaznaczone, stopnie służbowe nieobecne w bazie trafią na "
+        "ekran weryfikacji do utworzenia. Odznacz, aby pomijać niedopasowane.",
+    )
+    tworz_brakujace_stanowiska = forms.BooleanField(
+        required=False,
+        initial=True,
+        label="Twórz brakujące stanowiska dydaktyczne",
+        help_text="Gdy zaznaczone, stanowiska dydaktyczne nieobecne w bazie "
+        "trafią na ekran weryfikacji do utworzenia. Odznacz, aby pomijać "
+        "niedopasowane.",
+    )
 
     def __init__(self, *args, naglowki=None, initial_mapowanie=None, **kwargs):
         super().__init__(*args, **kwargs)

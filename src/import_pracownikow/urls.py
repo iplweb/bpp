@@ -43,6 +43,16 @@ urlpatterns = [
         name="tytuly",
     ),
     path(
+        "<uuid:pk>/stopnie/",
+        views.WeryfikacjaStopniView.as_view(),
+        name="stopnie",
+    ),
+    path(
+        "<uuid:pk>/stanowiska/",
+        views.WeryfikacjaStanowiskView.as_view(),
+        name="stanowiska",
+    ),
+    path(
         "<uuid:pk>/zatwierdz/",
         views.ZatwierdzImportView.as_view(),
         name="zatwierdz",
