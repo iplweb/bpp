@@ -11,9 +11,11 @@ przekazuje uczelnię (a nie tylko że manager kolejki ją wspiera).
 """
 
 import pytest
+from django.contrib.auth.models import Group
 from django.urls import reverse
 from model_bakery import baker
 
+from bpp.const import GR_WPROWADZANIE_DANYCH
 from pbn_export_queue.models import PBN_Export_Queue
 
 
@@ -24,6 +26,7 @@ def test_przemapuj_zrodlo_enqueue_sets_uczelnia_from_request(
     settings.ALLOWED_HOSTS = ["*"]
 
     user = baker.make("bpp.BppUser")
+    user.groups.add(Group.objects.get_or_create(name=GR_WPROWADZANIE_DANYCH)[0])
     client.force_login(user)
 
     journal_deleted = baker.make(

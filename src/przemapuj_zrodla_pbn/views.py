@@ -3,13 +3,13 @@ import sys
 
 import rollbar
 from django.contrib import messages
-from django.contrib.auth.decorators import login_required
 from django.contrib.postgres.search import TrigramSimilarity
 from django.db import models, transaction
 from django.db.models import Count, Q
 from django.shortcuts import get_object_or_404, redirect, render
 
 from bpp.models import Rekord, Rodzaj_Zrodla, Uczelnia, Wydawnictwo_Ciagle, Zrodlo
+from bpp.permissions import wprowadzanie_danych_wymagane
 from bpp.util import zaloguj_polkniety_wyjatek
 from pbn_api.const import ACTIVE, DELETED
 from pbn_api.models import Journal
@@ -401,7 +401,7 @@ def znajdz_podobne_zrodla(journal_skasowane, max_results=10):
     return results
 
 
-@login_required
+@wprowadzanie_danych_wymagane
 def lista_skasowanych_zrodel(request):
     """Widok listy wszystkich źródeł skasowanych w PBN."""
 
@@ -617,7 +617,7 @@ def _obsluz_preview(request, zrodlo, form, liczba_rekordow, sugerowane):
     return render(request, "przemapuj_zrodla_pbn/przemapuj_zrodlo.html", context)
 
 
-@login_required
+@wprowadzanie_danych_wymagane
 def przemapuj_zrodlo(request, zrodlo_id):
     """Główny widok do przemapowania źródła."""
     zrodlo = get_object_or_404(Zrodlo, pk=zrodlo_id)
@@ -674,7 +674,7 @@ def przemapuj_zrodlo(request, zrodlo_id):
     return render(request, "przemapuj_zrodla_pbn/przemapuj_zrodlo.html", context)
 
 
-@login_required
+@wprowadzanie_danych_wymagane
 def usun_zrodlo(request, zrodlo_id):
     """Usuwa źródło skasowane w PBN, które nie ma żadnych rekordów."""
     zrodlo = get_object_or_404(Zrodlo, pk=zrodlo_id)
