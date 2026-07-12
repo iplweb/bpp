@@ -109,9 +109,12 @@ krok". Dlatego limity egzekwuje **walidacja formularza (A2)** — to ona daje
 - pole `pliki` (`MultipleFileField`) dostaje `validate_file_size` w
   `validators` (odpala per-plik, bo `clean` iteruje listę — jak istniejący
   `validate_file_extension_pdf`),
-- `MultipleFileField.clean`: limit liczby sprawdzany **przed** rozgałęzieniem
-  `isinstance(list)` (znormalizuj do listy, potem `len(...) > MAX...` →
-  `ValidationError`),
+- `MultipleFileField.clean`: limit liczby liczony na znormalizowanej liście
+  (`data if isinstance(data,(list,tuple)) else [data] if data else []`),
+  `len(...) > MAX_LICZBA_PLIKOW` → `ValidationError`. **Kształt zwrotki `clean`
+  bez zmian** (nie-lista → pojedyncza wartość) — `_process_files` fallback
+  (`views.py:665-667`) i inni konsumenci na tym polegają; normalizacja dotyczy
+  wyłącznie licznika,
 - legacy pole `plik` w `Zgloszenie_Publikacji_Plik` też dostaje
   `validate_file_size` (formularz to martwy kod — brak importów poza
   definicją; dodajemy defensywnie, nie jako zamknięcie realnej ścieżki).
@@ -164,16 +167,27 @@ i sprawdzenie istnienia PRZED wejściem w `done()`:
 
 ```
 def render_done(self, form, **kwargs):
-    brakujace = [i for i in self.storage.extra_data.get(PLIKI_EXTRA_KEY, [])
+    brakujace = [i for i in self.storage.extra_data.get(self.PLIKI_EXTRA_KEY, [])
                  if not self.file_storage.exists(i["tmp_name"])]
     if brakujace:
-        self._wyczysc_tmp_pliki()                # skasuj metadane sierot
+        self._wyczysc_tmp_pliki()   # kasuje CAŁĄ listę (1 wygasły → wszystkie
+                                    # do ponownego wgrania) — świadoma prostota
         self.storage.current_step = "2"
         messages.warning(self.request, "Wgrane pliki wygasły — wgraj ponownie.")
         return self.render(self.get_form("2",
                            data=self.storage.get_step_data("2")))
     return super().render_done(form, **kwargs)
 ```
+
+Uwagi implementacyjne:
+- `messages` w `views.py:16` to re-eksport `django.contrib.messages` przez
+  `messages_extends` (zweryfikowane — `messages.warning` działa, `base.html`
+  renderuje).
+- Po recovery form zwracany przez `get_form("2", data=...)` jest **bound**;
+  przy OGRANICZONY `pliki_juz_zapisane` policzy się jako `False` (tmp
+  wyczyszczone) → `clean()` pokaże obok warninga błąd „wymagany min. 1 plik".
+  **To pożądane** — user ma ponownie wgrać. NIE „naprawiać" przez wymuszenie
+  `pliki_juz_zapisane=True` (odtworzyłoby to 500 na `done()`).
 
 **B3. Sprzątanie przy restarcie kreatora (review #8, tanie).** GET na URL
 wizardu robi `storage.reset()` (→ `init_data()`, zeruje `extra_data`), ale
@@ -209,10 +223,12 @@ def get(self, request, *args, **kwargs):
   komenda **nie** przyjmuje ścieżki z CLI — katalog bierze wyłącznie z tego
   samego punktu prawdy co wizard (funkcja modułowa). Dalej:
   `tmp = Path(zglos_tmp_dir()).resolve()` (realpath neutralizuje symlink
-  i trailing slash); assert `tmp.name == "zglos_publikacje_tmp"` (**równość**
-  basename, nie `endswith`); iteracja `tmp.iterdir()` **bez rekursji**;
-  kasuj tylko `e.is_file() and not e.is_symlink()`; wiek po
-  `e.lstat().st_mtime` (lstat — nie podążaj za linkiem).
+  i trailing slash); jeśli katalog **nie istnieje** (świeża instalacja, zero
+  uploadów) → wczesny return, nie `iterdir` (rzuciłby `FileNotFoundError`);
+  assert `tmp.name == "zglos_publikacje_tmp"` (**równość** basename, nie
+  `endswith`); iteracja `tmp.iterdir()` **bez rekursji**; kasuj tylko
+  `e.is_file() and not e.is_symlink()`; wiek po `e.lstat().st_mtime`
+  (lstat — nie podążaj za linkiem).
 - Wpięcie w cron należy do wdrożenia (`bpp-deploy`); poza zakresem PR,
   wspomniane w newsfragmencie.
 
@@ -223,6 +239,8 @@ z nadpisanym `.size`, bo `File.size` to zwykły atrybut/`cached_property`):
 1. `validate_file_size`: plik `.size = 21 MB` → `ValidationError`; 19 MB → OK.
 2. `MultipleFileField.clean`: 6 plików → `ValidationError` (liczba);
    5 plików → OK; 1 plik (nie-lista) → nie wywala limitu liczby; `[]` → OK.
+2b. `_pliki_w_limicie`: lista z plikiem > 20 MB → odrzucony (+ rollbar);
+   7 plików → przycięte do 5 (+ rollbar); 5×OK → bez zmian, bez rollbara.
 
 Przepływ wizardu (test client / bezpośrednie wołanie widoku,
 `@override_settings(MEDIA_ROOT=tmp_path)` + w razie potrzeby monkeypatch
@@ -231,8 +249,14 @@ Przepływ wizardu (test client / bezpośrednie wołanie widoku,
    utrwalony w tmp.
 4. Krok 2: 5 plików ~1 MB → utrwalone; lądują w `zglos_publikacje_tmp/`,
    **nie** w `zglos_publikacje/`.
-5. **Regresja wektora review #1:** ważny krok 0 z doczepionymi plikami pod
-   dowolnymi kluczami → **żaden** plik nie utrwalony w storage.
+5. **Regresja wektora review #1:** ważny krok z doczepionymi plikami pod
+   dowolnymi kluczami → **żaden** plik nie utrwalony w storage. Sparametryzuj
+   po krokach 0/1/3/4 (tanie, a każdy to osobna ścieżka `return {}`).
+5b. **Happy-path OGRANICZONY end-to-end (kluczowy regression-guard):** pełny
+   przebieg wizardu z plikami → `done()` tworzy `Zgloszenie_Publikacji_Zalacznik`,
+   tmp wyczyszczone, plik trwały w `zglos_publikacje/`. Chroni rewiring
+   `return {}` + `pliki_juz_zapisane` + rewalidację w `render_done` z
+   `files=None` (testy 4/6b tego nie łapią).
 6. Krok 2 OTWARTY (pole `pliki` usunięte) z doczepionym `2-pliki` → nic nie
    utrwalone.
 6b. OGRANICZONY z plikami → powrót na krok 1 → zmiana na OTWARTY → koniec:
@@ -241,6 +265,8 @@ Przepływ wizardu (test client / bezpośrednie wołanie widoku,
 7. Late-completion: tmp-plik usunięty przed `done()` → **brak 500**;
    `render_done` wykrywa brak, resetuje na krok 2 z komunikatem (żadna
    `ValidationError` nie propaguje).
+7b. **B3 — GET czyści tmp:** po uploadzie na kroku 2, GET na URL wizardu →
+   tmp-pliki skasowane z dysku, `extra_data[PLIKI_EXTRA_KEY]` wyzerowane.
 
 Komenda `wyczysc_zglos_tmp` (mtime ustawiany `os.utime`):
 8. stary tmp (mtime > 24 h) → skasowany; świeży tmp → zostaje;
