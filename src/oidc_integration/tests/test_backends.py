@@ -442,3 +442,42 @@ def test_email_trusted_false_on_username_fallback():
     )
     assert claims["email"] == "user@x.pl"
     assert claims["_bpp_email_trusted"] is False
+
+
+# --- Task 5: filter_users_by_claims po (issuer, sub) ---
+
+
+def test_filter_matches_only_by_linked_sub(db):
+    from oidc_integration.models import OIDCIdentity
+
+    u = baker.make("bpp.BppUser", email="jan@x.pl")
+    OIDCIdentity.objects.create(user=u, issuer="https://kc", sub="S1")
+    b = _backend()
+    claims = {"sub": "S1", "iss": "https://kc", "email": "jan@x.pl"}
+    assert list(b.filter_users_by_claims(claims)) == [u]
+
+
+def test_filter_ignores_email_when_no_sub_link(db):
+    # Konto z tym samym e-mailem, ale BEZ powiązanego (issuer, sub) — nie
+    # wolno go dopasować (to jest właśnie zamknięte przejęcie po e-mailu).
+    baker.make("bpp.BppUser", email="jan@x.pl")
+    b = _backend()
+    claims = {"sub": "S1", "iss": "https://kc", "email": "jan@x.pl"}
+    assert list(b.filter_users_by_claims(claims)) == []
+
+
+def test_filter_empty_when_no_sub_or_iss(db):
+    b = _backend()
+    assert list(b.filter_users_by_claims({"iss": "https://kc"})) == []
+    assert list(b.filter_users_by_claims({"sub": "S1"})) == []
+
+
+def test_filter_cross_realm_same_sub_not_matched(db):
+    # Ten sam sub w innym realmie (issuer) NIE może dopasować konta.
+    from oidc_integration.models import OIDCIdentity
+
+    u = baker.make("bpp.BppUser", email="jan@x.pl")
+    OIDCIdentity.objects.create(user=u, issuer="https://other", sub="S1")
+    b = _backend()
+    claims = {"sub": "S1", "iss": "https://kc", "email": "jan@x.pl"}
+    assert list(b.filter_users_by_claims(claims)) == []

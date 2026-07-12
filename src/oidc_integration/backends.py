@@ -235,6 +235,24 @@ class BppOIDCBackend(OIDCAuthenticationBackend):
         _log_claims_debug(claims)
         return super().verify_claims(claims)
 
+    def filter_users_by_claims(self, claims):
+        """Dopasuj konto WYŁĄCZNIE po powiązanym ``(issuer, sub)``.
+
+        Bazowa implementacja dopasowuje po e-mailu — co pozwala przejąć konto
+        przez wpisanie cudzego adresu w realmie. Tu wiążemy tożsamość po
+        niezmiennym ``sub`` w obrębie danego ``issuer``: brak wpisu
+        ``OIDCIdentity`` → brak dopasowania (konto powstanie lub trzeba je
+        świadomie połączyć). Brak ``sub``/``iss`` → pusty queryset.
+        """
+        sub = claims.get("sub")
+        issuer = claims.get("iss")
+        if not sub or not issuer:
+            return self.UserModel.objects.none()
+        return self.UserModel.objects.filter(
+            oidc_identities__issuer=issuer,
+            oidc_identities__sub=sub,
+        )
+
     def _assign_uczelnia(self, user):
         """Przypisz uczelnię docelową (``accessible_uczelnie``) wg skrótu OIDC.
 
