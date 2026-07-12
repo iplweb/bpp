@@ -22,7 +22,7 @@ PBN-instytucjonalny, spójny wygląd tabel, aktywne wyszukiwanie i akcję zbiorc
 | 4 | `/rezultaty/` | Kolumna ORCID |
 | 5 | `/rezultaty/` | Wskaźnik: autor pochodzi z API instytucjonalnego PBN (`OsobaZInstytucji`) |
 | 6 | `/rezultaty/` | Przekolorowanie plakietek statusów (patrz „Schemat plakietek") |
-| 7 | logika | Zdublowany autor → dopasowanie do rekordu głównego (deduplikator, **opcja B**), tylko `import_pracownikow` |
+| 7 | logika | Zdublowany autor → operacje zatrudnienia (przypisanie do jednostki, zmiana miejsca pracy, przepięcia) kierowane na rekord **oryginalny/główny** (ORCID + tytuł + PBN instytucjonalny), **BEZ scalania rekordów**, tylko `import_pracownikow` |
 | 8 | `/audyt/` | Pełne nazwy jednostek na plakietkach |
 | 9 | `/audyt/` | Dane autora: ORCID, link do strony autora BPP, link do adminu |
 | 10 | `/audyt/` | Aktywne wyszukiwanie + stronicowanie (DataTables) |
@@ -52,62 +52,86 @@ PBN-instytucjonalny, spójny wygląd tabel, aktywne wyszukiwanie i akcję zbiorc
 
 ---
 
-## Pozycja 7 — dopasowanie do rekordu głównego (opcja B)
+## Pozycja 7 — operacje zatrudnienia kierowane na rekord ORYGINALNY
 
-### Zasada
+### Zasada (DOPRECYZOWANE przez użytkownika)
 
-Gdy dopasowanie po nazwisku daje **≥2 kandydatów na najwyższym tierze pewności**
-(dziś zawsze `STATUS_WIELU` → wybór ręczny), spróbuj rozstrzygnąć automatycznie
-przez logikę deduplikatora, ale **tylko gdy sygnał jest jednoznaczny**. Ryzyko:
-`STATUS_WIELU` powstaje też dla dwóch **różnych** osób o tym samym nazwisku —
-auto-wybór w tym przypadku byłby korupcją danych. Dlatego bramka jest
-konserwatywna.
+**NIE scalamy rekordów autorów podczas importu.** Zmiana dotyczy wyłącznie tego,
+do **którego rekordu autora** import podpina operacje zatrudnienia
+(`Autor_Jednostka`: przypisanie do jednostki, zmiana miejsca pracy, przepięcia
+dorobku). Gdy dopasowanie po nazwisku trafia na **rekord-duplikat**, import ma
+podpiąć zatrudnienie do **rekordu oryginalnego/głównego** — tego z ORCID,
+tytułem i odpowiednikiem w API instytucjonalnym PBN (`OsobaZInstytucji`). Żaden
+rekord nie jest usuwany ani łączony (`scal_autora` **nie** jest wołane).
 
-### Algorytm `_rozstrzygnij_do_rekordu_glownego(kandydaci)`
+### Mechanizm — persystowany `DuplicateCandidate` (nie live analiza)
 
-Wywoływany w `_dopasuj_autora_i_status` **tylko** gdy wyliczony `status ==
-STATUS_WIELU`.
+Deduplikator zapisuje wyniki skanu w `deduplikator_autorow.models.DuplicateCandidate`:
+`duplicate_autor` (duplikat) → `main_autor` (oryginał, z `OsobaZInstytucji`/
+`pbn_uid`), z `confidence_percent` (0.0–1.0), `confidence_score` (surowy) i
+`status` (`pending`/`merged`/`not_duplicate`). To gotowa, przeglądalna przez
+operatora, **odwrotna** mapa duplikat→oryginał — dużo tańsza niż uruchamianie
+`analiza_duplikatow` per wiersz. („Opcja B" = logika deduplikatora; używamy jej
+**zmaterializowanej** formy zamiast liczyć na żywo.)
 
-1. **Top-tier:** `top = [k for k in kandydaci if k.pewnosc == kandydaci[0].pewnosc]`.
-2. **PBN-backed:** dla każdego `k` w `top` ustal `OsobaZInstytucji`
-   (`k.autor.pbn_uid.osobazinstytucji`, wzorzec `_osoba_z_instytucji_autora`,
-   z obsługą `RelatedObjectDoesNotExist` i braku `pbn_uid`).
-3. Jeśli **dokładnie jeden** kandydat z `top` jest PBN-backed → `osoba` = jego
-   `OsobaZInstytucji`, `glowny = _ustal_glownego_autora(osoba)`.
-   W przeciwnym razie (0 lub ≥2 PBN-backed, albo `glowny is None`) → **zwróć
-   `(None, STATUS_WIELU)`** (wybór ręczny).
-4. `analiza = analiza_duplikatow(osoba)`; zbuduj mapę
-   `{a["autor"].pk: a["pewnosc"] for a in analiza["analiza"]}` (pewność 0–100).
-5. **Bramka potwierdzenia:** każdy kandydat z `top` **inny niż `glowny`** musi
-   być w mapie z `pewnosc >= PROG_AUTO_DEDUP`. Jeśli tak (wszystkie pozostałe to
-   potwierdzone duplikaty rekordu głównego) → **zwróć `(glowny, STATUS_DEDUP)`**.
-   Jeśli którykolwiek pozostały kandydat nie jest potwierdzonym duplikatem →
-   **zwróć `(None, STATUS_WIELU)`** (bezpieczeństwo > automatyzacja).
-6. `glowny` może NIE być wśród `top` (name-match go nie znalazł, np. inne
-   nazwisko) — to poprawne: sedno pozycji to dopasowanie do rekordu głównego,
-   nie do żadnego z name-kandydatów. Bramka z pkt. 5 dalej działa (wszystkie
-   `top` to wtedy duplikaty).
+### Helper `kanoniczny_autor(autor) -> Autor`
+
+Czysty helper (w `import_pracownikow`, np. `dedup.py`):
+
+1. Jeśli istnieje `NotADuplicate` dla `autor` → zwróć `autor` (operator
+   zawetował — nie przekierowuj).
+2. Znajdź najlepszy `DuplicateCandidate` gdzie `duplicate_autor == autor`,
+   `status != NOT_DUPLICATE`, `confidence_percent >= PROG_KANONICZNY`,
+   sort po `-confidence_percent` (bierz `main_autor` najpewniejszego).
+   - Uszanuj też `main_osoba_z_instytucji`/`main_autor` jako „oryginał"
+     (ma pochodzić z PBN instytucjonalnego — to gwarantuje konstrukcja skanu).
+3. Jeśli znaleziono → zwróć `main_autor`; inaczej zwróć `autor` (no-op).
+
+Idempotentny: dla rekordu, który sam jest `main_autor` (nie występuje jako
+`duplicate_autor`), zwraca wejściowy autor.
+
+### Punkt wpięcia
+
+W `_dopasuj_autora_i_status` (`analyze.py`), **po** ustaleniu `(autor, status,
+kandydaci)` i **tylko** gdy `autor is not None` (twardy/zgadywanie/ID):
+
+```
+autor_kanoniczny = kanoniczny_autor(autor)
+if autor_kanoniczny != autor:
+    # przekierowanie zatrudnienia na oryginał; zapamiętaj do audytu/badge
+    status = STATUS_DEDUP
+    autor = autor_kanoniczny
+```
+
+- Dla `STATUS_WIELU`/`STATUS_BRAK` (brak auto-autora) nie przekierowujemy —
+  wybór należy do operatora. Po ręcznym wyborze (`DopasujAutoraView`/
+  `WybierzKandydataView`) można opcjonalnie zaproponować oryginał, ale to
+  **poza zakresem** tej iteracji (patrz Ryzyka).
+- Dla dopasowania po `pbn_uid` (ID-path) rekord i tak jest zwykle oryginałem
+  (duplikaty nie mają `pbn_uid`) → helper jest no-opem. Poprawne.
 
 ### Parametr do zatwierdzenia
 
-- `PROG_AUTO_DEDUP` — próg pewności deduplikatora do **automatycznego** scalenia.
-  Musi być **wyższy** niż próg wyświetlania (`50`). Proponowany **domyślny: 80**
-  (0–100). Wartość wydzielona jako nazwana stała w `import_pracownikow`
-  (nie w deduplikatorze), do rewizji w planie/PR.
+- `PROG_KANONICZNY` — minimalny `confidence_percent` z `DuplicateCandidate`, przy
+  którym ufamy relacji duplikat→oryginał na tyle, by przekierować zatrudnienie.
+  Musi być **wyższy** niż próg wyświetlania deduplikatora
+  (`MIN_PEWNOSC_DO_WYSWIETLENIA = 50` na skali 0–100 ≈ `0.5`). Proponowany
+  **domyślny: 0.80**. Stała w `import_pracownikow`, do rewizji w PR.
 
-### Wydajność
+### Zależność od skanu (WAŻNE)
 
-- `analiza_duplikatow` (+ `szukaj_kopii` + zgadywanie płci + 8 ocen) uruchamiane
-  wyłącznie dla wierszy `STATUS_WIELU` z **dokładnie jednym** PBN-backed
-  kandydatem — mniejszość wierszy.
-- **Memoizacja per `osoba.pk`** w obrębie jednego przebiegu analizy (ta sama
-  osoba instytucjonalna bywa kandydatem dla wielu wierszy o tym samym nazwisku).
+Przekierowanie działa **tylko dla par duplikat→oryginał obecnych w
+`DuplicateCandidate`**, tj. gdy skan deduplikatora został uruchomiony i pokrył
+danego autora. Brak wpisu → brak przekierowania (bezpieczny no-op, import działa
+jak dziś). Live `analiza_duplikatow` jako fallback dla nieprzeskanowanych
+autorów — **poza zakresem** (droższe per-wiersz; do rozważenia osobno).
 
 ### Transparentność / audyt
 
-- Nowy status `STATUS_DEDUP = "dedup"` (autom. dopasowanie do rekordu głównego).
-- Przy rozstrzygnięciu zapis do `log_zmian`/diff wiersza: „auto-dopasowano do
-  rekordu głównego #<pk> (deduplikator, pewność N%)".
+- Nowy status `STATUS_DEDUP = "dedup"` — etykieta „rekord główny"
+  (NIE „scalono"): wiersz dopasowano do rekordu oryginalnego.
+- Zapis do `log_zmian`/diff wiersza: „zatrudnienie przypisane do rekordu
+  głównego #<main_pk> (zamiast duplikatu #<dup_pk>, deduplikator, pewność N%)".
 - `STATUS_DEDUP` traktowany jak status **rozstrzygnięty**:
   - dołączyć do `confidence__in=[STATUS_TWARDY, STATUS_RECZNY]` w
     `ImportPracownikowResultsView.get_queryset` (`_prio` → na dół listy),
@@ -117,10 +141,9 @@ STATUS_WIELU`.
 
 ### Zależność między pozycjami
 
-Pozycja 5 (wskaźnik PBN-instytucjonalny) i pozycja 7 dzielą to samo zapytanie
-`autor.pbn_uid.osobazinstytucji` — wspólny helper
-`autor_ma_osobe_z_instytucji(autor)` w `import_common` lub `import_pracownikow`,
-z prefetch/adnotacją w widokach, by uniknąć N+1.
+Pozycja 5 (wskaźnik PBN-instytucjonalny) dzieli sygnał „autor ma
+`OsobaZInstytucji`" (`autor.pbn_uid.osobazinstytucji`) — wspólny helper
+`autor_ma_osobe_z_instytucji(autor)` z prefetch/adnotacją w widokach (bez N+1).
 
 ---
 
@@ -202,15 +225,20 @@ dostępne (skompilowane): `success`, `warning`, `primary`, `secondary`, `alert`.
 ## Testy
 
 - **Poz. 7 (priorytet):**
-  - Dwa różne rekordy tego samego autora (główny z `OsobaZInstytucji`+ORCID+tytuł,
-    duplikat bez) o identycznej pewności nazwiskowej → `STATUS_DEDUP`, autor =
-    główny.
-  - Dwie **różne** osoby o tym samym nazwisku (obie bez lub obie z PBN, brak
-    potwierdzenia duplikatu) → pozostaje `STATUS_WIELU` (brak auto-wyboru).
-  - Duplikat poniżej `PROG_AUTO_DEDUP` → `STATUS_WIELU`.
-  - Główny spoza top-tier (name-match nie znalazł głównego) → auto-wybór
-    głównego, gdy wszystkie top-tier to potwierdzone duplikaty.
-  - Memoizacja: `analiza_duplikatow` liczone raz per `osoba` w przebiegu.
+  - Name-match trafia na duplikat; istnieje `DuplicateCandidate`
+    duplikat→oryginał z `confidence_percent >= PROG_KANONICZNY` i
+    `status != not_duplicate` → `row.autor == main_autor`, `STATUS_DEDUP`;
+    `Autor_Jednostka` powstaje dla **oryginału**, duplikat nietknięty.
+  - `DuplicateCandidate` poniżej `PROG_KANONICZNY` → brak przekierowania
+    (autor = trafiony rekord, status bez zmian).
+  - `NotADuplicate` dla trafionego autora → brak przekierowania (weto operatora).
+  - Brak jakiegokolwiek `DuplicateCandidate` dla autora → no-op (autor bez zmian).
+  - Dopasowanie po `pbn_uid` do oryginału → `kanoniczny_autor` no-op
+    (oryginał nie występuje jako `duplicate_autor`).
+  - Idempotencja: `kanoniczny_autor(main_autor) == main_autor`.
+  - `STATUS_WIELU`/`STATUS_BRAK` (brak auto-autora) → przekierowanie się nie
+    odpala.
+  - Audyt: log zawiera `main_pk` i `dup_pk`.
 - **UI:** render kolumn ORCID/linków (rezultaty, odpiecia, audyt); klasa
   plakietki per status (rozszerzyć `test_confidence_badge_*`); endpoint zbiorczy
   odpięć (owner-scope, bramka podglądu, filtrowanie `pk__in`, toggle
@@ -220,9 +248,14 @@ dostępne (skompilowane): `success`, `warning`, `primary`, `secondary`, `alert`.
 ## Poza zakresem / ryzyka
 
 - Brak zmian w `import_common` widocznych dla innych importerów (poz. 7 lokalna).
-- Brak pełnego UI scalania duplikatów — używamy tylko *odczytu* analizy
-  deduplikatora do wyboru rekordu głównego (bez `scal_autora`).
-- `PROG_AUTO_DEDUP` = decyzja jakościowa; domyślnie konserwatywnie (80),
+- **Nie scalamy rekordów** — tylko *odczyt* `DuplicateCandidate` do wyboru
+  rekordu, do którego trafia zatrudnienie (`scal_autora` NIE jest wołane).
+- **Zależność od skanu:** przekierowanie działa tylko dla par obecnych w
+  `DuplicateCandidate` (deduplikator musiał przeskanować autora). Brak wpisu →
+  no-op. Live `analiza_duplikatow` jako fallback — poza zakresem.
+- **Ręczny wybór** operatora (`STATUS_WIELU`) nie jest auto-przekierowywany —
+  poza zakresem tej iteracji.
+- `PROG_KANONICZNY` = decyzja jakościowa; domyślnie konserwatywnie (0.80),
   do rewizji.
 - DataTables w audycie ładuje wszystkie wiersze do DOM — dla bardzo dużych
   importów rozważyć limit; obecnie spójne z pozostałymi tabelami przepływu.
