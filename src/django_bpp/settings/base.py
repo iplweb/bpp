@@ -779,6 +779,15 @@ CELERYBEAT_SCHEDULE = {
         "task": "oswiadczenia.tasks.remove_old_oswiadczenia_export_files",
         "schedule": timedelta(days=1),
     },
+    # Retencja porzuconych plików tmp kreatora zgłoszeń publikacji (anonimowy
+    # formularz — porzucone uploady zostałyby na wolumenie media bez ograniczeń;
+    # anty-DoS na dysk, bpp #551). Kasuje sieroty >24h z osobnego katalogu tmp,
+    # nie ruszając finalnych załączników. Worker montuje media (jak sąsiednie
+    # cleanup-*), więc kasowanie działa.
+    "wyczysc-zglos-tmp-pliki": {
+        "task": "zglos_publikacje.tasks.wyczysc_zglos_tmp_pliki",
+        "schedule": timedelta(hours=6),
+    },
     "rebuild-pbn-author-match-cache": {
         "task": "importer_autorow_pbn.tasks.auto_rebuild_match_cache_task",
         "schedule": crontab(hour=3, minute=30),  # Daily at 3:30 AM
