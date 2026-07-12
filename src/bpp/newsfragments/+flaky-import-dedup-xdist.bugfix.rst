@@ -1,8 +1,10 @@
-Ustabilizowano flaky testy ``import_pracownikow`` i ``deduplikator_autorow`` pod
-zrównoleglonym uruchomieniem (pytest-split + xdist). Testy tworzące jednostki o
-dosłownej nazwie „Katedra Testowa" itp. kolidowały na unikalnym constraincie
-``bpp_jednostka_nazwa_key``, gdy scommitowany wiersz sąsiada przeciekł na
-współdzielony worker — nazwy jednostek są teraz globalnie unikalne (czytelny
-prefiks + losowy sufiks). Test wykrywania duplikatów autorów asertuje własną
-inwariantę (para w jednym klastrze) zamiast globalnej liczby kandydatów, więc
-ambient „Kowalski Jan" z sąsiednich testów już go nie wywraca.
+Ustabilizowano flaky testy pod shardingiem (pytest-split + xdist). Pod
+obciążeniem CI test commitujący dane poza rollback zostawiał w bazie workera
+ambient autorów/jednostek/stopni/stanowisk, przez co kolejne testy pękały na
+unikalnym constraincie (``bpp_jednostka_nazwa_key`` itp.) albo na asercjach
+„pusta baza". Dodano defensywny guard izolacji w ``src/conftest.py``, który
+przed każdym testem czyści wyciekłe dane domenowe (TRUNCATE tabel pustych w
+baseline, bez ruszania danych referencyjnych). Dodatkowo testy
+``import_pracownikow`` używają globalnie unikalnych nazw jednostek, a test
+wykrywania duplikatów autorów asertuje inwariantę klastra zamiast globalnej
+liczby kandydatów.
