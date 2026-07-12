@@ -51,7 +51,10 @@
                         // APPEND_SLASH nie przekieruje POST-a (zgubiłby ciało).
                         var tozForm = document.createElement("form");
                         tozForm.method = "post";
-                        tozForm.action = "../../toz/" + pub_id + "/";
+                        // pub_id to PK (liczba). parseInt sanitizuje wartość
+                        // czytaną z DOM (.val()), żeby nie przenosiła meta-znaków
+                        // do URL-a — usuwa CodeQL js/xss-through-dom u źródła.
+                        tozForm.action = "../../toz/" + parseInt(pub_id, 10) + "/";
                         var tozCsrf = document.createElement("input");
                         tozCsrf.type = "hidden";
                         tozCsrf.name = "csrfmiddlewaretoken";
