@@ -216,6 +216,12 @@ SITE_ID = env("DJANGO_BPP_SITE_ID", default=1, cast=int)
 USE_I18N = True
 USE_TZ = True
 
+# URL usługi html2docx (sidecar HTTP) używanej jako fallback konwersji DOCX,
+# gdy pandoc zawiedzie (np. core dump na VMWare ESX). None => fallback
+# wyłączony, degradacja miękka (DocxConversionError). Patrz
+# nowe_raporty.docx_export._convert_using_html2docx_service.
+HTML2DOCX_URL = env("DJANGO_BPP_HTML2DOCX_URL", default=None)
+
 # Django 5.0 transitional; stanie się domyślne w 6.0. Wycisza
 # RemovedInDjango60Warning z forms.URLField dla URL-i bez schematu.
 FORMS_URLFIELD_ASSUME_HTTPS = True
