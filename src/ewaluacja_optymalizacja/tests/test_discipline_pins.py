@@ -208,18 +208,17 @@ def test_reset_discipline_pins_dispatches_task_and_redirects(
         kwargs={"pk": dyscyplina.pk},
     )
 
-    with patch(
-        "ewaluacja_optymalizacja.tasks.reset_discipline_pins_task"
-    ) as mock_task, patch(
-        "ewaluacja_optymalizacja.views.pins.Uczelnia.objects.get_for_request",
-        return_value=uczelnia,
+    with (
+        patch("ewaluacja_optymalizacja.tasks.reset_discipline_pins_task") as mock_task,
+        patch(
+            "ewaluacja_optymalizacja.views.pins.Uczelnia.objects.get_for_request",
+            return_value=uczelnia,
+        ),
     ):
         mock_task.delay.return_value = MagicMock(id="test-task-id")
         response = client.get(url)
 
-    mock_task.delay.assert_called_once_with(
-        uczelnia.pk, dyscyplina.pk, admin_user.pk
-    )
+    mock_task.delay.assert_called_once_with(uczelnia.pk, dyscyplina.pk, admin_user.pk)
     assert response.status_code == 302
     assert response.url == reverse(
         "ewaluacja_optymalizacja:reset-all-pins-status",
@@ -228,9 +227,7 @@ def test_reset_discipline_pins_dispatches_task_and_redirects(
 
 
 @pytest.mark.django_db
-def test_reset_discipline_pins_task_creates_snapshot_and_resets(
-    uczelnia, admin_user
-):
+def test_reset_discipline_pins_task_creates_snapshot_and_resets(uczelnia, admin_user):
     """Zadanie tła tworzy snapshot i resetuje przypięcia dyscypliny (2022-2025).
 
     Bez LiczbaNDlaUczelni optymalizacja jest pomijana — testujemy sam reset.

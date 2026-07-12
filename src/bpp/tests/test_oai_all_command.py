@@ -18,7 +18,7 @@ def _page(records_ids, token=""):
     return (
         f'<?xml version="1.0"?>'
         f"<OAI-PMH {_NS}>"
-        f'<responseDate>2026-01-01T00:00:00Z</responseDate>'
+        f"<responseDate>2026-01-01T00:00:00Z</responseDate>"
         f'<request verb="ListRecords">http://x</request>'
         f"<ListRecords>{records}"
         f"<resumptionToken>{token}</resumptionToken>"

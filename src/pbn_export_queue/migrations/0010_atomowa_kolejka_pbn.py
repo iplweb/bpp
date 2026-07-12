@@ -38,9 +38,7 @@ def deduplikuj_aktywne_wpisy(apps, schema_editor):
         for elem in aktywne[1:]:
             elem.wysylke_zakonczono = teraz
             elem.zakonczono_pomyslnie = False
-            elem.save(
-                update_fields=["wysylke_zakonczono", "zakonczono_pomyslnie"]
-            )
+            elem.save(update_fields=["wysylke_zakonczono", "zakonczono_pomyslnie"])
 
 
 def wstecz_noop(apps, schema_editor):
@@ -49,18 +47,21 @@ def wstecz_noop(apps, schema_editor):
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('bpp', '0467_seed_crossref_mapper_rows'),
-        ('contenttypes', '0002_remove_content_type_name'),
-        ('pbn_export_queue', '0009_link_queue_to_uczelnia'),
+        ("bpp", "0467_seed_crossref_mapper_rows"),
+        ("contenttypes", "0002_remove_content_type_name"),
+        ("pbn_export_queue", "0009_link_queue_to_uczelnia"),
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
     ]
 
     operations = [
         migrations.RunPython(deduplikuj_aktywne_wpisy, wstecz_noop),
         migrations.AddConstraint(
-            model_name='pbn_export_queue',
-            constraint=models.UniqueConstraint(condition=models.Q(('wysylke_zakonczono__isnull', True)), fields=('content_type', 'object_id'), name='pbn_export_queue_jeden_aktywny_wpis_na_rekord'),
+            model_name="pbn_export_queue",
+            constraint=models.UniqueConstraint(
+                condition=models.Q(("wysylke_zakonczono__isnull", True)),
+                fields=("content_type", "object_id"),
+                name="pbn_export_queue_jeden_aktywny_wpis_na_rekord",
+            ),
         ),
     ]

@@ -65,9 +65,7 @@ TABLE_REPORT_TYPES = frozenset(EXTRA_TYPES)
 # je po REALNYCH nazwach tabel w zapytaniu (query.alias_map), a NIE po
 # substringu w tekście SQL — poprzednie podejście było kruche: zależne od
 # aliasów i formatowania generowanego SQL-a.
-MULTISEEK_MNOZACE_ZLACZENIA = frozenset(
-    {"bpp_autorzy_mat", "bpp_zewnetrzne_bazy_view"}
-)
+MULTISEEK_MNOZACE_ZLACZENIA = frozenset({"bpp_autorzy_mat", "bpp_zewnetrzne_bazy_view"})
 
 # Projekcje eksportu DOKUMENTU dostrojone do partiali renderu (nie do CSV/XLSX).
 # Bazowe get_queryset() gubi liczba_cytowan/uwagi → N+1 na całym querysecie.
@@ -149,8 +147,7 @@ class MyMultiseekResults(MultiseekResults):
         z niego ``table_name``, więc self-joiny z aliasami T2/T3 też są ujęte.
         """
         tabele = {
-            getattr(join, "table_name", None)
-            for join in qs.query.alias_map.values()
+            getattr(join, "table_name", None) for join in qs.query.alias_map.values()
         }
         return bool(tabele & MULTISEEK_MNOZACE_ZLACZENIA)
 

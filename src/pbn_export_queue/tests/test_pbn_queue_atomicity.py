@@ -94,9 +94,7 @@ def test_prepare_for_resend_odmawia_gdy_istnieje_inny_aktywny(
 
 
 @pytest.mark.django_db
-def test_prepare_for_resend_reaktywuje_gdy_brak_innych(
-    wydawnictwo_ciagle, admin_user
-):
+def test_prepare_for_resend_reaktywuje_gdy_brak_innych(wydawnictwo_ciagle, admin_user):
     ct = _ct(wydawnictwo_ciagle)
     zakonczony = PBN_Export_Queue.objects.create(
         content_type=ct,

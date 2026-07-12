@@ -136,9 +136,9 @@ def test_run_pbn_import_persistence_failure_is_reported_not_swallowed(
 
     # Zapis błędu się nie powiódł, ale nie zniknął po cichu:
     logged_msgs = [c[0][0] for c in mock_logger.exception.call_args_list if c[0]]
-    assert any(
-        "Nie udało się zapisać krytycznego błędu" in m for m in logged_msgs
-    ), logged_msgs
+    assert any("Nie udało się zapisać krytycznego błędu" in m for m in logged_msgs), (
+        logged_msgs
+    )
 
     # Rollbar zawołany dwukrotnie: 1) oryginalny błąd importu,
     # 2) błąd persystencji z phase=error_persistence_failed.

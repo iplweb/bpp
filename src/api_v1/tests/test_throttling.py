@@ -72,9 +72,7 @@ def test_inne_endpointy_bez_throttlingu(api_client, monkeypatch):
     """Endpoint spoza wyszukiwania (np. /jezyk/) NIE jest limitowany —
     globalny throttling pozostaje wyłączony (nawet przy skrajnie niskim
     limicie wyszukiwania)."""
-    monkeypatch.setattr(
-        SearchAnonThrottle, "THROTTLE_RATES", {"search_anon": "1/min"}
-    )
+    monkeypatch.setattr(SearchAnonThrottle, "THROTTLE_RATES", {"search_anon": "1/min"})
     cache.clear()
     url = reverse("api_v1:jezyk-list")
     for _ in range(4):
