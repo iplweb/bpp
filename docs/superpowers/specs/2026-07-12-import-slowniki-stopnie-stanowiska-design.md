@@ -61,7 +61,8 @@ wymóg „kompatybilne z innymi formatami importu".
   `nazwa_jednostki`), `remapuj_wiersz`, `dopasuj_profil` (pokrycie ≥90%
   nagłówków). Cel „stanowisko" faktycznie zasila `Funkcja_Autora`.
 - **Profil** (`ProfilMapowania`): `nazwa` (unique), `mapowanie` (JSON),
-  `ostatnio_uzyty` (DateTime, **dziś nieustawiany**), `utworzony_przez`. Widok
+  `ostatnio_uzyty` (DateTime — **JUŻ ustawiany przy ZAPISIE** profilu, commit
+  `7be75739a`; brak stemplowania przy ZASTOSOWANIU), `utworzony_przez`. Widok
   `MapowanieView` proponuje profil przez `dopasuj_profil`; zapis przez
   `update_or_create` gdy zaznaczono `zapisz_profil`.
 - **Dopasowanie jednostki** (`src/import_common/core/jednostka.py`):
@@ -73,8 +74,9 @@ wymóg „kompatybilne z innymi formatami importu".
 - **Dopasowanie wydziału** (`src/import_common/core/tytul_funkcja.py`):
   `matchuj_wydzial` = `Wydzial.objects.get(nazwa__iexact=...)` — tylko dokładne.
 - **Podsystem tytułów (WZORZEC do zduplikowania ×2):**
-  - `import_common/core/tytul.py`: `sklasyfikuj_tytul`, `matchuj_tytul`,
+  - `import_common/core/tytul.py`: `sklasyfikuj_tytul`, `normalize_tytul`,
     `zaproponuj_skrot_tytulu`, statusy `STATUS_TYTUL_{TWARDY,ZGADYWANIE,BRAK}`.
+    (UWAGA: `matchuj_tytul` jest w `tytul_funkcja.py`, NIE w `tytul.py`.)
   - `import_pracownikow/models.py`: `ImportPracownikowTytul` (model decyzji),
     `ImportPracownikow.tworz_brakujace_tytuly`, `ImportPracownikowRow.{tytul,
     tytul_status, zrodlo_tytulu}`.
@@ -96,7 +98,7 @@ wymóg „kompatybilne z innymi formatami importu".
 ## 3. Decyzje projektowe (zatwierdzone)
 
 1. **Dwa nowe słowniki jako pełne modele** (`NazwaISkrot`):
-   `Stopien_Sluzbowy` (na `Autor`) i `StanowiskoDydaktyczne` (na
+   `StopienSluzbowy` (na `Autor`) i `StanowiskoDydaktyczne` (na
    `Autor_Jednostka`).
 2. **Oba dostają pełny ekran weryfikacji** (Approach C) — symetrycznie do
    tytułów/jednostek: klasyfikacja twardy/zgadywanie/brak, toggle „twórz
@@ -114,8 +116,11 @@ wymóg „kompatybilne z innymi formatami importu".
 7. **Profil ostatnio użyty**: ustawiaj `ostatnio_uzyty` przy zastosowaniu/zapisie
    profilu; przy kolejnym imporcie proponuj (fallback po dopasowaniu nagłówków)
    ostatnio użyty.
-8. **Nazewnictwo:** `StanowiskoDydaktyczne` (CamelCase, wprost od użytkownika),
-   `Stopien_Sluzbowy` (podkreślnik, spójnie z `Funkcja_Autora`/`Tytul`-sąsiedztwem).
+8. **Nazewnictwo:** oba w CamelCase — `StopienSluzbowy` i
+   `StanowiskoDydaktyczne` (decyzja użytkownika). Świadome odejście od
+   konwencji `Funkcja_Autora`/`Grupa_Pracownicza`/`Wymiar_Etatu` z
+   podkreślnikiem. URL-e admina: `/admin/bpp/stopiensluzbowy/`,
+   `/admin/bpp/stanowiskodydaktyczne/`.
 9. **Nowy branch** od `dev` (zrobione).
 10. **Baseline** (`baseline-sql/`) — **NIE** odświeżamy w feature-branchu; refresh
     dopiero przy scalaniu (reguła projektu).
@@ -125,7 +130,7 @@ wymóg „kompatybilne z innymi formatami importu".
 ### 4.1 Modele (`src/bpp/models/autor.py`)
 
 ```python
-class Stopien_Sluzbowy(NazwaISkrot):
+class StopienSluzbowy(NazwaISkrot):
     class Meta:
         verbose_name = "stopień służbowy"
         verbose_name_plural = "stopnie służbowe"
@@ -140,15 +145,24 @@ class StanowiskoDydaktyczne(NazwaISkrot):
         app_label = "bpp"
 ```
 
-- `Autor.stopien_sluzbowy = models.ForeignKey("bpp.Stopien_Sluzbowy",
+- `Autor.stopien_sluzbowy = models.ForeignKey("bpp.StopienSluzbowy",
   models.SET_NULL, blank=True, null=True)` — obok `tytul`.
 - `Autor_Jednostka.stanowisko = models.ForeignKey("bpp.StanowiskoDydaktyczne",
   models.SET_NULL, blank=True, null=True)` — obok `funkcja`.
 - Eksport w `src/bpp/models/__init__.py`.
 
-**Uwaga on_delete:** `Tytul`/`Funkcja_Autora` używają `CASCADE`, ale kasowanie
-słownika nie powinno kasować autorów/zatrudnień → używamy `SET_NULL` (bezpiecznej
-semantyki dla słownika opisowego). Do potwierdzenia w code-review.
+**Nazewnictwo (kolizja):** pole domenowe to `Autor_Jednostka.stanowisko` (czyste,
+bo model = `StanowiskoDydaktyczne`). ALE w warstwie importu klucz `stanowisko`
+jest już zajęty przez string FUNKCJI (legacy: `AutorForm.stanowisko` →
+`Funkcja_Autora`). Dlatego wszystkie NOWE identyfikatory stanowiska dydaktycznego
+w warstwie importu (cel mapowania, pole `AutorForm`, FK i `zrodlo_` na
+`ImportPracownikowRow`) noszą nazwę `stanowisko_dydaktyczne` — patrz §9/§10.
+
+**on_delete = `SET_NULL` (POTWIERDZONE w review):** `Tytul`/`Funkcja_Autora`
+używają `CASCADE`, ale `Autor_Jednostka.grupa_pracownicza`/`wymiar_etatu` już
+używają `SET_NULL` — jest więc precedens na tym samym modelu. Kasowanie słownika
+opisowego nie powinno kasować autorów/zatrudnień → `SET_NULL`. Nie łamie adminów
+(rejestracja przez `NazwaISkrotAdmin`, inline AJ w `admin/autor.py`).
 
 ### 4.2 Migracja `bpp`
 
@@ -158,7 +172,7 @@ Jedna migracja: 2 modele + 2 FK. Nazwa np.
 
 ### 4.3 Admin (`src/bpp/admin/__init__.py`)
 
-- Rejestracja `Stopien_Sluzbowy` i `StanowiskoDydaktyczne` przez
+- Rejestracja `StopienSluzbowy` i `StanowiskoDydaktyczne` przez
   `NazwaISkrotAdmin` (jak `Tytul`).
 - `stopien_sluzbowy` w formularzu/adminie `Autor` (obok tytułu).
 - `stanowisko` w inline `Autor_Jednostka` (obok funkcji).
@@ -167,7 +181,7 @@ Jedna migracja: 2 modele + 2 FK. Nazwa np.
 
 - `SYSTEM_MENU_2`: dodać alfabetycznie
   `("Stanowiska dydaktyczne", "/admin/bpp/stanowiskodydaktyczne/")` i
-  `("Stopnie służbowe", "/admin/bpp/stopien_sluzbowy/")` (URL-e = lowercase
+  `("Stopnie służbowe", "/admin/bpp/stopiensluzbowy/")` (URL-e = lowercase
   model_name Django admina).
 - Zaktualizować `src/django_bpp/tests/test_menu.py` (liczba/obecność pozycji).
 
@@ -183,10 +197,15 @@ preferencja: dwa moduły dla czytelności i spójności z `tytul.py`):
 - `import_common/core/stanowisko.py`: analogicznie dla
   `StanowiskoDydaktyczne`.
 
-Matchowanie: `Q(nazwa__iexact) | Q(skrot__iexact)`; „zgadywanie" = trigram ≥
-próg (jak tytuły). Normalizacja wartości (trim, spacje) przez istniejące helpery
-`import_common.normalization` (dodać `normalize_stopien` / `normalize_stanowisko`
-jeśli potrzebne — mogą być no-op/trim na start).
+**Matchowanie — mirror `tytul.py` (NIE `iexact`) — finding review #7:**
+`sklasyfikuj_tytul` CELOWO nie używa SQL `iexact`, tylko porównuje po
+`normalize_tytul` w Pythonie, bo kropki/spacje psują exact
+(`"dr hab." == "Dr. Hab"`). To samo dotyczy stopni: wszystkie 9 wartości z próbki
+ma kropki (`mł. bryg.`, `st. kpt.`, `st. str.`…), więc `iexact` NIE złapie
+wariantów `st.kpt.`/`st kpt`. Mirrorujemy: `normalize_stopien` /
+`normalize_stanowisko` (usuń kropki, zredukuj spacje, lower) + porównanie
+znormalizowane; „zgadywanie" = trigram ≥ próg krótkich stringów
+(jak `PROG_ZGADYWANIA_TYTULU`, ~0.85 — NIE 0.7 jak jednostki).
 
 ## 6. Rozszerzenie dopasowania jednostki — „niepełna nazwa jednostki"
 
@@ -196,13 +215,22 @@ jeśli potrzebne — mogą być no-op/trim na start).
 `sklasyfikuj_jednostke_niepelna(fragment, wydzial=None, *, prog=...)`:
 
 1. Najpierw `sklasyfikuj_jednostke` (exact/skrót) — jeśli `twardy`, zwróć.
-2. `icontains` w puli afiliacyjnej (`_pula_afiliacyjna`):
+2. `icontains` — **UWAGA (finding review #6): NIE używaj `_pula_afiliacyjna`**
+   do szukania kandydatów. Ta pula wyklucza `jest_lustrem=True` i
+   `rodzaj.autor_moze_afiliowac=False`, a po „Fazie B" wydział („Wydział
+   Medyczny") jest zwykle **lustrem** → `icontains("Medyczny")` NIC by nie
+   znalazło. Dla „niepełnej" szukamy w SZERSZYM zbiorze: `Jednostka.objects`
+   filtrowane `nazwa__icontains` (± `Wydzial`), bez wykluczeń puli afiliacyjnej:
    - dokładnie 1 trafienie → `(obj, "zgadywanie", None)` (operator weryfikuje);
-   - >1 trafień → wybierz najlepsze trigramowo, `"zgadywanie"` (do weryfikacji);
-   - 0 → spadek do trigramu jak w `sklasyfikuj_jednostke` → `"zgadywanie"|"brak"`.
+   - >1 trafień → najlepsze trigramowo, `"zgadywanie"`;
+   - 0 → trigram fallback → `"zgadywanie"|"brak"`.
 
 „niepełna" nazwa **nigdy** nie daje `twardy` z gałęzi `icontains` (zawsze
-wymaga weryfikacji), bo fragment z definicji jest niejednoznaczny.
+wymaga weryfikacji) — wynik ZAWSZE przez ekran `weryfikacja_jednostek`.
+
+**Ograniczenia (udokumentowane):** (a) `icontains` NIE łapie odmiany fleksyjnej
+(„Medyczny" ≠ „Medycznego"); (b) trigram na jednym krótkim słowie bywa hałaśliwy
+— dlatego wynik zawsze do weryfikacji, nigdy auto-twardy.
 
 ### 6.2 Wpięcie
 
@@ -229,25 +257,44 @@ skrót  = tokeny[0] jeśli re.match(r'^[A-ZŁŚŻĆŃÓ][A-ZŁŚŻĆŃÓ0-9]*-\d
 # nazwa = tokeny między skrótem a oddziałem, minus KOŃCOWY ciąg tokenów all-lowercase (ogon-znacznik)
 ```
 
-Reguły szczegółowe (wynikają z danych):
+Reguły szczegółowe (algorytm ZWERYFIKOWANY w review na wszystkich 31 wartościach):
 
-- Skrót zawsze pierwszy token pasujący do wzorca (`RW-1/1`, `RN-2`, `RW-9`).
-- Oddział = token mieszany-wielkoliterowy (`WIBiOL`). Dla `RN-*` brak takiego
-  tokenu; wtedy oddział = None.
-- Ogon-znacznik = końcowy ciąg tokenów pisanych **w całości małą literą**
-  (`taktyka`, `pożary`, `hydra hydromechanika`, `instytut ib`). Odrzucany.
-  Uwaga: łączniki w środku nazwy (`i`, `w`, `Ppoż.`) są w ŚRODKU, więc nie
-  wpadają do końcowego ciągu → nazwa zachowana poprawnie.
+- Skrót = pierwszy token pasujący do wzorca (`RW-1/1`, `RN-2`, `RW-9`).
+- **Oddział — skanuj od tokenu 1 (NIE 0), finding review:** heurystyka „akronim"
+  (len≥3, ≥2 wielkie litery) łapie też sam skrót `RW-1/1`, więc szukania oddziału
+  NIE wolno zaczynać od tokenu skrótu. Oddział = pierwszy taki token PO skrócie
+  (`WIBiOL`). Dla `RN-*` brak → oddział = None.
+- **Ogon-znacznik — reguła zależna od oddziału (finding review):**
+  - oddział ZNALEZIONY → ogon = **wszystko za oddziałem** (bez patrzenia na
+    wielkość liter — inaczej `WIBiOL medyczne RM` zostawiłoby wielkoliterowe
+    „RM"); nazwa = tokeny między skrótem a oddziałem.
+  - BRAK oddziału (`RN-*`) → ogon = końcowy ciąg tokenów **all-lowercase**
+    (`instytut ib`, `instytut bw`); nazwa = reszta. Łączniki w środku (`i`, `w`,
+    `Ppoż.`) są w ŚRODKU → nie wpadają do końcowego ciągu.
+  - brak ogona (`RW-6/3 Zakład Nauk Społecznych WIBiOL`) → nazwa do oddziału.
 
-Wyjście do wiersza:
+Wyjście do wiersza (**KLUCZOWE — finding review #5: skrót z pliku MUSI trafić do
+`Jednostka.skrot` przy tworzeniu**):
 
-- `nazwa_jednostki = f"{nazwa} ({skrót})"` gdy jest skrót — `matchuj_jednostke`
-  spróbuje najpierw `skrot=` (pewne dopasowanie); inaczej sama `nazwa`.
-- `wydział = oddział` **tylko** gdy istnieje `Wydzial`/`Jednostka` o skrócie ==
-  oddział; inaczej pomiń (hint best-effort).
+- **Nie** sklejaj `nazwa (SKRÓT)` — `zaproponuj_skrot` odrzuca token `(RW-1/1)`
+  (zaczyna się od `(`) i utworzyłby jednostkę z akronimem „ZKDRDGiŁ" + nawiasami
+  w nazwie, gubiąc skrót z pliku (główny scenariusz APOŻ = tworzenie struktury).
+  Zamiast tego parser zasila decyzję JAWNIE: `nazwa` = czysta nazwa (bez
+  nawiasów), `skrot_sugerowany` = **skrót z pliku** (`RW-1/1`). Wymaga nowego
+  parametru `skrot_hint` w `_ReconcilerJednostek.reconciluj` (nadpisuje domyślny
+  `zaproponuj_skrot`). Dopasowanie do ISTNIEJĄCEJ jednostki: najpierw po skrócie
+  (`Jednostka.objects.filter(skrot=skrót)`), potem po nazwie.
+- **Wydział (hint) — finding review #6:** `matchuj_wydzial` robi tylko
+  `nazwa__iexact`, a `WIBiOL` to SKRÓT (`Wydzial.skrot` istnieje, ale ten tor go
+  nie używa) → emitowanie `wydział="WIBiOL"` jest MARTWE. Parser rozwiązuje
+  oddział przez `Wydzial.objects.filter(skrot=oddział).first()` i emituje jego
+  **nazwę** (`wydział = w.nazwa`) — tylko gdy znaleziony; inaczej pomija.
+  (Alternatywa: dodać branch `skrot` do `matchuj_wydzial` — do decyzji w planie.)
 
-**Test akceptacyjny:** dla wszystkich 31 wartości parser zwraca poprawny
-(skrót, nazwa, oddział) — zapięte jako test tabelaryczny.
+**Test akceptacyjny:** wszystkie 31 wartości → poprawny (skrót, nazwa, oddział),
+test tabelaryczny. Szczególnie: `RW-7/1 … WIBiOL medyczne RM` (ogon za oddziałem
+z „RM"), `RN-1 … instytut ib` (ogon lowercase bez oddziału),
+`RW-6/3 … WIBiOL` (brak ogona).
 
 ## 8. Parser „nazwisko imię" (deterministyczny)
 
@@ -264,21 +311,36 @@ Nowe cele w `POLA_DOCELOWE` + synonimy w `_SYNONIMY`:
 | Cel | Etykieta | Synonimy (znormalizowane) |
 |---|---|---|
 | `email` | E-mail | email, e_mail, mail, poczta, adres_email |
-| `stopień_służbowy` | Stopień służbowy | stopień, stopien, stopień_służbowy, stopien_sluzbowy, stopień_wojskowy |
+| `stopień_służbowy` | Stopień służbowy | stopień_służbowy, stopien_sluzbowy, stopień_pożarniczy, stopien_pozarniczy (**NIE** gołe „stopień" — patrz niżej) |
 | `stanowisko_dydaktyczne` | Stanowisko dydaktyczne | stanowisko_dydakt, stanowisko_dydaktyczne, stanowisko_dyd |
-| `funkcja` (relabel istn. „stanowisko") | Funkcja w jednostce | funkcja, funkcja_w_jednostce, stanowisko |
+| `stanowisko` (KEY bez zmian — tylko relabel + synonim) | Funkcja w jednostce | funkcja, funkcja_w_jednostce, stanowisko |
 | `nazwisko_imię` | Nazwisko i imię (jedna komórka, nazwisko-first) | nazwisko_imię, nazwisko_imie |
 | `komórka_złożona` | Komórka (skrót + nazwa + oddział + znacznik) | komórka, komorka, komorka_zlozona |
 | `niepełna_nazwa_jednostki` | Niepełna nazwa jednostki | (bez auto-synonimu domyślnie; wybierany ręcznie) |
 
-Uwaga: `stopień` → `stopień_służbowy` (przejęcie z dawnego
-`stopień`→`tytuł_stopień`). `tytuł` nadal → `tytuł_stopień`. Dzięki temu tytuł
-(naukowy) i stopień (służbowy) są rozdzielone — zgodnie z „jak jest tytuł to
-tytuł".
+**Decyzja (finding review #9): NIE przejmujemy gołego synonimu `stopień`.**
+Dziś `stopień`/`stopien` → `tytuł_stopień`, bo na typowej uczelni „stopień" =
+stopień NAUKOWY (dr, dr hab.). Zmiana exact-synonimu zepsułaby auto-propozycję
+KAŻDEGO istniejącego pliku (stopnie naukowe wpadłyby do słownika stopni
+służbowych). Dlatego `stopień` ZOSTAJE → `tytuł_stopień`; stopień służbowy ma
+własne, jednoznaczne synonimy (bez gołego „stopień"). `funkcja` relabel zmienia
+tylko ETYKIETĘ + dokłada synonim `funkcja` — **KEY celu zostaje `stanowisko`**
+(inaczej trzeba by zmigrować `ProfilMapowania.mapowanie` i `AutorForm.stanowisko`
+→ ryzyko cichej utraty funkcji). Dla APOŻ operator mapuje „stopień" ręcznie na
+„Stopień służbowy" RAZ i zapisuje profil — kolejne importy proponują ostatni
+profil (§13). Spójne z „wszystko opt-in" (§1).
 
-`waliduj_mapowanie`: rozszerzyć regułę „jednostka wymagana" o
-`nazwa_jednostki_niepelna` (cel `niepełna_nazwa_jednostki`) i `komórka_złożona`
-jako alternatywy dla `nazwa_jednostki`. Zakaz duplikatów celów — bez zmian.
+**`waliduj_mapowanie` — DWA rozszerzenia (finding review #3, KRYTYCZNE):**
+
+1. **Identyfikacja osoby:** dziś wymaga (`nazwisko`+`imię`) LUB `osoba_sklejona`.
+   Dodać `nazwisko_imię` jako TRZECIĄ alternatywę — inaczej plik APOŻ (kolumna
+   „nazwisko imię") NIE przejdzie walidacji („Brak identyfikacji osoby") i cały
+   feature jest martwy.
+2. **Jednostka wymagana:** dziś tylko `nazwa_jednostki`. Dodać
+   `nazwa_jednostki_niepelna` (cel `niepełna_nazwa_jednostki`) i `komórka_złożona`
+   jako alternatywy.
+
+Zakaz duplikatów celów — bez zmian.
 
 ## 10. Model importu (`src/import_pracownikow/models.py`) — 1 migracja
 
@@ -292,18 +354,68 @@ Mirror wzorca tytułów, ×2:
 - `ImportPracownikow`: `tworz_brakujace_stopnie`, `tworz_brakujace_stanowiska`
   (BooleanField, mirror `tworz_brakujace_tytuly`).
 - `ImportPracownikowRow`:
-  - `stopien` FK → `Stopien_Sluzbowy`, `stopien_status`, `zrodlo_stopnia` FK →
+  - `stopien` FK → `StopienSluzbowy`, `stopien_status`, `zrodlo_stopnia` FK →
     `ImportPracownikowStopien` (mirror `tytul`/`tytul_status`/`zrodlo_tytulu`).
-  - `stanowisko` FK → `StanowiskoDydaktyczne`, `stanowisko_status`,
-    `zrodlo_stanowiska` FK → `ImportPracownikowStanowisko`.
-- `AutorForm`: dodać pola `email` (EmailField, required=False),
-  `stopień_służbowy` (CharField, required=False), `stanowisko_dydaktyczne`
-  (CharField, required=False). (Wartości tekstowe z pliku; klasyfikacja/FK
-  liczona później.)
+  - `stanowisko_dydaktyczne` FK → `StanowiskoDydaktyczne`,
+    `stanowisko_dydaktyczne_status`, `zrodlo_stanowiska_dydaktycznego` FK →
+    `ImportPracownikowStanowisko`. (NIE `stanowisko` — ten klucz w warstwie
+    importu oznacza string FUNKCJI; patrz §4.1 „Nazewnictwo".)
+- `AutorForm`: dodać pola `email`, `stopień_służbowy`, `stanowisko_dydaktyczne`
+  (wszystkie `required=False`; wartości tekstowe z pliku, klasyfikacja/FK liczona
+  później). **E-mail — łagodna walidacja (finding review):** `analyze` przy
+  niepoprawnym formularzu rzuca `XLSParseError` bez per-wiersz recovery — jeden
+  zepsuty adres w pliku kadrowym wywaliłby CAŁY run. `email` musi być
+  tolerancyjny: niepoprawny adres → puste + ostrzeżenie w audycie, NIE wyjątek
+  (`CharField` z miękką walidacją albo czyszczenie przed `full_clean`).
 
 Migracja `import_pracownikow`: 2 modele decyzji + pola toggle + pola na Row.
 
 ## 11. Pipeline
+
+### 11.0 Umiejscowienie w przepływie dwustopniowym (ROZSTRZYGNIĘTE)
+
+**Zasada (potwierdzona z użytkownikiem):** weryfikujemy **wszystkie słowniki
+PRZED wejściem w Krok 2 (osoby)**. Sekwencja weryfikacji Kroku 1:
+
+```
+Krok 1 (struktura / słowniki) — nie dotyka Autor/Autor_Jednostka:
+    1. jednostki   → weryfikacja_jednostek
+    2. tytuły      → weryfikacja_tytulow
+    3. stopnie     → weryfikacja_stopni        (NOWE)
+    4. stanowiska  → weryfikacja_stanowisk     (NOWE)
+  → tworzone są REKORDY słowników; stan = STRUKTURA_ZINTEGROWANA
+
+Krok 2 (osoby):
+  → dla dopasowanego/utworzonego autora DOCZEPIAMY już-rozstrzygnięte FK:
+    Autor.stopien_sluzbowy, Autor_Jednostka.stanowisko (+ tytuł, funkcja, email)
+```
+
+**Dlaczego to spójne (nie ma dziury):** `StopienSluzbowy` i
+`StanowiskoDydaktyczne` to **słowniki** — dokładnie jak `Tytul`. Rekord słownika
+(np. „kpt.", „adiunkt") powstaje w Kroku 1 (faza struktury). Samo *dopięcie* FK
+wymaga istniejącego `Autor`/`Autor_Jednostka`, które powstają dopiero w Kroku 2 —
+więc dopięcie ląduje w fazie osób. To lustro obecnego zachowania tytułów:
+`_rozstrzygnij_tytuly` tworzy `Tytul` w fazie struktury, a `row.tytul` dopina się
+do autora w fazie osób.
+
+**Mechanika w `integruj` (`pipeline/integrate.py`):**
+
+- Faza struktury jest gated `zakres != ZAKRES_JEDNOSTKI` i robi early-exit do
+  `STAN_STRUKTURA_ZINTEGROWANA`. Rozstrzyganie stopni/stanowisk dokładamy
+  **obok** `_rozstrzygnij_tytuly` w tej fazie (przed early-exitem) —
+  `_rozstrzygnij_stopnie`, `_rozstrzygnij_stanowiska`.
+- Dla `ZAKRES_STRUKTURA` (sama struktura): utworzą się rekordy słowników
+  stopni/stanowisk, ale **żaden** `Autor`/`Autor_Jednostka` nie jest tknięty
+  (early-exit). To jest zamierzone i zgodne z semantyką „Krok 1".
+- Dla `ZAKRES_PELNY`: po fazie struktury (rozstrzygnięcie słowników) lecimy
+  dalej w fazę osób, gdzie dopinamy `Autor.stopien_sluzbowy` (no-overwrite) i
+  `Autor_Jednostka.stanowisko`.
+- **Bramka Kroku 2:** wejście w import osób jest dozwolone dopiero, gdy
+  wszystkie decyzje słownikowe są rozstrzygnięte (jednostki + tytuły + stopnie +
+  stanowiska) — rozszerzyć istniejącą „bramkę tytułów" o stopnie i stanowiska
+  (patrz `przeglad.html` i logika stanu). Tak jak dziś nie wchodzi się w osoby z
+  nierozstrzygniętymi tytułami, tak samo z nierozstrzygniętymi stopniami/
+  stanowiskami.
 
 ### 11.1 `pipeline/analyze.py`
 
@@ -317,6 +429,14 @@ Migracja `import_pracownikow`: 2 modele decyzji + pola toggle + pola na Row.
   (do porównywarki i do zapisu przy tworzeniu autora).
 - `niepełna_nazwa_jednostki` → `sklasyfikuj_jednostke_niepelna` (§6).
 - `usun_stale` dla nowych reconcilerów.
+- **KRYTYCZNE (finding review #1) — auto-skip Krok 1→2:** dziś
+  `struktura_bez_decyzji = not jednostki_do_decyzji.exists() and not
+  tytuly_do_decyzji.exists()` skacze od razu do `STRUKTURA_ZINTEGROWANA`, a
+  ekrany weryfikacji są edytowalne tylko w `PRZEANALIZOWANY`. Bez zmiany: plik z
+  twardymi jednostkami/tytułami, ale z decyzjami stopni/stanowisk, wyląduje w
+  Kroku 2 z decyzjami, których user NIE może już edytować. Rozszerzyć warunek o
+  `stopnie_do_decyzji` i `stanowiska_do_decyzji` (i/lub odblokować edycję ekranów
+  w `struktura_zintegrowana`).
 
 ### 11.2 `pipeline/integrate.py`
 
@@ -324,13 +444,25 @@ Migracja `import_pracownikow`: 2 modele decyzji + pola toggle + pola na Row.
   `_rozstrzygnij_stopnie`, `_rozstrzygnij_stanowiska`
   (mirror `_rozstrzygnij_tytuly`; `unikalny_skrot_*` mirror
   `unikalny_skrot_tytulu`), `_podlacz_wiersze_do_{stopni,stanowisk}`.
-- Krok 2 (osoby):
-  - `Autor.stopien_sluzbowy` ← rozstrzygnięty stopień, **polityka
-    no-overwrite** (ustaw tylko gdy puste na istniejącym autorze; nowym
-    zawsze). Spójne z polityką dat.
-  - `Autor_Jednostka.stanowisko` ← rozstrzygnięte stanowisko (materializacja jak
-    `funkcja` w `_materializuj_diff`, ale ze źródła decyzji).
-  - `email`: nowy autor → zapis; istniejący → **bez zmian** (tylko porównywarka).
+- **KRYTYCZNE (finding review #4) — predykaty zmian.** `check_if_integration_
+  needed` (`_check_autor_needs_update` / `_check_autor_jednostka_needs_update`)
+  NIE zna nowych pól → wiersz, którego JEDYNĄ zmianą jest stopień/stanowisko,
+  dostanie `zmiany_potrzebne=False` i nigdy nie wejdzie w `integrate()`
+  (`_integruj_wiersz` iteruje `zmiany_potrzebne_set`). Trzeba:
+  - `_check_autor_needs_update` += stopień (no-overwrite aware:
+    `self.stopien_id is not None and autor.stopien_sluzbowy_id is None`);
+  - `_check_autor_jednostka_needs_update` += stanowisko dydaktyczne (analogicznie
+    na AJ);
+  - MONOTONICZNY recompute `zmiany_potrzebne` w `_podlacz_wiersze_do_{stopni,
+    stanowisk}` (mirror `_podlacz_wiersze_do_tytulow`).
+- Krok 2 (osoby) — miejsca zapisu:
+  - `Autor.stopien_sluzbowy` ← rozstrzygnięty stopień, **no-overwrite** (ustaw
+    gdy puste u istniejącego; nowym zawsze). Dopiąć w `_integrate_autor` ORAZ
+    `_przygotuj_nowego_autora` (`Autor.objects.create(...)` — tam TEŻ `email`).
+  - `Autor_Jednostka.stanowisko` ← rozstrzygnięte stanowisko; dopiąć w
+    `_integrate_autor_jednostka` / `_materializuj_diff` (mirror `funkcja`).
+  - `email`: nowy autor → zapis w `Autor.objects.create`; istniejący → **bez
+    zmian** (tylko porównywarka).
 - Liczniki wyniku: `utworzono_stopni`, `utworzono_stanowisk` (mirror
   `utworzono_tytulow`) w `p.result(...)`.
 
@@ -347,13 +479,31 @@ Migracja `import_pracownikow`: 2 modele decyzji + pola toggle + pola na Row.
 - **Porównywarka** (`przeglad.html`/`audyt.html`): kolumny e-mail
   (plik-vs-baza), stopień służbowy, stanowisko dydaktyczne — pokazać wartość z
   pliku i z bazy; e-mail różniący się podświetlić (bez nadpisania).
+- **KRYTYCZNE (finding review #2) — bramka „wymagają rozstrzygnięcia".** Dziś
+  `ZatwierdzImportView` (zakres PELNY) blokuje wejście w osoby tylko na
+  `tytuly_wymagaja_rozstrzygniecia` (property w `models.py`). Bez mirrorów:
+  ścieżka „Zapisz tylko jednostki" (ZAKRES_JEDNOSTKI) zostawia decyzje stopni/
+  stanowisk nierozstrzygnięte, a `integruj` w PELNY wykona
+  `_rozstrzygnij_stopnie/_stanowiska` z domyślną `decyzja=AKCEPTUJ` → CICHE
+  tworzenie (to, co item 3 wyeliminował dla tytułów). Dodać
+  `stopnie_wymagaja_rozstrzygniecia` / `stanowiska_wymagaja_rozstrzygniecia`
+  (mirror property tytułów) i rozszerzyć warunek 400 w `ZatwierdzImportView`.
+- `MapowanieForm`: dodać checkboxy `tworz_brakujace_stopnie` /
+  `tworz_brakujace_stanowiska` + `update_fields` w `form_valid`.
+- Teksty: opis `ZAKRES_STRUKTURA` (`models.py`: „jednostki + tytuły (bez osób)"
+  → dodać stopnie/stanowiska) i przyciski w `przeglad.html`.
 
 ## 13. Profil ostatnio użyty (`views.py` + `mapping.py`)
 
-- Ustawiaj `ProfilMapowania.ostatnio_uzyty = timezone.now()`:
-  - przy zastosowaniu profilu (GET/POST, gdy profil zasilił mapowanie), oraz
-  - przy zapisie profilu (`update_or_create` → dołożyć `ostatnio_uzyty`).
-- Sugestia w `MapowanieView.get_form_kwargs`/kontekście:
+- **Korekta (finding review #8):** `ostatnio_uzyty` JUŻ jest ustawiane przy
+  ZAPISIE profilu (`views.py` `update_or_create(..., ostatnio_uzyty=now())`,
+  commit `7be75739a`). Do zrobienia zostaje TYLKO:
+  - stemplowanie przy ZASTOSOWANIU profilu — w `form_valid` (NIE w GET; zapis DB
+    w GET psuje idempotencję refreshy/prefetchy), gdy mapowanie pochodziło z
+    profilu;
+  - fallback wyboru profilu (niżej).
+- Sugestia w `MapowanieView.get_form_kwargs`/kontekście (`views.py` ~207-213 —
+  tu wpiąć fallback PO `dopasuj_profil`):
   1. `dopasuj_profil(naglowki)` (pokrycie nagłówków) — priorytet;
   2. fallback: `ProfilMapowania.objects.filter(ostatnio_uzyty__isnull=False)
      .order_by("-ostatnio_uzyty").first()`.
@@ -376,9 +526,11 @@ Migracja `import_pracownikow`: 2 modele decyzji + pola toggle + pola na Row.
 - **Widoki:** ekrany weryfikacji stopni/stanowisk (mirror
   `test_views_tytuly.py`).
 - **Menu:** `test_menu.py` — nowe pozycje.
-- **E2E:** przejście `struktura.xlsx` (Krok 1 → słowniki → Krok 2 → osoby) na
-  bazie APOŻ (run-site baseline). Izolacja Playwright/asyncio jak w istniejącym
-  `conftest.py` (patrz pamięć projektu o wycieku pętli).
+- **E2E:** przejście `struktura.xlsx` (Krok 1 → słowniki → Krok 2 → osoby).
+  **Uwaga (finding review):** testowy baseline (testcontainers) NIE zawiera
+  struktur APOŻ (WIBiOL/RW-*), więc test musi sam przejść Krok 1 (utworzenie
+  jednostek po skrócie + tytułów + stopni + stanowisk) albo zaseedować przez
+  `baker`. Izolacja Playwright/asyncio jak w `conftest.py` (pamięć: wyciek pętli).
 
 ## 15. Migracje i baseline
 
@@ -402,10 +554,14 @@ Migracja `import_pracownikow`: 2 modele decyzji + pola toggle + pola na Row.
 
 - **Duplikacja podsystemu tytułów ×2** — duży, powtarzalny diff. Rozważyć
   wspólny helper, ale nie kosztem czytelności (`tytul.py` jest wzorcem).
-- **`on_delete` słowników** = `SET_NULL` (nie `CASCADE`) — do potwierdzenia w
-  review.
+- **`on_delete` słowników** = `SET_NULL` — POTWIERDZONE (precedens
+  `grupa_pracownicza`/`wymiar_etatu` na `Autor_Jednostka`).
+- **E-mail wywala analizę:** walidacja `AutorForm` jest fail-fast
+  (`XLSParseError` bez per-wiersz recovery) — e-mail musi być tolerancyjny (§10).
 - **Kolejność migracji** vs równoległe branche na `dev` (denorm_init invariant —
-  patrz pamięć). Nowe modele bez denorm, więc niskie ryzyko.
+  patrz pamięć). Nowe modele bez denorm, więc niskie ryzyko. Najnowsza migracja
+  bpp na dev to 0467 → nowa 0468+.
 - **Parser komórki** dostrojony do konwencji APOŻ; dla innych uczelni oddział/
   ogon mogą wyglądać inaczej — dlatego opt-in i dopasowanie głównie po skrócie.
+- **`stopień` NIE przejęty** (§9) — APOŻ mapuje ręcznie + zapisuje profil.
 ```
