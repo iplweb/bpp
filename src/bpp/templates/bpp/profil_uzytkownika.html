@@ -107,6 +107,48 @@
             </button>
         </form>
 
+        {% if oidc_login_enabled %}
+            <h3><span class="fi-key"></span> Logowanie SSO</h3>
+            {% if oidc_identities %}
+                <table class="hover">
+                    <thead>
+                        <tr>
+                            <th>Dostawca (issuer)</th>
+                            <th>Powiązano</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for identity in oidc_identities %}
+                        <tr>
+                            <td>{{ identity.issuer }}</td>
+                            <td>{{ identity.linked_at }}</td>
+                            <td>
+                                <form method="post" action="{% url 'bpp:profil-uzytkownika' %}">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="unlink_identity" value="{{ identity.pk }}">
+                                    <button type="submit" class="button small alert">
+                                        <span class="fi-x"></span> Odłącz
+                                    </button>
+                                </form>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            {% else %}
+                <div class="callout secondary">
+                    <p>
+                        <span class="fi-info"></span>
+                        Twoje konto nie jest jeszcze powiązane z logowaniem SSO.
+                    </p>
+                    <a href="{% url 'oidc_integration:polacz' %}" class="button">
+                        <span class="fi-link"></span> Połącz konto z SSO
+                    </a>
+                </div>
+            {% endif %}
+        {% endif %}
+
     </div>
 </div>
 {% endblock %}
