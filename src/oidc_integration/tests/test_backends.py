@@ -754,3 +754,61 @@ def test_link_mode_idempotent_same_identity(db):
     assert out == u
     assert u.oidc_identities.filter(sub="L4").count() == 1
     assert "oidc_link_mode" not in req.session
+
+
+# --- Task 10: UX odmowy (komunikat fail-closed w sesji) ---
+
+
+def test_failclosed_sets_session_message(db):
+    from django.contrib.sessions.backends.db import SessionStore
+
+    baker.make("bpp.BppUser", email="a@x.pl")
+    b = _backend()
+    req = RequestFactory().get("/oidc/callback/")
+    req.session = SessionStore()
+    b.request = req
+    claims = {
+        "sub": "S",
+        "iss": "https://kc",
+        "email": "a@x.pl",
+        "_bpp_email_trusted": True,
+        "preferred_username": "p",
+    }
+    with pytest.raises(SuspiciousOperation):
+        b.create_user(claims)
+    assert "oidc_error_message" in req.session
+
+
+def test_failclosed_untrusted_sets_session_message(db, settings):
+    from django.contrib.sessions.backends.db import SessionStore
+
+    settings.OIDC_REQUIRE_EMAIL_VERIFIED = True
+    b = _backend()
+    req = RequestFactory().get("/oidc/callback/")
+    req.session = SessionStore()
+    b.request = req
+    claims = {
+        "sub": "S",
+        "iss": "https://kc",
+        "email": "new@x.pl",
+        "_bpp_email_trusted": False,
+        "preferred_username": "p",
+    }
+    with pytest.raises(SuspiciousOperation):
+        b.create_user(claims)
+    assert "oidc_error_message" in req.session
+
+
+def test_failclosed_without_request_still_raises(db):
+    # Bez request/sesji (np. test jednostkowy) _fail nadal podnosi wyjątek.
+    baker.make("bpp.BppUser", email="a@x.pl")
+    b = _backend()
+    claims = {
+        "sub": "S",
+        "iss": "https://kc",
+        "email": "a@x.pl",
+        "_bpp_email_trusted": True,
+        "preferred_username": "p",
+    }
+    with pytest.raises(SuspiciousOperation):
+        b.create_user(claims)

@@ -257,12 +257,12 @@ class BppOIDCBackend(OIDCAuthenticationBackend):
             request_user = getattr(self.request, "user", None)
             if not target_pk or request_user is None or request_user.pk != target_pk:
                 self._clear_link_session(session)
-                raise SuspiciousOperation("OIDC: cel linkowania niezgodny")
+                self._fail("OIDC: cel linkowania niezgodny")
             issuer = user_info.get("iss") or ""
             sub = user_info.get("sub") or ""
             if not issuer or not sub:
                 self._clear_link_session(session)
-                raise SuspiciousOperation("OIDC: brak (issuer, sub) do związania")
+                self._fail("OIDC: brak (issuer, sub) do związania")
             try:
                 with transaction.atomic():
                     identity, created = OIDCIdentity.objects.get_or_create(
@@ -274,15 +274,11 @@ class BppOIDCBackend(OIDCAuthenticationBackend):
                 # (user, issuer) już zajęte innym sub — konto ma już tożsamość
                 # z tego realmu (jeden realm = jedno konto).
                 self._clear_link_session(session)
-                raise SuspiciousOperation(
-                    "OIDC: to konto ma już powiązaną tożsamość z tego realmu"
-                ) from None
+                self._fail("OIDC: to konto ma już powiązaną tożsamość z tego realmu")
             if not created and identity.user_id != request_user.pk:
                 # Ta (issuer, sub) należy do innego konta — NIE przejmujemy jej.
                 self._clear_link_session(session)
-                raise SuspiciousOperation(
-                    "OIDC: ta tożsamość SSO jest już powiązana z innym kontem"
-                )
+                self._fail("OIDC: ta tożsamość SSO jest już powiązana z innym kontem")
             self._clear_link_session(session)
             return request_user
         return super().get_or_create_user(access_token, id_token, payload)
@@ -348,6 +344,21 @@ class BppOIDCBackend(OIDCAuthenticationBackend):
         trusted = bool(claims.get("_bpp_email_trusted"))
         user.sprobuj_dopasowac_autora(match_email=trusted, match_names=trusted)
         return user
+
+    def _fail(self, message):
+        """Zapisz komunikat odmowy do sesji (jeśli jest) i podnieś wyjątek.
+
+        ``mozilla_django_oidc.authenticate`` łapie ``SuspiciousOperation`` i
+        degraduje do *login failure* — użytkownik ląduje z powrotem na stronie
+        logowania bez żadnej wskazówki, DLACZEGO się nie udało. Zapisujemy
+        powód w sesji (``oidc_error_message``, flash-once), a context processor
+        ``oidc_auth_status`` go POP-uje i pokazuje na stronie logowania.
+        """
+        session = getattr(getattr(self, "request", None), "session", None)
+        if session is not None:
+            session["oidc_error_message"] = message
+            session.save()
+        raise SuspiciousOperation(message)
 
     def _unique_username(self, base):
         """Zwróć ``base`` albo ``base-2``/``base-3``… jeśli zajęty.
@@ -438,14 +449,14 @@ class BppOIDCBackend(OIDCAuthenticationBackend):
             return graced
 
         if email and self.UserModel.objects.filter(email__iexact=email).exists():
-            raise SuspiciousOperation(
+            self._fail(
                 "OIDC: konto z tym adresem już istnieje — połącz je z SSO "
                 "przez profil (re-auth hasłem), nie tworzę konta."
             )
 
         require = getattr(settings, "OIDC_REQUIRE_EMAIL_VERIFIED", True)
         if require and not claims.get("_bpp_email_trusted"):
-            raise SuspiciousOperation(
+            self._fail(
                 "OIDC: e-mail niezweryfikowany (email_verified) — "
                 "odrzucam założenie konta."
             )
