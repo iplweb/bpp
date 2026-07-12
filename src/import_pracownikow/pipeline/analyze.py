@@ -13,7 +13,7 @@ from copy import copy
 
 from django.core.exceptions import ObjectDoesNotExist
 
-from bpp.models import Autor_Jednostka, Uczelnia
+from bpp.models import Autor_Jednostka, Uczelnia, Wydzial
 from import_common.core import (
     matchuj_autora,
     matchuj_funkcja_autora,
@@ -24,7 +24,22 @@ from import_common.core.autor import znajdz_kandydatow_autora
 from import_common.core.jednostka import (
     STATUS_JEDNOSTKA_TWARDY,
     sklasyfikuj_jednostke,
+    sklasyfikuj_jednostke_niepelna,
     zaproponuj_skrot,
+)
+from import_common.core.stanowisko import (
+    STATUS_STANOWISKO_BRAK,
+    STATUS_STANOWISKO_TWARDY,
+    STATUS_STANOWISKO_ZGADYWANIE,
+    sklasyfikuj_stanowisko,
+    zaproponuj_skrot_stanowiska,
+)
+from import_common.core.stopien import (
+    STATUS_STOPIEN_BRAK,
+    STATUS_STOPIEN_TWARDY,
+    STATUS_STOPIEN_ZGADYWANIE,
+    sklasyfikuj_stopien,
+    zaproponuj_skrot_stopnia,
 )
 from import_common.core.tytul import (
     STATUS_TYTUL_BRAK,
@@ -50,12 +65,16 @@ from import_pracownikow.models import (
     ImportPracownikowOdpiecie,
     ImportPracownikowRow,
     ImportPracownikowRowKandydat,
+    ImportPracownikowStanowisko,
+    ImportPracownikowStopien,
     ImportPracownikowTytul,
 )
+from import_pracownikow.parsers.jednostka_zlozona import parsuj_komorke
 from import_pracownikow.parsers.leksykony import zbuduj_parser_kontekst
 from import_pracownikow.parsers.osoba import rozbij_osobe
 from import_pracownikow.parsers.wartosci import (
     normalizuj_wartosci_wiersza,
+    rozbij_nazwisko_imie,
     sklej_drugie_imie,
 )
 from import_pracownikow.pewnosc import (
@@ -98,11 +117,19 @@ class _ReconcilerJednostek:
         self.parent = parent
         self.dotkniete = set()
 
-    def reconciluj(self, nazwa_zrodlowa, tryb, auto_jednostka, auto_similarity):
+    def reconciluj(
+        self,
+        nazwa_zrodlowa,
+        tryb,
+        auto_jednostka,
+        auto_similarity,
+        skrot_hint=None,
+    ):
         nazwa_zrodlowa = nazwa_zrodlowa[:512]
         dec = self.parent.jednostki_do_decyzji.filter(
             nazwa_zrodlowa__iexact=nazwa_zrodlowa
         ).first()
+        skrot = (skrot_hint or "").strip()[:128]
         if dec is None:
             dec = ImportPracownikowJednostka.objects.create(
                 parent=self.parent,
@@ -110,13 +137,17 @@ class _ReconcilerJednostek:
                 tryb=tryb,
                 auto_jednostka=auto_jednostka,
                 auto_similarity=auto_similarity,
-                skrot_sugerowany=zaproponuj_skrot(nazwa_zrodlowa),
+                skrot_sugerowany=skrot or zaproponuj_skrot(nazwa_zrodlowa),
             )
         else:
             dec.tryb = tryb
             dec.auto_jednostka = auto_jednostka
             dec.auto_similarity = auto_similarity
-            if not dec.skrot_sugerowany:
+            # skrot_hint (z komórki) nadpisuje ZAWSZE; bez hintu — dawne
+            # zachowanie (uzupełnij tylko gdy puste).
+            if skrot:
+                dec.skrot_sugerowany = skrot
+            elif not dec.skrot_sugerowany:
                 dec.skrot_sugerowany = zaproponuj_skrot(nazwa_zrodlowa)
             dec.save(
                 update_fields=[
@@ -189,6 +220,86 @@ class _ReconcilerTytulow:
         self.parent.tytuly_do_decyzji.exclude(pk__in=self.dotkniete).delete()
 
 
+_STATUS_NA_TRYB_STOPIEN = {
+    STATUS_STOPIEN_ZGADYWANIE: ImportPracownikowStopien.TRYB_ZGADYWANIE,
+    STATUS_STOPIEN_BRAK: ImportPracownikowStopien.TRYB_BRAK,
+}
+_STATUS_NA_TRYB_STANOWISKO = {
+    STATUS_STANOWISKO_ZGADYWANIE: ImportPracownikowStanowisko.TRYB_ZGADYWANIE,
+    STATUS_STANOWISKO_BRAK: ImportPracownikowStanowisko.TRYB_BRAK,
+}
+
+
+class _ReconcilerStopni:
+    """Mirror ``_ReconcilerTytulow`` dla ``ImportPracownikowStopien``."""
+
+    def __init__(self, parent):
+        self.parent = parent
+        self.dotkniete = set()
+
+    def reconciluj(self, nazwa_zrodlowa, tryb, auto_stopien, sim):
+        nazwa_zrodlowa = nazwa_zrodlowa[:512]
+        tryb_model = _STATUS_NA_TRYB_STOPIEN[tryb]
+        dec = self.parent.stopnie_do_decyzji.filter(
+            nazwa_zrodlowa__iexact=nazwa_zrodlowa
+        ).first()
+        if dec is None:
+            dec = ImportPracownikowStopien.objects.create(
+                parent=self.parent,
+                nazwa_zrodlowa=nazwa_zrodlowa,
+                tryb=tryb_model,
+                auto_stopien=auto_stopien,
+                auto_similarity=sim,
+                nazwa_do_utworzenia=nazwa_zrodlowa[:512],
+                skrot_do_utworzenia=zaproponuj_skrot_stopnia(nazwa_zrodlowa),
+            )
+        else:
+            dec.tryb = tryb_model
+            dec.auto_stopien = auto_stopien
+            dec.auto_similarity = sim
+            dec.save(update_fields=["tryb", "auto_stopien", "auto_similarity"])
+        self.dotkniete.add(dec.pk)
+        return dec
+
+    def usun_stale(self):
+        self.parent.stopnie_do_decyzji.exclude(pk__in=self.dotkniete).delete()
+
+
+class _ReconcilerStanowisk:
+    """Mirror ``_ReconcilerStopni`` dla ``ImportPracownikowStanowisko``."""
+
+    def __init__(self, parent):
+        self.parent = parent
+        self.dotkniete = set()
+
+    def reconciluj(self, nazwa_zrodlowa, tryb, auto_stanowisko, sim):
+        nazwa_zrodlowa = nazwa_zrodlowa[:512]
+        tryb_model = _STATUS_NA_TRYB_STANOWISKO[tryb]
+        dec = self.parent.stanowiska_do_decyzji.filter(
+            nazwa_zrodlowa__iexact=nazwa_zrodlowa
+        ).first()
+        if dec is None:
+            dec = ImportPracownikowStanowisko.objects.create(
+                parent=self.parent,
+                nazwa_zrodlowa=nazwa_zrodlowa,
+                tryb=tryb_model,
+                auto_stanowisko=auto_stanowisko,
+                auto_similarity=sim,
+                nazwa_do_utworzenia=nazwa_zrodlowa[:512],
+                skrot_do_utworzenia=zaproponuj_skrot_stanowiska(nazwa_zrodlowa),
+            )
+        else:
+            dec.tryb = tryb_model
+            dec.auto_stanowisko = auto_stanowisko
+            dec.auto_similarity = sim
+            dec.save(update_fields=["tryb", "auto_stanowisko", "auto_similarity"])
+        self.dotkniete.add(dec.pk)
+        return dec
+
+    def usun_stale(self):
+        self.parent.stanowiska_do_decyzji.exclude(pk__in=self.dotkniete).delete()
+
+
 def _klasyfikuj_tytul_wiersza(parent, tytul_str, reconciler_tytulow):
     """Klasyfikuje tytuł wiersza — mirror ``sklasyfikuj_jednostke``-flow.
 
@@ -218,6 +329,45 @@ def _klasyfikuj_tytul_wiersza(parent, tytul_str, reconciler_tytulow):
             )
         return None, tyt_status, decyzja
     return None, STATUS_TYTUL_BRAK, None
+
+
+def _klasyfikuj_stopien_wiersza(parent, stopien_str, reconciler_stopni):
+    """Mirror ``_klasyfikuj_tytul_wiersza`` dla stopni służbowych. Gated
+    ``parent.tworz_brakujace_stopnie``. Zwraca ``(stopien|None, status|None,
+    decyzja|None)``."""
+    if not stopien_str:
+        return None, None, None
+    obj, status, sim = sklasyfikuj_stopien(stopien_str)
+    if status == STATUS_STOPIEN_TWARDY:
+        return obj, status, None
+    tworzy = status == STATUS_STOPIEN_ZGADYWANIE or (
+        status == STATUS_STOPIEN_BRAK and parent.tworz_brakujace_stopnie
+    )
+    if tworzy:
+        decyzja = None
+        if reconciler_stopni is not None:
+            decyzja = reconciler_stopni.reconciluj(stopien_str, status, obj, sim)
+        return None, status, decyzja
+    return None, STATUS_STOPIEN_BRAK, None
+
+
+def _klasyfikuj_stanowisko_wiersza(parent, stanowisko_str, reconciler_stanowisk):
+    """Mirror ``_klasyfikuj_stopien_wiersza`` dla stanowisk dydaktycznych.
+    Gated ``parent.tworz_brakujace_stanowiska``."""
+    if not stanowisko_str:
+        return None, None, None
+    obj, status, sim = sklasyfikuj_stanowisko(stanowisko_str)
+    if status == STATUS_STANOWISKO_TWARDY:
+        return obj, status, None
+    tworzy = status == STATUS_STANOWISKO_ZGADYWANIE or (
+        status == STATUS_STANOWISKO_BRAK and parent.tworz_brakujace_stanowiska
+    )
+    if tworzy:
+        decyzja = None
+        if reconciler_stanowisk is not None:
+            decyzja = reconciler_stanowisk.reconciluj(stanowisko_str, status, obj, sim)
+        return None, status, decyzja
+    return None, STATUS_STANOWISKO_BRAK, None
 
 
 def _dane_znormalizowane_z_parserem(cleaned_data, rozbicie):
@@ -316,6 +466,56 @@ def _wybierz_autor_jednostka(autor, jednostka):
     )
 
 
+def _zrodlo_jednostki_wiersza(dane_form):
+    """Rozstrzyga, skąd wziąć nazwę jednostki i jak ją sklasyfikować (spec §6/§7).
+
+    Zwraca ``(nazwa_do_klas, wydzial, jednostka, jed_status, jed_sim,
+    skrot_hint)``. Trzy tory (priorytet):
+
+    1. ``komórka_złożona`` → ``parsuj_komorke``: nazwa = czysta nazwa z parsera,
+       ``skrot_hint`` = skrót z pliku (zasili ``Jednostka.skrot`` przy tworzeniu),
+       oddział rozwiązany przez ``Wydzial.skrot`` → jego NAZWA jako wydzial-hint
+       (``matchuj_wydzial`` robi tylko ``nazwa__iexact``; §7 finding #6).
+       Klasyfikacja zwykłym ``sklasyfikuj_jednostke`` po skrócie/nazwie.
+    2. ``nazwa_jednostki_niepelna`` (i brak ``nazwa_jednostki``) →
+       ``sklasyfikuj_jednostke_niepelna`` (icontains/trigram, zawsze do
+       weryfikacji). ``skrot_hint`` = None.
+    3. zwykła ``nazwa_jednostki`` → dotychczasowy ``sklasyfikuj_jednostke``.
+
+    Pusta/za długa (>512) nazwa → traktowana jak brak (wiersz pominięty).
+    """
+    wydzial = str(dane_form.get("wydział") or "").strip() or None
+    skrot_hint = None
+
+    komorka = str(dane_form.get("komórka_złożona") or "").strip()
+    niepelna = str(dane_form.get("nazwa_jednostki_niepelna") or "").strip()
+    zwykla = str(dane_form.get("nazwa_jednostki") or "").strip()
+
+    if komorka:
+        wynik = parsuj_komorke(komorka)
+        nazwa = wynik["nazwa"]
+        skrot_hint = wynik["skrot"]
+        oddzial = wynik["oddzial"]
+        if oddzial:
+            w = Wydzial.objects.filter(skrot=oddzial).first()
+            if w is not None:
+                wydzial = w.nazwa
+        nazwa_do_klas = nazwa if 0 < len(nazwa) <= 512 else ""
+        jednostka, jed_status, jed_sim = sklasyfikuj_jednostke(nazwa_do_klas, wydzial)
+        return nazwa_do_klas, wydzial, jednostka, jed_status, jed_sim, skrot_hint
+
+    if niepelna and not zwykla:
+        nazwa_do_klas = niepelna if 0 < len(niepelna) <= 512 else ""
+        jednostka, jed_status, jed_sim = sklasyfikuj_jednostke_niepelna(
+            nazwa_do_klas, wydzial
+        )
+        return nazwa_do_klas, wydzial, jednostka, jed_status, jed_sim, None
+
+    nazwa_do_klas = zwykla if 0 < len(zwykla) <= 512 else ""
+    jednostka, jed_status, jed_sim = sklasyfikuj_jednostke(nazwa_do_klas, wydzial)
+    return nazwa_do_klas, wydzial, jednostka, jed_status, jed_sim, None
+
+
 def _przetworz_wiersz(
     parent,
     elem,
@@ -323,22 +523,30 @@ def _przetworz_wiersz(
     *,
     reconciler=None,
     reconciler_tytulow=None,
+    reconciler_stopni=None,
+    reconciler_stanowisk=None,
     tworz_brakujace=True,
 ):
     dane_form = normalizuj_wartosci_wiersza(elem)
     rozbicie = _rozbij_osoba_sklejona(dane_form, parser_ctx)
+    # „Nazwisko Imię" (nazwisko-first) → nazwisko/imię (no-op gdy brak klucza).
+    rozbij_nazwisko_imie(dane_form)
     # Kolumna „Drugie imię" scalana z „Imię" w jedno Autor.imiona — PO rozbiciu
     # osoby sklejonej (parser uzupełnia puste „imię" z rozbicia), przed AutorForm.
     sklej_drugie_imie(dane_form)
 
     # Jednostka: klasyfikacja BEZ rzucania (brak/remis/pusta/za długa nazwa NIE
     # wywalają analizy). twardy → dopasowana wprost; zgadywanie/brak → odroczona
-    # do decyzji (ekran weryfikacji + faza integracji). Pusta/za długa nazwa
-    # (>512) → traktowana jak brak nazwy: wiersz pominięty, bez decyzji.
-    nazwa_jed = str(dane_form.get("nazwa_jednostki") or "").strip()
-    wydzial = str(dane_form.get("wydział") or "").strip() or None
-    nazwa_do_klas = nazwa_jed if 0 < len(nazwa_jed) <= 512 else ""
-    jednostka, jed_status, jed_sim = sklasyfikuj_jednostke(nazwa_do_klas, wydzial)
+    # do decyzji (ekran weryfikacji + faza integracji). Rozgałęzienie źródła
+    # (komórka złożona / niepełna nazwa / zwykła nazwa) w _zrodlo_jednostki_wiersza.
+    (
+        nazwa_do_klas,
+        wydzial,
+        jednostka,
+        jed_status,
+        jed_sim,
+        skrot_hint,
+    ) = _zrodlo_jednostki_wiersza(dane_form)
     jednostka_odroczona = jed_status != STATUS_JEDNOSTKA_TWARDY
 
     autor_form = AutorForm(data=dane_form)
@@ -393,7 +601,11 @@ def _przetworz_wiersz(
             jed_status == ImportPracownikowJednostka.TRYB_BRAK and tworz_brakujace
         ):
             decyzja_jednostki = reconciler.reconciluj(
-                nazwa_do_klas, jed_status, jednostka, jed_sim
+                nazwa_do_klas,
+                jed_status,
+                jednostka,
+                jed_sim,
+                skrot_hint=skrot_hint,
             )
 
     # AJ liczymy TYLKO dla jednostki twardo dopasowanej. Odroczona → jednostka
@@ -413,10 +625,23 @@ def _przetworz_wiersz(
     row_tytul, row_tytul_status, row_zrodlo_tytulu = _klasyfikuj_tytul_wiersza(
         parent, tytul_str, reconciler_tytulow
     )
+    row_stopien, row_stopien_status, row_zrodlo_stopnia = _klasyfikuj_stopien_wiersza(
+        parent, data.get("stopień_służbowy"), reconciler_stopni
+    )
+    (
+        row_stanowisko,
+        row_stanowisko_status,
+        row_zrodlo_stanowiska,
+    ) = _klasyfikuj_stanowisko_wiersza(
+        parent, data.get("stanowisko_dydaktyczne"), reconciler_stanowisk
+    )
 
     row = ImportPracownikowRow(
         parent=parent,
         dane_z_xls=elem,
+        # dane_znormalizowane zawiera też `email` (nowe pole AutorForm) —
+        # zapisywany do porównywarki (Plan 4) i do zapisu przy tworzeniu autora
+        # (integrate; e-mail = no-overwrite dla istniejących, spec §11.2).
         dane_znormalizowane=_dane_znormalizowane_z_parserem(
             autor_form.cleaned_data, rozbicie
         ),
@@ -429,6 +654,12 @@ def _przetworz_wiersz(
         tytul=row_tytul,
         tytul_status=row_tytul_status,
         zrodlo_tytulu=row_zrodlo_tytulu,
+        stopien=row_stopien,
+        stopien_status=row_stopien_status,
+        zrodlo_stopnia=row_zrodlo_stopnia,
+        stanowisko_dydaktyczne=row_stanowisko,
+        stanowisko_dydaktyczne_status=row_stanowisko_status,
+        zrodlo_stanowiska_dydaktycznego=row_zrodlo_stanowiska,
         funkcja_autora=funkcja,
         grupa_pracownicza=grupa,
         wymiar_etatu=wymiar,
@@ -492,6 +723,8 @@ def analizuj(parent, p):
     parser_ctx = zbuduj_parser_kontekst()
     reconciler = _ReconcilerJednostek(parent)
     reconciler_tytulow = _ReconcilerTytulow(parent)
+    reconciler_stopni = _ReconcilerStopni(parent)
+    reconciler_stanowisk = _ReconcilerStanowisk(parent)
     for elem in p.track(list(zrodlo.data()), total=total, label="Wczytywanie"):
         if mapowanie:
             elem = remapuj_wiersz(elem, mapowanie)
@@ -501,12 +734,16 @@ def analizuj(parent, p):
             parser_ctx,
             reconciler=reconciler,
             reconciler_tytulow=reconciler_tytulow,
+            reconciler_stopni=reconciler_stopni,
+            reconciler_stanowisk=reconciler_stanowisk,
             tworz_brakujace=parent.tworz_brakujace_jednostki,
         )
-    # Decyzje o jednostkach/tytułach nieobecne w bieżącym pliku → sprzątamy
-    # (przeżywają wybory usera dla nazw, które zostały — patrz reconcilery).
+    # Decyzje o jednostkach/tytułach/słownikach nieobecne w bieżącym pliku →
+    # sprzątamy (przeżywają wybory usera dla nazw, które zostały — reconcilery).
     reconciler.usun_stale()
     reconciler_tytulow.usun_stale()
+    reconciler_stopni.usun_stale()
+    reconciler_stanowisk.usun_stale()
 
     liczba_odpiec = _materializuj_odpiecia(parent)
 
@@ -520,6 +757,8 @@ def analizuj(parent, p):
     struktura_bez_decyzji = (
         not parent.jednostki_do_decyzji.exists()
         and not parent.tytuly_do_decyzji.exists()
+        and not parent.stopnie_do_decyzji.exists()
+        and not parent.stanowiska_do_decyzji.exists()
     )
     parent.stan = (
         ImportPracownikow.STAN_STRUKTURA_ZINTEGROWANA
