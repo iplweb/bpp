@@ -173,7 +173,7 @@ TransactionTestCase._fixture_teardown = _fixture_teardown
 # root-cause fixa (namierzyć i naprawić test commitujący poza rollback).
 # =============================================================================
 
-_LEAK_GUARD = {"conn": None, "poprzedni": "<start sesji>"}
+_LEAK_GUARD = {"conn": None, "poprzedni": "<start sesji>", "ref_snapshot": None}
 _LEAK_GUARD_TABLES = (
     "bpp_autor",
     "bpp_jednostka",
@@ -181,6 +181,45 @@ _LEAK_GUARD_TABLES = (
     "bpp_stanowiskodydaktyczne",
     "bpp_grupa_pracownicza",
 )
+# Sentinel dla WYCIEKU odwrotnego (vector 2): tabela referencyjna zaseedowana
+# migracją danych, której post_migrate NIE odtwarza po flushu. Gdy jest pusta,
+# a snapshot ją miał → transakcyjny flush zmiótł dane referencyjne workera.
+_LEAK_GUARD_SENTINEL = "bpp_crossref_mapper"
+
+
+def _snapshot_reference(cur):
+    """Snapshot tabel referencyjnych (niepuste w świeżym baseline) do schematu
+    ``_bp_snap``. Pomijamy tabele Django/auth (post_migrate je odtwarza) oraz
+    tabele domenowe z guarda (puste w baseline). UNLOGGED = szybko, przeżywa
+    flush (nie jest tabelą modelu → Django flush jej nie truncatuje)."""
+    cur.execute("CREATE SCHEMA IF NOT EXISTS _bp_snap")
+    cur.execute("SELECT tablename FROM pg_tables WHERE schemaname='public'")
+    tabele = [r[0] for r in cur.fetchall()]
+    ref = []
+    for t in tabele:
+        if t in _LEAK_GUARD_TABLES or t.startswith(
+            ("django_", "auth_", "social_", "_bp_snap")
+        ):
+            continue
+        cur.execute(f'SELECT EXISTS(SELECT 1 FROM "{t}")')
+        if cur.fetchone()[0]:
+            cur.execute(f'DROP TABLE IF EXISTS _bp_snap."{t}"')
+            cur.execute(f'CREATE UNLOGGED TABLE _bp_snap."{t}" AS TABLE "{t}"')
+            ref.append(t)
+    return ref
+
+
+def _restore_reference(cur, ref):
+    """Przywróć dane referencyjne ze snapshotu. ``session_replication_role =
+    replica`` wyłącza triggery FK → DELETE+INSERT w dowolnej kolejności (dane
+    są spójnym baseline, brak realnych naruszeń)."""
+    cur.execute("SET session_replication_role = replica")
+    try:
+        for t in ref:
+            cur.execute(f'DELETE FROM "{t}"')
+            cur.execute(f'INSERT INTO "{t}" SELECT * FROM _bp_snap."{t}"')
+    finally:
+        cur.execute("SET session_replication_role = origin")
 
 
 def _leak_guard_conn(settings_dict):
@@ -233,6 +272,27 @@ def _neutralizuj_wyciekle_dane(request):
         try:
             conn = _leak_guard_conn(connection.settings_dict)
             with conn.cursor() as cur:
+                # --- Snapshot referencyjny raz per worker (na świeżym baseline) ---
+                if _LEAK_GUARD["ref_snapshot"] is None:
+                    cur.execute(f"SELECT EXISTS(SELECT 1 FROM {_LEAK_GUARD_SENTINEL})")
+                    if cur.fetchone()[0]:
+                        _LEAK_GUARD["ref_snapshot"] = _snapshot_reference(cur)
+
+                # --- VECTOR 2: przywróć dane referencyjne zmiecione flushem ---
+                ref = _LEAK_GUARD["ref_snapshot"]
+                if ref:
+                    cur.execute(f"SELECT EXISTS(SELECT 1 FROM {_LEAK_GUARD_SENTINEL})")
+                    if not cur.fetchone()[0]:
+                        print(
+                            f"[LEAK-GUARD] dane referencyjne WYCZYSZCZONE (flush "
+                            f"transakcyjny) — widać na setupie {request.node.nodeid}. "
+                            f"Sprawca (poprzedni test DB na tym workerze): "
+                            f"{_LEAK_GUARD['poprzedni']}. Odtwarzam ze snapshotu.",
+                            file=sys.stderr,
+                        )
+                        _restore_reference(cur, ref)
+
+                # --- VECTOR 1: usuń wyciekłe (nadmiarowe) dane domenowe ---
                 cur.execute(f"SELECT {probe}")
                 obecne = cur.fetchone()
                 wyciekle = [
