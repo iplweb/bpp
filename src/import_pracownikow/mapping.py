@@ -110,6 +110,31 @@ TRY_NAMES = sorted(set(_SYNONIMY.keys()))
 MIN_POINTS = 2
 
 
+def sprawdz_pojedynczy_arkusz(zrodlo):
+    """Wymusza regułę „jeden arkusz = jeden import".
+
+    Plik z więcej niż jednym arkuszem z danymi (np. dwie uczelnie w jednym
+    skoroszycie — jak ``Pracownicy_..._UAFM_x_MWSL.xlsx``) jest ODRZUCANY:
+    auto-sklejenie mieszałoby rozłączne zbiory, a auto-podział na osobne
+    importy zakładałby, że arkusze są porównywalne (nie są — inne kolumny,
+    inna uczelnia). Świadomie NIE obsługujemy plików wieloarkuszowych —
+    użytkownik dzieli plik i importuje każdy arkusz osobno.
+
+    Podnosi ``BadNoOfSheetsException`` z czytelnym komunikatem (ekran
+    mapowania go łapie i pokazuje; w tle wyjątek trafia na konsolę/rollbar/
+    admin). CSV to zawsze jeden arkusz — nigdy nie wyzwala tej reguły.
+    """
+    from import_common.exceptions import BadNoOfSheetsException
+
+    n = zrodlo.liczba_arkuszy_z_danymi()
+    if n > 1:
+        raise BadNoOfSheetsException(
+            f"Plik zawiera więcej niż jeden arkusz z danymi (znaleziono: {n}). "
+            f"Jeden import obsługuje tylko jeden arkusz — podziel plik na osobne "
+            f"pliki (po jednym arkuszu) i zaimportuj każdy osobno."
+        )
+
+
 # Fallback podłańcuchowy: gdy DOKŁADNY synonim nie trafił, sprawdzamy czy
 # nagłówek ZAWIERA któryś fragment (kolejność = priorytet). Dla długich,
 # opisowych nagłówków typu „stopien_tytul_aktualny_na_dzien_..." (IHIT).

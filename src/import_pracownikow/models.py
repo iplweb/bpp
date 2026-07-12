@@ -199,6 +199,25 @@ class ImportPracownikow(LiveOperation):
         return None
 
     def run(self, p):
+        # liveops.runner._handle_error zapisuje traceback WYŁĄCZNIE do bazy (pole
+        # `traceback`) — bez śladu na konsoli workera i bez zgłoszenia do
+        # rollbara. Owijamy właściwy przebieg, żeby błąd był WIDOCZNY: surowy
+        # traceback na stderr (konsola celery/run-site) + rollbar (konwencja
+        # bg-tasków w projekcie), po czym re-raise — liveops i tak zapisze
+        # traceback do bazy i pokaże błąd w UI/adminie.
+        try:
+            self._wykonaj(p)
+        except Exception:
+            import sys
+            import traceback as _traceback
+
+            import rollbar
+
+            _traceback.print_exc()
+            rollbar.report_exc_info(sys.exc_info())
+            raise
+
+    def _wykonaj(self, p):
         if self.stan == self.STAN_ZMAPOWANY:
             from import_pracownikow.pipeline.analyze import analizuj
 
@@ -274,6 +293,23 @@ class ImportPracownikow(LiveOperation):
         self.log_seq = 0
         return list(self._POLA_LIVEOPS_RESET)
 
+    def waliduj_liczbe_arkuszy(self):
+        """Egzekwuje „jeden arkusz = jeden import": otwiera plik i podnosi
+        ``BadNoOfSheetsException``, gdy ma > 1 arkusz z danymi. Dla widoków
+        ruszających analizę z pominięciem ekranu mapowania (RestartAnalizaView) —
+        ``naglowki_i_probka`` robi tę samą kontrolę na ścieżce mapowania."""
+        from import_common.sources import otworz_zrodlo
+        from import_pracownikow.mapping import (
+            MIN_POINTS,
+            TRY_NAMES,
+            sprawdz_pojedynczy_arkusz,
+        )
+
+        zrodlo = otworz_zrodlo(
+            self.plik_xls.path, try_names=TRY_NAMES, min_points=MIN_POINTS
+        )
+        sprawdz_pojedynczy_arkusz(zrodlo)
+
     def naglowki_i_probka(self, limit=10):
         """Synchronicznie (bez liveops) czyta znormalizowane nagłówki i do
         ``limit`` wierszy próbki — na ekran mapowania. Nagłówki = klucze
@@ -282,11 +318,19 @@ class ImportPracownikow(LiveOperation):
         rzucić ``HeaderNotFoundException`` (plik bez rozpoznawalnego
         nagłówka) — widok (T8) łapie to i pokazuje komunikat, nie 500."""
         from import_common.sources import otworz_zrodlo
-        from import_pracownikow.mapping import MIN_POINTS, TRY_NAMES
+        from import_pracownikow.mapping import (
+            MIN_POINTS,
+            TRY_NAMES,
+            sprawdz_pojedynczy_arkusz,
+        )
 
         zrodlo = otworz_zrodlo(
             self.plik_xls.path, try_names=TRY_NAMES, min_points=MIN_POINTS
         )
+        # „Jeden arkusz = jeden import" — plik wieloarkuszowy odrzucamy zanim
+        # użytkownik zacznie mapować (mieszałby dwa rozłączne zbiory). Widok
+        # łapie BadNoOfSheetsException i pokazuje komunikat.
+        sprawdz_pojedynczy_arkusz(zrodlo)
         probka = []
         naglowki = []
         for i, wiersz in enumerate(zrodlo.data()):

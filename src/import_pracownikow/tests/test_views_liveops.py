@@ -290,12 +290,17 @@ def test_zatwierdz_bez_zakresu_domyslnie_pelny(admin_client, admin_user):
 
 
 @pytest.mark.django_db
-def test_restart_analiza_cofa_stan_i_kasuje_wiersze(admin_client, admin_user):
-    imp = baker.make(
-        ImportPracownikow,
-        owner=admin_user,
-        stan=ImportPracownikow.STAN_PRZEANALIZOWANY,
-    )
+def test_restart_analiza_cofa_stan_i_kasuje_wiersze(
+    admin_client, admin_user, testdata_xlsx_path
+):
+    # Restart otwiera plik (bramka „jeden arkusz = jeden import"), więc import
+    # potrzebuje REALNEGO, jednoarkuszowego pliku (jak w produkcji — nie da się
+    # przeanalizować importu bez pliku).
+    from import_pracownikow.tests.conftest import import_pracownikow_factory
+
+    imp = import_pracownikow_factory(admin_user, testdata_xlsx_path)
+    imp.stan = ImportPracownikow.STAN_PRZEANALIZOWANY
+    imp.save(update_fields=["stan"])
     baker.make(
         "import_pracownikow.ImportPracownikowRow", parent=imp, zmiany_potrzebne=False
     )
