@@ -1,4 +1,5 @@
 import logging
+import os
 import re
 
 from django.conf import settings
@@ -40,20 +41,48 @@ def _first_claim(claims, keys):
     return None
 
 
-def _log_claims_debug(claims):
-    """Zaloguj klucze i wartości claimów z Keycloaka na poziomie DEBUG.
+def _redact_claim_value(value):
+    """Zredagowana reprezentacja wartości claimu — BEZ danych osobowych.
 
-    Po fazie discovery nie zaśmiecamy już stderr bannerem — podgląd claimów
-    zostaje dostępny przez ``logging`` na DEBUG (np. do diagnostyki realmu),
-    ale domyślnie milczy. Guard na ``isEnabledFor`` unika składania stringów,
-    gdy DEBUG i tak jest wyłączony.
+    Diagnostyka realmu potrzebuje *kształtu* claimu (typ, długość, klucze
+    zagnieżdżonych obiektów), a nie treści: wartości niosą PII (adresy
+    e-mail, nazwy grup/ról, identyfikatory osoby). Dla ``dict`` pokazujemy
+    same klucze (strukturalne, nie PII); dla ``list``/``str`` — typ i długość.
+    """
+    if isinstance(value, dict):
+        return f"<dict keys={sorted(value.keys())}>"
+    if isinstance(value, (list, tuple)):
+        return f"<{type(value).__name__} len={len(value)}>"
+    if isinstance(value, str):
+        return f"<str len={len(value)}>"
+    return f"<{type(value).__name__}>"
+
+
+def _log_claims_debug(claims):
+    """Zaloguj claimy z Keycloaka na poziomie DEBUG — domyślnie ZREDAGOWANE.
+
+    Po fazie discovery nie zaśmiecamy stderr bannerem — podgląd claimów jest
+    dostępny przez ``logging`` na DEBUG (diagnostyka realmu), ale domyślnie
+    milczy. Guard ``isEnabledFor`` unika składania stringów, gdy DEBUG jest
+    wyłączony.
+
+    RODO/PII: domyślnie logujemy WYŁĄCZNIE nazwy claimów i zredagowany
+    kształt wartości (``_redact_claim_value``) — bez adresów, grup ani
+    identyfikatorów. Surowe wartości (``%r``) odblokowuje osobny, wyraźny
+    opt-in ``DJANGO_BPP_OIDC_DEBUG_CLAIM_VALUES=1`` — tylko do krótkotrwałej
+    diagnostyki, nigdy na stałe na produkcji.
     """
     if not logger.isEnabledFor(logging.DEBUG):
         return
     keys = sorted(claims.keys())
     logger.debug("OIDC: otrzymane claimy (%d): %s", len(keys), ", ".join(keys))
+
+    dump_values = os.getenv("DJANGO_BPP_OIDC_DEBUG_CLAIM_VALUES") == "1"
     for key in keys:
-        logger.debug("OIDC:   %s = %r", key, claims[key])
+        if dump_values:
+            logger.debug("OIDC:   %s = %r", key, claims[key])
+        else:
+            logger.debug("OIDC:   %s = %s", key, _redact_claim_value(claims[key]))
 
 
 class BppOIDCBackend(OIDCAuthenticationBackend):
