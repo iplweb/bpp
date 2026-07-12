@@ -10,6 +10,9 @@ generycznym ``import_common``.
 
 from datetime import date, datetime
 
+from django.core.exceptions import ValidationError
+from django.core.validators import validate_email
+
 # Kolumny-daty w rygorystycznym schemacie Fazy 0/1 (nazwy = znormalizowane
 # nagłówki wzorca BPP). Faza 2 (mapowanie) uczyni to konfigurowalnym.
 _KLUCZE_DAT = ("data_zatrudnienia", "data_końca_zatrudnienia")
@@ -87,3 +90,34 @@ def rozbij_nazwisko_imie(dane: dict) -> dict:
                 dane["imię"] = " ".join(tokeny[1:])
     dane.pop("nazwisko_imię", None)
     return dane
+
+
+def oczysc_email(dane: dict):
+    """Łagodna walidacja e-maila (§11): mutuje ``dane["email"]`` na poprawny,
+    znormalizowany adres (lower + strip) albo ``""``; zwraca komunikat
+    ostrzeżenia (gdy adres był NIEPUSTY i niepoprawny) albo ``None``.
+
+    Wołane PRZED ``AutorForm.full_clean()`` w analizie — dzięki temu zły adres
+    NIGDY nie unieważnia formularza (analiza jest fail-fast: jeden
+    ``XLSParseError`` z ``full_clean`` ubija cały run). ``str(...)`` bo XLSX
+    (openpyxl) potrafi dać komórkę nietekstową. Adres > 128 znaków traktujemy
+    jak niepoprawny (model ``Autor.email`` = ``EmailField(max_length=128)`` —
+    dłuższy wywaliłby ``Autor.objects.create``). Nie rzuca (per-wiersz
+    recovery)."""
+    if "email" not in dane:
+        return None
+    surowy = str(dane.get("email") or "").strip()
+    if not surowy:
+        dane["email"] = ""
+        return None
+    kandydat = surowy.lower()
+    if len(kandydat) > 128:
+        dane["email"] = ""
+        return "Pominięto zbyt długi adres e-mail (>128 znaków)."
+    try:
+        validate_email(kandydat)
+    except ValidationError:
+        dane["email"] = ""
+        return f"Pominięto niepoprawny adres e-mail: „{surowy}”."
+    dane["email"] = kandydat
+    return None
