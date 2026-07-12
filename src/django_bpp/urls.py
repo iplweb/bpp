@@ -407,9 +407,13 @@ if "microsoft_auth" in getattr(settings, "INSTALLED_APPS", []):
 # Logowanie OpenID Connect — addytywne, montowane tylko gdy apka aktywna.
 # Trasy mozilla-django-oidc: oidc/authenticate/ (start), oidc/callback/ (powrót).
 # Redirect URI do zarejestrowania w Keycloaku: https://<host>/oidc/callback/
-if apps.is_installed("oidc_integration"):
+if settings.OIDC_LOGIN_ENABLED:
     urlpatterns += [
         path("oidc/", include("mozilla_django_oidc.urls")),
+        path(
+            "oidc/",
+            include(("oidc_integration.urls", "oidc_integration")),
+        ),
     ]
 
 
@@ -425,11 +429,12 @@ if settings.DEBUG and settings.DEBUG_TOOLBAR:
     urlpatterns += debug_toolbar_urls()
 
 
-if apps.is_installed("oidc_integration"):
+if settings.OIDC_LOGIN_ENABLED:
     #
-    # Logowanie instytucjonalne przez OIDC (Keycloak). apps.is_installed(
-    # "oidc_integration") jest prawdą tylko gdy OIDC jest skonfigurowane (apka
-    # dokładana warunkowo w settings). OIDC to jeden realm na proces, więc
+    # Logowanie instytucjonalne przez OIDC (Keycloak). settings.OIDC_LOGIN_ENABLED
+    # jest prawdą tylko gdy OIDC jest skonfigurowane (app instalowany zawsze, ale
+    # routing/backend gateowane po wykryciu configu). OIDC to jeden realm na
+    # proces, więc
     # logowanie jest wybierane PER-UCZELNIA: InstitutionalLoginView odbija na
     # Keycloaka tylko dla domeny uczelni o skrócie == OIDC_LOGIN_SKROT, dla
     # pozostałych domen używa Microsoftu (jeśli włączony, globalnie) albo

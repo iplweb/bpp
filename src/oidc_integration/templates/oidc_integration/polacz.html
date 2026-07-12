@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+
+{% block title %}Połącz konto z SSO{% endblock %}
+
+{% block breadcrumbs %}
+    {{ block.super }}
+    <li><a href="/">Strona główna</a></li>
+    <li><a href="{% url 'bpp:profil-uzytkownika' %}">Mój profil</a></li>
+    <li class="current">Połącz konto z SSO</li>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="medium-8 medium-centered columns">
+        <h2><span class="fi-link"></span> Połącz konto z logowaniem SSO</h2>
+
+        {% if error %}
+            <div class="callout alert" role="alert">
+                <span class="fi-alert"></span> {{ error }}
+            </div>
+        {% endif %}
+
+        <div class="callout">
+            <p>
+                Aby powiązać to konto z Twoją tożsamością w systemie logowania
+                jednokrotnego (SSO), potwierdź swoje hasło. Po potwierdzeniu
+                zostaniesz przekierowany do logowania SSO — zalogowanie tam
+                trwale zwiąże obie tożsamości.
+            </p>
+            <form method="post" action="{% url 'oidc_integration:polacz' %}">
+                {% csrf_token %}
+                <label for="id_password">Hasło</label>
+                <input type="password" name="password" id="id_password"
+                       autocomplete="current-password" required>
+                <button type="submit" class="button">
+                    <span class="fi-link"></span> Potwierdź i połącz
+                </button>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
