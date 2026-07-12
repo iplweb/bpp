@@ -108,6 +108,48 @@ def test_run_pbn_import_failure(uczelnia, admin_user):
 
 
 @pytest.mark.django_db
+def test_run_pbn_import_persistence_failure_is_reported_not_swallowed(
+    uczelnia, admin_user
+):
+    """Gdy zapis błędu importu sam się wywali, MUSI zostać zalogowany
+    z tracebackiem i zgłoszony do Rollbara (phase=error_persistence_failed),
+    a nie zniknąć po cichu.
+
+    Regresja: wcześniej wewnętrzny handler łapał ``BaseException``, przez co
+    następujący po nim ``except Exception`` był MARTWY (nieosiągalny). Po
+    zmianie łapiemy tylko ``Exception`` — KeyboardInterrupt/SystemExit się
+    propagują, ale zwykły błąd zapisu jest nadal raportowany.
+    """
+    session = ImportSession.objects.create(user=admin_user, status="pending", config={})
+
+    mock_import_manager = MagicMock()
+    mock_import_manager.run.side_effect = Exception("Import failed")
+
+    with patch("pbn_import.tasks.ImportManager", return_value=mock_import_manager):
+        with patch.object(uczelnia, "pbn_client", return_value=MagicMock()):
+            with patch.object(
+                ImportSession, "mark_failed", side_effect=Exception("DB down")
+            ):
+                with patch("pbn_import.tasks.rollbar") as mock_rollbar:
+                    with patch("pbn_import.tasks.logger") as mock_logger:
+                        run_pbn_import.apply(args=(session.pk, uczelnia.pk))
+
+    # Zapis błędu się nie powiódł, ale nie zniknął po cichu:
+    logged_msgs = [c[0][0] for c in mock_logger.exception.call_args_list if c[0]]
+    assert any(
+        "Nie udało się zapisać krytycznego błędu" in m for m in logged_msgs
+    ), logged_msgs
+
+    # Rollbar zawołany dwukrotnie: 1) oryginalny błąd importu,
+    # 2) błąd persystencji z phase=error_persistence_failed.
+    phases = [
+        c.kwargs.get("extra_data", {}).get("phase")
+        for c in mock_rollbar.report_exc_info.call_args_list
+    ]
+    assert "error_persistence_failed" in phases
+
+
+@pytest.mark.django_db
 def test_run_pbn_import_cancelled(uczelnia, admin_user):
     """Test run_pbn_import respects cancelled status set during import."""
     session = ImportSession.objects.create(user=admin_user, status="pending", config={})
