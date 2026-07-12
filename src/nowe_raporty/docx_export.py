@@ -77,6 +77,7 @@ def as_docx(  # noqa: PLR0913
             _convert_using_html2docx_service(cleaned_html, output_file.name)
         except Exception as service_exc:  # noqa: BLE001
             output_file.close()
+            Path(output_file.name).unlink(missing_ok=True)
             raise DocxConversionError(
                 "DOCX conversion failed using both pandoc and html2docx"
             ) from service_exc
@@ -106,13 +107,18 @@ def _convert_using_html2docx_service(html: str, output_path: str) -> None:
     )
     response.raise_for_status()
 
-    with open(output_path, "wb") as output_file:
-        output_file.write(response.content)
-
-    # Validate output
-    output_file_path = Path(output_path)
-    if not output_file_path.exists() or output_file_path.stat().st_size == 0:
+    content = response.content
+    # Walidujemy zawartość PRZED zapisem: pusty body => brak wyniku; a status
+    # 200 z nie-DOCX (np. strona błędu proxy) rozpoznajemy po magii ZIP —
+    # .docx to archiwum ZIP zaczynające się od "PK\x03\x04". Bez tego user
+    # dostałby uszkodzony plik podany jako poprawny.
+    if not content:
         raise RuntimeError("html2docx service produced no output")
+    if not content.startswith(b"PK\x03\x04"):
+        raise RuntimeError("html2docx service returned non-DOCX content")
+
+    with open(output_path, "wb") as output_file:
+        output_file.write(content)
 
 
 def _replace_pagebreak_in_paragraph(paragraph, marker: str) -> bool:

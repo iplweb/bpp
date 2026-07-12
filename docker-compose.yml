@@ -102,8 +102,10 @@ services:
   html2docx:
     image: iplweb/html2docx:latest
     restart: always
-    # Port 3030 (default obrazu); nadpisywalny env HTML2DOCX_PORT.
-    # W dev odsłaniamy port dla debugowania; w produkcji NIE publikować.
+    # Port WEWNĄTRZ kontenera zostaje 3030 (prawa strona mappingu) — do niego
+    # celuje DJANGO_BPP_HTML2DOCX_URL w .env.docker. DJANGO_BPP_HTML2DOCX_PORT
+    # zmienia tylko port na HOŚCIE (lewa strona). W dev odsłaniamy port dla
+    # debugowania; w produkcji NIE publikować.
     ports:
       - ${DJANGO_BPP_HTML2DOCX_PORT:-3030}:3030
 

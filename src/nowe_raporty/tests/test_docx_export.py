@@ -80,7 +80,7 @@ def test_html2docx_service_success(monkeypatch, tmp_path):
     output_path = tmp_path / "out.docx"
 
     class FakeResp:
-        content = b"docx-bytes"
+        content = b"PK\x03\x04docx"  # magia ZIP = poprawny .docx
 
         def raise_for_status(self):
             pass
@@ -98,7 +98,7 @@ def test_html2docx_service_success(monkeypatch, tmp_path):
     with override_settings(HTML2DOCX_URL=SERVICE_URL):
         docx_export._convert_using_html2docx_service("<b>x</b>", str(output_path))
 
-    assert output_path.read_bytes() == b"docx-bytes"
+    assert output_path.read_bytes() == b"PK\x03\x04docx"
     assert captured["url"] == SERVICE_URL
     assert captured["data"] == b"<b>x</b>"
     assert captured["timeout"] == (5, 30)
@@ -147,4 +147,42 @@ def test_html2docx_service_empty_output_raises(monkeypatch, tmp_path):
     monkeypatch.setattr(requests, "post", lambda *a, **k: FakeResp())
     with override_settings(HTML2DOCX_URL=SERVICE_URL):
         with pytest.raises(RuntimeError, match="no output"):
+            docx_export._convert_using_html2docx_service("<b>x</b>", str(output_path))
+
+
+def test_html2docx_service_rejects_non_docx(monkeypatch, tmp_path):
+    """Status 200 z treścią nie-DOCX (np. strona błędu proxy) => RuntimeError.
+
+    Chroni przed podaniem userowi uszkodzonego .docx, gdy usługa/proxy zwróci
+    200 z HTML-em zamiast archiwum ZIP.
+    """
+    output_path = tmp_path / "out.docx"
+
+    class FakeResp:
+        content = b"<html><body>Bad Gateway</body></html>"
+
+        def raise_for_status(self):
+            pass
+
+    monkeypatch.setattr(requests, "post", lambda *a, **k: FakeResp())
+    with override_settings(HTML2DOCX_URL=SERVICE_URL):
+        with pytest.raises(RuntimeError, match="non-DOCX"):
+            docx_export._convert_using_html2docx_service("<b>x</b>", str(output_path))
+    assert not output_path.exists()
+
+
+def test_html2docx_service_propagates_connection_error(monkeypatch, tmp_path):
+    """Usługa nieosiągalna (ConnectionError) => wyjątek propaguje.
+
+    Kluczowy scenariusz produkcyjny: kontener html2docx padł. Wyżej zamienia
+    się w DocxConversionError (miękki fail, HTTP 500 — bez crasha).
+    """
+    output_path = tmp_path / "out.docx"
+
+    def fake_post(*args, **kwargs):  # noqa: ARG001
+        raise requests.ConnectionError("connection refused")
+
+    monkeypatch.setattr(requests, "post", fake_post)
+    with override_settings(HTML2DOCX_URL=SERVICE_URL):
+        with pytest.raises(requests.ConnectionError):
             docx_export._convert_using_html2docx_service("<b>x</b>", str(output_path))
