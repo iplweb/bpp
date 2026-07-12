@@ -18,7 +18,8 @@ from django.test import override_settings
 from zglos_publikacje.storage import zglos_tmp_dir
 
 GODZINA = 3600
-COMMAND_MODULE = "zglos_publikacje.management.commands.wyczysc_zglos_tmp"
+# Logika (w tym wołanie zglos_tmp_dir) siedzi w rdzeniu cleanup, nie w komendzie.
+CLEANUP_MODULE = "zglos_publikacje.cleanup"
 
 
 def _ustaw_mtime(sciezka, przed_iloma_godzinami):
@@ -122,7 +123,7 @@ def test_straznik_odmawia_na_zlym_katalogu(tmp_path, monkeypatch):
             f.write(b"b" * 20)
         _ustaw_mtime(plik, 100)  # bardzo stary — i tak nie wolno go tknąć
 
-        monkeypatch.setattr(f"{COMMAND_MODULE}.zglos_tmp_dir", lambda: zly)
+        monkeypatch.setattr(f"{CLEANUP_MODULE}.zglos_tmp_dir", lambda: zly)
 
         with pytest.raises(CommandError):
             call_command("wyczysc_zglos_tmp")

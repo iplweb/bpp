@@ -1,24 +1,17 @@
 """Czyszczenie porzuconych plików tymczasowych kreatora zgłoszeń.
 
-Kasuje pliki starsze niż `--older-than-hours` (default 24) WYŁĄCZNIE
-z katalogu tmp (`MEDIA_ROOT/protected/zglos_publikacje_tmp/`), tego samego
-punktu prawdy co wizard (`storage.zglos_tmp_dir`).
-
-Bezpieczeństwo wobec nakazu klienta „nigdy nie kasuj plików realnych
-zgłoszeń" opiera się na KONSTRUKCJI: trwałe pliki ukończonych zgłoszeń
-lądują w OSOBNYM katalogu (`protected/zglos_publikacje/`), którego ta
-komenda nie dotyka. Dodatkowo strażnik ścieżki odmawia działania, gdy
-rozwiązany katalog celu nie jest dokładnie skonfigurowanym katalogiem tmp.
+Cienki wrapper CLI na `zglos_publikacje.cleanup.wyczysc_tmp_pliki` (ten sam
+rdzeń woła cykliczny celery task `zglos_publikacje.tasks`). Kasuje pliki
+starsze niż `--older-than-hours` (default 24) WYŁĄCZNIE z katalogu tmp
+(`MEDIA_ROOT/protected/zglos_publikacje_tmp/`). Trwałe pliki ukończonych
+zgłoszeń są w osobnym katalogu i pozostają nietknięte.
 """
 
 from __future__ import annotations
 
-import pathlib
-import time
-
 from django.core.management.base import BaseCommand, CommandError
 
-from zglos_publikacje.storage import ZGLOS_TMP_DIRNAME, zglos_tmp_dir
+from zglos_publikacje.cleanup import ZglosTmpGuardError, wyczysc_tmp_pliki
 
 
 class Command(BaseCommand):
@@ -45,59 +38,22 @@ class Command(BaseCommand):
         older_than_hours = options["older_than_hours"]
         dry_run = options["dry_run"]
 
-        if older_than_hours < 0:
-            # Ujemny próg → prog w przyszłości → skasowałby WSZYSTKO, łącznie
-            # z plikami in-flight żywych sesji. Odmawiamy (błąd operatora).
-            raise CommandError("--older-than-hours musi być >= 0.")
-
-        # realpath — neutralizuje symlink i trailing slash zanim porównamy
-        # basename ze strażnikiem.
-        tmp = pathlib.Path(zglos_tmp_dir()).resolve()
-
-        if not tmp.exists():
-            # Świeża instalacja, zero uploadów — nie ma czego czyścić.
-            # NIE wołamy iterdir() (rzuciłby FileNotFoundError).
-            self.stdout.write(f"Katalog tmp nie istnieje ({tmp}) — nic do czyszczenia.")
-            return
-
-        # STRAŻNIK: równość basename (nie endswith). Zabezpieczenie przed
-        # skasowaniem złego katalogu, gdyby punkt prawdy został podmieniony.
-        if tmp.name != ZGLOS_TMP_DIRNAME:
-            raise CommandError(
-                "Strażnik ścieżki: katalog docelowy "
-                f"'{tmp}' nie jest katalogiem tmp "
-                f"'{ZGLOS_TMP_DIRNAME}' — odmawiam działania."
+        try:
+            wynik = wyczysc_tmp_pliki(
+                older_than_hours=older_than_hours, dry_run=dry_run
             )
+        except ValueError as e:
+            raise CommandError(str(e)) from e
+        except ZglosTmpGuardError as e:
+            raise CommandError(f"Strażnik ścieżki: {e}") from e
 
-        prog = time.time() - older_than_hours * 3600
-
-        skasowane = 0
-        skasowane_bajty = 0
-        pominiete = 0
-
-        for e in tmp.iterdir():
-            # lstat — nie podążaj za linkiem; kasuj tylko zwykłe pliki, nigdy
-            # symlinki (mogłyby wskazywać na plik trwały) ani katalogi.
-            if not e.is_file() or e.is_symlink():
-                pominiete += 1
-                continue
-            try:
-                st = e.lstat()
-                if st.st_mtime < prog:
-                    if not dry_run:
-                        e.unlink()
-                    skasowane += 1
-                    skasowane_bajty += st.st_size
-                else:
-                    pominiete += 1
-            except FileNotFoundError:
-                # Żywa sesja kreatora skasowała swój plik równolegle (między
-                # iterdir a lstat/unlink) — nie nasz problem, nie wywalaj crona.
-                pominiete += 1
+        if wynik["katalog_nieobecny"]:
+            self.stdout.write("Katalog tmp nie istnieje — nic do czyszczenia.")
+            return
 
         etykieta = "do skasowania" if dry_run else "skasowano"
         naglowek = "[DRY-RUN] " if dry_run else ""
         self.stdout.write(
-            f"{naglowek}{etykieta}: {skasowane} plików "
-            f"({skasowane_bajty} bajtów); pominięto: {pominiete}."
+            f"{naglowek}{etykieta}: {wynik['skasowane']} plików "
+            f"({wynik['skasowane_bajty']} bajtów); pominięto: {wynik['pominiete']}."
         )
