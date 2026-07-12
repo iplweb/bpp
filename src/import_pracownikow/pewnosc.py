@@ -19,6 +19,11 @@ STATUS_BRAK = "brak"
 # statusy automatyczne) — ustawia go dopiero akcja usera w podglądzie. Odróżnia
 # świadomy wybór operatora od automatycznego „twardego matcha" (badge nie kłamie).
 STATUS_RECZNY = "reczny"
+# Autor przekierowany na rekord ORYGINALNY/GŁÓWNY (deduplikacja): dopasowanie
+# po nazwisku trafiło na duplikat, a zatrudnienie podpięto do rekordu z
+# odpowiednikiem w API instytucjonalnym PBN (patrz dedup.kanoniczny_autor).
+# NIE powstaje w ``oblicz_status_pewnosci`` — ustawia go krok przekierowania.
+STATUS_DEDUP = "dedup"
 
 STATUS_CHOICES = [
     (STATUS_TWARDY, "twardy match"),
@@ -27,24 +32,34 @@ STATUS_CHOICES = [
     (STATUS_BRAK, "brak dopasowania"),
 ]
 
-# Confidence autora ma DODATKOWO status „ręczny" (świadomy wybór operatora).
-# Osobna lista, bo ``jednostka_status``/``tytul_status`` (też ``STATUS_CHOICES``)
-# NIE mają ręcznego override — trzymamy ich pulę na oryginalnych 4 wartościach
-# (poprawna semantyka + węższy, czystszy zakres migracji confidence).
+# Confidence autora ma DODATKOWO statusy „ręczny" (świadomy wybór operatora) i
+# „dedup" (przekierowanie na rekord główny). Osobna lista, bo
+# ``jednostka_status``/``tytul_status`` (też ``STATUS_CHOICES``) NIE mają tych
+# override'ów — trzymamy ich pulę na oryginalnych 4 wartościach (poprawna
+# semantyka + węższy, czystszy zakres migracji confidence).
 CONFIDENCE_CHOICES = STATUS_CHOICES + [
     (STATUS_RECZNY, "ręczny (wybór użytkownika)"),
+    (STATUS_DEDUP, "rekord główny (deduplikacja)"),
 ]
 
-# status → (klasa Foundation label, ikona Foundation-Icons, etykieta). Foundation
-# labels (success/warning/primary/secondary) są w built-in CSS — bez SCSS/grunt.
+# status → (klasa label, ikona Foundation-Icons, etykieta). Kolory
+# success/warning/primary/secondary/alert są built-in (bez SCSS); „import-reczny"
+# to własna klasa z common.scss (odrębny kolor dla ręcznego wyboru — inne
+# statusy zajęły wszystkie built-inowe kolory).
 STATUS_DISPLAY = {
     STATUS_TWARDY: ("success", "fi-check", "twardy match"),
     STATUS_ZGADYWANIE: ("warning", "fi-flag", "zgadywanie"),
-    STATUS_WIELU: ("primary", "fi-page-multiple", "wielu kandydatów"),
+    # Czerwony (alert): „wielu kandydatów" WYMAGA uwagi operatora — wcześniej
+    # było neutralne primary (niebieski), zwolnione teraz dla STATUS_DEDUP.
+    STATUS_WIELU: ("alert", "fi-page-multiple", "wielu kandydatów"),
     STATUS_BRAK: ("secondary", "fi-minus-circle", "brak dopasowania"),
-    # Zielony (rozstrzygnięte/zaufane), ale ikona-ołówek sygnalizuje „ręcznie
-    # przez operatora" — wizualnie odróżnialne od twardego matcha (fi-check).
-    STATUS_RECZNY: ("success", "fi-pencil", "wybór użytkownika"),
+    # Własny kolor (common.scss `.label.import-reczny`) + ikona-ołówek — świadomy
+    # wybór operatora, wizualnie odróżnialny od twardego matcha (zielony/fi-check)
+    # i od wszystkich pozostałych statusów.
+    STATUS_RECZNY: ("import-reczny", "fi-pencil", "wybór użytkownika"),
+    # Niebieski (primary), zwolniony przez wielu→alert; ikona osoby sygnalizuje
+    # „podpięto do rekordu głównego" (oryginał z API instytucjonalnego PBN).
+    STATUS_DEDUP: ("primary", "fi-torso", "rekord główny"),
 }
 
 

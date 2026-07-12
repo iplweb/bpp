@@ -1,0 +1,26 @@
+// =============================================================================
+// IMPORT PRACOWNIKÓW
+// Style specyficzne dla przepływu import_pracownikow (podglądy / rezultaty).
+// =============================================================================
+
+// Status „wybór użytkownika" (STATUS_RECZNY) — własny kolor plakietki.
+// Pozostałe statusy dopasowania zajęły wszystkie built-inowe kolory Foundation
+// (success / warning / primary / secondary / alert), więc świadomy wybór
+// operatora dostaje odrębny, rozpoznawalny kolor (fiolet) — patrz
+// import_pracownikow/pewnosc.py::STATUS_DISPLAY.
+.label.import-reczny {
+  background-color: #7b3fa0;
+  color: #fefefe;
+}
+
+// ORCID + link do admina pod nazwą autora w tabelach importu — dyskretne,
+// pomocnicze (mniejsze, wyszarzone).
+.import-orcid {
+  font-size: 0.8em;
+  color: #767676;
+}
+
+.import-autor-admin {
+  font-size: 0.8em;
+  margin-left: 0.35rem;
+}

@@ -25,6 +25,25 @@
     <script src="https://unpkg.com/htmx.org@2.0.4" crossorigin="anonymous"></script>
 
     {% if odpiecia %}
+        {% if parent_object.edytowalny_podglad %}
+            {# Akcja zbiorcza (poz. 1): zaznacz/odznacz do odpięcia WSZYSTKIE #}
+            {# wiersze z bieżącego filtra tabeli. JS zbiera pk z przefiltrowanych #}
+            {# wierszy DataTables i wstrzykuje je jako ukryte pola formularza. #}
+            <form id="form-zaznacz-odpiecia" method="post"
+                  action="{% url 'import_pracownikow:zaznacz-odpiecia' pk=parent_object.pk %}">
+                {% csrf_token %}
+                <input type="hidden" name="zaznacz" value="1" id="zaznacz-flaga">
+                <div id="zaznacz-hidden-pks"></div>
+                <button type="button" class="button primary" id="btn-zaznacz-filtr">
+                    <span class="fi-check"></span>
+                    Zaznacz do odpięcia (wszystkie z bieżącego wyboru)
+                </button>
+                <button type="button" class="button secondary" id="btn-odznacz-filtr">
+                    <span class="fi-x"></span>
+                    Odznacz (wszystkie z bieżącego wyboru)
+                </button>
+            </form>
+        {% endif %}
         <div style="overflow-x: auto;">
             <table id="tabela-odpiec">
                 <thead>
@@ -71,6 +90,38 @@
                     try { dt.row(tr).invalidate('dom'); } catch (err) { /* spoza tabeli */ }
                 }
             });
+
+            // Akcja zbiorcza (poz. 1): zbierz pk wierszy z BIEŻĄCEGO filtra
+            // DataTables (search zastosowany), wstrzyknij jako ukryte pola i
+            // wyślij formularz. Przyciski istnieją tylko w fazie edytowalnej.
+            var btnZaznacz = document.getElementById('btn-zaznacz-filtr');
+            var btnOdznacz = document.getElementById('btn-odznacz-filtr');
+            if (btnZaznacz && btnOdznacz) {
+                var wyslij = function (zaznacz) {
+                    var pks = [];
+                    dt.rows({ search: 'applied' }).every(function () {
+                        var id = this.node() && this.node().id;
+                        var m = id && id.match(/^odpiecie-(\d+)$/);
+                        if (m) { pks.push(m[1]); }
+                    });
+                    if (!pks.length) { return; }
+                    if (zaznacz === '1' && !window.confirm(
+                        'Zaznaczyć ' + pks.length + ' powiązań do odpięcia? '
+                        + 'Odpięcie (zakończenie zatrudnienia) wykona się dopiero '
+                        + 'przy zapisie do bazy.')) { return; }
+                    var cont = document.getElementById('zaznacz-hidden-pks');
+                    cont.innerHTML = '';
+                    pks.forEach(function (pk) {
+                        var i = document.createElement('input');
+                        i.type = 'hidden'; i.name = 'odp_pk'; i.value = pk;
+                        cont.appendChild(i);
+                    });
+                    document.getElementById('zaznacz-flaga').value = zaznacz;
+                    document.getElementById('form-zaznacz-odpiecia').submit();
+                };
+                btnZaznacz.addEventListener('click', function () { wyslij('1'); });
+                btnOdznacz.addEventListener('click', function () { wyslij('0'); });
+            }
         });
         </script>
     {% else %}
