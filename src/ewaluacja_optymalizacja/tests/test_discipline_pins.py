@@ -261,10 +261,16 @@ def test_reset_discipline_pins_task_creates_snapshot_and_resets(uczelnia, admin_
 
     snapshot_count_before = SnapshotOdpiec.objects.count()
 
-    with patch("ewaluacja_optymalizacja.tasks.reset_pins._wait_for_denorm"):
+    with (
+        patch("ewaluacja_optymalizacja.tasks.reset_pins._wait_for_denorm"),
+        patch("denorm.tasks.flush_via_queue") as mock_flush,
+    ):
         result = reset_discipline_pins_task.apply(
             args=(uczelnia.pk, dyscyplina.pk, admin_user.pk)
         ).result
+
+    # Denormalizacja jest wyzwalana jawnie (jak w starym widoku).
+    mock_flush.delay.assert_called_once()
 
     assert SnapshotOdpiec.objects.count() == snapshot_count_before + 1
     snapshot = SnapshotOdpiec.objects.latest("created_on")
