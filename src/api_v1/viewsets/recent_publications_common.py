@@ -31,14 +31,6 @@ def _int_param(request, nazwa, default=None):
         return default
 
 
-def _ukryte_statusy(request):
-    """PK statusów korekty ukrytych w kontekście API dla bieżącej uczelni."""
-    uczelnia = Uczelnia.objects.get_for_request(request)
-    if uczelnia is None:
-        return []
-    return list(uczelnia.ukryte_statusy("api"))
-
-
 def _url_publikacji(pub, request):
     if pub.slug:
         return request.build_absolute_uri(
@@ -65,7 +57,15 @@ def odpowiedz_z_publikacjami(request, base_qs, naglowek):
     :param naglowek: dict z metadanymi encji (np. ``{"autor_id": ...,
         "autor_nazwa": ...}``) wstrzykiwany na początek odpowiedzi.
     """
-    qs = base_qs.exclude(status_korekty_id__in=_ukryte_statusy(request))
+    # Ta sama polityka widoczności API co /szukaj/ i /zapytanie/rekord/:
+    # izolacja uczelni + ukryte statusy + rekordy nie_eksportuj_przez_api.
+    # (wcześniej tylko ukryte statusy — L1: wyciek nie_eksportuj_przez_api +
+    # brak izolacji multi-host na AllowAny+CORS* embedzie).
+    from api_v1.scoping import scope_rekord_api
+    from api_v1.viewsets.szukaj import MODELE_DETAIL_VIEWNAME
+
+    uczelnia = Uczelnia.objects.get_for_request(request)
+    qs = scope_rekord_api(base_qs, uczelnia, MODELE_DETAIL_VIEWNAME)
 
     rok_od = _int_param(request, "rok_od")
     if rok_od is not None:

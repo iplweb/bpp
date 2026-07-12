@@ -44,6 +44,7 @@ from bpp.multiseek_registry import (
     ZakresLatQueryObject,
     ZrodloQueryObject,
 )
+from bpp.util import sanitize_multiseek_title
 from bpp.util.uczelnia_scope import (
     scope_jednostki_do_uczelni,
     scope_rekord_do_uczelni,
@@ -757,8 +758,8 @@ class BuildSearch(RedirectView):
             zakres_lat_box,
         )
 
-        self.request.session["MULTISEEK_TITLE"] = self.request.POST.get(
-            "suggested-title", ""
+        self.request.session["MULTISEEK_TITLE"] = sanitize_multiseek_title(
+            self.request.POST.get("suggested-title", "")
         )
 
         # Usuń listę ręcznie wyrzuconych rekordów, ponieważ wchodzimy na świeże

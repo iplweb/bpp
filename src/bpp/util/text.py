@@ -181,6 +181,24 @@ def safe_html(html):
     )
 
 
+def sanitize_multiseek_title(value):
+    """Sanityzuj tytuł raportu multiseek zapisywany do sesji.
+
+    Wartość jest renderowana ``|safe`` w szablonie tytułu, więc musi być
+    oczyszczona z XSS. Wspólne dla AJAX-owego ``update_multiseek_title`` i
+    formularza wyszukiwania (``suggested-title``) — obie ścieżki piszą do
+    ``session['MULTISEEK_TITLE']`` i muszą sanityzować tak samo.
+    """
+    if not value:
+        return ""
+    return nh3.clean(
+        value.replace("\r\n", "\n").replace("\n", "<br/>"),
+        tags=set(getattr(settings, "ALLOWED_TAGS", [])) | {"hr", "p", "br"},
+        clean_content_tags=set(),
+        link_rel=None,
+    )
+
+
 # Streszczenia (abstrakty) bywają importowane z zewnętrznych źródeł (Crossref,
 # PBN) i mieszają prawdziwy markup (JATS/HTML) z matematycznymi operatorami
 # porównania wpisanymi wprost w tekst ("<30 IU/dL", "ct<or ≥15K", ">= 1%").
