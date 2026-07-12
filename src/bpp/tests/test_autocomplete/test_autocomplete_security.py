@@ -260,3 +260,21 @@ def test_global_nav_label_escapes_unit_name():
     # nie tworzy elementu <img>); "onerror" jako inertny tekst jest nieszkodliwe.
     assert "<img" not in label
     assert "&lt;img" in label
+
+
+@pytest.mark.django_db
+def test_admin_nav_label_escapes_author_name():
+    """Ten sam problem co w globalnej wyszukiwarce, ale w autocomplete admina
+    (staff-only): nazwiska trafiają do etykiety HTML przez super()."""
+    from model_bakery import baker
+
+    from bpp.models.autor import Autor
+    from bpp.views.autocomplete.navigation import AdminNavigationAutocomplete
+
+    autor = baker.make(
+        Autor, nazwisko="<script>alert(1)</script>", imiona="Jan", tytul=None
+    )
+    label = AdminNavigationAutocomplete().get_result_label(autor)
+
+    assert "<script>" not in label
+    assert "&lt;script&gt;" in label

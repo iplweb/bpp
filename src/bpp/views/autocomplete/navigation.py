@@ -245,10 +245,13 @@ class AdminNavigationAutocomplete(
                 Praca_Habilitacyjna,
             ),
         ):
-            return result.opis_bibliograficzny_cache or str(result)
+            # cache jest sanityzowany (safe_html w clean); fallback str()
+            # (nazwiska/nazwy) escapujemy — etykieta renderuje się jako HTML.
+            return result.opis_bibliograficzny_cache or escape(str(result))
 
-        # Default handling for other types
-        return super().get_result_label(result)
+        # Default (autorzy, jednostki, źródła, konferencje, użytkownicy) —
+        # etykieta renderuje się jako HTML, więc escapujemy nazwy.
+        return escape(str(result))
 
     def get_model_name(self, model):
         """Return the display name for grouping results."""
