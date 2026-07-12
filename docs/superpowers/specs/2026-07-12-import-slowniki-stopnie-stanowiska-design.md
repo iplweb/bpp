@@ -234,8 +234,11 @@ wymaga weryfikacji) — wynik ZAWSZE przez ekran `weryfikacja_jednostek`.
 
 ### 6.2 Wpięcie
 
-- Nowy cel mapowania `niepełna_nazwa_jednostki` → remap do klucza
-  `nazwa_jednostki_niepelna`.
+- Nowy cel mapowania = `nazwa_jednostki_niepelna` (etykieta „Niepełna nazwa
+  jednostki"). **S2 z review:** `remapuj_wiersz` robi `out[cel] = wartosc`, więc
+  cel == klucz danych — NIE ma warstwy translacji. Dlatego cel i klucz to JEDNA
+  nazwa `nazwa_jednostki_niepelna` (konwencja jak `nazwa_jednostki`,
+  `tytuł_stopień`). Wcześniejszy zapis „cel → remap do klucza" był błędny.
 - `analyze._przetworz_wiersz`: jeśli obecny `nazwa_jednostki_niepelna` (a brak
   `nazwa_jednostki`), użyj `sklasyfikuj_jednostke_niepelna`; dalej ten sam tor
   decyzji (`ImportPracownikowJednostka`, ekran `weryfikacja_jednostek`).
@@ -283,7 +286,10 @@ Wyjście do wiersza (**KLUCZOWE — finding review #5: skrót z pliku MUSI trafi
   nawiasów), `skrot_sugerowany` = **skrót z pliku** (`RW-1/1`). Wymaga nowego
   parametru `skrot_hint` w `_ReconcilerJednostek.reconciluj` (nadpisuje domyślny
   `zaproponuj_skrot`). Dopasowanie do ISTNIEJĄCEJ jednostki: najpierw po skrócie
-  (`Jednostka.objects.filter(skrot=skrót)`), potem po nazwie.
+  (`Jednostka.objects.filter(skrot=skrót)`), potem po nazwie. **Luka 5 z review:**
+  przy re-analizie reconciler odświeża `skrot_sugerowany` tylko gdy PUSTY — z
+  `skrot_hint` trzeba nadpisywać ZAWSZE (pole liczone; user nie edytuje skrótu na
+  ekranie jednostek), inaczej po dodaniu mapowania komórki przeżyje stary akronim.
 - **Wydział (hint) — finding review #6:** `matchuj_wydzial` robi tylko
   `nazwa__iexact`, a `WIBiOL` to SKRÓT (`Wydzial.skrot` istnieje, ale ten tor go
   nie używa) → emitowanie `wydział="WIBiOL"` jest MARTWE. Parser rozwiązuje
@@ -316,7 +322,7 @@ Nowe cele w `POLA_DOCELOWE` + synonimy w `_SYNONIMY`:
 | `stanowisko` (KEY bez zmian — tylko relabel + synonim) | Funkcja w jednostce | funkcja, funkcja_w_jednostce, stanowisko |
 | `nazwisko_imię` | Nazwisko i imię (jedna komórka, nazwisko-first) | nazwisko_imię, nazwisko_imie |
 | `komórka_złożona` | Komórka (skrót + nazwa + oddział + znacznik) | komórka, komorka, komorka_zlozona |
-| `niepełna_nazwa_jednostki` | Niepełna nazwa jednostki | (bez auto-synonimu domyślnie; wybierany ręcznie) |
+| `nazwa_jednostki_niepelna` | Niepełna nazwa jednostki | (bez auto-synonimu; wybierany ręcznie) |
 
 **Reguła KONTEKSTOWA dla gołego `stopień`/`stopien` (decyzja użytkownika):**
 auto-propozycja zależy od tego, czy w pliku jest TAKŻE kolumna „tytuł":
@@ -329,13 +335,23 @@ auto-propozycja zależy od tego, czy w pliku jest TAKŻE kolumna „tytuł":
 **Implementacja:** `zaproponuj_mapowanie(naglowki)` staje się ŚWIADOME ZBIORU
 nagłówków (dziś rozstrzyga per-nagłówek w izolacji przez `_dopasuj_naglowek`). Po
 bazowym przebiegu — post-pass: wykryj, czy istnieje nagłówek mapujący na
-`tytuł_stopień` (kolumna „tytuł"); jeśli TAK — przekieruj gołe `stopień`/`stopien`
-na `stopień_służbowy`, w przeciwnym razie zostaw `tytuł_stopień`. Jawne synonimy
-(`stopień_służbowy`, `stopień_naukowy`) NIE podlegają regule — dotyczy tylko
-GOŁEGO „stopień"/„stopien". Fallback `_SYNONIMY_ZAWIERA` też bez zmian. Operator
-może nadpisać na ekranie; reguła dotyczy wyłącznie auto-propozycji. Spójne z
-„wszystko opt-in" (§1). (To ODWRÓCENIE wcześniejszej decyzji „NIE przejmuj
-stopnia" — teraz przejmujemy WARUNKOWO, tylko gdy obecny jest też „tytuł".)
+`tytuł_stopień` (kolumna „tytuł") **INNY niż sam badany goły stopień**; jeśli TAK
+— przekieruj gołe `stopień`/`stopien` na `stopień_służbowy`, w przeciwnym razie
+zostaw `tytuł_stopień`.
+
+**Luka 3 z review — dwa doprecyzowania:**
+- Warunek MUSI wykluczać sam badany goły `stopień`/`stopien` z detekcji „kolumny
+  tytuł" (inaczej plik z samym „stopień" wykryłby siebie i błędnie przekierował).
+  „Goły" = znormalizowany nagłówek ∈ {`stopień`, `stopien`}.
+- **To KONIECZNOŚĆ, nie tylko UX:** bez post-passu `tytuł` i `stopień` mapują się
+  OBA na `tytuł_stopień` → `waliduj_mapowanie` odrzuca duplikat celu → APOŻ nie
+  przeszłoby w ogóle.
+
+Jawne synonimy (`stopień_służbowy`, `stopień_naukowy`) NIE podlegają regule —
+dotyczy tylko GOŁEGO „stopień"/„stopien". Fallback `_SYNONIMY_ZAWIERA` bez zmian.
+Operator może nadpisać na ekranie; reguła dotyczy wyłącznie auto-propozycji.
+(To ODWRÓCENIE wcześniejszej decyzji „NIE przejmuj stopnia" — przejmujemy
+WARUNKOWO, tylko gdy obecny jest też „tytuł".)
 
 `funkcja` relabel zmienia tylko ETYKIETĘ + dokłada synonim `funkcja` — **KEY celu
 zostaje `stanowisko`** (inaczej trzeba by zmigrować `ProfilMapowania.mapowanie` i
@@ -348,8 +364,7 @@ zostaje `stanowisko`** (inaczej trzeba by zmigrować `ProfilMapowania.mapowanie`
    „nazwisko imię") NIE przejdzie walidacji („Brak identyfikacji osoby") i cały
    feature jest martwy.
 2. **Jednostka wymagana:** dziś tylko `nazwa_jednostki`. Dodać
-   `nazwa_jednostki_niepelna` (cel `niepełna_nazwa_jednostki`) i `komórka_złożona`
-   jako alternatywy.
+   `nazwa_jednostki_niepelna` i `komórka_złożona` jako alternatywy.
 
 Zakaz duplikatów celów — bez zmian.
 
@@ -419,14 +434,15 @@ do autora w fazie osób.
   stopni/stanowisk, ale **żaden** `Autor`/`Autor_Jednostka` nie jest tknięty
   (early-exit). To jest zamierzone i zgodne z semantyką „Krok 1".
 - Dla `ZAKRES_PELNY`: po fazie struktury (rozstrzygnięcie słowników) lecimy
-  dalej w fazę osób, gdzie dopinamy `Autor.stopien_sluzbowy` (no-overwrite) i
-  `Autor_Jednostka.stanowisko`.
+  dalej w fazę osób, gdzie dopinamy `Autor.stopien_sluzbowy` i
+  `Autor_Jednostka.stanowisko` (polityka nadpisywania — patrz §11.2).
 - **Bramka Kroku 2:** wejście w import osób jest dozwolone dopiero, gdy
-  wszystkie decyzje słownikowe są rozstrzygnięte (jednostki + tytuły + stopnie +
-  stanowiska) — rozszerzyć istniejącą „bramkę tytułów" o stopnie i stanowiska
-  (patrz `przeglad.html` i logika stanu). Tak jak dziś nie wchodzi się w osoby z
-  nierozstrzygniętymi tytułami, tak samo z nierozstrzygniętymi stopniami/
-  stanowiskami.
+  wszystkie decyzje słownikowe są rozstrzygnięte. **Luka 6 z review:** jednostki
+  NIE potrzebują property „wymagają rozstrzygnięcia" — są gated wymogiem stanu
+  `struktura_zintegrowana` (zapis struktury zawsze woła
+  `_rozstrzygnij_jednostki`). Property-mirror dotyczy tylko `tytuły` → dodać
+  `stopnie`/`stanowiska` (patrz §12). Tak jak dziś nie wchodzi się w osoby z
+  nierozstrzygniętymi tytułami, tak samo ze stopniami/stanowiskami.
 
 ### 11.1 `pipeline/analyze.py`
 
@@ -438,7 +454,7 @@ do autora w fazie osób.
   odpowiednimi toggle'ami `tworz_brakujace_*`.
 - `email` z `AutorForm.cleaned_data` → zapis do `dane_znormalizowane`
   (do porównywarki i do zapisu przy tworzeniu autora).
-- `niepełna_nazwa_jednostki` → `sklasyfikuj_jednostke_niepelna` (§6).
+- `nazwa_jednostki_niepelna` → `sklasyfikuj_jednostke_niepelna` (§6).
 - `usun_stale` dla nowych reconcilerów.
 - **KRYTYCZNE (finding review #1) — auto-skip Krok 1→2:** dziś
   `struktura_bez_decyzji = not jednostki_do_decyzji.exists() and not
@@ -460,20 +476,29 @@ do autora w fazie osób.
   NIE zna nowych pól → wiersz, którego JEDYNĄ zmianą jest stopień/stanowisko,
   dostanie `zmiany_potrzebne=False` i nigdy nie wejdzie w `integrate()`
   (`_integruj_wiersz` iteruje `zmiany_potrzebne_set`). Trzeba:
-  - `_check_autor_needs_update` += stopień (no-overwrite aware:
-    `self.stopien_id is not None and autor.stopien_sluzbowy_id is None`);
-  - `_check_autor_jednostka_needs_update` += stanowisko dydaktyczne (analogicznie
-    na AJ);
+  - `_check_autor_needs_update` += stopień: **overwrite-if-different** (mirror
+    `tytul` — `self.stopien_id is not None and autor.stopien_sluzbowy_id !=
+    self.stopien_id`);
+  - `_check_autor_jednostka_needs_update` += stanowisko:
+    **overwrite-if-different** (mirror `funkcja` — `... aj.stanowisko_id !=
+    self.stanowisko_dydaktyczne_id`);
   - MONOTONICZNY recompute `zmiany_potrzebne` w `_podlacz_wiersze_do_{stopni,
     stanowisk}` (mirror `_podlacz_wiersze_do_tytulow`).
+- **Polityki nadpisywania (rozstrzygnięcie S1/S3 z review — predykat == zapis):**
+  - `Autor.stopien_sluzbowy` = **overwrite-if-different** — „to samo co z
+    tytułami" (§1): tytuł jest nadpisywany przy różnicy, stopień też (awans
+    kpt.→bryg. z pliku HR ma zaktualizować bazę).
+  - `Autor_Jednostka.stanowisko` = **overwrite-if-different** — mirror `funkcja`
+    (atrybut zatrudnienia odzwierciedla bieżący stan z pliku).
+  - `email` = **no-overwrite** (JEDYNY wyjątek — jawne życzenie usera): nowy
+    autor → zapis; istniejący → NIGDY nie nadpisuj, tylko porównywarka. Dlatego
+    e-mail NIE wchodzi do predykatów zmian (sam z siebie nie wyzwala integracji).
 - Krok 2 (osoby) — miejsca zapisu:
-  - `Autor.stopien_sluzbowy` ← rozstrzygnięty stopień, **no-overwrite** (ustaw
-    gdy puste u istniejącego; nowym zawsze). Dopiąć w `_integrate_autor` ORAZ
-    `_przygotuj_nowego_autora` (`Autor.objects.create(...)` — tam TEŻ `email`).
-  - `Autor_Jednostka.stanowisko` ← rozstrzygnięte stanowisko; dopiąć w
-    `_integrate_autor_jednostka` / `_materializuj_diff` (mirror `funkcja`).
-  - `email`: nowy autor → zapis w `Autor.objects.create`; istniejący → **bez
-    zmian** (tylko porównywarka).
+  - `Autor.stopien_sluzbowy` ← w `_integrate_autor` ORAZ `_przygotuj_nowego_
+    autora` (`Autor.objects.create(...)` — tam TEŻ `email`).
+  - `Autor_Jednostka.stanowisko` ← w `_integrate_autor_jednostka` /
+    `_materializuj_diff` (mirror `funkcja`).
+  - `email` ← tylko `Autor.objects.create` (nowy autor).
 - Liczniki wyniku: `utworzono_stopni`, `utworzono_stanowisk` (mirror
   `utworzono_tytulow`) w `p.result(...)`.
 
@@ -487,9 +512,11 @@ do autora w fazie osób.
   `weryfikacja_stanowisk.html` (mirror `weryfikacja_tytulow.html`).
 - Nawigacja Kroku 1 (bramki słowników): wpiąć ekrany stopni/stanowisk w
   sekwencję weryfikacji obok jednostek/tytułów (przegląd `przeglad.html`).
-- **Porównywarka** (`przeglad.html`/`audyt.html`): kolumny e-mail
-  (plik-vs-baza), stopień służbowy, stanowisko dydaktyczne — pokazać wartość z
-  pliku i z bazy; e-mail różniący się podświetlić (bez nadpisania).
+- **Porównywarka (Luka 4 z review — właściwe pliki):** tabela plik-vs-baza to
+  `importpracownikowrow_list.html` + `partials/_wiersz_preview_kom.html` (render
+  z `views.py`), NIE `przeglad.html` (hub z kaflami) ani `audyt.html` (log_zmian).
+  Dodać kolumny e-mail (plik-vs-baza), stopień służbowy, stanowisko dydaktyczne —
+  wartość z pliku i z bazy; e-mail różniący się podświetlić (bez nadpisania).
 - **KRYTYCZNE (finding review #2) — bramka „wymagają rozstrzygnięcia".** Dziś
   `ZatwierdzImportView` (zakres PELNY) blokuje wejście w osoby tylko na
   `tytuly_wymagaja_rozstrzygniecia` (property w `models.py`). Bez mirrorów:
@@ -501,25 +528,40 @@ do autora w fazie osób.
   (mirror property tytułów) i rozszerzyć warunek 400 w `ZatwierdzImportView`.
 - `MapowanieForm`: dodać checkboxy `tworz_brakujace_stopnie` /
   `tworz_brakujace_stanowiska` + `update_fields` w `form_valid`.
+- **Warunki szablonu `przeglad.html` (Luka 7 z review) — rozszerzyć jawnie:**
+  przycisk „Zapisz strukturę" (`zakres=struktura`) jest gated `pokaz_tytuly`, a
+  alert Kroku 2 z „Utwórz brakujące…" gated `tytuly_wymagaja_rozstrzygniecia` —
+  OBA wymagają rozszerzenia OR o stopnie/stanowiska (inaczej plik z SAMYMI
+  stopniami do decyzji nie pokaże przycisku struktury w Kroku 1).
+- Kafelki liczników na hubie: `liczniki_stopni`/`liczniki_stanowisk` przez
+  istniejący `_liczniki_decyzji` (trywialne).
 - Teksty: opis `ZAKRES_STRUKTURA` (`models.py`: „jednostki + tytuły (bez osób)"
-  → dodać stopnie/stanowiska) i przyciski w `przeglad.html`.
+  → dodać stopnie/stanowiska).
 
 ## 13. Profil ostatnio użyty (`views.py` + `mapping.py`)
 
 - **Korekta (finding review #8):** `ostatnio_uzyty` JUŻ jest ustawiane przy
   ZAPISIE profilu (`views.py` `update_or_create(..., ostatnio_uzyty=now())`,
-  commit `7be75739a`). Do zrobienia zostaje TYLKO:
-  - stemplowanie przy ZASTOSOWANIU profilu — w `form_valid` (NIE w GET; zapis DB
-    w GET psuje idempotencję refreshy/prefetchy), gdy mapowanie pochodziło z
-    profilu;
-  - fallback wyboru profilu (niżej).
-- Sugestia w `MapowanieView.get_form_kwargs`/kontekście (`views.py` ~207-213 —
-  tu wpiąć fallback PO `dopasuj_profil`):
-  1. `dopasuj_profil(naglowki)` (pokrycie nagłówków) — priorytet;
-  2. fallback: `ProfilMapowania.objects.filter(ostatnio_uzyty__isnull=False)
-     .order_by("-ostatnio_uzyty").first()`.
-- W szablonie `mapowanie.html`: pokaż, który profil zaproponowano („Zastosowano
-  ostatnio użyty schemat: «…»") — informacyjnie.
+  commit `7be75739a`). Do zrobienia:
+- **Stemplowanie przy ZASTOSOWANIU (Luka 1 z review):** `form_valid` nie wie, że
+  mapowanie pochodziło z profilu (GET wkłada `initial_mapowanie`, POST nic o
+  profilu nie niesie). Dodać ukryte pole `profil_zastosowany` (pk) w
+  `MapowanieForm`, wypełniane przy prefillu, stemplowane w `form_valid`
+  (`ostatnio_uzyty=now()`). NIE w GET (zapis DB w GET psuje idempotencję).
+- **Sugestia/fallback (Luka 2 z review — OSTROŻNIE):** goły fallback „ostatnio
+  użyty" + merge „profil nadpisuje propozycję" (`forms.py`) mógłby nałożyć profil
+  APOŻ (`stopień→stopień_służbowy`) na plik innej uczelni z samym „stopień" —
+  WBREW regule kontekstowej §9. Dlatego:
+  1. `dopasuj_profil(naglowki)` (pokrycie ≥90%) — priorytet, auto-prefill;
+  2. fallback „ostatnio użyty"
+     (`ProfilMapowania.objects.filter(ostatnio_uzyty__isnull=False)
+     .order_by("-ostatnio_uzyty").first()`) — auto-prefill TYLKO gdy pokrycie
+     kluczy profilu w nagłówkach pliku ≥ próg (np. 50%); poniżej — NIEinwazyjna
+     SUGESTIA (przycisk „Zastosuj ostatni schemat"), bez auto-prefillu.
+  Wpięcie: `MapowanieView.get_form_kwargs` (`views.py` ~207-213, PO
+  `dopasuj_profil`).
+- W szablonie `mapowanie.html`: pokaż, który profil zaproponowano/zasugerowano
+  („Zastosowano/Dostępny ostatni schemat: «…»") — informacyjnie.
 
 ## 14. Testy (`pytest`, `model_bakery`)
 
@@ -531,10 +573,12 @@ do autora w fazie osób.
 - **Mapowanie:** synonimy nowych celów; **reguła kontekstowa `stopień`**
   (plik z „tytuł"+„stopień" → stopień służbowy; sam „stopień" → tytuł naukowy);
   identyfikacja osoby przez `nazwisko_imię`; walidacja jednostki przez
-  `niepełna_nazwa_jednostki`/`komórka_złożona`.
+  `nazwa_jednostki_niepelna`/`komórka_złożona`.
 - **Analyze/Integrate:** rozstrzyganie + tworzenie stopni i stanowisk (mirror
-  testów tytułów); polityka e-mail (nowy vs istniejący); dopięcie
-  `Autor.stopien_sluzbowy` i `Autor_Jednostka.stanowisko`.
+  testów tytułów); polityki nadpisywania — stopień/stanowisko
+  **overwrite-if-different** (test: inna wartość w pliku NADPISUJE), e-mail
+  **no-overwrite** (test: istniejący e-mail NIE zmieniony, nowy zapisany);
+  dopięcie `Autor.stopien_sluzbowy` i `Autor_Jednostka.stanowisko`.
 - **Profil:** `ostatnio_uzyty` ustawiany; fallback proponuje ostatni.
 - **Widoki:** ekrany weryfikacji stopni/stanowisk (mirror
   `test_views_tytuly.py`).
@@ -578,4 +622,13 @@ do autora w fazie osób.
   ogon mogą wyglądać inaczej — dlatego opt-in i dopasowanie głównie po skrócie.
 - **`stopień` — reguła KONTEKSTOWA** (§9): plik z „tytuł"+„stopień" → służbowy;
   sam „stopień" (bez „tytuł") → naukowy. Nie psuje innych plików.
+- **Synonim `komórka`→`komórka_złożona`** zmienia auto-propozycję KAŻDEGO pliku z
+  dotąd niemapowaną kolumną „komórka" — zgodne z „opt-in przez ekran", ale to
+  zmiana defaultu (do odnotowania).
+- **`_przygotuj_nowego_autora` — cache dedup** po `(nazwisko, imiona, tytul_id)`:
+  dwa wiersze tej samej osoby z RÓŻNYM stopniem reużyją pierwszego autora (stopień
+  z pierwszego wiersza). Świadomość, nie zmiana — poza zakresem iteracji.
+- **Profil „ostatnio użyty" (Luka 2 z review)** może nałożyć profil APOŻ na plik
+  innej uczelni wbrew regule §9 — fallback tylko powyżej progu pokrycia / jako
+  sugestia (patrz §13).
 ```
