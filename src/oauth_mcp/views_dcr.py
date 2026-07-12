@@ -8,6 +8,8 @@ from django.views import View
 from django.views.decorators.csrf import csrf_exempt
 from oauth2_provider.models import get_application_model
 
+from django_bpp.client_ip import get_client_ip
+
 # Allowlista wzorców redirect_uri (spec §5.6): callbacki Claude + lokalne.
 _ALLOWED_REDIRECT_PATTERNS = [
     re.compile(r"^https://claude\.ai/[^\s]*\Z"),
@@ -32,7 +34,11 @@ class DynamicClientRegistrationView(View):
     """
 
     def post(self, request):
-        ip = request.META.get("REMOTE_ADDR", "?")
+        # Realne IP klienta (proxy-aware), NIE REMOTE_ADDR = IP nginxa — inaczej
+        # wszyscy klienci za brzegiem dzielą jeden limit 20/h (globalny DoS
+        # rejestracji, uwaga reviewera #7). get_client_ip czyta ostatni wpis XFF
+        # doklejony przez nginx (niefalsyfikowalny), z fallbackiem na REMOTE_ADDR.
+        ip = get_client_ip(request) or "?"
         key = f"dcr-rate:{ip}"
         # Atomowy licznik: `add` inicjuje tylko gdy klucz jeszcze nie
         # istnieje (no-op w przeciwnym razie), `incr` jest atomowy na

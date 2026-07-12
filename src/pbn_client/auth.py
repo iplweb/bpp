@@ -73,11 +73,11 @@ class OAuthMixin:
         webbrowser.open(auth_url)
         redirect_response = input("Paste the full redirect URL here:")
         one_time_token = parse_qs(urlparse(redirect_response).query).get("ott")[0]
-        print("ONE TIME TOKEN", one_time_token)
 
+        # NIE wypisujemy one_time_token ani access_token — to aktywne sekrety,
+        # które zostawałyby w terminalu/CI/przechwyconych logach (uwaga #4).
         self.access_token = OAuthMixin.get_user_token(
             base_url, app_id, app_token, one_time_token
         )
 
-        print("ACCESS TOKEN", self.access_token)
         return True
