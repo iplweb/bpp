@@ -9,6 +9,7 @@ from model_bakery import baker
 
 from bpp.const import GR_WPROWADZANIE_DANYCH
 from bpp.models import Wydawnictwo_Ciagle
+from fixtures.conftest_models import current_rok
 from pbn_export_queue.models import PBN_Export_Queue
 from pbn_export_queue.views import PBNExportQueuePermissionMixin
 
@@ -211,22 +212,28 @@ def test_pbnexportqueuelistview_search_by_komunikat(
 @pytest.mark.serial
 def test_pbnexportqueuelistview_sort_by_pk(client, admin_user, wydawnictwo_ciagle):
     """Test sorting by pk"""
-    baker.make(
+    # Oba rekordy dostają `rok=current_rok()`, żeby przeszły domyślny filtr
+    # widoku (`rok_od=2022`). Bez tego bare `baker.make(Wydawnictwo_Ciagle)`
+    # losuje `rok` (nierzadko ujemny — model_bakery ignoruje MinValueValidator),
+    # rekord wypadał z listy i asercja robiła IndexError (flake zależny od seedu).
+    item_a = baker.make(
         PBN_Export_Queue, rekord_do_wysylki=wydawnictwo_ciagle, zamowil=admin_user
     )
-    baker.make(
+    item_b = baker.make(
         PBN_Export_Queue,
-        rekord_do_wysylki=baker.make(Wydawnictwo_Ciagle),
+        rekord_do_wysylki=baker.make(Wydawnictwo_Ciagle, rok=current_rok()),
         zamowil=admin_user,
     )
+    own_pks = [item_a.pk, item_b.pk]
 
     client.force_login(admin_user)
     url = reverse("pbn_export_queue:export-queue-list")
     response = client.get(url + "?sort=pk")
 
     assert response.status_code == 200
-    items = list(response.context["export_queue_items"])
-    assert items[0].pk <= items[1].pk
+    # Zawężamy do własnych wierszy — odporność na ewentualne dane z innych testów.
+    items = [i.pk for i in response.context["export_queue_items"] if i.pk in own_pks]
+    assert items == sorted(own_pks)
 
 
 @pytest.mark.django_db
@@ -234,22 +241,26 @@ def test_pbnexportqueuelistview_sort_by_reverse_pk(
     client, admin_user, wydawnictwo_ciagle
 ):
     """Test sorting by reverse pk"""
-    baker.make(
+    # Patrz komentarz w test_pbnexportqueuelistview_sort_by_pk — `rok=current_rok()`
+    # gwarantuje, że oba rekordy przejdą domyślny filtr `rok_od=2022`.
+    item_a = baker.make(
         PBN_Export_Queue, rekord_do_wysylki=wydawnictwo_ciagle, zamowil=admin_user
     )
-    baker.make(
+    item_b = baker.make(
         PBN_Export_Queue,
-        rekord_do_wysylki=baker.make(Wydawnictwo_Ciagle),
+        rekord_do_wysylki=baker.make(Wydawnictwo_Ciagle, rok=current_rok()),
         zamowil=admin_user,
     )
+    own_pks = [item_a.pk, item_b.pk]
 
     client.force_login(admin_user)
     url = reverse("pbn_export_queue:export-queue-list")
     response = client.get(url + "?sort=-pk")
 
     assert response.status_code == 200
-    items = list(response.context["export_queue_items"])
-    assert items[0].pk >= items[1].pk
+    # Zawężamy do własnych wierszy — odporność na ewentualne dane z innych testów.
+    items = [i.pk for i in response.context["export_queue_items"] if i.pk in own_pks]
+    assert items == sorted(own_pks, reverse=True)
 
 
 @pytest.mark.django_db
