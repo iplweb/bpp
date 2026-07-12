@@ -509,11 +509,11 @@ dev = [
     # django-run-site: CLI orchestrator dev stack-u. Dawniej `manage.py run_site`
     # + helpery w `_run_site_helpers/`. Instalowany w dev-deps zeby `uv run run-site`
     # mialo dostep do CLI bez globalnego `uv tool install`. Konfiguracja: runsite.toml.
-    "django-run-site>=0.20.0",
+    "django-run-site>=0.20.1",
     # django-dev-helpers: autologin endpoint + dotfiles dla agentow LLM. Dawniej
     # `src/django_bpp/views_run_site_autologin.py`. Aktywuje sie tylko gdy run-site
     # ustawi DJANGO_DEV_HELPERS_ENABLED=1 — w produkcji no-op.
-    "django-dev-helpers>=0.1.13",
+    "django-dev-helpers>=0.1.14",
     "pytest-repeat>=0.9.4",
     "vulture>=2.16",
 ]
