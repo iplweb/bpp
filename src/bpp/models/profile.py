@@ -106,12 +106,18 @@ class BppUser(AbstractUser, ModelZAdnotacjami):
 
         return self.username
 
-    def sprobuj_dopasowac_autora(self):
+    def sprobuj_dopasowac_autora(self, match_email=True, match_names=True):
         """Próbuje automatycznie dopasować autora do użytkownika.
 
         Kolejność dopasowania:
         1. Po adresie email (case-insensitive, dokładnie 1 wynik)
         2. Po imieniu i nazwisku (case-insensitive, dokładnie 1 wynik)
+
+        Flagi ``match_email`` / ``match_names`` (domyślnie oba ``True`` —
+        zgodność wsteczna) pozwalają wyłączyć poszczególne gałęzie
+        dopasowania. Backend OIDC obniża je do ``False`` dla niezaufanych
+        claimów (np. e-mail bez ``email_verified``), żeby nie związać konta
+        z autorem na podstawie danych, których nie da się ufać.
 
         Nic nie robi jeśli autor jest już ustawiony.
 
@@ -140,7 +146,7 @@ class BppUser(AbstractUser, ModelZAdnotacjami):
             kandydaci = kandydaci.filter(aktualna_jednostka__uczelnia__in=uczelnie_ids)
 
         # Próba dopasowania po emailu
-        if self.email and self.email != PUSTY_ADRES_EMAIL:
+        if match_email and self.email and self.email != PUSTY_ADRES_EMAIL:
             wynik = (
                 kandydaci.filter(email__iexact=self.email)
                 .exclude(email="")
@@ -152,7 +158,7 @@ class BppUser(AbstractUser, ModelZAdnotacjami):
                 return
 
         # Próba dopasowania po imieniu i nazwisku
-        if self.first_name and self.last_name:
+        if match_names and self.first_name and self.last_name:
             wynik = kandydaci.filter(
                 imiona__iexact=self.first_name,
                 nazwisko__iexact=self.last_name,
