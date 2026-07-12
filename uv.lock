@@ -672,7 +672,7 @@ provides-extras = ["ldap", "office365", "baseline-rebuild"]
 dev = [
     { name = "bumpver", specifier = ">=2026.1132" },
     { name = "django-debug-toolbar", specifier = ">=7.0.0" },
-    { name = "django-dev-helpers", specifier = ">=0.1.12" },
+    { name = "django-dev-helpers", specifier = ">=0.1.13" },
     { name = "django-dynamic-fixture", specifier = ">=1.8.0" },
     { name = "django-run-site", specifier = ">=0.20.0" },
     { name = "django-webtest", specifier = "==1.9.14" },
@@ -1719,14 +1719,14 @@ wheels = [
 
 [[package]]
 name = "django-dev-helpers"
-version = "0.1.12"
+version = "0.1.13"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "django", marker = "platform_python_implementation != 'PyPy'" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/48/0d/eceac70ca9bd3d41d96ab73cd60c5c4a9dc46d570c84899f90c18ba1234b/django_dev_helpers-0.1.12.tar.gz", hash = "sha256:ab9debce7e8521955622892e4f629ac83f9e7dc0f9a4cc148e59e78f580e5475", size = 115280, upload-time = "2026-07-07T05:47:14.75Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/7a/dc/d6f9227cf5ddedbdebcb27a70f0f3d1916ae06b1a95db226f13b282da15a/django_dev_helpers-0.1.13.tar.gz", hash = "sha256:4fab6a3a6b0e0db4e32818fd653c69452d600c1fbaeb8fea2a16a39eeeb9e4b3", size = 118374, upload-time = "2026-07-12T08:32:05.568Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/a8/66/3f2fac9f16f251aa7169194a0f5a54e3cafde6c273f02ddbc3d6db753e61/django_dev_helpers-0.1.12-py3-none-any.whl", hash = "sha256:935a500d74d041996355a39ee057d2f2cd313f59662047f31f14e337a2d98d4b", size = 45791, upload-time = "2026-07-07T05:47:13.25Z" },
+    { url = "https://files.pythonhosted.org/packages/ca/46/13ef5915b38d0021ab6d66054160395b2ed182ce7180beeb71eafc9329b2/django_dev_helpers-0.1.13-py3-none-any.whl", hash = "sha256:cf7c968fc1ff3d13b7180ed06809b4a12e65dfe53cd443ce1540a8f2c379d091", size = 46814, upload-time = "2026-07-12T08:32:04.052Z" },
 ]
 
 [[package]]
