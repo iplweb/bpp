@@ -6,6 +6,7 @@
 # import *`` i dokłada modyfikacje specyficzne dla pytest.
 
 import os
+import secrets
 
 
 def setenv_default(varname, default_value):
@@ -15,6 +16,10 @@ def setenv_default(varname, default_value):
 
 setenv_default("DJANGO_SETTINGS_MODULE", "django_bpp.settings.local")
 setenv_default("DJANGO_BPP_SECRET_KEY", "0xdeadbeef 2")
+# ALTCHA: efemeryczny klucz per-proces TYLKO gdy env nieustawiony (jak wyżej).
+# run-site bez env → losowy klucz (widget działa, nic forgeable w repo); dev
+# docker compose ładuje .env.docker → setenv_default NIE nadpisze placeholdera.
+setenv_default("ALTCHA_HMAC_KEY", secrets.token_hex(32))
 # Staly dev-owy klucz Fernet dla EncryptedTextField (credentiale DSpace itd.).
 # Bez niego zapis pola EncryptedTextField wywala ImproperlyConfigured
 # (src/bpp/fields.py). Stala wartosc (nie generowana co restart), zeby
@@ -132,3 +137,7 @@ except ImportError:
     # produkcyjnym dla testow rece). Pomijamy bez bledu — autologin
     # i tak by sie nie wlaczyl bez DJANGO_DEV_HELPERS_ENABLED=1.
     pass
+
+# ALTCHA captcha WŁĄCZONA w dev (base ma default OFF) — do ogladania widgetu
+# w run-site. test.py nadpisuje z powrotem na False (patrz test.py).
+ZGLOS_CAPTCHA_ENABLED = True

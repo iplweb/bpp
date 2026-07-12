@@ -103,3 +103,12 @@ CACHEOPS_ENABLED = False
 # punktowo przez @override_settings(AXES_ENABLED=True) i logują się POST-em do
 # widoku logowania (który request przekazuje).
 AXES_ENABLED = False
+
+# ALTCHA captcha WYŁĄCZONA w testach. KRYTYCZNE: test.py robi `from .local
+# import *`, a local.py ma ZGLOS_CAPTCHA_ENABLED = True — bez tego jawnego
+# False cała suita dostałaby captchę ON (pole ALTCHA na kroku 0 kreatora
+# zgłoszeń). Testy captchy włączają ją punktowo przez @override_settings.
+ZGLOS_CAPTCHA_ENABLED = False
+# Stały test-key (nie efemeryczny z local.py) — dla testów captchy, które
+# włączają ZGLOS_CAPTCHA_ENABLED przez @override_settings.
+ALTCHA_HMAC_KEY = "test-altcha-hmac-key-deterministic-0123456789abcdef"
