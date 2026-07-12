@@ -59,3 +59,22 @@ def test_link_init_denies_unusable_password(client, oidc_routing):
     resp = client.post(reverse("oidc_integration:polacz"), {"password": "x"})
     assert resp.status_code == 200
     assert "oidc_link_mode" not in client.session
+
+
+@pytest.mark.django_db
+def test_link_init_get_clears_stale_flags(client, oidc_routing):
+    # Przerwany wcześniej link zostawił flagi w sesji; wejście na widok (GET,
+    # zanim user poda hasło) MUSI je wyczyścić, żeby następne zwykłe logowanie
+    # OIDC nie zostało błędnie zinterpretowane jako linkowanie.
+    u = baker.make("bpp.BppUser", username="u4")
+    u.set_password("secret")
+    u.save()
+    client.force_login(u)
+    session = client.session
+    session["oidc_link_mode"] = True
+    session["oidc_link_target"] = 999999
+    session.save()
+    resp = client.get(reverse("oidc_integration:polacz"))
+    assert resp.status_code == 200
+    assert "oidc_link_mode" not in client.session
+    assert "oidc_link_target" not in client.session

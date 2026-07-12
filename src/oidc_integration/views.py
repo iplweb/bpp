@@ -26,10 +26,26 @@ class SSOLinkInitView(LoginRequiredMixin, View):
 
     template_name = "oidc_integration/polacz.html"
 
+    @staticmethod
+    def _clear_stale_link_flags(request):
+        """Usuń ewentualne pozostałości po przerwanym wcześniej linkowaniu.
+
+        Gdy poprzedni link został porzucony (user nie dokończył flow), flagi
+        ``oidc_link_mode``/``oidc_link_target`` mogłyby zostać w sesji i sprawić,
+        że następne *zwykłe* logowanie OIDC zostanie w ``get_or_create_user``
+        błędnie potraktowane jako linkowanie. Czyścimy je na WEJŚCIU (GET i
+        POST), zanim ustawimy świeży stan po re-auth.
+        """
+        request.session.pop("oidc_link_mode", None)
+        request.session.pop("oidc_link_target", None)
+        request.session.save()
+
     def get(self, request):
+        self._clear_stale_link_flags(request)
         return render(request, self.template_name, {})
 
     def post(self, request):
+        self._clear_stale_link_flags(request)
         user = request.user
         password = request.POST.get("password", "")
         if not user.has_usable_password() or not user.check_password(password):
