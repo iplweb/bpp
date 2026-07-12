@@ -353,8 +353,9 @@ def test_importpracownikow_results_renderuje_liste_modyfikacji(
 
 
 @pytest.mark.django_db
-def test_importpracownikow_results_datatables_init(admin_client, admin_user):
-    """Tabela autorów ma id + inicjalizację DataTables (client-side filtr/sort)."""
+def test_importpracownikow_results_ma_pasek_filtrow(admin_client, admin_user):
+    """Tabela autorów ma id + pasek filtrów stanu pól (DataTables usunięte —
+    filtr rekordów jest czysto client-side nad <tbody>)."""
     imp = baker.make(
         ImportPracownikow,
         owner=admin_user,
@@ -373,7 +374,8 @@ def test_importpracownikow_results_datatables_init(admin_client, admin_user):
     url = reverse("import_pracownikow:importpracownikow-results", kwargs={"pk": imp.pk})
     content = admin_client.get(url).content.decode()
     assert 'id="tabela-autorow"' in content
-    assert ".DataTable(" in content
+    assert 'id="filtr-roznic"' in content
+    assert ".DataTable(" not in content
 
 
 def test_importpracownikow_results_bez_pagination_include():

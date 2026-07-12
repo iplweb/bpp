@@ -53,63 +53,99 @@
         {# Nagłówek audytu — asertowany przez test_views_liveops.py; NIE usuwać. #}
         <p>Lista modyfikacji do bazy danych, przeprowadzonych na podstawie
             pliku XLS poniżej:</p>
+        {# Filtr rekordów po stanie pól — radia per pole (POLA_ROZNIC), AND. #}
+        <form id="filtr-roznic" class="import-filtr-roznic">
+            <label class="import-filtr-tekst">
+                Szukaj:
+                <input type="search" id="filtr-tekst"
+                       placeholder="nazwisko / jednostka…">
+            </label>
+            {% for klucz, etykieta in pola_roznic %}
+                <fieldset class="import-filtr-pole">
+                    <legend>{{ etykieta }}</legend>
+                    <label><input type="radio" name="filtr-{{ klucz }}"
+                                  value="wszystkie" checked> wszystkie</label>
+                    <label><input type="radio" name="filtr-{{ klucz }}"
+                                  value="zmienione"> zmienione</label>
+                    <label><input type="radio" name="filtr-{{ klucz }}"
+                                  value="zgodne"> zgodne</label>
+                    <label><input type="radio" name="filtr-{{ klucz }}"
+                                  value="brak"> brak w pliku</label>
+                </fieldset>
+            {% endfor %}
+        </form>
         <div style="overflow-x: auto;">
             <table id="tabela-autorow">
                 <thead>
                     <tr>
-                        <th>Arkusz</th>
-                        <th>Wiersz</th>
-                        <th>Imiona</th>
-                        <th>Nazwisko</th>
-                        <th>Tytuł</th>
+                        <th>Poz</th>
+                        <th>Osoba (z pliku)</th>
                         <th>Pewność</th>
-                        <th>Autor</th>
+                        <th>Autor (BPP)</th>
                         <th>Jednostka (obecna → z pliku)</th>
-                        <th>E-mail (plik → baza)</th>
-                        <th>Stopień służbowy (plik → baza)</th>
-                        <th>Stanowisko dydaktyczne (plik → baza)</th>
-                        <th>Akcje / zmiany</th>
-                        <th>Przepnij prace</th>
                     </tr>
                 </thead>
-                <tbody>
-                    {% for row in object_list %}
-                        {% include "import_pracownikow/partials/_wiersz_preview.html" %}
-                        {% empty %}
+                {% for row in object_list %}
+                    {% include "import_pracownikow/partials/_wiersz_preview.html" %}
+                {% empty %}
+                    <tbody>
                         <tr>
-                            <td colspan="13" class="text-center"><strong>
+                            <td colspan="5" class="text-center"><strong>
                                 Żadnych wierszy do pokazania.
                             </strong></td>
                         </tr>
-                    {% endfor %}
-                </tbody>
+                    </tbody>
+                {% endfor %}
             </table>
         </div>
 
-        {# DataTables: biblioteki + polski język ładuje globalnie bare.html. #}
+        {# Filtr rekordów po stanie pól (data-diff-* na 1. <tr> rekordu) + tekst. #}
+        {# Zastępuje DataTables (usunięte): karta = 2×<tr> w <tbody>, sort zbędny; #}
+        {# HTMX swapuje innerHTML <tbody>, więc data-diff-* są zawsze świeże, a #}
+        {# po afterSettle wystarczy ponowić filtr. #}
         <script>
-        $(function () {
-            var dt = $('#tabela-autorow').DataTable({
-                paging: false,  // wszystkie wiersze w DOM → htmx-targety (#wiersz-X) żyją
-                info: false,
-                order: [],  // zachowaj kolejność serwera (nie-twardzi na górze)
-                columnDefs: [{orderable: false, searchable: false, targets: [11, 12]}]
-            });
-            // Resync po htmx-swapie wiersza: swap jest innerHTML (patrz
-            // _wiersz_preview.html), więc węzeł <tr> ZOSTAJE — ten sam, który zna
-            // DataTables. Dlatego dt.row(tr) go znajduje, a invalidate('dom')
-            // przeczytuje jego świeże komórki. (Przy outerHTML nowy <tr> był
-            // DataTables nieznany → resync był bezczynny i search/redraw
-            // przywracał starą treść z cache — uwaga reviewera #6.) Leniwy
-            // Select2 z partiala komórek działa dalej niezależnie.
-            document.body.addEventListener('htmx:afterSettle', function (e) {
-                var tr = e.detail && e.detail.elt ? e.detail.elt.closest('tr') : null;
-                if (tr && $.fn.dataTable.isDataTable('#tabela-autorow')
-                       && $('#tabela-autorow')[0].contains(tr)) {
-                    try { dt.row(tr).invalidate('dom'); } catch (err) { /* spoza tabeli */ }
-                }
-            });
-        });
+        (function () {
+            var form = document.getElementById('filtr-roznic');
+            var tabela = document.getElementById('tabela-autorow');
+            if (!form || !tabela) return;
+
+            function klucze() {
+                var s = new Set();
+                form.querySelectorAll('input[type=radio]').forEach(function (r) {
+                    s.add(r.name.replace(/^filtr-/, ''));
+                });
+                return Array.from(s);
+            }
+            function wybor(klucz) {
+                var el = form.querySelector(
+                    'input[name="filtr-' + klucz + '"]:checked');
+                return el ? el.value : 'wszystkie';
+            }
+            function stanPola(tbody, klucz) {
+                var tr = tbody.querySelector(':scope > tr[data-diff-' + klucz + ']');
+                return tr ? tr.getAttribute('data-diff-' + klucz) : null;
+            }
+            function tekst() {
+                var el = document.getElementById('filtr-tekst');
+                return (el ? el.value : '').trim().toLowerCase();
+            }
+            function filtruj() {
+                var ks = klucze();
+                var q = tekst();
+                tabela.querySelectorAll(':scope > tbody').forEach(function (tbody) {
+                    var okStany = ks.every(function (klucz) {
+                        var w = wybor(klucz);
+                        return w === 'wszystkie' || stanPola(tbody, klucz) === w;
+                    });
+                    var okTekst = !q ||
+                        tbody.textContent.toLowerCase().indexOf(q) !== -1;
+                    tbody.hidden = !(okStany && okTekst);
+                });
+            }
+            form.addEventListener('change', filtruj);
+            form.addEventListener('input', filtruj);
+            document.body.addEventListener('htmx:afterSettle', filtruj);
+        })();
         </script>
     {% endif %}
 

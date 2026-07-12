@@ -167,10 +167,10 @@ def test_dopasuj_autora_zly_pk_404(admin_client, admin_user):
 
 @pytest.mark.django_db
 def test_dopasuj_autora_odpowiedz_zachowuje_wiersz_innerhtml(admin_client, admin_user):
-    """Uwaga reviewera #6: swap HTMX musi ZACHOWAĆ węzeł ``<tr>`` (innerHTML),
-    żeby DataTables po swapie odczytał go przez ``dt.row(tr).invalidate('dom')``
-    (outerHTML podmieniał węzeł na nieznany DataTables → resync był bezczynny).
-    Odpowiedź partiala to SAME komórki (bez ``<tr>``), a przyciski celują
+    """Swap HTMX celuje ``<tbody id="wiersz-{pk}">`` i podmienia jego innerHTML.
+    Odpowiedź partiala to DWA ``<tr>`` rekordu (tożsamość z ``data-diff-*`` +
+    wiersz szczegółów), BEZ wrappera ``<tbody>`` — dzięki temu po swapie
+    ``data-diff-*`` na pierwszym ``<tr>`` są świeże, a przyciski celują
     ``hx-swap="innerHTML"``."""
     imp = _import(admin_user)
     jednostka = baker.make(Jednostka, nazwa="Kat.", skrot="K.")
@@ -179,7 +179,9 @@ def test_dopasuj_autora_odpowiedz_zachowuje_wiersz_innerhtml(admin_client, admin
     resp = admin_client.post(_url(imp, row), {"autor": autor.pk})
     assert resp.status_code == 200
     tresc = resp.content.decode("utf-8")
-    assert "<tr" not in tresc  # partial to komórki, NIE cały wiersz
+    assert "<tbody" not in tresc  # partial to wiersze rekordu, NIE wrapper tbody
+    assert "data-diff-jednostka=" in tresc  # 1. <tr> niesie stan pól
+    assert "import-wiersz-szczegoly" in tresc  # 2. <tr> szczegółów
     assert 'hx-swap="innerHTML"' in tresc
     assert 'hx-swap="outerHTML"' not in tresc
 

@@ -1,8 +1,7 @@
-{# Wrapper wiersza podglądu — <tr> włączany w liście (importpracownikowrow_ #}
-{# list.html). Węzeł <tr> zostaje stały: akcje HTMX swapują tylko jego #}
-{# zawartość (innerHTML → _wiersz_preview_kom.html), dzięki czemu DataTables #}
-{# odczytuje wiersz po swapie przez dt.row(tr).invalidate('dom') (uwaga #}
-{# reviewera #6). Widoki HTMX zwracają SAM partial komórek, nie ten wrapper. #}
-<tr id="wiersz-{{ row.pk }}">
+{# Wrapper wiersza podglądu — <tbody> obejmujący DWA <tr> (karta rekordu). #}
+{# Akcje HTMX swapują innerHTML tego <tbody> (→ _wiersz_preview_kom.html), #}
+{# więc węzeł <tbody id="wiersz-{pk}"> zostaje stały, a filtr JS odczytuje #}
+{# świeże data-diff-* z pierwszego <tr> po każdym swapie. #}
+<tbody id="wiersz-{{ row.pk }}">
     {% include "import_pracownikow/partials/_wiersz_preview_kom.html" %}
-</tr>
+</tbody>
