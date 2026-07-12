@@ -15900,6 +15900,7 @@ COPY public.django_countdown_sitecountdown (id, countdown_time, message, long_de
 
 COPY public.django_migrations (id, app, name, applied) FROM stdin;
 531	bpp	0418_merge_20260601_0954	2000-01-01 00:00:00+00
+434	bpp	0339_autor_opis	2000-01-01 00:00:00+00
 535	bpp	0421_cache_trigger_pk_filter	2000-01-01 00:00:00+00
 469	bpp	0362_rzeczownik	2000-01-01 00:00:00+00
 533	bpp	0419_merge_20260601_1319	2000-01-01 00:00:00+00
@@ -16134,6 +16135,7 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 222	bpp	0140_auto_20180624_1620	2000-01-01 00:00:00+00
 223	bpp	0141_konferencja_typ_konferencji	2000-01-01 00:00:00+00
 224	bpp	0142_auto_20180624_2245	2000-01-01 00:00:00+00
+339	bpp	0246_auto_20210312_1228	2000-01-01 00:00:00+00
 225	bpp	0143_uczelnia_wydruk_logo_szerokosc	2000-01-01 00:00:00+00
 226	bpp	0144_wyrzuc_w_z_informacji	2000-01-01 00:00:00+00
 227	bpp	0145_auto_20180629_1816	2000-01-01 00:00:00+00
@@ -16247,7 +16249,6 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 336	bpp	0243_auto_20210307_1452	2000-01-01 00:00:00+00
 337	bpp	0244_auto_20210307_2329	2000-01-01 00:00:00+00
 338	bpp	0245_auto_20210308_1246	2000-01-01 00:00:00+00
-339	bpp	0246_auto_20210312_1228	2000-01-01 00:00:00+00
 340	bpp	0247_funkcja_autora_pokazuj_za_nazwiskiem	2000-01-01 00:00:00+00
 341	bpp	0248_autorzy_mat_idx	2000-01-01 00:00:00+00
 342	bpp	0249_dyscyplina_zrodla	2000-01-01 00:00:00+00
@@ -16342,7 +16343,6 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 431	bpp	0336_jednostka_opis_html	2000-01-01 00:00:00+00
 432	bpp	0337_oswiadczenie_ken_cleanup	2000-01-01 00:00:00+00
 433	bpp	0338_wydzial_pokazuj_opis	2000-01-01 00:00:00+00
-434	bpp	0339_autor_opis	2000-01-01 00:00:00+00
 435	bpp	0340_skasuj_anonimowe_zdarzenia	2000-01-01 00:00:00+00
 436	bpp	0341_dyscyplina_naukowa_pbn_uid	2000-01-01 00:00:00+00
 437	pbn_api	0040_tlumaczdyscyplinmanager	2000-01-01 00:00:00+00
@@ -16356,6 +16356,7 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 446	taggit	0004_alter_taggeditem_content_type_alter_taggeditem_tag	2000-01-01 00:00:00+00
 448	multiseek	0001_initial	2000-01-01 00:00:00+00
 449	bpp	0342_remove_dyscyplina_naukowa_pbn_uid	2000-01-01 00:00:00+00
+547	bpp	0431_search_index_gin	2000-01-01 00:00:00+00
 450	bpp	0343_alter_typ_kbn_options_alter_patent_kc_punkty_kbn_and_more	2000-01-01 00:00:00+00
 451	bpp	0344_uczelnia_pbn_wysylaj_bez_oswiadczen	2000-01-01 00:00:00+00
 452	bpp	0345_alter_wydzial_opis	2000-01-01 00:00:00+00
@@ -16449,7 +16450,6 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 544	bpp	0428_weighted_publication_fulltext	2000-01-01 00:00:00+00
 545	bpp	0429_cache_trigger_v3	2000-01-01 00:00:00+00
 546	bpp	0430_rekord_mat_slug_idx	2000-01-01 00:00:00+00
-547	bpp	0431_search_index_gin	2000-01-01 00:00:00+00
 548	bpp	0440_port_plpython_to_plpgsql	2000-01-01 00:00:00+00
 549	bpp	0441_drop_trigger_tytul_sort	2000-01-01 00:00:00+00
 550	bpp	0432_cache_trigger_plpgsql	2000-01-01 00:00:00+00
@@ -16971,6 +16971,7 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 1075	import_pracownikow	0020_confidence_status_reczny	2000-01-01 00:00:00+00
 1076	import_pracownikow	0021_pola_data_zmian_i_przepnij_wszystkie	2000-01-01 00:00:00+00
 1077	importer_publikacji	0019_multipleworksimport_uczelnia	2000-01-01 00:00:00+00
+1078	pbn_export_queue	0010_atomowa_kolejka_pbn	2000-01-01 00:00:00+00
 \.
 
 
@@ -17327,6 +17328,21 @@ COPY public.formdefaults_formfieldrepresentation (id, name, label, klass, "order
 55	if_do	do	django.forms.fields.FloatField	7	nowe_raporty.forms_dynamiczne.RaportForm_raport_autorow
 56	tylko_punktowane	Tylko prace punktowane (pkt MNiSW > 0)	django.forms.fields.BooleanField	8	nowe_raporty.forms_dynamiczne.RaportForm_raport_autorow
 57	obiekt	Autor	django.forms.models.ModelChoiceField	9	nowe_raporty.forms_dynamiczne.RaportForm_raport_autorow
+88	od_roku	Od roku	django.forms.fields.IntegerField	1	raport_slotow.forms.autor.AutorRaportSlotowForm
+89	do_roku	Do roku	django.forms.fields.IntegerField	2	raport_slotow.forms.autor.AutorRaportSlotowForm
+90	od_roku	Od roku	django.forms.fields.IntegerField	0	raport_slotow.forms.ewaluacja.ParametryRaportSlotowEwaluacjaForm
+91	do_roku	Do roku	django.forms.fields.IntegerField	1	raport_slotow.forms.ewaluacja.ParametryRaportSlotowEwaluacjaForm
+92	od_roku	Od roku	django.forms.fields.IntegerField	0	raport_slotow.forms.uczelnia.UtworzRaportSlotowUczelniaForm
+93	do_roku	Do roku	django.forms.fields.IntegerField	1	raport_slotow.forms.uczelnia.UtworzRaportSlotowUczelniaForm
+94	slot	Slot	django.forms.fields.DecimalField	3	raport_slotow.forms.uczelnia.UtworzRaportSlotowUczelniaForm
+95	od_roku	Od roku	django.forms.fields.IntegerField	0	nowe_raporty.forms_dynamiczne.RaportForm_raport_uczelni
+96	do_roku	Do roku	django.forms.fields.IntegerField	1	nowe_raporty.forms_dynamiczne.RaportForm_raport_uczelni
+97	od_roku	Od roku	django.forms.fields.IntegerField	0	nowe_raporty.forms_dynamiczne.RaportForm_raport_wydzialow
+98	do_roku	Do roku	django.forms.fields.IntegerField	1	nowe_raporty.forms_dynamiczne.RaportForm_raport_wydzialow
+99	od_roku	Od roku	django.forms.fields.IntegerField	0	nowe_raporty.forms_dynamiczne.RaportForm_raport_jednostek
+100	do_roku	Do roku	django.forms.fields.IntegerField	1	nowe_raporty.forms_dynamiczne.RaportForm_raport_jednostek
+101	od_roku	Od roku	django.forms.fields.IntegerField	0	nowe_raporty.forms_dynamiczne.RaportForm_raport_autorow
+102	do_roku	Do roku	django.forms.fields.IntegerField	1	nowe_raporty.forms_dynamiczne.RaportForm_raport_autorow
 \.
 
 
@@ -18869,7 +18885,7 @@ SELECT pg_catalog.setval('public.django_countdown_sitecountdown_id_seq', 1, fals
 -- Name: django_migrations_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
-SELECT pg_catalog.setval('public.django_migrations_id_seq', 1077, true);
+SELECT pg_catalog.setval('public.django_migrations_id_seq', 1078, true);
 
 
 --
@@ -19100,7 +19116,7 @@ SELECT pg_catalog.setval('public.formdefaults_formfielddefaultvalue_id_seq', 42,
 -- Name: formdefaults_formfieldrepresentation_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
-SELECT pg_catalog.setval('public.formdefaults_formfieldrepresentation_id_seq', 87, true);
+SELECT pg_catalog.setval('public.formdefaults_formfieldrepresentation_id_seq', 102, true);
 
 
 --
@@ -29814,6 +29830,13 @@ CREATE INDEX pbn_downloader_app_pbninstitutionpeopletask_user_id_27218553 ON pub
 --
 
 CREATE INDEX pbn_downloader_app_pbnjournalsdownloadtask_user_id_3aee930f ON public.pbn_downloader_app_pbnjournalsdownloadtask USING btree (user_id);
+
+
+--
+-- Name: pbn_export_queue_jeden_aktywny_wpis_na_rekord; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX pbn_export_queue_jeden_aktywny_wpis_na_rekord ON public.pbn_export_queue_pbn_export_queue USING btree (content_type_id, object_id) WHERE (wysylke_zakonczono IS NULL);
 
 
 --
