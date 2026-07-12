@@ -22,6 +22,8 @@ from liveops.views import CreateLiveOperationView, RestartView
 from bpp.models import (
     Autor,
     Jednostka,
+    StanowiskoDydaktyczne,
+    StopienSluzbowy,
     Tytul,
     Uczelnia,
     Wydawnictwo_Ciagle_Autor,
@@ -29,13 +31,15 @@ from bpp.models import (
 )
 from import_common.exceptions import BadNoOfSheetsException, HeaderNotFoundException
 from import_pracownikow.forms import MapowanieForm, NowyImportForm
-from import_pracownikow.mapping import dopasuj_profil
+from import_pracownikow.mapping import dopasuj_profil, wybierz_profil_fallback
 from import_pracownikow.models import (
     ImportPracownikow,
     ImportPracownikowJednostka,
     ImportPracownikowOdpiecie,
     ImportPracownikowRow,
     ImportPracownikowRowKandydat,
+    ImportPracownikowStanowisko,
+    ImportPracownikowStopien,
     ImportPracownikowTytul,
     ProfilMapowania,
     wiersz_kwalifikuje_do_przepiecia,
@@ -214,9 +218,16 @@ class MapowanieView(GroupRequiredMixin, FormView):
     def get_form_kwargs(self):
         kwargs = super().get_form_kwargs()
         kwargs["naglowki"] = self._naglowki
-        profil = dopasuj_profil(self._naglowki)
+        profil = dopasuj_profil(self._naglowki) or wybierz_profil_fallback(
+            self._naglowki
+        )
+        # Zapamiętaj na instancji dla get_context_data (info w szablonie §13).
+        self._profil_zastosowany = profil
         if profil is not None:
             kwargs["initial_mapowanie"] = profil.mapowanie
+            initial = kwargs.get("initial") or {}
+            initial["profil_zastosowany"] = profil.pk
+            kwargs["initial"] = initial
         return kwargs
 
     def get_context_data(self, **kwargs):
@@ -225,6 +236,8 @@ class MapowanieView(GroupRequiredMixin, FormView):
         ctx["probka_rows"] = [
             [w.get(h, "") for h in self._naglowki] for w in self._probka
         ]
+        profil = getattr(self, "_profil_zastosowany", None)
+        ctx["profil_zastosowany_nazwa"] = profil.nazwa if profil else None
         return ctx
 
     def form_valid(self, form):
@@ -236,6 +249,12 @@ class MapowanieView(GroupRequiredMixin, FormView):
         )
         obj.tworz_brakujace_tytuly = form.cleaned_data.get(
             "tworz_brakujace_tytuly", True
+        )
+        obj.tworz_brakujace_stopnie = form.cleaned_data.get(
+            "tworz_brakujace_stopnie", True
+        )
+        obj.tworz_brakujace_stanowiska = form.cleaned_data.get(
+            "tworz_brakujace_stanowiska", True
         )
         # on_restart() kasuje wiersze podglądu (stan==zmapowany) — inaczej
         # ponowna analiza by je zduplikowała.
@@ -250,6 +269,8 @@ class MapowanieView(GroupRequiredMixin, FormView):
                 "stan",
                 "tworz_brakujace_jednostki",
                 "tworz_brakujace_tytuly",
+                "tworz_brakujace_stopnie",
+                "tworz_brakujace_stanowiska",
             ]
             + pola_liveops
         )
@@ -262,6 +283,14 @@ class MapowanieView(GroupRequiredMixin, FormView):
                     "utworzony_przez": self.request.user,
                     "ostatnio_uzyty": timezone.now(),
                 },
+            )
+
+        # Stempel „ostatnio użyty" na zastosowanym profilu (fallback/dopasowany) —
+        # dzięki temu wybierz_profil_fallback następnym razem podniesie właśnie ten.
+        profil_pk = form.cleaned_data.get("profil_zastosowany")
+        if profil_pk:
+            ProfilMapowania.objects.filter(pk=profil_pk).update(
+                ostatnio_uzyty=timezone.now()
             )
 
         obj.enqueue()
@@ -708,6 +737,24 @@ class PodgladImportuView(GroupRequiredMixin, DetailView):
                 "tytuly_wymagaja_rozstrzygniecia": (
                     parent.tytuly_wymagaja_rozstrzygniecia
                 ),
+                "liczniki_stopni": parent.liczniki_stopni(),
+                "liczniki_stanowisk": parent.liczniki_stanowisk(),
+                "pokaz_stopnie": parent.stopnie_do_decyzji.exists(),
+                "pokaz_stanowiska": parent.stanowiska_do_decyzji.exists(),
+                # Bramka Kroku 2 (finding #2): import osób nie tworzy słowników
+                # po cichu — dowolny nierozstrzygnięty słownik blokuje.
+                "slowniki_wymagaja_rozstrzygniecia": (
+                    parent.tytuly_wymagaja_rozstrzygniecia
+                    or parent.stopnie_wymagaja_rozstrzygniecia
+                    or parent.stanowiska_wymagaja_rozstrzygniecia
+                ),
+                # „Zapisz jednostki + słowniki" (zakres=struktura) ma sens, gdy
+                # jest COKOLWIEK słownikowego do utworzenia poza jednostkami.
+                "pokaz_struktura_slowniki": (
+                    parent.tytuly_do_decyzji.exists()
+                    or parent.stopnie_do_decyzji.exists()
+                    or parent.stanowiska_do_decyzji.exists()
+                ),
                 "odpiecia_count": odpiecia_count,
                 "pary_z_pliku_puste": pary_z_pliku_puste,
                 # Ostrzeżenie: wszystkie jednostki odroczone → wszystkie aktywne
@@ -1068,6 +1115,204 @@ class WeryfikacjaTytulowView(GroupRequiredMixin, View):
         )
 
 
+class WeryfikacjaStopniView(GroupRequiredMixin, View):
+    """Ekran weryfikacji decyzji o stopniach służbowych (mirror
+    ``WeryfikacjaTytulowView``)."""
+
+    group_required = GROUP_REQUIRED
+    template_name = "import_pracownikow/weryfikacja_stopni.html"
+
+    @cached_property
+    def parent_object(self):
+        obj = get_object_or_404(ImportPracownikow, pk=self.kwargs["pk"])
+        if obj.owner_id != self.request.user.pk and not self.request.user.is_superuser:
+            raise Http404
+        return obj
+
+    def _decyzje(self):
+        return (
+            self.parent_object.stopnie_do_decyzji.select_related(
+                "auto_stopien", "wybrany_stopien"
+            )
+            .annotate(liczba_osob=Count("wiersze_stopien", distinct=True))
+            .order_by("nazwa_zrodlowa")
+        )
+
+    def get(self, request, *args, **kwargs):
+        parent = self.parent_object
+        decyzje = list(self._decyzje())
+        ctx = {
+            "parent_object": parent,
+            "decyzje_brak": [
+                d for d in decyzje if d.tryb == ImportPracownikowStopien.TRYB_BRAK
+            ],
+            "decyzje_zgadywanie": [
+                d for d in decyzje if d.tryb == ImportPracownikowStopien.TRYB_ZGADYWANIE
+            ],
+            "mapuj_opcje": StopienSluzbowy.objects.all().order_by("skrot"),
+            "moze_edytowac": parent.stan == ImportPracownikow.STAN_PRZEANALIZOWANY,
+            "DECYZJA_AKCEPTUJ": ImportPracownikowStopien.DECYZJA_AKCEPTUJ,
+            "DECYZJA_MAPUJ": ImportPracownikowStopien.DECYZJA_MAPUJ,
+            "DECYZJA_POMIN": ImportPracownikowStopien.DECYZJA_POMIN,
+        }
+        return render(request, self.template_name, ctx)
+
+    def post(self, request, *args, **kwargs):
+        parent = self.parent_object
+        if parent.stan != ImportPracownikow.STAN_PRZEANALIZOWANY:
+            return HttpResponseBadRequest(
+                "Decyzje o stopniach można zmieniać tylko w podglądzie."
+            )
+        prawidlowe = {
+            ImportPracownikowStopien.DECYZJA_AKCEPTUJ,
+            ImportPracownikowStopien.DECYZJA_MAPUJ,
+            ImportPracownikowStopien.DECYZJA_POMIN,
+        }
+        decyzje = list(parent.stopnie_do_decyzji.all())
+        bez_celu = [
+            dec.nazwa_zrodlowa
+            for dec in decyzje
+            if request.POST.get(f"dec_{dec.pk}_decyzja")
+            == ImportPracownikowStopien.DECYZJA_MAPUJ
+            and not (request.POST.get(f"dec_{dec.pk}_wybrana") or "")
+        ]
+        if bez_celu:
+            messages.error(
+                request,
+                'Wybierz stopień docelowy w kolumnie „Mapuj na" dla: '
+                + ", ".join(bez_celu),
+            )
+            return HttpResponseRedirect(
+                reverse("import_pracownikow:stopnie", kwargs={"pk": parent.pk})
+            )
+        for dec in decyzje:
+            pref = f"dec_{dec.pk}_"
+            decyzja = request.POST.get(pref + "decyzja")
+            if decyzja in prawidlowe:
+                dec.decyzja = decyzja
+            mapuj_id = (request.POST.get(pref + "wybrana") or "").strip()
+            dec.wybrany_stopien = (
+                StopienSluzbowy.objects.filter(pk=int(mapuj_id)).first()
+                if mapuj_id.isdigit()
+                else None
+            )
+            update_fields = ["decyzja", "wybrany_stopien"]
+            if dec.tryb == ImportPracownikowStopien.TRYB_BRAK:
+                nazwa = request.POST.get(pref + "nazwa")
+                if nazwa is not None:
+                    dec.nazwa_do_utworzenia = nazwa.strip()[:512]
+                    update_fields.append("nazwa_do_utworzenia")
+                skrot = request.POST.get(pref + "skrot")
+                if skrot is not None:
+                    dec.skrot_do_utworzenia = skrot.strip()[:128]
+                    update_fields.append("skrot_do_utworzenia")
+            dec.save(update_fields=update_fields)
+        messages.success(request, "Zapisano decyzje o stopniach służbowych.")
+        return HttpResponseRedirect(
+            reverse("import_pracownikow:stopnie", kwargs={"pk": parent.pk})
+        )
+
+
+class WeryfikacjaStanowiskView(GroupRequiredMixin, View):
+    """Ekran weryfikacji decyzji o stanowiskach dydaktycznych (mirror
+    ``WeryfikacjaStopniView``)."""
+
+    group_required = GROUP_REQUIRED
+    template_name = "import_pracownikow/weryfikacja_stanowisk.html"
+
+    @cached_property
+    def parent_object(self):
+        obj = get_object_or_404(ImportPracownikow, pk=self.kwargs["pk"])
+        if obj.owner_id != self.request.user.pk and not self.request.user.is_superuser:
+            raise Http404
+        return obj
+
+    def _decyzje(self):
+        return (
+            self.parent_object.stanowiska_do_decyzji.select_related(
+                "auto_stanowisko", "wybrane_stanowisko"
+            )
+            .annotate(liczba_osob=Count("wiersze_stanowisko", distinct=True))
+            .order_by("nazwa_zrodlowa")
+        )
+
+    def get(self, request, *args, **kwargs):
+        parent = self.parent_object
+        decyzje = list(self._decyzje())
+        ctx = {
+            "parent_object": parent,
+            "decyzje_brak": [
+                d for d in decyzje if d.tryb == ImportPracownikowStanowisko.TRYB_BRAK
+            ],
+            "decyzje_zgadywanie": [
+                d
+                for d in decyzje
+                if d.tryb == ImportPracownikowStanowisko.TRYB_ZGADYWANIE
+            ],
+            "mapuj_opcje": StanowiskoDydaktyczne.objects.all().order_by("skrot"),
+            "moze_edytowac": parent.stan == ImportPracownikow.STAN_PRZEANALIZOWANY,
+            "DECYZJA_AKCEPTUJ": ImportPracownikowStanowisko.DECYZJA_AKCEPTUJ,
+            "DECYZJA_MAPUJ": ImportPracownikowStanowisko.DECYZJA_MAPUJ,
+            "DECYZJA_POMIN": ImportPracownikowStanowisko.DECYZJA_POMIN,
+        }
+        return render(request, self.template_name, ctx)
+
+    def post(self, request, *args, **kwargs):
+        parent = self.parent_object
+        if parent.stan != ImportPracownikow.STAN_PRZEANALIZOWANY:
+            return HttpResponseBadRequest(
+                "Decyzje o stanowiskach można zmieniać tylko w podglądzie."
+            )
+        prawidlowe = {
+            ImportPracownikowStanowisko.DECYZJA_AKCEPTUJ,
+            ImportPracownikowStanowisko.DECYZJA_MAPUJ,
+            ImportPracownikowStanowisko.DECYZJA_POMIN,
+        }
+        decyzje = list(parent.stanowiska_do_decyzji.all())
+        bez_celu = [
+            dec.nazwa_zrodlowa
+            for dec in decyzje
+            if request.POST.get(f"dec_{dec.pk}_decyzja")
+            == ImportPracownikowStanowisko.DECYZJA_MAPUJ
+            and not (request.POST.get(f"dec_{dec.pk}_wybrana") or "")
+        ]
+        if bez_celu:
+            messages.error(
+                request,
+                'Wybierz stanowisko docelowe w kolumnie „Mapuj na" dla: '
+                + ", ".join(bez_celu),
+            )
+            return HttpResponseRedirect(
+                reverse("import_pracownikow:stanowiska", kwargs={"pk": parent.pk})
+            )
+        for dec in decyzje:
+            pref = f"dec_{dec.pk}_"
+            decyzja = request.POST.get(pref + "decyzja")
+            if decyzja in prawidlowe:
+                dec.decyzja = decyzja
+            mapuj_id = (request.POST.get(pref + "wybrana") or "").strip()
+            dec.wybrane_stanowisko = (
+                StanowiskoDydaktyczne.objects.filter(pk=int(mapuj_id)).first()
+                if mapuj_id.isdigit()
+                else None
+            )
+            update_fields = ["decyzja", "wybrane_stanowisko"]
+            if dec.tryb == ImportPracownikowStanowisko.TRYB_BRAK:
+                nazwa = request.POST.get(pref + "nazwa")
+                if nazwa is not None:
+                    dec.nazwa_do_utworzenia = nazwa.strip()[:512]
+                    update_fields.append("nazwa_do_utworzenia")
+                skrot = request.POST.get(pref + "skrot")
+                if skrot is not None:
+                    dec.skrot_do_utworzenia = skrot.strip()[:128]
+                    update_fields.append("skrot_do_utworzenia")
+            dec.save(update_fields=update_fields)
+        messages.success(request, "Zapisano decyzje o stanowiskach dydaktycznych.")
+        return HttpResponseRedirect(
+            reverse("import_pracownikow:stanowiska", kwargs={"pk": parent.pk})
+        )
+
+
 class _PkOwnerRestartMixin(GroupRequiredMixin, RestartView):
     """Wspólny ``get_object`` dla widoków restartu — URL ma tylko ``pk``
     (bez ``op_type``), więc nadpisujemy ``OpTypeObjectMixin.get_object``
@@ -1140,12 +1385,17 @@ class ZatwierdzImportView(_PkOwnerRestartMixin):
             )
         else:
             # PELNY = import osób: dopiero po zapisaniu struktury i po
-            # rozstrzygnięciu tytułów (item 3 — brak cichego tworzenia tytułów).
-            if obj.tytuly_wymagaja_rozstrzygniecia:
+            # rozstrzygnięciu słowników (item 3 / spec §12 finding #2 — brak
+            # cichego tworzenia tytułów / stopni / stanowisk).
+            if (
+                obj.tytuly_wymagaja_rozstrzygniecia
+                or obj.stopnie_wymagaja_rozstrzygniecia
+                or obj.stanowiska_wymagaja_rozstrzygniecia
+            ):
                 return HttpResponseBadRequest(
-                    "Najpierw utwórz brakujące tytuły z pliku "
-                    "(Krok 2: „Utwórz brakujące tytuły”) — import osób nie "
-                    "tworzy ich po cichu."
+                    "Najpierw utwórz brakujące słowniki z pliku "
+                    "(Krok 2: tytuły / stopnie służbowe / stanowiska "
+                    "dydaktyczne) — import osób nie tworzy ich po cichu."
                 )
             stany_wymagane = {ImportPracownikow.STAN_STRUKTURA_ZINTEGROWANA}
             blad = "Najpierw zapisz strukturę (jednostki) — dopiero potem osoby."

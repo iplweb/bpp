@@ -22,7 +22,9 @@ from ..models import (
     Jezyk,
     Rodzaj_Zrodla,
     Rzeczownik,
+    StanowiskoDydaktyczne,
     Status_Korekty,
+    StopienSluzbowy,
     Typ_KBN,
     Typ_Odpowiedzialnosci,
     Tytul,
@@ -143,6 +145,8 @@ class NazwaISkrotAdmin(
 
 
 admin.site.register(Tytul, NazwaISkrotAdmin)
+admin.site.register(StopienSluzbowy, NazwaISkrotAdmin)
+admin.site.register(StanowiskoDydaktyczne, NazwaISkrotAdmin)
 
 
 class Typ_KBNAdmin(

@@ -171,6 +171,50 @@ def zaproponuj_skrot(nazwa):
     return nazwa[:128]
 
 
+def sklasyfikuj_jednostke_niepelna(
+    fragment, wydzial=None, *, prog=PROG_ZGADYWANIA_JEDNOSTKI
+):
+    """Klasyfikuje NIEPEŁNĄ nazwę jednostki (fragment, np. „Medyczny").
+
+    Najpierw próba dokładna/trigramowa (``sklasyfikuj_jednostke``, z ``prog``) —
+    jeśli ``twardy``, zwróć od razu. Inaczej ``nazwa__icontains`` w SZEROKIM
+    zbiorze widocznych jednostek (CELOWO NIE ``_pula_afiliacyjna`` — wyklucza ona
+    lustra wydziałów, przez co „Wydział Medyczny" nigdy by się nie znalazł);
+    trafienie ``icontains`` ma ZAWSZE status ``zgadywanie`` (fragment jest
+    niejednoznaczny), nigdy ``twardy``. Gdy ``icontains`` jest PUSTE, NIE zwracamy
+    twardego BRAK — oddajemy wynik ``sklasyfikuj_jednostke`` (trigramowe
+    ``zgadywanie`` albo ``brak``), co realizuje spec §6.1 „0 trafień → trigram
+    fallback". Ograniczenie: ``icontains`` nie łapie fleksji („Medyczny" ≠
+    „Medycznego"). Gałąź ``icontains`` filtruje wyłącznie ``widoczna=True`` i
+    IGNORUJE parametr ``wydzial`` (świadome uproszczenie — ujednoznacznienie po
+    wydziale robi tylko gałąź exact/trigram ``sklasyfikuj_jednostke``).
+    """
+    if not fragment:
+        return None, STATUS_JEDNOSTKA_BRAK, None
+    frag = normalize_nazwa_jednostki(fragment)
+    if not frag:
+        return None, STATUS_JEDNOSTKA_BRAK, None
+
+    j, status, sim = sklasyfikuj_jednostke(fragment, wydzial, prog=prog)
+    if status == STATUS_JEDNOSTKA_TWARDY:
+        return j, status, sim
+
+    best = (
+        Jednostka.objects.filter(widoczna=True, nazwa__icontains=frag)
+        .annotate(sim=TrigramSimilarity("nazwa", frag))
+        .order_by("-sim")
+        .first()
+    )
+    if best is not None:
+        return (
+            best,
+            STATUS_JEDNOSTKA_ZGADYWANIE,
+            float(best.sim) if best.sim is not None else None,
+        )
+    # icontains puste → NIE twardy BRAK; oddaj trigramowy wynik sklasyfikuj_jednostke.
+    return j, status, sim
+
+
 def unikalny_skrot(base, zajete=None):
     """Zwraca skrót unikalny w bazie ORAZ względem ``zajete`` (skróty utworzone
     wcześniej w TYM SAMYM runie integracji — obrona przed kolizją in-batch, gdy

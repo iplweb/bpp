@@ -31,6 +31,16 @@
         <span class="secondary">— (jednostka odroczona / brak)</span>
     {% endif %}
 </td>
+{# Porównywarka „plik vs baza" (§12): e-mail / stopień służbowy / stanowisko #}
+{# dydaktyczne. Różnicę PODŚWIETLAMY (Foundation label warning + klasa-hook #}
+{# import-porownanie-rozne) — to sygnał dla operatora. No-overwrite dotyczy #}
+{# WYŁĄCZNIE e-maila; stopień i stanowisko to overwrite-if-different (Plan 3). #}
+{# W komórce e-mail pokazujemy też ostrzeżenie o odrzuconym adresie. #}
+{% with porownanie=row.porownaj_z_baza %}
+    <td>{% include "import_pracownikow/partials/_porownanie_kom.html" with pole=porownanie.email ostrzezenie=row.ostrzezenie_email %}</td>
+    <td>{% include "import_pracownikow/partials/_porownanie_kom.html" with pole=porownanie.stopien %}</td>
+    <td>{% include "import_pracownikow/partials/_porownanie_kom.html" with pole=porownanie.stanowisko %}</td>
+{% endwith %}
 <td>
     {% if parent_object.edytowalny_podglad %}
         {% if row.confidence == "wielu" %}

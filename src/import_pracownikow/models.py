@@ -56,6 +56,12 @@ class AutorForm(forms.Form):
     data_końca_zatrudnienia = ExcelDateField(required=False)
     podstawowe_miejsce_pracy = forms.BooleanField(required=False)
     wymiar_etatu = forms.CharField(max_length=200, required=False)
+    # email tolerancyjny: CharField (nie EmailField), max_length=128 =
+    # Autor.email.max_length — dłuższy adres wywaliłby Autor.objects.create
+    # przez nieprzechwycony DataError. Miękkie czyszczenie/porównywarka = Plan 4.
+    email = forms.CharField(max_length=128, required=False)
+    stopień_służbowy = forms.CharField(max_length=200, required=False)
+    stanowisko_dydaktyczne = forms.CharField(max_length=200, required=False)
 
 
 class ImportPracownikow(LiveOperation):
@@ -90,7 +96,7 @@ class ImportPracownikow(LiveOperation):
     ZAKRES_CHOICES = [
         (ZAKRES_PELNY, "pełny import (struktura + osoby)"),
         (ZAKRES_JEDNOSTKI, "tylko jednostki"),
-        (ZAKRES_STRUKTURA, "jednostki + tytuły (bez osób)"),
+        (ZAKRES_STRUKTURA, "jednostki + tytuły + stopnie + stanowiska (bez osób)"),
     ]
 
     plik_xls = models.FileField(upload_to="protected/import_pracownikow/")
@@ -109,6 +115,21 @@ class ImportPracownikow(LiveOperation):
         help_text="Gdy zaznaczone, tytuły nieobecne w bazie (i bez bliskiego "
         "dopasowania) trafiają na ekran weryfikacji do utworzenia. Gdy "
         "odznaczone — wiersze z niedopasowanym tytułem zostają bez tytułu.",
+    )
+    tworz_brakujace_stopnie = models.BooleanField(
+        "Twórz brakujące stopnie służbowe",
+        default=True,
+        help_text="Gdy zaznaczone, stopnie służbowe nieobecne w bazie (i bez "
+        "bliskiego dopasowania) trafiają na ekran weryfikacji do utworzenia. "
+        "Gdy odznaczone — wiersze z niedopasowanym stopniem zostają bez stopnia.",
+    )
+    tworz_brakujace_stanowiska = models.BooleanField(
+        "Twórz brakujące stanowiska dydaktyczne",
+        default=True,
+        help_text="Gdy zaznaczone, stanowiska dydaktyczne nieobecne w bazie (i "
+        "bez bliskiego dopasowania) trafiają na ekran weryfikacji do utworzenia. "
+        "Gdy odznaczone — wiersze z niedopasowanym stanowiskiem zostają bez "
+        "stanowiska.",
     )
     data_zmian_personalnych = models.DateField(
         "Data zmian personalnych",
@@ -141,8 +162,9 @@ class ImportPracownikow(LiveOperation):
         choices=ZAKRES_CHOICES,
         default=ZAKRES_PELNY,
         help_text="Co „Zapisz do bazy” faktycznie tworzy: pełny import "
-        "(struktura + osoby), same jednostki, albo jednostki + tytuły "
-        "(bez osób). Ustawiane przez przycisk zatwierdzenia na hubie.",
+        "(struktura + osoby), same jednostki, albo jednostki + tytuły + stopnie "
+        "+ stanowiska (bez osób). Ustawiane przez przycisk zatwierdzenia na "
+        "hubie.",
     )
 
     stages = ["Wczytywanie", "Integracja"]
@@ -366,6 +388,9 @@ class ImportPracownikow(LiveOperation):
                 "grupa_pracownicza",
                 "funkcja_autora",
                 "wymiar_etatu",
+                # Porównywarka „plik vs baza" (§12) czyta FK bazy — bez N+1.
+                "autor__stopien_sluzbowy",
+                "autor_jednostka__stanowisko",
             )
         )
 
@@ -509,6 +534,45 @@ class ImportPracownikow(LiveOperation):
             .exists()
         )
 
+    @property
+    def stopnie_wymagaja_rozstrzygniecia(self):
+        """Mirror ``tytuly_wymagaja_rozstrzygniecia`` — bramka: import osób
+        (zakres pełny) nie może po cichu tworzyć stopni służbowych. ``pomin``
+        liczymy jako rozstrzygnięte."""
+        return (
+            self.stopnie_do_decyzji.filter(utworzony__isnull=True)
+            .exclude(decyzja=ImportPracownikowStopien.DECYZJA_POMIN)
+            .exists()
+        )
+
+    @property
+    def stanowiska_wymagaja_rozstrzygniecia(self):
+        """Mirror ``tytuly_wymagaja_rozstrzygniecia`` dla stanowisk
+        dydaktycznych (pole rozstrzygnięcia: ``utworzone``)."""
+        return (
+            self.stanowiska_do_decyzji.filter(utworzone__isnull=True)
+            .exclude(decyzja=ImportPracownikowStanowisko.DECYZJA_POMIN)
+            .exists()
+        )
+
+    def liczniki_stopni(self):
+        """``{"do_utworzenia","do_sprawdzenia"}`` z nierozstrzygniętych decyzji
+        o stopniach służbowych (``utworzony__isnull=True``)."""
+        return self._liczniki_decyzji(
+            self.stopnie_do_decyzji.filter(utworzony__isnull=True),
+            ImportPracownikowStopien.TRYB_BRAK,
+            ImportPracownikowStopien.TRYB_ZGADYWANIE,
+        )
+
+    def liczniki_stanowisk(self):
+        """``{"do_utworzenia","do_sprawdzenia"}`` z nierozstrzygniętych decyzji
+        o stanowiskach dydaktycznych (``utworzone__isnull=True``)."""
+        return self._liczniki_decyzji(
+            self.stanowiska_do_decyzji.filter(utworzone__isnull=True),
+            ImportPracownikowStanowisko.TRYB_BRAK,
+            ImportPracownikowStanowisko.TRYB_ZGADYWANIE,
+        )
+
 
 class ImportPracownikowRow(ImportRowMixin, models.Model):
     parent = models.ForeignKey(
@@ -563,6 +627,41 @@ class ImportPracownikowRow(ImportRowMixin, models.Model):
         "tej samej nazwie). Wypełniona, gdy tytuł wymaga rozstrzygnięcia "
         "(utworzenie / mapowanie / auto-dopasowanie).",
     )
+    stopien = models.ForeignKey(
+        "bpp.StopienSluzbowy", on_delete=models.SET_NULL, null=True, blank=True
+    )
+    stopien_status = models.CharField(  # noqa: DJ001
+        max_length=20, choices=STATUS_CHOICES, null=True, blank=True
+    )
+    zrodlo_stopnia = models.ForeignKey(
+        "ImportPracownikowStopien",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="wiersze_stopien",
+        help_text="Decyzja o źródłowym stopniu służbowym (współdzielona przez "
+        "wiersze o tej samej nazwie). Wypełniona, gdy stopień wymaga "
+        "rozstrzygnięcia (utworzenie / mapowanie / auto-dopasowanie).",
+    )
+    stanowisko_dydaktyczne = models.ForeignKey(
+        "bpp.StanowiskoDydaktyczne",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+    )
+    stanowisko_dydaktyczne_status = models.CharField(  # noqa: DJ001
+        max_length=20, choices=STATUS_CHOICES, null=True, blank=True
+    )
+    zrodlo_stanowiska_dydaktycznego = models.ForeignKey(
+        "ImportPracownikowStanowisko",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="wiersze_stanowisko",
+        help_text="Decyzja o źródłowym stanowisku dydaktycznym (współdzielona "
+        "przez wiersze o tej samej nazwie). Wypełniona, gdy stanowisko wymaga "
+        "rozstrzygnięcia (utworzenie / mapowanie / auto-dopasowanie).",
+    )
 
     zmiany_potrzebne = models.BooleanField()
 
@@ -613,6 +712,76 @@ class ImportPracownikowRow(ImportRowMixin, models.Model):
             self.confidence, ("secondary", "fi-minus", self.confidence or "—")
         )
 
+    @staticmethod
+    def _porownaj_email(plik, baza):
+        """Trójka porównania e-maila: ``{plik, baza, rozne}``. ``rozne`` = obie
+        strony NIEPUSTE i różne (case-insensitive) — pole puste w pliku LUB w
+        bazie NIE jest różnicą (e-mail to no-overwrite: import nie nadpisuje
+        istniejącego). Pustej bazy nie podświetlamy, ale import i tak jej NIE
+        uzupełnia — e-mail trafia do bazy WYŁĄCZNIE przy tworzeniu nowego autora
+        (``Autor.objects.create``); ``MAPPING_DANE_NA_AUTOR`` nie zawiera
+        ``email``, więc istniejący autor z pustym e-mailem tak czy inaczej go nie
+        dostaje z tego importu."""
+        p = str(plik or "").strip()
+        b = str(baza or "").strip()
+        rozne = bool(p) and bool(b) and p.casefold() != b.casefold()
+        return {"plik": p, "baza": b, "rozne": rozne}
+
+    @staticmethod
+    def _porownaj_fk(plik_str, baza_obj, plik_id):
+        """Trójka porównania pola FK (stopień/stanowisko): ``{plik, baza,
+        rozne}``. Porównanie SEMANTYCZNE po ID — skrót w pliku vs nazwa w bazie
+        NIE może decydować o różnicy. ``rozne`` = plik WSKAZUJE FK (``plik_id``
+        ustawione) i baza ma inny (lub żaden) FK — overwrite-if-different
+        (Plan 3), inaczej niż no-overwrite e-maila. ``plik`` = wartość z pliku
+        (skrót); ``baza`` = ``str`` FK z bazy."""
+        baza_id = baza_obj.pk if baza_obj else None
+        return {
+            "plik": str(plik_str or "").strip(),
+            "baza": str(baza_obj) if baza_obj else "",
+            "rozne": plik_id is not None and baza_id != plik_id,
+        }
+
+    def porownaj_z_baza(self):
+        """Porównanie „plik vs baza" dla e-maila, stopnia służbowego i
+        stanowiska dydaktycznego (§12). CZYSTY odczyt — NIC nie zapisuje ani nie
+        nadpisuje. E-mail: no-overwrite (porównanie stringów). Stopień/stanowisko:
+        overwrite-if-different, porównywane SEMANTYCZNIE po FK (skrót w pliku vs
+        nazwa w bazie dałyby fałszywe „różne"); FK z pliku rozwiązuje Plan 3 na
+        ``self.stopien`` / ``self.stanowisko_dydaktyczne``. Strona bazy: FK autora
+        / powiązania; stanowisko z ``autor_jednostka`` (aktualizowanego przez ten
+        wiersz). Dla wiersza bez autora/AJ strona bazy jest pusta."""
+        dane = self.dane_znormalizowane or {}
+        autor = self.autor
+        aj = self.autor_jednostka
+        stopien_baza = (
+            autor.stopien_sluzbowy if autor and autor.stopien_sluzbowy_id else None
+        )
+        stanowisko_baza = aj.stanowisko if aj and aj.stanowisko_id else None
+        return {
+            "email": self._porownaj_email(
+                dane.get("email"), autor.email if autor else ""
+            ),
+            "stopien": self._porownaj_fk(
+                dane.get("stopień_służbowy"), stopien_baza, self.stopien_id
+            ),
+            "stanowisko": self._porownaj_fk(
+                dane.get("stanowisko_dydaktyczne"),
+                stanowisko_baza,
+                self.stanowisko_dydaktyczne_id,
+            ),
+        }
+
+    @property
+    def ostrzezenie_email(self):
+        """Komunikat o odrzuconym adresie e-mail (z
+        ``dane_znormalizowane["ostrzeżenia"]``) albo ``None`` — renderowany w
+        komórce e-mail porównywarki jako ``label alert``."""
+        for o in (self.dane_znormalizowane or {}).get("ostrzeżenia") or []:
+            if "e-mail" in o.lower():
+                return o
+        return None
+
     def _check_autor_needs_update(self, dane):
         """Sprawdza czy autor wymaga aktualizacji."""
         a = self.autor
@@ -625,6 +794,9 @@ class ImportPracownikowRow(ImportRowMixin, models.Model):
         # Bez tego guardu utytułowany autor z pustym/niedopasowanym tytułem dawał
         # ``zmiany_potrzebne=True`` + puste ``integrate()``.
         if self.tytul_id is not None and self.tytul_id != a.tytul_id:
+            return True
+        # Stopień służbowy — overwrite-if-different (mirror tytuł, spec §11.2).
+        if self.stopien_id is not None and self.stopien_id != a.stopien_sluzbowy_id:
             return True
         return False
 
@@ -654,6 +826,9 @@ class ImportPracownikowRow(ImportRowMixin, models.Model):
             # mówi jawnie „Podstawowe miejsce pracy"=NIE.
             self.podstawowe_miejsce_pracy is not False
             and not aj.podstawowe_miejsce_pracy,
+            # Stanowisko dydaktyczne — overwrite-if-different (mirror funkcja).
+            self.stanowisko_dydaktyczne_id is not None
+            and aj.stanowisko_id != self.stanowisko_dydaktyczne_id,
         ]
         return any(checks)
 
@@ -682,17 +857,29 @@ class ImportPracownikowRow(ImportRowMixin, models.Model):
                 )
                 setattr(a, atrybut_autora, dane.get(klucz_danych))
 
-        if self.tytul_id is not None:
-            if a.tytul_id != self.tytul_id:
-                a.tytul_id = self.tytul_id
-                self.log_zmian["autor"].append(
-                    f"tytuł naukowy -> {self.tytul.skrot if self.tytul_id else 'brak'}"
-                )
+        self._ustaw_tytul_i_stopien_autora(a)
 
         try:
             a.save()
         except DataError as e:
             raise BPPDatabaseError(self.dane_z_xls, self, f"DataError {e}") from e
+
+    def _ustaw_tytul_i_stopien_autora(self, a):
+        """Ustawia tytuł naukowy i stopień służbowy na autorze
+        (overwrite-if-different, spec §11.2) i loguje zmiany. Import USTAWIA,
+        nigdy nie kasuje (guard is-not-None — spójne z ``_check_autor_needs_update``,
+        które te same pola liczy do ``zmiany_potrzebne``)."""
+        if self.tytul_id is not None and a.tytul_id != self.tytul_id:
+            a.tytul_id = self.tytul_id
+            self.log_zmian["autor"].append(
+                f"tytuł naukowy -> {self.tytul.skrot if self.tytul_id else 'brak'}"
+            )
+        if self.stopien_id is not None and a.stopien_sluzbowy_id != self.stopien_id:
+            a.stopien_sluzbowy_id = self.stopien_id
+            self.log_zmian["autor"].append(
+                "stopień służbowy -> "
+                f"{self.stopien.skrot if self.stopien_id else 'brak'}"
+            )
 
     def _integruj_daty_aj(self, aj, dane):
         """Ustawia daty zatrudnienia na powiązaniu z danych wiersza.
@@ -732,6 +919,15 @@ class ImportPracownikowRow(ImportRowMixin, models.Model):
             aj.funkcja = self.funkcja_autora
             self.log_zmian["autor_jednostka"].append(
                 f"funkcja na {self.funkcja_autora}"
+            )
+
+        if (
+            self.stanowisko_dydaktyczne_id is not None
+            and aj.stanowisko_id != self.stanowisko_dydaktyczne_id
+        ):
+            aj.stanowisko_id = self.stanowisko_dydaktyczne_id
+            self.log_zmian["autor_jednostka"].append(
+                f"stanowisko dydaktyczne na {self.stanowisko_dydaktyczne}"
             )
 
         if (
@@ -1107,6 +1303,166 @@ class ImportPracownikowTytul(models.Model):
     class Meta:
         verbose_name = "decyzja o tytule (import pracowników)"
         verbose_name_plural = "decyzje o tytułach (import pracowników)"
+        unique_together = (("parent", "nazwa_zrodlowa"),)
+        ordering = ["nazwa_zrodlowa"]
+
+    def __str__(self):
+        return f"{self.nazwa_zrodlowa} ({self.tryb} → {self.decyzja})"
+
+
+class ImportPracownikowStopien(models.Model):
+    """Decyzja o jednym UNIKALNYM (znormalizowanym) stringu stopnia służbowego
+    z pliku, którego nie da się dopasować dokładnie.
+
+    Mirror ``ImportPracownikowTytul`` (Tytul→StopienSluzbowy, tytul→stopien).
+    Deduplikowany po nazwie źródłowej; analiza wypełnia pola liczone
+    (``tryb``/``auto_stopien``/``auto_similarity``), użytkownik ustawia wybór
+    (``decyzja``/``wybrany_stopien``/``nazwa_do_utworzenia``/
+    ``skrot_do_utworzenia``), integracja materializuje wynik do ``utworzony``.
+    """
+
+    TRYB_ZGADYWANIE = "zgadywanie"
+    TRYB_BRAK = "brak"
+    TRYB_CHOICES = [
+        (TRYB_ZGADYWANIE, "auto-dopasowanie (podobna nazwa)"),
+        (TRYB_BRAK, "brak dopasowania (do utworzenia)"),
+    ]
+
+    DECYZJA_AKCEPTUJ = "akceptuj"
+    DECYZJA_MAPUJ = "mapuj"
+    DECYZJA_POMIN = "pomin"
+    DECYZJA_CHOICES = [
+        (DECYZJA_AKCEPTUJ, "akceptuj (utwórz nowy / użyj auto-dopasowania)"),
+        (DECYZJA_MAPUJ, "mapuj na istniejący"),
+        (DECYZJA_POMIN, "pomiń (nie ustawiaj stopnia tym wierszom)"),
+    ]
+
+    parent = models.ForeignKey(
+        ImportPracownikow,
+        on_delete=models.CASCADE,
+        related_name="stopnie_do_decyzji",
+        verbose_name="import pracowników",
+    )
+    nazwa_zrodlowa = models.CharField("nazwa źródłowa", max_length=512)
+    tryb = models.CharField(max_length=20, choices=TRYB_CHOICES)
+    auto_stopien = models.ForeignKey(
+        "bpp.StopienSluzbowy",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="+",
+        verbose_name="auto-dopasowany stopień",
+    )
+    auto_similarity = models.FloatField("podobieństwo auto", null=True, blank=True)
+    nazwa_do_utworzenia = models.CharField(
+        "nazwa do utworzenia", max_length=512, blank=True, default=""
+    )
+    skrot_do_utworzenia = models.CharField(
+        "skrót do utworzenia", max_length=128, blank=True, default=""
+    )
+    decyzja = models.CharField(
+        max_length=20, choices=DECYZJA_CHOICES, default=DECYZJA_AKCEPTUJ
+    )
+    wybrany_stopien = models.ForeignKey(
+        "bpp.StopienSluzbowy",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="+",
+        verbose_name="wybrany istniejący stopień (mapuj)",
+    )
+    utworzony = models.ForeignKey(
+        "bpp.StopienSluzbowy",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="+",
+        verbose_name="stopień utworzony/rozstrzygnięty",
+        help_text="Ustawiane przez integrację. Guard idempotencji (restart / "
+        "podwójny commit nie duplikuje stopni).",
+    )
+
+    class Meta:
+        verbose_name = "decyzja o stopniu służbowym (import pracowników)"
+        verbose_name_plural = "decyzje o stopniach służbowych (import pracowników)"
+        unique_together = (("parent", "nazwa_zrodlowa"),)
+        ordering = ["nazwa_zrodlowa"]
+
+    def __str__(self):
+        return f"{self.nazwa_zrodlowa} ({self.tryb} → {self.decyzja})"
+
+
+class ImportPracownikowStanowisko(models.Model):
+    """Decyzja o jednym UNIKALNYM (znormalizowanym) stringu stanowiska
+    dydaktycznego z pliku. Mirror ``ImportPracownikowStopien``
+    (StopienSluzbowy→StanowiskoDydaktyczne)."""
+
+    TRYB_ZGADYWANIE = "zgadywanie"
+    TRYB_BRAK = "brak"
+    TRYB_CHOICES = [
+        (TRYB_ZGADYWANIE, "auto-dopasowanie (podobna nazwa)"),
+        (TRYB_BRAK, "brak dopasowania (do utworzenia)"),
+    ]
+
+    DECYZJA_AKCEPTUJ = "akceptuj"
+    DECYZJA_MAPUJ = "mapuj"
+    DECYZJA_POMIN = "pomin"
+    DECYZJA_CHOICES = [
+        (DECYZJA_AKCEPTUJ, "akceptuj (utwórz nowe / użyj auto-dopasowania)"),
+        (DECYZJA_MAPUJ, "mapuj na istniejące"),
+        (DECYZJA_POMIN, "pomiń (nie ustawiaj stanowiska tym wierszom)"),
+    ]
+
+    parent = models.ForeignKey(
+        ImportPracownikow,
+        on_delete=models.CASCADE,
+        related_name="stanowiska_do_decyzji",
+        verbose_name="import pracowników",
+    )
+    nazwa_zrodlowa = models.CharField("nazwa źródłowa", max_length=512)
+    tryb = models.CharField(max_length=20, choices=TRYB_CHOICES)
+    auto_stanowisko = models.ForeignKey(
+        "bpp.StanowiskoDydaktyczne",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="+",
+        verbose_name="auto-dopasowane stanowisko",
+    )
+    auto_similarity = models.FloatField("podobieństwo auto", null=True, blank=True)
+    nazwa_do_utworzenia = models.CharField(
+        "nazwa do utworzenia", max_length=512, blank=True, default=""
+    )
+    skrot_do_utworzenia = models.CharField(
+        "skrót do utworzenia", max_length=128, blank=True, default=""
+    )
+    decyzja = models.CharField(
+        max_length=20, choices=DECYZJA_CHOICES, default=DECYZJA_AKCEPTUJ
+    )
+    wybrane_stanowisko = models.ForeignKey(
+        "bpp.StanowiskoDydaktyczne",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="+",
+        verbose_name="wybrane istniejące stanowisko (mapuj)",
+    )
+    utworzone = models.ForeignKey(
+        "bpp.StanowiskoDydaktyczne",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="+",
+        verbose_name="stanowisko utworzone/rozstrzygnięte",
+        help_text="Ustawiane przez integrację. Guard idempotencji (restart / "
+        "podwójny commit nie duplikuje stanowisk).",
+    )
+
+    class Meta:
+        verbose_name = "decyzja o stanowisku dydaktycznym (import pracowników)"
+        verbose_name_plural = (
+            "decyzje o stanowiskach dydaktycznych (import pracowników)"
+        )
         unique_together = (("parent", "nazwa_zrodlowa"),)
         ordering = ["nazwa_zrodlowa"]
 

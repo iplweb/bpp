@@ -148,6 +148,13 @@ class Autor(LinkDoPBNMixin, ModelZAdnotacjami, ModelZPBN_ID):
     imiona = models.CharField(max_length=512, db_index=True)
     nazwisko = models.CharField(max_length=256, db_index=True)
     tytul = models.ForeignKey(Tytul, CASCADE, blank=True, null=True)
+    stopien_sluzbowy = models.ForeignKey(
+        "bpp.StopienSluzbowy",
+        SET_NULL,
+        blank=True,
+        null=True,
+        verbose_name="stopień służbowy",
+    )
     pseudonim = models.CharField(
         max_length=300,
         blank=True,
@@ -521,6 +528,27 @@ class Funkcja_Autora(NazwaISkrot):
         app_label = "bpp"
 
 
+class StopienSluzbowy(NazwaISkrot):
+    """Stopień służbowy (np. pożarniczy: kpt., bryg.) — słownik na autorze."""
+
+    class Meta:
+        verbose_name = "stopień służbowy"
+        verbose_name_plural = "stopnie służbowe"
+        ordering = ["nazwa"]
+        app_label = "bpp"
+
+
+class StanowiskoDydaktyczne(NazwaISkrot):
+    """Stanowisko dydaktyczne (np. adiunkt, profesor) — słownik na
+    powiązaniu autor-jednostka."""
+
+    class Meta:
+        verbose_name = "stanowisko dydaktyczne"
+        verbose_name_plural = "stanowiska dydaktyczne"
+        ordering = ["nazwa"]
+        app_label = "bpp"
+
+
 class Grupa_Pracownicza(ModelZNazwa):
     class Meta:
         verbose_name = "grupa pracownicza"
@@ -625,6 +653,13 @@ class Autor_Jednostka(models.Model):
         "Zakończył pracę", null=True, blank=True, db_index=True
     )
     funkcja = models.ForeignKey("bpp.Funkcja_Autora", CASCADE, null=True, blank=True)
+    stanowisko = models.ForeignKey(
+        "bpp.StanowiskoDydaktyczne",
+        SET_NULL,
+        null=True,
+        blank=True,
+        verbose_name="stanowisko dydaktyczne",
+    )
 
     podstawowe_miejsce_pracy = models.BooleanField(null=True, blank=True, default=None)
 

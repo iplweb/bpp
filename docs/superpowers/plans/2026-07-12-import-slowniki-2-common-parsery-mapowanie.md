@@ -31,14 +31,15 @@
 - Modify: `src/import_pracownikow/mapping.py` — cele, synonimy, reguła kontekstowa, walidacja.
 - Modify: `src/import_pracownikow/forms.py` — hidden field `profil_zastosowany`.
 - Modify: `src/import_pracownikow/views.py` — fallback profilu + stempel `ostatnio_uzyty`.
-- Testy: `src/import_common/tests/test_sklasyfikuj_stopien.py`, `test_sklasyfikuj_stanowisko.py`, `test_sklasyfikuj_jednostke_niepelna.py`; `src/import_pracownikow/tests/test_parser_komorki.py`, `test_parser_nazwisko_imie.py`, `test_mapping_nowe_cele.py`, `test_mapping_regula_stopien.py`, `test_profil_ostatnio_uzyty.py`.
+- Modify: `src/import_pracownikow/templates/import_pracownikow/mapowanie.html` — info o zastosowanym/dostępnym profilu (spec §13).
+- Testy: `src/import_common/tests/test_core_stopien.py`, `test_core_stanowisko.py`, `test_core_jednostka_niepelna.py`; `src/import_pracownikow/tests/test_parsers/test_jednostka_zlozona.py`, `test_parsers/test_wartosci.py` (dopisz funkcje — plik istnieje), `test_mapping_nowe_cele.py`, `test_mapping_regula_stopien.py`, `test_profil_ostatnio_uzyty.py`.
 
 ---
 
 ## Task 1: Klasyfikator stopni służbowych (`import_common/core/stopien.py`)
 
 **Files:**
-- Test: `src/import_common/tests/test_sklasyfikuj_stopien.py` (create)
+- Test: `src/import_common/tests/test_core_stopien.py` (create)
 - Create: `src/import_common/core/stopien.py`
 
 **Interfaces:**
@@ -47,7 +48,7 @@
 
 - [ ] **Step 1: Write the failing test**
 
-Create `src/import_common/tests/test_sklasyfikuj_stopien.py`:
+Create `src/import_common/tests/test_core_stopien.py`:
 
 ```python
 import pytest
@@ -99,7 +100,7 @@ def test_brak_dopasowania_to_brak():
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `uv run pytest src/import_common/tests/test_sklasyfikuj_stopien.py -v`
+Run: `uv run pytest src/import_common/tests/test_core_stopien.py -v`
 Expected: FAIL — `ModuleNotFoundError: import_common.core.stopien`.
 
 - [ ] **Step 3: Write implementation**
@@ -168,13 +169,13 @@ def zaproponuj_skrot_stopnia(s):
 
 - [ ] **Step 4: Run test to verify it passes**
 
-Run: `uv run pytest src/import_common/tests/test_sklasyfikuj_stopien.py -v`
+Run: `uv run pytest src/import_common/tests/test_core_stopien.py -v`
 Expected: PASS (5 testów).
 
 - [ ] **Step 5: Commit**
 
 ```bash
-git add src/import_common/core/stopien.py src/import_common/tests/test_sklasyfikuj_stopien.py
+git add src/import_common/core/stopien.py src/import_common/tests/test_core_stopien.py
 git commit -m "feat(import_common): klasyfikator stopni służbowych (mirror tytul)"
 ```
 
@@ -183,7 +184,7 @@ git commit -m "feat(import_common): klasyfikator stopni służbowych (mirror tyt
 ## Task 2: Klasyfikator stanowisk dydaktycznych (`import_common/core/stanowisko.py`)
 
 **Files:**
-- Test: `src/import_common/tests/test_sklasyfikuj_stanowisko.py` (create)
+- Test: `src/import_common/tests/test_core_stanowisko.py` (create)
 - Create: `src/import_common/core/stanowisko.py`
 
 **Interfaces:**
@@ -192,7 +193,7 @@ git commit -m "feat(import_common): klasyfikator stopni służbowych (mirror tyt
 
 - [ ] **Step 1: Write the failing test**
 
-Create `src/import_common/tests/test_sklasyfikuj_stanowisko.py`:
+Create `src/import_common/tests/test_core_stanowisko.py`:
 
 ```python
 import pytest
@@ -234,7 +235,7 @@ def test_brak_dopasowania():
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `uv run pytest src/import_common/tests/test_sklasyfikuj_stanowisko.py -v`
+Run: `uv run pytest src/import_common/tests/test_core_stanowisko.py -v`
 Expected: FAIL — `ModuleNotFoundError: import_common.core.stanowisko`.
 
 - [ ] **Step 3: Write implementation**
@@ -299,13 +300,13 @@ def zaproponuj_skrot_stanowiska(s):
 
 - [ ] **Step 4: Run test to verify it passes**
 
-Run: `uv run pytest src/import_common/tests/test_sklasyfikuj_stanowisko.py -v`
+Run: `uv run pytest src/import_common/tests/test_core_stanowisko.py -v`
 Expected: PASS (4 testy).
 
 - [ ] **Step 5: Commit**
 
 ```bash
-git add src/import_common/core/stanowisko.py src/import_common/tests/test_sklasyfikuj_stanowisko.py
+git add src/import_common/core/stanowisko.py src/import_common/tests/test_core_stanowisko.py
 git commit -m "feat(import_common): klasyfikator stanowisk dydaktycznych"
 ```
 
@@ -314,7 +315,7 @@ git commit -m "feat(import_common): klasyfikator stanowisk dydaktycznych"
 ## Task 3: `sklasyfikuj_jednostke_niepelna` (fragment nazwy → jednostka)
 
 **Files:**
-- Test: `src/import_common/tests/test_sklasyfikuj_jednostke_niepelna.py` (create)
+- Test: `src/import_common/tests/test_core_jednostka_niepelna.py` (create)
 - Modify: `src/import_common/core/jednostka.py`
 
 **Interfaces:**
@@ -323,7 +324,7 @@ git commit -m "feat(import_common): klasyfikator stanowisk dydaktycznych"
 
 - [ ] **Step 1: Write the failing test**
 
-Create `src/import_common/tests/test_sklasyfikuj_jednostke_niepelna.py`:
+Create `src/import_common/tests/test_core_jednostka_niepelna.py`:
 
 ```python
 import pytest
@@ -364,11 +365,23 @@ def test_brak_trafienia():
     obj, status, _ = sklasyfikuj_jednostke_niepelna("Kompletnie inny fragment zzz")
     assert obj is None
     assert status == STATUS_JEDNOSTKA_BRAK
+
+
+@pytest.mark.django_db
+def test_fallback_trigram_gdy_brak_substring():
+    # Fragment NIE jest substringiem (icontains puste), ale trigramowo bliski —
+    # gałąź fallback woła sklasyfikuj_jednostke (trigram), więc zamiast twardego
+    # BRAK dostajemy zgadywanie (albo brak), NIGDY crash (spec §6.1 „0 → trigram").
+    baker.make("bpp.Jednostka", nazwa="Instytut Medyczny", widoczna=True)
+    obj, status, _ = sklasyfikuj_jednostke_niepelna("Instytut Medycyzny")
+    assert status in (STATUS_JEDNOSTKA_ZGADYWANIE, STATUS_JEDNOSTKA_BRAK)
+    if status == STATUS_JEDNOSTKA_ZGADYWANIE:
+        assert obj is not None
 ```
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `uv run pytest src/import_common/tests/test_sklasyfikuj_jednostke_niepelna.py -v`
+Run: `uv run pytest src/import_common/tests/test_core_jednostka_niepelna.py -v`
 Expected: FAIL — `ImportError: cannot import name 'sklasyfikuj_jednostke_niepelna'`.
 
 - [ ] **Step 3: Write implementation**
@@ -381,13 +394,18 @@ def sklasyfikuj_jednostke_niepelna(
 ):
     """Klasyfikuje NIEPEŁNĄ nazwę jednostki (fragment, np. „Medyczny").
 
-    Najpierw próba dokładna (``sklasyfikuj_jednostke``) — jeśli ``twardy``,
-    zwróć. Inaczej ``nazwa__icontains`` w SZEROKIM zbiorze widocznych jednostek
-    (CELOWO NIE ``_pula_afiliacyjna`` — wyklucza ona lustra wydziałów, przez co
-    „Wydział Medyczny" nigdy by się nie znalazł). Wynik z gałęzi ``icontains``
-    ma ZAWSZE status ``zgadywanie`` (fragment jest niejednoznaczny), nigdy
-    ``twardy``. Ograniczenie: ``icontains`` nie łapie fleksji („Medyczny" ≠
-    „Medycznego").
+    Najpierw próba dokładna/trigramowa (``sklasyfikuj_jednostke``, z ``prog``) —
+    jeśli ``twardy``, zwróć od razu. Inaczej ``nazwa__icontains`` w SZEROKIM
+    zbiorze widocznych jednostek (CELOWO NIE ``_pula_afiliacyjna`` — wyklucza ona
+    lustra wydziałów, przez co „Wydział Medyczny" nigdy by się nie znalazł);
+    trafienie ``icontains`` ma ZAWSZE status ``zgadywanie`` (fragment jest
+    niejednoznaczny), nigdy ``twardy``. Gdy ``icontains`` jest PUSTE, NIE zwracamy
+    twardego BRAK — oddajemy wynik ``sklasyfikuj_jednostke`` (trigramowe
+    ``zgadywanie`` albo ``brak``), co realizuje spec §6.1 „0 trafień → trigram
+    fallback". Ograniczenie: ``icontains`` nie łapie fleksji („Medyczny" ≠
+    „Medycznego"). Gałąź ``icontains`` filtruje wyłącznie ``widoczna=True`` i
+    IGNORUJE parametr ``wydzial`` (świadome uproszczenie — ujednoznacznienie po
+    wydziale robi tylko gałąź exact/trigram ``sklasyfikuj_jednostke``).
     """
     if not fragment:
         return None, STATUS_JEDNOSTKA_BRAK, None
@@ -395,7 +413,7 @@ def sklasyfikuj_jednostke_niepelna(
     if not frag:
         return None, STATUS_JEDNOSTKA_BRAK, None
 
-    j, status, sim = sklasyfikuj_jednostke(fragment, wydzial)
+    j, status, sim = sklasyfikuj_jednostke(fragment, wydzial, prog=prog)
     if status == STATUS_JEDNOSTKA_TWARDY:
         return j, status, sim
 
@@ -411,18 +429,19 @@ def sklasyfikuj_jednostke_niepelna(
             STATUS_JEDNOSTKA_ZGADYWANIE,
             float(best.sim) if best.sim is not None else None,
         )
-    return None, STATUS_JEDNOSTKA_BRAK, None
+    # icontains puste → NIE twardy BRAK; oddaj trigramowy wynik sklasyfikuj_jednostke.
+    return j, status, sim
 ```
 
 - [ ] **Step 4: Run test to verify it passes**
 
-Run: `uv run pytest src/import_common/tests/test_sklasyfikuj_jednostke_niepelna.py -v`
-Expected: PASS (4 testy).
+Run: `uv run pytest src/import_common/tests/test_core_jednostka_niepelna.py -v`
+Expected: PASS (5 testów).
 
 - [ ] **Step 5: Commit**
 
 ```bash
-git add src/import_common/core/jednostka.py src/import_common/tests/test_sklasyfikuj_jednostke_niepelna.py
+git add src/import_common/core/jednostka.py src/import_common/tests/test_core_jednostka_niepelna.py
 git commit -m "feat(import_common): sklasyfikuj_jednostke_niepelna (icontains, poza pulą afiliacyjną)"
 ```
 
@@ -431,7 +450,7 @@ git commit -m "feat(import_common): sklasyfikuj_jednostke_niepelna (icontains, p
 ## Task 4: Parser „komórki złożonej" (`parsers/jednostka_zlozona.py`)
 
 **Files:**
-- Test: `src/import_pracownikow/tests/test_parser_komorki.py` (create)
+- Test: `src/import_pracownikow/tests/test_parsers/test_jednostka_zlozona.py` (create)
 - Create: `src/import_pracownikow/parsers/jednostka_zlozona.py`
 
 **Interfaces:**
@@ -439,12 +458,12 @@ git commit -m "feat(import_common): sklasyfikuj_jednostke_niepelna (icontains, p
 
 - [ ] **Step 1: Write the failing test**
 
-Create `src/import_pracownikow/tests/test_parser_komorki.py`:
+Create `src/import_pracownikow/tests/test_parsers/test_jednostka_zlozona.py`. Test pokrywa WSZYSTKIE 31 wartości komórek z próbki (spec §7/§14): 10 przypadków z DOKŁADNYMI oczekiwaniami (skrot, nazwa, oddzial) + wszystkie 31 sprawdzane invariantami. Blok `WSZYSTKIE_KOMORKI` jest self-contained — nie wymaga dostępu do `~/Downloads/struktura.xlsx`:
 
 ```python
 import pytest
 
-from import_pracownikow.parsers.jednostka_zlozona import parsuj_komorke
+from import_pracownikow.parsers.jednostka_zlozona import _SKROT_RE, parsuj_komorke
 
 
 @pytest.mark.parametrize(
@@ -494,6 +513,28 @@ from import_pracownikow.parsers.jednostka_zlozona import parsuj_komorke
             "Studium Wychowania Fizycznego",
             "WIBiOL",
         ),
+        # RN-2 — brak oddziału, ogon lowercase „instytut bw"
+        (
+            "RN-2 Instytut Bezpieczeństwa Wewnętrznego instytut bw",
+            "RN-2",
+            "Instytut Bezpieczeństwa Wewnętrznego",
+            None,
+        ),
+        # RW-8 — oddział WIBiOL, ogon lowercase „języki"
+        (
+            "RW-8 Studium Języków Obcych WIBiOL języki",
+            "RW-8",
+            "Studium Języków Obcych",
+            "WIBiOL",
+        ),
+        # RW-1/3 — skrót z ukośnikiem, oddział WIBiOL, ogon „ratchem chemiczne"
+        (
+            "RW-1/3 Zakład Bezpieczeństwa Działań i Ratownictwa Technicznego "
+            "WIBiOL ratchem chemiczne",
+            "RW-1/3",
+            "Zakład Bezpieczeństwa Działań i Ratownictwa Technicznego",
+            "WIBiOL",
+        ),
         # pusta komórka
         ("", None, "", None),
     ],
@@ -503,11 +544,73 @@ def test_parsuj_komorke(komorka, skrot, nazwa, oddzial):
     assert wynik["skrot"] == skrot
     assert wynik["nazwa"] == nazwa
     assert wynik["oddzial"] == oddzial
+
+
+# Wszystkie 31 unikalnych wartości komórek z próbki APOŻ (spec §7/§14) —
+# self-contained, bez dostępu do ~/Downloads/struktura.xlsx.
+WSZYSTKIE_KOMORKI = [
+    "RN-1 Instytut Inżynierii Bezpieczeństwa instytut ib",
+    "RN-2 Instytut Bezpieczeństwa Wewnętrznego instytut bw",
+    "RW-1 Katedra Działań Ratowniczych WIBiOL rat",
+    (
+        "RW-1/1 Zakład Kierowania Działaniami Ratowniczymi, Działań "
+        "Gaśniczych i Łączności WIBiOL taktyka"
+    ),
+    "RW-1/2 Zakład Ratownictwa Chemicznego i Ekologicznego WIBiOL taktyka",
+    (
+        "RW-1/3 Zakład Bezpieczeństwa Działań i Ratownictwa "
+        "Technicznego WIBiOL ratchem chemiczne"
+    ),
+    "RW-2 Katedra Techniki Pożarniczej WIBiOL technika",
+    "RW-2/1 Zakład Mechaniki Stosowanej WIBiOL mechanika",
+    (
+        "RW-2/2 Zakład Hydromechaniki i Ppoż. Zaopatrzenia w Wodę "
+        "WIBiOL hydra hydromechanika"
+    ),
+    "RW-2/3 Zakład Sprzętu Ratowniczego WIBiOL sprzęt",
+    "RW-2/4 Zakład Elektroenergetyki WIBiOL elektroenergetyka",
+    "RW-3 Katedra Przeciwdziałania Zagrożeniom WIBiOL bezpieczeństwo",
+    (
+        "RW-3/1 Zakład Bezpieczeństwa Pożarowego Budynków i Budowli "
+        "Ochronnych WIBiOL bezpieczeństwo budynków"
+    ),
+    "RW-3/2 Zakład Podstaw Budownictwa i Materiałów Budowlanych WIBiOL budownictwo",
+    "RW-3/3 Zakład Technicznych Systemów Zabezpieczeń WIBiOL tsz",
+    "RW-4 Katedra Nauk Ścisłych WIBiOL ścisłe",
+    "RW-4/1 Zakład Matematyki i Informatyki WIBiOL matematyka informatyka",
+    "RW-4/2 Zakład Fizyki i Chemii WIBiOL fizyka chemia",
+    "RW-5 Katedra Procesów Spalania WIBiOL spalanie wybuchy gaszenie",
+    "RW-5/1 Zakład Teorii Procesów Spalania i Wybuchu WIBiOL spalanie",
+    "RW-5/2 Zakład Środków Gaśniczych i Neutralizujących WIBiOL środki",
+    "RW-5/3 Zakład Badania Przyczyn Pożarów i Rozpoznawania Zagrożeń WIBiOL pożary",
+    "RW-6 Katedra Ochrony Ludności i Obrony Cywilnej WIBiOL bezp",
+    "RW-6/1 Zakład Zintegrowanych Systemów Bezpieczeństwa WIBiOL bezp",
+    "RW-6/2 Zakład Bezpieczeństwa Wewnętrznego WIBiOL bezp",
+    "RW-6/3 Zakład Nauk Społecznych WIBiOL",
+    "RW-7 Katedra Ratownictwa Medycznego WIBiOL społ",
+    "RW-7/1 Zakład Medycznych Działań Ratowniczych WIBiOL medyczne RM",
+    "RW-7/2 Zakład Medycyny Ratunkowej WIBiOL medyczne RM",
+    "RW-8 Studium Języków Obcych WIBiOL języki",
+    "RW-9 Studium Wychowania Fizycznego WIBiOL wf",
+]
+
+
+@pytest.mark.parametrize("komorka", WSZYSTKIE_KOMORKI)
+def test_parsuj_komorke_invarianty(komorka):
+    """Invarianty na wszystkich 31 wartościach (bez dokładnych oczekiwań):
+    skrót pasuje do wzorca albo None; oddział ∈ {WIBiOL, None}; nazwa niepusta
+    i nie zaczyna się od tokenu skrótu."""
+    wynik = parsuj_komorke(komorka)
+    assert wynik["skrot"] is None or _SKROT_RE.match(wynik["skrot"])
+    assert wynik["oddzial"] in {"WIBiOL", None}
+    assert wynik["nazwa"] != ""
+    if wynik["skrot"] is not None:
+        assert not wynik["nazwa"].startswith(wynik["skrot"])
 ```
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `uv run pytest src/import_pracownikow/tests/test_parser_komorki.py -v`
+Run: `uv run pytest src/import_pracownikow/tests/test_parsers/test_jednostka_zlozona.py -v`
 Expected: FAIL — `ModuleNotFoundError: import_pracownikow.parsers.jednostka_zlozona`.
 
 - [ ] **Step 3: Write implementation**
@@ -520,6 +623,11 @@ Create `src/import_pracownikow/parsers/jednostka_zlozona.py`:
 Czysty rdzeń (bez ORM), testowalny tabelarycznie. Wynik zasila decyzję o
 jednostce (skrót → ``skrot_hint`` reconcilera; nazwa → nazwa źródłowa; oddział
 → hint wydziału rozwiązywany PO skrócie w warstwie analizy).
+
+Ograniczenie: w gałęzi BEZ oddziału końcowy ciąg tokenów all-lowercase jest
+ucinany — nazwa kończąca się słowami pisanymi małą literą (np. „Studium
+języków obcych") zostałaby przycięta; w danych APOŻ nie występuje (nazwy
+Kapitalizowane), ale to znane ograniczenie.
 """
 
 import re
@@ -570,13 +678,13 @@ def parsuj_komorke(komorka):
 
 - [ ] **Step 4: Run test to verify it passes**
 
-Run: `uv run pytest src/import_pracownikow/tests/test_parser_komorki.py -v`
-Expected: PASS (7 przypadków parametryzacji).
+Run: `uv run pytest src/import_pracownikow/tests/test_parsers/test_jednostka_zlozona.py -v`
+Expected: PASS (10 przypadków dokładnych + 31 przypadków invariantów).
 
 - [ ] **Step 5: Commit**
 
 ```bash
-git add src/import_pracownikow/parsers/jednostka_zlozona.py src/import_pracownikow/tests/test_parser_komorki.py
+git add src/import_pracownikow/parsers/jednostka_zlozona.py src/import_pracownikow/tests/test_parsers/test_jednostka_zlozona.py
 git commit -m "feat(import_pracownikow): parser komórki złożonej (skrót+nazwa+oddział)"
 ```
 
@@ -585,7 +693,7 @@ git commit -m "feat(import_pracownikow): parser komórki złożonej (skrót+nazw
 ## Task 5: Split „nazwisko imię" (deterministyczny, nazwisko-first)
 
 **Files:**
-- Test: `src/import_pracownikow/tests/test_parser_nazwisko_imie.py` (create)
+- Test: `src/import_pracownikow/tests/test_parsers/test_wartosci.py` (modify — dopisz funkcje w istniejącym pliku, NIE twórz osobnego)
 - Modify: `src/import_pracownikow/parsers/wartosci.py`
 
 **Interfaces:**
@@ -593,7 +701,7 @@ git commit -m "feat(import_pracownikow): parser komórki złożonej (skrót+nazw
 
 - [ ] **Step 1: Write the failing test**
 
-Create `src/import_pracownikow/tests/test_parser_nazwisko_imie.py`:
+Dopisz funkcje w istniejącym `src/import_pracownikow/tests/test_parsers/test_wartosci.py` (NIE twórz osobnego pliku; import scal z importami na górze pliku):
 
 ```python
 from import_pracownikow.parsers.wartosci import rozbij_nazwisko_imie
@@ -627,7 +735,7 @@ def test_brak_klucza_no_op():
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `uv run pytest src/import_pracownikow/tests/test_parser_nazwisko_imie.py -v`
+Run: `uv run pytest src/import_pracownikow/tests/test_parsers/test_wartosci.py -v`
 Expected: FAIL — `ImportError: cannot import name 'rozbij_nazwisko_imie'`.
 
 - [ ] **Step 3: Write implementation**
@@ -642,6 +750,9 @@ def rozbij_nazwisko_imie(dane: dict) -> dict:
 
     Ograniczenie: dwuczłonowe nazwiska bez łącznika nie są rozbijane (pierwszy
     token = całe nazwisko). ``Ciuka-Witrylak`` (łącznik = 1 token) działa.
+
+    Edge: 1 token (np. ``{"nazwisko_imię": "Kowalski"}``) → ``imię=""`` — wiersz
+    i tak trafi do ``AutorForm`` (puste ``imię`` obsłuży walidacja formularza).
     """
     combined = str(dane.get("nazwisko_imię") or "").strip()
     if combined:
@@ -657,13 +768,13 @@ def rozbij_nazwisko_imie(dane: dict) -> dict:
 
 - [ ] **Step 4: Run test to verify it passes**
 
-Run: `uv run pytest src/import_pracownikow/tests/test_parser_nazwisko_imie.py -v`
-Expected: PASS (4 testy).
+Run: `uv run pytest src/import_pracownikow/tests/test_parsers/test_wartosci.py -v`
+Expected: PASS (dopisane 4 testy + istniejące testy `test_wartosci.py` bez regresji).
 
 - [ ] **Step 5: Commit**
 
 ```bash
-git add src/import_pracownikow/parsers/wartosci.py src/import_pracownikow/tests/test_parser_nazwisko_imie.py
+git add src/import_pracownikow/parsers/wartosci.py src/import_pracownikow/tests/test_parsers/test_wartosci.py
 git commit -m "feat(import_pracownikow): deterministyczny split nazwisko-imię"
 ```
 
@@ -687,7 +798,6 @@ Create `src/import_pracownikow/tests/test_mapping_nowe_cele.py`:
 ```python
 from import_pracownikow.mapping import (
     POLA_DOCELOWE,
-    POLE_POMIN,
     waliduj_mapowanie,
     zaproponuj_mapowanie,
 )
@@ -732,7 +842,7 @@ def test_niepelna_nazwa_spelnia_wymog_jednostki():
 
 def test_brak_jednostki_daje_blad():
     bledy = waliduj_mapowanie({"a": "nazwisko", "b": "imię"})
-    assert any("jednostka" in e.lower() for e in bledy)
+    assert any("jednostk" in e.lower() for e in bledy)
 ```
 
 Create `src/import_pracownikow/tests/test_mapping_regula_stopien.py`:
@@ -816,7 +926,10 @@ W `waliduj_mapowanie`, w regule identyfikacji osoby dodaj `nazwisko_imię` jako 
         )
     pola_jednostki = {"nazwa_jednostki", "nazwa_jednostki_niepelna", "komórka_złożona"}
     if not (pola_jednostki & set(uzyte)):
-        bledy.append("Brak wymaganego pola: nazwa jednostki")
+        bledy.append(
+            "Brak jednostki: zmapuj 'nazwa jednostki', 'niepełna nazwa "
+            "jednostki' albo 'komórka złożona'."
+        )
 ```
 
 (Zastąp dotychczasowe dwa warunki — `ma_nazwisko_imie or ma_osobe` oraz `_POLE_JEDNOSTKA not in uzyte` — powyższymi.)
@@ -852,12 +965,12 @@ def zaproponuj_mapowanie(naglowki):
     return baza
 ```
 
-Uwaga: goły `stopień`/`stopien` NIE jest w `_SYNONIMY` (Step 4), więc `_dopasuj_naglowek` skieruje go fallbackiem `_SYNONIMY_ZAWIERA` na `tytuł_stopień` — a powyższy post-pass koryguje na `stopień_służbowy`, gdy jest tytuł.
+Uwaga: goły `stopień`/`stopien` ZOSTAJE w `_SYNONIMY` (→`tytuł_stopień`) — tych wpisów NIE usuwamy, bo zasilają `TRY_NAMES` (detekcję nagłówka). `_dopasuj_naglowek` skieruje więc goły stopień na `tytuł_stopień`, a powyższy post-pass i tak nadpisuje `baza[h]` (niezależnie od źródła dopasowania) na `stopień_służbowy`, gdy w zbiorze jest OSOBNA kolumna tytułu.
 
 - [ ] **Step 7: Run tests to verify they pass**
 
-Run: `uv run pytest src/import_pracownikow/tests/test_mapping_nowe_cele.py src/import_pracownikow/tests/test_mapping_regula_stopien.py src/import_pracownikow/tests/test_mapping_ihit.py -v`
-Expected: PASS (nowe testy + istniejący `test_mapping_ihit.py` bez regresji).
+Run: `uv run pytest src/import_pracownikow/tests/test_mapping_nowe_cele.py src/import_pracownikow/tests/test_mapping_regula_stopien.py src/import_pracownikow/tests/test_mapping.py src/import_pracownikow/tests/test_mapping_ihit.py -v`
+Expected: PASS (nowe testy + istniejące `test_mapping.py`/`test_mapping_ihit.py` bez regresji przy przepisaniu `waliduj_mapowanie`/`zaproponuj_mapowanie`).
 
 - [ ] **Step 8: Commit**
 
@@ -876,10 +989,11 @@ git commit -m "feat(import_pracownikow): nowe cele mapowania + reguła konteksto
 - Test: `src/import_pracownikow/tests/test_profil_ostatnio_uzyty.py` (create)
 - Modify: `src/import_pracownikow/forms.py`
 - Modify: `src/import_pracownikow/views.py`
+- Modify: `src/import_pracownikow/templates/import_pracownikow/mapowanie.html` — info o zastosowanym/dostępnym profilu (spec §13).
 
 **Interfaces:**
 - Consumes: `ProfilMapowania` (istniejący, pola `mapowanie`, `ostatnio_uzyty`), `dopasuj_profil`, `MapowanieView`.
-- Produces: ukryte pole `MapowanieForm.profil_zastosowany` (IntegerField); helper `wybierz_profil_fallback(naglowki, prog=0.5) -> ProfilMapowania|None` w `mapping.py`; stempel `ostatnio_uzyty` w `MapowanieView.form_valid`.
+- Produces: ukryte pole `MapowanieForm.profil_zastosowany` (IntegerField); helper `wybierz_profil_fallback(naglowki, prog=0.5) -> ProfilMapowania|None` w `mapping.py`; stempel `ostatnio_uzyty` w `MapowanieView.form_valid`; nazwa profilu w kontekście `MapowanieView` + info w `mapowanie.html` (spec §13).
 
 - [ ] **Step 1: Write the failing test**
 
@@ -938,25 +1052,29 @@ Dodaj na końcu `src/import_pracownikow/mapping.py`:
 
 ```python
 def wybierz_profil_fallback(naglowki, prog=0.5):
-    """Ostatnio użyty profil jako fallback — TYLKO gdy pokrywa ≥ ``prog`` swoich
-    kluczy w nagłówkach pliku. Chroni przed nałożeniem profilu z innej uczelni
-    (np. reguła kontekstowa `stopień` §9 zostałaby zignorowana). Import lokalny
-    (ORM lazy). Zwraca ``ProfilMapowania`` albo ``None``."""
+    """NAJNOWSZY ostemplowany profil jako fallback — zwracany TYLKO gdy pokrywa
+    ≥ ``prog`` swoich kluczy w nagłówkach pliku. Bierzemy WYŁĄCZNIE najnowszy
+    (``order_by("-ostatnio_uzyty").first()``) i NIE schodzimy do starszych:
+    chroni przed nałożeniem cudzego (np. z innej uczelni) profilu, którego
+    reguła kontekstowa `stopień` §9 zostałaby zignorowana. Import lokalny (ORM
+    lazy). Zwraca ``ProfilMapowania`` albo ``None``."""
     from import_pracownikow.models import ProfilMapowania
 
     zbior = set(naglowki)
     if not zbior:
         return None
-    for profil in ProfilMapowania.objects.filter(
-        ostatnio_uzyty__isnull=False
-    ).order_by("-ostatnio_uzyty"):
-        klucze = set(profil.mapowanie.keys())
-        if not klucze:
-            continue
-        pokrycie = len(zbior & klucze) / len(klucze)
-        if pokrycie >= prog:
-            return profil
-    return None
+    profil = (
+        ProfilMapowania.objects.filter(ostatnio_uzyty__isnull=False)
+        .order_by("-ostatnio_uzyty")
+        .first()
+    )
+    if profil is None:
+        return None
+    klucze = set(profil.mapowanie.keys())
+    if not klucze:
+        return None
+    pokrycie = len(zbior & klucze) / len(klucze)
+    return profil if pokrycie >= prog else None
 ```
 
 - [ ] **Step 4: Dodaj ukryte pole do `MapowanieForm`**
@@ -998,16 +1116,45 @@ W `MapowanieView.form_valid`, PO bloku `if form.cleaned_data.get("zapisz_profil"
             )
 ```
 
-- [ ] **Step 6: Run tests to verify they pass**
+- [ ] **Step 6: Info o profilu w `mapowanie.html` (spec §13)**
+
+W `MapowanieView.get_form_kwargs` (Step 5), po wyliczeniu `profil`, zapamiętaj go na instancji: `self._profil_zastosowany = profil` (gdy `profil` to `None` — też zapisz `None`).
+
+W istniejącym `MapowanieView.get_context_data` wystaw nazwę do kontekstu:
+
+```python
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        profil = getattr(self, "_profil_zastosowany", None)
+        ctx["profil_zastosowany_nazwa"] = profil.nazwa if profil else None
+        return ctx
+```
+
+Uwaga: jeśli `MapowanieView` MA już `get_context_data`, dopisz tylko dwie nowe linie (`profil = ...` + `ctx["profil_zastosowany_nazwa"] = ...`) do ISTNIEJĄCEJ metody — ZACHOWAJ dotychczasowe klucze (`ctx["object"]`, `ctx["probka_rows"]` itd.), NIE zastępuj metody tym snippetem.
+
+W `src/import_pracownikow/templates/import_pracownikow/mapowanie.html` wyświetl informacyjnie nazwę zastosowanego/dostępnego schematu (nad formularzem mapowania):
+
+```django
+{% if profil_zastosowany_nazwa %}
+  <div class="callout secondary" data-profil-info>
+    Zastosowano ostatni schemat mapowania: «{{ profil_zastosowany_nazwa }}».
+  </div>
+{% endif %}
+```
+
+Poza zakresem tej iteracji: przycisk „Zastosuj ostatni schemat" dla profilu PONIŻEJ progu pokrycia (gdy `wybierz_profil_fallback` zwróciło `None`, a jakiś ostemplowany profil mimo to istnieje) — wymaga osobnego POST/JS i świadomej decyzji użytkownika, więc NIE implementujemy go tutaj.
+
+- [ ] **Step 7: Run tests to verify they pass**
 
 Run: `uv run pytest src/import_pracownikow/tests/test_profil_ostatnio_uzyty.py src/import_pracownikow/tests/test_views_mapowanie.py -v`
 Expected: PASS (nowe testy + istniejące testy mapowania bez regresji).
 
-- [ ] **Step 7: Commit**
+- [ ] **Step 8: Commit**
 
 ```bash
 git add src/import_pracownikow/mapping.py src/import_pracownikow/forms.py \
   src/import_pracownikow/views.py \
+  src/import_pracownikow/templates/import_pracownikow/mapowanie.html \
   src/import_pracownikow/tests/test_profil_ostatnio_uzyty.py
 git commit -m "feat(import_pracownikow): profil ostatnio użyty (fallback z progiem + stempel)"
 ```
@@ -1020,13 +1167,15 @@ git commit -m "feat(import_pracownikow): profil ostatnio użyty (fallback z prog
 
 Run:
 ```bash
-uv run pytest src/import_common/tests/test_sklasyfikuj_stopien.py \
-  src/import_common/tests/test_sklasyfikuj_stanowisko.py \
-  src/import_common/tests/test_sklasyfikuj_jednostke_niepelna.py \
-  src/import_pracownikow/tests/test_parser_komorki.py \
-  src/import_pracownikow/tests/test_parser_nazwisko_imie.py \
+uv run pytest src/import_common/tests/test_core_stopien.py \
+  src/import_common/tests/test_core_stanowisko.py \
+  src/import_common/tests/test_core_jednostka_niepelna.py \
+  src/import_pracownikow/tests/test_parsers/test_jednostka_zlozona.py \
+  src/import_pracownikow/tests/test_parsers/test_wartosci.py \
   src/import_pracownikow/tests/test_mapping_nowe_cele.py \
   src/import_pracownikow/tests/test_mapping_regula_stopien.py \
+  src/import_pracownikow/tests/test_mapping.py \
+  src/import_pracownikow/tests/test_mapping_ihit.py \
   src/import_pracownikow/tests/test_profil_ostatnio_uzyty.py \
   -v 2>&1 | tee /tmp/plan2_tests.log
 ```

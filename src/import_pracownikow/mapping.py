@@ -14,25 +14,31 @@ POLA_DOCELOWE = [
     ("imię", "Imię"),
     ("drugie_imię", "Drugie imię"),
     ("osoba_sklejona", "Osoba (tytuł+imię+nazwisko w jednej komórce)"),
+    ("nazwisko_imię", "Nazwisko i imię (jedna komórka, nazwisko-first)"),
     ("nazwa_jednostki", "Nazwa jednostki"),
+    ("nazwa_jednostki_niepelna", "Niepełna nazwa jednostki"),
+    ("komórka_złożona", "Komórka (skrót + nazwa + oddział + znacznik)"),
     ("wydział", "Wydział"),
     ("tytuł_stopień", "Tytuł / stopień"),
-    ("stanowisko", "Stanowisko"),
+    ("stopień_służbowy", "Stopień służbowy"),
+    ("stanowisko", "Funkcja w jednostce"),
+    ("stanowisko_dydaktyczne", "Stanowisko dydaktyczne"),
     ("grupa_pracownicza", "Grupa pracownicza"),
     ("wymiar_etatu", "Wymiar etatu"),
     ("data_zatrudnienia", "Data zatrudnienia"),
     ("data_końca_zatrudnienia", "Data końca zatrudnienia"),
     ("podstawowe_miejsce_pracy", "Podstawowe miejsce pracy"),
     ("numer", "Numer (system kadrowy)"),
+    ("email", "E-mail"),
     ("orcid", "ORCID"),
     ("pbn_uuid", "PBN UUID"),
     ("bpp_id", "BPP ID"),
 ]
 
 # Pola identyfikacyjne — mapowanie MUSI zawierać (nazwisko+imię LUB
-# osoba_sklejona) ORAZ jednostkę (patrz waliduj_mapowanie).
+# osoba_sklejona LUB nazwisko_imię) ORAZ jednostkę (nazwa_jednostki /
+# nazwa_jednostki_niepelna / komórka_złożona — patrz waliduj_mapowanie).
 _POLA_IDENTYFIKACJI = {"nazwisko", "imię"}
-_POLE_JEDNOSTKA = "nazwa_jednostki"
 
 # Synonimy: znormalizowany nagłówek pliku → pole docelowe. Znormalizowany tak
 # jak robi to normalize_cell_header (lower, spacje/kropki/myślniki → "_").
@@ -79,7 +85,26 @@ _SYNONIMY = {
     "tytul": "tytuł_stopień",
     "stopień": "tytuł_stopień",
     "stopien": "tytuł_stopień",
+    "stopień_służbowy": "stopień_służbowy",
+    "stopien_sluzbowy": "stopień_służbowy",
+    "stopień_pożarniczy": "stopień_służbowy",
+    "stopien_pozarniczy": "stopień_służbowy",
     "stanowisko": "stanowisko",
+    "funkcja": "stanowisko",
+    "funkcja_w_jednostce": "stanowisko",
+    "stanowisko_dydakt": "stanowisko_dydaktyczne",
+    "stanowisko_dydaktyczne": "stanowisko_dydaktyczne",
+    "stanowisko_dyd": "stanowisko_dydaktyczne",
+    "email": "email",
+    "e_mail": "email",
+    "mail": "email",
+    "poczta": "email",
+    "adres_email": "email",
+    "nazwisko_imię": "nazwisko_imię",
+    "nazwisko_imie": "nazwisko_imię",
+    "komórka": "komórka_złożona",
+    "komorka": "komórka_złożona",
+    "komorka_zlozona": "komórka_złożona",
     "grupa_pracownicza": "grupa_pracownicza",
     "grupa": "grupa_pracownicza",
     "wymiar_etatu": "wymiar_etatu",
@@ -161,11 +186,29 @@ def _dopasuj_naglowek(h):
     return POLE_POMIN
 
 
+# Nagłówki (znormalizowane) traktowane jako „goły stopień" — rozstrzygane
+# kontekstowo (patrz zaproponuj_mapowanie).
+_GOLY_STOPIEN = {"stopień", "stopien"}
+
+
 def zaproponuj_mapowanie(naglowki):
-    """Dla listy znormalizowanych nagłówków pliku zwraca słownik
-    ``{naglowek: pole_docelowe_lub_POLE_POMIN}`` na podstawie synonimów
-    (dokładnych oraz podłańcuchowych — patrz ``_dopasuj_naglowek``)."""
-    return {h: _dopasuj_naglowek(h) for h in naglowki}
+    """``{naglowek: pole_docelowe}`` na podstawie synonimów + reguła kontekstowa.
+
+    Goły „stopień"/„stopien" jest DWUZNACZNY: gdy w pliku jest TAKŻE kolumna
+    tytułu (inny nagłówek → ``tytuł_stopień``), goły stopień oznacza stopień
+    SŁUŻBOWY; gdy nie ma tytułu — stopień NAUKOWY (``tytuł_stopień``). Inaczej
+    dwie kolumny wpadłyby oba na ``tytuł_stopień`` → duplikat celu → walidacja
+    odrzuca plik.
+    """
+    baza = {h: _dopasuj_naglowek(h) for h in naglowki}
+    # Czy istnieje kolumna tytułu INNA niż sam goły stopień?
+    ma_tytul = any(
+        cel == "tytuł_stopień" and h not in _GOLY_STOPIEN for h, cel in baza.items()
+    )
+    for h in naglowki:
+        if h in _GOLY_STOPIEN:
+            baza[h] = "stopień_służbowy" if ma_tytul else "tytuł_stopień"
+    return baza
 
 
 def waliduj_mapowanie(mapowanie):
@@ -178,13 +221,18 @@ def waliduj_mapowanie(mapowanie):
 
     ma_nazwisko_imie = _POLA_IDENTYFIKACJI <= set(uzyte)
     ma_osobe = "osoba_sklejona" in uzyte
-    if not (ma_nazwisko_imie or ma_osobe):
+    ma_nazwisko_imie_kol = "nazwisko_imię" in uzyte
+    if not (ma_nazwisko_imie or ma_osobe or ma_nazwisko_imie_kol):
         bledy.append(
-            "Brak identyfikacji osoby: zmapuj 'nazwisko' + 'imię' albo "
-            "'osoba (sklejona)'."
+            "Brak identyfikacji osoby: zmapuj 'nazwisko' + 'imię', "
+            "'osoba (sklejona)' albo 'nazwisko i imię (jedna komórka)'."
         )
-    if _POLE_JEDNOSTKA not in uzyte:
-        bledy.append("Brak wymaganego pola: nazwa jednostki")
+    pola_jednostki = {"nazwa_jednostki", "nazwa_jednostki_niepelna", "komórka_złożona"}
+    if not (pola_jednostki & set(uzyte)):
+        bledy.append(
+            "Brak jednostki: zmapuj 'nazwa jednostki', 'niepełna nazwa "
+            "jednostki' albo 'komórka złożona'."
+        )
 
     for pole in set(uzyte):
         if uzyte.count(pole) > 1:
@@ -233,3 +281,29 @@ def dopasuj_profil(naglowki):
             najlepszy = profil
             najlepsze_pokrycie = pokrycie
     return najlepszy
+
+
+def wybierz_profil_fallback(naglowki, prog=0.5):
+    """NAJNOWSZY ostemplowany profil jako fallback — zwracany TYLKO gdy pokrywa
+    ≥ ``prog`` swoich kluczy w nagłówkach pliku. Bierzemy WYŁĄCZNIE najnowszy
+    (``order_by("-ostatnio_uzyty").first()``) i NIE schodzimy do starszych:
+    chroni przed nałożeniem cudzego (np. z innej uczelni) profilu, którego
+    reguła kontekstowa `stopień` §9 zostałaby zignorowana. Import lokalny (ORM
+    lazy). Zwraca ``ProfilMapowania`` albo ``None``."""
+    from import_pracownikow.models import ProfilMapowania
+
+    zbior = set(naglowki)
+    if not zbior:
+        return None
+    profil = (
+        ProfilMapowania.objects.filter(ostatnio_uzyty__isnull=False)
+        .order_by("-ostatnio_uzyty")
+        .first()
+    )
+    if profil is None:
+        return None
+    klucze = set(profil.mapowanie.keys())
+    if not klucze:
+        return None
+    pokrycie = len(zbior & klucze) / len(klucze)
+    return profil if pokrycie >= prog else None

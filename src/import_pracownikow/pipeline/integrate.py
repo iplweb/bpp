@@ -33,11 +33,15 @@ from bpp.models import (
     Funkcja_Autora,
     Grupa_Pracownicza,
     Jednostka,
+    StanowiskoDydaktyczne,
+    StopienSluzbowy,
     Tytul,
     Uczelnia,
     Wymiar_Etatu,
 )
 from import_common.core.jednostka import unikalny_skrot, zaproponuj_skrot
+from import_common.core.stanowisko import zaproponuj_skrot_stanowiska
+from import_common.core.stopien import zaproponuj_skrot_stopnia
 from import_common.core.tytul import zaproponuj_skrot_tytulu
 from import_common.normalization import (
     normalize_funkcja_autora,
@@ -47,6 +51,8 @@ from import_common.normalization import (
 from import_pracownikow.models import (
     ImportPracownikow,
     ImportPracownikowJednostka,
+    ImportPracownikowStanowisko,
+    ImportPracownikowStopien,
     ImportPracownikowTytul,
     wiersz_kwalifikuje_do_przepiecia,
 )
@@ -90,7 +96,10 @@ def _materializuj_diff(row):
         row.autor_jednostka, _ = Autor_Jednostka.objects.get_or_create(
             autor_id=diff["autor_jednostka"]["autor"],
             jednostka_id=diff["autor_jednostka"]["jednostka"],
-            defaults={"funkcja": row.funkcja_autora},
+            defaults={
+                "funkcja": row.funkcja_autora,
+                "stanowisko": row.stanowisko_dydaktyczne,
+            },
         )
 
 
@@ -349,6 +358,7 @@ def _przygotuj_nowego_autora(row, cache):
     dane = row.dane_znormalizowane or {}
     nazwisko = (dane.get("nazwisko") or "").strip()
     imiona = (dane.get("imię") or "").strip()
+    email = (dane.get("email") or "").strip()
     if not imiona:
         return False
     klucz = (nazwisko, imiona, row.tytul_id)
@@ -356,10 +366,14 @@ def _przygotuj_nowego_autora(row, cache):
         autor = cache.get(klucz)
         utworzono = autor is None
         if utworzono:
+            # e-mail = no-overwrite dotyczy tylko ISTNIEJĄCYCH; nowy autor
+            # zapisuje z pliku (spec §11.2). Stopień z FK row.stopien (analiza).
             autor = Autor.objects.create(
                 nazwisko=nazwisko,
                 imiona=imiona,
                 tytul=row.tytul,
+                stopien_sluzbowy=row.stopien,
+                email=email,
             )
             cache[klucz] = autor
         row.autor = autor
@@ -529,6 +543,47 @@ def unikalny_skrot_tytulu(base, zajete=None):
         i += 1
 
 
+def unikalny_skrot_stopnia(base, zajete=None):
+    """Mirror ``unikalny_skrot_tytulu`` na ``StopienSluzbowy.skrot``."""
+    zajete = set(zajete or ())
+    base = (base or "").strip()[:128] or "ST"
+
+    def wolny(s):
+        return s not in zajete and not StopienSluzbowy.objects.filter(skrot=s).exists()
+
+    if wolny(base):
+        return base
+    i = 2
+    while True:
+        suf = str(i)
+        kand = base[: 128 - len(suf)] + suf
+        if wolny(kand):
+            return kand
+        i += 1
+
+
+def unikalny_skrot_stanowiska(base, zajete=None):
+    """Mirror ``unikalny_skrot_stopnia`` na ``StanowiskoDydaktyczne.skrot``."""
+    zajete = set(zajete or ())
+    base = (base or "").strip()[:128] or "SD"
+
+    def wolny(s):
+        return (
+            s not in zajete
+            and not StanowiskoDydaktyczne.objects.filter(skrot=s).exists()
+        )
+
+    if wolny(base):
+        return base
+    i = 2
+    while True:
+        suf = str(i)
+        kand = base[: 128 - len(suf)] + suf
+        if wolny(kand):
+            return kand
+        i += 1
+
+
 def _rozstrzygnij_jeden_tytul(dec, zajete_nazwy, zajete_skroty, p):
     """Zwraca ``(tytul|None, czy_utworzono_nowy)`` dla jednej decyzji o tytule.
 
@@ -631,6 +686,138 @@ def _rozstrzygnij_tytuly(parent, p):
     return utworzono
 
 
+def _rozstrzygnij_jeden_stopien(dec, zajete_nazwy, zajete_skroty, p):
+    """Mirror ``_rozstrzygnij_jeden_tytul`` dla ``StopienSluzbowy``."""
+    if dec.utworzony_id is not None:
+        return dec.utworzony, False
+    if dec.decyzja == ImportPracownikowStopien.DECYZJA_POMIN:
+        return None, False
+    if dec.decyzja == ImportPracownikowStopien.DECYZJA_MAPUJ:
+        return dec.wybrany_stopien, False
+    if dec.tryb == ImportPracownikowStopien.TRYB_ZGADYWANIE:
+        return dec.auto_stopien, False
+
+    nazwa = (dec.nazwa_do_utworzenia or "").strip() or (
+        dec.nazwa_zrodlowa or ""
+    ).strip()
+    nazwa = nazwa[:512]
+    istniejacy = StopienSluzbowy.objects.filter(nazwa__iexact=nazwa).first()
+    if istniejacy is not None:
+        return istniejacy, False
+    baza_skrotu = dec.skrot_do_utworzenia or zaproponuj_skrot_stopnia(
+        dec.nazwa_zrodlowa
+    )
+    skrot = unikalny_skrot_stopnia(baza_skrotu, zajete_skroty)
+    nowy = StopienSluzbowy.objects.create(nazwa=nazwa, skrot=skrot)
+    zajete_nazwy.add(nazwa)
+    zajete_skroty.add(skrot)
+    return nowy, True
+
+
+def _podlacz_wiersze_do_stopni(parent):
+    """Mirror ``_podlacz_wiersze_do_tytulow`` — ``row.stopien``. Recompute
+    ``zmiany_potrzebne`` (monotone) TYLKO gdy autor ustawiony (stopień jest na
+    Autorze; ``check_if_integration_needed`` sięga ``self.autor``)."""
+    for row in parent.importpracownikowrow_set.filter(
+        zrodlo_stopnia__isnull=False
+    ).select_related("zrodlo_stopnia", "autor", "autor_jednostka"):
+        row.stopien = row.zrodlo_stopnia.utworzony
+        if row.autor_id is not None:
+            row.zmiany_potrzebne = (
+                bool(row.diff_do_utworzenia)
+                or row.check_if_integration_needed()
+                or row.zmiany_potrzebne
+            )
+            row.save(update_fields=["stopien", "zmiany_potrzebne"])
+        else:
+            row.save(update_fields=["stopien"])
+
+
+def _rozstrzygnij_stopnie(parent, p):
+    """Mirror ``_rozstrzygnij_tytuly`` dla stopni służbowych."""
+    zajete_nazwy = set()
+    zajete_skroty = set()
+    utworzono = 0
+    for dec in parent.stopnie_do_decyzji.all():
+        with transaction.atomic():
+            stopien, utworzono_nowy = _rozstrzygnij_jeden_stopien(
+                dec, zajete_nazwy, zajete_skroty, p
+            )
+            if stopien is not None and dec.utworzony_id != stopien.pk:
+                dec.utworzony = stopien
+                dec.save(update_fields=["utworzony"])
+        if utworzono_nowy:
+            utworzono += 1
+    _podlacz_wiersze_do_stopni(parent)
+    return utworzono
+
+
+def _rozstrzygnij_jedno_stanowisko(dec, zajete_nazwy, zajete_skroty, p):
+    """Mirror ``_rozstrzygnij_jeden_stopien`` dla ``StanowiskoDydaktyczne``."""
+    if dec.utworzone_id is not None:
+        return dec.utworzone, False
+    if dec.decyzja == ImportPracownikowStanowisko.DECYZJA_POMIN:
+        return None, False
+    if dec.decyzja == ImportPracownikowStanowisko.DECYZJA_MAPUJ:
+        return dec.wybrane_stanowisko, False
+    if dec.tryb == ImportPracownikowStanowisko.TRYB_ZGADYWANIE:
+        return dec.auto_stanowisko, False
+
+    nazwa = (dec.nazwa_do_utworzenia or "").strip() or (
+        dec.nazwa_zrodlowa or ""
+    ).strip()
+    nazwa = nazwa[:512]
+    istniejace = StanowiskoDydaktyczne.objects.filter(nazwa__iexact=nazwa).first()
+    if istniejace is not None:
+        return istniejace, False
+    baza_skrotu = dec.skrot_do_utworzenia or zaproponuj_skrot_stanowiska(
+        dec.nazwa_zrodlowa
+    )
+    skrot = unikalny_skrot_stanowiska(baza_skrotu, zajete_skroty)
+    nowe = StanowiskoDydaktyczne.objects.create(nazwa=nazwa, skrot=skrot)
+    zajete_nazwy.add(nazwa)
+    zajete_skroty.add(skrot)
+    return nowe, True
+
+
+def _podlacz_wiersze_do_stanowisk(parent):
+    """Mirror ``_podlacz_wiersze_do_tytulow`` — ``row.stanowisko_dydaktyczne``.
+    Stanowisko jest na Autor_Jednostka, więc recompute gated jak tytuł
+    (autor + autor_jednostka ustawione)."""
+    for row in parent.importpracownikowrow_set.filter(
+        zrodlo_stanowiska_dydaktycznego__isnull=False
+    ).select_related("zrodlo_stanowiska_dydaktycznego", "autor", "autor_jednostka"):
+        row.stanowisko_dydaktyczne = row.zrodlo_stanowiska_dydaktycznego.utworzone
+        if row.autor_id is not None and row.autor_jednostka_id is not None:
+            row.zmiany_potrzebne = (
+                bool(row.diff_do_utworzenia)
+                or row.check_if_integration_needed()
+                or row.zmiany_potrzebne
+            )
+            row.save(update_fields=["stanowisko_dydaktyczne", "zmiany_potrzebne"])
+        else:
+            row.save(update_fields=["stanowisko_dydaktyczne"])
+
+
+def _rozstrzygnij_stanowiska(parent, p):
+    """Mirror ``_rozstrzygnij_stopnie`` dla stanowisk dydaktycznych."""
+    zajete_nazwy = set()
+    zajete_skroty = set()
+    utworzono = 0
+    for dec in parent.stanowiska_do_decyzji.all():
+        with transaction.atomic():
+            stanowisko, utworzono_nowe = _rozstrzygnij_jedno_stanowisko(
+                dec, zajete_nazwy, zajete_skroty, p
+            )
+            if stanowisko is not None and dec.utworzone_id != stanowisko.pk:
+                dec.utworzone = stanowisko
+                dec.save(update_fields=["utworzone"])
+        if utworzono_nowe:
+            utworzono += 1
+    _podlacz_wiersze_do_stanowisk(parent)
+    return utworzono
+
+
 def integruj(parent, p):
     zakres = parent.zakres_integracji
 
@@ -643,8 +830,14 @@ def integruj(parent, p):
     # po jednostkach i PRZED snapshotem/fazą autorów (autorzy czytają row.tytul).
     # Pomijana dla zakresu „tylko jednostki" (STRUKTURA i PELNY dostają tytuły).
     utworzono_tytulow = 0
+    utworzono_stopni = 0
+    utworzono_stanowisk = 0
     if zakres != ImportPracownikow.ZAKRES_JEDNOSTKI:
         utworzono_tytulow = _rozstrzygnij_tytuly(parent, p)
+        # FAZA 0.6/0.7: stopnie + stanowiska (słowniki, jak tytuły) — PRZED
+        # snapshotem/fazą osób (autorzy czytają row.stopien; AJ row.stanowisko).
+        utworzono_stopni = _rozstrzygnij_stopnie(parent, p)
+        utworzono_stanowisk = _rozstrzygnij_stanowiska(parent, p)
 
     # Zakres strukturalny (JEDNOSTKI / STRUKTURA): tworzymy TYLKO strukturę —
     # bez snapshotu, fazy nowych autorów, przepięć i odpięć. Osoby są
@@ -666,6 +859,8 @@ def integruj(parent, p):
                 "zakres": zakres,
                 "utworzono_jednostek": utworzono_jednostek,
                 "utworzono_tytulow": utworzono_tytulow,
+                "utworzono_stopni": utworzono_stopni,
+                "utworzono_stanowisk": utworzono_stanowisk,
                 "stan": parent.stan,
             }
         )
@@ -753,6 +948,8 @@ def integruj(parent, p):
             "utworzono_nowych_autorow": utworzono_nowych,
             "utworzono_jednostek": utworzono_jednostek,
             "utworzono_tytulow": utworzono_tytulow,
+            "utworzono_stopni": utworzono_stopni,
+            "utworzono_stanowisk": utworzono_stanowisk,
             "stan": parent.stan,
         }
     )

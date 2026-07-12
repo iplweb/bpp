@@ -5,6 +5,7 @@ import pytest
 from import_pracownikow.parsers.wartosci import (
     normalize_date_pl,
     normalizuj_wartosci_wiersza,
+    rozbij_nazwisko_imie,
     sklej_drugie_imie,
 )
 
@@ -82,3 +83,29 @@ def test_sklej_drugie_imie_komorka_liczbowa_nie_wybucha():
     out = sklej_drugie_imie(dane)
     assert out["imię"] == "Jan 2"
     assert "drugie_imię" not in out
+
+
+def test_prosty_split():
+    d = rozbij_nazwisko_imie({"nazwisko_imię": "Anszczak Marcin"})
+    assert d["nazwisko"] == "Anszczak"
+    assert d["imię"] == "Marcin"
+    assert "nazwisko_imię" not in d
+
+
+def test_nazwisko_z_lacznikiem():
+    d = rozbij_nazwisko_imie({"nazwisko_imię": "Ciuka-Witrylak Małgorzata"})
+    assert d["nazwisko"] == "Ciuka-Witrylak"
+    assert d["imię"] == "Małgorzata"
+
+
+def test_nie_nadpisuje_istniejacych():
+    d = rozbij_nazwisko_imie(
+        {"nazwisko_imię": "Anszczak Marcin", "nazwisko": "X", "imię": "Y"}
+    )
+    assert d["nazwisko"] == "X"
+    assert d["imię"] == "Y"
+
+
+def test_brak_klucza_no_op():
+    d = rozbij_nazwisko_imie({"nazwisko": "Kowalski"})
+    assert d == {"nazwisko": "Kowalski"}

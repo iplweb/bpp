@@ -160,8 +160,9 @@ def test_krok1_struktura_w_przeanalizowany(admin_client, admin_user):
     """W podglądzie (Krok 1) hub oferuje TYLKO zapis struktury — dwa przyciski
     strukturalne, BEZ importu osób (pelny). Import osób jest zablokowany.
 
-    „Zapisz jednostki + tytuły" pokazuje się TYLKO gdy są tytuły do utworzenia
-    (pokaz_tytuly) — tu jawnie dodajemy decyzję o tytule."""
+    „Zapisz jednostki + słowniki" pokazuje się TYLKO gdy są słowniki do
+    utworzenia (pokaz_struktura_slowniki) — tu jawnie dodajemy decyzję o
+    tytule."""
     imp = _imp(admin_user, stan=ImportPracownikow.STAN_PRZEANALIZOWANY)
     baker.make(
         ImportPracownikowTytul,
@@ -176,7 +177,7 @@ def test_krok1_struktura_w_przeanalizowany(admin_client, admin_user):
     assert 'value="jednostki"' in tresc
     assert 'value="struktura"' in tresc
     assert "Zapisz tylko jednostki" in tresc
-    assert "Zapisz jednostki + tytuły" in tresc
+    assert "Zapisz jednostki + słowniki" in tresc
     # import osób (pelny) NIE jest tu dostępny — dopiero po zapisie struktury
     assert 'value="pelny"' not in tresc
     assert "Zapisz osoby do bazy" not in tresc
@@ -225,7 +226,7 @@ def test_krok2_przycisk_zapisu_za_wymaganym_potwierdzeniem(admin_client, admin_u
 def test_krok1_tytuly_wszystkie_w_bazie_bez_przyciskow(admin_client, admin_user):
     """Gdy wszystkie tytuły z pliku są już w bazie (twarde dopasowania, zero
     decyzji), Krok 1 pokazuje sam komunikat „nic nowego nie powstanie" — BEZ
-    przycisku „Zobacz tytuły" i BEZ „Zapisz jednostki + tytuły" (nie ma czego
+    przycisku „Zobacz tytuły" i BEZ „Zapisz jednostki + słowniki" (nie ma czego
     tworzyć). Zostaje sam zapis jednostek.
 
     Uwaga: żeby w ogóle był Krok 1 (a nie auto-skip do Kroku 2), potrzebna jest
@@ -246,10 +247,10 @@ def test_krok1_tytuly_wszystkie_w_bazie_bez_przyciskow(admin_client, admin_user)
     tresc = resp.content.decode("utf-8")
     # komunikat „wszystko dopasowane" (fraza w jednej linii szablonu)
     assert "Wszystkie tytuły z pliku są już w bazie" in tresc
-    # ...ale BEZ przycisku „Zobacz tytuły" i BEZ „Zapisz jednostki + tytuły"
+    # ...ale BEZ przycisku „Zobacz tytuły" i BEZ „Zapisz jednostki + słowniki"
     assert "Zobacz tytuły" not in tresc
     assert reverse("import_pracownikow:tytuly", kwargs={"pk": imp.pk}) not in tresc
-    assert "Zapisz jednostki + tytuły" not in tresc
+    assert "Zapisz jednostki + słowniki" not in tresc
     assert 'value="struktura"' not in tresc
     # zapis samych jednostek zostaje
     assert "Zapisz tylko jednostki" in tresc
@@ -257,8 +258,8 @@ def test_krok1_tytuly_wszystkie_w_bazie_bez_przyciskow(admin_client, admin_user)
 
 @pytest.mark.django_db
 def test_krok2_bramka_tytulow_blokuje_zapis_osob(admin_client, admin_user):
-    """Item 3: w Kroku 2 z nierozstrzygniętymi tytułami (do utworzenia) zamiast
-    zapisu osób jest blok „Najpierw tytuły" + „Utwórz brakujące tytuły";
+    """Item 3: w Kroku 2 z nierozstrzygniętymi słownikami (do utworzenia) zamiast
+    zapisu osób jest blok „Najpierw słowniki" + „Utwórz brakujące słowniki";
     „Zapisz osoby do bazy" jest ukryte."""
     imp = _imp(admin_user, stan=ImportPracownikow.STAN_STRUKTURA_ZINTEGROWANA)
     baker.make(
@@ -271,8 +272,8 @@ def test_krok2_bramka_tytulow_blokuje_zapis_osob(admin_client, admin_user):
     )
     resp = admin_client.get(_url(imp))
     tresc = resp.content.decode("utf-8")
-    assert "Najpierw tytuły" in tresc
-    assert "Utwórz brakujące tytuły" in tresc
+    assert "Najpierw słowniki" in tresc
+    assert "Utwórz brakujące słowniki" in tresc
     assert "Zapisz osoby do bazy" not in tresc
 
 
@@ -295,7 +296,7 @@ def test_krok2_zapis_osob_gdy_tytuly_rozstrzygniete(admin_client, admin_user):
     resp = admin_client.get(_url(imp))
     tresc = resp.content.decode("utf-8")
     assert "Zapisz osoby do bazy" in tresc
-    assert "Najpierw tytuły" not in tresc
+    assert "Najpierw słowniki" not in tresc
 
 
 @pytest.mark.django_db
@@ -314,7 +315,7 @@ def test_krok2_pomin_tytul_nie_blokuje(admin_client, admin_user):
     resp = admin_client.get(_url(imp))
     tresc = resp.content.decode("utf-8")
     assert "Zapisz osoby do bazy" in tresc
-    assert "Najpierw tytuły" not in tresc
+    assert "Najpierw słowniki" not in tresc
 
 
 @pytest.mark.django_db
@@ -385,9 +386,10 @@ def test_scoping_obcy_import_404(client, django_user_model, admin_user):
 @pytest.mark.django_db
 def test_krok1_wyjasnia_ze_tylko_jednostki_odracza_tytuly(admin_client, admin_user):
     """Uwaga reviewera #2 (decyzja: odroczenie): hub Kroku 1 wprost tłumaczy, że
-    „tylko jednostki" odkłada tytuły (utworzą się przy imporcie osób), żeby wybór
-    nie zaskakiwał operatora. Objaśnienie pokazuje się tylko, gdy są tytuły do
-    utworzenia (są oba przyciski) — dlatego dodajemy decyzję o tytule."""
+    „tylko jednostki" odkłada słowniki (utworzą się przy imporcie osób), żeby
+    wybór nie zaskakiwał operatora. Objaśnienie pokazuje się tylko, gdy są
+    słowniki do utworzenia (są oba przyciski) — dlatego dodajemy decyzję o
+    tytule."""
     imp = _imp(admin_user, stan=ImportPracownikow.STAN_PRZEANALIZOWANY)
     baker.make(
         ImportPracownikowTytul,
@@ -399,4 +401,4 @@ def test_krok1_wyjasnia_ze_tylko_jednostki_odracza_tytuly(admin_client, admin_us
     resp = admin_client.get(_url(imp))
     assert resp.status_code == 200
     tresc = resp.content.decode("utf-8")
-    assert "odkłada tytuły" in tresc
+    assert "odkłada słowniki" in tresc
