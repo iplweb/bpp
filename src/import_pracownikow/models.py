@@ -388,6 +388,9 @@ class ImportPracownikow(LiveOperation):
                 "grupa_pracownicza",
                 "funkcja_autora",
                 "wymiar_etatu",
+                # Porównywarka „plik vs baza" (§12) czyta FK bazy — bez N+1.
+                "autor__stopien_sluzbowy",
+                "autor_jednostka__stanowisko",
             )
         )
 
@@ -708,6 +711,76 @@ class ImportPracownikowRow(ImportRowMixin, models.Model):
         return STATUS_DISPLAY.get(
             self.confidence, ("secondary", "fi-minus", self.confidence or "—")
         )
+
+    @staticmethod
+    def _porownaj_email(plik, baza):
+        """Trójka porównania e-maila: ``{plik, baza, rozne}``. ``rozne`` = obie
+        strony NIEPUSTE i różne (case-insensitive) — pole puste w pliku LUB w
+        bazie NIE jest różnicą (e-mail to no-overwrite: import nie nadpisuje
+        istniejącego). Pustej bazy nie podświetlamy, ale import i tak jej NIE
+        uzupełnia — e-mail trafia do bazy WYŁĄCZNIE przy tworzeniu nowego autora
+        (``Autor.objects.create``); ``MAPPING_DANE_NA_AUTOR`` nie zawiera
+        ``email``, więc istniejący autor z pustym e-mailem tak czy inaczej go nie
+        dostaje z tego importu."""
+        p = str(plik or "").strip()
+        b = str(baza or "").strip()
+        rozne = bool(p) and bool(b) and p.casefold() != b.casefold()
+        return {"plik": p, "baza": b, "rozne": rozne}
+
+    @staticmethod
+    def _porownaj_fk(plik_str, baza_obj, plik_id):
+        """Trójka porównania pola FK (stopień/stanowisko): ``{plik, baza,
+        rozne}``. Porównanie SEMANTYCZNE po ID — skrót w pliku vs nazwa w bazie
+        NIE może decydować o różnicy. ``rozne`` = plik WSKAZUJE FK (``plik_id``
+        ustawione) i baza ma inny (lub żaden) FK — overwrite-if-different
+        (Plan 3), inaczej niż no-overwrite e-maila. ``plik`` = wartość z pliku
+        (skrót); ``baza`` = ``str`` FK z bazy."""
+        baza_id = baza_obj.pk if baza_obj else None
+        return {
+            "plik": str(plik_str or "").strip(),
+            "baza": str(baza_obj) if baza_obj else "",
+            "rozne": plik_id is not None and baza_id != plik_id,
+        }
+
+    def porownaj_z_baza(self):
+        """Porównanie „plik vs baza" dla e-maila, stopnia służbowego i
+        stanowiska dydaktycznego (§12). CZYSTY odczyt — NIC nie zapisuje ani nie
+        nadpisuje. E-mail: no-overwrite (porównanie stringów). Stopień/stanowisko:
+        overwrite-if-different, porównywane SEMANTYCZNIE po FK (skrót w pliku vs
+        nazwa w bazie dałyby fałszywe „różne"); FK z pliku rozwiązuje Plan 3 na
+        ``self.stopien`` / ``self.stanowisko_dydaktyczne``. Strona bazy: FK autora
+        / powiązania; stanowisko z ``autor_jednostka`` (aktualizowanego przez ten
+        wiersz). Dla wiersza bez autora/AJ strona bazy jest pusta."""
+        dane = self.dane_znormalizowane or {}
+        autor = self.autor
+        aj = self.autor_jednostka
+        stopien_baza = (
+            autor.stopien_sluzbowy if autor and autor.stopien_sluzbowy_id else None
+        )
+        stanowisko_baza = aj.stanowisko if aj and aj.stanowisko_id else None
+        return {
+            "email": self._porownaj_email(
+                dane.get("email"), autor.email if autor else ""
+            ),
+            "stopien": self._porownaj_fk(
+                dane.get("stopień_służbowy"), stopien_baza, self.stopien_id
+            ),
+            "stanowisko": self._porownaj_fk(
+                dane.get("stanowisko_dydaktyczne"),
+                stanowisko_baza,
+                self.stanowisko_dydaktyczne_id,
+            ),
+        }
+
+    @property
+    def ostrzezenie_email(self):
+        """Komunikat o odrzuconym adresie e-mail (z
+        ``dane_znormalizowane["ostrzeżenia"]``) albo ``None`` — renderowany w
+        komórce e-mail porównywarki jako ``label alert``."""
+        for o in (self.dane_znormalizowane or {}).get("ostrzeżenia") or []:
+            if "e-mail" in o.lower():
+                return o
+        return None
 
     def _check_autor_needs_update(self, dane):
         """Sprawdza czy autor wymaga aktualizacji."""

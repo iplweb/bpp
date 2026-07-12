@@ -65,6 +65,9 @@
                         <th>Pewność</th>
                         <th>Autor</th>
                         <th>Jednostka (obecna → z pliku)</th>
+                        <th>E-mail (plik → baza)</th>
+                        <th>Stopień służbowy (plik → baza)</th>
+                        <th>Stanowisko dydaktyczne (plik → baza)</th>
                         <th>Akcje / zmiany</th>
                         <th>Przepnij prace</th>
                     </tr>
@@ -74,7 +77,7 @@
                         {% include "import_pracownikow/partials/_wiersz_preview.html" %}
                         {% empty %}
                         <tr>
-                            <td colspan="10" class="text-center"><strong>
+                            <td colspan="13" class="text-center"><strong>
                                 Żadnych wierszy do pokazania.
                             </strong></td>
                         </tr>
@@ -90,7 +93,7 @@
                 paging: false,  // wszystkie wiersze w DOM → htmx-targety (#wiersz-X) żyją
                 info: false,
                 order: [],  // zachowaj kolejność serwera (nie-twardzi na górze)
-                columnDefs: [{orderable: false, searchable: false, targets: [8, 9]}]
+                columnDefs: [{orderable: false, searchable: false, targets: [11, 12]}]
             });
             // Resync po htmx-swapie wiersza: swap jest innerHTML (patrz
             // _wiersz_preview.html), więc węzeł <tr> ZOSTAJE — ten sam, który zna
