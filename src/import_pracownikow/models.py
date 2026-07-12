@@ -743,14 +743,15 @@ class ImportPracownikowRow(ImportRowMixin, models.Model):
         }
 
     def porownaj_z_baza(self):
-        """Porównanie „plik vs baza" dla e-maila, stopnia służbowego i
-        stanowiska dydaktycznego (§12). CZYSTY odczyt — NIC nie zapisuje ani nie
-        nadpisuje. E-mail: no-overwrite (porównanie stringów). Stopień/stanowisko:
+        """Porównanie „plik vs baza" dla e-maila, stopnia służbowego,
+        stanowiska dydaktycznego, tytułu naukowego i funkcji w jednostce
+        (§12). CZYSTY odczyt — NIC nie zapisuje ani nie nadpisuje. E-mail:
+        no-overwrite (porównanie stringów). Stopień/stanowisko/tytuł/funkcja:
         overwrite-if-different, porównywane SEMANTYCZNIE po FK (skrót w pliku vs
         nazwa w bazie dałyby fałszywe „różne"); FK z pliku rozwiązuje Plan 3 na
         ``self.stopien`` / ``self.stanowisko_dydaktyczne``. Strona bazy: FK autora
-        / powiązania; stanowisko z ``autor_jednostka`` (aktualizowanego przez ten
-        wiersz). Dla wiersza bez autora/AJ strona bazy jest pusta."""
+        / powiązania; stanowisko i funkcja z ``autor_jednostka`` (aktualizowanego
+        przez ten wiersz). Dla wiersza bez autora/AJ strona bazy jest pusta."""
         dane = self.dane_znormalizowane or {}
         autor = self.autor
         aj = self.autor_jednostka
@@ -758,6 +759,8 @@ class ImportPracownikowRow(ImportRowMixin, models.Model):
             autor.stopien_sluzbowy if autor and autor.stopien_sluzbowy_id else None
         )
         stanowisko_baza = aj.stanowisko if aj and aj.stanowisko_id else None
+        tytul_baza = autor.tytul if autor and autor.tytul_id else None
+        funkcja_baza = aj.funkcja if aj and aj.funkcja_id else None
         return {
             "email": self._porownaj_email(
                 dane.get("email"), autor.email if autor else ""
@@ -769,6 +772,18 @@ class ImportPracownikowRow(ImportRowMixin, models.Model):
                 dane.get("stanowisko_dydaktyczne"),
                 stanowisko_baza,
                 self.stanowisko_dydaktyczne_id,
+            ),
+            # tytuł / funkcja: gdy brak autora/AJ → plik_id=None → rozne=False
+            # (niuans: bez dopasowania nie podświetlamy różnicy).
+            "tytul": self._porownaj_fk(
+                dane.get("tytuł_stopień"),
+                tytul_baza,
+                self.tytul_id if autor else None,
+            ),
+            "funkcja": self._porownaj_fk(
+                dane.get("stanowisko"),
+                funkcja_baza,
+                self.funkcja_autora_id if aj else None,
             ),
         }
 

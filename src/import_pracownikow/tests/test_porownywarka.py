@@ -109,3 +109,61 @@ def test_tabela_podgladu_renderuje_kolumny_porownania(admin_client, admin_user):
     assert "import-porownanie-rozne" in tresc
     assert "plik@example.com" in tresc
     assert "baza@example.com" in tresc
+
+
+def test_porownaj_z_baza_tytul_rozny(db):
+    from model_bakery import baker
+
+    from import_pracownikow.models import ImportPracownikowRow
+
+    # nazwa/skrot celowo różne od danych bazowych (baseline.sql seeduje
+    # "doktor"/"dr" i "profesor"/"prof." — kolizja unique=True bez tego).
+    dr = baker.make("bpp.Tytul", nazwa="doktor testowy 1", skrot="dr-t1")
+    prof = baker.make("bpp.Tytul", nazwa="profesor testowy 1", skrot="prof-t1")
+    autor = baker.make("bpp.Autor", tytul=prof)
+    row = baker.make(
+        ImportPracownikowRow,
+        autor=autor,
+        tytul=dr,
+        dane_znormalizowane={"tytuł_stopień": "dr"},
+    )
+    p = row.porownaj_z_baza()["tytul"]
+    assert p["rozne"] is True
+    assert p["plik"] == "dr"
+
+
+def test_porownaj_z_baza_tytul_bez_autora_nie_rozny(db):
+    from model_bakery import baker
+
+    from import_pracownikow.models import ImportPracownikowRow
+
+    # nazwa/skrot celowo różne od danych bazowych (kolizja z baseline.sql,
+    # patrz komentarz w teście wyżej).
+    dr = baker.make("bpp.Tytul", nazwa="doktor testowy 2", skrot="dr-t2")
+    row = baker.make(
+        ImportPracownikowRow,
+        autor=None,
+        tytul=dr,
+        dane_znormalizowane={"tytuł_stopień": "dr"},
+    )
+    assert row.porownaj_z_baza()["tytul"]["rozne"] is False
+
+
+def test_porownaj_z_baza_funkcja_rozna(db):
+    from model_bakery import baker
+
+    from import_pracownikow.models import ImportPracownikowRow
+
+    # nazwa celowo różna od danych bazowych (baseline.sql seeduje "asystent"
+    # i "adiunkt" — kolizja unique=True bez tego).
+    stara = baker.make("bpp.Funkcja_Autora", nazwa="asystent testowy 1")
+    nowa = baker.make("bpp.Funkcja_Autora", nazwa="adiunkt testowy 1")
+    aj = baker.make("bpp.Autor_Jednostka", funkcja=stara)
+    row = baker.make(
+        ImportPracownikowRow,
+        autor=aj.autor,
+        autor_jednostka=aj,
+        funkcja_autora=nowa,
+        dane_znormalizowane={"stanowisko": "adiunkt"},
+    )
+    assert row.porownaj_z_baza()["funkcja"]["rozne"] is True
