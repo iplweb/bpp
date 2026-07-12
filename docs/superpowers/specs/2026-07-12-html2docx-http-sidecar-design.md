@@ -2,7 +2,9 @@
 
 **Data:** 2026-07-12
 **Status:** design zatwierdzony, do spisania planu
-**Repozytoria:** `mpasternak/html2docx` (.NET), `iplweb/bpp`, `iplweb/bpp-deploy`
+**Zakres:** `mpasternak/html2docx` (.NET — usługa HTTP) + `iplweb/bpp` (klient).
+`iplweb/bpp-deploy` — **downstream, robi user sam**, tu tylko udokumentowany
+kontrakt.
 
 ## Problem
 
@@ -60,9 +62,10 @@ po prostu usunąć.
 ## Wybrany wariant: B — sidecar HTTP
 
 html2docx staje się długożyjącym serwisem HTTP w osobnym kontenerze; appserver
-woła go POST-em po sieci wewnętrznej. Appserver traci socket **i** Docker CLI.
-Konwerter zyskuje realną izolację: osobny kontener, wąskie API, tylko sieć
-wewnętrzna, nie-root.
+woła go POST-em po sieci wewnętrznej. W zakresie tego speca appserver traci
+**Docker CLI** i przestaje wołać dockera; sam mount `docker.sock` zdejmuje
+downstream deployment. Konwerter zyskuje realną izolację: osobny kontener,
+wąskie API, tylko sieć wewnętrzna, nie-root.
 
 ### Kontrakt HTTP (zatwierdzony)
 
@@ -72,8 +75,8 @@ wewnętrzna, nie-root.
     `Content-Type: application/vnd.openxmlformats-officedocument.wordprocessingml.document`.
   - **Błąd konwersji:** HTTP 4xx/5xx + tekst błędu w ciele (odpowiednik
     dzisiejszego stderr).
-  - Limit ciała żądania podniesiony w Kestrelu (raporty bywają duże;
-    docelowo ~100 MB) — dokładna wartość do ustalenia w planie.
+  - Limit ciała żądania Kestrela `MaxRequestBodySize = 100 MB` (104857600 B) —
+    raporty bywają duże.
 - `GET /health` → `200` (healthcheck compose/autoheal).
 
 Odwzorowuje 1:1 dzisiejszy filtr stdin→stdout — minimum kodu po obu stronach,
@@ -106,67 +109,79 @@ brak parsowania multipart, brak narzutu base64.
      headers={"Content-Type": "text/html; charset=utf-8"}, timeout=(5, 30))`.
      `200` → `response.content` (docx) do pliku; non-200/timeout/ConnectionError
      → `raise` (propaguje do `DocxConversionError` — logika fallbacku bez zmian).
-   - Settingsy: `HTML2DOCX_URL` (default `http://html2docx:8080/convert`)
-     zastępuje `HTML2DOCX_DOCKER_IMAGE` / `HTML2DOCX_DOCKER_COMMAND`. Znika
+   - **Endpoint z konfiguracji, nigdy hardcodowany.** Setting `HTML2DOCX_URL`
+     czytany z env (np. `DJANGO_BPP_HTML2DOCX_URL`), **default `None`**.
+     Zastępuje `HTML2DOCX_DOCKER_IMAGE` / `HTML2DOCX_DOCKER_COMMAND`. Znika
      import i wołanie dockera.
-   - Timeouty: connect ~5 s, read ~30 s — do potwierdzenia w planie.
+   - **Miękki fail:** gdy `HTML2DOCX_URL` jest `None`/pusty → fallback HTTP
+     jest pominięty, logujemy `warning` („html2docx nie skonfigurowany") i
+     rzucamy `DocxConversionError` — dokładnie tak, jak dziś, gdy dockera nie
+     ma. Gdy ustawiony, ale serwis nieosiągalny → to samo (błąd propaguje do
+     500). Appserver nigdy nie wywala się twardo.
+   - Timeouty klienta: connect 5 s, read 30 s.
+   - Host/port docelowego serwisu = wyłącznie sprawa konfiguracji (env), poza
+     kodem — patrz sekcja Deployment.
 2. **`docker/appserver/Dockerfile`**: usunąć stage `FROM docker:cli AS
    docker-cli` i `COPY --from=docker-cli … /usr/local/bin/docker` — appserver
    traci Docker CLI (chudszy obraz, mniejsza powierzchnia).
-3. **`docker-compose.yml` (dev)**: dodać serwis `html2docx`
+3. **`docker-compose.yml` (dev)** — opcjonalnie: dodać serwis `html2docx`
    (`image: iplweb/html2docx:...`, sieć wewnętrzna, bez published portu) oraz
-   env `HTML2DOCX_URL` na appserverze — żeby fallback dało się przetestować
-   lokalnie.
+   ustawić `DJANGO_BPP_HTML2DOCX_URL` na appserverze — żeby fallback dało się
+   przetestować lokalnie. Bez tego (default `None`) dev jedzie na samym
+   pandocu, co jest OK.
 4. **`src/nowe_raporty/tests/test_docx_export.py`**: mock `requests.post`
-   zamiast `subprocess.run`; przypadki 200 / non-200 / timeout / ConnectionError.
-   Rozważyć integration-test z realnym serwisem przez testcontainers (osobny
-   punkt w planie — dziś istnieje integration-test wołający realny
-   `docker run`, do zastąpienia).
+   zamiast `subprocess.run`; przypadki 200 / non-200 / timeout /
+   ConnectionError / `HTML2DOCX_URL is None` (miękki fallback). Rozważyć
+   integration-test z realnym serwisem przez testcontainers (osobny punkt
+   w planie — dziś istnieje integration-test wołający realny `docker run`,
+   do zastąpienia).
 5. **Newsfragment** (`src/bpp/newsfragments/*.bugfix.rst`) — po polsku, o
-   usunięciu docker.sock z appservera / przejściu na sidecar HTTP.
+   przejściu fallbacku html2docx z `docker run` na usługę HTTP (+ usunięcie
+   Docker CLI z obrazu appservera).
 6. **Docs**: notka o kontrakcie HTTP obrazu html2docx (np. w
    `docs/deweloper/`), żeby kontrakt był udokumentowany.
 
-## Zmiany deploymentu — `iplweb/bpp-deploy`
+## Deployment — `iplweb/bpp-deploy` (robi user sam, poza zakresem)
 
-1. **`docker-compose.application.yml`**:
-   - usunąć `- /var/run/docker.sock:/var/run/docker.sock:ro` z appservera
-     (linia 95);
-   - dodać serwis `html2docx`: `image: iplweb/html2docx:${DOCKER_VERSION:-latest}`,
-     sieć wewnętrzna, **bez published portu**, `restart: always`, healthcheck
-     `GET /health`, label `autoheal=true` (autoheal już działa w stacku);
-   - na appserverze env `HTML2DOCX_URL=http://html2docx:8080/convert`;
-   - `depends_on` html2docx — **miękkie** (bez `condition: service_healthy`
-     twardo blokującego start appservera), bo to ścieżka awaryjna; decyzja do
-     potwierdzenia w planie.
-   - ofelia / autoheal / monitoring **zostają** z socketem — to demony infry
-     bez wejścia z sieci, poza zakresem zastrzeżenia reviewera.
+Cały wiring produkcyjnego compose robi **user we własnym zakresie** — **nie
+jest** deliverable tego speca ani planu. Spec tylko **dokumentuje kontrakt**,
+który deployment musi spełnić po wdrożeniu obrazu z trybem serwera i klienta
+w bpp:
+
+- serwis `html2docx` (`image: iplweb/html2docx:<tag>`, sieć wewnętrzna, **bez
+  published portu**, restart + healthcheck wg uznania), pin **po tagu**;
+- na appserverze env `DJANGO_BPP_HTML2DOCX_URL=http://<host>:<port>/convert`;
+- zdjęcie mountu `docker.sock` z appservera.
+
+`depends_on`, healthcheck, restart policy, sieć — decyzje deploymentu, nie
+tego planu.
 
 ## Efekt bezpieczeństwa
 
-- Appserver: **zero `docker.sock`, zero Docker CLI**. RCE w appserverze nie ma
-  już czym sięgnąć do demona Dockera hosta.
+- Appserver: **zero Docker CLI** w obrazie (zmiana w bpp) i kod nie woła już
+  dockera; **zero `docker.sock`** po zdjęciu mountu przez bpp-deploy. RCE
+  w appserverze nie ma już czym sięgnąć do demona Dockera hosta.
 - Konwerter: osobny kontener, **wąskie API HTTP** (`/convert`, `/health`),
   tylko sieć wewnętrzna (bez published portu), nie-root, parsuje wyłącznie
   nh3-sanitizowany HTML.
 - Fallback nadal dostępny (wymóg ESX/core-dump spełniony); nowa zależność =
-  zdrowie kontenera html2docx, mitygowane `restart: always` + healthcheck +
-  autoheal.
+  zdrowie kontenera html2docx, mitygowane po stronie deploymentu (restart +
+  healthcheck + autoheal), a po stronie bpp degradacją miękką.
 
 ## Ryzyka i punkty do rozstrzygnięcia w planie
 
 - **Reliability fallbacku:** B dokłada zależność od drugiego kontenera będącego
-  up. Mitygacja: `restart: always` + healthcheck + autoheal. Zaakceptowane
-  świadomie (user wybrał B ponad C mimo tego).
-- **Dev/test bez serwisu:** gdy html2docx nie biegnie (np. czysty `pytest`),
-  fallback rzuci `DocxConversionError` — tak jak dziś rzucał, gdy brak dockera.
-  Testy jednostkowe mockują `requests.post`, więc nie wymagają serwisu.
-- **Wersjonowanie obrazu:** `DOCKER_VERSION` html2docx niezależny od bpp —
-  ustalić politykę pinowania (tag vs digest) w bpp-deploy.
-- **Rozmiar żądania:** dobrać `MaxRequestBodySize` (Kestrel) i ewentualny limit
-  po stronie nginx/appserver dla realnych raportów.
-- **Kolejność wdrożenia:** obraz html2docx z trybem serwera musi być
-  opublikowany **zanim** deploy przełączy appserver na `HTML2DOCX_URL` i usunie
-  socket — inaczej fallback jest chwilowo martwy. Sekwencja w planie.
+  up. Mitygacja **po stronie deploymentu** (restart + healthcheck + autoheal).
+  Zaakceptowane świadomie (user wybrał B ponad C mimo tego). Po stronie bpp
+  degradacja jest miękka (patrz niżej), więc niedostępny serwis = brak eksportu
+  DOCX, nie crash.
+- **Dev/test bez serwisu:** gdy `HTML2DOCX_URL` jest `None` lub html2docx nie
+  biegnie (np. czysty `pytest`), fallback rzuci `DocxConversionError` — tak jak
+  dziś rzucał, gdy brak dockera. Testy jednostkowe mockują `requests.post`,
+  więc nie wymagają serwisu.
+- **Kolejność deliverables:** obraz html2docx z trybem serwera musi być
+  opublikowany i dostępny **zanim** user przełączy deployment na
+  `DJANGO_BPP_HTML2DOCX_URL` i zdejmie socket. Plan dostarcza (a) usługę .NET
+  i (b) klienta bpp; sam moment przepięcia deploya to handoff do usera.
 - **CI integration-test:** zastąpić dzisiejszy `docker run`-owy test wariantem
   z testcontainers stawiającym serwis, albo oznaczyć jako opt-in.
