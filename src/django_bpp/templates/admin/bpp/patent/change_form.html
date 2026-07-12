@@ -42,7 +42,21 @@
 
                 $("#toz").click(function () {
                     if (confirm('Utworzysz kopię tego rekordu. Czy kontynuować?')) {
-                        location.href = "../../toz/" + pub_id;
+                        // Klonowanie to mutacja — POST + token CSRF (dawniej
+                        // GET-nawigacja). Budujemy i submitujemy ukryty formularz:
+                        // przeglądarka nawiguje jak przy location.href, a serwer
+                        // zwraca redirect na świeżą kopię. Ten sam UX, zero klików.
+                        var $tozForm = $("<form/>")
+                            .attr("method", "post")
+                            // Ukośnik na końcu jest wymagany: wzorzec URL to
+                            // toz/<pk>/ , a APPEND_SLASH nie przekieruje POST-a
+                            // (zgubiłby ciało) — bez ukośnika byłoby 404.
+                            .attr("action", "../../toz/" + pub_id + "/");
+                        $tozForm.append($("<input/>")
+                            .attr("type", "hidden")
+                            .attr("name", "csrfmiddlewaretoken")
+                            .val($("input[name=csrfmiddlewaretoken]").val()));
+                        $tozForm.appendTo("body").submit();
                     }
                 });
             }

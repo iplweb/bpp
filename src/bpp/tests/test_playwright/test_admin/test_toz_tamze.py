@@ -122,10 +122,11 @@ def test_admin_wydawnictwo_zwarte_toz(live_server, admin_page: Page):
 
     admin_page.on("dialog", handle_dialog)
 
-    # #toz: dialog confirm → location.href="../../toz/<pk>" → widok tworzy
-    # kopię (commit) i przekierowuje na change-form kopii. Blokujemy do
-    # zakończenia tej nawigacji, żeby GET/toz + insert + redirect + finalny
-    # GET zdążyły się dokończyć ZANIM czytamy bazę i ZANIM teardown truncuje.
+    # #toz: dialog confirm → POST na ../../toz/<pk>/ (ukryty formularz + CSRF)
+    # → widok tworzy kopię (commit) i przekierowuje na change-form kopii.
+    # Blokujemy do zakończenia tej nawigacji, żeby POST/toz + insert + redirect
+    # + finalny GET zdążyły się dokończyć ZANIM czytamy bazę i ZANIM teardown
+    # truncuje.
     with admin_page.expect_navigation(wait_until="domcontentloaded"):
         admin_page.click("#toz")
 
@@ -171,10 +172,11 @@ def test_admin_wydawnictwo_ciagle_toz(live_server, admin_page: Page):
 
     admin_page.on("dialog", handle_dialog)
 
-    # #toz: dialog confirm → location.href="../../toz/<pk>" → widok tworzy
-    # kopię (commit) i przekierowuje na change-form kopii. Blokujemy do
-    # zakończenia tej nawigacji, żeby GET/toz + insert + redirect + finalny
-    # GET zdążyły się dokończyć ZANIM czytamy bazę i ZANIM teardown truncuje.
+    # #toz: dialog confirm → POST na ../../toz/<pk>/ (ukryty formularz + CSRF)
+    # → widok tworzy kopię (commit) i przekierowuje na change-form kopii.
+    # Blokujemy do zakończenia tej nawigacji, żeby POST/toz + insert + redirect
+    # + finalny GET zdążyły się dokończyć ZANIM czytamy bazę i ZANIM teardown
+    # truncuje.
     with admin_page.expect_navigation(wait_until="domcontentloaded"):
         admin_page.click("#toz")
 
@@ -211,10 +213,11 @@ def test_admin_patent_toz(live_server, admin_page: Page):
 
     admin_page.on("dialog", handle_dialog)
 
-    # #toz: dialog confirm → location.href="../../toz/<pk>" → widok tworzy
-    # kopię (commit) i przekierowuje na change-form kopii. Blokujemy do
-    # zakończenia tej nawigacji, żeby GET/toz + insert + redirect + finalny
-    # GET zdążyły się dokończyć ZANIM czytamy bazę i ZANIM teardown truncuje.
+    # #toz: dialog confirm → POST na ../../toz/<pk>/ (ukryty formularz + CSRF)
+    # → widok tworzy kopię (commit) i przekierowuje na change-form kopii.
+    # Blokujemy do zakończenia tej nawigacji, żeby POST/toz + insert + redirect
+    # + finalny GET zdążyły się dokończyć ZANIM czytamy bazę i ZANIM teardown
+    # truncuje.
     with admin_page.expect_navigation(wait_until="domcontentloaded"):
         admin_page.click("#toz")
 

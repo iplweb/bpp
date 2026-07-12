@@ -7,9 +7,11 @@ PRZED refaktoryzacją.
 """
 
 import pytest
+from django.contrib.auth.models import Group
 from django.urls import reverse
 from model_bakery import baker
 
+from bpp.const import GR_WPROWADZANIE_DANYCH
 from bpp.models import Wydawnictwo_Ciagle, Zrodlo
 from przemapuj_zrodla_pbn.models import PrzeMapowanieZrodla
 
@@ -29,6 +31,7 @@ def _make_journal(**kwargs):
 @pytest.mark.django_db
 def test_view_odrzuca_zrodlo_ktore_nie_jest_deleted(client, django_user_model):
     user = baker.make(django_user_model)
+    user.groups.add(Group.objects.get_or_create(name=GR_WPROWADZANIE_DANYCH)[0])
     client.force_login(user)
 
     journal_active = _make_journal(status="ACTIVE", title="Aktywne")
@@ -46,6 +49,7 @@ def test_view_odrzuca_zrodlo_ktore_nie_jest_deleted(client, django_user_model):
 @pytest.mark.django_db
 def test_confirm_przemapowanie_na_istniejace_zrodlo(client, django_user_model):
     user = baker.make(django_user_model)
+    user.groups.add(Group.objects.get_or_create(name=GR_WPROWADZANIE_DANYCH)[0])
     client.force_login(user)
 
     journal_deleted = _make_journal(status="DELETED", title="Stara", issn="1234-5678")
@@ -95,6 +99,7 @@ def test_confirm_przemapowanie_na_istniejace_zrodlo(client, django_user_model):
 @pytest.mark.django_db
 def test_confirm_przemapowanie_na_journal_tworzy_nowe_zrodlo(client, django_user_model):
     user = baker.make(django_user_model)
+    user.groups.add(Group.objects.get_or_create(name=GR_WPROWADZANIE_DANYCH)[0])
     client.force_login(user)
 
     # Rodzaj "czasopismo" jest wymagany przez ścieżkę journal.
@@ -148,6 +153,7 @@ def test_confirm_cel_skasowany_jest_poza_sugestiami_wiec_formularz_niewalidny(
     # i widok renderuje stronę (200) bez przemapowania. Strażnik DELETED w
     # widoku jest wewnętrznym zabezpieczeniem nieosiągalnym tą ścieżką.
     user = baker.make(django_user_model)
+    user.groups.add(Group.objects.get_or_create(name=GR_WPROWADZANIE_DANYCH)[0])
     client.force_login(user)
 
     journal_deleted = _make_journal(status="DELETED", title="Stara", issn="9999-0000")
@@ -192,6 +198,7 @@ def test_confirm_cel_skasowany_jest_poza_sugestiami_wiec_formularz_niewalidny(
 @pytest.mark.django_db
 def test_confirm_z_niewalidnym_formularzem_renderuje_strone(client, django_user_model):
     user = baker.make(django_user_model)
+    user.groups.add(Group.objects.get_or_create(name=GR_WPROWADZANIE_DANYCH)[0])
     client.force_login(user)
 
     journal_deleted = _make_journal(status="DELETED", title="Stara", issn="")
@@ -211,6 +218,7 @@ def test_confirm_z_niewalidnym_formularzem_renderuje_strone(client, django_user_
 @pytest.mark.django_db
 def test_preview_journal_renderuje_podglad(client, django_user_model):
     user = baker.make(django_user_model)
+    user.groups.add(Group.objects.get_or_create(name=GR_WPROWADZANIE_DANYCH)[0])
     client.force_login(user)
 
     journal_deleted = _make_journal(status="DELETED", title="Stara P", issn="1111-2222")

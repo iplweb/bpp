@@ -65,18 +65,20 @@ urlpatterns = (
         path("test_exception/", login_required(test_exception_view)),
         path("tinymce/", include("tinymce.urls")),
         url(
+            # Auth (redaktor + POST/CSRF) egzekwuje WprowadzanieDanychRequiredMixin
+            # w samym TozView — bez owijki login_required (dawniej GET-mutacja).
             r"^admin/bpp/wydawnictwo_ciagle/toz/(?P<pk>[\d]+)/$",
-            login_required(WydawnictwoCiagleTozView.as_view()),
+            WydawnictwoCiagleTozView.as_view(),
             name="admin_bpp_wydawnictwo_ciagle_toz",
         ),
         url(
             r"^admin/bpp/wydawnictwo_zwarte/toz/(?P<pk>[\d]+)/$",
-            login_required(WydawnictwoZwarteTozView.as_view()),
+            WydawnictwoZwarteTozView.as_view(),
             name="admin_bpp_wydawnictwo_zwarte_toz",
         ),
         url(
             r"^admin/bpp/patent/toz/(?P<pk>[\d]+)/$",
-            login_required(PatentTozView.as_view()),
+            PatentTozView.as_view(),
             name="admin_bpp_patent_toz",
         ),
         # url(r'^admin/', include(admin.site.urls)),
