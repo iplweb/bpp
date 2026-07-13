@@ -125,7 +125,7 @@ def import_pracownikow_brak_naglowka(admin_user, testdata_brak_naglowka_xlsx_pat
 
 
 @pytest.fixture
-def dwa_autory_z_jednostka():
+def dwaj_autorzy_z_jednostki():
     """(Autor, Jednostka) matchowalne przez ``matchuj_autora``/``matchuj_jednostke``.
 
     Nazwa fixture nawiązuje do docelowego scenariusza analizy dwóch wierszy
@@ -151,7 +151,7 @@ def autor_bez_autor_jednostka():
     """(Autor, Jednostka) matchowalne przez ``matchuj_autora`` po imieniu i
     nazwisku, ale BEZ powiązania ``Autor_Jednostka`` do tej jednostki.
 
-    W przeciwieństwie do ``dwa_autory_z_jednostka`` (gdzie AJ istnieje z
+    W przeciwieństwie do ``dwaj_autorzy_z_jednostki`` (gdzie AJ istnieje z
     góry), tu celowo NIE tworzymy ani ``Autor_Jednostka``, ani nie
     ustawiamy ``aktualna_jednostka`` — ``matchuj_autora`` i tak znajdzie
     autora po dokładnym dopasowaniu imienia+nazwiska (jednostka jest tylko

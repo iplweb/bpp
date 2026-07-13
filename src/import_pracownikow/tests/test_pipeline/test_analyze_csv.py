@@ -24,8 +24,8 @@ def _csv_bytes(nazwisko, imie, jednostka):
 
 
 @pytest.mark.django_db
-def test_analiza_csv_end_to_end(admin_user, dwa_autory_z_jednostka):
-    autor, jednostka = dwa_autory_z_jednostka
+def test_analiza_csv_end_to_end(admin_user, dwaj_autorzy_z_jednostki, tytuly):
+    autor, jednostka = dwaj_autorzy_z_jednostki
     imp = ImportPracownikow(owner=admin_user, stan=ImportPracownikow.STAN_UTWORZONY)
     imp.plik_xls = SimpleUploadedFile(
         "pracownicy.csv",
