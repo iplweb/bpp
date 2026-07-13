@@ -164,9 +164,16 @@ TransactionTestCase._fixture_teardown = _fixture_teardown
 # zostaje w obrębie danych domenowych. Osobne autocommit-połączenie czyści
 # COMMITTED wiersze (poza transakcją testu). Leak-triggered: TRUNCATE odpala
 # się tylko gdy wykryty wyciek, więc w normalnym przypadku to 1 tani probe.
+#
+# DIAGNOSTYKA: przy wykryciu wycieku guard wypisuje do stderr (widoczne w
+# logach CI) które tabele wyciekły oraz najprawdopodobniejszego SPRAWCĘ —
+# poprzedni test DB na tym workerze. Bo guard sprawdza każdy test DB i czyści
+# przy każdym wykryciu, więc wyciek widziany na setupie testu X powstał po
+# ostatnim czystym stanie = w poprzednim teście DB. To ścieżka do docelowego
+# root-cause fixa (namierzyć i naprawić test commitujący poza rollback).
 # =============================================================================
 
-_LEAK_GUARD = {"conn": None}
+_LEAK_GUARD = {"conn": None, "poprzedni": "<start sesji>", "v2_zgloszony": False}
 _LEAK_GUARD_TABLES = (
     "bpp_autor",
     "bpp_jednostka",
@@ -174,6 +181,15 @@ _LEAK_GUARD_TABLES = (
     "bpp_stanowiskodydaktyczne",
     "bpp_grupa_pracownicza",
 )
+# Sentinel WYKRYCIA (tylko diagnostyka, BEZ naprawy) drugiego, ODRĘBNEGO wektora
+# flake'a: transakcyjny flush (_fixture_teardown TRUNCATE CASCADE) zmiata dane
+# referencyjne zaseedowane MIGRACJĄ (np. bpp_crossref_mapper 16→0,
+# bpp_funkcja_autora), których post_migrate NIE odtwarza na CI. Kolejne testy na
+# workerze padają na DoesNotExist / count()==0. To PRE-EXISTING (dotyczy deva),
+# ~50-60% pod xdist, i wymaga osobnego, ostrożnego fixa (blankietowy
+# snapshot/restore rozwalał session-fixture'y). Tu tylko RAPORTUJEMY sprawcę do
+# stderr — namiar do docelowego fixa, zero mutacji.
+_LEAK_GUARD_V2_SENTINEL = "bpp_crossref_mapper"
 
 
 def _leak_guard_conn(settings_dict):
@@ -216,21 +232,61 @@ def _neutralizuj_wyciekle_dane(request):
         or "transactional_db" in request.fixturenames
     )
     if uzywa_db:
+        import sys
+
         import psycopg2
         from django.db import connection
 
-        probe = " OR ".join(f"EXISTS(SELECT 1 FROM {t})" for t in _LEAK_GUARD_TABLES)
+        # Per-tabela (nie jeden OR) — żeby w raporcie nazwać CO wyciekło.
+        probe = ", ".join(f"EXISTS(SELECT 1 FROM {t})" for t in _LEAK_GUARD_TABLES)
         try:
             conn = _leak_guard_conn(connection.settings_dict)
             with conn.cursor() as cur:
                 cur.execute(f"SELECT {probe}")
-                if cur.fetchone()[0]:
+                obecne = cur.fetchone()
+                wyciekle = [
+                    t
+                    for t, jest in zip(_LEAK_GUARD_TABLES, obecne, strict=False)
+                    if jest
+                ]
+                if wyciekle:
+                    # Guard sprawdza KAŻDY test DB i czyści przy każdym wykryciu,
+                    # więc wyciek widziany na setupie tego testu powstał po
+                    # ostatnim czystym stanie — sprawcą jest poprzedni test DB
+                    # na tym workerze (xdist → proces = worker, stan per-proces).
+                    print(
+                        f"[LEAK-GUARD] wyciek scommitowanych danych na setupie "
+                        f"{request.node.nodeid}: {', '.join(wyciekle)}. "
+                        f"Najprawdopodobniejszy sprawca (poprzedni test DB na tym "
+                        f"workerze): {_LEAK_GUARD['poprzedni']}",
+                        file=sys.stderr,
+                    )
                     # Bez RESTART IDENTITY — jak flush (_fixture_teardown używa
                     # reset_sequences=False); sekwencje rosną dalej, brak
                     # niespodzianek z pk=1.
                     cur.execute(
                         "TRUNCATE " + ", ".join(_LEAK_GUARD_TABLES) + " CASCADE"
                     )
+
+                # VECTOR 2 (tylko diagnostyka): dane referencyjne zmiecione
+                # transakcyjnym flushem. Raportujemy RAZ na worker (żeby nie
+                # zaśmiecać), wskazując sprawcę — poprzedni test DB.
+                if not _LEAK_GUARD["v2_zgloszony"]:
+                    cur.execute(
+                        f"SELECT NOT EXISTS(SELECT 1 FROM {_LEAK_GUARD_V2_SENTINEL})"
+                    )
+                    if cur.fetchone()[0]:
+                        _LEAK_GUARD["v2_zgloszony"] = True
+                        print(
+                            f"[LEAK-GUARD/V2] dane referencyjne "
+                            f"({_LEAK_GUARD_V2_SENTINEL}) WYCZYSZCZONE (transakcyjny "
+                            f"flush) — widać na setupie {request.node.nodeid}. "
+                            f"Sprawca (poprzedni test DB na workerze): "
+                            f"{_LEAK_GUARD['poprzedni']}. NIENAPRAWIANE tutaj "
+                            f"(osobny wątek izolacji).",
+                            file=sys.stderr,
+                        )
+            _LEAK_GUARD["poprzedni"] = request.node.nodeid
         except psycopg2.Error:
             # Guard jest best-effort: brak połączenia / brak tabel (np. test
             # bez pełnej migracji) nie może wywalić samego testu.
