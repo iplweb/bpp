@@ -215,14 +215,56 @@ jobs:
 
       - name: Zainstaluj skanery CVE
         if: ${{ !inputs.skip_scan }}
+        env:
+          # Skanery CVE PRZYPIĘTE do konkretnych wersji + weryfikowane po SHA256.
+          # Wcześniej ten krok pobierał ruchomy `latest` (osv-scanner) i wykony-
+          # wał `curl | sh` z gałęzi `main` (grype, trivy) — czyli URUCHAMIAŁ
+          # NIEPRZYPIĘTY kod z Internetu w jobie z `packages: write` (push obrazu
+          # do GHCR) i `contents: write` (push gałęzi release/*). Klasyczny wektor
+          # supply-chain: ktokolwiek z write-em na tych repo/gałęziach (albo ich
+          # przejęcie) wstrzykuje kod, który leci z sekretami tego joba.
+          #
+          # BUMP: podnieś wersję i wklej SHA256 z pliku *checksums* danego release
+          #   (osv:   osv-scanner_SHA256SUMS → osv-scanner_linux_amd64)
+          #   (grype: grype_<ver>_checksums.txt → grype_<ver>_linux_amd64.tar.gz)
+          #   (trivy: trivy_<ver>_checksums.txt → trivy_<ver>_Linux-64bit.tar.gz)
+          # NIE zgaduj sumy — pobierz realną z assetów release-u, inaczej gate CVE
+          # padnie na `sha256sum -c` i zablokuje całe wydanie.
+          OSV_SCANNER_VERSION: "2.4.0"
+          OSV_SCANNER_SHA256: "15314940c10d26af9c6649f150b8a47c1262e8fc7e17b1d1029b0e479e8ed8a0"
+          GRYPE_VERSION: "0.115.0"
+          GRYPE_SHA256: "3fad92940650e514c0aa2dad83526942a055e210cec09a8a59d9c024adc2b90e"
+          TRIVY_VERSION: "0.72.0"
+          TRIVY_SHA256: "bbb64b9695866ce4a7a8f5c9592002c5961cab378577fa3f8a040df362b9b2ea"
         run: |
-          curl -sSL -o /usr/local/bin/osv-scanner \
-            https://github.com/google/osv-scanner/releases/latest/download/osv-scanner_linux_amd64
-          chmod +x /usr/local/bin/osv-scanner
-          curl -sSfL https://raw.githubusercontent.com/anchore/grype/main/install.sh \
-            | sh -s -- -b /usr/local/bin
-          curl -sSfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh \
-            | sh -s -- -b /usr/local/bin
+          set -euo pipefail
+          TMP="$(mktemp -d)"
+          trap 'rm -rf "$TMP"' EXIT
+
+          # --- osv-scanner: przypięty binarny release + weryfikacja SHA256 ---
+          curl -sSL -o "${TMP}/osv-scanner" \
+            "https://github.com/google/osv-scanner/releases/download/v${OSV_SCANNER_VERSION}/osv-scanner_linux_amd64"
+          echo "${OSV_SCANNER_SHA256}  ${TMP}/osv-scanner" | sha256sum -c -
+          install -m 0755 "${TMP}/osv-scanner" /usr/local/bin/osv-scanner
+
+          # --- grype: przypięty tarball + weryfikacja SHA256 (BEZ curl|sh) ---
+          curl -sSL -o "${TMP}/grype.tar.gz" \
+            "https://github.com/anchore/grype/releases/download/v${GRYPE_VERSION}/grype_${GRYPE_VERSION}_linux_amd64.tar.gz"
+          echo "${GRYPE_SHA256}  ${TMP}/grype.tar.gz" | sha256sum -c -
+          tar -xzf "${TMP}/grype.tar.gz" -C "${TMP}" grype
+          install -m 0755 "${TMP}/grype" /usr/local/bin/grype
+
+          # --- trivy: przypięty tarball + weryfikacja SHA256 (BEZ curl|sh) ---
+          curl -sSL -o "${TMP}/trivy.tar.gz" \
+            "https://github.com/aquasecurity/trivy/releases/download/v${TRIVY_VERSION}/trivy_${TRIVY_VERSION}_Linux-64bit.tar.gz"
+          echo "${TRIVY_SHA256}  ${TMP}/trivy.tar.gz" | sha256sum -c -
+          tar -xzf "${TMP}/trivy.tar.gz" -C "${TMP}" trivy
+          install -m 0755 "${TMP}/trivy" /usr/local/bin/trivy
+
+          # Smoke-check: binarki są na PATH (scan-deps.sh woła je przez command -v).
+          osv-scanner --version
+          grype version
+          trivy --version
 
       - name: Skan CVE (bramka)
         if: ${{ !inputs.skip_scan }}
