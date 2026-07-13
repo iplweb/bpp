@@ -5,7 +5,7 @@ Autorzy
 from __future__ import annotations
 
 import logging
-from datetime import date, datetime, timedelta
+from datetime import date, timedelta
 
 from autoslug import AutoSlugField
 from django.contrib.postgres.search import SearchVectorField as VectorField
@@ -709,12 +709,13 @@ class Autor_Jednostka(models.Model):
                     "Początek pracy późniejszy lub równy, jak zakończenie"
                 )
 
-        if self.zakonczyl_prace is not None:
-            if self.zakonczyl_prace >= datetime.now().date():
-                raise ValidationError(
-                    "Czas zakończenia pracy w jednostce nie może być taki sam"
-                    " lub większy, jak obecna data"
-                )
+        # UWAGA: świadomie NIE odrzucamy daty zakończenia w przyszłości —
+        # zatrudnienie bywa planowane naprzód („pan X pracuje do zaplanowanej
+        # daty"). Jest to spójne z triggerem `bpp_autor_ustaw_jednostka_aktualna`,
+        # który dla przyszłej daty „do" i tak liczy `aktualny = True`. Dawny
+        # zakaz (model + DB-owy CHECK `bez_dat_do_w_przyszlosci`) zdjęty w
+        # migracji 0469; w bazie zastąpiony odpornym na czas CHECK
+        # `rozpoczal_prace < zakonczyl_prace`.
 
         # UWAGA: niezmiennik "jedno podstawowe miejsce pracy na autora" NIE jest
         # tu walidowany per-instancja. Eager .exists() (widzacy stan sprzed

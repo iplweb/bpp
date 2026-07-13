@@ -76,13 +76,21 @@ def test_autor_jednostka_trigger_nie_mozna_zmienic_id_autora(
 
 
 @pytest.mark.django_db
-def test_autor_jednostka_trigger_nie_mozna_daty_w_przyszlosci(
+def test_autor_jednostka_dopuszcza_przyszla_date_zakonczenia(
     autor_jan_kowalski, jednostka
 ):
+    """Planowana przyszła data zakończenia zatrudnienia jest dozwolona (zdjęty
+    dawny zakaz ``bez_dat_do_w_przyszlosci``, mig 0469). Trigger ``aktualny``
+    liczy ją spójnie: przyszły koniec zatrudnienia = pracownik nadal aktualny,
+    więc ``aktualna_jednostka`` zostaje ustawiona."""
     aj = baker.make(Autor_Jednostka, autor=autor_jan_kowalski, jednostka=jednostka)
-    aj.zakonczyl_prace = date.today()
-    with pytest.raises(IntegrityError):
-        aj.save()
+    aj.zakonczyl_prace = date.today() + timedelta(days=365)
+    aj.save()  # nie rzuca — przyszła data „do" dozwolona
+
+    autor_jan_kowalski.refresh_from_db()
+    # Przyszły koniec zatrudnienia = pracownik nadal aktualny → trigger
+    # `bpp_autor_ustaw_jednostka_aktualna` ustawia aktualną jednostkę.
+    assert autor_jan_kowalski.aktualna_jednostka == jednostka
 
 
 @pytest.mark.django_db
