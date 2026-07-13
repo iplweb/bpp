@@ -110,7 +110,7 @@ dependencies = [
     "djangoql-iplweb>=0.31.1",
     "django-weasyprint>=2.5.0",
     "django-templated-email>=3.0.0",
-    "django-formtools>=2.6.1,<3",
+    "django-formtools>=2.7,<3",
     "pathspec>=1.1.1",
     "django-environ>=0.14.0",
     "django-celery-email>=3.0.0",
@@ -124,14 +124,14 @@ dependencies = [
     "twisted[http2,tls]>=26.4.0",
     "django-dbtemplates-iplweb>=4.4.0",
     "django-soft-delete>=1.0.23",
-    "tqdm>=4.68.3",
+    "tqdm>=4.68.4",
     "xhtml2pdf>=0.2.16",
     "isbnlib>=3.10.14",
     "chardet>=7.4.3",
     "python-dateutil>=2.9.0.post0",
     "thefuzz>=0.22.1",
     "celery-singleton>=0.3.1",
-    "rollbar>=1.3.0",
+    "rollbar>=1.4.0",
     "django-prometheus>=2.5.0",
     "ortools>=9.15.6755",
     "psycopg2-binary>=2.9.12", # ZOSTAW psycopg2 dla django-denorm
@@ -487,8 +487,8 @@ dev = [
     # .pre-commit-config.yaml. CI lints via pre-commit (that rev is the
     # source of truth); this `==` pin only keeps ad-hoc `uv run ruff`
     # producing identical output. Bump both together, never one alone.
-    "ruff==0.15.20",
-    "djlint>=1.40.3,<2",
+    "ruff==0.15.21",
+    "djlint>=1.40.5,<2",
     "pre-commit>=4.6.0",
     "twine>=5.1.0",
     "ipdb>=0.13.9",
