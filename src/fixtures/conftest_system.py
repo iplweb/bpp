@@ -85,6 +85,40 @@ def jezyki():
 
 
 @pytest.fixture(scope="function")
+def crossref_mappery(db):
+    """Wiersze ``Crossref_Mapper`` (mapowanie typów Crossref → charakter) —
+    seedowane migracją 0467. Nie zakładaj baseline: reużywa idempotentnej
+    funkcji seedującej migracji (``get_or_create``), więc bezpieczne zawsze.
+    """
+    from importlib import import_module
+
+    from django.apps import apps as django_apps
+
+    from bpp.models import Crossref_Mapper
+
+    import_module(
+        "bpp.migrations.0467_seed_crossref_mapper_rows"
+    ).seed_crossref_mapper_rows(django_apps, None)
+    return Crossref_Mapper.objects.all()
+
+
+@pytest.fixture(scope="function")
+def rzeczowniki(db):
+    """Wiersze ``Rzeczownik`` (override lematów UCZELNIA/WYDZIAL/JEDNOSTKA) —
+    normalnie seedowane migracjami. Nie zakładaj baseline: zasiej z
+    ``DOMYSLNE_LEMATY`` (jedyne źródło prawdy dla lematów) przez idempotentny
+    ``get_or_create``. Bieżący model ma tylko ``uid`` + ``m`` (mianownik);
+    liczba mnoga liczona jest inflekcją, więc wystarczy mianownik.
+    """
+    from bpp.models import Rzeczownik
+    from bpp.nazwy import DOMYSLNE_LEMATY
+
+    for uid, m in DOMYSLNE_LEMATY.items():
+        Rzeczownik.objects.get_or_create(uid=uid, defaults={"m": m})
+    return Rzeczownik.objects.all()
+
+
+@pytest.fixture(scope="function")
 def charaktery_formalne():
     Charakter_Formalny.objects.all().delete()
     # Lookup po kluczu naturalnym (skrot jest unique), NIGDY po pk (w JSON-ie

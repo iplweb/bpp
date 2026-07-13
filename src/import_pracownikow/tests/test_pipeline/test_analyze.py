@@ -30,8 +30,10 @@ def _wiersz(**over):
 
 
 @pytest.mark.django_db
-def test_analiza_nie_tworzy_slownikow_ani_autor_jednostka(dwa_autory_z_jednostka):
-    autor, jednostka = dwa_autory_z_jednostka
+def test_analiza_nie_tworzy_slownikow_ani_autor_jednostka(
+    dwaj_autorzy_z_jednostki, tytuly
+):
+    autor, jednostka = dwaj_autorzy_z_jednostki
     imp = baker.make(ImportPracownikow, stan=ImportPracownikow.STAN_UTWORZONY)
     imp.plik_xls.name = "protected/import_pracownikow/x.xlsx"
 
@@ -70,7 +72,7 @@ def test_analiza_nie_tworzy_autor_jednostka_gdy_brak_powiazania(
     """Autor matchuje się po imieniu+nazwisku mimo braku ``Autor_Jednostka``
     do docelowej jednostki z pliku — analiza (dry-run) NIE tworzy AJ, tylko
     odkłada je do ``diff_do_utworzenia`` (patrz review Task 3: fixture
-    ``dwa_autory_z_jednostka`` tworzył AJ z góry, więc gałąź ``aj is None``
+    ``dwaj_autorzy_z_jednostki`` tworzył AJ z góry, więc gałąź ``aj is None``
     w ``analyze._przetworz_wiersz`` nigdy się nie wykonywała w testach)."""
     autor, jednostka = autor_bez_autor_jednostka
     imp = baker.make(ImportPracownikow, stan=ImportPracownikow.STAN_UTWORZONY)
@@ -111,11 +113,11 @@ def test_analiza_nie_tworzy_autor_jednostka_gdy_brak_powiazania(
 
 
 @pytest.mark.django_db
-def test_odroczony_create_przy_istniejacym_aj_wymaga_zmian(dwa_autory_z_jednostka):
+def test_odroczony_create_przy_istniejacym_aj_wymaga_zmian(dwaj_autorzy_z_jednostki):
     # plik MA stanowisko nieistniejące w bazie (odroczony create) + AJ istnieje
     # → wiersz MUSI mieć zmiany_potrzebne=True (bool(diff)), inaczej integracja
     # go pominie i funkcja nigdy nie powstanie (guard is-not-None wyzerował check)
-    autor, jednostka = dwa_autory_z_jednostka
+    autor, jednostka = dwaj_autorzy_z_jednostki
     imp = baker.make(ImportPracownikow, stan=ImportPracownikow.STAN_ZMAPOWANY)
     imp.plik_xls.name = "protected/import_pracownikow/x.csv"
     with patch("import_pracownikow.pipeline.analyze.otworz_zrodlo") as MZ:

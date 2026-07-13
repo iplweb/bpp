@@ -8,9 +8,9 @@ from import_pracownikow.pipeline.analyze import analizuj
 
 @pytest.mark.django_db
 def test_analiza_z_mapowaniem_inaczej_nazwanych_kolumn(
-    admin_user, dwa_autory_z_jednostka
+    admin_user, dwaj_autorzy_z_jednostki
 ):
-    autor, jednostka = dwa_autory_z_jednostka
+    autor, jednostka = dwaj_autorzy_z_jednostki
     # plik z NIESTANDARDOWYMI nazwami kolumn — bez mapowania nie zadziała
     csv = (
         f"Nazwisko;Imie;Jedn org\n{autor.nazwisko};{autor.imiona};{jednostka.nazwa}\n"
@@ -40,10 +40,10 @@ def test_analiza_z_mapowaniem_inaczej_nazwanych_kolumn(
 
 @pytest.mark.django_db
 def test_analiza_puste_mapowanie_zachowuje_zachowanie_fazy1(
-    admin_user, dwa_autory_z_jednostka
+    admin_user, dwaj_autorzy_z_jednostki
 ):
     # plik ze standardowymi nazwami + puste mapowanie → działa jak w Fazie 1
-    autor, jednostka = dwa_autory_z_jednostka
+    autor, jednostka = dwaj_autorzy_z_jednostki
     csv = (
         "Nazwisko;Imię;Nazwa jednostki\n"
         f"{autor.nazwisko};{autor.imiona};{jednostka.nazwa}\n"

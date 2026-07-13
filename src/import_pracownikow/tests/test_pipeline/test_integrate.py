@@ -109,7 +109,8 @@ def test_commit_materializuje_grupe_i_wymiar_etatu(autor_jednostka_fixture):
     ćwiczy ścieżkę "materializowano + integrate()", różną od czystego
     create-only z testu wyżej."""
     autor, jednostka = autor_jednostka_fixture
-    funkcja = Funkcja_Autora.objects.get(nazwa="asystent")
+    # Nie zakładaj baseline — transakcyjny flush sąsiada bywa go zmiata.
+    funkcja, _ = Funkcja_Autora.objects.get_or_create(nazwa="asystent")
     aj = baker.make(
         Autor_Jednostka,
         autor=autor,

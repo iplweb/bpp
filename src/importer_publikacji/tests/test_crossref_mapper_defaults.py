@@ -74,7 +74,7 @@ def test_lazy_mapper_journal_article_nie_jest_zwartym():
 
 
 @pytest.mark.django_db
-def test_lazy_mapper_nie_nadpisuje_istniejacego():
+def test_lazy_mapper_nie_nadpisuje_istniejacego(crossref_mappery):
     """Istniejący wiersz (np. ręcznie zmieniony w adminie) nie jest nadpisany."""
     from importer_publikacji.views import _get_crossref_mapper
 

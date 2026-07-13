@@ -54,7 +54,7 @@ def test_znajdz_jezyk_brak_kodu_i_pustego():
 
 
 @pytest.mark.django_db
-def test_pobierz_jezyk_dubel_wraca_domyslny():
+def test_pobierz_jezyk_dubel_wraca_domyslny(jezyki):
     """Przy zdublowanym ``Jezyk`` ``pobierz_jezyk`` degraduje do domyślnego."""
     lang = baker.make(Language, code="zz3")
     baker.make(Jezyk, nazwa="ZZ język 3a", skrot="zz3a", pbn_uid=lang)
