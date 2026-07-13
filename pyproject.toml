@@ -93,7 +93,7 @@ dependencies = [
     "wosclient==0.1.5",
     "MOAI-iplweb>=2.0.2",
     "django_redis_iplweb>=6.0.1,<6.1",
-    "django-filter>=25.2,<25.3",
+    "django-filter>=26.1,<26.2",
     "dbfread>=2.0.7",
     "djangorestframework==3.17.1",
     "Markdown>=3.7,<4",
