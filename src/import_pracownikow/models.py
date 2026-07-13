@@ -1074,6 +1074,26 @@ class ImportPracownikowRow(ImportRowMixin, models.Model):
 
         self._integruj_daty_aj(aj, dane)
 
+        # Niezmiennik rozpoczal < zakonczyl walidujemy PRZED jakimkolwiek zapisem.
+        # Model.save() nie woła clean(), a ustaw_podstawowe_miejsce_pracy() niżej
+        # już utrwala aj (i zdejmuje flagę „podstawowe" z innych powiązań autora).
+        # Odwrócony zakres z XLS musi zostać odrzucony (BPPDatabaseError → izolacja
+        # wiersza) zanim cokolwiek trafi do bazy — inaczej przedwczesny save
+        # zderza się z DB-owym CHECK `poczatek_przed_koncem` (mig 0469) i daje
+        # nieizolowany CheckViolation. Reguły „koniec < dziś" celowo NIE
+        # egzekwujemy: import może nieść przyszłe (planowane) daty końca.
+        if (
+            aj.rozpoczal_prace is not None
+            and aj.zakonczyl_prace is not None
+            and aj.rozpoczal_prace >= aj.zakonczyl_prace
+        ):
+            raise BPPDatabaseError(
+                self.dane_z_xls,
+                self,
+                f"data rozpoczęcia pracy ({aj.rozpoczal_prace}) jest późniejsza "
+                f"lub równa dacie zakończenia ({aj.zakonczyl_prace})",
+            )
+
         if self.funkcja_autora is not None and aj.funkcja != self.funkcja_autora:
             aj.funkcja = self.funkcja_autora
             self.log_zmian["autor_jednostka"].append(
@@ -1118,23 +1138,6 @@ class ImportPracownikowRow(ImportRowMixin, models.Model):
         elif not aj.podstawowe_miejsce_pracy:
             aj.ustaw_podstawowe_miejsce_pracy()
             self.log_zmian["autor_jednostka"].append("podstawowe_miejsce_pracy -> tak")
-
-        # Autor_Jednostka.clean() waliduje rozpoczal < zakonczyl, ale Model.save()
-        # NIE woła clean() (uwaga reviewera #4). Bronimy niezmiennika tutaj — na
-        # jedynej ścieżce zapisu integracji — żeby odwrócony zakres dat z XLS nie
-        # trafił do bazy. Regułę „koniec < dziś" celowo pomijamy: import może nieść
-        # przyszłe daty końca zatrudnienia (to reguła admina, nie importu).
-        if (
-            aj.rozpoczal_prace is not None
-            and aj.zakonczyl_prace is not None
-            and aj.rozpoczal_prace >= aj.zakonczyl_prace
-        ):
-            raise BPPDatabaseError(
-                self.dane_z_xls,
-                self,
-                f"data rozpoczęcia pracy ({aj.rozpoczal_prace}) jest późniejsza "
-                f"lub równa dacie zakończenia ({aj.zakonczyl_prace})",
-            )
 
         aj.save()
 
