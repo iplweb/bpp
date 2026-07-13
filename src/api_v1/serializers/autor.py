@@ -1,7 +1,6 @@
 from rest_framework import serializers
 
 from api_v1.serializers.util import AbsoluteUrlSerializerMixin
-
 from bpp.models import Autor, Autor_Jednostka, Funkcja_Autora, Tytul
 
 
@@ -66,6 +65,15 @@ class AutorSerializer(
     urodzony = serializers.SerializerMethodField()
     poprzednie_nazwiska = serializers.SerializerMethodField()
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # E-mail to PII: dla anonima pole jest USUWANE z odpowiedzi (klucz
+        # nieobecny), nie tylko maskowane pustym stringiem. ``urodzony`` i
+        # ``poprzednie_nazwiska`` pozostają (maskowane w get_*), bo tego
+        # oczekują testy widoczności.
+        if not self._is_authenticated():
+            self.fields.pop("email", None)
+
     def _is_authenticated(self):
         request = self.context.get("request")
         return bool(request and request.user.is_authenticated)
@@ -96,6 +104,7 @@ class AutorSerializer(
             "aktualna_jednostka",
             "aktualna_funkcja",
             "www",
+            "email",
             "urodzony",
             "zmarl",
             "poprzednie_nazwiska",

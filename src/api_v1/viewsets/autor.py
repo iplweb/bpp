@@ -21,9 +21,10 @@ class AutorFilterSet(django_filters.rest_framework.FilterSet):
 
 
 class AutorViewSet(viewsets.ReadOnlyModelViewSet):
-    # Tylko autorzy oznaczeni jako widoczni — autor z pokazuj=False jest
-    # świadomie ukryty ze stron publicznych i nie może wyciekać przez API.
-    queryset = Autor.objects.filter(pokazuj=True)
+    # Bazowy queryset BEZ filtra widoczności — zawężenie do pokazuj=True robi
+    # get_queryset() TYLKO dla anonima. Autor z pokazuj=False jest świadomie
+    # ukryty ze stron publicznych, ale zalogowany (redaktor) musi go widzieć.
+    queryset = Autor.objects.all()
     serializer_class = AutorSerializer
     filterset_class = AutorFilterSet
     # Filtr nazwisko__icontains skanuje bez indeksu prefiksu — opt-in
