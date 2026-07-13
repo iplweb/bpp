@@ -2,7 +2,7 @@ import django_filters
 from rest_framework import viewsets
 
 from api_v1.serializers.patent import Patent_AutorSerializer, PatentSerializer
-from api_v1.viewsets.common import UkryjStatusyKorektyMixin
+from api_v1.viewsets.common import UkryjNieEksportowaneMixin, UkryjStatusyKorektyMixin
 from bpp.models import Patent, Patent_Autor
 
 
@@ -12,7 +12,7 @@ class Patent_AutorFilterSet(django_filters.rest_framework.FilterSet):
         model = Patent_Autor
 
 
-class Patent_AutorViewSet(viewsets.ReadOnlyModelViewSet):
+class Patent_AutorViewSet(UkryjNieEksportowaneMixin, viewsets.ReadOnlyModelViewSet):
     queryset = Patent_Autor.objects.all()
     serializer_class = Patent_AutorSerializer
     filterset_class = Patent_AutorFilterSet

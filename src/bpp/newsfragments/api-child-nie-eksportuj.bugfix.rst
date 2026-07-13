@@ -1,0 +1,1 @@
+Podrzędne endpointy API (streszczenia, autorstwa, identyfikatory zewnętrznych baz danych) respektują flagę ``nie_eksportuj_przez_api`` rekordu nadrzędnego — anonimowy użytkownik nie może już enumerować ich kluczy i wyciągać danych rekordu wyłączonego z eksportu.
