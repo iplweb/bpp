@@ -61,6 +61,31 @@ class AutorSerializer(
         many=True, read_only=True, view_name="api_v1:autor_jednostka-detail"
     )
 
+    # Pola PII maskowane dla użytkowników niezalogowanych.
+    email = serializers.SerializerMethodField()
+    urodzony = serializers.SerializerMethodField()
+    poprzednie_nazwiska = serializers.SerializerMethodField()
+
+    def _is_authenticated(self):
+        request = self.context.get("request")
+        return bool(request and request.user.is_authenticated)
+
+    def get_email(self, obj):
+        # E-mail to PII — ujawniany wyłącznie zalogowanym.
+        return obj.email if self._is_authenticated() else ""
+
+    def get_urodzony(self, obj):
+        # Pełna data urodzenia to PII (dzień i miesiąc umożliwiają kradzież
+        # tożsamości). Anonimowi otrzymują None — najbezpieczniejszy wariant.
+        return obj.urodzony if self._is_authenticated() else None
+
+    def get_poprzednie_nazwiska(self, obj):
+        # Zalogowani widzą zawsze; anonim tylko gdy autor na to zezwolił
+        # (pokazuj_poprzednie_nazwiska=True) — zgodnie z zachowaniem frontendu.
+        if self._is_authenticated() or obj.pokazuj_poprzednie_nazwiska:
+            return obj.poprzednie_nazwiska
+        return ""
+
     class Meta:
         model = Autor
         fields = [

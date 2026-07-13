@@ -30,6 +30,15 @@ class AutorViewSet(viewsets.ReadOnlyModelViewSet):
     # throttling kosztownego endpointu wyszukiwania (globalny wyłączony).
     throttle_classes = [SearchAnonThrottle, SearchUserThrottle]
 
+    def get_queryset(self):
+        # Anonim nie może zobaczyć autorów oznaczonych jako ukryci
+        # (pokazuj=False) — ani na liście, ani (dzięki temu) w detalu (404).
+        # Zalogowany widzi wszystkich.
+        qs = super().get_queryset()
+        if self.request.user.is_authenticated:
+            return qs
+        return qs.filter(pokazuj=True)
+
 
 class Funkcja_AutoraViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = Funkcja_Autora.objects.all()
