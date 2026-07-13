@@ -404,6 +404,20 @@ class Zgloszenie_PublikacjiWizard(UczelniaSettingRequiredMixin, SessionWizardVie
         if self.steps.current != "2":
             return {}
 
+        # Anti-bypass (review 2026-07, H2): pliki utrwalamy TYLKO gdy krok 0
+        # (z captchą, jeśli wymagana) został realnie zaliczony — marker
+        # `captcha_ok` w extra_data. formtools pozwala klientowi ustawić
+        # management-form `current_step` i przeskoczyć do kroku 2 z pominięciem
+        # kroku 0; bez tej bramki bot mógłby utrwalić pliki (disk-exhaustion)
+        # nie rozwiązując PoW. Marker jest server-side (extra_data) — nie da
+        # się go podrobić z klienta.
+        if (
+            settings.ZGLOS_CAPTCHA_ENABLED
+            and not self.request.user.is_authenticated
+            and not self.storage.extra_data.get(ZGLOS_CAPTCHA_OK_KEY)
+        ):
+            return {}
+
         # OTWARTY: pole `pliki` usunięte z formularza → plików nie oczekujemy.
         # Wyczyść ew. tmp z wcześniejszego przejścia jako OGRANICZONY
         # (scenariusz OGRANICZONY→krok 1→OTWARTY→koniec), inaczej

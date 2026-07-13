@@ -11,6 +11,7 @@ from api_v1.viewsets.common import (
     StreszczeniaPagination,
     UkryjNieEksportowaneMixin,
     UkryjStatusyKorektyMixin,
+    UkryjStatusyKorektyRekorduMixin,
 )
 from bpp.models import (
     Wydawnictwo_Ciagle,
@@ -27,7 +28,9 @@ class Wydawnictwo_Ciagle_AutorFilterSet(django_filters.rest_framework.FilterSet)
 
 
 class Wydawnictwo_Ciagle_AutorViewSet(
-    UkryjNieEksportowaneMixin, viewsets.ReadOnlyModelViewSet
+    UkryjNieEksportowaneMixin,
+    UkryjStatusyKorektyRekorduMixin,
+    viewsets.ReadOnlyModelViewSet,
 ):
     queryset = Wydawnictwo_Ciagle_Autor.objects.all()
     serializer_class = Wydawnictwo_Ciagle_AutorSerializer
@@ -64,14 +67,18 @@ class Wydawnictwo_CiagleViewSet(
 
 
 class Wydawnictwo_Ciagle_Zewnetrzna_Baza_DanychViewSet(
-    UkryjNieEksportowaneMixin, viewsets.ReadOnlyModelViewSet
+    UkryjNieEksportowaneMixin,
+    UkryjStatusyKorektyRekorduMixin,
+    viewsets.ReadOnlyModelViewSet,
 ):
     queryset = Wydawnictwo_Ciagle_Zewnetrzna_Baza_Danych.objects.all()
     serializer_class = Wydawnictwo_Ciagle_Zewnetrzna_Baza_DanychSerializer
 
 
 class Wydawnictwo_Ciagle_StreszczenieViewSet(
-    UkryjNieEksportowaneMixin, viewsets.ReadOnlyModelViewSet
+    UkryjNieEksportowaneMixin,
+    UkryjStatusyKorektyRekorduMixin,
+    viewsets.ReadOnlyModelViewSet,
 ):
     queryset = Wydawnictwo_Ciagle_Streszczenie.objects.all()
     serializer_class = Wydawnictwo_Ciagle_StreszczenieSerializer

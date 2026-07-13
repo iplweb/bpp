@@ -12,6 +12,7 @@ from bpp.models import (
     Wydawnictwo_Ciagle_Streszczenie,
     Wydawnictwo_Ciagle_Tytul,
 )
+from bpp.util import safe_tytul_html
 from pbn_api.client import PBNClient
 from pbn_api.models import Publication
 
@@ -82,7 +83,7 @@ def importuj_artykul(
     jezyk = pobierz_jezyk(mainLanguage, pbn_json.get("title"), domyslny_jezyk)
 
     ret = Wydawnictwo_Ciagle(
-        tytul_oryginalny=pbn_json.pop("title"),
+        tytul_oryginalny=safe_tytul_html(pbn_json.pop("title")),
         rok=pbn_json.pop("year"),
         public_www=pbn_json.pop("publicUri", None) or "",
         jezyk=jezyk,

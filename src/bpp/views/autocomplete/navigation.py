@@ -13,6 +13,7 @@ from queryset_sequence import QuerySetSequence
 
 from bpp.models import Uczelnia
 from bpp.models.autor import Autor
+from bpp.permissions import moze_wprowadzac_dane
 from bpp.models.cache import Rekord
 from bpp.models.konferencja import Konferencja
 from bpp.models.patent import Patent
@@ -163,7 +164,11 @@ class GlobalNavigationAutocomplete(
             Rekord.objects.filter(qry).only("tytul_oryginalny"), uczelnia
         )
 
-        if hasattr(self, "request") and self.request.user.is_anonymous:
+        # Rekordy o statusie ukrytym na poziomie "podglad" są niedostępne dla
+        # wszystkich POZA użytkownikami z uprawnieniami redaktorskimi
+        # (moze_wprowadzac_dane) — zwykłe zalogowane konto ich nie znajdzie,
+        # spójnie z gate'em na stronie szczegółów rekordu (PracaView).
+        if hasattr(self, "request") and not moze_wprowadzac_dane(self.request.user):
             uczelnia_status = Uczelnia.objects.get_for_request(self.request)
             if uczelnia_status is not None:
                 ukryte = uczelnia_status.ukryte_statusy("podglad")

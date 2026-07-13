@@ -399,3 +399,55 @@ def test_get_na_wizard_czysci_tmp(webtest_app, uczelnia, settings, tmp_path):
     # GET restartuje kreator; B3 czyści tmp PRZED storage.reset().
     webtest_app.get(_url())
     assert _list_files(_tmp_dir(str(tmp_path))) == []
+
+
+# --------------------------------------------------------------------------
+# 6. Anti-bypass (review 2026-07, H2): przy WŁĄCZONEJ captchy nie da się
+#    zapisać plików pomijając krok 0 (captcha) przez ustawienie management-form
+#    `current_step` wprost na "2". Marker `captcha_ok` powstaje tylko po
+#    zaliczeniu kroku 0 — bez niego process_step_files nie utrwala plików.
+# --------------------------------------------------------------------------
+def _current_step_field(form):
+    return next(n for n in form.fields if n and n.endswith("current_step"))
+
+
+@pytest.mark.django_db
+def test_bypass_kroku0_z_captcha_nie_zapisuje_plikow(
+    webtest_app, uczelnia, settings, tmp_path
+):
+    # Fixture `settings` (nie @override_settings) — spójne przywracanie razem
+    # z MEDIA_ROOT; mieszanie obu psuło teardown ZGLOS_CAPTCHA_ENABLED.
+    settings.ZGLOS_CAPTCHA_ENABLED = True
+    settings.MEDIA_ROOT = str(tmp_path)
+
+    # Atakujący pobiera publiczny GET → ma token CSRF (formularz nie jest
+    # csrf-exempt), którym podpisuje kolejne POST-y pomijające krok 0.
+    page = webtest_app.get(_url())
+    form = page.forms[0]
+    csrf = dict(form.submit_fields()).get("csrfmiddlewaretoken")
+    mgmt = _current_step_field(form)
+
+    # Krok 1 (forma OGRANICZONY) z pominięciem kroku 0 — krok 1 nie ma captchy.
+    webtest_app.post(
+        _url(),
+        params=[
+            ("csrfmiddlewaretoken", csrf),
+            (mgmt, "1"),
+            ("1-forma_dostepu", "OGRANICZONY"),
+        ],
+    )
+
+    # Krok 2 z plikami — marker captcha_ok NIGDY nie powstał (krok 0 pominięty).
+    fields = [
+        ("csrfmiddlewaretoken", csrf),
+        (mgmt, "2"),
+        ("2-tytul_oryginalny", "Atak"),
+        ("2-rok", "2020"),
+        ("2-email", "atak@test.pl"),
+        ("2-strona_www", "https://example.com/"),
+    ]
+    upload_files = [("2-pliki", "evil.pdf", _pdf_bytes())]
+    webtest_app.post(_url(), params=fields, upload_files=upload_files)
+
+    # Guard: bez markera captchy pliki nie mogą trafić na dysk.
+    assert _list_files(_tmp_dir(str(tmp_path))) == []

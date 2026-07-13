@@ -70,8 +70,6 @@ class AutorSerializer(
             "tytul",
             "aktualna_jednostka",
             "aktualna_funkcja",
-            "pokazuj",
-            "email",
             "www",
             "urodzony",
             "zmarl",

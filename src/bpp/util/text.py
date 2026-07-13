@@ -262,3 +262,36 @@ def safe_streszczenie_html(html):
         clean_content_tags=set(),
         link_rel=None,
     )
+
+
+class safe_tytul_defaults:
+    # Tytuły publikacji renderujemy `|safe` (naukowa notacja inline:
+    # kursywa nazw gatunków, indeksy dolne/górne). Dozwolona tylko wąska
+    # lista tagów inline — bez a/href, obrazków, skryptów itp.
+    ALLOWED_TAGS = ("i", "b", "em", "strong", "sub", "sup", "u")
+
+
+def safe_tytul_html(tytul):
+    """Zwróć bezpieczny tytuł publikacji do renderowania przez ``|safe``.
+
+    Tytuły z importów zewnętrznych (PBN, CrossRef) są nieufne — bez
+    sanityzacji złośliwy rekord upstream mógłby wstrzyknąć ``<script>`` /
+    ``<img onerror>`` renderowany na publicznych stronach (stored XSS).
+
+    Sanityzujemy WYŁĄCZNIE gdy tytuł zawiera ``<`` — XSS wymaga znacznika,
+    a przytłaczająca większość tytułów to czysty tekst (często z ``&``),
+    którego nie wolno podwójnie zakodować przez nh3 (korupcja danych w
+    fulltext/eksporcie). Gdy ``<`` jest obecny: escape gołych ``<``/``>`` +
+    nh3 z wąską allow-listą (zachowuje ``<i>``/``<sub>`` itp., usuwa XSS).
+    """
+    if not tytul or "<" not in tytul:
+        return tytul
+
+    escaped = _escape_bare_angle_brackets(tytul)
+    return nh3.clean(
+        escaped,
+        tags=set(safe_tytul_defaults.ALLOWED_TAGS),
+        attributes={},
+        clean_content_tags=set(),
+        link_rel=None,
+    )

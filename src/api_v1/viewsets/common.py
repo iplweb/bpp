@@ -43,6 +43,33 @@ class UkryjNieEksportowaneMixin:
         )
 
 
+class UkryjStatusyKorektyRekorduMixin:
+    """Wersja :class:`UkryjStatusyKorektyMixin` dla endpointów podrzędnych.
+
+    Ukrywa child-rekordy, których rekord nadrzędny ma status korekty ukryty
+    dla API (``ukryte_statusy("api")``). Parent viewsety robią to bezpośrednio
+    (pole ``status_korekty`` na rekordzie); child docierają do statusu przez
+    relację ``parent_lookup``. Uzupełnia :class:`UkryjNieEksportowaneMixin`
+    o wymiar statusów korekty — oba stosowane razem dają na pod-zasobie tę
+    samą widoczność co na rekordzie-rodzicu.
+    """
+
+    parent_lookup = "rekord"
+
+    def get_queryset(self):
+        queryset = super().get_queryset()
+
+        uczelnia = Uczelnia.objects.get_for_request(self.request)
+        if uczelnia:
+            ukryte_statusy = uczelnia.ukryte_statusy("api")
+            if ukryte_statusy:
+                queryset = queryset.exclude(
+                    **{f"{self.parent_lookup}__status_korekty_id__in": ukryte_statusy}
+                )
+
+        return queryset
+
+
 class StreszczeniaPagination(PageNumberPagination):
     page_size = 1
     page_size_query_param = "page_size"

@@ -44,6 +44,7 @@ from bpp.multiseek_registry import (
     ZakresLatQueryObject,
     ZrodloQueryObject,
 )
+from bpp.permissions import moze_wprowadzac_dane
 from bpp.util import sanitize_multiseek_title
 from bpp.util.uczelnia_scope import (
     scope_jednostki_do_uczelni,
@@ -780,8 +781,10 @@ class PracaViewMixin:
         # jednostka__uczelnia). No-op przy single-install.
         self.object._uczelnia_ogladajacego = uczelnia_dla_odczytu(request)
 
-        if request.user.is_anonymous:
-            # Jeżeli użytkownik jest anonimowy, to może obejmować go ukrywanie statusów
+        if not moze_wprowadzac_dane(request.user):
+            # Rekordy o statusie ukrytym na poziomie "podglad" są niedostępne
+            # dla wszystkich POZA użytkownikami z uprawnieniami redaktorskimi
+            # (anonim oraz zwykłe zalogowane konto → 403).
             uczelnia = Uczelnia.objects.get_for_request(request)
 
             if uczelnia is not None:

@@ -4,6 +4,7 @@ from bpp.util import (
     fulltext_tokenize,
     knapsack,
     safe_streszczenie_html,
+    safe_tytul_html,
     strip_html,
     strip_nonalphanumeric,
     wytnij_isbn_z_uwag,
@@ -170,3 +171,43 @@ def test_safe_streszczenie_html_empty(value):
 )
 def test_fulltext_tokenize(i, o):
     assert fulltext_tokenize(i) == o
+
+
+# ---------------------------------------------------------------------------
+# safe_tytul_html (M9→M2 audyt 2026-07): sanityzacja tytułów publikacji
+# renderowanych `|safe` — zamyka stored XSS z importów zewnętrznych.
+# ---------------------------------------------------------------------------
+@pytest.mark.parametrize("value", [None, "", "   "])
+def test_safe_tytul_html_puste_bez_zmian(value):
+    assert safe_tytul_html(value) == value
+
+
+def test_safe_tytul_html_zwykly_tekst_z_ampersandem_nietkniety():
+    # Brak '<' → zero mutacji: NIE wolno podwójnie zakodować '&'.
+    raw = "Rak & terapia: badanie A/B (100%)"
+    assert safe_tytul_html(raw) == raw
+
+
+def test_safe_tytul_html_zachowuje_notacje_naukowa():
+    assert safe_tytul_html("H<sub>2</sub>O oraz <i>E. coli</i>") == (
+        "H<sub>2</sub>O oraz <i>E. coli</i>"
+    )
+
+
+def test_safe_tytul_html_usuwa_script():
+    out = safe_tytul_html("Atak<script>alert(1)</script>")
+    assert "<script>" not in out
+    assert "onerror" not in out
+
+
+def test_safe_tytul_html_usuwa_img_onerror():
+    out = safe_tytul_html('Atak <img src=x onerror=alert(1)>')
+    assert "<img" not in out
+    assert "onerror" not in out
+
+
+def test_safe_tytul_html_operator_matematyczny_escapowany():
+    # '<' jako operator, nie znacznik → escapowany, tekst nie ginie.
+    out = safe_tytul_html("Wartość a < b w modelu")
+    assert "&lt;" in out
+    assert "< b" not in out
