@@ -47,6 +47,7 @@ def test_omega_psir_fetch_allows_public_host(monkeypatch):
     resp.status_code = 200
     resp.headers = {}
     resp.json.return_value = []
+    resp.iter_content = lambda chunk_size=1: iter([b"[]"])
     get = MagicMock(return_value=resp)
     monkeypatch.setattr(network.requests, "get", get)
 
