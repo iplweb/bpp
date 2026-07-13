@@ -1,3 +1,5 @@
+import posixpath
+
 from django.apps import apps
 from django.conf import settings
 from django.conf.urls.static import static
@@ -45,8 +47,15 @@ def protected_media_serve(request, path, document_root=None):
 
     Files in protected/ directory should only be accessible through authenticated
     views that use django-sendfile.
+
+    Ścieżkę normalizujemy PRZED sprawdzeniem guardu — inaczej traversal typu
+    ``public/../protected/tajne.pdf`` przechodzi (surowe ``startswith`` widzi
+    ``public/``), a ``static_serve`` zwija ``..`` dopiero wewnątrz i serwuje
+    plik z ``protected/``. ``normpath`` na pustej ścieżce daje ``"."``, więc
+    dodatkowe ``lstrip("/")`` i porównanie do ``"protected"`` są bezpieczne.
     """
-    if path.startswith("protected/"):
+    norm = posixpath.normpath(path).lstrip("/")
+    if norm == "protected" or norm.startswith("protected/"):
         raise Http404("Use the download endpoint")
     return static_serve(request, path, document_root)
 
