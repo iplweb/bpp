@@ -104,6 +104,35 @@ def test_pierwsze_powiazanie_nie_liczy_sie_jako_nowy_okres(autor_jednostka_fixtu
 
 
 @pytest.mark.django_db
+def test_okres_przylegajacy_scalony_nie_liczy_sie_jako_nowy(autor_jednostka_fixture):
+    """Audyt #3: nowy okres, którego „data od" = koniec zamkniętego + 1 dzień,
+    zostaje scalony przez defragmentację w JEDEN ciągły okres. Wtedy netto nie
+    powstał nowy okres — ``_integruj_wiersz`` NIE może zwrócić True (inaczej
+    panel raportuje „utworzono 1 okres" dla okresu, którego już nie ma)."""
+    autor, jednostka = autor_jednostka_fixture
+    baker.make(
+        Autor_Jednostka,
+        autor=autor,
+        jednostka=jednostka,
+        rozpoczal_prace=date(2010, 1, 1),
+        zakonczyl_prace=date(2015, 1, 1),
+    )
+    imp = baker.make(ImportPracownikow)
+    row = _row_odroczony_okres(
+        imp,
+        autor,
+        jednostka,
+        {"data_zatrudnienia": "2015-01-02"},  # dzień po końcu → sąsiedztwo
+        "2015-01-02",
+        nowy_okres=True,
+    )
+    wynik = _integruj_wiersz(row)
+    okresy = Autor_Jednostka.objects.filter(autor=autor, jednostka=jednostka)
+    assert okresy.count() == 1  # scalone w jeden ciągły okres
+    assert wynik is False  # nie liczymy scalonego okresu jako utworzonego
+
+
+@pytest.mark.django_db
 def test_idempotencja_drugi_przebieg_nie_tworzy_trzeciego_okresu(
     autor_jednostka_fixture,
 ):

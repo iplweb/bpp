@@ -43,6 +43,7 @@ from import_common.core.jednostka import unikalny_skrot, zaproponuj_skrot
 from import_common.core.stanowisko import zaproponuj_skrot_stanowiska
 from import_common.core.stopien import zaproponuj_skrot_stopnia
 from import_common.core.tytul import zaproponuj_skrot_tytulu
+from import_common.exceptions import BPPDatabaseError
 from import_common.normalization import (
     normalize_funkcja_autora,
     normalize_grupa_pracownicza,
@@ -157,6 +158,17 @@ def _opisz_utworzone(diff, aj_created=True):
     return opisy
 
 
+def _oznacz_wiersz_bledny(row, powod):
+    """Oznacz wiersz, którego integracja naruszyła niezmiennik bazy (np.
+    odwrócony zakres dat) — jego transakcja per-wiersz jest już wycofana
+    (savepoint w ``_integruj_wiersz``). Zapisujemy powód do ``log_zmian["blad"]``
+    (widoczny w audycie), żeby błąd JEDNEGO wiersza nie wywalał całego commitu
+    (audyt #2). ``log_zmian`` niepuste działa też jak marker „już przetworzony"
+    — restart integracji go nie powtórzy."""
+    row.log_zmian = {"autor": [], "autor_jednostka": [], "blad": [powod]}
+    row.save(update_fields=["log_zmian"])
+
+
 def _integruj_wiersz(row):
     # Idempotencja (#508 F2): faza integracji może ruszyć drugi raz na tym
     # samym parencie (restart liveops / podwójne „Zatwierdź" — stan
@@ -206,6 +218,10 @@ def _integruj_wiersz(row):
         # Świeży re-check — baza mogła się zmienić od preview (dry-run).
         if row.check_if_integration_needed():
             row.integrate()
+            if getattr(row, "_okres_scalony_po_defragmentacji", False):
+                # Świeży okres zlał się z sąsiadującym (defragmentacja) → netto
+                # NIE powstał nowy okres, więc nie inkrementuj licznika (#3).
+                nowy_okres_utworzony = False
             if materializowano:
                 # `integrate()` nadpisuje `log_zmian` na starcie — ślad
                 # utworzenia dopisujemy DOPIERO PO nim, do klucza
@@ -959,8 +975,15 @@ def integruj(parent, p):
     qs = parent.zmiany_potrzebne_set.all()
     utworzono_nowych_okresow = 0
     for row in p.track(list(qs), total=qs.count(), label="Integracja"):
-        if _integruj_wiersz(row):
-            utworzono_nowych_okresow += 1
+        try:
+            if _integruj_wiersz(row):
+                utworzono_nowych_okresow += 1
+        except BPPDatabaseError as e:
+            # Naruszenie niezmiennika w JEDNYM wierszu (np. odwrócone daty z XLS)
+            # NIE może wywalić całego commitu i zostawić import w połowie (audyt
+            # #2). Wiersz jest już wycofany (savepoint); oznaczamy go i lecimy
+            # dalej — reszta przechodzi, a błąd trafia do audytu + licznika.
+            _oznacz_wiersz_bledny(row, e.reason)
 
     odpieto = _wykonaj_odpiecia(parent)
     przepieto_wierszy, przepieto_prac = _wykonaj_przepiecia(
@@ -980,7 +1003,15 @@ def integruj(parent, p):
     # którego `_materializuj_diff` ustawia od razu docelowe wartości, nie
     # wchodzi w `row.integrate()` (recheck nie widzi driftu), a mimo to
     # wykonał realną pracę.
-    zintegrowano = parent.zmiany_potrzebne_set.count() - pominieto_nieaktualne
+    # Wiersze odrzucone przez guard niezmienników (np. odwrócone daty) —
+    # oznaczone ``log_zmian["blad"]``. Nie są „zintegrowane" ani „nieaktualne";
+    # raportujemy osobno i wykluczamy z licznika `zintegrowano` (audyt #2).
+    pominieto_bledne = parent.zmiany_potrzebne_set.filter(
+        log_zmian__has_key="blad"
+    ).count()
+    zintegrowano = (
+        parent.zmiany_potrzebne_set.count() - pominieto_nieaktualne - pominieto_bledne
+    )
 
     # Wiersze brak/wielu bez rozstrzygnięcia usera (autor None) — świadomie
     # pominięte w tej fazie (Faza 4 doda „utwórz nowego"). Raportujemy licznik
@@ -1002,7 +1033,11 @@ def integruj(parent, p):
             "pominieto_nieaktualne": pominieto_nieaktualne,
             "pominieto_niedopasowane": pominieto_niedopasowane,
             "pominieto_bez_jednostki": pominieto_bez_jednostki,
-            "wymaga_uwagi": (pominieto_niedopasowane + pominieto_bez_jednostki) > 0,
+            "pominieto_bledne": pominieto_bledne,
+            "wymaga_uwagi": (
+                pominieto_niedopasowane + pominieto_bez_jednostki + pominieto_bledne
+            )
+            > 0,
             "odpieto": odpieto,
             "przepieto_wierszy": przepieto_wierszy,
             "przepieto_prac": przepieto_prac,
