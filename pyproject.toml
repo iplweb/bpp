@@ -461,7 +461,11 @@ dev = [
     "pytest-recording>=0.12.1",
     "vcrpy>=8.3.0,<9",
     "towncrier>=22.8.0",
-    "pytest-sugar>=0.9.7",
+    # pytest-tqdm: jeden zagregowany pasek postepu na kontrolerze xdist
+    # (zamiast rozjezdzajacych sie paskow pytest-sugar). Auto-on tylko w TTY
+    # (CI / agent / pipe = non-TTY = no-op), sam wylacza sugara gdy aktywny.
+    # https://github.com/mpasternak/pytest-tqdm
+    "pytest-tqdm>=0.4.0",
     "pytest-rerunfailures>=16.4",
     "django-debug-toolbar>=7.0.0",
     "model-bakery>=1.24.0",

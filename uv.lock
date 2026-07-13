@@ -531,10 +531,10 @@ dev = [
     { name = "pytest-repeat", marker = "platform_python_implementation != 'PyPy'" },
     { name = "pytest-rerunfailures", marker = "platform_python_implementation != 'PyPy'" },
     { name = "pytest-split", marker = "platform_python_implementation != 'PyPy'" },
-    { name = "pytest-sugar", marker = "platform_python_implementation != 'PyPy'" },
     { name = "pytest-testcontainers", marker = "platform_python_implementation != 'PyPy'" },
     { name = "pytest-testcontainers-django", marker = "platform_python_implementation != 'PyPy'" },
     { name = "pytest-timeout", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "pytest-tqdm", marker = "platform_python_implementation != 'PyPy'" },
     { name = "pytest-xdist", marker = "platform_python_implementation != 'PyPy'" },
     { name = "ruff", marker = "platform_python_implementation != 'PyPy'" },
     { name = "testcontainers", marker = "platform_python_implementation != 'PyPy'" },
@@ -707,10 +707,10 @@ dev = [
     { name = "pytest-repeat", specifier = ">=0.9.4" },
     { name = "pytest-rerunfailures", specifier = ">=16.4" },
     { name = "pytest-split", specifier = ">=0.9.0" },
-    { name = "pytest-sugar", specifier = ">=0.9.7" },
     { name = "pytest-testcontainers", specifier = ">=0.2.2" },
     { name = "pytest-testcontainers-django", specifier = ">=0.2.5" },
     { name = "pytest-timeout", specifier = ">=2.1.0" },
+    { name = "pytest-tqdm", specifier = ">=0.4.0" },
     { name = "pytest-xdist", specifier = ">=2.3.0" },
     { name = "ruff", specifier = "==0.15.21" },
     { name = "testcontainers", extras = ["postgres"], specifier = ">=4.14.2" },
@@ -4760,19 +4760,6 @@ wheels = [
 ]
 
 [[package]]
-name = "pytest-sugar"
-version = "1.1.1"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "pytest", marker = "platform_python_implementation != 'PyPy'" },
-    { name = "termcolor", marker = "platform_python_implementation != 'PyPy'" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/0b/4e/60fed105549297ba1a700e1ea7b828044842ea27d72c898990510b79b0e2/pytest-sugar-1.1.1.tar.gz", hash = "sha256:73b8b65163ebf10f9f671efab9eed3d56f20d2ca68bda83fa64740a92c08f65d", size = 16533, upload-time = "2025-08-23T12:19:35.737Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/87/d5/81d38a91c1fdafb6711f053f5a9b92ff788013b19821257c2c38c1e132df/pytest_sugar-1.1.1-py3-none-any.whl", hash = "sha256:2f8319b907548d5b9d03a171515c1d43d2e38e32bd8182a1781eb20b43344cc8", size = 11440, upload-time = "2025-08-23T12:19:34.894Z" },
-]
-
-[[package]]
 name = "pytest-testcontainers"
 version = "0.2.2"
 source = { registry = "https://pypi.org/simple" }
@@ -4811,6 +4798,19 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/ac/82/4c9ecabab13363e72d880f2fb504c5f750433b2b6f16e99f4ec21ada284c/pytest_timeout-2.4.0.tar.gz", hash = "sha256:7e68e90b01f9eff71332b25001f85c75495fc4e3a836701876183c4bcfd0540a", size = 17973, upload-time = "2025-05-05T19:44:34.99Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/fa/b6/3127540ecdf1464a00e5a01ee60a1b09175f6913f0644ac748494d9c4b21/pytest_timeout-2.4.0-py3-none-any.whl", hash = "sha256:c42667e5cdadb151aeb5b26d114aff6bdf5a907f176a007a30b940d3d865b5c2", size = 14382, upload-time = "2025-05-05T19:44:33.502Z" },
+]
+
+[[package]]
+name = "pytest-tqdm"
+version = "0.4.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "pytest", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "tqdm", marker = "platform_python_implementation != 'PyPy'" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/0a/27/08b7a2e45d469fd052a6c6719946300160a8bf5603b101922363922e0f69/pytest_tqdm-0.4.0.tar.gz", hash = "sha256:eefa4e26145e7ad7d4f3e1ec23c5000f4115d74ea1c19daa7487ca70e832e19a", size = 15113, upload-time = "2026-07-13T15:11:57.19Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/6d/93/adcb6fcbec880d2886b3a49b3e42be85c5de70511f5b981640970c5cbf49/pytest_tqdm-0.4.0-py3-none-any.whl", hash = "sha256:9895bfb90a5fdf4f10d145dd78039d5a59da2b8887436b180763f90624a18192", size = 13386, upload-time = "2026-07-13T15:11:55.94Z" },
 ]
 
 [[package]]
@@ -5715,15 +5715,6 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/11/00/416d2ba54d7d58a7f7c61bf62dfeb48fd553cf49614daf83312f2d2c156e/tablib-3.9.0.tar.gz", hash = "sha256:1b6abd8edb0f35601e04c6161d79660fdcde4abb4a54f66cc9f9054bd55d5fe2", size = 125565, upload-time = "2025-10-15T18:21:56.263Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/66/6b/32e51d847148b299088fc42d3d896845fd09c5247190133ea69dbe71ba51/tablib-3.9.0-py3-none-any.whl", hash = "sha256:eda17cd0d4dda614efc0e710227654c60ddbeb1ca92cdcfc5c3bd1fc5f5a6e4a", size = 49580, upload-time = "2025-10-15T18:21:44.185Z" },
-]
-
-[[package]]
-name = "termcolor"
-version = "3.3.0"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/46/79/cf31d7a93a8fdc6aa0fbb665be84426a8c5a557d9240b6239e9e11e35fc5/termcolor-3.3.0.tar.gz", hash = "sha256:348871ca648ec6a9a983a13ab626c0acce02f515b9e1983332b17af7979521c5", size = 14434, upload-time = "2025-12-29T12:55:21.882Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/33/d1/8bb87d21e9aeb323cc03034f5eaf2c8f69841e40e4853c2627edf8111ed3/termcolor-3.3.0-py3-none-any.whl", hash = "sha256:cf642efadaf0a8ebbbf4bc7a31cec2f9b5f21a9f726f4ccbb08192c9c26f43a5", size = 7734, upload-time = "2025-12-29T12:55:20.718Z" },
 ]
 
 [[package]]
