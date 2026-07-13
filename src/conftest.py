@@ -310,9 +310,7 @@ def _audit_wipe_once(django_db_setup, django_db_blocker):
         with django_db_blocker.unblock():
             conn = _leak_guard_conn(connection.settings_dict)
             with conn.cursor() as cur:
-                cur.execute(
-                    "SELECT tablename FROM pg_tables WHERE schemaname='public'"
-                )
+                cur.execute("SELECT tablename FROM pg_tables WHERE schemaname='public'")
                 niepuste = []
                 for (t,) in list(cur.fetchall()):
                     if t.startswith(_AUDIT_EXCLUDE_PREFIXES) or (
@@ -325,9 +323,7 @@ def _audit_wipe_once(django_db_setup, django_db_blocker):
                 if niepuste:
                     cur.execute("SET session_replication_role = replica")
                     cur.execute(
-                        "TRUNCATE "
-                        + ", ".join(f'"{t}"' for t in niepuste)
-                        + " CASCADE"
+                        "TRUNCATE " + ", ".join(f'"{t}"' for t in niepuste) + " CASCADE"
                     )
                     cur.execute("SET session_replication_role = DEFAULT")
         print(

@@ -25,7 +25,9 @@ from pbn_integrator import importer
 
 
 @pytest.mark.django_db
-def test_importuj_edited_book_bez_publisher_wchodzi_bez_wydawcy(jezyki, charaktery_formalne, typy_kbn, typy_odpowiedzialnosci, statusy_korekt):
+def test_importuj_edited_book_bez_publisher_wchodzi_bez_wydawcy(
+    jezyki, charaktery_formalne, typy_kbn, typy_odpowiedzialnosci, statusy_korekt
+):
     """EDITED_BOOK bez ``publisher`` (payload #352) → rekord z ``wydawca=None``."""
     baker.make(
         Publication,

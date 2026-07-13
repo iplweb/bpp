@@ -13,7 +13,9 @@ from import_pracownikow.models import ImportPracownikow
 
 
 @pytest.mark.django_db
-def test_e2e_upload_mapowanie_analiza(admin_client, admin_user, dwaj_autorzy_z_jednostki):
+def test_e2e_upload_mapowanie_analiza(
+    admin_client, admin_user, dwaj_autorzy_z_jednostki
+):
     autor, jednostka = dwaj_autorzy_z_jednostki
     csv = (
         f"Nazwisko;Imie;Jedn org\n{autor.nazwisko};{autor.imiona};{jednostka.nazwa}\n"
