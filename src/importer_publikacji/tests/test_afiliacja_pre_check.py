@@ -48,7 +48,15 @@ def test_create_blokuje_gdy_autor_afiliuje_do_wydzialu(authed_client, jednostka)
     """Autor dopasowany do jednostki rodzaju „Wydział" (afiliuje=True) →
     task NIE jest enqueueowany, sesja zostaje w REVIEW, user widzi błąd."""
     client, user = authed_client
-    jednostka.rodzaj = RodzajJednostki.objects.get(nazwa="Wydział")
+    # Baseline bywa zmieciony przez transakcyjny flush sąsiada — zapewniamy
+    # rodzaj "Wydział" sami i WYMUSZAMY autor_moze_afiliowac=False (o to w teście
+    # chodzi; model domyślnie ma True, a inne fixtury mogły utworzyć "Wydział"
+    # z domyślną wartością, więc samo ``defaults`` nie wystarcza).
+    rodzaj, _ = RodzajJednostki.objects.get_or_create(nazwa="Wydział")
+    if rodzaj.autor_moze_afiliowac is not False:
+        rodzaj.autor_moze_afiliowac = False
+        rodzaj.save()
+    jednostka.rodzaj = rodzaj
     jednostka.save()
     session = _sesja_z_autorem(user, jednostka)
 
@@ -103,7 +111,15 @@ def test_waliduj_afiliacje_sesji_raises_dla_wydzialu(jednostka):
     """Twardy guard współdzielony przez CreateView i _create_publication."""
     from importer_publikacji.views.publikacja import waliduj_afiliacje_sesji
 
-    jednostka.rodzaj = RodzajJednostki.objects.get(nazwa="Wydział")
+    # Baseline bywa zmieciony przez transakcyjny flush sąsiada — zapewniamy
+    # rodzaj "Wydział" sami i WYMUSZAMY autor_moze_afiliowac=False (o to w teście
+    # chodzi; model domyślnie ma True, a inne fixtury mogły utworzyć "Wydział"
+    # z domyślną wartością, więc samo ``defaults`` nie wystarcza).
+    rodzaj, _ = RodzajJednostki.objects.get_or_create(nazwa="Wydział")
+    if rodzaj.autor_moze_afiliowac is not False:
+        rodzaj.autor_moze_afiliowac = False
+        rodzaj.save()
+    jednostka.rodzaj = rodzaj
     jednostka.save()
     session = _sesja_z_autorem(baker.make("bpp.BppUser"), jednostka)
 

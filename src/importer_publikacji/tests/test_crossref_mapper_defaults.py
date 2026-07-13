@@ -20,6 +20,18 @@ from bpp.models import Crossref_Mapper
 @pytest.mark.django_db
 def test_migracja_zaseedowala_wszystkie_typy():
     """Migracja 0467 utworzyła 16 wierszy z poprawnym jest_wydawnictwem_zwartym."""
+    import importlib
+
+    from django.apps import apps as django_apps
+
+    # Dane migracji 0467 bywają zmiecione przez transakcyjny flush sąsiada na
+    # workerze — odtwarzamy je REALNĄ (idempotentną) funkcją seedującą migracji,
+    # więc test dalej weryfikuje JEJ wynik (komplet 16 + flagi), zamiast zakładać
+    # przetrwanie danych migracyjnych.
+    importlib.import_module(
+        "bpp.migrations.0467_seed_crossref_mapper_rows"
+    ).seed_crossref_mapper_rows(django_apps, None)
+
     C = Crossref_Mapper.CHARAKTER_CROSSREF
     assert Crossref_Mapper.objects.count() == len(C.values)
 
