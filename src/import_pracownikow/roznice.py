@@ -62,6 +62,28 @@ def _stan_funkcja(row):
     )
 
 
+def _stan_data_od(row):
+    # „brak" gdy plik nie niesie daty od, albo wiersz nie ma autora/jednostki
+    # (nie ma okresu do rozstrzygnięcia). Inaczej stan bierzemy z porównywarki:
+    # „zmienione" = nowy okres LUB wypełnienie pustej daty od w bazie.
+    if row.jednostka_id is None or not row.autor_id:
+        return "brak"
+    if not _dane(row).get("data_zatrudnienia"):
+        return "brak"
+    return "zmienione" if row.porownaj_z_baza()["data_od"]["rozne"] else "zgodne"
+
+
+def _stan_data_do(row):
+    # „brak" gdy plik nie niesie daty końca, albo wiersz nie ma autora/jednostki.
+    # „zmienione" = wstawienie do pustej, różnica pokazana bez nadpisania, albo
+    # nowy okres z niepustą datą końca.
+    if row.jednostka_id is None or not row.autor_id:
+        return "brak"
+    if not _dane(row).get("data_końca_zatrudnienia"):
+        return "brak"
+    return "zmienione" if row.porownaj_z_baza()["data_do"]["rozne"] else "zgodne"
+
+
 POLA_ROZNIC = [
     ("jednostka", "Jednostka", _stan_jednostka),
     ("email", "E-mail", _stan_email),
@@ -69,4 +91,6 @@ POLA_ROZNIC = [
     ("stopien", "Stopień służbowy", _stan_stopien),
     ("funkcja", "Funkcja w jednostce", _stan_funkcja),
     ("stanowisko", "Stanowisko dydaktyczne", _stan_stanowisko),
+    ("data_od", "Data od", _stan_data_od),
+    ("data_do", "Data do", _stan_data_do),
 ]

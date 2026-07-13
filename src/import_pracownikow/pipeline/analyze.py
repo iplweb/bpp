@@ -69,6 +69,7 @@ from import_pracownikow.models import (
     ImportPracownikowStopien,
     ImportPracownikowTytul,
 )
+from import_pracownikow.okresy import rozwiaz_okres_zatrudnienia
 from import_pracownikow.parsers.jednostka_zlozona import parsuj_komorke
 from import_pracownikow.parsers.leksykony import zbuduj_parser_kontekst
 from import_pracownikow.parsers.osoba import rozbij_osobe
@@ -475,11 +476,14 @@ def _wybierz_autor_jednostka(autor, jednostka):
     nadpisać zamknięte zatrudnienie — korupcja (#508 F6). Deterministycznie
     preferujemy AKTYWNY etat (bez ``zakonczyl_prace``), najnowszy startem; w
     ostateczności najnowszy AJ. Zwraca ``None``, gdy autor nie ma AJ w jednostce.
+
+    Deleguje do ``okresy._wybierz_aktywny_najswiezszy`` (gałąź „pusty plik_od"
+    resolvera §7) na JEDNEJ pobranej liście — jedno źródło reguły wyboru.
     """
-    aj_qs = Autor_Jednostka.objects.filter(autor=autor, jednostka=jednostka)
-    return (
-        aj_qs.filter(zakonczyl_prace__isnull=True).order_by("-rozpoczal_prace").first()
-        or aj_qs.order_by("-rozpoczal_prace").first()
+    from import_pracownikow.okresy import _wybierz_aktywny_najswiezszy
+
+    return _wybierz_aktywny_najswiezszy(
+        list(Autor_Jednostka.objects.filter(autor=autor, jednostka=jednostka))
     )
 
 
@@ -631,16 +635,30 @@ def _przetworz_wiersz(
 
     # AJ liczymy TYLKO dla jednostki twardo dopasowanej. Odroczona → jednostka
     # None na wierszu; AJ oraz diff["autor_jednostka"] policzy integracja PO
-    # rozstrzygnięciu — inaczej get_or_create(jednostka_id=None) w
-    # _materializuj_diff wywala cały task (IntegrityError).
+    # rozstrzygnięciu — inaczej create z jednostka_id=None w _materializuj_diff
+    # wywala cały task (IntegrityError). Resolver okresu (§7) rozstrzyga po
+    # „dacie od": ten sam okres → istniejący AJ; inna → NOWY okres (nowy AJ).
     jednostka_na_wierszu = None if jednostka_odroczona else jednostka
     aj = None
     if autor is not None and jednostka_na_wierszu is not None:
-        aj = _wybierz_autor_jednostka(autor, jednostka_na_wierszu)
-        if aj is None:
+        aj_lista = list(
+            Autor_Jednostka.objects.filter(autor=autor, jednostka=jednostka_na_wierszu)
+        )
+        # ExcelDateField.to_python → date|None (kontrakt resolvera: nigdy str).
+        plik_od = data.get("data_zatrudnienia") or None
+        rodzaj, wartosc = rozwiaz_okres_zatrudnienia(
+            autor, jednostka_na_wierszu, plik_od, aj_lista=aj_lista
+        )
+        if rodzaj == "istniejacy":
+            aj = wartosc
+        else:
             diff["autor_jednostka"] = {
                 "autor": autor.pk,
                 "jednostka": jednostka_na_wierszu.pk,
+                "rozpoczal_prace": wartosc.isoformat() if wartosc else None,
+                # nowy_okres = tworzymy DODATKOWY okres obok istniejącego (nie
+                # pierwsze powiązanie) → do licznika/opisu (§10).
+                "nowy_okres": bool(aj_lista),
             }
 
     row_tytul, row_tytul_status, row_zrodlo_tytulu = _klasyfikuj_tytul_wiersza(

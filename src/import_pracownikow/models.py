@@ -747,6 +747,85 @@ class ImportPracownikowRow(ImportRowMixin, models.Model):
             "rozne": plik_id is not None and baza_id != plik_id,
         }
 
+    @staticmethod
+    def _porownaj_data(plik, baza, *, nowy_okres=False, ma_okres=True):
+        """Trójka+ porównania daty: ``{plik, baza, rozne, nowy_okres}``. Toleruje
+        ``date`` / ISO-``str`` / puste po obu stronach (porównywarka czyta surowe
+        ``dane_znormalizowane``, gdzie data bywa stringiem lub obiektem). ``rozne``
+        (= „zmienione") gdy: nowy okres z niepustym plikiem, LUB baza pusta a plik
+        niepusty (wstawienie), LUB obie niepuste i różne (różnica pokazana bez
+        nadpisania). ``ma_okres=False`` (brak autora/jednostki → brak okresu do
+        rozstrzygnięcia) → ZAWSZE ``rozne=False`` (nie ma z czym porównywać)."""
+
+        def _iso(v):
+            if v is None or v == "":
+                return ""
+            return v.isoformat() if isinstance(v, date) else str(v)
+
+        p = _iso(plik)
+        b = _iso(baza)
+        rozne = ma_okres and (bool(nowy_okres and p) or (bool(p) and p != b))
+        return {"plik": p, "baza": b, "rozne": rozne, "nowy_okres": bool(nowy_okres)}
+
+    def _plik_od(self):
+        """„Data od" z pliku jako ``date | None`` (kontrakt resolvera: nigdy
+        ``str`` — inaczej fałszywy „nowy okres" + duplikat AJ). Pusty/``None``
+        ``dane_znormalizowane`` (stare/puste wiersze) → ``None`` (bez sięgania do
+        ``dane_bardziej_znormalizowane``, które nie znosi ``None``)."""
+        if not self.dane_znormalizowane:
+            return None
+        return self.dane_bardziej_znormalizowane.get("data_zatrudnienia") or None
+
+    def _plik_do(self):
+        """„Data do" z pliku jako ``date | None`` (guard jak w ``_plik_od``)."""
+        if not self.dane_znormalizowane:
+            return None
+        return self.dane_bardziej_znormalizowane.get("data_końca_zatrudnienia") or None
+
+    def _aj_lista(self):
+        """Lista okresów ``Autor_Jednostka`` dla ``(autor, jednostka)`` wiersza —
+        JEDNO zapytanie (memo na instancji), współdzielone przez resolver
+        (``_okres``) i gałąź „nowy okres" w porównywarce (bez N+1)."""
+        if not hasattr(self, "_aj_lista_cache"):
+            if not (self.autor_id and self.jednostka_id):
+                self._aj_lista_cache = []
+            else:
+                from bpp.models import Autor_Jednostka
+
+                self._aj_lista_cache = list(
+                    Autor_Jednostka.objects.filter(
+                        autor_id=self.autor_id, jednostka_id=self.jednostka_id
+                    )
+                )
+        return self._aj_lista_cache
+
+    def _okres(self):
+        """Decyzja resolvera okresu dla tego wiersza (memo na instancji) —
+        ``None`` (brak autora/jednostki) | ``("istniejacy", aj)`` |
+        ``("nowy", rozpoczal|None)``. Współdzielona przez porównywarkę i ekstraktory
+        ``_stan_data_*`` → 1 zapytanie o AJ na wiersz."""
+        if not hasattr(self, "_okres_cache"):
+            if not (self.autor_id and self.jednostka_id):
+                self._okres_cache = None
+            else:
+                from import_pracownikow.okresy import rozwiaz_okres_zatrudnienia
+
+                self._okres_cache = rozwiaz_okres_zatrudnienia(
+                    self.autor,
+                    self.jednostka,
+                    self._plik_od(),
+                    aj_lista=self._aj_lista(),
+                )
+        return self._okres_cache
+
+    def _zapomnij_okres(self):
+        """Inwaliduje memo ``_okres``/``_aj_lista`` — wołane przy zmianie
+        autora/jednostki wiersza (``odtworz_autor_jednostka`` / podłączenie
+        jednostki), żeby kolejny odczyt nie podał decyzji dla nieaktualnej pary."""
+        for atrybut in ("_okres_cache", "_aj_lista_cache"):
+            if hasattr(self, atrybut):
+                delattr(self, atrybut)
+
     def porownaj_z_baza(self):
         """Porównanie „plik vs baza" dla e-maila, stopnia służbowego,
         stanowiska dydaktycznego, tytułu naukowego i funkcji w jednostce
@@ -766,6 +845,23 @@ class ImportPracownikowRow(ImportRowMixin, models.Model):
         stanowisko_baza = aj.stanowisko if aj and aj.stanowisko_id else None
         tytul_baza = autor.tytul if autor and autor.tytul_id else None
         funkcja_baza = aj.funkcja if aj and aj.funkcja_id else None
+        # Daty zatrudnienia: strona bazy z DECYZJI resolvera (§9.2) — to samo
+        # źródło prawdy co integracja. „istniejacy" → daty docelowego okresu;
+        # „nowy" → baza `data od` = okres-referencyjny (stara → nowa), `data do`
+        # pusta (nowy okres nie ma jeszcze końca); brak autora/jednostki → puste.
+        okres = self._okres()
+        nowy_okres = bool(okres and okres[0] == "nowy")
+        if okres and okres[0] == "istniejacy":
+            baza_od = okres[1].rozpoczal_prace
+            baza_do = okres[1].zakonczyl_prace
+        elif nowy_okres:
+            from import_pracownikow.okresy import _wybierz_aktywny_najswiezszy
+
+            referencyjny = _wybierz_aktywny_najswiezszy(self._aj_lista())
+            baza_od = referencyjny.rozpoczal_prace if referencyjny else None
+            baza_do = None
+        else:
+            baza_od = baza_do = None
         return {
             "email": self._porownaj_email(
                 dane.get("email"), autor.email if autor else ""
@@ -793,6 +889,18 @@ class ImportPracownikowRow(ImportRowMixin, models.Model):
                 funkcja_baza,
                 self.funkcja_autora_id if aj else None,
             ),
+            "data_od": self._porownaj_data(
+                self._plik_od(),
+                baza_od,
+                nowy_okres=nowy_okres,
+                ma_okres=okres is not None,
+            ),
+            "data_do": self._porownaj_data(
+                self._plik_do(),
+                baza_do,
+                nowy_okres=nowy_okres,
+                ma_okres=okres is not None,
+            ),
         }
 
     def stany_pol(self):
@@ -801,12 +909,14 @@ class ImportPracownikowRow(ImportRowMixin, models.Model):
         = plik, więc live dałoby „zgodne"), inaczej live wyliczenie z
         ``POLA_ROZNIC`` (jednostka / email / tytuł / stopień / funkcja /
         stanowisko). Zasila filtr stanu pól i atrybuty ``data-diff-*``."""
-        # Uwaga: gdyby POLA_ROZNIC kiedyś zyskało nowy klucz, stare snapshoty go
-        # nie zawierają — wtedy rekord nie ma data-diff-<nowy> i filtr po tym polu
-        # (≠ „wszystkie") go ukryje. Przy dodaniu pola rozważ dopełnienie snapshotu.
-        if self.stany_pol_snapshot is not None:
-            return self.stany_pol_snapshot
+        # Snapshoty sprzed dodania `data_od`/`data_do` nie mają tych kluczy —
+        # dopełniamy je neutralnym „brak", żeby rekord nie znikał pod filtrem
+        # nowego pola (≠ „wszystkie"). Import PRZED gałęzią (używany w obu).
         from import_pracownikow.roznice import POLA_ROZNIC
+
+        if self.stany_pol_snapshot is not None:
+            baza = {klucz: "brak" for klucz, _et, _ekstraktor in POLA_ROZNIC}
+            return {**baza, **self.stany_pol_snapshot}
 
         return {klucz: ekstraktor(self) for klucz, _et, ekstraktor in POLA_ROZNIC}
 
@@ -851,8 +961,11 @@ class ImportPracownikowRow(ImportRowMixin, models.Model):
             # #4: rozpoczęcie stemplujemy TYLKO gdy puste (data z pliku / importu)
             # — integracja potrzebna, gdy plik niesie datę, a AJ jej nie ma.
             dane.get("data_zatrudnienia") is not None and aj.rozpoczal_prace is None,
+            # „data do" wstaw-tylko-gdy-pusta (§3): integracja potrzebna, gdy plik
+            # niesie datę końca, a AJ jej nie ma. Różnicy wobec istniejącej NIE
+            # nadpisujemy (pokazuje ją tylko porównywarka), więc tu jej nie liczymy.
             dane.get("data_końca_zatrudnienia") is not None
-            and aj.zakonczyl_prace != dane["data_końca_zatrudnienia"],
+            and aj.zakonczyl_prace is None,
             self.funkcja_autora is not None and aj.funkcja != self.funkcja_autora,
             self.grupa_pracownicza is not None
             and aj.grupa_pracownicza != self.grupa_pracownicza,
@@ -922,26 +1035,24 @@ class ImportPracownikowRow(ImportRowMixin, models.Model):
     def _integruj_daty_aj(self, aj, dane):
         """Ustawia daty zatrudnienia na powiązaniu z danych wiersza.
 
-        Polityka „no-overwrite" (#4): ``rozpoczal_prace`` stemplujemy TYLKO gdy
-        puste — nie nadpisujemy istniejącej daty (decyzja usera #4; dawniej data
-        z pliku nadpisywała istniejącą wartość). Priorytet przy stemplowaniu
-        pustej daty: data zatrudnienia z pliku → globalna „data zmian
-        personalnych" z importu (item 8) → dzień importu (dziś). Item 8 dotyczy
-        właśnie dopisywania autora do jednostki (nowe AJ, pusta data), więc jest
-        spójny z no-overwrite."""
-        if aj.rozpoczal_prace is None:
-            nowa_data = (
-                dane.get("data_zatrudnienia")
-                or self.parent.data_zmian_personalnych
-                or timezone.localdate()
-            )
-            aj.rozpoczal_prace = nowa_data
+        „Data od" (``rozpoczal_prace``) na ISTNIEJĄCYM AJ wypełniamy TYLKO gdy
+        baza ma ``NULL`` a plik NIESIE datę (§3: „wypełnienie NULL") — nie
+        nadpisujemy istniejącej daty. Pusty ``plik_od`` na istniejącym AJ →
+        NIC NIE ZMIENIAJ (§5), nawet gdy ``rozpoczal_prace`` jest ``NULL``.
+        Fallback ``data zmian → dziś`` dla NOWEGO okresu stemplujemy przy
+        MATERIALIZACJI (``integrate._materializuj_diff``), nie tutaj — świeży AJ
+        ma już ``rozpoczal_prace``, więc ta gałąź go nie dotyczy.
+
+        „Data do" (``zakonczyl_prace``) — wstaw-tylko-gdy-pusta (§3): różnicę
+        wobec istniejącej daty POKAZUJEMY w porównywarce, ale NIE nadpisujemy."""
+        if aj.rozpoczal_prace is None and dane.get("data_zatrudnienia"):
+            aj.rozpoczal_prace = dane["data_zatrudnienia"]
             self.log_zmian["autor_jednostka"].append(
-                f"data rozpoczęcia pracy na {nowa_data}"
+                f"data rozpoczęcia pracy na {aj.rozpoczal_prace}"
             )
 
         data_konca = dane.get("data_końca_zatrudnienia")
-        if data_konca is not None and aj.zakonczyl_prace != data_konca:
+        if data_konca and aj.zakonczyl_prace is None:
             aj.zakonczyl_prace = data_konca
             self.log_zmian["autor_jednostka"].append(
                 f"data końca zatrudnienia na {data_konca}"
@@ -949,6 +1060,11 @@ class ImportPracownikowRow(ImportRowMixin, models.Model):
 
     def _integrate_autor_jednostka(self):
         aj = self.autor_jednostka
+        if aj is None:
+            # Ochrona: świeży okres mógł zostać scalony przez defragmentację i
+            # bez ocalałego AJ (`_przepnij_aj_po_defragmentacji`). Dane zatrudnienia
+            # niesie już scalony rekord — nie ma czego zapisywać.
+            return
         dane = self.dane_bardziej_znormalizowane
 
         self._integruj_daty_aj(aj, dane)
@@ -1027,8 +1143,39 @@ class ImportPracownikowRow(ImportRowMixin, models.Model):
             self.stany_pol_snapshot = self.stany_pol()
         self.log_zmian = {"autor": [], "autor_jednostka": []}
         self._integrate_autor()
+        self._przepnij_aj_po_defragmentacji()
         self._integrate_autor_jednostka()
         self.save()
+
+    def _przepnij_aj_po_defragmentacji(self):
+        """``_integrate_autor`` woła ``Autor.save()``, który defragmentuje okresy
+        (``defragmentuj_jednostke`` scala nakładające/sąsiadujące/otwarte AJ).
+        Świeżo utworzony okres, który okazał się sąsiadować z zamkniętym (edge:
+        dzień po końcu poprzedniego), mógł zostać scalony i USUNIĘTY — dalszy
+        ``aj.save()`` w ``_integrate_autor_jednostka`` rzuciłby wtedy
+        ``DoesNotExist`` (easyaudit, PROPAGATE_EXCEPTIONS). Celujemy w ocalały
+        aktywny/najświeższy AJ zamiast zapisywać skasowany rekord.
+
+        Guard aktywny WYŁĄCZNIE dla wierszy, które utworzyły nowy okres
+        (``_okres_swiezo_utworzony`` ustawia pipeline) — reszta nie płaci za
+        dodatkowe zapytanie."""
+        if not getattr(self, "_okres_swiezo_utworzony", False):
+            return
+        if self.autor_jednostka_id is None:
+            return
+        from bpp.models import Autor_Jednostka
+        from import_pracownikow.okresy import _wybierz_aktywny_najswiezszy
+
+        if Autor_Jednostka.objects.filter(pk=self.autor_jednostka_id).exists():
+            return
+        # Świeży okres scalony przez defragmentację — przepnij na ocalały AJ.
+        self.autor_jednostka = _wybierz_aktywny_najswiezszy(
+            list(
+                Autor_Jednostka.objects.filter(
+                    autor_id=self.autor_id, jednostka_id=self.jednostka_id
+                )
+            )
+        )
 
     def sformatowany_log_zmian(self):
         # Renderuje WSZYSTKIE klucze audytu (#513 F1 / #508 M4). Faza integracji

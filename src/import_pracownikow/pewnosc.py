@@ -109,24 +109,37 @@ def odtworz_autor_jednostka(row, autor):
     - gdy AJ brak: odkłada create w ``diff_do_utworzenia`` i ustawia
       ``zmiany_potrzebne=True`` (integracja zmaterializuje AJ przez ``get_or_create``).
 
+    Wybór okresu (istniejący vs NOWY) rozstrzyga resolver ``rozwiaz_okres_
+    zatrudnienia`` po „dacie od" z pliku (§7) — TEN SAM co analiza i porównywarka,
+    żeby podgląd nie zapowiadał innego okresu niż utworzy commit. Inna data od niż
+    w bazie → odroczony NOWY okres (``rozpoczal_prace`` + ``nowy_okres`` w diffie).
+
     NIE zapisuje wiersza — caller składa ``save``/``update_fields``. Caller MUSI
     ustawić ``row.autor = autor`` PRZED wywołaniem (``check_if_integration_needed``
-    czyta ``self.autor``). Jedyna funkcja w module sięgająca ORM: import
-    ``Autor_Jednostka`` jest LAZY (w ciele), więc ładowanie modułu pozostaje
-    ORM-free i ``models.py`` dalej może importować ``STATUS_*``.
+    / ``_aj_lista`` czytają ``self.autor``). Jedyne funkcje w module sięgające ORM
+    są LAZY (w ciele), więc ładowanie modułu pozostaje ORM-free i ``models.py``
+    dalej może importować ``STATUS_*``.
     """
-    from bpp.models import Autor_Jednostka
+    from import_pracownikow.okresy import rozwiaz_okres_zatrudnienia
 
     row.diff_do_utworzenia.pop("autor_jednostka", None)
-    aj = Autor_Jednostka.objects.filter(autor=autor, jednostka=row.jednostka).first()
-    row.autor_jednostka = aj
-    if aj is None:
-        row.diff_do_utworzenia["autor_jednostka"] = {
-            "autor": autor.pk,
-            "jednostka": row.jednostka_id,
-        }
-        row.zmiany_potrzebne = True
-    else:
+    # Zmiana autora unieważnia decyzję okresu policzoną dla poprzedniego autora.
+    row._zapomnij_okres()
+    aj_lista = row._aj_lista()
+    rodzaj, wartosc = rozwiaz_okres_zatrudnienia(
+        autor, row.jednostka, row._plik_od(), aj_lista=aj_lista
+    )
+    if rodzaj == "istniejacy":
+        row.autor_jednostka = wartosc
         row.zmiany_potrzebne = bool(row.diff_do_utworzenia) or (
             row.check_if_integration_needed()
         )
+    else:
+        row.autor_jednostka = None
+        row.diff_do_utworzenia["autor_jednostka"] = {
+            "autor": autor.pk,
+            "jednostka": row.jednostka_id,
+            "rozpoczal_prace": wartosc.isoformat() if wartosc else None,
+            "nowy_okres": bool(aj_lista),
+        }
+        row.zmiany_potrzebne = True

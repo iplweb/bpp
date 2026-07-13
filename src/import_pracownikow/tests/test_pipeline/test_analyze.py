@@ -100,10 +100,13 @@ def test_analiza_nie_tworzy_autor_jednostka_gdy_brak_powiazania(
     # Właściwa asercja: dry-run nie utworzył Autor_Jednostka.
     assert po == przed
     assert row.autor_jednostka is None
-    assert row.diff_do_utworzenia["autor_jednostka"] == {
-        "autor": autor.pk,
-        "jednostka": jednostka.pk,
-    }
+    aj_diff = row.diff_do_utworzenia["autor_jednostka"]
+    assert aj_diff["autor"] == autor.pk
+    assert aj_diff["jednostka"] == jednostka.pk
+    # Pierwsze powiązanie (brak istniejącego AJ) → nie „dodatkowy okres".
+    assert aj_diff["nowy_okres"] is False
+    # Resolver odkłada też „data od" z pliku (ISO-string / None) do materializacji.
+    assert "rozpoczal_prace" in aj_diff
 
 
 @pytest.mark.django_db

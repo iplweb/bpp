@@ -17,7 +17,28 @@ from model_bakery import baker
 from bpp.models import Autor_Jednostka
 from import_common.exceptions import BPPDatabaseError
 from import_pracownikow.models import ImportPracownikow, ImportPracownikowRow
-from import_pracownikow.pipeline.integrate import integruj
+from import_pracownikow.pipeline.integrate import _materializuj_diff, integruj
+
+
+def _row_swiezy_okres(imp, autor, jednostka, dane, *, rozpoczal_prace=None):
+    """Wiersz z odroczonym NOWYM okresem (diff_do_utworzenia['autor_jednostka'])
+    do bezpośredniej materializacji — bez istniejącego AJ."""
+    return ImportPracownikowRow.objects.create(
+        parent=imp,
+        autor=autor,
+        jednostka=jednostka,
+        autor_jednostka=None,
+        dane_znormalizowane=dane,
+        diff_do_utworzenia={
+            "autor_jednostka": {
+                "autor": autor.pk,
+                "jednostka": jednostka.pk,
+                "rozpoczal_prace": rozpoczal_prace,
+                "nowy_okres": False,
+            }
+        },
+        zmiany_potrzebne=True,
+    )
 
 
 def _row_z_aj(imp, autor, jednostka, aj, dane):
@@ -37,9 +58,22 @@ def _row_z_aj(imp, autor, jednostka, aj, dane):
 
 
 @pytest.mark.django_db
-def test_data_zmian_wypelnia_nowe_aj_bez_daty_w_pliku(autor_jednostka_fixture):
-    """Item 8: nowe powiązanie (rozpoczal_prace=None) i brak daty w pliku →
-    globalna „data zmian personalnych" z importu jako data początku pracy."""
+def test_swiezy_aj_bez_daty_w_pliku_uzywa_data_zmian(autor_jednostka_fixture):
+    """P1: NOWY okres (świeży AJ z diff) i brak daty w pliku → globalna „data
+    zmian personalnych" jako rozpoczal, stemplowana przy MATERIALIZACJI."""
+    autor, jednostka = autor_jednostka_fixture
+    imp = baker.make(ImportPracownikow, data_zmian_personalnych=date(2024, 9, 1))
+    row = _row_swiezy_okres(imp, autor, jednostka, {})
+    created = _materializuj_diff(row)
+    assert created is True
+    assert row.autor_jednostka.rozpoczal_prace == date(2024, 9, 1)
+
+
+@pytest.mark.django_db
+def test_istniejacy_aj_pusta_data_od_bez_zmian(autor_jednostka_fixture):
+    """§5: istniejący AJ + pusty plik_od → NIC NIE ZMIENIAJ. rozpoczal zostaje
+    NULL — NIE stemplujemy data_zmian/dziś na istniejącym AJ (fallback dotyczy
+    tylko świeżego AJ przy materializacji)."""
     autor, jednostka = autor_jednostka_fixture
     aj = baker.make(
         Autor_Jednostka, autor=autor, jednostka=jednostka, rozpoczal_prace=None
@@ -48,7 +82,7 @@ def test_data_zmian_wypelnia_nowe_aj_bez_daty_w_pliku(autor_jednostka_fixture):
     row = _row_z_aj(imp, autor, jednostka, aj, {})
     row._integrate_autor_jednostka()
     aj.refresh_from_db()
-    assert aj.rozpoczal_prace == date(2024, 9, 1)
+    assert aj.rozpoczal_prace is None
 
 
 @pytest.mark.django_db
@@ -84,20 +118,56 @@ def test_data_zmian_nie_nadpisuje_istniejacej_daty_aj(autor_jednostka_fixture):
 
 
 @pytest.mark.django_db
-def test_brak_globalnej_daty_stempluje_date_importu(autor_jednostka_fixture):
-    """Item 8 × #4: bez globalnej daty (None) i bez daty w pliku — nowe AJ
-    dostaje datę importu (dziś). „data zmian personalnych" jest tylko środkowym
-    ogniwem priorytetu (plik → globalna → dziś); ostatecznym fallbackiem pozostaje
-    polityka #4 (puste rozpoczal_prace zawsze stemplujemy)."""
+def test_swiezy_aj_bez_globalnej_daty_stempluje_dzis(autor_jednostka_fixture):
+    """P1 fallback: świeży AJ (nowy okres), brak daty w pliku i brak globalnej
+    „daty zmian" (None) → dzień importu (dziś). Priorytet: plik → globalna → dziś,
+    stemplowany przy materializacji nowego AJ."""
+    autor, jednostka = autor_jednostka_fixture
+    imp = baker.make(ImportPracownikow, data_zmian_personalnych=None)
+    row = _row_swiezy_okres(imp, autor, jednostka, {})
+    _materializuj_diff(row)
+    assert row.autor_jednostka.rozpoczal_prace == timezone.localdate()
+
+
+@pytest.mark.django_db
+def test_data_do_wstaw_gdy_pusta(autor_jednostka_fixture):
+    """§3: „data do" z pliku wstawiana, gdy AJ nie ma jeszcze końca zatrudnienia."""
     autor, jednostka = autor_jednostka_fixture
     aj = baker.make(
-        Autor_Jednostka, autor=autor, jednostka=jednostka, rozpoczal_prace=None
+        Autor_Jednostka,
+        autor=autor,
+        jednostka=jednostka,
+        rozpoczal_prace=date(2010, 1, 1),
+        zakonczyl_prace=None,
     )
-    imp = baker.make(ImportPracownikow, data_zmian_personalnych=None)
-    row = _row_z_aj(imp, autor, jednostka, aj, {})
+    imp = baker.make(ImportPracownikow)
+    row = _row_z_aj(
+        imp, autor, jednostka, aj, {"data_końca_zatrudnienia": "2023-06-30"}
+    )
     row._integrate_autor_jednostka()
     aj.refresh_from_db()
-    assert aj.rozpoczal_prace == timezone.localdate()
+    assert aj.zakonczyl_prace == date(2023, 6, 30)
+
+
+@pytest.mark.django_db
+def test_data_do_nie_nadpisuje_istniejacej(autor_jednostka_fixture):
+    """§3: „data do" z pliku NIE nadpisuje istniejącej daty końca (różnicę
+    pokazuje tylko porównywarka, wstaw-tylko-gdy-pusta)."""
+    autor, jednostka = autor_jednostka_fixture
+    aj = baker.make(
+        Autor_Jednostka,
+        autor=autor,
+        jednostka=jednostka,
+        rozpoczal_prace=date(2010, 1, 1),
+        zakonczyl_prace=date(2020, 12, 31),
+    )
+    imp = baker.make(ImportPracownikow)
+    row = _row_z_aj(
+        imp, autor, jednostka, aj, {"data_końca_zatrudnienia": "2023-06-30"}
+    )
+    row._integrate_autor_jednostka()
+    aj.refresh_from_db()
+    assert aj.zakonczyl_prace == date(2020, 12, 31)
 
 
 @pytest.mark.django_db

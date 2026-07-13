@@ -4,7 +4,7 @@
 {# total, zmiany_potrzebne, byl_dry_run, stan; faza integracji: #}
 {# zintegrowano, pominieto_nieaktualne, pominieto_niedopasowane, #}
 {# pominieto_bez_jednostki, wymaga_uwagi, odpieto, utworzono_nowych_autorow, #}
-{# przepieto_wierszy, przepieto_prac, stan. #}
+{# utworzono_nowych_okresow, przepieto_wierszy, przepieto_prac, stan. #}
 {# Panel: żółty (warning) gdy integracja coś pominęła (wymaga_uwagi), żeby #}
 {# częściowy import nie udawał pełnego sukcesu (uwaga reviewera #3). #}
 <div class="panel callout {% if byl_dry_run %}secondary{% elif wymaga_uwagi %}warning{% else %}success{% endif %}">
@@ -61,6 +61,10 @@
             <p>Utworzono nowych autorów:
                 <strong>{{ utworzono_nowych_autorow }}</strong>.</p>
         {% endif %}
+        {% if utworzono_nowych_okresow %}
+            <p>Utworzono nowych okresów zatrudnienia:
+                <strong>{{ utworzono_nowych_okresow }}</strong>.</p>
+        {% endif %}
         {% if przepieto_wierszy %}
             <p>Przepięto prace:
                 <strong>{{ przepieto_wierszy }}</strong> wierszy /
@@ -89,6 +93,10 @@
         {% if utworzono_nowych_autorow %}
             <p>Utworzono nowych autorów:
                 <strong>{{ utworzono_nowych_autorow }}</strong>.</p>
+        {% endif %}
+        {% if utworzono_nowych_okresow %}
+            <p>Utworzono nowych okresów zatrudnienia:
+                <strong>{{ utworzono_nowych_okresow }}</strong>.</p>
         {% endif %}
         {% if przepieto_wierszy %}
             <p>Przepięto prace:
