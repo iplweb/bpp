@@ -151,6 +151,52 @@
             </a>
         {% endif %}
 
+        {% if orcid_login_enabled %}
+            <h3><span class="fi-key"></span> Logowanie ORCID</h3>
+            {% if orcid_identities %}
+                <table class="hover">
+                    <thead>
+                        <tr>
+                            <th>Środowisko (issuer)</th>
+                            <th>ORCID iD</th>
+                            <th>Powiązano</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for identity in orcid_identities %}
+                        <tr>
+                            <td>{{ identity.issuer }}</td>
+                            <td>{{ identity.sub }}</td>
+                            <td>{{ identity.linked_at }}</td>
+                            <td>
+                                <form method="post" action="{% url 'bpp:profil-uzytkownika' %}">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="unlink_orcid_identity" value="{{ identity.pk }}">
+                                    <button type="submit" class="button small alert">
+                                        <span class="fi-x"></span> Odłącz
+                                    </button>
+                                </form>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            {% else %}
+                <div class="callout secondary">
+                    <p>
+                        <span class="fi-info"></span>
+                        Twoje konto nie jest jeszcze powiązane z ORCID.
+                    </p>
+                </div>
+            {% endif %}
+            {# Przycisk „Połącz" ZAWSZE dostępny — sandbox i prod to osobne #}
+            {# środowiska, więc konto może mieć powiązanie w każdym z nich. #}
+            <a href="{% url 'orcid_integration:polacz' %}" class="button">
+                <span class="fi-link"></span> Połącz konto z ORCID
+            </a>
+        {% endif %}
+
     </div>
 </div>
 {% endblock %}
