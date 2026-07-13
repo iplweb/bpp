@@ -509,10 +509,12 @@ if apps.is_installed("password_policies"):
         PasswordResetCompleteView,
         PasswordResetConfirmView,
         PasswordResetDoneView,
-        PasswordResetFormView,
     )
 
-    from django_bpp.views import SmartPasswordChangeView
+    from django_bpp.views import (
+        RateLimitedPasswordResetFormView,
+        SmartPasswordChangeView,
+    )
 
     urlpatterns += [
         url(
@@ -526,7 +528,9 @@ if apps.is_installed("password_policies"):
             name="password_change",
         ),
         url(
-            r"^password_reset/$", PasswordResetFormView.as_view(), name="password_reset"
+            r"^password_reset/$",
+            RateLimitedPasswordResetFormView.as_view(),
+            name="password_reset",
         ),
         url(
             r"^password_reset_confirm/"
