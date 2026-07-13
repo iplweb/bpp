@@ -230,13 +230,16 @@ def sklasyfikuj_jednostke(nazwa, wydzial=None, *, prog=PROG_ZGADYWANIA_JEDNOSTKI
 
     Zwraca ``(jednostka|None, status, similarity|None)``:
     - dokładne dopasowanie (``matchuj_jednostke``) → ``(j, "twardy", None)``;
-    - brak/remis, ale najbliższa trigramowo ≥ ``prog`` (z puli afiliacyjnej) →
+    - najbliższa trigramowo ≥ ``prog`` (z puli afiliacyjnej) →
+      ``(best, "zgadywanie", sim)``;
+    - inaczej fallback ``dopasuj_po_skrocie`` (prefiksowe wyrównanie słów do
+      nazwa/skrot, np. skrócone „Zakład Piel. Anestezjol.…") →
       ``(best, "zgadywanie", sim)`` — auto-wybór do weryfikacji;
-    - w przeciwnym razie (w tym pusta nazwa, remis prefiksowy, brak podobnej) →
-      ``(None, "brak", None)``.
+    - w przeciwnym razie (pusta nazwa, brak podobnej) → ``(None, "brak", None)``.
 
     ``matchuj_jednostke`` rzuca ``DoesNotExist``/``MultipleObjectsReturned`` —
-    oba łapiemy i spadamy do trigramu, więc funkcja nigdy nie wywali analizy.
+    oba łapiemy i spadamy do trigramu/fallbacku, więc funkcja nigdy nie wywali
+    analizy.
     """
     if not nazwa:
         return None, STATUS_JEDNOSTKA_BRAK, None
@@ -251,7 +254,7 @@ def sklasyfikuj_jednostke(nazwa, wydzial=None, *, prog=PROG_ZGADYWANIA_JEDNOSTKI
     except (Jednostka.DoesNotExist, Jednostka.MultipleObjectsReturned):
         pass
 
-    best = (
+    kandydaci = list(
         _pula_afiliacyjna()
         .annotate(
             sim=Greatest(
@@ -259,11 +262,21 @@ def sklasyfikuj_jednostke(nazwa, wydzial=None, *, prog=PROG_ZGADYWANIA_JEDNOSTKI
                 TrigramSimilarity("skrot", nazwa_norm),
             )
         )
-        .order_by("-sim")
-        .first()
+        .filter(sim__gte=min(TRIGRAM_FLOOR, prog))
+        .order_by("-sim")[:TOP_K]
     )
-    if best is not None and best.sim is not None and best.sim >= prog:
+
+    if kandydaci and kandydaci[0].sim is not None and kandydaci[0].sim >= prog:
+        best = kandydaci[0]
         return best, STATUS_JEDNOSTKA_ZGADYWANIE, float(best.sim)
+
+    trafienie = dopasuj_po_skrocie(nazwa_norm, kandydaci)
+    if trafienie is not None:
+        return (
+            trafienie,
+            STATUS_JEDNOSTKA_ZGADYWANIE,
+            float(trafienie.sim) if trafienie.sim is not None else None,
+        )
     return None, STATUS_JEDNOSTKA_BRAK, None
 
 
