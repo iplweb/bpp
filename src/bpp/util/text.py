@@ -181,6 +181,169 @@ def safe_html(html):
     )
 
 
+# Litery greckie wpisywane przez autorów jako pseudo-znaczniki (``<beta>``,
+# ``<Delta>``, ``<alfa>``) — to NIE jest HTML, tylko nazwa litery w nawiasach
+# ostrokątnych. Bez konwersji sanitizer (nh3) wyrzuciłby je jako nieznany tag,
+# gubiąc literę. Zamieniamy je na właściwy znak Unicode ZANIM zadziała nh3.
+# Nazwa z wielkiej litery (``<Delta>``) → majuskuła (Δ) tam, gdzie majuskuła
+# różni się wizualnie od łacińskiej; inaczej minuskuła.
+_GREEK_LOWER = {
+    "alfa": "α",
+    "alpha": "α",
+    "beta": "β",
+    "gamma": "γ",
+    "delta": "δ",
+    "epsilon": "ε",
+    "zeta": "ζ",
+    "eta": "η",
+    "theta": "θ",
+    "iota": "ι",
+    "kappa": "κ",
+    "lambda": "λ",
+    "my": "μ",
+    "mu": "μ",
+    "ny": "ν",
+    "nu": "ν",
+    "ksi": "ξ",
+    "xi": "ξ",
+    "omikron": "ο",
+    "omicron": "ο",
+    "pi": "π",
+    "rho": "ρ",
+    "ro": "ρ",
+    "sigma": "σ",
+    "tau": "τ",
+    "ypsilon": "υ",
+    "upsilon": "υ",
+    "ipsilon": "υ",
+    "fi": "φ",
+    "phi": "φ",
+    "chi": "χ",
+    "khi": "χ",
+    "psi": "ψ",
+    "omega": "ω",
+}
+_GREEK_UPPER = {
+    # tylko majuskuły wizualnie różne od łacińskich
+    "gamma": "Γ",
+    "delta": "Δ",
+    "theta": "Θ",
+    "lambda": "Λ",
+    "ksi": "Ξ",
+    "xi": "Ξ",
+    "pi": "Π",
+    "sigma": "Σ",
+    "fi": "Φ",
+    "phi": "Φ",
+    "psi": "Ψ",
+    "omega": "Ω",
+}
+_PSEUDO_GREEK_RE = re.compile(
+    r"<(" + "|".join(sorted(_GREEK_LOWER, key=len, reverse=True)) + r")>",
+    re.IGNORECASE,
+)
+
+
+def zamien_pseudotagi_na_greke(text):
+    """Zamień pseudo-znaczniki liter greckich (``<beta>`` → ``β``) na Unicode."""
+    if not text or "<" not in text:
+        return text or ""
+
+    def _repl(m):
+        name = m.group(1)
+        low = name.lower()
+        if name[:1].isupper() and low in _GREEK_UPPER:
+            return _GREEK_UPPER[low]
+        return _GREEK_LOWER.get(low, m.group(0))
+
+    return _PSEUDO_GREEK_RE.sub(_repl, text)
+
+
+class safe_tytul_defaults:
+    # Tytuły publikacji: wyłącznie formatowanie inline typowe dla bibliografii —
+    # kursywa (nazwy gatunków, obce zwroty), pogrubienie, indeks górny/dolny
+    # (wzory: "H<sub>2</sub>O", "CD4<sup>+</sup>", "m<sup>2</sup>") i
+    # podkreślenie. Bez linków, tabel, bloków i BEZ atrybutów — tytuł nie ma
+    # powodu ich nieść, a ich brak dodatkowo domyka wektory (onerror, style).
+    ALLOWED_TAGS = ("i", "em", "b", "strong", "sub", "sup", "u")
+
+
+def safe_tytul_html(tytul):
+    """Zwróć bezpieczny HTML tytułu publikacji.
+
+    Zamiennik dla ``|safe`` przy tytułach (``tytul``/``tytul_oryginalny``),
+    które bywają importowane z niezaufanych źródeł (WWW, zgłoszenia anonimowe)
+    i renderowane w publicznych widokach. Escape'uje gołe operatory '<'/'>'
+    (notacja matematyczna w tytule) i przepuszcza wynik przez nh3 z wąską
+    allowlistą inline, usuwając ``<script>``, atrybuty zdarzeń i pozostały XSS.
+    Pseudo-znaczniki liter greckich (``<beta>``) są wcześniej zamieniane na
+    Unicode (β), a nie wyrzucane jak nieznany tag.
+
+    Sanityzujemy WYŁĄCZNIE gdy tytuł zawiera ``<`` — inaczej zwracamy go bez
+    zmian, żeby nh3 nie zakodował podwójnie ``&`` (korupcja danych w
+    fulltext/eksporcie).
+    """
+    if not tytul or "<" not in tytul:
+        return tytul
+
+    html = zamien_pseudotagi_na_greke(tytul)
+    html = _escape_bare_angle_brackets(html)
+
+    ALLOWED_TAGS = getattr(
+        settings, "TYTUL_ALLOWED_TAGS", safe_tytul_defaults.ALLOWED_TAGS
+    )
+    return nh3.clean(
+        html,
+        tags=set(ALLOWED_TAGS),
+        attributes={},
+        # Usuń także TREŚĆ tych tagów (nie tylko znaczniki), żeby w tytule nie
+        # zostawał goły ``alert(1)`` po wyciętym ``<script>``.
+        clean_content_tags={"script", "style"},
+        link_rel=None,
+    )
+
+
+class safe_opis_bibliograficzny_defaults:
+    # Opis bibliograficzny składa się z tytułu (sanityzowanego jak wyżej) oraz
+    # inline'owego formatowania cytowania; w wariancie linkowanym niesie też
+    # odnośniki autorów (``<a href>``). Dopuszczamy TE SAME tagi co tytuł plus
+    # ``<a>`` z samym ``href``/``rel``/``title`` — bez tagów blokowych, bez
+    # ``style``/``class`` i bez innych atrybutów.
+    ALLOWED_TAGS = safe_tytul_defaults.ALLOWED_TAGS + ("a",)
+    ALLOWED_ATTRIBUTES = {"a": ["href", "title", "rel"]}
+
+
+def safe_opis_bibliograficzny_html(html):
+    """Zwróć bezpieczny HTML opisu bibliograficznego.
+
+    Opis jest budowany z (potencjalnie niezaufanego) tytułu i renderowany
+    ``|safe`` na publicznych stronach oraz cache'owany w
+    ``opis_bibliograficzny_cache``. Sanityzujemy wynik złożenia, żeby żaden
+    ``<script>`` z tytułu nie przeżył — zachowując kursywę, sub/sup oraz
+    odnośniki autorów (``<a href>``). Pseudo-znaczniki liter greckich
+    (``<beta>``) są wcześniej zamieniane na Unicode (β).
+    """
+    html = zamien_pseudotagi_na_greke(html or "")
+    html = _escape_bare_angle_brackets(html)
+    ALLOWED_TAGS = getattr(
+        settings,
+        "OPIS_BIBLIOGRAFICZNY_ALLOWED_TAGS",
+        safe_opis_bibliograficzny_defaults.ALLOWED_TAGS,
+    )
+    ALLOWED_ATTRIBUTES = getattr(
+        settings,
+        "OPIS_BIBLIOGRAFICZNY_ALLOWED_ATTRIBUTES",
+        safe_opis_bibliograficzny_defaults.ALLOWED_ATTRIBUTES,
+    )
+    return nh3.clean(
+        html,
+        tags=set(ALLOWED_TAGS),
+        attributes={k: set(v) for k, v in ALLOWED_ATTRIBUTES.items()},
+        clean_content_tags={"script", "style"},
+        link_rel=None,
+    )
+
+
 def sanitize_multiseek_title(value):
     """Sanityzuj tytuł raportu multiseek zapisywany do sesji.
 
@@ -259,39 +422,6 @@ def safe_streszczenie_html(html):
         html,
         tags=set(ALLOWED_TAGS),
         attributes={k: set(v) for k, v in ALLOWED_ATTRIBUTES.items()},
-        clean_content_tags=set(),
-        link_rel=None,
-    )
-
-
-class safe_tytul_defaults:
-    # Tytuły publikacji renderujemy `|safe` (naukowa notacja inline:
-    # kursywa nazw gatunków, indeksy dolne/górne). Dozwolona tylko wąska
-    # lista tagów inline — bez a/href, obrazków, skryptów itp.
-    ALLOWED_TAGS = ("i", "b", "em", "strong", "sub", "sup", "u")
-
-
-def safe_tytul_html(tytul):
-    """Zwróć bezpieczny tytuł publikacji do renderowania przez ``|safe``.
-
-    Tytuły z importów zewnętrznych (PBN, CrossRef) są nieufne — bez
-    sanityzacji złośliwy rekord upstream mógłby wstrzyknąć ``<script>`` /
-    ``<img onerror>`` renderowany na publicznych stronach (stored XSS).
-
-    Sanityzujemy WYŁĄCZNIE gdy tytuł zawiera ``<`` — XSS wymaga znacznika,
-    a przytłaczająca większość tytułów to czysty tekst (często z ``&``),
-    którego nie wolno podwójnie zakodować przez nh3 (korupcja danych w
-    fulltext/eksporcie). Gdy ``<`` jest obecny: escape gołych ``<``/``>`` +
-    nh3 z wąską allow-listą (zachowuje ``<i>``/``<sub>`` itp., usuwa XSS).
-    """
-    if not tytul or "<" not in tytul:
-        return tytul
-
-    escaped = _escape_bare_angle_brackets(tytul)
-    return nh3.clean(
-        escaped,
-        tags=set(safe_tytul_defaults.ALLOWED_TAGS),
-        attributes={},
         clean_content_tags=set(),
         link_rel=None,
     )

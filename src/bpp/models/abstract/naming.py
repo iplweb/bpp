@@ -4,7 +4,7 @@ Modele abstrakcyjne związane z nazwami.
 
 from django.db import models
 
-from bpp.util import safe_html
+from bpp.util import safe_tytul_html
 
 
 class ModelZNazwa(models.Model):
@@ -55,6 +55,17 @@ class DwaTytuly(models.Model):
     class Meta:
         abstract = True
 
+    def save(self, *args, **kwargs):
+        self._sanityzuj_tytuly()
+        return super().save(*args, **kwargs)
+
     def clean(self):
-        self.tytul_oryginalny = safe_html(self.tytul_oryginalny)
-        self.tytul = safe_html(self.tytul)
+        self._sanityzuj_tytuly()
+
+    def _sanityzuj_tytuly(self):
+        # Wąska allowlista (kursywa, sub/sup, pogrubienie — bez tagów blokowych
+        # i bez atrybutów) plus zamiana pseudo-znaczników liter greckich na
+        # Unicode. Egzekwowane też w ``save()``, bo ``objects.create()`` i
+        # importery NIE wołają ``full_clean()``.
+        self.tytul_oryginalny = safe_tytul_html(self.tytul_oryginalny)
+        self.tytul = safe_tytul_html(self.tytul)

@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% load static %}
+{% load prace %}
 
 {% block title %}Optymalizacja publikacji{% endblock %}
 
@@ -7,7 +8,7 @@
     {{ block.super }}
     <li><a href="{% url "multiseek:index" %}">Wyszukiwanie</a></li>
     {% if publikacja %}
-        <li><a href="{% url "bpp:browse_praca_by_slug" publikacja.slug %}">{{ publikacja.tytul_oryginalny|truncatewords_html:15|safe }}</a></li>
+        <li><a href="{% url "bpp:browse_praca_by_slug" publikacja.slug %}">{{ publikacja.tytul_oryginalny|truncatewords_html:15|safe_tytul }}</a></li>
         <li class="current">Optymalizuj</li>
     {% else %}
         <li class="current">Optymalizuj</li>
@@ -345,7 +346,7 @@
             </div>
         {% else %}
             <div class="publication-title">
-                <h3>{{ publikacja.tytul_oryginalny|safe }}</h3>
+                <h3>{{ publikacja.tytul_oryginalny|safe_tytul }}</h3>
                 <p>ID: {{ publikacja.pk }} | Typ: {{ publikacja.typ_kbn }}</p>
             </div>
 

@@ -50,6 +50,7 @@ from bpp.util.text import (
     non_url,
     safe_html,
     safe_html_defaults,
+    safe_opis_bibliograficzny_html,
     safe_streszczenie_html,
     safe_tytul_html,
     sanitize_multiseek_title,
@@ -60,6 +61,7 @@ from bpp.util.text import (
     strip_nonalpha_regex,
     strip_nonalphanumeric,
     wytnij_isbn_z_uwag,
+    zamien_pseudotagi_na_greke,
     zrob_cache,
 )
 from bpp.util.wyjatki import zaloguj_polkniety_wyjatek
@@ -143,9 +145,11 @@ __all__ = [
     "non_url",
     "safe_html",
     "safe_html_defaults",
+    "safe_opis_bibliograficzny_html",
     "safe_streszczenie_html",
     "safe_tytul_html",
     "sanitize_multiseek_title",
+    "zamien_pseudotagi_na_greke",
     "slugify_function",
     "strip_extra_spaces",
     "strip_extra_spaces_regex",
