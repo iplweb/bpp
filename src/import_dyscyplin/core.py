@@ -11,6 +11,7 @@ from import_common.exceptions import (
     HeaderNotFoundException,
     ImproperFileException,
 )
+from import_common.util import sprawdz_bombe_dekompresji
 from import_dyscyplin.models import Import_Dyscyplin_Row
 
 
@@ -109,6 +110,7 @@ def przeanalizuj_plik_xls(sciezka, parent):
     :param sciezka:
     :return: (success:boolean, message)
     """
+    sprawdz_bombe_dekompresji(sciezka)
     try:
         f = openpyxl.load_workbook(sciezka)
     except InvalidFileException as e:

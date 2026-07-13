@@ -9,9 +9,41 @@ from django.utils.functional import cached_property
 
 from .exceptions import (
     BadNoOfSheetsException,
+    DecompressionBombException,
     HeaderNotFoundException,
     ImproperFileException,
 )
+
+# Limit rozmiaru pliku XLSX PO dekompresji. Realne pliki importowe (nawet
+# kilkanaście MB XLSX) rozpakowują się do najwyżej dziesiątek/setek MB XML —
+# 500 MB daje spory zapas, a bomba zip (KB → GB) go przekracza i jest
+# odrzucana przed załadowaniem do pamięci (obrona przed OOM workera importu).
+MAX_ROZMIAR_PO_DEKOMPRESJI = 500 * 1024 * 1024
+
+
+def sprawdz_bombe_dekompresji(sciezka, max_rozpakowany=MAX_ROZMIAR_PO_DEKOMPRESJI):
+    """Odrzuca XLSX-owe (ZIP) bomby dekompresyjne PRZED załadowaniem do pamięci.
+
+    XLSX to archiwum ZIP; złośliwy plik ~KB może rozpakować się do GB i zabić
+    workera importu (OOM). Sumujemy deklarowane rozmiary po dekompresji z
+    centralnego katalogu ZIP (bez faktycznego rozpakowywania) i odrzucamy plik
+    przekraczający ``max_rozpakowany``. Pliki nie-ZIP (stary .xls OLE, .csv)
+    nie są bombami tego typu → cicho przepuszczamy (inny wektor).
+    """
+    import zipfile
+
+    try:
+        with zipfile.ZipFile(sciezka) as zf:
+            rozpakowany = sum(info.file_size for info in zf.infolist())
+    except zipfile.BadZipFile:
+        return  # nie-ZIP (np. .xls / .csv) — nie ten wektor
+
+    if rozpakowany > max_rozpakowany:
+        raise DecompressionBombException(
+            f"Rozmiar pliku po dekompresji ({rozpakowany} B) przekracza "
+            f"bezpieczny limit ({max_rozpakowany} B) — plik odrzucony jako "
+            f"potencjalna bomba dekompresyjna."
+        )
 
 # openpyxl importujemy LOKALNIE (nie na poziomie modułu): ten moduł jest
 # importowany eager przez import_common.models (XLSImportFile) już przy
@@ -99,6 +131,7 @@ def znajdz_naglowek(
     import openpyxl
     from openpyxl.utils.exceptions import InvalidFileException
 
+    sprawdz_bombe_dekompresji(sciezka)
     try:
         f: openpyxl.workbook.workbook.Workbook = openpyxl.load_workbook(sciezka)
     except InvalidFileException as e:
@@ -151,6 +184,7 @@ class XLSImportFile:
     def xl_workbook(self) -> openpyxl.workbook.workbook.Workbook:
         import openpyxl
 
+        sprawdz_bombe_dekompresji(self.xls_path)
         return openpyxl.load_workbook(self.xls_path)
 
     @cached_property
