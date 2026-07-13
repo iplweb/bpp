@@ -119,6 +119,25 @@ def rzeczowniki(db):
 
 
 @pytest.fixture(scope="function")
+def first_run_wizard_state(db):
+    """Singleton ``FirstRunWizardState`` (pk=1) — normalnie seedowany migracją
+    ``first_run_wizard.0001`` (``get_or_create(pk=1)``). Wiersz NIE ma receivera
+    ``post_migrate``, więc transakcyjny sąsiad (flush → ``TRUNCATE``) wymiata go
+    i już nie wraca. Bez tego wiersza middleware first-run-wizarda w
+    ``_install_is_finished`` trafia na ``state is None`` i przerywa PRZED ścieżką
+    naprawczą (``mark_completed``) — ``completed_at`` nigdy się nie stempluje, a
+    widoki ``/setup/`` zwracają 302 (redirect na krok) zamiast 404 (setup
+    zamknięty). Fixtura odtwarza wiersz idempotentnie (jak migracja); samo jego
+    ISTNIENIE wystarcza — backfill ``completed_at`` robi już middleware, gdy
+    wszystkie kroki są kompletne.
+    """
+    from first_run_wizard.models import FirstRunWizardState
+
+    FirstRunWizardState.objects.get_or_create(pk=1)
+    return FirstRunWizardState.load()
+
+
+@pytest.fixture(scope="function")
 def charaktery_formalne():
     Charakter_Formalny.objects.all().delete()
     # Lookup po kluczu naturalnym (skrot jest unique), NIGDY po pk (w JSON-ie
