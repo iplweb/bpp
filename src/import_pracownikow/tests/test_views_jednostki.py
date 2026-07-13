@@ -4,7 +4,7 @@ import pytest
 from django.urls import reverse
 from model_bakery import baker
 
-from bpp.models import Jednostka
+from bpp.models import Jednostka, Uczelnia
 from import_pracownikow.models import ImportPracownikow, ImportPracownikowJednostka
 
 AKCEPTUJ = ImportPracownikowJednostka.DECYZJA_AKCEPTUJ
@@ -229,3 +229,46 @@ def test_toggle_tworz_brakujace_w_mapowaniu_zapisuje_false(admin_client, admin_u
     assert resp.status_code == 302
     imp.refresh_from_db()
     assert imp.tworz_brakujace_jednostki is False
+
+
+@pytest.mark.django_db
+def test_jednostki_ma_wiring_select2_i_widocznosc(admin_client, admin_user):
+    """Ekran ma okablowanie JS: Select2 na „Mapuj na" + sterowanie widocznością
+    pola-celu wartością „Decyzja". Regresja na klasy hooków i inicjalizację."""
+    imp = _imp(admin_user)
+    _dec(imp, "Zrodlowa")
+    url = reverse("import_pracownikow:jednostki", kwargs={"pk": imp.pk})
+    tresc = admin_client.get(url).content.decode("utf-8")
+    # klasy hooków JS obecne na kontrolkach
+    assert 'class="js-decyzja"' in tresc
+    assert 'class="js-wybrana"' in tresc
+    assert "js-wybrana-wrap" in tresc
+    # Select2 inicjalizowany na przeszukiwalnej liście „Mapuj na"
+    assert ".js-wybrana" in tresc and ".select2(" in tresc
+    # mechanizm widoczności czyta wartość decyzji „mapuj" z kontekstu
+    assert f'var D_MAPUJ = "{MAPUJ}"' in tresc
+
+
+@pytest.mark.django_db
+def test_jednostki_wydzial_ma_wrap_i_opcje_root(admin_client, admin_user, uczelnia):
+    """Gdy uczelnia używa wydziałów, kolumna „Wydział (parent)" ma wrapper do
+    ukrywania (js-wydzial-wrap) i jawną opcję utworzenia w korzeniu."""
+    uczelnia.uzywaj_wydzialow = True
+    uczelnia.save()
+    # uczelnia=uczelnia: bez tego baker auto-tworzy powiązaną Uczelnia (FK
+    # wymagany) → w bazie są 2 uczelnie.
+    baker.make(Jednostka, nazwa="Wydział X", skrot="WX", parent=None, uczelnia=uczelnia)
+    imp = _imp(admin_user)
+    _dec(imp, "Zrodlowa")  # tryb=BRAK → tabela „Do utworzenia"
+    # „dokładnie jedna uczelnia" — get_single_uczelnia_or_none() degraduje do
+    # None przy >1 (ambient-data / baker) i kolumna wydziału by nie
+    # wyrenderowała. Jednostka wskazuje na fixture'ową uczelnię, więc kasowanie
+    # nadmiaru nie kaskaduje na nią.
+    Uczelnia.objects.exclude(pk=uczelnia.pk).delete()
+    url = reverse("import_pracownikow:jednostki", kwargs={"pk": imp.pk})
+    tresc = admin_client.get(url).content.decode("utf-8")
+    # pełny <th>, nie samo „Wydział (parent)" — ta fraza jest też w komentarzu JS
+    assert "<th>Wydział (parent)</th>" in tresc
+    assert 'class="js-wydzial"' in tresc  # select z hookiem JS
+    assert "js-wydzial-wrap" in tresc
+    assert "w korzeniu" in tresc  # jawna opcja utworzenia w korzeniu

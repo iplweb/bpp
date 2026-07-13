@@ -62,7 +62,7 @@
                                 {% else %}—{% endif %}
                             </td>
                             <td>
-                                <select name="dec_{{ dec.pk }}_decyzja"
+                                <select name="dec_{{ dec.pk }}_decyzja" class="js-decyzja"
                                         {% if not moze_edytowac %}disabled{% endif %}>
                                     <option value="{{ DECYZJA_AKCEPTUJ }}"
                                             {% if dec.decyzja == DECYZJA_AKCEPTUJ %}selected{% endif %}>
@@ -79,7 +79,8 @@
                                 </select>
                             </td>
                             <td>
-                                <select name="dec_{{ dec.pk }}_wybrana"
+                                <span class="js-wybrana-wrap">
+                                <select name="dec_{{ dec.pk }}_wybrana" class="js-wybrana"
                                         {% if not moze_edytowac %}disabled{% endif %}>
                                     <option value="">— wybierz (dla „Mapuj”) —</option>
                                     {% for j in mapuj_opcje %}
@@ -93,6 +94,7 @@
                                     <br>
                                     <span class="label alert">wskaż jednostkę docelową</span>
                                 {% endif %}
+                                </span>
                             </td>
                         </tr>
                     {% endfor %}
@@ -124,7 +126,7 @@
                             <td>{{ dec.nazwa_zrodlowa }}</td>
                             <td>{{ dec.liczba_osob }}</td>
                             <td>
-                                <select name="dec_{{ dec.pk }}_decyzja"
+                                <select name="dec_{{ dec.pk }}_decyzja" class="js-decyzja"
                                         {% if not moze_edytowac %}disabled{% endif %}>
                                     <option value="{{ DECYZJA_AKCEPTUJ }}"
                                             {% if dec.decyzja == DECYZJA_AKCEPTUJ %}selected{% endif %}>
@@ -142,9 +144,10 @@
                             </td>
                             {% if uzywaj_wydzialow %}
                                 <td>
-                                    <select name="dec_{{ dec.pk }}_parent"
+                                    <span class="js-wydzial-wrap">
+                                    <select name="dec_{{ dec.pk }}_parent" class="js-wydzial"
                                             {% if not moze_edytowac %}disabled{% endif %}>
-                                        <option value="">— Wydział Domyślny (auto) —</option>
+                                        <option value="">— w korzeniu / wydział domyślny (auto) —</option>
                                         {% for w in parent_opcje %}
                                             <option value="{{ w.pk }}"
                                                     {% if dec.wybrany_parent_id == w.pk %}selected{% endif %}>
@@ -152,10 +155,12 @@
                                             </option>
                                         {% endfor %}
                                     </select>
+                                    </span>
                                 </td>
                             {% endif %}
                             <td>
-                                <select name="dec_{{ dec.pk }}_wybrana"
+                                <span class="js-wybrana-wrap">
+                                <select name="dec_{{ dec.pk }}_wybrana" class="js-wybrana"
                                         {% if not moze_edytowac %}disabled{% endif %}>
                                     <option value="">— wybierz (dla „Mapuj”) —</option>
                                     {% for j in mapuj_opcje %}
@@ -169,6 +174,7 @@
                                     <br>
                                     <span class="label alert">wskaż jednostkę docelową</span>
                                 {% endif %}
+                                </span>
                             </td>
                         </tr>
                     {% endfor %}
@@ -190,5 +196,62 @@
                class="button secondary">Wróć do przeglądu</a>
         </div>
     </form>
+
+    <style>
+        {# wrappery pól-celu jako blok: JS chowa je przez display:none, a przy #}
+        {# pokazaniu czyści inline-style → wraca tu do display:block. Blok jest #}
+        {# potrzebny, by Select2 width:100% policzyło się względem kolumny. #}
+        .js-wybrana-wrap, .js-wydzial-wrap { display: block; }
+        .js-wybrana-wrap .select2-container { min-width: 220px; }
+    </style>
+
+    <script>
+    // Weryfikacja jednostek: pole-cel widoczne w wierszu zależnie od „Decyzji".
+    //  - MAPUJ            → widać tylko „Mapuj na" (przeszukiwalna lista jednostek),
+    //  - AKCEPTUJ (utwórz nową / użyj auto-dopasowania) → widać „Wydział (parent)"
+    //    z opcją utworzenia w korzeniu (o ile uczelnia używa wydziałów),
+    //  - POMIŃ            → żadnego pola-celu.
+    // Wybór wydziału znaczy więc „utwórz nową jednostkę w tym wydziale" i NIE
+    // ogranicza listy „Mapuj na" (obie pule są niezależne po stronie serwera).
+    (function () {
+        if (window.__bppWeryfikacjaJednostekInit) return;
+        window.__bppWeryfikacjaJednostekInit = true;
+
+        var D_MAPUJ = "{{ DECYZJA_MAPUJ }}";
+        var D_AKCEPTUJ = "{{ DECYZJA_AKCEPTUJ }}";
+
+        function pokaz(el, widoczny) {
+            if (el) el.style.display = widoczny ? "" : "none";
+        }
+
+        function zastosuj(decyzjaSelect) {
+            var wiersz = decyzjaSelect.closest("tr");
+            if (!wiersz) return;
+            var v = decyzjaSelect.value;
+            pokaz(wiersz.querySelector(".js-wybrana-wrap"), v === D_MAPUJ);
+            pokaz(wiersz.querySelector(".js-wydzial-wrap"), v === D_AKCEPTUJ);
+        }
+
+        document.addEventListener("DOMContentLoaded", function () {
+            // Select2 na „Mapuj na" — płaska lista wszystkich jednostek jest długa,
+            // bez wyszukiwarki trudno trafić we właściwą. Init PRZED ukryciem pól,
+            // żeby szerokość policzyła się na widocznym elemencie.
+            if (window.jQuery && window.jQuery.fn && window.jQuery.fn.select2) {
+                window.jQuery(".js-wybrana").select2({
+                    width: "100%",
+                    allowClear: true,
+                    placeholder: "— wybierz jednostkę (dla „Mapuj”) —",
+                    language: "pl"
+                });
+            }
+            document.querySelectorAll(".js-decyzja").forEach(function (sel) {
+                zastosuj(sel);
+                sel.addEventListener("change", function () {
+                    zastosuj(sel);
+                });
+            });
+        });
+    })();
+    </script>
     {% endif %}
 {% endblock %}
