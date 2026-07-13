@@ -117,6 +117,20 @@ def safe_streszczenie(value):
     return mark_safe(safe_streszczenie_html(value))
 
 
+@register.filter(name="safe_tytul")
+def safe_tytul(value):
+    """Wyrenderuj tytuł publikacji bezpiecznie.
+
+    Zamiennik dla ``|safe`` przy ``tytul``/``tytul_oryginalny``: sanityzuje
+    HTML tytułu (wąska allowlista inline — kursywa, pogrubienie, sub/sup),
+    usuwając XSS z tytułów pochodzących z importu/zgłoszeń. Stosować jako
+    OSTATNI filtr (po ``truncatewords_html``/``znak_na_koncu``).
+    """
+    from bpp.util import safe_tytul_html
+
+    return mark_safe(safe_tytul_html(value))
+
+
 @register.filter(name="jsonify")
 def jsonify(value):
     """Convert a value to a JSON literal for use inside a <script> JSON-LD block.
