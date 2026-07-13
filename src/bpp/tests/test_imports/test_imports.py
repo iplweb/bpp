@@ -1,3 +1,4 @@
+import uuid
 from datetime import date
 
 import pytest
@@ -18,6 +19,22 @@ from bpp.tests.util import any_jednostka
 class _x:
     def __init__(self, value):
         self.value = value
+
+
+def unikalna_nazwa_jednostki(prefix="JednostkaTestowa"):
+    """Zwraca długą, gwarantowanie unikalną nazwę jednostki.
+
+    ``dopasuj_jednostke()`` szuka jednostek po ``nazwa__icontains`` (dopasowanie
+    po podłańcuchu), a ``Jednostka.objects.get()`` rzuca ``MultipleObjectsReturned``
+    gdy trafi więcej niż jeden wiersz. Krótkie, pospolite tokeny (np. ``"Foo"``)
+    bywają podłańcuchem losowej nazwy jednostki wyciekłej z sąsiedniego testu pod
+    xdist (np. ``baker.make(Jednostka)`` generuje długi losowy string) → flake.
+
+    Nazwa z tego helpera jest długa i zawiera heksadecymalny UUID, więc ani nie
+    jest podłańcuchem ambientowych nazw, ani żadna ambientowa nazwa nie jest jej
+    podłańcuchem — lookup ``icontains`` zawsze trafia dokładnie jeden wiersz.
+    """
+    return f"{prefix}-{uuid.uuid4().hex}"
 
 
 def test_mangle_labels():
@@ -74,7 +91,7 @@ def test_dopasuj_jednostke():
     # lookup nazwa__icontains, więc krótki, pospolity token jak "Foo" łatwo
     # pasuje więcej niż jednej jednostce (Jednostka.objects.get() rzuca
     # wtedy MultipleObjectsReturned). Długi, unikalny token to eliminuje.
-    unikalna_nazwa = "ZzUnikalnaJednostkaTestowaDopasujJednostke438Kx9Qz7"
+    unikalna_nazwa = unikalna_nazwa_jednostki("DopasujJednostke")
     j1 = any_jednostka(nazwa=unikalna_nazwa)
     j2 = any_jednostka(  # noqa
         nazwa="Sam. Pracownia Propedeutyki Radiologii Stom. i Szczęk-Twarz"
@@ -128,9 +145,14 @@ def test_dopasuj_autora():
 @pytest.mark.django_db
 def test_importuj_wiersz():
     a1 = baker.make(Autor, imiona="Jan", nazwisko="Kowalski")
-    j1 = any_jednostka(nazwa="Foo")
+    # Nazwa musi być odporna na kolizję z losowymi jednostkami wyciekłymi z
+    # sąsiednich testów — importuj_wiersz() → dopasuj_jednostke() robi lookup
+    # nazwa__icontains, więc krótki token jak "Foo" łatwo pasuje do >1 jednostki
+    # (MultipleObjectsReturned). Patrz unikalna_nazwa_jednostki().
+    nazwa = unikalna_nazwa_jednostki()
+    j1 = any_jednostka(nazwa=nazwa)
 
-    importuj_wiersz("Jan", "Kowalski", "Foo", "Kucharz", 2012, UML_Egeria_2012_Mangle)
+    importuj_wiersz("Jan", "Kowalski", nazwa, "Kucharz", 2012, UML_Egeria_2012_Mangle)
     assert Autor_Jednostka.objects.get(autor=a1, jednostka=j1).zakonczyl_prace == date(
         2012, 12, 31
     )
