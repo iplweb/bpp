@@ -164,7 +164,23 @@ def test_scal_wymiar_rozbieznosc_rzuca():
         scal_wymiar_etatu(d)
 
 
-def test_scal_wymiar_smiec_rzuca():
-    d = _dane(wymiar_etatu_ulamek="abc")
-    with pytest.raises(XLSMatchError):
-        scal_wymiar_etatu(d)
+def test_scal_wymiar_pojedynczy_niesparsowalny_przechodzi():
+    # Pojedyncza kolumna z nieliczbowym wpisem (np. „brak" — legalna wartość
+    # słownika) AKCEPTOWANA: przekazana surowo, NIE wywala importu.
+    d = _dane(wymiar_etatu_ulamek="brak")
+    scal_wymiar_etatu(d)
+    assert d["wymiar_etatu"] == "brak"
+
+
+def test_scal_wymiar_pojedynczy_smiec_tekst_przechodzi():
+    d = _dane(wymiar_etatu_tekst="abc")
+    scal_wymiar_etatu(d)
+    assert d["wymiar_etatu"] == "abc"
+
+
+def test_scal_wymiar_jedna_kolumna_niesparsowalna_uzywa_drugiej():
+    # tekst sparsowalny, ułamek śmieć → używamy sparsowalnego (kanoniczny),
+    # bez błędu (nie ma z czym porównać rozbieżności).
+    d = _dane(wymiar_etatu_tekst="1/2 etatu", wymiar_etatu_ulamek="brak")
+    scal_wymiar_etatu(d)
+    assert d["wymiar_etatu"] == "0,5"

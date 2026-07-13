@@ -54,7 +54,12 @@ class AutorForm(forms.Form):
     grupa_pracownicza = forms.CharField(max_length=200, required=False)
     data_zatrudnienia = ExcelDateField(required=False)
     data_końca_zatrudnienia = ExcelDateField(required=False)
-    podstawowe_miejsce_pracy = forms.BooleanField(required=False)
+    # CharField, NIE BooleanField: forms.BooleanField.to_python("N") → bool("N")
+    # → True (tylko „false"/„0" dają False), więc „N" (= NIE podstawowe) trafiłby
+    # do dane_znormalizowane jako True. Właściwy bool liczy pole WIERSZA z
+    # normalize_nullboleanfield(elem[...]) (analyze._przetworz_wiersz); tu tylko
+    # zachowujemy surowe „T"/„N" do audytu, bez błędnej koercji.
+    podstawowe_miejsce_pracy = forms.CharField(max_length=20, required=False)
     wymiar_etatu = forms.CharField(max_length=200, required=False)
     # email tolerancyjny: CharField (nie EmailField), max_length=128 =
     # Autor.email.max_length — dłuższy adres wywaliłby Autor.objects.create

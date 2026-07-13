@@ -178,31 +178,40 @@ Nowy krok normalizacji wiersza (w `parsers/wartosci.py` /
 integracja, `_integrate_autor_jednostka`) pozostał **bez zmian**:
 
 ```
-t = parsuj_wymiar_etatu(dane_form.pop("wymiar_etatu_tekst", None))
-u = parsuj_wymiar_etatu(dane_form.pop("wymiar_etatu_ulamek", None))
-jeśli t i u oba niepuste:
-    jeśli round(t,2) != round(u,2):  -> BŁĄD WIERSZA (pokaż obie wartości)
-    kan = u                          # dziesiętna autorytatywna
-elif u:  kan = u
-elif t:  kan = t
-else:    kan = None                  # brak wymiaru — jak dziś (pole opcjonalne)
-dane_form["wymiar_etatu"] = kanoniczny_wymiar(kan) if kan else ""
+t = parsuj_tolerancyjnie(dane_form.pop("wymiar_etatu_tekst", None))  # None gdy nieparsowalne
+u = parsuj_tolerancyjnie(dane_form.pop("wymiar_etatu_ulamek", None))
+jeśli t i u oba są ułamkami i round(t,2) != round(u,2):
+    -> XLSMatchError (BŁĄD WIERSZA, pokaż obie wartości)   # JEDYNY twardy błąd
+kan = u jeśli u else t                                     # dziesiętna autorytatywna
+jeśli kan (ułamek):  dane_form["wymiar_etatu"] = kanoniczny_wymiar(kan)
+inaczej:             dane_form["wymiar_etatu"] = surowa (ułamek_raw|tekst_raw)  # pass-through
 ```
 
-- Rozbieżność `round(t,2) != round(u,2)` → per-row error (jak inne
-  `XLSParseError`-y: widoczny w audycie, blokuje integrację danego wiersza).
-- Nieparsowalna którakolwiek forma → per-row error.
+- **Twardy błąd TYLKO** gdy OBIE kolumny to sparsowalne ułamki, które się
+  RÓŻNIĄ (`round(t,2) != round(u,2)`) → `XLSMatchError` (analiza fail-fast,
+  „nie przyjmujemy takiego excela"). Komunikat wskazuje wiersz i obie wartości.
+- **Nieparsowalna wartość NIE jest błędem** — nieliczbowy wpis (np. `brak`,
+  legalna wartość słownika) przechodzi **surowo** do `wymiar_etatu` (stara,
+  tolerancyjna ścieżka słownika). Pojedynczą kolumnę **akceptujemy** — nie
+  wywalamy importu na nieparsowalnym wymiarze.
+- Sparsowalny ułamek → zawsze kanonizowany (koniec śmieci typu `1/2 etatu`).
 - Tolerancja zaokrągleń (`round(...,2)`) obsługuje `2/3` vs `0,67` itp.
 
 ---
 
-## 5. Warstwa błędów per-wiersz
+## 5. Warstwa błędów
 
-Zgodnie z decyzją „błąd wiersza" (nie odrzucanie całego pliku): rozbieżność /
-nieparsowalny wymiar zgłaszamy jako per-row error spójnie z istniejącą obsługą
-(`XLSParseError` → widoczne w ekranie audytu, integracja pomija/blokuje wiersz).
-Komunikat wskazuje **wiersz** i **obie** wartości (tekst + ułamek). Gdy w pliku
-jest tylko jedna kolumna wymiaru — akceptujemy ją bez walidacji krzyżowej.
+Analiza importu jest **fail-fast** (jeden `XLSParseError`/`XLSMatchError`
+przerywa cały run z komunikatem wskazującym wiersz). W tej architekturze „błąd
+wiersza" = przerwanie runu z jawnym wskazaniem winnego wiersza i wartości.
+
+Twardy `XLSMatchError` wyzwala **wyłącznie** rozbieżność DWÓCH sparsowalnych
+kolumn wymiaru (ten sam wymiar zapisany niespójnie — „nie przyjmujemy takiego
+excela"). Wartość **nieparsowalna** (np. `brak`) **NIE** jest błędem: przechodzi
+surowo do słownika (stara ścieżka). Gdy w pliku jest tylko jedna kolumna wymiaru
+— akceptujemy ją bez walidacji krzyżowej (parsowalną kanonizujemy, nieparsowalną
+przekazujemy surowo). To spójne z decyzją usera („jedna kolumna → akceptuj ją")
+oraz z tolerancyjnym wzorcem walidacji e-maila w tym module.
 
 ---
 

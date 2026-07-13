@@ -190,3 +190,30 @@ def test_analiza_rozbiezny_wymiar_rzuca(dwa_autory_z_jednostka):
         inst.data.return_value = iter([wiersz])
         with pytest.raises(XLSMatchError):
             analizuj(imp, MockProgress(imp))
+
+
+@pytest.mark.django_db
+def test_analiza_glowny_zaklad_pracy_nie_traktuje_N_jako_prawda(
+    dwa_autory_z_jednostka,
+):
+    # „Gł. zakład pracy" = N → NIE podstawowe miejsce pracy. Pole wiersza liczy
+    # normalize_nullboleanfield (poprawnie False); kopia audytowa
+    # (dane_znormalizowane) NIE może kłamać True (AutorForm = CharField, nie
+    # BooleanField, która „N" koercowała do True).
+    autor, jednostka = dwa_autory_z_jednostka
+    imp = baker.make(ImportPracownikow, stan=ImportPracownikow.STAN_UTWORZONY)
+    imp.plik_xls.name = "protected/import_pracownikow/x.xlsx"
+    wiersz = _wiersz(
+        nazwisko=autor.nazwisko,
+        imię=autor.imiona,
+        nazwa_jednostki=jednostka.nazwa,
+        podstawowe_miejsce_pracy="N",
+    )
+    with patch("import_pracownikow.pipeline.analyze.otworz_zrodlo") as MockZrodlo:
+        inst = MockZrodlo.return_value
+        inst.count.return_value = 1
+        inst.data.return_value = iter([wiersz])
+        analizuj(imp, MockProgress(imp))
+    row = imp.importpracownikowrow_set.get()
+    assert row.podstawowe_miejsce_pracy is False
+    assert row.dane_znormalizowane.get("podstawowe_miejsce_pracy") is not True
