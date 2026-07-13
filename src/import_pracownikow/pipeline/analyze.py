@@ -77,6 +77,7 @@ from import_pracownikow.parsers.wartosci import (
     normalizuj_wartosci_wiersza,
     oczysc_email,
     rozbij_nazwisko_imie,
+    scal_wymiar_etatu,
     sklej_drugie_imie,
 )
 from import_pracownikow.pewnosc import (
@@ -549,6 +550,9 @@ def _przetworz_wiersz(
     tworz_brakujace=True,
 ):
     dane_form = normalizuj_wartosci_wiersza(elem)
+    # Dwie kolumny „Wymiar etatu" (tekst + ułamek) → jeden kanoniczny string
+    # pod „wymiar_etatu" PRZED AutorForm; rozbieżność → XLSMatchError (§4).
+    scal_wymiar_etatu(dane_form)
     # E-mail: łagodna walidacja PRZED AutorForm.full_clean (§11) — zły adres nie
     # może unieważnić formularza (analiza fail-fast: jeden XLSParseError ubija
     # cały run). Ostrzeżenie trafia do dane_znormalizowane["ostrzeżenia"].

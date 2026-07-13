@@ -5,6 +5,7 @@ from liveops.testing import MockProgress
 from model_bakery import baker
 
 from bpp.models import Autor_Jednostka, Funkcja_Autora
+from import_common.exceptions import XLSMatchError
 from import_pracownikow.models import ImportPracownikow
 from import_pracownikow.pipeline.analyze import analizuj
 
@@ -144,3 +145,75 @@ def test_pusty_plik_rzuca_jawny_blad():
         MockZrodlo.return_value.data.return_value = iter([])
         with pytest.raises(ValueError, match="0 wierszy"):
             analizuj(imp, MockProgress(imp))
+
+
+@pytest.mark.django_db
+def test_analiza_scala_podwojny_wymiar_do_kanonicznego(dwa_autory_z_jednostka):
+    autor, jednostka = dwa_autory_z_jednostka
+    imp = baker.make(ImportPracownikow, stan=ImportPracownikow.STAN_UTWORZONY)
+    imp.plik_xls.name = "protected/import_pracownikow/x.xlsx"
+    wiersz = _wiersz(
+        nazwisko=autor.nazwisko,
+        imię=autor.imiona,
+        nazwa_jednostki=jednostka.nazwa,
+        wymiar_etatu_tekst="1/2 etatu",
+        wymiar_etatu_ulamek="0,5",
+    )
+    wiersz.pop("wymiar_etatu", None)
+    with patch("import_pracownikow.pipeline.analyze.otworz_zrodlo") as MockZrodlo:
+        inst = MockZrodlo.return_value
+        inst.count.return_value = 1
+        inst.data.return_value = iter([wiersz])
+        analizuj(imp, MockProgress(imp))
+    row = imp.importpracownikowrow_set.get()
+    # Wymiar zebrany do kanonicznej formy „0,5" (widoczny w znormalizowanych
+    # danych wiersza), NIE „1/2 etatu".
+    assert row.dane_znormalizowane.get("wymiar_etatu") == "0,5"
+
+
+@pytest.mark.django_db
+def test_analiza_rozbiezny_wymiar_rzuca(dwa_autory_z_jednostka):
+    autor, jednostka = dwa_autory_z_jednostka
+    imp = baker.make(ImportPracownikow, stan=ImportPracownikow.STAN_UTWORZONY)
+    imp.plik_xls.name = "protected/import_pracownikow/x.xlsx"
+    wiersz = _wiersz(
+        nazwisko=autor.nazwisko,
+        imię=autor.imiona,
+        nazwa_jednostki=jednostka.nazwa,
+        wymiar_etatu_tekst="1/2 etatu",
+        wymiar_etatu_ulamek="1",
+    )
+    wiersz.pop("wymiar_etatu", None)
+    with patch("import_pracownikow.pipeline.analyze.otworz_zrodlo") as MockZrodlo:
+        inst = MockZrodlo.return_value
+        inst.count.return_value = 1
+        inst.data.return_value = iter([wiersz])
+        with pytest.raises(XLSMatchError):
+            analizuj(imp, MockProgress(imp))
+
+
+@pytest.mark.django_db
+def test_analiza_glowny_zaklad_pracy_nie_traktuje_N_jako_prawda(
+    dwa_autory_z_jednostka,
+):
+    # „Gł. zakład pracy" = N → NIE podstawowe miejsce pracy. Pole wiersza liczy
+    # normalize_nullboleanfield (poprawnie False); kopia audytowa
+    # (dane_znormalizowane) NIE może kłamać True (AutorForm = CharField, nie
+    # BooleanField, która „N" koercowała do True).
+    autor, jednostka = dwa_autory_z_jednostka
+    imp = baker.make(ImportPracownikow, stan=ImportPracownikow.STAN_UTWORZONY)
+    imp.plik_xls.name = "protected/import_pracownikow/x.xlsx"
+    wiersz = _wiersz(
+        nazwisko=autor.nazwisko,
+        imię=autor.imiona,
+        nazwa_jednostki=jednostka.nazwa,
+        podstawowe_miejsce_pracy="N",
+    )
+    with patch("import_pracownikow.pipeline.analyze.otworz_zrodlo") as MockZrodlo:
+        inst = MockZrodlo.return_value
+        inst.count.return_value = 1
+        inst.data.return_value = iter([wiersz])
+        analizuj(imp, MockProgress(imp))
+    row = imp.importpracownikowrow_set.get()
+    assert row.podstawowe_miejsce_pracy is False
+    assert row.dane_znormalizowane.get("podstawowe_miejsce_pracy") is not True
