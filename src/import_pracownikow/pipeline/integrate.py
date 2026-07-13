@@ -268,8 +268,10 @@ def _wykonaj_odpiecia(parent):
        Dlatego przed wykonaniem sprawdzamy, czy para ``(autor_id, jednostka_id)``
        AJ jest teraz obecna w wierszach importu — jeśli tak, POMIJAMY (spójne z
        definicją „spoza pliku" §9 i duchem świeżego re-checku).
-    2. **AJ zakończone ręcznie od czasu podglądu (drift bazy).** ``zakonczyl_prace
-       is not None and <= today`` → pomijamy (NIE nadpisujemy daty).
+    2. **AJ ma już ustawioną datę końca.** ``zakonczyl_prace is not None`` →
+       pomijamy (NIE nadpisujemy). Dotyczy dat przeszłych (zakończone ręcznie,
+       drift bazy) ORAZ przyszłych (zaplanowany koniec umowy — dozwolony od
+       mig 0469); ustawiona data to świadoma decyzja człowieka.
 
     Wykonane: ``zakonczyl_prace = wczoraj``, ``podstawowe_miejsce_pracy =
     False``, ``wykonane = True``. Zwraca liczbę faktycznie odpiętych."""
@@ -286,8 +288,13 @@ def _wykonaj_odpiecia(parent):
                 autor_id=aj.autor_id, jednostka_id=aj.jednostka_id
             ).exists():
                 continue
-            if aj.zakonczyl_prace is not None and aj.zakonczyl_prace <= today:
-                # zakończone ręcznie — pomijamy, nie nadpisujemy daty.
+            if aj.zakonczyl_prace is not None:
+                # Ma już USTAWIONĄ datę końca — pomijamy, nie nadpisujemy.
+                # Dotyczy dat przeszłych (zakończone ręcznie, drift bazy) ORAZ
+                # przyszłych (zaplanowany koniec umowy, dozwolony od mig 0469):
+                # ustawiona data to świadoma decyzja człowieka, a ponowny import
+                # pomijający tę osobę nie może jej po cichu skasować. Dawny
+                # warunek `<= today` przepuszczał przyszłe daty do nadpisania.
                 continue
             aj.zakonczyl_prace = yesterday
             aj.podstawowe_miejsce_pracy = False
