@@ -2,10 +2,12 @@ from datetime import date, datetime
 
 import pytest
 
+from import_common.exceptions import XLSMatchError
 from import_pracownikow.parsers.wartosci import (
     normalize_date_pl,
     normalizuj_wartosci_wiersza,
     rozbij_nazwisko_imie,
+    scal_wymiar_etatu,
     sklej_drugie_imie,
 )
 
@@ -109,3 +111,60 @@ def test_nie_nadpisuje_istniejacych():
 def test_brak_klucza_no_op():
     d = rozbij_nazwisko_imie({"nazwisko": "Kowalski"})
     assert d == {"nazwisko": "Kowalski"}
+
+
+def _dane(**over):
+    d = {"__xls_loc_sheet__": 0, "__xls_loc_row__": 7}
+    d.update(over)
+    return d
+
+
+def test_scal_wymiar_zgodne_kanonizuje():
+    d = _dane(wymiar_etatu_tekst="1/2 etatu", wymiar_etatu_ulamek="0,5")
+    scal_wymiar_etatu(d)
+    assert d["wymiar_etatu"] == "0,5"
+    assert "wymiar_etatu_tekst" not in d
+    assert "wymiar_etatu_ulamek" not in d
+
+
+def test_scal_wymiar_pelny_etat_zgodny_z_jeden():
+    d = _dane(wymiar_etatu_tekst="Pełny etat", wymiar_etatu_ulamek="1")
+    scal_wymiar_etatu(d)
+    assert d["wymiar_etatu"] == "1"
+
+
+def test_scal_wymiar_tylko_ulamek():
+    d = _dane(wymiar_etatu_ulamek="0,75")
+    scal_wymiar_etatu(d)
+    assert d["wymiar_etatu"] == "0,75"
+
+
+def test_scal_wymiar_tylko_tekst():
+    d = _dane(wymiar_etatu_tekst="3/4 etatu")
+    scal_wymiar_etatu(d)
+    assert d["wymiar_etatu"] == "0,75"
+
+
+def test_scal_wymiar_brak_obu_noop():
+    d = _dane(nazwisko="Kowalski")
+    scal_wymiar_etatu(d)
+    assert "wymiar_etatu" not in d
+
+
+def test_scal_wymiar_tolerancja_zaokraglenia():
+    # 2/3 (0.6667) vs 0,67 — zgodne po zaokrągleniu do 2 miejsc.
+    d = _dane(wymiar_etatu_tekst="2/3 etatu", wymiar_etatu_ulamek="0,67")
+    scal_wymiar_etatu(d)
+    assert d["wymiar_etatu"] == "0,67"
+
+
+def test_scal_wymiar_rozbieznosc_rzuca():
+    d = _dane(wymiar_etatu_tekst="1/2 etatu", wymiar_etatu_ulamek="1")
+    with pytest.raises(XLSMatchError):
+        scal_wymiar_etatu(d)
+
+
+def test_scal_wymiar_smiec_rzuca():
+    d = _dane(wymiar_etatu_ulamek="abc")
+    with pytest.raises(XLSMatchError):
+        scal_wymiar_etatu(d)

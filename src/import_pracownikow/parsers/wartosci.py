@@ -13,6 +13,12 @@ from datetime import date, datetime
 from django.core.exceptions import ValidationError
 from django.core.validators import validate_email
 
+from import_common.exceptions import XLSMatchError
+from import_common.normalization import (
+    kanonizuj_wymiar_etatu,
+    parsuj_wymiar_etatu,
+)
+
 # Kolumny-daty w rygorystycznym schemacie Fazy 0/1 (nazwy = znormalizowane
 # nagłówki wzorca BPP). Faza 2 (mapowanie) uczyni to konfigurowalnym.
 _KLUCZE_DAT = ("data_zatrudnienia", "data_końca_zatrudnienia")
@@ -46,6 +52,38 @@ def normalizuj_wartosci_wiersza(elem: dict) -> dict:
         if out.get(klucz) is not None:
             out[klucz] = normalize_date_pl(out[klucz])
     return out
+
+
+def scal_wymiar_etatu(dane: dict) -> dict:
+    """Scala dwie kolumny wymiaru etatu („(tekst)" + „(ułamek)") w jeden
+    kanoniczny string pod kluczem ``wymiar_etatu`` (konsumowany dalej przez
+    ``AutorForm`` + ``matchuj_wymiar_etatu``). Obie niosą tę SAMĄ informację;
+    rozbieżność (po zaokrągleniu do 2 miejsc) albo nieparsowalna forma →
+    ``XLSMatchError`` (błąd wiersza, analiza fail-fast, komunikat wskazuje
+    wiersz i obie wartości). Kolumna ułamkowa jest autorytatywna dla zapisu;
+    tekst służy do walidacji. Mutuje i zwraca ``dane``."""
+    tekst_raw = dane.pop("wymiar_etatu_tekst", None)
+    ulamek_raw = dane.pop("wymiar_etatu_ulamek", None)
+    try:
+        tekst = parsuj_wymiar_etatu(tekst_raw)
+        ulamek = parsuj_wymiar_etatu(ulamek_raw)
+    except ValueError as exc:
+        raise XLSMatchError(dane, "wymiar_etatu", str(exc)) from exc
+    if (
+        tekst is not None
+        and ulamek is not None
+        and round(float(tekst), 2) != round(float(ulamek), 2)
+    ):
+        raise XLSMatchError(
+            dane,
+            "wymiar_etatu",
+            f"Rozbieżny wymiar etatu: tekst {tekst_raw!r} (={float(tekst)}) "
+            f"≠ ułamek {ulamek_raw!r} (={float(ulamek)})",
+        )
+    wybrany = ulamek if ulamek is not None else tekst
+    if wybrany is not None:
+        dane["wymiar_etatu"] = kanonizuj_wymiar_etatu(wybrany)
+    return dane
 
 
 def sklej_drugie_imie(dane: dict) -> dict:
