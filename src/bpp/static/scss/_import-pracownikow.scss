@@ -62,8 +62,9 @@
     flex: 1 1 14rem;
   }
 
-  .import-blok-akcje {
-    flex: 2 1 22rem;
+  // Porównania dostają więcej miejsca (siatka 2–3 kolumn niżej).
+  .import-blok-porownania {
+    flex: 3 1 30rem;
   }
 }
 
@@ -74,6 +75,33 @@
 .import-porownanie-etykieta {
   font-weight: bold;
   margin-right: 0.25rem;
+}
+
+// Porównania plik→baza jako siatka 2–3 kolumn (dawniej pionowa lista).
+.import-blok-porownania {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
+  gap: 0.25rem 1rem;
+}
+
+// Kontrolki dopasowania autora POD dopasowanym autorem (w komórce „Autor").
+.import-autor-akcje {
+  margin-top: 0.4rem;
+  font-size: 0.9em;
+
+  > form,
+  > .import-autor-zmien {
+    margin-bottom: 0.3rem;
+  }
+}
+
+// Audyt zmian (po integracji) — pełna szerokość nad blokami szczegółów.
+.import-blok-audyt {
+  margin-bottom: 0.5rem;
+
+  p {
+    margin: 0 0 0.15rem;
+  }
 }
 
 // Pasek filtrów „zmienione / zgodne / brak" nad tabelą.
@@ -96,13 +124,39 @@
     }
 
     label {
-      display: block;
+      display: inline-block;
       font-size: 0.85em;
-      margin: 0;
+      margin: 0 0.5rem 0 0;
     }
   }
 
   .import-filtr-tekst {
     align-self: center;
   }
+
+  // Kontenery grup filtrów: widoczne (główne) i zwijane (dodatkowe).
+  .import-filtr-glowne,
+  .import-filtr-dodatkowe {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+  }
+
+  .import-filtr-wiecej {
+    width: 100%;
+
+    > summary {
+      cursor: pointer;
+      font-size: 0.85em;
+      color: #1468a0;
+      margin-bottom: 0.5rem;
+    }
+  }
+}
+
+// Licznik przefiltrowanych rekordów pod paskiem filtrów.
+.import-filtr-licznik {
+  font-size: 0.9em;
+  color: #767676;
+  margin: 0 0 0.75rem;
 }

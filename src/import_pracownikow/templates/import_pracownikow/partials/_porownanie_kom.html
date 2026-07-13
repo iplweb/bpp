@@ -5,7 +5,7 @@
 {% if pole.rozne %}
     <span class="label warning import-porownanie-rozne">{{ pole.plik }}</span>
     <br>
-    <span class="secondary">baza: {{ pole.baza|default:"—" }}</span>
+    <span class="secondary">obecnie: {{ pole.baza|default:"—" }}</span>
 {% elif pole.plik %}
     {{ pole.plik }}
 {% else %}

@@ -19,6 +19,35 @@ def test_import_ma_pole_mapowanie_kolumn_domyslnie_puste():
 
 
 @pytest.mark.django_db
+def test_ma_kolumne_stopnia_wg_mapowania():
+    """`ma_kolumne_stopnia` = czy plik mapuje kolumnę na `stopień_służbowy`
+    (wartości `mapowanie_kolumn`, kształt `{nagłówek: pole_docelowe}`)."""
+    imp = baker.make(
+        ImportPracownikow,
+        mapowanie_kolumn={"Nazwisko": "nazwisko", "Stopień": "stopień_służbowy"},
+    )
+    assert imp.ma_kolumne_stopnia is True
+    assert imp.ma_kolumne_stanowiska is False
+
+
+@pytest.mark.django_db
+def test_ma_kolumne_stanowiska_wg_mapowania():
+    imp = baker.make(
+        ImportPracownikow,
+        mapowanie_kolumn={"Stanowisko dyd.": "stanowisko_dydaktyczne"},
+    )
+    assert imp.ma_kolumne_stanowiska is True
+    assert imp.ma_kolumne_stopnia is False
+
+
+@pytest.mark.django_db
+def test_ma_kolumne_stopnia_stanowiska_false_gdy_puste_mapowanie():
+    imp = baker.make(ImportPracownikow, mapowanie_kolumn={})
+    assert imp.ma_kolumne_stopnia is False
+    assert imp.ma_kolumne_stanowiska is False
+
+
+@pytest.mark.django_db
 def test_stan_zmapowany_istnieje():
     assert ImportPracownikow.STAN_ZMAPOWANY == "zmapowany"
     kody = [k for k, _ in ImportPracownikow.STAN_CHOICES]
