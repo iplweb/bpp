@@ -1,3 +1,4 @@
+import os
 import random
 import time
 from datetime import date
@@ -173,7 +174,15 @@ TransactionTestCase._fixture_teardown = _fixture_teardown
 # root-cause fixa (namierzyć i naprawić test commitujący poza rollback).
 # =============================================================================
 
-_LEAK_GUARD = {"conn": None, "poprzedni": "<start sesji>", "v2_zgloszony": False}
+_LEAK_GUARD = {
+    "conn": None,
+    "poprzedni": "<start sesji>",
+    "v2_zgloszony": False,
+    # Raporty zbieramy i drukujemy w pytest_sessionfinish (POZA per-test
+    # capture pytest-a) — inaczej print z fixture'a jest łykany i NIEwidoczny
+    # w logach CI (właśnie po to jest ta diagnostyka).
+    "raporty": [],
+}
 _LEAK_GUARD_TABLES = (
     "bpp_autor",
     "bpp_jednostka",
@@ -232,8 +241,6 @@ def _neutralizuj_wyciekle_dane(request):
         or "transactional_db" in request.fixturenames
     )
     if uzywa_db:
-        import sys
-
         import psycopg2
         from django.db import connection
 
@@ -254,12 +261,11 @@ def _neutralizuj_wyciekle_dane(request):
                     # więc wyciek widziany na setupie tego testu powstał po
                     # ostatnim czystym stanie — sprawcą jest poprzedni test DB
                     # na tym workerze (xdist → proces = worker, stan per-proces).
-                    print(
-                        f"[LEAK-GUARD] wyciek scommitowanych danych na setupie "
+                    _LEAK_GUARD["raporty"].append(
+                        f"[LEAK-GUARD/V1] wyciek scommitowanych danych na setupie "
                         f"{request.node.nodeid}: {', '.join(wyciekle)}. "
                         f"Najprawdopodobniejszy sprawca (poprzedni test DB na tym "
-                        f"workerze): {_LEAK_GUARD['poprzedni']}",
-                        file=sys.stderr,
+                        f"workerze): {_LEAK_GUARD['poprzedni']}"
                     )
                     # Bez RESTART IDENTITY — jak flush (_fixture_teardown używa
                     # reset_sequences=False); sekwencje rosną dalej, brak
@@ -277,14 +283,13 @@ def _neutralizuj_wyciekle_dane(request):
                     )
                     if cur.fetchone()[0]:
                         _LEAK_GUARD["v2_zgloszony"] = True
-                        print(
+                        _LEAK_GUARD["raporty"].append(
                             f"[LEAK-GUARD/V2] dane referencyjne "
                             f"({_LEAK_GUARD_V2_SENTINEL}) WYCZYSZCZONE (transakcyjny "
                             f"flush) — widać na setupie {request.node.nodeid}. "
                             f"Sprawca (poprzedni test DB na workerze): "
                             f"{_LEAK_GUARD['poprzedni']}. NIENAPRAWIANE tutaj "
-                            f"(osobny wątek izolacji).",
-                            file=sys.stderr,
+                            f"(osobny wątek izolacji)."
                         )
             _LEAK_GUARD["poprzedni"] = request.node.nodeid
         except psycopg2.Error:
@@ -292,6 +297,19 @@ def _neutralizuj_wyciekle_dane(request):
             # bez pełnej migracji) nie może wywalić samego testu.
             pass
     yield
+
+
+def pytest_sessionfinish(session, exitstatus):
+    """Drukuje raporty guarda (V1/V2) na KONIEC sesji — poza per-test capture
+    pytest-a, więc widoczne w logach CI (per worker xdist)."""
+    import sys
+
+    raporty = _LEAK_GUARD.get("raporty") or []
+    if raporty:
+        worker = os.environ.get("PYTEST_XDIST_WORKER", "master")
+        print(f"\n=== LEAK-GUARD raporty (worker {worker}) ===", file=sys.stderr)
+        for r in raporty:
+            print(r, file=sys.stderr)
 
 
 # =============================================================================
