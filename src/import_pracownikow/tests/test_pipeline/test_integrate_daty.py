@@ -14,8 +14,7 @@ from django.utils import timezone
 from liveops.testing import MockProgress
 from model_bakery import baker
 
-from bpp.models import Autor_Jednostka
-from import_common.exceptions import BPPDatabaseError
+from bpp.models import Autor, Autor_Jednostka
 from import_pracownikow.models import ImportPracownikow, ImportPracownikowRow
 from import_pracownikow.pipeline.integrate import _materializuj_diff, integruj
 
@@ -171,8 +170,10 @@ def test_data_do_nie_nadpisuje_istniejacej(autor_jednostka_fixture):
 
 
 @pytest.mark.django_db
-def test_commit_odrzuca_odwrocony_zakres_dat(autor_jednostka_fixture):
-    """Data rozpoczęcia >= data zakończenia → BPPDatabaseError, zero zapisu."""
+def test_commit_odrzuca_odwrocony_zakres_dat_bez_zapisu(autor_jednostka_fixture):
+    """Data rozpoczęcia >= data zakończenia → wiersz odrzucony (zero zapisu do
+    tego AJ), ale commit NIE jest przerywany globalnie (audyt #2): błąd jest
+    izolowany do wiersza i zaraportowany jako ``pominieto_bledne``."""
     autor, jednostka = autor_jednostka_fixture
     aj = baker.make(
         Autor_Jednostka,
@@ -182,7 +183,7 @@ def test_commit_odrzuca_odwrocony_zakres_dat(autor_jednostka_fixture):
         zakonczyl_prace=None,
     )
     imp = baker.make(ImportPracownikow, stan=ImportPracownikow.STAN_ZATWIERDZONY)
-    ImportPracownikowRow.objects.create(
+    row = ImportPracownikowRow.objects.create(
         parent=imp,
         autor=autor,
         jednostka=jednostka,
@@ -195,10 +196,68 @@ def test_commit_odrzuca_odwrocony_zakres_dat(autor_jednostka_fixture):
         zmiany_potrzebne=True,
     )
 
-    with pytest.raises(BPPDatabaseError):
-        integruj(imp, MockProgress(imp))
+    p = MockProgress(imp)
+    integruj(imp, p)  # NIE rzuca — błąd wiersza nie wywala całego commitu
 
     aj.refresh_from_db()
     # Odwrócony zakres NIE został zapisany (transakcja per-wiersz wycofana).
     assert aj.rozpoczal_prace is None
     assert aj.zakonczyl_prace is None
+    # Wiersz oznaczony jako błędny i policzony — nie jako „zintegrowany".
+    assert p.result_context["pominieto_bledne"] == 1
+    assert p.result_context["wymaga_uwagi"] is True
+    row.refresh_from_db()
+    assert "blad" in (row.log_zmian or {})
+
+
+@pytest.mark.django_db
+def test_commit_izoluje_bledny_wiersz_reszta_przechodzi(autor_jednostka_fixture):
+    """Jeden błędny wiersz (odwrócone daty) NIE blokuje pozostałych — dobry
+    wiersz w tym samym commicie zostaje zintegrowany (audyt #2)."""
+    autor_bad, jednostka = autor_jednostka_fixture
+    aj_bad = baker.make(
+        Autor_Jednostka,
+        autor=autor_bad,
+        jednostka=jednostka,
+        rozpoczal_prace=None,
+        zakonczyl_prace=None,
+    )
+    autor_good = baker.make(Autor)
+    aj_good = baker.make(
+        Autor_Jednostka,
+        autor=autor_good,
+        jednostka=jednostka,
+        rozpoczal_prace=None,
+        zakonczyl_prace=None,
+    )
+    imp = baker.make(ImportPracownikow, stan=ImportPracownikow.STAN_ZATWIERDZONY)
+    ImportPracownikowRow.objects.create(
+        parent=imp,
+        autor=autor_bad,
+        jednostka=jednostka,
+        autor_jednostka=aj_bad,
+        dane_znormalizowane={
+            "data_zatrudnienia": "2026-12-31",
+            "data_końca_zatrudnienia": "2026-01-01",
+        },
+        diff_do_utworzenia={},
+        zmiany_potrzebne=True,
+    )
+    ImportPracownikowRow.objects.create(
+        parent=imp,
+        autor=autor_good,
+        jednostka=jednostka,
+        autor_jednostka=aj_good,
+        dane_znormalizowane={"data_zatrudnienia": "2020-01-01"},
+        diff_do_utworzenia={},
+        zmiany_potrzebne=True,
+    )
+
+    p = MockProgress(imp)
+    integruj(imp, p)
+
+    aj_bad.refresh_from_db()
+    aj_good.refresh_from_db()
+    assert aj_bad.rozpoczal_prace is None  # błędny wycofany
+    assert aj_good.rozpoczal_prace == date(2020, 1, 1)  # dobry zapisany
+    assert p.result_context["pominieto_bledne"] == 1

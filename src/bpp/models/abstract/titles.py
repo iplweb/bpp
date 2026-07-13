@@ -4,6 +4,8 @@ Modele abstrakcyjne związane z tytułami w wielu językach.
 
 from django.db import models
 
+from bpp.util import safe_tytul_html
+
 
 class BazaModeluTytulow(models.Model):
     """Tytuł rekordu w jednym (dodatkowym) języku.
@@ -28,3 +30,14 @@ class BazaModeluTytulow(models.Model):
 
     class Meta:
         abstract = True
+
+    def save(self, *args, **kwargs):
+        # Egzekwowane w save(), bo importer PBN wpisuje te tytuły surowym
+        # ``objects.create(tytul=...)`` (helpers.py) — NIE woła full_clean(),
+        # więc clean() by nie zadziałał (XSS #3). Wąska allowlista + litery
+        # greckie jak w ``DwaTytuly._sanityzuj_tytuly``.
+        self.tytul = safe_tytul_html(self.tytul)
+        return super().save(*args, **kwargs)
+
+    def clean(self):
+        self.tytul = safe_tytul_html(self.tytul)

@@ -1169,6 +1169,11 @@ class ImportPracownikowRow(ImportRowMixin, models.Model):
         if Autor_Jednostka.objects.filter(pk=self.autor_jednostka_id).exists():
             return
         # Świeży okres scalony przez defragmentację — przepnij na ocalały AJ.
+        # Netto NIE powstał nowy okres (dwa sąsiadujące zlały się w jeden), więc
+        # sygnalizujemy to, by licznik `utworzono_nowych_okresow` nie skłamał
+        # (audyt #3). Dane z pliku (funkcja/stanowisko) i tak trafią na ocalały,
+        # ciągły okres — to spójne z semantyką defragmentacji.
+        self._okres_scalony_po_defragmentacji = True
         self.autor_jednostka = _wybierz_aktywny_najswiezszy(
             list(
                 Autor_Jednostka.objects.filter(
@@ -1196,6 +1201,9 @@ class ImportPracownikowRow(ImportRowMixin, models.Model):
 
         if log.get("utworzono"):
             yield "Utworzono: " + ", ".join(log["utworzono"])
+
+        if log.get("blad"):
+            yield "Wiersz pominięty (błąd): " + ", ".join(log["blad"])
 
         przepiecie = log.get("przepiecie")
         if przepiecie:

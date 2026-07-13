@@ -367,7 +367,7 @@
                         </td>
                         <td>
                             <a href="{% url 'ewaluacja_optymalizuj_publikacje:optymalizuj' praca.rekord.slug %}">
-                                {{ praca.rekord.tytul_oryginalny|safe_tytul|truncatewords:10 }}
+                                {{ praca.rekord.tytul_oryginalny|truncatewords_html:10|safe_tytul }}
                             </a>
                         </td>
                         <td>{{ praca.rekord.rok }}</td>
@@ -437,7 +437,7 @@
                             </td>
                             <td>
                                 <a href="{% url 'ewaluacja_optymalizuj_publikacje:optymalizuj' praca.rekord.slug %}">
-                                    {{ praca.rekord.tytul_oryginalny|safe_tytul|truncatewords:10 }}
+                                    {{ praca.rekord.tytul_oryginalny|truncatewords_html:10|safe_tytul }}
                                 </a>
                                 {% if praca.is_nazbierana %}
                                     <span class="label success">Wybrana</span>
@@ -505,7 +505,7 @@
                             <td>{{ forloop.counter }}</td>
                             <td>
                                 <a href="{% url 'bpp:browse_praca_by_slug' praca.rekord.slug %}">
-                                    {{ praca.tytul_oryginalny|safe_tytul|truncatewords:10 }}
+                                    {{ praca.tytul_oryginalny|truncatewords_html:10|safe_tytul }}
                                 </a>
                                 <span class="label secondary">Odpięta</span>
                             </td>
