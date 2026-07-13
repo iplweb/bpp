@@ -174,9 +174,9 @@ def test_commit_pomija_wiersz_gdy_recheck_nieaktualny(autor_jednostka_fixture):
     pomijany (``pominiety_bo_nieaktualny=True``) i NIE trafia do
     ``row.integrate()`` — ``log_zmian`` pozostaje puste."""
     autor, jednostka = autor_jednostka_fixture
-    # "asystent" jest w danych referencyjnych (baseline) — używamy istniejącego
-    # wpisu zamiast tworzyć nowy (uniqueness na "nazwa").
-    funkcja = Funkcja_Autora.objects.get(nazwa="asystent")
+    # "asystent" bywa w baseline, ale transakcyjny flush innego testu na tym
+    # samym workerze potrafi go zmieść — zapewniamy go sami zamiast zakładać.
+    funkcja, _ = Funkcja_Autora.objects.get_or_create(nazwa="asystent")
     # podstawowe_miejsce_pracy=True: bez tego #4 (domyślnie import ustawia
     # jednostkę jako podstawowe miejsce pracy) trzymałby wiersz jako „wymaga
     # integracji" i recheck NIE pominąłby go jako nieaktualnego.

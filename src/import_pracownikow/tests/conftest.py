@@ -8,6 +8,9 @@ from model_bakery import baker
 
 from bpp.models import Autor, Autor_Jednostka, Jednostka
 from import_pracownikow.models import ImportPracownikow
+from import_pracownikow.tests._helpers import unikalna_nazwa
+
+__all__ = ["unikalna_nazwa"]
 
 
 @pytest.fixture(autouse=True)
@@ -92,8 +95,8 @@ def autor_spoza_pliku():
 def jednostka_spoza_pliku() -> Jednostka:
     return baker.make(
         Jednostka,
-        nazwa="Jednostka Spozaplikowa",
-        skrot="Jedn. Spoz.",
+        nazwa=unikalna_nazwa("Jednostka Spozaplikowa"),
+        skrot=unikalna_nazwa("Jedn. Spoz."),
         zarzadzaj_automatycznie=True,
     )
 
@@ -133,8 +136,8 @@ def dwa_autory_z_jednostka():
     """
     jednostka = baker.make(
         Jednostka,
-        nazwa="Katedra Testowa",
-        skrot="Kat. Test.",
+        nazwa=unikalna_nazwa("Katedra Testowa"),
+        skrot=unikalna_nazwa("Kat. Test."),
     )
     autor = baker.make(
         Autor, nazwisko="Kowalski", imiona="Jan", aktualna_jednostka=jednostka
@@ -158,8 +161,8 @@ def autor_bez_autor_jednostka():
     """
     jednostka = baker.make(
         Jednostka,
-        nazwa="Katedra Bez Powiazania",
-        skrot="Kat. Bez Pow.",
+        nazwa=unikalna_nazwa("Katedra Bez Powiazania"),
+        skrot=unikalna_nazwa("Kat. Bez Pow."),
     )
     autor = baker.make(Autor, nazwisko="Nowicki", imiona="Piotr")
     return autor, jednostka
@@ -178,8 +181,8 @@ def autor_jednostka_fixture():
     """
     jednostka = baker.make(
         Jednostka,
-        nazwa="Katedra Integracji Testowej",
-        skrot="Kat. Integr. Test.",
+        nazwa=unikalna_nazwa("Katedra Integracji Testowej"),
+        skrot=unikalna_nazwa("Kat. Integr. Test."),
     )
     autor = baker.make(Autor, nazwisko="Wisniewski", imiona="Adam")
     return autor, jednostka

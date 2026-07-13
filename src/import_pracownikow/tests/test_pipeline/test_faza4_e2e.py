@@ -10,17 +10,22 @@ from model_bakery import baker
 from bpp.models import Autor, Autor_Jednostka, Jednostka
 from import_pracownikow.models import ImportPracownikow
 from import_pracownikow.pewnosc import STATUS_BRAK
+from import_pracownikow.tests._helpers import unikalna_nazwa
 
 
 @pytest.mark.django_db
 def test_e2e_nowy_autor_i_odpiecie(admin_client, admin_user, yesterday):
-    jednostka = baker.make(Jednostka, nazwa="Katedra Testowa", skrot="Kat. T.")
+    jednostka = baker.make(
+        Jednostka,
+        nazwa=unikalna_nazwa("Katedra Testowa"),
+        skrot=unikalna_nazwa("Kat. T."),
+    )
 
     # autor spoza pliku: jednostka zarządzana automatycznie + aktualna jednostka
     j_spoza = baker.make(
         Jednostka,
-        nazwa="Katedra Spoza",
-        skrot="Kat. Spoza",
+        nazwa=unikalna_nazwa("Katedra Spoza"),
+        skrot=unikalna_nazwa("Kat. Spoza"),
         zarzadzaj_automatycznie=True,
     )
     a_spoza = baker.make(Autor, nazwisko="Odpinalski", imiona="Marek")
