@@ -71,7 +71,9 @@ def _naglowki_pliku(path):
 
 
 @pytest.mark.django_db
-def test_wykaz_rozpoznaje_daty_glowny_zaklad_i_wymiar(dwaj_autorzy_z_jednostki, tmp_path):
+def test_wykaz_rozpoznaje_daty_glowny_zaklad_i_wymiar(
+    dwaj_autorzy_z_jednostki, tmp_path
+):
     autor, jednostka = dwaj_autorzy_z_jednostki
     plik = str(tmp_path / "wykaz.xlsx")
     _zapisz_wykaz(plik, autor, jednostka)
