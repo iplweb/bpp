@@ -7,7 +7,7 @@
         {# — przy embedowaniu w kroku fetch (step_fetch.html) tego dublowania #}
         {# linku "powrót do importera" nie chcemy, bo tam i tak już nim jesteśmy. #}
         <p>
-            <a class="button tiny secondary"
+            <a class="button secondary"
                href="{% url 'importer_publikacji:index' %}"
                hx-get="{% url 'importer_publikacji:index' %}"
                hx-target="#importer-wizard"
@@ -116,18 +116,7 @@
                         </td>
                         <td>{{ s.provider_name }}</td>
                         <td>
-                            <span class="label
-                                {% if s.status == 'completed' %}
-                                    success
-                                {% elif s.status == 'cancelled' %}
-                                    alert
-                                {% elif s.status == 'import_failed' %}
-                                    alert
-                                {% elif s.status == 'fetching' or s.status == 'creating' %}
-                                    warning
-                                {% else %}
-                                    primary
-                                {% endif %}">
+                            <span class="label {{ s.status_badge_class }}">
                                 {{ s.get_status_display }}
                             </span>
                         </td>
@@ -166,51 +155,86 @@
 </style>
 
 <script>
-$(document).ready(function() {
-    var $form = $('#session-filter-form');
-
-    $('#session-list-container .importer-user-select2')
-        .select2({
-            placeholder: 'Wybierz...',
-            allowClear: true,
-            language: 'pl',
-            width: '150px'
-        })
-        .on('change', function() {
-            htmx.trigger($form[0], 'change');
-        });
-
-    $('#session-filter-reset').on('click', function() {
-        $form.find('input[type="text"]').val('');
-        $form.find('input[type="date"]').val('');
-        $form.find('select').each(function() {
-            var $sel = $(this);
-            if ($sel.hasClass('importer-user-select2')) {
-                $sel.val(null)
-                    .trigger('change.select2');
-            } else {
-                $sel.val('');
+// Inicjalizacja idempotentna. Przy nawigacji htmx + Wstecz (szczególnie
+// bfcache / history-restore w Safari) ten fragment potrafi się wykonać
+// ponownie na DOM-ie, gdzie DataTable/select2 są JUŻ zainicjalizowane.
+// Bez zabezpieczeń DataTable rzucał „Cannot reinitialise DataTable", co
+// przerywało przetwarzanie htmx nowej treści → uchwyty hx-* nie były
+// podpinane → strona stawała się nieklikalna. Guardy poniżej sprawiają,
+// że powtórne wywołanie jest no-opem zamiast wyjątku.
+(function() {
+    function initSessionList() {
+        try {
+            var $form = $('#session-filter-form');
+            if (!$form.length) {
+                return;
             }
-        });
-        htmx.trigger($form[0], 'change');
-    });
 
-    var table = $('#sessions-table');
-    if (table.length && $.fn.DataTable) {
-        table.DataTable({
-            paging: true,
-            pageLength: 25,
-            ordering: true,
-            order: [[0, 'desc']],
-            info: true,
-            searching: false,
-            language: {
-                url: "{% static 'bpp/js/Polish.json' %}"
-            },
-            columnDefs: [
-                {orderable: false, targets: [7]}
-            ]
-        });
+            // select2 tylko na jeszcze-nie-zainicjalizowanych polach
+            // (.select2-hidden-accessible znaczy „już podpięte").
+            $('#session-list-container .importer-user-select2')
+                .not('.select2-hidden-accessible')
+                .select2({
+                    placeholder: 'Wybierz...',
+                    allowClear: true,
+                    language: 'pl',
+                    width: '150px'
+                })
+                .on('change', function() {
+                    htmx.trigger($form[0], 'change');
+                });
+
+            // .off przed .on — żeby powtórny init nie dublował handlera.
+            $('#session-filter-reset')
+                .off('click.importerReset')
+                .on('click.importerReset', function() {
+                    $form.find('input[type="text"]').val('');
+                    $form.find('input[type="date"]').val('');
+                    $form.find('select').each(function() {
+                        var $sel = $(this);
+                        if ($sel.hasClass('importer-user-select2')) {
+                            $sel.val(null)
+                                .trigger('change.select2');
+                        } else {
+                            $sel.val('');
+                        }
+                    });
+                    htmx.trigger($form[0], 'change');
+                });
+
+            var table = $('#sessions-table');
+            if (table.length && $.fn.DataTable
+                    && !$.fn.dataTable.isDataTable(table[0])) {
+                table.DataTable({
+                    paging: true,
+                    pageLength: 25,
+                    ordering: true,
+                    order: [[0, 'desc']],
+                    info: true,
+                    searching: false,
+                    language: {
+                        url: "{% static 'bpp/js/Polish.json' %}"
+                    },
+                    columnDefs: [
+                        {orderable: false, targets: [7]}
+                    ]
+                });
+            }
+        } catch (e) {
+            // Nie połykamy po cichu — logujemy. Jeden błąd inicjalizacji
+            // (np. wyścig re-init przy Wstecz w Safari) nie może zabić
+            // reszty strony.
+            console.error(
+                '[importer] inicjalizacja listy sesji nie powiodła się:',
+                e
+            );
+        }
     }
-});
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initSessionList);
+    } else {
+        initSessionList();
+    }
+})();
 </script>

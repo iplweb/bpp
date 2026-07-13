@@ -254,6 +254,25 @@ class ImportSession(models.Model):
             kwargs={"session_id": self.pk},
         )
 
+    @property
+    def status_badge_class(self) -> str:
+        """Klasa koloru Foundation dla etykiety statusu na liście sesji.
+
+        Semantyka kolorów (żeby operator nie brał stanów w toku za sukces):
+        - ``success`` (zielony) — TYLKO ``COMPLETED`` („Zakończono"),
+        - ``alert`` (czerwony) — ``IMPORT_FAILED`` (błąd, wymaga akcji),
+        - ``warning`` (pomarańcz) — aktywne przetwarzanie (FETCHING/CREATING),
+        - ``secondary`` (szary) — pozostałe stany w toku (dane pobrane, ale
+          wizard niedokończony: czeka na operatora).
+        """
+        if self.status == self.Status.COMPLETED:
+            return "success"
+        if self.status == self.Status.IMPORT_FAILED:
+            return "alert"
+        if self.status in (self.Status.FETCHING, self.Status.CREATING):
+            return "warning"
+        return "secondary"
+
     # Statusy "w locie": task Celery jeszcze pracuje (albo powinien). Tylko
     # dla nich watchdog może orzec zawieszenie — stan terminalny nigdy nie
     # jest "zawieszony".

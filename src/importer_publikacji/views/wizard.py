@@ -33,7 +33,7 @@ from ..models import (
     MultipleWorksImportEntry,
 )
 from ..permissions import ImporterPermissionMixin
-from ..providers import InputMode, get_provider
+from ..providers import InputMode, get_provider, get_providers_metadata
 from ..tasks import create_publication_task, fetch_session_task
 from .authors import (
     _create_single_author,
@@ -102,13 +102,17 @@ class IndexView(ImporterPermissionMixin, View):
         return self._get_landing(request)
 
     def _get_fetch_form(self, request):
-        initial = {"provider": request.GET["provider"]}
+        provider_name = request.GET["provider"]
+        # Nieznany provider (stary/zepsuty deep-link) → wróć do kafelków,
+        # zamiast renderować pusty nagłówek jednego źródła.
+        if provider_name not in get_providers_metadata():
+            return self._get_landing(request)
+        initial = {"provider": provider_name}
         if request.GET.get("identifier"):
             initial["identifier"] = request.GET["identifier"]
         form = FetchForm(initial=initial)
 
-        ctx = _fetch_context(form, request=request)
-        ctx.update(_sessions_list_context(request))
+        ctx = _fetch_context(form, request=request, provider_name=provider_name)
         if _is_htmx_partial(request):
             response = render(request, STEP_FETCH, ctx)
             return _with_breadcrumbs_oob(response, request)
@@ -204,7 +208,11 @@ class FetchView(ImporterPermissionMixin, View):
     def post(self, request):
         form = FetchForm(request.POST)
         if not form.is_valid():
-            return render(request, STEP_FETCH, _fetch_context(form))
+            return render(
+                request,
+                STEP_FETCH,
+                _fetch_context(form, provider_name=request.POST.get("provider")),
+            )
 
         provider_name = form.cleaned_data["provider"]
         request.session["importer_last_provider"] = provider_name
@@ -227,7 +235,11 @@ class FetchView(ImporterPermissionMixin, View):
             if placeholder:
                 msg += f" Przykład: {placeholder}"
             form.add_error(error_field, msg)
-            return render(request, STEP_FETCH, _fetch_context(form))
+            return render(
+                request,
+                STEP_FETCH,
+                _fetch_context(form, provider_name=provider_name),
+            )
 
         # Wielo-rekordowe wejście (BibTeX z ≥2 wpisami) → paczka, nie
         # pojedyncza sesja. Pojedyncze sesje powstają leniwie przy

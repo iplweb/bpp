@@ -1,6 +1,5 @@
-from rest_framework.pagination import PageNumberPagination
-
 from django.utils.functional import cached_property
+from rest_framework.pagination import PageNumberPagination
 
 from bpp.models import Uczelnia
 
@@ -22,26 +21,50 @@ class UkryjStatusyKorektyMixin:
         return queryset
 
 
-class FiltrujPoWidocznosciRekorduMixin:
-    """Dla viewsetów pod-zasobów (autorzy, streszczenia, zewnętrzne bazy
-    danych) powiązanych FK ``rekord`` z rekordem-rodzicem.
+class UkryjNieEksportowaneMixin:
+    """Ukrywa child-rekordy, których rekord nadrzędny ma ustawioną flagę
+    ``nie_eksportuj_przez_api``.
 
-    Ukrywa wiersze należące do rekordów wykluczonych z eksportu API
-    (``nie_eksportuj_przez_api=True``) lub o ukrytym statusie korekty —
-    spójnie z filtrem widoczności rekordu-rodzica. Bez tego anonimowy
-    klient mógłby przez pod-zasób odczytać powiązania autorów oraz
-    abstrakty rekordów świadomie ukrytych.
+    Główne viewsety publikacji filtrują to na poziomie rekordu, ale endpointy
+    podrzędne (streszczenia, autorstwa, identyfikatory zewnętrznych baz) jadą
+    na globalnym querysecie modelu-dziecka — bez tego mixina anonimowy
+    użytkownik mógłby enumerować ich PK i wyciągać dane rekordu chronionego.
+
+    ``parent_lookup`` to nazwa relacji prowadzącej do rekordu nadrzędnego
+    (domyślnie ``rekord``); nadpisz na podklasie, jeśli child używa innej.
     """
 
+    parent_lookup = "rekord"
+
     def get_queryset(self):
-        queryset = super().get_queryset().exclude(rekord__nie_eksportuj_przez_api=True)
+        queryset = super().get_queryset()
+        return queryset.exclude(
+            **{f"{self.parent_lookup}__nie_eksportuj_przez_api": True}
+        )
+
+
+class UkryjStatusyKorektyRekorduMixin:
+    """Wersja :class:`UkryjStatusyKorektyMixin` dla endpointów podrzędnych.
+
+    Ukrywa child-rekordy, których rekord nadrzędny ma status korekty ukryty
+    dla API (``ukryte_statusy("api")``). Parent viewsety robią to bezpośrednio
+    (pole ``status_korekty`` na rekordzie); child docierają do statusu przez
+    relację ``parent_lookup``. Uzupełnia :class:`UkryjNieEksportowaneMixin`
+    o wymiar statusów korekty — oba stosowane razem dają na pod-zasobie tę
+    samą widoczność co na rekordzie-rodzicu.
+    """
+
+    parent_lookup = "rekord"
+
+    def get_queryset(self):
+        queryset = super().get_queryset()
 
         uczelnia = Uczelnia.objects.get_for_request(self.request)
         if uczelnia:
             ukryte_statusy = uczelnia.ukryte_statusy("api")
             if ukryte_statusy:
                 queryset = queryset.exclude(
-                    rekord__status_korekty_id__in=ukryte_statusy
+                    **{f"{self.parent_lookup}__status_korekty_id__in": ukryte_statusy}
                 )
 
         return queryset
