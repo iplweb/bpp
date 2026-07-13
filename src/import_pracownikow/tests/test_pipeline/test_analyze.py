@@ -150,8 +150,8 @@ def test_pusty_plik_rzuca_jawny_blad():
 
 
 @pytest.mark.django_db
-def test_analiza_scala_podwojny_wymiar_do_kanonicznego(dwa_autory_z_jednostka):
-    autor, jednostka = dwa_autory_z_jednostka
+def test_analiza_scala_podwojny_wymiar_do_kanonicznego(dwaj_autorzy_z_jednostki):
+    autor, jednostka = dwaj_autorzy_z_jednostki
     imp = baker.make(ImportPracownikow, stan=ImportPracownikow.STAN_UTWORZONY)
     imp.plik_xls.name = "protected/import_pracownikow/x.xlsx"
     wiersz = _wiersz(
@@ -174,8 +174,8 @@ def test_analiza_scala_podwojny_wymiar_do_kanonicznego(dwa_autory_z_jednostka):
 
 
 @pytest.mark.django_db
-def test_analiza_rozbiezny_wymiar_rzuca(dwa_autory_z_jednostka):
-    autor, jednostka = dwa_autory_z_jednostka
+def test_analiza_rozbiezny_wymiar_rzuca(dwaj_autorzy_z_jednostki):
+    autor, jednostka = dwaj_autorzy_z_jednostki
     imp = baker.make(ImportPracownikow, stan=ImportPracownikow.STAN_UTWORZONY)
     imp.plik_xls.name = "protected/import_pracownikow/x.xlsx"
     wiersz = _wiersz(
@@ -196,13 +196,13 @@ def test_analiza_rozbiezny_wymiar_rzuca(dwa_autory_z_jednostka):
 
 @pytest.mark.django_db
 def test_analiza_glowny_zaklad_pracy_nie_traktuje_N_jako_prawda(
-    dwa_autory_z_jednostka,
+    dwaj_autorzy_z_jednostki,
 ):
     # „Gł. zakład pracy" = N → NIE podstawowe miejsce pracy. Pole wiersza liczy
     # normalize_nullboleanfield (poprawnie False); kopia audytowa
     # (dane_znormalizowane) NIE może kłamać True (AutorForm = CharField, nie
     # BooleanField, która „N" koercowała do True).
-    autor, jednostka = dwa_autory_z_jednostka
+    autor, jednostka = dwaj_autorzy_z_jednostki
     imp = baker.make(ImportPracownikow, stan=ImportPracownikow.STAN_UTWORZONY)
     imp.plik_xls.name = "protected/import_pracownikow/x.xlsx"
     wiersz = _wiersz(
