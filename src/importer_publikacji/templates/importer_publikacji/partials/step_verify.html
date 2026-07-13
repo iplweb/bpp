@@ -465,14 +465,14 @@
             </div>
             <div class="cell">
                 <a href="{% url 'importer_publikacji:index' %}"
-                   class="button hollow secondary small">
+                   class="button hollow secondary">
                     <span class="fi-list"></span>
                     Powrót do listy
                 </a>
             </div>
             <div class="cell">
                 <button type="button"
-                        class="button alert hollow small"
+                        class="button alert hollow"
                         hx-post="{% url 'importer_publikacji:cancel' session.pk %}"
                         hx-target="#importer-wizard"
                         hx-confirm="Czy na pewno chcesz anulować import? Sesja zostanie skasowana.">

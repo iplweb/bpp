@@ -8,8 +8,6 @@ Zawiera:
 - pomocnicze nakładki HTMX (HX-Push-Url, OOB breadcrumbs).
 """
 
-import json
-
 from django.shortcuts import render
 from django.template.loader import render_to_string
 
@@ -144,16 +142,29 @@ def _get_crossref_mapper(publication_type):
     return mapper
 
 
-def _fetch_context(form=None, request=None):
-    """Kontekst dla kroku fetch (providers_metadata)."""
+def _fetch_context(form=None, request=None, provider_name=None):
+    """Kontekst kroku fetch dla POJEDYNCZEGO wybranego providera.
+
+    W kaflowym/deep-linkowym flow provider jest zawsze znany (``?provider=``
+    z kafla albo POST). Zwracamy metadane TEGO JEDNEGO providera
+    (``provider_meta``) zamiast całej mapy — szablon renderuje wyłącznie
+    właściwe pole (identyfikator albo textarea), bez radiowego wyboru źródła
+    i bez listy sesji pod spodem.
+    """
+    metadata = get_providers_metadata()
+    if provider_name is None and form is not None:
+        provider_name = form.data.get("provider") or form.initial.get("provider")
     if form is None:
         last_provider = None
         if request is not None:
             last_provider = request.session.get("importer_last_provider")
         form = FetchForm(last_provider=last_provider)
+        if provider_name is None:
+            provider_name = form.initial.get("provider")
     return {
         "form": form,
-        "providers_metadata_json": json.dumps(get_providers_metadata()),
+        "provider_name": provider_name,
+        "provider_meta": metadata.get(provider_name),
     }
 
 
