@@ -1,17 +1,28 @@
 """Matchowanie jednostek (komórki organizacyjne uczelni)."""
 
+import re
+
 from django.contrib.postgres.search import TrigramSimilarity
 from django.db.models import Q
 from django.db.models.functions import Greatest
+from unidecode import unidecode
 
 from bpp.models import Jednostka
 
-from ..normalization import normalize_nazwa_jednostki
+from ..normalization import ROMAN_NUMERAL_PATTERN, normalize_nazwa_jednostki
 
 # Próg podobieństwa trigramowego, powyżej którego niedopasowaną dokładnie nazwę
 # jednostki uznajemy za „bardzo zbliżoną" i wybieramy automatycznie (status
 # ``zgadywanie``, widoczny dla użytkownika). Strojony w jednym miejscu.
 PROG_ZGADYWANIA_JEDNOSTKI = 0.7
+
+# Fallback „po skrócie" (prefiksowe wyrównanie słów) — stałe strojone tu.
+# Kalibracja TRIGRAM_FLOOR na realnej jednostce: forma z Excela ma trigram 0.629,
+# agresywny pełnowymiarowy skrót 0.417 (wchodzi), 3-słowny 0.186 (odrzuca guard).
+TRIGRAM_FLOOR = 0.25  # dolny próg kandydatów do prefiltru top-K (perf + odsiew)
+TOP_K = 50  # ilu kandydatów materializujemy do wyrównania w Pythonie
+MIN_SLOW_PLIKU = 2  # <2 słowa → za dwuznaczne na dopasowanie po skrócie
+MIN_POKRYCIE = 0.6  # min. udział słów pliku w słowach NAZWY kandydata
 
 # Statusy klasyfikacji jednostki. Wartości są CELOWO identyczne z
 # ``import_pracownikow.pewnosc.STATUS_*`` (wspólne słownictwo), ale definiujemy je
@@ -112,6 +123,106 @@ def _pula_afiliacyjna():
         .filter(Q(rodzaj__isnull=True) | Q(rodzaj__autor_moze_afiliowac=True))
         .exclude(jest_lustrem=True)
     )
+
+
+_NAWIAS = re.compile(r"\([^)]*\)")
+# Obcięcie brzegowej interpunkcji PO unidecode+lower (token jest już ASCII);
+# zbiór musi pokrywać transliteracje unidecode (np. '«'->'<<'), nie znaki źródłowe.
+_OBETNIJ_BRZEGI = re.compile(r"^[^a-z0-9]+|[^a-z0-9]+$")
+_NUMERAL = re.compile(rf"(?:{ROMAN_NUMERAL_PATTERN}|[0-9]+)", re.IGNORECASE)
+
+
+def _slowa(s):
+    """Nazwa/skrot → lista znormalizowanych słów.
+
+    Usuwa nawiasowe grupy (np. „(WNoZ)" — skrót wydziału z displayu), łamie na
+    słowa, każde: unidecode (zdejmuje ogonki ł→l, ż→z), lower, obcięcie brzegowej
+    interpunkcji. Puste tokeny pominięte.
+    """
+    s = _NAWIAS.sub(" ", s or "")
+    out = []
+    for w in s.split():
+        w = _OBETNIJ_BRZEGI.sub("", unidecode(w).lower())
+        if w:
+            out.append(w)
+    return out
+
+
+def _jest_numeralem(t):
+    """True gdy token to numerał rzymski (I–XX) albo liczba arabska."""
+    return _NUMERAL.fullmatch(t) is not None
+
+
+def _para_prefiksowa(a, b):
+    """True gdy a==b albo jedno jest prefiksem drugiego (dwukierunkowo).
+
+    Tokeny ≤2 znaki (np. „i", „ii", „im") ORAZ numerały (rzymskie/cyfry) wymagają
+    RÓWNOŚCI, nie prefiksu — inaczej „i" połknęłoby „intensywnej", a „VII"
+    dopasowałoby się do „VIII" (numerowane kliniki). „III" (3 znaki) obsługuje
+    reguła numerałów.
+    """
+    if len(a) <= 2 or len(b) <= 2:
+        return a == b
+    if _jest_numeralem(a) or _jest_numeralem(b):
+        return a == b
+    return a.startswith(b) or b.startswith(a)
+
+
+def _liczba_dopasowanych(slowa_pliku, slowa_pola):
+    """Greedy: słowa_pliku jako uporządkowany podciąg słów_pola z relacją
+    prefiksową. Zwraca liczbę dopasowanych słów (== len(slowa_pliku)) albo None,
+    gdy któreś słowo pliku nie znalazło pary. Greedy earliest-match jest
+    dowodliwie optymalny dla testu istnienia podciągu."""
+    i = 0
+    for wp in slowa_pliku:
+        while i < len(slowa_pola) and not _para_prefiksowa(wp, slowa_pola[i]):
+            i += 1
+        if i >= len(slowa_pola):
+            return None
+        i += 1
+    return len(slowa_pliku)
+
+
+def dopasuj_po_skrocie(
+    nazwa, kandydaci, *, min_slow=MIN_SLOW_PLIKU, min_pokrycie=MIN_POKRYCIE
+):
+    """Najlepszy kandydat wg prefiksowego wyrównania słów, albo None.
+
+    Wyrównanie próbowane na `nazwa` LUB `skrot` kandydata (istnienie podciągu),
+    ale POKRYCIE liczone ZAWSZE względem słów `nazwa` (kanoniczna długość
+    jednostki) — inaczej krótki `skrot` omijałby guard. `kandydaci` — instancje
+    z adnotacją `.sim` (trigram). Ranking: (pokrycie, trigram); remis → wyższy
+    trigram, przy równym pierwszy napotkany (wynik i tak jest `zgadywanie`,
+    weryfikowany przez użytkownika).
+
+    Znane ograniczenia v1: (1) reguła ≤2 znaki wyklucza 2-znakowe skróty słów
+    (`Kl.`, `Ch.`); (2) all-or-nothing na słowach pliku — dopisek bez pary
+    (`UM`, `CM`) daje None.
+    """
+    slowa_pliku = _slowa(nazwa)
+    if len(slowa_pliku) < min_slow:
+        return None
+    najlepszy = None
+    najlepszy_klucz = None
+    for kand in kandydaci:
+        slowa_nazwa = _slowa(kand.nazwa or "")
+        if not slowa_nazwa:
+            continue
+        dopasowany = False
+        for slowa_pola in (slowa_nazwa, _slowa(kand.skrot or "")):
+            if slowa_pola and _liczba_dopasowanych(slowa_pliku, slowa_pola) is not None:
+                dopasowany = True
+                break
+        if not dopasowany:
+            continue
+        pokrycie = len(slowa_pliku) / len(slowa_nazwa)
+        if pokrycie < min_pokrycie:
+            continue
+        klucz = (pokrycie, float(kand.sim or 0.0))
+        if najlepszy_klucz is None or klucz > najlepszy_klucz:
+            najlepszy = kand
+            najlepszy_klucz = klucz
+    return najlepszy
 
 
 def sklasyfikuj_jednostke(nazwa, wydzial=None, *, prog=PROG_ZGADYWANIA_JEDNOSTKI):
