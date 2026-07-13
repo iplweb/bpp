@@ -189,12 +189,17 @@ def test_podglad_wiersz_ma_atrybuty_data_diff(admin_client, admin_user):
 @pytest.mark.django_db
 def test_podglad_ma_pasek_filtrow_radia(admin_client, admin_user):
     """Pasek filtrów renderuje radia (wszystkie/zmienione/zgodne/brak) dla
-    każdego z pól POLA_ROZNIC (w tym data_od/data_do)."""
+    każdego z pól POLA_ROZNIC (w tym data_od/data_do). `mapowanie_kolumn`
+    z kolumnami stopnia i stanowiska, żeby oba filtry (zwijane) się pojawiły."""
     imp = baker.make(
         ImportPracownikow,
         owner=admin_user,
         stan=ImportPracownikow.STAN_PRZEANALIZOWANY,
         finished_successfully=True,
+        mapowanie_kolumn={
+            "S": "stopień_służbowy",
+            "SD": "stanowisko_dydaktyczne",
+        },
     )
     url = reverse("import_pracownikow:importpracownikow-results", kwargs={"pk": imp.pk})
     tresc = admin_client.get(url).content.decode("utf-8")
@@ -212,3 +217,150 @@ def test_podglad_ma_pasek_filtrow_radia(admin_client, admin_user):
         assert f'name="filtr-{klucz}"' in tresc
     assert 'value="zmienione"' in tresc
     assert 'value="brak"' in tresc
+
+
+@pytest.mark.django_db
+def test_results_context_dzieli_pola_glowne_dodatkowe(admin_client, admin_user):
+    """Widok dzieli POLA_ROZNIC na `pola_glowne` (zawsze widoczne: jednostka,
+    tytuł, data od/do) i `pola_dodatkowe` (collapsible: email, stopień,
+    funkcja, stanowisko)."""
+    imp = baker.make(
+        ImportPracownikow,
+        owner=admin_user,
+        stan=ImportPracownikow.STAN_PRZEANALIZOWANY,
+        finished_successfully=True,
+        mapowanie_kolumn={
+            "S": "stopień_służbowy",
+            "SD": "stanowisko_dydaktyczne",
+        },
+    )
+    url = reverse("import_pracownikow:importpracownikow-results", kwargs={"pk": imp.pk})
+    ctx = admin_client.get(url).context
+    assert [k for k, _ in ctx["pola_glowne"]] == [
+        "jednostka",
+        "tytul",
+        "data_od",
+        "data_do",
+    ]
+    assert [k for k, _ in ctx["pola_dodatkowe"]] == [
+        "email",
+        "stopien",
+        "funkcja",
+        "stanowisko",
+    ]
+
+
+@pytest.mark.django_db
+def test_results_context_ukrywa_stopien_stanowisko_bez_kolumn(admin_client, admin_user):
+    """Bez kolumny w pliku (`mapowanie_kolumn` puste) — stopień i stanowisko
+    wypadają z `pola_dodatkowe` (nie filtrujemy po polu, którego nie ma)."""
+    imp = baker.make(
+        ImportPracownikow,
+        owner=admin_user,
+        stan=ImportPracownikow.STAN_PRZEANALIZOWANY,
+        finished_successfully=True,
+        mapowanie_kolumn={},
+    )
+    url = reverse("import_pracownikow:importpracownikow-results", kwargs={"pk": imp.pk})
+    ctx = admin_client.get(url).context
+    assert [k for k, _ in ctx["pola_dodatkowe"]] == ["email", "funkcja"]
+    assert [k for k, _ in ctx["pola_glowne"]] == [
+        "jednostka",
+        "tytul",
+        "data_od",
+        "data_do",
+    ]
+
+
+@pytest.mark.django_db
+def test_karta_ukrywa_stopien_stanowisko_bez_kolumny(admin_client, admin_user):
+    """Plik bez kolumny stopnia/stanowiska → karta NIE renderuje tych wierszy
+    porównania (dane i tak by się nie zmieniły)."""
+    imp = baker.make(
+        ImportPracownikow,
+        owner=admin_user,
+        stan=ImportPracownikow.STAN_PRZEANALIZOWANY,
+        finished_successfully=True,
+        mapowanie_kolumn={},
+    )
+    jednostka = baker.make(Jednostka, nazwa="Kat.", skrot="K.")
+    autor = baker.make(Autor, nazwisko="Nowak", imiona="Ewa")
+    ImportPracownikowRow.objects.create(
+        parent=imp,
+        jednostka=jednostka,
+        autor=autor,
+        confidence=STATUS_TWARDY,
+        zmiany_potrzebne=False,
+        dane_znormalizowane={"imię": "Ewa", "nazwisko": "Nowak"},
+        dane_z_xls={"__xls_loc_sheet__": 0, "__xls_loc_row__": 3},
+    )
+    url = reverse("import_pracownikow:importpracownikow-results", kwargs={"pk": imp.pk})
+    tresc = admin_client.get(url).content.decode("utf-8")
+    assert "Stopień sł.:" not in tresc
+    assert "Stanowisko dyd.:" not in tresc
+    # Pozostałe pola porównania zostają.
+    assert "E-mail:" in tresc
+    assert "Funkcja:" in tresc
+
+
+@pytest.mark.django_db
+def test_karta_pokazuje_stopien_stanowisko_z_kolumnami(admin_client, admin_user):
+    """Plik z kolumnami stopnia/stanowiska → karta renderuje oba wiersze."""
+    imp = baker.make(
+        ImportPracownikow,
+        owner=admin_user,
+        stan=ImportPracownikow.STAN_PRZEANALIZOWANY,
+        finished_successfully=True,
+        mapowanie_kolumn={
+            "S": "stopień_służbowy",
+            "SD": "stanowisko_dydaktyczne",
+        },
+    )
+    jednostka = baker.make(Jednostka, nazwa="Kat.", skrot="K.")
+    autor = baker.make(Autor, nazwisko="Nowak", imiona="Ewa")
+    ImportPracownikowRow.objects.create(
+        parent=imp,
+        jednostka=jednostka,
+        autor=autor,
+        confidence=STATUS_TWARDY,
+        zmiany_potrzebne=False,
+        dane_znormalizowane={"imię": "Ewa", "nazwisko": "Nowak"},
+        dane_z_xls={"__xls_loc_sheet__": 0, "__xls_loc_row__": 3},
+    )
+    url = reverse("import_pracownikow:importpracownikow-results", kwargs={"pk": imp.pk})
+    tresc = admin_client.get(url).content.decode("utf-8")
+    assert "Stopień sł.:" in tresc
+    assert "Stanowisko dyd.:" in tresc
+
+
+@pytest.mark.django_db
+def test_karta_zmien_autora_pod_autorem_i_etykieta_obecnie(admin_client, admin_user):
+    """Kontrolka „zmień autora" przeniesiona do bloku akcji w komórce Autora;
+    różnica e-maila renderuje etykietę „obecnie:" (dawniej „baza:")."""
+    imp = baker.make(
+        ImportPracownikow,
+        owner=admin_user,
+        stan=ImportPracownikow.STAN_PRZEANALIZOWANY,
+        finished_successfully=True,
+    )
+    jednostka = baker.make(Jednostka, nazwa="Kat.", skrot="K.")
+    autor = baker.make(Autor, nazwisko="Nowak", imiona="Ewa", email="stary@x.pl")
+    ImportPracownikowRow.objects.create(
+        parent=imp,
+        jednostka=jednostka,
+        autor=autor,
+        confidence=STATUS_TWARDY,
+        zmiany_potrzebne=False,
+        dane_znormalizowane={
+            "imię": "Ewa",
+            "nazwisko": "Nowak",
+            "email": "nowy@y.pl",
+        },
+        dane_z_xls={"__xls_loc_sheet__": 0, "__xls_loc_row__": 3},
+    )
+    url = reverse("import_pracownikow:importpracownikow-results", kwargs={"pk": imp.pk})
+    tresc = admin_client.get(url).content.decode("utf-8")
+    assert "import-autor-akcje" in tresc
+    assert "zmień autora" in tresc
+    assert "obecnie:" in tresc
+    assert "baza:" not in tresc

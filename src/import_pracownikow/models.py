@@ -522,6 +522,22 @@ class ImportPracownikow(LiveOperation):
         )
 
     @property
+    def ma_kolumne_stopnia(self):
+        """Czy plik importu MA kolumnę stopnia służbowego (zmapowaną na
+        ``stopień_służbowy``). Źródło prawdy: wartości ``mapowanie_kolumn``
+        (kształt ``{nagłówek: pole_docelowe}``). Steruje pokazaniem pola
+        „Stopień sł." w karcie wyników i w pasku filtrów — bez kolumny w pliku
+        nie ma czego pokazywać ani po czym filtrować (dane i tak by się nie
+        zmieniły)."""
+        return "stopień_służbowy" in (self.mapowanie_kolumn or {}).values()
+
+    @property
+    def ma_kolumne_stanowiska(self):
+        """Mirror ``ma_kolumne_stopnia`` dla stanowiska dydaktycznego
+        (kolumna zmapowana na ``stanowisko_dydaktyczne``)."""
+        return "stanowisko_dydaktyczne" in (self.mapowanie_kolumn or {}).values()
+
+    @property
     def tytuly_wymagaja_rozstrzygniecia(self):
         """Czy są tytuły z pliku, które import osób UTWORZYŁBY/USTAWIŁ, a które
         NIE zostały jeszcze zmaterializowane (``utworzony=None``) i nie są

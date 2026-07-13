@@ -54,26 +54,33 @@
         <p>Lista modyfikacji do bazy danych, przeprowadzonych na podstawie
             pliku XLS poniżej:</p>
         {# Filtr rekordów po stanie pól — radia per pole (POLA_ROZNIC), AND. #}
+        {# Widoczne (główne) + zwijane (dodatkowe) w <details> — oba w tym #}
+        {# samym <form>, więc JS querySelectorAll łapie radia niezależnie od #}
+        {# stanu open/closed. #}
         <form id="filtr-roznic" class="import-filtr-roznic">
             <label class="import-filtr-tekst">
                 Szukaj:
                 <input type="search" id="filtr-tekst"
                        placeholder="nazwisko / jednostka…">
             </label>
-            {% for klucz, etykieta in pola_roznic %}
-                <fieldset class="import-filtr-pole">
-                    <legend>{{ etykieta }}</legend>
-                    <label><input type="radio" name="filtr-{{ klucz }}"
-                                  value="wszystkie" checked> wszystkie</label>
-                    <label><input type="radio" name="filtr-{{ klucz }}"
-                                  value="zmienione"> zmienione</label>
-                    <label><input type="radio" name="filtr-{{ klucz }}"
-                                  value="zgodne"> zgodne</label>
-                    <label><input type="radio" name="filtr-{{ klucz }}"
-                                  value="brak"> brak w pliku</label>
-                </fieldset>
-            {% endfor %}
+            <div class="import-filtr-glowne">
+                {% for klucz, etykieta in pola_glowne %}
+                    {% include "import_pracownikow/partials/_filtr_pole.html" %}
+                {% endfor %}
+            </div>
+            {% if pola_dodatkowe %}
+                <details class="import-filtr-wiecej">
+                    <summary>Więcej filtrów…</summary>
+                    <div class="import-filtr-dodatkowe">
+                        {% for klucz, etykieta in pola_dodatkowe %}
+                            {% include "import_pracownikow/partials/_filtr_pole.html" %}
+                        {% endfor %}
+                    </div>
+                </details>
+            {% endif %}
         </form>
+        {# Licznik przefiltrowanych rekordów (aktualizowany w JS filtruj()). #}
+        <p id="filtr-licznik" class="import-filtr-licznik"></p>
         <div style="overflow-x: auto;">
             <table id="tabela-autorow">
                 <thead>
@@ -100,9 +107,11 @@
         </div>
 
         {# Filtr rekordów po stanie pól (data-diff-* na 1. <tr> rekordu) + tekst. #}
-        {# Zastępuje DataTables (usunięte): karta = 2×<tr> w <tbody>, sort zbędny; #}
-        {# HTMX swapuje innerHTML <tbody>, więc data-diff-* są zawsze świeże, a #}
-        {# po afterSettle wystarczy ponowić filtr. #}
+        {# Zastępuje DataTables (usunięte): karta = 2×<tr> w <tbody data-rekord>, #}
+        {# sort zbędny; HTMX swapuje innerHTML <tbody>, więc data-diff-* są zawsze #}
+        {# świeże, a po afterSettle wystarczy ponowić filtr. Tekst szukamy tylko #}
+        {# w elementach [data-szukaj] (nazwisko / autor / jednostka) — kontrolki #}
+        {# dopasowania autora i Select2 są POZA nimi, więc nie zaśmiecają. #}
         <script>
         (function () {
             var form = document.getElementById('filtr-roznic');
@@ -129,25 +138,43 @@
                 var el = document.getElementById('filtr-tekst');
                 return (el ? el.value : '').trim().toLowerCase();
             }
+            function tekstRekordu(tbody) {
+                var buf = '';
+                tbody.querySelectorAll('[data-szukaj]').forEach(function (el) {
+                    buf += ' ' + el.textContent;
+                });
+                return buf.toLowerCase();
+            }
             function filtruj() {
                 var ks = klucze();
                 var q = tekst();
-                tabela.querySelectorAll(':scope > tbody').forEach(function (tbody) {
-                    var okStany = ks.every(function (klucz) {
-                        var w = wybor(klucz);
-                        return w === 'wszystkie' || stanPola(tbody, klucz) === w;
+                var widoczne = 0, wszystkich = 0;
+                tabela.querySelectorAll(':scope > tbody[data-rekord]').forEach(
+                    function (tbody) {
+                        wszystkich++;
+                        var okStany = ks.every(function (klucz) {
+                            var w = wybor(klucz);
+                            return w === 'wszystkie'
+                                || stanPola(tbody, klucz) === w;
+                        });
+                        var okTekst = !q
+                            || tekstRekordu(tbody).indexOf(q) !== -1;
+                        var pokaz = okStany && okTekst;
+                        tbody.hidden = !pokaz;
+                        if (pokaz) widoczne++;
                     });
-                    // Szukaj tylko w 1. <tr> (tożsamość) — 2. <tr> zawiera skrypt
-                    // Select2, którego tekst zaśmiecałby dopasowania.
-                    var pierwszy = tbody.querySelector(':scope > tr');
-                    var okTekst = !q || (pierwszy &&
-                        pierwszy.textContent.toLowerCase().indexOf(q) !== -1);
-                    tbody.hidden = !(okStany && okTekst);
-                });
+                var licznik = document.getElementById('filtr-licznik');
+                if (licznik) {
+                    licznik.textContent = wszystkich
+                        ? 'Pokazano ' + widoczne + ' z ' + wszystkich
+                            + ' rekordów'
+                        : '';
+                }
             }
             form.addEventListener('change', filtruj);
             form.addEventListener('input', filtruj);
             document.body.addEventListener('htmx:afterSettle', filtruj);
+            filtruj();
         })();
         </script>
     {% endif %}

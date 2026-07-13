@@ -1,11 +1,14 @@
-{# Karta rekordu: <tr> nr 1 (tożsamość, read-only, data-diff-*) + <tr> nr 2 #}
-{# (colspan=5: dopasowanie autora / komparatory plik→baza / przepnij prace). #}
-{# Oba <tr> to innerHTML <tbody id="wiersz-{pk}"> — HTMX swapuje całość, więc #}
-{# data-diff-* na pierwszym <tr> są zawsze świeże po akcji. Kolumny Osoba są #}
-{# READ-ONLY (dane z XLS). #}
+{# Karta rekordu: <tr> nr 1 (tożsamość + dopasowanie autora, data-diff-*) + #}
+{# <tr> nr 2 (colspan=5: komparatory plik→baza / audyt / przepnij prace). #}
+{# Oba <tr> to innerHTML <tbody id="wiersz-{pk}" data-rekord> — HTMX swapuje #}
+{# całość, więc data-diff-* na pierwszym <tr> są zawsze świeże po akcji. #}
+{# Kolumny Osoba/Jednostka są READ-ONLY (dane z XLS). Fragmenty [data-szukaj] #}
+{# zasilają filtr tekstowy (nazwisko / autor / jednostka) — kontrolki #}
+{# dopasowania autora są POZA nimi, żeby ich tekst i Select2 nie zaśmiecały #}
+{# wyszukiwania. #}
 <tr{% for klucz, stan in row.stany_pol.items %} data-diff-{{ klucz }}="{{ stan }}"{% endfor %}>
     <td class="import-poz">{{ row.nr_arkusza }}/{{ row.nr_wiersza }}</td>
-    <td>
+    <td data-szukaj>
         <strong>{{ row.dane_znormalizowane.nazwisko }}</strong>
         {{ row.dane_znormalizowane.imię }}
         {% if row.dane_znormalizowane.tytuł_stopień %}
@@ -21,9 +24,170 @@
         {% endwith %}
     </td>
     <td>
-        {% include "import_pracownikow/partials/_autor_dane.html" with autor=row.autor pbn_inst=row.autor_z_pbn_inst %}
+        {# Sama nazwa autora jest przeszukiwalna; kontrolki niżej — NIE. #}
+        <span data-szukaj>
+            {% include "import_pracownikow/partials/_autor_dane.html" with autor=row.autor pbn_inst=row.autor_z_pbn_inst %}
+        </span>
+        {% if parent_object.edytowalny_podglad %}
+            {# Kontrolki dopasowania autora POD dopasowanym autorem (dawniej #}
+            {# w 2. wierszu). RODZEŃSTWO span[data-szukaj], NIE wewnątrz. #}
+            <div class="import-autor-akcje">
+                {% if row.confidence == "wielu" %}
+                    {# dropdown policzonych kandydatów — POST ustawia wybrany_kandydat #}
+                    <form method="post"
+                          hx-post="{% url "import_pracownikow:wybierz-kandydata" parent_object.pk row.pk %}"
+                          hx-target="#wiersz-{{ row.pk }}"
+                          hx-swap="innerHTML">
+                        {% csrf_token %}
+                        <select name="wybrany_kandydat">
+                            {% for k in row.kandydaci.all %}
+                                <option value="{{ k.autor.pk }}">
+                                    {{ k.autor }} ({{ k.pewnosc }})
+                                </option>
+                            {% endfor %}
+                        </select>
+                        <button type="submit" class="button tiny">
+                            <i class="fi-check"></i> wybierz
+                        </button>
+                    </form>
+                    {# poza policzonymi kandydatami: dopasuj do dowolnego autora #}
+                    <div class="import-autor-zmien">
+                        <a href="#" class="js-zmien-autora">
+                            <i class="fi-torso"></i> inny autor…
+                        </a>
+                        <div class="js-autor-picker" hidden>
+                            <form method="post"
+                                  hx-post="{% url "import_pracownikow:dopasuj-autora" parent_object.pk row.pk %}"
+                                  hx-target="#wiersz-{{ row.pk }}"
+                                  hx-swap="innerHTML"
+                                  hx-trigger="change">
+                                {% csrf_token %}
+                                <select name="autor"
+                                        data-autocomplete-url="{% url "bpp:import-autor-autocomplete" %}"></select>
+                            </form>
+                        </div>
+                    </div>
+                {% elif row.confidence == "brak" %}
+                    {# brak dopasowania: dopasuj do istniejącego autora (leniwy #}
+                    {# Select2) albo utwórz nowego (checkbox niżej). #}
+                    <div class="import-autor-zmien">
+                        <a href="#" class="js-zmien-autora">
+                            <i class="fi-magnifying-glass"></i>
+                            Dopasuj do istniejącego autora
+                        </a>
+                        <div class="js-autor-picker" hidden>
+                            <form method="post"
+                                  hx-post="{% url "import_pracownikow:dopasuj-autora" parent_object.pk row.pk %}"
+                                  hx-target="#wiersz-{{ row.pk }}"
+                                  hx-swap="innerHTML"
+                                  hx-trigger="change">
+                                {% csrf_token %}
+                                <select name="autor"
+                                        data-autocomplete-url="{% url "bpp:import-autor-autocomplete" %}"></select>
+                            </form>
+                        </div>
+                    </div>
+                    {# D2: checkbox „utwórz nowego autora" — zmiana → POST toggle #}
+                    <form method="post"
+                          hx-post="{% url "import_pracownikow:utworz-nowego" parent_object.pk row.pk %}"
+                          hx-target="#wiersz-{{ row.pk }}"
+                          hx-swap="innerHTML"
+                          hx-trigger="change">
+                        {% csrf_token %}
+                        <label>
+                            <input type="checkbox" name="utworz_nowego"
+                                   {% if row.utworz_nowego %}checked{% endif %}>
+                            <i class="fi-plus"></i> utwórz nowego autora
+                        </label>
+                    </form>
+                {% else %}
+                    {# twardy / zgadywanie: auto-autor jest już w kol. Autor — #}
+                    {# dyskretny „zmień autora" rozwijający leniwy Select2 (override). #}
+                    <div class="import-autor-zmien">
+                        <a href="#" class="js-zmien-autora">
+                            <i class="fi-pencil"></i> zmień autora
+                        </a>
+                        <div class="js-autor-picker" hidden>
+                            <form method="post"
+                                  hx-post="{% url "import_pracownikow:dopasuj-autora" parent_object.pk row.pk %}"
+                                  hx-target="#wiersz-{{ row.pk }}"
+                                  hx-swap="innerHTML"
+                                  hx-trigger="change">
+                                {% csrf_token %}
+                                <select name="autor"
+                                        data-autocomplete-url="{% url "bpp:import-autor-autocomplete" %}"></select>
+                            </form>
+                        </div>
+                    </div>
+                {% endif %}
+                {# Leniwy Select2 na autocomplete importu. Event-delegation #}
+                {# zarejestrowana RAZ (guard window.__bppImportAutorPicker), bo #}
+                {# partial jest powielany per wiersz i wstrzykiwany OOB przez #}
+                {# HTMX. Klik w „.js-zmien-autora" pokazuje kontener i inicjalizuje #}
+                {# Select2 dopiero na żądanie (tabela bez paginacji, setki wierszy #}
+                {# → nie chcemy setek widgetów na starcie). #}
+                <script>
+                (function () {
+                    if (window.__bppImportAutorPicker) return;
+                    window.__bppImportAutorPicker = true;
+
+                    function initPicker(wrap) {
+                        var sel = wrap.querySelector("select[data-autocomplete-url]");
+                        if (!sel || sel.dataset.select2Init || !window.jQuery) return;
+                        sel.dataset.select2Init = "1";
+                        window.jQuery(sel).select2({
+                            width: "220px",
+                            ajax: {
+                                url: sel.dataset.autocompleteUrl,
+                                dataType: "json",
+                                delay: 250,
+                                data: function (params) { return {q: params.term}; },
+                                processResults: function (data) { return data; }
+                            },
+                            minimumInputLength: 2,
+                            placeholder: "Szukaj autora…",
+                            allowClear: true,
+                            language: "pl"
+                        });
+                        // htmx słucha natywnego "change" (addEventListener); Select2
+                        // emituje "change" przez system zdarzeń jQuery, którego natywny
+                        // listener NIE łapie → POST dopasuj-autora nigdy nie leciał, a
+                        // wybór autora „nie zapisywał się". Mostek: na select2:select /
+                        // select2:unselect wystrzel natywny "change", który htmx podłapie
+                        // i wykona hx-post (bubbles, bo formularz jest rodzicem selecta).
+                        window.jQuery(sel).on(
+                            "select2:select select2:unselect",
+                            function () {
+                                sel.dispatchEvent(
+                                    new Event("change", { bubbles: true })
+                                );
+                            }
+                        );
+                    }
+
+                    document.addEventListener("click", function (e) {
+                        var toggle = e.target.closest(".js-zmien-autora");
+                        if (!toggle) return;
+                        e.preventDefault();
+                        var wrap = toggle.parentElement.querySelector(".js-autor-picker");
+                        if (!wrap) return;
+                        wrap.hidden = false;
+                        toggle.style.display = "none";
+                        initPicker(wrap);
+                    });
+
+                    document.body.addEventListener("htmx:afterSettle", function (e) {
+                        var scope = (e.detail && e.detail.target) || document;
+                        scope
+                            .querySelectorAll(".js-autor-picker:not([hidden])")
+                            .forEach(initPicker);
+                    });
+                })();
+                </script>
+            </div>
+        {% endif %}
     </td>
-    <td>
+    <td data-szukaj>
         {% if row.jednostka %}
             {% if row.autor and row.autor.aktualna_jednostka_id and row.autor.aktualna_jednostka_id != row.jednostka_id %}
                 {{ row.autor.aktualna_jednostka }} → <strong>{{ row.jednostka }}</strong>
@@ -37,169 +201,16 @@
 </tr>
 <tr class="import-wiersz-szczegoly">
     <td colspan="5">
-        <div class="import-szczegoly-bloki">
-            <div class="import-blok import-blok-akcje">
-                {% if parent_object.edytowalny_podglad %}
-                    {% if row.confidence == "wielu" %}
-                        {# dropdown policzonych kandydatów — POST ustawia wybrany_kandydat #}
-                        <form method="post"
-                              hx-post="{% url "import_pracownikow:wybierz-kandydata" parent_object.pk row.pk %}"
-                              hx-target="#wiersz-{{ row.pk }}"
-                              hx-swap="innerHTML">
-                            {% csrf_token %}
-                            <select name="wybrany_kandydat">
-                                {% for k in row.kandydaci.all %}
-                                    <option value="{{ k.autor.pk }}">
-                                        {{ k.autor }} ({{ k.pewnosc }})
-                                    </option>
-                                {% endfor %}
-                            </select>
-                            <button type="submit" class="button tiny">
-                                <i class="fi-check"></i> wybierz
-                            </button>
-                        </form>
-                        {# poza policzonymi kandydatami: dopasuj do dowolnego autora #}
-                        <div class="import-autor-zmien">
-                            <a href="#" class="js-zmien-autora">
-                                <i class="fi-torso"></i> inny autor…
-                            </a>
-                            <div class="js-autor-picker" hidden>
-                                <form method="post"
-                                      hx-post="{% url "import_pracownikow:dopasuj-autora" parent_object.pk row.pk %}"
-                                      hx-target="#wiersz-{{ row.pk }}"
-                                      hx-swap="innerHTML"
-                                      hx-trigger="change">
-                                    {% csrf_token %}
-                                    <select name="autor"
-                                            data-autocomplete-url="{% url "bpp:import-autor-autocomplete" %}"></select>
-                                </form>
-                            </div>
-                        </div>
-                    {% elif row.confidence == "brak" %}
-                        {# brak dopasowania: dopasuj do istniejącego autora (leniwy #}
-                        {# Select2) albo utwórz nowego (checkbox niżej). #}
-                        <div class="import-autor-zmien">
-                            <a href="#" class="js-zmien-autora">
-                                <i class="fi-magnifying-glass"></i>
-                                Dopasuj do istniejącego autora
-                            </a>
-                            <div class="js-autor-picker" hidden>
-                                <form method="post"
-                                      hx-post="{% url "import_pracownikow:dopasuj-autora" parent_object.pk row.pk %}"
-                                      hx-target="#wiersz-{{ row.pk }}"
-                                      hx-swap="innerHTML"
-                                      hx-trigger="change">
-                                    {% csrf_token %}
-                                    <select name="autor"
-                                            data-autocomplete-url="{% url "bpp:import-autor-autocomplete" %}"></select>
-                                </form>
-                            </div>
-                        </div>
-                        {# D2: checkbox „utwórz nowego autora" — zmiana → POST toggle #}
-                        <form method="post"
-                              hx-post="{% url "import_pracownikow:utworz-nowego" parent_object.pk row.pk %}"
-                              hx-target="#wiersz-{{ row.pk }}"
-                              hx-swap="innerHTML"
-                              hx-trigger="change">
-                            {% csrf_token %}
-                            <label>
-                                <input type="checkbox" name="utworz_nowego"
-                                       {% if row.utworz_nowego %}checked{% endif %}>
-                                <i class="fi-plus"></i> utwórz nowego autora
-                            </label>
-                        </form>
-                    {% else %}
-                        {# twardy / zgadywanie: auto-autor jest już w kol. Autor — #}
-                        {# dyskretny „zmień autora" rozwijający leniwy Select2 (override). #}
-                        <div class="import-autor-zmien">
-                            <a href="#" class="js-zmien-autora">
-                                <i class="fi-pencil"></i> zmień autora
-                            </a>
-                            <div class="js-autor-picker" hidden>
-                                <form method="post"
-                                      hx-post="{% url "import_pracownikow:dopasuj-autora" parent_object.pk row.pk %}"
-                                      hx-target="#wiersz-{{ row.pk }}"
-                                      hx-swap="innerHTML"
-                                      hx-trigger="change">
-                                    {% csrf_token %}
-                                    <select name="autor"
-                                            data-autocomplete-url="{% url "bpp:import-autor-autocomplete" %}"></select>
-                                </form>
-                            </div>
-                        </div>
-                    {% endif %}
-                    {# Leniwy Select2 na autocomplete importu. Event-delegation #}
-                    {# zarejestrowana RAZ (guard window.__bppImportAutorPicker), bo #}
-                    {# partial jest powielany per wiersz i wstrzykiwany OOB przez #}
-                    {# HTMX. Klik w „.js-zmien-autora" pokazuje kontener i inicjalizuje #}
-                    {# Select2 dopiero na żądanie (tabela bez paginacji, setki wierszy #}
-                    {# → nie chcemy setek widgetów na starcie). #}
-                    <script>
-                    (function () {
-                        if (window.__bppImportAutorPicker) return;
-                        window.__bppImportAutorPicker = true;
-
-                        function initPicker(wrap) {
-                            var sel = wrap.querySelector("select[data-autocomplete-url]");
-                            if (!sel || sel.dataset.select2Init || !window.jQuery) return;
-                            sel.dataset.select2Init = "1";
-                            window.jQuery(sel).select2({
-                                width: "220px",
-                                ajax: {
-                                    url: sel.dataset.autocompleteUrl,
-                                    dataType: "json",
-                                    delay: 250,
-                                    data: function (params) { return {q: params.term}; },
-                                    processResults: function (data) { return data; }
-                                },
-                                minimumInputLength: 2,
-                                placeholder: "Szukaj autora…",
-                                allowClear: true,
-                                language: "pl"
-                            });
-                            // htmx słucha natywnego "change" (addEventListener); Select2
-                            // emituje "change" przez system zdarzeń jQuery, którego natywny
-                            // listener NIE łapie → POST dopasuj-autora nigdy nie leciał, a
-                            // wybór autora „nie zapisywał się". Mostek: na select2:select /
-                            // select2:unselect wystrzel natywny "change", który htmx podłapie
-                            // i wykona hx-post (bubbles, bo formularz jest rodzicem selecta).
-                            window.jQuery(sel).on(
-                                "select2:select select2:unselect",
-                                function () {
-                                    sel.dispatchEvent(
-                                        new Event("change", { bubbles: true })
-                                    );
-                                }
-                            );
-                        }
-
-                        document.addEventListener("click", function (e) {
-                            var toggle = e.target.closest(".js-zmien-autora");
-                            if (!toggle) return;
-                            e.preventDefault();
-                            var wrap = toggle.parentElement.querySelector(".js-autor-picker");
-                            if (!wrap) return;
-                            wrap.hidden = false;
-                            toggle.style.display = "none";
-                            initPicker(wrap);
-                        });
-
-                        document.body.addEventListener("htmx:afterSettle", function (e) {
-                            var scope = (e.detail && e.detail.target) || document;
-                            scope
-                                .querySelectorAll(".js-autor-picker:not([hidden])")
-                                .forEach(initPicker);
-                        });
-                    })();
-                    </script>
-                {% else %}
-                    {# Poza stanem „przeanalizowany" (np. „zintegrowany") pokazujemy #}
-                    {# audyt zmian — to JEDYNY widok log_zmian dla stanu po integracji. #}
-                    {% for elem in row.sformatowany_log_zmian %}
-                        <p>{{ elem }}</p>
-                    {% endfor %}
-                {% endif %}
+        {% if not parent_object.edytowalny_podglad %}
+            {# Po integracji: audyt zmian — JEDYNY widok log_zmian dla stanu #}
+            {# po integracji (dawniej w bloku akcji, gdy nieedytowalny). #}
+            <div class="import-blok-audyt">
+                {% for elem in row.sformatowany_log_zmian %}
+                    <p>{{ elem }}</p>
+                {% endfor %}
             </div>
+        {% endif %}
+        <div class="import-szczegoly-bloki">
             <div class="import-blok import-blok-porownania">
                 {% with porownanie=row.porownaj_z_baza %}
                     <div class="import-porownanie-item">
@@ -210,18 +221,22 @@
                         <span class="import-porownanie-etykieta">Tytuł nauk.:</span>
                         {% include "import_pracownikow/partials/_porownanie_kom.html" with pole=porownanie.tytul %}
                     </div>
-                    <div class="import-porownanie-item">
-                        <span class="import-porownanie-etykieta">Stopień sł.:</span>
-                        {% include "import_pracownikow/partials/_porownanie_kom.html" with pole=porownanie.stopien %}
-                    </div>
+                    {% if parent_object.ma_kolumne_stopnia %}
+                        <div class="import-porownanie-item">
+                            <span class="import-porownanie-etykieta">Stopień sł.:</span>
+                            {% include "import_pracownikow/partials/_porownanie_kom.html" with pole=porownanie.stopien %}
+                        </div>
+                    {% endif %}
                     <div class="import-porownanie-item">
                         <span class="import-porownanie-etykieta">Funkcja:</span>
                         {% include "import_pracownikow/partials/_porownanie_kom.html" with pole=porownanie.funkcja %}
                     </div>
-                    <div class="import-porownanie-item">
-                        <span class="import-porownanie-etykieta">Stanowisko dyd.:</span>
-                        {% include "import_pracownikow/partials/_porownanie_kom.html" with pole=porownanie.stanowisko %}
-                    </div>
+                    {% if parent_object.ma_kolumne_stanowiska %}
+                        <div class="import-porownanie-item">
+                            <span class="import-porownanie-etykieta">Stanowisko dyd.:</span>
+                            {% include "import_pracownikow/partials/_porownanie_kom.html" with pole=porownanie.stanowisko %}
+                        </div>
+                    {% endif %}
                     <div class="import-porownanie-item">
                         <span class="import-porownanie-etykieta">Data od:</span>
                         {% include "import_pracownikow/partials/_porownanie_kom.html" with pole=porownanie.data_od %}
