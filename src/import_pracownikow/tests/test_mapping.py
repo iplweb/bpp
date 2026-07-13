@@ -202,3 +202,22 @@ def test_zaklad_pracy_nie_koliduje_z_nazwa_jednostki():
     prop = zaproponuj_mapowanie(["zakład", "gł_zakład_pracy"])
     assert prop["zakład"] == "nazwa_jednostki"
     assert prop["gł_zakład_pracy"] == "podstawowe_miejsce_pracy"
+
+
+def test_pola_docelowe_maja_dwa_wymiary():
+    klucze = {k for k, _ in POLA_DOCELOWE}
+    assert "wymiar_etatu_tekst" in klucze
+    assert "wymiar_etatu_ulamek" in klucze
+
+
+def test_podwojny_wymiar_mapuje_sie_na_dwa_pola():
+    # dwie identyczne kolumny „Wymiar etatu" po rename_duplicate_columns →
+    # wymiar_etatu / wymiar_etatu_2 (znormalizowane).
+    prop = zaproponuj_mapowanie(["wymiar_etatu", "wymiar_etatu_2"])
+    assert prop["wymiar_etatu"] == "wymiar_etatu_tekst"
+    assert prop["wymiar_etatu_2"] == "wymiar_etatu_ulamek"
+
+
+def test_pojedynczy_wymiar_mapuje_na_tekst():
+    prop = zaproponuj_mapowanie(["wymiar_etatu"])
+    assert prop["wymiar_etatu"] == "wymiar_etatu_tekst"
