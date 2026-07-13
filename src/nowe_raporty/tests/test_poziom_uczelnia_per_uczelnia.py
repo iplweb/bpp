@@ -5,14 +5,12 @@ from nowe_raporty.poziomy import _base_uczelnia
 
 
 @pytest.mark.django_db
-def test_base_uczelnia_wyklucza_obca_uczelnie(
-    uczelnia1,
+def test_base_uczelnia_wyklucza_obca_uczelnie(uczelnia1,
     uczelnia2,
     jednostka_uczelnia1,
     jednostka_uczelnia2,
     autor_uczelnia1,
-    autor_uczelnia2,
-):
+    autor_uczelnia2, typy_odpowiedzialnosci):
     w1 = baker.make("bpp.Wydawnictwo_Ciagle", tytul_oryginalny="MOJA")
     w1.dodaj_autora(autor_uczelnia1, jednostka_uczelnia1)
     w2 = baker.make("bpp.Wydawnictwo_Ciagle", tytul_oryginalny="OBCA")

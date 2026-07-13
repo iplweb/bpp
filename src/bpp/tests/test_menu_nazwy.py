@@ -11,7 +11,7 @@ def test_struktura_menu_domyslne_etykiety():
 
 
 @pytest.mark.django_db
-def test_struktura_menu_po_przemianowaniu():
+def test_struktura_menu_po_przemianowaniu(rzeczowniki):
     from bpp.models import Rzeczownik
     from django_bpp.menu import STRUKTURA_MENU
 

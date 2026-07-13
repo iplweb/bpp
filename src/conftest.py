@@ -271,6 +271,73 @@ def _neutralizuj_wyciekle_dane(request):
     yield
 
 
+# =============================================================================
+# AUDYT SAMOWYSTARCZALNOŚCI (program B) — NARZĘDZIE DIAGNOSTYCZNE, env-gated.
+# AUDIT_WIPE_REFERENCE=1: przed każdym testem DB wymiata WSZYSTKIE niepuste
+# tabele referencyjne POZA odtwarzanymi przez post_migrate (django/auth/social,
+# raporty, oraz bpp_rodzajjednostki — pokryte fixem A). Symuluje stan CI po
+# transakcyjnym flushu z A. Lista FAILED/ERROR = testy zakładające niedeklarowany
+# słownik (reszta programu B). NIE zostaje w repo — odpalane na żądanie.
+# =============================================================================
+_AUDIT_EXCLUDE_PREFIXES = (
+    "django_",
+    "auth_",
+    "social_",
+    "silk_",
+    "nowe_raporty",  # post_migrate: seed_reports / create_entries
+    "raport_slotow",  # post_migrate: create_entries
+)
+_AUDIT_EXCLUDE_TABLES = frozenset({"bpp_rodzajjednostki"})  # post_migrate: fix A
+
+
+@pytest.fixture(scope="session", autouse=True)
+def _audit_wipe_once(django_db_setup, django_db_blocker):
+    """AUDIT_WIPE_REFERENCE=1: JEDNORAZOWO po załadowaniu baseline wymiata
+    słowniki referencyjne (poza odtwarzanymi przez post_migrate — django/auth/
+    social/raporty + RodzajJednostki [fix A]). Potem testy lecą na tak
+    opróżnionej bazie; rollback (testy `db`) i flush (`transactional_db`)
+    utrzymują pustkę. FAILED/ERROR = test zakłada niedeklarowany słownik.
+
+    Odpalać JEDNOWĄTKOWO (bez xdist) — jeden TRUNCATE, jedna baza. Osobne
+    autocommit-połączenie (jak guard V1), więc TRUNCATE jest scommitowany
+    zanim ruszą testy.
+    """
+    if os.environ.get("AUDIT_WIPE_REFERENCE"):
+        import sys
+
+        from django.db import connection
+
+        with django_db_blocker.unblock():
+            conn = _leak_guard_conn(connection.settings_dict)
+            with conn.cursor() as cur:
+                cur.execute(
+                    "SELECT tablename FROM pg_tables WHERE schemaname='public'"
+                )
+                niepuste = []
+                for (t,) in list(cur.fetchall()):
+                    if t.startswith(_AUDIT_EXCLUDE_PREFIXES) or (
+                        t in _AUDIT_EXCLUDE_TABLES
+                    ):
+                        continue
+                    cur.execute(f'SELECT EXISTS(SELECT 1 FROM "{t}")')
+                    if cur.fetchone()[0]:
+                        niepuste.append(t)
+                if niepuste:
+                    cur.execute("SET session_replication_role = replica")
+                    cur.execute(
+                        "TRUNCATE "
+                        + ", ".join(f'"{t}"' for t in niepuste)
+                        + " CASCADE"
+                    )
+                    cur.execute("SET session_replication_role = DEFAULT")
+        print(
+            f"\n[AUDIT] baseline wymieciony JEDNORAZOWO: {len(niepuste)} tabel "
+            f"{sorted(niepuste)}",
+            file=sys.stderr,
+        )
+    yield
+
+
 def pytest_sessionfinish(session, exitstatus):
     """Drukuje raporty guarda (V1/V2) na KONIEC sesji — poza per-test capture
     pytest-a, więc widoczne w logach CI (per worker xdist)."""

@@ -28,14 +28,12 @@ def test_scope_single_install_short_circuit(uczelnia1):
 
 
 @pytest.mark.django_db
-def test_scope_dwie_uczelnie_filtruje(
-    uczelnia1,
+def test_scope_dwie_uczelnie_filtruje(uczelnia1,
     uczelnia2,
     jednostka_uczelnia1,
     jednostka_uczelnia2,
     autor_uczelnia1,
-    autor_uczelnia2,
-):
+    autor_uczelnia2, typy_odpowiedzialnosci):
     w1 = baker.make("bpp.Wydawnictwo_Ciagle", tytul_oryginalny="MOJA")
     w1.dodaj_autora(autor_uczelnia1, jednostka_uczelnia1)
     w2 = baker.make("bpp.Wydawnictwo_Ciagle", tytul_oryginalny="OBCA")
