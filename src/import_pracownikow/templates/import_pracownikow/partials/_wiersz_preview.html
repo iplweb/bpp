@@ -2,6 +2,6 @@
 {# Akcje HTMX swapują innerHTML tego <tbody> (→ _wiersz_preview_kom.html), #}
 {# więc węzeł <tbody id="wiersz-{pk}"> zostaje stały, a filtr JS odczytuje #}
 {# świeże data-diff-* z pierwszego <tr> po każdym swapie. #}
-<tbody id="wiersz-{{ row.pk }}">
+<tbody id="wiersz-{{ row.pk }}" data-rekord>
     {% include "import_pracownikow/partials/_wiersz_preview_kom.html" %}
 </tbody>

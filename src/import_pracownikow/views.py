@@ -683,10 +683,21 @@ class ImportPracownikowResultsView(GroupRequiredMixin, ListView):
         if parent.edytowalny_podglad:
             oznacz_przepiecie_prac(list(ctx["object_list"]), parent)
         # Pasek filtrów stanu pól — etykiety z rejestru POLA_ROZNIC (jedno źródło
-        # prawdy z modelem/szablonem).
+        # prawdy z modelem/szablonem). Dzielimy na ZAWSZE WIDOCZNE (główne) i
+        # ZWIJANE (dodatkowe, w <details>). Stopień/stanowisko wypadają całkiem,
+        # gdy plik nie ma takiej kolumny — nie filtrujemy po polu, którego nie
+        # ma (spójne z ukryciem wiersza w karcie).
         from import_pracownikow.roznice import POLA_ROZNIC
 
-        ctx["pola_roznic"] = [(k, etykieta) for k, etykieta, _ in POLA_ROZNIC]
+        etykiety = {k: etykieta for k, etykieta, _ in POLA_ROZNIC}
+        klucze_glowne = ["jednostka", "tytul", "data_od", "data_do"]
+        klucze_dodatkowe = ["email", "stopien", "funkcja", "stanowisko"]
+        if not parent.ma_kolumne_stopnia:
+            klucze_dodatkowe.remove("stopien")
+        if not parent.ma_kolumne_stanowiska:
+            klucze_dodatkowe.remove("stanowisko")
+        ctx["pola_glowne"] = [(k, etykiety[k]) for k in klucze_glowne]
+        ctx["pola_dodatkowe"] = [(k, etykiety[k]) for k in klucze_dodatkowe]
         return ctx
 
 

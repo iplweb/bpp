@@ -85,6 +85,12 @@ def test_tabela_podgladu_renderuje_kolumny_porownania(admin_client, admin_user):
         owner=admin_user,
         stan=ImportPracownikow.STAN_STRUKTURA_ZINTEGROWANA,
         finished_successfully=True,
+        # Kolumny stopnia/stanowiska w pliku — inaczej karta chowa te wiersze
+        # porównania (warunkowe wg mapowanie_kolumn).
+        mapowanie_kolumn={
+            "S": "stopień_służbowy",
+            "SD": "stanowisko_dydaktyczne",
+        },
     )
     ImportPracownikowRow.objects.create(
         parent=imp,
