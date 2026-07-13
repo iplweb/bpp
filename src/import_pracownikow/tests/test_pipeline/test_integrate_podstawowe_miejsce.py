@@ -2,15 +2,15 @@
 
 Decyzja usera: import ma ustawiać jednostkę autora (z wiersza) jako PODSTAWOWE
 miejsce pracy, a pozostałe jednostki tego autora oznaczać jako NIE-podstawowe.
-Datę rozpoczęcia pracy stemplujemy TYLKO gdy pusta — priorytet: data z pliku,
-w razie braku data importu (dziś). Kolumna „Podstawowe miejsce pracy"=NIE w
-pliku wyłącza to dla danego wiersza.
+Datę rozpoczęcia pracy istniejącego AJ wypełniamy TYLKO gdy pusta ORAZ plik
+niesie datę (§5); fallback „data importu (dziś)" dotyczy wyłącznie ŚWIEŻEGO AJ
+(materializacja nowego okresu). Kolumna „Podstawowe miejsce pracy"=NIE w pliku
+wyłącza podstawowe dla danego wiersza.
 """
 
 from datetime import date
 
 import pytest
-from django.utils import timezone
 from liveops.testing import MockProgress
 from model_bakery import baker
 
@@ -76,8 +76,10 @@ def test_plik_nie_wylacza_podstawowego_miejsca(autor_jednostka_fixture):
 
 
 @pytest.mark.django_db
-def test_stempluje_date_importu_gdy_brak_w_pliku(autor_jednostka_fixture):
-    """Brak daty w pliku + puste rozpoczal_prace → data importu (dziś)."""
+def test_istniejacy_aj_pusta_data_nie_stemplowany(autor_jednostka_fixture):
+    """§5: istniejący AJ z pustą datą + brak daty w pliku → NIC NIE ZMIENIAJ
+    (rozpoczal zostaje NULL). Fallback „data importu (dziś)" dotyczy WYŁĄCZNIE
+    świeżego AJ (materializacja nowego okresu), nie istniejącego powiązania."""
     autor, jednostka = autor_jednostka_fixture
     aj = baker.make(
         Autor_Jednostka,
@@ -92,7 +94,7 @@ def test_stempluje_date_importu_gdy_brak_w_pliku(autor_jednostka_fixture):
     integruj(imp, MockProgress(imp))
 
     aj.refresh_from_db()
-    assert aj.rozpoczal_prace == timezone.localdate()
+    assert aj.rozpoczal_prace is None
 
 
 @pytest.mark.django_db

@@ -390,6 +390,8 @@ def _zwiaz_autora_z_wierszem(row, autor):
         row.diff_do_utworzenia.pop("autor_jednostka", None)
         row.autor_jednostka = None
         row.zmiany_potrzebne = False
+        # Zmiana autora unieważnia decyzję okresu (odtworz robi to sam w else).
+        row._zapomnij_okres()
     else:
         odtworz_autor_jednostka(row, autor)
     row.confidence = STATUS_RECZNY

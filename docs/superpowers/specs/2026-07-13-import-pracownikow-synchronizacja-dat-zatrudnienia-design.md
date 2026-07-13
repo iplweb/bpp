@@ -81,8 +81,20 @@ komórka w tym wierszu jest pusta (rozróżnienie nieistotne — patrz §5).
 | brak AJ | puste | utwórz AJ z `rozpoczal =` (fallback: data zmian → dziś) | **NOWY** |
 | AJ istnieje, `rozpoczal = plik_od` | wartość | bez zmian (ten sam okres) | istniejący |
 | AJ istnieje, `rozpoczal = NULL` | wartość | **wypełnij** `plik_od` (to samo, niedatowane) | istniejący |
-| AJ istnieje, `rozpoczal ≠ plik_od` | wartość | pokaż różnicę + **utwórz NOWY okres** | **NOWY** |
+| AJ istnieje **OTWARTY** (`zakonczyl = NULL`), `rozpoczal ≠ plik_od` | wartość | pokaż różnicę, **celuj w aktywny** (bez nowego okresu) | istniejący |
+| AJ istnieje, wszystkie **ZAMKNIĘTE**, `rozpoczal ≠ plik_od` | wartość | pokaż różnicę + **utwórz NOWY okres** | **NOWY** |
 | AJ istnieje | puste | **NIC NIE ZMIENIAJ** (`rozpoczal` zostaje jak jest, nawet `NULL`) | istniejący |
+
+> **KLUCZOWE (odkryte przy implementacji) — niezmiennik `defragmentuj`.**
+> `Autor.save()` woła `defragmentuj_jednostke`, które **scala** nakładające /
+> sąsiadujące / **otwarte** okresy tej samej pary `(autor, jednostka)`. Faza
+> integracji zapisuje autora (`_integrate_autor`), więc dwa **otwarte** okresy
+> naraz są niemożliwe — zostałyby scalone (a świeży AJ skasowany → crash
+> easyaudit z `PROPAGATE_EXCEPTIONS`). Dlatego (decyzja usera **A**): nowy okres
+> powstaje **tylko gdy istniejące okresy są ZAMKNIĘTE** (osoba odeszła i wraca).
+> Przy **otwartym** okresie inną „datę od" tylko **pokazujemy** w podglądzie i
+> celujemy w aktywny okres (nie tworzymy, nie domykamy — spójne z P2). To
+> zawężenie „inna data od → nowy okres" wymuszone niezmiennikiem, nie kaprys.
 
 ### „data do" (`zakonczyl_prace`)
 
@@ -191,7 +203,11 @@ jeśli plik_od ma wartość:
     inaczej niedat = [aj for aj in aj_lista if aj.rozpoczal_prace is None]
         posortowane po pk            # determinizm przy >1 NULL (legacy)
         jeśli niedat:                 -> ("istniejacy", niedat[0])      # wypełnij plik_od
-        inaczej:                      -> ("nowy", plik_od)              # NOWY okres
+        inaczej aktywne = [aj for aj in aj_lista if aj.zakonczyl_prace is None]
+            jeśli aktywne:            -> ("istniejacy", _wybierz_aktywny_najswiezszy(aktywne))
+                                      # OTWARTY okres → pokaż różnicę, NIE twórz
+                                      # nowego (defragmentuj by scalił; decyzja A)
+            inaczej:                  -> ("nowy", plik_od)              # wszystkie ZAMKNIĘTE → NOWY okres
 jeśli plik_od puste:
     aj = _wybierz_aktywny_najswiezszy(aj_lista)   # aktywny (zakonczyl IS NULL),
                                                   # remis → najświeższy rozpoczal
@@ -362,6 +378,21 @@ return created
 - **Resolvera tu NIE wołamy** (poprawka Fable) — check jest w gorących miejscach
   (analyze/integrate), nie dokładamy mu zapytań.
 - reszta pól (funkcja/stanowisko/grupa/wymiar/primary) bez zmian.
+
+### 8.6 `models.py` — `integrate()` guard po defragmentacji (odkryte przy implementacji)
+
+`integrate()` woła `_integrate_autor()` (→ `Autor.save()` → `defragmentuj_jednostke`)
+PRZED `_integrate_autor_jednostka()`. Edge: nowy okres utworzony na granicy
+zamkniętego okresu (sąsiadujący dzień) zostaje przez defragmentację **scalony i
+usunięty** → dalszy `aj.save()` rzuciłby `Autor_Jednostka.DoesNotExist` (easyaudit
++ `DJANGO_EASY_AUDIT_PROPAGATE_EXCEPTIONS=True`) → cały task pada.
+
+Guard `_przepnij_aj_po_defragmentacji()` między tymi wywołaniami: gdy wiersz
+utworzył świeży okres (`_okres_swiezo_utworzony`, ustawiany przez `_integruj_wiersz`)
+a jego AJ już nie istnieje — przepina `row.autor_jednostka` na ocalały
+aktywny/najświeższy AJ (`_wybierz_aktywny_najswiezszy`), zamiast zapisywać
+skasowany rekord. `_integrate_autor_jednostka` dostaje też guard `aj is None`.
+Płaci za dodatkowe zapytanie WYŁĄCZNIE wiersz, który utworzył nowy okres.
 
 ---
 

@@ -173,14 +173,23 @@ def test_podglad_wiersz_ma_atrybuty_data_diff(admin_client, admin_user):
     )
     url = reverse("import_pracownikow:importpracownikow-results", kwargs={"pk": imp.pk})
     tresc = admin_client.get(url).content.decode("utf-8")
-    for klucz in ("jednostka", "email", "tytul", "stopien", "funkcja", "stanowisko"):
+    for klucz in (
+        "jednostka",
+        "email",
+        "tytul",
+        "stopien",
+        "funkcja",
+        "stanowisko",
+        "data_od",
+        "data_do",
+    ):
         assert f"data-diff-{klucz}=" in tresc
 
 
 @pytest.mark.django_db
 def test_podglad_ma_pasek_filtrow_radia(admin_client, admin_user):
     """Pasek filtrów renderuje radia (wszystkie/zmienione/zgodne/brak) dla
-    każdego z 6 pól POLA_ROZNIC."""
+    każdego z pól POLA_ROZNIC (w tym data_od/data_do)."""
     imp = baker.make(
         ImportPracownikow,
         owner=admin_user,
@@ -190,7 +199,16 @@ def test_podglad_ma_pasek_filtrow_radia(admin_client, admin_user):
     url = reverse("import_pracownikow:importpracownikow-results", kwargs={"pk": imp.pk})
     tresc = admin_client.get(url).content.decode("utf-8")
     assert 'id="filtr-roznic"' in tresc
-    for klucz in ("jednostka", "email", "tytul", "stopien", "funkcja", "stanowisko"):
+    for klucz in (
+        "jednostka",
+        "email",
+        "tytul",
+        "stopien",
+        "funkcja",
+        "stanowisko",
+        "data_od",
+        "data_do",
+    ):
         assert f'name="filtr-{klucz}"' in tresc
     assert 'value="zmienione"' in tresc
     assert 'value="brak"' in tresc

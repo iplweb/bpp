@@ -22,7 +22,7 @@ dopisywany ręcznie do ``log_zmian``, żeby audyt i licznik ``zintegrowano``
 widziały, że wiersz wykonał realną pracę.
 """
 
-from datetime import timedelta
+from datetime import date, timedelta
 
 from django.db import transaction
 from django.utils import timezone
@@ -65,13 +65,21 @@ from przemapuj_prace_autora import service as przemapuj_service
 
 
 def _materializuj_diff(row):
-    """Tworzy (get_or_create) obiekty odłożone przez analizę i podpina FK.
+    """Tworzy obiekty odłożone przez analizę i podpina FK. Zwraca ``created``
+    (bool) dla ``Autor_Jednostka`` — zasila licznik nowych okresów zatrudnienia.
 
     Wartości w ``diff`` są już znormalizowane przez fazę analizy
     (``import_pracownikow.pipeline.analyze``) — ponowne wołanie
     ``normalize_*`` tutaj jest więc no-opem (normalizery są idempotentne),
     zostawione dla czytelności/obrony w głąb.
-    """
+
+    ``Autor_Jednostka`` tworzymy po PEŁNYM kluczu ``unique_together`` (autor,
+    jednostka, ``rozpoczal_prace``): lookup ``order_by("pk").first()`` + jawny
+    ``create`` (nie ``get_or_create``) jest deterministyczny i nie rzuca
+    ``MultipleObjectsReturned`` przy duplikatach ``(A, J, NULL)`` z admina/legacy.
+    Nowy AJ z pustym „plik_od" dostaje fallback ``data zmian → dziś`` (P1) TU, przy
+    materializacji — świeży AJ ma więc od razu ``rozpoczal_prace`` (nie ``NULL``),
+    a ``_integruj_daty_aj`` już go nie stempluje."""
     diff = row.diff_do_utworzenia or {}
     if "funkcja_autora" in diff:
         nazwa = normalize_funkcja_autora(diff["funkcja_autora"])
@@ -84,29 +92,48 @@ def _materializuj_diff(row):
     if "wymiar_etatu" in diff:
         nazwa = normalize_wymiar_etatu(diff["wymiar_etatu"])
         row.wymiar_etatu, _ = Wymiar_Etatu.objects.get_or_create(nazwa=nazwa)
+    created = False
     if "autor_jednostka" in diff:
-        # Dług Fazy 0: `get_or_create` tutaj pomija `rozpoczal_prace`, mimo
-        # że `unique_together` na Autor_Jednostka to
-        # (autor, jednostka, rozpoczal_prace). Dla autora z wieloma AJ w tej
-        # samej jednostce (multi-etat / historia zatrudnienia) ten lookup
-        # (autor, jednostka) może trafić na >1 wiersz — Django łapie tylko
-        # `DoesNotExist`, więc `get_or_create` rzuci nieobsłużony
-        # `MultipleObjectsReturned`. Akceptowany dług, do naprawy gdy
-        # multi-etat trafi do zakresu importu.
-        row.autor_jednostka, _ = Autor_Jednostka.objects.get_or_create(
-            autor_id=diff["autor_jednostka"]["autor"],
-            jednostka_id=diff["autor_jednostka"]["jednostka"],
-            defaults={
-                "funkcja": row.funkcja_autora,
-                "stanowisko": row.stanowisko_dydaktyczne,
-            },
+        d = diff["autor_jednostka"]
+        rozpoczal = (
+            date.fromisoformat(d["rozpoczal_prace"])
+            if d.get("rozpoczal_prace")
+            else None
         )
+        if rozpoczal is None:
+            # Nowy AJ, pusty plik_od → fallback (P1): data zmian → dziś. Odtąd
+            # tworzony rekord ma konkretną datę (brak NULL w kluczu unikalności).
+            rozpoczal = row.parent.data_zmian_personalnych or timezone.localdate()
+        aj = (
+            Autor_Jednostka.objects.filter(
+                autor_id=d["autor"],
+                jednostka_id=d["jednostka"],
+                rozpoczal_prace=rozpoczal,
+            )
+            .order_by("pk")
+            .first()
+        )
+        created = aj is None
+        if created:
+            aj = Autor_Jednostka.objects.create(
+                autor_id=d["autor"],
+                jednostka_id=d["jednostka"],
+                rozpoczal_prace=rozpoczal,
+                funkcja=row.funkcja_autora,
+                stanowisko=row.stanowisko_dydaktyczne,
+            )
+        row.autor_jednostka = aj
+    return created
 
 
-def _opisz_utworzone(diff):
+def _opisz_utworzone(diff, aj_created=True):
     """Krótkie opisy obiektów utworzonych z ``diff_do_utworzenia`` — do
     ``log_zmian["utworzono"]``, żeby audyt widział realną pracę wykonaną
-    przez materializację nawet gdy świeży recheck nie wykrył driftu."""
+    przez materializację nawet gdy świeży recheck nie wykrył driftu.
+
+    ``aj_created`` (zwrot ``_materializuj_diff``): gdy AJ NIE powstał (drugi
+    wiersz z tym samym ``(A, J, data)`` trafił lookupem w istniejący) — NIE
+    opisujemy „nowy okres" (N6), żeby audyt nie kłamał."""
     opisy = []
     if "nowy_autor" in diff:
         opisy.append(f"nowy autor: {diff['nowy_autor']}")
@@ -116,8 +143,17 @@ def _opisz_utworzone(diff):
         opisy.append(f"grupa pracownicza: {diff['grupa_pracownicza']}")
     if "wymiar_etatu" in diff:
         opisy.append(f"wymiar etatu: {diff['wymiar_etatu']}")
-    if "autor_jednostka" in diff:
-        opisy.append("powiązanie autor-jednostka")
+    if "autor_jednostka" in diff and aj_created:
+        aj_diff = diff["autor_jednostka"]
+        if aj_diff.get("nowy_okres"):
+            rozpoczal = aj_diff.get("rozpoczal_prace")
+            opisy.append(
+                f"nowy okres zatrudnienia od {rozpoczal}"
+                if rozpoczal
+                else "nowy okres zatrudnienia"
+            )
+        else:
+            opisy.append("powiązanie autor-jednostka")
     return opisy
 
 
@@ -130,8 +166,9 @@ def _integruj_wiersz(row):
     # markerem „już zintegrowany". Bez tego guardu drugi przebieg albo nadpisuje
     # audyt `log_zmian` (gałąź materializacji), albo fałszywie oznacza wiersz
     # `pominiety_bo_nieaktualny` (świeży recheck nie widzi już driftu).
+    # Restart (log_zmian już ustawiony) → nie liczymy nowego okresu ponownie.
     if row.log_zmian is not None:
-        return
+        return False
     with transaction.atomic():
         # Sprawdzone PRZED materializacją — po niej `diff_do_utworzenia`
         # nadal jest niepuste (nic go nie czyści), więc to jest jedyny
@@ -144,7 +181,19 @@ def _integruj_wiersz(row):
         # nadpisze (guard `is None`), a gałąź create-only utrwala go tym save.
         if row.stany_pol_snapshot is None:
             row.stany_pol_snapshot = row.stany_pol()
-        _materializuj_diff(row)
+        created = _materializuj_diff(row)
+        # Nowy okres zatrudnienia = utworzono AJ (created), który analiza
+        # oznaczyła jako DODATKOWY okres (nowy_okres) → licznik §10.
+        nowy_okres_utworzony = bool(
+            created
+            and (row.diff_do_utworzenia or {})
+            .get("autor_jednostka", {})
+            .get("nowy_okres")
+        )
+        # Sygnał dla `integrate()._przepnij_aj_po_defragmentacji`: tylko świeży
+        # okres może zostać scalony przez `Autor.save()` (defragmentacja) i
+        # wymagać przepięcia FK przed zapisem AJ.
+        row._okres_swiezo_utworzony = nowy_okres_utworzony
         row.save(
             update_fields=[
                 "funkcja_autora",
@@ -161,9 +210,11 @@ def _integruj_wiersz(row):
                 # `integrate()` nadpisuje `log_zmian` na starcie — ślad
                 # utworzenia dopisujemy DOPIERO PO nim, do klucza
                 # "utworzono", zamiast go nadpisać.
-                row.log_zmian["utworzono"] = _opisz_utworzone(row.diff_do_utworzenia)
+                row.log_zmian["utworzono"] = _opisz_utworzone(
+                    row.diff_do_utworzenia, created
+                )
                 row.save(update_fields=["log_zmian"])
-            return
+            return nowy_okres_utworzony
         if materializowano:
             # Recheck nie widzi driftu (get_or_create już ustawił docelowe
             # wartości), ale wiersz FAKTYCZNIE wykonał pracę: utworzył nowe
@@ -175,14 +226,15 @@ def _integruj_wiersz(row):
             row.log_zmian = {
                 "autor": [],
                 "autor_jednostka": [],
-                "utworzono": _opisz_utworzone(row.diff_do_utworzenia),
+                "utworzono": _opisz_utworzone(row.diff_do_utworzenia, created),
             }
             row.save(update_fields=["log_zmian"])
-            return
+            return nowy_okres_utworzony
         # Prawdziwy drift: diff był pusty (nic nie materializowano) i
         # recheck nie widzi potrzeby zmian — baza zmieniła się od analizy.
         row.pominiety_bo_nieaktualny = True
         row.save(update_fields=["pominiety_bo_nieaktualny"])
+        return False
 
 
 def _wykonaj_odpiecia(parent):
@@ -905,8 +957,10 @@ def integruj(parent, p):
             utworzono_nowych += 1
 
     qs = parent.zmiany_potrzebne_set.all()
+    utworzono_nowych_okresow = 0
     for row in p.track(list(qs), total=qs.count(), label="Integracja"):
-        _integruj_wiersz(row)
+        if _integruj_wiersz(row):
+            utworzono_nowych_okresow += 1
 
     odpieto = _wykonaj_odpiecia(parent)
     przepieto_wierszy, przepieto_prac = _wykonaj_przepiecia(
@@ -953,6 +1007,7 @@ def integruj(parent, p):
             "przepieto_wierszy": przepieto_wierszy,
             "przepieto_prac": przepieto_prac,
             "utworzono_nowych_autorow": utworzono_nowych,
+            "utworzono_nowych_okresow": utworzono_nowych_okresow,
             "utworzono_jednostek": utworzono_jednostek,
             "utworzono_tytulow": utworzono_tytulow,
             "utworzono_stopni": utworzono_stopni,

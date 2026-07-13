@@ -64,6 +64,8 @@ def test_stany_pol_ma_wszystkie_klucze():
         "stopien",
         "funkcja",
         "stanowisko",
+        "data_od",
+        "data_do",
     }
 
 

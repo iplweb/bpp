@@ -222,6 +222,18 @@
                         <span class="import-porownanie-etykieta">Stanowisko dyd.:</span>
                         {% include "import_pracownikow/partials/_porownanie_kom.html" with pole=porownanie.stanowisko %}
                     </div>
+                    <div class="import-porownanie-item">
+                        <span class="import-porownanie-etykieta">Data od:</span>
+                        {% include "import_pracownikow/partials/_porownanie_kom.html" with pole=porownanie.data_od %}
+                        {% if porownanie.data_od.nowy_okres %}
+                            <br>
+                            <span class="label primary" title="Inna data od niż w bazie — powstanie nowy okres zatrudnienia">nowy okres</span>
+                        {% endif %}
+                    </div>
+                    <div class="import-porownanie-item">
+                        <span class="import-porownanie-etykieta">Data do:</span>
+                        {% include "import_pracownikow/partials/_porownanie_kom.html" with pole=porownanie.data_do %}
+                    </div>
                 {% endwith %}
             </div>
             <div class="import-blok import-blok-przepnij">
