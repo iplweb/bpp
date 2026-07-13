@@ -273,3 +273,38 @@ TDD — testy najpierw:
   realne dane wymagały, można podnieść do DP (LCS) — na razie YAGNI.
 - Wydajność: fallback tylko dla wierszy bez twardego trafienia, jedno zapytanie +
   ≤`TOP_K` tanich wyrównań w Pythonie. Akceptowalne dla typowych importów.
+
+## Rewizja po review Fable (2026-07-13)
+
+Trzy poprawki MAJOR + drobne (autorytatywny kod jest w PLANIE):
+
+1. **Guard pokrycia zawsze względem `nazwa`** (nie pola, na którym uzyskano
+   wyrównanie). Poprzednio krótki `skrot` (2–4 słowa, typowy) obniżał mianownik,
+   przez co 2-słowny generyczny wpis (`"Zakład Chorób"`) przechodził guard przez
+   `skrot` (2/3=0.67), choć przez `nazwa` odpadał (2/6=0.33) — guard „krótki
+   fragment nie matchuje długiej obcej nazwy" był martwy. Fix: `dopasuj_po_skrocie`
+   próbuje wyrównania na `nazwa` LUB `skrot` (istnienie), ale
+   `pokrycie = len(slowa_pliku) / len(_slowa(kand.nazwa))` — kanoniczna długość
+   jednostki.
+2. **Równość dla numerałów rzymskich/cyfr** w `_para_prefiksowa`. Reguła „≤2 znaki
+   → równość" chroni `II`/`III?` ale nie `VII`⊂`VIII`, `XII`⊂`XIII`,
+   `XVII`⊂`XVIII` (numerowane kliniki na uczelniach medycznych). Fix: token
+   pasujący do `ROMAN_NUMERAL_PATTERN` (`normalization.py:44`, I–XX) lub `\d+` →
+   wymaga równości. Uwaga: `III` (3 znaki) obsługuje właśnie ta reguła, nie ≤2.
+3. **Realny test negatywny.** `"Katedra Chirurgii"` daje trigram 0.000 → puste
+   `kandydaci` → guard się nie wykonuje (test pusty). Zastąpione przez
+   `"Pielęgniarstwa Opieki"` (trigram 0.313 ≥ floor → wchodzi do puli; pokrycie
+   2/7 < 0.6 → BRAK przez guard). NIE `"Zakład Pielęgniarstwa"` — złapałby to
+   `matchuj_jednostke` przez `nazwa__istartswith` (TWARDY).
+
+Drobne: `_slowa` obcina brzegi tokena regexem `^[^a-z0-9]+|[^a-z0-9]+$` PO
+`unidecode`+`lower` (odporne na `«»`→`<<`/`>>` itd., zamiast enumerować znaki);
+docstring `sklasyfikuj_jednostke` zaktualizowany o fallback; dolny próg
+`min(TRIGRAM_FLOOR, prog)` (obrona przed custom `prog < floor`).
+
+Kalibracja `TRIGRAM_FLOOR = 0.25` (pomiary na realnej jednostce): medium 0.629,
+agresywny pełnowymiarowy 0.417 (wchodzi), bardzo agresywny 3-słowny 0.186 (nie
+wchodzi, ale guard i tak odrzuca). Znane ograniczenie v1 (świadome): reguła ≤2
+znaki wyklucza 2-znakowe skróty słów (`Kl.`, `Ch.`, `Op.`), a `_liczba_dopasowanych`
+jest all-or-nothing na słowach pliku (dopisek `UM`/`CM` w pliku → BRAK) —
+udokumentowane w docstringu + testem-świadkiem.
