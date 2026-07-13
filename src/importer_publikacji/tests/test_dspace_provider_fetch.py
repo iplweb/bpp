@@ -80,6 +80,7 @@ def test_fetch_dspace7_success(mock_get):
         timeout=15,
         allow_redirects=False,
         headers=None,
+        stream=True,
     )
 
 
@@ -269,6 +270,7 @@ def test_fetch_dspace6_success(mock_get):
         timeout=15,
         allow_redirects=False,
         headers=None,
+        stream=True,
     )
 
 

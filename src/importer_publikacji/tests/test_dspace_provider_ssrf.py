@@ -31,6 +31,7 @@ def _benign_get():
     resp.status_code = 200
     resp.headers = {}
     resp.json.return_value = {"metadata": []}
+    resp.iter_content = lambda chunk_size=1: iter([b'{"metadata": []}'])
     return MagicMock(return_value=resp)
 
 
