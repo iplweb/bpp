@@ -13,12 +13,20 @@
     grid-template-columns: 1fr;
 }
 
-// Kafle dostawców danych importera: liczba źródeł rośnie w czasie
-// (BibTeX/CrossRef/PBN/DSpace/WWW...), więc auto-fit zamiast sztywnych
-// 2 kolumn lepiej wykorzystuje szerokość na większych ekranach i sam
-// się przełamuje na mobile.
+// Kafle dostawców danych importera: stały układ 3 kolumn na desktopie
+// (dla 5 źródeł daje czytelne 3 + 2), 2 kolumny na tablecie, 1 na mobile.
+// Wcześniejszy auto-fit (minmax 220px) dawał na szerokich ekranach 4 + 1,
+// co wyglądało niesymetrycznie.
 .tile-grid--providers {
-    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    grid-template-columns: 1fr;
+
+    @media screen and (min-width: 640px) {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    @media screen and (min-width: 1024px) {
+        grid-template-columns: repeat(3, 1fr);
+    }
 }
 
 .wizard-wybor-info {
