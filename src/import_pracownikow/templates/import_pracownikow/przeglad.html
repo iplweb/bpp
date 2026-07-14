@@ -82,7 +82,13 @@
                 {% csrf_token %}
                 <button type="submit" name="zakres" value="jednostki"
                         class="button">
-                    <span class="fi-marker"></span> Zapisz tylko jednostki
+                    {% if parent_object.nic_do_utworzenia %}
+                        {# Nic nowego nie powstanie — zapis to czysty no-op #}
+                        {# strukturalny, więc przycisk mówi wprost „przejdź". #}
+                        <span class="fi-arrow-right"></span> Przejdź do kolejnego kroku
+                    {% else %}
+                        <span class="fi-marker"></span> Zapisz tylko jednostki
+                    {% endif %}
                 </button>
                 {% if pokaz_struktura_slowniki %}
                     <button type="submit" name="zakres" value="struktura"

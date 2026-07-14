@@ -7,6 +7,7 @@ from model_bakery import baker
 from bpp.models import Autor, Jednostka
 from import_pracownikow.models import (
     ImportPracownikow,
+    ImportPracownikowJednostka,
     ImportPracownikowRow,
     ImportPracownikowTytul,
 )
@@ -131,10 +132,19 @@ def test_index_renderuje_bez_noreversematch(admin_client, admin_user):
 @pytest.mark.django_db
 def test_zatwierdz_ustawia_stan_zatwierdzony_i_reenqueue(admin_client, admin_user):
     # Z podglądu (Krok 1) wolno zapisać strukturę → stan „zatwierdzony".
+    # Decyzja BRAK (jednostka do utworzenia) → jest CO tworzyć, więc idzie
+    # normalną ścieżką liveops (re-enqueue + strona live), a NIE synchronicznym
+    # skrótem „nic do utworzenia".
     imp = baker.make(
         ImportPracownikow,
         owner=admin_user,
         stan=ImportPracownikow.STAN_PRZEANALIZOWANY,
+    )
+    baker.make(
+        ImportPracownikowJednostka,
+        parent=imp,
+        tryb=ImportPracownikowJednostka.TRYB_BRAK,
+        utworzona=None,
     )
     url = reverse("import_pracownikow:zatwierdz", kwargs={"pk": imp.pk})
     with patch.object(ImportPracownikow, "run", lambda self, p: None):
@@ -142,6 +152,72 @@ def test_zatwierdz_ustawia_stan_zatwierdzony_i_reenqueue(admin_client, admin_use
     imp.refresh_from_db()
     assert imp.stan == ImportPracownikow.STAN_ZATWIERDZONY
     assert resp.status_code in (204, 302)
+
+
+@pytest.mark.django_db
+def test_zatwierdz_nic_do_utworzenia_skrot_do_kroku2_realna_integracja(
+    admin_client, admin_user
+):
+    """Skrót „Przejdź do kolejnego kroku": gdy struktura nic nie utworzy (zero
+    decyzji BRAK), zapis jednostek biegnie SYNCHRONICZNIE (bez celery/strony
+    live) i ląduje PROSTO w Kroku 2. Realna integracja: stan przechodzi na
+    ``struktura_zintegrowana`` w samym POST-cie, redirect na hub (nie na live)."""
+    imp = baker.make(
+        ImportPracownikow,
+        owner=admin_user,
+        stan=ImportPracownikow.STAN_PRZEANALIZOWANY,
+    )
+    assert imp.nic_do_utworzenia is True
+    url = reverse("import_pracownikow:zatwierdz", kwargs={"pk": imp.pk})
+    resp = admin_client.post(url, {"zakres": "jednostki"})
+    assert resp.status_code == 302
+    hub = reverse("import_pracownikow:przeglad", kwargs={"pk": imp.pk})
+    assert resp["Location"] == hub
+    # NIE na stronę live (ta ma inny URL — get_absolute_url).
+    assert resp["Location"] != imp.get_absolute_url()
+    imp.refresh_from_db()
+    assert imp.stan == ImportPracownikow.STAN_STRUKTURA_ZINTEGROWANA
+
+
+@pytest.mark.django_db
+def test_zatwierdz_nic_do_utworzenia_flash_bez_struktura_zapisana(
+    admin_client, admin_user
+):
+    """Komunikat skrótu NIE udaje „Struktura zapisana" (nic nie zapisano) —
+    mówi wprost, że jednostki już są w bazie i kieruje do Kroku 2."""
+    imp = baker.make(
+        ImportPracownikow,
+        owner=admin_user,
+        stan=ImportPracownikow.STAN_PRZEANALIZOWANY,
+    )
+    url = reverse("import_pracownikow:zatwierdz", kwargs={"pk": imp.pk})
+    resp = admin_client.post(url, {"zakres": "jednostki"}, follow=True)
+    komunikaty = [m.message for m in list(resp.context["messages"])]
+    assert any("już w bazie" in k for k in komunikaty)
+    assert not any("Struktura zapisana" in k for k in komunikaty)
+
+
+@pytest.mark.django_db
+def test_zatwierdz_nic_do_utworzenia_blad_cofa_do_kroku1(admin_client, admin_user):
+    """Gdy synchroniczna integracja padnie, import wraca do Kroku 1
+    (``przeanalizowany``) — nie zostaje zawieszony w ``zatwierdzony`` — a
+    użytkownik dostaje komunikat błędu (reconcilery są idempotentne → retry OK)."""
+    imp = baker.make(
+        ImportPracownikow,
+        owner=admin_user,
+        stan=ImportPracownikow.STAN_PRZEANALIZOWANY,
+    )
+
+    def _boom(self, p):
+        raise RuntimeError("integracja padła")
+
+    url = reverse("import_pracownikow:zatwierdz", kwargs={"pk": imp.pk})
+    with patch.object(ImportPracownikow, "run", _boom):
+        resp = admin_client.post(url, {"zakres": "jednostki"}, follow=True)
+    imp.refresh_from_db()
+    assert imp.stan == ImportPracownikow.STAN_PRZEANALIZOWANY
+    komunikaty = [m.message for m in list(resp.context["messages"])]
+    assert any("Nie udało się" in k for k in komunikaty)
 
 
 @pytest.mark.django_db
@@ -416,6 +492,15 @@ def test_zatwierdz_wyscig_nie_dubluje_integracji(admin_user):
         owner=admin_user,
         stan=ImportPracownikow.STAN_PRZEANALIZOWANY,
     )
+    # Decyzja BRAK → jest CO tworzyć, więc żądania idą normalną ścieżką liveops
+    # (re-enqueue), a NIE synchronicznym skrótem „nic do utworzenia" — testujemy
+    # tu wyścig na atomowym CAS w tej właśnie ścieżce (licznik ``enqueue``).
+    baker.make(
+        ImportPracownikowJednostka,
+        parent=imp,
+        tryb=ImportPracownikowJednostka.TRYB_BRAK,
+        utworzona=None,
+    )
     url = reverse("import_pracownikow:zatwierdz", kwargs={"pk": imp.pk})
 
     barrier = threading.Barrier(2, timeout=10)
@@ -499,6 +584,10 @@ def test_panel_wyniku_czesciowy_import_nie_udaje_sukcesu(admin_user):
     assert "częściowo" in html
     assert "<strong>2</strong>" in html  # pominięci niedopasowani
     assert "<strong>1</strong>" in html  # pominięci bez jednostki
+    # „Zobacz szczegóły" i „Log zmian" w jednej linii (button-group).
+    assert "button-group" in html
+    assert "Zobacz szczegóły" in html
+    assert "Log zmian" in html
 
 
 @pytest.mark.django_db
@@ -523,3 +612,7 @@ def test_panel_wyniku_pelny_sukces_jest_zielony(admin_user):
     )
     assert "panel callout success" in html
     assert "częściowo" not in html
+    # „Zobacz szczegóły" i „Log zmian" w jednej linii (button-group).
+    assert "button-group" in html
+    assert "Zobacz szczegóły" in html
+    assert "Log zmian" in html

@@ -1401,6 +1401,16 @@ class ZatwierdzImportView(_PkOwnerRestartMixin):
         zakres = request.POST.get("zakres", ImportPracownikow.ZAKRES_PELNY)
         if zakres not in self._ZAKRESY_PRAWIDLOWE:
             zakres = ImportPracownikow.ZAKRES_PELNY
+
+        # Skrót „Przejdź do kolejnego kroku": gdy zapis struktury (same jednostki)
+        # NIC nie utworzy (wszystkie decyzje to auto-dopasowania do istniejących),
+        # integracja jest de-facto no-opem strukturalnym. Uruchamiamy ją
+        # SYNCHRONICZNIE (materializuje ewentualne guessy → podłącza wiersze) i
+        # lądujemy PROSTO w Kroku 2, z pominięciem strony live „Struktura
+        # zapisana" — skoro nic nie zapisano, celebracja byłaby myląca.
+        if zakres == ImportPracownikow.ZAKRES_JEDNOSTKI and obj.nic_do_utworzenia:
+            return self._przejdz_do_kroku2_synchronicznie(request, obj)
+
         if zakres == ImportPracownikow.ZAKRES_JEDNOSTKI:
             # Same jednostki — tylko z podglądu (Krok 1). Po zapisaniu struktury
             # nie ma sensu ich zapisywać ponownie.
@@ -1447,6 +1457,59 @@ class ZatwierdzImportView(_PkOwnerRestartMixin):
         if not zmieniono:
             return HttpResponseBadRequest(blad)
         return super().post(request, *args, **kwargs)
+
+    def _przejdz_do_kroku2_synchronicznie(self, request, obj):
+        """Zapisuje strukturę bez tworzenia czegokolwiek i przenosi PROSTO do
+        Kroku 2, z pominięciem strony live. Atomowy CAS (jak w ``post``) broni
+        przed podwójnym odpaleniem; integrację biegniemy w wątku żądania
+        (``TextProgress`` — bez channels/celery), bo dla „nic do utworzenia" jest
+        to lekkie: rozstrzygnięcie auto-dopasowań + podłączenie wierszy. Na błąd
+        cofamy import do Kroku 1 (reconcilery idempotentne → bezpieczny retry)."""
+        import sys
+
+        from liveops.progress import TextProgress
+
+        zmieniono = ImportPracownikow.objects.filter(
+            pk=obj.pk, stan=ImportPracownikow.STAN_PRZEANALIZOWANY
+        ).update(
+            stan=ImportPracownikow.STAN_ZATWIERDZONY,
+            zakres_integracji=ImportPracownikow.ZAKRES_JEDNOSTKI,
+        )
+        if not zmieniono:
+            return HttpResponseBadRequest(
+                "Ten import nie jest już w podglądzie (Krok 1)."
+            )
+        obj.refresh_from_db()
+        # Czyścimy pola liveops z fazy analizy (mirror RestartView) — bez tego
+        # stary snapshot mieszałby się z wynikiem integracji; sami nie enqueue'ujemy.
+        obj.save(update_fields=obj.reset_liveops_state())
+        try:
+            # obj.run dispatchuje integruj() dla stanu ``zatwierdzony`` (zgłasza do
+            # rollbara i re-raise'uje na błędzie); integruj ustawia stan →
+            # ``struktura_zintegrowana``.
+            obj.run(TextProgress(obj, sys.stdout))
+        except Exception:
+            # Cofnij do Kroku 1 — reconcilery mają guardy ``utworzon*``, więc
+            # ponowna próba jest bezpieczna. obj.run już zgłosił błąd do rollbara.
+            obj.refresh_from_db()
+            obj.stan = ImportPracownikow.STAN_PRZEANALIZOWANY
+            obj.save(update_fields=["stan"])
+            messages.error(
+                request,
+                "Nie udało się przejść do kolejnego kroku — spróbuj ponownie "
+                "(szczegóły błędu w panelu administracyjnym).",
+            )
+            return HttpResponseRedirect(
+                reverse("import_pracownikow:przeglad", kwargs={"pk": obj.pk})
+            )
+        messages.success(
+            request,
+            "Wszystkie jednostki są już w bazie — nic nowego nie powstało. "
+            "Sprawdź dopasowania osób poniżej i zaimportuj je do bazy (Krok 2).",
+        )
+        return HttpResponseRedirect(
+            reverse("import_pracownikow:przeglad", kwargs={"pk": obj.pk})
+        )
 
 
 class RestartAnalizaView(_PkOwnerRestartMixin):
