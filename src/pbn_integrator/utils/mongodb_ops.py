@@ -7,6 +7,7 @@ import sys
 from typing import TYPE_CHECKING
 
 import rollbar
+from django_pbn_client.download import download_to_model
 from django_pbn_client.persistence import (
     download_pbn_objects,
     get_or_download,
@@ -284,6 +285,7 @@ def pobierz_mongodb(
     client=None,
     disable_progress_bar=False,
     callback=None,
+    on_error="raise",
 ):
     """Fetch and save elements from PBN API.
 
@@ -295,24 +297,50 @@ def pobierz_mongodb(
         client: PBN client.
         disable_progress_bar: Whether to disable progress bar.
         callback: Optional callback for progress tracking.
+        on_error: Zachowanie przy błędzie zapisu POJEDYNCZEGO rekordu do
+            lokalnego lustra BPP (``IntegrityError``, zły kształt danych itp.):
+
+            - ``"raise"`` (default) — fail-fast: pierwszy błąd propaguje i
+              przerywa cały batch (zachowanie historyczne). Zwraca ``None``.
+            - ``"skip"`` — skip-and-log-and-continue: zły rekord jest logowany
+              (pełny traceback) i liczony, import reszty listy kończy się.
+              Deleguje do pakietowego ``download_to_model`` i zwraca
+              ``DownloadResult(processed, errored)``. Przydatne przy masowych
+              synchronizacjach (tysiące rekordów), gdzie jeden zepsuty rekord
+              nie powinien wywalać całego przebiegu.
     """
     if fun is None:
         fun = zapisz_mongodb
 
-    def progress(elements, total, label):
+    def progress(elements, total, _label):
+        # Używamy ``pbar_label`` (nie ``_label`` z delegata) — ``download_to_model``
+        # nie forwarduje etykiety, więc trzymamy ją stałą w obu trybach.
         return pbar(
             elements,
             total,
-            label,
+            pbar_label,
             disable_progress_bar=disable_progress_bar,
             callback=callback,
         )
 
-    return download_pbn_objects(
-        elems,
-        klass,
-        label=pbar_label,
-        save=fun,
-        client=client,
-        progress=progress,
-    )
+    if on_error == "raise":
+        return download_pbn_objects(
+            elems,
+            klass,
+            label=pbar_label,
+            save=fun,
+            client=client,
+            progress=progress,
+        )
+    if on_error == "skip":
+        # ``elems`` jest już zbudowanym paginatorem/iteratorem — fasada oczekuje
+        # fabryki (zero-arg), więc oddajemy gotowy zasób. Domyślne
+        # ``concurrency=None`` → ścieżka sekwencyjna (bez ponownego requestu).
+        return download_to_model(
+            lambda: elems,
+            klass,
+            save=fun,
+            client=client,
+            progress=progress,
+        )
+    raise ValueError(f"on_error musi być 'raise' albo 'skip', otrzymano {on_error!r}")
