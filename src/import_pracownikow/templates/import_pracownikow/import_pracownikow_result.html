@@ -70,14 +70,18 @@
                 <strong>{{ przepieto_wierszy }}</strong> wierszy /
                 <strong>{{ przepieto_prac }}</strong> prac.</p>
         {% endif %}
-        <a href="{% url 'import_pracownikow:przeglad' operation.pk %}"
-           class="button secondary">
-            <span class="fi-list"></span> Zobacz szczegóły
-        </a>
-        <a href="{% url 'import_pracownikow:audyt' operation.pk %}"
-           class="button">
-            <span class="fi-list"></span> Log zmian
-        </a>
+        {# „Zobacz szczegóły" + „Log zmian" w jednej linii (button-group) — #}
+        {# inaczej drugi przycisk zawija się pod pierwszy. #}
+        <div class="button-group">
+            <a href="{% url 'import_pracownikow:przeglad' operation.pk %}"
+               class="button secondary">
+                <span class="fi-list"></span> Zobacz szczegóły
+            </a>
+            <a href="{% url 'import_pracownikow:audyt' operation.pk %}"
+               class="button">
+                <span class="fi-list"></span> Log zmian
+            </a>
+        </div>
     {% else %}
         <h3><span class="fi-check"></span> Import zakończony</h3>
         <p>
@@ -103,13 +107,17 @@
                 <strong>{{ przepieto_wierszy }}</strong> wierszy /
                 <strong>{{ przepieto_prac }}</strong> prac.</p>
         {% endif %}
-        <a href="{% url 'import_pracownikow:przeglad' operation.pk %}"
-           class="button secondary">
-            <span class="fi-list"></span> Zobacz szczegóły
-        </a>
-        <a href="{% url 'import_pracownikow:audyt' operation.pk %}"
-           class="button">
-            <span class="fi-list"></span> Log zmian
-        </a>
+        {# „Zobacz szczegóły" + „Log zmian" w jednej linii (button-group) — #}
+        {# inaczej drugi przycisk zawija się pod pierwszy. #}
+        <div class="button-group">
+            <a href="{% url 'import_pracownikow:przeglad' operation.pk %}"
+               class="button secondary">
+                <span class="fi-list"></span> Zobacz szczegóły
+            </a>
+            <a href="{% url 'import_pracownikow:audyt' operation.pk %}"
+               class="button">
+                <span class="fi-list"></span> Log zmian
+            </a>
+        </div>
     {% endif %}
 </div>

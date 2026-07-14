@@ -252,8 +252,31 @@ def test_krok1_tytuly_wszystkie_w_bazie_bez_przyciskow(admin_client, admin_user)
     assert reverse("import_pracownikow:tytuly", kwargs={"pk": imp.pk}) not in tresc
     assert "Zapisz jednostki + słowniki" not in tresc
     assert 'value="struktura"' not in tresc
-    # zapis samych jednostek zostaje
+    # zapis samych jednostek zostaje (BRAK jednostka → jest CO tworzyć)
     assert "Zapisz tylko jednostki" in tresc
+    assert "Przejdź do kolejnego kroku" not in tresc
+
+
+@pytest.mark.django_db
+def test_krok1_przycisk_przejdz_gdy_nic_do_utworzenia(admin_client, admin_user):
+    """Gdy struktura nic nie utworzy (decyzja tylko ZGADYWANIE — auto-match do
+    istniejącej jednostki), przycisk zapisu mówi „Przejdź do kolejnego kroku"
+    zamiast „Zapisz tylko jednostki" (nic nowego nie powstanie → zapis to no-op).
+    Decyzja (choćby guess) jest potrzebna, żeby był Krok 1 (a nie auto-skip)."""
+    imp = _imp(admin_user)  # PRZEANALIZOWANY (Krok 1)
+    baker.make(
+        ImportPracownikowJednostka,
+        parent=imp,
+        nazwa_zrodlowa="Katedra Y",
+        tryb=ImportPracownikowJednostka.TRYB_ZGADYWANIE,
+        utworzona=None,
+    )
+    resp = admin_client.get(_url(imp))
+    tresc = resp.content.decode("utf-8")
+    assert "Przejdź do kolejnego kroku" in tresc
+    assert "Zapisz tylko jednostki" not in tresc
+    # nadal ta sama akcja (zakres=jednostki) — zmienia się tylko etykieta
+    assert 'value="jednostki"' in tresc
 
 
 @pytest.mark.django_db

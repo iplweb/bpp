@@ -630,6 +630,34 @@ class ImportPracownikow(LiveOperation):
             ImportPracownikowStanowisko.TRYB_ZGADYWANIE,
         )
 
+    @property
+    def nic_do_utworzenia(self):
+        """True gdy zapis struktury (Krok 1) nie UTWORZY żadnego nowego rekordu —
+        wszystkie nierozstrzygnięte decyzje (jednostki / tytuły / stopnie /
+        stanowiska) to auto-dopasowania do ISTNIEJĄCYCH rekordów (tryb
+        ``ZGADYWANIE``), zero ``BRAK`` (= „do utworzenia"). Guessy trzeba jeszcze
+        zmaterializować (integracja podłącza wiersze), ale nic nowego nie powstaje.
+
+        Odpowiada dokładnie komunikatowi „nic nowego nie powstanie": steruje
+        etykietą przycisku Kroku 1 („Przejdź do kolejnego kroku" zamiast „Zapisz
+        tylko jednostki") oraz skrótem synchronicznym do Kroku 2 (pominięcie
+        strony live — nie ma czego oglądać). Liczą się TYLKO nierozstrzygnięte
+        decyzje (``utworzon*`` NULL) — już zmaterializowany ``BRAK`` nic nie doda."""
+        return not (
+            self.jednostki_do_decyzji.filter(
+                utworzona__isnull=True, tryb=ImportPracownikowJednostka.TRYB_BRAK
+            ).exists()
+            or self.tytuly_do_decyzji.filter(
+                utworzony__isnull=True, tryb=ImportPracownikowTytul.TRYB_BRAK
+            ).exists()
+            or self.stopnie_do_decyzji.filter(
+                utworzony__isnull=True, tryb=ImportPracownikowStopien.TRYB_BRAK
+            ).exists()
+            or self.stanowiska_do_decyzji.filter(
+                utworzone__isnull=True, tryb=ImportPracownikowStanowisko.TRYB_BRAK
+            ).exists()
+        )
+
 
 class ImportPracownikowRow(ImportRowMixin, models.Model):
     parent = models.ForeignKey(

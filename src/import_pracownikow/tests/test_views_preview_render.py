@@ -51,6 +51,9 @@ def test_podglad_pokazuje_badge_i_dropdown_kandydatow(admin_client, admin_user):
         )
         in tresc
     )
+    # przycisk potwierdzenia kandydata: normalny (nie „tiny"), etykieta „potwierdź"
+    assert "potwierdź" in tresc
+    assert "button tiny" not in tresc
 
 
 @pytest.mark.django_db
