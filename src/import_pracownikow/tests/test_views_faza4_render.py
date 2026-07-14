@@ -18,7 +18,9 @@ def _results_url(imp):
 
 
 @pytest.mark.django_db
-def test_render_checkbox_utworz_nowego_dla_brak(admin_client, admin_user):
+def test_render_radio_pomin_utworz_dopasuj_dla_brak(admin_client, admin_user):
+    # Wiersz „brak" ma teraz radio-wybór (Pomiń/Utwórz/Dopasuj) zamiast dawnego
+    # checkboxa „utwórz nowego". Stan trzymany w istniejącym `utworz_nowego`.
     imp = baker.make(
         ImportPracownikow,
         owner=admin_user,
@@ -34,8 +36,11 @@ def test_render_checkbox_utworz_nowego_dla_brak(admin_client, admin_user):
     )
     resp = admin_client.get(_results_url(imp))
     tresc = resp.content.decode("utf-8")
-    assert 'name="utworz_nowego"' in tresc
-    assert "utwórz nowego" in tresc
+    assert 'name="wybor"' in tresc
+    assert 'value="pomin"' in tresc
+    assert 'value="utworz"' in tresc
+    assert 'value="dopasuj"' in tresc
+    assert "Utwórz nowego autora" in tresc
 
 
 @pytest.mark.django_db

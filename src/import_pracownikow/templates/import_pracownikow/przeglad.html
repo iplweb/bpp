@@ -188,18 +188,26 @@
                     {# Ostrzeżenie #4 (PR #531): zapis zmienia podstawowe #}
                     {# miejsce pracy — szczegółowy warning tuż przed przyciskiem. #}
                     {% include "import_pracownikow/partials/_ostrzezenie_podstawowe_miejsce.html" %}
-                    <form method="post"
-                          action="{% url "import_pracownikow:zatwierdz" parent_object.pk %}">
-                        {% csrf_token %}
-                        <input type="hidden" name="zakres" value="pelny">
-                        <label>
-                            <input type="checkbox" name="potwierdzenie_zapisu" required>
-                            Rozumiem, że to zapisze zmiany do bazy danych.
-                        </label>
-                        <button type="submit" class="button alert">
-                            <span class="fi-torso"></span> Zapisz osoby do bazy
-                        </button>
-                    </form>
+                    {# Ostrzeżenie finalizacji: wiersze bez decyzji zostaną #}
+                    {# pominięte. {% with %} liczy COUNT raz (nie 2× w if+confirm). #}
+                    {% with liczba_pominietych=parent_object.liczba_wierszy_do_pominiecia %}
+                        {% if liczba_pominietych %}
+                            {% include "import_pracownikow/partials/_ostrzezenie_brak_dopasowania.html" %}
+                        {% endif %}
+                        <form method="post"
+                              action="{% url "import_pracownikow:zatwierdz" parent_object.pk %}"
+                              {% if liczba_pominietych %}onsubmit="return confirm('Wiersze bez dopasowania zostaną pominięte: {{ liczba_pominietych }}. Kontynuować zapis?');"{% endif %}>
+                            {% csrf_token %}
+                            <input type="hidden" name="zakres" value="pelny">
+                            <label>
+                                <input type="checkbox" name="potwierdzenie_zapisu" required>
+                                Rozumiem, że to zapisze zmiany do bazy danych.
+                            </label>
+                            <button type="submit" class="button alert">
+                                <span class="fi-torso"></span> Zapisz osoby do bazy
+                            </button>
+                        </form>
+                    {% endwith %}
                 </div>
             {% endif %}
         </div>
