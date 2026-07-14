@@ -413,4 +413,8 @@ def test_zapisz_snapshot_populuje_pole_i_zgadza_sie_z_builderem():
     # jako ``assert b'PK\x03\x04...' == b'PK\x03\x04...'``. Intencja testu to
     # „snapshot zawiera to samo, co zwraca builder" — tresc, nie identycznosc
     # kontenera ZIP.
-    assert _wczytaj(zapisane) == _wczytaj(zbuduj_plik_po_imporcie(imp))
+    naglowki, wiersze = _wczytaj(zapisane)
+    assert (naglowki, wiersze) == _wczytaj(zbuduj_plik_po_imporcie(imp))
+    # Sanity na kilku komorkach — snapshot odbija autorow z bazy.
+    plaskie = {str(c) for w in wiersze for c in w}
+    assert {"Snap", "Jeden", "Shot", "Dwa"} <= plaskie
