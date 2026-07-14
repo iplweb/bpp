@@ -14,6 +14,7 @@ from import_pracownikow.mapping import (
 )
 from import_pracownikow.models import ImportPracownikow, ImportPracownikowRow
 from import_pracownikow.tests._helpers import unikalna_nazwa
+from pbn_api.models import Scientist
 
 
 def _wczytaj(content):
@@ -227,3 +228,110 @@ def test_round_trip_naglowki_auto_mapuja_sie():
     nierozpoznane = [h for h, cel in mapowanie.items() if cel == POLE_POMIN]
     assert nierozpoznane == [], f"Nierozpoznane nagłówki: {nierozpoznane}"
     assert waliduj_mapowanie(mapowanie) == []
+
+
+# --- Fix 1: sanityzacja formuł XLSX (OWASP Formula/CSV Injection) ---------
+
+
+@pytest.mark.parametrize("lead", ["=", "+", "-", "@", "\t"])
+@pytest.mark.django_db
+def test_wartosc_zaczynajaca_sie_od_znaku_formuly_jest_sanityzowana(lead):
+    # Nazwisko I nazwa jednostki, oba zaczynające się od znaku, który Excel/
+    # LibreOffice interpretuje jako formułę (albo separator wstrzykujący do
+    # innej komórki) — builder MUSI je sanityzować (prefiks apostrofu), inaczej
+    # otwarcie „skorygowanego" pliku w Excelu wykonuje wstrzykniętą formułę.
+    imp = _import_zintegrowany(
+        mapowanie_kolumn={
+            "Nazwisko": "nazwisko",
+            "Imię": "imię",
+            "Jednostka": "nazwa_jednostki",
+        }
+    )
+    j = baker.make(Jednostka, nazwa=unikalna_nazwa(f"{lead}Klinika"))
+    a = baker.make(Autor, nazwisko=f"{lead}Groźne", imiona="Jan")
+    aj = baker.make(Autor_Jednostka, autor=a, jednostka=j)
+    _wiersz(imp, loc=0, autor=a, autor_jednostka=aj)
+
+    naglowki, wiersze = _wczytaj(zbuduj_plik_po_imporcie(imp))
+
+    kol = {n: i for i, n in enumerate(naglowki)}
+    nazwisko_cell = wiersze[0][kol["Nazwisko"]]
+    jednostka_cell = wiersze[0][kol["Nazwa jednostki"]]
+    assert nazwisko_cell.startswith("'")
+    assert jednostka_cell.startswith("'")
+    # Wartość poza apostrofem musi zostać zachowana (bez utraty danych).
+    assert nazwisko_cell == f"'{lead}Groźne"
+    assert jednostka_cell == f"'{j.nazwa}"
+
+
+@pytest.mark.django_db
+def test_naglowki_nie_sa_sanityzowane():
+    # Nagłówki to nasze własne stałe kanoniczne (żaden nie zaczyna się od
+    # znaku formuły) i MUSZĄ zostać bajt-w-bajt — inaczej auto-mapowanie przy
+    # re-imporcie (rozpoznawanie po dosłownym tekście nagłówka) by się zepsuło.
+    imp = _import_zintegrowany(
+        mapowanie_kolumn={
+            "Nazwisko": "nazwisko",
+            "Imię": "imię",
+            "Jednostka": "nazwa_jednostki",
+        }
+    )
+    j = baker.make(Jednostka, nazwa=unikalna_nazwa("Klinika Zwykła"))
+    a = baker.make(Autor, nazwisko="Zwykły", imiona="Jan")
+    aj = baker.make(Autor_Jednostka, autor=a, jednostka=j)
+    _wiersz(imp, loc=0, autor=a, autor_jednostka=aj)
+
+    naglowki, _ = _wczytaj(zbuduj_plik_po_imporcie(imp))
+
+    assert naglowki[:4] == ["BPP ID", "Nazwisko", "Imię", "Nazwa jednostki"]
+    assert not any(str(h).startswith("'") for h in naglowki)
+
+
+# --- Fix 3: hardening długości PBN UUID (AutorForm.pbn_uuid wymaga 24) ----
+
+
+@pytest.mark.django_db
+def test_pbn_uuid_24_znaki_jest_emitowany():
+    imp = _import_zintegrowany(
+        mapowanie_kolumn={
+            "Nazwisko": "nazwisko",
+            "Imię": "imię",
+            "Jednostka": "nazwa_jednostki",
+        }
+    )
+    j = baker.make(Jednostka, nazwa=unikalna_nazwa("Klinika PBN"))
+    scientist = baker.make(Scientist, mongoId="a" * 24)
+    a = baker.make(Autor, nazwisko="Pbn", imiona="Poprawny", pbn_uid=scientist)
+    aj = baker.make(Autor_Jednostka, autor=a, jednostka=j)
+    _wiersz(imp, loc=0, autor=a, autor_jednostka=aj)
+
+    naglowki, wiersze = _wczytaj(zbuduj_plik_po_imporcie(imp))
+
+    assert "PBN UUID" in naglowki
+    kol = {n: i for i, n in enumerate(naglowki)}
+    assert wiersze[0][kol["PBN UUID"]] == "a" * 24
+
+
+@pytest.mark.django_db
+def test_pbn_uuid_nietypowej_dlugosci_jest_pomijany():
+    # Scientist.mongoId dopuszcza inne długości niż 24 (max_length=32);
+    # AutorForm.pbn_uuid wymaga DOKŁADNIE 24 — nietypowa wartość musi zostać
+    # wyciszona (pusty string), inaczej re-import całego pliku pada fail-fast.
+    imp = _import_zintegrowany(
+        mapowanie_kolumn={
+            "Nazwisko": "nazwisko",
+            "Imię": "imię",
+            "Jednostka": "nazwa_jednostki",
+            "PBN": "pbn_uuid",
+        }
+    )
+    j = baker.make(Jednostka, nazwa=unikalna_nazwa("Klinika PBN Zła"))
+    scientist = baker.make(Scientist, mongoId="krotki-id")
+    a = baker.make(Autor, nazwisko="Pbn", imiona="Zly", pbn_uid=scientist)
+    aj = baker.make(Autor_Jednostka, autor=a, jednostka=j)
+    _wiersz(imp, loc=0, autor=a, autor_jednostka=aj)
+
+    naglowki, wiersze = _wczytaj(zbuduj_plik_po_imporcie(imp))
+
+    kol = {n: i for i, n in enumerate(naglowki)}
+    assert wiersze[0][kol["PBN UUID"]] in (None, "")

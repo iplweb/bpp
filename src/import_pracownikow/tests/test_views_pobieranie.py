@@ -172,6 +172,37 @@ def test_rezultaty_pokazuje_przyciski(client, django_user_model):
 
 
 @pytest.mark.django_db
+def test_po_imporcie_dziala_gdy_plik_xls_pusty_po_cleanupie(client, django_user_model):
+    # `usun_stare_pliki_importu_pracownikow` (housekeeping 90-dniowy) czyści
+    # `plik_xls` po fakcie, ale ZOSTAWIA import + wiersze. Builder
+    # (`eksport.zbuduj_plik_po_imporcie`) nie czyta `plik_xls` — czyta z
+    # `Autor`/`Autor_Jednostka` — więc link „po imporcie” musi nadal działać,
+    # a nazwa pliku spada do fallbacku `import-<pk>-po-imporcie.xlsx`.
+    u = _user_w_grupie(django_user_model)
+    client.force_login(u)
+    imp = baker.make(
+        ImportPracownikow,
+        owner=u,
+        stan=ImportPracownikow.STAN_ZINTEGROWANY,
+        mapowanie_kolumn={
+            "Nazwisko": "nazwisko",
+            "Imię": "imię",
+            "Jednostka": "nazwa_jednostki",
+        },
+    )
+    # Symuluj stan PO housekeepingu — dokładnie to, co robi komenda porządkowa.
+    imp.plik_xls = ""
+    imp.save(update_fields=["plik_xls"])
+
+    resp = client.get(
+        reverse("import_pracownikow:pobierz-po-imporcie", kwargs={"pk": imp.pk})
+    )
+
+    assert resp.status_code == 200
+    assert f"import-{imp.pk}-po-imporcie.xlsx" in resp["Content-Disposition"]
+
+
+@pytest.mark.django_db
 def test_rezultaty_ukrywa_po_imporcie_przed_finalizacja(client, django_user_model):
     u = _user_w_grupie(django_user_model)
     client.force_login(u)
@@ -189,3 +220,33 @@ def test_rezultaty_ukrywa_po_imporcie_przed_finalizacja(client, django_user_mode
         reverse("import_pracownikow:pobierz-po-imporcie", kwargs={"pk": imp.pk})
         not in tresc
     )  # po-imporcie ukryty
+
+
+# --- Fix 4: niezalogowany użytkownik nie pobiera plików -------------------
+
+
+@pytest.mark.django_db
+def test_oryginal_niezalogowany_nie_pobiera(client, django_user_model):
+    u = _user_w_grupie(django_user_model)
+    imp = _import_z_plikiem(u)
+    resp = client.get(
+        reverse("import_pracownikow:pobierz-oryginal", kwargs={"pk": imp.pk})
+    )
+    assert resp.status_code != 200  # braces GroupRequiredMixin → redirect login
+
+
+@pytest.mark.django_db
+def test_po_imporcie_niezalogowany_nie_pobiera(client, django_user_model):
+    u = _user_w_grupie(django_user_model)
+    imp = _import_z_plikiem(u, nazwa="pracownicy_2026.xlsx")
+    imp.stan = ImportPracownikow.STAN_ZINTEGROWANY
+    imp.mapowanie_kolumn = {
+        "Nazwisko": "nazwisko",
+        "Imię": "imię",
+        "Jednostka": "nazwa_jednostki",
+    }
+    imp.save()
+    resp = client.get(
+        reverse("import_pracownikow:pobierz-po-imporcie", kwargs={"pk": imp.pk})
+    )
+    assert resp.status_code != 200  # braces GroupRequiredMixin → redirect login

@@ -11,6 +11,7 @@ from io import BytesIO
 from openpyxl import Workbook
 from openpyxl.styles import Font
 
+from bpp.util.xlsx import sanitize_xlsx_row
 from import_pracownikow.mapping import POLE_POMIN
 
 
@@ -31,6 +32,13 @@ def _jednostka(row):
     return aj.jednostka.nazwa if aj and aj.jednostka_id else ""
 
 
+def _pbn(row):
+    # AutorForm.pbn_uuid wymaga DOKŁADNIE 24 znaków; nietypowa wartość
+    # wywaliłaby re-import (fail-fast). Emitujemy tylko poprawne 24-znakowe.
+    v = row.autor.pbn_uid_id
+    return v if v is not None and len(str(v)) == 24 else ""
+
+
 # (nagłówek, targety_włączające, getter(row), tryb)
 # tryb: "always" | "attr" | "id_enrich"
 REJESTR = [
@@ -48,7 +56,7 @@ REJESTR = [
         "always",
     ),
     ("ORCID", ("orcid",), lambda r: _tekst(r.autor.orcid), "id_enrich"),
-    ("PBN UUID", ("pbn_uuid",), lambda r: _tekst(r.autor.pbn_uid_id), "id_enrich"),
+    ("PBN UUID", ("pbn_uuid",), _pbn, "id_enrich"),
     ("Numer", ("numer",), lambda r: _tekst(r.autor.system_kadrowy_id), "id_enrich"),
     ("E-mail", ("email",), lambda r: _tekst(r.autor.email), "attr"),
     (
@@ -159,7 +167,7 @@ def zbuduj_plik_po_imporcie(import_obj) -> bytes:
         cell.font = Font(bold=True)
     ws.freeze_panes = "A2"
     for r in wiersze:
-        ws.append([getter(r) for _, getter in kolumny])
+        ws.append(sanitize_xlsx_row([getter(r) for _, getter in kolumny]))
 
     buf = BytesIO()
     wb.save(buf)

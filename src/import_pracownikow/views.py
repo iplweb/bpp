@@ -1577,6 +1577,14 @@ class PobierzPoImporcieView(GroupRequiredMixin, View):
 
     Dostępny dopiero po finalizacji (``STAN_ZINTEGROWANY``). Generowany w locie
     z autorytatywnych rekordów bazy — patrz ``eksport.zbuduj_plik_po_imporcie``.
+
+    UWAGA: ``plik_xls`` NIE jest tu odczytywany (builder czyta z ``Autor`` /
+    ``Autor_Jednostka``, nie z pliku) — używamy go tylko jako źródła nazwy
+    pliku wynikowego. Komenda porządkowa
+    ``usun_stare_pliki_importu_pracownikow`` czyści ``plik_xls`` po 90 dniach,
+    ale ZOSTAWIA import i wiersze — brak pliku źródłowego nie może więc
+    blokować tego pobrania (inaczej link „po imporcie” psuje się po
+    cleanupie, mimo że wszystko potrzebne nadal istnieje w bazie).
     """
 
     group_required = GROUP_REQUIRED
@@ -1588,10 +1596,11 @@ class PobierzPoImporcieView(GroupRequiredMixin, View):
         obj = _pobierz_wlasny_import(request, pk)
         if obj.stan != ImportPracownikow.STAN_ZINTEGROWANY:
             raise Http404("Plik „po imporcie” dostępny dopiero po zakończeniu importu.")
-        if not obj.plik_xls:
-            raise Http404("Import nie ma pliku źródłowego.")
         content = zbuduj_plik_po_imporcie(obj)
-        stem = os.path.splitext(os.path.basename(obj.plik_xls.name))[0]
+        if obj.plik_xls:
+            stem = os.path.splitext(os.path.basename(obj.plik_xls.name))[0]
+        else:
+            stem = f"import-{obj.pk}"
         resp = HttpResponse(content, content_type=XLSX_CONTENT_TYPE)
         resp["Content-Disposition"] = content_disposition_header(
             as_attachment=True, filename=f"{stem}-po-imporcie.xlsx"
