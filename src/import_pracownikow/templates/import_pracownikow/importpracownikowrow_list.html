@@ -37,8 +37,10 @@
     {# wzorzec importer_publikacji/index.html. #}
     <script src="https://unpkg.com/htmx.org@2.0.4" crossorigin="anonymous"></script>
 
-    {% if parent_object.edytowalny_podglad %}
+    {% if parent_object.edytowalny_podglad and parent_object.przepnij_wszystkie_prace %}
         {# akcja zbiorcza: zaznacz przepięcie prac dla wierszy z różnicą jednostki #}
+        {# tylko gdy import startował z masowym przepięciem — inaczej cały UI #}
+        {# przepinania jest ukryty (operator świadomie NIE rusza dorobku). #}
         <form method="post"
               action="{% url "import_pracownikow:zaznacz-przepiecia" pk=parent_object.pk %}">
             {% csrf_token %}
