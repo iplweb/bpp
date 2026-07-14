@@ -14,8 +14,8 @@ repozytorium. Poniższe strony rozwijają wybrane tematy:
   (generowane maszynowo).
 - [Polecenia](polecenia.md) — referencja komend (testy, build, Celery,
   zarządzanie).
-- [Pakiety klienckie PBN](pakiety-pbn.md) — granice pakietów workspace i ich
-  zależności od BPP.
+- [Pakiety klienckie PBN](pakiety-pbn.md) — pakiety `pbn-client` /
+  `django-pbn-client` (PyPI), podział odpowiedzialności i aktualizacja wersji.
 - [Budowanie CSS/SCSS](budowanie-css.md) — pipeline frontendu (Grunt,
   Foundation).
 - [Rozwijanie projektu](rozwijanie-projektu.md) — jak współtworzyć.

@@ -1,2 +1,3 @@
-Wydzielono komunikację z PBN i generyczny zapis danych Django do pakietów
-``pbn-client`` oraz ``django-pbn-client`` rozwijanych we wspólnym workspace.
+Wydzielono komunikację z PBN i generyczny zapis danych Django do samodzielnych
+pakietów ``pbn-client`` oraz ``django-pbn-client`` publikowanych na PyPI; BPP
+zależy od nich jak od każdej innej zależności (bez katalogu ``packages/``).

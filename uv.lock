@@ -615,7 +615,7 @@ requires-dist = [
     { name = "django-multiseek", specifier = "==0.10.2" },
     { name = "django-oauth-toolkit", specifier = "==3.3.0" },
     { name = "django-password-policies-iplweb", specifier = "==0.9.0" },
-    { name = "django-pbn-client", specifier = ">=0.1.0,<0.2" },
+    { name = "django-pbn-client", specifier = ">=0.2,<0.3" },
     { name = "django-pg-baseline", specifier = ">=0.3.0" },
     { name = "django-polish-inflection", specifier = ">=0.1,<0.2" },
     { name = "django-prometheus", specifier = ">=2.5.0" },
@@ -650,7 +650,7 @@ requires-dist = [
     { name = "ortools", specifier = ">=9.15.6755" },
     { name = "pandas", specifier = ">=3.0.3" },
     { name = "pathspec", specifier = ">=1.1.1" },
-    { name = "pbn-client", specifier = ">=0.1.0,<0.2" },
+    { name = "pbn-client", specifier = ">=0.2,<0.3" },
     { name = "pillow", specifier = ">=12.2,<14" },
     { name = "psycopg2-binary", specifier = ">=2.9.12" },
     { name = "pygad", specifier = ">=3.7.0" },
@@ -2104,15 +2104,15 @@ wheels = [
 
 [[package]]
 name = "django-pbn-client"
-version = "0.1.0"
+version = "0.2.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "django", marker = "platform_python_implementation != 'PyPy'" },
     { name = "pbn-client", marker = "platform_python_implementation != 'PyPy'" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/f1/6b/f84a5897bb7a7d06b5f61afad994a024942b493965e5532a1478ba5aecad/django_pbn_client-0.1.0.tar.gz", hash = "sha256:12ee7d94b93ab3b30768b695e23e10346b51011f82bbdbdb7a48f9c1ea48d868", size = 10099, upload-time = "2026-07-14T14:00:37.839Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/e7/22/2ef927450e8b20bc27e25010ba2e801c4b5f0b38614266dc897c3fad2ec6/django_pbn_client-0.2.0.tar.gz", hash = "sha256:75b1079475e2b3c23a9e92c95f577ff4935f71df37a9c901e9d9638626acf1f2", size = 13687, upload-time = "2026-07-14T17:30:19.328Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/24/f1/37b0264e1d0c545aa8f74968ef03633df885abdcc6946de03270a8c5995c/django_pbn_client-0.1.0-py3-none-any.whl", hash = "sha256:7ed7834538b32c6d4659d2f6d29d4547610d5f5c54950a5a2e646517ed230e66", size = 8241, upload-time = "2026-07-14T14:00:39.469Z" },
+    { url = "https://files.pythonhosted.org/packages/a5/b5/03b2e79e6de2ca826cd8b912374c5e3e07356d924872c215737e1c4baf17/django_pbn_client-0.2.0-py3-none-any.whl", hash = "sha256:b6d993cbcfef45adcaf62690ddf797f8bf7b3b8fb804f2d557aae2192fd26db6", size = 10524, upload-time = "2026-07-14T17:30:18.406Z" },
 ]
 
 [[package]]
@@ -4009,15 +4009,15 @@ wheels = [
 
 [[package]]
 name = "pbn-client"
-version = "0.1.0"
+version = "0.2.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "requests", marker = "platform_python_implementation != 'PyPy'" },
     { name = "simplejson", marker = "platform_python_implementation != 'PyPy'" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/14/77/2aebe056db372f0a81b17466bc183e578c7e875f8fdd009268c19c1ec666/pbn_client-0.1.0.tar.gz", hash = "sha256:6a691e9f9be4ab6e63ccba6461099a4202355d79d0df26fe7f5108586f4fc46f", size = 24146, upload-time = "2026-07-14T14:00:28.732Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/ae/b7/c7af4c1124b14285d5d086e6df35379583cb67029bf61c98815c48feab2b/pbn_client-0.2.0.tar.gz", hash = "sha256:d3b9f500c6c35a23d15a615d883bf4f82b4e58373c3d5b78322b90599e208954", size = 32513, upload-time = "2026-07-14T17:29:35.637Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/af/aa/0dedd9259aba97109e9bfb4a823d7ad3683379bf12001f959d2fe246f9ad/pbn_client-0.1.0-py3-none-any.whl", hash = "sha256:2b531bacc34d150d72d6d18d5c8d1b1c03a06d7d9bf9df3d3237f549255cc024", size = 26792, upload-time = "2026-07-14T14:00:27.184Z" },
+    { url = "https://files.pythonhosted.org/packages/24/5f/8ab1c036011f966b424dba62b6c2cf70be89853a702c128e76fac3db61df/pbn_client-0.2.0-py3-none-any.whl", hash = "sha256:df4b87acb7589e894029d039a8bfbb35bf0097861c36ba55197279ecb8e45fef", size = 31665, upload-time = "2026-07-14T17:29:34.629Z" },
 ]
 
 [[package]]
