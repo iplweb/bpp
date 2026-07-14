@@ -8,6 +8,7 @@ się bezobsługowo.
 
 from io import BytesIO
 
+from django.core.files.base import ContentFile
 from openpyxl import Workbook
 from openpyxl.styles import Font
 
@@ -172,3 +173,13 @@ def zbuduj_plik_po_imporcie(import_obj) -> bytes:
     buf = BytesIO()
     wb.save(buf)
     return buf.getvalue()
+
+
+def zapisz_snapshot_po_imporcie(import_obj):
+    """Buduje i ZAPISUJE zamrożony plik „po imporcie" do pola
+    ``plik_po_imporcie`` (trwały rekord przy finalizacji). Nazwa w storage
+    bazuje na pk; nazwę POBIERANIA ustala widok."""
+    tresc = zbuduj_plik_po_imporcie(import_obj)
+    import_obj.plik_po_imporcie.save(
+        f"po-imporcie-{import_obj.pk}.xlsx", ContentFile(tresc), save=True
+    )

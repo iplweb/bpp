@@ -64,3 +64,35 @@ def test_e2e_przepiecie_i_cofniecie(admin_client, admin_user):
     assert pz.jednostka_id == stara.pk
     # audyt przetrwał
     assert PrzemapoaniePracAutora.objects.filter(pk=prz.pk).exists()
+
+
+@pytest.mark.django_db
+def test_e2e_integracja_zapisuje_zamrozony_snapshot_po_imporcie(admin_user):
+    # Immutable snapshot at finalization: pełna integracja osób (zakres
+    # domyślny — ZAKRES_PELNY) musi na końcu zapisać `plik_po_imporcie`
+    # (patrz integrate.integruj -> eksport.zapisz_snapshot_po_imporcie).
+    jednostka = baker.make(Jednostka, nazwa="Klinika E2E", skrot="KE2E")
+    autor = baker.make(Autor, nazwisko="Zamrozony", imiona="Jan")
+
+    imp = baker.make(
+        ImportPracownikow,
+        owner=admin_user,
+        stan=ImportPracownikow.STAN_ZATWIERDZONY,
+        mapowanie_kolumn={
+            "Nazwisko": "nazwisko",
+            "Imię": "imię",
+            "Jednostka": "nazwa_jednostki",
+        },
+    )
+    ImportPracownikowRow.objects.create(
+        parent=imp,
+        autor=autor,
+        jednostka=jednostka,
+        zmiany_potrzebne=False,
+    )
+
+    integruj(imp, MockProgress(imp))
+    imp.refresh_from_db()
+
+    assert imp.stan == ImportPracownikow.STAN_ZINTEGROWANY
+    assert imp.plik_po_imporcie

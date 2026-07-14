@@ -105,6 +105,14 @@ class ImportPracownikow(LiveOperation):
     ]
 
     plik_xls = models.FileField(upload_to="protected/import_pracownikow/")
+    plik_po_imporcie = models.FileField(
+        upload_to="protected/import_pracownikow/",
+        null=True,
+        blank=True,
+        help_text="Zamrożony, skorygowany plik „po imporcie” wygenerowany przy "
+        "finalizacji — trwały rekord tego, co trafiło do BPP (niezależny od "
+        "późniejszych edycji). Housekeeping go NIE kasuje.",
+    )
     stan = models.CharField(max_length=32, choices=STAN_CHOICES, default=STAN_UTWORZONY)
     mapowanie_kolumn = models.JSONField(default=dict, blank=True)
     tworz_brakujace_jednostki = models.BooleanField(

@@ -1000,6 +1000,22 @@ def integruj(parent, p):
     parent.stan = ImportPracownikow.STAN_ZINTEGROWANY
     parent.save(update_fields=["stan"])
 
+    # Zamroź „po imporcie" jako trwały, niezmienny rekord tego, co trafiło do
+    # BPP. Błąd generacji NIE może wywalić już-zakończonej integracji (osoby są
+    # zapisane); logujemy (stderr + rollbar) i lecimy dalej — widok pobierania
+    # degraduje wtedy do budowy w locie. Świadomie NIE re-raise.
+    try:
+        from import_pracownikow.eksport import zapisz_snapshot_po_imporcie
+
+        zapisz_snapshot_po_imporcie(parent)
+    except Exception:
+        import traceback as _tb
+
+        import rollbar
+
+        _tb.print_exc()
+        rollbar.report_exc_info()
+
     pominieto_nieaktualne = parent.importpracownikowrow_set.filter(
         pominiety_bo_nieaktualny=True
     ).count()

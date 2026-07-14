@@ -1575,34 +1575,49 @@ class PobierzOryginalView(GroupRequiredMixin, View):
 class PobierzPoImporcieView(GroupRequiredMixin, View):
     """Pobranie kanonicznego, SKORYGOWANEGO pliku „po imporcie”.
 
-    Dostępny dopiero po finalizacji (``STAN_ZINTEGROWANY``). Generowany w locie
-    z autorytatywnych rekordów bazy — patrz ``eksport.zbuduj_plik_po_imporcie``.
+    Dostępny dopiero po finalizacji (``STAN_ZINTEGROWANY``). Od finalizacji
+    przy integracji zapisywany jest ZAMROŻONY snapshot (``plik_po_imporcie`` —
+    patrz ``eksport.zapisz_snapshot_po_imporcie``, wołane z
+    ``pipeline.integrate.integruj``): późniejsze edycje autorów NIE zmieniają
+    już pobranego pliku. Importy zfinalizowane PRZED wprowadzeniem tego
+    mechanizmu (albo gdy generacja snapshotu się nie powiodła) nie mają tego
+    pola — degradujemy wtedy do budowy w locie z aktualnego stanu bazy, patrz
+    ``eksport.zbuduj_plik_po_imporcie``.
 
-    UWAGA: ``plik_xls`` NIE jest tu odczytywany (builder czyta z ``Autor`` /
-    ``Autor_Jednostka``, nie z pliku) — używamy go tylko jako źródła nazwy
-    pliku wynikowego. Komenda porządkowa
+    UWAGA: ``plik_xls`` NIE jest tu odczytywany jako źródło danych — używamy
+    go tylko jako źródła nazwy pliku wynikowego. Komenda porządkowa
     ``usun_stare_pliki_importu_pracownikow`` czyści ``plik_xls`` po 90 dniach,
     ale ZOSTAWIA import i wiersze — brak pliku źródłowego nie może więc
     blokować tego pobrania (inaczej link „po imporcie” psuje się po
-    cleanupie, mimo że wszystko potrzebne nadal istnieje w bazie).
+    cleanupie, mimo że wszystko potrzebne nadal istnieje w bazie/snapshocie).
     """
 
     group_required = GROUP_REQUIRED
 
     def get(self, request, pk):
-        # Lazy import: openpyxl jest ciężki, nie ładujemy go przy starcie/urls.
-        from import_pracownikow.eksport import zbuduj_plik_po_imporcie
-
         obj = _pobierz_wlasny_import(request, pk)
         if obj.stan != ImportPracownikow.STAN_ZINTEGROWANY:
             raise Http404("Plik „po imporcie” dostępny dopiero po zakończeniu importu.")
-        content = zbuduj_plik_po_imporcie(obj)
         if obj.plik_xls:
             stem = os.path.splitext(os.path.basename(obj.plik_xls.name))[0]
         else:
             stem = f"import-{obj.pk}"
+        nazwa = f"{stem}-po-imporcie.xlsx"
+        if obj.plik_po_imporcie:
+            # Zamrożony snapshot z chwili finalizacji (immutable). sendfile sam
+            # robi RFC 5987 dla nazwy z polskimi znakami.
+            return sendfile(
+                request,
+                obj.plik_po_imporcie.path,
+                attachment=True,
+                attachment_filename=nazwa,
+            )
+        # Fallback: importy sprzed snapshotu / błąd generacji — buduj w locie.
+        from import_pracownikow.eksport import zbuduj_plik_po_imporcie
+
+        content = zbuduj_plik_po_imporcie(obj)
         resp = HttpResponse(content, content_type=XLSX_CONTENT_TYPE)
         resp["Content-Disposition"] = content_disposition_header(
-            as_attachment=True, filename=f"{stem}-po-imporcie.xlsx"
+            as_attachment=True, filename=nazwa
         )
         return resp

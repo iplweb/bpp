@@ -6,7 +6,10 @@ from openpyxl import load_workbook
 
 from bpp.models import Autor, Autor_Jednostka, Jednostka, StopienSluzbowy
 from import_common.util import normalize_cell_header
-from import_pracownikow.eksport import zbuduj_plik_po_imporcie
+from import_pracownikow.eksport import (
+    zapisz_snapshot_po_imporcie,
+    zbuduj_plik_po_imporcie,
+)
 from import_pracownikow.mapping import (
     POLE_POMIN,
     waliduj_mapowanie,
@@ -335,3 +338,32 @@ def test_pbn_uuid_nietypowej_dlugosci_jest_pomijany():
 
     kol = {n: i for i, n in enumerate(naglowki)}
     assert wiersze[0][kol["PBN UUID"]] in (None, "")
+
+
+# --- Snapshot „po imporcie" (immutable finalization) -----------------------
+
+
+@pytest.mark.django_db
+def test_zapisz_snapshot_populuje_pole_i_zgadza_sie_z_builderem():
+    imp = _import_zintegrowany(
+        mapowanie_kolumn={
+            "Nazwisko": "nazwisko",
+            "Imię": "imię",
+            "Jednostka": "nazwa_jednostki",
+        }
+    )
+    j = baker.make(Jednostka, nazwa=unikalna_nazwa("Klinika Snapshot"))
+    a1 = baker.make(Autor, nazwisko="Snap", imiona="Jeden")
+    aj1 = baker.make(Autor_Jednostka, autor=a1, jednostka=j)
+    a2 = baker.make(Autor, nazwisko="Shot", imiona="Dwa")
+    aj2 = baker.make(Autor_Jednostka, autor=a2, jednostka=j)
+    _wiersz(imp, loc=0, autor=a1, autor_jednostka=aj1)
+    _wiersz(imp, loc=1, autor=a2, autor_jednostka=aj2)
+
+    zapisz_snapshot_po_imporcie(imp)
+    imp.refresh_from_db()
+
+    assert imp.plik_po_imporcie
+    with imp.plik_po_imporcie.open("rb") as f:
+        zapisane = f.read()
+    assert zapisane == zbuduj_plik_po_imporcie(imp)

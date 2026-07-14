@@ -8,7 +8,10 @@ from model_bakery import baker
 from openpyxl import load_workbook
 
 from bpp.const import GR_WPROWADZANIE_DANYCH
-from import_pracownikow.models import ImportPracownikow
+from bpp.models import Autor, Autor_Jednostka, Jednostka
+from import_pracownikow.eksport import zapisz_snapshot_po_imporcie
+from import_pracownikow.models import ImportPracownikow, ImportPracownikowRow
+from import_pracownikow.tests._helpers import unikalna_nazwa
 
 
 def _user_w_grupie(django_user_model, username="entry"):
@@ -250,3 +253,83 @@ def test_po_imporcie_niezalogowany_nie_pobiera(client, django_user_model):
         reverse("import_pracownikow:pobierz-po-imporcie", kwargs={"pk": imp.pk})
     )
     assert resp.status_code != 200  # braces GroupRequiredMixin → redirect login
+
+
+# --- Immutable snapshot at finalization ------------------------------------
+
+
+@pytest.mark.django_db
+def test_po_imporcie_serwuje_zamrozony_snapshot_mimo_pozniejszej_edycji_autora(
+    client, django_user_model
+):
+    # Kluczowa własność: plik pobrany PO edycji autora nadal ma STARE
+    # (zamrożone przy finalizacji) dane — snapshot jest niezmienny.
+    u = _user_w_grupie(django_user_model)
+    client.force_login(u)
+    j = baker.make(Jednostka, nazwa=unikalna_nazwa("Klinika Immutable"))
+    a = baker.make(Autor, nazwisko="Zamrozony", imiona="Jan")
+    aj = baker.make(Autor_Jednostka, autor=a, jednostka=j)
+    imp = _import_z_plikiem(u, nazwa="pracownicy_2026.xlsx")
+    imp.stan = ImportPracownikow.STAN_ZINTEGROWANY
+    imp.mapowanie_kolumn = {
+        "Nazwisko": "nazwisko",
+        "Imię": "imię",
+        "Jednostka": "nazwa_jednostki",
+    }
+    imp.save()
+    ImportPracownikowRow.objects.create(
+        parent=imp,
+        autor=a,
+        autor_jednostka=aj,
+        zmiany_potrzebne=False,
+        dane_z_xls={"__xls_loc_sheet__": 0, "__xls_loc_row__": 0},
+    )
+
+    # Zamroź snapshot Z NAZWISKIEM SPRZED edycji.
+    zapisz_snapshot_po_imporcie(imp)
+
+    # Edycja PO finalizacji — snapshot nie powinien tego zobaczyć.
+    a.nazwisko = "Zmieniony"
+    a.save(update_fields=["nazwisko"])
+
+    resp = client.get(
+        reverse("import_pracownikow:pobierz-po-imporcie", kwargs={"pk": imp.pk})
+    )
+    assert resp.status_code == 200
+    ws = load_workbook(BytesIO(resp.getvalue())).active
+    nazwiska = [row[1] for row in ws.iter_rows(min_row=2, values_only=True)]
+    assert "Zamrozony" in nazwiska
+    assert "Zmieniony" not in nazwiska
+
+
+@pytest.mark.django_db
+def test_po_imporcie_bez_snapshotu_buduje_w_locie_fallback(client, django_user_model):
+    # Import zfinalizowany BEZ snapshotu (sprzed wprowadzenia mechanizmu, albo
+    # błąd generacji) musi nadal dawać 200 — degradacja do budowy w locie.
+    u = _user_w_grupie(django_user_model)
+    client.force_login(u)
+    # Nazwa unikalna (nie "pracownicy_2026.xlsx" jak sąsiednie testy) — inaczej
+    # współdzielony MEDIA_ROOT workera dedupikuje storage suffiksem i psuje
+    # asercję na dosłownej nazwie w Content-Disposition.
+    imp = _import_z_plikiem(u, nazwa="pracownicy_2026_fallback.xlsx")
+    imp.stan = ImportPracownikow.STAN_ZINTEGROWANY
+    imp.mapowanie_kolumn = {
+        "Nazwisko": "nazwisko",
+        "Imię": "imię",
+        "Jednostka": "nazwa_jednostki",
+    }
+    imp.save()
+    assert not imp.plik_po_imporcie
+
+    resp = client.get(
+        reverse("import_pracownikow:pobierz-po-imporcie", kwargs={"pk": imp.pk})
+    )
+    assert resp.status_code == 200
+    assert "pracownicy_2026_fallback-po-imporcie.xlsx" in resp["Content-Disposition"]
+    ws = load_workbook(BytesIO(resp.getvalue())).active
+    assert [c.value for c in ws[1]][:4] == [
+        "BPP ID",
+        "Nazwisko",
+        "Imię",
+        "Nazwa jednostki",
+    ]
