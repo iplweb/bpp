@@ -402,3 +402,37 @@ def test_krok1_wyjasnia_ze_tylko_jednostki_odracza_tytuly(admin_client, admin_us
     assert resp.status_code == 200
     tresc = resp.content.decode("utf-8")
     assert "odkłada słowniki" in tresc
+
+
+@pytest.mark.django_db
+def test_liczba_wierszy_do_pominiecia_liczy_tylko_brak_decyzji(admin_user):
+    imp = _imp(admin_user)
+    # pominięty: brak autora, bez utworz_nowego
+    _row(imp, STATUS_BRAK, autor=None, utworz_nowego=False)
+    # NIE liczony: utworz_nowego=True (decyzja podjęta)
+    _row(imp, STATUS_BRAK, autor=None, utworz_nowego=True)
+    # NIE liczony: ma dopasowanego autora
+    _row(imp, STATUS_TWARDY, autor=baker.make(Autor), utworz_nowego=False)
+    assert imp.liczba_wierszy_do_pominiecia() == 1
+
+
+@pytest.mark.django_db
+def test_hub_ostrzega_o_wierszach_do_pominiecia(admin_client, admin_user):
+    imp = _imp(admin_user, stan=ImportPracownikow.STAN_STRUKTURA_ZINTEGROWANA)
+    _row(imp, STATUS_BRAK, autor=None, utworz_nowego=False)
+    _row(imp, STATUS_BRAK, autor=None, utworz_nowego=False)
+    tresc = admin_client.get(_url(imp)).content.decode("utf-8")
+    assert "Zapisz osoby do bazy" in tresc  # jesteśmy w fazie osób
+    assert "Wiersze bez dopasowania zostaną pominięte przy zapisie: 2." in tresc
+    assert "return confirm(" in tresc
+
+
+@pytest.mark.django_db
+def test_hub_bez_ostrzezenia_gdy_wszystko_rozwiazane(admin_client, admin_user):
+    imp = _imp(admin_user, stan=ImportPracownikow.STAN_STRUKTURA_ZINTEGROWANA)
+    _row(imp, STATUS_TWARDY, autor=baker.make(Autor), utworz_nowego=False)
+    _row(imp, STATUS_BRAK, autor=None, utworz_nowego=True)
+    tresc = admin_client.get(_url(imp)).content.decode("utf-8")
+    assert "Zapisz osoby do bazy" in tresc
+    assert "zostaną pominięte przy zapisie" not in tresc
+    assert "return confirm(" not in tresc

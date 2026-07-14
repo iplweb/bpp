@@ -8,7 +8,7 @@ from import_pracownikow.models import (
     ImportPracownikowRow,
     ImportPracownikowRowKandydat,
 )
-from import_pracownikow.pewnosc import STATUS_TWARDY, STATUS_WIELU
+from import_pracownikow.pewnosc import STATUS_BRAK, STATUS_TWARDY, STATUS_WIELU
 
 
 @pytest.mark.django_db
@@ -364,3 +364,101 @@ def test_karta_zmien_autora_pod_autorem_i_etykieta_obecnie(admin_client, admin_u
     assert "zmień autora" in tresc
     assert "obecnie:" in tresc
     assert "baza:" not in tresc
+
+
+def _imp_przeanalizowany(admin_user, **kw):
+    return baker.make(
+        ImportPracownikow,
+        owner=admin_user,
+        stan=ImportPracownikow.STAN_PRZEANALIZOWANY,
+        finished_successfully=True,
+        **kw,
+    )
+
+
+@pytest.mark.django_db
+def test_grid_pokazuje_wiersze_zatrudnienia_gdy_zmapowane(admin_client, admin_user):
+    """Trzy wiersze zatrudnienia (wymiar/grupa/podstawowe) renderują się w
+    karcie porównań, gdy odpowiednie kolumny są zmapowane."""
+    imp = _imp_przeanalizowany(
+        admin_user,
+        mapowanie_kolumn={
+            "Etat": "wymiar_etatu_tekst",
+            "Grupa": "grupa_pracownicza",
+            "Gł. zakład": "podstawowe_miejsce_pracy",
+        },
+    )
+    autor = baker.make(Autor, nazwisko="Nowak", imiona="Jan")
+    jednostka = baker.make(Jednostka, nazwa="Kat.", skrot="K.")
+    aj = baker.make(
+        "bpp.Autor_Jednostka",
+        autor=autor,
+        jednostka=jednostka,
+        wymiar_etatu=baker.make("bpp.Wymiar_Etatu"),
+        grupa_pracownicza=baker.make("bpp.Grupa_Pracownicza"),
+        podstawowe_miejsce_pracy=False,
+    )
+    ImportPracownikowRow.objects.create(
+        parent=imp,
+        autor=autor,
+        jednostka=jednostka,
+        autor_jednostka=aj,
+        confidence=STATUS_TWARDY,
+        zmiany_potrzebne=False,
+        wymiar_etatu=baker.make("bpp.Wymiar_Etatu"),
+        grupa_pracownicza=baker.make("bpp.Grupa_Pracownicza"),
+        podstawowe_miejsce_pracy=True,
+        dane_znormalizowane={"nazwisko": "Nowak", "imię": "Jan"},
+        dane_z_xls={"__xls_loc_sheet__": 0, "__xls_loc_row__": 0},
+    )
+    url = reverse("import_pracownikow:importpracownikow-results", kwargs={"pk": imp.pk})
+    tresc = admin_client.get(url).content.decode("utf-8")
+    assert "Wymiar etatu:" in tresc
+    assert "Grupa prac.:" in tresc
+    assert "Podst. miejsce:" in tresc
+
+
+@pytest.mark.django_db
+def test_grid_ukrywa_wiersze_zatrudnienia_gdy_niezmapowane(admin_client, admin_user):
+    imp = _imp_przeanalizowany(admin_user, mapowanie_kolumn={"E-mail": "email"})
+    autor = baker.make(Autor, nazwisko="Nowak", imiona="Jan")
+    jednostka = baker.make(Jednostka, nazwa="Kat.", skrot="K.")
+    ImportPracownikowRow.objects.create(
+        parent=imp,
+        autor=autor,
+        jednostka=jednostka,
+        confidence=STATUS_TWARDY,
+        zmiany_potrzebne=False,
+        dane_znormalizowane={"nazwisko": "Nowak", "imię": "Jan"},
+        dane_z_xls={"__xls_loc_sheet__": 0, "__xls_loc_row__": 0},
+    )
+    url = reverse("import_pracownikow:importpracownikow-results", kwargs={"pk": imp.pk})
+    tresc = admin_client.get(url).content.decode("utf-8")
+    assert "Wymiar etatu:" not in tresc
+    assert "Grupa prac.:" not in tresc
+    assert "Podst. miejsce:" not in tresc
+
+
+@pytest.mark.django_db
+def test_brak_row_pokazuje_radio_pomin_utworz_dopasuj(admin_client, admin_user):
+    """Wiersz „brak": jawny radio-wybór Pomiń / Utwórz / Dopasuj zamiast
+    zakopanego linku + checkboxa."""
+    imp = _imp_przeanalizowany(admin_user)
+    jednostka = baker.make(Jednostka, nazwa="Kat.", skrot="K.")
+    ImportPracownikowRow.objects.create(
+        parent=imp,
+        autor=None,
+        jednostka=jednostka,
+        confidence=STATUS_BRAK,
+        zmiany_potrzebne=False,
+        dane_znormalizowane={"nazwisko": "Nowak", "imię": "Jan"},
+        dane_z_xls={"__xls_loc_sheet__": 0, "__xls_loc_row__": 0},
+    )
+    url = reverse("import_pracownikow:importpracownikow-results", kwargs={"pk": imp.pk})
+    tresc = admin_client.get(url).content.decode("utf-8")
+    assert 'value="pomin"' in tresc
+    assert 'value="utworz"' in tresc
+    assert 'value="dopasuj"' in tresc
+    assert "Pomiń — nie importuj" in tresc
+    assert "Utwórz nowego autora" in tresc
+    assert "Dopasuj do istniejącego" in tresc

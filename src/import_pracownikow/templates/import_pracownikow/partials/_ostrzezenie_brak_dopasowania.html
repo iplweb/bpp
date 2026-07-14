@@ -1,0 +1,14 @@
+{# Ostrzeżenie finalizacji: wiersze bez decyzji (brak autora, bez „Utwórz #}
+{# nowego") zostaną po cichu pominięte przy zapisie osób. Ostrzega, NIE #}
+{# blokuje. Renderowane tylko gdy licznik > 0. Kopia gramatycznie #}
+{# niezmienna (bez odmiany przez przypadki) — Django `pluralize` nie #}
+{# obsługuje polskiej deklinacji. #}
+<div class="callout warning">
+    <p>
+        <span class="fi-alert"></span>
+        <strong>Wiersze bez dopasowania zostaną pominięte przy zapisie: {{ liczba_pominietych }}.</strong>
+        Te osoby nie trafią do bazy. Wróć do tabeli i dla każdej wybierz
+        „Utwórz nowego autora” albo „Dopasuj do istniejącego”, jeśli mają
+        zostać zaimportowane.
+    </p>
+</div>
