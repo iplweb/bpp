@@ -108,3 +108,44 @@ def test_po_imporcie_po_finalizacji_zwraca_xlsx(client, django_user_model):
         "Imię",
         "Nazwa jednostki",
     ]
+
+
+@pytest.mark.django_db
+def test_po_imporcie_nazwa_z_polskimi_znakami(client, django_user_model):
+    u = _user_w_grupie(django_user_model)
+    client.force_login(u)
+    imp = _import_z_plikiem(u, nazwa="wydział_lekarski.xlsx")
+    imp.stan = ImportPracownikow.STAN_ZINTEGROWANY
+    imp.mapowanie_kolumn = {
+        "Nazwisko": "nazwisko",
+        "Imię": "imię",
+        "Jednostka": "nazwa_jednostki",
+    }
+    imp.save()
+    resp = client.get(
+        reverse("import_pracownikow:pobierz-po-imporcie", kwargs={"pk": imp.pk})
+    )
+    assert resp.status_code == 200
+    disposition = resp["Content-Disposition"]
+    assert "filename*=utf-8''" in disposition.lower()
+    assert "=?utf-8?" not in disposition
+    assert "%C5%82" in disposition
+
+
+@pytest.mark.django_db
+def test_po_imporcie_cudzy_import_404(client, django_user_model):
+    wlasciciel = _user_w_grupie(django_user_model, "wlasciciel")
+    obcy = _user_w_grupie(django_user_model, "obcy")
+    imp = _import_z_plikiem(wlasciciel, nazwa="pracownicy_2026.xlsx")
+    imp.stan = ImportPracownikow.STAN_ZINTEGROWANY
+    imp.mapowanie_kolumn = {
+        "Nazwisko": "nazwisko",
+        "Imię": "imię",
+        "Jednostka": "nazwa_jednostki",
+    }
+    imp.save()
+    client.force_login(obcy)
+    resp = client.get(
+        reverse("import_pracownikow:pobierz-po-imporcie", kwargs={"pk": imp.pk})
+    )
+    assert resp.status_code == 404

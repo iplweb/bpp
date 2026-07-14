@@ -22,6 +22,7 @@ from django.shortcuts import get_object_or_404, render
 from django.urls import reverse
 from django.utils import timezone
 from django.utils.functional import cached_property
+from django.utils.http import content_disposition_header
 from django.views import View
 from django.views.generic import DetailView, FormView, ListView
 from django_sendfile import sendfile
@@ -1572,7 +1573,7 @@ class PobierzOryginalView(GroupRequiredMixin, View):
 
 
 class PobierzPoImporcieView(GroupRequiredMixin, View):
-    """Pobranie kanonicznego, SKORYGOWANEGO pliku „po imporcie".
+    """Pobranie kanonicznego, SKORYGOWANEGO pliku „po imporcie”.
 
     Dostępny dopiero po finalizacji (``STAN_ZINTEGROWANY``). Generowany w locie
     z autorytatywnych rekordów bazy — patrz ``eksport.zbuduj_plik_po_imporcie``.
@@ -1587,8 +1588,12 @@ class PobierzPoImporcieView(GroupRequiredMixin, View):
         obj = _pobierz_wlasny_import(request, pk)
         if obj.stan != ImportPracownikow.STAN_ZINTEGROWANY:
             raise Http404("Plik „po imporcie” dostępny dopiero po zakończeniu importu.")
+        if not obj.plik_xls:
+            raise Http404("Import nie ma pliku źródłowego.")
         content = zbuduj_plik_po_imporcie(obj)
         stem = os.path.splitext(os.path.basename(obj.plik_xls.name))[0]
         resp = HttpResponse(content, content_type=XLSX_CONTENT_TYPE)
-        resp["Content-Disposition"] = f'attachment; filename="{stem}-po-imporcie.xlsx"'
+        resp["Content-Disposition"] = content_disposition_header(
+            as_attachment=True, filename=f"{stem}-po-imporcie.xlsx"
+        )
         return resp
