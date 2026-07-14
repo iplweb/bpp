@@ -521,8 +521,8 @@ FROM python:${PYTHON_VERSION}-slim-${DEBIAN_VERSION} AS runtime
 ARG GIT_SHA=unknown
 ARG BPP_BUILD_FLAVOR=dev
 ARG BPP_IMAGE_TAG=unknown
-# Sanityzowana nazwa source brancha (alias) — workflow ustawia tylko dla
-# pull_request eventów. Dla master/feature push pozostaje pusty.
+# Opcjonalny alias nazwy brancha dla starszych obrazów PR lub buildów lokalnych.
+# Bieżący workflow CI pozostawia go pusty.
 ARG BPP_BRANCH_TAG=
 
 RUN sed -i s/http/https/g /etc/apt/sources.list.d/debian.sources
