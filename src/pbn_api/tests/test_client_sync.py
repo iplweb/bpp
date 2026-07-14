@@ -24,6 +24,13 @@ import time
 from unittest.mock import MagicMock, patch
 
 import pytest
+from pbn_client.const import (
+    PBN_GET_INSTITUTION_PUBLICATIONS_V2,
+    PBN_POST_INSTITUTION_STATEMENTS_URL,
+    PBN_POST_PUBLICATION_NO_STATEMENTS_URL,
+    PBN_POST_PUBLICATIONS_URL,
+)
+from pbn_client.exceptions import PBNValidationError
 
 from fixtures.pbn_api import (
     MOCK_RETURNED_INSTITUTION_PUBLICATION_V2_DATA,
@@ -36,19 +43,12 @@ from pbn_api.client import (
     PBN_GET_INSTITUTION_STATEMENTS,
     PBN_GET_PUBLICATION_BY_ID_URL,
 )
-from pbn_api.const import (
-    PBN_GET_INSTITUTION_PUBLICATIONS_V2,
-    PBN_POST_INSTITUTION_STATEMENTS_URL,
-    PBN_POST_PUBLICATION_NO_STATEMENTS_URL,
-    PBN_POST_PUBLICATIONS_URL,
-)
 from pbn_api.exceptions import (
     HttpException,
     PKZeroExportDisabled,
     StatementsResendFailedException,
 )
 from pbn_api.models import Publication, SentData
-from pbn_client.exceptions import PBNValidationError
 
 
 def _patch_intended_statements(monkeypatch, statements):

@@ -7,11 +7,11 @@ from django.contrib.postgres.search import TrigramSimilarity
 from django.db import models, transaction
 from django.db.models import Count, Q
 from django.shortcuts import get_object_or_404, redirect, render
+from pbn_client.const import ACTIVE, DELETED
 
 from bpp.models import Rekord, Rodzaj_Zrodla, Uczelnia, Wydawnictwo_Ciagle, Zrodlo
 from bpp.permissions import wprowadzanie_danych_wymagane
 from bpp.util import zaloguj_polkniety_wyjatek
-from pbn_api.const import ACTIVE, DELETED
 from pbn_api.models import Journal
 from pbn_export_queue.models import PBN_Export_Queue
 

@@ -8,15 +8,15 @@ For helper/GUI tests, see test_client_helpers.py
 
 import pytest
 from model_bakery import baker
+from pbn_client.const import (
+    PBN_POST_PUBLICATION_NO_STATEMENTS_URL,
+    PBN_POST_PUBLICATIONS_URL,
+)
 
 from pbn_api.adapters.wydawnictwo import WydawnictwoPBNAdapter
 from pbn_api.client import (
     PBN_DELETE_PUBLICATION_STATEMENT,
     PBN_GET_INSTITUTION_STATEMENTS,
-)
-from pbn_api.const import (
-    PBN_POST_PUBLICATION_NO_STATEMENTS_URL,
-    PBN_POST_PUBLICATIONS_URL,
 )
 from pbn_api.exceptions import SameDataUploadedRecently, StatementsMissing
 from pbn_api.models import Publication, SentData
@@ -123,9 +123,9 @@ def test_PBNClient_test_upload_publication_bez_statements_idzie_do_repo(
 
     # Body wysłane do /v1/repositorium/publications: lista, BEZ statements,
     # po konwersji pól (givenNames → firstName).
-    sent_body = pbn_client.transport.input_values[PBN_POST_PUBLICATION_NO_STATEMENTS_URL][
-        "body"
-    ]
+    sent_body = pbn_client.transport.input_values[
+        PBN_POST_PUBLICATION_NO_STATEMENTS_URL
+    ]["body"]
     assert isinstance(sent_body, list) and len(sent_body) == 1
     assert "statements" not in sent_body[0]
     assert "firstName" in sent_body[0]["authors"][0]
@@ -162,12 +162,13 @@ def test_PBNClient_post_publication_no_statements(
     Uczelnia z ``pbn_wysylaj_bez_oswiadczen=True`` pozwala na wysyłkę prac
     bez oświadczeń (inaczej adapter rzuca StatementsMissing w pbn_get_json).
     """
-    from fixtures.pbn_api import MOCK_RETURNED_MONGODB_DATA
-    from pbn_api.client import PBN_GET_PUBLICATION_BY_ID_URL
-    from pbn_api.const import (
+    from pbn_client.const import (
         PBN_GET_INSTITUTION_PUBLICATIONS_V2,
         PBN_GET_INSTITUTION_STATEMENTS,
     )
+
+    from fixtures.pbn_api import MOCK_RETURNED_MONGODB_DATA
+    from pbn_api.client import PBN_GET_PUBLICATION_BY_ID_URL
 
     uczelnia.pbn_wysylaj_bez_oswiadczen = True
     uczelnia.save()

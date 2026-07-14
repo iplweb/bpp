@@ -25,17 +25,17 @@ from typing import Any
 
 from django.core.management.base import CommandError
 from pbn_client import decode_publication_object_id
-
-from bpp.models import Wydawnictwo_Ciagle, Wydawnictwo_Zwarte
-from bpp.util import zaloguj_polkniety_wyjatek
-from pbn_api.adapters.wydawnictwo import WydawnictwoPBNAdapter
-from pbn_api.const import (
+from pbn_client.const import (
     PBN_DELETE_PUBLICATION_STATEMENT,
     PBN_GET_INSTITUTION_STATEMENTS,
     PBN_POST_INSTITUTION_STATEMENTS_URL,
     PBN_POST_PUBLICATION_NO_STATEMENTS_URL,
     PBN_POST_PUBLICATIONS_URL,
 )
+
+from bpp.models import Wydawnictwo_Ciagle, Wydawnictwo_Zwarte
+from bpp.util import zaloguj_polkniety_wyjatek
+from pbn_api.adapters.wydawnictwo import WydawnictwoPBNAdapter
 from pbn_api.exceptions import (
     AccessDeniedException,
     DaneLokalneWymagajaAktualizacjiException,

@@ -1,4 +1,4 @@
-from pbn_api.utils import rename_dict_key
+from pbn_client.dict_utils import rename_dict_key
 
 
 def test_rename_dict_key_simple():

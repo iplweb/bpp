@@ -11,10 +11,10 @@ from typing import TYPE_CHECKING
 import rollbar
 from django.db import IntegrityError, transaction
 from django.db.models import Q
+from pbn_client.const import DELETED
 
 from bpp.models import Autor, Autor_Dyscyplina, Tytul, Uczelnia
 from bpp.util import pbar
-from pbn_api.const import DELETED
 from pbn_api.models import Scientist
 from pbn_integrator.utils.constants import CPU_COUNT
 from pbn_integrator.utils.django_imports import _ensure_django_imports

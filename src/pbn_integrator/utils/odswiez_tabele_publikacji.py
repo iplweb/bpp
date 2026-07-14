@@ -1,4 +1,5 @@
-from pbn_api.const import DELETED
+from pbn_client.const import DELETED
+
 from pbn_api.exceptions import BrakIDPracyPoStroniePBN
 
 
