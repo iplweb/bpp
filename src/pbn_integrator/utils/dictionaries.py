@@ -1,4 +1,4 @@
-"""Integration of dictionary data: languages, countries, disciplines."""
+"""Integration of dictionary data: languages and countries."""
 
 from __future__ import annotations
 
@@ -7,7 +7,7 @@ import warnings
 from django.db.models import Q
 
 from bpp.models import Jezyk
-from pbn_api.models import Country, Discipline, DisciplineGroup, Language
+from pbn_api.models import Country, Language
 
 
 def _sync_remote_languages(client):
@@ -100,82 +100,3 @@ def integruj_kraje(client):
         if remote_country["description"] != c.description:
             c.description = remote_country["description"]
             c.save()
-
-
-def _ensure_discipline_groups(client):
-    """Create any missing discipline groups (dict payloads only)."""
-    for remote_group in client.get_discipline_groups():
-        is_dict = isinstance(remote_group, dict)
-        group_id = remote_group.get("id") if is_dict else remote_group.pk
-        if DisciplineGroup.objects.filter(pk=group_id).exists():
-            continue
-        if is_dict:
-            DisciplineGroup.objects.create(
-                pk=group_id,
-                **{k: v for k, v in remote_group.items() if k != "id"},
-            )
-        # else: remote_group is a DisciplineGroup model object missing from
-        # the DB -- skip, as the original code did.
-
-
-def _parent_group_id_from_dict(remote_discipline):
-    """Resolve ``parent_group_id`` for a dict discipline payload."""
-    parent_group = remote_discipline.get("parent_group")
-    if isinstance(parent_group, dict):
-        return parent_group.get("id")
-    if hasattr(parent_group, "pk"):
-        return parent_group.pk
-    return remote_discipline.get("parent_group_id")
-
-
-def _discipline_fields(remote_discipline):
-    """Normalize a dict-or-model discipline payload into a field mapping."""
-    if isinstance(remote_discipline, dict):
-        return {
-            "code": remote_discipline.get("code"),
-            "disc_id": remote_discipline.get("id"),
-            "name": remote_discipline.get("name"),
-            "uuid": remote_discipline.get("uuid"),
-            "parent_group_id": _parent_group_id_from_dict(remote_discipline),
-        }
-
-    parent_group = getattr(remote_discipline, "parent_group", None)
-    return {
-        "code": remote_discipline.code,
-        "disc_id": remote_discipline.pk,
-        "name": remote_discipline.name,
-        "uuid": getattr(remote_discipline, "uuid", None),
-        "parent_group_id": parent_group.pk if parent_group else None,
-    }
-
-
-def _upsert_discipline(fields):
-    """Create a missing discipline or update its name in place."""
-    try:
-        d = Discipline.objects.get(code=fields["code"])
-    except Discipline.DoesNotExist:
-        create_kwargs = {
-            "code": fields["code"],
-            "name": fields["name"],
-            "parent_group_id": fields["parent_group_id"],
-            "uuid": fields["uuid"],
-        }
-        if fields["disc_id"]:
-            create_kwargs["pk"] = fields["disc_id"]
-        Discipline.objects.create(**create_kwargs)
-        return
-
-    if fields["name"] != d.name:
-        d.name = fields["name"]
-        d.save()
-
-
-def integruj_dyscypliny(client):
-    """Import discipline groups and disciplines from PBN.
-
-    Args:
-        client: PBN client.
-    """
-    _ensure_discipline_groups(client)
-    for remote_discipline in client.get_disciplines():
-        _upsert_discipline(_discipline_fields(remote_discipline))

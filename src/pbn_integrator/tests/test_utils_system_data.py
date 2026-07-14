@@ -7,13 +7,12 @@ For performance tests, see test_utils_performance.py
 """
 
 from unittest.mock import Mock
-from uuid import uuid4
 
 import pytest
 from model_bakery import baker
 
-from bpp.models import Dyscyplina_Naukowa, Jezyk
-from pbn_api.models import Country, Discipline, DisciplineGroup, Language
+from bpp.models import Jezyk
+from pbn_api.models import Country, Language
 
 # ============================================================================
 # UNIT TESTS - Language Integration
@@ -180,58 +179,3 @@ class TestIntegrujKraje:
 
         # Country should be created or updated
         assert Country.objects.filter(code="PL").exists()
-
-
-# ============================================================================
-# UNIT TESTS - Discipline Integration
-# ============================================================================
-
-
-@pytest.mark.django_db
-class TestIntegrujDyscypliny:
-    """Test integruj_dyscypliny function for discipline system data import"""
-
-    def test_integruj_dyscypliny_creates_disciplines(self):
-        """Should create Discipline records from PBN data"""
-        from pbn_integrator.utils import integruj_dyscypliny
-
-        discipline_group = baker.make(DisciplineGroup)
-
-        mock_client = Mock()
-        mock_client.get_discipline_groups.return_value = [discipline_group]
-        mock_client.get_disciplines.return_value = [
-            {
-                "uuid": uuid4(),
-                "code": "11.1",
-                "name": "Mathematics",
-                "parent_group": discipline_group,
-            },
-        ]
-
-        integruj_dyscypliny(mock_client)
-
-        # Verify discipline was created
-        assert Discipline.objects.filter(code="11.1").exists()
-
-    def test_integruj_dyscypliny_links_to_bpp_disciplines(self):
-        """Should establish mapping to BPP Dyscyplina_Naukowa"""
-        from pbn_integrator.utils import integruj_dyscypliny
-
-        discipline_group = baker.make(DisciplineGroup)
-        baker.make(Dyscyplina_Naukowa, nazwa="Matematyka")
-
-        mock_client = Mock()
-        mock_client.get_discipline_groups.return_value = [discipline_group]
-        mock_client.get_disciplines.return_value = [
-            {
-                "uuid": uuid4(),
-                "code": "11.1",
-                "name": "Matematyka",
-                "parent_group": discipline_group,
-            },
-        ]
-
-        integruj_dyscypliny(mock_client)
-
-        # Verify discipline mapping exists
-        assert Discipline.objects.filter(code="11.1").exists()
