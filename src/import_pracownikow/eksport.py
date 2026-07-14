@@ -4,6 +4,14 @@ Odbija stan BAZY po imporcie: wartości czytane z autorytatywnych rekordów
 (``Autor`` / ``Autor_Jednostka``), nie z pliku ani z proponowanych FK wiersza.
 Kanoniczne nagłówki (auto-rozpoznawane) + kolumna ``BPP ID`` → plik re-importuje
 się bezobsługowo.
+
+ZNANE OGRANICZENIE: pola modelu (nazwisko/imiona/tytuł/stopień/stanowisko/
+grupa/wymiar) dopuszczają do 256/512 znaków, a ``AutorForm`` po stronie
+importu tnie limit na 200. Wartość z bazy dłuższa niż 200 znaków może więc
+wywalić re-import tego pliku. Świadomie NIE skracamy jej tutaj (złamałoby
+kontrakt „skorygowany = wartość z bazy") — to osobny follow-up po stronie
+walidacji długości przy imporcie (odrzuć/oflaguj za długi XLS komunikatem
+per-wiersz), nie lossy truncation w eksporcie.
 """
 
 from io import BytesIO
@@ -125,18 +133,25 @@ REJESTR = [
 
 
 def _wiersze_do_eksportu(import_obj):
-    qs = import_obj.get_details_set().select_related(
-        "autor",
-        "autor__tytul",
-        "autor__stopien_sluzbowy",
-        "autor_jednostka",
-        "autor_jednostka__jednostka",
-        "autor_jednostka__funkcja",
-        "autor_jednostka__stanowisko",
-        "autor_jednostka__grupa_pracownicza",
-        "autor_jednostka__wymiar_etatu",
+    qs = (
+        import_obj.get_details_set()
+        .select_related(
+            "autor",
+            "autor__tytul",
+            "autor__stopien_sluzbowy",
+            "autor_jednostka",
+            "autor_jednostka__jednostka",
+            "autor_jednostka__funkcja",
+            "autor_jednostka__stanowisko",
+            "autor_jednostka__grupa_pracownicza",
+            "autor_jednostka__wymiar_etatu",
+        )
+        .filter(autor_id__isnull=False)
     )
-    return [r for r in qs if r.autor_id is not None]
+    # Materializujemy do list — niżej iterujemy DWA razy (raz przy decyzji o
+    # emisji kolumn id_enrich, raz przy budowie wierszy); leniwy queryset
+    # odpaliłby zapytanie dwukrotnie.
+    return list(qs)
 
 
 def _kolumny_do_emisji(import_obj, wiersze):
@@ -168,6 +183,12 @@ def zbuduj_plik_po_imporcie(import_obj) -> bytes:
         cell.font = Font(bold=True)
     ws.freeze_panes = "A2"
     for r in wiersze:
+        # Sanityzacja formula-injection: wartości zaczynające się od =/+/-/@ lub
+        # separatora (Tab/CR/LF) dostają apostrof-guard (bezpieczeństwo — te
+        # XLS-e bywają śmieciowe). ŚWIADOMY trade-off: taka patologiczna
+        # wartość NIE round-trip'uje bit-w-bit przy re-imporcie (bezpieczeństwo
+        # > wierność dla adversarial inputu). Normalne wartości round-trip'ują
+        # bez zmian.
         ws.append(sanitize_xlsx_row([getter(r) for _, getter in kolumny]))
 
     buf = BytesIO()

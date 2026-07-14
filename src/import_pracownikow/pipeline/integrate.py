@@ -1004,6 +1004,9 @@ def integruj(parent, p):
     # BPP. Błąd generacji NIE może wywalić już-zakończonej integracji (osoby są
     # zapisane); logujemy (stderr + rollbar) i lecimy dalej — widok pobierania
     # degraduje wtedy do budowy w locie. Świadomie NIE re-raise.
+    # Sama generacja snapshotu nie jest write-once/idempotentna, ale
+    # finalizacja jest jednorazowa (bramka stanu blokuje re-integrację
+    # ZINTEGROWANEGO importu) — w praktyce ta linia wykonuje się raz.
     try:
         from import_pracownikow.eksport import zapisz_snapshot_po_imporcie
 
