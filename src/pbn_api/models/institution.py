@@ -53,7 +53,7 @@ class Institution(BasePBNMongoDBModel):
         while ret.find(",,") != -1:
             ret = ret.replace(",,", ",")
         ret = ret.replace(", (", " (")
-        if self.status == "DELETED":
+        if self.is_deleted:
             ret = f"[❌ USUNIĘTY] {ret}"
         return ret
 

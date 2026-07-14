@@ -193,6 +193,6 @@ class Publication(LinkDoPBNMixin, BasePBNMongoDBModel):
             ret += f", {self.year}"
         if self.doi:
             ret += f", {self.doi}"
-        if self.status == "DELETED":
+        if self.is_deleted:
             ret = f"[❌ USUNIĘTY] {ret}"
         return ret

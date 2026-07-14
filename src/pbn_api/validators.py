@@ -1,14 +1,10 @@
-def check_mongoId(s: str):
-    """Sprawdza, czy to prawidłowy mongoId z PBNu"""
+"""Walidatory identyfikatorów PBN.
 
-    valid_letters = "0123456789abcdef"
+``check_mongoId`` to publiczna nazwa używana przez BPP (m.in. autocomplete
+wydawnictwa nadrzędnego) — implementację dostarcza pakiet ``pbn_client``.
+"""
 
-    if len(s) == 24 and all(letter in valid_letters for letter in s.lower()):
-        try:
-            int(s, 16)
-        except (TypeError, ValueError):
-            return False
+from pbn_client import is_valid_object_id
 
-        return True
-
-    return False
+#: Sprawdza, czy to prawidłowy mongoId (objectId) z PBNu.
+check_mongoId = is_valid_object_id

@@ -30,7 +30,7 @@ class Publisher(LinkDoPBNMixin, BasePBNMongoDBModel):
 
     def __str__(self):
         ret = f"{self.publisherName}, MNISW ID: {self.mniswId or '-'}"
-        if self.status == "DELETED":
+        if self.is_deleted:
             ret = f"[❌ USUNIĘTY] {ret}"
         return ret
 
