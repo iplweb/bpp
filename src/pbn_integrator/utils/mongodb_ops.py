@@ -7,9 +7,12 @@ import sys
 from typing import TYPE_CHECKING
 
 import rollbar
-from django.db import IntegrityError, transaction
+from django_pbn_client.persistence import (
+    download_pbn_objects,
+    upsert_pbn_object,
+)
 
-from bpp.util import pbar, zaloguj_polkniety_wyjatek
+from bpp.util import pbar
 from pbn_api.exceptions import HttpException
 from pbn_api.models import (
     Institution,
@@ -25,7 +28,6 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
-@transaction.atomic
 def zapisz_mongodb(elem, klass, client=None, **extra):
     """Save a MongoDB element to the database.
 
@@ -38,43 +40,7 @@ def zapisz_mongodb(elem, klass, client=None, **extra):
     Returns:
         The created or updated model instance.
     """
-    defaults = dict(
-        status=elem["status"],
-        verificationLevel=elem["verificationLevel"],
-        verified=elem["verified"],
-        versions=elem["versions"],
-        **extra,
-    )
-
-    existing = klass.objects.select_for_update().filter(pk=elem["mongoId"])
-
-    created = False
-    try:
-        v = existing.get()
-    except klass.DoesNotExist:
-        try:
-            v = klass.objects.create(pk=elem["mongoId"], **defaults)
-            created = True
-        except IntegrityError:
-            # Another thread created this record - just fetch it
-            v = klass.objects.get(pk=elem["mongoId"])
-
-    if not created:
-        needs_saving = False
-
-        for key in extra:
-            if getattr(v, key) != extra.get(key):
-                setattr(v, key, extra.get(key))
-                needs_saving = True
-
-        if elem["versions"] != v.versions:
-            v.versions = elem["versions"]
-            needs_saving = True
-
-        if needs_saving:
-            v.save()
-
-    return v
+    return upsert_pbn_object(elem, klass, client=client, **extra)
 
 
 def ensure_publication_exists(client, publicationId):
@@ -116,7 +82,7 @@ def ensure_institution_exists(client: PBNClient, institutionId):
         institutionId = Institution.objects.get(pk=institutionId)
     except Institution.DoesNotExist:
         zapisz_mongodb(
-            client.get_publication_by_id(institutionId), Institution, client=client
+            client.get_institution_by_id(institutionId), Institution, client=client
         )
 
 
@@ -327,35 +293,20 @@ def pobierz_mongodb(
     if fun is None:
         fun = zapisz_mongodb
 
-    # Determine the total count
-    count = None
-    if hasattr(elems, "total_elements"):
-        count = elems.total_elements
-    elif hasattr(elems, "__len__"):
-        count = len(elems)
-    else:
-        # Try to get count from iterator if possible
-        try:
-            count = elems.count() if hasattr(elems, "count") else elems.count
-        except Exception:
-            # Benign: count służy WYŁĄCZNIE do paska postępu. Brak liczby =
-            # pasek bez totalu, nie błąd importu — logujemy (standard:
-            # zaloguj_polkniety_wyjatek), ale bez Rollbara (do_rollbar=False),
-            # nie zaśmiecamy go nieistotnym fallbackiem.
-            zaloguj_polkniety_wyjatek(
-                "Nie udało się ustalić liczby elementów do paska postępu — "
-                "kontynuuję bez znanej liczby",
-                logger=logger,
-                do_rollbar=False,
-            )
-            count = None
+    def progress(elements, total, label):
+        return pbar(
+            elements,
+            total,
+            label,
+            disable_progress_bar=disable_progress_bar,
+            callback=callback,
+        )
 
-    # Use pbar with callback support for database progress tracking
-    for elem in pbar(
+    return download_pbn_objects(
         elems,
-        count,
-        pbar_label,
-        disable_progress_bar=disable_progress_bar,
-        callback=callback,
-    ):
-        fun(elem, klass, client=client)
+        klass,
+        label=pbar_label,
+        save=fun,
+        client=client,
+        progress=progress,
+    )

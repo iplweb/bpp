@@ -109,7 +109,9 @@ class InstitutionsProfileMixin:
 
             if ret_json:
                 if e.json.get("message") == "Locked" and ZABLOKOWANE in e.content:
-                    raise ResourceLockedException(e.content) from e
+                    raise ResourceLockedException(
+                        e.status_code, e.url, e.content
+                    ) from e
 
                 try:
                     try:

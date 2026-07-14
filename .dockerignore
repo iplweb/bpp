@@ -48,6 +48,7 @@ Thumbs.db
 htmlcov/
 .tox/
 .pytest_cache/
+.ruff_cache/
 .mypy_cache/
 .hypothesis/
 nosetests.xml
@@ -62,6 +63,9 @@ CHANGELOG*
 AUTHORS
 CONTRIBUTORS
 TODO
+
+# README-y sa metadanymi buildow lokalnych pakietow uv workspace.
+!packages/*/README.md
 
 # Build artifacts
 build/

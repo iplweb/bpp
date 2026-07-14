@@ -17,8 +17,6 @@ import logging
 import sys
 import time
 
-import rollbar
-
 from pbn_client.const import (
     PBN_POST_PUBLICATION_FEE_URL,
     PBN_POST_PUBLICATION_NO_STATEMENTS_URL,
@@ -33,6 +31,10 @@ from pbn_client.exceptions import (
     PublicationDoesNotExistInInstitutionProfile,
     StatementsResendFailedException,
 )
+from pbn_client.reporting import default_reporter
+
+# Backwards-compatible patch point; no external Rollbar dependency is imported.
+rollbar = default_reporter
 
 logger = logging.getLogger(__name__)
 
@@ -253,11 +255,12 @@ class StatementsMixin:
     def _report_statements_failure_and_raise(
         self, publication_pk, objectId, last_error
     ):
-        """Raportuje do Rollbar (level=warning) i rzuca StatementsResendFailedException."""
+        """Report a warning and raise ``StatementsResendFailedException``."""
         try:
             raise StatementsResendFailedException(publication_pk, objectId, last_error)
         except StatementsResendFailedException:
-            rollbar.report_exc_info(
+            reporter = getattr(self.transport, "reporter", rollbar)
+            reporter.report_exc_info(
                 sys.exc_info(),
                 level="warning",
                 extra_data={

@@ -38,6 +38,7 @@ from pbn_client.mixins import (
     SearchMixin,
 )
 from pbn_client.pagination import PageableResource
+from pbn_client.reporting import default_reporter
 from pbn_client.transport import PBNClientTransport, RequestsTransport
 from pbn_client.utils import smart_content
 
@@ -91,5 +92,10 @@ class BppPBNClient(PBNClient, PublicationSyncMixin, DisciplinesMixin):
     """
 
     def __init__(self, transport, uczelnia):
+        reporter = getattr(transport, "reporter", None)
+        if reporter is None or reporter is default_reporter:
+            from pbn_api.reporting import rollbar_reporter
+
+            transport.reporter = rollbar_reporter
         super().__init__(transport)
         self.uczelnia = uczelnia

@@ -20,6 +20,11 @@ supported-markers = [
 ]
 
 [manifest]
+members = [
+    "bpp-iplweb",
+    "django-pbn-client",
+    "pbn-client",
+]
 constraints = [
     { name = "bleach", specifier = ">=6.4.0" },
     { name = "daphne", specifier = ">=4.2.2" },
@@ -428,6 +433,7 @@ dependencies = [
     { name = "django-multiseek", marker = "platform_python_implementation != 'PyPy'" },
     { name = "django-oauth-toolkit", marker = "platform_python_implementation != 'PyPy'" },
     { name = "django-password-policies-iplweb", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "django-pbn-client", marker = "platform_python_implementation != 'PyPy'" },
     { name = "django-pg-baseline", marker = "platform_python_implementation != 'PyPy'" },
     { name = "django-polish-inflection", marker = "platform_python_implementation != 'PyPy'" },
     { name = "django-prometheus", marker = "platform_python_implementation != 'PyPy'" },
@@ -462,6 +468,7 @@ dependencies = [
     { name = "ortools", marker = "platform_python_implementation != 'PyPy'" },
     { name = "pandas", marker = "platform_python_implementation != 'PyPy'" },
     { name = "pathspec", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "pbn-client", marker = "platform_python_implementation != 'PyPy'" },
     { name = "pillow", marker = "platform_python_implementation != 'PyPy'" },
     { name = "psycopg2-binary", marker = "platform_python_implementation != 'PyPy'" },
     { name = "pygad", marker = "platform_python_implementation != 'PyPy'" },
@@ -613,6 +620,7 @@ requires-dist = [
     { name = "django-multiseek", specifier = "==0.10.2" },
     { name = "django-oauth-toolkit", specifier = "==3.3.0" },
     { name = "django-password-policies-iplweb", specifier = "==0.9.0" },
+    { name = "django-pbn-client", editable = "packages/django-pbn-client" },
     { name = "django-pg-baseline", specifier = ">=0.3.0" },
     { name = "django-polish-inflection", specifier = ">=0.1,<0.2" },
     { name = "django-prometheus", specifier = ">=2.5.0" },
@@ -647,6 +655,7 @@ requires-dist = [
     { name = "ortools", specifier = ">=9.15.6755" },
     { name = "pandas", specifier = ">=3.0.3" },
     { name = "pathspec", specifier = ">=1.1.1" },
+    { name = "pbn-client", editable = "packages/pbn-client" },
     { name = "pillow", specifier = ">=12.2,<14" },
     { name = "psycopg2-binary", specifier = ">=2.9.12" },
     { name = "pygad", specifier = ">=3.7.0" },
@@ -2096,6 +2105,33 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/f3/df/7b934230c45c74b0c8baa419d99aeb18edb5dbc8526ab79a77a4b7fe0a07/django_password_policies_iplweb-0.9.0.tar.gz", hash = "sha256:4ea38dd5d261e7e7c8694fd8447ca9ce7bceb51a6efac5a609870d81bcadfd43", size = 91109, upload-time = "2026-04-07T13:18:01.688Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/f8/36/53dd874280b1223015e1eaa79c21c0131b4d2f6512686e6f8723cdd3c6c5/django_password_policies_iplweb-0.9.0-py3-none-any.whl", hash = "sha256:2b702e17dd80b83e06c7247f6949c5f2c3297b49ac2996be4388049cc49016ab", size = 185463, upload-time = "2026-04-07T13:18:00.447Z" },
+]
+
+[[package]]
+name = "django-pbn-client"
+version = "0.1.0"
+source = { editable = "packages/django-pbn-client" }
+dependencies = [
+    { name = "django", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "pbn-client", marker = "platform_python_implementation != 'PyPy'" },
+]
+
+[package.dev-dependencies]
+dev = [
+    { name = "pytest", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "pytest-django", marker = "platform_python_implementation != 'PyPy'" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "django", specifier = ">=5.2,<5.3" },
+    { name = "pbn-client", editable = "packages/pbn-client" },
+]
+
+[package.metadata.requires-dev]
+dev = [
+    { name = "pytest", specifier = ">=9.1.1,<10" },
+    { name = "pytest-django", specifier = ">=4.9,<5" },
 ]
 
 [[package]]
@@ -3989,6 +4025,29 @@ sdist = { url = "https://files.pythonhosted.org/packages/5a/82/42f767fc1c1143d6f
 wheels = [
     { url = "https://files.pythonhosted.org/packages/f1/d9/7fb5aa316bc299258e68c73ba3bddbc499654a07f151cba08f6153988714/pathspec-1.1.1-py3-none-any.whl", hash = "sha256:a00ce642f577bf7f473932318056212bc4f8bfdf53128c78bbd5af0b9b20b189", size = 57328, upload-time = "2026-04-27T01:46:07.06Z" },
 ]
+
+[[package]]
+name = "pbn-client"
+version = "0.1.0"
+source = { editable = "packages/pbn-client" }
+dependencies = [
+    { name = "requests", marker = "platform_python_implementation != 'PyPy'" },
+    { name = "simplejson", marker = "platform_python_implementation != 'PyPy'" },
+]
+
+[package.dev-dependencies]
+dev = [
+    { name = "pytest", marker = "platform_python_implementation != 'PyPy'" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "requests", specifier = ">=2.28,<3" },
+    { name = "simplejson", specifier = ">=3.19,<5" },
+]
+
+[package.metadata.requires-dev]
+dev = [{ name = "pytest", specifier = ">=9.1.1,<10" }]
 
 [[package]]
 name = "pexpect"

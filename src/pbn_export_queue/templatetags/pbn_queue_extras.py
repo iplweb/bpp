@@ -7,6 +7,8 @@ from django.utils.safestring import mark_safe
 
 register = template.Library()
 
+_PBN_EXCEPTION_MODULES = ("pbn_api.exceptions", "pbn_client.exceptions")
+
 
 @register.filter(name="format_json")
 def format_json(value):
@@ -32,10 +34,10 @@ def last_line(value):
 
 
 def _extract_exception_line(value: str) -> str | None:
-    """Extract the last line containing pbn_api.exceptions from traceback."""
+    """Extract the last legacy or extracted PBN exception from a traceback."""
     lines = [line for line in value.strip().split("\n") if line.strip()]
     for line in reversed(lines):
-        if "pbn_api.exceptions" in line:
+        if any(module in line for module in _PBN_EXCEPTION_MODULES):
             return line.strip()
     return None
 
@@ -207,8 +209,9 @@ _HTTP_EXCEPTION_PATTERN = re.compile(
 def format_pbn_error(value, rodzaj_bledu=None):
     """
     Format PBN API error in a readable way.
-    Extracts the last line with pbn_api.exceptions from traceback and formats it.
-    Handles format: pbn_api.exceptions.HttpException: (400, '/api/v1/publications', '{"code":400,...}')
+    Extracts the last PBN exception line from a traceback and formats it.
+    Handles both the legacy ``pbn_api.exceptions`` and the extracted
+    ``pbn_client.exceptions`` import paths.
 
     Args:
         value: The error message/traceback string

@@ -107,6 +107,7 @@ nav:
       - deweloper/index.md
       - Mapa kodu: deweloper/mapa-kodu.md
       - Polecenia: deweloper/polecenia.md
+      - Pakiety klienckie PBN: deweloper/pakiety-pbn.md
       - Import z SQLite (harvestery): deweloper/import-sqlite.md
       - Budowanie CSS/SCSS: deweloper/budowanie-css.md
       - Rozwijanie projektu: deweloper/rozwijanie-projektu.md

@@ -60,6 +60,7 @@ FROM base AS builder
 WORKDIR /app
 
 COPY pyproject.toml uv.lock yarn.lock package.json ./
+COPY packages/ packages/
 
 # R4: `--no-dev` blokuje grupe [dependency-groups].dev (testowe deps,
 # ruff, ipython, playwright, run-site, vulture itd.). Wczesniej dev byl
@@ -68,7 +69,7 @@ COPY pyproject.toml uv.lock yarn.lock package.json ./
 # realnie potrzebne extras produkcji (ldap, office365).
 RUN --mount=type=cache,target=/root/.cache/uv,id=uv-cache \
     uv sync --frozen --no-dev --no-install-project \
-        --extra ldap --extra office365
+        --no-editable --extra ldap --extra office365
 
 # R6: pygad deklaruje matplotlib jako twardą dep dla funkcji rysowania
 # zbieżności algorytmu genetycznego (plot_fitness), których BPP nie używa.
@@ -238,9 +239,10 @@ ENV UV_PROJECT_ENVIRONMENT=/opt/venv
 
 WORKDIR /build
 COPY pyproject.toml uv.lock ./
+COPY packages/ packages/
 RUN --mount=type=cache,target=/root/.cache/uv,id=uv-cache \
     uv sync --frozen --all-extras \
-        --all-groups --no-install-project
+        --all-groups --no-install-project --no-editable
 
 # Przegladarki Playwright raz, do /opt/playwright (kopiowane do slim nizej).
 RUN PLAYWRIGHT_BROWSERS_PATH=/opt/playwright \
@@ -396,6 +398,7 @@ RUN npx grunt build-non-interactive
 # grunta powyzej. Skompilowane assety (gitignored, nieobecne w kontekscie
 # build) przezyja ten COPY — COPY nie kasuje plikow, ktorych nie ma w zrodle.
 COPY src/ /src/src/
+COPY packages/ /src/packages/
 COPY baseline-sql/ /src/baseline-sql/
 COPY conftest.py pytest.ini Makefile pyproject.toml uv.lock /src/
 
@@ -460,8 +463,10 @@ ENV UV_PROJECT_ENVIRONMENT=/opt/venv \
 
 WORKDIR /app
 COPY pyproject.toml uv.lock ./
+COPY packages/ packages/
 RUN --mount=type=cache,target=/root/.cache/uv,id=uv-cache \
-    uv sync --frozen --all-extras --all-groups --no-install-project
+    uv sync --frozen --all-extras --all-groups \
+        --no-install-project --no-editable
 
 # Yarn + grunt + collectstatic — mirror production builder, zeby:
 # 1. /app/staticroot.baked istnial → entrypoint-appserver.sh przy starcie wybiera

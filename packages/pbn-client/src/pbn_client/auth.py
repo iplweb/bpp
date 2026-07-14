@@ -4,6 +4,7 @@ from urllib.parse import parse_qs, urlparse
 
 import requests
 
+from pbn_client.conf import settings as pbn_settings
 from pbn_client.exceptions import (
     AuthenticationConfigurationError,
     AuthenticationResponseError,
@@ -23,9 +24,15 @@ class OAuthMixin:
         return url
 
     @classmethod
-    def get_user_token(klass, base_url, app_id, app_token, one_time_token):
-        from pbn_client.conf import settings as pbn_settings
-
+    def get_user_token(
+        klass,
+        base_url,
+        app_id,
+        app_token,
+        one_time_token,
+        *,
+        timeout=None,
+    ):
         headers = {
             "X-App-Id": app_id,
             "X-App-Token": app_token,
@@ -36,7 +43,11 @@ class OAuthMixin:
             url=url,
             json=body,
             headers=headers,
-            timeout=pbn_settings.PBN_CLIENT_HTTP_TIMEOUT,
+            timeout=(
+                pbn_settings.PBN_CLIENT_HTTP_TIMEOUT
+                if timeout is None
+                else pbn_settings.parse_timeout(timeout)
+            ),
         )
         try:
             response.json()
@@ -53,12 +64,10 @@ class OAuthMixin:
         return response.json().get("X-User-Token")
 
     def authorize(self, base_url, app_id, app_token):
-        from pbn_client.conf import settings
-
         if self.access_token:
             return True
 
-        self.access_token = getattr(settings, "PBN_CLIENT_USER_TOKEN", None)
+        self.access_token = pbn_settings.PBN_CLIENT_USER_TOKEN
         if self.access_token:
             return True
 
@@ -77,7 +86,11 @@ class OAuthMixin:
         # NIE wypisujemy one_time_token ani access_token — to aktywne sekrety,
         # które zostawałyby w terminalu/CI/przechwyconych logach (uwaga #4).
         self.access_token = OAuthMixin.get_user_token(
-            base_url, app_id, app_token, one_time_token
+            base_url,
+            app_id,
+            app_token,
+            one_time_token,
+            timeout=getattr(self, "timeout", None),
         )
 
         return True

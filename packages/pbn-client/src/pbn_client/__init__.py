@@ -21,6 +21,13 @@ from .mixins import (
     SearchMixin,
 )
 from .pagination import PageableResource
+from .reporting import (
+    ErrorReporter,
+    LoggingReporter,
+    NullReporter,
+    get_default_reporter,
+    set_default_reporter,
+)
 from .transport import PBNClientTransport, RequestsTransport
 from .utils import smart_content
 
@@ -37,6 +44,11 @@ __all__ = [
     "PublishersMixin",
     "SearchMixin",
     "PageableResource",
+    "ErrorReporter",
+    "LoggingReporter",
+    "NullReporter",
+    "get_default_reporter",
+    "set_default_reporter",
     "PBNClientTransport",
     "RequestsTransport",
     "smart_content",

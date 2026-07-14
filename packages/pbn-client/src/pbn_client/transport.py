@@ -7,12 +7,12 @@ import warnings
 from urllib.parse import quote
 
 import requests
-import rollbar
 from requests import ConnectionError
 from requests.exceptions import JSONDecodeError as RequestsJSONDecodeError
 from requests.exceptions import SSLError
 from simplejson.errors import JSONDecodeError
 
+from pbn_client.conf import settings as pbn_settings
 from pbn_client.const import DEFAULT_BASE_URL
 from pbn_client.exceptions import (
     AccessDeniedException,
@@ -25,7 +25,13 @@ from pbn_client.exceptions import (
 
 from .auth import OAuthMixin
 from .pagination import PageableResource
+from .reporting import ErrorReporter, default_reporter
 from .utils import smart_content
+
+# Backwards-compatible patch point for applications/tests that used
+# ``pbn_client.transport.rollbar``. It is a package-owned reporter proxy and
+# does not import or require the Rollbar distribution.
+rollbar = default_reporter
 
 # Nagłówki, których WARTOŚCI nie wolno logować/wysyłać (uwierzytelniające lub
 # identyfikujące). Dopasowanie po nazwie, case-insensitive.
@@ -60,7 +66,16 @@ logger = logging.getLogger(__name__)
 class PBNClientTransport:
     """Base transport class for PBN API communication."""
 
-    def __init__(self, app_id, app_token, base_url, user_token=None):
+    def __init__(
+        self,
+        app_id,
+        app_token,
+        base_url,
+        user_token=None,
+        *,
+        timeout=None,
+        reporter: ErrorReporter | None = None,
+    ):
         self.app_id = app_id
         self.app_token = app_token
 
@@ -69,6 +84,12 @@ class PBNClientTransport:
             self.base_url = DEFAULT_BASE_URL
 
         self.access_token = user_token
+        self.timeout = (
+            pbn_settings.PBN_CLIENT_HTTP_TIMEOUT
+            if timeout is None
+            else pbn_settings.parse_timeout(timeout)
+        )
+        self.reporter = default_reporter if reporter is None else reporter
 
 
 class RequestsTransport(OAuthMixin, PBNClientTransport):
@@ -85,15 +106,13 @@ class RequestsTransport(OAuthMixin, PBNClientTransport):
 
     def _make_get_request_with_retry(self, url, headers, max_retries=15):
         """Make GET request with retry on SSL/Connection errors."""
-        from pbn_client.conf import settings as pbn_settings
-
         retries = 0
         while retries < max_retries:
             try:
                 return requests.get(
                     self.base_url + url,
                     headers=headers,
-                    timeout=pbn_settings.PBN_CLIENT_HTTP_TIMEOUT,
+                    timeout=self.timeout,
                 )
             except (SSLError, ConnectionError) as e:
                 retries += 1
@@ -231,7 +250,7 @@ class RequestsTransport(OAuthMixin, PBNClientTransport):
                 len(ret.content),
                 ret.content[:4000],
             )
-            rollbar.report_message(
+            self.reporter.report_message(
                 f"PBN {ret.status_code} on {url}",
                 level="error" if ret.status_code >= 500 else "warning",
                 extra_data={
@@ -249,15 +268,13 @@ class RequestsTransport(OAuthMixin, PBNClientTransport):
         if not hasattr(self, "access_token"):
             return self.post(url, headers=headers, body=body, delete=delete)
 
-        from pbn_client.conf import settings as pbn_settings
-
         sent_headers = self._build_post_headers(headers)
         method = self._get_request_method(delete)
         ret = method(
             self.base_url + url,
             headers=sent_headers,
             json=body,
-            timeout=pbn_settings.PBN_CLIENT_HTTP_TIMEOUT,
+            timeout=self.timeout,
         )
 
         if ret.status_code == 403:

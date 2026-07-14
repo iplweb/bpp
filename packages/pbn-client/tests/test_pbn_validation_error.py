@@ -1,6 +1,8 @@
-import pytest
+from unittest.mock import Mock
 
-from pbn_api.tests.utils import MockTransport
+import pytest
+from fakes import MockTransport
+
 from pbn_client.exceptions import (
     HttpException,
     PBNValidationError,
@@ -87,8 +89,14 @@ class _FakeResponse:
         self.headers = headers or {}
 
 
-def test_transport_validation_400_raises_pbnvalidationerror_no_rollbar(mocker):
-    report = mocker.patch("pbn_client.transport.rollbar.report_message")
+def _patch_reporter(monkeypatch):
+    report = Mock()
+    monkeypatch.setattr("pbn_client.transport.rollbar.report_message", report)
+    return report
+
+
+def test_transport_validation_400_raises_pbnvalidationerror_no_rollbar(monkeypatch):
+    report = _patch_reporter(monkeypatch)
     t = MockTransport()
     ret = _FakeResponse(
         400,
@@ -101,8 +109,8 @@ def test_transport_validation_400_raises_pbnvalidationerror_no_rollbar(mocker):
     report.assert_not_called()
 
 
-def test_transport_validation_409_format2_no_rollbar(mocker):
-    report = mocker.patch("pbn_client.transport.rollbar.report_message")
+def test_transport_validation_409_format2_no_rollbar(monkeypatch):
+    report = _patch_reporter(monkeypatch)
     t = MockTransport()
     ret = _FakeResponse(
         409,
@@ -115,8 +123,8 @@ def test_transport_validation_409_format2_no_rollbar(mocker):
     report.assert_not_called()
 
 
-def test_transport_400_without_details_is_plain_httpexception(mocker):
-    report = mocker.patch("pbn_client.transport.rollbar.report_message")
+def test_transport_400_without_details_is_plain_httpexception(monkeypatch):
+    report = _patch_reporter(monkeypatch)
     t = MockTransport()
     ret = _FakeResponse(400, '{"message":"Bad Request"}')
     with pytest.raises(HttpException) as ei:
@@ -125,8 +133,8 @@ def test_transport_400_without_details_is_plain_httpexception(mocker):
     report.assert_called_once()
 
 
-def test_transport_500_with_details_shape_still_reports_rollbar(mocker):
-    report = mocker.patch("pbn_client.transport.rollbar.report_message")
+def test_transport_500_with_details_shape_still_reports_rollbar(monkeypatch):
+    report = _patch_reporter(monkeypatch)
     t = MockTransport()
     ret = _FakeResponse(500, '{"details":{"x":"y"}}')
     with pytest.raises(HttpException) as ei:
@@ -136,8 +144,8 @@ def test_transport_500_with_details_shape_still_reports_rollbar(mocker):
 
 
 @pytest.mark.parametrize("status", [401, 403, 423])
-def test_transport_auth_and_locked_not_validation(mocker, status):
-    report = mocker.patch("pbn_client.transport.rollbar.report_message")
+def test_transport_auth_and_locked_not_validation(monkeypatch, status):
+    report = _patch_reporter(monkeypatch)
     t = MockTransport()
     ret = _FakeResponse(status, '{"details":{"x":"y"}}')
     with pytest.raises(HttpException) as ei:

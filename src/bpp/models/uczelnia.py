@@ -820,7 +820,11 @@ class Uczelnia(ModelZAdnotacjami, ModelZPBN_ID, NazwaISkrot, NazwaWDopelniaczu):
         Klient zna ``self`` jako swoją ``uczelnia`` — orchestracja czyta z niej
         flagi zamiast zgadywać ``get_default()`` (kluczowe dla multi-hosted).
         """
+        from django.conf import settings
+        from pbn_client.conf import settings as pbn_defaults
+
         from pbn_api import client
+        from pbn_api.reporting import rollbar_reporter
 
         class UczelniaTransport(client.RequestsTransport):
             def authorize(self, base_url, app_id, token):
@@ -839,7 +843,16 @@ class Uczelnia(ModelZAdnotacjami, ModelZPBN_ID, NazwaISkrot, NazwaWDopelniaczu):
             raise ImproperlyConfigured("Brak tokena aplikacji dla API PBN")
 
         transport = UczelniaTransport(
-            self.pbn_app_name, self.pbn_app_token, self.pbn_api_root, pbn_user_token
+            self.pbn_app_name,
+            self.pbn_app_token,
+            self.pbn_api_root,
+            pbn_user_token,
+            timeout=getattr(
+                settings,
+                "PBN_CLIENT_HTTP_TIMEOUT",
+                pbn_defaults.PBN_CLIENT_HTTP_TIMEOUT,
+            ),
+            reporter=rollbar_reporter,
         )
         return client.BppPBNClient(transport, uczelnia=self)
 
