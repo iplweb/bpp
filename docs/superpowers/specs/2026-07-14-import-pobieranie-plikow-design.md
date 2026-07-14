@@ -11,11 +11,29 @@ Na stronie rezultatów importu pracowników udostępnić dwa pobierania:
    Plik jest chroniony (leży w `protected/`, NGINX nie serwuje go bezpośrednio),
    dostępny tylko dla zalogowanych z uprawnieniami do modułu.
 
-2. **Pobierz plik „po imporcie"** — kanoniczny, wzbogacony XLSX odzwierciedlający
-   **to, co faktycznie trafiło do BPP**. Ma być tak zbudowany, żeby ponowny
-   import tego pliku przeszedł bezobsługowo („bardzo gładko"): kanoniczne
-   nagłówki auto-rozpoznawane przez importer, kanoniczne wartości z bazy,
-   kolumna `BPP ID` kotwicząca autora po identyfikatorze.
+2. **Pobierz plik „po imporcie"** — kanoniczny, **SKORYGOWANY** XLSX
+   odzwierciedlający **to, co faktycznie trafiło do BPP**. „Skorygowany" =
+   plik naprawia bałagan z wejścia: każda wartość jest **odczytana z
+   autorytatywnego rekordu w bazie** (nie echem z pliku), więc błędne/niepełne
+   nazwy jednostek, literówki w nazwiskach, skróty tytułów itd. wychodzą jako
+   **poprawne wartości z BPP**. Ma być tak zbudowany, żeby ponowny import tego
+   pliku przeszedł bezobsługowo („bardzo gładko"): kanoniczne nagłówki
+   auto-rozpoznawane przez importer, kanoniczne wartości z bazy, kolumna
+   `BPP ID` kotwicząca autora po identyfikatorze.
+
+   **Semantyka „skorygowany" (kluczowa):** wartości NIE pochodzą z pliku ani z
+   *proponowanych* przez analizę FK wiersza — pochodzą z **rzeczywistych
+   rekordów** utworzonych/zaktualizowanych w bazie:
+   - pola **autora** → z `row.autor` (`Autor`): `nazwisko`, `imiona`, `tytul`,
+     `stopien_sluzbowy`, `orcid`, `pbn_uid`, `system_kadrowy_id`, `email`;
+   - pola **zatrudnienia** → z `row.autor_jednostka` (`Autor_Jednostka`):
+     `jednostka`, `wymiar_etatu`, `funkcja` (= „Funkcja w jednostce"),
+     `stanowisko` (= `StanowiskoDydaktyczne`!), `grupa_pracownicza`,
+     `rozpoczal_prace`/`zakonczyl_prace`, `podstawowe_miejsce_pracy`.
+
+   Dzięki temu plik pokazuje **stan BAZY po korekcie**, nawet gdy import nie
+   nadpisał jakiegoś pola (polityki no-overwrite) — wtedy w pliku jest wartość
+   z bazy, a nie sprzeczna wartość z pliku wejściowego.
 
 ## Kontekst techniczny (stan istniejący)
 
@@ -139,7 +157,7 @@ Kilka targetów wejściowych **kolapsuje** do jednej kolumny kanonicznej:
   w oryginale;
 - warianty jednostki (`nazwa_jednostki`, `nazwa_jednostki_niepelna`,
   `komórka_złożona`, `wydział`) → jedna kolumna `Nazwa jednostki`
-  = `row.jednostka.nazwa`;
+  = `AJ.jednostka.nazwa` (autorytatywna nazwa z zatrudnienia w bazie);
 - warianty wymiaru (`wymiar_etatu_tekst`, `wymiar_etatu_ulamek`) → jedna kolumna
   `Wymiar etatu`.
 
@@ -147,27 +165,39 @@ Kilka targetów wejściowych **kolapsuje** do jednej kolumny kanonicznej:
 
 Kolejność w pliku: blok tożsamości, potem atrybuty zatrudnienia.
 
-| # | Nagłówek (kanoniczny) | Target(y) włączające | Wartość z BPP | Emisja |
+Kolumna „Wartość z BPP" = **autorytatywny rekord bazy** (`A` = `row.autor`,
+`AJ` = `row.autor_jednostka`), NIE proponowane FK wiersza.
+
+| # | Nagłówek (kanoniczny) | Target(y) włączające | Wartość z BPP (autorytatywna) | Emisja |
 |---|---|---|---|---|
-| 1 | `BPP ID` | — | `row.autor_id` | ZAWSZE |
-| 2 | `Nazwisko` | `nazwisko`/`osoba_sklejona`/`nazwisko_imię` | `row.autor.nazwisko` | ZAWSZE |
-| 3 | `Imię` | `imię`/`osoba_sklejona`/`nazwisko_imię` | `row.autor.imiona` | ZAWSZE |
-| 4 | `ORCID` | `orcid` | `row.autor.orcid` | użyty ∨ niepusty |
-| 5 | `PBN UUID` | `pbn_uuid` | `row.autor.pbn_uid_id` | użyty ∨ niepusty |
-| 6 | `Numer (system kadrowy)` | `numer` | `row.autor.system_kadrowy_id` | użyty ∨ niepusty |
-| 7 | `E-mail` | `email` | `row.autor.email` | użyty |
-| 8 | `Nazwa jednostki` | warianty jednostki | `row.jednostka.nazwa` | ZAWSZE |
-| 9 | `Tytuł / stopień naukowy` | `tytuł_stopień` | `str(row.tytul)` | użyty |
-| 10 | `Stopień służbowy` | `stopień_służbowy` | `str(row.stopien)` | użyty |
-| 11 | `Funkcja w jednostce` | `stanowisko` | `str(row.funkcja_autora)` | użyty |
-| 12 | `Stanowisko dydaktyczne` | `stanowisko_dydaktyczne` | `str(row.stanowisko_dydaktyczne)` | użyty |
-| 13 | `Grupa pracownicza` | `grupa_pracownicza` | `str(row.grupa_pracownicza)` | użyty |
-| 14 | `Wymiar etatu` | warianty wymiaru | `str(row.wymiar_etatu)` | użyty |
-| 15 | `Data zatrudnienia` | `data_zatrudnienia` | `row.autor_jednostka.rozpoczal_prace` | użyty |
-| 16 | `Data końca zatrudnienia` | `data_końca_zatrudnienia` | `row.autor_jednostka.zakonczyl_prace` | użyty |
-| 17 | `Podstawowe miejsce pracy` | `podstawowe_miejsce_pracy` | `T`/`N` z `row.podstawowe_miejsce_pracy` | użyty |
+| 1 | `BPP ID` | — | `A.pk` (`row.autor_id`) | ZAWSZE |
+| 2 | `Nazwisko` | `nazwisko`/`osoba_sklejona`/`nazwisko_imię` | `A.nazwisko` | ZAWSZE |
+| 3 | `Imię` | `imię`/`osoba_sklejona`/`nazwisko_imię` | `A.imiona` | ZAWSZE |
+| 4 | `ORCID` | `orcid` | `A.orcid` | użyty ∨ niepusty |
+| 5 | `PBN UUID` | `pbn_uuid` | `A.pbn_uid_id` | użyty ∨ niepusty |
+| 6 | `Numer (system kadrowy)` | `numer` | `A.system_kadrowy_id` | użyty ∨ niepusty |
+| 7 | `E-mail` | `email` | `A.email` | użyty |
+| 8 | `Nazwa jednostki` | warianty jednostki | `AJ.jednostka.nazwa` | ZAWSZE |
+| 9 | `Tytuł / stopień naukowy` | `tytuł_stopień` | `str(A.tytul)` | użyty |
+| 10 | `Stopień służbowy` | `stopień_służbowy` | `str(A.stopien_sluzbowy)` | użyty |
+| 11 | `Funkcja w jednostce` | `stanowisko` | `str(AJ.funkcja)` | użyty |
+| 12 | `Stanowisko dydaktyczne` | `stanowisko_dydaktyczne` | `str(AJ.stanowisko)` | użyty |
+| 13 | `Grupa pracownicza` | `grupa_pracownicza` | `str(AJ.grupa_pracownicza)` | użyty |
+| 14 | `Wymiar etatu` | warianty wymiaru | `str(AJ.wymiar_etatu)` | użyty |
+| 15 | `Data zatrudnienia` | `data_zatrudnienia` | `AJ.rozpoczal_prace` | użyty |
+| 16 | `Data końca zatrudnienia` | `data_końca_zatrudnienia` | `AJ.zakonczyl_prace` | użyty |
+| 17 | `Podstawowe miejsce pracy` | `podstawowe_miejsce_pracy` | `T`/`N` z `AJ.podstawowe_miejsce_pracy` | użyty |
 
 Uwagi:
+- **PUŁAPKA nazewnictwa** (potwierdzona w modelu): target `stanowisko` =
+  „Funkcja w jednostce" = `AJ.funkcja` (`Funkcja_Autora`); a `StanowiskoDydaktyczne`
+  siedzi w `AJ.stanowisko`. Nie pomylić tych dwóch.
+- **`stopien_sluzbowy` i `tytul` są na `Autor`** (nie na zatrudnieniu ani na
+  wierszu) — czytać z `A`, bo tam jest autorytatywna, skorygowana wartość.
+- **Gdy `row.autor_jednostka is None`** (autor wszedł, ale zatrudnienie odroczone/
+  nie powstało) — kolumny z `AJ` (8, 11–17) zostają **puste**; wiersz i tak jest
+  eksportowany (autor trafił do BPP). Kolumna `Nazwa jednostki` (ZAWSZE) też
+  będzie wtedy pusta — to uczciwe odbicie stanu bazy.
 - **Nagłówki muszą być rozpoznawane** przez `mapping.pole_dla_naglowka` — przy
   implementacji zweryfikować każdy nagłówek względem `_SYNONIMY`; jeśli któryś
   długi label z `POLA_DOCELOWE` nie normalizuje się do synonimu, użyć
@@ -221,8 +251,13 @@ Odczyt wygenerowanego skoroszytu z powrotem przez `openpyxl.load_workbook`.
   **nie** występują; kanoniczne nagłówki obecne; kolejność wg rejestru.
 - **BPP ID** wypełnione dla każdego wiersza (także dla autora nowo utworzonego
   w tym imporcie).
-- **Wartości kanoniczne z bazy**: nazwa jednostki = `jednostka.nazwa` (nawet gdy
-  oryginał miał inną/niepełną formę); tytuł/stopień/stanowisko/wymiar = `str(FK)`.
+- **Wartości SKORYGOWANE (autorytatywne z bazy)**: nazwa jednostki =
+  `AJ.jednostka.nazwa` (nawet gdy oryginał miał inną/niepełną/błędną formę);
+  tytuł = `A.tytul`, stopień służbowy = `A.stopien_sluzbowy`, stanowisko
+  dydakt. = `AJ.stanowisko`, funkcja = `AJ.funkcja`, wymiar = `AJ.wymiar_etatu`.
+  **Test wprost**: podaj w pliku wejściowym błędną nazwę jednostki / literówkę w
+  nazwisku, a w bazie poprawną — asertuj, że w wygenerowanym pliku jest wartość
+  z bazy, NIE z pliku.
 - `ORCID`/`PBN UUID`/`Numer` wypełnione gdy autor je ma; kolumna pomijana gdy
   wszędzie pusto i target nieużyty.
 - Daty zatrudnienia = z `autor_jednostka` (ISO); puste gdy `autor_jednostka None`.
