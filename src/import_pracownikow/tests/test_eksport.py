@@ -62,3 +62,106 @@ def test_builder_pomija_wiersze_bez_autora_i_zachowuje_kolejnosc():
     assert naglowki[:4] == ["BPP ID", "Nazwisko", "Imię", "Nazwa jednostki"]
     assert [w[0] for w in wiersze] == [a1.pk, a2.pk]  # kolejność z pliku
     assert [w[1] for w in wiersze] == ["Pierwszy", "Druga"]
+
+
+@pytest.mark.django_db
+def test_ignorowane_kolumny_znikaja_uzyte_zostaja():
+    imp = _import_zintegrowany(
+        mapowanie_kolumn={
+            "Nazwisko": "nazwisko",
+            "Imię": "imię",
+            "Jedn org": "nazwa_jednostki",
+            "Dyscyplina": "__pomin__",  # ignorowana
+            "Tytuł nauk.": "tytuł_stopień",  # użyta
+        }
+    )
+    j = baker.make(Jednostka, nazwa=unikalna_nazwa("Katedra X"))
+    a = baker.make(Autor, nazwisko="Nowak", imiona="Ewa")
+    aj = baker.make(Autor_Jednostka, autor=a, jednostka=j)
+    _wiersz(
+        imp,
+        loc=0,
+        autor=a,
+        autor_jednostka=aj,
+        dane={"Dyscyplina": "nauki medyczne", "Tytuł nauk.": "dr"},
+    )
+
+    naglowki, _ = _wczytaj(zbuduj_plik_po_imporcie(imp))
+
+    assert "Tytuł" in naglowki
+    assert "Dyscyplina" not in naglowki
+    assert "nauki medyczne" not in naglowki
+    assert "Stopień służbowy" not in naglowki  # nieużyty target → brak kolumny
+
+
+@pytest.mark.django_db
+def test_wartosc_skorygowana_wygrywa_z_plikiem():
+    # Plik miał błędną nazwę jednostki; baza ma poprawną → w pliku wynikowym
+    # jest wartość z BAZY.
+    imp = _import_zintegrowany(
+        mapowanie_kolumn={
+            "Nazwisko": "nazwisko",
+            "Imię": "imię",
+            "Jednostka": "nazwa_jednostki",
+        }
+    )
+    poprawna = unikalna_nazwa("Klinika Chorób Wewnętrznych")
+    j = baker.make(Jednostka, nazwa=poprawna)
+    a = baker.make(Autor, nazwisko="Kowalski", imiona="Jan")
+    aj = baker.make(Autor_Jednostka, autor=a, jednostka=j)
+    _wiersz(
+        imp,
+        loc=0,
+        autor=a,
+        autor_jednostka=aj,
+        dane={"Jednostka": "klin chor wewn", "Nazwisko": "Kowalksi"},
+    )
+
+    naglowki, wiersze = _wczytaj(zbuduj_plik_po_imporcie(imp))
+
+    kol = {n: i for i, n in enumerate(naglowki)}
+    assert wiersze[0][kol["Nazwa jednostki"]] == poprawna  # nie "klin chor wewn"
+    assert wiersze[0][kol["Nazwisko"]] == "Kowalski"  # nie "Kowalksi"
+
+
+@pytest.mark.django_db
+def test_id_enrich_orcid_gdy_niepusty_mimo_braku_mapowania():
+    imp = _import_zintegrowany(
+        mapowanie_kolumn={
+            "Nazwisko": "nazwisko",
+            "Imię": "imię",
+            "Jednostka": "nazwa_jednostki",
+        }
+    )
+    j = baker.make(Jednostka, nazwa=unikalna_nazwa("Zakład Y"))
+    a = baker.make(Autor, nazwisko="Test", imiona="Orc", orcid="0000-0002-1825-0097")
+    aj = baker.make(Autor_Jednostka, autor=a, jednostka=j)
+    _wiersz(imp, loc=0, autor=a, autor_jednostka=aj)
+
+    naglowki, wiersze = _wczytaj(zbuduj_plik_po_imporcie(imp))
+
+    assert "ORCID" in naglowki  # niepusty ORCID → kolumna mimo braku w mapowaniu
+    kol = {n: i for i, n in enumerate(naglowki)}
+    assert wiersze[0][kol["ORCID"]] == "0000-0002-1825-0097"
+
+
+@pytest.mark.django_db
+def test_autor_bez_zatrudnienia_wchodzi_z_pustymi_polami_zatrudnienia():
+    imp = _import_zintegrowany(
+        mapowanie_kolumn={
+            "Nazwisko": "nazwisko",
+            "Imię": "imię",
+            "Jednostka": "nazwa_jednostki",
+            "Etat": "wymiar_etatu_tekst",
+        }
+    )
+    a = baker.make(Autor, nazwisko="Sam", imiona="Autor")
+    _wiersz(imp, loc=0, autor=a, autor_jednostka=None)
+
+    naglowki, wiersze = _wczytaj(zbuduj_plik_po_imporcie(imp))
+
+    assert len(wiersze) == 1  # autor wszedł, choć bez zatrudnienia
+    kol = {n: i for i, n in enumerate(naglowki)}
+    assert wiersze[0][kol["BPP ID"]] == a.pk
+    assert wiersze[0][kol["Nazwa jednostki"]] in (None, "")  # AJ None → puste
+    assert wiersze[0][kol["Wymiar etatu"]] in (None, "")
