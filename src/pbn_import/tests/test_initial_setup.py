@@ -38,7 +38,9 @@ def test_run_full_setup_uses_existing_client_and_matches_uczelnia(session, uczel
 
     jezyki.assert_called_once_with(client, create_if_not_exists=True)
     kraje.assert_called_once_with(client)
-    client.download_disciplines.assert_called_once()
+    # sync_disciplines() sam pobiera słownik — nie wołamy download_disciplines()
+    # bezpośrednio (regresja: podwójny zaciąg z PBN).
+    client.download_disciplines.assert_not_called()
     client.sync_disciplines.assert_called_once()
     uczelnia.refresh_from_db()
     session.refresh_from_db()
@@ -115,7 +117,8 @@ def test_language_non_authorization_error_uses_minimal_setup(session, uczelnia):
 
 def test_later_pbn_errors_are_delegated_and_import_continues(session, uczelnia):
     client = MagicMock()
-    client.download_disciplines.side_effect = RuntimeError("disciplines failed")
+    # Krok dyscyplin woła teraz tylko sync_disciplines() — tam wstrzykujemy błąd.
+    client.sync_disciplines.side_effect = RuntimeError("disciplines failed")
     setup = InitialSetup(session, client=client, uczelnia=uczelnia)
 
     with patch("pbn_import.utils.initial_setup.integruj_jezyki"):
