@@ -1,5 +1,7 @@
 # Create your views here.
 
+import os
+
 from braces.views import GroupRequiredMixin
 from django.contrib import messages
 from django.db.models import (
@@ -10,13 +12,20 @@ from django.db.models import (
     Value,
     When,
 )
-from django.http import Http404, HttpResponseBadRequest, HttpResponseRedirect
+from django.http import (
+    Http404,
+    HttpResponse,
+    HttpResponseBadRequest,
+    HttpResponseRedirect,
+)
 from django.shortcuts import get_object_or_404, render
 from django.urls import reverse
 from django.utils import timezone
 from django.utils.functional import cached_property
+from django.utils.http import content_disposition_header
 from django.views import View
 from django.views.generic import DetailView, FormView, ListView
+from django_sendfile import sendfile
 from liveops.views import CreateLiveOperationView, RestartView
 
 from bpp.models import (
@@ -1533,3 +1542,83 @@ class RestartAnalizaView(_PkOwnerRestartMixin):
         obj.stan = ImportPracownikow.STAN_ZMAPOWANY
         obj.save(update_fields=["stan"])
         return super().post(request, *args, **kwargs)
+
+
+XLSX_CONTENT_TYPE = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+
+
+def _pobierz_wlasny_import(request, pk):
+    """Import właściciela (albo superusera) — inaczej 404 (jak results view)."""
+    obj = get_object_or_404(ImportPracownikow, pk=pk)
+    if obj.owner_id != request.user.pk and not request.user.is_superuser:
+        raise Http404
+    return obj
+
+
+class PobierzOryginalView(GroupRequiredMixin, View):
+    """Pobranie oryginalnego, wgranego pliku XLSX (chroniony, przez sendfile)."""
+
+    group_required = GROUP_REQUIRED
+
+    def get(self, request, pk):
+        obj = _pobierz_wlasny_import(request, pk)
+        if not obj.plik_xls or not os.path.exists(obj.plik_xls.path):
+            raise Http404("Plik oryginalny nie istnieje.")
+        return sendfile(
+            request,
+            obj.plik_xls.path,
+            attachment=True,
+            attachment_filename=os.path.basename(obj.plik_xls.name),
+        )
+
+
+class PobierzPoImporcieView(GroupRequiredMixin, View):
+    """Pobranie kanonicznego, SKORYGOWANEGO pliku „po imporcie”.
+
+    Dostępny dopiero po finalizacji (``STAN_ZINTEGROWANY``). Od finalizacji
+    przy integracji zapisywany jest ZAMROŻONY snapshot (``plik_po_imporcie`` —
+    patrz ``eksport.zapisz_snapshot_po_imporcie``, wołane z
+    ``pipeline.integrate.integruj``): późniejsze edycje autorów NIE zmieniają
+    już pobranego pliku. Importy zfinalizowane PRZED wprowadzeniem tego
+    mechanizmu (albo gdy generacja snapshotu się nie powiodła) nie mają tego
+    pola — degradujemy wtedy do budowy w locie z aktualnego stanu bazy, patrz
+    ``eksport.zbuduj_plik_po_imporcie``.
+
+    UWAGA: ``plik_xls`` NIE jest tu odczytywany jako źródło danych — używamy
+    go tylko jako źródła nazwy pliku wynikowego. Komenda porządkowa
+    ``usun_stare_pliki_importu_pracownikow`` czyści ``plik_xls`` po 90 dniach,
+    ale ZOSTAWIA import i wiersze — brak pliku źródłowego nie może więc
+    blokować tego pobrania (inaczej link „po imporcie” psuje się po
+    cleanupie, mimo że wszystko potrzebne nadal istnieje w bazie/snapshocie).
+    """
+
+    group_required = GROUP_REQUIRED
+
+    def get(self, request, pk):
+        obj = _pobierz_wlasny_import(request, pk)
+        if obj.stan != ImportPracownikow.STAN_ZINTEGROWANY:
+            raise Http404("Plik „po imporcie” dostępny dopiero po zakończeniu importu.")
+        if obj.plik_xls:
+            stem = os.path.splitext(os.path.basename(obj.plik_xls.name))[0]
+        else:
+            stem = f"import-{obj.pk}"
+        nazwa = f"{stem}-po-imporcie.xlsx"
+        if obj.plik_po_imporcie and os.path.exists(obj.plik_po_imporcie.path):
+            # Zamrożony snapshot z chwili finalizacji (immutable). sendfile sam
+            # robi RFC 5987 dla nazwy z polskimi znakami.
+            return sendfile(
+                request,
+                obj.plik_po_imporcie.path,
+                attachment=True,
+                attachment_filename=nazwa,
+            )
+        # Fallback: importy sprzed snapshotu / błąd generacji / plik zniknął
+        # z dysku (rekord w DB, ale brak pliku fizycznego) — buduj w locie.
+        from import_pracownikow.eksport import zbuduj_plik_po_imporcie
+
+        content = zbuduj_plik_po_imporcie(obj)
+        resp = HttpResponse(content, content_type=XLSX_CONTENT_TYPE)
+        resp["Content-Disposition"] = content_disposition_header(
+            as_attachment=True, filename=nazwa
+        )
+        return resp
