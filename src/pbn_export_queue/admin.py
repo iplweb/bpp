@@ -3,6 +3,7 @@ from django.contrib import admin, messages
 from django.contrib.auth import get_user_model
 from django.http import HttpResponseRedirect
 from django.urls import reverse
+from django.utils.html import escape
 from django.utils.safestring import mark_safe
 
 from bpp.admin.core import DynamicAdminFilterMixin
@@ -40,7 +41,9 @@ class ZamowilUniqueFilter(admin.SimpleListFilter):
 
 class RenderHTMLWidget(forms.Textarea):
     def render(self, name, value, renderer, attrs=None):
-        return mark_safe((value or "").replace("\n", "<br>"))
+        # value bywa treścią błędu z PBN (niezaufana) — escapujemy przed
+        # zamianą \n na <br>, żeby nie wpuścić HTML-a do panelu admina.
+        return mark_safe(escape(value or "").replace("\n", "<br>"))
 
 
 @admin.register(PBN_Export_Queue)

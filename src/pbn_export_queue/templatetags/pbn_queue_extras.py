@@ -2,6 +2,7 @@ import json
 import re
 
 from django import template
+from django.utils.html import escape
 from django.utils.safestring import mark_safe
 
 register = template.Library()
@@ -62,6 +63,10 @@ def _parse_exception_parts(exception_line: str) -> tuple[str, str] | None:
     return exception_type, message_part
 
 
+# UWAGA bezpieczeństwo: treść błędu pochodzi z PBN (niezaufana) i trafia do
+# ``mark_safe``. KAŻDA dynamiczna wartość interpolowana do HTML MUSI przejść
+# przez ``escape()`` — inaczej payload w odpowiedzi PBN (np. ``<script>``) daje
+# stored-XSS w tabeli/detalu kolejki. Statyczne etykiety i klasy CSS są bezpieczne.
 def _format_error_list(
     exception_type: str,
     error_code: str,
@@ -75,7 +80,8 @@ def _format_error_list(
     # For MERYTORYCZNY errors, skip redundant header
     if rodzaj_bledu != "MERYT":
         html_parts.append(
-            f'<div class="pbn-error-header">{exception_type}: HTTP {error_code}</div>'
+            f'<div class="pbn-error-header">'
+            f"{escape(exception_type)}: HTTP {escape(error_code)}</div>"
         )
 
     for error_item in errors:
@@ -86,16 +92,16 @@ def _format_error_list(
             if error_code_pbn:
                 html_parts.append(
                     f'<div class="pbn-error-detail">'
-                    f"<strong>Kod błędu:</strong> {error_code_pbn}</div>"
+                    f"<strong>Kod błędu:</strong> {escape(error_code_pbn)}</div>"
                 )
             if error_desc:
                 html_parts.append(
                     f'<div class="pbn-error-detail">'
-                    f"<strong>Opis:</strong> {error_desc}</div>"
+                    f"<strong>Opis:</strong> {escape(error_desc)}</div>"
                 )
 
     html_parts.append(
-        f'<div class="pbn-error-endpoint"><em>Endpoint: {endpoint}</em></div>'
+        f'<div class="pbn-error-endpoint"><em>Endpoint: {escape(endpoint)}</em></div>'
     )
     return "\n".join(html_parts)
 
@@ -112,11 +118,13 @@ def _format_details(details) -> list[str]:
                 ", ".join(str(v) for v in val) if isinstance(val, list) else str(val)
             )
             html_parts.append(
-                f'<div class="pbn-error-detail-item">• <em>{key}:</em> {val_str}</div>'
+                f'<div class="pbn-error-detail-item">'
+                f"• <em>{escape(key)}:</em> {escape(val_str)}</div>"
             )
     else:
         html_parts.append(
-            f'<div class="pbn-error-detail"><strong>Szczegóły:</strong> {details}</div>'
+            f'<div class="pbn-error-detail">'
+            f"<strong>Szczegóły:</strong> {escape(details)}</div>"
         )
     return html_parts
 
@@ -135,17 +143,20 @@ def _format_error_object(
     # and show only the validation details
     if rodzaj_bledu != "MERYT":
         html_parts.append(
-            f'<div class="pbn-error-header">{exception_type}: HTTP {error_code}</div>'
+            f'<div class="pbn-error-header">'
+            f"{escape(exception_type)}: HTTP {escape(error_code)}</div>"
         )
 
         if "message" in error:
             html_parts.append(
-                f'<div class="pbn-error-detail"><strong>Wiadomość:</strong> {error["message"]}</div>'
+                f'<div class="pbn-error-detail">'
+                f"<strong>Wiadomość:</strong> {escape(error['message'])}</div>"
             )
 
         if "description" in error:
             html_parts.append(
-                f'<div class="pbn-error-detail"><strong>Opis:</strong> {error["description"]}</div>'
+                f'<div class="pbn-error-detail">'
+                f"<strong>Opis:</strong> {escape(error['description'])}</div>"
             )
 
     # Always show details (this is what users need for MERYTORYCZNY errors)
@@ -154,7 +165,7 @@ def _format_error_object(
 
     # Always show endpoint for technical debugging
     html_parts.append(
-        f'<div class="pbn-error-endpoint"><em>Endpoint: {endpoint}</em></div>'
+        f'<div class="pbn-error-endpoint"><em>Endpoint: {escape(endpoint)}</em></div>'
     )
     return "\n".join(html_parts)
 
@@ -209,13 +220,15 @@ def format_pbn_error(value, rodzaj_bledu=None):
     exception_line = _extract_exception_line(value)
     if not exception_line:
         return mark_safe(
-            f'<div class="pbn-error-text">{_get_fallback_line(value)}</div>'
+            f'<div class="pbn-error-text">{escape(_get_fallback_line(value))}</div>'
         )
 
     try:
         parsed = _parse_exception_parts(exception_line)
         if not parsed:
-            return mark_safe(f'<div class="pbn-error-text">{exception_line}</div>')
+            return mark_safe(
+                f'<div class="pbn-error-text">{escape(exception_line)}</div>'
+            )
 
         exception_type, message_part = parsed
 
@@ -230,15 +243,18 @@ def format_pbn_error(value, rodzaj_bledu=None):
                 return mark_safe(result)
             # JSON parsing failed, return raw error
             return mark_safe(
-                f'<div class="pbn-error-text">{exception_type}: HTTP {error_code} - {json_str}</div>'
+                f'<div class="pbn-error-text">'
+                f"{escape(exception_type)}: HTTP {escape(error_code)} "
+                f"- {escape(json_str)}</div>"
             )
 
         # Simple exception format (e.g., StatementsMissing)
         return mark_safe(
-            f'<div class="pbn-error-text">{exception_type}: {message_part}</div>'
+            f'<div class="pbn-error-text">'
+            f"{escape(exception_type)}: {escape(message_part)}</div>"
         )
 
     except (ValueError, AttributeError, IndexError):
         pass
 
-    return mark_safe(f'<div class="pbn-error-text">{exception_line}</div>')
+    return mark_safe(f'<div class="pbn-error-text">{escape(exception_line)}</div>')
