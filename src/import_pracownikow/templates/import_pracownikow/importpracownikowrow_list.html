@@ -58,6 +58,22 @@
         {# samym <form>, więc JS querySelectorAll łapie radia niezależnie od #}
         {# stanu open/closed. #}
         <form id="filtr-roznic" class="import-filtr-roznic">
+            {# Filtr „Rodzaj dopasowania" (kolumna „Pewność") — <select>, bo 8 #}
+            {# opcji z długimi etykietami rozjechałoby pasek jak radia. „do #}
+            {# pominięcia" = syntetyczny predykat (autor NULL + brak „Utwórz #}
+            {# nowego"), celuje w zbiór z ostrzeżenia finalizacji. Pre-selekcja #}
+            {# z ?rodzaj= (wybrany_rodzaj) — działa też przed JS. #}
+            <label class="import-filtr-rodzaj">
+                Rodzaj dopasowania:
+                <select id="filtr-rodzaj" name="filtr-rodzaj">
+                    <option value="wszystkie"{% if not wybrany_rodzaj %} selected{% endif %}>wszystkie</option>
+                    <option value="do-pominiecia"{% if wybrany_rodzaj == "do-pominiecia" %} selected{% endif %}>⚠ do pominięcia (bez decyzji)</option>
+                    <option disabled>──────────</option>
+                    {% for wartosc, etykieta in rodzaje_confidence %}
+                        <option value="{{ wartosc }}"{% if wybrany_rodzaj == wartosc %} selected{% endif %}>{{ etykieta }}</option>
+                    {% endfor %}
+                </select>
+            </label>
             <label class="import-filtr-tekst">
                 Szukaj:
                 <input type="search" id="filtr-tekst"
@@ -145,6 +161,22 @@
                 });
                 return buf.toLowerCase();
             }
+            function wyborRodzaj() {
+                var el = document.getElementById('filtr-rodzaj');
+                return el ? el.value : 'wszystkie';
+            }
+            function okRodzaj(tbody) {
+                // Filtr rodzaju dopasowania (data-confidence na 1. <tr>).
+                // „do-pominiecia" czyta osobny warunkowy atrybut (autor NULL +
+                // brak „Utwórz nowego"), inne wartości → równość statusu.
+                var w = wyborRodzaj();
+                if (w === 'wszystkie') return true;
+                var tr = tbody.querySelector(':scope > tr[data-confidence]');
+                if (!tr) return false;
+                if (w === 'do-pominiecia')
+                    return tr.getAttribute('data-do-pominiecia') === '1';
+                return tr.getAttribute('data-confidence') === w;
+            }
             function filtruj() {
                 var ks = klucze();
                 var q = tekst();
@@ -159,7 +191,7 @@
                         });
                         var okTekst = !q
                             || tekstRekordu(tbody).indexOf(q) !== -1;
-                        var pokaz = okStany && okTekst;
+                        var pokaz = okStany && okTekst && okRodzaj(tbody);
                         tbody.hidden = !pokaz;
                         if (pokaz) widoczne++;
                     });

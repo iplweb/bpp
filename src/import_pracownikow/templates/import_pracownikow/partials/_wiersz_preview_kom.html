@@ -7,7 +7,11 @@
 {# zasilają filtr tekstowy (nazwisko / autor / jednostka) — kontrolki #}
 {# dopasowania autora są POZA nimi, żeby ich tekst i Select2 nie zaśmiecały #}
 {# wyszukiwania. #}
-<tr{% for klucz, stan in row.stany_pol.items %} data-diff-{{ klucz }}="{{ stan }}"{% endfor %}>
+{# data-confidence: filtr „Rodzaj dopasowania" (JS okRodzaj). data-do-pominiecia #}
+{# renderowane WARUNKOWO (tylko gdy wiersz bez decyzji) — filtr „do pominięcia" #}
+{# zrównuje się wtedy z licznikiem ostrzeżenia. Oba na SWAPOWANEJ treści, więc #}
+{# świeże po akcji HTMX (np. „Utwórz nowego" → wiersz znika z „do pominięcia"). #}
+<tr{% for klucz, stan in row.stany_pol.items %} data-diff-{{ klucz }}="{{ stan }}"{% endfor %} data-confidence="{{ row.confidence|default:'' }}"{% if row.do_pominiecia %} data-do-pominiecia="1"{% endif %}>
     <td class="import-poz">{{ row.nr_arkusza }}/{{ row.nr_wiersza }}</td>
     <td data-szukaj>
         <strong>{{ row.dane_znormalizowane.nazwisko }}</strong>

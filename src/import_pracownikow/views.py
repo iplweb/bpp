@@ -46,6 +46,7 @@ from import_pracownikow.models import (
 )
 from import_pracownikow.pbn import adnotuj_pbn_instytucjonalny
 from import_pracownikow.pewnosc import (
+    CONFIDENCE_CHOICES,
     STATUS_BRAK,
     STATUS_DEDUP,
     STATUS_RECZNY,
@@ -705,6 +706,15 @@ class ImportPracownikowResultsView(GroupRequiredMixin, ListView):
             klucze_dodatkowe.remove("stanowisko")
         ctx["pola_glowne"] = [(k, etykiety[k]) for k in klucze_glowne]
         ctx["pola_dodatkowe"] = [(k, etykiety[k]) for k in klucze_dodatkowe]
+        # Filtr „Rodzaj dopasowania" — opcje statusów (jedno źródło:
+        # CONFIDENCE_CHOICES) + syntetyczne „do pominięcia" (autor IS NULL AND
+        # NOT utworz_nowego, patrz row.do_pominiecia). Deep-link z ostrzeżenia
+        # finalizacji przychodzi jako ?rodzaj=do-pominiecia; walidujemy go tu,
+        # a śmieciowa wartość degraduje do "" (traktowane jak „wszystkie").
+        ctx["rodzaje_confidence"] = list(CONFIDENCE_CHOICES)
+        dozwolone_rodzaje = {"do-pominiecia"} | {k for k, _ in CONFIDENCE_CHOICES}
+        rodzaj = self.request.GET.get("rodzaj", "")
+        ctx["wybrany_rodzaj"] = rodzaj if rodzaj in dozwolone_rodzaje else ""
         return ctx
 
 
