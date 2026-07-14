@@ -6,7 +6,18 @@
 
 **Architecture:** Three independent, additive slices over the existing `import_pracownikow` preview pipeline. Section 1 extends the pure-read `porownaj_z_baza()` comparison dict with three new `{plik, baza, rozne}` triples rendered by the existing `_porownanie_kom.html`. Section 2 restyles the `brak`-row controls into one radio group, reusing the existing `PrzelaczUtworzNowegoView` (bool `utworz_nowego`) and `DopasujAutoraView` (Select2 pick) with no new model field. Section 3 adds a parent-model count + a warning partial + a `confirm()` on the finalize button.
 
-**Tech Stack:** Django 4.x, pytest + model_bakery, HTMX, Foundation CSS (public frontend — monochrome `fi-*` Foundation-Icons, NOT emoji), Select2.
+**Tech Stack:** Django 5.2, pytest + model_bakery, HTMX 1.9.12, Foundation CSS (public frontend — monochrome `fi-*` Foundation-Icons, NOT emoji), Select2.
+
+## Review corrections (Fable 5 review, 2026-07-14 — authoritative over conflicting task text below)
+
+- **C1 (HTMX trigger scoping):** Do NOT use `hx-trigger="change from:.js-brak-radio-post"` — in htmx 1.9.12 a bare selector in `from:` binds document-wide, so one radio click fires **every** brak row's POST. Instead keep the three radios in one form with an **event filter**: `hx-trigger="change[target.classList.contains('js-brak-radio-post')]"`. The "Dopasuj" radio omits that class → it never fires the `utworz-nowego` POST (only the JS reveal). Single form preserves radio-group exclusivity (grouping is per form owner).
+- **C2 / M5 (test markers & line length):** Every `_porownaj_fk_obj` test uses `baker.make(...)` → MUST carry `@pytest.mark.django_db`. `_porownaj_bool` tests are DB-free (no marker needed). Keep every test line ≤88 chars.
+- **I1 (pluralize):** Django `pluralize` supports ≤2 forms and cannot express Polish declension. Use grammatically-invariant copy, NO `pluralize`: warning `Wiersze bez dopasowania zostaną pominięte przy zapisie: {{ liczba_pominietych }}.` and confirm `Wiersze bez dopasowania zostaną pominięte: N. Kontynuować zapis?`. Tests assert those exact stable substrings.
+- **I2 (predicate scope — deliberate):** `liczba_wierszy_do_pominiecia()` = `autor__isnull=True, utworz_nowego=False` counts exactly the **"no decision made"** rows (design intent: user indecision). Rows with `utworz_nowego=True` but a deferred `jednostka` are gated by the separate jednostka-resolution flow upstream — NOT re-counted here. Document this in the method docstring.
+- **I3 (N+1):** Base-side `aj.wymiar_etatu` / `aj.grupa_pracownicza` are NOT prefetched today (`get_details_set()` only select_relates `autor_jednostka__stanowisko` / `__funkcja`). Task 3 MUST add `"autor_jednostka__wymiar_etatu", "autor_jednostka__grupa_pracownicza"` to that `select_related` list. (`podstawowe_miejsce_pracy` is a local column — fine.)
+- **I4 (real test scaffolding):** There is no `client_zalogowany` / `wiersz_brak` fixture. Use pytest-django's `admin_client, admin_user` and the existing helpers: `_wiersz(owner, confidence, stan)→(imp,row)` (`test_views_utworz_nowego.py:9`), `_imp/_url/_row` (`test_przeglad.py:23-38`). Preview grid renders via `reverse("import_pracownikow:przeglad", kwargs={"pk": imp.pk})`.
+- **M4 (query dedup):** In `przeglad.html` wrap the warning block in `{% with liczba_pominietych=parent_object.liczba_wierszy_do_pominiecia %}` so the COUNT runs once, not three times.
+- **M1 (backward-compat):** Existing `test_views_utworz_nowego.py` tests (`{"utworz_nowego": "on"}` / `{}`) keep passing with the `wybor`-first/legacy-fallback view logic — do NOT edit them.
 
 ## Global Constraints
 
