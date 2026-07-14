@@ -11,6 +11,7 @@ AKCEPTUJ = ImportPracownikowJednostka.DECYZJA_AKCEPTUJ
 MAPUJ = ImportPracownikowJednostka.DECYZJA_MAPUJ
 POMIN = ImportPracownikowJednostka.DECYZJA_POMIN
 BRAK = ImportPracownikowJednostka.TRYB_BRAK
+ZGADYWANIE = ImportPracownikowJednostka.TRYB_ZGADYWANIE
 
 
 def _imp(owner, stan=ImportPracownikow.STAN_PRZEANALIZOWANY):
@@ -33,6 +34,21 @@ def test_get_renderuje_liste_decyzji(admin_client, admin_user):
     resp = admin_client.get(url)
     assert resp.status_code == 200
     assert "Zakład Transfuzjologii".encode() in resp.content
+
+
+@pytest.mark.django_db
+def test_auto_dopasowanie_linkuje_strone_i_admina(admin_client, admin_user):
+    # Gdy jest auto-dopasowanie do jednostki, kolumna „Auto-dopasowanie"
+    # linkuje do publicznej strony jednostki oraz do jej edycji w adminie.
+    imp = _imp(admin_user)
+    j = baker.make(Jednostka, nazwa="Katedra Fizyki", skrot="KF")
+    _dec(imp, "Katera Fizyki", tryb=ZGADYWANIE, auto_jednostka=j)
+    url = reverse("import_pracownikow:jednostki", kwargs={"pk": imp.pk})
+    resp = admin_client.get(url)
+    assert resp.status_code == 200
+    content = resp.content.decode()
+    assert j.get_absolute_url() in content
+    assert reverse("admin:bpp_jednostka_change", args=(j.pk,)) in content
 
 
 @pytest.mark.django_db

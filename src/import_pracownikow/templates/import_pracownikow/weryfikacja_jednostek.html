@@ -55,7 +55,12 @@
                             <td>{{ dec.liczba_osob }}</td>
                             <td>
                                 {% if dec.auto_jednostka %}
-                                    {{ dec.auto_jednostka.nazwa }}
+                                    <a href="{{ dec.auto_jednostka.get_absolute_url }}"
+                                       title="Otwórz stronę jednostki"
+                                       target="_blank" rel="noopener">{{ dec.auto_jednostka.nazwa }}</a>
+                                    <a href="{% url "admin:bpp_jednostka_change" dec.auto_jednostka.pk %}"
+                                       class="import-autor-admin" title="Otwórz w panelu administracyjnym"
+                                       target="_blank" rel="noopener">admin</a>
                                     {% if dec.auto_similarity %}
                                         <span class="label secondary">{{ dec.auto_similarity|floatformat:2 }}</span>
                                     {% endif %}
