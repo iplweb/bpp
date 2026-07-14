@@ -6,11 +6,11 @@ in importer.py are re-exported here.
 
 import logging
 
+from pbn_client.const import DELETED
 from tqdm import tqdm
 
 from bpp.models import Dyscyplina_Naukowa, Jednostka, Rekord, Rodzaj_Zrodla
 from pbn_api.client import PBNClient
-from pbn_api.const import DELETED
 from pbn_api.models import Publication
 
 # Re-export publication import functions

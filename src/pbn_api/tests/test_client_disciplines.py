@@ -9,10 +9,10 @@ For helper/GUI tests, see test_client_helpers.py
 from pathlib import Path
 
 import pytest
+from pbn_client.const import PBN_GET_DISCIPLINES_URL
 
 from bpp.decorators import json
 from bpp.models import Dyscyplina_Naukowa
-from pbn_api.const import PBN_GET_DISCIPLINES_URL
 from pbn_api.models import TlumaczDyscyplin
 from pbn_api.models.discipline import Discipline
 

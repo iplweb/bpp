@@ -4,11 +4,11 @@ import logging
 
 from django.core.management import call_command
 from django.db import transaction
+from pbn_client.const import DELETED
 
 from bpp import const
 from bpp.models import Wydawca
 from bpp.models.wydawca import Poziom_Wydawcy
-from pbn_api.const import DELETED
 from pbn_api.models import Publisher
 from pbn_integrator.utils import zapisz_mongodb
 

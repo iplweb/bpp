@@ -10,6 +10,7 @@ This module contains tests for:
 
 import pytest
 from model_bakery import baker
+from pbn_client.const import PBN_GET_JOURNAL_BY_ID
 
 from bpp.const import PBN_UID_LEN
 from bpp.models.konferencja import Konferencja
@@ -29,7 +30,6 @@ from fixtures.pbn_api import (
     pbn_publisher_json,
 )
 from pbn_api.client import PBN_GET_PUBLICATION_BY_ID_URL, PBN_SEARCH_PUBLICATIONS_URL
-from pbn_api.const import PBN_GET_JOURNAL_BY_ID
 from pbn_api.models import Journal, Publication, Publisher
 
 

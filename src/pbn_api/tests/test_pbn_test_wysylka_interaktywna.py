@@ -10,15 +10,15 @@ from io import StringIO
 import pytest
 from django.core.management import call_command
 from django.core.management.base import CommandError
-
-from fixtures.pbn_api import pbn_pageable_json
-from pbn_api.const import (
+from pbn_client.const import (
     PBN_DELETE_PUBLICATION_STATEMENT,
     PBN_GET_INSTITUTION_STATEMENTS,
     PBN_POST_INSTITUTION_STATEMENTS_URL,
     PBN_POST_PUBLICATION_NO_STATEMENTS_URL,
     PBN_POST_PUBLICATIONS_URL,
 )
+
+from fixtures.pbn_api import pbn_pageable_json
 from pbn_api.exceptions import HttpException
 from pbn_api.management.commands import pbn_test_wysylka_interaktywna as cmd_mod
 

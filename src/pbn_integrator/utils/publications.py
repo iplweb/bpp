@@ -8,12 +8,12 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import TYPE_CHECKING
 
 import rollbar
+from pbn_client.const import ACTIVE
 from tqdm import tqdm
 
 from bpp.const import PBN_MIN_ROK
 from bpp.models import Rekord
 from bpp.util import pbar
-from pbn_api.const import ACTIVE
 from pbn_api.exceptions import (
     BrakIDPracyPoStroniePBN,
     HttpException,

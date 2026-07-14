@@ -69,7 +69,7 @@ def test_pbn_client_transport_initialization():
 
 def test_pbn_client_transport_default_base_url():
     """Test PBNClientTransport uses default URL when None provided"""
-    from pbn_api.const import DEFAULT_BASE_URL
+    from pbn_client.const import DEFAULT_BASE_URL
 
     transport = PBNClientTransport("app_id", "app_token", None)
 
