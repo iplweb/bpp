@@ -20,11 +20,6 @@ supported-markers = [
 ]
 
 [manifest]
-members = [
-    "bpp-iplweb",
-    "django-pbn-client",
-    "pbn-client",
-]
 constraints = [
     { name = "bleach", specifier = ">=6.4.0" },
     { name = "daphne", specifier = ">=4.2.2" },
@@ -620,7 +615,7 @@ requires-dist = [
     { name = "django-multiseek", specifier = "==0.10.2" },
     { name = "django-oauth-toolkit", specifier = "==3.3.0" },
     { name = "django-password-policies-iplweb", specifier = "==0.9.0" },
-    { name = "django-pbn-client", editable = "packages/django-pbn-client" },
+    { name = "django-pbn-client", specifier = ">=0.1.0,<0.2" },
     { name = "django-pg-baseline", specifier = ">=0.3.0" },
     { name = "django-polish-inflection", specifier = ">=0.1,<0.2" },
     { name = "django-prometheus", specifier = ">=2.5.0" },
@@ -655,7 +650,7 @@ requires-dist = [
     { name = "ortools", specifier = ">=9.15.6755" },
     { name = "pandas", specifier = ">=3.0.3" },
     { name = "pathspec", specifier = ">=1.1.1" },
-    { name = "pbn-client", editable = "packages/pbn-client" },
+    { name = "pbn-client", specifier = ">=0.1.0,<0.2" },
     { name = "pillow", specifier = ">=12.2,<14" },
     { name = "psycopg2-binary", specifier = ">=2.9.12" },
     { name = "pygad", specifier = ">=3.7.0" },
@@ -2110,28 +2105,14 @@ wheels = [
 [[package]]
 name = "django-pbn-client"
 version = "0.1.0"
-source = { editable = "packages/django-pbn-client" }
+source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "django", marker = "platform_python_implementation != 'PyPy'" },
     { name = "pbn-client", marker = "platform_python_implementation != 'PyPy'" },
 ]
-
-[package.dev-dependencies]
-dev = [
-    { name = "pytest", marker = "platform_python_implementation != 'PyPy'" },
-    { name = "pytest-django", marker = "platform_python_implementation != 'PyPy'" },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "django", specifier = ">=5.2,<5.3" },
-    { name = "pbn-client", editable = "packages/pbn-client" },
-]
-
-[package.metadata.requires-dev]
-dev = [
-    { name = "pytest", specifier = ">=9.1.1,<10" },
-    { name = "pytest-django", specifier = ">=4.9,<5" },
+sdist = { url = "https://files.pythonhosted.org/packages/f1/6b/f84a5897bb7a7d06b5f61afad994a024942b493965e5532a1478ba5aecad/django_pbn_client-0.1.0.tar.gz", hash = "sha256:12ee7d94b93ab3b30768b695e23e10346b51011f82bbdbdb7a48f9c1ea48d868", size = 10099, upload-time = "2026-07-14T14:00:37.839Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/24/f1/37b0264e1d0c545aa8f74968ef03633df885abdcc6946de03270a8c5995c/django_pbn_client-0.1.0-py3-none-any.whl", hash = "sha256:7ed7834538b32c6d4659d2f6d29d4547610d5f5c54950a5a2e646517ed230e66", size = 8241, upload-time = "2026-07-14T14:00:39.469Z" },
 ]
 
 [[package]]
@@ -4029,25 +4010,15 @@ wheels = [
 [[package]]
 name = "pbn-client"
 version = "0.1.0"
-source = { editable = "packages/pbn-client" }
+source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "requests", marker = "platform_python_implementation != 'PyPy'" },
     { name = "simplejson", marker = "platform_python_implementation != 'PyPy'" },
 ]
-
-[package.dev-dependencies]
-dev = [
-    { name = "pytest", marker = "platform_python_implementation != 'PyPy'" },
+sdist = { url = "https://files.pythonhosted.org/packages/14/77/2aebe056db372f0a81b17466bc183e578c7e875f8fdd009268c19c1ec666/pbn_client-0.1.0.tar.gz", hash = "sha256:6a691e9f9be4ab6e63ccba6461099a4202355d79d0df26fe7f5108586f4fc46f", size = 24146, upload-time = "2026-07-14T14:00:28.732Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/af/aa/0dedd9259aba97109e9bfb4a823d7ad3683379bf12001f959d2fe246f9ad/pbn_client-0.1.0-py3-none-any.whl", hash = "sha256:2b531bacc34d150d72d6d18d5c8d1b1c03a06d7d9bf9df3d3237f549255cc024", size = 26792, upload-time = "2026-07-14T14:00:27.184Z" },
 ]
-
-[package.metadata]
-requires-dist = [
-    { name = "requests", specifier = ">=2.28,<3" },
-    { name = "simplejson", specifier = ">=3.19,<5" },
-]
-
-[package.metadata.requires-dev]
-dev = [{ name = "pytest", specifier = ">=9.1.1,<10" }]
 
 [[package]]
 name = "pexpect"

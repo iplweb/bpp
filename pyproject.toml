@@ -31,8 +31,7 @@ classifiers = [
 requires-python = ">=3.11,<3.15"
 dependencies = [
     "Django>=5.2.16,<5.3",
-    # Pakiety rozwijane w tym samym workspace; `[tool.uv.sources]` ponizej
-    # przypina je do lokalnych memberow zamiast do indeksu PyPI.
+    # Reużywalne pakiety PBN wydzielone na PyPI (github.com/iplweb/*).
     "django-pbn-client>=0.1.0,<0.2",
     "pbn-client>=0.1.0,<0.2",
     "django-polish-inflection>=0.1,<0.2",
@@ -256,12 +255,6 @@ constraint-dependencies = [
     "pypdf>=6.13.3",
 ]
 
-[tool.uv.workspace]
-members = [
-    "packages/pbn-client",
-    "packages/django-pbn-client",
-]
-
 # Polityka: KAZDA NOWA zewnetrzna zaleznosc powinna miec prebuilt wheel dla
 # naszej macierzy (Linux x86_64 + macOS arm64, Python 3.10-3.14). Sdist
 # wykonuje `setup.py` podczas instalacji - klasyczny wektor supply-chain
@@ -318,8 +311,6 @@ default = true
 # WYCOFAĆ gdy upstream wyda release z #2156 → wróć na PyPI `>=4.5`. Tracking: #280.
 [tool.uv.sources]
 django-import-export = { git = "https://github.com/mpasternak/django-import-export.git", rev = "d6ee0d39194fee31437affbdc6fee5ce549b4b8f" }
-django-pbn-client = { workspace = true }
-pbn-client = { workspace = true }
 
 # Konfiguracja `pytest-testcontainers-django` — pluginu pytest, ktory
 # startuje kontenery PG/Redis przed importem Django settings i wstrzykuje

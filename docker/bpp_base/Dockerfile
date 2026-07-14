@@ -60,7 +60,6 @@ FROM base AS builder
 WORKDIR /app
 
 COPY pyproject.toml uv.lock yarn.lock package.json ./
-COPY packages/ packages/
 
 # R4: `--no-dev` blokuje grupe [dependency-groups].dev (testowe deps,
 # ruff, ipython, playwright, run-site, vulture itd.). Wczesniej dev byl
@@ -239,7 +238,6 @@ ENV UV_PROJECT_ENVIRONMENT=/opt/venv
 
 WORKDIR /build
 COPY pyproject.toml uv.lock ./
-COPY packages/ packages/
 RUN --mount=type=cache,target=/root/.cache/uv,id=uv-cache \
     uv sync --frozen --all-extras \
         --all-groups --no-install-project --no-editable
@@ -398,7 +396,6 @@ RUN npx grunt build-non-interactive
 # grunta powyzej. Skompilowane assety (gitignored, nieobecne w kontekscie
 # build) przezyja ten COPY — COPY nie kasuje plikow, ktorych nie ma w zrodle.
 COPY src/ /src/src/
-COPY packages/ /src/packages/
 COPY baseline-sql/ /src/baseline-sql/
 COPY conftest.py pytest.ini Makefile pyproject.toml uv.lock /src/
 
@@ -463,7 +460,6 @@ ENV UV_PROJECT_ENVIRONMENT=/opt/venv \
 
 WORKDIR /app
 COPY pyproject.toml uv.lock ./
-COPY packages/ packages/
 RUN --mount=type=cache,target=/root/.cache/uv,id=uv-cache \
     uv sync --frozen --all-extras --all-groups \
         --no-install-project --no-editable

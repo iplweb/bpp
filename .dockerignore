@@ -64,8 +64,6 @@ AUTHORS
 CONTRIBUTORS
 TODO
 
-# README-y sa metadanymi buildow lokalnych pakietow uv workspace.
-!packages/*/README.md
 
 # Build artifacts
 build/
