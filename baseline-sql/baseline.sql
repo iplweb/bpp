@@ -10494,6 +10494,7 @@ CREATE TABLE public.import_pracownikow_importpracownikow (
     przepnij_wszystkie_prace boolean NOT NULL,
     tworz_brakujace_stanowiska boolean NOT NULL,
     tworz_brakujace_stopnie boolean NOT NULL,
+    plik_po_imporcie character varying(100),
     CONSTRAINT import_pracownikow_importpracownikow_log_seq_check CHECK ((log_seq >= 0)),
     CONSTRAINT import_pracownikow_importpracownikow_percent_check CHECK ((percent >= 0))
 );
@@ -16774,6 +16775,7 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 625	django_countdown	0001_initial	2000-01-01 00:00:00+00
 626	django_countdown	0002_alter_sitecountdown_countdown_time	2000-01-01 00:00:00+00
 627	django_countdown	0003_sitecountdown_maintenance_until	2000-01-01 00:00:00+00
+808	integrator2	0001_initial	2000-01-01 00:00:00+00
 628	django_countdown	0004_alter_sitecountdown_long_description	2000-01-01 00:00:00+00
 629	django_countdown	0005_alter_sitecountdown_options_and_more	2000-01-01 00:00:00+00
 630	dspace_api	0001_initial	2000-01-01 00:00:00+00
@@ -16953,7 +16955,6 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 805	importer_publikacji	0007_merge_20260421_1248	2000-01-01 00:00:00+00
 806	importer_publikacji	0011_merge_20260601_0632	2000-01-01 00:00:00+00
 807	importer_publikacji	0012_alter_importedauthor_session	2000-01-01 00:00:00+00
-808	integrator2	0001_initial	2000-01-01 00:00:00+00
 809	integrator2	0002_auto_20160124_1336	2000-01-01 00:00:00+00
 810	integrator2	0003_django110_py3k	2000-01-01 00:00:00+00
 811	integrator2	0004_django32	2000-01-01 00:00:00+00
@@ -17223,6 +17224,7 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 1084	import_pracownikow	0024_importpracownikowrow_stany_pol_snapshot	2000-01-01 00:00:00+00
 1085	oidc_integration	0001_initial	2000-01-01 00:00:00+00
 1086	orcid_integration	0001_initial	2000-01-01 00:00:00+00
+1087	import_pracownikow	0025_importpracownikow_plik_po_imporcie	2000-01-01 00:00:00+00
 \.
 
 
@@ -17588,21 +17590,6 @@ COPY public.formdefaults_formfieldrepresentation (id, name, label, klass, "order
 55	if_do	do	django.forms.fields.FloatField	7	nowe_raporty.forms_dynamiczne.RaportForm_raport_autorow
 56	tylko_punktowane	Tylko prace punktowane (pkt MNiSW > 0)	django.forms.fields.BooleanField	8	nowe_raporty.forms_dynamiczne.RaportForm_raport_autorow
 57	obiekt	Autor	django.forms.models.ModelChoiceField	9	nowe_raporty.forms_dynamiczne.RaportForm_raport_autorow
-103	od_roku	Od roku	django.forms.fields.IntegerField	1	raport_slotow.forms.autor.AutorRaportSlotowForm
-104	do_roku	Do roku	django.forms.fields.IntegerField	2	raport_slotow.forms.autor.AutorRaportSlotowForm
-105	od_roku	Od roku	django.forms.fields.IntegerField	0	raport_slotow.forms.ewaluacja.ParametryRaportSlotowEwaluacjaForm
-106	do_roku	Do roku	django.forms.fields.IntegerField	1	raport_slotow.forms.ewaluacja.ParametryRaportSlotowEwaluacjaForm
-107	od_roku	Od roku	django.forms.fields.IntegerField	0	raport_slotow.forms.uczelnia.UtworzRaportSlotowUczelniaForm
-108	do_roku	Do roku	django.forms.fields.IntegerField	1	raport_slotow.forms.uczelnia.UtworzRaportSlotowUczelniaForm
-109	slot	Slot	django.forms.fields.DecimalField	3	raport_slotow.forms.uczelnia.UtworzRaportSlotowUczelniaForm
-110	od_roku	Od roku	django.forms.fields.IntegerField	0	nowe_raporty.forms_dynamiczne.RaportForm_raport_uczelni
-111	do_roku	Do roku	django.forms.fields.IntegerField	1	nowe_raporty.forms_dynamiczne.RaportForm_raport_uczelni
-112	od_roku	Od roku	django.forms.fields.IntegerField	0	nowe_raporty.forms_dynamiczne.RaportForm_raport_wydzialow
-113	do_roku	Do roku	django.forms.fields.IntegerField	1	nowe_raporty.forms_dynamiczne.RaportForm_raport_wydzialow
-114	od_roku	Od roku	django.forms.fields.IntegerField	0	nowe_raporty.forms_dynamiczne.RaportForm_raport_jednostek
-115	do_roku	Do roku	django.forms.fields.IntegerField	1	nowe_raporty.forms_dynamiczne.RaportForm_raport_jednostek
-116	od_roku	Od roku	django.forms.fields.IntegerField	0	nowe_raporty.forms_dynamiczne.RaportForm_raport_autorow
-117	do_roku	Do roku	django.forms.fields.IntegerField	1	nowe_raporty.forms_dynamiczne.RaportForm_raport_autorow
 \.
 
 
@@ -17729,7 +17716,7 @@ COPY public.import_polon_wierszimportuplikupolon (id, autor_id, parent_id, dane_
 -- Data for Name: import_pracownikow_importpracownikow; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY public.import_pracownikow_importpracownikow (id, created_on, started_on, finished_on, finished_successfully, traceback, plik_xls, owner_id, cancel_requested, cancelled, current_stage, language, log, log_seq, percent, result_context, stage_states, stan, status_text, mapowanie_kolumn, tworz_brakujace_jednostki, tworz_brakujace_tytuly, zakres_integracji, data_zmian_personalnych, przepnij_wszystkie_prace, tworz_brakujace_stanowiska, tworz_brakujace_stopnie) FROM stdin;
+COPY public.import_pracownikow_importpracownikow (id, created_on, started_on, finished_on, finished_successfully, traceback, plik_xls, owner_id, cancel_requested, cancelled, current_stage, language, log, log_seq, percent, result_context, stage_states, stan, status_text, mapowanie_kolumn, tworz_brakujace_jednostki, tworz_brakujace_tytuly, zakres_integracji, data_zmian_personalnych, przepnij_wszystkie_prace, tworz_brakujace_stanowiska, tworz_brakujace_stopnie, plik_po_imporcie) FROM stdin;
 \.
 
 
@@ -19191,7 +19178,7 @@ SELECT pg_catalog.setval('public.django_countdown_sitecountdown_id_seq', 1, fals
 -- Name: django_migrations_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
-SELECT pg_catalog.setval('public.django_migrations_id_seq', 1086, true);
+SELECT pg_catalog.setval('public.django_migrations_id_seq', 1087, true);
 
 
 --
