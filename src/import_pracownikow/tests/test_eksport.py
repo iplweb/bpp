@@ -86,12 +86,19 @@ def test_ignorowane_kolumny_znikaja_uzyte_zostaja():
         dane={"Dyscyplina": "nauki medyczne", "Tytuł nauk.": "dr"},
     )
 
-    naglowki, _ = _wczytaj(zbuduj_plik_po_imporcie(imp))
+    naglowki, wiersze = _wczytaj(zbuduj_plik_po_imporcie(imp))
 
     assert "Tytuł" in naglowki
-    assert "Dyscyplina" not in naglowki
-    assert "nauki medyczne" not in naglowki
     assert "Stopień służbowy" not in naglowki  # nieużyty target → brak kolumny
+    assert "Dyscyplina" not in naglowki
+    # Prawdziwa gwarancja: wartość zignorowanej kolumny nie wycieka
+    # do ŻADNEJ komórki danych w wyeksportowanym pliku.
+    assert not any(
+        "nauki medyczne" in str(cell)
+        for wiersz in wiersze
+        for cell in wiersz
+        if cell is not None
+    )
 
 
 @pytest.mark.django_db
