@@ -175,10 +175,10 @@ Kolumna „Wartość z BPP" = **autorytatywny rekord bazy** (`A` = `row.autor`,
 | 3 | `Imię` | `imię`/`osoba_sklejona`/`nazwisko_imię` | `A.imiona` | ZAWSZE |
 | 4 | `ORCID` | `orcid` | `A.orcid` | użyty ∨ niepusty |
 | 5 | `PBN UUID` | `pbn_uuid` | `A.pbn_uid_id` | użyty ∨ niepusty |
-| 6 | `Numer (system kadrowy)` | `numer` | `A.system_kadrowy_id` | użyty ∨ niepusty |
+| 6 | `Numer` | `numer` | `A.system_kadrowy_id` | użyty ∨ niepusty |
 | 7 | `E-mail` | `email` | `A.email` | użyty |
 | 8 | `Nazwa jednostki` | warianty jednostki | `AJ.jednostka.nazwa` | ZAWSZE |
-| 9 | `Tytuł / stopień naukowy` | `tytuł_stopień` | `str(A.tytul)` | użyty |
+| 9 | `Tytuł` | `tytuł_stopień` | `str(A.tytul)` | użyty |
 | 10 | `Stopień służbowy` | `stopień_służbowy` | `str(A.stopien_sluzbowy)` | użyty |
 | 11 | `Funkcja w jednostce` | `stanowisko` | `str(AJ.funkcja)` | użyty |
 | 12 | `Stanowisko dydaktyczne` | `stanowisko_dydaktyczne` | `str(AJ.stanowisko)` | użyty |
