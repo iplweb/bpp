@@ -4,8 +4,14 @@ import pytest
 from model_bakery import baker
 from openpyxl import load_workbook
 
-from bpp.models import Autor, Autor_Jednostka, Jednostka
+from bpp.models import Autor, Autor_Jednostka, Jednostka, StopienSluzbowy
+from import_common.util import normalize_cell_header
 from import_pracownikow.eksport import zbuduj_plik_po_imporcie
+from import_pracownikow.mapping import (
+    POLE_POMIN,
+    waliduj_mapowanie,
+    zaproponuj_mapowanie,
+)
 from import_pracownikow.models import ImportPracownikow, ImportPracownikowRow
 from import_pracownikow.tests._helpers import unikalna_nazwa
 
@@ -172,3 +178,52 @@ def test_autor_bez_zatrudnienia_wchodzi_z_pustymi_polami_zatrudnienia():
     assert wiersze[0][kol["BPP ID"]] == a.pk
     assert wiersze[0][kol["Nazwa jednostki"]] in (None, "")  # AJ None → puste
     assert wiersze[0][kol["Wymiar etatu"]] in (None, "")
+
+
+@pytest.mark.django_db
+def test_round_trip_naglowki_auto_mapuja_sie():
+    # Plik „po imporcie" musi re-importować się bez ręcznego mapowania:
+    # każdy nagłówek rozpoznany + walidacja mapowania bez błędów.
+    imp = _import_zintegrowany(
+        mapowanie_kolumn={
+            "Nazwisko": "nazwisko",
+            "Imię": "imię",
+            "Jednostka": "nazwa_jednostki",
+            "Tytuł": "tytuł_stopień",
+            "Stopień sł.": "stopień_służbowy",
+            "Funkcja": "stanowisko",
+            "St. dyd.": "stanowisko_dydaktyczne",
+            "Grupa": "grupa_pracownicza",
+            "Etat": "wymiar_etatu_tekst",
+            "Od": "data_zatrudnienia",
+            "Do": "data_końca_zatrudnienia",
+            "Gł.": "podstawowe_miejsce_pracy",
+            "Mail": "email",
+            "Nr": "numer",
+        }
+    )
+    j = baker.make(Jednostka, nazwa=unikalna_nazwa("Klinika RT"))
+    stopien = baker.make(StopienSluzbowy)
+    a = baker.make(
+        Autor,
+        nazwisko="Rt",
+        imiona="Test",
+        orcid="0000-0002-1825-0097",
+        stopien_sluzbowy=stopien,
+    )
+    aj = baker.make(Autor_Jednostka, autor=a, jednostka=j)
+    _wiersz(imp, loc=0, autor=a, autor_jednostka=aj)
+
+    naglowki, _ = _wczytaj(zbuduj_plik_po_imporcie(imp))
+
+    # Realny re-import normalizuje nagłówki PRZED zaproponuj_mapowanie
+    # (otworz_zrodlo(...).data() -> find_similar_row_in_rows ->
+    # normalize_cell_header) — tu robimy to samo, żeby test odzwierciedlał
+    # faktyczną ścieżkę re-importu, a nie porównywał surowy (Title Case)
+    # nagłówek pliku wprost z kluczami _SYNONIMY (zawsze lowercase/"_").
+    znormalizowane = [normalize_cell_header(h) for h in naglowki]
+
+    mapowanie = zaproponuj_mapowanie(znormalizowane)
+    nierozpoznane = [h for h, cel in mapowanie.items() if cel == POLE_POMIN]
+    assert nierozpoznane == [], f"Nierozpoznane nagłówki: {nierozpoznane}"
+    assert waliduj_mapowanie(mapowanie) == []
