@@ -627,3 +627,62 @@ def test_json_truncated_nie_obcina_krotkiego_tekstu():
     result = cmd_mod._json_truncated(small, max_len=100)
     assert "obcięto" not in result
     assert '"a": 1' in result
+
+
+@pytest.mark.django_db
+def test_niejednoznaczny_objectId_glosno_krzyczy_i_przerywa(
+    pbn_client,
+    pbn_wydawnictwo_zwarte_z_autorem_z_dyscyplina,
+    pbn_publication,
+    monkeypatch,
+):
+    """Repozytorium zwraca listę != 1 element → pakietowe
+    ``decode_publication_object_id`` rzuca zamiast po cichu zwracać None.
+
+    Narzędzie łapie to głośno (pokazuje błąd + surową odpowiedź) i pyta czy
+    kontynuować. Pod ``--yes-all`` pytanie idzie na default (False = nie) →
+    flow przerywany, zamiast jechać dalej z ``objectId=None``.
+    """
+    pbn_wydawnictwo_zwarte_z_autorem_z_dyscyplina.pbn_uid = pbn_publication
+    pbn_wydawnictwo_zwarte_z_autorem_z_dyscyplina.save()
+
+    _patch_get_client(monkeypatch, pbn_client)
+    _patch_intended_statements(monkeypatch, [])
+    # Dwa elementy — sytuacja niejednoznaczna (spodziewamy się dokładnie 1):
+    pbn_client.transport.return_values[PBN_POST_PUBLICATION_NO_STATEMENTS_URL] = [
+        {"id": pbn_publication.pk},
+        {"id": pbn_publication.pk},
+    ]
+    _patch_input(monkeypatch, ["2"])  # endpoint repozytoryjny
+
+    out = StringIO()
+    call_command(
+        "pbn_test_wysylka_interaktywna",
+        "--wydawnictwo-zwarte",
+        str(pbn_wydawnictwo_zwarte_z_autorem_z_dyscyplina.pk),
+        "--yes-all",
+        stdout=out,
+    )
+    output = out.getvalue()
+    assert "Nie mogę zdekodować objectId" in output
+    assert "Przerwano przez użytkownika." in output
+    # Nie dobił do GET oświadczeń (KROK 5) — przerwał już na dekodowaniu:
+    assert not any(
+        k.startswith(PBN_GET_INSTITUTION_STATEMENTS)
+        for k in pbn_client.transport.input_values
+    )
+
+
+def test_extract_object_id_niejednoznaczny_kontynuacja_zwraca_none(monkeypatch):
+    """Gałąź „kontynuuj mimo błędu": user zgadza się jechać dalej →
+    ``_extract_object_id`` zwraca None (zamiast rzucać UserAbort)."""
+    from django.core.management.base import OutputWrapper
+
+    cmd = cmd_mod.Command()
+    cmd.stdout = OutputWrapper(StringIO())
+    monkeypatch.setattr(cmd, "_prompt_yes_no", lambda *args, **kwargs: True)
+
+    result = cmd._extract_object_id(
+        [{"id": 1}, {"id": 2}], endpoint_choice="repositorium"
+    )
+    assert result is None
