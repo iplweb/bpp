@@ -97,20 +97,22 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  docker:
+  # ===================================================================
+  # JOB 1: build — buduje obrazy i pushuje je pod STAGING TAG.
+  # Ma DOCKER_PAT (login do Docker Hub + build cloud + bake push).
+  # Skan CVE jest CELOWO w osobnym jobie (`scan`) BEZ tego sekretu —
+  # patrz komentarz nad jobem `scan`.
+  # ===================================================================
+  build:
+    name: Build & push obrazów → staging tag
     runs-on: ubuntu-latest
-    env:
-      # Trivy PRZYPIĘTY do wersji + digestu (multi-arch index), NIE ruchomego
-      # :latest. Trivy leci `docker run` z zamontowanym docker.sock w TYM jobie,
-      # który ma DOCKER_PAT w env (login do Docker Hub) — kompromitacja taga
-      # `aquasec/trivy:latest` w rejestrze dałaby potencjalną eksfiltrację PAT-a.
-      # Pin + digest usuwa ten wektor (rejestr nie może podmienić zawartości pod
-      # niezmiennym digestem). Wersja 0.72.0 = ta sama co binarka trivy w
-      # release-candidate.yml (skan deps) — jeden trivy w całym pipeline.
-      # BUMP: podnieś wersję i digest z
-      #   docker buildx imagetools inspect aquasec/trivy:<wersja>
-      # (weź „Digest:" indeksu multi-arch, nie per-platform manifest).
-      TRIVY_IMAGE: "aquasec/trivy:0.72.0@sha256:cffe3f5161a47a6823fbd23d985795b3ed72a4c806da4c4df16266c02accdd6f"
+    # Tagi policzone tutaj muszą dojechać do jobów `scan` i `promote`
+    # (osobne runnery, brak współdzielonego steps.* kontekstu) — eksponujemy
+    # je jako outputy joba.
+    outputs:
+      staging_tag: ${{ steps.tag.outputs.staging_tag }}
+      final_tag: ${{ steps.tag.outputs.final_tag }}
+      channel_tag: ${{ steps.tag.outputs.channel_tag }}
     steps:
       - name: Log in to Docker Hub
         uses: docker/login-action@af1e73f918a031802d376d3c8bbc3fe56130a9b0 # v4.4.0
@@ -233,13 +235,42 @@ jobs:
             --allow=fs.read=/tmp \
             --allow=fs.write=/tmp
 
+  # ===================================================================
+  # JOB 2: scan — brama Trivy w ODDZIELNYM jobie, CELOWO BEZ DOCKER_PAT.
+  # ===================================================================
+  # Dlaczego osobny job: Trivy to zewnętrzne narzędzie odpalane z docker
+  # socketem. Gdyby dzieliło job z krokiem `docker login` (DOCKER_PAT),
+  # skompromitowany Trivy (nawet przy przypiętym digeście — np. dziura w
+  # samym narzędziu) miałby PAT w zasięgu. W osobnym jobie GitHub nie
+  # wstrzykuje sekretu, którego żaden krok nie referencuje → proces Trivy
+  # NIGDY nie ma PAT-a w środowisku. To defense-in-depth ponad pin obrazu.
+  #
+  # Skan PULL-uje obrazy staging z Docker Huba — repozytoria iplweb/bpp_*
+  # są PUBLICZNE (anonimowy pull działa), więc ten job nie potrzebuje
+  # ŻADNYCH credentiali do rejestru. (Obrazy z build-cloud i tak nie są
+  # w lokalnym daemonie — Trivy zawsze ciągnie je z rejestru.)
+  #
+  # `if` na poziomie joba: skan biegnie dla workflow_call (RC) ORAZ ręcznego
+  # buildu refa master. Dla ręcznego feature brancha (run_trivy=false) job
+  # jest 'skipped' → promote i tak przepuszcza (patrz `if` promote).
+  scan:
+    name: Skan CVE (Trivy) — bez DOCKER_PAT
+    needs: build
+    if: ${{ inputs.run_trivy || github.ref_name == 'master' }}
+    runs-on: ubuntu-latest
+    env:
+      # Trivy PRZYPIĘTY do wersji + digestu (multi-arch index), NIE ruchomego
+      # :latest — rejestr nie może podmienić zawartości pod niezmiennym
+      # digestem. Wersja 0.72.0 = ta sama co binarka trivy w
+      # release-candidate.yml (skan deps) — jeden trivy w całym pipeline.
+      # BUMP: podnieś wersję i digest z
+      #   docker buildx imagetools inspect aquasec/trivy:<wersja>
+      # (weź „Digest:" indeksu multi-arch, nie per-platform manifest).
+      TRIVY_IMAGE: "aquasec/trivy:0.72.0@sha256:cffe3f5161a47a6823fbd23d985795b3ed72a4c806da4c4df16266c02accdd6f"
+    steps:
       # -----------------------------------------------------------------
-      # FAZA 2: Trivy gate (gdy run_trivy=true lub ręczny ref=master)
-      # -----------------------------------------------------------------
-      # Skanuje staging tag. Gate odpala się dla wywołań workflow_call
-      # (RC przez release-candidate.yml) ORAZ ręcznego buildu refa master.
-      # CRITICAL z dostepnym fix-em → exit 1, promocja sie nie wykona
-      # (krok "Promote" ma domyslnie "if: success()").
+      # Skanuje staging tag. CRITICAL z dostepnym fix-em → exit 1, cały job
+      # 'failure' → promocja sie nie wykona (patrz `if` joba promote).
       # HIGH → zapis do Step Summary, nie blokuje.
       #
       # Skipowane sciezki (znane false-positivy w zaleznosciach):
@@ -249,10 +280,9 @@ jobs:
       # dopisz tutaj z komentarzem wyjasniajacym dlaczego to nie jest
       # prawdziwy sekret.
       # -----------------------------------------------------------------
-      - name: Trivy CRITICAL gate (gdy run_trivy / ręczny master)
-        if: ${{ inputs.run_trivy || github.ref_name == 'master' }}
+      - name: Trivy CRITICAL gate
         env:
-          STAGING_TAG: ${{ steps.tag.outputs.staging_tag }}
+          STAGING_TAG: ${{ needs.build.outputs.staging_tag }}
         run: |
           set -u
           images=(
@@ -313,14 +343,13 @@ jobs:
             exit 1
           fi
 
-      - name: Trivy HIGH report (gdy run_trivy / ręczny master, report-only)
+      - name: Trivy HIGH report (report-only)
         # Pokaz liste HIGH w Step Summary, ale nie blokuj. To jest
         # pomocna informacja o "dlugu CVE" — pozwala zdecydowac co bumpnac
         # przy nastepnej aktualizacji zaleznosci, bez zatrzymywania release-u.
-        if: ${{ inputs.run_trivy || github.ref_name == 'master' }}
         continue-on-error: true
         env:
-          STAGING_TAG: ${{ steps.tag.outputs.staging_tag }}
+          STAGING_TAG: ${{ needs.build.outputs.staging_tag }}
         run: |
           set -u
           images=(
@@ -365,24 +394,46 @@ jobs:
             echo "::endgroup::"
           done
 
-      # -----------------------------------------------------------------
-      # FAZA 3: Promote staging tag → canonical tag(s)
-      # -----------------------------------------------------------------
-      # docker buildx imagetools create -t NEW SOURCE:
-      #   kopiuje manifest z SOURCE pod tag NEW w tym samym rejestrze.
-      #   Nie rebuilduje, nie pushuje warstw — tylko zapisuje manifest
-      #   z referencja do istniejacych (juz pushnietych) layers.
-      #   Koszt: 1-2 sek per tag.
-      #
-      # if: success() (domyslne) — dla RC/ręcznego mastera wykona się tylko,
-      # jeśli Trivy przeszedł. Dla ręcznego feature brancha skan jest pomijany,
-      # więc promocja do tymczasowego tagu brancha może wykonać się od razu.
-      # -----------------------------------------------------------------
+  # ===================================================================
+  # JOB 3: promote — kopiuje manifest staging → kanoniczny tag.
+  # ===================================================================
+  # Ma DOCKER_PAT: `imagetools create` PUSHUJE manifest do rejestru, więc
+  # wymaga loginu. Oddzielony od skanu — PAT nie jest w środowisku Trivy.
+  #
+  # docker buildx imagetools create -t NEW SOURCE:
+  #   kopiuje manifest z SOURCE pod tag NEW w tym samym rejestrze.
+  #   Nie rebuilduje, nie pushuje warstw — tylko zapisuje manifest
+  #   z referencja do istniejacych (juz pushnietych) layers.
+  #   Koszt: 1-2 sek per tag. (Nie potrzebuje cloud drivera — to operacja
+  #   na rejestrze; domyślny builder w zupełności wystarcza.)
+  #
+  # BRAMKA `if`: buduj kanoniczny tag tylko gdy build OK ORAZ skan zielony
+  # LUB pominięty. scan='skipped' = run_trivy=false (ręczny feature branch)
+  # → promocja tymczasowego tagu może iść od razu. scan='failure'/'cancelled'
+  # (CRITICAL CVE) → promocja się NIE wykona, kanoniczny tag nie powstanie.
+  promote:
+    name: Promote staging → kanoniczny tag
+    needs: [build, scan]
+    if: |
+      always()
+      && needs.build.result == 'success'
+      && (needs.scan.result == 'success' || needs.scan.result == 'skipped')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Log in to Docker Hub
+        uses: docker/login-action@af1e73f918a031802d376d3c8bbc3fe56130a9b0 # v4.4.0
+        with:
+          username: ${{ vars.DOCKER_USER }}
+          password: ${{ secrets.DOCKER_PAT }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c # v4.2.0
+
       - name: Promote staging tag to canonical tag(s)
         env:
-          STAGING_TAG: ${{ steps.tag.outputs.staging_tag }}
-          FINAL_TAG: ${{ steps.tag.outputs.final_tag }}
-          CHANNEL_TAG: ${{ steps.tag.outputs.channel_tag }}
+          STAGING_TAG: ${{ needs.build.outputs.staging_tag }}
+          FINAL_TAG: ${{ needs.build.outputs.final_tag }}
+          CHANNEL_TAG: ${{ needs.build.outputs.channel_tag }}
         run: |
           set -eu
           images=(
