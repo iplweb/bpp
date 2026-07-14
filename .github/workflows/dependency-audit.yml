@@ -70,12 +70,21 @@ jobs:
       # Brak whitelisty CVE: gdy pojawi sie znany non-impact CVE bez
       # dostepnego fixa, dodaj tu --ignore-vuln <ID> z komentarzem
       # uzasadniajacym (i zsynchronizuj z bin/scan-deps.sh).
+      # PYSEC-2026-3447 (setuptools): fix jest w 83.0.0, ale setuptools >=81
+      # USUNAL modul `pkg_resources`, ktorego wymaga `pyoai`/`oaipmh`
+      # (serwer OAI-PMH przez `moai`, uzywany w bpp.views.oai). Zaden wydany
+      # pyoai nie zrezygnowal z pkg_resources, wiec bump setuptools do 83
+      # wywala starty Django (ModuleNotFoundError: pkg_resources). setuptools
+      # to narzedzie buildowe o minimalnej powierzchni ataku w runtime.
+      # Zdejmiemy ignore, gdy pyoai zmigruje na importlib.metadata albo
+      # wymienimy stos OAI-PMH.
       - name: Run pip-audit (gate on fixable)
         run: |
           uvx --from pip-audit pip-audit \
             --requirement /tmp/audit/requirements.txt \
             --disable-pip \
             --no-deps \
+            --ignore-vuln PYSEC-2026-3447 \
             --format columns
 
       - name: Run pip-audit (JSON full report - non-blocking)
