@@ -454,6 +454,48 @@ def test_importpracownikow_results_ma_pasek_filtrow(admin_client, admin_user):
     assert ".DataTable(" not in content
 
 
+@pytest.mark.django_db
+def test_importpracownikow_results_ma_selektor_rozmiaru_strony(
+    admin_client, admin_user
+):
+    """Tabela autorów (bez serwerowej paginacji, setki wierszy) ma client-side
+    selektor „na stronę" + pager, żeby nie renderować całego DOM naraz — duży
+    DOM wymusza reflow i muli Select2 przy pisaniu. Default 25; „wszystkie"
+    (value=0) świadomie pokazuje komplet."""
+    imp = baker.make(
+        ImportPracownikow,
+        owner=admin_user,
+        finished_successfully=True,
+        stan=ImportPracownikow.STAN_ZINTEGROWANY,
+    )
+    autor = baker.make(Autor, nazwisko="Testowy", imiona="Jan")
+    jednostka = baker.make(Jednostka, nazwa="Testowa Jednostka", skrot="Test. Jedn.")
+    baker.make(
+        ImportPracownikowRow,
+        parent=imp,
+        autor=autor,
+        jednostka=jednostka,
+        zmiany_potrzebne=True,
+    )
+    url = reverse("import_pracownikow:importpracownikow-results", kwargs={"pk": imp.pk})
+    content = admin_client.get(url).content.decode()
+
+    # selektor rozmiaru strony z opcjami 10/25/50/100/wszystkie, default 25
+    assert 'id="filtr-strona-rozmiar"' in content
+    assert 'value="10"' in content
+    assert 'value="25" selected' in content
+    assert 'value="50"' in content
+    assert 'value="100"' in content
+    assert 'value="0"' in content  # „wszystkie"
+    # pager (prev/next + info) — sterowanie client-side
+    assert 'id="filtr-pager"' in content
+    assert 'id="filtr-pager-prev"' in content
+    assert 'id="filtr-pager-next"' in content
+    # JS faktycznie wpina paginację (nie sam martwy markup)
+    assert "filtr-strona-rozmiar" in content
+    assert "strona" in content
+
+
 def test_importpracownikow_results_bez_pagination_include():
     """Martwy ``{% include "pagination.html" %}`` (widok bez ``paginate_by``)
     usunięty — nie-``<tr>`` w ``<tbody>`` psułby strukturę tabeli/karty."""

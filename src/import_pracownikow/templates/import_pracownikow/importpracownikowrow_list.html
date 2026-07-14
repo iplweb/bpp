@@ -81,6 +81,21 @@
                 <input type="search" id="filtr-tekst"
                        placeholder="nazwisko / jednostka…">
             </label>
+            {# Rozmiar „na stronę" — client-side paginacja. Tabela renderuje #}
+            {# WSZYSTKIE wiersze w DOM (setki), a wielki DOM wymusza reflow → #}
+            {# Select2 muli przy pisaniu. Pokazujemy tylko okno strony, resztę #}
+            {# chowamy (display:none wypada z layoutu). „wszystkie" (value=0) = #}
+            {# opt-in na komplet (i związany z tym jank). Default 25. #}
+            <label class="import-filtr-rozmiar">
+                Na stronę:
+                <select id="filtr-strona-rozmiar" name="filtr-strona-rozmiar">
+                    <option value="10">10</option>
+                    <option value="25" selected>25</option>
+                    <option value="50">50</option>
+                    <option value="100">100</option>
+                    <option value="0">wszystkie</option>
+                </select>
+            </label>
             <div class="import-filtr-glowne">
                 {% for klucz, etykieta in pola_glowne %}
                     {% include "import_pracownikow/partials/_filtr_pole.html" %}
@@ -99,6 +114,17 @@
         </form>
         {# Licznik przefiltrowanych rekordów (aktualizowany w JS filtruj()). #}
         <p id="filtr-licznik" class="import-filtr-licznik"></p>
+        {# Pager client-side (JS steruje widocznością i disabled). Ukryty przy #}
+        {# jednej stronie / „wszystkie". type="button" — NIE submituje formularza. #}
+        <nav id="filtr-pager" class="import-filtr-pager" hidden aria-label="Stronicowanie">
+            <button type="button" id="filtr-pager-prev" class="button secondary import-filtr-pager-btn">
+                <span class="fi-arrow-left"></span> poprzednia
+            </button>
+            <span id="filtr-pager-info" class="import-filtr-pager-info"></span>
+            <button type="button" id="filtr-pager-next" class="button secondary import-filtr-pager-btn">
+                następna <span class="fi-arrow-right"></span>
+            </button>
+        </nav>
         <div style="overflow-x: auto;">
             <table id="tabela-autorow">
                 <thead>
@@ -179,10 +205,23 @@
                     return tr.getAttribute('data-do-pominiecia') === '1';
                 return tr.getAttribute('data-confidence') === w;
             }
+            // Numer bieżącej strony (0-based). Reset do 0 tylko przy zmianie
+            // filtra/rozmiaru — NIE przy htmx:afterSettle (edytowany wiersz
+            // zostaje na swojej stronie).
+            var strona = 0;
+            function rozmiarStrony() {
+                var el = document.getElementById('filtr-strona-rozmiar');
+                var v = el ? parseInt(el.value, 10) : 25;
+                // 0 / puste / błędne → „wszystkie" (brak limitu).
+                return (isNaN(v) || v <= 0) ? Infinity : v;
+            }
             function filtruj() {
                 var ks = klucze();
                 var q = tekst();
-                var widoczne = 0, wszystkich = 0;
+                // 1) Zbierz rekordy przechodzące filtr (w kolejności DOM);
+                //    niepasujące od razu chowamy.
+                var pasujace = [];
+                var wszystkich = 0;
                 tabela.querySelectorAll(':scope > tbody[data-rekord]').forEach(
                     function (tbody) {
                         wszystkich++;
@@ -193,20 +232,69 @@
                         });
                         var okTekst = !q
                             || tekstRekordu(tbody).indexOf(q) !== -1;
-                        var pokaz = okStany && okTekst && okRodzaj(tbody);
-                        tbody.hidden = !pokaz;
-                        if (pokaz) widoczne++;
+                        if (okStany && okTekst && okRodzaj(tbody)) {
+                            pasujace.push(tbody);
+                        } else {
+                            tbody.hidden = true;
+                        }
                     });
+                // 2) Okno strony nad przefiltrowanym zbiorem. Chowamy rekordy
+                //    spoza okna, żeby DOM w layoucie był mały (Select2 nie muli).
+                var N = pasujace.length;
+                var r = rozmiarStrony();
+                var stronMax = (r === Infinity || N === 0)
+                    ? 1 : Math.ceil(N / r);
+                if (strona > stronMax - 1) strona = stronMax - 1;
+                if (strona < 0) strona = 0;
+                var start = (r === Infinity) ? 0 : strona * r;
+                var end = (r === Infinity) ? N : Math.min(start + r, N);
+                pasujace.forEach(function (tbody, i) {
+                    tbody.hidden = !(i >= start && i < end);
+                });
+                // 3) Licznik + pager.
                 var licznik = document.getElementById('filtr-licznik');
                 if (licznik) {
-                    licznik.textContent = wszystkich
-                        ? 'Pokazano ' + widoczne + ' z ' + wszystkich
-                            + ' rekordów'
-                        : '';
+                    if (!wszystkich) {
+                        licznik.textContent = '';
+                    } else if (!N) {
+                        licznik.textContent =
+                            'Nie znaleziono rekordów (0 z ' + wszystkich + ')';
+                    } else {
+                        licznik.textContent =
+                            'Pokazano ' + (start + 1) + '–' + end
+                            + ' z ' + N + ' rekordów'
+                            + (N !== wszystkich
+                                ? ' (odfiltrowano z ' + wszystkich + ')' : '');
+                    }
+                }
+                var pager = document.getElementById('filtr-pager');
+                if (pager) {
+                    pager.hidden = !(r !== Infinity && stronMax > 1);
+                    var info = document.getElementById('filtr-pager-info');
+                    if (info) {
+                        info.textContent =
+                            'strona ' + (strona + 1) + ' / ' + stronMax;
+                    }
+                    var prev = document.getElementById('filtr-pager-prev');
+                    var next = document.getElementById('filtr-pager-next');
+                    if (prev) prev.disabled = strona <= 0;
+                    if (next) next.disabled = strona >= stronMax - 1;
                 }
             }
-            form.addEventListener('change', filtruj);
-            form.addEventListener('input', filtruj);
+            // Zmiana filtra/rozmiaru → wróć na stronę 1 (inaczej można wylądować
+            // na pustej stronie za końcem nowego, węższego zbioru).
+            function przefiltrujOdNowa() { strona = 0; filtruj(); }
+            form.addEventListener('change', przefiltrujOdNowa);
+            form.addEventListener('input', przefiltrujOdNowa);
+            var prevBtn = document.getElementById('filtr-pager-prev');
+            var nextBtn = document.getElementById('filtr-pager-next');
+            if (prevBtn) prevBtn.addEventListener('click', function () {
+                strona -= 1; filtruj();
+            });
+            if (nextBtn) nextBtn.addEventListener('click', function () {
+                strona += 1; filtruj();
+            });
+            // Po swapie HTMX zachowaj bieżącą stronę (filtruj sam się klampuje).
             document.body.addEventListener('htmx:afterSettle', filtruj);
             filtruj();
         })();
