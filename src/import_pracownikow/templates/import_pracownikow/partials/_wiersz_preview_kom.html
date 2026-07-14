@@ -314,8 +314,9 @@
                 {% endwith %}
             </div>
             <div class="import-blok import-blok-przepnij">
-                {% if parent_object.edytowalny_podglad and row.przepnij_dostepne %}
+                {% if parent_object.edytowalny_podglad and parent_object.przepnij_wszystkie_prace and row.przepnij_dostepne %}
                     {# opt-in przepięcia prac — POST toggluje przepnij_prace #}
+                    {# ukryte, gdy import nie startował z masowym przepięciem #}
                     <form method="post"
                           hx-post="{% url "import_pracownikow:przepnij-prace" parent_object.pk row.pk %}"
                           hx-target="#wiersz-{{ row.pk }}"

@@ -14,8 +14,15 @@ def _autor_z_aktualna(nazwa="Stara"):
     return autor, stara
 
 
-def _import(owner, stan=ImportPracownikow.STAN_PRZEANALIZOWANY):
-    return baker.make(ImportPracownikow, owner=owner, stan=stan)
+def _import(
+    owner, stan=ImportPracownikow.STAN_PRZEANALIZOWANY, przepnij_wszystkie=False
+):
+    return baker.make(
+        ImportPracownikow,
+        owner=owner,
+        stan=stan,
+        przepnij_wszystkie_prace=przepnij_wszystkie,
+    )
 
 
 @pytest.mark.django_db
@@ -119,15 +126,19 @@ def test_bulk_pomija_wiersz_gdy_stara_jednostka_w_pliku(admin_client, admin_user
     assert row_b.przepnij_prace is False  # guard „para z pliku”
 
 
-@pytest.mark.django_db
-def test_kolumna_widoczna_tylko_przy_roznicy_jednostki(admin_client, admin_user):
+def _import_z_kwalifikujacym_wierszem(admin_user, przepnij_wszystkie):
+    """Import w stanie podglądu z JEDNYM wierszem kwalifikującym się do
+    przepięcia (autor z pracą w starej jednostce, wiersz kieruje do nowej) i
+    ``finished_successfully`` (by tabela wyników się wyrenderowała). Flaga
+    ``przepnij_wszystkie_prace`` sterowana parametrem — to ona bramkuje UI
+    przepinania na stronie autorów."""
     from bpp.models import Wydawnictwo_Ciagle, Wydawnictwo_Ciagle_Autor
 
     autor, stara = _autor_z_aktualna()
     nowa = baker.make(Jednostka, nazwa="Nowa", skrot="NW")
     wc = baker.make(Wydawnictwo_Ciagle, tytul_oryginalny="Art", rok=2023)
     baker.make(Wydawnictwo_Ciagle_Autor, rekord=wc, autor=autor, jednostka=stara)
-    imp = _import(admin_user)
+    imp = _import(admin_user, przepnij_wszystkie=przepnij_wszystkie)
     ImportPracownikowRow.objects.create(
         parent=imp,
         autor=autor,
@@ -135,14 +146,44 @@ def test_kolumna_widoczna_tylko_przy_roznicy_jednostki(admin_client, admin_user)
         zmiany_potrzebne=False,
         dane_z_xls={"__xls_loc_sheet__": 0, "__xls_loc_row__": 0},
     )
-    # dodatkowo import ma finished_successfully, by tabela się wyrenderowała
     ImportPracownikow.objects.filter(pk=imp.pk).update(finished_successfully=True)
+    return imp
+
+
+@pytest.mark.django_db
+def test_kolumna_widoczna_tylko_przy_roznicy_jednostki(admin_client, admin_user):
+    # UI przepinania odsłania się TYLKO gdy import ma przepnij_wszystkie_prace —
+    # tu ustawione, więc kolumna z checkboxem musi się pojawić przy różnicy jedn.
+    imp = _import_z_kwalifikujacym_wierszem(admin_user, przepnij_wszystkie=True)
     url = reverse("import_pracownikow:importpracownikow-results", kwargs={"pk": imp.pk})
     resp = admin_client.get(url)
     content = resp.content.decode("utf-8")
-    assert "przepnij_prace" in content
+    assert 'name="przepnij_prace"' in content
     # label przepięcia: „przenieś N prac z „stara” do „nowa”” (pełne nazwy jedn.)
     assert "przenieś 1 prac" in content
+
+
+@pytest.mark.django_db
+def test_ui_przepinania_widoczne_gdy_przepnij_wszystkie(admin_client, admin_user):
+    # Gdy na starcie wybrano masowe przepięcie prac — na stronie autorów widać
+    # ZARÓWNO przycisk zbiorczy JAK I per-wierszowe checkboxy.
+    imp = _import_z_kwalifikujacym_wierszem(admin_user, przepnij_wszystkie=True)
+    url = reverse("import_pracownikow:importpracownikow-results", kwargs={"pk": imp.pk})
+    content = admin_client.get(url).content.decode("utf-8")
+    assert "Zaznacz przepięcie prac dla wszystkich" in content
+    assert 'name="przepnij_prace"' in content
+
+
+@pytest.mark.django_db
+def test_ui_przepinania_ukryte_gdy_bez_przepniecia(admin_client, admin_user):
+    # Gdy na starcie NIE wybrano przepinania prac (domyślnie) — na stronie
+    # autorów NIE MA ani przycisku zbiorczego, ani per-wierszowych checkboxów,
+    # mimo że wiersz kwalifikuje się do przepięcia.
+    imp = _import_z_kwalifikujacym_wierszem(admin_user, przepnij_wszystkie=False)
+    url = reverse("import_pracownikow:importpracownikow-results", kwargs={"pk": imp.pk})
+    content = admin_client.get(url).content.decode("utf-8")
+    assert "Zaznacz przepięcie prac dla wszystkich" not in content
+    assert 'name="przepnij_prace"' not in content
 
 
 @pytest.mark.django_db
