@@ -78,7 +78,8 @@ class InitialSetup(ImportStepBase):
         self.update_progress(2, 4, "Pobieranie dyscyplin")
         self.log("info", "Pobieranie i synchronizacja dyscyplin")
         try:
-            self.client.download_disciplines()
+            # sync_disciplines() sam woła download_disciplines() — nie
+            # dublujemy zaciągu słownika z PBN.
             self.client.sync_disciplines()
         except Exception as e:
             zaloguj_polkniety_wyjatek(
