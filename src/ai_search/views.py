@@ -4,12 +4,13 @@ from urllib.parse import urlencode
 
 import rollbar
 from django.conf import settings
-from django.http import Http404, HttpResponseRedirect
+from django.http import HttpResponseRedirect
+from django.shortcuts import render
 from django.urls import reverse
 from django.utils import timezone
 from django.views.generic import FormView
 
-from ai_search import backends, budget, fx, pricing, translator
+from ai_search import backends, budget, config, fx, pricing, translator
 from ai_search.forms import AISearchForm
 from ai_search.models import AISearchQuery
 from bpp.views.zapytanie import WprowadzanieDanychOrSuperuserMixin
@@ -24,10 +25,28 @@ class ZapytanieAIView(WprowadzanieDanychOrSuperuserMixin, FormView):
     template_name = "ai_search/zapytanie_ai.html"
     form_class = AISearchForm
 
-    def dispatch(self, request, *args, **kwargs):
-        if not settings.BPP_AI_SEARCH_ENABLED:
-            raise Http404("Wyszukiwanie AI jest wyłączone.")
-        return super().dispatch(request, *args, **kwargs)
+    def get(self, request, *args, **kwargs):
+        if not config.is_configured():
+            return self._render_instrukcje()
+        return super().get(request, *args, **kwargs)
+
+    def post(self, request, *args, **kwargs):
+        if not config.is_configured():
+            return self._render_instrukcje()
+        return super().post(request, *args, **kwargs)
+
+    def _render_instrukcje(self):
+        """Ekran instrukcji konfiguracji zamiast formularza, gdy AI nie jest
+        skonfigurowane. Dostęp (login + staff/superuser) jest już wymuszony
+        przez ``WprowadzanieDanychOrSuperuserMixin`` w ``dispatch()``, więc
+        użytkownicy niezalogowani i bez uprawnień tu nie trafiają (dostają
+        odpowiednio redirect na logowanie / 403) — instrukcję widzi tylko
+        personel mogący korzystać z edytora zapytań."""
+        return render(
+            self.request,
+            "ai_search/nieskonfigurowane.html",
+            {"state": config.configuration_state()},
+        )
 
     def form_valid(self, form):
         model_key = form.cleaned_data["model"]

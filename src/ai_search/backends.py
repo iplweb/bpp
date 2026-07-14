@@ -50,7 +50,13 @@ class AnthropicBackend:
     """Natywny SDK ``anthropic`` — structured output, prompt caching."""
 
     def _client(self) -> anthropic.Anthropic:
-        return anthropic.Anthropic(timeout=settings.BPP_AI_LLM_TIMEOUT)
+        # ``BPP_AI_API_KEY`` jako jednolite ustawienie klucza (spójne z
+        # OpenAICompatibleBackend i z ai_search.config); puste -> None ->
+        # SDK sięga do zmiennej środowiskowej ANTHROPIC_API_KEY.
+        return anthropic.Anthropic(
+            api_key=settings.BPP_AI_API_KEY or None,
+            timeout=settings.BPP_AI_LLM_TIMEOUT,
+        )
 
     def _extract_usage(self, resp) -> dict:
         u = resp.usage

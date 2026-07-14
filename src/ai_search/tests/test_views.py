@@ -17,6 +17,16 @@ def staff_client(client, django_user_model):
     return client
 
 
+@pytest.fixture(autouse=True)
+def _ai_configured(settings):
+    """Domyślnie środowisko SKONFIGUROWANE: klucz anthropic + adres backendu
+    lokalnego. Testy poniżej ćwiczą ścieżkę działającego formularza (wymaga
+    ``config.is_configured() == True``). Testy „nieskonfigurowane" jawnie
+    nadpisują flagę/klucz."""
+    settings.BPP_AI_API_KEY = "sk-ant-test"
+    settings.BPP_AI_BASE_URL = "http://localhost:11434/v1"
+
+
 @pytest.mark.django_db
 def test_anonymous_denied(client, settings):
     settings.BPP_AI_SEARCH_ENABLED = True
@@ -29,6 +39,55 @@ def test_get_form_visible_for_staff(staff_client, settings):
     settings.BPP_AI_SEARCH_ENABLED = True
     r = staff_client.get(reverse("ai_search:index"))
     assert r.status_code == 200
+    # skonfigurowane -> widać formularz, nie ekran instrukcji
+    assert "data-ai-search-form" in r.content.decode()
+
+
+@pytest.mark.django_db
+def test_not_configured_shows_instructions_for_staff(staff_client, settings):
+    settings.BPP_AI_SEARCH_ENABLED = False
+    r = staff_client.get(reverse("ai_search:index"))
+    assert r.status_code == 200
+    body = r.content.decode()
+    assert "nie jest jeszcze skonfigurowana" in body
+    assert "BPP_AI_SEARCH_ENABLED" in body
+    # to instrukcja, nie formularz
+    assert "data-ai-search-form" not in body
+
+
+@pytest.mark.django_db
+def test_not_configured_missing_key_shows_instructions(
+    staff_client, settings, monkeypatch
+):
+    # Flaga włączona, ale brak klucza -> nadal „nieskonfigurowane".
+    settings.BPP_AI_SEARCH_ENABLED = True
+    settings.BPP_AI_BACKEND = "anthropic"
+    settings.BPP_AI_API_KEY = ""
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    r = staff_client.get(reverse("ai_search:index"))
+    assert r.status_code == 200
+    assert "nie jest jeszcze skonfigurowana" in r.content.decode()
+
+
+@pytest.mark.django_db
+def test_not_configured_denies_anonymous(client, settings):
+    # Niezalogowany NIE widzi instrukcji — dostęp odcięty przez mixin.
+    settings.BPP_AI_SEARCH_ENABLED = False
+    r = client.get(reverse("ai_search:index"))
+    assert r.status_code in (302, 403)
+    assert "nie jest jeszcze skonfigurowana" not in r.content.decode()
+
+
+@pytest.mark.django_db
+def test_not_configured_post_does_not_process_form(staff_client, settings):
+    settings.BPP_AI_SEARCH_ENABLED = False
+    r = staff_client.post(
+        reverse("ai_search:index"),
+        {"model": "rekord", "pytanie": "cokolwiek"},
+    )
+    assert r.status_code == 200
+    assert "nie jest jeszcze skonfigurowana" in r.content.decode()
+    assert AISearchQuery.objects.count() == 0
 
 
 @pytest.mark.django_db

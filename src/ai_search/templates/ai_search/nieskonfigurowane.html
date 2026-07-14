@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+{% block extratitle %}Szukaj przez AI — konfiguracja{% endblock %}
+{% block content %}
+<div class="row">
+  <div class="columns">
+    <h1>
+      <span class="fi-lightbulb" aria-hidden="true"></span>
+      Szukaj przez sztuczną inteligencję
+    </h1>
+
+    <div class="callout warning" role="status">
+      <p><strong>Ta funkcja nie jest jeszcze skonfigurowana.</strong></p>
+      <p>{{ state.reason }}</p>
+    </div>
+
+    <h2>Jak włączyć wyszukiwanie AI</h2>
+    <p>
+      Ustaw poniższe zmienne środowiskowe serwera BPP i zrestartuj aplikację.
+      Konfiguracji dokonuje administrator instalacji (nie z poziomu tej strony).
+    </p>
+
+    <ol>
+      <li>
+        <p>Włącz funkcję:</p>
+        <pre><code>BPP_AI_SEARCH_ENABLED=1</code></pre>
+      </li>
+      <li>
+        <p>Wybierz silnik (backend) modelu:</p>
+        <ul>
+          <li>
+            <p>
+              <strong>Anthropic (Claude)</strong> — płatny, w chmurze
+              (domyślny):
+            </p>
+            <pre><code>BPP_AI_BACKEND=anthropic
+BPP_AI_API_KEY=sk-ant-...        # albo zmienna ANTHROPIC_API_KEY
+BPP_AI_MODEL=claude-sonnet-5     # opcjonalnie</code></pre>
+          </li>
+          <li>
+            <p>
+              <strong>Model lokalny</strong> (Ollama, llama.cpp, vLLM,
+              LM&nbsp;Studio…) — dowolny serwer zgodny z OpenAI Chat
+              Completions API, darmowy:
+            </p>
+            <pre><code>BPP_AI_BACKEND=openai
+BPP_AI_BASE_URL=http://localhost:11434/v1
+BPP_AI_MODEL=...                 # nazwa modelu lokalnego
+BPP_AI_API_KEY=...               # opcjonalnie, jeśli serwer wymaga</code></pre>
+          </li>
+        </ul>
+      </li>
+      <li>
+        <p>
+          (Anthropic) Ustaw dzienny i miesięczny limit kosztów w PLN — po ich
+          przekroczeniu zapytania są twardo blokowane:
+        </p>
+        <pre><code>BPP_AI_DAILY_BUDGET_PLN=20
+BPP_AI_MONTHLY_BUDGET_PLN=300</code></pre>
+      </li>
+    </ol>
+
+    <p>
+      Pełna dokumentacja opcji (modele, cennik, kurs walut, cache schematu):
+      <code>docs/deweloper/ai-search.md</code>.
+    </p>
+  </div>
+</div>
+{% endblock %}

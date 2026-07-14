@@ -11,11 +11,11 @@ loguje każde zapytanie wraz z kosztem w `ai_search.models.AISearchQuery`
 
 | Zmienna | Domyślna | Znaczenie |
 |---|---|---|
-| `BPP_AI_SEARCH_ENABLED` | `False` | Włącza feature (link w menu + widok; bez tego widok zwraca 404). |
-| `ANTHROPIC_API_KEY` | — | Klucz API Anthropic (wymagany do realnych wywołań backendu `anthropic`; SDK `anthropic` czyta go bezpośrednio ze środowiska). |
+| `BPP_AI_SEARCH_ENABLED` | `False` | Włącza feature (link w menu + działający formularz). Gdy wyłączone **lub** brak poświadczeń aktywnego backendu, personel z dostępem do edytora zapytań widzi ekran instrukcji konfiguracji (zamiast 404), a pozycja w menu ma dopisek „(konfiguracja)". Niezalogowani/bez uprawnień: bez zmian (niewidoczne). |
+| `ANTHROPIC_API_KEY` | — | Klucz API Anthropic. Alternatywa dla `BPP_AI_API_KEY` (to drugie ma pierwszeństwo); SDK `anthropic` czyta `ANTHROPIC_API_KEY` ze środowiska jako fallback. |
 | `BPP_AI_BACKEND` | `anthropic` | `anthropic` (natywny SDK, płatny, budżet PLN) albo `openai` (lokalny/self-hosted serwer OpenAI-compatible — darmowy, budżet nieaktywny). Patrz [„Modele lokalne"](#modele-lokalne) niżej. |
 | `BPP_AI_BASE_URL` | `""` | Tylko dla `BPP_AI_BACKEND=openai` — adres API zgodny z OpenAI (np. `http://localhost:11434/v1` dla Ollama). |
-| `BPP_AI_API_KEY` | `""` | Tylko dla `BPP_AI_BACKEND=openai` — klucz API (pusty dla serwerów bez auth, np. Ollama). |
+| `BPP_AI_API_KEY` | `""` | Klucz API. Dla `openai` — klucz lokalnego serwera (pusty dla serwerów bez auth, np. Ollama). Dla `anthropic` — jednolita alternatywa dla `ANTHROPIC_API_KEY` (jeśli ustawione, ma pierwszeństwo). |
 | `BPP_AI_MODEL` | `claude-sonnet-5` | Model używany do tłumaczenia NL->DSL. Dla `anthropic` musi mieć wpis w `BPP_AI_PRICING` (cennik) w `settings/base.py`; dla `openai` to nazwa modelu na lokalnym serwerze (np. `qwen3:8b`). |
 | `BPP_AI_DAILY_BUDGET_PLN` / `BPP_AI_MONTHLY_BUDGET_PLN` | `20` / `300` | Twarde limity kosztu (PLN); po przekroczeniu `ai_search.budget.check_budget()` blokuje kolejne zapytania (widok zwraca 200 z komunikatem, nic nie loguje). |
 | `BPP_AI_MAX_RETRIES` | `1` | Ile razy `translator.translate` ponawia zapytanie do modelu po błędzie składni DjangoQL (z konkretnym komunikatem błędu, linia/kolumna). |
