@@ -17,6 +17,21 @@
     </p>
     <h1>Import danych {{ parent_object.plik_xls.name }}</h1>
 
+    <div class="button-group">
+        {# Pobranie oryginalnego, wgranego pliku XLSX (chroniony). #}
+        <a class="button"
+           href="{% url "import_pracownikow:pobierz-oryginal" pk=parent_object.pk %}">
+            <span class="fi-download"></span> Pobierz oryginał
+        </a>
+        {# Skorygowany plik „po imporcie" — tylko po finalizacji. #}
+        {% if parent_object.stan == "zintegrowany" %}
+            <a class="button secondary"
+               href="{% url "import_pracownikow:pobierz-po-imporcie" pk=parent_object.pk %}">
+                <span class="fi-download"></span> Pobierz plik po imporcie
+            </a>
+        {% endif %}
+    </div>
+
     {# Ostrzeżenie #4 na stronie autorów+jednostek — tylko przed zapisem osób. #}
     {% if parent_object.edytowalny_podglad %}
         {% include "import_pracownikow/partials/_ostrzezenie_podstawowe_miejsce.html" %}

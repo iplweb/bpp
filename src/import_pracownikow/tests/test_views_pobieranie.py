@@ -149,3 +149,43 @@ def test_po_imporcie_cudzy_import_404(client, django_user_model):
         reverse("import_pracownikow:pobierz-po-imporcie", kwargs={"pk": imp.pk})
     )
     assert resp.status_code == 404
+
+
+@pytest.mark.django_db
+def test_rezultaty_pokazuje_przyciski(client, django_user_model):
+    u = _user_w_grupie(django_user_model)
+    client.force_login(u)
+    imp = _import_z_plikiem(u)
+    imp.stan = ImportPracownikow.STAN_ZINTEGROWANY
+    imp.save()
+    resp = client.get(
+        reverse("import_pracownikow:importpracownikow-results", kwargs={"pk": imp.pk})
+    )
+    tresc = resp.content.decode()
+    assert (
+        reverse("import_pracownikow:pobierz-oryginal", kwargs={"pk": imp.pk}) in tresc
+    )
+    assert (
+        reverse("import_pracownikow:pobierz-po-imporcie", kwargs={"pk": imp.pk})
+        in tresc
+    )
+
+
+@pytest.mark.django_db
+def test_rezultaty_ukrywa_po_imporcie_przed_finalizacja(client, django_user_model):
+    u = _user_w_grupie(django_user_model)
+    client.force_login(u)
+    imp = _import_z_plikiem(u)
+    imp.stan = ImportPracownikow.STAN_PRZEANALIZOWANY
+    imp.save()
+    resp = client.get(
+        reverse("import_pracownikow:importpracownikow-results", kwargs={"pk": imp.pk})
+    )
+    tresc = resp.content.decode()
+    assert (
+        reverse("import_pracownikow:pobierz-oryginal", kwargs={"pk": imp.pk}) in tresc
+    )  # oryginał zawsze
+    assert (
+        reverse("import_pracownikow:pobierz-po-imporcie", kwargs={"pk": imp.pk})
+        not in tresc
+    )  # po-imporcie ukryty
