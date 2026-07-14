@@ -32,6 +32,17 @@
   > tbody {
     border-top: 2px solid #cacaca; // rozdzielenie kart
 
+    // Zebra PO KARCIE (tbody), nie po pojedynczym wierszu. Oba <tr> karty
+    // dostają JEDNO wspólne tło. Foundation domyślnie stripe'uje
+    // `tbody tr:nth-child(even)`, co trafiało w 2. wiersz KAŻDEJ karty
+    // (wiersz szczegółów) — przez to karta na białym tle miała szary drugi
+    // wiersz i zlewała się z następną. Jawne tło na `> tr` (selektor z #id
+    // bije regułę Foundation specyficznością) gasi ten pas: białe karty są
+    // białe na obu wierszach, szare — szare na obu.
+    > tr {
+      background-color: #fefefe;
+    }
+
     &:nth-of-type(odd) > tr {
       background-color: #f6f6f6;
     }
@@ -46,6 +57,12 @@
     white-space: nowrap;
     color: #767676;
     font-size: 0.85em;
+  }
+
+  // Pusta komórka wcięcia pod „Poz" w wierszu szczegółów — dziedziczy tło
+  // karty (zebra), sama nic nie renderuje.
+  .import-poz-spacer {
+    padding: 0;
   }
 }
 

@@ -107,7 +107,8 @@ def test_tabela_podgladu_renderuje_kolumny_porownania(admin_client, admin_user):
     )
     url = reverse("import_pracownikow:importpracownikow-results", kwargs={"pk": imp.pk})
     tresc = admin_client.get(url).content.decode("utf-8")
-    # etykiety komparatorów plik→baza w wierszu szczegółów (colspan=5)
+    # etykiety komparatorów plik→baza w wierszu szczegółów (pusta komórka
+    # pod „Poz" + colspan=4)
     assert "E-mail:" in tresc
     assert "Tytuł nauk." in tresc
     assert "Stopień sł." in tresc

@@ -1,5 +1,6 @@
 {# Karta rekordu: <tr> nr 1 (tożsamość + dopasowanie autora, data-diff-*) + #}
-{# <tr> nr 2 (colspan=5: komparatory plik→baza / audyt / przepnij prace). #}
+{# <tr> nr 2 (pusta komórka pod „Poz" + colspan=4: komparatory plik→baza / #}
+{# audyt / przepnij prace — wcięte o kolumnę „Poz"). #}
 {# Oba <tr> to innerHTML <tbody id="wiersz-{pk}" data-rekord> — HTMX swapuje #}
 {# całość, więc data-diff-* na pierwszym <tr> są zawsze świeże po akcji. #}
 {# Kolumny Osoba/Jednostka są READ-ONLY (dane z XLS). Fragmenty [data-szukaj] #}
@@ -240,7 +241,10 @@
     </td>
 </tr>
 <tr class="import-wiersz-szczegoly">
-    <td colspan="5">
+    {# Pusta komórka pod „Poz" — szczegóły wcięte o kolumnę Poz, żeby #}
+    {# wyrównywały się do kolumny „Osoba" pierwszego wiersza karty. #}
+    <td class="import-poz-spacer" aria-hidden="true"></td>
+    <td colspan="4">
         {% if not parent_object.edytowalny_podglad %}
             {# Po integracji: audyt zmian — JEDYNY widok log_zmian dla stanu #}
             {# po integracji (dawniej w bloku akcji, gdy nieedytowalny). #}
