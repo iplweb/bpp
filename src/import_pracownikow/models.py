@@ -397,6 +397,10 @@ class ImportPracownikow(LiveOperation):
                 "autor__stopien_sluzbowy",
                 "autor_jednostka__stanowisko",
                 "autor_jednostka__funkcja",
+                # Strona bazy dla wierszy zatrudnienia (wymiar/grupa) — bez N+1
+                # na nieostronicowanej tabeli setek wierszy.
+                "autor_jednostka__wymiar_etatu",
+                "autor_jednostka__grupa_pracownicza",
             )
         )
 
@@ -479,6 +483,19 @@ class ImportPracownikow(LiveOperation):
             liczniki[klucz] = liczniki.get(klucz, 0) + wiersz["n"]
         return liczniki
 
+    def liczba_wierszy_do_pominiecia(self):
+        """Ile wierszy zostanie PO CICHU pominiętych przy zapisie osób z powodu
+        braku DECYZJI: brak dopasowanego autora (``autor IS NULL``) i BEZ
+        „Utwórz nowego" (``utworz_nowego=False``). Zasila ostrzeżenie
+        finalizacji na hubie — ostrzega, NIE blokuje (świadoma decyzja usera).
+
+        Liczy WYŁĄCZNIE „brak decyzji" (indecyzja operatora). Wiersze z
+        ``utworz_nowego=True`` ale odroczoną jednostką są bramkowane osobnym
+        krokiem weryfikacji jednostek — nie dubluj ich tutaj."""
+        return self.importpracownikowrow_set.filter(
+            autor__isnull=True, utworz_nowego=False
+        ).count()
+
     @staticmethod
     def _liczniki_decyzji(queryset, tryb_brak, tryb_zgadywanie):
         """Rozkład NIEROZSTRZYGNIĘTYCH decyzji (jednostek/tytułów) po ``tryb``:
@@ -536,6 +553,24 @@ class ImportPracownikow(LiveOperation):
         """Mirror ``ma_kolumne_stopnia`` dla stanowiska dydaktycznego
         (kolumna zmapowana na ``stanowisko_dydaktyczne``)."""
         return "stanowisko_dydaktyczne" in (self.mapowanie_kolumn or {}).values()
+
+    @property
+    def ma_kolumne_wymiaru(self):
+        """Czy plik ma kolumnę wymiaru etatu (zmapowaną na ``wymiar_etatu_tekst``
+        LUB ``wymiar_etatu_ulamek`` — mapping.py rozbija wymiar na dwa cele).
+        Steruje pokazaniem wiersza „Wymiar etatu" w karcie porównań."""
+        cele = set((self.mapowanie_kolumn or {}).values())
+        return bool(cele & {"wymiar_etatu_tekst", "wymiar_etatu_ulamek"})
+
+    @property
+    def ma_kolumne_grupy(self):
+        """Mirror ``ma_kolumne_wymiaru`` dla grupy pracowniczej."""
+        return "grupa_pracownicza" in (self.mapowanie_kolumn or {}).values()
+
+    @property
+    def ma_kolumne_podstawowego(self):
+        """Mirror ``ma_kolumne_wymiaru`` dla podstawowego miejsca pracy."""
+        return "podstawowe_miejsce_pracy" in (self.mapowanie_kolumn or {}).values()
 
     @property
     def tytuly_wymagaja_rozstrzygniecia(self):
@@ -769,6 +804,42 @@ class ImportPracownikowRow(ImportRowMixin, models.Model):
         }
 
     @staticmethod
+    def _porownaj_fk_obj(plik_obj, baza_obj, *, ma_baze=True):
+        """Trójka porównania pola FK gdy OBIE strony to gotowe obiekty FK
+        (wymiar etatu / grupa pracownicza) — odróżnia się od ``_porownaj_fk``,
+        które bierze skrót+id z pliku. Porównanie SEMANTYCZNE po pk. ``rozne`` =
+        plik wskazuje wartość i baza jest inna (lub pusta). ``ma_baze=False``
+        (wiersz bez ``autor_jednostka`` → brak strony bazy) → ZAWSZE
+        ``rozne=False`` (jak ``ma_okres`` w ``_porownaj_data``: nie ma z czym
+        porównać), ale wartość z pliku nadal się renderuje."""
+        plik_pk = plik_obj.pk if plik_obj else None
+        baza_pk = baza_obj.pk if baza_obj else None
+        rozne = ma_baze and plik_pk is not None and baza_pk != plik_pk
+        return {
+            "plik": str(plik_obj) if plik_obj else "",
+            "baza": str(baza_obj) if baza_obj else "",
+            "rozne": rozne,
+        }
+
+    @staticmethod
+    def _porownaj_bool(plik_bool, baza_bool, *, ma_baze=True):
+        """Trójka porównania pola bool (podstawowe miejsce pracy): ``plik`` /
+        ``baza`` renderują ``Tak`` / ``Nie`` / ``""`` dla ``True`` / ``False`` /
+        ``None``. ``rozne`` = plik JAWNIE mówi (``not None``) i różni się od bazy.
+        ``None`` w pliku = „plik nie mówi nic" → to NIE różnica. ``ma_baze=False``
+        → ``rozne=False`` (brak strony bazy do porównania)."""
+
+        def _etykieta(v):
+            return "" if v is None else ("Tak" if v else "Nie")
+
+        rozne = ma_baze and plik_bool is not None and plik_bool != baza_bool
+        return {
+            "plik": _etykieta(plik_bool),
+            "baza": _etykieta(baza_bool),
+            "rozne": rozne,
+        }
+
+    @staticmethod
     def _porownaj_data(plik, baza, *, nowy_okres=False, ma_okres=True):
         """Trójka+ porównania daty: ``{plik, baza, rozne, nowy_okres}``. Toleruje
         ``date`` / ISO-``str`` / puste po obu stronach (porównywarka czyta surowe
@@ -849,7 +920,9 @@ class ImportPracownikowRow(ImportRowMixin, models.Model):
 
     def porownaj_z_baza(self):
         """Porównanie „plik vs baza" dla e-maila, stopnia służbowego,
-        stanowiska dydaktycznego, tytułu naukowego i funkcji w jednostce
+        stanowiska dydaktycznego, tytułu naukowego, funkcji w jednostce,
+        dat zatrudnienia oraz — display-only — wymiaru etatu, grupy
+        pracowniczej i podstawowego miejsca pracy
         (§12). CZYSTY odczyt — NIC nie zapisuje ani nie nadpisuje. E-mail:
         no-overwrite (porównanie stringów). Stopień/stanowisko/tytuł/funkcja:
         overwrite-if-different, porównywane SEMANTYCZNIE po FK (skrót w pliku vs
@@ -921,6 +994,25 @@ class ImportPracownikowRow(ImportRowMixin, models.Model):
                 baza_do,
                 nowy_okres=nowy_okres,
                 ma_okres=okres is not None,
+            ),
+            # Pola zatrudnienia AJ (wymiar / grupa / podstawowe miejsce pracy):
+            # strona pliku = własne FK/bool wiersza, strona bazy = z AJ. Bez AJ
+            # (wiersz niedopasowany/odroczony) → ma_baze=False, brak fałszywego
+            # podświetlenia. DISPLAY-ONLY: NIE wpięte w POLA_ROZNIC / filtr stanu.
+            "wymiar": self._porownaj_fk_obj(
+                self.wymiar_etatu,
+                aj.wymiar_etatu if aj else None,
+                ma_baze=aj is not None,
+            ),
+            "grupa": self._porownaj_fk_obj(
+                self.grupa_pracownicza,
+                aj.grupa_pracownicza if aj else None,
+                ma_baze=aj is not None,
+            ),
+            "podstawowe": self._porownaj_bool(
+                self.podstawowe_miejsce_pracy,
+                aj.podstawowe_miejsce_pracy if aj else None,
+                ma_baze=aj is not None,
             ),
         }
 
