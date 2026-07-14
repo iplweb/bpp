@@ -57,3 +57,46 @@ def test_toggle_blokada_poza_podgladem(admin_client, admin_user):
     )
     resp = admin_client.post(url, {"utworz_nowego": "on"})
     assert resp.status_code == 400
+
+
+@pytest.mark.django_db
+def test_wybor_utworz_ustawia_flage(admin_client, admin_user):
+    imp, row = _wiersz(admin_user)
+    url = reverse(
+        "import_pracownikow:utworz-nowego",
+        kwargs={"pk": imp.pk, "row_pk": row.pk},
+    )
+    resp = admin_client.post(url, {"wybor": "utworz"})
+    assert resp.status_code == 200
+    row.refresh_from_db()
+    assert row.utworz_nowego is True
+
+
+@pytest.mark.django_db
+def test_wybor_pomin_kasuje_flage(admin_client, admin_user):
+    imp, row = _wiersz(admin_user)
+    row.utworz_nowego = True
+    row.save(update_fields=["utworz_nowego"])
+    url = reverse(
+        "import_pracownikow:utworz-nowego",
+        kwargs={"pk": imp.pk, "row_pk": row.pk},
+    )
+    resp = admin_client.post(url, {"wybor": "pomin"})
+    assert resp.status_code == 200
+    row.refresh_from_db()
+    assert row.utworz_nowego is False
+
+
+@pytest.mark.django_db
+def test_wybor_dopasuj_nie_ustawia_utworz(admin_client, admin_user):
+    # „Dopasuj" POST-owane do tego widoku (gdyby doszło) NIE włącza utworz_nowego
+    # — właściwy match idzie osobno przez dopasuj-autora.
+    imp, row = _wiersz(admin_user)
+    url = reverse(
+        "import_pracownikow:utworz-nowego",
+        kwargs={"pk": imp.pk, "row_pk": row.pk},
+    )
+    resp = admin_client.post(url, {"wybor": "dopasuj"})
+    assert resp.status_code == 200
+    row.refresh_from_db()
+    assert row.utworz_nowego is False

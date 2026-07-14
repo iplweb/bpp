@@ -68,13 +68,52 @@
                         </div>
                     </div>
                 {% elif row.confidence == "brak" %}
-                    {# brak dopasowania: dopasuj do istniejącego autora (leniwy #}
-                    {# Select2) albo utwórz nowego (checkbox niżej). #}
+                    {# D2: jawny wybór Pomiń / Utwórz / Dopasuj zamiast #}
+                    {# zakopanego linku + checkboxa. „Pomiń" to widoczny #}
+                    {# domyślny stan — żeby wiersz nie zniknął po cichu. #}
+                    {# Stan trzymamy w istniejącym `utworz_nowego` (bool): #}
+                    {# Pomiń=False, Utwórz=True; „Dopasuj" nie POST-uje tu — #}
+                    {# odsłania Select2, a wybór autora idzie do dopasuj-autora #}
+                    {# i przenosi wiersz poza „brak". #}
+                    {# hx-trigger z filtrem zdarzenia (event filter) zamiast #}
+                    {# `from:` — bare selektor w `from:` w htmx 1.x wiąże na #}
+                    {# CAŁYM dokumencie, więc jeden klik odpalałby POST każdego #}
+                    {# wiersza. Filtr `target.classList…` odpala tylko dla dwóch #}
+                    {# radia z klasą js-brak-radio-post (Dopasuj jej nie ma). #}
+                    <form class="import-brak-wybor"
+                          method="post"
+                          hx-post="{% url "import_pracownikow:utworz-nowego" parent_object.pk row.pk %}"
+                          hx-target="#wiersz-{{ row.pk }}"
+                          hx-swap="innerHTML"
+                          hx-trigger="change[target.classList.contains('js-brak-radio-post')]">
+                        {% csrf_token %}
+                        <label>
+                            <input type="radio" name="wybor" value="pomin"
+                                   class="js-brak-radio-post"
+                                   {% if not row.utworz_nowego %}checked{% endif %}>
+                            <span class="fi-prohibited"></span>
+                            Pomiń — nie importuj
+                        </label>
+                        <label>
+                            <input type="radio" name="wybor" value="utworz"
+                                   class="js-brak-radio-post"
+                                   {% if row.utworz_nowego %}checked{% endif %}>
+                            <span class="fi-plus"></span>
+                            Utwórz nowego autora
+                        </label>
+                        <label>
+                            <input type="radio" name="wybor" value="dopasuj"
+                                   class="js-brak-radio-dopasuj">
+                            <span class="fi-magnifying-glass"></span>
+                            Dopasuj do istniejącego
+                        </label>
+                    </form>
+                    {# „Dopasuj" odsłania leniwy Select2 (JS niżej). Wybór autora #}
+                    {# POST-uje do dopasuj-autora (bez zmian) i przenosi wiersz #}
+                    {# poza „brak". Po każdym re-renderze wyboru „dopasuj" i #}
+                    {# odsłony NIE utrwalamy (stan serwera = Pomiń/Utwórz) — #}
+                    {# operator wybiera „Dopasuj" ponownie, jeśli trzeba. #}
                     <div class="import-autor-zmien">
-                        <a href="#" class="js-zmien-autora">
-                            <i class="fi-magnifying-glass"></i>
-                            Dopasuj do istniejącego autora
-                        </a>
                         <div class="js-autor-picker" hidden>
                             <form method="post"
                                   hx-post="{% url "import_pracownikow:dopasuj-autora" parent_object.pk row.pk %}"
@@ -87,19 +126,6 @@
                             </form>
                         </div>
                     </div>
-                    {# D2: checkbox „utwórz nowego autora" — zmiana → POST toggle #}
-                    <form method="post"
-                          hx-post="{% url "import_pracownikow:utworz-nowego" parent_object.pk row.pk %}"
-                          hx-target="#wiersz-{{ row.pk }}"
-                          hx-swap="innerHTML"
-                          hx-trigger="change">
-                        {% csrf_token %}
-                        <label>
-                            <input type="checkbox" name="utworz_nowego"
-                                   {% if row.utworz_nowego %}checked{% endif %}>
-                            <i class="fi-plus"></i> utwórz nowego autora
-                        </label>
-                    </form>
                 {% else %}
                     {# twardy / zgadywanie: auto-autor jest już w kol. Autor — #}
                     {# dyskretny „zmień autora" rozwijający leniwy Select2 (override). #}
@@ -176,6 +202,20 @@
                         initPicker(wrap);
                     });
 
+                    // Radio „Dopasuj do istniejącego" (wiersz brak) odsłania
+                    // leniwy Select2. Picker jest rodzeństwem formularza-radia w
+                    // .import-autor-akcje, więc szukamy go w tym kontenerze.
+                    document.addEventListener("change", function (e) {
+                        var radio = e.target.closest(".js-brak-radio-dopasuj");
+                        if (!radio || !radio.checked) return;
+                        var akcje = radio.closest(".import-autor-akcje");
+                        var wrap = akcje &&
+                            akcje.querySelector(".js-autor-picker");
+                        if (!wrap) return;
+                        wrap.hidden = false;
+                        initPicker(wrap);
+                    });
+
                     document.body.addEventListener("htmx:afterSettle", function (e) {
                         var scope = (e.detail && e.detail.target) || document;
                         scope
@@ -235,6 +275,24 @@
                         <div class="import-porownanie-item">
                             <span class="import-porownanie-etykieta">Stanowisko dyd.:</span>
                             {% include "import_pracownikow/partials/_porownanie_kom.html" with pole=porownanie.stanowisko %}
+                        </div>
+                    {% endif %}
+                    {% if parent_object.ma_kolumne_wymiaru %}
+                        <div class="import-porownanie-item">
+                            <span class="import-porownanie-etykieta">Wymiar etatu:</span>
+                            {% include "import_pracownikow/partials/_porownanie_kom.html" with pole=porownanie.wymiar %}
+                        </div>
+                    {% endif %}
+                    {% if parent_object.ma_kolumne_grupy %}
+                        <div class="import-porownanie-item">
+                            <span class="import-porownanie-etykieta">Grupa prac.:</span>
+                            {% include "import_pracownikow/partials/_porownanie_kom.html" with pole=porownanie.grupa %}
+                        </div>
+                    {% endif %}
+                    {% if parent_object.ma_kolumne_podstawowego %}
+                        <div class="import-porownanie-item">
+                            <span class="import-porownanie-etykieta">Podst. miejsce:</span>
+                            {% include "import_pracownikow/partials/_porownanie_kom.html" with pole=porownanie.podstawowe %}
                         </div>
                     {% endif %}
                     <div class="import-porownanie-item">

@@ -477,7 +477,14 @@ class PrzelaczUtworzNowegoView(_WierszImportuMixin):
             return HttpResponseBadRequest(
                 "„Utwórz nowego” dotyczy tylko wierszy bez dopasowania."
             )
-        row.utworz_nowego = request.POST.get("utworz_nowego") is not None
+        # Radio grupy Pomiń/Utwórz/Dopasuj: „utworz" → flaga True, cokolwiek
+        # innego (Pomiń) → False. Legacy param `utworz_nowego` (checkbox) nadal
+        # akceptowany, żeby stare wywołania/testy nie padły.
+        wybor = request.POST.get("wybor")
+        if wybor is not None:
+            row.utworz_nowego = wybor == "utworz"
+        else:
+            row.utworz_nowego = request.POST.get("utworz_nowego") is not None
         row.save(update_fields=["utworz_nowego"])
         return self._render_wiersz()
 
