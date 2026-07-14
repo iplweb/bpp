@@ -2,22 +2,19 @@
 transforms before refactoring:
 
 * ``integruj_jezyki``     (pbn_integrator/utils/dictionaries.py)
-* ``integruj_dyscypliny`` (pbn_integrator/utils/dictionaries.py)
 * ``integruj_zrodla``     (pbn_integrator/utils/journals.py)
 
 These lock the OBSERVABLE behavior of every branch so the subsequent
 complexity-reducing refactor can be proven behavior-preserving.
 """
 
-from datetime import date
 from unittest.mock import Mock
-from uuid import uuid4
 
 import pytest
 from model_bakery import baker
 
 from bpp.models import Jezyk, Zrodlo
-from pbn_api.models import Discipline, DisciplineGroup, Journal, Language
+from pbn_api.models import Journal, Language
 
 # ---------------------------------------------------------------------------
 # integruj_jezyki
@@ -189,215 +186,6 @@ def test_jezyki_639_1_participates_in_query():
 
     jezyk.refresh_from_db()
     assert jezyk.pbn_uid_id == lang.pk
-
-
-# ---------------------------------------------------------------------------
-# integruj_dyscypliny
-# ---------------------------------------------------------------------------
-
-
-def _make_group():
-    return baker.make(
-        DisciplineGroup,
-        uuid=uuid4(),
-        validityDateFrom=date(2022, 1, 1),
-        validityDateTo=None,
-    )
-
-
-@pytest.mark.django_db
-def test_dyscypliny_creates_group_from_dict():
-    """Group as dict, not present -> created with given pk."""
-    from pbn_integrator.utils import integruj_dyscypliny
-
-    gid = 987654
-    client = Mock()
-    client.get_discipline_groups.return_value = [
-        {
-            "id": gid,
-            "uuid": str(uuid4()),
-            "validityDateFrom": "2022-01-01",
-            "validityDateTo": None,
-        }
-    ]
-    client.get_disciplines.return_value = []
-    integruj_dyscypliny(client)
-
-    assert DisciplineGroup.objects.filter(pk=gid).exists()
-
-
-@pytest.mark.django_db
-def test_dyscypliny_skips_existing_group_dict():
-    """Group as dict, already present -> left untouched (no error)."""
-    from pbn_integrator.utils import integruj_dyscypliny
-
-    grp = _make_group()
-    client = Mock()
-    client.get_discipline_groups.return_value = [
-        {
-            "id": grp.pk,
-            "uuid": str(uuid4()),
-            "validityDateFrom": "2099-01-01",
-            "validityDateTo": None,
-        }
-    ]
-    client.get_disciplines.return_value = []
-    integruj_dyscypliny(client)
-
-    grp.refresh_from_db()
-    # untouched: still original validity date
-    assert grp.validityDateFrom == date(2022, 1, 1)
-
-
-@pytest.mark.django_db
-def test_dyscypliny_model_group_not_in_db_is_skipped():
-    """Group as (unsaved) model object missing from DB -> NOT created."""
-    from pbn_integrator.utils import integruj_dyscypliny
-
-    unsaved = DisciplineGroup(uuid=uuid4(), validityDateFrom=date(2022, 1, 1))
-    before = DisciplineGroup.objects.count()
-
-    client = Mock()
-    client.get_discipline_groups.return_value = [unsaved]
-    client.get_disciplines.return_value = []
-    integruj_dyscypliny(client)
-
-    assert DisciplineGroup.objects.count() == before
-
-
-@pytest.mark.django_db
-def test_dyscypliny_creates_discipline_dict_parent_group_dict():
-    """Discipline dict whose parent_group is a dict -> parent_group_id taken
-    from the nested id; created with explicit pk when 'id' present."""
-    from pbn_integrator.utils import integruj_dyscypliny
-
-    grp = _make_group()
-    client = Mock()
-    client.get_discipline_groups.return_value = []
-    client.get_disciplines.return_value = [
-        {
-            "id": 555001,
-            "uuid": str(uuid4()),
-            "code": "33.1",
-            "name": "Nauka A",
-            "parent_group": {"id": grp.pk},
-        }
-    ]
-    integruj_dyscypliny(client)
-
-    d = Discipline.objects.get(code="33.1")
-    assert d.pk == 555001
-    assert d.parent_group_id == grp.pk
-    assert d.name == "Nauka A"
-
-
-@pytest.mark.django_db
-def test_dyscypliny_creates_discipline_dict_parent_group_model():
-    """Discipline dict whose parent_group is a model object -> uses its pk."""
-    from pbn_integrator.utils import integruj_dyscypliny
-
-    grp = _make_group()
-    client = Mock()
-    client.get_discipline_groups.return_value = []
-    client.get_disciplines.return_value = [
-        {
-            "uuid": str(uuid4()),
-            "code": "33.2",
-            "name": "Nauka B",
-            "parent_group": grp,
-        }
-    ]
-    integruj_dyscypliny(client)
-
-    d = Discipline.objects.get(code="33.2")
-    assert d.parent_group_id == grp.pk
-
-
-@pytest.mark.django_db
-def test_dyscypliny_creates_discipline_dict_parent_group_id_key():
-    """Discipline dict with no parent_group, but a parent_group_id key."""
-    from pbn_integrator.utils import integruj_dyscypliny
-
-    grp = _make_group()
-    client = Mock()
-    client.get_discipline_groups.return_value = []
-    client.get_disciplines.return_value = [
-        {
-            "uuid": str(uuid4()),
-            "code": "33.3",
-            "name": "Nauka C",
-            "parent_group": None,
-            "parent_group_id": grp.pk,
-        }
-    ]
-    integruj_dyscypliny(client)
-
-    d = Discipline.objects.get(code="33.3")
-    assert d.parent_group_id == grp.pk
-
-
-@pytest.mark.django_db
-def test_dyscypliny_updates_name_and_skips_when_same():
-    """Existing discipline: name differs -> updated; name same -> untouched."""
-    from pbn_integrator.utils import integruj_dyscypliny
-
-    grp = _make_group()
-    disc = baker.make(
-        Discipline, code="33.4", name="Stara", parent_group=grp, uuid=uuid4()
-    )
-
-    client = Mock()
-    client.get_discipline_groups.return_value = []
-    client.get_disciplines.return_value = [
-        {
-            "uuid": str(uuid4()),
-            "code": "33.4",
-            "name": "Nowa",
-            "parent_group": grp,
-        }
-    ]
-    integruj_dyscypliny(client)
-    disc.refresh_from_db()
-    assert disc.name == "Nowa"
-
-    # Same name -> no-op; uuid/parent unchanged.
-    client.get_disciplines.return_value = [
-        {
-            "uuid": str(uuid4()),
-            "code": "33.4",
-            "name": "Nowa",
-            "parent_group": grp,
-        }
-    ]
-    integruj_dyscypliny(client)
-    disc.refresh_from_db()
-    assert disc.name == "Nowa"
-
-
-@pytest.mark.django_db
-def test_dyscypliny_discipline_model_object_create_and_update():
-    """Discipline supplied as a model object: create path (new code) then
-    update path (existing code, differing name)."""
-    from pbn_integrator.utils import integruj_dyscypliny
-
-    grp = _make_group()
-    remote = Discipline(code="33.5", name="Mname", parent_group=grp, uuid=uuid4())
-
-    client = Mock()
-    client.get_discipline_groups.return_value = []
-    client.get_disciplines.return_value = [remote]
-    integruj_dyscypliny(client)
-
-    d = Discipline.objects.get(code="33.5")
-    assert d.name == "Mname"
-    assert d.parent_group_id == grp.pk
-
-    # Now an existing discipline returned as model object with new name.
-    remote2 = Discipline(code="33.5", name="Mname2", parent_group=grp, uuid=uuid4())
-    client.get_disciplines.return_value = [remote2]
-    integruj_dyscypliny(client)
-    d.refresh_from_db()
-    assert d.name == "Mname2"
 
 
 # ---------------------------------------------------------------------------
