@@ -385,6 +385,34 @@ def _lagodna_walidacja_wiersza(dane_form):
     return ostrzezenia
 
 
+def _waliduj_dlugosci_pol(elem, dane_form):
+    """Czytelny (PL) błąd PRZED ``AutorForm.is_valid`` gdy któraś wartość
+    przekracza ``max_length`` pola formularza — zamiast surowego angielskiego
+    komunikatu Django („Ensure this value has at most 200 characters"). Limity
+    czytane wprost z ``AutorForm`` (jedno źródło prawdy), etykiety z
+    ``POLA_DOCELOWE``. Fail-fast (odrzucamy plik — spójne z resztą walidacji
+    analizy); ``elem`` niesie kontekst arkusza/wiersza do komunikatu. Inne błędy
+    walidacji (nie-długościowe) lecą dalej normalnie przez ``AutorForm``."""
+    from import_pracownikow.mapping import POLA_DOCELOWE
+
+    etykiety = dict(POLA_DOCELOWE)
+    for nazwa, pole in AutorForm.base_fields.items():
+        limit = getattr(pole, "max_length", None)
+        if not limit:
+            continue
+        wartosc = dane_form.get(nazwa)
+        if wartosc in (None, ""):
+            continue
+        dlugosc = len(str(wartosc))
+        if dlugosc > limit:
+            raise XLSMatchError(
+                elem,
+                etykiety.get(nazwa, nazwa),
+                f"wartość ma {dlugosc} znaków, przekracza maksimum {limit} "
+                f"znaków — skróć wartość w pliku XLS",
+            )
+
+
 def _dane_znormalizowane_z_parserem(cleaned_data, rozbicie, ostrzezenia=None):
     """Kopia cleaned_data wzbogacona o pewność rozbicia parsera (§7): confidence
     rozbicia (high/medium/low) i alternatywy trzymamy WEWNĄTRZ JSON, nie w
@@ -577,6 +605,10 @@ def _przetworz_wiersz(
         skrot_hint,
     ) = _zrodlo_jednostki_wiersza(dane_form)
     jednostka_odroczona = jed_status != STATUS_JEDNOSTKA_TWARDY
+
+    # Czytelny (PL) błąd długości przed AutorForm — zamiast surowego angielskiego
+    # max_length Django. Operator dostaje arkusz/wiersz/pole/limit.
+    _waliduj_dlugosci_pol(elem, dane_form)
 
     autor_form = AutorForm(data=dane_form)
     autor_form.full_clean()
