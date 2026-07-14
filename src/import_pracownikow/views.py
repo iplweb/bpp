@@ -1603,7 +1603,7 @@ class PobierzPoImporcieView(GroupRequiredMixin, View):
         else:
             stem = f"import-{obj.pk}"
         nazwa = f"{stem}-po-imporcie.xlsx"
-        if obj.plik_po_imporcie:
+        if obj.plik_po_imporcie and os.path.exists(obj.plik_po_imporcie.path):
             # Zamrożony snapshot z chwili finalizacji (immutable). sendfile sam
             # robi RFC 5987 dla nazwy z polskimi znakami.
             return sendfile(
@@ -1612,7 +1612,8 @@ class PobierzPoImporcieView(GroupRequiredMixin, View):
                 attachment=True,
                 attachment_filename=nazwa,
             )
-        # Fallback: importy sprzed snapshotu / błąd generacji — buduj w locie.
+        # Fallback: importy sprzed snapshotu / błąd generacji / plik zniknął
+        # z dysku (rekord w DB, ale brak pliku fizycznego) — buduj w locie.
         from import_pracownikow.eksport import zbuduj_plik_po_imporcie
 
         content = zbuduj_plik_po_imporcie(obj)

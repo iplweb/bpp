@@ -178,8 +178,16 @@ def zbuduj_plik_po_imporcie(import_obj) -> bytes:
 def zapisz_snapshot_po_imporcie(import_obj):
     """Buduje i ZAPISUJE zamrożony plik „po imporcie" do pola
     ``plik_po_imporcie`` (trwały rekord przy finalizacji). Nazwa w storage
-    bazuje na pk; nazwę POBIERANIA ustala widok."""
+    bazuje na pk; nazwę POBIERANIA ustala widok.
+
+    ``save=False`` + jawny ``update_fields=["plik_po_imporcie"]``: pełny
+    ``instance.save()`` (domyślne ``FieldFile.save(save=True)``) zapisałby
+    WSZYSTKIE pola wiersza, ryzykując zgubienie równoległych zmian na tym
+    samym rekordzie ``ImportPracownikow`` (lost update) — analogicznie do
+    integracji, która z tego samego powodu zapisuje ``stan`` przez
+    ``update_fields=["stan"]``."""
     tresc = zbuduj_plik_po_imporcie(import_obj)
     import_obj.plik_po_imporcie.save(
-        f"po-imporcie-{import_obj.pk}.xlsx", ContentFile(tresc), save=True
+        f"po-imporcie-{import_obj.pk}.xlsx", ContentFile(tresc), save=False
     )
+    import_obj.save(update_fields=["plik_po_imporcie"])
