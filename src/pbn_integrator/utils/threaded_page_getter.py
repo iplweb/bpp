@@ -17,7 +17,7 @@ class ThreadedMongoDBSaver(ThreadedModelSaver):
             from pbn_integrator.utils import zapisz_mongodb
 
             self.zapisz_mongodb = zapisz_mongodb
-        self.zapisz_mongodb(elem, self.pbn_api_klass)
+        self.zapisz_mongodb(elem, self.model_class)
 
 
 def threaded_page_getter(

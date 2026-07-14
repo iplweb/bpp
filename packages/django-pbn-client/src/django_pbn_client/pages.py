@@ -44,11 +44,15 @@ def simple_page_getter(
 class ThreadedPageGetter:
     """Fetch and process individual pages supplied by a PBN paginator."""
 
+    # Subclasses bind the target model by overriding this class attribute
+    # (``model_class = MyModel``); the constructor argument takes precedence
+    # when supplied.
+    model_class = None
+
     def __init__(self, max_workers=None, model_class=None):
         self.max_workers = max_workers
-        self.model_class = model_class
         if model_class is not None:
-            self.pbn_api_klass = model_class
+            self.model_class = model_class
         self.client = None
         self.data = None
 
@@ -71,11 +75,11 @@ class ThreadedModelSaver(ThreadedPageGetter):
     save_function = staticmethod(upsert_pbn_object)
 
     def process_element(self, element):
-        self.save_function(element, self.pbn_api_klass)
+        self.save_function(element, self.model_class)
 
 
-# The old name describes the upstream PBN storage, not the local database.
-# Keep it as an alias for applications migrating from BPP.
+# Historical name: describes PBN's upstream storage, not the local database.
+# Retained as an alias for existing consumers of the older API.
 ThreadedMongoDBSaver = ThreadedModelSaver
 
 
