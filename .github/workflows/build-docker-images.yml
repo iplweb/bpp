@@ -99,6 +99,18 @@ concurrency:
 jobs:
   docker:
     runs-on: ubuntu-latest
+    env:
+      # Trivy PRZYPIĘTY do wersji + digestu (multi-arch index), NIE ruchomego
+      # :latest. Trivy leci `docker run` z zamontowanym docker.sock w TYM jobie,
+      # który ma DOCKER_PAT w env (login do Docker Hub) — kompromitacja taga
+      # `aquasec/trivy:latest` w rejestrze dałaby potencjalną eksfiltrację PAT-a.
+      # Pin + digest usuwa ten wektor (rejestr nie może podmienić zawartości pod
+      # niezmiennym digestem). Wersja 0.72.0 = ta sama co binarka trivy w
+      # release-candidate.yml (skan deps) — jeden trivy w całym pipeline.
+      # BUMP: podnieś wersję i digest z
+      #   docker buildx imagetools inspect aquasec/trivy:<wersja>
+      # (weź „Digest:" indeksu multi-arch, nie per-platform manifest).
+      TRIVY_IMAGE: "aquasec/trivy:0.72.0@sha256:cffe3f5161a47a6823fbd23d985795b3ed72a4c806da4c4df16266c02accdd6f"
     steps:
       - name: Log in to Docker Hub
         uses: docker/login-action@af1e73f918a031802d376d3c8bbc3fe56130a9b0 # v4.4.0
@@ -109,7 +121,15 @@ jobs:
       - name: Set up Docker Buildx Action
         uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c # v4.2.0
         with:
-          version: "lab:latest"
+          # PRZYPIĘTE do konkretnej wersji lab (buildx-desktop) zamiast ruchomego
+          # "lab:latest". "lab:latest" ściąga binarkę buildx z kanału lab, którego
+          # kompromitacja/podmiana leci w tym jobie z DOCKER_PAT w env — pin usuwa
+          # ten wektor. v0.34.1-desktop.1 = dokładnie to, na co "lab:latest"
+          # wskazywał w buildx-lab-releases.json (docker/actions-toolkit) w chwili
+          # przypięcia, więc jest gwarantowanie kompatybilne z driver: cloud.
+          # BUMP: sprawdź nowy klucz wersji w
+          # https://github.com/docker/actions-toolkit/blob/main/.github/buildx-lab-releases.json
+          version: "lab:v0.34.1-desktop.1"
           driver: cloud
           endpoint: "iplweb/bpp"
           cache-binary: true
@@ -263,7 +283,7 @@ jobs:
             if ! docker run --rm \
               -v /var/run/docker.sock:/var/run/docker.sock \
               -v /tmp/trivy-cache:/root/.cache/trivy \
-              aquasec/trivy:latest image \
+              "${TRIVY_IMAGE}" image \
                 "${TRIVY_COMMON_ARGS[@]}" \
                 "${img}:${STAGING_TAG}"; then
               FAILED_IMAGES+=("${img}")
@@ -322,7 +342,7 @@ jobs:
             REPORT=$(docker run --rm \
               -v /var/run/docker.sock:/var/run/docker.sock \
               -v /tmp/trivy-cache:/root/.cache/trivy \
-              aquasec/trivy:latest image \
+              "${TRIVY_IMAGE}" image \
                 --severity HIGH \
                 --exit-code 0 \
                 --ignore-unfixed \

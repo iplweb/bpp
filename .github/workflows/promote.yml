@@ -127,9 +127,13 @@ jobs:
           # cairo. bumpver/towncrier czytają tylko ./pyproject.toml i edytują
           # pliki — nie potrzebują env projektu. (Ten sam wzorzec i uzasadnienie
           # co w release-candidate.yml.)
-          uvx bumpver update --no-fetch --commit --no-push \
+          # WERSJE PRZYPIETE (bumpver@2026.1132, towncrier@25.8.0 = spojne z
+          # uv.lock): ten job ma contents: write i commituje finalny bump +
+          # changelog, wiec `uvx` bez pinu ciagnalby najnowszy kod z PyPI do
+          # joba z write-em. BUMP: podnos razem z pyproject.toml/uv.lock.
+          uvx bumpver@2026.1132 update --no-fetch --commit --no-push \
             --set-version "v${BASE}"
-          uvx towncrier build --yes || echo "towncrier: brak newsfragmentów."
+          uvx towncrier@25.8.0 build --yes || echo "towncrier: brak newsfragmentów."
           git add -A
           git commit -m "Changelog dla v${BASE}" || echo "Brak zmian changelogu."
 

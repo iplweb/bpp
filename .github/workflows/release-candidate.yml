@@ -132,17 +132,21 @@ jobs:
             # zrodel (pycairo przez xhtml2pdf→svglib→rlpycairo) i wywala sie na
             # runnerze bez naglowkow cairo/kompilatora. bumpver czyta tylko
             # ./pyproject.toml i edytuje pliki — nie potrzebuje env projektu.
+            # WERSJA PRZYPIETA (bumpver@2026.1132 = spojna z uv.lock): ten job ma
+            # contents: write i commituje bump wersji, wiec `uvx` bez pinu (=
+            # najnowszy z PyPI za kazdym razem) bylby nieprzypietym kodem w jobie
+            # z write-em. BUMP: podnos razem z pyproject.toml/uv.lock.
             # NIE dopisuj `2>/dev/null` — ukrylo by realny blad (patrz historia:
             # cichy exit 1 gdy sync sie sypal, bo stderr szedl do /dev/null).
             CUR="v$(./bin/bpp-version.py)"
-            BASE=$(uvx bumpver test "$CUR" 'vYYYY0M.BUILD[-TAGNUM]' \
+            BASE=$(uvx bumpver@2026.1132 test "$CUR" 'vYYYY0M.BUILD[-TAGNUM]' \
                    | awk '/PEP440/{print $NF}')
             # Guard: pusty BASE (np. bumpver test padł) dałby malformed
             # "v-rc1" + gałąź "release/v" — przerwij zanim coś powstanie.
             [ -n "$BASE" ] || { echo "::error::Nie udało się policzyć BASE (bumpver test)."; exit 1; }
             RELEASE_REF="release/v${BASE}"
             git switch -C _rc origin/dev
-            uvx bumpver update --no-fetch --commit --no-push \
+            uvx bumpver@2026.1132 update --no-fetch --commit --no-push \
               --set-version "v${BASE}-rc1"
           else
             # Kontynuacja: checkout gałęzi, podbierz fixy z dev, rc(N+1).
@@ -154,7 +158,7 @@ jobs:
             BASE=$(echo "$CUR_PEP" | sed -E 's/rc[0-9]+$//')
             RCN=$(echo "$CUR_PEP" | sed -E 's/.*rc([0-9]+)$/\1/')
             NEXT_RC=$((RCN + 1))
-            uvx bumpver update --no-fetch --commit --no-push \
+            uvx bumpver@2026.1132 update --no-fetch --commit --no-push \
               --set-version "v${BASE}-rc${NEXT_RC}"
           fi
 
