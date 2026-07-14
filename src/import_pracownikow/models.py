@@ -773,6 +773,17 @@ class ImportPracownikowRow(ImportRowMixin, models.Model):
             self.confidence, ("secondary", "fi-minus", self.confidence or "—")
         )
 
+    @property
+    def do_pominiecia(self):
+        """Czy wiersz zostanie PO CICHU pominięty przy zapisie osób — brak
+        dopasowanego autora i bez „Utwórz nowego". JEDNO źródło prawdy z
+        ``ImportPracownikow.liczba_wierszy_do_pominiecia`` (identyczny predykat
+        ``autor IS NULL AND utworz_nowego=False``) — nie rozjeżdżać. Zasila
+        atrybut ``data-do-pominiecia`` filtra „Rodzaj dopasowania" w podglądzie,
+        żeby deep-link „do pominięcia" trafiał dokładnie w zbiór z ostrzeżenia
+        finalizacji (obejmuje ``brak`` ORAZ ``wielu`` — oba mają ``autor=None``)."""
+        return self.autor_id is None and not self.utworz_nowego
+
     @staticmethod
     def _porownaj_email(plik, baza):
         """Trójka porównania e-maila: ``{plik, baza, rozne}``. ``rozne`` = obie

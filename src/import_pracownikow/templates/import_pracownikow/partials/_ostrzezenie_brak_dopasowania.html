@@ -11,4 +11,13 @@
         „Utwórz nowego autora” albo „Dopasuj do istniejącego”, jeśli mają
         zostać zaimportowane.
     </p>
+    {# Deep-link: filtr „Rodzaj dopasowania" ustawiony na „do pominięcia" — #}
+    {# widok waliduje ?rodzaj= i pre-selekcjonuje <select>, a JS od razu #}
+    {# odfiltrowuje tabelę dokładnie do tych wierszy (licznik = powyższa liczba). #}
+    <p>
+        <a href="{% url "import_pracownikow:importpracownikow-results" parent_object.pk %}?rodzaj=do-pominiecia"
+           class="button primary">
+            <span class="fi-magnifying-glass"></span> Pokaż wiersze do pominięcia
+        </a>
+    </p>
 </div>
