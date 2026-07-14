@@ -11,6 +11,7 @@ from pbn_client.exceptions import (
     PBNValidationError,
     PraceSerwisoweException,
     PublicationDoesNotExistInInstitutionProfile,
+    PublicationNotFound,
     ResourceLockedException,
     SciencistDoesNotExist,
     StatementsResendFailedException,
@@ -46,6 +47,7 @@ __all__ = [
     "PraceSerwisoweException",
     "PublikacjaInstytucjiV2NieZnalezionaException",
     "PublicationDoesNotExistInInstitutionProfile",
+    "PublicationNotFound",
     "ResourceLockedException",
     "SameDataUploadedRecently",
     "SciencistDoesNotExist",
@@ -75,8 +77,14 @@ class BrakZdefiniowanegoObiektuUczelniaWSystemieError(Exception):
     pass
 
 
-class BrakIDPracyPoStroniePBN(HttpException):
-    pass
+# Alias zgodności: to DOKŁADNIE ta sama klasa co pakietowy
+# ``pbn_client.PublicationNotFound`` (przypisanie, nie podklasa — ``is``),
+# żeby istniejące handlery ``except BrakIDPracyPoStroniePBN`` łapały wyjątek
+# rzucany RAZ w endpoincie paczki (``get_publication_by_id`` na PBN 422
+# „was not exists!”). Rozpoznanie nie jest już duplikowane w call-site'ach
+# BPP. Uwaga: to CO INNEGO niż ``BPPPublicationNotFound`` (brak rekordu po
+# stronie BPP, nie PBN).
+BrakIDPracyPoStroniePBN = PublicationNotFound
 
 
 class IntegracjaWylaczonaException(Exception):

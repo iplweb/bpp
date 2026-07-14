@@ -14,7 +14,11 @@ from bpp.const import PBN_MIN_ROK
 from bpp.models import Rekord
 from bpp.util import pbar
 from pbn_api.const import ACTIVE
-from pbn_api.exceptions import BrakIDPracyPoStroniePBN, HttpException
+from pbn_api.exceptions import (
+    BrakIDPracyPoStroniePBN,
+    HttpException,
+    PublicationNotFound,
+)
 from pbn_api.models import Publication, PublikacjaInstytucji_V2
 from pbn_integrator.utils.mongodb_ops import (
     pobierz_mongodb,
@@ -353,6 +357,14 @@ def _pobierz_pojedyncza_prace(client, publicationId):
     """
     try:
         data = client.get_publication_by_id(publicationId)
+    except PublicationNotFound:
+        # Rozpoznanie „praca nie istnieje w PBN” (422 „was not exists!”) robi
+        # RAZ endpoint paczki (``get_publication_by_id``) — tu tylko
+        # propagujemy do handlerów (``odswiez_tabele_publikacji`` kasuje lokalny
+        # cache; worker importu zwraca przyjazny per-item fail). ``PublicationNotFound``
+        # to alias ``BrakIDPracyPoStroniePBN`` — ta sama klasa. Świadomie NIE
+        # łapiemy zwykłego 404: bywa przejściowy, leci dalej jako ``HttpException``.
+        raise
     except HttpException as e:
         # ``e.content`` bywa ``bytes`` (``smart_content`` zwraca surowe bajty
         # przy ``UnicodeDecodeError``) — dekodujemy do str, żeby membership-test
@@ -360,15 +372,6 @@ def _pobierz_pojedyncza_prace(client, publicationId):
         content = e.content
         if isinstance(content, bytes):
             content = content.decode("utf-8", errors="replace")
-
-        if (
-            e.status_code == 422
-            and f"Publication with ID {publicationId} was not exists!" in content
-            # "was not exists" to oryginalna pisownia błędu z PBNu.
-        ):
-            # ``BrakIDPracyPoStroniePBN`` dziedziczy po ``HttpException`` —
-            # trzeba przekazać (status_code, url, content), nie sam wyjątek.
-            raise BrakIDPracyPoStroniePBN(e.status_code, e.url, e.content) from e
 
         if e.status_code == 500 and "Internal server error" in content:
             print(
