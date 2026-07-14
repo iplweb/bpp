@@ -12,7 +12,12 @@ from django.db.models import (
     Value,
     When,
 )
-from django.http import Http404, HttpResponseBadRequest, HttpResponseRedirect
+from django.http import (
+    Http404,
+    HttpResponse,
+    HttpResponseBadRequest,
+    HttpResponseRedirect,
+)
 from django.shortcuts import get_object_or_404, render
 from django.urls import reverse
 from django.utils import timezone
@@ -1564,3 +1569,26 @@ class PobierzOryginalView(GroupRequiredMixin, View):
             attachment=True,
             attachment_filename=os.path.basename(obj.plik_xls.name),
         )
+
+
+class PobierzPoImporcieView(GroupRequiredMixin, View):
+    """Pobranie kanonicznego, SKORYGOWANEGO pliku „po imporcie".
+
+    Dostępny dopiero po finalizacji (``STAN_ZINTEGROWANY``). Generowany w locie
+    z autorytatywnych rekordów bazy — patrz ``eksport.zbuduj_plik_po_imporcie``.
+    """
+
+    group_required = GROUP_REQUIRED
+
+    def get(self, request, pk):
+        # Lazy import: openpyxl jest ciężki, nie ładujemy go przy starcie/urls.
+        from import_pracownikow.eksport import zbuduj_plik_po_imporcie
+
+        obj = _pobierz_wlasny_import(request, pk)
+        if obj.stan != ImportPracownikow.STAN_ZINTEGROWANY:
+            raise Http404("Plik „po imporcie” dostępny dopiero po zakończeniu importu.")
+        content = zbuduj_plik_po_imporcie(obj)
+        stem = os.path.splitext(os.path.basename(obj.plik_xls.name))[0]
+        resp = HttpResponse(content, content_type=XLSX_CONTENT_TYPE)
+        resp["Content-Disposition"] = f'attachment; filename="{stem}-po-imporcie.xlsx"'
+        return resp

@@ -102,4 +102,9 @@ urlpatterns = [
         views.PobierzOryginalView.as_view(),
         name="pobierz-oryginal",
     ),
+    path(
+        "<uuid:pk>/pobierz-po-imporcie/",
+        views.PobierzPoImporcieView.as_view(),
+        name="pobierz-po-imporcie",
+    ),
 ]

@@ -1,8 +1,11 @@
+from io import BytesIO
+
 import pytest
 from django.contrib.auth.models import Group
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.urls import reverse
 from model_bakery import baker
+from openpyxl import load_workbook
 
 from bpp.const import GR_WPROWADZANIE_DANYCH
 from import_pracownikow.models import ImportPracownikow
@@ -66,3 +69,42 @@ def test_oryginal_brak_pliku_404(client, django_user_model):
         reverse("import_pracownikow:pobierz-oryginal", kwargs={"pk": imp.pk})
     )
     assert resp.status_code == 404
+
+
+@pytest.mark.django_db
+def test_po_imporcie_przed_finalizacja_404(client, django_user_model):
+    u = _user_w_grupie(django_user_model)
+    client.force_login(u)
+    imp = baker.make(
+        ImportPracownikow, owner=u, stan=ImportPracownikow.STAN_PRZEANALIZOWANY
+    )
+    resp = client.get(
+        reverse("import_pracownikow:pobierz-po-imporcie", kwargs={"pk": imp.pk})
+    )
+    assert resp.status_code == 404
+
+
+@pytest.mark.django_db
+def test_po_imporcie_po_finalizacji_zwraca_xlsx(client, django_user_model):
+    u = _user_w_grupie(django_user_model)
+    client.force_login(u)
+    imp = _import_z_plikiem(u, nazwa="pracownicy_2026.xlsx")
+    imp.stan = ImportPracownikow.STAN_ZINTEGROWANY
+    imp.mapowanie_kolumn = {
+        "Nazwisko": "nazwisko",
+        "Imię": "imię",
+        "Jednostka": "nazwa_jednostki",
+    }
+    imp.save()
+    resp = client.get(
+        reverse("import_pracownikow:pobierz-po-imporcie", kwargs={"pk": imp.pk})
+    )
+    assert resp.status_code == 200
+    assert "pracownicy_2026-po-imporcie.xlsx" in resp["Content-Disposition"]
+    ws = load_workbook(BytesIO(resp.getvalue())).active
+    assert [c.value for c in ws[1]][:4] == [
+        "BPP ID",
+        "Nazwisko",
+        "Imię",
+        "Nazwa jednostki",
+    ]
