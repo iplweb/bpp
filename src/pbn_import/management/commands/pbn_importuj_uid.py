@@ -1,5 +1,7 @@
 """Import publikacji z PBN do BPP po PBN UID."""
 
+from pbn_client import normalize_author_name
+
 from pbn_api.exceptions import HttpException
 from pbn_api.management.commands.util import PBNBaseCommand
 from pbn_import.utils.command_helpers import (
@@ -86,9 +88,12 @@ class Command(PBNBaseCommand):
                 )
                 names = []
                 for p in persons_list[:5]:
-                    # PBN uses familyName/givenNames or lastName/name
-                    last = p.get("familyName") or p.get("lastName", "")
-                    first = p.get("givenNames") or p.get("name", "")
+                    # Jedno źródło prawdy dla niespójnych kształtów PBN
+                    # (familyName/lastName, firstName/givenNames/name); paczka
+                    # zwraca None dla braku — koerujemy do "" na potrzeby f-stringa.
+                    autor = normalize_author_name(p)
+                    last = autor["lastName"] or ""
+                    first = autor["firstName"] or ""
                     names.append(f"{last} {first}".strip())
                 if len(persons_list) > 5:
                     names.append(f"... (+{len(persons_list) - 5})")

@@ -68,6 +68,19 @@ def test_policz_autorow_dziala_dla_dict_kluczowanego_uidem():
 
 
 @pytest.mark.django_db
+def test_autorzy_nazwisko_z_familyName():
+    """Adopcja ``pbn_client.normalize_author_name``: nazwisko bywa podane
+
+    jako ``familyName`` (nie ``lastName``) — delegacja do paczki pokrywa
+    ten kształt, którego lokalna normalizacja wcześniej nie łapała.
+    """
+    pub = _publikacja({"authors": [{"familyName": "Abacki", "givenNames": "Ewa"}]})
+    autorzy = pub.autorzy["authors"]
+    assert autorzy[0]["lastName"] == "Abacki"
+    assert autorzy[0]["firstName"] == "Ewa"
+
+
+@pytest.mark.django_db
 def test_autorzy_goly_uid_bez_danych_osobowych_nie_wybucha():
     """Defensywnie: gdyby PBN podał listę samych UID-ów (stringów),
     nie wysadzamy się — zwracamy puste pola zamiast crashować szablon."""
