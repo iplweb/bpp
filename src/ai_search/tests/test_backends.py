@@ -44,7 +44,7 @@ def _system_blocks():
 def test_anthropic_backend_call_maps_usage_and_stop_reason(settings):
     settings.BPP_AI_MODEL = "claude-sonnet-5"
     settings.BPP_AI_LLM_TIMEOUT = 30
-    settings.BPP_AI_API_KEY = "sk-ant-xyz"
+    settings.BPP_AI_API_KEY = "test-anthropic-key"
     parsed = backends.DSLQuery(query="rok = 2024", error=None)
     fake_resp = mock.Mock()
     fake_resp.parsed_output = parsed
@@ -61,7 +61,7 @@ def test_anthropic_backend_call_maps_usage_and_stop_reason(settings):
         result = backends.AnthropicBackend().call(
             _system_blocks(), [{"role": "user", "content": "pytanie"}]
         )
-    ctor.assert_called_once_with(api_key="sk-ant-xyz", timeout=30)
+    ctor.assert_called_once_with(api_key="test-anthropic-key", timeout=30)
     assert result.parsed is parsed
     assert result.stop_reason == "end_turn"
     assert result.usage == {

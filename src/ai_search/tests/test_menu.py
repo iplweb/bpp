@@ -15,7 +15,7 @@ def staff_client(client, django_user_model):
 def test_menu_item_shown_when_configured(staff_client, settings):
     settings.BPP_AI_SEARCH_ENABLED = True
     settings.BPP_AI_BACKEND = "anthropic"
-    settings.BPP_AI_API_KEY = "sk-ant-test"
+    settings.BPP_AI_API_KEY = "test-anthropic-key"
     r = staff_client.get("/")
     body = r.content.decode()
     assert reverse("ai_search:index") in body
@@ -37,7 +37,7 @@ def test_menu_item_shown_with_hint_when_not_configured(staff_client, settings):
 @pytest.mark.django_db
 def test_menu_item_hidden_for_non_editor(client, django_user_model, settings):
     settings.BPP_AI_SEARCH_ENABLED = True
-    settings.BPP_AI_API_KEY = "sk-ant-test"
+    settings.BPP_AI_API_KEY = "test-anthropic-key"
     u = django_user_model.objects.create_user(username="zwykly", password="x")
     client.force_login(u)
     r = client.get("/")

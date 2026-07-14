@@ -23,7 +23,7 @@ def _ai_configured(settings):
     lokalnego. Testy poniżej ćwiczą ścieżkę działającego formularza (wymaga
     ``config.is_configured() == True``). Testy „nieskonfigurowane" jawnie
     nadpisują flagę/klucz."""
-    settings.BPP_AI_API_KEY = "sk-ant-test"
+    settings.BPP_AI_API_KEY = "test-anthropic-key"
     settings.BPP_AI_BASE_URL = "http://localhost:11434/v1"
 
 

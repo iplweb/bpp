@@ -28,7 +28,7 @@ def test_anthropic_without_key_not_configured(settings, monkeypatch):
 def test_anthropic_with_settings_key_configured(settings, monkeypatch):
     settings.BPP_AI_SEARCH_ENABLED = True
     settings.BPP_AI_BACKEND = "anthropic"
-    settings.BPP_AI_API_KEY = "sk-ant-test"
+    settings.BPP_AI_API_KEY = "test-anthropic-key"
     monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
     assert config.is_configured() is True
 
@@ -37,7 +37,7 @@ def test_anthropic_with_env_key_configured(settings, monkeypatch):
     settings.BPP_AI_SEARCH_ENABLED = True
     settings.BPP_AI_BACKEND = "anthropic"
     settings.BPP_AI_API_KEY = ""
-    monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-ant-from-env")
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "test-key-from-env")
     assert config.is_configured() is True
 
 
