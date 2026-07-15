@@ -315,9 +315,10 @@ django-import-export = { git = "https://github.com/mpasternak/django-import-expo
 # commita gałęzi feat/error-record, żeby CI/lokalnie rozwiązać zależność.
 # USUŃ po wydaniu pbn-client 0.2.1 na PyPI (wtedy sam pin >=0.2.1,<0.3 wystarczy).
 pbn-client = { git = "https://github.com/iplweb/pbn-client.git", rev = "84503cf41b308bc86edc6f8709b71383a8676cac" }
-# TYMCZASOWO: django-pbn-client 0.2.1 (sync_dictionary, D3) nie jest jeszcze na
-# PyPI. Pin do commita gałęzi feat/sync-dictionary. USUŃ po wydaniu 0.2.1.
-django-pbn-client = { git = "https://github.com/iplweb/django-pbn-client.git", rev = "9b2164f889861db9292b91508debf0732211bb39" }
+# TYMCZASOWO: django-pbn-client 0.2.2 (sync_dictionary D3 + with_deleted_marker
+# A2) nie jest jeszcze na PyPI. Pin do commita gałęzi feat/deleted-marker
+# (stacked na feat/sync-dictionary). USUŃ po wydaniu 0.2.2 na PyPI.
+django-pbn-client = { git = "https://github.com/iplweb/django-pbn-client.git", rev = "bb952e98967a96f96cd3773e3dcfcaf4555c8690" }
 
 # Konfiguracja `pytest-testcontainers-django` — pluginu pytest, ktory
 # startuje kontenery PG/Redis przed importem Django settings i wstrzykuje

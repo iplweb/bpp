@@ -27,9 +27,7 @@ class Journal(LinkDoPBNMixin, BasePBNMongoDBModel):
             f"{self.title}, ISSN: {self.issn or '-'}, "
             f"EISSN: {self.eissn or '-'}, MNISW ID: {self.mniswId or '-'}"
         )
-        if self.is_deleted:
-            ret = f"[❌ USUNIĘTY] {ret}"
-        return ret
+        return self.with_deleted_marker(ret)
 
     def rekord_w_bpp(self):
         from bpp.models import Zrodlo
