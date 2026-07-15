@@ -78,11 +78,16 @@ class ImportPlikuPolon(ASGINotificationMixin, Operation):
         """Autor_Dyscyplina dla roku importu, których autora NIE było w pliku.
 
         Multi-hosted: gdy znana jest ``uczelnia`` importu, lista jest zawężona
-        do autorów AKTUALNIE ZATRUDNIONYCH w tej uczelni (``aktualna_jednostka``
-        w uczelni + jednostka ``skupia_pracownikow``). Bez tego zawężenia raport
-        wyciekałby autorów innych uczelni współistniejących w bazie. Gdy
-        ``uczelnia`` nieznana (stare importy / brak rozstrzygnięcia) — zachowanie
-        wsteczne: wszyscy z dyscypliną dla roku, bez zawężenia.
+        do autorów ZWIĄZANYCH Z TĄ UCZELNIĄ przez realną jednostkę — obecnie
+        LUB historycznie (``aktualna_jednostka`` albo któryś wpis
+        ``Autor_Jednostka`` w uczelni, w obu przypadkach jednostka musi mieć
+        ``skupia_pracownikow=True``). Jednostki obce/techniczne
+        (``skupia_pracownikow=False``) NIE kwalifikują autora, nawet jeśli ich
+        uczelnia to bieżąca uczelnia (lustrzana jednostka obca o nazwie naszej
+        uczelni jest pomijana). Bez tego zawężenia raport wyciekałby autorów
+        innych uczelni współistniejących w bazie. Gdy ``uczelnia`` nieznana
+        (stare importy / brak rozstrzygnięcia) — zachowanie wsteczne: wszyscy
+        z dyscypliną dla roku, bez zawężenia.
         """
         from bpp.models import Autor_Dyscyplina
 
@@ -94,7 +99,9 @@ class ImportPlikuPolon(ASGINotificationMixin, Operation):
 
         qs = Autor_Dyscyplina.objects.filter(rok=self.rok)
         if self.uczelnia_id is not None:
-            qs = qs.filter(autor__in=Autor.objects.aktualnie_zatrudnieni(self.uczelnia))
+            qs = qs.filter(
+                autor__in=Autor.objects.kiedykolwiek_zatrudnieni(self.uczelnia)
+            )
 
         return (
             qs.exclude(autor_id__in=matched_authors)

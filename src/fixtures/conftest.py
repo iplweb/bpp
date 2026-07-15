@@ -34,8 +34,9 @@ def pytest_configure():
         del settings.RAVEN_CONFIG
 
     settings.TESTING = True
-    settings.CELERY_ALWAYS_EAGER = True
-    settings.CELERY_EAGER_PROPAGATES_EXCEPTIONS = True
+    # Flagi eager Celery ustawia teraz jednoznacznie settings/test.py
+    # (CELERY_ALWAYS_EAGER / _TASK_ALWAYS_EAGER / _EAGER_PROPAGATES_EXCEPTIONS);
+    # dawny re-set w tym hooku był redundantny — patrz audyt pkt 6.
 
     from bpp.models.cache import Autorzy, Rekord
 
@@ -79,15 +80,20 @@ def szablony():
 
     def instaluj_szablony():
         from dbtemplates.models import Template
+
         create_template(Template, "opis_bibliograficzny.html")
         create_template(Template, "browse/praca_tabela.html")
 
-        from bpp.models.szablondlaopisubibliograficznego import SzablonDlaOpisuBibliograficznego
+        from bpp.models.szablondlaopisubibliograficznego import (
+            SzablonDlaOpisuBibliograficznego,
+        )
+
         SzablonDlaOpisuBibliograficznego.objects.create(
             model=None,
             template=Template.objects.get(name="opis_bibliograficzny.html"),
         )
 
     from dbtemplates.models import Template
+
     instaluj_szablony()
     return Template.objects

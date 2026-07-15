@@ -65,6 +65,29 @@ def test_index_denied_for_staff_user(db, client):
 
 
 @pytest.mark.django_db
+def test_landing_shows_crossref_doi_hint(importer_client):
+    """Kafel CrossRef na stronie głównej ma jasno informować, że CrossRef
+    oznacza wyszukiwanie po numerze DOI (Freshdesk #381)."""
+    url = reverse("importer_publikacji:index")
+    response = importer_client.get(url)
+    content = response.content.decode()
+    assert "CrossRef — wyszukiwanie po numerze DOI" in content
+
+
+@pytest.mark.django_db
+def test_step1_shows_crossref_doi_hint(importer_client):
+    """Krok 1 (formularz fetch dla konkretnego dostawcy, osiągany kliknięciem
+    kafla CrossRef albo deep-linkiem ``?provider=CrossRef``) powinien jasno
+    informować, że CrossRef oznacza wyszukiwanie po numerze DOI
+    (Freshdesk #381). Wartość radia pozostaje 'CrossRef'."""
+    url = reverse("importer_publikacji:index") + "?provider=CrossRef"
+    response = importer_client.get(url)
+    content = response.content.decode()
+    assert "CrossRef — wyszukiwanie po numerze DOI" in content
+    assert 'value="CrossRef"' in content
+
+
+@pytest.mark.django_db
 def test_fetch_empty_identifier(importer_client):
     url = reverse("importer_publikacji:fetch")
     response = importer_client.post(

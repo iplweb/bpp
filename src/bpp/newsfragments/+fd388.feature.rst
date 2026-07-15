@@ -1,4 +1,0 @@
-Dodano import punktacji źródeł z pliku eksportu czasopism (XLSX/CSV):
-po wczytaniu pliku system pokazuje podgląd rozbieżności wskaźnika IF i
-kwartyla dla źródeł, a po zatwierdzeniu zapisuje wartości. Przeniesienie na
-prace odbywa się przez moduł rozbieżności punktacji (FD#388).

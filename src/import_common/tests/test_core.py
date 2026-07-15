@@ -11,6 +11,7 @@ from bpp.models import (
     Wydzial,
     Zrodlo,
 )
+from bpp.models.struktura_konwersja import znajdz_lub_utworz_wezel_wydzialu
 from import_common.core import (
     _isbn_matches,
     _part_numbers_compatible,
@@ -43,16 +44,82 @@ def test_matchuj_wydzial(szukany_string, db):
 )
 def test_matchuj_jednostke(szukany_string, uczelnia, wydzial, db):
     j1 = baker.make(
-        Jednostka, nazwa="Jednostka Pierwsza", wydzial=wydzial, uczelnia=uczelnia
+        Jednostka,
+        nazwa="Jednostka Pierwsza",
+        parent=znajdz_lub_utworz_wezel_wydzialu(wydzial)[0],
+        uczelnia=uczelnia,
     )
     baker.make(
         Jednostka,
         nazwa="Jednostka Pierwsza i Jeszcze",
-        wydzial=wydzial,
+        parent=znajdz_lub_utworz_wezel_wydzialu(wydzial)[0],
         uczelnia=uczelnia,
     )
 
     assert matchuj_jednostke(szukany_string) == j1
+
+
+@pytest.mark.django_db
+def test_matchuj_jednostke_disambiguacja_po_promowanym_wydziale(uczelnia):
+    """#438: dopasowanie po NAZWIE wydziału musi działać dla PROMOWANEGO
+    1-jednostkowego wydziału (0457), gdzie denorm-korzeń to REALNA jednostka
+    (jej własna nazwa ≠ nazwa wydziału). Match po ``wydzial__nazwa`` by tu
+    zawiódł; tożsamość wydziału niesie ``root.legacy_wydzial_id``."""
+    w = baker.make(Wydzial, nazwa="Wydział Nauk Ścisłych")
+    # Promowany root: realna jednostka o INNEJ nazwie, z legacy starego wydziału.
+    promowany_root = baker.make(
+        Jednostka,
+        uczelnia=uczelnia,
+        parent=None,
+        wydzial=None,
+        nazwa="Instytut Matematyki",
+        legacy_wydzial_id=w.id,
+        jest_lustrem=False,
+    )
+    inny_root = znajdz_lub_utworz_wezel_wydzialu(baker.make(Wydzial, nazwa="Inny"))[0]
+
+    # Ambiguacja PREFIKSOWA (nazwa jest UNIQUE, więc nie da się dwóch identycznych):
+    # "Katedra" jest prefiksem obu → MultipleObjectsReturned → disambiguacja po
+    # wydziale. ``cel`` wisi pod promowanym wydziałem.
+    cel = baker.make(
+        Jednostka, nazwa="Katedra Alfa", parent=promowany_root, uczelnia=uczelnia
+    )
+    baker.make(Jednostka, nazwa="Katedra Beta", parent=inny_root, uczelnia=uczelnia)
+
+    got = matchuj_jednostke("Katedra", wydzial="Wydział Nauk Ścisłych")
+    assert got == cel
+
+
+@pytest.mark.django_db
+def test_matchuj_jednostke_dopasowanie_SAMEGO_promowanego_korzenia(uczelnia):
+    """#438: sam promowany KORZEŃ (realna jednostka będąca rootem) też musi być
+    znajdowalny przez swój wydział. Korzeń ma denorm ``wydzial=None``, więc
+    ``Q(wydzial__legacy_wydzial_id=...)`` sam go wyklucza — filtr musi dołączyć
+    ``Q(parent__isnull=True, legacy_wydzial_id=...)``."""
+    w = baker.make(Wydzial, nazwa="Wydział Nauk Ścisłych")
+    inny_w = baker.make(Wydzial, nazwa="Wydział Humanistyczny")
+    # Dwa promowane korzenie prefiksowo pasujące do "Instytut", w różnych wydziałach.
+    cel = baker.make(
+        Jednostka,
+        uczelnia=uczelnia,
+        parent=None,
+        wydzial=None,
+        nazwa="Instytut Matematyki",
+        legacy_wydzial_id=w.id,
+        jest_lustrem=False,
+    )
+    baker.make(
+        Jednostka,
+        uczelnia=uczelnia,
+        parent=None,
+        wydzial=None,
+        nazwa="Instytut Filozofii",
+        legacy_wydzial_id=inny_w.id,
+        jest_lustrem=False,
+    )
+
+    got = matchuj_jednostke("Instytut", wydzial="Wydział Nauk Ścisłych")
+    assert got == cel
 
 
 def test_matchuj_autora_imiona_nazwisko(autor_jan_nowak):
@@ -578,3 +645,65 @@ def test_matchuj_publikacje_kandidat_bez_isbn_matchuje():
         isbn="978-83-7430-668-3",
     )
     assert result == pub
+
+
+@pytest.mark.django_db
+def test_matchuj_zrodlo_dwa_tytuly_disambiguacja_po_issn():
+    """Dwa źródła o tym samym tytule → ISSN z pliku rozstrzyga (pole issn)."""
+    a = baker.make(Zrodlo, nazwa="Duplikat Czasopismo", issn="1111-1111")
+    baker.make(Zrodlo, nazwa="Duplikat Czasopismo", issn="2222-2222")
+
+    result = matchuj_zrodlo("Duplikat Czasopismo", issn="1111-1111")
+    assert result == a
+
+
+@pytest.mark.django_db
+def test_matchuj_zrodlo_dwa_tytuly_disambiguacja_issn_pliku_w_polu_eissn():
+    """Cross-field: ISSN z pliku JCR trafia do pola e_issn źródła w BPP.
+
+    JCR miesza kolumny ISSN/eISSN, więc numer podany w pliku jako ISSN
+    bywa w BPP zapisany jako e-ISSN. Przy dwóch źródłach o tym samym
+    tytule dopasowanie musi to uwzględnić.
+    """
+    a = baker.make(Zrodlo, nazwa="Duplikat Czasopismo", issn="", e_issn="2222-2222")
+    baker.make(Zrodlo, nazwa="Duplikat Czasopismo", issn="", e_issn="3333-3333")
+
+    result = matchuj_zrodlo("Duplikat Czasopismo", issn="2222-2222")
+    assert result == a
+
+
+@pytest.mark.django_db
+def test_matchuj_zrodlo_dwa_tytuly_disambiguacja_eissn_pliku_w_polu_issn():
+    """Cross-field w drugą stronę: e-ISSN z pliku trafia do pola issn."""
+    a = baker.make(Zrodlo, nazwa="Duplikat Czasopismo", issn="4444-4444")
+    baker.make(Zrodlo, nazwa="Duplikat Czasopismo", issn="5555-5555")
+
+    result = matchuj_zrodlo("Duplikat Czasopismo", e_issn="4444-4444")
+    assert result == a
+
+
+@pytest.mark.django_db
+def test_matchuj_zrodlo_dwa_tytuly_bez_pasujacego_issn_zwraca_none():
+    """Dwa źródła o tym samym tytule + ISSN nie pasujący do żadnego → None.
+
+    Bez jednoznacznego rozstrzygnięcia nie wolno zgadywać — brak fałszywego
+    dopasowania jest tu zachowaniem poprawnym.
+    """
+    baker.make(Zrodlo, nazwa="Duplikat Czasopismo", issn="1111-1111")
+    baker.make(Zrodlo, nazwa="Duplikat Czasopismo", issn="2222-2222")
+
+    result = matchuj_zrodlo("Duplikat Czasopismo", issn="9999-9999")
+    assert result is None
+
+
+@pytest.mark.django_db
+def test_matchuj_zrodlo_dwa_tytuly_issn_niejednoznaczny_zwraca_none():
+    """ISSN z pliku pasuje do OBU źródeł o tym samym tytule → None.
+
+    Filtr po ISSN nie zawęża do jednego, więc nadal nie ma podstaw do wyboru.
+    """
+    baker.make(Zrodlo, nazwa="Duplikat Czasopismo", issn="1111-1111")
+    baker.make(Zrodlo, nazwa="Duplikat Czasopismo", issn="1111-1111")
+
+    result = matchuj_zrodlo("Duplikat Czasopismo", issn="1111-1111")
+    assert result is None

@@ -7,7 +7,7 @@ Redis już SUCCESS, ale session.save() jeszcze nie zafiałduje w DB.
 
 from celery.result import AsyncResult
 from django.http import HttpResponse, HttpResponseRedirect
-from django.shortcuts import get_object_or_404, render
+from django.shortcuts import render
 from django.views import View
 
 from ..models import ImportSession
@@ -18,6 +18,8 @@ TERMINAL_STATUSES = {
     ImportSession.Status.VERIFIED,
     ImportSession.Status.SOURCE_MATCHED,
     ImportSession.Status.AUTHORS_MATCHED,
+    ImportSession.Status.PUNKTACJA,
+    ImportSession.Status.PBN_CHECK,
     ImportSession.Status.REVIEW,
     ImportSession.Status.COMPLETED,
     ImportSession.Status.CANCELLED,
@@ -28,7 +30,7 @@ class ImportTaskStatusView(ImporterPermissionMixin, View):
     """GET — renderuje partial postępu (HTMX) lub pełną stronę."""
 
     def get(self, request, session_id):
-        session = get_object_or_404(ImportSession, pk=session_id)
+        session = self.get_scoped_or_404(ImportSession, pk=session_id)
         is_htmx = request.headers.get("HX-Request") == "true"
 
         if session.status == ImportSession.Status.IMPORT_FAILED:
@@ -36,6 +38,14 @@ class ImportTaskStatusView(ImporterPermissionMixin, View):
 
         if session.status in TERMINAL_STATUSES:
             return self._redirect_to_continue(session, is_htmx)
+
+        # Watchdog: sesja w locie (FETCHING/CREATING) tkwiąca ponad próg to
+        # martwy/zgubiony worker — task nie wykona bloku except, więc bez tego
+        # sesja wisiałaby wiecznie. Poll (every 3s) jest tu, gdy user patrzy
+        # na spinner, więc self-heal ma natychmiastowy efekt bez osobnej infry.
+        if session.is_stalled():
+            session.mark_stalled()
+            return self._render_error(request, session, is_htmx)
 
         info = None
         if session.celery_task_id:

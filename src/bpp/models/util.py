@@ -111,7 +111,7 @@ class ModelZOpisemBibliograficznym(models.Model):
         while ret.find("  ") != -1:
             ret = ret.replace("  ", " ")
 
-        return (
+        ret = (
             ret.replace(" , ", ", ")
             .replace(" . ", ". ")
             .replace(". . ", ". ")
@@ -119,6 +119,15 @@ class ModelZOpisemBibliograficznym(models.Model):
             .replace(" .", ".")
             .replace(".</b>[", ".</b> [")
         )
+
+        # Opis powstaje m.in. z (niezaufanego) tytułu i jest renderowany |safe
+        # oraz cache'owany w opis_bibliograficzny_cache. Sanityzujemy złożenie,
+        # żeby żaden <script> z tytułu nie przeżył (obrona w głębi obok
+        # sanityzacji tytułu u źródła), zachowując kursywę, sub/sup i linki
+        # autorów.
+        from bpp.util import safe_opis_bibliograficzny_html
+
+        return safe_opis_bibliograficzny_html(ret)
 
     def autorzy_dla_opisu(self):
         # Takie 'autorzy_set.all()' ale na potrzeby opisu bibliograficznego -- zaciąga
@@ -131,14 +140,15 @@ class ModelZOpisemBibliograficznym(models.Model):
             "autor", "typ_odpowiedzialnosci"
         ).order_by("kolejnosc")
 
-    def autorzy_dla_opisu_skrocony(self, uczelnia=None):
+    def autorzy_dla_opisu_skrocony(self, uczelnia=None, zwijaj=True):
         """Dane dla skróconego widoku listy autorów na stronie rekordu.
 
         Materializuje listę autorów raz i dokleja każdemu wpisowi atrybuty
         ``pozycja`` (1-based numer na liście) oraz ``czy_nasz`` (autor z
         jednostki skupiającej pracowników oglądającej uczelni). Zwraca słownik:
 
-        - ``skrocony``   -- czy włączyć widok zwinięty (autorów > próg),
+        - ``skrocony``   -- czy włączyć widok zwinięty (``zwijaj`` włączone
+          ORAZ autorów > próg); ``zwijaj=False`` wymusza pełną listę,
         - ``wszyscy``    -- pełna lista (z ``pozycja``/``czy_nasz``),
         - ``pierwsi``    -- pierwszych ``LICZBA_PIERWSZYCH_AUTOROW``,
         - ``nasi_dalej`` -- "nasi" autorzy spoza pierwszej piątki,
@@ -170,7 +180,7 @@ class ModelZOpisemBibliograficznym(models.Model):
             wpis.czy_nasz = czy_nasz
 
         return {
-            "skrocony": len(wszyscy) > PROG_SKRACANIA_AUTOROW,
+            "skrocony": zwijaj and len(wszyscy) > PROG_SKRACANIA_AUTOROW,
             "wszyscy": wszyscy,
             "pierwsi": wszyscy[:LICZBA_PIERWSZYCH_AUTOROW],
             "nasi_dalej": [

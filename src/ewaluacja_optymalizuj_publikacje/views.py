@@ -1,6 +1,5 @@
 from decimal import Decimal
 
-from django.contrib.auth.mixins import LoginRequiredMixin
 from django.db import transaction
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.generic import View
@@ -11,6 +10,7 @@ from bpp.models import (
     Rekord,
 )
 from bpp.models.sloty.core import CannotAdapt, IPunktacjaCacher, ISlot
+from bpp.permissions import WprowadzanieDanychRequiredMixin
 from ewaluacja_metryki.models import MetrykaAutora
 from ewaluacja_metryki.utils import przelicz_metryki_dla_publikacji
 
@@ -18,7 +18,7 @@ from .forms import OptymalizacjaForm
 from .models import OptymalizacjaPublikacji
 
 
-class OptymalizujPublikacjeView(LoginRequiredMixin, View):
+class OptymalizujPublikacjeView(WprowadzanieDanychRequiredMixin, View):
     """Main view for optimizing a single publication"""
 
     template_name = "ewaluacja_optymalizuj_publikacje/optymalizuj_fixed.html"
@@ -473,7 +473,7 @@ class OptymalizujPublikacjeView(LoginRequiredMixin, View):
         ]
 
 
-class HistoriaOptymalizacjiView(LoginRequiredMixin, View):
+class HistoriaOptymalizacjiView(WprowadzanieDanychRequiredMixin, View):
     """View optimization history"""
 
     template_name = "ewaluacja_optymalizuj_publikacje/historia.html"

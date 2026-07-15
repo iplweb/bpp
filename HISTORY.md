@@ -2,6 +2,353 @@
 
 <!-- towncrier release notes start -->
 
+## bpp 202607.1397 (2026-07-08)
+
+### Naprawione
+
+- Liczniki filtrów w adminie: naprawiono ``NoReverseMatch`` (połykany wyjątek,
+  szum w logach/Rollbarze) przy filtrowaniu changelistów adminów bez endpointu
+  ``_filter_count`` (np. użytkownicy). Licznik jest teraz liczony wyłącznie tam,
+  gdzie admin faktycznie wystawia ten endpoint. ([#admin-filter-count-bppuser](https://github.com/iplweb/bpp/issues/admin-filter-count-bppuser))
+- API ``/api/v1/patent/{id}/`` zwracało błąd 500 dla patentów z ustawionym
+  rodzajem prawa patentowego (goły ``RelatedField`` nie miał reprezentacji).
+  Pole ``rodzaj_prawa`` jest teraz serializowane jako jego nazwa. ([#api-patent-rodzaj-prawa](https://github.com/iplweb/bpp/issues/api-patent-rodzaj-prawa))
+- Naprawiono błąd 500 (NoReverseMatch) w API REST dla ``/api/v1/praca_doktorska/``
+  oraz ``/api/v1/praca_habilitacyjna/``, gdy rekord miał ustawionego wydawcę —
+  pole ``wydawca`` generowało hiperłącze bez przestrzeni nazw ``api_v1:``. ([#api-praca-doktorska-habilitacyjna-wydawca](https://github.com/iplweb/bpp/issues/api-praca-doktorska-habilitacyjna-wydawca))
+- Import PBN: obca jednostka uczelni nie musi już być podpięta do wydziału. Uczelnie nieużywające wydziałów nie dostają fałszywego alertu „Obca jednostka nie jest podpięta do żadnego wydziału tej uczelni" — wystarczy poprawnie ustawiony FK ``Uczelnia.obca_jednostka``. ([#obca-jednostka-bez-wydzialu](https://github.com/iplweb/bpp/issues/obca-jednostka-bez-wydzialu))
+- Import z PBN jest teraz odporny na niekompletne i zdryfowane rekordy — pojedynczy zły wpis nie wywala już całego wsadu, tylko jest pomijany, liczony i raportowany. Rekordy strukturalnie nieimportowalne (bez wersji bieżącej, bez typu obiektu, rozdział bez książki nadrzędnej) są jawnie pomijane; nieznane klucze z PBN (np. ``reviewers``) trafiają do adnotacji zamiast przerywać import; zdublowane lub brakujące rekordy słownika języków degradują do języka domyślnego zamiast wywalać rekord; a książki bez wydawcy poprawnie wchodzą (i nie wywracają post-importowej punktacji zwartych). ([#pbn-import-hardening](https://github.com/iplweb/bpp/issues/pbn-import-hardening))
+- Import z PBN: czasopisma bez ISSN (PBN podsyła wtedy syntetyczny placeholder ``xpbn-<uuid>``) nie wywalają już importu błędem ``value too long`` — placeholder jest traktowany jako brak ISSN. Dotyczy zarówno masowego importu źródeł MNiSW, jak i importu pojedynczej publikacji z PBN. ([#pbn-xpbn-issn](https://github.com/iplweb/bpp/issues/pbn-xpbn-issn))
+- Upload punktacji źródła: wartości dziesiętne wpisane z przecinkiem (np.
+  ``impact_factor`` = ``3,2``) nie wywalają już zapisu błędem 500 — przecinek
+  jest normalizowany do kropki. Dotyczy zarówno tworzenia, jak i nadpisywania
+  punktacji; wartość niepoprawna po normalizacji zwraca teraz czytelny błąd 400
+  zamiast 500. ([#punktacja-przecinek-dziesietny](https://github.com/iplweb/bpp/issues/punktacja-przecinek-dziesietny))
+- Na stronie głównej nagłówek sekcji ze strukturą organizacyjną pokazuje
+  teraz „Wybierz jednostkę" (zamiast zawsze „Wybierz wydział"), gdy uczelnia
+  nie używa wydziałów (opcja „Używaj wydziałów" ustawiona na NIE).
+
+### Usprawnienie
+
+- Import POLON i import absencji: gdy import uruchomiono bez zapisu do bazy
+  (tryb podglądu), na stronie wyników pojawia się przycisk „Zapisz ten import
+  do bazy danych", który po potwierdzeniu uruchamia ten sam import ponownie,
+  tym razem z zapisem zmian do bazy. ([#import-polon-zapis-do-bazy](https://github.com/iplweb/bpp/issues/import-polon-zapis-do-bazy))
+- W adminie wydawnictw ciągłych dodano filtr „Źródło: status w PBN"
+  (skasowany/aktywny/brak) — pozwala wyłapać prace, których źródło jest
+  skasowane w PBN. W adminie źródeł dodano filtr „PBN: status"
+  (skasowany/aktywny/brak) po statusie odpowiednika źródła w PBN. ([#pbn-status-zrodlo-ciagle](https://github.com/iplweb/bpp/issues/pbn-status-zrodlo-ciagle))
+- Zwijanie długich list autorów (powyżej 25 nazwisk) na stronie rekordu jest
+  teraz konfigurowalne. Uczelnia ustawia domyślne zachowanie (domyślnie
+  włączone), a zalogowany użytkownik może je nadpisać we własnym profilu
+  (zawsze zwijaj / nigdy nie zwijaj / jak uczelnia). Usunięto też efekt
+  podświetlenia (kolor i poświatę) z nazwisk „naszych" autorów — zostaje
+  samo pogrubienie. ([#zwijanie-listy-autorow](https://github.com/iplweb/bpp/issues/zwijanie-listy-autorow))
+- Importer publikacji: nowy krok „Punktacja" sugerujący punkty ministerialne (dla artykułów z punktacji źródła, dla monografii/rozdziałów z poziomu wydawcy) z jawnym pokazaniem podstawy albo powodu, gdy sugestia nie jest możliwa; sugestia jest tylko podpowiedzią i pozostaje edytowalna. W kroku dopasowania autorów można teraz ustawić typ autora (autor/redaktor).
+- Kasowanie jednostek w panelu administracyjnym jest teraz bezpieczne — usunąć można wyłącznie jednostkę w pełni pustą (bez podjednostek i bez żadnych obiektów przypiętych do niej przez klucze obce). Przy próbie skasowania niepustej jednostki system wyświetla listę tego, co ją blokuje, zamiast po cichu kasować powiązane dane w kaskadzie.
+- Na liście jednostek w panelu administracyjnym dodano kolumnę
+  „Uczelnia" (za kolumną „Jednostka nadrzędna"), pokazującą skrót
+  nazwy uczelni, do której należy dana jednostka.
+
+
+## bpp 202607.1396 (2026-07-07)
+
+### Naprawione
+
+- Import z PBN pomija obiekty usunięte po stronie PBN (``status == "DELETED"``),
+  gdy nie mają jeszcze odpowiednika w BPP — wcześniej taka praca, wydawca lub
+  naukowiec (import autorów z uczelni) był tworzony jako nowy rekord w BPP
+  (``Wydawnictwo_Ciagle``/``Wydawnictwo_Zwarte``, ``Wydawca``, ``Autor``).
+  Dopasowywanie istniejących rekordów BPP pozostaje bez zmian. ([#pbn-import-pomijaj-deleted](https://github.com/iplweb/bpp/issues/pbn-import-pomijaj-deleted))
+- Formularz zgłoszenia publikacji nie pozwala już wybrać dla autora jednostki,
+  do której nie można się afiliować (węzeł rodzaju „Wydział" albo jednostka
+  obca). Zamiast nieczytelnego błędu walidacji przy zapisie zgłaszający dostaje
+  komunikat wprost na polu „Jednostka" z prośbą o wskazanie jednostki
+  podrzędnej. Zgłoszony autor jest zawsze afiliowany, więc wybór jednostki
+  nieprzyjmującej afiliacji nie miał sensu. ([#438](https://github.com/iplweb/bpp/issues/438))
+- Importer publikacji nie pozwala już utworzyć pracy, w której autor
+  afiliuje do jednostki nieprzyjmującej afiliacji (np. węzła rodzaju
+  „Wydział"). Sprawdzenie odbywa się na etapie formularza przeglądu — przed
+  zleceniem zadania w tle — więc osoba importująca dostaje czytelny
+  komunikat wskazujący autora i jednostkę do poprawienia, zamiast błędu
+  walidacji w trakcie tworzenia rekordu. Dodano pomocniczą metodę
+  ``Jednostka.przyjmuje_afiliacje()``, która rozstrzyga, czy do danej
+  jednostki można afiliować (jednostka obca lub rodzaj z wyłączoną
+  afiliacją zwracają „nie"). ([#438](https://github.com/iplweb/bpp/issues/438))
+- Adres ``/bpp/wydzial/<slug>/`` przekierowuje teraz także wtedy, gdy
+  slug nie odpowiada żadnemu dawnemu wydziałowi, ale istnieje jednostka
+  o dokładnie tym slugu (np. wydział założony od razu w drzewie
+  jednostek) — użytkownik trafia wówczas wprost na
+  ``/bpp/jednostka/<ten-sam-slug>/``. Dotychczasowe przekierowania
+  dawnych wydziałów na ich węzły-lustra działają bez zmian; nieznane
+  slugi nadal zwracają 404.
+- Importer publikacji: sesja pobierania danych (np. z CrossRef po DOI) nie
+  zawiesza się już na stałe na „Pobieram dane od dostawcy…". Gdy zadanie w tle
+  zginęło poza kontrolą aplikacji (ubity/zgubiony worker Celery), status sesji
+  zostawał w nieskończoność w stanie „Trwa pobieranie", a strona odświeżała się w
+  kółko. Dodano watchdog: sesja tkwiąca zbyt długo w pobieraniu/tworzeniu rekordu
+  jest automatycznie oznaczana jako błąd z możliwością ponowienia. Timeout
+  zapytania HTTP do CrossRef jest teraz ustawiony jawnie i konfigurowalny
+  (`IMPORTER_STALL_TIMEOUT`, `CROSSREF_API_TIMEOUT`).
+- Naprawiono losowe błędy „relacja raport_slotow_raportzerowyentry
+  nie istnieje" przy oglądaniu raportu slotów — autorzy zerowi.
+  Wyniki raportu odczytywane są z tymczasowej (sesyjnej) tabeli
+  PostgreSQL, a odpowiedź renderowana była leniwie — pod serwerem
+  ASGI równoległy request (np. websocket powiadomień otwierany przez
+  przeglądarkę) mógł w międzyczasie zamknąć połączenie z bazą, przez
+  co tabela tymczasowa znikała przed odczytem. Strona raportu
+  renderuje się teraz w całości w obrębie tego samego połączenia.
+
+  Dodatkowo przezroczysty reconnect do bazy danych (silnik
+  ``django_bpp.db_connclosed_fix``) loguje ostrzeżenie zamiast
+  działać po cichu — utrata stanu sesji PostgreSQL (tabele
+  tymczasowe, advisory locks) jest teraz widoczna w logach.
+- Podświetlanie składni w polu wyszukiwania admina włącza się teraz warunkowo —
+  tylko gdy zaznaczono przełącznik „używaj DjangoQL". Przy zwykłym wyszukiwaniu
+  podłańcuchowym pole wygląda jak normalny input (wcześniej kolorowanie składni
+  było aktywne niezależnie od stanu przełącznika).
+- Strona jednostki wyświetlana w stylu wydziału (rodzaj jednostki z
+  zaznaczoną opcją „Pokazuj stronę w stylu wydziału") odtwarza układ
+  dawnej strony wydziału: panel nagłówka z nazwą, opisem i zestawieniem
+  liczb (jednostki aktualne, koła naukowe, jednostki historyczne),
+  pod nim wyśrodkowany przycisk „Pokaż wszystkie publikacje" filtrujący
+  po wydziale (jak na dawnej stronie wydziału — jeden zwięzły wpis
+  w formularzu wyszukiwania zamiast listy wszystkich podjednostek),
+  a dalej sekcje strukturalne. Link „Otwórz do edycji" znajduje się
+  w prawym górnym rogu panelu. Karty hierarchii „Wchodzi w skład" oraz „Jednostki
+  podrzędne" pozostają w tym stylu ukryte — strukturę podjednostek
+  prezentują sekcje strukturalne. Na zwykłych jednostkach bez zmian.
+- W formularzach raportów poziomu „jednostka" (np. „Raport jednostek")
+  pole „Jednostka" nie oferuje już jednostek najwyższego poziomu
+  (wydziałów), gdy uczelnia ma włączone używanie wydziałów — dla
+  wydziałów przeznaczony jest osobny raport poziomu „wydział". Lista
+  podpowiedzi i walidacja pola działają teraz tak samo, jak w rankingu
+  autorów.
+
+### Dokumentacja
+
+- Uwaga dla instalacji wielopodmiotowych: migracja ustawiająca „wydziałowi"
+  zakaz afiliacji (``RodzajJednostki.autor_moze_afiliowac=False``) rozpoznaje
+  rodzaj po nazwie „Wydział". Jeśli w danym tenancie zmieniono nazwę tego
+  rodzaju w słowniku, flagę trzeba ustawić ręcznie w panelu administracyjnym
+  (słownik „Rodzaje jednostek"), aby zadziałały zabezpieczenia przed afiliacją
+  autorów do wydziału. ([#438](https://github.com/iplweb/bpp/issues/438))
+
+### Usprawnienie
+
+- Admin ``Wydawnictwo ciągłe`` i ``Wydawnictwo zwarte`` ma nowy filtr „PBN:
+  status" — pozwala wyłapać rekordy powiązane z pracą skasowaną w PBN
+  (``DELETED``), aktywną (``ACTIVE``) albo bez powiązania. To samo zawężenie
+  działa też w wyszukiwaniu DjangoQL: ``pbn_uid.status = "DELETED"``. ([#admin-filtr-pbn-status](https://github.com/iplweb/bpp/issues/admin-filtr-pbn-status))
+- Nowa komenda ``audytuj_afiliacje_jednostek`` — raportuje wiersze przypisań
+  autorów (publikacje ciągłe, zwarte, patenty, zgłoszenia) z zaznaczoną
+  afiliacją do jednostki, której rodzaj nie dopuszcza afiliacji (np. węzła
+  „Wydział" powstałego z konwersji). Z opcją ``--napraw`` odznacza w takich
+  wierszach afiliację. Przydatna do porządkowania danych zastanych po
+  konwersji Wydział→Jednostka. ([#438](https://github.com/iplweb/bpp/issues/438))
+- Na podstronie źródła panel „Dyscypliny naukowe w ewaluacji” pokazuje
+  teraz dyscypliny aż do najnowszego roku obecnego w bazie danych i to
+  właśnie ten najnowszy rok jest domyślnie rozwinięty. Wcześniej zakres
+  prezentowanych lat oraz domyślnie otwarty rok były ustawione na sztywno,
+  przez co świeżo wgrane dyscypliny (np. za kolejny rok ewaluacji) nie były
+  widoczne bez zmiany w kodzie (Freshdesk 296).
+- Słownik „rodzaje jednostek" ma nową opcję „Autor może afiliować".
+  Gdy jest odznaczona, przy zapisie pracy z autorem afiliującym na
+  jednostkę tego rodzaju system zgłosi błąd walidacji — analogicznie do
+  obcej jednostki. Rodzaj „Wydział" ma tę opcję domyślnie wyłączoną:
+  afiliacja powinna wskazywać jednostkę podrzędną (instytut, katedrę,
+  klinikę), a nie sam wydział. Opcję można zmienić w adminie, w słowniku
+  rodzajów jednostek.
+- Uczelnia, która nie używa wydziałów, ale ma strukturę drzewa
+  jednostek (jednostka główna z podjednostkami), dostaje w
+  wyszukiwarce publikacji nowe pole „Jednostka nadrzędna”. Działa
+  jak dawny filtr „Wydział”: obejmuje jednym wpisem całe poddrzewo
+  wybranej jednostki-korzenia, zamiast wymagać wskazania każdej
+  podjednostki osobno. Pole pojawia się wyłącznie wtedy, gdy taka
+  struktura faktycznie istnieje; uczelnie z wydziałami korzystają
+  dalej z pola „Wydział”.
+
+  Na stronie jednostki-korzenia (widok w stylu wydziału) przycisk
+  „Pokaż wszystkie publikacje” ustala teraz ten filtr poddrzewa,
+  zamiast budować długą listę wszystkich jednostek potomnych — także
+  w uczelniach bez wydziałów. Jednostki bez podjednostek i jednostki
+  położone głębiej w drzewie działają jak dotychczas (jawna lista).
+
+
+## bpp 202607.1395 (2026-07-05)
+
+### Naprawione
+
+- Ikony Foundation w górnym menu (``top_bar.html``) nie pokazywały się przez
+  chwilę jako "kwadraciki z kodem" (tofu) w Firefoksie, zanim font ikonowy się
+  doczytał. Font ``foundation-icons.woff`` jest teraz preloadowany w ``<head>``,
+  a ``@font-face`` ma wymuszone ``font-display: block`` — zamiast pudełek z kodem
+  widać pustkę, a po doczytaniu fontu ikona doskakuje. ([#top-bar-ikony-font-preload](https://github.com/iplweb/bpp/issues/top-bar-ikony-font-preload))
+- Deduplikator źródeł: naprawiono kierunek proponowanego przemapowania. Dotąd
+  stroną docelową zostawało źródło o większej liczbie publikacji — przez co dla
+  pary „źródło ministerialne (z MNiSW ID) + duplikat bez MNiSW ID" deduplikator
+  proponował przepięcie źródła ministerialnego na cel bez MNiSW ID, co walidacja
+  i tak odrzucała. Teraz źródło z (efektywnym) MNiSW ID jest zawsze celem
+  przemapowania, a duplikat bez MNiSW ID stroną przepinaną — niezależnie od
+  liczby publikacji. (Istniejące listy wymagają ponownego skanu.)
+- Import PBN: anulowanie importu przez przycisk (HTMX) nie kończy się już
+  błędem 500 (odwołanie do nieistniejącej trasy w szablonie postępu).
+  Dodatkowo zapisy postępu nie nadpisują się nawzajem (zawężone zapisy pola
+  ``progress_data`` i odświeżenie przed modyfikacją), a sondaż autoryzacji
+  PBN przeniesiono z konstruktora menedżera importu do startu zadania
+  (brak ukrytego wywołania API przy samym utworzeniu obiektu).
+- Import POLON (multi-hosted): przypięcie importu do uczelni z requestu. Raport "autorzy z dyscyplinami, których nie było w pliku" pokazuje teraz wyłącznie aktualnie zatrudnionych w uczelni importu (wcześniej wyciekał autorów innych uczelni z tej samej bazy). Walidacja pola ZATRUDNIENIE sprawdza nazwę uczelni importu, a nie dowolnej uczelni w systemie; import nie modyfikuje też danych autora zatrudnionego w innej uczelni.
+- Import z CrossRef poprawnie dopasowuje teraz źródło (czasopismo) także wtedy,
+  gdy w bazie istnieje kilka zdublowanych rekordów o tej samej nazwie — wcześniej
+  zdublowane źródło (np. „Zeszyty Naukowe SGSP") zostawało niedopasowane i pole
+  źródła pozostawało puste (FD#422).
+- Przyspieszono renderowanie stron w panelu administracyjnym. Każda
+  lista obiektów wykonywała wcześniej ~300 zbędnych zapytań do bazy o
+  szablony (``dbtemplates`` sprawdzał w bazie każdą z ~150 nazw
+  szablonów admina, mimo że nie ma tam żadnego z nich), przez co
+  strony otwierały się zauważalnie wolno. Po aktualizacji
+  ``django-dbtemplates-iplweb`` do wersji ``4.4.0`` i włączeniu opcji
+  ``DBTEMPLATES_SKIP_UNKNOWN_NAMES`` te zapytania znikają — strony
+  admina renderują się kilkukrotnie szybciej.
+- Strona autora w instalacji wielouczelnianej (multi-homed): naprawiono trzy
+  powiązane usterki (FD#390).
+
+  - Link „PBN UID" oraz „Naukowiec z POL-on" na stronie autora znów prowadzi
+    do właściwego PBN — używa uczelni rozpoznanej z adresu, zamiast gubić link
+    przy więcej niż jednej uczelni.
+  - Autor będący pracownikiem swojej uczelni nie jest już błędnie pokazywany
+    jako „z obcej uczelni", gdy przy okazji figuruje w „obcej jednostce" innej
+    uczelni: przy ustalaniu aktualnej jednostki prawdziwa jednostka pracownicza
+    ma pierwszeństwo przed jednostką obcą.
+  - Edycja autora działa dla uprawnionego personelu każdej uczelni, z którą
+    autor był kiedykolwiek związany (obecnie lub historycznie) — koniec z
+    błędem „nie znaleziono" dla autora spoza aktualnej uczelni.
+- Tytuł publikacji na stronie rekordu nie jest już zniekształcany przez
+  metadane dla menedżerów bibliografii (COinS) — numery stron są poprawnie
+  osadzane, zamiast wyciekać jako wewnętrzny tekst diagnostyczny (FD#420).
+- Wizard zgłaszania publikacji nie crashuje już na kroku opłat w instalacji
+  multi-hosted: formularz kosztu publikacji przekazuje teraz uczelnię z requestu
+  do walidacji modelu, zamiast zgadywać przez ``Uczelnia.objects.get()``
+  (``MultipleObjectsReturned`` przy więcej niż jednej uczelni; Rollbar #400).
+
+### Usprawnienie
+
+- Nazwy poziomów struktury (uczelnia, wydział, jednostka) w menu i na stronach są teraz odmieniane przez przypadki prawdziwym silnikiem odmiany opartym o słownik SGJP (`django-polish-inflection`), zamiast sztywnej tabeli form. Dzięki temu formy są poprawne w każdym przypadku, a zgodność liczebnikowa działa jak należy (np. „2 jednostki" zamiast błędnego „2 jednostek"). Instalacje, które przemianowały te nazwy (np. „wydział" → „dział"), podają teraz w konfiguracji tylko mianownik liczby pojedynczej — pozostałe przypadki i liczbę mnogą wylicza automatycznie silnik. ([#odmiana-instytucji-silnik-sgjp](https://github.com/iplweb/bpp/issues/odmiana-instytucji-silnik-sgjp))
+- W instalacji wieloośrodkowej (multi-hosted) w adminach PBN API — „Publikacje
+  instytucji", „Publikacje instytucji V2" oraz „Oświadczenia instytucji" —
+  dodano filtr po instytucji PBN oraz kolumnę wskazującą instytucję. Filtr
+  i kolumna pojawiają się tylko gdy w systemie jest więcej niż jedna uczelnia;
+  na zwykłej instalacji jednouczelnianej nic się nie zmienia. ([#pbn-instytucja-admin-filter](https://github.com/iplweb/bpp/issues/pbn-instytucja-admin-filter))
+- Uproszczono dziewięć złożonych funkcji oznaczonych dotąd ``# noqa: C901``
+  (eksport XLSX możliwości odpinania, analiza duplikatów autorów, scalanie
+  danych CrossRef/PBN, porównywanie metryk autorów oraz cztery eksportery
+  BibTeX). Powtarzalne łańcuchy ``if``/``elif`` i zduplikowane bloki zastąpiono
+  tabelami danych (deskryptory kolumn, reguły scoringu, specyfikacje pól) oraz
+  wydzielonymi funkcjami pomocniczymi. Zachowanie jest niezmienione —
+  zabezpieczone nowymi testami charakteryzującymi — a kod jest znacznie
+  czytelniejszy i łatwiejszy w utrzymaniu. ([#uproszczenie-zlozonosci-c901](https://github.com/iplweb/bpp/issues/uproszczenie-zlozonosci-c901))
+- Uproszczono kolejne 22 złożone funkcje oznaczone dotąd ``# noqa: C901``
+  (scoring i przemapowywanie podobnych źródeł PBN, scalanie i wyszukiwanie
+  duplikatów autorów oraz źródeł, dopasowywanie autorów po stronie PBN, import
+  słowników/dyscyplin/czasopism PBN, budowa menu, eksport XLSX raportu slotów,
+  parsowanie historii komunikatów PBN, finder plików statycznych, middleware
+  blokujące złośliwe żądania, polecenie porównywania szablonów oraz aktualizacja
+  liczby cytowań z WoS). Powtarzalne łańcuchy ``if``/``elif`` i zduplikowane
+  bloki zastąpiono tabelami danych (reguły scoringu, deskryptory pól, listy
+  strategii dopasowania) oraz wydzielonymi funkcjami pomocniczymi; każda funkcja
+  ma teraz złożoność cyklomatyczną poniżej 10. Zachowanie jest niezmienione —
+  zabezpieczone nowymi testami charakteryzującymi pinującymi bieżące zachowanie
+  przed refaktorem — a kod jest znacznie czytelniejszy i łatwiejszy w utrzymaniu. ([#uproszczenie-zlozonosci-c901-tura2](https://github.com/iplweb/bpp/issues/uproszczenie-zlozonosci-c901-tura2))
+- Konsolidacja Wydział→Jednostka, Faza A (addytywna): nowy słownik
+  `RodzajJednostki` z flagami behawioralnymi, pole `Jednostka.rodzaj` (FK) obok
+  dotychczasowego `rodzaj_jednostki`, pola per-węzeł przeniesione z wydziału
+  (`zezwalaj_na_ranking_autorow`, `poprzednie_nazwy`, `skrot_nazwy`), kolumna
+  `legacy_wydzial_id`, poszerzenie sluga jednostki. Zamknięto wyciek niewidocznych
+  jednostek przez API, sitemap i autouzupełnianie (bramka logowania na
+  edytorskim endpointcie). Komendy `waliduj_konwersje_wydzialow` (skan przed
+  konwersją) oraz `konwertuj_wydzialy_na_jednostki` (idempotentna konwersja
+  wydziałów na ukryte węzły drzewa jednostek). Zmiany w pełni addytywne — nic nie
+  jest usuwane, `Wydzial` nietknięty. ([#438](https://github.com/iplweb/bpp/issues/438))
+- Admin źródeł: nowe kolumny „mniswID" i „Publikacje" (liczba prac,
+  sortowalna) oraz filtry „ma mniswID" i „ma publikacje" — ułatwiają
+  znalezienie i hurtowe usunięcie źródeł bez publikacji i bez mniswID.
+- Autocomplete autorów w panelu admina pokazuje teraz wszystkich autorów,
+  zgrupowanych w trzy sekcje (``optgroup``) wyróżniające ich powiązanie
+  z aktualnie obsługiwaną uczelnią:
+
+  * „Autorzy z naszej uczelni” — autorzy, których ``aktualna_jednostka``
+    należy do uczelni rozwiązanej z bieżącej domeny
+    (``Uczelnia.objects.get_for_request``).
+  * „Autorzy powiązani historycznie z naszą uczelnią” — autorzy z dowolnym
+    wpisem ``Autor_Jednostka`` w naszej uczelni, niezależnie od ``aktualna_jednostka``.
+  * „Autorzy zewnętrzni” — pozostali (np. z innych uczelni federacji
+    multi-hosted lub bez powiązania z jednostką).
+
+  Wcześniej autocomplete twardo filtrował wyłącznie autorów z aktualną
+  jednostką w bieżącej uczelni, co uniemożliwiało wybranie wieloetatowca,
+  byłego pracownika ani autora z uczelni partnerskiej.
+- Deduplikator źródeł działa znacznie szybciej: indeks GIN trigram na
+  nazwie/skrócie źródła + prefiltr operatorem podobieństwa zamiast pełnego
+  skanu tabeli na każde skanowane źródło. Na liście duplikatów wyraźnie
+  widać, czy źródło ma mniswID (co wskazuje, które źródło zostawić jako główne).
+- Deduplikator źródeł: wyszukiwanie duplikatów przeniesione do skanu w tle
+  (Celery) z podglądem postępu na żywo (django-liveops), zamiast wolnego
+  przeliczania przy każdym otwarciu strony. Po skanie pokazywana jest trwała
+  lista wszystkich par duplikatów z akcjami: przemapuj, „to nie duplikat",
+  ignoruj, odłóż na później.
+- Dodano import punktacji źródeł z pliku eksportu czasopism (XLSX/CSV):
+  po wczytaniu pliku system pokazuje podgląd rozbieżności wskaźnika IF i
+  kwartyla dla źródeł, a po zatwierdzeniu zapisuje wartości. Przeniesienie na
+  prace odbywa się przez moduł rozbieżności punktacji (FD#388).
+- Gdy import publikacji (kreator importera oraz prefill z CrossRef w panelu
+  administracyjnym) nie może jednoznacznie dopasować źródła, bo w bazie istnieją
+  zduplikowane czasopisma o tej samej nazwie i różnych ISSN-ach, formularz odsyła
+  teraz do deduplikatora źródeł zamiast po cichu zostawić puste pole (FD#422).
+- Import PBN: strony podglądu sesji nie ładują już wszystkich wpisów
+  dziennika przy każdym odpytaniu HTMX (co 5 s). Widoki logów są ograniczone
+  do 200 najnowszych wpisów, co eliminuje liniowo rosnący koszt zapytań przy
+  długich importach. Pełny dziennik pozostaje dostępny do pobrania.
+- Masowe kasowanie źródeł bez publikacji: nowa akcja w adminie „Usuń
+  zaznaczone źródła BEZ publikacji (wsadowo)" oraz komenda
+  ``usun_zrodla_bez_publikacji`` (z opcjami ``--bez-mnisw`` i ``--dry-run``).
+  Rozwiązuje błąd „TooManyFieldsSent" przy próbie skasowania dziesiątek tysięcy
+  źródeł naraz — akcja działa z „zaznacz wszystkie pasujące", a komenda omija
+  limit pól formularza w ogóle. Źródła z publikacjami nigdy nie są kasowane.
+  Akcja admina kasuje w paczkach po 5000 (każda commituje się osobno), więc
+  ewentualny timeout requestu na dużym zbiorze nie cofa całego postępu —
+  ponowne uruchomienie akcji dokańcza resztę.
+- Przemapowanie źródeł: źródło ministerialne (z MNiSW ID) można teraz
+  przemapować/zdeduplikować na inne źródło o TYM SAMYM MNiSW ID — czyli
+  zdeduplikować dwa rekordy tego samego czasopisma ministerialnego (wcześniej
+  było to całkowicie zablokowane). Przenoszenie publikacji do czasopisma o
+  innym MNiSW ID pozostaje zablokowane. Wysyłkę do PBN można pominąć
+  (odznaczając checkbox), bo dane w PBN się nie zmieniają.
+- Przemapowanie źródła: strona pokazuje teraz dwa symetryczne panele — „Źródło
+  źródłowe" i „Źródło docelowe" — z tym samym kompletem parametrów (skrót, ISSN,
+  e-ISSN, PBN UID, MNiSW ID, BPP ID, liczba publikacji). Panel docelowy doczytuje
+  się na żywo po wyborze źródła w liście, podświetla zgodny ISSN i ostrzega, gdy
+  przemapowanie źródła ministerialnego trafiłoby na czasopismo o innym (lub
+  brakującym) MNiSW ID — zanim jeszcze klikniesz „Przemapuj". Każdy panel ma też
+  link „Otwórz w panelu administracyjnym", datę ostatniej modyfikacji oraz badge
+  wieku („utworzone wcześniej/później" — po niższym BPP ID, bo Zrodlo nie
+  przechowuje daty utworzenia), co ułatwia ocenę, który rekord jest starszy.
+- SEO: metadane cytowań (Google Scholar, Dublin Core, PRISM, JSON-LD) na
+  stronie opisu publikacji przeniesione do sekcji `<head>` (wcześniej trafiały
+  do `<body>`, gdzie parsery Google Scholar je ignorowały). Dodano link
+  kanoniczny, opis (`meta description`) i tagi Open Graph dla strony publikacji
+  oraz domyślne dla całego serwisu, a `robots.txt` ogłasza teraz host-zależny
+  adres sitemapy.
+- Widget osadzania publikacji autora i jednostki na zewnętrznych stronach WWW: jednolinijkowy loader `<script src=".../static/embed/bpp-publikacje.js">` parametryzowany przez `data-*` (slug/ID, limit, zakres lat, styl lista/tabela, własne style), z dokumentacją zawierającą interaktywny generator kodu i podgląd na żywo. Endpoint API jednostki zwraca dorobek wraz z pod-jednostkami; oba endpointy embedu filtrują rekordy zgodnie z publiczną widocznością.
+
+### Usunięto
+
+- Import PBN: usunięto martwą warstwę WebSocket/Channels (konsumenci,
+  routing, helpery powiadomień). Niezgodność koperty komunikatów sprawiała,
+  że żadna wiadomość WS nie docierała do przeglądarki — cały podgląd
+  postępu na żywo i tak realizuje odpytywanie HTMX, które pozostaje bez
+  zmian. Mniej kodu i jedna zależność ASGI mniej, bez zmiany zachowania.
+
+
 ## bpp 202606.1394 (2026-06-29)
 
 ### Naprawione

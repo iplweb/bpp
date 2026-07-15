@@ -21,6 +21,7 @@ from .authors import (  # noqa: F401
     AutorAutocomplete,
     AutorAutocompleteBase,
     Dyscyplina_Naukowa_PrzypisanieAutocomplete,
+    ImportAutorAutocomplete,
     PodrzednaPublikacjaHabilitacyjnaAutocomplete,
     PublicAutorAutocomplete,
     ZapisanyJakoAutocomplete,
@@ -93,6 +94,9 @@ from .simple import (  # noqa: F401
 from .units import (  # noqa: F401
     JednostkaAutocomplete,
     PublicJednostkaAutocomplete,
+    PublicJednostkaNieToplevelAutocomplete,
+    PublicJednostkaToplevelAutocomplete,
+    PublicJednostkaWydzialRankinguAutocomplete,
     WidocznaJednostkaAutocomplete,
 )
 

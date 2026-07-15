@@ -10,6 +10,10 @@ def read_excel_or_csv_dataframe_guess_encoding(fn, header=0, nrows=None):
     fnl = fn.lower().strip()
 
     if fnl.endswith(".xlsx") or fnl.endswith(".xls"):
+        from import_common.util import sprawdz_bombe_dekompresji
+
+        # XLSX to ZIP — odrzuć bombę dekompresyjną przed wczytaniem do pandas.
+        sprawdz_bombe_dekompresji(fn)
         try:
             return pd.read_excel(fn, header=0, nrows=nrows).replace({np.nan: None})
         except ValueError as e:

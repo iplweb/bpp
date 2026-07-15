@@ -13,6 +13,7 @@ from django.http import Http404, HttpResponseRedirect
 from django.shortcuts import render
 from django.urls import reverse
 from django.utils.html import format_html, format_html_join
+from django.utils.http import urlencode
 from django_sendfile import sendfile
 from djangoql.admin import DjangoQLSearchMixin
 from templated_email import send_templated_mail
@@ -20,6 +21,7 @@ from templated_email import send_templated_mail
 from bpp.admin.core import DynamicAdminFilterMixin
 from bpp.admin.helpers.fieldsets import MODEL_Z_OPLATA_ZA_PUBLIKACJE
 from bpp.util import zaloguj_polkniety_wyjatek
+from import_common.normalization import extract_doi_from_url
 from zglos_publikacje.models import (
     Zgloszenie_Publikacji,
     Zgloszenie_Publikacji_Autor,
@@ -174,6 +176,16 @@ class Zgloszenie_PublikacjiAdmin(
         super_urls = super().get_urls()
 
         return urls + super_urls
+
+    def change_view(self, request, object_id, form_url="", extra_context=None):
+        # Udostępnij szablonowi URL importera, by przycisk „Użyj importera"
+        # mógł stanąć w pasku akcji nad tabelą (blok object-tools), a nie w
+        # readonly wierszu tabeli (Freshdesk #430).
+        extra_context = extra_context or {}
+        obj = self.get_object(request, object_id)
+        if obj is not None:
+            extra_context["importer_url"] = self.importer_url(obj)
+        return super().change_view(request, object_id, form_url, extra_context)
 
     zwroc_view_template = (
         "admin/zglos_publikacje/zgloszenie_publikacji/zwroc_zgloszenie.html"
@@ -373,6 +385,36 @@ class Zgloszenie_PublikacjiAdmin(
             return "-"
 
         return format_html_join("<br/>", "{}", ((part,) for part in parts))
+
+    def importer_url(self, obj: Zgloszenie_Publikacji) -> str | None:
+        """Zbuduj URL importera dla adresu zgłoszenia albo zwróć ``None``.
+
+        Priorytet: jeśli z pola „Dostępna w sieci pod adresem" (lub z pola
+        DOI zgłoszenia) da się wyłuskać DOI — importer z providerem CrossRef
+        i wypełnionym identyfikatorem. W przeciwnym razie, jeśli adres w
+        ogóle jest — importer z providerem „Pozostałe strony WWW" (import z
+        ogólnej strony), z adresem w polu identyfikatora. Gdy adresu nie ma
+        — ``None`` (przycisku importera nie pokazujemy).
+        """
+        doi = extract_doi_from_url(obj.strona_www) or extract_doi_from_url(
+            getattr(obj, "doi", None)
+        )
+
+        if doi:
+            params = {"provider": "CrossRef", "identifier": doi}
+        elif obj.strona_www:
+            # Nazwa providera musi zgadzać się z WWWProvider.name.
+            params = {
+                "provider": "Pozostałe strony WWW",
+                "identifier": obj.strona_www,
+            }
+        else:
+            return None
+
+        return "{}?{}".format(
+            reverse("importer_publikacji:index"),
+            urlencode(params),
+        )
 
     def wydzial_pierwszego_autora(self, obj: Zgloszenie_Publikacji):
         try:

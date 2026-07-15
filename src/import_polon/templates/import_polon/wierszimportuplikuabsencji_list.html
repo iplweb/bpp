@@ -22,6 +22,14 @@
             <h2>Zmiany nie zostały wprowadzone do bazy danych.</h2> Import został uruchomiony bez opcji zapisywania
             danych do bazy, więc to co widzisz poniżej, to informacja, która byłaby wprowadzona do bazy, gdyby
             zaznaczono opcję zapisywania zmian do bazy.
+            {% if object.finished_successfully %}
+                <p style="margin-top: 1rem; margin-bottom: 0;">
+                    <a href="{% url 'import_polon:importplikuabsencji-zapisz-do-bazy' object.pk %}"
+                       class="button alert" style="margin-bottom: 0;">
+                        <span class="fi-save"></span> Zapisz ten import do bazy danych
+                    </a>
+                </p>
+            {% endif %}
         </div>
     {% endif %}
 

@@ -1,0 +1,47 @@
+{% load i18n %}
+{# Numerowana lista opisów. Współdzielony przez render ekranowy #}
+{# (common-results.html, export_mode=False) i eksport dokumentu #}
+{# (export-document.html, export_mode=True). #}
+{# Parametry: export_mode (chowa chrome + link), start_index (0-based). #}
+<div class="multiseek-list-report">
+    <ol style="counter-reset: list-counter {{ start_index }}">
+        {% for element in object_list %}
+
+        <li class="multiseek-row" id="multiseek-row-{{ element.js_safe_pk }}">
+            <span class="multiseek-element">
+                {% if export_mode %}
+                    {{ element.opis_bibliograficzny_cache|safe }}
+                {% else %}
+                    <a href="{% url "bpp:browse_praca" element.id.0 element.id.1 %}"
+                       target="_top">
+                        {{ element.opis_bibliograficzny_cache|safe }}
+
+                    </a>
+                {% endif %}
+
+                {% if report_type == "numer_list" %}
+                    {% if export_mode %}
+                        {# nh3 zdejmuje style — emfaza (b) przetrwa sanityzację, #}
+                        {# żeby uwagi były wyróżnione też w HTML/DOCX. #}
+                        <b>{{ element.uwagi }}</b>
+                    {% else %}
+                    <span style="color: red;">
+            {{ element.uwagi }}
+            </span>
+                    {% endif %}
+                {% endif %}
+
+            </span>
+        {% if not export_mode and not print_removed %}
+            <span class="multiseek-remove-from-results">
+                <a data-remove-result="{{ element.js_safe_pk }}" style="font-size: 8pt;">
+                    ❌
+                </a>
+            </span>
+        {% endif %}
+        </li>
+        {% empty %}
+            <li style="text-align: center; color: #6c757d; padding: 20px;">{% trans "No elements" %}</li>
+        {% endfor %}
+    </ol>
+</div>

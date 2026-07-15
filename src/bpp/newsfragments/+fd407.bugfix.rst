@@ -1,0 +1,8 @@
+Dopasowywanie autorów przy imporcie prac (CrossRef, PBN, POL-on, import
+kadr) oraz w deduplikatorze autorów uwzględnia teraz pole "poprzednie
+nazwiska". Dzięki temu osoba, która zmieniła nazwisko (np. z dwuczłonowego
+"Gawlik-Dziki" na jednoczłonowe "Gawlik" albo z panieńskiego na nazwisko po
+mężu), jest poprawnie kojarzona z istniejącym rekordem zamiast tworzyć
+duplikat. Poprzednie nazwisko dopasowywane jest jako dokładny człon listy
+(rozdzielanej przecinkami), więc częste nazwiska nie generują fałszywych
+dopasowań (FD#407).

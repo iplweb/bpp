@@ -394,11 +394,65 @@ coverage-ai: ## Raport pokrycia dla AI (sortowane ascending, top N najgorszych)
 # you suspect schema corruption or need to validate migrations from zero.
 tests-fresh: destroy-test-databases tests ## Jak `tests`, ale od zera (destroy-test-databases + tests)
 
+# ---------------------------------------------------------------------------
+# baseline.sql: naprawa search_path po dumpie (triggery hstore-w-WHEN)
+# ---------------------------------------------------------------------------
+# pg_dump utwardza naglowek zrzutu linia:
+#     SELECT pg_catalog.set_config('search_path', '', false);
+# czyli ustawia PUSTY search_path na cala sesje restore. To ochrona dodana po
+# CVE-2018-1058 (zeby obiekt w cudzym schemacie nie przeslonil wbudowanego
+# podczas restore). pg_dump kwalifikuje wszystkie obiekty schematem, wiec pusty
+# search_path jest NORMALNIE nieszkodliwy.
+#
+# Przestaje byc nieszkodliwy w momencie, gdy CREATE TRIGGER ma klauzule WHEN
+# porownujaca kolumne typu `hstore` operatorem IS DISTINCT FROM. Nasze triggery
+# denorma robia dokladnie to (np. `WHEN (old.legacy_data IS DISTINCT FROM
+# new.legacy_data)` na kolumnach hstore). IS DISTINCT FROM rozwija sie do
+# operatora `hstore = hstore`, ktory zyje w schemacie `public` (rozszerzenie
+# instalowane przez CREATE EXTENSION hstore WITH SCHEMA public). Klauzula WHEN
+# jest parsowana i rozwiazywana na operatory JUZ przy CREATE TRIGGER (niezaleznie
+# od check_function_bodies), wiec z pustym search_path operator jest niewidoczny
+# i load pada:
+#     ERROR: operator does not exist: public.hstore = public.hstore
+# PostgreSQL 16 to (czasem) przepuszczal, 17/18 juz nie — a i klient psql potrafi
+# to odrzucic na 16. django-pg-baseline laduje baseline.sql przez
+# `psql -f ... -v ON_ERROR_STOP=1` w JEDNEJ transakcji, wiec JEDEN taki blad
+# przerywa caly load -> kazdy django_db_setup pada -> kontener testowej bazy
+# nigdy nie staje sie gotowy (ContainerStartError widoczny pod -n auto to
+# wlasnie to, objawiajace sie jako ubity kontener PG).
+#
+# Upstreamowe komendy baseline_update / baseline_rebuild NIE przepisuja
+# naglowka, wiec latamy to tutaj, zaraz po dumpie: przywracamy `public` do
+# search_path na czas restore. To dokladnie to samo, co bpp-deploy robi przy
+# ladowaniu (scripts/pg-collation-migrate-3-load.sh) — tyle ze tam filtrem
+# strumieniowym, a my zapisujemy poprawke do commitowanego pliku, bo testowy
+# loader (django-pg-baseline) nie ma takiego hooka. Bezpieczne: kazdy obiekt w
+# dumpie jest kwalifikowany schematem, wiec `public` w search_path wplywa tylko
+# na niekwalifikowane lookupy operatorow, jak `hstore =`. Edycja in-place jest
+# przenosna (bez `sed -i`, ktore rozni sie GNU vs BSD): przez plik tymczasowy.
+#
+# UWAGA: to sie NIE utrwala w django-pg-baseline — kazdy kolejny
+# baseline_update/rebuild znowu wyprodukuje pusty search_path, dlatego ten
+# post-krok MUSI zostac w obu targetach ponizej.
+define fix-baseline-search-path
+	@if grep -q "set_config('search_path', '', false)" baseline-sql/baseline.sql; then \
+		sed "s/set_config('search_path', '', false)/set_config('search_path', 'public', false)/" \
+			baseline-sql/baseline.sql > baseline-sql/baseline.sql.tmp \
+			&& mv baseline-sql/baseline.sql.tmp baseline-sql/baseline.sql; \
+		echo ">> search_path naprawiony: '' -> 'public' (triggery hstore-w-WHEN sie wczytaja)"; \
+	else \
+		echo ">> UWAGA: nie znalazlem set_config('search_path','',false) w naglowku dumpu."; \
+		echo ">>        Format pg_dump sie zmienil? Sprawdz baseline-sql/baseline.sql recznie"; \
+		echo ">>        (patrz dlugi komentarz nad rebuild-baseline)."; \
+	fi
+endef
+
 # Regenerate baseline-sql/baseline.sql by spinning up an isolated
 # postgres (via testcontainers), running migrate, dumping, and writing
 # baseline.meta.json. Commit the refreshed files to git.
 rebuild-baseline: ## Regeneruj baseline.sql OD ZERA (pełny reset; duży diff)
 	DJANGO_BPP_SKIP_DOTENV=1 uv run python src/manage.py baseline_rebuild
+	$(fix-baseline-search-path)
 	@echo ""
 	@echo "Baseline regenerated. Files:"
 	@ls -lh baseline-sql/baseline.sql baseline-sql/baseline.meta.json
@@ -415,6 +469,7 @@ rebuild-baseline: ## Regeneruj baseline.sql OD ZERA (pełny reset; duży diff)
 # migrations; reach for `rebuild-baseline` only for a full reset.
 baseline-update: ## Zaktualizuj baseline.sql IN-PLACE (load+migrate+dump; mały diff)
 	DJANGO_BPP_SKIP_DOTENV=1 uv run python src/manage.py baseline_update
+	$(fix-baseline-search-path)
 	@echo ""
 	@echo "Baseline updated in place. Files:"
 	@ls -lh baseline-sql/baseline.sql baseline-sql/baseline.meta.json
@@ -583,6 +638,71 @@ check-clean-tree: ## Zawołaj błąd, jeśli working tree brudne (pre-release gu
 
 release: check-clean-tree full-tests new-release ## Pełny release (tree clean + full-tests + new-release)
 
+.PHONY: release-candidate release-promote
+release-candidate: ## Faza 1: utnij kandydata (RC → :staging) i obserwuj run [SKIP_TESTS=1 SKIP_SCAN=1 WEB=1]
+	@BRANCH=$$(git rev-parse --abbrev-ref HEAD 2>/dev/null); \
+	if [ "$$BRANCH" != "dev" ]; then \
+		echo "BŁĄD: RC tnie kandydata z 'dev' (--ref dev), a lokalnie jesteś na '$$BRANCH'."; \
+		echo "      Przełącz się:  git switch dev && git pull  — potem ponów."; \
+		exit 1; \
+	fi; \
+	if [ -z "$$SKIP_SCAN" ]; then \
+		echo "==> Lokalny gate CVE (./bin/scan-deps.sh) — HIGH/CRITICAL zatrzyma RC przed CI..."; \
+		./bin/scan-deps.sh || { echo "BŁĄD: lokalny skan CVE znalazł HIGH/CRITICAL — przerywam przed RC (SKIP_SCAN=1 by pominąć awaryjnie)."; exit 1; }; \
+	else \
+		echo "==> SKIP_SCAN=1 — pomijam lokalny skan CVE (awaryjnie)."; \
+	fi; \
+	FLAGS=""; \
+	if [ -n "$$SKIP_TESTS" ]; then FLAGS="$$FLAGS -f skip_tests=true"; fi; \
+	if [ -n "$$SKIP_SCAN" ]; then FLAGS="$$FLAGS -f skip_scan=true"; fi; \
+	DISPATCHED_AT=$$(date -u +%Y-%m-%dT%H:%M:%SZ); \
+	echo "Odpalam release-candidate.yml (--ref dev)$$FLAGS ..."; \
+	if ! gh workflow run release-candidate.yml --ref dev $$FLAGS; then \
+		echo "BŁĄD: Nie udało się uruchomić workflow. Nie szukam runu."; \
+		exit 1; \
+	fi; \
+	echo "Czekam na run utworzony po $$DISPATCHED_AT..."; \
+	RUN_ID=""; \
+	RUN_JQ="[.[] | select(.createdAt >= \"$$DISPATCHED_AT\")]"; \
+	ATTEMPT=0; \
+	while [ "$$ATTEMPT" -lt 30 ] && [ -z "$$RUN_ID" ]; do \
+		if ! RUN_ID=$$(gh run list \
+			--workflow=release-candidate.yml \
+			--branch=dev \
+			--event=workflow_dispatch \
+			--limit=20 \
+			--json databaseId,createdAt \
+			--jq "$$RUN_JQ | first | .databaseId // empty"); then \
+			echo "BŁĄD: Nie udało się pobrać listy runów workflow."; \
+			exit 1; \
+		fi; \
+		if [ -z "$$RUN_ID" ]; then sleep 2; fi; \
+		ATTEMPT=$$((ATTEMPT + 1)); \
+	done; \
+	if [ -z "$$RUN_ID" ]; then \
+		echo "BŁĄD: Przez 60 s nie pojawił się run utworzony przez ten dispatch."; \
+		exit 1; \
+	fi; \
+	echo "Obserwuję run ID: $$RUN_ID"; \
+	if [ -n "$$WEB" ]; then gh run view "$$RUN_ID" --web; fi; \
+	gh run watch "$$RUN_ID"
+
+release-promote: ## Faza 2: promuj kandydata do produkcji (:latest, bez rebuildu) i obserwuj run [VERSION=vXXX WEB=1]
+	@FLAGS=""; \
+	if [ -n "$$VERSION" ]; then FLAGS="-f version=$$VERSION"; fi; \
+	echo "Odpalam promote.yml$$FLAGS ..."; \
+	gh workflow run promote.yml $$FLAGS; \
+	echo "Czekam na pojawienie się runu..."; \
+	sleep 3; \
+	RUN_ID=$$(gh run list --workflow=promote.yml --limit=1 --json databaseId --jq '.[0].databaseId'); \
+	if [ -z "$$RUN_ID" ]; then \
+		echo "BŁĄD: Nie udało się znaleźć nowego runu workflow."; \
+		exit 1; \
+	fi; \
+	echo "Obserwuję run ID: $$RUN_ID"; \
+	if [ -n "$$WEB" ]; then gh run view "$$RUN_ID" --web; fi; \
+	gh run watch "$$RUN_ID"
+
 set-version-from-vcs: ## Ustaw wersję bumpver na podstawie git describe
 	$(eval CUR_VERSION_VCS=$(shell git describe | sed s/\-/\./ | sed s/\-/\+/))
 	bumpver update --no-commit --set-version=$(CUR_VERSION_VCS)
@@ -620,7 +740,7 @@ loc: clean ## Pokaż statystyki liczby linii (pygount)
 	pygount -N ... -F "...,staticroot,migrations,fixtures" src --format=summary
 
 
-DOCKER_VERSION=202606.1394
+DOCKER_VERSION=202607.1397
 
 # Cache configuration for docker buildx bake
 # - local: use local cache (default for local builds)

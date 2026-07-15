@@ -1,0 +1,116 @@
+<div class="callout">
+    <h4><span class="fi-magnifying-glass"></span> Krok: Sprawdź w PBN</h4>
+
+    <p>
+        Zanim utworzysz rekord, możesz wskazać jego odpowiednik w PBN.
+        Wyszukujemy pracę w PBN po <strong>DOI</strong>, <strong>tytule</strong>
+        i <strong>stronie WWW</strong>. Ten krok jest opcjonalny — możesz przejść
+        dalej bez wyboru odpowiednika.
+    </p>
+
+    {# --- Aktualnie wybrany odpowiednik --------------------------------- #}
+    {% if selected %}
+        <div class="callout success">
+            <span class="fi-check"></span>
+            <strong>Wybrany odpowiednik PBN:</strong>
+            {{ selected }}
+            {% if selected_pbn_url %}
+                &mdash;
+                <a href="{{ selected_pbn_url }}"
+                   target="_blank"
+                   rel="noopener">Otwórz w PBN</a>
+            {% endif %}
+            <form hx-post="{% url 'importer_publikacji:pbn-clear' session.pk %}"
+                  hx-target="#importer-wizard"
+                  style="display:inline; margin-left:.5rem;">
+                {% csrf_token %}
+                <button type="submit" class="button tiny alert">
+                    <span class="fi-x"></span> Wyczyść wybór
+                </button>
+            </form>
+        </div>
+    {% endif %}
+
+    {# --- Operator niezalogowany do PBN --------------------------------- #}
+    {% if not logged_in %}
+        <div class="callout warning">
+            <span class="fi-info"></span>
+            Nie jesteś zalogowany do PBN, więc nie można wyszukać odpowiednika.
+            Zaloguj się do PBN, aby wyszukać pracę, lub pomiń ten krok
+            (weryfikacja jest opcjonalna).
+            <div style="margin-top:.75rem;">
+                <a href="{{ authorize_url }}" class="button">
+                    <span class="fi-key"></span> Zaloguj się do PBN
+                </a>
+                <form hx-post="{% url 'importer_publikacji:pbn' session.pk %}"
+                      hx-target="#importer-wizard"
+                      style="display:inline;">
+                    {% csrf_token %}
+                    <button type="submit" class="button secondary">
+                        Pomiń <span class="fi-arrow-right"></span>
+                    </button>
+                </form>
+            </div>
+        </div>
+    {% else %}
+        {# --- Operator zalogowany: wyniki wyszukiwania ------------------ #}
+        {% if search.error %}
+            <div class="callout alert">
+                <span class="fi-alert"></span> {{ search.error }}
+            </div>
+        {% endif %}
+
+        {% if search.total_unique == 1 %}
+            <div class="callout primary">
+                <span class="fi-info"></span>
+                Znaleziono w PBN <strong>dokładnie jeden</strong> rekord.
+                Czy akceptujesz go jako odpowiednik PBN tej pracy? Kliknij
+                „Wybierz jako odpowiednik" poniżej.
+            </div>
+        {% elif search.total_unique == 0 %}
+            <div class="callout secondary">
+                <span class="fi-info"></span>
+                Nie znaleziono w PBN żadnego odpowiednika. Możesz przejść dalej
+                bez powiązania z PBN.
+            </div>
+        {% endif %}
+
+        {# --- Oś: DOI --- #}
+        <h5><span class="fi-page"></span> Po DOI</h5>
+        {% if search.by_doi %}
+            {% include "importer_publikacji/partials/_pbn_result_list.html" with results=search.by_doi %}
+        {% else %}
+            <p><em>Brak wyników po DOI.</em></p>
+        {% endif %}
+
+        {# --- Oś: tytuł --- #}
+        <h5><span class="fi-page"></span> Po tytule</h5>
+        {% if search.by_title %}
+            {% include "importer_publikacji/partials/_pbn_result_list.html" with results=search.by_title %}
+        {% else %}
+            <p><em>Brak wyników po tytule.</em></p>
+        {% endif %}
+
+        {# --- Oś: strona WWW --- #}
+        <h5><span class="fi-link"></span> Po stronie WWW</h5>
+        {% if search.by_www %}
+            {% include "importer_publikacji/partials/_pbn_result_list.html" with results=search.by_www %}
+        {% else %}
+            <p><em>Brak wyników po stronie WWW (lokalny cache PBN).</em></p>
+        {% endif %}
+    {% endif %}
+
+    {# --- Nawigacja ----------------------------------------------------- #}
+    <form hx-post="{% url 'importer_publikacji:pbn' session.pk %}"
+          hx-target="#importer-wizard">
+        {% csrf_token %}
+        <button type="button" class="button secondary"
+                hx-get="{{ punktacja_url }}"
+                hx-target="#importer-wizard">
+            <span class="fi-arrow-left"></span> Wstecz
+        </button>
+        <button type="submit" class="button">
+            Dalej <span class="fi-arrow-right"></span>
+        </button>
+    </form>
+</div>

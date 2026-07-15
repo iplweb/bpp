@@ -229,12 +229,15 @@ class Zrodlo(LinkDoPBNMixin, ModelZAdnotacjami, ModelZISSN):
     def dyscypliny_aktualna_ewaluacja(
         self,
         min_year=const.PBN_AKTUALNA_EWALUACJA_START,
-        max_year=const.PBN_AKTUALNA_EWALUACJA_STOP,
+        max_year=None,
     ):
-        return (
-            self.dyscyplina_zrodla_set.filter(
-                rok__gte=min_year, rok__lte=max_year, dyscyplina__widoczna=True
-            )
-            .select_related()
-            .order_by("rok", "dyscyplina__kod")
+        # max_year=None => bez górnego ograniczenia: pokazujemy dyscypliny aż
+        # do najnowszego roku obecnego w bazie (Freshdesk 296). Wcześniej górną
+        # granicą był na sztywno const.PBN_AKTUALNA_EWALUACJA_STOP, przez co
+        # świeżo wgrane lata (np. 2026) nie pojawiały się na podstronie źródła.
+        qs = self.dyscyplina_zrodla_set.filter(
+            rok__gte=min_year, dyscyplina__widoczna=True
         )
+        if max_year is not None:
+            qs = qs.filter(rok__lte=max_year)
+        return qs.select_related().order_by("rok", "dyscyplina__kod")

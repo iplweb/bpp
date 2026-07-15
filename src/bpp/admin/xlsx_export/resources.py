@@ -17,7 +17,6 @@ from bpp.models import (
     Praca_Habilitacyjna,
     Wydawnictwo_Ciagle,
     Wydawnictwo_Zwarte,
-    Wydzial,
 )
 from bpp.util import site_url_for_request
 
@@ -272,33 +271,6 @@ class AutorResource(resources.ModelResource):
         exclude = ["search", "slug", "sort", "expertus_id", "pbn_id"]
 
 
-class WydzialResource(resources.ModelResource):
-    uczelnia = Field(attribute="uczelnia__nazwa")
-
-    class Meta:
-        model = Wydzial
-        fields = (
-            "id",
-            "uczelnia",
-            "nazwa",
-            "skrot_nazwy",
-            "skrot",
-            "opis",
-            "pokazuj_opis",
-            "poprzednie_nazwy",
-            "kolejnosc",
-            "widoczny",
-            "zezwalaj_na_ranking_autorow",
-            "zarzadzaj_automatycznie",
-            "otwarcie",
-            "zamkniecie",
-            "pbn_id",
-            "ostatnio_zmieniony",
-            "adnotacje",
-        )
-        export_order = fields
-
-
 class JednostkaResource(resources.ModelResource):
     prettyxlsx_freeze_panes = "B2"
 
@@ -306,6 +278,9 @@ class JednostkaResource(resources.ModelResource):
     wydzial = Field(attribute="wydzial__nazwa")
     parent = Field(attribute="parent__nazwa")
     pbn_uid = Field(attribute="pbn_uid__mongoId")
+    # Faza B (#438), III-1: ``rodzaj_jednostki`` (CharField) zastąpiony FK
+    # ``rodzaj`` — eksportujemy czytelną nazwę słownikową (jak ``wydzial``).
+    rodzaj = Field(attribute="rodzaj__nazwa")
 
     def export(self, *args, **kwargs):
         dataset = super().export(*args, **kwargs)
@@ -317,10 +292,10 @@ class JednostkaResource(resources.ModelResource):
         fields = (
             "nazwa",
             "skrot",
-            "rodzaj_jednostki",
+            "rodzaj",
             "aktualna",
             "widoczna",
-            "wchodzi_do_raportow",
+            "wchodzi_do_rankingu_autorow",
             "skupia_pracownikow",
             "uczelnia",
             "wydzial",

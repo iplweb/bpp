@@ -5,6 +5,8 @@ Modele abstrakcyjne związane z metadanymi rekordów.
 from django.db import models
 from django.db.models import CASCADE, SET_NULL
 
+from bpp.util import safe_html
+
 
 class ModelZAdnotacjami(models.Model):
     """Zawiera adnotację  dla danego obiektu, czyli informacje, które
@@ -51,7 +53,10 @@ class ModelZeStatusem(models.Model):
 
 class ModelZCharakterem(models.Model):
     charakter_formalny = models.ForeignKey(
-        "bpp.Charakter_Formalny", CASCADE, verbose_name="Charakter formalny"
+        "bpp.Charakter_Formalny",
+        CASCADE,
+        verbose_name="Charakter formalny",
+        limit_choices_to={"ukryty": False},
     )
 
     class Meta:
@@ -100,6 +105,15 @@ class ModelZeSzczegolami(models.Model):
 
     class Meta:
         abstract = True
+
+    def clean(self):
+        # Pola renderowane w opisie bibliograficznym przez |safe (także przez
+        # zdenormalizowany opis_bibliograficzny_cache na publicznych stronach
+        # i w globalnej wyszukiwarce). Sanityzujemy na wejściu tak jak tytuły
+        # (DwaTytuly.clean), inaczej redaktor wstrzykuje stored XSS.
+        self.informacje = safe_html(self.informacje)
+        self.szczegoly = safe_html(self.szczegoly)
+        self.uwagi = safe_html(self.uwagi)
 
     def pierwsza_strona(self):
         return self.strony.split("-")[0]

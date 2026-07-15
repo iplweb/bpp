@@ -10,7 +10,7 @@ def test_lemat_z_zasianego_wiersza():
 
 
 @pytest.mark.django_db
-def test_lemat_override_przemianowanie():
+def test_lemat_override_przemianowanie(rzeczowniki):
     from bpp.models import Rzeczownik
 
     Rzeczownik.objects.filter(uid="JEDNOSTKA").update(m="dział")

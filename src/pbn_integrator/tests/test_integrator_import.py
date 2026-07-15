@@ -12,7 +12,42 @@ from unittest.mock import Mock, patch
 import pytest
 from model_bakery import baker
 
+from bpp.models import Rodzaj_Zrodla, Zrodlo
 from pbn_api.models import Journal, Publisher
+
+
+@pytest.mark.django_db
+def test_dopisz_jedno_zrodlo_pomija_syntetyczny_xpbn_issn():
+    """PBN podsyła placeholder ``xpbn-<uuid>`` (41 znaków) dla czasopism bez
+    ISSN. Pole ``Zrodlo.issn`` to CharField(max_length=32), więc dosłowny
+    zapis wywalał ``DataError: value too long``. Placeholder oznacza *brak*
+    ISSN, więc ma trafić do bazy jako pusty string."""
+    from pbn_integrator.importer import dopisz_jedno_zrodlo
+
+    xpbn = "xpbn-1585798a-33ca-44a8-8daf-6f1c15b25127"
+    assert len(xpbn) > 32  # gwarantuje, że bez fixa INSERT by pękł
+
+    pbn_journal = baker.make(
+        Journal,
+        status="ACTIVE",
+        versions=[
+            {
+                "current": True,
+                "object": {
+                    "title": "Andrologia i Seksualna Medycyna",
+                    "issn": xpbn,
+                    "eissn": xpbn,
+                },
+            }
+        ],
+    )
+    rodzaj_periodyk, _ = Rodzaj_Zrodla.objects.get_or_create(nazwa="periodyk")
+
+    dopisz_jedno_zrodlo(pbn_journal, rodzaj_periodyk, {})
+
+    zrodlo = Zrodlo.objects.get(pbn_uid=pbn_journal)
+    assert zrodlo.issn == ""
+    assert zrodlo.e_issn == ""
 
 
 @pytest.mark.django_db

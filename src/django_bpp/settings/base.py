@@ -24,6 +24,7 @@ SCRIPT_PATH = os.path.abspath(os.path.dirname(__file__))
 SITE_ROOT = os.path.abspath(os.path.join(SCRIPT_PATH, "..", ".."))
 
 SECRET_KEY_UNSET = "Please set the DJANGO_BPP_SECRET_KEY variable."
+ALTCHA_HMAC_KEY_UNSET = "Please set the ALTCHA_HMAC_KEY variable."
 
 
 # Ponieważ konieczna jest konfiguracja django-ldap-auth i potrzebne będą kolejne zmienne
@@ -105,6 +106,8 @@ env = environ.Env(
     DJANGO_BPP_DB_DISABLE_SSL=(bool, False),
     DJANGO_BPP_TEST_TEMPLATE=(str, ""),
     DJANGO_BPP_SECRET_KEY=(str, SECRET_KEY_UNSET),
+    ALTCHA_HMAC_KEY=(str, ALTCHA_HMAC_KEY_UNSET),
+    ZGLOS_CAPTCHA_ENABLED=(bool, False),
     DJANGO_BPP_MEDIA_ROOT=(str, os.path.join(os.getenv("HOME", "C:/"), "bpp-media")),
     #
     # Konfiguracja wymuszania zmiany haseł
@@ -139,7 +142,6 @@ env = environ.Env(
     # Wyświetlanie nazwy wydziału przez jednostki
     #
     DJANGO_BPP_SKROT_WYDZIALU_W_NAZWIE_JEDNOSTKI=(bool, True),
-    DJANGO_BPP_UCZELNIA_UZYWA_WYDZIALOW=(bool, True),
     #
     # Ile dni trzymać wyniki działań Celery - domyślnie tydzień
     #
@@ -156,6 +158,8 @@ env = environ.Env(
     # Rollbar access settings
     #
     ROLLBAR_ACCESS_TOKEN=(str, None),
+    # Publiczny token klienta (post_client_item) do frontendowego Rollbara.
+    ROLLBAR_CLIENT_ACCESS_TOKEN=(str, ""),
     #
     # Prometheus
     #
@@ -214,6 +218,12 @@ LOCALE_PATHS = [
 SITE_ID = env("DJANGO_BPP_SITE_ID", default=1, cast=int)
 USE_I18N = True
 USE_TZ = True
+
+# URL usługi html2docx (sidecar HTTP) używanej jako fallback konwersji DOCX,
+# gdy pandoc zawiedzie (np. core dump na VMWare ESX). None => fallback
+# wyłączony, degradacja miękka (DocxConversionError). Patrz
+# nowe_raporty.docx_export._convert_using_html2docx_service.
+HTML2DOCX_URL = env("DJANGO_BPP_HTML2DOCX_URL", default=None)
 
 # Django 5.0 transitional; stanie się domyślne w 6.0. Wycisza
 # RemovedInDjango60Warning z forms.URLField dla URL-i bez schematu.
@@ -293,6 +303,7 @@ TEMPLATES = [
                 "bpp.context_processors.constance_config.constance_config",
                 "bpp.context_processors.global_nav.user",
                 "bpp.context_processors.google_analytics.google_analytics",
+                "bpp.context_processors.rollbar.rollbar_client",
                 "bpp.context_processors.pbn_token_aktualny.pbn_token_aktualny",
                 "bpp.context_processors.microsoft_auth.microsoft_auth_status",
                 "bpp.context_processors.orcid.orcid_auth_status",
@@ -326,6 +337,7 @@ MIDDLEWARE = [
     "bpp.middleware.NotificationsMiddleware",
     # 'rollbar.contrib.django.middleware.RollbarNotifierMiddleware',
     "bpp.middleware.CustomRollbarNotifierMiddleware",
+    "oauth_mcp.middleware.ApiReadOnlyForBearerMiddleware",
     # AxesMiddleware MUSI być ostatnie — przechwytuje AxesBackendPermissionDenied
     # z backendu logowania i renderuje odpowiedź "konto zablokowane".
     "axes.middleware.AxesMiddleware",
@@ -456,6 +468,8 @@ INSTALLED_APPS = [
     "import_dyscyplin",
     "mptt",
     "rest_framework",
+    "oauth_mcp",
+    "oauth2_provider",
     "django_filters",
     "api_v1",
     "adminsortable2",
@@ -508,6 +522,7 @@ INSTALLED_APPS = [
     "komparator_publikacji_pbn",
     "admin_dashboard",
     "importer_publikacji",
+    "import_sqlite",
     "django_pg_baseline",
 ]
 
@@ -723,6 +738,28 @@ CELERY_TRACK_STARTED = False
 # started/succeeded/failed) na brokerze. Bez tego Flower nie widzi workerow.
 CELERY_WORKER_SEND_TASK_EVENTS = True
 
+# --- Importer publikacji ---------------------------------------------------
+# Watchdog sesji importu: sesja w stanie in-flight (FETCHING/CREATING) dłużej
+# niż tyle sekund jest uznawana za martwą (zgubiony/ubity worker Celery — task
+# nie wykona bloku except) i przy kolejnym pollu przełączana na IMPORT_FAILED.
+# Patrz importer_publikacji.models.ImportSession.is_stalled(). Świadomie duży
+# margines, żeby nie ubijać legalnie długiego dopasowania autorów.
+IMPORTER_STALL_TIMEOUT = env("IMPORTER_STALL_TIMEOUT", default=180, cast=int)
+
+# Twardy timeout (sekundy) requestu HTTP do API CrossRef przy pobieraniu DOI.
+# Bez tego obowiązuje domyślny 30 s biblioteki `crossref` — ustawiamy jawnie,
+# żeby był widoczny i konfigurowalny. Patrz crossref_bpp.models.
+CROSSREF_API_TIMEOUT = env("CROSSREF_API_TIMEOUT", default=30, cast=int)
+
+# Retencja (w dniach) plików XLS importu pracowników. Komenda zarządzająca
+# `usun_stare_pliki_importu_pracownikow` kasuje blob `plik_xls` importów
+# starszych niż tyle dni, zostawiając sam rekord i wiersze (historia
+# dopasowań pozostaje dostępna, plik źródłowy nie).
+# Patrz import_pracownikow.management.commands.usun_stare_pliki_importu_pracownikow.
+IMPORT_PRACOWNIKOW_RETENCJA_DNI = env(
+    "IMPORT_PRACOWNIKOW_RETENCJA_DNI", default=90, cast=int
+)
+
 CELERY_ROUTES = [
     {"denorm.tasks.flush_single": {"queue": "denorm"}},
 ]
@@ -747,6 +784,15 @@ CELERYBEAT_SCHEDULE = {
     "cleanup-oswiadczenia-export-files": {
         "task": "oswiadczenia.tasks.remove_old_oswiadczenia_export_files",
         "schedule": timedelta(days=1),
+    },
+    # Retencja porzuconych plików tmp kreatora zgłoszeń publikacji (anonimowy
+    # formularz — porzucone uploady zostałyby na wolumenie media bez ograniczeń;
+    # anty-DoS na dysk, bpp #551). Kasuje sieroty >24h z osobnego katalogu tmp,
+    # nie ruszając finalnych załączników. Worker montuje media (jak sąsiednie
+    # cleanup-*), więc kasowanie działa.
+    "wyczysc-zglos-tmp-pliki": {
+        "task": "zglos_publikacje.tasks.wyczysc_zglos_tmp_pliki",
+        "schedule": timedelta(hours=6),
     },
     "rebuild-pbn-author-match-cache": {
         "task": "importer_autorow_pbn.tasks.auto_rebuild_match_cache_task",
@@ -817,6 +863,14 @@ if _test_template:
     DATABASES["default"]["TEST"] = test_settings
 
 SECRET_KEY = env("DJANGO_BPP_SECRET_KEY")
+
+# ALTCHA — proof-of-work CAPTCHA na anonimowym formularzu zgłoszeń publikacji.
+# Model klucza jak SECRET_KEY: sentinel default, realny klucz z env (auto-gen
+# w bpp-deploy). Captcha domyślnie WYŁĄCZONA (opt-in). Brak hard-raise — miękki
+# system-check WARNING (zglos_publikacje/checks.py) sygnalizuje placeholder.
+ALTCHA_HMAC_KEY = env("ALTCHA_HMAC_KEY")
+ZGLOS_CAPTCHA_ENABLED = env("ZGLOS_CAPTCHA_ENABLED")
+INSTALLED_APPS += ["django_altcha"]
 
 # Klucz Fernet do szyfrowania sekretów integracji (DSpace itd.).
 # Wygeneruj: python -c "from cryptography.fernet import Fernet;
@@ -951,10 +1005,21 @@ REST_FRAMEWORK = {
     "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.LimitOffsetPagination",
     "PAGE_SIZE": 10,
     "DEFAULT_FILTER_BACKENDS": ["django_filters.rest_framework.DjangoFilterBackend"],
-    # Nie limituj ilości zapytań (mpasternak, 6.06.2020) - jednakże, gdyby
-    # trzeba było, to wystarczy odkomentować poniższe dwie linie:
-    # "DEFAULT_THROTTLE_CLASSES": ("rest_framework.throttling.AnonRateThrottle",),
-    # "DEFAULT_THROTTLE_RATES": {"anon": "50/second",},
+    "DEFAULT_AUTHENTICATION_CLASSES": [
+        "oauth_mcp.authentication.StrictOAuth2Authentication",
+        "rest_framework.authentication.SessionAuthentication",
+        "rest_framework.authentication.BasicAuthentication",
+    ],
+    # Globalny throttling pozostaje WYŁĄCZONY (mpasternak, 6.06.2020) — brak
+    # DEFAULT_THROTTLE_CLASSES, więc większość endpointów nie jest limitowana.
+    # Limitujemy WYŁĄCZNIE kosztowne endpointy wyszukiwania (opt-in per-viewset
+    # przez api_v1.throttling: /szukaj/ pełnotekstowe oraz /autor/ z filtrem
+    # nazwisko__icontains). Rate'y (klucze == scope) dają rozdzielne progi
+    # anon/user; pod DummyCache (dev/test) throttling jest no-op.
+    "DEFAULT_THROTTLE_RATES": {
+        "search_anon": "60/minute",
+        "search_user": "240/minute",
+    },
 }
 
 BPP_WALIDUJ_AFILIACJE_AUTOROW = (
@@ -1267,9 +1332,17 @@ _OIDC_CONFIG = discover_oidc_config()
 OIDC_LOGIN_ENABLED = _OIDC_CONFIG is not None
 OIDC_LOGIN_SKROT = (_OIDC_CONFIG or {}).get("skrot") or ""
 
+# App zawsze zainstalowany — model/tabela OIDCIdentity muszą istnieć
+# niezależnie od env (routing i backend zostają warunkowe po _OIDC_CONFIG).
+if "oidc_integration" not in INSTALLED_APPS:
+    INSTALLED_APPS = list(INSTALLED_APPS) + ["oidc_integration"]
+
+# Defaulty bezpieczne również dla instalacji bez OIDC.
+OIDC_REQUIRE_EMAIL_VERIFIED = (_OIDC_CONFIG or {}).get("require_email_verified", True)
+OIDC_GRACE_BIND_ENABLED = (_OIDC_CONFIG or {}).get("grace_bind", False)
+
 if _OIDC_CONFIG:
-    if "oidc_integration" not in INSTALLED_APPS:
-        INSTALLED_APPS = list(INSTALLED_APPS) + ["oidc_integration"]
+    OIDC_OP_ISSUER = _OIDC_CONFIG["issuer"]
 
     OIDC_RP_CLIENT_ID = _OIDC_CONFIG["client_id"]
     OIDC_RP_CLIENT_SECRET = _OIDC_CONFIG["client_secret"]
@@ -1526,6 +1599,15 @@ X_FRAME_OPTIONS = "SAMEORIGIN"
 
 DATA_UPLOAD_MAX_NUMBER_FIELDS = 5000
 
+# Twardy, parse-time limit liczby plików na jedno żądanie (Django default to
+# 100). Jedyny formularz w BPP przyjmujący wiele plików naraz to kreator
+# zgłaszania publikacji (MultipleFileField, max 5 plików); reszta wgrywa
+# pojedyncze pliki. Ustawiamy 10 (margines nad 5) — Django odrzuca nadmiar
+# już przy parsowaniu multiparta, zanim pliki wylądują w /tmp, ograniczając
+# anonimowy DoS przez masowe uploady. Twardy cap na bajty daje nginx
+# (client_max_body_size).
+DATA_UPLOAD_MAX_NUMBER_FILES = 10
+
 # django-formdefaults: pozwól wszystkim staff-userom edytować systemowe
 # wartości domyślne formularzy (domyślnie pakiet wpuszcza tylko superuserów).
 FORMDEFAULTS_CAN_EDIT_SYSTEM_WIDE = "bpp.formdefaults_perms.can_edit_system_wide"
@@ -1533,8 +1615,6 @@ FORMDEFAULTS_CAN_EDIT_SYSTEM_WIDE = "bpp.formdefaults_perms.can_edit_system_wide
 DJANGO_BPP_SKROT_WYDZIALU_W_NAZWIE_JEDNOSTKI = env(
     "DJANGO_BPP_SKROT_WYDZIALU_W_NAZWIE_JEDNOSTKI"
 )
-
-DJANGO_BPP_UCZELNIA_UZYWA_WYDZIALOW = env("DJANGO_BPP_UCZELNIA_UZYWA_WYDZIALOW")
 
 # polish-inflection: słowo spoza słownika SGJP → passthrough (nie błąd renderu)
 POLISH_INFLECTION_STRICT = False
@@ -1572,16 +1652,63 @@ DJANGO_BPP_ENABLE_TEST_CONFIGURATION = env("DJANGO_BPP_ENABLE_TEST_CONFIGURATION
 # ROLLBAR settings
 #
 
+# pyrollbar dopasowuje pola do scrubu po DOKŁADNEJ nazwie klucza (case-insensitive,
+# NIE po sufiksie) i PODMIENIA swoją domyślną listę, gdy podamy własną. Dlatego
+# odtwarzamy tu domyślny zestaw pyrollbara i DOKŁADAMY sekrety OAuth/MCP i PBN
+# (uwaga reviewera #3/#5): DOT oznacza jako wrażliwe tylko password/client_secret,
+# a Rollbar bez tej listy wysłałby aktywny refresh_token / code / code_verifier /
+# token przy nieoczekiwanym 500 na /o/token/ czy /o/revoke_token/.
+ROLLBAR_SCRUB_FIELDS = [
+    # domyślne pyrollbara (zachowujemy — nasza lista je nadpisuje):
+    "pw",
+    "passwd",
+    "password",
+    "secret",
+    "confirm_password",
+    "confirmPassword",
+    "password_confirmation",
+    "passwordConfirmation",
+    "access_token",
+    "accessToken",
+    "auth",
+    "authentication",
+    "authorization",
+    # sekrety OAuth/MCP (dokładne nazwy pól — exact match):
+    "token",
+    "refresh_token",
+    "refreshToken",
+    "code",
+    "code_verifier",
+    "codeVerifier",
+    "client_secret",
+    "clientSecret",
+    "secret_key",
+    "api_key",
+    # sekrety PBN / nagłówki uwierzytelniające (defense-in-depth, #4/#5):
+    "user_token",
+    "app_token",
+    "x-user-token",
+    "x-app-token",
+    "cookie",
+    "set-cookie",
+]
+
 ROLLBAR = {
     "access_token": env("ROLLBAR_ACCESS_TOKEN"),
     "environment": "development",
     "code_version": VERSION,
     "root": BASE_DIR,
+    "scrub_fields": ROLLBAR_SCRUB_FIELDS,
     "ignorable_404_urls": (
         re.compile(r"/favicon\.ico"),
         re.compile(r".*\{\{\s*clickURL\s*\}\}$"),
     ),
 }
+
+# Publiczny token klienta (post_client_item) do frontendowego Rollbara.
+# INNY niż sekretny ROLLBAR["access_token"] (post_server_item) — ten można
+# bezpiecznie renderować w przeglądarce. Pusty = front-end Rollbar wyłączony.
+ROLLBAR_CLIENT_ACCESS_TOKEN = env("ROLLBAR_CLIENT_ACCESS_TOKEN")
 
 #
 # Prometheus
@@ -1724,3 +1851,18 @@ CONSTANCE_DATABASE_CACHE_BACKEND = "constance_cache"
 # Puste CONSTANCE_CONFIG zachowane dla backward compat z django-constance.
 CONSTANCE_CONFIG = {}
 CONSTANCE_CONFIG_FIELDSETS = {}
+
+#
+# django-oauth-toolkit (DOT) — Authorization Server dla serwera MCP (`/o/`).
+# NIE dodawaj `ALLOWED_GRANT_TYPES` — taki klucz nie istnieje w DOT i
+# zostałby po cichu zignorowany. Granty kontroluje DCR (Task 6/7) i atrybut
+# `Application.authorization_grant_type`.
+#
+OAUTH2_PROVIDER = {
+    "PKCE_REQUIRED": True,
+    "DEFAULT_SCOPES": ["read"],
+    "SCOPES": {"read": "Odczyt danych BPP w Twoim imieniu"},
+    "ROTATE_REFRESH_TOKEN": True,
+    "ACCESS_TOKEN_EXPIRE_SECONDS": 60 * 30,  # 30 min
+    "REFRESH_TOKEN_EXPIRE_SECONDS": 60 * 60 * 24 * 7,  # 7 dni (NIE None!)
+}

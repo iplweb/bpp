@@ -54,27 +54,29 @@ def typy_odpowiedzialnosci(db):
 
 @pytest.fixture(scope="function")
 def tytuly():
+    # Lookup po kluczu naturalnym (skrot jest unique), NIGDY po pk — inaczej
+    # wiersz o tym samym skrocie pod innym pk => INSERT => IntegrityError.
     for elem in fixture("tytul.json"):
-        Tytul.objects.get_or_create(pk=elem["pk"], **elem["fields"])
+        fields = dict(elem["fields"])
+        skrot = fields.pop("skrot")
+        Tytul.objects.get_or_create(skrot=skrot, defaults=fields)
 
 
 @pytest.fixture(scope="function")
 def jezyki():
-    pl, created = Jezyk.objects.get_or_create(pk=1, skrot="pol.", nazwa="polski")
+    pl, created = Jezyk.objects.get_or_create(
+        skrot="pol.", defaults=dict(nazwa="polski")
+    )
     pl.skrot_dla_pbn = "PL"
     pl.skrot_crossref = "pl"
     pl.save()
-    assert pl.pk == 1
 
     ang, created = Jezyk.objects.get_or_create(
-        pk=2,
-        skrot="ang.",
-        nazwa="angielski",
+        skrot="ang.", defaults=dict(nazwa="angielski")
     )
     ang.skrot_dla_pbn = "EN"
     ang.skrot_crossref = "en"
     ang.save()
-    assert ang.pk == 2
 
     for elem in fixture("jezyk.json"):
         Jezyk.objects.get_or_create(**elem["fields"])
@@ -83,10 +85,68 @@ def jezyki():
 
 
 @pytest.fixture(scope="function")
+def crossref_mappery(db):
+    """Wiersze ``Crossref_Mapper`` (mapowanie typów Crossref → charakter) —
+    seedowane migracją 0467. Nie zakładaj baseline: reużywa idempotentnej
+    funkcji seedującej migracji (``get_or_create``), więc bezpieczne zawsze.
+    """
+    from importlib import import_module
+
+    from django.apps import apps as django_apps
+
+    from bpp.models import Crossref_Mapper
+
+    import_module(
+        "bpp.migrations.0467_seed_crossref_mapper_rows"
+    ).seed_crossref_mapper_rows(django_apps, None)
+    return Crossref_Mapper.objects.all()
+
+
+@pytest.fixture(scope="function")
+def rzeczowniki(db):
+    """Wiersze ``Rzeczownik`` (override lematów UCZELNIA/WYDZIAL/JEDNOSTKA) —
+    normalnie seedowane migracjami. Nie zakładaj baseline: zasiej z
+    ``DOMYSLNE_LEMATY`` (jedyne źródło prawdy dla lematów) przez idempotentny
+    ``get_or_create``. Bieżący model ma tylko ``uid`` + ``m`` (mianownik);
+    liczba mnoga liczona jest inflekcją, więc wystarczy mianownik.
+    """
+    from bpp.models import Rzeczownik
+    from bpp.nazwy import DOMYSLNE_LEMATY
+
+    for uid, m in DOMYSLNE_LEMATY.items():
+        Rzeczownik.objects.get_or_create(uid=uid, defaults={"m": m})
+    return Rzeczownik.objects.all()
+
+
+@pytest.fixture(scope="function")
+def first_run_wizard_state(db):
+    """Singleton ``FirstRunWizardState`` (pk=1) — normalnie seedowany migracją
+    ``first_run_wizard.0001`` (``get_or_create(pk=1)``). Wiersz NIE ma receivera
+    ``post_migrate``, więc transakcyjny sąsiad (flush → ``TRUNCATE``) wymiata go
+    i już nie wraca. Bez tego wiersza middleware first-run-wizarda w
+    ``_install_is_finished`` trafia na ``state is None`` i przerywa PRZED ścieżką
+    naprawczą (``mark_completed``) — ``completed_at`` nigdy się nie stempluje, a
+    widoki ``/setup/`` zwracają 302 (redirect na krok) zamiast 404 (setup
+    zamknięty). Fixtura odtwarza wiersz idempotentnie (jak migracja); samo jego
+    ISTNIENIE wystarcza — backfill ``completed_at`` robi już middleware, gdy
+    wszystkie kroki są kompletne.
+    """
+    from first_run_wizard.models import FirstRunWizardState
+
+    FirstRunWizardState.objects.get_or_create(pk=1)
+    return FirstRunWizardState.load()
+
+
+@pytest.fixture(scope="function")
 def charaktery_formalne():
     Charakter_Formalny.objects.all().delete()
+    # Lookup po kluczu naturalnym (skrot jest unique), NIGDY po pk (w JSON-ie
+    # pk bywa null) — inaczej wiersz o tym samym skrocie/nazwie pod innym pk
+    # => INSERT => IntegrityError.
     for elem in fixture("charakter_formalny.json"):
-        Charakter_Formalny.objects.get_or_create(pk=elem["pk"], **elem["fields"])
+        fields = dict(elem["fields"])
+        skrot = fields.pop("skrot")
+        Charakter_Formalny.objects.get_or_create(skrot=skrot, defaults=fields)
 
     chf_ksp = Charakter_Formalny.objects.get(skrot="KSP")
     chf_ksp.rodzaj_pbn = const.RODZAJ_PBN_KSIAZKA

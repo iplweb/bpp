@@ -392,15 +392,18 @@
             {% if not article and not news.exists and not request.user.is_superuser and not request.user|has_group:"web" %}
                 <div class="small-12 large-12 cell">
                     <h3 class="section-title">
-                        <i class="fi-foundation section-icon"></i>Wybierz {% odmien nazwa_wydzialu "biernik" %}
+                        <i class="fi-foundation section-icon"></i>Wybierz {% if uczelnia.uzywaj_wydzialow %}{% odmien nazwa_wydzialu "biernik" %}{% else %}{% odmien nazwa_jednostki "biernik" %}{% endif %}
                     </h3>
                     {% if request.user.is_superuser or request.user|has_group:"struktura" %}
                         <div class="admin-buttons-centered hide-for-print">
+                            {# Faza B (#438): dawny link do listy Wydzial w #}
+                            {# adminie usunięty -- ``WydzialAdmin`` znika w #}
+                            {# III-3, a sekcja pokazuje teraz węzły Jednostka. #}
                             <a target="_blank"
-                               href="{% url "admin:bpp_wydzial_changelist" %}"
+                               href="{% url "admin:bpp_jednostka_changelist" %}"
                                class="button btn-manage">
                                 <span class="fi-wrench"></span>
-                                Zarządzaj wydziałami
+                                Zarządzaj jednostkami
                             </a>
                             <a target="_blank"
                                href="{% url "admin:bpp_uczelnia_change" uczelnia.pk %}"
@@ -411,14 +414,14 @@
                         </div>
                     {% endif %}
                     <div class="grid-x grid-margin-x">
-                        {% for wydzial in uczelnia.wydzialy %}
+                        {% for jednostka in uczelnia.wydzialy %}
                             <div class="small-12 medium-6 large-6 cell">
                                 <div class="wydzial-card">
                                     <div class="arrow-icon">
                                         <i class="fi-arrow-right"></i>
                                     </div>
-                                    <a href="{% url "bpp:browse_wydzial" wydzial.slug %}">
-                                        {{ wydzial }}
+                                    <a href="{% url "bpp:browse_jednostka" jednostka.slug %}">
+                                        {{ jednostka }}
                                     </a>
                                 </div>
                             </div>
@@ -428,15 +431,16 @@
             {% else %}
                 <div class="small-12 {% if article or news.exists %}large-6{% else %}large-12{% endif %} cell">
                     <h3 class="section-title">
-                        <i class="fi-foundation section-icon"></i>Wybierz {% odmien nazwa_wydzialu "biernik" %}
+                        <i class="fi-foundation section-icon"></i>Wybierz {% if uczelnia.uzywaj_wydzialow %}{% odmien nazwa_wydzialu "biernik" %}{% else %}{% odmien nazwa_jednostki "biernik" %}{% endif %}
                     </h3>
                     {% if request.user.is_superuser or request.user|has_group:"struktura" %}
                         <div class="admin-buttons-centered hide-for-print">
+                            {# Faza B (#438): jw. -- link na listę Jednostka. #}
                             <a target="_blank"
-                               href="{% url "admin:bpp_wydzial_changelist" %}"
+                               href="{% url "admin:bpp_jednostka_changelist" %}"
                                class="button btn-manage">
                                 <span class="fi-wrench"></span>
-                                Zarządzaj wydziałami
+                                Zarządzaj jednostkami
                             </a>
                             <a target="_blank"
                                href="{% url "admin:bpp_uczelnia_change" uczelnia.pk %}"
@@ -448,14 +452,14 @@
                     {% endif %}
                     {% if not article and not news.exists %}
                         <div class="grid-x grid-margin-x">
-                            {% for wydzial in uczelnia.wydzialy %}
+                            {% for jednostka in uczelnia.wydzialy %}
                                 <div class="small-12 medium-6 large-6 cell">
                                     <div class="wydzial-card">
                                         <div class="arrow-icon">
                                             <i class="fi-arrow-right"></i>
                                         </div>
-                                        <a href="{% url "bpp:browse_wydzial" wydzial.slug %}">
-                                            {{ wydzial }}
+                                        <a href="{% url "bpp:browse_jednostka" jednostka.slug %}">
+                                            {{ jednostka }}
                                         </a>
                                     </div>
                                 </div>
@@ -463,13 +467,13 @@
                         </div>
                     {% else %}
                         <div class="wydzial-list">
-                            {% for wydzial in uczelnia.wydzialy %}
+                            {% for jednostka in uczelnia.wydzialy %}
                                 <div class="wydzial-card">
                                     <div class="arrow-icon">
                                         <i class="fi-arrow-right"></i>
                                     </div>
-                                    <a href="{% url "bpp:browse_wydzial" wydzial.slug %}">
-                                        {{ wydzial }}
+                                    <a href="{% url "bpp:browse_jednostka" jednostka.slug %}">
+                                        {{ jednostka }}
                                     </a>
                                 </div>
                             {% endfor %}

@@ -14,7 +14,9 @@ from bpp.admin.filters import (
     MaKonferencjeFilter,
     OstatnioZmienionePrzezFilter,
     PBN_UID_IDObecnyFilter,
+    PBNStatusFilter,
     UtworzonePrzezFilter,
+    ZrodloUsunieteWPBNFilter,
 )
 from bpp.admin.helpers.djangoql import BppDjangoQLSearchMixin
 from bpp.admin.helpers.fieldsets import (
@@ -381,6 +383,8 @@ class Wydawnictwo_CiagleAdmin(
         OstatnioZmienionePrzezFilter,
         UtworzonePrzezFilter,
         PBN_UID_IDObecnyFilter,
+        PBNStatusFilter,
+        ZrodloUsunieteWPBNFilter,
         BezJakichkolwiekDyscyplinFilter,
     ]
 

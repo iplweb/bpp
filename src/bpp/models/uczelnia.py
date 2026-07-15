@@ -288,6 +288,15 @@ class Uczelnia(ModelZAdnotacjami, ModelZPBN_ID, NazwaISkrot, NazwaWDopelniaczu):
     pokazuj_punktacja_snip = models.BooleanField(
         "Pokazuj punktację SNIP na stronie rekordu", default=True
     )
+    zwijaj_dlugie_listy_autorow = models.BooleanField(
+        "Zwijaj długie listy autorów na stronie rekordu",
+        default=True,
+        help_text="Gdy lista autorów publikacji przekracza 25 nazwisk, "
+        "domyślnie zwijaj ją na stronie rekordu (widoczni pierwsi autorzy "
+        "oraz autorzy z naszej uczelni; resztę użytkownik rozwija "
+        "przyciskiem). Ustawienie domyślne dla całej uczelni — zalogowany "
+        "użytkownik może je nadpisać we własnym profilu.",
+    )
     pokazuj_status_korekty = OpcjaWyswietlaniaField(
         "Pokazuj status korekty na stronie rekordu",
     )
@@ -712,15 +721,37 @@ class Uczelnia(ModelZAdnotacjami, ModelZPBN_ID, NazwaISkrot, NazwaWDopelniaczu):
         return reverse("bpp:browse_uczelnia", args=(self.slug,))
 
     def wydzialy(self):
-        """Widoczne wydziały -- do pokazania na WWW"""
-        from .wydzial import Wydzial
+        """Widoczne jednostki najwyższego poziomu -- do pokazania na WWW w
+        sekcji "Wybierz wydział".
 
-        return Wydzial.objects.filter(uczelnia=self, widoczny=True)
+        Faza B (#438): model ``Wydzial`` nie jest już renderowany na WWW
+        jako osobna strona -- struktura organizacyjna to teraz drzewo
+        ``Jednostka``. Zwracamy widoczne korzenie (``parent=None``); to ta
+        sama definicja co ``jednostki()`` poniżej -- różnica jest wyłącznie
+        w etykiecie/konfiguracji sekcji na stronie głównej (per-uczelnia).
+        """
+        from .jednostka import Jednostka
+
+        return Jednostka.objects.filter(uczelnia=self, widoczna=True, parent=None)
 
     def jednostki(self):
         from .jednostka import Jednostka
 
         return Jednostka.objects.filter(uczelnia=self, widoczna=True, parent=None)
+
+    def ma_jednostki_glowne_z_podjednostkami(self):
+        """Czy w tej uczelni istnieje jednostka-korzeń mająca podjednostki?
+
+        #438: włącza w multiseeku pole „Jednostka nadrzędna" (filtr po
+        poddrzewie korzenia) dla uczelni, która NIE używa wydziałów, ale ma
+        strukturę drzewa jednostek. Denorm ``Jednostka.wydzial`` wskazuje
+        KORZEŃ poddrzewa i jest NULL dla samych korzeni, więc dowolny wiersz z
+        ``wydzial != NULL`` to potomek — czyli jakiś korzeń MA podjednostki.
+        Jeden indeksowany ``.exists()`` (FK ``wydzial`` jest zaindeksowany).
+        """
+        from .jednostka import Jednostka
+
+        return Jednostka.objects.filter(uczelnia=self, wydzial__isnull=False).exists()
 
     def clean(self):
         if self.obca_jednostka is not None:

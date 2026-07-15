@@ -612,11 +612,19 @@ class Komparator:
                 f" prosimy o zgłoszenie tej sytuacji autorowi programu. ",
             )
 
+        charakter_crossref = getattr(
+            Crossref_Mapper.CHARAKTER_CROSSREF,
+            wartosc.upper().replace("-", "_"),
+        )
         c = Crossref_Mapper.objects.get_or_create(
-            charakter_crossref=getattr(
-                Crossref_Mapper.CHARAKTER_CROSSREF,
-                wartosc.upper().replace("-", "_"),
-            )
+            charakter_crossref=charakter_crossref,
+            defaults={
+                "jest_wydawnictwem_zwartym": (
+                    Crossref_Mapper.default_jest_wydawnictwem_zwartym(
+                        charakter_crossref
+                    )
+                ),
+            },
         )[0]
 
         if c.charakter_formalny_bpp_id is not None:

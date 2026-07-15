@@ -24,6 +24,7 @@ from bpp.models import (
     Wydawnictwo_Zwarte,
     Zrodlo,
 )
+from bpp.models.struktura_konwersja import znajdz_lub_utworz_wezel_wydzialu
 
 
 @pytest.mark.django_db
@@ -202,7 +203,10 @@ def test_char_praca_doktorska_full():
     uczelnia = baker.make("bpp.Uczelnia", nazwa="University")
     wydzial = baker.make("bpp.Wydzial", nazwa="Faculty of Science", uczelnia=uczelnia)
     jednostka = baker.make(
-        "bpp.Jednostka", nazwa="Department", wydzial=wydzial, uczelnia=uczelnia
+        "bpp.Jednostka",
+        nazwa="Department",
+        parent=znajdz_lub_utworz_wezel_wydzialu(wydzial)[0],
+        uczelnia=uczelnia,
     )
     praca = baker.make(
         Praca_Doktorska,
@@ -235,7 +239,10 @@ def test_char_praca_habilitacyjna_full():
     uczelnia = baker.make("bpp.Uczelnia", nazwa="University")
     wydzial = baker.make("bpp.Wydzial", nazwa="Faculty of Medicine", uczelnia=uczelnia)
     jednostka = baker.make(
-        "bpp.Jednostka", nazwa="Department", wydzial=wydzial, uczelnia=uczelnia
+        "bpp.Jednostka",
+        nazwa="Department",
+        parent=znajdz_lub_utworz_wezel_wydzialu(wydzial)[0],
+        uczelnia=uczelnia,
     )
     praca = baker.make(
         Praca_Habilitacyjna,

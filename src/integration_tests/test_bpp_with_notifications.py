@@ -92,13 +92,21 @@ def test_live_server(live_server, page: Page):
     expect(page.locator("body")).not_to_contain_text("Wystąpił błąd")
 
 
+@pytest.mark.flaky(reruns=3)
 @pytest.mark.django_db(transaction=True)
 def test_channels_live_server(preauth_asgi_page: Page):
+    # Ten sam probabilistyczny flake (~20% per run) co `test_bpp_notifications`
+    # i `test_bpp_notifications_and_messages`: notyfikacja ginie gdzies miedzy
+    # `send_notification` (`group_send`) a `chat_message` handlerem consumera w
+    # Daphne, mimo udowodnionej subskrypcji WS w fixture
+    # (wait_for_channel_subscription). 2-sekundowy bufor PRZED wyslaniem obniza
+    # miss-rate z ~80% do ~20%, `@flaky(reruns=3)` lapie reszte. Patrz
+    # docs/deweloper/testy-channels-broadcast.md.
     s = "test notyfikacji 123 456"
 
     page = preauth_asgi_page
 
-    page.wait_for_timeout(500)
+    page.wait_for_timeout(2000)  # Pozwol subskrypcji WS sie ustabilizowac
 
     call_command(
         "send_notification",
@@ -109,7 +117,7 @@ def test_channels_live_server(preauth_asgi_page: Page):
     )
 
     page.wait_for_function(
-        f"() => document.body.textContent.includes('{s}')", timeout=1000
+        f"() => document.body.textContent.includes('{s}')", timeout=15000
     )
 
 

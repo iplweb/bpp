@@ -1,0 +1,133 @@
+{% extends "base.html" %}
+
+{% block extratitle %}Import pracowników i jednostek — ludzie spoza XLS{% endblock %}
+
+{% block breadcrumbs %}
+    {{ block.super }}
+    <li><a href="{% url "import_pracownikow:index" %}">import pracowników i jednostek</a></li>
+    <li><a href="{% url "import_pracownikow:przeglad" pk=parent_object.pk %}">przegląd importu</a></li>
+    <li class="current">ludzie spoza XLS</li>
+{% endblock %}
+
+{% block content %}
+    <p>
+        <a href="{% url "import_pracownikow:przeglad" pk=parent_object.pk %}">&larr; wróć do przeglądu</a>
+    </p>
+
+    <h1>Powiązania autor+jednostka spoza tego pliku (odpięcia)</h1>
+    <p>
+        Powiązania obecne w bazie, ale nieobecne w tym imporcie (jednostki
+        uczelni oprócz Obcej). Domyślnie odznaczone — zaznacz, by odpiąć przy
+        zapisie do bazy. Wykonanie nastąpi dopiero w fazie zapisu.
+    </p>
+
+    {# HTMX dla toggla checkboxa odpięcia (partial _odpiecie_row.html). #}
+    <script src="https://unpkg.com/htmx.org@2.0.4" crossorigin="anonymous"></script>
+
+    {% if odpiecia %}
+        {% if parent_object.edytowalny_podglad %}
+            {# Akcja zbiorcza (poz. 1): zaznacz/odznacz do odpięcia WSZYSTKIE #}
+            {# wiersze z bieżącego filtra tabeli. JS zbiera pk z przefiltrowanych #}
+            {# wierszy DataTables i wstrzykuje je jako ukryte pola formularza. #}
+            <form id="form-zaznacz-odpiecia" method="post"
+                  action="{% url 'import_pracownikow:zaznacz-odpiecia' pk=parent_object.pk %}">
+                {% csrf_token %}
+                <input type="hidden" name="zaznacz" value="1" id="zaznacz-flaga">
+                <div id="zaznacz-hidden-pks"></div>
+                <button type="button" class="button primary" id="btn-zaznacz-filtr">
+                    <span class="fi-check"></span>
+                    Zaznacz do odpięcia (wszystkie z bieżącego wyboru)
+                </button>
+                <button type="button" class="button secondary" id="btn-odznacz-filtr">
+                    <span class="fi-x"></span>
+                    Odznacz (wszystkie z bieżącego wyboru)
+                </button>
+            </form>
+        {% endif %}
+        <div style="overflow-x: auto;">
+            <table id="tabela-odpiec">
+                <thead>
+                    <tr>
+                        <th>Autor</th>
+                        <th>Jednostka</th>
+                        {# Kolumna akcji tylko w fazie edytowalnej (podgląd / #}
+                        {# faza osób) — po pełnej integracji znika. #}
+                        {% if parent_object.edytowalny_podglad %}
+                            <th>Odepnij?</th>
+                        {% endif %}
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for odp in odpiecia %}
+                        {% include "import_pracownikow/partials/_odpiecie_row.html" %}
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        {# DataTables: biblioteki + polski język ładuje globalnie bare.html. #}
+        <script>
+        $(function () {
+            var dt = $('#tabela-odpiec').DataTable({
+                paging: false,  // wszystkie wiersze w DOM → htmx-targety (#odpiecie-X) żyją
+                info: false,
+                order: [],  // zachowaj kolejność serwera
+                {% if parent_object.edytowalny_podglad %}
+                // kolumna „Odepnij?” (index 2) — bez sortowania/filtrowania;
+                // po pełnej integracji tej kolumny nie ma, więc bez targetu
+                columnDefs: [{orderable: false, searchable: false, targets: [2]}]
+                {% endif %}
+            });
+            // Resync po htmx-swapie wiersza: swap jest innerHTML (patrz
+            // _odpiecie_row.html), więc węzeł <tr> ZOSTAJE — ten sam, który zna
+            // DataTables, dlatego dt.row(tr).invalidate('dom') przeczytuje jego
+            // świeże komórki. (Przy outerHTML nowy <tr> był nieznany → resync
+            // bezczynny, search/redraw przywracał starą treść — uwaga #6.)
+            document.body.addEventListener('htmx:afterSettle', function (e) {
+                var tr = e.detail && e.detail.elt ? e.detail.elt.closest('tr') : null;
+                if (tr && $.fn.dataTable.isDataTable('#tabela-odpiec')
+                       && $('#tabela-odpiec')[0].contains(tr)) {
+                    try { dt.row(tr).invalidate('dom'); } catch (err) { /* spoza tabeli */ }
+                }
+            });
+
+            // Akcja zbiorcza (poz. 1): zbierz pk wierszy z BIEŻĄCEGO filtra
+            // DataTables (search zastosowany), wstrzyknij jako ukryte pola i
+            // wyślij formularz. Przyciski istnieją tylko w fazie edytowalnej.
+            var btnZaznacz = document.getElementById('btn-zaznacz-filtr');
+            var btnOdznacz = document.getElementById('btn-odznacz-filtr');
+            if (btnZaznacz && btnOdznacz) {
+                var wyslij = function (zaznacz) {
+                    var pks = [];
+                    dt.rows({ search: 'applied' }).every(function () {
+                        var id = this.node() && this.node().id;
+                        var m = id && id.match(/^odpiecie-(\d+)$/);
+                        if (m) { pks.push(m[1]); }
+                    });
+                    if (!pks.length) { return; }
+                    if (zaznacz === '1' && !window.confirm(
+                        'Zaznaczyć ' + pks.length + ' powiązań do odpięcia? '
+                        + 'Odpięcie (zakończenie zatrudnienia) wykona się dopiero '
+                        + 'przy zapisie do bazy.')) { return; }
+                    var cont = document.getElementById('zaznacz-hidden-pks');
+                    cont.innerHTML = '';
+                    pks.forEach(function (pk) {
+                        var i = document.createElement('input');
+                        i.type = 'hidden'; i.name = 'odp_pk'; i.value = pk;
+                        cont.appendChild(i);
+                    });
+                    document.getElementById('zaznacz-flaga').value = zaznacz;
+                    document.getElementById('form-zaznacz-odpiecia').submit();
+                };
+                btnZaznacz.addEventListener('click', function () { wyslij('1'); });
+                btnOdznacz.addEventListener('click', function () { wyslij('0'); });
+            }
+        });
+        </script>
+    {% else %}
+        <div class="callout success">
+            {# brak powiązań spoza pliku #}
+            Brak powiązań spoza tego pliku — nic do odpięcia.
+        </div>
+    {% endif %}
+{% endblock %}

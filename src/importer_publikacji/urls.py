@@ -48,6 +48,16 @@ urlpatterns = [
         name="author-info",
     ),
     path(
+        "<int:session_id>/authors/<int:author_id>/delete/",
+        views.AuthorDeleteView.as_view(),
+        name="author-delete",
+    ),
+    path(
+        "<int:session_id>/authors/<int:author_id>/create-new/",
+        views.AuthorCreateNewView.as_view(),
+        name="author-create-new",
+    ),
+    path(
         "<int:session_id>/authors/<int:author_id>/candidates-modal/",
         views.AuthorCandidatesModalView.as_view(),
         name="author-candidates-modal",
@@ -73,6 +83,26 @@ urlpatterns = [
         name="authors-confirm",
     ),
     path(
+        "<int:session_id>/punktacja/",
+        views.PunktacjaView.as_view(),
+        name="punktacja",
+    ),
+    path(
+        "<int:session_id>/pbn/",
+        views.PbnCheckView.as_view(),
+        name="pbn",
+    ),
+    path(
+        "<int:session_id>/pbn/select/",
+        views.PbnSelectView.as_view(),
+        name="pbn-select",
+    ),
+    path(
+        "<int:session_id>/pbn/clear/",
+        views.PbnClearView.as_view(),
+        name="pbn-clear",
+    ),
+    path(
         "<int:session_id>/review/",
         views.ReviewView.as_view(),
         name="review",
@@ -91,6 +121,21 @@ urlpatterns = [
         "<int:session_id>/cancel/",
         views.CancelView.as_view(),
         name="cancel",
+    ),
+    path(
+        "batch/<int:batch_id>/",
+        views.MultipleWorksImportDetailView.as_view(),
+        name="batch-detail",
+    ),
+    path(
+        "batch/entry/<int:entry_id>/import/",
+        views.BatchEntryImportView.as_view(),
+        name="batch-entry-import",
+    ),
+    path(
+        "batch/entry/<int:entry_id>/skip/",
+        views.BatchEntrySkipView.as_view(),
+        name="batch-entry-skip",
     ),
     path(
         "task-status/<int:session_id>/",

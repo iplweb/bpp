@@ -1,0 +1,123 @@
+{# Fragment wyniku (liveops result_template_name). Renderowany po p.result() #}
+{# jako OOB-swap #op-result oraz przy wejściu na zakończoną operację. #}
+{# Kontekst: operation + klucze z result_context — faza analizy (dry-run): #}
+{# total, zmiany_potrzebne, byl_dry_run, stan; faza integracji: #}
+{# zintegrowano, pominieto_nieaktualne, pominieto_niedopasowane, #}
+{# pominieto_bez_jednostki, wymaga_uwagi, odpieto, utworzono_nowych_autorow, #}
+{# utworzono_nowych_okresow, przepieto_wierszy, przepieto_prac, stan. #}
+{# Panel: żółty (warning) gdy integracja coś pominęła (wymaga_uwagi), żeby #}
+{# częściowy import nie udawał pełnego sukcesu (uwaga reviewera #3). #}
+<div class="panel callout {% if byl_dry_run %}secondary{% elif wymaga_uwagi %}warning{% else %}success{% endif %}">
+    {% if byl_dry_run %}
+        {# Analiza (dry-run) gotowa. Auto-przejście na hub szczegółów (Krok 1 → #}
+        {# Krok 2) robi teraz liveops przez ImportPracownikow.get_success_url() #}
+        {# — inline <script> tu NIE działał (liveops wstrzykuje wynik przez #}
+        {# DOMParser+replaceWith, taki <script> jest „already started"). Panel #}
+        {# + link zostają jako fallback dla no-JS / gdyby push „finished" nie #}
+        {# dotarł. #}
+        <h3><span class="fi-check"></span> Analiza zakończona</h3>
+        <p>Przechodzę do szczegółów importu…</p>
+        <a href="{% url 'import_pracownikow:przeglad' operation.pk %}"
+           class="button primary">
+            <span class="fi-list"></span> Zobacz szczegóły
+        </a>
+    {% elif zakres == "jednostki" or zakres == "struktura" %}
+        {# Krok 1 gotowy: struktura zapisana, osoby czekają na Krok 2 (na hubie). #}
+        <h3><span class="fi-check"></span> Struktura zapisana</h3>
+        <p>
+            Utworzono strukturę:
+            <strong>{{ utworzono_jednostek }}</strong> jednostek{% if zakres == "struktura" %},
+                <strong>{{ utworzono_tytulow }}</strong> tytułów{% endif %}.
+            Osoby <strong>NIE</strong> zostały jeszcze zaimportowane.
+        </p>
+        <a href="{% url 'import_pracownikow:przeglad' operation.pk %}"
+           class="button">
+            <span class="fi-torso"></span> Przejdź do importu osób
+        </a>
+    {% elif wymaga_uwagi %}
+        {# Częściowy import: część wierszy świadomie/technicznie pominięta — #}
+        {# NIE udajemy pełnego sukcesu (uwaga reviewera #3). #}
+        <h3><span class="fi-alert"></span> Import zakończony częściowo</h3>
+        <p>
+            Zintegrowano wierszy: <strong>{{ zintegrowano }}</strong>
+            {% if pominieto_nieaktualne %},
+                pominięto (nieaktualne): <strong>{{ pominieto_nieaktualne }}</strong>
+            {% endif %}.
+        </p>
+        {% if pominieto_niedopasowane %}
+            <p>Pominięto osoby bez rozstrzygniętego dopasowania autora:
+                <strong>{{ pominieto_niedopasowane }}</strong>
+                — rozstrzygnij je w podglądzie i zaimportuj ponownie.</p>
+        {% endif %}
+        {% if pominieto_bez_jednostki %}
+            <p>Pominięto osoby bez przypisanej jednostki (odroczona / pominięta):
+                <strong>{{ pominieto_bez_jednostki }}</strong>.</p>
+        {% endif %}
+        {% if odpieto %}
+            <p>Zakończono zatrudnień (odpięcia):
+                <strong>{{ odpieto }}</strong>.</p>
+        {% endif %}
+        {% if utworzono_nowych_autorow %}
+            <p>Utworzono nowych autorów:
+                <strong>{{ utworzono_nowych_autorow }}</strong>.</p>
+        {% endif %}
+        {% if utworzono_nowych_okresow %}
+            <p>Utworzono nowych okresów zatrudnienia:
+                <strong>{{ utworzono_nowych_okresow }}</strong>.</p>
+        {% endif %}
+        {% if przepieto_wierszy %}
+            <p>Przepięto prace:
+                <strong>{{ przepieto_wierszy }}</strong> wierszy /
+                <strong>{{ przepieto_prac }}</strong> prac.</p>
+        {% endif %}
+        {# „Zobacz szczegóły" + „Log zmian" w jednej linii (button-group) — #}
+        {# inaczej drugi przycisk zawija się pod pierwszy. #}
+        <div class="button-group">
+            <a href="{% url 'import_pracownikow:przeglad' operation.pk %}"
+               class="button secondary">
+                <span class="fi-list"></span> Zobacz szczegóły
+            </a>
+            <a href="{% url 'import_pracownikow:audyt' operation.pk %}"
+               class="button">
+                <span class="fi-list"></span> Log zmian
+            </a>
+        </div>
+    {% else %}
+        <h3><span class="fi-check"></span> Import zakończony</h3>
+        <p>
+            Zintegrowano wierszy: <strong>{{ zintegrowano }}</strong>
+            {% if pominieto_nieaktualne %},
+                pominięto (nieaktualne): <strong>{{ pominieto_nieaktualne }}</strong>
+            {% endif %}.
+        </p>
+        {% if odpieto %}
+            <p>Zakończono zatrudnień (odpięcia):
+                <strong>{{ odpieto }}</strong>.</p>
+        {% endif %}
+        {% if utworzono_nowych_autorow %}
+            <p>Utworzono nowych autorów:
+                <strong>{{ utworzono_nowych_autorow }}</strong>.</p>
+        {% endif %}
+        {% if utworzono_nowych_okresow %}
+            <p>Utworzono nowych okresów zatrudnienia:
+                <strong>{{ utworzono_nowych_okresow }}</strong>.</p>
+        {% endif %}
+        {% if przepieto_wierszy %}
+            <p>Przepięto prace:
+                <strong>{{ przepieto_wierszy }}</strong> wierszy /
+                <strong>{{ przepieto_prac }}</strong> prac.</p>
+        {% endif %}
+        {# „Zobacz szczegóły" + „Log zmian" w jednej linii (button-group) — #}
+        {# inaczej drugi przycisk zawija się pod pierwszy. #}
+        <div class="button-group">
+            <a href="{% url 'import_pracownikow:przeglad' operation.pk %}"
+               class="button secondary">
+                <span class="fi-list"></span> Zobacz szczegóły
+            </a>
+            <a href="{% url 'import_pracownikow:audyt' operation.pk %}"
+               class="button">
+                <span class="fi-list"></span> Log zmian
+            </a>
+        </div>
+    {% endif %}
+</div>

@@ -5,17 +5,23 @@ Atomic: cały proces (publikacja + autorzy + streszczenia + linkowanie PBN)
 w jednej transakcji.
 """
 
+from datetime import date
+from decimal import Decimal
+
 from django.core.exceptions import ValidationError
 from django.db import transaction
 
+from bpp import const
 from bpp.models import (
+    Jednostka,
+    Patent,
+    Rodzaj_Prawa_Patentowego,
     Status_Korekty,
-    Typ_Odpowiedzialnosci,
     Wydawnictwo_Ciagle,
     Wydawnictwo_Zwarte,
 )
 
-from ..models import ImportedAuthor
+from ..models import ImportedAuthor, ImportSession
 from .helpers import _detect_language
 from .pbn_check import _link_pbn_uid
 
@@ -106,6 +112,108 @@ def _create_wydawnictwo_zwarte(session, common_fields, normalized_data):
     return Wydawnictwo_Zwarte.objects.create(**common_fields)
 
 
+def _parse_iso_date(value):
+    """Sparsuj datę ISO (YYYY-MM-DD) z ``normalized_data`` na ``date``.
+
+    Wartości patentowe (``filing_date``/``grant_date``) trzymane są jako
+    zwykłe stringi w JSON-owym ``normalized_data`` — pola modelu
+    (``data_zgloszenia``/``data_decyzji``) to prawdziwe ``DateField``.
+    """
+    if not value:
+        return None
+    try:
+        return date.fromisoformat(value)
+    except ValueError:
+        return None
+
+
+def _resolve_rodzaj_prawa(patent_type):
+    """Dopasuj ``Rodzaj_Prawa_Patentowego`` po nazwie z pola BibTeX ``type``.
+
+    Best-effort (dopasowanie dokładne, bez rozróżniania wielkości liter) —
+    źródło BibTeX nie ma ustandaryzowanego słownika wartości. Brak
+    dopasowania → ``None``, operator uzupełnia ręcznie w wizardzie
+    (decyzja produktowa z handoffu Track B).
+    """
+    if not patent_type:
+        return None
+    return Rodzaj_Prawa_Patentowego.objects.filter(nazwa__iexact=patent_type).first()
+
+
+def _create_patent(session, common_fields, normalized_data):
+    """Utwórz ``bpp.Patent``.
+
+    ``Patent`` odstaje od ``Wydawnictwo_Ciagle``/``Wydawnictwo_Zwarte``:
+    nie ma ``typ_kbn`` (brak ``ModelTypowany``) i jego
+    ``charakter_formalny``/``jezyk`` to zahardkodowane ``@cached_property``
+    (nie pola modelu) — przekazanie ich (albo ``doi``/``issn``/``e_issn``,
+    których Patent też nie ma) do ``Patent.objects.create(**common_fields)``
+    rzuciłoby ``TypeError`` ("unexpected keyword argument"). Odfiltrowujemy
+    je z ``common_fields`` zbudowanych przez ``_create_publication`` dla
+    ścieżki Wydawnictwo_*, zamiast duplikować całą resztę pól wspólnych.
+    """
+    patent_fields = dict(common_fields)
+    # ``tytul`` (drugi tytuł, z original_title) — Patent jest jedno-tytułowy,
+    # nie ma tego pola; przekazanie rzuciłoby TypeError. Reszta: Patent nie ma
+    # typ_kbn/charakter_formalny/jezyk/doi/issn/e_issn (patrz docstring).
+    for key in (
+        "typ_kbn",
+        "charakter_formalny",
+        "jezyk",
+        "doi",
+        "issn",
+        "e_issn",
+        "tytul",
+    ):
+        patent_fields.pop(key, None)
+
+    patent_fields["numer_zgloszenia"] = normalized_data.get("patent_number") or ""
+    patent_fields["data_zgloszenia"] = _parse_iso_date(
+        normalized_data.get("filing_date")
+    )
+    patent_fields["numer_prawa_wylacznego"] = (
+        normalized_data.get("patent_grant_number") or ""
+    )
+    patent_fields["data_decyzji"] = _parse_iso_date(normalized_data.get("grant_date"))
+    patent_fields["rodzaj_prawa"] = _resolve_rodzaj_prawa_dla_patentu(normalized_data)
+    patent_fields["wdrozenie"] = normalized_data.get("wdrozenie")
+    wydzial_id = normalized_data.get("wydzial_id")
+    if wydzial_id:
+        patent_fields["wydzial"] = Jednostka.objects.filter(pk=wydzial_id).first()
+
+    # Model Patent nie ma pól „uprawniony"/„kraj" — zapisujemy jako tekst
+    # informacyjny (``informacje``), żeby dane ze źródła nie zniknęły po cichu
+    # (analogiczny kompromis do własnego eksportu, bpp/export/bibtex.py).
+    for etykieta, wartosc in (
+        ("Uprawniony", normalized_data.get("patent_holder")),
+        ("Kraj", normalized_data.get("jurisdiction")),
+    ):
+        if wartosc:
+            existing = patent_fields.get("informacje", "")
+            prefix = f"{existing}\n" if existing else ""
+            patent_fields["informacje"] = f"{prefix}{etykieta}: {wartosc}"
+
+    return Patent.objects.create(**patent_fields)
+
+
+def _resolve_rodzaj_prawa_dla_patentu(normalized_data):
+    """Rozwiąż ``rodzaj_prawa`` dla tworzonego patentu.
+
+    Jawny wybór operatora (``rodzaj_prawa_id``, ustawiany przez Verify) ma
+    pierwszeństwo — nawet ``None`` (operator świadomie wyczyścił) jest
+    respektowane. Best-effort po nazwie (``patent_type``) stosuje się TYLKO
+    gdy klucz ``rodzaj_prawa_id`` jest nieobecny (ścieżka programistyczna /
+    back-compat sprzed UI patentów) — inaczej wyczyszczone pole zostałoby
+    wskrzeszone z danych BibTeX.
+    """
+    if "rodzaj_prawa_id" in normalized_data:
+        rp_id = normalized_data.get("rodzaj_prawa_id")
+        if not rp_id:
+            return None
+        return Rodzaj_Prawa_Patentowego.objects.filter(pk=rp_id).first()
+    return _resolve_rodzaj_prawa(normalized_data.get("patent_type"))
+
+
 def _add_authors_to_record(session, record, uczelnia=None):
     """Dodaj dopasowanych autorów do rekordu."""
     authors = (
@@ -118,7 +226,8 @@ def _add_authors_to_record(session, record, uczelnia=None):
         .order_by("order")
     )
 
-    typ_aut = Typ_Odpowiedzialnosci.objects.get(skrot="aut.")
+    # Rola importowanego autora (typ_ogolny) → kanoniczny skrot Typ_Odpowiedzialnosci.
+    SKROT_DLA_TYPU = {const.TO_AUTOR: "aut.", const.TO_REDAKTOR: "red."}
 
     if uczelnia is None:
         # Uczelnia sesji (multi-hosted) — obca_jednostka jest per-uczelnia.
@@ -143,15 +252,85 @@ def _add_authors_to_record(session, record, uczelnia=None):
             autor=imported_author.matched_autor,
             jednostka=(imported_author.matched_jednostka),
             zapisany_jako=zapisany_jako,
-            typ_odpowiedzialnosci_skrot=typ_aut.skrot,
+            typ_odpowiedzialnosci_skrot=SKROT_DLA_TYPU.get(
+                imported_author.typ_ogolny, "aut."
+            ),
             dyscyplina_naukowa=(imported_author.matched_dyscyplina),
             afiliuje=afiliuje,
         )
 
 
+def _autorzy_bez_prawa_afiliacji(session, uczelnia=None):
+    """Dopasowani autorzy sesji, którzy przy tworzeniu pracy afiliowaliby
+    (``afiliuje=True``) do jednostki nieprzyjmującej afiliacji.
+
+    Zwraca listę ``ImportedAuthor`` (pusta == brak problemów). Logika afiliacji
+    (jednostka obca → ``afiliuje=False``) jest lustrem
+    ``_add_authors_to_record``, żeby pre-check zgadzał się z faktycznym
+    zapisem. Respektuje ``BPP_WALIDUJ_AFILIACJE_AUTOROW`` — gdy walidacja jest
+    globalnie wyłączona, zwraca pustą listę (tak jak ``_waliduj_afiliacje``).
+    """
+    from django.conf import settings
+
+    if not getattr(settings, "BPP_WALIDUJ_AFILIACJE_AUTOROW", True):
+        return []
+
+    if uczelnia is None:
+        uczelnia = session.uczelnia
+    obca = uczelnia.obca_jednostka if uczelnia else None
+
+    authors = (
+        session.authors.exclude(match_status=ImportedAuthor.MatchStatus.UNMATCHED)
+        .select_related(
+            "matched_autor",
+            "matched_jednostka",
+            "matched_jednostka__rodzaj",
+        )
+        .order_by("order")
+    )
+
+    problemy = []
+    for imported_author in authors:
+        jednostka = imported_author.matched_jednostka
+        if not imported_author.matched_autor or jednostka is None:
+            continue
+        jest_obca = bool(obca and jednostka == obca)
+        afiliuje = not jest_obca
+        if afiliuje and not jednostka.przyjmuje_afiliacje():
+            problemy.append(imported_author)
+    return problemy
+
+
+def waliduj_afiliacje_sesji(session, uczelnia=None):
+    """Guard afiliacji: rzuca ``ValidationError``, gdy któryś dopasowany autor
+    afiliowałby do jednostki nieprzyjmującej afiliacji (rodzaj „Wydział" itp.).
+
+    Wołany PRZED utworzeniem pracy — synchronicznie na etapie formularza UI
+    (``CreateView.post``, żeby user dostał komunikat i poprawił dopasowanie)
+    oraz jako twardy guard na początku ``_create_publication`` (pokrywa też
+    ścieżkę retry i wywołania programistyczne).
+    """
+    problemy = _autorzy_bez_prawa_afiliacji(session, uczelnia)
+    if not problemy:
+        return
+    linie = "; ".join(
+        f"{ia.matched_autor} → „{ia.matched_jednostka}”" for ia in problemy
+    )
+    raise ValidationError(
+        "Nie można utworzyć pracy — część autorów jest przypisana z afiliacją "
+        "do jednostki, która nie przyjmuje afiliacji (np. wydział). Zmień "
+        "jednostkę tych autorów na przyjmującą afiliację albo dopasuj ich do "
+        f"jednostki obcej: {linie}."
+    )
+
+
 @transaction.atomic
 def _create_publication(session):
     """Utwórz rekord publikacji na podstawie sesji."""
+    # Twardy guard afiliacji — przed jakimkolwiek zapisem do bazy (transakcja
+    # atomowa i tak by wycofała, ale tu odmawiamy zanim cokolwiek powstanie).
+    waliduj_afiliacje_sesji(session)
+
     normalized_data = session.normalized_data
 
     if not normalized_data.get("year"):
@@ -190,21 +369,47 @@ def _create_publication(session):
     if article_number:
         common_fields["szczegoly"] = article_number
 
-    if session.jest_wydawnictwem_zwartym:
+    # Dispatch trójstronny: PATENT ma pierwszeństwo (rekord jawnie oznaczony
+    # jako patent w wizardzie), w przeciwnym razie zachowanie sprzed tej
+    # zmiany — binarny wybór po jest_wydawnictwem_zwartym (back-compat: nowe
+    # pole rodzaj_rekordu domyślnie CIAGLE, sesje które go nigdy nie ustawiły
+    # dispatchują dokładnie jak dawniej).
+    if session.rodzaj_rekordu == ImportSession.RodzajRekordu.PATENT:
+        record = _create_patent(session, common_fields, normalized_data)
+    elif session.jest_wydawnictwem_zwartym:
         record = _create_wydawnictwo_zwarte(session, common_fields, normalized_data)
     else:
         record = _create_wydawnictwo_ciagle(session, common_fields, normalized_data)
 
+    is_patent = session.rodzaj_rekordu == ImportSession.RodzajRekordu.PATENT
+
     _add_authors_to_record(session, record)
-    _create_streszczenia(session, record)
+    # Patent nie ma relacji ``streszczenia`` (tylko Wydawnictwo_Ciagle/Zwarte
+    # ją mają) — @patent z polem abstract (typowy eksport Zotero) wywaliłby
+    # tu AttributeError. Streszczenia patentu są poza zakresem modelu.
+    if not is_patent:
+        _create_streszczenia(session, record)
 
     if session.zrodlo and normalized_data.get("year"):
         from bpp.models.zrodlo import (
             uzupelnij_punktacje_z_zrodla,
         )
 
+        # Pełny fill ze źródła (IF/kwartyle/SNIP + punkty_kbn); operator może
+        # nadpisać punkty_kbn niżej.
         uzupelnij_punktacje_z_zrodla(record, session.zrodlo, normalized_data["year"])
 
-    _link_pbn_uid(session, record)
+    # Punktacja wybrana przez operatora w kroku „Punktacja" ma ostatnie słowo
+    # (dla zwartych to jedyne źródło punkty_kbn; dla ciągłych — nadpisanie po
+    # danych źródła, przy zachowaniu IF/kwartyli).
+    punkty_operator = session.matched_data.get("punkty_kbn")
+    if punkty_operator not in (None, ""):
+        record.punkty_kbn = Decimal(str(punkty_operator))
+        record.save(update_fields=["punkty_kbn"])
+
+    # Patent nie idzie do PBN i NIE MA pola pbn_uid (tylko Wydawnictwo_* je
+    # mają) — bez tego guardu stale pbn_mongo_id wywaliłby save(pbn_uid_id).
+    if not is_patent:
+        _link_pbn_uid(session, record)
 
     return record

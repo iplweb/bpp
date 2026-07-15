@@ -46,6 +46,11 @@ def test_buildSearch(settings):
         POST = mydct(dct)
         META = {}
         session = {}
+        # Faza B (#438): BuildSearch.post czyta ``uzywaj_wydzialow`` z uczelni
+        # requestu (get_for_request). Ustawiony cache ``_uczelnia`` = None
+        # zwraca uczelnię bez zapytania do bazy — test zostaje bez DB, a przy
+        # braku uczelni gałąź domyślnie zakłada użycie wydziałów (True).
+        _uczelnia = None
 
         def build_absolute_uri(self, *args, **kw):
             return "/absolute/uri"
@@ -87,6 +92,40 @@ def test_buildSearch(settings):
     }
 
     assert json.loads(request.session[MULTISEEK_SESSION_KEY]) == expected
+
+
+def test_buildSearch_jednostka_nadrzedna_honorowana(settings):
+    """#438: POST ``jednostka_nadrzedna`` trafia do formularza multiseeka jako
+    kryterium „Jednostka nadrzędna". BuildSearch buduje ten box BEZWARUNKOWO
+    (pusty POST = no-op, ``zrob_box_z_requestu`` → []), więc przycisk „Pokaż
+    wszystkie publikacje" na stronie jednostki-korzenia działa też dla uczelni
+    bez wydziałów — bez tego BuildSearch po cichu wyrzucał wartość i dawał
+    pusty raport."""
+    dct = {"jednostka_nadrzedna": [123]}
+
+    class mydct(dict):
+        def getlist(self, value):
+            return self.get(value)
+
+    class request:
+        POST = mydct(dct)
+        META = {}
+        session = {}
+        _uczelnia = None
+
+        def build_absolute_uri(self, *args, **kw):
+            return "/absolute/uri"
+
+    settings.LANGUAGE_CODE = "en"
+    tbs = BuildSearch()
+    tbs.request = request()
+    tbs.post(request)
+
+    form = json.loads(request.session[MULTISEEK_SESSION_KEY])["form_data"]
+    kryteria = [c for c in form if c]
+    crit = [c for c in kryteria if c["field"] == "Jednostka nadrzędna"]
+    assert len(crit) == 1
+    assert crit[0]["value"] == 123
 
 
 pattern = re.compile("Strona WWW")

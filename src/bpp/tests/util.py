@@ -71,10 +71,10 @@ def any_wydzial(nazwa=None, skrot=None, uczelnia_skrot="UCL", **kw):
         uczelnia = any_uczelnia()
 
     if nazwa is None:
-        nazwa = "Wydział %s" % wydzial_cnt
+        nazwa = f"Wydział {wydzial_cnt}"
 
     if skrot is None:
-        skrot = "W%s" % wydzial_cnt
+        skrot = f"W{wydzial_cnt}"
 
     wydzial_cnt += 1
 
@@ -87,10 +87,10 @@ def any_jednostka(nazwa=None, skrot=None, wydzial_skrot="WDZ", **kw):
     :rtype: bpp.models.Jednostka
     """
     if nazwa is None:
-        nazwa = "Jednostka %s" % random.randint(0, 500000)
+        nazwa = f"Jednostka {random.randint(0, 500000)}"
 
     if skrot is None:
-        skrot = "J. %s" % random.randint(0, 5000000)
+        skrot = f"J. {random.randint(0, 5000000)}"
 
     try:
         uczelnia = kw.pop("uczelnia")
@@ -99,16 +99,28 @@ def any_jednostka(nazwa=None, skrot=None, wydzial_skrot="WDZ", **kw):
         if uczelnia is None:
             uczelnia = baker.make(Uczelnia)
 
+    # Faza B (#438): ``Jednostka.wydzial`` to zdenormalizowany self-FK do
+    # KORZENIA drzewa. Żeby jednostka miała „wydział", musi wisieć pod
+    # węzłem-lustrem tego Wydzialu (root Jednostka). Denorm wyliczy ``wydzial``
+    # przy zapisie. ``wydzial=`` NIE jest już przekazywane do ``create()``.
+    parent = kw.pop("parent", None)
     try:
         wydzial = kw.pop("wydzial")
     except KeyError:
-        try:
-            wydzial = Wydzial.objects.get(skrot=wydzial_skrot)
-        except Wydzial.DoesNotExist:
-            wydzial = baker.make(Wydzial, uczelnia=uczelnia)
+        wydzial = None
+        if parent is None:
+            try:
+                wydzial = Wydzial.objects.get(skrot=wydzial_skrot)
+            except Wydzial.DoesNotExist:
+                wydzial = baker.make(Wydzial, uczelnia=uczelnia)
+
+    if parent is None and wydzial is not None:
+        from bpp.models.struktura_konwersja import znajdz_lub_utworz_wezel_wydzialu
+
+        parent, _ = znajdz_lub_utworz_wezel_wydzialu(wydzial)
 
     ret = Jednostka.objects.create(
-        nazwa=nazwa, skrot=skrot, wydzial=wydzial, uczelnia=uczelnia, **kw
+        nazwa=nazwa, skrot=skrot, parent=parent, uczelnia=uczelnia, **kw
     )
     ret.refresh_from_db()
     return ret
@@ -137,7 +149,9 @@ def any_wydawnictwo(klass, rok=None, **kw):
     for key, value in list(kw_wyd.items()):
         set_default(key, value, kw)
 
-    Status_Korekty.objects.get_or_create(pk=1, nazwa="przed korektą")
+    # Lookup po kluczu naturalnym (nazwa jest unique), nigdy po pk — inaczej
+    # wiersz o tej samej nazwie pod innym pk => INSERT => IntegrityError.
+    Status_Korekty.objects.get_or_create(nazwa="przed korektą")
 
     return baker.make(klass, rok=rok, **kw)
 
@@ -160,7 +174,7 @@ def any_zwarte_base(klass, **kw):
     set_default("informacje", "zrodlo-informacje dla zwarte", kw)
 
     if klass not in [Patent]:
-        set_default("miejsce_i_rok", "Lublin %s" % CURRENT_YEAR, kw)
+        set_default("miejsce_i_rok", f"Lublin {CURRENT_YEAR}", kw)
         set_default("wydawca_opis", "Wydawnictwo FOLIUM", kw)
         set_default("isbn", "123-IS-BN-34", kw)
         set_default("redakcja", "Redakcja", kw)
@@ -205,10 +219,10 @@ def any_zrodlo(**kw):
     :rtype: bpp.models.Zrodlo
     """
     if "nazwa" not in kw:
-        kw["nazwa"] = "Zrodlo %s" % time.time()
+        kw["nazwa"] = f"Zrodlo {time.time()}"
 
     if "skrot" not in kw:
-        kw["skrot"] = "Zrod. %s" % time.time()
+        kw["skrot"] = f"Zrod. {time.time()}"
 
     return baker.make(Zrodlo, **kw)
 

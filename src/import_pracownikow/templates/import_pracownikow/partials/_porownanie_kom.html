@@ -1,0 +1,17 @@
+{# Jedna komórka porównywarki: pole = {plik, baza, rozne}. Gdy różnica — plik #}
+{# w żółtym labelu + wartość z bazy wyszarzona pod spodem. Gdy zgodne/puste — #}
+{# sama wartość z pliku (albo „—"). ``ostrzezenie`` (przekazywane tylko do #}
+{# komórki e-mail) — komunikat o odrzuconym adresie jako czerwony label alert. #}
+{% if pole.rozne %}
+    <span class="label warning import-porownanie-rozne">{{ pole.plik }}</span>
+    <br>
+    <span class="secondary">obecnie: {{ pole.baza|default:"—" }}</span>
+{% elif pole.plik %}
+    {{ pole.plik }}
+{% else %}
+    <span class="secondary">—</span>
+{% endif %}
+{% if ostrzezenie %}
+    <br>
+    <span class="label alert" title="{{ ostrzezenie }}">e-mail odrzucony</span>
+{% endif %}

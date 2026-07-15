@@ -1,11 +1,12 @@
 import itertools
 from urllib.parse import urlencode
 
+from django.db.models import Q
 from django.db.models.aggregates import Sum
 from django.http.response import HttpResponseRedirect
-from django.template.defaultfilters import safe
 from django.urls import reverse
 from django.utils.functional import cached_property
+from django.utils.html import format_html
 from django.views.generic.edit import FormView
 from django_tables2 import Column
 from django_tables2.export.views import ExportMixin
@@ -21,7 +22,6 @@ from bpp.models import (
     Typ_KBN,
     Uczelnia,
 )
-from bpp.models.struktura import Wydzial
 from bpp.util.uczelnia_scope import tylko_jedna_uczelnia
 
 from .forms import RankingAutorowForm
@@ -133,7 +133,10 @@ class RankingAutorowTable(Table):
 
     def render_autor(self, record):
         url = reverse("bpp:browse_autor", args=(record.autor.slug,))
-        return safe(f'<a href="{url}">{record.autor}</a>')
+        # format_html escapuje {record.autor} — nazwisko autora (potencjalnie
+        # z importu bez sanityzacji) nie może wstrzyknąć markupu na publiczną,
+        # anonimową stronę rankingu (stored XSS).
+        return format_html('<a href="{}">{}</a>', url, record.autor)
 
     def value_autor(self, record):
         return str(record.autor)
@@ -152,8 +155,12 @@ class RankingAutorowJednostkaWydzialTable(RankingAutorowTable):
         )
         order_by = ("-impact_factor_sum", "autor__nazwisko")
 
-    jednostka = Column(accessor="jednostka__nazwa")
-    wydzial = Column(accessor="jednostka__wydzial__nazwa")
+    # Faza B (#438): jawne nagłówki. Bez nich django_tables2 wyprowadza
+    # verbose_name z ostatniego segmentu accessora — a oba (``jednostka__nazwa``
+    # i ``jednostka__wydzial__nazwa``) rozwiązują się do pola ``Jednostka.nazwa``
+    # (verbose_name „nazwa") → dwie identyczne kolumny „Nazwa".
+    jednostka = Column("Jednostka", accessor="jednostka__nazwa")
+    wydzial = Column("Wydział", accessor="jednostka__wydzial__nazwa")
 
 
 class RankingAutorow(ExportMixin, SingleTableView):
@@ -221,14 +228,30 @@ class RankingAutorow(ExportMixin, SingleTableView):
 
     def _apply_location_filters(self, qset):
         jednostki = self.get_jednostki()
-        if jednostki:
+        # F4 (#438): jak dla ``wydzial`` niżej — rozróżniamy „brak parametru"
+        # (None → bez filtra) od „parametr podany, ale spoza dostępnych"
+        # (pusty queryset → filtr STOSUJEMY, wynik pusty). Bez tego wybór
+        # jednostki poprawnej w pickerze, ale spoza ``get_dostepne_jednostki``
+        # (np. ``wchodzi_do_rankingu_autorow=False``) dawał ``if jednostki:``
+        # == False → CICHY pełny ranking pod filtrem jednostki.
+        if jednostki is not None:
             qset = qset.filter(jednostka__in=jednostki)
 
         uczelnia = Uczelnia.objects.get_for_request(self.request)
-        if uczelnia and uczelnia.uzywaj_wydzialow and not jednostki:
+        if uczelnia and uczelnia.uzywaj_wydzialow and jednostki is None:
             wydzialy = self.get_wydzialy()
-            if wydzialy:
-                qset = qset.filter(jednostka__wydzial__in=wydzialy)
+            # F4 (#438): rozróżniamy „brak parametru ``wydzial``" (None → bez
+            # filtra) od „parametr podany, ale nie pasuje do żadnego korzenia"
+            # (pusty queryset → filtr STOSUJEMY, wynik pusty). Bez tego stary
+            # bookmark ``?wydzial=<Wydzial.pk>`` (pk spoza rootów) dawał
+            # ``if wydzialy:`` == False → CICHY pełny ranking pod filtrem wydziału.
+            if wydzialy is not None:
+                # Faza B (#438): „wydziały" = jednostki-korzenie. Poddrzewo
+                # łapie ``jednostka__wydzial__in``; prace samego korzenia —
+                # ``jednostka__in`` (korzeń ma ``wydzial=NULL``).
+                qset = qset.filter(
+                    Q(jednostka__wydzial__in=wydzialy) | Q(jednostka__in=wydzialy)
+                )
 
         # Multi-hosted: ranking = obecni pracownicy tej uczelni.
         # No-op na single-install (guard) — wynik bez zmian.
@@ -253,8 +276,10 @@ class RankingAutorow(ExportMixin, SingleTableView):
         qset = qset.exclude(autor__pokazuj=False)
 
         if self.bez_kol_naukowych:
+            # Faza B (#438): wykluczenie kół po fladze FK ``rodzaj`` (spójnie z
+            # III-1, gdzie znika CharField ``rodzaj_jednostki``).
             qset = qset.exclude(
-                autor__aktualna_jednostka__rodzaj_jednostki=Jednostka.RODZAJ_JEDNOSTKI.KOLO_NAUKOWE
+                autor__aktualna_jednostka__rodzaj__wyklucz_z_rankingu_autorow=True
             )
 
         if self.bez_nieaktualnych:
@@ -297,7 +322,12 @@ class RankingAutorow(ExportMixin, SingleTableView):
         return self._apply_exclusions(qset)
 
     def get_dostepne_wydzialy(self):
-        return Wydzial.objects.filter(zezwalaj_na_ranking_autorow=True)
+        # Faza B (#438): „wydziały" = jednostki-korzenie (parent IS NULL).
+        # ``widoczna=True`` (parytet z ``get_dostepne_jednostki``): ukryty root
+        # nie może być wybieralny ani renderowalny przez ?wydzial=<pk>.
+        return Jednostka.objects.filter(
+            parent__isnull=True, widoczna=True, zezwalaj_na_ranking_autorow=True
+        )
 
     def get_wydzialy(self):
         # Handle single wydzial selection
@@ -313,7 +343,7 @@ class RankingAutorow(ExportMixin, SingleTableView):
         return None
 
     def get_dostepne_jednostki(self):
-        return Jednostka.objects.filter(widoczna=True, wchodzi_do_raportow=True)
+        return Jednostka.objects.filter(widoczna=True, wchodzi_do_rankingu_autorow=True)
 
     def get_jednostki(self):
         # Handle single jednostka selection
@@ -411,11 +441,20 @@ class RankingAutorow(ExportMixin, SingleTableView):
 
     def get_table_kwargs(self):
         uczelnia = Uczelnia.objects.get_for_request(self.request)
-        pokazuj = uczelnia.pokazuj_liczbe_cytowan_w_rankingu
+        exclude = []
 
+        pokazuj = uczelnia.pokazuj_liczbe_cytowan_w_rankingu
         if pokazuj == OpcjaWyswietlaniaField.POKAZUJ_NIGDY or (
             pokazuj == OpcjaWyswietlaniaField.POKAZUJ_ZALOGOWANYM
             and self.request.user.is_anonymous
         ):
-            return {"exclude": ("liczba_cytowan_sum",)}
-        return {}
+            exclude.append("liczba_cytowan_sum")
+
+        # Faza B (#438): kolumna „Wydział" ma sens tylko, gdy uczelnia używa
+        # wydziałów. Bez wydziałów jednostki są korzeniami (``wydzial=NULL``) →
+        # kolumna byłaby pusta; ukrywamy ją. (``exclude`` nieistniejącej
+        # kolumny — gdy tabela bez rozbicia — django_tables2 ignoruje.)
+        if not (uczelnia and uczelnia.uzywaj_wydzialow):
+            exclude.append("wydzial")
+
+        return {"exclude": tuple(exclude)} if exclude else {}

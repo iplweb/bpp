@@ -25,6 +25,7 @@ class Command(BaseCommand):
                 uczelnia=w.uczelnia,
                 rodzaj=rodzaj_wydzial,
                 legacy_wydzial_id=w.id,
+                jest_lustrem=True,  # #438: syntetyczny węzeł-lustro
                 parent=None,
                 widoczna=False,
                 aktualna=False,

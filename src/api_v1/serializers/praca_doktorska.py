@@ -5,7 +5,6 @@ from api_v1.serializers.util import (
     AbsoluteUrlSerializerMixin,
     WydawnictwoSerializerMixin,
 )
-
 from bpp.models import Praca_Doktorska
 
 
@@ -24,6 +23,10 @@ class Praca_DoktorskaSerializer(
 
     jednostka = serializers.HyperlinkedRelatedField(
         view_name="api_v1:jednostka-detail", read_only=True
+    )
+
+    wydawca = serializers.HyperlinkedRelatedField(
+        view_name="api_v1:wydawca-detail", read_only=True
     )
 
     slowa_kluczowe = TagListSerializerField()

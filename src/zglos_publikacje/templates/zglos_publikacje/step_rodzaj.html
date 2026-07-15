@@ -24,6 +24,21 @@
         {% endfor %}
     </div>
 
+    {# Widget ALTCHA + hint „zaloguj się" — obecne TYLKO gdy pole captcha #}
+    {# istnieje w formularzu, tj. dla anonima przy captcha ON (bramka w #}
+    {# forms/views). Dla zalogowanego pola nie ma → nic się nie renderuje. #}
+    {% if form.captcha %}
+        <div class="zglos-captcha">
+            {{ form.captcha }}
+            <p class="zglos-captcha-hint">
+                <span class="fi-lock" aria-hidden="true"></span>
+                Jesteś niezalogowany —
+                <a href="{% url "login_form" %}?next={{ request.get_full_path|urlencode }}">zaloguj się</a>,
+                aby pominąć tę weryfikację.
+            </p>
+        </div>
+    {% endif %}
+
     <script>
         (function() {
             var tiles = document.querySelectorAll('.tile-card');

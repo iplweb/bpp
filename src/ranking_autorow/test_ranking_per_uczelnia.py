@@ -15,6 +15,7 @@ def test_ranking_listuje_tylko_aktualnych_pracownikow_uczelni(
     jednostka_uczelnia2,
     autor_uczelnia1,
     autor_uczelnia2,
+    typy_odpowiedzialnosci,
 ):
     settings.ALLOWED_HOSTS = ["*"]
     w1 = baker.make("bpp.Wydawnictwo_Ciagle", impact_factor=10, rok=2020)

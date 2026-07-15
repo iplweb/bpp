@@ -1,0 +1,42 @@
+{# Kafle „Ludzie z XLS" + „Ludzie spoza XLS". Include (dziedziczy kontekst #}
+{# huba: liczniki_ludzi, ludzie_do_akceptacji, odpiecia_count, #}
+{# ostrzezenie_odpiecia, parent_object). Renderowany w Kroku 2 (wewnątrz #}
+{# calloutu osób) oraz w audycie zintegrowanego. Wołający owija w `.row`. #}
+<div class="medium-6 columns">
+    <div class="callout">
+        <h3><span class="fi-torso"></span> Ludzie z XLS</h3>
+        <p>
+            {{ liczniki_ludzi.twardy }} pewnych ·
+            {% if liczniki_ludzi.reczny %}{{ liczniki_ludzi.reczny }} ręcznych · {% endif %}
+            {{ liczniki_ludzi.zgadywanie }} luźnych ·
+            {{ ludzie_do_akceptacji }} do akceptacji
+        </p>
+        {% if ludzie_do_akceptacji == 0 %}
+            <p><span class="label success">
+                <span class="fi-check"></span> gotowe
+            </span></p>
+        {% endif %}
+        <a href="{% url "import_pracownikow:importpracownikow-results" parent_object.pk %}"
+           class="button">Zobacz wiersze</a>
+    </div>
+</div>
+
+<div class="medium-6 columns">
+    <div class="callout">
+        <h3><span class="fi-link"></span> Ludzie spoza XLS</h3>
+        <p>
+            {{ odpiecia_count }} powiązań spoza pliku
+            (jednostki uczelni oprócz Obcej)
+        </p>
+        {% if ostrzezenie_odpiecia %}
+            <div class="callout warning">
+                {# wszystkie jednostki odroczone → lista może być zawyżona #}
+                Uwaga: wszystkie jednostki z pliku są odroczone, więc
+                lista powiązań spoza pliku może być zawyżona (wszystkie
+                aktywne etaty uczelni zostały oznaczone).
+            </div>
+        {% endif %}
+        <a href="{% url "import_pracownikow:odpiecia" parent_object.pk %}"
+           class="button">Zobacz powiązania</a>
+    </div>
+</div>

@@ -17,9 +17,7 @@ def _browse_praca(client, wydawnictwo_ciagle):
         reverse(
             "bpp:browse_praca",
             args=(
-                ContentType.objects.get(
-                    app_label="bpp", model="wydawnictwo_ciagle"
-                ).pk,
+                ContentType.objects.get(app_label="bpp", model="wydawnictwo_ciagle").pk,
                 wydawnictwo_ciagle.pk,
             ),
         ),
@@ -79,6 +77,29 @@ def test_ponizej_progu_nie_skraca(wydawnictwo_ciagle, obca_jednostka):
 
 
 @pytest.mark.django_db
+def test_zwijaj_false_wylacza_skracanie_mimo_progu(wydawnictwo_ciagle, obca_jednostka):
+    """``zwijaj=False`` wymusza pełną listę nawet powyżej progu — cała lista
+    autorów zostaje dostępna, tylko ``skrocony`` jest False (brak przycisku)."""
+    _dodaj_autorow(wydawnictwo_ciagle, [obca_jednostka] * 30)
+
+    box = wydawnictwo_ciagle.autorzy_dla_opisu_skrocony(zwijaj=False)
+
+    assert box["skrocony"] is False
+    assert box["liczba"] == 30
+    assert len(box["wszyscy"]) == 30
+
+
+@pytest.mark.django_db
+def test_zwijaj_true_domyslnie_skraca_powyzej_progu(wydawnictwo_ciagle, obca_jednostka):
+    """``zwijaj=True`` (wartość domyślna) zachowuje dotychczasowe skracanie."""
+    _dodaj_autorow(wydawnictwo_ciagle, [obca_jednostka] * 30)
+
+    box = wydawnictwo_ciagle.autorzy_dla_opisu_skrocony(zwijaj=True)
+
+    assert box["skrocony"] is True
+
+
+@pytest.mark.django_db
 def test_brak_naszych_nasi_dalej_pusty(wydawnictwo_ciagle, obca_jednostka):
     _dodaj_autorow(wydawnictwo_ciagle, [obca_jednostka] * 30)
 
@@ -90,9 +111,7 @@ def test_brak_naszych_nasi_dalej_pusty(wydawnictwo_ciagle, obca_jednostka):
 
 
 @pytest.mark.django_db
-def test_nasz_tylko_w_pierwszej_piatce(
-    wydawnictwo_ciagle, jednostka, obca_jednostka
-):
+def test_nasz_tylko_w_pierwszej_piatce(wydawnictwo_ciagle, jednostka, obca_jednostka):
     jednostki = [obca_jednostka] * 30
     jednostki[2] = jednostka  # pozycja 3
     _dodaj_autorow(wydawnictwo_ciagle, jednostki)
@@ -167,6 +186,19 @@ def test_render_krotka_lista_bez_skracania(
 
 
 @pytest.mark.django_db
+def test_render_bez_autorow_brak_sekcji_autorow(client, wydawnictwo_ciagle, denorms):
+    # Rekord bez autorów: sekcja autorów ma szare tło + padding, więc pusta
+    # renderowała się jako goły szary pasek pod tytułem.
+    denorms.flush()
+
+    res = _browse_praca(client, wydawnictwo_ciagle)
+    assert res.status_code == 200
+    # NIE po "praca-mono__authors-section" — ta nazwa siedzi też w inline JS
+    # (querySelector), więc występuje w HTML-u niezależnie od renderu sekcji.
+    assert "praca-mono__authors-full" not in res.content.decode("utf-8")
+
+
+@pytest.mark.django_db
 def test_render_doktorat_nie_wybucha(client, doktorat, denorms):
     # Praca_Doktorska dziedziczy autorzy_dla_opisu_skrocony, ale jej
     # autorzy_set to FakeSet z 1 (fałszywym) autorem — strona rekordu musi
@@ -176,9 +208,7 @@ def test_render_doktorat_nie_wybucha(client, doktorat, denorms):
         reverse(
             "bpp:browse_praca",
             args=(
-                ContentType.objects.get(
-                    app_label="bpp", model="praca_doktorska"
-                ).pk,
+                ContentType.objects.get(app_label="bpp", model="praca_doktorska").pk,
                 doktorat.pk,
             ),
         ),
@@ -262,9 +292,7 @@ def test_czy_nasz_obca_jednostka_nigdy_nasza_mimo_uczelni(
 
 
 @pytest.mark.django_db
-def test_czy_nasz_bez_uczelni_zachowuje_stare_zachowanie(
-    wydawnictwo_ciagle, jednostka
-):
+def test_czy_nasz_bez_uczelni_zachowuje_stare_zachowanie(wydawnictwo_ciagle, jednostka):
     """Bez podanej uczelni (uczelnia=None) flaga zależy wyłącznie od
     ``skupia_pracownikow`` — wstecz-kompatybilność z istniejącymi callerami."""
     _dodaj_autorow(wydawnictwo_ciagle, [jednostka])
@@ -283,10 +311,13 @@ def test_simple_tag_autorzy_skrocony_przekazuje_uczelnie(
 
     _dodaj_autorow(wydawnictwo_ciagle, [jednostka_uczelnia1])
 
-    box_u1 = autorzy_skrocony(wydawnictwo_ciagle, uczelnia1)
+    # tag jest teraz takes_context — pierwszy arg to kontekst szablonu;
+    # {} (brak request) => zwijanie dziedziczy z uczelni, tu bez znaczenia
+    # (1 autor < próg), test sprawdza wyłącznie host-aware ``czy_nasz``.
+    box_u1 = autorzy_skrocony({}, wydawnictwo_ciagle, uczelnia1)
     assert box_u1["wszyscy"][0].czy_nasz is True
 
-    box_u2 = autorzy_skrocony(wydawnictwo_ciagle, uczelnia2)
+    box_u2 = autorzy_skrocony({}, wydawnictwo_ciagle, uczelnia2)
     assert box_u2["wszyscy"][0].czy_nasz is False
 
 
@@ -316,9 +347,7 @@ def test_render_nasz_autor_jest_host_aware(
     url = reverse(
         "bpp:browse_praca",
         args=(
-            ContentType.objects.get(
-                app_label="bpp", model="wydawnictwo_ciagle"
-            ).pk,
+            ContentType.objects.get(app_label="bpp", model="wydawnictwo_ciagle").pk,
             wydawnictwo_ciagle.pk,
         ),
     )
@@ -331,3 +360,43 @@ def test_render_nasz_autor_jest_host_aware(
     res_u2 = client.get(url, HTTP_HOST=site2.domain, follow=True)
     assert res_u2.status_code == 200
     assert nasz not in res_u2.content.decode("utf-8")  # obcy host -> nie
+
+
+@pytest.mark.django_db
+def test_render_zalogowany_nigdy_widzi_pelna_liste(
+    client, wydawnictwo_ciagle, obca_jednostka, denorms, django_user_model
+):
+    """Zalogowany użytkownik z preferencją NIGDY widzi pełną listę autorów
+    mimo przekroczenia progu — jego preferencja nadpisuje ustawienie uczelni."""
+    from bpp.models.profile import ZwijanieAutorow
+
+    _dodaj_autorow(wydawnictwo_ciagle, [obca_jednostka] * 30)
+    denorms.flush()
+
+    user = django_user_model.objects.create_user(username="u1", password="p")
+    user.zwijaj_dlugie_listy_autorow = ZwijanieAutorow.NIGDY
+    user.save()
+    client.force_login(user)
+
+    res = _browse_praca(client, wydawnictwo_ciagle)
+    tresc = res.content.decode("utf-8")
+
+    assert "Pokaż wszystkich" not in tresc
+    assert "praca-mono__authors-collapsed" not in tresc
+
+
+@pytest.mark.django_db
+def test_render_uczelnia_wylaczone_zwijanie_anonim_pelna_lista(
+    client, wydawnictwo_ciagle, obca_jednostka, denorms, uczelnia
+):
+    """Gdy uczelnia wyłączy zwijanie, anonim widzi pełną listę mimo progu."""
+    uczelnia.zwijaj_dlugie_listy_autorow = False
+    uczelnia.save()
+    _dodaj_autorow(wydawnictwo_ciagle, [obca_jednostka] * 30)
+    denorms.flush()
+
+    res = _browse_praca(client, wydawnictwo_ciagle)
+    tresc = res.content.decode("utf-8")
+
+    assert "Pokaż wszystkich" not in tresc
+    assert "praca-mono__authors-collapsed" not in tresc

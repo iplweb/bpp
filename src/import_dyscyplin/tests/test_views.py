@@ -32,9 +32,9 @@ def wyslij_i_przeanalizuj(wd_app, plik):
     return i
 
 
-def test_CreateImport_DyscyplinView_bledny_plik(wd_app, conftest_py, transactional_db):
+def test_CreateImport_DyscyplinView_bledny_plik(wd_app, zly_plik, transactional_db):
     with transaction.atomic():
-        wyslij_i_przeanalizuj(wd_app, conftest_py)
+        wyslij_i_przeanalizuj(wd_app, zly_plik)
 
     assert Import_Dyscyplin.objects.all().count() == 1
     i = Import_Dyscyplin.objects.all().first()
@@ -59,23 +59,25 @@ def test_ListImport_Dyscyplin(wd_app, test1_xlsx):
     assert ".xlsx" in res.testbody
 
 
-def test_UruchomPrzetwarzanieImport_Dyscyplin(wd_app, test1_xlsx):
-    wyslij(wd_app, test1_xlsx)
+def test_UruchomPrzetwarzanieImport_Dyscyplin(csrf_exempt_wd_app, test1_xlsx):
+    wyslij(csrf_exempt_wd_app, test1_xlsx)
 
     i = Import_Dyscyplin.objects.all().first()
     i.stworz_kolumny()
     i.zatwierdz_kolumny()
     i.save()
 
-    g = wd_app.get(reverse("import_dyscyplin:przetwarzaj", args=(i.pk,)))
+    g = csrf_exempt_wd_app.post(reverse("import_dyscyplin:przetwarzaj", args=(i.pk,)))
     assert g.json["status"] == "ok"
 
 
-def test_UsunImport_Dyscyplin(wd_app, test1_xlsx, transactional_db):
-    wyslij(wd_app, test1_xlsx)
+def test_UsunImport_Dyscyplin(csrf_exempt_wd_app, test1_xlsx, transactional_db):
+    wyslij(csrf_exempt_wd_app, test1_xlsx)
     assert Import_Dyscyplin.objects.all().count() == 1
     i = Import_Dyscyplin.objects.all().first()
-    g = wd_app.get(reverse("import_dyscyplin:usun", args=(i.pk,))).maybe_follow()
+    g = csrf_exempt_wd_app.post(
+        reverse("import_dyscyplin:usun", args=(i.pk,))
+    ).maybe_follow()
     assert "Brak informacji o importowanych" in g.testbody
     assert Import_Dyscyplin.objects.all().count() == 0
 
@@ -113,12 +115,12 @@ def test_API_Zintegrowane(wd_app, test1_xlsx):
 
 
 def test_UruchomIntegracjeImport_DyscyplinView(
-    wd_app, wprowadzanie_danych_user, test1_xlsx
+    csrf_exempt_wd_app, wprowadzanie_danych_user, test1_xlsx
 ):
-    i = wyslij_i_przeanalizuj(wd_app, test1_xlsx)
+    i = wyslij_i_przeanalizuj(csrf_exempt_wd_app, test1_xlsx)
     i.integruj_dyscypliny()
     i.owner = wprowadzanie_danych_user
     i.save()
 
-    res = wd_app.get(reverse("import_dyscyplin:integruj", args=(i.pk,)))
+    res = csrf_exempt_wd_app.post(reverse("import_dyscyplin:integruj", args=(i.pk,)))
     assert res.json["status"] == "ok"

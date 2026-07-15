@@ -5,14 +5,14 @@ Autorzy
 from __future__ import annotations
 
 import logging
-from datetime import date, datetime, timedelta
+from datetime import date, timedelta
 
 from autoslug import AutoSlugField
 from django.contrib.postgres.search import SearchVectorField as VectorField
 from django.core.exceptions import ValidationError
 from django.core.validators import RegexValidator
 from django.db import IntegrityError, models, transaction
-from django.db.models import CASCADE, SET_NULL, Count, Q, Sum, UniqueConstraint
+from django.db.models import CASCADE, SET_NULL, Count, Q, Sum
 from django.urls.base import reverse
 from django.utils import timezone
 from tinymce.models import HTMLField
@@ -83,6 +83,31 @@ class AutorQuerySet(models.QuerySet):
             | Q(autor_jednostka__jednostka__uczelnia=uczelnia)
         ).distinct()
 
+    def kiedykolwiek_zatrudnieni(self, uczelnia):
+        """Autorzy zatrudnieni w uczelni obecnie LUB historycznie, w REALNEJ
+        jednostce (``skupia_pracownikow=True``).
+
+        Różnica względem ``kiedykolwiek_zwiazani``: liczą się TYLKO powiązania
+        przez jednostki skupiające pracowników — jednostki obce/techniczne
+        (``skupia_pracownikow=False``) są pomijane, także gdy ich uczelnia to
+        bieżąca uczelnia (lustrzana jednostka obca o nazwie naszej uczelni NIE
+        kwalifikuje autora). Realność sprawdzana per-strona OR: albo aktualna
+        jednostka jest realna, albo któraś jednostka historyczna jest realna —
+        powiązanie wyłącznie przez jednostkę obcą nie łapie autora.
+        """
+        if uczelnia is None:
+            return self.none()
+        return self.filter(
+            Q(
+                aktualna_jednostka__uczelnia=uczelnia,
+                aktualna_jednostka__skupia_pracownikow=True,
+            )
+            | Q(
+                autor_jednostka__jednostka__uczelnia=uczelnia,
+                autor_jednostka__jednostka__skupia_pracownikow=True,
+            )
+        ).distinct()
+
 
 class AutorManager(FulltextSearchMixin, models.Manager.from_queryset(AutorQuerySet)):
     # Nie włączaj websearch gdy podano minus (podwójne nazwiska z myślnikiem)
@@ -123,6 +148,13 @@ class Autor(LinkDoPBNMixin, ModelZAdnotacjami, ModelZPBN_ID):
     imiona = models.CharField(max_length=512, db_index=True)
     nazwisko = models.CharField(max_length=256, db_index=True)
     tytul = models.ForeignKey(Tytul, CASCADE, blank=True, null=True)
+    stopien_sluzbowy = models.ForeignKey(
+        "bpp.StopienSluzbowy",
+        SET_NULL,
+        blank=True,
+        null=True,
+        verbose_name="stopień służbowy",
+    )
     pseudonim = models.CharField(
         max_length=300,
         blank=True,
@@ -357,20 +389,20 @@ class Autor(LinkDoPBNMixin, ModelZAdnotacjami, ModelZPBN_ID):
         koniec_pracy = date(rok, 12, 31)
 
         if Autor_Jednostka.objects.filter(
+            Q(jednostka__wydzial=wydzial) | Q(jednostka=wydzial),
             autor=self,
             rozpoczal_prace__lte=start_pracy,
             zakonczyl_prace__gte=koniec_pracy,
-            jednostka__wydzial=wydzial,
         ):
             return True
 
         # A może ma wpisaną tylko datę początku pracy? W takiej sytuacji
         # stwierdzamy, że autor NADAL tam pracuje, bo nie ma końca, więc:
         if Autor_Jednostka.objects.filter(
+            Q(jednostka__wydzial=wydzial) | Q(jednostka=wydzial),
             autor=self,
             rozpoczal_prace__lte=start_pracy,
             zakonczyl_prace=None,
-            jednostka__wydzial=wydzial,
         ):
             return True
 
@@ -386,7 +418,9 @@ class Autor(LinkDoPBNMixin, ModelZAdnotacjami, ModelZPBN_ID):
         # być przydatne np przy importowaniu imion i innych rzeczy, więc sprawdźmy w sytuacj
         # gdy jest rozszerzona afiliacja:
 
-        if Autor_Jednostka.objects.filter(autor=self, jednostka__wydzial=wydzial):
+        if Autor_Jednostka.objects.filter(
+            Q(jednostka__wydzial=wydzial) | Q(jednostka=wydzial), autor=self
+        ):
             return True
 
     def get_full_name(self):
@@ -490,6 +524,27 @@ class Funkcja_Autora(NazwaISkrot):
     class Meta:
         verbose_name = "funkcja w jednostce"
         verbose_name_plural = "funkcje w jednostkach"
+        ordering = ["nazwa"]
+        app_label = "bpp"
+
+
+class StopienSluzbowy(NazwaISkrot):
+    """Stopień służbowy (np. pożarniczy: kpt., bryg.) — słownik na autorze."""
+
+    class Meta:
+        verbose_name = "stopień służbowy"
+        verbose_name_plural = "stopnie służbowe"
+        ordering = ["nazwa"]
+        app_label = "bpp"
+
+
+class StanowiskoDydaktyczne(NazwaISkrot):
+    """Stanowisko dydaktyczne (np. adiunkt, profesor) — słownik na
+    powiązaniu autor-jednostka."""
+
+    class Meta:
+        verbose_name = "stanowisko dydaktyczne"
+        verbose_name_plural = "stanowiska dydaktyczne"
         ordering = ["nazwa"]
         app_label = "bpp"
 
@@ -598,6 +653,13 @@ class Autor_Jednostka(models.Model):
         "Zakończył pracę", null=True, blank=True, db_index=True
     )
     funkcja = models.ForeignKey("bpp.Funkcja_Autora", CASCADE, null=True, blank=True)
+    stanowisko = models.ForeignKey(
+        "bpp.StanowiskoDydaktyczne",
+        SET_NULL,
+        null=True,
+        blank=True,
+        verbose_name="stanowisko dydaktyczne",
+    )
 
     podstawowe_miejsce_pracy = models.BooleanField(null=True, blank=True, default=None)
 
@@ -616,13 +678,12 @@ class Autor_Jednostka(models.Model):
         ordering = ["autor__nazwisko", "rozpoczal_prace", "jednostka__nazwa"]
         unique_together = [("autor", "jednostka", "rozpoczal_prace")]
         app_label = "bpp"
-        constraints = [
-            UniqueConstraint(
-                fields=["autor_id"],
-                condition=Q(podstawowe_miejsce_pracy=True),
-                name="jedno_podstawowe_miejsce_pracy_na_autora",
-            )
-        ]
+        # Niezmiennik "co najwyzej jedno podstawowe miejsce pracy na autora" NIE
+        # jest tu egzekwowany przez UniqueConstraint (partial unique index byl
+        # natychmiastowy/per-statement i wysadzal legalne przelaczanie domyslnego
+        # miejsca pracy w obrebie jednej transakcji). Zamiast tego pilnuje go
+        # DEFERRED constraint trigger sprawdzajacy stan KONCOWY przy COMMIT —
+        # patrz migracja 0444_deferred_podstawowe_miejsce_pracy.
 
     def __str__(self):
         try:
@@ -648,27 +709,21 @@ class Autor_Jednostka(models.Model):
                     "Początek pracy późniejszy lub równy, jak zakończenie"
                 )
 
-        if self.zakonczyl_prace is not None:
-            if self.zakonczyl_prace >= datetime.now().date():
-                raise ValidationError(
-                    "Czas zakończenia pracy w jednostce nie może być taki sam"
-                    " lub większy, jak obecna data"
-                )
+        # UWAGA: świadomie NIE odrzucamy daty zakończenia w przyszłości —
+        # zatrudnienie bywa planowane naprzód („pan X pracuje do zaplanowanej
+        # daty"). Jest to spójne z triggerem `bpp_autor_ustaw_jednostka_aktualna`,
+        # który dla przyszłej daty „do" i tak liczy `aktualny = True`. Dawny
+        # zakaz (model + DB-owy CHECK `bez_dat_do_w_przyszlosci`) zdjęty w
+        # migracji 0469; w bazie zastąpiony odpornym na czas CHECK
+        # `rozpoczal_prace < zakonczyl_prace`.
 
-        if self.podstawowe_miejsce_pracy:
-            czy_istnieje = Autor_Jednostka.objects.filter(
-                autor_id=self.autor_id, podstawowe_miejsce_pracy=True
-            )
-            if self.pk:
-                czy_istnieje = czy_istnieje.exclude(pk=self.pk)
-
-            if czy_istnieje.exists():
-                raise ValidationError(
-                    "Ten autor ma już określone podstawowe miejsce pracy. Najpierw usuń podstawowe "
-                    f"miejsce pracy (ustaw wartość na 'Nie' dla jednostki '{czy_istnieje.first().jednostka.nazwa}'), "
-                    f"następnie zapisz rekord autora, następnie ustaw ponownie właściwe podstawowe miejsce pracy "
-                    f"(ustaw wartość na 'Tak') i zapisz po raz kolejny. "
-                )
+        # UWAGA: niezmiennik "jedno podstawowe miejsce pracy na autora" NIE jest
+        # tu walidowany per-instancja. Eager .exists() (widzacy stan sprzed
+        # zapisu) blokowal legalne przelaczanie domyslnego miejsca pracy, bo
+        # przejsciowo istnialy dwa rekordy True. Stan KONCOWY pilnuje DEFERRED
+        # constraint trigger (przy COMMIT), a przyjazny komunikat dla wielu
+        # zaznaczonych naraz daje walidacja formsetu w adminie
+        # (Autor_JednostkaInlineFormSet).
 
     @transaction.atomic
     def ustaw_podstawowe_miejsce_pracy(self):

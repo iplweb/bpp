@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% load columns %}
+{% load cache %}
 
 {% block extratitle %}
     {{ jednostka }}
@@ -8,12 +9,263 @@
 {% block breadcrumbs %}
     {{ block.super }}{% if uczelnia.uzywaj_wydzialow and jednostka.wydzial %}
     <li>
-        <a href="{% url "bpp:browse_wydzial" jednostka.wydzial.slug %}">{{ jednostka.wydzial }}</a>
+        {# Faza B (#438): ``jednostka.wydzial`` to zdenormalizowany self-FK #}
+        {# do korzenia drzewa Jednostka (II-1) -- link prowadzi więc do #}
+        {# ``browse_jednostka``, nie (usuniętego) ``browse_wydzial``. #}
+        <a href="{% url "bpp:browse_jednostka" jednostka.wydzial.slug %}">{{ jednostka.wydzial }}</a>
     </li>{% endif %}
     <li class="current">{{ jednostka }}</li>
 {% endblock %}
 
 {% block content %}
+    {% if jednostka.rodzaj.pokazuj_strukture_podjednostek %}
+        {# Styl wydziałowy (dawna strona wydziału, Faza B / #438, III-2): #}
+        {# węzeł tego rodzaju (np. "Wydział") nie pokazuje własnych prac ani #}
+        {# kart hierarchii "Wchodzi w skład"/"Jednostki podrzędne" -- układ to #}
+        {# wierny port dawnego wydzial.html: panel nagłówka ze statami w #}
+        {# środku, wyśrodkowany przycisk wszystkich publikacji, potem sekcje #}
+        {# podjednostek/kół naukowych/jednostek historycznych. #}
+
+        <!-- Modern Header Section -->
+        <div class="modern-header">
+            <div class="grid-x grid-margin-x">
+                <div class="cell auto">
+                    <h1 class="page-title">
+                        <i class="fi-foundation"></i>{{ jednostka }}
+                    </h1>
+
+                    {% if jednostka.pokazuj_opis and jednostka.opis %}
+                        <div class="wydzial-description">
+                            {{ jednostka.opis|safe }}
+                        </div>
+                    {% endif %}
+
+                    {% cache 3600 jednostka_struktura_stats jednostka.pk %}
+                        {% with total_jednostki=jednostka.aktualne_podjednostki.count kola_count=jednostka.kola_naukowe.count hist_count=jednostka.historyczne_podjednostki.count %}
+                            <div class="wydzial-stats">
+                                {% if total_jednostki > 0 %}
+                                    <div class="stat-item stat-jednostki">
+                                        <div>Jednostki aktualne</div>
+                                        <div>{{ total_jednostki }}</div>
+                                    </div>
+                                {% endif %}
+                                {% if kola_count > 0 %}
+                                    <div class="stat-item stat-kola">
+                                        <div>Koła naukowe</div>
+                                        <div>{{ kola_count }}</div>
+                                    </div>
+                                {% endif %}
+                                {% if hist_count > 0 %}
+                                    <div class="stat-item stat-historyczne">
+                                        <div>Jednostki historyczne</div>
+                                        <div>{{ hist_count }}</div>
+                                    </div>
+                                {% endif %}
+                            </div>
+                        {% endwith %}
+                    {% endcache %}
+                </div>
+                <div class="cell shrink">
+                    {% include "browse/go_to_admin_change.html" with url="admin:bpp_jednostka_change" pk=jednostka.pk group="struktura" %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Quick Actions -->
+        {# Korzeń Z poddrzewem: krótki POST filtra poddrzewa zamiast mega- #}
+        {# długiej listy potomków. WydzialQueryObject / JednostkaNadrzedna #}
+        {# rozwiązują wyłącznie korzenie i filtrują po denormie #}
+        {# ``jednostka.wydzial`` = całe poddrzewo jednym wpisem. Uczelnia #}
+        {# z wydziałami → ``wydzial``; bez wydziałów → ``jednostka_nadrzedna`` #}
+        {# (BuildSearch honoruje oba bezwarunkowo). Korzeń-liść albo węzeł #}
+        {# głębiej w drzewie: jawna lista jednostki + potomków, bo POST #}
+        {# poddrzewa byłby wtedy pusty/zignorowany albo dał pusty raport. #}
+        <div class="jednostka__quick-actions">
+            <form method="post" action="{% url "bpp:browse_build_search" %}" class="jednostka__quick-actions-form">
+                {% csrf_token %}
+                {% if not jednostka.parent_id and jednostka.ma_poddrzewo %}
+                    {% if uczelnia.uzywaj_wydzialow %}
+                        <input type="hidden" name="wydzial" value="{{ jednostka.pk }}"/>
+                    {% else %}
+                        <input type="hidden" name="jednostka_nadrzedna" value="{{ jednostka.pk }}"/>
+                    {% endif %}
+                {% else %}
+                    <input type="hidden" name="jednostka" value="{{ jednostka.pk }}"/>
+                    {% for descendant in jednostka.get_descendants %}
+                        <input type="hidden" name="jednostka" value="{{ descendant.pk }}"/>
+                    {% endfor %}
+                {% endif %}
+                <input type="hidden" name="suggested-title" value="{{ jednostka }}"/>
+                <button type="submit" class="button button-show-all">
+                    <i class="fi-list-bullet"></i>Pokaż wszystkie publikacje
+                </button>
+            </form>
+        </div>
+
+        <!-- Modern Navigation -->
+        {% if jednostka.wymaga_nawigacji %}
+            <div data-sticky-container id="navStickyContainer" class="wydzial-nav">
+                <div data-sticky class="sticky"
+                     data-anchor="listyJednostek" data-margin-top="4">
+                    <nav class="sticky-container">
+                        <ul class="menu expanded" data-magellan>
+                            {% if jednostka.aktualne_podjednostki.exists %}
+                                <li><a href="#aktualne">
+                                    <i class="fi-home"></i>Jednostki aktualne
+                                </a></li>
+                            {% endif %}
+                            {% if jednostka.kola_naukowe.exists %}
+                                <li><a href="#kola_naukowe">
+                                    <i class="fi-torsos-all"></i>Koła naukowe
+                                </a></li>
+                            {% endif %}
+                            {% if jednostka.historyczne_podjednostki.exists %}
+                                <li><a href="#historyczne">
+                                    <i class="fi-clock"></i>Jednostki historyczne
+                                </a></li>
+                            {% endif %}
+                        </ul>
+                    </nav>
+                </div>
+            </div>
+        {% endif %}
+
+        <div class="sections" id="listyJednostek">
+            {% if jednostka.aktualne_podjednostki.exists %}
+                <section id="aktualne" data-magellan-target="aktualne" style="margin-bottom: 40px;">
+                    <div class="section-header">
+                        <h2>
+                            <i class="fi-home"></i>Jednostki aktualne
+                            <span>({{ jednostka.aktualne_podjednostki.count }})</span>
+                        </h2>
+                    </div>
+                    <div class="grid-x grid-margin-x">
+                        {% for col in jednostka.aktualne_podjednostki|columns:3 %}
+                            <div class="large-4 medium-6 small-12 cell">
+                                {% for podjednostka in col %}
+                                    <div class="jednostka-card card-aktualne">
+                                        <div class="card-icon">
+                                            <i class="fi-home"></i>
+                                        </div>
+                                        <div class="jednostka-name">
+                                            <a href="{% url "bpp:browse_jednostka" podjednostka.slug %}" class="link-aktualne">
+                                                {{ podjednostka.nazwa }}
+                                            </a>
+                                        </div>
+                                        {% cache 3600 jednostka_struktura_karta podjednostka.pk %}
+                                            {% if podjednostka.aktualna_jednostka.count > 0 %}
+                                                <div class="jednostka-stats">
+                                                    <i class="fi-torso"></i>
+                                                    {{ podjednostka.aktualna_jednostka.count }} {% if podjednostka.aktualna_jednostka.count == 1 %}pracownik{% elif podjednostka.aktualna_jednostka.count < 5 %}pracowników{% else %}pracowników{% endif %}
+                                                </div>
+                                            {% endif %}
+                                        {% endcache %}
+                                    </div>
+                                {% endfor %}
+                            </div>
+                        {% endfor %}
+                    </div>
+                </section>
+            {% endif %}
+
+            {% if jednostka.kola_naukowe.exists %}
+                <section id="kola_naukowe" data-magellan-target="kola_naukowe" style="margin-bottom: 40px;">
+                    <div class="section-header">
+                        <h2>
+                            <i class="fi-torsos-all"></i>Koła naukowe
+                            <span>({{ jednostka.kola_naukowe.count }})</span>
+                        </h2>
+                    </div>
+                    <div class="grid-x grid-margin-x">
+                        {% for col in jednostka.kola_naukowe|columns:3 %}
+                            <div class="large-4 medium-6 small-12 cell">
+                                {% for podjednostka in col %}
+                                    <div class="jednostka-card card-kola">
+                                        <div class="card-icon">
+                                            <i class="fi-torsos-all"></i>
+                                        </div>
+                                        <div class="jednostka-name">
+                                            <a href="{% url "bpp:browse_jednostka" podjednostka.slug %}" class="link-kola">
+                                                {{ podjednostka.nazwa }}
+                                            </a>
+                                        </div>
+                                        {% cache 3600 kolo_struktura_karta podjednostka.pk %}
+                                            {% if podjednostka.aktualna_jednostka.count > 0 %}
+                                                <div class="jednostka-stats">
+                                                    <i class="fi-torsos-all"></i>
+                                                    {{ podjednostka.aktualna_jednostka.count }} {% if podjednostka.aktualna_jednostka.count == 1 %}członek{% elif podjednostka.aktualna_jednostka.count < 5 %}członków{% else %}członków{% endif %}
+                                                </div>
+                                            {% endif %}
+                                        {% endcache %}
+                                    </div>
+                                {% endfor %}
+                            </div>
+                        {% endfor %}
+                    </div>
+                </section>
+            {% endif %}
+
+            {% if jednostka.historyczne_podjednostki.exists %}
+                <section id="historyczne" data-magellan-target="historyczne" style="margin-bottom: 40px;">
+                    <div class="section-header">
+                        <h2>
+                            <i class="fi-clock"></i>Jednostki historyczne
+                            <span>({{ jednostka.historyczne_podjednostki.count }})</span>
+                        </h2>
+                    </div>
+                    <div class="grid-x grid-margin-x">
+                        {% for col in jednostka.historyczne_podjednostki|columns:3 %}
+                            <div class="large-4 medium-6 small-12 cell">
+                                {% for podjednostka in col %}
+                                    <div class="jednostka-card card-historyczne">
+                                        <div class="card-icon">
+                                            <i class="fi-clock"></i>
+                                        </div>
+                                        <div class="jednostka-name">
+                                            <a href="{% url "bpp:browse_jednostka" podjednostka.slug %}" class="link-historyczne">
+                                                {{ podjednostka.nazwa }}
+                                            </a>
+                                        </div>
+                                        <div class="jednostka-stats">
+                                            <i class="fi-info"></i>Jednostka historyczna
+                                        </div>
+                                    </div>
+                                {% endfor %}
+                            </div>
+                        {% endfor %}
+                    </div>
+                </section>
+            {% endif %}
+        </div>
+
+        <script type="text/javascript">
+            $(document).ready(function(){
+                showOrHideNav();
+            });
+            $(window).resize(showOrHideNav);
+
+            function showOrHideNav() {
+                /* decyzja o ukryciu lub pokazaniu nawigacji opiera się na określeniu, czy wyszła poza
+                okno. W tym celu pobieramy zmienną y (top) DIVa z listą jednostek i sprawdzamy, czy
+                po dodaniu go do wysokosci tej listy wyjdzie poza okno. Jeżeli tak -> wyświetlamy nawigację.
+
+                Funkcja uruchamiana po zmianie rozmiaru okna.
+                 */
+                var listyJednostek = $("#listyJednostek").height();
+                var win = $(window).height();
+                var navContainer = $("#navStickyContainer");
+
+                if (listyJednostek && navContainer.length > 0) {
+                    var top = document.getElementById("listyJednostek").getBoundingClientRect().top;
+
+                    if (listyJednostek < win - top)
+                        navContainer.hide();
+                    else
+                        navContainer.show();
+                }
+            }
+        </script>
+    {% else %}
     <!-- Modern Header Section -->
     <div class="unit-header jednostka__header">
         <div class="grid-x grid-margin-x align-middle">
@@ -90,7 +342,6 @@
             </button>
         </form>
     </div>
-
 
     <!-- Modern Search Form -->
     <div class="search-container jednostka__search-container">
@@ -288,5 +539,6 @@
             </p>
         </div>
     </div>
+    {% endif %}
 
 {% endblock %}

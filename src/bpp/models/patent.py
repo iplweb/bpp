@@ -26,7 +26,7 @@ from bpp.models.abstract import (
 )
 from bpp.models.autor import Autor
 from bpp.models.system import Charakter_Formalny, Jezyk
-from bpp.util import safe_html
+from bpp.util import safe_tytul_html
 
 
 class Patent_Autor(BazaModeluOdpowiedzialnosciAutorow):
@@ -87,14 +87,22 @@ class Patent(
 
     data_zgloszenia = models.DateField("Data zgłoszenia", null=True, blank=True)
 
-    numer_zgloszenia = models.CharField(
-        "Numer zgłoszenia", max_length=255, null=True, blank=True
+    numer_zgloszenia = models.CharField(  # noqa: DJ001
+        # legacy null=True (jest na produkcji); zmiana wymagałaby migracji.
+        "Numer zgłoszenia",
+        max_length=255,
+        null=True,
+        blank=True,
     )
 
     data_decyzji = models.DateField(null=True, blank=True)
 
-    numer_prawa_wylacznego = models.CharField(
-        "Numer prawa wyłącznego", max_length=255, null=True, blank=True
+    numer_prawa_wylacznego = models.CharField(  # noqa: DJ001
+        # legacy null=True (jest na produkcji); zmiana wymagałaby migracji.
+        "Numer prawa wyłącznego",
+        max_length=255,
+        null=True,
+        blank=True,
     )
 
     rodzaj_prawa = models.ForeignKey(
@@ -103,7 +111,7 @@ class Patent(
 
     wdrozenie = models.BooleanField("Wdrożenie", null=True, blank=True, default=None)
 
-    wydzial = models.ForeignKey("bpp.Wydzial", SET_NULL, null=True, blank=True)
+    wydzial = models.ForeignKey("bpp.Jednostka", SET_NULL, null=True, blank=True)
 
     autor_rekordu_klass = Patent_Autor
     autorzy = models.ManyToManyField(Autor, through=autor_rekordu_klass)
@@ -126,7 +134,14 @@ class Patent(
 
     def clean(self):
         # DwaTytuly.clean() w wydaniu jedno-tytułowym...
-        self.tytul_oryginalny = safe_html(self.tytul_oryginalny)
+        self.tytul_oryginalny = safe_tytul_html(self.tytul_oryginalny)
+        ModelZeSzczegolami.clean(self)
+
+    def save(self, *args, **kwargs):
+        # Egzekwuj sanityzację tytułu także na ścieżce objects.create()/import,
+        # która nie woła full_clean().
+        self.tytul_oryginalny = safe_tytul_html(self.tytul_oryginalny)
+        return super().save(*args, **kwargs)
 
     #
     # Cache framework by django-denorm-iplweb

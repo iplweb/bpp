@@ -1,0 +1,212 @@
+// =============================================================================
+// IMPORT PRACOWNIKÓW
+// Style specyficzne dla przepływu import_pracownikow (podglądy / rezultaty).
+// =============================================================================
+
+// Status „wybór użytkownika" (STATUS_RECZNY) — własny kolor plakietki.
+// Pozostałe statusy dopasowania zajęły wszystkie built-inowe kolory Foundation
+// (success / warning / primary / secondary / alert), więc świadomy wybór
+// operatora dostaje odrębny, rozpoznawalny kolor (fiolet) — patrz
+// import_pracownikow/pewnosc.py::STATUS_DISPLAY.
+.label.import-reczny {
+  background-color: #7b3fa0;
+  color: #fefefe;
+}
+
+// ORCID + link do admina pod nazwą autora w tabelach importu — dyskretne,
+// pomocnicze (mniejsze, wyszarzone).
+.import-orcid {
+  font-size: 0.8em;
+  color: #767676;
+}
+
+.import-autor-admin {
+  font-size: 0.8em;
+  margin-left: 0.35rem;
+}
+
+// Tabela autorów jako dwuwierszowa „karta": rekord = <tbody> z dwoma <tr>
+// (tożsamość + wiersz szczegółów colspan=5). Wspólne tło obu wierszy, zebra
+// po rekordach, drugi wiersz sklejony z pierwszym (bez górnej ramki).
+#tabela-autorow {
+  > tbody {
+    border-top: 2px solid #cacaca; // rozdzielenie kart
+
+    // Zebra PO KARCIE (tbody), nie po pojedynczym wierszu. Oba <tr> karty
+    // dostają JEDNO wspólne tło. Foundation domyślnie stripe'uje
+    // `tbody tr:nth-child(even)`, co trafiało w 2. wiersz KAŻDEJ karty
+    // (wiersz szczegółów) — przez to karta na białym tle miała szary drugi
+    // wiersz i zlewała się z następną. Jawne tło na `> tr` (selektor z #id
+    // bije regułę Foundation specyficznością) gasi ten pas: białe karty są
+    // białe na obu wierszach, szare — szare na obu.
+    > tr {
+      background-color: #fefefe;
+    }
+
+    &:nth-of-type(odd) > tr {
+      background-color: #f6f6f6;
+    }
+
+    > tr.import-wiersz-szczegoly > td {
+      border-top: none;
+      padding-top: 0;
+    }
+  }
+
+  .import-poz {
+    white-space: nowrap;
+    color: #767676;
+    font-size: 0.85em;
+  }
+
+  // Pusta komórka wcięcia pod „Poz" w wierszu szczegółów — dziedziczy tło
+  // karty (zebra), sama nic nie renderuje.
+  .import-poz-spacer {
+    padding: 0;
+  }
+}
+
+// Bloki wiersza szczegółów — poziomo, zawijają się; picker autora dostaje
+// więcej miejsca (dawniej ściśnięty w wąskiej kolumnie).
+.import-szczegoly-bloki {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  align-items: flex-start;
+
+  .import-blok {
+    min-width: 12rem;
+    flex: 1 1 14rem;
+  }
+
+  // Porównania dostają więcej miejsca (siatka 2–3 kolumn niżej).
+  .import-blok-porownania {
+    flex: 3 1 30rem;
+  }
+}
+
+.import-porownanie-item {
+  margin-bottom: 0.25rem;
+}
+
+.import-porownanie-etykieta {
+  font-weight: bold;
+  margin-right: 0.25rem;
+}
+
+// Porównania plik→baza jako siatka 2–3 kolumn (dawniej pionowa lista).
+.import-blok-porownania {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
+  gap: 0.25rem 1rem;
+}
+
+// Kontrolki dopasowania autora POD dopasowanym autorem (w komórce „Autor").
+.import-autor-akcje {
+  margin-top: 0.4rem;
+  font-size: 0.9em;
+
+  > form,
+  > .import-autor-zmien {
+    margin-bottom: 0.3rem;
+  }
+}
+
+// Audyt zmian (po integracji) — pełna szerokość nad blokami szczegółów.
+.import-blok-audyt {
+  margin-bottom: 0.5rem;
+
+  p {
+    margin: 0 0 0.15rem;
+  }
+}
+
+// Pasek filtrów „zmienione / zgodne / brak" nad tabelą.
+.import-filtr-roznic {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+
+  .import-filtr-pole {
+    border: 1px solid #cacaca;
+    border-radius: 3px;
+    padding: 0.35rem 0.6rem;
+    margin: 0;
+
+    legend {
+      font-size: 0.8em;
+      font-weight: bold;
+      padding: 0 0.3rem;
+    }
+
+    label {
+      display: inline-block;
+      font-size: 0.85em;
+      margin: 0 0.5rem 0 0;
+    }
+  }
+
+  .import-filtr-tekst {
+    align-self: center;
+  }
+
+  // Selektor „na stronę" (client-side paginacja) — wyrównany do pola szukania.
+  .import-filtr-rozmiar {
+    align-self: center;
+    font-size: 0.85em;
+  }
+
+  // Kontenery grup filtrów: widoczne (główne) i zwijane (dodatkowe).
+  .import-filtr-glowne,
+  .import-filtr-dodatkowe {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+  }
+
+  .import-filtr-wiecej {
+    width: 100%;
+
+    > summary {
+      cursor: pointer;
+      font-size: 0.85em;
+      color: #1468a0;
+      margin-bottom: 0.5rem;
+    }
+  }
+}
+
+// Licznik przefiltrowanych rekordów pod paskiem filtrów.
+.import-filtr-licznik {
+  font-size: 0.9em;
+  color: #767676;
+  margin: 0 0 0.75rem;
+}
+
+// Pager client-side (prev / info / next) nad tabelą. Chowany przy jednej
+// stronie (atrybut [hidden]) — bez display:flex, żeby [hidden] wygrał.
+.import-filtr-pager {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin: 0 0 0.75rem;
+
+  &[hidden] {
+    display: none;
+  }
+
+  // Kompaktowe przyciski pagera — mniejsze niż domyślne, ale bez klasy
+  // Foundation `tiny` (test podglądu banuje ją globalnie, by przycisk
+  // „potwierdź" kandydata pozostał normalny).
+  .import-filtr-pager-btn {
+    margin: 0;
+    padding: 0.35rem 0.6rem;
+    font-size: 0.8em;
+  }
+
+  .import-filtr-pager-info {
+    font-size: 0.9em;
+    color: #767676;
+  }
+}

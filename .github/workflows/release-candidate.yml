@@ -1,0 +1,479 @@
+name: Release candidate (kandydat → staging)
+
+# Pierwsza z dwóch komend wydania (druga: promote.yml). Buduje kandydata na
+# gałęzi release/v<BASE>, skanuje, testuje i publikuje obrazy :<BASE>rcN +
+# :staging. NIE rusza master/dev/:latest. Wywołanie:
+#   gh workflow run release-candidate.yml --ref dev
+# Powtórne wywołanie (gdy gałąź release/* otwarta) → kolejne -rcN.
+# Promote dopiero przez: gh workflow run promote.yml
+#
+# Testy biegną SHARDOWANE (12-way matrix), tak jak w tests.yml — wcześniej
+# cała suita szła jednym `pytest -n auto` na JEDNYM runnerze (~4 rdzenie),
+# przez co RC ciągnął się kilkadziesiąt minut. Teraz `prepare` buduje obraz
+# test-runner RAZ i pushuje go do GHCR, a `tests` rozkłada suitę na 12
+# runnerów (pytest-split, balans po czasie z .test_durations) — ~150 s na
+# najwolniejszy shard zamiast całości seryjnie.
+#
+# Kolejność (patrz `needs`/`if` niżej):
+#   prepare → bump RC (commit lokalny) + skan CVE + build&push obrazu +
+#             PUSH gałęzi release/* (od razu, żeby `build` mógł ją checkoutować)
+#   tests   → matrix shard 0..11, pull obrazu, pytest-split (needs: prepare)
+#   build   → obrazy :staging (needs: [prepare, tests], BRAMKA: tylko gdy testy
+#             zielone LUB pominięte)
+#
+# UWAGA SEMANTYKA: gałąź release/* jest pushowana w `prepare`, ZANIM testy
+# przejdą — więc nieudany run zostawia ją wypchniętą. To świadomy trade-off za
+# prostotę (RC commit żyje tylko w drzewie `prepare`; sharding na osobnych
+# runnerach wymaga przeniesienia go przez barierę testów). Skutki:
+#   - kolejny `release-candidate.yml` wykryje otwartą gałąź i kontynuuje jako
+#     rc(N+1) — normalna iteracja RC, nic się nie psuje;
+#   - obrazy :staging NIE powstają na nieudanych testach (job `build` jest
+#     bramkowany na `tests`), więc deployment nigdy nie pullnie złego RC;
+#   - żeby PORZUCIĆ nieudany cykl zamiast iterować: `git push origin --delete
+#     release/vXXXX`.
+
+on:
+  workflow_dispatch:
+    inputs:
+      skip_tests:
+        description: Pomiń testy (AWARYJNIE).
+        type: boolean
+        default: false
+      skip_scan:
+        description: Pomiń skan CVE (AWARYJNIE).
+        type: boolean
+        default: false
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  prepare:
+    name: Zbuduj kandydata (bump RC + scan + push obrazu)
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    permissions:
+      contents: write
+      # GHCR push obrazu test-runner. GITHUB_TOKEN dziedziczy ten scope
+      # tylko gdy job deklaruje go jawnie.
+      packages: write
+      # Guard „pomijaj testy rc1 gdy dev zielony" czyta status runu workflow
+      # `Tests` na dev tip przez `gh api .../actions/.../runs` — to wymaga
+      # actions:read (bez tego gh zwróci 403 → fallback na testowanie).
+      actions: read
+    env:
+      # Ten sam obraz-cache co tests.yml — RC grzeje się z tego samego
+      # rejestrowego cache'u i odwrotnie.
+      IMAGE_REPO: ghcr.io/iplweb/bpp-test-runner
+      PYTHON_VERSION: "3.12"
+      DEBIAN_VERSION: trixie
+      NODEJS_VERSION: "20"
+    outputs:
+      version_tag: ${{ steps.bump.outputs.version_tag }}
+      release_ref: ${{ steps.bump.outputs.release_ref }}
+      image: ${{ steps.tag.outputs.image }}
+      # 'true' = odpal suitę RC; 'false' = pomiń (drzewo RC == zielony dev
+      # modulo bump wersji — rc1 lub rc2+).
+      should_test: ${{ steps.bump.outputs.should_test }}
+    steps:
+      - name: Checkout (pełna historia + tagi)
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+          persist-credentials: false
+
+      - name: Konfiguracja git
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git fetch --tags origin dev
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@11f9893b081a58869d3b5fccaea48c9e9e46f990 # v8.3.2
+        with:
+          # Bez cache: w tym jobie uv służy wyłącznie do `uvx bumpver`
+          # (drobne narzędzie w izolowanym env) — cache uv-a dawał tu
+          # znikomy zysk, a w JEDNYM jobie z docker/build-push-action
+          # (push obrazu) tworzył wektor cache-poisoning (zizmor). Brak
+          # cache'u = brak wektora, kosztem paru sekund re-downloadu bumpver.
+          enable-cache: false
+
+      - name: Bump RC (nowy cykl lub kolejne -rcN)
+        id: bump
+        env:
+          # Dla guardu „pomijaj testy rc1 gdy dev zielony" (gh api niżej).
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          # Wykryj otwartą gałąź wydania (origin/release/*).
+          mapfile -t BRANCHES < <(git ls-remote --heads origin 'refs/heads/release/*' \
+            | sed -E 's@.*refs/heads/(release/.*)$@\1@')
+
+          if [ "${#BRANCHES[@]}" -gt 1 ]; then
+            echo "::error::Otwartych >1 wydań: ${BRANCHES[*]}. Domknij/promuj jedno przed kolejnym RC."
+            exit 1
+          fi
+
+          OPEN="${BRANCHES[0]:-}"
+
+          if [ -z "$OPEN" ]; then
+            # Nowy cykl: policz BASE RAZ (bumpver test daje następny final),
+            # gałąź z dev, ustaw rc1 JAWNIE przez --set-version (BUILD nie
+            # może auto-dryfować przy kolejnych RC, stąd nie --tag-num).
+            #
+            # UWAGA: uzywamy `uvx bumpver` (izolowany tool env, ~5 pakietow),
+            # a NIE `uv run bumpver`. `uv run` na goRym hoscie runnera synchro-
+            # nizowalby CALY projekt bpp (300+ pakietow) tylko po to, by odpalic
+            # utility do wersjonowania — a to buduje natywne rozszerzenia ze
+            # zrodel (pycairo przez xhtml2pdf→svglib→rlpycairo) i wywala sie na
+            # runnerze bez naglowkow cairo/kompilatora. bumpver czyta tylko
+            # ./pyproject.toml i edytuje pliki — nie potrzebuje env projektu.
+            # WERSJA PRZYPIETA (bumpver@2026.1132 = spojna z uv.lock): ten job ma
+            # contents: write i commituje bump wersji, wiec `uvx` bez pinu (=
+            # najnowszy z PyPI za kazdym razem) bylby nieprzypietym kodem w jobie
+            # z write-em. BUMP: podnos razem z pyproject.toml/uv.lock.
+            # NIE dopisuj `2>/dev/null` — ukrylo by realny blad (patrz historia:
+            # cichy exit 1 gdy sync sie sypal, bo stderr szedl do /dev/null).
+            CUR="v$(./bin/bpp-version.py)"
+            BASE=$(uvx bumpver@2026.1132 test "$CUR" 'vYYYY0M.BUILD[-TAGNUM]' \
+                   | awk '/PEP440/{print $NF}')
+            # Guard: pusty BASE (np. bumpver test padł) dałby malformed
+            # "v-rc1" + gałąź "release/v" — przerwij zanim coś powstanie.
+            [ -n "$BASE" ] || { echo "::error::Nie udało się policzyć BASE (bumpver test)."; exit 1; }
+            RELEASE_REF="release/v${BASE}"
+            git switch -C _rc origin/dev
+            uvx bumpver@2026.1132 update --no-fetch --commit --no-push \
+              --set-version "v${BASE}-rc1"
+          else
+            # Kontynuacja: checkout gałęzi, podbierz fixy z dev, rc(N+1).
+            # BASE stały (z nazwy gałęzi); rc numer = bieżący+1.
+            RELEASE_REF="$OPEN"
+            git switch -C _rc "origin/$OPEN"
+            git merge --no-ff --no-edit origin/dev
+            CUR_PEP=$(./bin/bpp-version.py)               # np. 202606.1394rc1
+            BASE=$(echo "$CUR_PEP" | sed -E 's/rc[0-9]+$//')
+            RCN=$(echo "$CUR_PEP" | sed -E 's/.*rc([0-9]+)$/\1/')
+            NEXT_RC=$((RCN + 1))
+            uvx bumpver@2026.1132 update --no-fetch --commit --no-push \
+              --set-version "v${BASE}-rc${NEXT_RC}"
+          fi
+
+          PEP=$(./bin/bpp-version.py)            # np. 202606.1394rc2
+          git branch -M _rc "$RELEASE_REF"
+          echo "version_tag=${PEP}" >> "$GITHUB_OUTPUT"
+          echo "release_ref=${RELEASE_REF}" >> "$GITHUB_OUTPUT"
+          echo "::notice::Kandydat ${PEP} na gałęzi ${RELEASE_REF}"
+
+          # --- Guard: pomiń suitę RC gdy drzewo == ZIELONY dev (modulo bump) ---
+          # W tym workflow CAŁY kod każdego RC pochodzi z dev: rc1 odbija się
+          # prosto z origin/dev, rc2+ robi `git merge origin/dev` na gałąź
+          # release (która NIE ma własnego kodu — patrz niżej). Jedyną nie-devową
+          # zmianą jest bump wersji przez bumpver, dotykający WYŁĄCZNIE plików z
+          # [tool.bumpver.file_patterns] (pyproject.toml, version.py, package.json,
+          # Makefile) — te nie wpływają na testy. uv.lock nie jest re-lockowany
+          # (patrz niżej), więc deps RC są identyczne jak na dev.
+          #
+          # Zatem: jeśli commit RC różni się od AKTUALNEGO tip dev tylko tymi
+          # plikami wersji, a ten tip ma zielony run `Tests` (tests.yml odpala
+          # się na każdym push→dev), to re-test RC jest zdublowany → pomijamy
+          # (should_test=false). Reguła jest jednolita dla rc1 ORAZ rc2+:
+          # decyduje TREŚĆ drzewa, nie numer rc. (Wcześniej guard był zawężony
+          # do rc1, bo RC re-lockował uv.lock i mógł wciągnąć nietestowane deps;
+          # re-lock usunięto, więc rc2+ z zielonego dev też jest już przetestowany.)
+          #
+          # Testujemy (should_test=true) w KAŻDEJ innej sytuacji:
+          #   - RC ma realną zmianę kodu poza bumpem (np. hotfix wprost na gałąź
+          #     release, albo dev, którego tip nie jest jeszcze zielony),
+          #   - dev tip pending/czerwony/bez runu (np. push docs-only pominięty
+          #     przez paths-ignore w tests.yml),
+          #   - gdy zapytanie do gh api zawiedzie (|| echo 0) — fallback jest
+          #     ZAWSZE w stronę bezpieczeństwa (testuj przy niepewności).
+          # `skip_tests` (input) nadal wymusza pominięcie niezależnie od tego.
+          #
+          # UWAGA: dodając plik do [tool.bumpver.file_patterns] w pyproject.toml,
+          # dopisz go też do wykluczeń poniżej — inaczej jego bump zostanie
+          # wykryty jako „zmiana kodu" i RC niepotrzebnie się przetestuje
+          # (kierunek bezpieczny: nadmiarowy test, nie pominięty).
+          SHOULD_TEST=true
+          DEV_SHA=$(git rev-parse origin/dev)
+          CODE_DIFF=$(git diff --name-only "$DEV_SHA" HEAD -- \
+            ':(exclude)pyproject.toml' \
+            ':(exclude)src/django_bpp/version.py' \
+            ':(exclude)package.json' \
+            ':(exclude)Makefile')
+          if [ -n "$CODE_DIFF" ]; then
+            echo "::notice::RC ma zmiany kodu poza bumpem wersji — testuję RC."
+            echo "Pliki różniące RC od dev (poza bumpem):"
+            echo "$CODE_DIFF"
+          else
+            GREEN=$(gh api \
+              "repos/${GITHUB_REPOSITORY}/actions/workflows/tests.yml/runs?branch=dev&head_sha=${DEV_SHA}&status=success&per_page=1" \
+              --jq '.total_count' 2>/dev/null || echo 0)
+            if [ "${GREEN:-0}" -ge 1 ]; then
+              SHOULD_TEST=false
+              echo "::notice::RC == zielony dev (${DEV_SHA:0:7}) modulo bump wersji — pomijam re-test RC (już przetestowany na dev)."
+            else
+              echo "::notice::RC == dev (${DEV_SHA:0:7}) modulo bump, ale dev nie ma zielonego runu Tests (pending/red/brak) — testuję RC."
+            fi
+          fi
+          echo "should_test=${SHOULD_TEST}" >> "$GITHUB_OUTPUT"
+
+          # NIE re-lockujemy uv.lock dla RC. Gałąź dev jest bramkowana jobem
+          # `lockfile` (tests.yml → `uv lock --check`), więc uv.lock jest już
+          # spójny z pyproject.toml i przetestowany DOKŁADNIE w tej postaci na
+          # dev. Wcześniej stało tu `uv lock` (+ commit), które RE-RESOLVOWAŁO
+          # zależności przy każdym RC — mogło wciągnąć deps, których dev nigdy
+          # nie testował (to był powód, dla którego RC nie mógł pominąć re-testu).
+          # Po wprowadzeniu gate'u `lockfile` jest to zbędne: jedyną zmianą, jaką
+          # `uv lock` by tu jeszcze wniósł, jest bump wersji root-pakietu w locku
+          # (bumpver podniósł [project].version). To pole ignoruje `uv sync
+          # --frozen` (Dockerfile), a zainstalowana wersja pakietu i tak jest
+          # budowana z pyproject.toml (=zbumpowana), więc pominięcie jest
+          # bezpieczne. Efekt: obraz test-runner RC bazuje na tym samym zamku
+          # zależności co zielony dev — co odblokowuje pomijanie re-testu rc1.
+
+          # SHA commita RC (po bumpie) — obraz test-runner buduje się z TEGO
+          # drzewa, więc tag obrazu i GIT_SHA (busta warstwę COPY src/) muszą
+          # wskazywać ten commit, nie github.sha (= dev tip, przed bumpem).
+          echo "rc_sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
+      - name: Zainstaluj skanery CVE
+        if: ${{ !inputs.skip_scan }}
+        env:
+          # Skanery CVE PRZYPIĘTE do konkretnych wersji + weryfikowane po SHA256.
+          # Wcześniej ten krok pobierał ruchomy `latest` (osv-scanner) i wykony-
+          # wał `curl | sh` z gałęzi `main` (grype, trivy) — czyli URUCHAMIAŁ
+          # NIEPRZYPIĘTY kod z Internetu w jobie z `packages: write` (push obrazu
+          # do GHCR) i `contents: write` (push gałęzi release/*). Klasyczny wektor
+          # supply-chain: ktokolwiek z write-em na tych repo/gałęziach (albo ich
+          # przejęcie) wstrzykuje kod, który leci z sekretami tego joba.
+          #
+          # BUMP: podnieś wersję i wklej SHA256 z pliku *checksums* danego release
+          #   (osv:   osv-scanner_SHA256SUMS → osv-scanner_linux_amd64)
+          #   (grype: grype_<ver>_checksums.txt → grype_<ver>_linux_amd64.tar.gz)
+          #   (trivy: trivy_<ver>_checksums.txt → trivy_<ver>_Linux-64bit.tar.gz)
+          # NIE zgaduj sumy — pobierz realną z assetów release-u, inaczej gate CVE
+          # padnie na `sha256sum -c` i zablokuje całe wydanie.
+          OSV_SCANNER_VERSION: "2.4.0"
+          OSV_SCANNER_SHA256: "15314940c10d26af9c6649f150b8a47c1262e8fc7e17b1d1029b0e479e8ed8a0"
+          GRYPE_VERSION: "0.115.0"
+          GRYPE_SHA256: "3fad92940650e514c0aa2dad83526942a055e210cec09a8a59d9c024adc2b90e"
+          TRIVY_VERSION: "0.72.0"
+          TRIVY_SHA256: "bbb64b9695866ce4a7a8f5c9592002c5961cab378577fa3f8a040df362b9b2ea"
+        run: |
+          set -euo pipefail
+          TMP="$(mktemp -d)"
+          trap 'rm -rf "$TMP"' EXIT
+
+          # --- osv-scanner: przypięty binarny release + weryfikacja SHA256 ---
+          curl -sSL -o "${TMP}/osv-scanner" \
+            "https://github.com/google/osv-scanner/releases/download/v${OSV_SCANNER_VERSION}/osv-scanner_linux_amd64"
+          echo "${OSV_SCANNER_SHA256}  ${TMP}/osv-scanner" | sha256sum -c -
+          install -m 0755 "${TMP}/osv-scanner" /usr/local/bin/osv-scanner
+
+          # --- grype: przypięty tarball + weryfikacja SHA256 (BEZ curl|sh) ---
+          curl -sSL -o "${TMP}/grype.tar.gz" \
+            "https://github.com/anchore/grype/releases/download/v${GRYPE_VERSION}/grype_${GRYPE_VERSION}_linux_amd64.tar.gz"
+          echo "${GRYPE_SHA256}  ${TMP}/grype.tar.gz" | sha256sum -c -
+          tar -xzf "${TMP}/grype.tar.gz" -C "${TMP}" grype
+          install -m 0755 "${TMP}/grype" /usr/local/bin/grype
+
+          # --- trivy: przypięty tarball + weryfikacja SHA256 (BEZ curl|sh) ---
+          curl -sSL -o "${TMP}/trivy.tar.gz" \
+            "https://github.com/aquasecurity/trivy/releases/download/v${TRIVY_VERSION}/trivy_${TRIVY_VERSION}_Linux-64bit.tar.gz"
+          echo "${TRIVY_SHA256}  ${TMP}/trivy.tar.gz" | sha256sum -c -
+          tar -xzf "${TMP}/trivy.tar.gz" -C "${TMP}" trivy
+          install -m 0755 "${TMP}/trivy" /usr/local/bin/trivy
+
+          # Smoke-check: binarki są na PATH (scan-deps.sh woła je przez command -v).
+          osv-scanner --version
+          grype version
+          trivy --version
+
+      - name: Skan CVE (bramka)
+        if: ${{ !inputs.skip_scan }}
+        run: ./bin/scan-deps.sh
+
+      # --- Build & push obrazu test-runner do GHCR (dla sharded `tests`) ---
+      # Wcześniej `prepare` budował obraz lokalnie (`docker compose build`) i
+      # sam odpalał całą suitę. Teraz obraz idzie do rejestru, żeby 12 runnerów
+      # matrixa mogło go pullnąć zamiast budować 12×. Mirror kroków z
+      # tests.yml → prepare-image.
+      - name: Set up Docker Buildx
+        if: ${{ !inputs.skip_tests && steps.bump.outputs.should_test == 'true' }}
+        uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c # v4.2.0
+        with:
+          driver: docker-container
+
+      - name: Log in to GHCR
+        if: ${{ !inputs.skip_tests && steps.bump.outputs.should_test == 'true' }}
+        uses: docker/login-action@af1e73f918a031802d376d3c8bbc3fe56130a9b0 # v4.4.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Compute image tag
+        id: tag
+        if: ${{ !inputs.skip_tests && steps.bump.outputs.should_test == 'true' }}
+        env:
+          RC_SHA: ${{ steps.bump.outputs.rc_sha }}
+        run: |
+          echo "image=${IMAGE_REPO}:sha-${RC_SHA}" >> "$GITHUB_OUTPUT"
+
+      - name: Build & push obrazu test-runner
+        if: ${{ !inputs.skip_tests && steps.bump.outputs.should_test == 'true' }}
+        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
+        with:
+          context: .
+          file: docker/bpp_base/Dockerfile
+          target: test-runner
+          push: true
+          tags: |
+            ${{ steps.tag.outputs.image }}
+          build-args: |
+            PYTHON_VERSION=${{ env.PYTHON_VERSION }}
+            DEBIAN_VERSION=${{ env.DEBIAN_VERSION }}
+            NODEJS_VERSION=${{ env.NODEJS_VERSION }}
+            # RC_SHA (nie github.sha) — busta warstwy COPY src/ + grunt, żeby
+            # obraz zawierał zbumpowane źródła RC (uv.lock = dev-owy,
+            # niezmieniony — patrz krok bump: RC nie re-lockuje).
+            GIT_SHA=${{ steps.bump.outputs.rc_sha }}
+          # Rejestrowy cache współdzielony z tests.yml (ten sam IMAGE_REPO).
+          cache-from: type=registry,ref=${{ env.IMAGE_REPO }}:cache
+          cache-to: type=registry,ref=${{ env.IMAGE_REPO }}:cache,mode=max
+
+      - name: Push gałęzi wydania
+        # Bez `if:` → biegnie gdy poprzednie kroki OK (bump + scan + build).
+        # Pushujemy TU (przed testami), bo job `build` checkoutuje release_ref;
+        # bramka „tylko na zielonych testach" jest na `build` (needs: tests),
+        # nie na samym istnieniu gałęzi. Patrz nota SEMANTYKA na górze pliku.
+        env:
+          RELEASE_REF: ${{ steps.bump.outputs.release_ref }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          git push \
+            "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" \
+            "HEAD:refs/heads/${RELEASE_REF}"
+
+  tests:
+    # Sharded suita (playwright + non-playwright + serial) pod `pytest -n auto`,
+    # rozbita duration-balanced przez pytest-split (.test_durations). Mirror
+    # joba `tests` z tests.yml — pełny opis mechaniki splitu/DB tam. Tu obraz
+    # jest już zbudowany przez `prepare` i wypchnięty do GHCR; każdy shard go
+    # pullnie zamiast budować.
+    name: Testy (sharded)
+    needs: prepare
+    # Odpalamy suitę RC gdy NIE wymuszono skip_tests ORAZ prepare zdecydował,
+    # że warto testować (should_test). should_test=false gdy drzewo RC ==
+    # zielony dev modulo bump wersji (rc1 lub rc2+) — wtedy job jest 'skipped'
+    # i bramka `build` niżej i tak przepuszcza (tests.result == 'skipped').
+    # Patrz guard w kroku `bump`.
+    if: ${{ !inputs.skip_tests && needs.prepare.outputs.should_test == 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    permissions:
+      contents: read
+      packages: read
+
+    strategy:
+      fail-fast: false
+      max-parallel: 12
+      matrix:
+        # 0-indexed; MUSI byc spojne z NUM_SHARDS nizej.
+        shard: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]
+
+    env:
+      TEST_RUNNER_IMAGE: ${{ needs.prepare.outputs.image }}
+      COMPOSE_FILES: -f docker-compose.test.yml -f docker-compose.test.ci.yml
+      NUM_SHARDS: "12"
+
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          # Testujemy RC commit (bump), nie dev tip. Bez tego .test_durations
+          # (mount) i ewentualne compose-refy byłyby ze złego drzewa. Obraz i
+          # tak bakuje źródła, ale checkout musi być spójny.
+          ref: ${{ needs.prepare.outputs.release_ref }}
+          # Ten job nie robi żadnych operacji git po checkoucie (mount
+          # .test_durations + pull obrazu przez osobny docker/login), więc
+          # nie utrwalamy tokena w .git/config (zizmor: artipacked).
+          persist-credentials: false
+
+      - name: Log in to GHCR
+        uses: docker/login-action@af1e73f918a031802d376d3c8bbc3fe56130a9b0 # v4.4.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Prepare ci-output dir
+        run: mkdir -p ci-output
+
+      - name: Pull test-runner image
+        run: docker compose $COMPOSE_FILES pull test-runner
+
+      - name: Start services
+        run: docker compose $COMPOSE_FILES up -d db redis
+
+      - name: Wait for services
+        timeout-minutes: 2
+        run: |
+          until docker compose $COMPOSE_FILES exec db \
+              pg_isready -U bpp; do
+            echo "Waiting for PostgreSQL..."
+            sleep 2
+          done
+          until docker compose $COMPOSE_FILES exec redis \
+              redis-cli ping; do
+            echo "Waiting for Redis..."
+            sleep 2
+          done
+
+      - name: Tests (shard ${{ matrix.shard }}/${{ env.NUM_SHARDS }})
+        timeout-minutes: 25
+        env:
+          SHARD_ID: ${{ matrix.shard }}
+        run: |
+          # pytest-split groups są 1-indexed; matrix shard jest 0-indexed.
+          # Map group = shard + 1.
+          GROUP=$((SHARD_ID + 1))
+          docker compose $COMPOSE_FILES run --rm \
+            test-runner uv run pytest \
+              -n auto \
+              --splits "$NUM_SHARDS" --group "$GROUP" \
+              --splitting-algorithm least_duration \
+              --durations-path .test_durations \
+              --timeout 300
+
+      - name: Cleanup
+        if: always()
+        run: docker compose $COMPOSE_FILES down -v
+
+  build:
+    name: Build obrazów RC → :staging
+    needs: [prepare, tests]
+    # BRAMKA: buduj :staging tylko gdy prepare OK oraz testy zielone LUB
+    # pominięte. `tests` = 'skipped' na dwa sposoby: input skip_tests
+    # (awaryjnie) albo guard should_test=false (drzewo RC == zielony dev modulo
+    # bump — już przetestowany na dev). Nieudane testy ('failure') → build się
+    # NIE wykonuje, więc :staging nie dostaje złego RC.
+    if: |
+      always()
+      && needs.prepare.result == 'success'
+      && (needs.tests.result == 'success' || needs.tests.result == 'skipped')
+    uses: ./.github/workflows/build-docker-images.yml
+    permissions:
+      contents: read
+    with:
+      ref: ${{ needs.prepare.outputs.release_ref }}
+      version_tag: ${{ needs.prepare.outputs.version_tag }}
+      channel: staging
+      run_trivy: ${{ !inputs.skip_scan }}
+    secrets:
+      DOCKER_PAT: ${{ secrets.DOCKER_PAT }}

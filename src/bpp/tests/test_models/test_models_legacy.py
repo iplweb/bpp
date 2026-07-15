@@ -1,7 +1,9 @@
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 
 import pytest
 from django.core.exceptions import ValidationError
+from django.db import transaction
+from django.db.utils import IntegrityError
 from model_bakery import baker
 
 from bpp.models import (
@@ -65,10 +67,12 @@ def test_jednostka(jednostka_setup):
     any_wydzial(skrot="BAR")
     j = any_jednostka(nazwa="foo", wydzial_skrot="BAR")
 
-    # Check if wydzial should be included in the string representation
-    if getattr(settings, "DJANGO_BPP_UCZELNIA_UZYWA_WYDZIALOW", True) and getattr(
-        settings, "DJANGO_BPP_SKROT_WYDZIALU_W_NAZWIE_JEDNOSTKI", True
-    ):
+    # Faza B (#438): "uzywaj wydzialow" zyje na modelu Uczelnia (default
+    # True — `j.uczelnia` jest tu swiezo utworzona przez `any_wydzial`/
+    # `any_jednostka`, wiec flaga nie byla nigdzie nadpisywana). Jedynym
+    # jeszcze-env-owym przelacznikiem formatowania jest SKROT_WYDZIALU_W_NAZWIE.
+    assert j.uczelnia.uzywaj_wydzialow is True
+    if getattr(settings, "DJANGO_BPP_SKROT_WYDZIALU_W_NAZWIE_JEDNOSTKI", True):
         assert str(j) == "foo (BAR)"
     else:
         assert str(j) == "foo"
@@ -149,32 +153,41 @@ def test_autor():
 @pytest.mark.django_db
 def test_afiliacja_na_rok():
     """Test sprawdzania afiliacji autora na rok."""
+    # Faza B (#438): ``afiliacja_na_rok`` filtruje po ``jednostka__wydzial``,
+    # które jest teraz self-FK do jednostki-korzenia. Przekazujemy węzły-
+    # korzenie (``j.wydzial`` = węzeł-lustro wydziału ``w``), nie obiekty
+    # Wydzial.
+    from bpp.models.struktura_konwersja import znajdz_lub_utworz_wezel_wydzialu
+
     w = any_wydzial()
     n = any_wydzial(skrot="w2", nazwa="w2")
     j = any_jednostka(wydzial=w)
     a = baker.make(Autor)
 
+    w_node = j.wydzial
+    n_node, _ = znajdz_lub_utworz_wezel_wydzialu(n)
+
     aj = Autor_Jednostka.objects.create(
         autor=a, jednostka=j, funkcja=baker.make(Funkcja_Autora)
     )
 
-    assert a.afiliacja_na_rok(2030, w) is None
-    assert a.afiliacja_na_rok(2030, n) is None
+    assert a.afiliacja_na_rok(2030, w_node) is None
+    assert a.afiliacja_na_rok(2030, n_node) is None
 
     aj.rozpoczal_prace = date(2012, 1, 1)
     aj.save()
 
-    assert a.afiliacja_na_rok(2030, w) is True
-    assert a.afiliacja_na_rok(2011, w) is None
-    assert a.afiliacja_na_rok(2030, n) is None
+    assert a.afiliacja_na_rok(2030, w_node) is True
+    assert a.afiliacja_na_rok(2011, w_node) is None
+    assert a.afiliacja_na_rok(2030, n_node) is None
 
     aj.zakonczyl_prace = date(2013, 12, 31)
     aj.save()
 
-    assert a.afiliacja_na_rok(2030, w) is None
-    assert a.afiliacja_na_rok(2011, w) is None
-    assert a.afiliacja_na_rok(2012, w) is True
-    assert a.afiliacja_na_rok(2030, n) is None
+    assert a.afiliacja_na_rok(2030, w_node) is None
+    assert a.afiliacja_na_rok(2011, w_node) is None
+    assert a.afiliacja_na_rok(2012, w_node) is True
+    assert a.afiliacja_na_rok(2030, n_node) is None
 
 
 @pytest.mark.django_db
@@ -186,6 +199,9 @@ def test_dodaj_jednostke():
     w2 = any_wydzial(nazwa="XX", skrot="YY")
     j = any_jednostka(wydzial=w)
     j2 = any_jednostka(wydzial=w2)
+    # Faza B (#438): korzenie zamiast obiektów Wydzial (patrz wyżej).
+    w = j.wydzial
+    w2 = j2.wydzial
 
     def ma_byc(ile=1):
         assert Autor_Jednostka.objects.count() == ile
@@ -289,6 +305,48 @@ def test_autor_jednostka(autor_jednostka_setup):
     aj.zakonczyl_prace = datetime(2011, 1, 1)
     with pytest.raises(ValidationError):
         aj.full_clean()
+
+
+@pytest.mark.django_db
+def test_autor_jednostka_dopuszcza_przyszla_date_zakonczenia():
+    """Planowanie zatrudnienia: data zakończenia w przyszłości jest dozwolona
+    (np. „pan X pracuje do zaplanowanej daty"). Zdejmujemy dawny zakaz
+    ``bez_dat_do_w_przyszlosci`` — spójne z triggerem ``aktualny``, który dla
+    przyszłej daty „do" i tak zwraca True. Egzekwowane w warstwie modelu
+    (``full_clean``) ORAZ w bazie (nowy CHECK dopuszcza przyszłe „do")."""
+    a = baker.make(Autor)
+    j = any_jednostka(nazwa="Przyszłość", skrot="Prz.")
+    przyszlosc = date.today() + timedelta(days=365)
+
+    aj = Autor_Jednostka(
+        autor=a,
+        jednostka=j,
+        rozpoczal_prace=date.today(),
+        zakonczyl_prace=przyszlosc,
+    )
+    aj.full_clean()  # warstwa formularzy/admina — nie odrzuca przyszłej daty
+    aj.save()  # baza — nowy CHECK (rozpoczal < zakonczyl) też przepuszcza
+    aj.refresh_from_db()
+    assert aj.zakonczyl_prace == przyszlosc
+
+
+@pytest.mark.django_db
+def test_autor_jednostka_baza_odrzuca_poczatek_po_koncu():
+    """Nowy, odporny na czas CHECK ``rozpoczal_prace < zakonczyl_prace`` jest
+    egzekwowany także w bazie, nawet gdy ``clean()`` zostaje ominięty (import
+    robi bezpośredni ``create``). Zastępuje dawny ``bez_dat_do_w_przyszlosci``,
+    który nie chronił przed odwróconym zakresem."""
+    a = baker.make(Autor)
+    j = any_jednostka(nazwa="Odwrócony", skrot="Odw.")
+
+    with pytest.raises(IntegrityError):
+        with transaction.atomic():
+            Autor_Jednostka.objects.create(
+                autor=a,
+                jednostka=j,
+                rozpoczal_prace=date(2013, 1, 1),
+                zakonczyl_prace=date(2011, 1, 1),
+            )
 
 
 def test_defragmentuj(autor_jednostka_setup):

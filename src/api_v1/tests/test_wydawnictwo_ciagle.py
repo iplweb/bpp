@@ -142,3 +142,66 @@ def test_rest_api_wydawnictwo_ciagle_streszczenia_eksport(
     for elem in res.json()["streszczenia"]:
         ts = client.get(elem)
         assert (TEXT_OF_SUMMARY in ts.content) or (TEKST_STRESZCZENIA in ts.content)
+
+
+@pytest.mark.django_db
+def test_rest_api_wydawnictwo_ciagle_autor_filter_autor(
+    api_client, wydawnictwo_ciagle, autor_jan_kowalski, autor_jan_nowak, jednostka
+):
+    wydawnictwo_ciagle.dodaj_autora(autor_jan_kowalski, jednostka)
+
+    res = api_client.get(
+        reverse("api_v1:wydawnictwo_ciagle_autor-list")
+        + f"?autor={autor_jan_kowalski.pk}"
+    )
+    assert res.json()["count"] == 1
+
+    res = api_client.get(
+        reverse("api_v1:wydawnictwo_ciagle_autor-list") + f"?autor={autor_jan_nowak.pk}"
+    )
+    assert res.json()["count"] == 0
+
+
+@pytest.mark.django_db
+def test_rest_api_wydawnictwo_ciagle_autor_ukrywa_nieeksportowane(
+    client, wydawnictwo_ciagle, autor_jan_kowalski, jednostka
+):
+    # Pod-zasób /wydawnictwo_ciagle_autor/ nie może ujawniać powiązań
+    # autor-jednostka dla rekordów oznaczonych nie_eksportuj_przez_api=True.
+    wydawnictwo_ciagle.dodaj_autora(autor_jan_kowalski, jednostka)
+    res = client.get(reverse("api_v1:wydawnictwo_ciagle_autor-list"))
+    assert res.json()["count"] == 1
+
+    wydawnictwo_ciagle.nie_eksportuj_przez_api = True
+    wydawnictwo_ciagle.save()
+    res = client.get(reverse("api_v1:wydawnictwo_ciagle_autor-list"))
+    assert res.json()["count"] == 0
+
+
+@pytest.mark.django_db
+def test_rest_api_wydawnictwo_ciagle_streszczenie_ukrywa_nieeksportowane(
+    client, wydawnictwo_ciagle_ze_streszczeniami
+):
+    # Pod-zasób /wydawnictwo_ciagle_streszczenie/ nie może ujawniać abstraktów
+    # rekordów wykluczonych z eksportu API.
+    res = client.get(reverse("api_v1:wydawnictwo_ciagle_streszczenie-list"))
+    assert res.json()["count"] == 2
+
+    wydawnictwo_ciagle_ze_streszczeniami.nie_eksportuj_przez_api = True
+    wydawnictwo_ciagle_ze_streszczeniami.save()
+    res = client.get(reverse("api_v1:wydawnictwo_ciagle_streszczenie-list"))
+    assert res.json()["count"] == 0
+
+
+@pytest.mark.django_db
+def test_rest_api_wydawnictwo_ciagle_autor_ukrywa_ukryty_status(
+    api_client, wydawnictwo_ciagle, autor_jan_kowalski, jednostka, uczelnia, przed_korekta
+):
+    # Pod-zasób respektuje ukryte statusy korekty (jak rekord-rodzic).
+    wydawnictwo_ciagle.dodaj_autora(autor_jan_kowalski, jednostka)
+    wydawnictwo_ciagle.status_korekty = przed_korekta
+    wydawnictwo_ciagle.save()
+
+    uczelnia.ukryj_status_korekty_set.create(status_korekty=przed_korekta)
+    res = api_client.get(reverse("api_v1:wydawnictwo_ciagle_autor-list"))
+    assert res.json()["count"] == 0

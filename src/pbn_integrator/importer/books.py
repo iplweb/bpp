@@ -1,6 +1,7 @@
 """Book import for PBN importer."""
 
 import copy
+import logging
 
 from django.db import transaction
 
@@ -10,6 +11,7 @@ from bpp.models import (
     Wydawca,
     Wydawnictwo_Zwarte,
 )
+from bpp.util import safe_tytul_html
 from pbn_api.client import PBNClient
 
 from .authors import utworz_autorow
@@ -25,6 +27,8 @@ from .helpers import (
     ustaw_jezyk_oryginalny,
 )
 from .publishers import sciagnij_i_zapisz_wydawce
+
+logger = logging.getLogger(__name__)
 
 
 @transaction.atomic
@@ -48,6 +52,17 @@ def importuj_ksiazke(
                poda kod nieobecny w słowniku ``Jezyk`` (domyślnie: polski).
     """
     pbn_publication = get_or_download_publication(mongoId, client)
+
+    # Bramka minimum-viable-record także dla KSIĄŻKI NADRZĘDNEJ rozdziału:
+    # dispatch woła importuj_ksiazke(book_id) dla rodzica, który sam bywa
+    # rekordem-widmem (versions=[]). Bez tego guardu ``current_version["object"]``
+    # niżej wywala się ``TypeError`` na ``None`` i (w ścieżce bez per-rekordowego
+    # try/except) zabija cały wsad.
+    if pbn_publication.current_version is None:
+        logger.warning(
+            "Pomijam książkę PBN %s: brak wersji bieżącej (rekord-widmo).", mongoId
+        )
+        return None
 
     ret = pbn_publication.rekord_w_bpp
 
@@ -74,7 +89,7 @@ def importuj_ksiazke(
         pbn_json.pop("mainLanguage", None), pbn_json.get("title"), domyslny_jezyk
     )
     ret = Wydawnictwo_Zwarte(
-        tytul_oryginalny=pbn_json.pop("title"),
+        tytul_oryginalny=safe_tytul_html(pbn_json.pop("title")),
         isbn=pbn_json.pop("isbn", None) or "",
         rok=rok,
         strony=pbn_json.pop("pages", None) or "",

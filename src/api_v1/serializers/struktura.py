@@ -1,6 +1,6 @@
 from rest_framework import serializers
 
-from bpp.models import Jednostka, Wydzial, Uczelnia
+from bpp.models import Jednostka, Uczelnia, Wydzial
 
 
 class UczelniaSerializer(serializers.ModelSerializer):
@@ -45,8 +45,11 @@ class WydzialSerializer(serializers.ModelSerializer):
 
 
 class JednostkaSerializer(serializers.ModelSerializer):
+    # Faza B (#438): ``wydzial`` to teraz self-FK do jednostki-korzenia, więc
+    # hiperłącze wskazuje zasób Jednostki (root), nie Wydzialu. Zasób
+    # ``/api/v1/wydzial/`` (WydzialViewSet) żyje osobno do Fazy C.
     wydzial = serializers.HyperlinkedRelatedField(
-        view_name="api_v1:wydzial-detail", read_only=True
+        view_name="api_v1:jednostka-detail", read_only=True
     )
     uczelnia = serializers.HyperlinkedRelatedField(
         view_name="api_v1:uczelnia-detail", read_only=True
@@ -62,7 +65,7 @@ class JednostkaSerializer(serializers.ModelSerializer):
             "opis",
             "slug",
             "widoczna",
-            "wchodzi_do_raportow",
+            "wchodzi_do_rankingu_autorow",
             "skupia_pracownikow",
             "wydzial",
             "uczelnia",

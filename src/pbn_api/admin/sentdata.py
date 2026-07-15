@@ -33,9 +33,10 @@ class SentDataAdmin(SiteFilteredAdminMixin, BasePBNAPIAdminNoReadonly):
         "exception",
         "pbn_uid_id",
         "typ_rekordu",
+        "fee_uploaded_okay",
     ]
-    fields = readonly_fields + ["data_sent"]
-    list_filter = ["uploaded_okay", "typ_rekordu"]
+    fields = readonly_fields + ["data_sent", "fee_sent"]
+    list_filter = ["uploaded_okay", "fee_uploaded_okay", "typ_rekordu"]
 
     list_per_page = 25
 

@@ -18,6 +18,7 @@ from pbn_client.exceptions import (
     AccessDeniedException,
     HttpException,
     NeedsPBNAuthorisationException,
+    PBNValidationError,
     PraceSerwisoweException,
     ResourceLockedException,
 )
@@ -25,6 +26,33 @@ from pbn_client.exceptions import (
 from .auth import OAuthMixin
 from .pagination import PageableResource
 from .utils import smart_content
+
+# Nagłówki, których WARTOŚCI nie wolno logować/wysyłać (uwierzytelniające lub
+# identyfikujące). Dopasowanie po nazwie, case-insensitive.
+_WRAZLIWE_NAGLOWKI = frozenset(
+    {
+        "authorization",
+        "proxy-authorization",
+        "cookie",
+        "set-cookie",
+        "x-user-token",
+        "x-app-token",
+        "x-api-key",
+    }
+)
+
+
+def _redact_headers(headers):
+    """Zredaguj wartości wrażliwych nagłówków, zachowując resztę do diagnostyki.
+
+    Zwraca kopię, w której wrażliwe nagłówki mają wartość ``"[REDACTED]"`` —
+    Content-Type, X-Request-Id itp. zostają nietknięte (uwaga reviewera #5).
+    """
+    return {
+        k: ("[REDACTED]" if k.lower() in _WRAZLIWE_NAGLOWKI else v)
+        for k, v in headers.items()
+    }
+
 
 logger = logging.getLogger(__name__)
 
@@ -171,16 +199,35 @@ class RequestsTransport(OAuthMixin, PBNClientTransport):
                 raise ResourceLockedException(
                     ret.status_code, url, smart_content(ret.content)
                 )
-            # Diagnostyka: logger.error dla widoczności w konsoli/plikach
-            # logów, rollbar.report_message dla zdalnego trackingu (oba przy
-            # każdym 4xx/5xx — szczegóły body i headers przydają się przy
-            # debugowaniu enigmatycznych odpowiedzi typu „400 Bad Request"
-            # bez body).
+
+            # Błąd walidacji PBN (details / lista z code) to błąd danych
+            # użytkownika, NIE problem techniczny — nie raportujemy do Rollbara,
+            # podnosimy dedykowany, samo-opisujący typ. Bramka: 4xx bez
+            # 401/403/423 (5xx = awaria PBN warta Rollbara; 401/403 = autoryzacja;
+            # 423 = blokada zasobu).
+            if 400 <= ret.status_code < 500 and ret.status_code not in (
+                401,
+                403,
+                423,
+            ):
+                validation_exc = PBNValidationError(
+                    ret.status_code, url, smart_content(ret.content)
+                )
+                if validation_exc.user_messages():
+                    logger.info("PBN validation rejected %s: %s", url, validation_exc)
+                    raise validation_exc
+
+            # Diagnostyka. Nagłówki mają zredagowane wartości uwierzytelniające
+            # (#5). Surowe body zostaje TYLKO w lokalnym logu on-prem — przydaje
+            # się przy „400 Bad Request" bez treści — ale NIE jest wysyłane do
+            # Rollbara, bo może zawierać dane osobowe (PESEL, dane publikacji),
+            # a Rollbar to kanał wynoszący dane poza instalację.
+            redacted_headers = _redact_headers(dict(ret.headers))
             logger.error(
                 "PBN %s on %s: headers=%r body_len=%d body=%r",
                 ret.status_code,
                 url,
-                dict(ret.headers),
+                redacted_headers,
                 len(ret.content),
                 ret.content[:4000],
             )
@@ -190,9 +237,8 @@ class RequestsTransport(OAuthMixin, PBNClientTransport):
                 extra_data={
                     "status_code": ret.status_code,
                     "url": url,
-                    "headers": dict(ret.headers),
+                    "headers": redacted_headers,
                     "body_len": len(ret.content),
-                    "body": smart_content(ret.content[:4000]),
                 },
             )
             raise HttpException(ret.status_code, url, smart_content(ret.content))

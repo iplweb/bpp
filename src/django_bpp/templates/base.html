@@ -2,6 +2,10 @@
 {% load static static cache just_single_quotes bpp_version crispy_forms_tags %}
 
 {% block extrahead %}
+    {% if ROLLBAR_CLIENT %}
+        {% include "rollbar.html" %}
+    {% endif %}
+
     {{ block.super }}
 
     {# jQuery Circle Progress is now included in the main bundle.js #}
@@ -186,7 +190,7 @@
                                 closeURL: '{% url "messages_extends:message_mark_read" message.pk %}',
                             {% endif %}
                             pk: '{{ message.pk }}',
-                            text: '{{ message.message|just_single_quotes|safe }}',
+                            text: '{{ message.message|escapejs }}',
                             sound: false
                         });
                     {% endfor %}
@@ -212,7 +216,7 @@
                                 closeURL: '{% url "messages_extends:message_mark_read" message.pk %}',
                             {% endif %}
                             pk: '{{ message.pk }}',
-                            text: '{{ message.message|just_single_quotes|safe }}',
+                            text: '{{ message.message|escapejs }}',
                             sound: false
                         });
                     {% endfor %}

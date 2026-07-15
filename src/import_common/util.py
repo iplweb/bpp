@@ -9,21 +9,52 @@ from django.utils.functional import cached_property
 
 from .exceptions import (
     BadNoOfSheetsException,
+    DecompressionBombException,
     HeaderNotFoundException,
     ImproperFileException,
 )
+
+# Limit rozmiaru pliku XLSX PO dekompresji. Realne pliki importowe (nawet
+# kilkanaście MB XLSX) rozpakowują się do najwyżej dziesiątek/setek MB XML —
+# 500 MB daje spory zapas, a bomba zip (KB → GB) go przekracza i jest
+# odrzucana przed załadowaniem do pamięci (obrona przed OOM workera importu).
+MAX_ROZMIAR_PO_DEKOMPRESJI = 500 * 1024 * 1024
+
+
+def sprawdz_bombe_dekompresji(sciezka, max_rozpakowany=MAX_ROZMIAR_PO_DEKOMPRESJI):
+    """Odrzuca XLSX-owe (ZIP) bomby dekompresyjne PRZED załadowaniem do pamięci.
+
+    XLSX to archiwum ZIP; złośliwy plik ~KB może rozpakować się do GB i zabić
+    workera importu (OOM). Sumujemy deklarowane rozmiary po dekompresji z
+    centralnego katalogu ZIP (bez faktycznego rozpakowywania) i odrzucamy plik
+    przekraczający ``max_rozpakowany``. Pliki nie-ZIP (stary .xls OLE, .csv)
+    nie są bombami tego typu → cicho przepuszczamy (inny wektor).
+    """
+    import zipfile
+
+    try:
+        with zipfile.ZipFile(sciezka) as zf:
+            rozpakowany = sum(info.file_size for info in zf.infolist())
+    except zipfile.BadZipFile:
+        return  # nie-ZIP (np. .xls / .csv) — nie ten wektor
+
+    if rozpakowany > max_rozpakowany:
+        raise DecompressionBombException(
+            f"Rozmiar pliku po dekompresji ({rozpakowany} B) przekracza "
+            f"bezpieczny limit ({max_rozpakowany} B) — plik odrzucony jako "
+            f"potencjalna bomba dekompresyjna."
+        )
 
 # openpyxl importujemy LOKALNIE (nie na poziomie modułu): ten moduł jest
 # importowany eager przez import_common.models (XLSImportFile) już przy
 # django.setup(), a openpyxl przez compat/numbers.py ciągnie całe numpy
 # (~tens MB RSS) do KAŻDEGO procesu — także web/ASGI, który nigdy nie czyta
-# xlsx. Dzięki PEP 563 (future annotations) adnotacje typu ``Worksheet`` /
-# ``openpyxl.*`` w sygnaturach poniżej są tylko łańcuchami i nie wymagają
-# openpyxl w runtime; pod TYPE_CHECKING dajemy je type-checkerom/ruff. Plik
-# xlsx otwierają tylko funkcje z lokalnym importem.
+# xlsx. Dzięki PEP 563 (future annotations) adnotacje typu ``openpyxl.*``
+# w sygnaturach poniżej są tylko łańcuchami i nie wymagają openpyxl w
+# runtime; pod TYPE_CHECKING dajemy je type-checkerom/ruff. Plik xlsx
+# otwierają tylko funkcje z lokalnym importem.
 if TYPE_CHECKING:
     import openpyxl
-    from openpyxl.worksheet.worksheet import Worksheet
 
 DEFAULT_COL_NAMES = [
     "imię",
@@ -43,8 +74,11 @@ DEFAULT_COL_NAMES = [
 DEFAULT_MIN_POINTS = 3
 
 
-def normalize_cell_header(elem: openpyxl.cell.cell.Cell):
-    s = str(elem.value).lower().split("\n")[0]
+def normalize_cell_header(value):
+    """Normalizuje SUROWĄ wartość komórki nagłówka (str/None/liczba/datetime),
+    NIE openpyxl ``Cell`` — dzięki temu ten sam kod obsługuje XLSX (openpyxl)
+    i CSV (stringi)."""
+    s = str(value).lower().split("\n")[0]
 
     s = s.replace(".", " ")
     while s.find("  ") >= 0:
@@ -54,23 +88,36 @@ def normalize_cell_header(elem: openpyxl.cell.cell.Cell):
     return s.replace(" ", "_").replace("/", "_").replace("\\", "_").replace("-", "_")
 
 
-def find_similar_row(
-    sheet: Worksheet, try_names=None, min_points=None, max_row_length=128
-):
+def find_similar_row_in_rows(rows, try_names=None, min_points=None, max_row_length=128):
+    """Rdzeń fuzzy-detekcji nagłówka nad gołymi listami wartości.
+
+    :param rows: iterowalne wierszy; każdy wiersz to lista wartości (str/None/…)
+    :return: ``(znormalizowane_nazwy, n_1based)`` pierwszego wiersza z
+        ``>= min_points`` trafień, albo ``None``.
+    """
     if try_names is None:
         try_names = DEFAULT_COL_NAMES
 
     if min_points is None:
         min_points = DEFAULT_MIN_POINTS
 
-    for n, row in enumerate(sheet.rows, start=1):
-        r = [normalize_cell_header(elem) for elem in row[:max_row_length]]
+    for n, row in enumerate(rows, start=1):
+        r = [normalize_cell_header(v) for v in row[:max_row_length]]
         points = 0
         for elem in try_names:
             if elem in r:
                 points += 1
         if points >= min_points:
             return r, n
+
+
+def find_similar_row(sheet, try_names=None, min_points=None, max_row_length=128):
+    """Wrapper zachowujący dotychczasową sygnaturę (arkusz openpyxl):
+    wyciąga ``cell.value`` z każdej komórki i deleguje do
+    ``find_similar_row_in_rows``. Istniejący callerzy (``znajdz_naglowek``,
+    ``XLSImportFile``) nie wymagają zmian."""
+    rows = ([cell.value for cell in row] for row in sheet.rows)
+    return find_similar_row_in_rows(rows, try_names, min_points, max_row_length)
 
 
 def znajdz_naglowek(
@@ -84,6 +131,7 @@ def znajdz_naglowek(
     import openpyxl
     from openpyxl.utils.exceptions import InvalidFileException
 
+    sprawdz_bombe_dekompresji(sciezka)
     try:
         f: openpyxl.workbook.workbook.Workbook = openpyxl.load_workbook(sciezka)
     except InvalidFileException as e:
@@ -136,6 +184,7 @@ class XLSImportFile:
     def xl_workbook(self) -> openpyxl.workbook.workbook.Workbook:
         import openpyxl
 
+        sprawdz_bombe_dekompresji(self.xls_path)
         return openpyxl.load_workbook(self.xls_path)
 
     @cached_property
@@ -160,19 +209,44 @@ class XLSImportFile:
             _cache[sheet] = res
         return _cache
 
+    @staticmethod
+    def _pusty(values) -> bool:
+        """Wiersz pusty = wszystkie komórki danych ``None`` albo białe znaki.
+        openpyxl ``sheet.max_row`` obejmuje puste wiersze końcowe (Excel śledzi
+        „użyty zakres" — stąd rozjazd `max_row` z realną liczbą danych), więc
+        bez tego filtra puste wiersze trafiają do pipeline'u i wywalają
+        walidację wymaganych pól (nazwisko/imię) — cały import pada na jednym
+        pustym wierszu na końcu arkusza. Zwierciadło ``CSVSource._pusty``."""
+        return not any((str(v).strip() if v is not None else "") for v in values)
+
     def count(self) -> int:
         """
-        Zwraca całkowitą liczbę wierszy do analizy
+        Zwraca całkowitą liczbę NIEPUSTYCH wierszy do analizy — spójne z
+        ``data()`` (puste wiersze pomijamy po obu stronach, inaczej pasek
+        postępu nigdy nie dobija do 100%).
         """
         total = 0
-        for _n_sheet, sheet in enumerate(self.xl_workbook.worksheets):
+        for sheet in self.xl_workbook.worksheets:
             res = self.sheet_row_cache.get(sheet)
             if res is None:
                 continue
             labels, no = res
-            total += sheet.max_row - no
+            for n_row, row in enumerate(sheet.rows):
+                if n_row < no:
+                    continue
+                if self._pusty(cell.value for cell in row[: len(labels)]):
+                    continue
+                total += 1
 
         return total
+
+    def liczba_arkuszy_z_danymi(self) -> int:
+        """Liczba arkuszy z rozpoznanym nagłówkiem (= arkuszy z danymi).
+        Importy wymuszające „jeden arkusz = jeden import" (np. import
+        pracowników) używają tego do odrzucenia plików wieloarkuszowych: dwa
+        arkusze w jednym skoroszycie to zwykle dwa rozłączne zbiory (np. dwie
+        uczelnie), których nie wolno po cichu skleić w jeden import."""
+        return len(self.sheet_row_cache)
 
     def data(self) -> Generator[dict, None, None]:
         """
@@ -199,6 +273,8 @@ class XLSImportFile:
                 if n_row < res[1]:
                     continue
                 data = [x.value for x in row[: len(colnames) - 2]]
+                if self._pusty(data):
+                    continue
                 data.append(n_sheet)
                 data.append(n_row)
 

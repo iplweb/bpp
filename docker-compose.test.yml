@@ -65,7 +65,6 @@ services:
         NODEJS_VERSION: ${NODEJS_VERSION:-20}
     volumes:
       - .:/src
-      - /var/run/docker.sock:/var/run/docker.sock
     working_dir: /src
     depends_on:
       db: { condition: service_healthy }
@@ -80,8 +79,8 @@ services:
       DJANGO_BPP_REDIS_HOST: redis
       DJANGO_BPP_REDIS_PORT: 6379
       # Wyłącz testcontainers — w CI serwisy (db, redis) są uruchamiane
-      # przez docker-compose, nie przez testcontainers. Testcontainers
-      # z wnętrza kontenera wymagałyby Docker-in-Docker. Nazwa zmiennej
+      # przez docker-compose, nie przez testcontainers. Test-runner celowo nie
+      # ma dostępu do socketa Dockera. Nazwa zmiennej
       # pochodzi z pakietu pytest-testcontainers — gdy ustawiona na
       # 1/true/yes, plugin sie wylacza i testy uzywaja zmiennych
       # DJANGO_BPP_DB_* dostarczonych przez docker-compose.

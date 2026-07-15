@@ -22,7 +22,9 @@ from ..models import (
     Jezyk,
     Rodzaj_Zrodla,
     Rzeczownik,
+    StanowiskoDydaktyczne,
     Status_Korekty,
+    StopienSluzbowy,
     Typ_KBN,
     Typ_Odpowiedzialnosci,
     Tytul,
@@ -60,7 +62,6 @@ from .wydawnictwo_zwarte import (  # noqa
     Wydawnictwo_ZwarteAdmin_Baza,
 )
 from .wydawnictwo_zwarte_autor import Wydawnictwo_Zwarte_Autor_Admin  # noqa
-from .wydzial import WydzialAdmin  # noqa
 
 
 class JezykAdmin(RestrictDeletionToAdministracjaGroupAdmin):
@@ -118,7 +119,10 @@ class Charakter_PBNAdmin(
         "opis",
         "charaktery_formalne",
         "typy_kbn",
+        "ukryty",
     ]
+    list_editable = ["ukryty"]
+    list_filter = ["ukryty"]
     readonly_fields = ["identyfikator", "wlasciwy_dla", "opis", "help_text"]
 
     def charaktery_formalne(self, rec):
@@ -141,12 +145,16 @@ class NazwaISkrotAdmin(
 
 
 admin.site.register(Tytul, NazwaISkrotAdmin)
+admin.site.register(StopienSluzbowy, NazwaISkrotAdmin)
+admin.site.register(StanowiskoDydaktyczne, NazwaISkrotAdmin)
 
 
 class Typ_KBNAdmin(
     RestrictDeletionToAdministracjaGroupAdmin, BaseBppAdminMixin, admin.ModelAdmin
 ):
-    list_display = ["nazwa", "skrot", "artykul_pbn", "charakter_pbn"]
+    list_display = ["nazwa", "skrot", "artykul_pbn", "charakter_pbn", "ukryty"]
+    list_editable = ["ukryty"]
+    list_filter = ["ukryty"]
 
 
 admin.site.register(Typ_KBN, Typ_KBNAdmin)
@@ -250,6 +258,10 @@ class BppUserAdmin(UserAdmin):
         (
             "Powiązanie z autorem",
             {"fields": ("autor",)},
+        ),
+        (
+            "Ustawienia wyświetlania",
+            {"fields": ("zwijaj_dlugie_listy_autorow",)},
         ),
         (
             "PBN API",

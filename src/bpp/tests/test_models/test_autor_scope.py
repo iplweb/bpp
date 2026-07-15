@@ -1,9 +1,12 @@
 """Zakresy wyszukiwania autora na ``AutorQuerySet`` (spec 2026-07-02).
 
-Trzy zakresy jako czytelne API managera:
+Zakresy jako czytelne API managera:
 - ``aktualnie_zatrudnieni(uczelnia)`` — aktualna jednostka w uczelni, realna
   (``skupia_pracownikow=True``),
-- ``kiedykolwiek_zwiazani(uczelnia)`` — obecnie LUB historycznie,
+- ``kiedykolwiek_zatrudnieni(uczelnia)`` — obecnie LUB historycznie, ale tylko
+  przez realną jednostkę (``skupia_pracownikow=True``); pomija jednostki obce,
+- ``kiedykolwiek_zwiazani(uczelnia)`` — obecnie LUB historycznie, dowolna
+  jednostka (także obca),
 - WSZYSCY = ``Autor.objects.all()`` (bez metody).
 """
 
@@ -15,6 +18,7 @@ from model_bakery import baker
 
 from bpp.models import Autor
 from bpp.models.autor import Autor_Jednostka
+from bpp.models.struktura_konwersja import znajdz_lub_utworz_wezel_wydzialu
 
 
 def _wpis_historyczny(autor, jednostka):
@@ -36,7 +40,7 @@ def obca_jednostka_uczelni(uczelnia, wydzial):
     return baker.make(
         "bpp.Jednostka",
         uczelnia=uczelnia,
-        wydzial=wydzial,
+        parent=znajdz_lub_utworz_wezel_wydzialu(wydzial)[0],
         skupia_pracownikow=False,
     )
 
@@ -103,12 +107,93 @@ def test_kiedykolwiek_zwiazani_bez_duplikatow(uczelnia, jednostka):
 
 
 @pytest.mark.django_db
+def test_kiedykolwiek_zatrudnieni_zwraca_aktualnie_zatrudnionego(uczelnia, jednostka):
+    autor = baker.make(Autor, aktualna_jednostka=jednostka)  # skupia_pracownikow=True
+
+    wynik = Autor.objects.kiedykolwiek_zatrudnieni(uczelnia)
+
+    assert autor in wynik
+
+
+@pytest.mark.django_db
+def test_kiedykolwiek_zatrudnieni_zwraca_historycznie_zatrudnionego(
+    uczelnia, jednostka
+):
+    """Kluczowa różnica względem ``aktualnie_zatrudnieni``: autor związany z
+    realną jednostką uczelni TYLKO w przeszłości też się łapie."""
+    autor = baker.make(Autor, aktualna_jednostka=None)
+    _wpis_historyczny(autor, jednostka)
+
+    wynik = Autor.objects.kiedykolwiek_zatrudnieni(uczelnia)
+
+    assert autor in wynik
+
+
+@pytest.mark.django_db
+def test_kiedykolwiek_zatrudnieni_pomija_aktualna_jednostke_obca(
+    uczelnia, obca_jednostka_uczelni
+):
+    """Aktualna jednostka obca (``skupia_pracownikow=False``) NIE kwalifikuje,
+    nawet gdy należy do bieżącej uczelni (lustrzana jednostka obca)."""
+    autor = baker.make(Autor, aktualna_jednostka=obca_jednostka_uczelni)
+
+    wynik = Autor.objects.kiedykolwiek_zatrudnieni(uczelnia)
+
+    assert autor not in wynik
+
+
+@pytest.mark.django_db
+def test_kiedykolwiek_zatrudnieni_pomija_tylko_historycznie_w_jednostce_obcej(
+    uczelnia, obca_jednostka_uczelni
+):
+    """Powiązanie WYŁĄCZNIE przez historyczną jednostkę obcą nie łapie autora —
+    to główny przypadek, który odróżnia ``kiedykolwiek_zatrudnieni`` od
+    ``kiedykolwiek_zwiazani`` (ta druga by go zwróciła)."""
+    autor = baker.make(Autor, aktualna_jednostka=None)
+    _wpis_historyczny(autor, obca_jednostka_uczelni)
+
+    assert autor not in Autor.objects.kiedykolwiek_zatrudnieni(uczelnia)
+    assert autor in Autor.objects.kiedykolwiek_zwiazani(uczelnia)
+
+
+@pytest.mark.django_db
+def test_kiedykolwiek_zatrudnieni_realna_jednostka_wygrywa_nad_obca(
+    uczelnia, jednostka, obca_jednostka_uczelni
+):
+    """Autor z historią i w realnej, i w obcej jednostce — łapie się przez
+    realną (bez duplikatów)."""
+    autor = baker.make(Autor, aktualna_jednostka=None)
+    _wpis_historyczny(autor, obca_jednostka_uczelni)
+    _wpis_historyczny(autor, jednostka)
+
+    wynik = list(Autor.objects.kiedykolwiek_zatrudnieni(uczelnia))
+
+    assert wynik.count(autor) == 1
+
+
+@pytest.mark.django_db
+def test_kiedykolwiek_zatrudnieni_izolacja_miedzy_uczelniami(uczelnia, jednostka):
+    """Realna jednostka historyczna INNEJ uczelni nie łapie autora."""
+    from bpp.models import Uczelnia
+
+    druga = baker.make(Uczelnia, skrot="U2", nazwa="Druga uczelnia")
+    druga_jednostka = baker.make(
+        "bpp.Jednostka", uczelnia=druga, skupia_pracownikow=True
+    )
+    autor = baker.make(Autor, aktualna_jednostka=None)
+    _wpis_historyczny(autor, druga_jednostka)
+
+    assert autor not in Autor.objects.kiedykolwiek_zatrudnieni(uczelnia)
+
+
+@pytest.mark.django_db
 def test_uczelnia_none_fail_closed(jednostka):
     """Brak ustalonej uczelni → pusty queryset (nie fail-open)."""
     baker.make(Autor, aktualna_jednostka=jednostka)
 
     assert not Autor.objects.aktualnie_zatrudnieni(None).exists()
     assert not Autor.objects.kiedykolwiek_zwiazani(None).exists()
+    assert not Autor.objects.kiedykolwiek_zatrudnieni(None).exists()
 
 
 @pytest.mark.django_db

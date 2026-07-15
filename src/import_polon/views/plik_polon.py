@@ -1,5 +1,8 @@
 from braces.views import GroupRequiredMixin
+from django.db import transaction
 from django.db.models import Q
+from django.http import HttpResponseRedirect
+from django.views.generic import DetailView
 
 from import_polon.forms import NowyImportForm, WierszImportuPlikuPolonFilterForm
 from import_polon.models import ImportPlikuPolon
@@ -9,8 +12,40 @@ from long_running.views import (
     LongRunningOperationsView,
     LongRunningResultsView,
     LongRunningRouterView,
+    LongRunningTaskCallerMixin,
     RestartLongRunningOperationView,
+    RestrictToOwnerMixin,
 )
+
+
+class ZapiszDoBazyMixin(RestrictToOwnerMixin, LongRunningTaskCallerMixin, DetailView):
+    """Domknięcie dry-runa zapisem do bazy.
+
+    Gdy import uruchomiono bez zapisu (``zapisz_zmiany_do_bazy=False``), ta akcja
+    przestawia flagę na ``True`` i resetuje obiekt do ponownego uruchomienia —
+    „taki reset, ALE tym razem modyfikuj bazę". GET pokazuje stronę
+    potwierdzenia; dopiero POST modyfikuje bazę (prefetch/robot nie wywoła
+    zapisu). ``mark_reset`` czyści stan i kasuje wiersze-dzieci; ponowne
+    ``perform()`` — tym razem z zapisem — kolejkuje ``task_on_commit``.
+    """
+
+    template_name = "import_polon/potwierdz_zapis_do_bazy.html"
+
+    @transaction.atomic
+    def post(self, *args, **kwargs):
+        # select_for_update: blokuje wiersz na czas transakcji, więc dwa
+        # równoległe POST-y nie przejdą obu przez guard i nie odpalą podwójnego
+        # zapisu — drugi czeka, po commicie widzi już zapisz_zmiany_do_bazy=True.
+        self.object = self.get_object(self.get_queryset().select_for_update())
+        # Guard: domknąć zapisem można tylko dry-run zakończony POMYŚLNIE —
+        # użytkownik musiał zobaczyć podgląd. Odsiewa import w trakcie, zakończony
+        # błędem oraz już zapisany do bazy (ochrona przed podwójnym zapisem).
+        if self.object.finished_successfully and not self.object.zapisz_zmiany_do_bazy:
+            # Flaga trafi do bazy przez pełny save() w mark_reset() poniżej.
+            self.object.zapisz_zmiany_do_bazy = True
+            self.object.mark_reset()
+            self.task_on_commit(pk=self.object.pk)
+        return HttpResponseRedirect("..")
 
 
 class BaseImportPlikuPolonMixin(GroupRequiredMixin):
@@ -46,6 +81,10 @@ class ImportPolonDetailsView(BaseImportPlikuPolonMixin, LongRunningDetailsView):
 
 
 class RestartImportView(BaseImportPlikuPolonMixin, RestartLongRunningOperationView):
+    pass
+
+
+class ZapiszDoBazyImportView(BaseImportPlikuPolonMixin, ZapiszDoBazyMixin):
     pass
 
 
@@ -118,8 +157,9 @@ class ImportPolonResultsView(BaseImportPlikuPolonMixin, LongRunningResultsView):
         )
 
         # Autorzy z dyscyplinami dla roku importu, których nie było w pliku.
-        # Multi-hosted: zawężone do aktualnie zatrudnionych w uczelni importu
-        # (patrz ImportPlikuPolon.autorzy_niezmatchowani) — bez tego raport
+        # Multi-hosted: zawężone do autorów związanych z uczelnią importu przez
+        # realną jednostkę (obecnie lub historycznie; jednostki obce pomijane —
+        # patrz ImportPlikuPolon.autorzy_niezmatchowani) — bez tego raport
         # wyciekałby autorów innych uczelni współistniejących w bazie.
         import_object = ImportPlikuPolon.objects.get(pk=self.kwargs["pk"])
         unmatched_autor_dyscyplina = import_object.autorzy_niezmatchowani()

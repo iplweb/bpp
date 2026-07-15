@@ -366,12 +366,14 @@ class Zgloszenie_Publikacji_Zalacznik(models.Model):
 
 
 class Obslugujacy_Zgloszenia_WydzialowManager(models.Manager):
-    def emaile_dla_wydzialu(self, wydzial):
-        # Jeżeli jest ktokolwiek przypisany do danego wydziału, to zwróć go:
-        if self.filter(wydzial=wydzial).exists():
+    def emaile_dla_obslugujacego(self, jednostka_root):
+        # Faza B (#438) II-2: ``wydzial`` to teraz FK→Jednostka (korzeń
+        # drzewa). Jeżeli jest ktokolwiek przypisany do tego korzenia, zwróć
+        # jego maile.
+        if self.filter(wydzial=jednostka_root).exists():
             ret = []
             for email in (
-                self.filter(wydzial=wydzial)
+                self.filter(wydzial=jednostka_root)
                 .values_list("user__email", flat=True)
                 .distinct()
             ):
@@ -391,7 +393,9 @@ class Obslugujacy_Zgloszenia_Wydzialow(models.Model):
         # [user, wydzial] (user jest kolumną wiodącą).
         db_index=False,
     )
-    wydzial = models.ForeignKey("bpp.Wydzial", models.CASCADE, verbose_name="Wydział")
+    # Faza B (#438) II-2: FK→Jednostka (korzeń drzewa, mirror dawnego
+    # Wydzial). Nazwa pola i ``verbose_name`` zostają — patrz brief II-2.
+    wydzial = models.ForeignKey("bpp.Jednostka", models.CASCADE, verbose_name="Wydział")
 
     objects = Obslugujacy_Zgloszenia_WydzialowManager()
 

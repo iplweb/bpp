@@ -4,6 +4,7 @@ Shared between ``test_dspace_provider*.py`` modules. Not a pytest module
 (leading underscore + no ``test_`` prefix) — pytest won't collect it.
 """
 
+import json
 from unittest.mock import MagicMock
 
 SAMPLE_UUID = "276895f0-2d8a-4d99-8e45-8c9bc891da24"
@@ -128,6 +129,11 @@ def _mock_response(json_data, status_code=200):
     resp = MagicMock()
     resp.json.return_value = json_data
     resp.status_code = status_code
+    resp.headers = {}
+    # ``safe_get`` streamuje ciało i limituje rozmiar — dostarcz je jako
+    # ``iter_content`` (treść nieistotna dla asercji, liczy się ``.json()``).
+    body = json.dumps(json_data).encode("utf-8")
+    resp.iter_content = lambda chunk_size=1: iter([body])
     resp.raise_for_status = MagicMock()
     if status_code >= 400:
         resp.raise_for_status.side_effect = __import__(

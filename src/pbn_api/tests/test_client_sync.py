@@ -21,7 +21,7 @@ For helper/GUI tests, see test_client_helpers.py
 """
 
 import time
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -48,6 +48,7 @@ from pbn_api.exceptions import (
     StatementsResendFailedException,
 )
 from pbn_api.models import Publication, SentData
+from pbn_client.exceptions import PBNValidationError
 
 
 def _patch_intended_statements(monkeypatch, statements):
@@ -312,7 +313,9 @@ def test_sync_publication_z_statements_idzie_do_v1_publications(
     pbn_client.sync_publication(pbn_wydawnictwo_zwarte_z_autorem_z_dyscyplina)
 
     assert PBN_POST_PUBLICATIONS_URL in pbn_client.transport.input_values
-    assert PBN_POST_PUBLICATION_NO_STATEMENTS_URL not in pbn_client.transport.input_values
+    assert (
+        PBN_POST_PUBLICATION_NO_STATEMENTS_URL not in pbn_client.transport.input_values
+    )
     # Body to surowy dict z adaptera (NIE lista) — z kluczem statements.
     body = pbn_client.transport.input_values[PBN_POST_PUBLICATIONS_URL]["body"]
     assert isinstance(body, dict)
@@ -928,3 +931,69 @@ def test_diff_statements_empty_sets(pbn_client):
     only_pbn, only_intended = pbn_client._diff_statements([], [])
     assert only_pbn == set()
     assert only_intended == set()
+
+
+# ============================================================
+# Retry loops: PBNValidationError przerywa natychmiast (bez ponawiania)
+# ============================================================
+
+
+@pytest.mark.django_db
+def test_post_statements_with_retry_reraises_validation_immediately(pbn_client, mocker):
+    # Walidacja się nie naprawi przez retry — musi przerwać natychmiast.
+    exc = PBNValidationError(
+        400, "/api/v2/institution-profile/statements", '{"details":{"x":"y"}}'
+    )
+    mocker.patch.object(
+        pbn_client, "_build_post_statements_payload", return_value={"stmt": 1}
+    )
+    post = mocker.patch.object(
+        pbn_client, "post_discipline_statements", side_effect=exc
+    )
+    report = mocker.patch.object(pbn_client, "_report_statements_failure_and_raise")
+
+    with pytest.raises(PBNValidationError):
+        pbn_client._post_statements_with_retry(
+            rec=MagicMock(), objectId="123", publication_pk=1
+        )
+
+    assert post.call_count == 1  # brak ponawiania
+    report.assert_not_called()  # nie raportuje do Rollbara
+
+
+@pytest.mark.django_db
+def test_delete_statements_batch_reraises_validation_immediately(pbn_client, mocker):
+    exc = PBNValidationError(
+        400, "/api/v2/institution-profile/statements", '{"details":{"x":"y"}}'
+    )
+    delete = mocker.patch.object(
+        pbn_client, "delete_all_publication_statements", side_effect=exc
+    )
+    report = mocker.patch.object(pbn_client, "_report_statements_failure_and_raise")
+
+    with pytest.raises(PBNValidationError):
+        pbn_client._delete_statements_batch("123", publication_pk=1)
+
+    assert delete.call_count == 1
+    report.assert_not_called()
+
+
+@pytest.mark.django_db
+def test_delete_statements_selective_reraises_validation_immediately(
+    pbn_client, mocker
+):
+    exc = PBNValidationError(
+        400, "/api/v2/institution-profile/statements", '{"details":{"x":"y"}}'
+    )
+    delete = mocker.patch.object(
+        pbn_client, "delete_publication_statement", side_effect=exc
+    )
+    report = mocker.patch.object(pbn_client, "_report_statements_failure_and_raise")
+
+    with pytest.raises(PBNValidationError):
+        pbn_client._delete_statements_selective(
+            "123", [{"personId": "p1", "type": "AUTHOR"}], publication_pk=1
+        )
+
+    assert delete.call_count == 1  # brak ponawiania
+    report.assert_not_called()

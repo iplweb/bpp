@@ -7,8 +7,12 @@ from api_v1.serializers.wydawnictwo_ciagle import (
     Wydawnictwo_Ciagle_Zewnetrzna_Baza_DanychSerializer,
     Wydawnictwo_CiagleSerializer,
 )
-from api_v1.viewsets.common import StreszczeniaPagination, UkryjStatusyKorektyMixin
-
+from api_v1.viewsets.common import (
+    StreszczeniaPagination,
+    UkryjNieEksportowaneMixin,
+    UkryjStatusyKorektyMixin,
+    UkryjStatusyKorektyRekorduMixin,
+)
 from bpp.models import (
     Wydawnictwo_Ciagle,
     Wydawnictwo_Ciagle_Autor,
@@ -17,9 +21,20 @@ from bpp.models import (
 )
 
 
-class Wydawnictwo_Ciagle_AutorViewSet(viewsets.ReadOnlyModelViewSet):
+class Wydawnictwo_Ciagle_AutorFilterSet(django_filters.rest_framework.FilterSet):
+    class Meta:
+        fields = ["autor"]
+        model = Wydawnictwo_Ciagle_Autor
+
+
+class Wydawnictwo_Ciagle_AutorViewSet(
+    UkryjNieEksportowaneMixin,
+    UkryjStatusyKorektyRekorduMixin,
+    viewsets.ReadOnlyModelViewSet,
+):
     queryset = Wydawnictwo_Ciagle_Autor.objects.all()
     serializer_class = Wydawnictwo_Ciagle_AutorSerializer
+    filterset_class = Wydawnictwo_Ciagle_AutorFilterSet
 
 
 class Wydawnictwo_CiagleFilterSet(django_filters.rest_framework.FilterSet):
@@ -51,12 +66,20 @@ class Wydawnictwo_CiagleViewSet(
     filterset_class = Wydawnictwo_CiagleFilterSet
 
 
-class Wydawnictwo_Ciagle_Zewnetrzna_Baza_DanychViewSet(viewsets.ReadOnlyModelViewSet):
+class Wydawnictwo_Ciagle_Zewnetrzna_Baza_DanychViewSet(
+    UkryjNieEksportowaneMixin,
+    UkryjStatusyKorektyRekorduMixin,
+    viewsets.ReadOnlyModelViewSet,
+):
     queryset = Wydawnictwo_Ciagle_Zewnetrzna_Baza_Danych.objects.all()
     serializer_class = Wydawnictwo_Ciagle_Zewnetrzna_Baza_DanychSerializer
 
 
-class Wydawnictwo_Ciagle_StreszczenieViewSet(viewsets.ReadOnlyModelViewSet):
+class Wydawnictwo_Ciagle_StreszczenieViewSet(
+    UkryjNieEksportowaneMixin,
+    UkryjStatusyKorektyRekorduMixin,
+    viewsets.ReadOnlyModelViewSet,
+):
     queryset = Wydawnictwo_Ciagle_Streszczenie.objects.all()
     serializer_class = Wydawnictwo_Ciagle_StreszczenieSerializer
     pagination_class = StreszczeniaPagination

@@ -113,6 +113,24 @@
         {# Centralized event handlers: data-confirm, data-submit-on-change, data-open-url #}
         <script src="{% static 'bpp/js/event-handlers.js' %}"></script>
     {% endcompress %}
+
+    {# DataTables: polski język + lengthMenu ustawiamy SYNCHRONICZNIE tu, zaraz #}
+    {# po bundlu (który definiuje $.fn.dataTable), a NIE w $(document).ready na #}
+    {# dole <body>. Inline-inity DataTables w blokach content rejestrują swój #}
+    {# $(document).ready WCZEŚNIEJ (są wyżej w DOM) i odpalały się przed #}
+    {# ready-em z bare.html → tabela startowała z angielskim „Search". Ustawienie #}
+    {# defaultu synchronicznie gwarantuje, że każdy późniejszy .DataTable() go #}
+    {# widzi. #}
+    <script>
+        if (window.jQuery && jQuery.fn.dataTable && jQuery.fn.dataTable.defaults) {
+            jQuery.extend(true, jQuery.fn.dataTable.defaults, {
+                "language": {
+                    "url": "{% static "bpp/js/Polish.json" %}"
+                },
+                "lengthMenu": [[10, 25, 50, 100, -1], [10, 25, 50, 100, "wszystkie"]]
+            });
+        }
+    </script>
     {% block extrahead_js %}{% endblock %}
 
     {% block extrahead %}
@@ -138,15 +156,10 @@
             $.fn.select2.defaults.set('theme', 'foundation');
         }
 
-        // Configure DataTables defaults
-        if ($.fn.dataTable && $.fn.dataTable.defaults) {
-            $.extend(true, $.fn.dataTable.defaults, {
-                "language": {
-                    "url": "{% static "bpp/js/Polish.json" %}"
-                },
-                "lengthMenu": [[10, 25, 50, 100, -1], [10, 25, 50, 100, "wszystkie"]]
-            });
-        }
+        // DataTables defaults (polski język + lengthMenu) są ustawiane
+        // SYNCHRONICZNIE w <head>, zaraz po bundlu — patrz komentarz tam.
+        // Tu ich NIE ustawiamy: ready na dole <body> przegrywał wyścig z
+        // inline-initami DataTables w blokach content (startowały z „Search").
 
         // Show body after styles are loaded (FOUC prevention)
         $('body').removeClass('fouc-hidden').addClass('fouc-visible');

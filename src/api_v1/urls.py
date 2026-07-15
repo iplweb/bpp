@@ -1,4 +1,4 @@
-from django.urls import include
+from django.urls import include, path
 from django.urls import re_path as url
 from rest_framework import routers
 
@@ -29,6 +29,7 @@ from api_v1.viewsets.system import (
     Seria_WydawniczaViewSet,
     Typ_KBNViewSet,
 )
+from api_v1.viewsets.szukaj import SzukajViewSet
 from api_v1.viewsets.wydawca import Poziom_WydawcyViewSet, WydawcaViewSet
 from api_v1.viewsets.wydawnictwo_ciagle import (
     Wydawnictwo_Ciagle_AutorViewSet,
@@ -41,7 +42,13 @@ from api_v1.viewsets.wydawnictwo_zwarte import (
     Wydawnictwo_Zwarte_StreszczenieViewSet,
     Wydawnictwo_ZwarteViewSet,
 )
+from api_v1.viewsets.zapytanie import (
+    ZapytanieAutorViewSet,
+    ZapytanieAutorzyViewSet,
+    ZapytanieRekordViewSet,
+)
 from api_v1.viewsets.zrodlo import Rodzaj_ZrodlaViewSet, ZrodloViewSet
+from oauth_mcp.views_whoami import WhoAmIView
 
 
 class CustomRouter(routers.DefaultRouter):
@@ -100,6 +107,16 @@ router.register(r"jednostka", JednostkaViewSet)
 router.register(r"wydzial", WydzialViewSet)
 router.register(r"uczelnia", UczelniaViewSet)
 
+router.register(r"szukaj", SzukajViewSet, basename="szukaj")
+
+router.register(
+    r"zapytanie/rekord", ZapytanieRekordViewSet, basename="zapytanie_rekord"
+)
+router.register(r"zapytanie/autor", ZapytanieAutorViewSet, basename="zapytanie_autor")
+router.register(
+    r"zapytanie/autorzy", ZapytanieAutorzyViewSet, basename="zapytanie_autorzy"
+)
+
 router.register(r"autor", AutorViewSet)
 router.register(r"funkcja_autora", Funkcja_AutoraViewSet)
 router.register(r"tytul", TytulViewSet)
@@ -135,5 +152,6 @@ router.register(
 #
 
 urlpatterns = [
+    path("whoami/", WhoAmIView.as_view(), name="whoami"),
     url(r"^", include(router.urls)),
 ]

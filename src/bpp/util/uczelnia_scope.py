@@ -31,11 +31,49 @@ def scope_rekord_do_uczelni(qs, uczelnia):
     return qs.filter(autorzy__jednostka__uczelnia=uczelnia).distinct()
 
 
+def scope_autor_do_uczelni(qs, uczelnia):
+    """Zawęź queryset ``Autor`` do uczelni oglądającego (multi-hosted).
+
+    Atrybucja jak ``AutorQuerySet.kiedykolwiek_zwiazani``: autor należy do
+    uczelni, gdy jego aktualna LUB którakolwiek historyczna jednostka
+    (``autor_jednostka``) należy do tej uczelni.
+
+    No-op (zwraca ten sam qs) gdy brak uczelni (brak mapowania Site→Uczelnia)
+    albo gdy w systemie jest dokładnie jedna uczelnia — spójnie z resztą API
+    (żaden filtr izolacji nie „gryzie" w single-install).
+    """
+    if uczelnia is None or tylko_jedna_uczelnia():
+        return qs
+    from django.db.models import Q
+
+    return qs.filter(
+        Q(aktualna_jednostka__uczelnia=uczelnia)
+        | Q(autor_jednostka__jednostka__uczelnia=uczelnia)
+    ).distinct()
+
+
+def scope_autorzy_do_uczelni(qs, uczelnia):
+    """Zawęź queryset ``Autorzy`` (mat-view autorstwa) do uczelni oglądającego.
+
+    Atrybucja przez jednostkę zapisaną na autorstwie (``jednostka__uczelnia``).
+    Autorstwa bez jednostki nie dają się przypisać do żadnej uczelni → w
+    trybie multi-host wypadają (fail-closed: lepiej ukryć nieprzypisane niż
+    wyciekać cudzą uczelnię).
+
+    No-op (zwraca ten sam qs) gdy brak uczelni albo gdy w systemie jest
+    dokładnie jedna uczelnia.
+    """
+    if uczelnia is None or tylko_jedna_uczelnia():
+        return qs
+    return qs.filter(jednostka__uczelnia=uczelnia)
+
+
 def scope_jednostki_do_uczelni(qs, uczelnia):
     """Zawęź queryset ``Jednostka`` do uczelni oglądającego (multi-hosted).
 
     Atrybucja przez bezpośredni FK ``Jednostka.uczelnia``. Constraint w
-    ``Jednostka_Wydzial.clean()`` wymusza ``wydzial.uczelnia == jednostka.uczelnia``,
+    ``Jednostka.uczelnia`` jest źródłem prawdy atrybucji; historyczna metryczka
+    ``Jednostka_Rodzic`` nie waliduje już równości uczelni (federacja, #438),
     więc dla jednostek z wydziałem wynik jest tożsamy z filtrem po wydziale;
     jednostki bez wydziału, należące do uczelni, pozostają widoczne.
 

@@ -59,12 +59,16 @@ def test_create_jednostki_per_wydzial(tmp_manifest_path, rng):
         disable_progress=True,
     )
 
+    from bpp.models.struktura_konwersja import znajdz_lub_utworz_wezel_wydzialu
+
     assert len(jednostki) == 6
     assert Jednostka.objects.filter(pk__in=[j.pk for j in jednostki]).count() == 6
-    wydzial_pks = {w.pk for w in wydzialy}
+    # Faza B (#438): ``wydzial`` (denorm) = węzeł-lustro wydziału (root
+    # Jednostka), więc porównujemy do pk węzłów-luster, nie Wydzialów.
+    wezel_pks = {znajdz_lub_utworz_wezel_wydzialu(w)[0].pk for w in wydzialy}
     for j in jednostki:
         assert j.uczelnia_id == uczelnia.pk
-        assert j.wydzial_id in wydzial_pks
+        assert j.wydzial_id in wezel_pks
         # marker + realistyczny prefiks jednostki, NIE "Jednostka N"
         assert j.nazwa.startswith("Demo — ")
         from bpp.demo_data.themes.base import SHARED_JEDNOSTKA_PREFIKSY

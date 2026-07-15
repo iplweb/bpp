@@ -2,9 +2,11 @@
 Struktura uczelni.
 """
 
+from collections import defaultdict
 from datetime import date, timedelta
 
 from autoslug import AutoSlugField
+from denorm import denormalized, depend_on_fields, depend_on_related
 from django.conf import settings
 from django.contrib.postgres.search import SearchVectorField as VectorField
 from django.core.exceptions import ValidationError
@@ -12,7 +14,7 @@ from django.db import models
 from django.db.models import CASCADE
 from django.db.models.functions import Coalesce
 from django.db.models.query_utils import Q
-from django.db.models.signals import post_save
+from django.db.models.signals import post_delete, post_save
 from django.dispatch import receiver
 from django.urls.base import reverse
 from django.utils import timezone
@@ -34,12 +36,10 @@ SORTUJ_ALFABETYCZNIE = ("nazwa",)
 
 
 class JednostkaManager(FulltextSearchMixin, TreeManager):
-    def create(self, *args, **kw):
-        if "wydzial" in kw and not ("uczelnia" in kw or "uczelnia_id" in kw):
-            # Kompatybilność wsteczna, z czasów, gdy nie było metryczki historycznej
-            # dla obecności jednostki w wydziałach
-            kw["uczelnia"] = kw["wydzial"].uczelnia
-        return super().create(*args, **kw)
+    # Faza B (#438): usunięto kompat-kwarg ``wydzial=`` z ``create()`` —
+    # ``wydzial`` jest teraz zdenormalizowanym self-FK (denorm nadpisuje przy
+    # zapisie), więc nie da się (i nie należy) go podać ręcznie. Wołający
+    # ustawiają ``parent`` (drzewo) i ``uczelnia`` wprost.
 
     def get_default_ordering(self, uczelnia=None):
         # Multi-hosted: odczyt PREFERENCJI sortowania. Bez przekazanej uczelni
@@ -100,14 +100,36 @@ class Jednostka(ModelZAdnotacjami, ModelZPBN_ID, ModelZPBN_UID, MPTTModel):
         # default=lambda: Uczelnia.objects.first()
     )
 
-    wydzial = models.ForeignKey(
-        Wydzial, CASCADE, verbose_name="Wydział", blank=True, null=True
+    @denormalized(
+        models.ForeignKey,
+        "self",
+        verbose_name="Wydział",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="+",
     )
+    @depend_on_fields("parent")
+    @depend_on_related("self", "parent", only=("wydzial_id",))
+    def wydzial(self):
+        # Faza B (#438): zdenormalizowany wskaźnik KORZENIA drzewa MPTT.
+        # Root (parent IS NULL) → NULL; potomek → korzeń swojego poddrzewa.
+        # Kaskada tranzytywna (denorm) przelicza poddrzewo przy re-parencie.
+        if self.parent_id is None:
+            return None
+        return self.parent.wydzial or self.parent
+
     aktualna = models.BooleanField(
-        default=False,
+        default=True,
         help_text="""Jeżeli dana jednostka wchodzi w struktury wydziału
     (czyli jej obecność w strukturach wydziału nie została zakończona z określoną datą), to pole to będzie miało
     wartość 'PRAWDA'.""",
+    )
+    aktualna_override = models.BooleanField(
+        "Ręczne nadpisanie «aktualna»",
+        null=True,
+        blank=True,
+        help_text="Puste = licz z historii; ustawione = trzymaj tę wartość",
     )
 
     nazwa = models.CharField(max_length=512, unique=True)
@@ -120,11 +142,12 @@ class Jednostka(ModelZAdnotacjami, ModelZPBN_ID, ModelZPBN_UID, MPTTModel):
     slug = AutoSlugField(populate_from="nazwa", max_length=512, unique=True)
 
     widoczna = models.BooleanField(default=True, db_index=True)
-    wchodzi_do_raportow = models.BooleanField(
-        "Wchodzi do raportów",
+    wchodzi_do_rankingu_autorow = models.BooleanField(
+        "Wlicza prace jednostki do rankingu autorów",
         default=True,
         db_index=True,
-        help_text="Jeżeli odznaczone, prace z jednostki nie sumują się w rankingu autorów.",
+        help_text="Jeżeli odznaczone, prace z tej jednostki NIE sumują się w rankingu "
+        "autorów.",
     )
     email = models.EmailField("E-mail", max_length=128, blank=True, default="")
     www = models.URLField("WWW", max_length=1024, blank=True, default="")
@@ -152,17 +175,10 @@ class Jednostka(ModelZAdnotacjami, ModelZPBN_ID, ModelZPBN_UID, MPTTModel):
         systemów informatycznych""",
     )
 
-    class RODZAJ_JEDNOSTKI(models.TextChoices):
-        NORMALNA = "normalna", "zwyczajna jednostka (katedra, zakład, pracownia, itp.)"
-        KOLO_NAUKOWE = "kolo_naukowe", "koło naukowe"
-
-    rodzaj_jednostki = models.CharField(
-        max_length=20,
-        db_index=True,
-        default=RODZAJ_JEDNOSTKI.NORMALNA,
-        choices=RODZAJ_JEDNOSTKI.choices,
-    )
-
+    # Faza B (#438), III-1: stary CharField ``rodzaj_jednostki`` +
+    # ``RODZAJ_JEDNOSTKI`` (TextChoices) usunięte — jedyne źródło prawdy to
+    # FK ``rodzaj`` (→ ``RodzajJednostki``, słownik per-tenant edytowalny w
+    # adminie). Migracja 0461 usuwa kolumnę po ostatnim re-backfillu.
     rodzaj = models.ForeignKey(
         "bpp.RodzajJednostki",
         null=True,
@@ -180,6 +196,18 @@ class Jednostka(ModelZAdnotacjami, ModelZPBN_ID, ModelZPBN_UID, MPTTModel):
         max_length=250, blank=True, null=True
     )
     legacy_wydzial_id = models.IntegerField(null=True, blank=True, db_index=True)
+    # Faza B (#438): stabilny marker TOŻSAMOŚCI KONWERSJI. Rozdziela trzy
+    # niezależne pojęcia, dotąd sklejone w nazwie rodzaju "Wydział":
+    #  - ``legacy_wydzial_id`` — KTÓRY stary Wydzial reprezentuje ten węzeł
+    #    (mają OBA: syntetyczne lustro I promowana 1-jednostkowa) → mapowanie FK,
+    #  - ``jest_lustrem`` — czy to SYNTETYCZNY węzeł-lustro (True), czy REALNA
+    #    jednostka promowana do roota (False) → logika kasowania/widoczności/
+    #    historii lustra filtruje PO TYM (nie po edytowalnej nazwie rodzaju),
+    #  - ``rodzaj.pokazuj_strukture_podjednostek`` — czy wyświetlać stronę w
+    #    stylu wydziału (edytowalna preferencja UI, osobna sprawa).
+    jest_lustrem = models.BooleanField(
+        "Syntetyczny węzeł-lustro wydziału", default=False
+    )
 
     search = VectorField(blank=True, null=True)
 
@@ -202,21 +230,111 @@ class Jednostka(ModelZAdnotacjami, ModelZPBN_ID, ModelZPBN_UID, MPTTModel):
     def __str__(self):
         ret = self.nazwa
 
-        if (
-            settings.DJANGO_BPP_SKROT_WYDZIALU_W_NAZWIE_JEDNOSTKI is False
-            or settings.DJANGO_BPP_UCZELNIA_UZYWA_WYDZIALOW is False
-        ):
+        if settings.DJANGO_BPP_SKROT_WYDZIALU_W_NAZWIE_JEDNOSTKI is False:
             return ret
+
+        # Faza B (#438): flaga „używaj wydziałów" żyje teraz WYŁĄCZNIE na
+        # modelu Uczelnia (bez globalnego env). ``self.uczelnia`` to FK do
+        # obiektu, który każda Jednostka MUSI mieć (pole wymagane) — w
+        # praktyce to .get() Django (cache'owany przez cacheops dla
+        # ``bpp.uczelnia`` na produkcji; ten sam koszt ponosi już
+        # ``self.wydzial`` niżej). Odczyt jest DEFENSYWNY: ``__str__`` bywa
+        # wołany z audytu ``post_delete`` (easyaudit ``object_repr``), gdy
+        # Uczelnia jest już skasowana w kaskadzie — wtedy FK rzuca
+        # ``DoesNotExist`` i repr NIE może wybuchać (traktujemy brak uczelni
+        # jak „pokaż wydział"). Bez ``uczelnia_id`` (niezapisany obiekt w
+        # pamięci) też pomijamy sprawdzenie.
+        if self.uczelnia_id is not None:
+            try:
+                if self.uczelnia.uzywaj_wydzialow is False:
+                    return ret
+            except Uczelnia.DoesNotExist:
+                pass
 
         try:
             wydzial = self.wydzial
-        except (ValueError, TypeError, Wydzial.DoesNotExist):  # TODO catch-all
+        except (ValueError, TypeError, Jednostka.DoesNotExist):
+            # Faza B (#438): ``wydzial`` to teraz self-FK -> Jednostka, więc
+            # dangling/deferred dostęp rzuca Jednostka.DoesNotExist (dawny
+            # guard na Wydzial.DoesNotExist był martwy po retargecie).
             wydzial = None
 
         if wydzial is not None:
-            ret += f" ({self.wydzial.skrot})"
+            # Używamy lokalnej ``wydzial`` (przechwyconej pod try/except powyżej),
+            # NIE ``self.wydzial`` — inaczej ponowny dostęp do FK omija defensywny
+            # guard, który ma chronić repr wołany z audytu post_delete.
+            ret += f" ({wydzial.skrot})"
 
         return ret
+
+    def przyjmuje_afiliacje(self):
+        """Czy autor pracy może afiliować (``afiliuje=True``) do tej jednostki.
+
+        Zwraca ``False`` dla jednostek obcych (``skupia_pracownikow=False``)
+        oraz jednostek, których rodzaj zabrania afiliacji
+        (``RodzajJednostki.autor_moze_afiliowac=False``, np. węzeł-lustro
+        „Wydział" z #438). Instancyjny odpowiednik warunków sprawdzanych w
+        ``BazaModeluOdpowiedzialnosciAutorow._waliduj_afiliacje`` — dzięki temu
+        ścieżki tworzące przypisania (np. importer publikacji) mogą sprawdzić
+        legalność afiliacji ZANIM zawołają ``full_clean``.
+        """
+        if self.skupia_pracownikow is False:
+            return False
+        if self.rodzaj_id is not None and self.rodzaj.autor_moze_afiliowac is False:
+            return False
+        return True
+
+    def przeszkody_w_kasowaniu(self):
+        """Lista ``(etykieta, liczba)`` niepustych odwrotnych relacji FK
+        wskazujących na tę jednostkę z REALNYCH, zarządzanych tabel.
+
+        Pusta lista ⇔ jednostkę można bezpiecznie skasować (nic się przez nią
+        nie kaskaduje). Zasada „ściśle zero": każda referencja z tabeli blokuje
+        (podjednostki ``children``, ``Autor_Jednostka``, własna historia
+        ``Jednostka_Rodzic`` itd.). Świadomie POMIJANE:
+
+        * modele NIEzarządzane w Django (``managed=False``) — u nas to warstwa
+          odczytowa cache (widoki SQL ``AutorzyView``, ``Nowe_Sumy_View`` oraz
+          alias-y na tabele bazowe ``Cache_Punktacja_Autora_*``). Nie są
+          samodzielnym źródłem danych blokujących kasowanie (realne wiersze
+          publikacji i tak trzymają je zarządzane tabele ``Wydawnictwo_*_Autor``
+          / ``Cache_Punktacja_Autora``), a liczenie odwrotnego O2O do widoku
+          przez akcesor rzucałoby ``DoesNotExist``.
+
+        KLUCZOWE: iterujemy po ``get_candidate_relations_to_delete`` — DOKŁADNIE
+        tym samym zbiorze relacji, który widzi kolektor kasowania Django
+        (``include_hidden=True``). ``_meta.related_objects`` POMIJA ukryte
+        relacje (``related_name="+"``, np. ``Import_Dyscyplin_Row.wydzial``),
+        które kolektor mimo to kaskaduje — użycie ich pominęłoby realne
+        referencje i pozwoliło na ciche SET_NULL/CASCADE. Kandydaci to tylko
+        FK/O2O (bez M2M), więc znika też potrzeba osobnego skipu M2M.
+
+        Relacje generyczne (reversion/easyaudit/cacheops) nie mają tu
+        ``GenericRelation``, więc nie są kandydatami do kasowania i nie
+        blokują — log audytu nie powinien wstrzymywać kasowania pustej
+        jednostki.
+        """
+        from django.db.models.deletion import get_candidate_relations_to_delete
+
+        przeszkody = []
+        for rel in get_candidate_relations_to_delete(self._meta):
+            related_model = rel.related_model
+            if not related_model._meta.managed:
+                continue
+            # Liczymy przez POLE (nie akcesor) — jednolicie dla FK i O2O,
+            # bez ryzyka ``DoesNotExist`` na pustym odwrotnym O2O.
+            liczba = related_model._base_manager.filter(
+                **{rel.field.name: self}
+            ).count()
+            if liczba:
+                przeszkody.append(
+                    (str(related_model._meta.verbose_name_plural), liczba)
+                )
+        return przeszkody
+
+    def czy_mozna_skasowac(self):
+        """True ⇔ jednostka jest w pełni pusta (brak przeszkód w kasowaniu)."""
+        return not self.przeszkody_w_kasowaniu()
 
     def dodaj_autora(
         self, autor, funkcja=None, rozpoczal_prace=None, zakonczyl_prace=None
@@ -321,10 +439,10 @@ class Jednostka(ModelZAdnotacjami, ModelZPBN_ID, ModelZPBN_UID, MPTTModel):
         )
 
     def przypisania(self):
-        return Jednostka_Wydzial.objects.filter(jednostka_id=self.pk).order_by("od")
+        return Jednostka_Rodzic.objects.filter(jednostka_id=self.pk).order_by("od")
 
     def przypisania_dla_czasokresu(self, od, do):
-        return Jednostka_Wydzial.objects.dla_czasokresu(od=od, do=do).filter(
+        return Jednostka_Rodzic.objects.dla_czasokresu(od=od, do=do).filter(
             jednostka_id=self.pk
         )
 
@@ -332,13 +450,155 @@ class Jednostka(ModelZAdnotacjami, ModelZPBN_ID, ModelZPBN_UID, MPTTModel):
         return self.przypisania_dla_czasokresu(data, data).first()
 
     def wydzial_dnia(self, data):
-        try:
-            return self.przypisanie_dla_dnia(data).wydzial
-        except AttributeError:
-            return
+        # Faza B (#438): metryczka historyczna trzyma teraz węzeł-rodzic
+        # (Jednostka), a nie Wydzial. Stary Wydzial odzyskujemy przez
+        # legacy_wydzial_id węzła — utrzymuje kontrakt (zwraca Wydzial lub None)
+        # do czasu usunięcia strony wydziału (B-III).
+        przypisanie = self.przypisanie_dla_dnia(data)
+        if przypisanie is None or przypisanie.parent_id is None:
+            return None
+        return Wydzial.objects.filter(id=przypisanie.parent.legacy_wydzial_id).first()
+
+    #
+    # Metody węzła dla strukturalnego stylu browse (Faza B, III-2, #438).
+    #
+    # Zastępują dawne ``Wydzial.jednostki/aktualne_jednostki/kola_naukowe/
+    # historyczne_jednostki`` (models/wydzial.py). Używane przez
+    # ``JednostkaView`` w stylu strukturalnym
+    # (``self.rodzaj.pokazuj_strukture_podjednostek``), czyli dawnej stronie
+    # wydziału.
+    #
+    # SEMANTYKA PODDRZEWA (regresja III-2 naprawiona): dawne metody ``Wydzial``
+    # pokazywały CAŁE poddrzewo wydziału przez denorm FK
+    # (``wydzial__legacy_wydzial_id=<wydzial.pk>``). III-2 zwęził to omyłkowo do
+    # ``self.get_children()`` (TYLKO bezpośrednie dzieci MPTT) -> strona
+    # wydziału stawała się pusta, gdy jednostki wisiały głębiej (wydział ->
+    # instytut -> katedra). Przywracamy poddrzewo przez MPTT
+    # ``self.get_descendants()`` (lft/rght range), które działa dla KAŻDEGO
+    # węzła — także nie-korzenia. WAŻNE: nie używamy ``wydzial=self``, bo
+    # zdenorm. ``wydzial`` wskazuje KORZEŃ drzewa (a nie ``self``), więc
+    # ``wydzial=self`` dawałoby PUSTKĘ dla węzła w środku drzewa (np. rodzaj z
+    # flagą ``pokazuj_strukture_podjednostek`` przypisany do „Instytutu")
+    # -> pusta strona mimo dzieci. Poddrzewo liczymy helperami
+    # ``_poddrzewo_jednostki`` / ``_poddrzewo_jednostki_z_soba``: dla KORZENIA
+    # zdenorm. ``wydzial`` (pk-owe, odporne na nieaktualne lft/rght instancji --
+    # jak w dawnych metodach), dla węzła nie-korzenia MPTT ``get_descendants``
+    # (w widoku ``self`` jest świeżo wczytany, więc lft/rght aktualne).
+    # Odwzorowanie: ``wydzial__legacy_wydzial_id=self.pk`` -> poddrzewo jednostek;
+    # ``parent__legacy_wydzial_id=self.pk`` -> rodzic metryczki w poddrzewie.
+    #
+
+    def _poddrzewo_jednostki(self):
+        """Queryset jednostek z PODDRZEWA tego węzła (bez samego węzła).
+
+        Korzeń: zdenorm. ``wydzial=self`` (pk-owe, odporne na nieaktualne
+        lft/rght). Nie-korzeń: MPTT ``get_descendants`` (``wydzial`` potomka
+        wskazuje KORZEŃ, nie ``self``, więc ``wydzial=self`` dałoby pustkę)."""
+        if self.parent_id is None:
+            return Jednostka.objects.filter(wydzial=self)
+        return self.get_descendants()
+
+    def _poddrzewo_jednostki_z_soba(self):
+        """Jak ``_poddrzewo_jednostki``, ale WŁĄCZNIE z samym węzłem -- dla
+        metryczek ``Jednostka_Rodzic`` z rodzicem w poddrzewie."""
+        if self.parent_id is None:
+            return Jednostka.objects.filter(Q(pk=self.pk) | Q(wydzial=self))
+        return self.get_descendants(include_self=True)
+
+    def ma_poddrzewo(self):
+        """Czy ten węzeł ma jakiekolwiek podjednostki (poddrzewo)?
+
+        #438: predykat przycisku „Pokaż wszystkie publikacje" na stronie
+        jednostki w stylu wydziału. Korzeń Z poddrzewem POST-uje krótki filtr
+        wydziału / jednostki-nadrzędnej (całe poddrzewo jednym wpisem) zamiast
+        mega-długiej jawnej listy potomków; korzeń-liść nie ma po czym
+        filtrować poddrzewem, więc dostaje zwykłą listę jednoelementową."""
+        return self._poddrzewo_jednostki().exists()
+
+    def aktualne_podjednostki(self):
+        """Aktualne, widoczne jednostki z PODDRZEWA tego węzła -- bez jednostek
+        oznaczonych jako odrębna sekcja (np. koła naukowe).
+
+        Wierny port dawnej ``Wydzial.aktualne_jednostki`` (poddrzewo -- patrz
+        komentarz wyżej): obejmuje wnuki, prawnuki, ..., i działa też dla węzła
+        nie-korzenia; ``rodzaj__nazwa="Koło naukowe"`` -> flaga
+        ``rodzaj__pokazuj_jako_odrebna_sekcje`` (spójność Fazy B)."""
+        return (
+            self._poddrzewo_jednostki()
+            .filter(widoczna=True)
+            .exclude(rodzaj__pokazuj_jako_odrebna_sekcje=True)
+            .exclude(aktualna=False)
+            .order_by(*Jednostka.objects.get_default_ordering())
+        )
+
+    def kola_naukowe(self):
+        """Koła naukowe (rodzaj z flagą ``pokazuj_jako_odrebna_sekcje``) z
+        PODDRZEWA węzła -- pokazywane osobno od zwykłych podjednostek.
+
+        Wierny port dawnej ``Wydzial.kola_naukowe``: aktualne przez poddrzewo
+        (helper ``_poddrzewo_jednostki``), historyczne (odłączone od drzewa,
+        ``wydzial=None``) przez wciąż-ważną metryczkę ``Jednostka_Rodzic`` z
+        rodzicem w poddrzewie. ``rodzaj__nazwa="Koło naukowe"`` -> flaga
+        ``pokazuj_jako_odrebna_sekcje``; ``parent__legacy_wydzial_id`` ->
+        rodzic w poddrzewie (helper ``_poddrzewo_jednostki_z_soba``)."""
+        today = timezone.now().date()
+
+        return (
+            Jednostka.objects.filter(rodzaj__pokazuj_jako_odrebna_sekcje=True)
+            .filter(
+                Q(pk__in=self._poddrzewo_jednostki(), aktualna=True, widoczna=True)
+                | Q(
+                    wydzial=None,
+                    pk__in=Jednostka_Rodzic.objects.filter(
+                        parent__in=self._poddrzewo_jednostki_z_soba()
+                    )
+                    .exclude(do=None)
+                    .exclude(do__lt=today)
+                    .values_list("jednostka_id", flat=True),
+                )
+            )
+            .order_by(*Jednostka.objects.get_default_ordering())
+        )
+
+    def historyczne_podjednostki(self):
+        """Jednostki, które historycznie należały do PODDRZEWA tego węzła
+        (metryczka ``Jednostka_Rodzic`` z rodzicem w poddrzewie i ``do`` w
+        przeszłości), a obecnie już nie (``aktualna`` != True).
+
+        Wierny port dawnej ``Wydzial.historyczne_jednostki``:
+        ``parent__legacy_wydzial_id=self.pk`` -> rodzic w poddrzewie (helper
+        ``_poddrzewo_jednostki_z_soba``) -- obejmuje historię z całego
+        poddrzewa, nie tylko bezpośrednich dzieci, i działa też dla węzła
+        nie-korzenia."""
+        today = timezone.now().date()
+
+        return (
+            Jednostka.objects.exclude(aktualna=True)
+            .filter(
+                pk__in=Jednostka_Rodzic.objects.filter(
+                    parent__in=self._poddrzewo_jednostki_z_soba()
+                )
+                .exclude(do=None)
+                .exclude(do__gte=today)
+                .values_list("jednostka_id", flat=True)
+            )
+            .order_by(*Jednostka.objects.get_default_ordering())
+        )
+
+    def wymaga_nawigacji(self):
+        """Jeżeli węzeł ma co najmniej dwie z trzech kategorii podjednostek
+        (aktualne, koła naukowe, historyczne), to wymaga wyświetlenia
+        nawigacji na podstronie strukturalnej -- zwraca wówczas True."""
+        res = defaultdict(int)
+
+        res[self.aktualne_podjednostki().exists()] += 1
+        res[self.historyczne_podjednostki().exists()] += 1
+        res[self.kola_naukowe().exists()] += 1
+
+        return res[True] >= 2
 
 
-class Jednostka_Wydzial_Manager(models.Manager):
+class Jednostka_Rodzic_Manager(models.Manager):
     def od_do_not_null(self):
         return self.get_queryset().annotate(
             od_not_null=Coalesce("od", date(1, 1, 1)),
@@ -406,8 +666,8 @@ class Jednostka_Wydzial_Manager(models.Manager):
                 jw.do = new_do
                 jw.save()
 
-                Jednostka_Wydzial.objects.create(
-                    jednostka=jw.jednostka, wydzial=jw.wydzial, od=new_od, do=old_do
+                Jednostka_Rodzic.objects.create(
+                    jednostka=jw.jednostka, parent=jw.parent, od=new_od, do=old_do
                 )
                 continue
 
@@ -439,33 +699,35 @@ class Jednostka_Wydzial_Manager(models.Manager):
                 continue
 
 
-class Jednostka_Wydzial(models.Model):
+class Jednostka_Rodzic(models.Model):
     jednostka = models.ForeignKey(Jednostka, CASCADE)
-    wydzial = models.ForeignKey(Wydzial, CASCADE)
+    parent = models.ForeignKey(
+        Jednostka,
+        CASCADE,
+        null=True,
+        blank=True,
+        related_name="jednostka_rodzic_parent_set",
+    )
     od = models.DateField(null=True, blank=True)
     do = models.DateField(null=True, blank=True)
 
-    objects = Jednostka_Wydzial_Manager()
+    objects = Jednostka_Rodzic_Manager()
 
     class Meta:
-        verbose_name = "powiązanie jednostka-wydział"
-        verbose_name_plural = "powiązania jednostka-wydział"
+        verbose_name = "powiązanie jednostka-rodzic"
+        verbose_name_plural = "powiązania jednostka-rodzic"
         ordering = ("-od",)
 
     def __str__(self):
-        return f"{self.jednostka} - {self.wydzial} ({self.od}, {self.do})"
+        return f"{self.jednostka} - {self.parent} ({self.od}, {self.do})"
 
     def clean(self):
-        try:
-            _ = self.wydzial
-        except (ValueError, TypeError, Wydzial.DoesNotExist):
-            raise ValidationError({"wydzial": "Określ wydział"}) from None
-
-        if self.wydzial.uczelnia_id != self.jednostka.uczelnia_id:
-            raise ValidationError(
-                {"wydzial": "Uczelnia dla wydziału i jednostki musi być identyczna."}
-            )
-
+        # Faza B (#438): walidacja równości uczelni (wydzial.uczelnia ==
+        # jednostka.uczelnia) USUNIĘTA — federacja (Zasada #4) dopuszcza
+        # krawędzie między-uczelniane. Check obecności starego pola „wydzial"
+        # też znika (pole zastąpione nullowalnym „parent"). Zostają checki
+        # niezależne od uczelni: zakres dat, tożsamość jednostki, nakładanie
+        # zakresów, data „do" w przyszłości.
         if self.od is not None and self.do is not None:
             if self.od >= self.do:
                 raise ValidationError(
@@ -477,19 +739,19 @@ class Jednostka_Wydzial(models.Model):
 
         if self.pk:
             try:
-                old = Jednostka_Wydzial.objects.get(pk=self.pk)
+                old = Jednostka_Rodzic.objects.get(pk=self.pk)
                 if old.jednostka_id != self.jednostka_id:
                     raise ValidationError(
                         {
                             "jednostka": "Zmiana ID jednostki dla tych obiektów nie jest obsługiwana."
                         }
                     )
-            except Jednostka_Wydzial.DoesNotExist:
+            except Jednostka_Rodzic.DoesNotExist:
                 pass
 
         # Sprawdz zakres dat
         cnt = (
-            Jednostka_Wydzial.objects.dla_czasokresu(self.od, self.do)
+            Jednostka_Rodzic.objects.dla_czasokresu(self.od, self.do)
             .filter(jednostka_id=self.jednostka_id)
             .exclude(id=self.id)
             .count()
@@ -510,6 +772,120 @@ class Jednostka_Wydzial(models.Model):
                     "do": 'Data w polu "Do" nie może być większa lub równa, niż data aktualna (dzisiejsza).'
                 }
             )
+
+
+def wylicz_aktualna(najswiezszy_do, ma_wpis, override, dzis=None):
+    """FINALNA logika pola ``Jednostka.aktualna`` (issue #438, Faza B, IV-1).
+
+    Jedno źródło prawdy dla sygnału ``ustaw_aktualna_jednostki``, komendy
+    ``przelicz_aktualna`` i (zduplikowanej inline) migracji ``0462``.
+
+    * ``override`` (``aktualna_override``) nie-NULL → użyj override, POMIŃ
+      derywację.
+    * ``ma_wpis`` False (brak wpisów ``Jednostka_Rodzic``) → ``True``.
+    * najświeższy wpis ``do IS NULL`` → ``True`` (``coalesce(do, 9999) > dziś``).
+    * najświeższy wpis ``do`` w przeszłości → ``False``.
+
+    ``najswiezszy_do`` to pole ``do`` NAJŚWIEŻSZEGO wpisu (max
+    ``coalesce(od, 0001-01-01)``); ``ma_wpis`` mówi, czy jakikolwiek wpis
+    istnieje (odróżnia „brak wpisów → True" od „wpis z ``do``").
+    """
+    if override is not None:
+        return override
+    if not ma_wpis:
+        return True
+    if dzis is None:
+        dzis = date.today()
+    do = najswiezszy_do if najswiezszy_do is not None else date(9999, 12, 31)
+    return do > dzis
+
+
+def _najswiezsze_do_per_jednostka():
+    """Mapa ``jednostka_id -> do`` NAJŚWIEŻSZEGO wpisu ``Jednostka_Rodzic``
+    (max ``coalesce(od, 0001-01-01)``), jednym zapytaniem (``DISTINCT ON``).
+
+    Brak jednostki w mapie ⇒ nie ma żadnego wpisu (``ma_wpis`` = False).
+    """
+    return dict(
+        Jednostka_Rodzic.objects.annotate(_od=Coalesce("od", date(1, 1, 1)))
+        .order_by("jednostka_id", "-_od")
+        .distinct("jednostka_id")
+        .values_list("jednostka_id", "do")
+    )
+
+
+def przelicz_aktualna_wszystkich():
+    """Przelicz ``aktualna`` dla WSZYSTKICH jednostek wg finalnej logiki
+    (``wylicz_aktualna``). Idempotentne, bez N+1 (najświeższy wpis per
+    jednostka jednym ``DISTINCT ON``, zapis dwoma ``.update()``). Zwraca
+    liczbę zmienionych wierszy. Używane przez komendę ``przelicz_aktualna``;
+    migracja ``0462`` duplikuje tę logikę inline na modelach historycznych.
+    """
+    najswiezsze = _najswiezsze_do_per_jednostka()
+    dzis = date.today()
+
+    aktualne, nieaktualne = [], []
+    for pk, override in Jednostka.objects.values_list("pk", "aktualna_override"):
+        ma_wpis = pk in najswiezsze
+        val = wylicz_aktualna(najswiezsze.get(pk), ma_wpis, override, dzis)
+        (aktualne if val else nieaktualne).append(pk)
+
+    zmienione = (
+        Jednostka.objects.filter(pk__in=aktualne)
+        .exclude(aktualna=True)
+        .update(aktualna=True)
+    )
+    zmienione += (
+        Jednostka.objects.filter(pk__in=nieaktualne)
+        .exclude(aktualna=False)
+        .update(aktualna=False)
+    )
+    return zmienione
+
+
+@receiver(post_save, sender=Jednostka_Rodzic)
+@receiver(post_delete, sender=Jednostka_Rodzic)
+def ustaw_aktualna_jednostki(sender, instance, **kwargs):
+    """Zastępuje część triggera ``bpp_jednostka_ustaw_wydzial_aktualna``
+    dotyczącą pola ``aktualna`` (zdjęty w migracji 0455, Faza B / issue #438).
+
+    **Zmiana w II-1 (0459):** sygnał NIE utrzymuje już interim ``wydzial_id``
+    — po retargecie ``Jednostka.wydzial`` jest zdenormalizowanym self-FK do
+    korzenia drzewa MPTT, utrzymywanym przez ``django-denorm-iplweb`` na
+    podstawie ``parent`` (a NIE historii ``Jednostka_Rodzic``). Sygnał liczy
+    wyłącznie ``aktualna``.
+
+    Po każdej zmianie wpisów ``Jednostka_Rodzic`` danej jednostki bierze
+    NAJŚWIEŻSZY wpis (max ``coalesce(od, 0001-01-01)``) i deleguje do
+    ``wylicz_aktualna`` (FINALNA logika, ujednolicona w IV-1 z jednorazowym
+    przeliczeniem): brak wpisów → True, ``do IS NULL`` → True, ``do`` w
+    przeszłości → False; ``aktualna_override`` nie-NULL nadpisuje wszystko.
+
+    Zapis przez ``.update()`` (bypass ``save()`` na Jednostce → brak
+    rekurencji sygnałów).
+    """
+    jednostka_id = instance.jednostka_id
+
+    najswiezszy = (
+        Jednostka_Rodzic.objects.filter(jednostka_id=jednostka_id)
+        .annotate(_od_not_null=Coalesce("od", date(1, 1, 1)))
+        .order_by("-_od_not_null")
+        .first()
+    )
+
+    override = (
+        Jednostka.objects.filter(pk=jednostka_id)
+        .values_list("aktualna_override", flat=True)
+        .first()
+    )
+
+    aktualna = wylicz_aktualna(
+        najswiezszy.do if najswiezszy is not None else None,
+        najswiezszy is not None,
+        override,
+    )
+
+    Jednostka.objects.filter(pk=jednostka_id).update(aktualna=aktualna)
 
 
 @receiver(post_save, sender=Jednostka)

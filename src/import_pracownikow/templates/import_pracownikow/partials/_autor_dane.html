@@ -1,0 +1,24 @@
+{# Wspólny render danych autora dla tabel importu (rezultaty / odpięcia / #}
+{# audyt) — spójny wygląd. Kontekst: #}
+{#   autor       — bpp.Autor lub None #}
+{#   pbn_inst    — bool: autor ma odpowiednik w API instytucjonalnym PBN #}
+{#   admin_link  — bool (opcjonalny): pokaż link do panelu admina #}
+{% if autor %}
+    <a href="{% url "bpp:browse_autor" autor.pk %}">{{ autor }}</a>
+    {% if pbn_inst %}
+        <span class="label secondary"
+              title="Autor z API instytucjonalnego PBN (OsobaZInstytucji)">PBN</span>
+    {% endif %}
+    {% if admin_link %}
+        <a href="{% url "admin:bpp_autor_change" autor.pk %}"
+           class="import-autor-admin" title="Otwórz w panelu administracyjnym"
+           target="_blank" rel="noopener">admin</a>
+    {% endif %}
+    {% if autor.orcid %}
+        <br>
+        <a href="https://orcid.org/{{ autor.orcid }}" class="import-orcid"
+           target="_blank" rel="noopener">ORCID: {{ autor.orcid }}</a>
+    {% endif %}
+{% else %}
+    —
+{% endif %}

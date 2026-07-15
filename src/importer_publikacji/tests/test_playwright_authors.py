@@ -66,7 +66,10 @@ def test_import_crossref_doi_author_modal_single_open(
     """Import DOI from CrossRef, navigate to step 4, and verify
     that clicking a row opens exactly ONE modal (not two)."""
     page = importer_page
-    url = live_server.url + reverse("importer_publikacji:index")
+    # Landing page kafla CrossRef pushuje dokładnie ten sam URL — nawigujemy
+    # tu wprost, żeby nie dublować interakcji "klik w kafel" w teście
+    # skupionym na kroku 4 (modal autorów).
+    url = live_server.url + reverse("importer_publikacji:index") + "?provider=CrossRef"
     page.goto(url)
     # No networkidle — the page has long-polling/WebSocket connections
     # so the network never becomes idle. The locator-based interactions
@@ -75,8 +78,7 @@ def test_import_crossref_doi_author_modal_single_open(
     # Dismiss cookie consent banner
     page.evaluate("Cookielaw.accept();")
 
-    # Step 1: Enter DOI and fetch
-    page.locator('input[name="provider"][value="CrossRef"]').check()
+    # Step 1: Enter DOI and fetch (CrossRef już zaznaczony przez ?provider=)
     page.fill('input[name="identifier"]', "10.1182/blood-2025-848")
     page.locator('#input-identifier button[type="submit"]').click()
 

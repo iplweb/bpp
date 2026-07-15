@@ -16,6 +16,16 @@ class BppConfig(AppConfig):
 
             post_migrate.connect(odtworz_grupy, sender=self)
 
+        # Odtwarzaj słowniki referencyjne po każdym ``migrate`` ORAZ po
+        # transakcyjnym flushu testów (``TransactionTestCase._fixture_teardown``
+        # emituje ``post_migrate``). Bez tego ``TRUNCATE`` zmiata słowniki
+        # zaseedowane migracjami danych (0449, …) i kolejne testy na tym
+        # samym workerze widzą pustą tabelę → flake. Wzorzec jak
+        # ``odtworz_grupy``. Idempotentne, w produkcji no-op na zdrowej bazie.
+        from bpp.seed_slowniki import seed_slowniki
+
+        post_migrate.connect(seed_slowniki, sender=self)
+
         if apps.is_installed("siteblog"):
             from bpp.views.browse import invalidate_uczelnia_cache_on_article_change
 

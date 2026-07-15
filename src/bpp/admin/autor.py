@@ -1,6 +1,8 @@
 from dal import autocomplete
 from django import forms
 from django.contrib import admin
+from django.core.exceptions import ValidationError
+from django.forms.models import BaseInlineFormSet
 from dynamic_admin_columns.mixins import DynamicColumnsMixin
 
 from bpp.admin.helpers.djangoql import BppDjangoQLSearchMixin
@@ -135,15 +137,48 @@ class Autor_JednostkaInlineForm(forms.ModelForm):
             "rozpoczal_prace",
             "zakonczyl_prace",
             "funkcja",
+            "stanowisko",
             "podstawowe_miejsce_pracy",
             "grupa_pracownicza",
             "wymiar_etatu",
         ]
 
 
+class Autor_JednostkaInlineFormSet(BaseInlineFormSet):
+    """Pilnuje przyjaznie (na poziomie formularza, zanim cokolwiek trafi do
+    bazy), zeby autor mial najwyzej jedno podstawowe miejsce pracy.
+
+    Liczymy stan KONCOWY — tylko wiersze niezaznaczone do usuniecia. Dzieki
+    temu legalne przelaczenie domyslnego miejsca (odznacz A, zaznacz B) daje
+    dokladnie jeden True i przechodzi. Twardym backstopem (i obrona przed
+    rownoleglymi zapisami) pozostaje DEFERRED constraint trigger w bazie."""
+
+    def clean(self):
+        super().clean()
+        if any(self.errors):
+            # Nie nadbudowuj komunikatu nad bledami pojedynczych formularzy.
+            return
+
+        ile_podstawowych = 0
+        for form in self.forms:
+            cleaned_data = getattr(form, "cleaned_data", None)
+            if not cleaned_data or cleaned_data.get("DELETE"):
+                continue
+            if cleaned_data.get("podstawowe_miejsce_pracy") is True:
+                ile_podstawowych += 1
+
+        if ile_podstawowych > 1:
+            raise ValidationError(
+                "Autor może mieć tylko jedno podstawowe miejsce pracy, a "
+                f"zaznaczono je dla {ile_podstawowych} powiązań. Ustaw 'Tak' "
+                "tylko przy jednym powiązaniu (przy pozostałych 'Nie' lub puste)."
+            )
+
+
 class Autor_JednostkaInline(admin.TabularInline):
     model = Autor_Jednostka
     form = Autor_JednostkaInlineForm
+    formset = Autor_JednostkaInlineFormSet
     extra = 1
 
     def get_queryset(self, request):
@@ -185,6 +220,7 @@ class AutorForm(forms.ModelForm):
             "imiona",
             "nazwisko",
             "tytul",
+            "stopien_sluzbowy",
             "pseudonim",
             "aktualna_funkcja",
             "pokazuj",
@@ -334,6 +370,7 @@ class AutorAdmin(
                     "imiona",
                     "nazwisko",
                     "tytul",
+                    "stopien_sluzbowy",
                     "pseudonim",
                     "pokazuj",
                     "pokazuj_siec_powiazan",

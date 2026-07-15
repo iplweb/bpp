@@ -29,6 +29,7 @@ from pbn_client.exceptions import (
     CannotDeleteStatementsException,
     CannotUploadPublicationFee,
     HttpException,
+    PBNValidationError,
     PublicationDoesNotExistInInstitutionProfile,
     StatementsResendFailedException,
 )
@@ -315,6 +316,8 @@ class StatementsMixin:
                     self.delete_publication_statement(str(objectId), person_id, role)
                     success = True
                     break
+                except PBNValidationError:
+                    raise
                 except Exception as e:
                     last_error = e
                     logger.warning(
@@ -347,6 +350,8 @@ class StatementsMixin:
                 self.delete_all_publication_statements(str(objectId))
                 return
             except CannotDeleteStatementsException:
+                raise
+            except PBNValidationError:
                 raise
             except Exception as e:
                 last_error = e
