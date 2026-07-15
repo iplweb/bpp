@@ -18,7 +18,7 @@ from django.http import (
     HttpResponseBadRequest,
     HttpResponseRedirect,
 )
-from django.shortcuts import get_object_or_404, render
+from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
 from django.utils.functional import cached_property
@@ -64,6 +64,44 @@ from import_pracownikow.pewnosc import (
 )
 
 GROUP_REQUIRED = "wprowadzanie danych"
+
+
+class WymagajUczelniZRequestuMixin:
+    """Bramka multi-hosted: import działa TYLKO w zakresie uczelni z requestu.
+
+    ``dispatch``: brak uczelni z requestu (``get_for_request`` → None: domena
+    bez mapowania Site→Uczelnia albo 0 uczelni) → redirect na home + komunikat.
+    Dla WSZYSTKICH (też superusera) — kolejność MRO: ``GroupRequiredMixin`` →
+    ten mixin → widok, więc auth/grupa lecą pierwsze, a bramka uczelni obowiązuje
+    także superusera (który jest zwolniony z grupy, ale NIE z uczelni).
+
+    ``sprawdz_uczelnie(obj)``: obiekt spoza bieżącej uczelni → ``Http404``
+    (semantyka jak ``uczelnia_do_integracji`` — single-tenant łapie legacy NULL
+    przez fallback do jedynej uczelni)."""
+
+    @cached_property
+    def uczelnia_biezaca(self):
+        return Uczelnia.objects.get_for_request(self.request)
+
+    def dispatch(self, request, *args, **kwargs):
+        if self.uczelnia_biezaca is None:
+            messages.error(
+                request,
+                "Nie ustalono uczelni dla tej domeny — import pracowników i "
+                "jednostek jest niedostępny.",
+            )
+            return redirect("root")
+        return super().dispatch(request, *args, **kwargs)
+
+    def sprawdz_uczelnie(self, obj):
+        # 404 tylko dla importu należącego do INNEJ, JEDNOZNACZNEJ uczelni.
+        # Import o nieokreślonej uczelni (``uczelnia_do_integracji`` → None: brak
+        # ``uczelnia`` i brak jedynej uczelni) przepuszczamy — w produkcji każdy
+        # import ma uczelnię (łapaną z requestu przy tworzeniu), więc dotyczy to
+        # tylko rekordów legacy/NULL, których i tak nie ma na multi-hosted.
+        u = obj.uczelnia_do_integracji()
+        if u is not None and u != self.uczelnia_biezaca:
+            raise Http404
 
 
 def oznacz_przepiecie_prac(rows, parent):
@@ -115,12 +153,13 @@ def oznacz_przepiecie_prac(rows, parent):
     return rows
 
 
-class ListaImportowView(GroupRequiredMixin, ListView):
-    """Lista importów bieżącego użytkownika.
+class ListaImportowView(GroupRequiredMixin, WymagajUczelniZRequestuMixin, ListView):
+    """Lista importów bieżącego użytkownika (w zakresie bieżącej uczelni).
 
     Dawniej long_running.LongRunningOperationsView. Teraz zwykły owner-scoped
     ListView — strona live (postęp/wynik) jest osobno, pod centralnym
-    ``liveops:live`` (link przez ``object.get_absolute_url``).
+    ``liveops:live`` (link przez ``object.get_absolute_url``). Multi-hosted:
+    dodatkowo zawężone do uczelni z requestu (``widoczne_dla_uczelni``).
     """
 
     group_required = GROUP_REQUIRED
@@ -128,12 +167,16 @@ class ListaImportowView(GroupRequiredMixin, ListView):
     template_name = "import_pracownikow/importpracownikow_list.html"
 
     def get_queryset(self):
-        return ImportPracownikow.objects.filter(owner=self.request.user).order_by(
-            "-created_on"
+        return (
+            ImportPracownikow.widoczne_dla_uczelni(self.uczelnia_biezaca)
+            .filter(owner=self.request.user)
+            .order_by("-created_on")
         )
 
 
-class NowyImportView(GroupRequiredMixin, CreateLiveOperationView):
+class NowyImportView(
+    GroupRequiredMixin, WymagajUczelniZRequestuMixin, CreateLiveOperationView
+):
     """Formularz nowego importu.
 
     ``CreateLiveOperationView`` (liveops) sam ustawia owner, zapisuje,
@@ -166,7 +209,7 @@ class NowyImportView(GroupRequiredMixin, CreateLiveOperationView):
         # >1 uczelni to JEDYNE wiarygodne źródło. Bez tego FAZA 0 nie utworzyłaby
         # jednostek (get_single_uczelnia_or_none() = None). None (domena
         # nierozstrzygnięta) → ostrzeżenie nad listą jednostek, nie ciche pominięcie.
-        self.object.uczelnia = Uczelnia.objects.get_for_request(self.request)
+        self.object.uczelnia = self.uczelnia_biezaca  # bramka gwarantuje non-None
         self.object.stan = ImportPracownikow.STAN_UTWORZONY
         self.object.save()
         return HttpResponseRedirect(
@@ -183,7 +226,7 @@ _STANY_MAPOWALNE = (
 )
 
 
-class MapowanieView(GroupRequiredMixin, FormView):
+class MapowanieView(GroupRequiredMixin, WymagajUczelniZRequestuMixin, FormView):
     """Ekran mapowania kolumn. GET: auto-propozycja (lub profil) + próbka.
     POST: zapis mapowania + ewentualny profil → stan zmapowany → (re)enqueue."""
 
@@ -193,9 +236,11 @@ class MapowanieView(GroupRequiredMixin, FormView):
 
     @cached_property
     def object(self):
-        return get_object_or_404(
+        obj = get_object_or_404(
             ImportPracownikow, pk=self.kwargs["pk"], owner=self.request.user
         )
+        self.sprawdz_uczelnie(obj)  # multi-hosted: obcy import → 404
+        return obj
 
     def _przygotuj(self, request):
         """Wywoływane z get()/post() (PO kontroli dostępu GroupRequiredMixin,
@@ -234,9 +279,9 @@ class MapowanieView(GroupRequiredMixin, FormView):
     def get_form_kwargs(self):
         kwargs = super().get_form_kwargs()
         kwargs["naglowki"] = self._naglowki
-        profil = dopasuj_profil(self._naglowki) or wybierz_profil_fallback(
-            self._naglowki
-        )
+        profil = dopasuj_profil(
+            self._naglowki, self.uczelnia_biezaca
+        ) or wybierz_profil_fallback(self._naglowki, self.uczelnia_biezaca)
         # Zapamiętaj na instancji dla get_context_data (info w szablonie §13).
         self._profil_zastosowany = profil
         if profil is not None:
@@ -293,6 +338,7 @@ class MapowanieView(GroupRequiredMixin, FormView):
 
         if form.cleaned_data.get("zapisz_profil"):
             ProfilMapowania.objects.update_or_create(
+                uczelnia=self.uczelnia_biezaca,
                 nazwa=form.cleaned_data["nazwa_profilu"],
                 defaults={
                     "mapowanie": obj.mapowanie_kolumn,
@@ -313,7 +359,7 @@ class MapowanieView(GroupRequiredMixin, FormView):
         return HttpResponseRedirect(obj.get_absolute_url())
 
 
-class _ImportPodgladMixin(GroupRequiredMixin, View):
+class _ImportPodgladMixin(GroupRequiredMixin, WymagajUczelniZRequestuMixin, View):
     """Wspólna bramka podglądu importu (owner/superuser scoping + stan
     ``przeanalizowany``) dla widoków HTMX modyfikujących decyzje wiersza/odpięcia
     (Faza 3/4). Wydzielona, żeby scoping i bramka żyły w JEDNYM miejscu —
@@ -327,6 +373,7 @@ class _ImportPodgladMixin(GroupRequiredMixin, View):
         obj = get_object_or_404(ImportPracownikow, pk=self.kwargs["pk"])
         if obj.owner_id != self.request.user.pk and not self.request.user.is_superuser:
             raise Http404
+        self.sprawdz_uczelnie(obj)  # multi-hosted: obcy import → 404
         return obj
 
     def _blad_jesli_nie_podglad(self):
@@ -647,7 +694,9 @@ class ZaznaczOdpieciaView(_ImportPodgladMixin):
         )
 
 
-class ImportPracownikowResultsView(GroupRequiredMixin, ListView):
+class ImportPracownikowResultsView(
+    GroupRequiredMixin, WymagajUczelniZRequestuMixin, ListView
+):
     """Filtrowalna tabela wyników importu (dopasowani/niedopasowani autorzy).
 
     Zastępuje dawną long_running.LongRunningResultsView: właściciel-scoping
@@ -664,6 +713,7 @@ class ImportPracownikowResultsView(GroupRequiredMixin, ListView):
         obj = get_object_or_404(ImportPracownikow, pk=self.kwargs["pk"])
         if obj.owner_id != self.request.user.pk and not self.request.user.is_superuser:
             raise Http404
+        self.sprawdz_uczelnie(obj)  # multi-hosted: obcy import → 404
         return obj
 
     def get_queryset(self):
@@ -733,7 +783,7 @@ class ImportPracownikowResultsView(GroupRequiredMixin, ListView):
         return ctx
 
 
-class PodgladImportuView(GroupRequiredMixin, DetailView):
+class PodgladImportuView(GroupRequiredMixin, WymagajUczelniZRequestuMixin, DetailView):
     """Hub „szczegóły importu" — landing z 2–4 kafelkami (Jednostki / Ludzie z
     XLS / Ludzie spoza XLS / Tytuły) i skupionymi podstronami.
 
@@ -751,6 +801,7 @@ class PodgladImportuView(GroupRequiredMixin, DetailView):
         obj = get_object_or_404(ImportPracownikow, pk=self.kwargs["pk"])
         if obj.owner_id != self.request.user.pk and not self.request.user.is_superuser:
             raise Http404
+        self.sprawdz_uczelnie(obj)  # multi-hosted: obcy import → 404
         return obj
 
     def get(self, request, *args, **kwargs):
@@ -830,7 +881,7 @@ class PodgladImportuView(GroupRequiredMixin, DetailView):
         return ctx
 
 
-class OdpieciaView(GroupRequiredMixin, ListView):
+class OdpieciaView(GroupRequiredMixin, WymagajUczelniZRequestuMixin, ListView):
     """Podstrona huba „Ludzie spoza XLS" — powiązania Autor+Jednostka OBECNE w
     bazie, ale NIEOBECNE w tym imporcie (§9 odpięcia).
 
@@ -847,6 +898,7 @@ class OdpieciaView(GroupRequiredMixin, ListView):
         obj = get_object_or_404(ImportPracownikow, pk=self.kwargs["pk"])
         if obj.owner_id != self.request.user.pk and not self.request.user.is_superuser:
             raise Http404
+        self.sprawdz_uczelnie(obj)  # multi-hosted: obcy import → 404
         return obj
 
     def get_queryset(self):
@@ -863,7 +915,7 @@ class OdpieciaView(GroupRequiredMixin, ListView):
         return super().get_context_data(parent_object=self.parent_object, **kwargs)
 
 
-class LogZmianView(GroupRequiredMixin, ListView):
+class LogZmianView(GroupRequiredMixin, WymagajUczelniZRequestuMixin, ListView):
     """Ekran audytu (item 6) — per-wiersz log zmian po integracji: utworzenia
     (autor/jednostka/tytuł), zmiany Autora i Autor_Jednostka, przepięcia prac
     (z→do, liczba) oraz wykonane odpięcia. Owner/superuser-scoped.
@@ -884,6 +936,7 @@ class LogZmianView(GroupRequiredMixin, ListView):
         obj = get_object_or_404(ImportPracownikow, pk=self.kwargs["pk"])
         if obj.owner_id != self.request.user.pk and not self.request.user.is_superuser:
             raise Http404
+        self.sprawdz_uczelnie(obj)  # multi-hosted: obcy import → 404
         return obj
 
     def get_queryset(self):
@@ -907,7 +960,7 @@ class LogZmianView(GroupRequiredMixin, ListView):
         return ctx
 
 
-class WeryfikacjaJednostekView(GroupRequiredMixin, View):
+class WeryfikacjaJednostekView(GroupRequiredMixin, WymagajUczelniZRequestuMixin, View):
     """Ekran weryfikacji decyzji o jednostkach (do utworzenia / auto-dopasowane).
 
     GET renderuje listę decyzji z kontrolkami (utwórz/mapuj/pomiń + parent +
@@ -924,6 +977,7 @@ class WeryfikacjaJednostekView(GroupRequiredMixin, View):
         obj = get_object_or_404(ImportPracownikow, pk=self.kwargs["pk"])
         if obj.owner_id != self.request.user.pk and not self.request.user.is_superuser:
             raise Http404
+        self.sprawdz_uczelnie(obj)  # multi-hosted: obcy import → 404
         return obj
 
     def _decyzje(self):
@@ -1072,7 +1126,7 @@ class WeryfikacjaJednostekView(GroupRequiredMixin, View):
         )
 
 
-class WeryfikacjaTytulowView(GroupRequiredMixin, View):
+class WeryfikacjaTytulowView(GroupRequiredMixin, WymagajUczelniZRequestuMixin, View):
     """Ekran weryfikacji decyzji o tytułach (do utworzenia / auto-dopasowane).
 
     Mirror ``WeryfikacjaJednostekView`` — tytuł nie ma drzewa ani wydziału,
@@ -1091,6 +1145,7 @@ class WeryfikacjaTytulowView(GroupRequiredMixin, View):
         obj = get_object_or_404(ImportPracownikow, pk=self.kwargs["pk"])
         if obj.owner_id != self.request.user.pk and not self.request.user.is_superuser:
             raise Http404
+        self.sprawdz_uczelnie(obj)  # multi-hosted: obcy import → 404
         return obj
 
     def _decyzje(self):
@@ -1185,7 +1240,7 @@ class WeryfikacjaTytulowView(GroupRequiredMixin, View):
         )
 
 
-class WeryfikacjaStopniView(GroupRequiredMixin, View):
+class WeryfikacjaStopniView(GroupRequiredMixin, WymagajUczelniZRequestuMixin, View):
     """Ekran weryfikacji decyzji o stopniach służbowych (mirror
     ``WeryfikacjaTytulowView``)."""
 
@@ -1197,6 +1252,7 @@ class WeryfikacjaStopniView(GroupRequiredMixin, View):
         obj = get_object_or_404(ImportPracownikow, pk=self.kwargs["pk"])
         if obj.owner_id != self.request.user.pk and not self.request.user.is_superuser:
             raise Http404
+        self.sprawdz_uczelnie(obj)  # multi-hosted: obcy import → 404
         return obj
 
     def _decyzje(self):
@@ -1283,7 +1339,7 @@ class WeryfikacjaStopniView(GroupRequiredMixin, View):
         )
 
 
-class WeryfikacjaStanowiskView(GroupRequiredMixin, View):
+class WeryfikacjaStanowiskView(GroupRequiredMixin, WymagajUczelniZRequestuMixin, View):
     """Ekran weryfikacji decyzji o stanowiskach dydaktycznych (mirror
     ``WeryfikacjaStopniView``)."""
 
@@ -1295,6 +1351,7 @@ class WeryfikacjaStanowiskView(GroupRequiredMixin, View):
         obj = get_object_or_404(ImportPracownikow, pk=self.kwargs["pk"])
         if obj.owner_id != self.request.user.pk and not self.request.user.is_superuser:
             raise Http404
+        self.sprawdz_uczelnie(obj)  # multi-hosted: obcy import → 404
         return obj
 
     def _decyzje(self):
@@ -1383,7 +1440,9 @@ class WeryfikacjaStanowiskView(GroupRequiredMixin, View):
         )
 
 
-class _PkOwnerRestartMixin(GroupRequiredMixin, RestartView):
+class _PkOwnerRestartMixin(
+    GroupRequiredMixin, WymagajUczelniZRequestuMixin, RestartView
+):
     """Wspólny ``get_object`` dla widoków restartu — URL ma tylko ``pk``
     (bez ``op_type``), więc nadpisujemy ``OpTypeObjectMixin.get_object``
     i rozwiązujemy konkretny model wprost, owner-scoped.
@@ -1399,9 +1458,11 @@ class _PkOwnerRestartMixin(GroupRequiredMixin, RestartView):
     group_required = GROUP_REQUIRED
 
     def get_object(self, queryset=None):
-        return get_object_or_404(
+        obj = get_object_or_404(
             ImportPracownikow, pk=self.kwargs["pk"], owner=self.request.user
         )
+        self.sprawdz_uczelnie(obj)  # multi-hosted: obcy import → 404
+        return obj
 
 
 class ZatwierdzImportView(_PkOwnerRestartMixin):
@@ -1581,13 +1642,14 @@ def _pobierz_wlasny_import(request, pk):
     return obj
 
 
-class PobierzOryginalView(GroupRequiredMixin, View):
+class PobierzOryginalView(GroupRequiredMixin, WymagajUczelniZRequestuMixin, View):
     """Pobranie oryginalnego, wgranego pliku XLSX (chroniony, przez sendfile)."""
 
     group_required = GROUP_REQUIRED
 
     def get(self, request, pk):
         obj = _pobierz_wlasny_import(request, pk)
+        self.sprawdz_uczelnie(obj)  # multi-hosted: obcy import → 404
         if not obj.plik_xls or not os.path.exists(obj.plik_xls.path):
             raise Http404("Plik oryginalny nie istnieje.")
         return sendfile(
@@ -1598,7 +1660,7 @@ class PobierzOryginalView(GroupRequiredMixin, View):
         )
 
 
-class PobierzPoImporcieView(GroupRequiredMixin, View):
+class PobierzPoImporcieView(GroupRequiredMixin, WymagajUczelniZRequestuMixin, View):
     """Pobranie kanonicznego, SKORYGOWANEGO pliku „po imporcie”.
 
     Dostępny dopiero po finalizacji (``STAN_ZINTEGROWANY``). Od finalizacji
@@ -1622,6 +1684,7 @@ class PobierzPoImporcieView(GroupRequiredMixin, View):
 
     def get(self, request, pk):
         obj = _pobierz_wlasny_import(request, pk)
+        self.sprawdz_uczelnie(obj)  # multi-hosted: obcy import → 404
         if obj.stan != ImportPracownikow.STAN_ZINTEGROWANY:
             raise Http404("Plik „po imporcie” dostępny dopiero po zakończeniu importu.")
         if obj.plik_xls:

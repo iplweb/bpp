@@ -43,6 +43,46 @@ def _bez_wycieklej_petli_zdarzen():
         asyncio.events._set_running_loop(zapisany)
 
 
+@pytest.fixture(autouse=True)
+def _biezaca_uczelnia_importu(request, settings):
+    """Zapewnia bieżącą uczelnię dla testów WIDOKÓW importu (tych z klientem).
+
+    Bramka ``WymagajUczelniZRequestuMixin`` redirectuje na home, gdy
+    ``get_for_request`` nie ustali uczelni (0 uczelni → None). Większość testów
+    widoków tworzy import bez tworzenia uczelni — bez rozstrzygalnej uczelni
+    każdy widok dawał 302 zamiast 200. Tworzymy JEDNĄ uczelnię zmapowaną na host
+    klienta (``testserver``), więc ``get_for_request`` ją rozstrzyga (dopasowanie
+    domeny), a importy bez własnej uczelni (``uczelnia=None``) przechodzą
+    ``sprawdz_uczelnie`` przez single-tenant fallback ``uczelnia_do_integracji``.
+
+    Uruchamiane TYLKO gdy test używa klienta HTTP (``admin_client``/``client``)
+    — testy modelowe/pipelinowe (bez klienta, często wrażliwe na liczbę uczelni)
+    są nietknięte. Testy multi-hosted zarządzają uczelniami jawnie
+    (``ustaw_biezaca_uczelnie`` zwalnia host od tej autouse-uczelni; test
+    „brak uczelni" kasuje uczelnie na starcie)."""
+    uzywa_klienta = any(
+        f in request.fixturenames
+        for f in ("client", "admin_client", "client_class", "async_client")
+    )
+    if not uzywa_klienta:
+        return None
+
+    from import_pracownikow.tests._helpers import ustaw_biezaca_uczelnie
+
+    request.getfixturevalue("db")
+    # Gdy test sam żąda fixture'a ``uczelnia`` (bezpośrednio lub tranzytywnie) —
+    # użyj JEJ jako bieżącej, nie twórz drugiej (``bpp_uczelnia_site_id_key``
+    # dopuszcza jedną Uczelnię na Site → druga = IntegrityError).
+    if "uczelnia" in request.fixturenames:
+        u = request.getfixturevalue("uczelnia")
+    else:
+        from bpp.models import Uczelnia
+
+        u = baker.make(Uczelnia)
+    ustaw_biezaca_uczelnie(u, settings)
+    return u
+
+
 def xls_path_factory(suffix=""):
     return os.path.join(os.path.dirname(__file__), "", f"testdata{suffix}.xlsx")
 

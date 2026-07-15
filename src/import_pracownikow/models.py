@@ -698,6 +698,17 @@ class ImportPracownikow(LiveOperation):
             return self.uczelnia
         return Uczelnia.objects.get_single_uczelnia_or_none()
 
+    @classmethod
+    def widoczne_dla_uczelni(cls, uczelnia):
+        """Importy należące do danej uczelni — ORM-owy odpowiednik
+        ``uczelnia_do_integracji``. Multi-tenant: ściśle ``uczelnia=U``.
+        Single-tenant: także legacy ``NULL`` (należy do jedynej uczelni)."""
+        from bpp.models import Uczelnia
+
+        if Uczelnia.objects.exclude(pk=uczelnia.pk).exists():
+            return cls.objects.filter(uczelnia=uczelnia)
+        return cls.objects.filter(Q(uczelnia=uczelnia) | Q(uczelnia__isnull=True))
+
     @property
     def uczelnia_nieokreslona_a_potrzebna(self):
         """True gdy są jednostki „do utworzenia" (nierozstrzygnięty ``BRAK``),
@@ -1437,12 +1448,41 @@ class ImportPracownikowRow(ImportRowMixin, models.Model):
         return list(self.sformatowany_log_zmian())
 
 
+class ProfilMapowaniaManager(models.Manager):
+    def dla_uczelni(self, uczelnia):
+        """Profile widoczne dla danej uczelni. Multi-tenant: ściśle
+        ``uczelnia=U``. Single-tenant: także legacy ``NULL`` (jak
+        ``ImportPracownikow.uczelnia_do_integracji`` — NULL należy do jedynej
+        uczelni). Bez ``uczelnia`` (None) → pusty zbiór (bramka i tak blokuje)."""
+        from bpp.models import Uczelnia
+
+        if uczelnia is None:
+            return self.none()
+        if Uczelnia.objects.exclude(pk=uczelnia.pk).exists():
+            return self.filter(uczelnia=uczelnia)
+        return self.filter(Q(uczelnia=uczelnia) | Q(uczelnia__isnull=True))
+
+
 class ProfilMapowania(models.Model):
     """Zapisywalne mapowanie nagłówków pliku → pola systemowe, do reużycia
-    przy powtarzalnych plikach (ta sama uczelnia co kwartał). BPP jest
-    single-tenant per instalacja, więc profile są globalne dla instancji."""
+    przy powtarzalnych plikach (ta sama uczelnia co kwartał).
 
-    nazwa = models.CharField(max_length=200, unique=True)
+    Multi-hosted: profil należy do KONKRETNEJ uczelni (FK ``uczelnia``) —
+    auto-dopasowanie i „ostatnio użyty" (``mapping.dopasuj_profil`` /
+    ``wybierz_profil_fallback``) widzą wyłącznie profile bieżącej uczelni
+    (zero przecieku między uczelniami). ``NULL`` = legacy (sprzed migracji
+    0027) / single-tenant."""
+
+    nazwa = models.CharField(max_length=200)
+    uczelnia = models.ForeignKey(
+        "bpp.Uczelnia",
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        verbose_name="uczelnia",
+        help_text="Uczelnia, do której należy profil (multi-hosted). NULL dla "
+        "profili sprzed migracji 0027 / instalacji single-tenant.",
+    )
     mapowanie = models.JSONField(default=dict)
     ostatnio_uzyty = models.DateTimeField(null=True, blank=True)
     utworzony_przez = models.ForeignKey(
@@ -1452,10 +1492,13 @@ class ProfilMapowania(models.Model):
         on_delete=models.SET_NULL,
     )
 
+    objects = ProfilMapowaniaManager()
+
     class Meta:
         verbose_name = "profil mapowania importu pracowników"
         verbose_name_plural = "profile mapowania importu pracowników"
         ordering = ["nazwa"]
+        unique_together = (("uczelnia", "nazwa"),)
 
     def __str__(self):
         return self.nazwa

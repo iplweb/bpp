@@ -268,10 +268,12 @@ def remapuj_wiersz(elem, mapowanie):
     return out
 
 
-def dopasuj_profil(naglowki):
-    """Zwraca ``ProfilMapowania``, którego zbiór kluczy mapowania pokrywa
-    ≥90% znormalizowanych nagłówków pliku (najlepsze pokrycie), albo ``None``.
-    Import lokalny — moduł ``mapping`` bywa ładowany bez potrzeby ORM."""
+def dopasuj_profil(naglowki, uczelnia):
+    """Zwraca ``ProfilMapowania`` BIEŻĄCEJ UCZELNI, którego zbiór kluczy
+    mapowania pokrywa ≥90% znormalizowanych nagłówków pliku (najlepsze
+    pokrycie), albo ``None``. Pula zawężona do uczelni (multi-hosted) — zero
+    przecieku profili między uczelniami. Import lokalny — moduł ``mapping``
+    bywa ładowany bez potrzeby ORM."""
     from import_pracownikow.models import ProfilMapowania
 
     zbior_naglowkow = set(naglowki)
@@ -280,7 +282,7 @@ def dopasuj_profil(naglowki):
 
     najlepszy = None
     najlepsze_pokrycie = 0.0
-    for profil in ProfilMapowania.objects.all():
+    for profil in ProfilMapowania.objects.dla_uczelni(uczelnia):
         klucze = set(profil.mapowanie.keys())
         if not klucze:
             continue
@@ -291,20 +293,22 @@ def dopasuj_profil(naglowki):
     return najlepszy
 
 
-def wybierz_profil_fallback(naglowki, prog=0.5):
-    """NAJNOWSZY ostemplowany profil jako fallback — zwracany TYLKO gdy pokrywa
-    ≥ ``prog`` swoich kluczy w nagłówkach pliku. Bierzemy WYŁĄCZNIE najnowszy
-    (``order_by("-ostatnio_uzyty").first()``) i NIE schodzimy do starszych:
-    chroni przed nałożeniem cudzego (np. z innej uczelni) profilu, którego
-    reguła kontekstowa `stopień` §9 zostałaby zignorowana. Import lokalny (ORM
-    lazy). Zwraca ``ProfilMapowania`` albo ``None``."""
+def wybierz_profil_fallback(naglowki, uczelnia, prog=0.5):
+    """NAJNOWSZY ostemplowany profil BIEŻĄCEJ UCZELNI jako fallback — zwracany
+    TYLKO gdy pokrywa ≥ ``prog`` swoich kluczy w nagłówkach pliku. Bierzemy
+    WYŁĄCZNIE najnowszy (``order_by("-ostatnio_uzyty").first()``) i NIE
+    schodzimy do starszych. Pula zawężona do uczelni (multi-hosted) chroni
+    przed nałożeniem cudzego (z innej uczelni) profilu, którego reguła
+    kontekstowa `stopień` §9 zostałaby zignorowana. Import lokalny (ORM lazy).
+    Zwraca ``ProfilMapowania`` albo ``None``."""
     from import_pracownikow.models import ProfilMapowania
 
     zbior = set(naglowki)
     if not zbior:
         return None
     profil = (
-        ProfilMapowania.objects.filter(ostatnio_uzyty__isnull=False)
+        ProfilMapowania.objects.dla_uczelni(uczelnia)
+        .filter(ostatnio_uzyty__isnull=False)
         .order_by("-ostatnio_uzyty")
         .first()
     )
