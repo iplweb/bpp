@@ -4,7 +4,7 @@ import pytest
 from django.urls import reverse
 from model_bakery import baker
 
-from bpp.models import Autor, Jednostka
+from bpp.models import Autor, Jednostka, Uczelnia
 from import_pracownikow.models import (
     ImportPracownikow,
     ImportPracownikowJednostka,
@@ -528,6 +528,12 @@ def test_zatwierdz_wyscig_nie_dubluje_integracji(admin_user):
     from django.test import Client
 
     from import_pracownikow.views import ZatwierdzImportView
+
+    # Ten test buduje własne żądania w wątkach (Client(), nie fixture
+    # ``admin_client``), więc autouse ``_biezaca_uczelnia_importu`` go pomija —
+    # bramka wymaga rozstrzygalnej uczelni, inaczej OBA żądania redirectują na
+    # home (302) zamiast wejść w wyścig. Jedna uczelnia → fallback single-tenant.
+    baker.make(Uczelnia)
 
     imp = baker.make(
         ImportPracownikow,

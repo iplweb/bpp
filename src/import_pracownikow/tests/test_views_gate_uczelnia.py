@@ -16,7 +16,11 @@ from import_pracownikow.tests._helpers import ustaw_biezaca_uczelnie
 
 @pytest.mark.django_db
 def test_lista_redirect_gdy_brak_uczelni(admin_client):
-    """>1 uczelnia + żadna nie zmapowana na host → lista redirectuje na home."""
+    """>1 uczelnia + żadna nie zmapowana na host → lista redirectuje na home.
+
+    Kasujemy autouse-uczelnię (fixture ``_biezaca_uczelnia_importu``), by
+    odtworzyć „brak uczelni z requestu"."""
+    Uczelnia.objects.all().delete()
     baker.make(Uczelnia)
     baker.make(Uczelnia)  # get_for_request → None (brak mapowania, >1)
     resp = admin_client.get(reverse("import_pracownikow:index"))

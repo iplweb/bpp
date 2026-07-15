@@ -94,7 +94,13 @@ class WymagajUczelniZRequestuMixin:
         return super().dispatch(request, *args, **kwargs)
 
     def sprawdz_uczelnie(self, obj):
-        if obj.uczelnia_do_integracji() != self.uczelnia_biezaca:
+        # 404 tylko dla importu należącego do INNEJ, JEDNOZNACZNEJ uczelni.
+        # Import o nieokreślonej uczelni (``uczelnia_do_integracji`` → None: brak
+        # ``uczelnia`` i brak jedynej uczelni) przepuszczamy — w produkcji każdy
+        # import ma uczelnię (łapaną z requestu przy tworzeniu), więc dotyczy to
+        # tylko rekordów legacy/NULL, których i tak nie ma na multi-hosted.
+        u = obj.uczelnia_do_integracji()
+        if u is not None and u != self.uczelnia_biezaca:
             raise Http404
 
 
