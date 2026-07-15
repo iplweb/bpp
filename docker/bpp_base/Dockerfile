@@ -278,10 +278,10 @@ RUN sed -i s/http/https/g /etc/apt/sources.list.d/debian.sources
 
 # Runtime liby wspoldzielone, ktorych potrzebuja skompilowane wheelsy +
 # narzedzia. runtime.txt: pango/cairo (weasyprint), libpq, gmp/lua (pandoc).
-# test.txt: redis-tools. Dodatkowo wzgledem `base`/produkcji:
+# test.txt: make, redis-tools. Dodatkowo wzgledem `base`/produkcji:
 #  - libldap2/libsasl2-2: python-ldap (z extras `ldap`) linkuje sie z nimi;
 #    na pelnym trixie dawal je libldap2-dev/libsasl2-dev (build.txt), tu nie ma,
-#  - ca-certificates/curl/gnupg: repo NodeSource + Dockera,
+#  - ca-certificates/curl/gnupg: repo NodeSource,
 #  - git: `yarn install` ma zaleznosci po URL-u git (pelny trixie mial git
 #    w buildpacku; slim nie ma) — bez tego `yarn install` pada.
 # UWAGA: `gettext` (msgfmt) NIE jest tu potrzebny — projektowy override
@@ -310,19 +310,6 @@ COPY --from=test-venv-builder /opt/playwright /opt/playwright
 # Playwright system deps. Na slim — w odroznieniu od pelnego trixie — tych
 # bibliotek nie ma, wiec instalacja jest konieczna (uzywamy playwrighta z venv).
 RUN /opt/venv/bin/playwright install-deps chromium
-
-# Docker CLI (for tests that use Docker, e.g. html2docx)
-RUN --mount=type=cache,target=/var/cache/apt,sharing=locked,id=apt-cache \
-    --mount=type=cache,target=/var/lib/apt/lists,sharing=locked,id=apt-lists \
-    install -m 0755 -d /etc/apt/keyrings && \
-    curl -fsSL https://download.docker.com/linux/debian/gpg \
-        -o /etc/apt/keyrings/docker.asc && \
-    echo "deb [arch=$(dpkg --print-architecture) \
-        signed-by=/etc/apt/keyrings/docker.asc] \
-        https://download.docker.com/linux/debian \
-        $(. /etc/os-release && echo $VERSION_CODENAME) stable" \
-        > /etc/apt/sources.list.d/docker.list && \
-    apt-get update && apt-get install -y docker-ce-cli
 
 # Pandoc z oficjalnego obrazu (patrz komentarz R7 przy runtime stage).
 # libgmp10/liblua5.4-0 juz sa w runtime.txt instalowanym wyzej.
@@ -398,6 +385,8 @@ RUN npx grunt build-non-interactive
 COPY src/ /src/src/
 COPY baseline-sql/ /src/baseline-sql/
 COPY conftest.py pytest.ini Makefile pyproject.toml uv.lock /src/
+COPY .github/workflows/build-docker-images.yml \
+     /src/.github/workflows/build-docker-images.yml
 
 RUN /opt/venv/bin/python src/manage.py compilemessages -v0 -l pl --traceback
 
@@ -436,19 +425,6 @@ COPY --from=pandoc-src /usr/local/bin/pandoc /usr/local/bin/pandoc
 # yarn + grunt CLI dla developera w kontenerze.
 RUN --mount=type=cache,target=/root/.npm,id=npm-cache \
     npm install -g --force yarn grunt-cli
-
-# Docker CLI dla testow ktore wolaja docker (html2docx, testcontainers).
-RUN --mount=type=cache,target=/var/cache/apt,sharing=locked,id=apt-cache \
-    --mount=type=cache,target=/var/lib/apt/lists,sharing=locked,id=apt-lists \
-    install -m 0755 -d /etc/apt/keyrings && \
-    curl -fsSL https://download.docker.com/linux/debian/gpg \
-        -o /etc/apt/keyrings/docker.asc && \
-    echo "deb [arch=$(dpkg --print-architecture) \
-        signed-by=/etc/apt/keyrings/docker.asc] \
-        https://download.docker.com/linux/debian \
-        $(. /etc/os-release && echo $VERSION_CODENAME) stable" \
-        > /etc/apt/sources.list.d/docker.list && \
-    apt-get update && apt-get install -y docker-ce-cli
 
 # Deps do /opt/venv. Bind-mount source do /app/src (z docker-compose.yml) nie
 # tknie venva — inny prefix sciezki, dlatego nie potrzeba named volume na .venv.
@@ -521,8 +497,8 @@ FROM python:${PYTHON_VERSION}-slim-${DEBIAN_VERSION} AS runtime
 ARG GIT_SHA=unknown
 ARG BPP_BUILD_FLAVOR=dev
 ARG BPP_IMAGE_TAG=unknown
-# Sanityzowana nazwa source brancha (alias) — workflow ustawia tylko dla
-# pull_request eventów. Dla master/feature push pozostaje pusty.
+# Opcjonalny alias nazwy brancha dla starszych obrazów PR lub buildów lokalnych.
+# Bieżący workflow CI pozostawia go pusty.
 ARG BPP_BRANCH_TAG=
 
 RUN sed -i s/http/https/g /etc/apt/sources.list.d/debian.sources

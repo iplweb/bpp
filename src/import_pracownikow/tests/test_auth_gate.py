@@ -18,11 +18,14 @@ from model_bakery import baker
 
 from bpp.const import GR_WPROWADZANIE_DANYCH
 from import_pracownikow.models import ImportPracownikow
+from import_pracownikow.tests._helpers import unikalny_id
 
 
 @pytest.mark.django_db
 def test_zatwierdz_bez_grupy_nie_zmienia_stanu(client, django_user_model):
-    u = django_user_model.objects.create_user(username="plain", password="pass")
+    u = django_user_model.objects.create_user(
+        username=unikalny_id("plain"), password="pass"
+    )
     client.force_login(u)
     imp = baker.make(
         ImportPracownikow, owner=u, stan=ImportPracownikow.STAN_PRZEANALIZOWANY
@@ -36,7 +39,9 @@ def test_zatwierdz_bez_grupy_nie_zmienia_stanu(client, django_user_model):
 
 @pytest.mark.django_db
 def test_restart_analiza_bez_grupy_nie_zmienia_stanu(client, django_user_model):
-    u = django_user_model.objects.create_user(username="plain2", password="pass")
+    u = django_user_model.objects.create_user(
+        username=unikalny_id("plain2"), password="pass"
+    )
     client.force_login(u)
     imp = baker.make(
         ImportPracownikow, owner=u, stan=ImportPracownikow.STAN_PRZEANALIZOWANY
@@ -49,7 +54,9 @@ def test_restart_analiza_bez_grupy_nie_zmienia_stanu(client, django_user_model):
 
 @pytest.mark.django_db
 def test_zatwierdz_z_grupa_przechodzi(client, django_user_model):
-    u = django_user_model.objects.create_user(username="entry", password="pass")
+    u = django_user_model.objects.create_user(
+        username=unikalny_id("entry"), password="pass"
+    )
     grupa, _ = Group.objects.get_or_create(name=GR_WPROWADZANIE_DANYCH)
     u.groups.add(grupa)
     client.force_login(u)
