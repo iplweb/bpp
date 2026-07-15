@@ -18,7 +18,7 @@ from django.http import (
     HttpResponseBadRequest,
     HttpResponseRedirect,
 )
-from django.shortcuts import get_object_or_404, render
+from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
 from django.utils.functional import cached_property
@@ -64,6 +64,38 @@ from import_pracownikow.pewnosc import (
 )
 
 GROUP_REQUIRED = "wprowadzanie danych"
+
+
+class WymagajUczelniZRequestuMixin:
+    """Bramka multi-hosted: import działa TYLKO w zakresie uczelni z requestu.
+
+    ``dispatch``: brak uczelni z requestu (``get_for_request`` → None: domena
+    bez mapowania Site→Uczelnia albo 0 uczelni) → redirect na home + komunikat.
+    Dla WSZYSTKICH (też superusera) — kolejność MRO: ``GroupRequiredMixin`` →
+    ten mixin → widok, więc auth/grupa lecą pierwsze, a bramka uczelni obowiązuje
+    także superusera (który jest zwolniony z grupy, ale NIE z uczelni).
+
+    ``sprawdz_uczelnie(obj)``: obiekt spoza bieżącej uczelni → ``Http404``
+    (semantyka jak ``uczelnia_do_integracji`` — single-tenant łapie legacy NULL
+    przez fallback do jedynej uczelni)."""
+
+    @cached_property
+    def uczelnia_biezaca(self):
+        return Uczelnia.objects.get_for_request(self.request)
+
+    def dispatch(self, request, *args, **kwargs):
+        if self.uczelnia_biezaca is None:
+            messages.error(
+                request,
+                "Nie ustalono uczelni dla tej domeny — import pracowników i "
+                "jednostek jest niedostępny.",
+            )
+            return redirect("root")
+        return super().dispatch(request, *args, **kwargs)
+
+    def sprawdz_uczelnie(self, obj):
+        if obj.uczelnia_do_integracji() != self.uczelnia_biezaca:
+            raise Http404
 
 
 def oznacz_przepiecie_prac(rows, parent):
@@ -115,12 +147,13 @@ def oznacz_przepiecie_prac(rows, parent):
     return rows
 
 
-class ListaImportowView(GroupRequiredMixin, ListView):
-    """Lista importów bieżącego użytkownika.
+class ListaImportowView(GroupRequiredMixin, WymagajUczelniZRequestuMixin, ListView):
+    """Lista importów bieżącego użytkownika (w zakresie bieżącej uczelni).
 
     Dawniej long_running.LongRunningOperationsView. Teraz zwykły owner-scoped
     ListView — strona live (postęp/wynik) jest osobno, pod centralnym
-    ``liveops:live`` (link przez ``object.get_absolute_url``).
+    ``liveops:live`` (link przez ``object.get_absolute_url``). Multi-hosted:
+    dodatkowo zawężone do uczelni z requestu (``widoczne_dla_uczelni``).
     """
 
     group_required = GROUP_REQUIRED
@@ -128,12 +161,16 @@ class ListaImportowView(GroupRequiredMixin, ListView):
     template_name = "import_pracownikow/importpracownikow_list.html"
 
     def get_queryset(self):
-        return ImportPracownikow.objects.filter(owner=self.request.user).order_by(
-            "-created_on"
+        return (
+            ImportPracownikow.widoczne_dla_uczelni(self.uczelnia_biezaca)
+            .filter(owner=self.request.user)
+            .order_by("-created_on")
         )
 
 
-class NowyImportView(GroupRequiredMixin, CreateLiveOperationView):
+class NowyImportView(
+    GroupRequiredMixin, WymagajUczelniZRequestuMixin, CreateLiveOperationView
+):
     """Formularz nowego importu.
 
     ``CreateLiveOperationView`` (liveops) sam ustawia owner, zapisuje,
@@ -166,7 +203,7 @@ class NowyImportView(GroupRequiredMixin, CreateLiveOperationView):
         # >1 uczelni to JEDYNE wiarygodne źródło. Bez tego FAZA 0 nie utworzyłaby
         # jednostek (get_single_uczelnia_or_none() = None). None (domena
         # nierozstrzygnięta) → ostrzeżenie nad listą jednostek, nie ciche pominięcie.
-        self.object.uczelnia = Uczelnia.objects.get_for_request(self.request)
+        self.object.uczelnia = self.uczelnia_biezaca  # bramka gwarantuje non-None
         self.object.stan = ImportPracownikow.STAN_UTWORZONY
         self.object.save()
         return HttpResponseRedirect(

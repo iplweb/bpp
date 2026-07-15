@@ -23,3 +23,18 @@ def unikalna_nazwa(baza: str) -> str:
 def unikalny_id(baza: str) -> str:
     """Zwróć czytelny identyfikator odporny na dane pozostawione w testowej DB."""
     return f"{baza}-{uuid.uuid4().hex[:8]}"
+
+
+def ustaw_biezaca_uczelnie(uczelnia, settings, host="testserver"):
+    """Zwiąż uczelnię z hostem testowego klienta → ``SiteResolutionMiddleware``
+    ustawi ``request._uczelnia = uczelnia`` (jak produkcyjne domena→Site→Uczelnia).
+
+    Potrzebne w testach multi-hosted (>1 uczelnia), gdzie bramka importu wymaga,
+    by request rozstrzygał bieżącą uczelnię — inaczej ``get_for_request`` zwraca
+    ``None`` i widok redirectuje na home. Zwraca host do przekazania jako
+    ``HTTP_HOST`` w ``client.get/post``."""
+    uczelnia.site.domain = host
+    uczelnia.site.save(update_fields=["domain"])
+    if host not in settings.ALLOWED_HOSTS:
+        settings.ALLOWED_HOSTS = list(settings.ALLOWED_HOSTS) + [host]
+    return host
