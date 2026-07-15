@@ -650,7 +650,7 @@ requires-dist = [
     { name = "ortools", specifier = ">=9.15.6755" },
     { name = "pandas", specifier = ">=3.0.3" },
     { name = "pathspec", specifier = ">=1.1.1" },
-    { name = "pbn-client", specifier = ">=0.2,<0.3" },
+    { name = "pbn-client", git = "https://github.com/iplweb/pbn-client.git?rev=84503cf41b308bc86edc6f8709b71383a8676cac" },
     { name = "pillow", specifier = ">=12.2,<14" },
     { name = "psycopg2-binary", specifier = ">=2.9.12" },
     { name = "pygad", specifier = ">=3.7.0" },
@@ -4009,15 +4009,11 @@ wheels = [
 
 [[package]]
 name = "pbn-client"
-version = "0.2.0"
-source = { registry = "https://pypi.org/simple" }
+version = "0.2.1"
+source = { git = "https://github.com/iplweb/pbn-client.git?rev=84503cf41b308bc86edc6f8709b71383a8676cac#84503cf41b308bc86edc6f8709b71383a8676cac" }
 dependencies = [
     { name = "requests", marker = "platform_python_implementation != 'PyPy'" },
     { name = "simplejson", marker = "platform_python_implementation != 'PyPy'" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/ae/b7/c7af4c1124b14285d5d086e6df35379583cb67029bf61c98815c48feab2b/pbn_client-0.2.0.tar.gz", hash = "sha256:d3b9f500c6c35a23d15a615d883bf4f82b4e58373c3d5b78322b90599e208954", size = 32513, upload-time = "2026-07-14T17:29:35.637Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/24/5f/8ab1c036011f966b424dba62b6c2cf70be89853a702c128e76fac3db61df/pbn_client-0.2.0-py3-none-any.whl", hash = "sha256:df4b87acb7589e894029d039a8bfbb35bf0097861c36ba55197279ecb8e45fef", size = 31665, upload-time = "2026-07-14T17:29:34.629Z" },
 ]
 
 [[package]]
