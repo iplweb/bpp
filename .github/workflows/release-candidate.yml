@@ -76,7 +76,8 @@ jobs:
       version_tag: ${{ steps.bump.outputs.version_tag }}
       release_ref: ${{ steps.bump.outputs.release_ref }}
       image: ${{ steps.tag.outputs.image }}
-      # 'true' = odpal suitę RC; 'false' = pomiń (rc1 z zielonego dev).
+      # 'true' = odpal suitę RC; 'false' = pomiń (drzewo RC == zielony dev
+      # modulo bump wersji — rc1 lub rc2+).
       should_test: ${{ steps.bump.outputs.should_test }}
     steps:
       - name: Checkout (pełna historia + tagi)
@@ -168,32 +169,56 @@ jobs:
           echo "release_ref=${RELEASE_REF}" >> "$GITHUB_OUTPUT"
           echo "::notice::Kandydat ${PEP} na gałęzi ${RELEASE_REF}"
 
-          # --- Guard: pomiń suitę RC dla rc1 odbitego z ZIELONEGO dev ---
-          # rc1 (nowy cykl, OPEN puste) = origin/dev tip + WYŁĄCZNIE bump wersji
-          # przez bumpver (zero zmian w kodzie/deps/Dockerze — deps identyczne,
-          # bo Step 2 zdjął re-lock). To DOKŁADNIE ten kod, który przed chwilą
-          # przeszedł pełną suitę `Tests` na dev (tests.yml odpala się na każdym
-          # push→dev). Jeśli TEN SHA dev-a ma zielony run `Tests`, re-test RC
-          # jest zdublowany → pomijamy (should_test=false).
+          # --- Guard: pomiń suitę RC gdy drzewo == ZIELONY dev (modulo bump) ---
+          # W tym workflow CAŁY kod każdego RC pochodzi z dev: rc1 odbija się
+          # prosto z origin/dev, rc2+ robi `git merge origin/dev` na gałąź
+          # release (która NIE ma własnego kodu — patrz niżej). Jedyną nie-devową
+          # zmianą jest bump wersji przez bumpver, dotykający WYŁĄCZNIE plików z
+          # [tool.bumpver.file_patterns] (pyproject.toml, version.py, package.json,
+          # Makefile) — te nie wpływają na testy. uv.lock nie jest re-lockowany
+          # (patrz niżej), więc deps RC są identyczne jak na dev.
           #
-          # W KAŻDEJ innej sytuacji testujemy (should_test=true):
-          #   - rc2+ (kontynuacja: `git merge origin/dev` wnosi nowy kod),
-          #   - dev tip pending/czerwony/bez runu (np. push docs-only, który
-          #     tests.yml pomija przez paths-ignore),
+          # Zatem: jeśli commit RC różni się od AKTUALNEGO tip dev tylko tymi
+          # plikami wersji, a ten tip ma zielony run `Tests` (tests.yml odpala
+          # się na każdym push→dev), to re-test RC jest zdublowany → pomijamy
+          # (should_test=false). Reguła jest jednolita dla rc1 ORAZ rc2+:
+          # decyduje TREŚĆ drzewa, nie numer rc. (Wcześniej guard był zawężony
+          # do rc1, bo RC re-lockował uv.lock i mógł wciągnąć nietestowane deps;
+          # re-lock usunięto, więc rc2+ z zielonego dev też jest już przetestowany.)
+          #
+          # Testujemy (should_test=true) w KAŻDEJ innej sytuacji:
+          #   - RC ma realną zmianę kodu poza bumpem (np. hotfix wprost na gałąź
+          #     release, albo dev, którego tip nie jest jeszcze zielony),
+          #   - dev tip pending/czerwony/bez runu (np. push docs-only pominięty
+          #     przez paths-ignore w tests.yml),
           #   - gdy zapytanie do gh api zawiedzie (|| echo 0) — fallback jest
           #     ZAWSZE w stronę bezpieczeństwa (testuj przy niepewności).
           # `skip_tests` (input) nadal wymusza pominięcie niezależnie od tego.
+          #
+          # UWAGA: dodając plik do [tool.bumpver.file_patterns] w pyproject.toml,
+          # dopisz go też do wykluczeń poniżej — inaczej jego bump zostanie
+          # wykryty jako „zmiana kodu" i RC niepotrzebnie się przetestuje
+          # (kierunek bezpieczny: nadmiarowy test, nie pominięty).
           SHOULD_TEST=true
-          if [ -z "$OPEN" ]; then
-            DEV_SHA=$(git rev-parse origin/dev)
+          DEV_SHA=$(git rev-parse origin/dev)
+          CODE_DIFF=$(git diff --name-only "$DEV_SHA" HEAD -- \
+            ':(exclude)pyproject.toml' \
+            ':(exclude)src/django_bpp/version.py' \
+            ':(exclude)package.json' \
+            ':(exclude)Makefile')
+          if [ -n "$CODE_DIFF" ]; then
+            echo "::notice::RC ma zmiany kodu poza bumpem wersji — testuję RC."
+            echo "Pliki różniące RC od dev (poza bumpem):"
+            echo "$CODE_DIFF"
+          else
             GREEN=$(gh api \
               "repos/${GITHUB_REPOSITORY}/actions/workflows/tests.yml/runs?branch=dev&head_sha=${DEV_SHA}&status=success&per_page=1" \
               --jq '.total_count' 2>/dev/null || echo 0)
             if [ "${GREEN:-0}" -ge 1 ]; then
               SHOULD_TEST=false
-              echo "::notice::rc1 z zielonego dev (${DEV_SHA:0:7}) — pomijam re-test RC (już przetestowany na dev)."
+              echo "::notice::RC == zielony dev (${DEV_SHA:0:7}) modulo bump wersji — pomijam re-test RC (już przetestowany na dev)."
             else
-              echo "::notice::rc1, ale dev ${DEV_SHA:0:7} nie ma zielonego runu Tests (pending/red/brak) — testuję RC."
+              echo "::notice::RC == dev (${DEV_SHA:0:7}) modulo bump, ale dev nie ma zielonego runu Tests (pending/red/brak) — testuję RC."
             fi
           fi
           echo "should_test=${SHOULD_TEST}" >> "$GITHUB_OUTPUT"
@@ -345,9 +370,10 @@ jobs:
     name: Testy (sharded)
     needs: prepare
     # Odpalamy suitę RC gdy NIE wymuszono skip_tests ORAZ prepare zdecydował,
-    # że warto testować (should_test). should_test=false tylko dla rc1 z
-    # zielonego dev — wtedy job jest 'skipped' i bramka `build` niżej i tak
-    # przepuszcza (tests.result == 'skipped'). Patrz guard w kroku `bump`.
+    # że warto testować (should_test). should_test=false gdy drzewo RC ==
+    # zielony dev modulo bump wersji (rc1 lub rc2+) — wtedy job jest 'skipped'
+    # i bramka `build` niżej i tak przepuszcza (tests.result == 'skipped').
+    # Patrz guard w kroku `bump`.
     if: ${{ !inputs.skip_tests && needs.prepare.outputs.should_test == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 35
@@ -434,9 +460,9 @@ jobs:
     needs: [prepare, tests]
     # BRAMKA: buduj :staging tylko gdy prepare OK oraz testy zielone LUB
     # pominięte. `tests` = 'skipped' na dwa sposoby: input skip_tests
-    # (awaryjnie) albo guard should_test=false (rc1 z zielonego dev — już
-    # przetestowany na dev). Nieudane testy ('failure') → build się NIE
-    # wykonuje, więc :staging nie dostaje złego RC.
+    # (awaryjnie) albo guard should_test=false (drzewo RC == zielony dev modulo
+    # bump — już przetestowany na dev). Nieudane testy ('failure') → build się
+    # NIE wykonuje, więc :staging nie dostaje złego RC.
     if: |
       always()
       && needs.prepare.result == 'success'
