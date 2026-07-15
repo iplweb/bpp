@@ -1,9 +1,14 @@
 """Widoki importu a multi-hosted uczelnia:
 
 - ``NowyImportView`` łapie uczelnię z requestu i utrwala na imporcie,
-- ekran ``/jednostki/`` GŁOŚNO ostrzega, gdy uczelni nie da się ustalić, a są
-  jednostki „do utworzenia" (zamiast cichego pominięcia).
-"""
+- bramka: >1 uczelnia bez mapowania domeny → wejście redirectuje na home,
+- pule „Mapuj na" / „Wydział (parent)" na ekranie ``/jednostki/`` są zawężone
+  do uczelni bieżącego requestu.
+
+Uwaga: autouse fixture ``_biezaca_uczelnia_importu`` (conftest) tworzy jedną
+uczelnię zmapowaną na host klienta dla testów z klientem. Testy multi-hosted
+zarządzają uczelniami jawnie — ``ustaw_biezaca_uczelnie`` przepina host na
+wskazaną uczelnię (zwalniając go od autouse-uczelni)."""
 
 import pytest
 from django.core.files.uploadedfile import SimpleUploadedFile
@@ -12,6 +17,7 @@ from model_bakery import baker
 
 from bpp.models import Jednostka, Uczelnia
 from import_pracownikow.models import ImportPracownikow, ImportPracownikowJednostka
+from import_pracownikow.tests._helpers import ustaw_biezaca_uczelnie
 
 BRAK = ImportPracownikowJednostka.TRYB_BRAK
 AKCEPTUJ = ImportPracownikowJednostka.DECYZJA_AKCEPTUJ
@@ -19,7 +25,7 @@ MAPUJ = ImportPracownikowJednostka.DECYZJA_MAPUJ
 
 
 def _jedyna_uczelnia():
-    """Utwardza „dokładnie jedna uczelnia" (kasuje ambient-nadmiar spod xdist)."""
+    """Utwardza „dokładnie jedna uczelnia" (kasuje ambient/autouse-nadmiar)."""
     u = baker.make(Uczelnia)
     Uczelnia.objects.exclude(pk=u.pk).delete()
     return u
@@ -42,37 +48,33 @@ def test_nowy_import_lapie_uczelnie_z_requestu(admin_client):
 
 
 @pytest.mark.django_db
-def test_jednostki_ostrzega_gdy_uczelnia_nieokreslona(admin_client, admin_user):
-    """>1 uczelnia + import bez ustalonej uczelni + jednostka „do utworzenia" →
-    ekran /jednostki/ pokazuje WIDOCZNE ostrzeżenie nad listą jednostek."""
+def test_jednostki_redirect_gdy_uczelnia_nieokreslona(admin_client, admin_user):
+    """>1 uczelnia + brak mapowania domeny → wejście na /jednostki/ redirectuje
+    na home (bramka „brak uczelni"). Kasujemy autouse-uczelnię, by odtworzyć
+    scenariusz nierozstrzygalnej uczelni."""
+    Uczelnia.objects.all().delete()
     baker.make(Uczelnia)
-    baker.make(Uczelnia)  # >1 → uczelnia_do_integracji() = None
+    baker.make(Uczelnia)  # >1 i brak mapowania → get_for_request = None
     imp = baker.make(
         ImportPracownikow,
         owner=admin_user,
         stan=ImportPracownikow.STAN_PRZEANALIZOWANY,
         uczelnia=None,
     )
-    baker.make(
-        ImportPracownikowJednostka,
-        parent=imp,
-        nazwa_zrodlowa="Zakład Do Utworzenia",
-        tryb=BRAK,
-        utworzona=None,
-    )
     url = reverse("import_pracownikow:jednostki", kwargs={"pk": imp.pk})
     resp = admin_client.get(url)
-    assert resp.status_code == 200
-    content = resp.content.decode()
-    assert 'data-uczelnia-nieokreslona="1"' in content
-    assert "Nie ustalono uczelni" in content
+    assert resp.status_code == 302
+    assert resp.url == "/"
 
 
 @pytest.mark.django_db
-def test_jednostki_bez_ostrzezenia_gdy_uczelnia_znana(admin_client, admin_user):
-    """Uczelnia ustalona na imporcie → brak ostrzeżenia, mimo >1 uczelni."""
+def test_jednostki_bez_ostrzezenia_gdy_uczelnia_znana(
+    admin_client, admin_user, settings
+):
+    """Uczelnia ustalona (zmapowana na host) → brak ostrzeżenia, mimo >1 uczelni."""
     baker.make(Uczelnia)
     u = baker.make(Uczelnia)
+    host = ustaw_biezaca_uczelnie(u, settings)
     imp = baker.make(
         ImportPracownikow,
         owner=admin_user,
@@ -87,17 +89,20 @@ def test_jednostki_bez_ostrzezenia_gdy_uczelnia_znana(admin_client, admin_user):
         utworzona=None,
     )
     url = reverse("import_pracownikow:jednostki", kwargs={"pk": imp.pk})
-    resp = admin_client.get(url)
+    resp = admin_client.get(url, HTTP_HOST=host)
     assert resp.status_code == 200
     assert 'data-uczelnia-nieokreslona="1"' not in resp.content.decode()
 
 
 @pytest.mark.django_db
-def test_picker_pokazuje_tylko_jednostki_uczelni_importu(admin_client, admin_user):
+def test_picker_pokazuje_tylko_jednostki_uczelni_importu(
+    admin_client, admin_user, settings
+):
     """Multi-hosted: pula „Mapuj na" na /jednostki/ pokazuje TYLKO jednostki
     uczelni importu — jednostki innej uczelni są niewidoczne w selektorze."""
     u_import = baker.make(Uczelnia)
     u_inna = baker.make(Uczelnia)
+    host = ustaw_biezaca_uczelnie(u_import, settings)
     baker.make(
         Jednostka,
         nazwa="Katedra Mojej Uczelni",
@@ -128,18 +133,21 @@ def test_picker_pokazuje_tylko_jednostki_uczelni_importu(admin_client, admin_use
         utworzona=None,
     )
     url = reverse("import_pracownikow:jednostki", kwargs={"pk": imp.pk})
-    content = admin_client.get(url).content.decode()
+    content = admin_client.get(url, HTTP_HOST=host).content.decode()
     assert "Katedra Mojej Uczelni" in content
     assert "Katedra Obcej Uczelni" not in content
 
 
 @pytest.mark.django_db
-def test_post_odrzuca_mape_na_jednostke_innej_uczelni(admin_client, admin_user):
+def test_post_odrzuca_mape_na_jednostke_innej_uczelni(
+    admin_client, admin_user, settings
+):
     """Twarda obrona serwera: POST „mapuj na" jednostkę INNEJ uczelni jest
     odrzucany (spoza puli ``_z_puli``) — cel nie zostaje ustawiony, walidacja
     „mapuj bez celu" alarmuje i NIE zapisuje (re-render 200, nie redirect)."""
     u_import = baker.make(Uczelnia)
     u_inna = baker.make(Uczelnia)
+    host = ustaw_biezaca_uczelnie(u_import, settings)
     j_obca = baker.make(
         Jednostka,
         nazwa="Obca",
@@ -166,6 +174,7 @@ def test_post_odrzuca_mape_na_jednostke_innej_uczelni(admin_client, admin_user):
     resp = admin_client.post(
         url,
         {f"dec_{dec.pk}_decyzja": MAPUJ, f"dec_{dec.pk}_wybrana": str(j_obca.pk)},
+        HTTP_HOST=host,
     )
     assert resp.status_code == 200  # re-render z alarmem, brak redirectu
     dec.refresh_from_db()

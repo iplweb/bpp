@@ -23,3 +23,27 @@ def unikalna_nazwa(baza: str) -> str:
 def unikalny_id(baza: str) -> str:
     """Zwróć czytelny identyfikator odporny na dane pozostawione w testowej DB."""
     return f"{baza}-{uuid.uuid4().hex[:8]}"
+
+
+def ustaw_biezaca_uczelnie(uczelnia, settings, host="testserver"):
+    """Zwiąż uczelnię z hostem testowego klienta → ``SiteResolutionMiddleware``
+    ustawi ``request._uczelnia = uczelnia`` (jak produkcyjne domena→Site→Uczelnia).
+
+    Potrzebne w testach multi-hosted (>1 uczelnia), gdzie bramka importu wymaga,
+    by request rozstrzygał bieżącą uczelnię — inaczej ``get_for_request`` zwraca
+    ``None`` i widok redirectuje na home. Zwraca host do przekazania jako
+    ``HTTP_HOST`` w ``client.get/post``.
+
+    Zwalnia ``host`` od innych Site'ów (np. z autouse fixture'a
+    ``_biezaca_uczelnia_importu``), inaczej ``Site.objects.get(domain=host)``
+    w resolverze rzuciłby ``MultipleObjectsReturned``."""
+    from django.contrib.sites.models import Site
+
+    Site.objects.filter(domain=host).exclude(pk=uczelnia.site_id).update(
+        domain=f"other-{uuid.uuid4().hex[:8]}.localhost"
+    )
+    uczelnia.site.domain = host
+    uczelnia.site.save(update_fields=["domain"])
+    if host not in settings.ALLOWED_HOSTS:
+        settings.ALLOWED_HOSTS = list(settings.ALLOWED_HOSTS) + [host]
+    return host

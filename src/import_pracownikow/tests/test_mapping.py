@@ -1,5 +1,7 @@
 import pytest
+from model_bakery import baker
 
+from bpp.models import Uczelnia
 from import_pracownikow.mapping import (
     POLA_DOCELOWE,
     POLE_POMIN,
@@ -81,8 +83,10 @@ def test_remapuj_wiersz_przepisuje_klucze_i_pomija():
 
 @pytest.mark.django_db
 def test_dopasuj_profil_pokrycie_ponad_90pct():
+    u = baker.make(Uczelnia)
     ProfilMapowania.objects.create(
         nazwa="P",
+        uczelnia=u,
         mapowanie={
             "nazwisko": "nazwisko",
             "imię": "imię",
@@ -90,17 +94,19 @@ def test_dopasuj_profil_pokrycie_ponad_90pct():
         },
     )
     # nagłówki pokrywają się w 100% z kluczami profilu
-    p = dopasuj_profil(["nazwisko", "imię", "jedn_org"])
+    p = dopasuj_profil(["nazwisko", "imię", "jedn_org"], u)
     assert p is not None and p.nazwa == "P"
 
 
 @pytest.mark.django_db
 def test_dopasuj_profil_brak_gdy_niskie_pokrycie():
+    u = baker.make(Uczelnia)
     ProfilMapowania.objects.create(
         nazwa="P",
+        uczelnia=u,
         mapowanie={"a": "nazwisko", "b": "imię", "c": "nazwa_jednostki"},
     )
-    assert dopasuj_profil(["zupełnie", "inne", "naglowki", "xyz"]) is None
+    assert dopasuj_profil(["zupełnie", "inne", "naglowki", "xyz"], u) is None
 
 
 def test_synonimy_osoba_sklejona():

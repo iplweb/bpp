@@ -81,17 +81,23 @@ REJESTR = [
         lambda r: _tekst(r.autor.stopien_sluzbowy),
         "attr",
     ),
+    # Blok zatrudnienia (Autor_Jednostka) — tryb "always": kolumny są ZAWSZE
+    # w pliku, niezależnie od tego, czy plik wejściowy je zawierał i czy autor
+    # ma już podpięte zatrudnienie. Getter zwraca "" przy braku Autor_Jednostka,
+    # więc powstaje pusta komórka „do ręcznego wpisania" (czas pracy od-do,
+    # funkcja, stanowisko itd.). Nagłówki pozostają kanoniczne → re-import
+    # rozpoznaje je bezobsługowo.
     (
         "Funkcja w jednostce",
         ("stanowisko",),
         lambda r: _tekst(r.autor_jednostka.funkcja) if r.autor_jednostka else "",
-        "attr",
+        "always",
     ),
     (
         "Stanowisko dydaktyczne",
         ("stanowisko_dydaktyczne",),
         lambda r: _tekst(r.autor_jednostka.stanowisko) if r.autor_jednostka else "",
-        "attr",
+        "always",
     ),
     (
         "Grupa pracownicza",
@@ -99,25 +105,25 @@ REJESTR = [
         lambda r: (
             _tekst(r.autor_jednostka.grupa_pracownicza) if r.autor_jednostka else ""
         ),
-        "attr",
+        "always",
     ),
     (
         "Wymiar etatu",
         ("wymiar_etatu_tekst", "wymiar_etatu_ulamek"),
         lambda r: _tekst(r.autor_jednostka.wymiar_etatu) if r.autor_jednostka else "",
-        "attr",
+        "always",
     ),
     (
         "Data zatrudnienia",
         ("data_zatrudnienia",),
         lambda r: _iso(r.autor_jednostka.rozpoczal_prace) if r.autor_jednostka else "",
-        "attr",
+        "always",
     ),
     (
         "Data końca zatrudnienia",
         ("data_końca_zatrudnienia",),
         lambda r: _iso(r.autor_jednostka.zakonczyl_prace) if r.autor_jednostka else "",
-        "attr",
+        "always",
     ),
     (
         "Podstawowe miejsce pracy",
@@ -127,7 +133,7 @@ REJESTR = [
             if r.autor_jednostka
             else ""
         ),
-        "attr",
+        "always",
     ),
 ]
 

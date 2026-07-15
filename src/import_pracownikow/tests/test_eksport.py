@@ -185,6 +185,42 @@ def test_autor_bez_zatrudnienia_wchodzi_z_pustymi_polami_zatrudnienia():
     assert wiersze[0][kol["Wymiar etatu"]] in (None, "")
 
 
+BLOK_ZATRUDNIENIA = [
+    "Funkcja w jednostce",
+    "Stanowisko dydaktyczne",
+    "Grupa pracownicza",
+    "Wymiar etatu",
+    "Data zatrudnienia",
+    "Data końca zatrudnienia",
+    "Podstawowe miejsce pracy",
+]
+
+
+@pytest.mark.django_db
+def test_blok_zatrudnienia_zawsze_obecny_mimo_braku_mapowania_i_zatrudnienia():
+    # Kontrakt: cały blok Autor_Jednostka jest ZAWSZE w pliku — user ma gdzie
+    # ręcznie wpisać czas pracy od-do, funkcję i stanowisko, nawet gdy plik
+    # wejściowy tych kolumn nie zawierał i autor nie ma jeszcze zatrudnienia.
+    imp = _import_zintegrowany(
+        mapowanie_kolumn={
+            "Nazwisko": "nazwisko",
+            "Imię": "imię",
+            "Jednostka": "nazwa_jednostki",
+        }
+    )
+    a = baker.make(Autor, nazwisko="Bez", imiona="Etatu")
+    _wiersz(imp, loc=0, autor=a, autor_jednostka=None)
+
+    naglowki, wiersze = _wczytaj(zbuduj_plik_po_imporcie(imp))
+
+    for kol in BLOK_ZATRUDNIENIA:
+        assert kol in naglowki, f"Brak zawsze-obecnej kolumny: {kol}"
+    # Bez zatrudnienia komórki są puste („do wpisania"), ale kolumna istnieje.
+    idx = {n: i for i, n in enumerate(naglowki)}
+    for kol in BLOK_ZATRUDNIENIA:
+        assert wiersze[0][idx[kol]] in (None, "")
+
+
 @pytest.mark.django_db
 def test_round_trip_naglowki_auto_mapuja_sie():
     # Plik „po imporcie" musi re-importować się bez ręcznego mapowania:

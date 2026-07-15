@@ -1,5 +1,5 @@
 {
-  "git_sha": "690ada7f7b76a47af6b46c9645edfe7f24556c44",
+  "git_sha": "ef7db54e2b1e3aed0e7f3409b9e5222e1de9cfd8",
   "last_migration": {
     "admin": "0003_logentry_add_action_flag_choices",
     "admin_dashboard": "0001_initial",
@@ -35,7 +35,7 @@
     "import_list_if": "0004_alter_importlistif_plik_xls",
     "import_list_ministerialnych": "0008_remove_null_from_string_fields",
     "import_polon": "0016_importplikupolon_uczelnia",
-    "import_pracownikow": "0026_importpracownikow_uczelnia",
+    "import_pracownikow": "0027_profil_uczelnia",
     "import_punktacji_zrodel": "0002_alter_importpunktacjizrodel_options_and_more",
     "importer_autorow_pbn": "0002_add_cache_models",
     "importer_publikacji": "0019_multipleworksimport_uczelnia",
